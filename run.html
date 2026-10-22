@@ -2246,6 +2246,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     min-height: 48px; padding: 12px 16px; border-radius: 999px; background: rgba(12,14,18,.92); color: #f4f7fb;
     font-size: 18px; line-height: 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   body.desk-ptr:has(#handq.on) .topchip { max-width: calc(100vw - 14px - var(--hq-room, 140px)); }
+  /* A narrow desktop row (about 960px) has less room than the line needs next
+     to the header chip: the line wraps to two 16px lines inside the header
+     band instead of running over the chip (placeHandq sets the width). */
+  body.desk-ptr.comfy.hq-tight .topchip #statuscount, body.desk-ptr.comfy.hq-tight .topchip #statusrest { display: none !important; }
+  body.desk-ptr.comfy #handq.on.hq-tight { display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    white-space: normal; padding: 4px 14px; font-size: 16px; line-height: 20px; min-height: 48px; border-radius: 16px; }
   /* A shared slide starts below the header row, so the header never covers it. */
   body.desk-ptr.screen-on #feed { padding-top: 70px; }
   /* Phone chrome from qa-meet-mobile: the status sheet, the 44px chip, Fit as a
@@ -10272,6 +10278,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // band here used to reserve that band in the gallery, so the tiles
         // stopped short of the screen and a wake could resize them.
         let floor = 0;
+        // An app is something you work, not a face. On an upright phone its
+        // pane starts under the meeting's header chip, so the chip never sits
+        // on the app's own header (Invite, Help, Stop app). The faces keep the
+        // full screen (the layout ignores insets); the chip does not move when
+        // the controls wake or tuck, so this never resizes on a wake.
+        let topInset = 0;
+        if (phone && !shortLand && appOn) {
+          const chipEl = document.querySelector('.topchip');
+          if (chipEl && chipEl.getClientRects().length && getComputedStyle(chipEl).display !== 'none') {
+            topInset = Math.ceil(chipEl.getBoundingClientRect().bottom + 8);
+          }
+        }
         window.__comfyLast = MV.apply({
           feed: feed, tiles: tiles, faces: faces, video: meta.video, srcW: meta.w, srcH: meta.h, cols: cols, cellN: cellOf ? meta.n : 0, cellOf: cellOf,
           holdMs: holdMs, floor: floor,
@@ -10288,6 +10306,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           for (const [k, v] of [['--seat-x', 'left'], ['--seat-y', 'top'], ['--seat-w', 'width'], ['--seat-h', 'height']]) {
             if (appOn && appSeat.style[v]) pane.style.setProperty(k, appSeat.style[v]);
             else pane.style.removeProperty(k);
+          }
+          if (appOn && topInset > 0) {
+            const sy = parseFloat(appSeat.style.top) || 0, sh = parseFloat(appSeat.style.height) || 0;
+            if (sh > 0 && sy < topInset) {
+              pane.style.setProperty('--seat-y', topInset + 'px');
+              pane.style.setProperty('--seat-h', Math.max(1, Math.round(sh - (topInset - sy))) + 'px');
+            }
           }
         }
         if (meta.srcEl) meta.srcEl.classList.toggle('stad-src', faces.length > 0);
@@ -12655,7 +12680,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // You left on purpose: the number is the room without you, frozen at
       // the click, not the tiles this page still has up behind the dialog.
       const shown = (leftUp && leftBehind > 0) ? leftBehind : headerCount();
-      const tail = partial + link + savedLock + extra;
+      // The password and ready-count sentences are longer than the row Fit
+      // leaves, so they were cut off after you left. The count and quality stay.
+      const tail = partial + link + savedLock + (leftUp ? '' : extra);
       const foldNow = roomDig();
       const foldPartial = !!(foldNow && foldNow.part); // a shortfall is not the room size
       let countText = '';
@@ -12741,6 +12768,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // An empty count is no button: Tab must not stop on nothing.
         if (countEl.hidden !== !countText) countEl.hidden = !countText;
         if (restEl.textContent !== restText) restEl.textContent = restText;
+        restEl.dataset.full = restText;
+        restEl.dataset.short = (q && q.label && restText.indexOf(' · ' + q.label) === 0) ? restText.slice((' · ' + q.label).length) : '';
+        fitStatusRest();
       }
       paintBcQuiet(bq);
       if (typeof paintLiveBadge === 'function') paintLiveBadge();
@@ -12763,6 +12793,37 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } catch (e) {}
       try { updateStatus(); } catch (e) {}
     }, 5000);
+    // A wide window's header line never shows a sentence cut in half (the
+    // same rule as the You-left line, 97854e1). The OS buttons take the
+    // right of the row (UI-0010), so when the line is longer than the room:
+    // the transcribing mark keeps only its icon, then the resolution drops,
+    // and then the sentence leaves the row. The whole line stays the
+    // header's title and a phone's status sheet.
+    function fitStatusRest() {
+      const restEl = document.getElementById('statusrest');
+      if (!restEl) return;
+      const b = document.body.classList;
+      const over = () => restEl.scrollWidth > restEl.clientWidth + 1;
+      const full = restEl.dataset.full || '';
+      if (restEl.textContent !== full) restEl.textContent = full;
+      b.remove('tx-tight');
+      restEl.classList.remove('rest-off');
+      if (!full || (typeof phoneLayout === 'function' && phoneLayout()) || !restEl.getClientRects().length) return;
+      if (!over()) return;
+      b.add('tx-tight');
+      if (!over()) return;
+      const short = restEl.dataset.short || '';
+      if (short) {
+        restEl.textContent = short;
+        if (!over()) return;
+        restEl.textContent = full;
+      }
+      restEl.classList.add('rest-off');
+    }
+    let fitRestFrame = 0;
+    window.addEventListener('resize', () => {
+      if (!fitRestFrame) fitRestFrame = requestAnimationFrame(() => { fitRestFrame = 0; try { fitStatusRest(); } catch (e) {} });
+    });
     try {
       const hdrMq = window.matchMedia('(max-width: 700px), (max-height: 500px)');
       if (hdrMq.addEventListener) hdrMq.addEventListener('change', () => { try { updateStatus(); } catch (e) {} });
@@ -20009,6 +20070,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function placeHandq() {
       if (!document.body.classList.contains('desk-ptr') || !handqEl.classList.contains('on')) {
         handqEl.style.right = '';
+        handqEl.style.maxWidth = '';
+        handqEl.classList.remove('hq-tight');
+        document.body.classList.remove('hq-tight');
         document.body.style.removeProperty('--hq-room');
         try { placeFit(); } catch (e) {}
         return;
@@ -20021,6 +20085,29 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       const right = Math.max(14, Math.round(window.innerWidth - edge));
       handqEl.style.right = right + 'px';
+      // The header chip yields to the line (--hq-room) down to its logo and
+      // mark; the count already shrinks to an unreadable sliver there. When
+      // the line is wider than what is left of the row beside the logo and
+      // mark, the count steps out and the line wraps to that width (hq-tight)
+      // instead of covering the chip. People is still in More.
+      handqEl.classList.remove('hq-tight');
+      document.body.classList.remove('hq-tight');
+      handqEl.style.maxWidth = '';
+      const chipEl = document.querySelector('.topchip');
+      if (chipEl && chipEl.getClientRects().length) {
+        const cr = chipEl.getBoundingClientRect();
+        const stEl = document.getElementById('status');
+        const fixedRight = stEl && stEl.getClientRects().length ? stEl.getBoundingClientRect().left + 12 : cr.right;
+        const natural = handqEl.getBoundingClientRect().width;
+        if (natural > Math.floor(window.innerWidth - right - cr.right - 10)) {
+          const room = Math.floor(window.innerWidth - right - fixedRight - 10);
+          if (natural > room) {
+            handqEl.classList.add('hq-tight');
+            document.body.classList.add('hq-tight');
+            handqEl.style.maxWidth = Math.max(120, room) + 'px';
+          }
+        }
+      }
       document.body.style.setProperty('--hq-room', Math.round(right + handqEl.getBoundingClientRect().width + 10) + 'px');
       try { placeFit(); } catch (e) {}
     }
@@ -22161,6 +22248,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // left guests with no way to share the meeting link.
         if (typeof BROADCAST !== 'undefined' && BROADCAST) show = !document.body.classList.contains('has-app') && (hostAlone || phoneAlone);
         else show = true;
+        // A person held in the waiting room is not in the meeting yet: no
+        // Invite until they are admitted (the line says "In the waiting room").
+        if (show && typeof iAmWaiting === 'function' && iAmWaiting()) show = false;
       }
       btn.style.display = show ? '' : 'none';
       const tip = (ROOM.kind === 'app' || document.body.classList.contains('app-room'))

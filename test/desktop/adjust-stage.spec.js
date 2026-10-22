@@ -4,8 +4,12 @@ const path = require('path');
 // More → Settings → Adjust stage video opens the Stage frame window
 // ("Frame what the Stage shows") and does not put anyone on the stage.
 test.use({
-  launchOptions: { args: ['--disable-gpu', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] },
-  permissions: ['camera', 'microphone'],
+  // WebKit 27.2 rejects --disable-gpu and never reaches the chromium-only skip.
+  launchOptions: async ({ browserName }, use) => {
+    if (browserName !== 'chromium') { await use({}); return; }
+    await use({ args: ['--disable-gpu', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] });
+  },
+  permissions: async ({ browserName }, use) => use(browserName === 'chromium' ? ['camera', 'microphone'] : []),
 });
 
 function membership() {
