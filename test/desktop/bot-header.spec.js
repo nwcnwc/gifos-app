@@ -5,7 +5,12 @@ const path = require('path');
 // count stay up with the transcribing mark. A person's page still fades
 // those two when the call goes calm.
 test.use({
-  launchOptions: { args: ['--disable-gpu', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] },
+  // Chromium-only flags: WebKit 27.2 rejects --disable-gpu and closes before
+  // the chromium-only skip below is reached.
+  launchOptions: async ({ browserName }, use) => {
+    if (browserName !== 'chromium') { await use({}); return; }
+    await use({ args: ['--disable-gpu', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] });
+  },
 });
 
 const SHOT = process.env.SHOT || 'run';
