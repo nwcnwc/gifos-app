@@ -3362,7 +3362,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
        made "Unmute" 72px, End ran past a 411px screen, and Reactions moved
        into More (LM-44: the sheet scrolled 645 in 625). 64px holds the
        longest word, "Silenciar". */
-    .bar > #mic { width: 68px; min-width: 68px; padding-left: 2px; padding-right: 2px; }
+    /* body .bar #mic at 46px outranks a plain .bar rule, so Unmute spills out of the button on a 320px phone. */
+    html body .bar > #mic { width: 68px; min-width: 68px; padding-left: 2px; padding-right: 2px; }
     /* Full screen width, square bottom corners: a narrower rounded sheet
        let the red Video and End buttons show through the corner cutouts. */
     .bar:not(.collapsed) .barmore {
@@ -33267,9 +33268,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!e.isTrusted || bar.classList.contains('collapsed')) return;
         const btn = e.target && e.target.closest ? e.target.closest('button') : null;
         if (!btn || !moreSheet.contains(btn)) return;
+        // Hiding the sheet blurs a focused control inside it, so remember
+        // that first and put the keyboard back on More.
+        const returnFocus = moreSheet.contains(document.activeElement);
         apply(true);
         try { localStorage.setItem('gifos_meet_bar', '1'); } catch (err) {}
-        if (moreSheet.contains(document.activeElement)) toggle.focus();
+        if (returnFocus) toggle.focus();
       });
       // Publish the bar's own height so the fixed overlays that hang from the
       // top (the chat panel) can start BELOW it instead of on top of it. It has
@@ -36976,7 +36980,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const vt = localStream && localStream.getVideoTracks()[0];
         return { ok: true, ended: !vt || vt.readyState === 'ended', n: stopped.length };
       },
-      participants: participantCount,
+      participants: headerCount, // the header counts every face on the grid, including a bot the ladder has not seated
       shareInvite: () => { const b = document.getElementById('appinvite'); if (b) b.click(); },
       markJoinedForTest: (id) => {
         const pid = String(id || 'peer').slice(0, 80);
