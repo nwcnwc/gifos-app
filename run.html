@@ -16012,10 +16012,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // cross-row link: that tile is how the other row's face is decoded, and
     // parking it at replaceTrack(null) left the far tile ended at videoWidth 0
     // (2026-10-21). Past six people the stadium composite is the picture.
-    const camPeer = (pid) => {
-      const q = peers.get(pid) || {};
-      return isRowMate(pid) || !!q.turnAudio || !!q.turnPaid || participantCount() <= 6;
-    };
+    const camPeer = (pid) => { const q = peers.get(pid) || {}; return isRowMate(pid) || !!q.turnAudio || !!q.turnPaid || (typeof participantCount === 'function' && participantCount() <= 6); };
     // ---- mesh early-probe intake (healing-laws D5) --------------------------
     // Transport death is MY first-hand evidence: when my DataChannel to a peer
     // closes, or its pc lands in a hard state ('closed', or 'failed' persisting
