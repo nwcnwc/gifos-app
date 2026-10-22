@@ -4582,6 +4582,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <script src="js/camera-studio.js" defer></script>
   <script src="js/gifos-perms.js" defer></script>
   <script>
+  // THE ENGINE, read before anything else runs (a var, so early callers never
+  // hit a TDZ). WebKit — Safari, and the Playwright WebKit shell under any UA
+  // (meet.js --profile phone wears an Android Chrome UA) — keeps
+  // navigator.vendor 'Apple Computer, Inc.'; Chromium says 'Google Inc.',
+  // Firefox ''. The UA test is the fallback for an engine that hides it.
+  var WEBKIT_ENGINE = (() => { try { const ua = navigator.userAgent || ''; if ((navigator.vendor || '').indexOf('Apple') === 0) return true; return /AppleWebKit/.test(ua) && !/Chrome|Chromium|CriOS|Edg\/|FxiOS|Android/.test(ua); } catch (e) { return false; } })();
   /*
    * GifOS Meeting — a SYSTEM app (first-party page, not a sandboxed GIF app).
    * Sandboxed apps have WebRTC deliberately neutered and no network, and camera
@@ -11548,7 +11554,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // mainHoldUntil: a held re-seat a peer asked for (holdMainVideo) —
           // the park must outlive this beat, or the beat seats the camera
           // back before the far side has bound its tile.
-          if (!cam || !vt || p.remoteParkMain || (p.mainHoldUntil && p.mainHoldUntil > Date.now())) { if (p.mainV.track) p.mainV.replaceTrack(null).catch(() => {}); }
+          const heldNow = !!(p.mainHoldUntil && p.mainHoldUntil > Date.now());
+          if (!cam || !vt || p.remoteParkMain || (heldNow && !WEBKIT_ENGINE)) { if (p.mainV.track) p.mainV.replaceTrack(null).catch(() => {}); }
+          else if (heldNow) { /* a WebKit hold: parked through encodings.active (holdMainVideo); the track stays seated */ }
           else if (p.mainV.track !== vt) p.mainV.replaceTrack(vt).catch(() => {});
         }
         if (p.mainA) {
@@ -17609,6 +17617,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const s = p.mainV, now = Date.now();
       if (!s || !s.track || s.track.readyState !== 'live' || !p.connected || p.relayed || p.remoteParkMain || (p.mainHoldUntil && p.mainHoldUntil > now)
           || myStatus.camOff || stageIds().includes(myId) || !camPeer(pid) || !s.getStats) { p.txProbe = null; return; }
+      // The source must be producing: the self view plays the same camera. A
+      // camera still starting (a clip, a slow device) encodes nothing yet.
+      if (!(meTile && meTile.video && meTile.video.readyState >= 2 && meTile.video.videoWidth > 0)) { p.txProbe = null; return; }
       const tr = s.track, pc0 = p.pc;
       s.getStats().then((st) => {
         let fe = -1; st.forEach((x) => { if (x.type === 'outbound-rtp' && (x.kind === 'video' || x.mediaType === 'video')) fe = Math.max(fe, x.framesEncoded || 0); });
@@ -17620,7 +17631,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (t - (p.txKickAt || 0) < Math.min(60000, 8000 * Math.pow(2, n))) return;
         p.txKicks = n + 1; p.txKickAt = t; p.txProbe = null;
         if (typeof clog === 'function') clog('tx-stall ' + String(pid).slice(0, 6) + ' encoded ' + fe + ' frames total, none in ' + Math.round((t - q.at) / 1000) + 's: ' + (n < 2 ? 're-seat ' + (n + 1) : 'rebuild'));
-        if (n < 2) { s.replaceTrack(null).then(() => { if (p.mainV === s && !p.remoteParkMain && !(p.mainHoldUntil && p.mainHoldUntil > Date.now())) return s.replaceTrack(tr); }).catch(() => {}); }
+        if (n < 2) { wkSenderActive(s, false).then(() => new Promise((r) => setTimeout(r, 300))).then(() => { if (p.mainV === s && !p.remoteParkMain && !(p.mainHoldUntil && p.mainHoldUntil > Date.now())) return wkSenderActive(s, true); }).catch(() => {}); }
         else { newPcFor(p); sendOffer(pid, false); }
       }).catch(() => {});
     }
@@ -22583,7 +22594,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // UA (meet.js --profile phone does), and WebKit keeps navigator.vendor
     // 'Apple Computer, Inc.' under any UA. Chromium says 'Google Inc.',
     // Firefox ''. The UA test is the fallback for an engine that hides it.
-    const WEBKIT_TILE = (() => { try { const ua = navigator.userAgent || ''; if ((navigator.vendor || '').indexOf('Apple') === 0) return true; return /AppleWebKit/.test(ua) && !/Chrome|Chromium|CriOS|Edg\/|FxiOS|Android/.test(ua); } catch (e) { return false; } })();
+    // localStorage gifos_wk_tile=off bypasses the WebKit tile path (a bisect switch for the harness).
+    const WEBKIT_TILE = WEBKIT_ENGINE && (() => { try { return localStorage.getItem('gifos_wk_tile') !== 'off'; } catch (e) { return true; } })();
     const WK_TILE_HOLD = 3000;    // ms the sender keeps the camera parked for a held re-seat
     const WK_TILE_BIND_AT = 1200; // ms into the hold when the tile is bound (frames have stopped by then)
     function tileHolds(video, stream) {
@@ -22703,25 +22715,48 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const sender = p.mainV;
       const seat = () => sender.replaceTrack(vt).catch(() => {});
       if (sender.track !== vt) { seat(); return; }
+      if (WEBKIT_ENGINE) { wkSenderActive(sender, false).then(() => wkSenderActive(sender, true)).catch(() => {}); return; } // never replaceTrack(null) on a WebKit source
       sender.replaceTrack(null).then(seat).catch(() => {});
     }
     // A HELD re-seat (WEBKIT_TILE): park the camera toward this peer for ms,
     // then seat it again through refreshOutbound (which keeps the park while
     // mainHoldUntil stands). Same guards as kickMainVideo: never a parked,
     // staged or cam-off sender, never a non-mate.
+    // A WEBKIT SENDER PARKS THROUGH ITS ENCODING, NEVER replaceTrack(null).
+    // Measured 2026-10-21 (gate-1812 webkit-fix: t2fix/mem1, lonepair-*): a
+    // WebKit seat whose camera and mic come from a media pipeline (a clip's
+    // <video> into a canvas, a WebAudio destination mic) deadlocked its web
+    // process main thread at pair formation — futex wait, CPU frozen, the
+    // pipeline's queue, webaudio and video source threads all blocked — on
+    // 1 join in 6 with that pipeline and 0 in 6 with a plain camera. The one
+    // thing the page does to those sources right then is the post-rollback
+    // kick (replaceTrack(null), then the track). encodings[0].active pauses
+    // and resumes the encoder of ONE sender without touching the source, and
+    // the resume opens a new GOP, so every WebKit park and re-seat goes this
+    // way: the held re-seat, the kick, the stalled-encoder re-seat.
+    function wkSenderActive(sender, on) {
+      try {
+        const prm = sender.getParameters();
+        if (!prm.encodings || !prm.encodings.length) prm.encodings = [{}];
+        prm.encodings[0].active = !!on;
+        return sender.setParameters(prm);
+      } catch (e) { return Promise.reject(e); }
+    }
     function holdMainVideo(p, ms) {
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (!p || !p.mainV || p.remoteParkMain || myStatus.camOff || stageIds().includes(myId) || !camPeer(p.id)) return;
       const t = Date.now();
       p.mainHoldUntil = t + ms;
-      // The ack rides the channel once the park has taken (replaceTrack
-      // resolved): the far side binds on it, never on a guess.
+      // The ack rides the channel once the park has taken (replaceTrack or
+      // setParameters resolved): the far side binds on it, never on a guess.
       const ack = () => { if (p.dc && p.dc.readyState === 'open') dcSend(p, { k: 'vkick-held', hold: ms }); };
-      if (p.mainV.track) p.mainV.replaceTrack(null).then(ack, ack); else ack();
-      if (typeof clog === 'function') clog('held re-seat ' + String(p.id).slice(0, 6) + ' park ' + ms + 'ms');
+      if (WEBKIT_ENGINE) wkSenderActive(p.mainV, false).then(ack, ack);
+      else if (p.mainV.track) p.mainV.replaceTrack(null).then(ack, ack); else ack();
+      if (typeof clog === 'function') clog('held re-seat ' + String(p.id).slice(0, 6) + ' park ' + ms + 'ms' + (WEBKIT_ENGINE ? ' (encoding)' : ''));
       setTimeout(() => {
         if (p.mainHoldUntil && p.mainHoldUntil > Date.now() + 250) return; // a later hold lengthened the window
         p.mainHoldUntil = 0;
+        if (WEBKIT_ENGINE && p.mainV) wkSenderActive(p.mainV, true).catch(() => {});
         try { refreshOutbound(); } catch (e) {}
       }, ms + 50);
     }
@@ -22738,6 +22773,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const sender = p.mainA;
       const seat = () => sender.replaceTrack(at).catch(() => {});
       if (sender.track !== at) { seat(); return; }
+      if (WEBKIT_ENGINE) return; // the WebKit mic is never re-seated through replaceTrack(null) (wkSenderActive)
       sender.replaceTrack(null).then(seat).catch(() => {});
     }
     // OFFER TURNS. Both ends of a link may offer (a fold sender opens its own
