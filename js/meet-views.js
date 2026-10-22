@@ -140,6 +140,39 @@
     return false;
   }
 
+  // True when no face in the bottom row stands over Live, Record or the chat
+  // preview: Record is beside a short last row, so that row may sit on the
+  // dock. A full bottom row would run under them.
+  function recordBeside(doc, tileEls) {
+    const marks = [];
+    const state = doc.getElementById('callstate');
+    if (state) {
+      const btns = state.querySelectorAll('button');
+      for (let i = 0; i < btns.length; i++) if (btns[i].offsetParent) marks.push(btns[i].getBoundingClientRect());
+    }
+    const note = doc.getElementById('chatnote');
+    if (note && note.offsetParent) marks.push(note.getBoundingClientRect());
+    let bottom = -Infinity;
+    const rects = [];
+    for (let i = 0; i < tileEls.length; i++) {
+      const el = tileEls[i];
+      if (!el || !el.getBoundingClientRect) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < 8 || r.height < 8) continue;
+      rects.push(r);
+      bottom = Math.max(bottom, r.bottom);
+    }
+    for (let i = 0; i < rects.length; i++) {
+      const r = rects[i];
+      if (r.bottom < bottom - 2) continue;
+      for (let j = 0; j < marks.length; j++) {
+        const m = marks[j];
+        if (m.width > 0 && r.left < m.right - 1 && m.left < r.right - 1) return false;
+      }
+    }
+    return true;
+  }
+
   // Faces stop where the call's buttons start. A shared screen and an app
   // stay full-bleed. Desktop has no call-state row (it is display:none).
   function reserveCallChrome(feed, opts, header, tiles) {
@@ -166,7 +199,9 @@
       if (a > 0 && b > 0) top = Math.min(a, b);
       else top = a > 0 ? a : b;
       // No call-state row: the dock is the edge.
-      if (!(top > 0) && d > 0) top = d;
+      // A desktop has no call-state row and its faces fill the window
+      // under a floating dock (sideways-tiles: 0.51 slivers when it stopped there).
+      if (!(top > 0) && d > 0 && opts.phone) top = d;
       callChromeTop = top > 0 ? top : 0;
       // Video and Mic are the line a face must not cross. On a sideways
       // phone the dock is taller than Record and sticks up into the feed.
@@ -174,9 +209,10 @@
       const btnTop = dockControlsTop(doc);
       // Sideways, Video sticks up past Record. Stop there.
       if (btnTop > 0 && (edge === 0 || btnTop < edge)) edge = btnTop;
-      // Upright, Record is the row the faces have to touch. Two pixels is
-      // not enough to land on the dock, which stays clear of a four-face grid.
-      else if (d > callChromeTop + 24) edge = Math.min(callChromeTop + 4, d - 4);
+      // Upright, the faces stop at Record's row (see-everyone, chat-preview,
+      // live-stands-out). 4px into it put a full bottom row under Live and
+      // Record. A crowd whose short last row leaves Record beside it gets the
+      // lip below instead.
       // Seven faces leave Record beside the grid. Sit the bottom row on the
       // dock, still above Video, and only when the first pass missed it.
       if (doc.documentElement.dataset.chromeLip === '1' && d > 0) {
@@ -699,7 +735,7 @@
       t.el.dataset.fit = r.fit || 'cover';
       used.push(t.el);
     }
-    if (!opts._lip && opts.phone && used.length && !tilesMeetChrome(feed.ownerDocument || document, used)) {
+    if (!opts._lip && opts.phone && used.length && !tilesMeetChrome(feed.ownerDocument || document, used) && recordBeside(feed.ownerDocument || document, used)) {
       (feed.ownerDocument || document).documentElement.dataset.chromeLip = '1';
       opts._lip = true;
       return apply(opts);
