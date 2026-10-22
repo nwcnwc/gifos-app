@@ -3337,7 +3337,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
        made "Unmute" 72px, End ran past a 411px screen, and Reactions moved
        into More (LM-44: the sheet scrolled 645 in 625). 64px holds the
        longest word, "Silenciar". */
-    .bar > #mic { width: 68px; min-width: 68px; padding-left: 2px; padding-right: 2px; }
+    /* body .bar #mic at 46px outranks a plain .bar rule, so Unmute spills out of the button on a 320px phone. */
+    html body .bar > #mic { width: 68px; min-width: 68px; padding-left: 2px; padding-right: 2px; }
     /* Full screen width, square bottom corners: a narrower rounded sheet
        let the red Video and End buttons show through the corner cutouts. */
     .bar:not(.collapsed) .barmore {
@@ -34671,7 +34672,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const vt = localStream && localStream.getVideoTracks()[0];
         return { ok: true, ended: !vt || vt.readyState === 'ended', n: stopped.length };
       },
-      participants: participantCount,
+      participants: headerCount, // the header counts every face on the grid, including a bot the ladder has not seated
       shareInvite: () => { const b = document.getElementById('appinvite'); if (b) b.click(); },
       markJoinedForTest: (id) => {
         const pid = String(id || 'peer').slice(0, 80);
