@@ -383,6 +383,14 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
      stay on screen and the later groups scroll (more-calm). */
   .bar.more-rows:not(.collapsed) .barmore { max-height: 200px; }
 }
+/* Sideways on an SE (568x320) the sheet is 50dvh, 160px. Two 64px rows of
+   Meeting put People and Chat's second row 2px under its edge, so you had to
+   scroll for People (landscape-first). 56px still holds a two-line label
+   and keeps both rows on the first screen. Upright keeps 64px. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .bar:not(.collapsed) #barmore .morerow > button,
+  .bar:not(.collapsed) #barmore .dockmore { min-height: 56px; }
+}
 
 /* The crop preview shares the card with a narrow column of controls, so it
    can be a normal size. The 72px cap left a postage stamp over a full-width
