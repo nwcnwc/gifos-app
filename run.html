@@ -11707,7 +11707,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // its n is what was heard. The line then says the count is incomplete.
     function displayCount() {
       const d = roomDig();
-      if (d && d.part) return Math.max(1, 1 + shownPeerCount());
+      // A partial fold is not the room size, but the number may never fall
+      // below what this page knows first-hand (its own occ and statuses, and
+      // the faces on its grid): a dead deep seat held the root fold partial
+      // for ~150 s and every page read 1 + its tiles (9 of 26). The header
+      // still says the count is incomplete (countPartial).
+      if (d && d.part) return Math.max(1, participantCount(), 1 + shownPeerCount());
       const n = roomPastSection() ? Math.max(participantCount(), d.n) : participantCount();
       return Math.max(n, 1 + shownPeerCount());
     }
@@ -14395,6 +14400,29 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const s = meshSeat();
       try { if (s && s.transportLost) s.transportLost(pid); } catch (e) {}
       if (typeof clog === 'function') clog('translost ' + String(pid).slice(0, 6) + ' ' + why);
+    }
+    // pcDeadWhy(p, st, now): which hard transport death the sweep hands to
+    // the mesh (D5) for this pair this beat, or null. The sweep asks every 2 s
+    // and onTransportDead lets one through per 10 s, so a death observation
+    // the mesh forgot is handed over again while the pair stays dead.
+    //  - 'failed-persist': the pc sits in 'failed' past the ICE-restart kick
+    //    window (the first kick fires at ~6 s).
+    //  - 'disconnected-persist' (gifos-app 6584735, never merged until now):
+    //    a dead or frozen peer answers no ICE restart and no consent check, so
+    //    Chromium can park our pc in 'disconnected' for good with the
+    //    DataChannel 'open' and silent. 'disconnected' for a whole silence
+    //    window (PEER_SILENT_MS) with NOTHING heard from the peer in it is not
+    //    a blip. Without it a forgotten observation was never re-armed: a
+    //    crashed deep seat's late frame cancelled the parent's only D5
+    //    observation, the corpse kept its cell ~150 s and every page's room
+    //    fold read partial (bigroom-past-section-twentysix f3diag: count 9 of
+    //    26). The mesh's probe gate still decides: a peer alive on any mesh
+    //    path answers and keeps its seat.
+    function pcDeadWhy(p, st, now) {
+      if (!p || p.connected || !p.downSince) return null;
+      if (st === 'failed' && now - p.downSince > 9000) return 'failed-persist';
+      if (st === 'disconnected' && now - p.downSince > PEER_SILENT_MS && now - peerHeardAt(p) > PEER_SILENT_MS) return 'disconnected-persist';
+      return null;
     }
     // A dark-return rebuild marks the pair (p.darkDead). The mark is handed
     // to the mesh from onUpdate, which runs after that tick's netEdge: netHold
@@ -18104,7 +18132,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // which probes the seat over the mesh and runs its existing confirm.
         // An alive peer answers the probe and keeps its seat; 'disconnected'
         // never reaches this (the restart path below owns blips).
-        if (st === 'failed' && !p.connected && p.downSince && now - p.downSince > 9000) onTransportDead(pid, 'failed-persist');
+        { const why = pcDeadWhy(p, st, now); if (why) onTransportDead(pid, why); }
         // 'failed'/'disconnected' heal with an ICE restart — and a pc STUCK in
         // 'new' means our offer was dropped on arrival (the receiver's roster
         // hadn't caught up, so its row-discipline guard refused us): re-offer
