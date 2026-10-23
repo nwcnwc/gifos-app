@@ -11705,6 +11705,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // than the faces on the grid (me + shownPeerCount). A partial fold is a
     // shortfall, not the room size (healing-laws: a shortfall is not the room):
     // its n is what was heard. The line then says the count is incomplete.
+    // Am I deep, or does my occ name a cell below Section 1? (displayCount)
+    function deepInView() {
+      const s = meshSeat(); if (!s || !s.hasCoord) return false;
+      if (s.coord.pc !== 0) return true;
+      for (const k of s.occ.keys()) if (k.slice(0, 2) !== '0_') return true;
+      return false;
+    }
     function displayCount() {
       const d = roomDig();
       // A partial fold is not the room size, but the number may never fall
@@ -11713,7 +11720,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // for ~150 s and every page read 1 + its tiles (9 of 26). The header
       // still says the count is incomplete (countPartial).
       if (d && d.part) return Math.max(1, participantCount(), 1 + shownPeerCount());
-      const n = roomPastSection() ? Math.max(participantCount(), d.n) : participantCount();
+      // THE FOLD IS THE ROOM WHEREVER MY FIRST-HAND VIEW CANNOT COVER IT: past
+      // C² (as before), at exactly C² (a room of C² can still hold a deep seat:
+      // twentysix ep 3, 25 present with one deep, showed 24 on Section-1 pages
+      // and 2 on the deep one), and whenever I am deep or my occ names a deep
+      // cell. A single-section room below C² reads first-hand exactly as
+      // before, so a leave drops its count at once.
+      const pc = participantCount();
+      const n = (d && (roomPastSection() || d.n >= SCALE.C * SCALE.C || deepInView())) ? Math.max(pc, d.n) : pc;
       return Math.max(n, 1 + shownPeerCount());
     }
     // Faces the page itself has put on screen (me, plus each real peer tile).
