@@ -109,13 +109,16 @@
   function newPins() {
     const map = new Map();
     const seen = new Set(); // signatures already accepted — an exact replay is refused
+    const seenRl = new Set(); // ...and, apart, the relayed goodbye copies (verifyFill opt.relayed): one each
+    const take = (set, sig) => {
+      if (set.has(sig)) return true;
+      set.add(sig);
+      if (set.size > SEEN_MAX) { const it = set.values(); for (let i = 0; i < SEEN_MAX / 4; i++) set.delete(it.next().value); }
+      return false;
+    };
     return {
-      seen(sig) {
-        if (seen.has(sig)) return true;
-        seen.add(sig);
-        if (seen.size > SEEN_MAX) { const it = seen.values(); for (let i = 0; i < SEEN_MAX / 4; i++) seen.delete(it.next().value); }
-        return false;
-      },
+      seen(sig) { return take(seen, sig); },
+      seenRelayed(sig) { return take(seenRl, sig); },
       // pin(id, pub): returns { ok, changed }. ok=false ⇒ this pub CONFLICTS with
       // the one already pinned for id (a key-swap attempt) — reject. changed is
       // reserved for surfacing a key rotation (not used to reject here).
@@ -153,9 +156,11 @@
   // relay). It carries its author's own signature, which the direct copy also
   // carries, so it neither consumes nor meets the exact-replay set: consumed,
   // a copy that won the race dropped the leaver's own LEAVE at the link behind
-  // it, and the link kept the leaver live ~60 ticks (e2e-vanish 4/8 red). A
-  // relayed goodbye still needs its tenancy or to be said now (mesh.js LEAVE),
-  // and a seat with a stake in the cell only passes it on.
+  // it, and the link kept the leaver live ~60 ticks (e2e-vanish 4/8 red). It
+  // has an exact-replay set of its own (seenRelayed), so each signature is
+  // taken once as the author's frame and once as a relayed copy. A relayed
+  // goodbye still needs its tenancy or to be said now (mesh.js LEAVE), and a
+  // seat with a stake in the cell only passes it on.
   async function verifyFill(pins, m, opt) {
     const s = m && m.s4;
     if (!s || typeof s.sp !== 'string' || !s.sig || !s.pub) return { ok: false, from: null };
@@ -168,7 +173,8 @@
     // the signed statement must describe THIS frame (no cross-frame replay),
     // be minted inside the window, and not be one this seat already accepted
     if (statement(from, m, sp.ts) !== s.sp) return { ok: false, from: null };
-    if (!(opt && opt.relayed) && pins.seen && pins.seen(String(s.sig))) return { ok: false, from: null };
+    if (opt && opt.relayed) { if (pins.seenRelayed && pins.seenRelayed(String(s.sig))) return { ok: false, from: null }; }
+    else if (pins.seen && pins.seen(String(s.sig))) return { ok: false, from: null };
     // an occupant-bearing frame must be signed BY that occupant
     if (m.id != null && m.id !== from) return { ok: false, from: null };
     // (2) the signer actually holds the private key
