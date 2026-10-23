@@ -11509,6 +11509,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (botVoiceTrack && botVoiceTrack.readyState === 'live') return botVoiceTrack;
       return (localStream && localStream.getAudioTracks()[0]) || null;
     }
+    function mainGone(pc, sd) {
+      try {
+        const tx = pc.getTransceivers().find((t) => t.sender === sd);
+        return !tx || tx.stopped === true || tx.currentDirection === 'stopped' || tx.direction === 'stopped';
+      } catch (e) { return false; }
+    }
     function refreshOutbound() {
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       // Viewers do not ride the row. Stepping off the stage in Meet restores
@@ -11583,6 +11589,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const at = mainAudioTrack();
       for (const p of peers.values()) {
         const cam = camPeer(p.id) && !staged; // structural link OR staged ⇒ no raw camera encode
+        // A MAIN SENDER ON A STOPPED M-LINE IS GONE (tile-0930). addTrack can
+        // seat my camera on a transceiver the far side opened for its own aux
+        // job, and a stop of that m-line leaves the sender holding my track
+        // and carrying nothing, ever. Forget it so the line below opens a new
+        // one. A stopped (or stopping) transceiver never resumes, so this
+        // cannot add twice.
+        if (p.pc && p.mainV && mainGone(p.pc, p.mainV)) { if (typeof clog === 'function') clog('main-gone ' + String(p.id).slice(0, 6) + ' video: re-add'); p.mainV = null; }
+        if (p.pc && p.mainA && mainGone(p.pc, p.mainA)) { if (typeof clog === 'function') clog('main-gone ' + String(p.id).slice(0, 6) + ' audio: re-add'); p.mainA = null; }
         // BECAME a row-mate after a seat move (heal/teleport): the pc predates
         // the row link and carries NO main senders — without this the new
         // mate's direct tile stays BLACK until a full transport rebuild.
@@ -17939,6 +17953,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     GifOS.meshMedia.workerClock(2000, () => {
       const now = Date.now();
       presenceSweep();
+      // A main sender whose m-line was stopped under it (mainGone) is seated
+      // again on this beat, not on the next room-state pass (tile-0930).
+      try { for (const p of peers.values()) if (p.pc && ((p.mainV && mainGone(p.pc, p.mainV)) || (p.mainA && mainGone(p.pc, p.mainA)))) { refreshOutbound(); break; } } catch (e) {}
       // §LOCK, the two verdicts only a POPULATED room can hand down:
       //  - the open-key probe got me in and there are other people here, so the
       //    room is genuinely open and the password I remembered under its NAME
@@ -22836,6 +22853,29 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // (isStageJob, not isStageKey — that name is taken further down by the mixer's
     // ROW-key test ('s:' prefix). This one classifies a mosaic JOB key.)
     const isStageJob = (k) => k === 'sgs' || String(k).indexOf('stg:') === 0;
+    // AN AUX M-LINE THE MATE SENDS ON IS NOT MINE TO STOP (tile-0930). A
+    // seat that becomes a row-mate adds its camera and mic with addTrack, and
+    // addTrack reuses any free transceiver of the same kind: on a link pc
+    // that is the m-line my aux job opened toward it (aux transceivers are
+    // sendrecv), so its main camera rides my aux m-line. Stopping that m-line
+    // at unship ended the receiver track its tile shows here and stopped its
+    // main sender for good (bigroom-past-section-twentysix: the new mate's
+    // tile bound to an ended track after the re-seat). When the far side is
+    // sending on it (negotiated sendrecv/recvonly) the m-line only loses my
+    // track; the far side's mainGone check heals one stopped before its offer
+    // landed here.
+    function stopAuxTx(pc, sd, key) {
+      try {
+        const tx = pc.getTransceivers().find((t) => t.sender === sd);
+        if (!tx || !tx.stop || tx.stopped) return;
+        const cd = tx.currentDirection;
+        if (cd === 'sendrecv' || cd === 'recvonly') {
+          if (typeof clog === 'function') clog('aux-keep ' + String(key) + ' mid=' + tx.mid + ' ' + cd + ': far side sends on it');
+          return;
+        }
+        tx.stop();
+      } catch (e) {}
+    }
     // Aux media ALWAYS opens a fresh m-line. addTrack would happily reuse an
     // already-negotiated free transceiver — and a reused m-line delivers its
     // media WITHOUT a new ontrack (the original fired with streams:[] and was
@@ -24213,7 +24253,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (pj && job.trackList[idx] === pj.carrier.track) { pipeJobs.delete(jk); try { MPipe.unpipe(pj.srcId, jk); } catch (e) {} }
       if (p && p.pc) {
         try { p.pc.removeTrack(sd); } catch (e) {}
-        try { const tx = p.pc.getTransceivers().find((t) => t.sender === sd); if (tx && tx.stop && !tx.stopped) tx.stop(); } catch (e) {}
+        stopAuxTx(p.pc, sd, job.key);
       }
       job.senders.splice(idx, 1); job.trackList.splice(idx, 1); job.srcTracks.splice(idx, 1);
     }
@@ -24582,7 +24622,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // SDP. Over hours of churn that bloats offers monotonically until
           // negotiation slows and links wedge. A stopped m-line renegotiates
           // down to a rejected stub (port 0) — bounded SDP for a long session.
-          try { const tx = p.pc.getTransceivers().find((t) => t.sender === sd); if (tx && tx.stop && !tx.stopped) tx.stop(); } catch (e) {}
+          stopAuxTx(p.pc, sd, job.key);
         }
         if (notify !== false && p.dc && p.dc.readyState === 'open') dcSend(p, { k: 'mx-end', key: job.key, streamId: job.streamId });
         compKick(job.to);
@@ -35924,7 +35964,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           return { peer: String(pid).slice(0, 12), name: rosterNames[pid] || null, coord: coordOfPeer.get(pid) || null,
             ip: ipsOf[pid] || null, camOff: st ? !!st.camOff : null, blur: st ? st.blur : null,
             stAge: st ? Math.round((now - (st.at || 0)) / 1000) : null, away: st ? !!st.away : null,
-            conn: p ? !!p.connected : false, auth: !!(p && p.dc && p.dc.__authBy === pid), vid: !!(p && p.video && p.video.srcObject && p.video.videoWidth > 0),
+            conn: p ? !!p.connected : false, auth: !!(p && p.dc && p.dc.__authBy === pid), vid: !!(p && p.video && p.video.srcObject && p.video.videoWidth > 0 && p.video.srcObject.getVideoTracks && p.video.srcObject.getVideoTracks().some((t) => t.readyState === 'live')),
             // friend-relay (E5§1): media arrives via this mutual friend's browser.
             // conn=false + relay set is a WORKING call over the fallback path —
             // liveLinks alone reads it as an outage (the 01:48 forensics gap).
