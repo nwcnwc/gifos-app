@@ -7651,7 +7651,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // sentinel has nothing to count. A real freeze stops the sentinel, and
       // that sleep is the debt. A probe here rebuilt the pair and, one settle
       // later, declared the frozen mate dead — both then held the head.
-      if (nap && !frozeGap && typeof starveDebtSince === 'function' && starveDebtSince(nowBeat - beatGap) > WAKE_SUSPECT_MS) wakeProbe(nowBeat, 'beat gap ' + Math.round(beatGap / 1000) + 's');
+      // (The sentinel usually probed this gap already, at the thaw: one probe a gap.)
+      if (nap && !frozeGap && typeof starveDebtSince === 'function' && starveDebtSince(nowBeat - beatGap) > WAKE_SUSPECT_MS && !(wakeLastAt > nowBeat - beatGap)) wakeProbe(nowBeat, 'beat gap ' + Math.round(beatGap / 1000) + 's');
       netDarkBeat(nowBeat);
       doorRoundBeat(nowBeat);
       // A hidden tab beats at a third of the pace (12s — still inside every 15s
@@ -8236,6 +8237,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       loopLastBeat = now;
       if (late > 1000) loopBlocks.push({ at: now, ms: late });
       while (loopBlocks.length && now - loopBlocks[0].at > 300000) loopBlocks.shift();
+      // THE WAKE, FIRST-HAND. The loop slept past every peer's silence
+      // threshold and the beat clock was silent through it as well (a frozen
+      // renderer: main thread and worker both stopped): probe now, not at the
+      // next HB beat. A throttled worker delivers that beat one in several, so
+      // the probe ran 2-11 s after a thaw and the evicted seat greeted into
+      // dead channels meanwhile (chaos quarter-speed-clock-back-from-75s-
+      // freeze). A hidden tab's throttled timers (up to a minute) read as a
+      // block here, but its worker keeps beating, so that is never a wake; a
+      // long task or GC pause is far under WAKE_SUSPECT_MS. One probe a wake
+      // (wakeProbe). Past 150 s the beat's freeze reload owns the return.
+      if (late > WAKE_SUSPECT_MS && late < 150000 && now - hbLastAt > Math.max(WAKE_SUSPECT_MS, 1.8 * (beatTypical || 0)) && typeof wakeProbe === 'function') { try { wakeProbe(now, 'loop gap ' + Math.round(late / 1000) + 's'); } catch (e) {} }
     }, 250);
     const starveDebtSince = (t0) => {
       let d = 0;
