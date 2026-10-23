@@ -5186,7 +5186,15 @@
         // Before healing it, learn the ring from the door: WHOHOME to a listed
         // greeter (the HOME roster installs as hints below) — the hole is then
         // either held (phone it) or free with its ring neighbours known.
-        if (oc && oc.pc === 0 && !ownEarly && this.occGet(ok) == null && TICK - this.lastAck > confirm && !this.knowsRing(ok)) {
+        // The D5 early path too: a confirmed death says the cell is free, not
+        // who sits beside it. A heir that knew no ring handed its leaf an
+        // empty neighbourhood; the leaf's CLAIM reached nobody, the row-mate
+        // (deferring to the heir) never heard it, and the heir, still seeing
+        // the hole, healed it again: two seats in the home cell
+        // (home-heal-defers-to-heir, once the founding layout put the leaf
+        // two rows down).
+        // (Early, only while the door lists someone to ask: a heir with no greeter heals as before.)
+        if (oc && oc.pc === 0 && ((ownEarly && this.lastGreeters && this.lastGreeters.some((g) => g != null && g !== this.id)) || (!ownEarly && this.occGet(ok) == null && TICK - this.lastAck > confirm)) && !this.knowsRing(ok)) {
           if (TICK - this.rosterAskAt > 40 && this.lastGreeters) { const gs = this.lastGreeters.filter((g) => g != null && g !== this.id); if (gs.length) { this.rosterAskAt = TICK; this.emit(gs[(this.rng() * gs.length) | 0], { t: 'WHOHOME', from: this.id, ttl: 60 }); } }
           this.healAt = TICK;
         } else if (oc && (ownEarly || (this.occGet(ok) == null && TICK - this.lastAck > confirm)) && TICK - (this.healTry.has(ok) ? this.healTry.get(ok) : -999) > 45) {
