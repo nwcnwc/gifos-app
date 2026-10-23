@@ -4226,7 +4226,7 @@
           }
           return;
         }
-        case 'FIND': if (m.ttl > FIND_TTL) m.ttl = FIND_TTL; if (m.tag === 1) this.serveCompact(m); else {   // a FIND's hop budget is never more than an honest seeker's (FIND_TTL): a forged ttl cannot buy a longer walk
+        case 'FIND': m.ttl = Math.min(FIND_TTL, Number.isFinite(+m.ttl) ? +m.ttl : 0); if (m.tag === 1) this.serveCompact(m); else {   // a FIND's hop budget is never more than an honest seeker's (FIND_TTL): a forged ttl cannot buy a longer walk
  this.noteKnock(m.nc); this.findNc = m.nc; try { this.serveFind(m); } finally { this.findNc = null; } } return; // Q2: tag==1 is a compaction probe (up-chain walk), never newcomer admission. Untagged: the seeker is at the door for the whole scan (knock-is-evidence phantom scope — 03c)
         case 'FINDACK': if (this.state === 2 && m.nc === this.id && m.from === this.lastAsked && this.findAckAt < 0) this.findAckAt = TICK; return; // the seeker's own greeter handed my FIND on (only the first hop: the seeker knows nobody further down)
         case 'FINDLEAF': if (!this.verifyFill(m)) return; this.findLeaf(m.hole, m.nbrs, m.ttl); return; // S4 identity hook gates fill authorship
