@@ -4411,23 +4411,17 @@
           // (byeRelay). It frees the cell in my view and goes one hop further;
           // it starts no heal (the leaver's links heard it first-hand) and is
           // no churn near me.
-          if (m.rl === 1 && m.bye === 1 && m.mvd == null && this.hasCoord && this.state === 3 && m.ck !== ck(this.coord) && this.relStake(m.ck)) {
-            // A STAKE-HOLDER takes a relayed copy as the leaver's own LEAVE
-            // (below). It carries the leaver's own signature, so on the wire
-            // it may be the only copy that survives: mesh-wire's exact-replay
-            // check (pins.seen) drops the direct copy that arrives after it.
-            // Refusing it left the link holding the leaver live ~60 ticks and
-            // its healer flapping (e2e-vanish 4/8 red). The goodbye is then
-            // handled once, whichever copy came first (byeOnce).
-          } else if (m.rl === 1) {
+          if (m.rl === 1) {
             if (m.bye !== 1 || m.mvd != null || !this.hasCoord || this.state !== 3) return;
             const tenR = this.tenOf.get(m.ck);
             const okR = (tenR && tenR.id === m.id) ? (m.tn != null && String(m.tn) === tenR.tn) : m.s4live === true;
             if (!okR || this.occGet(m.ck) !== m.id || m.ck === ck(this.coord)) return;
-            // (a cell I hold a stake in — my link, my owner, my row head — took
-            // the branch above: the full LEAVE path, the input every healing
-            // law reads; freeing it here, without that path, made links act
-            // on a copy: sim, 7 extra drains after a 15% leave at N=160)
+            // A cell I hold a stake in (my link, my owner, my row head) is
+            // freed by the leaver's own LEAVE, the input every healing law
+            // reads (heal, drain, dark hold, wait-claim). A relay that won the
+            // race to it made links act on a copy (sim: 7 extra drains after a
+            // 15% leave at N=160); it only goes on from here.
+            if (this.relStake(m.ck)) { this.byeRelay(m); return; }
             // ...and only a cell of a row I still see standing: its head held
             // by someone else. When the head is gone in my view the row is
             // being healed or was wiped (a mass leave), and the hint I hold is
@@ -4440,7 +4434,6 @@
             this.byeRelay(m);
             return;
           }
-          if (m.bye === 1 && m.mvd == null && this.byeOnce(m)) return; // a room goodbye is handled once, by its first copy (direct or relayed)
           this.lastChurn = TICK; // Q2 hysteresis: a departure near me — hold off compaction until quiescent
           // TENANCY (R5): a goodbye frees only the tenancy it was signed for.
           // When a link told me x's tenancy at this cell, the LEAVE must name
@@ -4810,18 +4803,6 @@
     // goodbye from the leaver already is).
     // A cell I have a law relationship with: an owned link, my owner, my row head.
     relStake(k) { if (this.ownedLinkCell(k)) return true; const o = this.ownerCoord(); if (o && ck(o) === k) return true; if (this.coord.i !== 0 && ck({ pc: this.coord.pc, r: this.coord.r, i: 0 }) === k) return true; return false; }
-    // true when this room goodbye (cell, leaver, tenancy) was already handled
-    // here; marks it handled otherwise. The wire drops an exact replay of a
-    // signature, a bus without that check delivers both copies: either way
-    // the goodbye acts once.
-    byeOnce(m) {
-      const key = m.ck + '|' + m.id + '|' + (m.tn == null ? '' : String(m.tn));
-      const D = this.byeDone || (this.byeDone = new Map());
-      if (D.has(key)) return true;
-      D.set(key, this.TICK);
-      if (D.size > 256) { for (const [k, at] of D) if (this.TICK - at > 120) D.delete(k); while (D.size > 256) D.delete(D.keys().next().value); }
-      return false;
-    }
     byeRelay(m) {
       if (!this.hasCoord || this.state !== 3 || m.s4 == null) return;
       let c; try { c = unck(m.ck); } catch (e) { return; }

@@ -149,7 +149,14 @@
   //   - the Ed25519 signature does not verify                (not the key holder)
   //   - TOFU conflict: pub != the key pinned for `from`      (key-swap / impostor)
   //   - minted outside FILL_WINDOW_MS on a VERIFIED signature → { reason: 'skew', skewMs }
-  async function verifyFill(pins, m) {
+  // opt.relayed: the frame is a byeRelay copy of a goodbye (mesh.js, D2
+  // relay). It carries its author's own signature, which the direct copy also
+  // carries, so it neither consumes nor meets the exact-replay set: consumed,
+  // a copy that won the race dropped the leaver's own LEAVE at the link behind
+  // it, and the link kept the leaver live ~60 ticks (e2e-vanish 4/8 red). A
+  // relayed goodbye still needs its tenancy or to be said now (mesh.js LEAVE),
+  // and a seat with a stake in the cell only passes it on.
+  async function verifyFill(pins, m, opt) {
     const s = m && m.s4;
     if (!s || typeof s.sp !== 'string' || !s.sig || !s.pub) return { ok: false, from: null };
     let sp;
@@ -161,7 +168,7 @@
     // the signed statement must describe THIS frame (no cross-frame replay),
     // be minted inside the window, and not be one this seat already accepted
     if (statement(from, m, sp.ts) !== s.sp) return { ok: false, from: null };
-    if (pins.seen && pins.seen(String(s.sig))) return { ok: false, from: null };
+    if (!(opt && opt.relayed) && pins.seen && pins.seen(String(s.sig))) return { ok: false, from: null };
     // an occupant-bearing frame must be signed BY that occupant
     if (m.id != null && m.id !== from) return { ok: false, from: null };
     // (2) the signer actually holds the private key

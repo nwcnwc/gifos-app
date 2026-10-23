@@ -520,7 +520,7 @@
         return;
       }
       if (s4on && EVICT.has(m.t) && m.s4) {
-        evictChain(() => ident.verifyFill(seat.pins, m).then((v) => {
+        evictChain(() => ident.verifyFill(seat.pins, m, (m.t === 'LEAVE' && m.rl === 1) ? { relayed: true } : undefined).then((v) => {   // a byeRelay copy never consumes the leaver's signature (mesh-identity verifyFill)
           if (stopped) return;
           // s4live: a goodbye said NOW on its author's clock, not a captured one
           // replayed (goodbyeLive; mesh.js LEAVE heals on it)
