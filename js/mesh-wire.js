@@ -333,6 +333,7 @@
       // takes the channel the knocker opened, or a forward back to it.
       if (AT_THE_DOOR_ASKING_TO_BE_LET_IN(to, m)) return;
       if (ANSWERING_SOMEONE_AT_THE_DOOR(to, m)) return;
+      if (m.t === 'HELLO') GREETING_A_MEMBER_I_HAVE_NO_CHANNEL_TO(to);
       if (opts.sendDC && opts.sendDC(to, m, peer)) return;   // DataChannel, else sponsor-forward through the mesh (peer: the sender, for in-process buses)
       // Anything else has no path: the peer is NOT REACHABLE. Say nothing and
       // let healing (H1/H2/E2) see the truth — a back channel that lies about
@@ -810,6 +811,27 @@
         if (entryDelivered(e.to, e.m)) pendingEntry.delete(k);
         else { handOnce(e); askDial(e.to); }
       }
+    }
+    // (3b) GREET A MEMBER I HAVE NO CHANNEL TO — I am inside the room and my
+    // seat says HELLO to someone with no open DataChannel to me. A transport
+    // death (D5) frees the cell on both sides of a cut pair, so neither occ
+    // names the other again and the app's dial set (built from occ) never
+    // rebuilds the pair; the seat keeps greeting (loneGreet, the greeters
+    // HELLO) into silence, both ends seated, for good (bigroom six-room
+    // cross-row sever: the row-0 and row-1 heads never met again). The HELLO
+    // is the mesh asking for that pair, so the app is asked to open it:
+    // opts.memberDial decides who dials, pacing and refusals. The frame still
+    // goes the usual way below; nothing rides the relay but the bootstrap.
+    const memberDialAt = new Map(); // to -> last member dial ask (throttle)
+    function GREETING_A_MEMBER_I_HAVE_NO_CHANNEL_TO(to) {
+      if (!opts.memberDial || typeof opts.dcOpen !== 'function' || !iAmInsideTheRoom()) return;
+      if (to == null || to === peer || opts.dcOpen(to)) return;
+      const now = Date.now();
+      if (now - (memberDialAt.get(to) || 0) < DIAL_GAP_MS) return;
+      memberDialAt.set(to, now);
+      if (memberDialAt.size > 256) { for (const [k, at] of memberDialAt) if (now - at > 60000) memberDialAt.delete(k); }
+      try { if (typeof window !== 'undefined') { const t = (window.__mwTx = window.__mwTx || {}); t['memberDial'] = (t['memberDial'] || 0) + 1; } } catch (e) {} // DEBUG-TREE
+      try { opts.memberDial(String(to)); } catch (e) {}
     }
 
     // (4) ANSWER SOMEONE AT THE DOOR — I am a member and the target is still
