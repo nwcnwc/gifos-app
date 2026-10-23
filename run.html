@@ -35232,6 +35232,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { whoLog.set(id, { att: true, first: Date.now() }); } catch (e) {}
         made.push(id);
       }
+      // The seeded people are in the room NOW: the roster and the hand line
+      // take them at seed time, not at the next roster sweep (a spec that
+      // measured before that sweep saw a different header than one after).
+      for (const id of made) if (!rosterIds.includes(id)) rosterIds.push(id);
+      try { renderHandq(); } catch (e) {}
       try { layout(); } catch (e) {}
       try { updateStatus(); } catch (e) {}
       if (!window.__qaBeat) {
