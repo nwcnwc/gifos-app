@@ -47,12 +47,24 @@ test('four people in the room are not "Just you", and the count is not cut off',
   expect(box.onScreen).toBe(true);
   expect(box.font).toBeGreaterThanOrEqual(16);
 
+  // The seeded room has a raised hand (Priya). At a narrow desktop row the
+  // hand line sits beside the header chip and the count steps out (hq-tight,
+  // ba6dd3f); "N here" still says who is in. Wait for the hand line, so the
+  // check never depends on when the page drew it.
+  await expect(page.locator('#handq')).toHaveClass(/\bon\b/, { timeout: 5000 });
   await page.setViewportSize({ width: 900, height: 720 });
   await page.waitForTimeout(200);
   const narrow = await countBox(page);
   expect(narrow.count).toBe('5 in this meeting');
-  expect(narrow.clipped).toBe(false);
-  expect(narrow.onScreen).toBe(true);
+  const tight = await page.evaluate(() => document.body.classList.contains('hq-tight'));
+  if (tight) {
+    expect(narrow.onScreen).toBe(false);
+    await expect(page.locator('#airwho')).toBeVisible();
+    await expect(page.locator('#airwho')).toHaveText('5 here');
+  } else {
+    expect(narrow.clipped).toBe(false);
+    expect(narrow.onScreen).toBe(true);
+  }
 });
 
 // The rest of the header line starts with " · 360p" in its own flex item; a
@@ -62,6 +74,12 @@ test('the header line keeps a space between the count and the dot', async ({ pag
   const seeded = await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 4, connected: false }));
   expect(seeded && seeded.ok).toBe(true);
   await expect(page.locator('#statusrest')).toContainText('·');
+  // The seeded hand line takes header room; at 1280 the sentence then folds
+  // to its " · …" tap (rest-off, 79d409b) and its own dot is drawn at 0 px.
+  // Measure the whole line where it fits beside the hand line.
+  await expect(page.locator('#handq')).toHaveClass(/\bon\b/, { timeout: 5000 });
+  await page.setViewportSize({ width: 1920, height: 720 });
+  await expect(page.locator('#statusrest')).not.toHaveClass(/\brest-off\b/);
   const gap = await page.evaluate(() => {
     const count = document.getElementById('statuscount');
     const rest = document.getElementById('statusrest');
