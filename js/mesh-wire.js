@@ -232,6 +232,7 @@
     const gpending = new Set();            // gids whose verification is in flight — the copies that arrive meanwhile are not verified again
     let skewFired = false;                 // onClockSkew fires once per node
     const gsig = new Map(); // gid -> Promise<s4> for gossip I authored (signed once, sent many times)
+    const gflight = new Set(); // deliveries of gossip I authored whose signature is still in flight (flushed())
 
     let seat = null, timer = null;
     let readyResolve; const ready = new Promise((r) => { readyResolve = r; });
@@ -407,7 +408,16 @@
           if (m.src !== seat.id) return;
           let pr = gsig.get(m.gid);
           if (!pr) { pr = ident.signGossip(identity, m); gsig.set(m.gid, pr); if (gsig.size > 512) { const it = gsig.keys(); for (let i = 0; i < 128; i++) gsig.delete(it.next().value); } }
-          pr.then((s) => { if (!stopped) { m.s4 = s; deliver(to, m); } }).catch(() => {});
+          // GOSSIP SAID BEFORE STOP STILL LEAVES. The farewell 'bye' is
+          // gossiped, then leave() stops the node in the same pass, before the
+          // signature resolves: dropped here, the bye reached only the seats
+          // with a channel to the leaver, and a section-mate in another row
+          // kept the leaver on its status hold (~13 s, bigroom-past-row-six).
+          // A frame handed over before stop() is delivered once signed;
+          // flushed() lets the page wait for it before closing channels.
+          const early = !stopped;
+          const q = pr.then((s) => { if (!stopped || early) { m.s4 = s; deliver(to, m); } }).catch(() => {});
+          if (early) { gflight.add(q); q.then(() => gflight.delete(q)); }
           return;
         }
         deliver(to, m);
@@ -1308,6 +1318,10 @@
       // R5/E5§2: after onFork, the app picks one genesis key; seat joins only that room.
       chooseFork(gkey) { return !!(seat && seat.chooseFork && seat.chooseFork(gkey)); },
       leave() { try { if (seat) seat.leave(); } catch (e) {} node.stop(); },
+      // Resolves once every gossip frame handed over before now has been
+      // signed and delivered, or after `ms` (the farewell's channels close
+      // behind it: run.html afterFarewell).
+      flushed(ms) { const all = Promise.all(Array.from(gflight)); return Promise.race([all, new Promise((r) => setTimeout(r, Math.max(0, +ms || 0)))]).then(() => undefined); },
       stop() { stopped = true; if (timer && timer.worker) { try { timer.worker.terminate(); } catch (e) {} } else if (timer) clearInterval(timer); timer = null; if (sock) { try { sock.close(); } catch (e) {} sock = null; } },
     };
 
