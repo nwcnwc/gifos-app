@@ -7626,14 +7626,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // The first gap only sets the baseline. Folding a nap into it would
       // hide the next one.
       let nap = false;
+      // Slept: the sentinel was stopped for most of this gap (a freeze, not
+      // a slow clock; see starveDebtSince). Such a gap is never a cadence.
+      const slept = beatGap > WAKE_SUSPECT_MS && typeof starveDebtSince === 'function' && starveDebtSince(nowBeat - beatGap) > WAKE_SUSPECT_MS;
       // The baseline lives in the enclosing scope. A missing binding (a lift
       // of this arrow) is the same as "not set yet", not a throw.
       if (typeof beatTypical === 'undefined' || !beatTypical) {
         if (beatGap > 400 && beatGap < 60000) beatTypical = beatGap;
-      } else if (beatGap > WAKE_SUSPECT_MS && beatGap > beatTypical * 1.8) {
+      } else if (beatGap > WAKE_SUSPECT_MS && (slept || beatGap > beatTypical * 1.8)) {
         // One gap past the cadence is a nap. The next one, just as long,
-        // is the cadence itself (a slowed clock), not a nap every beat.
-        if (typeof beatLong !== 'undefined' && beatLong) { beatTypical = beatGap; beatLong = false; }
+        // is the cadence itself (a slowed clock), not a nap every beat --
+        // unless the loop slept through it: a freeze on the beat after a
+        // slowed clock's first long gap became the new cadence, no wake
+        // probe ran, and the thawed seat greeted into dead channels for
+        // 25 s (chaos quarter-speed-clock-back-from-75s-freeze).
+        if (typeof beatLong !== 'undefined' && beatLong && !slept) { beatTypical = beatGap; beatLong = false; }
         else { nap = true; beatLong = true; }
       } else {
         beatLong = false;
