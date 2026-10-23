@@ -15487,7 +15487,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (typeof clog === 'function') clog('dial-request from ' + String(p.id || '?').slice(0, 6) + ' solo=' + (participantCount() <= 1) + ' live=' + !!pLive
         + ' init=' + iInitiate(p.id) + ' forming=' + !!forming + ' dark=' + !!darkOffer + ' pc=' + (p.pc ? p.pc.connectionState + '/' + p.pc.signalingState : '-')
         + ' age=' + Math.round((Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0)) / 100) / 10 + 's frag=' + Math.round((Date.now() - (p.fragDialAt || 0)) / 100) / 10 + 's');
-      if ((participantCount() <= 1 || !pLive) && !forming && iInitiate(p.id) && Date.now() - (p.fragDialAt || 0) > 5000) {
+      // A request answered by an offer that went into the dark (the asker's
+      // side was cut when it left) is asked again every 2 s by memberDial; a
+      // 5 s re-offer gate there put up to 5 s on a cut pair's return
+      // (066ba4-room-six: 12.6 s). A dark offer is re-made after 2 s.
+      if ((participantCount() <= 1 || !pLive) && !forming && iInitiate(p.id) && Date.now() - (p.fragDialAt || 0) > (darkOffer ? 2000 : 5000)) {
         p.fragDialAt = Date.now();
         if (!pLive && p.pc) newPcFor(p);
         makePeer(p.id, null); sendOffer(p.id, false);
