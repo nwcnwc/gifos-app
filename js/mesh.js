@@ -4648,6 +4648,9 @@
           // V4: my assigner hands me my row's ledger — outstanding vouches
           // and its confirmed row occ. I am now the row's admitter, and these
           // cells are already promised or held.
+          // ...and only from the seat that vouched me in: a verified signer
+          // that is the PLACE signer I took this cell from (admBy), naming me.
+          if (!this.verifyFill(m) || m.id !== this.id || m.s4from == null || m.s4from === this.id || m.s4from !== this.admBy) return;
           if (this.hasCoord && this.coord.pc === 0 && this.coord.i === 0 && ck(this.coord) === m.ck) {
             const inRow = (e) => { const c = e && cellKeyOk(e.k); return !!c && c.pc === 0 && c.r === this.coord.r && e.v != null; }; // the ledger of MY row, nothing else
             for (const kv of (Array.isArray(m.vouches) ? m.vouches.slice(0, C()) : [])) if (inRow(kv) && !this.occ.has(kv.k) && !this.sitting.has(kv.k)) this.sitting.set(kv.k, { joiner: kv.v, assigner: this.id, at: this.TICK, pingAt: -1 });
