@@ -173,8 +173,6 @@
     // the signed statement must describe THIS frame (no cross-frame replay),
     // be minted inside the window, and not be one this seat already accepted
     if (statement(from, m, sp.ts) !== s.sp) return { ok: false, from: null };
-    if (opt && opt.relayed) { if (pins.seenRelayed && pins.seenRelayed(String(s.sig))) return { ok: false, from: null }; }
-    else if (pins.seen && pins.seen(String(s.sig))) return { ok: false, from: null };
     // an occupant-bearing frame must be signed BY that occupant
     if (m.id != null && m.id !== from) return { ok: false, from: null };
     // (2) the signer actually holds the private key
@@ -185,6 +183,12 @@
     // surfaces it (mesh-wire onClockSkew) instead of retrying in silence.
     const skewMs = (+sp.ts || 0) - Date.now();
     if (Math.abs(skewMs) > FILL_WINDOW_MS) return { ok: false, from: null, reason: 'skew', skewMs };
+    // The exact-replay set takes a signature only once the frame has passed
+    // every check above. Taken before the signature check, anyone who knew a
+    // real signature could burn it at a seat with a forged frame (a statement
+    // that matches its fields, another ts) and the real frame was refused.
+    if (opt && opt.relayed) { if (pins.seenRelayed && pins.seenRelayed(String(s.sig))) return { ok: false, from: null }; }
+    else if (pins.seen && pins.seen(String(s.sig))) return { ok: false, from: null };
     // (3) TOFU: pin on first contact, reject a key that conflicts with the pin
     const p = pins.pin(from, s.pub);
     if (!p.ok) return { ok: false, from: null };
@@ -279,8 +283,8 @@
     if (Math.abs((+sp.ts || 0) - Date.now()) > DIG_WINDOW_MS) return { ok: false, from: null };  // fresh: an old digest frame is not replayed as new
     if ((await peerIdOf(s.pub)) !== from) return { ok: false, from: null };
     if ((await digStatement(from, m, sp.ts)) !== s.sp) return { ok: false, from: null };
-    if (pins.seen && pins.seen(String(s.sig))) return { ok: false, from: null };
     if (!(await net.edVerify(s.pub, s.sig, s.sp))) return { ok: false, from: null };
+    if (pins.seen && pins.seen(String(s.sig))) return { ok: false, from: null };   // only a verified frame takes its signature (verifyFill)
     const p = pins.pin(from, s.pub);
     if (!p.ok) return { ok: false, from: null };
     return { ok: true, from };
