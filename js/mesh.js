@@ -1084,12 +1084,23 @@
       // heard another seat at; two proof-backed claimants, neither displaced
       // (heal-time.js s1all seed 8: 2_2_4 doubled for 40k ticks).
       if (joiner !== this.id && !sit && this.ppAdmitter(c0) === this.id) this.ppGrant(k, joiner);
-      if (xfer) {
-        const vouches = [], rowOcc = [];
-        for (const [sk, ss] of this.sitting) { const sc = unck(sk); if (sc.pc === 0 && sc.r === c0.r && ss.assigner === this.id) vouches.push({ k: sk, v: ss.joiner }); }
-        for (let j = 0; j < C(); j++) { const rk = ck({ pc: 0, r: c0.r, i: j }); const x = this.occGet(rk); if (x != null && rk !== k) rowOcc.push({ k: rk, v: x }); }
-        this.emit(joiner, { t: 'SITXFER', ck: k, id: joiner, vouches, rowOcc });   // an EMPTY ledger is still the authority-handover signal
-      }
+      if (xfer) this.sitXfer(k, joiner);
+    }
+    sitXfer(k, joiner) {
+      const c0 = unck(k), vouches = [], rowOcc = [];
+      for (const [sk, ss] of this.sitting) { const sc = unck(sk); if (sc.pc === 0 && sc.r === c0.r && ss.assigner === this.id) vouches.push({ k: sk, v: ss.joiner }); }
+      for (let j = 0; j < C(); j++) { const rk = ck({ pc: 0, r: c0.r, i: j }); const x = this.occGet(rk); if (x != null && rk !== k) rowOcc.push({ k: rk, v: x }); }
+      this.emit(joiner, { t: 'SITXFER', ck: k, id: joiner, vouches, rowOcc });   // an EMPTY ledger is still the authority-handover signal
+    }
+    // A HELLO from the joiner clears its vouch. When the vouch was mine for a
+    // Section-1 row head, the ledger goes with it: the head's HELLO can land
+    // before its CLAIM, the CLAIM then found no vouch, and the head waited
+    // 60 ticks for a SITXFER nobody sent (door-stream.js xfer-probe).
+    clearVouch(k, id) {
+      const sit = this.sitting.get(k); if (!sit || sit.joiner !== id) return;
+      this.clearSoft(k);
+      const c0 = unck(k);
+      if (sit.assigner === this.id && c0.pc === 0 && c0.i === 0 && id !== this.id) this.sitXfer(k, id);
     }
     // CHECK-BACK (law A tightened, 2026-08-02 — the ghost-churn fix): the
     // recheck at SIT_RECHECK now actually FREES a vouch that was never
@@ -2533,6 +2544,16 @@
                 this.serveFind(mm); return;
               }
               this.handOn(mm, this.occGet(ck(adm)), ck(adm), false); return;
+            }
+            // DOOR RELAY (A): an admitter I do not hear first-hand is not a
+            // reason to refuse. The FIND goes to my own row head, which hears
+            // every row head first-hand (column 0), and its scan hands it on.
+            // A NOROOM here left the knock to the one greeter in five that
+            // was a head: a 26-person stream seated its 9th joiner deep after
+            // 17 later ones (chaos bigroom-past-section-twentysix; door-stream.js).
+            if (this.coord.i !== 0) {
+              const hk = ck({ pc: 0, r: this.coord.r, i: 0 }), h = this.occGet(hk);
+              if (h != null && h !== this.id && h !== mm.nc && h !== mm.from && this.firstHandLive(hk) && !this.translost.has(hk)) { this.handOn(mm, h, hk, false); return; }
             }
           }
         }
@@ -4309,7 +4330,7 @@
               const hb = this.helloBack, at = hb.get(m.id);
               if (at === undefined || TICK - at > HELLO_BACK) { if (hb.size >= 32) hb.delete(hb.keys().next().value); hb.set(m.id, TICK); this.emit(m.id, { t: 'HELLO', ck: ck(this.coord), id: this.id }); }
             }
-            { const sit = this.sitting.get(m.ck); if (sit && sit.joiner === m.id) this.clearSoft(m.ck); }
+            this.clearVouch(m.ck, m.id);
             return;
           }
           // TENURE (law S2): a tenured incumbent I hear here beats a raw claim,
@@ -4337,7 +4358,7 @@
           // self-confirms — a rival claimant or a promoted healer announcing
           // must not wipe a vouch it does not own (the wipe plus a LEAVE echo
           // read the cell FREE and the same head re-placed it every ~3 ticks).
-          { const sit = this.sitting.get(m.ck); if (sit && sit.joiner === m.id) this.clearSoft(m.ck); }
+          this.clearVouch(m.ck, m.id);
           return;
         }
         // YIELD: "you and another claim your cell; you lost." Honoured only
@@ -4648,6 +4669,9 @@
           // V4: my assigner hands me my row's ledger — outstanding vouches
           // and its confirmed row occ. I am now the row's admitter, and these
           // cells are already promised or held.
+          // ...and only from the seat that vouched me in: a verified signer
+          // that is the PLACE signer I took this cell from (admBy), naming me.
+          if (!this.verifyFill(m) || m.id !== this.id || m.s4from == null || m.s4from === this.id || m.s4from !== this.admBy) return;
           if (this.hasCoord && this.coord.pc === 0 && this.coord.i === 0 && ck(this.coord) === m.ck) {
             const inRow = (e) => { const c = e && cellKeyOk(e.k); return !!c && c.pc === 0 && c.r === this.coord.r && e.v != null; }; // the ledger of MY row, nothing else
             for (const kv of (Array.isArray(m.vouches) ? m.vouches.slice(0, C()) : [])) if (inRow(kv) && !this.occ.has(kv.k) && !this.sitting.has(kv.k)) this.sitting.set(kv.k, { joiner: kv.v, assigner: this.id, at: this.TICK, pingAt: -1 });
