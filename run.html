@@ -11719,7 +11719,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // the faces on its grid): a dead deep seat held the root fold partial
       // for ~150 s and every page read 1 + its tiles (9 of 26). The header
       // still says the count is incomplete (countPartial).
-      if (d && d.part) return Math.max(1, participantCount(), 1 + shownPeerCount());
+      if (d && d.part) return Math.max(1, participantCount(), (roomPastSection() || d.n >= SCALE.C * SCALE.C || deepInView()) ? d.n : 0, 1 + shownPeerCount()); // a partial fold's n is what was heard (G9: missing inputs only under-count), so where the fold is the room it is a floor too
       // THE FOLD IS THE ROOM WHEREVER MY FIRST-HAND VIEW CANNOT COVER IT: past
       // C² (as before), at exactly C² (a room of C² can still hold a deep seat:
       // twentysix ep 3, 25 present with one deep, showed 24 on Section-1 pages
