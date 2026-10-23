@@ -90,7 +90,7 @@
   const DARK_WAIT = 6;         // a greeter I asked WHOHOME at the door and that has not answered for 6 ticks is dark to me (FIND's dark list)
   const DARK_ASK_FRESH = 60;   // ...while my latest ask to it is at most 60 ticks old
   const FIND_TTL = 200;        // an honest seeker's FIND hop budget; intake clamps every FIND to it (door relay amplification bound)
-  const RELAY_SEEN = 4;        // door relay: one hand-off per seeker per 4 ticks from this seat (a stale-view head/mate cycle stops here)
+  const RELAY_SEEN = 4, RELAY_BUDGET = 3;   // door relay: at most 3 hand-offs per seeker per 4 ticks from this seat (a stale-view head/mate cycle stops here); a budget, not 1, so one forged FIND in the seeker's name cannot shut its real one out, and a re-ask (`again`) always passes
   const KNOCK_FRESH = 40;      // a FIND from x in the last 40 ticks: x is knocking (serveFind's split-off guard)   // a door round's answers are in after 8 ticks (doorRound; app-paced every few seconds)
   // D5 EARLY-PROBE (healing-laws D5): when MY OWN transport to a neighbour dies
   // (DataChannel close / hard pc failure — a FIRST-HAND observation, never
@@ -2555,9 +2555,9 @@
             // 17 later ones (chaos bigroom-past-section-twentysix; door-stream.js).
             if (this.coord.i !== 0) {
               const hk = ck({ pc: 0, r: this.coord.r, i: 0 }), h = this.occGet(hk);
-              const RS = this.relaySeen || (this.relaySeen = new Map()); const seen = RS.get(mm.nc);
-              if (h != null && h !== this.id && h !== mm.nc && h !== mm.from && this.firstHandLive(hk) && !this.translost.has(hk) && !(seen !== undefined && TICK - seen < RELAY_SEEN)) {
-                RS.delete(mm.nc); RS.set(mm.nc, TICK); if (RS.size > 64) RS.delete(RS.keys().next().value);
+              const RS = this.relaySeen || (this.relaySeen = new Map()); const e = RS.get(mm.nc); const fresh = e !== undefined && TICK - e.at < RELAY_SEEN;
+              if (h != null && h !== this.id && h !== mm.nc && h !== mm.from && this.firstHandLive(hk) && !this.translost.has(hk) && (mm.again || !fresh || e.n < RELAY_BUDGET)) {
+                RS.delete(mm.nc); RS.set(mm.nc, fresh ? { at: e.at, n: e.n + 1 } : { at: TICK, n: 1 }); if (RS.size > 64) RS.delete(RS.keys().next().value);
                 this.handOn(mm, h, hk, false); return;
               }
             }
