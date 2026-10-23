@@ -468,6 +468,7 @@
       // once, so no transport loss is recorded for it); cell -> the tick. A
       // row-mate's first-hand proof of a head's death for the H2 head backstop.
       this.byeAt = new Map();
+      this.byeIds = new Map();      // id -> tick its own signed room goodbye (LEAVE bye, or the app's bye) reached me: scopeGap reads no gap for a cell an echo still names it at (dc2 Theo)
       // D5 early-probe state (all keyed by coord ckey):
       //   translost: when MY transport to that coord's occupant died (edge-
       //              triggered — set once per transition, cleared on any answer)
@@ -2063,6 +2064,7 @@
     // seed 10 #1: 10.5 s; the runs whose LEAVE arrived took 4.2 s).
     goodbye(pid) {
       if (pid == null || pid === this.id || !this.hasCoord || this.state !== 3) return;
+      this.noteBye(pid);
       for (const [k, v] of Array.from(this.occ)) {
         if (v !== pid || k === ck(this.coord)) continue;
         this.linkedBy.delete(k); this.tenOf.delete(k); this.occ.delete(k); this.live.delete(k); this.kidful.delete(k); this.s1seen.delete(k); this.tlForget(k, 'goodbye'); this.healTry.delete(k); this.digForget(k);
@@ -3173,8 +3175,10 @@
     // while its old cell still counts it. Blurring on that window marked a
     // settled room partial for ~150 ticks per move. A vacate or my own seat
     // change clears what I heard, so "heard" never outlives the relationship.
+    noteBye(id) { if (id == null || id === this.id) return; if (this.byeIds.size >= 256) { for (const [x, t] of this.byeIds) if (this.TICK - t > DIG_LOSS_H) this.byeIds.delete(x); if (this.byeIds.size >= 256) this.byeIds.delete(this.byeIds.keys().next().value); } this.byeIds.set(id, this.TICK); }
     scopeGap(k) {
       if (!this.occ.has(k) || this.occIsPhantom(k)) return false;
+      { const b = this.byeIds.get(this.occ.get(k)); if (b !== undefined && this.TICK - b <= DIG_LOSS_H) return false; } // a cell an echo still names a seat that said its own room goodbye is not a subtree I lost (G3 reads LOSS, not departure)
       const heard = this.rowKids.has(k) || this.s1tab.has(k) || (this.hasCoord && k === ck(topo.down(this.coord)) && this.downDig.at >= 0);
       if (!heard) return false;
       const it = this.live.get(k); return it !== undefined && this.TICK - it <= DIG_LOSS_H;
@@ -4483,6 +4487,7 @@
           // anyone else's name used to free a live seat at every neighbour and
           // start a left-pack heal into it.
           if (m.id == null || !cellKeyOk(m.ck) || (m.mvd != null && !cellKeyOk(m.mvd)) || !this.provenEv(m, m.id)) return;
+          if (m.bye === 1 && m.mvd == null) this.noteBye(m.id);
           // D2 RELAY: a section-mate passed the leaver's own signed goodbye on
           // (byeRelay). It frees the cell in my view and goes one hop further;
           // it starts no heal (the leaver's links heard it first-hand) and is
