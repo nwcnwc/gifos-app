@@ -15158,7 +15158,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // HELLO that would have taught B can no longer sneak over the relay.
         // Degree stays bounded: the sender dials only its own owned links, and
         // the sweeper retires any link the arithmetic ends up not wanting.
-        if (!linkTo(from) && meshKnows(from)) { rxStats.offerRejected++; return; }
+        // ...but a seat with NO link up refuses nobody it knows. My view can
+        // hold a member at the cell it just left: a left-pack after a head's
+        // death moved the row-0 seat into my owner's cell, my occ still named
+        // it at its old one, so I refused every offer from my own new owner
+        // and sat alone 107 s (bigroom-past-row-six: 10 refusals, one per
+        // mesh-starve rebuild). Taken, the pair carries the HELLO that fixes
+        // my view; a pair the arithmetic still does not name keeps its 15 s
+        // grace and is retired by the sweeper.
+        if (!linkTo(from) && meshKnows(from)) {
+          let linkUp = false;
+          for (const [q, pp] of peers) if (q !== from && pp && pp.dc && pp.dc.readyState === 'open' && linkTo(q)) { linkUp = true; break; }
+          if (linkUp) { rxStats.offerRejected++; return; }
+          if (typeof clog === 'function') clog('offer from ' + String(from).slice(0, 6) + ' taken: no link of mine is up');
+        }
         const p = makePeer(from, msg.name);
         if (!p) return; // banned seat or forger: no pair, no negotiation
         if (p && !linkTo(from) && !meshKnows(from)) {
