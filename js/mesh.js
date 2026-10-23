@@ -478,7 +478,7 @@
       //              PREVENT an early eviction, never evict or resurrect.
       // § G10 unp: peer id -> first tick of its current run of PHONE/PONG that
       // reached me UNPROVEN (no channel names it). Ended by one link-proven frame.
-      this.unp = new Map(); this.lkAnyAt = -1; this.unpAnyAt = -1;
+      this.unp = new Map(); this.lkAnyAt = -1; this.unpAnyAt = -1; this.d6Mark = false;
       // Per owned-link cell, the last tick a channel named its occupant (D6).
       // unpSince: peer -> tick its current unproven streak started. A direct
       // frame ends it; the next unproven beat starts another. A gap of more
@@ -864,7 +864,7 @@
       if (this.linkIs(m, x)) {
         this.unp.delete(x); this.noChan.delete(x); this.unpSince.delete(x);   // a direct frame ends the unproven streak
         if (mine) {
-          this.lkAnyAt = this.TICK;
+          this.lkAnyAt = this.TICK; this.d6Mark = false;   // D6b: a channel proved at my cell
           const k = ck(m.coord);
           if (this.lkAt.size >= 64) this.lkAt.delete(this.lkAt.keys().next().value);
           this.lkAt.set(k, this.TICK);
@@ -953,9 +953,33 @@
       // is still recent, every channel has stopped and this is the seat
       // vacating itself; waiting for the youngest would leave it sitting
       // while its neighbours leave around it.
-      if (!recent) this.dark6 = (this.dark6 || 0) + 1;
+      if (!recent) { this.dark6 = (this.dark6 || 0) + 1; this.d6Mark = true; }
       this.requeue();
       return true;
+    }
+    // D6b A SEAT WITH NO CHANNEL TAKES NO CONTESTED CELL. Marked (I vacated
+    // by D6 with every channel stopped and none has proved since), or every
+    // owned link a channel once proved at this cell (the hole aside) has been
+    // silent past CHAN_UP while its beats still reach me unproven: darkSeat's
+    // own evidence, before DARK_LEAVE. Such a seat cannot answer an E2 / T1
+    // contest at a new cell, and take() clears the lkAt clocks D6 reads, so a
+    // move made dark is one D6 never sees again (sim repro-dark-seat leg A
+    // seed 16: the dark seat left-packed into a D6-link vacancy and held it
+    // unheard while the row head refilled it, a lasting duplicate).
+    chanless(holeK) {
+      if (this.d6Mark) return true;
+      if (!this.hasCoord) return false;
+      let proven = 0, fresh = 0;
+      for (const olc of topo.ownedLinks(this.coord)) {
+        const k = ck(olc); if (k === holeK) continue;
+        const x = this.occGet(k);
+        if (x == null || x === this.id || this.linkedBy.get(k) !== x) continue;
+        const at = this.lkAt.get(k);
+        if (at === undefined) continue;
+        proven++;
+        if (this.TICK - at <= CHAN_UP) fresh++;
+      }
+      return proven > 0 && fresh === 0 && this.unpAnyAt >= 0 && this.TICK - this.unpAnyAt <= 16;
     }
     unpLong(x) { const u = this.unp.get(x); return u !== undefined && this.TICK - u >= UNP_SIGN; }
     // An EVICTION frame (YIELD, CONFIRM, LEAVE, MOVED) frees or unseats a
@@ -1764,6 +1788,7 @@
       const fm = { t: 'FIND', nc: this.id, ttl: FIND_TTL, spread: (SPREAD && this.noroomSeen >= 1) };
       if (again) fm.again = 1;
       const dk = this.darkGreeters(target); if (dk.length) fm.dark = dk;
+      if (this.d6Mark) fm.dk = 1;   // D6b: no channel of mine has proved since D6 moved me; ask for a deep cell
       this.emit(target, fm); this.wake();
     }
     // ENTRY RESUME (2026-08-04 plane incident; test/tools/seat-flap-repro.js).
@@ -2205,7 +2230,7 @@
     handOn(mm, to, cell, deep) {
       if (this.handed.size >= 64) this.handed.delete(this.handed.keys().next().value);
       this.handed.set(mm.nc, { to, cell, deep: !!deep, at: this.TICK });
-      const f = { t: 'FIND', nc: mm.nc, ttl: mm.ttl - 1, spread: !!mm.spread }; if (mm.again) f.again = 1;
+      const f = { t: 'FIND', nc: mm.nc, ttl: mm.ttl - 1, spread: !!mm.spread }; if (mm.again) f.again = 1; if (mm.dk === 1) f.dk = 1;
       this.emit(to, f); this.findAck(mm, cell, !!deep);
       if (!deep) this.quietHeadAlso(f, to, cell);
     }
@@ -2256,7 +2281,15 @@
         const lost = !h || silentTarget || !this.firstHandLive(h.cell);
         if (!left && !mineDied && !lost) return;
       }
-      if (this.coord.pc === 0) {
+      // D6b: a seeker that D6 moved with every channel stopped asks for a deep
+      // cell. Section 1 is where cells are contested (heals, row fill, the
+      // door relay), and a seat that cannot hold a channel cannot answer a
+      // contest there. The flag is unsigned (FIND is rebuilt per hop): a
+      // carrier that forges it only places that one seeker deep, which it can
+      // already do by handing the FIND to a deep seat or dropping it. It moves
+      // nobody, frees no cell, and the seat it leads to is admitted and
+      // verified the ordinary way.
+      if (this.coord.pc === 0 && mm.dk !== 1) {
         const skip = [];   // forensics: why each Section-1 cell was passed over (noroomWhy, the test trace's NOROOM row)
         // A SPLIT-OFF SEAT ADMITS NOBODY INTO SECTION 1 (sim twin). A healer
         // that left-packed on a stale view of the hole's links can hear no
@@ -2776,6 +2809,7 @@
     promoteInto(hole, nbrs) {
       if (!this.hasCoord || ck(this.coord) === ck(hole)) return;
       if (this.moving) return;                       // T1: one move at a time
+      if (this.chanless(ck(hole))) return;           // D6b: no channel, no contested cell (D6 moves me instead)
       if (this.coord.pc === 0 && hole.pc !== 0) return;
       // 11a left-pack: scooch LEFT within the row. H-CHAIN S1 column: scooch
       // UP into denser (lower row index) same-column hole only — never DOWN
@@ -4985,7 +5019,7 @@
       }
       if (this.evil) this.attack();
       if (this.retireDead()) { this.wake(); return; }   // one owned link lost its channel; the higher id vacates
-      if (this.darkSeat()) { this.dark6 = (this.dark6 || 0) + 1; this.requeue(); this.wake(); return; }   // D6
+      if (this.darkSeat()) { this.dark6 = (this.dark6 || 0) + 1; this.d6Mark = true; this.requeue(); this.wake(); return; }   // D6
       this.noteTree();   // the tree I sit in, for a later door round (foundDoor)
       // T: transit bookkeeping — a claim window that closes with NO
       // contradiction CONFIRMS (a wiped region has nobody to answer; a
