@@ -3,7 +3,7 @@
  * relay). The join repaints the chat title (applyAdminUi ->
  * paintBroadcastChrome), which wrote "Meeting chat" over the search sign, so
  * a sideways keyboard left nothing on screen saying the log was cut down.
- * Gate red on fractal at 12:53 (iphone-se-land, saw: Meeting chat ...).
+ * Gate red on the <gate-host> at 12:53 (iphone-se-land, saw: Meeting chat ...).
  *
  * Find in chat steps aside while a sideways keyboard is up, so the field
  * and Send stay above the keys. If a search was on, the log stayed cut down
