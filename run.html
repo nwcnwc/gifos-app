@@ -2234,6 +2234,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      to the header chip: the line wraps to two 16px lines inside the header
      band instead of running over the chip (placeHandq sets the width). */
   body.desk-ptr.comfy.hq-tight .topchip #statuscount { display: none !important; }
+  /* What stays in the chip then (logo, mark, the " · …" tap) is never cut. */
+  body.desk-ptr.comfy.hq-tight .topchip { min-width: max-content; }
   body.desk-ptr.comfy #handq.on.hq-tight { display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
     white-space: normal; padding: 4px 14px; font-size: 16px; line-height: 20px; min-height: 48px; border-radius: 16px; }
   /* A shared slide starts below the header row, so the header never covers it. */
@@ -18433,10 +18435,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return;
       }
       let edge = window.innerWidth - 14 - (parseFloat(getComputedStyle(document.body).getPropertyValue('--osw')) || 0);
+      // Only what sits right of the header line limits it: a short window
+      // puts the build mark at the top left, which pushed the line off screen.
+      const lineEl = document.getElementById('status');
+      const lineLeft = lineEl && lineEl.getClientRects().length ? lineEl.getBoundingClientRect().left : 0;
       for (const id of ['fitbtn', 'gifos-build-float']) {
         const el = document.getElementById(id);
         if (!el || !el.getClientRects().length) continue;
-        edge = Math.min(edge, el.getBoundingClientRect().left - 10);
+        const l = el.getBoundingClientRect().left;
+        if (l < lineLeft) continue;
+        edge = Math.min(edge, l - 10);
       }
       const right = Math.max(14, Math.round(window.innerWidth - edge));
       handqEl.style.right = right + 'px';
