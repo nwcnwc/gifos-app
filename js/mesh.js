@@ -2365,7 +2365,7 @@
             const below = (t + 1) % C();
             if (this.coord.r === below) {
               const k = ck({ pc: 0, r: t, i: this.coord.i });
-              if (TICK - (this.healTry.has(k) ? this.healTry.get(k) : -999) > 45 || (this.healOnly.has(k) && this.oneRowRoom())) { this.healOnly.delete(k); this.healTry.set(k, TICK); this.admit({ pc: 0, r: t, i: this.coord.i }, mm); return; }
+              if (TICK - (this.healTry.has(k) ? this.healTry.get(k) : -999) > 45 || (this.healOnly.has(k) && (this.oneRowRoom() || this.nothingBelow(k)))) { this.healOnly.delete(k); this.healTry.set(k, TICK); this.admit({ pc: 0, r: t, i: this.coord.i }, mm); return; }
               continue;
             }
             // Forward toward the admitter row below ONLY over a FIRST-HAND-LIVE
@@ -2446,7 +2446,7 @@
             if (this.softSitting(ck(adm)) && !this.occ.has(ck(adm)) && j > 0) {
               const sit = this.sitting.get(ck({ pc: 0, r: t, i: 0 }));
               if (sit && sit.assigner === this.id) {
-                if (TICK - (this.healTry.has(k) ? this.healTry.get(k) : -999) > 45 || (this.healOnly.has(k) && this.oneRowRoom())) { this.healOnly.delete(k); this.healTry.set(k, TICK); this.admit(cell, mm); return; }
+                if (TICK - (this.healTry.has(k) ? this.healTry.get(k) : -999) > 45 || (this.healOnly.has(k) && (this.oneRowRoom() || this.nothingBelow(k)))) { this.healOnly.delete(k); this.healTry.set(k, TICK); this.admit(cell, mm); return; }
                 continue;
               }
             }
@@ -2495,7 +2495,7 @@
               const hk = ck(adm);
               const ago = this.live.has(hk) ? TICK - this.live.get(hk) : 999;
               if (ago > 16) {
-                if (this.occGet(k) === mm.nc || TICK - (this.healTry.has(k) ? this.healTry.get(k) : -999) > 45 || (this.healOnly.has(k) && this.oneRowRoom())) {
+                if (this.occGet(k) === mm.nc || TICK - (this.healTry.has(k) ? this.healTry.get(k) : -999) > 45 || (this.healOnly.has(k) && (this.oneRowRoom() || this.nothingBelow(k)))) {
                   this.healOnly.delete(k); this.healTry.set(k, TICK);
                   if (this.occIsPhantom(k)) { this.occ.delete(k); this.live.delete(k); this.s1seen.delete(k); this.kidful.delete(k); this.tlForget(k, 'phantom-standin'); }
                   this.admit(cell, mm); return;
@@ -2517,7 +2517,7 @@
               // and the knocker is that seat (rekey-restart-same-id.js: the
               // row sweep forgot the dark mate, a row-mate re-listed it, and
               // its rebuilt node was seated one row over instead).
-              if (this.occGet(k) === mm.nc || TICK - (this.healTry.has(k) ? this.healTry.get(k) : -999) > 45 || (this.healOnly.has(k) && this.oneRowRoom())) {
+              if (this.occGet(k) === mm.nc || TICK - (this.healTry.has(k) ? this.healTry.get(k) : -999) > 45 || (this.healOnly.has(k) && (this.oneRowRoom() || this.nothingBelow(k)))) {
                 this.healOnly.delete(k); this.healTry.set(k, TICK);
                 if (this.occIsPhantom(k)) {
                   this.occ.delete(k); this.live.delete(k); this.s1seen.delete(k); this.kidful.delete(k); this.tlForget(k, 'phantom-heal');
@@ -2669,6 +2669,20 @@
     // hear it first-hand: one that went quiet (a reload, a closed tab) waits out its ring hold in my
     // occupancy, and counting it kept the hole shut to the newcomer at the door for that whole hold.
     oneRowRoom() { for (const k of this.occ.keys()) if (k.slice(0, 4) !== '0_0_' && this.firstHandLive(k)) return false; return true; }
+    // C4b: nobody a heal could promote into k: no deep tree in my view and no
+    // first-hand column-mate below it. A heal there can never fill the hole,
+    // so its pace must not hold the chair against the door: a 6-person room
+    // kept a dead seat's chair shut to its own rejoin for the 45-tick pace
+    // (chaos share-arrives-holds 06a8cd: 15-21 s against a 10 s bound).
+    nothingBelow(k) {
+      const c = unck(k);
+      for (const kk of this.occ.keys()) {
+        const o = unck(kk);
+        if (o.pc !== 0) return false;
+        if (c.pc === 0 && o.i === c.i && o.r > c.r && this.firstHandLive(kk)) return false;
+      }
+      return true;
+    }
     heal(hole) {
       if (hole && this.darkHold && this.darkHold.has(ck(hole))) return;   // refused a dead channel, not an empty chair
       const TICK = this.TICK;
