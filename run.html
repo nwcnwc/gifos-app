@@ -14453,10 +14453,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     //    fold read partial (bigroom-past-section-twentysix f3diag: count 9 of
     //    26). The mesh's probe gate still decides: a peer alive on any mesh
     //    path answers and keeps its seat.
+    // The window is DISCONNECTED_DEAD_MS, not the count's 30 s: a frozen
+    // renderer (a backgrounded phone) answers no probe either, and at 30 s
+    // every Section-1 freeze longer than ~40 s lost its seat and paid the
+    // S1 coord lag on return (chaos share-arrives-holds-794b3f-room-six:
+    // 32-34 s against 10 s; 6 s before a3fb01d). The chaos laws grant a
+    // freeze up to 75 s; 90 s clears it with the wake and the sweep's 2 s,
+    // and a dead seat still leaves at ~96 s (it held 150-300 s before).
+    // A radio dropout keeps the pc connected, so it never reaches this.
+    const DISCONNECTED_DEAD_MS = 90000;
     function pcDeadWhy(p, st, now) {
       if (!p || p.connected || !p.downSince) return null;
       if (st === 'failed' && now - p.downSince > 9000) return 'failed-persist';
-      if (st === 'disconnected' && now - p.downSince > PEER_SILENT_MS && now - peerHeardAt(p) > PEER_SILENT_MS) return 'disconnected-persist';
+      if (st === 'disconnected' && now - p.downSince > DISCONNECTED_DEAD_MS && now - peerHeardAt(p) > DISCONNECTED_DEAD_MS) return 'disconnected-persist';
       return null;
     }
     // A dark-return rebuild marks the pair (p.darkDead). The mark is handed
