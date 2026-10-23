@@ -79,8 +79,14 @@
     // no older client verifies them, so no older statement changes).
     // A LEAVE also commits to the TENANCY it ends (`tn`, the seat's nonce
     // for this stay in this cell), so it cannot free a later stay.
-    if (m.ck) return 'k:' + m.ck + (m.mvd != null ? '>' + m.mvd : '') + ((m.t === 'LEAVE' || m.t === 'MOVED') && m.tn != null ? '#' + m.tn : '');
+    if (m.ck) return 'k:' + m.ck + (m.mvd != null ? '>' + m.mvd : '') + ((m.t === 'LEAVE' || m.t === 'MOVED') && m.tn != null ? '#' + m.tn : '') + (m.t === 'SITXFER' ? '|' + ledgerOf(m) : '');
     return '-';
+  }
+  // A SITXFER also commits to the ledger it hands over, so a hop that
+  // carries it cannot rewrite the vouches or the row occ.
+  function ledgerOf(m) {
+    const kv = (a) => (Array.isArray(a) ? a.map((e) => (e && typeof e === 'object' ? [e.k === undefined ? null : e.k, e.v === undefined ? null : e.v] : null)) : null);   // raw values: ['k_x'] and 'k_x' commit differently
+    return JSON.stringify([kv(m.vouches), kv(m.rowOcc)]);
   }
   // `ts` is the minting time: Ed25519 is deterministic, so two honest
   // re-sends of one CLAIM would otherwise be byte-identical, and a replay
@@ -173,8 +179,12 @@
     // the signed statement must describe THIS frame (no cross-frame replay),
     // be minted inside the window, and not be one this seat already accepted
     if (statement(from, m, sp.ts) !== s.sp) return { ok: false, from: null };
-    // an occupant-bearing frame must be signed BY that occupant
-    if (m.id != null && m.id !== from) return { ok: false, from: null };
+    // an occupant-bearing frame must be signed BY that occupant. A SITXFER
+    // is the one frame whose `id` names the RECEIVER (the row head it hands
+    // the ledger to): it is signed by the assigner, never by that head, and
+    // mesh.js takes it only from the seat that placed the head (admBy).
+    if (m.t === 'SITXFER') { if (m.id == null || m.id === from) return { ok: false, from: null }; }
+    else if (m.id != null && m.id !== from) return { ok: false, from: null };
     // (2) the signer actually holds the private key
     if (!(await net.edVerify(s.pub, s.sig, s.sp))) return { ok: false, from: null };
     // Minted outside the window: still refused, but NAMED. Checked after the
