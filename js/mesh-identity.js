@@ -85,7 +85,7 @@
   // A SITXFER also commits to the ledger it hands over, so a hop that
   // carries it cannot rewrite the vouches or the row occ.
   function ledgerOf(m) {
-    const kv = (a) => (Array.isArray(a) ? a.map((e) => (e && typeof e === 'object' ? [String(e.k), String(e.v)] : null)) : null);
+    const kv = (a) => (Array.isArray(a) ? a.map((e) => (e && typeof e === 'object' ? [e.k === undefined ? null : e.k, e.v === undefined ? null : e.v] : null)) : null);   // raw values: ['k_x'] and 'k_x' commit differently
     return JSON.stringify([kv(m.vouches), kv(m.rowOcc)]);
   }
   // `ts` is the minting time: Ed25519 is deterministic, so two honest

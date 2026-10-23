@@ -442,7 +442,7 @@
       // rowGenSeen — the last generation my down-child head phoned me.
       // gbProbe — goodbyes about a cell someone else holds in my view, under
       // probe; upAck — a probe answer that keeps a never-proven pairing alive.
-      this.backAt = -1; this.pp = null; this.oldPp = null; this.admBy = null; this.oldAdmBy = null; this.ppAt = new Map(); this.oldPP = new Map(); this.ppGiven = new Map(); this.ppAskAt = -1;
+      this.backAt = -1; this.pp = null; this.oldPp = null; this.admBy = null; this.oldAdmBy = null; this.placedBy = null; this.oldPlacedBy = null; this.ppAt = new Map(); this.oldPP = new Map(); this.ppGiven = new Map(); this.ppAskAt = -1;
       this.rowGen = 0; this.rowLedgerLast = ''; this.rowGenSeen = null; this.gbProbe = new Map(); this.upAck = new Map(); this.upExpired = new Map(); this.upUsed = new Map(); this.upOpen = new Map(); this.upProbeAt = -1;
       this.tn = null; this.oldTn = null; this.tnSeq = 0; this.pendY = null; this.tnSalt = (env && env.tnSalt) ? String(env.tnSalt) : String(id).slice(-6);   // the wire supplies per-page entropy; buses stay deterministic
       // born: CLAIM BIRTH — the tick (on MY clock, LT) each (cell → claimant)
@@ -1963,7 +1963,7 @@
       this.rowLedger = !(c.pc === 0 && c.i === 0 && owner != null);   // V4: an admitted S1 row head waits for its assigner's SITXFER
       // PP: the proof my admitter signed with this PLACE; a healer (no
       // admitter) asks the hole's admitter for one with a CLAIM (below).
-      this.pp = (owner != null && pp && pp.sig != null) ? { ck: ck(c), s4: pp } : null; this.ppAskAt = -1; this.admBy = null;   // admBy: set by the PLACE intake (the verified signer), never by take
+      this.pp = (owner != null && pp && pp.sig != null) ? { ck: ck(c), s4: pp } : null; this.ppAskAt = -1; this.admBy = null; this.placedBy = null;   // admBy: set by the PLACE intake (the verified signer), never by take; placedBy: the same, and ONLY by the PLACE intake (a PP grant moves admBy, never placedBy)
       this.rowGen = 0; this.rowLedgerLast = ''; this.rowGenSeen = null;   // V7b: a new seat's row ledger starts at generation 0 (its first beats delete nothing at the owner)
       this.tn = this.tnSalt + '.' + (++this.tnSeq);   // a new tenancy (see emit)
       this.coord = c; this.hasCoord = true; this.state = 3; this.joinStart = -1; this.stranded = false; this.reAsk = false; this.reJoin = false; this.noroomSeen = 0; this.rowLedgerAt = -1; // seated: any deferred entry retry is moot; T7: the NOROOM evidence dies; V7: a new seat holds no child-row ledger yet with the attempt it belonged to
@@ -2776,7 +2776,7 @@
       if (!this.hasCoord || ck(this.coord) === ck(hole) || this.moving) return;
       if (this.env.bumpMoves) this.env.bumpMoves();
       this.lastChurn = this.TICK; // Q2 hysteresis: a move is churn
-      this.oldCoord = this.coord; this.oldCk = ck(this.coord); this.oldTn = this.tn; this.oldEstAt = this.estAt; this.oldPp = this.pp; this.oldAdmBy = this.admBy;
+      this.oldCoord = this.coord; this.oldCk = ck(this.coord); this.oldTn = this.tn; this.oldEstAt = this.estAt; this.oldPp = this.pp; this.oldAdmBy = this.admBy; this.oldPlacedBy = this.placedBy;
       this.oldNbrIds = []; { const seen = new Set();
         for (const olc of topo.ownedLinks(this.oldCoord)) { const x = this.occGet(ck(olc)); if (x != null && x !== this.id && !seen.has(x)) { seen.add(x); this.oldNbrIds.push(x); } } }
       this.holdOcc = new Map(this.occ); this.holdSeen = new Map(this.s1seen); this.holdCous = new Map(this.cousins); // rollback snapshots
@@ -2822,7 +2822,7 @@
       if (!this.moving) return; this.moving = false;
       const newCk = ck(this.coord); const seen = new Set();
       for (const olc of topo.ownedLinks(this.coord)) { const x = this.occGet(ck(olc)); if (x != null && x !== this.id && !seen.has(x)) { seen.add(x); this.emit(x, { t: 'LEAVE', ck: newCk, id: this.id }); } }
-      this.coord = this.oldCoord; this.tn = this.oldTn; this.estAt = this.oldEstAt; this.nbrAt = this.TICK; this.pp = this.oldPp; this.oldPp = null; this.admBy = this.oldAdmBy; this.oldAdmBy = null;
+      this.coord = this.oldCoord; this.tn = this.oldTn; this.estAt = this.oldEstAt; this.nbrAt = this.TICK; this.pp = this.oldPp; this.oldPp = null; this.admBy = this.oldAdmBy; this.oldAdmBy = null; this.placedBy = this.oldPlacedBy; this.oldPlacedBy = null;
       this.bindOcc(this.holdOcc || new Map()); this.s1seen = this.holdSeen || new Map(); this.cousins = this.holdCous || new Map();
       this.occ.set(this.oldCk, this.id);
       // my stamp for the cell I give back was for whoever I heard there (me, a rival), not for the snapshot's occupant: a gossip echo of a departed seat in the snapshot plus my own stamp read as hearing it (test/mesh/rollback-live-stamp.js)
@@ -4155,7 +4155,7 @@
         case 'FINDACK': if (this.state === 2 && m.nc === this.id && m.from === this.lastAsked && this.findAckAt < 0) this.findAckAt = TICK; return; // the seeker's own greeter handed my FIND on (only the first hop: the seeker knows nobody further down)
         case 'FINDLEAF': if (!this.verifyFill(m)) return; this.findLeaf(m.hole, m.nbrs, m.ttl); return; // S4 identity hook gates fill authorship
         case 'PLACE':
-          if (this.state === 2 && this.verifyFill(m)) { this.take(m.coord, m.owner, m.nbrs, m.pp); if (this.pp && m.s4from != null && m.s4from !== this.id) this.admBy = m.s4from; return; } // S4 identity hook; admBy: the verified signer of the PLACE that seated me (arbOk)
+          if (this.state === 2 && this.verifyFill(m)) { this.take(m.coord, m.owner, m.nbrs, m.pp); if (this.pp && m.s4from != null && m.s4from !== this.id) { this.admBy = m.s4from; this.placedBy = m.s4from; } return; } // S4 identity hook; admBy: the verified signer of the PLACE that seated me (arbOk)
           // Q2: a compaction PLACE for a seated leaf — atomically MOVE (law T
           // dual-hold) into the shallower cell, keeping the old seat warm until
           // confirm. Re-validate at the moment of action (the frontier may have
@@ -4649,10 +4649,12 @@
           // and its confirmed row occ. I am now the row's admitter, and these
           // cells are already promised or held.
           // ...and only from the seat that vouched me in: a verified signer
-          // that is the PLACE signer I took this cell from (admBy), naming me.
-          if (!this.verifyFill(m) || m.id !== this.id || m.s4from == null || m.s4from === this.id || m.s4from !== this.admBy) return;
+          // that is the PLACE signer I took this cell from (placedBy: set only
+          // by the PLACE intake; a PP grant moves admBy, and any Section-1
+          // member may send one), naming me, once per seat.
+          if (!this.verifyFill(m) || m.id !== this.id || m.s4from == null || m.s4from === this.id || m.s4from !== this.placedBy || this.rowLedger) return;
           if (this.hasCoord && this.coord.pc === 0 && this.coord.i === 0 && ck(this.coord) === m.ck) {
-            const inRow = (e) => { const c = e && cellKeyOk(e.k); return !!c && c.pc === 0 && c.r === this.coord.r && e.v != null; }; // the ledger of MY row, nothing else
+            const inRow = (e) => { const c = e && cellKeyOk(e.k); return !!c && c.pc === 0 && c.r === this.coord.r && typeof e.v === 'string'; }; // the ledger of MY row, nothing else
             for (const kv of (Array.isArray(m.vouches) ? m.vouches.slice(0, C()) : [])) if (inRow(kv) && !this.occ.has(kv.k) && !this.sitting.has(kv.k)) this.sitting.set(kv.k, { joiner: kv.v, assigner: this.id, at: this.TICK, pingAt: -1 });
             for (const e of (Array.isArray(m.rowOcc) ? m.rowOcc.slice(0, C()) : [])) if (inRow(e) && !this.occ.has(e.k)) { this.setOcc(e.k, e.v); this.noteS1(e.k); }
             this.rowLedger = true;
