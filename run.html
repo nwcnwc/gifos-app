@@ -7184,17 +7184,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // My status pulse as one frame: what every beat carries, and what a pair
     // gets the moment its channel opens (wireDc onopen).
     const statusPayload = () => ({ kind: 'status', s: myStatus, conns: myConns(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined });
-    // The talking bit's edges beat at once (at most one extra beat a second):
-    // the 4 s pulse alone named a far-row line late or not at all.
-    const TK_HOLD_MS = 1500;
-    let tkOn = false, tkBeatAt = 0;
-    function tkEdge(speaking) {
-      const on = !!speaking || (typeof myVoiceAt === 'number' && Date.now() - myVoiceAt < TK_HOLD_MS);
-      if (on === tkOn) return;
-      const now = Date.now(); if (now - tkBeatAt < 1000) return;
-      tkOn = on; tkBeatAt = now;
-      try { broadcastStatus(); } catch (e) {}
-    }
     function broadcastStatus(answer) {
       if (pulseHalt && !answer) return; // the halt models a throttled clock; an answer to a newcomer is driven by its frame, not the clock
       myStatus.at = Date.now(); // timestamped: out-of-order gossip can't roll me back
@@ -7231,10 +7220,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // name AND my own network address (learned privately via whoami) go out
       // encrypted under the room key, so the relay routes opaque peer ids over
       // a roster whose identity fields it cannot read.
-      // TALKING rides the beat. A scribe hears a voice from another row only
-      // inside that row's mix, with no name on it, and names such a line by
-      // who says they are talking (wspFoldWho). Held TK_HOLD_MS past the voice.
-      if (!myStatus.muted && typeof myVoiceAt === 'number' && Date.now() - myVoiceAt < TK_HOLD_MS) myStatus.tk = 1; else delete myStatus.tk;
       const payload = statusPayload();
       // The relay-signed address never changes, so it rides the first three
       // beats, the next beat after ANYONE new appears (so a newcomer can check
@@ -10793,7 +10778,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           speaking = Math.sqrt(dev / m.data.length) > 5;
         }
         t.tile.classList.toggle('speaking', speaking);
-        if (id === 'me' && speaking) { lastActive = Date.now(); myVoiceAt = lastActive; } if (id === 'me' && typeof tkEdge === 'function') tkEdge(speaking); // talking IS activity — a speaker's phone is never "parked"
+        if (id === 'me' && speaking) { lastActive = Date.now(); myVoiceAt = lastActive; } // talking IS activity — a speaker's phone is never "parked"
         speakingOf.set(id, speaking); // fed to the packer overlay (green talking frame on composite faces)
         if (speaking) ccGapSee(id, speaking); // a paused neighbour's voice is kept for the one speech session
       }
@@ -28787,7 +28772,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       botSpokenLines.push(t);
       if (botSpokenLines.length > 20) botSpokenLines.splice(0, botSpokenLines.length - 20);
     }
-    function addTranscriptLine(text, at, forId) { // forId: a scribe writing down THAT person
+    function addTranscriptLine(text, at, forId, label) { // forId: a scribe writing down THAT person; label: a channel's name ('Stadium') instead of a person's
       text = String(text || '').trim();
       if (!text) return;
       // The bot's own microphone is never written down, and neither is a line
@@ -28795,7 +28780,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (window.GifOS && GifOS.meetHost && typeof GifOS.meetHost.suppressBotLine === 'function'
           && GifOS.meetHost.suppressBotLine(!!myStatus.bot, text, forId, myId, botSpokenLines)) return;
       const m = { id: uid('t'), byId: myId, by: myName(), at: at || Date.now(), text: text.slice(0, 400) };
-      if (forId && forId !== myId) { m.byId = forId; m.by = String(rosterNames[forId] || (peers.get(forId) || {}).name || '…').slice(0, 40); m.scribe = myId; m.scribeBy = myName(); }
+      if (forId && forId !== myId) { m.byId = forId; m.by = String(label || rosterNames[forId] || (peers.get(forId) || {}).name || '…').slice(0, 40); m.scribe = myId; m.scribeBy = myName(); }
       if (!keepOwnTranscript(m)) return; // I only HEARD this — another device already wrote it down
       sendAll({ k: 'tr', m }, captionScope(m.byId));
       renderTranscript();
@@ -28928,8 +28913,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function wspStageSid(id) { const st = wspStageStream(id); return st ? (st.id || 'stg') : null; }
     // THE FAR-ROW MIX (cross-row scribe). A voice from another row reaches me
     // only inside the stadium mix. A scribe that has no source of its own for
-    // a present person captures that mix as one more voice ('fold') and names
-    // each utterance by who said they were talking while it ran (status tk).
+    // a present person captures that mix as one more voice ('fold'), and its
+    // lines are labelled by the CHANNEL they came on: "Stadium". Naming the
+    // speaker inside a mix is later work (Nathan 2026-10-22 22:58).
     function wspFoldTracks() {
       const out = [], seen = new Set();
       if (typeof stadiumEl === 'undefined' || !stadiumEl || !stadiumEl.querySelectorAll) return out;
@@ -28941,19 +28927,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return out;
     }
     function wspFoldSig() { return wspFoldTracks().map((t) => t.id).sort().join(','); }
-    // People with no source of mine who say they are talking now.
-    function wspFarTalkers() {
-      const out = [], now = Date.now();
-      if (typeof statusOf === 'undefined' || typeof ccWrittenElsewhere !== 'function') return out;
-      for (const [pid, st] of statusOf) {
-        if (!st || !st.tk || (typeof myId !== 'undefined' && pid === myId) || st.muted || st.bot) continue;
-        if (now - (st.rx || st.at || 0) > 5000) continue;
-        if (wspCaps.has(pid)) continue;
-        if (ccWrittenElsewhere(pid)) continue;
-        out.push(pid);
-      }
-      return out;
-    }
     // Is anyone present that I hold no source for (a far-row voice)?
     function wspFoldNeeded(queued) {
       const now = Date.now();
@@ -28968,11 +28941,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       return false;
     }
-    function wspFoldWho(w) {
-      let best = null, n = 0;
-      if (w && w.votes) for (const [pid, c] of w.votes) if (c > n) { n = c; best = pid; }
-      return best;
-    }
     function wspOnChunk(w, chunk) {
       const ms = chunk.length / w.rate * 1000, now = Date.now();
       // A stager's direct meter watches the parked main track, which is
@@ -28984,7 +28952,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         for (let i = 0; i < chunk.length; i += 8) { const x = chunk[i]; acc += x * x; n++; }
         talking = n > 0 && Math.sqrt(acc / n) > 0.04;
       } else talking = !!speakingOf.get(w.id) || (w.id === 'me' && now - myVoiceAt < 250);
-      if (w.fold && talking) for (const pid of wspFarTalkers()) w.votes.set(pid, (w.votes.get(pid) || 0) + 1);
       if (w.utt) {
         w.utt.push(chunk);
         if (talking) w.lastVoice = now;
@@ -28992,11 +28959,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if ((!talking && now - w.lastVoice > WSP_GAP_MS) || secs >= WSP_MAX_S) {
           const done = w.utt, at = w.uttStart; w.utt = null;
           if (secs >= WSP_MIN_S) wspEnqueue(w, done, at);
-          if (w.fold) w.votes = new Map();
           if (secs >= WSP_MAX_S && talking) { w.utt = []; w.uttStart = now; w.lastVoice = now; }
         }
       } else if (talking) {
-        if (w.fold) { const keep = w.votes; w.votes = new Map(); for (const [pid, c] of keep) if (c) w.votes.set(pid, c); }   // this utterance's votes start with the chunk that opened it
         w.utt = w.pre; w.pre = [];
         w.utt.push(chunk); w.uttStart = now - w.preMs; w.lastVoice = now; w.preMs = 0;
       } else {
@@ -29076,7 +29041,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       if (!src) return false;
       const w = { id, src, node: null, own, rate: ac.sampleRate, stageSid, pre: [], preMs: 0, utt: null, uttStart: 0, lastVoice: 0, worklet: false };
-      if (id === 'fold') { w.fold = true; w.foldSig = wspFoldSig(); w.votes = new Map(); }
+      if (id === 'fold') { w.fold = true; w.foldSig = wspFoldSig(); }
       if (wspUseWorklet(id, w)) return true;
       let node;
       try { node = ac.createScriptProcessor(4096, 1, 1); } catch (e) { return false; }
@@ -29173,7 +29138,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           setStatus('Captions behind, skipping old audio', 8000);
         }
       }
-      const job = { id: w.id, chunks, at, rate: rate || w.rate, keep: !!keep, stage: !!w.stageSid, who: w.fold ? wspFoldWho(w) : null };
+      const job = { id: w.id, chunks, at, rate: rate || w.rate, keep: !!keep, stage: !!w.stageSid };
       if (keep) wspQ.items.unshift(job); else wspQ.items.push(job);
       wspDrain();
     }
@@ -29344,7 +29309,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (text && GifOS.meetHost && typeof GifOS.meetHost.dropWhisperNoise === 'function') text = GifOS.meetHost.dropWhisperNoise(text);
         if (text && wspCaps.has(job.id)) {
           if (job.id === 'me') { addTranscriptLine(text, job.at); }
-          else if (job.id === 'fold') { if (job.who && scribeOn()) addTranscriptLine(text, job.at, job.who); }   // a far-row line, named by who was talking
+          else if (job.id === 'fold') { if (scribeOn()) addTranscriptLine(text, job.at, 'stadium', 'Stadium'); }   // a far-row line, labelled by its channel
           else if (scribeOn() && (peers.has(job.id) || job.stage)) addTranscriptLine(text, job.at, job.id);
         }
         if (!wspQ.items.length && myStatus && myStatus.ccst === 'behind') {
