@@ -7892,9 +7892,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // the browser fires visibilitychange before it freezes us, so the last
     // thing we say is an honest "away", and the first thing back is "here".
     let stillTimer = 0;
+    // "Still in the call" tells the user they can be heard or seen, so it is
+    // said only when that is true: this page joined a room, has not left it,
+    // and holds a live mic or camera track. A solo app (#id=), the lobby and
+    // the left screen never qualify (0.9.24 hotfix: a solo Tip app showed it
+    // after every app switch on Android).
+    function liveInCall() {
+      try {
+        if (!roomJoinedAt || leftMesh) return false;
+        if (!localStream || !localStream.getTracks) return false;
+        return localStream.getTracks().some((t) => t.readyState === 'live' && (t.kind === 'audio' || t.kind === 'video'));
+      } catch (e) { return false; }
+    }
     function showStill() {
       const el = document.getElementById('still');
       if (!el) return;
+      if (!liveInCall()) { el.classList.remove('on'); return; }
       const word = uiText('stillHere', 'Still in the call');
       if (el.textContent !== word) el.textContent = word;
       el.classList.add('on');
@@ -35400,6 +35413,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         return { ok: false };
       },
+      liveTracksForTest: () => (localStream && localStream.getTracks ? localStream.getTracks().filter((t) => t.readyState === 'live').length : 0),
       setTabHiddenForTest: (hidden) => {
         try { Object.defineProperty(document, 'hidden', { configurable: true, get: () => !!hidden }); } catch (e) {}
         document.dispatchEvent(new Event('visibilitychange'));

@@ -2,8 +2,31 @@ const { test, expect } = require('@playwright/test');
 // A room of its own per run: these pages use the public relay, where a fixed
 // room seats any copy of this test running at the same time as a stranger.
 const RUN_ROOM = Math.random().toString(36).slice(2, 6).padEnd(4, '0');
+// "Still in the call" is said only to someone who can be heard or seen
+// (0.9.24 hotfix), so this meeting brings a fake mic and camera.
+test.use({
+  launchOptions: async ({ browserName }, use) => use(browserName === 'chromium'
+    ? { args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] }
+    : browserName === 'firefox'
+      ? { firefoxUserPrefs: { 'media.navigator.streams.fake': true, 'media.navigator.permission.disabled': true } }
+      : {}),
+});
 
-async function boot(page) {
+// Playwright WebKit has no capture devices here: hand it a canvas camera.
+const FAKE_CAMERA = () => {
+  const real = navigator.mediaDevices && navigator.mediaDevices.getUserMedia && navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+  if (!navigator.mediaDevices) return;
+  navigator.mediaDevices.getUserMedia = async (c) => {
+    try { if (real) return await real(c); } catch (e) {}
+    const cv = document.createElement('canvas'); cv.width = 320; cv.height = 240;
+    const g = cv.getContext('2d'); let n = 0;
+    setInterval(() => { g.fillStyle = 'hsl(' + (n++ % 360) + ',60%,50%)'; g.fillRect(0, 0, 320, 240); }, 100);
+    return cv.captureStream(10);
+  };
+};
+
+async function boot(page, browserName) {
+  if (browserName === 'webkit') await page.addInitScript(FAKE_CAMERA);
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Jordan Lee');
@@ -11,12 +34,13 @@ async function boot(page) {
   });
   await page.goto('/run.html#v=' + RUN_ROOM + 'qastay&debug=on', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#leavebtn', { state: 'visible' });
+  await page.waitForFunction(() => window.__gifosVideo && window.__gifosVideo.liveTracksForTest && window.__gifosVideo.liveTracksForTest() > 0, null, { timeout: 15000 });
   const seeded = await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 2, connected: true }));
   expect(seeded && seeded.ok).toBe(true);
 }
 
-test('a friend who steps away is readable, and coming back says you are still in the call', async ({ page }) => {
-  await boot(page);
+test('a friend who steps away is readable, and coming back says you are still in the call', async ({ page, browserName }) => {
+  await boot(page, browserName);
   await expect(page.locator('.awaymark')).toHaveCount(0);
   await expect(page.locator('#still')).toBeHidden();
 
