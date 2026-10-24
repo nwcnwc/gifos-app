@@ -439,7 +439,8 @@
     // (offline, no cache) fall through and run this edge build.
     try {
       var x = new XMLHttpRequest(); x.open('GET', '/version.json?ts=' + Date.now(), false); x.send();
-      var v = ''; try { v = (JSON.parse(x.responseText) || {}).current || ''; } catch (e) {}
+      // `latest` (may be four-part, 0.9.24.1) first; `current` is the three-part legacy pointer.
+      var v = ''; try { var j = JSON.parse(x.responseText) || {}; v = (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(j.latest || '')) ? j.latest : j.current) || ''; } catch (e) {}
       if (v) { try { localStorage.setItem('gifos_current', v); } catch (e) {} return to(v); }
     } catch (e) {}
     return stay;
@@ -454,8 +455,8 @@
       fetch('/version.json', { cache: 'no-cache' }).then(function (r) {
         return r && r.ok ? r.json() : null;
       }).then(function (j) {
-        var v = j && j.current;
-        if (!v || !/^\d+\.\d+\.\d+$/.test(String(v))) return;
+        var v = j && (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(j.latest || '')) ? j.latest : j.current);   // latest (may be 4-part) first
+        if (!v || !/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(v))) return;
         try { localStorage.setItem('gifos_current', String(v)); } catch (e2) {}
       }).catch(function () {});
     }
@@ -8779,7 +8780,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // share needs a tap (a browser asks again for every share).
     if (updateResume) setTimeout(() => {
       let v = updateResume.to;
-      try { const r = GifOS.update.running().version; if (/^\d+\.\d+\.\d+$/.test(r)) v = r; } catch (e) {}
+      try { const r = GifOS.update.running().version; if (/^\d+\.\d+\.\d+(\.\d+)?$/.test(r)) v = r; } catch (e) {}
       try {
         setStatus((updateResume.note ? updateResume.note + ' ' : '') + (v ? 'Updated to GifOS v' + v + '. ' : 'GifOS updated. ') +
           (updateResume.sharing ? 'Tap Share to show your screen again.' : 'You are still in the meeting.'));
@@ -8797,7 +8798,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function homeHref() {
       let pin = null; try { pin = localStorage.getItem('gifos_pin'); } catch (e) {}
       const here = window.GifOS && GifOS.update ? GifOS.update.running().version : null;
-      return (pin && /^\d+\.\d+\.\d+$/.test(pin) && here !== pin) ? '/versions/' + pin + '/index.html' : 'index.html';
+      return (pin && /^\d+\.\d+\.\d+(\.\d+)?$/.test(pin) && here !== pin) ? '/versions/' + pin + '/index.html' : 'index.html';
     }
     document.querySelectorAll('a.title[href="index.html"], a.brand[href="index.html"]').forEach((a) => { a.setAttribute('href', homeHref()); });
     function closeRoomNoHost() {

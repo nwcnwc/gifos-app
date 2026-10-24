@@ -41,7 +41,7 @@
  */
 'use strict';
 
-var SHELL_VERSION = 'v15'; // v15: gifos-charge.js joins the shell so Settings can name the payment support address offline
+var SHELL_VERSION = 'v16'; // v16: 0.9.24 hotfix, gifos-update.js reads a four-part `latest` (v15: gifos-charge.js joins the shell)
 var CACHE = 'gifos-shell-' + SHELL_VERSION;
 
 // ONE CACHE KEY PER FILE. pages.yml stamps `?v=<sha>` onto every local css/js
@@ -272,7 +272,7 @@ function notInstalled(v) {
 // upgrade fixes it); serving it to the WRONG CHANNEL was the bug.
 async function degrade(req, url, cache) {
   if (req.mode === 'navigate') {
-    var pin = url.pathname.match(/^\/versions\/([0-9]+\.[0-9]+\.[0-9]+)\//);
+    var pin = url.pathname.match(/^\/versions\/([0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?)\//);   // x.y.z or x.y.z.w
     var idx = await cache.match(pin ? '/versions/' + pin[1] + '/index.html' : '/index.html');
     if (idx) return idx;
     if (pin) return notInstalled(pin[1]);

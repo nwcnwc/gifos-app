@@ -166,7 +166,8 @@ window.GIFOS_VERSION = 'edge';
     // (offline, no cache) fall through and run this edge build.
     try {
       var x = new XMLHttpRequest(); x.open('GET', '/version.json?ts=' + Date.now(), false); x.send();
-      var v = ''; try { v = (JSON.parse(x.responseText) || {}).current || ''; } catch (e) {}
+      // `latest` (may be four-part, 0.9.24.1) first; `current` is the three-part legacy pointer.
+      var v = ''; try { var j = JSON.parse(x.responseText) || {}; v = (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(j.latest || '')) ? j.latest : j.current) || ''; } catch (e) {}
       if (v) { try { localStorage.setItem('gifos_current', v); } catch (e) {} return to(v); }
     } catch (e) {}
     return stay;

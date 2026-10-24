@@ -57,7 +57,7 @@
   // page and hash ride along so a run.html#id=… link still lands on its app,
   // now on the live release, with the desktop (per-origin, additive-only
   // data) intact.
-  var rv = location.pathname.match(/^\/versions\/(\d+\.\d+\.\d+)\/(.*)$/);
+  var rv = location.pathname.match(/^\/versions\/(\d+\.\d+\.\d+(?:\.\d+)?)\/(.*)$/);   // x.y.z or x.y.z.w
   if (rv) {
     var alive = false;
     try {
@@ -103,8 +103,10 @@
       x.timeout = 3000;
       x.onload = function () {
         try {
-          var v = String((JSON.parse(x.responseText) || {}).current || '');
-          if (x.status >= 200 && x.status < 300 && /^\d+\.\d+\.\d+$/.test(v)) localStorage.setItem('gifos_current', v);
+          // `latest` (may be four-part) first; `current` is the three-part legacy pointer.
+          var j = JSON.parse(x.responseText) || {}, VER = /^\d+\.\d+\.\d+(\.\d+)?$/;
+          var v = String((VER.test(String(j.latest || '')) ? j.latest : j.current) || '');
+          if (x.status >= 200 && x.status < 300 && VER.test(v)) localStorage.setItem('gifos_current', v);
         } catch (e) {}
         finish();
       };

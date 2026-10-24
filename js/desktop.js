@@ -64,10 +64,11 @@
   const attachedTo = () => {
     try { return localStorage.getItem('gifos_pin') || (localStorage.getItem('gifos_channel') === EDGE ? EDGE : null); } catch (e) { return null; }
   };
-  // Compare dotted versions: >0 if a>b.
+  // Compare dotted versions: >0 if a>b. Up to four parts (0.9.24.1); a
+  // missing part counts as 0. Same rule as GifOS.update.cmpVer.
   function cmpVer(a, b) {
     const pa = String(a).split('.').map(Number), pb = String(b).split('.').map(Number);
-    for (let i = 0; i < 3; i++) { const d = (pa[i] || 0) - (pb[i] || 0); if (d) return d; }
+    for (let i = 0; i < 4; i++) { const d = (pa[i] || 0) - (pb[i] || 0); if (d) return d; }
     return 0;
   }
 
@@ -2916,16 +2917,21 @@
     // can redirect default visitors instantly on the next visit. The release
     // notes come along only when Settings is open or the bar has news.
     const U = GifOS.update;
+    // liveOf: version.json's `latest`/`latestEmergency` (may be four-part)
+    // first, the three-part legacy `current`/`emergency` otherwise.
+    const liveOf = (info) => (U && U.liveOf ? U.liveOf(info) : null) || { latest: info && info.current, emergency: info && info.emergency };
     const notes = withNotes === true ? undefined : (info) => {
-      const d = U.decide({ version: VERSION, edge: runningEdge(), pinned: pinnedVersion(), latest: info.current, changelog: null, emergency: info.emergency });
+      const live = liveOf(info);
+      const d = U.decide({ version: VERSION, edge: runningEdge(), pinned: pinnedVersion(), latest: live.latest, changelog: null, emergency: live.emergency });
       return !!d && !d.emergency;
     };
     const got = U ? await U.check({ notes }) : null;
     if (!got) return false;   // offline or no version.json — stay silent
     const info = got.info;
     versionChecked = true;
-    latestVersion = info.current || VERSION;
-    emergencyFloor = info.emergency || null;
+    const live = liveOf(info);
+    latestVersion = live.latest || VERSION;
+    emergencyFloor = live.emergency || null;
     edgeBuild = Number(info.edgeBuild) || BUILD;   // latest edge build number, live
     releaseBuilds = (info.builds && typeof info.builds === 'object') ? info.builds : {};
     availableVersions = Array.isArray(info.versions) && info.versions.length ? info.versions : [VERSION];
@@ -4521,7 +4527,7 @@
   function noteRetiredBuild() {
     let gone = '';
     try { gone = localStorage.getItem('gifos_gone') || ''; localStorage.removeItem('gifos_gone'); } catch (e) {}
-    if (!gone || !/^\d+\.\d+\.\d+$/.test(gone)) return;
+    if (!gone || !/^\d+\.\d+\.\d+(\.\d+)?$/.test(gone)) return;
     const here = VERSION === 'edge' ? 'the edge build' + (BUILD ? ' (build ' + BUILD + ')' : '') : 'v' + VERSION;
     showModal('Build v' + gone + ' has been retired',
       'This computer was pinned to <b>v' + gone + '</b>, which is no longer available, so it now runs <b>' + escapeHtml(here) + '</b>. ' +

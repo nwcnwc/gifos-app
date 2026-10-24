@@ -29,7 +29,7 @@
     if (window.GIFOS_VERSION) return window.GIFOS_VERSION;
     var src = '';
     try { src = document.baseURI || location.pathname; } catch (e) { src = location.pathname; }
-    var m = /\/versions\/(\d+\.\d+\.\d+)\//.exec(src);
+    var m = /\/versions\/(\d+\.\d+\.\d+(?:\.\d+)?)\//.exec(src);   // x.y.z or x.y.z.w
     return m ? m[1] : 'edge';
   }
 

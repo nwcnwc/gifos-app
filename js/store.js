@@ -139,6 +139,8 @@
     // them as an edge user and hand their install to a desktop that is about
     // to redirect itself into a snapshot.
     const v = await versionJson();
+    // `latest` (may be four-part) first; `current` is the three-part legacy pointer.
+    if (v && /^\d+\.\d+\.\d+(\.\d+)?$/.test(String(v.latest || ''))) return String(v.latest);
     return (v && v.current) || null;
   }
 

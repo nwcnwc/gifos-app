@@ -44,14 +44,30 @@
   'use strict';
   const GifOS = (root.GifOS = root.GifOS || {});
 
-  // Compare dotted versions: >0 if a>b.
+  // Compare dotted versions: >0 if a>b. A release may carry a 4th part
+  // (0.9.24.1, a hotfix of 0.9.24); a missing part counts as 0, so
+  // 0.9.23 < 0.9.24 < 0.9.24.1 < 0.9.25.
   function cmpVer(a, b) {
     const pa = String(a).split('.').map(Number), pb = String(b).split('.').map(Number);
-    for (let i = 0; i < 3; i++) { const d = (pa[i] || 0) - (pb[i] || 0); if (d) return d; }
+    for (let i = 0; i < 4; i++) { const d = (pa[i] || 0) - (pb[i] || 0); if (d) return d; }
     return 0;
   }
 
-  const VER = /^\d+\.\d+\.\d+$/;
+  const VER = /^\d+\.\d+\.\d+(\.\d+)?$/;
+
+  // The live release and the emergency floor version.json names. `current` and
+  // `emergency` stay three-part forever: they are what the frozen 0.9.23-and-
+  // older updaters read (their VER is three-part), so they are the legacy hop.
+  // `latest` / `latestEmergency` may be four-part; this code reads them first
+  // and falls back to the legacy pair. A `latest` behind `current` is ignored.
+  function liveOf(info) {
+    if (!info) return null;
+    const ok = (v) => (VER.test(String(v || '')) ? String(v) : null);
+    const pick = (fresh, legacy) => (fresh && (!legacy || cmpVer(fresh, legacy) >= 0) ? fresh : legacy);
+    const latest = pick(ok(info.latest), ok(info.current));
+    if (!latest) return null;
+    return { latest, emergency: pick(ok(info.latestEmergency), ok(info.emergency)) };
+  }
 
   // What THIS page is running. index.html and boot.html declare
   // GIFOS_VERSION ('edge' at the root, 'x.y.z' in a snapshot); run.html and
@@ -70,7 +86,7 @@
     if (!version) {
       let src = '';
       try { src = (doc && doc.baseURI) || root.location.pathname; } catch (e) {}
-      const m = /\/versions\/(\d+\.\d+\.\d+)\//.exec(src);
+      const m = /\/versions\/(\d+\.\d+\.\d+(?:\.\d+)?)\//.exec(src);
       version = m ? m[1] : 'edge';
     }
     version = String(version);
@@ -149,7 +165,7 @@
   let notesFor = null, notesCache = null;
   // version.json every time, revalidated by the browser (ETag → 304), never
   // cache-busted. changelog.json only when opts.notes(info) says the bar will
-  // show and this page has not read the notes for info.current yet. Resolves
+  // show and this page has not read the notes for the live release yet. Resolves
   // null offline or on a bad answer — the bar stays silent. A good answer
   // refreshes gifos_current for the next visit.
   function check(opts) {
@@ -157,14 +173,15 @@
     const json = (u) => fetch(u, { cache: 'no-cache' })
       .then((r) => (r && r.ok ? r.json() : null)).catch(() => null);
     return json('/version.json').then((info) => {
-      if (!info || !VER.test(String(info.current || ''))) return null;
-      try { root.localStorage.setItem('gifos_current', String(info.current)); } catch (e) {}
+      const live = liveOf(info);
+      if (!live) return null;
+      try { root.localStorage.setItem('gifos_current', live.latest); } catch (e) {}
       const want = !(opts && typeof opts.notes === 'function') || opts.notes(info);
-      if (!want || notesFor === info.current) return { info, changelog: notesCache };
+      if (!want || notesFor === live.latest) return { info, changelog: notesCache };
       // Release notes are best-effort: the bar still works without them.
       return json('/changelog.json').then((cl) => {
         const entries = cl && Array.isArray(cl.entries) ? cl.entries : null;
-        if (entries) { notesFor = info.current; notesCache = entries; }
+        if (entries) { notesFor = live.latest; notesCache = entries; }
         return { info, changelog: entries };
       });
     });
@@ -303,15 +320,17 @@
     const decideFor = (info, changelog) => {
       const r = running();
       const meeting = !!(opts.room && opts.room());
+      const live = liveOf(info);
+      if (!live) return null;
       let version = r.version, edge = r.edge;
       if (opts.root && r.edge) {
-        if (baseline === null) baseline = String(info.current);
+        if (baseline === null) baseline = live.latest;
         version = baseline; edge = false;
       }
       if (r.pinned && !meeting) return null;
       return decide({
         version, edge, pinned: r.pinned, meeting,
-        latest: info.current, changelog, emergency: info.emergency,
+        latest: live.latest, changelog, emergency: live.emergency,
       });
     };
     const move = (d) => {
@@ -350,5 +369,5 @@
     return { stop: () => { clearInterval(t); try { doc.removeEventListener('visibilitychange', onVis); } catch (e) {} }, tick };
   }
 
-  GifOS.update = { cmpVer, running, criticalSince, notesOf, underFloor, decide, updateUrl, go, check, mount, paint, watch, MINUTE };
+  GifOS.update = { cmpVer, liveOf, running, criticalSince, notesOf, underFloor, decide, updateUrl, go, check, mount, paint, watch, MINUTE };
 })(typeof window !== 'undefined' ? window : globalThis);
