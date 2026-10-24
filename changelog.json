@@ -2,6 +2,35 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.23",
+      "date": "2026-10-23",
+      "headline": "Bigger meetings that stay in one piece",
+      "critical": false,
+      "features": [
+        "Meetings past one section: everyone seats, and each section has its own People list.",
+        "Transcripts label every line by the channel it was heard on: a person's name for a direct link, \"Stadium\" for the far rows.",
+        "Payments: the payment sheet offers PayPal only while USDC is switched off.",
+        "Tip GifOS Creators 1.1."
+      ],
+      "fixes": [
+        "A new row-mate's camera no longer freezes on its tile after people move seats (rooms of any size).",
+        "The room count stays right after someone leaves, also with a deep seat and in rooms of exactly one full section.",
+        "A seat that went silent is dropped after about 90 seconds, so a frozen tile and a wrong count clear on their own.",
+        "A phone that was frozen or backgrounded rejoins in about two seconds when it wakes, even on a slowed clock.",
+        "Someone who leaves is no longer shown as gone from one page and still counted on another.",
+        "Joining a big meeting no longer stalls at the door.",
+        "With a hand up on a narrow window, the header keeps its count tap whole, and a short desktop window shows the count again.",
+        "A person in the waiting room no longer sees Invite."
+      ],
+      "notes": [
+        "Known issue: in meetings of 26 or more, after someone rejoins or reloads into the first section, other people's lists can show them without a seat for up to about 30 seconds.",
+        "Known issue: after someone's device crashes, one person's header can read \"Room count incomplete\" for up to about a minute and a half before the count returns.",
+        "Known issue: if the link between two people in the first section drops for most of a minute, they can take up to about a minute to see each other again after it returns.",
+        "Known issue: a raised hand in a different section can take up to about 15 seconds to reach far seats.",
+        "Known issue: meetings of 80 people are new and not yet proven; some lists may stay incomplete after a big room fills."
+      ]
+    },
+    {
       "version": "0.9.22",
       "date": "2026-10-16",
       "headline": "Meetings hold together under stress",
