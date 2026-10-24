@@ -2,6 +2,21 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.24",
+      "date": "2026-10-23",
+      "headline": "Hotfix: no false \"Still in the call\", and a one-line app bar on phones",
+      "critical": true,
+      "features": [],
+      "fixes": [
+        "An app opened on its own (no meeting) no longer says \"Still in the call\" when you come back from another app. It shows only while you are in a meeting with your microphone or camera on.",
+        "On a phone, an app's top bar fits on one line again: GifOS, the app, Invite and a \u22ef menu with Save, Help, Abilities and Full screen.",
+        "Help and Abilities in an app's top bar open on the first tap again on a phone."
+      ],
+      "notes": [
+        "Version numbers can now have a fourth part for quick fixes (0.9.24.1 comes after 0.9.24 and before 0.9.25)."
+      ]
+    },
+    {
       "version": "0.9.23",
       "date": "2026-10-23",
       "headline": "Bigger meetings that stay in one piece",
