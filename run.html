@@ -892,6 +892,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @container (max-width: 720px) {
     #appbar #appwho { order: 1; flex-basis: 100%; white-space: normal; overflow: visible; }
   }
+  /* The folded phone bar (wireAppMore): one row, the rest in the ⋯ menu. */
+  #appbar #appmore { display: none; }
+  #appbar[data-fold="1"] { flex-wrap: nowrap; position: relative; z-index: 2; gap: .35rem; }
+  #appbar[data-fold="1"] #appname { flex: 0 1 auto; min-width: 0; margin-right: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #appbar[data-fold="1"] > * { flex-shrink: 0; }
+  #appbar[data-fold="1"] > #appname { flex-shrink: 1; }
+  #appbar[data-fold="1"] #appmore { display: inline-flex; justify-content: center; min-width: 44px; min-height: 44px; font-size: 1.25rem; line-height: 1; box-sizing: border-box; }
+  #appmenu { position: absolute; top: 100%; right: .4rem; z-index: 31; display: flex; flex-direction: column; align-items: stretch; gap: .4rem;
+    min-width: 13rem; max-width: calc(100vw - .8rem); padding: .55rem; box-sizing: border-box; background: var(--surface, #14141f);
+    border: 1px solid var(--border, #2a2a3f); border-radius: .7rem; box-shadow: 0 10px 28px rgba(0,0,0,.45); }
+  #appmenu[hidden] { display: none; }
+  #appbar #appmenu > button { min-height: 44px; justify-content: flex-start; font-size: 1rem; padding: .45rem .8rem; }
+  #appbar #appmenu #appwho { order: 0; flex: none; white-space: normal; overflow: visible; padding: 0 .3rem; font-size: .85rem; }
   /* When the app bar is the ONLY bar (solo / app room before a call), it also
      carries the GifOS home link — same gradient wordmark as the meeting bar. */
   #appbar .brand { display: none; font-weight: 800; font-size: .9rem; text-decoration: none; cursor: pointer;
@@ -31880,7 +31893,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!callOpen() || !phoneCall()) return;
         if (!document.body.classList.contains('chrome-away')) return;
         const t = e.target;
-        if (t && t.closest && t.closest('.fitbtn, .topchip, #unmute, #showcam, #chatnote, #chatpanel, #chatbadge, #chatpreview, .name-modal, #waitlist, #tilewin, .tile-open')) {
+        // #appbar never tucks while an app is up, so its tap is a press, not
+        // a wake: swallowing it left Help and Abilities dead on a solo app.
+        if (t && t.closest && t.closest('.fitbtn, .topchip, #unmute, #showcam, #chatnote, #chatpanel, #chatbadge, #chatpreview, .name-modal, #waitlist, #tilewin, .tile-open, #appbar')) {
           wakeOnClick = true;
           return;
         }
@@ -34184,6 +34199,41 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         else openFsView('auto');
       });
       paintInPageFull();
+    })();
+    // ONE-ROW APP BAR ON A PHONE (0.9.24 hotfix). 0.9.23's bar grew to three
+    // rows at 390 px (16 px buttons, the app's name, a full-width "on this
+    // device" line). Where the app bar is the page's only bar (solo app, app
+    // room) and it is narrow, the GifOS link, the app, Invite and the OS
+    // header's own Help and Full screen keep the row; the rest moves into a
+    // "⋯" menu: the same buttons, same handlers.
+    (function wireAppMore() {
+      const abar = document.getElementById('appbar');
+      if (!abar) return;
+      const orig = Array.from(abar.children);
+      const more = document.createElement('button');
+      more.type = 'button'; more.id = 'appmore'; more.textContent = '⋯';
+      more.title = uiText('more', 'More'); more.setAttribute('aria-label', more.title);
+      more.setAttribute('aria-haspopup', 'menu'); more.setAttribute('aria-expanded', 'false');
+      const menu = document.createElement('div');
+      menu.id = 'appmenu'; menu.setAttribute('role', 'menu'); menu.hidden = true;
+      abar.appendChild(more); abar.appendChild(menu);
+      const keep = (el) => el.classList.contains('brand') || ['appgif', 'appname', 'appinvite', 'apphelp', 'appfull'].includes(el.id);
+      const setOpen = (on) => { menu.hidden = !on; more.setAttribute('aria-expanded', on ? 'true' : 'false'); };
+      function fit() {
+        const b = document.body.classList;
+        const fold = (b.contains('solo-app') || b.contains('app-room')) && abar.clientWidth > 0 && abar.clientWidth <= 720;
+        if (fold === (abar.dataset.fold === '1')) return;
+        if (fold) { for (const el of orig) if (!keep(el)) menu.appendChild(el); abar.dataset.fold = '1'; }
+        else { for (const el of orig) abar.insertBefore(el, more); delete abar.dataset.fold; setOpen(false); }
+      }
+      more.addEventListener('click', (e) => { e.stopPropagation(); setOpen(menu.hidden); });
+      // A pick runs its own handler first, then the menu closes.
+      menu.addEventListener('click', (e) => { if (e.target && e.target.closest && e.target.closest('button')) setTimeout(() => setOpen(false), 0); });
+      document.addEventListener('click', (e) => { if (!menu.hidden && !(e.target && e.target.closest && e.target.closest('#appmenu, #appmore'))) setOpen(false); }, true);
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !menu.hidden) setOpen(false); });
+      try { new ResizeObserver(() => { try { fit(); } catch (e) {} }).observe(abar); } catch (e) {}
+      try { new MutationObserver(() => { try { fit(); } catch (e) {} }).observe(document.body, { attributes: true, attributeFilter: ['class'] }); } catch (e) {}
+      fit();
     })();
     document.getElementById('apphelp-close').onclick = () => { document.getElementById('apphelp-modal').style.display = 'none'; };
     document.getElementById('apphelp-modal').onclick = (e) => {
