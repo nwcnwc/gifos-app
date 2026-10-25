@@ -3,16 +3,13 @@
  *
  * Modes, all behind one app-facing API (window.gifos = { db(), fetch(), save() }):
  *   - standalone/host : boot(mountEl, fileId) runs a local App GIF with a local
- *                       DB persisted to the desktop icon. becomeHost() opens a
- *                       relay session (reusing the icon's stored session id, so
- *                       reopening the icon resumes the SAME share link) and this
- *                       browser serves the authoritative DB to remote clients.
- *   - client          : bootClient(mountEl, {s,k,relay}) joins a host over the
- *                       relay, receives the App GIF, and runs it with a RemoteDB
- *                       forwarded to the host. Clients continuously mirror the
- *                       host's full state, can save a full copy to their own
- *                       desktop, and — if the host dies — can Become Host on the
- *                       same session so remaining clients continue.
+ *                       DB persisted to the desktop icon. becomeHost() keeps the
+ *                       icon's stored session id (so reopening the icon resumes
+ *                       the SAME share link) and serves the authoritative DB
+ *                       over the room's mesh (attachStageBus). No relay session.
+ *   - client          : mounts from the room's mesh (bootClientBus): the App GIF
+ *                       and the owner-signed state arrive over the mesh, never
+ *                       over the relay.
  *
  * First run of a GIF with embedded .state/db.json hydrates the icon's DB from
  * the GIF, so dropping a snapshot GIF resumes exactly where it was saved.
@@ -3941,7 +3938,8 @@
   // and the fragmentation layer all live in GifOS.net now — one implementation
   // for app sessions AND meetings. The relay is the signaling channel; once a
   // DataChannel opens, session traffic flows directly browser-to-browser, with
-  // a friend-hop (P1) and the relay (P2) as the fallback rungs. No TURN server.
+  // a friend-hop (P1) as the only fallback. Session traffic never rides the
+  // relay (it refuses every content verb). No TURN server.
   const steadySocket = net.steadySocket;
   const ICE_SERVERS = net.ICE_SERVERS;
   const hasP2P = net.hasP2P;
@@ -4230,7 +4228,6 @@
       // 'close' forces resilient off — a link that dies on close can't also be
       // kept alive by someone else. Expiry only shuts the door; it never ends a
       // session in progress.
-      let liveHost = null; // { ws, timer, stop } for the session this tab serves
       function lifetimeToSpec(lt, now) {
         if (lt === '1h') return { keep: 'persist', exp: now + 3600e3 };
         if (lt === '24h') return { keep: 'persist', exp: now + 86400e3 };
@@ -4244,24 +4241,12 @@
             exp: (s && s.exp) || 0, keep: (s && s.keep) || null, heal: !!(s && s.heal) };
         });
       }
-      function retire(h) {
-        if (!h) return;
-        if (h.timer) clearTimeout(h.timer);
-        try { if (h.stop) h.stop(); } catch (e) { /* already stopped */ }
-        try { h.ws.close(); } catch (e) { /* already closing */ }
-      }
       function endSession(reason) {
         poolDetach(); // the room is gone; a pending claim or answer has nowhere to land
-        const gone = liveHost; liveHost = null;
-        if (!gone) return Promise.resolve();
-        net.seal(gone.key, { t: 'ended', reason })
-          .then((env) => gone.ws.send(JSON.stringify({ t: 'bcast', msg: env })))
-          .catch(() => { /* socket gone */ });
-        // Let the 'ended' frame flush before dropping the socket.
-        setTimeout(() => retire(gone), 200);
-        announceConn({ mode: 'local' });
-        setStatus(reason === 'expired' ? 'Invite link expired — open Invite to make a new one.' : 'Sharing ended.');
-        return store.setState(fileId + '::session', null);
+        // No relay session exists to tell (one-runtime step 6), so there is
+        // nothing to send: liveHost was never set again after that step and
+        // this used to return here every time.
+        return Promise.resolve();
       }
 
       function becomeHost(opts) {
@@ -4446,10 +4431,6 @@
             };
             const attachStageBus = (bus) => {
               if (!bus || typeof bus.send !== 'function' || typeof bus.subscribe !== 'function') return Promise.reject(new Error('bad stage bus'));
-              // Kill the redundant relay app-session — app-state now rides the
-              // mesh. The local authoritative store (db) and the running iframe
-              // are untouched; only the relay transport goes.
-              if (liveHost) { const gone = liveHost; liveHost = null; if (gone.timer) clearTimeout(gone.timer); try { gone.stop && gone.stop(); } catch (e) {} try { gone.ws.close(); } catch (e) {} }
               return appOwnerLib().then((AO) => AO.createSigner(sec || undefined)).then((signer) => {
                 stageSigner = signer; stageBus = bus;
                 // The pool rides the same lane, UNSIGNED and by design: any peer

@@ -17,11 +17,11 @@
  * PATHS. Every message class travels an ordered path list:
  *   P0 — a direct WebRTC DataChannel to the destination
  *   P1 — one hop THROUGH A FRIEND'S browser ({t:'fwd'} over two DataChannels)
- *   P2 — the relay WebSocket (bandwidth-capped control plane)
- * Which classes may use which paths is policy in the CALLER (join: db and the
- * app GIF go P0→P1→P2; meet: chat goes P0→P1→P2, media and file bodies go
- * P0→P1 and NEVER the relay). The fabric provides the rungs; the sessions
- * pick the ladder.
+ * Content (chat, app state, the app GIF, media, file bodies) goes P0→P1 and
+ * NEVER the relay. The relay WebSocket is signaling only: pair bootstrap
+ * (boot/fp/ice/name), the password frames and the door/admin verbs. The relay
+ * enforces that list itself (relay.js RELAY_TYPES + the verb shapes), so a
+ * content frame sent to it is refused, not carried.
  *
  * DERIVE, DON'T SEND. The invite link carries a secret the relay must never
  * learn. Everything the relay needs is a ONE-WAY DERIVATION of that secret:
@@ -29,8 +29,8 @@
  * outputs, and the end-to-end AES-GCM key is derived from the same secret and
  * sent NOWHERE. The relay can gate and route exactly as before while every
  * content frame it carries is ciphertext. Anyone holding the link derives the
- * key offline — late joiners and P2P-less peers need no key exchange at all,
- * which is exactly when the relay path (P2) matters. A friend forwarding P1
+ * key offline — late joiners need no key exchange at all. The bootstrap
+ * frames the relay carries are sealed under it, and a friend forwarding P1
  * frames carries ciphertext too.
  *
  * The derivation is versioned (DS tag). Changing it is a deliberate flag day:
@@ -42,8 +42,8 @@
   const GifOS = (root.GifOS = root.GifOS || {});
 
   // ---- WebRTC availability + ICE --------------------------------------------
-  // No TURN server anywhere: P1 (a friend) and P2 (the relay, for control
-  // classes only) are the fallbacks. Media gets a friend or nothing.
+  // No TURN server anywhere: P1 (a friend) is the only fallback for content.
+  // The relay carries signaling, never content. Media gets a friend or nothing.
   const ICE_SERVERS = [
     { urls: 'stun:stun.cloudflare.com:3478' },
     { urls: 'stun:stun.l.google.com:19302' },
@@ -509,7 +509,8 @@
   // One envelope for every content frame, over every path: AES-256-GCM under
   // the session key. On P0 this doubles DTLS — cheap, and it removes the whole
   // category of "plaintext accidentally took the wrong path" bugs; on P1 the
-  // forwarding friend carries ciphertext; on P2 the relay carries ciphertext.
+  // forwarding friend carries ciphertext; the sealed bootstrap frames the relay
+  // carries are ciphertext too.
   const b64ofBuf = (buf) => {
     const u = new Uint8Array(buf); let s = '';
     for (let i = 0; i < u.length; i += 8192) s += String.fromCharCode.apply(null, u.subarray(i, i + 8192));
