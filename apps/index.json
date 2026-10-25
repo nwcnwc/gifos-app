@@ -6202,23 +6202,25 @@
     {
       "slug": "pdf-read-aloud",
       "appId": "pdf-read-aloud",
-      "name": "PDF Read Aloud",
+      "name": "Read Aloud",
       "shortName": "Read Aloud",
-      "version": "1.0.0",
-      "tagline": "Open a PDF and hear it read aloud. The file stays on this device.",
+      "version": "1.1.0",
+      "tagline": "Read a PDF, pasted text, or an image of text aloud. The file stays on this device.",
       "author": {
         "name": "GifOS",
         "url": "https://gifos.app"
       },
-      "minBuild": 947,
+      "minBuild": 1381,
       "offline": true,
       "releaseDate": "2026-10-11",
-      "updated": "2026-10-11",
+      "updated": "2026-10-24",
       "categories": [
         "Utilities"
       ],
       "tags": [
         "pdf",
+        "ocr",
+        "text",
         "read-aloud",
         "reader",
         "accessibility",
@@ -6231,15 +6233,17 @@
         42
       ],
       "cover": "/apps/pdf-read-aloud/cover.jpg",
-      "bytes": 832900,
+      "bytes": 2319698,
       "download": 0,
+      "optionalCount": 1,
+      "optionalDownload": 15400601,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-12"
+        "ts": "2026-10-25"
       },
-      "sha256": "bef545bede41d28dc272017105105395f83ece6fbec052cf0df48d18009ddc6b"
+      "sha256": "6dbd62f286d9d3dd135ccf89326628a28830c19835574a4ff4adf58e14727e39"
     },
     {
       "slug": "pdf-reader",
