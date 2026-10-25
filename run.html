@@ -28955,7 +28955,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // default, so a phone set to Russian wrote English down as Cyrillic
     // nonsense and nobody could see why. Settings → Captions language, kept
     // on this device; the device language stays the default.
-    const CC_LANGS = [['', 'Same as this device'], ['auto', 'Let Whisper detect it (Whisper only)'], ['en-US', 'English (US)'], ['en-GB', 'English (UK)'], ['ru-RU', 'Русский'], ['uk-UA', 'Українська'],
+    const CC_LANGS = [['', 'Auto-detect'], ['auto', 'Let Whisper detect it (Whisper only)'], ['en-US', 'English (US)'], ['en-GB', 'English (UK)'], ['ru-RU', 'Русский'], ['uk-UA', 'Українська'],
       ['es-ES', 'Español'], ['pt-BR', 'Português (BR)'], ['fr-FR', 'Français'], ['de-DE', 'Deutsch'], ['it-IT', 'Italiano'], ['pl-PL', 'Polski'],
       ['tr-TR', 'Türkçe'], ['zh-CN', '中文 (普通话)'], ['ja-JP', '日本語'], ['ko-KR', '한국어'], ['hi-IN', 'हिन्दी'], ['ar-SA', 'العربية']];
     const CC_LANG_KEY = 'gifos_cc_lang';
@@ -28964,8 +28964,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     (function wireCcLang() {
       const sel = document.getElementById('cclang'); if (!sel) return;
       let saved = ''; try { saved = localStorage.getItem(CC_LANG_KEY) || ''; } catch (e) {}
-      const dev = navigator.language || 'en-US';
-      sel.innerHTML = CC_LANGS.map(([v, l]) => '<option value="' + v + '">' + l + (v ? '' : ' (' + esc(dev) + ')') + '</option>').join('');
+      sel.innerHTML = CC_LANGS.map(([v, l]) => '<option value="' + v + '">' + l + '</option>').join('');
       if (saved && !CC_LANGS.some(([v]) => v === saved)) sel.insertAdjacentHTML('beforeend', '<option value="' + esc(saved) + '">' + esc(saved) + '</option>');
       sel.value = saved;
       sel.onchange = () => {
@@ -29357,7 +29356,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!wspCaps.has(job.id)) { wspDrain(); return; } // its voice left while it waited
       wspQ.busy = true;
       const pcm = wspPcm16k(job.chunks, job.rate);
-      const lang = ccLang();
+      const lang = lsGet(CC_LANG_KEY) || 'auto';
       let model = 'base';
       if (typeof wspModel === 'function') {
         const picked = wspModel();
