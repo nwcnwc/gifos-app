@@ -5619,7 +5619,7 @@
       "appId": "offline-tts",
       "name": "Offline Text to Speech",
       "shortName": "Offline TTS",
-      "version": "1.0",
+      "version": "1.0.1",
       "tagline": "Give your computer a voice — offline text-to-speech that serves every app, no key, no cloud.",
       "author": {
         "name": "GifOS",
@@ -5646,7 +5646,7 @@
         255
       ],
       "cover": "/apps/offline-tts/cover.jpg",
-      "bytes": 1632026,
+      "bytes": 1635246,
       "download": 0,
       "provides": {
         "ai": [
@@ -5656,9 +5656,9 @@
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-10-25"
       },
-      "sha256": "9e9128400e4882ff02f26d964a91ceca03be58f0ac4ebe77ec70886778dd4de0"
+      "sha256": "b9eea208032166e7d5bcca67d626cfb6b2ffda7145bf7ca9e1a5ebd9a7fe7458"
     },
     {
       "slug": "offline-tts-kokoro",
@@ -6204,7 +6204,7 @@
       "appId": "pdf-read-aloud",
       "name": "Read Aloud",
       "shortName": "Read Aloud",
-      "version": "1.1.3",
+      "version": "1.1.4",
       "tagline": "Read a PDF, pasted text, or an image of text aloud. The file stays on this device.",
       "author": {
         "name": "GifOS",
@@ -6233,7 +6233,7 @@
         42
       ],
       "cover": "/apps/pdf-read-aloud/cover.jpg",
-      "bytes": 2329265,
+      "bytes": 2331796,
       "download": 0,
       "optionalCount": 1,
       "optionalDownload": 15400601,
@@ -6243,7 +6243,7 @@
         "id": "gifos.app",
         "ts": "2026-10-25"
       },
-      "sha256": "086a25d3d62cea46c615742680d564673f7c1aa74db24d93390693ff47c9da04"
+      "sha256": "e0cbf22e97f37c1f64718fa88e6f1c1c9304195154f2fac97524c9b3970b626c"
     },
     {
       "slug": "pdf-reader",
