@@ -5619,7 +5619,7 @@
       "appId": "offline-tts",
       "name": "Offline Text to Speech",
       "shortName": "Offline TTS",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "tagline": "Give your computer a voice — offline text-to-speech that serves every app, no key, no cloud.",
       "author": {
         "name": "GifOS",
@@ -5628,7 +5628,7 @@
       "minBuild": 1177,
       "offline": true,
       "releaseDate": "2026-08-09",
-      "updated": "2026-08-09",
+      "updated": "2026-10-26",
       "categories": [
         "Utilities"
       ],
@@ -5646,7 +5646,7 @@
         255
       ],
       "cover": "/apps/offline-tts/cover.jpg",
-      "bytes": 1637204,
+      "bytes": 1639087,
       "download": 0,
       "provides": {
         "ai": [
@@ -5656,9 +5656,9 @@
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-25"
+        "ts": "2026-10-26"
       },
-      "sha256": "3b3ccdba09b8cba41cee72285b52cdd09ae219d23a659cd7026775ffa998bbbe"
+      "sha256": "fd51555963a0ce14d8d4f162460c72c6d15c95af37f16e59c7ead8a6ad420e36"
     },
     {
       "slug": "offline-tts-kokoro",
@@ -6204,7 +6204,7 @@
       "appId": "pdf-read-aloud",
       "name": "Read Aloud",
       "shortName": "Read Aloud",
-      "version": "1.1.5",
+      "version": "1.1.6",
       "tagline": "Read a PDF, pasted text, or an image of text aloud. The file stays on this device.",
       "author": {
         "name": "GifOS",
@@ -6213,7 +6213,7 @@
       "minBuild": 1381,
       "offline": true,
       "releaseDate": "2026-10-11",
-      "updated": "2026-10-25",
+      "updated": "2026-10-26",
       "categories": [
         "Utilities"
       ],
@@ -6233,7 +6233,7 @@
         42
       ],
       "cover": "/apps/pdf-read-aloud/cover.jpg",
-      "bytes": 2333056,
+      "bytes": 2334116,
       "download": 0,
       "optionalCount": 1,
       "optionalDownload": 15400601,
@@ -6241,9 +6241,9 @@
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-25"
+        "ts": "2026-10-26"
       },
-      "sha256": "cc43b3c60620655b01b29c20ca7ff86a0947ae2ede27d12b5b53cf612bbcde56"
+      "sha256": "caad087aef6cd1ce6c167eede899124773df7700f43f6c28b6412004853350d5"
     },
     {
       "slug": "pdf-reader",
