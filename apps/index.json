@@ -6204,7 +6204,7 @@
       "appId": "pdf-read-aloud",
       "name": "Read Aloud",
       "shortName": "Read Aloud",
-      "version": "1.1.6",
+      "version": "1.1.7",
       "tagline": "Read a PDF, pasted text, or an image of text aloud. The file stays on this device.",
       "author": {
         "name": "GifOS",
@@ -6233,7 +6233,7 @@
         42
       ],
       "cover": "/apps/pdf-read-aloud/cover.jpg",
-      "bytes": 2334116,
+      "bytes": 2334350,
       "download": 0,
       "optionalCount": 1,
       "optionalDownload": 15400601,
@@ -6243,7 +6243,7 @@
         "id": "gifos.app",
         "ts": "2026-10-26"
       },
-      "sha256": "caad087aef6cd1ce6c167eede899124773df7700f43f6c28b6412004853350d5"
+      "sha256": "fa6196b6ac53a40ed2562579fb27ac3605496061162e48b020a6bb4df4f2f1c7"
     },
     {
       "slug": "pdf-reader",
