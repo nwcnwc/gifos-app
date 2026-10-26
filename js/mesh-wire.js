@@ -58,7 +58,7 @@
   // Occupancy-authoring frames + the announce: signed on the way out, verified
   // on the way in when S4 is active. FINDLEAF/PLACE/CLAIM are the verifyFill-
   // gated fills; HELLO carries the announce (pubkey exchange + move recognition).
-  const SIGNED = new Set(['FINDLEAF', 'PLACE', 'CLAIM', 'HELLO', 'SITPONG', 'SITXFER', 'DRAIN', 'PP']);   // PP: an admitter's placement proof granted on a CLAIM (§AUTH; verified by verifyPP — its `id` is the joiner, not the signer)   // V4: SITPONG is a re-CLAIM (confirms occupancy), SITXFER grants a row's admission ledger — both author occupancy and are S4-signed; SITPING is a question and rides unsigned like PHONE. DRAIN (E1) vacates a whole subtree: signed, `id` bound to the signer, honoured by mesh.js only from the receiver's anchor
+  const SIGNED = new Set(['FINDLEAF', 'PLACE', 'CLAIM', 'HELLO', 'SITPONG', 'SITXFER', 'DRAIN', 'PP', 'PUB']);   // PP: an admitter's placement proof granted on a CLAIM (§AUTH; verified by verifyPP — its `id` is the joiner, not the signer)   // V4: SITPONG is a re-CLAIM (confirms occupancy), SITXFER grants a row's admission ledger — both author occupancy and are S4-signed; SITPING is a question and rides unsigned like PHONE. DRAIN (E1) vacates a whole subtree: signed, `id` bound to the signer, honoured by mesh.js only from the receiver's anchor. PUB: a camera pins its own cell (`ck`, `id`, `sid`); verified on this same fill path, so a forged or replayed one is dropped before the seat sees it.
   // EVICTION frames (docs/meet-security.md §AUTH). Each frees or unseats a
   // seat, so mesh.js honours one only when S4-signed by its author
   // (provenEv). The DataChannel pair id is not proof enough here: signaling

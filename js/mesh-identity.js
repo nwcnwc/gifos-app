@@ -74,6 +74,9 @@
     // the coordinate a fill frame authoritatively acts on
     if (m.hole) return 'h:' + net.topo.ckey(m.hole);
     if (m.coord) return 'c:' + net.topo.ckey(m.coord);
+    // A camera PUB commits to the session it is pinning (`sid`) as well as the
+    // cell, so a carrier cannot retarget the fill onto another stream.
+    if (m.t === 'PUB') return 'k:' + (m.ck == null ? '-' : m.ck) + '@' + (m.sid == null ? '' : String(m.sid));
     // A goodbye (LEAVE / MOVED) also commits to WHERE its author went, so a
     // carrier cannot re-point it (only the new eviction frames carry mvd, and
     // no older client verifies them, so no older statement changes).

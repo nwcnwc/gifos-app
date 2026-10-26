@@ -400,7 +400,12 @@
       this.id = id; this.env = env;
       this.state = 0;            // 0 join, 1 ask, 2 search, 3 seated
       this.hasCoord = false; this.coord = { pc: 0, r: 0, i: 0 };
+      // pubPin: a verified PUB camera, cell -> { id, sid }. While it holds and
+      // the occupant is still that id, healer silence does not free the cell.
+      this.pubPin = new Map();
       this.occ = new Map(); this.live = new Map(); this.s1seen = new Map();
+      const liveDel = this.live.delete.bind(this.live);
+      this.live.delete = (k) => { if (this.pubFresh(k)) return false; return liveDel(k); };
       this.bindOcc(this.occ);
       // s1told: S1 cells whose s1seen stamp came from a heal/PLACE nbrs LISTING
       // (take), not a sighting. It still counts as fresh for the one-place
@@ -744,14 +749,59 @@
       for (const [k, v] of map) { add(v, k); if (isS1key(k)) s1.add(k); }
       const origSet = map.set.bind(map), origDel = map.delete.bind(map), origClr = map.clear.bind(map);
       map.set = (k, v) => { const prev = map.get(k); if (prev !== undefined && prev !== v) drop(prev, k); origSet(k, v); add(v, k); if (isS1key(k)) s1.add(k); return map; };
-      map.delete = (k) => { const prev = map.get(k); if (prev !== undefined) drop(prev, k); if (isS1key(k)) s1.delete(k); return origDel(k); };
+      map.delete = (k) => {
+        // A live camera pin is not a silence vacancy. Past NBR_GAP the stamp
+        // is already stale, so the delete that frees the corpse proceeds and
+        // the pin goes with it.
+        if (this.pubFresh(k)) return false;
+        const pin = this.pubPin && this.pubPin.get(k);
+        if (pin && map.get(k) === pin.id) this.pubPin.delete(k);
+        const prev = map.get(k); if (prev !== undefined) drop(prev, k); if (isS1key(k)) s1.delete(k); return origDel(k);
+      };
       map.clear = () => { by.clear(); s1.clear(); return origClr(); };
       this.occ = map; this.occBy = by; this.s1keys = s1;
     }
     occGet(k) { const v = this.occ.get(k); return v === undefined ? null : v; }
     // a seat can be in exactly ONE place: never store MYSELF at a coord I do not
     // hold (stale self-claims circulating back made invisible zombies)
+    // A camera pin is fresh while its occupant is still the pinned id and a
+    // PHONE (or the PUB itself) has been heard inside NBR_GAP. A stale pin
+    // record whose occupant moved on is dropped here.
+    pubFresh(k) {
+      const p = this.pubPin && this.pubPin.get(k);
+      if (!p) return false;
+      if (this.occ.get(k) !== p.id) { this.pubPin.delete(k); return false; }
+      const it = this.live.get(k);
+      return it !== undefined && this.TICK - it <= NBR_GAP;
+    }
+    // NBR_GAP still frees a silent pin. PHONE liveness is the stamp: a camera
+    // that keeps phoning never reaches this. Healer verbs do not.
+    // An explicit goodbye is the occupant speaking, not silence: drop the pin
+    // first so LEAVE / MOVED / a channel farewell can free the cell now.
+    releasePub(k) { if (this.pubPin) this.pubPin.delete(k); }
+    sweepPub() {
+      if (!this.pubPin || !this.pubPin.size) return;
+      const dead = [];
+      for (const [k, p] of this.pubPin) {
+        if (this.occ.get(k) !== p.id) { dead.push(k); continue; }
+        const it = this.live.get(k);
+        if (it !== undefined && this.TICK - it <= NBR_GAP) continue;
+        dead.push(k);
+      }
+      for (const k of dead) {
+        const held = this.pubPin.get(k);
+        this.pubPin.delete(k);
+        if (held && this.occ.get(k) === held.id) {
+          this.occ.delete(k); this.live.delete(k); this.liveBy.delete(k); this.kidful.delete(k); this.s1seen.delete(k); this.tlForget(k, 'pub-gap'); this.digForget(k);
+        }
+      }
+    }
     setOcc(k, v) {
+      const pin = this.pubPin && this.pubPin.get(k);
+      if (pin && this.occ.get(k) === pin.id && v !== pin.id) {
+        if (this.pubFresh(k)) return; // the pin holds: nobody else is admitted
+        this.pubPin.delete(k);
+      }
       if (v === this.id && (!this.hasCoord || k !== ck(this.coord))) return;
       // A channel that died and stayed dead is not an owned link again. Holding
       // the cell back from heal: the peer may still be sitting there.
@@ -1151,7 +1201,7 @@
         }
         if (this.TICK - s.at >= SIT_TTL) {
           del.push(k); this.healOnly.delete(k); this.healTry.set(k, this.TICK); this.noteVouchDead(s.joiner);   // V4: TTL is also a silence-free — cool before re-admission
-          if (this.occGet(k) === s.joiner && !this.firstHandLive(k)) {
+          if (this.occGet(k) === s.joiner && !this.firstHandLive(k) && !this.pubFresh(k)) {
             this.occ.delete(k); this.live.delete(k); this.s1seen.delete(k);
             this.kidful.delete(k); this.tlForget(k, 'sit-ttl'); this.healTry.delete(k);
           }
@@ -2140,6 +2190,7 @@
       if (this.env.NET) this.env.NET.noteDeath(pid);   // the peer's own farewell: announced, counts a bridge end down at once
       for (const [k, v] of Array.from(this.occ)) {
         if (v !== pid || k === ck(this.coord)) continue;
+        this.releasePub(k); // the leaver said goodbye; the pin is not a silence hold
         this.linkedBy.delete(k); this.tenOf.delete(k); this.occ.delete(k); this.live.delete(k); this.kidful.delete(k); this.s1seen.delete(k); this.tlForget(k, 'goodbye'); this.healTry.delete(k); this.digForget(k);
         { const sit = this.sitting.get(k); if (sit && sit.joiner === pid) this.clearSoft(k); }
         this.lastChurn = this.TICK;
@@ -2228,6 +2279,7 @@
     admit(c, f) {
       const nc = f.nc;
       const k = ck(c);
+      if (this.pubFresh(k)) return; // a pinned camera is not offered to anyone else
       this.tlForget(k, 'refill'); // the cell genuinely refills — any standing D5 observation of the old occupant ends here
       const nbrs = []; const ol = topo.ownedLinks(c);
       for (const olc of ol) { const x = this.occGet(ck(olc)); if (x != null && x !== nc) nbrs.push({ k: ck(olc), v: x }); }
@@ -2788,6 +2840,7 @@
     // taken at any depth. Twin of compactDensifyCol in test/sim/mesh_seat.inc.
     compactDensifyCol(j) {
       const cell = { pc: this.coord.pc, r: this.coord.r, i: j };
+      if (this.pubFresh(ck(cell))) return false; // a pinned camera is not a densify slot
       if (this.occ.has(ck(cell)) || this.softSitting(ck(cell))) return false; // a chair already promised (newcomer or mover) is not a slot
       if (this.occGet(ck(topo.down(cell))) != null) return false;
       for (let k = j + 1; k < C(); k++) {
@@ -2927,6 +2980,7 @@
     promoteInto(hole, nbrs) {
       if (!this.hasCoord || ck(this.coord) === ck(hole)) return;
       if (this.moving) return;                       // T1: one move at a time
+      if (this.pubFresh(ck(hole))) return;          // FINDLEAF does not pack onto a pinned camera
       if (this.coord.pc === 0 && hole.pc !== 0) return;
       // 11a left-pack: scooch LEFT within the row. H-CHAIN S1 column: scooch
       // UP into denser (lower row index) same-column hole only — never DOWN
@@ -3534,6 +3588,10 @@
       if (!this.ownedLinkCell(kk)) return;
       const prev = this.occGet(kk);
       if (!sure && prev !== m.id) return;
+      // A pinned camera keeps the cell. PHONE from the camera itself falls
+      // through and refreshes liveness; anyone else is not installed and is
+      // not answered with a YIELD of the camera.
+      if (prev != null && prev !== m.id && this.pubFresh(kk)) return;
       // E2 at the ARBITER. D5: my first-hand hearing of prev ENDS at my own
       // transport loss (an unanswered translost) — a corpse whose last PHONE
       // is still inside the 40-tick window must not out-tenure the legitimate
@@ -3889,7 +3947,7 @@
       // healTry — the head's own 45-tick admission pace — so the window is
       // closed; every EXPLICIT free (LEAVE, MOVED, D5 confirm, check-back)
       // still clears healTry and stays instantly admissible.
-      for (const k of del) { this.live.delete(k); this.occ.delete(k); this.kidful.delete(k); this.s1seen.delete(k); this.tlForget(k, 'row-age'); this.healTry.set(k, this.TICK); }
+      for (const k of del) { if (this.pubFresh(k)) continue; this.live.delete(k); this.occ.delete(k); this.kidful.delete(k); this.s1seen.delete(k); this.tlForget(k, 'row-age'); this.healTry.set(k, this.TICK); }
       // (D5's early corpse-forget lives in tlSweep — every observer, not just
       // heads — so a confirmed corpse stops riding rosters in ~probe-time.)
     }
@@ -4121,6 +4179,7 @@
     // ---- message dispatch ----
     recv(m) {
       if (!this.alive) return;
+      this.sweepPub(); // a silent camera is already gone before a healer frame acts
       // Coordinates ride unsigned frames (ROUTE, FIND, S1SYNC, …) and index
       // the topology arithmetic: a pc that is not a natural number, or an r/i
       // that is not, is a hostile or corrupt frame, never a seat. Dropped at
@@ -4473,6 +4532,9 @@
             return;
           }
           const prev = this.occGet(m.ck);
+          // A pinned camera is not yielded and not replaced. Its own HELLO
+          // (prev === m.id) still refreshes the cell below.
+          if (prev != null && prev !== m.id && this.pubFresh(m.ck)) return;
           // E2: yield only between FIRST-HAND-LIVE claimants. A prev that is
           // only gossip (a phantom) is NOT first-hand live ⇒ no yield ⇒ the
           // real sender is accepted (bug #1). D5: an unanswered transport loss
@@ -4573,6 +4635,7 @@
         }
         case 'CLAIM': {
           if (!this.verifyFill(m) || m.id == null || !cellKeyOk(m.ck)) return;
+          if (this.pubFresh(m.ck) && this.occGet(m.ck) !== m.id) return; // a pinned camera is not claimed out
           if (this.ppValid(m)) this.ppNote(m.ck, m.id, m.pp.sig, m.ppfrom);   // PP: a verified placement proof for this claim
           else if (m.ppok === undefined && m.pp && m.pp.sig != null) this.ppNote(m.ck, m.id, m.pp.sig, null, m.pp);
           // A: joiner self-confirm — upgrade sitting-down → seated. My own
@@ -4631,7 +4694,7 @@
           // hand-over then degrades to a cold structural re-dial.
           if (mine && m.mvd == null && this.env.NET) this.env.NET.noteDeath(m.id);
           if (mvdFrom) this.carryLinked(m.ck, m.mvd, m.id);
-          if (mine) { this.linkedBy.delete(m.ck); this.tenOf.delete(m.ck); this.occ.delete(m.ck); this.live.delete(m.ck); this.kidful.delete(m.ck); this.s1seen.delete(m.ck); this.tlForget(m.ck, 'leave'); this.healTry.delete(m.ck); this.digForget(m.ck); } // freed ⇒ admissible now
+          if (mine) { this.releasePub(m.ck); this.linkedBy.delete(m.ck); this.tenOf.delete(m.ck); this.occ.delete(m.ck); this.live.delete(m.ck); this.kidful.delete(m.ck); this.s1seen.delete(m.ck); this.tlForget(m.ck, 'leave'); this.healTry.delete(m.ck); this.digForget(m.ck); } // freed ⇒ admissible now (a signed goodbye, not silence)
           // ...unless a claimant was waiting on it (waitClaim, the HELLO branch): it is the cell's hint now
           if (mine) { const w = this.waitClaim.get(m.ck); if (w) { this.waitClaim.delete(m.ck); if (w.id !== m.id && TICK - w.at <= 20) this.hintClaim(m.ck, w.id); } }
           // A, ATTRIBUTABLE (V4): only the LEAVER'S OWN vouch clears — a soft
@@ -4691,7 +4754,7 @@
             const kk = e.k, eid = e.v, age = e.age;
             if (e.ch != null) this.childOf.set(kk, e.ch); // learn this cell's heir — feeds cousins-in-PONG
             if (this.hasCoord && kk === ck(this.coord) && eid !== this.id) continue; // gossip claims MY seat: IGNORE — a genuine duplicate is settled by a first-hand witness, never an echo
-            if (this.firstHandLive(kk)) continue; // I have first-hand truth here — gossip can't resurrect a moved/dead occupant over it
+            if (this.firstHandLive(kk) || this.pubFresh(kk)) continue; // I have first-hand truth here — gossip can't resurrect a moved/dead occupant over it, and a pinned camera is not a digest vacancy
             if (this.translost.has(kk)) continue; // D5: my standing first-hand observation (transport died, probe unanswered) outranks an echo — gossip must not re-seat the corpse; any answer or a genuine refill clears the observation and gossip resumes
             if (this.liveElsewhere(eid, kk)) continue; // A SEAT IS IN ONE PLACE, and I hear this one first-hand at another cell: an echo never plants it beside itself (behavior 14a: a returning head's stale table listed the real head one cell over, and its row-mate carried two cells for the same seat until the hint aged out)
             const seen = TICK - age - 2; const cur = this.occGet(kk); const curSeen = this.s1seen.has(kk) ? this.s1seen.get(kk) : -999;
@@ -4806,6 +4869,7 @@
           // had just spoken, and the two met again only on a rescue dial
           // (chaos seed 7: a head back from a dead spot, its row-mate moved
           // into its cell — 15 s to settle, 5 of them re-dialing).
+          this.releasePub(m.ck); // the mover said where it went; silence is not what frees this cell
           this.occ.delete(m.ck); this.live.delete(m.ck); this.kidful.delete(m.ck); this.s1seen.delete(m.ck); this.tlForget(m.ck, 'moved'); this.healTry.delete(m.ck); this.digForget(m.ck); // freed ⇒ admissible now
           if (mvdFrom) { this.setOcc(m.mvd, m.id); this.noteS1(m.mvd); }   // a redirect, never liveness: the mover is heard there only when it speaks there
           this.wake(); return;
@@ -4817,7 +4881,9 @@
           if (this.hasCoord && this.coord.pc === 0 && this.coord.i === 0 && ck(this.coord) === m.ck) {
             const inRow = (e) => { const c = e && cellKeyOk(e.k); return !!c && c.pc === 0 && c.r === this.coord.r && e.v != null; }; // the ledger of MY row, nothing else
             for (const kv of (Array.isArray(m.vouches) ? m.vouches.slice(0, C()) : [])) if (inRow(kv) && !this.occ.has(kv.k) && !this.sitting.has(kv.k)) this.sitting.set(kv.k, { joiner: kv.v, assigner: this.id, at: this.TICK, pingAt: -1 });
-            for (const e of (Array.isArray(m.rowOcc) ? m.rowOcc.slice(0, C()) : [])) if (inRow(e) && !this.occ.has(e.k)) { this.setOcc(e.k, e.v); this.noteS1(e.k); }
+            // A ledger that is silent about a pinned camera does not free it
+            // and does not hand the cell to anyone else (setOcc refuses too).
+            for (const e of (Array.isArray(m.rowOcc) ? m.rowOcc.slice(0, C()) : [])) if (inRow(e) && !this.occ.has(e.k) && !this.pubFresh(e.k)) { this.setOcc(e.k, e.v); this.noteS1(e.k); }
             this.rowLedger = true;
           }
           return;
@@ -4840,6 +4906,24 @@
             if (m.tag === 1) this.confirmSeated(m.ck, m.id);            // the lost CLAIM, replayed first-hand
             else { sit.at = this.TICK; sit.pingAt = -1; if (sit.pl) this.emit(m.id, Object.assign({}, sit.pl)); } // alive and still seeking: restart the clock, and re-send the PLACE it has evidently not got
           }
+          return;
+        }
+        case 'PUB': {
+          // A camera pins one cell. Verified (s4ok, and `sid` is inside the
+          // signed statement). Free, or already this id: seat it, hear it,
+          // and keep `sid` beside the fill. Occupied by anyone else: ignore.
+          // While the pin is fresh, FINDLEAF / SITPING / SITXFER / DRAIN / the
+          // digest do not free it for silence, and it is not compacted, admitted
+          // over, or YIELDed. PHONE still refreshes the stamp. sweepPub frees
+          // it once that stamp is older than NBR_GAP.
+          if (!this.verifyFill(m) || m.id == null || !cellKeyOk(m.ck)) return;
+          if (typeof m.sid !== 'string' || m.sid.length < 1 || m.sid.length > 128) return;
+          const cur = this.occGet(m.ck);
+          if (cur != null && cur !== m.id) return;
+          this.setOcc(m.ck, m.id);
+          if (this.occGet(m.ck) !== m.id) return;
+          this.liveMark(m.ck); this.noteS1(m.ck);
+          this.pubPin.set(m.ck, { id: m.id, sid: m.sid });
           return;
         }
         case 'PHONE': this.onPhone(m); return;
@@ -4911,7 +4995,7 @@
           if (this.hasCoord && this.coord.pc !== 0 && this.coord.i !== 0 && m.coord && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r && m.coord.i === 0) {
             for (let j = 1; j < C(); j++) {
               if (j === this.coord.i) continue; const rk = ck({ pc: this.coord.pc, r: this.coord.r, i: j });
-              if (!this.occ.has(rk) || this.firstHandLive(rk)) continue;
+              if (!this.occ.has(rk) || this.firstHandLive(rk) || this.pubFresh(rk)) continue;
               if (!(Array.isArray(m.row) && m.row.some((e) => e && e.k === rk))) { this.occ.delete(rk); this.kidful.delete(rk); this.childOf.delete(rk); }
             }
           }
@@ -5074,6 +5158,7 @@
         else if (this.state === 2 && TICK - this.retryAt > ((this.findAckAt < 0 && (!this.findAckers || this.findAckers.has(this.lastAsked))) ? FIND_ACK_WAIT : (this.seatTries === 0 && this.roster.filter((e) => e.v !== this.id).length === 1) ? 12 : 60)) { if (this.haveRoster && this.roster.length && ++this.seatTries <= 6) { const t = this.pickRoster(); if (t != null) this.askSeat(t); else if (!this.resumeAsk()) this.join(); } else { this.seatTries = 0; if (!this.resumeAsk()) this.join(); } } // ENTRY RESUME on roster exhaustion too: a fresh WHOHOME beats a fresh knock
         this.wake(); return;
       }
+      this.sweepPub(); // NBR_GAP frees a silent camera before healer sweeps run
       if (this.evil) this.attack();
       // A dead channel vacates before this tick publishes a fold (0.9.23).
       // The network sim still refreshes a dark link on a tick that continues.
@@ -5318,6 +5403,7 @@
       if (!this.env.COMPACTION) return; // opt-in (mesh-wire enables it; harness/tests toggle)
       const TICK = this.TICK;
       if (!this.hasCoord || this.state !== 3 || this.coord.pc === 0 || this.moving) return; // S1 is the top; a mover finishes first
+      if (this.pubFresh(ck(this.coord))) return; // a pinned camera does not compact away
       if (TICK < this.compactAt) return; // rate limit / hysteresis
       // HYSTERESIS: compact only from a QUIESCENT neighbourhood. A LEAVE/heal/move
       // I saw nearby resets lastChurn, so during a heal storm compaction lies
