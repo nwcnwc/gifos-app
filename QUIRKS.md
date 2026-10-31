@@ -1307,6 +1307,12 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Open
 
+### Q81. My Media's Download button does nothing on iPhone
+
+Deferred by Nathan. Not fixed in this pass.
+
+My Media (`js/sample-apps.js`, the Download button `#mdown`, handler `downloadCur`) opens an item and offers Download. Download builds a blob URL and clicks an `<a download>` named for that file. The same tap saves the file in Chromium, in Firefox, and in Linux WebKit. On iPhone it does nothing. Suspected cause: iOS ignores a blob `<a download>` click that happens inside the null-origin sandboxed app iframe. Possible fixes, not tried here: `navigator.share` on iOS, or a runtime `gifos.download` bridge from the app iframe to the host page. The bridge is a core change. Deferred by Nathan.
+
 ### Q80. A late arrival that heard the host's spare copy before its relay pulled a full copy from the host
 
 Q79's open part 2, now reproducible on demand. The host sends its stage feed live to two seats only (STG-DIRECT). Every other neighbour gets the host's copy as a parked spare (`sb:1`) and should watch a one-hop relay from a direct seat. But a late arrival's link to the host and its link to the relaying seat come up in a race. When the host's spare is heard first, it is the only candidate, so `claimRedun` makes it the first claim. The no-primary seed also asks for it hot: it ranks copies by raw hop count, and the spare's `h: 0` beats any relay. The host then feeds that late arrival a full copy until failback moves it to the relay. That happens to every late arrival that loses the race: in `late-host-upload` the host sent media on 2 links with 3 joiners in one row (where it has one direct seat) about 1 wave in 3, and on a 3rd link at 6 joiners.
