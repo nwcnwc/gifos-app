@@ -5,8 +5,10 @@
  *   - standalone/host : boot(mountEl, fileId) runs a local App GIF with a local
  *                       DB persisted to the desktop icon. becomeHost() keeps the
  *                       icon's stored session id (so reopening the icon resumes
- *                       the SAME share link) and serves the authoritative DB
- *                       over the room's mesh (attachStageBus). No relay session.
+ *                       the SAME share link) and, unless the manifest sets
+ *                       capabilities.multiplayer to false, serves the
+ *                       authoritative DB over the room's mesh (attachStageBus).
+ *                       No relay session.
  *   - client          : mounts from the room's mesh (bootClientBus): the App GIF
  *                       and the owner-signed state arrive over the mesh, never
  *                       over the relay.
@@ -4466,18 +4468,22 @@
             };
             const setLead = (on) => { meshLead.on = !!on; try { hostApi.setLead(on); } catch (e) {} if (stageBus) sendDelta(); return Promise.resolve(); };
 
-            return store.setState(fileId + '::session', { sid, lsec, relay, epoch, keep, exp, heal, av, sec }).then(() => ({
-              shareUrl: joinUrl, keep, exp, heal, owned: !!av,
-              // Leadership controls for the page chrome: how many records this
-              // app declares as leadable, and the live communal⇄leading switch
-              // (which flips their visibility read-write⇄read-only host-side).
-              leadCount: leadTargets.length,
-              setLead: setLead,
-              // Present iff the runtime can drive the mesh Stage DATA lane;
-              // run.html feature-detects this to pick the mesh bus over the
-              // relay app-session (and to advertise mesh:true in the app ad).
-              attachStageBus: attachStageBus,
-            }));
+            return store.setState(fileId + '::session', { sid, lsec, relay, epoch, keep, exp, heal, av, sec }).then(() => {
+              // capabilities.multiplayer defaults on. An explicit false still
+              // mints this session (the meeting can show the app) but does
+              // not hand out the Stage DATA lane: no owner-signed state and
+              // no act lane. run.html reads attachStageBus to set mesh.
+              const share = multiplayerOn(manifest);
+              const hosted = {
+                shareUrl: joinUrl, keep, exp, heal, owned: !!av,
+                // How many records this app declares as leadable. A view-only
+                // app offers no communal switch, because nothing syncs.
+                leadCount: share ? leadTargets.length : 0,
+                setLead: setLead,
+              };
+              if (share) hosted.attachStageBus = attachStageBus;
+              return hosted;
+            });
           });
           })); // resolveMint().then(…) — laneless
         });
@@ -4845,6 +4851,16 @@
     });
   }
 
+  // capabilities.multiplayer defaults on. Only JSON false opts an app out
+  // of Invite and of the mesh app-state lane. Absent, true, 0, and the
+  // string "false" stay on, so an app that already shipped keeps today's
+  // invite link and its mesh sync.
+  function multiplayerOn(manifest) {
+    const caps = manifest && manifest.capabilities;
+    if (!caps || !Object.prototype.hasOwnProperty.call(caps, 'multiplayer')) return true;
+    return caps.multiplayer !== false;
+  }
+
   // Header chrome is one capability, a small set (Nathan 2026-10-18 21:19):
   // capabilities.header is "auto-hide" or "larger", or absent for the ordinary
   // always-shown bar. Not a user setting and not per device. The two do not
@@ -4862,5 +4878,5 @@
   // is a rule nothing can test. poolStats is the same argument for the
   // algorithm: "did the room actually save a fetch" is not visible from
   // outside otherwise.
-  GifOS.runtime = { boot, bootClientBus, buildAppHtml, buildFolderHtml, norm, slug, poolHosts, poolStats, headerChoice, SYSTEM_HEADER };
+  GifOS.runtime = { boot, bootClientBus, buildAppHtml, buildFolderHtml, norm, slug, poolHosts, poolStats, headerChoice, multiplayerOn, SYSTEM_HEADER };
 })(typeof window !== 'undefined' ? window : globalThis);

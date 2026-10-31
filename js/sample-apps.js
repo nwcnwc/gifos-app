@@ -3096,7 +3096,7 @@ Home Screen, so this icon opens the built-in store page instead of running here.
   <p>Whatever you do in an app is saved with its icon automatically. Close the tab, come back tomorrow — you're right where you left off. Nothing is stored on anyone's servers.</p></div>
 
   <div class="card"><h2><span class="emoji">🔗</span>Play together with one link</h2>
-  <p>Open any app and press <b>Invite</b>. Send the link to friends and they join you live — same game, same notes, same room. Try <b>Meeting</b>, right on your Home Screen — you can even run an app inside it!</p></div>
+  <p>Most apps invite friends with one link: open the app and press <b>Invite</b>. An app can turn that off. Send the link and friends join you live — same game, same notes, same room. Try <b>Meeting</b>, right on your Home Screen — you can even run an app inside it!</p></div>
 
   <div class="card"><h2><span class="emoji"></span>Games for real-life hangouts</h2>
   <p>The <b>IRL Games</b> folder is for game night: everyone keeps their own phone — open a game, press <b>Invite</b>, and secret roles, hidden votes, and sneaky lies get dealt to each player's screen while the laughing and accusing happens face to face. Only one phone in the room? The <b>Single Phone</b> subfolder has pass-around versions.</p></div>
@@ -3147,8 +3147,9 @@ Home Screen, so this icon opens the built-in store page instead of running here.
     '    session can, since it is synced to your browser.',
     '  * Hand any app GIF to an AI and ask for a change. It unpacks the GIF,',
     '    edits it, and packs it back. You do not need to know how to code.',
-    '  * Any app can go multiplayer: your browser becomes the server and',
-    '    friends join from a share link. Traffic goes peer-to-peer when the',
+    '  * Most apps can go multiplayer: your browser becomes the server and',
+    '    friends join from a share link. An app can set multiplayer off, and',
+    '    then it does not invite or sync. Traffic goes peer-to-peer when the',
     '    network allows, and falls back to a relay when it does not.',
     '  * Nothing lives on our servers. Your desktop stays in this browser.',
     '    Use the GifOS menu (top-left) to back up your whole desktop as one',
