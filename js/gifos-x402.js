@@ -25,14 +25,20 @@
   const VERSION = 2;
 
   // ---- the policy: what GifOS will EVER agree to pay -------------------------
-  // Phase 2 is Base Sepolia only. Pinned here, in code — not in a manifest, not
-  // in a setting an app can reach. A server quoting mainnet is refused before
-  // any human sees a prompt.
+  // The chain and the token live in gifos-base-net.js. This fallback is
+  // Base Sepolia, used when that module is not on the page (unit tests that
+  // load this file alone). A server quoting any other network — mainnet
+  // included, while the flag is off — is refused before a human sees a prompt.
   const ALLOWED = {
     schemes: ['exact'],
     networks: ['eip155:84532'],                                   // Base Sepolia
     assets: { 'eip155:84532': ['0x036cbd53842c5426634e7929541ec2318f3dcf7e'] }, // Sepolia USDC
+    chainName: 'Base Sepolia',
   };
+  function allowedNow() {
+    if (GifOS.baseNet && typeof GifOS.baseNet.policy === 'function') return GifOS.baseNet.policy();
+    return ALLOWED;
+  }
 
   const b64encode = (s) => (typeof btoa === 'function'
     ? btoa(unescape(encodeURIComponent(s)))
@@ -79,12 +85,13 @@
    */
   function chooseRequirement(pr, policy) {
     const cap = BigInt((policy && policy.maxAmount) || 0);
+    const allowed = allowedNow();
     const reasons = [];
     for (const req of pr.accepts) {
       if (!req || typeof req !== 'object') { reasons.push('malformed offer'); continue; }
-      if (ALLOWED.schemes.indexOf(req.scheme) < 0) { reasons.push('scheme "' + req.scheme + '" unsupported'); continue; }
-      if (ALLOWED.networks.indexOf(req.network) < 0) { reasons.push('network "' + req.network + '" refused (this build is Base Sepolia only)'); continue; }
-      const assets = ALLOWED.assets[req.network] || [];
+      if (allowed.schemes.indexOf(req.scheme) < 0) { reasons.push('scheme "' + req.scheme + '" unsupported'); continue; }
+      if (allowed.networks.indexOf(req.network) < 0) { reasons.push('network "' + req.network + '" refused (this build is ' + (allowed.chainName || 'Base Sepolia') + ' only)'); continue; }
+      const assets = allowed.assets[req.network] || [];
       if (typeof req.asset !== 'string' || assets.indexOf(req.asset.toLowerCase()) < 0) { reasons.push('asset "' + req.asset + '" is not an allowed token'); continue; }
       if (typeof req.payTo !== 'string' || !/^0x[0-9a-fA-F]{40}$/.test(req.payTo)) { reasons.push('payTo is not an address'); continue; }
       let amount;

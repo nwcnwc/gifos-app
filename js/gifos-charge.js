@@ -17,9 +17,18 @@
   const GifOS = (root.GifOS = root.GifOS || {});
   if (GifOS.charge) return;
 
-  // Pinned, same as gifos-x402.js. An app cannot ask to be paid on mainnet.
+  // Default pin, same as gifos-x402.js. The live network is gifos-base-net.js
+  // when that module is loaded. An app cannot ask to be paid on mainnet:
+  // the manifest's chain must equal the network the OS already selected.
   const CHAIN = 'eip155:84532';       // Base Sepolia
   const CHAIN_NAME = 'Base Sepolia';
+  function chainNow() {
+    if (GifOS.baseNet && typeof GifOS.baseNet.active === 'function') {
+      const n = GifOS.baseNet.active();
+      return { caip: n.caip, name: n.name };
+    }
+    return { caip: CHAIN, name: CHAIN_NAME };
+  }
   const MAX_REASON = 140;
   const MAX_SKU = 64;
 
@@ -98,8 +107,9 @@
     const pay = manifest && manifest.pay;
     if (!pay || typeof pay !== 'object') throw new Error('this app declares no payee (manifest.pay), so it cannot be paid');
     if (!isAddress(pay.to)) throw new Error('manifest.pay.to is not an address');
-    if (pay.chain && pay.chain !== CHAIN) throw new Error('manifest.pay.chain "' + pay.chain + '" is refused — this build pays on ' + CHAIN_NAME + ' only');
-    return { to: pay.to, chain: CHAIN };
+    const net = chainNow();
+    if (pay.chain && pay.chain !== net.caip) throw new Error('manifest.pay.chain "' + pay.chain + '" is refused — this build pays on ' + net.name + ' only');
+    return { to: pay.to, chain: net.caip };
   }
 
   // ---- the FIAT payee, DERIVED from the signing identity ---------------------
@@ -226,11 +236,11 @@
       // sheet renders a button per rail — never a rail with a null payee.
       rails: {
         paypal: allow('paypal') ? (elig.paypal || null) : null,
-        x402: allow('x402') && elig.payee ? { address: elig.payee.to, chain: CHAIN_NAME } : null,
+        x402: allow('x402') && elig.payee ? { address: elig.payee.to, chain: chainNow().name } : null,
         // The universal rail: send exactly X to the signed payee, from ANY
         // self-custody wallet (RockWallet included) — same address authority
         // as x402, no connection needed.
-        transfer: allow('transfer') && elig.payee ? { address: elig.payee.to, chain: CHAIN_NAME } : null,
+        transfer: allow('transfer') && elig.payee ? { address: elig.payee.to, chain: chainNow().name } : null,
         // FedNow rides the verified identity like PayPal does; whether that
         // identity is REGISTERED with the provider is the Worker's answer.
         fednow: allow('fednow') ? { identity: elig.identity.id } : null,
@@ -241,7 +251,7 @@
       // Back-compat fields (address/chain) kept while the x402 rail is the
       // only on-chain one; prefer rails.* in new code.
       address: elig.payee ? elig.payee.to : null,
-      chain: CHAIN_NAME,
+      chain: chainNow().name,
       amount: String(request.amount),
       editable: !!request.editable,
       reason: request.reason,
@@ -258,7 +268,7 @@
       ok: true,
       rail,
       amount: sheetData.amount,
-      chain: onChain ? CHAIN : null,
+      chain: onChain ? chainNow().caip : null,
       payee: onChain ? sheetData.address
         : rail === 'paypal' ? ((sheetData.rails && sheetData.rails.paypal) || null)
         : null,                             // fednow: the bank account is the provider's business, not the app's
