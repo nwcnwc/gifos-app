@@ -55,9 +55,26 @@
   // it (platform_fees) — the client never computes fiat fees. On x402 the
   // split is built here, because the broker constructs the payment.
   const FEE_BPS = 300n;
-  // Where the x402 fee lands. A Base Sepolia TEST address — replace alongside
-  // the mainnet flag day, never before (docs/payments.md "What this does NOT do").
+  // Where the x402 fee lands. The same placeholder as gifos-base-net.js
+  // FEE_ADDRESS. Sepolia tests pay it; mainnet refuses to run while the
+  // module still calls this value unset (docs/payments.md "What this does NOT do").
   const TREASURY = '0x1111111111111111111111111111111111111111';
+  function treasuryAddress() {
+    const pinned = GifOS.baseNet && GifOS.baseNet.FEE_ADDRESS;
+    if (typeof pinned === 'string' && pinned.toLowerCase() !== TREASURY.toLowerCase()) {
+      throw new Error('payBroker: fee address mismatch between gifos-base-net and the broker');
+    }
+    return pinned || TREASURY;
+  }
+  function usdcLeg() {
+    if (GifOS.baseNet && typeof GifOS.baseNet.active === 'function') {
+      const n = GifOS.baseNet.active();
+      return { network: n.caip, asset: n.usdc.toLowerCase() };
+    }
+    const x = GifOS.x402;
+    const network = x.ALLOWED.networks[0];
+    return { network, asset: x.ALLOWED.assets[network][0] };
+  }
   // THE USDC SWITCH. While false, the sheet never offers the USDC rails
   // (x402 and wallet transfer), and the permission sheet does not list them,
   // for any app; nothing else about them is removed. Flip to true only when
@@ -642,13 +659,12 @@
     try {
       const fee = (amount * FEE_BPS) / 10000n;
       const toAuthor = amount - fee;
-      const x = GifOS.x402;
-      const network = x.ALLOWED.networks[0];
-      const asset = x.ALLOWED.assets[network][0];
+      const leg = usdcLeg();
+      const network = leg.network, asset = leg.asset;
       const transfers = [
         { to: sheetData.rails.x402.address, amount: String(toAuthor), asset, network },
       ];
-      if (fee > 0n) transfers.push({ to: TREASURY, amount: String(fee), asset, network });
+      if (fee > 0n) transfers.push({ to: treasuryAddress(), amount: String(fee), asset, network });
       // The human authenticates HERE — the Base Account passkey prompt (or the
       // wallet's own confirm). One prompt per transfer of the split.
       const payloads = await wallet.signTransfers(transfers);

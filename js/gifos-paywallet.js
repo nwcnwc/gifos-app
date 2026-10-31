@@ -28,9 +28,10 @@
  *      the destination, because an extension keeps key custody in the
  *      extension rather than behind a passkey.
  *
- * TESTNET PINNED: the only chain this file will build for is Base Sepolia
- * (eip155:84532); a transfer naming any other network throws before any
- * wallet sees anything. Same doctrine as gifos-x402.js/gifos-charge.js.
+ * CHAIN: gifos-base-net.js picks the network. With that module absent, or
+ * with GIFOS_BASE_MAINNET off, the only chain this file will build for is
+ * Base Sepolia (eip155:84532). A transfer naming any other network throws
+ * before any wallet sees anything.
  *
  * Attaches to `GifOS.payWallet`.
  */
@@ -38,9 +39,16 @@
   const GifOS = (root.GifOS = root.GifOS || {});
   if (GifOS.payWallet) return;
 
-  const CHAIN_CAIP = 'eip155:84532';       // Base Sepolia — the ONLY chain
+  const CHAIN_CAIP = 'eip155:84532';       // Base Sepolia — the default chain
   const CHAIN_ID = 84532;
   const CHAIN_HEX = '0x14a34';
+  function chainNow() {
+    if (GifOS.baseNet && typeof GifOS.baseNet.active === 'function') {
+      const n = GifOS.baseNet.active();
+      return { caip: n.caip, chainId: n.chainId, hex: n.hex, name: n.name, rpc: n.rpc, explorer: n.explorer };
+    }
+    return { caip: CHAIN_CAIP, chainId: CHAIN_ID, hex: CHAIN_HEX, name: 'Base Sepolia', rpc: 'https://sepolia.base.org', explorer: 'https://sepolia.basescan.org' };
+  }
   // USDC's EIP-712 domain on Base Sepolia. The x402 spec carries these in the
   // requirement's `extra` because they vary per token deployment; these are
   // the defaults for the one asset this build allows.
@@ -55,7 +63,8 @@
   // plus a fresh random nonce and a short validity window.
   function buildAuthorization(transfer, from, nonceBytes, nowMs) {
     const t = transfer || {};
-    if (t.network !== CHAIN_CAIP) throw new Error('payWallet: refusing network "' + t.network + '" — this build signs for Base Sepolia only');
+    const chain = chainNow();
+    if (t.network !== chain.caip) throw new Error('payWallet: refusing network "' + t.network + '" — this build signs for ' + chain.name + ' only');
     if (!isAddress(t.to)) throw new Error('payWallet: transfer.to is not an address');
     if (!isAddress(from)) throw new Error('payWallet: payer is not an address');
     if (typeof t.amount !== 'string' || !/^[0-9]+$/.test(t.amount) || BigInt(t.amount) <= 0n) {
@@ -99,7 +108,7 @@
       domain: {
         name: (extra && extra.name) || DOMAIN_NAME,
         version: (extra && extra.version) || DOMAIN_VERSION,
-        chainId: CHAIN_ID,
+        chainId: chainNow().chainId,
         verifyingContract: asset,
       },
       message: authorization,
@@ -137,7 +146,7 @@
       // Coinbase's own popup; the passkey never touches this page.
       try {
         const base = await loadVendorSdk();
-        const sdk = base.createBaseAccountSDK({ appName: 'GifOS', appChainIds: [CHAIN_ID] });
+        const sdk = base.createBaseAccountSDK({ appName: 'GifOS', appChainIds: [chainNow().chainId] });
         return { p: sdk.getProvider(), kind: 'base-account' };
       } catch (e) { /* fall through to an injected wallet */ }
       if (root.ethereum) return { p: root.ethereum, kind: 'injected' };
@@ -148,22 +157,23 @@
   }
 
   async function ensureChain(p) {
+    const chain = chainNow();
     try {
       const id = await p.request({ method: 'eth_chainId' });
-      if (parseInt(id, 16) === CHAIN_ID) return;
+      if (parseInt(id, 16) === chain.chainId) return;
     } catch (e) { /* some providers only answer after connect; try the switch */ }
     try {
-      await p.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CHAIN_HEX }] });
+      await p.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chain.hex }] });
     } catch (e) {
-      // 4902: the wallet has never seen Base Sepolia — offer to add it.
+      // 4902: the wallet has never seen this chain — offer to add it.
       if (e && (e.code === 4902 || /unrecognized|not added/i.test(String(e.message)))) {
         await p.request({
           method: 'wallet_addEthereumChain',
           params: [{
-            chainId: CHAIN_HEX, chainName: 'Base Sepolia',
+            chainId: chain.hex, chainName: chain.name,
             nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-            rpcUrls: ['https://sepolia.base.org'],
-            blockExplorerUrls: ['https://sepolia.basescan.org'],
+            rpcUrls: [chain.rpc],
+            blockExplorerUrls: [chain.explorer],
           }],
         });
       } else throw e;
