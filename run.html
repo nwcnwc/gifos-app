@@ -3370,6 +3370,59 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
        longest word, "Silenciar". */
     /* body .bar #mic at 46px outranks a plain .bar rule, so Unmute spills out of the button on a 320px phone. */
     html body .bar > #mic { width: 68px; min-width: 68px; padding-left: 2px; padding-right: 2px; }
+    /* A phone and a short window: the 68px mic and 56–76px neighbours ran off
+       a 320px screen once Share or Step off joined the row, and on a 390px
+       phone the bar was edge to edge. Same controls, smaller chrome. A thumb
+       still has 44px. Share, then Reactions, then Step off fold into More
+       when the row still cannot hold them (fitBeside). */
+    html body .bar {
+      box-sizing: border-box;
+      gap: 4px;
+      height: 60px;
+      padding: 0 4px;
+      max-width: calc(100vw - 8px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+    }
+    html body .bar > #bargrip {
+      width: 44px; min-width: 44px; height: 44px; min-height: 44px;
+    }
+    html body .bar > #bargrip svg { width: 18px; height: 18px; }
+    html body .bar > #cam,
+    html body .bar > #mic,
+    html body .bar > #reactbtn,
+    html body .bar > #chatbtn,
+    html body .bar > #ccdock,
+    html body .bar > #sharebtn,
+    html body .bar > #bartoggle,
+    html body .bar > #hand,
+    html body .bar > #stagebtn {
+      box-sizing: border-box;
+      width: auto; min-width: 44px; max-width: 64px;
+      height: 48px; min-height: 44px;
+      padding: 2px 3px 1px;
+      border-radius: 14px;
+    }
+    html body .bar > #leavebtn {
+      box-sizing: border-box;
+      width: auto; min-width: 44px; max-width: 64px;
+      height: 48px; min-height: 44px;
+      margin-left: 0;
+      padding: 2px 4px 1px;
+      border-radius: 14px;
+    }
+    html body .bar .docklab.dockword {
+      line-height: 1.05;
+      max-width: 58px;
+    }
+    html body .bar > #cam svg,
+    html body .bar > #mic svg,
+    html body .bar > #reactbtn svg,
+    html body .bar > #chatbtn svg,
+    html body .bar > #ccdock svg,
+    html body .bar > #sharebtn svg,
+    html body .bar > #bartoggle svg,
+    html body .bar > #leavebtn svg,
+    html body .bar > #hand svg,
+    html body .bar > #stagebtn svg { width: 18px; height: 18px; }
     /* Full screen width, square bottom corners: a narrower rounded sheet
        let the red Video and End buttons show through the corner cutouts. */
     .bar:not(.collapsed) .barmore {
