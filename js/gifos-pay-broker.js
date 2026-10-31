@@ -357,6 +357,7 @@
           '<div style="display:flex;justify-content:space-between;gap:.6rem;margin-top:.45rem"><span style="color:#9a9ab5">Paying</span><span><b>' + esc(sheetData.payingTo) + '</b> <span style="color:#7ddb91">✓ verified</span></span></div>' +
           (sheetData.unlocks ? '<div style="display:flex;justify-content:space-between;gap:.6rem;margin-top:.45rem"><span style="color:#9a9ab5">Unlocks</span><span>' + esc(sheetData.sku) + ' (on this computer)</span></div>' : '') +
           (sheetNote(sheetData) ? '<div style="color:#9a9ab5;font-size:.78rem;margin-top:.55rem">' + esc(sheetNote(sheetData)) + '</div>' : '') +
+          ((canX402 || sheetData.rails.transfer) && GifOS.onramp ? '<div id="gp-onramp" style="margin-top:.7rem;padding-top:.6rem;border-top:1px solid #23233a"><div style="display:flex;justify-content:space-between;gap:.6rem"><span style="color:#9a9ab5">USDC balance</span><b id="gp-usdc-bal">…</b></div><button id="gp-topup" type="button" style="margin-top:.45rem;padding:.4rem .8rem;border-radius:.4rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit">Add USDC</button></div>' : '') +
         '</div>' +
         '<div id="gp-buttons" style="display:flex;flex-direction:column;gap:.5rem">' +
           (canPaypal ? '<button id="gp-paypal" style="padding:.6rem 1rem;border-radius:.5rem;border:none;background:#ffc439;color:#111;cursor:pointer;font:inherit;font-weight:600">' + (sheetData.mode === 'LIVE' ? 'Pay with PayPal' : 'Pay with PayPal (sandbox)') + '</button>' : '') +
@@ -381,6 +382,18 @@
         return cents * CENT; // whole cents, exactly
       };
       const done = (result) => { bg.remove(); resolve(result); };
+      const topUp = box.querySelector('#gp-topup');
+      if (topUp && GifOS.onramp) {
+        topUp.onclick = () => { try { GifOS.onramp.showTopUp(); } catch (e) {} };
+        const bal = box.querySelector('#gp-usdc-bal');
+        const wallet = GifOS.payWallet;
+        if (bal && wallet && typeof wallet.peekAddress === 'function') {
+          wallet.peekAddress().then((addr) => {
+            if (!addr) { bal.textContent = 'connect a wallet'; return null; }
+            return GifOS.onramp.readUsdcBalance(addr).then((u) => { bal.textContent = GifOS.onramp.formatUsdc(u) + ' USDC'; });
+          }).catch(() => { bal.textContent = 'unavailable'; });
+        }
+      }
 
       box.querySelector('#gp-decline').onclick = () => done({ declined: true });
       const pp = box.querySelector('#gp-paypal');
