@@ -661,8 +661,13 @@
       const toAuthor = amount - fee;
       const leg = usdcLeg();
       const network = leg.network, asset = leg.asset;
+      // The seller address is the signed manifest's, re-read here. The sheet
+      // is checked against it and then discarded as a source of the payee.
+      const signed = GifOS.charge.assertSignedPayTo(manifest, sheetData && sheetData.address);
+      const railAddr = sheetData && sheetData.rails && sheetData.rails.x402 && sheetData.rails.x402.address;
+      GifOS.charge.assertSignedPayTo(manifest, railAddr);
       const transfers = [
-        { to: sheetData.rails.x402.address, amount: String(toAuthor), asset, network },
+        { to: signed.to, amount: String(toAuthor), asset, network },
       ];
       if (fee > 0n) transfers.push({ to: treasuryAddress(), amount: String(fee), asset, network });
       // The human authenticates HERE — the Base Account passkey prompt (or the
@@ -973,6 +978,11 @@
       entitled: (sku) => p.entitled(scope, sku),
       prices: elig.prices,
     });
+    // A request may name an address. It cannot choose one. Anything other
+    // than the signed manifest address is a refusal, before a sheet, a
+    // wallet, or the Worker.
+    const claimedAddr = req && (req.payTo != null ? req.payTo : req.baseAddress != null ? req.baseAddress : req.address != null ? req.address : (req.to != null ? req.to : null));
+    if (claimedAddr != null) GifOS.charge.assertSignedPayTo(manifest, claimedAddr);
     // The proof is what the Worker verifies instead of consulting the store;
     // /rails narrows the author's allowed rails to what can be processed now.
     const proof = await proofFor(appBytes);
