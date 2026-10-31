@@ -129,7 +129,7 @@ async function meeting(browser, prof) {
         });
         check(prof + ' host: the More sheet fits the screen width', sheet.l >= -1 && sheet.right <= sheet.vw + 1 && sheet.top >= -1 && sheet.bottom <= sheet.dockTop + 1, sheet);
         check(prof + ' host: neither the page nor the sheet scrolls sideways', sheet.pageW <= sheet.vw + 1 && sheet.sheetW <= 1, { pageW: sheet.pageW, sheetW: sheet.sheetW, vw: sheet.vw });
-        check(prof + ' host: every More button is on screen, 64px, and its text fits', sheet.box.length > 0 && sheet.box.every((b) => b.left >= -1 && b.right <= sheet.vw + 1 && b.h === 64 && !b.over), sheet.box);
+        check(prof + ' host: every More button is on screen, at least 44px, and its text fits', sheet.box.length > 0 && sheet.box.every((b) => b.left >= -1 && b.right <= sheet.vw + 1 && b.h >= 44 && !b.over), sheet.box);
         check(prof + ' host: start time, Visit, Rebroadcast and Questions do not overlap', sheet.overlaps.length === 0 && sheet.fields.every((f) => f.r <= sheet.vw + 1 && !f.in), sheet.fields.concat(sheet.overlaps));
         check(prof + ' host: no More tile sits on the dock', sheet.dockHits.length === 0, sheet.dockHits);
         check(prof + ' host: the header sentence stays inside the screen', sheet.statusRight <= sheet.vw + 1 && !sheet.statusOver, { statusRight: sheet.statusRight, vw: sheet.vw, statusOver: sheet.statusOver });

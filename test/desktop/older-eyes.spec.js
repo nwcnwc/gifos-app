@@ -66,8 +66,8 @@ test('every word in the open More sheet is 16px', async ({ page }) => {
   const heads = await page.evaluate(() => [...document.querySelectorAll('#barmore .moregroup h4')]
     .filter((h) => getComputedStyle(h.closest('.moregroup')).display !== 'none')
     .map((h) => ({ t: h.textContent.trim(), caps: getComputedStyle(h).textTransform })));
-  // Four groups since 49ea823 (the More sheet fits at 100% zoom as a labeled grid; more-groups.spec.js reads their names).
-  expect(heads.map((h) => h.t)).toEqual(['Meeting', 'Your video', 'Room', 'Settings and help']);
+  // Six groups (more-groups.spec.js reads their names). The sheet still fits at 100% zoom as a labeled grid.
+  expect(heads.map((h) => h.t)).toEqual(['You', 'Share and present', 'People and room', 'Recording, captions, transcript', 'Apps', 'Settings and help']);
   for (const h of heads) expect(h.caps, h.t).toBe('none');
 });
 

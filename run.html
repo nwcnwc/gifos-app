@@ -2642,8 +2642,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .bar:not(.collapsed) .barmore .moregroup + .moregroup { border-top: 1px solid #e4e4ea; padding-top: 8px; }
   .bar:not(.collapsed) .barmore .moregroup:not(:has(.morerow > button:not([style*="display:none"]):not([style*="display: none"]))):not(:has(.moresegs > .blurctl:not([hidden]))) { display: none; }
   /* A viewer's blur and stage choices are hidden by role, not [hidden]. */
-  body.broadcast.bc-viewer .bar:not(.collapsed) .barmore .moregroup[data-group="video"]:not(:has(.morerow > button:not([style*="display:none"]):not([style*="display: none"]))),
-  body.broadcast.bc-watching .bar:not(.collapsed) .barmore .moregroup[data-group="video"]:not(:has(.morerow > button:not([style*="display:none"]):not([style*="display: none"]))) { display: none; }
+  body.broadcast.bc-viewer .bar:not(.collapsed) .barmore .moregroup[data-group="you"]:not(:has(.morerow > button:not([style*="display:none"]):not([style*="display: none"]))),
+  body.broadcast.bc-watching .bar:not(.collapsed) .barmore .moregroup[data-group="you"]:not(:has(.morerow > button:not([style*="display:none"]):not([style*="display: none"]))) { display: none; }
   .bar:not(.collapsed) .barmore .moregroup h4 { margin: 0; padding: 0 4px; font: 700 16px/1.2 system-ui, sans-serif; color: #4a505c; }
   .bar:not(.collapsed) .barmore .moresegs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; min-width: 0; }
   /* Sits above the dock, not inside #barmore — More folds after a blur pick. */
@@ -2654,7 +2654,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (min-width: 600px) {
     .bar:not(.collapsed) .barmore .moregroup { grid-template-columns: 7.5em minmax(0, 1fr); column-gap: 12px; align-items: center; }
     .bar:not(.collapsed) .barmore .moregroup > :not(h4) { grid-column: 2; }
-    .bar:not(.collapsed) .barmore .moregroup[data-group="video"] > h4 { grid-row: span 2; }
+    .bar:not(.collapsed) .barmore .moregroup[data-group="you"] > h4 { grid-row: span 2; }
   }
   .bar:not(.collapsed) .barmore .morerow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   /* Stage voting: picking a vote mode folds More, so the dots are in reach.
@@ -2662,6 +2662,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      (to change the mode, or turn voting off). */
   .bar:not(.collapsed) .barmore .morerow > button { min-height: 64px; height: auto; padding: 8px 6px; border: 0; border-radius: 16px;
     background: #e8ecf1; color: #1d1d1f; font-size: 1.125rem; font-weight: 650; white-space: normal; }
+  /* Mic and camera move into You while More is open. The dock's 11px face
+     and 76px height would stay on them (the dock rule is .bar #mic, which
+     still matches inside the sheet). Give them the sheet's size instead. */
+  html body .bar:not(.collapsed) #barmore #mic,
+  html body .bar:not(.collapsed) #barmore #cam {
+    width: auto; min-width: 0; max-width: none; height: auto; min-height: 52px;
+    font-size: 1.125rem; border-radius: 16px; padding: 8px 6px;
+  }
+  html body .bar:not(.collapsed) #barmore #mic .dockword,
+  html body .bar:not(.collapsed) #barmore #cam .dockword {
+    font-size: 1.125rem; max-width: none; white-space: normal;
+  }
   /* The old on-colors were written for a dark bar. On this light sheet they
      turn Captions and Record pale, so the pressed state uses the blue button. */
   .bar:not(.collapsed) #barmore #ccbtn.on,
@@ -3450,6 +3462,28 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       /* 4px sides: "password" fits whole in an 86px tile on a 390 phone. */
       padding-left: 4px; padding-right: 4px;
     }
+    /* The 64px tiles made later groups fall under the fold on a phone.
+       Same actions, a 44px target, 13px words. A label that needs another
+       line grows the tile instead of cutting its words. */
+    html body .bar:not(.collapsed) #barmore .morerow > button,
+    html body .bar:not(.collapsed) #barmore .dockmore,
+    html body .bar:not(.collapsed) #barmore #mic,
+    html body .bar:not(.collapsed) #barmore #cam {
+      min-height: 44px;
+      font-size: 13px;
+      padding: 4px 6px;
+      border-radius: 12px;
+    }
+    html body .bar:not(.collapsed) #barmore #mic .dockword,
+    html body .bar:not(.collapsed) #barmore #cam .dockword { font-size: 13px; }
+    html body .bar:not(.collapsed) #barmore .moregroup h4 { font-size: 13px; }
+    html body .bar:not(.collapsed) #barmore .morerow > .iconbtn .docklab.dockword,
+    html body .bar:not(.collapsed) #barmore .blurlbl,
+    html body .bar:not(.collapsed) #barmore .seg { font-size: 13px; }
+    html body .bar:not(.collapsed) #barmore .seg {
+      min-height: 40px;
+      min-width: 40px;
+    }
     /* Blur and Stage drop under their word when large text needs the room. */
     .bar:not(.collapsed) .barmore .blurctl { flex-wrap: wrap; }
     .bar:not(.collapsed) .barmore .segwrap { max-width: 100%; }
@@ -3519,7 +3553,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .bar:not(.collapsed) .barmore .moregroup,
     .bar:not(.collapsed) .barmore .moregroup + .moregroup { grid-template-columns: minmax(0, 1fr); border-top: 0; padding-top: 0; }
     .bar:not(.collapsed) .barmore .moregroup > :not(h4),
-    .bar:not(.collapsed) .barmore .moregroup[data-group="video"] > h4 { grid-column: auto; grid-row: auto; }
+    .bar:not(.collapsed) .barmore .moregroup[data-group="you"] > h4 { grid-column: auto; grid-row: auto; }
   }
   /* A narrow sideways phone anchors the sheet 102px up, not 122. The wide
      cap used 122 and cut the second row (Waiting room and Chat) off an SE. */
@@ -4095,22 +4129,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <button type="button" class="dockmore" data-dock="reactbtn" hidden>Reactions</button>
       <button type="button" class="dockmore" data-dock="stagebtn" hidden>Step off</button>
     </div>
-    <!-- One sheet for every width, grouped the way a meeting is used. A button
-         pick folds the sheet. A text field does not. placeDockForWidth
-         moves Chat and Share screen into their groups when the dock is a
-         phone's. -->
-    <section class="moregroup" data-group="use">
-      <h4 data-t="lobTitle">Meeting</h4>
-      <div class="morerow" id="userow">
-        <button id="hand" data-t="hand" aria-keyshortcuts="Alt+H" title="Raise your hand — raised hands float to the top">Hand</button>
-        <button id="ccbtn" type="button" aria-pressed="false" data-t="captions" data-ti="ccTip" title="Show or hide captions on your screen. This meeting is written down either way.">Captions</button>
-        <button type="button" id="whobtn" data-t="people" data-ti="whoTip" aria-keyshortcuts="Alt+W" title="Who is on this meeting — names and internet addresses">People</button>
-        <button data-t="transcript" aria-keyshortcuts="Alt+T" title="The meeting's live transcript" id="trbtn"><svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>Transcript</button>
-        <button id="qabtn" type="button" title="Questions for the host: ask one, and vote up the ones you want answered">Questions</button>
-      </div>
-    </section>
-    <section class="moregroup" data-group="video">
-      <h4 data-t="yourVideo">Your video</h4>
+    <!-- One sheet for every width. A button pick folds the sheet. A text
+         field does not. Groups follow how a meeting is used. Mic and camera
+         sit in You while this sheet is open and return to the dock when it
+         closes, so a closed phone dock still holds them. placeDockForWidth
+         parks Chat and Share screen in their groups on a phone, and while
+         More is open. -->
+    <section class="moregroup" data-group="you">
+      <h4 data-t="youGroup">You</h4>
       <div class="moresegs">
     <span class="blurctl" title="How much your own video is blurred to everyone else">
       <span class="blurlbl" data-t="blur">Blur</span>
@@ -4157,6 +4183,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     </span>
       </div>
       <div class="morerow">
+        <button id="hand" data-t="hand" aria-keyshortcuts="Alt+H" title="Raise your hand — raised hands float to the top">Hand</button>
         <button id="flipcam" class="iconbtn" aria-label="Switch camera" title="Switch between front and back camera" style="display:none">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M20 8a8 8 0 0 0-14.9-2"/><polyline points="5 2 5 6 9 6"/>
@@ -4170,23 +4197,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         </button>
       </div>
     </section>
-    <section class="moregroup" data-group="room">
-      <h4 data-t="room">Room</h4>
+    <section class="moregroup" data-group="present">
+      <h4 data-t="sharePresent">Share and present</h4>
       <div class="morerow">
-        <button id="pwbtn" data-t="password" data-ti="pwTip" aria-keyshortcuts="Alt+L" title="Lock this room with a password">Password</button>
-        <button id="waitbtn" type="button" aria-pressed="false" title="Hold people at the door until you admit them" style="display:none">Waiting room</button>
-        <button id="recbtn" data-t="record" aria-keyshortcuts="Alt+R" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
-        <button id="votebtn" data-t="vote" data-ti="voteTip" aria-keyshortcuts="Alt+U" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
         <button id="stagebtn" data-t="stage" aria-keyshortcuts="Alt+G" title="Step onto the stage — the whole room sees and hears the stage first">Stage</button>
-        <button id="appbtn" data-t="runApp" aria-keyshortcuts="Alt+Y" title="Run an app inside this meeting — everyone here shares and interacts with it live">Run app</button>
         <button id="rbbtn" title="Play the last broadcast, or a video, into the broadcast. Viewers see Prerecorded.">Rebroadcast</button>
-        <label id="bcwhenrow" title="When the broadcast starts. The viewer link and the room say so."><span id="bcwhen-lbl">Start time</span><input type="datetime-local" id="bcwhen"></label>
-        <label id="bcvisitrow" title="Link for viewers (opens in a new window)"><span id="bcvisit-lbl">Visit link</span><input type="url" id="bcvisit" inputmode="url" autocomplete="url" placeholder="https://" spellcheck="false"></label>
       </div>
     </section>
-    <section class="moregroup" data-group="host">
-      <h4 data-t="host">Host</h4>
+    <section class="moregroup" data-group="people">
+      <h4 data-t="peopleRoom">People and room</h4>
       <div class="morerow">
+        <button type="button" id="whobtn" data-t="people" data-ti="whoTip" aria-keyshortcuts="Alt+W" title="Who is on this meeting — names and internet addresses">People</button>
+        <button id="pwbtn" data-t="password" data-ti="pwTip" aria-keyshortcuts="Alt+L" title="Lock this room with a password">Password</button>
+        <button id="waitbtn" type="button" aria-pressed="false" title="Hold people at the door until you admit them" style="display:none">Waiting room</button>
+        <button id="votebtn" data-t="vote" data-ti="voteTip" aria-keyshortcuts="Alt+U" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
+        <button id="qabtn" type="button" title="Questions for the host: ask one, and vote up the ones you want answered">Questions</button>
         <button id="muteall" data-t="muteGuests" aria-keyshortcuts="Alt+M" title="Mute every guest at once (admins). Only an admin can lift it, for one guest from their tile or for all with the same button." style="display:none">Mute guests</button>
         <button id="blurall" data-t="blurGuests" aria-keyshortcuts="Alt+B" title="Blur every guest at once (admins) — same as blocking each of them by hand" style="display:none">Blur guests</button>
         <button id="camall" data-t="videoOff" aria-keyshortcuts="Alt+X" title="Turn video off for every guest at once (admins) — stronger than blur" style="display:none">Turn video off</button>
@@ -4194,11 +4219,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <button id="admbtn" title="Room admin controls" style="display:none">Admin</button>
       </div>
     </section>
+    <section class="moregroup" data-group="record">
+      <h4 data-t="recGroup">Recording, captions, transcript</h4>
+      <div class="morerow">
+        <button id="recbtn" data-t="record" aria-keyshortcuts="Alt+R" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
+        <button id="ccbtn" type="button" aria-pressed="false" data-t="captions" data-ti="ccTip" title="Show or hide captions on your screen. This meeting is written down either way.">Captions</button>
+        <button data-t="transcript" aria-keyshortcuts="Alt+T" title="The meeting's live transcript" id="trbtn"><svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>Transcript</button>
+      </div>
+    </section>
+    <section class="moregroup" data-group="apps">
+      <h4 data-t="appsGroup">Apps</h4>
+      <div class="morerow">
+        <button id="appbtn" data-t="runApp" aria-keyshortcuts="Alt+Y" title="Run an app inside this meeting — everyone here shares and interacts with it live">Run app</button>
+      </div>
+    </section>
     <section class="moregroup" data-group="setup">
       <h4 data-t="setHelp">Settings and help</h4>
       <div class="morerow">
         <button id="setbtn" data-t="settings" aria-keyshortcuts="Alt+," title="Meeting settings — your sound mix, timing, and the video quality your camera records">Settings</button>
         <button id="keysbtn" data-t="keys" type="button" title="Keyboard shortcuts">Keys</button>
+        <label id="bcwhenrow" title="When the broadcast starts. The viewer link and the room say so."><span id="bcwhen-lbl">Start time</span><input type="datetime-local" id="bcwhen"></label>
+        <label id="bcvisitrow" title="Link for viewers (opens in a new window)"><span id="bcvisit-lbl">Visit link</span><input type="url" id="bcvisit" inputmode="url" autocomplete="url" placeholder="https://" spellcheck="false"></label>
       </div>
     </section>
     </div>
@@ -4732,6 +4773,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         appearClear: 'Leeren', appearSave: 'Speichern', changePic: 'Bild ändern',
         people: 'Leute', share: 'Teilen', room: 'Raum', host: 'Leitung', help: 'Hilfe',
         talk: 'Gespräch', yourVideo: 'Ihr Video', setHelp: 'Einstellungen und Hilfe',
+        youGroup: 'Sie', sharePresent: 'Teilen und zeigen', peopleRoom: 'Leute und Raum',
+        recGroup: 'Aufnahme, Untertitel, Protokoll', appsGroup: 'Apps',
         who: 'Wer', hand: 'Hand', chat: 'Chat', invite: 'Einladen', runApp: 'App starten', showApp: 'App zeigen',
         appSheetTitle: 'Eine App in dieser Besprechung starten',
         appSheetBody: 'Wählen Sie eine Ihrer Apps. Sie läuft live für alle hier, mit demselben Stand und denselben Zügen, und mit Bild, Ton und Aufnahme der Besprechung. Jeder kann mitmachen.',
@@ -5046,6 +5089,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         appearClear: 'Limpiar', appearSave: 'Guardar', changePic: 'Cambiar foto',
         people: 'Gente', share: 'Compartir', room: 'Sala', host: 'Anfitrión', help: 'Ayuda',
         talk: 'Conversación', yourVideo: 'Tu video', setHelp: 'Ajustes y ayuda',
+        youGroup: 'Tú', sharePresent: 'Compartir y presentar', peopleRoom: 'Gente y sala',
+        recGroup: 'Grabación, subtítulos, transcripción', appsGroup: 'Apps',
         who: 'Quién', hand: 'Mano', chat: 'Chat', invite: 'Invitar', runApp: 'Abrir app', showApp: 'Mostrar app',
         appSheetTitle: 'Abrir una app en esta reunión',
         appSheetBody: 'Elige una de tus apps. Corre en vivo para todos aquí, con el mismo estado y los mismos movimientos, y con el audio, el video y la grabación de la reunión. Cualquiera puede usarla.',
@@ -5705,25 +5750,45 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function moreRow(group) {
       return document.querySelector('#barmore .moregroup[data-group="' + group + '"] > .morerow');
     }
-    // Chat, Share screen, Hand, Captions, People, then Transcript and
-    // Questions. On a desktop the first two stay on the dock until More
-    // opens. A phone keeps them in this row. A broadcast does not use this
-    // (placeDockForWidth still parks a service's own buttons).
+    // Each control lives in its group. Chat and Share screen stay on a
+    // desktop dock until More opens; a phone keeps them in the sheet.
+    // Mic and camera join You only while the sheet is open, then go back
+    // beside the grip, so a closed phone dock still holds them. A broadcast
+    // does not use this (placeDockForWidth parks a service's own buttons).
     function seatUseRow() {
       if (typeof BROADCAST !== 'undefined' && BROADCAST) return;
       const bar = document.querySelector('.bar');
-      const row = moreRow('use');
-      if (!bar || !row) return;
+      if (!bar) return;
       const phone = phoneLayout();
       const open = !bar.classList.contains('collapsed');
-      const skipHand = (id) => id === 'hand' && typeof viewerHandOnDock === 'function' && viewerHandOnDock();
-      if (phone || open) {
-        ['chatbtn', 'sharebtn', 'hand', 'ccbtn', 'whobtn', 'trbtn', 'qabtn'].forEach((id) => {
-          if (skipHand(id)) return;
-          const el = document.getElementById(id);
-          if (el) row.appendChild(el);
-        });
-      } else {
+      const skipHand = typeof viewerHandOnDock === 'function' && viewerHandOnDock();
+      const place = (id, group, beforeId) => {
+        const el = document.getElementById(id);
+        const row = moreRow(group);
+        if (!el || !row) return;
+        const before = beforeId ? document.getElementById(beforeId) : null;
+        row.insertBefore(el, before && before.parentElement === row ? before : null);
+      };
+      const sheetHomes = () => {
+        place('whobtn', 'people', 'pwbtn');
+        place('chatbtn', 'people', 'pwbtn');
+        place('qabtn', 'people', 'muteall');
+        place('sharebtn', 'present', 'stagebtn');
+        if (!skipHand) place('hand', 'you', 'flipcam');
+        place('trbtn', 'record', null);
+        place('ccbtn', 'record', 'trbtn');
+        place('recbtn', 'record', 'ccbtn');
+      };
+      const restoreDockMedia = () => {
+        const grip = document.getElementById('bargrip');
+        const cam = document.getElementById('cam');
+        const mic = document.getElementById('mic');
+        if (!grip || grip.parentElement !== bar || !cam || !mic) return;
+        if (cam.parentElement !== bar || cam.previousElementSibling !== grip) bar.insertBefore(cam, grip.nextSibling);
+        if (mic.parentElement !== bar || mic.previousElementSibling !== cam) bar.insertBefore(mic, cam.nextSibling);
+      };
+      if (phone || open) sheetHomes();
+      else {
         const chat = document.getElementById('chatbtn');
         const share = document.getElementById('sharebtn');
         const cc = document.getElementById('ccdock');
@@ -5733,12 +5798,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           else if (toggle && toggle.parentElement === bar) bar.insertBefore(chat, toggle);
         }
         if (share && share.parentElement !== bar && toggle && toggle.parentElement === bar) bar.insertBefore(share, toggle);
-        ['hand', 'ccbtn', 'whobtn', 'trbtn', 'qabtn'].forEach((id) => {
-          if (skipHand(id)) return;
-          const el = document.getElementById(id);
-          if (el) row.appendChild(el);
-        });
+        if (!skipHand) place('hand', 'you', 'flipcam');
+        place('whobtn', 'people', 'pwbtn');
+        place('qabtn', 'people', 'muteall');
+        place('trbtn', 'record', null);
+        place('ccbtn', 'record', 'trbtn');
+        place('recbtn', 'record', 'ccbtn');
       }
+      if (open) {
+        const you = moreRow('you');
+        const cam = document.getElementById('cam');
+        const mic = document.getElementById('mic');
+        const hand = document.getElementById('hand');
+        const flip = document.getElementById('flipcam');
+        if (you && cam && mic) {
+          const anchor = (hand && hand.parentElement === you) ? hand : ((flip && flip.parentElement === you) ? flip : null);
+          you.insertBefore(cam, anchor);
+          you.insertBefore(mic, cam);
+        }
+      } else restoreDockMedia();
     }
     function placeDockForWidth() {
       const bar = document.querySelector('.bar');
@@ -5757,8 +5835,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (anchor && anchor.parentElement === bar) bar.insertBefore(el, anchor); else bar.insertBefore(el, document.getElementById('bartoggle'));
         }
       };
-      // A service keeps Share beside the video tools and Chat in the first
-      // group. A meeting seats Chat and Share with Hand while More is open
+      // A service keeps Share in Share and present, and Chat in People and
+      // room. A meeting seats those with their groups while More is open
       // (and on a phone the whole time). seatUseRow does that.
       // A phone host is the exception: Share stays on the dock, and fitDock
       // moves Share, then Reactions, then Step off when the row does not fit.
@@ -5773,10 +5851,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const share = document.getElementById('sharebtn');
           const toggle = document.getElementById('bartoggle');
           if (share && toggle && share.parentElement !== bar) bar.insertBefore(share, toggle);
-        } else put('sharebtn', 'video', 'bartoggle');
-        const hand = document.getElementById('hand'), use = moreRow('use');
-        if (hand && use && hand.parentElement !== bar && hand.parentElement !== use) use.insertBefore(hand, use.firstChild);
-        put('chatbtn', 'use', 'ccdock', true);
+        } else put('sharebtn', 'present', 'bartoggle');
+        const hand = document.getElementById('hand'), you = moreRow('you');
+        const flip = document.getElementById('flipcam');
+        if (hand && you && hand.parentElement !== bar && hand.parentElement !== you) you.insertBefore(hand, flip && flip.parentElement === you ? flip : you.firstChild);
+        put('chatbtn', 'people', 'ccdock', true);
       } else {
         try { seatUseRow(); } catch (e) {}
       }
@@ -5980,8 +6059,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (shareOnDock && moreSheet && bar && host) {
         const moreBtn = document.getElementById('bartoggle');
         if (shareOnDock.parentElement !== bar && moreBtn) bar.insertBefore(shareOnDock, moreBtn);
-      } else if (shareOnDock && moreSheet && bar && !phoneLayout() && !moreSheet.contains(shareOnDock) && moreRow('video')) {
-        moreRow('video').appendChild(shareOnDock);
+      } else if (shareOnDock && moreSheet && bar && !phoneLayout() && !moreSheet.contains(shareOnDock) && moreRow('present')) {
+        const present = moreRow('present'), stage = document.getElementById('stagebtn');
+        present.insertBefore(shareOnDock, stage && stage.parentElement === present ? stage : null);
       }
       if (host && bar) {
         const stage = document.getElementById('stagebtn');
@@ -27275,13 +27355,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const hand = document.getElementById('hand');
       const bar = document.querySelector('.bar');
       const react = document.getElementById('reactbtn');
-      const talk = moreRow('use') || moreRow('talk');
-      const chat = document.getElementById('chatbtn');
-      if (!hand || !bar || !react || !talk) return;
+      const you = moreRow('you') || moreRow('talk');
+      const flip = document.getElementById('flipcam');
+      if (!hand || !bar || !react || !you) return;
       if (viewerHandOnDock()) {
         if (hand.parentElement !== bar) bar.insertBefore(hand, react);
-      } else if (hand.parentElement !== talk) {
-        talk.insertBefore(hand, chat && chat.parentElement === talk ? chat.nextSibling : talk.firstChild);
+      } else if (hand.parentElement !== you) {
+        you.insertBefore(hand, flip && flip.parentElement === you ? flip : you.firstChild);
       }
     }
     try {
@@ -27387,8 +27467,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           stageBtn.innerHTML = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="7" r="2.4"/><path d="M8.2 13.2c.5-1.5 1.9-2.4 3.8-2.4s3.3.9 3.8 2.4"/><path d="M4 17.5h16"/></svg><span class="docklab dockword">Step off</span>';
         }
       } else if (!hostHere && stageBtn.parentElement && stageBtn.parentElement.classList.contains('bar')) {
-        const room = moreRow('room'), app = document.getElementById('appbtn');
-        if (room) room.insertBefore(stageBtn, app && app.parentElement === room ? app : null);
+        const present = moreRow('present'), rb = document.getElementById('rbbtn');
+        if (present) present.insertBefore(stageBtn, rb && rb.parentElement === present ? rb : null);
       }
       const dockedNow = stageBtn.parentElement && stageBtn.parentElement.classList.contains('bar');
       const labNow = stageBtn.querySelector('.docklab');
