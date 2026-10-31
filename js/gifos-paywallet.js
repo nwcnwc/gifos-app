@@ -199,6 +199,16 @@
     return accounts[0];
   }
 
+  // No prompt. Empty when the wallet has not been connected yet.
+  async function peekAddress() {
+    try {
+      const { p } = await provider();
+      const accounts = await p.request({ method: 'eth_accounts' });
+      if (accounts && isAddress(accounts[0])) return accounts[0];
+    } catch (e) {}
+    return null;
+  }
+
   // ---- sign what the broker built -------------------------------------------
   // One signature per transfer. The Base Account / wallet shows its own
   // prompt for each; the trusted description of WHAT is being paid was
@@ -290,7 +300,7 @@
 
   GifOS.payWallet = {
     CHAIN_CAIP, CHAIN_ID,
-    available, address, signTransfers, paySplit,
+    available, address, peekAddress, signTransfers, paySplit,
     // pure, for the unit tier
     buildAuthorization, typedData, encodeUsdcTransfer, sendCallsParams, capabilitiesSupportBatch,
   };
