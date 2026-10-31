@@ -4317,7 +4317,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <div class="name-modal" role="dialog" aria-modal="true" id="set-modal" style="display:none">
     <div class="name-box" style="text-align:left">
       <h3 id="set-title" style="text-align:center" data-t="setTitle">Settings</h3>
+      <div class="set-sec" id="set-you">
+        <h4 class="set-h" data-t="youGroup">You</h4>
+        <b data-t="setName">Your name</b>
+        <p class="set-help"><span data-t="setNameHelp">What everyone sees on your tile:</span> <b id="set-name-cur">…</b> <button id="set-rename" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem;margin-left:.4rem" data-t="setChange">Change</button></p>
+        <p class="set-help" data-t="setPicHelp">Your picture, when the camera is off. An animated GIF stays animated.</p>
+        <img id="set-avatar-preview" alt="" hidden style="width:72px;height:72px;object-fit:cover;border-radius:.5rem">
+        <input id="set-avatar-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp,.gif,.png,.jpg,.jpeg,.webp" aria-label="Picture" data-al="setPicture">
+        <button type="button" id="set-avatar-remove" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem;align-self:flex-start" data-t="setRemove">Remove</button>
+        <p id="set-avatar-err" class="set-help" role="alert"></p>
+      </div>
       <div class="set-sec" id="set-video">
+        <h4 class="set-h" data-t="setVideoHead">Video</h4>
         <b data-t="setVideo">Video quality</b>
         <p class="set-help" data-t="setVideoHelp">What <b>your own camera</b> records and sends. <b>Auto</b> adapts to the room's size and your battery; a fixed choice pins it.</p>
         <span class="segwrap" id="vqrow" role="group" aria-label="Video quality" data-al="setVideo">
@@ -4330,22 +4341,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           <button class="seg" data-vq="144p">144p</button>
         </span>
       </div>
-      <div id="set-col-a">
-      <div class="set-sec" id="set-stage-video">
-        <button type="button" id="adjust-stage" class="seg" data-t="adjustStage" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem;align-self:flex-start">Adjust stage video</button>
-        <p class="set-help" data-t="adjustStageHelp">Preview and frame what your camera would send on the stage. This does not put anyone on the stage.</p>
-      </div>
-      <div class="set-sec">
-        <b data-t="setName">Your name</b>
-        <p class="set-help"><span data-t="setNameHelp">What everyone sees on your tile:</span> <b id="set-name-cur">…</b> <button id="set-rename" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem;margin-left:.4rem" data-t="setChange">Change</button></p>
-        <p class="set-help" data-t="setPicHelp">Your picture, when the camera is off. An animated GIF stays animated.</p>
-        <img id="set-avatar-preview" alt="" hidden style="width:72px;height:72px;object-fit:cover;border-radius:.5rem">
-        <input id="set-avatar-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp,.gif,.png,.jpg,.jpeg,.webp" aria-label="Picture" data-al="setPicture">
-        <button type="button" id="set-avatar-remove" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem;align-self:flex-start" data-t="setRemove">Remove</button>
-        <p id="set-avatar-err" class="set-help" role="alert"></p>
-      </div>
-      </div>
       <div class="set-sec" id="set-captions">
+        <h4 class="set-h" data-t="setCcHead">Captions</h4>
         <b data-t="setCcLang">Captions language</b>
         <p class="set-help" data-t="setCcHelp">What <b>your own device</b> listens for when CC is on. It cannot guess: a phone set to Russian writes English down as nonsense, so pick the language you will speak.</p>
         <select id="cclang" style="padding:.35rem .5rem;border-radius:.4rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);max-width:100%"></select>
@@ -4364,6 +4361,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <p class="set-help" id="ccall-row" style="display:none;margin-top:.5rem"><button id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span id="ccall-note">Admins only — every device starts writing down the voices it hears. Anyone can tap Captions to opt out.</span></p>
       </div>
       <div id="mixpanel">
+        <h4 class="set-h" data-t="setSoundHead">Sound and timing</h4>
         <b data-t="setMix">Sound mix</b>
         <label><span data-t="setStage">Stage</span> <input type="range" id="mix-stage" min="0" max="100" value="100"></label>
         <label><span data-t="setRow">My row</span> <input type="range" id="mix-row" min="0" max="100" value="100"></label>
@@ -4374,6 +4372,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           <button data-timing="unison" data-ti="setUnisonTip" title="Everyone hears everyone at the same synced instant — reactions, responses and spontaneous song land together (the room may wait for its slowest link, capped)"><span data-t="setUnison">Unison</span></button>
           <button data-timing="song" data-ti="setSongTip" title="Lead the room in song — steps you onto the stage with a music-grade mic and lines everyone's sound up to you; tap again to end (earbuds recommended for singers)">🎵 <span data-t="rdSong">Song</span></button>
         </div>
+      </div>
+      <div class="set-sec" id="set-stage-video">
+        <h4 class="set-h" data-t="setLessHead">Less used</h4>
+        <button type="button" id="adjust-stage" class="seg" data-t="adjustStage" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem;align-self:flex-start">Adjust stage video</button>
+        <p class="set-help" data-t="adjustStageHelp">Preview and frame what your camera would send on the stage. This does not put anyone on the stage.</p>
       </div>
       <div style="display:flex;justify-content:center;margin-top:.9rem">
         <button id="set-close" data-t="setClose" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
@@ -5003,7 +5006,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         rdMessage: 'Vortrag', rdClosing: 'Abschluss',
         lyProgram: 'Programm', lyPreview: 'Vorschau', lyNext: 'Nächste Zeile',
         songWords: 'Liedtext', songNote: 'Eine Zeile pro Zeile. Lied liest sie der Reihe nach.', songSave: 'Speichern', songCancel: 'Abbrechen',
-        setTitle: 'Einstellungen', setVideo: 'Videoqualität',
+        setTitle: 'Einstellungen', setVideoHead: 'Video', setCcHead: 'Untertitel', setSoundHead: 'Klang und Zeit', setLessHead: 'Seltener', setVideo: 'Videoqualität',
         adjustStage: 'Bühnenvideo anpassen',
         adjustStageHelp: 'So sähe Ihre Kamera auf der Bühne aus. Das setzt niemanden auf die Bühne.',
         setVideoHelp: 'Was Ihre eigene Kamera aufnimmt und sendet. Automatisch passt sich der Größe des Raums und Ihrem Akku an. Eine feste Wahl bleibt stehen.',
@@ -5319,7 +5322,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         rdMessage: 'Charla', rdClosing: 'Cierre',
         lyProgram: 'Programa', lyPreview: 'Vista previa', lyNext: 'Siguiente línea',
         songWords: 'Letra', songNote: 'Una línea por renglón. Canción las lee en orden.', songSave: 'Guardar', songCancel: 'Cancelar',
-        setTitle: 'Ajustes', setVideo: 'Calidad de video',
+        setTitle: 'Ajustes', setVideoHead: 'Video', setCcHead: 'Subtítulos', setSoundHead: 'Sonido y tiempo', setLessHead: 'Poco usado', setVideo: 'Calidad de video',
         adjustStage: 'Ajustar video del escenario',
         adjustStageHelp: 'Así se vería tu cámara en el escenario. Esto no pone a nadie en el escenario.',
         setVideoHelp: 'Lo que graba y envía tu propia cámara. Automático se adapta al tamaño de la sala y a tu batería. Una elección fija se queda.',

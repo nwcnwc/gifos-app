@@ -451,79 +451,61 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
   #tilewin .tw-side button.tw-btn { font-size: 16px; padding: 4px; }
 }
 
-/* Settings is one card. Desktop: video, stage and name on one row; captions
-   beside the mix. Phone: name beside the mix. Every control stays visible,
-   including both caption engines and the stadium fader. The card does not scroll. */
+/* Settings is one card, in the order people use it: You, Video, Captions,
+   Sound and timing, then Less used. Desktop pairs the first four so the
+   card stays on a 720px window. A phone stacks them. The card scrolls
+   only when a short window cannot hold every control. */
 #set-modal .name-box {
-  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px; align-items: start;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; align-items: start;
   width: min(1000px, calc(100vw - 16px)); max-width: min(1000px, calc(100vw - 16px));
-  padding: 8px 10px; box-sizing: border-box;
+  max-height: calc(100dvh - 16px); overflow-y: auto;
+  padding: 10px 14px; box-sizing: border-box;
 }
-#set-modal #set-title { grid-column: 1 / -1; grid-row: 1; margin: 0; font-size: 16px; }
-#set-modal #set-video { grid-column: 1; grid-row: 2; }
-#set-modal #set-stage-video { grid-column: 2; grid-row: 2; }
-#set-modal .set-sec:not([id]) { grid-column: 3; grid-row: 2; }
-/* The stage and name blocks share a wrapper. It is only a column on a phone. */
-#set-modal #set-col-a { display: contents; }
-#set-modal #set-captions { grid-column: 1 / span 2; grid-row: 3; }
-#set-modal #mixpanel { grid-column: 3; grid-row: 3; }
-#set-modal .name-box > div:last-child { grid-column: 1 / -1; grid-row: 4; margin-top: 0; }
+#set-modal #set-title { grid-column: 1 / -1; margin: 0; font-size: 16px; }
+#set-modal #set-you { grid-column: 1; }
+#set-modal #set-video { grid-column: 2; }
+#set-modal #set-captions { grid-column: 1; }
+#set-modal #mixpanel { grid-column: 2; }
+#set-modal #set-stage-video { grid-column: 1 / -1; }
+#set-modal .set-h { margin: 0; font-size: 15px; line-height: 1.2; }
+#set-modal .name-box > div:last-child { grid-column: 1 / -1; margin-top: 0; }
 #set-modal .name-box p { margin: 0; }
 #set-modal .set-sec { margin: 0; gap: 4px; }
-#set-modal .set-help, #set-modal .rec-opt small { font-size: 11px; line-height: 1.25; }
+#set-modal .set-help, #set-modal .rec-opt small { font-size: 13px; line-height: 1.3; }
 #set-modal .rec-opt { min-height: 0; padding: 2px 0; }
 #set-modal #ccengine-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px; }
 #set-modal #ccengine-row #ccsource { grid-column: 1 / -1; }
-#set-modal .seg { min-height: 28px; padding: 2px 6px; }
+#set-modal .seg { min-height: 32px; padding: 2px 6px; }
 #set-modal .name-box button { min-height: 32px; padding: 4px 8px; }
 #set-modal #mixpanel { gap: 4px; margin: 0; }
 #set-modal #mixpanel label { min-height: 0; }
 #set-modal #mixpanel input[type=range] { width: 88px; height: 18px; min-height: 0; margin: 0; }
-#set-modal #set-avatar-file { height: 28px; min-height: 0; font-size: 12px; padding: 0; }
+#set-modal #set-avatar-file { height: 32px; min-height: 0; font-size: 13px; padding: 0; }
 #set-modal #set-close { margin-top: 0; }
 @media (max-width: 700px), (max-height: 500px) {
-  #set-modal .name-box { grid-template-columns: 1fr 1fr; width: min(1000px, calc(100vw - 12px)); max-width: min(1000px, calc(100vw - 12px)); }
-  #set-modal #set-video { grid-column: 1 / -1; grid-row: 2; }
+  #set-modal .name-box {
+    grid-template-columns: 1fr;
+    width: min(1000px, calc(100vw - 12px)); max-width: min(1000px, calc(100vw - 12px));
+    gap: 8px; padding: 8px;
+  }
+  #set-modal #set-you,
+  #set-modal #set-video,
+  #set-modal #set-captions,
+  #set-modal #mixpanel,
+  #set-modal #set-stage-video { grid-column: 1; }
   #set-modal #vqrow { flex-wrap: nowrap; }
   #set-modal #vqrow .seg { flex: 1 1 0; min-width: 0; padding: 2px 1px; font-size: 11px; }
-  #set-modal #set-stage-video { grid-column: 1; grid-row: 3; }
-  #set-modal #mixpanel { grid-column: 2; grid-row: 3; }
-  #set-modal .set-sec:not([id]) { grid-column: 1 / -1; grid-row: 4; }
-  #set-modal #set-captions { grid-column: 1 / -1; grid-row: 5; }
-  #set-modal .name-box > div:last-child { grid-row: 6; }
-  #set-modal #ccengine-row { max-height: 72px; overflow-y: auto; }
+  #set-modal .set-h { font-size: 13px; }
+  #set-modal .set-help, #set-modal .rec-opt small { font-size: 12px; line-height: 1.25; }
+  #set-modal #ccengine-row { margin-top: 2px; }
 }
-/* A 360-wide phone. The 72px cap above clipped the caption engines (194>72),
-   and the stadium fader pushed the card 5px past the viewport (711>706).
-   Tighter rhythm lets both engines show in full and the card still fits.
-   A short wide window keeps the cap: this block is width only. */
 @media (max-width: 700px) {
-  #set-modal .name-box { padding: 4px 6px; gap: 2px 6px; }
-  #set-modal .set-sec { gap: 2px; }
-  #set-modal .set-help, #set-modal .rec-opt small { font-size: 10px; line-height: 1.15; }
-  #set-modal #ccengine-row { max-height: none; overflow: visible; margin-top: 2px; gap: 4px; }
-  #set-modal #mixpanel { gap: 1px; }
-  #set-modal #mixpanel input[type=range] { height: 16px; }
-  #set-modal .name-box button, #set-modal .seg { min-height: 28px; }
-  #set-modal #set-avatar-file { height: 24px; min-height: 0; }
+  #set-modal .name-box { padding: 6px 8px; gap: 6px; }
+  #set-modal .set-sec, #set-modal #mixpanel { gap: 2px; }
+  #set-modal #mixpanel input[type=range] { height: 18px; width: 120px; }
+  #set-modal .name-box button, #set-modal .seg { min-height: 32px; }
+  #set-modal #set-avatar-file { height: 32px; }
   #set-modal .rec-opt input { min-height: 0; }
-  /* A phone that is offered a Meeting Bot's captions gets the Captions
-     source block, and the card ran 108px past a 773px screen. Two columns
-     hold the lower half: the name block sits under the stage block (one
-     column, so the two sides stack on their own), and the captions
-     language, its help and the language menu sit under the sound mix. The engine row spans the card, and the Captions source
-     block takes the empty column under Whisper, beside the phone's
-     Whisper warning. Close stays on screen without scrolling. */
-  #set-modal #set-captions { display: contents; }
-  #set-modal #set-col-a { display: flex; flex-direction: column; gap: 2px; grid-column: 1; grid-row: 3 / span 4; }
-  #set-modal #set-col-a > .set-sec { grid-column: auto; grid-row: auto; }
-  #set-modal #set-captions > b { grid-column: 2; grid-row: 4; }
-  #set-modal #set-captions > .set-help:not(#ccall-row) { grid-column: 2; grid-row: 5; }
-  #set-modal #cclang { grid-column: 2; grid-row: 6; }
-  #set-modal #ccengine-row { grid-column: 1 / -1; grid-row: 7; margin-top: 0 !important; }
-  #set-modal #ccall-row { grid-column: 1 / -1; grid-row: 8; }
-  #set-modal .name-box > div:last-child { grid-row: 9; }
-  #set-modal #ccengine-row #ccsource { grid-column: 2; grid-row: 2; margin-top: 0 !important; }
 }
 
 /* People is a column: the title, the lead and the buttons keep their height
