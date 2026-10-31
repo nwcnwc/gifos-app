@@ -670,14 +670,23 @@
         { to: signed.to, amount: String(toAuthor), asset, network },
       ];
       if (fee > 0n) transfers.push({ to: treasuryAddress(), amount: String(fee), asset, network });
-      // The human authenticates HERE — the Base Account passkey prompt (or the
-      // wallet's own confirm). One prompt per transfer of the split.
-      const payloads = await wallet.signTransfers(transfers);
+      // The human authenticates HERE. paySplit uses one wallet_sendCalls
+      // approval when the Base Account can batch, and EIP-3009 signatures
+      // otherwise (gifos-paywallet.js).
+      const split = wallet.paySplit
+        ? await wallet.paySplit(transfers)
+        : { mode: 'eip3009', payloads: await wallet.signTransfers(transfers) };
       if (busyUi.cancelled()) throw new Error(GifOS.charge.DECLINED);
       busyUi.say('Settling on Base Sepolia…');
+      const tx = split.status && split.status.receipts && split.status.receipts[0]
+        ? (split.status.receipts[0].transactionHash || split.status.receipts[0].txHash || null)
+        : null;
+      const settleBody = split.mode === 'eip5792'
+        ? { proof, sku: sheetData.sku || null, amount: String(amount), transfers, mode: 'eip5792', batch: { id: split.batchId, tx } }
+        : { proof, sku: sheetData.sku || null, amount: String(amount), transfers, payloads: split.payloads };
       const r = await fetch(base + '/x402/settle', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ proof, sku: sheetData.sku || null, amount: String(amount), transfers, payloads }),
+        body: JSON.stringify(settleBody),
       });
       if (!r.ok) throw new Error('settlement failed (HTTP ' + r.status + '): ' + (await r.text()).slice(0, 200));
       const body = await r.json(); // { status, receiptJson, sig }
