@@ -60,14 +60,41 @@
       out.push(r);
     }
     const chain = out.filter((r) => CHAIN_RAILS.indexOf(r) !== -1);
-    if (chain.length && !(manifest.pay && isAddress(manifest.pay.to))) {
-      throw new Error('capabilities.pay allows ' + chain.join(' and ') + ' but manifest.pay.to names no address to pay');
+    if (chain.length) {
+      try { signedPayTo(manifest); }
+      catch (e) {
+        if (/not an address|does not match/.test(e.message)) throw e;
+        throw new Error('capabilities.pay allows ' + chain.join(' and ') + ' but manifest.pay.to names no address to pay');
+      }
     }
     return out;
   }
 
+  // The seller's Base address, from the signed manifest and nowhere else.
+  // pay.baseAddress is the field; pay.to is the older name. Both sit in
+  // manifest.json, so the app signature covers them. If both are present
+  // they must be the same address. Invalid, missing, or mismatched is a
+  // refusal — never a guess, never a caller-supplied substitute.
+  function signedPayTo(manifest) {
+    const pay = manifest && manifest.pay;
+    if (!pay || typeof pay !== 'object' || Array.isArray(pay)) {
+      throw new Error('this app declares no payee (manifest.pay), so it cannot be paid');
+    }
+    const present = (v) => v !== undefined && v !== null && v !== '';
+    const base = present(pay.baseAddress) ? pay.baseAddress : null;
+    const to = present(pay.to) ? pay.to : null;
+    if (base == null && to == null) throw new Error('manifest.pay names no Base address to pay');
+    if (base != null && !isAddress(base)) throw new Error('manifest.pay.baseAddress is not an address');
+    if (to != null && !isAddress(to)) throw new Error('manifest.pay.to is not an address');
+    if (base != null && to != null && base.toLowerCase() !== to.toLowerCase()) {
+      throw new Error('manifest.pay.baseAddress does not match manifest.pay.to');
+    }
+    return base != null ? base : to;
+  }
+
   // ---- the CHAIN payee, out of the SIGNED manifest ---------------------------
-  // manifest.pay = { to: "0x…", chain: "eip155:84532" } — OPTIONAL since the
+  // manifest.pay = { baseAddress: "0x…", to: "0x…", chain: "eip155:84532" }
+  // baseAddress (or the older `to`) is OPTIONAL since the
   // PayPal rail (below) derives its payee from the signing identity and needs
   // no field at all. When the block IS present it is covered by the app
   // signature's content hash — editing it breaks the signature, which is what
@@ -106,10 +133,26 @@
   function payeeOf(manifest) {
     const pay = manifest && manifest.pay;
     if (!pay || typeof pay !== 'object') throw new Error('this app declares no payee (manifest.pay), so it cannot be paid');
-    if (!isAddress(pay.to)) throw new Error('manifest.pay.to is not an address');
+    const to = signedPayTo(manifest);
     const net = chainNow();
     if (pay.chain && pay.chain !== net.caip) throw new Error('manifest.pay.chain "' + pay.chain + '" is refused — this build pays on ' + net.name + ' only');
-    return { to: pay.to, chain: net.caip };
+    return { to, chain: net.caip };
+  }
+
+  // The broker's only way to choose a payee. `claimed` is anything a request
+  // or a sheet might say. It is accepted only when it IS the signed address.
+  // A missing claim returns the signed address; it never invents one.
+  function assertSignedPayTo(manifest, claimed) {
+    let signed = null;
+    try { signed = payeeOf(manifest); } catch (e) { signed = null; }
+    if (claimed == null || claimed === '') {
+      if (!signed) throw new Error('this app declares no Base address to pay');
+      return signed;
+    }
+    if (!signed || typeof claimed !== 'string' || !isAddress(claimed) || claimed.toLowerCase() !== signed.to.toLowerCase()) {
+      throw new Error('refusing a payee that is not the signed manifest address');
+    }
+    return signed;
   }
 
   // ---- the FIAT payee, DERIVED from the signing identity ---------------------
@@ -155,7 +198,7 @@
     // block that is PRESENT and wrong is a refusal, never a silent "no rail".
     // (A pay block that carries only prices names no chain payee at all.)
     let payee = null;
-    if (manifest && manifest.pay != null && (typeof manifest.pay !== 'object' || manifest.pay.to !== undefined || manifest.pay.chain !== undefined)) {
+    if (manifest && manifest.pay != null && (typeof manifest.pay !== 'object' || manifest.pay.to !== undefined || manifest.pay.baseAddress !== undefined || manifest.pay.chain !== undefined)) {
       try { payee = payeeOf(manifest); } catch (e) { return { allowed: false, reason: e.message }; }
     }
     let prices;
@@ -358,7 +401,7 @@
   GifOS.charge = {
     CHAIN, CHAIN_NAME, DECLINED, PAID_BY,
     RAILS, railsAllowed, pricesOf, priceFor,
-    payeeOf, paypalPayeeOf, eligibility, validateRequest, sheet, receipt, receiptFile,
+    payeeOf, signedPayTo, assertSignedPayTo, paypalPayeeOf, eligibility, validateRequest, sheet, receipt, receiptFile,
     SUPPORT_EMAIL, paymentSupportText, paymentSupportHtml,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
