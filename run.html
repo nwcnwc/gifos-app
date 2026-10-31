@@ -3526,6 +3526,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (max-height: 500px) and (orientation: landscape) and (max-width: 700px) {
     .bar:not(.collapsed) .barmore { max-height: min(50vh, 18rem); max-height: min(50dvh, 18rem); }
   }
+  /* More opens on the side of the dock with more room, and stops at the
+     viewport. A dock moved to the top used to keep the upward anchor
+     (bottom: 122px on a wide window, bottom: 100% only inside the phone
+     query), so the sheet grew off the top. The rows scroll inside the room. */
+  html body .bar:not(.sheet-below):not(.collapsed) #barmore {
+    top: auto;
+    bottom: calc(100% + 6px);
+    max-height: var(--sheet-room, 50vh);
+    max-height: var(--sheet-room, 50dvh);
+    overflow-y: auto;
+  }
+  html body .bar.sheet-below:not(.collapsed) #barmore {
+    bottom: auto;
+    top: calc(100% + 6px);
+    max-height: var(--sheet-room, 50vh);
+    max-height: var(--sheet-room, 50dvh);
+    overflow-y: auto;
+  }
   @media (min-width: 381px) {
     .bar { max-width: calc(100% - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
   }
@@ -31640,24 +31658,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // step back by the drag so it stays on the screen (#barmore below).
         const dx = dockx + 'px';
         if (bar.style.getPropertyValue('--dockx') !== dx) bar.style.setProperty('--dockx', dx);
-        // A dock dragged up leaves less room above it than the sheet's usual
-        // cap, so the sheet takes the larger side of the dock and fits it.
-        // offsetTop is where the fixed dock rests before its transform.
-        const raised = docky > 0;
-        bar.classList.toggle('dock-raised', raised);
-        if (raised) {
-          const restTop = bar.offsetTop - docky;
-          const above = Math.max(0, restTop - 8), below = Math.max(0, window.innerHeight - restTop - h - 8);
-          bar.classList.toggle('sheet-below', below > above);
-          const room = Math.round(Math.max(above, below)) + 'px';
-          if (bar.style.getPropertyValue('--sheet-room') !== room) bar.style.setProperty('--sheet-room', room);
-        } else bar.classList.toggle('sheet-below', false);
         const extra = tucked ? (h + Math.max(0, docky) + 40) : 0;
-        if (!extra && dockx === 0 && docky === 0 && !cx) {
-          bar.style.transform = '';
-          return;
-        }
-        bar.style.transform = 'translateX(-50%) translate(' + (cx + dockx) + 'px, ' + (-docky + extra) + 'px)';
+        if (!extra && dockx === 0 && docky === 0 && !cx) bar.style.transform = '';
+        else bar.style.transform = 'translateX(-50%) translate(' + (cx + dockx) + 'px, ' + (-docky + extra) + 'px)';
+        // The sheet uses the dock's box (the dock is transformed), so measure
+        // the dock where it is drawn. Open on the side with more room, and
+        // give the sheet only that room so it cannot leave the screen.
+        const rect = bar.getBoundingClientRect();
+        const above = Math.max(0, rect.top - 8);
+        const below = Math.max(0, window.innerHeight - rect.bottom - 8);
+        const openBelow = below > above;
+        bar.classList.toggle('dock-raised', docky > 0);
+        bar.classList.toggle('sheet-below', openBelow);
+        const room = Math.round(openBelow ? below : above) + 'px';
+        if (bar.style.getPropertyValue('--sheet-room') !== room) bar.style.setProperty('--sheet-room', room);
       };
       const markTuck = (on) => {
         tucked = !!on;
