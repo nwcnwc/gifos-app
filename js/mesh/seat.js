@@ -50,7 +50,7 @@
     'fabricNoteBackoff', 'fabricNoteReseat', 'fabricNoteRollback', 'fabricNoteSwap', 'fabricReloadBye',
     'fabricSend', 'fabricUnreachable', 'fabricVerdict', 'fhopActive', 'fhopFriendFor', 'l164Of', 'l18Deliv',
     'l18Hop', 'l18UxDeliv', 'l222Note', 'l22Agree', 'l22Close', 'l22CloseAsk', 'l22Need', 'l22Quiet', 'l28Reply',
-    'l915Note', 'relayKnock', 'relayUnlist', 'descEnd', 'descNote', 'wake', 'fabricAudit',
+    'l915Note', 'relayKnock', 'relayUnlist', 'descEnd', 'descNote', 'wake', 'fabricAudit', 'fabricDoorHeard',
   ]);
 
   // A fabric that refuses every call: the interface a harness or the page adapter fills in.
@@ -130,7 +130,7 @@
   // C++: mesh.cpp:deathWhy
   function deathWhy(why) { return DEATH_WHY.includes(why); }
   // C++: mesh_ring.inc:islandStand
-  function islandStand(s, law) { return FREE.islandStandM(!!s && (law === E.IS_L164 ? s.l1612Keep() : s.mergeCalc()), law); }
+  function islandStand(s, law) { return FREE.islandStandM(!!s && (law === E.IS_L164 ? s.l1612Keep() : s.mergeCalc()), law, s ? s.w.lv : WORLD.lv); }
   // C++: mesh_roomterm.inc:roomTerm
   function roomTerm(s, v) { void v; return !!s && s.islandSeen(); }
   // C++: mesh.cpp:l13MergingOf

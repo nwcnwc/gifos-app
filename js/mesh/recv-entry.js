@@ -1,0 +1,242 @@
+/*
+ * recv-entry.js: the frame handlers of a seat that is not (yet) seated (port unit S7a): the greeter list, the
+ * door's WHOHOME and HOME, FIND and its ack, a heal order (FINDLEAF), PLACE, NOROOM, the reclaim answers, and PP.
+ * Ported line for line from the 0.9.25 sim (mesh_seat.inc at gifos 37d787b2d). The dispatcher that calls them is
+ * recv.js. HANDOFF / TAKEOVER / TAKEN and PLACED are served by handlers other units own (l16Handoff, l16Taken in
+ * island.js, l31OnPlaced in instant.js); serveReclaim is in entry.js.
+ *
+ * Port notes (see seat.js for the conventions):
+ *   gate()      the sim's gate-measurement hook is left out (no seat reads it).
+ *   COMPACT_*, L25_TWICE   the sim's counters are w.lv counters.
+ *   L31_VIA     the `ijvia` gate lever (OMap<int,int>) is `this.w.L31_VIA` (a Map, or unset = empty).
+ *   vector copies (roster=m.roster, lastGreeters=m.list, rcPend=m) are copied, never shared.
+ */
+(function (root) {
+  'use strict';
+  const GifOS = root.GifOS = root.GifOS || {};
+  const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
+  const req = (f, g) => (isNode ? require(f) : GifOS[g]);
+  const seatM = req('./seat.js', 'meshSeat');
+  const { cellOk } = req('./shared.js', 'meshShared');
+  const { Seat, FREE, roomTerm, islandStand } = seatM;
+  const C_ = req('./consts.js', 'meshConsts');
+  const msg = req('./msg.js', 'meshMsg');
+  const topo = req('./topo.js', 'meshTopo');
+  const { eraseFirst } = req('./util.js', 'meshUtil');
+
+  const K = C_.consts, E = C_.enums;
+  const { ckey, ckPc, unckey, down, pcDepth, lastDigit, parentPath, crossLink, rowMates } = topo;
+  const C = topo.C;
+  const newMsg = (t) => msg.newMsg(t);
+  const kvCopy = (a) => a.map((e) => ({ k: e.k, v: e.v }));
+
+
+  Seat.unit('mesh_seat.inc recv entry handlers', {
+    // C++: mesh_seat.inc:Seat::onGreeters
+    onGreeters(m) {
+      const TICK = this.TICK, id = this.id, lv = this.w.lv;
+      if (m.list.length === 0) {
+        if (this.state === 0) { this.genKey = this.linkKey; this.take({ pc: 0, r: 0, i: 0 }, -1, [], -1, -1, [], -1); this.lineAdopt(id, 'genesis'); }
+        else if (this.state === 3) { this.lastGreeters = []; this.greetersAt = TICK; }
+        return;
+      }   // a seated seat records the empty list too; R3: empty list => I minted the genesis key & found the home
+      if ((this.state === 0 || this.state === 1) && this.joinStart < 0) this.joinStart = TICK;
+      if ((this.state === 0 || this.state === 1) && this.joinStart >= 0 && TICK - this.joinStart > K.STRAND_TTL && (this.lastReach < 0 || TICK - this.lastReach > K.STRAND_TTL) && !this.l16Saw && !this.evilDoor) { this.stranded = true; this.strandedAt = TICK; return; }   // R6
+      for (const g of m.list) this.dials.heard(g);   // L17
+      this.lastGreeters = m.list.slice(); this.greetersAt = TICK;
+      if (this.state === 0 && this.entryTerm()) { this.islandAsk(m.list); return; }   // L8.2
+      if (this.state === 0) {
+        let g = m.list[Math.floor(this.rng() * m.list.length)];
+        { const via = this.w.L31_VIA; const dv = via ? via.get(id) : undefined; if (dv !== undefined && m.list.includes(dv)) g = dv; }
+        this.gateway = g; this.entNote(g); if (this.f.fabricDoors()) this.l16AskOne(g);
+        const w = newMsg('WHOHOME'); w.from = id; w.ttl = 60; if (!this.oldCell && !islandStand(this, E.IS_L31)) w.l31 = 1; this.emit(g, w); this.state = 1; this.retryAt = TICK;
+      }
+      this.islandFork(m.list);   // L8.3
+      if (this.state === 3 && this.coord.pc === 0 && TICK - this.rookSeenAt > K.STRAND_TTL && !this.islandFounder) {   // L8.4
+        let other = false; for (const g of m.list) if (g !== id && g >= 0) { other = true; break; }
+        if (other) { this.requeue('rook-silent-split'); return; }
+      }
+      this.loneGreet();
+      if (this.state === 3 && this.coord.pc === 0 && TICK - this.seatedAt > 80) {
+        let full = true;
+        for (let r = 0; r < C && full; r++) for (let i = 0; i < C && full; i++) if (!this.occ.has(ckey({ pc: 0, r, i }))) full = false;
+        const quiet = TICK - this.lastChurn > 300 && TICK - this.healAt > 300;
+        if (full && !quiet) return;
+        const known = new Set();
+        for (const [k, v] of this.occ) { if (v < 0) continue; const ew = this.elsewhere.get(v); if (ew !== undefined && TICK - ew <= K.RELAY_TTL && !this.firstHandLive(k)) continue; known.add(v); }
+        const next = new Map();
+        const need = full ? 8 : 2;
+        for (const g of m.list) if (g >= 0 && g !== id && !known.has(g)) {
+          const seen = (this.strangeSeen.has(g) ? this.strangeSeen.get(g) : 0) + 1; next.set(g, seen);
+          if (seen >= 2) { this.xrOk.set(g, TICK); if (this.xrOk.size > K.RELAY_CAP) { const old = []; for (const [k, v] of this.xrOk) if (TICK - v > 2 * K.RELAY_TTL) old.push(k); for (const o of old) this.xrOk.delete(o); } }
+          if (seen >= need) { const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = id; this.emit(g, h); next.delete(g); }
+        }
+        this.strangeSeen = next;   // ids no longer listed/known drop out
+      }
+      void lv;
+    },
+
+    // C++: mesh_seat.inc:Seat::onWhoHome
+    onWhoHome(m) {
+      const TICK = this.TICK, id = this.id;
+      if (!this.hasCoord) { const h = newMsg('HOME'); this.emit(m.from, h); return; }
+      if (m.ttl <= 0) return;
+      if (this.coord.pc === 0) {
+        const h = newMsg('HOME'); h.roster = this.s1Roster(); h.id = id; h.gkey = this.genKey;
+        if (m.knock) { h.knock = true; this.f.fabricDialJoin(id, m.from); h.mass = this.l13On() && this.l13Mass(); }   // L13.25
+        for (const [bk, bv] of this.byeAt) { if (ckPc(bk) !== 0 || this.occGet(bk) >= 0 || TICK - bv > K.LEASE_T) continue; h.byes.push(bk); if (h.byes.length >= C * C) break; }   // L1.5
+        if (!this.l31Door(m, h)) this.emit(m.from, h);
+        return;
+      }
+      const fwd = (x) => { if (x >= 0 && x !== id && x !== m.via) { const w = newMsg('WHOHOME'); w.from = m.from; w.via = id; w.ttl = m.ttl - 1; w.knock = m.knock; this.emit(x, w); return true; } return false; };
+      if (this.coord.i !== 0) { if (fwd(this.occGet(ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 })))) return; } else { if (fwd(this.ownerId())) return; }
+      const x = crossLink(this.coord); if (x && fwd(this.occGet(ckey(x)))) return;
+      const rm = rowMates(this.coord); for (let q = 0; q < C - 1; q++) { const cx = crossLink(rm[q]); if (cx && fwd(this.occGet(ckey(cx)))) return; }
+      if (this.l13On()) {   // L13: my way up is gone: the ask goes to a home seat I name
+        let best = -1;
+        for (const [k, v] of this.occ) { if (ckPc(k) !== 0 || v < 0 || v === id || v === m.via || v === m.from) continue; if (this.firstHandLive(k)) { best = v; break; } if (best < 0) best = v; }
+        if (best < 0) for (const [k, v] of this.cousins) { if (ckPc(k) !== 0 || v < 0 || v === id || v === m.via || v === m.from) continue; best = v; break; }
+        if (best >= 0) { this.f.fabricDialJoin(id, best); fwd(best); return; }
+      }
+    },
+
+    // C++: mesh_seat.inc:Seat::onHome
+    onHome(m) {
+      const TICK = this.TICK, id = this.id, lv = this.w.lv;
+      if (m.id >= 0) this.doorAsk.delete(m.id);   // it answered: not dark
+      if (this.l13On() && this.state === 3 && m.knock && (m.byes.length >= 2 || m.mass)) { let n = 0; for (const v of this.byeIds.values()) if (TICK - v <= K.LEASE_T) n++; let d = 0; for (const t of this.l13DownAt) if (TICK - t <= K.LEASE_T) d++; if (n + d >= 1) this.l13MassHeard(); }   // L13
+      if (this.state === 3 && TICK - this.rosterAskAt > 120) return;   // a SEATED seat hears HOME only as the answer to its own WHOHOME
+      if (m.gkey) this.genKey = m.gkey;   // THIS meeting's genesis key
+      if (this.state === 1 && roomTerm(this, 1) && m.from >= 0 && this.c7Old.has(m.from) && TICK - this.c7At < K.RELAY_TTL) return;   // L8.5
+      if (this.state === 1 && m.l31 === 1 && this.l31TakeDoor(m)) return;   // L31.1
+      if (this.state === 1 && this.oldCell && this.rcTries < 2 && !(this.rcPendAt >= 0) && m.roster.length && this.tryReclaim(m.roster, m.from)) { this.rcGreeter = m.from; this.rcTries++; this.roster = kvCopy(m.roster); this.haveRoster = true; this.lastReach = TICK; this.retryAt = TICK; return; }   // L3.10
+      if (this.state === 1 && this.oldCell && (this.rcPendAt >= 0 || this.rcRound2) && m.roster.length) { this.roster = kvCopy(m.roster); this.haveRoster = true; this.lastReach = TICK; return; }   // L3.10.6
+      if (this.state === 1) {
+        if (m.roster.length === 0) { this.retryAt = TICK - 10; return; }
+        if (this.entryTerm() && m.from >= 0) { this.gateway = m.from; this.islandAskAt = -1; }
+        if (m.line >= 0) { this.lineAdopt(m.line, 'home'); if (m.lineF) this.lineFork = true; }
+        this.roster = kvCopy(m.roster); this.haveRoster = true; this.lastReach = TICK; this.seatTries = 0; this.resumeTries = 0;
+        let t;
+        if (this.f.fabricDoors() && m.from >= 0) { this.gateway = m.from; t = lv.L16PICK ? this.pickRoster() : m.from; this.l16Gateway(m.from, lv.L16PICK === 2 ? -1 : t); }   // L16
+        else t = this.pickRoster();
+        if (t >= 0) this.askSeat(t); else this.retryAt = TICK - 10;
+      } else if (this.state === 3 && m.roster.length) {
+        this.roster = kvCopy(m.roster); this.haveRoster = true; this.rmHomeAt = TICK;   // L11
+        if (this.hasCoord && this.coord.pc !== 0 && this.coord.i === 0) { const oc = this.ownerCoord(); if (oc && oc.pc === 0) { const ok = ckey(oc); if (!this.byeAt.has(ok) && !this.firstHandLive(ok) && TICK - this.lastAck >= K.L9_LONE) for (const b of m.byes) if (b === ok) { this.byeAt.set(ok, TICK); if (this.occ.has(ok)) { this.occDrop(ok, 'ring-bye'); this.live.delete(ok); this.kidful.delete(ok); } this.trace('BYE-LEARNED', id, oc, 'from=%d', m.id); break; } } }   // L9.9
+        if (this.l13('L13.9') && this.hasCoord && this.coord.pc !== 0 && this.coord.i !== 0) {
+          const H = { pc: this.coord.pc, r: this.coord.r, i: 0 }; const chain = FREE.l13Chain(this, H); const nc = chain.length;
+          for (let l = 1; l < nc; l++) {
+            if (chain[l].pc !== 0) continue; const ok = ckey(chain[l]); if (this.firstHandLive(ok) || this.translost.has(ok)) continue;
+            for (const e of m.roster) {
+              if (e.k !== ok) continue; const cur = this.occGet(ok);
+              if (e.v >= 0 && e.v !== id && cur !== e.v && !this.liveElsewhere(e.v, ok) && (cur < 0 || !this.heardAt(ok, cur))) { this.live.delete(ok); this.liveBy.delete(ok); this.setOcc(ok, e.v); this.noteS1(ok); this.f.fabricDialJoin(id, e.v); this.l13HomeNewsAt = TICK; this.trace('L13-HOMESEAT', id, chain[l], 'from=%d v=%d was=%d lvl=%d', m.id, e.v, cur, l); }
+              break;
+            }
+          }
+        }   // L13.9
+        {
+          const lone = this.hasCoord && this.coord.pc === 0 && !this.hearRook();
+          let put = 0;
+          if (this.hasCoord && ((this.coord.pc !== 0 && this.coord.i === 0) || lone)) {
+            let nr = 0;
+            for (const e of m.roster) {
+              if (++nr > C * C) break;
+              if (ckPc(e.k) !== 0 || !cellOk(e.k) || e.v < 0 || e.v === id || this.firstHandLive(e.k) || (this.translost.has(e.k) && !(lone && this.occGet(e.k) < 0)) || (lone && !this.ownedLinkCell(e.k))) continue;
+              const cur = this.occGet(e.k);
+              if (cur !== e.v && !this.liveElsewhere(e.v, e.k) && (cur < 0 || (lone ? (this.rivalId >= 0 && cur === this.rivalId && !this.heardAt(e.k, cur)) : !this.heardAt(e.k, cur)))) { this.live.delete(e.k); this.liveBy.delete(e.k); this.setOcc(e.k, e.v); this.noteS1(e.k); put++; }
+            }
+          }
+          if (put) this.l13HomeNewsAt = TICK; if (put && lone) this.announce();
+        }
+      }
+    },
+
+    // C++: mesh_seat.inc:Seat::onFind
+    onFind(m) {
+      const TICK = this.TICK;
+      if (m.ttl > K.FIND_TTL) m.ttl = K.FIND_TTL; if (m.tag !== 1) this.l711Took(m);   // L7.11; FIND hop budget clamp
+      if (this.f.fabricDoors() && m.tag !== 1 && m.nc >= 0 && m.nc !== this.id) this.dials.heard(m.nc);   // L16.3 + L17
+      if (m.tag === 1) this.serveCompact(m);
+      else {
+        if (m.nc >= 0) { this.knockAt.set(m.nc, TICK); if (this.knockAt.size > 64) eraseFirst(this.knockAt); }
+        if (m.nc >= 0 && m.from === m.nc && this.hasCoord && this.state === 3 && this.coord.pc === 0 && this.f.fabricDoors()) this.l16Anchor(m.nc);   // L16.2
+        this.findNc = m.nc; this.serveFind(m); this.findNc = -1;
+      }
+    },
+
+    // C++: mesh_seat.inc:Seat::onFindAck
+    onFindAck(m) {
+      if (this.state === 2 && m.nc === this.id && m.from === this.lastAsked && this.findAckAt < 0) this.findAckAt = this.TICK;
+    },
+
+    // C++: mesh_seat.inc:Seat::onFindLeaf
+    onFindLeaf(m) {
+      const TICK = this.TICK;
+      if (roomTerm(this, 1) && m.from >= 0 && m.from !== this.id && this.hasCoord && this.state === 3 && this.coord.pc === 0 && TICK - this.c7At >= K.RELAY_TTL) { let c7Seen = false; for (const v of this.l829Bye.values()) if (TICK - v <= K.RELAY_TTL) { c7Seen = true; break; } const r = this.l828RingOf(m.from); if (c7Seen && r >= 0 && r !== this.ringName()) return; }   // L8.37
+      if (this.l2514Drop(m)) return;   // L25.14
+      if (m.from >= 0 && m.from !== this.id) { if (this.l25Bad(m.from)) return; this.l25OrderBy = m.from; this.l25OrderAt = TICK; }
+      { const sv = this.flCur, sva = this.flCurAt, svl = this.flCurL; this.flCur = m.fo >= 0 ? m.fo : m.from; this.flCurAt = m.fo >= 0 ? m.foAt : TICK; this.flCurL = m.fo >= 0 ? m.foL : TICK; this.findLeaf(m.hole, m.nbrs, m.ttl, m.tag); this.flCur = sv; this.flCurAt = sva; this.flCurL = svl; }   // L25.7
+    },
+
+    // C++: mesh_seat.inc:Seat::onPlace
+    onPlace(m) {
+      const id = this.id, lv = this.w.lv;
+      if (this.state === 2 && roomTerm(this, 1) && this.TICK - this.c7At < K.RELAY_TTL && (this.c7Old.has(m.owner) || this.c7Old.has(m.from))) return;   // L8.5
+      if (this.state === 2 && this.l25BadPlacer.size && (this.l25Bad(m.owner) || this.l25Bad(m.from))) { this.trace('L25-BADPLACER', id, null, 'owner=%d', m.owner); if (m.nc === id) this.l711Reask('badplacer'); return; }
+      if (this.state === 2 && m.nbrs.length === 0 && ckey(m.coord) !== 0) { lv.L25_TWICE++; this.l25Mark(m.owner, true); this.trace('L25-BARE-PLACE', id, m.coord, 'owner=%d', m.owner); if (m.nc === id) this.l711Reask('bare'); return; }   // L25
+      if (this.state === 2) { if (m.line >= 0) { this.lineAdopt(m.line, 'place'); if (m.lineF) this.lineFork = true; } this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, m.row, m.ppL); if (this.pp >= 0 && this.pp !== id) this.placer = this.pp; return; }   // placer: only this intake
+      if (this.state === 3 && (m.l31 === 5 || m.l31 === 7) && this.l31Replace(m)) return;   // L31.4
+      if (this.state === 3 && m.tag === 1 && m.nc === id) lv.COMPACT_PLACES++;
+      if (this.state === 3 && m.tag === 1 && m.nc === id && this.hasCoord && !this.moving && !this.hasChildren() && pcDepth(m.coord.pc) < pcDepth(this.coord.pc) && !this.firstHandLive(ckey(m.coord))) {
+        let trailing = true; for (let j = this.coord.i + 1; j < C; j++) if (this.occGet(ckey({ pc: this.coord.pc, r: this.coord.r, i: j })) >= 0) { trailing = false; break; }   // re-validate clean departure
+        if (trailing) { lv.COMPACT_MOVES++; this.doMove(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, m.ppL); }   // a contested destination is caught by E2 -> rollbackMove
+      }
+    },
+
+    // C++: mesh_seat.inc:Seat::onNoRoom
+    onNoRoom(m) {
+      const TICK = this.TICK, id = this.id;
+      if (m.tag === K.L711_TAG) { this.l711Reask('lost'); return; }   // L7.11
+      if (this.state === 2) {
+        if (m.nd >= K.SPREAD_MINDEPTH) this.noroomSeen++; this.triedSilent.delete(m.id); if (this.lastAsked >= 0) this.triedSilent.delete(this.lastAsked); this.retryAt = TICK;
+        if (this.f.fabricDoors() && m.split && this.l16Next < this.l16List.length) { this.trace('L16-SPLIT-FAN', id, null, 'from=%d rest=%d', m.id, this.l16List.length - this.l16Next); this.l16Wave(this.l16List.length); return; }   // L16
+        if (this.f.fabricDoors() && m.gwc && m.id >= 0 && m.id !== id && this.f.fabricLinkState(id, m.id) === E.LS_OPEN && this.haveRoster && this.roster.length && ++this.seatTries <= 6) { this.askSeat(m.id, true); return; }   // L16.3
+        if (this.haveRoster && this.roster.length && ++this.seatTries <= 6) { const t = this.pickRoster(); if (t >= 0) { this.askSeat(t); return; } }
+        this.seatTries = 0; this.join();
+      }
+    },
+
+    // C++: mesh_seat.inc:Seat::onReclaimed
+    onReclaimed(m) {
+      const TICK = this.TICK, id = this.id;
+      if ((this.state === 1 || this.state === 2) && m.nc === id && this.oldCell) {
+        if (m.tag === 1 && m.ck === this.oldCell) { this.oldCell = 0; this.rcPendAt = -1; this.trace('RECLAIM-TAKE', id, m.coord, 'from=%d beside', m.owner); this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, [], m.ppL); if (this.pp >= 0 && this.pp !== id) this.placer = this.pp; return; }   // the hole's mover already holds my old cell
+        if (m.tag === 2 && ckey(m.coord) === this.oldCell) { this.oldCell = 0; this.rcPendAt = -1; this.trace('RECLAIM-TAKE', id, m.coord, 'from=%d reload', m.owner); this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, [], m.ppL); if (this.pp >= 0 && this.pp !== id) this.placer = this.pp; return; }   // L3.11
+        if (ckey(m.coord) === this.oldCell && this.rcPendAt < 0) {
+          this.rcPend = msg.clone(m); this.rcPendAt = TICK; this.rcPendWait = K.RC_WAIT;
+          { const dk = ckey(down(m.coord)); for (const kv of m.nbrs) if (kv.k === dk && kv.v >= 0) { this.rcPendWait = 2 * K.RC_WAIT; this.trace('RECLAIM-HOLD', id, m.coord, 'heir=%d wait=%d', kv.v, this.rcPendWait); break; } }   // L3.10.6 (I10)
+          this.f.wake(id);
+        }   // L3.10.4: wait RC_WAIT ticks for the cell's own occupant (a mover) to say it healed it; else take it
+      }
+    },
+
+    // C++: mesh_seat.inc:Seat::onReclaimNo
+    onReclaimNo(m) {
+      const id = this.id;
+      if (m.tag === 1 && (this.state === 1 || this.state === 2) && m.nc === id && this.oldCell && m.ck === this.oldCell) { this.rcPendAt = -1; }   // L3.10.4
+      if (m.tag !== 1 && (this.rcPendAt >= 0 || this.rcRound2) && m.nc === id && this.oldCell) return;   // L3.10.6
+      if ((this.state === 1 || (m.tag === 1 && this.state === 2)) && m.nc === id && this.oldCell) { this.movedOnFrom = this.oldCell; this.oldCell = 0; this.rcTries = 9; this.retryAt = this.TICK - 21; this.f.wake(id); }   // L3.10.5
+    },
+
+    // C++: mesh_seat.inc:Seat::onPp
+    onPp(m) {
+      if (m.id !== this.id || !this.hasCoord || this.state !== 3 || ckey(m.coord) !== ckey(this.coord) || m.pp < 0 || m.pp === this.id || m.ppAt < 0) return;
+      if (this.pp >= 0 && !this.ppAdm(ckey(m.coord), m.pp, this.id)) return;
+      this.pp = m.pp; this.ppAt = m.ppAt; this.ppL = m.ppL >= 0 ? m.ppL : this.TICK; this.ppCk = ckey(m.coord);
+    },
+  });
+
+  const api = { cellOk };
+  GifOS.meshRecvEntry = api;
+  if (isNode) module.exports = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
