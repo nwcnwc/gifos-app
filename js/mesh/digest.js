@@ -171,10 +171,11 @@
       // L5.1 HEAL TOWARD SECTION 1.
       let l5home = 0; if (this.coord.pc === 0) { l5home = 1; const ol = ownedLinks(this.coord); for (const o2 of ol) if (o2.pc === 0 && this.firstHandLive(ckey(o2))) l5home++; }
       if (this.coord.pc === 0 && sd > 0 && this.rootDec.at >= 0 && !this.rootDec.part && this.rootDec.n <= C * C && this.rootDec.n >= l5home) {
-        if (TICK - this.l5At >= K.COMPACT_PERIOD || this.l9Small()) {
+        if (TICK - this.l5At >= K.COMPACT_PERIOD || this.l9Small() || this.l43Home()) {
           for (let j = 1; j < C; j++) {
             const c = { pc: 0, r: this.coord.r, i: j }, k = ckey(c);
-            if (this.occGet(k) >= 0 || this.sitting.has(k) || this.occGet(ckey(down(c))) >= 0 || FREE.l1MoverCell(this, c) !== 0) continue;
+            this.l43SelfEcho(k, mm);   // L43.3 (ijoin.js)
+            if (this.occGet(k) >= 0 || this.sitting.has(k) || this.occGet(ckey(down(c))) >= 0 || (FREE.l1MoverCell(this, c) !== 0 && !this.l43MoverLate(c))) continue;
             { const ht = this.healTry.get(k); if (ht !== undefined && TICK - ht <= 45) continue; }
             this.l5At = TICK; this.w.ADMIT_SITE = 'l5-home'; this.admit(c, mm); return;
           }
@@ -241,7 +242,7 @@
       if (!this.w.lv.COMPACTION) return false;
       if (!this.hasCoord || this.state !== 3 || this.coord.pc === 0 || this.moving || this.l4Busy()) return false;   // S1 is the top; a mover finishes first
       const l9small = this.l9Small();   // L9.11
-      if (!l9small) {
+      if (!l9small && !this.l43Home()) {
         const settle = K.COMPACT_SETTLE;
         if (TICK - this.seatedAt < settle || TICK - this.healAt < settle || TICK - this.lastChurn < settle) return false;
       }
@@ -255,7 +256,7 @@
     tryCompact() {
       const id = this.id, TICK = this.TICK, lv = this.w.lv;
       if (!lv.PROBEON) return;                                   // offers-only arm
-      const l9small = this.l9Small();   // L9.11
+      const l9small = this.l9Small() || this.l43Home();   // L9.11, L43.1
       if (l9small && this.rootDec.n !== this.l9ProbeN) { this.l9ProbeN = this.rootDec.n; this.l9ProbeGap = K.L5_PERIOD; }
       if (l9small ? (TICK - this.lastProbeTick < this.l9ProbeGap) : (TICK < this.compactAt)) return;   // rate limit / hysteresis
       if (!this.compactEligible()) return;
@@ -459,7 +460,7 @@
           else if (this.scopeGap(k)) { R.part = 1; R.refuse += 1; this.digGap |= 4; }
         }
         dig.digTrim(R);
-        this.rootDig = R; if (!extra) this.rootDec = dig.cloneDig(R);   // rootDec: the fold as the pulse made it, the one a decision may read (L5)
+        this.rootDig = R; if (!extra) { this.rootDec = dig.cloneDig(R); this.l43Fold(); }   // rootDec: the fold as the pulse made it, the one a decision may read (L5)
       } finally { this.findNc = svFind; }
     },
   });

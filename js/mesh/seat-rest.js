@@ -267,6 +267,7 @@
         }
       }
       this.l383Tick();   // L38.3 (gaps2.js)
+      this.l43Head();   // L43.4 (ijoin.js)
       if (this.pp < 0 && this.ppAskAt >= 0 && TICK - this.ppAskAt >= 16 && TICK - this.seatedAt <= 160 && !this.moving) {
         this.ppAskAt = TICK | 0; const adm = this.ppAdmitter(this.coord);
         if (adm >= 0 && adm !== id) { const m = newMsg('CLAIM'); m.ck = ckey(this.coord); m.id = id; this.emit(adm, m); }

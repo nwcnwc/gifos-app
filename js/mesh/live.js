@@ -47,7 +47,7 @@
       if (this.w.lv.DIGEST && this.state === 3 && this.hasCoord && this.coord.pc !== 0) {
         if (m.dgRoot.at >= 0) {
           const rt = digM.cloneDig(m.dgRoot); this.rxDig(rt);
-          if (!m.dgOnly && (this.rootDig.at < 0 || rt.rx > this.rootDig.rx)) { this.rootDig = rt; this.rootDec = digM.cloneDig(rt); }   // the room fold, one level per period; fresher ON MY CLOCK wins (G0b)
+          if (!m.dgOnly && (this.rootDig.at < 0 || rt.rx > this.rootDig.rx)) { this.rootDig = rt; this.rootDec = digM.cloneDig(rt); this.l43Fold(); }   // the room fold, one level per period; fresher ON MY CLOCK wins (G0b)
         }   // L10: the shown fold takes an early push too; the decision copy (rootDec) is the regular beat's only
         if (m.dgPub.at >= 0) {
           const oc = this.coord.i === 0 ? this.ownerCoord() : null; const isOwner = !!oc && ckey(m.coord) === ckey(oc);
