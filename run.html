@@ -14998,6 +14998,31 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function meshTraceSink(line) { const G = window.__meshTraceRing || (window.__meshTraceRing = { ring: [], seq: 0 }); G.ring.push([++G.seq, line]); if (G.ring.length > 4000) G.ring.splice(0, 1000); }
     window.__meshPortPage = { pcbye: (pid, why) => { try { meshNode && meshNode.__pc && meshNode.__pc.bye(pid, why); } catch (e) {} }, dcOpen: (pid) => { const p = peers.get(pid); return !!(p && p.dc && p.dc.readyState === 'open'); } };
     function seatAsked(pid) { const at = seatAskAt.get(pid); return at != null && Date.now() - at < 60000; }
+    // A2's offer marks cross on the pair's own dc, whoever sent the SDP (the id-order initiator offers, a polite
+    // dialler only asks): the seat's dialler sends {k:'pcmark', d: mark} at open, a callee sends {n:1} and runs the pc
+    // laws' offer gate on the dialler's mark (never a guess from its own occ), then answers {a: its mark}.
+    const seatMark = new Map();
+    const cleanMark = (d) => (d && typeof d === 'object') ? { s: d.s ? 1 : 0, up: d.up ? 1 : 0, mt: typeof d.mt === 'string' ? d.mt.slice(0, 12) : null, ck: Number.isFinite(d.ck) ? d.ck : 0, tier: Number.isFinite(d.tier) ? d.tier : 0 } : null;
+    function pcMarkOpen(p, dc, mk, src) {
+      if (!dc || dc.__pcOffered || p.dc !== dc || !meshNode || !meshNode.transport) return;
+      dc.__pcOffered = true; clearTimeout(dc.__pcMarkWait);
+      const m = mk || { s: meshKnows(p.id) ? 1 : 0 };
+      if (typeof clog === 'function') clog('pc-offer ' + String(p.id).slice(0, 6) + ' src=' + src + ' s=' + m.s + ' mt=' + (m.mt || '-'));
+      const ok = meshNode.transport(p.id, 'offer', m) !== false;
+      if (!ok) { if (typeof clog === 'function') clog('pc-refused ' + String(p.id).slice(0, 6)); return; }
+      meshNode.transport(p.id, 'open');
+      if (mk) { try { dcSend(p, { k: 'pcmark', a: meshNode.mark ? meshNode.mark(p.id) : null }); } catch (e) {} }
+    }
+    function pcMarkIn(p, dc, m) {
+      if (!dc || p.dc !== dc || !meshNode || !meshNode.transport) return;
+      if (seatAsked(p.id)) {   // my dial: the far end's answer (or, both dialled, its own dial mark) says how it sits
+        const a = cleanMark(m.a || m.d);
+        if (a) { if (typeof clog === 'function') clog('pc-answer ' + String(p.id).slice(0, 6) + ' s=' + a.s); meshNode.transport(p.id, 'answer', a); }
+        return;
+      }
+      if (m.d !== undefined) pcMarkOpen(p, dc, cleanMark(m.d), m.d ? 'mark' : 'nomark');
+      else if (m.n) pcMarkOpen(p, dc, null, 'occ');   // neither end's seat dialled (a page-own dial): my view decides
+    }
     // Establish or retire ONE peer's media link per the seat arithmetic. Also
     // run by the sweeper: occupancy gossip settling can change who my
     // neighbours are, and the link set must follow without waiting for the
@@ -16890,7 +16915,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         sendDC: meshSendDC,
         // The seat's pcs (js/mesh/page/env.js calls these; it decides, the page carries out).
         pc: {
-          ensure: (pid, o) => { if (!pid || pid === myId) return; seatAskAt.set(pid, Date.now()); if (seatAskAt.size > 256) seatAskAt.delete(seatAskAt.keys().next().value); const s = meshSeat(); if (!(s && s.hasCoord && s.state === 3)) bootDial(pid); else ensureLink(pid); },
+          ensure: (pid, o) => { if (!pid || pid === myId) return; seatAskAt.set(pid, Date.now()); if (seatAskAt.size > 256) seatAskAt.delete(seatAskAt.keys().next().value); seatMark.set(pid, cleanMark(o && o.mark)); if (seatMark.size > 256) seatMark.delete(seatMark.keys().next().value); const s = meshSeat(); if (!(s && s.hasCoord && s.state === 3)) bootDial(pid); else ensureLink(pid); },
           bye: (pid, why) => { const p = peers.get(pid); if (!p) return; if (why && p.dc && p.dc.readyState === 'open') { try { dcSend(p, { k: 'pcbye', why }); } catch (e) {} } p.byeSent = Date.now(); p.envClosing = Date.now(); seatAskAt.delete(pid); if (typeof clog === 'function') clog('pcbye-out ' + String(pid).slice(0, 6) + ' ' + why); setTimeout(() => { if (peers.get(pid) === p && !linkTo(pid)) dropPeer(pid, true); }, 300); },
           close: (pid, why) => { seatAskAt.delete(pid); const p0 = peers.get(pid); if (p0) p0.envClosing = Date.now(); const p = peers.get(pid); if (!p) return; if (typeof clog === 'function') clog('pcclose ' + String(pid).slice(0, 6) + ' ' + (why || '')); if (!linkTo(pid)) dropPeer(pid, true); },
           state: (pid) => { const p = peers.get(pid); return p ? { pc: p.pc ? p.pc.connectionState : 'none', dc: p.dc ? p.dc.readyState : 'none', heardAt: p.lastRx || 0 } : null; },
@@ -20668,13 +20693,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       p.dc = dc;
       if (!dc.__pc) { try { dc.__pc = p.pc; } catch (e) {} }
       dc.onopen = () => {
-        // The seat's link opened (env.js). A pc the far end dialled reaches the pc laws as its offer first: the
-        // dialler's mark does not cross the bootstrap yet, so its seatedness is my view's (seated if my occ holds it).
+        // The seat's link opened (env.js). My seat's dial sends its mark and opens; a pc the far end dialled waits
+        // for the dialler's mark (pcMarkIn) and reaches the pc laws as its offer then (3 s: my view decides).
         try {
           if (meshNode && meshNode.transport && p.dc === dc) {
-            let ok = true;
-            if (!seatAsked(p.id)) ok = meshNode.transport(p.id, 'offer', { s: meshKnows(p.id) ? 1 : 0 }) !== false;
-            if (ok) meshNode.transport(p.id, 'open'); else if (typeof clog === 'function') clog('pc-refused ' + String(p.id).slice(0, 6));
+            if (seatAsked(p.id)) { dc.__pcOffered = true; dcSend(p, { k: 'pcmark', d: seatMark.get(p.id) || null }); meshNode.transport(p.id, 'open'); }
+            else { dcSend(p, { k: 'pcmark', n: 1 }); dc.__pcMarkWait = setTimeout(() => { try { pcMarkOpen(p, dc, null, 'timeout'); } catch (e) {} }, 3000); }
           }
         } catch (e) {}
         clearTimeout(p.hiLate); p.hiLate = null;
@@ -21145,6 +21169,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // departure too (mesh.js goodbye): the LEAVE behind it is lost when
         // the page dies first (chaos seed 10 #1: 10.5 s against 4.2 s).
         if (dc && dc.__authBy === p.id) { try { const s = meshSeat(); if (s && s.goodbye) s.goodbye(p.id); } catch (e) {} }
+      } else if (m.k === 'pcmark') {
+        try { pcMarkIn(p, dc, m); } catch (e) {}   // A2's offer / answer mark (pcMarkIn)
       } else if (m.k === 'pcbye') {
         // A deliberate close from the far end (A2's pc laws): its why reaches the seat's world, and the
         // channel's close that follows is no loss.
