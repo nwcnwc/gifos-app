@@ -22,6 +22,7 @@ const C_ = require(path.join(M, 'consts.js'));
 const topo = require(path.join(M, 'topo.js'));
 const hash = require(path.join(M, 'hash.js'));
 const roles = require(path.join(M, 'roles.js'));
+const tickM = require(path.join(M, 'tick.js'));   // L2: the heir-takeover counters (mesh_seat.inc L2_TAKE_N / MAX / SUM, module statics)
 
 const K = C_.consts, E = C_.enums;
 const { ckey, unckey, down, ownedLinks, C } = topo;
@@ -263,7 +264,7 @@ function installMedia(fab) {
     }
     const [tP50, tMax, oP50, oMax] = pcsReport();
     mediaSetup(); lv.MEDIA = true; for (let k = 0; k < 30; k++) { fab.doTick(); w.TICK++; } mediaReset();
-    lv.L2_TAKE_N = 0; lv.L2_TAKE_MAX = 0; lv.L2_TAKE_SUM = 0; const mv0 = lv.MOVES, ev0 = lv.EVICTIONS;
+    const L2 = tickM.L2; L2.TAKE_N = 0; L2.TAKE_MAX = 0; L2.TAKE_SUM = 0; const mv0 = lv.MOVES, ev0 = lv.EVICTIONS;
     // the uncut row links: every pair of row-mates now, minus the cut pairs and the victims; a tick in which such a pair, both still seated side by side, cannot carry counts
     const pairs = [];
     {
@@ -293,7 +294,7 @@ function installMedia(fab) {
     for (let i = 0; i < cuts.length; i++) P('%s%d-%d', i ? ',' : '', cuts[i][0], cuts[i][1]); if (!cuts.length) P('-');
     P(' crash='); for (let i = 0; i < crashes.length; i++) P('%s%d', i ? ',' : '', crashes[i]); if (!crashes.length) P('-');
     P(' stage_max=%lld stage_at=%d stage_feed=%d stage_p50=%lld stage_far=%lld stad_max=%lld rowlink_gap=%lld rowlink_pair=%d-%d takeovers=%lld takeover_max=%lld moves=%lld evict=%lld seated=%lld dups=%lld pcs_p50=%d pcs_max=%d open_p50=%d open_max=%d t=%lld%s%s\n',
-      all.stMax, all.stAt, all.stFeed, all.stP50, far.stMax, all.sdMax, rowGap, rgA, rgB, lv.L2_TAKE_N, lv.L2_TAKE_MAX, lv.MOVES - mv0, lv.EVICTIONS - ev0, seated, lv.DUPS_G, tP50, tMax, oP50, oMax, TICK() - t0, note === '' ? '' : ' note=', note);
+      all.stMax, all.stAt, all.stFeed, all.stP50, far.stMax, all.sdMax, rowGap, rgA, rgB, L2.TAKE_N, L2.TAKE_MAX, lv.MOVES - mv0, lv.EVICTIONS - ev0, seated, lv.DUPS_G, tP50, tMax, oP50, oMax, TICK() - t0, note === '' ? '' : ' note=', note);
     lv.MEDIA = false;
   }
 
