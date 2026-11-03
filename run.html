@@ -16957,9 +16957,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           setStatus(code === 4007 ? '⛔ The people on this meeting voted you off.' : '⛔ You were banned from this room.');
         },
         onStranded: () => updateStatus(), // R6: the line reads the seat's verdict (REACH_MSG 'cannot-reach-room') until the re-knock gets in
-        // S4 CLOCK SKEW: the wire reports the signed delta from a verified
-        // member's frame while I am joining (more than 10 minutes off).
-        onClockSkew: (ms) => { const mins = Math.max(1, Math.round(Math.abs(ms) / 60000)); setStatus('\ud83d\udd50 This device\u2019s clock is ' + mins + ' minute' + (mins === 1 ? '' : 's') + (ms > 0 ? ' behind' : ' ahead of') + ' the meeting\u2019s. Set the clock, then reload.', 12000); },
+        // S4 CLOCK SKEW: every seating frame is a signed fill with a 10-minute
+        // window, so a device whose clock is wrong is never seated and, after
+        // the TTL, was told the NETWORK refused it. The wire reports the signed
+        // delta from a verified member's frame while I am still joining.
+        onClockSkew: (ms) => { const mins = Math.max(1, Math.round(Math.abs(ms) / 60000)); setStatus('\ud83d\udd50 This device\u2019s clock is ' + mins + ' minute' + (mins === 1 ? '' : 's') + (ms > 0 ? ' behind' : ' ahead of') + ' the meeting\u2019s, so you cannot join. Set the clock, then reload.'); },
+        onClockStop: (ms) => { const mins = Math.max(1, Math.round(Math.abs(ms) / 60000)); bannedOut = true; for (const pid of Array.from(peers.keys())) dropPeer(pid); setStatus('\ud83d\udd50 This device\u2019s clock is ' + mins + ' minute' + (mins === 1 ? '' : 's') + (ms > 0 ? ' behind' : ' ahead of') + ' the meeting\u2019s, so you cannot join. Set the clock, then reload.'); },
         // FRAGMENT SELF-RESCUE: the wire proved the door knows members my
         // solo room view doesn't. Same clean lever as the freeze self-heal \u2014
         // a full re-entry \u2014 throttled, and only while the app agrees we look
