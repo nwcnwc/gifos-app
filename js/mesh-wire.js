@@ -59,19 +59,59 @@
   const GifOS = root.GifOS = root.GifOS || {};
   const net = GifOS.net;
 
-  // SIGNATURES (K1b, page-adapter.md 1.6): the SEAT says which frames are signed: `sig` (by m.id), `fsig`
-  // (by the seeker m.nc) or `fo` (by the heal's decider m.fo). The wire signs a frame whose claimant is me,
-  // over its canonical encoding minus the per-hop fields, and on receipt keeps a claim only when the
-  // signature is good and its key's peer id maps to the claimed seat; a bad or missing one clears the
-  // claim and the frame still reaches the seat (the sim's receivers decide what an unsigned frame may do).
-  // A forwarded frame carries its author's block (cached by its signed core).
-  const HOP = ['to', 'from', 'ttl', 'rttl', 'rvia', 'lk', 'lkEp', 'tx', 'sigL', 'ppL', 'mpL', 'foL', 'l31L', 'swL', 'direct', 'rl', 'fhTtl', 'routing'];
-  // A PLACED (L31.4) names the placed newcomer in m.id but is signed by the greeter that made it, m.l31By (the sim's
-  // mesh_seat.inc PLACED note; seat.js emit signs it when l31By is me): its claimant is the placer.
-  function claimOf(m) { return m.sig ? (m.t === 'PLACED' ? m.l31By : m.id) : m.fsig ? m.nc : (m.fo >= 0 ? m.fo : -1); }
-  // A seeker's FIND (fsig: L24) is rebuilt at every hop (sh, sgw, gwc, spread, dk change), so its signature covers
-  // what the seeker owns, its own ask {t, nc}; a forwarder re-attaches the seeker's verified signature from sigOf.
-  function coreOf(msgM, m) { if (!m.sig && m.fsig && m.t === 'FIND') return JSON.stringify({ t: 'FIND', nc: m.nc }); const o = msgM.writeMsg(m); for (const k of HOP) delete o[k]; return JSON.stringify(o); }
+  // SIGNATURES (K1b, page-adapter.md 1.6): the SEAT says which frames are claimed (`sig`, `fsig`, `fo`); this table says
+  // who signs each and what the signature covers. A forwarding seat rebuilds the Msg as the sim does, so a signature
+  // covers only what the claimant authors and EVERY forwarder preserves; the wire carries the author's block with the
+  // rebuilt frame (sigOf, by signed core). On receipt a claim stands only if the signature is good and its key's peer
+  // id maps to the claimant; otherwise the claim is cleared and the frame still reaches the seat (the sim's receivers
+  // decide what an unsigned frame may do).
+  //   by    the field naming the signer
+  //   only  rebuilt at every hop: sign only these
+  //   relay rebuilt by a relaying seat (m.rl): the author signs the whole frame AND this form; a rebuilt frame verifies
+  //         against this form and reaches the seat with nothing else the author could have said (RELAY_KEEP)
+  //   none of these: forwarders clone it, so everything but the per-hop STAMPS is signed
+  const CLAIMS = {
+    HELLO: { by: 'id', stamps: ['c7Min', 'c7Held'] },   // emit's L8.5 stamps a HELLO at any hop
+    CLAIM: { by: 'id' }, PHONE: { by: 'id' }, PONG: { by: 'id' }, TAKEN: { by: 'id' }, MOVED: { by: 'id' },
+    YIELD: { by: 'id' }, CONFIRM: { by: 'id' }, WITNESS: { by: 'id' }, LGCOMP: { by: 'id' },
+    PLACED: { by: 'l31By' },   // names the newcomer in id; signed by its placer (L31.4)
+    LEAVE: { by: 'id', relay: ['ck', 'id', 'tn', 'mvd', 'bye', 'sigAt'] },   // byeRelay, l21Relay: only a plain goodbye (mvd 0) is relayed
+    FIND: { by: 'nc', flag: 'fsig', only: ['nc'] },   // sh, sgw, gwc, spread, dk, ttl, late change per hop (L24)
+    FINDLEAF: { by: 'fo', flag: 'fo', only: ['fo', 'foAt', 'hole'] },   // the decider's order (L25.7); ttl, nbrs, tag change down the cascade
+  };
+  const FILL_WINDOW_MS = 10 * 60 * 1000;   // mesh-identity.js: a signature's time must lie this close to mine
+  const REPLAY_MS = 30000;   // the seat's own goodbye window: 60 ticks (recv-seated.js)
+  const BY_ID = { by: 'id' };   // a type no seat signs today: a claim on it still has to verify as m.id's whole frame
+  // Per-hop fields, never signed: addressing, each holder's clock (recv.js CLOCKS moves vAt, born, e1At and the *L ticks),
+  // the link's door bit, the route's own state and FARVIEW's first-emitter stamp.
+  const STAMPS = ['to', 'from', 'ttl', 'rttl', 'rvia', 'lk', 'lkEp', 'tx', 'sigL', 'ppL', 'mpL', 'foL', 'l31L', 'swL', 'vAt', 'born', 'e1At',
+    'direct', 'rl', 'yl', 'fhTo', 'fhOrig', 'fhTtl', 'fhId', 'fhTc', 'routing', 'rfinal', 'rdst', 'adoor', 'gwc', 'l18', 'dsat', 'aId', 'aCk', 'sgw', 'sgwCk'];
+  // What a relayed goodbye may hold past its signed form: the relay's own marks and the heir hint byeRelay copies (L13.7),
+  // which l21Relay drops and so no signature can cover. Anything else on an m.rl frame was not said by the leaver.
+  const RELAY_KEEP = ['t', 'sig', 'rl', 'yl', 'child', 'kids', ...STAMPS];
+  function claimRule(m) {
+    if (m.sig) return CLAIMS[m.t] && !CLAIMS[m.t].flag ? CLAIMS[m.t] : BY_ID;
+    const r = CLAIMS[m.t]; return r && r.flag && (r.flag === 'fo' ? m.fo >= 0 : m[r.flag]) ? r : null;
+  }
+  // -1: no claim. A frame that claims and names no signer is a failed claim (NOSIGNER), never a passed one.
+  const NOSIGNER = -2;
+  function claimOf(m) { const r = claimRule(m); if (!r) return -1; const c = m[r.by]; return c >= 0 ? c : NOSIGNER; }
+  const pick = (o, keys) => { const out = { t: o.t }; for (const k of keys) if (o[k] !== undefined) out[k] = o[k]; return JSON.stringify(out); };
+  function coreOf(msgM, m) {
+    const r = claimRule(m), o = msgM.writeMsg(m);
+    if (r && r.only) return pick(o, r.only);
+    if (r && r.relay && m.rl) return pick(o, r.relay);
+    for (const k of STAMPS) delete o[k];
+    if (r && r.stamps) for (const k of r.stamps) delete o[k];
+    return JSON.stringify(o);
+  }
+  // The form a relay would sign, for the author's second signature (null: this frame has none).
+  function relayCoreOf(msgM, m) { const r = claimRule(m); return r && r.relay && !m.rl ? pick(msgM.writeMsg(m), r.relay) : null; }
+  function relayForm(msgM, m) {
+    const r = claimRule(m); if (!r || !r.relay || !m.rl) return m;
+    const g = msgM.newMsg(m.t); for (const k of r.relay) g[k] = m[k]; for (const k of RELAY_KEEP) g[k] = m[k];
+    return g;
+  }
   // A GOODBYE SAID NOW (mesh.js LEAVE heals on m.s4live when no link told the
   // receiver the leaver's stay). The pre-signed LEAVE is up to PRELEAVE_MS old
   // when it is sent, and the two clocks may differ: `off` is my estimate of
@@ -209,6 +249,23 @@
     const s4on = true;                      // unconditional — no off switch
     const gossipChain = net.makeChain();   // gossip has its own lane: a chat burst must never queue a newcomer's seating frame behind it
     const verifyChain = net.makeChain();   // one inbound chain for every signed seat frame (order kept)
+    const clockTold = new Set();           // peers told their clock is off
+    let inWindowSeen = false;              // a signer's time has passed the window here: at least one clock agrees with mine
+    // While joining, or just sat (a door can place me on an unsigned ask): say it once; and if in 2 s no signer at all agrees with my
+    // clock, stop joining (0.9.24: such a device never seats). One signer's word alone, with others in the window, stops nothing.
+    function noteSkew(ms, who) {
+      if (skewFired || !(raw.state !== 3 || env.TICK - raw.seatedAt <= 20)) return;
+      skewFired = true; if (opts.onClockSkew) { try { opts.onClockSkew(ms, who); } catch (e) {} }
+      setTimeout(() => { if (!stopped && !inWindowSeen) { try { node.leave(false); } catch (e) {} if (opts.onClockStop) { try { opts.onClockStop(ms); } catch (e) {} } } }, 2000);
+    }
+    const fillPins = ident.newPins();      // the exact-replay sets for claimed frames, bounded as 0.9.24's (mesh-identity SEEN_MAX)
+    const signerTs = new Map();            // claimant -> {ts: its newest verified signature time, off: my clock - its clock then}
+    function staleGoodbye(ts, nowMs, seen) {
+      if (seen) return ts < seen.ts - REPLAY_MS;
+      const offs = Array.from(signerTs.values(), (v) => v.off).sort((a, b) => a - b);
+      if (!offs.length) return !goodbyeLive(nowMs, ts, null);
+      return nowMs - ts - offs[offs.length >> 1] > REPLAY_MS;
+    }
     const sigOf = new Map();               // signed core -> s4 block (my own and verified ones, for forwards)
     const pubPeer = new Map();             // pub -> peer id (H(pub)), cached
     const outq = new Map();                // peer -> tail promise: one outbound FIFO per peer (a signed frame never overtaken)
@@ -317,20 +374,79 @@
       // reachability is worse than silence.
     }
     const env = { TICK: 0 };   // legacy face (stats, debug): TICK mirrors the seat world's
+    function keepSig(core, blk) { sigOf.delete(core); sigOf.set(core, blk); if (sigOf.size > 1024) sigOf.delete(sigOf.keys().next().value); }
+    function clearClaim(f) { f.sig = false; f.fsig = false; f.fo = -1; }
     function sendFrameTo(to, m, dir) {   // a seat frame for peer `to`: encode, sign if mine, keep per-peer order
       const msgM = GifOS.meshMsg;
+      // My goodbye goes on the pre-signed signature, now: this page may not live to finish a signature, and
+      // the pcbye right behind it must not overtake it (a frame after the far end's pcbye is dropped there).
+      if (m.t === 'LEAVE' && m.bye && preLeave && m.id === layer.ids.nid(peer)) {
+        const at = m.sigAt, atL = m.sigL; m.sigAt = preLeave.at; if (m.sigL >= 0) m.sigL = preLeave.at;
+        const s4 = preLeave.s4.get(coreOf(msgM, m));
+        if (s4) { try { const out = { t: 'MW2', f: msgM.writeMsg(m), s4 }; if (dir && typeof dir === 'object') out.dir = dir; deliver(to, out); return true; } catch (e) { return false; } }
+        m.sigAt = at; m.sigL = atL;
+      }
       let f; try { f = msgM.writeMsg(m); } catch (e) { return false; }
-      const claim = claimOf(m), core = claim >= 0 ? coreOf(msgM, m) : null;
+      let claim = claimOf(m); const core = claim >= 0 ? coreOf(msgM, m) : null;
       let blk = null;
       if (claim >= 0 && claim === layer.ids.nid(peer)) {
         blk = sigOf.get(core);
-        if (!blk) { const ts = Date.now(); blk = net.edSign(identity.priv, JSON.stringify({ v: 3, c: core, ts })).then((sig) => ({ ts, sig, pub: identity.pubB64 })); sigOf.set(core, blk); if (sigOf.size > 1024) sigOf.delete(sigOf.keys().next().value); }
-      } else if (claim >= 0) blk = sigOf.get(core) || null;
+        // One signature per tick: a later re-send of the same words (a seeker's next FIND) mints a new time, so only a replay is ever an exact copy.
+        if (!blk || blk.tick !== raw.TICK) {
+          const ts = Date.now(), rc = relayCoreOf(msgM, m), sign = (c) => net.edSign(identity.priv, JSON.stringify({ v: 3, c, ts }));
+          blk = Promise.all([sign(core), rc ? sign(rc) : null]).then(([sig, r]) => { const b = { ts, sig, pub: identity.pubB64 }; if (r) b.r = r; return b; });
+          blk.tick = raw.TICK; keepSig(core, blk);
+        }
+      } else if (claim >= 0) {
+        blk = sigOf.get(core) || null;
+        // I hold no signature for this claim (the author's frame reached me unverified, or a seat's stamp has no author
+        // word behind it): hand it on unclaimed, as a receiver would have to read it, and say so.
+        if (!blk) {
+          if (opts.trace) { try { opts.trace('{"t":' + (env.TICK | 0) + ',"s":' + layer.ids.nid(peer) + ',"e":"SIG-NOCARRY","c":null,"d":"mt=' + String(m.t).replace(/[^A-Z0-9_]/g, '') + ' claim=' + claim + '"}'); } catch (e) {} }
+          const u = msgM.clone(m); clearClaim(u); f = msgM.writeMsg(u); claim = -1;
+        }
+      }
       const pd = layer.sideOut(to, m);   // the page's display digest beside the seat's frame (layer.js; outside f and its signature)
       const prev = outq.get(to) || Promise.resolve();
       const q = prev.then(() => blk).then((s4) => { if (stopped && m.t !== 'LEAVE') return; const out = { t: 'MW2', f }; if (s4) out.s4 = s4; if (dir && typeof dir === 'object') out.dir = dir; if (pd) out.pd = pd; deliver(to, out); }).catch(() => {});
       outq.set(to, q); q.then(() => { if (outq.get(to) === q) outq.delete(to); });
       return true;
+    }
+    // THE PRE-SIGNED GOODBYE (0.9.24 preLeave): leave() runs in pagehide / beforeunload and the node stops in the
+    // same tick, so a goodbye signed only then may never leave. Kept current: signed once per change of what the
+    // goodbye says, or per PRELEAVE_MS, in both CLAIMS forms (whole frame, relay form). What it says comes from the
+    // seat's own leave() and emit(), run on a throwaway view of the seat (their writes land on the view, their frames
+    // are caught), so it cannot drift from the seat.
+    let preLeave = null, preLeaveBusy = false;
+    function goodbyeFrames() {
+      const out = [], v = Object.create(raw), f = Object.create(raw.f);
+      f.fabricLeft = f.fabricReloadBye = () => {}; f.fabricSend = (from, to, m) => { out.push(m); };
+      Object.defineProperty(v, 'f', { value: f });   // f is a getter on the Seat: plain assignment would miss
+      v.callBook = { touchOut() {} };
+      raw.leave.call(v, false);
+      return out;
+    }
+    // RELOAD TREE MEMORY (0.9.24 seat.prevTree; run.html saves it for 2 minutes): a reloaded page does not wait out the
+    // seat's one-door-at-a-time wave for a door that may be dark; it asks every old neighbour now, the way the wave's
+    // own last round does. The seat decides as ever; it just hears its HOME sooner.
+    let prevOld = (opts.prevTree && Array.isArray(opts.prevTree.ids) && opts.prevTree.ids.length) ? new Set(opts.prevTree.ids.map(String)) : null, treeAsk = null;
+    function treeMemAsk() {
+      if (!treeAsk || !raw || raw.state !== 1) return;
+      const list = treeAsk; treeAsk = null; let n = 0;
+      for (const g of list) { if (g < 0 || g === raw.id || raw.l16Ask.includes(g)) continue; raw.l16Ask.push(g); const w = GifOS.meshMsg.newMsg('WHOHOME'); w.from = raw.id; w.ttl = 60; raw.emit(g, w); raw.l33NoSockAsk(g); n++; }
+      if (opts.trace) { try { opts.trace('{"t":' + (env.TICK | 0) + ',"s":' + raw.id + ',"e":"TREEMEM-ASK","c":null,"d":"doors=' + n + '"}'); } catch (e) {} }
+    }
+    function refreshPreLeave() {
+      if (preLeaveBusy || stopped || !identity || !raw || raw.dead || raw.state !== 3 || !raw.hasCoord) return;
+      const msgM = GifOS.meshMsg; let frames, body;
+      try { frames = goodbyeFrames(); body = Array.from(new Set(frames.map((m) => { m.sigAt = 0; return coreOf(msgM, m); }))).sort().join('|'); } catch (e) { return; }
+      if (!frames.length) { preLeave = null; return; }
+      if (preLeave && preLeave.body === body && Date.now() - preLeave.signedAt < PRELEAVE_MS) return;
+      const at = penv.world.TICK, ts = Date.now(), sign = (c) => net.edSign(identity.priv, JSON.stringify({ v: 3, c, ts }));
+      const forms = new Map(); for (const m of frames) { m.sigAt = at; forms.set(coreOf(msgM, m), relayCoreOf(msgM, m)); }
+      preLeaveBusy = true;
+      Promise.all(Array.from(forms, ([c, rc]) => Promise.all([sign(c), rc ? sign(rc) : null]).then(([sig, r]) => { const b = { ts, sig, pub: identity.pubB64 }; if (r) b.r = r; return [c, b]; })))
+        .then((signed) => { preLeaveBusy = false; preLeave = { body, at, s4: new Map(signed), signedAt: Date.now() }; }, () => { preLeaveBusy = false; });
     }
     // ingest(m): the S4 verification gate on the way IN. A signed fill is
     // verified against the TOFU-pinned participant key (FIFO-chained so crypto
@@ -345,6 +461,21 @@
       for (const k of Object.keys(d)) { if (++n > 32) break; const v = d[k]; if (/^\d{1,16}$/.test(k) && Number(k) < 2 ** 52 && typeof v === 'string' && v.length <= 64) out[k] = v; }
       return out;
     }
+    // WAITING ROOM (relay-admit.js). The page says whether this knocker is still held; a thrown hold fails
+    // closed. Only a knocker's ask is withheld: a seat already in my view is no knocker.
+    const heldAsks = new Map();   // peer -> its last withheld WHOHOME
+    function doorBlocks(f, via, dir) {
+      if (typeof opts.doorHeld !== 'function' || !raw) return false;
+      if (Array.from(raw.occ.values()).includes(f.from)) return false;
+      const who = layer.ids.pid(f.from) || (dir && dir[f.from]) || (f.via < 0 ? via : '');
+      let held = true; try { held = !!opts.doorHeld(String(who || '')); } catch (e) {}
+      if (held && who) { heldAsks.set(String(who), [f, via, dir]); if (heldAsks.size > 64) heldAsks.delete(heldAsks.keys().next().value); }
+      return held;
+    }
+    // The host's OK answers the held knock now, not at the knocker's next retry (run.html meetWait.admit).
+    function answerHeld(list) {
+      for (const p of list || []) { const a = heldAsks.get(String(p)); if (!a || stopped || !raw) continue; penv.frame(Object.assign({}, a[0]), String(a[1]), dirOf(a[2])); }
+    }
     function ingest(m, via, direct) {
       if (stopped || !raw || !m || typeof m !== 'object') return;
       if (typeof opts.excluded === 'function') {
@@ -356,31 +487,69 @@
       } catch (e) {}
       try { if (typeof window !== 'undefined') { const t = (window.__mwRx = window.__mwRx || {}); const k = m.t === 'MW2' && m.f ? m.f.t : m.t; t[k] = (t[k] || 0) + 1; } } catch (e) {} // DEBUG-TREE: per-type ingest counter
       if (via != null) layer.ids.learn(String(via));
+      if (m.t === 'MWCLOCK') {   // a seated peer refused my frame as outside the window: its own signed time says by how much
+        if (skewFired || typeof m.sig !== 'string' || typeof m.pub !== 'string' || !Number.isFinite(m.ts)) return;
+        verifyChain(async () => { try { if (await net.edVerify(m.pub, m.sig, JSON.stringify({ v: 3, c: 'clock', ts: m.ts })) && Math.abs(m.ts - Date.now()) > FILL_WINDOW_MS) noteSkew(m.ts - Date.now(), String(via)); } catch (e) {} });
+        return;
+      }
       if (m.t === 'MW2') {   // a seat frame
         const msgM = GifOS.meshMsg; let f;
         try { f = msgM.readMsg(m.f); } catch (e) { return; }
         const claim = claimOf(f), dir = direct === true;
-        const done = (ok) => {
+        const done = (ok, why) => {
           if (stopped) return;
+          if (why === 'SKEW') return;   // refused outright: a signer outside the window cannot move a seat, signed or stripped
           if (!ok) {
-            f.sig = false; f.fsig = false; if (f.fo >= 0 && f.t !== 'FINDLEAF') f.fo = -1;
-            if (claim >= 0 && opts.trace) { try { opts.trace('{"t":' + (env.TICK | 0) + ',"s":' + layer.ids.nid(peer) + ',"e":"SIG-FAIL","c":null,"d":"mt=' + String(f.t).replace(/[^A-Z0-9_]/g, '') + ' claim=' + claim + ' via=' + layer.ids.nid(String(via)) + '"}'); } catch (e) {} }   // DEBUG trace sink only (T8)
+            clearClaim(f);
+            if (claim !== -1 && !why && opts.trace) { try { opts.trace('{"t":' + (env.TICK | 0) + ',"s":' + layer.ids.nid(peer) + ',"e":"SIG-FAIL","c":null,"d":"mt=' + String(f.t).replace(/[^A-Z0-9_]/g, '') + ' claim=' + claim + ' via=' + layer.ids.nid(String(via)) + '"}'); } catch (e) {} }   // DEBUG trace sink only (T8)
           }
+          if (f.t === 'WHOHOME' && doorBlocks(f, via, m.dir)) return;   // waiting room: no HOME, no roster
           if (ok && dir && m.pd) layer.sideIn(String(via), f, m.pd);
-          penv.frame(f, String(via), dirOf(m.dir));
+          penv.frame(ok ? relayForm(msgM, f) : f, String(via), dirOf(m.dir));
         };
-        if (claim < 0) { verifyChain(() => Promise.resolve().then(() => done(true))); return; }
+        if (claim === -1) { verifyChain(() => Promise.resolve().then(() => done(true))); return; }
+        if (claim === NOSIGNER) { verifyChain(() => Promise.resolve().then(() => done(false))); return; }
         const s4 = m.s4;
         if (!s4 || typeof s4.sig !== 'string' || typeof s4.pub !== 'string' || !Number.isFinite(s4.ts)) { verifyChain(() => Promise.resolve().then(() => done(false))); return; }
         verifyChain(async () => {
-          let ok = false;
+          let ok = false, why = null;
           try {
             const core = coreOf(msgM, f);
             let who = pubPeer.get(s4.pub); if (!who) { who = 'k_' + (await net.keyId(s4.pub)).slice(0, 40); pubPeer.set(s4.pub, who); if (pubPeer.size > 4096) pubPeer.delete(pubPeer.keys().next().value); }
             ok = layer.ids.nid(who) === claim && await net.edVerify(s4.pub, s4.sig, JSON.stringify({ v: 3, c: core, ts: s4.ts }));
-            if (ok) { layer.ids.learn(who); if (!sigOf.has(core)) { sigOf.set(core, Promise.resolve(s4)); if (sigOf.size > 1024) sigOf.delete(sigOf.keys().next().value); } }
+            // Past the signature only a key holder's frame gets here (0.9.24 verifyFill): each check names why it refuses.
+            if (ok) {
+              const seen = signerTs.get(claim), nowMs = Date.now(), skewMs = s4.ts - nowMs, isDirect = claim === layer.ids.nid(String(via));
+              if (Math.abs(skewMs) <= FILL_WINDOW_MS) inWindowSeen = true;
+              if (Math.abs(skewMs) > FILL_WINDOW_MS) {   // minted outside the window: a stale capture, or one of our clocks is wrong
+                ok = false; why = 'SKEW';
+                noteSkew(skewMs, who);
+                // A joiner hears no signed frame until it is seated, so it could never learn why its FIND got no answer: tell it, signed, once.
+                if (isDirect && raw.state === 3 && !clockTold.has(String(via))) {
+                  clockTold.add(String(via)); if (clockTold.size > 256) clockTold.clear();
+                  const ts = Date.now(); net.edSign(identity.priv, JSON.stringify({ v: 3, c: 'clock', ts })).then((sig) => deliver(String(via), { t: 'MWCLOCK', ts, sig, pub: identity.pubB64 })).catch(() => {});
+                }
+              } else if (f.t === 'LEAVE' && !isDirect && staleGoodbye(s4.ts, nowMs, seen)) {
+                // older than what its signer has since said: the signature is real, its word is spent. (sigL, the seat's freshness
+                // test, is the forwarder's word.) No word from this signer yet: judge by the room's clocks as I have verified them;
+                // a signer whose clock runs far behind the room loses only its relayed goodbye.
+                ok = false; why = 'STALE';
+              } else if (isDirect ? fillPins.seen(s4.sig) : fillPins.seenRelayed(s4.sig)) {
+                // An exact copy. A forwarded copy has its own set, so one that wins the race never burns the claimant's own frame
+                // at the link behind it, and that frame still does its relaying (each signature: once direct, once forwarded).
+                ok = false; why = 'SEEN';
+              } else if (!seen || s4.ts > seen.ts) { signerTs.set(claim, { ts: s4.ts, off: nowMs - s4.ts }); if (signerTs.size > 256) signerTs.delete(signerTs.keys().next().value); }
+              if (why && opts.trace) { try { opts.trace('{"t":' + (env.TICK | 0) + ',"s":' + layer.ids.nid(peer) + ',"e":"SIG-' + why + '","c":null,"d":"mt=' + String(f.t).replace(/[^A-Z0-9_]/g, '') + ' claim=' + claim + ' via=' + layer.ids.nid(String(via)) + ' skew=' + Math.round(skewMs / 1000) + 's"}'); } catch (e) {} }
+            }
+            if (ok) {
+              layer.ids.learn(who);
+              if (claim !== layer.ids.nid(String(via)) && opts.trace) { try { opts.trace('{"t":' + (env.TICK | 0) + ',"s":' + layer.ids.nid(peer) + ',"e":"SIG-FWD","c":null,"d":"mt=' + String(f.t).replace(/[^A-Z0-9_]/g, '') + ' claim=' + claim + ' rl=' + (f.rl ? 1 : 0) + '"}'); } catch (e) {} }   // DEBUG trace sink only: a forwarded claim that verified
+              keepSig(core, Promise.resolve(s4));
+              const rc = relayCoreOf(msgM, f);   // the author's word for a relay of this frame; a bad one fails at the next hop, on the author's account
+              if (rc && typeof s4.r === 'string') keepSig(rc, Promise.resolve({ ts: s4.ts, sig: s4.r, pub: s4.pub }));
+            }
           } catch (e) { ok = false; }
-          done(ok);
+          done(ok, why);
         });
         return;
       }
@@ -724,6 +893,8 @@
         // Non-empty ⇒ deliver greeter ids (gateway pick).
         if (!ids.length && m.founded) action = preState === 0 ? 'MINT' : 'empty-founded-noop';
         else action = 'deliver';
+        // RELOAD TREE MEMORY: the doors this page sat with before its reload go first (treeMemAsk asks them all at once)
+        if (prevOld && preState !== 3 && ids.length) { const old = ids.filter((p) => prevOld.has(p)); treeAsk = old.map((p) => layer.ids.nid(p)); ids.sort((a, b) => (prevOld.has(b) ? 1 : 0) - (prevOld.has(a) ? 1 : 0)); prevOld = null; }
         penv.relayFrame({ t: 'greeters', list: ids }); // the seat's L16 knocker takes it from here
       }
       // `adm` is the relay's `admitted`: does my genesis key match the room's?
@@ -852,6 +1023,7 @@
           }
           lastTickAt = nowT;
           for (let i = 0; i < n && !stopped; i++) { penv.tick(); env.TICK = penv.world.TICK; layer.afterTick(); }
+          treeMemAsk(); refreshPreLeave();
         } else lastTickAt = 0;
         if (seat.stranded && !strandedFired) { strandedFired = true; if (opts.onStranded) opts.onStranded(); }
         // Socket lifecycle: deep-seated ⇒ the relay is done with me; drop after a
@@ -958,7 +1130,7 @@
         onGossip: opts.onGossip ? (src, m, ag, scoped) => (stopped ? undefined : opts.onGossip(src, m, (ag || 0) * tickMs, !!scoped)) : null,
         ckey: (c) => net.topo.ckey(c), ownedLinks: (c) => net.topo.ownedLinks(c),
       });
-      seat = layer.view;
+      seat = layer.view; seat.answerDoor = answerHeld;
       penv = GifOS.meshPageEnv.create({
         peer, ids: layer.ids, seat: () => raw,
         pc: Object.assign({}, opts.pc || {}, { send: (to, m, dir) => ((typeof opts.dcOpen !== 'function' || opts.dcOpen(to)) ? sendFrameTo(to, m, dir) : false) }),
@@ -1055,15 +1227,27 @@
       // when its switch is on.
       // T8 (DEBUG pages only, run.html gates it): a real seat frame of type ty claiming `claimId` (default: me),
       // sent on the open dc to `to` with a garbage signature or none, so the receiver's unsigned path runs.
-      FORGE_FRAME_FOR_TEST(to, ty, fields, how) {
+      // how:'alter': signed for real by me, then `alter` changes the frame on its way out, as a dishonest forwarder would.
+      FORGE_FRAME_FOR_TEST(to, ty, fields, how, alter) {
         if (stopped || !raw) return { err: 'stopped' };
         const msgM = GifOS.meshMsg; let m;
         try { m = msgM.newMsg(String(ty)); } catch (e) { return { err: 'bad type' }; }
-        Object.assign(m, fields || {}); if (m.id === -1 || m.id === undefined) m.id = raw.id; if (m.from === -1) m.from = raw.id; if (!m.sig && !m.fsig && !(m.fo >= 0)) m.sig = true; m.to = layer.ids.nid(String(to));
+        const own = (v) => (v === '$me' ? raw.id : v === '$ck' ? (raw.hasCoord ? GifOS.meshTopo.ckey(raw.coord) : 0) : v === '$tn' ? raw.tn : v);
+        for (const k of Object.keys(fields || {})) m[k] = own(fields[k]); if (m.id === -1 || m.id === undefined) m.id = raw.id; if (m.from === -1) m.from = raw.id; if (!m.sig && !m.fsig && !(m.fo >= 0)) m.sig = true; m.to = layer.ids.nid(String(to));
         let f; try { f = msgM.writeMsg(m); } catch (e) { return { err: 'encode' }; }
         const out = { t: 'MW2', f };
+        const sendIt = () => !!(opts.sendDC && opts.sendDC(String(to), out, peer));
+        if (how === 'alter') {
+          const ts = Date.now(), core = coreOf(msgM, m), rc = relayCoreOf(msgM, m), sign = (c) => net.edSign(identity.priv, JSON.stringify({ v: 3, c, ts }));
+          return Promise.all([sign(core), rc ? sign(rc) : null]).then(([sig, r]) => {
+            out.s4 = { ts, sig, pub: identity.pubB64 }; if (r) out.s4.r = r;
+            const a = msgM.clone(m); Object.assign(a, alter || {}); out.f = msgM.writeMsg(a);
+            if (r && coreOf(msgM, a) === rc) out.s4 = { ts, sig: r, pub: identity.pubB64 };   // posing as a relay: it carries the relay form's signature
+            return sendIt() ? { ok: true, ty: m.t, claim: claimOf(a), how, signedCoreSame: coreOf(msgM, a) === core } : { err: 'no open dc' };
+          });
+        }
         if (how !== 'nosig') out.s4 = { ts: Date.now(), sig: 'AAAA' + Math.random().toString(36).slice(2), pub: identity.pubB64 };
-        const sent = !!(opts.sendDC && opts.sendDC(String(to), out, peer));
+        const sent = sendIt();
         return sent ? { ok: true, ty: m.t, claim: claimOf(m), how: how || 'garbage' } : { err: 'no open dc to ' + String(to).slice(0, 8) };
       },
       RAW_SOCKET_SEND_FOR_TEST(obj) { if (stopped) return { err: 'stopped' }; if (!sock) makeSock(); if (sock.rejected) return { err: 'rejected' }; sock.send(obj); return { ok: true }; },
@@ -1129,10 +1313,10 @@
       kicked(peer) { return layer ? layer.kicked(peer) : false; },
       adapterStats() { return (penv && penv.stats) ? penv.stats() : null; },
       links() { return seat ? Array.from(seat.linkPeers()) : []; },
-      // Resolves once every gossip frame handed over before now has been
+      // Resolves once every gossip frame and every seat frame handed over before now has been
       // signed and delivered, or after `ms` (the farewell's channels close
       // behind it: run.html afterFarewell).
-      flushed(ms) { const all = Promise.all(Array.from(gflight)); return Promise.race([all, new Promise((r) => setTimeout(r, Math.max(0, +ms || 0)))]).then(() => undefined); },
+      flushed(ms) { const all = Promise.all(Array.from(gflight).concat(Array.from(outq.values()))); return Promise.race([all, new Promise((r) => setTimeout(r, Math.max(0, +ms || 0)))]).then(() => undefined); },
       stop() { stopped = true; if (timer && timer.worker) { try { timer.worker.terminate(); } catch (e) {} } else if (timer) clearInterval(timer); timer = null; if (sock) { try { sock.close(); } catch (e) {} sock = null; } },
     };
 
@@ -1148,5 +1332,5 @@
     return node;
   }
 
-  GifOS.meshWire = { createMeshNode, goodbyeLive };
+  GifOS.meshWire = { createMeshNode, goodbyeLive, claims: { CLAIMS, STAMPS, claimOf, coreOf, relayCoreOf, relayForm } };
 })(typeof window !== 'undefined' ? window : globalThis);

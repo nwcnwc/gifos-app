@@ -6316,7 +6316,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (hasAdminRoom() && amAdmin) {
           admSigned('admit', { id: id }).then((w) => { if (w) relaySendObj({ t: 'admit', id: id, w }); });
         } else {
-          try { const s = meshSeat(); if (s && s.answerDoor) s.answerDoor([id]); } catch (e) {}
+          // The door channel closed while they waited: reopen it, then answer on it.
+          try { bootDial(id); } catch (e) {}
+          [0, 1000, 2500].forEach((ms) => setTimeout(() => { try { const s = meshSeat(); if (s && s.answerDoor) s.answerDoor([id]); } catch (e) {} }, ms));
         }
         return true;
       },
@@ -15083,9 +15085,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         + ' init=' + iInitiate(p.id) + ' forming=' + !!forming + ' dark=' + !!darkOffer + ' pc=' + (p.pc ? p.pc.connectionState + '/' + p.pc.signalingState : '-')
         + ' age=' + Math.round((Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0)) / 100) / 10 + 's frag=' + Math.round((Date.now() - (p.fragDialAt || 0)) / 100) / 10 + 's');
       // A request answered by an offer that went into the dark (the asker's
-      // side was cut when it left) is asked again every 2 s by memberDial; a
-      // 5 s re-offer gate there put up to 5 s on a cut pair's return
-      // (066ba4-room-six: 12.6 s). A dark offer is re-made after 2 s.
+      // side was cut when it left): a 5 s re-offer gate put up to 5 s on a cut
+      // pair's return (066ba4-room-six: 12.6 s). A dark offer is re-made after 2 s.
       if ((participantCount() <= 1 || !pLive) && !forming && iInitiate(p.id) && Date.now() - (p.fragDialAt || 0) > (darkOffer ? 2000 : 5000)) {
         p.fragDialAt = Date.now();
         if (!pLive && p.pc) newPcFor(p);
@@ -15161,91 +15162,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       else { const q0 = makePeer(pid, null); if (q0) askDial(pid, q0); }
       if (typeof clog === 'function') clog('door-out ' + String(pid).slice(0, 6));
       const q = peers.get(pid); if (q) { q.boot = true; q.bootOut = true; if (!manyDoors) armDoorRetry(pid, q); } // the door I came in by: retired once a seat's own link is open (retireBootPairs), unless the arithmetic names it
-    }
-    // memberDial(pid): the wire's hook for a seated HELLO to a member with no
-    // open channel to me (mesh-wire GREETING_A_MEMBER_I_HAVE_NO_CHANNEL_TO).
-    // A transport death (D5) frees the cell on BOTH sides of a cut pair, and
-    // every dial here is driven by occ (renderFromOcc, ensureLink, linkTo),
-    // so once the cut ends nobody dials the pair again: the seat greets into
-    // silence and the two stay apart for good (bigroom six-room cross-row
-    // sever: Wren's roster lacked Zed 150 s after the cut; Zed sat solo). The
-    // id-order initiator offers, the other side sends a dial request; an
-    // offer to a corpse is never answered (the relay routes only to live
-    // sockets). The pair stays off the grid until a channel opens
-    // (restoreDoorTile), so a dead id never paints a face or moves the count.
-    // A live channel is first-hand proof of life, which is what lifts a
-    // tombstone (notTomb); no third-hand word is taken for it.
-    // Refused: a banned/ejected id, my own device, a member confirmed gone by
-    // anything but a transport death (saidGone: a goodbye is final), a pair
-    // already open or forming, and a link the arithmetic names (ensureLink /
-    // askDial own those). Pace: a member that was my link in the last 10 min
-    // (the cut pair) every 2 s for its first 90 s of trying, then every 10 s,
-    // and no more than 60 dials until a channel opens; anyone else every 30 s.
-    // The seat greets once a beat (4 s and more on a slowed clock), so the
-    // page keeps its own 1 s retry for 12 s after the last greeting, and for
-    // a lost link until its budget is spent: the cut ends between two
-    // greetings, waiting for the next one put 4-8 s on every return
-    // (0a07b6-room-six: 12.4 s), and a lone seat may stop greeting the lost
-    // link mid-cut altogether (066ba4-room-six: back after 82 s). A page dials at most once every
-    // 2 s in all (lost links first), whatever the room size: a lone seat in a
-    // big room greets a whole door list.
-    const linkSeenAt = new Map();   // pid -> when the mesh last named it my link
-    const memberDialAt = new Map(); // pid -> last dial
-    const memberWant = new Map();   // pid -> last time the seat greeted it with no channel
-    const memberStreak = new Map(); // pid -> { at: first dial of the unanswered streak, n: dials in it }
-    const MEMBER_DIAL_LINK_MS = 2000, MEMBER_DIAL_SLOW_MS = 10000, MEMBER_STREAK_MS = 90000, MEMBER_BUDGET = 60, MEMBER_DIAL_OTHER_MS = 30000, LINK_MEMORY_MS = 600000, MEMBER_WANT_MS = 12000, MEMBER_PAGE_GAP_MS = 2000;
-    let memberRetryT = 0, memberLastAny = 0;
-    function memberDial(pid) {
-      if (!pid || pid === myId) return;
-      const prev = memberWant.get(pid);
-      if (prev === undefined || Date.now() - prev > 120000) memberStreak.delete(pid); // not greeted for two minutes (or ever): a new streak
-      memberWant.set(pid, Date.now());
-      if (memberWant.size > 64) memberWant.delete(memberWant.keys().next().value);
-      if (!memberRetryT) memberRetryT = setTimeout(memberRetry, 0);
-    }
-    function memberRetry() {
-      memberRetryT = 0;
-      const now = Date.now();
-      const lostOf = (pid) => { const t = linkSeenAt.get(pid); return t !== undefined && now - t < LINK_MEMORY_MS; };
-      const due = [];
-      for (const [pid, at] of Array.from(memberWant)) { if (now - at > 180000) memberWant.delete(pid); else if (now - at <= MEMBER_WANT_MS || lostOf(pid)) due.push(pid); } // a lost link stays wanted (its budget ends it): the seat may stop greeting it mid-cut
-      due.sort((a, b) => (lostOf(b) - lostOf(a)) || ((memberDialAt.get(a) || 0) - (memberDialAt.get(b) || 0))); // lost links first, then the longest waiting
-      for (const pid of due) { if (now - memberLastAny < MEMBER_PAGE_GAP_MS) break; tryMemberDial(pid); }
-      if (due.length) memberRetryT = setTimeout(memberRetry, 1000);
-    }
-    function tryMemberDial(pid) {
-      if (!pid || pid === myId) return;
-      if (bannedSeat.has(pid) || (typeof isEjected === 'function' && isEjected(pid) === true)) { memberWant.delete(pid); return; }
-      if (saidGone.has(pid)) { memberWant.delete(pid); return; }
-      if (devOf[pid] && devOf[pid] === myDevHash) { memberWant.delete(pid); return; }
-      const s = meshSeat(); if (!s || !s.hasCoord || s.state !== 3) return;
-      const p = peers.get(pid);
-      if (p && (p.connected || (p.dc && p.dc.readyState === 'open'))) { memberWant.delete(pid); memberStreak.delete(pid); return; }
-      if (p && p.offering) return;
-      const darkOffer = !!(p && p.pc && p.pc.signalingState === 'have-local-offer' && p.offerSentPc === p.pc && Date.now() - (p.offerSentAt || 0) >= 1500); // my offer went into the dark (onDialRequest's rule)
-      if (p && p.pc && !darkOffer && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed' && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000) return; // forming
-      if (linkTo(pid) && notTomb(pid)) { memberWant.delete(pid); return; } // a named link: the occ sweep dials it
-      const now = Date.now();
-      const seen = linkSeenAt.get(pid);
-      const lost = seen !== undefined && now - seen < LINK_MEMORY_MS;
-      const st0 = memberStreak.get(pid);
-      if (st0 && st0.n >= MEMBER_BUDGET) return; // spent: a former link that never answers is let go
-      const gap = !lost ? MEMBER_DIAL_OTHER_MS : (st0 && now - st0.at > MEMBER_STREAK_MS ? MEMBER_DIAL_SLOW_MS : MEMBER_DIAL_LINK_MS);
-      if (now - (memberDialAt.get(pid) || 0) < gap) return;
-      memberDialAt.set(pid, now); memberLastAny = now;
-      if (st0) st0.n++; else memberStreak.set(pid, { at: now, n: 1 });
-      if (memberDialAt.size > 256) { for (const [k, at] of memberDialAt) if (now - at > 120000) { memberDialAt.delete(k); memberStreak.delete(k); } }
-      if (!linkTo(pid)) doorOffGrid.add(pid); // no face until a channel opens
-      if (p && p.tile && p.tile.parentNode && doorOffGrid.has(pid) && p.neverUp === true) p.tile.remove();
-      const init = iInitiate(pid);
-      if (typeof clog === 'function') clog('member-dial ' + String(pid).slice(0, 6) + (lost ? ' lost-link' : '') + (meshGone.has(pid) ? ' tomb' : '') + (init ? ' (dialing)' : ' (requesting dial)'));
-      if (init) {
-        if (p && p.pc) newPcFor(p);
-        const q = makePeer(pid, null);
-        if (q) sendOffer(pid, false);
-      } else {
-        try { relayName(pid); } catch (e) {}
-      }
     }
     // The bootstrap channel to a greeter has done its work once I am seated
     // and a link the arithmetic names is open: a seat holds its bounded
@@ -15349,7 +15265,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let occPrevIds = new Map();   // pid -> ckey, my occ view one mesh tick ago
     let occPrevMyCk = null;       // my own seat then (a move rebuilds occ wholesale)
     // Ids confirmed gone by anything but a transport death (D5): a goodbye
-    // ('left', 'bye'), a silence reap, a ban, a forger. memberDial never
+    // ('left', 'bye'), a silence reap, a ban, a forger. The page never
     // re-dials them, however long the mesh keeps greeting the id (a door list
     // can name a leaver for a while). Kept past the tombstone's 60 s.
     const saidGone = new Set();
@@ -15654,7 +15570,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // instead of within 3 s).
       if (s.hasCoord && s.state === 3 && !seatedBeatSent) { seatedBeatSent = true; try { broadcastStatus(); } catch (e) {} }
       departSweep(s); // D2/D5 event intake FIRST — a freed seat leaves the view this tick
-      if (s.hasCoord && s.state === 3 && typeof s.linkPeers === 'function') { const nowL = Date.now(); for (const v of s.linkPeers()) if (v && v !== myId) linkSeenAt.set(v, nowL); if (linkSeenAt.size > 128) linkSeenAt.delete(linkSeenAt.keys().next().value); } // memberDial's lost-link pace
       const ids = new Set();
       // An occ id is a PARTICIPANT only with a liveness signal: a fresh status
       // (15s — the one rule everywhere) or a live connection. A DEPARTED seat
@@ -16884,7 +16799,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         oldKeys: (prevRoomE2E && prevRoomE2E !== roomE2E) ? [prevRoomE2E] : [],   // a door blob this key opens is behind me, not ahead (mesh-wire R6)
         excluded: isEjected, // ejected forgers: their mesh frames never reach the seat
         urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
-        doorHeld: (id) => { try { return meetWait.blocks(id); } catch (e) { return false; } },
+        doorHeld: (id) => { try { const b = meetWait.blocks(id); if (b && id) meetWait.note(id, rosterNames[id] || 'Someone waiting'); return b; } catch (e) { return false; } },   // a withheld knock goes on the host's list: nothing else names a plain room's knocker
         onDoor: (kind, frame) => {
           if (kind === 'unseated') {
             meetWait.waiting(true);
@@ -16916,7 +16831,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // wire must not treat that as the door (mesh-wire entryDelivered).
         dcOpen: (to) => { const p = peers.get(to); return !!(p && p.dc && p.dc.readyState === 'open'); },
         dial: bootDial, // a knocker's entry ask has no channel to its greeter: open one (the bootstrap over the relay)
-        memberDial: memberDial, // a seated greeting to a member with no channel: re-open the pair a transport death cut (memberDial)
         onBehind: healBehindDoor, // door blobs a key I replaced opens: their writers missed the grant (§LOCK door-side heal)
         // Deep-socket drop waits until at least one DataChannel is open (§FWD:
         // an unwired deep newcomer must stay relay-reachable or inbound
@@ -17048,6 +16962,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // the TTL, was told the NETWORK refused it. The wire reports the signed
         // delta from a verified member's frame while I am still joining.
         onClockSkew: (ms) => { const mins = Math.max(1, Math.round(Math.abs(ms) / 60000)); setStatus('\ud83d\udd50 This device\u2019s clock is ' + mins + ' minute' + (mins === 1 ? '' : 's') + (ms > 0 ? ' behind' : ' ahead of') + ' the meeting\u2019s, so you cannot join. Set the clock, then reload.'); },
+        onClockStop: (ms) => { const mins = Math.max(1, Math.round(Math.abs(ms) / 60000)); bannedOut = true; for (const pid of Array.from(peers.keys())) dropPeer(pid); setStatus('\ud83d\udd50 This device\u2019s clock is ' + mins + ' minute' + (mins === 1 ? '' : 's') + (ms > 0 ? ' behind' : ' ahead of') + ' the meeting\u2019s, so you cannot join. Set the clock, then reload.'); },
         // FRAGMENT SELF-RESCUE: the wire proved the door knows members my
         // solo room view doesn't. Same clean lever as the freeze self-heal \u2014
         // a full re-entry \u2014 throttled, and only while the app agrees we look
@@ -36176,7 +36091,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       relayTx: () => ({ boot: txStats.relayBoot, fp: txStats.relayFp, ice: txStats.relayIce, name: txStats.relayName, password: txStats.relayPassword, unfit: txStats.relayUnfit }), // frames this page put on the relay, by type
       // T8: a real seat frame {ty, fields, how: 'garbage'|'nosig'} with a bad signature, on the open dc to pid;
       // the receiver traces SIG-FAIL <ty> and runs the seat's unsigned path. DEBUG only.
-      forgeFrameForTest: (pid, spec) => { if (!DEBUG_ON || !meshNode || !meshNode.FORGE_FRAME_FOR_TEST) return { err: 'DEBUG=on not in URL' }; const o = spec || {}; return meshNode.FORGE_FRAME_FOR_TEST(pid, o.ty || 'PHONE', o.fields || {}, o.how); },
+      forgeFrameForTest: (pid, spec) => { if (!DEBUG_ON || !meshNode || !meshNode.FORGE_FRAME_FOR_TEST) return { err: 'DEBUG=on not in URL' }; const o = spec || {}; return meshNode.FORGE_FRAME_FOR_TEST(pid, o.ty || 'PHONE', o.fields || {}, o.how, o.alter); },
       relayRawSendUnchecked: (obj) => { if (!DEBUG_ON || !meshNode) return { err: 'DEBUG=on not in URL' }; return meshNode.RAW_SOCKET_SEND_FOR_TEST(obj); },
       // The people this page says tried to reach it and could not (the
       // locked-out line's names), and the line itself.

@@ -436,7 +436,8 @@
       const L = LINKS.get(x);
       if (m && m.t === 'pcbye') { byeIn(x, BYE.includes(m.why) ? m.why : 'call'); return true; }
       if (!L) return false;
-      if (L.state !== LK_OPEN && L.wasOpen && (L.view[mine(x)] === LK_CLOSED || (L.gone & (1 << mine(x)))) && !(m.t === 'LEAVE' && L.byeIn)) { /* a far goodbye outruns its own LEAVE (unsigned and sync vs the signature chain): that LEAVE was sent before the close, as in the sim's FIFO */ lv.CLOSEDROPS = (lv.CLOSEDROPS || 0) + 1; trace('CLOSEDROP', me, null, 'from=%d mt=%d', x, mtI(m.t)); return true; }
+      // (A leaver's own goodbye is exempt: sent before its close, but the page's seal and signature checks can hand it over after the close is seen; the sim has no such gap.)
+      if (!(m && m.t === 'LEAVE' && m.bye && m.id === x) && L.state !== LK_OPEN && L.wasOpen && (L.view[mine(x)] === LK_CLOSED || (L.gone & (1 << mine(x))))) { lv.CLOSEDROPS = (lv.CLOSEDROPS || 0) + 1; trace('CLOSEDROP', me, null, 'from=%d mt=%d', x, mtI(m.t)); return true; }
       L.txAt[theirs(x)] = T(); doorProg(L, m.t);
       if (m.dsat !== undefined && L.outside) far(x).seated = m.dsat ? 1 : 0;
       if (m.rvia === undefined || m.rvia < 0) { m.lk = x; m.lkEp = L.epoch; }

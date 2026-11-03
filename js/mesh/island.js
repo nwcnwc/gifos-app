@@ -58,6 +58,7 @@
     // C++: mesh_island.inc:Seat::islandForkLive
     islandForkLive() {
       if (this.forkAt >= 0 || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0 || this.TICK - this.seatedAt <= 80) return;
+      if (this.l30 && this.TICK - this.l30At <= K.L30_SILENT + 1) return;   // L8.7: a seat just in small mode: L30.5 has the first word on a silent mate (a fork here turned small mode off and a young room waited 110 s on a dark head)
       if (this.greetersAt < 0 || this.TICK - this.greetersAt > K.RELAY_TTL || this.lastGreeters.length === 0) return;
       const ol = ownedLinks(this.coord), n = ol.length;
       for (let q = 0; q < n; q++) {
