@@ -50,6 +50,8 @@
   }
 
   // -> { bytes, manifest }. opts.provider: also enforce the provider rules.
+  // Whole megabytes in the system locale's digits.
+  const mbOf = (n) => (GifOS.i18n ? GifOS.i18n.fmt.number(Math.round(n / 1e6), { useGrouping: false }) : String(Math.round(n / 1e6)));
   function fetchApp(app, onProgress, opts) {
     const note = (text, frac) => { if (typeof onProgress === 'function') { try { onProgress(text, frac); } catch (e) {} } };
     const label = app.name || app.appId;
@@ -63,7 +65,7 @@
       const pump = () => reader.read().then(({ done, value }) => {
         if (done) { const out = new Uint8Array(got); let off = 0; for (const c of chunks) { out.set(c, off); off += c.length; } return out; }
         chunks.push(value); got += value.length;
-        if (total) note('Downloading ' + label + '… ' + Math.round(got / 1e6) + ' of ' + Math.round(total / 1e6) + ' MB', Math.min(1, got / total));
+        if (total) note('Downloading ' + label + '… ' + mbOf(got) + ' of ' + mbOf(total) + ' MB', Math.min(1, got / total));
         return pump();
       });
       return pump();

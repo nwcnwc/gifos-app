@@ -74,14 +74,16 @@
   let filter = '';
   let saveT = null;
   if (window.gifos) gifos.me().then(m => { me = { id: m.id, name: m.name || 'You' }; });
+  if (window.gifos && gifos.onLocaleChange) gifos.onLocaleChange(function(){ render(); });
   const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
   const DEL = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
   function titleOf(n){ const t=String(n.text||'').trim(); const line=t.split('\\n')[0]; return line || 'Untitled'; }
   function when(n){
     const t=n.u||n.t; if(!t) return '';
     const d=new Date(t); if(!isFinite(d.getTime())) return '';
-    const mo=d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
-    const hm=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
+    const F=window.gifos&&gifos.i18n&&gifos.i18n.fmt; // the system locale (GifOS Settings)
+    const mo=F?F.date(d,{month:'short',day:'numeric'}):d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
+    const hm=F?F.clockTime(d):('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
     return mo+' '+hm;
   }
   function ordered(items){
@@ -206,7 +208,7 @@
       : 'Press <b>Invite</b> in the top bar to sign with friends.');
   }
   if (window.gifos) gifos.me().then(function(m){ me = { id: m.id, name: m.name || 'You' }; setWho(); beat(); });
-  function ago(t){ if(!t) return ''; var d=Date.now()-t; if(d<45000) return 'just now'; if(d<3600000) return Math.max(1,Math.floor(d/60000))+'m ago'; if(d<86400000) return Math.floor(d/3600000)+'h ago'; var dt=new Date(t); return (dt.getMonth()+1)+'/'+dt.getDate(); }
+  function ago(t){ if(!t) return ''; var d=Date.now()-t; if(d<45000) return 'just now'; if(d<3600000) return Math.max(1,Math.floor(d/60000))+'m ago'; if(d<86400000) return Math.floor(d/3600000)+'h ago'; var dt=new Date(t); var F=window.gifos&&gifos.i18n&&gifos.i18n.fmt; return F?F.date(dt,{month:'numeric',day:'numeric'}):(dt.getMonth()+1)+'/'+dt.getDate(); }
   function render(items){
     items=items||[];
     list.innerHTML = items.length
@@ -875,8 +877,9 @@
   }
   if(window.gifos) gifos.me().then(function(m){ me={id:m.id,name:m.name||'You'}; beat(); });
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-  function hhmm(t){ if(!t) return ''; const d=new Date(t); return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); }
-  function fmt(n){ n=+n||0; return n>=1e6?(n/1e6).toFixed(1)+' MB':n>=1024?Math.round(n/1024)+' KB':n+' B'; }
+  const L10N=window.gifos&&gifos.i18n&&gifos.i18n.fmt; // the system locale (GifOS Settings)
+  function hhmm(t){ if(!t) return ''; const d=new Date(t); return L10N?L10N.clockTime(d):('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); }
+  function fmt(n){ n=+n||0; if(L10N) return n>=1e6?L10N.size(n/1e6,'MB',1):n>=1024?L10N.size(Math.round(n/1024),'KB',0):L10N.size(n,'B',0); return n>=1e6?(n/1e6).toFixed(1)+' MB':n>=1024?Math.round(n/1024)+' KB':n+' B'; }
   function b64(bytes){ let s=''; for(let i=0;i<bytes.length;i+=8192) s+=String.fromCharCode.apply(null,bytes.subarray(i,i+8192)); return btoa(s); }
   const atts={}; // att id -> data URL | 'loading' | 'gone'
   function fetchAtt(m){
@@ -4258,6 +4261,8 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
   function manifest(appId, name, accent, extra) {
     return JSON.stringify(Object.assign({
       gifos: '1.0', appId, name, version: '0.2.0', entry: 'index.html', accent,
+      // Built-in: its words live in GifOS's catalogs, i18n/<locale>/apps/<appId>.json.
+      i18n: 'gifos',
       capabilities: { db: true, multiplayer: true, network: [] },
     }, extra || {}));
   }
@@ -4494,7 +4499,8 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
   function esc(s){ var d=document.createElement('div'); d.textContent=s==null?'':s; return d.innerHTML; }
   var toastT; function toast(m, hold){ var t=document.getElementById('toast'); t.textContent=m; t.classList.add('on'); clearTimeout(toastT); if(!hold) toastT=setTimeout(function(){ t.classList.remove('on'); }, 2600); }
   var KIND={ image:'🖼', audio:'🎵', video:'🎬' };
-  function fmtSize(n){ n=+n||0; return n>=1e6?(n/1e6).toFixed(1)+' MB':n>=1024?Math.round(n/1024)+' KB':n+' B'; }
+  var L10N=window.gifos&&gifos.i18n&&gifos.i18n.fmt; // the system locale (GifOS Settings)
+  function fmtSize(n){ n=+n||0; if(L10N) return n>=1e6?L10N.size(n/1e6,'MB',1):n>=1024?L10N.size(Math.round(n/1024),'KB',0):L10N.size(n,'B',0); return n>=1e6?(n/1e6).toFixed(1)+' MB':n>=1024?Math.round(n/1024)+' KB':n+' B'; }
 
   // ---- thumbnails: a small jpeg baked at import so the grid never loads blobs ----
   function downscale(src, w, h){ if(!w||!h) return '';
@@ -4852,7 +4858,7 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
       if(!clip||!clip.bytes) return;
       var bytes=new Uint8Array(clip.bytes);
       var mime=clip.mime||(kind==='photo'?'image/jpeg':kind==='audio'?'audio/webm':'video/webm');
-      var label=(kind==='photo'?'Photo':kind==='audio'?'Recording':'Clip')+' · '+new Date().toLocaleString();
+      var label=(kind==='photo'?'Photo':kind==='audio'?'Recording':'Clip')+' · '+(L10N?L10N.dateTime(new Date()):new Date().toLocaleString());
       await store(bytes, mime, label, 'Captured');
     }catch(err){ var m=String(err&&err.message||err); if(!/cancel/i.test(m)) toast(m.slice(0,90)); }
   }
@@ -5723,7 +5729,8 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
   function toast(m){ var t=document.getElementById('toast'); t.textContent=m; t.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(function(){ t.classList.remove('on'); }, 2800); }
   function typeOf(mime){ mime=String(mime||''); return mime.indexOf('image/')===0?'image':mime.indexOf('video/')===0?'video':mime.indexOf('audio/')===0?'audio':''; }
   function nameFor(shot){
-    var t=new Date().toLocaleString();
+    var F=window.gifos&&gifos.i18n&&gifos.i18n.fmt; // the system locale (GifOS Settings)
+    var t=F?F.dateTime(new Date()):new Date().toLocaleString();
     var m=shot.mode||'';
     if(shot.kind==='video' || (shot.mime||'').indexOf('video/')===0) return 'Video · '+t;
     if((shot.mime||'')==='image/gif'){

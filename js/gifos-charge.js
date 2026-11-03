@@ -320,7 +320,7 @@
       row('Amount', fmtUsdUnits(receipt.amount)) +
       row('Paid', PAID_BY[receipt.rail] || String(receipt.rail || '')) +
       (opts.payingTo ? row('To', opts.payingTo) : '') +
-      row('When', receipt.at ? new Date(receipt.at).toLocaleString() : '') +
+      row('When', receipt.at ? ((root.GifOS && root.GifOS.i18n) ? root.GifOS.i18n.fmt.dateTime(receipt.at) : new Date(receipt.at).toLocaleString()) : '') +
       row('Transaction', String(receipt.tx || '')) +
       '<p class="foot">This file IS the proof: it carries a receipt signed by gifos.app, and opening it on any GifOS computer verifies the signature and registers the purchase there. Sharing it shares your license — the app treats whoever holds this receipt as the same buyer (same saves, same identity). Keep it with your backups.</p>' +
       '<p class="foot" id="gifos-pay-support">' + paymentSupportHtml() + '</p>' +

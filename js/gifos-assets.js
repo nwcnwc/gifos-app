@@ -148,7 +148,11 @@
     });
   }
 
-  const fmtMB = (n) => (n >= 1e9 ? (n / 1e9).toFixed(2) + ' GB' : (n / 1e6).toFixed(1) + ' MB');
+  const fmtMB = (n) => {
+    const f = root.GifOS && root.GifOS.i18n && root.GifOS.i18n.fmt; // the system locale: 1.5 MB, 1,5 MB
+    if (n >= 1e9) return f ? f.size(n / 1e9, 'GB', 2) : (n / 1e9).toFixed(2) + ' GB';
+    return f ? f.size(n / 1e6, 'MB', 1) : (n / 1e6).toFixed(1) + ' MB';
+  };
 
   // Read a response body to a Blob while REPORTING PROGRESS.
   //

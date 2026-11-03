@@ -1,0 +1,17 @@
+{
+  "settings.lang.row": "Language and region",
+  "settings.lang.title": "Language and region",
+  "settings.lang.intro": "GifOS follows your browser’s language unless you choose one here. Apps that support languages follow it too. Changes apply as you make them, on every GifOS page in this browser.",
+  "settings.lang.language": "Language",
+  "settings.lang.region": "Region",
+  "settings.lang.clock": "Time",
+  "settings.lang.auto": "Automatic ({name})",
+  "settings.lang.clockAuto": "Automatic ({example})",
+  "settings.lang.clock12": "12-hour ({example})",
+  "settings.lang.clock24": "24-hour ({example})",
+  "settings.lang.example": "Example",
+  "settings.lang.untranslated": "GifOS’s own words are in English for now. Dates, times and numbers already follow your choice.",
+  "settings.lang.reset": "Use browser settings",
+  "settings.lang.sourceBrowser": "From your browser",
+  "settings.lang.sourceSettings": "Chosen here"
+}

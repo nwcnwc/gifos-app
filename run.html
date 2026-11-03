@@ -4579,6 +4579,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (db && /^gifos_vm_[\w-]+$/.test(db)) window.GIFOS_DB_NAME = db;
     })();
   </script>
+  <script src="js/gifos-i18n.js" defer></script>
   <script src="js/gifos-gif.js" defer></script>
   <script src="js/gifos-help.js" defer></script>
   <script src="js/gifos-fullscreen.js" defer></script>
@@ -5283,13 +5284,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         badLink: 'Eso no es un enlace ni un id.',
       },
     };
+    // The language is GifOS's system locale (Settings → Language and region,
+    // else the browser's), from gifos-i18n.js.
+    const L10N = GifOS.i18n || null;
+    if (L10N && L10N.ui() !== 'en') L10N.load('meet');
     function uiLang() {
-      const l = (navigator.language || 'en').toLowerCase();
+      const l = ((L10N && L10N.language()) || navigator.language || 'en').toLowerCase();
       if (l.indexOf('de') === 0) return 'de';
       if (l.indexOf('es') === 0) return 'es';
       return 'en';
     }
     function uiText(key, en) {
+      // A meet.json catalog for the UI language wins (i18n/<locale>/meet.json).
+      if (L10N && L10N.ui() !== 'en' && L10N.has('meet.' + key)) return L10N.t('meet.' + key);
       const pack = UI_TEXT[uiLang()];
       return (pack && pack[key]) || en || '';
     }
@@ -6002,12 +6009,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function bcWhenWords(ms, now) {
       const d = new Date(ms), n = new Date(now);
       const plain = (x) => x.replace(/[\u202f\u00a0]/g, ' ');
-      const time = plain(d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }));
+      const time = plain(L10N ? L10N.fmt.time(d, { hour: 'numeric', minute: '2-digit' }) : d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }));
       const day0 = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
       const days = Math.round((day0(d) - day0(n)) / 86400000);
       const day = days === 0 ? 'today' : days === 1 ? 'tomorrow'
-        : days > 1 && days < 7 ? d.toLocaleDateString(undefined, { weekday: 'long' })
-        : plain(d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }));
+        : days > 1 && days < 7 ? (L10N ? L10N.fmt.date(d, { weekday: 'long' }) : d.toLocaleDateString(undefined, { weekday: 'long' }))
+        : plain(L10N ? L10N.fmt.date(d, { weekday: 'short', month: 'short', day: 'numeric' }) : d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }));
       return day + ' at ' + time;
     }
     // "in 2 h 5 min", "in 4 min", "in under a minute".
@@ -22160,7 +22167,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function chatWhen(at) {
       const n = Number(at);
       if (!n) return '';
-      try { return new Date(n).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+      try { return L10N ? L10N.fmt.time(n, { hour: 'numeric', minute: '2-digit' }) : new Date(n).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
       catch (e) { return ''; }
     }
     function chatPeople() {

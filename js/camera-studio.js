@@ -719,7 +719,7 @@
     function recTick() {
       if (!recording) return;
       const s = Math.max(0, Math.floor((Date.now() - recStart) / 1000));
-      recTime.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+      recTime.textContent = (root.GifOS && root.GifOS.i18n) ? root.GifOS.i18n.fmt.clock(s) : Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
     }
 
     function startVideo() {

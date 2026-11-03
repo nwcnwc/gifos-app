@@ -150,10 +150,59 @@
   }
   try { if (store.onIdentity) store.onIdentity(publishIdentity); } catch (e) {}
 
+  // The system locale (gifos-i18n.js), handed to every app frame: a snapshot
+  // baked into the shim so gifos.locale() answers synchronously at boot, and a
+  // 'locale' message to each live frame when it changes. Apps that never ask
+  // are unaffected.
+  function localeSnap() {
+    try { return GifOS.i18n ? GifOS.i18n.locale() : null; } catch (e) { return null; }
+  }
+  function i18nCoreSrc() {
+    try { return GifOS.i18n && GifOS.i18n.core ? String(GifOS.i18n.core) : 'null'; } catch (e) { return 'null'; }
+  }
+  function publishLocale() {
+    const loc = localeSnap();
+    if (!loc) return;
+    identFrames.forEach((ifr) => {
+      try {
+        const w = ifr && ifr.contentWindow;
+        if (w) w.postMessage({ ns: 'gifos', type: 'locale', locale: loc }, '*');
+      } catch (e) {}
+    });
+  }
+  try { if (GifOS.i18n) GifOS.i18n.onChange(publishLocale); } catch (e) {}
+  // An app's words (gifos.i18n.load): its own i18n/<locale>.json files when
+  // the GIF carries them; for a built-in app (manifest "i18n": "gifos") the
+  // site's i18n/<locale>/apps/<appId>.json. -> { order, catalogs }.
+  function appCatalogs(files, manifest) {
+    const I = GifOS.i18n;
+    if (!I) return Promise.resolve({ order: ['en'], catalogs: {} });
+    const loc = I.locale();
+    const C = I.core();
+    const own = Object.keys(files || {}).map((p) => (/^i18n\/([A-Za-z0-9-]+)\.json$/.exec(norm(p)) || [])[1]).filter(Boolean);
+    const catalogs = {};
+    if (own.length) {
+      const order = C.chain(C.parts(loc.baseName), own);
+      for (const l of order) {
+        const key = Object.keys(files).find((p) => norm(p) === 'i18n/' + l + '.json');
+        try { const obj = JSON.parse(gif.bytesToText(files[key])); if (obj && typeof obj === 'object') catalogs[l] = obj; } catch (e) {}
+      }
+      return Promise.resolve({ order, catalogs });
+    }
+    const appId = String((manifest && manifest.appId) || '').replace(/[^a-z0-9_-]/gi, '');
+    if (!appId || !manifest || manifest.i18n !== 'gifos') return Promise.resolve({ order: loc.catalogs, catalogs });
+    const order = loc.catalogs.indexOf('en') === -1 ? loc.catalogs.concat(['en']) : loc.catalogs;
+    return Promise.all(order.map((l) => root.fetch(I.catalogUrl(l, 'apps/' + appId))
+      .then((r) => (r.ok ? r.json() : null)).catch(() => null)
+      .then((obj) => { if (obj && typeof obj === 'object') catalogs[l] = obj; })))
+      .then(() => ({ order, catalogs }));
+  }
+
   // ---- app-facing shim injected into the sandboxed iframe -----------------
   function clientShim(gen, nonce) {
     return `(function(){
       var GEN = ${Number(gen) || 1}, NONCE = ${JSON.stringify(String(nonce || ''))};
+      var LOCALE0 = ${JSON.stringify(localeSnap()).replace(/</g, '\\u003c')}, I18N_CORE = (${i18nCoreSrc()});
       // Neuter WebRTC: CSP's 'webrtc' directive is not universally supported,
       // so hard-remove the constructors before app code runs. connect-src 'none'
       // already blocks fetch/XHR/WebSocket/EventSource/beacons; this closes the
@@ -205,6 +254,41 @@
         } catch(e){}
       })();
       var pending = {}, subs = {}, backCbs = [];
+      // ---- the system locale (see docs: LANGUAGE AND REGION) ----
+      // gifos.locale() is synchronous; catalogs (gifos.i18n.load) come over
+      // the bridge. Formatters follow the locale; words follow the app's
+      // catalogs. Nothing here touches the app's document.
+      var I18 = I18N_CORE ? I18N_CORE() : null;
+      var loc = LOCALE0 || { tag:'en', baseName:'en', language:'en', script:'', region:'', ui:'en', catalogs:['en'], dir:'ltr', hourCycle:'', hour12:false, timeZone:'', calendar:'gregory', numberingSystem:'latn', browser:[], prefs:{}, source:'browser' };
+      var appCats = {}, appOrder = null, appMiss = {}, catP = null, locCbs = [];
+      function appLoc(){ return { tag: loc.tag, catalogs: appOrder || loc.catalogs }; }
+      var tFn = I18 ? I18.translator(appLoc, appCats, appMiss) : function(k){ return k; };
+      function appLocal(key){ var o = appOrder || []; for (var i = 0; i < o.length; i++) { if (o[i] === 'en') break; if (appCats[o[i]] && Object.prototype.hasOwnProperty.call(appCats[o[i]], key)) return true; } return false; }
+      var fmtObj = {};
+      function bindFmt(){
+        if (!I18) return;
+        var l = JSON.parse(JSON.stringify(loc)); if (appOrder && appOrder.length) l.ui = appOrder[0];
+        var f = I18.makeFmt(l, tFn, appLocal); for (var k in f) fmtObj[k] = f[k];
+      }
+      bindFmt();
+      function loadCats(){
+        if (!catP) catP = rpc({ type:'i18n' }).then(function(r){
+          for (var k in appCats) delete appCats[k];
+          var c = (r && r.catalogs) || {};
+          for (var l in c) if (c[l] && typeof c[l] === 'object') appCats[l] = c[l];
+          appOrder = (r && r.order) || null; bindFmt();
+          return JSON.parse(JSON.stringify(loc));
+        }, function(){ return JSON.parse(JSON.stringify(loc)); });
+        return catP;
+      }
+      function setLocale(next){
+        loc = next; var had = !!catP; catP = null; appOrder = null; bindFmt();
+        (had ? loadCats() : Promise.resolve()).then(function(){
+          var snap = JSON.parse(JSON.stringify(loc));
+          for (var i = 0; i < locCbs.length; i++) { try { locCbs[i](snap); } catch (e) {} }
+          try { window.dispatchEvent(new CustomEvent('gifos:localechange', { detail: snap })); } catch (e) {}
+        });
+      }
       // onPart: an OPTIONAL callback kept on THIS side of the wall. A function
       // cannot cross postMessage, so the app hands it to rpc() and the runtime
       // sends back plain 'part' messages carrying the id — the callback is
@@ -261,6 +345,7 @@
           var cbs = window.__gifosIdentCbs || [];
           for (var ii = 0; ii < cbs.length; ii++) { try { cbs[ii](d.identity); } catch (err) {} }
         }
+        if(d.type==='locale' && d.locale){ setLocale(d.locale); }
         if(d.type==='db-change'){
           if(d.collection==='*'){ Object.keys(subs).forEach(refresh); }
           else refresh(d.collection);
@@ -473,6 +558,25 @@
         assetHas: function(path){ return rpc({type:'asset-has', path:path}).then(function(r){ return !!(r && r.present); }); },
         info: function(){ return rpc({type:'info'}); },
         me: function(){ return rpc({type:'me'}); },
+        // The person's language and region: { tag, language, region, ui,
+        // hourCycle, timeZone, ... } (BCP 47 tag; pass it to Intl). Sync.
+        locale: function(){ return JSON.parse(JSON.stringify(loc)); },
+        // cb(locale) after the person changes it; returns an unsubscribe.
+        onLocaleChange: function(cb){
+          if (typeof cb !== 'function') return function(){};
+          locCbs.push(cb);
+          return function(){ var i = locCbs.indexOf(cb); if (i >= 0) locCbs.splice(i, 1); };
+        },
+        // Words and formats in that locale. load() fetches this app's
+        // catalogs (i18n/<locale>.json in the GIF); t(key, params) reads them,
+        // ICU plurals included, falling back to en and then to the key.
+        i18n: {
+          load: loadCats,
+          t: function(key, params){ return tFn(key, params); },
+          format: function(msg, params){ return I18 ? I18.format(msg, params, loc.tag, (appOrder && appOrder[0]) || loc.ui) : String(msg); },
+          fmt: fmtObj,
+          missing: function(){ return Object.keys(appMiss).sort(); }
+        },
         onIdentity: function(cb){
           if (typeof cb !== 'function') return function(){};
           if (!window.__gifosIdentCbs) window.__gifosIdentCbs = [];
@@ -1437,7 +1541,7 @@
     let t0 = Date.now(); const tEl = box.querySelector('#gc-t');
     const iv = kind === 'photo' ? null : setInterval(() => {
       const s = Math.floor((Date.now() - t0) / 1000);
-      if (tEl) tEl.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+      if (tEl) tEl.textContent = GifOS.i18n ? GifOS.i18n.fmt.clock(s) : Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
     }, 250);
     if (opts.onStop) box.querySelector('#gc-stop').onclick = opts.onStop;
     const flipBtn = box.querySelector('#gc-flip'); if (flipBtn && opts.onFlip) flipBtn.onclick = opts.onFlip;
@@ -2774,7 +2878,12 @@
   // interrupted.
   const busy = { n: 0, el: null, noteEl: null, subEl: null, barEl: null, t0: 0, tick: null, show: null, name: '', note: '', expect: 0, frac: null };
 
+  // A number of megabytes with fixed decimals, in the system locale's digits.
+  const mbText = (v, digits) => (GifOS.i18n
+    ? GifOS.i18n.fmt.number(Number(v.toFixed(digits)), { useGrouping: false, minimumFractionDigits: digits, maximumFractionDigits: digits })
+    : v.toFixed(digits));
   const fmtDur = (ms) => {
+    if (GifOS.i18n) return GifOS.i18n.fmt.duration(ms);
     const s = Math.max(0, Math.round(ms / 1000));
     return s < 60 ? s + 's' : Math.floor(s / 60) + 'm' + (s % 60 ? ' ' + (s % 60) + 's' : '');
   };
@@ -3609,6 +3718,7 @@
       // change visibility (setVisibility). A guest view is not the owner.
       else if (d.type === 'info') reply({ ok: true, result: { appId: manifest.appId, name: manifest.name, version: manifest.version, owner: !!(db && db.owner) } });
       else if (d.type === 'me') reply({ ok: true, result: identity() });
+      else if (d.type === 'i18n') appCatalogs(files, manifest).then((result) => reply({ ok: true, result }), () => reply({ ok: true, result: { order: ['en'], catalogs: {} } }));
       // The app asking what its link said. Answers once — and only once — the
       // person has confirmed; null if nothing was asked, or if they declined.
       else if (d.type === 'launch') launchGate.then((result) => reply({ ok: true, result }));
@@ -4062,7 +4172,7 @@
       if (!rec) return refuse('File not found on this desktop.');
       const appName = String(rec.name || 'app').replace(/\.gif$/i, '');
       const big = rec.bytes && rec.bytes.length > 2097152;
-      splash.say('Opening ' + appName + (big ? ' — unpacking ' + (rec.bytes.length / 1048576).toFixed(0) + ' MB…' : '…'));
+      splash.say('Opening ' + appName + (big ? ' — unpacking ' + mbText(rec.bytes.length / 1048576, 0) + ' MB…' : '…'));
       if (big) {
         splash.art(rec.bytes);
         // The GIF's own global color table is sitting in its first bytes — the
@@ -4078,7 +4188,7 @@
       // which step they are.
       const unpackNote = big ? {
         onProgress: (frac, done, total) => splash.say('Unpacking ' + appName + ' (step 1 of 2) — ' +
-          (done * 0.75 / 1048576).toFixed(1) + ' of ' + (total * 0.75 / 1048576).toFixed(1) + ' MB…'),
+          mbText(done * 0.75 / 1048576, 1) + ' of ' + mbText(total * 0.75 / 1048576, 1) + ' MB…'),
       } : undefined;
       return Promise.all([gif.decode(appBytes, unpackNote), store.getState(fileId)]).then(([archive, st]) => {
         const locked = !!(lock && (lock.isLockedItem(item) || lock.isSealed(st)));

@@ -301,6 +301,43 @@ WHO/WHAT AM I
                                consents); call at boot, treat null as "open
                                normally", never block first paint on it.
 
+LANGUAGE AND REGION — gifos.locale / gifos.i18n  [no capability needed; optional]
+   GifOS has one locale for the whole computer: the browser's language by
+   default, or what the person chose in Settings → Language and region.
+   Using it is optional — an app that ignores it is unaffected.
+   gifos.locale()           -> SYNCHRONOUS (no await). { tag, baseName,
+                               language, script, region, ui, dir, hourCycle,
+                               hour12, timeZone, calendar, numberingSystem,
+                               source: 'browser'|'settings' }.
+                               tag is BCP 47 and carries the chosen clock
+                               (e.g. "de-DE-u-hc-h12"): pass it to Intl.
+                               new Intl.DateTimeFormat(gifos.locale().tag, …)
+   gifos.onLocaleChange(cb) -> cb(locale) after a change (no reload);
+                               returns an unsubscribe function. The window
+                               also gets a 'gifos:localechange' event
+                               (event.detail = the locale).
+   gifos.i18n.fmt           -> formatters in that locale (synchronous):
+     .date(d, opts) .time(d, opts) .dateTime(d, opts)   Intl options, or none
+     .number(n, opts)  .fileSize(bytes)  .size(value, 'MB', digits)
+     .duration(ms) -> "3m 20s"   .clock(seconds) -> "4:07"
+     .relative(ts) -> "5m ago"   .list([...])   .plural(n) -> 'one'|'other'…
+   YOUR OWN WORDS — ship catalogs inside the GIF, one per locale:
+     i18n/en.json  { "greeting": "Hello {name}",
+                     "files": "{n, plural, one {# file} other {# files}}" }
+     i18n/es.json  { "greeting": "Hola {name}", … }
+   await gifos.i18n.load()  -> loads the best catalogs for the locale
+                               (es-MX reads es-MX, then es, then en).
+   gifos.i18n.t(key, params) -> the message, ICU MessageFormat: {arg},
+                               {n, number}, {n, plural, =0 {…} one {# …}
+                               other {# …}}, {n, selectordinal, …},
+                               {x, select, a {…} other {…}}. A key missing
+                               in the locale falls back to en, then to the
+                               key itself. Call load() again after a
+                               locale change (or just re-render: the
+                               runtime reloads catalogs before cb fires
+                               once you have loaded them).
+   gifos.i18n.format(msg, params) -> format a message string directly.
+
 BROKERED CAPTURE  [capabilities.microphone / camera]
    The app never touches the live device: GifOS records behind a visible
    indicator it owns, then hands back finished bytes.

@@ -40,14 +40,18 @@
   // "index.html" would resolve to the nonexistent /store/index.html.
   const BASE = FROZEN ? location.pathname.replace(/\/[^/]*$/, '/') : '/';
 
+  // Sizes and dates in the system locale (GifOS.i18n).
+  const L10N = GifOS.i18n;
   function human(bytes) {
     if (!(bytes > 0)) return '';
-    if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB';
-    return (bytes / 1048576).toFixed(bytes < 10485760 ? 1 : 0) + ' MB';
+    if (bytes < 1024 * 1024) return L10N ? L10N.fmt.size(Math.round(bytes / 1024), 'KB', 0) : Math.round(bytes / 1024) + ' KB';
+    const digits = bytes < 10485760 ? 1 : 0;
+    return L10N ? L10N.fmt.size(bytes / 1048576, 'MB', digits) : (bytes / 1048576).toFixed(digits) + ' MB';
   }
   function niceDate(iso) {
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
     if (!m) return iso || '';
+    if (L10N) return L10N.fmt.date(new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])), { year: 'numeric', month: 'long', day: 'numeric' });
     const MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     return MON[Number(m[2]) - 1] + ' ' + Number(m[3]) + ', ' + m[1];
   }

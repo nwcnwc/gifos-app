@@ -2259,9 +2259,9 @@
     if (!total) return '';
     // KB matters here: rounding a small cache to "0 MB" would turn the
     // reassurance into a puzzle.
-    const size = total >= 1e9 ? (total / 1e9).toFixed(2) + ' GB'
-      : total >= 1e6 ? Math.round(total / 1e6) + ' MB'
-        : Math.max(1, Math.round(total / 1e3)) + ' KB';
+    const size = total >= 1e9 ? sizeIn(total / 1e9, 'GB', 2)
+      : total >= 1e6 ? sizeIn(Math.round(total / 1e6), 'MB', 0)
+        : sizeIn(Math.max(1, Math.round(total / 1e3)), 'KB', 0);
     return ' This also frees the <b>' + size + '</b> of downloaded model data on this device.';
   }
 
@@ -2624,11 +2624,15 @@
   // ---------- storage ----------
   // Persistent storage is requested automatically at boot — normal people
   // shouldn't have to know eviction exists. Details live in Settings→Advanced.
+  // Sizes and times read in the system locale (GifOS.i18n): 1.2 MB, 1,2 MB.
+  function sizeIn(v, unit, digits) {
+    return GifOS.i18n ? GifOS.i18n.fmt.size(v, unit, digits) : v.toFixed(digits) + ' ' + unit;
+  }
   function fmtBytes(n) {
-    if (n >= 1e9) return (n / 1e9).toFixed(1) + ' GB';
-    if (n >= 1e6) return (n / 1e6).toFixed(1) + ' MB';
-    if (n >= 1e3) return (n / 1e3).toFixed(0) + ' KB';
-    return n + ' B';
+    if (n >= 1e9) return sizeIn(n / 1e9, 'GB', 1);
+    if (n >= 1e6) return sizeIn(n / 1e6, 'MB', 1);
+    if (n >= 1e3) return sizeIn(n / 1e3, 'KB', 0);
+    return sizeIn(n, 'B', 0);
   }
   function requestPersistence() {
     try {
@@ -2831,7 +2835,7 @@
   // re-seeds. Everything else in the gifos_* namespace is computer state and gets
   // swept (see eraseComputer).
   const ERASE_KEEP = new Set([
-    'gifos_ui_scale', 'gifos_meet_bar',
+    'gifos_ui_scale', 'gifos_meet_bar', 'gifos_locale',
     'gifos_pin', 'gifos_channel', 'gifos_current', 'gifos_pin_until',
   ]);
 
@@ -3374,6 +3378,93 @@
     return s;
   }
 
+  // ---- Language and region (Settings) -----------------------------------------
+  // The choice lives in GifOS.i18n (localStorage `gifos_locale`, every page).
+  // Empty means "follow the browser". It applies as it is made, like Look.
+  const I18N = GifOS.i18n;
+  const LANG_CHOICES = ['en', 'es', 'zh-Hans', 'zh-Hant', 'ru', 'fr', 'de', 'pt', 'it', 'ja', 'ko', 'ar', 'hi', 'bn', 'tr',
+    'vi', 'id', 'ms', 'fil', 'th', 'pl', 'nl', 'uk', 'cs', 'ro', 'hu', 'el', 'sv', 'da', 'fi', 'nb', 'he', 'fa', 'sw'];
+  const REGION_CHOICES = ['US', 'GB', 'CA', 'AU', 'NZ', 'IE', 'IN', 'ZA', 'NG', 'KE', 'SG', 'PH', 'MX', 'ES', 'AR', 'CO', 'CL',
+    'PE', 'VE', 'CU', 'DO', 'BR', 'PT', 'FR', 'BE', 'CH', 'DE', 'AT', 'IT', 'NL', 'SE', 'NO', 'DK', 'FI', 'PL', 'CZ', 'RO',
+    'HU', 'GR', 'TR', 'UA', 'RU', 'BY', 'KZ', 'IL', 'SA', 'AE', 'EG', 'MA', 'IR', 'PK', 'BD', 'CN', 'TW', 'HK', 'JP', 'KR',
+    'VN', 'TH', 'MY', 'ID', 'MO'];
+  function langName(code, inLang) {
+    try { return new Intl.DisplayNames([inLang || code], { type: 'language' }).of(code) || code; } catch (e) { return code; }
+  }
+  function regionName(code, inLang) {
+    try { return new Intl.DisplayNames([inLang], { type: 'region' }).of(code) || code; } catch (e) { return code; }
+  }
+  // "English (United States)" — the status line on the Settings root.
+  function localeStatus() {
+    if (!I18N) return '';
+    const l = I18N.locale();
+    try { return new Intl.DisplayNames([l.ui], { type: 'language' }).of(l.baseName) || l.baseName; } catch (e) { return l.baseName; }
+  }
+  function langSectionHtml() {
+    const t = I18N.t;
+    return '<p class="add-help">' + escapeHtml(t('settings.lang.intro')) + '</p>' +
+      '<div class="set-card set-pad">' +
+        '<label class="set-label" for="set-lang">' + escapeHtml(t('settings.lang.language')) + '</label>' +
+        '<select id="set-lang" aria-label="' + escapeHtml(t('settings.lang.language')) + '"></select>' +
+        '<label class="set-label" for="set-region">' + escapeHtml(t('settings.lang.region')) + '</label>' +
+        '<select id="set-region" aria-label="' + escapeHtml(t('settings.lang.region')) + '"></select>' +
+        '<label class="set-label" for="set-clock">' + escapeHtml(t('settings.lang.clock')) + '</label>' +
+        '<select id="set-clock" aria-label="' + escapeHtml(t('settings.lang.clock')) + '"></select>' +
+      '</div>' +
+      '<p class="add-help"><b>' + escapeHtml(t('settings.lang.example')) + '</b> <span id="set-lang-example" class="set-lang-example"></span></p>' +
+      '<p class="add-help" id="set-lang-note" hidden></p>' +
+      '<button type="button" class="widebtn" id="set-lang-reset">' + escapeHtml(t('settings.lang.reset')) + '</button>';
+  }
+  function wireLangSection(box) {
+    if (!I18N) return;
+    const langSel = box.querySelector('#set-lang');
+    const regSel = box.querySelector('#set-region');
+    const clockSel = box.querySelector('#set-clock');
+    if (!langSel || !regSel || !clockSel) return;
+    const opt = (value, label, on) => '<option value="' + escapeHtml(value) + '"' + (on ? ' selected' : '') + '>' + escapeHtml(label) + '</option>';
+    const sample = new Date(2026, 0, 15, 13, 30);
+    const paint = () => {
+      const l = I18N.locale();
+      const p = l.prefs;
+      const t = I18N.t;
+      const browser = I18N.core().resolve(l.browser, {}, I18N.LOCALES);
+      langSel.innerHTML = opt('', t('settings.lang.auto', { name: langName(browser.language + (browser.script && /^zh/.test(browser.language) ? '-' + browser.script : ''), l.ui) }), !p.language) +
+        LANG_CHOICES.map((c) => {
+          const own = langName(c, c), here = langName(c, l.ui);
+          return opt(c, own === here ? own : own + ' — ' + here, p.language === c);
+        }).join('');
+      if (p.language && LANG_CHOICES.indexOf(p.language) === -1) langSel.insertAdjacentHTML('beforeend', opt(p.language, langName(p.language, p.language), true));
+      const regions = REGION_CHOICES.slice();
+      if (l.region && regions.indexOf(l.region) === -1) regions.push(l.region);
+      regions.sort((a, b) => regionName(a, l.ui).localeCompare(regionName(b, l.ui), l.ui));
+      regSel.innerHTML = opt('', t('settings.lang.auto', { name: browser.region ? regionName(browser.region, l.ui) : '—' }), !p.region) +
+        regions.map((c) => opt(c, regionName(c, l.ui), p.region === c)).join('');
+      const ex = (hc) => { try { return sample.toLocaleTimeString(l.baseName, hc ? { hour: 'numeric', minute: '2-digit', hourCycle: hc } : { hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } };
+      clockSel.innerHTML = opt('', t('settings.lang.clockAuto', { example: ex('') }), !p.hourCycle) +
+        opt('h12', t('settings.lang.clock12', { example: ex('h12') }), p.hourCycle === 'h12') +
+        opt('h23', t('settings.lang.clock24', { example: ex('h23') }), p.hourCycle === 'h23');
+      const exEl = box.querySelector('#set-lang-example');
+      if (exEl) exEl.textContent = I18N.fmt.date(sample, { dateStyle: 'full' }) + ' · ' + I18N.fmt.time(sample, { hour: 'numeric', minute: '2-digit' }) + ' · ' + I18N.fmt.number(1234567.89) + ' · ' + I18N.fmt.fileSize(3400000);
+      const note = box.querySelector('#set-lang-note');
+      if (note) {
+        const untranslated = l.ui.split('-')[0] !== l.language;
+        note.hidden = !untranslated;
+        note.textContent = untranslated ? t('settings.lang.untranslated') : '';
+      }
+      const st = box.querySelector('#set-status-lang');
+      if (st) st.textContent = localeStatus();
+    };
+    const apply = () => I18N.setPrefs({ language: langSel.value, region: regSel.value, hourCycle: clockSel.value }).then(paint);
+    langSel.addEventListener('change', apply);
+    regSel.addEventListener('change', apply);
+    clockSel.addEventListener('change', apply);
+    const reset = box.querySelector('#set-lang-reset');
+    if (reset) reset.onclick = () => I18N.setPrefs({}).then(paint);
+    // Another tab chose a language: show it here too.
+    const off = I18N.onChange(() => { if (!box.isConnected) { off(); return; } paint(); });
+    paint();
+  }
+
   // ---- Payments: what this computer bought, spent, and allows ----------------
   // The purse itself lives in localStorage under pay.* (written by run.html's
   // broker, gifos-pay-broker.js) — this panel is a WINDOW onto it and owns no
@@ -3421,7 +3512,7 @@
       const led = a.led.map((e) =>
         '<div class="pay-led-row"><span class="mono">' + payUsd(e.amount) + '</span> ' +
         escapeHtml(e.reason || '') + ' <span class="pay-dim">' + escapeHtml(e.rail || '') +
-        (e.at ? ' · ' + new Date(e.at).toLocaleDateString() : '') + '</span></div>').join('');
+        (e.at ? ' · ' + (GifOS.i18n ? GifOS.i18n.fmt.date(e.at) : new Date(e.at).toLocaleDateString()) : '') + '</span></div>').join('');
       const ent = a.ent.map((e) =>
         '<span class="pay-ent" data-app="' + escapeHtml(id) + '" data-sku="' + escapeHtml(e.sku) + '">' + escapeHtml(e.sku) +
         ' <button class="pay-ent-del row-del" data-key="' + escapeHtml(e.key) + '" data-app="' + escapeHtml(id) + '" data-sku="' + escapeHtml(e.sku) + '" title="Forget this purchase on this computer (the payment is not refunded)">' + DEL_ICON + '</button></span>').join(' ');
@@ -3471,6 +3562,8 @@
       : 'Not yet protected. GifOS asks automatically; browsers grant it once a site is used a bit. You can also keep a backup GIF (GifOS menu → Back up Home Screen).';
 
     let prefs = null; try { prefs = await store.getState('sys::prefs'); } catch (e) {}
+    // The words of Settings → Language and region (and the shared formatters).
+    if (I18N) await I18N.load(['settings', 'common']).catch(() => null);
     const curColor = (prefs && prefs.bg && prefs.bg.color) || '#0a0a0f';
 
     const nameNow = (store.identity().name || '').trim();
@@ -3501,6 +3594,7 @@
           '</div>' +
           '<div class="set-group">Look</div><div class="set-card">' +
             '<button type="button" class="set-row" id="set-go-look"><span class="set-row-t"><b>Background and text</b><span>Color, picture, and text size</span></span><span class="chev" aria-hidden="true">›</span></button>' +
+            (I18N ? '<button type="button" class="set-row" id="set-go-language"><span class="set-row-t"><b>' + escapeHtml(I18N.t('settings.lang.row')) + '</b><span id="set-status-lang">' + escapeHtml(localeStatus()) + '</span></span><span class="chev" aria-hidden="true">›</span></button>' : '') +
           '</div>' +
           '<div class="set-group">For apps</div><div class="set-card">' +
             '<button type="button" class="set-row" id="set-go-ai"><span class="set-row-t"><b>AI</b><span id="set-status-ai">' + escapeHtml(aiStatus) + '</span></span><span class="chev" aria-hidden="true">›</span></button>' +
@@ -3543,6 +3637,7 @@
             '<div class="ts-row"><button type="button" id="ts-minus" class="ghost" aria-label="Smaller text">A−</button><span id="ts-val" class="mono" aria-live="polite"></span><button type="button" id="ts-plus" class="ghost" aria-label="Bigger text">A+</button><button type="button" id="ts-reset" class="ghost" aria-label="Reset text size">Reset</button></div>' +
           '</div>' +
         '</section>' +
+        (I18N ? '<section data-page="language" hidden>' + langSectionHtml() + '</section>' : '') +
         '<section data-page="ai" hidden>' + aiSectionHtml() + '</section>' +
         '<section data-page="accounts" hidden>' + apiSectionHtml() + '</section>' +
         '<section data-page="payments" hidden>' + paySectionHtml() + '</section>' +
@@ -3580,7 +3675,7 @@
       '</div>';
     bg.appendChild(box);
     const TITLES = {
-      root: 'Settings', you: 'Your name', look: 'Background and text', ai: 'AI',
+      root: 'Settings', you: 'Your name', look: 'Background and text', language: I18N ? I18N.t('settings.lang.title') : '', ai: 'AI',
       accounts: 'Connected accounts', payments: 'Payments', system: 'System',
       storage: 'Storage', updates: 'Updates', connection: 'Invite connection',
       erase: 'Erase this computer',
@@ -3659,6 +3754,7 @@
     wireAiSection(box);
     wireApiSection(box);
     wirePaySection(box);
+    wireLangSection(box);
     const paintAvatar = () => {
       const img = box.querySelector('#set-avatar-preview');
       if (!img) return;
@@ -4183,6 +4279,7 @@
   function loadInviteHistory() { try { const h = JSON.parse(localStorage.getItem(INVITE_HIST) || '[]'); return Array.isArray(h) ? h : []; } catch (e) { return []; } }
   function saveInviteHistory(h) { try { localStorage.setItem(INVITE_HIST, JSON.stringify(h)); } catch (e) { /* private mode */ } }
   function relTime(ts) {
+    if (GifOS.i18n) return GifOS.i18n.fmt.relative(ts || 0);
     const s = Math.max(0, (Date.now() - (ts || 0)) / 1000);
     if (s < 60) return 'just now';
     if (s < 3600) return Math.floor(s / 60) + 'm ago';
