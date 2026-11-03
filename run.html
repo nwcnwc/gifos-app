@@ -7000,28 +7000,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // identical in every room.)
     // Vote-off-the-island (non-admin rooms): every user carries ONE personal,
     // GLOBAL vote-off list (device ids) across all meetings, in their own
-    // browser. The here-relevant slice syncs to the relay, which boots any
-    // device a majority of the room's devices (min 2) has voted off — and
-    // checks arrivals against the room's standing votes. No ban list exists:
-    // an injected "insta-ban" can only ever cast its author's one vote.
+    // browser. A vote-off is a statement each seated member makes on the room's
+    // own mesh; this page no longer sends a vote-off to the relay.
     const VOTE_KEY = 'gifos_voteoff';
     function loadVoteoffs() { try { return new Set(JSON.parse(localStorage.getItem(VOTE_KEY) || '[]')); } catch (e) { return new Set(); } }
     function saveVoteoffs(s) { try { localStorage.setItem(VOTE_KEY, JSON.stringify(Array.from(s).slice(0, 500))); } catch (e) {} }
     const myVoteoffs = loadVoteoffs(); // device ids I've voted off, anywhere, ever
-    let lastVoteSync = null;
-    let voteTally = {}, voteNeed = 0;  // relay's live tally, keyed by DEVICE id
-    function syncVotes() {
-      if (hasAdminRoom() || !relayUp()) return;
-      const present = new Set(Object.values(devOf));
-      const relevant = Array.from(myVoteoffs).filter((d) => present.has(d)).sort();
-      // ABSTAIN: '*' takes me out of the relay's majority bar for every
-      // vote-off. The Meeting Bot never votes, so it always abstains.
-      const abs = (myStatus.bot || myStageVotes.ab.has('*')) ? ['*'] : [];
-      const sig = relevant.join(',') + '|' + abs.join(',');
-      if (sig === lastVoteSync) return;
-      lastVoteSync = sig;
-      relaySendObj(abs.length ? { t: 'votekick', devs: relevant, abs } : { t: 'votekick', devs: relevant });
-    }
+    let voteTally = {}, voteNeed = 0;  // the room's live tally, keyed by DEVICE id
     // ---- STAGE votes (open rooms): onto the stage / off the stage -----------
     // Same trust shape as vote-off: each voter carries ONLY their own vote
     // lists (device-keyed, capped), which ride their status heartbeat. Every
@@ -17397,7 +17382,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       myId = identity.peerId; // S4: peer id = H(pubkey), unforgeable
       if (myIdReadyResolve) { const resolveId = myIdReadyResolve; myIdReadyResolve = null; resolveId(); }
       try { tryBroadcastStage(); } catch (e) {}
-      lastVoteSync = null;   // a fresh socket re-syncs my standing votes
       pwReasserted = false;  // a fresh socket re-asserts the admin's door lock once
       meshNode = GifOS.meshWire.createMeshNode({
         relayUrl: relay.replace(/\/$/, ''),
@@ -17799,7 +17783,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (roomStateSettled) applyAdminBoot();
           else roomStateReady.then(applyAdminBoot);
         }
-        syncVotes(); // my standing vote-offs apply to whoever holds a socket now
         applyAdminUi();
         reactRoomState();
         adminWatch();
@@ -17860,7 +17843,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Greeters only: a socket joined the session. Keeps the full list
         // exact without the relay re-sending it on every connect.
         if (m.peer) { relaySocketed.add(m.peer); relayNoSock.delete(m.peer); }
-        if (m.peer && m.dev) { devOf[m.peer] = m.dev; devRelay.add(m.peer); syncVotes(); }
+        if (m.peer && m.dev) { devOf[m.peer] = m.dev; devRelay.add(m.peer); }
       }
       else if (m.t === 'peer-leave') {
         relaySocketed.delete(m.peer); // the relay no longer reaches it (the delta a greeter's full list lives on)
@@ -32822,7 +32805,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const on = !myVoteoffs.has(dev);
       if (on) myVoteoffs.add(dev); else myVoteoffs.delete(dev);
       saveVoteoffs(myVoteoffs);
-      syncVotes();
       setStatus(on ? uiText('voteRecorded', 'Vote recorded — it follows this person into every room you share.') : uiText('voteWithdrawn', 'Vote withdrawn.'));
     }
     // ---- vote MODE: pick what you're voting on, then tap the targets ---------

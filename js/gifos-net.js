@@ -696,7 +696,7 @@
   // media session (tracks, codecs, renegotiation, restarts) never touches
   // the relay: it is negotiated over the pair's own DataChannel once the
   // bootstrap has opened it (run.html sendSig).
-  const RELAY_TYPES = ['boot', 'fp', 'ice', 'name', 'password', 'pwsig', 'pwpub', 'pwby'];
+  const RELAY_TYPES = ['boot', 'fp', 'ice', 'name', 'password', 'pwsig', 'pwpub', 'pwby', 'busy'];
   const RELAY_PLAIN_BYTES = 128;
   const RELAY_IV_B64_LEN = 16;
   const RELAY_CT_B64_LEN = 4 * Math.ceil((RELAY_PLAIN_BYTES + 16) / 3);
@@ -729,6 +729,7 @@
     peer: { to: { str: 64, re: RELAY_ID_RE }, ty: { one: RELAY_TYPES }, msg: { sealed: 1 } },
     knock: { gk: { str: 128, re: RELAY_GK_RE }, gblob: { sealedText: 1, opt: 1 } },
     who: {},
+    unlist: {},                                            // a seat that left Section 1 drops its greeter registration at once
     setpw: { pw: { str: 64, re: RELAY_PROOF_RE }, w: { obj: RELAY_ORDER, opt: 1 } },
     ban: { dev: { str: 16, re: RELAY_DEV_RE }, w: { obj: RELAY_ORDER } },
     unban: { dev: { str: 16, re: RELAY_DEV_RE }, w: { obj: RELAY_ORDER } },
@@ -817,6 +818,34 @@
     while (n.length && !fitsFixed({ k: 'name', n })) n = n.slice(0, -1);
     return n;
   }
+  // ---- a referral list that does not fit one frame ----
+  // A declined uplink names up to C other peers to try (42 characters each);
+  // one frame holds one. The list goes as several 'busy' frames, each
+  // {k:'busy', i, n, ref:[ids]}: i of n, packed greedily so every frame fits.
+  // No new relay type or frame size is involved, and the receiver rebuilds
+  // the list only when all n pieces are in hand.
+  function referralFrames(ids) {
+    const list = (Array.isArray(ids) ? ids : []).filter((x) => typeof x === 'string' && RELAY_ID_RE.test(x));
+    const parts = [];
+    for (const id of list) {
+      const last = parts[parts.length - 1];
+      if (last && fitsFixed({ k: 'busy', i: 99, n: 99, ref: last.concat([id]) })) last.push(id);
+      else if (fitsFixed({ k: 'busy', i: 99, n: 99, ref: [id] })) parts.push([id]);
+    }
+    return parts.map((ref, i) => ({ k: 'busy', i, n: parts.length, ref }));
+  }
+  // The inverse: the ids from a set of pieces in any order, or null when a
+  // piece is missing, repeated, malformed, or from a different split.
+  function referralJoin(frames) {
+    if (!Array.isArray(frames) || !frames.length) return null;
+    const n = frames[0] && frames[0].n, got = new Array(n);
+    if (!Number.isInteger(n) || n < 1 || n > 16 || frames.length !== n) return null;
+    for (const f of frames) {
+      if (!f || f.k !== 'busy' || f.n !== n || !Number.isInteger(f.i) || f.i < 0 || f.i >= n || got[f.i] || !Array.isArray(f.ref) || !f.ref.every((x) => typeof x === 'string' && RELAY_ID_RE.test(x))) return null;
+      got[f.i] = f.ref;
+    }
+    return [].concat(...got);
+  }
   // ---- the bootstrap: a DataChannel-only session description, compacted ----
   const hexToB64 = (hex) => { let s = ''; for (const h of hex.split(':')) s += String.fromCharCode(parseInt(h, 16)); return btoa(s); };
   const b64ToHex = (b64) => { const s = atob(b64); const out = []; for (let i = 0; i < s.length; i++) out.push(s.charCodeAt(i).toString(16).toUpperCase().padStart(2, '0')); return out.join(':'); };
@@ -868,7 +897,7 @@
   }
 
   GifOS.net = {
-    RELAY_TYPES, RELAY_PLAIN_BYTES, RELAY_IV_B64_LEN, RELAY_CT_B64_LEN, RELAY_MAX_FRAME_LEN, RELAY_SHAPES, relayFrameOk, relayVerbOk, fitsFixed, sansPad, sealFixed, relayNameFit,
+    RELAY_TYPES, RELAY_PLAIN_BYTES, RELAY_IV_B64_LEN, RELAY_CT_B64_LEN, RELAY_MAX_FRAME_LEN, RELAY_SHAPES, relayFrameOk, relayVerbOk, fitsFixed, sansPad, sealFixed, relayNameFit, referralFrames, referralJoin,
     bootOf, bootOk, fpOk, sdpOfBoot, iceOf, candOfIce,
     ICE_SERVERS, hasP2P, holdSessionLock,
     steadySocket,
