@@ -66,7 +66,9 @@
   // claim and the frame still reaches the seat (the sim's receivers decide what an unsigned frame may do).
   // A forwarded frame carries its author's block (cached by its signed core).
   const HOP = ['to', 'from', 'ttl', 'rttl', 'rvia', 'lk', 'lkEp', 'tx', 'sigL', 'ppL', 'mpL', 'foL', 'l31L', 'swL', 'direct', 'rl', 'fhTtl', 'routing'];
-  function claimOf(m) { return m.sig ? m.id : m.fsig ? m.nc : (m.fo >= 0 ? m.fo : -1); }
+  // A PLACED (L31.4) names the placed newcomer in m.id but is signed by the greeter that made it, m.l31By (the sim's
+  // mesh_seat.inc PLACED note; seat.js emit signs it when l31By is me): its claimant is the placer.
+  function claimOf(m) { return m.sig ? (m.t === 'PLACED' ? m.l31By : m.id) : m.fsig ? m.nc : (m.fo >= 0 ? m.fo : -1); }
   // A seeker's FIND (fsig: L24) is rebuilt at every hop (sh, sgw, gwc, spread, dk change), so its signature covers
   // what the seeker owns, its own ask {t, nc}; a forwarder re-attaches the seeker's verified signature from sigOf.
   function coreOf(msgM, m) { if (!m.sig && m.fsig && m.t === 'FIND') return JSON.stringify({ t: 'FIND', nc: m.nc }); const o = msgM.writeMsg(m); for (const k of HOP) delete o[k]; return JSON.stringify(o); }
