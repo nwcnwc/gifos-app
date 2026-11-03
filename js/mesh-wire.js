@@ -973,10 +973,10 @@
         onLinks: opts.onLinks || null,
         onLeft: (reload) => { if (opts.onLeft) { try { opts.onLeft(reload); } catch (e) {} } },
         onTake: () => {},
-        onRecv: () => { if (!stopped) netEdge(); },
+        onRecv: (_s, m) => { if (!stopped) { netEdge(); noteRequeue(m); } },
       });
       raw = penv.newSeat ? penv.newSeat() : new GifOS.meshSeat.Seat(penv.me, penv.world);   // the seat is mine (A3); env.seat() reads it back
-      penv.world.onRecv = () => { if (!stopped) netEdge(); };
+      penv.world.onRecv = (_s, m) => { if (!stopped) { netEdge(); noteRequeue(m); } };
       node.seat = seat; node.raw = raw; node.penv = penv; node.__pc = opts.pc || {};
       makeSock();
       if (penv.join) penv.join(); else raw.join();
@@ -998,6 +998,15 @@
     const gpins = ident.newPins();
     let lastOccDrain = new Map();
     let lastDrainCk = null;   // my cell at the last drainDeaths (null: not seated)
+    // A LEAVE with no goodbye mark is a seat going back through the door (REQUEUE), not a departure: it stays in the
+    // meeting and its first WHOHOME rides these very channels. Reading its occ drop as a death closed its pcs under
+    // that WHOHOME, so it waited out the 20-tick retry. No word of it after REQUEUE_GRACE ticks: gone after all.
+    const REQUEUE_GRACE = 60;
+    const requeuing = new Map();   // peer -> the tick its goodbye-less LEAVE arrived
+    function noteRequeue(m) {
+      if (!m || m.t !== 'LEAVE' || m.bye || m.mvd || !(m.id >= 0)) { if (m && m.t === 'LEAVE' && m.bye && m.id >= 0) requeuing.delete(layer.ids.pid(m.id)); return; }
+      const p = layer.ids.pid(m.id); if (p) requeuing.set(p, env.TICK);
+    }
 
     const node = {
       peer, seat: null, env, whenReady: ready,
@@ -1085,8 +1094,13 @@
         // Only while I sit in the same cell at both drains: a requeue clears my whole view and a move rebuilds
         // it, and neither is anyone's death (read as deaths, the page tombstoned the room and closed every pc).
         const ck = (seat.state === 3 && seat.hasCoord) ? seat.coord.pc + '/' + seat.coord.r + '.' + seat.coord.i : null;
-        if (ck !== null && ck === lastDrainCk) for (const [k, p] of lastOccDrain) if (!now.has(p)) out.push([k, p]);
-        lastOccDrain = new Map(cur); lastDrainCk = ck; return out;
+        const held = [];
+        if (ck !== null && ck === lastDrainCk) for (const [k, p] of lastOccDrain) if (!now.has(p)) {
+          const at = requeuing.get(p);
+          if (at !== undefined && env.TICK - at <= REQUEUE_GRACE) held.push([k, p]); else { requeuing.delete(p); out.push([k, p]); }
+        }
+        for (const p of now) requeuing.delete(p);
+        lastOccDrain = new Map(cur); for (const [, p] of held) lastOccDrain.set('q' + p, p); lastDrainCk = ck; return out;
       },
       // D5-observation forensics: the seat's standing translosts, its recent
       // forgotten ones (tlLog carries WHY each was dropped), and the occ view —

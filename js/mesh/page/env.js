@@ -505,6 +505,7 @@
       newSeat: () => new seatM.Seat(me, w),
     };
     if (dbg && typeof window !== 'undefined') window.__meshEnv = env;   // DEBUG: meet.js eval reaches the env (stats, traces, pcw.dump)
+    if (dbg && typeof window !== 'undefined') window.__meshSeatRaw = seat;   // DEBUG: the ported seat, for a forced requeue in a repro
     return env;
   }
 

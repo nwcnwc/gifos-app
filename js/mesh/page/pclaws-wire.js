@@ -308,6 +308,7 @@
         bye(x, 'door', L); L.outside = 0;
       }
     }
+    const DOOR_FIRST_FRAME = 4;   // ticks a just-opened door waits for the frame that dialled it (L16_ANS_IDLE)
     // C++: mesh_link.inc:l16Doors   [g = me: my doors' limits and my count; the joiner end marks its door seated]
     function l16Mine() {
       S.DOORN[me] = 0; S.DOORK[me] = 0;
@@ -321,7 +322,7 @@
           const idle = T() - L.dProg, age = T() - L.dBorn; let why = null;
           if (L.dHoAt >= 0 && T() - L.dHoAt >= K.L16_HO_CLOSE && !(L.dOwed && L.dWait >= 0)) why = 'handed';
           else if (L.dGw && !L.dIn) { if (idle > K.L16_GW_IDLE && !(L.dWait >= 0)) why = 'gw-idle'; else if (age > K.L16_GW_LIFE) why = 'gw-life'; }
-          else if (L.dIn && L.state === LK_OPEN && !L.dAsked && L.dProg === L.dBorn) why = 'unnamed';
+          else if (L.dIn && L.state === LK_OPEN && !L.dAsked && L.dProg === L.dBorn) { if (age > DOOR_FIRST_FRAME) why = 'unnamed'; }   // the sim delivers the dial's queued frame with the open; here it follows the dc's open over the verify chain
           else if (L.dIn && !L.dAsked && L.state === LK_OPEN && idle > K.L16_ANS_IDLE) why = 'idle';
           else if (idle > K.L16_IDLE) why = 'idle'; else if (age > K.L16_LIFE) why = 'life';
           if (why) {

@@ -14443,7 +14443,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           settled();
           if (p.pc !== pc) return; // rebuilt while minting: this offer belongs to a closed pc
           p.offerSentAt = Date.now(); p.offerSentPc = pc;
-          sendSig(peerId, { kind: 'offer', sdp: pc.localDescription, ib: 1, name: myName(), ip: myIp, st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), sid: mySid() });
+          sendSig(peerId, { kind: 'offer', sdp: pc.localDescription, ib: 1, dr: (() => { const ms = meshSeat(); return ms && ms.hasCoord && ms.state === 3 ? 0 : 1; })(), name: myName(), ip: myIp, st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), sid: mySid() });
         })
         .catch((e) => { settled(); if (p.pc === pc) noteNegFail('offer', peerId, e); });
     }
@@ -14710,7 +14710,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!linkTo(from) && meshKnows(from)) {
           let linkUp = false;
           for (const [q, pp] of peers) if (q !== from && pp && pp.dc && pp.dc.readyState === 'open' && linkTo(q)) { linkUp = true; break; }
-          if (linkUp) { rxStats.offerRejected++; return; }
+          // ...and an unseated dialler is at my door (dr): a member that requeued, its goodbye not yet here. L16 and L23 are the door's gates.
+          if (linkUp && !msg.dr) { rxStats.offerRejected++; return; }
           if (typeof clog === 'function') clog('offer from ' + String(from).slice(0, 6) + ' taken: no link of mine is up');
         }
         const p = makePeer(from, msg.name);
