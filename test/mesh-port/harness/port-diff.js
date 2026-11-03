@@ -16,6 +16,9 @@
 const fs = require('fs'), path = require('path'), cp = require('child_process'), os = require('os');
 
 const FILES = ['stdout', 'trace', 'frames.jsonl', 'hash.jsonl'];
+// The only stdout text not compared (process memory, not sim state): the `rss` verb's hwm_kb= and rss_kb= values.
+const MASKS = [[/^(RSS tick=\d+ N=\d+ alive=\d+) hwm_kb=-?\d+ rss_kb=-?\d+$/gm, '$1 hwm_kb=* rss_kb=*']];
+const mask = (buf) => { let s = buf.toString('latin1'); for (const [re, to] of MASKS) s = s.replace(re, to); return Buffer.from(s, 'latin1'); };
 
 function parseArgs(argv) {
   const o = { j: Math.max(1, os.cpus().length - 2), maxSec: 60, jsSec: 1800, keep: 0, state: false };
@@ -72,9 +75,9 @@ async function oneCase(c, o, idx) {
   const cr = await run(o.bin, ['--service', '--trace', path.join(dir, 'c', 'trace')], input, Object.assign({}, base, { MESH_PROOF: path.join(dir, 'c') }), o.maxSec);
   const res = { id, f: c.f, n: c.n, cms: cr.ms };
   if (cr.timedOut) { res.status = 'CXXSLOW'; fs.rmSync(dir, { recursive: true, force: true }); return res; }
-  fs.writeFileSync(path.join(dir, 'c', 'stdout'), cr.stdout);
+  fs.writeFileSync(path.join(dir, 'c', 'stdout'), mask(cr.stdout));
   const jr = await run(process.execPath, [path.join(__dirname, 'main.js'), '--service', '--tolerant', '--trace', path.join(dir, 'j', 'trace')], input, Object.assign({}, base, { MESH_PROOF: path.join(dir, 'j') }), o.jsSec);
-  fs.writeFileSync(path.join(dir, 'j', 'stdout'), jr.stdout);
+  fs.writeFileSync(path.join(dir, 'j', 'stdout'), mask(jr.stdout));
   res.jms = jr.ms;
   const skip = /^@@SKIP ([^:]*): (.*)$/m.exec(jr.stdout.toString('latin1'));
   const firsts = {};
