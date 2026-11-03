@@ -26,9 +26,6 @@
   const { ckey, ckPc, unckey, ownedLinks, down } = topo;
   const C = topo.C;
   const newMsg = (t) => msg.newMsg(t);
-  const U2_STANDBY = 562949953421312;   // 2^49: the standby flag of a u2Rows key (the sim's bit 62 does not fit a JS number)
-  // C++: mesh_seat.inc:inSubtree
-  function inSubtree(row, t) { if (t.r !== row.r) return false; let pc = t.pc; for (let g = 0; g < 32; g++) { if (pc === row.pc) return true; if (pc === 0) return false; pc = topo.parentPath(pc); } return false; }
   const unck = unckey;
 
   Seat.unit('mesh_seat.inc rest', {
@@ -274,9 +271,6 @@
       }
     },
 
-    // C++: mesh_seat.inc:Seat::l3QuietLoss
-    l3QuietLoss(k) { if (!this.translost.has(k)) return false; const h = this.tlHard.get(k); return h === undefined || !h; },
-
     // C++: mesh_seat.inc:Seat::s1Fill
     s1Fill() {
       if (this.TICK - this.seatedAt < 80) return;
@@ -286,73 +280,6 @@
         if (this.translost.has(ck) && this.hasDownChild(c)) continue;
         if (this.ringConfirmDead(c)) { if (this.occ.has(ck)) { this.occDrop(ck, 'ring-dead'); this.live.delete(ck); this.s1seen.delete(ck); this.kidful.delete(ck); } this.holeSince.delete(ck); this.heal(c); return; }
       }
-    },
-
-    // C++: mesh_seat.inc:Seat::headGone
-    headGone() {
-      if (!this.hasCoord || this.coord.pc === 0 || this.coord.i === 0) return false;
-      const hk = ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 }); const h = this.occGet(hk);
-      return h < 0 || h === this.id || this.translost.has(hk) || this.f.fabricLinkState(this.id, h) === E.LS_CLOSED || (this.TICK - this.seatedAt > 8 + K.EARLY_HOLD && this.TICK - this.headAckAt > 8 + K.EARLY_HOLD);
-    },
-
-    // C++: mesh_seat.inc:Seat::l2Peer
-    l2Peer(x) {
-      if (x < 0 || !this.hasCoord) return false;
-      if (x === this.u2Id || x === this.u3Id) return true;
-      for (const e of this.u2Rows.values()) if (e.heir === x && this.TICK - e.at <= 40) return true;
-      return false;
-    },
-
-    // C++: mesh_seat.inc:Seat::l2E2Up
-    l2E2Up() { return this.u2Id >= 0 && this.u2Id !== this.id && this.f.fabricLinkState(this.id, this.u2Id) === E.LS_OPEN && this.TICK - this.u2AckAt <= 2 * 8 + K.EARLY_HOLD; },
-
-    // C++: mesh_seat.inc:Seat::l2RowE2Down
-    l2RowE2Down() {
-      if (!this.hasCoord || this.coord.pc === 0 || this.coord.i !== 0) return false;
-      const view = (c) => ckey(c) === ckey(this.coord) || this.occGet(ckey(c)) >= 0;
-      const row = { pc: this.coord.pc, r: this.coord.r, i: 0 }; const src = roles.e2SrcOf(row, view); if (!src) return false;
-      if (ckey(src) === ckey(this.coord)) return this.u2SrcAt >= 0 && !this.l2E2Up();
-      const sk = ckey(src); const x = this.occGet(sk);
-      if (x < 0 || this.translost.has(sk) || this.f.fabricLinkState(this.id, x) === E.LS_CLOSED) return true;
-      const lvv = this.live.get(sk); if (lvv === undefined || this.TICK - lvv > 8 + K.EARLY_HOLD) return true;
-      return this.hdE2Dn && this.hdE2Id === x;
-    },
-
-    // C++: mesh_seat.inc:Seat::l2OwnerHold
-    l2OwnerHold(k) {
-      if (!this.hasCoord || this.byeAt.has(k)) return false;
-      const oc = this.coord.pc !== 0 && this.coord.i === 0 ? this.ownerCoord() : null; const owner = !!oc && ckey(oc) === k;
-      const child = ckey(down(this.coord)) === k;
-      if (!owner && !child) return false;
-      if (owner && oc.pc !== 0 && this.TICK - this.ownVouchAt <= 2 * 8 + K.EARLY_HOLD) return true;
-      if (owner && this.l2RowE2Down()) return true;
-      const it = this.translost.get(k); if (it === undefined) return false;
-      const h = this.tlHard.get(k); if (h === undefined || !h) return false;
-      return this.TICK - it <= K.EARLY_HOLD + 2 * 8;
-    },
-
-    // C++: mesh_seat.inc:Seat::l2Around
-    // The u2Rows key carries the standby flag (C++ bit 62; JS: U2_STANDBY, see recv-seated.js, a sim change is pending).
-    l2Around(t, exclude, servedOnly) {
-      if (!this.hasCoord) return -1;
-      const usable = (x) => x >= 0 && x !== this.id && x !== exclude && this.f.fabricLinkState(this.id, x) === E.LS_OPEN;
-      const view = (c) => ckey(c) === ckey(this.coord) || this.occGet(ckey(c)) >= 0;
-      for (const [ek, e] of this.u2Rows) {
-        if (e.heir < 0 || this.TICK - e.at > 40) continue;
-        const sb = ek >= U2_STANDBY; const row = unck(sb ? ek - U2_STANDBY : ek); if (!inSubtree(row, t)) continue;
-        if (usable(e.heir)) return e.heir;
-        if (!sb && this.f.fabricLinkState(this.id, e.heir) === E.LS_CLOSED) { const s2 = roles.standbyOf(row, view); if (s2) { const x = this.occGet(ckey(s2)); if (usable(x)) return x; } }
-      }
-      if (servedOnly) return -1;
-      const crow = down(this.coord);
-      if (inSubtree(crow, t)) {
-        let b = roles.backupOwnerOf(crow, view);
-        if (b && ckey(b) !== ckey(this.coord)) {
-          let x = this.occGet(ckey(b)); if (usable(x)) return x;
-          if (x >= 0 && (this.f.fabricLinkState(this.id, x) === E.LS_CLOSED || this.translost.has(ckey(b)))) { b = roles.standbyOf(crow, view); if (b && ckey(b) !== ckey(this.coord)) { x = this.occGet(ckey(b)); if (usable(x)) return x; } }
-        }
-      }
-      return -1;
     },
 
     // C++: mesh.cpp:l13Merging

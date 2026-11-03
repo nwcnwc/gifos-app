@@ -1,7 +1,7 @@
 // Smoke for js/mesh/seat-rest.js: load, and call the pure-ish members on hand-built seats.
 'use strict';
 const path = require('path'); const M = path.join(__dirname, '..', '..', 'js', 'mesh');
-const sm = require(path.join(M, 'seat.js')); require(path.join(M, 'shared.js')); require(path.join(M, 'ring.js')); require(path.join(M, 'seat-rest.js'));
+const sm = require(path.join(M, 'seat.js')); require(path.join(M, 'shared.js')); require(path.join(M, 'ring.js')); require(path.join(M, 'seat-rest.js')); require(path.join(M, 'tick.js'));   // l3QuietLoss lives in tick.js
 const { Seat } = sm; const topo = require(path.join(M, 'topo.js')); const { ckey } = topo;
 let bad = 0; const eq = (a, b, n) => { if (a !== b) { bad++; console.log('FAIL ' + n + ': ' + a + ' != ' + b); } };
 const w = sm.newWorld({ levers: Object.assign({}, require(path.join(M, 'consts.js')).levers) });
