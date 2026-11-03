@@ -376,7 +376,8 @@
         delete m.lk; delete m.s4ok;
         if (direct === true && via != null) m.lk = via;
         if (via != null && m.from == null) m.from = via;
-        if (gpending.has(m.gid)) return;
+        if (layer.seen && layer.seen(m.gid)) return;   // a copy of a frame already taken: dedup BEFORE paying for a verification
+        if (gpending.has(m.gid)) return;   // one whose verification is in flight
         gpending.add(m.gid);
         gossipChain(() => ident.verifyGossip(gpins, m).then((v) => {
           gpending.delete(m.gid);

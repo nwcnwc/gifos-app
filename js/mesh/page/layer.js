@@ -261,7 +261,9 @@
     // ---- per tick (after the seat's tick) -------------------------------------------------------------------------
     function afterTick() { bump(); replayNew(); refan(); leafOut(); }
 
-    return { ids, view, gossip, gossipRecv, setKicks, kickTally, setLeaf, setRefuses, roomDigest, afterTick, bump, heardLeaves: () => heard.size };
+    // seen(gid): a gossip frame I already took (the wire skips the signature check for its later copies)
+    const seen = (gid) => typeof gid === 'string' && gseen.has(gid);
+    return { ids, view, gossip, gossipRecv, seen, setKicks, kickTally, setLeaf, setRefuses, roomDigest, afterTick, bump, heardLeaves: () => heard.size };
   }
 
   const api = Object.freeze({ create, makeIds });
