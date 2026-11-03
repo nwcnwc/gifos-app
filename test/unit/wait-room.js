@@ -15,50 +15,64 @@ function check(name, ok, detail) {
   else { fail++; console.log('FAIL ' + name + (detail !== undefined ? ' — ' + detail : '')); }
 }
 
-require(path.join(__dirname, '..', '..', 'js', 'gifos-net.js'));
-require(path.join(__dirname, '..', '..', 'js', 'mesh.js'));
+const J = (...x) => path.join(__dirname, '..', '..', 'js', ...x);
+require(J('gifos-net.js'));
+require(J('mesh-identity.js'));
+for (const f of fs.readdirSync(J('mesh')).sort()) if (f.endsWith('.js')) require(J('mesh', f));
+for (const f of ['env.js', 'pclaws-wire.js', 'layer.js']) require(J('mesh', 'page', f));
+require(J('mesh-wire.js'));
 let admit = null;
-try { require(path.join(__dirname, '..', '..', 'js', 'relay-admit.js')); admit = globalThis.GifOS && globalThis.GifOS.relayAdmit; }
+try { require(J('relay-admit.js')); admit = globalThis.GifOS && globalThis.GifOS.relayAdmit; }
 catch (e) { admit = null; }
+const G = globalThis.GifOS, sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-function makeSeat(id, envExtra) {
-  const sent = [];
-  let tick = 80;
-  const env = Object.assign({
-    get TICK() { return tick; },
-    HEALING: true,
-    send(from, to, m) { sent.push({ from, to, m: Object.assign({}, m) }); },
-    knock() {},
-    wake() {},
-  }, envExtra || {});
-  const seat = new globalThis.GifOS.mesh.Seat(id, env);
-  seat.myKey = 'mine';
-  seat.genKey = 'room-genesis';
-  return { seat, sent, tick(n) { tick = n; } };
+// A founder on the new wire: a fake relay socket, one open pair to the knocker, every frame out recorded.
+async function founder(doorHeld) {
+  const sent = []; let sock = null;
+  const realSocket = G.net.steadySocket;
+  G.net.steadySocket = () => (sock = { state: 'up', send() {}, close() {}, kick() {} });
+  const node = G.meshWire.createMeshNode({ relayUrl: 'ws://x', sid: 's', tok: 't', key: await G.net.deriveMeetKey('wait-room', ''), tickMs: 10, doorHeld,
+    sendDC: (to, m) => { sent.push({ to, m }); return true; }, pc: { ensure() {}, close() {}, bye() {}, state() { return 'open'; } }, dcOpen: () => true, dropDeepSocket: false });
+  await node.whenReady; G.net.steadySocket = realSocket;
+  sock.onmessage({ data: JSON.stringify({ t: 'greeters', list: [], founded: true, admitted: true }) });
+  for (let i = 0; i < 100 && node.seat.state !== 3; i++) await sleep(10);
+  return { node, sent, homes: (to) => sent.filter((s) => s.to === to && s.m.t === 'MW2' && s.m.f.t === 'HOME') };
+}
+function knock(h, who) {
+  const w = G.meshMsg.newMsg('WHOHOME'); w.from = G.meshPageEnv.nidOf(who); w.ttl = 60;
+  h.node.transport(who, 'open');
+  h.node.recvCtl({ t: 'MW2', f: G.meshMsg.writeMsg(w) }, who, true);
 }
 
-// 1. Unseated while waiting: a Section-1 seat must not hand the roster to a
-// knocker the door is holding. Today homeFor runs anyway.
-{
-  const held = new Set(['knocker-1']);
-  const host = makeSeat('host-1', { doorHeld: (id) => held.has(String(id)) });
-  host.seat.take({ pc: 0, r: 0, i: 0 }, null, []);
-  host.sent.length = 0;
-  host.seat.recv({ t: 'WHOHOME', from: 'knocker-1', ttl: 60 });
-  const homes = host.sent.filter((s) => s.m && s.m.t === 'HOME');
-  const rostered = homes.filter((s) => Array.isArray(s.m.roster) && s.m.roster.length);
-  check('unseated while waiting — no HOME roster on WHOHOME', homes.length === 0 && rostered.length === 0, 'HOME frames ' + homes.length + ' rostered ' + rostered.length);
-  check('unseated while waiting — answerDoor sends nothing', host.seat.answerDoor(['knocker-1']) === 0, 'n=' + host.seat.answerDoor(['knocker-1']));
-  const knocker = makeSeat('knocker-1');
-  check('unseated while waiting — knocker state stays at the door', knocker.seat.state !== 3 && !knocker.seat.hasCoord, 'state ' + knocker.seat.state);
-}
-// A room that is not holding the door still answers, or nobody can join.
-{
-  const host = makeSeat('host-open');
-  host.seat.take({ pc: 0, r: 0, i: 0 }, null, []);
-  host.sent.length = 0;
-  const n = host.seat.answerDoor(['knocker-9']);
-  check('open door still answers WHOHOME', n === 1 && host.sent.some((s) => s.m && s.m.t === 'HOME' && Array.isArray(s.m.roster) && s.m.roster.length), 'n=' + n);
+async function wireChecks() {
+  const k1 = 'k_' + 'a1'.repeat(20), k2 = 'k_' + 'b2'.repeat(20);
+  // 1. Unseated while waiting: a Section-1 seat must not hand the roster to a knocker the door is holding.
+  const held = new Set([k1]), asked = [];
+  const host = await founder((id) => { asked.push(id); return held.has(String(id)); });
+  check('founder sits on the new wire', host.node.seat.state === 3, 'state ' + host.node.seat.state);
+  knock(host, k1); await sleep(200);
+  check('held knock reaches the page', asked.includes(k1), asked.join());
+  check('unseated while waiting: no HOME on WHOHOME', host.homes(k1).length === 0, 'HOME frames ' + host.homes(k1).length);
+  host.node.seat.answerDoor([k2]);   // nothing was withheld from this one
+  await sleep(50);
+  check('answerDoor sends nothing to an id with no held knock', host.homes(k2).length === 0);
+  // The page's OK: not held any more, and the kept ask is answered without waiting for the knocker's retry.
+  held.delete(k1); host.node.transport(k1, 'open'); host.node.seat.answerDoor([k1]); await sleep(200);
+  const hm = host.homes(k1);
+  check('host OK answers the held knock', hm.length >= 1 && Array.isArray(hm[0].m.f.roster) && hm[0].m.f.roster.length > 0, String(JSON.stringify(hm[0] && hm[0].m.f)).slice(0, 120) + ' sent ' + host.sent.map((s) => s.m.f ? s.m.f.t : s.m.t).join());
+  host.node.stop();
+  // 2. A thrown hold fails closed.
+  const thrown = await founder(() => { throw new Error('hold broke'); });
+  knock(thrown, k1); await sleep(200);
+  check('a thrown hold fails closed', thrown.homes(k1).length === 0);
+  thrown.node.stop();
+  // 3. A room that is not holding the door still answers, or nobody can join.
+  for (const [name, hold] of [['no doorHeld', undefined], ['doorHeld false', () => false]]) {
+    const open = await founder(hold);
+    knock(open, k2); await sleep(200);
+    check('open door still answers WHOHOME (' + name + ')', open.homes(k2).length >= 1, 'sent ' + open.sent.length);
+    open.node.stop();
+  }
 }
 
 check('relay admission module is loaded', !!admit && typeof admit.createRoom === 'function' && typeof admit.knock === 'function');
@@ -128,5 +142,7 @@ if (!admit) {
   check('client does not mint after a bad password', reuse === 'unseated', reuse);
 }
 
-console.log(pass + ' passed, ' + fail + ' failed');
-process.exit(fail ? 1 : 0);
+wireChecks().catch((e) => check('wire checks ran', false, String(e && e.stack || e))).then(() => {
+  console.log(pass + ' passed, ' + fail + ' failed');
+  process.exit(fail ? 1 : 0);
+});
