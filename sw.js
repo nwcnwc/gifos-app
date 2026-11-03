@@ -41,7 +41,7 @@
  */
 'use strict';
 
-var SHELL_VERSION = 'v17'; // v17: gifos-i18n.js and the en catalogs join the shell (v16: 0.9.24 hotfix, gifos-update.js reads a four-part `latest`; v15: gifos-charge.js joins the shell)
+var SHELL_VERSION = 'v18'; // v18: i18n/en/meet.json joins the shell (the meeting's words); v17: gifos-i18n.js and the en catalogs join the shell (v16: 0.9.24 hotfix, gifos-update.js reads a four-part `latest`; v15: gifos-charge.js joins the shell)
 var CACHE = 'gifos-shell-' + SHELL_VERSION;
 
 // ONE CACHE KEY PER FILE. pages.yml stamps `?v=<sha>` onto every local css/js
@@ -69,6 +69,7 @@ var CORE = [
   '/js/gifos-themes.js', '/js/gifos-avatar.js', '/js/gifos-store.js', '/js/gifos-install.js', '/js/gifos-fullscreen.js', '/js/irl-apps.js', '/js/sample-apps.js', '/js/store.js', '/js/gifos-cash.js',
   '/js/desktop.js', '/js/runtime.js', '/js/meet-host.js', '/js/camera-studio.js', '/js/relay-config.js', '/js/sw-register.js', '/js/build.js', '/js/build-badge.js', '/js/gifos-update.js',
   '/js/gifos-i18n.js', '/i18n/en/common.json', '/i18n/en/settings.json',
+  '/i18n/en/meet.json',
   '/themes/theme.js', '/themes/icons.js', '/themes/eggs.js',
   '/gifos.key', '/version.json', '/changelog.json', '/og.png', '/manifest.webmanifest', '/icon.svg',
 ];
