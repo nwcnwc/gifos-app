@@ -25,6 +25,7 @@
   const roles = req('./roles.js', 'meshRoles');
   const { ins } = req('./util.js', 'meshUtil');
   const { Seat } = req('./seat.js', 'meshSeat');
+  const { cellOk, coordStr } = req('./shared.js', 'meshShared');
 
   const K = C_.consts, E = C_.enums;
   const { ckey, unckey, ownedLinks, rowMates, colMates, up, down, crossLink, pcDepth, parentPath, lastDigit } = topo;
@@ -34,20 +35,6 @@
   const cc = topo.cc;
   const LS_CLOSED = E.LS_CLOSED, LS_OPEN = E.LS_OPEN;
 
-  // C++: mesh.cpp:coordStr
-  function coordStr(c) {
-    let p = ''; let pc = c.pc; const d = [];
-    while (pc) { d.push(lastDigit(pc)); pc = parentPath(pc); }
-    for (let a = d.length - 1; a >= 0; a--) p += String.fromCharCode(48 + d[a]);
-    return p + '/' + c.r + '.' + c.i;
-  }
-  // C++: mesh_seat.inc:cellOk
-  function cellOk(k) {
-    const c = unckey(k); if (c.r >= C || c.i >= C) return false;
-    let pc = c.pc, d = 0;
-    while (pc) { if (lastDigit(pc) >= C) return false; pc = parentPath(pc); if (++d > 12) return false; }
-    return true;
-  }
   const mtInt = (t) => msg.MT_NAMES.indexOf(t);   // (int)m.t: the sim's MT enum is in MT_NAMES order
   const answerType = (t) => t === 'NOROOM' || t === 'PLACE' || t === 'FIND' || t === 'FINDACK';
 

@@ -7,14 +7,13 @@
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
   const { Seat } = req('./seat.js', 'meshSeat');
+  const { l4Meet } = req('./shared.js', 'meshShared');
   const C_ = req('./consts.js', 'meshConsts');
   const msg = req('./msg.js', 'meshMsg');
   const topo = req('./topo.js', 'meshTopo');
   const K = C_.consts, E = C_.enums;
   const { ckey, unckey, down, C } = topo;
   const newMsg = (t) => msg.newMsg(t);
-  // C++: mesh.cpp:l4Meet
-  const l4Meet = (a, b) => a !== E.NAT_BLOCKED && b !== E.NAT_BLOCKED && !(a === E.NAT_STRICT && b === E.NAT_STRICT);
 
   // Out-parameters: lgRecvCells returns the array of cells (the C++ returns its count and fills an array);
   // lgIsWit returns the cell key or null (the C++ returns bool and fills xk; a key can be 0, test !== null);

@@ -628,7 +628,7 @@
         if (!w) { this.trace('L11-NOWIT', id, hole, 'owner=%d', owner); if (!this.rmRingAlone(hole)) return; const hk0 = ckey(hole); if (this.rmAskDue(hk0)) this.rmAsk(hole); if (this.rmPend.size < 4) this.rmPend.set(hk0, cc(hole)); return; }
       }
       this.rmOldBornAt = this.rmBornAt; this.rmNeedWit = (this.rmStrictNext || (this.l13('L13.31') && hole.pc === 0));
-      FREE.bumpMoves(); this.lastChurn = this.TICK | 0;
+      this.w.lv.MOVES++;   /* bumpMoves */ this.lastChurn = this.TICK | 0;
       this.oldCoord = cc(this.coord); this.oldCk = ckey(this.coord); this.oldTn = this.tn; this.oldEstAt = this.estAt; this.oldPp = this.pp; this.oldPpAt = this.ppAt; this.oldPpL = this.ppL; this.oldPpCk = this.ppCk; this.oldPlacer = this.placer;
       this.oldNbrIds.length = 0; this.oldOwnerId = -1;
       {

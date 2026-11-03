@@ -17,6 +17,7 @@
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
   const seatM = req('./seat.js', 'meshSeat');
+  const { cellOk, ownerCoordOf, coordStr, l4Pack, fabricToken } = req('./shared.js', 'meshShared');
   const { Seat, FREE, roomTerm } = seatM;
   const C_ = req('./consts.js', 'meshConsts');
   const msg = req('./msg.js', 'meshMsg');
@@ -32,26 +33,6 @@
   const newMsg = (t) => msg.newMsg(t);
 
   // ---- free helpers the entry functions call (private copies of small statics) ---------------------------
-  // C++: mesh_seat.inc:cellOk
-  function cellOk(k) {
-    const c = unckey(k); if (c.r >= C || c.i >= C) return false;
-    let pc = c.pc, d = 0;
-    while (pc) { if (lastDigit(pc) >= C) return false; pc = parentPath(pc); if (++d > 12) return false; }
-    return true;
-  }
-  // C++: mesh_seat.inc:ownerCoordOf
-  function ownerCoordOf(c) { if (c.pc === 0) return null; return up({ pc: c.pc, r: c.r, i: 0 }); }
-  // C++: mesh.cpp:coordStr
-  function coordStr(c) {
-    let p = ''; let pc = c.pc; const d = [];
-    while (pc) { d.push(lastDigit(pc)); pc = parentPath(pc); }
-    for (let a = d.length - 1; a >= 0; a--) p += String.fromCharCode(48 + d[a]);
-    return p + '/' + c.r + '.' + c.i;
-  }
-  // C++: mesh.cpp:l4Pack
-  function l4Pack(t, n) { return ((n & 0xff) << 8 | (t & 0xff)) & 0xffff; }
-  // C++: mesh.cpp:fabricToken
-  function fabricToken(lv, id) { return (hash.fmix32(hash.hmix(hash.hmix((hash.H_INIT ^ 0x72636c) >>> 0, lv.SEED0 >>> 0), id >>> 0)) | 1) >>> 0; }
   // C++: mesh.cpp:descOn (the MESH_DESC switch; a measurement, never read by protocol code)
   function descOn(s) { return !!s.w.DESC_ON; }
   const mtNum = (t) => msg.MT_NAMES.indexOf(t);

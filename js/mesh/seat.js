@@ -130,7 +130,7 @@
   // C++: mesh.cpp:deathWhy
   function deathWhy(why) { return DEATH_WHY.includes(why); }
   // C++: mesh_ring.inc:islandStand
-  function islandStand(s, law) { return FREE.islandStandM(!!s && (law === E.IS_L164 ? s.l1612Keep() : s.mergeCalc()), law); }
+  function islandStand(s, law) { return FREE.islandStandM(!!s && (law === E.IS_L164 ? s.l1612Keep() : s.mergeCalc()), law, s ? s.w.lv : WORLD.lv); }
   // C++: mesh_roomterm.inc:roomTerm
   function roomTerm(s, v) { void v; return !!s && s.islandSeen(); }
   // C++: mesh.cpp:l13MergingOf

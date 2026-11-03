@@ -9,6 +9,7 @@
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
   const { Seat } = req('./seat.js', 'meshSeat');
+  const { cellOk } = req('./shared.js', 'meshShared');
   const C_ = req('./consts.js', 'meshConsts');
   const topo = req('./topo.js', 'meshTopo');
   const books = req('./books.js', 'meshBooks');
@@ -55,7 +56,7 @@
           if (!named) for (const v of this.childOf.values()) if (v === m.from) { named = true; break; }
           if (!named && this.callBook.inKnown(m.from) && !this.l372Fresh(m)) named = true;
           if (!named) return false;
-          if (!this.cellOk(ckey(m.hole))) return false;
+          if (!cellOk(ckey(m.hole))) return false;
           const hk = ckey(m.hole); const x = this.occGet(hk); if (x >= 0 && x !== this.id && x !== m.from && this.firstHandLive(hk)) return false;
           return true;
         }

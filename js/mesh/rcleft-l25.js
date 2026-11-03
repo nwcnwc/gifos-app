@@ -7,14 +7,13 @@
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
   const { Seat, roomTerm } = req('./seat.js', 'meshSeat');
+  const { coordStr, cellOk } = req('./shared.js', 'meshShared');
   const C_ = req('./consts.js', 'meshConsts');
   const msg = req('./msg.js', 'meshMsg');
   const topo = req('./topo.js', 'meshTopo');
   const K = C_.consts;
   const { ckey, unckey, ownedLinks } = topo;
   const newMsg = (t) => msg.newMsg(t);
-  // C++: mesh.cpp:coordStr
-  const coordStr = (c) => { let p = ''; let pc = c.pc; const d = []; while (pc) { d.push(topo.lastDigit(pc)); pc = topo.parentPath(pc); } for (let a = d.length - 1; a >= 0; a--) p += String.fromCharCode(48 + d[a]); return p + '/' + c.r + '.' + c.i; };
 
   Seat.unit('mesh_rcleft_l25.inc', {
     // C++: mesh_rcleft_l25.inc:Seat::l2512Tell
@@ -102,12 +101,12 @@
 
     // C++: mesh_rcleft_l25.inc:Seat::l2514Drop
     l2514Drop(m) {
-      if (m.from < 0 || m.from === this.id || !this.hasCoord || this.state !== 3 || !this.cellOk(ckey(m.hole))) return false;
+      if (m.from < 0 || m.from === this.id || !this.hasCoord || this.state !== 3 || !cellOk(ckey(m.hole))) return false;
       const hk = ckey(m.hole); const o = m.fo >= 0 ? m.fo : m.from;
       const x = this.occGet(hk);
       if (x >= 0 && x !== this.id && x !== o && x !== m.from && this.l167HolderHeard(m.hole)) { this.trace('L25.14-HELD', this.id, m.hole, 'from=%d fo=%d holder=%d', m.from, m.fo, x); return true; }
       if (o < 0 || o === this.id) return false;
-      let ok = 0, placed = false; for (const [ek, ev] of this.occ) if (ev === o && this.cellOk(ek)) { ok = ek; placed = true; break; }
+      let ok = 0, placed = false; for (const [ek, ev] of this.occ) if (ev === o && cellOk(ek)) { ok = ek; placed = true; break; }
       if (!placed || ok === hk) return false;
       const oc = unckey(ok); if (oc.pc === m.hole.pc && oc.r === m.hole.r) return false;
       const ol = ownedLinks(m.hole), n = ol.length; for (let k = 0; k < n; k++) if (ckey(ol[k]) === ok) return false;

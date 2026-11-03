@@ -1,8 +1,8 @@
 /*
  * ring.js: the ring signal: lineage, merge, the island stand-down switch (C++: mesh_ring.inc).
  * Methods only on the Seat; the two free functions (islandStandM, c7Goodbye) are registered with Seat.free.
- * Two notes for the harness: islandStandM has no seat to read the world from, so it reads the shared levers
- * (consts.levers: ISLAND_MODE, NETGRP), as the C++ reads its globals; and `fabric::NETG.size()` (the number of
+ * Two notes for the harness: islandStandM has no seat to read the world from, so it takes the calling seat's world
+ * levers (ISLAND_MODE, NETGRP) as its third argument, as the C++ reads its globals; and `fabric::NETG.size()` (the number of
  * net groups, mesh_net.inc) comes from hooks.netgSize, which the net harness unit sets.
  */
 (function (root) {
@@ -13,23 +13,22 @@
   const { Seat } = req('./seat.js', 'meshSeat');
   const C_ = req('./consts.js', 'meshConsts');
   const K = C_.consts, E = C_.enums;
-  const LV = C_.levers;
 
   const hooks = { netgSize: () => 0 };
 
   // C++: mesh.cpp:leverRoom
-  function leverRoom(v) { return v < 0 ? LV.ISLAND_MODE !== 0 : LV.ISLAND_MODE === v; }
+  function leverRoom(LV, v) { return v < 0 ? LV.ISLAND_MODE !== 0 : LV.ISLAND_MODE === v; }
 
   // C++: mesh_ring.inc:islandStandM
-  function islandStandM(merge, law) {
+  function islandStandM(merge, law, LV) {   // LV: the calling seat's world levers (C++ reads its globals)
     switch (law) {
       case E.IS_L13: return merge;
       case E.IS_L164: return merge;
       case E.IS_RELAY: return LV.NETGRP;
       case E.IS_WALK: return merge;
       case E.IS_L18: return merge;
-      case E.IS_L25: return leverRoom(-1);
-      case E.IS_L22: case E.IS_L223: return leverRoom(-1) && hooks.netgSize() > 1;
+      case E.IS_L25: return leverRoom(LV, -1);
+      case E.IS_L22: case E.IS_L223: return leverRoom(LV, -1) && hooks.netgSize() > 1;
       case E.IS_L31: return false;
     }
     return false;

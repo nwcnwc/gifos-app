@@ -7,6 +7,7 @@
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
   const { Seat } = req('./seat.js', 'meshSeat');
+  const { cellOk } = req('./shared.js', 'meshShared');
   const C_ = req('./consts.js', 'meshConsts');
   const msg = req('./msg.js', 'meshMsg');
   const topo = req('./topo.js', 'meshTopo');
@@ -36,7 +37,7 @@
 
     // C++: mesh_witness.inc:Seat::l25WitAnswer
     l25WitAnswer(m) {
-      if (!this.hasCoord || this.state !== 3 || m.from < 0 || m.from === this.id || !this.linkIs(m, m.from) || !this.cellOk(m.ck) || !this.ownedLinkCell(m.ck)) return;
+      if (!this.hasCoord || this.state !== 3 || m.from < 0 || m.from === this.id || !this.linkIs(m, m.from) || !cellOk(m.ck) || !this.ownedLinkCell(m.ck)) return;
       const w = newMsg('WITNESS'); w.ck = m.ck; w.id = this.id; w.nc = this.l25WitHeard(m.ck); w.tag = (m.nc >= 0 && m.nc !== this.id && this.l25WitClaimed(m.nc, m.ck)) ? 1 : 0; w.sig = true; w.sigAt = this.TICK; w.born = this.seatedAt;
       this.emit(m.from, w);
     },

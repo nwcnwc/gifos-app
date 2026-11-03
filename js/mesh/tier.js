@@ -10,6 +10,7 @@
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
   const seatM = req('./seat.js', 'meshSeat');
+  const { coordStr, l4Pack, l4Meet } = req('./shared.js', 'meshShared');
   const C_ = req('./consts.js', 'meshConsts');
   const msg = req('./msg.js', 'meshMsg');
   const topo = req('./topo.js', 'meshTopo');
@@ -21,16 +22,6 @@
   const cpKV = (a) => a.map((e) => ({ k: e.k, v: e.v }));
   const newL4Order = () => ({ a: -1, b: -1, ca: 0, cb: 0, rdyA: 0, rdyB: 0, nbA: [], nbB: [], at: -1000, go: false });
 
-  // C++: mesh.cpp:l4Pack
-  function l4Pack(t, n) { return ((((n & 0xff) << 8) | (t & 0xff)) & 0xffff) >>> 0; }
-  // C++: mesh.cpp:l4Meet
-  function l4Meet(a, b) { return a !== E.NAT_BLOCKED && b !== E.NAT_BLOCKED && !(a === E.NAT_STRICT && b === E.NAT_STRICT); }
-  // C++: mesh.cpp:coordStr
-  function coordStr(c) {
-    let p = ''; let pc = c.pc; const d = []; while (pc) { d.push(lastDigit(pc)); pc = parentPath(pc); }
-    for (let a = d.length - 1; a >= 0; a--) p += String.fromCharCode(48 + d[a]);
-    return p + '/' + c.r + '.' + c.i;
-  }
 
   Seat.unit('mesh_tier.inc', {
     // C++: mesh_tier.inc:Seat::l4Learn

@@ -11,6 +11,7 @@
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
   const seatM = req('./seat.js', 'meshSeat');
+  const { coordStr, cellOk } = req('./shared.js', 'meshShared');
   const C_ = req('./consts.js', 'meshConsts');
   const msg = req('./msg.js', 'meshMsg');
   const topo = req('./topo.js', 'meshTopo');
@@ -22,8 +23,6 @@
   const cpKV = (a) => a.map((e) => ({ k: e.k, v: e.v }));
   // the cell's designated admitter (C3): the head of its row, or of the row before it for a head cell
   const admCell = (c) => (c.i > 0 ? { pc: 0, r: c.r, i: 0 } : { pc: 0, r: (c.r + C - 1) % C, i: 0 });
-  // C++: mesh.cpp:coordStr
-  const coordStr = (c) => { let p = ''; let pc = c.pc; const d = []; while (pc) { d.push(topo.lastDigit(pc)); pc = topo.parentPath(pc); } for (let a = d.length - 1; a >= 0; a--) p += String.fromCharCode(48 + d[a]); return p + '/' + c.r + '.' + c.i; };
 
   // C++: mesh_instant.inc:l31Beats
   function l31Beats(ta, ga, qa, tb, gb, qb) { if (ta - tb > K.PLACE_W || tb - ta > K.PLACE_W) return ta < tb; if (ga !== gb) return ga < gb; return qa < qb; }
@@ -222,7 +221,7 @@
         for (const d of this.l31Done) if (d.k === k && d.nc === q && d.at === m.l31At) d.wait = false;
         return;
       }
-      if (q < 0 || q === this.id || g < 0 || g === q || !this.cellOk(k) || ckPc(k) !== 0 || k === ckey(this.coord)) return;
+      if (q < 0 || q === this.id || g < 0 || g === q || !cellOk(k) || ckPc(k) !== 0 || k === ckey(this.coord)) return;
       const rook = this.ownedLinkCell(k);
       if (m.from === g && m.from >= 0) this.l31Relay(m);
       let ok = this.ppAdm(k, g, q) && !this.liveElsewhere(q, k);

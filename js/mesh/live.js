@@ -25,6 +25,7 @@
   const digM = req('./dig.js', 'meshDig');
   const { ins, eraseFirst } = req('./util.js', 'meshUtil');
   const sm = req('./seat.js', 'meshSeat');
+  const { cellOk, coordStr } = req('./shared.js', 'meshShared');
   const { Seat, FREE, roomTerm, signedBy, placeBefore, l165Earlier } = sm;
 
   const K = C_.consts, E = C_.enums;
@@ -38,20 +39,6 @@
   // ~0ULL as the argument of l33MateArm (a double cannot hold 2^64-1; this is the nearest, 2^64).
   const ALLK = 18446744073709551615;
 
-  // C++: mesh_seat.inc:cellOk
-  function cellOk(k) {
-    const c = unck(k); if (c.r >= C || c.i >= C) return false;
-    let pc = c.pc >>> 0, d = 0;
-    while (pc) { if (((pc - 1) >>> 0) % 6 >= C) return false; pc = Math.floor(((pc - 1) >>> 0) / 6); if (++d > 12) return false; }
-    return true;
-  }
-  // C++: mesh.cpp:coordStr
-  function coordStr(c) {
-    const d = []; let pc = c.pc >>> 0;
-    while (pc) { d.push(((pc - 1) >>> 0) % 6); pc = Math.floor(((pc - 1) >>> 0) / 6); }
-    let p = ''; for (let a = d.length - 1; a >= 0; a--) p += String(d[a]);
-    return p + '/' + c.r + '.' + c.i;
-  }
 
   Seat.unit('live (mesh_seat.inc liveness)', {
     // C++: mesh_seat.inc:Seat::pongDig
