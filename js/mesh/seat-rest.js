@@ -17,6 +17,7 @@
   const msg = req('./msg.js', 'meshMsg');
   const topo = req('./topo.js', 'meshTopo');
   const dig = req('./dig.js', 'meshDig');
+  const roles = req('./roles.js', 'meshRoles');
   const rngM = req('./rng.js', 'meshRng');
   const { Seat, l13MergingOf, l25OrdKey } = req('./seat.js', 'meshSeat');
   const { cellOk, ownerCoordOf, fabricToken } = req('./shared.js', 'meshShared');
@@ -282,6 +283,49 @@
         if (this.translost.has(ck) && this.hasDownChild(c)) continue;
         if (this.ringConfirmDead(c)) { if (this.occ.has(ck)) { this.occDrop(ck, 'ring-dead'); this.live.delete(ck); this.s1seen.delete(ck); this.kidful.delete(ck); } this.holeSince.delete(ck); this.heal(c); return; }
       }
+    },
+
+    // C++: mesh_seat.inc:Seat::headGone
+    headGone() {
+      if (!this.hasCoord || this.coord.pc === 0 || this.coord.i === 0) return false;
+      const hk = ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 }); const h = this.occGet(hk);
+      return h < 0 || h === this.id || this.translost.has(hk) || this.f.fabricLinkState(this.id, h) === E.LS_CLOSED || (this.TICK - this.seatedAt > 8 + K.EARLY_HOLD && this.TICK - this.headAckAt > 8 + K.EARLY_HOLD);
+    },
+
+    // C++: mesh_seat.inc:Seat::l2Peer
+    l2Peer(x) {
+      if (x < 0 || !this.hasCoord) return false;
+      if (x === this.u2Id || x === this.u3Id) return true;
+      for (const e of this.u2Rows.values()) if (e.heir === x && this.TICK - e.at <= 40) return true;
+      return false;
+    },
+
+    // C++: mesh_seat.inc:Seat::l2E2Up
+    l2E2Up() { return this.u2Id >= 0 && this.u2Id !== this.id && this.f.fabricLinkState(this.id, this.u2Id) === E.LS_OPEN && this.TICK - this.u2AckAt <= 2 * 8 + K.EARLY_HOLD; },
+
+    // C++: mesh_seat.inc:Seat::l2RowE2Down
+    l2RowE2Down() {
+      if (!this.hasCoord || this.coord.pc === 0 || this.coord.i !== 0) return false;
+      const view = (c) => ckey(c) === ckey(this.coord) || this.occGet(ckey(c)) >= 0;
+      const row = { pc: this.coord.pc, r: this.coord.r, i: 0 }; const src = roles.e2SrcOf(row, view); if (!src) return false;
+      if (ckey(src) === ckey(this.coord)) return this.u2SrcAt >= 0 && !this.l2E2Up();
+      const sk = ckey(src); const x = this.occGet(sk);
+      if (x < 0 || this.translost.has(sk) || this.f.fabricLinkState(this.id, x) === E.LS_CLOSED) return true;
+      const lvv = this.live.get(sk); if (lvv === undefined || this.TICK - lvv > 8 + K.EARLY_HOLD) return true;
+      return this.hdE2Dn && this.hdE2Id === x;
+    },
+
+    // C++: mesh_seat.inc:Seat::l2OwnerHold
+    l2OwnerHold(k) {
+      if (!this.hasCoord || this.byeAt.has(k)) return false;
+      const oc = this.coord.pc !== 0 && this.coord.i === 0 ? this.ownerCoord() : null; const owner = !!oc && ckey(oc) === k;
+      const child = ckey(down(this.coord)) === k;
+      if (!owner && !child) return false;
+      if (owner && oc.pc !== 0 && this.TICK - this.ownVouchAt <= 2 * 8 + K.EARLY_HOLD) return true;
+      if (owner && this.l2RowE2Down()) return true;
+      const it = this.translost.get(k); if (it === undefined) return false;
+      const h = this.tlHard.get(k); if (h === undefined || !h) return false;
+      return this.TICK - it <= K.EARLY_HOLD + 2 * 8;
     },
 
     // C++: mesh.cpp:l13Merging

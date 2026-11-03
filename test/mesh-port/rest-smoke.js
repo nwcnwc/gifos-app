@@ -15,6 +15,8 @@ eq(s.beatsMe(ckey(ol[0])), true, 'beatsMe'); eq(s.ppAdmitter({ pc: 0, r: 1, i: 0
 eq(s.probeNote(5), 1, 'probeNote'); eq(s.probeNote(5), 1, 'probeNote keeps'); eq(s.probeAsked(5, 1), true, 'probeAsked'); eq(s.probeAsked(5, 2), false, 'probeAsked wrong');
 eq(s.knowsRing(0), true, 'knowsRing'); eq(s.liveElsewhere(9, 123), true, 'liveElsewhere'); eq(s.l3QuietLoss(5), false, 'l3QuietLoss');
 eq(s.l13Merging(), false, 'l13Merging');
+s.u2Id = 11; eq(s.l2Peer(11), true, 'l2Peer'); eq(s.l2Peer(12), false, 'l2Peer no'); eq(s.headGone(), false, 'headGone root');
+eq(s.l2OwnerHold(ckey(ol[0])), false, 'l2OwnerHold');
 const h = new Seat(8, w); h.hostile = 1; const m = require(path.join(M, 'msg.js')).newMsg('UNNEEDED'); eq(h.hostileRecv(m), true, 'hostileRecv');
 console.log(bad ? 'rest-smoke: FAIL ' + bad : 'rest-smoke: ok');
 process.exit(bad ? 1 : 0);
