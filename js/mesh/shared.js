@@ -43,7 +43,7 @@
 
   // U2Row key: C++ ckey(row)*2 + variant flag (< 2^49, a plain JS number). C++: mesh_seat.inc:Seat::onU2
   const u2RowKey = (rowCk, tag3) => rowCk * 2 + (tag3 ? 1 : 0);
-  // C++ (key>>62)&1 in l2Around: the old bit-62 flag test, left in the sim after the re-key; always 0 for a key < 2^49
+  // the old bit-62 flag test ((key>>62)&1); l2Around tests the re-keyed flag (key&1) since sim cbef32d8d. Kept for callers.
   const u2RowTag3 = (key) => Math.floor(key / 2 ** 62) & 1;
   // C++ unck(key>>1)
   const u2RowCell = (key) => unckey(Math.floor(key / 2));

@@ -257,7 +257,7 @@
     kPush(bk = false, fold = null) {
       const id = this.id;
       if (!this.hasCoord || this.state !== 3) return;
-      const p = newMsg('PONG'); p.tag = 27; p.kbk = bk; p.id = id; p.coord = cc(this.coord); p.dgRoot = this.wireDig(fold ? fold : this.rootDec); p.dgRoot.kl.length = 0;   // a relay of the backup path carries the backup's fold, not mine
+      const p = newMsg('PONG'); p.tag = 27; p.kbk = bk; p.id = id; p.coord = cc(this.coord); p.dgRoot = this.wireDig(fold ? fold : this.rootDec); p.dgRoot.kl.length = 0; p.sig = true; p.sigAt = this.TICK | 0;   // a relay of the backup path carries the backup's fold, not mine; signed: the parked E2 edge may carry it routed
       const to = new Set();
       for (const e of this.u2Rows.values()) if (e.heir >= 0 && e.heir !== id) to.add(e.heir);
       for (let j = 0; j < C; j++) { if (j === this.coord.i) continue; const x = this.occGet(ckey({ pc: this.coord.pc, r: this.coord.r, i: j })); if (x >= 0 && x !== id) to.add(x); }

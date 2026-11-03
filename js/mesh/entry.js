@@ -265,9 +265,7 @@
       // A SPLIT-OFF SEAT ADMITS NOBODY INTO SECTION 1 (mesh.js twin).
       if (TICK - this.rookSeenAt > K.OWNER_SILENT && (this.rookEver || !this.f.fabricDoors()) && this.greetersAt >= 0 && TICK - this.greetersAt <= K.RELAY_TTL) {
         let other = false;
-        // (the C++ greeter loop that sets `other` sits inside the `//` comment that ends the line above it: it never runs, so
-        //  the hold never fires; reported as a sim bug. The loop as written: for g of lastGreeters, g !== id && g >= 0 &&
-        //  g !== mm.nc && !(knock within KNOCK_FRESH) && !mm.dark.includes(g) -> other = true)
+        for (const g of this.lastGreeters) { const ka = this.knockAt.get(g); if (g !== id && g >= 0 && g !== mm.nc && !(ka !== undefined && TICK - ka <= K.KNOCK_FRESH) && !mm.dark.includes(g)) { other = true; break; } }   // a greeter knocking on me (a FIND in the last KNOCK_FRESH ticks) is at the door, no second ring
         if (other) {
           if (TICK - this.splitKnockAt >= 8) { this.splitKnockAt = TICK; this.emitRelay(this.genKey); }
           this.trace('NOROOM', id, this.hasCoord ? this.coord : null, 'nc=%d why=split-off-hold', mm.nc); const m = newMsg('NOROOM'); m.gwc = mm.gwc; m.split = true; m.id = id; m.nd = 0; this.emit(mm.nc, m); return true;

@@ -12,8 +12,8 @@
  *   - a C++ bool function with an out-parameter returns the Coord (or null): ownerCoord, e2SrcOf, standbyOf,
  *     backupOwnerOf, rmWitness, l13Witness, ownerCoordOf (through FREE).
  *   - l13Top(oc) in C++ rewrites oc to the top of the gone chain and returns true; heal.js returns the Coord or null.
- *   - u2Rows is keyed ckey(row)*2 + variant flag (u2RowKey / u2RowCell / u2RowTag3, in shared.js). l2Around still
- *     tests the old bit-62 flag ((key>>62)&1, always 0): ported as written, reported as a sim bug.
+ *   - u2Rows is keyed ckey(row)*2 + variant flag (u2RowKey / u2RowCell, in shared.js). l2Around tests the flag
+ *     (key&1) since sim cbef32d8d.
  *   - L2_TAKE_N / MAX / SUM are the module counters of the C++ `up2stat` report.
  */
 (function (root) {
@@ -620,7 +620,7 @@
       for (const [key, e] of this.u2Rows) {
         if (e.heir < 0 || TICK - e.at > 40) continue; const row = u2RowCell(key); if (!inSubtree(row, t)) continue;   // unck(e.first>>1)
         if (usable(e.heir)) return e.heir;
-        if (!u2RowTag3(key) && this.f.fabricLinkState(this.id, e.heir) === LS_CLOSED) { const sb = roles.standbyOf(row, view); if (sb) { const x = this.occGet(ckey(sb)); if (usable(x)) return x; } }
+        if (!(key % 2) && this.f.fabricLinkState(this.id, e.heir) === LS_CLOSED) { const sb = roles.standbyOf(row, view); if (sb) { const x = this.occGet(ckey(sb)); if (usable(x)) return x; } }
       }   // variant B: my E2 to the row is cut, the standby holds E3
       if (servedOnly) return -1;
       const crow = down(this.coord);

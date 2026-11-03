@@ -196,7 +196,7 @@ function installMedia(fab) {
     for (let q = 0; q < n; q++) {
       if (!alive[q]) continue; let no = 0, kd = 0, kn = 0;
       for (const p of L_.LINKPEERS[q]) { const L = L_.linkFind(q, p); if (L && L.state === E.LK_OPEN) { no++; if (L_.l15Names(q, p) || L_.l15Names(p, q)) kn++; else if (L.outside) kd++; } }
-      // (the C++ PCS_PEAK update sits inside the comment that ends this line, so it never runs: PCS_PEAK stays 0)
+      if (no > lv.PCS_PEAK) { lv.PCS_PEAK = no; lv.PCS_PEAK_AT = TICK(); lv.PCS_PEAK_SEAT = q; }
       const s = seats[q]; const t = (s.ctier === E.TIER_MOBILE) ? 1 : 0, c = (s.state === 3 && s.hasCoord) ? (s.coord.pc === 0 ? 0 : 1) : 2;
       if (no > PK.n[t][c]) { PK.n[t][c] = no; PK.seat[t][c] = q; PK.at[t][c] = TICK(); PK.kind[t][c][0] = kd; PK.kind[t][c][1] = kn; PK.kind[t][c][2] = no - kd - kn; }
     }

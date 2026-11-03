@@ -97,8 +97,8 @@ async function main(argv, env) {
       // ---- SERVICE: read commands on stdin, answer on stdout ----
       fab.printf('READY gifos-mesh-sim service\n');
       const rd = require('readline').createInterface({ input: process.stdin, crlfDelay: Infinity });
-      // fgets(buf, 4096): a line longer than 4095 bytes reaches runOp as several commands, 4095 bytes at a time
-      const pieces = function* (line) { const b = Buffer.from(line + '\n', 'latin1'); for (let off = 0; off < b.length; off += 4095) yield b.subarray(off, off + 4095).toString('latin1'); };
+      // getline: a whole line of any length is one command
+      const pieces = function* (line) { yield line; };
       let stop = false;
       for await (const raw of rd) {
         for (let cmd of pieces(raw)) {
