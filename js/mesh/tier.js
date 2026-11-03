@@ -183,7 +183,7 @@
       this.trace('SWAP', this.id, nc, 'from=%s with=%d head=%d', coordStr(this.coord), partner, this.l4Head);
       const oldLinks = []; this.l4Links(oldLinks);
       this.l4Old.clear(); for (const e of oldLinks) this.l4Old.add(e.v);
-      this.oldCoord = { pc: this.coord.pc, r: this.coord.r, i: this.coord.i }; this.oldCk = oldCk0; this.oldTn = this.tn; this.oldEstAt = this.estAt; this.oldPp = this.pp; this.oldPpAt = this.ppAt; this.oldPpL = this.ppL; this.oldPpCk = this.ppCk; this.oldPlacer = this.placer; this.oldNbrIds.clear();
+      this.oldCoord = { pc: this.coord.pc, r: this.coord.r, i: this.coord.i }; this.oldCk = oldCk0; this.oldTn = this.tn; this.oldEstAt = this.estAt; this.oldPp = this.pp; this.oldPpAt = this.ppAt; this.oldPpL = this.ppL; this.oldPpCk = this.ppCk; this.oldPlacer = this.placer; this.oldNbrIds.length = 0;
       this.holdOcc = new Map(this.occ); this.holdSeen = new Map(this.s1seen); this.holdCous = new Map(this.cousins);
       this.occ.clear(); this.ledgerSeen.clear(); this.s1seen.clear(); this.cousins.clear(); this.tlClear();
       this.moving = true; this.moveAt = this.TICK; this.l4X = true;

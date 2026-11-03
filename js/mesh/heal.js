@@ -688,7 +688,7 @@
       this.occ.set(this.oldCk, this.id);
       this.l919Rollback();
       { const lb = this.liveBy.get(newCk); const oc = this.occ.get(newCk); if (this.live.has(newCk) && (lb === undefined ? -1 : lb) !== (oc === undefined ? -1 : oc)) { this.live.delete(newCk); this.liveBy.delete(newCk); this.heardSince.delete(newCk); } }
-      this.oldNbrIds.length = 0; this.holdOcc.clear(); this.holdSeen.clear();
+      this.oldNbrIds.length = 0; this.holdOcc.clear(); this.holdSeen.clear(); this.holdCous.clear();
       this.healOnly.delete(newCk); this.healTry.set(newCk, this.TICK | 0); this.healAt = this.TICK | 0;
       this.lastAck = this.TICK | 0; this.lastPhone = (this.TICK | 0) - 100;
       this.announce(); this.f.wake(this.id);

@@ -541,7 +541,8 @@
           else if (ok2 !== ckey(this.coord) && o2 < 0 && this.byeAt.has(ok2) && TICK - this.byeAt.get(ok2) <= K.LEASE_T) { a.hard = true; a.oCk = ok2; a.owner = -1; this.trace('BYE-REPORT', id, oc2, 'to=%d', m.id); }
         }
       }   // L1.4 (I10): ...and its GOODBYE, the same way
-      if (m.e1dn) { const oc4 = roles.ownerOf(row); const ok4 = oc4 ? ckey(oc4) : 0; this.trace('UP2-ACK', id, this.coord, 'to=%d e1dn=%d hard=%d occ=%d tl=%d tlhard=%d conf=%d memo=%d', m.id, a.e1dn ? 1 : 0, a.hard ? 1 : 0, ok4 ? this.occGet(ok4) : -2, (ok4 && this.translost.has(ok4)) ? 1 : 0, (ok4 && this.tlHard.has(ok4) && this.tlHard.get(ok4)) ? 1 : 0, (ok4 && this.translostConfirmed(ok4)) ? 1 : 0, (ok4 && this.memo.has(ok4)) ? 1 : 0); }   // diagnostic
+      if (m.e1dn) { const oc4 = roles.ownerOf(row); const ok4 = oc4 ? ckey(oc4) : 0; const memo4 = (ok4 && this.memo.has(ok4)) ? 1 : 0, conf4 = (ok4 && this.translostConfirmed(ok4)) ? 1 : 0, tlh4 = (ok4 && this.tlHard.has(ok4) && this.tlHard.get(ok4)) ? 1 : 0, tl4 = (ok4 && this.translost.has(ok4)) ? 1 : 0;   // the arguments in the order the C++ binary runs them (right to left: translostConfirmed may drop the loss before tl is read)
+        this.trace('UP2-ACK', id, this.coord, 'to=%d e1dn=%d hard=%d occ=%d tl=%d tlhard=%d conf=%d memo=%d', m.id, a.e1dn ? 1 : 0, a.hard ? 1 : 0, ok4 ? this.occGet(ok4) : -2, tl4, tlh4, conf4, memo4); }   // diagnostic
       this.emit(m.id, a);   // L2.7 / L2.9
       if (this.u2Rows.size > 2 * C) for (const [k, v] of this.u2Rows) { if (TICK - v.at > 60) this.u2Rows.delete(k); }
     },
