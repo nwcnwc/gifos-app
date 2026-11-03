@@ -371,6 +371,8 @@ function createOps(fab, opts) {
     doTicks(12);
     P('SITXFER to=%d from=%d assigner=%d ck=%s id=%d accepted=%d\n', to, from, h.placer, (k === ckey(h.coord) ? 'own' : 'other'), idv, h.rowLedger ? 1 : 0);
   };
+  // C++: mesh.cpp:runOp (contest)   [L40: two heal moves into one cell in one tick (gaps4-fab.js)]
+  V.contest = (tk) => { X.g4Contest(tk); };
   // kill the CURRENT occupant of a coord (deterministic scenario tool): killat <path>/<r>.<i> [silent|crash]
   // C++: mesh.cpp:runOp (killat)
   V.killat = (tk) => {
