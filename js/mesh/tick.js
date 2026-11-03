@@ -12,8 +12,8 @@
  *   - a C++ bool function with an out-parameter returns the Coord (or null): ownerCoord, e2SrcOf, standbyOf,
  *     backupOwnerOf, rmWitness, l13Witness, ownerCoordOf (through FREE).
  *   - l13Top(oc) in C++ rewrites oc to the top of the gone chain and returns true; heal.js returns the Coord or null.
- *   - u2Rows is keyed in C++ by ckey(row) | (tag3 << 62), which a JS number cannot hold. Here the tag bit is
- *     2^52 (u2RowKey / u2RowCell / u2RowTag3, in shared.js). SIM CHANGE NEEDED: key the sim's U2Row the same way.
+ *   - u2Rows is keyed ckey(row)*2 + variant flag (u2RowKey / u2RowCell / u2RowTag3, in shared.js). l2Around still
+ *     tests the old bit-62 flag ((key>>62)&1, always 0): ported as written, reported as a sim bug.
  *   - L2_TAKE_N / MAX / SUM are the module counters of the C++ `up2stat` report.
  */
 (function (root) {
@@ -229,7 +229,7 @@
       // H2 LEFT-PACK backstop (probe-gated): when my row has NO live head, the row rebuilds itself leftward.
       if (this.coord.i >= 1 && TICK - this.healAt > 20 && (!this.firstHandLive(ckey(cell(0, this.coord.r, 0))) || this.translost.has(ckey(cell(0, this.coord.r, 0))))) {
         const lft = cell(0, this.coord.r, this.coord.i - 1); const lk = ckey(lft);
-        let defer = this.translost.has(lk) && this.hasDownChild(lft);   // the early path defers to VERTICAL whenever the cell has a down-child
+        let defer = this.translost.has(lk) && this.hasDownChild(lft) && this.l375Defer(lft);   // L37.5: for the heir's window only (gaps.js). The early path defers to VERTICAL whenever the cell has a down-child
         if (defer && this.islandHeirGone(lk, lft)) defer = false;   // L8.4
         if (defer && this.l3QuietLoss(lk)) { if (this.occ.has(lk) && this.ringConfirmDead(lft)) { this.occDrop(lk, 'ring-dead-left'); this.live.delete(lk); this.s1seen.delete(lk); this.kidful.delete(lk); this.holeSince.delete(lk); } }   // L3.13
         if (!defer && this.ringConfirmDead(lft)) { if (this.occ.has(lk)) { this.occDrop(lk, 'ring-dead-left'); this.live.delete(lk); this.s1seen.delete(lk); this.kidful.delete(lk); } this.holeSince.delete(lk); this.heal(lft); }
@@ -614,7 +614,7 @@
       const usable = (x) => x >= 0 && x !== this.id && x !== exclude && this.f.fabricLinkState(this.id, x) === LS_OPEN;   // a peer my own transport says is cut carries nothing
       const view = (c) => ckey(c) === ckey(this.coord) || this.occGet(ckey(c)) >= 0;
       for (const [key, e] of this.u2Rows) {
-        if (e.heir < 0 || TICK - e.at > 40) continue; const row = u2RowCell(key); if (!inSubtree(row, t)) continue;
+        if (e.heir < 0 || TICK - e.at > 40) continue; const row = u2RowCell(key); if (!inSubtree(row, t)) continue;   // unck(e.first>>1)
         if (usable(e.heir)) return e.heir;
         if (!u2RowTag3(key) && this.f.fabricLinkState(this.id, e.heir) === LS_CLOSED) { const sb = roles.standbyOf(row, view); if (sb) { const x = this.occGet(ckey(sb)); if (usable(x)) return x; } }
       }   // variant B: my E2 to the row is cut, the standby holds E3

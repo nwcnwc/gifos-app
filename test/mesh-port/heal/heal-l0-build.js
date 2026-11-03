@@ -15,7 +15,9 @@ function cut(lines, re) {
   let b = a; if (!/\}\s*(\/\/.*|\/\*.*)?$/.test(lines[a]) || /^\s*(static )?(int|bool) \w+\([^)]*\)\s*\{\s*$/.test(lines[a])) { while (!/^\}/.test(lines[b])) b++; }
   return lines.slice(a, b + 1).join('\n');
 }
+const mcpp = fs.readFileSync(path.join(simDir, 'mesh.cpp'), 'utf8').split('\n');
 const parts = [
+  ...[/^static const uint32_t H_INIT=/, /^static inline uint32_t fmix32\(/, /^static inline uint32_t hmix\(/, /^static inline uint32_t hmix64\(/].map((re) => mcpp.find((l) => re.test(l))),   // one-line definitions (findLeaf's l9Fwd key)
   cut(seat, /^static inline bool ownerCoordOf\(/),
   cut(heal, /^static int rmWitCells\(/),
   cut(heal, /^static int l13Ring\(/),

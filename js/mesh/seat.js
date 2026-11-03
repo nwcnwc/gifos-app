@@ -142,8 +142,8 @@
   // C++: mesh.cpp:Seat::ppSigOf
   function ppSigOf(from, at) { return from * 4294967296 + (at >>> 0); }
   // C++: mesh.cpp:Seat::ppKey
-  // (k<<13) ^ (unsigned)x over uint64. Exact while k < 2^40 (a path below depth 10); see the port report.
-  function ppKey(k, x) { const v = k * 8192, lo = (hash.lo32(v) ^ (x >>> 0)) >>> 0; return Math.floor(v / 4294967296) * 4294967296 + lo; }
+  // a 32-bit hash of (cell, seat)
+  function ppKey(k, x) { return hash.hmix64(hash.hmix(hash.H_INIT, x >>> 0), k); }
   // C++: mesh.cpp:Seat::l165Earlier
   function l165Earlier(at1, from1, id1, at2, from2, id2) { if (at1 - at2 > K.PLACE_W || at2 - at1 > K.PLACE_W) return at1 < at2; if (from1 !== from2) return from1 < from2; return id1 < id2; }
   const coordOf = (k) => unckey(k);
@@ -385,7 +385,7 @@
     // C++: mesh.cpp:Seat::softSitting
     softSitting(k) {
       const it = this.sitting.get(k); if (it === undefined) return false;
-      if (this.TICK - it.at > K.SIT_TTL) { this.sitting.delete(k); return false; }   // (sitLog: MESH_SITLOG only)
+      if (this.TICK - it.at > K.SIT_TTL) { this.sitting.delete(k); return false; }
       return true;
     },
     // C++: mesh.cpp:Seat::cellTaken
@@ -416,8 +416,6 @@
     },
     // C++: mesh.cpp:Seat::cellSeated
     cellSeated(k) { if (this.hasCoord && ckey(this.coord) === k) return true; return this.firstHandLive(k) && this.occ.has(k); },
-    // C++: mesh.cpp:Seat::sitLog
-    sitLog() { /* MESH_SITLOG debug print only */ },
     // C++: mesh.cpp:Seat::clearSoft
     clearSoft(k, why = '?') { void why; if (this.sitting.has(k)) this.sitting.delete(k); },
     // C++: mesh.cpp:Seat::markSitting

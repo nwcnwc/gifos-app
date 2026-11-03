@@ -21,6 +21,8 @@
   const MAXLINKS = 2 * C - 1;
   // C++: topo.h:TOPO_XDROP
   const TOPO_XDROP = true;
+  // C++: topo.h:NO_CK
+  const NO_CK = 2 ** 53 - 1;   // a ckey sentinel that is no cell (ckeys are < 2^48), a plain JS number
 
   // C++: topo.h:Coord
   function coord(pc, r, i) { return { pc: pc >>> 0, r: r & 0xff, i: i & 0xff }; }
@@ -79,7 +81,7 @@
   }
 
   const api = Object.freeze({
-    C, MAXLINKS, TOPO_XDROP,
+    C, MAXLINKS, TOPO_XDROP, NO_CK,
     coord, cc, same, ckey, ckPc, ckR, ckI, unckey,
     isRoot, childPath, parentPath, pcDepth, lastDigit,
     up, down, crossLink, rowMates, colMates, ownedLinks,

@@ -18,7 +18,7 @@ if (!dir) { console.error('usage: gen-seat.js <sim dir> [--check]'); process.exi
 const cpp = fs.readFileSync(path.join(dir, 'mesh.cpp'), 'utf8');
 const msgSpec = JSON.parse(fs.readFileSync(path.join(dir, 'msg.json'), 'utf8'));
 const consts = (() => { require(path.join(__dirname, '..', '..', 'js', 'mesh', 'laws.js')); return require(path.join(__dirname, '..', '..', 'js', 'mesh', 'consts.js')); })();
-const K = Object.assign({}, consts.consts, consts.levers, consts.enums);
+const K = Object.assign({ NO_CK: require(path.join(__dirname, '..', '..', 'js', 'mesh', 'topo.js')).NO_CK }, consts.consts, consts.levers, consts.enums);
 
 // ---- text helpers ------------------------------------------------------------------------------------------
 function stripComments(s) {   // keep line breaks so line numbers survive
@@ -166,7 +166,9 @@ const seat = members(seatB.body, seatB.start, text, 'Seat');
 // ---- cross-check against msg.json's seat list (the state the sim hashes) --------------------------------------
 const byName = new Map(seat.fields.map(f => [f.name, f]));
 const stateBad = [];
-for (const f of msgSpec.seat) { const g = byName.get(f.name); if (!g) stateBad.push(f.name + ' missing'); else if (g.type !== f.type) stateBad.push(f.name + ' ' + g.type + ' vs msg.json ' + f.type); }
+const stateFields = require(path.join(__dirname, '..', '..', 'js', 'mesh', 'msg.js')).STATE_FIELDS;   // msg.json's seat list in JS type spelling (gen-msg.js)
+if (stateFields.length !== msgSpec.seat.length) throw new Error('gen-seat: js/mesh/msg.js is stale: run gen-msg.js first');
+for (const f of stateFields) { const g = byName.get(f.name); if (!g) stateBad.push(f.name + ' missing'); else if (g.type !== f.type) stateBad.push(f.name + ' ' + g.type + ' vs msg.json ' + f.type); }
 if (stateBad.length) throw new Error('gen-seat: msg.json seat list disagrees: ' + stateBad.join('; '));
 
 // ---- write the module ----------------------------------------------------------------------------------------

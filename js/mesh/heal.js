@@ -24,6 +24,7 @@
   const msg = req('./msg.js', 'meshMsg');
   const topo = req('./topo.js', 'meshTopo');
   const { ins, eraseFirst } = req('./util.js', 'meshUtil');
+  const hash = req('./hash.js', 'meshHash');
   const SEAT = req('./seat.js', 'meshSeat');
   const { Seat, FREE, roomTerm } = SEAT;
 
@@ -161,7 +162,7 @@
   // C++: mesh_heal.inc:l13Line
   function l13Line(H) { const out = []; let c = H; for (let l = 0; l < 4; l++) { out.push(c); if (c.i !== 0) break; const w = up(c); if (!w) break; c = w; } return out; }
 
-  Seat.free({ l1RowEmpty, l1MoverCell, l1HasMover, l13Ring, l13Witness, l13Chain });
+  Seat.free({ l1RowEmpty, l1HeirFailed, l1MoverCell, l1HasMover, l13Ring, l13Witness, l13Chain });
 
   Seat.unit('mesh_heal.inc', {
     // L9.17: a head densifies only on vacancy it holds (its C++ definition is in mesh_seat.inc; no other job owns it).
@@ -357,7 +358,7 @@
       if (this.occGet(dk) >= 0) { return; }
       const since = bye ? by : this.TICK;
       if (this.l1KidHeals(hd)) {
-        const u = this.u2Rows.get(dk); if (u !== undefined && u.heir >= 0 && u.at >= since) { return; }
+        const u = this.u2Rows.get(dk * 2); if (u !== undefined && u.heir >= 0 && u.at >= since) { return; }
         if (this.TICK - since < K.L9_KID_WAIT) { return; }
       }
       {
@@ -510,7 +511,7 @@
                 const cc_ = cell(0, Math.floor(q / C), q % C); const k = ckey(cc_); if (k === ckey(hole) || k === ckey(this.coord)) continue;
                 const x = this.occGet(k); const kf = this.kidful.get(k); const chx = this.childOf.get(k);
                 if (x >= 0 && x !== id && ((kf !== undefined && kf && this.firstHandLive(k)) || (chx !== undefined && chx >= 0))) {
-                  const fk = xorHi40(ckey(hole), x); const f = this.l9Fwd.get(fk); if (f !== undefined && this.TICK - f <= K.CONFIRM_TTL) continue;
+                  const fk = l9FwdKey(ckey(hole), x); const f = this.l9Fwd.get(fk); if (f !== undefined && this.TICK - f <= K.CONFIRM_TTL) continue;
                   this.l9Fwd.set(fk, this.TICK | 0); this.emit(x, flMsg(hole, nbrs, ttl - 1, 12)); return;
                 }
               }
@@ -1169,14 +1170,11 @@
     },
   });
 
-  // uint64 ckey ^ ((uint64)x << 40), as the Number it is exact for (x < 8192; see the port report).
+  // (1ULL<<50) | hmix64(hmix(H_INIT, x), ckey(hole)): (hole, x) as a 32-bit hash under bit 50 (no ckey has it)
   // C++: mesh_heal.inc:Seat::findLeaf
-  function xorHi40(k, x) {
-    const lo = k % 4294967296, hiK = Math.floor(k / 4294967296);
-    return (((hiK ^ ((x * 256) >>> 0)) >>> 0)) * 4294967296 + lo;
-  }
+  function l9FwdKey(k, x) { return 2 ** 50 + hash.hmix64(hash.hmix(hash.H_INIT, x >>> 0), k); }
 
-  const api = { l1RowEmpty, l1HeirFailed, l1RightCell, l1ColCell, l9RoomAllHome, l9PullSmall, l9PullHold, l1MoverCell, l1HasMover, rmWitCells, l13Ring, l13Witness, l13Chain, l13Line, L13_CHAIN_MAX, xorHi40 };
+  const api = { l1RowEmpty, l1HeirFailed, l1RightCell, l1ColCell, l9RoomAllHome, l9PullSmall, l9PullHold, l1MoverCell, l1HasMover, rmWitCells, l13Ring, l13Witness, l13Chain, l13Line, L13_CHAIN_MAX, l9FwdKey };
   GifOS.meshHeal = api;
   if (isNode) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

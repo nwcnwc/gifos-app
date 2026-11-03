@@ -16,7 +16,7 @@ for (const line of fs.readFileSync(process.argv[2], 'utf8').split('\n')) {
   const o = JSON.parse(line); const H = o.H;
   const fakeSeat = { l13: (sub) => (sub === 'L13.15' ? o.l13_15 : false) };
   const w = heal.l13Witness(H);
-  const got = { H, l13_15: o.l13_15, wit: heal.rmWitCells(H), ring: heal.l13Ring(H), witness: w, chain: heal.l13Chain(fakeSeat, H), line: heal.l13Line(H), x: o.x, fk: String(heal.xorHi40(topo.ckey(H), o.x)) };
+  const got = { H, l13_15: o.l13_15, wit: heal.rmWitCells(H), ring: heal.l13Ring(H), witness: w, chain: heal.l13Chain(fakeSeat, H), line: heal.l13Line(H), x: o.x, fk: String(heal.l9FwdKey(topo.ckey(H), o.x)) };
   // the 64-bit key is exact only below x = 8192 (see the port report): compare it there, count the rest
   const a = J(o), b = J(got);
   if (a !== b) {

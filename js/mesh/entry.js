@@ -145,23 +145,23 @@
       const TICK = this.TICK, id = this.id;
       const del = [];
       for (const [ek, s] of this.sitting) {
-        if (s.assigner !== id) { if (TICK - s.at >= K.SIT_TTL) { this.sitLog('SIT-', ek, s.joiner, 'promise-ttl'); del.push(ek); } continue; }   // L7.7
+        if (s.assigner !== id) { if (TICK - s.at >= K.SIT_TTL) { del.push(ek); } continue; }   // L7.7
         // Confirmed seated by first-hand contact with the joiner at this cell.
-        if (this.occGet(ek) === s.joiner && this.firstHandLive(ek)) { this.sitLog('SIT-', ek, s.joiner, 'recheck-confirmed'); del.push(ek); continue; }
+        if (this.occGet(ek) === s.joiner && this.firstHandLive(ek)) { del.push(ek); continue; }
         if (!s.replayed && s.pl.t === 'PLACE' && TICK - s.at >= K.PLACE_REPLAY && this.occGet(ek) !== s.joiner) { s.replayed = true; this.emit(s.joiner, msg.clone(s.pl)); }   // FINDACK: a lost PLACE, replayed once
         if (TICK - s.at < K.SIT_RECHECK) continue;
         // V4 PROBE-GATED CHECK-BACK: SITPING the admittee itself; a killed tab never answers, the chair frees.
         if (this.occGet(ek) !== s.joiner && !this.firstHandLive(ek)) {
           if (s.pingAt < 0) { s.pingAt = TICK; const m = newMsg('SITPING'); m.ck = ek; m.id = s.joiner; this.emit(s.joiner, m); continue; }
           if (TICK - s.pingAt < K.SIT_PING_WAIT) continue;
-          this.sitLog('SIT-', ek, s.joiner, 'checkback-free');
+         
           // Freed on SILENCE, not on attributed evidence: the chair re-enters the 45-tick admission cooling.
           del.push(ek); this.healOnly.delete(ek); this.healTry.set(ek, TICK);
           continue;
         }
         // Soft TTL backstop: a mark cannot live forever if recheck is skipped.
         if (TICK - s.at >= K.SIT_TTL) {
-          this.sitLog('SIT-', ek, s.joiner, 'ttl-backstop');
+         
           del.push(ek); this.healOnly.delete(ek); this.healTry.set(ek, TICK);   // V4: TTL is also a silence-free
           // Ghost occ left by an older admit path or partial confirm: clear if not live.
           if (this.occGet(ek) === s.joiner && !this.firstHandLive(ek)) {

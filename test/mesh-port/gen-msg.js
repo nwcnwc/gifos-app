@@ -143,7 +143,14 @@ P('  function decode(s) { return readMsg(JSON.parse(s)); }');
 P('  function clone(m) { return readMsg(writeMsg(m)); }');
 P('');
 P('  // the state fields the per-tick state hash covers, in order');
-P('  const STATE_FIELDS = Object.freeze(' + JSON.stringify((spec.seat || []).map(f => ({ name: f.name, type: f.type }))) + ');');
+// msg.json writes seat types in C++ spelling (Seat::X, T[N] with N a number or a laws constant); the JS field
+// tables (seat-fields.js) write X and [T;N]. Same type, JS spelling.
+const ARRN = { L10_STATE_CLASSES: 7 };   // the one named array bound in the seat list (mesh.cpp L10_STATE_CLASSES)
+function jsType(t) {
+  t = t.replace(/\b(?:Seat|DialBook)::/g, '');
+  return t.replace(/([A-Za-z_][A-Za-z0-9_<>]*)\[([A-Za-z0-9_]+)\]/g, (_, el, n) => '[' + el + ';' + (/^\d+$/.test(n) ? n : ARRN[n]) + ']');
+}
+P('  const STATE_FIELDS = Object.freeze(' + JSON.stringify((spec.seat || []).map(f => ({ name: f.name, type: jsType(f.type) }))) + ');');
 P('');
 P('  const api = Object.freeze({');
 P('    MT, MT_NAMES, STATE_FIELDS,');

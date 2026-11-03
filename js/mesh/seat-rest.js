@@ -277,7 +277,7 @@
       for (let j = 1; j < C; j++) {
         const c = { pc: 0, r: this.coord.r, i: j }; const ck = ckey(c);
         if (this.translost.has(ck) && this.hasDownChild(c) && this.l3QuietLoss(ck)) { if (this.occ.has(ck) && this.ringConfirmDead(c)) { this.occDrop(ck, 'ring-dead'); this.live.delete(ck); this.s1seen.delete(ck); this.kidful.delete(ck); this.holeSince.delete(ck); } continue; }
-        if (this.translost.has(ck) && this.hasDownChild(c)) continue;
+        if (this.translost.has(ck) && this.hasDownChild(c) && this.l375Defer(c)) continue;   // L37.5: for the heir's window only (gaps.js)
         if (this.ringConfirmDead(c)) { if (this.occ.has(ck)) { this.occDrop(ck, 'ring-dead'); this.live.delete(ck); this.s1seen.delete(ck); this.kidful.delete(ck); } this.holeSince.delete(ck); this.heal(c); return; }
       }
     },

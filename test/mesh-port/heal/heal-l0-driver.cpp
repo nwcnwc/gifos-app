@@ -28,7 +28,7 @@ int main(int argc,char** argv){
     Coord w; bool ok=l13Witness(H,w); S+=",\"witness\":"; if(ok) coordJ(w); else S+="null";
     Coord ch[L13_CHAIN_MAX]; n=l13Chain(H,ch); S+=",\"chain\":"; coordsJ(ch,n);
     n=l13Line(H,ch); S+=",\"line\":"; coordsJ(ch,n);
-    uint64_t k=ckey(H); int x=ri(0,3)?ri(0,10000):ri(0,1<<20); uint64_t fk=k^((uint64_t)x<<40);
+    uint64_t k=ckey(H); int x=ri(0,3)?ri(0,10000):ri(0,1<<20); uint64_t fk=(1ULL<<50)|hmix64(hmix(H_INIT,(uint32_t)x),k);   // findLeaf's l9Fwd key
     S+=",\"x\":"+to_string(x)+",\"fk\":\""+to_string((unsigned long long)fk)+"\"}";
     puts(S.c_str());
   }

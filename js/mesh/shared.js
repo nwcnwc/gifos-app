@@ -41,12 +41,12 @@
   // lv: the world's levers (SEED0 is a lever here, a global in C++)
   function fabricToken(lv, id) { return (hash.fmix32(hash.hmix(hash.hmix((hash.H_INIT ^ 0x72636c) >>> 0, lv.SEED0 >>> 0), id >>> 0)) | 1) >>> 0; }
 
-  // U2Row key: C++ ckey(row) | (tag3 << 62); a JS number cannot hold bit 62, so the tag bit is 2^52 (ckey < 2^48).
-  // SIM CHANGE NEEDED: key the sim's U2Row the same way (or by a pair); set the flag to whatever portsim lands.
-  const U2_TAG3 = 2 ** 52;
-  const u2RowKey = (rowCk, tag3) => rowCk + (tag3 ? U2_TAG3 : 0);
-  const u2RowTag3 = (key) => key >= U2_TAG3;
-  const u2RowCell = (key) => unckey(key >= U2_TAG3 ? key - U2_TAG3 : key);
+  // U2Row key: C++ ckey(row)*2 + variant flag (< 2^49, a plain JS number). C++: mesh_seat.inc:Seat::onU2
+  const u2RowKey = (rowCk, tag3) => rowCk * 2 + (tag3 ? 1 : 0);
+  // C++ (key>>62)&1 in l2Around: the old bit-62 flag test, left in the sim after the re-key; always 0 for a key < 2^49
+  const u2RowTag3 = (key) => Math.floor(key / 2 ** 62) & 1;
+  // C++ unck(key>>1)
+  const u2RowCell = (key) => unckey(Math.floor(key / 2));
 
   Seat.free({ cellOk, ownerCoordOf, coordStr, l4Pack, l4Meet, fabricToken, u2RowKey, u2RowTag3, u2RowCell });
   const api = Object.freeze({ cellOk, ownerCoordOf, coordStr, l4Pack, l4Meet, fabricToken, u2RowKey, u2RowTag3, u2RowCell });

@@ -12,8 +12,7 @@
  *   fabric::LINKMODEL   is this.w.lv.LINKMODEL (as in rcleft-l25.js).
  *   Msg copies (Msg f=m; movedClaimMsg=m; emit of a stored frame) are msg.clone().
  *   ownerOf / standbyOf / backupOwnerOf are roles.js (they return the cell or null).
- *   u2Rows key: C++ ckey(row)|((m.tag==3)<<62). 2^62 does not fit a JS number exactly, so the standby flag is
- *   shared.js u2RowKey (2^52): SIM CHANGE NEEDED (see the report).
+ *   u2Rows key: C++ ckey(row)*2+(m.tag==3): shared.js u2RowKey.
  */
 (function (root) {
   'use strict';
@@ -181,7 +180,7 @@
         { const bare = prev < 0 && !prov; this.bareSetting = bare; this.setOcc(m.ck, m.id); this.bareSetting = false; if (bare && this.occGet(m.ck) === m.id) { if (this.bareAt.size > 64) this.bareAt.clear(); this.bareAt.set(m.ck, TICK); } }
         if (this.hasCoord) {
           const h = hello(ckey(this.coord), id);
-          { const kc = unck(m.ck); const R = { pc: childPath(kc.pc, kc.i), r: kc.r, i: 0 }; const u = this.u2Rows.get(ckey(R)); if (u !== undefined && u.heir >= 0 && TICK - u.at <= 16) h.rmKids = true; }   // L11
+          { const kc = unck(m.ck); const R = { pc: childPath(kc.pc, kc.i), r: kc.r, i: 0 }; const u = this.u2Rows.get(ckey(R) * 2); if (u !== undefined && u.heir >= 0 && TICK - u.at <= 16) h.rmKids = true; }   // L11
           this.emit(m.id, h);
         }
       }
@@ -268,7 +267,7 @@
         if (this.relStake(m.ck)) { this.byeRelay(m); return; }
         { const lc = unck(m.ck); const h = this.occGet(ckey({ pc: lc.pc, r: lc.r, i: 0 })); if (lc.i === 0 || h < 0 || h === m.id) { this.byeRelay(m); return; } }
         this.linkedBy.delete(m.ck); this.tenOf.delete(m.ck); this.occDrop(m.ck, 'leave'); this.live.delete(m.ck); this.kidful.delete(m.ck); this.s1seen.delete(m.ck); this.tlForget(m.ck); this.healTry.delete(m.ck); this.digForget(m.ck);
-        { const sit = this.sitting.get(m.ck); if (sit !== undefined && sit.joiner === m.id) { this.sitLog('SIT-', m.ck, m.id, 'leave-own'); this.sitting.delete(m.ck); } }
+        { const sit = this.sitting.get(m.ck); if (sit !== undefined && sit.joiner === m.id) { this.sitting.delete(m.ck); } }
         this.lastChurn = TICK; this.l12DepartAt = TICK;
         if (ckPc(m.ck) === 0) this.byeAt.set(m.ck, TICK);   // L1.5
         this.byeRelay(m);
@@ -293,7 +292,7 @@
       if (m.bye && !m.mvd && s4live && (mine || (this.occGet(m.ck) < 0 && this.byeAt.has(m.ck) && TICK - this.byeAt.get(m.ck) <= 20))) this.byeRelay(m);
       if (mine) { const w = this.waitClaim.get(m.ck); if (w !== undefined) { const wid = w[0], wat = w[1]; this.waitClaim.delete(m.ck); if (wid !== m.id && TICK - wat <= 20) this.hintClaim(m.ck, wid); } }
       // A, ATTRIBUTABLE (V4): only the LEAVER'S OWN vouch clears.
-      { const sit = this.sitting.get(m.ck); if (sit !== undefined && sit.joiner === m.id) { this.sitLog('SIT-', m.ck, m.id, 'leave-own'); this.sitting.delete(m.ck); } }
+      { const sit = this.sitting.get(m.ck); if (sit !== undefined && sit.joiner === m.id) { this.sitting.delete(m.ck); } }
       if (mvdFrom) { this.setOcc(m.mvd, m.id); this.noteS1(m.mvd); }   // T3
       // A goodbye about a cell somebody ELSE holds in my view frees nothing
       if (this.occGet(m.ck) >= 0 && (this.firstHandLive(m.ck) || !s4live)) return;
@@ -528,7 +527,7 @@
       if (o.pc === this.coord.pc && o.r === this.coord.r) mine = (m.tag === 3) ? ((b = roles.standbyOf(row, view)) !== null && ckey(b) === ckey(this.coord)) : ((b = roles.backupOwnerOf(row, view)) !== null && ckey(b) === ckey(this.coord));
       else { const orow = { pc: o.pc, r: o.r, i: 0 }; const oo = roles.ownerOf(orow); mine = m.tag !== 3 && !!oo && oo.pc === this.coord.pc && oo.r === this.coord.r && (b = roles.backupOwnerOf(orow, view)) !== null && ckey(b) === ckey(this.coord); }   // L2.2b
       if (!mine) return;
-      const ukey = u2RowKey(ckey(row), m.tag === 3);   // C++ <<62: shared.js
+      const ukey = u2RowKey(ckey(row), m.tag === 3);   // key = ckey*2 + variant flag
       const u = ins(this.u2Rows, ukey, () => state.newStruct('U2Row'));
       if (m.e1dn && !u.hot) this.trace('UP2-SERVE', id, this.coord, 'row=%s heir=%d%s', coordStr(row), m.id, m.tag === 3 ? ' standby' : '');
       u.heir = m.id; u.at = TICK; u.hot = m.e1dn; if (m.e1dn && m.dgUp.at >= 0) u.dig = dig.cloneDig(m.dgUp);   // the row's fold, held while I serve it
