@@ -1162,6 +1162,7 @@ function createOps(fab, opts) {
     return true;
   }
 
+  fab.runOp = runOp;   // feedcase (media.js) applies its cuts through the ops, as the C++ feedCase calls runOp
   return { runOp, verbs: V, NOT_PORTED, EXTERNAL_VERBS, parseCell };
 }
 
