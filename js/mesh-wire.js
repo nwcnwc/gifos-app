@@ -177,6 +177,7 @@
     let sealedSoloRuns = 0; // consecutive sealed-only door replies while a fragment suspect (key-divergence evidence)
     let lastOccSize = 0;   // seat.occ.size last tick (state 3 only)
     let everPopulated = false; // this PAGE-LIFE saw a room of >=2 — a reseat/requeue cannot launder it
+    let everLinked = false, cutSince = 0; // a seated seat that held links and now holds none (wall clock of the cut, 0 = not cut)
     let shrankSolo = false; // armed while everPopulated && solo; disarmed by a door reply proving we are truly alone, or by repopulation
     // Greeter-list forensics (fragment founding): every greeters reply we
     // handle is stamped here — list length, how many blobs opened under our
@@ -881,6 +882,10 @@
           else if (osz === 1 && everPopulated) shrankSolo = true;
           lastOccSize = osz;
         }
+        {
+          const nl = (seat && seat.state === 3 && seat.hasCoord) ? seat.linkPeers().size : -1;
+          if (nl > 0) { everLinked = true; cutSince = 0; } else if (nl === 0 && everLinked) { if (!cutSince) cutSince = Date.now(); } else cutSince = 0;
+        }
         if (iAmAGreeter() && sock && !sock.rejected) {
           const nowMs = Date.now();
           if (regPendingAt && nowMs - regPendingAt > 12000) {
@@ -905,6 +910,13 @@
             // probes within ~3s — the 2-person fork's heal window (see
             // shrankSolo) must beat human patience, not a cadence.
             reregister(shrankSolo ? 'shrank-solo' : 'solo-probe');
+          } else if (seat.state === 3 && cutSince && nowMs - cutSince > 4000) {
+            // CUT-OFF DOOR PROBE: every link of mine closed (transport loss) while my relay socket
+            // stayed up. My view can still name half a row (the Section-1 ledger), so the solo
+            // probe above never fires, and every redial to a lost peer is held (L17) until I hear
+            // it. The seat's lone greeting (loneGreet) greets the door list, and the only list it
+            // holds is the one from my join: ask the door now (reregister keeps 8 s between asks).
+            reregister('cut-probe');
           }
         }
         if (opts.onUpdate) opts.onUpdate(node);
@@ -972,6 +984,7 @@
     }
     const gpins = ident.newPins();
     let lastOccDrain = new Map();
+    let lastDrainCk = null;   // my cell at the last drainDeaths (null: not seated)
 
     const node = {
       peer, seat: null, env, whenReady: ready,
@@ -1043,8 +1056,11 @@
       // whose heal rebuilt the view in the same tick (sole-survivor promotion).
       drainDeaths() {   // tombstones for display, re-derived from occ (D5 itself lives inside the seat): [cellKey, peer] gone since the last drain
         if (!seat) return []; const cur = seat.occ, out = []; const now = new Set(cur.values());
-        for (const [k, p] of lastOccDrain) if (!now.has(p)) out.push([k, p]);
-        lastOccDrain = new Map(cur); return out;
+        // Only while I sit in the same cell at both drains: a requeue clears my whole view and a move rebuilds
+        // it, and neither is anyone's death (read as deaths, the page tombstoned the room and closed every pc).
+        const ck = (seat.state === 3 && seat.hasCoord) ? seat.coord.pc + '/' + seat.coord.r + '.' + seat.coord.i : null;
+        if (ck !== null && ck === lastDrainCk) for (const [k, p] of lastOccDrain) if (!now.has(p)) out.push([k, p]);
+        lastOccDrain = new Map(cur); lastDrainCk = ck; return out;
       },
       // D5-observation forensics: the seat's standing translosts, its recent
       // forgotten ones (tlLog carries WHY each was dropped), and the occ view —
