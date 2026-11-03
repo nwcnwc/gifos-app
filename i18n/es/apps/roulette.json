@@ -1,0 +1,21 @@
+{
+  "player.you": "Tú",
+  "lobby.players": "Jugadores aquí ({n})",
+  "lobby.invite": "📲 Cada quien juega en SU propio teléfono: toca <b>Invitar</b> en la barra superior, envía el enlace y tus amigos aparecerán aquí cuando lo abran.",
+  "lobby.start": "Empezar",
+  "lobby.startN": "{label} ({n, plural, one {# jugador} other {# jugadores}})",
+  "lobby.min": "Se necesitan al menos {n, plural, one {# jugador} other {# jugadores}}",
+  "lobby.confirmRemove": "¿Quitar a {name} de la sala?",
+  "name.placeholder": "Añade un nombre y pulsa Intro",
+  "players.none": "Aún no hay jugadores",
+  "orPhones": "O cada quien tiene su teléfono 📲",
+  "setup.dealAll": "Repartir a todos los teléfonos",
+  "setup.title": "El mazo manda 🎲",
+  "setup.intro": "Añade el nombre de todos, deja el teléfono en el centro, toca para sacar una carta y haz lo que diga. Eso es todo. Ese es el juego.",
+  "setup.in": "¿Quién juega?",
+  "setup.go": "Barajar y repartir",
+  "setup.lobbyText": "Toca <b>Invitar</b>. La misma carta aparece en todas las pantallas: sin amontonarse alrededor de un solo teléfono.",
+  "card.n": "carta {n}",
+  "card.next": "Siguiente carta →",
+  "card.players": "Jugadores"
+}
