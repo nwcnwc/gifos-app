@@ -957,7 +957,7 @@
         peer, ids: layer.ids, seat: () => raw,
         pc: Object.assign({}, opts.pc || {}, { send: (to, m, dir) => ((typeof opts.dcOpen !== 'function' || opts.dcOpen(to)) ? sendFrameTo(to, m, dir) : false) }),
         relay: {
-          knock: (gk, blobOk) => { const k = raw && raw.genKey ? String(raw.genKey) : myKey; if (blobOk && iAmAGreeter()) REGISTER_MYSELF_AS_A_GREETER(gk || k); else KNOCK_FOR_THE_GREETER_LIST(gk || k); },
+          knock: (gk, blobOk) => { const k = gkStr(); /* the room's string, as every register presents it ('g' + hex): a decimal genKey was refused (admitted:false), and three refusals requeued a seated greeter */ if (blobOk && iAmAGreeter()) REGISTER_MYSELF_AS_A_GREETER(gk || k); else KNOCK_FOR_THE_GREETER_LIST(gk || k); },
           unlist: () => sendRaw({ t: 'unlist' }),
           busy: (to, body) => { if (opts.relayBusy) { try { opts.relayBusy(to, body); } catch (e) {} } },
         },
