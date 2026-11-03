@@ -1,11 +1,15 @@
 const { test, expect } = require('@playwright/test');
 
-async function boot(page, hash) {
+// The run of show is an optional host template (More > Run of show), off for a
+// new broadcast: a test that needs it picks Worship service first (tpl false = new room).
+async function boot(page, hash, tpl = true) {
   await page.setViewportSize({ width: 1280, height: 720 });
-  await page.addInitScript(() => {
+  const room = (/(?:^|&)v=([^&]+)/.exec(hash) || [])[1] || '';
+  await page.addInitScript((a) => {
     localStorage.setItem('gifos_name', 'Pastor Kim');
     sessionStorage.setItem('gifos_appeared', '1');
-  });
+    if (a.tpl) localStorage.setItem('gifos_rdtpl_' + a.room, 'service');
+  }, { tpl, room });
   await page.goto('/run.html#' + hash, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#leavebtn', { state: 'visible' });
 }
@@ -54,6 +58,29 @@ test('a broadcast viewer does not run the order of service', async ({ page }) =>
   expect(b.display).toBe('none');
 });
 
+test('a new broadcast host has no run of show, no lyrics and no prayer button until the template is picked', async ({ page }) => {
+  await boot(page, 'v=qaneutral&av=0123456789abcdef&bc=1&debug=on', false);
+  const armed = await page.evaluate(() => window.__gifosVideo.armBroadcastHostForTest());
+  expect(armed && armed.ok).toBe(true);
+  expect((await box(page)).display).toBe('none');
+  expect(await page.evaluate(() => getComputedStyle(document.getElementById('lyrics')).display)).toBe('none');
+  expect(await page.evaluate(() => window.__gifosVideo.prayOn())).toBe(false);
+  expect(await page.locator('#bcrd').inputValue()).toBe('');
+  await page.evaluate(() => { const s = document.getElementById('bcrd'); s.value = 'service'; s.dispatchEvent(new Event('change')); });
+  const on = await box(page);
+  expect(on.display).not.toBe('none');
+  expect(on.now).toBe('Welcome');
+  await page.evaluate(() => { const s = document.getElementById('bcrd'); s.value = ''; s.dispatchEvent(new Event('change')); });
+  expect((await box(page)).display).toBe('none');
+});
+
+test('a room that already used the run of show keeps it', async ({ page }) => {
+  await page.addInitScript(() => { localStorage.setItem('gifos_song_qakeep', 'Old words'); });
+  await boot(page, 'v=qakeep&av=0123456789abcdef&bc=1&debug=on', false);
+  await page.evaluate(() => window.__gifosVideo.armBroadcastHostForTest());
+  expect((await box(page)).display).not.toBe('none');
+});
+
 test('a host steps through the order of service', async ({ page }) => {
   await boot(page, 'v=qarun&av=0123456789abcdef&bc=1&debug=on');
   const armed = await page.evaluate(() => window.__gifosVideo.armBroadcastHostForTest());
@@ -70,7 +97,7 @@ test('a host steps through the order of service', async ({ page }) => {
   expect(open.coversDock).toBe(false);
   expect(open.coversAir).toBe(false);
   expect(open.next).toBe('Next');
-  expect(open.items).toEqual(['Welcome', 'Song 1', 'Break', 'Reading', 'Talk', 'Song 2', 'Closing']);
+  expect(open.items).toEqual(['Welcome', 'Song 1', 'Prayer', 'Scripture', 'Message', 'Song 2', 'Closing']);
 
   await page.click('#rundown-next');
   const song = await box(page);

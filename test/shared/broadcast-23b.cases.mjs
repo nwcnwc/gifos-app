@@ -80,6 +80,7 @@ async function host(page) {
     const K = Array.from(new Uint8Array(bits)).map((x) => x.toString(16).padStart(2, '0')).join('');
     const V = (await GifOS.net.edKeysFromSeedHex(K)).verifier;
     localStorage.setItem('gifos_vadm_' + roomId + '.' + V, K);
+    localStorage.setItem('gifos_rdtpl_' + roomId, 'service'); // the run of show is an optional template
     return V;
   }, room);
   // Only the hash changes, so load the page again for the room to start.
