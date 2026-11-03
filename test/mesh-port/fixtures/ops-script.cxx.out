@@ -1,0 +1,11 @@
+SCRIPT ops-script.json seed=9
+OK seed=9
+OK net loss=0.0500 lat=2 sever=0.0000 subnets=2 density=1.00 qual=1.00 spine=1 relayk=0 skew=0
+OK joinmode burst a=0 b=0
+OK compaction=0
+OK init N=12 leave=0.00 seed=9 join=burst(0,0) window=1
+STATE tick=0 spawned=0 seated=0 s1cells=0/12 dups=0 stranded=0 moves=0 evict=0 inflight=0 transit=0 lease=0
+FIND /0.0 -> seat -1
+ERR killat: nobody at /0.1
+ERR unknown: bogus	verb
+BYE

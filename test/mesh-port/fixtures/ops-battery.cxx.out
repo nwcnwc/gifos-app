@@ -1,0 +1,468 @@
+READY gifos-mesh-sim service
+OK seed=7
+ERR unknown: __m0
+OK seed=20260714
+ERR unknown: __m1
+OK seed=4294967295
+ERR unknown: __m2
+OK joinmode burst a=0 b=0
+ERR unknown: __m3
+OK joinmode batch a=3 b=2
+ERR unknown: __m4
+OK joinmode serial a=4 b=0
+ERR unknown: __m5
+OK joinmode window a=12 b=0
+ERR unknown: __m6
+OK joinmode window a=0 b=0
+ERR unknown: __m7
+OK net loss=0.0000 lat=1 sever=0.0000 subnets=1 density=1.00 qual=1.00 spine=1 relayk=0 skew=0
+ERR unknown: __m8
+OK net loss=0.1000 lat=3 sever=0.0500 subnets=3 density=0.50 qual=0.75 spine=1 relayk=2 skew=4
+ERR unknown: __m9
+OK net loss=0.1000 lat=3 sever=0.0500 subnets=1 density=0.50 qual=0.75 spine=1 relayk=2 skew=0
+ERR unknown: __m10
+OK net loss=0.1250 lat=3 sever=0.0500 subnets=1 density=0.50 qual=0.75 spine=1 relayk=2 skew=0
+ERR unknown: __m11
+OK linkmodel=0
+ERR unknown: __m12
+OK linkmodel=0
+ERR unknown: __m13
+OK threads=4 det=1
+ERR unknown: __m14
+OK threads=1 det=1
+ERR unknown: __m15
+OK threads=1 det=1
+ERR unknown: __m16
+OK det=1
+ERR unknown: __m17
+OK sigdedupe=1
+ERR unknown: __m18
+OK sigdedupe=0
+ERR unknown: __m19
+OK compaction=0
+ERR unknown: __m20
+OK compaction=1
+ERR unknown: __m21
+OK problvl=3
+ERR unknown: __m22
+OK problvl=0
+ERR unknown: __m23
+OK probeon=0
+ERR unknown: __m24
+OK probeon=1
+ERR unknown: __m25
+OK spread=0
+ERR unknown: __m26
+OK spread=1
+ERR unknown: __m27
+OK spreaddepth=2
+ERR unknown: __m28
+OK spreaddepth=0
+ERR unknown: __m29
+OK digabs=0
+ERR unknown: __m30
+OK digabs=1
+ERR unknown: __m31
+OK digest=0
+ERR unknown: __m32
+OK digest=1
+ERR unknown: __m33
+OK l10bucket=0
+ERR unknown: __m34
+OK l10bucket=1
+ERR unknown: __m35
+OK kickhold 99
+ERR unknown: __m36
+OK kickhold 99
+ERR unknown: __m37
+OK doorcap 7 reserve 3
+ERR unknown: __m38
+OK doorcap 96 reserve 12
+ERR unknown: __m39
+OK doorcap_mobile 5 reserve 2
+ERR unknown: __m40
+OK doorcap_mobile 64 reserve 8
+ERR unknown: __m41
+OK mobrate 9
+ERR unknown: __m42
+OK mobrate 2
+ERR unknown: __m43
+OK l16pick random
+ERR unknown: __m44
+OK l16pick random-drop
+ERR unknown: __m45
+OK l16pick gateway
+ERR unknown: __m46
+OK l16backoff 4 40
+ERR unknown: __m47
+OK l16backoff 2 8
+ERR unknown: __m48
+OK l16hoload 6
+ERR unknown: __m49
+OK l16hoload 8
+ERR unknown: __m50
+OK l16mobkeep 2
+ERR unknown: __m51
+OK l16mobkeep 0
+ERR unknown: __m52
+OK l16hedge 3
+ERR unknown: __m53
+OK l16hedge 4
+ERR unknown: __m54
+OK l16fan 2
+ERR unknown: __m55
+OK l16fan -1
+ERR unknown: __m56
+OK l15settle 7
+ERR unknown: __m57
+OK l15settle 4
+ERR unknown: __m58
+OK tierquiet=11
+ERR unknown: __m59
+OK tierquiet=11
+ERR unknown: __m60
+OK tierperiod=900
+ERR unknown: __m61
+OK tierperiod=900
+ERR unknown: __m62
+OK tierlead=5
+ERR unknown: __m63
+OK tierlead=5
+ERR unknown: __m64
+OK tierhops=3
+ERR unknown: __m65
+OK tierhops=3
+ERR unknown: __m66
+OK tiermix 0.30
+ERR unknown: __m67
+OK tiermix 0.00
+ERR unknown: __m68
+OK tiermix 0.12
+ERR unknown: __m69
+OK realcheck on at tick=0
+ERR unknown: __m70
+OK realcheck off
+ERR unknown: __m71
+ERR realcheck is off
+ERR unknown: __m72
+OK losefirst FIND seat 8
+ERR unknown: __m73
+OK losefirst PLACE seat -1
+ERR unknown: __m74
+OK losefirst NOPE seat 3
+ERR unknown: __m75
+OK losefirst  seat -1
+ERR unknown: __m76
+OK init N=30 leave=0.00 seed=4294967295 join=window(0,0) window=7
+ERR unknown: __m77
+OK init N=10000 leave=0.00 seed=4294967295 join=window(0,0) window=2000
+ERR unknown: __m78
+OK init N=12 leave=0.25 seed=4294967295 join=window(0,0) window=3
+ERR unknown: __m79
+OK init N=30 leave=0.00 seed=4294967295 join=window(0,0) window=7
+ERR unknown: __m80
+STATE tick=0 spawned=0 seated=0 s1cells=0/25 dups=0 stranded=0 moves=0 evict=0 inflight=0 transit=0 lease=0
+ERR unknown: __m81
+BAD unseated=0 
+ERR unknown: __m82
+DUPS 0 
+ERR unknown: __m83
+HOLES 0 
+ERR unknown: __m84
+HIST cells:1=0 2=0 3+=0 maxDup=0@/0.0 s1seats=0
+ERR unknown: __m85
+TRANSIT moves=0 leases=0 
+ERR unknown: __m86
+RELAY greeters=0 (live=0, section1=0) H(genesisKey)=0
+ERR unknown: __m87
+DARKSTAT dark=0 d6moves=0 laws=1
+ERR unknown: __m88
+WHERE 3 dead
+ERR unknown: __m89
+WHERE -1 dead
+ERR unknown: __m90
+WHERE -1 dead
+ERR unknown: __m91
+FIND /0.0 -> seat -1
+ERR unknown: __m92
+FIND /1.2 -> seat -1
+ERR unknown: __m93
+FIND /01.2 -> seat -1
+ERR unknown: __m94
+ERR usage: find <path>/<r>.<i>
+ERR unknown: __m95
+ERR usage: find <path>/<r>.<i>
+ERR unknown: __m96
+ACTIVE seat3 inActive=0 inNext=0
+ERR unknown: __m97
+ERR
+ERR unknown: __m98
+ERR no such live seat 3
+ERR unknown: __m99
+ERR no such live seat -1
+ERR unknown: __m100
+ERR no such live seat -1
+ERR unknown: __m101
+CHECK FAIL seed=4294967295 seated=0/30 s1=0/25
+ERR unknown: __m102
+SPLITSTATE A[seated=0/0 s1=0 dups=0 strand=0] B[seated=0/0 s1=0 dups=0 strand=0]
+ERR unknown: __m103
+OK split: sideA=0 sideB=0 (all alive, cross-links cut)
+ERR unknown: __m104
+SPLITSTATE A[seated=0/0 s1=0 dups=0 strand=0] B[seated=0/0 s1=0 dups=0 strand=0]
+ERR unknown: __m105
+OK partition removed (links restored)
+ERR unknown: __m106
+OK partition removed (links restored)
+ERR unknown: __m107
+OK seatdump tick=0
+ERR unknown: __m108
+TIERCELLS 
+ERR unknown: __m109
+TIERSTAT seated=0 mobile=0 rows=0 rowsMulti=0 rowsWithDesktop=0 headBad=0 heirNeed=0 heirBad=0 swaps order=0 go=0 done=0 refused=0 evict=0 rollbacks=0
+ERR unknown: __m110
+NATSTAT seated=0 strict=0 blocked=0 required=0 unreachable=0 strictStrict=0 blocked=0 other=0 deepRequired=0 deepUnreachable=0 deepStrictStrict=0 noUpPath=0 deepByClass=row:0,col:0,cross:0,up:0,down:0,up2:0,down2:0
+ERR unknown: __m111
+VIEWCHECK seats=0 seatsWithABadView=0 stale=0 missing=0
+ERR unknown: __m112
+LINEAGE tick=0 seated=0 lines=0 none=0 merge=0
+ERR unknown: __m113
+COMPACT seats=0 occSections=0 maxDepth=0 minDepth=0 loneRowDeepSections=0 byDepth=0:0 frontier(d0=0,d1=0,d2=0) cProbes=0 cAdmits=0 cPlaces=0 cMoves=0 cAtS1=0 cOffers=0 cOfferFires=0
+ERR unknown: __m114
+COMPACTFIX violations=0
+ERR unknown: __m115
+LISTS obs=0 hands=0 handN=0 handExact=0 handNExact=0 stage=0 stageExact=0 apps=0 appExact=0 awayN=0 awayExact=0 voteTargets=0 voteExact=0 voteOver=0 voteExcessMax=0 liarPubN=0
+ERR unknown: __m116
+DIGEST on=1 true=0 trueRefuse=0 obs=0 noroot=0 rootMin=-1 rootMax=-1 rootExact=0 refuseMin=-1 refuseMax=-1 partial=0 freeMin=-1 freeMax=-1 mismatch=0
+DIGGAP childRow=0 rowMate=0 s1cell=0  
+DIGGAUGE win=1 nodes=0 framesPerTick_max=0.0000 framesPerTick_p50=0.0000 framesPerTick_maxAt=-1 digState_max=0 digState_p50=0 digState_maxAt=-1 occ_max=0 C=5 bound=39
+ERR unknown: __m117
+OK digest gauge reset at tick=0
+ERR unknown: __m118
+DIGEST on=1 true=0 trueRefuse=0 obs=0 noroot=0 rootMin=-1 rootMax=-1 rootExact=0 refuseMin=-1 refuseMax=-1 partial=0 freeMin=-1 freeMax=-1 mismatch=0
+DIGGAP childRow=0 rowMate=0 s1cell=0  
+DIGGAUGE win=1 nodes=0 framesPerTick_max=0.0000 framesPerTick_p50=0.0000 framesPerTick_maxAt=-1 digState_max=0 digState_p50=0 digState_maxAt=-1 occ_max=0 C=5 bound=39
+ERR unknown: __m119
+DIGCOUNT depth=0 disc=0 conn=0 seated=0 expect=5 obs=0 noroot=0 min=-1 max=-1 exact=0 under=0 over=0 leasedMax=0 s1=0 s1under=0 s1exact=0 s1over=0
+ERR unknown: __m120
+DIGCOUNT depth=0 disc=0 conn=0 seated=0 expect=0 obs=0 noroot=0 min=-1 max=-1 exact=0 under=0 over=0 leasedMax=0 s1=0 s1under=0 s1exact=0 s1over=0
+ERR unknown: __m121
+DIGCOUNT depth=0 disc=0 conn=0 seated=0 expect=3 obs=0 noroot=0 min=-1 max=-1 exact=0 under=0 over=0 leasedMax=0 s1=0 s1under=0 s1exact=0 s1over=0 hand=2 s1hand=0/0 allhand=0/0
+ERR unknown: __m122
+OK digstale n=0
+ERR unknown: __m123
+OK digstale n=0
+ERR unknown: __m124
+FREEMAP cell | digest_n true_n | digest_free true_free | err% | digest_dmin true_dmin | maxDepth
+  0.0  EMPTY
+  0.1  EMPTY
+  0.2  EMPTY
+  0.3  EMPTY
+  0.4  EMPTY
+  1.0  EMPTY
+  1.1  EMPTY
+  1.2  EMPTY
+  1.3  EMPTY
+  1.4  EMPTY
+  2.0  EMPTY
+  2.1  EMPTY
+  2.2  EMPTY
+  2.3  EMPTY
+  2.4  EMPTY
+  3.0  EMPTY
+  3.1  EMPTY
+  3.2  EMPTY
+  3.3  EMPTY
+  3.4  EMPTY
+  4.0  EMPTY
+  4.1  EMPTY
+  4.2  EMPTY
+  4.3  EMPTY
+  4.4  EMPTY
+FREETOT sections=0 digest_n=0 true_n=0 digest_free=0 true_free=0 free_err=+0.0% hasRoom_agree=0/0 dmin_agree=0/0 | SPREAD hasRoom_true=0/0 dmin_distinct=0 best_true=99 best_digest=99
+FREEDEPTH unseated=0 freeFrontierByDepth=
+ERR unknown: __m125
+ERR unknown: __m126
+L10STAT on=1 window=1 seated=0 sent=0 mean=0.0000 peak=0 early=0 drops=0 (phone 0 pong 0 s1sync 0 u2beat 0; early 0) lead=0 trail=0 latMean=0.00 latMax=0
+ERR unknown: __m127
+OK l10 gauge reset at tick=0
+ERR unknown: __m128
+ERR
+ERR unknown: __m129
+ERR
+ERR unknown: __m130
+ERR
+ERR unknown: __m131
+NOROOMHIST
+ERR unknown: __m132
+NOROOMHIST
+ERR unknown: __m133
+DESCSTAT off — rerun with MESH_DESC=1
+ERR unknown: __m134
+OK descstat reset at tick=0
+ERR unknown: __m135
+OK movemark tick=0
+ERR unknown: __m136
+MOVESTAT since=0 tick=0 moves=0 movers=0 twice=0 max=0 hist=- lastMove=- reseats=0 requeues=0 rollbacks=0 stagersMoved=0
+ERR unknown: __m137
+STAGESET truth=- obs=0 exact=0 stageUp=0 tick=0
+ERR unknown: __m138
+ERR unknown: __m139
+ERR unknown: __m140
+JOINSTAT n=0 unseated=0 p50=-1 p95=-1 max=-1 lastSeat=-1 pcs_open_p50=0 pcs_open_max=0 relay: knocks=0 signal=0 refused=0 cuts=0
+ERR unknown: __m141
+KICKSTAT t=2 tick=0 honest=0 ban=0 nbr=0 nbrBan=0 lag=-1 naming=0 dupH=0 tState=-1 tCell=- dropsIn=0 dropsOut=0 taken=0 refused=0/0/0/0/0/0/0
+ERR unknown: __m142
+ERR
+ERR unknown: __m143
+KAUDIT t=2 tick=0 first=-1 seats=0 strong=0 unanswered=0 voterEv=0 honestAggEv=0 honestVoterEv=0 audits=0 frames=0 hard=0 honestHard=0 suspects=0 firstSuspect=-1 honestSuspects=0
+ERR unknown: __m144
+KROLES seat=1 head=-1 owner=-1 child=-1
+ERR unknown: __m145
+KROLES seat=-1 head=-1 owner=-1 child=-1
+ERR unknown: __m146
+KFAKE seat=2 victim=-1
+ERR unknown: __m147
+ERR
+ERR unknown: __m148
+ERR kforge
+ERR unknown: __m149
+ERR
+ERR unknown: __m150
+ERR
+ERR unknown: __m151
+ERR
+ERR unknown: __m152
+ERR
+ERR unknown: __m153
+OK kvote first:3 yes t=4 seats=0
+ERR unknown: __m154
+OK kvote 2 clear t=-1 seats=0
+ERR unknown: __m155
+OK kvote 2 bogus t=1 seats=0
+ERR unknown: __m156
+OK refuse set=0 trueRefuse=0
+ERR unknown: __m157
+OK refuse set=0 trueRefuse=0
+ERR unknown: __m158
+OK refuse set=0 trueRefuse=0
+ERR unknown: __m159
+OK hand set=0
+ERR unknown: __m160
+OK hand set=0
+ERR unknown: __m161
+OK stage set=0
+ERR unknown: __m162
+OK app set=0
+ERR unknown: __m163
+OK away set=0
+ERR unknown: __m164
+OK vote dn added=0
+ERR unknown: __m165
+OK vote up added=0
+ERR unknown: __m166
+OK vote clear
+ERR unknown: __m167
+OK talk on set=0
+ERR unknown: __m168
+OK talk off set=0
+ERR unknown: __m169
+OK pin on set=0
+ERR unknown: __m170
+OK pin off set=0
+ERR unknown: __m171
+ERR lie: no such live seat 2
+ERR unknown: __m172
+ERR lie: no such live seat /0.0
+ERR unknown: __m173
+OK lie 2 tier (when it arrives)
+ERR unknown: __m174
+OK lie 2 nat (when it arrives)
+ERR unknown: __m175
+OK lie 99 tier (when it arrives)
+ERR unknown: __m176
+ERR usage: tier <live id> mobile|desktop
+ERR unknown: __m177
+ERR usage: tier <live id> mobile|desktop
+ERR unknown: __m178
+ERR usage: tierhold <live id> [0|1]
+ERR unknown: __m179
+OK evil seats=0
+ERR unknown: __m180
+OK evil seats=0
+ERR unknown: __m181
+ANCHORS seated=0 clients=0 uncovered=0 maxLinks=0 maxServed=0 fanin_max=0 at=/0.0 pool=links cap=9
+ERR unknown: __m182
+ANCHORS seated=0 clients=0 uncovered=0 maxLinks=0 maxServed=0 fanin_max=0 at=/0.0 pool=room cap=9
+ERR unknown: __m183
+ANCHORS seated=0 clients=0 uncovered=0 maxLinks=0 maxServed=0 fanin_max=0 at=/0.0 pool=room cap=0
+ERR unknown: __m184
+ANCHORS seated=0 clients=0 uncovered=0 maxLinks=0 maxServed=0 fanin_max=0 at=/0.0 pool=links cap=9
+ERR unknown: __m185
+OK killed 0, N now 30
+ERR unknown: __m186
+OK killed 0, N now 30
+ERR unknown: __m187
+OK killed 0, N now 30
+ERR unknown: __m188
+OK killed 0, N now 30
+ERR unknown: __m189
+OK killed 0, N now 30
+ERR unknown: __m190
+OK killed 0, N now 30
+ERR unknown: __m191
+ERR killat: nobody at /0.0
+ERR unknown: __m192
+ERR killat: nobody at /0.0
+ERR unknown: __m193
+ERR killat: nobody at /0.0
+ERR unknown: __m194
+ERR usage: killat <path>/<r>.<i> [silent]
+ERR unknown: __m195
+ERR no such live seat 3
+ERR unknown: __m196
+ERR no such live seat 3
+ERR unknown: __m197
+ERR no such live seat -1
+ERR unknown: __m198
+OK killspread 0 over 30 ticks (leave), N 30 -> 30
+ERR unknown: __m199
+OK killspread 0 over 30 ticks (crash), N 30 -> 30
+ERR unknown: __m200
+OK killspread 0 over 60 ticks (leave), N 30 -> 30
+ERR unknown: __m201
+OK dark seat 3 (not seated yet: no channel of it will ever open)
+ERR unknown: __m202
+ERR dark needs a live seat
+ERR unknown: __m203
+ERR dark needs a live seat
+ERR unknown: __m204
+ERR sever needs two live seats
+ERR unknown: __m205
+ERR sever needs two live seats
+ERR unknown: __m206
+OK pcstrack
+ERR unknown: __m207
+ERR unknown: lawoff
+ERR unknown: __m208
+ERR unknown: lawon
+ERR unknown: __m209
+ERR unknown: l2variant
+ERR unknown: __m210
+ERR unknown: darklaws
+ERR unknown: __m211
+ERR unknown: l28stat
+ERR unknown: __m212
+ERR unknown: #
+ERR unknown: __m213
+ERR unknown: bogusverb
+ERR unknown: __m214
+ERR mgap on|report|seats <minTotal>
+ERR unknown: __m215
+ERR mgap on|report|seats <minTotal>
+ERR unknown: __m216
+ERR usage: media on|off|stage <id..>|reset|report
+ERR unknown: __m217
+OK media stage 0
+ERR unknown: __m218
+BYE
