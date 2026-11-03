@@ -39,7 +39,7 @@ function install(fab) {
   // C++: mesh_link.inc:lmix
   const lmix = (x) => hash.fmix32((x + 0x9e3779b9) >>> 0);
   // C++: mesh_link.inc:lMobHash
-  const lMobHash = (id, f) => f > 0 && (lmix(hash.hmix((((lv.SEED0 >>> 0) ^ 0x6d6f62) >>> 0), id >>> 0) >>> 0) % 1000000) / 1e6 < f;
+  const lMobHash = (id, f) => f > 0 && (lmix(hash.hmixId((((lv.SEED0 >>> 0) ^ 0x6d6f62) >>> 0), id) >>> 0) % 1000000) / 1e6 < f;
   // C++: mesh_link.inc:tierMobile
   const tierMobile = (id) => { const o = TIEROVR.get(id); if (o !== undefined) return o === TIER_MOBILE; return lMobHash(id, lv.TIERMIX); };
 

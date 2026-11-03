@@ -21,6 +21,7 @@
   const SF = isNode ? require('./seat-fields.js') : GifOS.meshSeatFields;
   const books = isNode ? require('./books.js') : GifOS.meshBooks;
   const fnv = isNode ? require('./fnv.js') : GifOS.meshFnv;
+  const hash = isNode ? require('./hash.js') : GifOS.meshHash;
 
   const SCALARS = new Set(['i8', 'i32', 'i64', 'u8', 'u16', 'u32', 'u64', 'f64']);
   const MSGS = { Coord: 1, KV: 1, LE: 1, VE: 1, KStmt: 1, Dig: 1, DigE: 1, Ent: 1 };
@@ -37,6 +38,7 @@
     else if (t === 'bool') r = { k: 'bool' };
     else if (t === 'str') r = { k: 'str' };
     else if (t === 'ptr') r = { k: 'ptr' };
+    else if (t === 'idp') r = { k: 'idp' };   // C++ IdP: the key string "a:b" (hash.idPair)
     else if (t === 'Msg') r = { k: 'msg' };
     else if (MSGS[t]) r = { k: 'mstruct', name: t };
     else if ((m = /^Bucket<(\w+)>$/.exec(t))) r = { k: 'bucket', intT: m[1] !== 'f64' };
@@ -60,6 +62,7 @@
       case 'bool': return lit === undefined ? false : lit;
       case 'str': return lit === undefined ? '' : lit;
       case 'ptr': return null;
+      case 'idp': return hash.idPair(0, 0);
       case 'msg': return msg.newMsg('GREETERS');   // a value-initialized Msg (t = 0)
       case 'mstruct': return lit !== undefined && T.name === 'Coord' ? { pc: lit.pc, r: lit.r, i: lit.i } : msg['new' + T.name]();
       case 'bucket': { const b = new books.Bucket(T.intT); if (lit) { b.tok = lit[0]; b.at = lit[1]; } return b; }
@@ -87,7 +90,7 @@
   // ---- copy (a C++ struct copy) ---------------------------------------------------------------------------
   function copyT(v, T) {
     switch (T.k) {
-      case 'num': case 'bool': case 'str': case 'ptr': return v;
+      case 'num': case 'bool': case 'str': case 'ptr': case 'idp': return v;
       case 'msg': return msg.clone(v);
       case 'mstruct': return msg['read' + T.name](JSON.parse(JSON.stringify(msg['write' + T.name](v))));
       case 'bucket': { const b = new books.Bucket(T.intT); b.tok = v.tok; b.at = v.at; return b; }
@@ -106,6 +109,7 @@
   function out(v, T) {
     switch (T.k) {
       case 'num': case 'bool': case 'str': return v;
+      case 'idp': return [hash.pairA(v), hash.pairB(v)];   // C++ jv(IdP): [a, b]
       case 'ptr': return null;
       case 'msg': return msg.writeMsg(v);
       case 'mstruct': return msg['write' + T.name](v);
@@ -139,6 +143,7 @@
   function inp(o, T) {
     switch (T.k) {
       case 'num': case 'bool': case 'str': return o;
+      case 'idp': return hash.idPair(o[0], o[1]);
       case 'ptr': return null;
       case 'msg': return msg.readMsg(o);
       case 'mstruct': return msg['read' + T.name](o);

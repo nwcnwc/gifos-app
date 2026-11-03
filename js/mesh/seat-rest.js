@@ -19,6 +19,7 @@
   const dig = req('./dig.js', 'meshDig');
   const roles = req('./roles.js', 'meshRoles');
   const rngM = req('./rng.js', 'meshRng');
+  const hash = req('./hash.js', 'meshHash');
   const { Seat, l13MergingOf, l25OrdKey } = req('./seat.js', 'meshSeat');
   const { cellOk, ownerCoordOf, fabricToken } = req('./shared.js', 'meshShared');
 
@@ -305,7 +306,7 @@
         }
       }
       if ((h & E.H_FORGE) && m.t === 'FIND' && m.nc >= 0 && this.hasCoord) {
-        if (!this.hostRng) this.hostRng = rngM.mt19937(((Math.imul(lv.SEED0 >>> 0, 31) + Math.imul(id, 2654435761)) >>> 0));
+        if (!this.hostRng) this.hostRng = rngM.mt19937(hash.hmixId(Math.imul(lv.SEED0 >>> 0, 31) >>> 0, id));   // C++ hmixId((uint32_t)(SEED0*31u), id)
         const v = w.hostPickHonest(this.hostRng, id);
         const p = newMsg('PLACE'); { const sc = v >= 0 ? w.seats[v].coord : this.coord; p.coord = { pc: sc.pc, r: sc.r, i: sc.i }; } p.owner = id; p.nc = m.nc; p.pp = id; p.ppAt = this.TICK | 0; p.tag = m.tag; w.hostSend(id, m.nc, p); return true;
       }

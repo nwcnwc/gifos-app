@@ -45,7 +45,6 @@
   const { ckey, ownedLinks, parentPath } = topo;
   const { LK_NONE, LK_DIALING, LK_OPEN, LK_CLOSED, LS_NONE, LS_DIALING, LS_OPEN } = E;
   const MT_INDEX = new Map(msg.MT_NAMES.map((n, i) => [n, i]));
-  const TWO32 = 4294967296;
   const LINK_QCAP = 64;            // C++: mesh_link.inc:LINK_QCAP
   const LINK_DC_MIN = 0, LINK_DC_MAX = 1, LINK_DISC_DEAD = 196, LINK_ICE_FAIL = 60, LINK_FAILED_PERSIST = 18, LINK_ASK_GAP = 8;
   const L14_PC_ALLOW = 4;          // C++: mesh_link.inc:L14_PC_ALLOW
@@ -80,8 +79,8 @@
     for (const [n, mk] of [['DOORN', () => []], ['DOORK', () => []], ['L16CLOSING', () => []], ['L16COOL', () => new Map()], ['DOOR_PEND', () => []], ['MOBOPEN', () => new Map()],
       ['LDOORS', () => new Set()], ['L23S', () => new Map()], ['L23PEND', () => []], ['L23GREET', () => new Map()], ['L18_HH', () => new Array(9).fill(0)]]) if (!(n in S)) S[n] = mk();
     const fns = {};
-    const ldoorsAsc = () => [...S.LDOORS].sort((a, b) => a - b);
-    const pkA = (pk) => Math.floor(pk / TWO32), pkB = (pk) => pk % TWO32;
+    const ldoorsAsc = () => [...S.LDOORS].sort(hash.pairCmp);   // C++ set<IdP>: by a, then b
+    const pkA = hash.pairA, pkB = hash.pairB;   // C++ pk.a, pk.b
 
     // ===================================================================================================================
     // THE PC BUDGET TABLE
@@ -374,7 +373,7 @@
     }
     // C++: mesh_link.inc:l23GreetSlot   [end]
     function l23GreetSlot(me, from, ck) {
-      const key = hash.hmix64(hash.hmix(hash.H_INIT, me >>> 0), ck); const it = S.L23GREET.get(key);
+      const key = hash.hmix64(hash.hmixId(hash.H_INIT, me), ck); const it = S.L23GREET.get(key);
       if (it === undefined || T() - it[1] > K.L23_WORD_ || it[0] === from) { if (S.L23GREET.size > 100000) S.L23GREET.clear(); S.L23GREET.set(key, [from, T()]); return true; }
       return false;
     }

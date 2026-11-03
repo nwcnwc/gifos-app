@@ -37,8 +37,7 @@ const { ckey, ownedLinks, unckey } = topo;
 const { LK_NONE, LK_DIALING, LK_OPEN, LK_CLOSED, LS_NONE, LS_DIALING, LS_OPEN } = E;
 const { EV_DIAL, EV_DOWN, EV_ICE, EV_DISC, EV_STARVE1, EV_RADIOEND, EV_FRESH, EV_DSMALL } = E;
 const { PB_DOORS, PB_KNOCKS, PB_S1, PB_CLASS } = E;
-const TWO32 = 4294967296;
-const pkA = (pk) => Math.floor(pk / TWO32), pkB = (pk) => pk % TWO32;   // C++ (int)(pk>>32), (int)(uint32_t)pk
+const pkA = hash.pairA, pkB = hash.pairB;   // C++ pk.a, pk.b
 const U32 = (x) => x >>> 0;
 const cmpPair = (p, q) => (p[0] - q[0]) || (p[1] - q[1]);   // std::pair<int,int> operator<
 
@@ -80,7 +79,7 @@ function install(fab) {
   for (const [n, get, set] of [['DOORN', () => DOORN, (v) => { DOORN = v; }], ['DOORK', () => DOORK, (v) => { DOORK = v; }], ['L16CLOSING', () => L16CLOSING, (v) => { L16CLOSING = v; }],
     ['DOOR_PEND', () => DOOR_PEND, (v) => { DOOR_PEND = v; }], ['LPENDCLOSE', () => LPENDCLOSE, (v) => { LPENDCLOSE = v; }]]) Object.defineProperty(api, n, { get, set, enumerable: true, configurable: true });
   const L23PEND = api.L23PEND = [];   // L23PENDT (the stamp) is the lever lv.L23PENDT, shared with pclaws.js
-  const sortedDoors = () => [...LDOORS].sort((x, y) => x - y);
+  const sortedDoors = () => [...LDOORS].sort(hash.pairCmp);   // C++ set<IdP>: by a, then b
   const firstTick = (m) => { let f = Infinity; for (const k of m.keys()) if (k < f) f = k; return f; };   // std::map begin()
 
   // ---- small readers -------------------------------------------------------------------------------------------
@@ -91,7 +90,7 @@ function install(fab) {
     return lo + (h % U32(hi - lo + 1));
   };
   // C++: mesh_link.inc:lMobHash
-  const lMobHash = (id, f) => f > 0 && (lmix(hash.hmix(U32(U32(lv.SEED0) ^ 0x6d6f62), U32(id))) % 1000000) / 1e6 < f;
+  const lMobHash = (id, f) => f > 0 && (lmix(hash.hmixId(U32(U32(lv.SEED0) ^ 0x6d6f62), id)) % 1000000) / 1e6 < f;
   // C++: mesh_link.inc:tierMobile
   const tierMobile = (id) => { const o = TIEROVR.get(id); if (o !== undefined) return o === E.TIER_MOBILE; return lMobHash(id, lv.TIERMIX); };
   const lMobile = (id) => tierMobile(id) || lMobHash(id, lv.LMOBILE);
@@ -667,7 +666,7 @@ function install(fab) {
   };
   // C++: mesh_link.inc:l23GreetSlot
   const l23GreetSlot = api.l23GreetSlot = (me, from, ck) => {
-    const key = hash.hmix64(hash.hmix(hash.H_INIT, U32(me)), ck); const it = L23GREET.get(key);
+    const key = hash.hmix64(hash.hmixId(hash.H_INIT, me), ck); const it = L23GREET.get(key);
     if (it === undefined || TICK() - it[1] > K.L23_WORD_ || it[0] === from) { if (L23GREET.size > 100000) L23GREET.clear(); L23GREET.set(key, [from, TICK()]); return true; }
     return false;
   };

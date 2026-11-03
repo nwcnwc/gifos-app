@@ -592,7 +592,7 @@ function createOps(fab, opts) {
       const mix = (v) => { h = hash.hmix64(h, v); };
       const mixAll = (lo, hi) => { h = hash.hmix(hash.hmix(h, lo >>> 0), hi >>> 0); };
       const mixI = (v) => { mixAll(v >>> 0, v < 0 ? 0xffffffff : 0); };   // (uint64_t) of an int / long long
-      const mixmap = (m) => { let a = 0; for (const [k, v] of m) a = (a + hash.hmix(hash.hmix64(hash.H_INIT, k), v >>> 0)) >>> 0; mix(a); mix(m.size); };   // a sum: order-free
+      const mixmap = (m) => { let a = 0; for (const [k, v] of m) a = (a + hash.hmixId(hash.hmix64(hash.H_INIT, k), v)) >>> 0; mix(a); mix(m.size); };   // a sum: order-free
       mixI(x.state);
       if (x.hasCoord) mix(ckey(x.coord)); else mixAll(0xffffffff, 0xffffffff);
       mixmap(x.occ); mixmap(x.live); mixmap(x.s1seen); mixmap(x.healTry);

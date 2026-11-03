@@ -181,7 +181,7 @@
   }
   Seat.free({ kOver });
   // C++: mesh_seat.inc:kHash
-  function kHash(a, b, c) { return fmix32(hmix(hmix64(hmix(H_INIT, a >>> 0), b), c >>> 0)); }
+  function kHash(a, b, c) { return fmix32(hmix(hmix64(hash.hmixId(H_INIT, a), b), c >>> 0)); }
   // C++: mesh_seat.inc:kSameVote
   function kSameVote(a, b) {
     const srt = (v) => v.slice().sort((x, y) => x - y);

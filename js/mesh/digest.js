@@ -514,7 +514,7 @@
       const o = this.l10OwnNow(); if (o !== this.l10OwnSig) { if (this.l10OwnSig) this.l10Mark(); this.l10OwnSig = o; }   // the first look at my own facts is no change
       if (this.rootDig.at >= 0) { const r = dig.digSig(this.rootDig); if (r !== this.l10RootSig) { if (this.l10RootSig) this.l10DirtyDn = true; this.l10RootSig = r; } }
       { // a new seat at one of my owned links has none of my state: it gets it at once
-        const ol = ownedLinks(this.coord); let h = H_INIT; for (const o2 of ol) { const x = this.occGet(ckey(o2)); h = hmix(h, x); }
+        const ol = ownedLinks(this.coord); let h = H_INIT; for (const o2 of ol) { const x = this.occGet(ckey(o2)); h = hash.hmixId(h, x); }
         if (h !== this.l10NbrSig) { if (this.l10NbrSig) { this.l10Mark(); this.l10Force = true; this.l10DirtyDn = true; } this.l10NbrSig = h; }
       }
       // LEADING EDGE / TRAILING EDGE.
