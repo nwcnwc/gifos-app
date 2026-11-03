@@ -1,0 +1,17 @@
+{
+ "joinpat.proof": {
+  "seats": 26,
+  "calls": 442,
+  "digest": "ef01f56ca5a99639"
+ },
+ "joinburst.proof": {
+  "seats": 43,
+  "calls": 731,
+  "digest": "34675e90554a41c2"
+ },
+ "freeze.proof": {
+  "seats": 117,
+  "calls": 1989,
+  "digest": "0fee76522c074fa3"
+ }
+}
