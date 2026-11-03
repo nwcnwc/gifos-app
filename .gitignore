@@ -5,6 +5,8 @@ test-results/
 playwright-report/
 # How long a published app file stays good.
 !_headers
+# Pretty links (/meet, /cast, /join, /store) answer 200.
+!_redirects
 .DS_Store
 node_modules/
 test-results/
