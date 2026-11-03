@@ -334,10 +334,10 @@
     // stamped and its key pinned, a forged one is dropped. Non-signed frames and
     // S4-off nodes pass straight through — the structural path is untouched.
     // The directory a frame carries ({int: peer} for the seats it names; env.js checks each entry).
-    function dirOf(d) {
+    function dirOf(d) {   // keys are seat ids: up to 2^52, so up to 16 digits
       if (!d || typeof d !== 'object' || Array.isArray(d)) return null;
       const out = {}; let n = 0;
-      for (const k of Object.keys(d)) { if (++n > 32) break; const v = d[k]; if (/^\d{1,7}$/.test(k) && typeof v === 'string' && v.length <= 64) out[k] = v; }
+      for (const k of Object.keys(d)) { if (++n > 32) break; const v = d[k]; if (/^\d{1,16}$/.test(k) && typeof v === 'string' && v.length <= 64) out[k] = v; }
       return out;
     }
     function ingest(m, via, direct) {
