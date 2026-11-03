@@ -296,7 +296,7 @@ function createOps(fab, opts) {
   // C++: mesh.cpp:runOp (l18stat)
   V.l18stat = () => {
     P('L18STAT routed=%lld delivered=%lld hops_mean=%.2f hops_max=%lld hops=', lv.L18_ROUTED, lv.L18_DELIV, lv.L18_DELIV ? lv.L18_HOPS / lv.L18_DELIV : 0.0, lv.L18_HMAX);
-    for (let h = 0; h < 9; h++) P('%s%lld', h ? ',' : '', fab.L18_HH ? fab.L18_HH[h] : 0);
+    { const HH = fab.link && fab.link.L18_HH; for (let h = 0; h < 9; h++) P('%s%lld', h ? ',' : '', HH ? HH[h] : 0); }   // the table lives on the link physics (pclaws.js S.L18_HH)
     P(' nopath=%lld nodial=%lld skip_direct=%lld skip_friend=%lld skip_mass=%lld\n', lv.L18_NOPATH, lv.L18_NODIAL, lv.L18_SKIPDIRECT, lv.L18_SKIPFRIEND, lv.L18_SKIPMASS);   // L18: frames routed for want of a role, their hops (0..7, 8+), and the cut-off senders that kept the old path
   };
   // C++: mesh.cpp:runOp (mgap)
