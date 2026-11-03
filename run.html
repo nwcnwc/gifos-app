@@ -7309,6 +7309,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           for (const pid of rosterIds) {
             if (darkSince(nowHb)) break; // same law as the sweep above
             if (pid === myId || peers.has(pid)) continue;
+            if (!linkTo(pid)) continue;   // a pair the seat holds no link to never formed by design (a 6-room has cross-row members), not a dead one
             const heard = meshRxByPid.get(pid) || 0;
             if (!pidFirstSeen.has(pid)) pidFirstSeen.set(pid, nowHb);
             if (nowHb - Math.max(heard, pidFirstSeen.get(pid)) < 12000) continue;
