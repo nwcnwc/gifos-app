@@ -26,6 +26,9 @@
   const { ckey, ckPc, unckey, ownedLinks, down } = topo;
   const C = topo.C;
   const newMsg = (t) => msg.newMsg(t);
+  const U2_STANDBY = 562949953421312;   // 2^49: the standby flag of a u2Rows key (the sim's bit 62 does not fit a JS number)
+  // C++: mesh_seat.inc:inSubtree
+  function inSubtree(row, t) { if (t.r !== row.r) return false; let pc = t.pc; for (let g = 0; g < 32; g++) { if (pc === row.pc) return true; if (pc === 0) return false; pc = topo.parentPath(pc); } return false; }
   const unck = unckey;
 
   Seat.unit('mesh_seat.inc rest', {
@@ -326,6 +329,30 @@
       const it = this.translost.get(k); if (it === undefined) return false;
       const h = this.tlHard.get(k); if (h === undefined || !h) return false;
       return this.TICK - it <= K.EARLY_HOLD + 2 * 8;
+    },
+
+    // C++: mesh_seat.inc:Seat::l2Around
+    // The u2Rows key carries the standby flag (C++ bit 62; JS: U2_STANDBY, see recv-seated.js, a sim change is pending).
+    l2Around(t, exclude, servedOnly) {
+      if (!this.hasCoord) return -1;
+      const usable = (x) => x >= 0 && x !== this.id && x !== exclude && this.f.fabricLinkState(this.id, x) === E.LS_OPEN;
+      const view = (c) => ckey(c) === ckey(this.coord) || this.occGet(ckey(c)) >= 0;
+      for (const [ek, e] of this.u2Rows) {
+        if (e.heir < 0 || this.TICK - e.at > 40) continue;
+        const sb = ek >= U2_STANDBY; const row = unck(sb ? ek - U2_STANDBY : ek); if (!inSubtree(row, t)) continue;
+        if (usable(e.heir)) return e.heir;
+        if (!sb && this.f.fabricLinkState(this.id, e.heir) === E.LS_CLOSED) { const s2 = roles.standbyOf(row, view); if (s2) { const x = this.occGet(ckey(s2)); if (usable(x)) return x; } }
+      }
+      if (servedOnly) return -1;
+      const crow = down(this.coord);
+      if (inSubtree(crow, t)) {
+        let b = roles.backupOwnerOf(crow, view);
+        if (b && ckey(b) !== ckey(this.coord)) {
+          let x = this.occGet(ckey(b)); if (usable(x)) return x;
+          if (x >= 0 && (this.f.fabricLinkState(this.id, x) === E.LS_CLOSED || this.translost.has(ckey(b)))) { b = roles.standbyOf(crow, view); if (b && ckey(b) !== ckey(this.coord)) { x = this.occGet(ckey(b)); if (usable(x)) return x; } }
+        }
+      }
+      return -1;
     },
 
     // C++: mesh.cpp:l13Merging

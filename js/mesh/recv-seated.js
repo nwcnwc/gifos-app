@@ -21,6 +21,7 @@
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
   const seatM = req('./seat.js', 'meshSeat');
+  const { cellOk, ownerCoordOf, coordStr } = req('./shared.js', 'meshShared');
   const { Seat, roomTerm, islandStand, signedBy, l165Earlier } = seatM;
   const C_ = req('./consts.js', 'meshConsts');
   const msg = req('./msg.js', 'meshMsg');
@@ -39,22 +40,6 @@
   const kvCopy = (a) => a.map((e) => ({ k: e.k, v: e.v }));
   const hello = (ck, id) => { const h = newMsg('HELLO'); h.ck = ck; h.id = id; return h; };
 
-  // C++: mesh.cpp:cellOk (private copy, as in entry.js)
-  function cellOk(k) {
-    const c = unckey(k); if (c.r >= C || c.i >= C) return false;
-    let pc = c.pc, d = 0;
-    while (pc) { if (lastDigit(pc) >= C) return false; pc = parentPath(pc); if (++d > 12) return false; }
-    return true;
-  }
-  // C++: mesh_seat.inc:ownerCoordOf (private copy, as in entry.js)
-  function ownerCoordOf(c) { if (c.pc === 0) return null; return topo.up({ pc: c.pc, r: c.r, i: 0 }); }
-  // C++: mesh.cpp:coordStr (private copy, as in entry.js)
-  function coordStr(c) {
-    let p = ''; let pc = c.pc; const d = [];
-    while (pc) { d.push(lastDigit(pc)); pc = parentPath(pc); }
-    for (let a = d.length - 1; a >= 0; a--) p += String.fromCharCode(48 + d[a]);
-    return p + '/' + c.r + '.' + c.i;
-  }
 
   Seat.unit('mesh_seat.inc recv seated handlers', {
     // C++: mesh_seat.inc:Seat::onHello

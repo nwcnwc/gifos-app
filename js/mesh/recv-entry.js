@@ -17,6 +17,7 @@
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
   const seatM = req('./seat.js', 'meshSeat');
+  const { cellOk } = req('./shared.js', 'meshShared');
   const { Seat, FREE, roomTerm, islandStand } = seatM;
   const C_ = req('./consts.js', 'meshConsts');
   const msg = req('./msg.js', 'meshMsg');
@@ -29,13 +30,6 @@
   const newMsg = (t) => msg.newMsg(t);
   const kvCopy = (a) => a.map((e) => ({ k: e.k, v: e.v }));
 
-  // C++: mesh_seat.inc:cellOk (private copy, as in entry.js)
-  function cellOk(k) {
-    const c = unckey(k); if (c.r >= C || c.i >= C) return false;
-    let pc = c.pc, d = 0;
-    while (pc) { if (lastDigit(pc) >= C) return false; pc = parentPath(pc); if (++d > 12) return false; }
-    return true;
-  }
 
   Seat.unit('mesh_seat.inc recv entry handlers', {
     // C++: mesh_seat.inc:Seat::onGreeters

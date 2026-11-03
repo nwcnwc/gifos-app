@@ -20,6 +20,7 @@
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
   const seatM = req('./seat.js', 'meshSeat');
+  const { fabricToken } = req('./shared.js', 'meshShared');
   const { Seat, FREE, roomTerm } = seatM;
   const C_ = req('./consts.js', 'meshConsts');
   const msg = req('./msg.js', 'meshMsg');
@@ -32,8 +33,6 @@
   const { ckey } = topo;
   const newMsg = (t) => msg.newMsg(t);
   const mtNum = (t) => msg.MT_NAMES.indexOf(t);
-  // C++: mesh.cpp:fabricToken (private copy, as in entry.js)
-  function fabricToken(lv, id) { return (hash.fmix32(hash.hmix(hash.hmix((hash.H_INIT ^ 0x72636c) >>> 0, lv.SEED0 >>> 0), id >>> 0)) | 1) >>> 0; }
 
   Seat.unit('mesh_seat.inc recv', {
     // C++: mesh_seat.inc:Seat::recv
