@@ -88,6 +88,9 @@ check('wire asks the admit door before seating', wireSrc.indexOf('relayAdmit.cli
   check('the Waiting room button shows only to the admin of an admin room', /mayHold = hasAdminRoom\(\) && amAdmin/.test(pageSrc) && !/mayHold = amAdmin \|\| !hasAdminRoom/.test(pageSrc));
   check('a resumed hold is dropped in an open room', /if \(!av\) \{ holdDoor = false;/.test(pageSrc));
 }
+// The Worker keeps no waiting room: a guest's door holds on the admin's signed order, and Admit opens every door.
+check('the switch travels as a signed room order', /room\.dhold = \{ on: holdDoor/.test(pageSrc) && /'dhold', 'dadm'/.test(pageSrc));
+check('a guest door obeys the order', /const h = \(modTable\['\*'\] \|\| \{\}\)\.dhold;/.test(pageSrc) && /mine\.dadm = \{ on: true/.test(pageSrc));
 check('page loads the admit door', pageSrc.indexOf('js/relay-admit.js') > 0);
 
 function roomWithHost() {

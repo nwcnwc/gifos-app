@@ -6293,9 +6293,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         holdDoor = !!on;
         if (holdDoor) closeMoreForWait();
         waitPaint();
-        // Admin rooms tell the relay. The relay is what keeps a knocker
-        // unseated; this page's list is only the host's view of that.
+        // The Worker keeps no waiting room: every seated page's door is what holds a knocker. So the
+        // switch travels as a signed room order (dhold), and a guest's door obeys it too.
         if (hasAdminRoom() && amAdmin) {
+          const room = modTable['*'] = modTable['*'] || {};
+          room.dhold = { on: holdDoor, by: myName(), byId: myId, at: Date.now() };
+          hostFlood();
           const bit = holdDoor ? '1' : '0';
           admSigned('waitroom', { on: bit }).then((w) => { if (w) relaySendObj({ t: 'waitroom', on: bit, w }); });
         }
@@ -6314,16 +6317,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         waitDeclined.delete(id);
         if (id) waitAdmitted.add(id);
         waitPaint();
-        // An admin room does not hand over HOME on this socket. The relay
-        // mints a token, the knocker reconnects, and only then is WHOHOME
-        // answered (doorHeld is false for an admitted id).
-        if (hasAdminRoom() && amAdmin) {
+        // Every door lets them in now (a signed dadm, doorHeld false for them), and this one answers at once.
+        if (hasAdminRoom() && amAdmin && id) {
+          const mine = modTable[id] = modTable[id] || {};
+          mine.dadm = { on: true, by: myName(), byId: myId, at: Date.now() };
+          hostFlood();
           admSigned('admit', { id: id }).then((w) => { if (w) relaySendObj({ t: 'admit', id: id, w }); });
-        } else {
-          // The door channel closed while they waited: reopen it, then answer on it.
-          try { bootDial(id); } catch (e) {}
-          [0, 1000, 2500].forEach((ms) => setTimeout(() => { try { const s = meshSeat(); if (s && s.answerDoor) s.answerDoor([id]); } catch (e) {} }, ms));
         }
+        // The door channel closed while they waited: reopen it, then answer on it.
+        try { bootDial(id); } catch (e) {}
+        [0, 1000, 2500].forEach((ms) => setTimeout(() => { try { const s = meshSeat(); if (s && s.answerDoor) s.answerDoor([id]); } catch (e) {} }, ms));
         return true;
       },
       decline(id) {
@@ -6340,7 +6343,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       holding() { return holdDoor; },
       // True while this id must not receive HOME. Fail closed if the
       // waiting room is on and they have not been admitted.
-      blocks(id) { return holdDoor && hasAdminRoom() && !waitAdmitted.has(String(id || '')); },
+      blocks(id) {
+        id = String(id || '');
+        if (!hasAdminRoom()) return false;
+        if (holdDoor) return !waitAdmitted.has(id);
+        if (amAdmin) return false;
+        // A guest's door is the room's door, while an admin is here to admit (nobody could, once they have gone).
+        const h = (modTable['*'] || {}).dhold;
+        if (!h || !h.on || !admins.length) return false;
+        const a = (modTable[id] || {}).dadm;
+        return !(a && a.on && (+a.at || 0) >= (+h.at || 0));
+      },
       waiting(on) {
         atWaitDoor = !!on;
         const el = document.getElementById('waitdoor');
@@ -7772,7 +7785,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // field (the admin's chat on/off switch). It rides the same signed
         // table as every per-target order, so it reaches late joiners on the
         // heartbeat and a forged copy dies in takeMod's admVerify.
-        for (const field of ['mute', 'blur', 'cam', 'app', 'share', 'chat', 'cc', 'wait', 'admit', 'rename', 'spot', 'pray', 'gfile', 'greact', 'qa', 'chist', 'slow', 'clink']) {
+        for (const field of ['mute', 'blur', 'cam', 'app', 'share', 'chat', 'cc', 'wait', 'admit', 'dhold', 'dadm', 'rename', 'spot', 'pray', 'gfile', 'greact', 'qa', 'chist', 'slow', 'clink']) {
           const inc = incoming[target][field];
           if (!inc || typeof inc !== 'object') continue;
           if (goneAt != null && (+inc.at || 0) <= goneAt) continue;
@@ -12418,6 +12431,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (signed && signed.then) signed.then(modFlood, modFlood); else modFlood();
     }
     function applyHostOrders() {
+      // An admin back from a reload picks its own switch up again from the table the guests carried.
+      try { const dh = (modTable['*'] || {}).dhold; if (dh && dh.on && !holdDoor && amAdmin && hasAdminRoom()) { holdDoor = true; waitPaint(); } } catch (e) {}
       const nmMe = hostRename(myId);
       if (nmMe) {
         try { localStorage.setItem('gifos_name', nmMe); } catch (e) {}
@@ -16842,7 +16857,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         oldKeys: (prevRoomE2E && prevRoomE2E !== roomE2E) ? [prevRoomE2E] : [],   // a door blob this key opens is behind me, not ahead (mesh-wire R6)
         excluded: isEjected, // ejected forgers: their mesh frames never reach the seat
         urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
-        doorHeld: (id) => { try { const b = meetWait.blocks(id); if (b && id) meetWait.note(id, rosterNames[id] || 'Someone waiting'); return b; } catch (e) { return false; } },   // a withheld knock goes on the host's list: nothing else names a plain room's knocker
+        doorHeld: (id) => { try { const b = meetWait.blocks(id); if (b && id && amAdmin) meetWait.note(id, rosterNames[id] || 'Someone waiting'); return b; } catch (e) { return false; } },   // a withheld knock goes on the host's list: nothing else names a plain room's knocker
         onDoor: (kind, frame) => {
           if (kind === 'unseated') {
             meetWait.waiting(true);
