@@ -258,12 +258,35 @@
       return out;
     }
 
+    // ---- L27 across a rejoin: the verdict is about the identity (the device), not one peer id -------------------
+    // In the sim a seat's id IS its identity, so a refused T stays refused when it comes back. A page that rejoins
+    // gets a new peer id; the page knows which peers share a device. kickDevs(devOf): the devices my seat refuses
+    // (devOf(peer) -> tag; a tag is remembered while its peer id stays refused, after the peer itself is gone).
+    // kickCarry(peers): refuse those peers too (the same goodbye/heal/close as the verdict, L27.5), traced KICK-ID.
+    const kDev = new Map();   // refused seat id -> device tag
+    function kickDevs(devOf) {
+      const s = raw(), out = new Set(); if (!s || !s.vban) return out;
+      for (const t of Array.from(kDev.keys())) if (!s.vban.has(t)) kDev.delete(t);
+      for (const t of s.vban.keys()) { const p = P(t); const d = p != null ? devOf(p) : ''; if (d && !kDev.has(t)) kDev.set(t, d); const k = kDev.get(t); if (k) out.add(k); }
+      return out;
+    }
+    function kicked(pid) { const s = raw(); if (!s || !s.vban) return false; const x = ids.nid(pid); return x >= 0 && s.vban.has(x); }
+    function kickCarry(list) {
+      const s = raw(); if (!s || !s.vban || !s.hasCoord || s.state !== 3) return 0;
+      let n = 0;
+      for (const pid of list || []) {
+        const x = ids.nid(pid); if (x < 0 || x === s.id || s.vban.has(x)) continue;
+        s.vban.set(x, s.TICK); s.trace('KICK-ID', s.id, s.coord, 'tgt=%d', x); s.kBanOn(x); n++;
+      }
+      return n;
+    }
+
     // ---- per tick (after the seat's tick) -------------------------------------------------------------------------
     function afterTick() { bump(); replayNew(); refan(); leafOut(); }
 
     // seen(gid): a gossip frame I already took (the wire skips the signature check for its later copies)
     const seen = (gid) => typeof gid === 'string' && gseen.has(gid);
-    return { ids, view, gossip, gossipRecv, seen, setKicks, kickTally, setLeaf, setRefuses, roomDigest, afterTick, bump, heardLeaves: () => heard.size };
+    return { ids, view, gossip, gossipRecv, seen, setKicks, kickTally, kickDevs, kickCarry, kicked, setLeaf, setRefuses, roomDigest, afterTick, bump, heardLeaves: () => heard.size };
   }
 
   const api = Object.freeze({ create, makeIds });

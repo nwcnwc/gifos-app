@@ -254,7 +254,9 @@
 
     // C++: mesh.cpp:fabricSend  (the sim's order; past the direct link the path is the sender's picture of `to`)
     function fabricSend(from, to, m) {
-      const s = seat(); if (!s || dead) return;
+      // the sim's fabricSend has no dead gate: seat.leave marks itself dead (fabricLeft) and THEN emits its LEAVEs, so a
+      // send while the leave's own close is pending (closeAt >= 0) goes out; dropping them left every leaver's cell held
+      const s = seat(); if (!s || (dead && closeAt < 0)) return;
       if (m.l10E || m.dgOnly) {
         let held = false; if (s.hasCoord && to >= 0 && to !== from) { for (const c of ownedLinks(s.coord)) if (s.occGet(ckey(c)) === to) { held = true; break; } }
         if (held) parSend(from, to, m); else drop('l10');

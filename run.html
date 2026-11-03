@@ -21184,6 +21184,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // A deliberate close from the far end (A2's pc laws): its why reaches the seat's world, and the
         // channel's close that follows is no loss.
         if (dc && dc.__authBy === p.id) { p.byeSeen = Date.now(); try { if (meshNode && meshNode.transport) meshNode.transport(p.id, 'bye', typeof m.why === 'string' ? m.why.slice(0, 16) : 'call'); } catch (e) {} if (typeof clog === 'function') clog('pcbye-in ' + String(p.id).slice(0, 6) + ' ' + m.why); }
+        // L27 for the refused device: a seat that refuses me says 'kick'. Two distinct seats saying it (the vote-off
+        // bar is never below 2) while I am kept out is the room's standing verdict on this device: tell the person.
+        if (dc && dc.__authBy === p.id && m.why === 'kick' && !bannedOut && !hasAdminRoom()) {
+          const now = Date.now(); kickByesIn.set(p.id, now); for (const [k2, at] of kickByesIn) if (now - at > 60000) kickByesIn.delete(k2);
+          if (kickByesIn.size >= 2 || votedOffHere()) {
+            bannedOut = true; noteVotedOff(); if (typeof clog === 'function') clog('kicked-out by ' + kickByesIn.size);
+            for (const pid of Array.from(peers.keys())) dropPeer(pid);
+            try { meshNode && meshNode.stop(); } catch (e) {}
+            setStatus(uiText('stThePeopleInThisRoom', '\u26d4 The people in this room voted not to let this device in.'));
+          }
+        }
       } else if (m.k === 'dcauth') {
         dcAuthRecv(p, dc, m);   // §DCAUTH: the peer proves it is the far end of THIS channel
       } else if (m.k === 'mesh') {
@@ -32351,17 +32362,37 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     };
     // L27 VOTE-OFF ON THE MESH: my vote-offs (device tags) name every peer on that device; the seat signs the
     // statement and it rides PHONE; the seat's fold is the tally, its threshold the need, its verdict the kick.
+    const kickByesIn = new Map();   // peer -> when it closed our pair with 'kick' (L27, the refused side)
+    // This device's own memory that the room voted it off (its fold said so, or two seats did), for KICK_LIFT-ish 120 s:
+    // a rejoining page then takes the one door it knocks (L16) saying 'kick' as the standing verdict. Only ever about me.
+    const VOTED_OFF_KEY = 'gifos_votedoff', VOTED_OFF_MS = 120000;
+    function noteVotedOff() { try { const o = JSON.parse(localStorage.getItem(VOTED_OFF_KEY) || '{}'); const now = Date.now(); for (const k in o) if (now - o[k] > VOTED_OFF_MS) delete o[k]; o[String(room)] = now; localStorage.setItem(VOTED_OFF_KEY, JSON.stringify(o)); } catch (e) {} }
+    function votedOffHere() { try { const o = JSON.parse(localStorage.getItem(VOTED_OFF_KEY) || '{}'); const at = o[String(room)]; return !!at && Date.now() - at < VOTED_OFF_MS; } catch (e) { return false; } }
     function meshVoteBeat() {
       if (!meshNode || !meshNode.setKicks || hasAdminRoom()) return;
       const want = []; for (const pid of Object.keys(devOf)) if (pid !== myId && myVoteoffs.has(devOf[pid])) want.push(pid);
       meshNode.setKicks(want);
+      // L27 across a rejoin: my seat's verdict is about the DEVICE, so every other peer of a refused device (its
+      // rejoining page, a second tab) is refused too, and a door pc to it is closed with the same 'kick' goodbye.
+      if (meshNode.kickDevs && meshNode.kickCarry) {
+        const kd = meshNode.kickDevs((pid) => devOf[pid] || '');
+        if (kd.size) for (const pid of new Set(Object.keys(devOf).concat(Array.from(peers.keys())))) {
+          const dv = devOf[pid]; if (pid === myId || !dv || dv === myDevHash || !kd.has(dv)) continue;
+          if (meshNode.kickCarry([pid]) > 0 && typeof clog === 'function') clog('kick-id ' + String(pid).slice(0, 6));
+        }
+      }
+      // A refused peer's open channel (its door knock, or a pair the verdict found not yet a link) hears 'kick' too.
+      if (meshNode.kicked) for (const q of Array.from(peers.values())) {
+        if (!q.dc || q.dc.readyState !== 'open' || !meshNode.kicked(q.id) || Date.now() - (q.kickSaidAt || 0) < 10000) continue;
+        q.kickSaidAt = Date.now(); try { dcSend(q, { k: 'pcbye', why: 'kick' }); } catch (e) {} if (typeof clog === 'function') clog('kick-say ' + String(q.id).slice(0, 6));
+      }
       const k = meshNode.kickTally(); const tally = {}; let need = 0;
       for (const pid of Object.keys(k.tally)) { const dv = devOf[pid]; if (!dv) continue; tally[dv] = Math.max(tally[dv] || 0, k.tally[pid]); need = Math.max(need, k.need[pid] || 0); }
       if (!need && Object.keys(k.need).length === 0) { const n = (meshSeat() && meshSeat().occ) ? meshSeat().occ.size : 0; need = Math.max(2, Math.trunc(n / 2) + 1); }
       const ch = JSON.stringify(tally) !== JSON.stringify(voteTally) || need !== voteNeed;
       voteTally = tally; voteNeed = need; if (ch) refreshAllTiles();
       if (k.me && !bannedOut) {
-        bannedOut = true;
+        bannedOut = true; noteVotedOff();
         for (const pid of Array.from(peers.keys())) dropPeer(pid);
         try { meshNode.stop(); } catch (e) {}
         setStatus('\u26d4 The people on this meeting voted you off.');

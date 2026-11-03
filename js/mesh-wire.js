@@ -1106,6 +1106,9 @@
       relayBusyIn(from, d) { if (stopped || !penv) return; try { penv.relayFrame({ t: 'peer', from: String(from), ty: 'busy', d }); } catch (e) {} },
       setKicks(peers) { if (layer) layer.setKicks(peers); },   // L27: whom I vote off (peer ids)
       kickTally() { return layer ? layer.kickTally() : { tally: {}, need: {}, me: false }; },
+      kickDevs(devOf) { return layer ? layer.kickDevs(devOf) : new Set(); },   // L27 across a rejoin (layer.js)
+      kickCarry(peers) { return layer ? layer.kickCarry(peers) : 0; },
+      kicked(peer) { return layer ? layer.kicked(peer) : false; },
       adapterStats() { return (penv && penv.stats) ? penv.stats() : null; },
       links() { return seat ? Array.from(seat.linkPeers()) : []; },
       // Resolves once every gossip frame handed over before now has been
