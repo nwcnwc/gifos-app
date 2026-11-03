@@ -10,7 +10,8 @@
  * State lives on `api` (api.LINKS ...), one set per fabric. Counters the sim keeps as globals (L16_BUSY,
  * CLOSEDROPS ...) are fab.lv.<name>; constants are fab.K.<name>.
  *
- * NOT PORTED, on purpose: the realcheck hooks (RC_ON, rcNoteDial, rcNoteSend, RcFabric), gate() (the threaded
+ * The realcheck hooks: startDial calls X.rcNoteDial under RC_ON; the L22SEQ sends count through fab.schedL10.
+ * NOT PORTED, on purpose: RcFabric (heap accounting), gate() (the threaded
  * tick), the L13DBG / DBG-LINK-* stderr prints, the rcDialWhy instrument and Link.dialT, the parallel-tick
  * published views (xvOf is the seat itself; l15NamesX is l15Names), and the lever printfs (the lever functions
  * here do the state change only). lever words `link stat|peers|show` print only and are not ported.
@@ -191,6 +192,7 @@ function install(fab) {
         if (o !== 3) { const g = (o & (1 << lEnd(a, b))) ? b : a; if (g >= DOORN.length) { while (DOORN.length < g + 1) DOORN.push(0); while (DOORK.length < g + 1) DOORK.push(0); } DOORN[g]++; if (!L.dIn) DOORK[g]++; }
       }
     }
+    if (lv.RC_ON) X.rcNoteDial(a, b);   // realcheck: a dial to a seat long gone (a measurement)
     { L.nnAt[0] = L.nnAt[1] = -1; }
     L.state = LK_DIALING; L.epoch = U32(L.epoch + 1); L.dialAt = TICK(); L.half = 0; L.halfAt = -1; L.stuck = false; L.backAt[0] = L.backAt[1] = -1; L.view[lEnd(a, b)] = LK_DIALING; LSTAT[0]++; L.dialBy = a; L.callClosed = false; L.gone = 0; L.uplink = false; L.dialT = -1; L.dialHow = 0;
     X.netSignal(a, b);

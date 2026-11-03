@@ -1,8 +1,8 @@
 'use strict';
 /*
- * harness/fhop.js: friend-hop (port plan H4), a line-for-line port of the sim's mesh_fhop.inc (law and physics; the
- * measurement is not ported: fhMeasureTick stays the fabric's no-op, and so do fhStat, fhHeal, fhopLever, fhRx and the
- * FHMEAS / FHM_PEAK* counters). Harness code: it plays run.html around the seats and is never shipped.
+ * harness/fhop.js: friend-hop (port plan H4), a line-for-line port of the sim's mesh_fhop.inc: law and physics
+ * (installFhop), and the measurement with its lever (installFhopLever: fhMeasureTick, fhStat, fhHeal, fhRx, fhopLever
+ * and the FHMEAS / FHM_PEAK* counters). Harness code: it plays run.html around the seats and is never shipped.
  *
  *   const { installFhop } = require('./fhop.js');   installFhop(fab);
  *
@@ -316,7 +316,7 @@ function installFhop(fab) {
 
   // ---- the seat-facing calls (js/mesh/fhop.js) and the plug ---------------------------------------------------------
   const ctx = { lv, K, seats, alive, X, get FH() { return fab.FH; }, get NETG() { return fab.NETG; }, grpOf, fhopActive, fhConns, fhClaims, fhDc };
-  fab.fhop = { ctx, fhConn, fhConns, fhDc, fhClaims, fhKeyOf, fhNextHop, fhopSponsor, fhopOnward, fhopRouteDrop, fhSweep, fhOnMsg, fhWebkit, fhEnsure };
+  fab.fhop = { ctx, fhConn, fhConns, fhDc, fhClaims, fhKeyOf, fhNextHop, fhopSponsor, fhopOnward, fhopRouteDrop, fhSweep, fhOnMsg, fhWebkit, fhEnsure, fhHasStream };
   fab.plug({
     fhopActive, fhopReset, fhopSchedule, fhopSponsorDrop, fhopIntercept, fhopTick,
     fhopFriendFor: (me, to) => fhopSeat.fhopFriendFor(ctx, me, to),
@@ -326,4 +326,136 @@ function installFhop(fab) {
   return fab;
 }
 
-module.exports = { installFhop, lEnd, bsearch };
+// ---- the measurement and the lever (C++ mesh_fhop.inc after fhopTick): `fhop on|off|measure|webkit|heal|why|jobs`, `fhstat`
+// Person pairs whose audio and video reach each other: the page sends a person's camera and mic to its ROW-MATES only
+// (camPeer), so the pairs measured are row-mate pairs, by the seats' true cells. fhMeasureTick never changes the
+// trajectory; `fhop heal` runs ticks (and `freeze` through runOp). installFhopLever(fab, runOp) needs installFhop first.
+function installFhopLever(fab, runOp) {
+  const { lv, seats, alive, X, w } = fab;
+  const P = (...a) => fab.printf(...a);
+  const TICK = () => w.TICK;
+  const F = fab.fhop; const fhEnsure = F.fhEnsure;
+  const S = { FHMEAS: false, FHM_PEAKJOBS: 0, FHM_PEAKAT: -1, FHM_PEAKSEAT: -1, FHM_PEAKRELAYERS: 0 };
+  fab.fhopMeas = S;
+  const grpOf = (id) => (id >= 0 && id < fab.SEATGRP.length) ? fab.SEATGRP[id] : -1;   // C++: mesh_net.inc:grpOf
+  const grpByName = (n) => { for (let g = 0; g < fab.NETG.length; g++) if (fab.NETG[g].name === n) return g; return -1; };   // C++: mesh_net.inc:grpByName
+  const atoll = (s) => { const v = parseInt(s, 10); return Number.isNaN(v) ? 0 : v; };
+  const atof = (s) => { const v = parseFloat(s); return Number.isNaN(v) ? 0 : v; };
+
+  // C++: mesh_fhop.inc:fhRun
+  const fhRun = (q) => q >= 0 && q < lv.nextId && !!alive[q] && !fab.isFrozen(q) && seats[q].state === 3 && seats[q].hasCoord;
+  // C++: mesh_fhop.inc:fhFlow   (frames a sends reach b)
+  const fhFlow = (a, b) => { if (!fhRun(a) || !fhRun(b)) return false; const L = X.linkFind(a, b); return !!L && L.state === LK_OPEN && !(L.half & (1 << lEnd(a, b))); };
+  // C++: mesh_fhop.inc:fhCam   (t still sends its camera to r: camPeer from t's side)
+  const fhCam = (t, r) => { const s = seats[t]; const k = F.fhKeyOf(t, r); if (!k) return true; const c = unckey(k - 1); return c.pc === s.coord.pc && c.r === s.coord.r; };
+  // C++: mesh_fhop.inc:fhRx   (does t's stream reach s now? 0 no, 1 direct, 2 through a friend)
+  function fhRx(s, t) {
+    if (fhFlow(t, s)) return 1;
+    const FH = fab.FH; if (s >= FH.length) return 0; const Pp = FH[s].peer.get(t); if (Pp === undefined) return 0;
+    if (Pp.via < 0 || Pp.claimAt > TICK()) return 0; const r = Pp.via; let job = false; if (r < FH.length) for (const j of FH[r].jobs) if (j.target === t && j.req === s) { job = true; break; }
+    return (job && fhFlow(t, r) && fhCam(t, r) && fhFlow(r, s)) ? 2 : 0;
+  }
+  // C++: mesh_fhop.inc:fhRows   (OMap: rows in the order their first seat is met)
+  function fhRows() { const rows = new Map(); for (let q = 0; q < lv.nextId; q++) if (fhRun(q)) { const k = seats[q].coord.pc * 256 + seats[q].coord.r; let v = rows.get(k); if (v === undefined) { v = []; rows.set(k, v); } v.push(q); } return rows; }
+  // C++: mesh_fhop.inc:fhMeasureTick
+  function fhMeasureTick() {
+    if (!S.FHMEAS) return; fhEnsure(); const FH = fab.FH;
+    const rows = fhRows();
+    for (const M_ of rows.values()) {
+      if (M_.length < 2) continue;
+      for (const s of M_) { let got = 0; for (const t of M_) if (t !== s && fhRx(s, t)) got++;
+        if (got > 0 && FH[s].firstMedia < 0) FH[s].firstMedia = TICK(); if (got === M_.length - 1 && FH[s].fullMedia < 0) FH[s].fullMedia = TICK(); }
+    }
+    let relayers = 0; for (let q = 0; q < lv.nextId; q++) if (q < FH.length && FH[q].jobs.length && alive[q]) { relayers++; if (FH[q].jobs.length > S.FHM_PEAKJOBS) { S.FHM_PEAKJOBS = FH[q].jobs.length; S.FHM_PEAKSEAT = q; S.FHM_PEAKAT = TICK(); } }
+    if (relayers > S.FHM_PEAKRELAYERS) S.FHM_PEAKRELAYERS = relayers;
+  }
+  // C++: mesh_fhop.inc:fhStat
+  function fhStat(tk) {
+    fhEnsure(); const FH = fab.FH; const FHS = fab.FHS, FHM = fab.FHM; let g = -1;
+    if (tk.length > 1) { g = grpByName(tk[1]); if (g < 0) { P('ERR fhstat [group]: no group %s\n', tk[1]); return; } }
+    const rows = fhRows();
+    let upairs = 0, both = 0, oneway = 0, none = 0, orx = 0, odir = 0, orel = 0, unreach = 0, unreachBoth = 0, seated = 0, lone = 0, darkRow = 0, partRow = 0, noLink = 0, relayers = 0, jobs = 0;
+    for (let q = 0; q < lv.nextId; q++) if (fhRun(q)) { seated++; let any = false; X.lEnsure(q); for (const p of X.linkPeers(q)) if (fhFlow(q, p) || fhFlow(p, q)) { any = true; break; } if (!any) noLink++; }
+    for (const M_ of rows.values()) {
+      if (M_.length < 2) { lone += M_.length; continue; }
+      for (const s of M_) { let got = 0; for (const t of M_) if (t !== s) { const r = fhRx(s, t); if (r) { got++; orx++; if (r === 1) odir++; else orel++; } } if (got === 0) darkRow++; else if (got < M_.length - 1) partRow++; }
+      for (let a = 0; a < M_.length; a++) for (let b = a + 1; b < M_.length; b++) {
+        const x = M_[a], y = M_[b]; upairs++; const xy = fhRx(x, y) !== 0, yx = fhRx(y, x) !== 0; if (xy && yx) both++; else if (xy || yx) oneway++; else none++;
+        if (lv.NETGRP && !X.grpReach(x, y)) { unreach++; if (xy && yx) unreachBoth++; }
+      }
+    }
+    for (let q = 0; q < lv.nextId && q < FH.length; q++) if (alive[q] && FH[q].jobs.length) { relayers++; jobs += FH[q].jobs.length; }
+    let opairs = 0; for (const v of rows.values()) { const m = v.length; if (m >= 2) opairs += m * (m - 1); }
+    P('FHSTAT t=%lld fhop=%d seated=%d rowpairs=%lld both=%lld oneway=%lld none=%lld reach=%.4f rx=%.4f direct=%lld relayed=%lld unreachpairs=%lld unreachboth=%lld lone=%d norowmedia=%d partrowmedia=%d nolink=%d relayers=%d jobs=%d peakjobs=%lld peakstreams=%lld peakrelayers=%d asks=%lld refused=%lld started=%lld ended=%lld claimed=%lld env: sponsored=%lld friend=%lld nexthop=%lld crumb=%lld last=%lld swallow=%lld none=%lld t_next=%lld t_friend=%lld t_crumb=%lld t_last=%lld t_stuck=%lld dedup=%lld ttl=%lld delivered=%lld routedrop=%lld\n',
+      TICK(), X.fhopActive() ? 1 : 0, seated, upairs, both, oneway, none, upairs ? both / upairs : 1.0, opairs ? orx / opairs : 1.0, odir, orel, unreach, unreachBoth, lone, darkRow, partRow, noLink, relayers, jobs, S.FHM_PEAKJOBS, 2 * S.FHM_PEAKJOBS, S.FHM_PEAKRELAYERS,
+      FHM[0], FHM[1], FHM[2], FHM[3], FHM[4], FHS[0], FHS[1], FHS[2], FHS[3], FHS[4], FHS[5], FHS[6], FHS[7], FHS[8], FHS[9], FHS[10], FHS[11], FHS[12], FHS[13], FHS[14], FHS[15]);
+    if (g >= 0 || tk.length > 1) {   // time to media for the seats of one group, from spawn (ticks); -1 = never so far
+      const f1 = [], fa = []; let n = 0, never1 = 0, neverA = 0, alone = 0;
+      const loneSeat = new Set(); for (const v of rows.values()) if (v.length < 2) for (const q of v) loneSeat.add(q);   // a seat alone in its row has no row-mate to miss
+      const SP = fab.SPAWNT;
+      for (let q = 0; q < lv.nextId; q++) {
+        if (grpOf(q) !== g || q >= SP.length || SP[q] < 0) continue;
+        if (loneSeat.has(q) && !(q < FH.length && FH[q].fullMedia >= 0)) { alone++; continue; }   // a seat sitting alone is not counted against full media
+        n++;
+        if (q < FH.length && FH[q].firstMedia >= 0) f1.push(FH[q].firstMedia - SP[q]); else never1++;
+        if (q < FH.length && FH[q].fullMedia >= 0) fa.push(FH[q].fullMedia - SP[q]); else neverA++;
+      }
+      const pct = (v, p) => { if (!v.length) return -1; v.sort((a, b) => a - b); const i = Math.min(v.length - 1, Math.floor((v.length * p + 99) / 100) - 1); return v[i]; };
+      P('FHJOIN group=%s n=%d first_p50=%lld first_p95=%lld first_never=%d full_p50=%lld full_p95=%lld full_max=%lld full_never=%d alone=%d\n', fab.NETG[g].name, n, pct(f1, 50), pct(f1, 95), never1, pct(fa, 50), pct(fa, 95), fa.length ? Math.max(...fa) : -1, neverA, alone);
+    }
+  }
+  // C++: mesh_fhop.inc:fhHeal   (`fhop heal leave|freeze [window] [freeze ticks]`)
+  function fhHeal(tk) {
+    const how = tk.length > 2 ? tk[2] : 'leave'; const win = tk.length > 3 ? atoll(tk[3]) : 400; const fz = tk.length > 4 ? atoll(tk[4]) : win + 50;
+    fhEnsure(); const FH = fab.FH; let r = -1, best = 0;
+    for (let q = 0; q < lv.nextId && q < FH.length; q++) if (fhRun(q) && FH[q].jobs.length > best) { best = FH[q].jobs.length; r = q; }
+    if (r < 0) { P('FHHEAL how=%s none (no relaying seat)\n', how); return; }
+    const pr = []; for (const j of FH[r].jobs) if (fhRx(j.req, j.target) === 2) pr.push([j.req, j.target]);
+    if (how === 'freeze') runOp(['freeze', String(r), String(fz)]);
+    else { seats[r].leave(); lv.N--; }
+    const back = new Array(pr.length).fill(-1);
+    for (let k = 1; k <= win; k++) { fab.doTick(); w.TICK++;
+      for (let i = 0; i < pr.length; i++) if (back[i] < 0 && fhRx(pr[i][0], pr[i][1])) back[i] = k; }
+    const ok = []; let never = 0, gone = 0; for (let i = 0; i < pr.length; i++) { if (!fhRun(pr[i][0]) || !fhRun(pr[i][1])) { gone++; continue; } if (back[i] < 0) never++; else ok.push(back[i]); }
+    ok.sort((a, b) => a - b);
+    P('FHHEAL how=%s relayer=%d jobs=%zu carried=%zu healed=%zu never=%d gone=%d p50=%lld max=%lld window=%lld\n', how, r, best, pr.length, ok.length, never, gone, ok.length ? ok[ok.length >> 1] : -1, ok.length ? ok[ok.length - 1] : -1, win);
+  }
+  // C++: mesh_fhop.inc:fhopLever
+  function fhopLever(tk) {
+    if (tk[0] === 'fhstat') { fhStat(tk); return; }
+    const sub = tk.length > 1 ? tk[1] : '';
+    if (sub === 'measure') { const wd = tk.length > 2 ? tk[2] : 'on'; if (wd === 'reset') { fhEnsure(); for (const f of fab.FH) { f.firstMedia = -1; f.fullMedia = -1; } S.FHM_PEAKJOBS = 0; S.FHM_PEAKSEAT = -1; S.FHM_PEAKAT = -1; S.FHM_PEAKRELAYERS = 0; } else S.FHMEAS = (wd !== 'off'); P('OK fhop measure %s\n', wd); return; }
+    if (sub === 'on' || sub === 'off') { fab.FHOP_ON = (sub === 'on'); P('OK fhop %s (active=%d: needs linkmodel 1 and no lawoff FHOP)\n', sub, X.fhopActive() ? 1 : 0); return; }
+    if (sub === 'webkit') { lv.FH_WEBKIT = tk.length > 2 ? atof(tk[2]) : 0; P('OK fhop webkit=%.2f\n', lv.FH_WEBKIT); return; }
+    if (sub === 'heal') { fhHeal(tk); return; }
+    if (sub === 'why') {   // unreached row pairs with no direct path: what the receiver sees
+      fhEnsure(); const FH = fab.FH; let shown = 0; const rows = fhRows();
+      for (const v of rows.values()) for (const s of v) for (const t of v) {
+        if (s === t || fhRx(s, t) || shown >= 20) continue; if (lv.NETGRP && X.grpReach(s, t)) continue; shown++;
+        const it = FH[s].peer.get(t);
+        P('FHWHY req=%d target=%d watched=%d down=%lld ask=%lld via=%d cands:', s, t, it !== undefined ? 1 : 0, it !== undefined ? TICK() - it.downSince : -1, it !== undefined ? TICK() - it.askAt : -1, it !== undefined ? it.via : -1);
+        for (const r of F.fhConns(s)) if (r !== t) {
+          const cl = F.fhClaims(s, r, t); const ct = F.fhConn(r, t); if (!cl && !ct) continue;
+          let rf = -1; if (it !== undefined) { const q = it.refused.get(r); if (q !== undefined) rf = TICK() - q; }
+          P(' %d(claims=%d conn=%d stream=%d jobs=%zu refusedAgo=%lld)', r, cl ? 1 : 0, ct ? 1 : 0, F.fhHasStream(r, t) ? 1 : 0, FH[r].jobs.length, rf);
+        }
+        P('\n');
+      }
+      P('OK fhop why\n'); return;
+    }
+    if (sub === 'jobs') {
+      fhEnsure(); const FH = fab.FH;
+      for (let q = 0; q < lv.nextId; q++) for (const j of FH[q].jobs) {
+        const row = fhRun(j.target) && fhRun(j.req) && seats[j.target].coord.pc === seats[j.req].coord.pc && seats[j.target].coord.r === seats[j.req].coord.r;
+        P('FHJOB relayer=%d at=%s target=%d req=%d since=%lld rowpair=%d flowing=%d\n', q, fhRun(q) ? fab.coordStr(seats[q].coord) : '-', j.target, j.req, j.at, row ? 1 : 0, fhRx(j.req, j.target) === 2 ? 1 : 0);
+      }
+      P('OK fhop jobs\n'); return;
+    }
+    P('ERR usage: fhop on|off | fhop measure on|off|reset | fhop webkit <frac> | fhop heal leave|freeze [window] [freeze ticks] | fhstat [group]\n');
+  }
+
+  fab.plug({ fhopLever, fhMeasureTick });
+  return { fhopLever, fhMeasureTick, fhStat, fhRx };
+}
+
+module.exports = { installFhop, installFhopLever, lEnd, bsearch };

@@ -1126,12 +1126,7 @@ function createOps(fab, opts) {
   // C++: mesh.cpp:runOp (l15settle)
   V.l15settle = (tk) => { lv.L15_SETTLE = tk.length > 1 ? atoi(tk[1]) : 4; P('OK l15settle %d\n', lv.L15_SETTLE); };
   // C++: mesh.cpp:runOp (realcheck, rss)
-  V.realcheck = (tk) => {
-    if (tk.length > 1 && tk[1] === 'on') { lv.RC_ON = true; if (X.rcReset) X.rcReset(); P('OK realcheck on at tick=%lld\n', TICK()); return; }
-    if (tk.length > 1 && tk[1] === 'off') { lv.RC_ON = false; P('OK realcheck off\n'); return; }
-    if (!lv.RC_ON) { P('ERR realcheck is off\n'); return; }
-    E_('rcVerb', tk);   // the realcheck measurement is not ported
-  };
+  V.realcheck = (tk) => { E_('rcVerb', tk); };   // harness/realcheck.js
   V.rss = (tk) => {
     let hwm = -1, rss = -1;
     try { for (const l of require('fs').readFileSync('/proc/self/status', 'utf8').split('\n')) { if (l.startsWith('VmHWM:')) hwm = parseInt(l.slice(6), 10); else if (l.startsWith('VmRSS:')) rss = parseInt(l.slice(6), 10); } } catch (e) { /* no /proc */ }
