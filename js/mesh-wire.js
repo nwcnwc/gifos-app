@@ -82,6 +82,7 @@
   // 30 s window refused every goodbye at a receiver whose clock ran more
   // than ~10 s ahead of the leaver's).
   const PRELEAVE_MS = 10000;
+  const SKEW_MS = 10 * 60 * 1000;   // mesh-identity.js FILL_WINDOW_MS
   function goodbyeLive(nowMs, tsMs, off) {
     if (!Number.isFinite(tsMs) || tsMs <= 0) return false;
     if (off == null || !Number.isFinite(off)) return Math.abs(nowMs - tsMs) <= 120000;
@@ -422,6 +423,9 @@
             const core = coreOf(msgM, f);
             let who = pubPeer.get(s4.pub); if (!who) { who = 'k_' + (await net.keyId(s4.pub)).slice(0, 40); pubPeer.set(s4.pub, who); if (pubPeer.size > 4096) pubPeer.delete(pubPeer.keys().next().value); }
             ok = layer.ids.nid(who) === claim && await net.edVerify(s4.pub, s4.sig, JSON.stringify({ v: 3, c: core, ts: s4.ts }));
+            // A key holder's frame minted outside the 10-minute window while I am still joining: my clock is off.
+            // Say it once (0.9.24 v.reason === 'skew'; a joiner's first signed frames come as it sits, hence the 20 ticks). A settled seat stays quiet: a skewed neighbour is its own problem.
+            if (ok && !skewFired && (raw.state !== 3 || env.TICK - raw.seatedAt <= 20) && Math.abs(s4.ts - Date.now()) > SKEW_MS) { skewFired = true; if (opts.onClockSkew) { try { opts.onClockSkew(s4.ts - Date.now(), who); } catch (e) {} } }
             if (ok) { layer.ids.learn(who); if (!sigOf.has(core)) { sigOf.set(core, Promise.resolve(s4)); if (sigOf.size > 1024) sigOf.delete(sigOf.keys().next().value); } }
           } catch (e) { ok = false; }
           done(ok);
