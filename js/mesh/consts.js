@@ -169,7 +169,7 @@
     L12_QUIET: 7000,   // C++: mesh_seat.inc:L12_QUIET
     L12_HOLD: 1200,   // C++: mesh_seat.inc:L12_HOLD
     L12_OPEN_END: 2700,   // C++: mesh_seat.inc:L12_OPEN_END
-    L13_CHAIN_MAX: 6,   // C++: mesh_heal.inc:L13_CHAIN_MAX  (LAW_L13_CHAIN_MAX)
+    L13_CHAIN_MAX: 6,   // C++: mesh_heal.inc:L13_CHAIN_MAX
     L16_EVIL_EVERY: 8,   // C++: mesh_island.inc:L16_EVIL_EVERY
     L16_FAN: 1,   // C++: mesh_island.inc:L16_FAN
     L16_WAVE: 12,   // C++: mesh_island.inc:L16_WAVE
@@ -180,6 +180,7 @@
     KEEP_MAX: 4,   // C++: mesh_linkset.inc:KEEP_MAX
     L25_WIT_WAIT: 16,   // C++: mesh_witness.inc:L25_WIT_WAIT  (L25_WAIT)
     L25_WIT_MIN: 3,   // C++: mesh_witness.inc:L25_WIT_MIN
+    L43_WAIT: 76,   // C++: mesh_ijoin.inc:L43_WAIT  (60+L5_SETTLE)
     GA_FIND_WIN: 90,   // C++: mesh_gapa.inc:GA_FIND_WIN  ((int)LAW_COMPACT_PERIOD)
     SOCK_CLOSE_CRASH: 4,   // C++: mesh.cpp:SOCK_CLOSE_CRASH
     H_RINGLIE_BIT: 8192,   // C++: mesh.cpp:H_RINGLIE_BIT
@@ -499,6 +500,7 @@
     HM_FPSSEAT: -1,   // C++: mesh_hostile.inc:HM_FPSSEAT
     HM_SHOWNMAX: 0,   // C++: mesh_hostile.inc:HM_SHOWNMAX
     HM_RELAY: 0,   // C++: mesh_hostile.inc:HM_RELAY
+    C7FORGE_ID: -1,   // C++: mesh_c7proof_fab.inc:C7FORGE_ID
     L18R_REACH: 0,   // C++: mesh_l18.inc:L18R_REACH
     L18R_UNREACH: 0,   // C++: mesh_l18.inc:L18R_UNREACH
     L18R_MASS: 0,   // C++: mesh_l18.inc:L18R_MASS
