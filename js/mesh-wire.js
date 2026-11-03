@@ -326,8 +326,9 @@
         blk = sigOf.get(core);
         if (!blk) { const ts = Date.now(); blk = net.edSign(identity.priv, JSON.stringify({ v: 3, c: core, ts })).then((sig) => ({ ts, sig, pub: identity.pubB64 })); sigOf.set(core, blk); if (sigOf.size > 1024) sigOf.delete(sigOf.keys().next().value); }
       } else if (claim >= 0) blk = sigOf.get(core) || null;
+      const pd = layer.sideOut(to, m);   // the page's display digest beside the seat's frame (layer.js; outside f and its signature)
       const prev = outq.get(to) || Promise.resolve();
-      const q = prev.then(() => blk).then((s4) => { if (stopped && m.t !== 'LEAVE') return; const out = { t: 'MW2', f }; if (s4) out.s4 = s4; if (dir && typeof dir === 'object') out.dir = dir; deliver(to, out); }).catch(() => {});
+      const q = prev.then(() => blk).then((s4) => { if (stopped && m.t !== 'LEAVE') return; const out = { t: 'MW2', f }; if (s4) out.s4 = s4; if (dir && typeof dir === 'object') out.dir = dir; if (pd) out.pd = pd; deliver(to, out); }).catch(() => {});
       outq.set(to, q); q.then(() => { if (outq.get(to) === q) outq.delete(to); });
       return true;
     }
@@ -365,6 +366,7 @@
             f.sig = false; f.fsig = false; if (f.fo >= 0 && f.t !== 'FINDLEAF') f.fo = -1;
             if (claim >= 0 && opts.trace) { try { opts.trace('{"t":' + (env.TICK | 0) + ',"s":' + layer.ids.nid(peer) + ',"e":"SIG-FAIL","c":null,"d":"mt=' + String(f.t).replace(/[^A-Z0-9_]/g, '') + ' claim=' + claim + ' via=' + layer.ids.nid(String(via)) + '"}'); } catch (e) {} }   // DEBUG trace sink only (T8)
           }
+          if (ok && dir && m.pd) layer.sideIn(String(via), f, m.pd);
           penv.frame(f, String(via), dirOf(m.dir));
         };
         if (claim < 0) { verifyChain(() => Promise.resolve().then(() => done(true))); return; }
