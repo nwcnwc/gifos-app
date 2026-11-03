@@ -22,12 +22,12 @@ function installPcLaws(fab) {
     schedL10: fab.schedL10, wireTx: fab.wireTx, pairKey: fab.pairKey,
     grpReach: (a, b) => fab.X.grpReach(a, b),
     relayMeter: (id, n) => fab.X.relayMeter(id, n),
-    fhopActive: () => fab.X.fhopActive(), FH: fab.FH || [], fhopFriendFor: (a, b) => fab.X.fhopFriendFor(a, b),
+    fhopActive: () => fab.X.fhopActive(), get FH() { return fab.FH || []; }, fhopFriendFor: (a, b) => fab.X.fhopFriendFor(a, b),
     phys, S: phys, LINKS: phys.LINKS, LINKPEERS: phys.LINKPEERS, radioOff: phys.radioOff,
   };
   const pc = createPcLaws(P);
   fab.plug(pc.fns);
-  fab.plug({ l1611Guard: pc.l1611Guard, fhopFriendFor: () => false });   // l1611Guard: link.js's startDial calls it; no friend-hop in this room (FHOP_ON 0)
+  fab.plug({ l1611Guard: pc.l1611Guard, fhopFriendFor: () => false });   // l1611Guard: link.js's startDial calls it; fhopFriendFor until installFhop plugs the real one
   return { pc, phys, P, ln };
 }
 

@@ -322,7 +322,7 @@
     },
 
     // C++: mesh_seat.inc:Seat::goodbyeHeal
-    goodbyeHeal(k, moved) {
+    goodbyeHeal(k, moved = false) {
       const lv = this.w.lv;
       this.byeAt.set(k, this.TICK);   // the goodbye is first-hand proof the cell emptied
       { const left = unck(k); if (moved && left.pc === 0 && !this.hasDownChild(left)) { this.l1Vacated.set(k, this.TICK); if (left.i === 0) { const par = up(left); if (par) this.childOf.delete(ckey(par)); } return; } }   // L1.1
@@ -559,7 +559,7 @@
     },
 
     // C++: mesh_seat.inc:Seat::transportLost
-    transportLost(pid, hard) {
+    transportLost(pid, hard = true) {
       if (!this.hasCoord || this.state !== 3 || pid < 0 || pid === this.id) return;
       const ol = ownedLinks(this.coord);
       for (let q = 0; q < ol.length; q++) {
@@ -587,7 +587,7 @@
     },
 
     // C++: mesh_seat.inc:Seat::requeue
-    requeue(why) {
+    requeue(why = '') {
       const TICK = this.TICK, lv = this.w.lv, id = this.id;
       this.l13ReqN++;
       if (this.l815N > 0) { for (let i = 0; i < this.l815N; i++) { const y = newMsg('YIELD'); y.ck = this.l815Ck[i]; y.id = id; y.nc = this.l815Prev[i]; this.emit(this.l815To[i], y); } this.l815N = 0; }
@@ -607,7 +607,7 @@
     },
 
     // C++: mesh_seat.inc:Seat::leave
-    leave(reload) {
+    leave(reload = false) {
       const id = this.id;
       this.dead = true; if (reload) this.f.fabricReloadBye(id); else this.f.fabricLeft(id);   /* a reload closes its channels only after its goodbyes are out: the fabric schedules the close */
       this.moving = false; this.leaseCk = 0; this.leaseUntil = -1; if (!this.hasCoord) return;

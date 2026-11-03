@@ -182,7 +182,7 @@
     },
 
     // C++: mesh_island.inc:Seat::c7Yield
-    c7Yield(rmin, why) {
+    c7Yield(rmin, why = 'C7-merge') {
       if (!this.hasCoord || this.state !== 3) return;
       const ol = ownedLinks(this.coord), n = ol.length; const told = new Set();
       const b = newMsg('LEAVE'); b.ck = ckey(this.coord); b.id = this.id; b.c7 = true; b.c7Min = rmin;

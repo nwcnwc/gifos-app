@@ -350,7 +350,7 @@
       for (const t of on) if (this.kUpLink(t) && !this.kConfirmed(t)) { this.kConfAt.set(t, TICK); this.trace('KICK-CONF', this.id, this.coord, 'tgt=%d by=%d', t, m.id); }
     },
     // C++: mesh_seat.inc:Seat::kIntake
-    kIntake(u, author, firstHand, from, rowScope) {
+    kIntake(u, author, firstHand, from = 0, rowScope = false) {
       if (this.kSuspect(author)) {   // L27.12: a suspect's votes are not in my fold; I keep what it sent so the audits go on judging it
         if (u.kl.length) {
           const all = u.kl; u.kl = []; const raw = []; dig.kDerive(u); let bad = 0, out = 0, mine = 0;
