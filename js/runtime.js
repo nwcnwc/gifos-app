@@ -3145,7 +3145,7 @@
   //     is not a way to ask a stranger's computer what it is worth.
   const HANDOFF_KEY = 'sys::handoff';
   // Words on the sheet come from the catalog; written against `root` so the
-  // block stays liftable on its own (test/unit/app-handoff.js runs it).
+  // block stays liftable on its own.
   const hT = (k, p) => (root.GifOS && root.GifOS.i18n ? root.GifOS.i18n.t(k, p) : k);
   const HANDOFF_KINDS = {
     'finance.plan': {
