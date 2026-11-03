@@ -79,6 +79,7 @@
     FIND: { by: 'nc', flag: 'fsig', only: ['nc'] },   // sh, sgw, gwc, spread, dk, ttl, late change per hop (L24)
     FINDLEAF: { by: 'fo', flag: 'fo', only: ['fo', 'foAt', 'hole'] },   // the decider's order (L25.7); ttl, nbrs, tag change down the cascade
   };
+  const REPLAY_MS = 30000;   // the seat's own goodbye window: 60 ticks (recv-seated.js)
   const BY_ID = { by: 'id' };   // a type no seat signs today: a claim on it still has to verify as m.id's whole frame
   // Per-hop fields, never signed: addressing, each holder's clock (recv.js CLOCKS moves vAt, born, e1At and the *L ticks),
   // the link's door bit, the route's own state and FARVIEW's first-emitter stamp.
@@ -247,6 +248,13 @@
     const s4on = true;                      // unconditional — no off switch
     const gossipChain = net.makeChain();   // gossip has its own lane: a chat burst must never queue a newcomer's seating frame behind it
     const verifyChain = net.makeChain();   // one inbound chain for every signed seat frame (order kept)
+    const signerTs = new Map();            // claimant -> {ts: its newest verified signature time, off: my clock - its clock then}
+    function staleGoodbye(ts, nowMs, seen) {
+      if (seen) return ts < seen.ts - REPLAY_MS;
+      const offs = Array.from(signerTs.values(), (v) => v.off).sort((a, b) => a - b);
+      if (!offs.length) return !goodbyeLive(nowMs, ts, null);
+      return nowMs - ts - offs[offs.length >> 1] > REPLAY_MS;
+    }
     const sigOf = new Map();               // signed core -> s4 block (my own and verified ones, for forwards)
     const pubPeer = new Map();             // pub -> peer id (H(pub)), cached
     const outq = new Map();                // peer -> tail promise: one outbound FIFO per peer (a signed frame never overtaken)
@@ -431,6 +439,16 @@
             const core = coreOf(msgM, f);
             let who = pubPeer.get(s4.pub); if (!who) { who = 'k_' + (await net.keyId(s4.pub)).slice(0, 40); pubPeer.set(s4.pub, who); if (pubPeer.size > 4096) pubPeer.delete(pubPeer.keys().next().value); }
             ok = layer.ids.nid(who) === claim && await net.edVerify(s4.pub, s4.sig, JSON.stringify({ v: 3, c: core, ts: s4.ts }));
+            // A forwarded goodbye older than what its signer has since said is a replay: the signature is real, its word is spent.
+            // (sigL, the seat's freshness test, is the forwarder's word.) No word from this signer yet: judge its age by the
+            // room's clocks as I have verified them. A signer whose clock runs far behind the room loses only its relayed goodbye.
+            if (ok) {
+              const seen = signerTs.get(claim), nowMs = Date.now();
+              if (f.t === 'LEAVE' && claim !== layer.ids.nid(String(via)) && staleGoodbye(s4.ts, nowMs, seen)) {
+                ok = false;
+                if (opts.trace) { try { opts.trace('{"t":' + (env.TICK | 0) + ',"s":' + layer.ids.nid(peer) + ',"e":"SIG-STALE","c":null,"d":"mt=LEAVE claim=' + claim + ' age=' + Math.round((nowMs - s4.ts) / 1000) + 's known=' + (seen ? 1 : 0) + '"}'); } catch (e) {} }
+              } else if (!seen || s4.ts > seen.ts) { signerTs.set(claim, { ts: s4.ts, off: nowMs - s4.ts }); if (signerTs.size > 256) signerTs.delete(signerTs.keys().next().value); }
+            }
             if (ok) {
               layer.ids.learn(who);
               if (claim !== layer.ids.nid(String(via)) && opts.trace) { try { opts.trace('{"t":' + (env.TICK | 0) + ',"s":' + layer.ids.nid(peer) + ',"e":"SIG-FWD","c":null,"d":"mt=' + String(f.t).replace(/[^A-Z0-9_]/g, '') + ' claim=' + claim + ' rl=' + (f.rl ? 1 : 0) + '"}'); } catch (e) {} }   // DEBUG trace sink only: a forwarded claim that verified
