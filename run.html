@@ -6316,7 +6316,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (hasAdminRoom() && amAdmin) {
           admSigned('admit', { id: id }).then((w) => { if (w) relaySendObj({ t: 'admit', id: id, w }); });
         } else {
-          try { const s = meshSeat(); if (s && s.answerDoor) s.answerDoor([id]); } catch (e) {}
+          // The door channel closed while they waited: reopen it, then answer on it.
+          try { bootDial(id); } catch (e) {}
+          [0, 1000, 2500].forEach((ms) => setTimeout(() => { try { const s = meshSeat(); if (s && s.answerDoor) s.answerDoor([id]); } catch (e) {} }, ms));
         }
         return true;
       },
@@ -16883,7 +16885,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         oldKeys: (prevRoomE2E && prevRoomE2E !== roomE2E) ? [prevRoomE2E] : [],   // a door blob this key opens is behind me, not ahead (mesh-wire R6)
         excluded: isEjected, // ejected forgers: their mesh frames never reach the seat
         urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
-        doorHeld: (id) => { try { return meetWait.blocks(id); } catch (e) { return false; } },
+        doorHeld: (id) => { try { const b = meetWait.blocks(id); if (b && id) meetWait.note(id, rosterNames[id] || 'Someone waiting'); return b; } catch (e) { return false; } },   // a withheld knock goes on the host's list: nothing else names a plain room's knocker
         onDoor: (kind, frame) => {
           if (kind === 'unseated') {
             meetWait.waiting(true);

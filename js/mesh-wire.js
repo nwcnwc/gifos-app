@@ -342,6 +342,21 @@
       for (const k of Object.keys(d)) { if (++n > 32) break; const v = d[k]; if (/^\d{1,16}$/.test(k) && Number(k) < 2 ** 52 && typeof v === 'string' && v.length <= 64) out[k] = v; }
       return out;
     }
+    // WAITING ROOM (relay-admit.js). The page says whether this knocker is still held; a thrown hold fails
+    // closed. Only a knocker's ask is withheld: a seat already in my view is no knocker.
+    const heldAsks = new Map();   // peer -> its last withheld WHOHOME
+    function doorBlocks(f, via, dir) {
+      if (typeof opts.doorHeld !== 'function' || !raw) return false;
+      if (Array.from(raw.occ.values()).includes(f.from)) return false;
+      const who = layer.ids.pid(f.from) || (dir && dir[f.from]) || (f.via < 0 ? via : '');
+      let held = true; try { held = !!opts.doorHeld(String(who || '')); } catch (e) {}
+      if (held && who) { heldAsks.set(String(who), [f, via, dir]); if (heldAsks.size > 64) heldAsks.delete(heldAsks.keys().next().value); }
+      return held;
+    }
+    // The host's OK answers the held knock now, not at the knocker's next retry (run.html meetWait.admit).
+    function answerHeld(list) {
+      for (const p of list || []) { const a = heldAsks.get(String(p)); if (!a || stopped || !raw) continue; penv.frame(Object.assign({}, a[0]), String(a[1]), dirOf(a[2])); }
+    }
     function ingest(m, via, direct) {
       if (stopped || !raw || !m || typeof m !== 'object') return;
       if (typeof opts.excluded === 'function') {
@@ -363,6 +378,7 @@
             f.sig = false; f.fsig = false; if (f.fo >= 0 && f.t !== 'FINDLEAF') f.fo = -1;
             if (claim >= 0 && opts.trace) { try { opts.trace('{"t":' + (env.TICK | 0) + ',"s":' + layer.ids.nid(peer) + ',"e":"SIG-FAIL","c":null,"d":"mt=' + String(f.t).replace(/[^A-Z0-9_]/g, '') + ' claim=' + claim + ' via=' + layer.ids.nid(String(via)) + '"}'); } catch (e) {} }   // DEBUG trace sink only (T8)
           }
+          if (f.t === 'WHOHOME' && doorBlocks(f, via, m.dir)) return;   // waiting room: no HOME, no roster
           penv.frame(f, String(via), dirOf(m.dir));
         };
         if (claim < 0) { verifyChain(() => Promise.resolve().then(() => done(true))); return; }
@@ -954,7 +970,7 @@
         onGossip: opts.onGossip ? (src, m, ag, scoped) => (stopped ? undefined : opts.onGossip(src, m, (ag || 0) * tickMs, !!scoped)) : null,
         ckey: (c) => net.topo.ckey(c), ownedLinks: (c) => net.topo.ownedLinks(c),
       });
-      seat = layer.view;
+      seat = layer.view; seat.answerDoor = answerHeld;
       penv = GifOS.meshPageEnv.create({
         peer, ids: layer.ids, seat: () => raw,
         pc: Object.assign({}, opts.pc || {}, { send: (to, m, dir) => ((typeof opts.dcOpen !== 'function' || opts.dcOpen(to)) ? sendFrameTo(to, m, dir) : false) }),
