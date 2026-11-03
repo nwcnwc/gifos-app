@@ -343,6 +343,16 @@
     // same tick, so a goodbye signed only then may never leave. Kept current: one signature per stay change, or per
     // PRELEAVE_MS. It covers what coreOf says a goodbye owns, so it fits every copy, the section relay's too.
     let preLeave = null, preLeaveBusy = false;
+    // RELOAD TREE MEMORY (0.9.24 seat.prevTree; run.html saves it for 2 minutes): a reloaded page does not wait out the
+    // seat's one-door-at-a-time wave for a door that may be dark; it asks every old neighbour now, the way the wave's
+    // own last round does. The seat decides as ever; it just hears its HOME sooner.
+    let prevOld = (opts.prevTree && Array.isArray(opts.prevTree.ids) && opts.prevTree.ids.length) ? new Set(opts.prevTree.ids.map(String)) : null, treeAsk = null;
+    function treeMemAsk() {
+      if (!treeAsk || !raw || raw.state !== 1) return;
+      const list = treeAsk; treeAsk = null; let n = 0;
+      for (const g of list) { if (g < 0 || g === raw.id || raw.l16Ask.includes(g)) continue; raw.l16Ask.push(g); const w = GifOS.meshMsg.newMsg('WHOHOME'); w.from = raw.id; w.ttl = 60; raw.emit(g, w); raw.l33NoSockAsk(g); n++; }
+      if (opts.trace) { try { opts.trace('{"t":' + (env.TICK | 0) + ',"s":' + raw.id + ',"e":"TREEMEM-ASK","c":null,"d":"doors=' + n + '"}'); } catch (e) {} }
+    }
     function refreshPreLeave() {
       if (preLeaveBusy || stopped || !identity || !raw || raw.dead || raw.state !== 3 || !raw.hasCoord) return;
       const ck = GifOS.meshTopo.ckey(raw.coord), tn = raw.tn;
@@ -758,6 +768,8 @@
         // Non-empty ⇒ deliver greeter ids (gateway pick).
         if (!ids.length && m.founded) action = preState === 0 ? 'MINT' : 'empty-founded-noop';
         else action = 'deliver';
+        // RELOAD TREE MEMORY: the doors this page sat with before its reload go first (treeMemAsk asks them all at once)
+        if (prevOld && preState !== 3 && ids.length) { const old = ids.filter((p) => prevOld.has(p)); treeAsk = old.map((p) => layer.ids.nid(p)); ids.sort((a, b) => (prevOld.has(b) ? 1 : 0) - (prevOld.has(a) ? 1 : 0)); prevOld = null; }
         penv.relayFrame({ t: 'greeters', list: ids }); // the seat's L16 knocker takes it from here
       }
       // `adm` is the relay's `admitted`: does my genesis key match the room's?
@@ -886,7 +898,7 @@
           }
           lastTickAt = nowT;
           for (let i = 0; i < n && !stopped; i++) { penv.tick(); env.TICK = penv.world.TICK; layer.afterTick(); }
-          refreshPreLeave();
+          treeMemAsk(); refreshPreLeave();
         } else lastTickAt = 0;
         if (seat.stranded && !strandedFired) { strandedFired = true; if (opts.onStranded) opts.onStranded(); }
         // Socket lifecycle: deep-seated ⇒ the relay is done with me; drop after a

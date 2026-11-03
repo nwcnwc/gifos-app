@@ -98,6 +98,7 @@
       get stranded() { const s = raw(); return !!(s && s.stranded); },
       get seatedAt() { const s = raw(); return s ? s.seatedAt : -1; },
       get genKey() { const s = raw(); return s ? s.genKey : 0; },
+      s1Roster() { const s = raw(); return s ? s.s1Roster().map((e) => ({ k: e.k, v: P(e.v) })).filter((e) => e.v != null) : []; },   // the reload tree memory (run.html saveTreeMem)
       get TICK() { return T(); },
       get env() { return { TICK: T() }; },
       get occ() { return occView(); },
