@@ -8,15 +8,14 @@
  * (the same bytes JSON.stringify gives for the parsed form). Reading fills the
  * defaults back in and rejects unknown fields and unknown type names.
  *
- * Numbers are JS numbers. A 64-bit key that may pass 2^53 (u64) is a number
- * while it is below 2^53 and a decimal string above. A 64-bit hash or token
- * (h64) is the string "0x" + 16 lowercase hex digits.
+ * Numbers are JS numbers. Every hash, key and token is 32-bit, and every
+ * 64-bit field (u64) is a cell key or a tick, always below 2^53.
  */
 (function (root) {
   'use strict';
   const GifOS = root.GifOS = root.GifOS || {};
 
-  const MT_NAMES = Object.freeze(["GREETERS","WHOHOME","HOME","FIND","FINDLEAF","PLACE","NOROOM","HELLO","YIELD","CLAIM","LEAVE","GREETWALK","S1SYNC","DRAIN","CHALLENGE","CONFIRM","PHONE","PONG","ROUTE","ROUTED","KNOCK","TRANSLOST","MOVED","SITPING","SITPONG","SITXFER","OFFER","FINDACK","PP","RECLAIM","RECLAIMED","RECLAIMNO","U2BEAT","U2ACK","E1STATE","SWAPQ","SWAPRDY","SWAPGO","MEET","MEETACK","WALK","UNNEEDED","BUSY","GOTHOME","HANDOFF","TAKEOVER","TAKEN","AUDITQ","AUDITA","LGSTARVE","LGASK","LGCOMP","PLACED","WITNESS"]);
+  const MT_NAMES = Object.freeze(["GREETERS","WHOHOME","HOME","FIND","FINDLEAF","PLACE","NOROOM","HELLO","YIELD","CLAIM","LEAVE","GREETWALK","S1SYNC","DRAIN","CHALLENGE","CONFIRM","PHONE","PONG","ROUTE","ROUTED","KNOCK","TRANSLOST","MOVED","SITPING","SITPONG","SITXFER","OFFER","FINDACK","PP","RECLAIM","RECLAIMED","RECLAIMNO","U2BEAT","U2ACK","E1STATE","SWAPQ","SWAPRDY","SWAPGO","MEET","MEETACK","WALK","UNNEEDED","BUSY","GOTHOME","HANDOFF","TAKEOVER","TAKEN","AUDITQ","AUDITA","LGSTARVE","LGASK","LGCOMP","PLACED","WITNESS","UPOFFER"]);
   const MT = Object.freeze(Object.fromEntries(MT_NAMES.map(n => [n, n])));
   const MT_SET = new Set(MT_NAMES);
   function checkMT(t) { if (!MT_SET.has(t)) throw new Error("msg: unknown type " + t); return t; }
@@ -195,10 +194,10 @@
   Dig_DEF.kOwn = JSON.stringify(writeKStmt(newKStmt()));
 
   // Msg
-  const Msg_FIELDS = new Set(["t", "to", "from", "id", "owner", "nc", "asker", "via", "child", "ttl", "tag", "hold", "vAt", "fOwn", "fCnt", "adoor", "dsat", "nosock", "fo", "foAt", "mpBy", "mpAt", "mpK", "mpOld", "fsig", "split", "gwc", "mv", "ck", "oCk", "tock", "gkey", "mvd", "coord", "hole", "target", "kids", "mass", "l31", "l31Ck", "l31By", "l31At", "knock", "wordHeld", "spread", "sh", "dark", "dk", "nd", "list", "roster", "nbrs", "ent", "row", "byes", "l20", "dgUp", "dgPub", "dgEcho", "dgRoot", "digs", "l10E", "dgOnly", "bkId", "u3Id", "bkCk", "u3Ck", "e1dn", "e1At", "routing", "rfinal", "rttl", "rvia", "rdst", "direct", "lk", "sig", "sigAt", "lkEp", "rl", "pst", "hard", "l18", "uxTo", "uxId", "rel", "yl", "bye", "tok", "pp", "ppAt", "rg", "yp", "tn", "rmKids", "l9s", "arr", "born", "pn", "pseq", "l12", "l12s", "l12n", "c7", "c7Min", "c7Held", "cutF", "lineF", "line", "late", "tier", "nat", "th", "sw", "swHd", "swA", "swB", "swAt", "swCk", "swCa", "swCb", "fhTo", "fhOrig", "fhTtl", "fhId", "fhTc", "kv", "kbk"]);
+  const Msg_FIELDS = new Set(["t", "to", "from", "id", "owner", "nc", "asker", "via", "child", "ttl", "tag", "hold", "vAt", "fOwn", "fCnt", "adoor", "dsat", "nosock", "fo", "foAt", "mpBy", "mpAt", "mpK", "mpOld", "fsig", "split", "gwc", "mv", "ck", "oCk", "tock", "gkey", "mvd", "coord", "hole", "target", "kids", "mass", "l31", "l31Ck", "l31By", "l31At", "knock", "wordHeld", "spread", "sh", "dark", "dk", "nd", "list", "roster", "nbrs", "ent", "row", "byes", "l20", "dgUp", "dgPub", "dgEcho", "dgRoot", "digs", "l10E", "dgOnly", "bkId", "u3Id", "bkCk", "u3Ck", "e1dn", "e1At", "routing", "rfinal", "rttl", "rvia", "rdst", "direct", "lk", "sig", "sigAt", "lkEp", "rl", "pst", "hard", "l18", "uxTo", "uxId", "rel", "yl", "bye", "tok", "pp", "ppAt", "rg", "yp", "tn", "rmKids", "l9s", "arr", "born", "pn", "pseq", "l12", "l12s", "l12n", "c7", "c7Min", "c7Held", "cutF", "lineF", "line", "late", "tier", "nat", "th", "sw", "swHd", "swA", "swB", "swAt", "swCk", "swCa", "swCb", "fhTo", "fhOrig", "fhTtl", "fhId", "fhTc", "kv", "kbk", "tx", "sigL", "ppL", "mpL", "foL", "l31L", "swL", "aId", "sgw", "aCk", "sgwCk"]);
   const Msg_DEF = {};
   function newMsg(t) {
-    return { t: checkMT(t), to: -1, from: -1, id: -1, owner: -1, nc: -1, asker: -1, via: -1, child: -1, ttl: 0, tag: 0, hold: 0, vAt: -1, fOwn: -1, fCnt: 0, adoor: false, dsat: false, nosock: false, fo: -1, foAt: -1, mpBy: -1, mpAt: -1, mpK: 0, mpOld: 0, fsig: false, split: false, gwc: false, mv: false, ck: 0, oCk: 0, tock: 0, gkey: "0x0000000000000000", mvd: 0, coord: newCoord(), hole: newCoord(), target: newCoord(), kids: false, mass: false, l31: 0, l31Ck: 0, l31By: -1, l31At: -1, knock: false, wordHeld: false, spread: false, sh: 0, dark: [], dk: false, nd: 0, list: [], roster: [], nbrs: [], ent: [], row: [], byes: [], l20: [], dgUp: newDig(), dgPub: newDig(), dgEcho: newDig(), dgRoot: newDig(), digs: [], l10E: false, dgOnly: false, bkId: -1, u3Id: -1, bkCk: 0, u3Ck: 0, e1dn: false, e1At: -1, routing: false, rfinal: -1, rttl: 0, rvia: -1, rdst: newCoord(), direct: false, lk: -1, sig: false, sigAt: -1, lkEp: 0, rl: false, pst: false, hard: false, l18: false, uxTo: -1, uxId: -1, rel: false, yl: false, bye: false, tok: "0x0000000000000000", pp: -1, ppAt: -1, rg: -1, yp: false, tn: -1, rmKids: false, l9s: false, arr: -1, born: -1, pn: -1, pseq: -1, l12: false, l12s: 0, l12n: 0, c7: false, c7Min: -1, c7Held: false, cutF: false, lineF: false, line: -1, late: false, tier: 0, nat: 0, th: 0, sw: -1, swHd: -1, swA: -1, swB: -1, swAt: -1, swCk: 0, swCa: 0, swCb: 0, fhTo: -1, fhOrig: -1, fhTtl: 0, fhId: 0, fhTc: 0, kv: newKStmt(), kbk: false };
+    return { t: checkMT(t), to: -1, from: -1, id: -1, owner: -1, nc: -1, asker: -1, via: -1, child: -1, ttl: 0, tag: 0, hold: 0, vAt: -1, fOwn: -1, fCnt: 0, adoor: false, dsat: false, nosock: false, fo: -1, foAt: -1, mpBy: -1, mpAt: -1, mpK: 0, mpOld: 0, fsig: false, split: false, gwc: false, mv: false, ck: 0, oCk: 0, tock: 0, gkey: 0, mvd: 0, coord: newCoord(), hole: newCoord(), target: newCoord(), kids: false, mass: false, l31: 0, l31Ck: 0, l31By: -1, l31At: -1, knock: false, wordHeld: false, spread: false, sh: 0, dark: [], dk: false, nd: 0, list: [], roster: [], nbrs: [], ent: [], row: [], byes: [], l20: [], dgUp: newDig(), dgPub: newDig(), dgEcho: newDig(), dgRoot: newDig(), digs: [], l10E: false, dgOnly: false, bkId: -1, u3Id: -1, bkCk: 0, u3Ck: 0, e1dn: false, e1At: -1, routing: false, rfinal: -1, rttl: 0, rvia: -1, rdst: newCoord(), direct: false, lk: -1, sig: false, sigAt: -1, lkEp: 0, rl: false, pst: false, hard: false, l18: false, uxTo: -1, uxId: -1, rel: false, yl: false, bye: false, tok: 0, pp: -1, ppAt: -1, rg: -1, yp: false, tn: -1, rmKids: false, l9s: false, arr: -1, born: -1, pn: -1, pseq: -1, l12: false, l12s: 0, l12n: 0, c7: false, c7Min: -1, c7Held: false, cutF: false, lineF: false, line: -1, late: false, tier: 0, nat: 0, th: 0, sw: -1, swHd: -1, swA: -1, swB: -1, swAt: -1, swCk: 0, swCa: 0, swCb: 0, fhTo: -1, fhOrig: -1, fhTtl: 0, fhId: 0, fhTc: 0, kv: newKStmt(), kbk: false, tx: -1, sigL: -1, ppL: -1, mpL: -1, foL: -1, l31L: -1, swL: -1, aId: -1, sgw: -1, aCk: 0, sgwCk: 0 };
   }
   function writeMsg(m) {
     const o = { t: m.t };
@@ -232,7 +231,7 @@
     if (m.ck !== 0) o.ck = m.ck;
     if (m.oCk !== 0) o.oCk = m.oCk;
     if (m.tock !== 0) o.tock = m.tock;
-    if (m.gkey !== "0x0000000000000000") o.gkey = m.gkey;
+    if (m.gkey !== 0) o.gkey = m.gkey;
     if (m.mvd !== 0) o.mvd = m.mvd;
     { const v = writeCoord(m.coord); if (JSON.stringify(v) !== Msg_DEF.coord) o.coord = v; }
     { const v = writeCoord(m.hole); if (JSON.stringify(v) !== Msg_DEF.hole) o.hole = v; }
@@ -289,7 +288,7 @@
     if (m.rel !== false) o.rel = m.rel;
     if (m.yl !== false) o.yl = m.yl;
     if (m.bye !== false) o.bye = m.bye;
-    if (m.tok !== "0x0000000000000000") o.tok = m.tok;
+    if (m.tok !== 0) o.tok = m.tok;
     if (m.pp !== -1) o.pp = m.pp;
     if (m.ppAt !== -1) o.ppAt = m.ppAt;
     if (m.rg !== -1) o.rg = m.rg;
@@ -329,6 +328,17 @@
     if (m.fhTc !== 0) o.fhTc = m.fhTc;
     { const v = writeKStmt(m.kv); if (JSON.stringify(v) !== Msg_DEF.kv) o.kv = v; }
     if (m.kbk !== false) o.kbk = m.kbk;
+    if (m.tx !== -1) o.tx = m.tx;
+    if (m.sigL !== -1) o.sigL = m.sigL;
+    if (m.ppL !== -1) o.ppL = m.ppL;
+    if (m.mpL !== -1) o.mpL = m.mpL;
+    if (m.foL !== -1) o.foL = m.foL;
+    if (m.l31L !== -1) o.l31L = m.l31L;
+    if (m.swL !== -1) o.swL = m.swL;
+    if (m.aId !== -1) o.aId = m.aId;
+    if (m.sgw !== -1) o.sgw = m.sgw;
+    if (m.aCk !== 0) o.aCk = m.aCk;
+    if (m.sgwCk !== 0) o.sgwCk = m.sgwCk;
     return o;
   }
   function readMsg(o) {
@@ -461,6 +471,17 @@
     if (o.fhTc !== undefined) m.fhTc = o.fhTc;
     if (o.kv !== undefined) m.kv = readKStmt(o.kv);
     if (o.kbk !== undefined) m.kbk = o.kbk;
+    if (o.tx !== undefined) m.tx = o.tx;
+    if (o.sigL !== undefined) m.sigL = o.sigL;
+    if (o.ppL !== undefined) m.ppL = o.ppL;
+    if (o.mpL !== undefined) m.mpL = o.mpL;
+    if (o.foL !== undefined) m.foL = o.foL;
+    if (o.l31L !== undefined) m.l31L = o.l31L;
+    if (o.swL !== undefined) m.swL = o.swL;
+    if (o.aId !== undefined) m.aId = o.aId;
+    if (o.sgw !== undefined) m.sgw = o.sgw;
+    if (o.aCk !== undefined) m.aCk = o.aCk;
+    if (o.sgwCk !== undefined) m.sgwCk = o.sgwCk;
     return m;
   }
   Msg_DEF.coord = JSON.stringify(writeCoord(newCoord()));
@@ -477,7 +498,7 @@
   function clone(m) { return readMsg(writeMsg(m)); }
 
   // the state fields the per-tick state hash covers, in order
-  const STATE_FIELDS = Object.freeze([{"name":"id","type":"i32"},{"name":"state","type":"i32"},{"name":"hasCoord","type":"bool"},{"name":"coord","type":"Coord"},{"name":"occ","type":"{u64:i32}"},{"name":"live","type":"{u64:i32}"},{"name":"s1seen","type":"{u64:i32}"},{"name":"healTry","type":"{u64:i32}"},{"name":"translost","type":"{u64:i32}"},{"name":"kidful","type":"{u64:u8}"},{"name":"noChan","type":"<i32>"},{"name":"byeIds","type":"{i32:i32}"},{"name":"lastAck","type":"i32"},{"name":"healAt","type":"i32"},{"name":"lastPhone","type":"i32"},{"name":"leaseUntil","type":"i64"},{"name":"seatedAt","type":"i32"},{"name":"moving","type":"bool"},{"name":"moveAt","type":"i32"},{"name":"oldCoord","type":"Coord"},{"name":"oldCk","type":"u64"},{"name":"leaseCk","type":"u64"},{"name":"tn","type":"i32"},{"name":"oldTn","type":"i32"},{"name":"pp","type":"i32"},{"name":"ppAt","type":"i32"},{"name":"ppCk","type":"u64"},{"name":"placer","type":"i32"},{"name":"rowGen","type":"i32"},{"name":"roster","type":"[KV]"},{"name":"haveRoster","type":"bool"},{"name":"lastAsked","type":"i32"},{"name":"retryAt","type":"i32"},{"name":"seatTries","type":"i32"},{"name":"askTick","type":"i32"},{"name":"joinTick","type":"i32"},{"name":"genKey","type":"h64"},{"name":"rs","type":"u32"},{"name":"refuses","type":"bool"},{"name":"lastChurn","type":"i32"},{"name":"compactAt","type":"i64"}]);
+  const STATE_FIELDS = Object.freeze([{"name":"id","type":"i32"},{"name":"state","type":"i32"},{"name":"hasCoord","type":"bool"},{"name":"coord","type":"Coord"},{"name":"occ","type":"{u64:i32}"},{"name":"live","type":"{u64:i32}"},{"name":"s1seen","type":"{u64:i32}"},{"name":"healTry","type":"{u64:i32}"},{"name":"translost","type":"{u64:i32}"},{"name":"kidful","type":"{u64:u8}"},{"name":"noChan","type":"<i32>"},{"name":"byeIds","type":"{i32:i32}"},{"name":"lastAck","type":"i32"},{"name":"healAt","type":"i32"},{"name":"lastPhone","type":"i32"},{"name":"leaseUntil","type":"i64"},{"name":"seatedAt","type":"i32"},{"name":"moving","type":"bool"},{"name":"moveAt","type":"i32"},{"name":"oldCoord","type":"Coord"},{"name":"oldCk","type":"u64"},{"name":"leaseCk","type":"u64"},{"name":"tn","type":"i32"},{"name":"oldTn","type":"i32"},{"name":"pp","type":"i32"},{"name":"ppAt","type":"i32"},{"name":"ppCk","type":"u64"},{"name":"placer","type":"i32"},{"name":"rowGen","type":"i32"},{"name":"roster","type":"[KV]"},{"name":"haveRoster","type":"bool"},{"name":"lastAsked","type":"i32"},{"name":"retryAt","type":"i32"},{"name":"seatTries","type":"i32"},{"name":"askTick","type":"i32"},{"name":"joinTick","type":"i32"},{"name":"genKey","type":"u32"},{"name":"rs","type":"u32"},{"name":"refuses","type":"bool"},{"name":"lastChurn","type":"i32"},{"name":"compactAt","type":"i64"}]);
 
   const api = Object.freeze({
     MT, MT_NAMES, STATE_FIELDS,

@@ -63,9 +63,8 @@ P(' * first, then only the fields that differ from their default, in field order
 P(' * (the same bytes JSON.stringify gives for the parsed form). Reading fills the');
 P(' * defaults back in and rejects unknown fields and unknown type names.');
 P(' *');
-P(' * Numbers are JS numbers. A 64-bit key that may pass 2^53 (u64) is a number');
-P(' * while it is below 2^53 and a decimal string above. A 64-bit hash or token');
-P(' * (h64) is the string "0x" + 16 lowercase hex digits.');
+P(' * Numbers are JS numbers. Every hash, key and token is 32-bit, and every');
+P(' * 64-bit field (u64) is a cell key or a tick, always below 2^53.');
 P(' */');
 P('(function (root) {');
 P("  'use strict';");
