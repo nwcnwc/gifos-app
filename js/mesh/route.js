@@ -173,11 +173,13 @@
   // ---- L27: the mesh vote-off ------------------------------------------------------------------------------
   // C++: mesh_seat.inc:kOver
   // The targets a complete, fresh fold carries over the bar.
-  function kOver(R, now, self, on) {
-    if (R.at < 0 || R.part || R.rx < 0 || now - R.rx > K.DIG_TTL) return;   // a partial or stale fold says nothing
+  function kOver(R, now, self, on = []) {   // fills and returns `on` (FREE.kOver form)
+    if (R.at < 0 || R.part || R.rx < 0 || now - R.rx > K.DIG_TTL) return on;   // a partial or stale fold says nothing
     const pop = Math.max(0, R.n) + Math.max(0, R.leased);
     for (const e of R.kick) { const base = pop - R.kabs - e.dn; const need = Math.max(2, Math.trunc(base / 2) + 1); if (e.up >= need && e.tgt !== self) on.push(e.tgt); }
+    return on;
   }
+  Seat.free({ kOver });
   // C++: mesh_seat.inc:kHash
   function kHash(a, b, c) { return fmix32(hmix(hmix64(hmix(H_INIT, a >>> 0), b), c >>> 0)); }
   // C++: mesh_seat.inc:kSameVote
