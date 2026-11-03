@@ -94,6 +94,13 @@
   const ID_BITS = 21, ID_MAX = 1 << ID_BITS;
   const NOSOCK_WIN = 40;      // ticks: a relay nosock and the seat's ask (fabricNoSock) pair up within this window
   const REF_STALE = 20;       // ticks: an incomplete referral list over the relay is dropped after this
+  const TRACE_RING = 20000;   // DEBUG trace lines kept per page
+  // the page's death observations, as the sim's whys (hard: dc-close, pc-closed, relay-leave; the rest quiet)
+  const WHY = {
+    'close': 'dc-close', 'dc-close': 'dc-close', 'pc-closed': 'pc-closed', 'relay-leave': 'relay-leave', 'relay-leave-hint': 'relay-leave',
+    'failed-persist': 'failed-persist', 'disconnected-persist': 'disconnected-persist', 'starve': 'starve', 'starve-dead': 'starve', 'starve-noobj': 'starve',
+    'dark': 'disconnected-persist', 'wake-dead': 'disconnected-persist',
+  };
 
   // ---- ids ----------------------------------------------------------------------------------------------------
   function ids() {
@@ -115,6 +122,13 @@
     return { nid, pid, learn, size: () => toPeer.size };
   }
 
+  // the page's DEBUG switch, read as run.html reads it (DEBUG_ON: the URL, then the session's memory of it)
+  function pageDebug() {
+    if (typeof location === 'undefined') return false;
+    if (/(?:^|[#&?])debug=(?:on|1|true)/i.test(String(location.hash) + String(location.search))) return true;
+    try { return sessionStorage.getItem('gifos_debug') === '1'; } catch (e) { return false; }
+  }
+
   // ---- the env -------------------------------------------------------------------------------------------------
   function create(o) {
     if (!o || !o.peer) throw new Error('mesh env: create needs o.peer');
@@ -127,7 +141,12 @@
     const drop = (why) => { st.drops[why] = (st.drops[why] || 0) + 1; };
 
     // the trace sink: the sim's JSONL line {t, s, e, c, d} (harness fabric.js traceLine), or off
-    const sink = typeof o.trace === 'function' ? o.trace : null;
+    // DEBUG: the page's DEBUG=on (meet.js joins with it) keeps the last TRACE_RING lines here too (env.traces()),
+    // so every participant writes the seat's decision trace even when the page passes no sink
+    const dbg = o.debug != null ? !!o.debug : pageDebug();
+    const ring = [];
+    const userSink = typeof o.trace === 'function' ? o.trace : null;
+    const sink = (userSink || dbg) ? (line) => { if (dbg) { ring.push(line); if (ring.length > TRACE_RING) ring.splice(0, ring.length - TRACE_RING); } if (userSink) userSink(line); } : null;
     function traceLine(ev, s, cell, d) {
       if (!sink) return;
       let e = ''; for (let i = 0; i < d.length; i++) { const ch = d[i]; if (ch === '"' || ch === '\\') e += '\\'; if (ch.charCodeAt(0) >= 0x20) e += ch; }
@@ -395,16 +414,21 @@
     // a pc / dc event at my end for viaPeer
     function transport(peer, ev, arg) {
       const x = learnPeer(peer); if (x < 0) return false;
+      if (sink) trace('ENV-PC', me, null, 'peer=%d ev=%s', x, String(ev));
+      if (ev === 'unanswered') ev = 'dial-failed';
       switch (ev) {
         case 'offer': return pcw.offer ? pcw.offer(x, arg || {}) !== false : true;
         case 'answer': if (pcw.answered) pcw.answered(x, arg || {}); return true;   // the callee's mark came back with its answer
-        case 'open': if (pcw.opened) pcw.opened(x); return true;
+        case 'open':
+          // a pc the far end dialled whose offer the page did not report: my end takes it now (A2's offer gates)
+          if (pcw.link && !pcw.link(x) && pcw.offer && pcw.offer(x, arg || {}) === false) { io.close(x); return false; }
+          if (pcw.opened) pcw.opened(x); return true;
         case 'bye': if (pcw.byeIn) pcw.byeIn(x, arg || 'call'); return true;   // the page seam parsed {k:'pcbye'} itself
         case 'dial-failed': if (pcw.dialFailed) pcw.dialFailed(x); return true;
         case 'refused': if (pcw.refused) pcw.refused(x, arg || {}); return true;
-        case 'close': case 'dc-close': case 'pc-closed': case 'relay-leave': case 'failed-persist': case 'disconnected-persist': case 'starve':
-          if (pcw.lost) pcw.lost(x, ev === 'close' ? 'dc-close' : ev); return true;
       }
+      if (WHY[ev]) { if (pcw.lost) pcw.lost(x, WHY[ev]); return true; }
+      if (/-awake$/.test(ev) && WHY[ev.replace(/-awake$/, '')]) { if (pcw.lost) pcw.lost(x, WHY[ev.replace(/-awake$/, '')]); return true; }
       return false;
     }
 
@@ -453,14 +477,16 @@
     function absence(n) { const s = seat(); if (s && !dead && n > 0) s.absence(n); }
     function stats() { return Object.assign({ tick: w.TICK, me, ids: ID.size(), woken, dead }, JSON.parse(JSON.stringify(st))); }
 
-    return {
-      me, world: w, ids: ID, f: F, pcw, tick, frame, transport, relayFrame, absence, stats, links,
+    const env = {
+      me, world: w, traces: () => ring.slice(), ids: ID, f: F, pcw, tick, frame, transport, relayFrame, absence, stats, links,
       dirFor, learnDir, relayBusyList,
       // the mark my answer to peer carries back to it (A2), for the pc layer's answer
       mark: (peer) => { const x = ID.pid(ID.nid(peer)) === String(peer) ? ID.nid(peer) : learnPeer(peer); return x >= 0 && pcw.mark ? pcw.mark(x) : null; }, farView: (to) => farView(seat(), to),
       // the seat's construction is the caller's (A3): new Seat(env.me, env.world)
       newSeat: () => new seatM.Seat(me, w),
     };
+    if (dbg && typeof window !== 'undefined') window.__meshEnv = env;   // DEBUG: meet.js eval reaches the env (stats, traces, pcw.dump)
+    return env;
   }
 
   const api = Object.freeze({ create, ids, ID_BITS });
