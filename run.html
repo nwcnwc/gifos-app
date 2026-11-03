@@ -21189,11 +21189,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // bar is never below 2) while I am kept out is the room's standing verdict on this device: tell the person.
         if (dc && dc.__authBy === p.id && m.why === 'kick' && !bannedOut && !hasAdminRoom()) {
           const now = Date.now(); kickByesIn.set(p.id, now); for (const [k2, at] of kickByesIn) if (now - at > 60000) kickByesIn.delete(k2);
-          if (kickByesIn.size >= 2 || votedOffHere()) {
+          // The room's bar, not any two seats: fewer than a majority of those the relay can reach could otherwise stop a newcomer.
+          if (kickByesIn.size >= Math.max(2, Math.trunc(relaySocketed.size / 2) + 1) || votedOffHere()) {
             bannedOut = true; noteVotedOff(); if (typeof clog === 'function') clog('kicked-out by ' + kickByesIn.size);
             for (const pid of Array.from(peers.keys())) dropPeer(pid);
             try { meshNode && meshNode.stop(); } catch (e) {}
             setStatus(uiText('stThePeopleInThisRoom', '\u26d4 The people in this room voted not to let this device in.'));
+          } else {
+            // Not the room's bar yet: this door is shut to me, so ask the next one now rather than at the 10 s retry.
+            try { const r = meshNode && meshNode.raw; if (r && !r.hasCoord && r.state !== 3) { r.state = 0; r.findAckAt = -1; r.retryAt = r.TICK - 21; } } catch (e) {}
           }
         }
       } else if (m.k === 'dcauth') {
@@ -32364,6 +32368,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // L27 VOTE-OFF ON THE MESH: my vote-offs (device tags) name every peer on that device; the seat signs the
     // statement and it rides PHONE; the seat's fold is the tally, its threshold the need, its verdict the kick.
     const kickByesIn = new Map();   // peer -> when it closed our pair with 'kick' (L27, the refused side)
+    const devClaimAt = new Map();   // peer -> when I first saw it hold a device tag
+    const kickTagAt = new Map();    // refused tag -> when the refused peer took it
     // This device's own memory that the room voted it off (its fold said so, or two seats did), for KICK_LIFT-ish 120 s:
     // a rejoining page then takes the one door it knocks (L16) saying 'kick' as the standing verdict. Only ever about me.
     const VOTED_OFF_KEY = 'gifos_votedoff', VOTED_OFF_MS = 120000;
@@ -32376,9 +32382,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // L27 across a rejoin: my seat's verdict is about the DEVICE, so every other peer of a refused device (its
       // rejoining page, a second tab) is refused too, and a door pc to it is closed with the same 'kick' goodbye.
       if (meshNode.kickDevs && meshNode.kickCarry) {
-        const kd = meshNode.kickDevs((pid) => devOf[pid] || '');
+        // A tag is the holder's own word (status, or the dev= of its socket), so it is carried only to peers that took
+        // it AFTER the refused one: a rejoining page does; a device already here that a voted-off seat copied does not.
+        const now = Date.now(); for (const pid of Object.keys(devOf)) if (devOf[pid] && !devClaimAt.has(pid)) devClaimAt.set(pid, now);
+        const kd = meshNode.kickDevs((pid) => { const d = devOf[pid] || ''; if (d && !kickTagAt.has(d)) kickTagAt.set(d, devClaimAt.get(pid) || now); return d; });
         if (kd.size) for (const pid of new Set(Object.keys(devOf).concat(Array.from(peers.keys())))) {
           const dv = devOf[pid]; if (pid === myId || !dv || dv === myDevHash || !kd.has(dv)) continue;
+          if ((devClaimAt.get(pid) || now) < (kickTagAt.get(dv) || 0)) continue;
           if (meshNode.kickCarry([pid]) > 0 && typeof clog === 'function') clog('kick-id ' + String(pid).slice(0, 6));
         }
       }
@@ -35928,6 +35938,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       freezeGapForTest: (ms, mono) => { hbLastAt = Date.now() - (ms | 0); hbLastMono -= (mono === undefined ? ms : mono) | 0; },
       stageVoteNeed: () => stageVoteTallies().need,
       devInfo: () => ({ devOf: Object.assign({}, devOf), attested: Array.from(devRelay) }), // which device tags the RELAY vouched for (Ban needs one)
+      _setDevForTest: (id, tag) => { if (DEBUG_ON) { devOf[id] = tag; devClaimAt.delete(id); } },
+      _sayKickForTest: (id) => { const q = peers.get(id); if (!DEBUG_ON || !q || !q.dc || q.dc.readyState !== 'open') return false; dcSend(q, { k: 'pcbye', why: 'kick' }); return true; },
       _unattestForTest: (id) => devRelay.delete(id), // leave devOf[id] as a tag known only by the peer's own word
       // THE STATUS PLANE, as this seat sees it.
       statusPlane: () => { const d = roomDig(); return { id: myId, mode: digestMode(), past: roomPastSection(), n: d ? d.n : null, age: d ? d.age : null,
