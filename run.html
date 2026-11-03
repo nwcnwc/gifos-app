@@ -17047,6 +17047,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // the TTL, was told the NETWORK refused it. The wire reports the signed
         // delta from a verified member's frame while I am still joining.
         onClockSkew: (ms) => { const mins = Math.max(1, Math.round(Math.abs(ms) / 60000)); setStatus('\ud83d\udd50 This device\u2019s clock is ' + mins + ' minute' + (mins === 1 ? '' : 's') + (ms > 0 ? ' behind' : ' ahead of') + ' the meeting\u2019s, so you cannot join. Set the clock, then reload.'); },
+        onClockStop: (ms) => { const mins = Math.max(1, Math.round(Math.abs(ms) / 60000)); bannedOut = true; for (const pid of Array.from(peers.keys())) dropPeer(pid); setStatus('\ud83d\udd50 This device\u2019s clock is ' + mins + ' minute' + (mins === 1 ? '' : 's') + (ms > 0 ? ' behind' : ' ahead of') + ' the meeting\u2019s, so you cannot join. Set the clock, then reload.'); },
         // FRAGMENT SELF-RESCUE: the wire proved the door knows members my
         // solo room view doesn't. Same clean lever as the freeze self-heal \u2014
         // a full re-entry \u2014 throttled, and only while the app agrees we look
