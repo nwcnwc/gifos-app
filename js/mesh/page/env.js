@@ -1,0 +1,469 @@
+/*
+ * env.js: the ported seat's world on a real page (page adapter job A1).
+ *
+ * The seat (js/mesh/*.js) never touches a pc, a socket, a timer or the DOM. It sees only its world `w`
+ * (seat.js THE SEAT'S WORLD): w.TICK, w.lv, w.f (the 52 FABRIC_CALLS), w.trace. This file builds that world over
+ * the page: the 500 ms tick, the inbox, the wake flag, the relay (knock, unlist, busy, nosock), the path a frame
+ * takes (the sim's fabricSend, from the sender's own view), and the hand-off to the page's pcs. The pc-lifecycle
+ * laws on my end of each pc are pclaws-wire.js's (A2, GifOS.meshPcWire); the socket, signing, sealing and the
+ * page's debug face are mesh-wire's (A3). This file decides nothing the laws decide.
+ *
+ * THE 52 CALLS (seat.js FABRIC_CALLS). Owner: A1 = here; A2 = pclaws-wire.js fns (merged over these at create);
+ * meas = a measurement in the sim, a no-op here (a DEBUG trace line at most).
+ *   call                 owner  page meaning
+ *   fabricAdmitLog       meas   admit forensics
+ *   fabricCallFrame      A2     L25 question over a pc dialled for it (A2 linkSchedule)
+ *   fabricDial           A2     dial x (pclaws gates; io.dial -> o.pc.ensure)
+ *   fabricDialFails      A2     the seat's own DialBook
+ *   fabricDialJoin       A2     dial x or join its dial
+ *   fabricDialUplink     A2     L14 uplink dial + UPOFFER on the dc
+ *   fabricUpDecline      A2     L14 decline + referrals (BUSY tag 14 on the dc; over the relay: relayBusyList here)
+ *   fabricUpTake         A2     far page's L14 budget, my end
+ *   fabricDoorDrop       A2     pcbye{door} then close
+ *   fabricDoorHanded     A2     L16.2/16.3 hand-off mark
+ *   fabricDoors          A2     constant true (link model)
+ *   fabricDupMint        meas   move count
+ *   fabricFreeCells      A1     free cells in (pc, row) from MY view (the sim counts the truth: sim change 4.x)
+ *   fabricKickClose      A2     L27 pcbye{kick} then close
+ *   fabricL23Busy        A2     my pc budget
+ *   fabricLeft           A1     leave: seat dead, A2.leaveAll() next tick, o.onLeft(false)
+ *   fabricLieFor         A1     no lie (null)
+ *   fabricLinkOpen       A2     my end reads OPEN
+ *   fabricLinkState      A2     my end's view
+ *   fabricMyDoors        A2     my door count
+ *   fabricMyKnocks       A2     my knock count
+ *   fabricMyNat          A1     o.measure.nat() (STUN probe; NAT_OPEN until known)
+ *   fabricMyTier         A1     o.measure.tier() (UA class)
+ *   fabricNoSock         A1     L33.11: arm; the relay's real {t:'nosock'} becomes BUSY{nosock} (either order)
+ *   fabricNoteBackoff    meas   count
+ *   fabricNoteReseat     meas   count
+ *   fabricNoteRollback   meas   count
+ *   fabricNoteSwap       meas   count
+ *   fabricReloadBye      A1     as fabricLeft, pcs closed RELOAD_CLOSE_LAG ticks later, o.onLeft(true)
+ *   fabricSend           A1     the sim's path choice from the sender's view (FARVIEW); link step -> A2.send
+ *   fabricUnreachable    A1     false: friend-hop is off on the page (fhopActive false)
+ *   fabricVerdict        meas   D5 forensics
+ *   fhopActive           A1     false (friend-hop rungs: later; the sim's friend-hop is off in this profile)
+ *   fhopFriendFor        A1     false
+ *   l164Of               A1     LINKMODEL && !islandStand(s, IS_L164)
+ *   l18Deliv             A2     L18 count
+ *   l18Hop               A2     L18 next hop
+ *   l18UxDeliv           meas   L18 measurement
+ *   l222Note             A2     L22.2 far ask, my end
+ *   l22Agree             A2     UNNEEDED tag 1 on the dc
+ *   l22Close             A2     pcbye{unneeded} then close
+ *   l22CloseAsk          A2     UNNEEDED tag 3 on the dc
+ *   l22Need              A2     linkWhy, my end
+ *   l22Quiet             A2     my end's quiet clock
+ *   l28Reply             A2     L28 keep reply
+ *   l915Note             A1     the L9.15 call-channel note (sender-side table)
+ *   relayKnock           A1     o.relay.knock(null, blobOk); the reply becomes GREETERS
+ *   relayUnlist          A1     o.relay.unlist() when l164Of(seat)
+ *   descEnd              meas   descent instrument
+ *   descNote             meas   descent instrument
+ *   wake                 A1     the wake flag (the sim's active set)
+ *   fabricAudit          A1     L27.9 audit frame: sent like any frame (the sim's schedule)
+ *   fabricDoorHeard      A2     K5 door heard, my end
+ * Seat methods used here: recv, tick, join, absence, route, strictNextHop, linkRole, linkPeers, socketed,
+ * occGet, l13On, l13, state/hasCoord/coord/occ/live/farCk/farGw/clkHeld.
+ *
+ * IDS. The seat's ids are integers below 2^21 (hash.idPair is exact only there). ids() maps a page peer id to one:
+ * `k_<hex>` ids by their first 21 bits (string order = int order), any other id by FNV-1a. Ints a frame names
+ * travel with a small directory (dirFor / learnDir) so a page can dial a seat it only heard of; each entry is
+ * checked (nid(peer) === int), so a directory cannot point an int at another peer.
+ */
+(function (root) {
+  'use strict';
+  const GifOS = root.GifOS = root.GifOS || {};
+  const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
+  const req = (f, g) => (isNode ? require(f) : GifOS[g]);
+  const C_ = req('../consts.js', 'meshConsts');
+  const msg = req('../msg.js', 'meshMsg');
+  const topo = req('../topo.js', 'meshTopo');
+  const fnv = req('../fnv.js', 'meshFnv');
+  const fmt = req('../fmt.js', 'meshFmt');
+  const seatM = req('../seat.js', 'meshSeat');
+  const shared = req('../shared.js', 'meshShared');
+  const pcWireM = () => (isNode ? (GifOS.meshPcWire || tryReq('./pclaws-wire.js')) : GifOS.meshPcWire);
+  function tryReq(f) { try { return require(f); } catch (e) { return null; } }
+  const netM = () => GifOS.net || null;
+
+  const K = C_.consts, E = C_.enums;
+  const { ckey, ckPc, ckR, ownedLinks } = topo;
+  const { LS_OPEN, LS_DIALING, LK_OPEN } = E;
+  const ID_BITS = 21, ID_MAX = 1 << ID_BITS;
+  const NOSOCK_WIN = 40;      // ticks: a relay nosock and the seat's ask (fabricNoSock) pair up within this window
+  const REF_STALE = 20;       // ticks: an incomplete referral list over the relay is dropped after this
+
+  // ---- ids ----------------------------------------------------------------------------------------------------
+  function ids() {
+    const toPeer = new Map(), byPeer = new Map();
+    function nid(peer) {
+      const p = String(peer);
+      if (/^k_[0-9a-f]{6}/.test(p)) return parseInt(p.slice(2, 8), 16) >>> 3;
+      return fnv.str(p) >>> (32 - ID_BITS);
+    }
+    // learn a peer: its int, or -1 when another peer already holds that int (a collision: the second is ignored)
+    function learn(peer) {
+      if (peer == null || peer === '') return -1;
+      const p = String(peer); const c = byPeer.get(p); if (c !== undefined) return c;
+      const n = nid(p); const o = toPeer.get(n);
+      if (o !== undefined && o !== p) return -1;
+      toPeer.set(n, p); byPeer.set(p, n); return n;
+    }
+    const pid = (n) => (toPeer.has(n) ? toPeer.get(n) : null);
+    return { nid, pid, learn, size: () => toPeer.size };
+  }
+
+  // ---- the env -------------------------------------------------------------------------------------------------
+  function create(o) {
+    if (!o || !o.peer) throw new Error('mesh env: create needs o.peer');
+    const pc = o.pc || {}, relay = o.relay || {}, measure = o.measure || {};
+    const ID = o.ids || ids();
+    const me = ID.learn(o.peer);
+    if (!(me >= 0 && me < ID_MAX)) throw new Error('mesh env: my id ' + me + ' is not below 2^21 (hash.idPair needs it)');
+    const lv = Object.assign({}, C_.levers, { LINKMODEL: true, TIERS_ACTIVE: true, nextId: ID_MAX }, o.levers || {});
+    const st = { rx: 0, tx: 0, inboxMax: 0, delay: [0, 0, 0], drops: {}, relay: { knock: 0, unlist: 0, greeters: 0, nosock: 0, nosockBusy: 0, busyIn: 0, busyOut: 0, refIn: 0 }, idCollide: 0, lawErr: {} };
+    const drop = (why) => { st.drops[why] = (st.drops[why] || 0) + 1; };
+
+    // the trace sink: the sim's JSONL line {t, s, e, c, d} (harness fabric.js traceLine), or off
+    const sink = typeof o.trace === 'function' ? o.trace : null;
+    function traceLine(ev, s, cell, d) {
+      if (!sink) return;
+      let e = ''; for (let i = 0; i < d.length; i++) { const ch = d[i]; if (ch === '"' || ch === '\\') e += '\\'; if (ch.charCodeAt(0) >= 0x20) e += ch; }
+      sink('{"t":' + w.TICK + ',"s":' + s + ',"e":"' + ev + '","c":' + (cell ? '"' + shared.coordStr(cell) + '"' : 'null') + ',"d":"' + e + '"}');
+    }
+    const trace = (ev, s, cell, f, ...a) => { if (sink) traceLine(ev, s, cell, fmt.sprintf(f, ...a)); };
+
+    const w = seatM.newWorld({ levers: lv, trace: sink ? traceLine : null });
+    const seat = () => (typeof o.seat === 'function' ? o.seat() : null);
+    let woken = false, dead = false, closeAt = -1;
+    const bus = new Map();        // tick -> frames for my seat (synthesized: GREETERS, BUSY, deliveries the laws post)
+    let inbox = [];               // frames off the dcs since the last tick, in arrival order: [m, arrivedAtTick]
+    const busAt = (t, m) => { let s = bus.get(t); if (!s) { s = []; bus.set(t, s); } s.push(m); };
+    const inboxPush = (m) => { inbox.push([m, w.TICK]); if (inbox.length > st.inboxMax) st.inboxMax = inbox.length; };
+
+    // C++: mesh.cpp:wireTx  (CLOCKS: the frame leaves now; its holder-clock fields are on my clock)
+    function wireTx(m) {
+      const s = seat(); if (!s || m.fhTo >= 0) return;
+      m.tx = w.TICK - s.clkHeld;
+      if (m.sigAt >= 0 && m.id === me) m.sigL = m.sigAt;
+      if (m.ppAt >= 0 && m.pp === me) m.ppL = m.ppAt;
+      if (m.mpAt >= 0 && m.mpBy === me) m.mpL = m.mpAt;
+      if (m.foAt >= 0 && m.fo === me) m.foL = m.foAt;
+      if (m.l31At >= 0 && m.l31By === me) m.l31L = m.l31At;
+      if (m.swAt >= 0 && m.t === 'SWAPGO' && m.id === me) m.swL = m.swAt;
+    }
+
+    // the ints a frame names, with their peers, so the far page can dial them (checked there by learnDir)
+    function dirFor(m) {
+      const d = {}; let n = 0;
+      const walk = (v) => {
+        if (typeof v === 'number') { if (v >= 0 && v < ID_MAX && !(v in d)) { const p = ID.pid(v); if (p) { d[v] = p; n++; } } return; }
+        if (Array.isArray(v)) { for (const x of v) walk(x); return; }
+        if (v && typeof v === 'object') for (const k in v) walk(v[k]);
+      };
+      walk(msg.writeMsg(m));
+      return n ? d : null;
+    }
+    function learnDir(d) {
+      if (!d || typeof d !== 'object') return;
+      for (const k of Object.keys(d)) {
+        const p = d[k], n = +k; if (typeof p !== 'string' || ID.nid(p) !== n) continue;
+        if (ID.learn(p) < 0) { st.idCollide++; trace('ENV-IDCOLLIDE', me, null, 'id=%d', n); }
+      }
+    }
+    function learnPeer(peer) { const x = ID.learn(peer); if (x < 0 && peer) { st.idCollide++; trace('ENV-IDCOLLIDE', me, null, 'id=%d', ID.nid(peer)); } return x; }
+
+    // ---- io for the pc laws (A2) --------------------------------------------------------------------------------
+    const dialFailLater = [];
+    const io = {
+      dial(x, mark) {
+        const p = ID.pid(x);
+        if (!p || !pc.ensure) { trace('ENV-NOPEER', me, null, 'peer=%d', x); drop('nopeer'); dialFailLater.push(x); return; }
+        pc.ensure(p, { why: mark && mark.mt, uplink: !!(mark && mark.up), mark });
+      },
+      send(x, m) {
+        const p = ID.pid(x); if (!p || !pc.send) { drop('nopeer'); return false; }
+        if (m && m.t !== 'pcbye') wireTx(m);
+        st.tx++;
+        return pc.send(p, m, m && m.t !== 'pcbye' ? dirFor(m) : null) !== false;
+      },
+      close(x) { const p = ID.pid(x); if (p && pc.close) pc.close(p); },
+      // the page seam that sends {k:'pcbye', why} on the dc and closes my end (A3); without it A2 sends pcbye itself
+      bye: pc.bye ? (x, why) => { const p = ID.pid(x); if (p) pc.bye(p, why); } : undefined,
+      refuse(x, info) { relayBusy(x, { k: 'busy', g: info && info.busy ? 16 : 23 }); },
+      deliver(m) { m.to = me; busAt(w.TICK, m); },
+    };
+
+    // ---- the fabric calls I own ---------------------------------------------------------------------------------
+    const L915CH = new Map();
+    const l915Ch = (a, b) => { const t = L915CH.get(b === me ? a : b); return t !== undefined && w.TICK - t <= K.RELAY_TTL; };
+    const l9AskFrame = (m) => m.t === 'ROUTE' || m.t === 'ROUTED' || (m.t === 'E1STATE' && m.tag === 3);
+    const l18Frame = (m) => l9AskFrame(m) || seatM.l13Frame(m);
+    const noSockAsk = new Map(), noSockSeen = new Map();
+    const l164Of = (s) => !!lv.LINKMODEL && !seatM.islandStand(s, E.IS_L164);
+
+    // C++: mesh_farview_fab.inc:farView  (the sender's picture of a target: its own occ, live, farCk, farGw)
+    function farView(s, to) {
+      const v = { seat: 0, c: { pc: 0, r: 0, i: 0 }, gw: -1, gc: { pc: 0, r: 0, i: 0 }, gcOk: false };
+      if (!s || to < 0) return v;
+      const now = s.TICK; let any = false, ak = 0;
+      for (const [k, x] of s.occ) if (x === to) { const lt = s.live.get(k); if (lt !== undefined && now - lt <= 60) { v.seat = 1; v.c = topo.unckey(k); break; } if (!any) { any = true; ak = k; } }
+      if (v.seat === 0) { const it = s.farCk.get(to); if (it !== undefined && now - it.at <= K.RELAY_TTL) { if (it.ck) { v.seat = 1; v.c = topo.unckey(it.ck - 1); } else v.seat = -1; } }
+      if (v.seat === 0 && any) { v.seat = 1; v.c = topo.unckey(ak); }
+      const g = s.farGw.get(to); if (g !== undefined && now - g.at <= K.RELAY_TTL) { v.gw = g.gw; if (g.gck) { v.gc = topo.unckey(g.gck - 1); v.gcOk = true; } if (v.seat === 0) v.seat = -1; }
+      return v;
+    }
+    const farSock = (v) => v.seat !== 1 || v.c.pc === 0;
+
+    // the last step of a send: an early state frame rides an open pc or nowhere (schedL10); the rest go to the
+    // pc laws' link step (A2: open -> dc, dialing -> queue, none -> dial, L22-closing -> hold)
+    function parSend(from, to, m0) {
+      const m = msg.clone(m0);
+      if (to < 0 || to === me) { drop('self'); return; }
+      if (m.l10E || m.dgOnly) { if (F.fabricLinkState(me, to) !== LS_OPEN) { drop('l10'); return; } }
+      pcw.send(to, m);
+    }
+
+    // C++: mesh.cpp:fabricSend  (the sim's order; past the direct link the path is the sender's picture of `to`)
+    function fabricSend(from, to, m) {
+      const s = seat(); if (!s || dead) return;
+      if (m.l10E || m.dgOnly) {
+        let held = false; if (s.hasCoord && to >= 0 && to !== from) { for (const c of ownedLinks(s.coord)) if (s.occGet(ckey(c)) === to) { held = true; break; } }
+        if (held) parSend(from, to, m); else drop('l10');
+        return;
+      }
+      if (lv.ROUTE_ENFORCE && lv.LINKMODEL && !m.routing && !m.direct && to >= 0 && to !== from && l18Frame(m) && F.l18Route(from, to)) {
+        const rc = F.l18Cell(from, to); const mm = msg.clone(m); mm.l18 = true; lv.L18_ROUTED = (lv.L18_ROUTED || 0) + 1; s.route(rc, to, mm); return;
+      }
+      if (lv.ROUTE_ENFORCE && !m.routing && to >= 0 && to !== from) {
+        let directLink = !!s.linkRole(to, E.LR_OWNED | E.LR_E2 | E.LR_L4);
+        if (!directLink && ((l9AskFrame(m) && l915Ch(from, to)) || (s.l13On() && seatM.l13Frame(m))) && lv.LINKMODEL) { const ls = F.fabricLinkState(from, to); if (ls === LS_OPEN || ls === LS_DIALING) directLink = true; }
+        const fv = directLink ? { seat: 0, c: { pc: 0, r: 0, i: 0 }, gw: -1, gc: { pc: 0, r: 0, i: 0 }, gcOk: false } : farView(s, to);
+        const vIn = fv.seat === 1, mineCell = vIn && s.hasCoord && ckey(fv.c) === ckey(s.coord);
+        const doors = F.fabricDoors();
+        if (!directLink && m.direct) {
+          if (mineCell && !(s.socketed() && farSock(fv))) { drop('direct-mine'); return; }
+          if (vIn && !mineCell) { s.route(fv.c, -1, msg.clone(m)); return; }
+        } else if (!directLink && m.t === 'TAKEOVER' && !s.hasCoord && doors) {
+          /* L16.2: the joiner dials the admitter its FIND was handed to */
+        } else if (!directLink && doors && !vIn && s.hasCoord && s.state === 3 && F.fabricLinkState(from, to) === LS_OPEN) {
+          /* L16: a seated seat holding an open door to a joiner hands the frame over that door */
+        } else if (!directLink && doors && !s.hasCoord && F.fabricLinkState(from, to) === LS_OPEN) {
+          /* L16.3: a seeker outside with an open door to a seated seat hands its frame over that door */
+        } else if (!directLink && doors && !vIn && s.hasCoord && s.state === 3 && m.t !== 'HOME' && m.gwc) {
+          /* L16.3: a deep seat's answer to a joiner outside rides a door of its own, dialled for it */
+        } else if (!directLink) {
+          if (doors && s.socketed() && farSock(fv) && s.hasCoord && s.state === 3 && fv.seat === -1 && fv.gw >= 0 && fv.gw !== from && fv.gcOk && F.fabricLinkState(from, to) !== LS_OPEN && F.fabricLinkState(from, to) !== LS_DIALING) { s.route(fv.gc, to, msg.clone(m)); return; }
+          else if (s.socketed() && farSock(fv)) { /* both hold sockets (greeting scope): the relay signals a pc; a socketless target answers nosock */ }
+          else if (vIn) { s.route(fv.c, s.l13('L13.1') ? to : -1, msg.clone(m)); return; }
+          else if (fv.gw >= 0 && fv.gcOk) { s.route(fv.gc, to, msg.clone(m)); return; }
+          else { drop('nowhere'); return; }   // nowhere I know: the seat retries on its own clock
+        }
+      }
+      parSend(from, to, m);
+    }
+
+    // C++: mesh.cpp:relayKnock  (the relay's own law runs at the relay; the L16.4 blob rule is applied here, at my end)
+    function relayKnock(id, presentedKey, blob) {
+      void presentedKey;   // the page's genesis key is mesh-wire's (the room key the relay hashes)
+      const s = seat(); if (!s || !relay.knock) return;
+      const isl = seatM.islandStand(s, E.IS_RELAY); const s1Only = isl || l164Of(s);
+      const blobOk = !!blob && (!s1Only || (s.state === 3 && s.hasCoord && s.coord.pc === 0));
+      st.relay.knock++; relay.knock(null, blobOk);
+    }
+    // C++: mesh.cpp:relayUnlist
+    function relayUnlist(id) { const s = seat(); if (!s || !l164Of(s) || !relay.unlist) return; st.relay.unlist++; relay.unlist(); }
+
+    // L33.11: the seat says its ask to g crossed the relay; the relay's nosock for g answers it (either order)
+    function fabricNoSock(a, g) {
+      if (a !== me || g < 0) return;
+      const t = noSockSeen.get(g);
+      if (t !== undefined && w.TICK - t <= NOSOCK_WIN) { noSockSeen.delete(g); bounceNoSock(g); return; }
+      noSockAsk.set(g, w.TICK);
+    }
+    function bounceNoSock(g) { const m = msg.newMsg('BUSY'); m.nosock = true; m.id = g; m.to = me; m.from = -1; st.relay.nosockBusy++; busAt(w.TICK + 1, m); }
+
+    // C++: mesh_fhop.inc:fabricFreeCells, from MY view (the sim counts the true seats)
+    function fabricFreeCells(pcPath, r) {
+      const s = seat(); let free = r < 0 ? topo.C * topo.C : topo.C; if (!s) return free;
+      for (const k of s.occ.keys()) { if (ckPc(k) !== pcPath) continue; if (r < 0 || ckR(k) === r) free--; }
+      return free;
+    }
+
+    function leaveNow(reload) {
+      const s = seat(); if (s) s.dead = true; dead = true; woken = false;
+      closeAt = w.TICK + (reload ? K.RELOAD_CLOSE_LAG : 1);
+      if (typeof o.onLeft === 'function') o.onLeft(!!reload);
+    }
+
+    // a referral list over the relay: one id per sealed frame (gifos-net fitsFixed checks every piece)
+    function relayBusyList(x, g, list) {
+      const ps = []; for (const n of list || []) { const p = ID.pid(n); if (p) ps.push(p); }
+      if (!ps.length) { relayBusy(x, { k: 'busy', g }); return; }
+      ps.forEach((p, i) => relayBusy(x, { k: 'busy', g, i, n: ps.length, ref: [p] }));
+    }
+    function relayBusy(x, body) {
+      const p = ID.pid(x); if (!p || !relay.busy) { drop('busy-nopeer'); return; }
+      const net = netM(); if (net && net.fitsFixed && !net.fitsFixed(body)) { drop('busy-unfit'); trace('ENV-BUSY-UNFIT', me, null, 'peer=%d', x); return; }
+      st.relay.busyOut++; relay.busy(p, body);
+    }
+
+    const noop = () => {};
+    const OWN = {
+      fabricAdmitLog: noop, fabricDupMint: noop, fabricNoteBackoff: noop, fabricNoteReseat: noop, fabricNoteRollback: noop,
+      fabricNoteSwap: noop, fabricVerdict: noop, l18UxDeliv: noop, descEnd: noop, descNote: noop,
+      fabricFreeCells, fabricLieFor: () => null, fabricUnreachable: () => false, fhopActive: () => false, fhopFriendFor: () => false,
+      fabricMyTier: () => ((measure.tier ? measure.tier() : E.TIER_DESKTOP) | 0),
+      fabricMyNat: () => ((measure.nat ? measure.nat() : E.NAT_OPEN) | 0),
+      fabricLeft: () => leaveNow(false), fabricReloadBye: () => leaveNow(true),
+      fabricNoSock, fabricSend, fabricAudit: (from, to, m) => { if (to >= 0 && to !== me) parSend(from, to, m); },
+      l164Of, l915Note: (a, b) => { if (L915CH.size > 4096) L915CH.clear(); L915CH.set(b === me ? a : b, w.TICK); },
+      relayKnock, relayUnlist, wake: (id) => { if (id === me && !dead) woken = true; },
+    };
+
+    // ---- the pc laws (A2) over my io ----------------------------------------------------------------------------
+    const PW = pcWireM();
+    if (!PW || !PW.create) throw new Error('mesh env: GifOS.meshPcWire (js/mesh/page/pclaws-wire.js) is not loaded');
+    const pcw = PW.create({ me, seat, w, trace, io, wireTx, l392Contest: o.l392Contest });
+    // a law that throws must not take the page down: trace it, count it, answer as "no"
+    const guard = (n, fn) => (...a) => {
+      try { return fn(...a); } catch (e) {
+        st.lawErr[n] = (st.lawErr[n] || 0) + 1;
+        if (st.lawErr[n] <= 3) trace('ENV-LAWERR', me, null, '%s %s', n, String(e && e.message || e));
+        if (o.strict) throw e;
+        return undefined;
+      }
+    };
+    const F = {};
+    for (const n of seatM.FABRIC_CALLS) {
+      const fn = (pcw.fns && pcw.fns[n]) || OWN[n];
+      F[n] = fn ? guard(n, fn) : guard(n, () => { throw new Error('mesh env: ' + n + ' is not wired'); });
+    }
+    w.f = F;
+    // the pc laws' own helpers fabricSend reads (not seat calls): L18's route test and cell
+    for (const n of ['l18Route', 'l18Cell']) F[n] = guard(n, (pcw.fns && pcw.fns[n]) || (() => (n === 'l18Route' ? false : null)));
+
+    // ---- the page's face ------------------------------------------------------------------------------------------
+    // C++: mesh.cpp:doTick, for one seat: link tick, deliver, tick the seat if woken; then the clock moves on.
+    function tick() {
+      const s = seat();
+      if (closeAt >= 0 && w.TICK >= closeAt) { closeAt = -1; if (pcw.leaveAll) pcw.leaveAll(); }
+      while (dialFailLater.length) { const x = dialFailLater.shift(); if (pcw.dialFailed) pcw.dialFailed(x); }
+      if (pcw.tick) guard('pcw.tick', pcw.tick)();
+      if (s && !dead) {
+        const due = [];
+        for (const t of [...bus.keys()].sort((a, b) => a - b)) { if (t > w.TICK) break; due.push(...bus.get(t)); bus.delete(t); }
+        const ib = inbox; inbox = [];
+        for (const m of due) recvOne(s, m);
+        for (const [m, at] of ib) { const d = w.TICK - at;   /* 0: the first boundary after arrival (the sim's 1-tick hop) */ st.delay[d <= 0 ? 0 : d === 1 ? 1 : 2]++; recvOne(s, m); }
+        if (woken) { woken = false; guard('seat.tick', () => s.tick())(); }
+        noteLinks(s);
+      } else { bus.clear(); inbox = []; }
+      for (const [g, t] of noSockAsk) if (w.TICK - t > NOSOCK_WIN) noSockAsk.delete(g);
+      for (const [g, t] of noSockSeen) if (w.TICK - t > NOSOCK_WIN) noSockSeen.delete(g);
+      for (const [x, r] of refPend) if (w.TICK - r.at > REF_STALE) refPend.delete(x);
+      w.TICK++;
+    }
+    function recvOne(s, m) {
+      if (s.dead) return;
+      st.rx++;
+      guard('seat.recv', () => s.recv(m))();
+      woken = true;   // the sim wakes the receiver of every delivered frame
+    }
+
+    let lastLinks = '';
+    function links() { const s = seat(); if (!s) return []; const out = []; s.linkPeers(out); const ps = []; for (const x of out) { const p = ID.pid(x); if (p) ps.push(p); } return ps; }
+    function noteLinks(s) {
+      if (typeof o.onLinks !== 'function') return;
+      const out = []; s.linkPeers(out); const key = out.slice().sort((a, b) => a - b).join(',');
+      if (key === lastLinks) return; lastLinks = key; o.onLinks(links());
+    }
+
+    // a verified frame off viaPeer's dc (A3 decodes and checks signatures); dir: the sender's id directory
+    function frame(m, viaPeer, dir) {
+      if (dead || !m) return;
+      const x = learnPeer(viaPeer); if (x < 0) { drop('frame-collide'); return; }
+      learnDir(dir);
+      if (pcw.frame && pcw.frame(x, m)) return;   // a pcbye, or a frame lost to a close at my end
+      if (!m.t || m.t === 'pcbye') return;
+      m.to = me; m.from = x;
+      inboxPush(m);
+    }
+
+    // a pc / dc event at my end for viaPeer
+    function transport(peer, ev, arg) {
+      const x = learnPeer(peer); if (x < 0) return false;
+      switch (ev) {
+        case 'offer': return pcw.offer ? pcw.offer(x, arg || {}) !== false : true;
+        case 'answer': if (pcw.answered) pcw.answered(x, arg || {}); return true;   // the callee's mark came back with its answer
+        case 'open': if (pcw.opened) pcw.opened(x); return true;
+        case 'bye': if (pcw.byeIn) pcw.byeIn(x, arg || 'call'); return true;   // the page seam parsed {k:'pcbye'} itself
+        case 'dial-failed': if (pcw.dialFailed) pcw.dialFailed(x); return true;
+        case 'refused': if (pcw.refused) pcw.refused(x, arg || {}); return true;
+        case 'close': case 'dc-close': case 'pc-closed': case 'relay-leave': case 'failed-persist': case 'disconnected-persist': case 'starve':
+          if (pcw.lost) pcw.lost(x, ev === 'close' ? 'dc-close' : ev); return true;
+      }
+      return false;
+    }
+
+    // a relay frame (mesh-wire opened any sealed part)
+    const refPend = new Map();
+    function relayFrame(m) {
+      if (!m || dead) return;
+      if (m.t === 'greeters') {
+        st.relay.greeters++;
+        const out = [];
+        for (const p of m.list || []) { const x = learnPeer(p); if (x >= 0 && x !== me && !out.includes(x)) out.push(x); }
+        for (let k = out.length - 1; k > 0; k--) { const j = Math.floor((o.rand ? o.rand() : Math.random()) * (k + 1)); const t = out[k]; out[k] = out[j]; out[j] = t; }   // the sim's relay shuffles
+        const g = msg.newMsg('GREETERS'); g.list = out; g.to = me; g.from = -1; busAt(w.TICK, g);
+        return;
+      }
+      if (m.t === 'nosock') {
+        st.relay.nosock++;
+        const g = learnPeer(m.to); if (g < 0) return;
+        const t = noSockAsk.get(g);
+        if (t !== undefined && w.TICK - t <= NOSOCK_WIN) { noSockAsk.delete(g); bounceNoSock(g); }
+        else noSockSeen.set(g, w.TICK);
+        return;
+      }
+      if (m.t === 'peer' && m.ty === 'busy') {
+        st.relay.busyIn++;
+        const x = learnPeer(m.from); if (x < 0) return; const d = m.d || {};
+        if (d.g === 14) {
+          if (Number.isInteger(d.n) && d.n > 0) {
+            let r = refPend.get(x); if (!r || r.n !== d.n) { r = { n: d.n, at: w.TICK, parts: [] }; refPend.set(x, r); }
+            r.parts.push(d); if (r.parts.length < r.n) return; refPend.delete(x);
+            const net = netM(); const ps = net && net.referralJoin ? net.referralJoin(r.parts) : [].concat(...r.parts.map((q) => q.ref || []));
+            if (!ps) { drop('ref-bad'); return; }
+            st.relay.refIn++; deliverDecline(x, ps);
+          } else deliverDecline(x, []);
+          return;
+        }
+        if (pcw.refused) pcw.refused(x, { busy: d.g === 16 ? 1 : 0 });
+      }
+    }
+    function deliverDecline(x, peers) {
+      const d = msg.newMsg('BUSY'); d.tag = 14; d.id = x; d.from = x; d.to = me; d.lk = -1;
+      for (const p of peers) { const n = learnPeer(p); if (n >= 0) d.list.push(n); }
+      busAt(w.TICK, d);
+    }
+
+    function absence(n) { const s = seat(); if (s && !dead && n > 0) s.absence(n); }
+    function stats() { return Object.assign({ tick: w.TICK, me, ids: ID.size(), woken, dead }, JSON.parse(JSON.stringify(st))); }
+
+    return {
+      me, world: w, ids: ID, f: F, pcw, tick, frame, transport, relayFrame, absence, stats, links,
+      dirFor, learnDir, relayBusyList,
+      // the mark my answer to peer carries back to it (A2), for the pc layer's answer
+      mark: (peer) => { const x = ID.pid(ID.nid(peer)) === String(peer) ? ID.nid(peer) : learnPeer(peer); return x >= 0 && pcw.mark ? pcw.mark(x) : null; }, farView: (to) => farView(seat(), to),
+      // the seat's construction is the caller's (A3): new Seat(env.me, env.world)
+      newSeat: () => new seatM.Seat(me, w),
+    };
+  }
+
+  const api = Object.freeze({ create, ids, ID_BITS });
+  GifOS.meshPageEnv = api;
+  if (isNode) module.exports = api;
+})(typeof window !== 'undefined' ? window : globalThis);
