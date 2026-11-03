@@ -69,7 +69,10 @@
   function claimOf(m) { return m.sig ? m.id : m.fsig ? m.nc : (m.fo >= 0 ? m.fo : -1); }
   // A seeker's FIND (fsig: L24) is rebuilt at every hop (sh, sgw, gwc, spread, dk change), so its signature covers
   // what the seeker owns, its own ask {t, nc}; a forwarder re-attaches the seeker's verified signature from sigOf.
-  function coreOf(msgM, m) { if (!m.sig && m.fsig && m.t === 'FIND') return JSON.stringify({ t: 'FIND', nc: m.nc }); const o = msgM.writeMsg(m); for (const k of HOP) delete o[k]; return JSON.stringify(o); }
+  // A room goodbye (0.9.24's signed LEAVE) covers the stay it ends, not the hints beside it: it is signed ahead of the
+  // close, the section relay (byeRelay) rebuilds it, and the page stamps hop fields on it.
+  const goodbyeCore = (m) => JSON.stringify({ t: 'LEAVE', ck: m.ck, id: m.id, tn: m.tn, at: m.sigAt });
+  function coreOf(msgM, m) { if (m.sig && m.t === 'LEAVE' && m.bye && !m.mvd) return goodbyeCore(m); if (!m.sig && m.fsig && m.t === 'FIND') return JSON.stringify({ t: 'FIND', nc: m.nc }); const o = msgM.writeMsg(m); for (const k of HOP) delete o[k]; return JSON.stringify(o); }
   // A GOODBYE SAID NOW (mesh.js LEAVE heals on m.s4live when no link told the
   // receiver the leaver's stay). The pre-signed LEAVE is up to PRELEAVE_MS old
   // when it is sent, and the two clocks may differ: `off` is my estimate of
@@ -317,6 +320,13 @@
     const env = { TICK: 0 };   // legacy face (stats, debug): TICK mirrors the seat world's
     function sendFrameTo(to, m, dir) {   // a seat frame for peer `to`: encode, sign if mine, keep per-peer order
       const msgM = GifOS.meshMsg;
+      // My goodbye goes on the pre-signed signature, now: this page may not live to finish a signature, and
+      // the pcbye right behind it must not overtake it (a frame after the far end's pcbye is dropped there).
+      if (m.t === 'LEAVE' && m.bye && preLeave && m.id === layer.ids.nid(peer)) {
+        const at = m.sigAt, atL = m.sigL; m.sigAt = preLeave.at; if (m.sigL >= 0) m.sigL = preLeave.at;
+        if (coreOf(msgM, m) === preLeave.core) { try { const out = { t: 'MW2', f: msgM.writeMsg(m), s4: preLeave.s4 }; if (dir && typeof dir === 'object') out.dir = dir; deliver(to, out); return true; } catch (e) { return false; } }
+        m.sigAt = at; m.sigL = atL;
+      }
       let f; try { f = msgM.writeMsg(m); } catch (e) { return false; }
       const claim = claimOf(m), core = claim >= 0 ? coreOf(msgM, m) : null;
       let blk = null;
@@ -328,6 +338,18 @@
       const q = prev.then(() => blk).then((s4) => { if (stopped && m.t !== 'LEAVE') return; const out = { t: 'MW2', f }; if (s4) out.s4 = s4; if (dir && typeof dir === 'object') out.dir = dir; deliver(to, out); }).catch(() => {});
       outq.set(to, q); q.then(() => { if (outq.get(to) === q) outq.delete(to); });
       return true;
+    }
+    // THE PRE-SIGNED GOODBYE (0.9.24 preLeave): leave() runs in pagehide / beforeunload and the node stops in the
+    // same tick, so a goodbye signed only then may never leave. Kept current: one signature per stay change, or per
+    // PRELEAVE_MS. It covers what coreOf says a goodbye owns, so it fits every copy, the section relay's too.
+    let preLeave = null, preLeaveBusy = false;
+    function refreshPreLeave() {
+      if (preLeaveBusy || stopped || !identity || !raw || raw.dead || raw.state !== 3 || !raw.hasCoord) return;
+      const ck = GifOS.meshTopo.ckey(raw.coord), tn = raw.tn;
+      if (preLeave && preLeave.ck === ck && preLeave.tn === tn && Date.now() - preLeave.signedAt < PRELEAVE_MS) return;
+      const at = penv.world.TICK, ts = Date.now(), core = goodbyeCore({ ck, id: raw.id, tn, sigAt: at });
+      preLeaveBusy = true;
+      net.edSign(identity.priv, JSON.stringify({ v: 3, c: core, ts })).then((sig) => { preLeaveBusy = false; preLeave = { ck, tn, at, core, s4: { ts, sig, pub: identity.pubB64 }, signedAt: Date.now() }; }, () => { preLeaveBusy = false; });
     }
     // ingest(m): the S4 verification gate on the way IN. A signed fill is
     // verified against the TOFU-pinned participant key (FIFO-chained so crypto
@@ -864,6 +886,7 @@
           }
           lastTickAt = nowT;
           for (let i = 0; i < n && !stopped; i++) { penv.tick(); env.TICK = penv.world.TICK; layer.afterTick(); }
+          refreshPreLeave();
         } else lastTickAt = 0;
         if (seat.stranded && !strandedFired) { strandedFired = true; if (opts.onStranded) opts.onStranded(); }
         // Socket lifecycle: deep-seated ⇒ the relay is done with me; drop after a
@@ -1127,10 +1150,10 @@
       kicked(peer) { return layer ? layer.kicked(peer) : false; },
       adapterStats() { return (penv && penv.stats) ? penv.stats() : null; },
       links() { return seat ? Array.from(seat.linkPeers()) : []; },
-      // Resolves once every gossip frame handed over before now has been
+      // Resolves once every gossip frame and every seat frame handed over before now has been
       // signed and delivered, or after `ms` (the farewell's channels close
       // behind it: run.html afterFarewell).
-      flushed(ms) { const all = Promise.all(Array.from(gflight)); return Promise.race([all, new Promise((r) => setTimeout(r, Math.max(0, +ms || 0)))]).then(() => undefined); },
+      flushed(ms) { const all = Promise.all(Array.from(gflight).concat(Array.from(outq.values()))); return Promise.race([all, new Promise((r) => setTimeout(r, Math.max(0, +ms || 0)))]).then(() => undefined); },
       stop() { stopped = true; if (timer && timer.worker) { try { timer.worker.terminate(); } catch (e) {} } else if (timer) clearInterval(timer); timer = null; if (sock) { try { sock.close(); } catch (e) {} sock = null; } },
     };
 
