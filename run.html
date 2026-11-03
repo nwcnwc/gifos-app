@@ -15399,10 +15399,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             const roomKnows = (Array.isArray(rosterIds) && rosterIds.includes(pid))
               || (statusOf && statusOf.has(pid))
               || (typeof relaySocketed !== 'undefined' && relaySocketed.has(pid));
-            if (roomKnows) {
-              try { s.translost.delete(k); } catch (e) {}
-              continue;
-            }
+            if (roomKnows) continue;   // display only: the seat's own D5 owns its translost (no write into the seat)
             confirmGone(pid, 'd5'); continue;
           }
           if (peers.has(pid) && !occVanish.has(pid)) occVanish.set(pid, Date.now());
@@ -15443,45 +15440,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
       }
       occPrevIds = occNow; occPrevMyCk = myCk;
-      // VOUCH-CAP REAP (2026-07-26, the frozen-phone lesson part 2): an OS-
-      // frozen phone keeps its TCP open — no close event EVER arrives, the pc
-      // sits in 'disconnected' forever, and its peers-map entry became an
-      // immortal zombie (participantCount rides peers.size, so the room
-      // counted a corpse indefinitely; the roster had long dropped it). A
-      // peer that is neither rostered nor heard past the vouch cap is
-      // confirmed gone; the pc.close() inside is the first-hand hard
-      // transport event the mesh's D5 confirm needs, so the SEAT heals
-      // through the ordinary law path too. A pocketed-but-alive phone (G1)
-      // keeps beating and is never eligible.
-      // SILENCE IS EVIDENCE ONLY WHERE A BEAT IS OWED. A heartbeat's direct
-      // leg rides my own links and nothing else, so a pair the tree does not
-      // name as my link hears nothing after its first status, by design: the
-      // door a member came in by, kept open because my view never learns
-      // their seat in another section. Reading that quiet as death
-      // tombstoned a live member on both sides of the door at once, and the
-      // tombstone then refused the very link a promotion needed, splitting
-      // the room. A quiet door is left open and unjudged: when a deep seat's
-      // parent dies, the door is the one channel its new parent can still
-      // signal it over. A pair that only just became a link is judged from
-      // that moment, not from the quiet it kept while it was a door.
-      // ...and a beat is owed only on a link BOTH ends hold. A deep row's
-      // non-head seats count their row's owner among their links, but the
-      // owner holds only the row head, so it closes their door and never
-      // answers their dial: their side of the pair stays quiet by design,
-      // and reading that as death marked a live owner gone. When my view
-      // shows the far side's links and I am not among them, the pair is not
-      // owed; an unknown far side is judged as before.
-      const REAP_MS = 195000; // vouch cap + pulse slack
-      for (const [pid, p] of Array.from(peers)) {
-        const theirs = typeof targetLinkIds === 'function' ? targetLinkIds(pid) : null;
-        const owed = linkTo(pid) && (!theirs || theirs.includes(myId));
-        if (!owed) p.owedAt = 0; else if (!p.owedAt) p.owedAt = nowMs;
-        if (rosterIds.includes(pid)) continue;
-        const st = statusOf.get(pid);
-        const heard = Math.max(p.lastHeard || 0, (st && st.rx) || 0);
-        if (!heard || nowMs - heard <= REAP_MS) continue;
-        if (owed && nowMs - p.owedAt > REAP_MS) confirmGone(pid, 'vouch-reap');
-      }
+      // No vouch-cap reap: a silent peer is the seat's to judge (its L3 lease and
+      // D5). A frozen phone's pc reaches 'disconnected-persist' (pcDeadWhy), the
+      // seat hears that as a quiet loss and decides; the page never closes a pc
+      // to make a death.
     }
     // ---- JOINING MUST LOOK LIKE JOINING (Fix 2, 2026-07-26) -----------------
     // A page that cannot complete the knock used to look like an EMPTY ROOM:
@@ -17520,57 +17482,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (now - seen - holdDebtSince(seen) > HOLDOVER_MS) { if (typeof dropStatus === 'function') dropStatus(pid); else statusOf.delete(pid); }
         }
       }
-      // The link set follows the seat arithmetic — occupancy gossip settling
-      // can name new neighbours; dial them the tick they appear.
-      for (const pid of rosterIds) {
-        if (pid === myId || (devOf[pid] && devOf[pid] === myDevHash)) continue;
-        if (linkTo(pid) && !peers.has(pid)) ensureLink(pid, rosterNames[pid] || null);
-      }
-      const seatedNow = (() => { const s = meshSeat(); return !!(s && s.hasCoord && s.state === 3); })();
-      let anyLinkOpen = false; for (const [qid, q] of peers) if (q.dc && q.dc.readyState === 'open' && linkTo(qid)) { anyLinkOpen = true; break; }
+      // No page dial here: the seat dials every pc it needs and re-dials on
+      // its own clock (L17 / L3.8); a second clock here raced it.
       for (const [pid, p] of Array.from(peers)) {
         if (p.qa) continue; // painted stand-ins for the desktop UI suite — not mesh peers
-        // A link the arithmetic no longer wants gets a 15s grace: the seat
-        // map flaps while gossip settles, and an ICE rebuild two seconds
-        // after a needless drop is pure lost time.
         if (!linkTo(pid)) {
-          // The bootstrap channel to a greeter (p.boot) is the door: kept
-          // while I am still outside, however it fares (a dead one is what
-          // tells a locked-out person so — reachCounts), and retired the
-          // moment I am seated with a link of my own open (retireBootPairs).
-          // A door is kept while either side is still outside — mine while I
-          // knock, a knocker's (not yet in my occupancy) while it knocks at
-          // me — and retired once both are seated with no link between them.
           const theyOutside = !meshKnows(pid);
           const doorShut = p.boot && !p.bootOut && p.dc && p.dc.readyState === 'closed'; // the knocker closed my end of its door
           if (p.boot && p.pc && (p.pc.connectionState === 'closed' || p.pc.connectionState === 'failed' || doorShut)) { dropPeer(pid, !theyOutside || rosterIds.includes(pid)); continue; } // a dead door: gone now, never rebuilt (a knocker redials); a member the roster already holds keeps its status
-          // A door I knocked through is mine to close once I am seated: its
-          // greeter is seated somewhere my occupancy need not hold (Section 1
-          // when I sit deep), so theyOutside says nothing about it. Kept, it
-          // was a pc with video from every late joiner to every Section-1
-          // seat, a front seat's load growing with the room (bw-ladder N=32).
-          else if (p.boot && p.bootOut && seatedNow && anyLinkOpen) { dropPeer(pid, true); continue; }
-          else if (p.boot && (!seatedNow || theyOutside)) { p.unlinkedSince = 0; }
-          else if (p.boot && seatedNow && anyLinkOpen) { dropPeer(pid, true); continue; }
-          else {
-            // Any other pair keeps its grace and its repair: a member back
-            // from a dark spell names its neighbours again only once its
-            // view re-converges, and its dead pairs with them must be
-            // rebuilt meanwhile, not dropped.
-            if (!p.unlinkedSince) p.unlinkedSince = now;
-            if (now - p.unlinkedSince > 15000) { dropPeer(pid, meshKnows(pid)); continue; }
-          }
-        } else { p.unlinkedSince = 0; p.absentSince = 0; } // a mesh-named neighbour is never absent
+          // A pc the seat does not name is not closed here: the pc laws close
+          // it at my end with a goodbye (doors K5/L16, L22 UNNEEDED, L23).
+        } else { p.absentSince = 0; } // a mesh-named neighbour is never absent
         const st = p.pc.connectionState;
         if (p.absentSince && !p.connected && now - p.absentSince > ABSENT_GRACE) { dropPeer(pid); continue; }
-        // A pc that lands in 'closed' can't be ICE-restarted — rebuild the
-        // transport into the same peer record (tile + identity survive).
-        if (!p.absentSince && st === 'closed') {
-          if (p.boot && !linkTo(pid)) continue; // a door the arithmetic does not name is never rebuilt (its grace runs out above); every other pair is
-          newPcFor(p);
-          if (iInitiate(pid)) { p.lastKick = now + Math.random() * 1500; sendOffer(pid); }
-          continue;
-        }
+        // A pc that lands in 'closed' can't be ICE-restarted; it is dropped.
+        if (!p.absentSince && st === 'closed') { dropPeer(pid, meshKnows(pid)); continue; } // the seat re-dials a pc it still needs
         // A pc WEDGED in 'connecting' never completed its first ICE handshake —
         // typically a candidate lost to a renegotiation glare, or an aux-track
         // reneg reset ICE mid-flight. The browser won't downgrade it to
