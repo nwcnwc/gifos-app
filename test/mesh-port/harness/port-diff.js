@@ -9,7 +9,8 @@
  *
  * <list>: stream files, one per line, or JSON lines with an `f` field (and `n`, `h`). Results go to
  * <dir>/results.jsonl (one line per case: PASS, DIFF with the first differing file and line, JSCRASH, CXXSLOW,
- * JSSLOW, SKIP when the JS skipped a verb as not wired). The run dirs of the first K non-PASS cases are kept.
+ * JSSLOW, SKIP when the JS skipped a verb as not wired). Every case's run dir is deleted once compared, except the
+ * first K non-PASS ones (--keep, default 0: rerun a case alone to look at it). Stops below 3 GB free.
  * --state adds MESH_PROOF_STATE=1 (state.jsonl, the JSON each hash hashed) to both sides.
  */
 const fs = require('fs'), path = require('path'), cp = require('child_process'), os = require('os');
@@ -17,7 +18,7 @@ const fs = require('fs'), path = require('path'), cp = require('child_process'),
 const FILES = ['stdout', 'trace', 'frames.jsonl', 'hash.jsonl'];
 
 function parseArgs(argv) {
-  const o = { j: Math.max(1, os.cpus().length - 2), maxSec: 60, jsSec: 1800, keep: 40, state: false };
+  const o = { j: Math.max(1, os.cpus().length - 2), maxSec: 60, jsSec: 1800, keep: 0, state: false };
   const pos = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -25,7 +26,7 @@ function parseArgs(argv) {
     else if (a === '--js-sec') o.jsSec = +argv[++i]; else if (a === '--keep') o.keep = +argv[++i]; else if (a === '--state') o.state = true;
     else pos.push(a);
   }
-  [o.list, o.bin] = pos;
+  [o.list, o.bin] = pos; if (o.bin) o.bin = path.resolve(o.bin);
   return o;
 }
 
@@ -88,6 +89,9 @@ async function oneCase(c, o, idx) {
   return res;
 }
 
+// stop writing below 3 GB free (a shared box)
+function lowDisk(dir) { try { const st = fs.statfsSync(dir); return st.bavail * st.bsize < 3 * 2 ** 30; } catch (e) { return false; } }
+
 async function main() {
   const o = parseArgs(process.argv.slice(2));
   if (!o.list || !o.bin || !o.out) { console.error('usage: port-diff.js <list> <mesh binary> --out <dir> [-j N] [--max-sec S] [--js-sec S] [--keep K] [--state]'); process.exit(2); }
@@ -97,6 +101,7 @@ async function main() {
   const count = {}; let next = 0, done = 0;
   const worker = async () => {
     while (next < cases.length) {
+      if (lowDisk(o.out)) { if (!o.stopped) { o.stopped = true; process.stderr.write('port-diff: under 3G free on the out disk: stopped\n'); } return; }
       const i = next++;
       let r;
       try { r = await oneCase(cases[i], o, i); } catch (e) { r = { f: cases[i].f, status: 'ERROR', why: String(e && e.stack || e).slice(0, 400) }; }

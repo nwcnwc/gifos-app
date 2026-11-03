@@ -508,8 +508,8 @@ function createFabric(opts) {
   // CLOSEDROP (lost on a pc this end saw close), then the `joinphase` measurement. true: the frame is lost.
   const recvPre = fab.recvPre = (m) => { if (X.closedDrop(m)) return true; joinPhaseNote(m); return false; };
 
-  // C++: mesh_proof.inc:ProofEntry  (the "recv" entry of Seat::recv: a frame in, from outside the seat)
-  fab.proofRecv = (id, m) => {
+  // C++: mesh_proof.inc:ProofEntry  (the "recv" entry of Seat::recv: a frame in, from outside the seat; Seat::recv calls it as w.proofRecv)
+  fab.proofRecv = w.proofRecv = (id, m) => {
     if (!proof.on) return;
     proof.nRecv++;
     put(proof.frames, JSON.stringify({ e: 'recv', t: TICK(), to: id, m: msg.writeMsg(m) }));
@@ -555,8 +555,7 @@ function createFabric(opts) {
           if (recvPre(m)) continue;   // CLOSEDROP, then the `joinphase` measurement
           if (tfx && isFrozen(m.to)) { X.freezeHold(m); continue; }
           if (fh && X.fhopIntercept(m)) continue;
-          fab.proofRecv(m.to, m);
-          seats[m.to].recv(m); wake(m.to);
+          seats[m.to].recv(m); wake(m.to);   // (the recv proof line is written inside Seat::recv, after its clock rebase: w.proofRecv)
         }
       }
       bus.delete(TICK());

@@ -6,7 +6,7 @@
  * here by name. Ported line for line from the 0.9.25 sim (mesh_seat.inc at gifos 37d787b2d).
  *
  * Port notes (see seat.js for the conventions):
- *   PROOF_IN    the proof-tape hook is the fabric's (fab.proofRecv), left out here as in the rest of the port.
+ *   PROOF_IN    recv's frame line is the fabric's w.proofRecv (set when MESH_PROOF is on); the tapes are not ported.
  *   gate()      the sim's gate-measurement hook is left out.
  *   CurGuard    w.L13CUR is set for the rest of the call and restored on every exit (try / finally).
  *   kOver       (static free function, mesh_seat.inc, S6) is called as FREE.kOver(dig, now, self) and returns the
@@ -46,6 +46,7 @@
         if (m.e1At >= 0) m.e1At = Math.max(0, m.e1At + d); if (m.born >= 0) m.born = Math.max(0, m.born + d);
       }
       if (this.l4Out) { if (m.t === 'SWAPRDY' && m.id === this.l4Partner && m.tag >= 5) this.l4OnRdy(m); else this.l4Held.push(msg.clone(m)); return; }   // L4.3
+      if (w.proofRecv && w.L13CUR !== this) w.proofRecv(id, m);   // PROOF_IN("recv"): a frame in from outside the seat (not my own code's replay)
       if (this.dead) return;
       this.farLearn(m);   // FARVIEW
       if (m.dsat && m.lk >= 0 && m.lk !== id) this.f.fabricDoorHeard(id, m.lk, m.lkEp);   // K5
