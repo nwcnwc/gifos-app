@@ -1110,7 +1110,7 @@
         if (stopped || !raw) return { err: 'stopped' };
         const msgM = GifOS.meshMsg; let m;
         try { m = msgM.newMsg(String(ty)); } catch (e) { return { err: 'bad type' }; }
-        const own = (v) => (v === '$me' ? raw.id : v === '$ck' ? (raw.hasCoord ? GifOS.meshTopo.ckey(raw.coord) : 0) : v);
+        const own = (v) => (v === '$me' ? raw.id : v === '$ck' ? (raw.hasCoord ? GifOS.meshTopo.ckey(raw.coord) : 0) : v === '$tn' ? raw.tn : v);
         for (const k of Object.keys(fields || {})) m[k] = own(fields[k]); if (m.id === -1 || m.id === undefined) m.id = raw.id; if (m.from === -1) m.from = raw.id; if (!m.sig && !m.fsig && !(m.fo >= 0)) m.sig = true; m.to = layer.ids.nid(String(to));
         let f; try { f = msgM.writeMsg(m); } catch (e) { return { err: 'encode' }; }
         const out = { t: 'MW2', f };
@@ -1120,6 +1120,7 @@
           return Promise.all([sign(core), rc ? sign(rc) : null]).then(([sig, r]) => {
             out.s4 = { ts, sig, pub: identity.pubB64 }; if (r) out.s4.r = r;
             const a = msgM.clone(m); Object.assign(a, alter || {}); out.f = msgM.writeMsg(a);
+            if (r && coreOf(msgM, a) === rc) out.s4 = { ts, sig: r, pub: identity.pubB64 };   // posing as a relay: it carries the relay form's signature
             return sendIt() ? { ok: true, ty: m.t, claim: claimOf(a), how, signedCoreSame: coreOf(msgM, a) === core } : { err: 'no open dc' };
           });
         }
