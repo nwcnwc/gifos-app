@@ -16718,15 +16718,54 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let myIdentity = null; // S4: one per-participant Ed25519 key, minted once, reused across reconnects
     // The seed stays in this page's memory so an UPDATE reload can hand it to
     // the next boot of this same tab (updateReload → sessionStorage, read and
-    // removed at boot): same key, same peer id, same seat. Any other load
-    // mints a fresh one.
+    // removed at boot): same key, same peer id, same seat. A plain reload of
+    // this tab does the same through the seat memory below (L3.11). Any other
+    // load mints a fresh one.
     let myIdentitySeed = null;
+    // SEAT MEMORY (L3.10, L3.11): this tab's key and cell, for the page that
+    // loads next in it. A tab that holds a seat also holds a Web Lock named for
+    // its key, so a duplicated tab (it copies sessionStorage) finds the key in
+    // use and is a new person. Leave erases the memory.
+    const SEAT_MEM_MS = 110000;   // LEASE_T: past it no neighbour holds the cell
+    let seatMemNow = null;
+    function seatMemKey() { return 'gifos_seat:' + String(room || ''); }
+    function seatMemSave() {
+      const ck = meshNode && meshNode.myCell ? meshNode.myCell() : -1;
+      if (!myIdentitySeed || ck < 0) return;
+      try { sessionStorage.setItem(seatMemKey(), JSON.stringify({ seed: myIdentitySeed, ck, at: Date.now() })); } catch (e) {}
+    }
+    function seatMemErase() { try { sessionStorage.removeItem(seatMemKey()); } catch (e) {} }
+    function seatMemRead() {
+      try {
+        const o = JSON.parse(sessionStorage.getItem(seatMemKey()) || 'null');
+        return (o && /^[0-9a-f]{64}$/.test(o.seed || '') && Date.now() - (+o.at || 0) < SEAT_MEM_MS) ? o : null;
+      } catch (e) { return null; }
+    }
+    // true when this tab now holds the key. The lock stays held for the page's life.
+    function seatKeyLock(seed, tries) {
+      if (!navigator.locks) return Promise.resolve(false);
+      return new Promise((res) => {
+        navigator.locks.request('gifos_seat:' + seed.slice(0, 32), { ifAvailable: true }, (l) => { res(!!l); return l ? new Promise(() => {}) : undefined; }).catch(() => res(false));
+      }).then((got) => (got || tries <= 0) ? got : new Promise((r) => setTimeout(r, 250)).then(() => seatKeyLock(seed, tries - 1)));   // the page before me may still be letting go
+    }
     function ensureIdentity() {
       if (myIdentity) return Promise.resolve(myIdentity);
+      return seatMemTake().then((mem) => mintIdentity(mem));
+    }
+    function seatMemTake() {
+      const mem = seatMemRead(); if (!mem) return Promise.resolve(null);
+      return seatKeyLock(mem.seed, 3).then((got) => {
+        if (!got) { seatMemErase(); return null; }
+        seatMemNow = mem; return mem;
+      });
+    }
+    function mintIdentity(mem) {
       let seed = updateResume && typeof updateResume.seed === 'string' && /^[0-9a-f]{64}$/.test(updateResume.seed) ? updateResume.seed : null;
       if (updateResume) delete updateResume.seed;
       if (!seed) { const n = pwBootNote(); if (n && /^[0-9a-f]{64}$/.test(n.seed || '')) seed = n.seed; } // sent back to the door by a password change (pwBootToDoor)
+      if (!seed && mem) seed = mem.seed;
       if (!seed) seed = GifOS.net.randHex(32);
+      if (!mem) seatKeyLock(seed, 0);   // mine from now on: a duplicate of this tab must not take it
       return GifOS.meshIdentity.mint(seed).then((id) => { myIdentitySeed = seed; return (myIdentity = id); });
     }
     // FRAG-RESCUE (the 2-person fork heal — see onFragment's one-corpse
@@ -16771,7 +16810,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function saveTreeMem() {
       const now = Date.now(); if (now - treeMemAt < 2000) return;
       const s = meshSeat(); if (!s || s.state !== 3 || !s.hasCoord || s.genKey == null) return;
-      treeMemAt = now;
+      treeMemAt = now; seatMemSave();
       try {
         const ids = s.s1Roster().map((e) => String(e.v)).filter((v) => v !== String(myId));
         if (ids.length) sessionStorage.setItem(treeMemKey(), JSON.stringify({ gkey: String(s.genKey), ids, at: now }));
@@ -17064,6 +17103,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         onUpdate: () => { renderFromOcc(); saveTreeMem(); try { reportDarkDeaths(); } catch (e) {} try { meshVoteBeat(); } catch (e) {} },
         onRelayMsg: onRelayFrame,
         prevTree: readTreeMem(),
+        oldCell: seatMemNow ? seatMemNow.ck : -1,
+        onByeHeld: (pid) => { try { confirmGone(pid, 'bye'); } catch (e) {} },   // the tab did not come back: its farewell, late
       });
       updateStatus(); applyAdminUi();
       });
@@ -33085,8 +33126,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Without the digest (GIFOS_DIGEST=false) every seat holds every status,
     // so the farewell floods as before.
     function byeScope() { return digestMode() && !stageIds().includes(myId) ? { scope: 'section' } : undefined; }
-    function sendMeshLeave() {
+    // unloadEvent: the page is unloading on its own. No browser says whether
+    // this tab is closing or reloading, so the seat is left as a reload (L3.11)
+    // and no farewell goes out: its far ends hold the plain goodbye (mesh-wire
+    // holdBye) and act on it if this tab does not come back.
+    function sendMeshLeave(unloadEvent) {
       if (leftMesh) return; leftMesh = true; leaving = true;
+      if (unloadEvent) {
+        try { seatMemSave(); } catch (e) {}
+        try { meshNode && meshNode.leave(true); } catch (e) {}
+        return;
+      }
+      if (typeof seatMemErase === 'function') seatMemErase();
       // Farewell FIRST (every open channel carries it directly, gossip carries
       // it across my section, belt-and-braces for the unload window), then the
       // seat's own LEAVE + socket close. Receivers confirmGone instantly:
@@ -33097,7 +33148,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function pageHideLeaves(e) {
       if (e && e.persisted) return;
-      sendMeshLeave();
+      sendMeshLeave(e);
     }
     window.addEventListener('beforeunload', sendMeshLeave);
     window.addEventListener('pagehide', pageHideLeaves);

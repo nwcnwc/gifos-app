@@ -78,6 +78,7 @@
     LEAVE: { by: 'id', relay: ['ck', 'id', 'tn', 'mvd', 'bye', 'sigAt'] },   // byeRelay, l21Relay: only a plain goodbye (mvd 0) is relayed
     FIND: { by: 'nc', flag: 'fsig', only: ['nc'] },   // sh, sgw, gwc, spread, dk, ttl, late change per hop (L24)
     FINDLEAF: { by: 'fo', flag: 'fo', only: ['fo', 'foAt', 'hole'] },   // the decider's order (L25.7); ttl, nbrs, tag change down the cascade
+    RECLAIM: { by: 'id', flag: 't' },   // L3.10: always claimed: the signature under m.id is the proof of identity (the seat's tok is the sim's stand-in, anyone can compute it)
   };
   const FILL_WINDOW_MS = 10 * 60 * 1000;   // mesh-identity.js: a signature's time must lie this close to mine
   const REPLAY_MS = 30000;   // the seat's own goodbye window: 60 ticks (recv-seated.js)
@@ -121,6 +122,7 @@
   // 30 s window refused every goodbye at a receiver whose clock ran more
   // than ~10 s ahead of the leaver's).
   const PRELEAVE_MS = 10000;
+  const RELOAD_HOLD_MS = 15000;   // a closed tab's goodbye waits this long; with PRELEAVE_MS it must stay inside REPLAY_MS or its relay reads stale
   function goodbyeLive(nowMs, tsMs, off) {
     if (!Number.isFinite(tsMs) || tsMs <= 0) return false;
     if (off == null || !Number.isFinite(off)) return Math.abs(nowMs - tsMs) <= 120000;
@@ -418,12 +420,12 @@
     // seat's own leave() and emit(), run on a throwaway view of the seat (their writes land on the view, their frames
     // are caught), so it cannot drift from the seat.
     let preLeave = null, preLeaveBusy = false;
-    function goodbyeFrames() {
+    function goodbyeFrames(reload) {
       const out = [], v = Object.create(raw), f = Object.create(raw.f);
-      f.fabricLeft = f.fabricReloadBye = () => {}; f.fabricSend = (from, to, m) => { out.push(m); };
+      f.fabricLeft = f.fabricReloadBye = () => {}; f.fabricSend = (from, to, m) => { m.to = to; out.push(m); };
       Object.defineProperty(v, 'f', { value: f });   // f is a getter on the Seat: plain assignment would miss
       v.callBook = { touchOut() {} };
-      raw.leave.call(v, false);
+      raw.leave.call(v, !!reload);
       return out;
     }
     // RELOAD TREE MEMORY (0.9.24 seat.prevTree; run.html saves it for 2 minutes): a reloaded page does not wait out the
@@ -436,10 +438,24 @@
       for (const g of list) { if (g < 0 || g === raw.id || raw.l16Ask.includes(g)) continue; raw.l16Ask.push(g); const w = GifOS.meshMsg.newMsg('WHOHOME'); w.from = raw.id; w.ttl = 60; raw.emit(g, w); raw.l33NoSockAsk(g); n++; }
       if (opts.trace) { try { opts.trace('{"t":' + (env.TICK | 0) + ',"s":' + raw.id + ',"e":"TREEMEM-ASK","c":null,"d":"doors=' + n + '"}'); } catch (e) {} }
     }
+    function sendHeldByes() {
+      if (!preLeave || !raw || raw.dead || raw.state !== 3 || !raw.hasCoord) return false;
+      const msgM = GifOS.meshMsg; let out = [];
+      try {
+        for (const m of goodbyeFrames(false)) {
+          m.sigAt = preLeave.at; if (m.sigL >= 0) m.sigL = preLeave.at;
+          const s4 = preLeave.s4.get(coreOf(msgM, m)); if (!s4) return false;
+          out.push([m.to, { t: 'MW2', f: msgM.writeMsg(m), s4, rh: 1 }]);
+        }
+      } catch (e) { return false; }
+      if (!out.length) return false;
+      for (const [to, fr] of out) { const pid = layer.ids.pid(to); if (pid && (typeof opts.dcOpen !== 'function' || opts.dcOpen(pid))) deliver(pid, fr); }
+      return true;
+    }
     function refreshPreLeave() {
       if (preLeaveBusy || stopped || !identity || !raw || raw.dead || raw.state !== 3 || !raw.hasCoord) return;
       const msgM = GifOS.meshMsg; let frames, body;
-      try { frames = goodbyeFrames(); body = Array.from(new Set(frames.map((m) => { m.sigAt = 0; return coreOf(msgM, m); }))).sort().join('|'); } catch (e) { return; }
+      try { frames = goodbyeFrames(false).concat(goodbyeFrames(true)); body = Array.from(new Set(frames.map((m) => { m.sigAt = 0; return coreOf(msgM, m); }))).sort().join('|'); } catch (e) { return; }
       if (!frames.length) { preLeave = null; return; }
       if (preLeave && preLeave.body === body && Date.now() - preLeave.signedAt < PRELEAVE_MS) return;
       const at = penv.world.TICK, ts = Date.now(), sign = (c) => net.edSign(identity.priv, JSON.stringify({ v: 3, c, ts }));
@@ -476,6 +492,25 @@
     function answerHeld(list) {
       for (const p of list || []) { const a = heldAsks.get(String(p)); if (!a || stopped || !raw) continue; penv.frame(Object.assign({}, a[0]), String(a[1]), dirOf(a[2])); }
     }
+    // A PAGE GONE, TAB CLOSED OR RELOADED (L3.11): no browser says which at unload, so the leaver sends both words. The reload
+    // mark holds its cell; its plain goodbye (`rh`, outside the signature) waits here RELOAD_HOLD_MS for it to come back. Any
+    // frame of its own after that means it did, and the goodbye is dropped; else the goodbye lands and it was a real leave.
+    const byeHeld = new Map();   // leaver's peer id -> timer
+    function holdBye(m, f, via, direct) {
+      const k = String(via);
+      if (m.rh && direct === true && f.t === 'LEAVE' && f.bye && !f.rel) {
+        clearTimeout(byeHeld.get(k));
+        byeHeld.set(k, setTimeout(() => {
+          byeHeld.delete(k); if (stopped || !raw) return;
+          raw.relMark.delete(f.id);   // the mark was for a return that never came: the seat hears a plain goodbye, its closes read as ever
+          if (opts.onByeHeld) { try { opts.onByeHeld(k); } catch (e) {} }
+          const g = Object.assign({}, m); delete g.rh; ingest(g, via, direct);
+        }, RELOAD_HOLD_MS));
+        return true;
+      }
+      if (byeHeld.has(k) && f.t !== 'LEAVE') { clearTimeout(byeHeld.get(k)); byeHeld.delete(k); }
+      return false;
+    }
     function ingest(m, via, direct) {
       if (stopped || !raw || !m || typeof m !== 'object') return;
       if (typeof opts.excluded === 'function') {
@@ -495,6 +530,7 @@
       if (m.t === 'MW2') {   // a seat frame
         const msgM = GifOS.meshMsg; let f;
         try { f = msgM.readMsg(m.f); } catch (e) { return; }
+        if (holdBye(m, f, via, direct)) return;
         const claim = claimOf(f), dir = direct === true;
         const done = (ok, why) => {
           if (stopped) return;
@@ -503,6 +539,7 @@
             clearClaim(f);
             if (claim !== -1 && !why && opts.trace) { try { opts.trace('{"t":' + (env.TICK | 0) + ',"s":' + layer.ids.nid(peer) + ',"e":"SIG-FAIL","c":null,"d":"mt=' + String(f.t).replace(/[^A-Z0-9_]/g, '') + ' claim=' + claim + ' via=' + layer.ids.nid(String(via)) + '"}'); } catch (e) {} }   // DEBUG trace sink only (T8)
           }
+          if (!ok && f.t === 'RECLAIM') return;   // no proof, no reclaim: the seat never hears it
           if (f.t === 'WHOHOME' && doorBlocks(f, via, m.dir)) return;   // waiting room: no HOME, no roster
           if (ok && dir && m.pd) layer.sideIn(String(via), f, m.pd);
           penv.frame(ok ? relayForm(msgM, f) : f, String(via), dirOf(m.dir));
@@ -1149,6 +1186,7 @@
       });
       raw = penv.newSeat ? penv.newSeat() : new GifOS.meshSeat.Seat(penv.me, penv.world);   // the seat is mine (A3); env.seat() reads it back
       penv.world.onRecv = (_s, m) => { if (!stopped) { netEdge(); noteRequeue(m); } };
+      if (opts.oldCell >= 0) raw.oldCell = opts.oldCell + 1;   // L3.10 (key + 1, 0 is none): my cell before this page loaded: the door's HOME sends me to its neighbours first
       node.seat = seat; node.raw = raw; node.penv = penv; node.__pc = opts.pc || {};
       makeSock();
       if (penv.join) penv.join(); else raw.join();
@@ -1300,7 +1338,10 @@
       },
       // R5/E5§2: after onFork, the app picks one genesis key; seat joins only that room.
       chooseFork() { return false; },   // L8 islands decide; no human pick on the new mesh
-      leave(reload) { try { if (raw) { if (penv && penv.leave) penv.leave(!!reload); else raw.leave(!!reload); } } catch (e) {} node.stop(); },
+      myCell() { return raw && raw.state === 3 && raw.hasCoord ? GifOS.meshTopo.ckey(raw.coord) : -1; },   // for the page's seat memory (L3.10)
+      // reload: the page may be coming back with this identity (L3.11). Its plain goodbye goes first, for the far end to hold.
+      // None pre-signed for what I would say now: then it is a plain leave, or a closed tab would hold its cell for a whole lease.
+      leave(reload) { if (reload && !sendHeldByes()) reload = false; try { if (raw) { if (penv && penv.leave) penv.leave(!!reload); else raw.leave(!!reload); } } catch (e) {} node.stop(); },
       // Transport events from the page's pc/dc callbacks and watchdogs (env.js maps hard/quiet and debounces).
       transport(pid, ev, arg) { if (stopped || !penv) return undefined; try { return penv.transport(String(pid), ev, arg); } catch (e) { return undefined; } },
       mark(pid) { if (stopped || !penv || !penv.mark) return null; try { return penv.mark(String(pid)); } catch (e) { return null; } },   // A2's mark my answer carries back

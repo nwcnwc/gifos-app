@@ -210,9 +210,9 @@
     onReclaimed(m) {
       const TICK = this.TICK, id = this.id;
       if ((this.state === 1 || this.state === 2) && m.nc === id && this.oldCell) {
-        if (m.tag === 1 && m.ck === this.oldCell) { this.oldCell = 0; this.rcPendAt = -1; this.trace('RECLAIM-TAKE', id, m.coord, 'from=%d beside', m.owner); this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, [], m.ppL); if (this.pp >= 0 && this.pp !== id) this.placer = this.pp; return; }   // the hole's mover already holds my old cell
-        if (m.tag === 2 && ckey(m.coord) === this.oldCell) { this.oldCell = 0; this.rcPendAt = -1; this.trace('RECLAIM-TAKE', id, m.coord, 'from=%d reload', m.owner); this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, [], m.ppL); if (this.pp >= 0 && this.pp !== id) this.placer = this.pp; return; }   // L3.11
-        if (ckey(m.coord) === this.oldCell && this.rcPendAt < 0) {
+        if (m.tag === 1 && m.ck === this.oldCell - 1) { this.oldCell = 0; this.rcPendAt = -1; this.trace('RECLAIM-TAKE', id, m.coord, 'from=%d beside', m.owner); this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, [], m.ppL); if (this.pp >= 0 && this.pp !== id) this.placer = this.pp; return; }   // the hole's mover already holds my old cell
+        if (m.tag === 2 && ckey(m.coord) === this.oldCell - 1) { this.oldCell = 0; this.rcPendAt = -1; this.trace('RECLAIM-TAKE', id, m.coord, 'from=%d reload', m.owner); this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, [], m.ppL); if (this.pp >= 0 && this.pp !== id) this.placer = this.pp; return; }   // L3.11
+        if (ckey(m.coord) === this.oldCell - 1 && this.rcPendAt < 0) {
           this.rcPend = msg.clone(m); this.rcPendAt = TICK; this.rcPendWait = K.RC_WAIT;
           { const dk = ckey(down(m.coord)); for (const kv of m.nbrs) if (kv.k === dk && kv.v >= 0) { this.rcPendWait = 2 * K.RC_WAIT; this.trace('RECLAIM-HOLD', id, m.coord, 'heir=%d wait=%d', kv.v, this.rcPendWait); break; } }   // L3.10.6 (I10)
           this.f.wake(id);
@@ -223,7 +223,7 @@
     // C++: mesh_seat.inc:Seat::onReclaimNo
     onReclaimNo(m) {
       const id = this.id;
-      if (m.tag === 1 && (this.state === 1 || this.state === 2) && m.nc === id && this.oldCell && m.ck === this.oldCell) { this.rcPendAt = -1; }   // L3.10.4
+      if (m.tag === 1 && (this.state === 1 || this.state === 2) && m.nc === id && this.oldCell && m.ck === this.oldCell - 1) { this.rcPendAt = -1; }   // L3.10.4
       if (m.tag !== 1 && (this.rcPendAt >= 0 || this.rcRound2) && m.nc === id && this.oldCell) return;   // L3.10.6
       if ((this.state === 1 || (m.tag === 1 && this.state === 2)) && m.nc === id && this.oldCell) { this.movedOnFrom = this.oldCell; this.oldCell = 0; this.rcTries = 9; this.retryAt = this.TICK - 21; this.f.wake(id); }   // L3.10.5
     },
