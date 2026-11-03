@@ -373,6 +373,8 @@ function createOps(fab, opts) {
   };
   // C++: mesh.cpp:runOp (contest)   [L40: two heal moves into one cell in one tick (gaps4-fab.js)]
   V.contest = (tk) => { X.g4Contest(tk); };
+  // C++: mesh.cpp:runOp (l25e)   [L40.4's lever (l25e-fab.js)]
+  V.l25e = (tk) => { X.l25eFab(tk); };
   // kill the CURRENT occupant of a coord (deterministic scenario tool): killat <path>/<r>.<i> [silent|crash]
   // C++: mesh.cpp:runOp (killat)
   V.killat = (tk) => {

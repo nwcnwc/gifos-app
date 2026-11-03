@@ -26,6 +26,13 @@
     // C++: mesh_gaps4.inc:Seat::l40Go
     l40Go(rival, why) { this.l40To = rival; this.requeue(why); this.l40To = -1; },
 
+    // C++: mesh_gaps4.inc:Seat::l404Empty   [L40.4: nobody left in the rook to ask; a third seat in it yielded me naming the rival]
+    l404Empty(rival) {
+      if (this.l25WitAskedN !== 0 || this.l25By < 0 || this.l25By === this.id || this.l25By === rival || rival < 0) return false;
+      const ol = topo.ownedLinks(this.coord); for (let k = 0; k < ol.length; k++) if (this.occGet(ckey(ol[k])) === this.l25By) return true;
+      return false;
+    },
+
     // C++: mesh_gaps4.inc:Seat::l40Tell
     l40Tell(rival, kept) {
       if (!this.w.lv.LINKMODEL || rival < 0 || rival === this.id || !this.hasCoord || this.state !== 3 || this.TICK - this.l2512TellAt <= K.L25_WAIT) return;
