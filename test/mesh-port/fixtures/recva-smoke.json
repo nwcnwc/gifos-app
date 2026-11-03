@@ -1,0 +1,26 @@
+{
+ "joinpat.proof": {
+  "seats": 26,
+  "frames": 103,
+  "calls": 779,
+  "digest": "a12042f5e11164fd"
+ },
+ "joinburst.proof": {
+  "seats": 43,
+  "frames": 161,
+  "calls": 1279,
+  "digest": "887b773b2c14fc99"
+ },
+ "freeze.proof": {
+  "seats": 117,
+  "frames": 446,
+  "calls": 3488,
+  "digest": "f6f31dc3dd659ec7"
+ },
+ "islands.proof": {
+  "seats": 1064,
+  "frames": 15,
+  "calls": 27679,
+  "digest": "b0120df9f3f64e77"
+ }
+}
