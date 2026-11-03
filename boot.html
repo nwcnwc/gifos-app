@@ -169,14 +169,14 @@ window.GIFOS_VERSION = 'edge';
 </style>
 </head>
 <body>
-  <div class="vm-banner"><span>Booted image: <b id="vm-name">…</b> — this computer runs in its own space; your real Home Screen is untouched.</span>
-    <button id="vm-reboot" title="Wipe this booted computer's changes and re-hydrate it from the image bytes">Reboot fresh</button>
+  <div class="vm-banner"><span id="vm-msg">Booted image: <b id="vm-name">…</b> — this computer runs in its own space; your real Home Screen is untouched.</span>
+    <button id="vm-reboot" data-i18n="boot.reboot.label" data-i18n-attr="title:boot.reboot.hint" title="Wipe this booted computer's changes and re-hydrate it from the image bytes">Reboot fresh</button>
   </div>
   <div class="update-bar" id="update-bar" style="display:none">
-    <span id="update-msg">A new version of GifOS is available.</span>
-    <button id="update-more" class="more" type="button">What’s new</button>
-    <button id="update-action" type="button">Update now</button>
-    <button class="dismiss" id="update-dismiss" type="button" title="Dismiss" aria-label="Dismiss">✕</button>
+    <span id="update-msg" data-i18n="boot.update.msg">A new version of GifOS is available.</span>
+    <button id="update-more" class="more" type="button" data-i18n="boot.update.more">What’s new</button>
+    <button id="update-action" type="button" data-i18n="boot.update.action">Update now</button>
+    <button class="dismiss" id="update-dismiss" type="button" data-i18n-attr="title:boot.update.dismiss,aria-label:boot.update.dismiss" title="Dismiss" aria-label="Dismiss">✕</button>
   </div>
   <div class="menubar">
     <button class="brand-btn" id="sys-menu-btn"><span class="brand">GifOS</span><span class="caret">▾</span></button>
@@ -191,10 +191,10 @@ window.GIFOS_VERSION = 'edge';
        menubar with no Done button to get back. -->
   <div class="arrange-bar" id="arrange-bar" style="display:none">
     <span class="ab-glyph" aria-hidden="true">✥</span>
-    <span class="ab-msg">Arranging icons</span>
-    <span class="ab-hint">— drag them anywhere</span>
+    <span class="ab-msg" data-i18n="boot.arrange.msg">Arranging icons</span>
+    <span class="ab-hint" data-i18n="boot.arrange.hint">— drag them anywhere</span>
     <span class="spacer"></span>
-    <button id="arrange-done">Done</button>
+    <button id="arrange-done" data-i18n="boot.arrange.done">Done</button>
   </div>
   <div id="desktop"></div>
   <input type="file" id="file-input" multiple style="display:none">
@@ -221,9 +221,26 @@ window.GIFOS_VERSION = 'edge';
     var vm = GifOS.store;                                   // bound to gifos_vm_<id>
     var host = GifOS.store.namespace(window.__bootFrom);    // where the image bytes live
 
+    var I18N = GifOS.i18n;
+    var T = function (k, p) { return I18N.t(k, p); };
+    var esc = function (x) { return String(x).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+    var bootName = null;                                    // null until known; shown as the ellipsis
+    // The banner is one sentence with the name inside it: the name goes in as a
+    // marker, then becomes the bold element (the name and the message are escaped).
+    function paintBanner() {
+      var shown = bootName === null ? '…' : bootName;
+      document.getElementById('vm-msg').innerHTML = esc(T('boot.banner.msg', { name: '\u0001' })).replace('\u0001', '<b id="vm-name">' + esc(shown) + '</b>');
+    }
+    function paintStatic() {
+      Array.prototype.forEach.call(document.querySelectorAll('[data-i18n]'), function (el) { el.textContent = T(el.getAttribute('data-i18n')); });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-i18n-attr]'), function (el) {
+        el.getAttribute('data-i18n-attr').split(',').forEach(function (pair) { var i = pair.indexOf(':'); el.setAttribute(pair.slice(0, i), T(pair.slice(i + 1))); });
+      });
+      paintBanner();
+    }
     function fail(msg) {
-      document.getElementById('desktop').innerHTML = '<div class="boot-fail">' + msg + '</div>';
-      document.getElementById('vm-name').textContent = 'boot failed';
+      document.getElementById('desktop').innerHTML = '<div class="boot-fail">' + esc(msg) + '</div>';
+      bootName = T('boot.failed.name'); paintBanner();
     }
 
     function hydrate(archive) {
@@ -244,27 +261,31 @@ window.GIFOS_VERSION = 'edge';
       document.body.appendChild(s);
     }
 
-    if (!window.__bootImageId) { fail('No image id in URL.'); return; }
+    function run() {
+    if (!window.__bootImageId) { fail(T('boot.failed.noId')); return; }
 
     host.getFile(window.__bootImageId).then(function (rec) {
-      if (!rec) { fail('Image not found on the host Home Screen (was it deleted?).'); return null; }
-      var name = rec.name || 'computer image';
-      document.getElementById('vm-name').textContent = name;
-      document.title = name + ' — booted image';
+      if (!rec) { fail(T('boot.failed.notFound')); return null; }
+      var name = rec.name || T('boot.image.defaultName');
+      bootName = name; paintBanner();
+      document.title = T('boot.title.named', { name: name });
       return vm.allItems().then(function (existing) {
         if (existing.length) return startDesktop();     // resume the running VM
         var bytes = rec.bytes instanceof Uint8Array ? rec.bytes : new Uint8Array(rec.bytes);
         return gif.decode(bytes).then(function (archive) {
-          if (!archive || !archive.files['desktop.json']) { fail('Not a GifOS desktop image.'); return; }
+          if (!archive || !archive.files['desktop.json']) { fail(T('boot.failed.notImage')); return; }
           return hydrate(archive).then(startDesktop);
         });
       });
-    }).catch(function (e) { fail('Boot failed: ' + (e && e.message || e)); });
+    }).catch(function (e) { fail(T('boot.failed.error', { message: String(e && e.message || e) })); });
 
     document.getElementById('vm-reboot').onclick = function () {
-      if (!confirm('Reboot fresh? Changes made inside this booted computer are discarded and it re-hydrates from the image.')) return;
+      if (!confirm(T('boot.reboot.confirm'))) return;
       vm.clearAll().then(function () { location.reload(); });
     };
+    }
+    I18N.load('boot').then(function () { paintStatic(); document.title = T('boot.title.booting'); run(); });
+    I18N.onChange(function () { paintStatic(); });
   })();
   </script>
 <!-- FOR AI AGENTS. Off-screen, not display:none — most agent fetchers read

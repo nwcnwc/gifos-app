@@ -21,6 +21,12 @@
   const gif = GifOS.gif;
   const store = GifOS.store;
 
+  // The runtime's own words (i18n/<locale>/runtime.json): the sheets it raises,
+  // the capture indicator, the busy pill and the launch splash. RT_READY settles
+  // once the catalog is in; boot() waits on it, so a sheet never paints a key.
+  const T = (k, p) => (GifOS.i18n ? GifOS.i18n.t(k, p) : k);
+  const RT_READY = (GifOS.i18n && GifOS.i18n.load) ? Promise.resolve(GifOS.i18n.load('runtime')).catch(() => null) : Promise.resolve();
+
   const MIME = {
     html: 'text/html', htm: 'text/html', js: 'text/javascript', mjs: 'text/javascript',
     css: 'text/css', json: 'application/json', txt: 'text/plain', md: 'text/markdown',
@@ -1451,7 +1457,7 @@
     catch (e) { return []; }
   }
   const capDisabled = (manifest, cap) => capOff(manifest).indexOf(cap) >= 0;
-  const CAP_OFF_MSG = (what) => 'You turned ' + what + ' off for this app. Turn it back on in the Abilities panel (the chip at the top of the app’s tab).';
+  const CAP_OFF_MSG = (what) => T('runtime.capOff', { what: T('runtime.capOff.' + what) });
   // The capture indicator the runtime owns (an app can never fake or hide it).
   // For camera kinds it now shows a LIVE preview of exactly what's being
   // recorded, with a flip button to switch front/back camera. opts: { onStop,
@@ -1471,24 +1477,24 @@
     bg.style.cssText = 'position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,' + (withPreview ? '.62' : '.15') + ');font:15px system-ui;color:#fff;padding:16px;box-sizing:border-box';
     const box = doc.createElement('div');
     box.style.cssText = 'background:#141018;border:1px solid #ff5c5c;border-radius:14px;padding:16px 18px;max-width:' + (withPreview ? '380px' : '320px') + ';width:100%;text-align:center;box-sizing:border-box;box-shadow:0 12px 40px rgba(0,0,0,.5)';
-    const noun = kind === 'photo' ? 'a photo' : kind;
-    const dev = kind === 'audio' ? 'mic' : 'camera';
+    const noun = kind === 'photo' ? T('runtime.capture.nounPhoto') : kind === 'audio' ? T('runtime.capture.nounAudio') : kind === 'video' ? T('runtime.capture.nounVideo') : kind;
+    const dev = kind === 'audio' ? T('runtime.capture.deviceMic') : T('runtime.capture.deviceCamera');
     box.innerHTML =
-      '<div id="gc-grip" style="color:#8a8a9a;font-size:12px;letter-spacing:2px;margin:-6px 0 6px;cursor:grab;user-select:none;touch-action:none">⠿ drag to move</div>'
+      '<div id="gc-grip" style="color:#8a8a9a;font-size:12px;letter-spacing:2px;margin:-6px 0 6px;cursor:grab;user-select:none;touch-action:none">' + capEsc(T('runtime.capture.drag')) + '</div>'
       + (withPreview
         ? '<div style="position:relative;margin-bottom:12px">'
           + '<video id="gc-prev" autoplay playsinline muted style="width:100%;max-height:44vh;border-radius:10px;background:#000;display:block"></video>'
-          + (opts.onFlip ? '<button id="gc-flip" title="Switch camera" style="position:absolute;top:8px;right:8px;width:40px;height:40px;border:0;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;font-size:18px;line-height:40px;cursor:pointer">🔄</button>' : '')
+          + (opts.onFlip ? '<button id="gc-flip" title="' + capEsc(T('runtime.capture.flip')) + '" style="position:absolute;top:8px;right:8px;width:40px;height:40px;border:0;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;font-size:18px;line-height:40px;cursor:pointer">🔄</button>' : '')
           + '</div>'
         : '<div style="width:14px;height:14px;border-radius:50%;background:#ff5c5c;margin:2px auto 12px"></div>')
       + '<div style="display:flex;align-items:center;justify-content:center;gap:7px;font-weight:800;margin:2px 0 4px">'
       + (withPreview ? '<span style="width:11px;height:11px;border-radius:50%;background:#ff5c5c;display:inline-block"></span>' : '')
-      + '<span>GifOS is capturing ' + noun + '</span></div>'
-      + '<div style="color:#c8c8dc;font-size:13px;margin-bottom:10px">for <b>' + capEsc(label) + '</b> — it receives only this clip, never your live ' + dev + '.</div>'
+      + '<span>' + capEsc(T('runtime.capture.title', { what: noun })) + '</span></div>'
+      + '<div style="color:#c8c8dc;font-size:13px;margin-bottom:10px">' + capEsc(T('runtime.capture.forApp', { label: '\u0000L\u0000', device: dev })).split('\u0000L\u0000').join('<b>' + capEsc(label) + '</b>') + '</div>'
       + (kind === 'photo' ? '' : '<div id="gc-t" style="font-variant-numeric:tabular-nums;font-weight:700;margin-bottom:12px">0:00</div>')
       + '<div style="display:flex;gap:8px;justify-content:center">'
-      + '<button id="gc-stop" style="padding:9px 20px;border:0;border-radius:9px;background:#ff5c5c;color:#fff;font:inherit;font-weight:700;cursor:pointer">' + (kind === 'photo' ? '📸 Capture' : 'Stop &amp; use') + '</button>'
-      + (opts.onCancel ? '<button id="gc-cancel" style="padding:9px 16px;border:1px solid #3a3a48;border-radius:9px;background:transparent;color:#c8c8dc;font:inherit;cursor:pointer">Cancel</button>' : '')
+      + '<button id="gc-stop" style="padding:9px 20px;border:0;border-radius:9px;background:#ff5c5c;color:#fff;font:inherit;font-weight:700;cursor:pointer">' + capEsc(kind === 'photo' ? T('runtime.capture.photo') : T('runtime.capture.stop')) + '</button>'
+      + (opts.onCancel ? '<button id="gc-cancel" style="padding:9px 16px;border:1px solid #3a3a48;border-radius:9px;background:transparent;color:#c8c8dc;font:inherit;cursor:pointer">' + capEsc(T('runtime.capture.cancel')) + '</button>' : '')
       + '</div>';
     bg.appendChild(box); doc.body.appendChild(bg);
     // The dialog can be MOVED OUT OF THE WAY: it lands over the middle of the
@@ -1576,7 +1582,7 @@
       const CS = GifOS.cameraStudio;
       if (!CS || !CS.open) return Promise.reject(new Error('Camera studio is not available.'));
       if (!hasCap(manifest, 'camera')) return Promise.reject(new Error('This app did not declare the "camera" capability.'));
-      if (capDisabled(manifest, 'camera')) return Promise.reject(new Error(CAP_OFF_MSG('the camera')));
+      if (capDisabled(manifest, 'camera')) return Promise.reject(new Error(CAP_OFF_MSG('camera')));
       const nav = root.navigator;
       if (!(nav && nav.mediaDevices && nav.mediaDevices.getUserMedia)) return Promise.reject(new Error('No camera available here.'));
       const hasMic = hasCap(manifest, 'microphone') && !capDisabled(manifest, 'microphone');
@@ -1591,7 +1597,7 @@
     const kind = d.media === 'video' ? 'video' : d.media === 'photo' ? 'photo' : 'audio';
     const cap = CAP_FOR[kind];
     if (!hasCap(manifest, cap)) return Promise.reject(new Error('This app did not declare the "' + cap + '" capability.'));
-    if (capDisabled(manifest, cap)) return Promise.reject(new Error(CAP_OFF_MSG(cap === 'microphone' ? 'the microphone' : 'the camera')));
+    if (capDisabled(manifest, cap)) return Promise.reject(new Error(CAP_OFF_MSG(cap === 'microphone' ? 'microphone' : 'camera')));
     const nav = root.navigator;
     if (!(nav && nav.mediaDevices && nav.mediaDevices.getUserMedia)) return Promise.reject(new Error('No ' + cap + ' available here.'));
     const wantVideo = kind !== 'audio';
@@ -1689,7 +1695,7 @@
   });
   function brokerCameraInfo(manifest) {
     if (!hasCap(manifest, 'camera')) return Promise.reject(new Error('This app did not declare the "camera" capability.'));
-    if (capDisabled(manifest, 'camera')) return Promise.resolve(CAMERA_INFO_NO(CAP_OFF_MSG('the camera')));
+    if (capDisabled(manifest, 'camera')) return Promise.resolve(CAMERA_INFO_NO(CAP_OFF_MSG('camera')));
     const CS = GifOS.cameraStudio;
     if (!CS || !CS.probe) return Promise.resolve(CAMERA_INFO_NO('Camera studio is not available.'));
     return CS.probe().then((info) => info || CAMERA_INFO_NO());
@@ -1931,7 +1937,7 @@
   }
   function brokerAI(manifest, d, emit) {
     if (!hasCap(manifest, 'ai')) return Promise.reject(new Error('This app did not declare the "ai" capability.'));
-    if (capDisabled(manifest, 'ai')) return Promise.reject(new Error(CAP_OFF_MSG('AI')));
+    if (capDisabled(manifest, 'ai')) return Promise.reject(new Error(CAP_OFF_MSG('ai')));
     const cfg = aiConfig();
     // A role counts as available whether an endpoint or a provider app serves it.
     if (d.op === 'models') return Promise.resolve({ available: Object.keys(cfg).filter((k) => cfg[k] && (cfg[k].url || cfg[k].app)) });
@@ -2257,7 +2263,7 @@
             : Promise.resolve();
           return prep
             .then(live)
-            .then(() => { if (cold) busyNote('Starting ' + name + '…', null); return providerService(c.app, arc.files, m); })
+            .then(() => { if (cold) busyNote(T('runtime.busy.starting', { name }), null); return providerService(c.app, arc.files, m); })
             .then(live)
             .then((svc) => svc.call(role, req, (note, frac) => busyNote(note, frac), emit || null))
             .then(
@@ -2326,7 +2332,7 @@
       return p.then((found) => found || GifOS.install.fetchApp(app, note, { provider: true }).then(({ bytes, manifest: m }) => {
         const fileId = store.uid('file');
         const name = (m.name || app.name || app.appId) + '.gif';
-        note('Filing ' + (m.name || app.name) + ' into your Providers folder…', null);
+        note(T('runtime.provider.filing', { name: m.name || app.name }), null);
         return store.putFile({ id: fileId, name, bytes, kind: 'gif', isApp: true, appId: m.appId, mime: 'image/gif' })
           .then(() => store.allItems())
           .then((all2) => { const at = freeFolderCell(all2, PROVIDERS_ID); return store.putItem({ id: store.uid('item'), kind: 'file', fileId, name, parent: PROVIDERS_ID, x: at.x, y: at.y, iconSize: 64 }); })
@@ -2382,8 +2388,8 @@
       const k = fileId + '\0' + p;
       if (assetInflight.has(k)) return assetInflight.get(k);
       const cache = A.assetCache(store, fileId);
-      busyStart(manifest.name || 'This app');
-      busyNote('Downloading ' + p.split('/').pop() + '…', 0);
+      busyStart(manifest.name || T('runtime.thisApp'));
+      busyNote(T('runtime.busy.downloadingFile', { file: p.split('/').pop() }), 0);
       const pending = A.ensurePath(files, manifest, p, (s, frac) => busyNote(s, frac), cache)
         .then((r) => {
           busyEnd();
@@ -2391,7 +2397,7 @@
           return store.getAsset(fileId, p).then((blob) => ({ blob: blob || null }));
         })
         .catch((e) => {
-          const msg = 'the download failed — ' + (e && e.message || e);
+          const msg = T('runtime.busy.downloadFailed', { msg: e && e.message || e });
           busyNote(msg, null);
           setTimeout(busyEnd, 4000);
           return { error: msg };
@@ -2415,7 +2421,7 @@
     rowP.then((row) => {
       if (row && row.blob && (!A || !A.rowMatches || A.rowMatches(row, pin))) return sendBlob(row.blob);
       if (pin && pin.optional && capDisabled(manifest, 'assets')) {
-        return miss(CAP_OFF_MSG('extra file downloads'));
+        return miss(CAP_OFF_MSG('assets'));
       }
       return fetchOnce().then(after);
     }).catch(() => fetchOnce().then(after));
@@ -2841,10 +2847,10 @@
   }
   // The AI "types" a manifest can name under capabilities.ai (an array), each a
   // row the user sets up in Settings → AI models. Labels match that screen.
-  const AI_ROLE_LABELS = {
-    smartest: 'Smartest text LLM', cheapest: 'Cheapest text LLM', tts: 'Text → speech',
-    stt: 'Speech → text', image: 'Text → image', image_to_video: 'Image → video', video: 'Text → video',
-  };
+  const AI_ROLE_LABELS = {};
+  ['smartest', 'cheapest', 'tts', 'stt', 'image', 'image_to_video', 'video'].forEach((role) => {
+    Object.defineProperty(AI_ROLE_LABELS, role, { enumerable: true, get: () => T('runtime.role.' + role) });
+  });
   // Which AI roles a manifest declares. true / missing array = generic (any).
   function aiRoles(manifest) {
     const a = manifest && manifest.capabilities && manifest.capabilities.ai;
@@ -2894,19 +2900,12 @@
     // A cold call is warming up; a warm one is thinking. Saying "warming up"
     // for a model already in memory would train people to expect the long wait
     // every time.
-    busy.noteEl.textContent = busy.note || (busy.name + (busy.cold ? ' is warming up…' : ' is thinking…'));
+    busy.noteEl.textContent = busy.note || T(busy.cold ? 'runtime.busy.warming' : 'runtime.busy.thinking', { name: busy.name });
     // Elapsed ALWAYS; the expectation only when we have actually measured it
     // before on this computer. "Usually about a minute" invented on the first
     // run is a guess, and a guess that turns out short is worse than silence.
-    let sub = fmtDur(ms) + ' so far';
-    if (busy.expect > 0) {
-      sub += ms < busy.expect * 1.35
-        ? ' · usually about ' + fmtDur(busy.expect)
-        : ' · longer than its usual ' + fmtDur(busy.expect);
-    } else if (busy.cold) {
-      sub += ' · first answer loads the model, so it is the slow one';
-    }
-    busy.subEl.textContent = sub;
+    const mode = busy.expect > 0 ? (ms < busy.expect * 1.35 ? 'usually' : 'longer') : (busy.cold ? 'cold' : 'none');
+    busy.subEl.textContent = T('runtime.busy.sub', { elapsed: fmtDur(ms), mode, expect: busy.expect > 0 ? fmtDur(busy.expect) : '' });
     // A known fraction drives the bar; otherwise it sweeps, for the same reason
     // the store's asset bar does — a bar parked at a number it cannot justify
     // reads as finished.
@@ -2949,7 +2948,7 @@
   function busyStart(name, opts) {
     busy.n++;
     if (busy.n > 1) return;                       // one pill, whoever is asking
-    busy.name = name || 'The provider';
+    busy.name = name || T('runtime.busy.provider');
     busy.note = ''; busy.frac = null;
     busy.cold = !!(opts && opts.cold);
     busy.expect = (opts && opts.expect) || 0;
@@ -3008,17 +3007,17 @@
       try {
         const doc = root.document; if (!doc || !doc.body) return resolve(false);
         const old = doc.getElementById('gifos-name-modal'); if (old) old.remove();
-        const app = escHtml((manifest && (manifest.shortName || manifest.name || manifest.appId)) || 'This app');
+        const appRaw = (manifest && (manifest.shortName || manifest.name || manifest.appId)) || T('runtime.thisApp');
         const bg = doc.createElement('div'); bg.id = 'gifos-name-modal'; bg.className = 'perm-modal';
         bg.setAttribute('style', 'position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:1.2rem;');
         const box = doc.createElement('div'); box.className = 'perm-box';
         box.setAttribute('style', 'background:#14141f;color:#e8e8f4;border:1px solid #2a2a3f;border-radius:.8rem;max-width:23rem;width:100%;padding:1.2rem;font:15px/1.55 system-ui,-apple-system,sans-serif;');
-        box.innerHTML = '<h3 style="margin:0 0 .5rem;font-size:1.1rem">' + app + ' wants to change your name</h3>' +
+        box.innerHTML = '<h3 style="margin:0 0 .5rem;font-size:1.1rem">' + escHtml(T('runtime.name.title', { app: appRaw })) + '</h3>' +
           '<p style="color:#b6b6cf;font-size:.9rem;margin:0 0 .9rem">' + (want
-            ? 'Your name on this computer would become <b>' + escHtml(want) + '</b>. Every app and meeting here would see it.'
-            : 'It would clear the name you use on this computer. Every app and meeting here would see you as unnamed.') + '</p>' +
-          '<div style="display:flex;gap:.6rem;justify-content:flex-end"><button id="gifos-name-no" style="padding:.5rem 1.1rem;border-radius:.5rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit">Keep my name</button>' +
-          '<button id="gifos-name-yes" style="padding:.5rem 1.3rem;border-radius:.5rem;border:none;background:#7b5cff;color:#fff;cursor:pointer;font:inherit">' + (want ? 'Use “' + escHtml(want) + '”' : 'Clear it') + '</button></div>';
+            ? escHtml(T('runtime.name.set', { name: '\u0000N\u0000' })).split('\u0000N\u0000').join('<b>' + escHtml(want) + '</b>')
+            : escHtml(T('runtime.name.clear'))) + '</p>' +
+          '<div style="display:flex;gap:.6rem;justify-content:flex-end"><button id="gifos-name-no" style="padding:.5rem 1.1rem;border-radius:.5rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit">' + escHtml(T('runtime.name.keep')) + '</button>' +
+          '<button id="gifos-name-yes" style="padding:.5rem 1.3rem;border-radius:.5rem;border:none;background:#7b5cff;color:#fff;cursor:pointer;font:inherit">' + escHtml(want ? T('runtime.name.use', { name: want }) : T('runtime.name.clearIt')) + '</button></div>';
         bg.appendChild(box); doc.body.appendChild(bg);
         const done = function (yes) { bg.remove(); resolve(yes); };
         box.querySelector('#gifos-name-yes').onclick = function () { done(true); };
@@ -3034,19 +3033,17 @@
       try {
         const doc = root.document; if (!doc || !doc.body) return resolve(false);
         const old = doc.getElementById('gifos-avatar-modal'); if (old) old.remove();
-        const app = escHtml((manifest && (manifest.shortName || manifest.name || manifest.appId)) || 'This app');
+        const appRaw = (manifest && (manifest.shortName || manifest.name || manifest.appId)) || T('runtime.thisApp');
         const safe = /^data:image\/(gif|png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(String(url || ''));
         const bg = doc.createElement('div'); bg.id = 'gifos-avatar-modal'; bg.className = 'perm-modal';
         bg.setAttribute('style', 'position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:1.2rem;');
         const box = doc.createElement('div'); box.className = 'perm-box';
         box.setAttribute('style', 'background:#14141f;color:#e8e8f4;border:1px solid #2a2a3f;border-radius:.8rem;max-width:23rem;width:100%;padding:1.2rem;font:15px/1.55 system-ui,-apple-system,sans-serif;');
-        box.innerHTML = '<h3 style="margin:0 0 .5rem;font-size:1.1rem">' + app + ' wants to change your picture</h3>' +
-          '<p style="color:#b6b6cf;font-size:.9rem;margin:0 0 .9rem">' + (url
-            ? 'This picture would be saved on this computer, next to your name. Every app and meeting here would see it.'
-            : 'It would remove the picture you use on this computer. Every app and meeting here would see you without it.') + '</p>' +
+        box.innerHTML = '<h3 style="margin:0 0 .5rem;font-size:1.1rem">' + escHtml(T('runtime.avatar.title', { app: appRaw })) + '</h3>' +
+          '<p style="color:#b6b6cf;font-size:.9rem;margin:0 0 .9rem">' + escHtml(url ? T('runtime.avatar.set') : T('runtime.avatar.clear')) + '</p>' +
           (safe ? '<img id="gifos-avatar-preview" alt="" style="width:96px;height:96px;object-fit:cover;border-radius:.6rem;display:block;margin:0 0 .9rem">' : '') +
-          '<div style="display:flex;gap:.6rem;justify-content:flex-end"><button id="gifos-avatar-no" style="padding:.5rem 1.1rem;border-radius:.5rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit">Keep my picture</button>' +
-          '<button id="gifos-avatar-yes" style="padding:.5rem 1.3rem;border-radius:.5rem;border:none;background:#7b5cff;color:#fff;cursor:pointer;font:inherit">' + (url ? 'Use this picture' : 'Remove it') + '</button></div>';
+          '<div style="display:flex;gap:.6rem;justify-content:flex-end"><button id="gifos-avatar-no" style="padding:.5rem 1.1rem;border-radius:.5rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit">' + escHtml(T('runtime.avatar.keep')) + '</button>' +
+          '<button id="gifos-avatar-yes" style="padding:.5rem 1.3rem;border-radius:.5rem;border:none;background:#7b5cff;color:#fff;cursor:pointer;font:inherit">' + escHtml(url ? T('runtime.avatar.use') : T('runtime.avatar.remove')) + '</button></div>';
         bg.appendChild(box); doc.body.appendChild(bg);
         if (safe) { const img = box.querySelector('#gifos-avatar-preview'); if (img) img.src = url; }
         const done = function (yes) { bg.remove(); resolve(yes); };
@@ -3057,6 +3054,15 @@
     });
   }
 
+  // A sentence with bold runs or code: the translation is escaped as text, then
+  // each {placeholder} is swapped for its (already escaped) HTML.
+  function setupRich(key, params, html) {
+    const tok = {};
+    Object.keys(html).forEach((n) => { tok[n] = '\u0000' + n + '\u0000'; });
+    let out = escHtml(T(key, Object.assign({}, params, tok)));
+    Object.keys(html).forEach((n) => { out = out.split('\u0000' + n + '\u0000').join(html[n]); });
+    return out;
+  }
   function showSystemSetup(opts) {
     try {
       const doc = root.document; if (!doc || !doc.body) return;
@@ -3064,25 +3070,33 @@
       let title, body;
       if (opts.kind === 'ai') {
         const label = AI_ROLE_LABELS[opts.role];
-        title = (label || 'An AI model') + ' isn’t set up yet';
-        body = 'This app uses an AI model you provide. In GifOS <b>Settings → AI models</b>, set up ' +
-          (label ? 'the <b>' + escHtml(label) + '</b> model' : 'a text model') + ' — any OpenAI-compatible endpoint and key, or a <b>Provider app</b> from your Providers folder (answers on this device, no key).';
+        title = T('runtime.setup.notSetUp', { label: label || T('runtime.setup.anAiModel') });
+        body = setupRich('runtime.setup.aiBody', {}, {
+          settings: '<b>' + escHtml(T('runtime.setup.pathAi')) + '</b>',
+          what: label ? setupRich('runtime.setup.theModel', {}, { label: '<b>' + escHtml(label) + '</b>' }) : escHtml(T('runtime.setup.aTextModel')),
+          provider: '<b>' + escHtml(T('runtime.setup.providerApp')) + '</b>',
+        });
       } else if (opts.kind === 'provider') {
         // A Provider APP is assigned to this role but can't serve right now.
         const label = AI_ROLE_LABELS[opts.role];
-        title = escHtml(opts.name || 'Your provider app') + ' can’t answer right now';
+        title = T('runtime.setup.cantAnswer', { name: opts.name || T('runtime.setup.yourProvider') });
+        const typeHtml = label ? setupRich('runtime.setup.yourType', {}, { label: '<b>' + escHtml(label) + '</b>' }) : escHtml(T('runtime.setup.anAiType'));
+        const settingsHtml = '<b>' + escHtml(T('runtime.setup.pathAi')) + '</b>';
         body = opts.problem === 'outside'
-          ? '<b>' + escHtml(opts.name) + '</b> serves ' + (label ? 'your <b>' + escHtml(label) + '</b>' : 'an AI type') +
-            ', but its icon isn’t in the <b>Providers</b> folder on your Home Screen. A provider only works from inside that folder (it wears a red ✕ anywhere else) — move it back, or pick another model in <b>Settings → AI models</b>.'
-          : '<b>' + escHtml(opts.name) + '</b> is assigned to ' + (label ? 'your <b>' + escHtml(label) + '</b>' : 'an AI type') +
-            ', but its file is no longer on this computer. Re-install it from the App Store, or pick another model in <b>Settings → AI models</b>.';
+          ? setupRich('runtime.setup.outsideBody', {}, { name: '<b>' + escHtml(opts.name) + '</b>', type: typeHtml,
+              folder: '<b>' + escHtml(T('runtime.setup.providersFolder')) + '</b>', settings: settingsHtml })
+          : setupRich('runtime.setup.missingBody', {}, { name: '<b>' + escHtml(opts.name) + '</b>', type: typeHtml, settings: settingsHtml });
       } else {
         const k = KNOWN_APIS[String(opts.name || '').toLowerCase()];
-        title = (k ? k.label : opts.name) + ' isn’t set up yet';
-        body = 'In GifOS <b>Settings → Third-party APIs</b>, add one named <b>' + escHtml(opts.name) + '</b>' +
-          (k ? ', base URL <span style="font-family:ui-monospace,monospace">' + escHtml(k.url) + '</span>' + (k.auth ? ', <b>' + escHtml(k.auth) + '</b> auth' : '') : '') + '.';
+        title = T('runtime.setup.notSetUp', { label: k ? k.label : opts.name });
+        body = setupRich('runtime.setup.apiBody', { hasUrl: k ? 'yes' : 'no', hasAuth: k && k.auth ? 'yes' : 'no' }, {
+          settings: '<b>' + escHtml(T('runtime.setup.pathApi')) + '</b>',
+          name: '<b>' + escHtml(opts.name) + '</b>',
+          url: k ? '<span style="font-family:ui-monospace,monospace">' + escHtml(k.url) + '</span>' : '',
+          auth: k && k.auth ? '<b>' + escHtml(k.auth) + '</b>' : '',
+        });
       }
-      body += ' Your key stays in this browser — the app never sees it.';
+      body += ' ' + escHtml(T('runtime.setup.keyStays'));
       const bg = doc.createElement('div'); bg.id = 'gifos-setup-modal'; bg.className = 'perm-modal';
       bg.setAttribute('style', 'position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:1.2rem;');
       const box = doc.createElement('div'); box.className = 'perm-box';
@@ -3090,7 +3104,7 @@
       box.innerHTML = '<h3 style="margin:0 0 .5rem;font-size:1.1rem">' + escHtml(title) + '</h3>' +
         '<p style="color:#b6b6cf;font-size:.9rem;margin:0 0 .7rem">' + body + '</p>' +
         (opts.hint ? '<p style="color:#9a9ab5;font-size:.83rem;margin:0 0 .9rem">' + escHtml(opts.hint) + '</p>' : '') +
-        '<div style="text-align:right"><button id="gifos-setup-ok" style="padding:.5rem 1.3rem;border-radius:.5rem;border:none;background:#7b5cff;color:#fff;cursor:pointer;font:inherit">Got it</button></div>';
+        '<div style="text-align:right"><button id="gifos-setup-ok" style="padding:.5rem 1.3rem;border-radius:.5rem;border:none;background:#7b5cff;color:#fff;cursor:pointer;font:inherit">' + escHtml(T('runtime.setup.gotIt')) + '</button></div>';
       bg.appendChild(box); doc.body.appendChild(bg);
       box.querySelector('#gifos-setup-ok').onclick = function () { bg.remove(); };
       bg.addEventListener('click', function (e) { if (e.target === bg) bg.remove(); });
@@ -3130,20 +3144,23 @@
   //     may neither read this computer's shelf nor write to it. An invite link
   //     is not a way to ask a stranger's computer what it is worth.
   const HANDOFF_KEY = 'sys::handoff';
+  // Words on the sheet come from the catalog; written against `root` so the
+  // block stays liftable on its own (test/unit/app-handoff.js runs it).
+  const hT = (k, p) => (root.GifOS && root.GifOS.i18n ? root.GifOS.i18n.t(k, p) : k);
   const HANDOFF_KINDS = {
     'finance.plan': {
-      label: 'a retirement plan summary',
-      never: 'No account numbers, no institution names, and none of your transactions.',
+      label: 'runtime.handoff.planLabel',
+      never: 'runtime.handoff.planNever',
       // [field, the words the user reads, 'money' | 'age' | 'text']
       fields: [
-        ['currentAge', 'Your age', 'age'],
-        ['netWorth', 'Net worth', 'money'],
-        ['portfolio', 'Savings and investments', 'money'],
-        ['illiquid', 'Property and other things you own', 'money'],
-        ['debts', 'What you owe', 'money'],
-        ['annualSavings', 'Put away each year', 'money'],
-        ['annualSpend', 'Spent each year', 'money'],
-        ['asOf', 'As of', 'text'],
+        ['currentAge', 'runtime.handoff.field.currentAge', 'age'],
+        ['netWorth', 'runtime.handoff.field.netWorth', 'money'],
+        ['portfolio', 'runtime.handoff.field.portfolio', 'money'],
+        ['illiquid', 'runtime.handoff.field.illiquid', 'money'],
+        ['debts', 'runtime.handoff.field.debts', 'money'],
+        ['annualSavings', 'runtime.handoff.field.annualSavings', 'money'],
+        ['annualSpend', 'runtime.handoff.field.annualSpend', 'money'],
+        ['asOf', 'runtime.handoff.field.asOf', 'text'],
       ],
     },
   };
@@ -3181,24 +3198,23 @@
       if (!doc_ || !doc_.body) { resolve(false); return; }   // no surface = no consent
       const old = doc_.getElementById('gifos-handoff-modal'); if (old) old.remove();
       const rows = spec.fields.filter((f) => doc[f[0]] !== undefined).map((f) =>
-        '<tr><td style="padding:.18rem .8rem .18rem 0;color:#b6b6cf">' + escHtml(f[1]) + '</td>' +
+        '<tr><td style="padding:.18rem .8rem .18rem 0;color:#b6b6cf">' + escHtml(hT(f[1])) + '</td>' +
         '<td style="padding:.18rem 0;text-align:right;font-variant-numeric:tabular-nums;font-weight:600">' + handoffRow(f, doc[f[0]]) + '</td></tr>').join('');
       const bg = doc_.createElement('div'); bg.id = 'gifos-handoff-modal'; bg.className = 'perm-modal';
       bg.setAttribute('style', 'position:fixed;inset:0;z-index:2147483646;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:1.2rem;');
       const box = doc_.createElement('div'); box.className = 'perm-box';
       box.setAttribute('style', 'background:#14141f;color:#e8e8f4;border:1px solid #2a2a3f;border-radius:.8rem;max-width:24rem;width:100%;padding:1.2rem;font:15px/1.55 system-ui,-apple-system,sans-serif;');
       box.innerHTML =
-        '<h3 style="margin:0 0 .5rem;font-size:1.1rem">Hand this to your other apps?</h3>' +
-        '<p style="color:#b6b6cf;font-size:.9rem;margin:0 0 .8rem"><b>' + escHtml(manifest.name || 'This app') +
-          '</b> wants to put ' + escHtml(spec.label) + ' where your other apps can pick it up.</p>' +
+        '<h3 style="margin:0 0 .5rem;font-size:1.1rem">' + escHtml(hT('runtime.handoff.title')) + '</h3>' +
+        '<p style="color:#b6b6cf;font-size:.9rem;margin:0 0 .8rem">' +
+          escHtml(hT('runtime.handoff.ask', { app: '\u0000A\u0000', what: hT(spec.label) })).split('\u0000A\u0000').join('<b>' + escHtml(manifest.name || hT('runtime.thisApp')) + '</b>') + '</p>' +
         (rows ? '<table style="width:100%;border-collapse:collapse;font-size:.88rem;margin:0 0 .8rem;' +
           'background:#0f0f18;border:1px solid #2a2a3f;border-radius:.5rem;padding:.5rem">' + rows + '</table>'
-              : '<p style="color:#ff9d9d;font-size:.88rem">There is nothing in it.</p>') +
-        '<p style="color:#9a9ab5;font-size:.82rem;margin:0 0 1rem">That is the whole of it — ' + escHtml(spec.never) +
-          ' It stays on this device, and only an app that asks for this exact kind of summary can read it.</p>' +
+              : '<p style="color:#ff9d9d;font-size:.88rem">' + escHtml(hT('runtime.handoff.empty')) + '</p>') +
+        '<p style="color:#9a9ab5;font-size:.82rem;margin:0 0 1rem">' + escHtml(hT('runtime.handoff.whole', { never: hT(spec.never) })) + '</p>' +
         '<div style="display:flex;gap:.5rem;justify-content:flex-end">' +
-        '<button id="gifos-handoff-no" style="padding:.5rem 1rem;border-radius:.5rem;border:1px solid #3a3a52;background:transparent;color:#e8e8f4;cursor:pointer;font:inherit">Not now</button>' +
-        '<button id="gifos-handoff-yes" style="padding:.5rem 1.3rem;border-radius:.5rem;border:none;background:#7b5cff;color:#fff;cursor:pointer;font:inherit">Hand it over</button></div>';
+        '<button id="gifos-handoff-no" style="padding:.5rem 1rem;border-radius:.5rem;border:1px solid #3a3a52;background:transparent;color:#e8e8f4;cursor:pointer;font:inherit">' + escHtml(hT('runtime.handoff.no')) + '</button>' +
+        '<button id="gifos-handoff-yes" style="padding:.5rem 1.3rem;border-radius:.5rem;border:none;background:#7b5cff;color:#fff;cursor:pointer;font:inherit">' + escHtml(hT('runtime.handoff.yes')) + '</button></div>';
       bg.appendChild(box); doc_.body.appendChild(bg);
       let done = false;
       const finish = (v) => { if (done) return; done = true; bg.remove(); resolve(v); };
@@ -3330,7 +3346,7 @@
   function brokerApi(manifest, d) {
     const name = d.name;
     if (!name || !apiAllowed(manifest, name)) return Promise.reject(new Error('This app did not declare the "' + name + '" third-party API in its manifest.'));
-    if (capDisabled(manifest, 'api')) return Promise.reject(new Error(CAP_OFF_MSG('your third-party accounts')));
+    if (capDisabled(manifest, 'api')) return Promise.reject(new Error(CAP_OFF_MSG('api')));
     const c = apiEntry(name);
     if (!c || !c.url) { showSystemSetup({ kind: 'api', name: name, hint: d.hint }); return Promise.reject(new Error('NOT_CONFIGURED:' + name)); }
     let baseOrigin;
@@ -3447,7 +3463,7 @@
   // KEY never enters the sandbox. Gated by the `agent` capability.
   function brokerAgentChat(manifest, d) {
     if (!hasCap(manifest, 'agent')) return Promise.reject(new Error('This app did not declare the "agent" capability.'));
-    if (capDisabled(manifest, 'agent')) return Promise.reject(new Error(CAP_OFF_MSG('the AI assistant')));
+    if (capDisabled(manifest, 'agent')) return Promise.reject(new Error(CAP_OFF_MSG('agent')));
     const c = aiConfig().smartest;
     if (!c || (!c.url && !c.app)) { showSystemSetup({ kind: 'ai', role: 'smartest' }); return Promise.reject(new Error('NOT_CONFIGURED:ai:smartest')); }
     if (c.app) {
@@ -3469,17 +3485,25 @@
   // gifos._agentChat (key stays out). Returned as a source string; buildAppHtml
   // drops it in as a <script> when the app declares `agent`.
   function agentBootstrap() {
+    // The bar's words, resolved here (the app frame has no catalog) and handed
+    // to the injected script as one JSON object.
+    const tx = JSON.stringify({
+      placeholder: T('runtime.agent.placeholder'), run: T('runtime.agent.run'), stop: T('runtime.agent.stop'),
+      tag: T('runtime.agent.tag'), unreadable: T('runtime.agent.unreadable'), noElement: T('runtime.agent.noElement', { index: '\u0001' }),
+      done: T('runtime.agent.done'), stoppedAfter: T('runtime.agent.stoppedAfter', { n: '\u0001' }), stopped: T('runtime.agent.stopped'),
+    }).replace(/</g, '\\u003c');
     return "(function(){\n" +
+"  var TX = " + tx + ";\n" +
 "  if (!window.gifos || typeof gifos._agentChat !== 'function') return;\n" +
 "  var running = false, MAXSTEPS = 10;\n" +
 "  var css = 'position:fixed;z-index:2147483000;font:13px system-ui,-apple-system,sans-serif;';\n" +
 "  var bar = document.createElement('div'); bar.setAttribute('data-agent-ui','1');\n" +
 "  bar.setAttribute('style', css+'left:0;right:0;bottom:0;background:#14141f;color:#e8e8f4;border-top:1px solid #2a2a3f;padding:.45rem .5rem;display:flex;gap:.4rem;align-items:center');\n" +
-"  var inp = document.createElement('input'); inp.placeholder='Tell the agent what to do on this app…';\n" +
+"  var inp = document.createElement('input'); inp.placeholder=TX.placeholder;\n" +
 "  inp.setAttribute('style','flex:1;min-width:0;padding:.4rem .55rem;border-radius:.45rem;border:1px solid #2a2a3f;background:#0a0a0f;color:#e8e8f4;font:inherit');\n" +
-"  var run = document.createElement('button'); run.textContent='Run'; run.setAttribute('style','padding:.4rem .9rem;border:none;border-radius:.45rem;background:#7b5cff;color:#fff;font:inherit;cursor:pointer');\n" +
-"  var stop = document.createElement('button'); stop.textContent='Stop'; stop.setAttribute('style','padding:.4rem .8rem;border:1px solid #2a2a3f;border-radius:.45rem;background:transparent;color:#b6b6cf;font:inherit;cursor:pointer;display:none');\n" +
-"  var tag = document.createElement('span'); tag.textContent='\\u2726 Agent'; tag.setAttribute('style','font-weight:700;color:#8f78ff;white-space:nowrap');\n" +
+"  var run = document.createElement('button'); run.textContent=TX.run; run.setAttribute('style','padding:.4rem .9rem;border:none;border-radius:.45rem;background:#7b5cff;color:#fff;font:inherit;cursor:pointer');\n" +
+"  var stop = document.createElement('button'); stop.textContent=TX.stop; stop.setAttribute('style','padding:.4rem .8rem;border:1px solid #2a2a3f;border-radius:.45rem;background:transparent;color:#b6b6cf;font:inherit;cursor:pointer;display:none');\n" +
+"  var tag = document.createElement('span'); tag.textContent=TX.tag; tag.setAttribute('style','font-weight:700;color:#8f78ff;white-space:nowrap');\n" +
 "  bar.appendChild(tag); bar.appendChild(inp); bar.appendChild(run); bar.appendChild(stop);\n" +
 "  var logbox = document.createElement('div'); logbox.setAttribute('data-agent-ui','1');\n" +
 "  logbox.setAttribute('style', css+'right:.5rem;bottom:3rem;max-width:18rem;max-height:40vh;overflow:auto;color:#b6b6cf;text-align:right;pointer-events:none');\n" +
@@ -3506,20 +3530,20 @@
 "      var snap=snapshot();\n" +
 "      var user='GOAL: '+task+'\\n\\nINTERACTIVE ELEMENTS:\\n'+(snap.text||'(none)')+'\\n\\nACTIONS SO FAR:\\n'+(hist.join('\\n')||'(none yet)');\n" +
 "      var res; try { res=await gifos._agentChat([{role:'system',content:SYS},{role:'user',content:user}]); } catch(e){ log('\\u26A0 '+(e&&e.message||e)); break; }\n" +
-"      var act; try { act=JSON.parse(strip(res.text)); } catch(e){ log('\\u26A0 could not read the model\\'s reply'); break; }\n" +
+"      var act; try { act=JSON.parse(strip(res.text)); } catch(e){ log(TX.unreadable); break; }\n" +
 "      if (act.say) log(act.say);\n" +
-"      if (act.action==='done'){ log('\\u2713 done'); break; }\n" +
-"      var el=snap.map[act.index]; if (!el){ log('\\u26A0 no element ['+act.index+']'); break; }\n" +
+"      if (act.action==='done'){ log(TX.done); break; }\n" +
+"      var el=snap.map[act.index]; if (!el){ log(TX.noElement.replace('\\u0001', act.index)); break; }\n" +
 "      flash(el);\n" +
 "      if (act.action==='type'){ setVal(el, act.text||''); hist.push('typed \\\"'+(act.text||'')+'\\\" into ['+act.index+']'); }\n" +
 "      else { el.click(); hist.push('clicked ['+act.index+']'); }\n" +
 "      await sleep(500);\n" +
-"      if (step===MAXSTEPS-1) log('\\u26A0 stopped after '+MAXSTEPS+' steps');\n" +
+"      if (step===MAXSTEPS-1) log(TX.stoppedAfter.replace('\\u0001', MAXSTEPS));\n" +
 "    }\n" +
 "    running=false; run.style.display=''; stop.style.display='none'; }\n" +
 "  run.onclick=function(){ var t=inp.value.trim(); if (t) go(t); };\n" +
 "  inp.addEventListener('keydown', function(e){ if (e.key==='Enter'){ e.preventDefault(); run.click(); } });\n" +
-"  stop.onclick=function(){ running=false; log('stopped'); };\n" +
+"  stop.onclick=function(){ running=false; log(TX.stopped); };\n" +
 "})();";
   }
 
@@ -3787,7 +3811,7 @@
         const host = root.GifOS && root.GifOS.meetHost;
         const meetNo = !hasCap(manifest, 'meet') || capDisabled(manifest, 'meet');
         if (!host) reply({ ok: false, error: 'Meetings are not available on this page.' });
-        else if (meetNo) reply({ ok: false, error: capDisabled(manifest, 'meet') ? CAP_OFF_MSG('Meet') : 'This app did not declare the Meet ability.' });
+        else if (meetNo) reply({ ok: false, error: capDisabled(manifest, 'meet') ? CAP_OFF_MSG('meet') : 'This app did not declare the Meet ability.' });
         else {
           const op = String(d.op || '');
           const remoteNo = !hasCap(manifest, 'remote') || capDisabled(manifest, 'remote');
@@ -3802,7 +3826,7 @@
             }, 1000);
           }
           if (op === 'setControl' && remoteNo) {
-            reply({ ok: false, error: capDisabled(manifest, 'remote') ? CAP_OFF_MSG('Remote') : 'This app did not declare the Remote ability.' });
+            reply({ ok: false, error: capDisabled(manifest, 'remote') ? CAP_OFF_MSG('remote') : 'This app did not declare the Remote ability.' });
           } else {
             const done = (p) => Promise.resolve(p).then((result) => reply({ ok: true, result })).catch((err) => reply({ ok: false, error: String(err && err.message || err) }));
             if (op === 'join') done(host.join({ room: d.room, link: d.link, password: d.password, name: d.name, bot: d.bot !== false, control: !!d.control && !remoteNo }));
@@ -4122,7 +4146,8 @@
       document.head.appendChild(st);
     }
     const line = document.createElement('div');
-    line.textContent = 'Opening…';
+    line.textContent = '';
+    RT_READY.then(() => { if (wrap.parentNode && !line.textContent) line.textContent = T('runtime.splash.opening'); });
     const img = document.createElement('img');
     img.setAttribute('style', 'width:96px;height:96px;object-fit:contain;image-rendering:pixelated;border-radius:12px;display:none');
     img.alt = '';
@@ -4168,11 +4193,11 @@
     const lock = GifOS.lock;
     const splash = launchSplash(mountEl);
     const refuse = (m) => { setStatus(m); splash.say(m); return noop; };
-    return Promise.all([store.getFile(fileId), store.allItems()]).then(([rec, all]) => {
-      if (!rec) return refuse('File not found on this desktop.');
+    return Promise.all([store.getFile(fileId), store.allItems(), RT_READY]).then(([rec, all]) => {
+      if (!rec) return refuse(T('runtime.status.notFound'));
       const appName = String(rec.name || 'app').replace(/\.gif$/i, '');
       const big = rec.bytes && rec.bytes.length > 2097152;
-      splash.say('Opening ' + appName + (big ? ' — unpacking ' + mbText(rec.bytes.length / 1048576, 0) + ' MB…' : '…'));
+      splash.say(T('runtime.splash.openingApp', { name: appName, big: big ? 'yes' : 'no', mb: big ? mbText(rec.bytes.length / 1048576, 0) : '' }));
       if (big) {
         splash.art(rec.bytes);
         // The GIF's own global color table is sitting in its first bytes — the
@@ -4187,13 +4212,13 @@
       // count reads as progress being thrown away — so both counters say
       // which step they are.
       const unpackNote = big ? {
-        onProgress: (frac, done, total) => splash.say('Unpacking ' + appName + ' (step 1 of 2) — ' +
-          mbText(done * 0.75 / 1048576, 1) + ' of ' + mbText(total * 0.75 / 1048576, 1) + ' MB…'),
+        onProgress: (frac, done, total) => splash.say(T('runtime.splash.unpacking', { name: appName,
+          done: mbText(done * 0.75 / 1048576, 1), total: mbText(total * 0.75 / 1048576, 1) })),
       } : undefined;
       return Promise.all([gif.decode(appBytes, unpackNote), store.getState(fileId)]).then(([archive, st]) => {
         const locked = !!(lock && (lock.isLockedItem(item) || lock.isSealed(st)));
         if (locked && !lockKey) {
-          return refuse('This app is passkey-locked on this device. Unlock it with your passkey to open.');
+          return refuse(T('runtime.status.locked'));
         }
         const go = (arch) => {
           if (!lockKey) return bootDecoded(arch, appBytes, rec, null, null);
@@ -4208,7 +4233,7 @@
     });
 
     function bootDecoded(archive, appBytes, rec, lockKey, lockState) {
-      if (!archive) return refuse('Not a GifOS app — nothing to run.');
+      if (!archive) return refuse(T('runtime.status.notApp'));
       const files = archive.files;
       const manifest = gif.readManifest(archive) || { name: rec.name || 'App' };
       if (manifest.accent) splash.tint(manifest.accent);
@@ -4305,7 +4330,7 @@
       let stale = mountEl.firstChild; // drop stale frames from a re-mount; keep the splash
       while (stale) { const nx = stale.nextSibling; if (stale.tagName === 'IFRAME') mountEl.removeChild(stale); stale = nx; }
       mountEl.appendChild(iframe);
-      if (!hasEntry) { iframe.srcdoc = buildFolderHtml(files); setStatus('Browsable filesystem (no index.html).'); reveal(); return noop; }
+      if (!hasEntry) { iframe.srcdoc = buildFolderHtml(files); setStatus(T('runtime.status.folder')); reveal(); return noop; }
 
       let hostApi = null;
       // When this host is sharing its app over the mesh Stage DATA lane (an
@@ -4411,7 +4436,7 @@
           const sid = m.sid, lsec = m.lsec, epoch = m.epoch, keep = m.keep, exp = m.exp, heal = m.heal, av = m.av, sec = m.sec;
           const joinUrl = buildJoinUrl('app', sid, lsec, relay);
           return Promise.resolve().then(() => {
-            setStatus('Ready — waiting for the room mesh');
+            setStatus(T('runtime.status.readyMesh'));
 
             // ---- MESH Stage DATA lane (attachStageBus) ----------------------
             // run.html calls this after becomeHost when the app is shared INTO
@@ -4565,7 +4590,7 @@
                   if (!snapTimer) snapTimer = setTimeout(() => { snapTimer = null; sendSnap(); }, 1200);
                 };
                 announceConn({ mode: 'host', counts: { up: 0, soft: 0, warn: 0 }, total: 0, p2p: 0, self: 'up' });
-                setStatus('Live on the meeting mesh — app-state is owner-signed');
+                setStatus(T('runtime.status.liveMesh'));
                 seedApp();                       // fire-and-forget; retried by the drum below
                 if (!appSeedTimer) appSeedTimer = setInterval(() => {
                   if (appSeeded) { clearInterval(appSeedTimer); appSeedTimer = null; return; }
@@ -4626,13 +4651,13 @@
           // the OS doing heavy, measured work on an app's behalf — so the
           // backfill drives it too, with ensure()'s own honest fraction.
           // (Held back 600 ms like every pill, so a small asset never flashes.)
-          busyStart(manifest.name || 'This app');
-          busyNote('One-time download of this app’s data…', null);
+          busyStart(manifest.name || T('runtime.thisApp'));
+          busyNote(T('runtime.busy.oneTime'), null);
           return A.ensure(files, manifest, (s, frac) => { setStatus(s); busyNote(s, frac); }, cache, { requiredOnly: true })
             .then(() => busyEnd(), (e) => {
               // The app still mounts (SOFT), but the person must SEE why it is
               // about to open degraded — hold the pill long enough to read.
-              const msg = 'App data download failed — ' + (e && e.message || e) + '. The app opens without it and tries again next launch.';
+              const msg = T('runtime.busy.dataFailed', { msg: e && e.message || e });
               setStatus(msg); busyNote(msg, null);
               setTimeout(busyEnd, 8000);
             });
@@ -4644,7 +4669,7 @@
         mountApp(iframe, files, manifest, db, appBytes, netPolicy, fileId, launch);
         if (root.__gifosOnApp) root.__gifosOnApp(appBytes, manifest);
         announceConn({ mode: 'local' });
-        setStatus('Running · state saved to this icon');
+        setStatus(T('runtime.status.running'));
         return {
           save: () => downloadSnapshot(appBytes, files, manifest, db),
           steal: (opts) => stealApp(appBytes, files, manifest, db, stealCtx, opts),
@@ -4862,7 +4887,7 @@
         trace('app-frame', { kb: Math.round((b64.length || 0) / 1024) });
         appBytes = gif.b64decode(b64);
         return gif.decode(appBytes).then((archive) => {
-          if (!archive) { setStatus('Bad app from the mesh host.'); try { console.error('[bootClientBus] app frame DECODE failed (bytes ' + (appBytes ? appBytes.length : 0) + ')'); } catch (e2) {} appBytes = null; return; }
+          if (!archive) { setStatus(T('runtime.status.badMesh')); try { console.error('[bootClientBus] app frame DECODE failed (bytes ' + (appBytes ? appBytes.length : 0) + ')'); } catch (e2) {} appBytes = null; return; }
           filesRef = archive.files; manifestRef = gif.readManifest(archive) || { name: name || 'App' };
           dataVis = manifestRef.data || {};
           if (typeof document !== 'undefined') document.title = (manifestRef.name || 'App') + ' — GifOS (mesh)';
@@ -4911,7 +4936,7 @@
         }).catch(() => {});
       });
 
-      setStatus('Connected to the shared app · owner-signed over the mesh');
+      setStatus(T('runtime.status.connected'));
       return {
         stop: () => { try { unsub && unsub(); } catch (e) {} clearInterval(actSweep); pendingActs.clear(); poolDetach(); },
         // ONE RUNTIME (docs/one-runtime.md): the client's mirror is the room's

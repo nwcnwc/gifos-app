@@ -1,0 +1,17 @@
+{
+  "install.error.noApp": "No se indicó ninguna app.",
+  "install.error.noListing": "La App Store no tiene ninguna ficha para {slug} ({status}).",
+  "install.error.incomplete": "La ficha de {slug} está incompleta.",
+  "install.error.needsNewer": "{name} requiere una versión de GifOS más reciente que la de esta página.",
+  "install.error.status": "la descarga devolvió {status}",
+  "install.error.mismatch": "La descarga no coincide con el catálogo. No se instaló nada.",
+  "install.error.signature": "Esta app figura como firmada por {signer}, pero la firma no se pudo verificar. No se instaló nada.",
+  "install.error.notApp": "Ese archivo no es una app de GifOS.",
+  "install.error.differentApp": "Ese archivo es una app distinta de la de la ficha. No se instaló nada.",
+  "install.error.notProvider": "{name} no es una app proveedora.",
+  "install.error.providerNetwork": "{name} declara acceso a la red, y un proveedor no debe tener red. Rechazada.",
+  "install.signer.author": "su autor",
+  "install.progress.start": "Descargando {name}…",
+  "install.progress.bytes": "Descargando {name}… {got} de {total} MB",
+  "install.progress.checking": "Comprobando {name}…"
+}

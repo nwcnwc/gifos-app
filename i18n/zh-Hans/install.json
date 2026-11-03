@@ -1,0 +1,17 @@
+{
+  "install.error.noApp": "未指定应用。",
+  "install.error.noListing": "App Store 中没有 {slug} 的条目（{status}）。",
+  "install.error.incomplete": "{slug} 的条目信息不完整。",
+  "install.error.needsNewer": "{name} 需要比此页面当前运行的更新版本的 GifOS。",
+  "install.error.status": "下载返回了 {status}",
+  "install.error.mismatch": "下载内容与目录不符。未安装任何内容。",
+  "install.error.signature": "此应用标明由 {signer} 签名，但签名验证未通过。未安装任何内容。",
+  "install.error.notApp": "该文件不是 GifOS 应用。",
+  "install.error.differentApp": "该文件与条目所列的不是同一个应用。未安装任何内容。",
+  "install.error.notProvider": "{name} 不是提供方应用。",
+  "install.error.providerNetwork": "{name} 声明了网络访问，而提供方必须无网络。已拒绝。",
+  "install.signer.author": "其作者",
+  "install.progress.start": "正在下载 {name}…",
+  "install.progress.bytes": "正在下载 {name}… {got} / {total} MB",
+  "install.progress.checking": "正在检查 {name}…"
+}

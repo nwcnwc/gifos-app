@@ -15,6 +15,8 @@
   const store = GifOS.store, gif = GifOS.gif;
   const surface = document.getElementById('desktop');
   const crumbs = document.getElementById('crumbs');
+  // Words on the Home Screen come from the desktop catalog (i18n/<locale>/desktop.json), loaded before the first paint.
+  const dt = (key, params) => GifOS.i18n.t(key, params);
 
   const VERSION = root.GIFOS_VERSION || '0.6.0';
   const BUILD = Number(root.GIFOS_BUILD) || 0;   // this build's edge build number (build.js)
@@ -28,12 +30,12 @@
 
   // Launchers whose GIF opens a trusted GifOS page instead of running in the
   // sandbox (runtime.js SYSTEM_PAGES). They wear a SYSTEM badge, and the value
-  // here is the tooltip explaining what extra power that page holds.
+  // here is the catalog key of the tooltip explaining what extra power that page holds.
   const SYSTEM_LAUNCHERS = {
-    meet: 'Built into GifOS — it may use your camera and microphone. Apps you install cannot.',
-    video: 'Built into GifOS — it may use your camera and microphone. Apps you install cannot.',
-    broadcast: 'Built into GifOS — it may use your camera and microphone. Apps you install cannot.',
-    appstore: 'Built into GifOS — it may put new apps on your Home Screen. Apps you install cannot.',
+    meet: 'desktop.sys.camMic',
+    video: 'desktop.sys.camMic',
+    broadcast: 'desktop.sys.camMic',
+    appstore: 'desktop.sys.appstore',
   };
 
   let latestVersion = VERSION;      // version.json.current — the LIVE release everyone gets
@@ -1097,9 +1099,9 @@
     if (!visible.length) {
       const hint = document.createElement('div');
       hint.className = 'hint';
-      hint.textContent = currentFolder === TRASH_ID ? 'Trash is empty.'
-        : currentFolder ? 'Empty folder — drop files here or use ＋ Add.'
-        : 'Drop any file here, or use ＋ Add. Double-click an app GIF to run it.';
+      hint.textContent = currentFolder === TRASH_ID ? dt('desktop.hint.trashEmpty')
+        : currentFolder ? dt('desktop.hint.emptyFolder')
+        : dt('desktop.hint.emptyHome');
       surface.appendChild(hint);
     }
     if (currentFolder) surface.appendChild(buildUpHole());
@@ -1132,7 +1134,7 @@
     el.dataset.id = '__up__';
     el.style.left = GRID.origin + 'px';
     el.style.top = GRID.origin + 'px';
-    el.title = 'Up to ' + parentName + ' — or drop things here to move them there';
+    el.title = dt('desktop.uphole.tip', { name: parentName });
     el.innerHTML = '<div class="thumb"><div class="hole">⤴</div></div><div class="label">' + escapeHtml(parentName) + '</div>';
     el.addEventListener('click', () => navTo(upTo));
     return el;
@@ -1195,9 +1197,9 @@
     np.className = 'nameplate';
     np.textContent = meta.shortName.length > PLATE_MAX
       ? meta.shortName.slice(0, PLATE_MAX - 1) + '…' : meta.shortName;
-    np.title = meta.shortName + (meta.version ? ' — version ' + meta.version : '')
-      + '\nThe app’s own name, shown because this app is signed.'
-      + (fileName ? '\nThe file is named “' + fileName + '” (Rename to change that).' : '');
+    np.title = (meta.version ? dt('desktop.plate.nameVersion', { name: meta.shortName, version: meta.version }) : meta.shortName)
+      + '\n' + dt('desktop.plate.note')
+      + (fileName ? '\n' + dt('desktop.plate.file', { file: fileName }) : '');
     return np;
   }
 
@@ -1215,11 +1217,10 @@
     const ver = meta && meta.signed && meta.version ? 'v' + meta.version : '';
     const nb = document.createElement('span');
     nb.className = 'new-badge' + (ver ? ' isver' : '');
-    nb.textContent = ver || 'NEW';
+    nb.textContent = ver || dt('desktop.badge.new');
     nb.title = ver
-      ? 'Version ' + meta.version + ' — the copy that arrived. Fresh: you haven’t saved '
-        + 'anything in this app yet, and this tag goes away once you do.'
-      : 'Fresh — you haven’t saved anything in this app yet.';
+      ? dt('desktop.badge.versionTip', { version: meta.version })
+      : dt('desktop.badge.freshTip');
     return nb;
   }
 
@@ -1266,7 +1267,7 @@
         if (it.passkey) {
           const lb = document.createElement('span');
           lb.className = 'lock-badge'; lb.textContent = '🔒';
-          lb.title = 'Passkey-locked — Open asks for your passkey. The icon still plays.';
+          lb.title = dt('desktop.badge.lockTip');
           thumb.appendChild(lb);
         }
         if (SYSTEM_LAUNCHERS[file.appId]) {
@@ -1276,8 +1277,8 @@
           // the store. The tooltip says which, per launcher.
           const sys = document.createElement('span');
           sys.className = 'sysbadge';
-          sys.textContent = 'SYS';
-          sys.title = SYSTEM_LAUNCHERS[file.appId];
+          sys.textContent = dt('desktop.badge.sys');
+          sys.title = dt(SYSTEM_LAUNCHERS[file.appId]);
           thumb.appendChild(sys);
         } else if (meta && meta.signed && meta.shortName) {
           // A NAME is what the plate is for. A signed app with a version but no
@@ -1296,7 +1297,7 @@
           const px = document.createElement('span');
           px.className = 'provider-x';
           px.textContent = '✕';
-          px.title = 'This is a Provider app — it can serve abilities (like AI models) to your whole computer, but ONLY from inside the Providers folder. Move it there to activate it; out here it does nothing.';
+          px.title = dt('desktop.badge.providerTip');
           thumb.appendChild(px);
         }
       } else {
@@ -1307,8 +1308,8 @@
     // unmistakable at a glance that this copy tracks another computer's master.
     if (isMirror) {
       const ribbon = document.createElement('span');
-      ribbon.className = 'mirror-ribbon'; ribbon.textContent = 'MIRROR';
-      ribbon.title = 'Synced mirror — re-syncs to the original every time you open it.';
+      ribbon.className = 'mirror-ribbon'; ribbon.textContent = dt('desktop.badge.mirror');
+      ribbon.title = dt('desktop.badge.mirrorTip');
       thumb.appendChild(ribbon);
     }
     // THE LABEL SLOT HOLDS ONE NAME, AND THE SIGNED ONE WINS.
@@ -1354,7 +1355,7 @@
     const badge = document.createElement('span');
     badge.className = 'sig-badge ' + (SIG_CLASS[state] || 'sig-unk');
     badge.textContent = SIG_ICON[state] || '🛡';
-    badge.title = cached ? sigLabel(cached) : ('Signed by ' + sig.id + ' — tap Verify to check');
+    badge.title = cached ? sigLabel(cached) : dt('desktop.sig.pendingTip', { id: sig.id });
     thumb.appendChild(badge);
   }
   // Does an app's saved state hold any real data? (empty collections don't count)
@@ -1364,10 +1365,10 @@
     return Object.keys(st).length > 0;
   }
   function sigLabel(v) {
-    if (v.status === 'valid') return 'Signed by ' + v.id + (v.ts ? ' · ' + v.ts : '') + (v.keyChanged ? ' (key changed since first seen!)' : '');
-    if (v.status === 'tampered') return 'Tampered — contents changed after ' + (v.id ? v.id + ' ' : '') + 'signed';
-    if (v.status === 'unverified') return 'Signed by ' + (v.id || '?') + ' — could not verify right now (' + (v.detail || 'offline') + ')';
-    return 'Unsigned';
+    if (v.status === 'valid') return dt('desktop.sig.signedBy', { id: v.id }) + (v.ts ? ' · ' + v.ts : '') + (v.keyChanged ? ' ' + dt('desktop.sig.keyChangedShort') : '');
+    if (v.status === 'tampered') return v.id ? dt('desktop.sig.tamperedBy', { id: v.id }) : dt('desktop.sig.tampered');
+    if (v.status === 'unverified') return dt('desktop.sig.unverifiedTip', { id: v.id || '?', detail: v.detail || dt('desktop.sig.offline') });
+    return dt('desktop.sig.unsigned');
   }
   // Open the signing page with THIS GIF preloaded (by fileId + namespace),
   // so the user lands ready to sign — no re-download/re-drop needed.
@@ -1381,18 +1382,18 @@
     if (!file) return;
     const bytes = file.bytes instanceof Uint8Array ? file.bytes : new Uint8Array(file.bytes);
     const sig = GifOS.sign.readSig(bytes);
-    if (!sig) { showModal('No signature', 'This GIF is <b>unsigned</b> — it carries no provenance. Anyone can make an unsigned GIF, so treat it like a file from an unknown source.'); return; }
-    showModal('Checking signature…', 'Fetching the key for <b>' + escapeHtml(sig.id) + '</b>…');
+    if (!sig) { showModal(dt('desktop.sig.noneTitle'), dt('desktop.sig.noneBody')); return; }
+    showModal(dt('desktop.sig.checkingTitle'), dt('desktop.sig.checkingBody', { id: escapeHtml(sig.id) }));
     const v = await GifOS.sign.verify(bytes);
     sigVerdicts.set(it.fileId, v);
     render();
     const body = {
-      valid: '✅ <b>Signed by ' + escapeHtml(v.id) + '</b>' + (v.type === 'email' ? ' (email/PGP)' : ' (domain)') + '.<br><br>The contents are unchanged since it was signed' + (v.ts ? ' on ' + escapeHtml(v.ts) : '') + '. This proves authorship — not that the app is safe.' + (v.keyChanged ? '<br><br>⚠️ The signing key is <b>different</b> from the first one you saw for this identity.' : '') + (v.unpinned ? '<br><br>⚠️ This is an older signature: ' + v.unpinned + ' sealed file' + (v.unpinned === 1 ? '' : 's') + ' under <span class="mono">.assets/</span> ' + (v.unpinned === 1 ? 'is' : 'are') + ' not covered by it. Ask the author for a re-signed copy.' : ''),
-      tampered: '⚠️ <b>Tampered.</b> This GIF claims to be signed by ' + escapeHtml(v.id || '?') + ', but its contents were <b>changed after signing</b>. Do not trust it as coming from them.',
-      unverified: '🛡 <b>Signed by ' + escapeHtml(v.id || '?') + '</b>, but the signature couldn\'t be checked right now: ' + escapeHtml(v.detail || 'offline') + '.<br><br>' + (v.type === 'domain' ? 'The key must be published at <span class="mono">https://' + escapeHtml(v.id || '') + '/gifos.key</span> (with CORS).' : 'Their key must be on keys.openpgp.org.'),
-      unsigned: 'This GIF is unsigned.',
-    }[v.status] || 'Unknown signature state.';
-    showModal(v.status === 'valid' ? 'Verified' : v.status === 'tampered' ? 'Tampered!' : 'Signature', body);
+      valid: dt(v.type === 'email' ? 'desktop.sig.validEmail' : 'desktop.sig.validDomain', { id: escapeHtml(v.id) }) + '<br><br>' + (v.ts ? dt('desktop.sig.unchangedOn', { ts: escapeHtml(v.ts) }) : dt('desktop.sig.unchanged')) + (v.keyChanged ? '<br><br>' + dt('desktop.sig.keyChanged') : '') + (v.unpinned ? '<br><br>' + dt('desktop.sig.unpinned', { n: v.unpinned }) : ''),
+      tampered: dt('desktop.sig.tamperedBody', { id: escapeHtml(v.id || '?') }),
+      unverified: dt('desktop.sig.unverifiedHead', { id: escapeHtml(v.id || '?'), detail: escapeHtml(v.detail || dt('desktop.sig.offline')) }) + '<br><br>' + (v.type === 'domain' ? dt('desktop.sig.unverifiedDomain', { id: escapeHtml(v.id || '') }) : dt('desktop.sig.unverifiedEmail')),
+      unsigned: dt('desktop.sig.unsignedBody'),
+    }[v.status] || dt('desktop.sig.unknown');
+    showModal(v.status === 'valid' ? dt('desktop.sig.verified') : v.status === 'tampered' ? dt('desktop.sig.tamperedTitle') : dt('desktop.sig.signature'), body);
   }
 
   // Passkey lock: launch gate AND crypto wrap together. Metadata lives on the
@@ -1407,9 +1408,9 @@
       const bytes = file.bytes instanceof Uint8Array ? file.bytes : new Uint8Array(file.bytes);
       const archive = await gif.decode(bytes);
       const m = archive ? gif.readManifest(archive) : null;
-      if (m && m.system) { showModal('Can’t lock this', 'Built-in GifOS pages cannot be passkey-locked.'); return; }
+      if (m && m.system) { showModal(dt('desktop.lock.cantTitle'), dt('desktop.lock.builtIn')); return; }
       const cap = await GifOS.lock.canPasskeyLock();
-      if (!cap.ok && !GifOS.lock._prfOverride) { showModal('Can’t lock this', escapeHtml(cap.reason)); return; }
+      if (!cap.ok && !GifOS.lock._prfOverride) { showModal(dt('desktop.lock.cantTitle'), escapeHtml(cap.reason)); return; }
       const act = await GifOS.lock.showSheet('lock', name);
       if (act !== 'ok') return;
       const created = await GifOS.lock.createLock(name, it.fileId);
@@ -1418,7 +1419,7 @@
       await saveItem(it, { keepCell: true });
       render();
     } catch (e) {
-      showModal('Could not lock', escapeHtml(e && e.message || String(e)));
+      showModal(dt('desktop.lock.failed'), escapeHtml(e && e.message || String(e)));
     }
   }
   async function unlockItem(it) {
@@ -1434,14 +1435,14 @@
       await saveItem(it, { keepCell: true });
       render();
     } catch (e) {
-      showModal('Could not remove the lock', escapeHtml(e && e.message || String(e)));
+      showModal(dt('desktop.lock.removeFailed'), escapeHtml(e && e.message || String(e)));
     }
   }
 
   function updateCrumbs() {
-    if (!currentFolder) { crumbs.textContent = 'Home'; return; }
+    if (!currentFolder) { crumbs.textContent = dt('desktop.crumbs.home'); return; }
     const folder = items.find((i) => i.id === currentFolder);
-    crumbs.innerHTML = '<a id="crumb-root">Home</a> › ' + (folder ? escapeHtml(folder.name) : '…');
+    crumbs.innerHTML = '<a id="crumb-root">' + escapeHtml(dt('desktop.crumbs.home')) + '</a> › ' + (folder ? escapeHtml(folder.name) : '…');
     const rootLink = document.getElementById('crumb-root');
     if (rootLink) rootLink.onclick = () => navTo(null);
   }
@@ -1653,6 +1654,7 @@
   function showUndoToast(msgHtml, undoFn) {
     if (toastTimer) clearTimeout(toastTimer);
     toastMsg.innerHTML = msgHtml;
+    toastBtn.textContent = dt('desktop.toast.undo');
     toastUndo = undoFn;
     toastEl.classList.add('on');
     toastTimer = setTimeout(hideToast, 6000);
@@ -1662,13 +1664,12 @@
   // Snapshot an item's home BEFORE a move, so Undo can put it exactly back.
   function homeOf(it) { return { id: it.id, parent: it.parent || null, x: it.x, y: it.y }; }
   function placeName(parentId) {
-    if (!parentId) return 'Home Screen';
+    if (!parentId) return dt('desktop.place.home');
     const f = items.find((i) => i.id === parentId);
-    return f ? f.name : 'a folder';
+    return f ? f.name : dt('desktop.place.folder');
   }
   function offerUndoMove(before, toParent) {
-    showUndoToast('Moved <b>' + escapeHtml((items.find((i) => i.id === before.id) || {}).name || '') + '</b> into ' +
-      escapeHtml(placeName(toParent)), async () => {
+    showUndoToast(dt('desktop.toast.moved', { name: escapeHtml((items.find((i) => i.id === before.id) || {}).name || ''), place: escapeHtml(placeName(toParent)) }), async () => {
       const it = items.find((i) => i.id === before.id);
       if (!it) return;
       // Back to the exact cell it came from — or, if something has taken that
@@ -1850,12 +1851,11 @@
         const m = archive ? gif.readManifest(archive) : null;
         if (archive && m && m.type === 'desktop' && archive.files['desktop.json']) {
           bail(); // this path is a modal (a fresh gesture), not the reserved tab
-          showConfirm('This GIF is a whole computer',
-            '"' + escapeHtml(it.name) + '" holds a whole GifOS computer. <b>Boot it</b> to run that computer in a new tab — ' +
-            'your Home Screen here is untouched. Or <b>replace</b> this Home Screen with it (destructive).',
+          showConfirm(dt('desktop.computer.title'),
+            dt('desktop.computer.body', { name: escapeHtml(it.name) }),
             [
-              { label: 'Boot this computer', fn: () => root.open('boot.html#id=' + encodeURIComponent(it.fileId) + nsParam('&from='), '_blank') },
-              { label: 'Replace this Home Screen', danger: true, fn: () => restoreDesktop(archive) },
+              { label: dt('desktop.computer.boot'), fn: () => root.open('boot.html#id=' + encodeURIComponent(it.fileId) + nsParam('&from='), '_blank') },
+              { label: dt('desktop.computer.replace'), danger: true, fn: () => restoreDesktop(archive) },
             ]);
           return;
         }
@@ -1880,7 +1880,7 @@
           const base = f.name.replace(/\.zip$/i, '');
           await createAppFromFiles(base, files, null);
         } catch (err) {
-          showModal('Could not open zip', escapeHtml(err.message || String(err)));
+          showModal(dt('desktop.zip.failed'), escapeHtml(err.message || String(err)));
         }
         i++;
         continue;
@@ -1900,12 +1900,11 @@
       // A whole-desktop backup GIF gets offered as a restore, not an icon.
       if (archive && m.type === 'desktop' && archive.files['desktop.json']) {
         await new Promise((done) => {
-          showConfirm('Desktop backup detected',
-            '"' + escapeHtml(f.name) + '" is a full GifOS backup. Restore it? ' +
-            '<b>This replaces everything currently on this Home Screen.</b>',
+          showConfirm(dt('desktop.backupFound.title'),
+            dt('desktop.backupFound.body', { name: escapeHtml(f.name) }),
             [
-              { label: 'Restore this backup', danger: true, fn: async () => { await restoreDesktop(archive); done(); } },
-              { label: 'Add as a file instead', fn: async () => { await addFileIcon(f.name, buf, archive, m, baseX + i * 20, baseY + i * 20); done(); } },
+              { label: dt('desktop.backupFound.restore'), danger: true, fn: async () => { await restoreDesktop(archive); done(); } },
+              { label: dt('desktop.backupFound.addFile'), fn: async () => { await addFileIcon(f.name, buf, archive, m, baseX + i * 20, baseY + i * 20); done(); } },
             ], done);
         });
         i++;
@@ -1945,7 +1944,7 @@
   // hidden while the empty-desktop hint is doing the explaining).
   const dropHint = document.createElement('div');
   dropHint.className = 'drop-hint';
-  dropHint.textContent = 'drop files anywhere to add them';
+  dropHint.textContent = 'drop files anywhere to add them'; // English until the catalog loads; paintStaticText() sets the reader's words
   document.body.appendChild(dropHint);
 
   // ---------- endless scroll ----------
@@ -2009,43 +2008,43 @@
     let entries;
     if (it && it.id === TRASH_ID) {
       entries = [
-        { label: 'Open', fn: () => openItem(it) },
-        { label: 'Empty Trash', cls: 'danger', fn: emptyTrash },
+        { label: dt('desktop.menu.open'), fn: () => openItem(it) },
+        { label: dt('desktop.menu.emptyTrash'), cls: 'danger', fn: emptyTrash },
       ];
     } else if (it && isInTrash(it)) {
       entries = [
-        { label: 'Put back on Home Screen', fn: () => restoreFromTrash(it) },
+        { label: dt('desktop.menu.putBack'), fn: () => restoreFromTrash(it) },
         'sep',
-        { label: 'Delete permanently', cls: 'danger', fn: () => confirmDeletePermanently(it) },
+        { label: dt('desktop.menu.deletePerm'), cls: 'danger', fn: () => confirmDeletePermanently(it) },
       ];
     } else if (it) {
       entries = [
-        { label: 'Open', fn: () => openItem(it) },
+        { label: dt('desktop.menu.open'), fn: () => openItem(it) },
         ...(it._isApp
           ? (it.passkey
-              ? [{ label: 'Remove passkey lock…', fn: () => unlockItem(it) }]
-              : [{ label: 'Passkey lock…', fn: () => lockItem(it) }])
+              ? [{ label: dt('desktop.menu.removeLock'), fn: () => unlockItem(it) }]
+              : [{ label: dt('desktop.menu.lock'), fn: () => lockItem(it) }])
           : []),
         // Files AND folders are GIFs → both download (folders as a bundle) and sign.
-        ...(it.fileId ? [{ label: it.kind === 'folder' ? 'Download (as one GIF)' : 'Download', fn: () => downloadItem(it) }] : []),
+        ...(it.fileId ? [{ label: it.kind === 'folder' ? dt('desktop.menu.downloadFolder') : dt('desktop.menu.download'), fn: () => downloadItem(it) }] : []),
         ...(it.fileId && signableFiles.has(it.fileId)
           ? (signedFiles.has(it.fileId)
-              ? [{ label: 'Verify signature', fn: () => verifyItem(it) }, { label: 'Re-sign this GIF…', fn: () => signItem(it) }]
-              : [{ label: 'Sign this GIF…', fn: () => signItem(it) }])
+              ? [{ label: dt('desktop.menu.verify'), fn: () => verifyItem(it) }, { label: dt('desktop.menu.resign'), fn: () => signItem(it) }]
+              : [{ label: dt('desktop.menu.sign'), fn: () => signItem(it) }])
           : []),
-        { label: 'Rename', fn: () => beginRename(it) },
+        { label: dt('desktop.menu.rename'), fn: () => beginRename(it) },
         // The discoverable way in on a phone: icons don't move until you ask.
-        { label: 'Arrange icons…', fn: () => setArrangeMode(true) },
-        { label: 'Bigger icon', fn: () => resizeIcon(it, +16) },
-        { label: 'Smaller icon', fn: () => resizeIcon(it, -16) },
+        { label: dt('desktop.menu.arrange'), fn: () => setArrangeMode(true) },
+        { label: dt('desktop.menu.bigger'), fn: () => resizeIcon(it, +16) },
+        { label: dt('desktop.menu.smaller'), fn: () => resizeIcon(it, -16) },
         'sep',
-        { label: 'Move to Trash', cls: 'danger', fn: () => moveToTrash(it) },
+        { label: dt('desktop.menu.toTrash'), cls: 'danger', fn: () => moveToTrash(it) },
       ];
     } else {
       entries = [
-        { label: 'New Folder', fn: () => newFolder(e.offsetX, e.offsetY) },
-        { label: 'Add file(s)…', fn: () => fileInput.click() },
-        { label: 'Arrange icons…', fn: () => setArrangeMode(true) },
+        { label: dt('desktop.menu.newFolder'), fn: () => newFolder(e.offsetX, e.offsetY) },
+        { label: dt('desktop.menu.addFiles'), fn: () => fileInput.click() },
+        { label: dt('desktop.menu.arrange'), fn: () => setArrangeMode(true) },
       ];
     }
     buildMenu(e.clientX, e.clientY, entries);
@@ -2116,7 +2115,7 @@
           const ex = await exportBytes(it.fileId, { locked: true, key });
           if (ex) triggerDownload(ex.bytes, it.name || ex.file.name || 'download', ex.file.mime);
         } catch (e) {
-          showModal('Could not unlock', escapeHtml(e && e.message || String(e)));
+          showModal(dt('desktop.download.unlockFailed'), escapeHtml(e && e.message || String(e)));
         }
         return;
       }
@@ -2137,7 +2136,7 @@
           triggerDownload(ex.bytes, it.name || ex.file.name || 'download', ex.file.mime);
         }
       } catch (e) {
-        showModal('Could not download', escapeHtml(e && e.message || String(e)));
+        showModal(dt('desktop.download.failed'), escapeHtml(e && e.message || String(e)));
       }
       return;
     }
@@ -2262,36 +2261,35 @@
     const size = total >= 1e9 ? sizeIn(total / 1e9, 'GB', 2)
       : total >= 1e6 ? sizeIn(Math.round(total / 1e6), 'MB', 0)
         : sizeIn(Math.max(1, Math.round(total / 1e3)), 'KB', 0);
-    return ' This also frees the <b>' + size + '</b> of downloaded model data on this device.';
+    return dt('desktop.trash.freed', { size });
   }
 
   async function confirmDeletePermanently(it) {
     const doomed = [it, ...descendantsOf(it.id)];
     const freed = await freedBytesLine(doomed);
-    showConfirm('Delete permanently?',
-      'This deletes <b>' + escapeHtml(it.name) + '</b>' + (doomed.length > 1 ? ' and ' + (doomed.length - 1) + ' item(s) inside it' : '') +
-      ' forever. There is no undo.' + freed,
-      [{ label: 'Delete forever', danger: true, fn: async () => {
+    showConfirm(dt('desktop.trash.deleteTitle'),
+      (doomed.length > 1 ? dt('desktop.trash.deleteBodyMore', { name: escapeHtml(it.name), n: doomed.length - 1 }) : dt('desktop.trash.deleteBody', { name: escapeHtml(it.name) })) + freed,
+      [{ label: dt('desktop.trash.deleteForever'), danger: true, fn: async () => {
         for (const d of doomed) await purgeItem(d);
         await load(); render();
       } }]);
   }
   async function emptyTrash() {
     const doomed = items.filter((i) => isInTrash(i));
-    if (!doomed.length) { showModal('Trash is empty', 'Nothing to delete.'); return; }
+    if (!doomed.length) { showModal(dt('desktop.trash.emptyTitle'), dt('desktop.trash.nothing')); return; }
     // A Provider dragged to the Trash still holds its weights until this
     // moment — the Trash is a holding pen, not a delete — so this is where
     // the reclaimed gigabyte gets announced.
     const freed = await freedBytesLine(doomed);
-    showConfirm('Empty Trash?',
-      'Permanently delete <b>' + doomed.length + ' item(s)</b>? There is no undo.' + freed,
-      [{ label: 'Empty Trash', danger: true, fn: async () => {
+    showConfirm(dt('desktop.trash.emptyAsk'),
+      dt('desktop.trash.emptyBody', { n: doomed.length }) + freed,
+      [{ label: dt('desktop.menu.emptyTrash'), danger: true, fn: async () => {
         for (const d of doomed) await purgeItem(d);
         await load(); render();
       } }]);
   }
   async function newFolder(x, y) {
-    const it = await createFolder('New Folder', currentFolder, x || GRID.origin, y || GRID.origin);
+    const it = await createFolder(dt('desktop.folder.newName'), currentFolder, x || GRID.origin, y || GRID.origin);
     await load(); await render(); // paint the icon first, then offer the name
     beginRename(it);
   }
@@ -2302,15 +2300,15 @@
   function beginRename(it) {
     const bg = document.createElement('div'); bg.className = 'modal-bg';
     const box = document.createElement('div'); box.className = 'modal';
-    box.innerHTML = '<h3>Rename</h3>';
+    box.innerHTML = '<h3>' + escapeHtml(dt('desktop.rename.title')) + '</h3>';
     const input = document.createElement('input');
     input.type = 'text'; input.className = 'rename-input'; input.value = it.name;
     // 16px floor: anything smaller makes iOS Safari zoom the page on focus.
     input.style.cssText = 'width:100%;box-sizing:border-box;font-size:16px;padding:10px 12px;margin:6px 0 2px;';
     box.appendChild(input);
     const row = document.createElement('div'); row.className = 'modal-actions';
-    const okBtn = document.createElement('button'); okBtn.textContent = 'Rename';
-    const cancel = document.createElement('button'); cancel.textContent = 'Cancel'; cancel.className = 'ghost';
+    const okBtn = document.createElement('button'); okBtn.textContent = dt('desktop.rename.title');
+    const cancel = document.createElement('button'); cancel.textContent = dt('desktop.common.cancel'); cancel.className = 'ghost';
     row.appendChild(okBtn); row.appendChild(cancel);
     box.appendChild(row); bg.appendChild(box);
     const commit = async () => {
@@ -2339,7 +2337,7 @@
     okBtn.onclick = () => done(true);
     cancel.onclick = () => done(false);
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); done(true); } });
-    const dlg = armDialog(bg, box, { label: 'Rename', initial: input, onEscape: () => done(false) });
+    const dlg = armDialog(bg, box, { label: dt('desktop.rename.title'), initial: input, onEscape: () => done(false) });
     bg._dlg = dlg;
     input.select();
     bg.addEventListener('click', (e) => { if (e.target === bg) done(false); });
@@ -2352,7 +2350,7 @@
       // A backup that did not happen must SAY so — past the JSON/base64
       // string ceiling this rejected silently, and "Back up first, then
       // erase" went on as if a file had been saved.
-      showModal('Backup failed', 'The backup could not be built: ' + escapeHtml(String(e && e.message || e)) + '.<br><br>A very large computer can exceed what one GIF can hold in this browser; try again in a normal (not private) window with more free memory, or back up the biggest apps one at a time (right-click → Download).');
+      showModal(dt('desktop.backup.failedTitle'), dt('desktop.backup.failedBody', { error: escapeHtml(String(e && e.message || e)) }));
       throw e;
     }
   }
@@ -2412,7 +2410,7 @@
     blobUrls.clear();
     currentFolder = null; selectedId = null;
     await load(); await ensureSystemItems(); render();
-    showModal('Home Screen restored', 'Your Home Screen was restored from the backup GIF.');
+    showModal(dt('desktop.restore.doneTitle'), dt('desktop.restore.doneBody'));
   }
 
   // ---------- modals ----------
@@ -2508,7 +2506,7 @@
     const bg = document.createElement('div'); bg.className = 'modal-bg';
     const box = document.createElement('div'); box.className = 'modal';
     box.innerHTML = '<h3>' + escapeHtml(title) + '</h3><p>' + msgHtml + '</p>';
-    const ok = document.createElement('button'); ok.type = 'button'; ok.textContent = 'OK';
+    const ok = document.createElement('button'); ok.type = 'button'; ok.textContent = dt('desktop.common.ok');
     box.appendChild(ok);
     bg.appendChild(box);
     const dlg = armDialog(bg, box);
@@ -2562,7 +2560,7 @@
     }
     const cancel = document.createElement('button');
     cancel.type = 'button';
-    cancel.textContent = 'Cancel'; cancel.className = 'ghost';
+    cancel.textContent = dt('desktop.common.cancel'); cancel.className = 'ghost';
     cancel.id = 'confirm-cancel';
     cancel.onclick = () => { api.close(); if (onCancel) onCancel(); };
     row.appendChild(cancel);
@@ -2598,12 +2596,12 @@
     inp.style.paddingRight = '3.2rem';
     inp.style.width = '100%';
     inp.style.boxSizing = 'border-box';
-    const what = inp.getAttribute('aria-label') || inp.getAttribute('placeholder') || 'password';
+    const what = inp.getAttribute('aria-label') || inp.getAttribute('placeholder') || dt('desktop.pw.password');
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'pw-eye';
     if (inp.id) b.id = 'pweye-' + inp.id;
-    const eyeLabel = (showing) => (showing ? 'Hide ' : 'Show ') + what;
+    const eyeLabel = (showing) => dt(showing ? 'desktop.pw.hide' : 'desktop.pw.show', { what });
     b.title = eyeLabel(false); b.setAttribute('aria-label', eyeLabel(false));
     b.style.cssText = 'position:absolute;right:0;top:50%;transform:translateY(-50%);background:none;border:none;padding:0;margin:0;color:var(--muted,#3a3a3f);cursor:pointer;line-height:0';
     b.innerHTML = PWEYE_SVG;
@@ -2691,28 +2689,22 @@
   if (GifOS.fullscreen) GifOS.fullscreen.attach(document.getElementById('fs-btn'), document.documentElement);
 
   sysBtn.addEventListener('click', () => menuUnder(sysBtn, [
-    { label: 'About GifOS', fn: () => showModal('GifOS v' + VERSION,
-      'Your GIF-powered computer, right in your browser. Apps are GIFs. Data is GIFs.<br><br>' +
-      'Everything on this Home Screen lives in this browser — nothing on our servers.<br><br>' +
-      '<a href="about.html" target="_blank" rel="noopener">What is GifOS?</a> · ' +
-      '<a href="browser-support.html" target="_blank" rel="noopener">Which browsers work</a> · ' +
-      '<a href="' + REPO_URL + '" target="_blank" rel="noopener">Source code</a> · ' +
-      '<a href="https://gifos.app" target="_blank" rel="noopener">gifos.app</a><br><br>' +
-      'Something wrong? <a href="' + issueUrl('About GifOS (desktop menu)') + '" target="_blank" rel="noopener">Report a problem on GitHub</a> — the form opens with this build and browser filled in.') },
+    { label: dt('desktop.menu.about'), fn: () => showModal(dt('desktop.about.title', { version: VERSION }),
+      dt('desktop.about.body', { repo: REPO_URL, issueUrl: issueUrl('About GifOS (desktop menu)') })) },
     'sep',
     // Where more apps come from. Also on the Home Screen as a launcher icon,
     // but an icon can be moved into a folder or trashed — the menu is the one
     // route to the store that a user can't misplace.
-    { label: 'App Store…', fn: () => { location.href = 'store.html' + (nsParam('#db=') || ''); } },
+    { label: dt('desktop.menu.appStore'), fn: () => { location.href = 'store.html' + (nsParam('#db=') || ''); } },
     'sep',
-    { label: 'Arrange icons…', fn: () => setArrangeMode(true) },
+    { label: dt('desktop.menu.arrange'), fn: () => setArrangeMode(true) },
     'sep',
-    { label: 'Back up Home Screen…', fn: backupDesktop },
-    { label: 'Restore from backup…', fn: () => restoreInput.click() },
+    { label: dt('desktop.menu.backup'), fn: backupDesktop },
+    { label: dt('desktop.menu.restore'), fn: () => restoreInput.click() },
     'sep',
-    { label: 'Empty Trash', fn: emptyTrash },
+    { label: dt('desktop.menu.emptyTrash'), fn: emptyTrash },
     'sep',
-    { label: 'Settings…', fn: showSettings },
+    { label: dt('desktop.menu.settings'), fn: showSettings },
     // Erasing the whole computer now lives deep in Settings → Advanced, not on
     // this top-level menu, so it can't be triggered by an accidental tap.
   ]));
@@ -2765,8 +2757,8 @@
     if (d && d.pinned && !d.critical.length && document.getElementById('pin-head')) d = null;
     // A pinned computer changes build only by its own choice in Settings.
     U.paint(updateBar, d, d && (d.pinned
-      ? { label: d.critical.length ? 'See what changed' : 'What’s new', run: () => showSettings({ focus: 'version' }) }
-      : { label: 'Update now', run: updateInPlace }),
+      ? { label: d.critical.length ? dt('desktop.update.seeChanged') : dt('desktop.update.whatsNew'), run: () => showSettings({ focus: 'version' }) }
+      : { label: dt('desktop.update.now'), run: updateInPlace }),
     d && !d.pinned ? { run: () => showSettings({ focus: 'version' }) } : undefined);
   }
 
@@ -2962,15 +2954,23 @@
   // Config lives in localStorage (per-origin, NOT in a shareable backup GIF), so
   // an app that requests the "ai" capability calls through the runtime and never
   // sees a key. Each role is an OpenAI-shaped base URL + key + model name.
+  // Settings words live in i18n/<locale>/settings.json. ST gives text; STh gives
+  // escaped HTML that allows only the <b>, <m> (mono) and <bm> tags messages use.
+  const ST = (k, p) => (GifOS.i18n ? GifOS.i18n.t(k, p) : k);
+  const richHtml = (s) => escapeHtml(s).replace(/&lt;(\/?)b&gt;/g, '<$1b>').replace(/&lt;m&gt;/g, '<span class="mono">')
+    .replace(/&lt;\/m&gt;/g, '</span>').replace(/&lt;bm&gt;/g, '<b class="mono">').replace(/&lt;\/bm&gt;/g, '</b>');
+  const STh = (k, p) => richHtml(ST(k, p));
   const AI_TYPES = [
-    { key: 'smartest', label: 'Smartest text LLM', ph: 'gpt-4o', op: 'chat' },
-    { key: 'cheapest', label: 'Cheapest text LLM', ph: 'gpt-4o-mini', op: 'chat' },
-    { key: 'tts', label: 'Text → speech', ph: 'tts-1', op: 'tts' },
-    { key: 'stt', label: 'Speech → text', ph: 'whisper-1', op: 'stt' },
-    { key: 'image', label: 'Text → image', ph: 'gpt-image-1', op: 'image' },
-    { key: 'image_to_video', label: 'Image → video', ph: 'provider model', op: 'video' },
-    { key: 'video', label: 'Text → video', ph: 'provider model', op: 'video' },
+    { key: 'smartest', lk: 'settings.ai.role.smartest', ph: 'gpt-4o', op: 'chat' },
+    { key: 'cheapest', lk: 'settings.ai.role.cheapest', ph: 'gpt-4o-mini', op: 'chat' },
+    { key: 'tts', lk: 'settings.ai.role.tts', ph: 'tts-1', op: 'tts' },
+    { key: 'stt', lk: 'settings.ai.role.stt', ph: 'whisper-1', op: 'stt' },
+    { key: 'image', lk: 'settings.ai.role.image', ph: 'gpt-image-1', op: 'image' },
+    { key: 'image_to_video', lk: 'settings.ai.role.imageToVideo', ph: 'provider model', op: 'video' },
+    { key: 'video', lk: 'settings.ai.role.video', ph: 'provider model', op: 'video' },
   ];
+  // The model box's example text; 'provider model' is also the model name a test sends.
+  const aiPh = (t) => (t.ph === 'provider model' ? ST('settings.ai.providerModel') : t.ph);
   const AI_LS = 'gifos_ai_config';
   const aiCfgAll = () => { try { return JSON.parse(root.localStorage.getItem(AI_LS) || '{}') || {}; } catch (e) { return {}; } };
   function aiSectionHtml() {
@@ -2982,24 +2982,23 @@
       // wireAiSection (scanning the Providers folder needs the store); a
       // role already assigned to a provider renders its saved option
       // immediately so the select never lies while the scan runs.
-      const savedApp = c.app ? '<option value="' + escapeHtml(c.app) + '" selected>📦 ' + escapeHtml(c.appName || 'Provider app') + ' — app on this device</option>' : '';
-      const lab = escapeHtml(t.label);
+      const savedApp = c.app ? '<option value="' + escapeHtml(c.app) + '" selected>' + escapeHtml(ST('settings.ai.appOnDevice', { name: c.appName || ST('settings.ai.providerApp') })) + '</option>' : '';
       return '<div class="ai-row" data-ai="' + t.key + '" hidden>' +
-        '<div class="ai-head"><b>' + t.label + '</b><button type="button" class="ai-test" data-ai="' + t.key + '">Test</button>' +
+        '<div class="ai-head"><b>' + escapeHtml(ST(t.lk)) + '</b><button type="button" class="ai-test" data-ai="' + t.key + '">' + escapeHtml(ST('settings.ai.test')) + '</button>' +
         '<span class="ai-status" data-ai="' + t.key + '" aria-live="polite"></span></div>' +
-        '<label class="set-label">Source<select class="ai-src" data-ai="' + t.key + '" aria-label="Source for ' + lab + '"><option value="">Your own address and key</option>' + savedApp + '</select></label>' +
-        '<label class="set-label">Address<input class="ai-f" data-ai="' + t.key + '" data-f="url" aria-label="Address for ' + lab + '" placeholder="https://api.openai.com/v1" value="' + escapeHtml(c.url || '') + '"></label>' +
-        '<label class="set-label">Key<input class="ai-f" data-ai="' + t.key + '" data-f="key" type="password" aria-label="API key for ' + lab + '" placeholder="API key" value="' + escapeHtml(c.key || '') + '"></label>' +
-        '<label class="set-label">Model<input class="ai-f" data-ai="' + t.key + '" data-f="model" aria-label="Model for ' + lab + '" placeholder="Model — ' + escapeHtml(t.ph) + '" value="' + escapeHtml(c.model || '') + '"></label>' +
+        '<label class="set-label">' + escapeHtml(ST('settings.ai.source')) + '<select class="ai-src" data-ai="' + t.key + '" aria-label="' + escapeHtml(ST('settings.ai.sourceAria', { label: ST(t.lk) })) + '"><option value="">' + escapeHtml(ST('settings.ai.ownEndpoint')) + '</option>' + savedApp + '</select></label>' +
+        '<label class="set-label">' + escapeHtml(ST('settings.ai.address')) + '<input class="ai-f" data-ai="' + t.key + '" data-f="url" aria-label="' + escapeHtml(ST('settings.ai.addressAria', { label: ST(t.lk) })) + '" placeholder="https://api.openai.com/v1" value="' + escapeHtml(c.url || '') + '"></label>' +
+        '<label class="set-label">' + escapeHtml(ST('settings.ai.key')) + '<input class="ai-f" data-ai="' + t.key + '" data-f="key" type="password" aria-label="' + escapeHtml(ST('settings.ai.keyAria', { label: ST(t.lk) })) + '" placeholder="' + escapeHtml(ST('settings.ai.apiKeyPh')) + '" value="' + escapeHtml(c.key || '') + '"></label>' +
+        '<label class="set-label">' + escapeHtml(ST('settings.ai.model')) + '<input class="ai-f" data-ai="' + t.key + '" data-f="model" aria-label="' + escapeHtml(ST('settings.ai.modelAria', { label: ST(t.lk) })) + '" placeholder="' + escapeHtml(ST('settings.ai.modelPh', { example: aiPh(t) })) + '" value="' + escapeHtml(c.model || '') + '"></label>' +
         '</div>';
     }).join('');
     const picks = AI_TYPES.map((t) => {
       const c = cfg[t.key] || {};
       const on = !!(c.url || c.app);
-      return '<button type="button" class="set-row" data-ai-pick="' + t.key + '"><span class="set-row-t"><b>' + escapeHtml(t.label) + '</b><span class="set-status">' + (on ? 'Set up' : 'Not set up') + '</span></span><span class="chev" aria-hidden="true">›</span></button>';
+      return '<button type="button" class="set-row" data-ai-pick="' + t.key + '"><span class="set-row-t"><b>' + escapeHtml(ST(t.lk)) + '</b><span class="set-status">' + escapeHtml(on ? ST('settings.ai.roleOn') : ST('settings.ai.notSetUp')) + '</span></span><span class="chev" aria-hidden="true">›</span></button>';
     }).join('');
-    return '<details class="adv" id="set-ai-adv" open><summary class="set-sr" tabindex="-1">AI models</summary>' +
-      '<p class="add-help">Apps that ask for AI use what you pick here. A key stays in this browser and is not included in a shared backup. A Provider app in your Providers folder can answer on this device with no key.</p>' +
+    return '<details class="adv" id="set-ai-adv" open><summary class="set-sr" tabindex="-1">' + escapeHtml(ST('settings.ai.sr')) + '</summary>' +
+      '<p class="add-help">' + escapeHtml(ST('settings.ai.help')) + '</p>' +
       '<div class="set-card">' + picks + '</div>' +
       '<div id="set-ai-detail">' + rows + '</div></details>';
   }
@@ -3012,7 +3011,7 @@
     return new Blob([b], { type: 'audio/wav' });
   }
   function testAiEndpoint(t, c) {
-    if (!c.url) return Promise.resolve({ ok: false, msg: 'Set a base URL first.' });
+    if (!c.url) return Promise.resolve({ ok: false, msg: ST('settings.ai.testNoUrl') });
     const base = c.url.replace(/\/+$/, '');
     const PATH = { chat: '/chat/completions', tts: '/audio/speech', stt: '/audio/transcriptions', image: '/images/generations', video: '/video/generations' };
     const path = PATH[t.op] || '';
@@ -3025,11 +3024,11 @@
     else if (t.op === 'image') req = { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, auth), body: JSON.stringify({ model: c.model || t.ph, prompt: 'a small grey dot', n: 1, size: '256x256' }) };
     else req = { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, auth), body: JSON.stringify({ model: c.model || t.ph, prompt: 'a grey dot' }) };
     return fetch(url, req).then((r) => {
-      if (r.ok) return { ok: true, msg: '✓ works' };
-      if (r.status === 401 || r.status === 403) return { ok: false, msg: '✗ key rejected (' + r.status + ')' };
-      if (r.status === 404) return { ok: false, msg: '✗ not found — check the URL (404)' };
-      return { ok: false, msg: '⚠ reached, but returned ' + r.status };
-    }).catch(() => ({ ok: false, msg: '✗ can’t reach (network or CORS blocked)' }));
+      if (r.ok) return { ok: true, msg: ST('settings.ai.testWorks') };
+      if (r.status === 401 || r.status === 403) return { ok: false, msg: ST('settings.ai.testRejected', { status: String(r.status) }) };
+      if (r.status === 404) return { ok: false, msg: ST('settings.ai.testNotFound') };
+      return { ok: false, msg: ST('settings.ai.testReached', { status: String(r.status) }) };
+    }).catch(() => ({ ok: false, msg: ST('settings.ai.testUnreachable') }));
   }
   // Installed, RECOGNIZED provider apps — direct children of sys_providers
   // whose manifest carries provides.ai and no network/api capability
@@ -3103,7 +3102,7 @@
         list.filter((p) => p.roles.indexOf(t.key) >= 0).forEach((p) => {
           for (const o of sel.options) if (o.value === p.fileId) return; // saved option already there
           const o = document.createElement('option');
-          o.value = p.fileId; o.textContent = '📦 ' + p.name + ' — app on this device';
+          o.value = p.fileId; o.textContent = ST('settings.ai.appOnDevice', { name: p.name });
           sel.appendChild(o);
         });
       });
@@ -3137,40 +3136,40 @@
   const API_LS = 'gifos_api_config';
   const API_PROXY_DEFAULT = 'https://cors-proxy.gifos.app';
   const AUTH_TYPES = [
-    { v: 'bearer', label: 'Bearer token' },
-    { v: 'token', label: 'Token header' },
-    { v: 'basic', label: 'Basic' },
-    { v: 'header', label: 'Custom header' },
-    { v: 'query', label: 'Query parameter' },
+    { v: 'bearer', lk: 'settings.accounts.auth.bearer' },
+    { v: 'token', lk: 'settings.accounts.auth.token' },
+    { v: 'basic', lk: 'settings.accounts.auth.basic' },
+    { v: 'header', lk: 'settings.accounts.auth.header' },
+    { v: 'query', lk: 'settings.accounts.auth.query' },
   ];
   const apiCfgAll = () => { try { return JSON.parse(root.localStorage.getItem(API_LS) || '{}') || {}; } catch (e) { return {}; } };
   function apiRowHtml(idx, name, c) {
     c = c || {};
     const at = c.authType || 'bearer';
-    const opts = AUTH_TYPES.map((t) => '<option value="' + t.v + '"' + (t.v === at ? ' selected' : '') + '>' + escapeHtml(t.label) + '</option>').join('');
+    const opts = AUTH_TYPES.map((t) => '<option value="' + t.v + '"' + (t.v === at ? ' selected' : '') + '>' + escapeHtml(ST(t.lk)) + '</option>').join('');
     const needName = (at === 'header' || at === 'query');
-    const savedNote = c.url ? (c.proxy ? 'saved · via proxy' : 'saved · direct') : '';
+    const savedNote = c.url ? (c.proxy ? ST('settings.accounts.savedProxy') : ST('settings.accounts.savedDirect')) : '';
     const customProxy = (c.proxy && c.proxy !== true && c.proxy !== 'default') ? c.proxy : '';
     return '<div class="ai-row api-row" data-row="' + idx + '">' +
-      '<div class="ai-head"><label class="set-label">Name<input class="api-f api-name" data-row="' + idx + '" data-f="name" aria-label="Name for this account" placeholder="short name — e.g. deepgram" value="' + escapeHtml(name || '') + '"></label>' +
-      '<button type="button" class="ai-test api-test" data-row="' + idx + '">Test &amp; save</button>' +
-      '<button type="button" class="api-del row-del" data-row="' + idx + '" aria-label="Remove this account">' + DEL_ICON + '</button></div>' +
-      '<label class="set-label">Address<input class="api-f" data-row="' + idx + '" data-f="url" aria-label="Address for this account" placeholder="https://api.deepgram.com" value="' + escapeHtml(c.url || '') + '"></label>' +
-      '<label class="set-label">How the key is sent<select class="api-f api-auth" data-row="' + idx + '" data-f="authType" aria-label="How the key is sent">' + opts + '</select></label>' +
-      '<label class="set-label api-authname-lab"' + (needName ? '' : ' hidden') + '>Header or parameter name<input class="api-f api-authname" data-row="' + idx + '" data-f="authName" aria-label="Header or parameter name" placeholder="header or parameter name" value="' + escapeHtml(c.authName || '') + '"></label>' +
-      '<label class="set-label">Key<input class="api-f" data-row="' + idx + '" data-f="key" type="password" aria-label="Key for this account" placeholder="API key" value="' + escapeHtml(c.key || '') + '"></label>' +
-      '<details class="api-adv"' + (customProxy ? ' open' : '') + '><summary>Custom proxy</summary>' +
-      '<label class="set-label">Proxy address<input class="api-proxy-url" data-row="' + idx + '" aria-label="Custom proxy address" placeholder="https://your-proxy.example" value="' + escapeHtml(customProxy) + '"></label></details>' +
-      '<div class="ai-status api-status" data-row="' + idx + '" aria-live="polite">' + escapeHtml(savedNote) + '</div>' +
+      '<div class="ai-head"><label class="set-label">' + escapeHtml(ST('settings.accounts.name')) + '<input class="api-f api-name" data-row="' + idx + '" data-f="name" aria-label="' + escapeHtml(ST('settings.accounts.nameAria')) + '" placeholder="' + escapeHtml(ST('settings.accounts.namePh')) + '" value="' + escapeHtml(name || '') + '"></label>' +
+      '<button type="button" class="ai-test api-test" data-row="' + idx + '">' + escapeHtml(ST('settings.accounts.testSave')) + '</button>' +
+      '<button type="button" class="api-del row-del" data-row="' + idx + '" aria-label="' + escapeHtml(ST('settings.accounts.removeAria')) + '">' + DEL_ICON + '</button></div>' +
+      '<label class="set-label">' + escapeHtml(ST('settings.accounts.address')) + '<input class="api-f" data-row="' + idx + '" data-f="url" aria-label="' + escapeHtml(ST('settings.accounts.addressAria')) + '" placeholder="https://api.deepgram.com" value="' + escapeHtml(c.url || '') + '"></label>' +
+      '<label class="set-label">' + escapeHtml(ST('settings.accounts.howSent')) + '<select class="api-f api-auth" data-row="' + idx + '" data-f="authType" aria-label="' + escapeHtml(ST('settings.accounts.howSent')) + '">' + opts + '</select></label>' +
+      '<label class="set-label api-authname-lab"' + (needName ? '' : ' hidden') + '>' + escapeHtml(ST('settings.accounts.authName')) + '<input class="api-f api-authname" data-row="' + idx + '" data-f="authName" aria-label="' + escapeHtml(ST('settings.accounts.authName')) + '" placeholder="' + escapeHtml(ST('settings.accounts.authNamePh')) + '" value="' + escapeHtml(c.authName || '') + '"></label>' +
+      '<label class="set-label">' + escapeHtml(ST('settings.accounts.key')) + '<input class="api-f" data-row="' + idx + '" data-f="key" type="password" aria-label="' + escapeHtml(ST('settings.accounts.keyAria')) + '" placeholder="' + escapeHtml(ST('settings.ai.apiKeyPh')) + '" value="' + escapeHtml(c.key || '') + '"></label>' +
+      '<details class="api-adv"' + (customProxy ? ' open' : '') + '><summary>' + escapeHtml(ST('settings.accounts.proxy')) + '</summary>' +
+      '<label class="set-label">' + escapeHtml(ST('settings.accounts.proxyAddress')) + '<input class="api-proxy-url" data-row="' + idx + '" aria-label="' + escapeHtml(ST('settings.accounts.proxyAria')) + '" placeholder="https://your-proxy.example" value="' + escapeHtml(customProxy) + '"></label></details>' +
+      '<div class="ai-status api-status" data-row="' + idx + '"' + (savedNote ? ' data-saved="1"' : '') + ' aria-live="polite">' + escapeHtml(savedNote) + '</div>' +
       '</div>';
   }
   function apiSectionHtml() {
     const cfg = apiCfgAll();
     const rows = Object.keys(cfg).map((n, i) => apiRowHtml(i, n, cfg[n])).join('');
-    return '<details class="adv" id="set-api-adv" open><summary class="set-sr" tabindex="-1">Third-party APIs</summary>' +
-      '<p class="add-help">A short name, the service’s address, and your key. GifOS sends the key only to that service, and only saves it after a test succeeds. Deepgram is spoken directly. If another service blocks the browser, GifOS retries through a proxy (<span class="mono">' + escapeHtml(API_PROXY_DEFAULT) + '</span>) and remembers that — those requests pass through that proxy in flight. Your own proxy address stays under Custom proxy.</p>' +
+    return '<details class="adv" id="set-api-adv" open><summary class="set-sr" tabindex="-1">' + escapeHtml(ST('settings.accounts.sr')) + '</summary>' +
+      '<p class="add-help">' + STh('settings.accounts.help', { proxy: API_PROXY_DEFAULT }) + '</p>' +
       '<div class="api-rows">' + rows + '</div>' +
-      '<button type="button" class="widebtn" id="api-add">Add a connected account</button>' +
+      '<button type="button" class="widebtn" id="api-add">' + escapeHtml(ST('settings.accounts.add')) + '</button>' +
       '</details>';
   }
   // Providers the system knows the shape of. MIRRORS runtime.js KNOWN_APIS —
@@ -3268,7 +3267,8 @@
     };
     const removeOne = (name) => { if (!name) return; const cfg = apiCfgAll(); delete cfg[name]; try { root.localStorage.setItem(API_LS, JSON.stringify(cfg)); } catch (e) {} };
 
-    const setSt = (st, msg, cls) => { st.textContent = msg; st.className = 'ai-status api-status' + (cls ? ' ' + cls : ''); };
+    // data-saved marks a "saved" note, so typing can clear it in any language.
+    const setSt = (st, msg, cls) => { st.textContent = msg; st.className = 'ai-status api-status' + (cls ? ' ' + cls : ''); if (cls === 'ok') st.setAttribute('data-saved', '1'); else st.removeAttribute('data-saved'); };
 
     // CREDENTIALS IN THE URL. SimpleFIN's access URL is one string with the
     // username and password embedded — https://<user>:<pass>@host/… — and that
@@ -3288,15 +3288,15 @@
 
     async function testAndSave(row, st) {
       const c = splitCreds(readRow(row));
-      if (!c.name) return setSt(st, 'give it a short name', 'bad');
-      if (!c.url) return setSt(st, 'add the base URL', 'bad');
-      if (!c.key) return setSt(st, 'paste your API key', 'bad');
-      setSt(st, 'testing directly…');
+      if (!c.name) return setSt(st, ST('settings.accounts.needName'), 'bad');
+      if (!c.url) return setSt(st, ST('settings.accounts.needUrl'), 'bad');
+      if (!c.key) return setSt(st, ST('settings.accounts.needKey'), 'bad');
+      setSt(st, ST('settings.accounts.testing'));
       const direct = await apiProbe(c, null);
-      if (direct.bad) return setSt(st, '✗ bad URL', 'bad');
+      if (direct.bad) return setSt(st, ST('settings.accounts.badUrl'), 'bad');
       if (direct.reached) {
-        if (direct.keyRejected) return setSt(st, '✗ key rejected — check your key', 'bad');
-        saveOne(c, undefined); return setSt(st, '✓ saved · direct', 'ok');
+        if (direct.keyRejected) return setSt(st, ST('settings.accounts.keyRejected'), 'bad');
+        saveOne(c, undefined); return setSt(st, ST('settings.accounts.okDirect'), 'ok');
       }
       // NOT REACHED is not NOT SET. Offline, this used to walk the whole
       // ladder and end on a generic can't-reach — which reads as "your
@@ -3305,31 +3305,29 @@
       // entry is untouched.
       if (navigator.onLine === false) {
         const saved = !!apiCfgAll()[c.name];
-        return setSt(st, '✗ you appear to be offline — ' + (saved
-          ? 'this API is still set up; test again when the connection returns'
-          : 'connect to test and save'), 'bad');
+        return setSt(st, ST(saved ? 'settings.accounts.offlineSaved' : 'settings.accounts.offlineNew'), 'bad');
       }
       // A WS-native API (Deepgram): the REST base never answers a browser, but
       // the runtime speaks its WebSocket directly — probe THAT door, save with
       // no proxy at all. This is how every real request will travel.
       const known = knownShape(c.name);
       if (known && known.ws) {
-        setSt(st, 'blocked directly — trying its WebSocket…');
+        setSt(st, ST('settings.accounts.wsTrying'));
         const viaWs = await apiWsProbe(c, known.ws);
-        if (viaWs.opened) { saveOne(c, undefined); return setSt(st, '✓ saved · native WebSocket (no proxy needed)', 'ok'); }
-        return setSt(st, '✗ could not open its WebSocket — a wrong key and a blocked network look the same here; check both', 'bad');
+        if (viaWs.opened) { saveOne(c, undefined); return setSt(st, ST('settings.accounts.wsSaved'), 'ok'); }
+        return setSt(st, ST('settings.accounts.wsFailed'), 'bad');
       }
       // Blocked directly (CORS/network) — retry through the proxy (custom or default).
       const pbase = c.customProxy || API_PROXY_DEFAULT;
-      setSt(st, 'blocked directly — trying the CORS proxy…');
+      setSt(st, ST('settings.accounts.proxyTrying'));
       const viaProxy = await apiProbe(c, pbase);
       if (viaProxy.reached) {
-        if (viaProxy.keyRejected) return setSt(st, '✗ key rejected — check your key', 'bad');
-        saveOne(c, c.customProxy || 'default'); return setSt(st, '✓ saved · via proxy', 'ok');
+        if (viaProxy.keyRejected) return setSt(st, ST('settings.accounts.keyRejected'), 'bad');
+        saveOne(c, c.customProxy || 'default'); return setSt(st, ST('settings.accounts.okProxy'), 'ok');
       }
       setSt(st, navigator.onLine === false
-        ? '✗ you appear to be offline — ' + (apiCfgAll()[c.name] ? 'this API is still set up; test again when the connection returns' : 'connect to test and save')
-        : '✗ can’t reach it directly or through the proxy — network or CORS, not your key', 'bad');
+        ? ST(apiCfgAll()[c.name] ? 'settings.accounts.offlineSaved' : 'settings.accounts.offlineNew')
+        : ST('settings.accounts.unreachable'), 'bad');
     }
 
     const wireRow = (row) => {
@@ -3342,16 +3340,16 @@
       };
       const del = row.querySelector('.api-del');
       if (del) del.onclick = () => {
-        const nm = readRow(row).name || 'this account';
-        showConfirm('Remove this account?', 'Remove <b>' + escapeHtml(nm) + '</b> from this computer? The service itself is not changed.', [
-          { label: 'Remove', danger: true, fn: () => { removeOne(readRow(row).name || ''); row.remove(); } },
+        const nm = readRow(row).name || ST('settings.accounts.thisAccount');
+        showConfirm(ST('settings.accounts.removeTitle'), STh('settings.accounts.removeBody', { name: nm }), [
+          { label: ST('settings.accounts.remove'), danger: true, fn: () => { removeOne(readRow(row).name || ''); row.remove(); } },
         ], null, { alert: true });
       };
       const test = row.querySelector('.api-test');
       const st = row.querySelector('.api-status');
       if (test) test.onclick = () => { test.disabled = true; testAndSave(row, st).finally(() => { test.disabled = false; }); };
       // typing invalidates the "saved" note so it can't mislead
-      row.querySelectorAll('.api-f').forEach((i) => i.addEventListener('input', () => { if (/saved/.test(st.textContent)) setSt(st, ''); }));
+      row.querySelectorAll('.api-f').forEach((i) => i.addEventListener('input', () => { if (st.hasAttribute('data-saved')) setSt(st, ''); }));
     };
     box.querySelectorAll('.api-row').forEach(wireRow);
     const add = box.querySelector('#api-add');
@@ -3480,7 +3478,7 @@
     const i = String(scope).indexOf('/');
     if (i === -1) return String(scope);
     let by = scope.slice(0, i); try { by = decodeURIComponent(by); } catch (e) {}
-    return scope.slice(i + 1) + ' — sold by ' + by;
+    return ST('settings.pay.scope', { app: scope.slice(i + 1), seller: by });
   }
   function payLedger() {
     const apps = Object.create(null);   // keyed by text out of storage: never an object with a prototype
@@ -3515,17 +3513,17 @@
         (e.at ? ' · ' + (GifOS.i18n ? GifOS.i18n.fmt.date(e.at) : new Date(e.at).toLocaleDateString()) : '') + '</span></div>').join('');
       const ent = a.ent.map((e) =>
         '<span class="pay-ent" data-app="' + escapeHtml(id) + '" data-sku="' + escapeHtml(e.sku) + '">' + escapeHtml(e.sku) +
-        ' <button class="pay-ent-del row-del" data-key="' + escapeHtml(e.key) + '" data-app="' + escapeHtml(id) + '" data-sku="' + escapeHtml(e.sku) + '" title="Forget this purchase on this computer (the payment is not refunded)">' + DEL_ICON + '</button></span>').join(' ');
+        ' <button class="pay-ent-del row-del" data-key="' + escapeHtml(e.key) + '" data-app="' + escapeHtml(id) + '" data-sku="' + escapeHtml(e.sku) + '" title="' + escapeHtml(ST('settings.pay.forget')) + '">' + DEL_ICON + '</button></span>').join(' ');
       return '<div class="pay-app" data-app="' + escapeHtml(id) + '">' +
-        '<div class="pay-head"><b>' + escapeHtml(payScopeName(id)) + '</b><span class="pay-dim">' + a.led.length + ' payment' + (a.led.length === 1 ? '' : 's') + ' · ' + payUsd(String(spent)) + ' total</span></div>' +
-        (ent ? '<div class="pay-ents">Purchased: ' + ent + '</div>' : '') +
+        '<div class="pay-head"><b>' + escapeHtml(payScopeName(id)) + '</b><span class="pay-dim">' + escapeHtml(ST('settings.pay.count', { n: a.led.length, total: payUsd(String(spent)) })) + '</span></div>' +
+        (ent ? '<div class="pay-ents">' + escapeHtml(ST('settings.pay.purchased')) + ' ' + ent + '</div>' : '') +
         led +
-        '<div class="pay-cap-row"><label class="set-label">Per-charge ceiling in dollars<input class="pay-cap" data-app="' + escapeHtml(id) + '" type="number" min="0" step="1" aria-label="Per-charge ceiling in dollars" value="' + (function () { try { return Number(BigInt(cap) / 10000n) / 100; } catch (e) { return ''; } })() + '"></label></div>' +
+        '<div class="pay-cap-row"><label class="set-label">' + escapeHtml(ST('settings.pay.ceiling')) + '<input class="pay-cap" data-app="' + escapeHtml(id) + '" type="number" min="0" step="1" aria-label="' + escapeHtml(ST('settings.pay.ceiling')) + '" value="' + (function () { try { return Number(BigInt(cap) / 10000n) / 100; } catch (e) { return ''; } })() + '"></label></div>' +
         '</div>';
     }).join('');
     const lead = rows
-      ? 'Charges you approved on this computer. Apps never see your card, wallet, or balance. Forgetting a purchase only clears it from this computer and does not refund it. The ceiling is the most one charge from that app may ask for.'
-      : 'Nothing charged on this computer. Apps never see your card, wallet, or balance.';
+      ? escapeHtml(ST('settings.pay.leadSome'))
+      : escapeHtml(ST('settings.pay.leadNone'));
     const support = (typeof GifOS !== 'undefined' && GifOS.charge && typeof GifOS.charge.paymentSupportHtml === 'function')
       ? '<p class="add-help" id="pay-support">' + GifOS.charge.paymentSupportHtml() + '</p>' : '';
     return '<div id="set-pay"><p class="add-help">' + lead + '</p>' + support + (rows || '') + '</div>';
@@ -3551,15 +3549,14 @@
   async function showSettings(opts) {
     opts = opts || {};
     closeContext();
+    if (I18N) await I18N.load(['settings', 'common']).catch(() => null); // before any t() below
     let relay = ''; try { relay = localStorage.getItem('gifos_relay') || ''; } catch (e) {}
 
     // Storage facts for the Advanced section.
     const est = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate().catch(() => null) : null;
     const persisted = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted().catch(() => false) : false;
-    const storageLine = est ? 'Using <b>' + fmtBytes(est.usage || 0) + '</b> of about ' + fmtBytes(est.quota || 0) + '.' : 'Storage details unavailable in this browser.';
-    const persistLine = persisted
-      ? 'Protected — the browser won\'t clear this Home Screen to free space.'
-      : 'Not yet protected. GifOS asks automatically; browsers grant it once a site is used a bit. You can also keep a backup GIF (GifOS menu → Back up Home Screen).';
+    const storageLine = est ? ST('settings.storage.usage', { used: fmtBytes(est.usage || 0), quota: fmtBytes(est.quota || 0) }) : ST('settings.storage.unavailable');
+    const persistLine = persisted ? ST('settings.storage.protectedLine') : ST('settings.storage.notProtectedLine');
 
     let prefs = null; try { prefs = await store.getState('sys::prefs'); } catch (e) {}
     // The words of Settings → Language and region (and the shared formatters).
@@ -3570,71 +3567,71 @@
     const aiN = AI_TYPES.filter((t) => { const c = aiCfgAll()[t.key] || {}; return !!(c.url || c.app); }).length;
     const apiN = Object.keys(apiCfgAll()).length;
     const payN = Object.keys(payLedger()).length;
-    const nameStatus = nameNow || 'Not set';
-    const aiStatus = aiN ? (aiN + ' set up') : 'Not set up';
-    const apiStatus = apiN ? (apiN + (apiN === 1 ? ' account' : ' accounts')) : 'None';
-    const payStatus = payN ? (payN + (payN === 1 ? ' app' : ' apps')) : 'Nothing charged on this computer';
-    const relayStatus = relay ? 'Your own connection' : 'Standard GifOS connection';
+    const nameStatus = nameNow || ST('settings.you.notSet');
+    const aiStatus = aiN ? ST('settings.ai.count', { n: aiN }) : ST('settings.ai.notSetUp');
+    const apiStatus = apiN ? ST('settings.accounts.count', { n: apiN }) : ST('settings.accounts.none');
+    const payStatus = payN ? ST('settings.pay.apps', { n: payN }) : ST('settings.pay.nothing');
+    const relayStatus = relay ? ST('settings.conn.own') : ST('settings.conn.standard');
 
     const bg = document.createElement('div'); bg.className = 'modal-bg';
     const box = document.createElement('div'); box.className = 'modal wide settings-sheet';
     box.innerHTML =
       '<header class="set-head">' +
-        '<div class="set-head-start"><button type="button" class="set-textbtn" id="set-back" hidden>Back</button></div>' +
-        '<h3 id="set-title">Settings</h3>' +
+        '<div class="set-head-start"><button type="button" class="set-textbtn" id="set-back" hidden>' + escapeHtml(ST('settings.back')) + '</button></div>' +
+        '<h3 id="set-title">' + escapeHtml(ST('settings.title')) + '</h3>' +
         '<div class="set-head-end"><span id="set-save-note" class="set-save-note" aria-live="polite"></span>' +
-          '<button type="button" class="set-textbtn" id="set-cancel" hidden>Cancel</button>' +
-          '<button type="button" class="set-textbtn" id="set-save" hidden>Save</button>' +
-          '<button type="button" class="set-textbtn" id="set-close">Close</button></div>' +
+          '<button type="button" class="set-textbtn" id="set-cancel" hidden>' + escapeHtml(ST('settings.cancel')) + '</button>' +
+          '<button type="button" class="set-textbtn" id="set-save" hidden>' + escapeHtml(ST('settings.save')) + '</button>' +
+          '<button type="button" class="set-textbtn" id="set-close">' + escapeHtml(ST('settings.close')) + '</button></div>' +
       '</header>' +
       '<div class="set-body">' +
         '<section data-page="root">' +
-          '<div class="set-group">You</div><div class="set-card">' +
-            '<button type="button" class="set-row" id="set-go-you"><span class="set-row-t"><b>Your name</b><span>Friends see this when you play together</span></span><span class="set-status" id="set-status-name">' + escapeHtml(nameStatus) + '</span><span class="chev" aria-hidden="true">›</span></button>' +
+          '<div class="set-group">' + escapeHtml(ST('settings.root.groupYou')) + '</div><div class="set-card">' +
+            '<button type="button" class="set-row" id="set-go-you"><span class="set-row-t"><b>' + escapeHtml(ST('settings.you.title')) + '</b><span>' + escapeHtml(ST('settings.you.sub')) + '</span></span><span class="set-status" id="set-status-name">' + escapeHtml(nameStatus) + '</span><span class="chev" aria-hidden="true">›</span></button>' +
           '</div>' +
-          '<div class="set-group">Look</div><div class="set-card">' +
-            '<button type="button" class="set-row" id="set-go-look"><span class="set-row-t"><b>Background and text</b><span>Color, picture, and text size</span></span><span class="chev" aria-hidden="true">›</span></button>' +
+          '<div class="set-group">' + escapeHtml(ST('settings.root.groupLook')) + '</div><div class="set-card">' +
+            '<button type="button" class="set-row" id="set-go-look"><span class="set-row-t"><b>' + escapeHtml(ST('settings.look.title')) + '</b><span>' + escapeHtml(ST('settings.look.sub')) + '</span></span><span class="chev" aria-hidden="true">›</span></button>' +
             (I18N ? '<button type="button" class="set-row" id="set-go-language"><span class="set-row-t"><b>' + escapeHtml(I18N.t('settings.lang.row')) + '</b><span id="set-status-lang">' + escapeHtml(localeStatus()) + '</span></span><span class="chev" aria-hidden="true">›</span></button>' : '') +
           '</div>' +
-          '<div class="set-group">For apps</div><div class="set-card">' +
-            '<button type="button" class="set-row" id="set-go-ai"><span class="set-row-t"><b>AI</b><span id="set-status-ai">' + escapeHtml(aiStatus) + '</span></span><span class="chev" aria-hidden="true">›</span></button>' +
-            '<button type="button" class="set-row" id="set-go-accounts"><span class="set-row-t"><b>Connected accounts</b><span>Keys for other services</span></span><span class="set-status" id="set-status-api">' + escapeHtml(apiStatus) + '</span><span class="chev" aria-hidden="true">›</span></button>' +
-            '<button type="button" class="set-row" id="set-go-payments"><span class="set-row-t"><b>Payments</b><span id="set-status-pay">' + escapeHtml(payStatus) + '</span></span><span class="chev" aria-hidden="true">›</span></button>' +
+          '<div class="set-group">' + escapeHtml(ST('settings.root.groupApps')) + '</div><div class="set-card">' +
+            '<button type="button" class="set-row" id="set-go-ai"><span class="set-row-t"><b>' + escapeHtml(ST('settings.ai.title')) + '</b><span id="set-status-ai">' + escapeHtml(aiStatus) + '</span></span><span class="chev" aria-hidden="true">›</span></button>' +
+            '<button type="button" class="set-row" id="set-go-accounts"><span class="set-row-t"><b>' + escapeHtml(ST('settings.accounts.title')) + '</b><span>' + escapeHtml(ST('settings.accounts.sub')) + '</span></span><span class="set-status" id="set-status-api">' + escapeHtml(apiStatus) + '</span><span class="chev" aria-hidden="true">›</span></button>' +
+            '<button type="button" class="set-row" id="set-go-payments"><span class="set-row-t"><b>' + escapeHtml(ST('settings.pay.title')) + '</b><span id="set-status-pay">' + escapeHtml(payStatus) + '</span></span><span class="chev" aria-hidden="true">›</span></button>' +
           '</div>' +
-          '<div class="set-group">This computer</div><div class="set-card">' +
-            '<button type="button" class="set-row" id="set-go-system"><span class="set-row-t"><b>System</b><span>Storage, updates, invite connection</span></span><span class="chev" aria-hidden="true">›</span></button>' +
+          '<div class="set-group">' + escapeHtml(ST('settings.root.groupComputer')) + '</div><div class="set-card">' +
+            '<button type="button" class="set-row" id="set-go-system"><span class="set-row-t"><b>' + escapeHtml(ST('settings.system.title')) + '</b><span>' + escapeHtml(ST('settings.system.sub')) + '</span></span><span class="chev" aria-hidden="true">›</span></button>' +
           '</div>' +
         '</section>' +
         '<section data-page="you" hidden>' +
-          '<p class="add-help">Friends see this name when you play or work together. It stays on this computer.</p>' +
-          '<label class="set-label" for="set-name">Name</label>' +
-          '<input id="set-name" maxlength="40" aria-label="Name" placeholder="Your name" value="' + escapeHtml(store.identity().name) + '">' +
-          '<label class="set-label" for="set-avatar-file">Picture</label>' +
-          '<p class="add-help">Friends see this when your camera is off. An animated GIF stays animated.</p>' +
+          '<p class="add-help">' + escapeHtml(ST('settings.you.intro')) + '</p>' +
+          '<label class="set-label" for="set-name">' + escapeHtml(ST('settings.you.name')) + '</label>' +
+          '<input id="set-name" maxlength="40" aria-label="' + escapeHtml(ST('settings.you.name')) + '" placeholder="' + escapeHtml(ST('settings.you.namePh')) + '" value="' + escapeHtml(store.identity().name) + '">' +
+          '<label class="set-label" for="set-avatar-file">' + escapeHtml(ST('settings.you.picture')) + '</label>' +
+          '<p class="add-help">' + escapeHtml(ST('settings.you.pictureHelp')) + '</p>' +
           '<div class="set-avatar-row">' +
             '<img id="set-avatar-preview" alt="" hidden>' +
             '<div class="set-avatar-actions">' +
-              '<input id="set-avatar-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp,.gif,.png,.jpg,.jpeg,.webp" aria-label="Picture">' +
-              '<button type="button" id="set-avatar-remove">Remove</button>' +
+              '<input id="set-avatar-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp,.gif,.png,.jpg,.jpeg,.webp" aria-label="' + escapeHtml(ST('settings.you.picture')) + '">' +
+              '<button type="button" id="set-avatar-remove">' + escapeHtml(ST('settings.you.remove')) + '</button>' +
             '</div>' +
           '</div>' +
           '<p id="set-avatar-err" class="add-help" role="alert"></p>' +
         '</section>' +
         '<section data-page="look" hidden>' +
-          '<p class="add-help">Changes apply as you make them, on every GifOS page in this browser.</p>' +
-          '<div class="set-group">Background</div>' +
+          '<p class="add-help">' + escapeHtml(ST('settings.look.intro')) + '</p>' +
+          '<div class="set-group">' + escapeHtml(ST('settings.look.background')) + '</div>' +
           '<div class="set-card set-pad">' +
-            '<label class="set-label" for="set-bg-color">Color</label>' +
+            '<label class="set-label" for="set-bg-color">' + escapeHtml(ST('settings.look.color')) + '</label>' +
             '<div class="bg-row">' +
-              '<input type="color" id="set-bg-color" value="' + escapeHtml(curColor) + '" aria-label="Background color">' +
-              '<button type="button" id="set-bg-image">Use a picture…</button>' +
-              '<button type="button" id="set-bg-reset" class="ghost" aria-label="Reset background">Reset</button>' +
+              '<input type="color" id="set-bg-color" value="' + escapeHtml(curColor) + '" aria-label="' + escapeHtml(ST('settings.look.colorAria')) + '">' +
+              '<button type="button" id="set-bg-image">' + escapeHtml(ST('settings.look.usePicture')) + '</button>' +
+              '<button type="button" id="set-bg-reset" class="ghost" aria-label="' + escapeHtml(ST('settings.look.resetBgAria')) + '">' + escapeHtml(ST('settings.look.reset')) + '</button>' +
             '</div>' +
           '</div>' +
-          '<div class="set-group">Text size</div>' +
+          '<div class="set-group">' + escapeHtml(ST('settings.look.textSize')) + '</div>' +
           '<div class="set-card set-pad">' +
-            '<p class="add-help">GifOS’s own text — icon labels, menus, this window. Inside an app, that app’s own controls still apply.</p>' +
-            '<div class="ts-row"><button type="button" id="ts-minus" class="ghost" aria-label="Smaller text">A−</button><span id="ts-val" class="mono" aria-live="polite"></span><button type="button" id="ts-plus" class="ghost" aria-label="Bigger text">A+</button><button type="button" id="ts-reset" class="ghost" aria-label="Reset text size">Reset</button></div>' +
+            '<p class="add-help">' + escapeHtml(ST('settings.look.textSizeHelp')) + '</p>' +
+            '<div class="ts-row"><button type="button" id="ts-minus" class="ghost" aria-label="' + escapeHtml(ST('settings.look.smaller')) + '">A−</button><span id="ts-val" class="mono" aria-live="polite"></span><button type="button" id="ts-plus" class="ghost" aria-label="' + escapeHtml(ST('settings.look.bigger')) + '">A+</button><button type="button" id="ts-reset" class="ghost" aria-label="' + escapeHtml(ST('settings.look.resetSizeAria')) + '">' + escapeHtml(ST('settings.look.reset')) + '</button></div>' +
           '</div>' +
         '</section>' +
         (I18N ? '<section data-page="language" hidden>' + langSectionHtml() + '</section>' : '') +
@@ -3643,42 +3640,42 @@
         '<section data-page="payments" hidden>' + paySectionHtml() + '</section>' +
         '<section data-page="system" hidden>' +
           '<div class="set-card">' +
-            '<button type="button" class="set-row" id="set-go-storage"><span class="set-row-t"><b>Storage</b><span>' + storageLine.replace(/<[^>]+>/g, '') + '</span></span><span class="chev" aria-hidden="true">›</span></button>' +
-            '<button type="button" class="set-row" id="set-go-updates"><span class="set-row-t"><b>Updates</b><span>Latest release and what’s new</span></span><span class="chev" aria-hidden="true">›</span></button>' +
-            '<button type="button" class="set-row" id="set-go-connection"><span class="set-row-t"><b>Invite connection</b><span>' + escapeHtml(relayStatus) + '</span></span><span class="chev" aria-hidden="true">›</span></button>' +
+            '<button type="button" class="set-row" id="set-go-storage"><span class="set-row-t"><b>' + escapeHtml(ST('settings.storage.title')) + '</b><span>' + escapeHtml(storageLine.replace(/<[^>]+>/g, '')) + '</span></span><span class="chev" aria-hidden="true">›</span></button>' +
+            '<button type="button" class="set-row" id="set-go-updates"><span class="set-row-t"><b>' + escapeHtml(ST('settings.updates.title')) + '</b><span>' + escapeHtml(ST('settings.updates.sub')) + '</span></span><span class="chev" aria-hidden="true">›</span></button>' +
+            '<button type="button" class="set-row" id="set-go-connection"><span class="set-row-t"><b>' + escapeHtml(ST('settings.conn.title')) + '</b><span>' + escapeHtml(relayStatus) + '</span></span><span class="chev" aria-hidden="true">›</span></button>' +
           '</div>' +
           '<div class="set-gap"></div>' +
           '<div class="set-card">' +
-            '<button type="button" class="set-row danger" id="set-go-erase"><span class="set-row-t"><b>Erase this computer</b><span>Wipes apps and files in this browser</span></span><span class="chev" aria-hidden="true">›</span></button>' +
+            '<button type="button" class="set-row danger" id="set-go-erase"><span class="set-row-t"><b>' + escapeHtml(ST('settings.erase.title')) + '</b><span>' + escapeHtml(ST('settings.erase.sub')) + '</span></span><span class="chev" aria-hidden="true">›</span></button>' +
           '</div>' +
         '</section>' +
         '<section data-page="storage" hidden>' +
-          '<p class="add-help" id="set-storage-line">Your desktop lives entirely in this browser. ' + storageLine + '<br>' + persistLine + '</p>' +
-          (persisted ? '' : '<button type="button" class="widebtn" id="set-persist">Protect this Home Screen now</button>') +
+          '<p class="add-help" id="set-storage-line">' + escapeHtml(ST('settings.storage.lead')) + ' ' + richHtml(storageLine) + '<br>' + escapeHtml(persistLine) + '</p>' +
+          (persisted ? '' : '<button type="button" class="widebtn" id="set-persist">' + escapeHtml(ST('settings.storage.protect')) + '</button>') +
         '</section>' +
         '<section data-page="updates" hidden>' +
-          '<details class="adv" id="set-advanced" open><summary class="set-sr" tabindex="-1">System</summary>' +
-          '<h4 id="set-version-h">Updates</h4>' +
-          '<div id="set-version"><p class="add-help">Running <b>v' + escapeHtml(VERSION) + '</b>. Checking gifos.app for the latest…</p></div>' +
+          '<details class="adv" id="set-advanced" open><summary class="set-sr" tabindex="-1">' + escapeHtml(ST('settings.system.title')) + '</summary>' +
+          '<h4 id="set-version-h">' + escapeHtml(ST('settings.updates.title')) + '</h4>' +
+          '<div id="set-version"><p class="add-help">' + STh('settings.updates.running', { version: VERSION }) + '</p></div>' +
           '</details></section>' +
         '<section data-page="connection" hidden>' +
-          '<p class="add-help">This is how invite links find each other. Leave the field blank to keep the standard connection, <span class="mono">wss://relay.gifos.app</span>. Test checks that address. A change applies to apps you open afterwards.</p>' +
-          '<label class="set-label" for="set-relay">Your own connection</label>' +
-          '<input id="set-relay" aria-label="Your own connection" placeholder="Leave blank to keep the standard one" value="' + escapeHtml(relay) + '">' +
-          '<button type="button" class="widebtn" id="set-relay-test">Test connection</button>' +
+          '<p class="add-help">' + STh('settings.conn.intro') + '</p>' +
+          '<label class="set-label" for="set-relay">' + escapeHtml(ST('settings.conn.own')) + '</label>' +
+          '<input id="set-relay" aria-label="' + escapeHtml(ST('settings.conn.own')) + '" placeholder="' + escapeHtml(ST('settings.conn.ph')) + '" value="' + escapeHtml(relay) + '">' +
+          '<button type="button" class="widebtn" id="set-relay-test">' + escapeHtml(ST('settings.conn.test')) + '</button>' +
           '<p class="add-help" id="set-relay-status" aria-live="polite"></p>' +
         '</section>' +
         '<section data-page="erase" hidden>' +
-          '<button type="button" class="widebtn" id="set-backup">Back up first</button>' +
-          '<button type="button" class="widebtn danger" id="set-erase">Erase this computer…</button>' +
+          '<button type="button" class="widebtn" id="set-backup">' + escapeHtml(ST('settings.erase.backup')) + '</button>' +
+          '<button type="button" class="widebtn danger" id="set-erase">' + escapeHtml(ST('settings.erase.go')) + '</button>' +
         '</section>' +
       '</div>';
     bg.appendChild(box);
     const TITLES = {
-      root: 'Settings', you: 'Your name', look: 'Background and text', language: I18N ? I18N.t('settings.lang.title') : '', ai: 'AI',
-      accounts: 'Connected accounts', payments: 'Payments', system: 'System',
-      storage: 'Storage', updates: 'Updates', connection: 'Invite connection',
-      erase: 'Erase this computer',
+      root: ST('settings.title'), you: ST('settings.you.title'), look: ST('settings.look.title'), language: I18N ? I18N.t('settings.lang.title') : '', ai: ST('settings.ai.title'),
+      accounts: ST('settings.accounts.title'), payments: ST('settings.pay.title'), system: ST('settings.system.title'),
+      storage: ST('settings.storage.title'), updates: ST('settings.updates.title'), connection: ST('settings.conn.title'),
+      erase: ST('settings.erase.title'),
     };
     let stack = ['root'];
     // One save model on every page. Name, the invite connection, and AI wait
@@ -3709,7 +3706,7 @@
     const paintNameStatus = () => {
       const nameEl = box.querySelector('#set-name');
       const ns = box.querySelector('#set-status-name');
-      if (nameEl && ns) ns.textContent = nameEl.value.trim() || 'Not set';
+      if (nameEl && ns) ns.textContent = nameEl.value.trim() || ST('settings.you.notSet');
     };
     const paintActions = () => {
       const dirty = isDirty();
@@ -3724,7 +3721,7 @@
       box.querySelectorAll('[data-page]').forEach((s) => { s.hidden = s.getAttribute('data-page') !== id; });
       box.dataset.page = id;
       const title = box.querySelector('#set-title');
-      if (title) title.textContent = TITLES[id] || 'Settings';
+      if (title) title.textContent = TITLES[id] || ST('settings.title');
       const backBtn = box.querySelector('#set-back');
       if (backBtn) backBtn.hidden = id === 'root';
       if (id === 'root') paintNameStatus();
@@ -3775,14 +3772,14 @@
       avatarFile.value = '';
       if (!f) return;
       if (avatarErr) avatarErr.textContent = '';
-      const go = (GifOS.avatar && GifOS.avatar.prepareFile) ? GifOS.avatar.prepareFile(f) : Promise.resolve({ ok: false, error: 'Choose a GIF, PNG, JPG, or WebP.' });
+      const go = (GifOS.avatar && GifOS.avatar.prepareFile) ? GifOS.avatar.prepareFile(f) : Promise.resolve({ ok: false, error: ST('settings.you.pictureErr') });
       Promise.resolve(go).then((res) => {
         if (!box.isConnected) return;
-        if (!res || !res.ok) { if (avatarErr) avatarErr.textContent = (res && res.error) || 'Choose a GIF, PNG, JPG, or WebP.'; return; }
+        if (!res || !res.ok) { if (avatarErr) avatarErr.textContent = (res && res.error) || ST('settings.you.pictureErr'); return; }
         box._avatarDraft = { mime: res.mime, hash: res.hash, b64: res.b64 };
         paintAvatar();
         const note = box.querySelector('#set-save-note');
-        if (note && note.textContent === 'Saved') note.textContent = '';
+        if (note && note.textContent === ST('settings.saved')) note.textContent = '';
         paintActions();
       });
     });
@@ -3792,7 +3789,7 @@
       if (avatarErr) avatarErr.textContent = '';
       paintAvatar();
       const note = box.querySelector('#set-save-note');
-      if (note && note.textContent === 'Saved') note.textContent = '';
+      if (note && note.textContent === ST('settings.saved')) note.textContent = '';
       paintActions();
     };
     paintAvatar();
@@ -3802,7 +3799,7 @@
       if (!t || !t.matches) return;
       if (t.matches('#set-name, #set-relay, #set-avatar-file, .ai-f, .ai-src')) {
         const note = box.querySelector('#set-save-note');
-        if (note && note.textContent === 'Saved') note.textContent = '';
+        if (note && note.textContent === ST('settings.saved')) note.textContent = '';
         paintActions();
       }
     };
@@ -3854,15 +3851,15 @@
       // index.html does not load relay-config.js, so a blank field still means
       // the standard connection the apps use.
       let url = box.querySelector('#set-relay').value.trim() || root.GIFOS_RELAY || 'wss://relay.gifos.app';
-      out.textContent = 'Testing ' + url + ' …';
+      out.textContent = ST('settings.conn.testing', { url });
       let done = false;
       const finish = (msg) => { if (!done) { done = true; out.textContent = msg; } };
       try {
         const ws = new WebSocket(url.replace(/\/$/, '') + '/s/connection-test?role=client');
-        const timer = setTimeout(() => { finish('No answer after 8 seconds — this address cannot be reached from here.'); try { ws.close(); } catch (e) {} }, 8000);
-        ws.onmessage = () => { clearTimeout(timer); finish('Connected — invites will work.'); try { ws.close(); } catch (e) {} };
-        ws.onerror = () => { clearTimeout(timer); finish('Could not connect. If you did not set this yourself, try again in a moment; if you run your own service, check that it is live on this domain.'); };
-      } catch (e) { finish('Error: ' + (e.message || e)); }
+        const timer = setTimeout(() => { finish(ST('settings.conn.noAnswer')); try { ws.close(); } catch (e) {} }, 8000);
+        ws.onmessage = () => { clearTimeout(timer); finish(ST('settings.conn.connected')); try { ws.close(); } catch (e) {} };
+        ws.onerror = () => { clearTimeout(timer); finish(ST('settings.conn.failed')); };
+      } catch (e) { finish(ST('settings.conn.error', { message: String(e.message || e) })); }
     };
     const eraseBtn = box.querySelector('#set-erase');
     if (eraseBtn) eraseBtn.onclick = () => { eraseBtn.focus(); resetFlow(); };
@@ -3872,10 +3869,10 @@
     if (persistBtn) persistBtn.onclick = async () => {
       const ok = navigator.storage && navigator.storage.persist ? await navigator.storage.persist() : false;
       if (ok) {
-        persistBtn.textContent = 'Protected';
+        persistBtn.textContent = ST('settings.storage.protected');
         persistBtn.disabled = true;
       } else {
-        persistBtn.textContent = 'The browser declined for now — nothing was lost. It grants this once the site is used more. You can try again.';
+        persistBtn.textContent = ST('settings.storage.declined');
         persistBtn.disabled = false;
       }
     };
@@ -3897,7 +3894,7 @@
       paintAvatar();
       paintNameStatus();
       const note = box.querySelector('#set-save-note');
-      if (note) note.textContent = 'Saved';
+      if (note) note.textContent = ST('settings.saved');
       paintActions();
     };
     const revertDeferred = () => {
@@ -3929,7 +3926,7 @@
     box.querySelector('#set-close').onclick = () => { if (!isDirty()) dlg.close(); };
     box.querySelector('#set-back').onclick = () => back();
     const dlg = armDialog(bg, box, {
-      label: 'Settings',
+      label: ST('settings.title'),
       initial: opts.focus === 'version' ? '#set-back' : '#set-go-you',
       onEscape: () => {
         if (box.dataset.page === 'erase') back();
@@ -3974,7 +3971,7 @@
   // re-pull while already on edge keeps the time the switch ends.
   async function loadEdge() {
     if (!(await reachable())) {
-      showConfirm('Can’t reach gifos.app', 'You appear to be offline. Reconnect and try again — the unreleased build has to download from the site.', [{ label: 'OK' }]);
+      showConfirm(ST('settings.updates.offlineTitle'), ST('settings.updates.offlineBody'), [{ label: ST('settings.ok') }]);
       return;
     }
     const already = attachedTo() === EDGE;
@@ -3993,40 +3990,38 @@
     const edge = v === EDGE;
     const word = edge ? 'EDGE' : v;
     const noBanner = !edge && cmpVer(v, PIN_BANNER_SINCE) < 0;
-    const risks = edge ? [
-      'It is <b>unreleased</b>: it changes without notice and can have bugs that break apps or meetings.',
-      'Things you save on it may not open the same way on the latest release.',
-      'People on the latest release may not be able to join your meetings, or you theirs.',
+    const risks = (edge ? [
+      STh('settings.pin.riskEdge1'),
+      STh('settings.pin.riskEdge2'),
+      STh('settings.pin.riskEdge3'),
     ] : [
-      'It is <b>older</b> than the latest release and misses its fixes, including security fixes.',
-      'Apps and files made with newer releases may not work on it. Meetings still run on the latest release.',
-      noBanner
-        ? 'v' + escapeHtml(v) + ' was made before the header shows a pin. To come back, choose “Use latest” in its Settings, or visit <b>gifos.app/?latest</b>.'
-        : 'The header will say you are pinned, with <b>Back to current release</b> right there.',
-    ];
+      STh('settings.pin.riskOld1'),
+      STh('settings.pin.riskOld2'),
+      noBanner ? STh('settings.pin.riskOldNoBanner', { version: v }) : STh('settings.pin.riskOldBanner'),
+    ]);
     const step = PIN_CONFIRM === 'checkbox'
-      ? '<label class="pin-ack-row"><input type="checkbox" class="pin-ack"> I understand the risks and I’m testing GifOS</label>'
+      ? '<label class="pin-ack-row"><input type="checkbox" class="pin-ack"> ' + escapeHtml(ST('settings.pin.ack')) + '</label>'
       : PIN_CONFIRM === 'hold'
-        ? '<p class="add-help">Press and hold the button to switch.</p>'
-        : '<label class="set-label" for="pin-word">Type <b class="mono">' + escapeHtml(word) + '</b> to confirm</label>' +
-          '<input id="pin-word" class="pin-word" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Type ' + escapeHtml(word) + ' to confirm">';
-    const goLabel = edge ? 'Switch to edge' : 'Switch to v' + v;
+        ? '<p class="add-help">' + escapeHtml(ST('settings.pin.holdHelp')) + '</p>'
+        : '<label class="set-label" for="pin-word">' + STh('settings.pin.type', { word }) + '</label>' +
+          '<input id="pin-word" class="pin-word" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="' + escapeHtml(ST('settings.pin.typeAria', { word })) + '">';
+    const goLabel = edge ? ST('settings.pin.switchEdge') : ST('settings.pin.switchTo', { version: v });
     const bg = document.createElement('div'); bg.className = 'modal-bg';
     const box = document.createElement('div'); box.className = 'modal pin-confirm';
     box.dataset.style = PIN_CONFIRM;
     box.innerHTML =
-      '<h3>' + (edge ? 'Switch to the edge build?' : 'Switch to v' + escapeHtml(v) + '?') + '</h3>' +
-      '<p class="add-help">This is for people testing GifOS before a release. Most people should stay on the latest release.</p>' +
+      '<h3>' + escapeHtml(edge ? ST('settings.pin.titleEdge') : ST('settings.pin.titleVer', { version: v })) + '</h3>' +
+      '<p class="add-help">' + escapeHtml(ST('settings.pin.intro')) + '</p>' +
       '<ul class="pin-risks">' + risks.map((r) => '<li>' + r + '</li>').join('') + '</ul>' + step +
       '<div class="modal-actions">' +
         '<button type="button" class="danger pin-go"' + (PIN_CONFIRM === 'hold' ? '' : ' disabled') + '>' +
-          '<span class="pin-go-fill" aria-hidden="true"></span><span class="pin-go-t">' + escapeHtml(PIN_CONFIRM === 'hold' ? 'Hold to switch' : goLabel) + '</span></button>' +
-        '<button type="button" class="ghost pin-cancel">Cancel</button>' +
+          '<span class="pin-go-fill" aria-hidden="true"></span><span class="pin-go-t">' + escapeHtml(PIN_CONFIRM === 'hold' ? ST('settings.pin.holdToSwitch') : goLabel) + '</span></button>' +
+        '<button type="button" class="ghost pin-cancel">' + escapeHtml(ST('settings.cancel')) + '</button>' +
       '</div>';
     bg.appendChild(box);
     const go = box.querySelector('.pin-go');
     const cancel = box.querySelector('.pin-cancel');
-    const dlg = armDialog(bg, box, { label: edge ? 'Switch to the edge build' : 'Switch to v' + v, initial: cancel });
+    const dlg = armDialog(bg, box, { label: edge ? ST('settings.pin.dialogEdge') : ST('settings.pin.switchTo', { version: v }), initial: cancel });
     let done = false;
     const commit = () => {
       if (done) return;
@@ -4072,8 +4067,8 @@
   function pinHeadCopy(to) {
     if (!to) return null;
     return {
-      label: to === EDGE ? 'Pinned: edge' : ('Pinned: v' + to),
-      action: 'Back to current release',
+      label: to === EDGE ? ST('settings.pin.headEdge') : ST('settings.pin.headVer', { version: to }),
+      action: ST('settings.pin.back'),
     };
   }
   function paintPinHead() {
@@ -4082,6 +4077,8 @@
     if (old) old.remove();
     document.body.style.removeProperty('--pinbar-h');
     let el = document.getElementById('pin-head');
+    // The header paints at boot, before the words are in: load them, then paint again.
+    if (to && GifOS.i18n && !GifOS.i18n.has('settings.pin.back')) { GifOS.i18n.load('settings').then(paintPinHead); return; }
     const copy = pinHeadCopy(to);
     if (!copy) { if (el) el.remove(); return; }
     const menu = document.querySelector('.menubar');
@@ -4096,7 +4093,7 @@
       '<span class="pin-head-t">' + escapeHtml(copy.label) + '</span>' +
       '<button type="button" id="pin-back" aria-label="' + escapeHtml(copy.action) + '">' +
         '<span class="pin-back-wide">' + escapeHtml(copy.action) + '</span>' +
-        '<span class="pin-back-narrow">Use latest</span></button>';
+        '<span class="pin-back-narrow">' + escapeHtml(ST('settings.pin.useLatest')) + '</span></button>';
     el.querySelector('#pin-back').onclick = () => useRelease();
   }
 
@@ -4104,17 +4101,14 @@
   // back to latest (reset:). A pin does not end on its own, so nothing here
   // clears one. An expired: note left by a build that used to time a pin out
   // is still explained once, then dropped.
-  function notePinEnded() {
+  async function notePinEnded() {
     let v = '';
     try { v = localStorage.getItem('gifos_pin_ended') || ''; localStorage.removeItem('gifos_pin_ended'); } catch (e) {}
     const m = /^(expired|reset):(.+)$/.exec(v);
     if (!m) return;
-    const what = m[2] === EDGE ? 'the edge build' : 'v' + escapeHtml(m[2]);
-    showModal('Back on the latest release',
-      (m[1] === 'expired'
-        ? 'This computer’s switch to <b>' + what + '</b> has ended, so it runs the latest release again.'
-        : 'This computer was set to <b>' + what + '</b>. That is now only for people testing GifOS, so it runs the latest release again.') +
-      ' Your files, apps and settings are untouched. Testers can switch again in <b>Settings → System → Updates → Advanced / testing</b>.');
+    if (GifOS.i18n) await GifOS.i18n.load('settings').catch(() => null);
+    const what = m[2] === EDGE ? ST('settings.pin.whatEdge') : ST('settings.pin.whatVer', { version: m[2] });
+    showModal(ST('settings.pin.endedTitle'), STh(m[1] === 'expired' ? 'settings.pin.endedExpired' : 'settings.pin.endedReset', { what }));
   }
 
   // ?edge (query or hash) never switches anyone — the loader stores nothing for
@@ -4157,16 +4151,16 @@
 
     // ---- LATEST: the recommended (and default) choice ----
     const latestLine = !versionChecked
-      ? (offline ? 'Couldn’t check which release is latest.' : 'Checking gifos.app for the latest…')
-      : 'v' + escapeHtml(latestVersion) + (to ? '' : ' · this computer follows it');
-    const away = to === EDGE ? 'This computer is on the edge build.'
-      : to ? 'This computer is pinned to v' + escapeHtml(to) + '.' : '';
+      ? escapeHtml(offline ? ST('settings.updates.couldntCheck') : ST('settings.updates.checking'))
+      : escapeHtml(to ? 'v' + latestVersion : ST('settings.updates.latestFollows', { version: latestVersion }));
+    const away = to === EDGE ? escapeHtml(ST('settings.updates.onEdge'))
+      : to ? escapeHtml(ST('settings.updates.pinnedTo', { version: to })) : '';
     const latestCard =
       '<div class="vlatest' + (to ? '' : ' on') + '" data-selected="' + (to ? '0' : '1') + '">' +
         '<span class="vlatest-mark" aria-hidden="true">' + (to ? '' : '✓') + '</span>' +
-        '<span class="vlatest-t"><b>Latest release (recommended)</b><span>' + latestLine + '</span>' +
+        '<span class="vlatest-t"><b>' + escapeHtml(ST('settings.updates.latest')) + '</b><span>' + latestLine + '</span>' +
           (away ? '<span class="vlatest-away">' + away + '</span>' : '') + '</span>' +
-        (to ? '<button type="button" class="vbtn" id="set-latest">Return to latest</button>' : '') +
+        (to ? '<button type="button" class="vbtn" id="set-latest">' + escapeHtml(ST('settings.updates.returnLatest')) + '</button>' : '') +
       '</div>';
 
     // ---- RELEASE rows, newest first, notes FOLDED behind each. A row is
@@ -4182,9 +4176,9 @@
       const hasNotes = entryHasNotes(e);
       const critical = !!(e && e.critical && !onEdge && cmpVer(v, VERSION) > 0);
       const dateTag = (e && e.date) ? '<span class="cl-date">' + escapeHtml(e.date) + '</span>' : '';
-      const tags = (isLive ? '<span class="vpill live">latest</span>' : '') +
-                   (isRunning ? '<span class="vpill run">running</span>' : '') +
-                   (critical ? '<span class="vpill crit">critical</span>' : '');
+      const tags = (isLive ? '<span class="vpill live">' + escapeHtml(ST('settings.updates.pillLatest')) + '</span>' : '') +
+                   (isRunning ? '<span class="vpill run">' + escapeHtml(ST('settings.updates.pillRunning')) + '</span>' : '') +
+                   (critical ? '<span class="vpill crit">' + escapeHtml(ST('settings.updates.pillCritical')) + '</span>' : '');
       const head =
         '<span class="vcaret' + (hasNotes ? '' : ' vcaret-empty') + '" aria-hidden="true">▸</span>' +
         '<span class="vlabel">v' + escapeHtml(v) + ' ' + tags + dateTag + '</span>';
@@ -4200,32 +4194,32 @@
 
     // ---- ADVANCED / TESTING (collapsed): edge, then older releases ----
     const edgeOn = to === EDGE;
-    const edgeLabel = edgeOn ? (newerEdge ? 'Update' : 'Re-pull') : 'Use edge…';
+    const edgeLabel = edgeOn ? ST(newerEdge ? 'settings.updates.edgeUpdate' : 'settings.updates.edgeRepull') : ST('settings.updates.edgeUse');
     const edgeRow =
       '<div class="vitem"><details class="vrow vedge">' +
         '<summary class="vhead">' +
           '<span class="vcaret" aria-hidden="true">▸</span>' +
-          '<span class="vlabel">Edge build' +
-            (onEdge ? ' <span class="vpill run">running</span>' : '') + '</span>' +
+          '<span class="vlabel">' + escapeHtml(ST('settings.updates.edgeBuild')) +
+            (onEdge ? ' <span class="vpill run">' + escapeHtml(ST('settings.updates.pillRunning')) + '</span>' : '') + '</span>' +
         '</summary>' +
-        '<div class="vnotes"><p class="add-help">The unreleased build at the site root, ahead of every release. You can jump to the latest, but edge builds aren’t archived — you can’t pin or roll back to a specific one.</p></div>' +
+        '<div class="vnotes"><p class="add-help">' + escapeHtml(ST('settings.updates.edgeHelp')) + '</p></div>' +
       '</details>' +
       '<button type="button" class="vbtn' + (edgeOn && !newerEdge ? ' ghost' : '') + '" id="set-edge">' + edgeLabel + '</button></div>';
     const olderHtml = PIN_OLDER_PICKER === 'type'
-      ? '<div class="vtype"><label class="set-label" for="set-pin-version">Older release</label>' +
-          '<div class="vtype-row"><input id="set-pin-version" class="mono" placeholder="e.g. ' + escapeHtml(older[0] || '0.0.0') + '" autocomplete="off" spellcheck="false" aria-label="Exact older version">' +
-          '<button type="button" class="vbtn" id="set-pin-go">Pin…</button></div>' +
+      ? '<div class="vtype"><label class="set-label" for="set-pin-version">' + escapeHtml(ST('settings.updates.olderRelease')) + '</label>' +
+          '<div class="vtype-row"><input id="set-pin-version" class="mono" placeholder="' + escapeHtml(ST('settings.updates.olderPh', { example: older[0] || '0.0.0' })) + '" autocomplete="off" spellcheck="false" aria-label="' + escapeHtml(ST('settings.updates.olderAria')) + '">' +
+          '<button type="button" class="vbtn" id="set-pin-go">' + escapeHtml(ST('settings.updates.pin')) + '</button></div>' +
           '<p class="add-help" id="set-pin-note" aria-live="polite"></p></div>'
-      : older.map((v) => rowHtml(v, '<button type="button" data-v="' + escapeHtml(v) + '" class="vbtn rollback">Pin…</button>')).join('');
+      : older.map((v) => rowHtml(v, '<button type="button" data-v="' + escapeHtml(v) + '" class="vbtn rollback">' + escapeHtml(ST('settings.updates.pin')) + '</button>')).join('');
     const testing =
       '<details class="vtesting" id="set-testing"' + (testingOpen ? ' open' : '') + '>' +
-        '<summary class="vhead"><span class="vcaret" aria-hidden="true">▸</span>Advanced / testing</summary>' +
-        '<p class="add-help">For people testing GifOS before it is released. Most people never need this. Every switch asks you to confirm. A pin stays until you come back.</p>' +
+        '<summary class="vhead"><span class="vcaret" aria-hidden="true">▸</span>' + escapeHtml(ST('settings.updates.testing')) + '</summary>' +
+        '<p class="add-help">' + escapeHtml(ST('settings.updates.testingHelp')) + '</p>' +
         '<div class="vlist">' + edgeRow + olderHtml + '</div>' +
       '</details>';
 
     container.innerHTML =
-      (offline ? '<p class="add-help bad">Couldn’t reach gifos.app to check the latest release — you may be offline. The snapshots below still work.</p>' : '') +
+      (offline ? '<p class="add-help bad">' + escapeHtml(ST('settings.updates.offlineBad')) + '</p>' : '') +
       latestCard + '<div class="vlist">' + main.join('') + '</div>' + testing;
     const lb = container.querySelector('#set-latest');
     if (lb) lb.onclick = (ev) => { ev.preventDefault(); useRelease(); };
@@ -4241,7 +4235,7 @@
     if (tg) tg.onclick = () => {
       const v = (container.querySelector('#set-pin-version').value || '').trim().replace(/^v/i, '');
       const note = container.querySelector('#set-pin-note');
-      if (older.indexOf(v) === -1) { note.textContent = 'Type an older release number exactly, like ' + (older[0] || '0.0.0') + '.'; return; }
+      if (older.indexOf(v) === -1) { note.textContent = ST('settings.updates.pinNote', { example: older[0] || '0.0.0' }); return; }
       note.textContent = '';
       confirmPin(v);
     };
@@ -4267,7 +4261,7 @@
         '<ul class="cl-notes">' + arr.map((n) => '<li>' + escapeHtml(String(n)) + '</li>').join('') + '</ul>';
     };
     return (e.headline ? '<div class="cl-headline">' + escapeHtml(e.headline) + '</div>' : '') +
-           list('New', e.features) + list('Fixed', e.fixes) + list('', e.notes);
+           list(ST('settings.updates.notesNew'), e.features) + list(ST('settings.updates.notesFixed'), e.fixes) + list('', e.notes);
   }
 
   addBtn.addEventListener('click', showAddDialog);
@@ -4297,33 +4291,33 @@
       const rows = h.length ? h.map((e, i) =>
         '<div class="hist-row">' +
           '<a class="hist-open" data-url="' + escapeHtml(e.url || '') + '">' +
-            '<span class="hist-name">' + escapeHtml(e.name || 'Invite') + '</span>' +
+            '<span class="hist-name">' + escapeHtml(e.name || dt('desktop.history.invite')) + '</span>' +
             '<span class="hist-meta">' + escapeHtml(relTime(e.ts) + ' · ' + shortInviteUrl(e.url || '')) + '</span>' +
           '</a>' +
-          '<button type="button" class="hist-del row-del" data-i="' + i + '" title="Remove" aria-label="Remove">' + DEL_ICON + '</button>' +
+          '<button type="button" class="hist-del row-del" data-i="' + i + '" title="' + escapeHtml(dt('desktop.history.remove')) + '" aria-label="' + escapeHtml(dt('desktop.history.remove')) + '">' + DEL_ICON + '</button>' +
         '</div>').join('')
-        : '<p class="add-help">No invites visited yet. Open a friend’s invite link and it will show up here.</p>';
+        : '<p class="add-help">' + escapeHtml(dt('desktop.history.none')) + '</p>';
       box.innerHTML =
-        '<h3>Invite history</h3>' +
-        '<p class="add-help">Sessions you’ve joined. Tap one to rejoin; the trash button removes it. This list lives only in this browser.</p>' +
+        '<h3>' + escapeHtml(dt('desktop.history.title')) + '</h3>' +
+        '<p class="add-help">' + escapeHtml(dt('desktop.history.intro')) + '</p>' +
         '<div class="hist-list">' + rows + '</div>' +
-        '<div class="modal-actions"><button class="ghost" id="hist-close">Close</button></div>' +
+        '<div class="modal-actions"><button class="ghost" id="hist-close">' + escapeHtml(dt('desktop.history.close')) + '</button></div>' +
         // "Clear all" is demoted to a small link, well clear of Close, so it can't
         // be fat-fingered — only Close should be an easy target. (It still confirms.)
-        (h.length ? '<div class="hist-clearwrap"><a class="hist-clear-link" id="hist-clear">Clear all invites</a></div>' : '');
+        (h.length ? '<div class="hist-clearwrap"><a class="hist-clear-link" id="hist-clear">' + escapeHtml(dt('desktop.history.clearLink')) + '</a></div>' : '');
       // Tapping a row opens the invite in a new tab — a direct gesture, so it's
       // allowed on iOS (unlike the deferred app-open, which reserves its tab).
       box.querySelectorAll('.hist-open').forEach((a) => { a.onclick = () => { const u = a.getAttribute('data-url'); if (u && /^https?:\/\//i.test(u)) root.open(u, '_blank'); }; });
       box.querySelectorAll('.hist-del').forEach((b) => { b.onclick = (ev) => { ev.stopPropagation(); const arr = loadInviteHistory(); arr.splice(+b.getAttribute('data-i'), 1); saveInviteHistory(arr); paint(); }; });
       const clr = box.querySelector('#hist-clear'); if (clr) clr.onclick = () => {
         const n = loadInviteHistory().length;
-        showConfirm('Clear invite history?', 'Remove all ' + n + ' saved invite link' + (n === 1 ? '' : 's') + '? This only clears the list on this device — the sessions themselves aren’t affected.',
-          [{ label: 'Clear all', danger: true, fn: () => { saveInviteHistory([]); paint(); } }]);
+        showConfirm(dt('desktop.history.clearTitle'), dt('desktop.history.clearBody', { n }),
+          [{ label: dt('desktop.history.clearAll'), danger: true, fn: () => { saveInviteHistory([]); paint(); } }]);
       };
       box.querySelector('#hist-close').onclick = () => bg._close();
     };
     paint();
-    const dlg = armDialog(bg, box, { label: 'Invite history', initial: '#hist-close' });
+    const dlg = armDialog(bg, box, { label: dt('desktop.history.title'), initial: '#hist-close' });
     bg._close = () => dlg.close();
     bg.addEventListener('click', (e) => { if (e.target === bg) bg._close(); });
   }
@@ -4435,22 +4429,22 @@
   // resolve true to continue; anything else cancels the download unread.
   async function fetchGifFromUrl(raw, onProgress, onLarge) {
     let url;
-    try { url = new URL(raw); } catch (e) { return { error: 'That doesn’t look like a web link.' }; }
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') return { error: 'Only http(s) links work.' };
+    try { url = new URL(raw); } catch (e) { return { error: dt('desktop.fetch.notLink') }; }
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return { error: dt('desktop.fetch.onlyHttp') };
     let buf;
     try {
       const r = await fetch(url.toString(), { redirect: 'follow' });
-      if (!r.ok) return { error: 'The link returned an error (' + r.status + ').' };
+      if (!r.ok) return { error: dt('desktop.fetch.status', { status: r.status }) };
       // Read up to the ceiling WHILE it streams: a link to a multi-gigabyte
       // file must fail with a message, not by exhausting the tab's memory
       // before arrayBuffer() ever returns. The ceiling is well above any App
       // GIF (the inflate cap is 2 GB−1 on the unpacked side).
       const cl = Number(r.headers.get('content-length'));
-      if (cl > RUN_MAX_BYTES) { try { r.body && r.body.cancel(); } catch (e) {} return { error: 'That file is bigger than ' + Math.round(RUN_MAX_BYTES / 1048576) + ' MB — too large to open here.' }; }
+      if (cl > RUN_MAX_BYTES) { try { r.body && r.body.cancel(); } catch (e) {} return { error: dt('desktop.fetch.tooBig', { mb: Math.round(RUN_MAX_BYTES / 1048576) }) }; }
       if (onLarge && cl > RUN_CONFIRM_BYTES) {
         let ok = false;
         try { ok = await onLarge(cl, url.host); } catch (e) { ok = false; }
-        if (ok !== true) { try { r.body && r.body.cancel(); } catch (e) {} return { cancelled: true, error: 'Cancelled.' }; }
+        if (ok !== true) { try { r.body && r.body.cancel(); } catch (e) {} return { cancelled: true, error: dt('desktop.fetch.cancelled') }; }
       }
       if (r.body && typeof r.body.getReader === 'function') {
         const reader = r.body.getReader();
@@ -4465,7 +4459,7 @@
           const { done, value } = await reader.read();
           if (done) break;
           total += value.length;
-          if (total > RUN_MAX_BYTES) { try { reader.cancel(); } catch (e) {} return { error: 'That file is bigger than ' + Math.round(RUN_MAX_BYTES / 1048576) + ' MB — too large to open here.' }; }
+          if (total > RUN_MAX_BYTES) { try { reader.cancel(); } catch (e) {} return { error: dt('desktop.fetch.tooBig', { mb: Math.round(RUN_MAX_BYTES / 1048576) }) }; }
           if (fixed && total > fixed.length) { chunks = [fixed.subarray(0, total - value.length)]; fixed = null; }
           if (fixed) fixed.set(value, total - value.length); else chunks.push(value);
           if (onProgress) { try { onProgress(total, cl > 0 ? cl : 0); } catch (e) {} }
@@ -4477,7 +4471,7 @@
         }
       } else {
         buf = new Uint8Array(await r.arrayBuffer());
-        if (buf.length > RUN_MAX_BYTES) return { error: 'That file is bigger than ' + Math.round(RUN_MAX_BYTES / 1048576) + ' MB — too large to open here.' };
+        if (buf.length > RUN_MAX_BYTES) return { error: dt('desktop.fetch.tooBig', { mb: Math.round(RUN_MAX_BYTES / 1048576) }) };
       }
     } catch (e) {
       // A TypeError from fetch is the CORS/network signature. Anything else —
@@ -4485,13 +4479,11 @@
       // say what it was: for a while EVERY failure here was blamed on CORS,
       // including a 500 MB download dying in a private tab.
       if (e instanceof TypeError) {
-        return { error: 'Couldn’t load that link — the network refused, or the site it’s on won’t let another page read the file (no CORS). Use a direct link to the GIF bytes (for GitHub, the raw.githubusercontent.com link works), or save the GIF to your device and use ＋ Add file(s).' };
+        return { error: dt('desktop.fetch.network') };
       }
-      return { error: 'The download failed partway — ' +
-        (e && e.name ? e.name + ': ' : '') + ((e && e.message) || 'unknown error') +
-        '. A very large app needs a normal (not private) window and enough free memory.' };
+      return { error: dt('desktop.fetch.partway', { detail: (e && e.name ? e.name + ': ' : '') + ((e && e.message) || dt('desktop.fetch.unknownError')) }) };
     }
-    if (!(buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46)) return { error: 'That link isn’t a GIF file.' };
+    if (!(buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46)) return { error: dt('desktop.fetch.notGif') };
     let name = '';
     try { name = decodeURIComponent((url.pathname.split('/').pop() || '').split('?')[0]); } catch (e) {}
     name = (name || 'download').replace(/[^\w.\-]+/g, '_');
@@ -4566,32 +4558,31 @@
       }
       history.replaceState(null, '', location.pathname + rest);
     } catch (e) {}
-    const mb = (n) => (n >= 1048576 ? Math.round(n / 1048576) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB');
-    const busy = showBusy('Opening this app', 'Downloading…');
+    const mb = (n) => (n >= 1048576 ? sizeIn(Math.round(n / 1048576), 'MB', 0) : sizeIn(Math.max(1, Math.round(n / 1024)), 'KB', 0));
+    const busy = showBusy(dt('desktop.run.openingTitle'), dt('desktop.run.downloading'));
     // A big one asks first. The link came from a stranger's page; before this
     // tab buffers hundreds of megabytes on that page's say-so, the person
     // sees where it comes from and how much it is, and taps. Cancel leaves
     // nothing behind: no bytes were read, nothing was stored.
     const confirmLarge = (total, host) => new Promise((resolve) => {
       busy.hide();
-      showConfirm('Open a large app?',
-        'This link downloads a <b>' + mb(total) + '</b> app from <b>' + escapeHtml(host) + '</b>. ' +
-        'It is kept on this device so it opens offline next time. Continue?',
-        [{ label: 'Download ' + mb(total), fn: () => { busy.show(); resolve(true); } }],
+      showConfirm(dt('desktop.run.largeTitle'),
+        dt('desktop.run.largeBody', { size: mb(total), host: escapeHtml(host) }),
+        [{ label: dt('desktop.run.download', { size: mb(total) }), fn: () => { busy.show(); resolve(true); } }],
         () => resolve(false));
     });
     const r = await fetchGifFromUrl(raw, (got, total) => {
-      busy.say(total ? 'Downloading — ' + mb(got) + ' of ' + mb(total) : 'Downloading — ' + mb(got),
+      busy.say(total ? dt('desktop.run.downloadingOf', { got: mb(got), total: mb(total) }) : dt('desktop.run.downloadingGot', { got: mb(got) }),
         total ? got / total : null);
     }, confirmLarge);
     if (r.cancelled) { busy.close(); return; }
-    if (r.error) { busy.close(); showModal('Couldn’t run that link', escapeHtml(r.error)); return; }
+    if (r.error) { busy.close(); showModal(dt('desktop.run.cantRun'), escapeHtml(r.error)); return; }
     // Storing a half-gigabyte app is where a private/incognito window gives
     // up (tiny storage quota) — that failure must name itself, not vanish as
     // an unhandled rejection while the desktop sits there looking idle.
     let archive, m, isApp, fileId;
     try {
-      busy.say('Unpacking ' + escapeHtml(r.name) + '…', null);
+      busy.say(dt('desktop.run.unpacking', { name: escapeHtml(r.name) }), null);
       archive = await gif.decode(r.bytes).catch(() => null);
       m = archive ? (gif.readManifest(archive) || {}) : {};
       isApp = !!(archive && (m.appId || m.entry));
@@ -4602,9 +4593,8 @@
       await load();
     } catch (e) {
       busy.close();
-      showModal('Couldn’t save that app',
-        escapeHtml((e && e.name ? e.name + ': ' : '') + ((e && e.message) || 'unknown error')) +
-        '<br>Saving a very large app usually fails in a private/incognito window — open gifos.app in a normal window and tap the link again.');
+      showModal(dt('desktop.run.cantSave'),
+        dt('desktop.run.cantSaveBody', { detail: escapeHtml((e && e.name ? e.name + ': ' : '') + ((e && e.message) || dt('desktop.fetch.unknownError'))) }));
       return;
     }
     busy.close();
@@ -4614,7 +4604,7 @@
       return;
     }
     render();
-    showModal('Added to Stolen Apps', escapeHtml(r.name) + ' was added to your Stolen Apps. (It isn’t a runnable app GIF, so it wasn’t launched.)');
+    showModal(dt('desktop.run.addedTitle'), dt('desktop.run.addedBody', { name: escapeHtml(r.name) }));
   }
 
   // gifos_gone=<v> — 404.html set it when the release this computer was pinned
@@ -4625,11 +4615,9 @@
     let gone = '';
     try { gone = localStorage.getItem('gifos_gone') || ''; localStorage.removeItem('gifos_gone'); } catch (e) {}
     if (!gone || !/^\d+\.\d+\.\d+(\.\d+)?$/.test(gone)) return;
-    const here = VERSION === 'edge' ? 'the edge build' + (BUILD ? ' (build ' + BUILD + ')' : '') : 'v' + VERSION;
-    showModal('Build v' + gone + ' has been retired',
-      'This computer was pinned to <b>v' + gone + '</b>, which is no longer available, so it now runs <b>' + escapeHtml(here) + '</b>. ' +
-      'Your files, apps and settings are untouched — every build reads the same desktop. ' +
-      'You can pin a different build any time in <b>Settings → Version</b>.');
+    const here = VERSION === 'edge' ? (BUILD ? dt('desktop.retired.edgeBuild', { build: BUILD }) : dt('desktop.retired.edge')) : 'v' + VERSION;
+    showModal(dt('desktop.retired.title', { gone }),
+      dt('desktop.retired.body', { gone, here: escapeHtml(here) }));
   }
 
   // #place=<fileId> — finish an App Store install. store.js downloaded and
@@ -4651,7 +4639,7 @@
     // Strip it first: a refresh must never re-place the icon.
     try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
     const f = await store.getFile(fileId).catch(() => null);
-    if (!f) { showModal('Nothing to install', 'That install didn’t finish — the app’s file isn’t on this computer. Try installing it again.'); return; }
+    if (!f) { showModal(dt('desktop.place.nothingTitle'), dt('desktop.place.nothingBody')); return; }
     // Already on the desktop (a double-back, a re-shared link): show it, don't
     // add a second icon for the same file.
     if (items.some((i) => i.fileId === fileId)) { render(); return; }
@@ -4669,14 +4657,12 @@
       parent: isProvider ? 'sys_providers' : null, iconSize: 64 });
     await load();
     render();
-    const name = (f.name || 'The app').replace(/\.gif$/i, ''); // showConfirm escapes the title; labels are textContent
-    showConfirm(name + ' is installed',
-      isProvider
-        ? 'It’s in your <b>Providers</b> folder — it can now serve your computer. Assign it to an AI type in <b>Settings → AI models</b> and every app that asks for that ability will use it.'
-        : 'It’s on your Home Screen now — a GIF file you own. Copy it anywhere; it runs anywhere.',
+    const name = (f.name || dt('desktop.place.theApp')).replace(/\.gif$/i, ''); // showConfirm escapes the title; labels are textContent
+    showConfirm(dt('desktop.place.installed', { name }),
+      isProvider ? dt('desktop.place.providerBody') : dt('desktop.place.homeBody'),
       [
-        { label: 'Open ' + name, fn: () => { location.href = 'run.html#id=' + encodeURIComponent(fileId) + nsParam('&db='); } },
-        from === 'store' ? { label: 'Back to the Store', fn: () => { location.href = 'store.html' + (nsParam('#db=') || ''); } } : null,
+        { label: dt('desktop.place.open', { name }), fn: () => { location.href = 'run.html#id=' + encodeURIComponent(fileId) + nsParam('&db='); } },
+        from === 'store' ? { label: dt('desktop.place.backToStore'), fn: () => { location.href = 'store.html' + (nsParam('#db=') || ''); } } : null,
       ].filter(Boolean));
   }
 
@@ -4685,43 +4671,40 @@
     const bg = document.createElement('div'); bg.className = 'modal-bg';
     const box = document.createElement('div'); box.className = 'modal wide';
     box.innerHTML =
-      '<h3>Add to your Home Screen</h3>' +
+      '<h3>' + escapeHtml(dt('desktop.add.title')) + '</h3>' +
       // The store first: "where do I get apps?" is the question this dialog is
       // opened to answer, and browsing a catalog beats pasting a link.
       '<div class="add-actions">' +
-        '<button id="ad-store">🛍️ Browse the App Store…</button>' +
+        '<button id="ad-store">' + escapeHtml(dt('desktop.add.store')) + '</button>' +
       '</div>' +
       '<div class="add-actions">' +
-        '<button id="ad-file">📄 Add file(s)…</button>' +
-        '<button id="ad-folder">📁 New Folder</button>' +
+        '<button id="ad-file">' + escapeHtml(dt('desktop.add.file')) + '</button>' +
+        '<button id="ad-folder">' + escapeHtml(dt('desktop.add.folder')) + '</button>' +
       '</div>' +
       '<div class="add-url-row">' +
-        '<input id="ad-url" type="url" placeholder="…or paste a link to a .gif" autocomplete="off" autocapitalize="off" spellcheck="false">' +
-        '<button id="ad-url-go">Add</button>' +
+        '<input id="ad-url" type="url" placeholder="' + escapeHtml(dt('desktop.add.urlPlaceholder')) + '" autocomplete="off" autocapitalize="off" spellcheck="false">' +
+        '<button id="ad-url-go">' + escapeHtml(dt('desktop.add.urlGo')) + '</button>' +
       '</div>' +
       '<p class="add-help" id="ad-url-msg"></p>' +
-      '<p class="add-help">Share a one-tap link: <span class="mono">gifos.app/?run=&lt;gif link&gt;</span> — or a store name, ' +
-        '<span class="mono">gifos.app/?run=anyroad</span> — opens that app and saves it to your <b>Stolen Apps</b>. ' +
-        'Some apps can be opened <i>on something</i>: <span class="mono">?run=anyroad&amp;go.at=Grand Canyon&amp;go.fly=1</span>. ' +
-        'Whoever follows it sees what the link is asking for, and decides.</p>' +
+      '<p class="add-help">' + dt('desktop.add.shareHelp') + '</p>' +
       '<div class="add-sep"></div>' +
-      '<h4>Ask an AI to build you an app</h4>' +
-      '<p class="add-help">Copy this prompt into any AI (Claude, ChatGPT, Gemini…). It asks what you want, then hands you back a <b>finished .gif file</b> — add it with ＋ Add file(s) above, or just drop it on your Home Screen.</p>' +
+      '<h4>' + escapeHtml(dt('desktop.add.aiTitle')) + '</h4>' +
+      '<p class="add-help">' + dt('desktop.add.aiHelp') + '</p>' +
       '<textarea id="ad-prompt" class="mono" readonly rows="5">' + escapeHtml(AI_PROMPT) + '</textarea>' +
-      '<button id="ad-copy" class="widebtn">📋 Copy prompt</button>' +
+      '<button id="ad-copy" class="widebtn">' + escapeHtml(dt('desktop.add.copy')) + '</button>' +
       '<div class="add-sep"></div>' +
-      '<h4>App builder — got HTML instead?</h4>' +
-      '<p class="add-help">If your AI could only reply with code, paste its complete index.html below and GifOS packs the GIF for you right here. (A <b>.zip</b> via ＋ Add file(s) works for multi-file apps.)</p>' +
-      '<input id="ad-name" placeholder="App name (e.g. Todo)">' +
-      '<textarea id="ad-html" rows="4" placeholder="Paste the AI&#39;s complete index.html here (a ```html code block is fine)"></textarea>' +
+      '<h4>' + escapeHtml(dt('desktop.add.builderTitle')) + '</h4>' +
+      '<p class="add-help">' + dt('desktop.add.builderHelp') + '</p>' +
+      '<input id="ad-name" placeholder="' + escapeHtml(dt('desktop.add.namePlaceholder')) + '">' +
+      '<textarea id="ad-html" rows="4" placeholder="' + escapeHtml(dt('desktop.add.htmlPlaceholder')).replace(/'/g, '&#39;') + '"></textarea>' +
       '<div class="add-sep"></div>' +
-      '<p class="add-help">Made an app? <a href="sign.html" target="_blank" rel="noopener">Sign it 🛡️</a> so people see “Signed by you” — with your domain or email.</p>' +
+      '<p class="add-help">' + dt('desktop.add.signHelp') + '</p>' +
       '<div class="modal-actions">' +
-        '<button id="ad-create">Create app</button>' +
-        '<button class="ghost" id="ad-close">Close</button>' +
+        '<button id="ad-create">' + escapeHtml(dt('desktop.add.create')) + '</button>' +
+        '<button class="ghost" id="ad-close">' + escapeHtml(dt('desktop.add.close')) + '</button>' +
       '</div>';
     bg.appendChild(box);
-    const dlg = armDialog(bg, box, { label: 'Add to your Home Screen' });
+    const dlg = armDialog(bg, box, { label: dt('desktop.add.title') });
     const shut = () => dlg.close();
 
     box.querySelector('#ad-store').onclick = () => { location.href = 'store.html' + (nsParam('#db=') || ''); };
@@ -4731,10 +4714,10 @@
     const goUrl = async () => {
       const v = urlInput.value.trim();
       if (!v) { urlInput.focus(); return; }
-      urlBtn.disabled = true; urlMsg.textContent = 'Fetching…'; urlMsg.className = 'add-help';
+      urlBtn.disabled = true; urlMsg.textContent = dt('desktop.add.fetching'); urlMsg.className = 'add-help';
       const err = await addFromUrl(v, (got, total) => {
-        const mb = (n) => (n >= 1048576 ? Math.round(n / 1048576) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB');
-        urlMsg.textContent = total ? 'Fetching — ' + mb(got) + ' of ' + mb(total) : 'Fetching — ' + mb(got);
+        const mb = (n) => (n >= 1048576 ? sizeIn(Math.round(n / 1048576), 'MB', 0) : sizeIn(Math.max(1, Math.round(n / 1024)), 'KB', 0));
+        urlMsg.textContent = total ? dt('desktop.add.fetchingOf', { got: mb(got), total: mb(total) }) : dt('desktop.add.fetchingGot', { got: mb(got) });
       });
       if (err) { urlBtn.disabled = false; urlMsg.textContent = err; urlMsg.className = 'add-help bad'; return; }
       shut();
@@ -4745,7 +4728,7 @@
       const t = box.querySelector('#ad-prompt'); t.select();
       try { document.execCommand('copy'); } catch (e) {}
       if (navigator.clipboard) navigator.clipboard.writeText(AI_PROMPT).catch(() => {});
-      box.querySelector('#ad-copy').textContent = 'Copied — now paste it into any AI';
+      box.querySelector('#ad-copy').textContent = dt('desktop.add.copied');
     };
     box.querySelector('#ad-create').onclick = async () => {
       const html = extractHtml(box.querySelector('#ad-html').value);
@@ -4770,31 +4753,44 @@
     const bytes = new Uint8Array(await f.arrayBuffer());
     const archive = await gif.decode(bytes).catch(() => null);
     if (!archive || !archive.files['desktop.json']) {
-      showModal('Not a backup GIF', 'That GIF is not a GifOS backup. (App snapshots load by dropping them on the Home Screen.)');
+      showModal(dt('desktop.restoreFile.notBackupTitle'), dt('desktop.restoreFile.notBackupBody'));
       return;
     }
-    showConfirm('Restore this backup?',
-      '<b>This replaces everything currently on this Home Screen</b> with the backup\'s contents.',
-      [{ label: 'Replace Home Screen', danger: true, fn: () => restoreDesktop(archive) }]);
+    showConfirm(dt('desktop.restoreFile.title'),
+      dt('desktop.restoreFile.body'),
+      [{ label: dt('desktop.restoreFile.replace'), danger: true, fn: () => restoreDesktop(archive) }]);
   });
 
   // Dev-only escape hatch — dies before 1.0. Backup is one click away on purpose.
   function resetFlow() {
     // Same channel as eraseReloadUrl: pin, edge, or the live release. Not a
     // reinstall of whatever gifos.app calls latest.
-    const channel = 'You stay on the <b>same version channel</b> you are using now (edge, the live release, or a pinned snapshot).';
+    const channel = dt('desktop.reset.channel');
     const backToErase = () => { const b = document.getElementById('set-erase'); if (b) b.focus(); };
-    showConfirm('Erase this entire computer?',
-      'This wipes every app, file, folder, and wallpaper stored in this browser. There is no undo and no server copy. ' + channel,
+    showConfirm(dt('desktop.reset.title'),
+      dt('desktop.reset.body', { channel }),
       [
-        { label: 'Back up first, then erase', fn: async () => {
+        { label: dt('desktop.reset.backupFirst'), fn: async () => {
           if (!(await backupDesktop().then(() => true, () => false))) return; // no backup, no erase
-          showConfirm('Backup downloaded', 'Your computer image is downloading — it can boot or restore this exact computer later. Erase now? ' + channel,
-            [{ label: 'Erase This Computer', danger: true, fn: eraseComputer }], backToErase, { alert: true });
+          showConfirm(dt('desktop.reset.doneTitle'), dt('desktop.reset.doneBody', { channel }),
+            [{ label: dt('desktop.reset.erase'), danger: true, fn: eraseComputer }], backToErase, { alert: true });
         } },
-        { label: 'Erase without backup', danger: true, fn: eraseComputer },
+        { label: dt('desktop.reset.eraseNoBackup'), danger: true, fn: eraseComputer },
       ], backToErase, { alert: true });
   }
+
+  // Static text in index.html carries data-i18n (words), data-i18n-title and
+  // data-i18n-aria-label (attributes): English in the markup, the reader's
+  // words once the catalog is in. The drop hint is built here, in script.
+  function paintStaticText() {
+    document.querySelectorAll('[data-i18n]').forEach((n) => { n.textContent = dt(n.getAttribute('data-i18n')); });
+    document.querySelectorAll('[data-i18n-title]').forEach((n) => { n.title = dt(n.getAttribute('data-i18n-title')); });
+    document.querySelectorAll('[data-i18n-aria-label]').forEach((n) => { n.setAttribute('aria-label', dt(n.getAttribute('data-i18n-aria-label'))); });
+    dropHint.textContent = dt('desktop.dropHint');
+  }
+  // The desktop words load before the first paint; a language change repaints.
+  const desktopWords = GifOS.i18n.load(['desktop', 'common']).catch(() => null).then(paintStaticText);
+  GifOS.i18n.onChange(() => { paintStaticText(); dropRenderCaches(); render(); });
 
   // deselect on empty click/tap
   surface.addEventListener('pointerdown', (e) => { if (e.target === surface) { selectedId = null; surface.querySelectorAll('.icon.selected').forEach((n) => n.classList.remove('selected')); } });
@@ -5015,7 +5011,7 @@
   // ---------- boot ----------
   requestPersistence();
   paintPinHead();
-  load().then(seedIfEmpty).then(reseedDefaultsIfNeeded).then(ensureSystemItems).then(drainPendingReceipts).then(destackForThisScreen).then(render).then(() => { scheduleStoreDefaults(); }).then(noteRetiredBuild).then(notePinEnded).then(handleRunParam).then(handlePlaceParam).then(handleEdgeLink).then(() => checkForUpdate()).then(reclaimOrphanAssets).then(backfillOrnaments);
+  desktopWords.then(() => load()).then(seedIfEmpty).then(reseedDefaultsIfNeeded).then(ensureSystemItems).then(drainPendingReceipts).then(destackForThisScreen).then(render).then(() => { scheduleStoreDefaults(); }).then(noteRetiredBuild).then(notePinEnded).then(handleRunParam).then(handlePlaceParam).then(handleEdgeLink).then(() => checkForUpdate()).then(reclaimOrphanAssets).then(backfillOrnaments);
 
   GifOS.desktop = { render, load, backfillOrnaments, get stats() { return renderStats; },
     // The lazy seed, awaitable: the promise the boot armed (resolves once it has run), and what it decided.

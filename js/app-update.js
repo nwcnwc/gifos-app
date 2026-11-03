@@ -29,6 +29,15 @@
   'use strict';
   const GifOS = (root.GifOS = root.GifOS || {});
 
+  // The words of this module live in i18n/<locale>/update.json. The English given
+  // here is what shows before the catalog lands or on a page without the loader.
+  const tr = (key, en, p) => {
+    const I = GifOS.i18n;
+    if (I && I.has(key)) return I.t(key, p);
+    return String(en).replace(/\{(\w+)\}/g, (m, k) => (p && p[k] != null ? p[k] : m));
+  };
+  if (GifOS.i18n && GifOS.i18n.load) GifOS.i18n.load('update');
+
   // The catalog lives at the ROOT for every build: a frozen snapshot's
   // /versions/x.y.z/run.html asks the same /apps/index.json as edge does.
   const CATALOG = '/apps/index.json';
@@ -97,15 +106,18 @@
     ? key + encodeURIComponent(GifOS.store.dbName) : '');
   const storeUrl = (slug) => '/store/' + encodeURIComponent(slug) + ns('#db=');
 
+  // A translation may carry <b>…</b>; everything else is escaped text.
+  const rich = (s) => esc(s).replace(/&lt;(\/?)b&gt;/g, '<$1b>');
   function message(d) {
     if (d.kind === 'gifos') {
-      return '<b>A newer ' + esc(d.name) + ' is in the App Store, but it needs GifOS build ' + d.need + ' or newer.</b> ' +
+      const path = tr('update.app.versionPath', 'GifOS ▾ → Settings → Advanced → Version');
+      return rich(tr('update.app.needsBuild', '<b>A newer {name} is in the App Store, but it needs GifOS build {need} or newer.</b>', { name: d.name, need: String(d.need) })) + ' ' +
         (d.rel
-          ? 'Update GifOS first — move to release ' + esc(d.rel) + ' or later in <b>GifOS ▾ → Settings → Advanced → Version</b> — then update the app from the store.'
-          : 'No release has it yet — it is only in the unreleased edge build. Pick <b>Edge build</b> in <b>GifOS ▾ → Settings → Advanced → Version</b> first, or wait for the next release.');
+          ? rich(tr('update.app.updateGifosFirst', 'Update GifOS first — move to release {release} or later in <b>{path}</b> — then update the app from the store.', { release: d.rel, path }))
+          : rich(tr('update.app.edgeOnly', 'No release has it yet — it is only in the unreleased edge build. Pick <b>{edge}</b> in <b>{path}</b> first, or wait for the next release.', { edge: tr('update.app.edgeBuild', 'Edge build'), path })));
     }
-    return '<b>Update available for ' + esc(d.name) + '.</b> ' +
-      '<a href="' + esc(storeUrl(d.slug)) + '" target="_blank" rel="noopener">Update — keeps your data</a>';
+    return rich(tr('update.app.available', '<b>Update available for {name}.</b>', { name: d.name })) + ' ' +
+      '<a href="' + esc(storeUrl(d.slug)) + '" target="_blank" rel="noopener">' + esc(tr('update.app.link', 'Update — keeps your data')) + '</a>';
   }
 
   // A small bar under the app bar. Dismiss is ✕ (dismiss, never delete).
@@ -128,7 +140,7 @@
     el.setAttribute('data-kind', d.kind);
     el.setAttribute('data-slug', d.slug);
     el.innerHTML = '<span class="txt" style="flex:1">' + message(d) + '</span>' +
-      '<button class="close" aria-label="Dismiss" style="background:none;border:0;color:inherit;font-size:1rem;cursor:pointer;padding:0 .2rem">✕</button>';
+      '<button class="close" aria-label="' + esc(tr('update.app.dismiss', 'Dismiss')) + '" style="background:none;border:0;color:inherit;font-size:1rem;cursor:pointer;padding:0 .2rem">✕</button>';
     el.querySelectorAll('a').forEach((a) => {
       a.style.cssText = 'color:#a9c7ff;font-weight:600;text-decoration:underline';
     });
