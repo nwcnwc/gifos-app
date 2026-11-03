@@ -139,6 +139,7 @@
         if ((this.state === 0 || this.state === 1) && TICK - this.retryAt > 20) { if (this.rcPendAt >= 0 && this.oldCell) { this.retryAt = TICK; } /* L3.10.6 */ else if (!this.resumeAsk()) this.join(); }
         else if (this.state === 2) {
           if (TICK - this.retryAt > (this.findAckAt < 0 ? K.FIND_ACK_WAIT : 60)) {
+            this.l381Lost();   /* L38.1 */
             if (this.l32RosterStale() && this.resumeAsk()) { wake(); return true; }   /* L32.1 */
             if (this.f.fabricDoors() && this.lastAsked >= 0 && this.haveRoster && this.f.fabricLinkState(id, this.lastAsked) === LS_CLOSED) { for (let q = 0; q < this.roster.length;) { if (this.roster[q].v === this.lastAsked) this.roster.splice(q, 1); else q++; } this.trace('ROSTER-DROP', id, null, 'seat=%d why=dial-failed', this.lastAsked); }   // L16.4
             if (this.haveRoster && this.roster.length && ++this.seatTries <= 6) { const t = this.pickRoster(); if (t >= 0) this.askSeat(t); else if (!this.resumeAsk()) this.join(); } else { this.seatTries = 0; if (!this.resumeAsk()) this.join(); }

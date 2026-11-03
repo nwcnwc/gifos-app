@@ -45,6 +45,7 @@
     take(c, owner, nbrs, ppFrom = -1, ppTick = -1, nbrsRow = [], ppTickL = -1) {
       const lv = this.w.lv, id = this.id, TICK = this.TICK;
       if (c.i >= C || c.r >= C) return;   // sanity: never take a malformed coord
+      this.l381N = 0;   // L38.1: a seated seat's next entry starts fresh
       if (roomTerm(this, 1) && this.c7At > -1000000 && TICK - this.c7At < K.RELAY_TTL && !(lv.TIERS_ACTIVE && (this.cnat !== E.NAT_OPEN || this.l4NatSeen))) {
         const drop = []; for (const k of this.byeAt.keys()) if (ckPc(k) === 0) drop.push(k); for (const k of drop) this.byeAt.delete(k);   // L8.14
       }

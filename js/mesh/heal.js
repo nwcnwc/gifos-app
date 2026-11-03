@@ -286,7 +286,7 @@
       if (this.l1KidHeals(hole) && ckey(down(hole)) !== ckey(this.coord)) { return; }
       if (!this.hasCoord || this.state !== 3 || this.TICK - this.healAt < 12) { return; }
       if (this.l13('L13.4')) { const hh = this.l13HeldAt.get(ckey(hole)); if (hh !== undefined && this.TICK - hh <= 32) { return; } }
-      if (hole.pc === 0 && this.TICK - this.seatedAt < 60) return;
+      if (hole.pc === 0 && this.TICK - this.seatedAt < 60) { this.l383Due.set(ckey(hole), (this.seatedAt + 60) | 0); return; }   // L38.3: the goodbye is read again when my view comes of age (gaps2.js)   // L1.1
       this.lastChurn = this.TICK | 0;
       let l13Redir = false;
       if (this.l13('L13.5') && hole.pc !== 0 && hole.i === 0 && this.coord.pc === hole.pc && this.coord.r === hole.r && this.coord.i !== 0) {
@@ -670,6 +670,7 @@
       let handTo = -1; { const it = this.rcHanded.get(ckey(this.coord)); if (it !== undefined) handTo = it[0]; }
       for (const x of this.oldNbrIds) { const m = newMsg('LEAVE'); m.ck = this.oldCk; m.id = this.id; m.mvd = ckey(this.coord); m.mv = true; m.nc = handTo; this.emit(x, m); }
       if (this.oldOwnerId >= 0) { this.f.fabricDialJoin(this.id, this.oldOwnerId); const m = newMsg('LEAVE'); m.ck = this.oldCk; m.id = this.id; m.mvd = ckey(this.coord); m.mv = true; m.nc = handTo; this.emit(this.oldOwnerId, m); this.oldOwnerId = -1; }
+      this.l382Vacated();   // L38.2 (gaps2.js)
       this.oldNbrIds.length = 0; this.holdOcc.clear(); this.holdSeen.clear(); this.holdCous.clear(); this.oldPp = -1; this.oldPlacer = -1;
       this.leaseCk = this.oldCk; this.leaseUntil = this.TICK + K.LEASE_TTL;
     },
