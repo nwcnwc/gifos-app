@@ -60,6 +60,8 @@ function install(fab) {
     G4_HOLE = ckey(h) + 1; G4_A = sa; G4_B = sb; G4_AT = T() | 0; G4_JOIN = -1;
     P('OK contest %s left=%d a=%s:%d b=%s:%d moved=%d\n', fab.coordStr(h), x, fab.coordStr(a), sa, fab.coordStr(b), sb, got);
   }
-  fab.plug({ g4Joined, g4Contest });
+  // (C++: file statics mesh_l25e_fab.inc reads and writes)
+  const g4Observer = () => ({ get A() { return G4_A; }, get B() { return G4_B; }, get HOLE() { return G4_HOLE; }, get AT() { return G4_AT; }, get JOIN() { return G4_JOIN; }, set(hole, a, b, at, join) { G4_HOLE = hole; G4_A = a; G4_B = b; G4_AT = at; G4_JOIN = join; } });
+  fab.plug({ g4Joined, g4Contest, g4Parse, g4At, g4Observer });
 }
 module.exports = { install };

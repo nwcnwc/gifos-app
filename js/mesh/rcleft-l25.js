@@ -126,6 +126,7 @@
     l2513Decide(deadline) {
       if (this.l25WitAsk.length && !deadline && this.TICK - this.l25WitAt < K.L25_WIT_WAIT) return 0;
       if (this.l25WitRival > this.l25WitMe && 2 * this.l25WitRival > this.l25WitAskedN) { this.trace('L25.13-GO', this.id, this.coord, 'rival=%d me=%d asked=%d', this.l25WitRival, this.l25WitMe, this.l25WitAskedN); return 1; }
+      if (this.l404Empty(this.l25WitRivalId)) { this.trace('L40.4-GO', this.id, this.coord, 'rival=%d by=%d', this.l25WitRivalId, this.l25By); return 1; }   // an empty rook: the arbiter's word and the rival's (gaps4.js)
       this.trace('L25.13-STAY', this.id, this.coord, 'rival=%d me=%d asked=%d', this.l25WitRival, this.l25WitMe, this.l25WitAskedN); return 2;
     },
   });
