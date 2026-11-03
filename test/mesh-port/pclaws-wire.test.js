@@ -193,6 +193,18 @@ const lost = (pg, x) => (pg.seen || []).concat(pg.inbox).filter((m) => m.t === '
   ok(LS(A, 2) === E.LS_CLOSED && A.seat.dials.fails(2) === 1, 'A reads CLOSED with one failed dial');
 }
 
+// ---- 9b. a far seat my view cannot place (seated by its offer mark, no cell in my view): L18 reads it as unplaced, no throw
+{
+  console.log('l18Route, far seat with no cell in my view');
+  const net = makeNet(); const A = net.page(1), B = net.page(2), C = net.page(3);
+  seatAt(A, S1(0, 0)); seatAt(B, S1(0, 1)); seatAt(C, S1(3, 3));
+  B.seat.occ.set(topo.ckey(S1(0, 0)), 1); A.seat.occ.set(topo.ckey(S1(0, 1)), 2);
+  B.wire.fns.fabricDial(2, 3); net.connect(2, 3); net.tick();   // C learns B is seated from B's offer mark; C's view has no cell for B
+  ok(C.wire.link(2) && C.wire.fns.l18Cell(3, 2) === null, 'C holds a pc to B but no cell for it');
+  let err = null; try { C.wire.fns.l18Route(3, 2); C.wire.fns.fabricDial(3, 2); const m = msg.newMsg('PHONE'); m.id = 3; C.wire.send(1, m); } catch (e) { err = e; }
+  ok(!err, 'l18Route / fabricDial do not throw' + (err ? ' (' + err.message + ')' : ''));
+  ok(C.wire.fns.l18Route(3, 2) === false, 'no L18 route to a seat my view cannot place');
+}
 // ---- 10. page ids reach 2^21: the per-id tables stay sparse (no table sized by an id)
 {
   console.log('big ids');

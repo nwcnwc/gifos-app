@@ -49,9 +49,13 @@
       const f = FAR.get(x); if (f && f.seated >= 0) return f.seated === 1;
       const s = mySeat(); return !!s && !!pc.fns.l18Cell(me, x);
     }
+    // A far seat counts as placed only where my view holds its cell (laws such as l18Route read b.coord). At my offer
+    // gate the dialler's own mark says it is seated: l23Refused reads only that (hasCoord/state), never the cell.
+    let offering = -1;
     function farView(x) {
-      const st = farSeated(x); const s = mySeat();
-      return { hasCoord: st, state: st ? 3 : 0, ctier: far(x).tier, coord: st && s ? pc.fns.l18Cell(me, x) : null, evilDoor: false };
+      const s = mySeat(); const c = s && farSeated(x) ? pc.fns.l18Cell(me, x) : null;
+      const seated = !!c || (x === offering && farSeated(x));
+      return { hasCoord: seated, state: seated ? 3 : 0, ctier: far(x).tier, coord: c, evilDoor: false };
     }
     const seats = new Proxy([], { get(t, k) { if (typeof k === 'string' && /^\d+$/.test(k)) { const x = +k; return x === me ? mySeat() : farView(x); } return t[k]; } });
     const alive = new Proxy([], { get(t, k) { if (typeof k === 'string' && /^\d+$/.test(k)) { const x = +k; if (x !== me) return true; const s = mySeat(); return !!s && !s.dead; } return t[k]; } });
@@ -389,7 +393,8 @@
       mk = mk || {}; const s = mySeat(); if (!s || s.dead || x === me || x < 0) return false;
       const f = far(x); f.seated = mk.s ? 1 : 0; if (mk.tier) f.tier = mk.tier;
       const mt = mk.mt || null, ck = mk.ck || 0;
-      if (pc.l23Refused(me, x, mt, ck)) { trace('PC-REFUSE', me, null, 'peer=%d why=l23', x); io.refuse(x, { busy: 0 }); return false; }
+      let l23r; offering = x; try { l23r = pc.l23Refused(me, x, mt, ck); } finally { offering = -1; }
+      if (l23r) { trace('PC-REFUSE', me, null, 'peer=%d why=l23', x); io.refuse(x, { busy: 0 }); return false; }
       if (mt && !mk.s) {   // L16: an outside knocker at my door (a seated dialler's own door count gated it at its end)
         refusing = x; refusedBusy = false; lv.L16_DEFER = false; let r;
         try { r = pc.l16Refuse(x, me, mt); } finally { refusing = -1; }
