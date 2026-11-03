@@ -346,6 +346,7 @@ function createFabric(opts) {
     const g = me.farGw.get(to); if (g !== undefined && now - g.at <= K.RELAY_TTL) { v.gw = g.gw; if (g.gck) { v.gc = topo.unckey(g.gck - 1); v.gcOk = true; } if (v.seat === 0) v.seat = -1; }
     return v;
   }
+  fab.farView = farView;   // (H4: friend-hop reads the sender's picture of a target)
   // C++: mesh_farview_fab.inc:farSock
   const farSock = (v) => v.seat !== 1 || v.c.pc === 0;
 
