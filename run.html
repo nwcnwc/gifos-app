@@ -3859,54 +3859,54 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <div id="lobby">
     <div class="lob-preview" id="lob-preview">
       <video id="lob-preview-vid" autoplay muted playsinline></video>
-      <span class="lob-pv-name" id="lob-preview-name">You</span>
-      <button type="button" id="lob-desk-more" hidden aria-pressed="false" aria-label="Watch, or change the host key">More</button>
-      <span class="lob-pv-note">You join muted, with the camera off</span>
+      <span data-t="lobPreviewName" class="lob-pv-name" id="lob-preview-name">You</span>
+      <button data-al="lobDeskMoreAria" data-t="more" type="button" id="lob-desk-more" hidden aria-pressed="false" aria-label="Watch, or change the host key">More</button>
+      <span data-t="youJoinMutedWith" class="lob-pv-note">You join muted, with the camera off</span>
     </div>
     <div class="lobby-card">
       <h1 data-t="lobTitle">Meeting</h1>
       <p class="lob-quiet" data-t="lobQuiet">Turn your mic and camera on from the call.</p>
       <button id="lob-open" class="lob-primary"><span data-t="lobStart">Start a call</span><small data-t="lobStartSub">Anyone with the link can join</small></button>
-      <button type="button" id="lob-admin-btn" class="lob-link">Host this call</button>
+      <button data-t="lobAdminBtn" type="button" id="lob-admin-btn" class="lob-link">Host this call</button>
       <div id="lob-admin" class="lob-expand" style="display:none">
-        <input id="lob-admin-name" maxlength="40" placeholder="Name this call" autocomplete="off">
-        <button type="button" id="lob-key-reveal" class="lob-text" hidden>Change host key</button>
+        <input data-ph="lobAdminNamePh" id="lob-admin-name" maxlength="40" placeholder="Name this call" autocomplete="off">
+        <button data-t="lobKeyReveal" type="button" id="lob-key-reveal" class="lob-text" hidden>Change host key</button>
         <div id="lob-key-block">
-        <label class="lob-pwlab">🔑 <b id="lob-admin-pass-head">Host password</b> — only you<small id="lob-admin-pass-note">Do not share it. Guests do not need it, and it is not part of the link.</small></label>
+        <label class="lob-pwlab">🔑 <b data-t="invAdminPh" id="lob-admin-pass-head">Host password</b> — only you<small data-t="lobAdminPassNote" id="lob-admin-pass-note">Do not share it. Guests do not need it, and it is not part of the link.</small></label>
         <div class="lob-keyrow">
-          <input id="lob-admin-pass" type="password" maxlength="64" placeholder="Host password" autocomplete="new-password">
-          <button type="button" id="lob-keygen" class="lob-ghost">Generate</button>
+          <input data-ph="invAdminPh" id="lob-admin-pass" type="password" maxlength="64" placeholder="Host password" autocomplete="new-password">
+          <button data-t="lobKeygen" type="button" id="lob-keygen" class="lob-ghost">Generate</button>
         </div>
         </div>
-        <button type="button" id="lob-guest-reveal" class="lob-text" hidden>Add a guest password</button>
-        <button type="button" id="lob-guest-more" class="lob-link" aria-expanded="false">Add a password for guests</button>
+        <button data-t="lobGuestReveal" type="button" id="lob-guest-reveal" class="lob-text" hidden>Add a guest password</button>
+        <button data-t="lobGuestMore" type="button" id="lob-guest-more" class="lob-link" aria-expanded="false">Add a password for guests</button>
         <div id="lob-guest-extra" style="display:none">
-          <label class="lob-pwlab">🎟 <b id="lob-guest-pass-head">Guest password</b> — the one you share<small id="lob-guest-pass-note">Optional. It is not part of the link.</small></label>
-          <input id="lob-guest-pass" type="password" maxlength="64" placeholder="Guest password (optional)" autocomplete="new-password">
+          <label class="lob-pwlab">🎟 <b data-t="lobGuestPassHead" id="lob-guest-pass-head">Guest password</b> — the one you share<small data-t="lobGuestPassNote" id="lob-guest-pass-note">Optional. It is not part of the link.</small></label>
+          <input data-ph="invGuestPh" id="lob-guest-pass" type="password" maxlength="64" placeholder="Guest password (optional)" autocomplete="new-password">
         </div>
-        <div class="lob-row"><button id="lob-admin-cancel" class="lob-ghost">Cancel</button><button id="lob-admin-go">Start</button></div>
+        <div class="lob-row"><button data-t="shareCancel" id="lob-admin-cancel" class="lob-ghost">Cancel</button><button data-t="lobAdminGo" id="lob-admin-go">Start</button></div>
         <div id="lob-admin-err" class="lob-err"></div>
       </div>
-      <button type="button" id="lob-join-btn" class="lob-link">Join a link</button>
+      <button data-t="lobJoinBtn" type="button" id="lob-join-btn" class="lob-link">Join a link</button>
       <div id="lob-join" class="lob-expand" style="display:none">
-        <input id="lob-join-in" placeholder="Paste link or meeting id" autocomplete="off">
-        <p id="lob-watch-note" class="lob-watch-note" hidden>Watching the broadcast. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.</p>
-        <div class="lob-row"><button id="lob-join-cancel" class="lob-ghost">Cancel</button><button id="lob-join-go">Join</button></div>
+        <input data-ph="lobJoinInPh" id="lob-join-in" placeholder="Paste link or meeting id" autocomplete="off">
+        <p data-t="lobWatchNote" id="lob-watch-note" class="lob-watch-note" hidden>Watching the broadcast. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.</p>
+        <div class="lob-row"><button data-t="shareCancel" id="lob-join-cancel" class="lob-ghost">Cancel</button><button data-t="join" id="lob-join-go">Join</button></div>
         <div id="lob-join-err" class="lob-err"></div>
       </div>
       <!-- Town hall and Stream to friends come after Join: Start, Host and Join
            stay on the first screen even at the largest text. -->
-      <button type="button" id="lob-th-btn" class="lob-link">Start a town hall</button>
-      <button type="button" id="lob-stream" class="lob-link">Stream to friends</button>
+      <button data-t="lobThBtn" type="button" id="lob-th-btn" class="lob-link">Start a town hall</button>
+      <button data-t="lobStream" type="button" id="lob-stream" class="lob-link">Stream to friends</button>
       <div class="lob-sep"></div>
       <div class="lob-hist-h" data-t="lobRecent">Recent &amp; saved</div>
       <div id="lob-list"></div>
       <div id="lob-empty" class="lob-empty" data-t="lobEmpty">Calls you start or join show up here.</div>
       <div class="lob-appear">
-        <div class="lob-appear-k">This is how you'll appear</div>
+        <div data-t="appearTitle" class="lob-appear-k">This is how you'll appear</div>
         <div class="lob-appear-row">
-          <button type="button" id="lob-face" class="lob-face" aria-label="Change your picture"></button>
-          <input id="lob-name-in" maxlength="40" autocomplete="nickname" aria-label="Your name" placeholder="Your name">
+          <button data-al="lobFaceAria" type="button" id="lob-face" class="lob-face" aria-label="Change your picture"></button>
+          <input data-al="setName" data-ph="setName" id="lob-name-in" maxlength="40" autocomplete="nickname" aria-label="Your name" placeholder="Your name">
         </div>
         <input id="lob-face-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp" hidden>
         <b id="lob-name" hidden>…</b>
@@ -3914,50 +3914,50 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     </div>
   </div>
   <div class="topchip">
-    <span id="livebadge" data-state="off" aria-label="You are off air"><i class="livedot" aria-hidden="true"></i><span id="livebadge-txt">OFF AIR</span></span>
-    <a class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
-    <span id="txmark" role="status" aria-label="Transcribing" title="This meeting is written down while people speak. Each browser writes its own voice; Meet Bot writes the rest.">📝 <span data-t="transcribing">Transcribing</span></span>
+    <span data-al="livebadgeAria" id="livebadge" data-state="off" aria-label="You are off air"><i class="livedot" aria-hidden="true"></i><span data-t="livebadgeTxt" id="livebadge-txt">OFF AIR</span></span>
+    <a data-ti="openYourGifosComputerTip" class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
+    <span data-ti="txmarkTip" data-al="transcribing" id="txmark" role="status" aria-label="Transcribing" title="This meeting is written down while people speak. Each browser writes its own voice; Meet Bot writes the rest.">📝 <span data-t="transcribing">Transcribing</span></span>
     <span id="onair" hidden><i class="lamp" aria-hidden="true"></i><span class="words"></span></span>
-    <span class="status" id="status"><button type="button" id="statuscount" aria-expanded="false" aria-controls="roster">Joining…</button><span id="statusrest" class="statustext"></span></span>
+    <span class="status" id="status"><button data-t="statuscount" type="button" id="statuscount" aria-expanded="false" aria-controls="roster">Joining…</button><span id="statusrest" class="statustext"></span></span>
     <button type="button" id="hdrhand" aria-expanded="false" aria-controls="handq"></button>
   </div>
-  <aside id="roster" aria-label="People">
-    <div class="roster-head"><h3 id="roster-title">People</h3><button type="button" id="roster-close">Close</button></div>
-    <input id="roster-find" type="search" placeholder="Find a name" autocomplete="off">
+  <aside data-al="people" id="roster" aria-label="People">
+    <div class="roster-head"><h3 data-t="people" id="roster-title">People</h3><button data-t="setClose" type="button" id="roster-close">Close</button></div>
+    <input data-ph="rosterFind" id="roster-find" type="search" placeholder="Find a name" autocomplete="off">
     <div id="roster-host" hidden></div>
     <div id="roster-waitlist"></div>
     <div id="roster-list"></div>
   </aside>
   <div id="waitself" aria-live="polite"><h3></h3><p></p></div>
-  <button type="button" id="still">Still in the call</button>
-  <aside id="rundown" aria-label="Run of show">
-    <h3 id="rundown-title">Run of show</h3>
+  <button data-t="stillHere" type="button" id="still">Still in the call</button>
+  <aside data-al="orderOfService" id="rundown" aria-label="Run of show">
+    <h3 data-t="orderOfService" id="rundown-title">Run of show</h3>
     <ol id="rundown-list"></ol>
     <p id="rundown-end"></p>
-    <button type="button" id="rundown-next">Next</button>
-    <button type="button" id="song-edit" class="secondary">Song words</button>
+    <button data-t="rdNext" type="button" id="rundown-next">Next</button>
+    <button data-t="songWords" type="button" id="song-edit" class="secondary">Song words</button>
   </aside>
   <aside id="songedit" aria-labelledby="songedit-title">
-    <h3 id="songedit-title">Song words</h3>
-    <p id="songedit-note">One line per line. Song reads them in order.</p>
+    <h3 data-t="songWords" id="songedit-title">Song words</h3>
+    <p data-t="songNote" id="songedit-note">One line per line. Song reads them in order.</p>
     <textarea id="song-text" rows="8" spellcheck="false" aria-labelledby="songedit-title" aria-describedby="songedit-note"></textarea>
     <div class="songedit-row">
-      <button type="button" id="song-save">Save</button>
-      <button type="button" id="song-cancel" class="secondary">Cancel</button>
+      <button data-t="barSave" type="button" id="song-save">Save</button>
+      <button data-t="shareCancel" type="button" id="song-cancel" class="secondary">Cancel</button>
     </div>
   </aside>
-  <aside id="lyrics" aria-label="Lyrics">
-    <p class="ly-k" id="lyrics-program-k">Program</p>
+  <aside data-al="lyricsAria" id="lyrics" aria-label="Lyrics">
+    <p data-t="lyProgram" class="ly-k" id="lyrics-program-k">Program</p>
     <p class="ly-program" id="lyrics-program" aria-live="polite"></p>
-    <p class="ly-k preview" id="lyrics-preview-k">Preview</p>
+    <p data-t="lyPreview" class="ly-k preview" id="lyrics-preview-k">Preview</p>
     <p class="ly-preview" id="lyrics-preview"></p>
-    <button type="button" id="lyrics-next">Next line</button>
+    <button data-t="lyNext" type="button" id="lyrics-next">Next line</button>
   </aside>
-  <button type="button" id="fitbtn" class="fitbtn" aria-pressed="true" aria-label="Gallery" aria-keyshortcuts="Alt+F" title="Fit everyone on one screen. Press to scroll the room instead. Alt+F switches.">▦ Fit</button>
+  <button data-ti="fitbtnTip" data-al="fitbtnAria" data-t="fitbtn" type="button" id="fitbtn" class="fitbtn" aria-pressed="true" aria-label="Gallery" aria-keyshortcuts="Alt+F" title="Fit everyone on one screen. Press to scroll the room instead. Alt+F switches.">▦ Fit</button>
   <div id="livecap"></div>
   <div id="callstate" hidden>
-    <span id="call-live" role="status">Live</span>
-    <button type="button" id="call-rec" aria-pressed="false">Record</button>
+    <span data-t="callLive" id="call-live" role="status">Live</span>
+    <button data-t="record" type="button" id="call-rec" aria-pressed="false">Record</button>
   </div>
   <div id="chatnote" hidden>
     <button type="button" id="chatpreview"><b id="chatpreview-by"></b><span id="chatpreview-txt"></span></button>
@@ -3968,50 +3968,50 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <div id="airbar" hidden>
     <span id="airkind" role="status"></span>
     <span class="airacts">
-      <button type="button" id="airrec" aria-pressed="false">Not recording</button>
+      <button data-t="airrec" type="button" id="airrec" aria-pressed="false">Not recording</button>
       <button type="button" id="airwho">1 here</button>
-      <button type="button" id="airsound" hidden aria-pressed="false">Sound on</button>
+      <button data-t="airsound" type="button" id="airsound" hidden aria-pressed="false">Sound on</button>
     </span>
   </div>
-  <div class="bar collapsed" role="toolbar" aria-label="Call controls. Press ? for keyboard shortcuts">
-    <button id="bargrip" type="button" aria-label="Move the controls" title="Drag to move. Double-tap to reset. Arrow keys nudge.">
+  <div data-al="callControlsPressForAria" class="bar collapsed" role="toolbar" aria-label="Call controls. Press ? for keyboard shortcuts">
+    <button data-ti="bargripTip" data-al="bargripAria" id="bargrip" type="button" aria-label="Move the controls" title="Drag to move. Double-tap to reset. Arrow keys nudge.">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 8h14M5 12h14M5 16h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
     </button>
-    <button id="cam" class="iconbtn off" aria-label="Start video" aria-keyshortcuts="Alt+V" title="Camera off — tap to turn on. Shortcut: V">
+    <button data-ti="camTip" data-al="camAria" id="cam" class="iconbtn off" aria-label="Start video" aria-keyshortcuts="Alt+V" title="Camera off — tap to turn on. Shortcut: V">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <rect x="2" y="6" width="13" height="12" rx="2"/><path d="M15 10.5 22 7v10l-7-3.5"/>
         <line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg>
-      <span class="docklab dockword">Video</span>
+      <span data-t="video" class="docklab dockword">Video</span>
     </button>
-    <button id="mic" class="iconbtn off" aria-label="Unmute" aria-keyshortcuts="Alt+A" title="You are muted — tap to speak. Shortcut: M">
+    <button data-ti="micTip" data-al="unmute" id="mic" class="iconbtn off" aria-label="Unmute" aria-keyshortcuts="Alt+A" title="You are muted — tap to speak. Shortcut: M">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/>
         <line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg>
-      <span class="docklab dockword">Unmute</span>
+      <span data-t="unmute" class="docklab dockword">Unmute</span>
     </button>
     <!-- Smiley, on purpose. The sparkle (AI_SPARK_SVG) is only for AI: the transcript and the note bot. -->
-    <button id="reactbtn" type="button" class="iconbtn" aria-label="Reactions" aria-expanded="false" aria-pressed="false" title="Reactions">
+    <button data-ti="react" data-al="react" id="reactbtn" type="button" class="iconbtn" aria-label="Reactions" aria-expanded="false" aria-pressed="false" title="Reactions">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 14.2c1.1 1.4 2.4 2 4 2s2.9-.6 4-2"/><circle cx="9" cy="10" r=".9" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r=".9" fill="currentColor" stroke="none"/></svg>
       <span class="docklab dockword" data-t="react">Reactions</span>
     </button>
-    <button id="chatbtn" type="button" class="iconbtn" aria-label="Chat" aria-keyshortcuts="Alt+C" title="Chat and share files — stays between the people on this meeting, not on a server">
+    <button data-ti="chatbtnTip" data-al="chat" id="chatbtn" type="button" class="iconbtn" aria-label="Chat" aria-keyshortcuts="Alt+C" title="Chat and share files — stays between the people on this meeting, not on a server">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9l-4 3v-3H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/></svg>
-      <span class="docklab dockword">Chat</span>
+      <span data-t="chat" class="docklab dockword">Chat</span>
       <span class="chatcount" hidden></span>
     </button>
-    <button id="ccdock" aria-keyshortcuts="Alt+K" data-ti="ccTip" type="button" class="iconbtn" aria-pressed="false" aria-label="Captions" title="Show or hide captions on your screen. This meeting is written down either way.">
+    <button data-al="captions" id="ccdock" aria-keyshortcuts="Alt+K" data-ti="ccTip" type="button" class="iconbtn" aria-pressed="false" aria-label="Captions" title="Show or hide captions on your screen. This meeting is written down either way.">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 10a2 2 0 1 0 0 4M17 10a2 2 0 1 0 0 4"/></svg>
       <span class="docklab dockword">CC</span>
     </button>
-    <button id="sharebtn" type="button" class="iconbtn" aria-label="Share screen" aria-keyshortcuts="Alt+S" title="Show the whole room a window, a tab or your desktop. To share a GifOS app, use Run app." style="display:none">
+    <button data-ti="sharebtnTip" data-al="shareScreen" id="sharebtn" type="button" class="iconbtn" aria-label="Share screen" aria-keyshortcuts="Alt+S" title="Show the whole room a window, a tab or your desktop. To share a GifOS app, use Run app." style="display:none">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
       <span class="docklab dockword" data-t="shareScreen">Share screen</span>
     </button>
-    <button id="bartoggle" type="button" class="bartoggle" aria-expanded="false" aria-label="More" title="More">
+    <button data-ti="more" data-al="more" id="bartoggle" type="button" class="bartoggle" aria-expanded="false" aria-label="More" title="More">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
       <span class="docklab dockword" data-t="more">More</span>
     </button>
-    <button id="leavebtn" type="button" aria-label="Leave" aria-keyshortcuts="Alt+Q" title="Leave. Your camera and microphone stop.">
+    <button data-ti="leavebtnTip" data-al="leave" id="leavebtn" type="button" aria-label="Leave" aria-keyshortcuts="Alt+Q" title="Leave. Your camera and microphone stop.">
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g transform="rotate(135 12 12)"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 3.1 2 2 0 0 1 4.1 1h3a2 2 0 0 1 2 1.7c.1 1 .3 1.9.6 2.8a2 2 0 0 1-.5 2.1L8.1 8.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.5 2.8.6a2 2 0 0 1 1.7 2.1z"/></g></svg>
       <span class="docklab dockword" data-t="leave">Leave</span>
     </button>
@@ -4019,10 +4019,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <!-- Dock buttons that do not fit the window wait here (fitDock). -->
     <div class="morerow dockrow" id="dockrow" hidden>
       <button type="button" class="dockmore" data-dock="ccdock" hidden>CC</button>
-      <button type="button" class="dockmore" data-dock="chatbtn" hidden>Chat</button>
-      <button type="button" class="dockmore" data-dock="sharebtn" hidden>Share screen</button>
-      <button type="button" class="dockmore" data-dock="reactbtn" hidden>Reactions</button>
-      <button type="button" class="dockmore" data-dock="stagebtn" hidden>Step off</button>
+      <button data-t="chat" type="button" class="dockmore" data-dock="chatbtn" hidden>Chat</button>
+      <button data-t="shareScreen" type="button" class="dockmore" data-dock="sharebtn" hidden>Share screen</button>
+      <button data-t="react" type="button" class="dockmore" data-dock="reactbtn" hidden>Reactions</button>
+      <button data-t="stepOff" type="button" class="dockmore" data-dock="stagebtn" hidden>Step off</button>
     </div>
     <!-- One sheet for every width, grouped the way a meeting is used. A button
          pick folds the sheet. A text field does not. placeDockForWidth
@@ -4031,71 +4031,71 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <section class="moregroup" data-group="use">
       <h4 data-t="lobTitle">Meeting</h4>
       <div class="morerow" id="userow">
-        <button id="hand" data-t="hand" aria-keyshortcuts="Alt+H" title="Raise your hand — raised hands float to the top">Hand</button>
+        <button data-ti="handTip" id="hand" data-t="hand" aria-keyshortcuts="Alt+H" title="Raise your hand — raised hands float to the top">Hand</button>
         <button id="ccbtn" type="button" aria-pressed="false" data-t="captions" data-ti="ccTip" title="Show or hide captions on your screen. This meeting is written down either way.">Captions</button>
         <button type="button" id="whobtn" data-t="people" data-ti="whoTip" aria-keyshortcuts="Alt+W" title="Who is on this meeting — names and internet addresses">People</button>
-        <button data-t="transcript" aria-keyshortcuts="Alt+T" title="The meeting's live transcript" id="trbtn"><svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>Transcript</button>
-        <button id="qabtn" type="button" title="Questions for the host: ask one, and vote up the ones you want answered">Questions</button>
+        <button data-ti="trbtnTip" data-t="transcript" aria-keyshortcuts="Alt+T" title="The meeting's live transcript" id="trbtn"><svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>Transcript</button>
+        <button data-ti="qabtnTip" data-t="qabtn" id="qabtn" type="button" title="Questions for the host: ask one, and vote up the ones you want answered">Questions</button>
       </div>
     </section>
     <section class="moregroup" data-group="video">
       <h4 data-t="yourVideo">Your video</h4>
       <div class="moresegs">
-    <span class="blurctl" title="How much your own video is blurred to everyone else">
+    <span data-ti="howMuchYourOwnTip" class="blurctl" title="How much your own video is blurred to everyone else">
       <span class="blurlbl" data-t="blur">Blur</span>
-      <span id="blurseg" class="segwrap" role="group" aria-label="Blur level">
-        <button class="seg" id="blur-max" data-blur="2">Max</button>
-        <button class="seg" id="blur-min" data-blur="1">Min</button>
+      <span data-al="blursegAria" id="blurseg" class="segwrap" role="group" aria-label="Blur level">
+        <button data-t="blurMax" class="seg" id="blur-max" data-blur="2">Max</button>
+        <button data-t="blurMin" class="seg" id="blur-min" data-blur="1">Min</button>
         <button class="seg" id="blur-none" data-blur="0" data-t="noBlur">No blur</button>
       </span>
     </span>
-    <span class="blurctl selfctl" id="selfctl" title="Where your own video sits. Tile is the default: you are a normal tile and you cover nobody.">
-      <span class="blurlbl">You</span>
-      <span class="segwrap" role="group" aria-label="Your video">
-        <button type="button" class="seg" data-self-arr="tile" title="A normal tile, first in the grid">Tile</button>
-        <button type="button" class="seg" data-self-arr="float" title="A window you can drag. Pick a size and a corner.">Float</button>
-        <button type="button" class="seg" data-self-arr="strip" title="A band on one edge. It does not cover anyone.">Strip</button>
-        <button type="button" class="seg" data-self-arr="hidden" title="Hide your video on this screen. The camera still sends if it is on.">Hide</button>
+    <span data-ti="selfctlTip" class="blurctl selfctl" id="selfctl" title="Where your own video sits. Tile is the default: you are a normal tile and you cover nobody.">
+      <span data-t="lobPreviewName" class="blurlbl">You</span>
+      <span data-al="yourVideo" class="segwrap" role="group" aria-label="Your video">
+        <button data-ti="aNormalTileFirstTip" data-t="tile" type="button" class="seg" data-self-arr="tile" title="A normal tile, first in the grid">Tile</button>
+        <button data-ti="aWindowYouCanTip" data-t="float" type="button" class="seg" data-self-arr="float" title="A window you can drag. Pick a size and a corner.">Float</button>
+        <button data-ti="aBandOnOneTip" data-t="strip" type="button" class="seg" data-self-arr="strip" title="A band on one edge. It does not cover anyone.">Strip</button>
+        <button data-ti="hideYourVideoOnTip" data-t="barHide" type="button" class="seg" data-self-arr="hidden" title="Hide your video on this screen. The camera still sends if it is on.">Hide</button>
       </span>
     </span>
-    <span class="blurctl selfctl" id="selfsize" hidden title="How big your float or strip is">
-      <span class="blurlbl">Size</span>
-      <span class="segwrap" role="group" aria-label="Your video size">
+    <span data-ti="selfsizeTip" class="blurctl selfctl" id="selfsize" hidden title="How big your float or strip is">
+      <span data-t="size" class="blurlbl">Size</span>
+      <span data-al="yourVideoSizeAria" class="segwrap" role="group" aria-label="Your video size">
         <button type="button" class="seg" data-self-size="s">S</button>
         <button type="button" class="seg" data-self-size="m">M</button>
         <button type="button" class="seg" data-self-size="l">L</button>
       </span>
     </span>
-    <span class="blurctl selfctl" id="selfcorner" hidden title="Corner for the floating video. You can also drag it.">
-      <span class="blurlbl" id="selfcorner-lbl">Corner</span>
-      <span class="segwrap" role="group" aria-label="Floating video corner">
+    <span data-ti="selfcornerTip" class="blurctl selfctl" id="selfcorner" hidden title="Corner for the floating video. You can also drag it.">
+      <span data-t="selfcornerLbl" class="blurlbl" id="selfcorner-lbl">Corner</span>
+      <span data-al="floatingVideoCornerAria" class="segwrap" role="group" aria-label="Floating video corner">
         <button type="button" class="seg" data-self-anchor="tl">TL</button>
         <button type="button" class="seg" data-self-anchor="tr">TR</button>
         <button type="button" class="seg" data-self-anchor="bl">BL</button>
         <button type="button" class="seg" data-self-anchor="br">BR</button>
       </span>
     </span>
-    <span class="blurctl selfctl" id="selfedge" hidden title="Which edge your strip uses. Bottom on a phone until you choose.">
-      <span class="blurlbl" id="selfedge-lbl">Place</span>
-      <span class="segwrap" role="group" aria-label="Your strip edge">
-        <button type="button" class="seg" data-self-edge="bottom">Bottom</button>
-        <button type="button" class="seg" data-self-edge="right">Right</button>
-        <button type="button" class="seg" data-self-edge="left">Left</button>
-        <button type="button" class="seg" data-self-edge="top">Top</button>
+    <span data-ti="selfedgeTip" class="blurctl selfctl" id="selfedge" hidden title="Which edge your strip uses. Bottom on a phone until you choose.">
+      <span data-t="selfedgeLbl" class="blurlbl" id="selfedge-lbl">Place</span>
+      <span data-al="yourStripEdgeAria" class="segwrap" role="group" aria-label="Your strip edge">
+        <button data-t="bottom" type="button" class="seg" data-self-edge="bottom">Bottom</button>
+        <button data-t="right" type="button" class="seg" data-self-edge="right">Right</button>
+        <button data-t="left" type="button" class="seg" data-self-edge="left">Left</button>
+        <button data-t="top" type="button" class="seg" data-self-edge="top">Top</button>
       </span>
     </span>
       </div>
       <div class="morerow">
-        <button id="flipcam" class="iconbtn" aria-label="Switch camera" title="Switch between front and back camera" style="display:none">
+        <button data-ti="flipcamTip" data-al="flipcamAria" id="flipcam" class="iconbtn" aria-label="Switch camera" title="Switch between front and back camera" style="display:none">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M20 8a8 8 0 0 0-14.9-2"/><polyline points="5 2 5 6 9 6"/>
             <path d="M4 16a8 8 0 0 0 14.9 2"/><polyline points="19 22 19 18 15 18"/></svg>
-          <span class="blab">Flip</span>
+          <span data-t="flip" class="blab">Flip</span>
         </button>
-        <button id="pipbtn" class="iconbtn" aria-label="Float the meeting" title="Float the meeting in a mini window — it stays on screen while you use other apps" style="display:none">
+        <button data-ti="pipbtnTip" data-al="pipbtnAria" id="pipbtn" class="iconbtn" aria-label="Float the meeting" title="Float the meeting in a mini window — it stays on screen while you use other apps" style="display:none">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="2" y="4" width="20" height="16" rx="2"/><rect x="12" y="12" width="7" height="5" rx="1" fill="currentColor" stroke="none"/></svg>
-          <span class="blab">Float</span>
+          <span data-t="float" class="blab">Float</span>
         </button>
       </div>
     </section>
@@ -4103,101 +4103,101 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <h4 data-t="room">Room</h4>
       <div class="morerow">
         <button id="pwbtn" data-t="password" data-ti="pwTip" aria-keyshortcuts="Alt+L" title="Lock this room with a password">Password</button>
-        <button id="waitbtn" type="button" aria-pressed="false" title="Hold people at the door until you admit them" style="display:none">Waiting room</button>
-        <button id="recbtn" data-t="record" aria-keyshortcuts="Alt+R" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
+        <button data-ti="waitbtnTip" data-t="waitRoom" id="waitbtn" type="button" aria-pressed="false" title="Hold people at the door until you admit them" style="display:none">Waiting room</button>
+        <button data-ti="recbtnTip" id="recbtn" data-t="record" aria-keyshortcuts="Alt+R" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
         <button id="votebtn" data-t="vote" data-ti="voteTip" aria-keyshortcuts="Alt+U" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
-        <button id="stagebtn" data-t="stage" aria-keyshortcuts="Alt+G" title="Step onto the stage — the whole room sees and hears the stage first">Stage</button>
-        <button id="appbtn" data-t="runApp" aria-keyshortcuts="Alt+Y" title="Run an app inside this meeting — everyone here shares and interacts with it live">Run app</button>
-        <button id="rbbtn" title="Play the last broadcast, or a video, into the broadcast. Viewers see Prerecorded.">Rebroadcast</button>
-        <label id="bcwhenrow" title="When the broadcast starts. The viewer link and the room say so."><span id="bcwhen-lbl">Start time</span><input type="datetime-local" id="bcwhen"></label>
-        <label id="bcvisitrow" title="Link for viewers (opens in a new window)"><span id="bcvisit-lbl">Visit link</span><input type="url" id="bcvisit" inputmode="url" autocomplete="url" placeholder="https://" spellcheck="false"></label>
+        <button data-ti="stagebtnTip" id="stagebtn" data-t="stage" aria-keyshortcuts="Alt+G" title="Step onto the stage — the whole room sees and hears the stage first">Stage</button>
+        <button data-ti="appTip" id="appbtn" data-t="runApp" aria-keyshortcuts="Alt+Y" title="Run an app inside this meeting — everyone here shares and interacts with it live">Run app</button>
+        <button data-ti="rbbtnTip" data-t="rbbtn" id="rbbtn" title="Play the last broadcast, or a video, into the broadcast. Viewers see Prerecorded.">Rebroadcast</button>
+        <label data-ti="bcwhenrowTip" id="bcwhenrow" title="When the broadcast starts. The viewer link and the room say so."><span data-t="bcwhenLbl" id="bcwhen-lbl">Start time</span><input type="datetime-local" id="bcwhen"></label>
+        <label data-ti="bcvisitrowTip" id="bcvisitrow" title="Link for viewers (opens in a new window)"><span data-t="bcvisitLbl" id="bcvisit-lbl">Visit link</span><input type="url" id="bcvisit" inputmode="url" autocomplete="url" placeholder="https://" spellcheck="false"></label>
       </div>
     </section>
     <section class="moregroup" data-group="host">
       <h4 data-t="host">Host</h4>
       <div class="morerow">
-        <button id="muteall" data-t="muteGuests" aria-keyshortcuts="Alt+M" title="Mute every guest at once (admins). Only an admin can lift it, for one guest from their tile or for all with the same button." style="display:none">Mute guests</button>
-        <button id="blurall" data-t="blurGuests" aria-keyshortcuts="Alt+B" title="Blur every guest at once (admins) — same as blocking each of them by hand" style="display:none">Blur guests</button>
-        <button id="camall" data-t="videoOff" aria-keyshortcuts="Alt+X" title="Turn video off for every guest at once (admins) — stronger than blur" style="display:none">Turn video off</button>
-        <button id="shareall" data-t="allowShare" aria-keyshortcuts="Alt+P" title="Let every guest share their screen (admins). Off until you turn it on. One person can still be allowed or stopped from their tile." style="display:none">Allow screen share</button>
-        <button id="admbtn" title="Room admin controls" style="display:none">Admin</button>
+        <button data-ti="muteallTip" id="muteall" data-t="muteGuests" aria-keyshortcuts="Alt+M" title="Mute every guest at once (admins). Only an admin can lift it, for one guest from their tile or for all with the same button." style="display:none">Mute guests</button>
+        <button data-ti="blurallTip" id="blurall" data-t="blurGuests" aria-keyshortcuts="Alt+B" title="Blur every guest at once (admins) — same as blocking each of them by hand" style="display:none">Blur guests</button>
+        <button data-ti="camallTip" id="camall" data-t="videoOff" aria-keyshortcuts="Alt+X" title="Turn video off for every guest at once (admins) — stronger than blur" style="display:none">Turn video off</button>
+        <button data-ti="shareallTip" id="shareall" data-t="allowShare" aria-keyshortcuts="Alt+P" title="Let every guest share their screen (admins). Off until you turn it on. One person can still be allowed or stopped from their tile." style="display:none">Allow screen share</button>
+        <button data-ti="admbtnTip" data-t="admBtn" id="admbtn" title="Room admin controls" style="display:none">Admin</button>
       </div>
     </section>
     <section class="moregroup" data-group="setup">
       <h4 data-t="setHelp">Settings and help</h4>
       <div class="morerow">
-        <button id="setbtn" data-t="settings" aria-keyshortcuts="Alt+," title="Meeting settings — your sound mix, timing, and the video quality your camera records">Settings</button>
-        <button id="keysbtn" data-t="keys" type="button" title="Keyboard shortcuts">Keys</button>
+        <button data-ti="setbtnTip" id="setbtn" data-t="settings" aria-keyshortcuts="Alt+," title="Meeting settings — your sound mix, timing, and the video quality your camera records">Settings</button>
+        <button data-ti="shortcutTitle" id="keysbtn" data-t="keys" type="button" title="Keyboard shortcuts">Keys</button>
       </div>
     </section>
     </div>
     <!-- Outside #barmore: More folds after No blur (STEERING 22:45 #8), but the
          note must stay readable until its own timer clears it. -->
     <p id="blurnote" role="status" hidden></p>
-    <div id="reacttray" class="reacttray" hidden role="group" aria-label="Reactions">
-      <button type="button" id="react-hand" aria-label="Raise hand" aria-keyshortcuts="H">✋</button>
-      <button type="button" data-burst="👏" aria-label="Clap">👏</button>
-      <button type="button" data-burst="👍" aria-label="Yes">👍</button>
-      <button type="button" data-burst="👎" aria-label="No">👎</button>
-      <button type="button" data-burst="😂" aria-label="Laugh">😂</button>
+    <div data-al="react" id="reacttray" class="reacttray" hidden role="group" aria-label="Reactions">
+      <button data-al="reactHandAria" type="button" id="react-hand" aria-label="Raise hand" aria-keyshortcuts="H">✋</button>
+      <button data-al="clapAria" type="button" data-burst="👏" aria-label="Clap">👏</button>
+      <button data-al="yesAria" type="button" data-burst="👍" aria-label="Yes">👍</button>
+      <button data-al="noAria" type="button" data-burst="👎" aria-label="No">👎</button>
+      <button data-al="laughAria" type="button" data-burst="😂" aria-label="Laugh">😂</button>
     </div>
   </div>
-  <div id="waitlist" hidden role="region" aria-label="Waiting room"></div>
+  <div data-al="waitRoom" id="waitlist" hidden role="region" aria-label="Waiting room"></div>
   <div id="waitdoor" hidden role="status">
-    <h1>Waiting for the host</h1>
-    <p>You'll join when the host lets you in. This meeting can't see or hear you yet.</p>
-    <button type="button" id="waitdoor-leave">Leave</button>
+    <h1 data-t="waitingForTheHost">Waiting for the host</h1>
+    <p data-t="youLlJoinWhen">You'll join when the host lets you in. This meeting can't see or hear you yet.</p>
+    <button data-t="leave" type="button" id="waitdoor-leave">Leave</button>
   </div>
   <div id="appmissing" hidden role="alert">
     <h1></h1>
     <p></p>
-    <a id="appmissing-home" href="index.html">Go to Home Screen</a>
+    <a data-t="appMissingHome" id="appmissing-home" href="index.html">Go to Home Screen</a>
   </div>
   <div class="share" id="share">
-    <span class="hint">Send this link to friends — opening it brings them right in:</span>
+    <span data-t="sendThisLinkTo" class="hint">Send this link to friends — opening it brings them right in:</span>
     <input id="share-url" readonly>
-    <button id="copy">Copy</button>
+    <button data-t="invCopy" id="copy">Copy</button>
   </div>
-  <div id="bc-link" role="region" aria-label="Stream link">
-    <p>People watch with this link.</p>
-    <input id="bc-link-url" readonly aria-label="Stream link">
-    <button type="button" id="bc-link-copy">Copy</button>
+  <div data-al="bcLinkAria" id="bc-link" role="region" aria-label="Stream link">
+    <p data-t="peopleWatchWithThis">People watch with this link.</p>
+    <input data-al="bcLinkAria" id="bc-link-url" readonly aria-label="Stream link">
+    <button data-t="invCopy" type="button" id="bc-link-copy">Copy</button>
   </div>
-  <div id="callbanner"><span id="callbanner-txt"></span><button id="callbanner-join">Join the call</button></div>
-  <button id="ccwsp-off" type="button" style="display:none" title="Stop Whisper on this device and write captions with the browser">Whisper captions · <b>Switch to browser captions</b></button>
+  <div id="callbanner"><span id="callbanner-txt"></span><button data-t="callbannerJoin" id="callbanner-join">Join the call</button></div>
+  <button data-ti="ccwspOffTip" id="ccwsp-off" type="button" style="display:none" title="Stop Whisper on this device and write captions with the browser">Whisper captions · <b>Switch to browser captions</b></button>
   <div id="apppane">
     <div id="appbar">
-      <a class="brand" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
+      <a data-ti="openYourGifosComputerTip" class="brand" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
       <img id="appgif" alt="">
-      <span id="appname">App</span>
+      <span data-t="appname" id="appname">App</span>
       <span id="appwho"></span>
       <button id="appinvite" style="display:none" data-t="invite" data-ti="barInviteTip" aria-keyshortcuts="Alt+I" title="Share this app live — friends join with one link">Invite</button>
       <button id="appsave" style="display:none" data-t="barSave" data-ti="barSaveTip" title="Save a snapshot GIF — the app with its data, yours to keep">Save</button>
-      <button id="apphelp" data-t="help" aria-keyshortcuts="Alt+/" title="How this app works">Help</button>
+      <button data-ti="appHelpTip" id="apphelp" data-t="help" aria-keyshortcuts="Alt+/" title="How this app works">Help</button>
       <button id="appaudio" style="display:none" data-t="barTalkOff" data-ti="barTalkTip" title="Talk with the people in this app — when on, everyone here gets their own mic control (host only)">Talk: off</button>
       <button id="appsteal" style="display:none" data-t="barSteal" data-ti="barStealTip" title="Steal a copy of this app — it goes to your desktop's Stolen Apps, data and all">Steal</button>
-      <button class="perms" id="appperms" title="What this app can do — review or turn things off" style="display:none"></button>
+      <button data-ti="apppermsTip" class="perms" id="appperms" title="What this app can do — review or turn things off" style="display:none"></button>
       <button id="applead" style="display:none"></button>
       <button id="apphide" style="display:none" data-t="barHide" data-ti="barHideTip" title="Hide this app on my screen only — the meeting keeps sharing it">Hide</button>
       <button id="appstop" data-t="stopApp" data-ti="stopAppTip" title="Stop sharing this app with the meeting">Stop app</button>
-      <button class="fs-btn" id="appfull" style="display:none" title="Full screen" aria-label="Full screen" aria-keyshortcuts="F" aria-pressed="false"></button>
+      <button data-ti="fullScreen" data-al="fullScreen" class="fs-btn" id="appfull" style="display:none" title="Full screen" aria-label="Full screen" aria-keyshortcuts="F" aria-pressed="false"></button>
     </div>
     <div id="appmount"></div>
   </div>
   <div id="handq"></div>
   <p id="bc-join-note" hidden></p>
   <div id="feed">
-    <p id="bc-pre" hidden>Prerecorded</p>
-    <div id="bc-ended" hidden><p id="bc-ended-txt"></p><a id="bc-cal" hidden>Add to calendar</a></div>
-    <a id="bc-visit" hidden target="_blank" rel="noopener noreferrer"><svg data-icon="external-link" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><span>Visit</span></a>
+    <p data-t="bcPre" id="bc-pre" hidden>Prerecorded</p>
+    <div id="bc-ended" hidden><p id="bc-ended-txt"></p><a data-t="bcCal" id="bc-cal" hidden>Add to calendar</a></div>
+    <a id="bc-visit" hidden target="_blank" rel="noopener noreferrer"><svg data-icon="external-link" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><span data-t="visit">Visit</span></a>
     <div id="bc-q" hidden aria-live="polite"><i id="bc-q-pad"></i><i id="bc-q-fit"></i><b id="bc-q-by"></b><p id="bc-q-txt"></p></div>
-    <div id="bc-cap" hidden><button type="button" id="bc-cap-btn" aria-pressed="true" aria-label="Captions" title="Show or hide the captions">CC</button><p id="bc-cap-txt" aria-live="polite"></p></div>
+    <div id="bc-cap" hidden><button data-ti="bcCapBtnTip" data-al="captions" type="button" id="bc-cap-btn" aria-pressed="true" aria-label="Captions" title="Show or hide the captions">CC</button><p id="bc-cap-txt" aria-live="polite"></p></div>
     <div id="stagefeed"></div>
-    <div id="stagemod" hidden aria-label="On stage"></div>
-    <div id="bc-ident"><img id="bc-ident-img" alt=""><div id="bc-ident-init" aria-hidden="true"></div><div id="bc-ident-name"></div><div id="bc-ident-note">Camera off</div></div>
-    <div id="bc-stage" hidden><p id="bc-stage-line">Joining the broadcast…</p></div>
+    <div data-al="stageLabel" id="stagemod" hidden aria-label="On stage"></div>
+    <div id="bc-ident"><img id="bc-ident-img" alt=""><div id="bc-ident-init" aria-hidden="true"></div><div id="bc-ident-name"></div><div data-t="camOffChip" id="bc-ident-note">Camera off</div></div>
+    <div id="bc-stage" hidden><p data-t="bcStageLine" id="bc-stage-line">Joining the broadcast…</p></div>
     <div id="bc-react" aria-hidden="true"></div>
-    <div id="bc-reacts" hidden role="status" aria-label="Audience reactions"></div>
+    <div data-al="bcReactsAria" id="bc-reacts" hidden role="status" aria-label="Audience reactions"></div>
     <div id="appseat" aria-hidden="true"></div>
     <div id="grid"></div>
     <div id="stadium"></div>
@@ -4249,7 +4249,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           </div>
           <div id="ccsource" style="margin-top:.5rem;display:none"></div>
         </div>
-        <p class="set-help" id="ccall-row" style="display:none;margin-top:.5rem"><button id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span id="ccall-note">Admins only — every device starts writing down the voices it hears. Anyone can tap Captions to opt out.</span></p>
+        <p class="set-help" id="ccall-row" style="display:none;margin-top:.5rem"><button data-t="setCcAllOff" id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span data-t="ccallNote" id="ccall-note">Admins only — every device starts writing down the voices it hears. Anyone can tap Captions to opt out.</span></p>
       </div>
       <div id="mixpanel">
         <b data-t="setMix">Sound mix</b>
@@ -4281,7 +4281,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <p class="share-body" data-t="shareSound">Your camera pauses while you share, and comes back when you stop. Sound from the shared tab doesn’t travel — talk over it.</p>
       <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin-top:.9rem">
         <button id="share-go" data-t="shareGo">Choose what to share…</button>
-        <button id="share-runapp" data-t="runApp" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Run app instead</button>
+        <button id="share-runapp" data-t="runAppInstead" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Run app instead</button>
         <button id="share-cancel" data-t="shareCancel" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Cancel</button>
       </div>
     </div>
@@ -4315,19 +4315,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <div id="chathead"><span id="paneltitle" data-t="chatTitle">Meeting chat</span> <small id="chatprivacy" data-t="chatPrivate" style="color:#667;font-weight:400">Private. Gone when everyone leaves.</small>
       <button id="trtab" type="button" data-t="transcript"><svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>Transcript</button>
       <button id="chatmod" style="display:none" data-t="chatModOff" data-ti="chatModTipOff" title="Silence the chat for everyone but you">Turn chat off</button>
-      <button id="chatclose" type="button" aria-label="Close chat">✕</button></div>
+      <button data-al="chatcloseAria" id="chatclose" type="button" aria-label="Close chat">✕</button></div>
     <div id="chatfind" role="search">
-      <input id="chatq" type="text" placeholder="Find in chat" aria-label="Find in chat" autocomplete="off" enterkeyhint="search">
-      <button type="button" id="chatqclear" hidden>Clear</button>
+      <input data-al="chatqAria" data-ph="chatqAria" id="chatq" type="text" placeholder="Find in chat" aria-label="Find in chat" autocomplete="off" enterkeyhint="search">
+      <button data-t="appearClear" type="button" id="chatqclear" hidden>Clear</button>
     </div>
     <div id="chatlog"></div>
-    <button type="button" id="chatnew" hidden>New messages</button>
+    <button data-t="chatnew" type="button" id="chatnew" hidden>New messages</button>
     <div id="trwrap">
-      <div id="trlog"><small data-t="trEmpty" style="color:#667">This meeting is written down. Lines appear here under each name. Anyone here can read or download them.</small></div>
+      <div id="trlog"><small data-t="trEmptyStatic" style="color:#667">This meeting is written down. Lines appear here under each name. Anyone here can read or download them.</small></div>
       <div id="trfoot"><button id="trdl" type="button" data-t="trDownload">Download transcript</button></div>
     </div>
-    <div id="cfiles" hidden><h4>Files pinned to this meeting</h4><div id="cfilelist"></div></div>
-    <div id="emojirow" hidden role="group" aria-label="Emoji">
+    <div id="cfiles" hidden><h4 data-t="filesPinnedToThis">Files pinned to this meeting</h4><div id="cfilelist"></div></div>
+    <div data-al="emojirowAria" id="emojirow" hidden role="group" aria-label="Emoji">
       <button type="button" data-emoji="😀">😀</button>
       <button type="button" data-emoji="😂">😂</button>
       <button type="button" data-emoji="❤️">❤️</button>
@@ -4339,33 +4339,33 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <button type="button" data-emoji="✅">✅</button>
       <button type="button" data-emoji="🔥">🔥</button>
     </div>
-    <div id="chatmentions" hidden role="listbox" aria-label="People"></div>
+    <div data-al="people" id="chatmentions" hidden role="listbox" aria-label="People"></div>
     <div id="chatreply" hidden>
       <div class="chatreply-body">
         <b id="chatreply-by"></b>
         <span id="chatreply-txt"></span>
       </div>
-      <button type="button" id="chatreply-x">Cancel</button>
+      <button data-t="shareCancel" type="button" id="chatreply-x">Cancel</button>
     </div>
     <form id="chatform">
-      <button type="button" id="pray" hidden aria-pressed="false" title="Mark messages as prayer requests" aria-label="Prayer"><span class="pray-ico" aria-hidden="true">🙏</span><span class="pray-word">Prayer</span></button>
-      <button type="button" id="cattach" title="Pin a file to the meeting">📎</button>
+      <button data-ti="prayTip" data-al="prayer" type="button" id="pray" hidden aria-pressed="false" title="Mark messages as prayer requests" aria-label="Prayer"><span class="pray-ico" aria-hidden="true">🙏</span><span data-t="prayer" class="pray-word">Prayer</span></button>
+      <button data-ti="cattachTip" type="button" id="cattach" title="Pin a file to the meeting">📎</button>
       <input type="file" id="cfile-in" multiple style="display:none">
-      <button type="button" id="cemoji" aria-label="Emoji" aria-expanded="false" title="Emoji">😊</button>
-      <input type="text" id="chat-in" placeholder="Message everyone…" autocomplete="off" maxlength="2000">
-      <button type="submit">Send</button>
+      <button data-ti="emojirowAria" data-al="emojirowAria" type="button" id="cemoji" aria-label="Emoji" aria-expanded="false" title="Emoji">😊</button>
+      <input data-ph="chatPlaceholder" type="text" id="chat-in" placeholder="Message everyone…" autocomplete="off" maxlength="2000">
+      <button data-t="send" type="submit">Send</button>
     </form>
   </div>
 
   <div id="qa" role="dialog" aria-labelledby="qa-title" hidden>
-    <div id="qa-head"><span id="qa-title">Questions</span><small>Most votes on top. The host can put one on the picture.</small><button type="button" id="qa-close" aria-label="Close questions">✕</button></div>
+    <div id="qa-head"><span data-t="qabtn" id="qa-title">Questions</span><small data-t="mostVotesOnTop">Most votes on top. The host can put one on the picture.</small><button data-al="qaCloseAria" type="button" id="qa-close" aria-label="Close questions">✕</button></div>
     <div id="qa-list"></div>
-    <form id="qa-form"><input type="text" id="qa-in" placeholder="Ask the host…" autocomplete="off" maxlength="280" aria-label="Your question"><button type="submit" id="qa-ask">Ask</button></form>
+    <form id="qa-form"><input data-al="qaInAria" data-ph="qaInPh" type="text" id="qa-in" placeholder="Ask the host…" autocomplete="off" maxlength="280" aria-label="Your question"><button data-t="qaAsk" type="submit" id="qa-ask">Ask</button></form>
   </div>
 
   <div class="name-modal" role="dialog" aria-modal="true" id="inv-modal" style="display:none">
     <div class="name-box appear-box">
-      <h3>Share this meeting</h3>
+      <h3 data-t="invTitle">Share this meeting</h3>
       <div id="inv-body"></div>
     </div>
   </div>
@@ -4373,8 +4373,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <!-- R5 / E5§2: two door clusters (multi-genesis OR same-key torn halves) — pick ONE. -->
   <div class="name-modal" role="dialog" aria-modal="true" id="fork-modal" style="display:none">
     <div class="name-box" style="max-width:26rem;text-align:left">
-      <h3>Which meeting?</h3>
-      <p style="font-size:.9rem;opacity:.85;margin:.4rem 0 1rem">This link reaches more than one live room. Pick the one you want to join — they are not merged, and you are not placed between both.</p>
+      <h3 data-t="whichMeeting">Which meeting?</h3>
+      <p data-t="thisLinkReachesMore" style="font-size:.9rem;opacity:.85;margin:.4rem 0 1rem">This link reaches more than one live room. Pick the one you want to join — they are not merged, and you are not placed between both.</p>
       <div id="fork-choices" style="display:flex;flex-direction:column;gap:.55rem"></div>
       <p style="font-size:.78rem;opacity:.55;margin-top:.9rem">We show people on the <b>Stage</b> when we can; if the stage is empty, the <b>Stadium</b> (everyone that room can see).</p>
     </div>
@@ -4397,15 +4397,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 
   <div class="name-modal" role="dialog" aria-modal="true" id="pw-modal" style="display:none">
     <div class="name-box">
-      <h3 id="pw-title">Room password</h3>
-      <p id="pw-hint">Anyone in the meeting can set or change it — it reaches everyone here instantly, and new joiners must enter it. Leave empty to remove the lock.</p>
+      <h3 data-t="pwTitle" id="pw-title">Room password</h3>
+      <p data-t="pwHint2" id="pw-hint">Anyone in the meeting can set or change it — it reaches everyone here instantly, and new joiners must enter it. Leave empty to remove the lock.</p>
       <div id="pw-cur-row" style="display:flex;gap:.5rem;margin-bottom:.8rem">
         <input id="pw-cur" type="password" readonly autocomplete="new-password">
       </div>
-      <input id="pw-new" type="password" maxlength="64" placeholder="New password" autocomplete="new-password">
+      <input data-ph="pwNew" id="pw-new" type="password" maxlength="64" placeholder="New password" autocomplete="new-password">
       <div style="display:flex;gap:.5rem;justify-content:center">
-        <button id="pw-save">Save</button>
-        <button id="pw-cancel" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
+        <button data-t="barSave" id="pw-save">Save</button>
+        <button data-t="setClose" id="pw-cancel" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
       </div>
     </div>
   </div>
@@ -4479,23 +4479,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <div style="display:flex;justify-content:center;margin-top:1rem">
         <button id="help-close" data-t="helpGot" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Got it</button>
       </div>
-      <p style="text-align:center;margin:.6rem 0 0;font-size:.85rem"><button type="button" id="help-keys" class="linkbtn">Keyboard shortcuts (?)</button></p>
+      <p style="text-align:center;margin:.6rem 0 0;font-size:.85rem"><button data-t="helpKeys" type="button" id="help-keys" class="linkbtn">Keyboard shortcuts (?)</button></p>
     </div>
   </div>
 
   <div class="name-modal" role="dialog" aria-modal="true" aria-labelledby="keys-title" id="keys-modal" style="display:none">
     <div class="name-box" style="max-width:480px;text-align:left">
-      <h3 id="keys-title" style="text-align:center">Keyboard shortcuts</h3>
+      <h3 data-t="shortcutTitle" id="keys-title" style="text-align:center">Keyboard shortcuts</h3>
       <dl id="keys-list" class="keys-list"></dl>
       <div style="display:flex;justify-content:center;margin-top:1rem">
-        <button id="keys-close" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Got it</button>
+        <button data-t="helpGot" id="keys-close" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Got it</button>
       </div>
     </div>
   </div>
 
   <div class="name-modal" role="dialog" aria-modal="true" id="apphelp-modal" style="display:none">
     <div class="name-box help-box" style="max-width:600px;text-align:left">
-      <h3 id="apphelp-title" style="text-align:center">Help</h3>
+      <h3 data-t="help" id="apphelp-title" style="text-align:center">Help</h3>
       <div class="help-scroll help-md" id="apphelp-body"></div>
       <div style="display:flex;justify-content:center;margin-top:1rem">
         <button id="apphelp-close" data-t="helpGot" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Got it</button>
@@ -4505,17 +4505,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 
   <div class="name-modal" role="dialog" aria-modal="true" id="closed-modal" style="display:none">
     <div class="closed-box">
-      <h3>Room closed</h3>
-      <p id="closed-msg">This room’s host wasn’t here, so it closed. Reopen the same link when the host is back.</p>
-      <button id="closed-reload">Rejoin</button>
+      <h3 data-t="roomClosed">Room closed</h3>
+      <p data-t="closedMsg" id="closed-msg">This room’s host wasn’t here, so it closed. Reopen the same link when the host is back.</p>
+      <button data-t="closedReload" id="closed-reload">Rejoin</button>
     </div>
   </div>
   <div class="name-modal" role="dialog" aria-modal="true" id="left-modal" style="display:none">
     <div class="name-box">
-      <h3 id="left-title">You left</h3>
-      <p id="left-note">Your camera and microphone are off.</p>
-      <button id="left-rejoin" type="button">Rejoin</button>
-      <button id="left-close" type="button">Close</button>
+      <h3 data-t="leftTitle" id="left-title">You left</h3>
+      <p data-t="leftNote" id="left-note">Your camera and microphone are off.</p>
+      <button data-t="closedReload" id="left-rejoin" type="button">Rejoin</button>
+      <button data-t="setClose" id="left-close" type="button">Close</button>
     </div>
   </div>
   <div class="name-modal" id="status-full" style="display:none" aria-labelledby="status-full-text">
@@ -4523,16 +4523,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <p id="status-full-text"></p>
       <div class="status-full-acts">
         <button type="button" id="status-full-people" data-t="people" aria-controls="roster">People</button>
-        <button type="button" id="status-full-close">Close</button>
+        <button data-t="setClose" type="button" id="status-full-close">Close</button>
       </div>
     </div>
   </div>
   <div class="name-modal" role="alertdialog" aria-modal="true" id="leave-ask" style="display:none">
     <div class="name-box">
-      <h3 id="leave-ask-title">Leave the meeting?</h3>
+      <h3 data-t="leaveAskTitle" id="leave-ask-title">Leave the meeting?</h3>
       <p id="leave-ask-note" hidden></p>
-      <button id="leave-cancel" type="button">Stay</button>
-      <button id="leave-go" type="button">Leave</button>
+      <button data-t="leaveCancel" id="leave-cancel" type="button">Stay</button>
+      <button data-t="leave" id="leave-go" type="button">Leave</button>
     </div>
   </div>
   <div class="name-modal" role="dialog" aria-modal="true" id="shortcutsheet" aria-labelledby="shortcut-title" style="display:none">
@@ -4651,654 +4651,34 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   // executed, and before DOMContentLoaded.
   window.__startMeet = function () {
   (function () {
-    // Visible chrome for a German or Spanish device. English stays in the
-    // markup. Anything without a translation stays English on purpose.
-    // Declared first: paintBroadcastChrome() and placeDockForWidth() run at load and call uiText().
-    const UI_TEXT = {
-      de: {
-        mic: 'Mikro', unmute: 'Ton an', mute: 'Stumm', micHeld: 'Stumm', cam: 'Kamera', react: 'Reaktionen', more: 'Mehr', hide: 'Weniger', leave: 'Ende',
-        hideControls: 'Steuerungen ausblenden',
-        appearTitle: 'So sehen Sie aus', screenName: 'Name', notNow: 'Nicht jetzt', join: 'Beitreten',
-        appearClear: 'Leeren', appearSave: 'Speichern', changePic: 'Bild ändern',
-        people: 'Leute', share: 'Teilen', room: 'Raum', host: 'Leitung', help: 'Hilfe',
-        talk: 'Gespräch', yourVideo: 'Ihr Video', setHelp: 'Einstellungen und Hilfe',
-        who: 'Wer', hand: 'Hand', chat: 'Chat', invite: 'Einladen', runApp: 'App starten', showApp: 'App zeigen',
-        appSheetTitle: 'Eine App in dieser Besprechung starten',
-        appSheetBody: 'Wählen Sie eine Ihrer Apps. Sie läuft live für alle hier, mit demselben Stand und denselben Zügen, und mit Bild, Ton und Aufnahme der Besprechung. Jeder kann mitmachen.',
-        appSheetOr: 'Oder eine GIF-App, die nicht auf diesem Computer liegt:',
-        appSheetFile: '＋ Eine GIF-Datei wählen…', appSheetLink: 'Link zu einer GIF-App einfügen', appSheetRun: 'Starten',
-        appLoading: 'Ihre Apps werden geladen…',
-        appTip: 'Eine App in dieser Besprechung starten — alle hier benutzen sie gemeinsam',
-        appHidden: 'Hier läuft eine App ({name}) — Sie haben sie ausgeblendet. Tippen Sie, um sie zurückzuholen.',
-        appDenied: '🛡 Nur die Leitung dieses Raums — oder wen sie erlaubt — kann hier eine App starten.',
-        appLoadFail: 'Der Link ließ sich nicht laden. Speichern Sie das GIF auf Ihrem Gerät und wählen Sie dann eine GIF-Datei.',
-        appNotGif: 'Dieser Link ist keine GIF-Datei.', appReadFail: 'Diese Datei ließ sich nicht lesen.', appNeedLink: 'Fügen Sie zuerst einen GIF-Link ein.',
-        shareScreen: 'Bildschirm', stopShare: 'Beenden', float: 'Bild-in-Bild', flip: 'Drehen',
-        vote: 'Abstimmung', password: 'Passwort', stage: 'Bühne', record: 'Aufnahme', settings: 'Einstellungen', keys: 'Tasten',
-        blur: 'Unschärfe', noBlur: 'Aus',
-        transcript: 'Protokoll', chatPrivate: 'Nur hier. Weg, wenn alle gehen.',
-        captions: 'Untertitel', ccTip: 'Untertitel nur auf diesem Bildschirm',
-        fsTip: 'Vollbild ansehen. Folgt der Person, die spricht.', keyFull: 'Vollbild öffnen oder schließen',
-        trEmpty: 'Dieses Treffen wird mitgeschrieben. Die Zeilen stehen hier unter dem Namen. Jeder kann sie lesen oder herunterladen.',
-        trDownload: 'Protokoll laden',
-        muteGuests: 'Gäste stumm', unmuteGuests: 'Gäste laut', blurGuests: 'Weichzeichnen', unblurGuests: 'Schärfen', videoOff: 'Video aus', videoOn: 'Video an',
-        allowShare: 'Freigeben', stopShares: 'Freigabe aus',
-        inMeeting: 'im Meeting', countPartial: 'Anzahl unvollständig', justYou: 'Nur Sie', backIn: 'Wieder dabei', waitHere: 'Im Warteraum',
-        away: 'Weg', stillHere: 'Sie sind noch dabei',
-        unlockClear: 'Gesichter weich bis zum Passwort',
-        onAir: 'Auf Sendung', offAir: 'Nicht live', watching: 'Live',
-        rosterPeople: 'Personen', rosterPerson: 'Person', you: 'Sie', muted: 'Stumm', camOffChip: 'Kamera aus', rosterClose: 'Schließen', rosterFind: 'Name suchen',
-        muteForAll: 'Stumm', unmuteForAll: 'Ton an', forEveryone: 'Für alle',
-        waitRoom: 'Warteraum', waitOn: 'An', waitOff: 'Aus', waitHeading: 'Warten',
-        admit: 'Herein', nobodyWaiting: 'Niemand wartet', rename: 'Umbenennen', saveName: 'Sichern',
-        spotlight: 'Hervorheben', inView: 'Im Blick',
-        waitSelf: 'Die Leitung lässt Sie gleich hinein', waitSelfNote: 'Sie sehen die Besprechung, sobald Sie hereingelassen werden.',
-        waitMic: 'Sie sind im Warteraum: Ihr Mikrofon geht an, sobald Sie hereingelassen werden.',
-        shareTitle: 'Bildschirm teilen', shareGo: 'Auswählen, was geteilt wird…', shareCancel: 'Abbrechen',
-        shareDenied: 'Nur die Leitung dieses Raums — oder wen sie erlaubt — kann einen Bildschirm teilen. Bitten Sie die Leitung, es zu erlauben, an Ihrem Feld oder für den ganzen Raum, und öffnen Sie dies dann erneut.',
-        shareBody: 'Ein Bildschirm ist für das, was keine App sein kann: eine Präsentation auf Ihrem Rechner, ein Werkzeug, das nicht GifOS ist, ein Fenster von woanders. Es liegt auf der Bühne, der ganze Raum sieht es, und alle sehen, dass Sie teilen.',
-        shareSound: 'Ihre Kamera pausiert, während Sie teilen, und kommt zurück, wenn Sie aufhören. Ton aus dem geteilten Tab kommt nicht mit — sprechen Sie darüber.',
-        shareLive: '🖥 Ihr Bildschirm ist in der Besprechung. Ton aus dem geteilten Tab kommt nicht mit — sprechen Sie darüber.',
-        shareStopped: 'Bildschirmteilen beendet.',
-        shareStoppedWhy: 'Bildschirmteilen beendet — {why}.',
-        shareEndedByBrowser: 'der Browser hat das Teilen beendet',
-        shareCancelled: 'Bildschirmteilen abgebrochen — nichts wurde geteilt.',
-        shareFailed: 'Der Bildschirm ließ sich nicht teilen ({err}).',
-        shareNoCapture: '🖥 Dieser Browser kann keinen Bildschirm aufnehmen. Die meisten Telefone können das nicht. Ein Computer kann es. Ein Dokument vom Telefon öffnen Sie mit App starten.',
-        whoTip: 'Wer in dieser Besprechung ist — Namen und Internetadressen',
-        shareTip: 'Zeigen Sie dem Raum ein Fenster, einen Tab oder den Schreibtisch. Eine GifOS-App starten Sie mit App starten.',
-        shareTipOn: 'Sie teilen Ihren Bildschirm — tippen Sie zum Beenden',
-        shareMineStage: 'Ihr Bildschirm — auf der Bühne',
-        shareTheirStage: 'Bildschirm von {names} — auf der Bühne',
-        shareBothStage: 'Ihr Bildschirm und der von {names} — auf der Bühne',
-        nameJoin: ' und ', aGuest: 'einem Gast',
-        stageLabel: 'Auf der Bühne', onStageChip: 'auf der Bühne',
-        shareTheirsChip: 'teilt den Bildschirm',
-        reshareNote: 'Ihr Bildschirmteilen endete, als Sie zurückkamen.',
-        reshareGo: 'Noch einmal teilen',
-        pwTitle: 'Raum-Passwort',
-        pwTitleLocked: 'Dieser Raum ist gesperrt',
-        pwHint: 'Jeder in der Besprechung kann es setzen oder ändern. Es gilt sofort für alle hier, und wer neu kommt, muss es eingeben. Leer lassen hebt die Sperre auf.',
-        pwHintAdmin: 'Nur die Leitung kann es setzen oder ändern. Es gilt sofort für alle hier, und wer neu kommt, muss es eingeben. Leer lassen hebt die Sperre auf.',
-        pwHintLocked: 'Geben Sie das Passwort ein, um beizutreten.',
-        pwNew: 'Neues Passwort', pwWord: 'Passwort',
-        pwSave: 'Speichern', pwClose: 'Schließen', pwLeave: 'Verlassen',
-        pwShow: 'Passwort zeigen', pwHide: 'Passwort verbergen',
-        pwTrying: 'Passwort wird geprüft…',
-        pwTip: 'Diesen Raum mit einem Passwort sperren',
-        pwTipAdmin: 'Das Passwort dieses Raums setzt die Leitung',
-        invTip: 'Freunde kommen mit einem Link live dazu',
-        invTitle: 'Diese Besprechung teilen', invTitleApp: 'Diese App teilen', invTitleBc: 'Diese Sendung teilen',
-        invOpen: 'Jeder mit diesem Link kann beitreten, und der Link läuft nicht ab. <b>Niemand leitet</b> — jeder hier kann jeden stummschalten oder weichzeichnen.',
-        invApp: 'Jeder mit diesem Link ist <b>live in dieser App</b> dabei, und der Link läuft nicht ab.',
-        invAdmin: '<b>Sie leiten diesen Raum.</b> Der Link ist sicher zum Weitergeben — er lässt Menschen beitreten, er lässt sie den Raum nicht leiten. Dafür ist Ihr Admin-Passwort. Behalten Sie es für sich.',
-        invCopy: 'Kopieren', invCopied: 'Kopiert ✓', invShare: 'Teilen…', invClose: 'Schließen', invDone: 'Fertig',
-        invWant: 'Möchten Sie einen Raum, den <b>Sie</b> leiten — Passwort, Stumm und Weichzeichnen für alle, und jemanden ausschließen können?',
-        invMk: 'Einen Raum anlegen, den Sie leiten →',
-        invWarn: 'Das legt einen <b>neuen, eigenen Raum</b> an, den Sie leiten — <b>nennen Sie ihn, wie Sie wollen</b>. ',
-        invWarnHere: 'Die {n} Personen hier wechseln nicht von selbst. Lassen Sie das Häkchen, dann liegt der neue Link im Chat und sie können folgen.',
-        invWarnSolo: 'Sie wechseln jetzt dorthin.',
-        invRoomPh: 'Raumname (wie Sie wollen)',
-        invAdminLab: '🔑 <b>Admin-Passwort</b> — nur für Sie — <b>nicht weitergeben</b><small>Damit leiten Sie den Raum. Gäste brauchen es nicht. Wer es bekommt, kann den Raum auch leiten.</small>',
-        invAdminPh: 'Admin-Passwort (für Sie allein)',
-        invGuestLab: '🎟 <b>Gast-Passwort</b> — das, das Sie <b>weitergeben</b><small>Optional. Gesichter bleiben ganz weich, bis Sie eines setzen. Gäste geben es ein. Es steht nicht im Link — schicken Sie es selbst.</small>',
-        invGuestPh: 'Gast-Passwort (optional — an Gäste geben)',
-        invFollow: 'Den neuen Link in den Chat dieses Raums legen, damit die {n} Personen hier mitkommen können.',
-        invBack: 'Zurück', invGo: 'Anlegen und wechseln',
-        voteTip: 'Jemanden auf die Bühne, von der Bühne oder aus dem Raum wählen — die Mehrheit entscheidet',
-        voteRecorded: 'Stimme gezählt — sie folgt dieser Person in Räume, die Sie teilen.',
-        voteWithdrawn: 'Stimme zurückgenommen.',
-        shareAppNote: '<b>🧩 Eine GifOS-App? Nutzen Sie „App starten“.</b> Eine angeheftete App läuft auf jedem Gerät über einen kleinen Datenstrom — scharf, anklickbar, auf dem Telefon lesbar. Ein Bildschirm ist ein <i>Video Ihres Fensters</i>: nur in eine Richtung.',
-        shareRunning: ' läuft schon in dieser Besprechung.</b> Alle hier führen sie auf dem eigenen Gerät. Sie müssen den Bildschirm nicht teilen.',
-        whoTitle: 'Wer in dieser Besprechung ist',
-        whoLead: 'Kein Server in der Mitte speichert diese Besprechung. Die Telefone und Computer der Menschen darin sind die Server: sie verbinden sich direkt. Deshalb sieht hier jeder die Internetadresse der anderen — niemand ist anonym. ✓ markiert eine Adresse, die das GifOS-Relay geprüft hat oder die dieses Gerät direkt gesehen hat. Alles andere hat nur das Gerät der Person gemeldet. Wer gegangen ist, bleibt auf der Liste. Um etwas Illegales zu melden, laden Sie diese Liste herunter und legen Sie sie bei.',
-        whoDl: 'Diese Liste laden',
-        whoYou: '(Sie)',
-        whoFileTitle: 'GifOS-Besprechung — wer hier war',
-        whoFileRoom: 'Raum: {room}',
-        whoFileSaved: 'Gespeichert: {when}   (jede Zeit in dieser Datei ist UTC)',
-        whoFileLink: 'Besprechungslink: {link}',
-        whoFileRelay: 'Relay-Sitzung: {session}',
-        whoFileRelayOff: 'nicht verbunden',
-        whoFileOnly: 'Wer den Besprechungslink hat, kann diese Besprechung öffnen. Geben Sie diese Datei nur an die Personen weiter, die ermitteln.',
-        whoFileHow: 'SO LESEN SIE DIESE DATEI',
-        whoFileVerified: 'Vom Relay geprüft: Das GifOS-Relay hat gesehen, dass das Gerät dieser Person zur genannten Zeit von dieser Adresse aus verbunden war, und hat das mit einer Erklärung bestätigt (am Ende aufgeführt). Das Gerät kann das nicht fälschen oder jemand anderen behaupten.',
-        whoFileSeenDirect: 'Direkt gesehen: Dieses Gerät war direkt mit deren Gerät verbunden und hat diese Adresse und diesen Port zwischen der ersten und der letzten genannten Zeit in Benutzung gesehen.',
-        whoFileReportedLine: 'Vom eigenen Gerät gemeldet: was das eigene Gerät gesagt hat. Das ist NICHT geprüft und kann falsch sein.',
-        whoFileEjectedLine: 'Ausgeschlossen: Sobald eine Fälschung erkannt wurde, hat dieses Gerät die Person abgeschnitten und nichts mehr angenommen: kein Bild, kein Ton, keine Nachrichten, keine Dateien.',
-        whoFileForgeryLine: 'Fälschung erkannt: Das Gerät hat etwas gesendet, das nur ein Fälscher senden würde: eine Relay-Erklärung, die nicht echt ist oder jemand anderem gehört, oder eine andere Adresse als die, die das Relay bestätigt hat. Die vom Relay geprüften und direkt gesehenen Adressen bleiben gültig.',
-        whoFileConnLine: 'Verbindung zu mir: „direkt“ heißt, dieses Gerät und deren Gerät waren direkt verbunden. „über andere“ heißt, dieses Gerät hat sie nur über andere Teilnehmer erreicht und ihre Adresse nie selbst gesehen.',
-        whoFileRelayNote: 'Relay-Sitzung: Das GifOS-Relay wird von Cloudflare betrieben. Dessen Verbindungsdaten, falls welche aufbewahrt werden, liegen unter dieser Sitzungsadresse. Die Verbindung jedes Teilnehmers nennt die Peer-Id (letzte Spalte), sodass beides zusammenpasst.',
-        whoFileIsp: 'Eine Adresse kann zu einem VPN, einem Arbeitsplatz oder einem Mobilnetz gehören, das viele Kunden teilen. Um einen Anschluss zu ermitteln, braucht ein Anbieter meist Adresse, Port und die genaue Zeit. Alle drei stehen hier, wo sie bekannt sind.',
-        whoColName: 'Name', whoColConn: 'Verbindung zu mir', whoColForgery: 'Fälschung erkannt',
-        whoColRelayAddr: 'Vom Relay geprüfte Adresse', whoColRelayAt: 'Relay sah um', whoColSeenAddr: 'Direkt gesehen (Adresse)',
-        whoColPort: 'Port', whoColProto: 'Protokoll', whoColKind: 'Verbindung', whoColFrom: 'Gesehen von', whoColUntil: 'Gesehen bis',
-        whoColInFrom: 'In der Besprechung von', whoColLast: 'Zuletzt gehört', whoColReported: 'Vom eigenen Gerät gemeldet',
-        whoColDev: 'Gerätekennung', whoColPeer: 'Peer-Id',
-        whoConnMe: 'dieses Gerät', whoConnDirect: 'direkt', whoConnIndirect: 'über andere', whoConnLeft: 'gegangen',
-        whoConnEjected: 'AUSGESCHLOSSEN wegen Fälschung um {when}',
-        whoFileLocal: 'lokales Netz',
-        whoFileSigned: 'SIGNIERTE RELAY-ERKLÄRUNGEN (Ed25519; die Signatur gilt für den Erklärungstext genau so, wie er hier steht)',
-        whoColStatement: 'Erklärung', whoColSig: 'Signatur (Base64)',
-        whoFileKeys: 'ÖFFENTLICHE RELAY-SCHLÜSSEL (Schlüssel-Id = die ersten 16 Hex-Zeichen von SHA-256 über den rohen 32-Byte-Schlüssel)',
-        admSignIn: 'Admin-Anmeldung', admBtn: 'Admin',
-        admTipOn: 'Admin-Steuerung: gesperrte Geräte, Raum-Passwort',
-        admTipOff: 'Dieser Raum hat einen Admin — geben Sie das Admin-Passwort ein, um die Steuerung zu bekommen',
-        admTitle: 'Raum-Admin', admPassPh: 'Admin-Passwort', admEnable: 'Als Admin anmelden',
-        admHintOff: 'Dieser Raum hat einen Admin. Wenn Sie das Admin-Passwort kennen, geben Sie es hier ein, um die Steuerung zu bekommen. Ihr Passwort bleibt auf diesem Gerät.',
-        admHintOn: 'Sie leiten diesen Raum. Admins können den Raum mit einem Passwort schließen (der Schlüssel zum scharfen Bild), jemanden für alle stummschalten oder weichzeichnen und Geräte sperren. Wer das Admin-Passwort kennt, kann Admin öffnen und sich auch anmelden.',
-        admBanned: 'Gesperrte Geräte:', admNobody: 'Niemand ist gesperrt.', admUnban: 'Entsperren', admUnnamed: 'ohne Namen',
-        admChatH: 'Chat-Optionen', admChatGuests: 'Gäste dürfen chatten', admChatGuestsSub: 'Aus: nur Admins können schreiben.',
-        admChatPray: 'Gebet-Taste', admChatPraySub: 'Alle können eine Nachricht als Gebetsanliegen markieren.',
-        admChatFiles: 'Dateien im Chat', admChatFilesOn: 'Erlaubt: dieser Raum hat ein Passwort.',
-        admChatFilesOff: 'Erst wenn der Raum ein Passwort hat.', admChatPw: 'Passwort',
-        admChatGfile: 'Gäste dürfen Dateien senden', admChatGfileSub: 'Aus, auch wenn der Raum ein Passwort hat.',
-        admChatGreact: 'Gäste dürfen reagieren', admChatGreactSub: 'Emoji-Reaktionen auf Chat-Zeilen.',
-        admChatQa: 'Fragen-Taste', admChatQaSub: 'Fragen in der Chat-Leiste anzeigen.',
-        admChatChist: 'Spät Eingetretene sehen frühere Nachrichten', admChatChistSub: 'Aus: Neue starten mit leerem Chat.',
-        admChatSlow: 'Langsam-Modus', admChatSlowSub: 'Gäste höchstens eine Zeile alle 10 Sekunden.',
-        admChatClink: 'Links im Chat', admChatClinkSub: 'Aus: Links von Gästen sind nur Text.',
-        admChecking: 'Wird geprüft…',
-        admCheckingStatus: '🛡 Passwort wird geprüft… (dauert ein paar Sekunden)',
-        admCheckFail: 'Das Passwort ließ sich nicht prüfen ({err}).',
-        admWrong: 'Falsches Admin-Passwort.',
-        admWrongStatus: '🛡 Falsches Admin-Passwort.',
-        admSignedIn: '🛡 Sie sind als Admin angemeldet.',
-        stopApp: 'App beenden', stopAppAll: 'Für alle beenden',
-        stopAppTip: 'Diese App nicht mehr mit der Besprechung teilen',
-        stopAppTipAdmin: 'Admin: diese App für den ganzen Raum beenden',
-        stopAppTipRoom: 'Diese App für den ganzen Raum beenden — alle sehen, dass Sie es waren, und wer sie teilt, kann sie wieder teilen',
-        appHelpTip: 'Wie diese App funktioniert',
-        chatModOff: 'Chat ausschalten', chatModOn: 'Chat einschalten',
-        chatModTipOff: 'Schaltet den Chat für alle außer Ihnen stumm',
-        chatModTipOn: 'Alle dürfen wieder im Chat schreiben',
-        chatWasOff: 'Der Chat wurde ausgeschaltet.',
-        chatWasOffBy: 'Der Chat wurde von {name} ausgeschaltet.',
-        chatHostOnly: 'Nur die Leitung kann schreiben.',
-        barSave: 'Speichern',
-        barSaveTip: 'Ein GIF dieser App mit ihren Daten speichern — es gehört Ihnen',
-        barSaveFail: 'Speichern ging nicht: {err}',
-        barSteal: 'Kopieren',
-        barStealTip: 'Eine Kopie dieser App mitnehmen — sie landet in „Stolen Apps“ auf Ihrem Schreibtisch, mit allen Daten',
-        barHide: 'Ausblenden',
-        barHideTip: 'Diese App nur auf Ihrem Bildschirm ausblenden — die Besprechung teilt sie weiter',
-        barHideStatus: '🧩 App nur auf Ihrem Bildschirm ausgeblendet — die Besprechung teilt sie weiter. „App zeigen“ holt sie zurück.',
-        barTalkOff: 'Sprechen: aus', barTalkOn: 'Sprechen: an',
-        barTalkTip: 'Mit den Menschen in dieser App sprechen — wenn an, hat hier jeder eine eigene Mikrofon-Taste (nur die Leitung)',
-        barTalkOnStatus: 'Sprechen ist an — alle hier können ihr Mikrofon einschalten.',
-        barTalkOffStatus: 'Sprechen ist aus — jedes Mikrofon ist still.',
-        barTalkHostOff: 'Die Leitung hat Sprechen ausgeschaltet.',
-        barInviteTip: 'Diese App live teilen — Freunde kommen mit einem Link dazu',
-        barLeading: '👑 Sie leiten', barCommunal: 'Gemeinsam',
-        barLeadingTip: 'Sie leiten diese App — nur Ihr Blättern bewegt den Raum. Tippen für gemeinsame Steuerung.',
-        barCommunalTip: 'Gemeinsam — jeder hier kann die geteilte App steuern. Tippen, um zu leiten.',
-        barLeadingStatus: '🧩 Sie leiten die App — nur Ihre Änderungen an den gemeinsamen Reglern bleiben.',
-        barCommunalStatus: '🧩 Gemeinsame Steuerung — jeder hier kann die geteilte App steuern.',
-        fullScreen: 'Vollbild', leaveFullScreen: 'Vollbild beenden',
-        appWhoHost: '· Sie stellen sie der Besprechung bereit', appWhoPinned: 'Sie stellen sie bereit',
-        appWhoShared: '· mit der Besprechung geteilt', appWhoSharedBy: '· mit der Besprechung geteilt von ', appWhoDevice: 'auf diesem Gerät',
-        appMissingTitle: 'Diese App ist nicht auf diesem Gerät',
-        appMissingBody: 'Dieser Link öffnet eine App, die auf einem anderen Gerät oder in einem anderen Browser gespeichert ist. GifOS behält Apps auf dem Gerät, auf dem sie gespeichert sind, deshalb kann sie hier nicht geöffnet werden. Öffnen Sie den Link dort, oder bitten Sie die Person, die sie hat, Ihnen einen Einladungslink zu schicken.',
-        appMissingHome: 'Zum Startbildschirm',
-        appSlowTitle: 'Die App wird noch gesucht',
-        appSlowBody: 'GifOS liest noch die Apps, die auf diesem Gerät gespeichert sind. Sie können weiter warten oder zum Startbildschirm zurückkehren.',
-        appFailTitle: 'Diese App konnte nicht geöffnet werden',
-        appFailBody: 'Beim Öffnen auf diesem Gerät ist etwas schiefgelaufen. Laden Sie die Seite neu, um es noch einmal zu versuchen, oder kehren Sie zum Startbildschirm zurück.',
-        tileControls: 'Steuerung für diese Person.', handChip: 'Hand gehoben', handUpOne: 'Hand oben', handUpMany: 'Hände oben', stageFull: 'Bühne voll', leavingChip: 'geht…', recChip: 'nimmt dieses Meeting auf', scribeChip: 'schreibt alle mit', stopShareTip: 'Ihre Bildschirmfreigabe beenden', botThinking: 'Denkt nach…',
-        stealData: '+ Daten', stealDataTip: 'Die App und alles, was jetzt darin ist',
-        stealJoined: 'wie ich kam', stealJoinedTip: 'Die App und der Raum, wie er war, als Sie kamen',
-        stealApp: 'nur die App', stealAppTip: 'Eine saubere Kopie — nur die App, keine Daten des Raums',
-        stealBusy: 'Wird kopiert…', stealDone: '🥷 Kopiert ✓',
-        stealNone: '🥷 Gehört Ihnen — eine saubere Kopie in „Stolen Apps“, ohne die Daten des Raums.',
-        stealConnect: '🥷 Gehört Ihnen — der Raum, wie er war, als Sie kamen, in „Stolen Apps“.',
-        stealAll: '🥷 Gehört Ihnen — in „Stolen Apps“ auf Ihrem Schreibtisch, mit allen Daten.',
-        stealFail: 'Kopieren ging nicht: {err}',
-        whoDirect: 'Direkt mit Ihnen verbunden',
-        whoDirectNote: 'Ihr Gerät und ihres sprechen direkt miteinander, deshalb hat es die Adresse selbst gesehen.',
-        whoIndirect: 'In der Besprechung, über andere',
-        whoIndirectNote: 'Sie erreichen sie über die Geräte anderer, deshalb hat Ihres die Adresse nie gesehen.',
-        whoEjected: 'Ausgeschlossen, Adresse gefälscht',
-        whoEjectedNote: 'Beim Fälschen erwischt. Dieses Gerät hat danach nichts mehr angenommen, kein Bild und keine Nachricht.',
-        whoLeftGroup: 'Haben die Besprechung verlassen',
-        whoSameNet: 'gleiches lokales Netz (Adresse vom Browser verborgen)',
-        whoLocal: 'lokales Netz ', whoPort: 'Port', whoVerified: 'vom Relay geprüft', whoSeen: 'direkt gesehen',
-        whoForged: 'GEFÄLSCHT — ihr Gerät ',
-        whoClaimed: 'vom Gerät behauptet, NICHT ihre Adresse',
-        whoDiffers: 'vom Gerät gemeldet, weicht ab von dem, was das Relay sah (das Netz kann sich geändert haben)',
-        whoReported: 'vom Gerät gemeldet, nicht geprüft',
-        whoUnknown: 'Adresse unbekannt', whoGone: 'ausgeschlossen', whoLeftAt: 'gegangen',
-        voteTitle: 'Abstimmen',
-        voteLead: 'Eine Stimme pro Person, solange Sie im Raum sind. Die Mehrheit gilt.',
-        voteUp: 'Auf die Bühne wählen',
-        voteUpNote: 'Ein grüner Punkt zeigt, wen Sie hinaufschicken können. Die Mehrheit setzt sie auf die Bühne.',
-        voteDown: 'Von der Bühne wählen',
-        voteDownNote: 'Ein gelber Punkt zeigt, wen Sie herunterholen können. Die Mehrheit nimmt sie herunter.',
-        voteKick: 'Aus dem Raum wählen',
-        voteKickNote: 'Ein roter Rand zeigt, wen Sie entfernen können. Ihre Stimme folgt ihnen in Räume, die Sie teilen.',
-        voteDone: 'Fertig',
-        voteBannerUp: 'Tippen Sie den grünen Punkt, um jemanden AUF die Bühne zu wählen — bei {n} Stimmen ist es so. Nochmal tippen nimmt die Stimme zurück.',
-        voteBannerDown: 'Tippen Sie das ✕, um jemanden von der Bühne zu wählen — bei {n} Stimmen steigt die Person ab. Nochmal tippen nimmt die Stimme zurück.',
-        voteBannerKick: 'Tippen Sie das ✕, um jemanden AUS dem Raum zu wählen — die Mehrheit entfernt die Person. Nochmal tippen nimmt die Stimme zurück.',
-        camBack: 'Kamera weg — sie kommt zurück',
-        camFail: 'Kamera nicht zurück. Tippen Sie auf Kamera.',
-        camBlack: 'Ihre Kamera sendet schwarz — sie startet neu…',
-        goLive: 'Kamera an, dann sind Sie live. Der Raum sieht Sie noch nicht.',
-        waitLive: 'Die Sendung hat noch nicht begonnen.',
-        orderOfService: 'Ablauf', rdNow: 'Jetzt', rdNext: 'Weiter', rdDone: 'Fertig',
-        rdEnded: 'Zu Ende', rdAgain: 'Von vorn',
-        rdWelcome: 'Begrüßung', rdSong: 'Lied', rdPrayer: 'Pause', rdScripture: 'Lesung',
-        rdMessage: 'Vortrag', rdClosing: 'Abschluss',
-        lyProgram: 'Programm', lyPreview: 'Vorschau', lyNext: 'Nächste Zeile',
-        songWords: 'Liedtext', songNote: 'Eine Zeile pro Zeile. Lied liest sie der Reihe nach.', songSave: 'Speichern', songCancel: 'Abbrechen',
-        setTitle: 'Einstellungen', setVideo: 'Videoqualität',
-        adjustStage: 'Bühnenvideo anpassen',
-        adjustStageHelp: 'So sähe Ihre Kamera auf der Bühne aus. Das setzt niemanden auf die Bühne.',
-        setVideoHelp: 'Was Ihre eigene Kamera aufnimmt und sendet. Automatisch passt sich der Größe des Raums und Ihrem Akku an. Eine feste Wahl bleibt stehen.',
-        setAuto: 'Automatisch', setName: 'Ihr Name',
-        setNameHelp: 'Was alle auf Ihrem Feld sehen:',
-        setChange: 'Ändern',
-        setPicHelp: 'Ihr Bild, wenn die Kamera aus ist. Ein animiertes GIF bleibt animiert.',
-        setPicture: 'Bild', setRemove: 'Entfernen',
-        setCcLang: 'Untertitelsprache',
-        setCcHelp: 'Wonach Ihr Gerät hört, wenn CC an ist. Es rät nicht. Wählen Sie die Sprache, die Sie sprechen werden.',
-        setCcBrowser: 'Untertitel im Browser',
-        setCcBrowserHelp: 'Sofort. Eine feste Sprache, oben gewählt. Manche Geräte schreiben zwei Wörter ohne Satzzeichen. Der Browser kann Ihre Stimme an seinen Hersteller schicken (Chrome: Google).',
-        setCcWhisper: 'Whisper auf diesem Gerät',
-        setCcWhisperHelp: 'Jede Sprache, von selbst erkannt. Echte Sätze mit Satzzeichen. Ihre Namen und Wörter. Kann alles auf Englisch schreiben. Ein Satz erscheint ein paar Sekunden später. Auf dem Telefon langsamer und mit Akku. Nichts verlässt das Gerät.',
-        setCcEnglish: 'Alles auf Englisch schreiben',
-        setCcWords: 'Namen und Wörter: Siobhan, Kubernetes, GifOS…',
-        setCcScribe: 'Alle hier mitschreiben',
-        setCcScribeHelp: 'Ihr Gerät schreibt jede Stimme mit Whisper mit und bietet den anderen die Untertitel an. Die meiste Arbeit — am besten auf einem starken Computer.',
-        setCcAllOff: 'Untertitel für alle: aus', setCcAllOn: 'Untertitel für alle: an',
-        setCcAllHelp: 'Nur die Leitung. Jedes Gerät schreibt die Stimmen mit, die es hört. CC schaltet es für einen selbst aus.',
-        setMix: 'Klang', setStage: 'Bühne', setRow: 'Meine Reihe', setStadium: 'Das Stadion',
-        setTiming: 'Zeit', setTalk: 'Gespräch', setUnison: 'Einklang', setClose: 'Schließen',
-        setTalkTip: 'Die schnellsten Antworten. Die Ohren richten sich nur nach Ihren eigenen Verbindungen.',
-        setUnisonTip: 'Alle hören denselben Augenblick. Der Raum wartet auf die langsamste Verbindung.',
-        setSongTip: 'Sie leiten das Lied. Nochmal tippen beendet es. Ohrhörer helfen.',
-        setSongWait: '{name} leitet. Warten Sie, bis das Lied endet.',
-        setCcWeak: 'Nicht angeboten auf {where}.',
-        setCcWeakPhone: 'einem Telefon', setCcWeakCores: 'einem Gerät mit so wenigen Kernen', setCcWeakMem: 'einem Gerät mit so wenig Speicher',
-        setCcWeakWhy: 'Whisper läuft auf dem Prozessor. Es macht den Anruf langsamer und leert den Akku. Untertitel im Browser bleiben sofort.',
-        setCcAnyway: 'Whisper trotzdem',
-        setCcReady: 'Bereit:', setCcReadyTail: 'antwortet auf diesem Gerät.',
-        setCcPhoneSlow: 'Auf einem Telefon kann ein Satz 5 bis 10 Sekunden brauchen und verbraucht Akku.',
-        setCcNeed: 'Braucht die App Offline-Untertitel (Whisper), 13 MB, einmal pro Computer. Das Modell lädt beim ersten Mal.',
-        setCcInstall: 'Jetzt installieren', setCcStore: 'oder aus dem App Store',
-        setCcSource: 'Untertitelquelle', setCcMine: 'Mein Gerät schreibt mich mit',
-        setCcUse: 'Untertitel von {name}',
-        setCcNear: 'Dessen Gerät schreibt alle mit, Sie eingeschlossen, und Ihres hört auf.',
-        setCcFar: 'Dessen Gerät schreibt mit, wen es hört. Es ist nicht direkt mit Ihnen verbunden, deshalb schreibt Ihres Sie weiter mit.',
-        setCcTrust: 'Jede Zeile trägt dessen Namen. Wählen Sie das nur, wenn Sie der Person vertrauen.',
-        sendInvite: 'Link schicken, er läuft nicht ab',
-        waiting: 'wir warten auf die anderen…',
-        chatTitle: 'Meeting-Chat',
-        chatPlaceholder: 'Nachricht an alle…', send: 'Senden',
-        chatOff: 'Chat ist gerade aus',
-        chatOffHost: 'Chat für Gäste aus',
-        filesTitle: 'Dateien in diesem Meeting',
-        filesLocked: 'Dateien erst nach einem Passwort (Taste Passwort).',
-        filesEmpty: 'Noch keine Dateien.',
-        lobTitle: 'Besprechung', lobQuiet: 'Mikrofon und Kamera schalten Sie im Anruf ein.',
-        lobStart: 'Besprechung starten', lobStartSub: 'Offener Raum · wer den Link hat, kommt rein',
-        lobRun: 'Einen Raum leiten', lobRunSub: 'Sie sind die Leitung: Passwort, stumm, unscharf, jemand raus',
-        lobJoin: 'Einem Link folgen', lobJoinSub: 'Link oder Kennung einfügen',
-        lobAdminHead: 'Leitungspasswort', lobAdminMid: 'nur für Sie — nicht weitergeben',
-        lobAdminNote: 'Damit leiten Sie den Raum. Gäste brauchen es nicht. Wer es bekommt, kann den Raum auch leiten.',
-        lobGuestHead: 'Gästepasswort', lobGuestMid: 'das geben Sie weiter',
-        lobGuestNote: 'Optional. Gesichter bleiben unscharf, bis Sie eines setzen. Es steht nicht im Link.',
-        lobCreate: 'Erstellen und hinein', lobCancel: 'Abbrechen',
-        lobRecent: 'Zuletzt und gemerkt', lobEmpty: 'Besprechungen, die Sie starten oder betreten, stehen hier.',
-        lobJoinAs: 'Sie erscheinen als', lobChange: 'ändern',
-        lobRoomPh: 'Raumname, ganz wie Sie wollen', lobAdminPh: 'Leitungspasswort (für Sie allein)',
-        lobGuestPh: 'Gästepasswort (optional — an Gäste)', lobPastePh: 'Link oder Kennung einfügen',
-        bcTitle: 'Sendung', bcStart: 'Sendung starten', bcStartSub: 'Sie sind auf der Bühne; wer den Link hat, schaut zu und schreibt',
-        bcHostHead: 'Leitungspasswort', bcViewerHead: 'Zuschauerpasswort',
-        bcHostPh: 'Leitungspasswort (für Sie allein)', bcViewerPh: 'Zuschauerpasswort (optional — an Zuschauer)',
-        bcHostNote: 'Damit leiten Sie die Sendung. Zuschauer brauchen es nicht.',
-        bcViewerNote: 'Optional. Das Bild bleibt unscharf, bis Sie eines setzen. Es steht nicht im Link.',
-        bcJoin: 'Eine Sendung schauen', bcJoinSub: 'Einen Sendungslink einfügen',
-        bcEmpty: 'Sendungen, die Sie starten oder schauen, stehen hier.',
-        shortcutTitle: 'Tastatur', keyMic: 'Stumm oder an', keyCam: 'Kamera an oder aus',
-        keyChat: 'Chat auf oder zu', keyShare: 'Bildschirm teilen oder beenden', keyHand: 'Hand heben oder senken', keyView: 'Alle zeigen oder scrollen', keyLeave: 'Besprechung verlassen', keyEsc: 'Fenster oder Chat schließen', keyList: 'Diese Liste zeigen oder schließen',
-        keyWho: 'Wer ist hier', keyMuteAll: 'Alle Gäste stumm oder laut schalten', keyBlurAll: 'Alle Gäste weichzeichnen oder schärfen', keyCamAll: 'Video aller Gäste aus oder an', keyShareAll: 'Gästen das Teilen erlauben oder beenden', keyInvite: 'Einladen', keyApp: 'App starten', keyVote: 'Abstimmung', keyLock: 'Passwort', keyStage: 'Bühne', keyRecord: 'Aufnahme', keyCaptions: 'Untertitel auf diesem Bildschirm', keySettings: 'Einstellungen', keyTranscript: 'Protokoll', keyHelp: 'Hilfe',
-        helpTitle: 'So funktioniert diese Besprechung', helpGot: 'Verstanden',
-        bcHelpTitle: 'So funktioniert diese Sendung', appHelpTitle: 'So funktioniert dieser App-Raum',
-        screenNameTitle: 'Ihr Name', screenNameNote: 'Die anderen in der Besprechung sehen ihn.', save: 'Speichern',
-        needName: 'Geben Sie dem Raum einen Namen.', needPass: 'Setzen Sie ein Leitungspasswort — es ist der Schlüssel.',
-        creating: 'Wird erstellt…', createFail: 'Der Raum ließ sich nicht erstellen. Nochmal versuchen.',
-        badLink: 'Das war kein Link und keine Kennung.',
-      },
-      es: {
-        mic: 'Micro', unmute: 'Activar', mute: 'Silenciar', micHeld: 'Mudo', cam: 'Cámara', react: 'Reacciones', more: 'Más', hide: 'Menos', leave: 'Salir',
-        hideControls: 'Ocultar controles',
-        appearTitle: 'Así te verán', screenName: 'Nombre', notNow: 'Ahora no', join: 'Entrar',
-        appearClear: 'Limpiar', appearSave: 'Guardar', changePic: 'Cambiar foto',
-        people: 'Gente', share: 'Compartir', room: 'Sala', host: 'Anfitrión', help: 'Ayuda',
-        talk: 'Conversación', yourVideo: 'Tu video', setHelp: 'Ajustes y ayuda',
-        who: 'Quién', hand: 'Mano', chat: 'Chat', invite: 'Invitar', runApp: 'Abrir app', showApp: 'Mostrar app',
-        appSheetTitle: 'Abrir una app en esta reunión',
-        appSheetBody: 'Elige una de tus apps. Corre en vivo para todos aquí, con el mismo estado y los mismos movimientos, y con el audio, el video y la grabación de la reunión. Cualquiera puede usarla.',
-        appSheetOr: 'O una app GIF que no está en esta computadora:',
-        appSheetFile: '＋ Elegir un archivo GIF…', appSheetLink: 'Pega un enlace de app GIF', appSheetRun: 'Abrir',
-        appLoading: 'Cargando tus apps…',
-        appTip: 'Abre una app en esta reunión — todos aquí la usan juntos',
-        appHidden: 'Hay una app aquí ({name}) — la ocultaste. Toca para volver a verla.',
-        appDenied: '🛡 Solo los anfitriones de esta sala — o quien ellos permitan — pueden abrir una app aquí.',
-        appLoadFail: 'No se pudo abrir ese enlace. Guarda el GIF en tu dispositivo y elige un archivo GIF.',
-        appNotGif: 'Ese enlace no es un archivo GIF.', appReadFail: 'No se pudo leer ese archivo.', appNeedLink: 'Pega primero un enlace GIF.',
-        shareScreen: 'Pantalla', stopShare: 'Parar', float: 'Flotar', flip: 'Girar',
-        vote: 'Votar', password: 'Contraseña', stage: 'Escenario', record: 'Grabar', settings: 'Ajustes', keys: 'Teclas',
-        blur: 'Desenfoque', noBlur: 'Sin',
-        transcript: 'Transcripción', chatPrivate: 'Solo aquí. Se borra cuando salen.',
-        captions: 'Subtítulos', ccTip: 'Subtítulos solo en tu pantalla',
-        fsTip: 'Ver en pantalla completa. Sigue a quien habla.', keyFull: 'Abrir o cerrar pantalla completa',
-        trEmpty: 'Esta reunión se transcribe. Las líneas quedan aquí, con el nombre. Cualquiera puede leerlas o descargarlas.',
-        trDownload: 'Descargar transcripción',
-        muteGuests: 'Silenciar invitados', unmuteGuests: 'Activar invitados', blurGuests: 'Difuminar', unblurGuests: 'Quitar desenfoque', videoOff: 'Apagar video', videoOn: 'Encender video',
-        allowShare: 'Permitir pantalla', stopShares: 'Parar pantallas',
-        inMeeting: 'en la reunión', countPartial: 'Número incompleto', justYou: 'Solo tú', backIn: 'Volviendo', waitHere: 'En la sala de espera',
-        away: 'Fuera', stillHere: 'Sigues en la llamada',
-        unlockClear: 'caras suaves hasta una contraseña',
-        onAir: 'Al aire', offAir: 'Fuera del aire', watching: 'En vivo',
-        rosterPeople: 'personas', rosterPerson: 'persona', you: 'tú', muted: 'En silencio', camOffChip: 'Cámara apagada', rosterClose: 'Cerrar', rosterFind: 'Buscar un nombre',
-        muteForAll: 'Silenciar', unmuteForAll: 'Activar', forEveryone: 'Para todos',
-        waitRoom: 'Sala de espera', waitOn: 'Sí', waitOff: 'No', waitHeading: 'Esperando',
-        admit: 'Admitir', nobodyWaiting: 'Nadie espera', rename: 'Renombrar', saveName: 'Guardar',
-        spotlight: 'Destacar', inView: 'En vista',
-        waitSelf: 'El anfitrión te dejará entrar', waitSelfNote: 'Verás la reunión cuando te admitan.',
-        waitMic: 'Estás en la sala de espera: tu micrófono se abre cuando te admitan.',
-        shareTitle: 'Compartir pantalla', shareGo: 'Elegir qué compartir…', shareCancel: 'Cancelar',
-        shareDenied: 'Solo los anfitriones de esta sala — o quien ellos permitan — pueden compartir pantalla. Pide que te lo permitan, en tu recuadro o para toda la sala, y abre esto otra vez.',
-        shareBody: 'Compartir pantalla es para lo que una app no puede ser: una presentación en tu disco, una herramienta que no es GifOS, una ventana de otro sitio. Se ve en el escenario, toda la sala la ve, y todos ven que eres tú.',
-        shareSound: 'Tu cámara se pausa mientras compartes y vuelve cuando paras. El sonido de la pestaña no viaja — habla por encima.',
-        shareLive: '🖥 Estás compartiendo tu pantalla. El sonido de la pestaña no viaja — habla por encima.',
-        shareStopped: 'Dejaste de compartir.',
-        shareStoppedWhy: 'Dejaste de compartir — {why}.',
-        shareEndedByBrowser: 'el navegador terminó de compartir',
-        shareCancelled: 'Compartir se canceló — no se compartió nada.',
-        shareFailed: 'No se pudo compartir la pantalla ({err}).',
-        shareNoCapture: '🖥 Este navegador no puede capturar la pantalla. Casi ningún teléfono puede. Una computadora sí. Para mostrar un documento desde el teléfono, ábrelo con Abrir app.',
-        whoTip: 'Quién está en esta reunión — nombres y direcciones de internet',
-        shareTip: 'Muestra al grupo una ventana, una pestaña o el escritorio. Para una app de GifOS, usa Abrir app.',
-        shareTipOn: 'Estás compartiendo tu pantalla — toca para parar',
-        shareMineStage: 'Tu pantalla — en el escenario',
-        shareTheirStage: 'Pantalla de {names} — en el escenario',
-        shareBothStage: 'Tu pantalla y la de {names} — en el escenario',
-        nameJoin: ' y ', aGuest: 'un invitado',
-        stageLabel: 'En el escenario', onStageChip: 'en el escenario',
-        shareTheirsChip: 'comparte su pantalla',
-        reshareNote: 'Dejaste de compartir al volver.',
-        reshareGo: 'Compartir otra vez',
-        pwTitle: 'Contraseña de la sala',
-        pwTitleLocked: 'Esta sala está cerrada',
-        pwHint: 'Cualquiera en la reunión puede ponerla o cambiarla. Llega al instante a todos aquí, y quien entre después tiene que escribirla. Déjala vacía para quitar el candado.',
-        pwHintAdmin: 'Solo el anfitrión puede ponerla o cambiarla. Llega al instante a todos aquí, y quien entre después tiene que escribirla. Déjala vacía para quitar el candado.',
-        pwHintLocked: 'Escribe la contraseña para entrar.',
-        pwNew: 'Contraseña nueva', pwWord: 'Contraseña',
-        pwSave: 'Guardar', pwClose: 'Cerrar', pwLeave: 'Salir',
-        pwShow: 'Mostrar contraseña', pwHide: 'Ocultar contraseña',
-        pwTrying: 'Probando la contraseña…',
-        pwTip: 'Cierra esta sala con una contraseña',
-        pwTipAdmin: 'La contraseña de esta sala la pone el anfitrión',
-        invTip: 'Tus amigos entran en vivo con un enlace',
-        invTitle: 'Compartir esta reunión', invTitleApp: 'Compartir esta app', invTitleBc: 'Compartir esta transmisión',
-        invOpen: 'Cualquiera con este enlace puede entrar, y el enlace no caduca. <b>Nadie manda</b> — cualquiera aquí puede silenciar o difuminar a los demás.',
-        invApp: 'Cualquiera con este enlace entra <b>en vivo en esta app</b>, y el enlace no caduca.',
-        invAdmin: '<b>Tú diriges esta sala.</b> El enlace se puede enviar a cualquiera — deja entrar, no deja dirigir. Eso lo hace tu contraseña de anfitrión. Guárdala.',
-        invCopy: 'Copiar', invCopied: 'Copiado ✓', invShare: 'Compartir…', invClose: 'Cerrar', invDone: 'Listo',
-        invWant: '¿Quieres una sala que <b>tú</b> diriges — contraseña, silenciar y difuminar a todos, y poder echar a alguien?',
-        invMk: 'Crear una sala que tú diriges →',
-        invWarn: 'Esto crea una <b>sala nueva, aparte</b>, que tú diriges — <b>ponle el nombre que quieras</b>. ',
-        invWarnHere: 'Las {n} personas de aquí no se mueven solas. Deja la casilla marcada para dejar el enlace nuevo en el chat y que puedan seguirte.',
-        invWarnSolo: 'Pasas ahora.',
-        invRoomPh: 'Nombre de la sala (el que quieras)',
-        invAdminLab: '🔑 <b>Contraseña de anfitrión</b> — solo tuya — <b>no la compartas</b><small>Con esto diriges la sala. Los invitados no la necesitan. Quien la tenga también puede dirigir.</small>',
-        invAdminPh: 'Contraseña de anfitrión (solo tuya)',
-        invGuestLab: '🎟 <b>Contraseña de invitados</b> — la que <b>sí</b> compartes<small>Opcional. Las caras siguen muy difuminadas hasta que pongas una. Los invitados la escriben para entrar. No va en el enlace — envíasela tú.</small>',
-        invGuestPh: 'Contraseña de invitados (opcional — compártela)',
-        invFollow: 'Publica el enlace nuevo en el chat, para que las {n} personas de aquí puedan seguirte.',
-        invBack: 'Atrás', invGo: 'Crear y cambiar',
-        voteTip: 'Vota a alguien al escenario, fuera del escenario o fuera de la sala — decide la mayoría',
-        voteRecorded: 'Voto contado — sigue a esta persona en las salas que compartes.',
-        voteWithdrawn: 'Voto retirado.',
-        shareAppNote: '<b>🧩 ¿Una app de GifOS? Usa “Abrir app”.</b> Una app fijada corre en el dispositivo de cada quien, nítida y se puede tocar. Compartir pantalla es un <i>video de tu ventana</i>: de un solo lado.',
-        shareRunning: ' ya está en esta reunión.</b> Todos la usan en su propio dispositivo. No hace falta compartir pantalla.',
-        whoTitle: 'Quién está en esta reunión',
-        whoLead: 'No hay un servidor en medio que guarde esta reunión. Los teléfonos y las computadoras de quienes están son los servidores: se conectan directo. Por eso todos ven la dirección de internet de los demás — nadie es anónimo. ✓ marca una dirección que el relay de GifOS verificó o que este dispositivo vio directo. Lo demás es solo lo que dijo el dispositivo de esa persona. Quien se fue sigue en la lista. Para denunciar algo ilegal, descarga esta lista y adjúntala.',
-        whoDl: 'Descargar esta lista',
-        whoYou: '(tú)',
-        whoFileTitle: 'Reunión de GifOS — quién estuvo aquí',
-        whoFileRoom: 'Sala: {room}',
-        whoFileSaved: 'Guardado: {when}   (todas las horas de este archivo son UTC)',
-        whoFileLink: 'Enlace de la reunión: {link}',
-        whoFileRelay: 'Sesión del relay: {session}',
-        whoFileRelayOff: 'sin conexión',
-        whoFileOnly: 'Quien tenga el enlace puede abrir esta reunión. Comparte este archivo solo con quienes investigan.',
-        whoFileHow: 'CÓMO LEER ESTO',
-        whoFileVerified: 'Verificado por el relay: el relay de GifOS vio que el dispositivo de esta persona se conectó desde esta dirección a la hora indicada, y firmó una constancia (al final). Su dispositivo no puede falsificarla ni atribuirla a otra persona.',
-        whoFileSeenDirect: 'Visto directo: este dispositivo estaba conectado directo al de esa persona y vio esta dirección y este puerto en uso entre la primera y la última hora indicadas.',
-        whoFileReportedLine: 'Lo que dijo su dispositivo: lo que su propio dispositivo declaró. NO está verificado y puede ser falso.',
-        whoFileEjectedLine: 'Expulsado: en cuanto se detectó una falsificación, este dispositivo cortó a esa persona y no aceptó nada más: ni video, ni audio, ni mensajes, ni archivos.',
-        whoFileForgeryLine: 'Falsificación detectada: su dispositivo envió algo que solo enviaría un falsificador: una constancia del relay que no es genuina o es de otra persona, o una dirección distinta de la que el relay firmó. Las direcciones verificadas por el relay y vistas directo siguen en pie.',
-        whoFileConnLine: 'Conexión conmigo: «directo» significa que este dispositivo y el de esa persona estaban conectados entre sí. «por otros» significa que este dispositivo solo los alcanzó a través de otros participantes y nunca vio su dirección.',
-        whoFileRelayNote: 'Sesión del relay: el relay de GifOS lo hospeda Cloudflare. Sus registros de conexión, si se guardan, están bajo esta dirección de sesión, y la conexión de cada participante nombra su id de par (última columna), para poder cruzarlos.',
-        whoFileIsp: 'Una dirección puede ser de una VPN, un trabajo o una red móvil compartida por muchos clientes. Para identificar un abonado, el proveedor suele necesitar la dirección, el puerto y la hora exacta. Los tres aparecen aquí cuando se conocen.',
-        whoColName: 'Nombre', whoColConn: 'Conexión conmigo', whoColForgery: 'Falsificación detectada',
-        whoColRelayAddr: 'Dirección verificada por el relay', whoColRelayAt: 'El relay vio a las', whoColSeenAddr: 'Visto directo (dirección)',
-        whoColPort: 'Puerto', whoColProto: 'Protocolo', whoColKind: 'Conexión', whoColFrom: 'Visto desde', whoColUntil: 'Visto hasta',
-        whoColInFrom: 'En la reunión desde', whoColLast: 'Última vez oído', whoColReported: 'Lo que dijo su dispositivo',
-        whoColDev: 'Etiqueta del dispositivo', whoColPeer: 'Id de par',
-        whoConnMe: 'este dispositivo', whoConnDirect: 'directo', whoConnIndirect: 'por otros', whoConnLeft: 'se fue',
-        whoConnEjected: 'EXPULSADO por falsificación a las {when}',
-        whoFileLocal: 'red local',
-        whoFileSigned: 'CONSTANCIAS FIRMADAS DEL RELAY (Ed25519; la firma cubre el texto de la constancia exactamente como está escrito)',
-        whoColStatement: 'Constancia', whoColSig: 'Firma (base64)',
-        whoFileKeys: 'CLAVES PÚBLICAS DEL RELAY (id de clave = los primeros 16 hex de SHA-256 sobre la clave cruda de 32 bytes)',
-        admSignIn: 'Entrar como anfitrión', admBtn: 'Anfitrión',
-        admTipOn: 'Controles de anfitrión: dispositivos bloqueados, contraseña de la sala',
-        admTipOff: 'Esta sala tiene un anfitrión — escribe la contraseña para tener los controles',
-        admTitle: 'Anfitrión de la sala', admPassPh: 'Contraseña de anfitrión', admEnable: 'Entrar como anfitrión',
-        admHintOff: 'Esta sala tiene un anfitrión. Si sabes la contraseña, escríbela aquí para tener los controles. Tu contraseña se queda en este dispositivo.',
-        admHintOn: 'Tú diriges esta sala. Los anfitriones pueden cerrarla con una contraseña (la llave del video nítido), silenciar o difuminar a alguien para todos, y bloquear dispositivos. Quien sepa la contraseña puede abrir Anfitrión y entrar también.',
-        admBanned: 'Dispositivos bloqueados:', admNobody: 'Nadie está bloqueado.', admUnban: 'Desbloquear', admUnnamed: 'sin nombre',
-        admChatH: 'Opciones del chat', admChatGuests: 'Los invitados pueden chatear', admChatGuestsSub: 'Apagado: solo los anfitriones escriben.',
-        admChatPray: 'Botón de oración', admChatPraySub: 'Cualquiera puede marcar un mensaje como petición de oración.',
-        admChatFiles: 'Archivos en el chat', admChatFilesOn: 'Permitidos: esta sala tiene contraseña.',
-        admChatFilesOff: 'Solo cuando la sala tenga contraseña.', admChatPw: 'Contraseña',
-        admChatGfile: 'Los invitados pueden enviar archivos', admChatGfileSub: 'Apagado aunque la sala tenga contraseña.',
-        admChatGreact: 'Los invitados pueden reaccionar', admChatGreactSub: 'Reacciones con emoji en las líneas del chat.',
-        admChatQa: 'Botón de preguntas', admChatQaSub: 'Mostrar Preguntas en la barra del chat.',
-        admChatChist: 'Los que entran tarde ven mensajes anteriores', admChatChistSub: 'Apagado: empiezan con el chat vacío.',
-        admChatSlow: 'Modo lento', admChatSlowSub: 'Los invitados publican como mucho una línea cada 10 segundos.',
-        admChatClink: 'Enlaces en el chat', admChatClinkSub: 'Apagado: los enlaces de invitados quedan como texto.',
-        admChecking: 'Comprobando…',
-        admCheckingStatus: '🛡 Comprobando la contraseña… (tarda unos segundos)',
-        admCheckFail: 'No se pudo comprobar la contraseña ({err}).',
-        admWrong: 'Contraseña de anfitrión incorrecta.',
-        admWrongStatus: '🛡 Contraseña de anfitrión incorrecta.',
-        admSignedIn: '🛡 Entraste como anfitrión.',
-        stopApp: 'Detener app', stopAppAll: 'Detener para todos',
-        stopAppTip: 'Deja de compartir esta app con la reunión',
-        stopAppTipAdmin: 'Anfitrión: detén esta app para toda la sala',
-        stopAppTipRoom: 'Detén esta app para toda la sala — todos ven que fuiste tú, y quien la comparte puede volver a compartirla',
-        appHelpTip: 'Cómo funciona esta app',
-        chatModOff: 'Apagar el chat', chatModOn: 'Encender el chat',
-        chatModTipOff: 'Silencia el chat para todos menos tú',
-        chatModTipOn: 'Todos pueden escribir en el chat otra vez',
-        chatWasOff: 'El chat se apagó.',
-        chatWasOffBy: 'El chat lo apagó {name}.',
-        chatHostOnly: 'Solo el anfitrión puede escribir.',
-        barSave: 'Guardar',
-        barSaveTip: 'Guarda un GIF de esta app con sus datos — queda para ti',
-        barSaveFail: 'No se pudo guardar: {err}',
-        barSteal: 'Copiar',
-        barStealTip: 'Llévate una copia de esta app — va a «Stolen Apps» en tu escritorio, con todos los datos',
-        barHide: 'Ocultar',
-        barHideTip: 'Oculta esta app solo en tu pantalla — la reunión sigue compartiéndola',
-        barHideStatus: '🧩 App oculta solo en tu pantalla — la reunión sigue compartiéndola. «Mostrar app» la trae de vuelta.',
-        barTalkOff: 'Hablar: no', barTalkOn: 'Hablar: sí',
-        barTalkTip: 'Habla con la gente de esta app — si está activo, cada quien tiene su micrófono (solo el anfitrión)',
-        barTalkOnStatus: 'Hablar está activo — todos aquí pueden encender su micrófono.',
-        barTalkOffStatus: 'Hablar está apagado — todos los micrófonos quedan en silencio.',
-        barTalkHostOff: 'El anfitrión apagó Hablar.',
-        barInviteTip: 'Comparte esta app en vivo — tus amigos entran con un enlace',
-        barLeading: '👑 Diriges', barCommunal: 'Entre todos',
-        barLeadingTip: 'Diriges esta app — solo tus cambios de página mueven la sala. Toca para control entre todos.',
-        barCommunalTip: 'Entre todos — cualquiera aquí puede manejar la app compartida. Toca para dirigir.',
-        barLeadingStatus: '🧩 Diriges la app — solo tus cambios en los controles compartidos se quedan.',
-        barCommunalStatus: '🧩 Control entre todos — cualquiera aquí puede manejar la app compartida.',
-        fullScreen: 'Pantalla completa', leaveFullScreen: 'Salir de pantalla completa',
-        appWhoHost: '· tú la alojas para la reunión', appWhoPinned: 'tú la alojas',
-        appWhoShared: '· compartida con la reunión', appWhoSharedBy: '· compartida con la reunión por ', appWhoDevice: 'en este dispositivo',
-        appMissingTitle: 'Esta app no está en este dispositivo',
-        appMissingBody: 'Este enlace abre una app guardada en otro dispositivo o en otro navegador. GifOS deja las apps en el dispositivo donde se guardaron, así que aquí no se puede abrir. Abre el enlace allí o pide a quien la tiene que te mande un enlace de invitación.',
-        appMissingHome: 'Ir a la pantalla de inicio',
-        appSlowTitle: 'Todavía buscando esta app',
-        appSlowBody: 'GifOS todavía está leyendo las apps guardadas en este dispositivo. Puedes seguir esperando o volver a la pantalla de inicio.',
-        appFailTitle: 'Esta app no se pudo abrir',
-        appFailBody: 'Algo salió mal al abrirla en este dispositivo. Recarga la página para intentarlo de nuevo o vuelve a la pantalla de inicio.',
-        tileControls: 'Controles para esta persona.', handChip: 'mano levantada', handUpOne: 'mano levantada', handUpMany: 'manos levantadas', stageFull: 'escenario lleno', leavingChip: 'saliendo…', recChip: 'grabando esta reunión', scribeChip: 'anotando a todos', stopShareTip: 'Dejar de compartir tu pantalla', botThinking: 'Pensando…',
-        stealData: '+ datos', stealDataTip: 'La app y todo lo que hay ahora',
-        stealJoined: 'como entré', stealJoinedTip: 'La app y la sala como estaban cuando entraste',
-        stealApp: 'solo la app', stealAppTip: 'Una copia limpia — solo la app, sin los datos de la sala',
-        stealBusy: 'Copiando…', stealDone: '🥷 Copiada ✓',
-        stealNone: '🥷 Ya es tuya — una copia limpia en «Stolen Apps», sin los datos de la sala.',
-        stealConnect: '🥷 Ya es tuya — la sala como estaba cuando entraste, en «Stolen Apps».',
-        stealAll: '🥷 Ya es tuya — en «Stolen Apps» de tu escritorio, con todos los datos.',
-        stealFail: 'No se pudo copiar: {err}',
-        whoDirect: 'Conectados directo contigo',
-        whoDirectNote: 'Tu dispositivo y el suyo hablan directo, así que vio la dirección.',
-        whoIndirect: 'En la reunión, a través de otros',
-        whoIndirectNote: 'Los alcanzas por los dispositivos de otras personas, así que el tuyo nunca vio su dirección.',
-        whoEjected: 'Expulsados por falsificar su dirección',
-        whoEjectedNote: 'Pillados falsificando. Este dispositivo no aceptó nada más de ellos: ni video ni mensajes.',
-        whoLeftGroup: 'Salieron de la reunión',
-        whoSameNet: 'misma red local (el navegador oculta la dirección)',
-        whoLocal: 'red local ', whoPort: 'puerto', whoVerified: 'verificado por el relay', whoSeen: 'visto directo',
-        whoForged: 'FALSIFICADO — su dispositivo ',
-        whoClaimed: 'lo dijo su dispositivo, NO es su dirección',
-        whoDiffers: 'lo dijo su dispositivo y no coincide con lo que vio el relay (pudo cambiar de red)',
-        whoReported: 'lo dijo su dispositivo, sin verificar',
-        whoUnknown: 'dirección desconocida', whoGone: 'expulsado', whoLeftAt: 'salió',
-        voteTitle: 'Votar',
-        voteLead: 'Un voto cada uno, mientras estés en la sala. La mayoría decide.',
-        voteUp: 'Votar al escenario',
-        voteUpNote: 'Un punto verde marca a quién puedes subir. La mayoría lo pone en el escenario.',
-        voteDown: 'Bajar del escenario',
-        voteDownNote: 'Un punto ámbar marca a quién puedes bajar. La mayoría lo baja.',
-        voteKick: 'Sacar de la sala',
-        voteKickNote: 'Un borde rojo marca a quién puedes quitar. Tu voto lo sigue a las salas que compartes.',
-        voteDone: 'Listo',
-        voteBannerUp: 'Toca el punto verde para votar a alguien AL escenario — con {n} votos sube. Toca otra vez para retirar el voto.',
-        voteBannerDown: 'Toca la ✕ para votar que alguien BAJE del escenario — con {n} votos baja. Toca otra vez para retirar el voto.',
-        voteBannerKick: 'Toca la ✕ para votar que alguien SALGA de la sala — la mayoría lo quita. Toca otra vez para retirar el voto.',
-        camBack: 'Cámara parada — vuelve enseguida',
-        camFail: 'La cámara no volvió. Toca Cámara.',
-        camBlack: 'Tu cámara manda negro — vuelve a arrancar…',
-        goLive: 'Enciende la cámara para salir al aire. La sala aún no te ve.',
-        waitLive: 'La transmisión aún no empieza.',
-        orderOfService: 'Programa', rdNow: 'Ahora', rdNext: 'Siguiente', rdDone: 'Listo',
-        rdEnded: 'Terminó', rdAgain: 'Otra vez',
-        rdWelcome: 'Bienvenida', rdSong: 'Canción', rdPrayer: 'Pausa', rdScripture: 'Lectura',
-        rdMessage: 'Charla', rdClosing: 'Cierre',
-        lyProgram: 'Programa', lyPreview: 'Vista previa', lyNext: 'Siguiente línea',
-        songWords: 'Letra', songNote: 'Una línea por renglón. Canción las lee en orden.', songSave: 'Guardar', songCancel: 'Cancelar',
-        setTitle: 'Ajustes', setVideo: 'Calidad de video',
-        adjustStage: 'Ajustar video del escenario',
-        adjustStageHelp: 'Así se vería tu cámara en el escenario. Esto no pone a nadie en el escenario.',
-        setVideoHelp: 'Lo que graba y envía tu propia cámara. Automático se adapta al tamaño de la sala y a tu batería. Una elección fija se queda.',
-        setAuto: 'Automático', setName: 'Tu nombre',
-        setNameHelp: 'Lo que todos ven en tu cuadro:',
-        setChange: 'Cambiar',
-        setPicHelp: 'Tu foto cuando la cámara está apagada. Un GIF animado sigue animado.',
-        setPicture: 'Foto', setRemove: 'Quitar',
-        setCcLang: 'Idioma de los subtítulos',
-        setCcHelp: 'Lo que escucha tu dispositivo cuando CC está activo. No adivina. Elige el idioma que vas a hablar.',
-        setCcBrowser: 'Subtítulos del navegador',
-        setCcBrowserHelp: 'Al instante. Un idioma fijo, el de arriba. En algunos dispositivos son dos palabras sin puntuación. El navegador puede enviar tu voz al servicio de su fabricante (Chrome: Google).',
-        setCcWhisper: 'Whisper en este dispositivo',
-        setCcWhisperHelp: 'Cualquier idioma, lo detecta solo. Frases de verdad, con puntuación. Tus nombres y palabras. Puede escribir todo en inglés. Una frase aparece unos segundos después. En el teléfono va más lento y gasta batería. Nada sale del dispositivo.',
-        setCcEnglish: 'Escribir todo en inglés',
-        setCcWords: 'Nombres y palabras: Siobhan, Kubernetes, GifOS…',
-        setCcScribe: 'Escribir a todos aquí',
-        setCcScribeHelp: 'Tu dispositivo transcribe cada voz con Whisper y se ofrece como subtítulos de los demás. El mayor trabajo: mejor en un computador fuerte.',
-        setCcAllOff: 'Subtítulos para todos: no', setCcAllOn: 'Subtítulos para todos: sí',
-        setCcAllHelp: 'Solo anfitriones. Cada dispositivo escribe las voces que oye. Cualquiera puede tocar CC para salir.',
-        setMix: 'Mezcla', setStage: 'Escenario', setRow: 'Mi fila', setStadium: 'El estadio',
-        setTiming: 'Tiempo', setTalk: 'Conversación', setUnison: 'Al unísono', setClose: 'Cerrar',
-        setTalkTip: 'Las respuestas más rápidas. Tus oídos se alinean solo con tus propias conexiones.',
-        setUnisonTip: 'Todos oyen el mismo instante. La sala espera a la conexión más lenta.',
-        setSongTip: 'Tú diriges la canción. Tocar otra vez la termina. Los audífonos ayudan.',
-        setSongWait: '{name} dirige. Espera a que termine la canción.',
-        setCcWeak: 'No se ofrece en {where}.',
-        setCcWeakPhone: 'un teléfono', setCcWeakCores: 'un dispositivo con tan pocos núcleos', setCcWeakMem: 'un dispositivo con tan poca memoria',
-        setCcWeakWhy: 'Whisper corre en el procesador. Hace la llamada más lenta y gasta la batería. Los subtítulos del navegador siguen al instante.',
-        setCcAnyway: 'Usar Whisper igual',
-        setCcReady: 'Listo:', setCcReadyTail: 'responde en este dispositivo.',
-        setCcPhoneSlow: 'En un teléfono una frase puede tardar de 5 a 10 segundos y gasta batería.',
-        setCcNeed: 'Hace falta la app Subtítulos sin conexión (Whisper), 13 MB, una vez por computador. El modelo se descarga la primera vez.',
-        setCcInstall: 'Instalar ahora', setCcStore: 'o desde la tienda',
-        setCcSource: 'Fuente de subtítulos', setCcMine: 'Mi dispositivo me escribe',
-        setCcUse: 'Subtítulos de {name}',
-        setCcNear: 'Su dispositivo escribe a todos, tú incluido, y el tuyo para.',
-        setCcFar: 'Su dispositivo escribe a quien oye. No está conectado directo contigo, así que el tuyo sigue escribiéndote.',
-        setCcTrust: 'Cada línea lleva su nombre. Elige esto solo si confías en esa persona.',
-        sendInvite: 'envía el enlace; no caduca',
-        waiting: 'esperando a los demás…',
-        chatTitle: 'Chat de la reunión',
-        chatPlaceholder: 'Mensaje para todos…', send: 'Enviar',
-        chatOff: 'Chat apagado por ahora',
-        chatOffHost: 'Chat apagado para invitados',
-        filesTitle: 'Archivos de esta reunión',
-        filesLocked: 'Archivos solo con contraseña (botón Contraseña).',
-        filesEmpty: 'Aún no hay archivos.',
-        lobTitle: 'Reunión', lobQuiet: 'Activa el micrófono y la cámara desde la llamada.',
-        lobStart: 'Empezar una reunión', lobStartSub: 'Sala abierta · quien tenga el enlace entra',
-        lobRun: 'Una sala que tú diriges', lobRunSub: 'Tú eres el anfitrión: contraseña, silencio, desenfoque, expulsar',
-        lobJoin: 'Entrar con un enlace', lobJoinSub: 'Pega un enlace o el id',
-        lobAdminHead: 'Contraseña de anfitrión', lobAdminMid: 'solo tuya — no la compartas',
-        lobAdminNote: 'Con esto diriges la sala. Los invitados no la necesitan. Quien la tenga también puede dirigir.',
-        lobGuestHead: 'Contraseña de invitados', lobGuestMid: 'esta sí la compartes',
-        lobGuestNote: 'Opcional. Las caras siguen borrosas hasta que pongas una. No va en el enlace.',
-        lobCreate: 'Crear y entrar', lobCancel: 'Cancelar',
-        lobRecent: 'Recientes y guardadas', lobEmpty: 'Las reuniones que empieces o entres aparecen aquí.',
-        lobJoinAs: 'Entrarás como', lobChange: 'cambiar',
-        lobRoomPh: 'Nombre de la sala, el que quieras', lobAdminPh: 'Contraseña de anfitrión (solo tuya)',
-        lobGuestPh: 'Contraseña de invitados (opcional)', lobPastePh: 'Pega un enlace o el id',
-        bcTitle: 'Transmisión', bcStart: 'Empezar a transmitir', bcStartSub: 'Sales al escenario; quien tenga el enlace mira y escribe',
-        bcHostHead: 'Contraseña de anfitrión', bcViewerHead: 'Contraseña de espectadores',
-        bcHostPh: 'Contraseña de anfitrión (solo tuya)', bcViewerPh: 'Contraseña de espectadores (opcional)',
-        bcHostNote: 'Con esto diriges la transmisión. Los espectadores no la necesitan.',
-        bcViewerNote: 'Opcional. La imagen sigue borrosa hasta que pongas una. No va en el enlace.',
-        bcJoin: 'Ver una transmisión', bcJoinSub: 'Pega un enlace de transmisión',
-        bcEmpty: 'Las transmisiones que empieces o veas aparecen aquí.',
-        shortcutTitle: 'Teclado', keyMic: 'Silenciar o activar', keyCam: 'Cámara activada o no',
-        keyChat: 'Abrir o cerrar el chat', keyShare: 'Compartir o dejar de compartir', keyHand: 'Levantar o bajar la mano', keyView: 'Ver a todos o desplazar', keyLeave: 'Salir de la reunión', keyEsc: 'Cerrar una ventana o el chat', keyList: 'Mostrar u ocultar esta lista',
-        keyWho: 'Quién está', keyMuteAll: 'Silenciar o activar a todos los invitados', keyBlurAll: 'Difuminar o enfocar a todos los invitados', keyCamAll: 'Apagar o encender el video de los invitados', keyShareAll: 'Permitir o parar que los invitados compartan pantalla', keyInvite: 'Invitar', keyApp: 'Abrir app', keyVote: 'Votar', keyLock: 'Contraseña', keyStage: 'Escenario', keyRecord: 'Grabar', keyCaptions: 'Subtítulos en tu pantalla', keySettings: 'Ajustes', keyTranscript: 'Transcripción', keyHelp: 'Ayuda',
-        helpTitle: 'Así funciona esta reunión', helpGot: 'Entendido',
-        bcHelpTitle: 'Así funciona esta transmisión', appHelpTitle: 'Así funciona esta sala de app',
-        screenNameTitle: 'Tu nombre', screenNameNote: 'Las demás personas de la reunión lo ven.', save: 'Guardar',
-        needName: 'Ponle un nombre a la sala.', needPass: 'Pon una contraseña de anfitrión — es la llave.',
-        creating: 'Creando…', createFail: 'No se pudo crear la sala. Inténtalo de nuevo.',
-        badLink: 'Eso no es un enlace ni un id.',
-      },
-    };
-    // The language is GifOS's system locale (Settings → Language and region,
-    // else the browser's), from gifos-i18n.js.
+    // The meeting's words come from the meet catalog (i18n/<locale>/meet.json),
+    // keyed by the name each call site and data-t/-ph/-al/-ti attribute carries.
+    // English stays beside the call (and in the markup): English never waits for
+    // a catalog, and a key a language lacks reads in English. For a translated
+    // language the module that starts this script loads the catalog first, so the
+    // first paint is already in that language.
     const L10N = GifOS.i18n || null;
-    if (L10N && L10N.ui() !== 'en') L10N.load('meet');
-    function uiLang() {
-      const l = ((L10N && L10N.language()) || navigator.language || 'en').toLowerCase();
-      if (l.indexOf('de') === 0) return 'de';
-      if (l.indexOf('es') === 0) return 'es';
-      return 'en';
-    }
+    function uiLang() { return (L10N && L10N.ui()) || 'en'; }
     function uiText(key, en) {
-      // A meet.json catalog for the UI language wins (i18n/<locale>/meet.json).
       if (L10N && L10N.ui() !== 'en' && L10N.has('meet.' + key)) return L10N.t('meet.' + key);
-      const pack = UI_TEXT[uiLang()];
-      return (pack && pack[key]) || en || '';
+      return en || '';
+    }
+    // Catalog text with a little markup (<b>, <i>, <kbd>, <p>, <h4>, <ul>, <li>,
+    // <br>, a class) is allowed back in; everything else becomes plain text.
+    function richHtml(str) {
+      const tpl = document.createElement('template');
+      tpl.innerHTML = String(str);
+      const ok = { P: 1, H4: 1, UL: 1, LI: 1, B: 1, I: 1, KBD: 1, BR: 1, SMALL: 1 };
+      (function walk(n) {
+        Array.from(n.childNodes).forEach((c) => {
+          if (c.nodeType === 1) {
+            if (!ok[c.tagName]) { c.replaceWith(document.createTextNode(c.textContent)); return; }
+            Array.from(c.attributes).forEach((a) => { if (!(a.name === 'class' && /^[\w -]+$/.test(a.value))) c.removeAttribute(a.name); });
+            walk(c);
+          } else if (c.nodeType !== 3) c.remove();
+        });
+      })(tpl.content);
+      return tpl.innerHTML;
     }
 
     const net = GifOS.net; // the shared transport fabric (also under runtime.js)
@@ -6252,7 +5632,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       document.querySelectorAll('[data-t]').forEach((el) => {
         const v = uiText(el.getAttribute('data-t'), '');
         if (!v) return;
-        el.textContent = v;
+        if (/<[a-z]/i.test(v)) el.innerHTML = richHtml(v);
+        else if (el.children.length) { // keep an icon: only the words change
+          let tn = null;
+          el.childNodes.forEach((n) => { if (n.nodeType === 3 && n.textContent.trim()) tn = n; });
+          if (tn) tn.textContent = v; else el.appendChild(document.createTextNode(v));
+        } else el.textContent = v;
         const btn = el.closest('button');
         if (btn && el.classList.contains('dockword')) btn.setAttribute('aria-label', v);
       });
@@ -6270,28 +5655,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       });
       applyHelp();
     }
-    const HELP_HTML = {
-      de: '<p class="help-lead">Diese Besprechung hat <b>kein Größenlimit</b>. Zwei Menschen oder zwei Millionen, sie läuft gleich. Gebaut für den Traum, die <b>ganze Erde in einer Besprechung</b> — jeder kann sprechen, alle teilen einen Raum. Der Raum faltet sich in sich selbst, deshalb spricht Ihr Telefon immer nur mit ein paar Nachbarn.</p>'
-        + '<h4>Das Stadion</h4><p>Stellen Sie sich ein Stadion vor. Sie treffen nicht eine Million Gesichter, sondern die wenigen um Sie herum. Der Rest ist die Kulisse.</p><ul class="help-list"><li><b>Bühne</b> — die Front. Wer hier hinauftritt, wird von <i>allen</i> zuerst gesehen und gehört.</li><li><b>Reihe</b> — die Menschen direkt neben Ihnen. Das ist das Gespräch, mit einer direkten Verbindung.</li><li><b>Das Stadion</b> — alle weiter weg, als Mosaik gleich großer Felder, plus ein gemeinsamer Klang. Eine Million Stimmen, die zusammen antworten, kommen als ein Ton an.</li></ul>'
-        + '<h4>Der Bildschirm</h4><p>Von oben nach unten, <b>das Nahe zuerst</b>: die <b>Bühne</b>, dann <b>Ihre Reihe</b>, dann <b>das Stadion</b>. Ab etwa hundert Menschen werden die Felder ein lebendiger Teppich. <b>Tippen Sie ein gefaltetes Feld an</b>, um es zu vergrößern.</p>'
-        + '<h4>Der Klang</h4><p><b>Einstellungen</b> ist Ihr eigenes Mischpult. Es ändert nur, was <i>Sie</i> hören. Regler erscheinen, wenn der Raum sie braucht: Bühne, Ihre Reihe, das Stadion. Darunter liegt das <b>Timing</b>: Gespräch (schnell), Einklang (alle hören denselben Augenblick), und Lied.</p>'
-        + '<h4>Gemeinsam singen</h4><p>Singen in einem normalen Anruf wird Matsch, weil jede Stimme anders spät ankommt. Tippen Sie <b>Lied</b> in den Einstellungen: Sie treten auf die Bühne, das Mikrofon wird musiktauglich, und alle Telefone richten sich auf denselben Moment aus, wie in einem großen Saal. Ohrhörer helfen. Nochmal tippen beendet das Lied.</p>'
-        + '<h4>Die Knöpfe</h4><ul class="help-list"><li><b>Unschärfe</b> — wie unscharf Ihr Bild für die anderen ist. Nur Sie können es scharf stellen.</li><li><b>Bühne</b> — hinauf, damit der ganze Raum Sie zuerst sieht. Nochmal tippen steigt ab.</li><li><b>Hand</b> — Sie wandern nach oben in die Warteschlange.</li><li><b>Passwort</b> — der Schlüssel zum scharfen Bild. Ohne Passwort bleiben alle unscharf.</li><li><b>Einladen</b> — ein Link.</li><li><b>App starten</b> — eine App, die alle hier gemeinsam benutzen.</li><li><b>Aufnahme / CC</b> — Aufnahme auf Ihr Gerät, oder Untertitel, die Ihr Telefon schreibt.</li></ul>'
-        + '<h4>Kurz weg</h4><p>Wechseln Sie den Tab, und Sie <b>bleiben in der Besprechung</b>. Sie hören weiter, die anderen hören Sie, und Ihr Feld zeigt „weg“. Die Kamera pausiert und kommt zurück, wenn Sie zurück sind.</p>'
-        + '<h4>Ihre Privatsphäre</h4><p><b>Bild und Stimme gehen direkt zu den Menschen im Raum.</b> Keine Firma sitzt dazwischen. Unterwegs ist alles verschlüsselt. Der eine ehrliche Preis: weil die Telefone sich direkt verbinden, kann jeder die <b>Internetadresse</b> der anderen sehen. Tippen Sie auf Wer.</p>',
-      es: '<p class="help-lead">Esta reunión <b>no tiene límite de tamaño</b>. Dos personas o dos millones, funciona igual. Está hecha para el sueño de <b>toda la Tierra en una reunión</b>: todos pueden hablar, todos comparten una sala. La sala se pliega sobre sí misma, así que tu teléfono solo habla con unos pocos vecinos.</p>'
-        + '<h4>El estadio</h4><p>Imagina un estadio. No te encuentras con un millón de caras, sino con las pocas que tienes al lado. El resto es el fondo.</p><ul class="help-list"><li><b>Escenario</b> — el frente. Quien sube es visto y oído primero por <i>todos</i>.</li><li><b>Fila</b> — la gente justo a tu lado. Esa es la conversación, con una conexión directa.</li><li><b>El estadio</b> — todos los demás, en un mosaico de cuadros iguales, más un solo sonido. Un millón de voces que responden juntas llega como un solo tono.</li></ul>'
-        + '<h4>La pantalla</h4><p>De arriba abajo, <b>lo cercano primero</b>: el <b>escenario</b>, luego <b>tu fila</b>, y al final <b>el estadio</b>. Pasadas unas cien personas los cuadros se vuelven un tapiz. <b>Toca un cuadro plegado</b> para agrandarlo.</p>'
-        + '<h4>El sonido</h4><p><b>Ajustes</b> es tu propia mesa de mezcla. Solo cambia lo que <i>tú</i> oyes. Los controles aparecen cuando la sala los necesita: escenario, tu fila, el estadio. Debajo está el <b>tiempo</b>: conversación (rápida), al unísono (todos oyen el mismo instante) y canción.</p>'
-        + '<h4>Cantar juntos</h4><p>Cantar en una llamada normal se vuelve papilla, porque cada voz llega tarde de otra forma. Toca <b>Canción</b> en Ajustes: subes al escenario, el micrófono pasa a calidad de música y todos los teléfonos se alinean al mismo momento, como en una sala grande. Los audífonos ayudan. Tocar otra vez termina la canción.</p>'
-        + '<h4>Los botones</h4><ul class="help-list"><li><b>Desenfoque</b> — qué tan borrosa ven los demás tu imagen. Solo tú puedes quitarlo.</li><li><b>Escenario</b> — sube para que toda la sala te vea primero. Toca otra vez para bajar.</li><li><b>Mano</b> — pasas arriba en la cola.</li><li><b>Contraseña</b> — la llave del video nítido. Sin ella, todos siguen borrosos.</li><li><b>Invitar</b> — un enlace.</li><li><b>Abrir app</b> — una app que todos usan juntos.</li><li><b>Grabar / CC</b> — grabar en tu dispositivo, o subtítulos que escribe tu teléfono.</li></ul>'
-        + '<h4>Si te vas un momento</h4><p>Cambia de pestaña y <b>sigues en la reunión</b>. Sigues oyendo, los demás te oyen, y tu cuadro dice que te fuiste. La cámara pausa y vuelve cuando regresas.</p>'
-        + '<h4>Tu privacidad</h4><p><b>Tu imagen y tu voz van directo a la gente de la sala.</b> Ninguna empresa está en medio. El camino va cifrado. El precio honesto: como los teléfonos se conectan directo, cada quien puede ver la <b>dirección de internet</b> de los demás. Toca Quién.</p>',
-    };
     function applyHelp() {
-      const html = HELP_HTML[uiLang()];
+      const html = uiText('helpMeetBody', '');
       const hs = document.querySelector('#help-modal .help-scroll');
-      if (html && hs) hs.innerHTML = html;
+      if (html && hs) hs.innerHTML = richHtml(html);
     }
     applyChrome();
 
@@ -7155,7 +6522,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // on and off on every status receipt.
         vupDismissedSig = myUpVoteSig();
         setStage(false);
-        setStatus('The room voted you off the stage.');
+        setStatus(uiText('stTheRoomVotedYouOff', 'The room voted you off the stage.'));
         return;
       }
       // Down is the standing verdict: while a down-majority holds, an up-
@@ -7164,7 +6531,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           && canStage(myId) && stageIds().length < SCALE.C
           && myUpVoteSig() !== vupDismissedSig) {
         setStage(true);
-        setStatus('The room voted you onto the stage. Step down whenever you like.');
+        setStatus(uiText('stTheRoomVotedYouOnto', 'The room voted you onto the stage. Step down whenever you like.'));
       }
     }
 
@@ -9745,10 +9112,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // camera is on. Blur is the picture itself, never a badge. A bot has
       // neither a mic nor a camera.
       if (!st.bot && gMute) chips.push(statusIco('mic-off', 'muted for all by ' + (mod.mute.by || 'someone')));
-      else if (!st.bot && st.muted) chips.push(statusIco('mic-off', uiText('muted', 'muted')));
+      else if (!st.bot && st.muted) chips.push(statusIco('mic-off', uiText('mutedLc', 'muted')));
       const bl = blurLevelFor(id);
       if (!st.bot && gCam) chips.push(statusIco('cam-off', 'video off for all by ' + (mod.cam.by || 'someone')));
-      else if (!st.bot && st.camOff) chips.push(statusIco('cam-off', uiText('camOffChip', 'camera off')));
+      else if (!st.bot && st.camOff) chips.push(statusIco('cam-off', uiText('camOffChipLc', 'camera off')));
       if (hasAdminRoom() && mod.app && mod.app.on && !admins.includes(id)) chips.push(txChip('long', '🧩', 'may run apps — allowed by ' + mod.app.by));
       // The chip names a per-person allow only. A room-wide allow covers
       // everyone and would chip every tile; modOf would not tell them apart.
@@ -11850,7 +11217,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const t = b.charging ? 0 : (b.level <= 0.5 ? 3 : 2);
         const tripped = drainStep(drainState, !!b.charging, b.level);
         drainTier = drainState.tier;
-        if (tripped) setStatus('🔋 Plugged in, but the battery is falling. Sending lighter video.');
+        if (tripped) setStatus(uiText('stPluggedInButTheBattery', '🔋 Plugged in, but the battery is falling. Sending lighter video.'));
         if (t === battTier) { adapt(); return; } // drainTier may still have moved
         battTier = t;
         adapt();
@@ -11952,7 +11319,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       adapt();
       if (idle) {
         try { if (wakeLock) { wakeLock.release(); wakeLock = null; } } catch (e) {}
-        setStatus('😴 Phone looks parked — letting the screen rest. Tap for full quality.');
+        setStatus(uiText('stPhoneLooksParkedLettingThe', '😴 Phone looks parked — letting the screen rest. Tap for full quality.'));
       } else keepAwake();
     }, 10000);
     // (No orientation listener, deliberately — nothing here reacts to rotation.
@@ -13081,7 +12448,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const all = rosterRows();
       const rows = all.filter((r) => !q || String(r.name).toLowerCase().indexOf(q) >= 0);
       const title = document.getElementById('roster-title');
-      if (title) title.textContent = all.length + ' ' + (all.length === 1 ? uiText('rosterPerson', 'person') : uiText('rosterPeople', 'people'));
+      if (title) title.textContent = all.length + ' ' + (all.length === 1 ? uiText('rosterPersonOne', 'person') : uiText('rosterPeople', 'people'));
       const close = document.getElementById('roster-close');
       if (close) close.textContent = uiText('rosterClose', 'Close');
       if (find) {
@@ -17380,7 +16747,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function startMesh() {
       const relay = relayUrl();
-      if (!relay) { setStatus('No connection service is set up, so nobody can be invited in.'); return; }
+      if (!relay) { setStatus(uiText('stNoConnectionServiceIsSet', 'No connection service is set up, so nobody can be invited in.')); return; }
       if (meshNode) { try { meshNode.stop(); } catch (e) {} meshNode = null; }
       meshBootGen++;
       if (directPath === 'pending') startDirectPathProbe(); // this network's verdict, once per page (re-run when the network comes back)
@@ -17535,8 +16902,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // state the in-band ban sets; every other policy code (replaced,
         // stale host, bad token) keeps its own path.
         onRejected: (code) => {
-          if (code === 4011) { setStatus('\u26d4 This room already has you connected from another device. Close it there, or reload here.'); return; }
-          if (code === 4013 || code === 4010) { setStatus('\u26d4 This meeting needs the current GifOS. Reload the page to update.'); return; } // 4010: the relay saw no key proof
+          if (code === 4011) { setStatus(uiText('stThisRoomAlreadyHasYou', '\u26d4 This room already has you connected from another device. Close it there, or reload here.')); return; }
+          if (code === 4013 || code === 4010) { setStatus(uiText('stThisMeetingNeedsTheCurrent', '\u26d4 This meeting needs the current GifOS. Reload the page to update.')); return; } // 4010: the relay saw no key proof
           if (code !== 4004 && code !== 4007) return;
           bannedOut = true;
           for (const pid of Array.from(peers.keys())) dropPeer(pid);
@@ -17879,8 +17246,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Password gate is handled by the wire (onLocked / R6 sealing); bans
         // and vote-offs land here. No walk \u2014 the session cap is the greeter
         // pool\u2019s, and newcomers drop their socket after seating anyway.
-        if (/voted-off/.test(m.error || '')) { bannedOut = true; setStatus('\u26d4 The people in this room voted not to let this device in.'); }
-        else if (/banned/.test(m.error || '')) { bannedOut = true; setStatus('\u26d4 This device was banned from the room by its admin.'); }
+        if (/voted-off/.test(m.error || '')) { bannedOut = true; setStatus(uiText('stThePeopleInThisRoom', '\u26d4 The people in this room voted not to let this device in.')); }
+        else if (/banned/.test(m.error || '')) { bannedOut = true; setStatus(uiText('stThisDeviceWasBannedFrom', '\u26d4 This device was banned from the room by its admin.')); }
         // The door's own refusals are written for a machine. Say the ONE that a
         // person can actually trigger in the same words the button uses \u2014 one
         // rule, one sentence \u2014 and never show the raw wire text for it.
@@ -18941,12 +18308,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // Prefer option id (same-gkey clusters); fall back to gkey.
           const key = o.id || o.gkey;
           try { if (meshNode && meshNode.chooseFork) meshNode.chooseFork(key); } catch (e) {}
-          setStatus('Joining the meeting you picked…');
+          setStatus(uiText('stJoiningTheMeetingYouPicked', 'Joining the meeting you picked…'));
         };
         forkChoices.appendChild(btn);
       });
       forkModal.style.display = 'flex';
-      setStatus('This link reaches more than one room — pick one.');
+      setStatus(uiText('stThisLinkReachesMoreThan', 'This link reaches more than one room — pick one.'));
     }
     // DEBUG/tests: inject a fork pick UI
     window.__gifosShowForkPick = showForkPick;
@@ -19028,7 +18395,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     document.getElementById('pwbtn').onclick = () => showPwModal(false);
     document.getElementById('waitbtn').onclick = () => {
-      if (hasAdminRoom() && !amAdmin) { setStatus('Only an admin can turn the waiting room on.'); return; }
+      if (hasAdminRoom() && !amAdmin) { setStatus(uiText('stOnlyAnAdminCanTurn', 'Only an admin can turn the waiting room on.')); return; }
       meetWait.hold(!holdDoor);
     };
     document.getElementById('waitdoor-leave').onclick = () => { location.href = MEET_PATH; };
@@ -19470,17 +18837,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (uiLang() === 'en') return;
       if (BROADCAST) {
         h3.textContent = uiText('bcHelpTitle', 'How this broadcast works');
-        hs.innerHTML = uiLang() === 'de'
-          ? '<p class="help-lead">Das ist eine <b>Live-Sendung</b>: eine Leitung (und wen sie heraufruft) auf der <b>Bühne</b>, und ein <b>unbegrenztes Publikum</b>. Zwei Zuschauer oder zwei Millionen, es läuft gleich.</p><h4>Zuschauen</h4><ul class="help-list"><li>Der Link genügt. <b>Kamera und Mikrofon werden nicht benutzt.</b></li><li>Das Bild bleibt <b>unscharf</b>, bis die Leitung ein <b>Zuschauerpasswort</b> setzt. Es steht nicht im Link.</li><li><b>Chat</b> ist live und weg, wenn die Sendung endet.</li></ul><h4>Zu Wort kommen</h4><ul class="help-list"><li><b>Hand</b> bittet um die Bühne. Die Leitung kann Sie heraufrufen. Ihr Telefon fragt dann nach Kamera und Mikrofon.</li><li>Absteigen können Sie jederzeit. Die Leitung kann es auch zurücknehmen.</li></ul><h4>Für die Leitung</h4><ul class="help-list"><li>Das <b>Leitungspasswort</b> ist Ihres allein. Schicken Sie es nicht an Zuschauer.</li><li><b>Passwort</b> setzt das Zuschauerpasswort. Ohne eines bleibt das Bild unscharf.</li><li>Die Handliste steht oben. Tippen Sie einen Namen an, um ihn auf die Bühne zu holen.</li></ul>'
-          : '<p class="help-lead">Esto es una <b>transmisión en vivo</b>: un anfitrión (y a quien llame) en el <b>escenario</b>, y un <b>público sin límite</b>. Dos espectadores o dos millones, funciona igual.</p><h4>Mirar</h4><ul class="help-list"><li>Basta el enlace. <b>No se usan la cámara ni el micrófono.</b></li><li>El video sigue <b>borroso</b> hasta que el anfitrión pone una <b>contraseña de espectadores</b>. No va en el enlace.</li><li>El <b>chat</b> es en vivo y se va cuando termina la transmisión.</li></ul><h4>Hablar</h4><ul class="help-list"><li><b>Mano</b> pide el escenario. El anfitrión puede llamarte. Tu teléfono entonces pide cámara y micrófono.</li><li>Bajar es tuyo en cualquier momento. El anfitrión también puede retirarlo.</li></ul><h4>Para el anfitrión</h4><ul class="help-list"><li>La <b>contraseña de anfitrión</b> es solo tuya. No se la envíes a los espectadores.</li><li><b>Contraseña</b> pone la de espectadores. Sin ella el video sigue borroso.</li><li>La cola de manos sube arriba. Toca un nombre para llamarlo al escenario.</li></ul>';
+        hs.innerHTML = richHtml(uiText('helpBcBody', hs.innerHTML));
       } else if (ROOM.kind === 'app') {
         h3.textContent = uiText('appHelpTitle', 'How this app room works');
-        hs.innerHTML = uiLang() === 'de'
-          ? '<p class="help-lead">Dieser Raum lebt um eine <b>gemeinsame App</b>: alle sehen und benutzen dieselbe App live.</p><h4>Die App ist die Sendung</h4><p>Eine Person führt sie. Fällt sie weg, pausiert eine eigene App, oder eine belastbare lässt jemand anderen weiterführen.</p><h4>Keine Kamera</h4><p>Dieser Raum hat keine Kamera und kein Video. Sprechen, wenn es eingeschaltet ist, ist nur Stimme.</p>'
-          : '<p class="help-lead">Esta sala vive alrededor de una <b>app compartida</b>: todos ven y usan la misma app en vivo.</p><h4>La app es el show</h4><p>Una persona la dirige. Si se va, una app propia pausa, o una resistente deja que otra persona siga.</p><h4>Sin cámara</h4><p>Esta sala no tiene cámara ni video. Hablar, cuando está activado, es solo voz.</p>';
+        hs.innerHTML = richHtml(uiText('helpAppBody', hs.innerHTML));
       }
     }
     applyRoomHelp();
+    // The person chose another language (Settings in another tab): load the
+    // meeting's catalog for it and repaint the fixed words.
+    const repaintWords = () => { try { applyChrome(); applyRoomHelp(); } catch (e) {} };
+    window.__meetRepaintWords = repaintWords;
+    if (L10N) L10N.onChange(() => { if (L10N.ui() === 'en') repaintWords(); else L10N.load('meet').then(repaintWords); });
     helpModal.onclick = (e) => { if (e.target === helpModal) helpModal.style.display = 'none'; }; // tap the backdrop to dismiss
     // The download is meant to be handed to the police: every time in UTC,
     // the port wherever one was seen (a provider sharing one address among
@@ -20199,7 +19567,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (BROADCAST) {
             const hint = document.querySelector('.share .hint');
             if (hint) hint.textContent = 'Share this link — anyone who opens it is watching:';
-            if (!bcHostStored()) setStatus('Joining the broadcast…');
+            if (!bcHostStored()) setStatus(uiText('bcStageLine', 'Joining the broadcast…'));
             else {
               // The HOST auto-steps onto the Stage: a broadcast page's whole
               // point, and the Stage is where their camera reaches the room.
@@ -20212,7 +19580,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               setTimeout(() => {
                 if (!bcStageWant) return;
                 bcStageWant = false;
-                if (!myStatus.stg) setStatus('Could not step onto the stage — tap Step on.');
+                if (!myStatus.stg) setStatus(uiText('stCouldNotStepOntoThe', 'Could not step onto the stage — tap Step on.'));
               }, 30000);
             }
           }
@@ -20431,7 +19799,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // chrome, before makeIframe. Cancel does not mount the sandbox.
         if (GifOS.lock) {
           return GifOS.lock.gateOpen(ROOM.fileId, nm).then((ok) => {
-            if (!ok) { setStatus('Cancelled — this app is passkey-locked.'); return; }
+            if (!ok) { setStatus(uiText('stCancelledThisAppIsPasskey', 'Cancelled — this app is passkey-locked.')); return; }
             return mount();
           });
         }
@@ -20549,7 +19917,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       GifOS.store.allItems().then((all) => {
         const it = GifOS.lock && GifOS.lock.itemOfFile(all, ROOM.fileId);
         if (it && GifOS.lock.isLockedItem(it)) {
-          setStatus('This app is passkey-locked. Other devices do not have your passkey, so it cannot be shared live.');
+          setStatus(uiText('stThisAppIsPasskeyLocked', 'This app is passkey-locked. Other devices do not have your passkey, so it cannot be shared live.'));
           return;
         }
         return GifOS.store.getFile(ROOM.fileId);
@@ -22569,13 +21937,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     })();
     document.getElementById('chatform').addEventListener('submit', (e) => {
       e.preventDefault();
-      if (chatOffInfo() && !amAdmin) { setStatus('The host has turned chat off.'); return; }
+      if (chatOffInfo() && !amAdmin) { setStatus(uiText('stTheHostHasTurnedChat', 'The host has turned chat off.')); return; }
       const inp = document.getElementById('chat-in');
       const text = inp.value.trim();
       if (!text) return;
       if (slowModeOn() && !amAdmin) {
         const now = Date.now();
-        if (now - chatSlowLast < CHAT_SLOW_MS) { setStatus('Slow mode: wait a few seconds before posting again.'); return; }
+        if (now - chatSlowLast < CHAT_SLOW_MS) { setStatus(uiText('stSlowModeWaitAFew', 'Slow mode: wait a few seconds before posting again.')); return; }
         chatSlowLast = now;
       }
       const prayBtn = document.getElementById('pray');
@@ -22623,7 +21991,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       document.getElementById('cfile-in').click();
     };
     document.getElementById('cfile-in').addEventListener('change', (e) => {
-      if (!mayPinFiles()) { setStatus('Files are not allowed here.'); e.target.value = ''; return; }
+      if (!mayPinFiles()) { setStatus(uiText('stFilesAreNotAllowedHere', 'Files are not allowed here.')); e.target.value = ''; return; }
       for (const file of e.target.files) {
         if (file.size > MAX_FILE) { setStatus(file.name + ' is over the 25 MB pin limit.'); continue; }
         const reader = new FileReader();
@@ -27276,7 +26644,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (stageIds().length >= SCALE.C) {
         if (handCallNoted !== at) {
           handCallNoted = at;
-          setStatus('Called to the stage — a place will open when someone steps down.');
+          setStatus(uiText('stCalledToTheStageA', 'Called to the stage — a place will open when someone steps down.'));
         }
         return;
       }
@@ -27375,7 +26743,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (myStatus.stg) setStage(false);
         return;
       }
-      if (!canStage(myId)) { setStatus('Only room admins — and people they allow — can take the stage here.'); return; }
+      if (!canStage(myId)) { setStatus(uiText('stOnlyRoomAdminsAndPeople', 'Only room admins — and people they allow — can take the stage here.')); return; }
       if (stageIds().length >= SCALE.C) { setStatus('The stage is full (' + SCALE.C + ' people).'); return; }
       setStage(true);
     };
@@ -27587,10 +26955,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // line is nearly unreachable anyway: paintShare hides the control where
       // the API is absent. A scripted call returns without a status line.
       if (!canScreenShare()) return;
-      if (forcedCamOff('me')) { setStatus('📷 An admin turned your video off for the room — screen sharing is off too until they lift it.'); return; }
+      if (forcedCamOff('me')) { setStatus(uiText('stAnAdminTurnedYourVideo', '📷 An admin turned your video off for the room — screen sharing is off too until they lift it.')); return; }
       // Already being on stage does not waive this. The stage grant and the
       // screen grant are different orders.
-      if (!mayShareScreen(myId)) { setStatus('🛡 Only this room’s admins — or people they allow — can share a screen here.'); return; }
+      if (!mayShareScreen(myId)) { setStatus(uiText('stOnlyThisRoomSAdmins', '🛡 Only this room’s admins — or people they allow — can share a screen here.')); return; }
       if (!myStatus.stg && stageIds().length >= SCALE.C) { setStatus('The stage is full (' + SCALE.C + ' people) — someone has to step down first.'); return; }
       setStatus(shareRecoverMode ? 'Bringing your screen share back…' : 'Choose what to share…');
       navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 15 }, audio: false })
@@ -27601,7 +26969,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (!mayShareScreen('me') || forcedCamOff('me')) {
             try { s.getTracks().forEach((t) => t.stop()); } catch (e) {}
             shareRecoverMode = false;
-            setStatus('🛡 Screen sharing was turned off before it started.');
+            setStatus(uiText('stScreenSharingWasTurnedOff', '🛡 Screen sharing was turned off before it started.'));
             return;
           }
           // TELL THE ENCODER IT IS LOOKING AT TEXT. Without a contentHint a
@@ -27833,7 +27201,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!r.v) throw new Error('no picture');
       } catch (e) {
         if (rbNow === r) { rbNow = null; rbDrop(r); paintRb(); }
-        setStatus('That video can’t be played here. Pick another file.', 8000);
+        setStatus(uiText('stThatVideoCanTBe', 'That video can’t be played here. Pick another file.'), 8000);
         return;
       }
       // From the ended screen (Q72): lift the hold the Leave left, without
@@ -27972,7 +27340,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         : uiText('shareAppNote', '<b>🧩 Sharing a GifOS app? Use “Run app” instead.</b> A pinned app runs on everyone’s own device off a small shared data stream — crisp, interactive, readable on a phone. A screen share is a <i>video of your window</i>: one-way, one resolution, and paid for in pixels at every hop.');
       const go = document.getElementById('share-runapp');
       go.style.display = (runnable && !ROOM.appPinned) ? '' : 'none';
-      go.textContent = running ? uiText('showApp', 'Show me the app') : uiText('runApp', 'Run app instead');
+      go.textContent = running ? uiText('showMeApp', 'Show me the app') : uiText('runAppInstead', 'Run app instead');
       // THE REFUSAL LIVES IN THE SHEET. A guest who may not share used to get
       // the picker button, then a 4s grey line in the bar — which she missed,
       // twice, while the sheet had already closed. The sheet itself now says
@@ -28071,7 +27439,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       audioNoteQueued = false;
       document.removeEventListener('pointerdown', audioKick, true);
       document.removeEventListener('keydown', audioKick, true);
-      setStatus('🔊 Sound is back.');
+      setStatus(uiText('stSoundIsBack', '🔊 Sound is back.'));
     }
     // Drop the companion. A removed tile used to leave el._aud playing the
     // stream with no picture. Safe to call before blockedAudio exists.
@@ -28660,7 +28028,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         } else {
           if (singPrevMix) { Object.assign(mix, singPrevMix); singPrevMix = null; rememberMix(null); paintFaders(); applyBuses(); }
           setMicMode('voice'); // leader and followers alike
-          setStatus('🎵 The song ended.');
+          setStatus(uiText('stTheSongEnded', '🎵 The song ended.'));
         }
         paintTiming(); // the Song pill lights (and stays tappable for its leader)
         applyGrid(); // retune the tiers now, not on the next tick
@@ -28703,7 +28071,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       if (roomSingOn()) { setStatus(singLeaderName() + ' is leading; wait for the song to end.'); return; }
       if (!stageIds().includes(myId)) {
-        if (!canStage(myId)) { setStatus('Only room admins — and people they allow — can lead a song here.'); return; }
+        if (!canStage(myId)) { setStatus(uiText('stOnlyRoomAdminsAndPeople2', 'Only room admins — and people they allow — can lead a song here.')); return; }
         if (stageIds().length >= SCALE.C) { setStatus('The stage is full (' + SCALE.C + ' people).'); return; }
         myStatus.sing = Date.now();
         singSteppedUp = true; // we stepped up FOR the song — step back down with it
@@ -29149,7 +28517,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function wspStart(id) {
       if (wspCaps.has(id)) return true;
-      if (!whisperReady()) { if (id === 'me') setStatus('Whisper captions need the Offline Captions app — open Settings → Captions to install it. Browser captions are on meanwhile.', 10000); return false; }
+      if (!whisperReady()) { if (id === 'me') setStatus(uiText('stWhisperCaptionsNeedTheOffline', 'Whisper captions need the Offline Captions app — open Settings → Captions to install it. Browser captions are on meanwhile.'), 10000); return false; }
       if (!ensureAc()) return false;
       let src = null, own = false, stageSid = null;
       const stg = wspStageStream(id);
@@ -29259,7 +28627,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           wspQ.items.splice(i, 1);
           wspQ.dropped++;
           if (typeof wspMarkBehind === 'function') wspMarkBehind();
-          setStatus('Captions behind, skipping old audio', 8000);
+          setStatus(uiText('stCaptionsBehindSkippingOldAudio', 'Captions behind, skipping old audio'), 8000);
         }
       }
       const cap = WSP_BACKLOG + 2 * Math.max(0, wspCaps.size - 1);
@@ -29269,7 +28637,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           wspQ.items.splice(i, 1);
           wspQ.dropped++;
           if (typeof wspMarkBehind === 'function') wspMarkBehind();
-          setStatus('Captions behind, skipping old audio', 8000);
+          setStatus(uiText('stCaptionsBehindSkippingOldAudio', 'Captions behind, skipping old audio'), 8000);
         }
       }
       const job = { id: w.id, chunks, at, rate: rate || w.rate, keep: !!keep, stage: !!w.stageSid };
@@ -29291,7 +28659,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
         } catch (e) {}
         try { lsSet(CC_ENGINE_KEY, ''); } catch (e) {}
-        setStatus('Whisper app missing — browser captions on', 10000);
+        setStatus(uiText('stWhisperAppMissingBrowserCaptions', 'Whisper app missing — browser captions on'), 10000);
       }
       try { stopWhisper(); } catch (e) {}
       try { syncSpeech(); } catch (e) {}
@@ -29311,9 +28679,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const hasSr = hasWindow && (window.SpeechRecognition || window.webkitSpeechRecognition);
       try { if (typeof updateTile === 'function') updateTile('me'); } catch (e) {}
       try { if (typeof broadcastStatus === 'function') broadcastStatus(); } catch (e) {}
-      if (hasWindow && !hasSr) { setStatus('Captions paused', 10000); return; }
+      if (hasWindow && !hasSr) { setStatus(uiText('stCaptionsPaused', 'Captions paused'), 10000); return; }
       try { syncSpeech(); } catch (e) {}
-      setStatus('Whisper captions stalled — browser captions are on.', 10000);
+      setStatus(uiText('stWhisperCaptionsStalledBrowserCaptions', 'Whisper captions stalled — browser captions are on.'), 10000);
     }
     // Unload the speech-to-text provider: a clip it is still working on, or a
     // model it is still loading, stops now instead of finishing for nobody.
@@ -29422,7 +28790,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         if (typeof wspMarkBehind === 'function') wspMarkBehind();
         else wspQ.behind = true;
-        setStatus('Captions behind, skipping old audio', 8000);
+        setStatus(uiText('stCaptionsBehindSkippingOldAudio', 'Captions behind, skipping old audio'), 8000);
       }, softMs);
       let hardTimer = setTimeout(() => {
         hardTimer = null;
@@ -29623,7 +28991,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       whisperInstalling = GifOS.providers.install(WHISPER_APP_ID, (t) => note(t)).then((p) => {
         if (!GifOS.providers.assigned('stt')) GifOS.providers.assign('stt', p);
         lsSet(WHISPER_SEED_KEY, 'done');
-        if (say) setStatus('✅ Offline Captions (Whisper) is installed and ready — the model itself downloads the first time captions run.', 10000);
+        if (say) setStatus(uiText('stOfflineCaptionsWhisperIsInstalled', '✅ Offline Captions (Whisper) is installed and ready — the model itself downloads the first time captions run.'), 10000);
         return p;
       }).catch((e) => {
         const msg = (e && e.message) || String(e);
@@ -29673,7 +29041,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             lsSet(CC_WHISPER_ANYWAY_KEY, '1');
             lsSet(CC_ENGINE_KEY, 'whisper');
             wspPaused = false; wspQ.stalls = 0;
-            setStatus('Whisper is on by your choice. If the call gets slow, tap “Switch to browser captions” at the bottom of the screen.', 12000);
+            setStatus(uiText('stWhisperIsOnByYour', 'Whisper is on by your choice. If the call gets slow, tap “Switch to browser captions” at the bottom of the screen.'), 12000);
             paintCcState();
             syncSpeech();
           };
@@ -29748,7 +29116,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         lsSet(CC_ENGINE_KEY, r.value === 'whisper' ? 'whisper' : '');
         if (r.value !== 'whisper') speechGaveUp = false;
         if (r.value === 'whisper') { wspPaused = false; wspQ.stalls = 0; wspQ.behind = false; if (myStatus.ccst === 'behind' || myStatus.ccst === 'paused') delete myStatus.ccst; } // a deliberate re-pick retries a stalled Whisper
-        if (r.value === 'whisper' && IS_MOBILE) setStatus('On a phone, Whisper runs on the processor: a sentence can take 5 to 10 seconds to appear, and it uses battery. Browser captions stay instant.', 12000);
+        if (r.value === 'whisper' && IS_MOBILE) setStatus(uiText('stOnAPhoneWhisperRuns', 'On a phone, Whisper runs on the processor: a sentence can take 5 to 10 seconds to appear, and it uses battery. Browser captions stay instant.'), 12000);
         if (r.value !== 'whisper' && myStatus.scribe) { myStatus.scribe = false; broadcastStatus(); }
         paintCcState();
         syncSpeech();
@@ -30090,7 +29458,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function startSpeech(input, cover) { // input: a mix or a paused voice's clip; none = the raw microphone. cover: { id, at } attributes the clip to that person
       if (speechGaveUp && !(cover && cover.id)) return false;
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SR) { setStatus('This browser cannot write down what people say.'); return false; }
+      if (!SR) { setStatus(uiText('stThisBrowserCannotWriteDown', 'This browser cannot write down what people say.')); return false; }
       speechFails = 0;
       try {
         speech = new SR();
@@ -30154,7 +29522,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (e.error === 'not-allowed' || e.error === 'service-not-allowed' || e.error === 'language-not-supported') {
             stopSpeech();
             speechEngineDown();
-            setStatus('Transcription paused');
+            setStatus(uiText('stTranscriptionPaused', 'Transcription paused'));
             return;
           }
           if (e.error === 'network' || e.error === 'audio-capture' || e.error === 'aborted') {
@@ -30165,7 +29533,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               speechGaveUp = true;
               stopSpeech();
               speechEngineDown();
-              setStatus('Transcription paused', 15000);
+              setStatus(uiText('stTranscriptionPaused', 'Transcription paused'), 15000);
               setTimeout(() => { speechGaveUp = false; speechFails = 0; try { syncSpeech(); } catch (err) {} }, 20000);
             }
           }
@@ -30203,7 +29571,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (typeof myStatus !== 'undefined' && myStatus && !wspPaused) myStatus.ccst = 'paused';
       try { if (typeof updateTile === 'function') updateTile('me'); } catch (e) {}
       try { if (typeof broadcastStatus === 'function') broadcastStatus(); } catch (e) {}
-      try { setStatus('Captions paused'); } catch (e) {}
+      try { setStatus(uiText('stCaptionsPaused', 'Captions paused')); } catch (e) {}
     }
     // Each browser writes its own voice whenever it is unmuted. CC does not
     // start or stop that. A chosen scribe who already hears me is the exception.
@@ -30249,7 +29617,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const filling = ccFilling();
       ccFillOn = filling;
       if (!myStatus.cc && !filling && !ownVoiceWanted()) { if (speechRunning()) stopSpeech(); ccvPublish(); return; }
-      if (filling && !ccFillSaid) { ccFillSaid = true; setStatus('Captions are on in this meeting — this device also writes down the voices only it hears. Tap CC twice to opt out.', 8000); }
+      if (filling && !ccFillSaid) { ccFillSaid = true; setStatus(uiText('stCaptionsAreOnInThis', 'Captions are on in this meeting — this device also writes down the voices only it hears. Tap CC twice to opt out.'), 8000); }
       if (typeof browserCaptionsMissing === 'function' && browserCaptionsMissing()) {
         if (speechRunning()) stopSpeech();
         if (mine || hearRoom || filling) noteNoBrowserSpeech();
@@ -30327,7 +29695,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const btn = document.getElementById('ccall');
       if (btn) btn.textContent = uiText(m ? 'setCcAllOn' : 'setCcAllOff', 'Captions for everyone: ' + (m ? 'on' : 'off'));
       if (!m) {
-        if (ccByOrder && ccShow) { ccByOrder = false; ccShow = false; paintCcButtons(); hideCaptions(); setStatus('Captions for everyone were turned off.'); }
+        if (ccByOrder && ccShow) { ccByOrder = false; ccShow = false; paintCcButtons(); hideCaptions(); setStatus(uiText('stCaptionsForEveryoneWereTurned', 'Captions for everyone were turned off.')); }
         return;
       }
       if (ccShow || ccOptOutAt >= (m.at || 0)) return;
@@ -30337,7 +29705,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     (function wireCcAll() {
       const btn = document.getElementById('ccall'); if (!btn) return;
-      btn.onclick = () => { setStatus('Captions are only on your screen. The transcript is already on for everyone.'); };
+      btn.onclick = () => { setStatus(uiText('stCaptionsAreOnlyOnYour', 'Captions are only on your screen. The transcript is already on for everyone.')); };
     })();
     function setPanelView(showTr) {
       const w = document.getElementById('trwrap'), c = document.getElementById('chatlog');
@@ -30693,7 +30061,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         showRecReplay(saved);
         return saved.saved ? 'saved' : 'replay';
       }
-      if (saved && saved.saved) { setStatus('Recording saved.'); return 'saved'; }
+      if (saved && saved.saved) { setStatus(uiText('stRecordingSaved', 'Recording saved.')); return 'saved'; }
       if (saved && saved.href) {
         recDownload(saved);
         recRelease(saved);
@@ -30721,7 +30089,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           recReloadAfterStop = true;
           try {
             if (typeof recDraw === 'function') { try { recDraw(); } catch (e2) {} }
-            setStatus('Saving your recording, then rejoining the meeting.');
+            setStatus(uiText('stSavingYourRecordingThenRejoining', 'Saving your recording, then rejoining the meeting.'));
             // onstop reloads after the file is finished. If onstop or the
             // sink's finish never settles, the latch above would make every
             // later freeze wait forever, so the page still reloads by itself.
@@ -32360,10 +31728,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function lateMedia(kind) {
       if (bcWatchingViewer()) return;
-      if (myStatus.bot) { setStatus('A bot does not use a camera or speak.'); return; }
+      if (myStatus.bot) { setStatus(uiText('stABotDoesNotUse', 'A bot does not use a camera or speak.')); return; }
       if (BROADCAST && !bcMayPublishAv()) { enforceBroadcastSeat(); return; }
       if (lateRefusal(kind)) { setStatus(lateRefusal(kind)); return; }
-      if (lateAsk) { setStatus('Still asking for the camera and microphone\u2026'); return; }
+      if (lateAsk) { setStatus(uiText('stStillAskingForTheCamera', 'Still asking for the camera and microphone\u2026')); return; }
       // THE BOOT ASK IS THE ONLY ASK (knock-first, 2026-08-05): the knock no
       // longer waits on getUserMedia, so "page live, localStream still null"
       // is a NORMAL window on every boot — and a cam/mic tap in that window
@@ -32374,7 +31742,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // failed (denied/hung), fall through to the fresh re-prompt below.
       if (bootGumPending) {
         const p = bootGumPending;
-        setStatus('Asking for camera & microphone…');
+        setStatus(uiText('stAskingForCameraMicrophone', 'Asking for camera & microphone…'));
         p.then(() => {
           if (BROADCAST && !bcMayPublishAv()) { enforceBroadcastSeat(); return; }
           if (bcWatchingViewer()) return;
@@ -32391,7 +31759,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       const md = navigator.mediaDevices;
       if (!md || !md.getUserMedia) {
-        setStatus('This browser can’t share a camera or microphone here. Open this meeting link in Safari or Chrome — the Invite button copies it.');
+        setStatus(uiText('stThisBrowserCanTShare', 'This browser can’t share a camera or microphone here. Open this meeting link in Safari or Chrome — the Invite button copies it.'));
         return;
       }
       lateAsk = true;
@@ -32409,7 +31777,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       lateTimer = setTimeout(() => {
         if (gen !== lateGen || !lateAsk) return;
         lateAsk = false;
-        setStatus('The browser has not answered the camera and microphone ask. Check this site\u2019s permissions in the browser settings \u2014 or open this meeting link in Safari or Chrome.');
+        setStatus(uiText('stTheBrowserHasNotAnswered', 'The browser has not answered the camera and microphone ask. Check this site\u2019s permissions in the browser settings \u2014 or open this meeting link in Safari or Chrome.'));
       }, LATE_ASK_MS);
       gumWithMicFallback(md, ask)
         .then(({ stream: s, camErr }) => {
@@ -32496,7 +31864,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (bcWatchingViewer()) return;
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (BROADCAST && !bcMayPublishAv()) { enforceBroadcastSeat(); return; }
-      if (document.body.classList.contains('app-room') && !roomAudioOn()) { setStatus('Talk is off — only the app host can turn it on.'); return; }
+      if (document.body.classList.contains('app-room') && !roomAudioOn()) { setStatus(uiText('stTalkIsOffOnlyThe', 'Talk is off — only the app host can turn it on.')); return; }
       if (!localStream) return lateMedia('mic');
       const track = localStream.getAudioTracks()[0]; if (!track) return lateMedia('mic');
       if (!track.enabled && amGloballyMuted()) { setStatus(micLockWords()); return; }
@@ -32526,11 +31894,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (bcWatchingViewer()) return;
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (BROADCAST && !bcMayPublishAv()) { enforceBroadcastSeat(); return; }
-      if (document.body.classList.contains('app-room')) { setStatus('Video is not available in an app room yet — start a meeting and run the app from there.'); return; }
+      if (document.body.classList.contains('app-room')) { setStatus(uiText('stVideoIsNotAvailableIn', 'Video is not available in an app room yet — start a meeting and run the app from there.')); return; }
       if (!localStream) return lateMedia('cam');
       const track = localStream.getVideoTracks()[0]; if (!track) return lateMedia('cam');
       if (forcedCamOff('me') && !track.enabled) {
-        setStatus('📷 An admin turned your video off for the room — only they can turn it back on.');
+        setStatus(uiText('stAnAdminTurnedYourVideo2', '📷 An admin turned your video off for the room — only they can turn it back on.'));
         return;
       }
       track.enabled = !track.enabled;
@@ -32711,15 +32079,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         blurNote('No blur is saved. It applies once this room has a password, and then right away. ' + who);
         setStatus('No blur saved — it applies the moment this room has a password. ' + who);
       } else if (blocked) {
-        setStatus('Someone in the room has blurred you for all — you stay blurred until that is lifted.');
+        setStatus(uiText('stSomeoneInTheRoomHas', 'Someone in the room has blurred you for all — you stay blurred until that is lifted.'));
       } else if (myStatus.camOff) {
-        setStatus('No blur picked — turn your camera on to be ready for clear video.');
+        setStatus(uiText('stNoBlurPickedTurnYour', 'No blur picked — turn your camera on to be ready for clear video.'));
       } else if (hasAdminRoom() && !adminPresent()) {
-        setStatus('No admin is here — the room stays blurred until an admin returns.');
+        setStatus(uiText('stNoAdminIsHereThe', 'No admin is here — the room stays blurred until an admin returns.'));
       } else if (!adminPresent() && !allConsent()) {
         setStatus('You are ready for clear video — it shows when everyone here is (camera on, No blur: ' + consentCount() + ' of ' + participantCount() + ').');
       } else {
-        setStatus('Blur off.');
+        setStatus(uiText('stBlurOff', 'Blur off.'));
       }
     }
     for (const seg of blurSegs) {
@@ -32875,7 +32243,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!voteMode || hasAdminRoom()) return;
       if (voteMode === 'kick') { toggleVote(id); refreshAllTiles(); return; }
       const dev = devOf[id];
-      if (!dev) { setStatus('Still learning who this is — try again in a moment.'); return; }
+      if (!dev) { setStatus(uiText('stStillLearningWhoThisIs', 'Still learning who this is — try again in a moment.')); return; }
       const set = myStageVotes[voteMode];
       if (set.has(dev)) set.delete(dev);
       else {
@@ -33336,7 +32704,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
 
     async function createAdminRoom(chosen, pass, postToChat, guestPw) {
-      setStatus('🛡 Creating your room… (takes a few seconds)');
+      setStatus(uiText('stCreatingYourRoomTakesA', '🛡 Creating your room… (takes a few seconds)'));
       const K = await deriveAdminKey(chosen, pass);
       const V = (await net.edKeysFromSeedHex(K)).verifier; // V commits to the PUBLIC key K seeds (§9) — 96-bit, short link, preimage-safe
       try { localStorage.setItem('gifos_vadm_' + chosen + '.' + V, K); } catch (e) {}
@@ -34333,7 +33701,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const all = await GifOS.store.allItems();
         const it = GifOS.lock.itemOfFile(all, fileId);
         if (GifOS.lock.isLockedItem(it)) {
-          setStatus('This app is passkey-locked. Other people in the meeting cannot unlock it, so it cannot be shared live.');
+          setStatus(uiText('stThisAppIsPasskeyLocked2', 'This app is passkey-locked. Other people in the meeting cannot unlock it, so it cannot be shared live.'));
           return;
         }
       }
@@ -34509,7 +33877,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }, 3000);
       if (hasAdminRoom()) admSigned('appstop', { s: ad.s }).then((w) => { fan(w); refan(w, 10); });
       else { fan(undefined); refan(undefined, 10); }
-      setStatus('🧩 You stopped the shared app for everyone here.');
+      setStatus(uiText('stYouStoppedTheSharedApp', '🧩 You stopped the shared app for everyone here.'));
       reconcileApp();
     }
     // ONE app wins everywhere, deterministically: the newest AUTHORIZED ad
@@ -34705,7 +34073,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         btn.textContent = uiText('runApp', 'Run app');
         btn.title = canIRunApp()
           ? uiText('appTip', 'Run an app inside this meeting — everyone here shares and interacts with it live')
-          : uiText('appDenied', 'Only this room\u2019s admins — or people they allow — can run an app here').replace(/^🛡\s*/, '');
+          : uiText('appDeniedTip', 'Only this room\u2019s admins — or people they allow — can run an app here').replace(/^🛡\s*/, '');
       }
       const hideB = document.getElementById('apphide');
       hideB.style.display = (appKey && !isMine) ? '' : 'none';
@@ -34738,7 +34106,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (myStatus.app && appKey === myStatus.app.s) { stopApp(); return; }
       const want = findSharedApp();
       if (!want) return;
-      if (hasAdminRoom() && !amAdmin) { setStatus('🛡 Only this room\u2019s admins can stop the shared app.'); return; }
+      if (hasAdminRoom() && !amAdmin) { setStatus(uiText('stOnlyThisRoomSAdmins2', '🛡 Only this room\u2019s admins can stop the shared app.')); return; }
       stopRoomApp(want);
     };
     document.getElementById('apphide').onclick = () => {
@@ -37231,8 +36599,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   };
   </script>
 <script type="module">
-// The deferred libraries have run. Start the meeting before DOMContentLoaded.
-if (typeof window.__startMeet === 'function') window.__startMeet();
+// The deferred libraries have run. Start the meeting. In a translated language
+// the first paint waits for the meeting's catalog (English never waits): the
+// words are in before anything is drawn, so nothing flashes English. A catalog
+// that has not landed after 8 s lets the meeting start in English, and the
+// words are repainted the moment the catalog does arrive.
+if (typeof window.__startMeet === 'function') {
+  const I = window.GifOS && GifOS.i18n;
+  if (I && I.ui() !== 'en') {
+    let started = false;
+    const go = () => { if (started) return; started = true; window.__startMeet(); };
+    const loaded = I.load('meet');
+    loaded.then(go, go);
+    setTimeout(go, 8000);
+    loaded.then(() => { if (window.__meetRepaintWords) window.__meetRepaintWords(); });
+  } else window.__startMeet();
+}
 </script>
 <!-- FOR AI AGENTS. Off-screen, not display:none — most agent fetchers read
      the raw HTML without running scripts (so the JS-painted build badge is

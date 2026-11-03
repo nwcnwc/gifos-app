@@ -36,7 +36,7 @@
 
   // Every locale that has catalogs under i18n/. Adding a language adds it here
   // and a folder i18n/<tag>/ holding the same files as i18n/en/.
-  var LOCALES = ['en', 'es', 'ru', 'zh-Hans'];
+  var LOCALES = ['en', 'de', 'es', 'ru', 'zh-Hans'];
   var BASE = 'en';
   var PREF_KEY = 'gifos_locale';
 
