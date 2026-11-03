@@ -1,7 +1,7 @@
-/meet/* /404 200
-/meet /404 200
-/cast/* /404 200
-/cast /404 200
-/join/* /404 200
-/store/* /404 200
-/store /404 200
+/meet/* /route 200
+/meet /route 200
+/cast/* /route 200
+/cast /route 200
+/join/* /route 200
+/store/* /route 200
+/store /route 200

@@ -77,7 +77,7 @@ var CORE = [
 // packer copies into an app GIF. install() adds them only when the client
 // is the desktop, so a clean join does not fetch them. An explicit shell
 // refresh still does, and the fetch handler caches each one on first use.
-var DESKTOP_SHELL = ['/404.html', '/js/pay.js', '/llms.txt'];
+var DESKTOP_SHELL = ['/route.html', '/js/pay.js', '/llms.txt'];
 
 function desktopClient(url) {
   var path = '';
@@ -410,7 +410,7 @@ self.addEventListener('fetch', function (e) {
   e.respondWith((async function () {
     var cache = await caches.open(CACHE);
     // Navigations let a redirect through: on Pages a directory URL without
-    // its slash is a 301, and the 404 body is 404.html, the pretty-link
+    // its slash is a 301, and pretty links are rewritten (200) to route.html, the pretty-link
     // router. See revalidate()'s note. The key is the bare path — see keyOf.
     var fresh = await revalidate(req, cache, 4000, req.mode === 'navigate', keyOf(url));
     if (fresh) return fresh;
