@@ -102,7 +102,7 @@
       const TICK = this.TICK, id = this.id;
       if (this.dHoldCol >= 0) { if (TICK < this.dHoldDue) this.f.wake(id); else { const hm = msg.clone(this.dHoldMsg); this.dHoldCol = -1; if (this.state === 3 && this.hasCoord) { this.dBypass = true; this.serveCompact(hm); this.dBypass = false; } } }   // L12.2: the held probe is served now through every guard of serveCompact again
       if (this.movedOnFrom && ((this.state === 3 && this.hasCoord) || this.rcGreeter >= 0)) {   // L3.11: my reclaim was refused: the cell is not mine any more
-        const oc = this.movedOnFrom; this.movedOnFrom = 0;
+        const oc = this.movedOnFrom - 1; this.movedOnFrom = 0;
         if (!(this.state === 3 && this.hasCoord && oc === ckey(this.coord))) {
           const o = unck(oc); const ol = ownedLinks(o); const n = ol.length; let sent = 0;
           for (let i = 0; i < n; i++) {
@@ -115,7 +115,7 @@
         }
       }
       if (this.state !== 3 && this.rcPendAt >= 0 && this.oldCell && TICK - this.rcPendAt >= this.rcPendWait) {
-        if (this.rcPendWait > K.RC_WAIT && !this.rcRound2) { this.rcPendAt = -1; this.rcRound2 = true; this.rcRound2At = TICK; this.rcPendWait = K.RC_WAIT; this.rcTries = 1; this.trace('RECLAIM-ROUND2', id, null, 'old=%s', coordStr(unck(this.oldCell))); if (!this.resumeAsk()) this.join(); this.f.wake(id); return true; }   // L3.10.6
+        if (this.rcPendWait > K.RC_WAIT && !this.rcRound2) { this.rcPendAt = -1; this.rcRound2 = true; this.rcRound2At = TICK; this.rcPendWait = K.RC_WAIT; this.rcTries = 1; this.trace('RECLAIM-ROUND2', id, null, 'old=%s', coordStr(unck(this.oldCell - 1))); if (!this.resumeAsk()) this.join(); this.f.wake(id); return true; }   // L3.10.6
         const m = msg.clone(this.rcPend); this.rcPendAt = -1; this.oldCell = 0; this.trace('RECLAIM-TAKE', id, m.coord, 'from=%d', m.owner); this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, [], m.ppL); if (this.pp >= 0 && this.pp !== id) this.placer = this.pp; this.f.wake(id); return true;   // L3.10: my old cell, handed back with its neighbours; no new seat, no requeue
       }
       if (this.rcPendAt >= 0 && (!this.oldCell || this.state === 3)) this.rcPendAt = -1; else if (this.state !== 3 && this.rcPendAt >= 0) this.f.wake(id);

@@ -17099,7 +17099,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         onUpdate: () => { renderFromOcc(); saveTreeMem(); try { reportDarkDeaths(); } catch (e) {} try { meshVoteBeat(); } catch (e) {} },
         onRelayMsg: onRelayFrame,
         prevTree: readTreeMem(),
-        oldCell: seatMemNow ? seatMemNow.ck : 0,
+        oldCell: seatMemNow ? seatMemNow.ck : -1,
         onByeHeld: (pid) => { try { confirmGone(pid, 'bye'); } catch (e) {} },   // the tab did not come back: its farewell, late
       });
       updateStatus(); applyAdminUi();
@@ -33101,18 +33101,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Without the digest (GIFOS_DIGEST=false) every seat holds every status,
     // so the farewell floods as before.
     function byeScope() { return digestMode() && !stageIds().includes(myId) ? { scope: 'section' } : undefined; }
-    // pageGone: the page is unloading on its own. No browser says whether this
-    // tab is closing or reloading, so the seat is left as a reload (L3.11) and
-    // no farewell goes out: its far ends hold the plain goodbye (mesh-wire
+    // unloadEvent: the page is unloading on its own. No browser says whether
+    // this tab is closing or reloading, so the seat is left as a reload (L3.11)
+    // and no farewell goes out: its far ends hold the plain goodbye (mesh-wire
     // holdBye) and act on it if this tab does not come back.
-    function sendMeshLeave(pageGone) {
+    function sendMeshLeave(unloadEvent) {
       if (leftMesh) return; leftMesh = true; leaving = true;
-      if (pageGone === true) {
+      if (unloadEvent) {
         try { seatMemSave(); } catch (e) {}
         try { meshNode && meshNode.leave(true); } catch (e) {}
         return;
       }
-      seatMemErase();
+      if (typeof seatMemErase === 'function') seatMemErase();
       // Farewell FIRST (every open channel carries it directly, gossip carries
       // it across my section, belt-and-braces for the unload window), then the
       // seat's own LEAVE + socket close. Receivers confirmGone instantly:
@@ -33123,9 +33123,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function pageHideLeaves(e) {
       if (e && e.persisted) return;
-      sendMeshLeave(true);
+      sendMeshLeave(e);
     }
-    window.addEventListener('beforeunload', () => sendMeshLeave(true));
+    window.addEventListener('beforeunload', sendMeshLeave);
     window.addEventListener('pagehide', pageHideLeaves);
     // bfcache resume after a pagehide: we already gave up our seat — rejoin fresh.
     window.addEventListener('pageshow', (e) => { if (e.persisted && leftMesh) location.reload(); });

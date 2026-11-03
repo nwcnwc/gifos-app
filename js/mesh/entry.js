@@ -576,17 +576,17 @@
     // The returner at the door: the HOME roster names my old cell's rook neighbours; each hears my proof over the mesh.
     tryReclaim(ro, greeter = -1) {
       const id = this.id; const lv = this.w.lv;
-      const oc = unckey(this.oldCell); const ol = ownedLinks(oc); const n = ol.length; let sent = 0;
+      const oc = unckey(this.oldCell - 1); const ol = ownedLinks(oc); const n = ol.length; let sent = 0;
       for (const e of ro) {
-        if (e.v < 0 || e.v === id) continue; let nb = false; for (let i = 0; i < n; i++) if (ckey(ol[i]) === e.k) { nb = true; break; } if (!nb && !(this.rcRound2 && e.k === this.oldCell)) continue;   // L3.10.6
-        const m = newMsg('RECLAIM'); m.ck = this.oldCell; m.id = id; m.tok = fabricToken(lv, id); this.emit(e.v, m); sent++;
+        if (e.v < 0 || e.v === id) continue; let nb = false; for (let i = 0; i < n; i++) if (ckey(ol[i]) === e.k) { nb = true; break; } if (!nb && !(this.rcRound2 && e.k === this.oldCell - 1)) continue;   // L3.10.6
+        const m = newMsg('RECLAIM'); m.ck = this.oldCell - 1; m.id = id; m.tok = fabricToken(lv, id); this.emit(e.v, m); sent++;
       }
       // L3.11: a deep cell's neighbours are not in the HOME roster: the proof travels the mesh as a routed frame.
       if (greeter >= 0 && oc.pc !== 0) {
         let routed = 0;
         for (let i = 0; i < n; i++) {
           if (ol[i].pc === 0) continue; let inRoster = false; for (const e of ro) if (e.k === ckey(ol[i]) && e.v >= 0) { inRoster = true; break; } if (inRoster) continue;
-          const m = newMsg('RECLAIM'); m.ck = this.oldCell; m.id = id; m.tok = fabricToken(lv, id); m.routing = true; m.rdst = co(ol[i]); m.rfinal = -1; m.rttl = 64; m.rvia = id; this.emit(greeter, m); routed++;
+          const m = newMsg('RECLAIM'); m.ck = this.oldCell - 1; m.id = id; m.tok = fabricToken(lv, id); m.routing = true; m.rdst = co(ol[i]); m.rfinal = -1; m.rttl = 64; m.rvia = id; this.emit(greeter, m); routed++;
         }
         if (routed) { this.trace('RECLAIM-ROUTED', id, oc, 'via=%d cells=%d', greeter, routed); sent += routed; }
       }

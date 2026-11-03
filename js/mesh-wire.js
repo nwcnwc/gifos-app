@@ -1186,7 +1186,7 @@
       });
       raw = penv.newSeat ? penv.newSeat() : new GifOS.meshSeat.Seat(penv.me, penv.world);   // the seat is mine (A3); env.seat() reads it back
       penv.world.onRecv = () => { if (!stopped) netEdge(); };
-      if (opts.oldCell) raw.oldCell = opts.oldCell;   // L3.10: my cell before this page loaded: the door's HOME sends me to its neighbours first
+      if (opts.oldCell >= 0) raw.oldCell = opts.oldCell + 1;   // L3.10 (key + 1, 0 is none): my cell before this page loaded: the door's HOME sends me to its neighbours first
       node.seat = seat; node.raw = raw; node.penv = penv; node.__pc = opts.pc || {};
       makeSock();
       if (penv.join) penv.join(); else raw.join();
