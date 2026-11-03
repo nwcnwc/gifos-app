@@ -50,14 +50,14 @@ const isHostile = (fab, q) => q >= 0 && q < fab.lv.nextId && !!fab.seats[q].host
 // C++: mesh_hostile.inc:hostDial
 function hostDial(fab, me, x) {
   if (x < 0 || x === me || !fab.alive[x]) return;
-  if (fab.X.l23Refused(x, me, MT.get('HELLO'))) return;
+  if (fab.X.l23Refused(x, me, 'HELLO')) return;
   const L = fab.X.linkGet(me, x);
   if (L.state === E.LK_NONE || L.state === E.LK_CLOSED) fab.X.startDial(me, x, L);
 }
 // C++: mesh_hostile.inc:hostCloseAll
 function hostCloseAll(fab, me) {
   const v = [];
-  for (const [key, L] of fab.X.linksTable()) {   // LINKS: pair key -> Link, in table order
+  for (const [key, L] of fab.link.LINKS) {   // LINKS: pair key -> Link, in table order
     const a = Math.floor(key / 4294967296), b = key >>> 0;
     if (L.state === E.LK_OPEN && (a === me || b === me)) v.push(a === me ? b : a);
   }
@@ -198,7 +198,7 @@ Seat.unit('mesh_hostile.inc seat side', {
       if (v >= 0 && to >= 0) {
         const wk = mk('WALK'); wk.target = cp(seats[to].coord); wk.asker = v; wk.ttl = 16; wk.via = id; send(to, wk);
         const r = mk('ROUTE'); r.target = cp(seats[to].coord); r.tag = 1; r.asker = v; r.via = v; r.ttl = 64; r.id = id; send(to, r);
-        const k = mk('RECLAIM'); k.ck = ckey(seats[to].coord); k.id = id; k.tok = fab.X.fabricToken(id); send(v, k);
+        const k = mk('RECLAIM'); k.ck = ckey(seats[to].coord); k.id = id; k.tok = require(path.join(M, 'seat.js')).FREE.fabricToken(lv, id); send(v, k);
       }
     }
     if ((h & H_COLLUDE) && t % 12 === 0 && this.hasCoord) {   // collusion: I (an arbiter) name a fellow hostile page as the rival of each honest seat beside me; it confirms
@@ -275,7 +275,7 @@ function install(fab) {
     const n = lv.nextId;
     while (H.HM_RUN.length < n) { H.HM_RUN.push(0); H.HM_LASTIN.push(-1); H.HM_R1.push(0); }
     const pcs = new Array(n).fill(0), hpcs = new Array(n).fill(0); let held = 0;
-    for (const [key, L] of fab.X.linksTable()) {
+    for (const [key, L] of fab.link.LINKS) {
       if (L.state !== E.LK_OPEN && L.state !== E.LK_DIALING) continue;
       const a = Math.floor(key / 4294967296), b = key >>> 0; if (a >= n || b >= n) continue;
       if (alive[a]) { pcs[a]++; if (isHostile(fab, b)) hpcs[a]++; }

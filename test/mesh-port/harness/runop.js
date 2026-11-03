@@ -67,9 +67,10 @@ function createOps(fab, opts) {
 
   // The externals the ops, hostile and lguard call that no unit of this port provides (levers of the link / net / time /
   // friend-hop / instant-join units, the media model, the link tables, realcheck): an unplugged one throws "not wired".
+  if (fab.link) fab.plug({ linkDark: fab.link.linkDark, linkSever: fab.link.linkSever, lEnd: fab.link.lEnd, pcBudget: fab.link.pcBudget, linkGet: fab.link.linkGet, linkFind: fab.link.linkFind, lEnsure: fab.link.lEnsure });
   for (const n of ['linkLever', 'keepLever', 'linksetLever', 'radioLever', 'l18Lever', 'feedCase', 'ijLever', 'fhopLever', 'l30Stat', 'netLever', 'timeLever',
     'mgapOn', 'mgapReport', 'mgapSeats', 'mediaSetup', 'mediaReset', 'mediaReport', 'mstage', 'mstageClear', 'mstagePush', 'mfeeds', 'mBuildCells', 'mcell', 'mAt', 'mOcc', 'mFlow', 'mCarry', 'mHash',
-    'pcsReport', 'pcsPeakRead', 'pcsPeakReset', 'pcsPeakClass', 'rcVerb', 'lEnsure', 'linkPeers', 'linkDark', 'linkSever', 'linksTable', 'linkGet', 'startDial', 'l23Refused', 'lEnd', 'pcBudget', 'fabricToken'])
+    'pcsReport', 'pcsPeakRead', 'pcsPeakReset', 'pcsPeakClass', 'rcVerb', 'lEnsure', 'linkPeers', 'linkDark', 'linkSever', 'linkGet', 'startDial', 'l23Refused', 'lEnd', 'pcBudget', 'fabricToken'])
     if (!(n in X)) X[n] = () => { throw new Error('mesh fabric: ' + n + ' is not wired (plug it with fab.plug)'); };
 
   // the fabric-side units that sit beside the ops (each plugs its functions into fab.X)
