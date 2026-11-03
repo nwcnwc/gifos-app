@@ -258,7 +258,7 @@
         if (!this.hasCoord || this.state !== 3 || this.coord.pc !== 0 || ckPc(m.ck) !== 0 || m.ck === ckey(this.coord) || !(m.sig && m.sigL >= 0 && TICK - m.sigL <= 60)) return;
         if (this.l152Bye.size >= 256) this.l152Bye.clear(); this.l152Bye.set(m.id, [m.ck, TICK]);
         if (this.occGet(m.ck) === m.id && (!this.firstHandLive(m.ck) || this.l167Gone(m))) { this.occDrop(m.ck, 'leave'); this.live.delete(m.ck); this.s1seen.delete(m.ck); this.kidful.delete(m.ck); this.tlForget(m.ck); }
-        this.l21Relay(m); return;
+        this.l43Relay(m); this.l21Relay(m); return;
       }
       if (m.rl) {
         if (!m.bye || m.mvd || !this.hasCoord || this.state !== 3) return;
