@@ -18544,6 +18544,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             storePwEpoch(ep); retainedGrant = order;
             pwLog('pwreset-sent ep=' + ep);
             txm(() => Promise.resolve()).then(() => rekeyRoom());
+            // An admin who locks the room before she holds a seat (nobody
+            // inside would seat her) knocks again on the new lock: the door
+            // drops at once every socket that has not passed it, so her fresh
+            // knock founds the room instead of waiting out her join round.
+            if (!meshCoord()) {
+              const gen = meshBootGen;
+              pwLog('pwreset-sent unseated: knocking again on the new lock');
+              setTimeout(() => { if (gen !== meshBootGen || leaving || bannedOut || pwBlocked || meshCoord()) return; startMesh(); }, 1500);
+            }
             return;
           }
           const wPeers = hasAdminRoom() ? await admSigned('pwinfo', { pw: v, ep }) : undefined;
