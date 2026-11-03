@@ -53,20 +53,32 @@
     #back{display:inline-block}
   }
 </style>
-<header><h1>Notes</h1><input id="q" placeholder="Search…" autocomplete="off"></header>
+<header><h1 data-i18n="title">Notes</h1><input id="q" placeholder="Search…" data-i18n-ph="search.placeholder" autocomplete="off"></header>
 <div id="wrap">
   <div id="listwrap">
-    <form id="f"><input id="t" placeholder="Write a note and press Add…" autocomplete="off"><button>Add</button></form>
-    <div class="hint">Tap a note to open it. Tick the box to check it off. Everything is saved in this icon.</div>
+    <form id="f"><input id="t" placeholder="Write a note and press Add…" data-i18n-ph="add.placeholder" autocomplete="off"><button data-i18n="add">Add</button></form>
+    <div class="hint" data-i18n="hint">Tap a note to open it. Tick the box to check it off. Everything is saved in this icon.</div>
     <ul id="list"></ul>
   </div>
   <div id="pane">
-    <div id="panebar"><button type="button" id="back">← List</button><div id="who"></div><div id="saved"></div></div>
-    <textarea id="body" placeholder="Start writing…" hidden></textarea>
-    <div id="nobody">Pick a note, or add one. Invite shares the list.</div>
+    <div id="panebar"><button type="button" id="back" data-i18n="back">← List</button><div id="who"></div><div id="saved"></div></div>
+    <textarea id="body" placeholder="Start writing…" data-i18n-ph="body.placeholder" hidden></textarea>
+    <div id="nobody" data-i18n="nobody">Pick a note, or add one. Invite shares the list.</div>
   </div>
 </div>
 <script>
+  const T = (k, p) => (window.gifos && gifos.i18n ? gifos.i18n.t(k, p) : k);
+  // Static markup keeps its English literal (shown until the catalog arrives, or on an older GifOS) and is
+  // tagged data-i18n / -ph / -title / -aria; applyI18n fills those from the catalog.
+  function applyI18n(){
+    if(!(window.gifos&&gifos.i18n)) return;
+    [['','textContent'],['-ph','placeholder'],['-title','title'],['-aria','aria-label']].forEach(function(a){
+      document.querySelectorAll('[data-i18n'+a[0]+']').forEach(function(e){
+        const v=T(e.getAttribute('data-i18n'+a[0]));
+        if(a[1]==='textContent') e.textContent=v; else e.setAttribute(a[1],v);
+      });
+    });
+  }
   const db = gifos.db('notes'), list = document.getElementById('list');
   let me = { name: 'You' };
   let notes = [];
@@ -74,10 +86,9 @@
   let filter = '';
   let saveT = null;
   if (window.gifos) gifos.me().then(m => { me = { id: m.id, name: m.name || 'You' }; });
-  if (window.gifos && gifos.onLocaleChange) gifos.onLocaleChange(function(){ render(); });
   const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
   const DEL = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
-  function titleOf(n){ const t=String(n.text||'').trim(); const line=t.split('\\n')[0]; return line || 'Untitled'; }
+  function titleOf(n){ const t=String(n.text||'').trim(); const line=t.split('\\n')[0]; return line || T('untitled'); }
   function when(n){
     const t=n.u||n.t; if(!t) return '';
     const d=new Date(t); if(!isFinite(d.getTime())) return '';
@@ -96,12 +107,12 @@
     list.innerHTML = shown.length
       ? shown.map(function(n){
           return '<li class="'+(n.done?'done ':'')+(n.id===sel?'on':'')+'" data-id="'+esc(n.id)+'">'
-            +'<input class="chk" type="checkbox"'+(n.done?' checked':'')+' data-chk="'+esc(n.id)+'" title="Check off">'
+            +'<input class="chk" type="checkbox"'+(n.done?' checked':'')+' data-chk="'+esc(n.id)+'" title="'+esc(T('check'))+'">'
             +'<div class="body"><span class="ttl" data-t="'+esc(n.id)+'">'+esc(titleOf(n))+' <small>— '+esc(n.by||'?')+'</small></span>'
             +'<small>'+esc(when(n))+'</small></div>'
-            +'<button class="row-del" data-id="'+esc(n.id)+'" title="Delete">'+DEL+'</button></li>';
+            +'<button class="row-del" data-id="'+esc(n.id)+'" title="'+esc(T('delete'))+'">'+DEL+'</button></li>';
         }).join('')
-      : '<div class="empty">'+(notes.length?'No notes match that search.':'No notes yet. Your notes persist in this GIF icon.')+'</div>';
+      : '<div class="empty">'+esc(notes.length?T('empty.nomatch'):T('empty.none'))+'</div>';
     paintPane();
   }
   function paintPane(){
@@ -117,10 +128,9 @@
     document.body.classList.add('show');
     nobody.hidden=true; body.hidden=false;
     if(document.activeElement!==body) body.value = n.text||'';
-    who.textContent = (n.by||'You') + (when(n) ? ' · '+when(n) : '');
-    saved.textContent = 'Saved in this icon';
+    who.textContent = (n.by||T('you')) + (when(n) ? ' · '+when(n) : '');
+    saved.textContent = T('saved');
   }
-  db.subscribe(render);
   document.getElementById('f').onsubmit = async e => {
     e.preventDefault();
     const t = document.getElementById('t');
@@ -160,6 +170,13 @@
   };
   document.getElementById('q').oninput = function(){ filter=this.value; render(); };
   document.getElementById('back').onclick = function(){ sel=null; render(); };
+  // Nothing that calls T runs before the catalog has loaded (a key must never be painted).
+  function boot(){
+    applyI18n();
+    db.subscribe(render);
+    if (window.gifos && gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); render(); });
+  }
+  if (window.gifos && gifos.i18n && gifos.i18n.load) gifos.i18n.load().then(boot, boot); else boot();
 </script>`;
 
   const GUESTBOOK_HTML = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -183,15 +200,27 @@
   .empty{color:var(--muted,#8888aa);padding:28px 12px;text-align:center;line-height:1.5}
   .empty b{color:var(--accent,#ff5caa)}
 </style>
-<header><span class="ttl">Guestbook</span><span class="who" id="who">just you — Invite</span></header>
+<header><span class="ttl" data-i18n="title">Guestbook</span><span class="who" id="who">just you — Invite</span></header>
 <div class="hint" id="hint">Press <b>Invite</b> in the top bar and share the link — everyone signs with their screen name.</div>
 <form id="f">
-  <input id="msg" placeholder="Say something…" autocomplete="off">
-  <button>Sign</button>
+  <input id="msg" placeholder="Say something…" data-i18n-ph="msg.placeholder" autocomplete="off">
+  <button data-i18n="sign">Sign</button>
 </form>
 <div class="stamps" id="stamps"></div>
 <ul id="list"></ul>
 <script>
+  const T = (k, p) => (window.gifos && gifos.i18n ? gifos.i18n.t(k, p) : k);
+  // Static markup keeps its English literal (shown until the catalog arrives, or on an older GifOS) and is
+  // tagged data-i18n / -ph / -title / -aria; applyI18n fills those from the catalog.
+  function applyI18n(){
+    if(!(window.gifos&&gifos.i18n)) return;
+    [['','textContent'],['-ph','placeholder'],['-title','title'],['-aria','aria-label']].forEach(function(a){
+      document.querySelectorAll('[data-i18n'+a[0]+']').forEach(function(e){
+        const v=T(e.getAttribute('data-i18n'+a[0]));
+        if(a[1]==='textContent') e.textContent=v; else e.setAttribute(a[1],v);
+      });
+    });
+  }
   const db = gifos.db('entries'), pres = (window.gifos&&gifos.db)?gifos.db('presence'):null, list = document.getElementById('list');
   ['💜','✨','⭐','🌈','✍️','🐸'].forEach(function(s){
     const b=document.createElement('button'); b.type='button'; b.textContent=s;
@@ -201,36 +230,44 @@
   let me = { id:'local', name: 'You' }, others=0;
   const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
   function setWho(){
-    document.getElementById('who').textContent = others>0 ? ((others+1)+' here') : 'just you — Invite';
+    document.getElementById('who').textContent = others>0 ? T('who.here',{n:others+1}) : T('who.alone');
     var h=document.getElementById('hint');
-    h.innerHTML = 'Signing as <b>'+esc(me.name)+'</b>. '+(others>0
-      ? 'Friends in this room sign with their screen name — new lines appear here.'
-      : 'Press <b>Invite</b> in the top bar to sign with friends.');
+    h.innerHTML = T(others>0 ? 'hint.friends' : 'hint.alone',{name:esc(me.name)});
   }
-  if (window.gifos) gifos.me().then(function(m){ me = { id: m.id, name: m.name || 'You' }; setWho(); beat(); });
-  function ago(t){ if(!t) return ''; var d=Date.now()-t; if(d<45000) return 'just now'; if(d<3600000) return Math.max(1,Math.floor(d/60000))+'m ago'; if(d<86400000) return Math.floor(d/3600000)+'h ago'; var dt=new Date(t); var F=window.gifos&&gifos.i18n&&gifos.i18n.fmt; return F?F.date(dt,{month:'numeric',day:'numeric'}):(dt.getMonth()+1)+'/'+dt.getDate(); }
+  function ago(t){ if(!t) return ''; var d=Date.now()-t; if(d<45000) return T('ago.now'); if(d<3600000) return T('ago.m',{n:Math.max(1,Math.floor(d/60000))}); if(d<86400000) return T('ago.h',{n:Math.floor(d/3600000)}); var dt=new Date(t); var F=window.gifos&&gifos.i18n&&gifos.i18n.fmt; return F?F.date(dt,{month:'numeric',day:'numeric'}):(dt.getMonth()+1)+'/'+dt.getDate(); }
+  let lastItems=[];
   function render(items){
-    items=items||[];
+    items=items||[]; lastItems=items;
     list.innerHTML = items.length
-      ? items.slice().reverse().map(function(e){ return '<li><b>'+esc(e.by||'anon')+'</b><span class="when">'+esc(ago(e.t))+'</span><div>'+esc(e.msg)+'</div></li>'; }).join('')
-      : '<div class="empty">No one has signed yet. You are the first.<br>Press <b>Invite</b> in the top bar and send the link.</div>';
+      ? items.slice().reverse().map(function(e){ return '<li><b>'+esc(e.by||T('anon'))+'</b><span class="when">'+esc(ago(e.t))+'</span><div>'+esc(e.msg)+'</div></li>'; }).join('')
+      : '<div class="empty">'+T('empty')+'</div>';
   }
-  db.subscribe(render);
   document.getElementById('f').onsubmit = async e => {
     e.preventDefault();
     const msg = document.getElementById('msg');
     if (msg.value.trim()) { await db.put({ by: me.name, uid: me.id, msg: msg.value.trim(), t: Date.now() }); msg.value=''; }
   };
   function beat(){ if(!pres||!me.id||me.id==='local') return; pres.put({id:'p:'+me.id,name:me.name,ts:Date.now()}); }
-  if(pres&&pres.subscribe){
-    pres.subscribe(function(rows){
-      var now=Date.now(); others=0;
-      (rows||[]).forEach(function(r){ if(r&&r.id&&r.id.indexOf('p:')===0&&r.id!=='p:'+me.id&&(now-(r.ts||0))<35000) others++; });
-      setWho();
-    });
-    setInterval(function(){ if(document.visibilityState!=='hidden') beat(); },15000);
+  function watchPresence(){
+    if(pres&&pres.subscribe){
+      pres.subscribe(function(rows){
+        var now=Date.now(); others=0;
+        (rows||[]).forEach(function(r){ if(r&&r.id&&r.id.indexOf('p:')===0&&r.id!=='p:'+me.id&&(now-(r.ts||0))<35000) others++; });
+        setWho();
+      });
+      setInterval(function(){ if(document.visibilityState!=='hidden') beat(); },15000);
+    }
   }
   document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible') beat(); });
+  // Nothing that calls T runs before the catalog has loaded (a key must never be painted).
+  function boot(){
+    applyI18n();
+    if (window.gifos) gifos.me().then(function(m){ me = { id: m.id, name: m.name || 'You' }; setWho(); beat(); });
+    db.subscribe(render);
+    watchPresence();
+    if (window.gifos && gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); setWho(); render(lastItems); });
+  }
+  if (window.gifos && gifos.i18n && gifos.i18n.load) gifos.i18n.load().then(boot, boot); else boot();
 </script>`;
 
   const TICTACTOE_HTML = `<!doctype html><meta charset="utf-8">
@@ -302,25 +339,38 @@
   }
 </style>
 <header>
-  <div class="brand"><span class="logo" aria-hidden="true"></span> Tic-Tac-Toe</div>
-  <div class="chip" id="chip">Alone</div>
+  <div class="brand" data-i18n-tail="title"><span class="logo" aria-hidden="true"></span> Tic-Tac-Toe</div>
+  <div class="chip" id="chip" data-i18n="chip.alone">Alone</div>
 </header>
 <main>
   <div class="seats" aria-live="polite">
-    <div class="seat x" id="seatX"><span class="mk" aria-hidden="true">X</span><span class="nm" id="nameX">X</span><span class="you" id="youX" hidden>You</span></div>
-    <div class="seat o" id="seatO"><span class="mk" aria-hidden="true">O</span><span class="nm" id="nameO">O</span><span class="you" id="youO" hidden>You</span></div>
+    <div class="seat x" id="seatX"><span class="mk" aria-hidden="true">X</span><span class="nm" id="nameX">X</span><span class="you" id="youX" hidden data-i18n="you">You</span></div>
+    <div class="seat o" id="seatO"><span class="mk" aria-hidden="true">O</span><span class="nm" id="nameO">O</span><span class="you" id="youO" hidden data-i18n="you">You</span></div>
   </div>
-  <div class="status" id="status">Loading…</div>
+  <div class="status" id="status" data-i18n="loading">Loading…</div>
   <div class="hint" id="hint"></div>
-  <div class="score" id="score"><div><b id="sx">0</b><span>X</span></div><div><b id="sd">0</b><span>draws</span></div><div><b id="so">0</b><span>O</span></div></div>
+  <div class="score" id="score"><div><b id="sx">0</b><span>X</span></div><div><b id="sd">0</b><span data-i18n="score.draws">draws</span></div><div><b id="so">0</b><span>O</span></div></div>
   <div class="boardwrap">
-    <div class="board" id="board" role="grid" aria-label="Tic-tac-toe board"></div>
+    <div class="board" id="board" role="grid" aria-label="Tic-tac-toe board" data-i18n-aria="board.aria"></div>
     <svg class="winline" id="win" viewBox="0 0 100 100" aria-hidden="true"><line id="seg" x1="0" y1="0" x2="0" y2="0"/></svg>
   </div>
-  <div class="controls"><button class="act" id="new" type="button">New game</button></div>
+  <div class="controls"><button class="act" id="new" type="button" data-i18n="new">New game</button></div>
   <div class="ask" id="ask"></div>
 </main>
 <script>
+  const T = (k, p) => (window.gifos && gifos.i18n ? gifos.i18n.t(k, p) : k);
+  // Static markup keeps its English literal (shown until the catalog arrives, or on an older GifOS) and is
+  // tagged data-i18n / -ph / -title / -aria; applyI18n fills those from the catalog.
+  function applyI18n(){
+    if(!(window.gifos&&gifos.i18n)) return;
+    document.querySelectorAll('[data-i18n-tail]').forEach(function(e){ const n=e.lastChild; if(n&&n.nodeType===3) n.nodeValue=' '+T(e.getAttribute('data-i18n-tail')); });
+    [['','textContent'],['-ph','placeholder'],['-title','title'],['-aria','aria-label']].forEach(function(a){
+      document.querySelectorAll('[data-i18n'+a[0]+']').forEach(function(e){
+        const v=T(e.getAttribute('data-i18n'+a[0]));
+        if(a[1]==='textContent') e.textContent=v; else e.setAttribute(a[1],v);
+      });
+    });
+  }
   const db = gifos.db('game');
   const WINS = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
   const PFX = 'p:';
@@ -330,7 +380,6 @@
   let askLocal = false;
   let me = { id:'local', name:'You' };
   let here = {};
-  if (window.gifos) gifos.me().then(function(m){ me = { id:m.id, name:m.name || 'You' }; beat(); render(); });
   const boardEl = document.getElementById('board');
   const statusEl = document.getElementById('status');
   const hintEl = document.getElementById('hint');
@@ -343,7 +392,7 @@
   function myMark(){ return current.players.X===me.id ? 'X' : current.players.O===me.id ? 'O' : null; }
   function liveIds(){ const t=now(), out=[]; for (const id in here){ if (here[id] && (t-(here[id].t||0))<LIVE) out.push(id); } return out; }
   function opponentLive(){ return liveIds().some(function(id){ return id!==me.id; }); }
-  function friendName(){ const ids=liveIds(); for (let i=0;i<ids.length;i++){ if(ids[i]!==me.id) return (here[ids[i]] && here[ids[i]].name) || 'a friend'; } return ''; }
+  function friendName(){ const ids=liveIds(); for (let i=0;i<ids.length;i++){ if(ids[i]!==me.id) return (here[ids[i]] && here[ids[i]].name) || ''; } return ''; }
   function label(s){ return (current.names && current.names[s]) ? current.names[s] : s; }
   function boardEmpty(){ return current.cells.every(function(v){ return !v; }); }
   function canPlayTurn(){
@@ -363,7 +412,7 @@
     for (let i=0;i<9;i++){
       const d=document.createElement('button');
       d.type='button'; d.className='cell'; d.setAttribute('data-i', String(i));
-      d.setAttribute('aria-label','empty');
+      d.setAttribute('aria-label',T('cell.empty'));
       d.onclick=function(){ play(i); };
       boardEl.appendChild(d);
     }
@@ -382,7 +431,7 @@
     const claimed = current.players && current.players[mark];
     const mine = claimed === me.id;
     const named = claimed && current.names && current.names[mark];
-    nameEl.textContent = named ? current.names[mark] : (opponentLive() && !claimed ? 'Open' : '');
+    nameEl.textContent = named ? current.names[mark] : (opponentLive() && !claimed ? T('seat.open') : '');
     youEl.hidden = !mine;
     el.classList.toggle('on', !!on);
     el.classList.toggle('win', !!win);
@@ -401,7 +450,7 @@
       const cls = 'cell'+(v?' '+v.toLowerCase():'')+(win?' win':'')+(last?' last':'')+((v&&!animate)?' settled':'');
       if (d.className !== cls) d.className = cls;
       d.disabled = !!(current.winner || v || !playable);
-      d.setAttribute('aria-label', v || 'empty');
+      d.setAttribute('aria-label', v || T('cell.empty'));
     });
     paintWin();
     const xOn = !current.winner && current.turn==='X';
@@ -415,24 +464,25 @@
     statusEl.className = 'status';
     hintEl.textContent = '';
     if (current.winner==='draw'){
-      statusEl.textContent = 'Draw.';
-      hintEl.textContent = 'New game keeps the series and swaps who starts.';
+      statusEl.textContent = T('draw');
+      hintEl.textContent = T('draw.hint');
     } else if (current.winner){
       const w = current.winner;
       const you = !!(live && mm===w);
-      statusEl.textContent = you ? 'You win.' : (label(w)+' wins.');
+      statusEl.textContent = you ? T('win.you') : T('win.other',{name:label(w)});
       statusEl.className = 'status '+(you?'good':(live && mm ? 'warn':''));
     } else if (playable){
-      if (live && !mm) statusEl.textContent = 'Tap a square to sit as '+current.turn+'.';
-      else if (live) statusEl.textContent = 'Your move.';
-      else statusEl.textContent = 'Your move — '+current.turn+'.';
+      if (live && !mm) statusEl.textContent = T('status.sit',{mark:current.turn});
+      else if (live) statusEl.textContent = T('status.yourMove');
+      else statusEl.textContent = T('status.yourMoveMark',{mark:current.turn});
     } else {
-      statusEl.textContent = 'Waiting for '+(label(current.turn) || current.turn)+'.';
+      statusEl.textContent = T('status.waiting',{name:label(current.turn) || current.turn});
     }
-    if (!current.winner && !live) hintEl.textContent = 'Alone: play both marks. Invite (top bar) to play a friend.';
-    else if (!current.winner && live && !mm) hintEl.textContent = 'First tap on a turn claims that seat. Then you only move on your turn.';
-    else if (!current.winner && live && mm) hintEl.textContent = 'You are '+mm+'.';
-    chipEl.textContent = live ? ('vs '+(friendName()||'a friend')) : 'Alone';
+    if (!current.winner && !live) hintEl.textContent = T('hint.alone');
+    else if (!current.winner && live && !mm) hintEl.textContent = T('hint.claim');
+    else if (!current.winner && live && mm) hintEl.textContent = T('hint.you',{mark:mm});
+    const fn = live ? friendName() : '';
+    chipEl.textContent = live ? (fn ? T('chip.vs',{name:fn}) : T('chip.vsFriend')) : T('chip.alone');
     renderConsent();
   }
   function play(i){
@@ -473,8 +523,8 @@
   function askButtons(askEl, text, onYes, onNo){
     const span = document.createElement('div'); span.textContent = text;
     const row = document.createElement('div'); row.className = 'row';
-    const yes = document.createElement('button'); yes.className='act'; yes.textContent='Start new game'; yes.onclick=onYes;
-    const no = document.createElement('button'); no.className='act ghost'; no.textContent='Keep playing'; no.onclick=onNo;
+    const yes = document.createElement('button'); yes.className='act'; yes.textContent=T('ask.yes'); yes.onclick=onYes;
+    const no = document.createElement('button'); no.className='act ghost'; no.textContent=T('ask.no'); no.onclick=onNo;
     row.appendChild(yes); row.appendChild(no);
     askEl.appendChild(span); askEl.appendChild(row);
   }
@@ -484,15 +534,15 @@
     const req = current.rematch;
     if (req && req.by !== me.id){
       btn.style.display = 'none';
-      askButtons(askEl, (req.name ? req.name : 'Your opponent')+' wants to start a new game.', startNew, clearRematch);
+      askButtons(askEl, req.name ? T('ask.rematch',{name:req.name}) : T('ask.rematchAnon'), startNew, clearRematch);
     } else if (req){
-      btn.textContent = 'Cancel request'; btn.style.display = ''; btn.className = 'act ghost';
-      askEl.textContent = 'Waiting for the other player to accept a new game…';
+      btn.textContent = T('ask.cancel'); btn.style.display = ''; btn.className = 'act ghost';
+      askEl.textContent = T('ask.waiting');
     } else if (askLocal){
       btn.style.display = 'none';
-      askButtons(askEl, 'Start a new game? The series score stays.', startNew, cancelLocal);
+      askButtons(askEl, T('ask.confirm'), startNew, cancelLocal);
     } else {
-      btn.textContent = 'New game'; btn.style.display = ''; btn.className = 'act';
+      btn.textContent = T('new'); btn.style.display = ''; btn.className = 'act';
     }
   }
   document.getElementById('new').onclick = function(){
@@ -509,7 +559,7 @@
     const k = e.key;
     if (k>='1' && k<='9') play(parseInt(k,10)-1);
   });
-  db.subscribe(function(items){
+  function onItems(items){
     const b = items.find(function(x){ return x.id==='board'; });
     if (b){
       current = b;
@@ -526,10 +576,18 @@
     });
     here = next;
     render();
-  });
-  setInterval(beat, 2000);
-  beat();
-  render();
+  }
+  // Nothing that calls T runs before the catalog has loaded (a key must never be painted).
+  function boot(){
+    applyI18n();
+    if (window.gifos) gifos.me().then(function(m){ me = { id:m.id, name:m.name || 'You' }; beat(); render(); });
+    db.subscribe(onItems);
+    setInterval(beat, 2000);
+    beat();
+    render();
+    if (window.gifos && gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); render(); });
+  }
+  if (window.gifos && gifos.i18n && gifos.i18n.load) gifos.i18n.load().then(boot, boot); else boot();
 </script>`;
 
   const CONNECT_FOUR_HTML = `<!doctype html><meta charset="utf-8">
@@ -603,29 +661,41 @@
   }
 </style>
 <header>
-  <div class="brand"><span class="logo" aria-hidden="true"></span> Connect Four</div>
-  <div class="chip" id="chip">Alone</div>
+  <div class="brand" data-i18n-tail="title"><span class="logo" aria-hidden="true"></span> Connect Four</div>
+  <div class="chip" id="chip" data-i18n="chip.alone">Alone</div>
 </header>
 <main>
   <div class="seats" aria-live="polite">
-    <div class="seat r" id="seatR"><i class="disc" aria-hidden="true"></i><span class="nm" id="nameR">Red</span><span class="you" id="youR" hidden>You</span></div>
-    <div class="seat y" id="seatY"><i class="disc" aria-hidden="true"></i><span class="nm" id="nameY">Yellow</span><span class="you" id="youY" hidden>You</span></div>
+    <div class="seat r" id="seatR"><i class="disc" aria-hidden="true"></i><span class="nm" id="nameR" data-i18n="color.red">Red</span><span class="you" id="youR" hidden data-i18n="you">You</span></div>
+    <div class="seat y" id="seatY"><i class="disc" aria-hidden="true"></i><span class="nm" id="nameY" data-i18n="color.yellow">Yellow</span><span class="you" id="youY" hidden data-i18n="you">You</span></div>
   </div>
-  <div class="status" id="status">Loading…</div>
+  <div class="status" id="status" data-i18n="loading">Loading…</div>
   <div class="hint" id="hint"></div>
-  <div class="score"><div><b id="sr">0</b><span>red</span></div><div><b id="sd">0</b><span>draws</span></div><div><b id="sy">0</b><span>yellow</span></div></div>
+  <div class="score"><div><b id="sr">0</b><span data-i18n="score.red">red</span></div><div><b id="sd">0</b><span data-i18n="score.draws">draws</span></div><div><b id="sy">0</b><span data-i18n="score.yellow">yellow</span></div></div>
   <div class="frame" id="frame">
     <div class="rail" id="rail" aria-hidden="true"></div>
-    <div class="cols" id="cols" role="grid" aria-label="Connect Four board"></div>
+    <div class="cols" id="cols" role="grid" aria-label="Connect Four board" data-i18n-aria="board.aria"></div>
   </div>
-  <div class="controls"><button class="act" id="new" type="button">New game</button></div>
+  <div class="controls"><button class="act" id="new" type="button" data-i18n="new">New game</button></div>
   <div class="ask" id="ask"></div>
 </main>
 <script>
+  const T = (k, p) => (window.gifos && gifos.i18n ? gifos.i18n.t(k, p) : k);
+  // Static markup keeps its English literal (shown until the catalog arrives, or on an older GifOS) and is
+  // tagged data-i18n / -ph / -title / -aria; applyI18n fills those from the catalog.
+  function applyI18n(){
+    if(!(window.gifos&&gifos.i18n)) return;
+    document.querySelectorAll('[data-i18n-tail]').forEach(function(e){ const n=e.lastChild; if(n&&n.nodeType===3) n.nodeValue=' '+T(e.getAttribute('data-i18n-tail')); });
+    [['','textContent'],['-ph','placeholder'],['-title','title'],['-aria','aria-label']].forEach(function(a){
+      document.querySelectorAll('[data-i18n'+a[0]+']').forEach(function(e){
+        const v=T(e.getAttribute('data-i18n'+a[0]));
+        if(a[1]==='textContent') e.textContent=v; else e.setAttribute(a[1],v);
+      });
+    });
+  }
   const db = gifos.db('game'), W=7, H=6, PFX='p:', LIVE=8000;
   const fresh = function(){ return { id:'board', cells:new Array(W*H).fill(null), turn:'R', starts:'R', winner:null, line:null, players:{}, names:{}, score:{R:0,Y:0,D:0} }; };
   let cur = fresh(), me = { id:'local', name:'You' }, askLocal = false, here = {}, hover = -1;
-  if (window.gifos) gifos.me().then(function(m){ me={id:m.id,name:m.name||'You'}; beat(); render(); });
   const colsEl = document.getElementById('cols');
   const railEl = document.getElementById('rail');
   const statusEl = document.getElementById('status');
@@ -636,10 +706,11 @@
   function now(){ return Date.now ? Date.now() : 0; }
   function liveIds(){ const t=now(), out=[]; for (const id in here){ if (here[id] && (t-(here[id].t||0))<LIVE) out.push(id); } return out; }
   function opp(){ return liveIds().some(function(id){ return id!==me.id; }); }
-  function friendName(){ const ids=liveIds(); for (let i=0;i<ids.length;i++){ if(ids[i]!==me.id) return (here[ids[i]] && here[ids[i]].name) || 'a friend'; } return ''; }
+  function friendName(){ const ids=liveIds(); for (let i=0;i<ids.length;i++){ if(ids[i]!==me.id) return (here[ids[i]] && here[ids[i]].name) || ''; } return ''; }
   function myMark(){ return cur.players.R===me.id?'R':cur.players.Y===me.id?'Y':null; }
   function canPlay(){ if(cur.winner) return false; if(!opp()) return true; const mm=myMark(); return mm?cur.turn===mm:!cur.players[cur.turn]; }
-  function label(s){ return cur.names&&cur.names[s]?cur.names[s]:(s==='R'?'Red':s==='Y'?'Yellow':s); }
+  function colorName(s){ return s==='R'?T('color.red'):s==='Y'?T('color.yellow'):s; }
+  function label(s){ return cur.names&&cur.names[s]?cur.names[s]:colorName(s); }
   function boardEmpty(){ return cur.cells.every(function(v){ return !v; }); }
   function colFull(c){ return !!cur.cells[c]; }
   function beat(){ if(!window.gifos || me.id==='local') return; db.put({id:PFX+me.id,name:me.name,t:now()}).catch(function(){}); }
@@ -661,7 +732,7 @@
     for(let c=0;c<W;c++){
       const peek=document.createElement('div'); peek.className='peek'; railEl.appendChild(peek); peekEls.push(peek);
       const col=document.createElement('button'); col.type='button'; col.className='col';
-      col.setAttribute('aria-label','Column '+(c+1));
+      col.setAttribute('aria-label',T('col.aria',{n:c+1}));
       col.addEventListener('click', function(){ drop(c); });
       col.addEventListener('pointerenter', function(){ setHover(c); });
       col.addEventListener('pointerleave', function(){ if(hover===c) setHover(-1); });
@@ -684,7 +755,7 @@
   function setSeat(el, youEl, nameEl, mark, on, isWin){
     const claimed = cur.players && cur.players[mark];
     const mine = claimed===me.id;
-    nameEl.textContent = claimed ? label(mark) : (opp() ? 'Open' : (mark==='R'?'Red':'Yellow'));
+    nameEl.textContent = claimed ? label(mark) : (opp() ? T('seat.open') : colorName(mark));
     youEl.hidden = !mine;
     el.classList.toggle('on', !!on);
     el.classList.toggle('win', !!isWin);
@@ -721,23 +792,26 @@
     statusEl.className='status';
     hintEl.textContent='';
     if (cur.winner==='draw'){
-      statusEl.textContent='Draw.';
-      hintEl.textContent='New game keeps the series and swaps who starts.';
+      statusEl.textContent=T('draw');
+      hintEl.textContent=T('draw.hint');
     } else if (cur.winner){
       const you = mm===cur.winner;
-      statusEl.textContent=(you?'You win.':label(cur.winner)+' wins.');
+      const wn=cur.names&&cur.names[cur.winner];
+      statusEl.textContent=(you?T('win.you'):wn?T('win.other',{name:wn}):T('win.color',{color:cur.winner}));
       statusEl.className='status '+(you?'good':(mm?'warn':''));
     } else if (playable){
-      if (live && !mm) statusEl.textContent='Tap a column to sit as '+(cur.turn==='R'?'Red':'Yellow')+'.';
-      else if (live) statusEl.textContent='Your move.';
-      else statusEl.textContent='Your move — '+(cur.turn==='R'?'Red':'Yellow')+'.';
+      if (live && !mm) statusEl.textContent=T('status.sit',{color:cur.turn});
+      else if (live) statusEl.textContent=T('status.yourMove');
+      else statusEl.textContent=T('status.yourMoveColor',{color:cur.turn});
     } else {
-      statusEl.textContent='Waiting for '+(label(cur.turn)||cur.turn)+'.';
+      const tn=cur.names&&cur.names[cur.turn];
+      statusEl.textContent=tn?T('status.waiting',{name:tn}):T('status.waitingColor',{color:cur.turn});
     }
-    if (!cur.winner && !live) hintEl.textContent='Alone: play both colours. Invite (top bar) to play a friend.';
-    else if (!cur.winner && live && !mm) hintEl.textContent='First drop on a turn claims that colour. Then you only move on your turn.';
-    else if (!cur.winner && live && mm) hintEl.textContent='You are '+(mm==='R'?'Red':'Yellow')+'. Tap a column to drop.';
-    chipEl.textContent = live ? ('vs '+(friendName()||'a friend')) : 'Alone';
+    if (!cur.winner && !live) hintEl.textContent=T('hint.alone');
+    else if (!cur.winner && live && !mm) hintEl.textContent=T('hint.claim');
+    else if (!cur.winner && live && mm) hintEl.textContent=T('hint.you',{color:mm});
+    const fn = live ? friendName() : '';
+    chipEl.textContent = live ? (fn ? T('chip.vs',{name:fn}) : T('chip.vsFriend')) : T('chip.alone');
     renderConsent();
   }
   function drop(col){
@@ -773,8 +847,8 @@
   function askButtons(askEl,text,onYes,onNo){
     const span=document.createElement('div'); span.textContent=text;
     const row=document.createElement('div'); row.className='row';
-    const yes=document.createElement('button'); yes.className='act'; yes.textContent='Start new game'; yes.onclick=onYes;
-    const no=document.createElement('button'); no.className='act ghost'; no.textContent='Keep playing'; no.onclick=onNo;
+    const yes=document.createElement('button'); yes.className='act'; yes.textContent=T('ask.yes'); yes.onclick=onYes;
+    const no=document.createElement('button'); no.className='act ghost'; no.textContent=T('ask.no'); no.onclick=onNo;
     row.appendChild(yes); row.appendChild(no);
     askEl.appendChild(span); askEl.appendChild(row);
   }
@@ -784,15 +858,15 @@
     const req=cur.rematch;
     if(req && req.by!==me.id){
       btn.style.display='none';
-      askButtons(askEl,(req.name?req.name:'Your opponent')+' wants to start a new game.',startNew,clearRematch);
+      askButtons(askEl,req.name?T('ask.rematch',{name:req.name}):T('ask.rematchAnon'),startNew,clearRematch);
     } else if(req){
-      btn.textContent='Cancel request'; btn.style.display=''; btn.className='act ghost';
-      askEl.textContent='Waiting for the other player to accept a new game…';
+      btn.textContent=T('ask.cancel'); btn.style.display=''; btn.className='act ghost';
+      askEl.textContent=T('ask.waiting');
     } else if(askLocal){
       btn.style.display='none';
-      askButtons(askEl,'Start a new game? The series score stays.',startNew,cancelLocal);
+      askButtons(askEl,T('ask.confirm'),startNew,cancelLocal);
     } else {
-      btn.textContent='New game'; btn.style.display=''; btn.className='act';
+      btn.textContent=T('new'); btn.style.display=''; btn.className='act';
     }
   }
   document.getElementById('new').onclick=function(){
@@ -809,7 +883,7 @@
     const k=e.key;
     if(k>='1' && k<='7') drop(parseInt(k,10)-1);
   });
-  db.subscribe(function(items){
+  function onItems(items){
     const b=items.find(function(x){return x.id==='board';});
     if(b){
       cur=b;
@@ -823,10 +897,18 @@
         next[x.id.slice(PFX.length)]=x;
     });
     here=next; render();
-  });
-  setInterval(beat, 2000);
-  beat();
-  render();
+  }
+  // Nothing that calls T runs before the catalog has loaded (a key must never be painted).
+  function boot(){
+    applyI18n();
+    if (window.gifos) gifos.me().then(function(m){ me={id:m.id,name:m.name||'You'}; beat(); render(); });
+    db.subscribe(onItems);
+    setInterval(beat, 2000);
+    beat();
+    render();
+    if (window.gifos && gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); render(); });
+  }
+  if (window.gifos && gifos.i18n && gifos.i18n.load) gifos.i18n.load().then(boot, boot); else boot();
 </script>`;
 
   const CHAT_HTML = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -857,11 +939,23 @@
   .quick{display:flex;gap:4px;padding:0 18px 8px}
   .quick button{background:var(--surface,#1c1c2b);font-size:18px;padding:6px 10px}
 </style>
-<header><span>Chat</span><span class="who" id="who">just you — Invite</span></header>
+<header><span data-i18n="title">Chat</span><span class="who" id="who">just you — Invite</span></header>
 <div id="log"></div>
 <div class="quick" id="quick"></div>
-<form id="f"><button type="button" id="att" title="Attach a photo or file">📎</button><input type="file" id="fi" hidden><input id="t" placeholder="Message…" autocomplete="off"><button type="button" id="ai" title="Draft a reply with YOUR AI — it fills the box for you to review and edit; it never sends">✨</button><button>Send</button></form>
+<form id="f"><button type="button" id="att" title="Attach a photo or file" data-i18n-title="att.title">📎</button><input type="file" id="fi" hidden><input id="t" placeholder="Message…" data-i18n-ph="placeholder" autocomplete="off"><button type="button" id="ai" title="Draft a reply with YOUR AI — it fills the box for you to review and edit; it never sends" data-i18n-title="ai.title">✨</button><button data-i18n="send">Send</button></form>
 <script>
+  const T = (k, p) => (window.gifos && gifos.i18n ? gifos.i18n.t(k, p) : k);
+  // Static markup keeps its English literal (shown until the catalog arrives, or on an older GifOS) and is
+  // tagged data-i18n / -ph / -title / -aria; applyI18n fills those from the catalog.
+  function applyI18n(){
+    if(!(window.gifos&&gifos.i18n)) return;
+    [['','textContent'],['-ph','placeholder'],['-title','title'],['-aria','aria-label']].forEach(function(a){
+      document.querySelectorAll('[data-i18n'+a[0]+']').forEach(function(e){
+        const v=T(e.getAttribute('data-i18n'+a[0]));
+        if(a[1]==='textContent') e.textContent=v; else e.setAttribute(a[1],v);
+      });
+    });
+  }
   const db=gifos.db('messages'), fdb=gifos.db('files'), pres=(window.gifos&&gifos.db)?gifos.db('presence'):null, log=document.getElementById('log');
   // Attachments ride gifos.db. The runtime fragments oversized messages, but
   // subscribers re-download a whole collection on every change — so file
@@ -873,9 +967,8 @@
   let me={id:'local',name:'You'}, last=[], others=0;
   function setWho(){
     var el=document.getElementById('who'); if(!el) return;
-    el.textContent = others>0 ? ((others+1)+' here') : 'just you — Invite';
+    el.textContent = others>0 ? T('who.here',{n:others+1}) : T('who.alone');
   }
-  if(window.gifos) gifos.me().then(function(m){ me={id:m.id,name:m.name||'You'}; beat(); });
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const L10N=window.gifos&&gifos.i18n&&gifos.i18n.fmt; // the system locale (GifOS Settings)
   function hhmm(t){ if(!t) return ''; const d=new Date(t); return L10N?L10N.clockTime(d):('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); }
@@ -900,8 +993,8 @@
   function body(m){
     if(m.kind!=='file') return esc(m.text);
     const a=atts[m.att];
-    if(!a||a==='loading') return '<span class="fsz">⏳ '+esc(m.name)+' ('+fmt(m.size)+')…</span>';
-    if(a==='gone') return '<span class="fsz">📎 '+esc(m.name)+' — attachment unavailable</span>';
+    if(!a||a==='loading') return '<span class="fsz">'+T('file.loading',{name:esc(m.name),size:fmt(m.size)})+'</span>';
+    if(a==='gone') return '<span class="fsz">'+T('file.gone',{name:esc(m.name)})+'</span>';
     if(String(m.mime).indexOf('image/')===0) return '<img src="'+a+'" alt="'+esc(m.name)+'">';
     return '<a class="file" download="'+esc(m.name)+'" href="'+a+'">📄 '+esc(m.name)+' <span class="fsz">'+fmt(m.size)+'</span></a>';
   }
@@ -912,25 +1005,22 @@
   let pend=[]; // own messages not yet confirmed in the shared db
   function mark(m){
     if(m.uid!==me.id||m.kind==='file') return '';
-    if(m.state==='sending') return '<span class="st" title="Sending…">🕓</span>';
-    if(m.state==='failed') return '<span class="st fail" title="Not delivered — tap to resend">⚠️ tap to resend</span>';
-    return '<span class="st ok" title="Received by the host">✓</span>';
+    if(m.state==='sending') return '<span class="st" title="'+esc(T('st.sending'))+'">🕓</span>';
+    if(m.state==='failed') return '<span class="st fail" title="'+esc(T('st.failedTitle'))+'">'+esc(T('st.failed'))+'</span>';
+    return '<span class="st ok" title="'+esc(T('st.ok'))+'">✓</span>';
   }
   function paint(){
     const seen={}; last.forEach(function(m){ if(m.id!=null) seen[m.id]=1; });
     pend=pend.filter(function(p){ return !seen[p.id]; });
     const items=last.concat(pend).sort(function(a,b){return (a.t||0)-(b.t||0);});
     if(!items.length){
-      log.innerHTML='<div class="empty">'+(others>0
-        ? 'No messages yet. Say hi — everyone in the room will see it.'
-        : 'No messages yet.<br>Press <b>Invite</b> in the top bar and send the link. Friends land in this same thread.')+'</div>';
+      log.innerHTML='<div class="empty">'+T(others>0 ? 'empty.friends' : 'empty.alone')+'</div>';
       return;
     }
-    log.innerHTML=items.map(function(m){ return '<div class="m'+(m.uid===me.id?' mine':'')+'"'+(m.state==='failed'?' data-retry="'+esc(m.id)+'"':'')+'><b>'+esc(m.by||'anon')+' <small>'+hhmm(m.t)+'</small>'+mark(m)+'</b>'+body(m)+'</div>'; }).join('');
+    log.innerHTML=items.map(function(m){ return '<div class="m'+(m.uid===me.id?' mine':'')+'"'+(m.state==='failed'?' data-retry="'+esc(m.id)+'"':'')+'><b>'+esc(m.by||T('anon'))+' <small>'+hhmm(m.t)+'</small>'+mark(m)+'</b>'+body(m)+'</div>'; }).join('');
     log.scrollTop=log.scrollHeight;
     items.forEach(function(m){ if(m.kind==='file'&&m.att&&!atts[m.att]) fetchAtt(m); });
   }
-  db.subscribe(function(items){ last=items; paint(); });
   function sendText(text){
     const rec={ id:'m'+Date.now().toString(36)+Math.floor(Math.random()*1e6).toString(36), by:me.name, uid:me.id, text:text, t:Date.now() };
     const p=Object.assign({state:'sending'},rec);
@@ -976,13 +1066,13 @@
         let model='cheapest';
         try{ const mm=await gifos.ai.models(); const av=(mm&&mm.available)||[];
           model = av.indexOf('cheapest')>=0?'cheapest':(av.indexOf('smartest')>=0?'smartest':'cheapest'); }catch(_){ }
-        t.value=''; t.setAttribute('placeholder','Drafting with your AI…');
-        const r=await gifos.ai.chat({model:model,messages:messages,maxTokens:160,temperature:0.7,hint:'Draft a chat reply',
+        t.value=''; t.setAttribute('placeholder',T('ai.drafting'));
+        const r=await gifos.ai.chat({model:model,messages:messages,maxTokens:160,temperature:0.7,hint:T('ai.hint'),
           onDelta:function(piece){ if(piece) t.value+=piece; }});
         const text=String((r&&r.text)||t.value||'').trim().replace(/^["']+|["']+$/g,'').trim();
         t.setAttribute('placeholder',PH);
         if(text){ t.value=text; t.focus(); try{ t.setSelectionRange(t.value.length,t.value.length); }catch(_){ } }
-        else { t.value=''; t.setAttribute('placeholder','The AI returned nothing — try again.'); setTimeout(function(){ t.setAttribute('placeholder',PH); },4000); }
+        else { t.value=''; t.setAttribute('placeholder',T('ai.empty')); setTimeout(function(){ t.setAttribute('placeholder',PH); },4000); }
       }catch(err){
         // A missing model pops the runtime's own Settings prompt (NOT_CONFIGURED);
         // anything else we surface briefly in the placeholder, then restore it.
@@ -990,20 +1080,22 @@
         if(!/NOT_CONFIGURED/.test(msg)){
           // A user opt-out (Abilities panel) comes back as a plain sentence — show it
           // as-is; anything else gets the generic prefix.
-          const friendly=/turned .*off|Abilities panel/i.test(msg)?msg:('AI draft failed: '+msg.slice(0,60));
+          const friendly=/turned .*off|Abilities panel/i.test(msg)?msg:T('ai.failed',{msg:msg.slice(0,60)});
           t.setAttribute('placeholder',friendly.slice(0,90)); setTimeout(function(){ t.setAttribute('placeholder',PH); },5000);
         }
       }finally{ aiBtn.disabled=false; aiBtn.textContent=glyph; }
     };
   }
   function beat(){ if(!pres||!me.id||me.id==='local') return; pres.put({id:'p:'+me.id,name:me.name,ts:Date.now()}); }
-  if(pres&&pres.subscribe){
-    pres.subscribe(function(rows){
-      var now=Date.now(); others=0;
-      (rows||[]).forEach(function(r){ if(r&&r.id&&r.id.indexOf('p:')===0&&r.id!=='p:'+me.id&&(now-(r.ts||0))<35000) others++; });
-      setWho(); if(!last.length&&!pend.length) paint();
-    });
-    setInterval(function(){ if(document.visibilityState!=='hidden') beat(); },15000);
+  function watchPresence(){
+    if(pres&&pres.subscribe){
+      pres.subscribe(function(rows){
+        var now=Date.now(); others=0;
+        (rows||[]).forEach(function(r){ if(r&&r.id&&r.id.indexOf('p:')===0&&r.id!=='p:'+me.id&&(now-(r.ts||0))<35000) others++; });
+        setWho(); if(!last.length&&!pend.length) paint();
+      });
+      setInterval(function(){ if(document.visibilityState!=='hidden') beat(); },15000);
+    }
   }
   document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible') beat(); });
   // ---- attachments ----
@@ -1036,9 +1128,9 @@
       let blob=f, mime=f.type||'application/octet-stream', name=f.name||'file';
       if(mime.indexOf('image/')===0 && f.size>MAX){
         try{ blob=await shrink(f); mime='image/jpeg'; const dot=name.lastIndexOf('.'); name=(dot>0?name.slice(0,dot):name)+'.jpg'; }
-        catch(e){ alert('That image could not be shrunk to fit — attachments are capped at '+fmt(MAX)+'.'); return; }
+        catch(e){ alert(T('att.shrinkFail',{max:fmt(MAX)})); return; }
       }
-      if(blob.size>MAX){ alert('Attachments here are capped at '+fmt(MAX)+' (images are shrunk automatically). For big files, share them in a Meeting instead — transfers there go direct, peer to peer.'); return; }
+      if(blob.size>MAX){ alert(T('att.tooBig',{max:fmt(MAX)})); return; }
       const B=b64(new Uint8Array(await blob.arrayBuffer()));
       const n=Math.max(1,Math.ceil(B.length/CS));
       const att='a'+Date.now().toString(36)+Math.floor(Math.random()*1e6).toString(36);
@@ -1046,6 +1138,15 @@
       await db.put({ by:me.name, uid:me.id, kind:'file', att:att, n:n, name:name, mime:mime, size:blob.size, t:Date.now() });
     } finally { attBtn.disabled=false; attBtn.textContent='📎'; fi.value=''; }
   }
+  // Nothing that calls T runs before the catalog has loaded (a key must never be painted).
+  function boot(){
+    applyI18n(); setWho();
+    if(window.gifos) gifos.me().then(function(m){ me={id:m.id,name:m.name||'You'}; beat(); });
+    db.subscribe(function(items){ last=items; paint(); });
+    watchPresence();
+    if(window.gifos && gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); setWho(); paint(); });
+  }
+  if(window.gifos && gifos.i18n && gifos.i18n.load) gifos.i18n.load().then(boot, boot); else boot();
 </script>`;
 
   const PAINT_HTML = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
@@ -2315,10 +2416,10 @@ function syncDebug(){
   .ask .no{background:var(--surface,#14141f);color:var(--text,#e0e0f0);border:1px solid var(--border,#2a2a3f)}
   .best{color:var(--muted,#8888aa);font-size:12px;margin:0 0 12px}
 </style>
-<header>Minesweeper</header>
+<header data-i18n="title">Minesweeper</header>
 <div class="hud">
   <div class="lcd" id="mines">015</div>
-  <button class="face" id="face" title="New game">🙂</button>
+  <button class="face" id="face" title="New game" data-i18n-title="new">🙂</button>
   <div class="lcd" id="time">0:00</div>
 </div>
 <div class="dens" id="dens"></div>
@@ -2326,20 +2427,32 @@ function syncDebug(){
 <div class="bar">
   <button id="mode">🚩 Flag mode: off</button>
 </div>
-<div class="status" id="status">Loading…</div>
+<div class="status" id="status" data-i18n="loading">Loading…</div>
 <div class="ask" id="ask"></div>
 <div class="best" id="best"></div>
 <script>
+  const T = (k, p) => (window.gifos && gifos.i18n ? gifos.i18n.t(k, p) : k);
+  // Static markup keeps its English literal (shown until the catalog arrives, or on an older GifOS) and is
+  // tagged data-i18n / -ph / -title / -aria; applyI18n fills those from the catalog.
+  function applyI18n(){
+    if(!(window.gifos&&gifos.i18n)) return;
+    [['','textContent'],['-ph','placeholder'],['-title','title'],['-aria','aria-label']].forEach(function(a){
+      document.querySelectorAll('[data-i18n'+a[0]+']').forEach(function(e){
+        const v=T(e.getAttribute('data-i18n'+a[0]));
+        if(a[1]==='textContent') e.textContent=v; else e.setAttribute(a[1],v);
+      });
+    });
+  }
   const db=gifos.db('mine');
   const DENS={
-    easy:{id:'easy',w:9,h:9,n:10,label:'Easy'},
-    medium:{id:'medium',w:10,h:10,n:15,label:'Medium'},
-    hard:{id:'hard',w:16,h:16,n:40,label:'Hard'},
-    expert:{id:'expert',w:30,h:16,n:99,label:'Expert'}
+    easy:{id:'easy',w:9,h:9,n:10,key:'dens.easy'},
+    medium:{id:'medium',w:10,h:10,n:15,key:'dens.medium'},
+    hard:{id:'hard',w:16,h:16,n:40,key:'dens.hard'},
+    expert:{id:'expert',w:30,h:16,n:99,key:'dens.expert'}
   };
+  function levelName(id){ return T(spec(id).key); }
   let dens='medium', flagMode=false, me={id:'local',name:'You'};
   let ask=null, skipClick=false, hold=null, faceHold=false;
-  if(window.gifos) gifos.me().then(function(m){ me={id:m.id,name:m.name||'You'}; });
   function spec(id){ return DENS[id]||DENS.medium; }
   function fresh(id){ const s=spec(id||dens); return { id:'game', dens:s.id, w:s.w, h:s.h, n:s.n, mines:null, rev:new Array(s.w*s.h).fill(false), flags:{}, over:false, win:false, t0:null, elapsed:0, hit:null }; }
   function adopt(b){
@@ -2442,15 +2555,15 @@ function syncDebug(){
     document.getElementById('face').textContent=faceGlyph();
     const densEl=document.getElementById('dens'); densEl.innerHTML='';
     ['easy','medium','hard','expert'].forEach(function(id){
-      const b=document.createElement('button'); b.textContent=DENS[id].label; if(dens===id) b.className='on';
+      const b=document.createElement('button'); b.textContent=levelName(id); if(dens===id) b.className='on';
       b.onclick=function(){ requestDens(id); }; densEl.appendChild(b);
     });
-    statusEl.textContent = g.over ? (g.win?'Cleared in '+fmt(g.elapsed)+'. Everyone wins.':'💥 Boom — the face starts a new board.')
-      : (g.mines? (flagMode?'Flag mode on — tap a square to plant or pull a flag.':'Tap to open · long-press / right-click to flag · tap a number to chord.')
-                : 'Tap any square. The first tap is safe. Invite a friend to share this board.');
+    statusEl.textContent = g.over ? (g.win?T('status.cleared',{time:fmt(g.elapsed)}):T('status.boom'))
+      : (g.mines? (flagMode?T('status.flagMode'):T('status.play'))
+                : T('status.start'));
     const bestEl=document.getElementById('best');
     const bt=stats.best&&stats.best[dens];
-    bestEl.textContent = (stats.games?('Boards: '+(stats.wins||0)+'/'+stats.games+' cleared. '):'')+(bt?('Best '+spec(dens).label+': '+fmt(bt*1000)+'.'):'');
+    bestEl.textContent = (stats.games?(T('best.boards',{wins:stats.wins||0,games:stats.games})+' '):'')+(bt?T('best.time',{level:levelName(dens),time:fmt(bt*1000)}):'');
     renderAsk();
     hook();
   }
@@ -2491,23 +2604,31 @@ function syncDebug(){
   function renderAsk(){
     const el=document.getElementById('ask'); el.textContent='';
     if(!ask) return;
-    const span=document.createElement('span'); span.textContent=ask.kind==='dens'?('Start a new '+spec(ask.id).label+' board? '):'Start a new game? ';
-    const yes=document.createElement('button'); yes.textContent='New game'; yes.onclick=function(){ doNew(ask.kind==='dens'?ask.id:dens); };
-    const no=document.createElement('button'); no.className='no'; no.textContent='Keep playing'; no.onclick=function(){ ask=null; renderAsk(); };
+    const span=document.createElement('span'); span.textContent=(ask.kind==='dens'?T('ask.dens',{level:levelName(ask.id)}):T('ask.new'))+' ';
+    const yes=document.createElement('button'); yes.textContent=T('new'); yes.onclick=function(){ doNew(ask.kind==='dens'?ask.id:dens); };
+    const no=document.createElement('button'); no.className='no'; no.textContent=T('keep'); no.onclick=function(){ ask=null; renderAsk(); };
     el.appendChild(span); el.appendChild(yes); el.appendChild(no);
   }
   document.getElementById('face').onclick=function(){ requestNew(); };
-  document.getElementById('mode').onclick=function(){ flagMode=!flagMode; this.textContent='🚩 Flag mode: '+(flagMode?'on':'off'); this.className=flagMode?'on':''; };
-  db.subscribe(function(items){
-    const b=items.find(function(x){ return x.id==='game'; });
-    const st=items.find(function(x){ return x.id==='stats'; });
-    if(st) stats=st;
-    if(b){ if(b.at&&g.at&&b.at<g.at) return; g=adopt(b); }
-    render();
-  });
+  function modeLabel(){ document.getElementById('mode').textContent=T(flagMode?'mode.on':'mode.off'); }
+  document.getElementById('mode').onclick=function(){ flagMode=!flagMode; modeLabel(); this.className=flagMode?'on':''; };
   setInterval(function(){ if(!g.over && g.t0) document.getElementById('time').textContent=fmt(elapsed()); }, 250);
   window.addEventListener('resize', function(){ const px=cellPx(); gridEl.style.setProperty('--cell', px+'px'); });
-  render();
+  // Nothing that calls T runs before the catalog has loaded (a key must never be painted).
+  function boot(){
+    applyI18n(); modeLabel();
+    if(window.gifos) gifos.me().then(function(m){ me={id:m.id,name:m.name||'You'}; });
+    db.subscribe(function(items){
+      const b=items.find(function(x){ return x.id==='game'; });
+      const st=items.find(function(x){ return x.id==='stats'; });
+      if(st) stats=st;
+      if(b){ if(b.at&&g.at&&b.at<g.at) return; g=adopt(b); }
+      render();
+    });
+    render();
+    if(window.gifos && gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); modeLabel(); render(); });
+  }
+  if(window.gifos && gifos.i18n && gifos.i18n.load) gifos.i18n.load().then(boot, boot); else boot();
 </script>`;
 
   const CHESS_HTML = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
