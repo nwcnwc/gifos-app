@@ -356,7 +356,14 @@
         const msgM = GifOS.meshMsg; let f;
         try { f = msgM.readMsg(m.f); } catch (e) { return; }
         const claim = claimOf(f), dir = direct === true;
-        const done = (ok) => { if (stopped) return; if (!ok) { f.sig = false; f.fsig = false; if (f.fo >= 0 && f.t !== 'FINDLEAF') f.fo = -1; } penv.frame(f, String(via), dirOf(m.dir)); };
+        const done = (ok) => {
+          if (stopped) return;
+          if (!ok) {
+            f.sig = false; f.fsig = false; if (f.fo >= 0 && f.t !== 'FINDLEAF') f.fo = -1;
+            if (claim >= 0 && opts.trace) { try { opts.trace('{"t":' + (env.TICK | 0) + ',"s":' + layer.ids.nid(peer) + ',"e":"SIG-FAIL","c":null,"d":"mt=' + String(f.t).replace(/[^A-Z0-9_]/g, '') + ' claim=' + claim + ' via=' + layer.ids.nid(String(via)) + '"}'); } catch (e) {} }   // DEBUG trace sink only (T8)
+          }
+          penv.frame(f, String(via), dirOf(m.dir));
+        };
         if (claim < 0) { verifyChain(() => Promise.resolve().then(() => done(true))); return; }
         const s4 = m.s4;
         if (!s4 || typeof s4.sig !== 'string' || typeof s4.pub !== 'string' || !Number.isFinite(s4.ts)) { verifyChain(() => Promise.resolve().then(() => done(false))); return; }
@@ -1031,6 +1038,19 @@
       // could do. Only a page running with DEBUG=on exposes it (run.html
       // relayRawSendUnchecked), to prove the relay refuses such a frame
       // when its switch is on.
+      // T8 (DEBUG pages only, run.html gates it): a real seat frame of type ty claiming `claimId` (default: me),
+      // sent on the open dc to `to` with a garbage signature or none, so the receiver's unsigned path runs.
+      FORGE_FRAME_FOR_TEST(to, ty, fields, how) {
+        if (stopped || !raw) return { err: 'stopped' };
+        const msgM = GifOS.meshMsg; let m;
+        try { m = msgM.newMsg(String(ty)); } catch (e) { return { err: 'bad type' }; }
+        Object.assign(m, fields || {}); if (m.id === -1 || m.id === undefined) m.id = raw.id; if (m.from === -1) m.from = raw.id; if (!m.sig && !m.fsig && !(m.fo >= 0)) m.sig = true; m.to = layer.ids.nid(String(to));
+        let f; try { f = msgM.writeMsg(m); } catch (e) { return { err: 'encode' }; }
+        const out = { t: 'MW2', f };
+        if (how !== 'nosig') out.s4 = { ts: Date.now(), sig: 'AAAA' + Math.random().toString(36).slice(2), pub: identity.pubB64 };
+        const sent = !!(opts.sendDC && opts.sendDC(String(to), out, peer));
+        return sent ? { ok: true, ty: m.t, claim: claimOf(m), how: how || 'garbage' } : { err: 'no open dc to ' + String(to).slice(0, 8) };
+      },
       RAW_SOCKET_SEND_FOR_TEST(obj) { if (stopped) return { err: 'stopped' }; if (!sock) makeSock(); if (sock.rejected) return { err: 'rejected' }; sock.send(obj); return { ok: true }; },
       relayUp() { return !!(sock && sock.state === 'up'); },
       // The network came back after a dark spell: read the door again now

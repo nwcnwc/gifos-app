@@ -36122,6 +36122,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       relayRawSend: (obj) => { if (!DEBUG_ON || !meshNode) return { err: 'DEBUG=on not in URL' }; meshNode.relaySend(obj); return { ok: true, unsent: meshNode.stats().relayUnsent }; },
       sealForTest: (frame) => (DEBUG_ON ? net.seal(roomE2E, frame) : Promise.resolve(null)), // the plain (unpadded) seal, for a frame a test hands to the relay levers above
       relayTx: () => ({ boot: txStats.relayBoot, fp: txStats.relayFp, ice: txStats.relayIce, name: txStats.relayName, password: txStats.relayPassword, unfit: txStats.relayUnfit }), // frames this page put on the relay, by type
+      // T8: a real seat frame {ty, fields, how: 'garbage'|'nosig'} with a bad signature, on the open dc to pid;
+      // the receiver traces SIG-FAIL <ty> and runs the seat's unsigned path. DEBUG only.
+      forgeFrameForTest: (pid, spec) => { if (!DEBUG_ON || !meshNode || !meshNode.FORGE_FRAME_FOR_TEST) return { err: 'DEBUG=on not in URL' }; const o = spec || {}; return meshNode.FORGE_FRAME_FOR_TEST(pid, o.ty || 'PHONE', o.fields || {}, o.how); },
       relayRawSendUnchecked: (obj) => { if (!DEBUG_ON || !meshNode) return { err: 'DEBUG=on not in URL' }; return meshNode.RAW_SOCKET_SEND_FOR_TEST(obj); },
       // The people this page says tried to reach it and could not (the
       // locked-out line's names), and the line itself.
