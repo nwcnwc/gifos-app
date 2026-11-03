@@ -74,7 +74,7 @@ function diff(dir, cxx, opt) {
     const key = cut.map((t) => t.join(' ')).join('\n'); if (seen.has(key)) continue; seen.add(key); cases.push(cut);
   }
   cases.sort((a, b) => a.length - b.length);
-  let nCase = 0, nChunk = 0, nSkip = 0, nSame = 0, nDiff = 0; const perVerb = new Map(); const skipVerb = new Map(); const diffs = [];
+  let nCase = 0, nChunk = 0, nSkip = 0, nSame = 0, nDiff = 0, nTaint = 0; const perVerb = new Map(); const skipVerb = new Map(); const diffs = [];
   const env = Object.assign({}, process.env, { MESH_NOTIME: '1', MESH_THREADS: '1' });
   for (const cut of cases.slice(0, limit)) {
     nCase++;
@@ -84,17 +84,19 @@ function diff(dir, cxx, opt) {
     const split = (s) => { const ch = []; let cur = []; for (const l of s.split('\n')) { if (l === 'READY gifos-mesh-sim service') continue; if (l.startsWith('ERR unknown: __m')) { ch.push(cur); cur = []; } else cur.push(l); } return ch; };
     const cc = split(c.stdout), jc = split(j.stdout);
     if (j.status !== 0 && jc.length < cut.length) { diffs.push({ cut, why: 'JS died: ' + (j.stderr || '').split('\n').slice(0, 3).join(' | ') }); nDiff++; continue; }
+    let tainted = false;   // after a skipped verb the JS room is not the sim's room (netgroups changes N, island the seating ...): the rest of the case is not compared
     for (let i = 0; i < cut.length; i++) {
-      nChunk++; const verb = cut[i][0]; const a = (cc[i] || []).join('\n'), b = (jc[i] || []).join('\n');
-      if (b.startsWith('@@SKIP')) { nSkip++; skipVerb.set(verb, (skipVerb.get(verb) || 0) + 1); continue; }
+      nChunk++; const verb = cut[i][0];
+      if (tainted) { nTaint++; continue; } const a = (cc[i] || []).join('\n'), b = (jc[i] || []).join('\n');
+      if (b.startsWith('@@SKIP')) { nSkip++; tainted = true; skipVerb.set(verb, (skipVerb.get(verb) || 0) + 1); continue; }
       if (verb === 'rss') { nSame++; perVerb.set(verb, (perVerb.get(verb) || 0) + 1); continue; }   // process memory: never equal
       if (a === b) { nSame++; perVerb.set(verb, (perVerb.get(verb) || 0) + 1); } else { nDiff++; diffs.push({ cut: cut.slice(0, i + 1), why: 'C++:\n' + a + '\nJS:\n' + b }); break; }
     }
   }
-  console.log(`cases=${nCase} chunks=${nChunk} same=${nSame} skipped(not wired/ported)=${nSkip} diff=${nDiff}`);
+  console.log(`cases=${nCase} chunks=${nChunk} same=${nSame} skipped(not wired/ported)=${nSkip} not-compared-after-a-skip=${nTaint} diff=${nDiff}`);
   console.log('compared per verb: ' + [...perVerb.entries()].sort((a, b) => b[1] - a[1]).map((x) => x[0] + ':' + x[1]).join(' '));
   console.log('skipped per verb: ' + [...skipVerb.entries()].sort((a, b) => b[1] - a[1]).map((x) => x[0] + ':' + x[1]).join(' '));
-  for (const d of diffs.slice(0, 5)) console.log('DIFF after:\n' + d.cut.map((t) => '  ' + t.join(' ')).slice(-6).join('\n') + '\n' + d.why);
+  for (const d of diffs.slice(0, 5)) console.log('DIFF after:\n' + d.cut.map((t) => '  ' + t.join(' ').slice(0, 100)).slice(-6).join('\n') + '\n' + d.why);
   return nDiff ? 1 : 0;
 }
 
