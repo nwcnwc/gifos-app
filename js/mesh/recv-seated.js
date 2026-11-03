@@ -376,6 +376,7 @@
       const id = this.id, TICK = this.TICK, LINKMODEL = this.w.lv.LINKMODEL;
       if (m.tag === 25 && !LINKMODEL && m.via >= 0 && m.via !== id && m.asker >= 0 && m.asker !== id) { const f = msg.clone(m); f.from = id; this.emit(m.via, f); return; }   // L25 without the link model
       if (m.tag === 27) { this.l40Told(m); if (!this.l2512Heard(m)) this.l40Keep(m); return; }   // L25.12 (L40.1: a tell held while a question is open)
+      if (m.tag === K.GA_TAG) { this.gaAnswer(m); return; }   // L41.2 (gapa.js)
       if (m.tag === 26) { this.l25WitAnswer(m); return; }   // L25.9
       if (m.tag === 25) {
         if (this.hasCoord && this.state === 3 && ckey(this.coord) === m.ck) {

@@ -23,6 +23,7 @@
     TALK_ON: 4,   // C++: mesh.cpp:TALK_ON  (LAW_TALK_ON)
     TALK_HOLD: 10,   // C++: mesh.cpp:TALK_HOLD  (LAW_TALK_HOLD)
     K_TALK: 5,   // C++: mesh.cpp:K_TALK  (STAGE_CAP)
+    GA_TAG: 41,   // C++: mesh.cpp:GA_TAG
     L10_NEW_WAIT: 16,   // C++: mesh.cpp:L10_NEW_WAIT  (LAW_L10_NEW_WAIT)
     L10_EARLY_GAP: 2,   // C++: mesh.cpp:L10_EARLY_GAP  (LAW_L10_EARLY_GAP)
     L10_BUCKET_BURST: 2,   // C++: mesh.cpp:L10_BUCKET_BURST  (LAW_L10_BUCKET_BURST)
@@ -179,6 +180,7 @@
     KEEP_MAX: 4,   // C++: mesh_linkset.inc:KEEP_MAX
     L25_WIT_WAIT: 16,   // C++: mesh_witness.inc:L25_WIT_WAIT  (L25_WAIT)
     L25_WIT_MIN: 3,   // C++: mesh_witness.inc:L25_WIT_MIN
+    GA_FIND_WIN: 90,   // C++: mesh_gapa.inc:GA_FIND_WIN  ((int)LAW_COMPACT_PERIOD)
     SOCK_CLOSE_CRASH: 4,   // C++: mesh.cpp:SOCK_CLOSE_CRASH
     H_RINGLIE_BIT: 8192,   // C++: mesh.cpp:H_RINGLIE_BIT
     RINGLIE_LINE: 1048576,   // C++: mesh.cpp:RINGLIE_LINE  (1<<20)
@@ -257,6 +259,7 @@
     COMPACT_PLACES: 0,   // C++: mesh.cpp:COMPACT_PLACES
     COMPACT_ATS1: 0,   // C++: mesh.cpp:COMPACT_ATS1
     COMPACT_SWEEP: 0,   // C++: mesh.cpp:COMPACT_SWEEP
+    GA_DENSE_ASK: 0,   // C++: mesh.cpp:GA_DENSE_ASK
     COMPACT_OFFERS: 0,   // C++: mesh.cpp:COMPACT_OFFERS
     COMPACT_OFFERFIRES: 0,   // C++: mesh.cpp:COMPACT_OFFERFIRES
     HEALING: true,   // C++: mesh.cpp:HEALING
@@ -379,6 +382,14 @@
     L2_TAKE_N: 0,   // C++: mesh_seat.inc:L2_TAKE_N
     L2_TAKE_MAX: 0,   // C++: mesh_seat.inc:L2_TAKE_MAX
     L2_TAKE_SUM: 0,   // C++: mesh_seat.inc:L2_TAKE_SUM
+    GA_DENSE_N: 0,   // C++: mesh_gapa.inc:GA_DENSE_N
+    GA_B1_REFUSED: 0,   // C++: mesh_gapa.inc:GA_B1_REFUSED
+    GA_ASKS: 0,   // C++: mesh_gapa.inc:GA_ASKS
+    GA_HELD: 0,   // C++: mesh_gapa.inc:GA_HELD
+    GA_FREE: 0,   // C++: mesh_gapa.inc:GA_FREE
+    GA_RB: 0,   // C++: mesh_gapa.inc:GA_RB
+    GA_CONF_VOTE: 0,   // C++: mesh_gapa.inc:GA_CONF_VOTE
+    GA_CONF_WIN: 0,   // C++: mesh_gapa.inc:GA_CONF_WIN
     EMIT_NEIGHBOR: 0,   // C++: mesh.cpp:EMIT_NEIGHBOR
     EMIT_TELEPORT: 0,   // C++: mesh.cpp:EMIT_TELEPORT
     EMIT_BOOTSTRAP: 0,   // C++: mesh.cpp:EMIT_BOOTSTRAP
@@ -427,6 +438,10 @@
     L23PENDT: -1,   // C++: mesh_link.inc:L23PENDT
     L14_REFUSED: 0,   // C++: mesh_link.inc:L14_REFUSED
     L1611_SHED: 0,   // C++: mesh_rcfollow_fab.inc:L1611_SHED
+    G4_HOLE: 0,   // C++: mesh_gaps4_fab.inc:G4_HOLE
+    G4_A: -1,   // C++: mesh_gaps4_fab.inc:G4_A
+    G4_B: -1,   // C++: mesh_gaps4_fab.inc:G4_B
+    G4_AT: -1,   // C++: mesh_gaps4_fab.inc:G4_AT
     KNOCK_T: -1,   // C++: mesh_net.inc:KNOCK_T
     KNOCK_N: 0,   // C++: mesh_net.inc:KNOCK_N
     KNOCK_PEAK: 0,   // C++: mesh_net.inc:KNOCK_PEAK
