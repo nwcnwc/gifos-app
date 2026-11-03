@@ -6238,8 +6238,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const list = document.getElementById('waitlist');
       const btn = document.getElementById('waitbtn');
       if (btn) btn.setAttribute('aria-pressed', holdDoor ? 'true' : 'false');
-      // The host's switch; in an open room (no admin) anyone can hold the door, as with mute and blur.
-      let mayHold = false; try { mayHold = amAdmin || !hasAdminRoom(); } catch (e) { mayHold = false; }
+      // The waiting room is for admin rooms only, and only its admin works the switch. An open room has none:
+      // an old stored hold is dropped here so holdDoor can never be true there.
+      let mayHold = false; try { mayHold = hasAdminRoom() && amAdmin; if (!hasAdminRoom() && holdDoor) holdDoor = false; } catch (e) { mayHold = false; }
       if (btn) btn.style.display = mayHold ? '' : 'none';
       document.body.classList.toggle('hold-door', holdDoor);
       if (!list) return;
@@ -6286,7 +6287,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     const meetWait = {
       hold(on) {
-        if (hasAdminRoom() && !amAdmin) return holdDoor;
+        if (!hasAdminRoom()) { holdDoor = false; waitPaint(); return false; }   // no waiting room in an open room
+        if (!amAdmin) return holdDoor;
         holdDoor = !!on;
         if (holdDoor) closeMoreForWait();
         waitPaint();
@@ -6337,7 +6339,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       holding() { return holdDoor; },
       // True while this id must not receive HOME. Fail closed if the
       // waiting room is on and they have not been admitted.
-      blocks(id) { return holdDoor && !waitAdmitted.has(String(id || '')); },
+      blocks(id) { return holdDoor && hasAdminRoom() && !waitAdmitted.has(String(id || '')); },
       waiting(on) {
         atWaitDoor = !!on;
         const el = document.getElementById('waitdoor');
@@ -17109,7 +17111,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const ids = Array.from(relaySocketed).filter((id) => id !== myId);
           try {
             const s = meshSeat();
-            if (holdDoor) {
+            if (holdDoor && hasAdminRoom()) {
               const members = new Set();
               try { if (s) for (const v of s.occ.values()) if (v) members.add(v); } catch (e2) {}
               for (const id of ids) {
@@ -18410,7 +18412,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     document.getElementById('pwbtn').onclick = () => showPwModal(false);
     document.getElementById('waitbtn').onclick = () => {
-      if (hasAdminRoom() && !amAdmin) { setStatus(uiText('stOnlyAnAdminCanTurn', 'Only an admin can turn the waiting room on.')); return; }
+      if (!hasAdminRoom()) return;
+      if (!amAdmin) { setStatus(uiText('stOnlyAnAdminCanTurn', 'Only an admin can turn the waiting room on.')); return; }
       meetWait.hold(!holdDoor);
     };
     document.getElementById('waitdoor-leave').onclick = () => { location.href = MEET_PATH; };
@@ -19000,6 +19003,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // The admin verifier is PART OF THE ROOM'S IDENTITY: with it this is an
       // admin-managed room, without it an anarchic one — two different rooms.
       av = (/^[a-f0-9]{16,64}$/.exec((params.get('av') || '').toLowerCase()) || [null])[0];
+      if (!av) { holdDoor = false; waitAdmitted.clear(); waitDeclined.clear(); waitQueue.clear(); }   // an open room has no waiting room: drop a resumed hold
       loadAdm(); // this device's stored admin key for this exact room, if any
       // Adopt the stored key as a SIGNING key (§9): verifies K against the
       // room's V locally and arms signed moderation. Async — the first

@@ -79,6 +79,15 @@ check('relay admission module is loaded', !!admit && typeof admit.createRoom ===
 const wireSrc = fs.readFileSync(path.join(__dirname, '..', '..', 'js', 'mesh-wire.js'), 'utf8');
 const pageSrc = fs.readFileSync(path.join(__dirname, '..', '..', 'run.html'), 'utf8');
 check('wire asks the admit door before seating', wireSrc.indexOf('relayAdmit.clientDoor') > 0);
+// The waiting room is for admin rooms only: no button, no hold and no blocking in an open room.
+{
+  const m = /blocks\(id\) \{([^}]*)\}/.exec(pageSrc);
+  check('doorHeld never holds in an open room', !!m && /hasAdminRoom\(\)/.test(m[1]), m && m[1]);
+  const h = /hold\(on\) \{\s*if \(!hasAdminRoom\(\)\) \{ holdDoor = false;/.test(pageSrc);
+  check('meetWait.hold(true) is refused in an open room', h);
+  check('the Waiting room button shows only to the admin of an admin room', /mayHold = hasAdminRoom\(\) && amAdmin/.test(pageSrc) && !/mayHold = amAdmin \|\| !hasAdminRoom/.test(pageSrc));
+  check('a resumed hold is dropped in an open room', /if \(!av\) \{ holdDoor = false;/.test(pageSrc));
+}
 check('page loads the admit door', pageSrc.indexOf('js/relay-admit.js') > 0);
 
 function roomWithHost() {

@@ -35,8 +35,22 @@ const PHONES = [
   for (const phone of PHONES) {
     const context = await browser.newContext(Object.assign({}, phone.device, { hasTouch: true }));
     await context.addInitScript(() => { try { localStorage.setItem('gifos_name', 'Host'); } catch (e) {} });
+    // The waiting room is for admin rooms only: sign this context in as the room's admin first.
+    const room = RUN_ROOM + 'wait-' + phone.name;
+    const boot = await context.newPage();
+    await boot.goto(BASE + '/run.html', { waitUntil: 'domcontentloaded', timeout: 20000 });
+    await boot.waitForFunction(() => window.GifOS && GifOS.net && GifOS.net.edKeysFromSeedHex, null, { timeout: 20000 });
+    const av = await boot.evaluate(async (roomId) => {
+      const km = await crypto.subtle.importKey('raw', new TextEncoder().encode('wait-list-pw'), 'PBKDF2', false, ['deriveBits']);
+      const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: new TextEncoder().encode('gifos-admin:' + roomId), iterations: 310000 }, km, 256);
+      const K = Array.from(new Uint8Array(bits)).map((x) => x.toString(16).padStart(2, '0')).join('');
+      const V = (await GifOS.net.edKeysFromSeedHex(K)).verifier;
+      localStorage.setItem('gifos_vadm_' + roomId + '.' + V, K);
+      return V;
+    }, room);
+    await boot.close();
     const page = await context.newPage();
-    await page.goto(BASE + '/run.html#v=' + RUN_ROOM + 'wait-' + phone.name, { waitUntil: 'domcontentloaded', timeout: 20000 });
+    await page.goto(BASE + '/run.html#v=' + room + '&av=' + av, { waitUntil: 'domcontentloaded', timeout: 20000 });
     await page.waitForSelector('#bartoggle', { timeout: 15000 });
     const skip = page.locator('#nmok');
     if (await skip.count()) await skip.tap().catch(() => {});
