@@ -12850,7 +12850,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // (pwby) — never the statement itself. Each is one fixed-size frame.
     // Returns the frames in sending order, or null for a grant with no relay
     // form (a password that does not fit the size takes the channels only).
+    // An admin room's password change order (k 'pwreset') carries no
+    // password: it is the three signature frames alone, and the receiver
+    // rebuilds the signed 'pwreset' statement from them.
     function pwFramesOf(grant) {
+      if (grant && grant.k === 'pwreset') {
+        if (!grant.w || typeof grant.w !== 'object') return null;
+        let o = null; try { o = JSON.parse(grant.w.sp); } catch (e) { return null; }
+        if (!o || o.act !== 'pwreset') return null;
+        const ep = grant.ep | 0;
+        const out = [{ k: 'pwsig', sig: String(grant.w.sig || '') }, { k: 'pwpub', ep, ts: +o.ts, pub: String(grant.w.pub || '') }, { k: 'pwby', ep, by: String(o.by || '') }];
+        for (const f of out) if (!net.fitsFixed(f)) return null;
+        return out;
+      }
       if (!grant || grant.k !== 'pwinfo') return null;
       const ep = grant.ep | 0;
       const out = [{ k: 'password', pw: String(grant.pw || ''), ep }];
@@ -12879,7 +12891,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       else if (ty === 'pwsig') s.sig = f.sig;
       else if (ty === 'pwpub') { s.ts = f.ts; s.pub = f.pub; }
       else if (ty === 'pwby') s.by = f.by;
-      if (s.pw == null) return null;
+      if (s.pw == null) {
+        // An admin room's change order: the signature frames with no
+        // password before them. The signature decides what it is; a grant
+        // whose password frame was lost fails it and is dropped.
+        if (!hasAdminRoom() || ty !== 'pwby' || s.sig == null || s.pub == null || s.ts == null || s.by == null) return null;
+        pwParts.delete(from);
+        return { k: 'pwreset', by: rosterNames[s.by] || '', ep: s.ep, w: { sp: JSON.stringify({ act: 'pwreset', ts: s.ts, room: roomKey(), by: s.by, ep: s.ep }), sig: s.sig, pub: s.pub } };
+      }
       if (!hasAdminRoom()) { pwParts.delete(from); return { k: 'pwinfo', pw: s.pw, by: rosterNames[from] || '', ep: s.ep }; }
       if (s.sig == null || s.pub == null || s.ts == null || s.by == null) return null;
       pwParts.delete(from);
@@ -15932,6 +15951,52 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       };
       sendSome(RELAY_COPY_BURST);
     }
+    // ADMIN ROOMS: THE PASSWORD IS TYPED, NEVER HANDED OUT. When the admin
+    // sets or changes it, everyone who does not hold the new generation
+    // leaves the meeting and comes back through the door, which asks for the
+    // password exactly as it asks a newcomer. So a room taken over by
+    // unwanted guests is cleared by one password change; the admin tells the
+    // people they want the new password some other way. The generation is
+    // recorded (a replay of the same order is spent) and the password I held
+    // is forgotten: it is not this room's any more. The page reloads, so it
+    // knocks as a newcomer with nothing left over from its old seat, and the
+    // prompt says why it is being asked (PW_CHANGED_KEY).
+    const PW_CHANGED_KEY = 'gifos_pw_changed';
+    function pwBootToDoor(m, p) {
+      pwLog('pwreset-boot from=' + String((p && p.id) || '?').slice(0, 6) + ' ep=' + m.ep + ' myEp=' + pwEpoch);
+      if (typeof clog === 'function') clog('pw-boot ep=' + m.ep + ' (admin changed the password)');
+      storePwEpoch(m.ep);
+      heldGrant = null; grantHoldUntil = 0; retainedGrant = null;
+      storePw('');
+      pwBlocked = true;
+      // The same identity comes back (ensureIdentity): one peer id, so the
+      // room never holds this person twice while the old seat is let go.
+      try { sessionStorage.setItem(PW_CHANGED_KEY, JSON.stringify({ room: roomKey(), seed: myIdentitySeed || '', at: Date.now() })); } catch (e) {}
+      try { meshNode && meshNode.stop(); } catch (e) {}
+      meshNode = null;
+      setStatus(uiText('pwChangedStatus', '🔒 The admin changed the room password. Enter the new password to rejoin.'));
+      location.reload();
+    }
+    // Was this page sent back to the door by a password change? The note is
+    // read once per page load and is good for this room only.
+    let pwBootNoteRead = false, pwBootNoteVal = null;
+    function pwBootNote() {
+      if (!pwBootNoteRead) {
+        pwBootNoteRead = true;
+        try {
+          const o = JSON.parse(sessionStorage.getItem(PW_CHANGED_KEY) || 'null');
+          sessionStorage.removeItem(PW_CHANGED_KEY);
+          if (o && o.room === roomKey() && typeof o.at === 'number' && Date.now() - o.at < 120000) pwBootNoteVal = o;
+        } catch (e) {}
+      }
+      return pwBootNoteVal;
+    }
+    function pwChangedWhy() {
+      const n = pwBootNote();
+      if (!n || n.shown) return undefined;
+      n.shown = true;
+      return 'changed';
+    }
     function pwChainFailed(err, reopen) {
       setStatus('Could not use the password (' + ((err && err.name) || 'Error') + ').');
       if (reopen) { pwBlocked = true; showPwModal(true); }
@@ -16687,6 +16752,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (myIdentity) return Promise.resolve(myIdentity);
       let seed = updateResume && typeof updateResume.seed === 'string' && /^[0-9a-f]{64}$/.test(updateResume.seed) ? updateResume.seed : null;
       if (updateResume) delete updateResume.seed;
+      if (!seed) { const n = pwBootNote(); if (n && /^[0-9a-f]{64}$/.test(n.seed || '')) seed = n.seed; } // sent back to the door by a password change (pwBootToDoor)
       if (!seed) seed = GifOS.net.randHex(32);
       return GifOS.meshIdentity.mint(seed).then((id) => { myIdentitySeed = seed; return (myIdentity = id); });
     }
@@ -16874,12 +16940,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // that empties forgets its lock at the door, so whoever comes back
           // first re-founds it on the OPEN key, and her blobs-under-the-password
           // knock reads nothing there. But her socket's roster has already sent
-          // the signed re-assert: the door lock, and the key itself granted to
-          // every socket in the room sealed under the open key (applyAdminBoot).
-          // The occupants adopt it and re-key a moment later. So she knocks
+          // the signed re-assert: the door lock, and the password change order
+          // to every socket in the room, sealed under the open key
+          // (applyAdminBoot). The occupants leave for the door's prompt a
+          // moment later, so the room she knocks on empties. She knocks
           // again, a few times, before anything is shown; each fresh socket
-          // re-grants. Only if the room still reads nothing (it really is under
-          // a different password) does the prompt appear.
+          // re-asserts. Only if the room still reads nothing (it really is
+          // under a different password) does the prompt appear.
           if (hasAdminRoom() && (admKey || amAdmin) && roomPw) {
             if (Date.now() - adminReknockAt > 60000) adminReknocks = 0;
             if (adminReknocks < ADMIN_REKNOCKS) {
@@ -16892,7 +16959,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
           pwLog('R6-LOCKED → pw modal');
           if (pwFromStore || pwProbe === 'restored') forgetPw('neither it nor the open key reads this room');
-          pwBlocked = true; showPwModal(true);
+          pwBlocked = true; showPwModal(true, pwChangedWhy());
         },
         // THE DOOR SAID NO, IN A CLOSE CODE (2026-07-29): a policy-cut socket
         // is the ONLY way a re-seeded ban reaches a squatter who was already
@@ -17129,17 +17196,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (roomPw && pwProof && !pwReasserted) {
               const proof = pwProof;
               admSigned('setpw', { pw: proof }).then((w) => { if (w) relaySendObj({ t: 'setpw', pw: proof, w }); });
-              // \u2026AND RE-GRANT THE KEY (2026-07-29): the door gate alone leaves
-              // the waiting room's occupants sealed apart from me \u2014 an evicted
-              // admin room re-seeds on the OPEN key (provisional-pw rule), so
-              // the \u00a7LOCK grant for a RE-assert seals under the open
-              // generation, not under my own. Signed like every admin pwinfo;
-              // occupants adopt and re-key; the epoch guard absorbs replays.
+              // \u2026AND SEND THE OCCUPANTS TO THE DOOR. A room that emptied
+              // re-seeds on the OPEN key (provisional-pw rule), so whoever came
+              // early sits there on the open key. Re-locking is a password
+              // set: they get the signed change ORDER, sealed under the open
+              // generation they read, never the password itself, and each
+              // leaves for the door's prompt (pwBootToDoor) and types it.
               const ep = pwEpoch + 1;
-              admSigned('pwinfo', { pw: roomPw, ep }).then((wPeers) => {
-                if (!wPeers) return;
-                const grant = { k: 'pwinfo', pw: roomPw, by: myName(), w: wPeers, ep };
+              admSigned('pwreset', { ep }).then((wOrder) => {
+                if (!wOrder) return;
+                const grant = { k: 'pwreset', by: myName(), w: wOrder, ep };
                 storePwEpoch(ep); retainedGrant = grant;
+                pwLog('pwreset-reassert ep=' + ep);
                 net.deriveMeetKey(room, av, '').then((openKey) => {
                   // relaySocketed, not gossipIds(): the whole point is reaching
                   // occupants I CANNOT yet read — the app roster is empty of
@@ -18367,7 +18435,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 
     // ---- room password UI: one modal, two moods -------------------------------
     const pwModal = document.getElementById('pw-modal');
-    function showPwModal(locked) {
+    function showPwModal(locked, why) {
       const service = typeof BROADCAST !== 'undefined' && BROADCAST;
       document.getElementById('pw-title').textContent = service ? 'Viewer password' : (locked ? uiText('pwTitleLocked', 'This room is locked') : uiText('pwTitle', 'Room password'));
       document.getElementById('pw-hint').textContent = service
@@ -18375,9 +18443,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           ? 'Enter the viewer password to see the stage clearly.'
           : 'Optional. It is not part of the link. People can still watch, and the stage stays blurred until it is set.')
         : (locked
-          ? uiText('pwHintLocked', 'Enter the room password to join the meeting.')
+          ? (why === 'changed'
+            ? uiText('pwHintChanged', 'The admin changed the room password. Enter the new password to rejoin the meeting.')
+            : uiText('pwHintLocked', 'Enter the room password to join the meeting.'))
           : hasAdminRoom()
-            ? uiText('pwHintAdmin', 'Only the admin can set or change it. It reaches everyone here instantly, and new joiners must enter it. Leave empty to remove the lock.')
+            ? uiText('pwHintAdmin', 'Only the admin can set or change it. When it is set or changed, everyone else here goes back to the door and must enter it to rejoin. Leave empty to remove the lock.')
             : uiText('pwHint', 'Anyone in the meeting can set or change it. It reaches everyone here instantly, and new joiners must enter it. Leave empty to remove the lock.'));
       document.getElementById('pw-cur-row').style.display = locked ? 'none' : 'flex';
       document.getElementById('pw-cur').value = roomPw;
@@ -18458,6 +18528,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // SIGNED (§9): the relay verifies the setpw, peers verify the pwinfo.
           const ep = pwEpoch + 1; // the signed epoch: replaying an older grant can never roll anyone backwards
           const wRelay = hasAdminRoom() ? await admSigned('setpw', { pw: pr }) : undefined;
+          if (hasAdminRoom() && v) {
+            // ADMIN ROOM, A PASSWORD SET OR CHANGED: the door locks with the
+            // new proof, and the room gets the signed ORDER, never the
+            // password. Every other page leaves for the door's prompt
+            // (pwBootToDoor); this page keeps its seat and moves to the new
+            // key once the order has left under the old one. The order is
+            // retained: a page that missed it and still speaks the old key is
+            // sent it again (healStaleFrom, healBehindDoor).
+            const wOrder = await admSigned('pwreset', { ep });
+            relaySendObj({ t: 'setpw', pw: pr, w: wRelay });
+            const order = { k: 'pwreset', by: myName(), w: wOrder, ep };
+            sendAll(order);
+            try { paceRelayCopies(relayCopyTargets(), order, roomE2E); } catch (e) {}
+            storePwEpoch(ep); retainedGrant = order;
+            pwLog('pwreset-sent ep=' + ep);
+            txm(() => Promise.resolve()).then(() => rekeyRoom());
+            return;
+          }
           const wPeers = hasAdminRoom() ? await admSigned('pwinfo', { pw: v, ep }) : undefined;
           relaySendObj({ t: 'setpw', pw: pr, w: wRelay });
           const grant = { k: 'pwinfo', pw: v, by: myName(), w: wPeers, ep };
@@ -21068,6 +21156,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // m-lines toward them never negotiated (rolled back in a glare),
         // re-offer so they exist on the wire. No-op when all is settled.
         if (p.pc && hasPendingTx(p)) renegotiate(p);
+      } else if (m.k === 'pwreset') {
+        // ADMIN ROOMS: the admin set or changed the password. The order names
+        // the new generation and carries no password. A page that does not
+        // already hold that generation leaves the meeting for the door's
+        // password prompt; the admin's own page (which minted it) stays.
+        if (!hasAdminRoom()) return;
+        if (admOk !== true) {
+          admVerify(m.w, 'pwreset').then((o) => { if (o && pwEpInt(o.ep) && o.ep === m.ep) onDc(p, null, m, true); });
+          return;
+        }
+        if (!pwEpInt(m.ep) || m.ep <= pwEpoch) return; // this generation (or a newer one) is already mine
+        if (roomPw && pwEpoch === 0 && Date.now() < grantHoldUntil) {
+          // Typed at the door, no generation yet: the room's first pulse
+          // decides whether this order is older than what I typed (heldGrant).
+          if (!heldGrant || heldGrant.m.ep == null || m.ep > heldGrant.m.ep) heldGrant = { p, m, admOk };
+          const until = grantHoldUntil;
+          setTimeout(() => { if (grantHoldUntil === until) releaseHeldGrant(true); }, Math.max(0, until - Date.now()) + 10);
+          return;
+        }
+        pwBootToDoor(m, p);
       } else if (m.k === 'pwinfo') {
         // The room's password changed — the PLAINTEXT arrives only inside this
         // sealed frame, never through the relay in the clear. Adopt it and
@@ -21078,6 +21186,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           admVerify(m.w, 'pwinfo').then((o) => { if (o && String(o.pw || '') === String(m.pw || '') && (o.ep == null || o.ep === m.ep)) onDc(p, null, m, true); });
           return;
         }
+        // In an admin room a password is never handed to the people inside:
+        // they type it at the door (see 'pwreset'). Only the admin's order
+        // to REMOVE the lock still travels this way — it gives away nothing.
+        if (hasAdminRoom() && String(m.pw || '') !== '') { pwLog('pwinfo-refused (admin room: a password is typed, never granted) ep=' + m.ep); return; }
         // EPOCH GUARD (§LOCK healing): a grant at or below my own generation
         // is a replay — dead on arrival. Nobody can roll a member backwards;
         // an ep-less grant is a legacy client's, treated as next-generation.
