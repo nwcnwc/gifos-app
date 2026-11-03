@@ -66,7 +66,6 @@ async function main(argv, env) {
     require(path.join(M, 'seat.js'));
     for (const f of fs.readdirSync(M).sort()) if (f.endsWith('.js') && f !== 'seat.js') require(path.join(M, f));
     fab.pcl = installPcLaws(fab); installFhop(fab);
-    fab.pcl.P.FH = fab.FH;   // the pc laws' linkWhy reads friend-hop's table (installPcLaws ran before it existed)
   }
   const ops = createOps(fab, { out: o.out });
   if (!opts_noUnits) {   // the measurement units and their levers (l18, instant join, realcheck, the friend-hop lever)
