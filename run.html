@@ -3420,11 +3420,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
        was wider than the column, so it ran under Questions. They are a
        service host's, so a small group does not show them. */
     body.broadcast.bc-host .bar:not(.collapsed) #barmore #bcwhenrow,
+    body.broadcast.bc-host .bar:not(.collapsed) #barmore #bcrdrow,
     body.broadcast.bc-host .bar:not(.collapsed) #barmore #bcvisitrow {
       grid-column: 1 / -1; display: flex; flex-direction: column; align-items: stretch;
       width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box;
     }
     .bar:not(.collapsed) #barmore #bcwhenrow input,
+    .bar:not(.collapsed) #barmore #bcrdrow select,
     .bar:not(.collapsed) #barmore #bcvisitrow input {
       width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box;
     }
@@ -3819,6 +3821,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #bcwhenrow { display: none; }
   body.broadcast.bc-host #bcwhenrow { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; flex-wrap: wrap; }
   #bcwhenrow input { min-height: 44px; font: inherit; border-radius: 10px; padding: 0 8px; }
+  #bcrdrow { display: none; }
+  body.broadcast.bc-host #bcrdrow { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; flex-wrap: wrap; }
+  #bcrdrow select { min-height: 44px; font: inherit; border-radius: 10px; padding: 0 8px; }
   #bcvisitrow { display: none; }
   body.broadcast.bc-host #bcvisitrow { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; flex-wrap: wrap; }
   #bcvisitrow input { min-height: 44px; min-width: 12rem; font: inherit; border-radius: 10px; padding: 0 8px; }
@@ -4110,6 +4115,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <button data-ti="appTip" id="appbtn" data-t="runApp" aria-keyshortcuts="Alt+Y" title="Run an app inside this meeting — everyone here shares and interacts with it live">Run app</button>
         <button data-ti="rbbtnTip" data-t="rbbtn" id="rbbtn" title="Play the last broadcast, or a video, into the broadcast. Viewers see Prerecorded.">Rebroadcast</button>
         <label data-ti="bcwhenrowTip" id="bcwhenrow" title="When the broadcast starts. The viewer link and the room say so."><span data-t="bcwhenLbl" id="bcwhen-lbl">Start time</span><input type="datetime-local" id="bcwhen"></label>
+        <label data-ti="bcrdrowTip" id="bcrdrow" title="An optional order of events only you see. Off for a new broadcast."><span data-t="bcrdLbl">Run of show</span><select id="bcrd"><option value="" data-t="bcrdNone">None</option><option value="service" data-t="bcrdService">Worship service</option></select></label>
         <label data-ti="bcvisitrowTip" id="bcvisitrow" title="Link for viewers (opens in a new window)"><span data-t="bcvisitLbl" id="bcvisit-lbl">Visit link</span><input type="url" id="bcvisit" inputmode="url" autocomplete="url" placeholder="https://" spellcheck="false"></label>
       </div>
     </section>
@@ -4598,7 +4604,59 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <script src="js/app-update.js" defer></script>
   <script src="js/gifos-update.js" defer></script>
   <script src="js/gifos-net.js" defer></script>
-  <script src="js/mesh.js" defer></script>
+  <!-- the mesh: the ported 0.9.25 seat (js/mesh/, dependency order), its page world and the page layer -->
+  <script src="js/mesh/laws.js" defer></script>
+  <script src="js/mesh/consts.js" defer></script>
+  <script src="js/mesh/util.js" defer></script>
+  <script src="js/mesh/books.js" defer></script>
+  <script src="js/mesh/msg.js" defer></script>
+  <script src="js/mesh/hash.js" defer></script>
+  <script src="js/mesh/topo.js" defer></script>
+  <script src="js/mesh/dig.js" defer></script>
+  <script src="js/mesh/seat-fields.js" defer></script>
+  <script src="js/mesh/fnv.js" defer></script>
+  <script src="js/mesh/state.js" defer></script>
+  <script src="js/mesh/rng.js" defer></script>
+  <script src="js/mesh/fmt.js" defer></script>
+  <script src="js/mesh/seat.js" defer></script>
+  <script src="js/mesh/digest.js" defer></script>
+  <script src="js/mesh/shared.js" defer></script>
+  <script src="js/mesh/entry.js" defer></script>
+  <script src="js/mesh/farview.js" defer></script>
+  <script src="js/mesh/fhop.js" defer></script>
+  <script src="js/mesh/gaps.js" defer></script>
+  <script src="js/mesh/gaps2.js" defer></script>
+  <script src="js/mesh/gaps3.js" defer></script>
+  <script src="js/mesh/gaps4.js" defer></script>
+  <script src="js/mesh/heal.js" defer></script>
+  <script src="js/mesh/hostile-laws.js" defer></script>
+  <script src="js/mesh/id.js" defer></script>
+  <script src="js/mesh/instant.js" defer></script>
+  <script src="js/mesh/island.js" defer></script>
+  <script src="js/mesh/lguard-seat.js" defer></script>
+  <script src="js/mesh/linkset.js" defer></script>
+  <script src="js/mesh/roles.js" defer></script>
+  <script src="js/mesh/live.js" defer></script>
+  <script src="js/mesh/mltail.js" defer></script>
+  <script src="js/mesh/pclaws.js" defer></script>
+  <script src="js/mesh/rcdead.js" defer></script>
+  <script src="js/mesh/rcfollow.js" defer></script>
+  <script src="js/mesh/rcleft-l25.js" defer></script>
+  <script src="js/mesh/rcleft.js" defer></script>
+  <script src="js/mesh/recv-entry.js" defer></script>
+  <script src="js/mesh/recv-seated.js" defer></script>
+  <script src="js/mesh/recv.js" defer></script>
+  <script src="js/mesh/ring.js" defer></script>
+  <script src="js/mesh/roomterm.js" defer></script>
+  <script src="js/mesh/route.js" defer></script>
+  <script src="js/mesh/seat-rest.js" defer></script>
+  <script src="js/mesh/small.js" defer></script>
+  <script src="js/mesh/tick.js" defer></script>
+  <script src="js/mesh/tier.js" defer></script>
+  <script src="js/mesh/witness.js" defer></script>
+  <script src="js/mesh/page/env.js" defer></script>
+  <script src="js/mesh/page/pclaws-wire.js" defer></script>
+  <script src="js/mesh/page/layer.js" defer></script>
   <script src="js/relay-admit.js" defer></script>
   <script src="js/mesh-identity.js" defer></script>
   <script src="js/mesh-wire.js" defer></script>
@@ -12012,9 +12070,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const RUNDOWN_STEPS = [
       ['rdWelcome', 'Welcome'],
       ['rdSong', 'Song'],
-      ['rdPrayer', 'Break'],
-      ['rdScripture', 'Reading'],
-      ['rdMessage', 'Talk'],
+      ['rdPrayer', 'Prayer'],
+      ['rdScripture', 'Scripture'],
+      ['rdMessage', 'Message'],
       ['rdSong', 'Song'],
       ['rdClosing', 'Closing'],
     ];
@@ -12030,6 +12088,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const at = rundownAt();
       for (let i = at; i < RUNDOWN_STEPS.length; i++) if (songSlotOf(i) >= 0) return songSlotOf(i);
       return 0;
+    }
+    // The run of show is an optional template the host picks in More (Run of
+    // show). A new broadcast has none: no agenda, no songs. A room that already
+    // used it (a stored place or song words) keeps it, unless the host chose None.
+    function rundownTplKey() { return 'gifos_rdtpl_' + (params.get('v') || ''); }
+    function rundownTpl() {
+      try {
+        const t = localStorage.getItem(rundownTplKey());
+        if (t === 'service') return 'service';
+        if (t === 'none') return '';
+        if (sessionStorage.getItem(rundownStoreKey()) !== null || localStorage.getItem(songStoreKey(0)) || localStorage.getItem(songStoreKey(1))) return 'service';
+      } catch (e) {}
+      return '';
     }
     function rundownStoreKey() { return 'gifos_rundown_' + (params.get('v') || ''); }
     function rundownAt() {
@@ -12048,7 +12119,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { paintLyrics(); } catch (e) {}
         return;
       }
-      const host = typeof BROADCAST !== 'undefined' && BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored()));
+      const host = typeof BROADCAST !== 'undefined' && BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored())) && rundownTpl() === 'service';
       el.classList.toggle('open', !!host);
       document.body.classList.toggle('rundown', !!host);
       try { paintLyrics(); } catch (e) {}
@@ -12145,7 +12216,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { sessionStorage.setItem(lyricStoreKey(), String(n)); } catch (e) {}
     }
     function lyricSongOn() {
-      const host = typeof BROADCAST !== 'undefined' && BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored()));
+      const host = typeof BROADCAST !== 'undefined' && BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored())) && rundownTpl() === 'service';
       return !!(host && songSlotOf(rundownAt()) >= 0);
     }
     // The line the room sees on the booth's camera, or '' outside Song.
@@ -12765,7 +12836,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const s = meshSeat();
       const atDoor = !!(s && (s.state === 1 || s.state === 2));
       let isMember = null;
-      if (atDoor) { const members = GifOS.mesh.Seat.rosterPeers(s.roster); for (const v of s.occ.values()) if (v) members.add(String(v)); isMember = (pid) => members.has(String(pid)); }
+      if (atDoor) { const members = new Set(); for (const v of s.occ.values()) if (v) members.add(String(v)); isMember = (pid) => members.has(String(pid)); }
       const c = reachCounts(peers.values(), peerAway, isMember);
       const f = { probe: directPath, n: participantCount(), live: c.live, dead: c.dead,
         stranded: !!(s && s.stranded), atDoor };
@@ -12773,7 +12844,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return f;
     }
 
-    const txStats = { relayStatus: 0, dcStatus: 0, relaySig: 0, dcSig: 0, fwdSig: 0, fwdMesh: 0, doorSig: 0, hopFwd: 0, hopRelay: 0, nosock: 0, relayBoot: 0, relayFp: 0, relayIce: 0, relayName: 0, relayPassword: 0, relayUnfit: 0 }; // counters showing where heartbeats + signaling + sponsor hops actually travel; relay*: frames put on the relay by type (relayPassword counts every frame of a grant), relayUnfit: payloads that did not fit the relay's fixed size (never sent)
+    const txStats = { relayStatus: 0, dcStatus: 0, relaySig: 0, dcSig: 0, fwdSig: 0, fwdMesh: 0, doorSig: 0, hopFwd: 0, hopRelay: 0, nosock: 0, relayBoot: 0, relayFp: 0, relayIce: 0, relayName: 0, relayPassword: 0, relayBusy: 0, relayUnfit: 0 }; // counters showing where heartbeats + signaling + sponsor hops actually travel; relay*: frames put on the relay by type (relayPassword counts every frame of a grant), relayUnfit: payloads that did not fit the relay's fixed size (never sent)
     const rxStats = { offer: 0, answer: 0, ice: 0, status: 0, offerRejected: 0, answerNoPeer: 0, negFail: 0, answerStale: 0, relayAccepted: {}, relayDropped: {}, dcKinds: {} }; // reception mirror: what actually ARRIVED (and what was refused); relayAccepted/relayDropped: relay frames by type, dispatched vs refused (relayFrameAllowed); dcKinds: opened channel frames by k
     // THE RELAY LAW (gifos-net.js RELAY_TYPES; docs/meet-security.md §RELAY).
     // The relay carries a fixed list of message types between members, each
@@ -12801,7 +12872,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const RELAY_NAME_MAX = 40, RELAY_PW_MAX = 64;
     const epOk = (ep) => Number.isInteger(ep) && ep >= 0;
     // The exact field set of each payload (the padding field `_` beside it).
-    const RELAY_PAYLOAD_KEYS = { boot: 'k,t,u,w,s,v', fp: 'k,v,fp', ice: 'k,c,end', name: 'k,n', password: 'k,pw,ep', pwsig: 'k,sig', pwpub: 'k,ep,ts,pub', pwby: 'k,ep,by' };
+    const RELAY_PAYLOAD_KEYS = { boot: 'k,t,u,w,s,v', fp: 'k,v,fp', ice: 'k,c,end', name: 'k,n', password: 'k,pw,ep', pwsig: 'k,sig', pwpub: 'k,ep,ts,pub', pwby: 'k,ep,by', busy: 'k,g,i,n,ref,cool' };
     function relayFrameAllowed(ty, inner) {
       if (!RELAY_TYPES.has(ty) || !inner || typeof inner !== 'object' || Array.isArray(inner) || inner.k !== ty || !net.fitsFixed(inner)) return null;
       const keys = RELAY_PAYLOAD_KEYS[ty].split(',');
@@ -12813,6 +12884,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (ty === 'password') return typeof inner.pw === 'string' && inner.pw.length <= RELAY_PW_MAX && epOk(inner.ep) ? ty : null;
       if (ty === 'pwsig') return typeof inner.sig === 'string' && /^[A-Za-z0-9+/]{86}==$/.test(inner.sig) ? ty : null;
       if (ty === 'pwpub') return epOk(inner.ep) && Number.isInteger(inner.ts) && inner.ts > 0 && typeof inner.pub === 'string' && /^[A-Za-z0-9+/]{43}=$/.test(inner.pub) ? ty : null;
+      if (ty === 'busy') return Number.isInteger(inner.g) ? ty : null;   // a door's refusal (L16 BUSY, L14 decline, L23): read by the seat's world only
       if (ty === 'pwby') return epOk(inner.ep) && typeof inner.by === 'string' && /^k_[0-9a-f]{40}$/.test(inner.by) ? ty : null;
       return null;
     }
@@ -12823,7 +12895,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // relaySendSealed(to, ty, obj, key): seal obj padded to the law's size
     // and put it on the relay as a `ty` frame. A payload that does not fit is
     // counted (txStats.relayUnfit) and never sent. Resolves true when sent.
-    const relayTxCount = { boot: 'relayBoot', fp: 'relayFp', ice: 'relayIce', name: 'relayName', password: 'relayPassword', pwsig: 'relayPassword', pwpub: 'relayPassword', pwby: 'relayPassword' };
+    const relayTxCount = { boot: 'relayBoot', fp: 'relayFp', ice: 'relayIce', name: 'relayName', password: 'relayPassword', pwsig: 'relayPassword', pwpub: 'relayPassword', pwby: 'relayPassword', busy: 'relayBusy' };
     function relaySendSealed(to, ty, obj, key) {
       if (!RELAY_TYPES.has(ty) || !obj || obj.k !== ty) return Promise.resolve(false);
       // Call order is the send order. The page's txm is already a FIFO, but
@@ -13347,6 +13419,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // onRelayPeer(from, ty, f): a relay frame of the law's shape, opened and
     // checked (relayFrameAllowed). Dispatch by its type.
     function onRelayPeer(from, ty, f) {
+      if (ty === 'busy') { try { if (meshNode && meshNode.relayBusyIn) meshNode.relayBusyIn(from, f); } catch (e) {} return; }
       if (ty === 'boot' || ty === 'fp') {
         const desc = takeBootPart(from, ty, f);
         if (!desc) return;
@@ -13838,7 +13911,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return;
       }
       const s = meshSeat();
-      try { if (s && s.transportLost) s.transportLost(pid); } catch (e) {}
+      try { if (meshNode && meshNode.transport) meshNode.transport(pid, String(why).replace(/-awake$/, '')); } catch (e) {}   // the seat hears the loss (env.js maps hard / quiet)
       if (typeof clog === 'function') clog('translost ' + String(pid).slice(0, 6) + ' ' + why);
     }
     // pcDeadWhy(p, st, now): which hard transport death the sweep hands to
@@ -14126,6 +14199,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function dropPeer(peerId, stillHere) {
       const p = peers.get(peerId);
       if (!p) return;
+      // A pc the page closes on its own (not the seat's world asking) is news to the pc laws.
+      if (!leaving && !(p.envClosing && Date.now() - p.envClosing < 5000)) { try { if (meshNode && meshNode.transport) meshNode.transport(peerId, 'pc-closed'); } catch (e) {} }
       clearTimeout(p.hiLate);
       try { if (p.doorRetry) clearTimeout(p.doorRetry); } catch (e) {}
       p.doorRetry = 0;
@@ -14915,8 +14990,39 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // needs no DataChannels; media links belong to a SEATED coord only. The
       // old "bootstrap = whole roster" relic full-meshed a stalled joiner (27
       // RTCPeerConnections, every tile black) — the last unbounded path, gone.
+      if (seatAsked(pid)) return true;   // the seat dialled it (a door, a call, an audit): its own reason
       if (!s || !s.hasCoord) return false;
-      return s.linkPeers().has(pid);
+      return s.linkPeers().has(pid) || (typeof s.keepPeers === 'function' && s.keepPeers().has(pid));   // every media target is a link peer or carries a keep reason (L28)
+    }
+    // Peers the seat asked to dial (pc.ensure), for a while: the seat's dial is its reason.
+    const seatAskAt = new Map();
+    function meshTraceSink(line) { const G = window.__meshTraceRing || (window.__meshTraceRing = { ring: [], seq: 0 }); G.ring.push([++G.seq, line]); if (G.ring.length > 4000) G.ring.splice(0, 1000); }
+    window.__meshPortPage = { pcbye: (pid, why) => { try { meshNode && meshNode.__pc && meshNode.__pc.bye(pid, why); } catch (e) {} }, dcOpen: (pid) => { const p = peers.get(pid); return !!(p && p.dc && p.dc.readyState === 'open'); } };
+    function seatAsked(pid) { const at = seatAskAt.get(pid); return at != null && Date.now() - at < 60000; }
+    // A2's offer marks cross on the pair's own dc, whoever sent the SDP (the id-order initiator offers, a polite
+    // dialler only asks): the seat's dialler sends {k:'pcmark', d: mark} at open, a callee sends {n:1} and runs the pc
+    // laws' offer gate on the dialler's mark (never a guess from its own occ), then answers {a: its mark}.
+    const seatMark = new Map();
+    const cleanMark = (d) => (d && typeof d === 'object') ? { s: d.s ? 1 : 0, up: d.up ? 1 : 0, mt: typeof d.mt === 'string' ? d.mt.slice(0, 12) : null, ck: Number.isFinite(d.ck) ? d.ck : 0, tier: Number.isFinite(d.tier) ? d.tier : 0 } : null;
+    function pcMarkOpen(p, dc, mk, src) {
+      if (!dc || dc.__pcOffered || p.dc !== dc || !meshNode || !meshNode.transport) return;
+      dc.__pcOffered = true; clearTimeout(dc.__pcMarkWait);
+      const m = mk || { s: meshKnows(p.id) ? 1 : 0 };
+      if (typeof clog === 'function') clog('pc-offer ' + String(p.id).slice(0, 6) + ' src=' + src + ' s=' + m.s + ' mt=' + (m.mt || '-'));
+      const ok = meshNode.transport(p.id, 'offer', m) !== false;
+      if (!ok) { if (typeof clog === 'function') clog('pc-refused ' + String(p.id).slice(0, 6)); return; }
+      meshNode.transport(p.id, 'open');
+      if (mk) { try { dcSend(p, { k: 'pcmark', a: meshNode.mark ? meshNode.mark(p.id) : null }); } catch (e) {} }
+    }
+    function pcMarkIn(p, dc, m) {
+      if (!dc || p.dc !== dc || !meshNode || !meshNode.transport) return;
+      if (seatAsked(p.id)) {   // my dial: the far end's answer (or, both dialled, its own dial mark) says how it sits
+        const a = cleanMark(m.a || m.d);
+        if (a) { if (typeof clog === 'function') clog('pc-answer ' + String(p.id).slice(0, 6) + ' s=' + a.s); meshNode.transport(p.id, 'answer', a); }
+        return;
+      }
+      if (m.d !== undefined) pcMarkOpen(p, dc, cleanMark(m.d), m.d ? 'mark' : 'nomark');
+      else if (m.n) pcMarkOpen(p, dc, null, 'occ');   // neither end's seat dialled (a page-own dial): my view decides
     }
     // Establish or retire ONE peer's media link per the seat arithmetic. Also
     // run by the sweeper: occupancy gossip settling can change who my
@@ -15399,10 +15505,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             const roomKnows = (Array.isArray(rosterIds) && rosterIds.includes(pid))
               || (statusOf && statusOf.has(pid))
               || (typeof relaySocketed !== 'undefined' && relaySocketed.has(pid));
-            if (roomKnows) {
-              try { s.translost.delete(k); } catch (e) {}
-              continue;
-            }
+            if (roomKnows) continue;   // display only: the seat's own D5 owns its translost (no write into the seat)
             confirmGone(pid, 'd5'); continue;
           }
           if (peers.has(pid) && !occVanish.has(pid)) occVanish.set(pid, Date.now());
@@ -15443,45 +15546,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
       }
       occPrevIds = occNow; occPrevMyCk = myCk;
-      // VOUCH-CAP REAP (2026-07-26, the frozen-phone lesson part 2): an OS-
-      // frozen phone keeps its TCP open — no close event EVER arrives, the pc
-      // sits in 'disconnected' forever, and its peers-map entry became an
-      // immortal zombie (participantCount rides peers.size, so the room
-      // counted a corpse indefinitely; the roster had long dropped it). A
-      // peer that is neither rostered nor heard past the vouch cap is
-      // confirmed gone; the pc.close() inside is the first-hand hard
-      // transport event the mesh's D5 confirm needs, so the SEAT heals
-      // through the ordinary law path too. A pocketed-but-alive phone (G1)
-      // keeps beating and is never eligible.
-      // SILENCE IS EVIDENCE ONLY WHERE A BEAT IS OWED. A heartbeat's direct
-      // leg rides my own links and nothing else, so a pair the tree does not
-      // name as my link hears nothing after its first status, by design: the
-      // door a member came in by, kept open because my view never learns
-      // their seat in another section. Reading that quiet as death
-      // tombstoned a live member on both sides of the door at once, and the
-      // tombstone then refused the very link a promotion needed, splitting
-      // the room. A quiet door is left open and unjudged: when a deep seat's
-      // parent dies, the door is the one channel its new parent can still
-      // signal it over. A pair that only just became a link is judged from
-      // that moment, not from the quiet it kept while it was a door.
-      // ...and a beat is owed only on a link BOTH ends hold. A deep row's
-      // non-head seats count their row's owner among their links, but the
-      // owner holds only the row head, so it closes their door and never
-      // answers their dial: their side of the pair stays quiet by design,
-      // and reading that as death marked a live owner gone. When my view
-      // shows the far side's links and I am not among them, the pair is not
-      // owed; an unknown far side is judged as before.
-      const REAP_MS = 195000; // vouch cap + pulse slack
-      for (const [pid, p] of Array.from(peers)) {
-        const theirs = typeof targetLinkIds === 'function' ? targetLinkIds(pid) : null;
-        const owed = linkTo(pid) && (!theirs || theirs.includes(myId));
-        if (!owed) p.owedAt = 0; else if (!p.owedAt) p.owedAt = nowMs;
-        if (rosterIds.includes(pid)) continue;
-        const st = statusOf.get(pid);
-        const heard = Math.max(p.lastHeard || 0, (st && st.rx) || 0);
-        if (!heard || nowMs - heard <= REAP_MS) continue;
-        if (owed && nowMs - p.owedAt > REAP_MS) confirmGone(pid, 'vouch-reap');
-      }
+      // No vouch-cap reap: a silent peer is the seat's to judge (its L3 lease and
+      // D5). A frozen phone's pc reaches 'disconnected-persist' (pcDeadWhy), the
+      // seat hears that as a quiet loss and decides; the page never closes a pc
+      // to make a death.
     }
     // ---- JOINING MUST LOOK LIKE JOINING (Fix 2, 2026-07-26) -----------------
     // A page that cannot complete the knock used to look like an EMPTY ROOM:
@@ -16846,6 +16914,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
         },
         sendDC: meshSendDC,
+        // The seat's pcs (js/mesh/page/env.js calls these; it decides, the page carries out).
+        pc: {
+          ensure: (pid, o) => { if (!pid || pid === myId) return; seatAskAt.set(pid, Date.now()); if (seatAskAt.size > 256) seatAskAt.delete(seatAskAt.keys().next().value); seatMark.set(pid, cleanMark(o && o.mark)); if (seatMark.size > 256) seatMark.delete(seatMark.keys().next().value); const s = meshSeat(); if (!(s && s.hasCoord && s.state === 3)) bootDial(pid); else ensureLink(pid); },
+          bye: (pid, why) => { const p = peers.get(pid); if (!p) return; if (why && p.dc && p.dc.readyState === 'open') { try { dcSend(p, { k: 'pcbye', why }); } catch (e) {} } p.byeSent = Date.now(); p.envClosing = Date.now(); seatAskAt.delete(pid); if (typeof clog === 'function') clog('pcbye-out ' + String(pid).slice(0, 6) + ' ' + why); setTimeout(() => { if (peers.get(pid) === p && !linkTo(pid)) dropPeer(pid, true); }, 300); },
+          close: (pid, why) => { seatAskAt.delete(pid); const p0 = peers.get(pid); if (p0) p0.envClosing = Date.now(); const p = peers.get(pid); if (!p) return; if (typeof clog === 'function') clog('pcclose ' + String(pid).slice(0, 6) + ' ' + (why || '')); if (!linkTo(pid)) dropPeer(pid, true); },
+          state: (pid) => { const p = peers.get(pid); return p ? { pc: p.pc ? p.pc.connectionState : 'none', dc: p.dc ? p.dc.readyState : 'none', heardAt: p.lastRx || 0 } : null; },
+        },
+        relayBusy: (pid, body) => { relaySendSealed(pid, 'busy', Object.assign({ k: 'busy' }, body)); },
+        trace: DEBUG_ON ? meshTraceSink : null,
+        onMissing: (g) => { if (typeof clog === 'function') clog('mesh-port missing ' + g); },
         // Entry asks are delivered only on a channel to the greeter they name.
         // meshSendDC also returns true for a dump onto some other peer; the
         // wire must not treat that as the door (mesh-wire entryDelivered).
@@ -17078,7 +17156,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             return { stage: stg, stadium: [...stad] };
           } catch (e) { return { stage: [], stadium: [] }; }
         },
-        onUpdate: () => { renderFromOcc(); saveTreeMem(); try { reportDarkDeaths(); } catch (e) {} },
+        onUpdate: () => { renderFromOcc(); saveTreeMem(); try { reportDarkDeaths(); } catch (e) {} try { meshVoteBeat(); } catch (e) {} },
         onRelayMsg: onRelayFrame,
         prevTree: readTreeMem(),
       });
@@ -17520,57 +17598,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (now - seen - holdDebtSince(seen) > HOLDOVER_MS) { if (typeof dropStatus === 'function') dropStatus(pid); else statusOf.delete(pid); }
         }
       }
-      // The link set follows the seat arithmetic — occupancy gossip settling
-      // can name new neighbours; dial them the tick they appear.
-      for (const pid of rosterIds) {
-        if (pid === myId || (devOf[pid] && devOf[pid] === myDevHash)) continue;
-        if (linkTo(pid) && !peers.has(pid)) ensureLink(pid, rosterNames[pid] || null);
-      }
-      const seatedNow = (() => { const s = meshSeat(); return !!(s && s.hasCoord && s.state === 3); })();
-      let anyLinkOpen = false; for (const [qid, q] of peers) if (q.dc && q.dc.readyState === 'open' && linkTo(qid)) { anyLinkOpen = true; break; }
+      // No page dial here: the seat dials every pc it needs and re-dials on
+      // its own clock (L17 / L3.8); a second clock here raced it.
       for (const [pid, p] of Array.from(peers)) {
         if (p.qa) continue; // painted stand-ins for the desktop UI suite — not mesh peers
-        // A link the arithmetic no longer wants gets a 15s grace: the seat
-        // map flaps while gossip settles, and an ICE rebuild two seconds
-        // after a needless drop is pure lost time.
         if (!linkTo(pid)) {
-          // The bootstrap channel to a greeter (p.boot) is the door: kept
-          // while I am still outside, however it fares (a dead one is what
-          // tells a locked-out person so — reachCounts), and retired the
-          // moment I am seated with a link of my own open (retireBootPairs).
-          // A door is kept while either side is still outside — mine while I
-          // knock, a knocker's (not yet in my occupancy) while it knocks at
-          // me — and retired once both are seated with no link between them.
           const theyOutside = !meshKnows(pid);
           const doorShut = p.boot && !p.bootOut && p.dc && p.dc.readyState === 'closed'; // the knocker closed my end of its door
           if (p.boot && p.pc && (p.pc.connectionState === 'closed' || p.pc.connectionState === 'failed' || doorShut)) { dropPeer(pid, !theyOutside || rosterIds.includes(pid)); continue; } // a dead door: gone now, never rebuilt (a knocker redials); a member the roster already holds keeps its status
-          // A door I knocked through is mine to close once I am seated: its
-          // greeter is seated somewhere my occupancy need not hold (Section 1
-          // when I sit deep), so theyOutside says nothing about it. Kept, it
-          // was a pc with video from every late joiner to every Section-1
-          // seat, a front seat's load growing with the room (bw-ladder N=32).
-          else if (p.boot && p.bootOut && seatedNow && anyLinkOpen) { dropPeer(pid, true); continue; }
-          else if (p.boot && (!seatedNow || theyOutside)) { p.unlinkedSince = 0; }
-          else if (p.boot && seatedNow && anyLinkOpen) { dropPeer(pid, true); continue; }
-          else {
-            // Any other pair keeps its grace and its repair: a member back
-            // from a dark spell names its neighbours again only once its
-            // view re-converges, and its dead pairs with them must be
-            // rebuilt meanwhile, not dropped.
-            if (!p.unlinkedSince) p.unlinkedSince = now;
-            if (now - p.unlinkedSince > 15000) { dropPeer(pid, meshKnows(pid)); continue; }
-          }
-        } else { p.unlinkedSince = 0; p.absentSince = 0; } // a mesh-named neighbour is never absent
+          // A pc the seat does not name is not closed here: the pc laws close
+          // it at my end with a goodbye (doors K5/L16, L22 UNNEEDED, L23).
+        } else { p.absentSince = 0; } // a mesh-named neighbour is never absent
         const st = p.pc.connectionState;
         if (p.absentSince && !p.connected && now - p.absentSince > ABSENT_GRACE) { dropPeer(pid); continue; }
-        // A pc that lands in 'closed' can't be ICE-restarted — rebuild the
-        // transport into the same peer record (tile + identity survive).
-        if (!p.absentSince && st === 'closed') {
-          if (p.boot && !linkTo(pid)) continue; // a door the arithmetic does not name is never rebuilt (its grace runs out above); every other pair is
-          newPcFor(p);
-          if (iInitiate(pid)) { p.lastKick = now + Math.random() * 1500; sendOffer(pid); }
-          continue;
-        }
+        // A pc that lands in 'closed' can't be ICE-restarted; it is dropped.
+        if (!p.absentSince && st === 'closed') { dropPeer(pid, meshKnows(pid)); continue; } // the seat re-dials a pc it still needs
         // A pc WEDGED in 'connecting' never completed its first ICE handshake —
         // typically a candidate lost to a renegotiation glare, or an aux-track
         // reneg reset ICE mid-flight. The browser won't downgrade it to
@@ -18544,6 +18586,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             storePwEpoch(ep); retainedGrant = order;
             pwLog('pwreset-sent ep=' + ep);
             txm(() => Promise.resolve()).then(() => rekeyRoom());
+            // An admin who locks the room before she holds a seat (nobody
+            // inside would seat her) knocks again on the new lock: the door
+            // drops at once every socket that has not passed it, so her fresh
+            // knock founds the room instead of waiting out her join round.
+            if (!meshCoord()) {
+              const gen = meshBootGen;
+              pwLog('pwreset-sent unseated: knocking again on the new lock');
+              setTimeout(() => { if (gen !== meshBootGen || leaving || bannedOut || pwBlocked || meshCoord()) return; startMesh(); }, 1500);
+            }
             return;
           }
           const wPeers = hasAdminRoom() ? await admSigned('pwinfo', { pw: v, ep }) : undefined;
@@ -20652,6 +20703,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       p.dc = dc;
       if (!dc.__pc) { try { dc.__pc = p.pc; } catch (e) {} }
       dc.onopen = () => {
+        // The seat's link opened (env.js). My seat's dial sends its mark and opens; a pc the far end dialled waits
+        // for the dialler's mark (pcMarkIn) and reaches the pc laws as its offer then (3 s: my view decides).
+        try {
+          if (meshNode && meshNode.transport && p.dc === dc) {
+            if (seatAsked(p.id)) { dc.__pcOffered = true; dcSend(p, { k: 'pcmark', d: seatMark.get(p.id) || null }); meshNode.transport(p.id, 'open'); }
+            else { dcSend(p, { k: 'pcmark', n: 1 }); dc.__pcMarkWait = setTimeout(() => { try { pcMarkOpen(p, dc, null, 'timeout'); } catch (e) {} }, 3000); }
+          }
+        } catch (e) {}
         clearTimeout(p.hiLate); p.hiLate = null;
         dcAuthSend(p, dc);
         // THE CHANNEL IS OPEN: everything the relay did not carry crosses it
@@ -20703,7 +20762,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // that starts the mesh's probe-gated confirm early. Guards: only the
       // CURRENT channel (a renegotiation replaces p.dc first), only while the
       // peer is still in the room, never during our own teardown.
-      dc.onclose = () => { if (!leaving && p.dc === dc && peers.has(p.id)) onTransportDead(p.id, 'dc-close'); };
+      dc.onclose = () => { if (!leaving && p.dc === dc && peers.has(p.id) && !(p.byeSeen && Date.now() - p.byeSeen < 30000)) onTransportDead(p.id, 'dc-close'); };   // a close after the far end's pcbye is no loss
       dc.onmessage = (ev) => {
         let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
         m = meshDefrag(m, 'dc|' + p.id); if (!m) return;
@@ -21120,6 +21179,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // departure too (mesh.js goodbye): the LEAVE behind it is lost when
         // the page dies first (chaos seed 10 #1: 10.5 s against 4.2 s).
         if (dc && dc.__authBy === p.id) { try { const s = meshSeat(); if (s && s.goodbye) s.goodbye(p.id); } catch (e) {} }
+      } else if (m.k === 'pcmark') {
+        try { pcMarkIn(p, dc, m); } catch (e) {}   // A2's offer / answer mark (pcMarkIn)
+      } else if (m.k === 'pcbye') {
+        // A deliberate close from the far end (A2's pc laws): its why reaches the seat's world, and the
+        // channel's close that follows is no loss.
+        if (dc && dc.__authBy === p.id) { p.byeSeen = Date.now(); try { if (meshNode && meshNode.transport) meshNode.transport(p.id, 'bye', typeof m.why === 'string' ? m.why.slice(0, 16) : 'call'); } catch (e) {} if (typeof clog === 'function') clog('pcbye-in ' + String(p.id).slice(0, 6) + ' ' + m.why); }
       } else if (m.k === 'dcauth') {
         dcAuthRecv(p, dc, m);   // §DCAUTH: the peer proves it is the far end of THIS channel
       } else if (m.k === 'mesh') {
@@ -32285,6 +32350,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       updateShareAllBtn();
       setStatus(on ? 'Guests may share their screen.' : 'Guests can no longer share their screen.');
     };
+    // L27 VOTE-OFF ON THE MESH: my vote-offs (device tags) name every peer on that device; the seat signs the
+    // statement and it rides PHONE; the seat's fold is the tally, its threshold the need, its verdict the kick.
+    function meshVoteBeat() {
+      if (!meshNode || !meshNode.setKicks || hasAdminRoom()) return;
+      const want = []; for (const pid of Object.keys(devOf)) if (pid !== myId && myVoteoffs.has(devOf[pid])) want.push(pid);
+      meshNode.setKicks(want);
+      const k = meshNode.kickTally(); const tally = {}; let need = 0;
+      for (const pid of Object.keys(k.tally)) { const dv = devOf[pid]; if (!dv) continue; tally[dv] = Math.max(tally[dv] || 0, k.tally[pid]); need = Math.max(need, k.need[pid] || 0); }
+      if (!need && Object.keys(k.need).length === 0) { const n = (meshSeat() && meshSeat().occ) ? meshSeat().occ.size : 0; need = Math.max(2, Math.trunc(n / 2) + 1); }
+      const ch = JSON.stringify(tally) !== JSON.stringify(voteTally) || need !== voteNeed;
+      voteTally = tally; voteNeed = need; if (ch) refreshAllTiles();
+      if (k.me && !bannedOut) {
+        bannedOut = true;
+        for (const pid of Array.from(peers.keys())) dropPeer(pid);
+        try { meshNode.stop(); } catch (e) {}
+        setStatus('\u26d4 The people on this meeting voted you off.');
+      }
+    }
     function toggleVote(id) {
       if (hasAdminRoom()) return; // admin rooms use the admin's ban, not votes
       const dev = devOf[id];
@@ -32971,6 +33054,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     // The host's Visit link. It stays on the host's phone for this room and
     // rides every viewer link from Invite.
+    const bcRdIn = document.getElementById('bcrd');
+    if (bcRdIn && BROADCAST) {
+      bcRdIn.value = rundownTpl();
+      bcRdIn.onchange = () => {
+        try { localStorage.setItem(rundownTplKey(), bcRdIn.value === 'service' ? 'service' : 'none'); } catch (e) {}
+        if (bcRdIn.value === 'service') { setRundownAt(0); setLyricAt(0); }
+        paintRundown();
+      };
+    }
     const bcVisitIn = document.getElementById('bcvisit');
     function paintBcVisitField() {
       const lbl = document.getElementById('bcvisit-lbl');
@@ -35504,50 +35596,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       meshSeatForTest: () => { const s = meshSeat(); if (!s) return null; const T = s.env.TICK; const ck = net.topo.ckey;
         return { tick: T, state: s.state, coord: s.hasCoord ? ck(s.coord) : null, lastAsked: s.lastAsked ? String(s.lastAsked).slice(0, 8) : null, findAckAt: s.findAckAt, retryAgo: T - s.retryAt, seatTries: s.seatTries, roster: (s.roster || []).map((e) => e.k + '=' + String(e.v).slice(0, 6)), greeters: (s.lastGreeters || []).map((g) => String(g).slice(0, 6)), greetersAgo: T - s.greetersAt, lastAckAgo: T - s.lastAck, seatedAgo: T - s.seatedAt,
           occ: [...s.occ.entries()].map(([k, v]) => k + '=' + String(v).slice(0, 6) + (s.firstHandLive(k) ? '!' : '')), sitting: [...s.sitting.entries()].map(([k, v]) => k + '=' + String(v.joiner).slice(0, 6) + '@' + (T - v.at) + (v.pingAt >= 0 ? 'p' : '')), tlLog: (s.tlLog || []).slice(-6), moving: !!s.moving, drainAt: s.drainAt, stranded: !!s.stranded }; },
-      meshTraceForTest: (on) => { const s = meshSeat(); if (!s) return false; if (s.__trace) return true; const G = window.__meshTraceRing || (window.__meshTraceRing = { ring: [], seq: 0 }); const ring = s.__trace = G.ring; Object.defineProperty(s, '__traceSeq', { configurable: true, get: () => G.seq, set: (v) => { G.seq = v; } });   // ONE ring per page: a second Seat object (a restarted node) traces into the same ring, its rows tagged by its serial
-        const KEEP = new Set(['FIND', 'FINDACK', 'PLACE', 'NOROOM', 'HELLO', 'CLAIM', 'SITPING', 'SITPONG', 'YIELD', 'CONFIRM', 'CHALLENGE', 'LEAVE', 'MOVED', 'GREETERS', 'HOME', 'WHOHOME', 'PP', 'PHONE', 'PONG']);
-        // columns: tick, dir, type, peer, cell, nonce, id, link-proven id, s4, list length (GREETERS) / tock (PHONE: the cell the caller believes I hold) / yp (PONG: the hearing PONG ahead of a YIELD) / why (a sent NOROOM: mesh.js noroomWhy)
-        const tag = () => 's' + s.serial + (s.alive ? '' : '!dead'); const push = (dir, m, to) => { if (!KEEP.has(m.t)) return; ring.push([s.env.TICK, dir, m.t, String(to || m.from || '').slice(0, 6), m.ck || (m.coord ? net.topo.ckey(m.coord) : ''), m.nc ? String(m.nc).slice(0, 6) : '', m.id ? String(m.id).slice(0, 6) : '', m.lk ? String(m.lk).slice(0, 6) : '', m.s4ok === true ? 's4' : '', m.list ? m.list.length : (m.t === 'PHONE' ? (m.tock || '') : (m.t === 'PONG' && m.yp === 1 ? 'yp' : (m.t === 'NOROOM' && dir === 'tx' ? String(s.noroomWhy || '').slice(0, 80) : ''))), tag()]); s.__traceSeq++; if (ring.length > 400) ring.shift(); };
-        const r0 = s.recv.bind(s), e0 = s.emit.bind(s); s.recv = (m) => { push('rx', m); s.rivalWhy = null; s.yieldWhy = null; const out = r0(m); if (m && m.t === 'HELLO' && s.rivalWhy) { ring.push([s.env.TICK, 'ev', 'rival', String(m.id || '').slice(0, 6), m.ck || '', '', '', String(s.rivalWhy).slice(0, 40), '', '']); s.__traceSeq++; if (ring.length > 400) ring.shift(); } if (m && m.t === 'YIELD' && s.yieldWhy) { ring.push([s.env.TICK, 'ev', 'yield', String(m.id || '').slice(0, 6), m.ck || '', '', '', String(s.yieldWhy).slice(0, 60), '', '']); s.__traceSeq++; if (ring.length > 400) ring.shift(); } return out; };   // ...and which exit the rival branch took for a HELLO about my own cell (mesh.js rivalWhy)
-        s.emit = (to, m) => { push('tx', m, to); return e0(to, m); };
-        // seat transitions (the frames say what was heard; these say what the seat DID with it): the method, its cell argument, and the calling method
-        for (const fn of ['heal', 'doMove', 'take', 'requeue', 'rollbackMove', 'confirmMove', 'reseatViaRoster']) { const f0 = s[fn]; if (typeof f0 !== 'function') continue; s[fn] = function (...a) { let by = ''; try { const st = String(new Error().stack).split('\n'); const ln = st[2] || ''; const mm = /at (?:Seat\.)?([\w$.]+)/.exec(ln); by = mm ? mm[1] : ''; } catch (e) {} const c = a[0] && typeof a[0] === 'object' && 'pc' in a[0] ? net.topo.ckey(a[0]) : ''; ring.push([s.env.TICK, 'ev', fn, '', c, '', s.hasCoord ? net.topo.ckey(s.coord) : '', by.slice(0, 24), '', '']); s.__traceSeq++; if (ring.length > 400) ring.shift(); return f0.apply(this, a); }; }
-        // ...and any write that names ANOTHER seat at my own cell (my view of my own seat: never someone else's), with its caller
-        { const so0 = s.setOcc; if (typeof so0 === 'function') s.setOcc = function (k, v) { if (s.hasCoord && k === net.topo.ckey(s.coord) && v != null && v !== s.id) { let by = ''; try { const st = String(new Error().stack).split('\n'); const ln = (st[2] || '') + ' ' + (st[3] || ''); const mm = ln.match(/at (?:Seat\.)?([\w$.]+)/g) || []; by = mm.map((x) => x.replace(/^at (?:Seat\.)?/, '')).join('<'); } catch (e) {} ring.push([s.env.TICK, 'ev', 'ownCellTo', String(v).slice(0, 6), k, '', '', by.slice(0, 40), '', '']); s.__traceSeq++; if (ring.length > 400) ring.shift(); } return so0.call(this, k, v); }; }
-        // ...and every Section-1 death verdict a heal rests on, with the evidence it read (live stamp, hole clock, D5 record)
-        { const rc0 = s.ringConfirmDead; if (typeof rc0 === 'function') s.ringConfirmDead = function (h) { const hk = net.topo.ckey(h); const lv = s.live.get(hk), hs = s.holeSince.get(hk), tl = s.translost.get(hk); const r = rc0.call(this, h); if (r) { ring.push([s.env.TICK, 'ev', 'ringDead', String(s.occ.get(hk) || '').slice(0, 6), hk, '', 'live=' + (lv === undefined ? '-' : lv) + ' hole=' + (hs === undefined ? '-' : hs) + ' tl=' + (tl === undefined ? '-' : tl), '', '', '']); s.__traceSeq++; if (ring.length > 400) ring.shift(); } return r; }; }
-        return true; },
-      meshTraceDump: () => { const s = meshSeat(); return s && s.__trace ? s.__trace.slice() : []; },
-      // Seat forensics for the behavior battery's per-actor record (meet.js
-      // snapshotInPage): the clocks and memories that decide a contest, and
-      // the trace ring entries after cursor `since` — the ring's sequence
-      // number as of the caller's last read (`seq` in the answer); the caller
-      // keeps the cursor. A tick is not a cursor: a tick holds many frames.
+      // The seat's decision trace (the sim's JSONL shape {t, s, e, c, d}) rides a page ring while DEBUG is on
+      // (meshTraceSink, the seat world's trace sink); meet.js writes it into each participant's jsonl.
+      meshTraceForTest: () => !!DEBUG_ON,
+      meshTraceDump: () => { const G = window.__meshTraceRing; return G ? G.ring.map((e) => e[1]) : []; },
       meshForensics: (since) => {
-        const s = meshSeat(); if (!s) return null;
+        const G = window.__meshTraceRing || { ring: [], seq: 0 }; const s = meshSeat(); if (!s) return null;
         const six = (x) => (x == null ? null : String(x).slice(0, 6));
         const occ = {}; try { for (const [k, v] of s.occ) occ[k] = six(v); } catch (e) {}
-        const linked = {}; try { for (const [k, v] of s.linkedBy) linked[k] = six(v); } catch (e) {}
-        const live = {}; try { for (const [k, t] of s.live) live[k] = s.env.TICK - t; } catch (e) {}
-        const liveBy = {}; try { for (const [k, v] of s.liveBy) liveBy[k] = six(v); } catch (e) {}
-        const ring = s.__trace || [];
-        const seq = s.__traceSeq || 0;                                    // ring entry i has sequence number seq - ring.length + i
-        const from = (Number.isFinite(since) && since >= 0 && since <= seq) ? since : 0; // a cursor past this ring belongs to an earlier seat object (a rejoin): start over
-        const skip = Math.max(0, ring.length - (seq - from));             // entries with sequence number < from are already recorded
-        return {
-          serial: s.serial, alive: !!s.alive, nodeSerial: meshNode && meshNode.seat === s ? 'current' : 'stale',
-          tick: s.env.TICK, estAt: s.estAt, rookSeenAt: s.rookSeenAt, seatedAt: s.seatedAt, moving: !!s.moving,
-          pendY: s.pendY ? { by: six(s.pendY.by), at: s.pendY.at, ck: s.pendY.ck } : null,
-          rival: s.rival ? { id: six(s.rival.id), at: s.rival.at } : null,
-          rosterAskAt: s.rosterAskAt, challTo: s.challTo ? { id: six(s.challTo.id), at: s.challTo.at } : null,
-          occ, linked, live, liveBy, translost: (() => { const o = {}; try { for (const [k, t] of s.translost) o[k] = t; } catch (e) {} return o; })(),
-          tlLog: (s.tlLog || []).slice(-6),
-          nbrAt: s.nbrAt, admBy: six(s.admBy), greeters: { ids: (s.lastGreeters || []).map(six), age: s.greetersAt == null ? null : s.env.TICK - s.greetersAt },
-          healTry: (() => { const o = {}; try { for (const [k, t] of s.healTry) o[k] = s.env.TICK - t; } catch (e) {} return o; })(),
-          seq, trace: ring.slice(skip),
-        };
+        return { seq: G.seq, tick: s.TICK, state: s.state, coord: s.coord, occ, links: Array.from(s.linkPeers()).map(six), keeps: Array.from(s.keepPeers ? s.keepPeers() : []).map(six),
+          trace: G.ring.filter((e) => e[0] > (since == null ? -1 : since)).map((e) => e[1]), adapter: meshNode && meshNode.adapterStats ? meshNode.adapterStats() : null };
       },
       meshLinks: () => { const s = meshSeat(); return s ? Array.from(s.linkPeers()) : []; },
+      adapterStats: () => (meshNode && meshNode.adapterStats ? meshNode.adapterStats() : null),
+      // DEBUG lever (test/browsertests T3): vote the peer shown under `name` off, as a tap on its vote dot does (L27).
+      voteOffForTest: (name) => { const pid = Object.keys(rosterNames).find((k) => rosterNames[k] === name); if (!pid || !devOf[pid]) return 'no-peer'; if (!myVoteoffs.has(devOf[pid])) toggleVote(pid); try { meshVoteBeat(); } catch (e) {} return 'voted ' + String(pid).slice(0, 6); },   // the seat world's tick/inbox/delay counters (env.js stats)
       // Greeter-list forensics (fragment founding): what onGreeters saw —
       // listLen, decryptable count, relay founded flag, action taken.
       greeterTrace: () => { try { return meshNode && meshNode.greeterTrace ? meshNode.greeterTrace() : []; } catch (e) { return []; } },

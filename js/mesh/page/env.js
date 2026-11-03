@@ -2,13 +2,13 @@
  * env.js: the ported seat's world on a real page (page adapter job A1).
  *
  * The seat (js/mesh/*.js) never touches a pc, a socket, a timer or the DOM. It sees only its world `w`
- * (seat.js THE SEAT'S WORLD): w.TICK, w.lv, w.f (the 52 FABRIC_CALLS), w.trace. This file builds that world over
+ * (seat.js THE SEAT'S WORLD): w.TICK, w.lv, w.f (the 54 FABRIC_CALLS), w.trace. This file builds that world over
  * the page: the 500 ms tick, the inbox, the wake flag, the relay (knock, unlist, busy, nosock), the path a frame
  * takes (the sim's fabricSend, from the sender's own view), and the hand-off to the page's pcs. The pc-lifecycle
  * laws on my end of each pc are pclaws-wire.js's (A2, GifOS.meshPcWire); the socket, signing, sealing and the
  * page's debug face are mesh-wire's (A3). This file decides nothing the laws decide.
  *
- * THE 52 CALLS (seat.js FABRIC_CALLS). Owner: A1 = here; A2 = pclaws-wire.js fns (merged over these at create);
+ * THE 54 CALLS (seat.js FABRIC_CALLS). Owner: A1 = here; A2 = pclaws-wire.js fns (merged over these at create);
  * meas = a measurement in the sim, a no-op here (a DEBUG trace line at most).
  *   call                 owner  page meaning
  *   fabricAdmitLog       meas   admit forensics
@@ -64,6 +64,7 @@
  *   wake                 A1     the wake flag (the sim's active set)
  *   fabricAudit          A1     L27.9 audit frame: sent like any frame (the sim's schedule)
  *   fabricDoorHeard      A2     K5 door heard, my end
+ *   g4Joined             no-op  L40 contest lever (sim only)
  * Seat methods used here: recv, tick, join, absence, route, strictNextHop, linkRole, linkPeers, socketed,
  * occGet, l13On, l13, state/hasCoord/coord/occ/live/farCk/farGw/clkHeld.
  *
@@ -336,7 +337,7 @@
     const noop = () => {};
     const OWN = {
       fabricAdmitLog: noop, fabricDupMint: noop, fabricNoteBackoff: noop, fabricNoteReseat: noop, fabricNoteRollback: noop,
-      fabricNoteSwap: noop, fabricVerdict: noop, l18UxDeliv: noop, descEnd: noop, descNote: noop,
+      fabricNoteSwap: noop, fabricVerdict: noop, l18UxDeliv: noop, descEnd: noop, descNote: noop, g4Joined: noop,   // g4Joined: the sim's L40 contest lever only (X1 55c97d1)
       fabricFreeCells, fabricLieFor: () => null, fabricUnreachable: () => false, fhopActive: () => false, fhopFriendFor: () => false,
       fabricMyTier: () => ((measure.tier ? measure.tier() : E.TIER_DESKTOP) | 0),
       fabricMyNat: () => ((measure.nat ? measure.nat() : E.NAT_OPEN) | 0),

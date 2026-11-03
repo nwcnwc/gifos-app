@@ -1,11 +1,15 @@
 const { test, expect } = require('@playwright/test');
 
-async function boot(page, hash) {
+// The run of show is an optional host template (More > Run of show), off for a
+// new broadcast: a test that needs it picks Worship service first (tpl false = new room).
+async function boot(page, hash, tpl = true) {
   await page.setViewportSize({ width: 1280, height: 720 });
-  await page.addInitScript(() => {
+  const room = (/(?:^|&)v=([^&]+)/.exec(hash) || [])[1] || '';
+  await page.addInitScript((a) => {
     localStorage.setItem('gifos_name', 'Pastor Kim');
     sessionStorage.setItem('gifos_appeared', '1');
-  });
+    if (a.tpl) localStorage.setItem('gifos_rdtpl_' + a.room, 'service');
+  }, { tpl, room });
   await page.goto('/run.html#' + hash, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#leavebtn', { state: 'visible' });
 }
@@ -382,7 +386,7 @@ test('a service has a second song after the Message with its own words', async (
   // Take the before picture first: on base the next line fails.
   await shot('before');
   // The order of service has two songs, the second after the Message.
-  expect(await steps()).toEqual(['Welcome', 'Song 1', 'Break', 'Reading', 'Talk', 'Song 2', 'Closing']);
+  expect(await steps()).toEqual(['Welcome', 'Song 1', 'Prayer', 'Scripture', 'Message', 'Song 2', 'Closing']);
 
   // Before the service, Song words opens song 1.
   await page.click('#rundown #song-edit');
@@ -396,9 +400,9 @@ test('a service has a second song after the Message with its own words', async (
   expect(b.program).toBe(OWN_SONG[0]);
   await page.click('#lyrics-next');
 
-  // During Break, Song words opens the song that comes next.
+  // During Prayer, Song words opens the song that comes next.
   await page.click('#rundown-next');
-  expect(await now()).toBe('Break');
+  expect(await now()).toBe('Prayer');
   await page.click('#rundown #song-edit');
   await expect(page.locator('#songedit-title')).toHaveText('Song words · Song 2');
   const text = page.locator('#song-text');
