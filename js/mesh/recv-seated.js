@@ -537,7 +537,7 @@
         if (oc2) {
           const ok2 = ckey(oc2); const o2 = this.occGet(ok2);
           if (ok2 === ckey(this.coord) || (o2 >= 0 && !this.translost.has(ok2) && (this.firstHandLive(ok2) || this.f.fabricLinkState(id, o2) === E.LS_OPEN))) { a.e1dn = true; a.oCk = ok2; a.owner = (ok2 === ckey(this.coord)) ? id : o2; }
-          else if (ok2 !== ckey(this.coord) && ((this.translost.has(ok2) && this.tlHard.has(ok2) && this.tlHard.get(ok2) && this.translostConfirmed(ok2)) || (o2 < 0 && this.memo.has(ok2) && TICK - this.memo.get(ok2).at <= K.LEASE_T))) { a.hard = true; a.oCk = ok2; a.owner = (o2 >= 0) ? o2 : this.memo.get(ok2).id; }
+          else if (ok2 !== ckey(this.coord) && ((this.translost.has(ok2) && this.tlHard.has(ok2) && this.tlHard.get(ok2) && this.translostConfirmed(ok2)) || (o2 < 0 && this.memo.has(ok2) && TICK - this.memo.get(ok2).at <= K.LEASE_T))) { a.hard = true; a.oCk = ok2; a.owner = (o2 >= 0) ? o2 : ins(this.memo, ok2, () => state.newStruct('Memo')).id; }   // memo[ok2]: inserts a default Memo when the hard loss came by the transport arm
           else if (ok2 !== ckey(this.coord) && o2 < 0 && this.byeAt.has(ok2) && TICK - this.byeAt.get(ok2) <= K.LEASE_T) { a.hard = true; a.oCk = ok2; a.owner = -1; this.trace('BYE-REPORT', id, oc2, 'to=%d', m.id); }
         }
       }   // L1.4 (I10): ...and its GOODBYE, the same way

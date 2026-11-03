@@ -92,16 +92,22 @@ async function main(argv, env) {
       // ---- SERVICE: read commands on stdin, answer on stdout ----
       fab.printf('READY gifos-mesh-sim service\n');
       const rd = require('readline').createInterface({ input: process.stdin, crlfDelay: Infinity });
-      for await (let line of rd) {
-        while (line.endsWith('\r')) line = line.slice(0, -1);
-        const tk = line.split(' ').filter((x) => x.length);   // tokenize on ' ' only
-        if (!tk.length) continue;
-        let cont;
-        try { cont = ops.runOp(tk); } catch (e) {
-          if (tolerant && (e.notPorted || /is not wired/.test(e.message))) { fab.printf('@@SKIP %s: %s\n', tk[0], e.message); continue; }
-          throw e;
+      // fgets(buf, 4096): a line longer than 4095 bytes reaches runOp as several commands, 4095 bytes at a time
+      const pieces = function* (line) { const b = Buffer.from(line + '\n', 'latin1'); for (let off = 0; off < b.length; off += 4095) yield b.subarray(off, off + 4095).toString('latin1'); };
+      let stop = false;
+      for await (const raw of rd) {
+        for (let cmd of pieces(raw)) {
+          while (cmd.endsWith('\n') || cmd.endsWith('\r')) cmd = cmd.slice(0, -1);
+          const tk = cmd.split(' ').filter((x) => x.length);   // tokenize on ' ' only
+          if (!tk.length) continue;
+          let cont;
+          try { cont = ops.runOp(tk); } catch (e) {
+            if (tolerant && (e.notPorted || /is not wired/.test(e.message))) { fab.printf('@@SKIP %s: %s\n', tk[0], e.message); continue; }
+            throw e;
+          }
+          if (!cont) { stop = true; break; }
         }
-        if (!cont) break;
+        if (stop) break;
       }
       rd.close();
     }
