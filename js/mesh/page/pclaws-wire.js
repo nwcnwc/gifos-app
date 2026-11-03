@@ -34,6 +34,7 @@
   const BYE_OF = { 'unneeded': 'unneeded', 'door-close': 'door', 'declined': 'declined', 'voted-off': 'kick', 'leave-close': 'leave' };
   const HARD = (why) => !(why === 'failed-persist' || why === 'disconnected-persist' || why === 'starve' || why === 'starve-dead');
 
+  const NOWHERE = Object.freeze({ pc: 0x7ffffff, r: 0, i: 0 });
   function create(o) {
     const me = o.me, io = o.io, w = o.w;
     const T = () => w.TICK;
@@ -51,7 +52,7 @@
     }
     function farView(x) {
       const st = farSeated(x); const s = mySeat();
-      return { hasCoord: st, state: st ? 3 : 0, ctier: far(x).tier, coord: st && s ? pc.fns.l18Cell(me, x) : null, evilDoor: false };
+      return { hasCoord: st, state: st ? 3 : 0, ctier: far(x).tier, coord: (st && s ? pc.fns.l18Cell(me, x) : null) || NOWHERE, evilDoor: false };   // seated somewhere I cannot place: a cell no seat holds (never null: the laws key it)
     }
     const seats = new Proxy([], { get(t, k) { if (typeof k === 'string' && /^\d+$/.test(k)) { const x = +k; return x === me ? mySeat() : farView(x); } return t[k]; } });
     const alive = new Proxy([], { get(t, k) { if (typeof k === 'string' && /^\d+$/.test(k)) { const x = +k; if (x !== me) return true; const s = mySeat(); return !!s && !s.dead; } return t[k]; } });

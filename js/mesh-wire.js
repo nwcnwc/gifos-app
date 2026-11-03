@@ -937,11 +937,11 @@
         measure: opts.measure || null,
         trace: opts.trace || null,
         onLinks: opts.onLinks || null,
+        onLeft: (reload) => { if (opts.onLeft) { try { opts.onLeft(reload); } catch (e) {} } },
         onTake: () => {},
         onRecv: () => { if (!stopped) netEdge(); },
       });
-      raw = penv.seat || (penv.world && penv.world.seat) || null;
-      if (!raw) { raw = new GifOS.meshSeat.Seat(layer.ids.nid(peer), penv.world); if (penv.attach) penv.attach(raw); }
+      raw = penv.newSeat ? penv.newSeat() : new GifOS.meshSeat.Seat(penv.me, penv.world);   // the seat is mine (A3); env.seat() reads it back
       penv.world.onRecv = () => { if (!stopped) netEdge(); };
       node.seat = seat; node.raw = raw; node.penv = penv; node.__pc = opts.pc || {};
       makeSock();
