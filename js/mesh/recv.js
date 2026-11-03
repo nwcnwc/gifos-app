@@ -37,6 +37,7 @@
   Seat.unit('mesh_seat.inc recv', {
     // C++: mesh_seat.inc:Seat::recv
     recv(m) {
+      if (this.w.onRecv) this.w.onRecv(this, m);   // page adapter seam (the network edge), outside the proof
       const id = this.id, w = this.w, lv = w.lv;
       const TICK = this.TICK;
       if (m.tx >= 0) {   // CLOCKS (0.9.25): the frame's holder-clock fields onto my clock

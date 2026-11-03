@@ -127,6 +127,7 @@
       else { const adm = this.ppAdmitter(c); if (adm >= 0 && adm !== id) { this.ppAskAt = TICK; const m = newMsg('CLAIM'); m.ck = ckey(c); m.id = id; this.emit(adm, m); } }   // PP
       if (c.pc === 0) { this.s1CheckAt = TICK + K.E3_PERIOD + Math.floor(this.rng() * K.E3_PERIOD); this.emitRelay(this.genKey); }   // E3
       this.announce(); this.f.wake(id);
+      if (this.w.onTake) this.w.onTake(this, c);   // page adapter seam (the pre-signed goodbye), outside the proof
     },
 
     // C++: mesh_seat.inc:Seat::announce
