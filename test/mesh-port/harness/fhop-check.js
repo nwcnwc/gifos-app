@@ -10,6 +10,7 @@ const fs = require('fs'), path = require('path'), cp = require('child_process');
 const M = path.join(__dirname, '..', '..', '..', 'js', 'mesh');
 const { createFabric } = require('./fabric.js');
 const { Seat, FREE } = require(path.join(M, 'seat.js'));
+require(path.join(M, 'ring.js'));   // the real islandStandM (and its netgSize hook) before any stand-in
 const msg = require(path.join(M, 'msg.js'));
 const topo = require(path.join(M, 'topo.js'));
 const E = require(path.join(M, 'consts.js')).enums;

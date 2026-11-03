@@ -16,6 +16,7 @@ const hashM = require(path.join(__dirname, '..', '..', '..', 'js', 'mesh', 'hash
 const { ins } = require(path.join(__dirname, '..', '..', '..', 'js', 'mesh', 'util.js'));
 const M = path.join(__dirname, '..', '..', '..', 'js', 'mesh');
 const { Seat } = require(path.join(M, 'seat.js'));
+require(path.join(M, 'ring.js'));   // the real islandStandM (and its netgSize hook) before any stand-in
 const msg = require(path.join(M, 'msg.js'));
 const topo = require(path.join(M, 'topo.js'));
 
