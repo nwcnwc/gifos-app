@@ -14179,6 +14179,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function dropPeer(peerId, stillHere) {
       const p = peers.get(peerId);
       if (!p) return;
+      // A pc the page closes on its own (not the seat's world asking) is news to the pc laws.
+      if (!leaving && !(p.envClosing && Date.now() - p.envClosing < 5000)) { try { if (meshNode && meshNode.transport) meshNode.transport(peerId, 'pc-closed'); } catch (e) {} }
       clearTimeout(p.hiLate);
       try { if (p.doorRetry) clearTimeout(p.doorRetry); } catch (e) {}
       p.doorRetry = 0;
@@ -16870,8 +16872,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // The seat's pcs (js/mesh/page/env.js calls these; it decides, the page carries out).
         pc: {
           ensure: (pid, o) => { if (!pid || pid === myId) return; seatAskAt.set(pid, Date.now()); if (seatAskAt.size > 256) seatAskAt.delete(seatAskAt.keys().next().value); const s = meshSeat(); if (!(s && s.hasCoord && s.state === 3)) bootDial(pid); else ensureLink(pid); },
-          bye: (pid, why) => { const p = peers.get(pid); if (!p) return; if (why && p.dc && p.dc.readyState === 'open') { try { dcSend(p, { k: 'pcbye', why }); } catch (e) {} } p.byeSent = Date.now(); seatAskAt.delete(pid); if (typeof clog === 'function') clog('pcbye-out ' + String(pid).slice(0, 6) + ' ' + why); setTimeout(() => { if (peers.get(pid) === p && !linkTo(pid)) dropPeer(pid, true); }, 300); },
-          close: (pid, why) => { seatAskAt.delete(pid); const p = peers.get(pid); if (!p) return; if (typeof clog === 'function') clog('pcclose ' + String(pid).slice(0, 6) + ' ' + (why || '')); if (!linkTo(pid)) dropPeer(pid, true); },
+          bye: (pid, why) => { const p = peers.get(pid); if (!p) return; if (why && p.dc && p.dc.readyState === 'open') { try { dcSend(p, { k: 'pcbye', why }); } catch (e) {} } p.byeSent = Date.now(); p.envClosing = Date.now(); seatAskAt.delete(pid); if (typeof clog === 'function') clog('pcbye-out ' + String(pid).slice(0, 6) + ' ' + why); setTimeout(() => { if (peers.get(pid) === p && !linkTo(pid)) dropPeer(pid, true); }, 300); },
+          close: (pid, why) => { seatAskAt.delete(pid); const p0 = peers.get(pid); if (p0) p0.envClosing = Date.now(); const p = peers.get(pid); if (!p) return; if (typeof clog === 'function') clog('pcclose ' + String(pid).slice(0, 6) + ' ' + (why || '')); if (!linkTo(pid)) dropPeer(pid, true); },
           state: (pid) => { const p = peers.get(pid); return p ? { pc: p.pc ? p.pc.connectionState : 'none', dc: p.dc ? p.dc.readyState : 'none', heardAt: p.lastRx || 0 } : null; },
         },
         relayBusy: (pid, body) => { relaySendSealed(pid, 'busy', Object.assign({ k: 'busy' }, body)); },
@@ -35542,7 +35544,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           trace: G.ring.filter((e) => e[0] > (since == null ? -1 : since)).map((e) => e[1]), adapter: meshNode && meshNode.adapterStats ? meshNode.adapterStats() : null };
       },
       meshLinks: () => { const s = meshSeat(); return s ? Array.from(s.linkPeers()) : []; },
-      adapterStats: () => (meshNode && meshNode.adapterStats ? meshNode.adapterStats() : null),   // the seat world's tick/inbox/delay counters (env.js stats)
+      adapterStats: () => (meshNode && meshNode.adapterStats ? meshNode.adapterStats() : null),
+      // DEBUG lever (test/browsertests T3): vote the peer shown under `name` off, as a tap on its vote dot does (L27).
+      voteOffForTest: (name) => { const pid = Object.keys(rosterNames).find((k) => rosterNames[k] === name); if (!pid || !devOf[pid]) return 'no-peer'; if (!myVoteoffs.has(devOf[pid])) toggleVote(pid); try { meshVoteBeat(); } catch (e) {} return 'voted ' + String(pid).slice(0, 6); },   // the seat world's tick/inbox/delay counters (env.js stats)
       // Greeter-list forensics (fragment founding): what onGreeters saw —
       // listLen, decryptable count, relay founded flag, action taken.
       greeterTrace: () => { try { return meshNode && meshNode.greeterTrace ? meshNode.greeterTrace() : []; } catch (e) { return []; } },

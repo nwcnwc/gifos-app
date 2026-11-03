@@ -312,7 +312,7 @@
       // reachability is worse than silence.
     }
     const env = { TICK: 0 };   // legacy face (stats, debug): TICK mirrors the seat world's
-    function sendFrameTo(to, m) {   // a seat frame for peer `to`: encode, sign if mine, keep per-peer order
+    function sendFrameTo(to, m, dir) {   // a seat frame for peer `to`: encode, sign if mine, keep per-peer order
       const msgM = GifOS.meshMsg;
       let f; try { f = msgM.writeMsg(m); } catch (e) { return false; }
       const claim = claimOf(m), core = claim >= 0 ? coreOf(msgM, m) : null;
@@ -322,7 +322,7 @@
         if (!blk) { const ts = Date.now(); blk = net.edSign(identity.priv, JSON.stringify({ v: 3, c: core, ts })).then((sig) => ({ ts, sig, pub: identity.pubB64 })); sigOf.set(core, blk); if (sigOf.size > 1024) sigOf.delete(sigOf.keys().next().value); }
       } else if (claim >= 0) blk = sigOf.get(core) || null;
       const prev = outq.get(to) || Promise.resolve();
-      const q = prev.then(() => blk).then((s4) => { if (stopped && m.t !== 'LEAVE') return; const out = { t: 'MW2', f }; if (s4) out.s4 = s4; deliver(to, out); }).catch(() => {});
+      const q = prev.then(() => blk).then((s4) => { if (stopped && m.t !== 'LEAVE') return; const out = { t: 'MW2', f }; if (s4) out.s4 = s4; if (dir && typeof dir === 'object') out.dir = dir; deliver(to, out); }).catch(() => {});
       outq.set(to, q); q.then(() => { if (outq.get(to) === q) outq.delete(to); });
       return true;
     }
@@ -331,6 +331,13 @@
     // never reorders a sender's frames); a good frame is delivered with m.s4ok
     // stamped and its key pinned, a forged one is dropped. Non-signed frames and
     // S4-off nodes pass straight through — the structural path is untouched.
+    // The directory a frame carries ({int: peer} for the seats it names; env.js checks each entry).
+    function dirOf(d) {
+      if (!d || typeof d !== 'object' || Array.isArray(d)) return null;
+      const out = {}; let n = 0;
+      for (const k of Object.keys(d)) { if (++n > 32) break; const v = d[k]; if (/^\d{1,7}$/.test(k) && typeof v === 'string' && v.length <= 64) out[k] = v; }
+      return out;
+    }
     function ingest(m, via, direct) {
       if (stopped || !raw || !m || typeof m !== 'object') return;
       if (typeof opts.excluded === 'function') {
@@ -346,7 +353,7 @@
         const msgM = GifOS.meshMsg; let f;
         try { f = msgM.readMsg(m.f); } catch (e) { return; }
         const claim = claimOf(f), dir = direct === true;
-        const done = (ok) => { if (stopped) return; if (!ok) { f.sig = false; f.fsig = false; if (f.fo >= 0 && f.t !== 'FINDLEAF') f.fo = -1; } penv.frame(f, String(via), dir); };
+        const done = (ok) => { if (stopped) return; if (!ok) { f.sig = false; f.fsig = false; if (f.fo >= 0 && f.t !== 'FINDLEAF') f.fo = -1; } penv.frame(f, String(via), dirOf(m.dir)); };
         if (claim < 0) { verifyChain(() => Promise.resolve().then(() => done(true))); return; }
         const s4 = m.s4;
         if (!s4 || typeof s4.sig !== 'string' || typeof s4.pub !== 'string' || !Number.isFinite(s4.ts)) { verifyChain(() => Promise.resolve().then(() => done(false))); return; }
@@ -927,7 +934,7 @@
       seat = layer.view;
       penv = GifOS.meshPageEnv.create({
         peer, ids: layer.ids, seat: () => raw,
-        pc: Object.assign({}, opts.pc || {}, { send: (to, m) => ((typeof opts.dcOpen !== 'function' || opts.dcOpen(to)) ? sendFrameTo(to, m) : false) }),
+        pc: Object.assign({}, opts.pc || {}, { send: (to, m, dir) => ((typeof opts.dcOpen !== 'function' || opts.dcOpen(to)) ? sendFrameTo(to, m, dir) : false) }),
         relay: {
           knock: (gk, blobOk) => { const k = raw && raw.genKey ? String(raw.genKey) : myKey; if (blobOk && iAmAGreeter()) REGISTER_MYSELF_AS_A_GREETER(gk || k); else KNOCK_FOR_THE_GREETER_LIST(gk || k); },
           unlist: () => sendRaw({ t: 'unlist' }),
