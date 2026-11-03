@@ -1,0 +1,5 @@
+{
+  "title": "App Store",
+  "why": "Diese App ist fest in GifOS eingebaut. Gewöhnliche Apps dürfen nichts auf Ihren\nStartbildschirm legen; deshalb öffnet dieses Symbol die integrierte Store-Seite, statt hier zu laufen.",
+  "open": "Öffnen Sie dieses GIF auf Ihrem Startbildschirm unter <code>gifos.app</code>, um Apps zu entdecken."
+}
