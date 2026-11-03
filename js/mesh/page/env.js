@@ -195,7 +195,7 @@
     function learnPeer(peer) { const x = ID.learn(peer); if (x < 0 && peer) { st.idCollide++; trace('ENV-IDCOLLIDE', me, null, 'id=%d', ID.nid(peer)); } return x; }
 
     // ---- io for the pc laws (A2) --------------------------------------------------------------------------------
-    const dialFailLater = [];
+    const dialFailLater = [], lostLater = new Set();
     const io = {
       dial(x, mark) {
         const p = ID.pid(x);
@@ -206,7 +206,10 @@
         const p = ID.pid(x); if (!p || !pc.send) { drop('nopeer'); return false; }
         if (m && m.t !== 'pcbye') wireTx(m);
         st.tx++;
-        return pc.send(p, m, m && m.t !== 'pcbye' ? dirFor(m) : null) !== false;
+        const ok = pc.send(p, m, m && m.t !== 'pcbye' ? dirFor(m) : null) !== false;
+        // the page tore this pc down without telling me (its own dropPeer): its dc is gone, so my end saw it close
+        if (!ok && pc.state) { const ps = pc.state(p); if (!ps || ps.dc !== 'open') { drop('send-closed'); lostLater.add(x); } }
+        return ok;
       },
       close(x) { const p = ID.pid(x); if (p && pc.close) pc.close(p); },
       // the page seam that sends {k:'pcbye', why} on the dc and closes my end (A3); without it A2 sends pcbye itself
@@ -370,6 +373,8 @@
       const s = seat();
       if (closeAt >= 0 && w.TICK >= closeAt) { closeAt = -1; if (pcw.leaveAll) pcw.leaveAll(); }
       while (dialFailLater.length) { const x = dialFailLater.shift(); if (pcw.dialFailed) pcw.dialFailed(x); }
+      for (const x of lostLater) { if (sink) trace('ENV-SENDCLOSED', me, null, 'peer=%d', x); if (pcw.lost) pcw.lost(x, 'dc-close'); }
+      lostLater.clear();
       if (pcw.tick) guard('pcw.tick', pcw.tick)();
       if (s && !dead) {
         const due = [];
@@ -474,11 +479,19 @@
       busAt(w.TICK, d);
     }
 
+    // the page's leave (A3 node.leave calls this, then stops the clock): the seat's goodbyes go out on the open dcs
+    // first (emit sends at once), then a pcbye{leave} on every pc, now: no later tick will run to do it
+    function leave(reload) {
+      const s = seat(); if (!s || s.dead) return;
+      guard('seat.leave', () => s.leave(!!reload))();
+      if (!dead) leaveNow(!!reload);
+      closeAt = -1; if (pcw.leaveAll) guard('pcw.leaveAll', pcw.leaveAll)();
+    }
     function absence(n) { const s = seat(); if (s && !dead && n > 0) s.absence(n); }
     function stats() { return Object.assign({ tick: w.TICK, me, ids: ID.size(), woken, dead }, JSON.parse(JSON.stringify(st))); }
 
     const env = {
-      me, world: w, traces: () => ring.slice(), ids: ID, f: F, pcw, tick, frame, transport, relayFrame, absence, stats, links,
+      me, world: w, traces: () => ring.slice(), ids: ID, f: F, pcw, tick, frame, transport, relayFrame, absence, leave, stats, links,
       dirFor, learnDir, relayBusyList,
       // the mark my answer to peer carries back to it (A2), for the pc layer's answer
       mark: (peer) => { const x = ID.pid(ID.nid(peer)) === String(peer) ? ID.nid(peer) : learnPeer(peer); return x >= 0 && pcw.mark ? pcw.mark(x) : null; }, farView: (to) => farView(seat(), to),

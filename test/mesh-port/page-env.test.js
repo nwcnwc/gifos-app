@@ -66,9 +66,10 @@ function room(opts) {
         send: (to, m, dir) => {
           const c = pcs.get(key(peer, to)); if (!c || c.state !== 'open') return false;
           const q = pages.get(to); const f = wire(m); const d = dir ? JSON.parse(JSON.stringify(dir)) : null;
-          later.push([T, () => { const c2 = pcs.get(key(peer, to)); if (c2 && c2.state === 'open') q.env.frame(f, peer, d); }]);
+          later.push([T, () => { const c2 = pcs.get(key(peer, to)); if (c2 === c || !c2) q.env.frame(f, peer, d); }]);   // an ordered dc delivers what was sent before its close
           return true;
         },
+        state: (to) => { const c = pcs.get(key(peer, to)); return c ? { pc: c.state, dc: c.state === 'open' ? 'open' : 'connecting' } : null; },
         close: (to) => {
           const k = key(peer, to); const c = pcs.get(k); if (!c || c.state === 'closed') return;
           const wasOpen = c.state === 'open'; c.state = 'closed'; pcs.delete(k);
@@ -197,8 +198,12 @@ test('room of 3: one leaves; the others keep their seats and log LINK-DOWN or a 
   const { R } = seatRoom(3, 1200);
   assert.strictEqual(R.seated().length, 3);
   const [A, B, C] = [...R.pages.values()];
-  C.seat.leave();
+  C.env.leave(false); C.env.tick = () => {};   // the page stops its clock right after leave (mesh-wire node.stop)
   R.run(200);
+  const byes = [A, B].map((p) => p.traces.filter((l) => l.includes('PC-BYE-IN')).length), downs = [A, B].map((p) => p.traces.filter((l) => l.includes('"LINK-DOWN"')).length);
+  console.log('  leave: goodbyes heard ' + byes.join(',') + ', LINK-DOWN ' + downs.join(','));
+  assert(byes.every((n) => n >= 1), 'each survivor hears the pcbye');
+  assert(downs.every((n) => n === 0), 'a goodbye is no loss');
   assert.strictEqual(C.left, 'leave', 'onLeft called');
   assert(A.seat.state === 3 && B.seat.state === 3, 'survivors seated');
   const errs = [A, B].map((p) => p.env.stats().lawErr).filter((e) => Object.keys(e).length);
@@ -218,6 +223,18 @@ test('room of 4: one crashes (pcs die without a goodbye, socket gone); survivors
   console.log('  crash: freed in ' + t + ' ticks; loss trace lines per survivor ' + down.join(','));
   assert(rest.every((p) => p.seat.state === 3), 'survivors seated');
   assert(rest.every((p) => ![...p.seat.occ.values()].includes(C.env.me)), 'the crashed seat is out of every view');
+});
+
+test('room of 3: the page drops a pc without telling the env; the next failed send closes my end (no frames into a dead dc)', () => {
+  const { R } = seatRoom(3, 1200);
+  const [A, B] = [...R.pages.values()];
+  const k = A.peer < B.peer ? A.peer + '|' + B.peer : B.peer + '|' + A.peer;
+  R.pcs.delete(k);   // the page's own dropPeer: no transport event to either env
+  R.run(60);
+  const sa = A.env.stats().drops['send-closed'] || 0, sb = B.env.stats().drops['send-closed'] || 0;
+  console.log('  silent drop: send-closed ' + sa + '/' + sb + ', ENV-SENDCLOSED lines ' + A.traces.filter((l) => l.includes('ENV-SENDCLOSED')).length);
+  assert(sa + sb > 0 && sa <= 2 && sb <= 2, 'each end notices within a send or two: ' + sa + '/' + sb);
+  assert(R.seated().length === 3, 'all still seated');
 });
 
 test('tick shape: every dc frame is delivered at the first tick boundary after it arrived (never later, never mid-tick)', () => {
