@@ -55,6 +55,7 @@
     L10_EARLY_GAP: 2,         // L10: a seat sends a state message early (its content changed) at most once per this many ticks (1 s); an early send resets the regular beat
     L10_NEW_WAIT: 16,         // L10: a report from a seat new at that cell is passed up early only after this many ticks (a mover's old cell has been vacated by then: it is not counted twice)
     L11_ARRIVE: 32,           // L11: a seat that took its cell less than this long ago is an ARRIVAL: a live rival holder of its cell heard first-hand wins over it at once (two claim windows: a move's claim and the witness's answer)
+    L13_CHAIN_MAX: 6,         // L13.15: a mass-leave witness chain holds this many cells (owner, its witness, ...): enough to reach the home cell from depth 4
     L29_ACCUSE: 120,          // L29.4: a receiver complains (signed, to the seat itself) only after the seat's own feed has starved this long (a minute): longer than the ladder takes to shed and to move
     L29_ASK_T: 8,             // L29.1: a seat that has shed both classes this long asks its row head to move it to a cell that carries less (one beat)
     L29_BEAT: 16,             // L29.3: a light seat repeats its word to its head this often (two beats); the head forgets the word after three of these
@@ -113,7 +114,6 @@
     RELAY_SEEN: 4,            // door relay: hand-off window per seeker (ticks)
     RELAY_TTL: 500,           // greeter entry lifetime at the door (ticks)
     RELOAD_MARK_T: 40,        // L3.11: a goodbye marked reload makes the closes that follow it from the same seat a lease (quiet), not a hard loss, for this many ticks (a close lags the goodbye by a link delay or a relay beat)
-    RING_HOLD: 220,           // H1-S1: a Section-1 cell is refilled only after its occupant is unreachable on every rook path this long
     SIT_PING_WAIT: 15,        // V4: a silent vouch is freed only after a SITPING went unanswered this long
     SIT_RECHECK: 25,          // admitter re-check cadence for a sitting-down mark
     SIT_TTL: 90,              // soft sitting-down mark backstop
@@ -125,6 +125,5 @@
     TALK_ON: 4,               // L6.2: a seat talks this long before it enters the stage set
     TENURE: 40,               // S2: a seat heard at its cell this long is its incumbent
     UNPROVEN_HOLD: 60,        // H6: an unproven pairing past this age lives only on probe answers
-    UNP_SIGN: 16,             // G10: after two unproven beats from a peer, digest frames to it are signed
   });
 })(typeof window !== 'undefined' ? window : globalThis);

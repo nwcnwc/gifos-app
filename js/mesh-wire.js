@@ -335,10 +335,11 @@
     // stamped and its key pinned, a forged one is dropped. Non-signed frames and
     // S4-off nodes pass straight through — the structural path is untouched.
     // The directory a frame carries ({int: peer} for the seats it names; env.js checks each entry).
-    function dirOf(d) {   // keys are seat ids: up to 2^52, so up to 16 digits
+    // A seat id is up to 52 bits (env.js ID_BITS): 16 decimal digits.
+    function dirOf(d) {
       if (!d || typeof d !== 'object' || Array.isArray(d)) return null;
       const out = {}; let n = 0;
-      for (const k of Object.keys(d)) { if (++n > 32) break; const v = d[k]; if (/^\d{1,16}$/.test(k) && typeof v === 'string' && v.length <= 64) out[k] = v; }
+      for (const k of Object.keys(d)) { if (++n > 32) break; const v = d[k]; if (/^\d{1,16}$/.test(k) && Number(k) < 2 ** 52 && typeof v === 'string' && v.length <= 64) out[k] = v; }
       return out;
     }
     function ingest(m, via, direct) {
@@ -383,7 +384,8 @@
         delete m.lk; delete m.s4ok;
         if (direct === true && via != null) m.lk = via;
         if (via != null && m.from == null) m.from = via;
-        if (gpending.has(m.gid)) return;
+        if (layer.seen && layer.seen(m.gid)) return;   // a copy of a frame already taken: dedup BEFORE paying for a verification
+        if (gpending.has(m.gid)) return;   // one whose verification is in flight
         gpending.add(m.gid);
         gossipChain(() => ident.verifyGossip(gpins, m).then((v) => {
           gpending.delete(m.gid);

@@ -168,7 +168,7 @@
     L12_QUIET: 7000,   // C++: mesh_seat.inc:L12_QUIET
     L12_HOLD: 1200,   // C++: mesh_seat.inc:L12_HOLD
     L12_OPEN_END: 2700,   // C++: mesh_seat.inc:L12_OPEN_END
-    L13_CHAIN_MAX: 6,   // C++: mesh_heal.inc:L13_CHAIN_MAX
+    L13_CHAIN_MAX: 6,   // C++: mesh_heal.inc:L13_CHAIN_MAX  (LAW_L13_CHAIN_MAX)
     L16_EVIL_EVERY: 8,   // C++: mesh_island.inc:L16_EVIL_EVERY
     L16_FAN: 1,   // C++: mesh_island.inc:L16_FAN
     L16_WAVE: 12,   // C++: mesh_island.inc:L16_WAVE
@@ -427,6 +427,10 @@
     L23PENDT: -1,   // C++: mesh_link.inc:L23PENDT
     L14_REFUSED: 0,   // C++: mesh_link.inc:L14_REFUSED
     L1611_SHED: 0,   // C++: mesh_rcfollow_fab.inc:L1611_SHED
+    G4_HOLE: 0,   // C++: mesh_gaps4_fab.inc:G4_HOLE
+    G4_A: -1,   // C++: mesh_gaps4_fab.inc:G4_A
+    G4_B: -1,   // C++: mesh_gaps4_fab.inc:G4_B
+    G4_AT: -1,   // C++: mesh_gaps4_fab.inc:G4_AT
     KNOCK_T: -1,   // C++: mesh_net.inc:KNOCK_T
     KNOCK_N: 0,   // C++: mesh_net.inc:KNOCK_N
     KNOCK_PEAK: 0,   // C++: mesh_net.inc:KNOCK_PEAK
