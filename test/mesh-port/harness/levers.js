@@ -178,7 +178,87 @@ function install(fab) {
     }
   }
 
-  fab.plug({ linkLever, radioLever, keepLever, linksetLever, timeLever, l30Stat });
-  return { linkLever, radioLever, keepLever, linksetLever, timeLever, l30Stat };
+  // ---- the net levers (mesh_net.inc): the state change is net.js's; the sim's checks and lines are here ---------------
+  const net = fab.net;
+  const GT = E;
+  // C++: mesh_net.inc:parseGroup
+  const parseGroup = (t) => {
+    const a = t.indexOf(':'); if (a < 0) return null; const b = t.indexOf(':', a + 1); if (b < 0) return null;
+    const g = { name: t.slice(0, a), type: 0, size: 0, iso: false }; const ty = t.slice(a + 1, b); let rest = t.slice(b + 1);
+    const c = rest.indexOf(':'); if (c >= 0) { g.iso = rest.slice(c + 1) === 'iso'; rest = rest.slice(0, c); }
+    g.size = atoi(rest); if (ty !== 'blocked' && ty !== 'symmetric' && ty !== 'sym' && ty !== 'public') return null;
+    return g;
+  };
+  const grpByName = (n) => { for (let g = 0; g < fab.NETG.length; g++) if (fab.NETG[g].name === n) return g; return -1; };
+  const grpOf = (id) => (id >= 0 && id < fab.SEATGRP.length) ? fab.SEATGRP[id] : -1;
+  const islandName = () => (lv.ISLAND_MODE === 1 ? 'found' : lv.ISLAND_MODE === 2 ? 'strand' : 'off');
+  // C++: mesh_net.inc:islandsReport
+  function islandsReport(since) {
+    const ids = []; for (let q = 0; q < lv.nextId; q++) if (alive[q] && seats[q].state === 3 && seats[q].hasCoord) ids.push(q);
+    const par = new Map(); for (const q of ids) par.set(q, q);
+    const f = (x) => { while (par.get(x) !== x) { par.set(x, par.get(par.get(x))); x = par.get(x); } return x; };
+    for (const q of ids) for (const [ek, x] of seats[q].occ) {
+      if (x < 0 || x === q || !par.has(x)) continue; if (ckey(seats[x].coord) !== ek || !X.grpReach(q, x)) continue;
+      const a = f(q), b = f(x); if (a !== b) par.set(a, b);
+    }
+    const isl = new Map(); for (const q of ids) { const r = f(q); if (!isl.has(r)) isl.set(r, []); isl.get(r).push(q); }
+    const keys = [...isl.keys()].sort((a, b) => a - b);   // a std::map<int,...>
+    const born = []; for (const k of keys) { let b = -1; for (const q of isl.get(k)) if (q < fab.FIRSTSEAT.length && fab.FIRSTSEAT[q] >= 0 && (b < 0 || fab.FIRSTSEAT[q] < b)) b = fab.FIRSTSEAT[q]; born.push(b < 0 ? 0 : b); }
+    born.sort((a, b) => a - b); if (born.length >= 2) since = Math.max(since, born[1]);
+    let unseated = 0, stranded = 0; for (let q = 0; q < lv.nextId; q++) if (alive[q] && seats[q].state !== 3) { unseated++; if (seats[q].stranded) stranded++; }
+    P('ISLANDS split=%lld n=%zu seated=%zu unseated=%d stranded=%d relay: knocks=%lld signal=%lld nondoor=%lld refused=%lld cuts=%lld drops=%lld\n', since, isl.size, ids.length, unseated, stranded, lv.RELAY_KNOCKS, lv.RELAY_SIGNAL, lv.RELAY_NONDOOR, lv.RELAY_REFUSED, lv.RELAY_CUTS, lv.NET_DROPS);
+    let k = 0;
+    for (const key of keys) {
+      const m = isl.get(key); const cells = new Set(), s1 = new Set(); let dups = 0, homes = 0, gre = 0, forked = 0, forkMax = -1; const jt = []; const grp = new Map();
+      for (const q of m) {
+        const c = ckey(seats[q].coord); if (cells.has(c)) dups++; else cells.add(c);
+        if (seats[q].coord.pc === 0) { s1.add(c); gre++; if (seats[q].forkAt >= 0) { forked++; const ref = Math.max(since, seats[q].seatedAt); forkMax = Math.max(forkMax, seats[q].forkAt - ref); } }
+        if (c === 0) homes++; grp.set(grpOf(q), (grp.get(grpOf(q)) || 0) + 1);
+        if (q < fab.FIRSTSEAT.length && fab.FIRSTSEAT[q] >= 0 && fab.SPAWNT[q] >= 0) jt.push(fab.FIRSTSEAT[q] - fab.SPAWNT[q]);
+      }
+      jt.sort((a, b) => a - b); const p95 = jt.length ? jt[Math.min(jt.length - 1, Math.trunc((jt.length * 95 + 99) / 100) - 1)] : -1;
+      let gs = ''; for (const g of [...grp.keys()].sort((a, b) => a - b)) { if (gs) gs += ','; gs += (g >= 0 && g < fab.NETG.length ? fab.NETG[g].name : '-') + ':' + grp.get(g); }
+      P('ISLAND %d size=%zu s1=%zu homes=%d dups=%d greeters=%d forked=%d forkMax=%lld joinP95=%lld groups=%s\n', k++, m.length, s1.size, homes, dups, gre, forked, forkMax, p95, gs);
+    }
+  }
+  // C++: mesh_net.inc:netLever
+  function netLever(tk) {
+    const op = tk[0];
+    if (op === 'netgroups') {
+      let bad = null; for (let z = 1; z < tk.length; z++) { const t = tk[z]; if (t.startsWith('arrival=')) continue; if (t === 'off') break; if (!parseGroup(t)) { bad = t; break; } }
+      net.lever(tk);
+      if (bad !== null) { P('ERR netgroups: bad group %s (NAME:blocked|symmetric|public:SIZE[:iso])\n', bad); return; }
+      let sum = 0; for (const g of fab.NETG) sum += g.size;
+      P('OK netgroups %zu groups, %d seats, arrival=%s, island=%s\n', fab.NETG.length, sum, fab.NET_ARRIVAL, islandName());
+    } else if (op === 'island') { net.lever(tk); const a = tk.length > 1 ? tk[1] : 'found'; P('OK island %s (now %s)\n', a, islandName()); }
+    else if (op === 'netjoin') {
+      if (!lv.NETGRP) { P('ERR netjoin needs netgroups\n'); return; }
+      const a = tk.length > 1 ? tk[1] : ''; let g = -1, k = 0; const ng = parseGroup(a);
+      if (ng) { g = grpByName(ng.name); if (g < 0) { k = ng.size; g = fab.NETG.length; } else k = ng.size; } else { g = grpByName(a); k = tk.length > 2 ? atoi(tk[2]) : 1; }
+      if (g < 0 || k <= 0) { P('ERR usage: netjoin NAME:type:SIZE | netjoin NAME K\n'); return; }
+      net.lever(tk); P('OK netjoin %d in %s (ids %d..%d), N now %d\n', k, fab.NETG[g].name, lv.nextId - k, lv.nextId - 1, lv.N);
+    } else if (op === 'netmove') {
+      const id = tk.length > 1 ? atoi(tk[1]) : -1; const g = tk.length > 2 ? grpByName(tk[2]) : -1;
+      if (!lv.NETGRP || id < 0 || id >= lv.nextId || !alive[id] || g < 0) { P('ERR usage: netmove <live id> <group>\n'); return; }
+      net.lever(tk); P('OK netmove %d -> %s\n', id, fab.NETG[g].name);
+    } else if (op === 'netcut' || op === 'netlift') {
+      const a = tk.length > 1 ? grpByName(tk[1]) : -1, b = tk.length > 2 ? grpByName(tk[2]) : -1;
+      if (!lv.NETGRP || a < 0 || b < 0 || a === b) { P('ERR usage: %s <group> <group>\n', op); return; }
+      net.lever(tk); P('OK %s %s %s\n', op, fab.NETG[a].name, fab.NETG[b].name);
+    } else if (op === 'relaystat') {
+      if (tk.length > 1) lv.RELAYSTAT = (tk[1] === 'on' || tk[1] === '1');
+      P('RELAYSTAT on=%d knocks=%lld signal=%lld nondoor=%lld refused=%lld cuts=%lld drops=%lld\n', lv.RELAYSTAT ? 1 : 0, lv.RELAY_KNOCKS, lv.RELAY_SIGNAL, lv.RELAY_NONDOOR, lv.RELAY_REFUSED, lv.RELAY_CUTS, lv.NET_DROPS);
+    } else if (op === 'netfind') {   // netfind <group> <path>/<r>.<i>: the seat of that group at that cell
+      const g = tk.length > 1 ? grpByName(tk[1]) : -1; const a = tk.length > 2 ? tk[2] : ''; const sl = a.indexOf('/'); const dt = sl < 0 ? -1 : a.indexOf('.', sl);
+      if (g < 0 || sl < 0 || dt < 0) { P('ERR usage: netfind <group> <path>/<r>.<i>\n'); return; }
+      let pc = 0; for (const ch of a.slice(0, sl)) pc = topo.childPath(pc, ch.charCodeAt(0) - 48);
+      const k = ckey({ pc, r: atoi(a.slice(sl + 1, dt)), i: atoi(a.slice(dt + 1)) });
+      let who = -1; for (let q = 0; q < lv.nextId; q++) if (alive[q] && grpOf(q) === g && seats[q].hasCoord && seats[q].state === 3 && ckey(seats[q].coord) === k) { who = q; break; }
+      P('NETFIND %s %s -> seat %d\n', tk[1], a, who);
+    } else if (op === 'islands') islandsReport(tk.length > 1 ? atoll(tk[1]) : 0);
+  }
+
+  fab.plug({ linkLever, radioLever, keepLever, linksetLever, timeLever, l30Stat, netLever });
+  return { linkLever, radioLever, keepLever, linksetLever, timeLever, l30Stat, netLever, islandsReport };
 }
 module.exports = { install };

@@ -78,7 +78,7 @@ function createOps(fab, opts) {
   require('./ring_fab.js').install(fab);
   require('./hostile.js').install(fab);
   require('./lguard.js').install(fab);
-  if (fab.link && fab.time) require('./levers.js').install(fab);   // the printing levers need the link and time units (installed by the caller: main.js)
+  if (fab.link && fab.time && fab.net) require('./levers.js').install(fab);   // the printing levers need the link and time units (installed by the caller: main.js)
 
   // "<path>/<r>.<i>" -> a Coord, or null (the C++ find / dark / killat idiom)
   function parseCell(a) {
