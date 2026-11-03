@@ -68,7 +68,7 @@ function install(fab) {
   let LPENDCLOSE = api.LPENDCLOSE = [];
   const LDOORS = api.LDOORS = new Set();        // a std::set<uint64_t>: iterated in ascending order (see sortedDoors)
   const LSTAT = api.LSTAT = new Array(8).fill(0);
-  const TIEROVR = api.TIEROVR = new Map();
+  const TIEROVR = api.TIEROVR = fab.TIEROVR = fab.TIEROVR || new Map();   // one table with tierfab.js and the spawn verb (fab.TIEROVR)
   const MOBOPEN = api.MOBOPEN = new Map();
   let DOOR_PEND = api.DOOR_PEND = [];
   const L1341_OPENED = api.L1341_OPENED = new Set();
