@@ -1,0 +1,23 @@
+{
+  "title": "Pintura",
+  "tool.brush.title": "Pincel (B)",
+  "tool.brush.aria": "Pincel",
+  "tool.erase.title": "Borrador (E)",
+  "tool.erase.aria": "Borrador",
+  "tool.fill.title": "Relleno (G)",
+  "tool.fill.aria": "Relleno",
+  "tool.pick.title": "Cuentagotas (I)",
+  "tool.pick.aria": "Cuentagotas",
+  "custom.title": "Color personalizado",
+  "size.title": "Tamaño del pincel",
+  "undo.title": "Deshacer (Ctrl+Z)",
+  "undo.aria": "Deshacer",
+  "redo.title": "Rehacer (Ctrl+Mayús+Z)",
+  "redo.aria": "Rehacer",
+  "clear": "Borrar",
+  "hint": "Dibuja en la página. Deshacer está en la barra. La imagen vive en este icono: usa Invitar para dibujar en grupo.",
+  "ask.text": "¿Borrar la imagen? Esta acción no se puede deshacer.",
+  "ask.keep": "Conservar",
+  "swatch.dark": "Oscuro",
+  "swatch.aria": "Color {color}"
+}

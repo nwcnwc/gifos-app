@@ -1,0 +1,5 @@
+{
+  "title": "App Store",
+  "why": "This one is built into GifOS. Ordinary apps are never allowed to put things on your\nHome Screen, so this icon opens the built-in store page instead of running here.",
+  "open": "Open this GIF on your Home Screen at <code>gifos.app</code> to browse apps."
+}
