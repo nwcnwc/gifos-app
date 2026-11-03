@@ -238,9 +238,9 @@
     // C++: mesh_seat.inc:Seat::onLeave
     onLeave(m) {
       const id = this.id, TICK = this.TICK;
-      if (roomTerm(this, 1) && m.c7 && m.id >= 0) { this.l829Bye.set(m.id, TICK); if (this.l829Bye.size > 128) this.l829Bye.clear(); }   // L8.29
-      if (roomTerm(this, 1) && !m.c7 && m.c7Min >= 0 && m.id >= 0 && this.hasCoord && this.state === 3 && TICK - this.c7At >= K.RELAY_TTL && this.ringName() === m.c7Min && this.occGet(m.ck) === m.id && this.provenEv(m, m.id)) { this.trace('L8.34-FOLLOW', id, this.coord, 'from=%d ring=%d', m.id, m.c7Min); this.c7Yield(m.c7Min); return; }   // L8.34
-      if (roomTerm(this, 1) && m.c7 && this.hasCoord && this.state === 3) { if (TICK - this.c7At >= K.RELAY_TTL) { let mate = false; for (const [, ev] of this.occ) if (ev === m.id) { mate = true; break; } if (mate && this.ringName() === m.c7Min) { this.c7Yield(m.c7Min); return; } } if (this.c7Follow(m)) return; }   // L8.5 / L8.6
+      if (roomTerm(this, 1) && m.c7 && m.id >= 0 && this.provenEv(m, m.id)) { this.l829Bye.set(m.id, TICK); if (this.l829Bye.size > 128) this.l829Bye.clear(); }   // L8.29
+      if (roomTerm(this, 1) && !m.c7 && m.c7Min >= 0 && m.id >= 0 && this.hasCoord && this.state === 3 && TICK - this.c7At >= K.RELAY_TTL && this.ringName() === m.c7Min && this.occGet(m.ck) === m.id && this.provenEv(m, m.id) && this.l42Second(m)) { this.trace('L8.34-FOLLOW', id, this.coord, 'from=%d ring=%d', m.id, m.c7Min); this.c7Yield(m.c7Min); return; }   // L8.34
+      if (roomTerm(this, 1) && m.c7 && this.hasCoord && this.state === 3) { if (TICK - this.c7At >= K.RELAY_TTL) { let mate = false; for (const [, ev] of this.occ) if (ev === m.id) { mate = true; break; } if (mate && this.ringName() === m.c7Min && this.provenEv(m, m.id) && this.l42Second(m)) { this.c7Yield(m.c7Min); return; } } if (this.c7Follow(m)) return; }   // L8.5 / L8.6
       else if (roomTerm(this, 1) && !m.c7 && m.c7Min >= 0 && this.hasCoord && this.state === 3 && this.c7Follow(m)) return;   // L8.40
       // FRAME AUTHORITY: a goodbye frees the LEAVER'S OWN cell
       if (m.id < 0 || !cellOk(m.ck) || (m.mvd && !cellOk(m.mvd)) || !this.provenEv(m, m.id)) return;
