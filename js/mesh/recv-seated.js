@@ -244,6 +244,7 @@
       else if (roomTerm(this, 1) && !m.c7 && m.c7Min >= 0 && this.hasCoord && this.state === 3 && this.c7Follow(m)) return;   // L8.40
       // FRAME AUTHORITY: a goodbye frees the LEAVER'S OWN cell
       if (m.id < 0 || !cellOk(m.ck) || (m.mvd && !cellOk(m.mvd)) || !this.provenEv(m, m.id)) return;
+      if (this.l40Handed(m)) return;   // L40.3: a yield's goodbye names the cell's holder (gaps4.js)
       if (this.l13('L13.7') && m.bye && !m.mvd && this.hasCoord && this.state === 3 && this.coord.pc !== 0 && this.coord.i === 0 && m.ck !== ckey(this.coord) && unck(m.ck).pc === this.coord.pc && unck(m.ck).r === this.coord.r) { this.l13ByeKids.set(m.ck, [m.kids ? 1 : 0, TICK]); if (m.child >= 0 && m.child !== id && !this.childOf.has(m.ck)) this.childOf.set(m.ck, m.child); }   // L13.7
       { const lh = this.l20Hold.get(m.ck); if (lh !== undefined && lh.x === m.id && !lh.bye) { lh.bye = true; const hc = unck(m.ck); this.trace('L20-BYE', id, hc, 'mate=%d held=%d', m.id, TICK - lh.at); } }   // L20
       { if (this.l152Bye.size >= 256) this.l152Bye.clear(); this.l152Bye.set(m.id, [m.ck, TICK]); }   // L15.2
@@ -374,7 +375,7 @@
     onChallenge(m) {
       const id = this.id, TICK = this.TICK, LINKMODEL = this.w.lv.LINKMODEL;
       if (m.tag === 25 && !LINKMODEL && m.via >= 0 && m.via !== id && m.asker >= 0 && m.asker !== id) { const f = msg.clone(m); f.from = id; this.emit(m.via, f); return; }   // L25 without the link model
-      if (m.tag === 27) { this.l2512Heard(m); return; }   // L25.12
+      if (m.tag === 27) { this.l40Told(m); if (!this.l2512Heard(m)) this.l40Keep(m); return; }   // L25.12 (L40.1: a tell held while a question is open)
       if (m.tag === 26) { this.l25WitAnswer(m); return; }   // L25.9
       if (m.tag === 25) {
         if (this.hasCoord && this.state === 3 && ckey(this.coord) === m.ck) {
@@ -401,10 +402,10 @@
         // (L25.8: D5's proof)
         if (!proof && m.pp >= 0 && m.pp === this.l25By && m.ppAt >= 0 && this.pp === m.pp && this.ppCk === ckey(this.coord) && m.ppAt > this.ppAt) { proof = true; this.trace('L25-REPLACED', id, this.coord, 'by=%d rival=%d at=%d mine=%d', this.l25By, m.id, m.ppAt, this.ppAt); }   // L25.8
         if (!proof && m.mpK > 0 && this.mpProven(m)) { const rt = m.mpL, mt = (this.pp >= 0 && this.ppCk === ckey(this.coord)) ? this.ppL : (this.mpK > 0 && this.mpCk === ckey(this.coord)) ? this.mpL : this.seatedAt; proof = rt < mt || (rt === mt && m.id < id); }   // L25.7
-        if (!proof) { this.trace('L25-UNPROVEN', id, this.coord, 'rival=%d pp=%d', m.id, m.pp); if (this.l2513Order(m)) return; if (!this.l2512Rook(m.id)) this.l2512TellHeard(m.id); return; }   // L25.12
+        if (!proof) { this.trace('L25-UNPROVEN', id, this.coord, 'rival=%d pp=%d', m.id, m.pp); if (this.l40Unproven(m)) return; if (this.l2513Order(m)) return; if (!this.l2512Rook(m.id)) this.l2512TellHeard(m.id); return; }   // L25.12
         this.trace('L25-CONFIRMED', id, this.coord, 'rival=%d', m.id);
         if (this.l25WitAsk.length || this.l25WitMe > 0 || this.l25WitRival > 0) { const d = this.l25WitDecide(false); if (d === 0) { this.l25WitPend = true; this.f.wake(id); return; } if (d === 2) { this.l2512Tell(m.id); return; } }   // L25.9
-        this.requeue('T1-yield'); return;   // L25
+        this.l40Go(m.id, 'T1-yield'); return;   // L25 (L40.3: the goodbye names the rival)
       }
       if (!this.hasCoord || this.state !== 3 || ckey(this.coord) !== m.ck || m.id < 0 || m.id === id || !(m.id < id)) return;
       if (this.challToId !== m.id || this.challToCk !== m.ck || TICK - this.challToAt > 40 || !this.provenEv(m, m.id) || this.liveElsewhereSinceReturn(m.id, m.ck)) return;

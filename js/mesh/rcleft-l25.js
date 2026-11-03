@@ -39,7 +39,7 @@
       if (this.l2512Q < 0 || this.l2512Q !== x) return false;
       this.l2512Q = -1; this.l2512Rev = true; const d = this.l2512Decide(false);
       if (d === 0) { this.l25WitPend = true; this.f.wake(this.id); return true; }
-      this.l2512Rev = false; if (d === 1) this.requeue('L25.12-yield');
+      this.l2512Rev = false; if (d === 1) this.l40Go(x, 'L25.12-yield');
       return true;
     },
 
@@ -77,7 +77,7 @@
       if (LINKMODEL && this.l2512Q !== m.id && this.l2513Later(m)) {
         this.l2513Rev = true; this.l2512Rev = false; const d = this.l2513Decide(false);
         if (d === 0) { this.l25WitPend = true; this.f.wake(this.id); return true; }
-        this.l2513Rev = false; if (d === 1) { this.requeue('L25.13-yield'); return true; }
+        this.l2513Rev = false; if (d === 1) { this.l40Go(m.id, 'L25.13-yield'); return true; }
         return false;
       }
       if (LINKMODEL) {
@@ -96,7 +96,7 @@
       this.trace('L25.13-ORDER', this.id, this.coord, 'rival=%d mine=%lld/%d theirs=%lld/%d %s', m.id, mt, mp, rt, rp, first ? 'first' : 'later');
       if (first) return false;
       if ((this.l25WitAsk.length || this.l25WitMe > 0 || this.l25WitRival > 0)) { const d = this.l25WitDecide(false); if (d === 0) { this.l25WitPend = true; this.f.wake(this.id); return true; } if (d === 2) return true; }
-      this.requeue('L25.13-yield'); return true;
+      this.l40Go(m.id, 'L25.13-yield'); return true;
     },
 
     // C++: mesh_rcleft_l25.inc:Seat::l2514Drop

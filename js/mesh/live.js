@@ -598,8 +598,8 @@
       this.moving = false; this.oldNbrIds.length = 0; this.holdOcc.clear(); this.holdSeen.clear(); this.holdCous.clear(); this.leaseCk = 0; this.leaseUntil = -1;
       if (this.hasCoord) {
         const ol = ownedLinks(this.coord); const seen = new Set();
-        for (let k = 0; k < ol.length; k++) { const x = this.occGet(ckey(ol[k])); if (x >= 0 && x !== id && !seen.has(x)) { seen.add(x); const m = newMsg('LEAVE'); m.ck = ckey(this.coord); m.id = id; m.child = this.l1DeepKid(); if (this.l834Y >= 0) m.c7Min = this.l834Y; this.emit(x, m); } }
-        const o = this.ownerCoord(); if (o) { const oid = this.occGet(ckey(o)); if (oid >= 0 && oid !== id && !seen.has(oid)) { const m = newMsg('LEAVE'); m.ck = ckey(this.coord); m.id = id; m.child = this.l1DeepKid(); if (this.l834Y >= 0) m.c7Min = this.l834Y; this.emit(oid, m); } }
+        for (let k = 0; k < ol.length; k++) { const x = this.occGet(ckey(ol[k])); if (x >= 0 && x !== id && !seen.has(x)) { seen.add(x); const m = newMsg('LEAVE'); m.ck = ckey(this.coord); m.id = id; m.child = this.l1DeepKid(); if (this.l834Y >= 0) m.c7Min = this.l834Y; if (this.l40To >= 0) { m.nc = this.l40To; m.tag = 40; m.child = -1; } this.emit(x, m); } }
+        const o = this.ownerCoord(); if (o) { const oid = this.occGet(ckey(o)); if (oid >= 0 && oid !== id && !seen.has(oid)) { const m = newMsg('LEAVE'); m.ck = ckey(this.coord); m.id = id; m.child = this.l1DeepKid(); if (this.l834Y >= 0) m.c7Min = this.l834Y; if (this.l40To >= 0) { m.nc = this.l40To; m.tag = 40; m.child = -1; } this.emit(oid, m); } }
       }   // V7b (H4): the owner reserves my cell in its ledger: it gets my goodbye too
       if (this.hasCoord) this.live.delete(ckey(this.coord));   // my own cell's stamp: never refreshed while I sat there
       this.f.relayUnlist(id);   // L16.4

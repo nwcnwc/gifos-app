@@ -137,7 +137,7 @@
       this.l25Nc = m.nc; this.l25Ck = m.ck; this.l25By = by; this.l25At = this.TICK | 0;
       const c = newMsg('CHALLENGE'); c.ck = m.ck; c.from = id; c.tag = 25;
       if (this.w.lv.LINKMODEL) this.f.fabricCallFrame(id, m.nc, c); else if (by >= 0) { c.asker = id; c.via = m.nc; this.emit(by, c); }
-      this.trace('L25-ASK', id, this.coord, 'by=%d rival=%d', by, m.nc); this.l25WitAskAll();
+      this.trace('L25-ASK', id, this.coord, 'by=%d rival=%d', by, m.nc); this.f.g4Joined(id, m.nc, m.ck); this.l25WitAskAll();
     },
 
     // C++: mesh_seat.inc:Seat::l25Nonsense

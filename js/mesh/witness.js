@@ -72,11 +72,12 @@
     // C++: mesh_witness.inc:Seat::l25WitTick
     l25WitTick() {
       if (!this.l25WitPend) return;
-      if (!this.hasCoord || this.state !== 3 || ckey(this.coord) !== this.l25Ck || this.moving) { this.l25WitPend = false; this.l2512Rev = false; this.l2513Rev = false; return; }
+      if (!this.hasCoord || this.state !== 3 || ckey(this.coord) !== this.l25Ck || this.moving) { this.l25WitPend = false; this.l2512Rev = false; this.l2513Rev = false; this.l40Rev = false; return; }
+      if (this.l40Rev) { const d = this.l40Decide(this.TICK - this.l25WitAt >= K.L25_WIT_WAIT); if (d === 0) { this.f.wake(this.id); return; } this.l25WitPend = false; this.l40Rev = false; this.l40Act(d); return; }   // L40.2 (gaps4.js)
       const dl = this.TICK - this.l25WitAt >= K.L25_WIT_WAIT;
       const d = this.l2513Rev ? this.l2513Decide(dl) : this.l2512Rev ? this.l2512Decide(dl) : this.l25WitDecide(dl); if (d === 0) { this.f.wake(this.id); return; }
-      if (this.l2513Rev) { this.l25WitPend = false; this.l2513Rev = false; if (d === 1) this.requeue('L25.13-yield'); return; }
-      this.l25WitPend = false; const rev = this.l2512Rev; this.l2512Rev = false; if (d === 1) this.requeue(rev ? 'L25.12-yield' : 'T1-yield'); else if (d === 2 && !rev) this.l2512Tell(this.l25WitRivalId);
+      if (this.l2513Rev) { this.l25WitPend = false; this.l2513Rev = false; if (d === 1) this.l40Go(this.l25WitRivalId, 'L25.13-yield'); return; }
+      this.l25WitPend = false; const rev = this.l2512Rev; this.l2512Rev = false; if (d === 1) this.l40Go(this.l25WitRivalId, rev ? 'L25.12-yield' : 'T1-yield'); else if (d === 2 && !rev) this.l2512Tell(this.l25WitRivalId);
     },
   });
   GifOS.meshWitness = Object.freeze({});

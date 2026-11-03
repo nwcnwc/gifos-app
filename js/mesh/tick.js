@@ -159,6 +159,7 @@
       const TICK = this.TICK, id = this.id, lv = this.w.lv;
       if (this.evil) this.attack();
       if (this.hostile) this.hostileTick();   // the hostile page
+      if (this.l40Hold) this.l40Tick();   // L40.1: a tell that came while a question was open (gaps4.js)
       if (this.l25WitPend) this.l25WitTick();   // L25.9: a proven rival, witnesses still due
       if (this.l815N > 0) {
         let w = 0;
