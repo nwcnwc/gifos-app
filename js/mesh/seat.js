@@ -753,6 +753,8 @@
     },
     // C++: mesh.cpp:Seat::socketed
     socketed() { return this.state !== 3 || (this.hasCoord && this.coord.pc === 0) || (!l13MergingOf(this) && this.TICK - this.l13KnockAt <= K.RELAY_TTL); },
+    // C++: mesh.cpp:Seat::l13MassHeard
+    l13MassHeard() { this.l13MassLast = this.TICK; this.l13MassTick = -1; },
     // C++: mesh.cpp:Seat::l13OwnerPending
     l13OwnerPending(ak, by) { const hb = this.l13HeldBy.get(ak); if (hb === undefined || hb === by) return false; return this.callBook.ringFresh(hb, 8, this.TICK); },
     // C++: mesh.cpp:Seat::l14FailedNow
