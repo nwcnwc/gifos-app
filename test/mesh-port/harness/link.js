@@ -688,24 +688,9 @@ function install(fab) {
     if (s.callBook.inOverlong(x, s.TICK)) return true;
     const wd = s.l23WordAt.get(x); return wd !== undefined && s.TICK - wd >= K.L23_WORD_ && s.TICK - wd < 8 * K.L23_WORD_;
   };
-  // C++: mesh_link.inc:l23Refused
-  // mt: the frame type name, or null (the C++ default -1: my own dial)
-  const l23Refused = api.l23Refused = (me, from, mt = null, ck = 0) => {
-    if (me < 0 || me >= nextId() || from < 0 || from >= nextId() || !alive[me] || !(seats[from].hasCoord && seats[from].state === 3)) return false;
-    if (mt === null || mt === 'U2BEAT' || mt === 'U2ACK' || X.l22Need(me, from)) return false;
-    const probe = msg.newMsg(mt);
-    const greet = (mt === 'HELLO' || mt === 'CLAIM') && ck && seats[me].hasCoord && seats[me].ownedLinkCell(ck) && (seats[me].occGet(ck) < 0 || seats[me].occGet(ck) === from) && l23GreetSlot(me, from, ck);
-    const call = seatM.l13Frame(probe) || mt === 'MEETACK' || mt === 'YIELD' || mt === 'FINDLEAF' || mt === 'LEAVE' || mt === 'CHALLENGE' || mt === 'CONFIRM';
-    if ((greet || X.l392Contest(me, from, mt, ck)) && !l23Suspect(me, from)) return false;   // L39.2 (gaps3-fab.js)
-    const it = L23S.get(idPair(me, from)); if (it !== undefined && it.until > TICK() && it.n >= 2 && !call) { lv.L23_REFUSED++; return true; }
-    if (!l23Suspect(me, from) && !l23Full(me)) { l23Pend(me, true); return false; }
-    if (l23Suspect(me, from)) { lv.L23_REFUSED++; return true; }
-    if (seats[me].hasCoord && seats[me].state === 3 && l23Full(me)) {
-      let dialing = 0; lEnsure(me); for (const p of LINKPEERS[me]) { const L = linkFind(me, p); if (L && L.state === LK_DIALING) dialing++; }
-      if (!call || seats[me].callBook.inCount(seats[me].TICK) + dialing >= K.L23_CALLS_) { lv.L23_REFUSED++; return true; }
-    }
-    return false;
-  };
+  // l23Refused: one copy, the laws' (js/mesh/pclaws.js, plugged over this file's names by pclaws-fab.js). The link
+  // physics' own dial paths reach it through fab.X so both see one decision.
+  const l23Refused = api.l23Refused = (me, from, mt = null, ck = 0) => X.l23Refused(me, from, mt, ck);
   // C++: mesh_link.inc:l23CloseAlone
   const l23CloseAlone = (me, x, strike = true) => {
     const L = linkFind(me, x); if (!L || L.state !== LK_OPEN) return; l22Close(me, x); lv.L23_CLOSED++; if (strike) l23Strike(me, x); trace('L23-CLOSE', me, null, 'peer=%d strike=%d', x, strike ? 1 : 0);
@@ -917,7 +902,7 @@ function install(fab) {
     linkTick, linkSchedule, linkOpenFor, linkFind, closeFrom, linkBlackhole, linkOnLeave, crashTransport, linkReset, closedDrop,
     fabricLinkState, fabricDial, fabricDialJoin, fabricDialUplink, fabricDialFails, fabricUpTake, fabricUpDecline, fabricDoorDrop,
     fabricDoorHanded, fabricMyDoors, fabricMyKnocks, fabricNoSock, fabricL23Busy, fabricCallFrame,
-    l22Quiet, l22Close, l22CloseAsk, l22Agree, l222Note, l23Refused,
+    l22Quiet, l22Close, l22CloseAsk, l22Agree, l222Note,
     // for the friend-hop unit (fhop.js reads these names from fab.X)
     linkPeers: (id) => (id >= 0 && id < LINKPEERS.length) ? LINKPEERS[id] : [], linkGet, lEnsure, linkTx: (id) => { LTX[id] = TICK(); }, startDial,
     l16Refuse: (from, to, mt) => l16Refuse(from, to, mt),

@@ -28,6 +28,7 @@ function installPcLaws(fab) {
   const pc = createPcLaws(P);
   fab.plug(pc.fns);
   fab.plug({ l1611Guard: pc.l1611Guard, fhopFriendFor: () => false });   // l1611Guard: link.js's startDial calls it; fhopFriendFor until installFhop plugs the real one
+  fab.plug({ l23Refused: pc.l23Refused });   // the one l23Refused: link.js's dial paths and hostile.js reach it through fab.X
   return { pc, phys, P, ln };
 }
 
