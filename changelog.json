@@ -2,6 +2,27 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.25",
+      "date": "2026-11-03",
+      "headline": "A new meeting mesh, and GifOS in five languages",
+      "critical": false,
+      "features": [
+        "Meetings run on a rebuilt mesh. People are seated in sections under a stage row, with trees that carry summaries up, so big rooms fill faster and heal themselves faster when people drop out, freeze or come back.",
+        "Rooms of 25 or fewer heal toward the first section, and the stage always has five slots.",
+        "GifOS follows your browser's language, with a choice in Settings. English, Spanish, Russian, Simplified Chinese and German are included for the desktop, the store, meetings and the built-in apps.",
+        "Dates, times, sizes and numbers show in your language's format."
+      ],
+      "fixes": [
+        "In a meeting with an admin password, setting or changing the password sends everyone who does not have the new one back to the door to type it, so people who slipped in early are asked too.",
+        "Hostile or broken pages can no longer lock new people out of the first section or leave duplicate seats that stay for good.",
+        "Vote-offs are counted inside the meeting, not on the relay."
+      ],
+      "notes": [
+        "The relay is updated first; older versions keep working with it, but a vote-off from an older page is ignored by the relay.",
+        "Spanish, Russian, Simplified Chinese and German strings are new. Please report any wording that reads wrong."
+      ]
+    },
+    {
       "version": "0.9.24",
       "date": "2026-10-23",
       "headline": "Hotfix: no false \"Still in the call\", and a one-line app bar on phones",
