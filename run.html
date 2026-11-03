@@ -6286,6 +6286,34 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (word) word.textContent = uiText('more', 'More');
       }
     }
+    // The Worker sends a held knocker no 'wait' frame: the hold is a signed room order that every seated door obeys. So the
+    // door that withholds a knocker's HOME says so over the knocker's own authenticated channel ({k:'held'}), and the knocker
+    // shows the screen from that. Only a page with no seat of its own, and only from a peer it asked, ever shows it.
+    const heldSaidAt = new Map();   // door side: knocker id -> last time told
+    function sayHeld(id) {
+      const now = Date.now(); if (now - (heldSaidAt.get(id) || 0) < 2000) return;
+      const q = peers.get(id); if (!q || !q.dc || q.dc.readyState !== 'open') return;
+      heldSaidAt.set(id, now); if (heldSaidAt.size > 64) heldSaidAt.delete(heldSaidAt.keys().next().value);
+      try { dcSend(q, { k: 'held' }); } catch (e) {}
+    }
+    let heldWatch = 0;
+    function showHeldScreen() {
+      meetWait.waiting(true);
+      const h = document.querySelector('#waitdoor h1'), p = document.querySelector('#waitdoor p');
+      if (h) h.textContent = uiText('waitingForTheHost', 'Waiting for the host');
+      if (p) p.textContent = uiText('youLlJoinWhen', 'You\u2019ll join when the host lets you in. This meeting can\u2019t see or hear you yet.');
+      setStatus(uiText('waitingForTheHost', 'Waiting for the host'));
+    }
+    function onHeldSaid(p, dc) {
+      if (!dc || dc.__authBy !== p.id) return;                 // an authenticated channel only
+      const s = meshSeat(); if (s && s.hasCoord) return;      // a seated page is never put behind the screen
+      if (!seatAskAt.has(p.id)) return;                        // only a door I knocked at
+      showHeldScreen();
+      if (!heldWatch) heldWatch = setInterval(() => {          // the screen goes when the seat lands (no greeters frame comes by this path)
+        const t = meshSeat();
+        if (t && t.hasCoord) { clearInterval(heldWatch); heldWatch = 0; meetWait.waiting(false); }
+      }, 500);
+    }
     const meetWait = {
       hold(on) {
         if (!hasAdminRoom()) { holdDoor = false; waitPaint(); return false; }   // no waiting room in an open room
@@ -16859,18 +16887,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         oldKeys: (prevRoomE2E && prevRoomE2E !== roomE2E) ? [prevRoomE2E] : [],   // a door blob this key opens is behind me, not ahead (mesh-wire R6)
         excluded: isEjected, // ejected forgers: their mesh frames never reach the seat
         urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
-        doorHeld: (id) => { try { const b = meetWait.blocks(id); if (b && id && amAdmin) meetWait.note(id, rosterNames[id] || 'Someone waiting'); return b; } catch (e) { return false; } },   // a withheld knock goes on the host's list: nothing else names a plain room's knocker
+        doorHeld: (id) => { try { const b = meetWait.blocks(id); if (b && id && amAdmin) meetWait.note(id, rosterNames[id] || 'Someone waiting'); if (b && id) sayHeld(id); return b; } catch (e) { return false; } },   // a withheld knock goes on the host's list: nothing else names a plain room's knocker
         onDoor: (kind, frame) => {
           if (kind === 'unseated') {
             meetWait.waiting(true);
             const denied = frame && frame.t === 'denied';
             const h = document.querySelector('#waitdoor h1');
             const p = document.querySelector('#waitdoor p');
-            if (h) h.textContent = denied ? 'Not admitted' : 'Waiting for the host';
-            if (p) p.textContent = denied
-              ? 'The host didn\u2019t let you in. You are not in the meeting.'
-              : 'You\u2019ll join when the host lets you in. This meeting can\u2019t see or hear you yet.';
-            setStatus(denied ? 'The host didn\u2019t let you in.' : 'Waiting for the host to let you in.');
+            if (denied) {
+              if (h) h.textContent = 'Not admitted';
+              if (p) p.textContent = 'The host didn\u2019t let you in. You are not in the meeting.';
+              setStatus('The host didn\u2019t let you in.');
+            } else showHeldScreen();
           } else if (kind === 'seated') {
             meetWait.waiting(false);
           }
@@ -21154,6 +21182,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         sgaRecvApp(m.m);
       } else if (m.k === 'wping') {
         dcSend(p, { k: 'wpong' }); // the wake probe (wakeProbe): the one answer it accepts
+      } else if (m.k === 'held') {
+        onHeldSaid(p, dc);
       } else if (m.k === 'wpong') {
         p.wakePongAt = Date.now();
       } else if (m.k === 'bye') {
