@@ -11897,7 +11897,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       let countText = '';
       let restText = '';
       if (reachLine) {
-        restText = REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' ? '' : reachTriedSentence()) + tail;
+        restText = REACH_MSG[reachState] + tail;
       } else if (typeof iAmWaiting === 'function' && iAmWaiting()) {
         // A person in the waiting room is not alone and has no one to invite.
         countText = uiText('waitHere', 'In the waiting room');
@@ -11906,7 +11906,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // The fold is missing someone. Do not word the short count, or the
         // occ union behind it, as how many people are in the room.
         countText = uiText('countPartial', 'Room count incomplete');
-        restText = ' · ' + q.label + reachTriedSentence() + tail;
+        restText = ' · ' + q.label + tail;
       } else if (shown === 1) {
         if (atDoor) {
           countText = uiText('backIn', 'Getting you back in');
@@ -11915,26 +11915,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // A service seat says what it is. The host's sentence follows the lamp.
           restText = (bcRoleSafe() === 'host'
             ? (bcSendingSafe() ? 'You are live. Send the link.' : 'Off air. Send the link.')
-            : ((typeof myStatus !== 'undefined' && myStatus.stg) ? 'You are on stage.' : 'You are watching this broadcast.')) + reachTriedSentence() + tail;
+            : ((typeof myStatus !== 'undefined' && myStatus.stg) ? 'You are on stage.' : 'You are watching this broadcast.')) + tail;
         } else {
           // Alone, the count is a button that opens the roster, and Invite sits
           // beside the sentence. The long invite sheet stays in More.
           countText = uiText('justYou', 'Just you');
-          restText = reachTriedSentence() + tail;
+          restText = tail;
         }
       } else if (bcWatcher) {
         // The badge and room bar say watching; the line names who is live.
-        restText = (bcLiveName ? bcLiveName + ' is live.' : 'You are watching this broadcast.') + reachTriedSentence() + tail;
+        restText = (bcLiveName ? bcLiveName + ' is live.' : 'You are watching this broadcast.') + tail;
       } else if (bcLive) {
         // The room bar counts who is watching; the host reads that she is live.
-        restText = 'You are live · ' + q.label + reachTriedSentence() + tail;
+        restText = 'You are live · ' + q.label + tail;
       } else {
         countText = shown + ' ' + (BROADCAST ? 'in this broadcast' : uiText('inMeeting', 'in this meeting'));
-        restText = ' · ' + q.label + reachTriedSentence() + tail;
+        restText = ' · ' + q.label + tail;
       }
       const bq = bcQuietLine(shown, reachLine, atDoor);
       const bcQuiet = bq.text;
-      if (bcQuiet) restText = bcQuiet + reachTriedSentence() + tail;
+      if (bcQuiet) restText = bcQuiet + tail;
       const statusText = countText + restText;
       const detail = statusText;
       // A phone chip names the room and the count (qa-meet-mobile); the whole
@@ -12990,35 +12990,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       bootParts.delete(from);
       return net.sdpOfBoot(s.boot, s.fp);
     }
-    // The people who tried to reach this page over the relay while no
-    // connection with them works (a bootstrap or a name frame): what the
-    // locked-out line names. pid -> { name, at }.
-    const reachTried = new Map();
-    function noteReachTried(pid, name) {
-      if (!pid || pid === myId) return;
-      const cur = reachTried.get(pid) || {};
-      reachTried.set(pid, { name: name || cur.name || '', at: Date.now() });
-      if (reachTried.size > 256) { const now = Date.now(); for (const [k, v] of reachTried) if (now - v.at > 120000) reachTried.delete(k); }
-    }
-    // Who tried to reach me and could not: a recent try, and no working pair
-    // with them now. Names from the name frames (or the roster), ids never.
-    function reachTriedNames() {
-      const now = Date.now(), out = [];
-      for (const [pid, v] of reachTried) {
-        if (now - v.at > 90000) continue;
-        const p = peers.get(pid);
-        if (p && (p.connected || p.relayed)) continue;
-        const nm = v.name || rosterNames[pid] || (p && p.name) || '';
-        if (nm && out.indexOf(nm) < 0) out.push(nm);
-      }
-      return out;
-    }
-    function reachTriedSentence() {
-      const names = reachTriedNames();
-      if (!names.length) return '';
-      const list = names.length === 1 ? names[0] : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
-      return ' ' + list + ' tried to reach you but couldn’t.';
-    }
     function noteNegFail(kind, from, e) {
       rxStats.negFail++;
       if (typeof clog === 'function') clog('neg-fail ' + kind + ' ' + String(from).slice(0, 6) + ' ' + String(e && e.message || e).slice(0, 160));
@@ -13424,8 +13395,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (ty === 'boot' || ty === 'fp') {
         const desc = takeBootPart(from, ty, f);
         if (!desc) return;
-        const p0 = peers.get(from);
-        if (desc.type === 'offer' && !(p0 && (p0.connected || p0.relayed))) noteReachTried(from, '');
         onSignal(from, { kind: desc.type, sdp: desc, ib: 1, boot: 1 });
         return;
       }
@@ -13443,12 +13412,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           p.name = nm; if (p.label) p.label.textContent = nm;
           if (p.avatar) { const letter = nameInitial(nm); if (typeof setTileLetter === 'function') setTileLetter(p.avatar, letter); else p.avatar.textContent = letter; }
         }
-        if (!(p && (p.connected || p.relayed))) noteReachTried(from, nm);
         if (typeof updateStatus === 'function') { try { updateStatus(); } catch (e) {} }
         onDialRequest(p || { id: from, dc: null });
         return;
       }
       if (ty === 'password' || ty === 'pwsig' || ty === 'pwpub' || ty === 'pwby') {
+        if (doorOutsider(from) && !statusOf.has(from)) { doorDropped++; return; }   // TROLL GATE: a knocker never re-keys a seated room
         const g = takePwPart(from, ty, f);
         if (g) onRemote(from, g);
       }
@@ -14179,6 +14148,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // learned it. Use the name already heard, so the face and the line
       // agree from the start.
       if (!name && rosterNames[peerId]) name = rosterNames[peerId];
+      // An outsider's knock never puts a face on a seated page: no face until a channel opens or the mesh seats it.
+      if (!headless && !linkTo(peerId) && !meshKnows(peerId)) doorOffGrid.add(peerId);
       const t = makeTile(peerId, name, false, headless);
       if (!headless && doorOffGrid.has(peerId) && t.tile.parentNode) t.tile.remove(); // grace already took this name off the grid
       const p = { id: peerId, pc: null, tile: t.tile, video: t.video, label: t.label, avatar: t.avatar, chips: t.chips, cap: t.cap, modbar: t.modbar, voteBtn: t.voteBtn,
@@ -14197,6 +14168,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // wanted (a bootstrap channel to a greeter, a link the arithmetic gave up)
     // keeps the status everyone holds of them — forgetting it made the next
     // beat read as a newcomer's first.
+    let doorUnreachAt = 0;   // when a door I knocked closed without ever connecting (the knocker's own veil reads it)
     function dropPeer(peerId, stillHere) {
       const p = peers.get(peerId);
       if (!p) return;
@@ -14206,6 +14178,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { if (p.doorRetry) clearTimeout(p.doorRetry); } catch (e) {}
       p.doorRetry = 0;
       if (p.bootOut) doorsShut.set(peerId, Date.now()); // a door I knocked through, closed by me
+      if (p.bootOut && p.neverUp === true) doorUnreachAt = Date.now(); // the knocker alone is told it could not reach the meeting
       if (p.boot && typeof clog === 'function') clog('door-drop ' + String(peerId).slice(0, 6) + ' out=' + !!p.bootOut);
       // A seatless door stays off the grid; a neighbour can still be relayed.
       // So does a pair I dialled myself to a person who has no seat here and
@@ -14971,6 +14944,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // and linkTo() still says no, the peer genuinely is not my neighbour and its
     // offer is refused. If it does NOT, I simply have not learned it yet — see
     // the offer gate in onSignal.
+    // A door outsider: I hold a seat, and this peer is neither a link of mine nor a seat my mesh knows (a knocker).
+    // Its frames may do door work only; see the TROLL GATE in onDc.
+    const DOOR_DENY = new Set(['hi', 'fhi', 'chat', 'chatack', 'cdel', 'tr', 'react', 'creact', 'fdel', 'fmeta', 'pwinfo', 'pwreset', 'sga', 'scribe', 'av']);
+    const DOOR_DENY_SIG = new Set(['status', 'mod', 'appstop']);
+    let doorDropped = 0; const doorDropKinds = {};
+    function doorOutsider(pid) {
+      const s = meshSeat(); if (!s || !s.hasCoord || s.state !== 3) return false;
+      return !linkTo(pid) && !meshKnows(pid);
+    }
     function meshKnows(pid) {
       const s = meshSeat();
       if (!s || !s.occ) return false;
@@ -15587,7 +15569,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // console.debug notes the 210 s reap bound once. After that bound
       // the veil says the wait has run long. With the relay down, the
       // door line after 20 s is the message.
-      if (waited > 8000 && relayUp()) {
+      if (doorUnreachAt && now - doorUnreachAt < 60000 && waited > 8000) {
+        veilSay('Couldn\u2019t reach the meeting', 'Your device could not connect to the people in this meeting. A firewall, VPN or strict network may be blocking calls. We keep trying, and you will be in the moment a connection works.');
+      } else if (waited > 8000 && relayUp()) {
         const left = Math.max(0, Math.ceil((210000 - waited) / 1000)); // reap bound, not a promise on screen
         const secs = Math.max(1, Math.ceil(waited / 1000));
         if (!veilCeilLogged) { veilCeilLogged = true; try { console.debug('seat ceiling 210s'); } catch (e) {} }
@@ -20795,6 +20779,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // §HEARD: app frames over the DC are the same end-to-end liveness
       // evidence as signaling — feed the mesh intake (see onSignal).
       try { const s = meshSeat(); if (s && s.heardFrom && p.id) s.heardFrom(p.id); } catch (e) {}
+      // TROLL GATE: a door pair (a knocker my mesh has not seated and that is no link of mine) carries only the door's
+      // own work (mesh, signaling, byes) to a seated page; room content and anything a person would see waits. The
+      // last frame of each kind is held (bounded) and replayed once the pair is a member, so a real joiner's first
+      // status/avatar/history is not lost; a knocker that is never seated never shows.
+      if (p.id && (DOOR_DENY.has(m.k) || (m.k === 'sig' && m.msg && DOOR_DENY_SIG.has(m.msg.kind)))) {
+        if (doorOutsider(p.id)) {
+          doorDropped++; const dk = m.k === 'sig' ? 'sig.' + m.msg.kind : m.k; doorDropKinds[dk] = (doorDropKinds[dk] || 0) + 1;
+          if (!p.doorHeld) p.doorHeld = new Map();
+          if (p.doorHeld.has(dk) || p.doorHeld.size < 8) p.doorHeld.set(dk, m);   // one per kind: a flood holds at most 8 frames
+          return;
+        }
+      }
+      if (p.doorHeld && p.id && !doorOutsider(p.id)) { const held = Array.from(p.doorHeld.values()); p.doorHeld = null; doorDropKinds.replayed = (doorDropKinds.replayed || 0) + held.length; for (const h of held) { try { onDc(p, dc, h, admOk); } catch (e) {} } }
       if (m.k === 'hi') {
         // Union-merge. The replay is BACKFILL (takeChat/takeTr's second
         // argument): the per-author limiter is for a live flood, and applied
@@ -35181,6 +35178,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       liveLinks: () => Array.from(peers.values()).filter((p) => p.connected).length,
       // ICE AND an open DataChannel — the gate every data-path assertion must
       // use: a half-open pair passes liveLinks and carries nothing (pair-probe.js).
+      doorDropped: () => doorDropped, doorDropKinds: () => doorDropKinds,
       liveDataLinks: () => Array.from(peers.values()).filter((p) => p.connected && p.dc && p.dc.readyState === 'open').length,
       txKindBytes: () => Object.assign({}, txKindBytes), // channel bytes sent, by kind
       txStats: () => Object.assign({}, txStats), // heartbeat transport split (relay vs DC vs sponsor hops)
@@ -36128,7 +36126,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       relayRawSendUnchecked: (obj) => { if (!DEBUG_ON || !meshNode) return { err: 'DEBUG=on not in URL' }; return meshNode.RAW_SOCKET_SEND_FOR_TEST(obj); },
       // The people this page says tried to reach it and could not (the
       // locked-out line's names), and the line itself.
-      reachTried: () => reachTriedNames(),
       meshWireStats: () => { try { return meshNode ? meshNode.stats() : null; } catch (e) { return null; } },
       micEnabled: () => !!(localStream && localStream.getAudioTracks()[0] && localStream.getAudioTracks()[0].enabled),
       chatTexts: () => Array.from(chat.values()).sort((a, b) => a.at - b.at).map((m) => m.text),
