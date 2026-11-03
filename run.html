@@ -11231,7 +11231,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const [pid, p] of peers) take(pid, p && p.tile);
       return n;
     }
-    function headerCount() { return Math.max(displayCount(), facesOnScreen()); }
+    function headerCount() { const h = (meshNode && meshNode.byesHeld) ? meshNode.byesHeld() : 0; return Math.max(displayCount() - h, facesOnScreen()); }
     // BATTERY TIERS (Nathan 2026-07-26): encode watts are the meeting's
     // biggest phone cost, so quality follows the battery — ON BATTERY at all
     // sends one rung lighter, under 50% two rungs, under 25% three rungs and
@@ -13867,6 +13867,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // 'disconnected' alone is a blip — the ICE-restart path owns it, never this.
     // Debounced per peer + edge-triggered in the mesh: one probe burst per
     // transition, so a flapping link cannot storm.
+    // The relay's word of a closed socket can beat the page's own goodbye on the channel, which still has its signature to clear, and a reload's mark must be read first.
+    function relayLeaveSoon(pid, why) { setTimeout(() => { if (!leaving) onTransportDead(pid, why); }, 800); }
     function onTransportDead(pid, why) {
       if (leaving || bannedOut) return;
       const p = peers.get(pid);
@@ -14171,7 +14173,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // agree from the start.
       if (!name && rosterNames[peerId]) name = rosterNames[peerId];
       // An outsider's knock never puts a face on a seated page: no face until a channel opens or the mesh seats it.
-      if (!headless && !linkTo(peerId) && !meshKnows(peerId)) doorOffGrid.add(peerId);
+      if (!headless && ((!linkTo(peerId) && !meshKnows(peerId)) || (meshNode && meshNode.byeIsHeld && meshNode.byeIsHeld(peerId)))) doorOffGrid.add(peerId);   // (nor a redial at a page gone, while its cell is held)
       const t = makeTile(peerId, name, false, headless);
       if (!headless && doorOffGrid.has(peerId) && t.tile.parentNode) t.tile.remove(); // grace already took this name off the grid
       const p = { id: peerId, pc: null, tile: t.tile, video: t.video, label: t.label, avatar: t.avatar, chips: t.chips, cap: t.cap, modbar: t.modbar, voteBtn: t.voteBtn,
@@ -17120,7 +17122,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         onRelayMsg: onRelayFrame,
         prevTree: readTreeMem(),
         oldCell: seatMemNow ? seatMemNow.ck : -1,
-        onByeHeld: (pid) => { try { confirmGone(pid, 'bye'); } catch (e) {} },   // the tab did not come back: its farewell, late
+        onByeHold: (pid) => { try { confirmGone(pid, 'bye'); } catch (e) {} },   // a page gone: its tile leaves at once, a reload brings it back
       });
       updateStatus(); applyAdminUi();
       });
@@ -17337,7 +17339,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // only STARTS the probe-gated confirm: a peer that merely dropped its
         // deep socket on purpose (socket lifecycle) answers the probe over the
         // mesh and keeps its seat — worst case, a spurious probe.
-        onTransportDead(m.peer, 'relay-leave');
+        relayLeaveSoon(m.peer, 'relay-leave');
         // D5 HINT (Nathan, 2026-07-28): peer-leave is broadcast-once — a member
         // whose relay socket is down at that moment misses it and detects a
         // crashed peer only via starve+probe (~18-24s vs ~7s). So the news
@@ -20880,7 +20882,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // ONLY — never re-forwarded, never about myself, only for a peer I
         // actually hold a link to (no probing strangers on hearsay).
         if (typeof clog === 'function') clog('tlhint ' + String(m.peer || '?').slice(0, 6) + ' from ' + String(p.id || '?').slice(0, 6) + (peers.has(m.peer) ? '' : ' (no link — ignored)'));
-        if (m.peer && m.peer !== myId && peers.has(m.peer)) onTransportDead(m.peer, 'relay-leave-hint');
+        if (m.peer && m.peer !== myId && peers.has(m.peer)) relayLeaveSoon(m.peer, 'relay-leave-hint');
       } else if (m.k === 'fmeta') {
         // Never re-broadcast to the ROOM (see chat) — but handed on, once, over
         // my OWN links: a file's bytes travel link by link (P0/P1 only), so

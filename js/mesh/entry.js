@@ -367,11 +367,11 @@
             }
           }
           // H-CHAIN: devolve when admitter is not reserved (empty or phantom); prefer first-hand live row-mates.
-          if (!this.cellReserved(ckey(adm)) && this.fhEver.has(ckey(adm)) && rowLive[adm.r]) {
+          if ((!this.cellReserved(ckey(adm)) && this.fhEver.has(ckey(adm)) && rowLive[adm.r]) || this.l315Cell(ckey(adm))) {   // L3.15: a held admitter hears no FIND
             devGuard = freeReason(ckey(adm));
             const oneRow = this.oneRowRoom();
             const d = { pc: 0, r: adm.r, i: 0 };
-            for (let dj = 1; dj < C; dj++) { d.i = dj; if (this.cellReserved(ckey(d)) && !this.occIsPhantom(ckey(d)) && !(oneRow && this.darkMate(ckey(d)))) { adm = { pc: d.pc, r: d.r, i: d.i }; devArm = 'rowmate'; break; } }
+            for (let dj = 1; dj < C; dj++) { d.i = dj; if (this.cellReserved(ckey(d)) && !this.occIsPhantom(ckey(d)) && !(oneRow && this.darkMate(ckey(d))) && !this.l315Cell(ckey(d))) { adm = { pc: d.pc, r: d.r, i: d.i }; devArm = 'rowmate'; break; } }
           }
           // S1 column-clique admission: ONLY when we once knew the primary admitter (s1seen) and it is not reserved.
           if (!this.cellReserved(ckey(adm)) && this.fhEver.has(ckey(adm)) && this.s1seen.has(ckey(adm))) {
