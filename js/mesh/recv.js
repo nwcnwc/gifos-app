@@ -46,13 +46,16 @@
         if (m.e1At >= 0) m.e1At = Math.max(0, m.e1At + d); if (m.born >= 0) m.born = Math.max(0, m.born + d);
       }
       if (this.l4Out) { if (m.t === 'SWAPRDY' && m.id === this.l4Partner && m.tag >= 5) this.l4OnRdy(m); else this.l4Held.push(msg.clone(m)); return; }   // L4.3
-      if (w.proofRecv && w.L13CUR !== this) w.proofRecv(id, m);   // PROOF_IN("recv"): a frame in from outside the seat (not my own code's replay)
+      if (w.proofRecv && w.L13CUR !== this && w.PROOF_OWN !== this) w.proofRecv(id, m);   // PROOF_IN("recv"): a frame in from outside the seat (not my own code's replay)
+      const pOwn = w.PROOF_OWN; w.PROOF_OWN = this;   // the recv entry is mine until it returns (C++ PROOF_STK)
+      try {
       if (this.dead) return;
       this.farLearn(m);   // FARVIEW
       if (m.dsat && m.lk >= 0 && m.lk !== id) this.f.fabricDoorHeard(id, m.lk, m.lkEp);   // K5
       if (this.vban.size && this.kDropIn(m)) { this.kRx++; return; }   // L27
       const prev = w.L13CUR; w.L13CUR = this;
       try { this.recvBody(m, id, w, lv); } finally { w.L13CUR = prev; }
+      } finally { w.PROOF_OWN = pOwn; }
     },
 
     // C++: mesh_seat.inc:Seat::recv

@@ -78,6 +78,8 @@
     // C++: mesh_seat.inc:Seat::tick
     tick() {
       const id = this.id; void id;
+      const pw = this.w, pOwn = pw.PROOF_OWN; pw.PROOF_OWN = this;   // PROOF_IN("tick"): from here a frame my own code replays (an L4 hold) is no input
+      try {
       if (this.dead) return;
       if (this.l4Out) { this.l4Tick(); return; }   // L4.3: between cells, waiting for my partner's word
       if (this.vban.size || this.rootDec.kick.length) this.kickEval(); else if (this.kHeal.length) this.kHealDue();   // L27 (inert unless a vote exists)
@@ -91,6 +93,7 @@
         if (this.tickCommon()) return;   // every seat: links, ring, leases, transit
         if (this.coord.pc === 0) this.tickSection1(); else this.tickDeep();
       } finally { w.L13CUR = prev; }
+      } finally { pw.PROOF_OWN = pOwn; }
     },
 
     // C++: mesh_seat.inc:Seat::tickHeld
