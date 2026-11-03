@@ -25,7 +25,7 @@
 
     // C++: mesh_linkset.inc:Seat::linkPeers
     // Fills the array it is handed (out), as the C++ does.
-    linkPeers(out, want) {
+    linkPeers(out, want = 15) {   // want = LR_TOPO
       out.length = 0;
       const add = (x) => { if (x >= 0 && x !== this.id) out.push(x); };
       if ((want & Seat.LR_OWNED) && this.hasCoord) { const ol = ownedLinks(this.coord), n = ol.length; for (let k = 0; k < n; k++) add(this.occGet(ckey(ol[k]))); }
