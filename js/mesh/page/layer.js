@@ -5,7 +5,7 @@
  * no string peer ids and no page view. This layer carries them beside the
  * seat, outside the byte proof, and never feeds a decision:
  *   ids     the seat's ids are integers; a page's are 'k_' + 40 hex. nid()
- *           takes 21 bits of the first 24 (same order as the string compare), pid()
+ *           takes the first 52 bits (env.js nidOf; same order as the string compare), pid()
  *           maps back. Learned from my own id and every peer that hands me a
  *           frame, a greeter blob or a roster line.
  *   view    node.seat for run.html: string peer ids and string cell keys
@@ -21,14 +21,12 @@
   const GifOS = root.GifOS = root.GifOS || {};
 
   // ---- ids -------------------------------------------------------------------------------------------------
+  const envIds = () => GifOS.meshPageEnv || (typeof require === 'function' ? require('./env.js') : null);
   function makeIds() {
     const n2p = new Map();
     function nid(p) {
       if (typeof p !== 'string' || !p) return -1;
-      let v;
-      // Below 2^21: the seat's pair keys (hash.idPair, ppSigOf) are exact only there (A1's rule).
-      if (/^k_[0-9a-f]{6}/.test(p)) v = parseInt(p.slice(2, 8), 16) >>> 3;
-      else { let h = 0x811c9dc5; for (let i = 0; i < p.length; i++) { h ^= p.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } v = h >>> 11; }   // a test id: 21 bits of FNV-1a
+      const v = envIds().nidOf(p);   // the env's map: a k_ identity's first 52 bits (no collision handling)
       if (!n2p.has(v)) n2p.set(v, p);
       return v;
     }

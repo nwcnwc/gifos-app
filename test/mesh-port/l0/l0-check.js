@@ -33,6 +33,7 @@ const cases = {
     check('hash', 'hmix', o.hmix, hash.hmix(c.h, c.x));
     check('hash', 'hmix64', o.hmix64, hash.hmix64(c.h, c.w));
     check('hash', 'idPair', o.idPair, hash.idPair(c.a, c.b));
+    check('hash', 'hmixId', o.hmixId, hash.hmixId(c.h, c.a));
   },
   topo(c) {
     const o = c.out, s = c.s;

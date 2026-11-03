@@ -20,7 +20,7 @@
   const TWO32 = 4294967296;
 
   // C++: mesh_gaps4.inc:l40Rank   [hmix64 of ck ^ 0x4c3430: the xor touches the low word only]
-  function l40Rank(ck, x) { return hash.hmix64(hash.hmix(hash.H_INIT, x >>> 0), hash.hi32(ck) * TWO32 + ((hash.lo32(ck) ^ 0x4c3430) >>> 0)); }
+  function l40Rank(ck, x) { return hash.hmix64(hash.hmixId(hash.H_INIT, x), hash.hi32(ck) * TWO32 + ((hash.lo32(ck) ^ 0x4c3430) >>> 0)); }
 
   Seat.unit('mesh_gaps4.inc', {
     // C++: mesh_gaps4.inc:Seat::l40Go

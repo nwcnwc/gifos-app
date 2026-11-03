@@ -43,13 +43,13 @@ static string dump(){
     s+="],\"n\":["; { bool f=true; for(auto& e:F.nat){ if(!f) s+=","; f=false; s+="["+to_string(e.first)+","+to_string(e.second)+"]"; } }
     s+="],\"sent\":"+(F.sentOk? (F.sent? lst(*F.sent):string("null")) : string("false"))+",\"cr\":["; { bool f=true; for(auto& e:F.crumb){ if(!f) s+=","; f=false; s+="["+to_string(e.first)+","+to_string(e.second.first)+","+to_string(e.second.second)+"]"; } }
     s+="],\"se\":["; { bool f=true; for(auto& e:F.seen){ if(!f) s+=","; f=false; s+="["+to_string(e.first)+","+to_string(e.second)+"]"; } }
-    s+="],\"la\":["; { bool f=true; for(auto& e:F.lane){ if(!f) s+=","; f=false; s+="["+to_string(e.first)+","+to_string(e.second)+"]"; } }
+    s+="],\"la\":["; { bool f=true; for(auto& e:F.lane){ if(!f) s+=","; f=false; s+="[\""+to_string(e.first.a)+":"+to_string(e.first.b)+"\","+to_string(e.second)+"]"; } }
     s+="],\"pe\":["; { bool f=true; for(auto& e:F.peer){ if(!f) s+=","; f=false; const FhPeer& P=e.second; s+="["+to_string(e.first)+","+to_string(P.downSince)+","+to_string(P.askAt)+","+to_string(P.via)+","+to_string(P.claimAt)+",["; bool g=true; vector<pair<int,long long>> rf; for(auto& r:P.refused) rf.push_back({r.first,r.second}); sort(rf.begin(),rf.end()); for(auto& r:rf){ if(!g) s+=","; g=false; s+="["+to_string(r.first)+","+to_string(r.second)+"]"; } s+="]]"; } }
     s+="],\"jo\":["; for(size_t k=0;k<F.jobs.size();k++){ if(k) s+=","; s+="["+to_string(F.jobs[k].target)+","+to_string(F.jobs[k].req)+","+to_string(F.jobs[k].at)+"]"; }
     s+="],\"wa\":["; { bool f=true; for(auto& e:F.want){ if(!f) s+=","; f=false; s+="["+to_string(e.first)+","+to_string(e.second)+"]"; } }
     s+="],\"ul\":["; { bool f=true; for(auto& e:F.unlinked){ if(!f) s+=","; f=false; s+="["+to_string(e.first)+","+to_string(e.second)+"]"; } }
     s+="]}]"; }
-  s+="],\"links\":["; { vector<pair<uint64_t,Link*>> ls; for(auto& e:LINKS) ls.push_back({e.first,&e.second}); sort(ls.begin(),ls.end()); bool f=true; for(auto& e:ls){ if(!f) s+=","; f=false; Link& L=*e.second; s+="["+to_string(e.first)+","+to_string(L.state)+","+to_string((int)L.view[0])+","+to_string((int)L.view[1])+","+to_string((int)L.half)+","+to_string(L.halfAt)+","+to_string(L.askAt)+"]"; } }
+  s+="],\"links\":["; { vector<pair<IdP,Link*>> ls; for(auto& e:LINKS) ls.push_back({e.first,&e.second}); sort(ls.begin(),ls.end()); bool f=true; for(auto& e:ls){ if(!f) s+=","; f=false; Link& L=*e.second; s+="[\""+to_string(e.first.a)+":"+to_string(e.first.b)+"\","+to_string(L.state)+","+to_string((int)L.view[0])+","+to_string((int)L.view[1])+","+to_string((int)L.half)+","+to_string(L.halfAt)+","+to_string(L.askAt)+"]"; } }
   s+="],\"peers\":["; for(int i=0;i<nextId;i++){ if(i) s+=","; s+=lst(i<(int)LINKPEERS.size()?LINKPEERS[i]:vector<int>()); } s+="]}"; return s; }
 static void out(const char* op,const string& r){ printf("{\"op\":\"%s\",\"r\":%s,\"log\":[%s],\"d\":%s}\n",op,r.c_str(),LOG.c_str(),dump().c_str()); LOG.clear(); }
 int main(){

@@ -68,10 +68,12 @@
  * Seat methods used here: recv, tick, join, absence, route, strictNextHop, linkRole, linkPeers, socketed,
  * occGet, l13On, l13, state/hasCoord/coord/occ/live/farCk/farGw/clkHeld.
  *
- * IDS. The seat's ids are integers below 2^21 (hash.idPair is exact only there). ids() maps a page peer id to one:
- * `k_<hex>` ids by their first 21 bits (string order = int order), any other id by FNV-1a. Ints a frame names
- * travel with a small directory (dirFor / learnDir) so a page can dial a seat it only heard of; each entry is
- * checked (nid(peer) === int), so a directory cannot point an int at another peer.
+ * IDS. The seat's ids are integers below 2^52 (exact in a JS number; pair keys are unpacked, hash.idPair, and an
+ * id enters a hash as two 32-bit halves, hash.hmixId). ids() maps a page peer id to one: `k_<hex>` ids by their
+ * first 52 bits (13 hex digits; string order = int order), any other id by two FNV-1a words. Two identities
+ * share an int with odds ~N^2/2^53 (1e-8 at 10,000 people): not checked. Ints a frame names travel with a small
+ * directory (dirFor / learnDir) so a page can dial a seat it only heard of; each entry is checked
+ * (nid(peer) === int), so a directory cannot point an int at another peer.
  */
 (function (root) {
   'use strict';
@@ -92,7 +94,7 @@
   const K = C_.consts, E = C_.enums;
   const { ckey, ckPc, ckR, ownedLinks } = topo;
   const { LS_OPEN, LS_DIALING, LK_OPEN } = E;
-  const ID_BITS = 21, ID_MAX = 1 << ID_BITS;
+  const ID_BITS = 52, ID_MAX = 2 ** ID_BITS;
   const NOSOCK_WIN = 40;      // ticks: a relay nosock and the seat's ask (fabricNoSock) pair up within this window
   const REF_STALE = 20;       // ticks: an incomplete referral list over the relay is dropped after this
   const TRACE_RING = 20000;   // DEBUG trace lines kept per page
@@ -104,20 +106,21 @@
   };
 
   // ---- ids ----------------------------------------------------------------------------------------------------
+  // a page peer id as the seat's int: a k_ identity's first 52 bits; any other id two FNV-1a words (20 + 32 bits)
+  function nidOf(peer) {
+    const p = String(peer);
+    if (/^k_[0-9a-f]{13}/.test(p)) return parseInt(p.slice(2, 15), 16);
+    return (fnv.str(p + '\u0001') >>> 12) * 4294967296 + fnv.str(p);
+  }
   function ids() {
     const toPeer = new Map(), byPeer = new Map();
-    function nid(peer) {
-      const p = String(peer);
-      if (/^k_[0-9a-f]{6}/.test(p)) return parseInt(p.slice(2, 8), 16) >>> 3;
-      return fnv.str(p) >>> (32 - ID_BITS);
-    }
-    // learn a peer: its int, or -1 when another peer already holds that int (a collision: the second is ignored)
+    const nid = nidOf;
+    // learn a peer: its int (the first peer an int was learned for keeps it: two identities on one int is not handled)
     function learn(peer) {
       if (peer == null || peer === '') return -1;
       const p = String(peer); const c = byPeer.get(p); if (c !== undefined) return c;
-      const n = nid(p); const o = toPeer.get(n);
-      if (o !== undefined && o !== p) return -1;
-      toPeer.set(n, p); byPeer.set(p, n); return n;
+      const n = nid(p); if (!toPeer.has(n)) toPeer.set(n, p);
+      byPeer.set(p, n); return n;
     }
     const pid = (n) => (toPeer.has(n) ? toPeer.get(n) : null);
     return { nid, pid, learn, size: () => toPeer.size };
@@ -136,9 +139,9 @@
     const pc = o.pc || {}, relay = o.relay || {}, measure = o.measure || {};
     const ID = o.ids || ids();
     const me = ID.learn(o.peer);
-    if (!(me >= 0 && me < ID_MAX)) throw new Error('mesh env: my id ' + me + ' is not below 2^21 (hash.idPair needs it)');
+    if (!(Number.isSafeInteger(me) && me >= 0 && me < ID_MAX)) throw new Error('mesh env: my id ' + me + ' is not an integer below 2^52');
     const lv = Object.assign({}, C_.levers, { LINKMODEL: true, TIERS_ACTIVE: true, nextId: ID_MAX }, o.levers || {});
-    const st = { rx: 0, tx: 0, inboxMax: 0, delay: [0, 0, 0], drops: {}, relay: { knock: 0, unlist: 0, greeters: 0, nosock: 0, nosockBusy: 0, busyIn: 0, busyOut: 0, refIn: 0 }, idCollide: 0, lawErr: {} };
+    const st = { rx: 0, tx: 0, inboxMax: 0, delay: [0, 0, 0], drops: {}, relay: { knock: 0, unlist: 0, greeters: 0, nosock: 0, nosockBusy: 0, busyIn: 0, busyOut: 0, refIn: 0 }, lawErr: {} };
     const drop = (why) => { st.drops[why] = (st.drops[why] || 0) + 1; };
 
     // the trace sink: the sim's JSONL line {t, s, e, c, d} (harness fabric.js traceLine), or off
@@ -190,10 +193,10 @@
       if (!d || typeof d !== 'object') return;
       for (const k of Object.keys(d)) {
         const p = d[k], n = +k; if (typeof p !== 'string' || ID.nid(p) !== n) continue;
-        if (ID.learn(p) < 0) { st.idCollide++; trace('ENV-IDCOLLIDE', me, null, 'id=%d', n); }
+        ID.learn(p);
       }
     }
-    function learnPeer(peer) { const x = ID.learn(peer); if (x < 0 && peer) { st.idCollide++; trace('ENV-IDCOLLIDE', me, null, 'id=%d', ID.nid(peer)); } return x; }
+    const learnPeer = (peer) => ID.learn(peer);
 
     // ---- io for the pc laws (A2) --------------------------------------------------------------------------------
     const dialFailLater = [], lostLater = new Set();
@@ -409,7 +412,7 @@
     // a verified frame off viaPeer's dc (A3 decodes and checks signatures); dir: the sender's id directory
     function frame(m, viaPeer, dir) {
       if (dead || !m) return;
-      const x = learnPeer(viaPeer); if (x < 0) { drop('frame-collide'); return; }
+      const x = learnPeer(viaPeer); if (x < 0) { drop('frame-nopeer'); return; }
       learnDir(dir);
       if (pcw.frame && pcw.frame(x, m)) return;   // a pcbye, or a frame lost to a close at my end
       if (!m.t || m.t === 'pcbye') return;
@@ -503,7 +506,7 @@
     return env;
   }
 
-  const api = Object.freeze({ create, ids, ID_BITS });
+  const api = Object.freeze({ create, ids, nidOf, ID_BITS });
   GifOS.meshPageEnv = api;
   if (isNode) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

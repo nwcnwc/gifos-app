@@ -73,7 +73,8 @@ function splitTop(s) {
 
 // ---- types -------------------------------------------------------------------------------------------------
 const SCAL = { 'int': 'i32', 'long long': 'i64', 'uint8_t': 'u8', 'uint16_t': 'u16', 'uint32_t': 'u32', 'unsigned': 'u32',
-  'uint64_t': 'u64', 'size_t': 'u64', 'bool': 'bool', 'double': 'f64', 'char': 'i8', 'string': 'str', 'const char*': 'str' };
+  'uint64_t': 'u64', 'size_t': 'u64', 'bool': 'bool', 'double': 'f64', 'char': 'i8', 'string': 'str', 'const char*': 'str',
+  'IdP': 'idp' };
 const MSGS = new Set(['Msg', 'Coord', 'KV', 'LE', 'VE', 'KStmt', 'Dig', 'DigE', 'Ent']);
 let localStructs = new Set();
 function ty(t) {

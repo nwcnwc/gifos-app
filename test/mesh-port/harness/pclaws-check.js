@@ -18,6 +18,7 @@ const seatM = require(path.join(M, 'seat.js'));
 const { Seat } = seatM;
 const msg = require(path.join(M, 'msg.js'));
 const topo = require(path.join(M, 'topo.js'));
+const hashM = require(path.join(M, 'hash.js'));
 const C_ = require(path.join(M, 'consts.js'));
 const E = C_.enums;
 
@@ -204,7 +205,7 @@ function runJs(script, dir) {
     s += '","peers":"'; phys.LINKPEERS.forEach((p, i) => { s += i + ':'; for (const v of p) s += v + ','; s += ';'; });
     const S = pc.S;
     s += '","doorn":"'; for (const v of S.DOORN) s += v + ','; s += '","doork":"'; for (const v of S.DOORK) s += v + ',';
-    s += '","ldoors":"'; for (const k of [...S.LDOORS].sort((x, y) => x - y)) s += k + ',';
+    s += '","ldoors":"'; for (const k of [...S.LDOORS].sort(hashM.pairCmp)) s += k + ',';
     s += '","closing":"'; for (const p of S.L16CLOSING) s += p[0] + ':' + p[1] + ',';
     s += '","cool":"'; for (const [k, c] of S.L16COOL) s += k + ':' + c[0] + ':' + c[1] + ',';
     s += '","l23s":"'; for (const [k, c] of S.L23S) s += k + ':' + c.until + ':' + c.last + ':' + c.n + ',';

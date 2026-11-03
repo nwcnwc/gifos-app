@@ -98,7 +98,7 @@ function installFhop(fab) {
   // C++: mesh_fhop.inc:fhKeyOf   (coordKeyOf; +1: 0 = unknown)
   const fhKeyOf = (me, pid) => { for (const [k, v] of seats[me].occ) if (v === pid) return k + 1; return 0; };
   // C++: mesh_fhop.inc:fhWebkit
-  const fhWebkit = (id) => lv.FH_WEBKIT > 0 && (lmix(hash.hmix((lv.SEED0 ^ 0x776b6974) >>> 0, id >>> 0)) % 1000000) / 1e6 < lv.FH_WEBKIT;
+  const fhWebkit = (id) => lv.FH_WEBKIT > 0 && (lmix(hash.hmixId((lv.SEED0 ^ 0x776b6974) >>> 0, id)) % 1000000) / 1e6 < lv.FH_WEBKIT;
   const namesOwned = (from, to) => seats[from].linkRole(to, E.LR_OWNED | E.LR_E2);   // C++: mesh_link.inc:namesOwned
 
   // C++: mesh_fhop.inc:fhNextHop   (nextHopDc(to, tc))
@@ -137,7 +137,7 @@ function installFhop(fab) {
     for (const r of mc) if (r !== to && fhClaims(me, r, to)) { if (fhDc(me, r)) { FHS[0]++; FHS[1]++; fhXmit(me, r, env); return true; } break; }   // cands[0] only
     const hp = fhNextHop(me, to, env.fhTc); if (hp >= 0) { FHS[0]++; FHS[2]++; fhXmit(me, hp, env); return true; }
     const cp = fhCrumb(me, to, -1); if (cp >= 0) { FHS[0]++; FHS[3]++; fhXmit(me, cp, env); return true; }
-    const lane = to * 256 + MT_INDEX.get(m.t); const it = fab.FH[me].lane.get(lane);
+    const lane = hash.idPair(to, MT_INDEX.get(m.t)); const it = fab.FH[me].lane.get(lane);
     if (it !== undefined && it === TICK()) { FHS[5]++; return true; }   // swallowed: the next beat re-mints it
     fab.FH[me].lane.set(lane, TICK());
     if (fab.FH[me].lane.size > 512) for (const [k, v] of [...fab.FH[me].lane]) { if (TICK() - v > 60) fab.FH[me].lane.delete(k); }

@@ -39,7 +39,7 @@
   function l4Meet(a, b) { return a !== E.NAT_BLOCKED && b !== E.NAT_BLOCKED && !(a === E.NAT_STRICT && b === E.NAT_STRICT); }
   // C++: mesh.cpp:fabricToken
   // lv: the world's levers (SEED0 is a lever here, a global in C++)
-  function fabricToken(lv, id) { return (hash.fmix32(hash.hmix(hash.hmix((hash.H_INIT ^ 0x72636c) >>> 0, lv.SEED0 >>> 0), id >>> 0)) | 1) >>> 0; }
+  function fabricToken(lv, id) { return (hash.fmix32(hash.hmixId(hash.hmix((hash.H_INIT ^ 0x72636c) >>> 0, lv.SEED0 >>> 0), id)) | 1) >>> 0; }
 
   // U2Row key: C++ ckey(row)*2 + variant flag (< 2^49, a plain JS number). C++: mesh_seat.inc:Seat::onU2
   const u2RowKey = (rowCk, tag3) => rowCk * 2 + (tag3 ? 1 : 0);

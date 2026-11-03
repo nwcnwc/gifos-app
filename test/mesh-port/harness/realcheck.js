@@ -21,12 +21,12 @@ const M = path.join(__dirname, '..', '..', '..', 'js', 'mesh');
 const C_ = require(path.join(M, 'consts.js'));
 const msg = require(path.join(M, 'msg.js'));
 const topo = require(path.join(M, 'topo.js'));
+const hash = require(path.join(M, 'hash.js'));
 
 const K = C_.consts, E = C_.enums;
 const { LK_OPEN, LK_DIALING, LK_CLOSED } = E;
 const C = topo.C;
-const TWO32 = 4294967296;
-const pkA = (pk) => Math.floor(pk / TWO32), pkB = (pk) => pk % TWO32;   // C++ (int)(pk>>32), (int)(uint32_t)pk
+const pkA = hash.pairA, pkB = hash.pairB;   // C++ pk.a, pk.b
 const lEnd = (me, x) => (me < x ? 0 : 1);
 const MT_INDEX = new Map(msg.MT_NAMES.map((n, i) => [n, i]));
 const MT_NAME = (t) => msg.MT_NAMES[t] || '?';

@@ -4,12 +4,13 @@ const assert = require('assert');
 const L = require('../../../js/mesh/page/layer.js');
 const ckey = (c) => String(c.pc * 65536 + c.r * 256 + c.i);
 const ownedLinks = (c) => [0, 1, 2, 3, 4].filter((i) => i !== c.i).map((i) => ({ pc: c.pc, r: c.r, i }));
-// ids: 21 bits, same order as the string compare, reversible
+// ids: 52 bits (the env's nidOf), same order as the string compare, reversible
 {
   const ids = L.makeIds();
-  const a = 'k_' + '0a1b2c' + '0'.repeat(34), b = 'k_' + '0a1b4c' + '0'.repeat(34);
+  const a = 'k_' + '0a1b2c' + '0'.repeat(34), b = 'k_' + '0a1b2c1' + '0'.repeat(33);   // one int under the old 21-bit rule
   const na = ids.nid(a), nb = ids.nid(b);
-  assert(na >= 0 && na < 2 ** 21 && nb < 2 ** 21, 'ids < 2^21');
+  assert(na >= 0 && Number.isSafeInteger(nb) && nb < 2 ** 52 && na !== nb, 'ids < 2^52, apart');
+  assert.strictEqual(na, require('../../../js/mesh/page/env.js').nidOf(a), 'the env and the layer agree');
   assert(na < nb, 'order kept');
   assert.strictEqual(ids.pid(na), a); assert.strictEqual(ids.pid(nb), b);
 }

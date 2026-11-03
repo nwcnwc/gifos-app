@@ -240,7 +240,7 @@
         return;
       }
       if (this.coord.i !== 0 || this.moving) return;
-      let sig = hash.H_INIT; for (let j = 0; j < C; j++) { const x = (j === 0) ? this.id : this.occGet(ckey({ pc: this.coord.pc, r: this.coord.r, i: j })); sig = hash.hmix(sig, x >>> 0); }
+      let sig = hash.H_INIT; for (let j = 0; j < C; j++) { const x = (j === 0) ? this.id : this.occGet(ckey({ pc: this.coord.pc, r: this.coord.r, i: j })); sig = hash.hmixId(sig, x); }
       if (sig !== this.l4Sig) { this.l4Sig = sig; this.l4SigAt = this.TICK; }
       if (this.l4o.at > -1000) {
         if (this.l4o.rdyA < 0 || this.l4o.rdyB < 0) { this.f.fabricNoteSwap(this.id, 3); this.trace('SWAP-REFUSED', this.id, this.coord, 'a=%d b=%d', this.l4o.a, this.l4o.b); this.l4o = newL4Order(); return; }

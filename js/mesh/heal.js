@@ -1172,9 +1172,9 @@
     },
   });
 
-  // (1ULL<<50) | hmix64(hmix(H_INIT, x), ckey(hole)): (hole, x) as a 32-bit hash under bit 50 (no ckey has it)
+  // (1ULL<<50) | hmix64(hmixId(H_INIT, x), ckey(hole)): (hole, x) as a 32-bit hash under bit 50 (no ckey has it)
   // C++: mesh_heal.inc:Seat::findLeaf
-  function l9FwdKey(k, x) { return 2 ** 50 + hash.hmix64(hash.hmix(hash.H_INIT, x >>> 0), k); }
+  function l9FwdKey(k, x) { return 2 ** 50 + hash.hmix64(hash.hmixId(hash.H_INIT, x), k); }
 
   const api = { l1RowEmpty, l1HeirFailed, l1RightCell, l1ColCell, l9RoomAllHome, l9PullSmall, l9PullHold, l1MoverCell, l1HasMover, rmWitCells, l13Ring, l13Witness, l13Chain, l13Line, L13_CHAIN_MAX, l9FwdKey };
   GifOS.meshHeal = api;

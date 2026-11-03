@@ -73,9 +73,9 @@ int main(int argc,char** argv){
   const int N=argc>1?atoi(argv[1]):1000; G.seed(argc>2?strtoull(argv[2],0,10):1);
   // ---- hash helpers
   for(int q=0;q<N;q++){
-    uint32_t h=(uint32_t)r64(), x=(uint32_t)r64(); long long w=mixVal(); int a=ri(0,(1<<21)-1), b=ri(0,(1<<21)-1);
+    uint32_t h=(uint32_t)r64(), x=(uint32_t)r64(); long long w=mixVal(); long long a=(long long)(r64()>>12), b=(q%7==0)?-1:(long long)(r64()>>12);   // seat ids: any 52-bit value (and -1, none)
     S+="{\"k\":\"hash\",\"h\":"; unum(h); S+=",\"x\":"; unum(x); S+=",\"w\":"; num(w); S+=",\"a\":"; num(a); S+=",\"b\":"; num(b);
-    S+=",\"out\":{\"fmix32\":"; unum(fmix32(x)); S+=",\"hmix\":"; unum(hmix(h,x)); S+=",\"hmix64\":"; unum(hmix64(h,(uint64_t)w)); S+=",\"idPair\":"; unum(idPair(a,b)); S+="}}"; line(); }
+    S+=",\"out\":{\"fmix32\":"; unum(fmix32(x)); S+=",\"hmix\":"; unum(hmix(h,x)); S+=",\"hmix64\":"; unum(hmix64(h,(uint64_t)w)); S+=",\"idPair\":\""+to_string(idPair(a,b).a)+":"+to_string(idPair(a,b).b)+"\""; S+=",\"hmixId\":"; unum(hmixId(h,a)); S+="}}"; line(); }
   // ---- topology
   for(int q=0;q<N;q++){
     Coord s=coordVal(); int d=ri(0,C-1);
