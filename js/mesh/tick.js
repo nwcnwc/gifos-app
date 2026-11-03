@@ -13,8 +13,7 @@
  *     backupOwnerOf, rmWitness, l13Witness, ownerCoordOf (through FREE).
  *   - l13Top(oc) in C++ rewrites oc to the top of the gone chain and returns true; heal.js returns the Coord or null.
  *   - u2Rows is keyed in C++ by ckey(row) | (tag3 << 62), which a JS number cannot hold. Here the tag bit is
- *     2^52 (u2RowKey / u2RowCell / u2RowTag3). SIM CHANGE NEEDED: key the sim's U2Row the same way (or by a pair),
- *     and the receiving unit (onU2, not in this job's range) must use u2RowKey.
+ *     2^52 (u2RowKey / u2RowCell / u2RowTag3, in shared.js). SIM CHANGE NEEDED: key the sim's U2Row the same way.
  *   - L2_TAKE_N / MAX / SUM are the module counters of the C++ `up2stat` report.
  */
 (function (root) {
@@ -47,11 +46,7 @@
     return p + '/' + c.r + '.' + c.i;
   }
 
-  // U2Row key: ckey(row) | (tag3 << 62) in C++ (see the header note).
-  const U2_TAG3 = 2 ** 52;
-  const u2RowKey = (rowCk, tag3) => rowCk + (tag3 ? U2_TAG3 : 0);
-  const u2RowTag3 = (key) => key >= U2_TAG3;
-  const u2RowCell = (key) => unck(key >= U2_TAG3 ? key - U2_TAG3 : key);
+  const { u2RowKey, u2RowCell, u2RowTag3 } = req('./shared.js', 'meshShared');   // the u2Rows key flag (shared.js)
 
   // C++: mesh_seat.inc:L2_TAKE_N
   // heir takeover (E1 judged down -> E2 hot), every UP2-HOT; reported by `up2stat`

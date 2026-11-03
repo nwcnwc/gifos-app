@@ -13,7 +13,7 @@
  *   Msg copies (Msg f=m; movedClaimMsg=m; emit of a stored frame) are msg.clone().
  *   ownerOf / standbyOf / backupOwnerOf are roles.js (they return the cell or null).
  *   u2Rows key: C++ ckey(row)|((m.tag==3)<<62). 2^62 does not fit a JS number exactly, so the standby flag is
- *   2^49 here (ckey < 2^48, so the keys stay apart): SIM CHANGE NEEDED (see the report), no reader sees the key.
+ *   shared.js u2RowKey (2^52): SIM CHANGE NEEDED (see the report).
  */
 (function (root) {
   'use strict';
@@ -21,7 +21,7 @@
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
   const seatM = req('./seat.js', 'meshSeat');
-  const { cellOk, ownerCoordOf, coordStr } = req('./shared.js', 'meshShared');
+  const { cellOk, ownerCoordOf, coordStr, u2RowKey } = req('./shared.js', 'meshShared');
   const { Seat, roomTerm, islandStand, signedBy, l165Earlier } = seatM;
   const C_ = req('./consts.js', 'meshConsts');
   const msg = req('./msg.js', 'meshMsg');
@@ -528,7 +528,7 @@
       if (o.pc === this.coord.pc && o.r === this.coord.r) mine = (m.tag === 3) ? ((b = roles.standbyOf(row, view)) !== null && ckey(b) === ckey(this.coord)) : ((b = roles.backupOwnerOf(row, view)) !== null && ckey(b) === ckey(this.coord));
       else { const orow = { pc: o.pc, r: o.r, i: 0 }; const oo = roles.ownerOf(orow); mine = m.tag !== 3 && !!oo && oo.pc === this.coord.pc && oo.r === this.coord.r && (b = roles.backupOwnerOf(orow, view)) !== null && ckey(b) === ckey(this.coord); }   // L2.2b
       if (!mine) return;
-      const ukey = ckey(row) + (m.tag === 3 ? 562949953421312 : 0);   // C++ <<62: see the file header (SIM CHANGE NEEDED)
+      const ukey = u2RowKey(ckey(row), m.tag === 3);   // C++ <<62: shared.js
       const u = ins(this.u2Rows, ukey, () => state.newStruct('U2Row'));
       if (m.e1dn && !u.hot) this.trace('UP2-SERVE', id, this.coord, 'row=%s heir=%d%s', coordStr(row), m.id, m.tag === 3 ? ' standby' : '');
       u.heir = m.id; u.at = TICK; u.hot = m.e1dn; if (m.e1dn && m.dgUp.at >= 0) u.dig = dig.cloneDig(m.dgUp);   // the row's fold, held while I serve it
