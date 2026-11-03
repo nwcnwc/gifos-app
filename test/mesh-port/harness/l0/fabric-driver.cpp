@@ -50,7 +50,7 @@ static Seat* mkSeat(int id){ if(id>=(int)seats.size()){ seats.resize(id+1,nullpt
 static uint32_t hh(uint32_t h,long long v){ h=hmix(h,(uint32_t)v); return hmix(h,(uint32_t)((unsigned long long)v>>32)); }
 static uint32_t linkHash(){
   uint32_t h=2166136261u;
-  for(auto& kv:LINKS){ const Link& L=kv.second; h=hh(h,(long long)kv.first);
+  for(auto& kv:LINKS){ const Link& L=kv.second; h=hh(h,kv.first.a); h=hh(h,kv.first.b);
     for(long long v:{(long long)L.state,(long long)L.view[0],(long long)L.view[1],(long long)L.half,(long long)L.stuck,(long long)L.leverHalf,(long long)L.wasOpen,(long long)L.carried,(long long)L.epoch,(long long)L.openEp,L.dialAt,L.halfAt,L.askAt,L.txAt[0],L.txAt[1],L.nnAt[0],L.nnAt[1],L.nnAsk[0],L.nnAsk[1],L.arrAt[0],L.arrAt[1],(long long)L.q.size(),(long long)L.outside,(long long)L.dialBy,(long long)L.callClosed,(long long)L.gone,(long long)L.agreed[0],(long long)L.agreed[1],(long long)L.hold[0].size(),(long long)L.hold[1].size(),L.closingAt[0],L.closingAt[1],L.farAsk[0],L.farAsk[1],(long long)L.uplink,(long long)L.dHeard,L.backAt[0],L.backAt[1],L.dBorn,L.dProg,(long long)L.dAsked,(long long)L.dHomed,(long long)L.dGw,(long long)L.dIn,(long long)L.dSat,L.dHoAt,L.dWait,(long long)L.dOwed,L.dWaitAtFind,L.dOwedAt}) h=hh(h,v); }
   for(int v:DOORN) h=hh(h,v); h=hh(h,-7); for(int v:DOORK) h=hh(h,v);
   h=hh(h,(long long)LDOORS.size()); h=hh(h,(long long)LEVQ.size()); h=hh(h,(long long)LPENDCLOSE.size()); h=hh(h,(long long)TLDEB.size()); h=hh(h,(long long)L16COOL.size()); h=hh(h,(long long)DOOR_PEND.size());

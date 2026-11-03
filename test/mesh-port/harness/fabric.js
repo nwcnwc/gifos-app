@@ -62,7 +62,7 @@ function keyHash(k) { k = hash.fmix32((k ^ 0x6b657968) >>> 0); return k ? k : 1;
 // C++: mesh.cpp:pairKey
 // A pair with a negative id (a frame to nobody: emit(-1, ...)) has a u64 key above 2^53 in C++, which a JS number
 // rounds onto one value for every seat; such a pair gets an exact string key (a distinct pair, as in the C++ set).
-function pairKey(a, b) { const lo = a < b ? a : b, hi = a < b ? b : a; return lo < 0 ? (lo >>> 0) + ':' + (hi >>> 0) : hash.idPair(lo, hi); }
+function pairKey(a, b) { return a < b ? hash.idPair(a, b) : hash.idPair(b, a); }
 
 // The externals that have a fixed answer with the feature off (so a room without the unit can still run).
 // Each is a one-line reading of the C++; the unit's own function replaces it through fab.plug.

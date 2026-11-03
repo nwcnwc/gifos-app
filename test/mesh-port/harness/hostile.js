@@ -19,6 +19,7 @@ const M = path.join(__dirname, '..', '..', '..', 'js', 'mesh');
 const C_ = require(path.join(M, 'consts.js'));
 const msg = require(path.join(M, 'msg.js'));
 const topo = require(path.join(M, 'topo.js'));
+const hash = require(path.join(M, 'hash.js'));
 const rng = require(path.join(M, 'rng.js'));
 const seatM = require(path.join(M, 'seat.js'));
 const { Seat } = seatM;
@@ -34,7 +35,7 @@ const atof = (s) => { const v = parseFloat(s); return Number.isNaN(v) ? 0 : v; }
 const cp = (c) => ({ pc: c.pc, r: c.r, i: c.i });
 
 // The mt19937 a hostile page draws from. C++: mesh_hostile.inc:Seat::hostileTick (hostRng)
-const seedOf = (lv, id) => u32(Math.imul(lv.SEED0 >>> 0, 31) + Math.imul(id >>> 0, 2654435761));
+const seedOf = (lv, id) => hash.hmixId(u32(Math.imul(lv.SEED0 >>> 0, 31)), id);   // C++ hmixId((uint32_t)(SEED0*31u), id)
 
 // C++: mesh_hostile.inc:hostPickHonest
 function hostPickHonest(fab, g, not1) {
@@ -58,7 +59,7 @@ function hostDial(fab, me, x) {
 function hostCloseAll(fab, me) {
   const v = [];
   for (const [key, L] of fab.link.LINKS) {   // LINKS: pair key -> Link, in table order
-    const a = Math.floor(key / 4294967296), b = key >>> 0;
+    const a = hash.pairA(key), b = hash.pairB(key);
     if (L.state === E.LK_OPEN && (a === me || b === me)) v.push(a === me ? b : a);
   }
   v.sort((a, b) => a - b);
@@ -277,7 +278,7 @@ function install(fab) {
     const pcs = new Array(n).fill(0), hpcs = new Array(n).fill(0); let held = 0;
     for (const [key, L] of fab.link.LINKS) {
       if (L.state !== E.LK_OPEN && L.state !== E.LK_DIALING) continue;
-      const a = Math.floor(key / 4294967296), b = key >>> 0; if (a >= n || b >= n) continue;
+      const a = hash.pairA(key), b = hash.pairB(key); if (a >= n || b >= n) continue;
       if (alive[a]) { pcs[a]++; if (isHostile(fab, b)) hpcs[a]++; }
       if (alive[b]) { pcs[b]++; if (isHostile(fab, a)) hpcs[b]++; }
       for (let e = 0; e < 2; e++) {

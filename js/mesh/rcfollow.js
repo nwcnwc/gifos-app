@@ -19,7 +19,7 @@
     l191Loop(m, nh) {
       if (m.tag < 1 || m.tag > 3) return false;
       if (this.occGet(ckey(m.target)) >= 0) return false;
-      const rk = hash.hmix(hash.hmix(hash.hmix(hash.hmix(hash.H_INIT, m.asker >>> 0), (m.pseq >= 0 ? m.pseq : m.pn) >>> 0), m.tag >>> 0), nh >>> 0);
+      const rk = hash.hmixId(hash.hmix(hash.hmix(hash.hmixId(hash.H_INIT, m.asker), (m.pseq >= 0 ? m.pseq : m.pn) >>> 0), m.tag >>> 0), nh);
       const rs = this.routeSeen.get(rk);
       if (rs !== undefined && this.TICK - rs <= K.L191_HOLD) return true;
       if (this.routeSeen.size >= 16) {

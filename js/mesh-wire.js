@@ -67,7 +67,9 @@
   // A forwarded frame carries its author's block (cached by its signed core).
   const HOP = ['to', 'from', 'ttl', 'rttl', 'rvia', 'lk', 'lkEp', 'tx', 'sigL', 'ppL', 'mpL', 'foL', 'l31L', 'swL', 'direct', 'rl', 'fhTtl', 'routing'];
   function claimOf(m) { return m.sig ? m.id : m.fsig ? m.nc : (m.fo >= 0 ? m.fo : -1); }
-  function coreOf(msgM, m) { const o = msgM.writeMsg(m); for (const k of HOP) delete o[k]; return JSON.stringify(o); }
+  // A seeker's FIND (fsig: L24) is rebuilt at every hop (sh, sgw, gwc, spread, dk change), so its signature covers
+  // what the seeker owns, its own ask {t, nc}; a forwarder re-attaches the seeker's verified signature from sigOf.
+  function coreOf(msgM, m) { if (!m.sig && m.fsig && m.t === 'FIND') return JSON.stringify({ t: 'FIND', nc: m.nc }); const o = msgM.writeMsg(m); for (const k of HOP) delete o[k]; return JSON.stringify(o); }
   // A GOODBYE SAID NOW (mesh.js LEAVE heals on m.s4live when no link told the
   // receiver the leaver's stay). The pre-signed LEAVE is up to PRELEAVE_MS old
   // when it is sent, and the two clocks may differ: `off` is my estimate of

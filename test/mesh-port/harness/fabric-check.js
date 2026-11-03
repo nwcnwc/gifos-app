@@ -137,7 +137,7 @@ function linkHashJs(fab) {
   const L = fab.link, lv = fab.lv; const hh = (h, v) => { h = hashM.hmix(h, v >>> 0); return hashM.hmix(h, Math.floor(v / 4294967296) >>> 0); };
   let h = 2166136261;
   for (const [pk, k] of L.LINKS) {
-    h = hh(h, pk);
+    h = hh(h, hashM.pairA(pk)); h = hh(h, hashM.pairB(pk));
     for (const v of [k.state, k.view[0], k.view[1], k.half, +k.stuck, +k.leverHalf, +k.wasOpen, +k.carried, k.epoch, k.openEp, k.dialAt, k.halfAt, k.askAt, k.txAt[0], k.txAt[1], k.nnAt[0], k.nnAt[1], k.nnAsk[0], k.nnAsk[1], k.arrAt[0], k.arrAt[1], k.q.length, k.outside, k.dialBy, +k.callClosed, k.gone, +k.agreed[0], +k.agreed[1], k.hold[0].length, k.hold[1].length, k.closingAt[0], k.closingAt[1], k.farAsk[0], k.farAsk[1], +k.uplink, k.dHeard, k.backAt[0], k.backAt[1], k.dBorn, k.dProg, +k.dAsked, +k.dHomed, +k.dGw, +k.dIn, +k.dSat, k.dHoAt, k.dWait, +k.dOwed, k.dWaitAtFind, k.dOwedAt]) h = hh(h, v);
   }
   for (const v of L.DOORN) h = hh(h, v); h = hh(h, -7); for (const v of L.DOORK) h = hh(h, v);

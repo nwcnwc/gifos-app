@@ -75,7 +75,7 @@
       this.id = i;
       this.rs = rngM.seedFor(i);   // FNV-1a 32 of "p%08d" xor 0x9e3779b9
       const h = (this.rs ^ 0x9e3779b9) >>> 0;
-      const z = hash.fmix32(hash.hmix(hash.H_INIT, ((i >>> 0) + 1) >>> 0)); this.myKey = (z | 1) >>> 0;
+      const z = hash.fmix32(hash.hmixId(hash.H_INIT, i + 1)); this.myKey = (z | 1) >>> 0;
       this.linkKey = lv.ISLAND_MODE ? lv.URL_KEY : this.myKey;
       if (lv.NET_SKEW > 0) this.skew = (h >>> 3) % ((lv.NET_SKEW + 1) >>> 0);
       if (lv.CLK_OFF > 0) { const q = hash.fmix32((z ^ 0x636c6b) >>> 0); this.clkHeld = -(q % ((lv.CLK_OFF + 1) >>> 0)); }
@@ -138,12 +138,12 @@
   // C++: mesh.cpp:l13MassOf
   function l13MassOf(s) { return s.l13Mass(); }
   // C++: mesh.cpp:l25OrdKey
-  function l25OrdKey(by, hole, at) { return hash.hmix(hash.hmix(hash.hmix64(hash.H_INIT, hole), by >>> 0), at >>> 0); }
+  function l25OrdKey(by, hole, at) { return hash.hmix(hash.hmixId(hash.hmix64(hash.H_INIT, hole), by), at >>> 0); }
   // C++: mesh.cpp:Seat::ppSigOf
-  function ppSigOf(from, at) { return from * 4294967296 + (at >>> 0); }
+  function ppSigOf(from, at) { return hash.idPair(from, at >>> 0); }   // IdP{signer, tick}
   // C++: mesh.cpp:Seat::ppKey
   // a 32-bit hash of (cell, seat)
-  function ppKey(k, x) { return hash.hmix64(hash.hmix(hash.H_INIT, x >>> 0), k); }
+  function ppKey(k, x) { return hash.hmix64(hash.hmixId(hash.H_INIT, x), k); }
   // C++: mesh.cpp:Seat::l165Earlier
   function l165Earlier(at1, from1, id1, at2, from2, id2) { if (at1 - at2 > K.PLACE_W || at2 - at1 > K.PLACE_W) return at1 < at2; if (from1 !== from2) return from1 < from2; return id1 < id2; }
   const coordOf = (k) => unckey(k);
@@ -607,7 +607,7 @@
     // {from, at, loc} when x's placement proof at k is whole, else null
     l165Have(k, x) {
       const it = this.ppNotes.get(k); if (it === undefined) return null;
-      for (const n of it) if (n.x === x) { const from = n.from, at = hash.lo32(n.sig) | 0, loc = n.loc; return (from >= 0 && at >= 0 && loc >= 0) ? { from, at, loc } : null; }
+      for (const n of it) if (n.x === x) { const from = n.from, at = hash.pairB(n.sig) | 0, loc = n.loc; return (from >= 0 && at >= 0 && loc >= 0) ? { from, at, loc } : null; }
       return null;
     },
     // C++: mesh.cpp:Seat::l165Attach

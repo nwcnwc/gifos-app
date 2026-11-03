@@ -13,6 +13,7 @@ const { Seat, FREE } = require(path.join(M, 'seat.js'));
 require(path.join(M, 'ring.js'));   // the real islandStandM (and its netgSize hook) before any stand-in
 const msg = require(path.join(M, 'msg.js'));
 const topo = require(path.join(M, 'topo.js'));
+const hash = require(path.join(M, 'hash.js'));
 const E = require(path.join(M, 'consts.js')).enums;
 const { installFhop } = require('./fhop.js');
 const MT_INDEX = new Map(msg.MT_NAMES.map((n, i) => [n, i]));
@@ -171,7 +172,7 @@ function runJs(script) {
       d.F.push([i, { c: [...F.conns].map(([k, v]) => [k, v]), n: [...F.nat], sent: F.sentOk ? (F.sent ? F.sent : null) : false, cr: [...F.crumb].map(([k, v]) => [k, v[0], v[1]]), se: [...F.seen], la: [...F.lane],
         pe: [...F.peer].sort((a, b) => a[0] - b[0]).map(([k, P]) => [k, P.downSince, P.askAt, P.via, P.claimAt, [...P.refused].sort((a, b) => a[0] - b[0])]), jo: F.jobs.map((j) => [j.target, j.req, j.at]), wa: [...F.want], ul: [...F.unlinked] }]);
     });
-    d.links = [...LINKS].sort((a, b) => a[0] - b[0]).map(([k, L]) => [k, L.state, L.view[0], L.view[1], L.half, L.halfAt, L.askAt]);
+    d.links = [...LINKS].sort((a, b) => hash.pairCmp(a[0], b[0])).map(([k, L]) => [k, L.state, L.view[0], L.view[1], L.half, L.halfAt, L.askAt]);
     d.peers = []; for (let i = 0; i < lv.nextId; i++) d.peers.push(LINKPEERS[i] || []);
     return d;
   };

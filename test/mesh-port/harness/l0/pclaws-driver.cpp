@@ -25,6 +25,7 @@ static void setField(Msg& m,const string& k,long long v){
   else if(k=="ck") m.ck=v; else { fprintf(stderr,"bad field %s\n",k.c_str()); exit(2); } }
 static Seat* mkSeat(int id){ if(id>=(int)seats.size()){ seats.resize(id+1,nullptr); alive.resize(id+1,0); } seats[id]=new Seat(id); alive[id]=1; if(id>=nextId) nextId=id+1; return seats[id]; }
 static string D(long long v){ return to_string(v); }
+static string D(const IdP& p){ return D(p.a)+":"+D(p.b); }   // an unpacked id pair, as the JS key "a:b"
 static string dump(){
   string s=",\"links\":\"";
   for(auto& kv:LINKS){ Link& L=kv.second; s+=D(kv.first)+"|";
@@ -38,7 +39,7 @@ static string dump(){
     a(L.dAsked); a(L.dHomed); a(L.dGw); a(L.dIn); a(L.dSat); a(L.dHoAt); a(L.dWait); a(L.dOwed); a(L.dWaitAtFind); a(L.dOwedAt); s+=";"; }
   s+="\",\"peers\":\""; for(size_t i=0;i<LINKPEERS.size();i++){ s+=D(i)+":"; for(int p:LINKPEERS[i]) s+=D(p)+","; s+=";"; }
   s+="\",\"doorn\":\""; for(int v:DOORN) s+=D(v)+","; s+="\",\"doork\":\""; for(int v:DOORK) s+=D(v)+",";
-  s+="\",\"ldoors\":\""; for(uint64_t k:LDOORS) s+=D(k)+",";
+  s+="\",\"ldoors\":\""; for(const IdP& k:LDOORS) s+=D(k)+",";
   s+="\",\"closing\":\""; for(auto& p:L16CLOSING) s+=D(p.first)+":"+D(p.second)+",";
   s+="\",\"cool\":\""; for(auto& kv:L16COOL) s+=D(kv.first)+":"+D(kv.second.first)+":"+D(kv.second.second)+",";
   s+="\",\"l23s\":\""; for(auto& kv:L23S) s+=D(kv.first)+":"+D(kv.second.until)+":"+D(kv.second.last)+":"+D(kv.second.n)+",";
