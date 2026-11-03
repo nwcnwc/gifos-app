@@ -96,13 +96,18 @@ function room(opts) {
 }
 
 // ---- unit: ids ----------------------------------------------------------------------------------------------------
-test('ids: k_ ids keep the string order, fit 21 bits; collisions are refused', () => {
+test('ids: k_ ids keep the string order and take 52 bits; ids that share their first 21 bits stay apart', () => {
   const I = envM.ids();
-  const a = I.learn(hex(0x100000)), b = I.learn(hex(0x200000)), c = I.learn(hex(0xfffff8));
-  assert(a < b && b < c, 'order'); assert(c < (1 << 21), '21 bits');
+  const a = I.learn(hex(0x100000)), b = I.learn(hex(0x200000)), c = I.learn(hex(0xffffff) + 'f');
+  assert(a < b && b < c, 'order'); assert(Number.isSafeInteger(c) && c < 2 ** 52, '52 bits');
   assert.strictEqual(I.pid(b), hex(0x200000));
-  assert.strictEqual(I.learn(hex(0x100001)), -1, 'same top 21 bits -> collision refused');
-  const t = I.learn('test-peer'); assert(t >= 0 && t < (1 << 21));
+  const x = 'k_abcdef1' + '0'.repeat(33), y = 'k_abcdef9' + '0'.repeat(33);   // same first 21 bits (and 24)
+  const nx = I.learn(x), ny = I.learn(y);
+  assert(nx >= 0 && ny >= 0 && nx !== ny, 'distinct ints ' + nx + ' ' + ny);
+  assert.strictEqual(I.pid(nx), x); assert.strictEqual(I.pid(ny), y);
+  assert.strictEqual(Math.floor(nx / 2 ** 31), Math.floor(ny / 2 ** 31), 'the old 21-bit rule would have given both one int');
+  const t = I.learn('test-peer'); assert(Number.isSafeInteger(t) && t >= 0 && t < 2 ** 52);
+  assert.strictEqual(envM.nidOf(x), nx);
 });
 
 test('dir: a frame carries the peers of the ints it names; a forged entry is ignored', () => {
@@ -178,6 +183,28 @@ function seatRoom(n, maxTicks, opts) {
   R.run(20);   // let the last dials open
   return { R, t };
 }
+// two people whose identities share their first 28 bits (one int under the old 21-bit rule): both sit, apart
+test('room of 2 and 4 with ids that share their first 21 bits: every seat sits, ints distinct, cells distinct, links open', () => {
+  for (const n of [2, 4]) {
+    const R = room();
+    const ps = []; for (let i = 0; i < n; i++) ps.push('k_abcdef' + (0x1 + i * 0x3).toString(16) + '0'.repeat(33));
+    let k = 0; R.join(ps[k++]);
+    R.run(1200, () => { if (k < n && R.T() % 6 === 0) R.join(ps[k++]); return k === n && R.seated().length === n; });
+    R.run(20);
+    const ints = ps.map((p) => R.pages.get(p).env.me);
+    assert.strictEqual(new Set(ints).size, n, 'ints ' + ints);
+    assert(ints.every((x) => x >= 2 ** 31), 'ints past 2^31: ' + ints);
+    const errs = [...R.pages.values()].map((p) => p.env.stats().lawErr).filter((e) => Object.keys(e).length);
+    assert.strictEqual(errs.length, 0, 'law errors: ' + JSON.stringify(errs));
+    assert.strictEqual(R.seated().length, n, 'seated ' + R.seated().length + '/' + n);
+    assert.strictEqual(new Set(R.coords()).size, n, 'distinct cells ' + R.coords());
+    let named = 0, open = 0;
+    for (const p of R.pages.values()) for (const q of p.env.links()) { named++; const c = R.pcs.get(p.peer < q ? p.peer + '|' + q : q + '|' + p.peer); if (c && c.state === 'open') open++; }
+    assert(open === named, 'links named but not open: ' + open + '/' + named);
+    console.log('  n=' + n + ' ints ' + ints.join(' ') + ' cells ' + R.coords().join(' ') + ' links ' + open + '/' + named);
+  }
+});
+
 for (const n of [2, 3, 4, 6]) {
   test('room of ' + n + ': every seat sits, cells distinct, links open, no law error', () => {
     const { R, t } = seatRoom(n, 1200);

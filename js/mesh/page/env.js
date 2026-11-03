@@ -106,13 +106,15 @@
   };
 
   // ---- ids ----------------------------------------------------------------------------------------------------
+  // a page peer id as the seat's int: a k_ identity's first 52 bits; any other id two FNV-1a words (20 + 32 bits)
+  function nidOf(peer) {
+    const p = String(peer);
+    if (/^k_[0-9a-f]{13}/.test(p)) return parseInt(p.slice(2, 15), 16);
+    return (fnv.str(p + '\u0001') >>> 12) * 4294967296 + fnv.str(p);
+  }
   function ids() {
     const toPeer = new Map(), byPeer = new Map();
-    function nid(peer) {
-      const p = String(peer);
-      if (/^k_[0-9a-f]{13}/.test(p)) return parseInt(p.slice(2, 15), 16);
-      return (fnv.str(p + '\u0001') >>> 12) * 4294967296 + fnv.str(p);   // a test id: 20 + 32 bits
-    }
+    const nid = nidOf;
     // learn a peer: its int (the first peer an int was learned for keeps it: two identities on one int is not handled)
     function learn(peer) {
       if (peer == null || peer === '') return -1;
@@ -504,7 +506,7 @@
     return env;
   }
 
-  const api = Object.freeze({ create, ids, ID_BITS });
+  const api = Object.freeze({ create, ids, nidOf, ID_BITS });
   GifOS.meshPageEnv = api;
   if (isNode) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

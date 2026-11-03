@@ -41,7 +41,7 @@
     const mySeat = () => o.seat();
     const trace = (...a) => { if (o.trace) o.trace(...a); };
     // my world's levers: the seat's, with the link model on; ids are bounded by the page's table, not a count
-    const lv = Object.create(w.lv); lv.LINKMODEL = 1; lv.nextId = 0x7fffffff; lv.NETGRP = 0;
+    const lv = Object.create(w.lv); lv.LINKMODEL = 1; lv.nextId = 2 ** 52; lv.NETGRP = 0;
 
     // ---- what my end knows of the far seats (only from frames: the offer mark, a door frame's dsat, my own view) ----
     const FAR = new Map();   // x -> {seated, tier}
