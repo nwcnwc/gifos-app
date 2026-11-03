@@ -115,6 +115,7 @@ const BATTERY = [
   'lie 2 1', 'lie /0.0 2', 'lie 2 tier mobile', 'lie 2 nat', 'lie 99 tier', 'tier 2 mobile', 'tier 2 purple', 'tierhold 2 1', 'evil 0.05', 'evil 0.5 reclaim', 'anchors 5 30', 'anchors 9 60 room', 'anchors 9 60 room nocap', 'anchors',
   'kill 0.2', 'kill 0.2 deep', 'kill 0.2 s1row', 'kill 0.5 s1all', 'kill 0.1 silent', 'kill 0.1 crash', 'killat /0.0', 'killat /0.0 silent', 'killat /0.0 crash', 'killat zzz', 'crash 3', 'crash 3 quiet', 'crash', 'killspread 0.5 30', 'killspread 0.5 30 crash', 'killspread',
   'dark 3', 'darkat /0.0', 'darkat zz', 'sever 1 2 50', 'sever 1 2', 'sitxfer /0.0 self', 'sitxfer /0.0', 'sitxfer', 'pcstrack', 'rss', 'lawoff L9', 'lawon L27.8', 'l2variant A', 'darklaws 0', 'l28stat', '#', 'bogusverb 1 2', 'mgap', 'mgap bogus', 'media bogus', 'media stage',
+  'hostile report', 'hostile 0.1 bogus s1', 'hostile 0.3 hole head', 'hostile report', 'lguard report', 'lguard seats', 'lguard throttle 2 20 300', 'lguard rejoin 5', 'lguard reset', 'lguard bogus', 'lguard on', 'lguard report', 'lguard off', 'lgcase throttle',
   'quit',
 ];
 // the battery as stdin text (a marker verb after every line) and as token lines

@@ -465,4 +465,33 @@ ERR usage: media on|off|stage <id..>|reset|report
 ERR unknown: __m217
 OK media stage 0
 ERR unknown: __m218
+HOSTFRAMES big=0 relayOnly=0 l24drop=0 l26refused=0 l25twice=0 l23closed=0 l23refused=0 voteBans=0
+HOSTSTAT tick=0 hostile=0 honest=0 seated=0 unseated=0 dups=0 hostileSeated=0 news=0 newOut=0 newMax=0 pcS1=0@0 pcDeep=0@0 pcOver=0 pcOverRun=0 heldMax=0 heldIdleMax=0 heldSeat=-1 heldNow=0 fpsMax=0 fpsSeat=-1 shownMax=0 moves=0 evict=0 bigTaken=0
+ERR unknown: __m219
+OK hostile seats=0 mode=bogus where=s1 outside=0
+ERR unknown: __m220
+OK hostile seats=0 mode=hole where=head outside=0
+ERR unknown: __m221
+HOSTFRAMES big=0 relayOnly=0 l24drop=0 l26refused=0 l25twice=0 l23closed=0 l23refused=0 voteBans=0
+HOSTSTAT tick=0 hostile=0 honest=0 seated=0 unseated=0 dups=0 hostileSeated=0 news=0 newOut=0 newMax=0 pcS1=0@0 pcDeep=0@0 pcOver=0 pcOverRun=0 heldMax=0 heldIdleMax=0 heldSeat=-1 heldNow=0 fpsMax=0 fpsSeat=-1 shownMax=0 moves=0 evict=0 bigTaken=0
+ERR unknown: __m222
+LGUARD tick=0 law=0 impaired=0 left=0 leftHealthy=0 ownImp=0 ownOther=0 ownOtherAt=-1 hover=0 nbrPct=0 nbrPctAt=-1 wakeRefused=0 wokeMax=0 complaints=0 refuted=0
+ERR unknown: __m223
+ERR unknown: __m224
+ERR usage: lguard on|off | throttle <id> <pct> <T> | stall <id> | budget <id> <u> | restore <id> | camoff <id> [0] | liar <id> <target> | rejoin <T> | reset | report | seats ; lgcase <leg> [run] [warm]
+ERR unknown: __m225
+OK lguard rejoin 5
+ERR unknown: __m226
+OK lguard reset
+ERR unknown: __m227
+ERR usage: lguard on|off | throttle <id> <pct> <T> | stall <id> | budget <id> <u> | restore <id> | camoff <id> [0] | liar <id> <target> | rejoin <T> | reset | report | seats ; lgcase <leg> [run] [warm]
+ERR unknown: __m228
+OK lguard on law=1
+ERR unknown: __m229
+LGUARD tick=0 law=1 impaired=0 left=0 leftHealthy=0 ownImp=0 ownOther=0 ownOtherAt=-1 hover=0 nbrPct=0 nbrPctAt=-1 wakeRefused=0 wokeMax=0 complaints=0 refuted=0
+ERR unknown: __m230
+OK lguard off law=0
+ERR unknown: __m231
+ERR lgcase needs `lguard on` before init (only the quiet leg runs without it: the media baseline)
+ERR unknown: __m232
 BYE
