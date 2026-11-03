@@ -344,6 +344,8 @@ function install(fab) {
   function hostileVerb(tk) {
     if (tk.length > 1 && tk[1] === 'report') hostileReport();
     else if (tk.length > 2 && tk[1] === 'densify' && tk[2] === 'asked') fab.X.gaDenseAskOn();   // gapa-fab.js
+    else if (tk.length > 2 && tk[1] === 'c7forge') fab.X.hostC7Forge(tk[2]);   // c7proof-fab.js
+    else if (tk.length > 2 && tk[1] === 'c7report') fab.X.hostC7Report(Number(tk[2]));
     else if (tk.length > 1 && tk[1] === 'gapa') fab.X.gaReport();   // gapa-fab.js
     else if (tk.length > 1 && tk[1] === 'densify') fab.X.hostDensify();   // gaps3-fab.js
     else if (tk.length > 2 && tk[1] === 'media') hostileMedia(tk[2]);
