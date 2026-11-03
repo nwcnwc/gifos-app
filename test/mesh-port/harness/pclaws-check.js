@@ -21,27 +21,13 @@ const topo = require(path.join(M, 'topo.js'));
 const C_ = require(path.join(M, 'consts.js'));
 const E = C_.enums;
 
-// ---- the seat-side units this check borrows (their own branches, proven by their own jobs) --------------------------------
-// The laws read seat methods other jobs own (linkRole, keepHeld, l14Branch, strictNextHop, island*, ...). They are loaded from
-// the gifos-app branches that hold them, by git ref, with their relative requires resolved against js/mesh here.
-const UNITS = [
-  ['origin/wip/0925-port-side', ['island', 'ring', 'roomterm', 'tier', 'small', 'linkset', 'mltail', 'rcleft', 'rcleft-l25', 'rcfollow', 'lguard-seat', 'instant', 'witness', 'gaps', 'farview', 'rcdead', 'hostile-laws']],
-  ['origin/wip/0925-port-heal', ['heal']], ['origin/wip/0925-port-digroute', ['digest', 'route']], ['origin/wip/0925-port-entry', ['entry']], ['origin/wip/0925-port-live', ['live']],
-];
-function loadUnits(repo) {
+// ---- the seat-side units: the merged tree's own js/mesh files (no git refs of unit branches) -------------------------------
+function loadUnits() {
   const got = [];
-  for (const [ref, files] of UNITS) for (const f of files) {
-    const src = cp.execFileSync('git', ['-C', repo, 'show', ref + ':js/mesh/' + f + '.js'], { maxBuffer: 1 << 26 }).toString();
-    const fn = path.join(M, f + '.js'); const m = new Module(fn, module); m.filename = fn; m.paths = Module._nodeModulePaths(M);
-    m._compile(src, fn); got.push(ref.split('-').pop() + ':' + f);
-  }
-  // two C++ Seat members no ported unit holds yet (mesh_seat.inc:14, mesh_seat.inc:l2Peer)
-  if (!('ownedLinkCell' in Seat.prototype)) Seat.unit('pclaws-check stand-in', {
-    // C++: mesh_seat.inc:Seat::ownedLinkCell
-    ownedLinkCell(k) { if (!this.hasCoord) return false; for (const c of topo.ownedLinks(this.coord)) if (topo.ckey(c) === k) return true; return false; },
-    // C++: mesh_seat.inc:Seat::l2Peer
-    l2Peer(x) { if (x < 0 || !this.hasCoord) return false; if (x === this.u2Id || x === this.u3Id) return true; for (const e of this.u2Rows.values()) if (e.heir === x && this.TICK - e.at <= 40) return true; return false; },
-  });
+  for (const f of fs.readdirSync(M).sort()) if (f.endsWith('.js')) { require(path.join(M, f)); got.push(f); }
+  return got;
+}
+function standIns() {
   // (S8 liveness holds l2Around; route.js's nextHopToward calls it. u2Rows stays empty in these rooms, so its first loop never runs.)
   if (!('l2Around' in Seat.prototype)) Seat.unit('pclaws-check stand-in 2', {
     // C++: mesh_seat.inc:Seat::l2Around
@@ -64,7 +50,7 @@ function loadUnits(repo) {
       return -1;
     },
   });
-  return got;
+  return true;
 }
 
 // ---- the script generator --------------------------------------------------------------------------------------
@@ -350,7 +336,7 @@ if (require.main === module) {
   if (!bin || !work) { console.error('usage: pclaws-check.js <driver> <work dir> [cases] [first seed]'); process.exit(2); }
   fs.mkdirSync(work, { recursive: true });
   const repo = process.env.GIFOS_APP_REPO || path.join(__dirname, '..', '..', '..');
-  const units = loadUnits(repo);
+  const units = loadUnits(); standIns();
   console.log('seat units borrowed: ' + units.join(' '));
   const n = Number(nStr || 20), first = Number(firstStr || 1);
   const tot = { 'counters+tables': 0, 'frames.jsonl': 0, 'hash.jsonl': 0, trace: 0 }; let fails = 0; const opCount = new Map();

@@ -12,7 +12,7 @@
  * requeue, phoneHome, translostConfirmed, routeToProbe, liveElsewhere, islandHeirGone, ownedLinkCell, l4Busy,
  * otherRing, onStageOrTalking, l64Keep, l919Rollback, l920Note, l920Deaf, l33WordDenied, l33WordMine,
  * l33WordRegrant); free functions through FREE (cellOk, ownerCoordOf, coordStr, l35HandOn, l35Hinted,
- * bumpMoves); the fabric through this.f. fabricDialUplink(me, x, refer): refer is an array the fabric fills in
+ * bumpMoves); the fabric through this.f. fabricDialUplink(me, x, refer): refer is an array the fabric leaves as given (the sim: (void)refer)
  * place, the call returns the bool.
  */
 (function (root) {

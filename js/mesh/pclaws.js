@@ -12,8 +12,7 @@
  *   P.busPush(due, m), P.schedL10(from, to, m, seqName), P.wireTx(m, from), P.grpReach(a, b), P.relayMeter(id, n)
  *   P.LINKS (Map pairKey -> Link), P.LINKPEERS (array id -> [peer ids]), P.pairKey(a, b)
  *   P.phys       the link physics the laws call: linkFind linkGet lEnsure lEnd startDial linkDeliver linkSchedule closeBoth
- *                closeFrom downAt pathOk ldraw (harness H2 supplies them; test/mesh-port/harness/pclaws-phys.js is a
- *                stand-in until then)
+ *                closeFrom downAt pathOk ldraw (harness/link.js supplies them, and the law tables P.S)
  *   P.fhopActive(), P.FH, P.fhopFriendFor(me, to)    friend-hop (H4), read only
  *
  * PER-END HALVES. Each function is marked [end] when it decides from one end's own state (its seat, its end of the Link:
@@ -39,6 +38,7 @@
   const hash = req('./hash.js', 'meshHash');
   const seatM = req('./seat.js', 'meshSeat');
   const { ins } = req('./util.js', 'meshUtil');
+  const { cellOk } = req('./shared.js', 'meshShared');
 
   const K = C_.consts, E = C_.enums;
   const C = topo.C;
@@ -63,13 +63,6 @@
     };
   }
 
-  // C++: mesh.cpp:cellOk (mesh_seat.inc:13)
-  function cellOk(k) {
-    const c = topo.unckey(k); if (c.r >= C || c.i >= C) return false;
-    let pc = c.pc, d = 0;
-    while (pc) { if (((pc - 1) % 6) >= C) return false; pc = Math.floor((pc - 1) / 6); if (++d > 12) return false; }
-    return true;
-  }
   const lEnd = (me, x) => (me < x ? 0 : 1);   // C++: mesh_link.inc:lEnd
 
   function createPcLaws(P) {
@@ -82,10 +75,10 @@
     const mtI = (t) => MT_INDEX.get(t);
 
     // The law tables (C++ statics of mesh_link.inc): the fabric's heap, not a seat's.
-    const S = {
-      DOORN: [], DOORK: [], L16CLOSING: [], L16COOL: new Map(), DOOR_PEND: [], MOBOPEN: new Map(),
-      LDOORS: new Set(), L23S: new Map(), L23PEND: [], L23GREET: new Map(), L18_HH: new Array(9).fill(0),
-    };
+    // P.S, when the physics holds them (harness/link.js does), is the one set of tables: the missing ones are made here.
+    const S = P.S || {};
+    for (const [n, mk] of [['DOORN', () => []], ['DOORK', () => []], ['L16CLOSING', () => []], ['L16COOL', () => new Map()], ['DOOR_PEND', () => []], ['MOBOPEN', () => new Map()],
+      ['LDOORS', () => new Set()], ['L23S', () => new Map()], ['L23PEND', () => []], ['L23GREET', () => new Map()], ['L18_HH', () => new Array(9).fill(0)]]) if (!(n in S)) S[n] = mk();
     const fns = {};
     const ldoorsAsc = () => [...S.LDOORS].sort((a, b) => a - b);
     const pkA = (pk) => Math.floor(pk / TWO32), pkB = (pk) => pk % TWO32;

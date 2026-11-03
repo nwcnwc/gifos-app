@@ -29,6 +29,7 @@ const topo = require(path.join(M, 'topo.js'));
 const hash = require(path.join(M, 'hash.js'));
 const seatM = require(path.join(M, 'seat.js'));
 const { ins } = require(path.join(M, 'util.js'));
+const { newLink } = require(path.join(M, 'pclaws.js'));   // the one Link struct (C++ mesh.cpp:Link)
 
 const K = C_.consts, E = C_.enums;
 const { ckey, ownedLinks, unckey } = topo;
@@ -74,7 +75,10 @@ function install(fab) {
   const L23S = api.L23S = new Map(), L23GREET = api.L23GREET = new Map(), L16COOL = api.L16COOL = new Map();
   let DOORN = api.DOORN = [], DOORK = api.DOORK = [];
   let L16CLOSING = api.L16CLOSING = [];
-  let L23PEND = [], L23PENDT = -1;
+  // The tables the pc laws (js/mesh/pclaws.js) share are reassigned by both: read and write through the api.
+  for (const [n, get, set] of [['DOORN', () => DOORN, (v) => { DOORN = v; }], ['DOORK', () => DOORK, (v) => { DOORK = v; }], ['L16CLOSING', () => L16CLOSING, (v) => { L16CLOSING = v; }],
+    ['DOOR_PEND', () => DOOR_PEND, (v) => { DOOR_PEND = v; }], ['LPENDCLOSE', () => LPENDCLOSE, (v) => { LPENDCLOSE = v; }]]) Object.defineProperty(api, n, { get, set, enumerable: true, configurable: true });
+  const L23PEND = api.L23PEND = [];   // L23PENDT (the stamp) is the lever lv.L23PENDT, shared with pclaws.js
   const sortedDoors = () => [...LDOORS].sort((x, y) => x - y);
   const firstTick = (m) => { let f = Infinity; for (const k of m.keys()) if (k < f) f = k; return f; };   // std::map begin()
 
@@ -103,15 +107,6 @@ function install(fab) {
     if (a < LINKPEERS.length) eraseVal(LINKPEERS[a], b);
     if (b < LINKPEERS.length) eraseVal(LINKPEERS[b], a);
   };
-  function newLink() {
-    return {
-      state: LK_NONE, view: [LK_NONE, LK_NONE], half: 0, stuck: false, leverHalf: false, wasOpen: false, carried: false,
-      epoch: 0, openEp: 0, dialAt: -1, halfAt: -1, askAt: -1000000, txAt: [-1, -1], nnAt: [-1, -1], nnAsk: [-1000000, -1000000], arrAt: [-1, -1],
-      q: [], outside: 0, dialBy: -1, dialHow: 0, callClosed: false, gone: 0,
-      agreed: [false, false], hold: [[], []], closingAt: [-1, -1], farAsk: [-1000000, -1000000], uplink: false, dHeard: 0, backAt: [-1, -1],
-      dBorn: -1, dProg: -1, dAsked: false, dHomed: false, dGw: false, dIn: false, dSat: false, dHoAt: -1, dWait: -1, dOwed: false, dWaitAtFind: -1, dOwedAt: -1,
-    };
-  }
   // C++: mesh_link.inc:linkFind
   const linkFind = api.linkFind = (a, b) => { const L = LINKS.get(pairKey(a, b)); return L === undefined ? null : L; };
   // C++: mesh_link.inc:linkGet
@@ -197,7 +192,7 @@ function install(fab) {
       }
     }
     { L.nnAt[0] = L.nnAt[1] = -1; }
-    L.state = LK_DIALING; L.epoch = U32(L.epoch + 1); L.dialAt = TICK(); L.half = 0; L.halfAt = -1; L.stuck = false; L.backAt[0] = L.backAt[1] = -1; L.view[lEnd(a, b)] = LK_DIALING; LSTAT[0]++; L.dialBy = a; L.callClosed = false; L.gone = 0; L.uplink = false; L.dialHow = 0;
+    L.state = LK_DIALING; L.epoch = U32(L.epoch + 1); L.dialAt = TICK(); L.half = 0; L.halfAt = -1; L.stuck = false; L.backAt[0] = L.backAt[1] = -1; L.view[lEnd(a, b)] = LK_DIALING; LSTAT[0]++; L.dialBy = a; L.callClosed = false; L.gone = 0; L.uplink = false; L.dialT = -1; L.dialHow = 0;
     X.netSignal(a, b);
     const mob = lMobile(a) || lMobile(b);
     const d = mob ? ldraw(K.LINK_DIAL_MOB_MIN, K.LINK_DIAL_MOB_MAX, a, b, 0x6469616c) : ldraw(K.LINK_DIAL_DESK_MIN, K.LINK_DIAL_DESK_MAX, a, b, 0x6469616c);
@@ -287,16 +282,16 @@ function install(fab) {
       case LK_NONE:
         if (dialHeld(from, to)) return; if (X.l23Refused(to, from, m.t, (m.t === 'HELLO' || m.t === 'CLAIM') ? m.ck : 0)) return;
         { lv.L16_DEFER = false; if (l16Refuse(from, to, m.t)) { if (lv.L16_DEFER) { lv.L16_DEFER = false; deferDoor(from, to, m, L); } return; } }
-        startDial(from, to, L); m.from = from; m.to = to; if (L.q.length < K.LINK_QCAP) L.q.push(m); LTX[from] = TICK(); return;
+        startDial(from, to, L); L.dialT = mtIdx(m.t); m.from = from; m.to = to; if (L.q.length < K.LINK_QCAP) L.q.push(m); LTX[from] = TICK(); return;
       case LK_DIALING:
-        m.from = from; m.to = to; if (L.q.length < K.LINK_QCAP) L.q.push(m); LTX[from] = TICK(); return;
+        if (L.dialT < 0) L.dialT = mtIdx(m.t); m.from = from; m.to = to; if (L.q.length < K.LINK_QCAP) L.q.push(m); LTX[from] = TICK(); return;
       case LK_CLOSED:
         LTX[from] = TICK();
         if (L.view[e] !== LK_CLOSED && !(L.view[e] === LK_NONE)) return;
         if ((!namesOwned(from, to) || m.gwc) && TICK() - L.askAt >= K.LINK_ASK_GAP && !dialHeld(from, to)) {
           if (X.l23Refused(to, from, m.t, (m.t === 'HELLO' || m.t === 'CLAIM') ? m.ck : 0)) return;
           { lv.L16_DEFER = false; if (l16Refuse(from, to, m.t)) { if (lv.L16_DEFER) { lv.L16_DEFER = false; deferDoor(from, to, m, L); } return; } }
-          L.askAt = TICK(); startDial(from, to, L); L.dialHow = 3; m.from = from; m.to = to; L.q.push(m);
+          L.askAt = TICK(); startDial(from, to, L); L.dialT = mtIdx(m.t); L.dialHow = 3; m.from = from; m.to = to; L.q.push(m);
         }
         return;
       default:
@@ -309,7 +304,7 @@ function install(fab) {
   // C++: mesh_link.inc:l30End
   const l30End = (id) => id >= 0 && id < nextId() && !!alive[id] && !!seats[id] && !!seats[id].l30Small();
   // C++: mesh_link.inc:downAt
-  const downAt = (at, e, x, ep, why) => { levPush(at, EV_DOWN, e, x, ep, why); };
+  const downAt = api.downAt = (at, e, x, ep, why) => { levPush(at, EV_DOWN, e, x, ep, why); };
   // C++: mesh_link.inc:closeBoth
   const closeBoth = api.closeBoth = (L, a, b, fail, why) => {
     if (L.state !== LK_OPEN && L.state !== LK_DIALING) return;
@@ -432,7 +427,7 @@ function install(fab) {
         if (L.agreed[lEnd(e, x)]) {
           L.agreed[lEnd(e, x)] = false; L.closingAt[lEnd(e, x)] = -1; const h = L.hold[lEnd(e, x)];
           if (h.length && L.state === LK_CLOSED && e < nextId() && alive[e] && x < nextId() && alive[x]) {
-            const q = h.slice(); h.length = 0; L.callClosed = false; startDial(e, x, L);
+            const q = h.slice(); h.length = 0; L.callClosed = false; startDial(e, x, L); L.dialT = mtIdx(q[0].t);
             for (const f of q) if (L.q.length < K.LINK_QCAP) L.q.push(f); trace('L22-REDIAL', e, null, 'peer=%d held=%zu why=%s', x, q.length, v.why);
           } else h.length = 0;
         }
@@ -646,7 +641,7 @@ function install(fab) {
     const at = Math.max(TICK() + ldraw(K.LINK_DC_MIN, K.LINK_DC_MAX, x, me, 0x6463), L.arrAt[lEnd(x, me)] + 1);
     if (byeOk) downAt(at, x, me, L.epoch, 'unneeded'); else if (stuck0) downAt(Math.max(TICK(), hAt0 + K.LINK_DISC_DEAD), x, me, L.epoch, 'disconnected-persist'); else downAt(Math.max(TICK(), hAt0 + K.LINK_ICE_FAIL) + K.LINK_FAILED_PERSIST, x, me, L.epoch, 'failed-persist');
     if (held.length && me < nextId() && alive[me] && x < nextId() && alive[x]) {
-      L.callClosed = false; startDial(me, x, L); for (const f of held) if (L.q.length < K.LINK_QCAP) L.q.push(f); trace('L22-REDIAL', me, null, 'peer=%d held=%zu why=L33.4', x, held.length);
+      L.callClosed = false; startDial(me, x, L); L.dialT = mtIdx(held[0].t); for (const f of held) if (L.q.length < K.LINK_QCAP) L.q.push(f); trace('L22-REDIAL', me, null, 'peer=%d held=%zu why=L33.4', x, held.length);
     }
   };
 
@@ -658,7 +653,7 @@ function install(fab) {
   };
   // C++: mesh_link.inc:l23Pend
   const l23Pend = (me, add) => {
-    if (L23PENDT !== TICK()) { L23PENDT = TICK(); L23PEND.fill(0); }
+    if (lv.L23PENDT !== TICK()) { lv.L23PENDT = TICK(); L23PEND.fill(0); }
     while (me >= L23PEND.length) L23PEND.push(0);
     if (add) L23PEND[me]++; return L23PEND[me];
   };
@@ -724,7 +719,7 @@ function install(fab) {
         const q = L.hold[e]; L.hold[e] = []; L.agreed[e] = false; L.closingAt[e] = -1; trace('L22-CLOSE-TIMEOUT', me, null, 'peer=%d held=%zu', x, q.length);
         if (L.state === LK_OPEN) l22Close(me, x);
         if (q.length && L.state === LK_CLOSED && me < nextId() && alive[me] && x < nextId() && alive[x]) {
-          L.callClosed = false; startDial(me, x, L); for (const f of q) if (L.q.length < K.LINK_QCAP) L.q.push(f); trace('L22-REDIAL', me, null, 'peer=%d held=%zu why=timeout', x, q.length);
+          L.callClosed = false; startDial(me, x, L); L.dialT = mtIdx(q[0].t); for (const f of q) if (L.q.length < K.LINK_QCAP) L.q.push(f); trace('L22-REDIAL', me, null, 'peer=%d held=%zu why=timeout', x, q.length);
         }
       }
     }
@@ -768,7 +763,7 @@ function install(fab) {
         const a = pr.a, b = pr.b; if (a >= nextId() || b >= nextId() || !alive[a] || !alive[b]) continue; const L = linkGet(a, b); if (L.state === LK_DIALING || L.state === LK_OPEN) continue;
         if (L.q.length === 0) continue; if (TICK() - pr.at > 8) { lv.L16_PENDDROP++; L.q.length = 0; continue; }
         if ((a < DOORN.length && DOORN[a] >= pcBudget(a, PB_DOORS)) || l1610Full(a)) { keep.push(pr); continue; }
-        if (l16Mobile(a) && !l16MobBudget(a)) { keep.push(pr); continue; } startDial(a, b, L); L.dialHow = 3; LTX[a] = TICK();
+        if (l16Mobile(a) && !l16MobBudget(a)) { keep.push(pr); continue; } startDial(a, b, L); L.dialT = mtIdx(L.q[0].t); L.dialHow = 3; LTX[a] = TICK();
       }
       DOOR_PEND = api.DOOR_PEND = keep;
     }
