@@ -1,0 +1,5 @@
+{
+  "title": "Meeting",
+  "why": "This one is built into GifOS. Ordinary apps are never allowed near your camera or\nmicrophone, so this icon opens the built-in meeting page instead of running here.",
+  "open": "Open this GIF on your Home Screen at <code>gifos.app</code> to start a meeting."
+}

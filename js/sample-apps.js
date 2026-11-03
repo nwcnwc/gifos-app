@@ -3207,14 +3207,44 @@ function syncDebug(){
 </script>`;
 
 
+  // i18n boot shared by the built-in apps from the fallbacks down to Reader
+  // (welcome, bible, speechcoach, askai, reader, meet, broadcast, appstore).
+  // Each app keeps its English in the markup (a paint before the catalog loads,
+  // or an older GifOS that has no gifos.i18n, still reads English) and tags the
+  // element: data-i18n (text), data-i18n-html (text with <b>/<code>/<small>),
+  // data-i18n-ph / -title / -aria (attributes). applyI18n() re-words the tagged
+  // elements from the app's catalog, i18n/<locale>/apps/<appId>.json. No
+  // backticks, ${ or backslashes in here: it is spliced into template literals.
+  const I18N_BOOT_C = [
+    "var T=function(k,p){return window.gifos&&gifos.i18n?gifos.i18n.t(k,p):k;};",
+    "function rich(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/&lt;([/]?)(b|code|small)&gt;/g,'<$1$2>');}",
+    "function applyI18n(){",
+    "  if(!(window.gifos&&gifos.i18n))return;",
+    "  try{var l=gifos.locale&&gifos.locale();if(l&&(l.ui||l.language))document.documentElement.setAttribute('lang',l.ui||l.language);}catch(e){}",
+    "  var each=function(a,f){Array.prototype.forEach.call(document.querySelectorAll('['+a+']'),f);};",
+    "  each('data-i18n',function(e){e.textContent=T(e.getAttribute('data-i18n'));});",
+    "  each('data-i18n-html',function(e){e.innerHTML=rich(T(e.getAttribute('data-i18n-html')));});",
+    "  each('data-i18n-ph',function(e){e.setAttribute('placeholder',T(e.getAttribute('data-i18n-ph')));});",
+    "  each('data-i18n-title',function(e){e.setAttribute('title',T(e.getAttribute('data-i18n-title')));});",
+    "  each('data-i18n-aria',function(e){e.setAttribute('aria-label',T(e.getAttribute('data-i18n-aria')));});",
+    "}",
+    "function i18nStart(boot,again){",
+    "  var go=function(){applyI18n();boot();};",
+    "  if(window.gifos&&gifos.i18n&&gifos.i18n.load)gifos.i18n.load().then(go,go);else go();",
+    "  if(window.gifos&&gifos.onLocaleChange)gifos.onLocaleChange(function(){applyI18n();if(again)again();});",
+    "}",
+  ].join('\n');
+
   const MEET_FALLBACK_HTML = `<!doctype html><meta charset="utf-8"><style>
   body{font:15px system-ui;background:#0a0a0f;color:#e0e0f0;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center}
   .card{max-width:420px;padding:2rem;border:1px solid #2a2a3f;border-radius:1rem;background:#14141f}
   h2{color:#5ca0ff;margin-top:0} p{color:#9a9ab5;line-height:1.5} code{color:#5ca0ff}
-</style><div class="card"><h2>Meeting</h2>
-<p>This one is built into GifOS. Ordinary apps are never allowed near your camera or
+</style><div class="card"><h2 data-i18n="title">Meeting</h2>
+<p data-i18n="why">This one is built into GifOS. Ordinary apps are never allowed near your camera or
 microphone, so this icon opens the built-in meeting page instead of running here.</p>
-<p>Open this GIF on your Home Screen at <code>gifos.app</code> to start a meeting.</p></div>`;
+<p data-i18n-html="open">Open this GIF on your Home Screen at <code>gifos.app</code> to start a meeting.</p></div>
+<script>${I18N_BOOT_C}
+i18nStart(function(){});</script>`;
 
   // Same idea for Broadcast: the Meet page wearing its broadcast skin — one
   // host live on the Stage, unlimited viewers, chat as the back-channel.
@@ -3222,10 +3252,12 @@ microphone, so this icon opens the built-in meeting page instead of running here
   body{font:15px system-ui;background:#0a0a0f;color:#e0e0f0;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center}
   .card{max-width:420px;padding:2rem;border:1px solid #2a2a3f;border-radius:1rem;background:#14141f}
   h2{color:#ff5c78;margin-top:0} p{color:#9a9ab5;line-height:1.5} code{color:#ff5c78}
-</style><div class="card"><h2>Broadcast</h2>
-<p>This one is built into GifOS. Ordinary apps are never allowed near your camera or
+</style><div class="card"><h2 data-i18n="title">Broadcast</h2>
+<p data-i18n="why">This one is built into GifOS. Ordinary apps are never allowed near your camera or
 microphone, so this icon opens the built-in broadcast page instead of running here.</p>
-<p>Open this GIF on your Home Screen at <code>gifos.app</code> to go live.</p></div>`;
+<p data-i18n-html="open">Open this GIF on your Home Screen at <code>gifos.app</code> to go live.</p></div>
+<script>${I18N_BOOT_C}
+i18nStart(function(){});</script>`;
 
   // Same idea for the App Store: the icon is a real GIF, but installing an app
   // means writing to this computer's Home Screen, which the app sandbox cannot
@@ -3234,10 +3266,12 @@ microphone, so this icon opens the built-in broadcast page instead of running he
   body{font:15px system-ui;background:#0a0a0f;color:#e0e0f0;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center}
   .card{max-width:420px;padding:2rem;border:1px solid #2a2a3f;border-radius:1rem;background:#14141f}
   h2{color:#7b5cff;margin-top:0} p{color:#9a9ab5;line-height:1.5} code{color:#7b5cff}
-</style><div class="card"><h2>App Store</h2>
-<p>This one is built into GifOS. Ordinary apps are never allowed to put things on your
+</style><div class="card"><h2 data-i18n="title">App Store</h2>
+<p data-i18n="why">This one is built into GifOS. Ordinary apps are never allowed to put things on your
 Home Screen, so this icon opens the built-in store page instead of running here.</p>
-<p>Open this GIF on your Home Screen at <code>gifos.app</code> to browse apps.</p></div>`;
+<p data-i18n-html="open">Open this GIF on your Home Screen at <code>gifos.app</code> to browse apps.</p></div>
+<script>${I18N_BOOT_C}
+i18nStart(function(){});</script>`;
 
   // A real app now: friendly onboarding for non-technical people, with a live
   // checklist that demonstrates the core magic (state lives inside the icon).
@@ -3262,46 +3296,48 @@ Home Screen, so this icon opens the built-in store page instead of running here.
   .magic{color:#5cc8ff;font-size:.85rem;margin-top:.6rem;display:none}
   .magic.show{display:block}
 </style></head><body><div class="wrap">
-  <h1>Welcome to GifOS</h1>
-  <p class="lead">Your own computer that lives in your browser. No account, no installs — and everything you make is a file <b>you</b> keep.</p>
+  <h1 data-i18n="title">Welcome to GifOS</h1>
+  <p class="lead" data-i18n-html="lead">Your own computer that lives in your browser. No account, no installs — and everything you make is a file <b>you</b> keep.</p>
 
-  <div class="card"><h2><span class="emoji">🖼️</span>Every app is a GIF</h2>
-  <p>Those animated icons on your Home Screen are real GIF images — with a whole app tucked inside. Double-click one and it runs. Send one to a friend and they get your app <b>with your stuff in it</b>.</p></div>
+  <div class="card"><h2><span class="emoji">🖼️</span><span data-i18n="card.gif.title">Every app is a GIF</span></h2>
+  <p data-i18n-html="card.gif.body">Those animated icons on your Home Screen are real GIF images — with a whole app tucked inside. Double-click one and it runs. Send one to a friend and they get your app <b>with your stuff in it</b>.</p></div>
 
-  <div class="card"><h2><span class="emoji">💾</span>Your stuff stays put</h2>
-  <p>Whatever you do in an app is saved with its icon automatically. Close the tab, come back tomorrow — you're right where you left off. Nothing is stored on anyone's servers.</p></div>
+  <div class="card"><h2><span class="emoji">💾</span><span data-i18n="card.stays.title">Your stuff stays put</span></h2>
+  <p data-i18n-html="card.stays.body">Whatever you do in an app is saved with its icon automatically. Close the tab, come back tomorrow — you're right where you left off. Nothing is stored on anyone's servers.</p></div>
 
-  <div class="card"><h2><span class="emoji">🔗</span>Play together with one link</h2>
-  <p>Open any app and press <b>Invite</b>. Send the link to friends and they join you live — same game, same notes, same room. Try <b>Meeting</b>, right on your Home Screen — you can even run an app inside it!</p></div>
+  <div class="card"><h2><span class="emoji">🔗</span><span data-i18n="card.together.title">Play together with one link</span></h2>
+  <p data-i18n-html="card.together.body">Open any app and press <b>Invite</b>. Send the link to friends and they join you live — same game, same notes, same room. Try <b>Meeting</b>, right on your Home Screen — you can even run an app inside it!</p></div>
 
-  <div class="card"><h2><span class="emoji"></span>Games for real-life hangouts</h2>
-  <p>The <b>IRL Games</b> folder is for game night: everyone keeps their own phone — open a game, press <b>Invite</b>, and secret roles, hidden votes, and sneaky lies get dealt to each player's screen while the laughing and accusing happens face to face. Only one phone in the room? The <b>Single Phone</b> subfolder has pass-around versions.</p></div>
+  <div class="card"><h2><span class="emoji"></span><span data-i18n="card.irl.title">Games for real-life hangouts</span></h2>
+  <p data-i18n-html="card.irl.body">The <b>IRL Games</b> folder is for game night: everyone keeps their own phone — open a game, press <b>Invite</b>, and secret roles, hidden votes, and sneaky lies get dealt to each player's screen while the laughing and accusing happens face to face. Only one phone in the room? The <b>Single Phone</b> subfolder has pass-around versions.</p></div>
 
-  <div class="card"><h2><span class="emoji">✨</span>Make your own apps</h2>
-  <p>Press <b>＋ Add</b> in the top bar, copy the magic prompt into any AI (like Claude), tell it what you want, and paste back what it gives you. You just made an app. It's yours to keep.</p></div>
+  <div class="card"><h2><span class="emoji">✨</span><span data-i18n="card.make.title">Make your own apps</span></h2>
+  <p data-i18n-html="card.make.body">Press <b>＋ Add</b> in the top bar, copy the magic prompt into any AI (like Claude), tell it what you want, and paste back what it gives you. You just made an app. It's yours to keep.</p></div>
 
-  <div class="card"><h2><span class="emoji">🔧</span>Change any app</h2>
-  <p>Every app is yours — free to keep, free to pass on, free to modify and improve. Hand the GIF to any AI and ask for a change. It unpacks what's inside, edits it, and packs it back. You don't need to know how to code.</p></div>
+  <div class="card"><h2><span class="emoji">🔧</span><span data-i18n="card.change.title">Change any app</span></h2>
+  <p data-i18n-html="card.change.body">Every app is yours — free to keep, free to pass on, free to modify and improve. Hand the GIF to any AI and ask for a change. It unpacks what's inside, edits it, and packs it back. You don't need to know how to code.</p></div>
 
-  <div class="card"><h2><span class="emoji"></span>Or just steal one</h2>
-  <p>See an app you like in a friend's session or a call? Press <b>Steal</b> and choose where the copy goes — your <b>Stolen Apps</b> chest or a downloaded GIF — and how much comes with it: <b>No data</b> for a fresh, empty copy, or the data <b>as it arrived</b> or <b>as it is now</b> to carry the game in progress or the shared notes. Anyone in the session can, since it's already synced to your browser. It's not rude here, it's the whole point: every app is a file, so taking one just copies the GIF. Then remix it with your AI and make it yours.</p></div>
+  <div class="card"><h2><span class="emoji"></span><span data-i18n="card.steal.title">Or just steal one</span></h2>
+  <p data-i18n-html="card.steal.body">See an app you like in a friend's session or a call? Press <b>Steal</b> and choose where the copy goes — your <b>Stolen Apps</b> chest or a downloaded GIF — and how much comes with it: <b>No data</b> for a fresh, empty copy, or the data <b>as it arrived</b> or <b>as it is now</b> to carry the game in progress or the shared notes. Anyone in the session can, since it's already synced to your browser. It's not rude here, it's the whole point: every app is a file, so taking one just copies the GIF. Then remix it with your AI and make it yours.</p></div>
 
-  <div class="card"><h2><span class="emoji">💿</span>Your whole computer is one file</h2>
-  <p>GifOS menu (top-left) → <b>Back up Home Screen</b> gives you a single GIF holding everything. Keep it safe, or double-click it anywhere to boot your computer — even inside another one.</p></div>
+  <div class="card"><h2><span class="emoji">💿</span><span data-i18n="card.backup.title">Your whole computer is one file</span></h2>
+  <p data-i18n-html="card.backup.body">GifOS menu (top-left) → <b>Back up Home Screen</b> gives you a single GIF holding everything. Keep it safe, or double-click it anywhere to boot your computer — even inside another one.</p></div>
 
-  <div class="try"><h2>See the magic for yourself</h2>
-  <p>Check something off, close this tab, then open Welcome again — it remembers. That's your data living inside the icon.</p>
-  <div id="list"></div><div class="magic" id="magic">Now close this tab and reopen Welcome from your desktop 😉</div></div>
+  <div class="try"><h2 data-i18n="try.title">See the magic for yourself</h2>
+  <p data-i18n="try.body">Check something off, close this tab, then open Welcome again — it remembers. That's your data living inside the icon.</p>
+  <div id="list"></div><div class="magic" id="magic" data-i18n="magic">Now close this tab and reopen Welcome from your desktop 😉</div></div>
 </div>
+<script>${I18N_BOOT_C}</script>
 <script>
-  var STEPS=[["look","Looked around my new Home Screen"],["run","Opened an app (this one counts!)"],["invite","Invited a friend with one link"],["make","Made my own app with ＋ Add"],["backup","Backed up my computer to one GIF"]];
+  var STEPS=["look","run","invite","make","backup"];  // data ids; the words are step.<id> in the catalog
   var db=window.gifos?gifos.db("welcome"):null,state={};
-  function render(){var el=document.getElementById("list");el.innerHTML="";STEPS.forEach(function(s){
-    var l=document.createElement("label");l.className="todo"+(state[s[0]]?" done":"");
-    var c=document.createElement("input");c.type="checkbox";c.checked=!!state[s[0]];
-    c.onchange=function(){state[s[0]]=c.checked;if(db)db.put({id:s[0],done:c.checked});document.getElementById("magic").classList.add("show");render();};
-    var t=document.createElement("span");t.textContent=s[1];l.appendChild(c);l.appendChild(t);el.appendChild(l);});}
-  if(db){db.subscribe(function(items){state={};items.forEach(function(i){state[i.id]=i.done;});render();});}else{render();}
+  function render(){var el=document.getElementById("list");el.innerHTML="";STEPS.forEach(function(id){
+    var l=document.createElement("label");l.className="todo"+(state[id]?" done":"");
+    var c=document.createElement("input");c.type="checkbox";c.checked=!!state[id];
+    c.onchange=function(){state[id]=c.checked;if(db)db.put({id:id,done:c.checked});document.getElementById("magic").classList.add("show");render();};
+    var t=document.createElement("span");t.textContent=T("step."+id);l.appendChild(c);l.appendChild(t);el.appendChild(l);});}
+  function boot(){if(db){db.subscribe(function(items){state={};items.forEach(function(i){state[i.id]=i.done;});render();});}else{render();}}
+  i18nStart(boot,render);
 </script></body></html>`;
 
   const WELCOME_README = [
@@ -3506,29 +3542,30 @@ Home Screen, so this icon opens the built-in store page instead of running here.
   nav button.jump.on{background:var(--rlink);color:var(--rbg);border-color:var(--rlink)}
   .foot{color:var(--rmuted);font-size:.72rem;text-align:center;padding:28px 20px 0;line-height:1.5;opacity:.85}
 </style>
-<header><span class="ttl">Bible Browser</span><span class="loc" id="loc"></span></header>
+<header><span class="ttl" data-i18n="title">Bible Browser</span><span class="loc" id="loc"></span></header>
 <nav>
-  <button id="back" title="Back">&lsaquo;</button>
-  <button id="fwd" title="Forward">&rsaquo;</button>
-  <button id="reload" title="Reload">&#8635;</button>
-  <button class="home" id="home">Home</button>
-  <button id="prevch" title="Previous chapter" disabled>&laquo;</button>
-  <button id="nextch" title="Next chapter" disabled>&raquo;</button>
-  <button id="jump" class="jump" title="Jump to a book or chapter">Go</button>
-  <button class="follow" id="follow" style="display:none" title="Follow the meeting">Follow</button>
+  <button id="back" title="Back" data-i18n-title="nav.back">&lsaquo;</button>
+  <button id="fwd" title="Forward" data-i18n-title="nav.forward">&rsaquo;</button>
+  <button id="reload" title="Reload" data-i18n-title="nav.reload">&#8635;</button>
+  <button class="home" id="home" data-i18n="nav.home">Home</button>
+  <button id="prevch" title="Previous chapter" data-i18n-title="nav.prev" disabled>&laquo;</button>
+  <button id="nextch" title="Next chapter" data-i18n-title="nav.next" disabled>&raquo;</button>
+  <button id="jump" class="jump" title="Jump to a book or chapter" data-i18n-title="nav.jump.title" data-i18n="nav.jump">Go</button>
+  <button class="follow" id="follow" style="display:none" title="Follow the meeting" data-i18n-title="follow.title" data-i18n="follow.off">Follow</button>
   <span class="sp"></span>
   <span class="grp">
-    <button id="smaller" class="chip" title="Smaller text">A&minus;</button>
-    <button id="bigger" class="chip" title="Bigger text">A&plus;</button>
-    <button id="theme" class="chip" title="Paper / night / black &amp; white">&#9728;</button>
+    <button id="smaller" class="chip" title="Smaller text" data-i18n-title="nav.smaller">A&minus;</button>
+    <button id="bigger" class="chip" title="Bigger text" data-i18n-title="nav.bigger">A&plus;</button>
+    <button id="theme" class="chip" title="Paper / night / black &amp; white" data-i18n-title="nav.theme">&#9728;</button>
   </span>
 </nav>
 <div id="jumper">
   <select id="jbook"></select>
-  <label>ch. <input id="jch" type="number" min="1" value="1"></label>
-  <button id="jgo">Open</button>
+  <label><span data-i18n="jumper.ch">ch.</span> <input id="jch" type="number" min="1" value="1"></label>
+  <button id="jgo" data-i18n="jumper.open">Open</button>
 </div>
-<main id="main"><div class="status">Fetching the Recovery Version through the GifOS CORS proxy&hellip;</div></main>
+<main id="main"><div class="status" data-i18n="status.first">Fetching the Recovery Version through the GifOS CORS proxy&hellip;</div></main>
+<script>${I18N_BOOT_C}</script>
 <script>
   var HOST='text.recoveryversion.bible', HOME='https://text.recoveryversion.bible/';
   var main=document.getElementById('main'), locEl=document.getElementById('loc');
@@ -3579,9 +3616,8 @@ Home Screen, so this icon opens the built-in store page instead of running here.
   function updateFollowUi(){ if(!followB) return;
     followB.style.display = shared ? '' : 'none';
     followB.classList.toggle('on', follow);
-    followB.textContent = follow ? 'Following' : 'Follow';
-    followB.title = follow ? 'Following the meeting — tap to browse on your own without moving anyone'
-                           : 'Browsing on your own — tap to follow the meeting again'; }
+    followB.textContent = T(follow ? 'follow.on' : 'follow.off');
+    followB.title = T(follow ? 'follow.on.title' : 'follow.off.title'); }
   // Shared-state (and whether the Follow toggle even shows) depends on BOTH
   // who's present and whether someone else is driving nav — recomputed on any
   // change to either collection.
@@ -3608,7 +3644,10 @@ Home Screen, so this icon opens the built-in store page instead of running here.
         setTimeout(function(){ applyingScroll=false; }, 90);
       }
     } }
-  function setStatus(msg,err){ main.innerHTML='<div class="status'+(err?' err':'')+'">'+msg+(err?'<p><button type="button" id="retry">Try again</button></p>':'')+'</div>'; }
+  // msg is HTML, or a function returning it (kept, so a locale change can re-word it)
+  var statusFn=null, statusErr=false;
+  function setStatus(msg,err){ statusFn=typeof msg==='function'?msg:null; statusErr=!!err;
+    main.innerHTML='<div class="status'+(err?' err':'')+'">'+(statusFn?statusFn():msg)+(err?'<p><button type="button" id="retry">'+rich(T('retry'))+'</button></p>':'')+'</div>'; }
   function buttons(){ backB.disabled=hi<=0; fwdB.disabled=hi>=hist.length-1; updateChapBtns(); }
   function shortLoc(u){ try{ var x=new URL(u); return (x.pathname+x.search)||'/'; }catch(e){ return u; } }
   function resolve(href, base){ try{ return new URL(href, base).toString(); }catch(e){ return null; } }
@@ -3639,13 +3678,13 @@ Home Screen, so this icon opens the built-in store page instead of running here.
   }
   function explainErr(e){
     var msg=String((e&&e.message)||e||'');
-    if(msg==='NO_GIFOS'||!window.gifos||!gifos.fetch) return 'Open this from GifOS to reach the internet.';
-    if(typeof navigator!=='undefined'&&navigator.onLine===false) return 'You are offline, and this page has not been saved on this device yet. Chapters you have already opened can be re-read without a connection.';
-    if(/Network denied/i.test(msg)) return 'This app&rsquo;s internet is switched off (the &ldquo;Internet&rdquo; button up top), or '+HOST+' is blocked.';
-    if(/HTTP 404/.test(msg)) return 'That address is not on the Recovery Version site.';
-    if(/HTTP 429/.test(msg)) return 'The CORS proxy asked us to slow down. Wait a moment and try again.';
-    if(/Failed to fetch|NetworkError|Load failed|TypeError/i.test(msg)) return 'Couldn&rsquo;t reach the GifOS CORS proxy or the Bible site. You may be offline.';
-    return 'Couldn&rsquo;t load that page.<br><br><small>'+esc(msg)+'</small>';
+    if(msg==='NO_GIFOS'||!window.gifos||!gifos.fetch) return rich(T('err.noGifos'));
+    if(typeof navigator!=='undefined'&&navigator.onLine===false) return rich(T('err.offline'));
+    if(/Network denied/i.test(msg)) return rich(T('err.denied',{host:HOST}));
+    if(/HTTP 404/.test(msg)) return rich(T('err.notFound'));
+    if(/HTTP 429/.test(msg)) return rich(T('err.slow'));
+    if(/Failed to fetch|NetworkError|Load failed|TypeError/i.test(msg)) return rich(T('err.network'));
+    return rich(T('err.generic'))+'<br><br><small>'+esc(msg)+'</small>';
   }
   // Base for resolving a page's relative links: honour <base href> if present,
   // else the page's own URL. (Old static Bible sites often set <base>, and
@@ -3725,15 +3764,16 @@ Home Screen, so this icon opens the built-in store page instead of running here.
         if(href && href.charAt(0)==='#'){ if(href.length>1) el.setAttribute('data-anchor', href.slice(1)); el.setAttribute('href','#'); return; }
         var host=''; try{ host=new URL(href).hostname; }catch(e){}
         if(href && host===HOST){ el.setAttribute('data-nav', href); el.setAttribute('href','#'); }
-        else { el.removeAttribute('href'); el.className=(el.className+' ext').trim(); el.title='External link — open it in your own browser'; }
+        else { el.removeAttribute('href'); el.className=(el.className+' ext').trim(); el.title=T('ext.title'); el.setAttribute('data-i18n-title','ext.title'); }
       }
     });
     return root.innerHTML;
   }
   function render(root){
     var html=sanitize(root);
-    var banner=fromCache?'<div class="banner">Showing a copy saved on this device &mdash; the live fetch through the CORS proxy did not land. Tap &#8635; to try again.</div>':'';
-    main.innerHTML='<div class="doc">'+banner+html+'<p class="foot">Text from text.recoveryversion.bible, read through the GifOS CORS proxy &mdash; tap the &ldquo;Internet&rdquo; button up top to see or change that. Chapters you open are saved on this device so you can re-read them offline.</p></div>';
+    statusFn=null;
+    var banner=fromCache?'<div class="banner" data-i18n="banner.cached">'+rich(T('banner.cached'))+'</div>':'';
+    main.innerHTML='<div class="doc">'+banner+html+'<p class="foot" data-i18n="foot">'+rich(T('foot'))+'</p></div>';
     // Land where the reader (or the meeting) last was on this page, not the top.
     // Re-apply on the next frame: right after innerHTML the new layout isn't
     // flushed yet, so a bare scrollTop set clamps against the old (short) height.
@@ -3750,15 +3790,13 @@ Home Screen, so this icon opens the built-in store page instead of running here.
     if(push){ hist=hist.slice(0,hi+1); hist.push(url); hi=hist.length-1; }
     buttons(); locEl.textContent=niceLoc(url);
     var offline=typeof navigator!=='undefined'&&navigator.onLine===false;
-    setStatus(offline
-      ? 'You are offline &mdash; looking for a saved copy of '+esc(niceLoc(url))+'&hellip;'
-      : 'Fetching '+esc(niceLoc(url))+' through the GifOS CORS proxy&hellip;');
-    if(!window.gifos||!gifos.fetch){ setStatus('Open this from GifOS to reach the internet.', true); return; }
+    setStatus(function(){ return rich(T(offline?'status.offline':'status.fetching',{loc:niceLoc(url)})); });
+    if(!window.gifos||!gifos.fetch){ setStatus(function(){ return rich(T('err.noGifos')); }, true); return; }
     var want=url, target=(frac==null?0:frac);
     loadPage(url).then(function(res){ if(curUrl!==want) return; curUrl=res.url||url;
         fromCache=!!res.cached; pendingFrac=target; render(res.root); lastFrac=target; saveLast();
         if(!fromSync && follow && !fromCache) pushNav(curUrl, target); })  // my own live move drives the group; a cached fallback does not
-      .catch(function(e){ if(curUrl!==want) return; setStatus(explainErr(e), true); });
+      .catch(function(e){ if(curUrl!==want) return; setStatus(function(){ return explainErr(e); }, true); });
   }
   main.addEventListener('click', function(e){
     if(e.target&&e.target.id==='retry'){ e.preventDefault(); go(curUrl, false); return; }
@@ -3830,6 +3868,7 @@ Home Screen, so this icon opens the built-in store page instead of running here.
   // Learn who I am, restore MY (private) prefs, then either JOIN whoever's
   // already reading or open my own last page — and from then on stay converged
   // via subscribe() on the two shared collections (nav + presence).
+  function bibleBoot(){
   (window.gifos&&gifos.me?gifos.me():Promise.resolve({id:'',name:''})).then(function(u){ me=u||{id:'',name:''}; })
     .then(function(){ return prefsDb?prefsDb.get('prefs'):null; })
     .then(function(p){ if(p){ if(p.theme) prefs.theme=p.theme; if(typeof p.fs==='number') prefs.fs=p.fs; } applyPrefs(); })
@@ -3843,6 +3882,9 @@ Home Screen, so this icon opens the built-in store page instead of running here.
       if(follow && navRec && navRec.by && navRec.by!==me.id && navRec.url){ go(navRec.url, true, true, navRec.scroll); return; }
       return firstPage().then(function(o){ go(o.url, true, false, o.scroll); }); })
     .catch(function(){ applyPrefs(); go(HOME, true); });
+  }
+  // A locale change re-words the chrome (applyI18n), the Follow button and whatever status is on screen.
+  i18nStart(bibleBoot, function(){ updateFollowUi(); if(statusFn) setStatus(statusFn, statusErr); });
 </script>`;
 
   // Speech Coach — showcases brokered capture + on-device DSP. Records a clip
@@ -3872,24 +3914,32 @@ Home Screen, so this icon opens the built-in store page instead of running here.
   .take .when{color:#8888aa;font-variant-numeric:tabular-nums}
   .wait{color:#8888aa}
 </style>
-<header>Speech Coach</header>
+<header data-i18n="title">Speech Coach</header>
 <main>
-  <p class="lead">Tap Record. GifOS shows its own mic indicator and records up to 12 seconds; this app receives the finished clip, never a live microphone. Analysis stays on this device — nothing is sent anywhere. Pace is estimated from bursts of sound, not from a transcript: this app does not listen for words.</p>
-  <button id="rec">● Record &amp; analyse</button>
+  <p class="lead" data-i18n="lead">Tap Record. GifOS shows its own mic indicator and records up to 12 seconds; this app receives the finished clip, never a live microphone. Analysis stays on this device — nothing is sent anywhere. Pace is estimated from bursts of sound, not from a transcript: this app does not listen for words.</p>
+  <button id="rec" data-i18n="rec">● Record &amp; analyse</button>
   <div id="out"></div>
-  <div class="card past" id="hist" style="display:none"><h3>Earlier takes (scores only — the clip is not kept)</h3><div id="hlist"></div></div>
+  <div class="card past" id="hist" style="display:none"><h3 data-i18n="past.title">Earlier takes (scores only — the clip is not kept)</h3><div id="hlist"></div></div>
 </main>
+<script>${I18N_BOOT_C}</script>
 <script>
 const recBtn=document.getElementById('rec'), out=document.getElementById('out');
 const histBox=document.getElementById('hist'), hlist=document.getElementById('hlist');
 const pad=n=>(n<10?'0':'')+n;
 function when(ts){ const d=new Date(ts); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes()); }
+// one decimal, in the system locale (3.2 -> "3,2" in Spanish); English stays toFixed(1)
+function num1(x){ const f=window.gifos&&gifos.i18n&&gifos.i18n.fmt; return f&&f.number?f.number(Number(x.toFixed(1)),{minimumFractionDigits:1,maximumFractionDigits:1}):x.toFixed(1); }
+// the stored pace is a data value (measured / quick / steady); only its label is worded
+function paceName(p){ return (p==='measured'||p==='quick'||p==='steady')?T('pace.'+p):String(p==null?'':p); }
+// what the result area shows, kept as a function so a locale change can redraw it
+let outFn=null, outAfter=null;
+function setOut(fn, after){ outFn=fn; outAfter=after||null; out.innerHTML=fn(); if(after) requestAnimationFrame(after); }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 let db=null, past=[];
 function drawHist(){
   if(!past.length){ histBox.style.display='none'; return; }
   histBox.style.display='';
-  hlist.innerHTML=past.slice().reverse().map(t=>'<div class="take"><span>'+esc(t.pace)+' · '+Math.round((t.talk||0)*100)+'% talking · '+t.pauses+' long pause'+(t.pauses===1?'':'s')+'</span><span class="when">'+when(t.ts)+' · '+(t.dur||0).toFixed(1)+'s</span></div>').join('');
+  hlist.innerHTML=past.slice().reverse().map(t=>'<div class="take"><span>'+esc(T('take.line',{pace:paceName(t.pace),talk:Math.round((t.talk||0)*100),pauses:t.pauses||0}))+'</span><span class="when">'+esc(T('take.when',{when:when(t.ts),secs:num1(t.dur||0)}))+'</span></div>').join('');
 }
 function paintWave(frames, voiced){
   const c=document.getElementById('wave'); if(!c||!frames.length) return;
@@ -3916,30 +3966,30 @@ function analyse(buf){
   let bursts=0,prev=false; for(const v of voiced){ if(v&&!prev)bursts++; prev=v; }
   const talkDur=voicedFrac*dur, wpm=talkDur>0.3?Math.round(bursts/talkDur*60):0;
   const bps=bursts/(dur||1), pace=bps<2.2?'measured':bps>4.2?'quick':'steady';
-  const tips=[];
-  if(dur<1.2) tips.push('That was very short — try a sentence or two so there is something to measure.');
-  if(voicedFrac<0.08) tips.push('Almost no voice landed on the clip. Speak closer to the mic, or check GifOS still has the microphone allowed for this app.');
-  else if(voicedFrac<0.45) tips.push('Lots of silence — fill it with confident delivery, or trim the dead air.');
-  if(pauses>=3) tips.push('Several long pauses — a few land, too many lose the room.');
-  if(cv>0.7) tips.push('Volume swings a lot — even it out so every word lands.');
-  if(pace==='quick') tips.push('You’re quick — slow down on key points to let them sink in.');
-  if(pace==='measured'&&voicedFrac>0.6) tips.push('Lovely measured pace — great for clarity.');
-  if(!tips.length) tips.push('Well balanced — clear pace, steady volume, natural pauses.');
+  const tips=[];   // catalog keys, worded when the card is drawn
+  if(dur<1.2) tips.push('tip.short');
+  if(voicedFrac<0.08) tips.push('tip.silent');
+  else if(voicedFrac<0.45) tips.push('tip.quiet');
+  if(pauses>=3) tips.push('tip.pauses');
+  if(cv>0.7) tips.push('tip.volume');
+  if(pace==='quick') tips.push('tip.quick');
+  if(pace==='measured'&&voicedFrac>0.6) tips.push('tip.measured');
+  if(!tips.length) tips.push('tip.good');
   return {dur,voicedFrac,pauses,pace,cv,wpm,bursts,frames,voiced,tips};
 }
 function card(a, url, vsLast){
   const vol=a.cv<0.4?'steady':a.cv<0.7?'ok':'uneven';
-  const wpmLine=a.wpm?('<div class="metric"><span>Estimated pace</span><b>~'+a.wpm+' bursts/min</b></div>'):'';
-  const delta=vsLast?('<div class="fine">Versus your last take: talking '+(a.voicedFrac>vsLast.talk?'up':'down')+' from '+Math.round(vsLast.talk*100)+'%, pace was '+esc(vsLast.pace)+'.</div>'):'';
-  return '<div class="card"><h3>Your delivery</h3>'+
-    '<div class="metric"><span>Length</span><b>'+a.dur.toFixed(1)+'s</b></div>'+
-    '<div class="metric"><span>Talking vs silence</span><b>'+Math.round(a.voicedFrac*100)+'% talking</b></div>'+
-    '<div class="metric"><span>Long pauses</span><b>'+a.pauses+'</b></div>'+
-    '<div class="metric"><span>Pace</span><b>'+a.pace+'</b></div>'+wpmLine+
-    '<div class="metric"><span>Volume</span><b>'+vol+'</b></div>'+
+  const wpmLine=a.wpm?('<div class="metric"><span>'+esc(T('metric.estPace'))+'</span><b>'+esc(T('metric.burstsValue',{wpm:a.wpm}))+'</b></div>'):'';
+  const delta=vsLast?('<div class="fine">'+esc(T(a.voicedFrac>vsLast.talk?'delta.up':'delta.down',{pct:Math.round(vsLast.talk*100),pace:paceName(vsLast.pace)}))+'</div>'):'';
+  return '<div class="card"><h3>'+esc(T('card.title'))+'</h3>'+
+    '<div class="metric"><span>'+esc(T('metric.length'))+'</span><b>'+esc(T('unit.secs',{n:num1(a.dur)}))+'</b></div>'+
+    '<div class="metric"><span>'+esc(T('metric.talkVsSilence'))+'</span><b>'+esc(T('talking',{n:Math.round(a.voicedFrac*100)}))+'</b></div>'+
+    '<div class="metric"><span>'+esc(T('metric.longPauses'))+'</span><b>'+a.pauses+'</b></div>'+
+    '<div class="metric"><span>'+esc(T('metric.pace'))+'</span><b>'+esc(paceName(a.pace))+'</b></div>'+wpmLine+
+    '<div class="metric"><span>'+esc(T('metric.volume'))+'</span><b>'+esc(T('vol.'+vol))+'</b></div>'+
     '<canvas class="wave" id="wave"></canvas>'+
-    '<div class="tip">'+a.tips.join(' ')+'</div>'+
-    '<div class="fine">Bursts/min is counted from loud-vs-quiet, not words. This app never transcribes you.</div>'+delta+
+    '<div class="tip">'+esc(a.tips.map(k=>T(k)).join(T('tips.sep')))+'</div>'+
+    '<div class="fine">'+esc(T('fine.bursts'))+'</div>'+delta+
     (url?'<audio controls src="'+url+'"></audio>':'')+'</div>';
 }
 async function keep(a){
@@ -3952,33 +4002,32 @@ async function keep(a){
   drawHist();
 }
 recBtn.onclick=async()=>{
-  if(!window.gifos||!gifos.recordAudio){ out.innerHTML='<div class="card">Open this inside GifOS to use the microphone. GifOS records behind its own indicator; this app never sees a live mic.</div>'; return; }
-  recBtn.disabled=true; out.innerHTML='<div class="card wait">GifOS is opening its recorder. Speak when the red indicator says it is capturing — tap <b>Stop &amp; use</b> there when you are done (it also stops at 12 seconds).</div>';
+  if(!window.gifos||!gifos.recordAudio){ setOut(()=>'<div class="card">'+esc(T('err.noGifos'))+'</div>'); return; }
+  recBtn.disabled=true; setOut(()=>'<div class="card wait">'+rich(T('wait.recorder'))+'</div>');
   try{
     const clip=await gifos.recordAudio({maxSeconds:12});
-    out.innerHTML='<div class="card wait">Analysing the clip on this device…</div>';
+    setOut(()=>'<div class="card wait">'+esc(T('wait.analysing'))+'</div>');
     const AC=window.AudioContext||window.webkitAudioContext; const ctx=new AC();
     const buf=await ctx.decodeAudioData(clip.bytes.slice(0));
     const a=analyse(buf);
     const url=URL.createObjectURL(new Blob([clip.bytes],{type:clip.mime||'audio/webm'}));
     const last=past[past.length-1]||null;
-    out.innerHTML=card(a,url,last);
-    requestAnimationFrame(function(){ paintWave(a.frames, a.voiced); });
+    setOut(()=>card(a,url,last), function(){ paintWave(a.frames, a.voiced); });
     await keep(a); ctx.close();
   }catch(e){
     const msg=String((e&&e.message)||e||'');
-    if(/cancel/i.test(msg)) out.innerHTML='<div class="card">Recording cancelled. Nothing was kept.</div>';
-    else if(/denied|Permission/i.test(msg)) out.innerHTML='<div class="card">The microphone was denied. Allow it when the browser asks, and leave it on in this app’s Abilities chip.</div>';
-    else if(/turned .*off|Abilities/i.test(msg)) out.innerHTML='<div class="card">'+esc(msg)+'</div>';
-    else out.innerHTML='<div class="card">Couldn’t record: '+esc(msg)+'</div>';
+    if(/cancel/i.test(msg)) setOut(()=>'<div class="card">'+esc(T('err.cancelled'))+'</div>');
+    else if(/denied|Permission/i.test(msg)) setOut(()=>'<div class="card">'+esc(T('err.denied'))+'</div>');
+    else if(/turned .*off|Abilities/i.test(msg)) setOut(()=>'<div class="card">'+esc(msg)+'</div>');
+    else setOut(()=>'<div class="card">'+esc(T('err.record',{msg:msg}))+'</div>');
   }
   recBtn.disabled=false;
 };
-(async()=>{
+i18nStart(async()=>{
   if(!window.gifos||!gifos.db) return;
   db=gifos.db('takes');
   try{ const rows=await db.getAll(); past=(rows||[]).filter(r=>r&&r.ts).sort((a,b)=>(a.ts||0)-(b.ts||0)).slice(-8); drawHist(); }catch(e){}
-})();
+}, function(){ drawHist(); if(outFn) setOut(outFn, outAfter); });
 </script>`;
 
   // Ask AI — showcases gifos.ai. Uses the models the user wired in Settings; the
@@ -4057,11 +4106,12 @@ recBtn.onclick=async()=>{
   .hconfirm button.yes{border-color:#ff5caa;color:#ff5caa}
   .hempty{color:#8888aa;padding:18px 8px;line-height:1.5}
 </style>
-<header>Ask AI<span class="sp"></span><button id="histbtn" title="Every chat you have had, searchable">🕘 History</button><button id="new" title="Start a new chat — this one is kept in History">＋ New chat</button></header>
+<header><span data-i18n="title">Ask AI</span><span class="sp"></span><button id="histbtn" title="Every chat you have had, searchable" data-i18n-title="history.title" data-i18n="history">🕘 History</button><button id="new" title="Start a new chat — this one is kept in History" data-i18n-title="new.title" data-i18n="new">＋ New chat</button></header>
 <div id="log"></div>
-<div class="pick"><button data-m="cheapest" class="on">Cheapest</button><button data-m="smartest">Smartest</button></div>
-<form id="f"><textarea id="t" placeholder="Ask anything… (Enter to send, Shift+Enter for a new line)" autocomplete="off" rows="1"></textarea><button id="send">Send</button></form>
-<div id="hist"><div class="hbar"><b>Your chats</b><input id="hq" placeholder="Search by keyword…" autocomplete="off"><button id="hclose">Close</button></div><div id="hlist"></div></div>
+<div class="pick"><button data-m="cheapest" class="on" data-i18n="model.cheapest">Cheapest</button><button data-m="smartest" data-i18n="model.smartest">Smartest</button></div>
+<form id="f"><textarea id="t" placeholder="Ask anything… (Enter to send, Shift+Enter for a new line)" data-i18n-ph="input.placeholder" autocomplete="off" rows="1"></textarea><button id="send" data-i18n="send">Send</button></form>
+<div id="hist"><div class="hbar"><b data-i18n="hist.title">Your chats</b><input id="hq" placeholder="Search by keyword…" data-i18n-ph="hist.search" autocomplete="off"><button id="hclose" data-i18n="close">Close</button></div><div id="hlist"></div></div>
+<script>${I18N_BOOT_C}</script>
 <script>
 const log=document.getElementById('log'), input=document.getElementById('t'), sendBtn=document.getElementById('send');
 const histBox=document.getElementById('hist'), hlist=document.getElementById('hlist'), hq=document.getElementById('hq');
@@ -4075,39 +4125,52 @@ const pad=n=>(n<10?'0':'')+n;
 function stamp(ts){ const d=new Date(ts);
   return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds()); }
 function stampMin(ts){ return stamp(ts).slice(0,16); }
-function secs(ms){ return ms<1000?(Math.round(ms)+'ms'):((ms/1000).toFixed(1)+'s'); }
+// one decimal, in the system locale; English stays toFixed(1)
+function num1(x){ const f=window.gifos&&gifos.i18n&&gifos.i18n.fmt; return f&&f.number?f.number(Number(x.toFixed(1)),{minimumFractionDigits:1,maximumFractionDigits:1}):x.toFixed(1); }
+function secs(ms){ return ms<1000?T('time.ms',{n:Math.round(ms)}):T('time.s',{n:num1(ms/1000)}); }
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function metaOf(r){
   const bits=[stamp(r.ts)];
   if(r.role==='assistant'){
     if(r.model) bits.push(r.model);
-    if(r.firstMs!=null) bits.push('first word '+secs(r.firstMs));
+    if(r.firstMs!=null) bits.push(T('meta.first',{t:secs(r.firstMs)}));
     // A finished answer that never sent a first word did not stream. Say so:
     // silence here is how "GifOS is broken" and "this model answers in one
     // piece" became the same thing to look at.
-    else if(r.ms!=null&&!r.error) bits.push('no streaming from this model');
-    if(r.ms!=null) bits.push(secs(r.ms)+' total');
+    else if(r.ms!=null&&!r.error) bits.push(T('meta.noStream'));
+    if(r.ms!=null) bits.push(T('meta.total',{t:secs(r.ms)}));
   }
   return bits.join(' · ');
 }
 function bottom(){ log.scrollTop=log.scrollHeight; }
 function copyBtn(text){
   const a=document.createElement('div'); a.className='acts';
-  const b=document.createElement('button'); b.type='button'; b.textContent='Copy';
-  b.onclick=async()=>{ try{ await navigator.clipboard.writeText(text); b.textContent='Copied'; setTimeout(()=>{ b.textContent='Copy'; },1200); }catch(e){ b.textContent='Couldn’t copy'; } };
+  const b=document.createElement('button'); b.type='button'; b.textContent=T('copy'); b.setAttribute('data-copy','1');
+  b.onclick=async()=>{ try{ await navigator.clipboard.writeText(text); b.textContent=T('copied'); setTimeout(()=>{ b.textContent=T('copy'); },1200); }catch(e){ b.textContent=T('copyFail'); } };
   a.appendChild(b); return a;
 }
 function draw(r){
   const row=document.createElement('div'); row.className='row '+(r.role==='user'?'you':'ai');
   const b=document.createElement('div'); b.className='m '+(r.role==='user'?'you':'ai'); if(r.error) b.classList.add('err');
   b.textContent=r.content||'';
-  const s=document.createElement('div'); s.className='stamp'; s.textContent=metaOf(r);
+  const s=document.createElement('div'); s.className='stamp'; s.textContent=metaOf(r); s._r=r;
   row.appendChild(b); row.appendChild(s);
   if(r.role==='assistant'&&r.content&&!r.error) row.appendChild(copyBtn(r.content));
   log.appendChild(row); bottom();
   return {bubble:b, stamp:s, row:row};
 }
-function note(html){ const d=document.createElement('div'); d.className='note'; d.innerHTML=html; log.appendChild(d); bottom(); return d; }
+// fn returns the note's HTML; it is kept so a locale change can re-word the note
+function note(fn){ const d=document.createElement('div'); d.className='note'; d._fn=fn; d.innerHTML=fn(); log.appendChild(d); bottom(); return d; }
+const nt=(k,p)=>()=>rich(T(k,p));
+// A locale change: the static chrome is done by applyI18n; the rest is redrawn here.
+function reword(){
+  document.querySelectorAll('.stamp').forEach(e=>{ if(e._r) e.textContent=metaOf(e._r); });
+  document.querySelectorAll('button[data-copy]').forEach(e=>{ e.textContent=T('copy'); });
+  document.querySelectorAll('.note').forEach(d=>{ if(!d._fn) return;
+    const keep=Array.prototype.filter.call(d.children,c=>c.hasAttribute('data-keep'));
+    d.innerHTML=d._fn(); keep.forEach(c=>d.appendChild(c)); });
+  if(histBox.classList.contains('on')) renderHistory();
+}
 function uid(p){ return (p||'m')+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 // One write path. all[] is the in-memory mirror of the collection, so the
 // history list and the search see a message the instant it is sent.
@@ -4140,7 +4203,7 @@ function conversations(){
 function titleOf(c){
   const first=c.msgs.filter(m=>m.role==='user'&&m.content)[0]||c.msgs[0];
   const t=String((first&&first.content)||'').replace(/\\s+/g,' ').trim();
-  return t?(t.length>72?t.slice(0,72)+'…':t):'Empty chat';
+  return t?(t.length>72?t.slice(0,72)+'…':t):T('chat.empty');
 }
 // Search reads the WHOLE chat, not just its title: you look for the answer you
 // half-remember as often as for the question you asked. Every word must appear.
@@ -4153,21 +4216,21 @@ function renderHistory(){
   const words=hq.value.trim().toLowerCase().split(/\\s+/).filter(Boolean);
   const list=conversations().filter(c=>matches(c,words));
   if(!list.length){
-    hlist.innerHTML='<div class="hempty">'+(words.length
-      ? 'No chat mentions “'+esc(hq.value.trim())+'”.'
-      : 'No chats yet. Everything you ask is kept here until you delete it.')+'</div>';
+    hlist.innerHTML='<div class="hempty">'+esc(words.length
+      ? T('hist.nomatch',{q:hq.value.trim()})
+      : T('hist.none'))+'</div>';
     return;
   }
   hlist.innerHTML=list.map(c=>{
-    const n=c.msgs.length+' message'+(c.msgs.length===1?'':'s');
+    const n=T('messages',{n:c.msgs.length});
     if(pendingDel===c.id) return '<div class="hrow" data-c="'+esc(c.id)+'"><div class="hconfirm">'+
-      '<span>Delete this chat and its '+n+'?</span>'+
-      '<button class="yes" data-del="'+esc(c.id)+'">Delete</button><button class="no">Keep it</button></div></div>';
+      '<span>'+esc(T('hist.confirm',{n:c.msgs.length}))+'</span>'+
+      '<button class="yes" data-del="'+esc(c.id)+'">'+esc(T('delete'))+'</button><button class="no">'+esc(T('keep'))+'</button></div></div>';
     return '<div class="hrow'+(c.id===conv?' cur':'')+'" data-c="'+esc(c.id)+'">'+
       '<button class="hopen" data-open="'+esc(c.id)+'">'+
         '<span class="htitle">'+esc(titleOf(c))+'</span>'+
-        '<span class="hmeta">'+stampMin(c.updated)+' · '+n+(c.id===conv?' · open now':'')+'</span></button>'+
-      '<button class="row-del" data-ask="'+esc(c.id)+'" title="Delete this chat">'+DEL+'</button></div>';
+        '<span class="hmeta">'+stampMin(c.updated)+' · '+esc(n)+(c.id===conv?' · '+esc(T('hist.openNow')):'')+'</span></button>'+
+      '<button class="row-del" data-ask="'+esc(c.id)+'" title="'+esc(T('hist.delete'))+'">'+DEL+'</button></div>';
   }).join('');
 }
 function openHistory(){ pendingDel=null; hq.value=''; renderHistory(); histBox.classList.add('on'); try{ hq.focus(); }catch(e){} }
@@ -4186,7 +4249,7 @@ function openConv(id){
   conv=id; hist=c.msgs.slice(); seq=0;
   for(const r of hist) seq=Math.max(seq,r.seq||0);
   log.innerHTML=''; hist.forEach(draw);
-  note('Reopened this chat from '+stampMin(c.started)+' — keep typing and it carries on.');
+  note(nt('note.reopened',{when:stampMin(c.started)}));
   remember();
 }
 // The ONLY thing in this app that erases anything, and it is one button click
@@ -4199,15 +4262,15 @@ async function deleteConv(id){
 }
 function startNew(quiet){
   conv=uid('c'); hist=[]; seq=0; log.innerHTML=''; remember();
-  if(!quiet) note('New chat. The one you were in is saved — press <b>🕘 History</b> to find it again.');
+  if(!quiet) note(nt('note.newChat'));
 }
 document.getElementById('new').onclick=()=>{
   if(busy) return;
-  if(!hist.length){ note('This chat is already empty — ask something.'); return; }
+  if(!hist.length){ note(nt('note.alreadyEmpty')); return; }
   startNew();
 };
-(async()=>{
-  if(!window.gifos||!gifos.ai){ note('Open this inside GifOS to use AI.'); return; }
+i18nStart(async()=>{
+  if(!window.gifos||!gifos.ai){ note(nt('note.noGifos')); return; }
   db=gifos.db('chat'); prefs=gifos.db('prefs');
   const p=await prefs.get('askai').catch(()=>null);
   if(p&&p.model) setModel(p.model);
@@ -4225,21 +4288,21 @@ document.getElementById('new').onclick=()=>{
     const pick=want?(convs.filter(c=>c.id===want)[0]||null):(convs[0]||null);
     conv=want||(pick?pick.id:uid('c'));
     if(pick){ hist=pick.msgs.slice(); for(const r of hist) seq=Math.max(seq,r.seq||0); hist.forEach(draw); }
-  }catch(e){ note('Couldn’t read your saved chats: '+((e&&e.message)||e)); }
+  }catch(e){ note(nt('err.read',{msg:String((e&&e.message)||e)})); }
   if(!conv) conv=uid('c');
   const others=convs.length-(hist.length?1:0);
-  if(hist.length) note('Picking up where you left off — '+hist.length+' message'+(hist.length===1?'':'s')+' from '+stampMin(hist[0].ts)+'.'+
-    (others>0?' '+others+' other chat'+(others===1?'':'s')+' in <b>🕘 History</b>.':''));
-  else if(others>0) note('New chat. Your '+others+' earlier chat'+(others===1?'':'s')+' '+(others===1?'is':'are')+' in <b>🕘 History</b>.');
+  if(hist.length){ const first=stampMin(hist[0].ts), nMsg=hist.length;
+    note(()=>rich(T('note.resume',{n:nMsg,when:first}))+(others>0?' '+rich(T('note.resumeOthers',{n:others})):'')); }
+  else if(others>0) note(nt('note.earlier',{n:others}));
   remember();
   const m=await gifos.ai.models().catch(()=>({available:[]}));
   if(!(m.available||[]).includes('cheapest')&&!(m.available||[]).includes('smartest')){
-    const n=note('No language model is set up on this computer yet. Send a question — GifOS will walk you through wiring one. The key stays in your browser; this app never sees it.');
-    const b=document.createElement('button'); b.textContent='Set up a model'; b.style.cssText='display:block;margin-top:10px;padding:6px 12px;border-radius:8px;border:1px solid #2a2a3f;background:#14141f;color:#e0e0f0;font:inherit;font-size:.82rem;cursor:pointer';
+    const n=note(nt('note.noModel'));
+    const b=document.createElement('button'); b.textContent=T('setup'); b.setAttribute('data-keep','1'); b.setAttribute('data-i18n','setup'); b.style.cssText='display:block;margin-top:10px;padding:6px 12px;border-radius:8px;border:1px solid #2a2a3f;background:#14141f;color:#e0e0f0;font:inherit;font-size:.82rem;cursor:pointer';
     b.onclick=()=>{ if(gifos.aiSetup) gifos.aiSetup(model); };
     n.appendChild(b);
   }
-})();
+}, reword);
 input.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); document.getElementById('f').requestSubmit(); }
 });
@@ -4256,7 +4319,7 @@ document.getElementById('f').onsubmit=async e=>{
       if(first===null){ first=Date.now()-t0; a.firstMs=first; el.bubble.textContent=''; }
       streamed+=piece; el.bubble.textContent=streamed; el.stamp.textContent=metaOf(a); bottom();
     }});
-    a.content=((r&&r.text)||streamed||'(no answer)');
+    a.content=((r&&r.text)||streamed||T('noAnswer'));
     a.ms=Date.now()-t0;
     if(r&&r.streamed===false&&first===null) a.firstMs=undefined;
     el.bubble.textContent=a.content;
@@ -4267,7 +4330,7 @@ document.getElementById('f').onsubmit=async e=>{
     // NOT_CONFIGURED bubble — that string is for machines, not people.
     if(/NOT_CONFIGURED/.test(msg)){
       el.row.remove(); seq--;
-      note('GifOS is asking you to set up a model. Come back and send again once it is wired.');
+      note(nt('note.setupAsked'));
       busy=false; sendBtn.disabled=false; input.focus(); return;
     }
     a.error=true; a.content='⚠ '+msg; a.ms=Date.now()-t0;
@@ -4306,39 +4369,45 @@ document.getElementById('f').onsubmit=async e=>{
   .hint{color:#8888aa;font-size:.78rem;padding:0 18px 10px;line-height:1.4}
   .note{color:#8888aa;font-size:.88rem;padding:0 18px 12px;line-height:1.5}
 </style>
-<header>📖 Reader<span class="sp"></span><span id="wc" style="color:#8888aa;font-weight:400;font-size:.78rem"></span></header>
-<textarea id="text" placeholder="Paste or type anything here, then press Read aloud."></textarea>
+<header><span data-i18n="title">📖 Reader</span><span class="sp"></span><span id="wc" style="color:#8888aa;font-weight:400;font-size:.78rem"></span></header>
+<textarea id="text" placeholder="Paste or type anything here, then press Read aloud." data-i18n-ph="text.placeholder"></textarea>
 <div id="script"></div>
 <div class="bar">
-  <select id="voice" title="A hint for the voice this computer uses. On-device voices have their own names and ignore this.">
-    <option value="">Default — this computer’s voice</option>
-    <option value="nova">Nova (if the provider knows it)</option>
-    <option value="shimmer">Shimmer (if the provider knows it)</option>
-    <option value="fable">Fable (if the provider knows it)</option>
-    <option value="echo">Echo (if the provider knows it)</option>
-    <option value="onyx">Onyx (if the provider knows it)</option>
-    <option value="alloy">Alloy (if the provider knows it)</option>
+  <select id="voice" title="A hint for the voice this computer uses. On-device voices have their own names and ignore this." data-i18n-title="voice.hint">
+    <option value="" data-i18n="voice.default">Default — this computer’s voice</option>
+    <option value="nova" data-voice="Nova">Nova (if the provider knows it)</option>
+    <option value="shimmer" data-voice="Shimmer">Shimmer (if the provider knows it)</option>
+    <option value="fable" data-voice="Fable">Fable (if the provider knows it)</option>
+    <option value="echo" data-voice="Echo">Echo (if the provider knows it)</option>
+    <option value="onyx" data-voice="Onyx">Onyx (if the provider knows it)</option>
+    <option value="alloy" data-voice="Alloy">Alloy (if the provider knows it)</option>
   </select>
-  <button id="read">🔊 Read aloud</button>
+  <button id="read" data-i18n="read">🔊 Read aloud</button>
   <button id="pause" class="ghost" style="display:none">⏸ Pause</button>
-  <button id="stop" class="ghost" style="display:none">■ Stop</button>
+  <button id="stop" class="ghost" style="display:none" data-i18n="stop">■ Stop</button>
 </div>
-<div class="hint">Named voices are a hint to a cloud TTS. An on-device voice uses its own names and ignores these.</div>
+<div class="hint" data-i18n="hint">Named voices are a hint to a cloud TTS. An on-device voice uses its own names and ignores these.</div>
 <div id="status"></div>
 <div class="note" id="note" style="display:none"></div>
+<script>${I18N_BOOT_C}</script>
 <script>
-const T=document.getElementById('text'), V=document.getElementById('voice');
+const TXT=document.getElementById('text'), V=document.getElementById('voice');
 const readBtn=document.getElementById('read'), stopBtn=document.getElementById('stop'), pauseBtn=document.getElementById('pause');
 const status=document.getElementById('status'), note=document.getElementById('note');
 const script=document.getElementById('script'), wc=document.getElementById('wc');
 let db=null, playing=false, session=0, paused=false;
-function say(m){ status.textContent=m||''; }
+// say(key, params) words a status line from the catalog (kept for a locale change); sayRaw(text) shows system text as is
+let sayArg=null;
+function say(k,p){ sayArg=k?[k,p]:null; status.textContent=k?T(k,p):''; }
+function sayRaw(m){ sayArg=null; status.textContent=m||''; }
+function pauseLbl(){ pauseBtn.textContent=T(paused?'resume':'pause'); }
+function voiceLbl(){ Array.prototype.forEach.call(V.options,function(o){ var n=o.getAttribute('data-voice'); if(n) o.textContent=T('voice.named',{name:n}); }); }
 function wordsOf(t){ return String(t||'').trim()?String(t).trim().split(/\\s+/).length:0; }
-function countWords(){ const n=wordsOf(T.value); wc.textContent=n?(n+' word'+(n===1?'':'s')):''; }
-T.addEventListener('input',()=>{ countWords(); remember(); });
+function countWords(){ const n=wordsOf(TXT.value); wc.textContent=n?T('words',{n:n}):''; }
+TXT.addEventListener('input',()=>{ countWords(); remember(); });
 V.addEventListener('change',remember);
-function remember(){ if(db) db.put({id:'current',text:T.value,voice:V.value}).catch(()=>{}); }
-function showScript(on){ script.style.display=on?'block':'none'; T.style.display=on?'none':'block'; }
+function remember(){ if(db) db.put({id:'current',text:TXT.value,voice:V.value}).catch(()=>{}); }
+function showScript(on){ script.style.display=on?'block':'none'; TXT.style.display=on?'none':'block'; }
 function fillScript(sents){
   script.innerHTML=sents.map((s,i)=>'<span class="sent" data-i="'+i+'">'+s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))+'</span>').join(' ');
 }
@@ -4352,15 +4421,15 @@ function markSent(from,to){
 // reads never hit a provider's per-request ceiling.
 function playBytes(r){ return new Promise((res,rej)=>{
   const url=URL.createObjectURL(new Blob([r.bytes],{type:r.mime||'audio/mpeg'}));
-  const a=new Audio(url); window.__cur=a; paused=false; pauseBtn.textContent='⏸ Pause';
+  const a=new Audio(url); window.__cur=a; paused=false; pauseLbl();
   a.onended=()=>{ URL.revokeObjectURL(url); if(window.__cur===a) window.__cur=null; res(); };
-  a.onerror=()=>{ URL.revokeObjectURL(url); if(window.__cur===a) window.__cur=null; rej(new Error('could not play the audio')); };
+  a.onerror=()=>{ URL.revokeObjectURL(url); if(window.__cur===a) window.__cur=null; rej(new Error(T('err.play'))); };
   a.play().catch(rej);
 }); }
 pauseBtn.onclick=()=>{
   const a=window.__cur; if(!a) return;
-  if(paused){ a.play().catch(()=>{}); paused=false; pauseBtn.textContent='⏸ Pause'; say('Reading…'); }
-  else { a.pause(); paused=true; pauseBtn.textContent='▶ Resume'; say('Paused.'); }
+  if(paused){ a.play().catch(()=>{}); paused=false; pauseLbl(); say('status.reading'); }
+  else { a.pause(); paused=true; pauseLbl(); say('status.paused'); }
 };
 // LEARN HOW FAST THIS VOICE IS, then size the passages to suit it. Reader
 // cannot know who serves Text -> speech — a cloud endpoint, a formant
@@ -4390,7 +4459,7 @@ function takeChunk(sents,i,first){
   return {text:cur,from:start,next:i};
 }
 async function readAloud(){
-  const text=T.value.trim(); if(!text){ say('Nothing to read yet.'); return; }
+  const text=TXT.value.trim(); if(!text){ say('status.nothing'); return; }
   const my=++session; playing=true; paused=false;
   readBtn.style.display='none'; stopBtn.style.display=''; pauseBtn.style.display='';
   remember();
@@ -4419,35 +4488,38 @@ async function readAloud(){
       const span={from:cut.from, next:cut.next}; cut=after; n++;
       if(!playing||my!==session) break;
       markSent(span.from, span.next);
-      say('Reading… sentence '+(span.from+1)+'–'+span.next+' of '+sents.length);
+      say('status.sentence',{from:span.from+1,to:span.next,total:sents.length});
       await playBytes(audio);
       if(!next) break;
     }
-    if(playing&&my===session) say('Done.');
+    if(playing&&my===session) say('status.done');
   }catch(err){
     const msg=String((err&&err.message)||err||'');
-    if(/NOT_CONFIGURED/.test(msg)) say('GifOS is asking you to set up Text → speech. Come back and press Read aloud once it is wired.');
-    else say('⚠ '+msg);
+    if(/NOT_CONFIGURED/.test(msg)) say('status.setupAsked');
+    else sayRaw('⚠ '+msg);
   }
   playing=false; paused=false; showScript(false);
   readBtn.style.display=''; stopBtn.style.display='none'; pauseBtn.style.display='none';
 }
 readBtn.onclick=readAloud;
-stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ try{ window.__cur.pause(); }catch(e){} window.__cur=null; } showScript(false); say('Stopped.'); readBtn.style.display=''; stopBtn.style.display='none'; pauseBtn.style.display='none'; };
-(async()=>{
-  if(!window.gifos||!gifos.ai){ note.style.display=''; note.innerHTML='Open this inside GifOS to use it.'; return; }
+stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ try{ window.__cur.pause(); }catch(e){} window.__cur=null; } showScript(false); say('status.stopped'); readBtn.style.display=''; stopBtn.style.display='none'; pauseBtn.style.display='none'; };
+// the note under the status line: noteFn words it (kept for a locale change); a button the app adds is data-keep
+let noteFn=null;
+function setNote(fn){ noteFn=fn; note.style.display=''; const keep=Array.prototype.filter.call(note.children,function(c){ return c.hasAttribute('data-keep'); }); note.innerHTML=fn(); keep.forEach(function(c){ note.appendChild(c); }); }
+i18nStart(async()=>{
+  voiceLbl(); pauseLbl();
+  if(!window.gifos||!gifos.ai){ setNote(()=>rich(T('note.noGifos'))); return; }
   db=gifos.db('texts');
-  db.get('current').then(d=>{ if(d&&d.text&&!T.value) T.value=d.text; if(d&&typeof d.voice==='string') V.value=d.voice; countWords(); }).catch(()=>{});
+  db.get('current').then(d=>{ if(d&&d.text&&!TXT.value) TXT.value=d.text; if(d&&typeof d.voice==='string') V.value=d.voice; countWords(); }).catch(()=>{});
   countWords();
   const m=await gifos.ai.models().catch(()=>({available:[]}));
   if(!(m.available||[]).includes('tts')){
-    note.style.display='';
-    note.innerHTML='No <b>Text → speech</b> is set up on this computer yet. Press <b>Read aloud</b> and GifOS will walk you through wiring a voice — a Provider app on this device, or an endpoint. This app never sees a key.';
-    const b=document.createElement('button'); b.textContent='Set up a voice'; b.style.cssText='display:block;margin-top:10px;padding:6px 12px;border-radius:8px;border:1px solid #2a2a3f;background:#14141f;color:#e0e0f0;font:inherit;font-size:.82rem;cursor:pointer';
+    setNote(()=>rich(T('note.noTts')));
+    const b=document.createElement('button'); b.textContent=T('setup'); b.setAttribute('data-keep','1'); b.setAttribute('data-i18n','setup'); b.style.cssText='display:block;margin-top:10px;padding:6px 12px;border-radius:8px;border:1px solid #2a2a3f;background:#14141f;color:#e0e0f0;font:inherit;font-size:.82rem;cursor:pointer';
     b.onclick=()=>{ if(gifos.aiSetup) gifos.aiSetup('tts'); };
     note.appendChild(b);
   }
-})();
+}, function(){ voiceLbl(); countWords(); pauseLbl(); if(sayArg) say(sayArg[0],sayArg[1]); if(noteFn) setNote(noteFn); });
 </script>`;
 
   function manifest(appId, name, accent, extra) {
