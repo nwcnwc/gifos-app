@@ -4681,37 +4681,37 @@ i18nStart(async()=>{
 <header>
   <h1>My Media</h1>
   <span id="cap"></span>
-  <button class="btn" id="add">＋ Add</button>
+  <button class="btn" id="add" data-i18n="add">＋ Add</button>
 </header>
 <div id="bar">
   <span class="seg" id="types">
-    <button data-t="all" class="on">All</button>
+    <button data-t="all" class="on" data-i18n="filter.all">All</button>
     <button data-t="image">🖼</button>
     <button data-t="audio">🎵</button>
     <button data-t="video">🎬</button>
   </span>
-  <select id="cat"><option value="all">All categories</option></select>
+  <select id="cat"><option value="all" data-i18n="filter.allCats">All categories</option></select>
   <span id="count"></span>
 </div>
 <div id="selbar">
   <span id="seln">0 selected</span>
-  <button class="btn ghost" id="selall">Select all</button>
-  <button class="btn" id="selcat">Categorize</button>
-  <button class="danger" id="seldel">Delete</button>
-  <button class="btn ghost" id="selclear">Clear</button>
+  <button class="btn ghost" id="selall" data-i18n="sel.all">Select all</button>
+  <button class="btn" id="selcat" data-i18n="sel.categorize">Categorize</button>
+  <button class="danger" id="seldel" data-i18n="sel.delete">Delete</button>
+  <button class="btn ghost" id="selclear" data-i18n="sel.clear">Clear</button>
 </div>
 <div id="grid"></div>
 <div id="empty"><div class="big" id="empty-icon">🎞️</div><div><b id="empty-title">No media yet</b></div><div class="sub" id="empty-sub" style="margin-top:.4rem">Tap <b>＋ Add</b> to import photos, audio or video — or drop files anywhere.</div></div>
 <input type="file" id="fi" accept="image/*,audio/*,video/*" multiple hidden>
-<div id="drop">Drop to add to your library</div>
+<div id="drop" data-i18n="drop">Drop to add to your library</div>
 <div id="modal"><div class="box">
   <div class="stage" id="stage"></div>
   <div class="info" id="detail">
-    <input type="text" id="mname" placeholder="Name">
-    <div class="row"><span class="sub">Category</span><input type="text" id="mcat" list="cats" placeholder="Unsorted"><button class="btn ghost" id="msave">Save</button></div>
+    <input type="text" id="mname" placeholder="Name" data-i18n-ph="detail.name.ph">
+    <div class="row"><span class="sub" data-i18n="detail.category">Category</span><input type="text" id="mcat" list="cats" placeholder="Unsorted" data-i18n-ph="cat.unsorted"><button class="btn ghost" id="msave" data-i18n="detail.save">Save</button></div>
     <datalist id="cats"></datalist>
-    <div class="row" id="visrow" style="display:none"><label class="tgl"><input type="checkbox" id="mvis"><span class="tslide"></span></label><div class="visinfo"><div class="vt">Visible to invited guests</div><span class="sub" id="vishint">Private — only you can see it.</span></div></div>
-    <div class="row"><span class="sub" id="minfo"></span><span style="flex:1"></span><button class="btn ghost" id="mfliph">Flip ↔️</button><button class="btn ghost" id="mflipv">Flip ↕️</button><button class="btn ghost" id="mclip">Clip</button><button class="btn ghost" id="mrev">Reverse</button><button class="btn" id="mgif">Make GIF</button><button class="btn ghost" id="mdown">Download</button><button class="danger" id="mdel">Delete</button><button class="btn ghost" id="mclose">Close</button></div>
+    <div class="row" id="visrow" style="display:none"><label class="tgl"><input type="checkbox" id="mvis"><span class="tslide"></span></label><div class="visinfo"><div class="vt" data-i18n="detail.vis.title">Visible to invited guests</div><span class="sub" id="vishint" data-i18n="vis.hint.default">Private — only you can see it.</span></div></div>
+    <div class="row"><span class="sub" id="minfo"></span><span style="flex:1"></span><button class="btn ghost" id="mfliph" data-i18n="detail.flipH">Flip ↔️</button><button class="btn ghost" id="mflipv" data-i18n="detail.flipV">Flip ↕️</button><button class="btn ghost" id="mclip" data-i18n="detail.clip">Clip</button><button class="btn ghost" id="mrev" data-i18n="detail.reverse">Reverse</button><button class="btn" id="mgif" data-i18n="detail.makeGif">Make GIF</button><button class="btn ghost" id="mdown" data-i18n="detail.download">Download</button><button class="danger" id="mdel" data-i18n="detail.delete">Delete</button><button class="btn ghost" id="mclose" data-i18n="detail.close">Close</button></div>
   </div>
   <div class="info" id="gifpanel">
     <div id="filmstrip"></div>
@@ -4723,7 +4723,7 @@ i18nStart(async()=>{
     </div>
     <div id="giftimes"><span id="gifta"></span><span id="giftd"></span><span id="giftb"></span></div>
     <div id="gifbudget"></div>
-    <div class="sub gifspeed-label">Speed</div>
+    <div class="sub gifspeed-label" data-i18n="gif.speed">Speed</div>
     <div class="seg" id="gifspeeds">
       <button data-s="0.25">0.25×</button>
       <button data-s="0.5">0.5×</button>
@@ -4732,23 +4732,33 @@ i18nStart(async()=>{
       <button data-s="1.5">1.5×</button>
       <button data-s="2">2×</button>
     </div>
-    <div class="row"><button class="btn" id="gifgo">Make GIF</button><button class="btn ghost" id="gifstop" style="display:none">Stop</button><button class="btn ghost" id="gifback">Cancel</button></div>
+    <div class="row"><button class="btn" id="gifgo" data-i18n="gif.go">Make GIF</button><button class="btn ghost" id="gifstop" style="display:none" data-i18n="gif.stop">Stop</button><button class="btn ghost" id="gifback" data-i18n="gif.cancel">Cancel</button></div>
     <div id="gifprog" class="sub"></div>
   </div>
 </div></div>
 <div id="toast"></div>
 <div id="delwarn"><div class="box"><div class="info">
   <div id="delwarn-msg"></div>
-  <div class="row"><button class="danger" id="mdel-confirm">Delete forever</button><button class="btn ghost" id="mdel-cancel">Cancel</button></div>
+  <div class="row"><button class="danger" id="mdel-confirm" data-i18n="delwarn.confirm">Delete forever</button><button class="btn ghost" id="mdel-cancel" data-i18n="delwarn.cancel">Cancel</button></div>
 </div></div></div>
 <div id="catpick"><div class="box"><div class="info">
-  <div class="sub">Move to a category — or type a new one. From Deleted, this puts items back in the library.</div>
+  <div class="sub" data-i18n="catpick.hint">Move to a category — or type a new one. From Deleted, this puts items back in the library.</div>
   <div class="picks" id="catpick-list"></div>
-  <div class="row"><input type="text" id="catpick-new" placeholder="New category"><button class="btn" id="catpick-go">Apply</button></div>
-  <div class="row"><button class="btn ghost" id="catpick-cancel">Cancel</button></div>
+  <div class="row"><input type="text" id="catpick-new" placeholder="New category" data-i18n-ph="catpick.new.ph"><button class="btn" id="catpick-go" data-i18n="catpick.apply">Apply</button></div>
+  <div class="row"><button class="btn ghost" id="catpick-cancel" data-i18n="catpick.cancel">Cancel</button></div>
 </div></div></div>
 <script src="gifenc.js"></script>
 <script>
+  var T = (k, p) => (window.gifos && gifos.i18n ? gifos.i18n.t(k, p) : k);
+  // Static markup keeps its English text (a pre-load paint, an older GifOS); this fills it from the catalog.
+  function applyI18n(){
+    var q=function(a,fn){ Array.prototype.forEach.call(document.querySelectorAll('['+a+']'), function(el){ fn(el, T(el.getAttribute(a))); }); };
+    q('data-i18n', function(el,t){ el.textContent=t; });
+    q('data-i18n-html', function(el,t){ el.innerHTML=t; });
+    q('data-i18n-ph', function(el,t){ el.placeholder=t; });
+    q('data-i18n-title', function(el,t){ el.title=t; });
+    q('data-i18n-aria', function(el,t){ el.setAttribute('aria-label',t); });
+  }
   var media = gifos.db('media'), blobs = gifos.db('blobs');
   var MAX = 25 * 1024 * 1024;
   var items = [], fType = 'all', fCat = 'all', curUrl = null, cur = null, owner = false;
@@ -4783,8 +4793,8 @@ i18nStart(async()=>{
 
   function typeOf(mime){ mime=String(mime||''); return mime.indexOf('image/')===0?'image':mime.indexOf('audio/')===0?'audio':mime.indexOf('video/')===0?'video':''; }
   async function store(bytes, mime, name, category){
-    var type=typeOf(mime); if(!type){ toast('Only images, audio and video can be added.'); return; }
-    if(bytes.length>MAX){ toast((name||'That file')+' is too big (max 25 MB).'); return; }
+    var type=typeOf(mime); if(!type){ toast(T('toast.onlyMedia')); return; }
+    if(bytes.length>MAX){ toast(name ? T('toast.tooBigNamed',{name:name}) : T('toast.tooBigThat')); return; }
     var id='m'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
     var thumb=''; try{ thumb=await makeThumb(new Blob([bytes],{type:mime}), type); }catch(e){}
     await blobs.put({ id:id, bytes:bytes });
@@ -4792,16 +4802,20 @@ i18nStart(async()=>{
     return id;
   }
   async function importFile(file){
-    try{ var buf=new Uint8Array(await file.arrayBuffer()); await store(buf, file.type||'', file.name||'file', 'Unsorted'); }
-    catch(e){ toast('Could not read ' + (file&&file.name||'file')); }
+    try{ var buf=new Uint8Array(await file.arrayBuffer()); await store(buf, file.type||'', file.name||T('name.file'), 'Unsorted'); }
+    catch(e){ toast(T('toast.readFailed',{name:(file&&file.name||T('name.file'))})); }
   }
 
   // ---- library ----
   function isDeleted(m){ return /^deleted$/i.test((m&&m.category)||''); }
+  // These four category names are stored data (peers compare them): only the label shown is translated.
+  var CATKEY={ Unsorted:'cat.unsorted', Deleted:'cat.deleted', Captured:'cat.captured', Camera:'cat.camera' };
+  function catName(c){ var k=CATKEY[c]; return k ? T(k) : c; }
   function canonCat(c){
     c=String(c==null?'':c).trim();
     if(!c) return 'Unsorted';
-    if(/^deleted$/i.test(c)) return 'Deleted';
+    if(/^deleted$/i.test(c) || c.toLowerCase()===T('cat.deleted').toLowerCase()) return 'Deleted';
+    for(var k in CATKEY) if(c===T(CATKEY[k])) return k;
     return c;
   }
   function categories(){
@@ -4810,14 +4824,14 @@ i18nStart(async()=>{
     return Object.keys(s).sort();
   }
   function refreshCats(){
-    var sel=document.getElementById('cat'); sel.innerHTML='<option value="all">All categories</option>';
-    categories().forEach(function(c){ var o=document.createElement('option'); o.value=c; o.textContent=c; sel.appendChild(o); });
-    var del=document.createElement('option'); del.value='Deleted'; del.textContent='Deleted'; sel.appendChild(del);
+    var sel=document.getElementById('cat'); sel.innerHTML=''; var all=document.createElement('option'); all.value='all'; all.textContent=T('filter.allCats'); sel.appendChild(all);
+    categories().forEach(function(c){ var o=document.createElement('option'); o.value=c; o.textContent=catName(c); sel.appendChild(o); });
+    var del=document.createElement('option'); del.value='Deleted'; del.textContent=T('cat.deleted'); sel.appendChild(del);
     if(fCat!=='all' && fCat!=='Deleted' && categories().indexOf(fCat)<0) fCat='all';
     sel.value=fCat;
     var dl=document.getElementById('cats'); dl.innerHTML='';
-    categories().forEach(function(c){ var o=document.createElement('option'); o.value=c; dl.appendChild(o); });
-    var dlo=document.createElement('option'); dlo.value='Deleted'; dl.appendChild(dlo);
+    categories().forEach(function(c){ var o=document.createElement('option'); o.value=catName(c); dl.appendChild(o); });
+    var dlo=document.createElement('option'); dlo.value=T('cat.deleted'); dl.appendChild(dlo);
   }
   function render(){
     refreshCats();
@@ -4829,7 +4843,7 @@ i18nStart(async()=>{
     var live=0, bin=0;
     items.forEach(function(m){ if(isDeleted(m)) bin++; else live++; });
     var tot=fCat==='Deleted'?bin:live;
-    document.getElementById('count').textContent = tot ? (list.length+' of '+tot) : '';
+    document.getElementById('count').textContent = tot ? T('list.count',{shown:String(list.length),total:String(tot)}) : '';
     if(list.length){
       gEmpty.style.display='none';
       grid.style.display='grid';
@@ -4841,20 +4855,20 @@ i18nStart(async()=>{
       var su=document.getElementById('empty-sub');
       if(!items.length){
         ic.textContent='🎞️';
-        ti.textContent='No media yet';
-        su.innerHTML='Tap <b>＋ Add</b> to import photos, audio or video — or drop files anywhere.';
+        ti.textContent=T('empty.none.title');
+        su.innerHTML=T('empty.none.sub');
       }else if(fCat==='Deleted'){
         ic.textContent='🗑️';
-        ti.textContent='Nothing in Deleted';
-        su.textContent='Items you Delete land here. Delete again to remove them for good.';
+        ti.textContent=T('empty.bin.title');
+        su.textContent=T('empty.bin.sub');
       }else if(!live && bin){
         ic.textContent='🎞️';
-        ti.textContent='Nothing here — '+bin+' in Deleted';
-        su.textContent='Open Deleted from the category list to see them.';
+        ti.textContent=T('empty.binOnly.title',{n:String(bin)});
+        su.textContent=T('empty.binOnly.sub');
       }else{
         ic.textContent='🎞️';
-        ti.textContent='Nothing here';
-        su.textContent='Try a different type or category.';
+        ti.textContent=T('empty.filtered.title');
+        su.textContent=T('empty.filtered.sub');
       }
     }
     var keep={}; items.forEach(function(m){ keep[m.id]=1; });
@@ -4862,10 +4876,10 @@ i18nStart(async()=>{
     grid.innerHTML = list.map(function(m){
       var bg = m.thumb ? 'style="background-image:url('+m.thumb+')"' : '';
       var face = m.thumb ? (m.type!=='image'?'<div class="play">▶</div>':'') : ('<span>'+(KIND[m.type]||'📄')+'</span>');
-      var shared = isVisible(m) ? '<span class="shared" title="Visible to invited guests">👁</span>' : '';
-      var catLabel = isDeleted(m) ? 'Deleted' : (m.category||'Unsorted');
+      var shared = isVisible(m) ? '<span class="shared" title="'+T('card.shared')+'">👁</span>' : '';
+      var catLabel = isDeleted(m) ? T('cat.deleted') : catName(m.category||'Unsorted');
       var on=!!selected[m.id];
-      return '<div class="card'+(on?' on':'')+'" data-id="'+m.id+'"><button type="button" class="sel" aria-label="Select"><input type="checkbox" class="pick"'+(on?' checked':'')+' tabindex="-1"></button>'+
+      return '<div class="card'+(on?' on':'')+'" data-id="'+m.id+'"><button type="button" class="sel" aria-label="'+T('card.select')+'"><input type="checkbox" class="pick"'+(on?' checked':'')+' tabindex="-1"></button>'+
         '<div class="thumb" '+bg+'><span class="kind">'+(KIND[m.type]||'')+'</span>'+shared+face+'</div>'+
         '<div class="meta"><div class="nm">'+esc(m.name)+'</div><span class="cat">'+esc(catLabel)+'</span></div></div>';
     }).join('');
@@ -4875,7 +4889,7 @@ i18nStart(async()=>{
   function updateSelBar(){
     var n=0; for(var k in selected) if(selected[k]) n++;
     var bar=document.getElementById('selbar');
-    if(n){ bar.classList.add('on'); document.getElementById('seln').textContent=n+' selected'; }
+    if(n){ bar.classList.add('on'); document.getElementById('seln').textContent=T('sel.count',{n:String(n)}); }
     else bar.classList.remove('on');
   }
   function clearSelection(){
@@ -4886,7 +4900,7 @@ i18nStart(async()=>{
     });
     updateSelBar();
   }
-  media.subscribe(function(rows){ items=(rows||[]).filter(function(r){ return r&&r.id&&r.type; }); render(); });
+  function subscribeMedia(){ media.subscribe(function(rows){ items=(rows||[]).filter(function(r){ return r&&r.id&&r.type; }); render(); }); }
 
   // ---- open one: fetch its blob, pick the right player ----
   grid.addEventListener('pointerdown', function(e){
@@ -4911,7 +4925,7 @@ i18nStart(async()=>{
   async function openItem(id){
     var m=items.filter(function(x){ return x.id===id; })[0]; if(!m) return;
     var rec=await blobs.get(id);
-    if(!rec||!rec.bytes){ toast('The file for this item is missing.'); return; }
+    if(!rec||!rec.bytes){ toast(T('err.fileMissing')); return; }
     var bytes = rec.bytes instanceof Uint8Array ? rec.bytes : new Uint8Array(rec.bytes);
     if(curUrl){ URL.revokeObjectURL(curUrl); curUrl=null; }
     curUrl = URL.createObjectURL(new Blob([bytes], { type:m.mime||'' })); cur=m;
@@ -4920,7 +4934,7 @@ i18nStart(async()=>{
       : m.type==='audio' ? '<audio src="'+curUrl+'" controls autoplay></audio>'
       : '<video src="'+curUrl+'" controls autoplay playsinline></video>';
     document.getElementById('mname').value = m.name||'';
-    document.getElementById('mcat').value = isDeleted(m) ? 'Deleted' : (m.category||'');
+    document.getElementById('mcat').value = isDeleted(m) ? T('cat.deleted') : (m.category ? catName(m.category) : '');
     document.getElementById('minfo').textContent = (KIND[m.type]||'')+' '+(m.mime||'')+' · '+fmtSize(m.size);
     syncVisRow();
     closeGifPanel();
@@ -4931,7 +4945,7 @@ i18nStart(async()=>{
     document.getElementById('mclip').style.display = (m.type==='video'||m.type==='audio') ? 'inline-block' : 'none';
     document.getElementById('mrev').style.display = (m.type==='video'||m.type==='audio') ? 'inline-block' : 'none';
     document.getElementById('mgif').style.display = m.type==='video' ? 'inline-block' : 'none';
-    document.getElementById('mdel').textContent = isDeleted(m) ? 'Delete forever' : 'Delete';
+    document.getElementById('mdel').textContent = isDeleted(m) ? T('detail.deleteForever') : T('detail.delete');
     document.getElementById('modal').style.display='flex';
   }
   // The visibility control — owner only. Reflects the current item's state and
@@ -4944,8 +4958,8 @@ i18nStart(async()=>{
     var vis=isVisible(cur);
     document.getElementById('mvis').checked = vis;
     document.getElementById('vishint').textContent = vis
-      ? 'Invited guests can see and steal this item.'
-      : 'Only you can see it. Flip on to share it.';
+      ? T('vis.hint.on')
+      : T('vis.hint.off');
   }
   document.getElementById('mvis').onchange=async function(){
     if(!cur||!owner) return;
@@ -4954,8 +4968,8 @@ i18nStart(async()=>{
       await media.setVisibility(cur.id, level);
       try{ await blobs.setVisibility(cur.id, level); }catch(e){}
       cur._vis=level; syncVisRow(); render();
-      toast(makeVis?'Now visible to invited guests':'Now private');
-    }catch(e){ this.checked=!makeVis; toast('Could not change visibility'); }
+      toast(makeVis?T('toast.nowVisible'):T('toast.nowPrivate'));
+    }catch(e){ this.checked=!makeVis; toast(T('toast.visFailed')); }
   };
   function closeModal(){
     gifAbort=true;
@@ -4977,7 +4991,7 @@ i18nStart(async()=>{
   }
   function downloadCur(){
     if(!cur) return;
-    if(!curUrl){ toast('The file for this item is missing.'); return; }
+    if(!curUrl){ toast(T('err.fileMissing')); return; }
     var a=document.createElement('a');
     a.href=curUrl; a.download=downloadName(cur);
     document.body.appendChild(a); a.click(); a.remove();
@@ -4992,15 +5006,15 @@ i18nStart(async()=>{
     if(cat==='Deleted' && !isDeleted(cur)){
       try{
         await media.put(Object.assign({}, cur, { name:name, category:'Deleted' }));
-        toast('Moved to Deleted');
+        toast(T('toast.movedDeleted'));
         closeModal();
-      }catch(e){ toast('You can only remove your own items.'); }
+      }catch(e){ toast(T('toast.onlyRemoveOwn')); }
       return;
     }
     try{
       await media.put(Object.assign({}, cur, { name:name, category:cat }));
-      toast('Saved'); cur.name=name; cur.category=cat;
-    }catch(e){ toast('You can only recategorize your own items.'); }
+      toast(T('toast.saved')); cur.name=name; cur.category=cat;
+    }catch(e){ toast(T('toast.onlyRecatOwn')); }
   };
   function hideDelWarn(){
     pendingForever=null;
@@ -5010,10 +5024,10 @@ i18nStart(async()=>{
     pendingForever=list||[];
     var msg;
     if(pendingForever.length===1){
-      var nm=pendingForever[0].name||'this item';
-      msg='This deletes "'+nm+'" for good. It cannot be undone.';
+      var nm=pendingForever[0].name;
+      msg=nm ? T('delwarn.one',{name:nm}) : T('delwarn.oneUnnamed');
     }else{
-      msg='This deletes '+pendingForever.length+' items for good. It cannot be undone.';
+      msg=T('delwarn.many',{n:pendingForever.length});
     }
     document.getElementById('delwarn-msg').textContent=msg;
     document.getElementById('delwarn').style.display='flex';
@@ -5024,8 +5038,8 @@ i18nStart(async()=>{
         await media.delete(list[i].id);
         try{ await blobs.delete(list[i].id); }catch(e){}
       }
-      toast(list.length>1 ? ('Deleted '+list.length+' items') : 'Deleted for good');
-    }catch(e){ toast('You can only remove your own items.'); }
+      toast(list.length>1 ? T('toast.deletedMany',{n:list.length}) : T('toast.deletedOne'));
+    }catch(e){ toast(T('toast.onlyRemoveOwn')); }
   }
   document.getElementById('mdel').onclick=async function(){
     if(!cur) return;
@@ -5034,8 +5048,8 @@ i18nStart(async()=>{
     closeModal();
     try{
       await media.put(Object.assign({}, m, { category:'Deleted' }));
-      toast('Moved to Deleted');
-    }catch(e){ toast('You can only remove your own items.'); }  // a guest can't delete the host's shared media
+      toast(T('toast.movedDeleted'));
+    }catch(e){ toast(T('toast.onlyRemoveOwn')); }  // a guest can't delete the host's shared media
   };
   document.getElementById('mdel-cancel').onclick=function(){ hideDelWarn(); };
   document.getElementById('mdel-confirm').onclick=async function(){
@@ -5063,16 +5077,16 @@ i18nStart(async()=>{
         if(isDeleted(list[i])) continue;
         await media.put(Object.assign({}, list[i], { category:'Deleted' }));
       }
-      toast(list.length===1 ? 'Moved to Deleted' : 'Moved '+list.length+' to Deleted');
+      toast(list.length===1 ? T('toast.movedDeleted') : T('toast.movedN',{n:list.length}));
       clearSelection();
-    }catch(e){ toast('You can only remove your own items.'); }
+    }catch(e){ toast(T('toast.onlyRemoveOwn')); }
   };
   function hideCatPick(){ document.getElementById('catpick').style.display='none'; }
   function openCatPick(){
     var list=document.getElementById('catpick-list'); list.innerHTML='';
     function addBtn(name){
       var b=document.createElement('button');
-      b.type='button'; b.className='btn ghost'; b.textContent=name;
+      b.type='button'; b.className='btn ghost'; b.textContent=catName(name);
       b.onclick=function(){ applyCat(name); };
       list.appendChild(b);
     }
@@ -5091,16 +5105,16 @@ i18nStart(async()=>{
       }
       hideCatPick();
       toast(name==='Deleted'
-        ? (list.length===1 ? 'Moved to Deleted' : 'Moved '+list.length+' to Deleted')
-        : 'Saved');
+        ? (list.length===1 ? T('toast.movedDeleted') : T('toast.movedN',{n:list.length}))
+        : T('toast.saved'));
       clearSelection();
-    }catch(e){ toast('You can only recategorize your own items.'); }
+    }catch(e){ toast(T('toast.onlyRecatOwn')); }
   }
   document.getElementById('selcat').onclick=openCatPick;
   document.getElementById('catpick-cancel').onclick=hideCatPick;
   document.getElementById('catpick-go').onclick=function(){
     var n=document.getElementById('catpick-new').value.trim();
-    if(!n){ toast('Type a category or pick one.'); return; }
+    if(!n){ toast(T('toast.typeCategory')); return; }
     applyCat(n);
   };
 
@@ -5115,21 +5129,24 @@ i18nStart(async()=>{
 
   // ---- capture straight in (brokered camera/mic; honours the Abilities opt-out) ----
   var cap=document.getElementById('cap');
-  function capBtn(glyph, title, fn){ var b=document.createElement('button'); b.textContent=glyph; b.title=title; b.onclick=fn; cap.appendChild(b); }
+  function capBtn(glyph, key, fn){ var b=document.createElement('button'); b.textContent=glyph; b.setAttribute('data-k',key); b.title=T(key); b.onclick=fn; cap.appendChild(b); }
+  function retitleCap(){ Array.prototype.forEach.call(cap.children, function(b){ b.title=T(b.getAttribute('data-k')); }); }
   async function capture(kind){
     try{
       var clip = kind==='photo' ? await gifos.takePhoto() : kind==='audio' ? await gifos.recordAudio() : await gifos.recordVideo();
       if(!clip||!clip.bytes) return;
       var bytes=new Uint8Array(clip.bytes);
       var mime=clip.mime||(kind==='photo'?'image/jpeg':kind==='audio'?'audio/webm':'video/webm');
-      var label=(kind==='photo'?'Photo':kind==='audio'?'Recording':'Clip')+' · '+(L10N?L10N.dateTime(new Date()):new Date().toLocaleString());
+      var label=T(kind==='photo'?'name.photo':kind==='audio'?'name.recording':'name.clip', { when:(L10N?L10N.dateTime(new Date()):new Date().toLocaleString()) });
       await store(bytes, mime, label, 'Captured');
     }catch(err){ var m=String(err&&err.message||err); if(!/cancel/i.test(m)) toast(m.slice(0,90)); }
   }
-  if(window.gifos && gifos.takePhoto){
-    capBtn('📷','Take a photo', function(){ capture('photo'); });
-    capBtn('🎙','Record audio', function(){ capture('audio'); });
-    capBtn('🎬','Record a video clip', function(){ capture('video'); });
+  function buildCap(){
+    if(window.gifos && gifos.takePhoto){
+      capBtn('📷','cap.photo', function(){ capture('photo'); });
+      capBtn('🎙','cap.audio', function(){ capture('audio'); });
+      capBtn('🎬','cap.video', function(){ capture('video'); });
+    }
   }
 
   // ---- video → GIF (plain GIF89a via packed gifenc.js) ----
@@ -5189,7 +5206,7 @@ i18nStart(async()=>{
     var sel=gifEnd-gifStart, max=maxSrc();
     var maxTxt=(Math.abs(max-Math.round(max))<1e-6)?String(Math.round(max)):max.toFixed(1);
     var spdTxt=gifSpeed+'×';
-    var line=sel.toFixed(1)+'s selected · max '+maxTxt+'s at '+spdTxt;
+    var line=T('gif.budget',{sel:sel.toFixed(1),max:maxTxt,speed:spdTxt});
     var budget=document.getElementById('gifbudget');
     budget.textContent=line;
     var over=panelMode==='gif' && sel>max+0.05;
@@ -5208,7 +5225,7 @@ i18nStart(async()=>{
     var box=document.querySelector('#modal .box'); if(box) box.classList.remove('gifing');
     var v=stageVideo();
     if(v){ v.controls=true; v.muted=false; }
-    var go=document.getElementById('gifgo'); if(go) go.textContent='Make GIF';
+    var go=document.getElementById('gifgo'); if(go) go.textContent=T('gif.go');
     panelMode='gif';
     var stop=document.getElementById('gifstop'); if(stop) stop.style.display='none';
     var prog=document.getElementById('gifprog'); if(prog) prog.textContent='';
@@ -5257,7 +5274,7 @@ i18nStart(async()=>{
     p.classList.add('on');
     p.classList.toggle('clip', panelMode==='clip'||panelMode==='aclip');
     p.classList.toggle('aclip', panelMode==='aclip');
-    document.getElementById('gifgo').textContent = panelMode==='gif' ? 'Make GIF' : 'Clip';
+    document.getElementById('gifgo').textContent = panelMode==='gif' ? T('gif.go') : T('gif.goClip');
     var box=document.querySelector('#modal .box'); if(box) box.classList.add('gifing');
     function ready(){
       var d=rangeDur();
@@ -5380,16 +5397,16 @@ i18nStart(async()=>{
     if(panelMode==='clip'){ await runVideoClip(); return; }
     if(panelMode==='aclip'){ await runAudioClip(); return; }
     var v=stageVideo();
-    if(!v){ toast('No video to convert.'); return; }
-    if(!window.GifEnc||!GifEnc.encode||!GifEnc.quantize){ toast('GIF encoder is missing.'); return; }
+    if(!v){ toast(T('toast.noVideoConvert')); return; }
+    if(!window.GifEnc||!GifEnc.encode||!GifEnc.quantize){ toast(T('toast.noEncoder')); return; }
     var srcDur=gifEnd-gifStart;
-    if(srcDur<=0){ toast('Pick a longer clip.'); return; }
-    if(srcDur>maxSrc()+0.05){ toast('That clip is too long at this speed.'); return; }
+    if(srcDur<=0){ toast(T('err.longerClip')); return; }
+    if(srcDur>maxSrc()+0.05){ toast(T('toast.tooLongSpeed')); return; }
     var nFrames=Math.round(srcDur/gifSpeed*GIF_FPS);
     if(nFrames<2) nFrames=2;
     if(nFrames>MAX_FRAMES) nFrames=MAX_FRAMES;
     var vw=v.videoWidth||0, vh=v.videoHeight||0;
-    if(!vw||!vh){ toast('The video has not decoded yet.'); return; }
+    if(!vw||!vh){ toast(T('err.notDecoded')); return; }
     var sc=Math.min(1, MAX_SIDE/Math.max(vw,vh));
     var tw=Math.max(1, Math.round(vw*sc)), th=Math.max(1, Math.round(vh*sc));
     gifBusy=true; gifAbort=false;
@@ -5404,25 +5421,25 @@ i18nStart(async()=>{
       for(var i=0;i<nFrames;i++){
         if(gifAbort) throw new Error('cancel');
         var t=gifStart+(i+0.5)*(srcDur/nFrames);
-        prog.textContent='Sampling '+(i+1)+'/'+nFrames+'…';
+        prog.textContent=T('gif.sampling',{i:String(i+1),n:String(nFrames)});
         await seekTo(v, t);
         if(gifAbort) throw new Error('cancel');
         ctx.drawImage(v, 0, 0, tw, th);
         rgba.push(new Uint8Array(ctx.getImageData(0,0,tw,th).data));
         await new Promise(function(r){ setTimeout(r, 0); });
       }
-      prog.textContent='Encoding…';
+      prog.textContent=T('gif.encoding');
       await new Promise(function(r){ setTimeout(r, 0); });
       var q=GifEnc.quantize(rgba, tw, th);
       var bytes=GifEnc.encode({ width:tw, height:th, frames:q.frames, palette:q.palette, delayCs:10, loop:true });
-      if(!bytes||bytes.length<6) throw new Error('Could not encode the GIF.');
+      if(!bytes||bytes.length<6) throw new Error(T('err.encodeGif'));
       var hdr=String.fromCharCode(bytes[0],bytes[1],bytes[2],bytes[3],bytes[4],bytes[5]);
-      if(hdr!=='GIF89a') throw new Error('Could not encode the GIF.');
-      if(bytes.length>MAX){ toast('That GIF would be too big (max 25 MB).'); return; }
+      if(hdr!=='GIF89a') throw new Error(T('err.encodeGif'));
+      if(bytes.length>MAX){ toast(T('toast.gifTooBig')); return; }
       var name=gifNameFrom(cur);
       var cat=(cur&&cur.category)||'Unsorted';
       id=await store(bytes, 'image/gif', name, cat);
-      toast('Saved '+name);
+      toast(T('toast.savedName',{name:name}));
     }catch(err){
       var msg=String(err&&err.message||err);
       if(!/cancel/i.test(msg)) toast(msg.slice(0,90));
@@ -5452,12 +5469,12 @@ i18nStart(async()=>{
   }
   function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   async function saveNew(bytes, mime, name){
-    if(!bytes||!bytes.length) throw new Error('Nothing to save.');
-    if(bytes.length>MAX){ toast('That file would be too big (max 25 MB).'); return null; }
+    if(!bytes||!bytes.length) throw new Error(T('err.nothingSave'));
+    if(bytes.length>MAX){ toast(T('toast.fileTooBig')); return null; }
     var cat=(cur&&cur.category)||'Unsorted';
     var id=await store(bytes, mime, name, cat);
     if(!id) return null;
-    toast('Saved '+name);
+    toast(T('toast.savedName',{name:name}));
     return id;
   }
   async function openNew(id){
@@ -5488,15 +5505,15 @@ i18nStart(async()=>{
   async function recordEditedVideo(opts){
     opts=opts||{};
     var v=stageVideo();
-    if(!v) throw new Error('No video to edit.');
-    if(typeof MediaRecorder==='undefined') throw new Error('This browser cannot record video (no MediaRecorder).');
+    if(!v) throw new Error(T('err.noVideoEdit'));
+    if(typeof MediaRecorder==='undefined') throw new Error(T('err.noMediaRecorder'));
     var canvas=document.createElement('canvas');
-    if(!canvas.captureStream) throw new Error('This browser cannot record video (no captureStream).');
+    if(!canvas.captureStream) throw new Error(T('err.noCaptureStream'));
     var w=v.videoWidth||0, h=v.videoHeight||0;
-    if(!w||!h) throw new Error('The video has not decoded yet.');
+    if(!w||!h) throw new Error(T('err.notDecoded'));
     var start=+opts.start||0, end=opts.end, d=vidDur();
     if(!(end>start)) end=d;
-    if(!(end>start)) throw new Error('That clip is empty.');
+    if(!(end>start)) throw new Error(T('err.clipEmpty'));
     var sx=opts.sx==null?1:opts.sx, sy=opts.sy==null?1:opts.sy;
     var reverse=!!opts.reverse;
     var fps=15;
@@ -5513,7 +5530,7 @@ i18nStart(async()=>{
     var chunks=[];
     rec.ondataavailable=function(e){ if(e.data&&e.data.size) chunks.push(e.data); };
     var stopped=new Promise(function(res, rej){
-      rec.onerror=function(ev){ rej((ev&&ev.error)||new Error('Recording failed.')); };
+      rec.onerror=function(ev){ rej((ev&&ev.error)||new Error(T('err.recordFailed'))); };
       rec.onstop=function(){ res(); };
     });
     function emit(){
@@ -5546,15 +5563,15 @@ i18nStart(async()=>{
     }
     try{ stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
     var blob=new Blob(chunks, { type: rec.mimeType||mime||'video/webm' });
-    if(!blob.size) throw new Error('Recording produced an empty file.');
+    if(!blob.size) throw new Error(T('err.recordEmpty'));
     var buf=new Uint8Array(await blob.arrayBuffer());
     var outMime=(blob.type||'video/webm').split(';')[0]||'video/webm';
     return { bytes:buf, mime:outMime };
   }
   async function flipStill(h, v){
-    if(!cur) throw new Error('Nothing to flip.');
+    if(!cur) throw new Error(T('err.nothingFlip'));
     var rec=await blobs.get(cur.id);
-    if(!rec||!rec.bytes) throw new Error('The file for this item is missing.');
+    if(!rec||!rec.bytes) throw new Error(T('err.fileMissing'));
     var bytes=rec.bytes instanceof Uint8Array ? rec.bytes : new Uint8Array(rec.bytes);
     var blob=new Blob([bytes], { type: cur.mime||'image/png' });
     var url=URL.createObjectURL(blob);
@@ -5563,27 +5580,27 @@ i18nStart(async()=>{
       img=await new Promise(function(res, rej){
         var i=new Image();
         i.onload=function(){ res(i); };
-        i.onerror=function(){ rej(new Error('Could not decode the image.')); };
+        i.onerror=function(){ rej(new Error(T('err.decodeImage'))); };
         i.src=url;
       });
     }finally{ URL.revokeObjectURL(url); }
     var w=img.naturalWidth, ht=img.naturalHeight;
-    if(!w||!ht) throw new Error('Could not decode the image.');
+    if(!w||!ht) throw new Error(T('err.decodeImage'));
     var c=document.createElement('canvas'); c.width=w; c.height=ht;
     var ctx=c.getContext('2d');
     ctx.drawImage(img, 0, 0);
     var before;
     try{ before=ctx.getImageData(0,0,w,ht).data.slice(); }
-    catch(e){ throw new Error('Could not read the image pixels.'); }
+    catch(e){ throw new Error(T('err.readPixels')); }
     paintFlipped(ctx, img, w, ht, h?-1:1, v?-1:1);
     var after;
     try{ after=ctx.getImageData(0,0,w,ht).data; }
-    catch(e){ throw new Error('Could not read the image pixels.'); }
+    catch(e){ throw new Error(T('err.readPixels')); }
     var changed=false, p;
     for(p=0;p<after.length;p+=4){
       if(after[p]!==before[p]||after[p+1]!==before[p+1]||after[p+2]!==before[p+2]){ changed=true; break; }
     }
-    if(!changed) throw new Error('That image looks the same flipped.');
+    if(!changed) throw new Error(T('err.flipSame'));
     var jm=(cur.mime||'').toLowerCase();
     var jpeg=jm==='image/jpeg'||jm==='image/jpg';
     var outMime=jpeg?'image/jpeg':'image/png';
@@ -5594,10 +5611,10 @@ i18nStart(async()=>{
           var bin=atob(data.split(',')[1]||''), u=new Uint8Array(bin.length);
           for(var i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i);
           res(new Blob([u], { type: outMime }));
-        }catch(err){ rej(new Error('Could not encode the image.')); }
+        }catch(err){ rej(new Error(T('err.encodeImage'))); }
         return;
       }
-      c.toBlob(function(b){ if(!b) rej(new Error('Could not encode the image.')); else res(b); }, outMime, jpeg?0.92:undefined);
+      c.toBlob(function(b){ if(!b) rej(new Error(T('err.encodeImage'))); else res(b); }, outMime, jpeg?0.92:undefined);
     });
     return { bytes:new Uint8Array(await out.arrayBuffer()), mime:outMime, ext:jpeg?'jpg':'png' };
   }
@@ -5607,16 +5624,16 @@ i18nStart(async()=>{
     try{
       if(cur.type==='image'){
         var still=await flipStill(h, v);
-        var sid=await saveNew(still.bytes, still.mime, suffixName(cur, 'flipped', still.ext));
+        var sid=await saveNew(still.bytes, still.mime, suffixName(cur, T('suffix.flipped'), still.ext));
         await openNew(sid);
       }else if(cur.type==='video'){
-        toast('Flipping…', true);
+        toast(T('toast.flipping'), true);
         var d=vidDur();
         var recd=await recordEditedVideo({
           sx:h?-1:1, sy:v?-1:1, start:0, end:d, reverse:false,
-          onProg:function(i,n){ toast('Flipping '+i+'/'+n+'…', true); }
+          onProg:function(i,n){ toast(T('toast.flippingN',{i:String(i),n:String(n)}), true); }
         });
-        var vidName=suffixName(cur, 'flipped', 'webm');
+        var vidName=suffixName(cur, T('suffix.flipped'), 'webm');
         var vid=await saveNew(recd.bytes, recd.mime, vidName);
         await openNew(vid);
       }
@@ -5654,9 +5671,9 @@ i18nStart(async()=>{
     return new Uint8Array(buf);
   }
   async function decodeCurAudio(){
-    if(!cur) throw new Error('Nothing to edit.');
+    if(!cur) throw new Error(T('err.nothingEdit'));
     var rec=await blobs.get(cur.id);
-    if(!rec||!rec.bytes) throw new Error('The file for this item is missing.');
+    if(!rec||!rec.bytes) throw new Error(T('err.fileMissing'));
     var bytes=rec.bytes instanceof Uint8Array ? rec.bytes : new Uint8Array(rec.bytes);
     function copyAb(){ return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset+bytes.byteLength); }
     var sr=0;
@@ -5674,14 +5691,14 @@ i18nStart(async()=>{
       }catch(e){}
     }
     var AC=window.AudioContext||window.webkitAudioContext;
-    if(!AC) throw new Error('This browser cannot decode audio.');
+    if(!AC) throw new Error(T('err.noAudioDecode'));
     var ctx=new AC();
     try{
       var live=await ctx.decodeAudioData(copyAb());
-      if(!live||!live.length) throw new Error('Could not decode the audio.');
+      if(!live||!live.length) throw new Error(T('err.decodeAudio'));
       return live;
     }catch(err){
-      throw new Error('Could not decode the audio.');
+      throw new Error(T('err.decodeAudio'));
     }finally{
       try{ ctx.close(); }catch(e){}
     }
@@ -5693,13 +5710,13 @@ i18nStart(async()=>{
     go.disabled=true; stop.style.display='';
     var id=null;
     try{
-      prog.textContent='Clipping…';
+      prog.textContent=T('gif.clipping');
       var decoded=await decodeCurAudio();
       if(gifAbort) throw new Error('cancel');
       var sr=decoded.sampleRate||44100;
       var i0=Math.max(0, Math.floor(gifStart*sr));
       var i1=Math.min(decoded.length, Math.ceil(gifEnd*sr));
-      if(i1-i0<2) throw new Error('Pick a longer clip.');
+      if(i1-i0<2) throw new Error(T('err.longerClip'));
       var ch=[], c;
       for(c=0;c<decoded.numberOfChannels;c++){
         var dst=new Float32Array(i1-i0);
@@ -5708,7 +5725,7 @@ i18nStart(async()=>{
         if(c%2===1) await sleep(0);
       }
       var wav=encodeWav16(ch, sr);
-      id=await saveNew(wav, 'audio/wav', suffixName(cur, 'clip', 'wav'));
+      id=await saveNew(wav, 'audio/wav', suffixName(cur, T('suffix.clip'), 'wav'));
     }catch(err){
       var msg=String(err&&err.message||err);
       if(!/cancel/i.test(msg)) toast(msg.slice(0,90));
@@ -5723,7 +5740,7 @@ i18nStart(async()=>{
   async function runVideoClip(){
     if(gifBusy) return;
     var v=stageVideo();
-    if(!v){ toast('No video to clip.'); return; }
+    if(!v){ toast(T('toast.noVideoClip')); return; }
     gifBusy=true; gifAbort=false;
     var go=document.getElementById('gifgo'), stop=document.getElementById('gifstop'), prog=document.getElementById('gifprog');
     go.disabled=true; stop.style.display='';
@@ -5731,9 +5748,9 @@ i18nStart(async()=>{
     try{
       var recd=await recordEditedVideo({
         sx:1, sy:1, start:gifStart, end:gifEnd, reverse:false,
-        onProg:function(i,n){ prog.textContent='Clipping '+i+'/'+n+'…'; }
+        onProg:function(i,n){ prog.textContent=T('gif.clippingN',{i:String(i),n:String(n)}); }
       });
-      id=await saveNew(recd.bytes, recd.mime, suffixName(cur, 'clip', 'webm'));
+      id=await saveNew(recd.bytes, recd.mime, suffixName(cur, T('suffix.clip'), 'webm'));
     }catch(err){
       var msg=String(err&&err.message||err);
       if(!/cancel/i.test(msg)) toast(msg.slice(0,90));
@@ -5753,7 +5770,7 @@ i18nStart(async()=>{
     gifBusy=true; gifAbort=false;
     try{
       if(cur.type==='audio'){
-        toast('Reversing…', true);
+        toast(T('toast.reversing'), true);
         var decoded=await decodeCurAudio();
         if(gifAbort) throw new Error('cancel');
         var ch=[], i;
@@ -5764,15 +5781,15 @@ i18nStart(async()=>{
           await sleep(0);
         }
         var wav=encodeWav16(ch, decoded.sampleRate||44100);
-        var aid=await saveNew(wav, 'audio/wav', suffixName(cur, 'reversed', 'wav'));
+        var aid=await saveNew(wav, 'audio/wav', suffixName(cur, T('suffix.reversed'), 'wav'));
         await openNew(aid);
       }else if(cur.type==='video'){
-        toast('Reversing…', true);
+        toast(T('toast.reversing'), true);
         var recd=await recordEditedVideo({
           sx:1, sy:1, start:0, end:vidDur(), reverse:true,
-          onProg:function(i,n){ toast('Reversing '+i+'/'+n+'…', true); }
+          onProg:function(i,n){ toast(T('toast.reversingN',{i:String(i),n:String(n)}), true); }
         });
-        var vid=await saveNew(recd.bytes, recd.mime, suffixName(cur, 'reversed', 'webm'));
+        var vid=await saveNew(recd.bytes, recd.mime, suffixName(cur, T('suffix.reversed'), 'webm'));
         await openNew(vid);
       }
     }catch(err){
@@ -5786,6 +5803,22 @@ i18nStart(async()=>{
   document.getElementById('types').addEventListener('click', function(e){ var b=e.target.closest?e.target.closest('button[data-t]'):null; if(!b) return;
     fType=b.getAttribute('data-t'); Array.prototype.forEach.call(this.children, function(c){ c.classList.toggle('on', c===b); }); selected={}; render(); });
   document.getElementById('cat').onchange=function(){ fCat=this.value; selected={}; render(); };
+
+  // ---- language: nothing that calls T runs before the catalog loads ----
+  function relocalize(){
+    applyI18n(); retitleCap(); render(); syncVisRow();
+    if(cur){
+      document.getElementById('mdel').textContent = isDeleted(cur) ? T('detail.deleteForever') : T('detail.delete');
+      document.getElementById('mcat').value = isDeleted(cur) ? T('cat.deleted') : (cur.category ? catName(cur.category) : '');
+    }
+    var gp=document.getElementById('gifpanel');
+    if(gp && gp.classList.contains('on')){ document.getElementById('gifgo').textContent = panelMode==='gif' ? T('gif.go') : T('gif.goClip'); updateGifUI(); }
+  }
+  function boot(){
+    applyI18n(); buildCap(); subscribeMedia();
+    if(window.gifos && gifos.onLocaleChange) gifos.onLocaleChange(relocalize);
+  }
+  if(window.gifos && gifos.i18n && gifos.i18n.load) gifos.i18n.load().then(boot, boot); else boot();
 </script></body></html>`;
 
   // Packed into My Media as gifenc.js. Real GIF89a + variable-width LZW — not
@@ -5972,20 +6005,29 @@ i18nStart(async()=>{
 </style></head><body>
 <div id="empty">
   <div class="ring"></div>
-  <h1>No camera on this computer</h1>
-  <p id="why">Allow the camera in the browser, then turn it on in this app’s Abilities chip at the top of the tab.</p>
+  <h1 data-i18n="empty.title">No camera on this computer</h1>
+  <p id="why" data-i18n="empty.why">Allow the camera in the browser, then turn it on in this app’s Abilities chip at the top of the tab.</p>
 </div>
 <div id="ui">
-  <div id="stage"><div class="ph"><div class="ring"></div><div>Tap the shutter</div></div><div id="hint"></div></div>
+  <div id="stage"><div class="ph"><div class="ring"></div><div data-i18n="stage.tap">Tap the shutter</div></div><div id="hint"></div></div>
   <div id="film"></div>
   <div id="bar">
-    <button class="ghost wide" id="mmbtn" title="Open My Media">🖼️ My Media</button>
-    <button id="shutter" aria-label="Open camera"><span></span></button>
-    <button class="ghost" id="rollbtn" title="Recents">🎞️</button>
+    <button class="ghost wide" id="mmbtn" title="Open My Media" data-i18n-title="mm.title" data-i18n="mm.label">🖼️ My Media</button>
+    <button id="shutter" aria-label="Open camera" data-i18n-aria="shutter.aria"><span></span></button>
+    <button class="ghost" id="rollbtn" title="Recents" data-i18n-title="roll.title">🎞️</button>
   </div>
 </div>
 <div id="toast"></div>
 <script>
+  var T = (k, p) => (window.gifos && gifos.i18n ? gifos.i18n.t(k, p) : k);
+  // Static markup keeps its English text (a pre-load paint, an older GifOS); this fills it from the catalog.
+  // #why is skipped once the camera reports its own reason.
+  function applyI18n(){
+    var q=function(a,fn){ Array.prototype.forEach.call(document.querySelectorAll('['+a+']'), function(el){ fn(el, T(el.getAttribute(a))); }); };
+    q('data-i18n', function(el,t){ if(el.id==='why' && el.getAttribute('data-own')) return; el.textContent=t; });
+    q('data-i18n-title', function(el,t){ el.title=t; });
+    q('data-i18n-aria', function(el,t){ el.setAttribute('aria-label',t); });
+  }
   var roll = gifos.db('roll');
   var items = [];
   var lastMode = 'photo';
@@ -5996,15 +6038,15 @@ i18nStart(async()=>{
     var F=window.gifos&&gifos.i18n&&gifos.i18n.fmt; // the system locale (GifOS Settings)
     var t=F?F.dateTime(new Date()):new Date().toLocaleString();
     var m=shot.mode||'';
-    if(shot.kind==='video' || (shot.mime||'').indexOf('video/')===0) return 'Video · '+t;
+    if(shot.kind==='video' || (shot.mime||'').indexOf('video/')===0) return T('name.video',{when:t});
     if((shot.mime||'')==='image/gif'){
-      if(m==='burst') return 'Burst · '+t;
-      if(m==='boomerang') return 'Boomerang · '+t;
-      if(m==='slowmo') return 'Slow-mo · '+t;
-      if(m==='timelapse') return 'Time-lapse · '+t;
-      return 'Clip · '+t;
+      if(m==='burst') return T('name.burst',{when:t});
+      if(m==='boomerang') return T('name.boomerang',{when:t});
+      if(m==='slowmo') return T('name.slowmo',{when:t});
+      if(m==='timelapse') return T('name.timelapse',{when:t});
+      return T('name.clip',{when:t});
     }
-    return 'Photo · '+t;
+    return T('name.photo',{when:t});
   }
   function renderFilm(){
     var film=document.getElementById('film');
@@ -6024,15 +6066,15 @@ i18nStart(async()=>{
     if(m.type==='video'){
       st.innerHTML='<video controls playsinline autoplay muted></video><div id="hint"></div>';
       hint=document.getElementById('hint');
-      hint.textContent = m.name+' — in My Media';
+      hint.textContent = T('hint.inLibrary',{name:m.name});
       if(m.bytes){ var u=URL.createObjectURL(new Blob([m.bytes],{type:m.mime||'video/webm'})); st.querySelector('video').src=u; }
-      else { st.querySelector('video').poster=m.thumb||''; hint.textContent='Open My Media to play this clip.'; }
+      else { st.querySelector('video').poster=m.thumb||''; hint.textContent=T('hint.openToPlay'); }
       return;
     }
     st.innerHTML='<img alt=""><div id="hint"></div>';
     hint=document.getElementById('hint');
     st.querySelector('img').src = m.thumb || '';
-    hint.textContent = (m.name||'Photo')+' — in My Media';
+    hint.textContent = T('hint.inLibrary',{name:(m.name||T('name.photoBare'))});
     if(m.bytes){ st.querySelector('img').src=URL.createObjectURL(new Blob([m.bytes],{type:m.mime||'image/jpeg'})); }
   }
   document.getElementById('film').onclick=function(e){
@@ -6048,7 +6090,7 @@ i18nStart(async()=>{
     try{
       var r=await gifos.library.put({ bytes:shot.bytes, mime:mime, name:nameFor(shot), type:type, category:'Camera', thumb:shot.thumb||'' });
       if(r && r.missing) toast(r.missing);
-      else toast('Saved to My Media');
+      else toast(T('toast.saved'));
     }catch(e){ toast(String(e&&e.message||e).slice(0,90)); }
   }
   async function openStudio(){
@@ -6067,7 +6109,7 @@ i18nStart(async()=>{
         var st=document.getElementById('stage');
         st.innerHTML='<img alt=""><div id="hint"></div>';
         st.querySelector('img').src=last.thumb;
-        document.getElementById('hint').textContent=(saved>1?saved+' captures saved to My Media':'Saved to My Media')+' — tap My Media below to see them';
+        document.getElementById('hint').textContent=T('hint.saved',{n:saved});
       }
     }catch(e){
       var m=String(e&&e.message||e);
@@ -6083,17 +6125,20 @@ i18nStart(async()=>{
     if(latest) showItem(latest.id);
   };
 
-  (async function boot(){
+  async function boot(){
+    applyI18n();
+    if(window.gifos && gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); var cur=document.querySelector('#film .on'); if(cur) showItem(cur.getAttribute('data-id')); });
     var info=null;
     try{ info=await gifos.cameraInfo(); }catch(e){ info={ ok:false, reason:String(e&&e.message||e) }; }
     if(!info||!info.ok){
       document.getElementById('ui').classList.add('hide');
       document.getElementById('empty').classList.add('on');
-      if(info && info.reason) document.getElementById('why').textContent=info.reason;
+      if(info && info.reason){ var why=document.getElementById('why'); why.setAttribute('data-own','1'); why.textContent=info.reason; }
       return;
     }
     await openStudio();
-  })();
+  }
+  if(window.gifos && gifos.i18n && gifos.i18n.load) gifos.i18n.load().then(boot, boot); else boot();
 </script></body></html>`;
 
   function build() {
