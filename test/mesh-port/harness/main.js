@@ -20,7 +20,7 @@ const fs = require('fs'), path = require('path');
 const { createFabric } = require('./fabric.js');
 const { createOps } = require('./runop.js');
 const { installPcLaws } = require('./pclaws-fab.js');
-const { installFhop } = require('./fhop.js');
+const { installFhop, installFhopLever } = require('./fhop.js');
 const { installMedia } = require('./media.js');
 const { runScript } = require('./script.js');
 const msg = require(path.join(__dirname, '..', '..', '..', 'js', 'mesh', 'msg.js'));
@@ -66,9 +66,14 @@ async function main(argv, env) {
     const M = path.join(__dirname, '..', '..', '..', 'js', 'mesh');
     require(path.join(M, 'seat.js'));
     for (const f of fs.readdirSync(M).sort()) if (f.endsWith('.js') && f !== 'seat.js') require(path.join(M, f));
-    installPcLaws(fab); installFhop(fab); installMedia(fab);
+    fab.pcl = installPcLaws(fab); installFhop(fab); installMedia(fab);
   }
   const ops = createOps(fab, { out: o.out });
+  if (!opts_noUnits) {   // the measurement units and their levers (l18, instant join, realcheck, the friend-hop lever)
+    require('./l18.js').install(fab); require('./ij.js').install(fab); require('./realcheck.js').install(fab); installFhopLever(fab, ops.runOp);
+    const shared = require(path.join(__dirname, '..', '..', '..', 'js', 'mesh', 'shared.js'));
+    fab.plug({ fabricToken: (id) => shared.fabricToken(fab.lv, id) });   // C++: mesh.cpp:fabricToken
+  }
   let rc = 0;
   const lv = fab.lv;
   try {

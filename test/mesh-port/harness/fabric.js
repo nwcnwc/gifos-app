@@ -34,10 +34,11 @@
  *   tiers (H3)         fabricMyTier fabricMyNat fabricLieFor fabricNoteSwap
  *   pc laws (S11)      l18Route l18Cell l18Hop l18Deliv l18UxDeliv
  *   measurement        mediaTick mgapTick hostileTickF ijTick lguardFabTick descEnd descNote (no-ops here)
+ *   l18 (l18.js)       l18UxOrigin l18RoutedNote (under lv.L18MEAS)
+ *   realcheck          rcNoteSend rcNoteRecv rcTick (realcheck.js; called only under lv.RC_ON; link.js calls rcNoteDial)
  *
- * NOT PORTED, on purpose: the threaded tick (the harness is serial, like MESH_THREADS=1), the realcheck
- * measurement (RC_ON), the descent instrument, the MESH_*DBG / L13DBG / FARVDBG / MESH_DUPLOG stderr prints,
- * the l18 measurement lever (L18MEAS), and MESH_PROOF's tapes (frames.jsonl and hash.jsonl only).
+ * NOT PORTED, on purpose: the threaded tick (the harness is serial, like MESH_THREADS=1), the descent instrument,
+ * the MESH_*DBG / L13DBG / FARVDBG / MESH_DUPLOG stderr prints, and MESH_PROOF's tapes (frames.jsonl and hash.jsonl only).
  */
 const fs = require('fs'), path = require('path');
 const M = path.join(__dirname, '..', '..', '..', 'js', 'mesh');
@@ -100,7 +101,7 @@ const EXTERNALS = [
   'linkTick', 'linkSchedule', 'linkOpenFor', 'linkFind', 'closeFrom', 'linkBlackhole', 'linkOnLeave', 'crashTransport', 'linkReset', 'closedDrop',
   'timeTick', 'freezeHold', 'slowSkip', 'netTick', 'netRefuse', 'grpReach', 'netKnockOk', 'netSetGrp', 'netNoteSpawn', 'netNoteTake', 'netPlanArrivals',
   'fhopActive', 'fhopSchedule', 'fhopSponsorDrop', 'fhopIntercept', 'fhopTick', 'fhMeasureTick', 'fhopReset',
-  'l18Route', 'l18Cell', 'mediaTick', 'mgapTick', 'hostileTickF', 'ijTick', 'lguardFabTick',
+  'l18Route', 'l18Cell', 'l18UxOrigin', 'l18RoutedNote', 'rcNoteSend', 'rcNoteRecv', 'rcTick', 'rcNoteDial', 'mediaTick', 'mgapTick', 'hostileTickF', 'ijTick', 'lguardFabTick',
 ];
 
 function createFabric(opts) {
@@ -212,7 +213,7 @@ function createFabric(opts) {
   // C++: mesh.cpp:l9AskFrame
   const l9AskFrame = (m) => m.t === 'ROUTE' || m.t === 'ROUTED' || (m.t === 'E1STATE' && m.tag === 3);
   // C++: mesh.cpp:l18Frame
-  const l18Frame = (m) => l9AskFrame(m) || l13Frame(m);
+  const l18Frame = fab.l18Frame = (m) => l9AskFrame(m) || l13Frame(m);
   // C++: mesh.cpp:l915Ch
   const l915Ch = (a, b) => { const t = fab.L915CH.get(pairKey(a, b)); return t !== undefined && TICK() - t <= K.RELAY_TTL; };
   // C++: mesh.cpp:l915Note
@@ -281,6 +282,7 @@ function createFabric(opts) {
   // An early state frame rides an open link without touching the fabric's state or its jitter. `seq` names the
   // counter it draws its latency from (the C++ pointer: L10SEQ, or L22SEQ for L22's asks).
   const schedL10 = fab.schedL10 = (from, to, m, seq = 'L10SEQ') => {
+    if (lv.RC_ON && seq === 'L22SEQ') X.rcNoteSend(from);   // realcheck: each C++ caller of schedL10(..,&L22SEQ) counts the send first (a measurement)
     if (from < 0 || to < 0 || from === to || from >= seats.length || to >= seats.length || !seats[from] || !seats[to]) return;
     const pk = pairKey(from, to);
     if (cutBetween(from, to)) return;
@@ -300,6 +302,7 @@ function createFabric(opts) {
   // C++: mesh.cpp:schedule
   // `m` is the caller's copy (the C++ takes it by value): this function owns and changes it.
   const schedule = fab.schedule = (from, to, m, cls = -1) => {
+    if (lv.RC_ON) X.rcNoteSend(from);   // realcheck (a measurement)
     const pk = pairKey(from, to);
     if (cls >= 0) classifyApply(cls, from, to, m); else classifyEmit(from, to, m);
     if (lv.DIGEST && from >= 0 && from < seats.length && seats[from] && ((m.t === 'PHONE' && m.dgUp.at >= 0) || (m.t === 'PONG' && (m.dgRoot.at >= 0 || m.dgPub.at >= 0)) || (m.t === 'S1SYNC' && m.digs.length > 0) || (m.t === 'U2BEAT' && m.dgUp.at >= 0))) {   // L10 gauge: a state frame sent
@@ -362,8 +365,9 @@ function createFabric(opts) {
       if (held) parSend(from, to, m);
       return;
     }
+    if (lv.L18MEAS && lv.LINKMODEL && !m.routing && !m.direct && m.fhTo < 0 && m.uxTo < 0 && to >= 0 && to < seats.length && to !== from) { const mm = msg.clone(m); X.l18UxOrigin(from, to, mm); if (mm.uxTo >= 0) { fabricSend(from, to, mm); return; } }   // measurement only: tag, then the same send
     if (lv.ROUTE_ENFORCE && lv.LINKMODEL && !m.routing && !m.direct && to >= 0 && to < seats.length && to !== from && l18Frame(m) && X.l18Route(from, to)) {   // L18: no role, no open pc: over the topology
-      const rc = X.l18Cell(from, to); const mm = msg.clone(m); mm.l18 = true; lv.L18_ROUTED++; me.route(rc, to, mm); return;
+      const rc = X.l18Cell(from, to); const mm = msg.clone(m); mm.l18 = true; lv.L18_ROUTED++; X.l18RoutedNote(from, to, m); me.route(rc, to, mm); return;
     }
     if (lv.ROUTE_ENFORCE && !m.routing && to >= 0 && to < seats.length && to !== from) {
       let directLink = !!me.linkRole(to, E.LR_OWNED | E.LR_E2 | E.LR_L4);   // an owned link, or L2's E2 link, or an L4 exchange: held, not routed
@@ -555,6 +559,7 @@ function createFabric(opts) {
           if (recvPre(m)) continue;   // CLOSEDROP, then the `joinphase` measurement
           if (tfx && isFrozen(m.to)) { X.freezeHold(m); continue; }
           if (fh && X.fhopIntercept(m)) continue;
+          if (lv.RC_ON) X.rcNoteRecv(m);
           seats[m.to].recv(m); wake(m.to);   // (the recv proof line is written inside Seat::recv, after its clock rebase: w.proofRecv)
         }
       }
@@ -569,6 +574,7 @@ function createFabric(opts) {
     X.hostileTickF();  // `hostile`: a measurement
     X.fhMeasureTick(); // FHOP measurement
     X.ijTick();        // L31 measurement
+    if (lv.RC_ON) X.rcTick();   // realcheck: a measurement
     proofTickEnd();    // MESH_PROOF: the per-tick state hash
   };
 
