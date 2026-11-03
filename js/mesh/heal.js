@@ -154,7 +154,7 @@
   // C++: mesh_heal.inc:l13Witness
   function l13Witness(H) { if (H.pc === 0) return null; if (H.i === 0) return up(H); return cell(H.pc, H.r, 0); }
   // C++: mesh_heal.inc:L13_CHAIN_MAX
-  const L13_CHAIN_MAX = 6;
+  const L13_CHAIN_MAX = K.L13_CHAIN_MAX;
   // My witness chain: my owner cell, its witness cell, that cell's witness (s: the seat, for the L13 lever).
   // C++: mesh_heal.inc:l13Chain
   function l13Chain(s, H) { const out = []; let c = H; const cap = s.l13('L13.15') ? L13_CHAIN_MAX : 4; for (let l = 0; l < cap; l++) { out.push(c); const w = l13Witness(c); if (!w) break; c = w; } return out; }
