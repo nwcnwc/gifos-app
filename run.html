@@ -18507,6 +18507,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (pwModal.dataset.mode === 'join') { location.href = MEET_PATH; return; }
       pwModal.style.display = 'none';
     });
+    let pwSaveWaited = false;
     document.getElementById('pw-save').onclick = () => {
       const v = document.getElementById('pw-new').value.trim();
       if (pwModal.dataset.mode === 'join') {
@@ -18522,6 +18523,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         Promise.all([net.meetPwProof(room, av, roomPw), rekeyRoom(true)])
           .then(([pr]) => { pwProof = pr; startMesh(); }).catch((err) => pwChainFailed(err, true)); // wrong password → bounced right back here
       } else {
+        // A page still at the door (a reload a moment ago) re-keys only once seated: a re-key now seals its entry frames
+        // under a key the room lacks, and a seated page holds a door's password frame until it is a member, so neither
+        // side ever moves. The wait is bounded; a room with nobody to admit me seats at once.
+        { const ms0 = meshSeat(); if (meshNode && !(ms0 && ms0.hasCoord && ms0.state === 3) && !pwSaveWaited) {
+          pwSaveWaited = true; pwModal.style.display = 'none'; const t0 = Date.now();
+          const again = () => { const ms1 = meshSeat(); if ((ms1 && ms1.hasCoord && ms1.state === 3) || Date.now() - t0 > 6000) { document.getElementById('pw-save').onclick(); pwSaveWaited = false; } else setTimeout(again, 200); };
+          setTimeout(again, 200); return;
+        } }
         // Clearing the password opens the room — warn that it also deletes any
         // shared files, then purge them for everyone.
         // A ROOM I CANNOT RE-KEY MUST NOT RE-KEY *ME* (2026-07-29). In an
