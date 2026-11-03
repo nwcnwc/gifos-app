@@ -4598,7 +4598,58 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <script src="js/app-update.js" defer></script>
   <script src="js/gifos-update.js" defer></script>
   <script src="js/gifos-net.js" defer></script>
-  <script src="js/mesh.js" defer></script>
+  <!-- the mesh: the ported 0.9.25 seat (js/mesh/, dependency order), its page world and the page layer -->
+  <script src="js/mesh/laws.js" defer></script>
+  <script src="js/mesh/consts.js" defer></script>
+  <script src="js/mesh/util.js" defer></script>
+  <script src="js/mesh/books.js" defer></script>
+  <script src="js/mesh/msg.js" defer></script>
+  <script src="js/mesh/hash.js" defer></script>
+  <script src="js/mesh/topo.js" defer></script>
+  <script src="js/mesh/dig.js" defer></script>
+  <script src="js/mesh/seat-fields.js" defer></script>
+  <script src="js/mesh/fnv.js" defer></script>
+  <script src="js/mesh/state.js" defer></script>
+  <script src="js/mesh/rng.js" defer></script>
+  <script src="js/mesh/fmt.js" defer></script>
+  <script src="js/mesh/seat.js" defer></script>
+  <script src="js/mesh/digest.js" defer></script>
+  <script src="js/mesh/shared.js" defer></script>
+  <script src="js/mesh/entry.js" defer></script>
+  <script src="js/mesh/farview.js" defer></script>
+  <script src="js/mesh/fhop.js" defer></script>
+  <script src="js/mesh/gaps.js" defer></script>
+  <script src="js/mesh/gaps2.js" defer></script>
+  <script src="js/mesh/gaps3.js" defer></script>
+  <script src="js/mesh/heal.js" defer></script>
+  <script src="js/mesh/hostile-laws.js" defer></script>
+  <script src="js/mesh/id.js" defer></script>
+  <script src="js/mesh/instant.js" defer></script>
+  <script src="js/mesh/island.js" defer></script>
+  <script src="js/mesh/lguard-seat.js" defer></script>
+  <script src="js/mesh/linkset.js" defer></script>
+  <script src="js/mesh/roles.js" defer></script>
+  <script src="js/mesh/live.js" defer></script>
+  <script src="js/mesh/mltail.js" defer></script>
+  <script src="js/mesh/pclaws.js" defer></script>
+  <script src="js/mesh/rcdead.js" defer></script>
+  <script src="js/mesh/rcfollow.js" defer></script>
+  <script src="js/mesh/rcleft-l25.js" defer></script>
+  <script src="js/mesh/rcleft.js" defer></script>
+  <script src="js/mesh/recv-entry.js" defer></script>
+  <script src="js/mesh/recv-seated.js" defer></script>
+  <script src="js/mesh/recv.js" defer></script>
+  <script src="js/mesh/ring.js" defer></script>
+  <script src="js/mesh/roomterm.js" defer></script>
+  <script src="js/mesh/route.js" defer></script>
+  <script src="js/mesh/seat-rest.js" defer></script>
+  <script src="js/mesh/small.js" defer></script>
+  <script src="js/mesh/tick.js" defer></script>
+  <script src="js/mesh/tier.js" defer></script>
+  <script src="js/mesh/witness.js" defer></script>
+  <script src="js/mesh/page/env.js" defer></script>
+  <script src="js/mesh/page/pclaws-wire.js" defer></script>
+  <script src="js/mesh/page/layer.js" defer></script>
   <script src="js/relay-admit.js" defer></script>
   <script src="js/mesh-identity.js" defer></script>
   <script src="js/mesh-wire.js" defer></script>
@@ -12773,7 +12824,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return f;
     }
 
-    const txStats = { relayStatus: 0, dcStatus: 0, relaySig: 0, dcSig: 0, fwdSig: 0, fwdMesh: 0, doorSig: 0, hopFwd: 0, hopRelay: 0, nosock: 0, relayBoot: 0, relayFp: 0, relayIce: 0, relayName: 0, relayPassword: 0, relayUnfit: 0 }; // counters showing where heartbeats + signaling + sponsor hops actually travel; relay*: frames put on the relay by type (relayPassword counts every frame of a grant), relayUnfit: payloads that did not fit the relay's fixed size (never sent)
+    const txStats = { relayStatus: 0, dcStatus: 0, relaySig: 0, dcSig: 0, fwdSig: 0, fwdMesh: 0, doorSig: 0, hopFwd: 0, hopRelay: 0, nosock: 0, relayBoot: 0, relayFp: 0, relayIce: 0, relayName: 0, relayPassword: 0, relayBusy: 0, relayUnfit: 0 }; // counters showing where heartbeats + signaling + sponsor hops actually travel; relay*: frames put on the relay by type (relayPassword counts every frame of a grant), relayUnfit: payloads that did not fit the relay's fixed size (never sent)
     const rxStats = { offer: 0, answer: 0, ice: 0, status: 0, offerRejected: 0, answerNoPeer: 0, negFail: 0, answerStale: 0, relayAccepted: {}, relayDropped: {}, dcKinds: {} }; // reception mirror: what actually ARRIVED (and what was refused); relayAccepted/relayDropped: relay frames by type, dispatched vs refused (relayFrameAllowed); dcKinds: opened channel frames by k
     // THE RELAY LAW (gifos-net.js RELAY_TYPES; docs/meet-security.md §RELAY).
     // The relay carries a fixed list of message types between members, each
@@ -12801,7 +12852,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const RELAY_NAME_MAX = 40, RELAY_PW_MAX = 64;
     const epOk = (ep) => Number.isInteger(ep) && ep >= 0;
     // The exact field set of each payload (the padding field `_` beside it).
-    const RELAY_PAYLOAD_KEYS = { boot: 'k,t,u,w,s,v', fp: 'k,v,fp', ice: 'k,c,end', name: 'k,n', password: 'k,pw,ep', pwsig: 'k,sig', pwpub: 'k,ep,ts,pub', pwby: 'k,ep,by' };
+    const RELAY_PAYLOAD_KEYS = { boot: 'k,t,u,w,s,v', fp: 'k,v,fp', ice: 'k,c,end', name: 'k,n', password: 'k,pw,ep', pwsig: 'k,sig', pwpub: 'k,ep,ts,pub', pwby: 'k,ep,by', busy: 'k,g,i,n,ref,cool' };
     function relayFrameAllowed(ty, inner) {
       if (!RELAY_TYPES.has(ty) || !inner || typeof inner !== 'object' || Array.isArray(inner) || inner.k !== ty || !net.fitsFixed(inner)) return null;
       const keys = RELAY_PAYLOAD_KEYS[ty].split(',');
@@ -12813,6 +12864,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (ty === 'password') return typeof inner.pw === 'string' && inner.pw.length <= RELAY_PW_MAX && epOk(inner.ep) ? ty : null;
       if (ty === 'pwsig') return typeof inner.sig === 'string' && /^[A-Za-z0-9+/]{86}==$/.test(inner.sig) ? ty : null;
       if (ty === 'pwpub') return epOk(inner.ep) && Number.isInteger(inner.ts) && inner.ts > 0 && typeof inner.pub === 'string' && /^[A-Za-z0-9+/]{43}=$/.test(inner.pub) ? ty : null;
+      if (ty === 'busy') return Number.isInteger(inner.g) ? ty : null;   // a door's refusal (L16 BUSY, L14 decline, L23): read by the seat's world only
       if (ty === 'pwby') return epOk(inner.ep) && typeof inner.by === 'string' && /^k_[0-9a-f]{40}$/.test(inner.by) ? ty : null;
       return null;
     }
@@ -12823,7 +12875,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // relaySendSealed(to, ty, obj, key): seal obj padded to the law's size
     // and put it on the relay as a `ty` frame. A payload that does not fit is
     // counted (txStats.relayUnfit) and never sent. Resolves true when sent.
-    const relayTxCount = { boot: 'relayBoot', fp: 'relayFp', ice: 'relayIce', name: 'relayName', password: 'relayPassword', pwsig: 'relayPassword', pwpub: 'relayPassword', pwby: 'relayPassword' };
+    const relayTxCount = { boot: 'relayBoot', fp: 'relayFp', ice: 'relayIce', name: 'relayName', password: 'relayPassword', pwsig: 'relayPassword', pwpub: 'relayPassword', pwby: 'relayPassword', busy: 'relayBusy' };
     function relaySendSealed(to, ty, obj, key) {
       if (!RELAY_TYPES.has(ty) || !obj || obj.k !== ty) return Promise.resolve(false);
       // Call order is the send order. The page's txm is already a FIFO, but
@@ -13347,6 +13399,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // onRelayPeer(from, ty, f): a relay frame of the law's shape, opened and
     // checked (relayFrameAllowed). Dispatch by its type.
     function onRelayPeer(from, ty, f) {
+      if (ty === 'busy') { try { if (meshNode && meshNode.relayBusyIn) meshNode.relayBusyIn(from, f); } catch (e) {} return; }
       if (ty === 'boot' || ty === 'fp') {
         const desc = takeBootPart(from, ty, f);
         if (!desc) return;
@@ -13838,7 +13891,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return;
       }
       const s = meshSeat();
-      try { if (s && s.transportLost) s.transportLost(pid); } catch (e) {}
+      try { if (meshNode && meshNode.transport) meshNode.transport(pid, String(why).replace(/-awake$/, '')); } catch (e) {}   // the seat hears the loss (env.js maps hard / quiet)
       if (typeof clog === 'function') clog('translost ' + String(pid).slice(0, 6) + ' ' + why);
     }
     // pcDeadWhy(p, st, now): which hard transport death the sweep hands to
@@ -14915,9 +14968,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // needs no DataChannels; media links belong to a SEATED coord only. The
       // old "bootstrap = whole roster" relic full-meshed a stalled joiner (27
       // RTCPeerConnections, every tile black) — the last unbounded path, gone.
+      if (seatAsked(pid)) return true;   // the seat dialled it (a door, a call, an audit): its own reason
       if (!s || !s.hasCoord) return false;
-      return s.linkPeers().has(pid);
+      return s.linkPeers().has(pid) || (typeof s.keepPeers === 'function' && s.keepPeers().has(pid));   // every media target is a link peer or carries a keep reason (L28)
     }
+    // Peers the seat asked to dial (pc.ensure), for a while: the seat's dial is its reason.
+    const seatAskAt = new Map();
+    function seatAsked(pid) { const at = seatAskAt.get(pid); return at != null && Date.now() - at < 60000; }
     // Establish or retire ONE peer's media link per the seat arithmetic. Also
     // run by the sweeper: occupancy gossip settling can change who my
     // neighbours are, and the link set must follow without waiting for the
@@ -16846,6 +16903,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
         },
         sendDC: meshSendDC,
+        // The seat's pcs (js/mesh/page/env.js calls these; it decides, the page carries out).
+        pc: {
+          ensure: (pid, o) => { if (!pid || pid === myId) return; seatAskAt.set(pid, Date.now()); if (seatAskAt.size > 256) seatAskAt.delete(seatAskAt.keys().next().value); const s = meshSeat(); if (!(s && s.hasCoord && s.state === 3)) bootDial(pid); else ensureLink(pid); },
+          close: (pid, why) => { seatAskAt.delete(pid); const p = peers.get(pid); if (!p) return; if (typeof clog === 'function') clog('pcclose ' + String(pid).slice(0, 6) + ' ' + (why || '')); if (!linkTo(pid)) dropPeer(pid, true); },
+          state: (pid) => { const p = peers.get(pid); return p ? { pc: p.pc ? p.pc.connectionState : 'none', dc: p.dc ? p.dc.readyState : 'none', heardAt: p.lastRx || 0 } : null; },
+        },
+        relayBusy: (pid, body) => { relaySendSealed(pid, 'busy', Object.assign({ k: 'busy' }, body)); },
+        onMissing: (g) => { if (typeof clog === 'function') clog('mesh-port missing ' + g); },
         // Entry asks are delivered only on a channel to the greeter they name.
         // meshSendDC also returns true for a dump onto some other peer; the
         // wire must not treat that as the door (mesh-wire entryDelivered).
@@ -20652,6 +20717,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       p.dc = dc;
       if (!dc.__pc) { try { dc.__pc = p.pc; } catch (e) {} }
       dc.onopen = () => {
+        try { if (meshNode && meshNode.transport && p.dc === dc) meshNode.transport(p.id, 'open'); } catch (e) {}   // the seat's link opened (env.js)
         clearTimeout(p.hiLate); p.hiLate = null;
         dcAuthSend(p, dc);
         // THE CHANNEL IS OPEN: everything the relay did not carry crosses it
@@ -35548,6 +35614,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         };
       },
       meshLinks: () => { const s = meshSeat(); return s ? Array.from(s.linkPeers()) : []; },
+      adapterStats: () => (meshNode && meshNode.adapterStats ? meshNode.adapterStats() : null),   // the seat world's tick/inbox/delay counters (env.js stats)
       // Greeter-list forensics (fragment founding): what onGreeters saw —
       // listLen, decryptable count, relay founded flag, action taken.
       greeterTrace: () => { try { return meshNode && meshNode.greeterTrace ? meshNode.greeterTrace() : []; } catch (e) { return []; } },
