@@ -21,6 +21,7 @@ const { createFabric } = require('./fabric.js');
 const { createOps } = require('./runop.js');
 const { installPcLaws } = require('./pclaws-fab.js');
 const { installFhop } = require('./fhop.js');
+const { installMedia } = require('./media.js');
 const { runScript } = require('./script.js');
 const msg = require(path.join(__dirname, '..', '..', '..', 'js', 'mesh', 'msg.js'));
 const topo = require(path.join(__dirname, '..', '..', '..', 'js', 'mesh', 'topo.js'));
@@ -65,7 +66,7 @@ async function main(argv, env) {
     const M = path.join(__dirname, '..', '..', '..', 'js', 'mesh');
     require(path.join(M, 'seat.js'));
     for (const f of fs.readdirSync(M).sort()) if (f.endsWith('.js') && f !== 'seat.js') require(path.join(M, f));
-    installPcLaws(fab); installFhop(fab);
+    installPcLaws(fab); installFhop(fab); installMedia(fab);
   }
   const ops = createOps(fab, { out: o.out });
   let rc = 0;
