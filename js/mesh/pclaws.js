@@ -419,7 +419,7 @@
       const probe = msg.newMsg(mt);
       const greet = (mt === 'HELLO' || mt === 'CLAIM') && ck && seats[me].hasCoord && seats[me].ownedLinkCell(ck) && (seats[me].occGet(ck) < 0 || seats[me].occGet(ck) === from) && l23GreetSlot(me, from, ck);
       const call = seatM.l13Frame(probe) || mt === 'MEETACK' || mt === 'YIELD' || mt === 'FINDLEAF' || mt === 'LEAVE' || mt === 'CHALLENGE' || mt === 'CONFIRM';
-      if (greet && !l23Suspect(me, from)) return false;
+      if ((greet || P.l392Contest(me, from, mt, ck)) && !l23Suspect(me, from)) return false;   // L39.2: the question about my own cell reaches me (harness gaps3-fab.js)
       const it = S.L23S.get(idPair(me, from)); if (it !== undefined && it.until > T() && it.n >= 2 && !call) { lv.L23_REFUSED++; return true; }
       if (!l23Suspect(me, from) && !l23Full(me)) { l23Pend(me, true); return false; }
       if (l23Suspect(me, from)) { lv.L23_REFUSED++; return true; }

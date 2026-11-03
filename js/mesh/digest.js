@@ -192,6 +192,7 @@
         for (let j = 1; j < C; j++) {
           if (!compactDensifyCol(this, j)) continue;
           if (!this.l917Free({ pc: this.coord.pc, r: this.coord.r, i: j })) continue;
+          if (this.l394Granted({ pc: this.coord.pc, r: this.coord.r, i: j })) continue;   // L39.4: a cell whose word I just gave a healer is held for its heal (gaps3.js)
           if (this.l373Blind({ pc: this.coord.pc, r: this.coord.r, i: j })) continue;   // L37.3
           if (lv.TIERS_ACTIVE && this.l4Bad(E.TIER_DESKTOP, mm.nat, { pc: this.coord.pc, r: this.coord.r, i: j })) continue;   // L15.3
           // L12.2: two seekers for one slot are not served in the order their frames happen to arrive.

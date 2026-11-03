@@ -282,7 +282,7 @@ function install(fab) {
     const L = linkGet(from, to); const e = lEnd(from, to);
     switch (L.state) {
       case LK_NONE:
-        if (dialHeld(from, to)) return; if (X.l23Refused(to, from, m.t, (m.t === 'HELLO' || m.t === 'CLAIM') ? m.ck : 0)) return;
+        if (dialHeld(from, to)) return; if (X.l23Refused(to, from, m.t, (m.t === 'HELLO' || m.t === 'CLAIM' || (m.t === 'CHALLENGE' && m.tag === 25)) ? m.ck : 0)) return;   /* (L39.2: an L25 question names the cell it asks about) */
         { lv.L16_DEFER = false; if (l16Refuse(from, to, m.t)) { if (lv.L16_DEFER) { lv.L16_DEFER = false; deferDoor(from, to, m, L); } return; } }
         startDial(from, to, L); L.dialT = mtIdx(m.t); m.from = from; m.to = to; if (L.q.length < K.LINK_QCAP) L.q.push(m); LTX[from] = TICK(); return;
       case LK_DIALING:
@@ -666,7 +666,7 @@ function install(fab) {
     return n >= pcBudget(me, PB_CLASS);
   };
   // C++: mesh_link.inc:l23GreetSlot
-  const l23GreetSlot = (me, from, ck) => {
+  const l23GreetSlot = api.l23GreetSlot = (me, from, ck) => {
     const key = hash.hmix64(hash.hmix(hash.H_INIT, U32(me)), ck); const it = L23GREET.get(key);
     if (it === undefined || TICK() - it[1] > K.L23_WORD_ || it[0] === from) { if (L23GREET.size > 100000) L23GREET.clear(); L23GREET.set(key, [from, TICK()]); return true; }
     return false;
@@ -696,7 +696,7 @@ function install(fab) {
     const probe = msg.newMsg(mt);
     const greet = (mt === 'HELLO' || mt === 'CLAIM') && ck && seats[me].hasCoord && seats[me].ownedLinkCell(ck) && (seats[me].occGet(ck) < 0 || seats[me].occGet(ck) === from) && l23GreetSlot(me, from, ck);
     const call = seatM.l13Frame(probe) || mt === 'MEETACK' || mt === 'YIELD' || mt === 'FINDLEAF' || mt === 'LEAVE' || mt === 'CHALLENGE' || mt === 'CONFIRM';
-    if (greet && !l23Suspect(me, from)) return false;
+    if ((greet || X.l392Contest(me, from, mt, ck)) && !l23Suspect(me, from)) return false;   // L39.2 (gaps3-fab.js)
     const it = L23S.get(idPair(me, from)); if (it !== undefined && it.until > TICK() && it.n >= 2 && !call) { lv.L23_REFUSED++; return true; }
     if (!l23Suspect(me, from) && !l23Full(me)) { l23Pend(me, true); return false; }
     if (l23Suspect(me, from)) { lv.L23_REFUSED++; return true; }

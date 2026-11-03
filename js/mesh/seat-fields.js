@@ -338,6 +338,7 @@
     ["evil", "bool"],   // bool = false  (line 1027)
     ["hostile", "i32"],   // int = 0  (line 1027)
     ["hostTgt", "i32"],   // int = -1  (line 1027)
+    ["hostDenseLeaf", "i32"],   // int = -1  (line 1027)
     ["hostRng", "ptr"],   // mt19937* = nullptr  (line 1027)
     ["hostRec", "[Msg]"],   // deque<Msg>  (line 1027)
     ["hostHeld", "<i32>"],   // OSet<int>  (line 1027)
@@ -949,6 +950,7 @@
     evil: false,
     hostile: 0,
     hostTgt: -1,
+    hostDenseLeaf: -1,
     hostRng: null,
     courtNc: -1,
     courtSkipped: false,

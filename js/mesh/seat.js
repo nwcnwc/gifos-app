@@ -818,6 +818,7 @@
     // only under that env switch.)
     emit(to, m) {
       const id = this.id, TICK = this.TICK, lv = this.w.lv;
+      if (this.hostDenseLeaf >= 0 && m.t === 'YIELD') return;   // `hostile densify`: the page never evicts the seat it placed (harness gaps3-fab.js)
       if (m.line < 0 && this.line >= 0 && (((m.t === 'HELLO' || m.t === 'PHONE' || m.t === 'PONG' || m.t === 'CONFIRM' || m.t === 'LEAVE' || m.t === 'HOME') && m.id === id) || (m.t === 'WALK' && m.asker === id) || (m.t === 'PLACE' && m.pp === id))) {
         const mm = msg.clone(m); mm.line = (this.hostile & K.H_RINGLIE_BIT) ? K.RINGLIE_LINE : this.line; mm.lineF = this.lineFork; mm.cutF = (this.cutAt >= 0 || this.cutHeardAt >= 0); this.emit(to, mm); return;   // L8.38
       }

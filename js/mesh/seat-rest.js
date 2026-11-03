@@ -294,6 +294,7 @@
       const mateOf = () => { let mate = -1; for (let q = 0; q < w.nextId; q++) { const y = (id + 1 + q) % w.nextId; if (y !== id && w.alive[y] && (w.seats[y].hostile & E.H_COLLUDE)) { mate = y; break; } } return mate; };
       if ((h & E.H_COLLUDE) && m.t === 'CHALLENGE' && m.tag === 25) { const mate = mateOf(); const c = newMsg('CONFIRM'); c.ck = m.ck; c.id = id; c.pp = mate; c.ppAt = (this.TICK | 0) - 500; c.sig = true; c.sigAt = this.TICK | 0; w.hostSend(id, m.from, c); return true; }
       if ((h & E.H_COLLUDE) && m.t === 'CHALLENGE' && m.tag === 26) { const mate = mateOf(); const wm = newMsg('WITNESS'); wm.ck = m.ck; wm.id = id; wm.nc = mate; wm.sig = true; wm.sigAt = this.TICK | 0; w.hostSend(id, m.from, wm); return true; }
+      if (this.hostDenseLeaf >= 0 && m.t === 'CHALLENGE' && m.tag === 26) { const wm = newMsg('WITNESS'); wm.ck = m.ck; wm.id = id; wm.nc = this.hostDenseLeaf; wm.sig = true; wm.sigAt = this.TICK | 0; wm.born = this.seatedAt; w.hostSend(id, m.from, wm); return true; }   // `hostile densify`: as a witness it hears the seat it placed (gaps3-fab.js)
       if (h & E.H_HOLE) {
         if (m.routing && m.t !== 'PHONE' && m.t !== 'PONG') return true;
         switch (m.t) {

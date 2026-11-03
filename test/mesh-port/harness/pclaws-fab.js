@@ -15,12 +15,12 @@ function installPcLaws(fab) {
   const lv = fab.lv;
   const MT_INDEX = new Map(msg.MT_NAMES.map((n, i) => [n, i]));
   fab.mtI = (t) => MT_INDEX.get(t);
-  const ln = linknet.install(fab); require('./gaps-fab.js').install(fab);
+  const ln = linknet.install(fab); require('./gaps-fab.js').install(fab); require('./gaps3-fab.js').install(fab);
   const phys = ln.link;
   const P = {
     w: fab.w, lv, seats: fab.seats, alive: fab.alive, isFrozen: fab.isFrozen, trace: fab.trace, busPush: fab.busPush,
     schedL10: fab.schedL10, wireTx: fab.wireTx, pairKey: fab.pairKey,
-    grpReach: (a, b) => fab.X.grpReach(a, b),
+    grpReach: (a, b) => fab.X.grpReach(a, b), l392Contest: (me, from, mt, ck) => fab.X.l392Contest(me, from, mt, ck),
     relayMeter: (id, n) => fab.X.relayMeter(id, n),
     fhopActive: () => fab.X.fhopActive(), get FH() { return fab.FH || []; }, fhopFriendFor: (a, b) => fab.X.fhopFriendFor(a, b),
     phys, S: phys, LINKS: phys.LINKS, LINKPEERS: phys.LINKPEERS, radioOff: phys.radioOff,

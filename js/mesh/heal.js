@@ -841,6 +841,7 @@
         else if (this.l33WordRegrant(ok, to)) { a.wordHeld = true; dropOk(); }
         else if (w === undefined || w[0] !== to || TICK - w[1] >= 16) { this.l13WordTo.set(ok, [to, TICK | 0]); if (this.l13WordTo.size > 64) eraseFirst(this.l13WordTo); }
       }
+      if (a.owner < 0 && ok !== ckey(this.coord) && this.l394Placing(ok, to)) { a.wordHeld = true; for (let q = 0; q < a.byes.length; q++) if (a.byes[q] === ok) { a.byes.splice(q, 1); break; } }   /* L39.4: a seat I am placing there holds the cell from the word (gaps3.js) */
       for (const [ck_, cv] of this.cousins) if (cv >= 0 && cv !== id && cv !== to && FREE.l35HandOn(this, ck_, cv)) a.nbrs.push({ k: ck_, v: cv });
       this.emit(to, a); this.trace('L13-ANSWER', id, H, 'to=%d owner=%d child=%d byes=%zu held=%d mass=%d', to, a.owner, a.child, a.byes.length, a.wordHeld ? 1 : 0, a.mass ? 1 : 0);
     },
@@ -918,7 +919,7 @@
         const bb = this.byeAt.get(ckey(chain[lvl - 1])); const bn = this.born.get(m.ck); const hh = this.l13HeldAt.get(ak);
         if (wit && bb !== undefined && (TICK - bb <= K.LEASE_T || (this.l13('L13.24') && this.occGet(ckey(chain[lvl - 1])) < 0)) && bn !== undefined && TICK - bn >= 16 && !(hh !== undefined && TICK - hh <= 32)) { byeA = true; this.l13EmptyAt.set(ak, TICK | 0); this.trace('L13-EMPTY-CHAIN', id, ac, 'by=%d', m.id); }
       }
-      if (this.l13('L13.11') && !byeA && x >= 0 && m.owner < 0 && !this.firstHandLive(ak)) {
+      if (this.l13('L13.11') && !byeA && x >= 0 && m.owner < 0 && !this.firstHandLive(ak) && !this.l394Held(ak)) {   /* L39.4 (gaps3.js) */
         const ac = unck(ak); let wc = null;
         const wit = (ac.pc === 0 && (wc = this.l13HomeWit(ac)) !== null && ckey(wc) === m.ck) || (ac.pc !== 0 && (wc = l13Witness(ac)) !== null && ckey(wc) === m.ck);
         const pb = this.pongBy.get(ak); const heardEver = pb !== undefined && pb[0] === x; let lastP = heardEver ? pb[1] : this.seatedAt;
