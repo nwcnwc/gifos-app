@@ -1181,27 +1181,34 @@
   #ask #askyes{background:var(--accent2,#ff5caa);color:var(--onaccent,#fff);border-color:transparent}
 </style>
 <div class="bar">
-  <h1>Paint</h1>
+  <h1 data-i18n="title">Paint</h1>
   <div class="tools" id="tools">
-    <button id="tbrush" class="on" title="Brush (B)" aria-label="Brush"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 19l8.5-8.5 3 3L8 22H5v-3z"/><path d="M14 7l3 3 3.5-3.5a2.1 2.1 0 0 0 0-3L19 2a2.1 2.1 0 0 0-3 0L14 7z"/></svg></button>
-    <button id="terase" title="Eraser (E)" aria-label="Eraser"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 17l8-8 7 7-4 4H8z"/><path d="M14 9l-7 7"/></svg></button>
-    <button id="tfill" title="Fill (G)" aria-label="Fill"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13l7-8 7 8H4z"/><path d="M6 13v2a4 4 0 0 0 4 4"/><path d="M16 19c1.2 0 2.5 1 2.5 2.4 0 1.6-2.5 2.6-2.5 2.6"/></svg></button>
-    <button id="tpick" title="Eyedropper (I)" aria-label="Eyedropper"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 7l5 5"/><path d="M4 20l7-7 3 3-7 7H4v-3z"/><path d="M16 3l5 5-4 4-5-5z"/></svg></button>
+    <button id="tbrush" class="on" title="Brush (B)" aria-label="Brush" data-i18n-title="tool.brush.title" data-i18n-aria="tool.brush.aria"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 19l8.5-8.5 3 3L8 22H5v-3z"/><path d="M14 7l3 3 3.5-3.5a2.1 2.1 0 0 0 0-3L19 2a2.1 2.1 0 0 0-3 0L14 7z"/></svg></button>
+    <button id="terase" title="Eraser (E)" aria-label="Eraser" data-i18n-title="tool.erase.title" data-i18n-aria="tool.erase.aria"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 17l8-8 7 7-4 4H8z"/><path d="M14 9l-7 7"/></svg></button>
+    <button id="tfill" title="Fill (G)" aria-label="Fill" data-i18n-title="tool.fill.title" data-i18n-aria="tool.fill.aria"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13l7-8 7 8H4z"/><path d="M6 13v2a4 4 0 0 0 4 4"/><path d="M16 19c1.2 0 2.5 1 2.5 2.4 0 1.6-2.5 2.6-2.5 2.6"/></svg></button>
+    <button id="tpick" title="Eyedropper (I)" aria-label="Eyedropper" data-i18n-title="tool.pick.title" data-i18n-aria="tool.pick.aria"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 7l5 5"/><path d="M4 20l7-7 3 3-7 7H4v-3z"/><path d="M16 3l5 5-4 4-5-5z"/></svg></button>
   </div>
   <div class="pal" id="pal"></div>
-  <input id="custom" type="color" value="#ff5c5c" title="Custom colour">
-  <div class="sz"><input id="sz" type="range" min="1" max="64" value="8" title="Brush size"><span id="szv">8</span></div>
-  <button class="act" id="undo" title="Undo (Ctrl+Z)" aria-label="Undo" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 8H5V4"/><path d="M5 8a9 9 0 1 1 2.2 5.7"/></svg></button>
-  <button class="act" id="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 8h4V4"/><path d="M19 8a9 9 0 1 0-2.2 5.7"/></svg></button>
-  <button class="act danger" id="clear" title="Clear">Clear</button>
+  <input id="custom" type="color" value="#ff5c5c" title="Custom colour" data-i18n-title="custom.title">
+  <div class="sz"><input id="sz" type="range" min="1" max="64" value="8" title="Brush size" data-i18n-title="size.title"><span id="szv">8</span></div>
+  <button class="act" id="undo" title="Undo (Ctrl+Z)" aria-label="Undo" data-i18n-title="undo.title" data-i18n-aria="undo.aria" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 8H5V4"/><path d="M5 8a9 9 0 1 1 2.2 5.7"/></svg></button>
+  <button class="act" id="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo" data-i18n-title="redo.title" data-i18n-aria="redo.aria" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 8h4V4"/><path d="M19 8a9 9 0 1 0-2.2 5.7"/></svg></button>
+  <button class="act danger" id="clear" title="Clear" data-i18n-title="clear" data-i18n="clear">Clear</button>
 </div>
 <div id="stage">
   <canvas id="cv" width="1024" height="1024"></canvas>
-  <div class="hint" id="hint">Draw on the page. Undo is in the bar. The picture lives in this icon — Invite to draw together.</div>
-  <div id="ask"><div class="box"><p>Clear the picture? This cannot be undone.</p><div class="row"><button id="askno">Keep</button><button id="askyes">Clear</button></div></div></div>
+  <div class="hint" id="hint" data-i18n="hint">Draw on the page. Undo is in the bar. The picture lives in this icon — Invite to draw together.</div>
+  <div id="ask"><div class="box"><p data-i18n="ask.text">Clear the picture? This cannot be undone.</p><div class="row"><button id="askno" data-i18n="ask.keep">Keep</button><button id="askyes" data-i18n="clear">Clear</button></div></div></div>
 </div>
 <script>
 'use strict';
+var T=function(k,p){return window.gifos&&gifos.i18n?gifos.i18n.t(k,p):k;};
+function applyI18n(){
+  [].forEach.call(document.querySelectorAll('[data-i18n]'),function(e){e.textContent=T(e.getAttribute('data-i18n'));});
+  [['ph','placeholder'],['title','title'],['aria','aria-label']].forEach(function(a){
+    [].forEach.call(document.querySelectorAll('[data-i18n-'+a[0]+']'),function(e){e.setAttribute(a[1],T(e.getAttribute('data-i18n-'+a[0])));});
+  });
+}
 var db=gifos.db('canvas');
 var PAPER=1024, COLORS=['#14141f','#ff5c5c','#ff8f3c','#ffd23c','#5cff7b','#5cdcb4','#5cc8ff','#7b5cff','#ff5caa','#a06a4a','#8888aa','#ffffff'];
 var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
@@ -1397,6 +1404,14 @@ function syncDebug(){
   window.__paint={ tool:tool, color:color, size:size, n:strokes.length, cells:cells?cells.length:0, canUndo:!!undoStack.length, canRedo:!!redoStack.length };
 }
 syncDebug();
+// Words: the markup above keeps its English until the catalog arrives (or on a GifOS without i18n).
+function applyPal(){
+  [].forEach.call(document.getElementById('pal').querySelectorAll('.sw'),function(el,i){
+    el.title=i===0?T('swatch.dark'):''; el.setAttribute('aria-label',T('swatch.aria',{color:el.dataset.c}));
+  });
+}
+function localize(){ applyI18n(); applyPal(); }
+if(window.gifos&&gifos.i18n){ gifos.i18n.load().then(localize); if(gifos.onLocaleChange) gifos.onLocaleChange(localize); }
 </script>`;
 
   // The Calculator is a GRAPHING calculator in the Desmos idiom: an expression
@@ -1456,22 +1471,29 @@ syncDebug();
     body.mode-graph #wrap,body.mode-list #wrap{flex-direction:column}
   }
 </style>
-<header>Calculator <div id="tabs"><button type="button" id="tabG" class="on">Graph</button><button type="button" id="tabL">List</button></div></header>
+<header><span data-i18n="title">Calculator</span> <div id="tabs"><button type="button" id="tabG" class="on" data-i18n="tab.graph">Graph</button><button type="button" id="tabL" data-i18n="tab.list">List</button></div></header>
 <div id="wrap">
   <div id="side">
     <div id="rows"></div>
-    <button id="addrow">+ expression</button>
+    <button id="addrow" data-i18n="add">+ expression</button>
     <div id="keypad"></div>
   </div>
   <div id="gwrap">
     <canvas id="g"></canvas>
     <canvas id="ov"></canvas>
     <div id="readout"></div>
-    <div id="gbtns"><button id="zin">+</button><button id="zout">−</button><button id="zhome" title="Reset view">⌂</button></div>
+    <div id="gbtns"><button id="zin">+</button><button id="zout">−</button><button id="zhome" title="Reset view" data-i18n-title="view.reset">⌂</button></div>
   </div>
 </div>
 <script>
 'use strict';
+var T=function(k,p){return window.gifos&&gifos.i18n?gifos.i18n.t(k,p):k;};
+function applyI18n(){
+  [].forEach.call(document.querySelectorAll('[data-i18n]'),function(e){e.textContent=T(e.getAttribute('data-i18n'));});
+  [['ph','placeholder'],['title','title'],['aria','aria-label']].forEach(function(a){
+    [].forEach.call(document.querySelectorAll('[data-i18n-'+a[0]+']'),function(e){e.setAttribute(a[1],T(e.getAttribute('data-i18n-'+a[0])));});
+  });
+}
 // ---------- expression language ----------
 var FN1={sin:Math.sin,cos:Math.cos,tan:Math.tan,asin:Math.asin,acos:Math.acos,atan:Math.atan,
   sinh:Math.sinh,cosh:Math.cosh,tanh:Math.tanh,sqrt:Math.sqrt,abs:Math.abs,ln:Math.log,
@@ -1515,7 +1537,7 @@ function tokenize(src,names){
     }
     if(c==='<'||c==='>'){if(s[i+1]==='='){t.push({t:'op',v:c+'='});i+=2;}else{t.push({t:'op',v:c});i++;}continue;}
     if('+-*/^=(),!'.indexOf(c)>=0){t.push({t:'op',v:c});i++;continue;}
-    throw new Error('unexpected "'+c+'"');
+    throw new Error(T('err.unexpected',{what:c}));
   }
   return t;
 }
@@ -1523,11 +1545,11 @@ function parse(src,names){
   var toks=tokenize(src,names),p=0;
   function peek(){return toks[p];}
   function next(){return toks[p++];}
-  function expect(v){var tk=next();if(!tk||tk.t!=='op'||tk.v!==v)throw new Error('expected "'+v+'"');}
+  function expect(v){var tk=next();if(!tk||tk.t!=='op'||tk.v!==v)throw new Error(T('err.expected',{what:v}));}
   function atomStarts(tk){return tk&&(tk.t==='num'||tk.t==='id'||(tk.t==='op'&&tk.v==='('));}
   function parseAtom(){
     var tk=next();
-    if(!tk)throw new Error('unexpected end');
+    if(!tk)throw new Error(T('err.end'));
     if(tk.t==='num')return{t:'num',v:tk.v};
     if(tk.t==='id'){
       if(peek()&&peek().t==='op'&&peek().v==='('&&(FN1[tk.v]||FN2[tk.v]||names['fn:'+tk.v])){
@@ -1542,7 +1564,7 @@ function parse(src,names){
       if(peek()&&peek().t==='op'&&peek().v===','){next();var b=parseCmpFree();expect(')');return{t:'point',x:a,y:b};}
       expect(')');return{t:'paren',a:a};
     }
-    throw new Error('unexpected "'+(tk.v!==undefined?tk.v:tk.t)+'"');
+    throw new Error(T('err.unexpected',{what:(tk.v!==undefined?tk.v:tk.t)}));
   }
   function parsePost(){
     var a=parseAtom();
@@ -1587,7 +1609,7 @@ function parse(src,names){
     return a;
   }
   var ast=parseCmp();
-  if(p<toks.length)throw new Error('unexpected "'+toks[p].v+'"');
+  if(p<toks.length)throw new Error(T('err.unexpected',{what:toks[p].v}));
   return ast;
 }
 function fact(v){if(v<0||v!==Math.floor(v)||v>170)return NaN;var r=1;for(var i=2;i<=v;i++)r*=i;return r;}
@@ -1966,11 +1988,11 @@ function rebuild(){
     var cls=classify(r);
     var el=document.createElement('div');el.className='row';el.dataset.rid=r.id;
     var sw=document.createElement('div');sw.className='sw'+(r.hidden?' off':'');sw.style.background=color;
-    sw.title=r.hidden?'Show':'Hide';
+    sw.title=r.hidden?T('row.show'):T('row.hide');
     sw.onclick=function(){r.hidden=!r.hidden;save();rebuild();};
     var mid=document.createElement('div');mid.className='mid';
     var inp=document.createElement('input');inp.className='ex';inp.value=r.s;inp.spellcheck=false;
-    inp.placeholder=i===0?'y = x^2  or  2+2':'';
+    inp.placeholder=i===0?T('placeholder'):'';
     inp.autocapitalize='off';inp.autocomplete='off';
     inp.oninput=function(){r.s=inp.value;refresh();saveSoon();};
     inp.onfocus=function(){focused=inp;};
@@ -1984,7 +2006,7 @@ function rebuild(){
     mid.appendChild(inp);
     var meta=document.createElement('div');
     mid.appendChild(meta);
-    var del=document.createElement('button');del.className='row-del';del.title='Delete row';
+    var del=document.createElement('button');del.className='row-del';del.title=T('row.delete');
     del.innerHTML='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
     del.onclick=function(){rows=rows.filter(function(q){return q!==r;});save();rebuild();};
     el.appendChild(sw);el.appendChild(mid);el.appendChild(del);
@@ -2022,10 +2044,10 @@ function renderMeta(r,cls,color){
   if(cls.kind==='slider'){
     var s=sliders[cls.name];if(!s)return;
     var sl=document.createElement('div');sl.className='sl';
-    var lo=document.createElement('input');lo.type='number';lo.value=s.min;lo.title='Slider minimum';
+    var lo=document.createElement('input');lo.type='number';lo.value=s.min;lo.title=T('slider.min');
     var rg=document.createElement('input');rg.type='range';rg.min=s.min;rg.max=s.max;rg.step=s.step;rg.value=s.v;
-    var hi=document.createElement('input');hi.type='number';hi.value=s.max;hi.title='Slider maximum';
-    var play=document.createElement('button');play.className='play'+(s.anim?' on':'');play.textContent='▶';play.title='Animate';
+    var hi=document.createElement('input');hi.type='number';hi.value=s.max;hi.title=T('slider.max');
+    var play=document.createElement('button');play.className='play'+(s.anim?' on':'');play.textContent='▶';play.title=T('slider.play');
     rg.oninput=function(){
       s.v=parseFloat(rg.value);
       var inp=r._meta.parentElement.querySelector('.ex');
@@ -2173,7 +2195,9 @@ function save(){
 function saveSoon(){clearTimeout(saveT);saveT=setTimeout(save,500);}
 var prefT=null;
 function savePrefsSoon(){clearTimeout(prefT);prefT=setTimeout(function(){prefs.put({id:'view',cx:view.cx,cy:view.cy,ppu:view.ppu});},700);}
+var booted=false;   // nothing paints (and so nothing calls T) before the catalog has loaded
 db.subscribe(function(items){
+  if(!booted)return;
   var doc=items.find(function(d){return d.id==='state';});
   if(!doc||!doc.rows)return;
   var j=JSON.stringify(doc);
@@ -2191,6 +2215,7 @@ db.subscribe(function(items){
   }
 });
 (async function boot(){
+  if(window.gifos&&gifos.i18n){ try{ await gifos.i18n.load(); }catch(e){} applyI18n(); }
   try{
     var vs=await prefs.getAll();
     var v=vs.find(function(d){return d.id==='view';});
@@ -2205,8 +2230,10 @@ db.subscribe(function(items){
     }
   }catch(e){}
   if(!rows.length){rows=[newRow('y = a sin(x)'),newRow('a = 1')];save();}
+  booted=true;
   resize();
   rebuild();
+  if(window.gifos&&gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); rebuild(); });
 })();
 // test hook: the suites read classifications and probe curves numerically
 // instead of screenshot-diffing canvas pixels.
@@ -2251,12 +2278,12 @@ function syncDebug(){
   #laps li.slow{color:#ff5c5c}
   #laps li.cur{color:var(--muted,#8888aa)}
 </style>
-<header>Timer &amp; Stopwatch</header>
-<div class="tabs"><button id="tabS" class="on">Stopwatch</button><button id="tabT">Timer</button></div>
+<header data-i18n="title">Timer &amp; Stopwatch</header>
+<div class="tabs"><button id="tabS" class="on" data-i18n="tab.stopwatch">Stopwatch</button><button id="tabT" data-i18n="tab.timer">Timer</button></div>
 <div id="t">00:00.00</div>
 <div id="lapnow"></div>
 <div class="chips row" id="presets" style="display:none">
-  <button data-add="60">+1 min</button><button data-add="300">+5 min</button><button data-add="600">+10 min</button><button data-add="10">+10 s</button>
+  <button data-add="60" data-i18n="preset.1m">+1 min</button><button data-add="300" data-i18n="preset.5m">+5 min</button><button data-add="600" data-i18n="preset.10m">+10 min</button><button data-add="10" data-i18n="preset.10s">+10 s</button>
 </div>
 <div class="row">
   <button id="lap" disabled>Lap</button>
@@ -2264,6 +2291,14 @@ function syncDebug(){
 </div>
 <ol id="laps"></ol>
 <script>
+  var T=function(k,p){return window.gifos&&gifos.i18n?gifos.i18n.t(k,p):k;};
+  function applyI18n(){
+    [].forEach.call(document.querySelectorAll('[data-i18n]'),function(e){e.textContent=T(e.getAttribute('data-i18n'));});
+    [['ph','placeholder'],['title','title'],['aria','aria-label']].forEach(function(a){
+      [].forEach.call(document.querySelectorAll('[data-i18n-'+a[0]+']'),function(e){e.setAttribute(a[1],T(e.getAttribute('data-i18n-'+a[0])));});
+    });
+  }
+  function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
   function pad2(n){ n=Math.floor(Math.abs(+n||0)); return (n<10?'0':'')+n; }
   function fmtSw(ms){
     ms=Math.max(0, Math.floor(+ms||0));
@@ -2301,29 +2336,29 @@ function syncDebug(){
   function paintLaps(){
     if(mode!=='sw'){ lapsEl.innerHTML=''; lapNow.textContent=''; return; }
     var total=swMs(), split=Math.max(0,total-sumLaps());
-    lapNow.textContent = (sw.laps.length||sw.running||total) ? ('Lap '+(sw.laps.length+1)+'  '+fmtSw(split)) : '';
+    lapNow.textContent = (sw.laps.length||sw.running||total) ? T('lap.now',{n:sw.laps.length+1,time:fmtSw(split)}) : '';
     var n=sw.laps.length, fast=-1, slow=-1;
     if(n>=2){ fast=0; slow=0; for(var i=1;i<n;i++){ if(sw.laps[i]<sw.laps[fast]) fast=i; if(sw.laps[i]>sw.laps[slow]) slow=i; } }
     var html='';
-    if(sw.running||split>0) html+='<li class="cur"><span class="n">Lap '+(n+1)+'</span><span>'+fmtSw(split)+'</span></li>';
+    if(sw.running||split>0) html+='<li class="cur"><span class="n">'+escH(T('lap.n',{n:n+1}))+'</span><span>'+fmtSw(split)+'</span></li>';
     for(var i=n-1;i>=0;i--){
       var cls=(n>=2&&i===fast)?'fast':(n>=2&&i===slow)?'slow':'';
-      html+='<li class="'+cls+'"><span class="n">Lap '+(i+1)+'</span><span>'+fmtSw(sw.laps[i])+'</span></li>';
+      html+='<li class="'+cls+'"><span class="n">'+escH(T('lap.n',{n:i+1}))+'</span><span>'+fmtSw(sw.laps[i])+'</span></li>';
     }
     lapsEl.innerHTML=html;
   }
   function buttons(){
     if(mode==='sw'){
       var has=swMs()>0||sw.laps.length;
-      lapBtn.textContent=sw.running?'Lap':'Reset';
+      lapBtn.textContent=sw.running?T('lap'):T('reset');
       lapBtn.disabled=sw.running?false:!has;
       go.disabled=false;
-      go.textContent=sw.running?'Stop':'Start';
+      go.textContent=sw.running?T('stop'):T('start');
       go.className=sw.running?'stop':'go';
     } else {
-      lapBtn.textContent='Reset';
+      lapBtn.textContent=T('reset');
       lapBtn.disabled=!(tm.running||tm.left>0);
-      go.textContent=tm.running?'Pause':'Start';
+      go.textContent=tm.running?T('pause'):T('start');
       go.className=tm.running?'stop':'go';
       go.disabled=!tm.running&&tm.left<=0;
     }
@@ -2338,7 +2373,7 @@ function syncDebug(){
     paintLaps(); buttons();
   }
   function loop(){ draw(); if(sw.running||tm.running) raf=requestAnimationFrame(loop); else cancelAnimationFrame(raf); }
-  function kick(){ cancelAnimationFrame(raf); loop(); persist(); }
+  function kick(){ if(!ready) return; cancelAnimationFrame(raf); loop(); persist(); }
   go.onclick=function(){
     tEl.classList.remove('done');
     if(mode==='sw'){
@@ -2384,8 +2419,14 @@ function syncDebug(){
     }
     ready=true; setMode(mode);
   }
-  if(clockDb) clockDb.get('clock').then(boot, function(){ boot(null); });
-  else boot(null);
+  function start(){
+    if(clockDb) clockDb.get('clock').then(boot, function(){ boot(null); });
+    else boot(null);
+  }
+  // Nothing that calls T runs before the catalog has loaded.
+  if(window.gifos&&gifos.i18n){
+    gifos.i18n.load().then(function(){ applyI18n(); start(); if(gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); kick(); }); });
+  } else start();
 </script>`;
 
   const MINESWEEPER_HTML = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
@@ -2680,10 +2721,16 @@ function syncDebug(){
   .actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:6px}
   .files{display:flex;justify-content:center;gap:2px;color:var(--muted,#8888aa);font-size:11px;letter-spacing:6px;margin:0 0 4px}
 </style>
-<header>Chess Tournament</header>
-<div class="status" id="status">Loading…</div>
+<header data-i18n="title">Chess Tournament</header>
+<div class="status" id="status" data-i18n="loading">Loading…</div>
 <div id="view"></div>
 <script>
+  const tx=function(k,p){ return window.gifos&&gifos.i18n?gifos.i18n.t(k,p):k; };   // T is the tournament below
+  function applyI18n(){
+    [].forEach.call(document.querySelectorAll('[data-i18n]'),function(e){ e.textContent=tx(e.getAttribute('data-i18n')); });
+  }
+  // A computer player is stored as 'Computer' (shared with the other players); shown in the reader's language.
+  function nameOf(p){ return p&&p.cpu?tx('computer'):p.name; }
   const db=gifos.db('chess');
   let me={id:'local',name:'You'}, viewMatch=null, sel=null, promo=null;
   let hint=null, hinting=false, cpuBusy=false;
@@ -2691,8 +2738,8 @@ function syncDebug(){
   const GLYPH={p:'♟',r:'♜',n:'♞',b:'♝',q:'♛',k:'♚'};
   const view=document.getElementById('view'), statusEl=document.getElementById('status');
   let T={ id:'t', players:[], started:false, rounds:[], round:0, settings:{ clock:'5+0', shuffle:true, cpu:'medium', side:'w' } };
-  const CLOCKS=[['none','No clock'],['1+0','Bullet 1 min'],['3+0','Blitz 3 min'],['3+2','Blitz 3|2'],['5+0','Blitz 5 min'],['5+3','Blitz 5|3'],['10+0','Rapid 10 min']];
-  const CPUS=[['easy','Easy'],['medium','Medium'],['hard','Hard']];
+  const CLOCKS=[['none','clock.none'],['1+0','clock.bullet1'],['3+0','clock.blitz3'],['3+2','clock.blitz3_2'],['5+0','clock.blitz5'],['5+3','clock.blitz5_3'],['10+0','clock.rapid10']];
+  const CPUS=[['easy','cpu.easy'],['medium','cpu.medium'],['hard','cpu.hard']];
   function clockSpec(){ const c=(T.settings&&T.settings.clock)||'none'; if(c==='none') return null;
     const p=c.split('+'); return { base:parseInt(p[0],10)*60000, inc:(parseInt(p[1],10)||0)*1000 }; }
 
@@ -2967,9 +3014,9 @@ function syncDebug(){
   }
   function askHint(m){
     const seat=mySeat(m); if(!seat||seat!==m.turn||m.winner||m.draw||hinting) return;
-    if(!(window.gifos&&gifos.ai)){ hint={err:'Hints need the computer’s AI.'}; render(); return; }
+    if(!(window.gifos&&gifos.ai)){ hint={errKey:'hint.err.noai'}; render(); return; }
     const s=gameOf(m); const list=legalMoves(s);
-    if(!list.length){ hint={err:'No legal moves to suggest.'}; render(); return; }
+    if(!list.length){ hint={errKey:'hint.err.none'}; render(); return; }
     hinting=true; hint=null; render();
     const side=m.turn==='w'?'White':'Black';
     const sys='You are a strong chess coach. You are given a position as FEN plus the EXACT list of legal moves in coordinate (UCI) notation. Choose the single strongest move for '+side+'. Reply with ONLY compact JSON and nothing else: {"move":"<one move copied verbatim from the legal list>","why":"<one short plain-language sentence>"}.';
@@ -2980,12 +3027,12 @@ function syncDebug(){
         try{ const j=JSON.parse(txt.replace(/\`\`\`json|\`\`\`/g,'').trim()); uci=String(j.move||'').trim().toLowerCase(); why=j.why||''; }catch(e){}
         if(!uci){ const mm=txt.toLowerCase().match(/[a-h][1-8][a-h][1-8][qrbn]?/); if(mm) uci=mm[0]; }
         let pick=list.find(function(l){return l.uci===uci;}) || list.find(function(l){return l.uci.slice(0,4)===uci;});
-        if(!pick){ pick=list[0]; why=why||'A safe, legal option.'; }
+        if(!pick){ pick=list[0]; why=why||tx('hint.safe'); }
         const cur=findMatch(viewMatch);
         if(cur&&cur.id===m.id&&cur.turn===m.turn&&!cur.winner&&!cur.draw) hint={ from:pick.from, to:pick.to, why:why, uci:pick.uci };
       })
       .catch(function(e){ const msg=String((e&&e.message)||e);
-        hint={ err: /NOT_CONFIGURED/.test(msg) ? 'Set up your Smartest AI in Settings to get hints.' : 'Couldn’t get a hint right now.' };
+        hint={ errKey: /NOT_CONFIGURED/.test(msg) ? 'hint.err.setup' : 'hint.err.fail' };
       })
       .then(function(){ hinting=false; render(); });
   }
@@ -2999,77 +3046,77 @@ function syncDebug(){
   function renderLobby(){
     const inList=T.players.some(function(p){return p.id===me.id;});
     const d=document.createElement('div'); d.className='lobby';
-    const cpuBtn=document.createElement('button'); cpuBtn.className='playcpu'; cpuBtn.textContent='Play the computer'; cpuBtn.onclick=playComputer;
+    const cpuBtn=document.createElement('button'); cpuBtn.className='playcpu'; cpuBtn.textContent=tx('play.cpu'); cpuBtn.onclick=playComputer;
     d.appendChild(cpuBtn);
     const st=document.createElement('div'); st.className='settings';
-    st.innerHTML='<h3>Vs computer</h3><div class="hint">Works offline, in this GIF. Strength is a small onboard engine — not Stockfish.</div>';
+    st.innerHTML='<h3>'+esc(tx('vs.title'))+'</h3><div class="hint">'+esc(tx('vs.hint'))+'</div>';
     function addSel(label, key, opts, def){
       const row=document.createElement('label'); row.appendChild(document.createTextNode(label+' '));
       const selEl=document.createElement('select');
-      opts.forEach(function(c){ const o=document.createElement('option'); o.value=c[0]; o.textContent=c[1]; selEl.appendChild(o); });
+      opts.forEach(function(c){ const o=document.createElement('option'); o.value=c[0]; o.textContent=tx(c[1]); selEl.appendChild(o); });
       selEl.value=(T.settings&&T.settings[key])||def;
       selEl.onchange=function(){ T.settings=Object.assign({},settingsOf()); T.settings[key]=selEl.value; save(); };
       row.appendChild(selEl); st.appendChild(row);
     }
-    addSel('Strength', 'cpu', CPUS, 'medium');
-    addSel('I play', 'side', [['w','White'],['b','Black'],['random','Random']], 'w');
+    addSel(tx('vs.strength'), 'cpu', CPUS, 'medium');
+    addSel(tx('vs.side'), 'side', [['w','side.white'],['b','side.black'],['random','side.random']], 'w');
     d.appendChild(st);
-    const split=document.createElement('div'); split.className='split'; split.textContent='or a tournament'; d.appendChild(split);
-    const p=document.createElement('p'); p.textContent='Invite a friend (top bar), then start. Winners advance until one champion remains. An odd player gets a bye.'; d.appendChild(p);
+    const split=document.createElement('div'); split.className='split'; split.textContent=tx('tourney.or'); d.appendChild(split);
+    const p=document.createElement('p'); p.textContent=tx('tourney.intro'); d.appendChild(p);
     const ul=document.createElement('ul'); ul.className='players';
-    T.players.forEach(function(pl){ const li=document.createElement('li'); li.textContent=pl.name+(pl.id===me.id?' (you)':'')+(pl.cpu?' — computer':''); ul.appendChild(li); });
+    T.players.forEach(function(pl){ const li=document.createElement('li'); li.textContent=pl.cpu?tx('player.cpu',{name:nameOf(pl)}):pl.id===me.id?tx('player.you',{name:pl.name}):pl.name; ul.appendChild(li); });
     d.appendChild(ul);
     const ts=document.createElement('div'); ts.className='settings';
-    ts.innerHTML='<h3>Tournament settings</h3><div class="hint">Apply to every game. Locked once the bracket starts.</div>';
+    ts.innerHTML='<h3>'+esc(tx('settings.title'))+'</h3><div class="hint">'+esc(tx('settings.hint'))+'</div>';
     (function(){
-      const row=document.createElement('label'); row.appendChild(document.createTextNode('Time control '));
+      const row=document.createElement('label'); row.appendChild(document.createTextNode(tx('settings.clock')+' '));
       const selEl=document.createElement('select');
-      CLOCKS.forEach(function(c){ const o=document.createElement('option'); o.value=c[0]; o.textContent=c[1]; selEl.appendChild(o); });
+      CLOCKS.forEach(function(c){ const o=document.createElement('option'); o.value=c[0]; o.textContent=tx(c[1]); selEl.appendChild(o); });
       selEl.value=settingsOf().clock; selEl.onchange=function(){ T.settings=Object.assign({},settingsOf(),{clock:selEl.value}); save(); };
       row.appendChild(selEl); ts.appendChild(row);
     })();
     const shl=document.createElement('label'); const shc=document.createElement('input'); shc.type='checkbox';
     shc.checked=settingsOf().shuffle!==false;
     shc.onchange=function(){ T.settings=Object.assign({},settingsOf(),{shuffle:shc.checked}); save(); };
-    shl.appendChild(shc); shl.appendChild(document.createTextNode(' Shuffle the bracket seeding'));
+    shl.appendChild(shc); shl.appendChild(document.createTextNode(' '+tx('settings.shuffle')));
     ts.appendChild(shl); d.appendChild(ts);
-    const jb=document.createElement('button'); jb.textContent=inList?'You’re in ('+T.players.length+')':'Join lobby'; jb.onclick=joinLobby;
+    const jb=document.createElement('button'); jb.textContent=inList?tx('join.in',{n:T.players.length}):tx('join'); jb.onclick=joinLobby;
     d.appendChild(jb);
     if(!T.players.some(function(p){ return p.cpu; })){
-      const ac=document.createElement('button'); ac.className='ghost'; ac.textContent='Add a computer'; ac.onclick=addCpu; d.appendChild(ac);
+      const ac=document.createElement('button'); ac.className='ghost'; ac.textContent=tx('add.cpu'); ac.onclick=addCpu; d.appendChild(ac);
     }
-    if(T.players.length>=2){ const sb=document.createElement('button'); sb.textContent='Start tournament'; sb.onclick=startTournament; d.appendChild(sb); }
+    if(T.players.length>=2){ const sb=document.createElement('button'); sb.textContent=tx('start'); sb.onclick=startTournament; d.appendChild(sb); }
     view.appendChild(d);
-    statusEl.textContent='Lobby — '+T.players.length+' player(s). Press Invite and share the link, or play the computer.';
+    statusEl.textContent=tx('status.lobby',{n:T.players.length});
   }
   function renderBracket(){
     const wrap=document.createElement('div'); wrap.className='bracket';
     T.rounds.forEach(function(ms){ const rd=document.createElement('div'); rd.className='round';
       ms.forEach(function(m){ const el=document.createElement('div'); el.className='match'+(mySeat(m)?' mine':'');
-        const an=m.a?m.a.name:'—', bn=m.b?m.b.name:'(bye)';
-        el.innerHTML='<div class="'+(m.winner&&m.winner.id===(m.a&&m.a.id)?'w':'')+'">'+esc(an)+'</div><div class="'+(m.winner&&m.b&&m.winner.id===m.b.id?'w':'')+'">'+esc(bn)+(m.draw?' · draw':'')+'</div>';
+        const an=m.a?nameOf(m.a):'—', bn=m.b?nameOf(m.b):tx('bracket.bye');
+        el.innerHTML='<div class="'+(m.winner&&m.winner.id===(m.a&&m.a.id)?'w':'')+'">'+esc(an)+'</div><div class="'+(m.winner&&m.b&&m.winner.id===m.b.id?'w':'')+'">'+esc(bn)+(m.draw?tx('bracket.draw'):'')+'</div>';
         el.onclick=function(){ viewMatch=m.id; sel=null; hint=null; promo=null; render(); queueCpu(); };
         rd.appendChild(el); });
       wrap.appendChild(rd); });
     view.appendChild(wrap);
     const last=(T.rounds[T.rounds.length-1]||[]);
     const champ=last.length===1 && last[0].winner && !last[0].draw;
-    statusEl.textContent=champ?('🏆 Champion: '+esc(champ.name)):'Round '+(T.round+1)+' — tap a match to play or watch.';
+    statusEl.textContent=champ?tx('status.champion',{name:esc(nameOf(last[0].winner))}):tx('status.round',{n:T.round+1});
     const actions=document.createElement('div'); actions.className='actions';
-    const nt=document.createElement('button'); nt.className='ghost'; nt.textContent='New tournament'; nt.onclick=resetTournament; actions.appendChild(nt);
+    const nt=document.createElement('button'); nt.className='ghost'; nt.textContent=tx('new'); nt.onclick=resetTournament; actions.appendChild(nt);
     view.appendChild(actions);
   }
   function fmtClock(ms){ ms=Math.max(0,ms|0); const s=Math.ceil(ms/1000); return Math.floor(s/60)+':'+('0'+s%60).slice(-2); }
   function clockRow(m,side){
     const el=document.createElement('div'); el.className='clock'+(m.turn===side&&!m.winner&&!m.draw?' live':'');
     const who=side==='w'?m.a:m.b; const r=remaining(m,side);
-    el.textContent=(side==='w'?'⚪ ':'⚫ ')+(who?who.name:'?')+'  '+fmtClock(r);
+    el.textContent=(side==='w'?'⚪ ':'⚫ ')+(who?nameOf(who):'?')+'  '+fmtClock(r);
     if(r<30000) el.classList.add('low'); el.dataset.side=side; return el;
   }
   function sqSize(){ const w=Math.min(document.documentElement.clientWidth-24, 420); return Math.max(28, Math.min(48, Math.floor(w/8))); }
   function renderBoard(){
     const m=findMatch(viewMatch); if(!m){ viewMatch=null; return render(); }
-    const back=document.createElement('button'); back.className='back'; back.textContent='← Bracket'; back.onclick=function(){ viewMatch=null; sel=null; hint=null; promo=null; render(); }; view.appendChild(back);
+    const back=document.createElement('button'); back.className='back'; back.textContent=tx('back'); back.onclick=function(){ viewMatch=null; sel=null; hint=null; promo=null; render(); }; view.appendChild(back);
     const seat=mySeat(m); const s=gameOf(m); const bd=s.board;
     const flip=seat==='b';
     const files=document.createElement('div'); files.className='files';
@@ -3099,8 +3146,8 @@ function syncDebug(){
     }
     if(promo&&promo.m&&promo.m.id===m.id){
       const box=document.createElement('div'); box.className='promo';
-      [['q','Queen'],['r','Rook'],['b','Bishop'],['n','Knight']].forEach(function(pr){
-        const b=document.createElement('button'); b.textContent=GLYPH[pr[0]]; b.title=pr[1];
+      [['q','promo.queen'],['r','promo.rook'],['b','promo.bishop'],['n','promo.knight']].forEach(function(pr){
+        const b=document.createElement('button'); b.textContent=GLYPH[pr[0]]; b.title=tx(pr[1]);
         b.onclick=function(){ const P=promo; promo=null; doMove(P.m,P.from[0],P.from[1],P.to[0],P.to[1],pr[0]); };
         box.appendChild(b);
       });
@@ -3112,40 +3159,45 @@ function syncDebug(){
     if(seat&&seat===m.turn&&!m.winner&&!m.draw){
       const hb=document.createElement('div'); hb.className='hintbar';
       const hbtn=document.createElement('button'); hbtn.className='ghost';
-      hbtn.textContent=hinting?'Thinking…':'💡 Hint'; hbtn.disabled=hinting;
+      hbtn.textContent=hinting?tx('hint.thinking'):tx('hint.button'); hbtn.disabled=hinting;
       hbtn.onclick=function(){ askHint(m); };
       hb.appendChild(hbtn);
       const why=document.createElement('div'); why.className='why';
-      if(hinting) why.textContent='Reading the board and weighing your options…';
-      else if(hint&&hint.err) why.textContent=hint.err;
-      else if(hint&&hint.uci) why.textContent='Suggested: '+hint.uci.slice(0,2)+'→'+hint.uci.slice(2)+(hint.why?' — '+hint.why:'');
-      else why.textContent='Ask the computer’s AI for your strongest move.';
+      if(hinting) why.textContent=tx('hint.reading');
+      else if(hint&&hint.errKey) why.textContent=tx(hint.errKey);
+      else if(hint&&hint.uci){ const mv=hint.uci.slice(0,2)+'→'+hint.uci.slice(2); why.textContent=hint.why?tx('hint.suggestedWhy',{move:mv,why:hint.why}):tx('hint.suggested',{move:mv}); }
+      else why.textContent=tx('hint.ask');
       hb.appendChild(why); view.appendChild(hb);
     }
     const actions=document.createElement('div'); actions.className='actions';
-    if(seat&&!m.winner&&!m.draw){ const rs=document.createElement('button'); rs.className='ghost'; rs.textContent='Resign'; rs.onclick=function(){ resign(m); }; actions.appendChild(rs); }
-    if(m.draw && seat){ const rm=document.createElement('button'); rm.textContent='Rematch'; rm.onclick=function(){ rematch(m); }; actions.appendChild(rm); }
+    if(seat&&!m.winner&&!m.draw){ const rs=document.createElement('button'); rs.className='ghost'; rs.textContent=tx('resign'); rs.onclick=function(){ resign(m); }; actions.appendChild(rs); }
+    if(m.draw && seat){ const rm=document.createElement('button'); rm.textContent=tx('rematch'); rm.onclick=function(){ rematch(m); }; actions.appendChild(rm); }
     view.appendChild(actions);
-    statusEl.textContent = m.winner ? ('Winner: '+esc(m.winner.name))
-      : m.draw ? ('Draw — '+(m.draw==='stalemate'?'stalemate':'draw')+'. Rematch to advance.')
-      : (seat? (m.turn===seat?'Your move ('+(seat==='w'?'White':'Black')+(stNow==='check'?' — check':'')+')':((m.turn==='w'?m.a:m.b)&& (m.turn==='w'?m.a:m.b).cpu?'Computer is thinking…':'Waiting for opponent')) : 'Spectating')
-        + ' — '+esc(m.a?m.a.name:'?')+' vs '+esc(m.b?m.b.name:'?');
+    statusEl.textContent = m.winner ? tx('status.winner',{name:esc(nameOf(m.winner))})
+      : m.draw ? tx(m.draw==='stalemate'?'status.drawStalemate':'status.drawOther')
+      : tx('status.vs',{ state: seat? (m.turn===seat?tx(stNow==='check'?'status.yourMoveCheck':'status.yourMove',{side:tx(seat==='w'?'side.white':'side.black')}):((m.turn==='w'?m.a:m.b)&& (m.turn==='w'?m.a:m.b).cpu?tx('status.cpuThinking'):tx('status.waiting'))) : tx('status.spectating'),
+          a:esc(m.a?nameOf(m.a):'?'), b:esc(m.b?nameOf(m.b):'?') });
   }
   setInterval(function(){
     if(!viewMatch) return; const m=findMatch(viewMatch); if(!m||!m.clock||m.winner||m.draw) return;
     if(mySeat(m)&&flagFall(m)) return;
     view.querySelectorAll('.clock').forEach(function(el){
       const side=el.dataset.side, who=side==='w'?m.a:m.b, r=remaining(m,side);
-      el.textContent=(side==='w'?'⚪ ':'⚫ ')+(who?who.name:'?')+'  '+fmtClock(r);
+      el.textContent=(side==='w'?'⚪ ':'⚫ ')+(who?nameOf(who):'?')+'  '+fmtClock(r);
       el.classList.toggle('low',r<30000);
       el.classList.toggle('live',m.turn===side&&!m.winner&&!m.draw);
     });
   }, 500);
   function findMatch(id){ for(let ri=0;ri<T.rounds.length;ri++){ const r=T.rounds[ri]; for(let i=0;i<r.length;i++){ if(r[i].id===id) return r[i]; } } return null; }
   const esc=function(s){ return String(s).replace(/[&<>]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }); };
-  db.subscribe(function(items){ const t=items.find(function(x){return x.id==='t';}); if(t){ T=t; T.settings=settingsOf(); } render(); queueCpu(); });
-  if(window.gifos) gifos.me().then(function(mm){ me={id:mm.id,name:mm.name||'You'}; joinLobby(); });
-  render();
+  // Nothing that calls tx runs before the catalog has loaded.
+  function start(){
+    db.subscribe(function(items){ const t=items.find(function(x){return x.id==='t';}); if(t){ T=t; T.settings=settingsOf(); } render(); queueCpu(); });
+    if(window.gifos) gifos.me().then(function(mm){ me={id:mm.id,name:mm.name||'You'}; joinLobby(); });
+    render();
+    if(window.gifos&&gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); render(); });
+  }
+  if(window.gifos&&gifos.i18n) gifos.i18n.load().then(function(){ applyI18n(); start(); }); else start();
   window.__chess={
     legal:function(m){ return legal(gameOf(m||{board:START,turn:'w'})).map(moveUci); },
     status:function(m){ return statusOf(gameOf(m)); },
@@ -3315,37 +3367,51 @@ Home Screen, so this icon opens the built-in store page instead of running here.
   .kept .k{background:var(--surface,#14141f);border:1px solid var(--border,#22222f);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--text,#c8c8dc);margin-bottom:6px}
   .foot{color:var(--muted,#6a6a86);font-size:.72rem;text-align:center;line-height:1.5}
 </style>
-<header>Fortune</header>
+<header data-i18n="title">Fortune</header>
 <main>
   <div class="cookie">🥠</div>
-  <div class="slip" id="slip">Crack open a cookie for a little wisdom…</div>
+  <div class="slip" id="slip" data-i18n="slip.initial">Crack open a cookie for a little wisdom…</div>
   <div class="src" id="src"></div>
   <div class="row">
-    <button class="go" id="crack">Crack a cookie</button>
-    <button id="keep" disabled>Keep it</button>
+    <button class="go" id="crack" data-i18n="crack">Crack a cookie</button>
+    <button id="keep" data-i18n="keep" disabled>Keep it</button>
   </div>
-  <div class="kept" id="keptWrap" style="display:none"><h4>Kept fortunes</h4><div id="kept"></div></div>
-  <p class="foot">Fortunes come from adviceslip.com over the internet — tap the “Internet” button up top to see or change that. This app never invents a line.</p>
+  <div class="kept" id="keptWrap" style="display:none"><h4 data-i18n="kept.title">Kept fortunes</h4><div id="kept"></div></div>
+  <p class="foot" data-i18n="foot">Fortunes come from adviceslip.com over the internet — tap the “Internet” button up top to see or change that. This app never invents a line.</p>
 </main>
 <script>
+  var T=function(k,p){return window.gifos&&gifos.i18n?gifos.i18n.t(k,p):k;};
+  function applyI18n(){
+    [].forEach.call(document.querySelectorAll('[data-i18n]'),function(e){e.textContent=T(e.getAttribute('data-i18n'));});
+    [['ph','placeholder'],['title','title'],['aria','aria-label']].forEach(function(a){
+      [].forEach.call(document.querySelectorAll('[data-i18n-'+a[0]+']'),function(e){e.setAttribute(a[1],T(e.getAttribute('data-i18n-'+a[0])));});
+    });
+  }
   var slip=document.getElementById('slip'),crack=document.getElementById('crack'),keepBtn=document.getElementById('keep');
   var srcEl=document.getElementById('src');
   var keptWrap=document.getElementById('keptWrap'),keptEl=document.getElementById('kept'),current=null,seq=0;
   var db=(window.gifos&&gifos.db)?gifos.db('fortunes'):null;
   function esc(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML;}
-  function showKept(items){items=(items||[]).slice().reverse();keptWrap.style.display=items.length?'':'none';
-    keptEl.innerHTML=items.map(function(x){return '<div class="k">“'+esc(x.text)+'”</div>';}).join('');}
+  var ready=false,lastKept=null,view={k:'init'};   // nothing calls T before the catalog has loaded
+  function showKept(items){lastKept=items;if(!ready)return;items=(items||[]).slice().reverse();keptWrap.style.display=items.length?'':'none';
+    keptEl.innerHTML=items.map(function(x){return '<div class="k">'+esc(T('quote',{text:x.text}))+'</div>';}).join('');}
   if(db)db.subscribe(showKept);
+  function paintSlip(){
+    if(view.k==='init'){slip.className='slip';slip.textContent=T('slip.initial');srcEl.textContent='';}
+    else if(view.k==='ask'){slip.className='slip';slip.textContent=T('asking');srcEl.textContent='';}
+    else if(view.k==='ok'){slip.className='slip';slip.textContent=T('quote',{text:current});srcEl.textContent=T('from');}
+    else {slip.className='slip err';slip.textContent=whyFail(view.err);srcEl.textContent='';}
+  }
   function whyFail(err){
     var msg=String(err&&err.message||err||'');
-    if(!window.gifos||!gifos.fetch) return 'Open this from GifOS to reach the internet. This app will not invent a fortune.';
-    if(/Network denied/i.test(msg)) return 'Internet is off for this app. Tap “Internet” in the top bar to allow adviceslip.com. This app will not invent a fortune.';
-    if(/timeout/i.test(msg)) return 'adviceslip.com took too long. Try again when you have a better connection.';
-    if(/HTTP\\s*\\d+/i.test(msg)) return 'adviceslip.com returned '+(msg.match(/HTTP\\s*\\d+/i)||['an error'])[0]+' — not a fortune.';
-    if(/empty|no advice/i.test(msg)) return 'That reply had no advice in it. Try another cookie.';
-    return 'Couldn’t reach adviceslip.com. You may be offline. This app will not make a fortune up.';
+    if(!window.gifos||!gifos.fetch) return T('err.nogifos');
+    if(/Network denied/i.test(msg)) return T('err.denied');
+    if(/timeout/i.test(msg)) return T('err.timeout');
+    if(/HTTP\\s*\\d+/i.test(msg)) return T('err.http',{code:(msg.match(/HTTP\\s*\\d+/i)||['HTTP'])[0]});
+    if(/empty|no advice/i.test(msg)) return T('err.empty');
+    return T('err.generic');
   }
-  function fail(err){current=null;slip.className='slip err';slip.textContent=whyFail(err);srcEl.textContent='';keepBtn.disabled=true;crack.disabled=false;}
+  function fail(err){current=null;view={k:'err',err:err};paintSlip();keepBtn.disabled=true;crack.disabled=false;}
   function fetchAdvice(){
     return new Promise(function(resolve,reject){
       var done=false;
@@ -3359,18 +3425,23 @@ Home Screen, so this icon opens the built-in store page instead of running here.
   }
   function crackOne(){
     var n=++seq;
-    slip.className='slip';slip.textContent='Asking adviceslip.com…';srcEl.textContent='';keepBtn.disabled=true;crack.disabled=true;current=null;
+    view={k:'ask'};paintSlip();keepBtn.disabled=true;crack.disabled=true;current=null;
     if(!window.gifos||!gifos.fetch){fail(new Error('no gifos'));return;}
     fetchAdvice().then(function(text){
       if(n!==seq) return;
-      current=text; slip.className='slip'; slip.textContent='“'+text+'”';
-      srcEl.textContent='from adviceslip.com'; keepBtn.disabled=!db; crack.disabled=false;
+      current=text; view={k:'ok'}; paintSlip();
+      keepBtn.disabled=!db; crack.disabled=false;
     }, function(err){ if(n!==seq) return; fail(err); });
   }
   crack.onclick=crackOne;
   keepBtn.onclick=function(){if(current&&db){db.put({text:current,t:Date.now()});keepBtn.disabled=true;}};
-  if(typeof navigator!=='undefined' && navigator.onLine===false) fail(new Error('offline'));
-  else crackOne();
+  function start(){
+    ready=true; applyI18n(); showKept(lastKept);
+    if(typeof navigator!=='undefined' && navigator.onLine===false) fail(new Error('offline'));
+    else crackOne();
+    if(window.gifos&&gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); showKept(lastKept); paintSlip(); });
+  }
+  if(window.gifos&&gifos.i18n) gifos.i18n.load().then(start); else start();
 </script>`;
 
   // Bible Browser — reads the Recovery Version straight from

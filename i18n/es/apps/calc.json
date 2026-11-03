@@ -1,0 +1,17 @@
+{
+  "title": "Calculadora",
+  "tab.graph": "Gráfica",
+  "tab.list": "Lista",
+  "add": "+ expresión",
+  "view.reset": "Restablecer vista",
+  "row.show": "Mostrar",
+  "row.hide": "Ocultar",
+  "row.delete": "Eliminar fila",
+  "placeholder": "y = x^2  o  2+2",
+  "slider.min": "Mínimo del control deslizante",
+  "slider.max": "Máximo del control deslizante",
+  "slider.play": "Animar",
+  "err.unexpected": "\"{what}\" inesperado",
+  "err.expected": "se esperaba \"{what}\"",
+  "err.end": "final inesperado"
+}
