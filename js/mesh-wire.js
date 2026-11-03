@@ -943,7 +943,7 @@
       raw = penv.seat || (penv.world && penv.world.seat) || null;
       if (!raw) { raw = new GifOS.meshSeat.Seat(layer.ids.nid(peer), penv.world); if (penv.attach) penv.attach(raw); }
       penv.world.onRecv = () => { if (!stopped) netEdge(); };
-      node.seat = seat; node.raw = raw; node.penv = penv;
+      node.seat = seat; node.raw = raw; node.penv = penv; node.__pc = opts.pc || {};
       makeSock();
       if (penv.join) penv.join(); else raw.join();
       startLoop();
@@ -1056,6 +1056,8 @@
       transport(pid, ev, arg) { if (stopped || !penv) return undefined; try { return penv.transport(String(pid), ev, arg); } catch (e) { return undefined; } },
       // A sealed relay `busy` frame from a door (opened by the page): the seat's world turns it into BUSY.
       relayBusyIn(from, d) { if (stopped || !penv) return; try { penv.relayFrame({ t: 'peer', from: String(from), ty: 'busy', d }); } catch (e) {} },
+      setKicks(peers) { if (layer) layer.setKicks(peers); },   // L27: whom I vote off (peer ids)
+      kickTally() { return layer ? layer.kickTally() : { tally: {}, need: {}, me: false }; },
       adapterStats() { return (penv && penv.stats) ? penv.stats() : null; },
       links() { return seat ? Array.from(seat.linkPeers()) : []; },
       // Resolves once every gossip frame handed over before now has been

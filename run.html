@@ -14974,6 +14974,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     // Peers the seat asked to dial (pc.ensure), for a while: the seat's dial is its reason.
     const seatAskAt = new Map();
+    window.__meshPortPage = { pcbye: (pid, why) => { try { meshNode && meshNode.__pc && meshNode.__pc.bye(pid, why); } catch (e) {} }, dcOpen: (pid) => { const p = peers.get(pid); return !!(p && p.dc && p.dc.readyState === 'open'); } };
     function seatAsked(pid) { const at = seatAskAt.get(pid); return at != null && Date.now() - at < 60000; }
     // Establish or retire ONE peer's media link per the seat arithmetic. Also
     // run by the sweeper: occupancy gossip settling can change who my
@@ -16868,6 +16869,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // The seat's pcs (js/mesh/page/env.js calls these; it decides, the page carries out).
         pc: {
           ensure: (pid, o) => { if (!pid || pid === myId) return; seatAskAt.set(pid, Date.now()); if (seatAskAt.size > 256) seatAskAt.delete(seatAskAt.keys().next().value); const s = meshSeat(); if (!(s && s.hasCoord && s.state === 3)) bootDial(pid); else ensureLink(pid); },
+          bye: (pid, why) => { const p = peers.get(pid); if (!p) return; if (why && p.dc && p.dc.readyState === 'open') { try { dcSend(p, { k: 'pcbye', why }); } catch (e) {} } p.byeSent = Date.now(); seatAskAt.delete(pid); if (typeof clog === 'function') clog('pcbye-out ' + String(pid).slice(0, 6) + ' ' + why); setTimeout(() => { if (peers.get(pid) === p && !linkTo(pid)) dropPeer(pid, true); }, 300); },
           close: (pid, why) => { seatAskAt.delete(pid); const p = peers.get(pid); if (!p) return; if (typeof clog === 'function') clog('pcclose ' + String(pid).slice(0, 6) + ' ' + (why || '')); if (!linkTo(pid)) dropPeer(pid, true); },
           state: (pid) => { const p = peers.get(pid); return p ? { pc: p.pc ? p.pc.connectionState : 'none', dc: p.dc ? p.dc.readyState : 'none', heardAt: p.lastRx || 0 } : null; },
         },
@@ -17105,7 +17107,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             return { stage: stg, stadium: [...stad] };
           } catch (e) { return { stage: [], stadium: [] }; }
         },
-        onUpdate: () => { renderFromOcc(); saveTreeMem(); try { reportDarkDeaths(); } catch (e) {} },
+        onUpdate: () => { renderFromOcc(); saveTreeMem(); try { reportDarkDeaths(); } catch (e) {} try { meshVoteBeat(); } catch (e) {} },
         onRelayMsg: onRelayFrame,
         prevTree: readTreeMem(),
       });
@@ -20695,7 +20697,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // that starts the mesh's probe-gated confirm early. Guards: only the
       // CURRENT channel (a renegotiation replaces p.dc first), only while the
       // peer is still in the room, never during our own teardown.
-      dc.onclose = () => { if (!leaving && p.dc === dc && peers.has(p.id)) onTransportDead(p.id, 'dc-close'); };
+      dc.onclose = () => { if (!leaving && p.dc === dc && peers.has(p.id) && !(p.byeSeen && Date.now() - p.byeSeen < 30000)) onTransportDead(p.id, 'dc-close'); };   // a close after the far end's pcbye is no loss
       dc.onmessage = (ev) => {
         let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
         m = meshDefrag(m, 'dc|' + p.id); if (!m) return;
@@ -21112,6 +21114,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // departure too (mesh.js goodbye): the LEAVE behind it is lost when
         // the page dies first (chaos seed 10 #1: 10.5 s against 4.2 s).
         if (dc && dc.__authBy === p.id) { try { const s = meshSeat(); if (s && s.goodbye) s.goodbye(p.id); } catch (e) {} }
+      } else if (m.k === 'pcbye') {
+        // A deliberate close from the far end (A2's pc laws): its why reaches the seat's world, and the
+        // channel's close that follows is no loss.
+        if (dc && dc.__authBy === p.id) { p.byeSeen = Date.now(); try { if (meshNode && meshNode.transport) meshNode.transport(p.id, 'bye', typeof m.why === 'string' ? m.why.slice(0, 16) : 'call'); } catch (e) {} if (typeof clog === 'function') clog('pcbye-in ' + String(p.id).slice(0, 6) + ' ' + m.why); }
       } else if (m.k === 'dcauth') {
         dcAuthRecv(p, dc, m);   // §DCAUTH: the peer proves it is the far end of THIS channel
       } else if (m.k === 'mesh') {
@@ -32277,6 +32283,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       updateShareAllBtn();
       setStatus(on ? 'Guests may share their screen.' : 'Guests can no longer share their screen.');
     };
+    // L27 VOTE-OFF ON THE MESH: my vote-offs (device tags) name every peer on that device; the seat signs the
+    // statement and it rides PHONE; the seat's fold is the tally, its threshold the need, its verdict the kick.
+    function meshVoteBeat() {
+      if (!meshNode || !meshNode.setKicks || hasAdminRoom()) return;
+      const want = []; for (const pid of Object.keys(devOf)) if (pid !== myId && myVoteoffs.has(devOf[pid])) want.push(pid);
+      meshNode.setKicks(want);
+      const k = meshNode.kickTally(); const tally = {}; let need = 0;
+      for (const pid of Object.keys(k.tally)) { const dv = devOf[pid]; if (!dv) continue; tally[dv] = Math.max(tally[dv] || 0, k.tally[pid]); need = Math.max(need, k.need[pid] || 0); }
+      if (!need && Object.keys(k.need).length === 0) { const n = (meshSeat() && meshSeat().occ) ? meshSeat().occ.size : 0; need = Math.max(2, Math.trunc(n / 2) + 1); }
+      const ch = JSON.stringify(tally) !== JSON.stringify(voteTally) || need !== voteNeed;
+      voteTally = tally; voteNeed = need; if (ch) refreshAllTiles();
+      if (k.me && !bannedOut) {
+        bannedOut = true;
+        for (const pid of Array.from(peers.keys())) dropPeer(pid);
+        try { meshNode.stop(); } catch (e) {}
+        setStatus('\u26d4 The people on this meeting voted you off.');
+      }
+    }
     function toggleVote(id) {
       if (hasAdminRoom()) return; // admin rooms use the admin's ban, not votes
       const dev = devOf[id];

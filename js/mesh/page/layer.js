@@ -226,10 +226,34 @@
       return d;
     }
 
+    // ---- L27 vote-off: the page's choice into the seat's statement, the seat's fold back to the page ------------
+    // setKicks(peers): who I vote off (the seat's kyes, one statement version per change; it rides PHONE).
+    function setKicks(list) {
+      const s = raw(); if (!s) return;
+      const want = Array.from(new Set((list || []).map(ids.nid).filter((x) => x >= 0 && x !== s.id))).sort((a, b) => a - b);
+      const cur = Array.from(s.kyes || []).sort((a, b) => a - b);
+      if (want.length === cur.length && want.every((x, i) => x === cur[i])) return;
+      s.kyes.length = 0; for (const x of want) s.kyes.push(x); s.kver = (s.kver | 0) + 1;
+    }
+    // kickTally(): the seat's decision fold (rootDec.kick) as peers: {tally: {peer: up}, need: {peer: n}, me: bool}
+    // with the seat's own threshold (route.js kOver); `me` is true when the fold votes ME off.
+    function kickTally() {
+      const s = raw(), out = { tally: {}, need: {}, me: false }; if (!s || !s.rootDec) return out;
+      const R = s.rootDec; const K = GifOS.meshConsts ? GifOS.meshConsts.consts : null;
+      if (R.at < 0 || R.part || R.rx < 0 || (K && s.LT() - R.rx > K.DIG_TTL)) return out;
+      const pop = Math.max(0, R.n) + Math.max(0, R.leased || 0);
+      for (const e of R.kick || []) {
+        const need = Math.max(2, Math.trunc((pop - (R.kabs || 0) - e.dn) / 2) + 1);
+        if (e.tgt === s.id) { if (e.up >= need) out.me = true; }
+        const p = P(e.tgt); if (p == null) continue; out.tally[p] = e.up; out.need[p] = need;
+      }
+      return out;
+    }
+
     // ---- per tick (after the seat's tick) -------------------------------------------------------------------------
     function afterTick() { bump(); replayNew(); refan(); leafOut(); }
 
-    return { ids, view, gossip, gossipRecv, setLeaf, setRefuses, roomDigest, afterTick, bump, heardLeaves: () => heard.size };
+    return { ids, view, gossip, gossipRecv, setKicks, kickTally, setLeaf, setRefuses, roomDigest, afterTick, bump, heardLeaves: () => heard.size };
   }
 
   const api = Object.freeze({ create, makeIds });
