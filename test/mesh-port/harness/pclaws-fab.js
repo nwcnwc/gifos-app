@@ -15,7 +15,7 @@ function installPcLaws(fab) {
   const lv = fab.lv;
   const MT_INDEX = new Map(msg.MT_NAMES.map((n, i) => [n, i]));
   fab.mtI = (t) => MT_INDEX.get(t);
-  const ln = linknet.install(fab); require('./gaps-fab.js').install(fab); require('./gaps3-fab.js').install(fab); require('./gaps4-fab.js').install(fab);
+  const ln = linknet.install(fab); require('./gaps-fab.js').install(fab); require('./gaps3-fab.js').install(fab); require('./gaps4-fab.js').install(fab); require('./gapa-fab.js').install(fab);
   const phys = ln.link;
   const P = {
     w: fab.w, lv, seats: fab.seats, alive: fab.alive, isFrozen: fab.isFrozen, trace: fab.trace, busPush: fab.busPush,

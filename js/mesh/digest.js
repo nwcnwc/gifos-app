@@ -167,6 +167,7 @@
       if (this.coord.pc === 0) lv.COMPACT_ATS1++;   // V5 funnel gauge: probes that reached a Section-1 seat
       // Only a ROW HEAD decides; a non-head hands the probe to its own row head.
       if (this.coord.i !== 0) { const h = this.occGet(ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 })); if (h >= 0 && h !== id) { const m = msg.clone(mm); m.ttl = mm.ttl - 1; this.emit(h, m); } return; }
+      if (lv.GA_DENSE_ASK && this.hostile && this.gaHostServe(mm)) return;   // `hostile densify asked` (gapa.js)
       // L5.1 HEAL TOWARD SECTION 1.
       let l5home = 0; if (this.coord.pc === 0) { l5home = 1; const ol = ownedLinks(this.coord); for (const o2 of ol) if (o2.pc === 0 && this.firstHandLive(ckey(o2))) l5home++; }
       if (this.coord.pc === 0 && sd > 0 && this.rootDec.at >= 0 && !this.rootDec.part && this.rootDec.n <= C * C && this.rootDec.n >= l5home) {
@@ -286,6 +287,7 @@
           else if (this.l12WaveEnd >= 0) this.l12QuietUntil = TICK + K.L12_QUIET;   // wave over: chain only, until a later goodbye
         }
       }
+      this.gaFindSent(up1, m);   // L41.1 (gapa.js)
       this.emit(up1, m);
     },
   });

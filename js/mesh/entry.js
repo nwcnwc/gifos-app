@@ -199,7 +199,7 @@
         const r = this.s1Roster(); let nr = 0;
         for (const e of r) { if (e.v === nc || e.k === k) continue; let has = false; for (const x of nbrs) if (x.k === e.k) { has = true; break; } if (has) continue; nbrs.push({ k: e.k, v: e.v }); if (++nr >= C * C) break; }
       }
-      const m = newMsg('PLACE'); m.coord = co(c); m.owner = id; m.nbrs = nbrs.map((x) => ({ k: x.k, v: x.v })); m.tag = f.tag; m.nc = nc; m.gwc = f.gwc; m.pp = id; m.ppAt = TICK;
+      const m = newMsg('PLACE'); m.coord = co(c); m.owner = id; m.nbrs = nbrs.map((x) => ({ k: x.k, v: x.v })); m.tag = f.tag; m.nc = nc; m.gwc = f.gwc; m.pp = id; m.ppAt = TICK; m.gaN = f.gaN;   // L41.1: the PLACE answers this FIND
       if (this.l13On() && c.pc !== 0 && c.i === 0 && this.hasCoord && ckey(down(this.coord)) === k && (this.l13Past || this.rmLedgerHead >= 0 || this.rmHistAt > -1000)) { this.rmNewHeadAt = TICK; this.rmLedgerHead = -1; }   // L13
       if (this.l13On() && c.pc !== 0 && c.i === 0) {
         for (let j = 1; j < C; j++) {

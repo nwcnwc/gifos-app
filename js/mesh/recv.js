@@ -103,7 +103,7 @@
       if (lv.TIERS_ACTIVE && (m.t === 'HELLO' || m.t === 'CLAIM' || m.t === 'PHONE' || m.t === 'PONG')) this.l4Learn(m);   // L4.1
       if (m.t === 'PHONE' || m.t === 'PONG') this.noteUnp(m);   // G10 / D6
       if (m.id >= 0 && m.id !== id && this.linkIs(m, m.id) && !this.pinned.has(m.id)) this.pinned.set(m.id, fabricToken(lv, m.id));   // L3.10 (S4 TOFU)
-      if (this.moving && this.state === 3 && this.moveEvidence(m) && (!this.rmNeedWit || this.rmWitCell(this.coord, (m.t === 'HELLO' || m.t === 'CLAIM') ? m.ck : ckey(m.coord)))) this.confirmMove();   // L11 / T1
+      if (this.moving && this.state === 3 && this.moveEvidence(m) && this.gaConfirmOk(m) && (!this.rmNeedWit || this.rmWitCell(this.coord, (m.t === 'HELLO' || m.t === 'CLAIM') ? m.ck : ckey(m.coord)))) this.confirmMove();   // L11 / T1
       if (this.evilDoor && (m.t !== 'GREETERS' || m.list.length === 0)) return;   // L16 adversary
       switch (m.t) {
         case 'BUSY': if (m.tag === 14) { this.l14Declined(m); return; } this.l16Busied(m); return;   // L14.1
@@ -134,7 +134,7 @@
         case 'S1SYNC': this.onS1Sync(m); return;
         case 'DRAIN': this.onDrain(m); return;
         case 'CHALLENGE': this.onChallenge(m); return;
-        case 'WITNESS': this.l25WitVote(m); return;   // L25.9
+        case 'WITNESS': if (m.tag === K.GA_TAG) { this.gaVote(m); return; } this.l25WitVote(m); return;   // L25.9 (L41.2: gapa.js)
         case 'PLACED': this.l31OnPlaced(m); return;   // L31.4
         case 'PP': this.onPp(m); return;
         case 'CONFIRM': this.onConfirm(m); return;

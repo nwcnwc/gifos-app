@@ -309,7 +309,8 @@
       if (this.vban.size && this.kBanned(v)) return;
       if (v >= 0 && v !== this.id && this.noChan.has(v) && this.hasCoord && this.ownedLinkCell(k)) { this.darkHold.set(k, v); return; }
       this.darkHold.delete(k);
-      const it = this.occ.get(k); if (it === undefined || it !== v) { this.tlForget(k); this.born.set(k, this.LT()); this.pairAt.set(k, this.TICK); }
+      const it = this.occ.get(k); if (it !== undefined && it >= 0 && it !== v && it !== this.id) this.gaNoteOver(k, it);   // L41.2: the seat a claim displaced in my view (gapa.js)
+      if (it === undefined || it !== v) { this.tlForget(k); this.born.set(k, this.LT()); this.pairAt.set(k, this.TICK); }
       this.occ.set(k, v);
     },
     // C++: mesh.cpp:Seat::noteS1

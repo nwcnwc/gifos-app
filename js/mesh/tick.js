@@ -188,7 +188,8 @@
           if (!this.moving && this.hasCoord && key === ckey(this.coord) && this.leaseUntil >= 0 && TICK <= this.leaseUntil && TICK >= this.leaseUntil - K.LEASE_TTL + K.RC_LAND && this.leaseCk && this.leaseCk !== key) { this.rcBeside(val[0], key, this.leaseCk); this.rcHanded.delete(key); continue; }
         }
       }   // L3.10.4
-      if (this.moving && TICK - this.moveAt > K.CONFIRM_TTL) { if (this.rmNeedWit) { this.rbWhy = 'nowit-window'; this.rollbackMove(); } else this.confirmMove(); }   // L11
+      if (this.moving && TICK - this.moveAt > K.CONFIRM_TTL && this.gaWindow()) { /* L41.2 (gapa.js) */ }
+      else if (this.moving && TICK - this.moveAt > K.CONFIRM_TTL) { if (this.rmNeedWit) { this.rbWhy = 'nowit-window'; this.rollbackMove(); } else this.confirmMove(); }   // L11
       if (this.leaseUntil >= 0 && TICK > this.leaseUntil) { this.leaseCk = 0; this.leaseUntil = -1; }
       this.recheckSitting();   // A: assigner frees soft sitting-down if PLACE never confirmed
       return false;

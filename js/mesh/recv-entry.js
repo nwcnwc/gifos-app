@@ -189,7 +189,7 @@
       if (this.state === 3 && m.tag === 1 && m.nc === id) lv.COMPACT_PLACES++;
       if (this.state === 3 && m.tag === 1 && m.nc === id && this.hasCoord && !this.moving && !this.hasChildren() && pcDepth(m.coord.pc) < pcDepth(this.coord.pc) && !this.firstHandLive(ckey(m.coord))) {
         let trailing = true; for (let j = this.coord.i + 1; j < C; j++) if (this.occGet(ckey({ pc: this.coord.pc, r: this.coord.r, i: j })) >= 0) { trailing = false; break; }   // re-validate clean departure
-        if (trailing) { lv.COMPACT_MOVES++; this.doMove(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, m.ppL); }   // a contested destination is caught by E2 -> rollbackMove
+        if (trailing && this.gaAsked(m)) { lv.COMPACT_MOVES++; this.doMove(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, m.ppL); if (this.moving && ckey(this.coord) === ckey(m.coord)) this.gaStart(m.owner); }   // L41 (gapa.js): only for a FIND I sent; the move asks a second word   // a contested destination is caught by E2 -> rollbackMove
       }
     },
 

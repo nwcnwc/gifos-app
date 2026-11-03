@@ -343,6 +343,8 @@ function install(fab) {
   // the `hostile` verb. C++: mesh.cpp:runOp
   function hostileVerb(tk) {
     if (tk.length > 1 && tk[1] === 'report') hostileReport();
+    else if (tk.length > 2 && tk[1] === 'densify' && tk[2] === 'asked') fab.X.gaDenseAskOn();   // gapa-fab.js
+    else if (tk.length > 1 && tk[1] === 'gapa') fab.X.gaReport();   // gapa-fab.js
     else if (tk.length > 1 && tk[1] === 'densify') fab.X.hostDensify();   // gaps3-fab.js
     else if (tk.length > 2 && tk[1] === 'media') hostileMedia(tk[2]);
     else hostileMark(tk.length > 1 ? atof(tk[1]) : 0.02, tk.length > 2 ? tk[2] : 'mix', tk.length > 3 ? tk[3] : 'any');
