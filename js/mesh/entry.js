@@ -42,7 +42,7 @@
   Seat.unit('mesh_seat.inc entry', {
     // C++: mesh_seat.inc:Seat::take
     // nbrs is filled in place (the C++ vector<KV>& is the caller's).
-    take(c, owner, nbrs, ppFrom, ppTick, nbrsRow, ppTickL) {
+    take(c, owner, nbrs, ppFrom = -1, ppTick = -1, nbrsRow = [], ppTickL = -1) {
       const lv = this.w.lv, id = this.id, TICK = this.TICK;
       if (c.i >= C || c.r >= C) return;   // sanity: never take a malformed coord
       if (roomTerm(this, 1) && this.c7At > -1000000 && TICK - this.c7At < K.RELAY_TTL && !(lv.TIERS_ACTIVE && (this.cnat !== E.NAT_OPEN || this.l4NatSeen))) {
@@ -572,7 +572,7 @@
 
     // C++: mesh_seat.inc:Seat::tryReclaim
     // The returner at the door: the HOME roster names my old cell's rook neighbours; each hears my proof over the mesh.
-    tryReclaim(ro, greeter) {
+    tryReclaim(ro, greeter = -1) {
       const id = this.id; const lv = this.w.lv;
       const oc = unckey(this.oldCell); const ol = ownedLinks(oc); const n = ol.length; let sent = 0;
       for (const e of ro) {

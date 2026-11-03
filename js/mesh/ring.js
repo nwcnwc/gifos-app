@@ -128,7 +128,7 @@
     doorNamed(x) { if (x < 0 || this.TICK - this.greetersAt > K.RELAY_TTL) return false; for (const g of this.lastGreeters) if (g === x) return true; return false; },
 
     // C++: mesh_ring.inc:Seat::l25Stand
-    l25Stand(claimant, yielding) {
+    l25Stand(claimant, yielding = false) {
       if (claimant < 0 || claimant === this.id) return false;
       if (yielding && this.hasCoord && this.state === 3 && this.TICK - this.seatedAt >= K.L11_ARRIVE && !this.islanded()) return false;
       const l = this.lineOf(claimant); if (l < 0 || this.line < 0 || l === this.line) return false;
