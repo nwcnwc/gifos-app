@@ -3420,11 +3420,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
        was wider than the column, so it ran under Questions. They are a
        service host's, so a small group does not show them. */
     body.broadcast.bc-host .bar:not(.collapsed) #barmore #bcwhenrow,
+    body.broadcast.bc-host .bar:not(.collapsed) #barmore #bcrdrow,
     body.broadcast.bc-host .bar:not(.collapsed) #barmore #bcvisitrow {
       grid-column: 1 / -1; display: flex; flex-direction: column; align-items: stretch;
       width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box;
     }
     .bar:not(.collapsed) #barmore #bcwhenrow input,
+    .bar:not(.collapsed) #barmore #bcrdrow select,
     .bar:not(.collapsed) #barmore #bcvisitrow input {
       width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box;
     }
@@ -3819,6 +3821,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #bcwhenrow { display: none; }
   body.broadcast.bc-host #bcwhenrow { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; flex-wrap: wrap; }
   #bcwhenrow input { min-height: 44px; font: inherit; border-radius: 10px; padding: 0 8px; }
+  #bcrdrow { display: none; }
+  body.broadcast.bc-host #bcrdrow { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; flex-wrap: wrap; }
+  #bcrdrow select { min-height: 44px; font: inherit; border-radius: 10px; padding: 0 8px; }
   #bcvisitrow { display: none; }
   body.broadcast.bc-host #bcvisitrow { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; flex-wrap: wrap; }
   #bcvisitrow input { min-height: 44px; min-width: 12rem; font: inherit; border-radius: 10px; padding: 0 8px; }
@@ -4110,6 +4115,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <button data-ti="appTip" id="appbtn" data-t="runApp" aria-keyshortcuts="Alt+Y" title="Run an app inside this meeting — everyone here shares and interacts with it live">Run app</button>
         <button data-ti="rbbtnTip" data-t="rbbtn" id="rbbtn" title="Play the last broadcast, or a video, into the broadcast. Viewers see Prerecorded.">Rebroadcast</button>
         <label data-ti="bcwhenrowTip" id="bcwhenrow" title="When the broadcast starts. The viewer link and the room say so."><span data-t="bcwhenLbl" id="bcwhen-lbl">Start time</span><input type="datetime-local" id="bcwhen"></label>
+        <label data-ti="bcrdrowTip" id="bcrdrow" title="An optional order of events only you see. Off for a new broadcast."><span data-t="bcrdLbl">Run of show</span><select id="bcrd"><option value="" data-t="bcrdNone">None</option><option value="service" data-t="bcrdService">Worship service</option></select></label>
         <label data-ti="bcvisitrowTip" id="bcvisitrow" title="Link for viewers (opens in a new window)"><span data-t="bcvisitLbl" id="bcvisit-lbl">Visit link</span><input type="url" id="bcvisit" inputmode="url" autocomplete="url" placeholder="https://" spellcheck="false"></label>
       </div>
     </section>
@@ -12063,9 +12069,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const RUNDOWN_STEPS = [
       ['rdWelcome', 'Welcome'],
       ['rdSong', 'Song'],
-      ['rdPrayer', 'Break'],
-      ['rdScripture', 'Reading'],
-      ['rdMessage', 'Talk'],
+      ['rdPrayer', 'Prayer'],
+      ['rdScripture', 'Scripture'],
+      ['rdMessage', 'Message'],
       ['rdSong', 'Song'],
       ['rdClosing', 'Closing'],
     ];
@@ -12081,6 +12087,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const at = rundownAt();
       for (let i = at; i < RUNDOWN_STEPS.length; i++) if (songSlotOf(i) >= 0) return songSlotOf(i);
       return 0;
+    }
+    // The run of show is an optional template the host picks in More (Run of
+    // show). A new broadcast has none: no agenda, no songs. A room that already
+    // used it (a stored place or song words) keeps it, unless the host chose None.
+    function rundownTplKey() { return 'gifos_rdtpl_' + (params.get('v') || ''); }
+    function rundownTpl() {
+      try {
+        const t = localStorage.getItem(rundownTplKey());
+        if (t === 'service') return 'service';
+        if (t === 'none') return '';
+        if (sessionStorage.getItem(rundownStoreKey()) !== null || localStorage.getItem(songStoreKey(0)) || localStorage.getItem(songStoreKey(1))) return 'service';
+      } catch (e) {}
+      return '';
     }
     function rundownStoreKey() { return 'gifos_rundown_' + (params.get('v') || ''); }
     function rundownAt() {
@@ -12099,7 +12118,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { paintLyrics(); } catch (e) {}
         return;
       }
-      const host = typeof BROADCAST !== 'undefined' && BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored()));
+      const host = typeof BROADCAST !== 'undefined' && BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored())) && rundownTpl() === 'service';
       el.classList.toggle('open', !!host);
       document.body.classList.toggle('rundown', !!host);
       try { paintLyrics(); } catch (e) {}
@@ -12196,7 +12215,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { sessionStorage.setItem(lyricStoreKey(), String(n)); } catch (e) {}
     }
     function lyricSongOn() {
-      const host = typeof BROADCAST !== 'undefined' && BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored()));
+      const host = typeof BROADCAST !== 'undefined' && BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored())) && rundownTpl() === 'service';
       return !!(host && songSlotOf(rundownAt()) >= 0);
     }
     // The line the room sees on the booth's camera, or '' outside Song.
@@ -32999,6 +33018,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     // The host's Visit link. It stays on the host's phone for this room and
     // rides every viewer link from Invite.
+    const bcRdIn = document.getElementById('bcrd');
+    if (bcRdIn && BROADCAST) {
+      bcRdIn.value = rundownTpl();
+      bcRdIn.onchange = () => {
+        try { localStorage.setItem(rundownTplKey(), bcRdIn.value === 'service' ? 'service' : 'none'); } catch (e) {}
+        if (bcRdIn.value === 'service') { setRundownAt(0); setLyricAt(0); }
+        paintRundown();
+      };
+    }
     const bcVisitIn = document.getElementById('bcvisit');
     function paintBcVisitField() {
       const lbl = document.getElementById('bcvisit-lbl');
