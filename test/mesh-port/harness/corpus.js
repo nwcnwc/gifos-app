@@ -11,6 +11,8 @@
  *       is none of these.
  *   node corpus.js battery <mesh binary>
  *       The hand-made battery (BATTERY below): argument parsing, lever toggles and every report on an empty room, same lines to both, compared chunk by chunk.
+ *   node corpus.js full <cache v1 dir> <mesh binary> [--max-n N] [--limit K] [--max-sec S]
+ *       Whole streams (with ticks) through the sim and the whole JS port, chunk by chunk (see full()).
  *   node corpus.js diff <cache v1 dir> <mesh binary> [--max-n N] [--limit K]
  *       For each distinct stream prefix (a cached stream cut at its first verb that advances time or makes a
  *       seat; a marker verb after every line), run the sim and `main.js --service --tolerant` and compare stdout
@@ -145,15 +147,62 @@ function battery(cxx) {
   if (skipped.length) console.log('skipped: ' + skipped.join(' ; '));
   return nd ? 1 : 0;
 }
+
+// Whole streams through the sim and through the whole JS port (every seat unit, link / time / net, pc laws, friend-hop).
+// Streams are deduplicated, cut to the ones with init N <= maxN, spread evenly over N and over the verb set, and a case the sim takes
+// more than maxSec to run is left out (no wall clock on the JS run). A chunk the JS skips as not wired taints the rest of the case.
+function full(dir, cxx, opt) {
+  const maxN = opt.maxN || 200, limit = opt.limit || 100, maxSec = opt.maxSec || 3;
+  const seen = new Set(); const cases = [];
+  for (const f of streams(dir)) {
+    const lines = fs.readFileSync(f, 'latin1').split('\n').map(tokenize).filter((t) => t.length);
+    const init = lines.find((t) => t[0] === 'init'); if (!init || atoi(init[1]) > maxN) continue;
+    if (lines.some((t) => ['threads'].includes(t[0]))) continue;
+    const key = lines.map((t) => t.join(' ')).join('\n'); if (seen.has(key)) continue; seen.add(key);
+    cases.push({ lines, n: atoi(init[1]), f });
+  }
+  cases.sort((a, b) => a.n - b.n || a.lines.length - b.lines.length);
+  const step = Math.max(1, Math.floor(cases.length / limit)); const pick = []; for (let i = 0; i < cases.length && pick.length < limit; i += step) pick.push(cases[i]);
+  const env = Object.assign({}, process.env, { MESH_NOTIME: '1', MESH_THREADS: '1' });
+  const split = (s) => { const ch = []; let cur = []; for (const l of s.split('\n')) { if (l === 'READY gifos-mesh-sim service') continue; if (l.startsWith('ERR unknown: __m')) { ch.push(cur); cur = []; } else cur.push(l); } return ch; };
+  let nCase = 0, nChunk = 0, nSame = 0, nSkip = 0, nTaint = 0, nDiff = 0, nSlow = 0, nCrash = 0; const perVerb = new Map(), skipVerb = new Map(), diffs = [], crashes = [];
+  for (const c of pick) {
+    const cut = c.lines.filter((t) => t[0] !== 'quit');
+    const input = cut.map((t, i) => t.join(' ') + '\n__m' + i + '\n').join('') + 'quit\n';
+    const t0 = Date.now(); const cr = cp.spawnSync(cxx, ['--service'], { input, env, encoding: 'latin1', maxBuffer: 1 << 29 });
+    if (Date.now() - t0 > maxSec * 1000) { nSlow++; continue; }
+    nCase++;
+    const j = cp.spawnSync(process.execPath, [path.join(__dirname, 'main.js'), '--service', '--tolerant'], { input, env, encoding: 'latin1', maxBuffer: 1 << 29 });
+    const cc = split(cr.stdout), jc = split(j.stdout);
+    if (j.status !== 0 && jc.length < cut.length) { nCrash++; crashes.push({ f: path.basename(path.dirname(c.f)), n: c.n, at: jc.length, verb: (cut[jc.length] || ['?'])[0], why: (j.stderr || '').split('\n').slice(0, 2).join(' | ') }); }
+    let tainted = false;
+    for (let i = 0; i < cut.length; i++) {
+      nChunk++; const verb = cut[i][0];
+      if (tainted) { nTaint++; continue; }
+      if (i >= jc.length) { tainted = true; nTaint++; continue; }
+      const a = (cc[i] || []).join('\n'), b = (jc[i] || []).join('\n');
+      if (b.startsWith('@@SKIP')) { nSkip++; tainted = true; skipVerb.set(verb, (skipVerb.get(verb) || 0) + 1); continue; }
+      if (verb === 'rss') { nSame++; continue; }
+      if (a === b) { nSame++; perVerb.set(verb, (perVerb.get(verb) || 0) + 1); } else { nDiff++; diffs.push({ id: path.basename(path.dirname(c.f)), n: c.n, cut: cut.slice(0, i + 1), why: 'C++:\n' + a.slice(0, 600) + '\nJS:\n' + b.slice(0, 600) }); tainted = true; }
+    }
+  }
+  console.log(`full: cases=${nCase} (slow in sim, left out: ${nSlow}) chunks=${nChunk} same=${nSame} skipped=${nSkip} not-compared-after-a-skip/diff/crash=${nTaint} diff=${nDiff} jsCrash=${nCrash}`);
+  console.log('compared per verb: ' + [...perVerb.entries()].sort((a, b) => b[1] - a[1]).map((x) => x[0] + ':' + x[1]).join(' '));
+  console.log('skipped per verb: ' + [...skipVerb.entries()].sort((a, b) => b[1] - a[1]).map((x) => x[0] + ':' + x[1]).join(' '));
+  for (const c of crashes.slice(0, 5)) console.log('CRASH ' + JSON.stringify(c));
+  for (const d of diffs.slice(0, 6)) console.log('DIFF stream ' + d.id + ' N=' + d.n + ' at `' + d.cut[d.cut.length - 1].join(' ').slice(0, 100) + '` (line ' + d.cut.length + ')\n' + d.why);
+  return nDiff || nCrash ? 1 : 0;
+}
 function atoi(s) { const v = parseInt(s, 10); return Number.isNaN(v) ? 0 : v | 0; }
 
 if (require.main === module) {
   const [cmd, dir, ...rest] = process.argv.slice(2);
   const opt = {}; let cxx = null;
-  for (let i = 0; i < rest.length; i++) { if (rest[i] === '--cxx') cxx = rest[++i]; else if (rest[i] === '--max-n') opt.maxN = +rest[++i]; else if (rest[i] === '--limit') opt.limit = +rest[++i]; else if (!cxx && cmd === 'diff') cxx = rest[i]; }
+  for (let i = 0; i < rest.length; i++) { if (rest[i] === '--cxx') cxx = rest[++i]; else if (rest[i] === '--max-n') opt.maxN = +rest[++i]; else if (rest[i] === '--limit') opt.limit = +rest[++i]; else if (rest[i] === '--max-sec') opt.maxSec = +rest[++i]; else if (!cxx && (cmd === 'diff' || cmd === 'full')) cxx = rest[i]; }
   if (cmd === 'scan') process.exit(scan(dir, cxx));
   else if (cmd === 'diff') process.exit(diff(dir, cxx, opt));
+  else if (cmd === 'full') process.exit(full(dir, cxx, opt));
   else if (cmd === 'battery') process.exit(battery(dir));
   else { console.error('usage: corpus.js scan <v1 dir> [--cxx bin] | diff <v1 dir> <bin> [--max-n N] [--limit K]'); process.exit(2); }
 }
-module.exports = { scan, diff, battery, batteryInput, tokenize };
+module.exports = { scan, diff, full, battery, batteryInput, tokenize };

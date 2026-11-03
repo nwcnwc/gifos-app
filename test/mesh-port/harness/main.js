@@ -19,6 +19,8 @@
 const fs = require('fs'), path = require('path');
 const { createFabric } = require('./fabric.js');
 const { createOps } = require('./runop.js');
+const { installPcLaws } = require('./pclaws-fab.js');
+const { installFhop } = require('./fhop.js');
 const { runScript } = require('./script.js');
 const msg = require(path.join(__dirname, '..', '..', '..', 'js', 'mesh', 'msg.js'));
 const topo = require(path.join(__dirname, '..', '..', '..', 'js', 'mesh', 'topo.js'));
@@ -35,6 +37,7 @@ function makeOut() {
 
 // C++: mesh.cpp:main
 async function main(argv, env) {
+  const opts_noUnits = env.MESH_PORT_NOUNITS !== undefined;   // test switch: the fabric alone (the units of the merged tree not loaded)
   let service = false, wthreads = 0, scriptPath = null, tracePath = null, haveSeed = false, scriptSeed = 0, tolerant = false, allowTeleport = false;
   const levers = {};
   if (env.MESH_SKEW !== undefined) levers.NET_SKEW = Math.max(0, atoi(env.MESH_SKEW));
@@ -57,6 +60,13 @@ async function main(argv, env) {
   const err = (s) => process.stderr.write(s);
   if (tracePath) { try { fs.closeSync(fs.openSync(tracePath, 'w')); } catch (e) { err('ERR cannot write trace ' + tracePath + '\n'); return 2; } }
   const fab = createFabric({ levers, proofDir: env.MESH_PROOF || null, proofState: !!env.MESH_PROOF_STATE, traceFile: tracePath });
+  // the whole port: every seat unit, the link / time / net physics, the pc laws and friend-hop (the merged tree)
+  if (!opts_noUnits) {
+    const M = path.join(__dirname, '..', '..', '..', 'js', 'mesh');
+    require(path.join(M, 'seat.js'));
+    for (const f of fs.readdirSync(M).sort()) if (f.endsWith('.js') && f !== 'seat.js') require(path.join(M, f));
+    installPcLaws(fab); installFhop(fab);
+  }
   const ops = createOps(fab, { out: o.out });
   let rc = 0;
   const lv = fab.lv;

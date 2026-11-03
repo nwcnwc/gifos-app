@@ -2,7 +2,7 @@
 /*
  * hostile.js: THE HOSTILE PAGE (port plan H3), a line-for-line port of the sim's mesh_hostile.inc: the seat
  * side (Seat.hostileTick, Seat.hostileRecv: a malicious page that sends any frame and ignores any law) and
- * the fabric side (the `hostile` verb: hostileMark, hostileReport, hostileMedia, and hostileTickF, the
+ * (hostileRecv is js/mesh/seat-rest.js) and the fabric side (the `hostile` verb: hostileMark, hostileReport, hostileMedia, and hostileTickF, the
  * per-tick measurement). Harness code, never shipped: a hostile page is the adversary of the sim.
  *
  *   hostile <frac> <mode> [any|s1|head]   mark max(1,frac*N) seated seats (or, with where, Section-1 seats / deep row heads first)
@@ -218,42 +218,18 @@ Seat.unit('mesh_hostile.inc seat side', {
     }
   },
 
-  // true: the frame stops here (the page ignored it, or answered it its own way)
-  // C++: mesh_hostile.inc:Seat::hostileRecv
-  hostileRecv(m) {
-    const fab = this.w.fab, lv = fab.lv, seats = fab.seats, alive = fab.alive; const id = this.id;
-    const h = this.hostile; const TICK = fab.w.TICK | 0;
-    const mate = () => { let r = -1; for (let q = 0; q < lv.nextId; q++) { const y = (id + 1 + q) % lv.nextId; if (y !== id && alive[y] && (seats[y].hostile & H_COLLUDE)) { r = y; break; } } return r; };
-    if (m.sig && m.id >= 0 && m.id !== id && this.hostRec.length < 32) this.hostRec.push(msg.clone(m));
-    if ((h & (H_HOLD | H_DIAL)) && m.t === 'UNNEEDED') return true;
-    if ((h & H_COLLUDE) && m.t === 'CHALLENGE' && m.tag === 25) {   // "yes, that cell is mine", with a placement my mate signed long ago
-      const mt = mate(); const c = msg.newMsg('CONFIRM'); c.ck = m.ck; c.id = id; c.pp = mt; c.ppAt = TICK - 500; c.sig = true; c.sigAt = TICK; hostSend(fab, id, m.from, c); return true;
-    }
-    if ((h & H_COLLUDE) && m.t === 'CHALLENGE' && m.tag === 26) {   // a colluding witness: "I hear my mate there" (L25.9)
-      const mt = mate(); const wm = msg.newMsg('WITNESS'); wm.ck = m.ck; wm.id = id; wm.nc = mt; wm.sig = true; wm.sigAt = TICK; hostSend(fab, id, m.from, wm); return true;
-    }
-    if (h & H_HOLE) {
-      if (m.routing && m.t !== 'PHONE' && m.t !== 'PONG') return true;
-      switch (m.t) {
-        case 'FIND': case 'FINDLEAF': case 'PLACE': case 'NOROOM': case 'ROUTE': case 'ROUTED': case 'WALK': case 'OFFER': case 'FINDACK': return true;
-        case 'HANDOFF': case 'TAKEOVER': return true;
-        case 'WHOHOME': { const b = msg.newMsg('BUSY'); b.id = id; hostSend(fab, id, m.from, b); return true; }   // the black hole answers every knock BUSY (L16): the joiner moves on
-        default: break;
-      }
-    }
-    if ((h & H_FORGE) && m.t === 'FIND' && m.nc >= 0 && this.hasCoord) {   // a false placement: a seat somebody already holds
-      if (!this.hostRng) this.hostRng = rng.mt19937(seedOf(lv, id));
-      const v = hostPickHonest(fab, this.hostRng, id);
-      const p = msg.newMsg('PLACE'); p.coord = cp(v >= 0 ? seats[v].coord : this.coord); p.owner = id; p.nc = m.nc; p.pp = id; p.ppAt = TICK; p.tag = m.tag; hostSend(fab, id, m.nc, p); return true;
-    }
-    return false;
-  },
+  // hostileRecv is js/mesh/seat-rest.js (C++: mesh_hostile.inc:Seat::hostileRecv); it reaches this file's hostSend and
+  // hostPickHonest through the world (w.hostSend, w.hostPickHonest, w.seats, w.alive, w.nextId), set by install().
 });
 
 function install(fab) {
   const lv = fab.lv, seats = fab.seats, alive = fab.alive, w = fab.w;
   const P = (f, ...a) => fab.printf(f, ...a);
   w.fab = fab;
+  // the hooks seat-rest.js's hostileRecv reads (C++: hostSend, hostPickHonest, seats, alive, nextId)
+  w.seats = seats; w.alive = alive; Object.defineProperty(w, 'nextId', { get: () => lv.nextId, configurable: true });
+  w.hostSend = (from, to, m) => hostSend(fab, from, to, m);
+  w.hostPickHonest = (g, not1) => hostPickHonest(fab, g, not1);
   const H = fab.hostile = { HM_PCMAX: [0, 0], HM_PCAT: [0, 0], HM_PCSEAT: [-1, -1], HM_RUN: [], HM_LASTIN: [], HM_R1: [] };
   const coordStr = fab.coordStr;
 
