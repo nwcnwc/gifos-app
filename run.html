@@ -12816,7 +12816,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const s = meshSeat();
       const atDoor = !!(s && (s.state === 1 || s.state === 2));
       let isMember = null;
-      if (atDoor) { const members = GifOS.mesh.Seat.rosterPeers(s.roster); for (const v of s.occ.values()) if (v) members.add(String(v)); isMember = (pid) => members.has(String(pid)); }
+      if (atDoor) { const members = new Set(); for (const v of s.occ.values()) if (v) members.add(String(v)); isMember = (pid) => members.has(String(pid)); }
       const c = reachCounts(peers.values(), peerAway, isMember);
       const f = { probe: directPath, n: participantCount(), live: c.live, dead: c.dead,
         stranded: !!(s && s.stranded), atDoor };
@@ -14974,6 +14974,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     // Peers the seat asked to dial (pc.ensure), for a while: the seat's dial is its reason.
     const seatAskAt = new Map();
+    function meshTraceSink(line) { const G = window.__meshTraceRing || (window.__meshTraceRing = { ring: [], seq: 0 }); G.ring.push([++G.seq, line]); if (G.ring.length > 4000) G.ring.splice(0, 1000); }
     window.__meshPortPage = { pcbye: (pid, why) => { try { meshNode && meshNode.__pc && meshNode.__pc.bye(pid, why); } catch (e) {} }, dcOpen: (pid) => { const p = peers.get(pid); return !!(p && p.dc && p.dc.readyState === 'open'); } };
     function seatAsked(pid) { const at = seatAskAt.get(pid); return at != null && Date.now() - at < 60000; }
     // Establish or retire ONE peer's media link per the seat arithmetic. Also
@@ -16874,6 +16875,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           state: (pid) => { const p = peers.get(pid); return p ? { pc: p.pc ? p.pc.connectionState : 'none', dc: p.dc ? p.dc.readyState : 'none', heardAt: p.lastRx || 0 } : null; },
         },
         relayBusy: (pid, body) => { relaySendSealed(pid, 'busy', Object.assign({ k: 'busy' }, body)); },
+        trace: DEBUG_ON ? meshTraceSink : null,
         onMissing: (g) => { if (typeof clog === 'function') clog('mesh-port missing ' + g); },
         // Entry asks are delivered only on a channel to the greeter they name.
         // meshSendDC also returns true for a dump onto some other peer; the
@@ -20645,7 +20647,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       p.dc = dc;
       if (!dc.__pc) { try { dc.__pc = p.pc; } catch (e) {} }
       dc.onopen = () => {
-        try { if (meshNode && meshNode.transport && p.dc === dc) meshNode.transport(p.id, 'open'); } catch (e) {}   // the seat's link opened (env.js)
+        // The seat's link opened (env.js). A pc the far end dialled reaches the pc laws as its offer first: the
+        // dialler's mark does not cross the bootstrap yet, so its seatedness is my view's (seated if my occ holds it).
+        try {
+          if (meshNode && meshNode.transport && p.dc === dc) {
+            let ok = true;
+            if (!seatAsked(p.id)) ok = meshNode.transport(p.id, 'offer', { s: meshKnows(p.id) ? 1 : 0 }) !== false;
+            if (ok) meshNode.transport(p.id, 'open'); else if (typeof clog === 'function') clog('pc-refused ' + String(p.id).slice(0, 6));
+          }
+        } catch (e) {}
         clearTimeout(p.hiLate); p.hiLate = null;
         dcAuthSend(p, dc);
         // THE CHANNEL IS OPEN: everything the relay did not carry crosses it
@@ -35520,48 +35530,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       meshSeatForTest: () => { const s = meshSeat(); if (!s) return null; const T = s.env.TICK; const ck = net.topo.ckey;
         return { tick: T, state: s.state, coord: s.hasCoord ? ck(s.coord) : null, lastAsked: s.lastAsked ? String(s.lastAsked).slice(0, 8) : null, findAckAt: s.findAckAt, retryAgo: T - s.retryAt, seatTries: s.seatTries, roster: (s.roster || []).map((e) => e.k + '=' + String(e.v).slice(0, 6)), greeters: (s.lastGreeters || []).map((g) => String(g).slice(0, 6)), greetersAgo: T - s.greetersAt, lastAckAgo: T - s.lastAck, seatedAgo: T - s.seatedAt,
           occ: [...s.occ.entries()].map(([k, v]) => k + '=' + String(v).slice(0, 6) + (s.firstHandLive(k) ? '!' : '')), sitting: [...s.sitting.entries()].map(([k, v]) => k + '=' + String(v.joiner).slice(0, 6) + '@' + (T - v.at) + (v.pingAt >= 0 ? 'p' : '')), tlLog: (s.tlLog || []).slice(-6), moving: !!s.moving, drainAt: s.drainAt, stranded: !!s.stranded }; },
-      meshTraceForTest: (on) => { const s = meshSeat(); if (!s) return false; if (s.__trace) return true; const G = window.__meshTraceRing || (window.__meshTraceRing = { ring: [], seq: 0 }); const ring = s.__trace = G.ring; Object.defineProperty(s, '__traceSeq', { configurable: true, get: () => G.seq, set: (v) => { G.seq = v; } });   // ONE ring per page: a second Seat object (a restarted node) traces into the same ring, its rows tagged by its serial
-        const KEEP = new Set(['FIND', 'FINDACK', 'PLACE', 'NOROOM', 'HELLO', 'CLAIM', 'SITPING', 'SITPONG', 'YIELD', 'CONFIRM', 'CHALLENGE', 'LEAVE', 'MOVED', 'GREETERS', 'HOME', 'WHOHOME', 'PP', 'PHONE', 'PONG']);
-        // columns: tick, dir, type, peer, cell, nonce, id, link-proven id, s4, list length (GREETERS) / tock (PHONE: the cell the caller believes I hold) / yp (PONG: the hearing PONG ahead of a YIELD) / why (a sent NOROOM: mesh.js noroomWhy)
-        const tag = () => 's' + s.serial + (s.alive ? '' : '!dead'); const push = (dir, m, to) => { if (!KEEP.has(m.t)) return; ring.push([s.env.TICK, dir, m.t, String(to || m.from || '').slice(0, 6), m.ck || (m.coord ? net.topo.ckey(m.coord) : ''), m.nc ? String(m.nc).slice(0, 6) : '', m.id ? String(m.id).slice(0, 6) : '', m.lk ? String(m.lk).slice(0, 6) : '', m.s4ok === true ? 's4' : '', m.list ? m.list.length : (m.t === 'PHONE' ? (m.tock || '') : (m.t === 'PONG' && m.yp === 1 ? 'yp' : (m.t === 'NOROOM' && dir === 'tx' ? String(s.noroomWhy || '').slice(0, 80) : ''))), tag()]); s.__traceSeq++; if (ring.length > 400) ring.shift(); };
-        const r0 = s.recv.bind(s), e0 = s.emit.bind(s); s.recv = (m) => { push('rx', m); s.rivalWhy = null; s.yieldWhy = null; const out = r0(m); if (m && m.t === 'HELLO' && s.rivalWhy) { ring.push([s.env.TICK, 'ev', 'rival', String(m.id || '').slice(0, 6), m.ck || '', '', '', String(s.rivalWhy).slice(0, 40), '', '']); s.__traceSeq++; if (ring.length > 400) ring.shift(); } if (m && m.t === 'YIELD' && s.yieldWhy) { ring.push([s.env.TICK, 'ev', 'yield', String(m.id || '').slice(0, 6), m.ck || '', '', '', String(s.yieldWhy).slice(0, 60), '', '']); s.__traceSeq++; if (ring.length > 400) ring.shift(); } return out; };   // ...and which exit the rival branch took for a HELLO about my own cell (mesh.js rivalWhy)
-        s.emit = (to, m) => { push('tx', m, to); return e0(to, m); };
-        // seat transitions (the frames say what was heard; these say what the seat DID with it): the method, its cell argument, and the calling method
-        for (const fn of ['heal', 'doMove', 'take', 'requeue', 'rollbackMove', 'confirmMove', 'reseatViaRoster']) { const f0 = s[fn]; if (typeof f0 !== 'function') continue; s[fn] = function (...a) { let by = ''; try { const st = String(new Error().stack).split('\n'); const ln = st[2] || ''; const mm = /at (?:Seat\.)?([\w$.]+)/.exec(ln); by = mm ? mm[1] : ''; } catch (e) {} const c = a[0] && typeof a[0] === 'object' && 'pc' in a[0] ? net.topo.ckey(a[0]) : ''; ring.push([s.env.TICK, 'ev', fn, '', c, '', s.hasCoord ? net.topo.ckey(s.coord) : '', by.slice(0, 24), '', '']); s.__traceSeq++; if (ring.length > 400) ring.shift(); return f0.apply(this, a); }; }
-        // ...and any write that names ANOTHER seat at my own cell (my view of my own seat: never someone else's), with its caller
-        { const so0 = s.setOcc; if (typeof so0 === 'function') s.setOcc = function (k, v) { if (s.hasCoord && k === net.topo.ckey(s.coord) && v != null && v !== s.id) { let by = ''; try { const st = String(new Error().stack).split('\n'); const ln = (st[2] || '') + ' ' + (st[3] || ''); const mm = ln.match(/at (?:Seat\.)?([\w$.]+)/g) || []; by = mm.map((x) => x.replace(/^at (?:Seat\.)?/, '')).join('<'); } catch (e) {} ring.push([s.env.TICK, 'ev', 'ownCellTo', String(v).slice(0, 6), k, '', '', by.slice(0, 40), '', '']); s.__traceSeq++; if (ring.length > 400) ring.shift(); } return so0.call(this, k, v); }; }
-        // ...and every Section-1 death verdict a heal rests on, with the evidence it read (live stamp, hole clock, D5 record)
-        { const rc0 = s.ringConfirmDead; if (typeof rc0 === 'function') s.ringConfirmDead = function (h) { const hk = net.topo.ckey(h); const lv = s.live.get(hk), hs = s.holeSince.get(hk), tl = s.translost.get(hk); const r = rc0.call(this, h); if (r) { ring.push([s.env.TICK, 'ev', 'ringDead', String(s.occ.get(hk) || '').slice(0, 6), hk, '', 'live=' + (lv === undefined ? '-' : lv) + ' hole=' + (hs === undefined ? '-' : hs) + ' tl=' + (tl === undefined ? '-' : tl), '', '', '']); s.__traceSeq++; if (ring.length > 400) ring.shift(); } return r; }; }
-        return true; },
-      meshTraceDump: () => { const s = meshSeat(); return s && s.__trace ? s.__trace.slice() : []; },
-      // Seat forensics for the behavior battery's per-actor record (meet.js
-      // snapshotInPage): the clocks and memories that decide a contest, and
-      // the trace ring entries after cursor `since` — the ring's sequence
-      // number as of the caller's last read (`seq` in the answer); the caller
-      // keeps the cursor. A tick is not a cursor: a tick holds many frames.
+      // The seat's decision trace (the sim's JSONL shape {t, s, e, c, d}) rides a page ring while DEBUG is on
+      // (meshTraceSink, the seat world's trace sink); meet.js writes it into each participant's jsonl.
+      meshTraceForTest: () => !!DEBUG_ON,
+      meshTraceDump: () => { const G = window.__meshTraceRing; return G ? G.ring.map((e) => e[1]) : []; },
       meshForensics: (since) => {
-        const s = meshSeat(); if (!s) return null;
+        const G = window.__meshTraceRing || { ring: [], seq: 0 }; const s = meshSeat(); if (!s) return null;
         const six = (x) => (x == null ? null : String(x).slice(0, 6));
         const occ = {}; try { for (const [k, v] of s.occ) occ[k] = six(v); } catch (e) {}
-        const linked = {}; try { for (const [k, v] of s.linkedBy) linked[k] = six(v); } catch (e) {}
-        const live = {}; try { for (const [k, t] of s.live) live[k] = s.env.TICK - t; } catch (e) {}
-        const liveBy = {}; try { for (const [k, v] of s.liveBy) liveBy[k] = six(v); } catch (e) {}
-        const ring = s.__trace || [];
-        const seq = s.__traceSeq || 0;                                    // ring entry i has sequence number seq - ring.length + i
-        const from = (Number.isFinite(since) && since >= 0 && since <= seq) ? since : 0; // a cursor past this ring belongs to an earlier seat object (a rejoin): start over
-        const skip = Math.max(0, ring.length - (seq - from));             // entries with sequence number < from are already recorded
-        return {
-          serial: s.serial, alive: !!s.alive, nodeSerial: meshNode && meshNode.seat === s ? 'current' : 'stale',
-          tick: s.env.TICK, estAt: s.estAt, rookSeenAt: s.rookSeenAt, seatedAt: s.seatedAt, moving: !!s.moving,
-          pendY: s.pendY ? { by: six(s.pendY.by), at: s.pendY.at, ck: s.pendY.ck } : null,
-          rival: s.rival ? { id: six(s.rival.id), at: s.rival.at } : null,
-          rosterAskAt: s.rosterAskAt, challTo: s.challTo ? { id: six(s.challTo.id), at: s.challTo.at } : null,
-          occ, linked, live, liveBy, translost: (() => { const o = {}; try { for (const [k, t] of s.translost) o[k] = t; } catch (e) {} return o; })(),
-          tlLog: (s.tlLog || []).slice(-6),
-          nbrAt: s.nbrAt, admBy: six(s.admBy), greeters: { ids: (s.lastGreeters || []).map(six), age: s.greetersAt == null ? null : s.env.TICK - s.greetersAt },
-          healTry: (() => { const o = {}; try { for (const [k, t] of s.healTry) o[k] = s.env.TICK - t; } catch (e) {} return o; })(),
-          seq, trace: ring.slice(skip),
-        };
+        return { seq: G.seq, tick: s.TICK, state: s.state, coord: s.coord, occ, links: Array.from(s.linkPeers()).map(six), keeps: Array.from(s.keepPeers ? s.keepPeers() : []).map(six),
+          trace: G.ring.filter((e) => e[0] > (since == null ? -1 : since)).map((e) => e[1]), adapter: meshNode && meshNode.adapterStats ? meshNode.adapterStats() : null };
       },
       meshLinks: () => { const s = meshSeat(); return s ? Array.from(s.linkPeers()) : []; },
       adapterStats: () => (meshNode && meshNode.adapterStats ? meshNode.adapterStats() : null),   // the seat world's tick/inbox/delay counters (env.js stats)
