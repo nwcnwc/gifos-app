@@ -25034,10 +25034,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // from a live source). Every copy I relay from this claim stops while the claim is dark or
     // gone, and starts again the moment it flows. Without this, Section 1's rook flood keeps a
     // dead stager's feed circling as silence, as a ring the path list cannot see past 12 seats.
-    function stgCarry(rk, on, pri) {
+    function stgCarry(rk, on, pri, onlyTo) {
       for (const job of mosJobs.values()) {
         if (job.upKey !== rk || !job.active || !job.senders) continue;
         if (on ? !job.carryOff : !(pri && stgFedBy(job, pri))) continue; // a copy fed by my parked standby is the way out: never stop it
+        if (!on && onlyTo && job.to !== onlyTo) { if (job.carryOff) { job.carryOff = false; job.senders.forEach((sd, i) => { const t = job.trackList[i]; if (t) { try { sd.replaceTrack(t); } catch (e) {} } }); } continue; }
         job.carryOff = !on;
         job.senders.forEach((sd, i) => { const t = job.trackList[i]; if (t) { try { sd.replaceTrack(on ? t : null); } catch (e) {} } });
         const jk = job.key + '>' + job.to; if (pipeJobs.has(jk) && MPipe) { try { MPipe.pausePipe(jk, !on); } catch (e) {} } // a piped picture stops at the worker too
@@ -25272,8 +25273,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (pri && !inCand(pri) && pri.deadAt && now - pri.deadAt > MOS_GRACE) { dropMosIn(rk); pri = null; repaintRedun(rk, null); }
       // A copy flows only while its sender holds the feed (stgCarry).
       if (rk.indexOf('stg:') === 0) {
-        const lost = !!(pri && !inCand(pri));
-        stgCarry(rk, !lost, pri);   // every pass: a stopped copy is restored even after this slot's state was rebuilt (a re-claim)
+        // Gone (no announcer, no stream): every copy stops, so a dead feed cannot circle. Dark (a
+        // blip, or the seat above dying): only the copy to my row's E2 source stops, so that seat
+        // sees E1's copy stop and moves to E2 at once; the rest of my row waits for my own swap.
+        // Every pass: a stopped copy is restored even after this slot's state was rebuilt.
+        const gone = !!(pri && !inCand(pri)), sv = meshSeat(), src = sv ? sv.e2Src() : null;
+        if (gone) stgCarry(rk, false, pri);
+        else if (pri && fb.dark && src && src !== myId) stgCarry(rk, false, pri, src);
+        else stgCarry(rk, true);
       }
       if (!cand.length) { mosFb.delete(rk); return; }
       // DEMAND — the ONE-PIPE law: only the primary moves bits. The standby is
