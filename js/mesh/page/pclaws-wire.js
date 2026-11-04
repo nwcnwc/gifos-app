@@ -9,7 +9,7 @@
  *   - `pcbye {why}` on the ordered data channel before every deliberate close, so the far end reads NONE (an orderly
  *     hang-up), never a loss;
  *   - UPOFFER and the L14 decline (BUSY tag 14 with referrals) ride the data channel;
- *   - an L16 or L23 refusal of an offer goes back without a pc (io.refuse: the relay `busy` type, or the way the offer came).
+ *   - an L16 or L23 refusal of an offer goes back over the relay (io.refuse: the `busy` type) and the page closes the pc.
  * Ids are the seat's ints (the adapter's peer-id table). One instance per page; `me` is my seat id.
  * The page plumbing (io) owns the pcs; this file never touches one and never decides who is gone.
  */
@@ -50,6 +50,8 @@
       const f = FAR.get(x); if (f && f.seated >= 0) return f.seated === 1;
       const s = mySeat(); return !!s && !!pc.fns.l18Cell(me, x);
     }
+    // A dialler's word that it sits (mark s, frame dsat) counts only where my view holds its cell: the sim reads its true seat, and a door has limits. Unseated, I have no view and no door to guard.
+    const seatedWord = (x) => !mySeated() || !!pc.fns.l18Cell(me, x);
     // A far seat counts as placed only where my view holds its cell (laws such as l18Route read b.coord). At my offer
     // gate the dialler's own mark says it is seated: l23Refused reads only that (hasCoord/state), never the cell.
     let offering = -1;
@@ -396,11 +398,13 @@
     // the callee's gate on an incoming offer: L23 (refused), L16 (busy over the relay); else my end starts DIALING
     function offer(x, mk) {
       mk = mk || {}; const s = mySeat(); if (!s || s.dead || x === me || x < 0) return false;
-      const f = far(x); f.seated = mk.s ? 1 : 0; if (mk.tier) f.tier = mk.tier;
+      const sat = mk.s && seatedWord(x) ? 1 : 0;
+      const f = far(x); f.seated = sat; if (mk.tier) f.tier = mk.tier;
       const mt = mk.mt || null, ck = mk.ck || 0;
-      let l23r; offering = x; try { l23r = pc.l23Refused(me, x, mt, ck); } finally { offering = -1; }
+      // A mark that names no frame is gated as a call, the widest honest dial: no word, or silence, skips nothing.
+      let l23r; offering = x; try { l23r = pc.l23Refused(me, x, mt || 'MEETACK', ck); } finally { offering = -1; }
       if (l23r) { trace('PC-REFUSE', me, null, 'peer=%d why=l23', x); io.refuse(x, { busy: 0 }); return false; }
-      if (mt && !mk.s) {   // L16: an outside knocker at my door (a seated dialler's own door count gated it at its end)
+      if (!sat) {   // L16: an outside knocker at my door (a seated dialler's own door count gated it at its end)
         refusing = x; refusedBusy = false; lv.L16_DEFER = false; let r;
         try { r = pc.l16Refuse(x, me, mt); } finally { refusing = -1; }
         lv.L16_DEFER = false;
@@ -409,7 +413,7 @@
       const L = linkGet(me, x);
       if (L.state === LK_OPEN) return true;   // a fresh offer over an open pc (ICE restart): the page's, no law change
       if (L.state !== LK_DIALING) {
-        let oo = 0; if (!mySeated()) oo |= (1 << mine(x)); if (!mk.s) oo |= (1 << theirs(x));
+        let oo = 0; if (!mySeated()) oo |= (1 << mine(x)); if (!sat) oo |= (1 << theirs(x));
         freshState(L, x, me); doorInit(L, x, me, oo); if (!oo) l1611Mine(x, L);
       }
       L.view[mine(x)] = LK_DIALING; if (mk.up) L.uplink = true;
@@ -417,9 +421,9 @@
     }
     // the callee's answer mark reached my dial: its seated flag sets the far end's door bit (my view only guessed it)
     function answered(x, mk) {
-      const L = LINKS.get(x); if (!L || !mk) return; const f = far(x); f.seated = mk.s ? 1 : 0; if (mk.tier) f.tier = mk.tier;
+      const L = LINKS.get(x); if (!L || !mk) return; const sat = mk.s && seatedWord(x) ? 1 : 0; const f = far(x); f.seated = sat; if (mk.tier) f.tier = mk.tier;
       if (L.state !== LK_DIALING && L.state !== LK_OPEN) return;
-      const oo = (L.outside & (1 << mine(x))) | (mk.s ? 0 : (1 << theirs(x)));
+      const oo = (L.outside & (1 << mine(x))) | (sat ? 0 : (1 << theirs(x)));
       if (oo === L.outside) return;
       doorEndCount(L); L.dUncounted = false; L.dG = -1; doorInit(L, L.dialBy, L.dialBy === me ? x : me, oo);
     }
@@ -427,6 +431,7 @@
     function opened(x) {
       const L = LINKS.get(x); if (!L || L.state === LK_OPEN) return;
       L.state = LK_OPEN; L.openEp = L.epoch; L.half = 0; L.halfAt = -1; L.stuck = false; L.view[0] = L.view[1] = LK_OPEN; L.opened = true;
+      L.byeIn = L.byeOut = false; L.callClosed = false; L.gone = 0;   // a new pc: the last one's close says nothing about it
       if (L.outside && L.dBorn >= 0) L.dProg = T();
       const s = mySeat(); if (s) { s.dials.opened(x); for (const [ck, v] of s.l13SplitCell) if (v[0] === x) { trace('L13.41-JOINED', me, null, 'peer=%d', x); s.l13SplitCell.delete(ck); } }
       if (L.wasOpen) trace('LINK-UP', me, null, 'peer=%d', x); L.wasOpen = true;
@@ -435,15 +440,17 @@
       for (const m of q) linkDeliver(me, x, m, L);
     }
     // every verified dc frame from x, before the inbox: the goodbye is mine; the rest get my end's link stamp
-    function frame(x, m) {
+    function frame(x, m, direct) {
       const L = LINKS.get(x);
       if (m && m.t === 'pcbye') { byeIn(x, BYE.includes(m.why) ? m.why : 'call'); return true; }
       if (!L) return false;
       // (A leaver's own goodbye is exempt: sent before its close, but the page's seal and signature checks can hand it over after the close is seen; the sim has no such gap.)
       if (!(m && m.t === 'LEAVE' && m.bye && m.id === x) && L.state !== LK_OPEN && L.wasOpen && (L.view[mine(x)] === LK_CLOSED || (L.gone & (1 << mine(x))))) { lv.CLOSEDROPS = (lv.CLOSEDROPS || 0) + 1; trace('CLOSEDROP', me, null, 'from=%d mt=%d', x, mtI(m.t)); return true; }
-      L.txAt[theirs(x)] = T(); doorProg(L, m.t);
+      doorProg(L, m.t);
+      if (m.dsat && !seatedWord(x)) m.dsat = false;   // the mark's s by another name: K5 lifts a door's limits on it
       if (m.dsat !== undefined && L.outside) far(x).seated = m.dsat ? 1 : 0;
-      if (m.rvia === undefined || m.rvia < 0) { m.lk = x; m.lkEp = L.epoch; }
+      // first-hand only off the sender's proven dc, on my Link, not routed (sim linkDeliver; 0.9.24 ingest)
+      if (direct && (m.rvia === undefined || m.rvia < 0)) { L.txAt[theirs(x)] = T(); m.lk = x; m.lkEp = L.epoch; }
       return false;
     }
     // the far end hung up on purpose: NONE at my end, no loss
@@ -465,7 +472,15 @@
       const L = LINKS.get(x); if (!L) return;
       if (L.byeIn || L.byeOut || (L.callClosed && (L.gone & (1 << mine(x))))) return;
       if (L.state === LK_DIALING && !L.opened) { dialFailed(x); return; }
+      io.close(x, 'lost');   // one Link per pair, and a close is real: no open channel stays behind a closed Link. First, so a redial below finds no old channel
       lostNow(x, why || 'dc-close', false);
+    }
+    // the page closed this pc on its own, with its goodbye: an orderly close at my end too, no loss
+    function pageClosed(x) {
+      const L = LINKS.get(x); if (!L) return;
+      if (L.state === LK_OPEN || L.state === LK_DIALING) { L.state = LK_CLOSED; L.epoch = (L.epoch + 1) >>> 0; L.q = []; L.half = 0; L.halfAt = -1; }
+      L.byeOut = true; doorEndCount(L); L.view[mine(x)] = LK_CLOSED; L.gone |= (1 << mine(x)); L.callClosed = true; L.outside = 0;
+      trace('PC-PAGECLOSE', me, null, 'peer=%d', x);
     }
     // C++: mesh_link.inc:linkApply EV_DIAL failure   [my end]
     function dialFailed(x) {
@@ -475,10 +490,11 @@
       if (L.view[mine(x)] === LK_DIALING || L.view[mine(x)] === LK_NONE) L.view[mine(x)] = LK_CLOSED;
       trace('PC-DIALFAIL', me, null, 'peer=%d', x);
     }
-    // my offer came back refused without a pc: L16 busy -> BUSY for the seat; L23 -> my dial just ends (the sim drops it)
+    // my offer came back refused: L16 busy -> BUSY for the seat; L23 -> my dial just ends (the sim drops it).
+    // The callee's gate runs on the open dc, so my end may already read open: a refused dial never opened.
     function refused(x, info) {
       const L = LINKS.get(x);
-      if (L && L.state === LK_DIALING) { L.state = LK_NONE; L.epoch = (L.epoch + 1) >>> 0; L.q = []; L.view[mine(x)] = LK_NONE; doorEndCount(L); }
+      if (L && (L.state === LK_DIALING || L.state === LK_OPEN)) { L.state = LK_NONE; L.epoch = (L.epoch + 1) >>> 0; L.q = []; L.view[mine(x)] = LK_NONE; doorEndCount(L); io.close(x, 'refused'); }
       if (info && info.busy) { const b = msg.newMsg('BUSY'); b.id = x; b.from = -1; b.to = me; b.lk = -1; io.deliver(b); }
     }
     // the page's leave: a goodbye on every open pc (the seat's LEAVE went out before)
@@ -493,10 +509,10 @@
     delete fns.fabricNoSock;   // A1: the relay's bounce
     return {
       fns, lv, send: (x, m) => linkSchedule(me, x, m), tick, mark, offer, answered, opened, frame, lost,
-      byeIn: (x, why) => byeIn(x, BYE.includes(why) ? why : 'call'), dialFailed, refused, leaveAll,
+      byeIn: (x, why) => byeIn(x, BYE.includes(why) ? why : 'call'), dialFailed, refused, leaveAll, pageClosed,
       busyFrom: (x) => refused(x, { busy: 1 }),
       link: (x) => LINKS.get(x) || null, dump: () => [...LINKS].map(([x, L]) => ({ x, state: L.state, view: L.view[mine(x)], outside: L.outside, gone: L.gone, q: L.q.length })),
-      laws: pc, BYE,
+      dialHeld: (x) => pc.dialHeld(me, x), laws: pc, BYE,
     };
   }
 

@@ -103,7 +103,7 @@
   const WHY = {
     'close': 'dc-close', 'dc-close': 'dc-close', 'pc-closed': 'pc-closed',
     'failed-persist': 'failed-persist', 'disconnected-persist': 'disconnected-persist', 'starve': 'starve', 'starve-dead': 'starve', 'starve-noobj': 'starve',
-    'dark': 'disconnected-persist', 'wake-dead': 'disconnected-persist',
+    'dark': 'dark', 'wake-dead': 'dark',   // the sim's dark: a hard close, no persist flag
   };
 
   // ---- ids ----------------------------------------------------------------------------------------------------
@@ -200,7 +200,7 @@
     const learnPeer = (peer) => ID.learn(peer);
 
     // ---- io for the pc laws (A2) --------------------------------------------------------------------------------
-    const dialFailLater = [], lostLater = new Set();
+    const dialFailLater = [];
     const io = {
       dial(x, mark) {
         const p = ID.pid(x);
@@ -211,12 +211,9 @@
         const p = ID.pid(x); if (!p || !pc.send) { drop('nopeer'); return false; }
         if (m && m.t !== 'pcbye') wireTx(m);
         st.tx++;
-        const ok = pc.send(p, m, m && m.t !== 'pcbye' ? dirFor(m) : null) !== false;
-        // the page tore this pc down without telling me (its own dropPeer): its dc is gone, so my end saw it close
-        if (!ok && pc.state) { const ps = pc.state(p); if (!ps || ps.dc !== 'open') { drop('send-closed'); lostLater.add(x); } }
-        return ok;
+        return pc.send(p, m, m && m.t !== 'pcbye' ? dirFor(m) : null) !== false;
       },
-      close(x) { const p = ID.pid(x); if (p && pc.close) pc.close(p); },
+      close(x, why) { const p = ID.pid(x); if (p && pc.close) pc.close(p, why); },
       // the page seam that sends {k:'pcbye', why} on the dc and closes my end (A3); without it A2 sends pcbye itself
       bye: pc.bye ? (x, why) => { const p = ID.pid(x); if (p) pc.bye(p, why); } : undefined,
       refuse(x, info) { relayBusy(x, { k: 'busy', g: info && info.busy ? 16 : 23 }); },
@@ -380,8 +377,6 @@
       const s = seat();
       if (closeAt >= 0 && w.TICK >= closeAt) { closeAt = -1; if (pcw.leaveAll) pcw.leaveAll(); }
       while (dialFailLater.length) { const x = dialFailLater.shift(); if (pcw.dialFailed) pcw.dialFailed(x); }
-      for (const x of lostLater) { if (sink) trace('ENV-SENDCLOSED', me, null, 'peer=%d', x); if (pcw.lost) pcw.lost(x, 'dc-close'); }
-      lostLater.clear();
       if (pcw.tick) guard('pcw.tick', pcw.tick)();
       if (s && !dead) {
         const due = [];
@@ -413,11 +408,13 @@
     }
 
     // a verified frame off viaPeer's dc (A3 decodes and checks signatures); dir: the sender's id directory
-    function frame(m, viaPeer, dir) {
+    // direct: run.html's word that the frame came off viaPeer's own dc after §DCAUTH. `from` and `lk` are the fabric's, never the frame's.
+    function frame(m, viaPeer, dir, direct) {
       if (dead || !m) return;
       const x = learnPeer(viaPeer); if (x < 0) { drop('frame-nopeer'); return; }
       learnDir(dir);
-      if (pcw.frame && pcw.frame(x, m)) return;   // a pcbye, or a frame lost to a close at my end
+      m.lk = -1; m.lkEp = 0;
+      if (pcw.frame && pcw.frame(x, m, direct === true)) return;   // a pcbye, or a frame lost to a close at my end
       if (!m.t || m.t === 'pcbye') return;
       m.to = me; m.from = x;
       inboxPush(m);
@@ -427,7 +424,6 @@
     function transport(peer, ev, arg) {
       const x = learnPeer(peer); if (x < 0) return false;
       if (sink) trace('ENV-PC', me, null, 'peer=%d ev=%s', x, String(ev));
-      if (ev === 'unanswered') ev = 'dial-failed';
       switch (ev) {
         case 'offer': return pcw.offer ? pcw.offer(x, arg || {}) !== false : true;
         case 'answer': if (pcw.answered) pcw.answered(x, arg || {}); return true;   // the callee's mark came back with its answer
@@ -438,7 +434,9 @@
         case 'bye': if (pcw.byeIn) pcw.byeIn(x, arg || 'call'); return true;   // the page seam parsed {k:'pcbye'} itself
         case 'greeter-crash': { if (x === me) return false; const s = seat(), m = s ? s.crashBye(x) : null; if (m) frame(m, peer); if (pcw.byeIn) pcw.byeIn(x, 'leave'); return true; }   // the relay's word, read as the dead greeter's goodbye and pcbye
         case 'dial-failed': if (pcw.dialFailed) pcw.dialFailed(x); return true;
+        case 'wake-dead': { const L = pcw.link ? pcw.link(x) : null; if (L && L.state === LK_OPEN) break; return true; }   // a dial still running has its own LINK_DIAL_FAIL
         case 'refused': if (pcw.refused) pcw.refused(x, arg || {}); return true;
+        case 'page-closed': if (pcw.pageClosed) pcw.pageClosed(x); return true;
       }
       if (WHY[ev]) { if (pcw.lost) pcw.lost(x, WHY[ev]); return true; }
       if (/-awake$/.test(ev) && WHY[ev.replace(/-awake$/, '')]) { if (pcw.lost) pcw.lost(x, WHY[ev.replace(/-awake$/, '')]); return true; }
@@ -499,7 +497,7 @@
     function stats() { return Object.assign({ tick: w.TICK, me, ids: ID.size(), woken, dead }, JSON.parse(JSON.stringify(st))); }
 
     const env = {
-      me, world: w, traces: () => ring.slice(), ids: ID, f: F, pcw, tick, frame, transport, relayFrame, absence, leave, stats, links,
+      me, world: w, traces: () => ring.slice(), ids: ID, f: F, pcw, tick, frame, transport, dialHeld: (peer) => { const x = learnPeer(peer); return x >= 0 && !!pcw.dialHeld && pcw.dialHeld(x); }, relayFrame, absence, leave, stats, links,
       dirFor, learnDir, relayBusyList,
       // the mark my answer to peer carries back to it (A2), for the pc layer's answer
       mark: (peer) => { const x = ID.pid(ID.nid(peer)) === String(peer) ? ID.nid(peer) : learnPeer(peer); return x >= 0 && pcw.mark ? pcw.mark(x) : null; }, farView: (to) => farView(seat(), to),

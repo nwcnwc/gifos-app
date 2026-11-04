@@ -6218,6 +6218,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // (the greeter pool + in-flight joiners). This is exactly "who the relay can
     // reach right now" — a target NOT in this set is a socketless deep seat the
     // relay would silently drop, so signaling to it must sponsor-forward (§FWD).
+    const kickByesIn = new Set();   // peers that closed our pair with 'kick' (L27, the refused side)
     let holdDoor = false;           // waiting room: do not auto-answer the door; the host admits from the list. Gate: node test/unit/wait-room.js
     let atWaitDoor = false;         // this page is the knocker, held by the relay, not seated
     const waitDeclined = new Set();
@@ -6989,15 +6990,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               // Our own rebuild drew no answer: that id is not there. Closing
               // it lets the next dial-request build a pair to whoever is.
               // Rebuilding again would offer the same corpse for the settle.
-              if (ours) { p.fragDialAt = 0; try { pc.close(); } catch (e) {} onTransportDead(pid, 'unanswered'); return; }
+              if (ours) { p.fragDialAt = 0; try { pc.close(); } catch (e) {} return; }   // the seat's own dial clock (LINK_DIAL_FAIL) says when it failed
               rebuild(pid, p, 'unanswered'); return;
             }
-            // No check has gone out yet. Waiting for the settle to say so
-            // starts the mesh confirm only after that window, and the confirm
-            // itself is as long again: a seat that left during the dark is
-            // still the occupant past a short return. Tell the mesh now. The
-            // offer stays up, so a live seat's answer clears the probe.
-            if (ours && v === 'soon') onTransportDead(pid, 'unanswered');
             if (v === 'soon' && again) setTimeout(() => hushOne(pid, p, pc, false, ours), 1000);
           });
         };
@@ -7245,6 +7240,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (iInitiate(pid) && nowHb - (p.meshKickAt || 0) >= 10000) {
               p.meshKickAt = nowHb;
               sv.kicked++;
+              if (seatHolds(pid)) { why('held'); continue; }
               if (typeof clog === 'function') clog('dc-watchdog rebuild ' + String(pid).slice(0, 6));
               newPcFor(p);
               sendOffer(pid, false);
@@ -7275,35 +7271,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (dcOpen && carried) continue;
           sv.kicked++;
           p.meshKickAt = nowHb;
-          // D5's missing edge (behavior battery 14a, 2026-07-26): a starving
-          // pair that WAS established (meshRxAt > 0) is a dead transport in
-          // every honest sense — an unanswered rebuild toward a dark peer
-          // idles in 'connecting' forever, so no failed/closed event will
-          // ever come. Fire the first-hand transport-death edge with the
-          // kick; the D5 probe gate still protects any live-but-slow peer
-          // (a merely-throttled phone keeps beating and never starves), and
-          // without this a dark member's seat stayed unconfirmed and H7's
-          // designated-admitter discipline kept the door constitutionally
-          // CLOSED (NOROOM) for every newcomer until the 195s reap.
-          // …EXCEPT a pair still FORMING whose signaling is live (pair-probe,
-          // 2026-07-27): a half-open pair's victim flaps in and out of ICE
-          // while the far side's offers/answers keep arriving — a peer we
-          // heard from over the relay seconds ago is demonstrably a PERSON
-          // (G1 transport-vouch), and death-firing on it forked the roster
-          // (one side dropped, the other held). Rebuild still runs below;
-          // only the death edge waits. A DARK peer signals nothing, so 14a's
-          // fix is untouched — heardPid>0 pairs (once-established) keep the
-          // full edge too.
-          const formingAlive = !heardPid && nowHb - (p.lastHeard || 0) < 12000;
-          // A member the room still knows (roster, status, occ, or relay) is
-          // not dead — only the pair is. Quiet-door heal fired starve-dead→d5
-          // on a live survivor during an occ blink (edc4392 a1:
-          // P3→P5). Rebuild below; leave the death edge for a peer nobody
-          // in the room still names.
-          const roomKnows = occNamed.has(pid)
-            || rosterSet.has(pid)
-            || (statusOf && statusOf.has(pid));
-          if (!tlFiredPid.has(pid) && !formingAlive && !roomKnows && (!dcOpen || !carried)) { tlFiredPid.add(pid); onTransportDead(pid, 'starve-dead'); }
+          // LINK_STARVE: an open channel that never carried a frame hands the seat a quiet loss and closes (the wire's lost);
+          // the seat re-dials on its own clock, and its probe gate protects a live peer.
+          if (dcOpen && !carried) { why('starve'); tlFiredPid.add(pid); onTransportDead(pid, 'starve-dead'); continue; }
+          if (seatHolds(pid)) { why('held'); continue; }   // L17
           if (typeof clog === 'function') clog('mesh-starve rebuild ' + String(pid).slice(0, 6));
           newPcFor(p);
           sendOffer(pid, false);
@@ -11893,7 +11864,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // 'partial' adds a note to the count line; every other reach state
       // replaces the line.
       const inlineReach = reachState === 'partial';
-      const reachLine = !!(reachState && !inlineReach && !leftUp);
+      const refused = !leftUp && typeof refusedLine === 'function' && refusedLine();
+      const reachLine = !refused && !!(reachState && !inlineReach && !leftUp);
       const partial = reachState === 'partial' ? reachNote(reach.dead) : '';
       // shown is the room you can see: the count, or the faces on the wall (qa-meet-desktop).
       // You left on purpose: the number is the room without you, frozen at
@@ -11906,7 +11878,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const foldPartial = !!(foldNow && foldNow.part); // a shortfall is not the room size
       let countText = '';
       let restText = '';
-      if (reachLine) {
+      if (refused) {
+        restText = uiText('stThePeopleInThisRoom', '\u26d4 The people in this room voted not to let this device in.');
+      } else if (reachLine) {
         restText = REACH_MSG[reachState] + tail;
       } else if (typeof iAmWaiting === 'function' && iAmWaiting()) {
         // A person in the waiting room is not alone and has no one to invite.
@@ -12799,11 +12773,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function startDirectPathProbe() {
       const gen = ++directPathRun;
       const forced = (typeof DEBUG_ON !== 'undefined' && DEBUG_ON && window.__gifosDirectPath) ? String(window.__gifosDirectPath) : '';
-      if (forced === 'ok' || forced === 'blocked') { directPath = forced; updateStatus(); return Promise.resolve(forced); }
+      if (forced === 'ok' || forced === 'blocked') { directPath = forced; updateStatus(); if (meshNode && meshNode.remeasure) meshNode.remeasure(); return Promise.resolve(forced); }
       if (typeof RTCPeerConnection !== 'function') { directPath = 'unknown'; return Promise.resolve('unknown'); }
       return probeDirectPath(() => new RTCPeerConnection({ iceServers: ICE_SERVERS }), REACH_PROBE_MS).then((v) => {
         if (gen !== directPathRun) return v; // a newer probe owns the verdict
-        directPath = v; updateStatus(); return v;
+        directPath = v; updateStatus(); if (meshNode && meshNode.remeasure) meshNode.remeasure(); return v;
       });
     }
     try { window.addEventListener('online', () => { if (meshNode) startDirectPathProbe(); }); } catch (e) {}
@@ -12845,14 +12819,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (f.live > 0 && f.dead > 0) return 'partial';
       return null;
     }
+    let outsideSince = 0;
     function reachInfo() {
       const s = meshSeat();
       const atDoor = !!(s && (s.state === 1 || s.state === 2));
       let isMember = null;
       if (atDoor) { const members = new Set(); for (const v of s.occ.values()) if (v) members.add(String(v)); isMember = (pid) => members.has(String(pid)); }
       const c = reachCounts(peers.values(), peerAway, isMember);
+      // A page still outside after a minute reads the plain failure line, whatever the reason (a wrong clock looks just like this): the page cannot tell why, so it does not say.
+      if (!s || s.state === 3 || (typeof iAmWaiting === 'function' && iAmWaiting())) outsideSince = 0; else if (!outsideSince) outsideSince = Date.now();
       const f = { probe: directPath, n: participantCount(), live: c.live, dead: c.dead,
-        stranded: !!(s && s.stranded), atDoor };
+        stranded: !!(s && s.stranded) || (outsideSince > 0 && Date.now() - outsideSince > 60000), atDoor };
       f.state = reachStateOf(f);
       return f;
     }
@@ -13874,11 +13851,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // freeze up to 75 s; 90 s clears it with the wake and the sweep's 2 s,
     // and a dead seat still leaves at ~96 s (it held 150-300 s before).
     // A radio dropout keeps the pc connected, so it never reaches this.
-    const DISCONNECTED_DEAD_MS = 90000;
+    // L30.2: a page in small mode times the pc out at 78 s (L30_DISC_DEAD 170 ticks from the cut; the pc reads disconnected at 12-16).
+    const DISCONNECTED_DEAD_MS = 90000, DISCONNECTED_DEAD_SMALL_MS = 78000;
     function pcDeadWhy(p, st, now) {
       if (!p || p.connected || !p.downSince) return null;
       if (st === 'failed' && now - p.downSince > 9000) return 'failed-persist';
-      if (st === 'disconnected' && now - p.downSince > DISCONNECTED_DEAD_MS && now - peerHeardAt(p) > DISCONNECTED_DEAD_MS) return 'disconnected-persist';
+      const s = meshSeat(), dead = s && s.raw && s.raw.l30 ? DISCONNECTED_DEAD_SMALL_MS : DISCONNECTED_DEAD_MS;
+      if (st === 'disconnected' && now - p.downSince > dead && now - peerHeardAt(p) > dead) return 'disconnected-persist';
       return null;
     }
     // A dark-return rebuild marks the pair (p.darkDead). The mark is handed
@@ -13923,8 +13902,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       return added;
     }
-    function newPcFor(p) {
-      try { p.pc && p.pc.close(); } catch (e) {}
+    // A rebuild replaces a pc and closes no link. On a live channel the far end hears so first (the channel is ordered,
+    // the close follows), so the old channel's close reads as the replacement it is: a fresh pc replacing a live one is
+    // no loss at either end. Not for a real close (closing): that one is the far end's to read.
+    function newPcFor(p, closing) {
+      const pcOld = p.pc;
+      if (!closing && pcOld && p.dc && p.dc.readyState === 'open') { try { dcSend(p, { k: 'pcfresh' }); } catch (e) {} setTimeout(() => { try { pcOld.close(); } catch (e) {} }, 300); }
+      else { try { pcOld && pcOld.close(); } catch (e) {} }
       // A rebuilt transport starts with NO senders: forget every composite role
       // this pair carried (folds sent, folds forwarded, folds displayed via
       // them) — the sweeper's reconcile re-derives and re-adds them cleanly.
@@ -14074,7 +14058,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // still in the room) is a hard transport death — first-hand evidence.
         // 'failed' waits for the sweeper (must persist past the ICE-restart
         // kick); 'disconnected' is a blip and never lands here.
-        if (pc.connectionState === 'closed' && peers.has(p.id)) onTransportDead(p.id, 'pc-closed');
+        if (pc.connectionState === 'closed' && peers.has(p.id) && !pc.__fresh) onTransportDead(p.id, 'pc-closed');
         clearTimeout(connBcastT); // my connectivity map changed → tell the room
         connBcastT = setTimeout(broadcastStatus, 300);
       };
@@ -14137,8 +14121,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function dropPeer(peerId, stillHere) {
       const p = peers.get(peerId);
       if (!p) return;
-      // A pc the page closes on its own (not the seat's world asking) is news to the pc laws.
-      if (!leaving && !(p.envClosing && Date.now() - p.envClosing < 5000)) { try { if (meshNode && meshNode.transport) meshNode.transport(peerId, 'pc-closed'); } catch (e) {} }
+      // A pc the page closes on its own (not the seat's world asking) is an orderly close: a goodbye on its channel,
+      // and no loss at either end. Only a real close from outside is a hard loss.
+      const pageOwn = !leaving && !(p.envClosing && Date.now() - p.envClosing < 5000);
+      if (pageOwn) { try { if (meshNode && meshNode.transport) meshNode.transport(peerId, 'page-closed'); } catch (e) {} }
+      const saidBye = pageOwn && !!p.dc && p.dc.readyState === 'open';
+      if (saidBye) { try { dcSend(p, { k: 'pcbye', why: 'call' }); } catch (e) {} }
       clearTimeout(p.hiLate);
       try { if (p.doorRetry) clearTimeout(p.doorRetry); } catch (e) {}
       p.doorRetry = 0;
@@ -14150,7 +14138,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // never connected (the higher id offers, so half the time a knocker is
       // dialled rather than knocking): their redial must not mint a new face.
       if (p.neverUp === true && !linkTo(peerId) && (p.boot || !meshKnows(peerId))) doorOffGrid.add(p.id);
-      try { p.pc.close(); } catch (e) {}
+      { const pc0 = p.pc; if (saidBye) setTimeout(() => { try { pc0.close(); } catch (e) {} }, 300); else { try { pc0.close(); } catch (e) {} } }   // the goodbye leaves before the close
       releaseAudio(p.video);
       p.tile.remove();
       peers.delete(peerId);
@@ -14951,13 +14939,47 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // laws' offer gate on the dialler's mark (never a guess from its own occ), then answers {a: its mark}.
     const seatMark = new Map();
     const cleanMark = (d) => (d && typeof d === 'object') ? { s: d.s ? 1 : 0, up: d.up ? 1 : 0, mt: typeof d.mt === 'string' ? d.mt.slice(0, 12) : null, ck: Number.isFinite(d.ck) ? d.ck : 0, tier: Number.isFinite(d.tier) ? d.tier : 0 } : null;
+    // The seat asked for this pc. A live channel carries it now (the far end dialled first): the mark crosses and the
+    // Link opens. Else a fresh dial, unless one is already forming; a goodbye in flight ends in pcCloseNow, which dials.
+    function seatDial(pid) {
+      const p = peers.get(pid);
+      if (p && p.byeSent && Date.now() - p.byeSent < 400) return;
+      if (p && p.dc && p.dc.readyState === 'open') {
+        if (!p.dc.__pcOffered && meshNode && meshNode.transport) { const dc = p.dc; dc.__pcOffered = true; clearTimeout(dc.__pcMarkWait); try { dcSend(p, { k: 'pcmark', d: seatMark.get(pid) || null }); } catch (e) {} }
+        if (meshNode && meshNode.transport) meshNode.transport(pid, 'open');
+        return;
+      }
+      const s = meshSeat();
+      if (!(s && s.hasCoord && s.state === 3)) { bootDial(pid); return; }
+      if (!p) { ensureLink(pid); return; }
+      if (p.offering || (p.pc && p.pc.connectionState !== 'closed' && p.pc.connectionState !== 'failed' && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000 && p.pc.signalingState !== 'stable')) return;
+      if (iInitiate(pid)) sendOffer(pid, false); else askDial(pid, p);
+    }
+    // A close is real: the pc ends. A peer the seat still names keeps its record and tile, with a fresh idle pc for the
+    // seat's next dial.
+    function pcCloseNow(pid, p) {
+      if (peers.get(pid) !== p) return;
+      if (!linkTo(pid)) { dropPeer(pid, true); return; }
+      newPcFor(p, true); p.byeSent = 0;
+      if (seatAsked(pid)) seatDial(pid);   // the seat re-dialled while the goodbye left
+    }
+    // My goodbye (the pc laws, or a refused offer), then the close: the channel is ordered, 300 ms lets it leave.
+    function pcBye(pid, why) {
+      const p = peers.get(pid); if (!p) return;
+      if (why && p.dc && p.dc.readyState === 'open') { try { dcSend(p, { k: 'pcbye', why }); } catch (e) {} }
+      p.byeSent = Date.now(); p.envClosing = Date.now(); seatAskAt.delete(pid);
+      if (typeof clog === 'function') clog('pcbye-out ' + String(pid).slice(0, 6) + ' ' + why);
+      setTimeout(() => pcCloseNow(pid, p), 300);
+    }
+    // L17: the seat holds its dials to this peer: no page clock dials it either.
+    function seatHolds(pid) { return !!(meshNode && meshNode.dialHeld && meshNode.dialHeld(pid)); }
     function pcMarkOpen(p, dc, mk, src) {
       if (!dc || dc.__pcOffered || p.dc !== dc || !meshNode || !meshNode.transport) return;
       dc.__pcOffered = true; clearTimeout(dc.__pcMarkWait);
       const m = mk || { s: meshKnows(p.id) ? 1 : 0 };
       if (typeof clog === 'function') clog('pc-offer ' + String(p.id).slice(0, 6) + ' src=' + src + ' s=' + m.s + ' mt=' + (m.mt || '-'));
       const ok = meshNode.transport(p.id, 'offer', m) !== false;
-      if (!ok) { if (typeof clog === 'function') clog('pc-refused ' + String(p.id).slice(0, 6)); return; }
+      if (!ok) { if (typeof clog === 'function') clog('pc-refused ' + String(p.id).slice(0, 6)); pcBye(p.id, 'declined'); return; }   // no peer makes me keep a pc
       meshNode.transport(p.id, 'open');
       if (mk) { try { dcSend(p, { k: 'pcmark', a: meshNode.mark ? meshNode.mark(p.id) : null }); } catch (e) {} }
     }
@@ -15137,6 +15159,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (typeof bannedSeat !== 'undefined' && bannedSeat.has(pid)) return; // this id was banned; the occ tick must not rebuild it
       if (!linkTo(pid)) return; // the sweeper retires unwanted links, with grace
       let p = peers.get(pid);
+      if (!p && !seatAsked(pid) && seatHolds(pid)) return; // L17: no page dial to a peer the seat holds
       if (!p) {
         // THE INITIATOR DIALS. Both sides used to offer when the caller had
         // no open channel yet: a just-seated newcomer offered every neighbour
@@ -15258,8 +15281,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       delete modTable[pid];
       rosterIds = rosterIds.filter((x) => x !== pid); // the roster view drops them NOW, not next tick
       recSrcDirty = true;
-      if (peers.has(pid)) dropPeer(pid);              // tile + meters + consent react inside
-      else reactRoomState();                          // far peer: count/consent still re-derive
+      // A change in my view closes no real pc: the pc laws close an open one with a goodbye once the seat stops naming it.
+      { const q = peers.get(pid); if (q && why === 'd5' && q.dc && q.dc.readyState === 'open') { doorOffGrid.add(pid); if (q.tile) q.tile.remove(); layout(); reactRoomState(); } else if (q) dropPeer(pid); }   // tile + meters + consent react inside
+      if (!peers.has(pid)) reactRoomState();          // far peer: count/consent still re-derive
       renderHandq();                                  // a dead hand leaves the queue with them
       updateStatus();
       if (typeof clog === 'function') clog('gone ' + String(pid).slice(0, 6) + ' ' + why);
@@ -15319,7 +15343,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if ((typeof isEjected === 'function' && isEjected(pid) === true)) return false; // ejected: gone for good, whatever it says
       const g = meshGone.get(pid); if (g === undefined) return true;
       const st = statusOf.get(pid); const p = peers.get(pid);
-      if ((st && (st.rx || 0) > g + TOMB_GRACE) || (p && p.connected) || meshHeardSince(pid)) { meshGone.delete(pid); meshGoneTick.delete(pid); if (typeof meshGoneSilent === 'object' && meshGoneSilent) { meshGoneSilent.delete(pid); meshGoneNamedAt.delete(pid); } return true; }
+      if ((st && (st.rx || 0) > g + TOMB_GRACE) || (p && p.connected) || meshHeardSince(pid)) { meshGone.delete(pid); meshGoneTick.delete(pid); if (p) restoreDoorTile(p); if (typeof meshGoneSilent === 'object' && meshGoneSilent) { meshGoneSilent.delete(pid); meshGoneNamedAt.delete(pid); } return true; }
       return false;
     };
     // Departure tombstones expire once every occ echo of the freed seat has
@@ -15396,11 +15420,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // close marked a live member gone, and that mark then refused the
           // very link the move needed. Two things say the member is still
           // here: the pair was a door that is no tree link of mine (doors
-          // are closed on purpose once a seat's own links are up), or the
-          // relay still reaches the member's socket (a page that went away
-          // closed it). The pair is retired and the member keeps its status;
-          // a real departure is still judged by its own links.
-          const stillHere = p && p.boot && !linkTo(pid);
+          // are closed on purpose once a seat's own links are up), or it never
+          // said goodbye (the seat's own laws judge a silent close; a socket
+          // says nothing, deep members hold none). The pair is retired and the
+          // member keeps its status; a real departure is still judged by its own links.
+          const stillHere = (p && p.boot && !linkTo(pid)) || !(p && p.byeWhy === 'leave');
           if (stillHere) { if (typeof clog === 'function') clog('pair-closed ' + String(pid).slice(0, 6) + ' (still here, not a goodbye)'); dropPeer(pid, true); continue; }
           confirmGone(pid, 'left');
         }
@@ -16706,7 +16730,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // dial REQUEST (frag-ping) so whichever half's door probe fires first,
     // the same one side ends up dialing.
     let fragPingId = null, fragPingAt = 0, fragRetryT = 0;
-    let fragDialAt = 0; const FRAG_DIAL_WAIT_MS = 30000; // F8 multi-id: the dial round before the reload, and how long it gets
+    let fragDialAt = 0; const FRAG_DIAL_WAIT_MS = 30000; // F8 multi-id: one dial round per 3 of these
     function fragRescue(id) {
       if (Date.now() - fragPingAt < 15000) return; // one outstanding rescue at a time
       fragPingId = id; fragPingAt = Date.now();
@@ -16783,11 +16807,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
         },
         sendDC: meshSendDC,
+        measure: {   // the device class and the network's verdict this page already keeps (L4)
+          tier: () => { const E = GifOS.meshConsts.enums; return IS_MOBILE ? E.TIER_MOBILE : E.TIER_DESKTOP; },
+          nat: () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' ? E.NAT_BLOCKED : E.NAT_OPEN; },
+        },
         // The seat's pcs (js/mesh/page/env.js calls these; it decides, the page carries out).
         pc: {
-          ensure: (pid, o) => { if (!pid || pid === myId) return; seatAskAt.set(pid, Date.now()); if (seatAskAt.size > 256) seatAskAt.delete(seatAskAt.keys().next().value); seatMark.set(pid, cleanMark(o && o.mark)); if (seatMark.size > 256) seatMark.delete(seatMark.keys().next().value); const s = meshSeat(); if (!(s && s.hasCoord && s.state === 3)) bootDial(pid); else ensureLink(pid); },
-          bye: (pid, why) => { const p = peers.get(pid); if (!p) return; if (why && p.dc && p.dc.readyState === 'open') { try { dcSend(p, { k: 'pcbye', why }); } catch (e) {} } p.byeSent = Date.now(); p.envClosing = Date.now(); seatAskAt.delete(pid); if (typeof clog === 'function') clog('pcbye-out ' + String(pid).slice(0, 6) + ' ' + why); setTimeout(() => { if (peers.get(pid) === p && !linkTo(pid)) dropPeer(pid, true); }, 300); },
-          close: (pid, why) => { seatAskAt.delete(pid); const p0 = peers.get(pid); if (p0) p0.envClosing = Date.now(); const p = peers.get(pid); if (!p) return; if (typeof clog === 'function') clog('pcclose ' + String(pid).slice(0, 6) + ' ' + (why || '')); if (!linkTo(pid)) dropPeer(pid, true); },
+          ensure: (pid, o) => { if (!pid || pid === myId) return; seatAskAt.set(pid, Date.now()); if (seatAskAt.size > 256) seatAskAt.delete(seatAskAt.keys().next().value); seatMark.set(pid, cleanMark(o && o.mark)); if (seatMark.size > 256) seatMark.delete(seatMark.keys().next().value); seatDial(pid); },
+          bye: pcBye,
+          close: (pid, why) => {
+            seatAskAt.delete(pid); const p = peers.get(pid); if (!p) return;
+            p.envClosing = Date.now(); if (typeof clog === 'function') clog('pcclose ' + String(pid).slice(0, 6) + ' ' + (why || ''));
+            // My end's loss with a pc still forming: that pc is the re-dial, and its open opens the Link again.
+            if (why === 'lost' && !p.connected && !(p.dc && p.dc.readyState === 'open')) return;
+            pcCloseNow(pid, p);
+          },
           state: (pid) => { const p = peers.get(pid); return p ? { pc: p.pc ? p.pc.connectionState : 'none', dc: p.dc ? p.dc.readyState : 'none', heardAt: p.lastRx || 0 } : null; },
         },
         relayBusy: (pid, body) => { relaySendSealed(pid, 'busy', Object.assign({ k: 'busy' }, body)); },
@@ -16910,12 +16944,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           setStatus(code === 4007 ? '⛔ The people on this meeting voted you off.' : '⛔ You were banned from this room.');
         },
         onStranded: () => updateStatus(), // R6: the line reads the seat's verdict (REACH_MSG 'cannot-reach-room') until the re-knock gets in
-        // S4 CLOCK SKEW: every seating frame is a signed fill with a 10-minute
-        // window, so a device whose clock is wrong is never seated and, after
-        // the TTL, was told the NETWORK refused it. The wire reports the signed
-        // delta from a verified member's frame while I am still joining.
-        onClockSkew: (ms) => { const mins = Math.max(1, Math.round(Math.abs(ms) / 60000)); setStatus('\ud83d\udd50 This device\u2019s clock is ' + mins + ' minute' + (mins === 1 ? '' : 's') + (ms > 0 ? ' behind' : ' ahead of') + ' the meeting\u2019s, so you cannot join. Set the clock, then reload.'); },
-        onClockStop: (ms) => { const mins = Math.max(1, Math.round(Math.abs(ms) / 60000)); bannedOut = true; for (const pid of Array.from(peers.keys())) dropPeer(pid); setStatus('\ud83d\udd50 This device\u2019s clock is ' + mins + ' minute' + (mins === 1 ? '' : 's') + (ms > 0 ? ' behind' : ' ahead of') + ' the meeting\u2019s, so you cannot join. Set the clock, then reload.'); },
         // FRAGMENT SELF-RESCUE: the wire proved the door knows members my
         // solo room view doesn't. Same clean lever as the freeze self-heal \u2014
         // a full re-entry \u2014 throttled, and only while the app agrees we look
@@ -16968,18 +16996,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // gated exactly as before.
             return;
           }
-          // THE DIAL BEATS THE RELOAD HERE TOO. The door knowing two or more
-          // identities I have tombstoned says they are REGISTERED, not that
-          // they are reachable: a 3-person room whose other two went dark
-          // within seconds of each other left the one healthy member solo
-          // against two door-listed ids, and this reload threw away the only
-          // seat that was still right. It came back as a stranger, the first
-          // returner was NOROOM'd by the second's stale view, and both
-          // disrupted people rejoined 55-75 s after their coverage came back
-          // (chaos seed 9 #1). Dial every door id first (an offer to a dark
-          // peer is a no-op; a live one answers in seconds and the pair
-          // heals without a reset); the reload stays as the backstop for a
-          // solo view that no dial could mend within FRAG_DIAL_WAIT_MS.
+          // Dial every door id (an offer to a dark peer is a no-op; a live one answers in seconds). The door's
+          // list introduces, it decides nothing: no reload from it. The seat's own law (L8) heals the rest.
           const nowF = Date.now();
           if (!fragDialAt || nowF - fragDialAt > FRAG_DIAL_WAIT_MS * 3) {
             fragDialAt = nowF;
@@ -16989,14 +17007,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               const q = peers.get(id); if (q && q.connected) continue;
               try { if (iInitiate(id)) { makePeer(id, null); sendOffer(id, false); } else relayName(id); dialed++; } catch (e) {}
             }
-            if (typeof clog === 'function') clog('frag-dial ' + dialed + ' door id(s) before any reload');
-            return;
+            if (typeof clog === 'function') clog('frag-dial ' + dialed + ' door id(s)');
           }
-          if (nowF - fragDialAt < FRAG_DIAL_WAIT_MS) return;
-          const last = +sessionStorage.getItem('gifos_fragrescue') || 0;
-          if (Date.now() - last < 90000) return; // once per 90s \u2014 never a reload loop
-          try { sessionStorage.setItem('gifos_fragrescue', String(Date.now())); } catch (e) {}
-          location.reload();
         },
         // R5 / E5§2: two door clusters (multi-genesis or same-key torn halves).
         onFork: (opts) => showForkPick(opts),
@@ -17180,7 +17192,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       else if (m.t === 'votes') { /* DEPRECATED: delete in 0.9.27: no relay sends it */ voteTally = m.tally || {}; voteNeed = m.need || 0; refreshAllTiles(); }
       else if (m.t === 'greeter-crash') {
         // Only the relay's socket gets here, and the relay only says it when a greeter's socket died with no close frame: that greeter's goodbye.
-        const p = peers.get(m.peer); if (p) p.byeSeen = Date.now();
+        const p = peers.get(m.peer); if (p) { p.byeSeen = Date.now(); p.byeWhy = 'leave'; }
         try { if (meshNode && meshNode.transport) meshNode.transport(m.peer, 'greeter-crash'); } catch (e) {}
       }
       else if (m.t === 'error') {
@@ -17452,7 +17464,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // frame a second for the whole call, so those pairs wait 30s. A pair
         // that was up and then wedged keeps the 8s clock.
         const stuckQuiet = p.neverUp === true && (st === 'new' || st === 'connecting');
-        if (!p.absentSince && iInitiate(pid) && !p.connected && (st === 'connecting' || st === 'new')
+        if (!p.absentSince && iInitiate(pid) && !p.connected && (st === 'connecting' || st === 'new') && !seatHolds(pid)
             && p.downSince && now - p.downSince > 12000 && now - (p.cureAt || 0) > (stuckQuiet ? 30000 : 8000)) {
           p.cureAt = now;
           p.lastKick = now + Math.random() * 1500;
@@ -17482,7 +17494,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // side never learns and never offers. The lower-id side has the occ
         // seed and must break the deadlock. Glare is handled in onSignal.
         const reofferGap = stuckQuiet ? 30000 : 6000;
-        if (!p.absentSince && !p.connected && linkTo(pid)
+        if (!p.absentSince && !p.connected && linkTo(pid) && !seatHolds(pid)
             && (st === 'failed' || st === 'disconnected' || st === 'new' || st === 'connecting')
             && now - p.lastKick > reofferGap
             && (iInitiate(pid) || (p.downSince && now - p.downSince > 4000))) {
@@ -20567,7 +20579,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // that starts the mesh's probe-gated confirm early. Guards: only the
       // CURRENT channel (a renegotiation replaces p.dc first), only while the
       // peer is still in the room, never during our own teardown.
-      dc.onclose = () => { if (!leaving && p.dc === dc && peers.has(p.id) && !(p.byeSeen && Date.now() - p.byeSeen < 30000)) onTransportDead(p.id, 'dc-close'); };   // a close after the far end's pcbye is no loss
+      dc.onclose = () => {
+        if (leaving || p.dc !== dc || peers.get(p.id) !== p || (p.byeSeen && Date.now() - p.byeSeen < 30000)) return;   // a close after the far end's pcbye is no loss
+        // The far end said a fresh pc replaces this one: no loss, unless that pc never comes (one dial's time, LINK_DIAL_FAIL).
+        if (dc.__fresh) { setTimeout(() => { if (!leaving && p.dc === dc && peers.get(p.id) === p) onTransportDead(p.id, 'dc-close'); }, 20000); return; }
+        onTransportDead(p.id, 'dc-close');
+      };
       dc.onmessage = (ev) => {
         let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
         m = meshDefrag(m, 'dc|' + p.id); if (!m) return;
@@ -20996,25 +21013,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (dc && dc.__authBy === p.id) { try { const s = meshSeat(); if (s && s.goodbye) s.goodbye(p.id); } catch (e) {} }
       } else if (m.k === 'pcmark') {
         try { pcMarkIn(p, dc, m); } catch (e) {}   // A2's offer / answer mark (pcMarkIn)
+      } else if (m.k === 'pcfresh') {
+        if (dc) { dc.__fresh = true; if (dc.__pc) dc.__pc.__fresh = true; }   // the far end's rebuild: the close that follows on THIS channel is no loss
       } else if (m.k === 'pcbye') {
         // A deliberate close from the far end (A2's pc laws): its why reaches the seat's world, and the
         // channel's close that follows is no loss.
-        if (dc && dc.__authBy === p.id) { p.byeSeen = Date.now(); try { if (meshNode && meshNode.transport) meshNode.transport(p.id, 'bye', typeof m.why === 'string' ? m.why.slice(0, 16) : 'call'); } catch (e) {} if (typeof clog === 'function') clog('pcbye-in ' + String(p.id).slice(0, 6) + ' ' + m.why); }
-        // L27 for the refused device: a seat that refuses me says 'kick'. Two distinct seats saying it (the vote-off
-        // bar is never below 2) while I am kept out is the room's standing verdict on this device: tell the person.
-        if (dc && dc.__authBy === p.id && m.why === 'kick' && !bannedOut && !hasAdminRoom()) {
-          const now = Date.now(); kickByesIn.set(p.id, now); for (const [k2, at] of kickByesIn) if (now - at > 60000) kickByesIn.delete(k2);
-          // The room's bar, not any two seats: fewer than a majority of the doors it knows could otherwise stop a newcomer.
-          if (kickByesIn.size >= Math.max(2, Math.trunc((((meshSeat() || {}).lastGreeters || []).length) / 2) + 1) || votedOffHere()) {
-            bannedOut = true; noteVotedOff(); if (typeof clog === 'function') clog('kicked-out by ' + kickByesIn.size);
-            for (const pid of Array.from(peers.keys())) dropPeer(pid);
-            try { meshNode && meshNode.stop(); } catch (e) {}
-            setStatus(uiText('stThePeopleInThisRoom', '\u26d4 The people in this room voted not to let this device in.'));
-          } else {
-            // Not the room's bar yet: this door is shut to me, so ask the next one now rather than at the 10 s retry.
-            try { const r = meshNode && meshNode.raw; if (r && !r.hasCoord && r.state !== 3) { r.state = 0; r.findAckAt = -1; r.retryAt = r.TICK - 21; } } catch (e) {}
-          }
-        }
+        if (dc && dc.__authBy === p.id) { p.byeSeen = Date.now(); p.byeWhy = m.why; try { if (meshNode && meshNode.transport) meshNode.transport(p.id, 'bye', typeof m.why === 'string' ? m.why.slice(0, 16) : 'call'); } catch (e) {} if (typeof clog === 'function') clog('pcbye-in ' + String(p.id).slice(0, 6) + ' ' + m.why); }
+        // L27, the refused side: a seat that refuses me says 'kick'. It moves nothing here: only the line (refusedLine) reads it.
+        if (dc && dc.__authBy === p.id && m.why === 'kick' && !hasAdminRoom()) { kickByesIn.add(p.id); if (typeof clog === 'function') clog('kick-heard ' + String(p.id).slice(0, 6) + ' of ' + kickByesIn.size); updateStatus(); }
       } else if (m.k === 'dcauth') {
         dcAuthRecv(p, dc, m);   // §DCAUTH: the peer proves it is the far end of THIS channel
       } else if (m.k === 'mesh') {
@@ -21038,7 +21044,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // channel, else one ttl-bounded unicast mesh step (fwdOnward).
         noteCrumb(m.from, p.id);
         if (m.m && (m.m.t === 'FIND' || m.m.t === 'WHOHOME')) noteCrumb(m.m.t === 'FIND' ? m.m.nc : m.m.from, p.id);
-        if (m.to === myId) { if (meshNode && m.m) meshNode.recvCtl(m.m, m.from); return; } // the envelope's origin is its sender's own claim: never `direct` (any member can write it)
+        if (m.to === myId) { if (meshNode && m.m) meshNode.recvCtl(m.m, p.id); return; } // the envelope's origin is its sender's own claim (any member can write it): the frame is the delivering peer's, as a routed frame's last hop, and never `direct`
         fwdOnward('fmesh', m, p.id);
       } else if (m.k === 'rreq') { // OFFER TURNS: the polite side asks
         if (p.pc && iInitiate(p.id)) giveTurn(p);
@@ -32183,18 +32189,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     };
     // L27 VOTE-OFF ON THE MESH: my vote-offs (device tags) name every peer on that device; the seat signs the
     // statement and it rides PHONE; the seat's fold is the tally, its threshold the need, its verdict the kick.
-    const kickByesIn = new Map();   // peer -> when it closed our pair with 'kick' (L27, the refused side)
     const devClaimAt = new Map();   // peer -> when I first saw it hold a device tag
     const kickTagAt = new Map();    // refused tag -> when the refused peer took it
-    // This device's own memory that the room voted it off (its fold said so, or two seats did), for KICK_LIFT-ish 120 s:
-    // a rejoining page then takes the one door it knocks (L16) saying 'kick' as the standing verdict. Only ever about me.
-    const VOTED_OFF_KEY = 'gifos_votedoff', VOTED_OFF_MS = 120000;
-    function noteVotedOff() { try { const o = JSON.parse(localStorage.getItem(VOTED_OFF_KEY) || '{}'); const now = Date.now(); for (const k in o) if (now - o[k] > VOTED_OFF_MS) delete o[k]; o[String(room)] = now; localStorage.setItem(VOTED_OFF_KEY, JSON.stringify(o)); } catch (e) {} }
-    function votedOffHere() { try { const o = JSON.parse(localStorage.getItem(VOTED_OFF_KEY) || '{}'); const at = o[String(room)]; return !!at && Date.now() - at < VOTED_OFF_MS; } catch (e) { return false; } }
+    // The honest line for a person the room voted off. The seat is not stopped: a refused seat simply is not answered,
+    // and it comes back in if the verdict lifts (L27.7). The evidence is the page's own: two seats said 'kick' over their
+    // own channels (L27.8's more than one path) and nobody else answers. One page, or anyone else who still answers, shows nothing.
+    let keptAnsweredAt = 0;
+    function answeredByOther() { const s = meshSeat(); if (!s || s.state !== 3 || !s.hasCoord) return false; for (const pid of s.linkPeers()) if (!kickByesIn.has(pid)) return true; return false; }
+    function refusedLine() { return kickByesIn.size >= 2 && !answeredByOther(); }
+    const kickSaid = new Map();   // refused peer -> when I said 'kick' on its channel
+    const kickWant = new Map();   // peer -> the device I voted off. My statement keeps naming it after its tile and devOf entry go: the verdict drops those, and a vote leaves with its voter, not its target (L27.7)
     function meshVoteBeat() {
       if (!meshNode || !meshNode.setKicks || hasAdminRoom()) return;
-      const want = []; for (const pid of Object.keys(devOf)) if (pid !== myId && myVoteoffs.has(devOf[pid])) want.push(pid);
-      meshNode.setKicks(want);
+      for (const pid of Object.keys(devOf)) if (pid !== myId && myVoteoffs.has(devOf[pid])) { kickWant.set(pid, devOf[pid]); if (kickWant.size > 64) kickWant.delete(kickWant.keys().next().value); }
+      for (const [pid, dv] of kickWant) if (!myVoteoffs.has(dv)) kickWant.delete(pid);
+      meshNode.setKicks(Array.from(kickWant.keys()));
       // L27 across a rejoin: my seat's verdict is about the DEVICE, so every other peer of a refused device (its
       // rejoining page, a second tab) is refused too, and a door pc to it is closed with the same 'kick' goodbye.
       if (meshNode.kickDevs && meshNode.kickCarry) {
@@ -32208,21 +32217,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (meshNode.kickCarry([pid]) > 0 && typeof clog === 'function') clog('kick-id ' + String(pid).slice(0, 6));
         }
       }
-      // A refused peer's open channel (its door knock, or a pair the verdict found not yet a link) hears 'kick' too.
-      if (meshNode.kicked) for (const q of Array.from(peers.values())) {
-        if (!q.dc || q.dc.readyState !== 'open' || !meshNode.kicked(q.id) || Date.now() - (q.kickSaidAt || 0) < 10000) continue;
-        q.kickSaidAt = Date.now(); try { dcSend(q, { k: 'pcbye', why: 'kick' }); } catch (e) {} if (typeof clog === 'function') clog('kick-say ' + String(q.id).slice(0, 6));
+      // A refused peer's open channel (its door knock, or a pair the verdict found not yet a link) hears 'kick' once, then this page has
+      // no pair and no tile for it (the same gates an admin's ban uses; its socket can stay up). The verdict's lift (L27.7) lifts them.
+      if (meshNode.kicked) {
+        for (const q of Array.from(peers.values())) {
+          if (!meshNode.kicked(q.id)) continue;
+          const at = kickSaid.get(q.id);
+          if (at === undefined) { if (q.dc && q.dc.readyState === 'open') { kickSaid.set(q.id, Date.now()); try { dcSend(q, { k: 'pcbye', why: 'kick' }); } catch (e) {} if (typeof clog === 'function') clog('kick-say ' + String(q.id).slice(0, 6)); } }
+          else if (Date.now() - at > 1500) { bannedSeat.add(q.id); confirmGone(q.id, 'ban'); dropPeer(q.id); }
+        }
+        for (const pid of Array.from(kickSaid.keys())) if (!meshNode.kicked(pid)) { kickSaid.delete(pid); bannedSeat.delete(pid); }
       }
       const k = meshNode.kickTally(); const tally = {}; let need = 0;
       for (const pid of Object.keys(k.tally)) { const dv = devOf[pid]; if (!dv) continue; tally[dv] = Math.max(tally[dv] || 0, k.tally[pid]); need = Math.max(need, k.need[pid] || 0); }
       if (!need && Object.keys(k.need).length === 0) { const n = (meshSeat() && meshSeat().occ) ? meshSeat().occ.size : 0; need = Math.max(2, Math.trunc(n / 2) + 1); }
       const ch = JSON.stringify(tally) !== JSON.stringify(voteTally) || need !== voteNeed;
       voteTally = tally; voteNeed = need; if (ch) refreshAllTiles();
-      if (k.me && !bannedOut) {
-        bannedOut = true; noteVotedOff();
-        for (const pid of Array.from(peers.keys())) dropPeer(pid);
-        try { meshNode.stop(); } catch (e) {}
-        setStatus('\u26d4 The people on this meeting voted you off.');
+      if (kickByesIn.size) {   // the words are forgotten once others have answered me for a while
+        if (!answeredByOther()) keptAnsweredAt = 0; else if (!keptAnsweredAt) keptAnsweredAt = Date.now(); else if (Date.now() - keptAnsweredAt > 30000) { kickByesIn.clear(); keptAnsweredAt = 0; }
       }
     }
     function toggleVote(id) {
