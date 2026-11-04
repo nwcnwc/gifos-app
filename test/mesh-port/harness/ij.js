@@ -88,6 +88,7 @@ function install(fab) {
     P('IJSTAT n=%d placed_p50=%lld placed_max=%lld seated_p50=%lld seated_max=%lld media_p50=%lld media_max=%lld links_p50=%lld links_max=%lld unplaced=%d unseated=%d nomedia=%d dupCells=%lld dupFirst=%lld dupLast=%lld dupMax=%lld dupNow=%zu l31=%d\n',
       n, ijPct(pl, 50), mx(pl), ijPct(se, 50), mx(se), ijPct(me, 50), mx(me), ijPct(li, 50), mx(li), unp, uns, unm, S.IJ_DUPCELLS, S.IJ_DUPFIRST, S.IJ_DUPLAST, S.IJ_DUPMAX, IJDUP.size, 1);
     P('IJL31 door=%lld direct=%lld replaced=%lld lost=%lld noAssent=%lld refused=%lld forged=%lld forgeAccepted=%lld forgeRefused=%lld\n', lv.L31_DOOR, lv.L31_HANDOFF, lv.L31_REPLACED, lv.L31_LOST, lv.L31_NOACK, lv.L31_REFUSED, lv.L31_FORGED, lv.L31_FORGE_OK, lv.L31_FORGE_NO);
+    P('IJL44 stay=%lld liveWithdrawn=%lld\n', lv.L44_STAY, lv.L44_LIVEW);
   }
   // C++: mesh_instant_fab.inc:ijLever
   function ijLever(tk) {
