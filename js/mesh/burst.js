@@ -13,6 +13,7 @@
   const topo = req('./topo.js', 'meshTopo');
   const K = C_.consts;
   const { ckey, C } = topo;
+  const { LS_CLOSED } = C_.enums || {};
 
   Seat.unit('mesh_burst.inc', {
     // L44.1: an admitter I hear first-hand is not silent: its refusal is judged on my own HELLO, and my placer's word alone does not move me.
@@ -43,6 +44,15 @@
     l44AckWait() {
       if (!this.haveRoster || this.roster.length >= C * C) return 60;
       return K.L7_HOLD + 1;
+    },
+
+    // L44.5: the link to the seat I asked is closed, in a room not yet full: nothing more comes over it, so I ask again now.
+    // C++: mesh_burst.inc:Seat::l44LinkLost
+    l44LinkLost() {
+      if (!this.f.fabricDoors() || this.lastAsked < 0 || !this.haveRoster || this.roster.length >= C * C || this.TICK <= this.retryAt || this.f.fabricLinkState(this.id, this.lastAsked) !== LS_CLOSED) return false;
+      this.trace('L44-REASK', this.id, null, 'asked=%d after=%d', this.lastAsked, this.TICK - this.retryAt);
+      this.w.lv.L44_REASK++;
+      return true;
     },
   });
   GifOS.meshBurst = Object.freeze({});
