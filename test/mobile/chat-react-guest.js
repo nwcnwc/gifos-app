@@ -5,7 +5,7 @@
  * The host can't match "Someone" to anybody in People.
  * A reactor with no name reads "Guest", the way People names them.
  *
- * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/chat-react-guest.js
+ * Gate: NODE_PATH=~/gifos-swarm/node_modules node test/mobile/chat-react-guest.js
  */
 const fs = require('fs');
 const path = require('path');

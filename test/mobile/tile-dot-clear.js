@@ -7,7 +7,7 @@
  * hit test never sees it; this test measures it.
  * The dot never covers a chip, Full screen, Blur or a name, on any tile.
  *
- * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/tile-dot-clear.js
+ * Gate: NODE_PATH=~/gifos-swarm/node_modules node test/mobile/tile-dot-clear.js
  */
 const fs = require('fs');
 const path = require('path');

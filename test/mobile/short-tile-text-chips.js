@@ -13,7 +13,7 @@
  * the name, of Full screen, of a camera-off tile's big initial and of
  * every other chip, and its words must stay in its title.
  *
- * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/short-tile-text-chips.js
+ * Gate: NODE_PATH=~/gifos-swarm/node_modules node test/mobile/short-tile-text-chips.js
  */
 const fs = require('fs');
 const path = require('path');

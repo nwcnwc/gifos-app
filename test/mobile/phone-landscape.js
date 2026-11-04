@@ -6,7 +6,7 @@
  * The faces now fill the height under the header, names stay at 12px,
  * and waking the dock does not move a face. More stays on the screen.
  *
- *   NODE_PATH=/home/nathan/rel23-gate-1017/node_modules node test/mobile/phone-landscape.js
+ *   NODE_PATH=~/rel23-gate-1017/node_modules node test/mobile/phone-landscape.js
  */
 const fs = require('fs');
 const path = require('path');
