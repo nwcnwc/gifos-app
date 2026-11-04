@@ -17416,17 +17416,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const jobs = [];
       for (const p of peers.values()) if (p.pc && p.connected) jobs.push(p.pc.getStats().then((rep) => ({ p, rep })).catch(() => null));
       Promise.all(jobs).then((list) => {
-        let lim = 0, all = 0, lost = 0;
+        let lim = 0, all = 0, lost = 0; const losses = [];
         const seen = new Set();
         for (const it of list) { if (!it) continue;
           it.rep.forEach((r) => {
-            if (r.type === 'remote-inbound-rtp' && r.fractionLost > lost) lost = r.fractionLost;
+            // What my uplink loses is what most of my receivers lose: one receiver on a bad network loses alone, and
+            // its word must not read as this device failing (it would shed every forward and leave its cell for it).
+            if (r.type === 'remote-inbound-rtp' && Number.isFinite(r.fractionLost)) losses.push(r.fractionLost);
             if (r.type !== 'outbound-rtp' || r.kind !== 'video' || !r.qualityLimitationDurations) return;
             const key = it.p.id + '|' + r.id, d = r.qualityLimitationDurations, was = lgPrev.get(key); seen.add(key); lgPrev.set(key, { d });
             if (was) { const c = d.cpu - was.d.cpu; lim += c; all += c + (d.bandwidth - was.d.bandwidth) + (d.none - was.d.none) + (d.other - was.d.other); }
           });
         }
         for (const k of [...lgPrev.keys()]) if (!seen.has(k)) lgPrev.delete(k);
+        if (losses.length) { losses.sort((a, b) => a - b); lost = losses[Math.floor(losses.length / 2)]; }   // the median receiver
         const share = all > 0 ? lim / all : 0;
         // A joining room ramps up and a busy second passes: only three low reads in a row say anything about the device.
         const low = share >= 0.5 || lag >= 500 || lost >= 0.2; lgLowReads = low ? lgLowReads + 1 : 0;
