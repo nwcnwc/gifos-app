@@ -14079,6 +14079,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (p.tile && p.tile.parentNode) p.tile.remove();
     }
     // Seated, a pair my seat neither links nor names is no one in this room yet: a door, or a lone seat greeting me. An open channel alone is no face and no count.
+    // Seated, a pair my seat does not link is no one in the room by its transport alone: an admission pair, a backup uplink, a feed carrier. Their person counts when their status reaches me, not because a channel is open.
+    function pairOnly(p) { const s = meshSeat(); return !!(s && s.hasCoord && s.state === 3 && !p.headless && !linkTo(p.id)); }
     function seatStranger(p) { const s = meshSeat(); return !!(s && s.hasCoord && s.state === 3 && !p.headless && !linkTo(p.id) && !meshKnows(p.id)); }
     function restoreDoorTile(p) {
       if (!p || !doorOffGrid.has(p.id)) return;
@@ -15580,7 +15582,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const alive = (v) => {
         if (stHold(v)) return true; // 15s fresh + the G1 away/transport holdover (60s-bounded)
         const p = peers.get(v);
-        if (p && p.connected && Date.now() - (p.lastHeard || 0) < VOUCH_MS) return true;
+        if (p && p.connected && Date.now() - (p.lastHeard || 0) < VOUCH_MS && !pairOnly(p)) return true;
         return fhLive(v);
       };
       for (const v of s.occ.values()) if (v && v !== myId && notTomb(v) && alive(v)) ids.add(v);
