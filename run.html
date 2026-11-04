@@ -6159,7 +6159,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let reactPending = false;
     const memoPass = (k, f) => { if (!passMemo) return f(); if (!(k in passMemo)) passMemo[k] = f(); return passMemo[k]; };
     const stageHeldAt = new Map(), STAGE_FOLD_HOLD_MS = 25000;
-    const stageFeedAt = new Map(), STAGE_FEED_LOST_MS = 10000;
+    const stageFeedAt = new Map(), STAGE_FEED_LOST_MS = 2500;
     const stageIds = () => memoPass('stg', stageIdsNow);
     const stageIdsNow = () => {
       // A stage seat needs a LIVE status — the same stHold rule as consent and
@@ -6203,14 +6203,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         for (const e of dg.stage) {
           if (!e.id || have.has(e.id) || e.id === myId || botOf(e.id) || stHold(e.id) || !notTomb(e.id) || !(canStage(e.id) || ((e.f & 2) && mayShareScreen(e.id)))) continue;
           if (vt) { const dv = e.dv || devFor(e.id); if (dv && (vt.down[dv] || 0) >= stageNeed(vt, dv)) continue; }
-          // The fold keeps a dead seat's lists under its lease (L3.12, up to 110 s), so it can't say
-          // a stager died. Its feed can: I held it and it has been gone a while, so nobody is there.
-          let feedNow = false; try { feedNow = !stgLost('stg:' + e.id); } catch (x) {}
-          if (feedNow) stageFeedAt.set(e.id, Date.now());
-          else if (stageFeedAt.has(e.id) && Date.now() - stageFeedAt.get(e.id) > STAGE_FEED_LOST_MS) continue;
           out.push([e.id, e.k]);
         }
-        for (const id of stageFeedAt.keys()) if (!dg.stage.some((e) => e.id === id)) stageFeedAt.delete(id);
+      }
+      // A/V gets no grace (Nathan, 0.9.25): a stager whose feed I held and lost is off the stage
+      // at once, whatever a status or the fold still says (both lag a death by up to a minute).
+      // Short of a blip only: the watchdog calls a pipe dark after 0.7 s of silence. A new claim
+      // (a reload, the feed back) puts the stager back.
+      {
+        const nowF = Date.now();
+        for (let i = out.length - 1; i >= 0; i--) {
+          const id = out[i][0]; if (id === myId) continue;
+          let feedNow = false; try { feedNow = !stgLost('stg:' + id); } catch (x) {}
+          if (feedNow) stageFeedAt.set(id, nowF);
+          else if (stageFeedAt.has(id) && nowF - stageFeedAt.get(id) > STAGE_FEED_LOST_MS) out.splice(i, 1);
+        }
+        for (const id of [...stageFeedAt.keys()]) if (!out.some((x) => x[0] === id) && nowF - stageFeedAt.get(id) > 120000) stageFeedAt.delete(id);
       }
       // A deep stager's entry reaches the far room through its row's fold, and that path breaks
       // when the seat above it dies, until E2 carries the fold. The stager did not step down and

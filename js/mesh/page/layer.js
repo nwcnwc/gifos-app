@@ -88,13 +88,13 @@
     const e = { tgt: v.tgt, up: v.up, dn: v.dn }; if (v.ab) e.ab = v.ab; acc.push(e);
   };
   const voteCopy = (v) => { const e = { tgt: v.tgt, up: v.up, dn: v.dn }; if (v.ab) e.ab = v.ab; return e; };
-  const digLists = (dst, s, cap) => {
+  const digLists = (dst, s, cap, held) => {
     dst.handN += Math.min(s.handN || 0, cap); dst.awayN += Math.min(s.awayN || 0, cap);
-    dst.hands = listMerge(dst.hands, s.hands, K_HAND, true); dst.stage = listMerge(dst.stage, s.stage, K_STAGE(), true); dst.apps = listMerge(dst.apps, s.apps, K_APP, false);
+    dst.hands = listMerge(dst.hands, s.hands, K_HAND, true); if (!held) dst.stage = listMerge(dst.stage, s.stage, K_STAGE(), true); dst.apps = listMerge(dst.apps, s.apps, K_APP, false);
     for (const v of (s.votes || [])) voteAdd(dst.votes, { tgt: v.tgt, up: Math.min(v.up, cap), dn: Math.min(v.dn, cap), ab: Math.min(v.ab || 0, cap) });
   };
   const digFold = (dst, s) => { const cap = (s.n < 0 ? 0 : s.n) + (s.leased || 0); dst.n += s.n; dst.leased += s.leased || 0; dst.refuse += s.refuse; if (s.part) dst.part = 1; digLists(dst, s, cap); };
-  const digFoldHeld = (dst, s) => { const cap = (s.n < 0 ? 0 : s.n) + (s.leased || 0); dst.leased += cap; digLists(dst, s, cap); };   // the seat's L3.12: held under its lease
+  const digFoldHeld = (dst, s) => { const cap = (s.n < 0 ? 0 : s.n) + (s.leased || 0); dst.leased += cap; digLists(dst, s, cap, true); };   // the seat's L3.12: held under its lease, with no Stage list
   const digTrim = (d) => {
     const cap = (d.n < 0 ? 0 : d.n) + (d.leased || 0);
     if (d.handN > cap) d.handN = cap; if (d.awayN > cap) d.awayN = cap;
