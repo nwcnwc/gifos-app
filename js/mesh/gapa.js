@@ -74,7 +74,7 @@
     // L41.2: a witness answers who it hears at a cell of its links (or that it holds the cell itself).
     // C++: mesh_gapa.inc:Seat::gaAnswer
     gaAnswer(m) {
-      const LINKMODEL = this.w.lv.LINKMODEL;
+      const LINKMODEL = this.f.fabricDoors();   // C++: fabricDoors() (the seat-side query; the wall keeps the fabric name out of seat code)
       if (!this.hasCoord || this.state !== 3 || m.from < 0 || m.from === this.id || (LINKMODEL && !this.linkIs(m, m.from)) || !cellOk(m.ck)) return;
       let held = -1;
       if (ckey(this.coord) === m.ck) { if (!(this.moving && this.gaCk === m.ck)) held = this.id; }   // the cell is mine
@@ -91,7 +91,7 @@
     // C++: mesh_gapa.inc:Seat::gaVote
     gaVote(m) {
       const lv = this.w.lv;
-      if (!this.gaLive() || m.ck !== this.gaCk || m.id < 0 || (lv.LINKMODEL && !this.linkIs(m, m.id))) return;
+      if (!this.gaLive() || m.ck !== this.gaCk || m.id < 0 || (this.f.fabricDoors() && !this.linkIs(m, m.id))) return;
       let asked = false; for (const y of this.gaAsk) if (y === m.id) asked = true; if (!asked) return;
       { let j = 0; for (const y of this.gaAsk) if (y !== m.id) this.gaAsk[j++] = y; this.gaAsk.length = j; }
       if (m.nc >= 0 && m.nc !== this.id) { lv.GA_HELD++; lv.GA_RB++; this.trace('L41.2-HELD', this.id, this.coord, 'by=%d holder=%d placer=%d', m.id, m.nc, this.gaPlacer); this.gaCk = 0; this.rbWhy = 'gapa-held'; this.rollbackMove(); return; }
