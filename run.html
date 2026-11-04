@@ -25859,8 +25859,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // L14 (fast media, slow tidy): the cut-off branches that took me as their uplink. Their products ride into what I
       // make ('subu:<head>'); each gets one down pack of everything I hold but itself, as 'sdn' (its outside).
       const l14Heads = (() => { const sv = meshSeat(); return sv && beyondRow ? sv.l14Served() : []; })();
+      // A branch one of my row-mates serves reaches me as that mate's relay (sub {l14, via}): the mate relays only the
+      // branches it serves, and its announce ages out when it stops. A head packs those as its own, so the branch
+      // goes up in the row product and into the stadium.
+      const rowMatePid = (pid) => { if (!pid) return false; for (let j = 0; j < C; j++) { if (j === c.i) continue; if (occPid({ pc: c.pc, r: c.r, i: j }) === pid) return true; } return false; };
+      const l14Keep = (h, uf) => l14Heads.includes(h) || (!!uf && uf.via !== h && (iAmHead || actHead) && rowMatePid(uf.via));
       const l14Blocks = (pk, skip, ordOf) => {
-        let q = 0; for (const [mk, uf] of mosIn) { if (mk.indexOf('subu:') !== 0) continue; const h = mk.slice(5); if (h === skip || !l14Heads.includes(h)) { pk.delTile('u' + h); continue; } setBlock(pk, 'u' + h, ordOf(q++), uf); }
+        let q = 0; for (const [mk, uf] of mosIn) { if (mk.indexOf('subu:') !== 0) continue; const h = mk.slice(5); if (h === skip || !l14Keep(h, uf)) { pk.delTile('u' + h); continue; } setBlock(pk, 'u' + h, ordOf(q++), uf); }
       };
       const l14Down = (fill, metaOf) => {
         for (const [h, pk] of [...l14Packs]) if (!fill || !l14Heads.includes(h)) { pk.stop(); l14Packs.delete(h); }
