@@ -10,7 +10,7 @@
  *
  * Calls this unit makes into other units, by the C++ name: Seat methods (occGet ... in seat.js; take, announce,
  * requeue, phoneHome, translostConfirmed, routeToProbe, liveElsewhere, islandHeirGone, ownedLinkCell, l4Busy,
- * otherRing, onStageOrTalking, l64Keep, l919Rollback, l920Note, l920Deaf, l33WordDenied, l33WordMine,
+ * otherRing, l919Rollback, l920Note, l920Deaf, l33WordDenied, l33WordMine,
  * l33WordRegrant); free functions through FREE (cellOk, ownerCoordOf, coordStr, l35HandOn, l35Hinted,
  * bumpMoves); the fabric through this.f. fabricDialUplink(me, x, refer): refer is an array the fabric leaves as given (the sim: (void)refer)
  * place, the call returns the bool.
@@ -568,10 +568,6 @@
           for (let j = C - 1; j >= 0; j--) { const k = ckey(rc[j]); const x = this.occGet(k); if (x >= 0 && x !== id && !this.translost.has(k) && !this.liveElsewhere(x, k) && (ttl > 0 || this.firstHandLive(k))) { if (j !== 0) this.f.fabricDialJoin(id, x); this.emit(x, flMsg(hole, nbrs, 0)); return; } }
           return;
         }
-        if (((this.l13('L13.7') && this.onStageOrTalking()) || this.l64Keep(hole))) {
-          for (let j = this.coord.i - 1; j >= 1; j--) { const k = ckey(cell(this.coord.pc, this.coord.r, j)); const x = this.occGet(k); if (x >= 0 && x !== id && !this.translost.has(k) && !this.l13Fresh(k) && !this.hasDownChild(unck(k))) { this.emit(x, flMsg(hole, nbrs, 0)); return; } }
-          this.trace('STAGE-REFUSE', id, hole, '-'); return;
-        }
         if (this.l13('L13.7') && this.l13Fresh(ckey(this.coord)) && !(hole.pc === this.coord.pc && hole.r === this.coord.r && hole.i === 0)) {
           for (let j = this.coord.i - 1; j >= 1; j--) { const k = ckey(cell(this.coord.pc, this.coord.r, j)); const x = this.occGet(k); if (x >= 0 && x !== id && !this.translost.has(k) && !this.l13Fresh(k) && !this.hasDownChild(unck(k))) { this.emit(x, flMsg(hole, nbrs, 0)); this.trace('FRESH-PASS', id, hole, 'to=%d', x); return; } }
           this.trace('FRESH-REFUSE', id, hole, '-'); return;
@@ -604,7 +600,6 @@
     // C++: mesh_heal.inc:Seat::promoteInto
     promoteInto(hole, nbrs) {
       if (!this.hasCoord || ckey(this.coord) === ckey(hole)) return;
-      if ((this.l13('L13.7') && this.onStageOrTalking()) || this.l64Keep(hole)) { this.trace('STAGE-REFUSE', this.id, hole, 'promote'); return; }
       if (this.moving) { return; }
       if (this.chanless(ckey(hole))) { return; }
       if (this.coord.pc === 0 && hole.pc !== 0) return;

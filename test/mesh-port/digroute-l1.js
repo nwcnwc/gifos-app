@@ -33,7 +33,7 @@ for (const dir of process.argv.slice(2)) {
     const w = newWorld({ fabric: fab }); w.TICK = o.t;
     const s = new Seat(o.id, w); state.restore(s, o.s);
     try {
-      s.l12SectionLone(); s.onStageOrTalking(); s.l9Small(); s.compactEligible(); s.l10OwnNow(); s.l10UpNow();
+      s.l12SectionLone(); s.l9Small(); s.compactEligible(); s.l10OwnNow(); s.l10UpNow();
       if (s.hasCoord) {
         s.pubDig(s.myDig); s.upRefuted(s.myDig, s.downUsed, 0); s.strictNextHop({ pc: 0, r: (s.coord.r + 1) % 5, i: 2 }); s.nextHopToward({ pc: 0, r: 3, i: 3 }, -1);
         s.kAuditTimeouts(); s.kHealDue(); s.kAuditPulse(); s.kickEval(); s.rootFold(true); s.rootFold(false);

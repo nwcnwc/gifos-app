@@ -775,8 +775,6 @@
       for (const v of this.l829Bye.values()) if (this.TICK - v <= K.RELAY_TTL) return true;
       return false;
     },
-    // C++: mesh.cpp:Seat::l4Stage
-    l4Stage() { return this.onStageOrTalking() || this.l4Hold; },
     // C++: mesh.cpp:Seat::l4Peer
     l4Peer(x) { return this.l4MarkUntil >= this.TICK && this.l4Old.has(x); },
     // C++: mesh.cpp:Seat::l13SplitHole
