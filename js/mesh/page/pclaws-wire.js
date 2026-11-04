@@ -322,7 +322,7 @@
         const kMe = !!(L.outside & (1 << mine(x)));
         if (kMe) { if (mySeated()) L.dSat = true; continue; }   // I am the outside end: the greeter's limits are its own
         if (farSeated(x)) L.dSat = true;
-        const heard = pc.doorHeard(L, me, x); const named = pc.l15Names(me, x) || pc.l15NamedBy(me, x);
+        const heard = pc.doorHeard(L, me, x); const named = pc.l15Names(me, x) || pc.l15NamedBy(me, x) || (!!mySeat() && (mySeat().l14Serve(x) || mySeat().l14Up === x));   // L14: my uplink, or one I took, is no door (in the sim both ends are seated); my view need not hold the head's cell
         if (!heard && !named && L.dBorn >= 0) {
           const idle = T() - L.dProg, age = T() - L.dBorn; let why = null;
           if (L.dHoAt >= 0 && T() - L.dHoAt >= K.L16_HO_CLOSE && !(L.dOwed && L.dWait >= 0)) why = 'handed';
