@@ -26424,6 +26424,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (c.i === 0) for (const m of T.rowMates(c)) add(m);
       }
       add(T.down(c));
+      // The second way up and down: the same E2 and L14 ends the Stage audio rides when a row's tree channel is
+      // cut (relayStg). A branch whose head lost its owner still exchanges app frames with the room this way;
+      // the lane dedups by frame id, so an extra edge never doubles a frame.
+      const sv = meshSeat();
+      if (sv) for (const t of [sv.u2Id, sv.u3Id, sv.l14Up].concat(sv.u2Heirs ? sv.u2Heirs() : [], sv.l14Served ? sv.l14Served() : [])) if (t && t !== myId) out.add(t);
       return [...out];
     }
     // A stage frame reaches only peers whose DataChannel is ALREADY open, and
