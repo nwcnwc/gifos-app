@@ -6205,7 +6205,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (vt) { const dv = e.dv || devFor(e.id); if (dv && (vt.down[dv] || 0) >= stageNeed(vt, dv)) continue; }
           // The fold keeps a dead seat's lists under its lease (L3.12, up to 110 s), so it can't say
           // a stager died. Its feed can: I held it and it has been gone a while, so nobody is there.
-          let feedNow = false; try { feedNow = !!mosIn.get('stg:' + e.id); } catch (x) {}
+          let feedNow = false; try { feedNow = !stgLost('stg:' + e.id); } catch (x) {}
           if (feedNow) stageFeedAt.set(e.id, Date.now());
           else if (stageFeedAt.has(e.id) && Date.now() - stageFeedAt.get(e.id) > STAGE_FEED_LOST_MS) continue;
           out.push([e.id, e.k]);
@@ -6222,7 +6222,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (out.some((x) => x[0] === id)) continue;
         const said = statusOf.get(id);
         const fresh = said && nowH - stSeen(said) <= 15000;
-        let held = false; try { held = !!mosIn.get('stg:' + id); } catch (e) {} // a dead primary still counts: its claim ends after the grace unless a standby takes the slot
+        let held = false; try { held = !!mosIn.get('stg:' + id) && !(mosFb.get('stg:' + id) || {}).dark; } catch (e) {} // a dead primary counts until the grace ends; a dark one (silent ring or dead path) does not
         if (nowH - h.at > STAGE_FOLD_HOLD_MS || id === myId || !held || meshGone.has(id) || (fresh && !said.stg)) { stageHeldAt.delete(id); continue; }
         out.push([id, h.k]);
       }
@@ -24119,7 +24119,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             const wantsPipe = kind === 'video' && pipeEnabled() && !pipeDeny.has(jk) && !pipeJobs.has(jk)
               && (() => { try { return !!MPipe.receiverForTrack(nt, [...peers.values()].map((q) => q.pc).filter(Boolean)); } catch (e) { return false; } })();
             if (wantsPipe) { mosDetach(cur, jk, p, i); mosAttach(cur, jk, p, nt); ops.push('relane:' + kind); have = haveIdx(kind); continue; }
-            if (cur.active && !(typeof outgoingHeld !== 'undefined' && outgoingHeld)) { try { cur.senders[i].replaceTrack(nt); } catch (e) {} }
+            if (cur.active && !cur.carryOff && !(typeof outgoingHeld !== 'undefined' && outgoingHeld)) { try { cur.senders[i].replaceTrack(nt); } catch (e) {} }
             cur.trackList[i] = nt; cur.srcTracks[i] = nt; ops.push('swap:' + kind);
           }
           // grow: the source gained a track of this kind — a fresh m-line
@@ -24300,7 +24300,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!!job.active === !!on) return;
       job.active = !!on;
       for (let i = 0; i < job.senders.length; i++) {
-        try { job.senders[i].replaceTrack(on ? (job.trackList[i] || null) : null); } catch (e) {}
+        try { job.senders[i].replaceTrack(on && !job.carryOff ? (job.trackList[i] || null) : null); } catch (e) {} // a copy of a dark claim stays stopped (stgCarry)
       }
       // A PIPED job's dormancy must reach the worker: a parked pipe's minted
       // templates die at the detached track, so its tap must stop queueing
@@ -25007,13 +25007,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const trs = ent.stream ? ent.stream.getTracks() : [];
       return !!job.srcTracks && job.srcTracks.some((t) => trs.indexOf(t) >= 0);
     }
-    function stgCarry(rk, on) {
-      const sv = meshSeat(), src = sv ? sv.e2Src() : null;
-      if (!src || src === myId) return;
+    // A copy flows only while its sender holds the feed (mesh_media.inc: the feed is a search
+    // from a live source). Every copy I relay from this claim stops while the claim is dark or
+    // gone, and starts again the moment it flows. Without this, Section 1's rook flood keeps a
+    // dead stager's feed circling as silence, as a ring the path list cannot see past 12 seats.
+    function stgCarry(rk, on, pri) {
       for (const job of mosJobs.values()) {
-        if (job.upKey !== rk || !job.active || job.to !== src) continue;
-        job.senders.forEach((sd, i) => { const t = job.trackList[i]; if (t && t.kind === 'audio') { try { sd.replaceTrack(on ? t : null); } catch (e) {} } });
+        if (job.upKey !== rk || !job.active || !job.senders) continue;
+        if (on ? !job.carryOff : !(pri && stgFedBy(job, pri))) continue; // a copy fed by my parked standby is the way out: never stop it
+        job.carryOff = !on;
+        job.senders.forEach((sd, i) => { const t = job.trackList[i]; if (t) { try { sd.replaceTrack(on ? t : null); } catch (e) {} } });
       }
+    }
+    // Is my claim on this stage feed one I may relay? It is not while it is dark or gone.
+    function stgLost(rk) {
+      const f = mosIn.get(rk); if (!f) return true;
+      const fb = mosFb.get(rk);
+      return !!(f.deadAt || (fb && fb.dark));
     }
     function prefCand(rk, cand) {
       const c = meshCoord(); if (!c) return null;
@@ -25230,13 +25240,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } else { fb.wakeAt = 0; if (!stdIsPref) fb.prefSince = 0; }
       // GRACE teardown: a dead primary whose standby never materialized/flowed.
       if (pri && !inCand(pri) && pri.deadAt && now - pri.deadAt > MOS_GRACE) { dropMosIn(rk); pri = null; repaintRedun(rk, null); }
-      // A copy flows only while its sender holds the feed (mesh_media.inc). A relayed audio
-      // track never stops by itself: with no source it sends silence, and my row's E2 source
-      // would never see E1's copy stop. So a dark claim stops what it sends that seat. The
-      // rest of my row and my subtree just wait for my swap: nothing ripples.
+      // A copy flows only while its sender holds the feed (stgCarry).
       if (rk.indexOf('stg:') === 0) {
         const lost = !!(pri && (fb.dark || !inCand(pri)));
-        if (lost || fb.held) stgCarry(rk, !lost);
+        if (lost || fb.held) stgCarry(rk, !lost, pri);
         fb.held = lost;
       }
       if (!cand.length) { mosFb.delete(rk); return; }
@@ -26114,8 +26121,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (!f.meta || !f.meta.ao || !sb || !sb.meta || sb.meta.ao) continue;
           for (const t of e2Up) if (t !== sb.via && stgPath(sb).indexOf(vpId(t)) < 0) { const jk = shipMos(k, t, sb.stream, { h: stgHop(sb), vp: stgPath(sb) }, k); if (jk) wanted.add(jk); }
         }
-        for (const k of heldStg) { const f = mosIn.get(k); relayStg(k, f.stream, f.via, stgHop(f), !!(f.meta && f.meta.ao), stgPath(f)); }
+        for (const k of heldStg) { if (stgLost(k)) continue; const f = mosIn.get(k); relayStg(k, f.stream, f.via, stgHop(f), !!(f.meta && f.meta.ao), stgPath(f)); }
         if (iAmHead) for (const k of heldStg) { // my row folds at its ears too
+          if (stgLost(k)) continue;
           const f = mosIn.get(k);
           const owner = k.slice(4).split('^')[0];
           for (let j = 1; j < C; j++) {
@@ -26168,7 +26176,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
         };
         if (amStager) { const st = mySelfStream(); if (st) floodOne('stg:' + myId, st, null, 0); }
-        for (const k of heldStg) { const hf = mosIn.get(k); floodOne(k, hf.stream, hf.via, stgHop(hf), stgPath(hf)); }
+        for (const k of heldStg) { if (stgLost(k)) continue; const hf = mosIn.get(k); floodOne(k, hf.stream, hf.via, stgHop(hf), stgPath(hf)); }
         // composite the strip in stage order; fan 'sgs' down my subtree
         const selfSt = soloSelf ? selfStageStream() : null;
         if (!stagers.length) { paintStageStrip(null); }
