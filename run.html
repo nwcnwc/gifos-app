@@ -6216,6 +6216,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // death, ends the hold at once; a feed that is gone ends it too.
       const nowH = Date.now();
       for (const x of out) stageHeldAt.set(x[0], { k: x[1], at: nowH });
+      // No fold in date says nothing about who is on stage: a fold that aged out on a row cut off from it must not stop a feed still arriving. Only a fold in date can leave a stager out.
+      if (!dg) for (const h of stageHeldAt.values()) h.at = nowH;
       for (const [id, h] of stageHeldAt) {
         if (out.some((x) => x[0] === id)) continue;
         const said = statusOf.get(id);
