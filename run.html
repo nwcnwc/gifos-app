@@ -13500,10 +13500,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const now = Date.now();
       for (const h of rekeyHeld.splice(0)) if (now - h.at <= REKEY_HOLD_MS) h.take(true);
     }
-    function healStaleFrom(pid, envPiece) {
+    function staleGoodbye(m) {
+      if (m.k === 'bye' || m.k === 'pcbye') return true;
+      if (m.k !== 'mesh' || !m.m || !m.m.f) return false;
+      try { return GifOS.meshMsg.readMsg(m.m.f).t === 'LEAVE'; } catch (e) { return false; }
+    }
+    function healStaleFrom(pid, envPiece, dc, pair) {
       if (!prevRoomE2E || !retainedGrant || !pid) return;
       return net.open(prevRoomE2E, envPiece).then((old) => {
         if (!old || (!old.k && !old.kind)) return; // not a previous-generation frame — just noise
+        // The one stale frame that is processed: a goodbye on the leaver's own
+        // authenticated channel. A password change sends everyone to the door
+        // under the key it replaced; read as a crash, the room holds the seat
+        // and its death verdict later closes the pair they come back on. A
+        // goodbye can only ever take its own sender out.
+        if (pair && dc && dc.__authBy === pid && staleGoodbye(old)) { onDc(pair, dc, old); return; }
         const now = Date.now();
         if (now - (staleHealAt.get(pid) || 0) < 5000) return;
         // ELIGIBILITY IS THE KEY ITSELF (2026-10-20). This used to ask
@@ -15994,8 +16005,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // The same identity comes back (ensureIdentity): one peer id, so the
       // room never holds this person twice while the old seat is let go.
       try { sessionStorage.setItem(PW_CHANGED_KEY, JSON.stringify({ room: roomKey(), seed: myIdentitySeed || '', at: Date.now() })); } catch (e) {}
-      try { meshNode && meshNode.stop(); } catch (e) {}
-      meshNode = null;
+      // Left as a reload, not stopped: a stopped node sends no reload mark, so
+      // the seat coming back waits out the crash path's reclaim wait (10 s).
+      sendMeshLeave({ type: 'pagehide' });
       setStatus(uiText('pwChangedStatus', '🔒 The admin changed the room password. Enter the new password to rejoin.'));
       location.reload();
     }
@@ -17321,7 +17333,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // A frame from X over the relay is proof X holds a socket right now:
         // my next bootstrap to X takes the relay, whatever an earlier
         // {t:'nosock'} said (a seat that just asked to be dialled is on it).
-        if (from) { relaySocketed.add(from); relayNoSock.delete(from); }
+        // (altPath too: an unanswered offer to the page it replaced rotated this pair onto a sponsor path that cannot reach a seatless returner.)
+        if (from) { relaySocketed.add(from); relayNoSock.delete(from); const pf = peers.get(from); if (pf) pf.altPath = false; }
         const take = (held) => rxm(() => net.open(roomE2E, piece).then((inner) => {
           if (!inner && !held && holdForRekey(take)) return; // sealed under the key my re-key is still deriving (rekeyHeld)
           if (!inner) return healStaleFrom(from, piece); // §LOCK: with the pair down, a stale member's frames arrive HERE — the relay path heals too
@@ -20775,7 +20788,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const take = (held) => rxm(() => net.open(roomE2E, m).then((inner) => {
           if (inner && inner.k) { const dk = rxStats.dcKinds; const kk = String(inner.k).slice(0, 16); dk[kk] = (dk[kk] || 0) + 1; onDc(p, dc, inner); return; }
           if (!inner && !held && holdForRekey(take)) return; // sealed under the key my re-key is still deriving (rekeyHeld)
-          return healStaleFrom(p.id, m); // §LOCK: a previous-key frame is the staleness signal — see healStaleFrom
+          return healStaleFrom(p.id, m, dc, p); // §LOCK: a previous-key frame is the staleness signal — see healStaleFrom
         }));
         take(false);
       };
