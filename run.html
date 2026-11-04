@@ -13777,7 +13777,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function isRowMate(pid) {
       const c = meshCoord(), s = meshSeat(); if (!c || !s) return true;
       let k = null; for (const [kk, v] of s.occ) if (v === pid) { k = kk; break; }
-      if (!k) return true;
+      // A peer the seat holds by a role but names at no cell is the far end of a backup uplink (E2): a parked pc, no camera.
+      if (!k) return !s.linkPeers().has(pid);
       const cc = net.topo.unck(k);
       return cc.pc === c.pc && cc.r === c.r;
     }
@@ -17228,6 +17229,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!p.video || !tileHolds(p.video, p.stream) || p.video.paused || p.video.readyState === 0) return 'element';
       if (!p.dc || p.dc.readyState !== 'open') return 'dc';
       if (!camPeer(pid) || mediaOk(pid) === false) return 'mate';
+      // Only a row-mate my seat names can be judged: rebuilding any other pair closes a link the seat may be standing on.
+      if (meshCoord() && meshSeat() && !Array.from(meshSeat().occ.values()).includes(pid)) return 'mate';
       if (!fst || fst.camOff || fst.scr || forcedCamOff(pid)) return 'cam';
       if (peerAway(pid)) return 'away';
       if (stageIds().includes(pid)) return 'staged';
