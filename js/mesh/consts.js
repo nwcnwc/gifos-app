@@ -113,6 +113,8 @@
     L7_HOLD: 24,   // C++: mesh.cpp:L7_HOLD  (LAW_L7_HOLD)
     L5_SETTLE: 16,   // C++: mesh.cpp:L5_SETTLE  (LAW_L5_SETTLE)
     L5_PERIOD: 8,   // C++: mesh.cpp:L5_PERIOD  (LAW_L5_PERIOD)
+    L4_ENTRY_N: 2,   // C++: mesh.cpp:L4_ENTRY_N  (LAW_L4_ENTRY_N)
+    L4_ENTRY_T: 16,   // C++: mesh.cpp:L4_ENTRY_T  (LAW_L4_ENTRY_T)
     L29_BUD_D: 60,   // C++: mesh.cpp:L29_BUD_D  (LAW_L29_BUD_D)
     L29_BUD_M: 40,   // C++: mesh.cpp:L29_BUD_M  (LAW_L29_BUD_M)
     L29_HOT: 2,   // C++: mesh.cpp:L29_HOT  (LAW_L29_HOT)
@@ -270,7 +272,6 @@
     PROBEON: true,   // C++: mesh.cpp:PROBEON
     SPREAD: true,   // C++: mesh.cpp:SPREAD
     SPREAD_MINDEPTH: 4,   // C++: mesh.cpp:SPREAD_MINDEPTH
-    STAGEUP: 0,   // C++: mesh.cpp:STAGEUP
     DIGEST: true,   // C++: mesh.cpp:DIGEST
     L10_BUCKET: true,   // C++: mesh.cpp:L10_BUCKET
     L10_SPAM: -1,   // C++: mesh.cpp:L10_SPAM

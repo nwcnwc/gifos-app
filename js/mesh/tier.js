@@ -51,7 +51,7 @@
 
     // C++: mesh_tier.inc:Seat::l4Bad
     l4Bad(stier, snat, f) {
-      if (stier === E.TIER_MOBILE && f.i <= 1) return true;
+      if (stier === E.TIER_MOBILE && f.i <= 1 && !this.l4MassNow()) return true;
       if (snat !== E.NAT_OPEN) {
         if (this.nat !== E.NAT_OPEN) return true;
         const rc = this.rosterCells();
@@ -108,12 +108,27 @@
       return null;
     },
 
+    // L4.6: the seat's own sense of mass times: a mass leave, or that many seekers on my FINDs at once.
+    // C++: mesh_tier.inc:Seat::l4SeekNote
+    l4SeekNote(nc) {
+      if (nc < 0 || nc === this.id) return;
+      if (this.l4SeekAt.size >= 64 && !this.l4SeekAt.has(nc)) { for (const [k, v] of [...this.l4SeekAt]) if (this.TICK - v > K.L4_ENTRY_T) this.l4SeekAt.delete(k); if (this.l4SeekAt.size >= 64) { for (const k of this.l4SeekAt.keys()) { this.l4SeekAt.delete(k); break; } } }
+      this.l4SeekAt.set(nc, this.TICK | 0);
+    },
+    // C++: mesh_tier.inc:Seat::l4MassNow
+    l4MassNow() {
+      if (this.l13Mass()) return true;
+      let n = 0; for (const v of this.l4SeekAt.values()) if (this.TICK - v <= K.L4_ENTRY_T && ++n >= K.L4_ENTRY_N) return true;
+      return false;
+    },
+
     // C++: mesh_tier.inc:Seat::l4Ready
     l4Ready(q) {
       if (!this.w.lv.TIERS_ACTIVE || !this.hasCoord || this.state !== 3 || this.moving || this.l4ExecAt >= 0 || this.coord.pc === 0) return false;
       const mine = ckey(this.coord);
       if (!((q.swA === this.id && q.swCa === mine) || (q.swB === this.id && q.swCb === mine))) return false;
-      if (this.l4Stage()) return false;
+      if (this.l4Hold) return false;
+      if (this.l4MassNow()) return false;
       if (this.TICK - this.lastChurn < this.w.lv.L4_QUIET || this.TICK - this.healAt < this.w.lv.L4_QUIET || this.TICK - this.seatedAt < this.w.lv.L4_QUIET) return false;
       return true;
     },
@@ -171,7 +186,7 @@
     // C++: mesh_tier.inc:Seat::l4Exchange
     l4Exchange() {
       const partner = this.l4Partner; const newCk = this.l4NewCk; const goAt = this.l4ExecAt, goId = this.l4GoId; this.l4ExecAt = -1;
-      if (!this.hasCoord || this.state !== 3 || this.moving || partner < 0 || ckey(this.coord) !== this.l4PartnerCk || this.l4Stage()) { this.f.fabricNoteSwap(this.id, 3); this.trace('SWAP-ABORT', this.id, this.hasCoord ? this.coord : null, 'with=%d', partner); return; }
+      if (!this.hasCoord || this.state !== 3 || this.moving || partner < 0 || ckey(this.coord) !== this.l4PartnerCk || this.l4Hold) { this.f.fabricNoteSwap(this.id, 3); this.trace('SWAP-ABORT', this.id, this.hasCoord ? this.coord : null, 'with=%d', partner); return; }
       const nc = unckey(newCk); const oldCk0 = ckey(this.coord);
       const nb = [];
       const add = (k, v) => { if (v < 0 || v === this.id || k === newCk) return; for (const e of nb) if (e.k === k) return; nb.push({ k, v }); };
@@ -223,7 +238,7 @@
       if (this.l4ExecAt >= 0) {
         if (this.l4Pinged < 0) { this.l4Pinged = this.TICK; const p = newMsg('SWAPRDY'); p.id = this.id; p.tag = 2; this.emit(this.l4Partner, p); }
         if (!this.l4Acked && this.TICK >= this.l4ExecAt - 3) {
-          const ok = this.l4PartnerPing >= 0 && this.lastChurn === this.l4GoChurn && this.TICK - this.healAt >= 2 && !this.moving && !this.l4Stage();
+          const ok = this.l4PartnerPing >= 0 && this.lastChurn === this.l4GoChurn && this.TICK - this.healAt >= 2 && !this.moving && !this.l4Hold;
           const v = newMsg('SWAPRDY'); v.id = this.id; v.tag = ok ? 3 : 4; this.emit(this.l4Partner, v);
           if (!ok) { this.l4ExecAt = -1; this.f.fabricNoteSwap(this.id, 3); this.trace('SWAP-ABORT', this.id, this.coord, 'partner=%d: I withdrew (heard=%d churned=%d)', this.l4Partner, this.l4PartnerPing >= 0, this.lastChurn !== this.l4GoChurn); return; }
           this.l4Acked = true;
@@ -256,6 +271,7 @@
       }
       if (this.TICK - this.l4SwapAt < this.w.lv.L4_PERIOD) return;
       if (this.TICK - this.l4SigAt < this.w.lv.L4_QUIET || this.TICK - this.lastChurn < this.w.lv.L4_QUIET || this.TICK - this.healAt < this.w.lv.L4_QUIET || this.TICK - this.seatedAt < this.w.lv.L4_QUIET) return;
+      if (this.l4MassNow()) return;   // L4.6
       const pk = this.l4HeadPick(); if (!pk) return;
       const a = pk.a, b = pk.b;
       let ca = a === this.id ? ckey(this.coord) : 0, cb = b === this.id ? ckey(this.coord) : 0;

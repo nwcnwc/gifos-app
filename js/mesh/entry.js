@@ -61,7 +61,6 @@
       this.rowGen = 0; this.rowLedgerLast = ''; this.rowGenSeenId = -1; this.rowGenSeen = -1;   // V7b
       this.rcRound2 = false; this.rcRound2At = -1; this.rcPendWait = K.RC_WAIT;
       this.f.fabricDupMint(id, c, owner);   // MESH_DUPLOG forensics: the fabric compares against its own table
-      if (this.hasCoord && pcDepth(c.pc) < pcDepth(this.coord.pc) && this.lastProbeTick >= TICK - 120 && ((this.pinT && TICK - this.pinT > 16) || (this.talkSince >= 0 && TICK - this.talkSince > 16)) && this.ownStage()) lv.STAGEUP++;   // L6 oracle (a measurement)
       this.trace('TAKE', id, c, 'placer=%d from=%s', owner, this.hasCoord ? coordStr(this.coord) : '-');
       this.myPlacer = owner;
       this.l13Wit.length = 0;
@@ -235,6 +234,7 @@
     serveFind(mm) {
       const id = this.id;
       const skip = { v: false };   // L33.6: this scan passed over a home cell a head below is calling about (L33.2)
+      if (this.w.lv.TIERS_ACTIVE && mm.tag !== 1) this.l4SeekNote(mm.nc);   // L4.6
       this.fcNc = mm.nc; this.fcTier = mm.tier; this.fcNat = mm.nat; this.fcTh = mm.th;   // L4
       if (!this.hasCoord || mm.ttl <= 0) { if (descOn(this)) this.f.descEnd(4, 200 - mm.ttl); this.trace('NOROOM', id, this.hasCoord ? this.coord : null, 'nc=%d why=ttl-or-unseated', mm.nc); const m = newMsg('NOROOM'); m.gwc = mm.gwc; m.id = id; m.nd = (this.hasCoord ? pcDepth(this.coord.pc) : 0) & 0xff; this.emit(mm.nc, m); return; }
       this.courtNc = mm.nc; if (!this.courtIgnore) this.courtSkipped = false;   // L3.14

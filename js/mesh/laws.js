@@ -82,6 +82,8 @@
     L31_ACK_WAIT: 8,          // L31.4: a small room's direct placement waits this long (4 s, two dials) for the assent of the cell's designated admitter; without it the newcomer takes the parent's path, so a silently dead admitter keeps its ring hold
     L31_COMMIT: 2,            // L31.4: a direct placement in a small room is a proposal for this long (1 s: a record crosses Section 1 in at most two hops) before it commits, so two greeters that picked one free cell see each other first
     L31_REC_HOLD: 20,         // L31.4: a rook seat that accepted a greeter's placement record for a free cell holds that cell for its seeker this long (10 s, past the slowest mobile dial) against any later record, so the earlier placement stands
+    L4_ENTRY_N: 2,            // L4.6: this many different seekers on my FINDs inside L4_ENTRY_T read as a mass entry
+    L4_ENTRY_T: 16,           // L4.6: the window of the mass-entry sense, and so how long it outlasts the last seeker
     L4_HOPS: 5,               // L4.2: tier and NAT hops a FIND takes (to a row-mate's child row) looking for a cell that suits its seeker before it takes the one in hand
     L4_LEAD: 10,              // L4.3: the head sets the exchange tick this far ahead, past the pair's greeting round trip (a dial of up to 10 ticks)
     L4_PERIOD: 16,            // L4.3: min ticks from one tier swap of a row to the next order for it
