@@ -343,6 +343,13 @@
     ["hostRng", "ptr"],   // mt19937* = nullptr  (line 1044)
     ["hostRec", "[Msg]"],   // deque<Msg>  (line 1044)
     ["hostHeld", "<i32>"],   // OSet<int>  (line 1044)
+    ["hoBy", "i32"],   // int = -1  (line 1044)
+    ["hoAt", "i32"],   // int = -1  (line 1044)
+    ["hoCk", "u64"],   // uint64_t = 0  (line 1044)
+    ["hoStole", "u64"],   // uint64_t = 0  (line 1044)
+    ["hoSeen", "i64"],   // long long = -100000  (line 1044)
+    ["hoMoveAt", "i64"],   // long long = -100000  (line 1044)
+    ["hoNbrs", "[KV]"],   // vector<KV>  (line 1044)
     ["gaFindAt", "i32"],   // int = -1  (line 1045)
     ["gaFindPrev", "i32"],   // int = -1  (line 1045)
     ["gaFindTo", "i32"],   // int = -1  (line 1045)
@@ -976,6 +983,12 @@
     hostTgt: -1,
     hostDenseLeaf: -1,
     hostRng: null,
+    hoBy: -1,
+    hoAt: -1,
+    hoCk: 0,
+    hoStole: 0,
+    hoSeen: -100000,
+    hoMoveAt: -100000,
     gaFindAt: -1,
     gaFindPrev: -1,
     gaFindTo: -1,

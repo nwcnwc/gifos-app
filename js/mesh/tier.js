@@ -261,7 +261,7 @@
         if (this.l4o.rdyA < 0 || this.l4o.rdyB < 0) { this.f.fabricNoteSwap(this.id, 3); this.trace('SWAP-REFUSED', this.id, this.coord, 'a=%d b=%d', this.l4o.a, this.l4o.b); this.l4o = newL4Order(); return; }
         if (this.l4o.rdyA > 0 && this.l4o.rdyB > 0) {
           const at = this.TICK + this.w.lv.L4_LEAD; const g = newMsg('SWAPGO'); g.id = this.id; g.swA = this.l4o.a; g.swB = this.l4o.b; g.swCa = this.l4o.ca; g.swCb = this.l4o.cb; g.swAt = at;
-          { /* gate(): a thread-pool fence in the C++, nothing here */ if (this.w.L25ORD.size > 2000000) this.w.L25ORD.clear(); this.w.L25ORD.add(l25OrdKey(this.id, this.l4o.ca, at)); this.w.L25ORD.add(l25OrdKey(this.id, this.l4o.cb, at)); }
+          { /* gate(): a thread-pool fence in the C++, nothing here */ if (this.w.L25ORD.size > 2000000) this.w.L25ORD.clear(); this.w.L25ORD.add(l25OrdKey(this.id, this.l4o.ca, at, this.l4o.b)); this.w.L25ORD.add(l25OrdKey(this.id, this.l4o.cb, at, this.l4o.a)); }
           for (let side = 0; side < 2; side++) { const p = side ? this.l4o.b : this.l4o.a; if (p === this.id) continue; g.nbrs = cpKV(side ? this.l4o.nbA : this.l4o.nbB); this.emit(p, msg.clone(g)); }
           { const mine = msg.clone(g); mine.nbrs = cpKV((this.l4o.a === this.id) ? this.l4o.nbB : this.l4o.nbA); mine.swL = g.swAt; this.l4OnGo(mine); }
           this.l4SwapAt = at; this.f.fabricNoteSwap(this.id, 1); this.l4o = newL4Order(); return;

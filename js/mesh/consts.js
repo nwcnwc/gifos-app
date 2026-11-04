@@ -506,6 +506,9 @@
     HM_FPSSEAT: -1,   // C++: mesh_hostile.inc:HM_FPSSEAT
     HM_SHOWNMAX: 0,   // C++: mesh_hostile.inc:HM_SHOWNMAX
     HM_RELAY: 0,   // C++: mesh_hostile.inc:HM_RELAY
+    HM_STEAL_TRY: 0,   // C++: mesh_hostile.inc:HM_STEAL_TRY
+    HM_STEAL_SEEN: 0,   // C++: mesh_hostile.inc:HM_STEAL_SEEN
+    HM_STEAL_NAMED: 0,   // C++: mesh_hostile.inc:HM_STEAL_NAMED
     C7FORGE_ID: -1,   // C++: mesh_c7proof_fab.inc:C7FORGE_ID
     L18R_REACH: 0,   // C++: mesh_l18.inc:L18R_REACH
     L18R_UNREACH: 0,   // C++: mesh_l18.inc:L18R_UNREACH
@@ -606,6 +609,7 @@
     H_FUZZ: 256,   // C++: mesh_hostile.inc:H_FUZZ
     H_REFLECT: 512,   // C++: mesh_hostile.inc:H_REFLECT
     H_BIG: 1024,   // C++: mesh_hostile.inc:H_BIG
+    H_STEAL: 16384,   // C++: mesh_hostile.inc:H_STEAL
     LW_ENTRY: 1,   // C++: mesh_linkset_fab.inc:LW_ENTRY
     LW_ROLE: 2,   // C++: mesh_linkset_fab.inc:LW_ROLE
     LW_CALL: 4,   // C++: mesh_linkset_fab.inc:LW_CALL
