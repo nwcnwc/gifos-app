@@ -378,6 +378,8 @@ function install(fab) {
   const linkOnLeave = api.linkOnLeave = (id) => { if (lv.LINKMODEL) LPENDCLOSE.push(id); };
   // C++: mesh_link.inc:linkCrash
   const relayLists = (x) => { const t = fab.relayGreeters.get(x); return t !== undefined && t >= TICK() && !fab.sockClosed(x); };
+  // C++: mesh_link.inc:l15LastLink
+  const l15LastLink = (x, y) => { for (const p of LINKPEERS[x]) { if (p === y) continue; const L = linkFind(x, p); if (L && L.state === LK_OPEN) return false; } return true; };
   const linkCrash = (id) => {
     lEnsure(id); const ps = LINKPEERS[id].slice(); const told = relayLists(id);
     if (told) for (const p of fab.relayGreeters.keys()) { if (p === id || p >= nextId() || !alive[p] || !relayLists(p)) continue; const m = seats[p].crashBye(id); if (m) { m.to = p; m.from = id; fab.busPush(TICK() + 1, m); } }
@@ -521,6 +523,7 @@ function install(fab) {
         const y = x === a ? b : a; if (!(L.outside & (1 << lEnd(x, y)))) continue; if (x >= nextId() || !alive[x] || !l15Seated(x)) continue;
         if ((L.outside & (1 << lEnd(y, x))) && !doorHeard(L, x, y)) continue;
         if (l15Names(x, y) || l15NamedBy(x, y)) continue;
+        if (l15LastLink(x, y)) continue;
         if (L.backAt[lEnd(x, y)] >= 0 && TICK() - L.backAt[lEnd(x, y)] < K.L15_BACK_HOLD) continue;
         k = x; break;
       }

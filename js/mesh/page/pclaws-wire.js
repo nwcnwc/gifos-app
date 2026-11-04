@@ -304,6 +304,7 @@
         if (!(L.outside & (1 << mine(x))) || !pc.l15Seated(me)) continue;
         if ((L.outside & (1 << theirs(x))) && !pc.doorHeard(L, me, x)) continue;
         if (pc.l15Names(me, x) || pc.l15NamedBy(me, x)) continue;
+        { let other = false; for (const [p, O] of LINKS) if (p !== x && O.state === LK_OPEN) { other = true; break; } if (!other) continue; }   // my only channel carries the setup of my first link
         if (L.backAt[mine(x)] >= 0 && T() - L.backAt[mine(x)] < K.L15_BACK_HOLD) continue;
         L.state = LK_CLOSED; L.epoch = (L.epoch + 1) >>> 0; L.q = []; L.half = 0; L.halfAt = -1; L.view[mine(x)] = LK_CLOSED;
         trace('DOOR-CLOSE', me, null, 'peer=%d', x); lv.L15_CLOSED = (lv.L15_CLOSED || 0) + 1;
