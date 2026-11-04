@@ -7959,7 +7959,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const adminPresent = () => hasAdminRoom() && admins.length > 0;
     // Clear video is a ROOM-WIDE unanimity, so it MUST be tallied over shared
     // state (rosterIds = occ ∪ fresh status gossip), NOT over `peers` — my
-    // bounded link set (row-mates + cross-link + S1 columns). Two seats hold
+    // bounded link set (row-mates, tree edges, E2, S1 columns). Two seats hold
     // DIFFERENT `peers` maps, so tallying `peers` split-brains the room: one
     // section decides "everyone consents" and shows clear while another, whose
     // members it never links, stays blurred — exactly the divergence the one-
@@ -14917,11 +14917,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function linkTo(pid) {
       // BOUNDED DEGREE — the law. A seat holds direct WebRTC links to ONLY its
       // own bounded neighbourhood: its ROW-mates (the full-mesh row, C-1), its
-      // cross-link, its up/down tree edges, and (in Section 1) its column
-      // neighbours — net ≤ C+2. Full mesh is the ROW, never the section. Every
-      // face beyond your row arrives COMPOSITED over these same links: your
-      // section via the cross-link flow (Channel Se), the far room via the
-      // Stadium mosaic — never a direct link. This is what keeps a device's
+      // up/down tree edges, its E2 edges, and (in Section 1) its column
+      // neighbours. Full mesh is the ROW, never the section. Every face beyond
+      // your row arrives COMPOSITED over these same links, in the Stadium
+      // mosaic — never a direct link. This is what keeps a device's
       // cost constant as the room grows to millions.
       const s = meshSeat();
       // PRE-SEAT: link NOBODY. The join dance rides the relay/greeter path and
@@ -15653,7 +15652,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 
     // The ordinary #grid is CHANNEL R ONLY (docs/media-plane.md): me + my C-1
     // ROW-MATES, so the row is never more than C tiles. A peer I KNOW sits in
-    // another row or section — my cross-link partner, an up/down structural
+    // another row or section — an up/down structural or E2
     // link — is a FEED for the Stadium/Stage composites (which read the aux
     // 'sd'/'sgs' streams, NOT these tiles), never an ordinary face. I only
     // ever HIDE a peer I can positively classify as non-row-mate from its occ
@@ -20927,17 +20926,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             dcSend(p, Object.assign({ k: 'mx', key: m.key, streamId: jw.streamId }, jw.meta || {}));
           }
         }
-        // Mirror-chain wake propagates END-TO-END IN ONE PASS (Phase 2): a
-        // woken hop immediately demands its OWN upstream hop awake, so the
-        // wake ripples producer-ward as one cascade of DC frames — never one
-        // hop per 2s sweep.
-        if (m.key.indexOf('sdnm:') === 0) { const up = mosIn.get('sdnmr:' + m.key.slice(5)); if (up) demand(up.via, m.key, up.streamId, true); }
       } else if (m.k === 'mx-idle' && typeof m.key === 'string') {
         // A receiver keeps this spare parked at zero bandwidth (ONE-PIPE law).
         const ji = mosJobs.get(m.key + '>' + p.id);
         if (ji && (!m.streamId || ji.streamId === m.streamId)) { setJobActive(m.key + '>' + p.id, false); chainDemandUp(ji, false); }
-        // …and a re-parked mirror hop re-parks its upstream the same way.
-        if (m.key.indexOf('sdnm:') === 0) { const up = mosIn.get('sdnmr:' + m.key.slice(5)); if (up) demand(up.via, m.key, up.streamId, false); }
       } else if (m.k === 'mx-kf' && typeof m.key === 'string') {
         // ENCODED-PASSTHROUGH keyframe walk (§9a): a downstream pipe starves
         // for key content. Relay toward the producer (kfNeed forwards to my
@@ -22326,8 +22318,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // The STAGE budget lane (see stageCeilingKbps). Every aux sender is carried
     // media, but the Stage is the carried media the room is actually WATCHING,
     // so it is capped by the room's stage ceiling instead of the flat 900k fold
-    // constant. Membership is by job key — the per-stager feeds ('stg:<id>', and
-    // the '^x' cross-link copy of one) and the composited strip ('sgs').
+    // constant. Membership is by job key — the per-stager feeds ('stg:<id>')
+    // and the composited strip ('sgs').
     const stageSenders = new Set();
     // (isStageJob, not isStageKey — that name is taken further down by the mixer's
     // ROW-key test ('s:' prefix). This one classifies a mosaic JOB key.)
@@ -22886,10 +22878,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 
     // ========== STADIUM MEDIA (docs/media-plane.md) ============================
     // Bounded-degree media. A seat holds DIRECT links only to seat.linkPeers()
-    // (row-mates + one cross-link + up/down) \u2014 degree \u2264 C+1, NOT a section
-    // mesh. Everything past the row arrives COMPOSITED, never as direct links:
-    // the Section band travels one hop over each cross-link and is self-
-    // composited into the C\u00d7C block; the Stage is a composited \u2264C strip; the
+    // (row-mates + up/down + E2), NOT a section mesh. Everything past the row
+    // arrives COMPOSITED, never as direct links: the Stage is a composited \u2264C strip; the
     // Stadium is the nested mosaic (product up \u2192 S1 exchange \u2192 fan down). reconcile-
     // Mosaic (below) wires all four channels; the compOf store holds the feed
     // tiles those composites produce.
@@ -22923,8 +22913,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // DIRECTLY over the head column (1 hop), with a fully link-disjoint
     // backup relayed through the row+column fabric (x1 → column carrier →
     // sdrow). Each head stacks all C products into THE STADIUM and fans it
-    // back down every down-link. The deep tree (pc≠0) keeps the sparse
-    // single-transpose crossLink — only Section-1 routing is rook-wired. One
+    // back down every down-link. Only Section-1 routing is rook-wired. One
     // mechanism carries every hop: a keyed aux-stream ship ({k:'mx'})
     // announced by streamId, claimed on ontrack — the exact friend-relay
     // discipline. All of it gates on beyondRow: a room that IS just my row
@@ -23226,7 +23215,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // STAGE-MOS-EL
     function mosNeedsVideo(rk) {
       if (rk === 'subraw' || rk === 'x1') return false;
-      if (typeof rk === 'string' && (rk.indexOf('x2:') === 0 || rk.indexOf('sdxc:') === 0 || rk.indexOf('sdnmr:') === 0)) return false;
+      if (typeof rk === 'string' && (rk.indexOf('x2:') === 0 || rk.indexOf('sdxc:') === 0)) return false;
       return true;
     }
     // END-STAGE-MOS-EL
@@ -23465,7 +23454,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const rlk = key + '>' + (fromPid || '');
       if (now - (kfLast.get(rlk) || 0) < 2000) { kfEv(key, 'rl', fromPid ? { from: String(fromPid).slice(0, 6) } : undefined); return; }
       kfLast.set(rlk, now);
-      // A relay's job key is not its claim slot (sub/x2/sdrow/sdn/sdx^x/sdnm).
+      // A relay's job key is not its claim slot (sub/x2/sdrow/sdn/sdx^x).
       // upKey is the slot the bytes came from. The asker's job wins; any job
       // for this key is the fallback.
       let cl = null;
@@ -23478,7 +23467,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (c2 && c2.via) { cl = c2; break; }
         }
       }
-      if (!cl) cl = mosIn.get(key) || mosIn.get(key + '^x');
+      if (!cl) cl = mosIn.get(key);
       if (cl && cl.via) {
         const vp = peers.get(cl.via);
         if (vp && vp.dc && vp.dc.readyState === 'open') { kfEv(key, 'relay', { via: String(cl.via).slice(0, 6) }); dcSend(vp, { k: 'mx-kf', key }); return; }
@@ -23814,22 +23803,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // redun-strict wedge, annForSlot 2 alive at 75s, both husks holding
       // each other's MUTED tracks, battery1 2026-08-08). Pause the announce
       // until the source unmutes or the job re-parks. A PARKED spare is
-      // exempt by construction (active=false — silence is its whole job:
-      // sdnm mirror chains and ^x cross copies hold muted sources for
-      // minutes by design and MUST stay claimable).
+      // exempt by construction (active=false — silence is its whole job, and
+      // parked copies hold muted sources for minutes by design).
       const carryHusk = (job, tracks) => {
         if (!job.active) { job.mutedAt = 0; return false; }
-        // The sdnm mirror lane is muted BY DESIGN in every steady state —
-        // born parked, carriers relay parked feeds, and during the failback
-        // RE-PARK a mid-chain hop is legitimately active-with-muted-upstream
-        // for as long as the '=i' cascade takes. The first cut of this rule
-        // paused exactly that hop's announce and broke the re-parked mirror
-        // (measured 2026-08-08: 'mirror standby is DORMANT again before the
-        // kill' red at IDLE on both boxes, a leg that had never failed).
-        // The mirror's true death is the TRACKLESS breaker below; a fruitless
-        // mirror wake is bounded by WAKE_MAX at the receiver. The carry
-        // guarantee's prey is the stg/sdrow husk cycle, and only that.
-        if (String(job.key).indexOf('sdnm:') === 0) { job.mutedAt = 0; return false; }
         if (!(tracks.length > 0 && tracks.every((t) => t.muted))) { job.mutedAt = 0; return false; }
         if (!job.mutedAt) job.mutedAt = Date.now();
         return Date.now() - job.mutedAt > MOS_GRACE;
@@ -24074,12 +24051,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // MOS_SETTLE, so failback cannot be observed through it at all.)
     // CHAIN-PARK
     // Backup relay chains are born parked and woken end to end on demand:
-    // the sdnm mirror, x1 -> x2 -> sdrow (a head's product over the row and
-    // column fabric) and sdxc -> sdx^x (a column ingredient over a carrier
-    // row-mate). x1 and sdxc leave the head from local canvases, so a hot
-    // spare there is a real encoder that nobody watches. Every hop of these
-    // chains has one consumer, so a want or an idle that reaches a hop is
-    // passed to the hop it relays (the sdnm handlers do the same by key).
+    // x1 -> x2 -> sdrow (a head's product over the row and column fabric) and
+    // sdxc -> sdx^x (a column ingredient over a carrier row-mate). x1 and sdxc
+    // leave the head from local canvases, so a hot spare there is a real
+    // encoder that nobody watches. Every hop of these chains has one consumer,
+    // so a want or an idle that reaches a hop is passed to the hop it relays.
     function chainUpKey(upKey) {
       if (typeof upKey !== 'string') return null;
       if (upKey === 'x1') return 'x1';
@@ -24088,7 +24064,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return null;
     }
     function chainBornParked(key, upKey) {
-      return key.indexOf('sdnm:') === 0 || key === 'x1' || key === 'sdxc' || !!chainUpKey(upKey);
+      return key === 'x1' || key === 'sdxc' || !!chainUpKey(upKey);
     }
     function chainDemandUp(job, want) {
       const parked = job ? mosStandby.get(job.upKey) : null; // E2 up: the copy I climb with can be one I hold parked
@@ -24335,32 +24311,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (key.indexOf('sdrow') === 0) return iAmHead && meta && meta.row != null && meta.row !== c.r ? 'sdrow:' + meta.row : null;
       // MIX-MINUS streams (docs/media-plane.md): per-branch, single-producer.
       if (key === 'sdm') return iAmHead ? null : 'sdm'; // my head's finished row view — my Stadium
-      // sdx: my column's child-branch ingredient (direct or the '^x' carrier
-      // copy — same slot, second link-disjoint pipe). sdxc: a NEIGHBOUR
-      // column's copy I carry sideways to its target seat.
+      // sdx: my column's child-branch ingredient (direct, or the 'sdx^x' copy a
+      // carrier row-mate hands me — same slot, second pipe in the row). sdxc: a
+      // NEIGHBOUR column's copy I carry sideways to its target seat.
       if (key === 'sdx' || key === 'sdx^x') return !iAmHead && meta && meta.col === c.i ? 'sdx' : null;
       if (key === 'sdxc') return !iAmHead && meta && meta.col != null && meta.col !== c.i ? 'sdxc:' + meta.col : null;
       if (key === 'sdn') return iAmHead ? 'sdn' : null;  // my branch's outside-world ingredient (from above)
-      // sdnm:<dst-ck> — the sdn DORMANT MIRROR chain (Phase 2). The dst child
-      // head resolves the mirror copy to the SAME 'sdn' slot ('^x'-style);
-      // a seat ON the route relays it ('sdnmr:'); everyone else ignores it.
-      // A carrier NEVER claims/plays the mix — it contains the producer row's
-      // faces, possibly the carrier's own (the mix-minus law is inviolable);
-      // 'sdnmr:*' slots are relay-only and never painted.
-      if (key.indexOf('sdnm:') === 0) {
-        const dstK = key.slice(5);
-        if (net.topo.ckey(c) === dstK) return iAmHead ? 'sdn' : null;
-        const t = meta ? meta.mt : null; if (t == null) return null;
-        const dst = net.topo.unck(dstK);
-        const rt = MM.sdnMirrorRoute(net.topo, SCALE.C, net.topo.parentPath(dst.pc), dst.r, net.topo.lastDigit(dst.pc), t);
-        if (!rt) return null;
-        const k2 = rt.findIndex((co) => net.topo.eq(co, c));
-        return (k2 >= 1 && k2 < rt.length - 1) ? 'sdnmr:' + dstK : null;
-      }
       if (key === 'sgs') return 'sgs';        // the composited Stage strip, fanned down
-      // an individual stager feed (per-stager slot); '^x' marks a REDUNDANT copy
-      // arriving over a cross-link — it resolves to the SAME slot so it just backs
-      // up the primary up-path (sticky claimMos keeps one, fails over if it dies).
+      // an individual stager feed (per-stager slot); an older client's '^' suffix
+      // resolves to the same slot.
       if (key.indexOf('stg:') === 0) {
         const q = key.indexOf('^'); const base = q < 0 ? key : key.slice(0, q);
         // NEVER CLAIM AN ECHO OF MYSELF (2026-07-29, the stage nobody could
@@ -24851,9 +24810,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // is supposed to come from; fall back to the old key-only match when that
       // cell's occupant is not known yet, so a gap in occ cannot leave a head
       // with no primary at all.
-      // NOTE the mirror deliberately cannot win either of these: it arrives
-      // under key 'sdnm:<dst>' and only resolves to the 'sdn' SLOT at the
-      // destination, so `x.key === 'sdn'` still excludes it from being preferred.
       if (rk === 'sdx' || rk === 'sdn') {
         const src = rk === 'sdn' ? net.topo.up(c) : { pc: c.pc, r: c.r, i: 0 };
         const srcPid = src ? occPid(src) : null;
@@ -24889,8 +24845,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // rest of the run. A husk CYCLE's members re-announce each other's
         // copies with h growing every sweep, so min-h escapes to the real
         // chain by itself; an old client's h-less announce ranks as far (999)
-        // — claimable when it is the only path. ^x cross copies stay the last
-        // resort as before.
+        // — claimable when it is the only path.
         const hOf = (x) => stgRank(x, owner);
         // TIES ARE STICKY (frza9). mosAnn ages entries out at 12s and re-adds
         // them, so Map order SHUFFLES — "min-h, first found" flipped between
@@ -25192,7 +25147,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         mosIn.set(rk, { via: from, streamId: ann.streamId, stream: st, el: mosNeedsVideo(rk) ? mosVideo(st) : null, meta: annMeta(ann) });
         structuralSeen.add(rk);
       }
-      // A structural slot (sub, x1, x2, sdxc, sdnmr) has no second announcer
+      // A structural slot (sub, x1, x2, sdxc) has no second announcer
       // and no claimRedun pass. Once its announce ages out, or the peer is
       // gone, nothing in the announcer loop visits it, and the last frame
       // stays painted. Keep it only while someone still announces it AND the
@@ -25370,9 +25325,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (typeof paintStagePlate === 'function') paintStagePlate();
       if (stripChanged) { try { layout(); } catch (e) {} }
     }
-    // (Channel Se — the C×C Section composite — was DROPPED to free its cross-link
-    // budget for the Stadium/Stage cross-link redundancy. Section-mates now fold
-    // into the Stadium. docs/media-plane.md.)
     function stopMosaic() {
       mosBeyondAt = 0;
       for (const jk of [...mosJobs.keys()]) unshipMos(jk, true);
@@ -25802,42 +25754,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               for (let d = 1; d < C; d++) { const k2 = (i + d) % C; if (k2 === 0 || k2 === i) continue; const cp = occPid({ pc: c.pc, r: c.r, i: k2 }); if (cp) { carrier = cp; break; } }
               if (carrier) { const jk6 = shipMos('sdxc', carrier, pk.stream, Object.assign({ col: i }, m)); if (jk6) wanted.add(jk6); }
             }
-            // sdn DORMANT MIRROR (Phase 2, docs/media-plane.md): the SAME
-            // per-child ingredient, negotiated over a fully link-disjoint
-            // chain that avoids the parent seat (pc,r,i) — born parked (zero
-            // media) and demand-woken end-to-end only when the child head
-            // loses its direct sdn. Re-derived from occ every sweep (first
-            // fully-OCCUPIED transit row wins), so churn re-routes it within
-            // a sweep. A child section with only one occupied row head has
-            // no disjoint entry — no mirror then (documented).
-            {
-              // PER-HOP CHAIN BUILD (Nathan, 2026-07-28 — the mirror never
-              // shipped in practice): the old gate required the producer's OWN
-              // occ to name EVERY hop, but bounded-degree knowledge means an
-              // S1 head never converges a child section's row-1 occupancy —
-              // post-03c occ hygiene prunes exactly what the check read, so no
-              // sdnm ever left the producer (mirror-drill, quarantine dossier).
-              // Pass 1 keeps today's preference: a route the producer can
-              // fully verify wins. Pass 2 verifies only what an S1 seat KNOWS
-              // first-hand — the route's S1 segment — and ships optimistically:
-              // each sdnmr hop below forwards from its own occ (per-hop
-              // knowledge, re-derived every sweep), and a chain that stalls at
-              // an empty deep seat is born parked — zero media, self-completing
-              // when occupancy appears.
-              let rt = null, mt = -1;
-              for (let pass = 0; pass < 2 && !rt; pass++) {
-                for (let tt = 0; tt < C && !rt; tt++) {
-                  const r2 = MM.sdnMirrorRoute(T, C, c.pc, c.r, i, tt);
-                  if (!r2 || !occPid(r2[1])) continue;
-                  const known = pass === 0 ? r2.slice(1) : r2.slice(1).filter((co) => co.pc === c.pc);
-                  if (known.every((co) => !!occPid(co))) { rt = r2; mt = tt; }
-                }
-              }
-              if (rt && !actHead) {
-                const jm = shipMos('sdnm:' + T.ckey(T.down({ pc: c.pc, r: c.r, i })), occPid(rt[1]), pk.stream, Object.assign({ mt }, m));
-                if (jm) wanted.add(jm);
-              }
-            }
           }
           // L14: a cut-off head that dialled me gets its branch's outside from me, as my own child would: outside + my
           // row's faces + every child block + the other branches I serve. Its own block is left out (mix-minus).
@@ -25863,8 +25779,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         sdnPacks.clear();
         sdEmptyAt = 0;
         // NON-HEAD relays: my down-child's product -> my head (tagged with my
-        // column); my head's x1 -> down my COLUMN to its destination row (W7:
-        // the transpose cross-link is GONE at Section 1); any x2:q I hold ->
+        // column); my head's x1 -> down my COLUMN to its destination row; any x2:q I hold ->
         // to my head as sdrow:q. Meta {n, cols} is FORWARDED so the far end
         // can unpack faces.
         const headPid = occPid({ pc: c.pc, r: c.r, i: 0 });
@@ -25920,9 +25835,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const jr = shipMos('sdm', mate, sdmH.stream, blockMeta(sdmH)); if (jr) wanted.add(jr);
         }
       }
-      // (Channel Se — the C×C Section composite — is DROPPED. Its cross-link
-      // budget now backs up the Stadium/Stage fans below; section-mates fold
-      // into the Stadium. docs/media-plane.md.)
       // ---- STAGE lane: chosen <=C feeds -> S1 -> composited strip -> fan down --
       // Individual stager feeds ride UP to Section 1 (uncomposited passthrough,
       // per-stager key); at S1 they FLOOD the row+cross mesh (dedup by streamId,
@@ -26129,26 +26041,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // STAGE EAR: sum the per-stager feeds I hold, skipping my own.
       if (stagers.length) ensureStageEar();
       syncStageEar(stagers);
-      // ---- sdn MIRROR chain relays (Phase 2, docs/media-plane.md) ----------
-      // Any seat (head or not) that claimed a 'sdnmr:<dst>' hop forwards it to
-      // the NEXT coord of the same deterministic route (recomputed from the
-      // announce's transit row — churn re-routes within a sweep; a seat that
-      // fell off the route just stops, and its stale job ages out under the
-      // grace). Relay only — never painted, never promoted (mix-minus law).
-      for (const [mk, mf] of mosIn) {
-        if (mk.indexOf('sdnmr:') !== 0) continue;
-        const dstK = mk.slice(6);
-        const mt = mf.meta ? mf.meta.mt : null; if (mt == null) continue;
-        const dst = T.unck(dstK);
-        const rt = MM.sdnMirrorRoute(T, C, T.parentPath(dst.pc), dst.r, T.lastDigit(dst.pc), mt);
-        if (!rt) continue;
-        const myIdx = rt.findIndex((co) => T.eq(co, c));
-        if (myIdx < 1 || myIdx >= rt.length - 1) continue;
-        const nextPid = occPid(rt[myIdx + 1]);
-        if (!nextPid || nextPid === mf.via) continue;
-        const jm = shipMos('sdnm:' + dstK, nextPid, mf.stream, Object.assign({ mt }, blockMeta(mf)), mk);
-        if (jm) wanted.add(jm);
-      }
       // DEBOUNCED UNSHIP: the wanted set is rebuilt from occ every sweep, and
       // occ flickers during gossip churn (a seat transiently unknown, a heal in
       // flight). Ripping a live pipe on ONE missed sweep sends mx-end + a
@@ -26234,7 +26126,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const sgaSubs = new Map();  // sid -> Set(cb)
     let sgaSeq = 0;
     // The same neighbour set the media fans ride: deep — up (head or parent),
-    // cross-link, down, and a head's row; Section 1 — the full rook row+column.
+    // down, and a head's row; Section 1 — the full rook row+column.
     // Test hook (e2e-meeting-app.js): a joiner whose STRUCTURAL sga
     // neighbourhood is empty — the shape of the late-joiner race, made
     // deterministic. With it set, only the widened pull can reach a holder.
@@ -26910,7 +26802,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // the camera to the display capture and steps onto the Stage — the existing
     // chosen-≤C broadcast tier, which is exactly "the thing the whole room is
     // looking at". Collect up the tree to Section 1, composite, fan down: the
-    // Stage path, unchanged, including its cross-link redundancy and its
+    // Stage path, unchanged, including its E2 redundancy and its
     // one-pipe/parked-standby law. The only screen-specific bit anywhere is the
     // gossiped `scr` bit telling the strip compositor to letterbox the cell
     // instead of cropping it square (mesh-media fitBox).
@@ -27544,8 +27436,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // tag: your faders are your own volume knobs, as ungovernable as any.
     // Degenerate by arithmetic: a room that is just your row has no stadium
     // sources, so that fader doesn't even show (progressive disclosure below).
-    // The faders grow in as the room does. (The old fourth "My section" bus
-    // died with Channel Se — section-mates fold into the Stadium now.)
+    // The faders grow in as the room does. Section-mates fold into the Stadium.
     const MIX_KEY = 'gifos_mix';
     const mix = Object.assign({ stage: 1, row: 1, stadium: 1 }, (() => {
       try { return JSON.parse(localStorage.getItem(MIX_KEY) || '{}'); } catch (e) { return {}; }
@@ -35465,7 +35356,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       upForTest: () => { const r = meshNode && meshNode.raw; const f = []; for (const [k, v] of mosIn) { const d = mosStandby.get(k); f.push(k + ":" + String(v.via).slice(0, 8) + (d ? "|" + String(d.via).slice(0, 8) : "")); } return { e1dn: r ? r.e1Dn : null, hot: r ? r.u2Hot : null, u2: r ? r.u2Id : null, f }; },
       audioForTest: async () => { let b = 0; for (const p of peers.values()) { if (!p.pc) continue; const st = await p.pc.getStats(); st.forEach((x) => { if (x.type === "inbound-rtp" && x.kind === "audio") b += x.bytesReceived || 0; }); } return b; },
       // Stage audio as a person hears it: per stage key, the packets on the claimed copy and whether the ear is bound to that very stream.
-      stageHeardForTest: async () => { const out = {}; for (const [k, v] of mosIn) { if (!k.startsWith("stg:") || k === "stg:" + myId || !v.stream) continue; const p = peers.get(v.via); if (!p || !p.pc) continue; const t = v.stream.getAudioTracks()[0]; let pk = 0, en = 0; if (t) { const st = await p.pc.getStats(t); st.forEach((x) => { if (x.type === "inbound-rtp" && x.kind === "audio") { pk = Math.max(pk, x.packetsReceived || 0); en = Math.max(en, x.totalAudioEnergy || 0); } }); } const d = mosStandby.get(k); out[k.slice(4, 12)] = { p: pk, en, ear: !!(stageEar && stageEar.bound && stageEar.bound.get(k) === v.stream), via: String(v.via).slice(0, 8), key: v.key || null, std: d ? String(d.via).slice(0, 8) : null, stdKey: d ? d.key : null }; } return out; },
+      stageHeardForTest: async () => { const out = {}; for (const [k, v] of mosIn) { if (!k.startsWith("stg:") || k === "stg:" + myId || !v.stream) continue; const p = peers.get(v.via); if (!p || !p.pc) continue; const t = v.stream.getAudioTracks()[0]; let pk = 0, en = 0; if (t) { const st = await p.pc.getStats(t); st.forEach((x) => { if (x.type === "inbound-rtp" && x.kind === "audio") { pk = Math.max(pk, x.packetsReceived || 0); en = Math.max(en, x.totalAudioEnergy || 0); } }); } let vf = -1; const vt = v.stream.getVideoTracks()[0]; if (vt) { const sv = await p.pc.getStats(vt); sv.forEach((x) => { if (x.type === "inbound-rtp" && x.kind === "video") vf = Math.max(vf, x.framesDecoded || 0); }); } const d = mosStandby.get(k); out[k.slice(4, 12)] = { p: pk, en, vf, ear: !!(stageEar && stageEar.bound && stageEar.bound.get(k) === v.stream), via: String(v.via).slice(0, 8), key: v.key || null, std: d ? String(d.via).slice(0, 8) : null, stdKey: d ? d.key : null }; } return out; },
       // A parked standby at rest: what its receiver and my parked senders have moved, per pipe, plus the whole page's transport bytes.
       stageIdleForTest: async () => { const std = []; for (const [k, v] of mosStandby) { if (!k.startsWith("stg:") || !v.stream) continue; const p = peers.get(v.via); if (!p || !p.pc) continue; let bytes = 0, pk = 0; for (const t of v.stream.getTracks()) { const st = await p.pc.getStats(t); st.forEach((x) => { if (x.type === "inbound-rtp") { bytes += x.bytesReceived || 0; pk += x.packetsReceived || 0; } }); } std.push({ k: k.slice(4, 12), via: String(v.via).slice(0, 8), key: v.key, kinds: v.stream.getTracks().map((t) => t.kind).join(), bytes, pk }); } const park = []; let parked = 0, hot = 0; for (const [jk, j] of mosJobs) { if (j.key.indexOf("stg:") !== 0) continue; if (j.active) { hot++; continue; } parked++; let bytes = 0, pk = 0; for (const sd of j.senders) { try { const st = await sd.getStats(); st.forEach((x) => { if (x.type === "outbound-rtp") { bytes += x.bytesSent || 0; pk += x.packetsSent || 0; } }); } catch (e) {} } park.push({ jk: jk.slice(0, 24), bytes, pk }); } let txAll = 0, rxAll = 0; for (const p of peers.values()) { if (!p.pc) continue; const st = await p.pc.getStats(); st.forEach((x) => { if (x.type === "transport") { txAll += x.bytesSent || 0; rxAll += x.bytesReceived || 0; } }); } return { std, park, parked, hot, txAll, rxAll, pcs: [...peers.values()].filter((q) => q.pc).length }; },
       stageFoForTest: () => (window.__stgFoLog || []).slice(),
@@ -36754,7 +36645,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // the stats row's mid — never by trackIdentifier alone. A forwarded
         // track keeps its id through every re-ship (msid rides the relay
         // chain), so the sdrow direct pipe and its x1→x2 relay copy — and even
-        // two containers from the SAME peer (stg direct + '^x' copy) — all
+        // two containers from the SAME peer — all
         // carry the SAME track id. An id-keyed map let the 'std:' tag clobber
         // the 'in:' tag and reported the flowing PRIMARY as a hot standby
         // (the redun-drill's phantom one-pipe violation).

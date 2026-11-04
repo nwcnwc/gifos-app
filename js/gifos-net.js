@@ -628,13 +628,6 @@
     const up = (s) => (s.i !== 0 || s.pc === 0) ? null : { pc: parentPath(s.pc), r: s.r, i: lastDigit(s.pc) };
     // down: every seat has one — to a child head, whose up is exactly this edge.
     const down = (s) => ({ pc: childPath(s.pc, s.i), r: s.r, i: 0 });
-    // Kept only for run.html's media plane (the wip/0925-e2media job removes those callers and this); no topology edge.
-    const crossLink = (s) => {
-      if (s.i === 0) return null;
-      if (s.r === s.i) return { pc: s.pc, r: 0, i: s.i };
-      if (s.r === 0) return { pc: s.pc, r: s.i, i: s.i };
-      return { pc: s.pc, r: s.i, i: s.r };
-    };
     const rowMates = (s) => { const out = []; const C = Cn(); for (let j = 0; j < C; j++) if (j !== s.i) out.push({ pc: s.pc, r: s.r, i: j }); return out; };
     // W7: column-mates — every seat sharing my column across the OTHER rows
     // (heads included, no diagonal). This is the extra half of the Section-1
@@ -656,7 +649,7 @@
       const u = up(s); if (u) out.push(u); out.push(down(s)); return out;
     };
     const isHead = (s) => s.i === 0;
-    return { childPath, parentPath, lastDigit, pcDepth, isRoot, isHead, ckey, unck, eq, up, down, crossLink, rowMates, colMates, ownedLinks, MAXLINKS };
+    return { childPath, parentPath, lastDigit, pcDepth, isRoot, isHead, ckey, unck, eq, up, down, rowMates, colMates, ownedLinks, MAXLINKS };
   })();
 
   // ---- P1: single-hop forwarding through a friend -----------------------------
