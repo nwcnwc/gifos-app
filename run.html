@@ -25055,6 +25055,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // is supposed to come from; fall back to the old key-only match when that
       // cell's occupant is not known yet, so a gap in occ cannot leave a head
       // with no primary at all.
+      // L2.7: while the seat holds E2 hot, E2's copy of the strip is the path too (the stage feed's rule below).
+      if (rk === 'sgs') { const hot = meshSeat(); if (hot && hot.u2Hot) { const e2 = cand.find((x) => x.live && x.from === hot.u2Id); if (e2) return e2; } }
       if (rk === 'sdx' || rk === 'sdn') {
         const src = rk === 'sdn' ? net.topo.up(c) : { pc: c.pc, r: c.r, i: 0 };
         const srcPid = src ? occPid(src) : null;
