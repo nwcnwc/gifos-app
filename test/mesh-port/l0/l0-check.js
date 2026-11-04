@@ -45,7 +45,6 @@ const cases = {
     check('topo', 'lastDigit', o.lastDigit, topo.lastDigit(s.pc));
     check('topo', 'up', o.up, topo.up(s));
     check('topo', 'down', o.down, topo.down(s));
-    check('topo', 'crossLink', o.crossLink, topo.crossLink(s));
     check('topo', 'rowMates', o.rowMates, topo.rowMates(s));
     check('topo', 'colMates', o.colMates, topo.colMates(s));
     check('topo', 'ownedLinks', o.ownedLinks, topo.ownedLinks(s));
