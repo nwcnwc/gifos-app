@@ -24398,16 +24398,69 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     //   x1 -> carry it down my column (W7); x2:q -> hand to my head as sdrow:q
     //   sdrow:q -> a head's stadium slot q (direct from head q, or relayed)
     //   sd -> THE STADIUM (render + fan down)
+    // L2.7 in the page (no seat moves): my row head's view stopped reaching me, so the row's view passes to the heir at once,
+    // ahead of the seat's verdict. Ends when the seat hears that head again, or names another one there (the heir then holds
+    // on until the row has had time to fail back to the new head's copy).
+    let rowHeadOut = null, rowHoldUntil = 0, rowWasOut = false, rowActed = false; const rowOutSkip = new Map();
+    // The head's view, read on its own clock: audio and video bytes together (a still camera in a quiet room sends little of
+    // either). Apart from the watchdog's dark rail, whose 700 ms is for waking a parked copy, not for moving a duty.
+    const ROW_SILENT_MS = 1500; const rowFeed = { via: null, sid: null, bytes: -1, at: 0 }; let rowFeedBusy = false;
+    setInterval(async () => {
+      if (rowFeedBusy) return; const c = meshCoord(), pri = c && c.i !== 0 ? mosIn.get('sdm') : null; if (!pri) { rowFeed.via = null; return; }
+      const p = peers.get(pri.via); if (!p || !p.pc || !pri.stream) return;
+      rowFeedBusy = true;
+      try {
+        let b = 0; for (const r of p.pc.getReceivers()) { if (!r.track || !pri.stream.getTracks().includes(r.track)) continue; (await r.getStats()).forEach((x) => { if (x.type === 'inbound-rtp') b += x.bytesReceived || 0; }); }
+        const now = Date.now();
+        if (rowFeed.via !== pri.via || rowFeed.sid !== pri.streamId || b !== rowFeed.bytes) { rowFeed.via = pri.via; rowFeed.sid = pri.streamId; rowFeed.bytes = b; rowFeed.at = now; }
+        else if (now - rowFeed.at >= ROW_SILENT_MS) schedReconcile();
+      } catch (e) {} finally { rowFeedBusy = false; }
+    }, 400);
+    function rowHeadIsOut(c) {
+      const s = meshSeat(); if (!c || !s || c.i === 0 || !s.rowHeir) { rowHeadOut = null; return false; }
+      const pid = occPid({ pc: c.pc, r: c.r, i: 0 }), now = Date.now();
+      if (rowHeadOut && rowHeadOut.pc === c.pc && rowHeadOut.r === c.r) {
+        if (rowHeadOut.pid !== pid) { dbgRowHead('new-head'); rowHeadOut = null; }
+        else if (s.headHeardSince(rowHeadOut.tick + 1)) { rowOutSkip.set(pid, now + 30000); dbgRowHead('heard'); rowHeadOut = null; }
+      } else rowHeadOut = null;
+      if (!rowHeadOut && pid && !(rowOutSkip.get(pid) > now)) {
+        const pri = mosIn.get('sdm'), fb = mosFb.get('sdm');
+        if (pri && pri.via === pid && (pri.deadAt || (rowFeed.via === pid && rowFeed.at && now - rowFeed.at >= ROW_SILENT_MS))) { rowHeadOut = { pid, tick: s.seatTick, pc: c.pc, r: c.r }; dbgRowHead('out'); if (fb) fb.dark = true; }
+      }
+      const out = !!rowHeadOut || s.headGoneView;
+      if (rowWasOut && !out) rowHoldUntil = now + MOS_SETTLE + 2000;   // the heir's copy stays while the row fails back
+      rowWasOut = out; return out;
+    }
+    // A carrier whose target just moved up to its row's head cell keeps handing it the row's product (L28 at both ends), so the
+    // new head's view does not go dark between the carried copy and the direct one.
+    let rowX2To = null;
+    function x2Target(cell) {
+      const pid = occPid(cell), now = Date.now(), ck = net.topo.ckey(cell);
+      if (pid) { rowX2To = { pid, ck, at: now }; return pid; }
+      if (!rowX2To || rowX2To.ck !== ck || now - rowX2To.at > 15000) return null;
+      const p = peers.get(rowX2To.pid), s = meshSeat(); if (!p || !p.connected) return null;
+      if (s && s.keepAdd) s.keepAdd(rowX2To.pid, 16);
+      return rowX2To.pid;
+    }
+    const dbgRowHead = (e) => { const l = (window.__rowViewLog = window.__rowViewLog || []); l.push({ t: Date.now(), e }); if (l.length > 100) l.shift(); };
+    function rowHeadPid(c) {
+      const s = meshSeat(), head = occPid({ pc: c.pc, r: c.r, i: 0 });
+      return rowHeadIsOut(c) && s && s.rowHeir ? (s.rowHeir() || head) : head;
+    }
+    function actingHead() {
+      const c = meshCoord(), s = meshSeat(); if (!c || !s || c.i === 0 || !s.rowHeir) return false;
+      return (rowHeadIsOut(c) || rowHoldUntil > Date.now()) && s.rowHeir() === myId;
+    }
     function mosResolve(key, meta, from) {
       const c = meshCoord(); if (!c) return null;
-      const iAmHead = c.i === 0 || !!(meshSeat() && meshSeat().actHead); // L2.7: the heir stands in for a gone head
+      const iAmHead = c.i === 0 || actingHead(); // L2.7: the heir stands in for a gone head
       if (key === 'sub') {
         if (meta && meta.l14) return 'subu:' + String(meta.via || from).slice(0, 64); // L14: a cut-off branch's product over its uplink (or relayed by my row-mate)
         if (meta && meta.col != null) return iAmHead ? 'sub:' + meta.col : null;
         return iAmHead ? 'sub:' + c.i : 'subraw'; // my own down-child's product (a head is column 0)
       }
       if (key === 'x1') return iAmHead ? null : 'x1';
-      if (key === 'x2' && iAmHead && c.i !== 0) return meta && meta.row != null && meta.row !== c.r ? 'sdrow:' + meta.row : null; // L2.7: the heir standing in for a Section 1 head takes the other rows' products its column carries
+      if (key === 'x2' && iAmHead) return meta && meta.row != null && meta.row !== c.r ? 'sdrow:' + meta.row : null; // a head (an heir standing in, or a mate just moved into the head's cell) uses the other rows' products its column still carries, until the direct copy lands
       // x2 is per-origin-row now (W7): one carrier delivers several rows'
       // products through the same column, so the slots must not collide.
       // MY OWN ROW'S PRODUCT IS NEVER MINE TO CLAIM (2026-07-29, the sibling of
@@ -24424,7 +24477,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (key === 'x2') return !iAmHead && meta && meta.row != null && meta.row !== c.r ? 'x2:' + meta.row : null;
       if (key.indexOf('sdrow') === 0) return iAmHead && meta && meta.row != null && meta.row !== c.r ? 'sdrow:' + meta.row : null;
       // MIX-MINUS streams (docs/media-plane.md): per-branch, single-producer.
-      if (key === 'sdm') return iAmHead ? null : 'sdm'; // my head's finished row view — my Stadium
+      if (key === 'sdm') return c.i === 0 || (iAmHead && from !== occPid({ pc: c.pc, r: c.r, i: 0 })) ? null : 'sdm'; // my head's finished row view — my Stadium. An heir standing in keeps its head's copy (the feed may come back) and takes no other: a mate's would be its own echo
       // sdx: my column's child-branch ingredient (direct, or the 'sdx^x' copy a
       // carrier row-mate hands me — same slot, second pipe in the row). sdxc: a
       // NEIGHBOUR column's copy I carry sideways to its target seat.
@@ -24600,7 +24653,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let dogVoiceFast = false;
     const stgVoiceClaim = (rk, pri) => rk.indexOf('stg:') === 0 && !!pri.stream && !pri.stream.getVideoTracks().length && !!pri.stream.getAudioTracks().length;
     function stgFoNote(rk, e, via) { // failover forensics, read by test hooks
-      if (rk.indexOf('stg:') !== 0) return;
+      if (rk.indexOf('stg:') !== 0 && rk !== 'sdm') return;
       const l = (window.__stgFoLog = window.__stgFoLog || []);
       l.push({ t: Date.now(), k: rk.slice(4, 12), e, via: via ? String(via).slice(0, 8) : undefined });
       if (l.length > 200) l.shift();
@@ -24992,7 +25045,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (rk === 'sdm') co = { pc: c.pc, r: c.r, i: 0 };                                        // my head's own fan
       else if (rk === 'sgs') co = c.i === 0 ? net.topo.up(c) : { pc: c.pc, r: c.r, i: 0 };      // the tree hop (my head, or a head's parent)
       else if (rk.indexOf('sdrow:') === 0) co = { pc: 0, r: +rk.slice(6), i: 0 };               // direct from head q over the S1 column
-      const pid = co ? occPid(co) : null;
+      const pid = rk === 'sdm' ? rowHeadPid(c) : (co ? occPid(co) : null);
       return pid ? cand.find((x) => x.live && x.from === pid) || null : null;
     }
     function claimRedun(rk, arr) {
@@ -25522,7 +25575,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const C = SCALE.C, iAmHead = c.i === 0, wanted = new Set();
       const T = net.topo;
       // L2.7: the heir of a row whose head is gone makes the row's Stadium product in its place; head geometry from the head's cell
-      const actHead = !iAmHead && !!(meshSeat() && meshSeat().actHead), hc = actHead ? { pc: c.pc, r: c.r, i: 0 } : c;
+      const actHead = !iAmHead && actingHead(); if (actHead !== rowActed) { rowActed = actHead; dbgRowHead(actHead ? 'acting' : 'stood-down'); }
+      const hc = actHead ? { pc: c.pc, r: c.r, i: 0 } : c;
       // STADIUM overlay threshold: past ~STAD_CAP people every square is too
       // small for a burned name/frame — bake only the tapestry + a talking dot.
       // Driven by the gossiped room size, so every seat AND every up-tree
@@ -25793,6 +25847,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
                 if (q === c.r) { pk.delTile('q' + q); continue; }
                 const rowIn = mosIn.get('sdrow:' + q);
                 if (rowIn) setBlock(pk, 'q' + q, 1 + q, rowIn); else pk.delTile('q' + q);
+                if (rowIn && rowIn.via !== occPid({ pc: 0, r: q, i: 0 })) { const sk = meshSeat(); if (sk && sk.keepAdd) sk.keepAdd(rowIn.via, 16); } // L28: a carried copy stays until the direct one lands
               }
             } else {
               for (let q = 0; q < C; q++) pk.delTile('q' + q);
@@ -25812,7 +25867,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // than an eternal 2×2 black one. A tile is never CREATED for an
           // empty pack; one already shown lingers MOS_GRACE (a transient
           // empty beat never flaps it off/on).
-          if (sdPack.count() > 0) { sdEmptyAt = 0; paintStadiumTile(sdPack.stream); }
+          const headView = actHead ? mosIn.get('sdm') : null, headFlows = !!headView && !(mosFb.get('sdm') || {}).dark && !headView.deadAt; // a false alarm must not take the heir's own ears off its head's view
+          if (headFlows) paintStadiumTile(headView.stream);
+          else if (sdPack.count() > 0) { sdEmptyAt = 0; paintStadiumTile(sdPack.stream); }
           else {
             if (!sdEmptyAt) sdEmptyAt = Date.now();
             const sdShown = !!stadiumEl.querySelector('[data-row="sd"]');
@@ -25905,7 +25962,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // column); my head's x1 -> down my COLUMN to its destination row; any x2:q I hold ->
         // to my head as sdrow:q. Meta {n, cols} is FORWARDED so the far end
         // can unpack faces.
-        const headPid = occPid({ pc: c.pc, r: c.r, i: 0 });
+        const headPid = rowHeadPid(c); // the head, or the heir while the head's feed is gone
         for (const [mk, uf] of mosIn) { if (mk.indexOf('subu:') !== 0) continue; const ju = shipMos('sub', headPid, uf.stream, Object.assign({ l14: 1, via: mk.slice(5) }, blockMeta(uf)), mk); if (ju) wanted.add(ju); } // L14: a branch I serve, into my row's product
         if (beyondRow) {
           const sdmM = mosIn.get('sdm'), packMetaM = (pk) => ({ n: pk.count(), cols: pk.cols() });
@@ -25923,7 +25980,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // COLUMN-mate sitting in that row, who hands it to its head. This is
           // the link-disjoint backup for the direct head-column ship above.
           const dest = (c.i === c.r) ? 0 : c.i; // never my own row: i===r ⇒ r≥1 here, dest 0
-          const xPid = occPid({ pc: 0, r: dest, i: c.i });
+          const xPid = x2Target({ pc: 0, r: dest, i: c.i });
           const jk = shipMos('x2', xPid, x1.stream, Object.assign({ row: x1.meta.row }, blockMeta(x1)), 'x1'); if (jk) wanted.add(jk);
         }
         if (c.pc === 0) for (const [mk, xf] of mosIn) {
@@ -26160,7 +26217,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // already excludes my row. Per-branch mixes are single-producer by
       // construction (a neighbour's mix would contain MY row), so the old
       // verbatim re-fan of the shared 'sd' is gone with the shared 'sd'.
-      if (!iAmHead) { const sdm = mosIn.get('sdm'); paintStadiumTile(sdm ? sdm.stream : null); }
+      if (!iAmHead && !actHead) { const sdm = mosIn.get('sdm'); paintStadiumTile(sdm ? sdm.stream : null); }
       // STAGE EAR: sum the per-stager feeds I hold, skipping my own.
       if (stagers.length) ensureStageEar();
       syncStageEar(stagers);
@@ -35484,6 +35541,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // A parked standby at rest: what its receiver and my parked senders have moved, per pipe, plus the whole page's transport bytes.
       stageIdleForTest: async () => { const std = []; for (const [k, v] of mosStandby) { if (!k.startsWith("stg:") || !v.stream) continue; const p = peers.get(v.via); if (!p || !p.pc) continue; let bytes = 0, pk = 0; for (const t of v.stream.getTracks()) { const st = await p.pc.getStats(t); st.forEach((x) => { if (x.type === "inbound-rtp") { bytes += x.bytesReceived || 0; pk += x.packetsReceived || 0; } }); } std.push({ k: k.slice(4, 12), via: String(v.via).slice(0, 8), key: v.key, kinds: v.stream.getTracks().map((t) => t.kind).join(), bytes, pk }); } const park = []; let parked = 0, hot = 0; for (const [jk, j] of mosJobs) { if (j.key.indexOf("stg:") !== 0) continue; if (j.active) { hot++; continue; } parked++; let bytes = 0, pk = 0; for (const sd of j.senders) { try { const st = await sd.getStats(); st.forEach((x) => { if (x.type === "outbound-rtp") { bytes += x.bytesSent || 0; pk += x.packetsSent || 0; } }); } catch (e) {} } park.push({ jk: jk.slice(0, 24), bytes, pk }); } let txAll = 0, rxAll = 0; for (const p of peers.values()) { if (!p.pc) continue; const st = await p.pc.getStats(); st.forEach((x) => { if (x.type === "transport") { txAll += x.bytesSent || 0; rxAll += x.bytesReceived || 0; } }); } return { std, park, parked, hot, txAll, rxAll, pcs: [...peers.values()].filter((q) => q.pc).length }; },
       stageFoForTest: () => (window.__stgFoLog || []).slice(),
+      rowViewForTest: () => (window.__rowViewLog || []).slice(),
       stgJobsForTest: () => [...mosJobs.entries()].filter(([, j]) => j.key.indexOf('stg:') === 0).map(([jk, j]) => { const p = peers.get(j.to); return { to: String(j.to).slice(0, 8), key: j.key.slice(0, 12), active: !!j.active, sid: String(j.streamId).slice(0, 8), sb: !!(j.meta && j.meta.sb), ao: !!(j.meta && j.meta.ao), kinds: j.trackList.map((t) => t ? t.kind + ':' + t.readyState + (t.enabled ? '' : ':off') : 'null').join(), sending: j.senders.map((sd) => sd.track ? sd.track.kind : 'null').join(), held: typeof outgoingHeld !== 'undefined' && !!outgoingHeld, pc: p && p.pc ? p.pc.connectionState : 'none' }; }),
       stageEarStreamForTest: () => (stageEar && stageEar.el.srcObject ? { stream: stageEar.el.srcObject, muted: !!stageEar.el.muted, paused: !!stageEar.el.paused } : null),
       stageRouteForTest: () => { const o = {}; for (const [k, v] of mosIn) { if (k.indexOf("stg:") !== 0 && k !== "sgs") continue; const d = mosStandby.get(k); o[k.slice(0, 8)] = String(v.via).slice(2, 8) + (d ? "|" + String(d.via).slice(2, 8) : ""); } return o; },
