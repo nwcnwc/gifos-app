@@ -106,6 +106,14 @@ function installMedia(fab) {
         } else if (!(rk === srk && F.stadium)) { for (const q of Mr) { if (q !== eh) Ed(eh, q, true); if (q !== ep) Ed(ep, q, false); } }
       }
     }
+    // L14 (fast media, slow tidy): a cut-off branch's temporary uplink carries its branch's feeds both ways while it is open,
+    // as mgapPaths counts it; the seat above passes them up its own chain to Section 1.
+    for (let s = 0; s < lv.nextId; s++) {
+      if (!alive[s] || !seats[s].hasCoord) continue; const x = seats[s].l14Up; if (x < 0 || x >= lv.nextId || !alive[x] || !seats[x].hasCoord) continue;
+      Ed(s, x, true); Ed(x, s, true);
+      let cur = x;
+      for (let g = 0; g < 64 && cur >= 0 && seats[cur].hasCoord && seats[cur].coord.pc !== 0; g++) { const hc = { pc: seats[cur].coord.pc, r: seats[cur].coord.r, i: 0 }; const hh = mAt(hc); if (hh >= 0 && hh !== cur) Ed(cur, hh, true); const o = hh >= 0 ? ownerOf(hc) : null; if (!o) break; const oi = mAt(o); Ed(hh, oi, true); cur = oi; }
+    }
     return out;
   }
   // C++: mesh_media.inc:mediaTick
