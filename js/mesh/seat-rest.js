@@ -65,6 +65,13 @@
       return false;
     },
 
+    // C++: mesh_seat.inc:Seat::ownPathUp
+    ownPathUp(k) {
+      let path = false;
+      for (const c of ownedLinks(this.coord)) { const lk = ckey(c), x = this.occGet(lk); if (lk !== k && x >= 0 && x !== this.id && this.heldRightNow(lk)) { path = true; break; } }
+      return path && this.knowsRing(k);
+    },
+
     // C++: mesh_seat.inc:Seat::hearRook
     hearRook() {
       if (!this.hasCoord || this.coord.pc !== 0) return false;
