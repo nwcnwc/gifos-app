@@ -1,0 +1,7 @@
+/meet/* /route 200
+/meet /route 200
+/cast/* /route 200
+/cast /route 200
+/join/* /route 200
+/store/* /route 200
+/store /route 200

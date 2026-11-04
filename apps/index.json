@@ -5619,7 +5619,7 @@
       "appId": "offline-tts",
       "name": "Offline Text to Speech",
       "shortName": "Offline TTS",
-      "version": "1.0",
+      "version": "1.0.3",
       "tagline": "Give your computer a voice — offline text-to-speech that serves every app, no key, no cloud.",
       "author": {
         "name": "GifOS",
@@ -5628,7 +5628,7 @@
       "minBuild": 1177,
       "offline": true,
       "releaseDate": "2026-08-09",
-      "updated": "2026-08-09",
+      "updated": "2026-10-26",
       "categories": [
         "Utilities"
       ],
@@ -5646,7 +5646,7 @@
         255
       ],
       "cover": "/apps/offline-tts/cover.jpg",
-      "bytes": 1632026,
+      "bytes": 1639087,
       "download": 0,
       "provides": {
         "ai": [
@@ -5656,9 +5656,9 @@
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-10-26"
       },
-      "sha256": "9e9128400e4882ff02f26d964a91ceca03be58f0ac4ebe77ec70886778dd4de0"
+      "sha256": "fd51555963a0ce14d8d4f162460c72c6d15c95af37f16e59c7ead8a6ad420e36"
     },
     {
       "slug": "offline-tts-kokoro",
@@ -6202,23 +6202,25 @@
     {
       "slug": "pdf-read-aloud",
       "appId": "pdf-read-aloud",
-      "name": "PDF Read Aloud",
+      "name": "Read Aloud",
       "shortName": "Read Aloud",
-      "version": "1.0.0",
-      "tagline": "Open a PDF and hear it read aloud. The file stays on this device.",
+      "version": "1.1.7",
+      "tagline": "Read a PDF, pasted text, or an image of text aloud. The file stays on this device.",
       "author": {
         "name": "GifOS",
         "url": "https://gifos.app"
       },
-      "minBuild": 947,
+      "minBuild": 1381,
       "offline": true,
       "releaseDate": "2026-10-11",
-      "updated": "2026-10-11",
+      "updated": "2026-10-26",
       "categories": [
         "Utilities"
       ],
       "tags": [
         "pdf",
+        "ocr",
+        "text",
         "read-aloud",
         "reader",
         "accessibility",
@@ -6231,15 +6233,17 @@
         42
       ],
       "cover": "/apps/pdf-read-aloud/cover.jpg",
-      "bytes": 832900,
+      "bytes": 2334350,
       "download": 0,
+      "optionalCount": 1,
+      "optionalDownload": 15400601,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-12"
+        "ts": "2026-10-26"
       },
-      "sha256": "bef545bede41d28dc272017105105395f83ece6fbec052cf0df48d18009ddc6b"
+      "sha256": "fa6196b6ac53a40ed2562579fb27ac3605496061162e48b020a6bb4df4f2f1c7"
     },
     {
       "slug": "pdf-reader",
