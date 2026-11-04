@@ -135,10 +135,10 @@ function install(fab) {
     } else if (op === 'reload') {   // L3.11: the tab is RELOADED: the page says goodbye marked "reload", closes its channels and comes back through the door `gap` ticks later with the SAME identity
       const id = liveId(1); const d = tk.length > 2 ? atoi(tk[2]) : 4;
       if (id < 0 || d < 1) { P('ERR usage: reload <live id> <gap>\n'); return; }
-      fab.FROZEN.delete(id); fab.SLOW.delete(id); const oc = seats[id].hasCoord ? ckey(seats[id].coord) : 0;
+      fab.FROZEN.delete(id); fab.SLOW.delete(id); const oc = seats[id].hasCoord ? ckey(seats[id].coord) + 1 : 0;
       seats[id].leave(true); lv.N -= 1; { const k = TICK() + d; fab.RESUMEQ.set(k, (fab.RESUMEQ.get(k) || []).concat([[id, oc]])); }
       fab.trace('RELOAD', id, oc ? seats[id].coord : null, 'returns at %lld', TICK() + d);
-      P('OK reload %d: goodbye sent%s, the same id knocks at tick %lld (old cell %s)\n', id, ' marked reload', TICK() + d, oc ? coordStr(unckey(oc)) : '-');
+      P('OK reload %d: goodbye sent%s, the same id knocks at tick %lld (old cell %s)\n', id, ' marked reload', TICK() + d, oc ? coordStr(unckey(oc - 1)) : '-');
     } else if (op === 'twocells') {   // observer: how many cells do the live seats name this id at
       const id = tk.length > 1 ? atoi(tk[1]) : -1; const cells = new Set();
       if (id >= 0 && id < lv.nextId && alive[id] && seats[id].hasCoord && seats[id].state === 3) cells.add(ckey(seats[id].coord));
@@ -155,8 +155,8 @@ function install(fab) {
     } else if (op === 'resume') {
       const id = liveId(1); const d = tk.length > 2 ? atoi(tk[2]) : 2;
       if (id < 0 || d < 1) { P('ERR usage: resume <live id> [delay]\n'); return; }
-      const oc = seats[id].hasCoord ? ckey(seats[id].coord) : 0; time.lever(tk);
-      P('OK resume %d: gone now, the same id knocks at tick %lld (old cell %s)\n', id, TICK() + d, oc ? coordStr(unckey(oc)) : '-');
+      const oc = seats[id].hasCoord ? ckey(seats[id].coord) + 1 : 0; time.lever(tk);
+      P('OK resume %d: gone now, the same id knocks at tick %lld (old cell %s)\n', id, TICK() + d, oc ? coordStr(unckey(oc - 1)) : '-');
     } else if (op === 'doordark') { time.lever(tk); P('OK doordark until %lld\n', lv.DOORDARK); }
     else if (op === 'verdicts') { time.lever(tk); P('VERDICTS on=%d gone=%lld false=%lld frozen=%lld\n', lv.VERDICTS ? 1 : 0, lv.VALL, lv.VFALSE, lv.VFROZEN); }
     else if (op === 'linked') {

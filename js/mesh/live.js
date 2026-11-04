@@ -619,6 +619,7 @@
       for (let k = 0; k < ol.length; k++) { const x = this.occGet(ckey(ol[k])); if (x >= 0 && !seen.has(x)) { seen.add(x); this.emit(x, msg.clone(bm)); } }
       const o = this.ownerCoord(); if (o) { const oid = this.occGet(ckey(o)); if (oid >= 0 && !seen.has(oid)) { this.emit(oid, msg.clone(bm)); } }   // bye: a room goodbye, relayed across the section
       if (bm.child >= 0 && bm.child !== id && !seen.has(bm.child)) { seen.add(bm.child); this.emit(bm.child, msg.clone(bm)); }   // L1.1 (a): my heir below hears it first-hand
+      { const ops = this.f.fabricOpenPeers(id); for (const x of ops) if (x !== id && x !== bm.child && !seen.has(x)) { let oid = -1; const oc = this.ownerCoord(); if (oc) oid = this.occGet(ckey(oc)); if (x === oid) continue; seen.add(x); this.emit(x, msg.clone(bm)); } }   // L1.5A: every other seat on an open link of mine hears it too
     },
   });
 

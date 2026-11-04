@@ -60,7 +60,7 @@
       if (!this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return null;
       if (!this.hearRook()) {
         if (this.greetersAt < 0 || this.TICK - this.greetersAt > K.RELAY_TTL) return null;
-        for (const g of this.lastGreeters) if (g >= 0 && g !== this.id && g !== this.findNc) return null;
+        for (const g of this.lastGreeters) if (g >= 0 && g !== this.id && g !== this.findNc && !this.l315Id(g)) return null;
       }
       for (let t = 0; t < C; t++) {
         if (t > 0) { for (let j = 0; j < C; j++) { const pk = ckey({ pc: 0, r: t - 1, i: j }); if (!this.occ.has(pk) && !this.softSitting(pk) && !this.l31Held(pk, this.findNc)) return null; } }
@@ -89,8 +89,8 @@
       if (!got) return false;
       {
         const ac = admCell(c); const ak = ckey(ac);
-        p.ack = false; p.needAck = !(this.hasCoord && ak === ckey(this.coord)) && this.occGet(ak) >= 0;
-        if (!p.needAck && !(this.hasCoord && ak === ckey(this.coord)) && !this.softSitting(ak) && !this.l31Held(ak, p.nc)) return false;
+        p.ack = false; const akHeld = this.l315Cell(ak); p.needAck = !(this.hasCoord && ak === ckey(this.coord)) && this.occGet(ak) >= 0 && !akHeld;
+        if (!p.needAck && !akHeld && !(this.hasCoord && ak === ckey(this.coord)) && !this.softSitting(ak) && !this.l31Held(ak, p.nc)) return false;
       }
       const mm = newMsg('FIND'); mm.nc = p.nc; mm.from = p.nc; mm.ttl = K.FIND_TTL;
       const k = ckey(c); this.healOnly.delete(k); this.healTry.set(k, this.TICK);

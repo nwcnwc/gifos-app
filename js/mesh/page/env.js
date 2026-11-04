@@ -29,6 +29,7 @@
  *   fabricLeft           A1     leave: seat dead, A2.leaveAll() next tick, o.onLeft(false)
  *   fabricLieFor         A1     no lie (null)
  *   fabricLinkOpen       A2     my end reads OPEN
+ *   fabricOpenPeers      A2     the seats on my open links
  *   fabricLinkState      A2     my end's view
  *   fabricMyDoors        A2     my door count
  *   fabricMyKnocks       A2     my knock count

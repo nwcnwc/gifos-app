@@ -264,6 +264,8 @@ function createFabric(opts) {
     const fs_ = fab.forcedSever.get(pk); if (fs_ !== undefined && fs_ > TICK()) return false;
     return true;
   };
+  // C++: mesh_link.inc:fabricOpenPeers
+  fab.fabricOpenPeers = (me) => { const out = []; if (!lv.LINKMODEL || me < 0) return out; const L = fab.link; L.lEnsure(me); for (const p of L.LINKPEERS[me]) if (linkViewOpen(me, p)) out.push(p); return out; };
   // C++: mesh.cpp:linkViewOpen
   const linkViewOpen = fab.linkViewOpen = (me, x) => X.fabricLinkState(me, x) === LS_OPEN && !cutBetween(me, x) && !darkPair(me, x);
 
@@ -656,7 +658,7 @@ function createFabric(opts) {
   // ---- the 52 calls a seat makes (seat.js FABRIC_CALLS) ------------------------------------------------------------
   // Mine are bound here; every other name forwards to fab.X, so a plugged unit's function is reached at call time.
   const own = {
-    fabricAdmitLog: fab.fabricAdmitLog, fabricDupMint: fab.fabricDupMint, fabricLeft, fabricLinkOpen: fab.fabricLinkOpen,
+    fabricAdmitLog: fab.fabricAdmitLog, fabricDupMint: fab.fabricDupMint, fabricLeft, fabricLinkOpen: fab.fabricLinkOpen, fabricOpenPeers: fab.fabricOpenPeers,
     fabricNoteReseat: fab.fabricNoteReseat, fabricNoteRollback: fab.fabricNoteRollback, fabricSend, fabricKickClose: fab.fabricKickClose,
     l915Note: fab.l915Note, l164Of, relayKnock: fab.relayKnock, relayUnlist: fab.relayUnlist, wake, fabricAudit: fab.fabricAudit,
   };

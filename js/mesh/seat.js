@@ -45,7 +45,7 @@
   const FABRIC_CALLS = Object.freeze([
     'fabricAdmitLog', 'fabricCallFrame', 'fabricDial', 'fabricDialFails', 'fabricDialJoin', 'fabricDialUplink',
     'fabricUpDecline', 'fabricUpTake', 'fabricDoorDrop', 'fabricDoorHanded', 'fabricDoors', 'fabricDupMint',
-    'fabricFreeCells', 'fabricKickClose', 'fabricL23Busy', 'fabricLeft', 'fabricLieFor', 'fabricLinkOpen',
+    'fabricFreeCells', 'fabricKickClose', 'fabricL23Busy', 'fabricLeft', 'fabricLieFor', 'fabricLinkOpen', 'fabricOpenPeers',
     'fabricLinkState', 'fabricMyDoors', 'fabricMyKnocks', 'fabricMyNat', 'fabricMyTier', 'fabricNoSock',
     'fabricNoteBackoff', 'fabricNoteReseat', 'fabricNoteRollback', 'fabricNoteSwap', 'fabricReloadBye',
     'fabricSend', 'fabricUnreachable', 'fabricVerdict', 'fhopActive', 'fhopFriendFor', 'l164Of', 'l18Deliv',
@@ -407,6 +407,10 @@
       if (this.ledgerNamed(k)) return true;
       return this.f.fabricLinkOpen(this.id, x);
     },
+    // C++: mesh.cpp:Seat::l315Id
+    l315Id(x) { if (x < 0 || x === this.id) return false; const r = this.relMark.get(x); return r !== undefined && this.TICK - r <= K.LEASE_T; },
+    // C++: mesh.cpp:Seat::l315Cell
+    l315Cell(k) { const x = this.occGet(k); if (!this.l315Id(x)) return false; const l = this.live.get(k); return l === undefined || l <= this.relMark.get(x); },
     // C++: mesh.cpp:Seat::cellReserved
     cellReserved(k) {
       if (this.softSitting(k)) return true;
@@ -716,7 +720,7 @@
     // C++: mesh.cpp:Seat::s1Roster
     s1Roster() {
       const out = []; if (this.hasCoord && this.coord.pc === 0) out.push({ k: ckey(this.coord), v: this.id });
-      for (const [k, v] of this.occ) if (ckPc(k) === 0 && v !== this.id && this.s1Fresh(k) && !this.translost.has(k) && !this.s1Told(k)) out.push({ k, v });
+      for (const [k, v] of this.occ) if (ckPc(k) === 0 && v !== this.id && this.s1Fresh(k) && !this.translost.has(k) && !this.s1Told(k) && !this.l315Cell(k)) out.push({ k, v });
       return out;
     },
     // C++: mesh.cpp:Seat::goodbye
