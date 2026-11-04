@@ -244,6 +244,7 @@
   "meet.pwHintAdmin": "Only the admin can set or change it. When it is set or changed, everyone else here goes back to the door and must enter it to rejoin. Leave empty to remove the lock.",
   "meet.pwHintChanged": "The admin changed the room password. Enter the new password to rejoin the meeting.",
   "meet.pwChangedStatus": "🔒 The admin changed the room password. Enter the new password to rejoin.",
+  "meet.admBan": "Ban",
   "meet.pwBanHeard": "🔒 The admin removed someone and changed the room password. You stay in the meeting.",
   "meet.pwHintBanned": "They are out, and this is the room's new password. Everyone still here already has it. Anyone joining later needs it, so copy it and send it to them yourself. To let a banned person back in, tell them this password.",
   "meet.pwHint": "Anyone in the meeting can set or change it. It reaches everyone here instantly, and new joiners must enter it. Leave empty to remove the lock.",

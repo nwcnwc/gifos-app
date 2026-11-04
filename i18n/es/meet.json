@@ -244,6 +244,7 @@
   "meet.pwHintAdmin": "Solo el anfitrión puede ponerla o cambiarla. Cuando la pone o la cambia, todos los demás vuelven a la puerta y tienen que escribirla para volver a entrar. Déjala vacía para quitar el candado.",
   "meet.pwHintChanged": "El anfitrión cambió la contraseña de la sala. Escribe la nueva para volver a entrar.",
   "meet.pwChangedStatus": "🔒 El anfitrión cambió la contraseña de la sala. Escribe la nueva para volver a entrar.",
+  "meet.admBan": "Expulsar",
   "meet.pwBanHeard": "🔒 El anfitrión sacó a alguien y cambió la contraseña de la sala. Tú sigues en la reunión.",
   "meet.pwHintBanned": "Esa persona ya está fuera, y esta es la nueva contraseña de la sala. Todos los que siguen aquí ya la tienen. Quien entre después la necesita: cópiala y envíasela tú. Para dejar volver a alguien expulsado, dile esta contraseña.",
   "meet.pwHint": "Cualquiera en la reunión puede ponerla o cambiarla. Llega al instante a todos aquí, y quien entre después tiene que escribirla. Déjala vacía para quitar el candado.",

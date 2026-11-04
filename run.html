@@ -13340,7 +13340,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return;
       }
       if (ty === 'password' && f.pr) {   // the admin, to someone in the waiting room: the door's new proof
-        if (meetWait.atDoor() && !meshCoord()) { pwProof = String(f.pr); pwWaitProof = true; pwLog('wait: the door moved, keeping my place'); }
+        if (!meshCoord()) { pwProof = String(f.pr); pwWaitProof = true; showHeldScreen(); pwLog('wait: the door moved, keeping my place'); }
         return;
       }
       if (ty === 'password' || ty === 'pwsig' || ty === 'pwpub' || ty === 'pwby') {
@@ -13410,11 +13410,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // excluded on purpose: a banned / voted-off seat, or an ejected forger.
         if (typeof bannedSeat !== 'undefined' && bannedSeat.has(pid)) return;
         if (typeof isEjected === 'function' && isEjected(pid) === true) return;
+        const pd = peers.get(pid);
+        if (noList && (!(pd && pd.dc && pd.dc.__authBy === pid) || doorOutsider(pid) || meetWait.blocks(pid))) return;   // a ban's grant goes only to the signed id at the far end of this channel, a member
         staleHealAt.set(pid, now);
         if (typeof clog === 'function') clog('grant-heal ' + String(pid).slice(0, 6) + ' (prev-key frame)');
       pwLog('grant-heal→' + String(pid).slice(0, 6) + ' ep=' + pwEpoch);
-        const pd = peers.get(pid);
-        if (noList && !(pd && pd.dc && pd.dc.__authBy === pid)) return;   // a ban's grant goes only to the signed id at the far end of this channel
         if (pd && pd.dc && pd.dc.readyState === 'open') txm(() => net.seal(prevRoomE2E, retainedGrant).then((env) => net.sendChunked(env, (piece, str) => { try { pd.dc.send(str); } catch (e) {} })));
         else { const fs = pwFramesOf(retainedGrant); if (fs) for (const f of fs) relaySendSealed(pid, f.k, f, prevRoomE2E); }
       });
@@ -15829,7 +15829,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const q of Array.from(peers.values())) {
         if (q.id === fromId || !q.dc || q.dc.readyState !== 'open') continue;
         if (no.includes(q.id)) { if (boot) pwSealTo(q, boot, key); continue; }
-        if (q.dc.__authBy === q.id && !doorOutsider(q.id)) pwSealTo(q, grant, key);
+        if (q.dc.__authBy === q.id && !doorOutsider(q.id) && !meetWait.blocks(q.id)) pwSealTo(q, grant, key);   // nor someone still in the waiting room
       }
     }
     function pwBarOut(no) {
@@ -16954,7 +16954,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // visit too. Bounded at three knocks, and only a device that REMEMBERS
         // a password ever pays for more than one.
         onLocked: (door) => {
-          if (pwWaitProof && meetWait.atDoor()) { pwLog('R6 while waiting on the admin: stays waiting'); return; }
+          if (pwWaitProof && !meshCoord()) { pwLog('R6 while waiting on the admin: stays waiting'); return; }
           const ms = meshSeat(), seated = !!(ms && ms.hasCoord && ms.state === 3);
           // A seat moves on no door blob: anyone can register one. Only the door's own refusal is the password change.
           if (seated && !door) { pwLog('R6 from door blobs, seated: stays seated'); pwBlocked = true; showPwModal(true, pwChangedWhy()); return; }
@@ -18699,6 +18699,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             add('blur', blurred ? 'Unblur' : 'Blur');
             add('ban', 'Ban');
             row.appendChild(mods);
+          } else if (!BROADCAST && hasAdminRoom() && amAdmin && r.here && !r.me) {
+            // Most of a big room has no tile on the admin's screen: this list is where she can reach them.
+            row.style.flexWrap = 'wrap';
+            const mods = document.createElement('div');
+            mods.className = 'bc-mods';
+            const b = document.createElement('button');
+            b.type = 'button'; b.dataset.bcMod = 'ban'; b.dataset.pid = r.pid; b.textContent = uiText('admBan', 'Ban');
+            mods.appendChild(b); row.appendChild(mods);
           }
           list.appendChild(row);
         }
@@ -21144,7 +21152,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // demanding a password the room already handed her. Gated on the
         // challenge having actually fired — an ordinary rotation must not
         // churn every member's socket.
-        const wasBlocked = pwBlocked;
+        const wasBlocked = pwBlocked || grantMine;   // admitted from the waiting room: the same re-entry as typing it
         // A SEATED page keeps its node. The challenge also fires for a seated
         // member who missed the change (mesh-wire: behind the room's key), and
         // a new node closes the old relay socket first: the relay announces

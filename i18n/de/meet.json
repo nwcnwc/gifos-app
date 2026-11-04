@@ -244,6 +244,7 @@
   "meet.pwHintAdmin": "Nur die Leitung kann es setzen oder ändern. Wird es gesetzt oder geändert, gehen alle anderen hier zurück an die Tür und müssen es eingeben, um wieder beizutreten. Leer lassen hebt die Sperre auf.",
   "meet.pwHintChanged": "Die Leitung hat das Raum-Passwort geändert. Geben Sie das neue Passwort ein, um wieder beizutreten.",
   "meet.pwChangedStatus": "🔒 Die Leitung hat das Raum-Passwort geändert. Geben Sie das neue Passwort ein, um wieder beizutreten.",
+  "meet.admBan": "Sperren",
   "meet.pwBanHeard": "🔒 Die Leitung hat jemanden entfernt und das Raum-Passwort geändert. Sie bleiben im Meeting.",
   "meet.pwHintBanned": "Die Person ist draußen, und das ist das neue Raum-Passwort. Alle, die noch hier sind, haben es schon. Wer später beitritt, braucht es: Kopieren Sie es und schicken Sie es selbst. Um eine gesperrte Person wieder hereinzulassen, nennen Sie ihr dieses Passwort.",
   "meet.pwHint": "Jeder in der Besprechung kann es setzen oder ändern. Es gilt sofort für alle hier, und wer neu kommt, muss es eingeben. Leer lassen hebt die Sperre auf.",
