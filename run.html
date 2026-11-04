@@ -6214,7 +6214,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (out.some((x) => x[0] === id)) continue;
         const said = statusOf.get(id);
         const fresh = said && nowH - stSeen(said) <= 15000;
-        let held = false; try { const f = mosIn.get('stg:' + id); held = !!f && !f.deadAt; } catch (e) {}
+        let held = false; try { held = !!mosIn.get('stg:' + id); } catch (e) {} // a dead primary still counts: its claim ends after the grace unless a standby takes the slot
         if (nowH - h.at > STAGE_FOLD_HOLD_MS || id === myId || !held || meshGone.has(id) || (fresh && !said.stg)) { stageHeldAt.delete(id); continue; }
         out.push([id, h.k]);
       }
