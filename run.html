@@ -6219,6 +6219,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // reach right now" — a target NOT in this set is a socketless deep seat the
     // relay would silently drop, so signaling to it must sponsor-forward (§FWD).
     let relaySocketed = new Set();
+    const kickByesIn = new Set();   // peers that closed our pair with 'kick' (L27, the refused side)
     let relayRosterScope = 'full';
     let doorAnswerAt = 0;           // a dark return's {t:'who'} pull is pending: its roster answers the door's knockers once (answerDoor)  // 'door' ⇒ relaySocketed holds only the greeters (see the roster handler)
     let holdDoor = false;           // waiting room: do not auto-answer the door; the host admits from the list. Gate: node test/unit/wait-room.js
@@ -11908,7 +11909,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // 'partial' adds a note to the count line; every other reach state
       // replaces the line.
       const inlineReach = reachState === 'partial';
-      const reachLine = !!(reachState && !inlineReach && !leftUp);
+      const refused = !leftUp && typeof refusedLine === 'function' && refusedLine();
+      const reachLine = !refused && !!(reachState && !inlineReach && !leftUp);
       const partial = reachState === 'partial' ? reachNote(reach.dead) : '';
       // shown is the room you can see: the count, or the faces on the wall (qa-meet-desktop).
       // You left on purpose: the number is the room without you, frozen at
@@ -11921,7 +11923,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const foldPartial = !!(foldNow && foldNow.part); // a shortfall is not the room size
       let countText = '';
       let restText = '';
-      if (reachLine) {
+      if (refused) {
+        restText = uiText('stThePeopleInThisRoom', '\u26d4 The people in this room voted not to let this device in.');
+      } else if (reachLine) {
         restText = REACH_MSG[reachState] + tail;
       } else if (typeof iAmWaiting === 'function' && iAmWaiting()) {
         // A person in the waiting room is not alone and has no one to invite.
@@ -12860,14 +12864,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (f.live > 0 && f.dead > 0) return 'partial';
       return null;
     }
+    let outsideSince = 0;
     function reachInfo() {
       const s = meshSeat();
       const atDoor = !!(s && (s.state === 1 || s.state === 2));
       let isMember = null;
       if (atDoor) { const members = new Set(); for (const v of s.occ.values()) if (v) members.add(String(v)); isMember = (pid) => members.has(String(pid)); }
       const c = reachCounts(peers.values(), peerAway, isMember);
+      // A page still outside after a minute reads the plain failure line, whatever the reason (a wrong clock looks just like this): the page cannot tell why, so it does not say.
+      if (!s || s.state === 3 || (typeof iAmWaiting === 'function' && iAmWaiting())) outsideSince = 0; else if (!outsideSince) outsideSince = Date.now();
       const f = { probe: directPath, n: participantCount(), live: c.live, dead: c.dead,
-        stranded: !!(s && s.stranded), atDoor };
+        stranded: !!(s && s.stranded) || (outsideSince > 0 && Date.now() - outsideSince > 60000), atDoor };
       f.state = reachStateOf(f);
       return f;
     }
@@ -16850,7 +16857,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // dial REQUEST (frag-ping) so whichever half's door probe fires first,
     // the same one side ends up dialing.
     let fragPingId = null, fragPingAt = 0, fragRetryT = 0;
-    let fragDialAt = 0; const FRAG_DIAL_WAIT_MS = 30000; // F8 multi-id: the dial round before the reload, and how long it gets
+    let fragDialAt = 0; const FRAG_DIAL_WAIT_MS = 30000; // F8 multi-id: one dial round per 3 of these
     function fragRescue(id) {
       if (Date.now() - fragPingAt < 15000) return; // one outstanding rescue at a time
       fragPingId = id; fragPingAt = Date.now();
@@ -17074,12 +17081,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           setStatus(code === 4007 ? '⛔ The people on this meeting voted you off.' : '⛔ You were banned from this room.');
         },
         onStranded: () => updateStatus(), // R6: the line reads the seat's verdict (REACH_MSG 'cannot-reach-room') until the re-knock gets in
-        // S4 CLOCK SKEW: every seating frame is a signed fill with a 10-minute
-        // window, so a device whose clock is wrong is never seated and, after
-        // the TTL, was told the NETWORK refused it. The wire reports the signed
-        // delta from a verified member's frame while I am still joining.
-        onClockSkew: (ms) => { const mins = Math.max(1, Math.round(Math.abs(ms) / 60000)); setStatus('\ud83d\udd50 This device\u2019s clock is ' + mins + ' minute' + (mins === 1 ? '' : 's') + (ms > 0 ? ' behind' : ' ahead of') + ' the meeting\u2019s, so you cannot join. Set the clock, then reload.'); },
-        onClockStop: (ms) => { const mins = Math.max(1, Math.round(Math.abs(ms) / 60000)); bannedOut = true; for (const pid of Array.from(peers.keys())) dropPeer(pid); setStatus('\ud83d\udd50 This device\u2019s clock is ' + mins + ' minute' + (mins === 1 ? '' : 's') + (ms > 0 ? ' behind' : ' ahead of') + ' the meeting\u2019s, so you cannot join. Set the clock, then reload.'); },
         // FRAGMENT SELF-RESCUE: the wire proved the door knows members my
         // solo room view doesn't. Same clean lever as the freeze self-heal \u2014
         // a full re-entry \u2014 throttled, and only while the app agrees we look
@@ -17132,18 +17133,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // gated exactly as before.
             return;
           }
-          // THE DIAL BEATS THE RELOAD HERE TOO. The door knowing two or more
-          // identities I have tombstoned says they are REGISTERED, not that
-          // they are reachable: a 3-person room whose other two went dark
-          // within seconds of each other left the one healthy member solo
-          // against two door-listed ids, and this reload threw away the only
-          // seat that was still right. It came back as a stranger, the first
-          // returner was NOROOM'd by the second's stale view, and both
-          // disrupted people rejoined 55-75 s after their coverage came back
-          // (chaos seed 9 #1). Dial every door id first (an offer to a dark
-          // peer is a no-op; a live one answers in seconds and the pair
-          // heals without a reset); the reload stays as the backstop for a
-          // solo view that no dial could mend within FRAG_DIAL_WAIT_MS.
+          // Dial every door id (an offer to a dark peer is a no-op; a live one answers in seconds). The door's
+          // list introduces, it decides nothing: no reload from it. The seat's own law (L8) heals the rest.
           const nowF = Date.now();
           if (!fragDialAt || nowF - fragDialAt > FRAG_DIAL_WAIT_MS * 3) {
             fragDialAt = nowF;
@@ -17153,14 +17144,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               const q = peers.get(id); if (q && q.connected) continue;
               try { if (iInitiate(id)) { makePeer(id, null); sendOffer(id, false); } else relayName(id); dialed++; } catch (e) {}
             }
-            if (typeof clog === 'function') clog('frag-dial ' + dialed + ' door id(s) before any reload');
-            return;
+            if (typeof clog === 'function') clog('frag-dial ' + dialed + ' door id(s)');
           }
-          if (nowF - fragDialAt < FRAG_DIAL_WAIT_MS) return;
-          const last = +sessionStorage.getItem('gifos_fragrescue') || 0;
-          if (Date.now() - last < 90000) return; // once per 90s \u2014 never a reload loop
-          try { sessionStorage.setItem('gifos_fragrescue', String(Date.now())); } catch (e) {}
-          location.reload();
         },
         // R5 / E5§2: two door clusters (multi-genesis or same-key torn halves).
         onFork: (opts) => showForkPick(opts),
@@ -21217,21 +21202,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // A deliberate close from the far end (A2's pc laws): its why reaches the seat's world, and the
         // channel's close that follows is no loss.
         if (dc && dc.__authBy === p.id) { p.byeSeen = Date.now(); try { if (meshNode && meshNode.transport) meshNode.transport(p.id, 'bye', typeof m.why === 'string' ? m.why.slice(0, 16) : 'call'); } catch (e) {} if (typeof clog === 'function') clog('pcbye-in ' + String(p.id).slice(0, 6) + ' ' + m.why); }
-        // L27 for the refused device: a seat that refuses me says 'kick'. Two distinct seats saying it (the vote-off
-        // bar is never below 2) while I am kept out is the room's standing verdict on this device: tell the person.
-        if (dc && dc.__authBy === p.id && m.why === 'kick' && !bannedOut && !hasAdminRoom()) {
-          const now = Date.now(); kickByesIn.set(p.id, now); for (const [k2, at] of kickByesIn) if (now - at > 60000) kickByesIn.delete(k2);
-          // The room's bar, not any two seats: fewer than a majority of those the relay can reach could otherwise stop a newcomer.
-          if (kickByesIn.size >= Math.max(2, Math.trunc(relaySocketed.size / 2) + 1) || votedOffHere()) {
-            bannedOut = true; noteVotedOff(); if (typeof clog === 'function') clog('kicked-out by ' + kickByesIn.size);
-            for (const pid of Array.from(peers.keys())) dropPeer(pid);
-            try { meshNode && meshNode.stop(); } catch (e) {}
-            setStatus(uiText('stThePeopleInThisRoom', '\u26d4 The people in this room voted not to let this device in.'));
-          } else {
-            // Not the room's bar yet: this door is shut to me, so ask the next one now rather than at the 10 s retry.
-            try { const r = meshNode && meshNode.raw; if (r && !r.hasCoord && r.state !== 3) { r.state = 0; r.findAckAt = -1; r.retryAt = r.TICK - 21; } } catch (e) {}
-          }
-        }
+        // L27, the refused side: a seat that refuses me says 'kick'. It moves nothing here: only the line (refusedLine) reads it.
+        if (dc && dc.__authBy === p.id && m.why === 'kick' && !hasAdminRoom()) { kickByesIn.add(p.id); if (typeof clog === 'function') clog('kick-heard ' + String(p.id).slice(0, 6) + ' of ' + kickByesIn.size); updateStatus(); }
       } else if (m.k === 'dcauth') {
         dcAuthRecv(p, dc, m);   // §DCAUTH: the peer proves it is the far end of THIS channel
       } else if (m.k === 'mesh') {
@@ -32400,18 +32372,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     };
     // L27 VOTE-OFF ON THE MESH: my vote-offs (device tags) name every peer on that device; the seat signs the
     // statement and it rides PHONE; the seat's fold is the tally, its threshold the need, its verdict the kick.
-    const kickByesIn = new Map();   // peer -> when it closed our pair with 'kick' (L27, the refused side)
     const devClaimAt = new Map();   // peer -> when I first saw it hold a device tag
     const kickTagAt = new Map();    // refused tag -> when the refused peer took it
-    // This device's own memory that the room voted it off (its fold said so, or two seats did), for KICK_LIFT-ish 120 s:
-    // a rejoining page then takes the one door it knocks (L16) saying 'kick' as the standing verdict. Only ever about me.
-    const VOTED_OFF_KEY = 'gifos_votedoff', VOTED_OFF_MS = 120000;
-    function noteVotedOff() { try { const o = JSON.parse(localStorage.getItem(VOTED_OFF_KEY) || '{}'); const now = Date.now(); for (const k in o) if (now - o[k] > VOTED_OFF_MS) delete o[k]; o[String(room)] = now; localStorage.setItem(VOTED_OFF_KEY, JSON.stringify(o)); } catch (e) {} }
-    function votedOffHere() { try { const o = JSON.parse(localStorage.getItem(VOTED_OFF_KEY) || '{}'); const at = o[String(room)]; return !!at && Date.now() - at < VOTED_OFF_MS; } catch (e) { return false; } }
+    // The honest line for a person the room voted off. The seat is not stopped: a refused seat simply is not answered,
+    // and it comes back in if the verdict lifts (L27.7). The evidence is the page's own: two seats said 'kick' over their
+    // own channels (L27.8's more than one path) and nobody else answers. One page, or anyone else who still answers, shows nothing.
+    let keptAnsweredAt = 0;
+    function answeredByOther() { const s = meshSeat(); if (!s || s.state !== 3 || !s.hasCoord) return false; for (const pid of s.linkPeers()) if (!kickByesIn.has(pid)) return true; return false; }
+    function refusedLine() { return kickByesIn.size >= 2 && !answeredByOther(); }
+    const kickSaid = new Map();   // refused peer -> when I said 'kick' on its channel
+    const kickWant = new Map();   // peer -> the device I voted off. My statement keeps naming it after its tile and devOf entry go: the verdict drops those, and a vote leaves with its voter, not its target (L27.7)
     function meshVoteBeat() {
       if (!meshNode || !meshNode.setKicks || hasAdminRoom()) return;
-      const want = []; for (const pid of Object.keys(devOf)) if (pid !== myId && myVoteoffs.has(devOf[pid])) want.push(pid);
-      meshNode.setKicks(want);
+      for (const pid of Object.keys(devOf)) if (pid !== myId && myVoteoffs.has(devOf[pid])) { kickWant.set(pid, devOf[pid]); if (kickWant.size > 64) kickWant.delete(kickWant.keys().next().value); }
+      for (const [pid, dv] of kickWant) if (!myVoteoffs.has(dv)) kickWant.delete(pid);
+      meshNode.setKicks(Array.from(kickWant.keys()));
       // L27 across a rejoin: my seat's verdict is about the DEVICE, so every other peer of a refused device (its
       // rejoining page, a second tab) is refused too, and a door pc to it is closed with the same 'kick' goodbye.
       if (meshNode.kickDevs && meshNode.kickCarry) {
@@ -32425,21 +32400,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (meshNode.kickCarry([pid]) > 0 && typeof clog === 'function') clog('kick-id ' + String(pid).slice(0, 6));
         }
       }
-      // A refused peer's open channel (its door knock, or a pair the verdict found not yet a link) hears 'kick' too.
-      if (meshNode.kicked) for (const q of Array.from(peers.values())) {
-        if (!q.dc || q.dc.readyState !== 'open' || !meshNode.kicked(q.id) || Date.now() - (q.kickSaidAt || 0) < 10000) continue;
-        q.kickSaidAt = Date.now(); try { dcSend(q, { k: 'pcbye', why: 'kick' }); } catch (e) {} if (typeof clog === 'function') clog('kick-say ' + String(q.id).slice(0, 6));
+      // A refused peer's open channel (its door knock, or a pair the verdict found not yet a link) hears 'kick' once, then this page has
+      // no pair and no tile for it (the same gates an admin's ban uses; its socket can stay up). The verdict's lift (L27.7) lifts them.
+      if (meshNode.kicked) {
+        for (const q of Array.from(peers.values())) {
+          if (!meshNode.kicked(q.id)) continue;
+          const at = kickSaid.get(q.id);
+          if (at === undefined) { if (q.dc && q.dc.readyState === 'open') { kickSaid.set(q.id, Date.now()); try { dcSend(q, { k: 'pcbye', why: 'kick' }); } catch (e) {} if (typeof clog === 'function') clog('kick-say ' + String(q.id).slice(0, 6)); } }
+          else if (Date.now() - at > 1500) { bannedSeat.add(q.id); confirmGone(q.id, 'ban'); dropPeer(q.id); }
+        }
+        for (const pid of Array.from(kickSaid.keys())) if (!meshNode.kicked(pid)) { kickSaid.delete(pid); bannedSeat.delete(pid); }
       }
       const k = meshNode.kickTally(); const tally = {}; let need = 0;
       for (const pid of Object.keys(k.tally)) { const dv = devOf[pid]; if (!dv) continue; tally[dv] = Math.max(tally[dv] || 0, k.tally[pid]); need = Math.max(need, k.need[pid] || 0); }
       if (!need && Object.keys(k.need).length === 0) { const n = (meshSeat() && meshSeat().occ) ? meshSeat().occ.size : 0; need = Math.max(2, Math.trunc(n / 2) + 1); }
       const ch = JSON.stringify(tally) !== JSON.stringify(voteTally) || need !== voteNeed;
       voteTally = tally; voteNeed = need; if (ch) refreshAllTiles();
-      if (k.me && !bannedOut) {
-        bannedOut = true; noteVotedOff();
-        for (const pid of Array.from(peers.keys())) dropPeer(pid);
-        try { meshNode.stop(); } catch (e) {}
-        setStatus('\u26d4 The people on this meeting voted you off.');
+      if (kickByesIn.size) {   // the words are forgotten once others have answered me for a while
+        if (!answeredByOther()) keptAnsweredAt = 0; else if (!keptAnsweredAt) keptAnsweredAt = Date.now(); else if (Date.now() - keptAnsweredAt > 30000) { kickByesIn.clear(); keptAnsweredAt = 0; }
       }
     }
     function toggleVote(id) {

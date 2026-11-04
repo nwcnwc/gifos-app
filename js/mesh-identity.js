@@ -189,8 +189,7 @@
     if (!(await net.edVerify(s.pub, s.sig, s.sp))) return { ok: false, from: null };
     // Minted outside the window: still refused, but NAMED. Checked after the
     // signature so only a key holder's frame can report a skew (a forgery
-    // says nothing). skewMs = the signer's clock minus mine; a joining node
-    // surfaces it (mesh-wire onClockSkew) instead of retrying in silence.
+    // says nothing). skewMs = the signer's clock minus mine.
     const skewMs = (+sp.ts || 0) - Date.now();
     if (Math.abs(skewMs) > FILL_WINDOW_MS) return { ok: false, from: null, reason: 'skew', skewMs };
     // The exact-replay set takes a signature only once the frame has passed

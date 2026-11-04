@@ -160,7 +160,6 @@
   //   onBehind(list)  door blobs a key I REPLACED opens: [{p, key}] — their
   //                   writers missed a password change (§LOCK door-side heal)
   //   onStranded()    R6: meeting is live but unreachable a full TTL
-  //   onClockSkew(ms, from) S4: while joining, a verified member's fill was minted outside the 10-min window; ms = its clock minus mine
   //   onFork(opts)    R5/E5§2: two+ door clusters — human pick-one
   //                   (multi-genesis OR same-key torn greeter halves).
   //                   opts = [{id, gkey, gateway, faces, tier, n}, …];
@@ -199,14 +198,6 @@
     let lastRelayRx = 0;   // last frame heard from the relay on the live socket
     let lastRegAt = 0;     // last time we sent a greeter registration
     let regPendingAt = 0;  // a registration awaiting its greeters reply (zombie detector)
-    // R3a CLIENT ARM (2026-08-02): consecutive not-admitted registration
-    // replies while seated-S1. The relay's `admitted` says whether MY
-    // presented genesis key matches the room's; a seated greeter refused
-    // repeatedly is SEALED OUT of its own door (ghost genesis, or a room
-    // re-founded under a key I missed) — its registrations are silently
-    // dropped and, from its own view, the pool just looks empty. Nothing
-    // acted on the flag before; the greeterTrace merely recorded it.
-    let notAdm = 0, notAdmAt = -1;
     // SHRANK-TO-SOLO (the 2-person fork fix, 2026-07-29): a room that WAS
     // populated and collapsed to one is a fragment SUSPECT the moment it
     // happens — a fresh founder is legitimately alone, but nobody legitimately
@@ -251,15 +242,6 @@
     const s4on = true;                      // unconditional — no off switch
     const gossipChain = net.makeChain();   // gossip has its own lane: a chat burst must never queue a newcomer's seating frame behind it
     const verifyChain = net.makeChain();   // one inbound chain for every signed seat frame (order kept)
-    const clockTold = new Set();           // peers told their clock is off
-    let inWindowSeen = false;              // a signer's time has passed the window here: at least one clock agrees with mine
-    // While joining, or just sat (a door can place me on an unsigned ask): say it once; and if in 2 s no signer at all agrees with my
-    // clock, stop joining (0.9.24: such a device never seats). One signer's word alone, with others in the window, stops nothing.
-    function noteSkew(ms, who) {
-      if (skewFired || !(raw.state !== 3 || env.TICK - raw.seatedAt <= 20)) return;
-      skewFired = true; if (opts.onClockSkew) { try { opts.onClockSkew(ms, who); } catch (e) {} }
-      setTimeout(() => { if (!stopped && !inWindowSeen) { try { node.leave(false); } catch (e) {} if (opts.onClockStop) { try { opts.onClockStop(ms); } catch (e) {} } } }, 2000);
-    }
     const fillPins = ident.newPins();      // the exact-replay sets for claimed frames, bounded as 0.9.24's (mesh-identity SEEN_MAX)
     const signerTs = new Map();            // claimant -> {ts: its newest verified signature time, off: my clock - its clock then}
     function staleGoodbye(ts, nowMs, seen) {
@@ -272,7 +254,6 @@
     const pubPeer = new Map();             // pub -> peer id (H(pub)), cached
     const outq = new Map();                // peer -> tail promise: one outbound FIFO per peer (a signed frame never overtaken)
     const gpending = new Set();            // gids whose verification is in flight — the copies that arrive meanwhile are not verified again
-    let skewFired = false;                 // onClockSkew fires once per node
     const gsig = new Map(); // gid -> Promise<s4> for gossip I authored (signed once, sent many times)
     const gflight = new Set(); // deliveries of gossip I authored whose signature is still in flight (flushed())
 
@@ -535,11 +516,6 @@
       } catch (e) {}
       try { if (typeof window !== 'undefined') { const t = (window.__mwRx = window.__mwRx || {}); const k = m.t === 'MW2' && m.f ? m.f.t : m.t; t[k] = (t[k] || 0) + 1; } } catch (e) {} // DEBUG-TREE: per-type ingest counter
       if (via != null) layer.ids.learn(String(via));
-      if (m.t === 'MWCLOCK') {   // a seated peer refused my frame as outside the window: its own signed time says by how much
-        if (skewFired || typeof m.sig !== 'string' || typeof m.pub !== 'string' || !Number.isFinite(m.ts)) return;
-        verifyChain(async () => { try { if (await net.edVerify(m.pub, m.sig, JSON.stringify({ v: 3, c: 'clock', ts: m.ts })) && Math.abs(m.ts - Date.now()) > FILL_WINDOW_MS) noteSkew(m.ts - Date.now(), String(via)); } catch (e) {} });
-        return;
-      }
       if (m.t === 'MW2') {   // a seat frame
         const msgM = GifOS.meshMsg; let f;
         try { f = msgM.readMsg(m.f); } catch (e) { return; }
@@ -571,15 +547,8 @@
             // Past the signature only a key holder's frame gets here (0.9.24 verifyFill): each check names why it refuses.
             if (ok) {
               const seen = signerTs.get(claim), nowMs = Date.now(), skewMs = s4.ts - nowMs, isDirect = claim === layer.ids.nid(String(via));
-              if (Math.abs(skewMs) <= FILL_WINDOW_MS) inWindowSeen = true;
-              if (Math.abs(skewMs) > FILL_WINDOW_MS) {   // minted outside the window: a stale capture, or one of our clocks is wrong
+              if (Math.abs(skewMs) > FILL_WINDOW_MS) {   // minted outside the window: a stale capture, or one of our clocks is wrong. Dropped, and that is all: no page's word stops a seat
                 ok = false; why = 'SKEW';
-                noteSkew(skewMs, who);
-                // A joiner hears no signed frame until it is seated, so it could never learn why its FIND got no answer: tell it, signed, once.
-                if (isDirect && raw.state === 3 && !clockTold.has(String(via))) {
-                  clockTold.add(String(via)); if (clockTold.size > 256) clockTold.clear();
-                  const ts = Date.now(); net.edSign(identity.priv, JSON.stringify({ v: 3, c: 'clock', ts })).then((sig) => deliver(String(via), { t: 'MWCLOCK', ts, sig, pub: identity.pubB64 })).catch(() => {});
-                }
               } else if (f.t === 'LEAVE' && !isDirect && staleGoodbye(s4.ts, nowMs, seen)) {
                 // older than what its signer has since said: the signature is real, its word is spent. (sigL, the seat's freshness
                 // test, is the forwarder's word.) No word from this signer yet: judge by the room's clocks as I have verified them;
@@ -960,31 +929,6 @@
         listLen: list.length, open: ids.length, founded: !!m.founded, adm: !!m.admitted, action, sealed: sealedFps,
       });
       if (greeterTrace.length > GREETER_TRACE_CAP) greeterTrace.shift();
-      // R3a CLIENT ARM: a seated Section-1 greeter that the door REFUSES
-      // (admitted:false — my genesis key does not match the room's) three
-      // registrations running, spanning at least 60 ticks, is provably
-      // sealed out: its E3/keepalive re-registrations are being dropped and
-      // it will never appear in the pool again. Requeue through the front
-      // door — the join dance re-teaches the room's REAL current key (or,
-      // once a ghost claim lapses per R3a's relay-side mint grace, this
-      // seat's own re-mint finally sticks). Only a definitive verdict acts:
-      // relays that don't send the flag give no verdict, joiners presenting
-      // a throwaway key are refused by DESIGN, and a single refusal can be
-      // the transient window of a mint in flight.
-      if (typeof m.admitted === 'boolean' && preState === 3 && iAmAGreeter()) {
-        if (m.admitted) { notAdm = 0; notAdmAt = -1; }
-        else {
-          if (!notAdm) notAdmAt = env.TICK;
-          notAdm++;
-          if (notAdm >= 3 && env.TICK - notAdmAt >= 60) {
-            notAdm = 0; notAdmAt = -1;
-            greeterTrace.push({ t: Date.now(), tick: env.TICK, state: seat.state, post: seat.state,
-              listLen: list.length, open: ids.length, founded: !!m.founded, adm: false, action: 'ghost-genesis-requeue' });
-            if (greeterTrace.length > GREETER_TRACE_CAP) greeterTrace.shift();
-            try { raw.requeue(); } catch (e) {}
-          }
-        }
-      }
       // A seated Section-1 greeter looking at an EMPTY pool is looking at a
       // door with no doorman — the very knock a joiner would stall or FOUND
       // on. My own entry is never in my replies (the relay excludes the
