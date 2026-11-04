@@ -22543,6 +22543,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (t) {
           t.relayed = r.via;
           t.noRoute = false; t.downSince = 0;
+          restoreDoorTile(t); // a friend now carries their picture: a face that was kept off the wall (no seat link here) comes back
           t.video.srcObject = r.stream;
           // A relayed tile's element has usually NEVER played (the direct pair
           // was down, srcObject was null) and a bare srcObject swap does not
