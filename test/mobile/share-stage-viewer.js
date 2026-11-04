@@ -9,7 +9,7 @@
  * must not hold an idle row over the stage: on an SE in Safari that row
  * left the hymn slide 116x66.
  *
- * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/share-stage-viewer.js
+ * Gate: NODE_PATH=~/gifos-swarm/node_modules node test/mobile/share-stage-viewer.js
  */
 const fs = require('fs');
 const path = require('path');

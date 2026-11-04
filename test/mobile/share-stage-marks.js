@@ -8,7 +8,7 @@
  * at its sides, else in a row under it), stay inside the stage and on the
  * screen, show their words whole, and Stop sharing stays a finger's size.
  *
- * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/share-stage-marks.js
+ * Gate: NODE_PATH=~/gifos-swarm/node_modules node test/mobile/share-stage-marks.js
  */
 const fs = require('fs');
 const path = require('path');

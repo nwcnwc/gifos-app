@@ -15,7 +15,7 @@
  * Since Nathan's 2026-10-19 change Captions is in More (Talk): Record stands
  * beside the dock alone, small, and clear of the header.
  *
- * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/sideways-callstate-beside.js
+ * Gate: NODE_PATH=~/gifos-swarm/node_modules node test/mobile/sideways-callstate-beside.js
  */
 const fs = require('fs');
 const path = require('path');

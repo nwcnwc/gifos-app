@@ -9,7 +9,7 @@
  * slide. They stay the thing a tap hits. Tucking them does not move the
  * slide or a face, and the tiles meet the screen edges.
  *
- * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/share-stage-clear.js
+ * Gate: NODE_PATH=~/gifos-swarm/node_modules node test/mobile/share-stage-clear.js
  */
 const fs = require('fs');
 const path = require('path');
