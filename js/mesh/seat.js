@@ -280,6 +280,7 @@
       if (this.occ.has(k) && deathWhy(why)) { if (this.hasCoord && this.coord.pc === 0 && ckPc(k) === 0 && this.occGet(k) >= 0) this.digGone.set(k, [this.occGet(k), this.TICK]); this.digForget(k); if (this.hasCoord && this.coord.pc === 0) this.rootFold(true); }
       if (this.occ.has(k) && deathWhy(why)) { const x = this.occGet(k); if (x >= 0 && x !== this.id) this.memo.set(k, { id: x, tok: this.pinned.has(x) ? ins(this.pinned, x, () => 0) : 0, at: this.TICK }); }
       if (this.occ.has(k) && deathWhy(why)) { const kf = this.kidful.get(k); if (kf !== undefined && kf) { this.kidMemo.set(k, this.TICK); if (this.kidMemo.size > 64) eraseFirst(this.kidMemo); } }
+      if ((why === 'hint-move' || why === 'moved-by-gossip' || why === 'moved-confirmed') && this.hasCoord && this.coord.pc === 0 && ckPc(k) === 0) { const st = this.s1tab.get(k); if (st !== undefined && st.by >= 0 && st.by === this.occGet(k)) this.digForget(k); }   // the occupant moved to another cell: its report here is not a second person
       this.occ.delete(k);
     },
     // C++: mesh.cpp:Seat::tlForget

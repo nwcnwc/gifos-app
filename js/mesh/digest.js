@@ -366,6 +366,7 @@
     // C++: mesh_seat.inc:Seat::s1Take
     // § G intake for the Section-1 table.
     s1Take(k, u) {
+      { const g = this.digForgot.get(k); if (g !== undefined && g[0] === u.by && u.rx <= g[1] + 8 && this.LT() - g[1] <= K.DIG_TTL) return; }   // a vacated cell's last report received no later than a relay hop (8 ticks) after the vacate and coming back in a relayed table is the same report, not a second person (a mover counted in its old cell and its new)
       const it = this.s1tab.get(k);
       if (it === undefined) { this.l10Dirty(null, u); this.s1tab.set(k, dig.cloneDig(u)); return; }
       if (it.by === u.by) { if (u.at > it.at) { this.l10Dirty(it, u); this.s1tab.set(k, dig.cloneDig(u)); } return; }
@@ -378,6 +379,7 @@
     },
     // C++: mesh_seat.inc:Seat::digForget1
     digForget1(k) {
+      { const st = this.s1tab.get(k); if (st !== undefined && st.by >= 0) this.digForgot.set(k, [st.by, this.LT() | 0]); }
       this.rowKids.delete(k); this.s1tab.delete(k); if (this.siKids.size) this.siKids.delete(k); if (this.kvKid.size) this.kvKid.delete(k);   // L27: a vacated cell's vote goes with its report
       if (this.hasCoord && k === ckey(down(this.coord))) this.downDig = msg.newDig();
     },
