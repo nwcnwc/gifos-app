@@ -11165,7 +11165,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // below what this page knows first-hand (its own occ and statuses, and
       // the faces on its grid): a dead deep seat held the root fold partial
       // for ~150 s and every page read 1 + its tiles (9 of 26). The header
-      // still says the count is incomplete (countPartial).
+      // still shows the count with a "+" while the fold is partial.
       if (d && d.part) return Math.max(1, participantCount(), (roomPastSection() || d.n >= SCALE.C * SCALE.C || deepInView()) ? d.n : 0, 1 + shownPeerCount()); // a partial fold's n is what was heard (G9: missing inputs only under-count), so where the fold is the room it is a floor too
       // THE FOLD IS THE ROOM WHEREVER MY FIRST-HAND VIEW CANNOT COVER IT: past
       // C² (as before), at exactly C² (a room of C² can still hold a deep seat:
@@ -11876,6 +11876,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const tail = partial + link + savedLock + (leftUp ? '' : extra);
       const foldNow = roomDig();
       const foldPartial = !!(foldNow && foldNow.part); // a shortfall is not the room size
+      // A fold still missing someone says so with a "+" on the number (25+), never in words.
+      const plus = foldPartial ? '+' : '';
       let countText = '';
       let restText = '';
       if (refused) {
@@ -11886,11 +11888,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // A person in the waiting room is not alone and has no one to invite.
         countText = uiText('waitHere', 'In the waiting room');
         restText = tail;
-      } else if (foldPartial) {
-        // The fold is missing someone. Do not word the short count, or the
-        // occ union behind it, as how many people are in the room.
-        countText = uiText('countPartial', 'Room count incomplete');
-        restText = ' · ' + q.label + tail;
       } else if (shown === 1) {
         if (atDoor) {
           countText = uiText('backIn', 'Getting you back in');
@@ -11913,7 +11910,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // The room bar counts who is watching; the host reads that she is live.
         restText = 'You are live · ' + q.label + tail;
       } else {
-        countText = shown + ' ' + (BROADCAST ? 'in this broadcast' : uiText('inMeeting', 'in this meeting'));
+        countText = shown + plus + ' ' + (BROADCAST ? 'in this broadcast' : uiText('inMeeting', 'in this meeting'));
         restText = ' · ' + q.label + tail;
       }
       const bq = bcQuietLine(shown, reachLine, atDoor);
@@ -11927,15 +11924,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       let phoneDetail = detail;
       if (phoneLayout() && !BROADCAST && !reachLine) {
         const head = roomLabel ? roomLabel + ' · ' : '';
-        if (foldPartial) {
-          phoneDetail = head + uiText('countPartial', 'Room count incomplete') + restText;
-          countText = head + uiText('countPartial', 'Room count incomplete');
-          restText = '';
-        } else {
-          phoneDetail = head + (shown <= 1 ? countText : shown + ' ' + uiText('inMeeting', 'in this meeting')) + restText;
-          countText = head + (shown <= 1 ? (atDoor ? uiText('backIn', 'Getting you back in') : uiText('justYou', 'Just you')) : shown + ' ' + uiText('inMeeting', 'in this meeting'));
-          restText = '';
-        }
+        phoneDetail = head + (shown <= 1 ? countText : shown + plus + ' ' + uiText('inMeeting', 'in this meeting')) + restText;
+        countText = head + (shown <= 1 ? (atDoor ? uiText('backIn', 'Getting you back in') : uiText('justYou', 'Just you')) : shown + plus + ' ' + uiText('inMeeting', 'in this meeting'));
+        restText = '';
       }
       // The line's KIND is state, not wording: 'door' (asking to be let back
       // in), 'alone' (seated, nobody else), 'meeting' (others here), or one
