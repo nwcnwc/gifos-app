@@ -161,7 +161,7 @@
   //                   on HOME for the pick-one UI
   //   onGossip(src,m,ageMs) room-wide app traffic delivery (exact-once); ageMs = time held by relays
   //   onRelayMsg(m)   every relay frame the wire does not consume — 'whoami',
-  //                   'pw', 'ban', 'votes', 'joined', and 'peer' frames of the
+  //                   'pw', 'votes', 'joined', and 'peer' frames of the
   //                   law's shape (boot / ice / name / password, one fixed
   //                   size; the rest are refused here) — so the app keeps its
   //                   existing handlers while the wire OWNS the one socket.
@@ -347,7 +347,7 @@
     const env = { TICK: 0 };   // legacy face (stats, debug): TICK mirrors the seat world's
     function keepSig(core, blk) { sigOf.delete(core); sigOf.set(core, blk); if (sigOf.size > 1024) sigOf.delete(sigOf.keys().next().value); }
     function clearClaim(f) { f.sig = false; f.fsig = false; f.fo = -1; }
-    function sendFrameTo(to, m, dir) {   // a seat frame for peer `to`: encode, sign if mine, keep per-peer order
+    function sendFrameTo(to, m, dir, sponsored) {   // a seat frame for peer `to`: encode, sign if mine, keep per-peer order (sponsored: it leaves in a friend's envelope, FHOP)
       const msgM = GifOS.meshMsg;
       // My goodbye goes on the pre-signed signature, now: this page may not live to finish a signature, and
       // the pcbye right behind it must not overtake it (a frame after the far end's pcbye is dropped there).
@@ -379,7 +379,9 @@
       }
       const pd = layer.sideOut(to, m);   // the page's display digest beside the seat's frame (layer.js; outside f and its signature)
       const prev = outq.get(to) || Promise.resolve();
-      const q = prev.then(() => blk).then((s4) => { if (stopped && m.t !== 'LEAVE') return; const out = { t: 'MW2', f }; if (s4) out.s4 = s4; if (dir && typeof dir === 'object') out.dir = dir; if (pd) out.pd = pd; deliver(to, out); }).catch(() => {});
+      // An envelope's origin is its sender's word (any friend could write it): a frame I did not sign as its author carries my word that I am its origin.
+      const os = (sponsored && claim !== layer.ids.nid(peer) && identity) ? originSign(to, f) : null;
+      const q = prev.then(() => blk).then((s4) => Promise.resolve(os).then((o) => { if (stopped && m.t !== 'LEAVE') return; const out = { t: 'MW2', f }; if (s4) out.s4 = s4; if (o) out.o = o; if (dir && typeof dir === 'object') out.dir = dir; if (pd) out.pd = pd; deliver(to, out); })).catch(() => {});
       outq.set(to, q); q.then(() => { if (outq.get(to) === q) outq.delete(to); });
       return true;
     }
@@ -493,10 +495,23 @@
       if (byeHeld.has(k) && f.t !== 'LEAVE' && Date.now() - (byeArmed.get(k) || 0) > BYE_STRAY_MS) { clearTimeout(byeHeld.get(k)); byeHeld.delete(k); byeMark.delete(k); byeTrace('BYE-BACK', k, f.t); }
       return false;
     }
-    function ingest(m, via, direct) {
+    // FHOP: who sent this envelope, proved. The sim's fabric knows; a page needs the origin's signature over the frame and its target.
+    function originSign(to, f) { const ts = Date.now(); return net.edSign(identity.priv, JSON.stringify({ v: 4, to: String(to), f, ts })).then((sig) => ({ ts, sig, pub: identity.pubB64 })).catch(() => null); }
+    const originSeen = new Set();
+    async function originProved(m, origin) {
+      const o = m.o; if (!o || typeof o.sig !== 'string' || typeof o.pub !== 'string' || !Number.isFinite(o.ts)) return false;
+      if (Math.abs(o.ts - Date.now()) > FILL_WINDOW_MS || originSeen.has(o.sig)) return false;
+      let who = pubPeer.get(o.pub); if (!who) { who = 'k_' + (await net.keyId(o.pub)).slice(0, 40); pubPeer.set(o.pub, who); if (pubPeer.size > 4096) pubPeer.delete(pubPeer.keys().next().value); }
+      if (layer.ids.nid(who) !== layer.ids.nid(String(origin))) return false;
+      if (!await net.edVerify(o.pub, o.sig, JSON.stringify({ v: 4, to: String(peer), f: m.f, ts: o.ts }))) return false;
+      originSeen.add(o.sig); if (originSeen.size > 2048) originSeen.delete(originSeen.values().next().value);
+      return true;
+    }
+    // origin: set only for a friend-hop envelope (run.html's fmesh): the id its envelope names as its sender
+    function ingest(m, via, direct, origin) {
       if (stopped || !raw || !m || typeof m !== 'object') return;
       if (typeof opts.excluded === 'function') {
-        try { for (const f of [m.src, via]) if (f != null && opts.excluded(String(f))) return; } catch (e) {}
+        try { for (const f of [m.src, via, origin]) if (f != null && opts.excluded(String(f))) return; } catch (e) {}
       }
       try {
         const sv = (typeof window !== 'undefined') && window.__severed;
@@ -508,7 +523,9 @@
         const msgM = GifOS.meshMsg; let f;
         try { f = msgM.readMsg(m.f); } catch (e) { return; }
         if (holdBye(m, f, via, direct)) return;
-        const claim = claimOf(f), dir = direct === true;
+        const claim = claimOf(f), dir = direct === true, sponsored = origin != null;
+        let proven = null;   // the envelope's origin, once proved: its own signature on this envelope, or the frame's verified author
+        const prove = () => (sponsored && claim !== layer.ids.nid(String(origin)) ? originProved(m, origin).then((y) => { if (y) proven = origin; }, () => {}) : Promise.resolve());
         const done = (ok, why) => {
           if (stopped) return;
           if (why === 'SKEW') return;   // refused outright: a signer outside the window cannot move a seat, signed or stripped
@@ -520,13 +537,15 @@
           if (f.t === 'WHOHOME' && doorBlocks(f, via, m.dir, dir)) return;   // waiting room: no HOME, no roster
           if (ok && dir && m.pd) layer.sideIn(String(via), f, m.pd);
           if (ok && f.t === 'LEAVE' && f.rel && f.bye && !f.mvd) markBye(msgM.clone(relayForm(msgM, f)), via, dirOf(m.dir), dir);
-          penv.frame(ok ? relayForm(msgM, f) : f, String(via), dirOf(m.dir), dir);
+          if (ok && sponsored && claim === layer.ids.nid(String(origin))) proven = origin;
+          penv.frame(ok ? relayForm(msgM, f) : f, String(via), dirOf(m.dir), dir, sponsored, proven);
         };
-        if (claim === -1) { verifyChain(() => Promise.resolve().then(() => done(true))); return; }
-        if (claim === NOSIGNER) { verifyChain(() => Promise.resolve().then(() => done(false))); return; }
+        if (claim === -1) { verifyChain(() => prove().then(() => done(true))); return; }
+        if (claim === NOSIGNER) { verifyChain(() => prove().then(() => done(false))); return; }
         const s4 = m.s4;
-        if (!s4 || typeof s4.sig !== 'string' || typeof s4.pub !== 'string' || !Number.isFinite(s4.ts)) { verifyChain(() => Promise.resolve().then(() => done(false))); return; }
+        if (!s4 || typeof s4.sig !== 'string' || typeof s4.pub !== 'string' || !Number.isFinite(s4.ts)) { verifyChain(() => prove().then(() => done(false))); return; }
         verifyChain(async () => {
+          await prove();
           let ok = false, why = null;
           try {
             const core = coreOf(msgM, f);
@@ -727,6 +746,7 @@
     function fireLocked(door) { if (!lockedFired || (door && !doorFired)) { lockedFired = true; if (door) doorFired = true; if (opts.onLocked) opts.onLocked(!!door); } }   // door: the door itself refused me; else only blobs I cannot open
 
     async function onGreeters(m) {
+      if (opts.holdDoor && opts.holdDoor()) return;   // waiting on the admin with a lock I cannot read: a list I cannot open must not make me a founder
       const list = m.list || [];
       const ids = [], sealedFps = [], fa = [], behind = [];
       let olderSeen = 0;   // sealed blobs one of my replaced keys opens: their writers are behind me, not ahead
@@ -1070,7 +1090,8 @@
           unlist: () => sendRaw({ t: 'unlist' }),
           busy: (to, body) => { if (opts.relayBusy) { try { opts.relayBusy(to, body); } catch (e) {} } },
         },
-        send: (to, m) => sendFrameTo(to, m),
+        send: (to, m, dir) => sendFrameTo(to, m, dir, true),   // FHOP's sponsored frames: deliver -> opts.sendDC -> the page's rungs, never the relay
+        fhop: opts.fhop || null,
         measure: opts.measure || null,
         trace: opts.trace || null,
         onLinks: opts.onLinks || null,
@@ -1121,7 +1142,7 @@
       // (production unwraps its own sealed frames; {mw:1, m} envelopes route m).
       // A stale-key frame's one way in: a plain or reload LEAVE of the seat the channel belongs to (ingest still checks its signature).
       isOwnGoodbye(m, pid) { try { const f = GifOS.meshMsg.readMsg(m.f); return m.t === 'MW2' && f.t === 'LEAVE' && !!f.bye && !f.mvd && String(layer.ids.pid(f.id)) === String(pid); } catch (e) { return false; } },
-      recvCtl(m, via, direct) { if (!stopped && seat && m) ingest(m, via, direct); }, // via: the delivering peer; direct === true ONLY for a frame off that peer's own DataChannel (run.html's pair intake) — never for a sponsor envelope or the relay
+      recvCtl(m, via, direct, origin) { if (!stopped && seat && m) ingest(m, via, direct, origin); }, // via: the delivering peer; direct === true ONLY for a frame off that peer's own DataChannel (run.html's pair intake) — never for a sponsor envelope or the relay
       // Room-wide app traffic (chat/status/votes/files): flood over the mesh —
       // the relay session is only the greeter pool now, not the room.
       gossip(payload, opts) { if (!stopped && layer) layer.gossip(payload, opts); }, // opts: { scope: 'section', ephemeral } — see js/mesh/page/layer.js
@@ -1243,6 +1264,7 @@
       leave(reload) { if (reload && !sendHeldByes()) reload = false; try { if (raw) { if (penv && penv.leave) penv.leave(!!reload); else raw.leave(!!reload); } } catch (e) {} try { if (sock) sendRaw({ t: 'unlist' }); } catch (e) {} node.stop(); },   // goodbye to the peers, then off the greeter list, then the socket closes: no greeter-gone for a page leaving in order
       // Transport events from the page's pc/dc callbacks and watchdogs (env.js maps hard/quiet and debounces).
       remeasure() { if (!raw || !opts.measure) return; const n0 = opts.measure.nat() & 0xff; if (raw.cnat === raw.nat) raw.cnat = n0; raw.nat = n0; },   // a network verdict that lands after the join (seat.join reads it once)
+      doorForgive(pid) { if (penv && penv.doorForgive) penv.doorForgive(String(pid)); },
       transport(pid, ev, arg) { if (stopped || !penv) return undefined; try { return penv.transport(String(pid), ev, arg); } catch (e) { return undefined; } },
       dialHeld(pid) { if (stopped || !penv || !penv.dialHeld) return false; try { return penv.dialHeld(String(pid)); } catch (e) { return false; } },
       mark(pid) { if (stopped || !penv || !penv.mark) return null; try { return penv.mark(String(pid)); } catch (e) { return null; } },   // A2's mark my answer carries back

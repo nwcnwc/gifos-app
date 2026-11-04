@@ -93,7 +93,7 @@
     // code, and only an explicit s.kick() (the app changed something: new
     // password, deliberate re-join) re-arms. CROWD codes (full / rate-limited /
     // no host yet) keep retrying on a longer leash.
-    const FATAL_CLOSES = [1008, 4000, 4001, 4003, 4004, 4007, 4008, 4009, 4010, 4011, 4012, 4013, 4014]; // 4013: no key proof; 4014: a frame outside the relay's message types — update GifOS
+    const FATAL_CLOSES = [1008, 4000, 4001, 4003, 4007, 4008, 4009, 4010, 4011, 4012, 4013, 4014]; // 4013: no key proof; 4014: a frame outside the relay's message types — update GifOS
     const SLOW_CLOSES = [1011, 1013];
     const setState = (st) => {
       if (s.state === st) return;
@@ -723,10 +723,7 @@
     knock: { gk: { str: 128, re: RELAY_GK_RE }, gblob: { sealedText: 1, opt: 1 } },
     unlist: {},                                            // a seat that left Section 1 drops its greeter registration at once
     setpw: { pw: { str: 64, re: RELAY_PROOF_RE }, w: { obj: RELAY_ORDER, opt: 1 } },
-    ban: { dev: { str: 16, re: RELAY_DEV_RE }, w: { obj: RELAY_ORDER } },
-    unban: { dev: { str: 16, re: RELAY_DEV_RE }, w: { obj: RELAY_ORDER } },
     votekick: { devs: { list: 24, item: { str: 16, re: RELAY_DEV_RE } }, abs: { list: 24, item: { str: 16, re: RELAY_ABS_RE }, opt: 1 } },
-    banlist: { devs: { list: 20, item: { obj: { d: { str: 16, re: RELAY_DEV_RE } } } }, w: { obj: RELAY_ORDER } },
   };
   function sealedOk(m) {
     if (!m || typeof m !== 'object' || Array.isArray(m) || m.e !== 1 || typeof m.iv !== 'string' || typeof m.ct !== 'string') return false;

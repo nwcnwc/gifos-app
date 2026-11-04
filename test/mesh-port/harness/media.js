@@ -91,11 +91,12 @@ function installMedia(fab) {
         for (const a of Mr) { const c = seats[a].coord; for (let j = 0; j < C; j++) if (j !== c.r) { const b = mAt({ pc: 0, r: j, i: c.i }); Ed(a, b, true); } }
       } else {
         let x; const oi = (x = ownerOf(row)) ? mAt(x) : -1, bi = (x = backupOwnerOf(row, mOcc)) ? mAt(x) : -1, si = (x = standbyOf(row, mOcc)) ? mAt(x) : -1;
-        if (inChain) { Ed(h, oi, true); Ed(src, bi, false); Ed(src, si, false); }   // up: E1 hot, E2 (and E3) parked
-        Ed(oi, h, !inChain); Ed(bi, src, false); Ed(si, src, false);                // down: E1 (parked in a chain row), E2 (E3) parked
+        const e2m = !F.stadium;   // C++: E2/E3 carry the stage only: a stadium mix exists at the owner alone
+        if (inChain) { Ed(h, oi, true); if (e2m) { Ed(src, bi, false); Ed(src, si, false); } }   // up: E1 hot, E2 (and E3) parked
+        Ed(oi, h, !inChain); if (e2m) { Ed(bi, src, false); Ed(si, src, false); }   // down: E1 (parked in a chain row), E2 (E3) parked
         let eh = h, ep = src, e3 = -1;                                              // a down row: the head enters, the E2 source backs it up
         if (inChain && rk !== srk) { const it = entry.get(rk); if (it !== undefined) { eh = it.o; ep = it.b; e3 = it.s; if (ep < 0) ep = (eh === h) ? src : h; } }
-        if (e3 >= 0) for (const q of Mr) if (q !== e3) Ed(e3, q, false);           // variant B: the standby holds a parked copy to its row too
+        if (e2m && e3 >= 0) for (const q of Mr) if (q !== e3) Ed(e3, q, false);           // variant B: the standby holds a parked copy to its row too
         if (rk === srk && !F.stadium) {
           const xs = F.src;
           for (const q of Mr) if (q !== xs) {
@@ -105,6 +106,14 @@ function installMedia(fab) {
           }
         } else if (!(rk === srk && F.stadium)) { for (const q of Mr) { if (q !== eh) Ed(eh, q, true); if (q !== ep) Ed(ep, q, false); } }
       }
+    }
+    // L14 (fast media, slow tidy): a cut-off branch's temporary uplink carries its branch's feeds both ways while it is open,
+    // as mgapPaths counts it; the seat above passes them up its own chain to Section 1.
+    for (let s = 0; s < lv.nextId; s++) {
+      if (!alive[s] || !seats[s].hasCoord) continue; const x = seats[s].l14Up; if (x < 0 || x >= lv.nextId || !alive[x] || !seats[x].hasCoord) continue;
+      Ed(s, x, true); Ed(x, s, true);
+      let cur = x;
+      for (let g = 0; g < 64 && cur >= 0 && seats[cur].hasCoord && seats[cur].coord.pc !== 0; g++) { const hc = { pc: seats[cur].coord.pc, r: seats[cur].coord.r, i: 0 }; const hh = mAt(hc); if (hh >= 0 && hh !== cur) Ed(cur, hh, true); const o = hh >= 0 ? ownerOf(hc) : null; if (!o) break; const oi = mAt(o); Ed(hh, oi, true); cur = oi; }
     }
     return out;
   }

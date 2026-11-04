@@ -696,6 +696,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* Stage feeds are verbatim cameras: show the FULL broadcast frame, exactly
      as the room's recording captures it — never a crop. */
   #stagefeed .rowtile video { object-fit: contain; }
+  .rowtile .stallnote { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 4px 10px; border-radius: 6px;
+    background: rgba(0, 0, 0, .72); color: #fff; font: 600 .85rem/1.3 system-ui, sans-serif; pointer-events: none; white-space: nowrap; }
+  #massbanner { position: fixed; top: 56px; left: 50%; transform: translateX(-50%); z-index: 9000; max-width: 92vw; padding: 8px 14px; border-radius: 8px;
+    background: rgba(24, 24, 28, .94); color: #fff; font: 600 .9rem/1.35 system-ui, sans-serif; text-align: center; pointer-events: none; }
   .rowtile .rlabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 2px 6px;
     font-size: .65rem; color: #e0e0f0; background: rgba(10,10,15,.7);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1829,7 +1833,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     border-radius: .35rem; background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: 600 .9rem/1.3 ui-monospace, monospace; text-align: center; }
   .name-box #help-keys { min-height: 44px; padding: .3rem .6rem; border: 0; background: none; color: var(--accent, #7b5cff); text-decoration: underline; }
   .name-box p { color: var(--muted, #8888aa); font-size: .85rem; margin-bottom: 1rem; }
-  #adm-modal #adm-hint, #adm-modal #adm-banned-h { font-size: 16px; line-height: 1.45; }
+  #adm-modal #adm-hint { font-size: 16px; line-height: 1.45; }
   .name-box input { width: 100%; padding: .55rem .7rem; border-radius: .5rem; min-height: 48px;
     border: 1px solid var(--border, #2a2a3f); background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: inherit; margin-bottom: .8rem; }
   #nm-avatar { width: 72px; height: 72px; object-fit: cover; border-radius: 50%; display: block; margin: 0 auto .8rem; }
@@ -1912,10 +1916,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* The app grant only means something in an admin room, from an admin. */
   .modbar .grantbtn { display: none; }
   body.admroom.amadmin .modbar .grantbtn { display: inline-block; }
-  #adm-banned { max-height: 150px; margin: .5rem 0; }
   #who-list { max-height: 55vh; max-height: 55dvh; }
-  #adm-banned, #who-list { overflow-y: auto; text-align: left; font-size: .8rem; }
-  #adm-banned .brow, #who-list .brow { display: flex; align-items: center; gap: .5rem; padding: .25rem 0; border-bottom: 1px solid var(--surface, #1c1c2b); }
+  #who-list { overflow-y: auto; text-align: left; font-size: .8rem; }
+  #who-list .brow { display: flex; align-items: center; gap: .5rem; padding: .25rem 0; border-bottom: 1px solid var(--surface, #1c1c2b); }
   /* People is a name list, the same job as Zoom, Meet, Teams, and FaceTime.
      Addresses stay in the download, not on the sheet. */
   #who-modal .name-box { background: #fff; color: #1d1d1f; border: 0; border-radius: 20px;
@@ -1928,8 +1931,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #who-list .who-state { font-size: 1rem; color: #3a3a3f; text-align: right; }
   #who-modal #who-dl, #who-modal #who-close {
     background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; min-height: 44px; min-width: 44px; }
-  #adm-banned .brow button { padding: .15rem .5rem; font-size: .72rem; border-radius: .35rem;
-                             border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
   #adm-chat { margin: 0 0 1rem; padding: .6rem 0 .2rem; border-top: 1px solid var(--border, #2a2a3f); border-bottom: 1px solid var(--border, #2a2a3f); }
   #adm-chat h4 { margin: 0 0 .35rem; font-size: 16px; font-weight: 700; }
   #adm-chat .admopt { display: flex; align-items: center; gap: .6rem; min-height: 44px; font-size: 16px; line-height: 1.3; cursor: pointer; }
@@ -4437,8 +4438,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           <label class="admopt"><input type="checkbox" id="adm-chat-slow"><span><span data-t="admChatSlow">Slow mode</span><small data-t="admChatSlowSub">Guests post at most one line every 10 seconds.</small></span></label>
           <label class="admopt"><input type="checkbox" id="adm-chat-clink"><span><span data-t="admChatClink">Links in chat</span><small data-t="admChatClinkSub">Off: a guest's links stay plain text.</small></span></label>
         </section>
-        <p id="adm-banned-h" data-t="admBanned" style="margin-bottom:.2rem">Banned devices:</p>
-        <div id="adm-banned"></div>
       </div>
       <button id="adm-close" data-t="setClose" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
     </div>
@@ -6357,6 +6356,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         waitDeclined.delete(id);
         if (id) waitAdmitted.add(id);
         waitPaint();
+        if (hasAdminRoom() && amAdmin && id) { pwAdmitGrant(id); try { meshNode.doorForgive(id); } catch (e) {} }   // the wait itself read as an idle knock at my door: the admit ends that
         // Every door lets them in now (a signed dadm, doorHeld false for them), and this one answers at once.
         if (hasAdminRoom() && amAdmin && id) {
           const mine = modTable[id] = modTable[id] || {};
@@ -6667,7 +6667,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let pulseHalt = false; // test hook: simulates a throttled phone's silent pulse gaps
     // My status pulse as one frame: what every beat carries, and what a pair
     // gets the moment its channel opens (wireDc onopen).
-    const statusPayload = () => ({ kind: 'status', s: myStatus, conns: myConns(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined });
+    // My network's kind for friend-hop's typing (a seat tells a blip from an unreachable pair), in the seat's GT_ words. The probe knows open or blocked; -1: not known yet.
+    const natWord = () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' ? E.GT_BLOCKED : directPath === 'ok' ? E.GT_PUBLIC : -1; };
+    const statusPayload = () => ({ kind: 'status', s: myStatus, conns: myConns(), nat: natWord(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined });
     function broadcastStatus(answer) {
       if (pulseHalt && !answer) return; // the halt models a throttled clock; an answer to a newcomer is driven by its frame, not the clock
       myStatus.at = Date.now(); // timestamped: out-of-order gossip can't roll me back
@@ -6768,6 +6770,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         ad: a ? { s: a.s, k: a.k, relay: a.relay, name: a.name, mesh: !!a.mesh, pk: a.pk, ts: a.ts, byName: a.byName, audio: !!a.audio } : null,
         away: !!myStatus.away, vup: myStatus.vup || [], vdn: myStatus.vdn || [], vab: myStatus.vab || [] });
       if (typeof meshNode.setRefuses === 'function') meshNode.setRefuses(!consents(myStatus));
+      // L10.1: a hand is one of the seat's own facts, so a change goes out early instead of on the next beat
+      try { const r = meshNode.raw; if (r && !r.handT !== !myStatus.hand) r.handT = myStatus.hand ? r.TICK + 1 : 0; } catch (e) {}
     }
     // Presence: the mesh occ map IS the local count — distinct peers at
     // distinct coords in my view of the tree, me included. Past one section
@@ -7769,7 +7773,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // The TARGET cannot lift a restriction the group put on them —
           // every receiver rejects a self-authored "off" independently.
           if (inc.on === false && inc.byId === target) continue;
-          if (!mine[field] || inc.at > mine[field].at) { mine[field] = inc; changed = true; }
+          if (!mine[field] || inc.at > mine[field].at) { mine[field] = inc; changed = true; if (field === 'dadm' && inc.on) { try { meshNode.doorForgive(target); } catch (e) {} } }
         }
       }
       if (changed) { try { applyHostOrders(); } catch (e) {} enforceForcedCam(); refreshAllTiles(); refreshOutbound(); paintControls(); reactHandCall(); paintChatGate(); paintStage(); if (typeof applyCcAll === 'function') applyCcAll(); } // re-derive every tile + my broadcast; an admin cam-off stops my camera; a revoked screen share stops too; a fresh grant may be a call-up (don't wait for the beat); a chat/app order repaints its gates
@@ -8581,8 +8585,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const MODBAR_HTML = '<button data-mod="mute" aria-label="Mute for all">Mute for all</button><button data-mod="blur" aria-label="Blur for all">Blur for all</button>'
       + '<button class="grantbtn" data-mod="app" title="Let this person run and lead apps in your room" aria-label="Allow apps & stage">Allow apps & stage</button>'
       + '<button class="grantbtn" data-mod="share" title="Let this person share their screen" aria-label="Allow screen share">Allow screen share</button>'
-      + '<button class="banbtn" data-adm="ban" title="Ban this person&#39;s device from the room" aria-label="Ban this device">Ban</button>';
-    // A BAN NAMES A DEVICE: the tag comes from the person's own status over the mesh, as they gave it to the door when they connected.
+      + '<button class="banbtn" data-adm="ban" title="Ban this person from the room" aria-label="Ban this person">Ban</button>';
     function wireModbar(modbar, id) {
       modbar.addEventListener('click', (e) => {
         const t = e.target && e.target.closest ? e.target.closest('button') : e.target;
@@ -8598,12 +8601,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         if (t.dataset.adm === 'ban') {
           e.stopPropagation();
-          const dev = devOf[id] || '';
-          if (window.__banDebug) console.error('[banclick]', id, dev, amAdmin, relayUp());
-          if (!amAdmin) return;
-          if (!dev) { setStatus('🛡 This person' + String.fromCharCode(39) + 's device is not known yet — try Ban again in a moment.'); return; }
-          rememberBanName(dev, (peers.get(id) || {}).name || rosterNames[id] || '');
-          admSigned('ban', { dev }).then((w) => { if (w) relaySendObj({ t: 'ban', dev, w }); }); // no name, no by: the relay carries a device tag and the order's author id
+          pwBan(id);
           return;
         }
         const f = t.dataset.mod;
@@ -8808,14 +8806,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return;
       }
       if (act === 'ban') {
-        if (!amAdmin) return;
-        const dev = devOf[id] || '';
-        if (!dev) {
-          setStatus('🛡 This person' + String.fromCharCode(39) + 's device is not known yet — try Ban again in a moment.');
-          return;
-        }
-        rememberBanName(dev, rosterNames[id] || '');
-        admSigned('ban', { dev }).then((w) => { if (w) relaySendObj({ t: 'ban', dev, w }); });
+        pwBan(id);
       }
     }
     (function () {
@@ -11803,6 +11794,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // before the farewell drops the tiles, so the header does not keep the
     // old total and does not fall back to "Just you".
     let leftBehind = 0;
+    // At the password prompt the prompt is the whole story: a network line under it would send the person looking for the wrong fault.
+    function atPwPrompt() { try { const m = document.getElementById('pw-modal'); return !!(pwBlocked && m && m.style.display !== 'none' && m.dataset.mode === 'join'); } catch (e) { return false; } }
     function updateStatus() {
       refreshTrBtn();
       if (bannedOut) return;                      // the ban notice is permanent
@@ -11905,6 +11898,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       let restText = '';
       if (refused) {
         restText = uiText('stThePeopleInThisRoom', '\u26d4 The people in this room voted not to let this device in.');
+      } else if (atPwPrompt()) {
+        restText = uiText('pwHintLocked', 'Enter the room password to join the meeting.');   // the prompt is the answer: no network line under it
       } else if (reachLine) {
         restText = REACH_MSG[reachState] + tail;
       } else if (typeof iAmWaiting === 'function' && iAmWaiting()) {
@@ -12764,20 +12759,31 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { pc = makePc(); } catch (e) { resolve('unknown'); return; }
         if (!pc) { resolve('unknown'); return; }
         let done = false;
-        const finish = (v) => { if (done) return; done = true; clearTimeout(timer); try { pc.close(); } catch (e) {} resolve(v); };
+        const finish = (v) => { if (done) return; done = true; clearTimeout(timer); clearTimeout(settle); try { pc.close(); } catch (e) {} resolve(v); };
         const timer = setTimeout(() => finish('blocked'), timeoutMs);
+        // Two STUN servers map the same local socket: one public port for both is an open (cone) NAT, two ports is a
+        // strict one (endpoint-dependent mapping), which pairs badly with another strict seat. A short wait after the
+        // first reflexive candidate lets the second server's answer arrive.
+        const maps = new Map(); let settle = null;
+        const verdict = () => { for (const ports of maps.values()) if (ports.size > 1) return 'strict'; return 'ok'; };
         pc.onicecandidate = (ev) => {
           const c = ev && ev.candidate;
-          if (!c) { finish('blocked'); return; } // end of candidates, none reflexive
-          if (c.type === 'srflx' || / typ srflx(?: |$)/.test(String(c.candidate || ''))) finish('ok');
+          if (!c) { finish(maps.size ? verdict() : 'blocked'); return; } // end of candidates
+          const line = String(c.candidate || '');
+          if (!(c.type === 'srflx' || / typ srflx(?: |$)/.test(line))) return;
+          const m = / (\S+) (\d+) typ srflx(?: raddr (\S+) rport (\d+))?/.exec(line);
+          // the local socket; a browser that hides it (rport 0) is read by its public address instead
+          const base = m ? (m[4] && m[4] !== '0' ? m[3] + ':' + m[4] : 'ip ' + m[1]) : '?';
+          let ports = maps.get(base); if (!ports) maps.set(base, ports = new Set()); ports.add(m ? m[2] : '?');
+          if (!settle) settle = setTimeout(() => finish(verdict()), 1500);
         };
-        pc.onicegatheringstatechange = () => { if (pc.iceGatheringState === 'complete') finish('blocked'); };
+        pc.onicegatheringstatechange = () => { if (pc.iceGatheringState === 'complete') finish(maps.size ? verdict() : 'blocked'); };
         try { pc.createDataChannel('probe'); } catch (e) {}
         Promise.resolve().then(() => pc.createOffer()).then((o) => pc.setLocalDescription(o)).catch(() => finish('unknown'));
       });
     }
     const REACH_PROBE_MS = 8000;
-    let directPath = 'pending'; // 'pending' | 'ok' | 'blocked' | 'unknown' — this network's verdict
+    let directPath = 'pending'; // 'pending' | 'ok' | 'strict' | 'blocked' | 'unknown' — this network's verdict
     let directPathRun = 0;
     // Run (or re-run) the probe. Called when the meeting starts and when the
     // browser reports the network came back, since a new network is a new
@@ -12787,7 +12793,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function startDirectPathProbe() {
       const gen = ++directPathRun;
       const forced = (typeof DEBUG_ON !== 'undefined' && DEBUG_ON && window.__gifosDirectPath) ? String(window.__gifosDirectPath) : '';
-      if (forced === 'ok' || forced === 'blocked') { directPath = forced; updateStatus(); if (meshNode && meshNode.remeasure) meshNode.remeasure(); return Promise.resolve(forced); }
+      if (forced === 'ok' || forced === 'blocked' || forced === 'strict') { directPath = forced; updateStatus(); if (meshNode && meshNode.remeasure) meshNode.remeasure(); return Promise.resolve(forced); }
       if (typeof RTCPeerConnection !== 'function') { directPath = 'unknown'; return Promise.resolve('unknown'); }
       return probeDirectPath(() => new RTCPeerConnection({ iceServers: ICE_SERVERS }), REACH_PROBE_MS).then((v) => {
         if (gen !== directPathRun) return v; // a newer probe owns the verdict
@@ -12876,7 +12882,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const RELAY_NAME_MAX = 40, RELAY_PW_MAX = 64;
     const epOk = (ep) => Number.isInteger(ep) && ep >= 0;
     // The exact field set of each payload (the padding field `_` beside it).
-    const RELAY_PAYLOAD_KEYS = { boot: 'k,t,u,w,s,v', fp: 'k,v,fp', ice: 'k,c,end', name: 'k,n', password: 'k,pw,ep', pwsig: 'k,sig', pwpub: 'k,ep,ts,pub', pwby: 'k,ep,by', busy: 'k,g,i,n,ref,cool' };
+    const RELAY_PAYLOAD_KEYS = { boot: 'k,t,u,w,s,v', fp: 'k,v,fp', ice: 'k,c,end', name: 'k,n', password: 'k,pw,ep,pr', pwsig: 'k,sig', pwpub: 'k,ep,ts,pub', pwby: 'k,ep,by', busy: 'k,g,i,n,ref,cool' };
     function relayFrameAllowed(ty, inner) {
       if (!RELAY_TYPES.has(ty) || !inner || typeof inner !== 'object' || Array.isArray(inner) || inner.k !== ty || !net.fitsFixed(inner)) return null;
       const keys = RELAY_PAYLOAD_KEYS[ty].split(',');
@@ -12885,7 +12891,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (ty === 'fp') return net.fpOk(inner) ? ty : null;
       if (ty === 'ice') return (inner.end === 1 && !('c' in inner)) || (!('end' in inner) && !!net.candOfIce(inner)) ? ty : null;
       if (ty === 'name') return typeof inner.n === 'string' && inner.n.length <= RELAY_NAME_MAX ? ty : null;
-      if (ty === 'password') return typeof inner.pw === 'string' && inner.pw.length <= RELAY_PW_MAX && epOk(inner.ep) ? ty : null;
+      if (ty === 'password') return typeof inner.pw === 'string' && inner.pw.length <= RELAY_PW_MAX && epOk(inner.ep) && (inner.pr === undefined || (typeof inner.pr === 'string' && inner.pr.length <= 64)) ? ty : null;
       if (ty === 'pwsig') return typeof inner.sig === 'string' && /^[A-Za-z0-9+/]{86}==$/.test(inner.sig) ? ty : null;
       if (ty === 'pwpub') return epOk(inner.ep) && Number.isInteger(inner.ts) && inner.ts > 0 && typeof inner.pub === 'string' && /^[A-Za-z0-9+/]{43}=$/.test(inner.pub) ? ty : null;
       if (ty === 'busy') return Number.isInteger(inner.g) ? ty : null;   // a door's refusal (L16 BUSY, L14 decline, L23): read by the seat's world only
@@ -12904,6 +12910,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // I may use it while I am at the door (no seat, or a seated seat that knocked: the seat's socketed()) for a peer my view seats nowhere, or one that spoke to me over it just now: it is at the door, whatever my view still says of its old seat.
     const relayHeardAt = new Map();
     function relayMayCarry(to) {
+      if (pwWaitKey.has(to) && hasAdminRoom() && amAdmin) return true;   // someone waiting through a ban has no channel and cannot read the door: only this reaches them
       if (meshNode && !meshNode.socketed()) return false;
       if (!meshCoord()) return true;
       if (!coordKeyOf(to)) return true;
@@ -12949,7 +12956,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         for (const f of out) if (!net.fitsFixed(f)) return null;
         return out;
       }
-      if (!grant || grant.k !== 'pwinfo') return null;
+      if (!grant || grant.k !== 'pwinfo' || grant.no) return null;   // a ban's grant takes the channels only: its list does not fit, and the lock has closed every socket that lacks it
       const ep = grant.ep | 0;
       const out = [{ k: 'password', pw: String(grant.pw || ''), ep }];
       if (grant.w && typeof grant.w === 'object') {
@@ -12988,7 +12995,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!hasAdminRoom()) { pwParts.delete(from); return { k: 'pwinfo', pw: s.pw, by: rosterNames[from] || '', ep: s.ep }; }
       if (s.sig == null || s.pub == null || s.ts == null || s.by == null) return null;
       pwParts.delete(from);
-      return { k: 'pwinfo', pw: s.pw, by: rosterNames[s.by] || '', ep: s.ep, w: { sp: JSON.stringify({ act: 'pwinfo', ts: s.ts, room: roomKey(), by: s.by, pw: s.pw, ep: s.ep }), sig: s.sig, pub: s.pub } };
+      const named = s.pw ? { to: myId } : {};   // an admin room's password over the relay is only ever signed for one id (pwAdmitGrant)
+      return { k: 'pwinfo', pw: s.pw, by: rosterNames[s.by] || '', ep: s.ep, w: { sp: JSON.stringify(Object.assign({ act: 'pwinfo', ts: s.ts, room: roomKey(), by: s.by, pw: s.pw, ep: s.ep }, named)), sig: s.sig, pub: s.pub } };
     }
     // The bootstrap's halves (boot + fp), gathered by sender and session
     // version until both are here. pid -> { v, boot, fp, at }.
@@ -13370,6 +13378,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         onDialRequest(p || { id: from, dc: null });
         return;
       }
+      if (ty === 'password' && f.pr) {   // the admin, to someone in the waiting room: the door's new proof
+        if (!meshCoord()) { pwProof = String(f.pr); pwWaitProof = true; showHeldScreen(); pwLog('wait: the door moved, keeping my place'); }
+        return;
+      }
       if (ty === 'password' || ty === 'pwsig' || ty === 'pwpub' || ty === 'pwby') {
         if (doorOutsider(from) && !statusOf.has(from)) { doorDropped++; return; }   // TROLL GATE: a knocker never re-keys a seated room
         const g = takePwPart(from, ty, f);
@@ -13414,6 +13426,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!retainedGrant) return;
         const now = Date.now();
         if (now - (staleHealAt.get(pid) || 0) < 5000) return;
+        const noList = retainedGrant.no || null;
+        if (noList && noList.includes(pid)) {   // a barred peer asking, by any frame: the boot order, never the grant
+          const boot = pwBootOf(retainedGrant); if (!boot) return;
+          staleHealAt.set(pid, now);
+          pwLog('ban-boot→' + String(pid).slice(0, 6) + ' ep=' + boot.ep);
+          const qd = peers.get(pid);
+          if (qd && qd.dc && qd.dc.readyState === 'open') pwSealTo(qd, boot, prevRoomE2E);
+          else { const fs = pwFramesOf(boot); if (fs) for (const f of fs) relaySendSealed(pid, f.k, f, prevRoomE2E); }
+          return;
+        }
         // ELIGIBILITY IS THE KEY ITSELF (2026-10-20). This used to ask
         // for a pair older than the rotation, or a roster entry, and no
         // tombstone — three liveness gates that FAIL for exactly the member
@@ -13427,10 +13449,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // excluded on purpose: a banned / voted-off seat, or an ejected forger.
         if (typeof bannedSeat !== 'undefined' && bannedSeat.has(pid)) return;
         if (typeof isEjected === 'function' && isEjected(pid) === true) return;
+        const pd = peers.get(pid);
+        if (noList && (!(pd && pd.dc && pd.dc.__authBy === pid) || meetWait.blocks(pid))) return;   // a ban's grant goes only to the signed id at the far end of this channel, and not into the waiting room. A stale key is the member's proof: one back from a gap may have left my view
         staleHealAt.set(pid, now);
         if (typeof clog === 'function') clog('grant-heal ' + String(pid).slice(0, 6) + ' (prev-key frame)');
       pwLog('grant-heal→' + String(pid).slice(0, 6) + ' ep=' + pwEpoch);
-        const pd = peers.get(pid);
         if (pd && pd.dc && pd.dc.readyState === 'open') txm(() => net.seal(prevRoomE2E, retainedGrant).then((env) => net.sendChunked(env, (piece, str) => { try { pd.dc.send(str); } catch (e) {} })));
         else { const fs = pwFramesOf(retainedGrant); if (fs) for (const f of fs) relaySendSealed(pid, f.k, f, prevRoomE2E); }
       });
@@ -14094,6 +14117,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (p.tile && p.tile.parentNode) p.tile.remove();
     }
     // Seated, a pair my seat neither links nor names is no one in this room yet: a door, or a lone seat greeting me. An open channel alone is no face and no count.
+    // Seated, a pair my seat does not link is no one in the room by its transport alone: an admission pair, a backup uplink, a feed carrier. Their person counts when their status reaches me, not because a channel is open.
+    function pairOnly(p) { const s = meshSeat(); return !!(s && s.hasCoord && s.state === 3 && !p.headless && !linkTo(p.id)); }
     function seatStranger(p) { const s = meshSeat(); return !!(s && s.hasCoord && s.state === 3 && !p.headless && !linkTo(p.id) && !meshKnows(p.id)); }
     function restoreDoorTile(p) {
       if (!p || !doorOffGrid.has(p.id)) return;
@@ -14571,6 +14596,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // plain rooms — the transport no longer matters, only the proof.
       takeMod(from, msg);
       if (msg.conns) setConns(from, msg.conns);
+      if (Number.isInteger(msg.nat)) natOf.set(from, msg.nat);
       if ('sid' in msg && p && sidIsNews(p, msg.sid)) { p.ownSid = msg.sid; claimOwnStream(p); }
     }
 
@@ -14647,7 +14673,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function ckReply(t0) { return { k: 'ck2', t0: t0, t1: performance.now() }; }
 
     function onSignal(from, msg, adm) {
-      if (isSevered(from)) return; // DEBUG sever — see severPair
+      if (isSevered(from) && !(sigProven && !isEjected(from))) return; // DEBUG sever cuts the pair's own transport (severPair); its author's gossip carried by a third page still lands, as through a real block. An ejected forger never does.
       if (!msg || !msg.kind) return;
       msg = sigSansIce(from, msg); // fault injection: a blocked pair yields nothing
       if (!msg) return;
@@ -14944,6 +14970,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // RTCPeerConnections, every tile black) — the last unbounded path, gone.
       if (seatAsked(pid)) return true;   // the seat dialled it (a door, a call, an audit): its own reason
       if (!s || !s.hasCoord) return false;
+      if (s.l14Served && s.l14Served().includes(pid)) return true;   // L14: a cut-off head dialled me for its branch's media
       return s.linkPeers().has(pid) || (typeof s.keepPeers === 'function' && s.keepPeers().has(pid));   // every media target is a link peer or carries a keep reason (L28)
     }
     // Peers the seat asked to dial (pc.ensure), for a while: the seat's dial is its reason.
@@ -15559,7 +15586,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function renderFromOcc() {
       const s = meshSeat();
       if (!s) return;
-      if (typeof bannedSeat !== 'undefined') for (const pid of bannedSeat) if (peers.has(pid)) dropPeer(pid); // a ban's seat stays down even if a tick rebuilt it
+      if (typeof bannedSeat !== 'undefined') for (const pid of bannedSeat) if (peers.has(pid) && !(Date.now() - (pwBarred.get(pid) || 0) < PW_BYE_MS)) { if (pwBarred.has(pid)) { const bq = peers.get(pid); bq.byeSeen = Date.now(); bq.byeWhy = 'leave'; } dropPeer(pid); }
+      // Every page that holds the admin's statement reads it as the barred seat's goodbye, pair or no pair: a LEAVE in its name is
+      // not carried hop to hop (it is not his signature), so a page with no pair to him would hold his cell. Once per id.
+      for (const [pid, at] of pwBarred) if (!pwByeSaid.has(pid) && Date.now() - at >= PW_BYE_MS) { pwByeSaid.add(pid); try { meshNode.transport(pid, 'greeter-gone'); } catch (e) {} } // a ban's seat stays down even if a tick rebuilt it. The admin's signed statement is the goodbye a page that ignored the order will not send: the seat hears it as any leave
       // FRESHLY SEATED, ONE FLUSH. Before hasCoord is true, gossip() has no
       // section to speak to and drops the frame silently (sc === null) — so
       // a status authored in that window, including scheduleNewPeerBeat's
@@ -15594,7 +15624,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const alive = (v) => {
         if (stHold(v)) return true; // 15s fresh + the G1 away/transport holdover (60s-bounded)
         const p = peers.get(v);
-        if (p && p.connected && Date.now() - (p.lastHeard || 0) < VOUCH_MS) return true;
+        if (p && p.connected && Date.now() - (p.lastHeard || 0) < VOUCH_MS && !pairOnly(p)) return true;
         return fhLive(v);
       };
       for (const v of s.occ.values()) if (v && v !== myId && notTomb(v) && alive(v)) ids.add(v);
@@ -15823,6 +15853,104 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let prevRoomE2E = null;   // exactly ONE previous generation, for stale-neighbour recognition + healing
     let pwEpoch = 0;          // generation counter, carried inside the signed grant
     let retainedGrant = null; // the admin's pwinfo, verbatim — replayable by any member
+    // A BAN IS A PASSWORD CHANGE EVERYONE HEARS BUT THE BANNED (admin rooms). The admin's signed pwinfo carries the new
+    // password and `no`, the peer ids (k_) it must not be shared with. It rides channels only, hop by hop, each page
+    // checking `no` first, and never the gossip lane (a seat there cannot choose who hears). A page holding the grant
+    // holds the list, because the list is inside the statement it replays. `no` accumulates: a later change that
+    // dropped Tom would let a neighbour heal him. The newest PW_NO_MAX ids stay; the oldest goes first, and it can
+    // only matter to someone still holding the key just replaced, which a person banned that many changes ago is not.
+    const PW_NO_MAX = 32, PW_BYE_MS = 2000;   // PW_BYE_MS: the barred seat's pair stays this long, to carry the boot order and its goodbye
+    const pwByeSaid = new Set();   // barred ids whose goodbye my seat has heard
+    const pwBarred = new Map();               // id -> when I heard the ban. Lifted by a frame from that id that opens under the current key: someone told them the password
+    function pwNoOf(grant) {
+      try { const o = JSON.parse(grant.w.sp); return Array.isArray(o.no) ? o.no.filter((x) => typeof x === 'string') : []; } catch (e) { return []; }
+    }
+    // What a barred peer does get: the plain signed change order (no password), which sends a page to the door as any change does.
+    function pwBootOf(grant) { return grant && grant.wb ? { k: 'pwreset', by: grant.by, w: grant.wb, ep: grant.ep } : null; }
+    function pwSealTo(q, msg, key) {
+      txm(() => net.seal(key, msg).then((env) => net.sendChunked(env, (piece, str) => { try { q.dc.send(str); } catch (e) {} })));
+    }
+    // One hop of a ban: my open, signed channels, under the key they still read. A peer on `no` gets the boot order instead.
+    function pwGrantOut(grant, key, fromId) {
+      const no = grant.no || [], boot = pwBootOf(grant);
+      for (const q of Array.from(peers.values())) {
+        if (q.id === fromId || !q.dc || q.dc.readyState !== 'open') continue;
+        if (no.includes(q.id)) { if (boot) pwSealTo(q, boot, key); continue; }
+        if (q.dc.__authBy === q.id && !doorOutsider(q.id) && !meetWait.blocks(q.id)) pwSealTo(q, grant, key);   // nor someone still in the waiting room
+      }
+    }
+    function pwBarOut(no) {
+      for (const id of no) {
+        if (id === myId) continue;
+        if (!pwBarred.has(id)) pwBarred.set(id, Date.now());
+        bannedSeat.add(id);
+        confirmGone(id, 'd5');   // d5: no tile now, the pair stays for PW_BYE_MS (renderFromOcc closes it)
+      }
+    }
+    function pwBarLift(id) {
+      const at = pwBarred.get(id);
+      if (at === undefined || rekeysPending || rekeyAt < at) return;   // until my key has moved, an old-key frame still opens: no proof of anything
+      pwBarred.delete(id); pwByeSaid.delete(id);
+      bannedSeat.delete(id); meshGone.delete(id); meshGoneTick.delete(id);
+      if (typeof clog === 'function') clog('ban-lift ' + String(id).slice(0, 6) + ' (speaks the current key)');
+    }
+    const pwNoKey = () => 'gifos_vpwno_' + roomKey();   // the admin's own memory of `no`: a reload holds no grant
+    function pwNoStored() { try { const l = JSON.parse(localStorage.getItem(pwNoKey()) || '[]'); return Array.isArray(l) ? l.filter((x) => typeof x === 'string') : []; } catch (e) { return []; } }
+    function pwNoStore(list) { try { localStorage.setItem(pwNoKey(), JSON.stringify(list)); } catch (e) {} mirrorRoomState({ pwNo: list }); }
+    function pwRandom() {
+      const abc = 'abcdefghjkmnpqrstuvwxyz23456789', b = crypto.getRandomValues(new Uint8Array(12));
+      let out = ''; for (const x of b) out += abc[x % abc.length];
+      return out;
+    }
+    // Who stays on the list: everyone still barred (a person told the password has spoken under the key since, and is off it), and the new name.
+    function pwNoNext(id) {
+      const had = pwNoStored().concat(retainedGrant && retainedGrant.no ? retainedGrant.no : []);
+      const out = []; for (const x of had) if (x !== id && !out.includes(x) && (pwBarred.has(x) || !pwNoSeen.has(x))) out.push(x);
+      out.push(id);
+      return out.slice(-PW_NO_MAX);
+    }
+    const pwNoSeen = new Set();   // ids on my stored list heard under the current key since this page loaded
+    const pwNoAny = () => hasAdminRoom() && (pwBarred.size > 0 || amAdmin);
+    function pwHeardNow(id) { if (!id) return; pwBarLift(id); if (amAdmin) { pwNoSeen.add(id); if (pwNoSeen.size > 1024) pwNoSeen.clear(); } }
+    const pwWaitKey = new Map();   // admin: a person waiting through a ban -> the key they still read
+    let pwWaitProof = false;       // this page waits on a proof the admin sent: the lock it cannot read yet is not a prompt
+    // Admit, for someone who waited through a ban: the password, signed for that one id. The page takes it and holds no grant, so it heals nobody.
+    async function pwAdmitGrant(id) {
+      const key = pwWaitKey.get(id); if (!key) return;
+      const w = await admSigned('pwinfo', { pw: roomPw, ep: pwEpoch, to: id }); if (!w) return;
+      const q = peers.get(id), g = { k: 'pwinfo', pw: roomPw, by: myName(), ep: pwEpoch, w };
+      if (q && q.dc && q.dc.readyState === 'open' && q.dc.__authBy === id) pwSealTo(q, g, key);
+      else { const fs = pwFramesOf(g); if (fs) for (const f of fs) relaySendSealed(id, f.k, f, key); }
+      pwWaitKey.delete(id);
+      pwLog('admit-grant→' + String(id).slice(0, 6) + ' ep=' + pwEpoch);
+    }
+    function pwToOf(grant) { try { return JSON.parse(grant.w.sp).to || ''; } catch (e) { return ''; } }
+    let pwBanChain = Promise.resolve();
+    function pwBan(id) {
+      if (!amAdmin || !hasAdminRoom() || !id || id === myId) return pwBanChain;
+      pwBanChain = pwBanChain.then(() => pwBanNow(id)).catch((err) => pwChainFailed(err, false));
+      return pwBanChain;
+    }
+    async function pwBanNow(id) {
+      const v = pwRandom(), pr = await net.meetPwProof(room, av, v), ep = pwEpoch + 1, no = pwNoNext(id);
+      const wRelay = await admSigned('setpw', { pw: pr }), wPeers = await admSigned('pwinfo', { pw: v, ep, no }), wb = await admSigned('pwreset', { ep });
+      if (!wRelay || !wPeers || !wb) return;
+      const key = roomE2E;
+      storePw(v); pwProof = pr;
+      // Someone in the waiting room is not in the room: no grant. The lock would close their socket, so they get the door's
+      // proof (it opens the door, not one frame of the room) and keep their place; Admit sends them the password (pwAdmitGrant).
+      for (const wid of waitQueue.keys()) { if (!pwWaitKey.has(wid)) pwWaitKey.set(wid, key); relaySendSealed(wid, 'password', { k: 'password', pw: '', ep, pr }, pwWaitKey.get(wid)); }
+      relaySendObj({ t: 'setpw', pw: pr, w: wRelay });
+      const grant = { k: 'pwinfo', pw: v, by: myName(), w: wPeers, ep, wb, no };
+      pwGrantOut(grant, key, null);
+      storePwEpoch(ep); retainedGrant = grant;
+      pwNoStore(no);
+      pwBarOut(no);
+      pwLog('pwban-sent ep=' + ep + ' no=' + no.length);
+      await txm(() => Promise.resolve()).then(() => rekeyRoom());
+      renderFiles(); reactRoomState();
+      showPwModal(false, 'banned');
+    }
     // A GRANT BEFORE THE ROOM HAS SPOKEN (§LOCK). A member who typed the
     // password at the door holds the room's CURRENT password but knows no
     // generation number yet (epoch 0): the epoch guard alone cannot tell an
@@ -15907,6 +16035,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       pwLeaveForDoor();
     }
     function pwLeaveForDoor() {
+      if (DEBUG_ON && window.__pwHoldBoot) { pwLog('sent to the door, stays (test lever: a hostile page)'); return; }
       heldGrant = null; grantHoldUntil = 0; retainedGrant = null;
       storePw('');
       pwBlocked = true;
@@ -15989,7 +16118,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // by a random locally-persisted token (honest limitation: wiping site
     // data mints a new device — bans deter, they don't imprison).
     let av = null; // the room's admin verifier — set at join, immutable
-    let admKey = null, amAdmin = false, admins = [], devOf = {}, roomBan = [], bannedOut = false, banSeeded = false, pwReasserted = false;
+    let admKey = null, amAdmin = false, admins = [], devOf = {}, bannedOut = false, pwReasserted = false;
     if (BROADCAST) {
       try { paintOnAir(); } catch (e) {}
       try { paintBroadcastJoinNote(bcRole()); } catch (e) {}
@@ -16085,8 +16214,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // contradicting.
         try { const st = meshSeat(); if (st && st.goodbye) st.goodbye(pid); } catch (err) {}
         // A seat whose links all ran through the forger is cut off from the
-        // room: cutOffByEjection (below) sends it back through the door.
-        ejectWatchUntil = Date.now() + 120000;
+        // room: the seat's own dark-seat law (D6) sends it back through the door.
       };
       Promise.race([whoObserve(pid), new Promise((r) => setTimeout(r, 1500))]).then(drop, drop);
       rosterIds = rosterIds.filter((x) => x !== pid);
@@ -16105,29 +16233,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { updateStatus(); } catch (err) {}
       whoRefresh();
     }
-    // CUT OFF BY AN EJECTION. A seat whose only links ran through an ejected
-    // forger hears nobody, and nothing else will rescue it: the room's own
-    // fragment rescue stands down while the room is known to hold others. So
-    // for two minutes after any ejection, a SEATED page with no live link to
-    // anyone not ejected, while the room was heard from lately, goes back
-    // through the door (at most every 15 s). A one-shot check right after the
-    // ejection was not enough: a seat still joining at that moment — e.g.
-    // seated by a forger that came back under a new key — was never
-    // re-checked and stayed alone.
-    let ejectWatchUntil = 0, cutOffSince = 0, ejectRequeueAt = 0;
-    function cutOffByEjection() {
-      if (!ejectWatchUntil || Date.now() > ejectWatchUntil) { cutOffSince = 0; return; }
-      const st = meshSeat();
-      if (!st || !st.hasCoord || st.state !== 3 || typeof st.requeue !== 'function') { cutOffSince = 0; return; }
-      const linked = [...peers.values()].some((q) => q.connected && !isEjected(q.id));
-      const roomHeard = [...whoLog].some(([pid, e]) => !isEjected(pid) && Date.now() - e.last < 60000);
-      if (linked || !roomHeard) { cutOffSince = 0; return; }
-      if (!cutOffSince) { cutOffSince = Date.now(); return; }
-      if (Date.now() - cutOffSince < 3000 || Date.now() - ejectRequeueAt < 15000) return;
-      cutOffSince = 0; ejectRequeueAt = Date.now();
-      try { st.requeue(); } catch (err) {}
-    }
-    setInterval(cutOffByEjection, 1500);
     // A departure: stamp what is about to be forgotten elsewhere.
     function whoGone(pid) {
       const e = whoLog.get(pid); if (!e) return;
@@ -16423,13 +16528,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     const roomKey = () => room + (av ? '.' + av : ''); // storage + session identity
     const admStoreKey = () => 'gifos_vadm_' + roomKey();
-    const banStoreKey = () => 'gifos_vban_' + roomKey();
     // ---- THE DURABLE MIRROR: a room's non-secret admin state rides the computer.
     // localStorage is the hot path (every reader below is synchronous) but it
     // is DEVICE state: the whole-computer backup GIF packs IndexedDB and
-    // nothing else (desktop.js backupDesktopInner), so a banlist kept only
+    // nothing else (desktop.js backupDesktopInner), so a list kept only
     // here dies with the browser's site data and a restored computer arrives
-    // with an empty room. A room's banlist, banned names and password
+    // with an empty room. A room's list of who a password must not reach and its password
     // GENERATION are COMPUTER state (docs/roadmap.md §24b): every write below
     // mirrors into one GifOS.store state record per administered room,
     // 'meet::<room>.<V>', and hydrateRoomState() reads it back BEFORE the
@@ -16477,8 +16581,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         let localAt = 0; try { localAt = parseInt(localStorage.getItem(MIRROR_AT_PFX + base), 10) || 0; } catch (e) {}
         const newer = (rec.updatedAt || 0) > localAt;
         try {
-          if (newer && Array.isArray(rec.bans)) localStorage.setItem('gifos_vban_' + base, JSON.stringify(rec.bans.slice(0, 100)));
-          if (newer && rec.banNames && typeof rec.banNames === 'object') localStorage.setItem('gifos_vbannames_' + base, JSON.stringify(rec.banNames));
+          if (newer && Array.isArray(rec.pwNo)) localStorage.setItem('gifos_vpwno_' + base, JSON.stringify(rec.pwNo.slice(-PW_NO_MAX)));
           const localEp = parseInt(localStorage.getItem('gifos_vpwep_' + base), 10) || 0;
           if (pwEpInt(rec.pwEp) && rec.pwEp > localEp) localStorage.setItem('gifos_vpwep_' + base, String(rec.pwEp));
           if (newer) localStorage.setItem(MIRROR_AT_PFX + base, String(rec.updatedAt || 0));
@@ -16486,32 +16589,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return newer;
       });
       return Promise.race([read, new Promise((res) => setTimeout(() => res(false), 1500))]).catch(() => false);
-    }
-    // Admin rooms only: the admin carries the ban list in their own storage
-    // and re-seeds an emptied room from it (the relay stores nothing).
-    function loadBans() { try { return JSON.parse(localStorage.getItem(banStoreKey()) || '[]') || []; } catch (e) { return []; } }
-    // Who a banned device WAS is the admin's own memory, kept here — the relay
-    // holds a device tag and nothing else. Everyone else resolves a tag to a
-    // name from their own sealed roster (nameForDev).
-    const banNamesKey = () => 'gifos_vbannames_' + roomKey();
-    function banNames() { try { return JSON.parse(localStorage.getItem(banNamesKey()) || '{}') || {}; } catch (e) { return {}; } }
-    function rememberBanName(dev, name) {
-      if (!dev || !name) return;
-      const m = banNames(); m[dev] = String(name).slice(0, 40);
-      const keys = Object.keys(m); if (keys.length > 100) delete m[keys[0]];
-      try { localStorage.setItem(banNamesKey(), JSON.stringify(m)); } catch (e) {}
-      mirrorRoomState({ banNames: m });
-    }
-    function nameForDev(dev) {
-      for (const pid of Object.keys(devOf)) if (devOf[pid] === dev) return (peers.get(pid) || {}).name || rosterNames[pid] || '';
-      return '';
-    }
-    // The `by` on a relay-authored ban/unban/pw frame is the signed order's
-    // author — a PEER ID — or the vote marker; a name is looked up here.
-    function nameForPeer(pid) { return pid === 'the room (vote)' ? pid : ((peers.get(pid) || {}).name || rosterNames[pid] || ''); }
-    function saveBans(list) {
-      try { localStorage.setItem(banStoreKey(), JSON.stringify(list.slice(0, 100))); } catch (e) {}
-      mirrorRoomState({ bans: list.slice(0, 100) });
     }
     function loadAdm() {
       try { admKey = localStorage.getItem(admStoreKey()); } catch (e) { admKey = null; }
@@ -16527,7 +16604,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // no admin and never can, so there's nothing for this button to do there.
       ab.style.display = hasAdmin ? '' : 'none';
       ab.textContent = amAdmin ? uiText('admBtn', 'Admin') : uiText('admSignIn', 'Admin sign-in');
-      ab.title = amAdmin ? uiText('admTipOn', 'Admin controls: banned devices, room password')
+      ab.title = amAdmin ? uiText('admTipOn', 'Admin controls: room password, chat and waiting room')
         : uiText('admTipOff', 'This room has an admin — enter the admin password to get admin controls');
       const pwb = document.getElementById('pwbtn');
       pwb.disabled = hasAdmin && !amAdmin;
@@ -16536,7 +16613,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         : uiText('pwTip', 'Lock this room with a password');
       // Vote-off only exists where there is no admin to ban bad actors.
       document.body.classList.toggle('canvote', !hasAdmin);
-      renderBanned();
       if (typeof updateMuteAllBtn === 'function') updateMuteAllBtn();
       if (typeof updateBlurAllBtn === 'function') updateBlurAllBtn();
       if (typeof updateCamAllBtn === 'function') updateCamAllBtn();
@@ -16546,6 +16622,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       refreshOutbound(); // admin presence changes what clears
       if (typeof paintBroadcastChrome === 'function') paintBroadcastChrome();
     }
+
+    // A signed order's `by` is a peer id; a name is looked up here.
+    function nameForPeer(pid) { return (peers.get(pid) || {}).name || rosterNames[pid] || ''; }
 
     const pwKey = () => 'gifos_vpw_' + roomKey();
     // §LOCK epoch PERSISTENCE: the replay guard is only as durable as the
@@ -16810,6 +16889,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         oldKeys: (prevRoomE2E && prevRoomE2E !== roomE2E) ? [prevRoomE2E] : [],   // a door blob this key opens is behind me, not ahead (mesh-wire R6)
         excluded: isEjected, // ejected forgers: their mesh frames never reach the seat
         urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
+        holdDoor: () => pwWaitProof && !meshCoord(),
         doorHeld: (id) => { try { const b = meetWait.blocks(id); if (b && id && amAdmin) meetWait.note(id, rosterNames[id] || 'Someone waiting'); if (b && id) sayHeld(id); return b; } catch (e) { return false; } },   // a withheld knock goes on the host's list: nothing else names a plain room's knocker
         onDoor: (kind, frame) => {
           if (kind === 'seated') {
@@ -16817,9 +16897,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
         },
         sendDC: meshSendDC,
+        // Friend-hop's page face (env.js decides which frames; sponsorSend and fwdOnward are the rungs).
+        fhop: {
+          friendFor: (pid) => { const c = myConns().filter((r) => r !== pid && (connsOf.get(r) || []).includes(pid)).sort(); const fp = c.length ? peers.get(c[0]) : null; return !!(fp && fp.dc && fp.dc.readyState === 'open'); },
+          canSponsor: (pid) => { for (const [r, q] of peers) if (r !== pid && r !== myId && q.connected && q.dc && q.dc.readyState === 'open') return true; return false; },
+          natMine: natWord, natOf: (pid) => natOf.get(pid),
+          roles: () => ({ jobs: Array.from(relayJobs.values(), (j) => ({ target: j.target, req: j.requester })), vias: Array.from(relayVia.values(), (r) => r.via) }),
+        },
         measure: {   // the device class and the network's verdict this page already keeps (L4)
-          tier: () => { const E = GifOS.meshConsts.enums; return IS_MOBILE ? E.TIER_MOBILE : E.TIER_DESKTOP; },
-          nat: () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' ? E.NAT_BLOCKED : E.NAT_OPEN; },
+          tier: () => { const E = GifOS.meshConsts.enums, hc = navigator.hardwareConcurrency | 0; return IS_MOBILE || (hc > 0 && hc <= 2) ? E.TIER_MOBILE : E.TIER_DESKTOP; },   // a 2-core desktop carries like a phone
+          nat: () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' ? E.NAT_BLOCKED : directPath === 'strict' ? E.NAT_STRICT : E.NAT_OPEN; },
         },
         // The seat's pcs (js/mesh/page/env.js calls these; it decides, the page carries out).
         pc: {
@@ -16899,6 +16986,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // visit too. Bounded at three knocks, and only a device that REMEMBERS
         // a password ever pays for more than one.
         onLocked: (door) => {
+          if (pwWaitProof && !meshCoord()) { pwLog('R6 while waiting on the admin: stays waiting'); return; }
           const ms = meshSeat(), seated = !!(ms && ms.hasCoord && ms.state === 3);
           // A seat moves on no door blob: anyone can register one. Only the door's own refusal is the password change.
           if (seated && !door) { pwLog('R6 from door blobs, seated: stays seated'); pwBlocked = true; showPwModal(true, pwChangedWhy()); return; }
@@ -16942,21 +17030,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (pwFromStore || pwProbe === 'restored') forgetPw('neither it nor the open key reads this room');
           pwBlocked = true; showPwModal(true, pwChangedWhy());
         },
-        // THE DOOR SAID NO, IN A CLOSE CODE (2026-07-29): a policy-cut socket
-        // is the ONLY way a re-seeded ban reaches a squatter who was already
-        // inside when the admin returned — the {t:'ban'} broadcast died with
-        // the socket, so the client sat 'reconnecting' forever, banned in
-        // fact but never told. Map the two verdict codes to the same honest
-        // state the in-band ban sets; every other policy code (replaced,
-        // stale host, bad token) keeps its own path.
+        // THE DOOR SAID NO, IN A CLOSE CODE: 4007 is a vote-off's verdict; every other policy code keeps its own path.
         onRejected: (code) => {
           if (code === 4011) { setStatus(uiText('stThisRoomAlreadyHasYou', '\u26d4 This room already has you connected from another device. Close it there, or reload here.')); return; }
           if (code === 4013 || code === 4010) { setStatus(uiText('stThisMeetingNeedsTheCurrent', '\u26d4 This meeting needs the current GifOS. Reload the page to update.')); return; } // 4010: the relay saw no key proof
-          if (code !== 4004 && code !== 4007) return;
+          if (code !== 4007) return;
           bannedOut = true;
           for (const pid of Array.from(peers.keys())) dropPeer(pid);
           try { meshNode && meshNode.stop(); } catch (e) {}
-          setStatus(code === 4007 ? '⛔ The people on this meeting voted you off.' : '⛔ You were banned from this room.');
+          setStatus('⛔ The people on this meeting voted you off.');
         },
         onStranded: () => updateStatus(), // R6: the line reads the seat's verdict (REACH_MSG 'cannot-reach-room') until the re-knock gets in
         // FRAGMENT SELF-RESCUE: the wire proved the door knows members my
@@ -17052,7 +17134,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function onRelayFrame(m) {
       if (m.t === 'joined') {
         updateStatus(); broadcastStatus();
-        roomBan = m.ban || []; // admins[] comes from VERIFIED signatures (adminsNow, \u00a79), never the relay
+        // admins[] comes from VERIFIED signatures (adminsNow, \u00a79), never the relay
         // \u00a7LOCK, ADMIN ROOMS \u2014 A STORED PASSWORD IS PROVISIONAL UNTIL THE DOOR
         // VOUCHES (2026-07-29). In an admin room only a SIGNED setpw gates the
         // door, so the joined frame's `locked` is an admin-rooted verdict on my
@@ -17084,14 +17166,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               const st = parseInt(localStorage.getItem(pwEpochKey()), 10);
               if (pwEpInt(st) && st > pwEpoch) { pwEpoch = st; myStatus.pwEp = pwEpoch; }
             } catch (e) {}
-            if (roomBan.length) saveBans(roomBan);
-            else if (!banSeeded) {
-              // Fresh DO after eviction \u2014 re-seed the ban list from this device
-              // (SIGNED, \u00a79); the relay cuts any listed socket on re-seed.
-              const stored = loadBans();
-              if (stored.length) admSigned('banlist', { devs: stored }).then((w) => { if (w) relaySendObj({ t: 'banlist', devs: stored, w }); });
-            }
-            banSeeded = true;
             // Re-assert the DOOR LOCK once per socket (\u00a79-signed) \u2014 after an
             // eviction the waiting room may have reopened lockless.
             if (roomPw && pwProof && !pwReasserted) {
@@ -17177,32 +17251,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const label = relayFrameAllowed(ty, inner);
           if (!label) { const d = relayFrameLabel(ty, inner); rxStats.relayDropped[d] = (rxStats.relayDropped[d] || 0) + 1; return; }
           rxStats.relayAccepted[label] = (rxStats.relayAccepted[label] || 0) + 1;
+          if (pwNoAny()) pwHeardNow(from);
           onRelayPeer(from, ty, inner);
         }));
         take(false);
-      }
-      else if (m.t === 'ban') {
-        if (!roomBan.some((b) => b.d === m.dev)) roomBan.push({ d: m.dev });
-        // A ban is not just signaling: sever the banned device's live P2P links.
-        // Remember the id and confirm it gone. dropPeer alone is undone by the
-        // next occ tick while the mesh still names the seat (RING_HOLD).
-        for (const pid of Object.keys(devOf)) if (devOf[pid] === m.dev && pid !== myId) {
-          bannedSeat.add(pid);
-          confirmGone(pid, 'ban');
-        }
-        const voted = m.by === 'the room (vote)';
-        if (m.dev === myDevHash) {
-          bannedOut = true;
-          for (const pid of Array.from(peers.keys())) dropPeer(pid);
-          try { meshNode && meshNode.stop(); } catch (e) {}
-          setStatus(voted ? '\u26d4 The people on this meeting voted you off.' : '\u26d4 You were banned from this room by ' + (nameForPeer(m.by) || 'an admin'));
-        } else setStatus(voted ? '\u26d4 ' + (nameForDev(m.dev) || 'Someone') + ' was voted off the meeting.' : '\u26d4 ' + (nameForDev(m.dev) || banNames()[m.dev] || 'A device') + ' was banned by ' + (nameForPeer(m.by) || 'an admin'));
-      }
-      else if (m.t === 'unban') {
-        roomBan = roomBan.filter((b) => b.d !== m.dev);
-        // The old peer id stays in bannedSeat. Unban admits the device; the
-        // reload mints a new id. Clearing the set would raise the ghost tile.
-        setStatus('\u2705 ' + (nameForDev(m.dev) || banNames()[m.dev] || 'A device') + ' was unbanned by ' + (nameForPeer(m.by) || 'an admin'));
       }
       else if (m.t === 'greeter-gone') {
         // Only the relay's socket gets here, and the relay only says it when a live greeter's socket closed with no unlist first: that greeter's goodbye.
@@ -17211,11 +17263,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       else if (m.t === 'error') {
         pwLog('relay-error: ' + String(m.error || '?').slice(0, 60));
-        // Password gate is handled by the wire (onLocked / R6 sealing); bans
-        // and vote-offs land here. No walk \u2014 the session cap is the greeter
+        // Password gate is handled by the wire (onLocked / R6 sealing); vote-offs
+        // land here. No walk \u2014 the session cap is the greeter
         // pool\u2019s, and newcomers drop their socket after seating anyway.
         if (/voted-off/.test(m.error || '')) { bannedOut = true; setStatus(uiText('stThePeopleInThisRoom', '\u26d4 The people in this room voted not to let this device in.')); }
-        else if (/banned/.test(m.error || '')) { bannedOut = true; setStatus(uiText('stThisDeviceWasBannedFrom', '\u26d4 This device was banned from the room by its admin.')); }
         // The door's own refusals are written for a machine. Say the ONE that a
         // person can actually trigger in the same words the button uses \u2014 one
         // rule, one sentence \u2014 and never show the raw wire text for it.
@@ -17334,6 +17385,47 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
     }
     GifOS.meshMedia.workerClock(1000, () => { for (const [pid, p] of peers) { try { frozenTileTick(pid, p); } catch (e) {} } });
+    // A picture that stops says so, never a silent frozen tile. A Stage strip or Stadium that had frames and has shown none
+    // for STALL_MS while the tab is in view gets a plain line; a shared screen may rightly stand still. The banner adds why,
+    // and only when both hold: this seat's picture stalled, and its own mass-leave sense names many people gone. Two goodbyes
+    // arm that sense for the seat's healing; ordinary churn does that, so the banner wants MASS_MANY of them.
+    const STALL_MS = 4000, MASS_MANY = 3;
+    const stallOf = new WeakMap();
+    let massMany = false, massBannerEl = null, massBannerAt = 0;
+    const BANNER_HOLD = 5000;
+    function stallSweep() {
+      const now = Date.now(); let n = 0;
+      for (const el of document.querySelectorAll('#stagefeed .rowtile, #stadium .rowtile')) {
+        const v = el.querySelector('video'); if (!v) continue;
+        const q = v.getVideoPlaybackQuality ? v.getVideoPlaybackQuality() : null, fr = q ? q.totalVideoFrames : -1;
+        let st = stallOf.get(v); if (!st) { st = { fr, at: now, had: false }; stallOf.set(v, st); }   // keyed on the element: a new stream that brings no frame is still a stall
+        if (fr !== st.fr) { st.had = st.had || fr > 0; st.fr = fr; st.at = now; }
+        if (document.hidden) st.at = now;   // a hidden tab presents nothing, so its count says nothing
+        const stalled = st.had && now - st.at >= STALL_MS && !el.querySelector('.sharelabel');
+        let note = el.querySelector('.stallnote');
+        if (stalled && !note) { note = document.createElement('div'); note.className = 'stallnote'; note.setAttribute('role', 'status'); note.textContent = uiText('mediaReconnecting', '⟳ Reconnecting…'); el.appendChild(note); if (typeof clog === 'function') clog('media-stall on ' + el.dataset.row); }
+        else if (!stalled && note) { note.remove(); if (typeof clog === 'function') clog('media-stall off ' + el.dataset.row); }
+        if (stalled) n++;
+      }
+      return n;
+    }
+    function massBannerTick() {
+      const stalled = stallSweep(), r = meshNode && meshNode.raw;
+      if (!r || !r.l13MassV) massMany = false;
+      else if (!massMany) {
+        let gone = 0; for (const at of r.byeIds.values()) if (r.TICK - at <= GifOS.meshConsts.consts.LEASE_T) gone++;
+        const down = new Set(); for (let q = 0; q < r.l13DownAt.length; q++) if (r.TICK - r.l13DownAt[q] <= GifOS.meshConsts.consts.LEASE_T) down.add(q < r.l13DownPeer.length ? r.l13DownPeer[q] : -1 - q);
+        massMany = Math.max(gone, down.size) >= MASS_MANY;
+      }
+      // held BANNER_HOLD past the last stalled beat, so a picture that comes and goes does not make it flicker
+      if (massMany && stalled > 0) massBannerAt = Date.now();
+      const on = massMany && Date.now() - massBannerAt < BANNER_HOLD;
+      if (on === !!massBannerEl) return;
+      if (typeof clog === 'function') clog('mass-banner ' + (on ? 'on' : 'off'));
+      if (on) { massBannerEl = document.createElement('div'); massBannerEl.id = 'massbanner'; massBannerEl.setAttribute('role', 'status'); massBannerEl.setAttribute('aria-live', 'polite'); massBannerEl.textContent = uiText('massLeaveBanner', 'Many people just left. Reconnecting the meeting, expect a short delay.'); document.body.appendChild(massBannerEl); }
+      else { massBannerEl.remove(); massBannerEl = null; }
+    }
+    GifOS.meshMedia.workerClock(1000, () => { try { massBannerTick(); } catch (e) {} });
     // A WEBKIT SENDER THAT NEVER ENCODES. Measured 2026-10-21 (gate-1812
     // diag d1/d5): a WebKit seat's camera track was live and playing on its
     // own tile, seated on the main sender of two connected mates, and
@@ -17720,10 +17812,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function applyBcAct(id, act) {
       if (!id || id === myId || !amAdmin) return;
       if (act === 'ban') {
-        const dev = devOf[id] || '';
-        if (!dev) { setStatus('🛡 This person' + String.fromCharCode(39) + 's device is not known yet — try Ban again in a moment.'); return; }
-        rememberBanName(dev, (peers.get(id) || {}).name || rosterNames[id] || '');
-        admSigned('ban', { dev }).then((w) => { if (w) relaySendObj({ t: 'ban', dev, w }); });
+        pwBan(id);
         return;
       }
       if (act === 'promote') setMod(id, 'app', true);
@@ -18308,6 +18397,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         ? (locked
           ? 'Enter the viewer password to see the stage clearly.'
           : 'Optional. It is not part of the link. People can still watch, and the stage stays blurred until it is set.')
+        : why === 'banned' ? uiText('pwHintBanned', 'They are out, and this is the room\'s new password. Everyone still here already has it. Anyone joining later needs it, so copy it and send it to them yourself. To let a banned person back in, tell them this password.')
         : (locked
           ? (why === 'changed'
             ? uiText('pwHintChanged', 'The admin changed the room password. Enter the new password to rejoin the meeting.')
@@ -18319,6 +18409,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       document.getElementById('pw-cur').value = roomPw;
       pwEyeHide(document.getElementById('pw-cur')); // every open starts hidden — the eye reveals on demand
       pwEyeHide(document.getElementById('pw-new'));
+      if (why === 'banned') { const cur = document.getElementById('pw-cur'), eye = document.getElementById('pweye-pw-cur'); if (eye) eye.click(); else cur.type = 'text'; }   // the admin needs to read it: nobody told them yet
       const inp = document.getElementById('pw-new');
       inp.value = ''; inp.placeholder = locked ? uiText('pwWord', 'Password') : uiText('pwNew', 'New password');
       document.getElementById('pw-save').textContent = locked ? uiText('join', 'Join') : uiText('pwSave', 'Save');
@@ -18327,7 +18418,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       cancel.textContent = locked ? uiText('pwLeave', 'Leave') : uiText('pwClose', 'Close');
       pwModal.dataset.mode = locked ? 'join' : 'manage';
       pwModal.style.display = 'flex';
-      inp.focus();
+      if (why === 'banned') { const cur = document.getElementById('pw-cur'); cur.focus(); cur.select(); } else inp.focus();
     }
     document.getElementById('pwbtn').onclick = () => showPwModal(false);
     document.getElementById('waitbtn').onclick = () => {
@@ -18473,22 +18564,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 
     // ---- admin UI --------------------------------------------------------------
     const admModal = document.getElementById('adm-modal');
-    function renderBanned() {
-      const box = document.getElementById('adm-banned');
-      if (!box) return;
-      box.innerHTML = '';
-      if (!amAdmin) return;
-      if (!roomBan.length) { box.innerHTML = '<span style="color:#667">' + uiText('admNobody', 'Nobody is banned.') + '</span>'; return; }
-      const names = banNames();
-      for (const b of roomBan) {
-        const row = document.createElement('div'); row.className = 'brow';
-        const nm = document.createElement('span'); nm.style.flex = '1';
-        nm.textContent = (names[b.d] || nameForDev(b.d) || uiText('admUnnamed', 'unnamed')) + ' · ' + b.d;
-        const btn = document.createElement('button'); btn.textContent = uiText('admUnban', 'Unban');
-        btn.onclick = () => { admSigned('unban', { dev: b.d }).then((w) => { if (w) relaySendObj({ t: 'unban', dev: b.d, w }); }); };
-        row.appendChild(nm); row.appendChild(btn); box.appendChild(row);
-      }
-    }
     function showAdmModal() {
       const setup = document.getElementById('adm-setup'), panel = document.getElementById('adm-panel');
       const btn = document.getElementById('adm-enable');
@@ -18498,8 +18573,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (amAdmin) {
         setup.style.display = 'none'; panel.style.display = '';
         paintChatOptions();
-        document.getElementById('adm-hint').textContent = uiText('admHintOn', 'You are an admin of this room. Admins can lock the room with a password (the key to clear video), mute or blur someone for everyone, and ban devices. Anyone who knows the admin password can open Admin and sign in too.');
-        renderBanned();
+        document.getElementById('adm-hint').textContent = uiText('admHintOn', 'You are an admin of this room. Admins can lock the room with a password (the key to clear video), mute or blur someone for everyone, and ban people. Anyone who knows the admin password can open Admin and sign in too.');
       } else {
         setup.style.display = ''; panel.style.display = 'none';
         btn.textContent = uiText('admEnable', 'Sign in as admin');
@@ -18700,6 +18774,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             add('blur', blurred ? 'Unblur' : 'Blur');
             add('ban', 'Ban');
             row.appendChild(mods);
+          } else if (!BROADCAST && hasAdminRoom() && amAdmin && r.here && !r.me) {
+            // Most of a big room has no tile on the admin's screen: this list is where she can reach them.
+            row.style.flexWrap = 'wrap';
+            const mods = document.createElement('div');
+            mods.className = 'bc-mods';
+            const b = document.createElement('button');
+            b.type = 'button'; b.dataset.bcMod = 'ban'; b.dataset.pid = r.pid; b.textContent = uiText('admBan', 'Ban');
+            mods.appendChild(b); row.appendChild(mods);
           }
           list.appendChild(row);
         }
@@ -18716,10 +18798,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const act = b.dataset.bcMod;
       if (!id) return;
       if (act === 'ban') {
-        const dev = devOf[id] || '';
-        if (!dev) { setStatus('🛡 This person' + String.fromCharCode(39) + 's device is not known yet — try Ban again in a moment.'); return; }
-        rememberBanName(dev, (peers.get(id) || {}).name || rosterNames[id] || '');
-        admSigned('ban', { dev }).then((w) => { if (w) relaySendObj({ t: 'ban', dev, w }); });
+        pwBan(id);
         return;
       }
       if (act === 'stage') setMod(id, 'app', !(modOf(id).app && modOf(id).app.on));
@@ -20483,6 +20562,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // as the DC path; anything that needs a channel to answer (file
     // 'want'/'fc') is skipped by the null-dc guards in onDc.
     function onRemote(from, m) {
+      if (pwNoAny()) pwHeardNow(from);
       const p = peers.get(from);
       onDc(p || { id: from, dc: null }, null, m);
     }
@@ -20529,7 +20609,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // frames from now on are the peer's own word: re-announce so my
           // HELLO reaches it as a first-hand claim, not a hint (and greet
           // it — see dc.onopen)
-          try { const s = meshSeat(); if (s && s.hasCoord && s.state === 3) { s.announce(); if (s.greet) s.greet(p.id); } } catch (e) {}
         }).catch(() => {});
     }
     function wireDc(p, dc) {
@@ -20588,7 +20667,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // to the other, the row-mate's YIELDs went unbacked, and both held
         // 0/0.0 for good (chaos seed 6 #2 on 403c6f81). The healer's mesh
         // settles a claim on its own cell from here (the rival branch).
-        try { const s = meshSeat(); if (s && s.hasCoord && s.state === 3) { s.announce(); if (s.greet) s.greet(p.id); } } catch (e) {}
       };
       // D5: my channel to this peer died. On an ungraceful peer death (mobile
       // tab kill, OOM, crash) this lands within ~1-5s — first-hand evidence
@@ -20605,7 +20683,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
         m = meshDefrag(m, 'dc|' + p.id); if (!m) return;
         const take = (held) => rxm(() => net.open(roomE2E, m).then((inner) => {
-          if (inner && inner.k) { const dk = rxStats.dcKinds; const kk = String(inner.k).slice(0, 16); dk[kk] = (dk[kk] || 0) + 1; onDc(p, dc, inner); return; }
+          if (inner && inner.k) { const dk = rxStats.dcKinds; const kk = String(inner.k).slice(0, 16); dk[kk] = (dk[kk] || 0) + 1; if (pwNoAny()) { pwHeardNow(p.id); pwHeardNow(inner.from); } onDc(p, dc, inner); return; }
           if (!inner && !held && holdForRekey(take)) return; // sealed under the key my re-key is still deriving (rekeyHeld)
           return healStaleFrom(p.id, m, dc, p); // §LOCK: a previous-key frame is the staleness signal — see healStaleFrom
         }));
@@ -21053,7 +21131,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // channel, else one ttl-bounded unicast mesh step (fwdOnward).
         noteCrumb(m.from, p.id);
         if (m.m && (m.m.t === 'FIND' || m.m.t === 'WHOHOME')) noteCrumb(m.m.t === 'FIND' ? m.m.nc : m.m.from, p.id);
-        if (m.to === myId) { if (meshNode && m.m) meshNode.recvCtl(m.m, p.id); return; } // the envelope's origin is its sender's own claim (any member can write it): the frame is the delivering peer's, as a routed frame's last hop, and never `direct`
+        if (m.to === myId) { if (meshNode && m.m) meshNode.recvCtl(m.m, p.id, false, String(m.from || '')); return; } // never `direct`. The envelope's origin is its sender's own claim: mesh-wire takes it only with the origin's signature, else the frame is the delivering peer's, as a routed frame's last hop
         fwdOnward('fmesh', m, p.id);
       } else if (m.k === 'rreq') { // OFFER TURNS: the polite side asks
         if (p.pc && iInitiate(p.id)) giveTurn(p);
@@ -21099,7 +21177,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // In an admin room a password is never handed to the people inside:
         // they type it at the door (see 'pwreset'). Only the admin's order
         // to REMOVE the lock still travels this way — it gives away nothing.
-        if (hasAdminRoom() && String(m.pw || '') !== '') { pwLog('pwinfo-refused (admin room: a password is typed, never granted) ep=' + m.ep); return; }
+        // The one exception is a ban: the admin's statement names who must not hear it.
+        const grantNo = hasAdminRoom() && String(m.pw || '') !== '' ? pwNoOf(m) : null;
+        const grantMine = !!grantNo && pwToOf(m) === myId;   // admitted from the waiting room
+        if (grantNo && !grantNo.length && !grantMine) { pwLog('pwinfo-refused (admin room: a password is typed, never granted) ep=' + m.ep); return; }
         // EPOCH GUARD (§LOCK healing): a grant at or below my own generation
         // is a replay — dead on arrival. Nobody can roll a member backwards;
         // an ep-less grant is a legacy client's, treated as next-generation.
@@ -21114,10 +21195,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           setTimeout(() => { if (grantHoldUntil === until) releaseHeldGrant(true); }, Math.max(0, until - Date.now()) + 10);
           return;
         }
+        if (grantNo && grantNo.includes(myId)) { pwLog('pwinfo-refused (the statement bars me) ep=' + m.ep); const boot = pwBootOf(m); if (boot) onDc(p, null, boot); return; }   // a neighbour broke the rule: not taken
         const cleared = !m.pw && roomPw;
+        const oldKey = roomE2E;
         pwLog('pwinfo-adopt from=' + String(p.id || '?').slice(0, 6) + ' by=' + (m.by || '?') + ' ep=' + m.ep + ' myEp=' + pwEpoch + ' pwSame=' + (String(m.pw || '') === String(roomPw || '')));
         storePwEpoch(m.ep != null ? m.ep : pwEpoch + 1);
         retainedGrant = { k: 'pwinfo', pw: m.pw, by: m.by, w: m.w, ep: pwEpoch }; // retained VERBATIM — any member can heal a stale neighbour with the admin's own signature
+        if (grantMine) { retainedGrant = null; pwWaitProof = false; }
+        else if (grantNo) {
+          retainedGrant.no = grantNo; retainedGrant.wb = m.wb;
+          pwGrantOut(retainedGrant, oldKey, p.id);
+          pwBarOut(grantNo);
+          if (amAdmin) pwNoStore(grantNo);
+        }
         storePw(m.pw || '');
         // A GRANT ANSWERS THE DOOR CHALLENGE (2026-07-29). A member whose
         // churned socket re-knocked mid-rotation gets the R6 "This room is
@@ -21128,7 +21218,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // demanding a password the room already handed her. Gated on the
         // challenge having actually fired — an ordinary rotation must not
         // churn every member's socket.
-        const wasBlocked = pwBlocked;
+        const wasBlocked = pwBlocked || grantMine;   // admitted from the waiting room: the same re-entry as typing it
         // A SEATED page keeps its node. The challenge also fires for a seated
         // member who missed the change (mesh-wire: behind the room's key), and
         // a new node closes the old relay socket first: the relay announces
@@ -21153,7 +21243,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }).catch((err) => pwChainFailed(err, wasBlocked));
         const purged = cleared ? purgeAllFiles(false) : 0; // password gone → shared files go with it
         renderFiles();
-        setStatus(m.pw ? '🔒 Room password ' + (m.by ? 'set by ' + m.by : 'updated')
+        if (grantMine) { /* nothing to say: they are about to sit */ }
+        else if (grantNo) setStatus(uiText('pwBanHeard', '🔒 The admin removed someone and changed the room password. You stay in the meeting.'));
+        else setStatus(m.pw ? '🔒 Room password ' + (m.by ? 'set by ' + m.by : 'updated')
           : '🔓 Password removed' + (m.by ? ' by ' + m.by : '') + ' — the room is blurred again' + (purged ? ' and shared files were cleared' : ''));
         reactRoomState(); // the password is the key to clear video
       } else if (m.k === 'roffer') {
@@ -22310,6 +22402,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const relayJobs = new Map();    // target + '>' + requester -> { senders }   (as relayer)
     const relayRefusal = new Map(); // target -> { viaPid: refusedAt }
     const connsOf = new Map();      // pid -> [connected pids] (gossiped)
+    const natOf = new Map();        // pid -> its network's kind (natWord), from the same beat
     // claimantsOf: the reverse of connsOf (target -> peers that report a link
     // to it). doorPeers reads it per forwarded frame; a greeter's socket list
     // is thousands long in a join wave, so the forward map alone made every
@@ -22323,7 +22416,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function forgetConns(pid) {
       for (const t of (connsOf.get(pid) || [])) { const c = claimantsOf.get(t); if (c) { c.delete(pid); if (!c.size) claimantsOf.delete(t); } }
-      connsOf.delete(pid);
+      connsOf.delete(pid); natOf.delete(pid);
     }
     const MAX_RELAY_JOBS = 4;       // a phone volunteers only so much upload
     // Senders that carry OTHER people's media (relay jobs, composites, forwarded
@@ -22972,6 +23065,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let mosBeyondAt = 0; // last time beyondRow was RAW-true (teardown hysteresis)
     let sdEmptyAt = 0;   // since when a head's sdPack has been EMPTY (blank-tile grace)
     const sdnPacks = new Map(); // col -> packer: per-child DOWN ingredients (mix-minus)
+    const l14Packs = new Map(); // head -> packer: the down ingredient of a cut-off branch I serve (L14)
     // STAGE AUDIO folds AT THE EAR (mix-minus): the strip is video-only; every
     // device sums the per-stager feeds it holds, skipping its OWN — a stager
     // never hears their own voice come back.
@@ -24299,12 +24393,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     //   sd -> THE STADIUM (render + fan down)
     function mosResolve(key, meta, from) {
       const c = meshCoord(); if (!c) return null;
-      const iAmHead = c.i === 0;
+      const iAmHead = c.i === 0 || !!(meshSeat() && meshSeat().actHead); // L2.7: the heir stands in for a gone head
       if (key === 'sub') {
+        if (meta && meta.l14) return 'subu:' + String(meta.via || from).slice(0, 64); // L14: a cut-off branch's product over its uplink (or relayed by my row-mate)
         if (meta && meta.col != null) return iAmHead ? 'sub:' + meta.col : null;
-        return iAmHead ? 'sub:0' : 'subraw';
+        return iAmHead ? 'sub:' + c.i : 'subraw'; // my own down-child's product (a head is column 0)
       }
       if (key === 'x1') return iAmHead ? null : 'x1';
+      if (key === 'x2' && iAmHead && c.i !== 0) return meta && meta.row != null && meta.row !== c.r ? 'sdrow:' + meta.row : null; // L2.7: the heir standing in for a Section 1 head takes the other rows' products its column carries
       // x2 is per-origin-row now (W7): one carrier delivers several rows'
       // products through the same column, so the slots must not collide.
       // MY OWN ROW'S PRODUCT IS NEVER MINE TO CLAIM (2026-07-29, the sibling of
@@ -25359,6 +25455,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (sdPack) { sdPack.stop(); sdPack = null; }
       for (const pk of sdnPacks.values()) pk.stop();
       sdnPacks.clear();
+      for (const pk of l14Packs.values()) pk.stop();
+      l14Packs.clear();
       if (stripPack) { stripPack.stop(); stripPack = null; }
       if (stageEar) { stageEar.fold.clear(); stageEar.sids.clear(); }
       paintStadiumTile(null); paintStageStrip(null);
@@ -25408,7 +25506,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // strip here left the stage blank until the mesh caught up (or
         // forever, with no seat). Keep the slide.
         const localShare = !!(myStatus.scr && screenStream);
-        if (mosJobs.size || mosIn.size || mosStandby.size || prodPack || sdPack || sdnPacks.size || stripPack) stopMosaic();
+        if (mosJobs.size || mosIn.size || mosStandby.size || prodPack || sdPack || sdnPacks.size || l14Packs.size || stripPack) stopMosaic();
         else if (compOf.size && !localShare) { paintStadiumTile(null); paintStageStrip(null); }
         if (localShare) paintStageStrip(selfStageStream());
         return;
@@ -25416,6 +25514,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       claimMos();
       const C = SCALE.C, iAmHead = c.i === 0, wanted = new Set();
       const T = net.topo;
+      // L2.7: the heir of a row whose head is gone makes the row's Stadium product in its place; head geometry from the head's cell
+      const actHead = !iAmHead && !!(meshSeat() && meshSeat().actHead), hc = actHead ? { pc: c.pc, r: c.r, i: 0 } : c;
       // STADIUM overlay threshold: past ~STAD_CAP people every square is too
       // small for a burned name/frame — bake only the tapestry + a talking dot.
       // Driven by the gossiped room size, so every seat AND every up-tree
@@ -25594,13 +25694,29 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (f && f.meta && Array.isArray(f.meta.ids) && f.meta.ids.length === m.n) m.ids = f.meta.ids.slice();
         return m;
       };
-      if (iAmHead) {
+      // L14 (fast media, slow tidy): the cut-off branches that took me as their uplink. Their products ride into what I
+      // make ('subu:<head>'); each gets one down pack of everything I hold but itself, as 'sdn' (its outside).
+      const l14Heads = (() => { const sv = meshSeat(); return sv && beyondRow ? sv.l14Served() : []; })();
+      const l14Blocks = (pk, skip, ordOf) => {
+        let q = 0; for (const [mk, uf] of mosIn) { if (mk.indexOf('subu:') !== 0) continue; const h = mk.slice(5); if (h === skip || !l14Heads.includes(h)) { pk.delTile('u' + h); continue; } setBlock(pk, 'u' + h, ordOf(q++), uf); }
+      };
+      const l14Down = (fill, metaOf) => {
+        for (const [h, pk] of [...l14Packs]) if (!fill || !l14Heads.includes(h)) { pk.stop(); l14Packs.delete(h); }
+        if (!fill) return;
+        for (const h of l14Heads) {
+          let pk = l14Packs.get(h);
+          if (!pk) { pk = MM.createPacker({ shape: 'stad', fps: compFps(), ac: (ensureAc(), ac) }).start(); l14Packs.set(h, pk); }
+          fill(pk); l14Blocks(pk, h, (q) => 20 + C + q);
+          if (pk.count() > 0) { const jk = shipMos('sdn', h, pk.stream, metaOf(pk)); if (jk) wanted.add(jk); }
+        }
+      };
+      if (iAmHead || actHead) {
         // PRODUCT = my row's live faces + my row's sub-blocks, PACKED near-square
         // (no fixed C+1 slots — the tall-product blowup is gone).
         if (!prodPack) prodPack = MM.createPacker({ shape: 'grid', fps: compFps(), ac: (ensureAc(), ac) }).start();
         dbgRowFaces = []; // test observability: which pid the packer drew at each row seat
         for (let j = 0; j < C; j++) {
-          let pid0 = j === c.i ? myId : occPid({ pc: c.pc, r: c.r, i: j });
+          let pid0 = j === c.i ? myId : (actHead && j === 0 ? null : occPid({ pc: c.pc, r: c.r, i: j }));
           // A SEAT'S FACE BELONGS TO ITS SELF-REPORTED OWNER (2026-07-29: a
           // moved bot rendered TWICE in the stadium all session). occ gossip
           // never evicts (E2) and tlSweep can't kill an entry whose pid still
@@ -25622,6 +25738,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const sub = mosIn.get('sub:' + j);
           if (sub) setBlock(prodPack, 's' + j, 'b' + j, sub); else prodPack.delTile('s' + j);
         }
+        l14Blocks(prodPack, null, (i) => 'b' + (C + i));
         // STADIUM-FACES: a pack's meta names who sits in cell 0..n-1 as it
         // packed them (cellIds; absent while dense-packed), so a receiver cuts
         // each face out BY ID. Before, a receiver matched its own roster to
@@ -25633,8 +25750,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const prodMeta = () => packMeta(prodPack);
         if (c.pc !== 0 && beyondRow) {
           // ship my product UP (the up-seat relays it to ITS head)
-          const up = T.up(c); const upPid = up ? occPid(up) : null;
+          const up = T.up(hc); const upPid = up ? occPid(up) : null;
           const jk = shipMos('sub', upPid, prodPack.stream, prodMeta()); if (jk) wanted.add(jk);
+          { const sv = meshSeat(); if (sv && sv.l14Up && sv.l14Up !== upPid && sv.l14Cut) { const ju = shipMos('sub', sv.l14Up, prodPack.stream, Object.assign({ l14: 1 }, prodMeta())); if (ju) wanted.add(ju); } } // L14: fast media, the branch rides its uplink
         } else if (c.pc === 0 && beyondRow) { // Stadium forms whenever the room is MULTI-ROW (not just multi-section) — the Section channel is gone, so cross-row visibility relies entirely on this
           // SECTION-1 FINISH (W7 rook): my product goes DIRECT to every other
           // head over the head column — colMates of a head ARE the other heads
@@ -25645,9 +25763,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // receiving head multi-subscribes (primary + hot standby, S3). Then
           // PACK into THE STADIUM, fan it down my down-link + keep my row
           // current.
-          for (const hm of T.colMates(c)) {
+          for (const hm of T.colMates(hc)) {
             const jk0 = shipMos('sdrow:' + c.r, occPid(hm), prodPack.stream, Object.assign({ row: c.r }, prodMeta())); if (jk0) wanted.add(jk0);
           }
+          // L2.7 at Section 1: the heir has no pc to the other heads; its column-mates carry its product to their heads (x2 -> sdrow), as a mate carries its head's x1
+          if (actHead) for (const cm of T.colMates(c)) { const jx = shipMos('x2', occPid(cm), prodPack.stream, Object.assign({ row: c.r }, prodMeta())); if (jx) wanted.add(jx); }
           for (let j = 1; j < C; j++) {
             const mate = occPid({ pc: 0, r: c.r, i: j });
             const jk = shipMos('x1', mate, prodPack.stream, Object.assign({ row: c.r }, prodMeta())); if (jk) wanted.add(jk);
@@ -25679,6 +25799,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (!sdPack) sdPack = MM.createPacker({ shape: 'stad', fps: compFps(), ac: (ensureAc(), ac) }).start();
           setOutside(sdPack);
           for (let j = 0; j < C; j++) { const sub = mosIn.get('sub:' + j); if (sub) setBlock(sdPack, 's' + j, 20 + j, sub); else sdPack.delTile('s' + j); }
+          l14Blocks(sdPack, null, (i) => 20 + C + i);
           // An EMPTY view (fragmented mesh, nothing claimable beyond the row
           // yet — the live 175s-black-tile signature) paints NO tile rather
           // than an eternal 2×2 black one. A tile is never CREATED for an
@@ -25722,7 +25843,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (!pk) { pk = MM.createPacker({ shape: 'stad', fps: compFps(), ac: (ensureAc(), ac) }).start(); sdnPacks.set(i, pk); }
             setOutside(pk);
             for (let j = 0; j < C; j++) {
-              const fp0 = j === c.i ? myId : occPid({ pc: c.pc, r: c.r, i: j });
+              const fp0 = j === c.i ? myId : (actHead && j === 0 ? null : occPid({ pc: c.pc, r: c.r, i: j }));
               const fp = fp0 && stagers.includes(fp0) ? null : fp0;
               const sc = fp ? srcFor(fp) : null;
               if (sc && sc.el) pk.setTile('f' + j, 10 + j, sc.el, sc.stream, { n: 1, cols: 1, lbl: stadLbl(fp), fit: fitFor(fp), pid: fp });
@@ -25733,6 +25854,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               const sub = mosIn.get('sub:' + j);
               if (sub) setBlock(pk, 's' + j, 20 + j, sub); else pk.delTile('s' + j);
             }
+            l14Blocks(pk, null, (q) => 20 + C + q);
             const m = packMeta(pk);
             const jk4 = i === c.i ? shipMos('sdn', childPid, pk.stream, m)
               : shipMos('sdx', occPid({ pc: c.pc, r: c.r, i }), pk.stream, Object.assign({ col: i }, m));
@@ -25749,10 +25871,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               if (carrier) { const jk6 = shipMos('sdxc', carrier, pk.stream, Object.assign({ col: i }, m)); if (jk6) wanted.add(jk6); }
             }
           }
+          // L14: a cut-off head that dialled me gets its branch's outside from me, as my own child would: outside + my
+          // row's faces + every child block + the other branches I serve. Its own block is left out (mix-minus).
+          l14Down((pk) => {
+            setOutside(pk);
+            for (let j = 0; j < C; j++) { const fp0 = j === c.i ? myId : (actHead && j === 0 ? null : occPid({ pc: c.pc, r: c.r, i: j })); const fp = fp0 && stagers.includes(fp0) ? null : fp0; const sc = fp ? srcFor(fp) : null; if (sc && sc.el) pk.setTile('f' + j, 10 + j, sc.el, sc.stream, { n: 1, cols: 1, lbl: stadLbl(fp), fit: fitFor(fp), pid: fp }); else pk.delTile('f' + j); }
+            for (let j = 0; j < C; j++) { const sub = mosIn.get('sub:' + j); if (sub) setBlock(pk, 's' + j, 20 + j, sub); else pk.delTile('s' + j); }
+          }, packMeta);
         } else {
           if (sdPack) { sdPack.stop(); sdPack = null; }
           for (const pk of sdnPacks.values()) pk.stop();
           sdnPacks.clear();
+          l14Down(null);
           paintStadiumTile(null);
         }
       } else {
@@ -25769,6 +25899,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // to my head as sdrow:q. Meta {n, cols} is FORWARDED so the far end
         // can unpack faces.
         const headPid = occPid({ pc: c.pc, r: c.r, i: 0 });
+        for (const [mk, uf] of mosIn) { if (mk.indexOf('subu:') !== 0) continue; const ju = shipMos('sub', headPid, uf.stream, Object.assign({ l14: 1, via: mk.slice(5) }, blockMeta(uf)), mk); if (ju) wanted.add(ju); } // L14: a branch I serve, into my row's product
+        if (beyondRow) {
+          const sdmM = mosIn.get('sdm'), packMetaM = (pk) => ({ n: pk.count(), cols: pk.cols() });
+          l14Down((pk) => {
+            if (sdmM) setBlock(pk, 'o', 0, sdmM); else pk.delTile('o');
+            for (let j = 0; j < C; j++) { const fp0 = j === c.i ? myId : occPid({ pc: c.pc, r: c.r, i: j }); const fp = fp0 && stagers.includes(fp0) ? null : fp0; const sc = fp ? srcFor(fp) : null; if (sc && sc.el) pk.setTile('f' + j, 10 + j, sc.el, sc.stream, { n: 1, cols: 1, lbl: stadLbl(fp), fit: fitFor(fp), pid: fp }); else pk.delTile('f' + j); }
+          }, packMetaM);
+        } else l14Down(null);
         const subraw = mosIn.get('subraw');
         if (subraw) { const jk = shipMos('sub', headPid, subraw.stream, Object.assign({ col: c.i }, blockMeta(subraw)), 'subraw'); if (jk) wanted.add(jk); }
         const x1 = mosIn.get('x1');
@@ -25825,9 +25963,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // second path; the S1 flood dedups by streamId, so it never double-composites.
         const upTgt = iAmHead ? (T.up(c) ? occPid(T.up(c)) : null) : occPid({ pc: c.pc, r: c.r, i: 0 });
         const seatE2 = meshSeat();
-        const e2Up = seatE2 ? [seatE2.u2Id, seatE2.u3Id].filter(Boolean) : []; // L2.3, L2.6: I am my row's E2 source
-        const e2Fan = (seatE2 && seatE2.u2Id) ? T.rowMates(c).map((m) => occPid(m)).filter((t) => t && t !== myId) : [];
-        const e2Kids = seatE2 ? seatE2.u2Heirs() : [];
+        const e2Up = seatE2 ? [seatE2.u2Id, seatE2.u3Id, seatE2.l14Up].filter(Boolean) : []; // L2.3, L2.6: I am my row's E2 source; L14: my branch's uplink
+        const e2Fan = (seatE2 && (seatE2.u2Id || (seatE2.l14Up && !iAmHead))) ? T.rowMates(c).map((m) => occPid(m)).filter((t) => t && t !== myId) : []; // L14: a mate holds an uplink only as the first live mate of a headless row
+        const e2Kids = seatE2 ? seatE2.u2Heirs().concat(seatE2.l14Served()) : []; // the rows I back up (E2), the heads whose uplink I took (L14)
         // Same owner rule as the S1 flood: a stager already HAS its own face —
         // shipping it back is waste at best, and (before the mosResolve guard)
         // the echo that thrashed the whole lane.
@@ -25913,7 +26051,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (dnSt) { const jk = shipMos(key, dnP, dnSt, stgDownMeta(hm, dnSt, stream), key); if (jk) wanted.add(jk); }
           }
           // E2: the rows I back up hold a parked copy.
-          for (const t of (meshSeat() ? meshSeat().u2Heirs() : [])) {
+          for (const t of (meshSeat() ? meshSeat().u2Heirs().concat(meshSeat().l14Served()) : [])) {
             if (skip(t)) continue;
             const dnSt = stgDownShip(key, stream, !!(owner && sharingScreen(owner)), stgAudioMemo);
             if (dnSt) { const jk = shipMos(key, t, dnSt, stgDownMeta(hm, dnSt, stream), key); if (jk) wanted.add(jk); }
@@ -25971,7 +26109,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // the flooded stg feeds, so sideways sgs ships between S1 seats were
         // dead weight (receivers own stripPack and never paint them) — gone.
         const jgs = shipMos('sgs', occPid(T.down(c)), stripPack.stream, { n: stripPack.count(), cols: stripPack.cols(), ids: stripIds }); if (jgs) wanted.add(jgs);
-        for (const t of (meshSeat() ? meshSeat().u2Heirs() : [])) { const j2 = shipMos('sgs', t, stripPack.stream, { n: stripPack.count(), cols: stripPack.cols(), ids: stripIds }); if (j2) wanted.add(j2); } // E2
+        for (const t of (meshSeat() ? meshSeat().u2Heirs().concat(meshSeat().l14Served()) : [])) { const j2 = shipMos('sgs', t, stripPack.stream, { n: stripPack.count(), cols: stripPack.cols(), ids: stripIds }); if (j2) wanted.add(j2); } // E2
         }
       }
       // Every seat: render the received strip and fan it down (heads -> row-mates).
@@ -25992,8 +26130,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (iAmHead) for (let j = 1; j < C; j++) { const mate = occPid({ pc: c.pc, r: c.r, i: j }); if (mate === sgs.via) continue; const jk = shipMos('sgs', mate, sgs.stream, stripMeta(sgs)); if (jk) wanted.add(jk); }
         { // E2: the rows I back up, and my row if I am its source. Parked at the far end. Never back to my own source.
           const sv = meshSeat();
-          const fanS = (sv && sv.u2Id) ? T.rowMates(c).map((m) => occPid(m)).filter((t) => t && t !== myId) : [];
-          for (const t of (sv ? sv.u2Heirs() : []).concat(fanS)) { if (t === sgs.via) continue; const jk = shipMos('sgs', t, sgs.stream, stripMeta(sgs)); if (jk) wanted.add(jk); }
+          const fanS = (sv && (sv.u2Id || (sv.l14Up && !iAmHead))) ? T.rowMates(c).map((m) => occPid(m)).filter((t) => t && t !== myId) : [];
+          for (const t of (sv ? sv.u2Heirs().concat(sv.l14Served()) : []).concat(fanS)) { if (t === sgs.via) continue; const jk = shipMos('sgs', t, sgs.stream, stripMeta(sgs)); if (jk) wanted.add(jk); }
           const onE2 = sv && sv.u2Id && mosStandby.get('sgs') && mosStandby.get('sgs').via === sv.u2Id ? mosStandby.get('sgs') : null;
           if (onE2 && sgs.via !== sv.u2Id) { const h0 = fanS.find((t) => t === sgs.via); if (h0) { const jk = shipMos('sgs', h0, onE2.stream, stripMeta(onE2)); if (jk) wanted.add(jk); } }
         }
@@ -26059,6 +26197,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       };
       gatePack(prodPack); gatePack(sdPack); gatePack(stripPack);
       for (const pk of sdnPacks.values()) gatePack(pk);
+      for (const pk of l14Packs.values()) gatePack(pk);
     }
 
     // ============ THE STAGE DATA LANE (§11 — docs/media-plane.md, Channel St):
@@ -35339,6 +35478,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       stageIdleForTest: async () => { const std = []; for (const [k, v] of mosStandby) { if (!k.startsWith("stg:") || !v.stream) continue; const p = peers.get(v.via); if (!p || !p.pc) continue; let bytes = 0, pk = 0; for (const t of v.stream.getTracks()) { const st = await p.pc.getStats(t); st.forEach((x) => { if (x.type === "inbound-rtp") { bytes += x.bytesReceived || 0; pk += x.packetsReceived || 0; } }); } std.push({ k: k.slice(4, 12), via: String(v.via).slice(0, 8), key: v.key, kinds: v.stream.getTracks().map((t) => t.kind).join(), bytes, pk }); } const park = []; let parked = 0, hot = 0; for (const [jk, j] of mosJobs) { if (j.key.indexOf("stg:") !== 0) continue; if (j.active) { hot++; continue; } parked++; let bytes = 0, pk = 0; for (const sd of j.senders) { try { const st = await sd.getStats(); st.forEach((x) => { if (x.type === "outbound-rtp") { bytes += x.bytesSent || 0; pk += x.packetsSent || 0; } }); } catch (e) {} } park.push({ jk: jk.slice(0, 24), bytes, pk }); } let txAll = 0, rxAll = 0; for (const p of peers.values()) { if (!p.pc) continue; const st = await p.pc.getStats(); st.forEach((x) => { if (x.type === "transport") { txAll += x.bytesSent || 0; rxAll += x.bytesReceived || 0; } }); } return { std, park, parked, hot, txAll, rxAll, pcs: [...peers.values()].filter((q) => q.pc).length }; },
       stageFoForTest: () => (window.__stgFoLog || []).slice(),
       stgJobsForTest: () => [...mosJobs.entries()].filter(([, j]) => j.key.indexOf('stg:') === 0).map(([jk, j]) => { const p = peers.get(j.to); return { to: String(j.to).slice(0, 8), key: j.key.slice(0, 12), active: !!j.active, sid: String(j.streamId).slice(0, 8), sb: !!(j.meta && j.meta.sb), ao: !!(j.meta && j.meta.ao), kinds: j.trackList.map((t) => t ? t.kind + ':' + t.readyState + (t.enabled ? '' : ':off') : 'null').join(), sending: j.senders.map((sd) => sd.track ? sd.track.kind : 'null').join(), held: typeof outgoingHeld !== 'undefined' && !!outgoingHeld, pc: p && p.pc ? p.pc.connectionState : 'none' }; }),
+      stageEarStreamForTest: () => (stageEar && stageEar.el.srcObject ? { stream: stageEar.el.srcObject, muted: !!stageEar.el.muted, paused: !!stageEar.el.paused } : null),
+      stageRouteForTest: () => { const o = {}; for (const [k, v] of mosIn) { if (k.indexOf("stg:") !== 0 && k !== "sgs") continue; const d = mosStandby.get(k); o[k.slice(0, 8)] = String(v.via).slice(2, 8) + (d ? "|" + String(d.via).slice(2, 8) : ""); } return o; },
       stgHiccupForTest: (ms) => { const jobs = [...mosJobs.values()].filter((b) => b.key.indexOf("stg:") === 0 && b.active); for (const b of jobs) b.senders.forEach((sd, i) => { const t = b.trackList[i]; if (t && t.kind === "audio") { try { sd.replaceTrack(null); } catch (e) {} } }); setTimeout(() => { for (const b of jobs) b.senders.forEach((sd, i) => { const t = b.trackList[i]; if (t && t.kind === "audio") { try { sd.replaceTrack(t); } catch (e) {} } }); }, ms); return jobs.length; },
       stageEarLevel: (ms) => new Promise((resolve) => {
         if (!stageEar || !stageEar.el.srcObject || !ac) return resolve(-1);
@@ -35516,6 +35657,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       meshLinks: () => { const s = meshSeat(); return s ? Array.from(s.linkPeers()) : []; },
       adapterStats: () => (meshNode && meshNode.adapterStats ? meshNode.adapterStats() : null),
       // DEBUG lever (test/browsertests T3): vote the peer shown under `name` off, as a tap on its vote dot does (L27).
+      stageAudioForTest: async () => { let b = 0; for (const [k, v] of mosIn) { if (!k.startsWith("stg:") || !v.stream) continue; const tr = v.stream.getAudioTracks(); const p = peers.get(v.via); if (!p || !p.pc) continue; for (const t of tr) { const st = await p.pc.getStats(t); st.forEach((x) => { if (x.type === "inbound-rtp" && x.kind === "audio") b += x.packetsReceived || 0; }); } } return b; },
       voteOffForTest: (name) => { const pid = Object.keys(rosterNames).find((k) => rosterNames[k] === name); if (!pid || !devOf[pid]) return 'no-peer'; if (!myVoteoffs.has(devOf[pid])) toggleVote(pid); try { meshVoteBeat(); } catch (e) {} return 'voted ' + String(pid).slice(0, 6); },   // the seat world's tick/inbox/delay counters (env.js stats)
       // Greeter-list forensics (fragment founding): what onGreeters saw —
       // listLen, decryptable count, relay founded flag, action taken.
@@ -36293,7 +36435,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       gossipStats: () => (meshNode && meshNode.seat ? { dropped: meshNode.seat.gspDropped || 0, refused: meshNode.seat.gspRefused || 0, forged: meshNode.seat.gspForged || 0, inAll: meshNode.seat.gspInAll || 0, roomFlood: txStats.roomFlood || 0 } : null),
       forgeGossipForTest: (src, n) => { if (!meshNode || !meshNode._forgeGossipForTest) return 0; const ps = []; for (let i = 0; i < (n | 0); i++) ps.push({ a: 1, msg: { k: 'chat', m: { id: 'forged_' + i, by: 'Impostor', byId: src, at: Date.now(), text: 'forged line ' + i } } }); return meshNode._forgeGossipForTest(src, ps); }, // a hostile client speaking in someone else's name, with a valid signature of its own
       localStreamActive: () => !!localStream,
-      banList: () => roomBan,
+      pwBanForTest: (id) => pwBan(id),
       bannedOut: () => bannedOut,
       deviceId,
       devHash: () => myDevHash, // the ROOM-SALTED device tag actually sent to the relay (bans/votes key on this)
@@ -36412,6 +36554,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       tileSid: (id) => { const p = peers.get(id); const s = p && p.video.srcObject; return s ? s.id : null; },
       relayedVia: (id) => { const p = peers.get(id); return (p && p.relayed) || null; },
       relayMapSid: (id) => { const r = relayVia.get(id); return r ? r.streamId : null; },
+      // Friend-hop proof: what the carried stream of `id` really delivers on the friend's pc (frames decoded, audio samples), the tile's frames, and the stats a room needs.
+      relayFlowForTest: async (id) => {
+        const r = relayVia.get(id), vp = r && peers.get(r.via), p = peers.get(id); const out = { via: r ? String(r.via).slice(0, 8) : null, claimed: !!(r && r.stream), direct: !!(p && p.connected), tile: !!(p && p.video && r && r.stream && p.video.srcObject === r.stream), frames: 0, samples: 0 };
+        if (p && p.video && p.video.getVideoPlaybackQuality) out.painted = p.video.getVideoPlaybackQuality().totalVideoFrames;
+        if (!r || !r.stream || !vp || !vp.pc) return out;
+        const ids = new Set(r.stream.getTracks().map((t) => t.id)); const rep = await vp.pc.getStats();
+        rep.forEach((s) => { if (s.type === 'inbound-rtp' && ids.has(s.trackIdentifier)) { if (s.kind === 'video') out.frames += s.framesDecoded || 0; else out.samples += s.totalSamplesReceived || 0; } });
+        return out;
+      },
+      fhopStatsForTest: () => { const st = meshNode && window.__meshEnv ? window.__meshEnv.stats() : {}; return { sponsored: st.fhSponsored, routeDrop: st.fhRouteDrop, in: st.fhIn, fwdMesh: txStats.fwdMesh, hopFwd: txStats.hopFwd, relayJobs: relayJobs.size, relayVia: relayVia.size }; },
       awayOf: (id) => peerAway(id),
       // fault injection: simulate lost gossip / a dead transport
       // Read-only forensics for the sick-status-path family (the false
