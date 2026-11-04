@@ -413,11 +413,13 @@
     }
 
     // a verified frame off viaPeer's dc (A3 decodes and checks signatures); dir: the sender's id directory
-    function frame(m, viaPeer, dir) {
+    // direct: run.html's word that the frame came off viaPeer's own dc after §DCAUTH. `from` and `lk` are the fabric's, never the frame's.
+    function frame(m, viaPeer, dir, direct) {
       if (dead || !m) return;
       const x = learnPeer(viaPeer); if (x < 0) { drop('frame-nopeer'); return; }
       learnDir(dir);
-      if (pcw.frame && pcw.frame(x, m)) return;   // a pcbye, or a frame lost to a close at my end
+      m.lk = -1; m.lkEp = 0;
+      if (pcw.frame && pcw.frame(x, m, direct === true)) return;   // a pcbye, or a frame lost to a close at my end
       if (!m.t || m.t === 'pcbye') return;
       m.to = me; m.from = x;
       inboxPush(m);

@@ -480,17 +480,17 @@
     // WAITING ROOM (relay-admit.js). The page says whether this knocker is still held; a thrown hold fails
     // closed. Only a knocker's ask is withheld: a seat already in my view is no knocker.
     const heldAsks = new Map();   // peer -> its last withheld WHOHOME
-    function doorBlocks(f, via, dir) {
+    function doorBlocks(f, via, dir, direct) {
       if (typeof opts.doorHeld !== 'function' || !raw) return false;
       if (Array.from(raw.occ.values()).includes(f.from)) return false;
       const who = layer.ids.pid(f.from) || (dir && dir[f.from]) || (f.via < 0 ? via : '');
       let held = true; try { held = !!opts.doorHeld(String(who || '')); } catch (e) {}
-      if (held && who) { heldAsks.set(String(who), [f, via, dir]); if (heldAsks.size > 64) heldAsks.delete(heldAsks.keys().next().value); }
+      if (held && who) { heldAsks.set(String(who), [f, via, dir, direct]); if (heldAsks.size > 64) heldAsks.delete(heldAsks.keys().next().value); }
       return held;
     }
     // The host's OK answers the held knock now, not at the knocker's next retry (run.html meetWait.admit).
     function answerHeld(list) {
-      for (const p of list || []) { const a = heldAsks.get(String(p)); if (!a || stopped || !raw) continue; penv.frame(Object.assign({}, a[0]), String(a[1]), dirOf(a[2])); }
+      for (const p of list || []) { const a = heldAsks.get(String(p)); if (!a || stopped || !raw) continue; penv.frame(Object.assign({}, a[0]), String(a[1]), dirOf(a[2]), a[3]); }
     }
     // A PAGE GONE, TAB CLOSED OR RELOADED (L3.11): no browser says which at unload, so the leaver sends both words. The reload
     // mark holds its cell; its plain goodbye (`rh`, outside the signature) waits here RELOAD_HOLD_MS for it to come back. Any
@@ -508,8 +508,8 @@
       }, RELOAD_HOLD_MS));
     }
     // A reload mark with no plain goodbye beside it (a link whose channel was not open yet carried the mark by another way): the verified mark starts the same hold.
-    function markBye(f, via, dir) {
-      const k = String(layer.ids.pid(f.id) || via); byeMark.set(k, () => { f.rel = false; penv.frame(f, String(via), dir); });
+    function markBye(f, via, dir, direct) {
+      const k = String(layer.ids.pid(f.id) || via); byeMark.set(k, () => { f.rel = false; penv.frame(f, String(via), dir, direct); });
       if (!byeHeld.has(k)) armBye(k, f.id, () => {});
     }
     function holdBye(m, f, via, direct) {
@@ -553,10 +553,10 @@
             if (claim !== -1 && !why && opts.trace) { try { opts.trace('{"t":' + (env.TICK | 0) + ',"s":' + layer.ids.nid(peer) + ',"e":"SIG-FAIL","c":null,"d":"mt=' + String(f.t).replace(/[^A-Z0-9_]/g, '') + ' claim=' + claim + ' via=' + layer.ids.nid(String(via)) + '"}'); } catch (e) {} }   // DEBUG trace sink only (T8)
           }
           if (!ok && f.t === 'RECLAIM') return;   // no proof, no reclaim: the seat never hears it
-          if (f.t === 'WHOHOME' && doorBlocks(f, via, m.dir)) return;   // waiting room: no HOME, no roster
+          if (f.t === 'WHOHOME' && doorBlocks(f, via, m.dir, dir)) return;   // waiting room: no HOME, no roster
           if (ok && dir && m.pd) layer.sideIn(String(via), f, m.pd);
-          if (ok && f.t === 'LEAVE' && f.rel && f.bye && !f.mvd) markBye(msgM.clone(relayForm(msgM, f)), via, dirOf(m.dir));
-          penv.frame(ok ? relayForm(msgM, f) : f, String(via), dirOf(m.dir));
+          if (ok && f.t === 'LEAVE' && f.rel && f.bye && !f.mvd) markBye(msgM.clone(relayForm(msgM, f)), via, dirOf(m.dir), dir);
+          penv.frame(ok ? relayForm(msgM, f) : f, String(via), dirOf(m.dir), dir);
         };
         if (claim === -1) { verifyChain(() => Promise.resolve().then(() => done(true))); return; }
         if (claim === NOSIGNER) { verifyChain(() => Promise.resolve().then(() => done(false))); return; }

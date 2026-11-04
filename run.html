@@ -21214,7 +21214,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // channel, else one ttl-bounded unicast mesh step (fwdOnward).
         noteCrumb(m.from, p.id);
         if (m.m && (m.m.t === 'FIND' || m.m.t === 'WHOHOME')) noteCrumb(m.m.t === 'FIND' ? m.m.nc : m.m.from, p.id);
-        if (m.to === myId) { if (meshNode && m.m) meshNode.recvCtl(m.m, m.from); return; } // the envelope's origin is its sender's own claim: never `direct` (any member can write it)
+        if (m.to === myId) { if (meshNode && m.m) meshNode.recvCtl(m.m, p.id); return; } // the envelope's origin is its sender's own claim (any member can write it): the frame is the delivering peer's, as a routed frame's last hop, and never `direct`
         fwdOnward('fmesh', m, p.id);
       } else if (m.k === 'rreq') { // OFFER TURNS: the polite side asks
         if (p.pc && iInitiate(p.id)) giveTurn(p);
