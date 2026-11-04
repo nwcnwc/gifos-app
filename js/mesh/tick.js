@@ -200,6 +200,7 @@
     // tick steps of a Section-1 seat (this.coord.pc==0)
     tickSection1() {
       const TICK = this.TICK, id = this.id;
+      this.l4Tick(); if (!this.hasCoord) { this.f.wake(id); return; }   // L4.3
       if (this.anyRookLive(this.backAt >= 0 ? this.backAt : -1)) { this.rookSeenAt = TICK; this.rookEver = true; }   // fragment detector
       if (this.rivalId >= 0) this.loneAsk();
       if (this.movedClaimId >= 0) {
@@ -388,7 +389,6 @@
               if (w) { const wk = ckey(w); const wx = this.occGet(wk); const wb = this.byeAt.get(wk); const em = this.l13EmptyAt.get(wk); const wGone = wb !== undefined && TICK - wb <= K.LEASE_T && wx < 0; const wFresh = em !== undefined && TICK - em <= 16; known = (wx >= 0 && this.firstHandLive(wk)) || (wGone && (wFresh || oc.i === 0 || TICK - wb >= 24)); }
               const ob = this.byeAt.get(ok); if (!known && ob !== undefined && TICK - ob < 24) { sent = true; this.healTry.set(ok, TICK - 33); }
             }   // L13.4
-            if (!sent && this.l13('L13.7') && this.onStageOrTalking()) { sent = true; this.healTry.set(ok, TICK - 33); }   // L13.7
             if (!sent && this.l13('L13.5') && oc.i !== 0 && !this.hasChildren()) {
               const rc0 = cell(oc.pc, oc.r, 0); const rk = ckey(rc0); const rb = this.byeAt.get(rk); const ch = this.childOf.get(rk); const em = this.l13EmptyAt.get(rk);
               const rowGone = this.occGet(rk) < 0 && rb !== undefined && TICK - rb <= K.LEASE_T && (ch === undefined || ch < 0) && em !== undefined && TICK - em <= 16;

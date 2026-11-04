@@ -25,7 +25,7 @@ const NCASES = +opt('--cases', 400), SEED = +opt('--seed', 1);
 
 // ---- the stubs of what other units own ------------------------------------------------------------------------
 const stubbed = new Set();
-for (const f of ['liveElsewhere', 'translostConfirmed', 'routeToProbe', 'requeue', 'islandHeirGone', 'l920Note', 'ownedLinkCell', 'l920Deaf', 'onStageOrTalking', 'l64Keep', 'l4Busy', 'take', 'l919Rollback', 'announce', 'otherRing', 'l33WordDenied', 'l33WordRegrant', 'l33WordMine', 'phoneHome', 'hearRook', 'ringName', 'islandSeen', 'mergeCalc', 'digForget', 'rootFold', 'entNote', 'l16AskOne', 'l845Held', 'l828RingOf', 'farStampNeed', 'farStamp', 'onStageOrTalking', 'l828RingOf']) {
+for (const f of ['liveElsewhere', 'translostConfirmed', 'routeToProbe', 'requeue', 'islandHeirGone', 'l920Note', 'ownedLinkCell', 'l920Deaf', 'l4Busy', 'take', 'l919Rollback', 'announce', 'otherRing', 'l33WordDenied', 'l33WordRegrant', 'l33WordMine', 'phoneHome', 'hearRook', 'ringName', 'islandSeen', 'mergeCalc', 'digForget', 'rootFold', 'entNote', 'l16AskOne', 'l845Held', 'l828RingOf', 'farStampNeed', 'farStamp', 'onStageOrTalking', 'l828RingOf']) {
   if (f in Seat.prototype) continue; stubbed.add(f);
   Seat.unit('smoke stub ' + f, { [f](...a) { this.w.smoke.log.push('STUB ' + f); return this.w.smoke.stubAns(f, a); } });
 }
@@ -55,7 +55,7 @@ function mkWorld(tick, rng, log) {
     }
   }
   w.f = f;
-  w.smoke = { log, stubAns: (name) => (name === 'ownedLinkCell' ? rng.next() < 0.7 : (name === 'onStageOrTalking' || name === 'l64Keep' || name === 'l4Busy' || name === 'otherRing' || name === 'l33WordRegrant') ? rng.next() < 0.1 : name === 'l33WordDenied' || name === 'requeue' ? undefined : (name === 'ringName' ? 0 : (name === 'l845Held' ? false : rng.next() < 0.3))) };
+  w.smoke = { log, stubAns: (name) => (name === 'ownedLinkCell' ? rng.next() < 0.7 : (name === 'l4Busy' || name === 'otherRing' || name === 'l33WordRegrant') ? rng.next() < 0.1 : name === 'l33WordDenied' || name === 'requeue' ? undefined : (name === 'ringName' ? 0 : (name === 'l845Held' ? false : rng.next() < 0.3))) };
   w.trace = (ev, seat, cell, detail) => log.push('T ' + ev + ' ' + seat + ' ' + (cell ? ckey(cell) : '-') + ' ' + detail);
   return w;
 }

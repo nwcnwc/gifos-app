@@ -1010,7 +1010,7 @@ function createOps(fab, opts) {
     const view = (q) => seats[q].dRoot().talk.map((e) => e.id);
     const eq = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
     const agree = (T) => { let ex = 0, obs = 0; for (let q = 0; q < lv.nextId; q++) if (alive[q] && seats[q].state === 3 && seats[q].dRoot().at >= 0) { obs++; if (eq(view(q), T)) ex++; } return { ex, obs }; };
-    if (op === 'stageset') { const T = truth(); const { ex, obs } = agree(T); P('STAGESET truth=%s obs=%d exact=%d stageUp=%lld tick=%lld\n', idsStr(T), obs, ex, lv.STAGEUP, TICK()); }
+    if (op === 'stageset') { const T = truth(); const { ex, obs } = agree(T); P('STAGESET truth=%s obs=%d exact=%d tick=%lld\n', idsStr(T), obs, ex, TICK()); }
     else if (op === 'stagewait') {   // stagewait <cap> | stagewait auto <extra>: auto = depth x 8 + 16 + extra
       let dep = 0; for (let q = 0; q < lv.nextId; q++) if (alive[q] && seats[q].state === 3 && seats[q].hasCoord) dep = Math.max(dep, 2 * pcDepth(seats[q].coord.pc) + 2);
       const au = tk.length > 1 && tk[1] === 'auto'; const cap = au ? (dep * 6 + 8) + (tk.length > 2 ? atoll(tk[2]) : 0) : (tk.length > 1 ? atoll(tk[1]) : 400); const start = TICK(); let ok = false, obs = 0, ex = 0, T = [];
@@ -1035,7 +1035,7 @@ function createOps(fab, opts) {
         }
         first = false; fab.doTick(); w.TICK++;
       }
-      P('STAGERUN ticks=%lld truthFlicker=%lld obsFlicker=%lld stageUp=%lld\n', n, tf, of, lv.STAGEUP);
+      P('STAGERUN ticks=%lld truthFlicker=%lld obsFlicker=%lld\n', n, tf, of);
     }
   };
   // C++: mesh.cpp:runOp (seatdump)
