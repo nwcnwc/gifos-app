@@ -1,3 +1,8 @@
+// RETIRED 2026-11-04 (not run by the unit sweep, which reads test/unit/*.js only).
+// It drove the old mesh's harness (test/mesh/mesh-harness.js, js/mesh.js), both gone with
+// the old mesh. The new mesh has no per-target `ab` abstain fold: a vote-off abstain is
+// the seat's own statement (kabs/kall, js/mesh/seat.js) tallied by kickTally, and is held
+// by the sim, the relay vote-off tests and the page's meshVoteBeat. Kept for reference only.
 // vote-abstain-fold.js — ABSTAIN IN THE FOLDED (PAST ONE SECTION) TALLY.
 //
 // Past C² people the stage tallies are the room fold's (js/mesh.js rollup):
