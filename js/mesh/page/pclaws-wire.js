@@ -153,6 +153,13 @@
       }
     }
     const namesOwned = (a, b) => { const s = mySeat(); return !!s && s.hasCoord && !!s.linkRole(b, E.LR_OWNED); };
+    // C++: mesh_fhop.inc:fhopSchedule   [the tail: a sponsored frame's dial side effects, without queueing it]
+    function fhDialBehind(to, m, names, outside) {
+      if (mySeated()) { lv.L16_DEFER = false; const r = pc.l16Refuse(me, to, m.t); lv.L16_DEFER = false; if (r) return; }
+      const L = linkGet(me, to);
+      if (L.state === LK_NONE && (names || outside)) startDial(me, to, L);
+      else if (L.state === LK_CLOSED && L.view[mine(to)] === LK_CLOSED && !names && T() - L.askAt >= K.LINK_ASK_GAP) { L.askAt = T(); startDial(me, to, L); }
+    }
     function deferDoor(from, to, m, L) {
       m.from = from; m.to = to; if (L.q.length < K.LINK_QCAP) L.q.push(m);
       if (!S.DOOR_PEND.some((p) => p.b === to)) S.DOOR_PEND.push({ a: from, b: to, at: T() });
@@ -217,11 +224,14 @@
       linkFind, linkGet, lEnsure, startDial, linkDeliver, linkSchedule, closeBoth, closeFrom, downAt,
       pathOk: () => true, ldraw: (lo) => lo,
     };
+    // linkWhy's friend-hop reason reads FH[me]: my relay roles, now (the ids are too wide for an array: only my own slot)
+    const FH = { get length() { return me + 1; } };
+    Object.defineProperty(FH, me, { get: () => o.fh.roles() });
     const P = {
       w, lv, seats, alive, isFrozen: () => false, radioOff: () => false, trace,
       busPush: (due, m) => busPush(m), schedL10, wireTx: () => {}, pairKey, grpReach: () => true,
       l392Contest: (a, b, mt, ck) => (o.l392Contest ? o.l392Contest(a, b, mt, ck) : false), relayMeter: () => {},
-      fhopActive: () => false, FH: [], fhopFriendFor: () => false,
+      fhopActive: () => !!o.fh, FH, fhopFriendFor: (a, b) => !!o.fh && a === me && o.fh.friendFor(a, b),
       phys, S, LINKS: new Map(), LINKPEERS,
     };
     // a frame the laws post to the bus: to me, it is a frame for my seat; to x, it rides my dc to x
@@ -508,6 +518,7 @@
     });
     delete fns.fabricNoSock;   // A1: the relay's bounce
     return {
+      fhDcRaw: (x) => { const L = LINKS.get(x); return !!L && L.view[mine(x)] === LK_OPEN; }, fhState: (x) => { const L = LINKS.get(x); return L ? L.state : LK_NONE; }, fhDialBehind,
       fns, lv, send: (x, m) => linkSchedule(me, x, m), tick, mark, offer, answered, opened, frame, lost,
       byeIn: (x, why) => byeIn(x, BYE.includes(why) ? why : 'call'), dialFailed, refused, leaveAll, pageClosed,
       busyFrom: (x) => refused(x, { busy: 1 }),
