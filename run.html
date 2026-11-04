@@ -11101,7 +11101,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const [pid, p] of peers) {
         if (rosterIds.includes(pid)) { n++; continue; }
         const heard = Math.max(p.lastHeard || 0, p.meshRxAt || 0);
-        if (p.connected && now - heard < 30000) n++;
+        if (p.connected && now - heard < 30000 && !seatStranger(p)) n++;
       }
       return n;
     }
@@ -14043,7 +14043,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // persistence gate for the rebuild-on-offer path (transients recover
         // via ICE restart and must never trigger a teardown)
         if (pc.connectionState === 'failed' || pc.connectionState === 'closed') { if (!p.deadSince) p.deadSince = Date.now(); }
-        else if (p.connected) { p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; restoreDoorTile(p); try { updateTile(p.id); } catch (e) {} }
+        else if (p.connected) { p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; if (!seatStranger(p)) restoreDoorTile(p); try { updateTile(p.id); } catch (e) {} }
         updateStatus();
         if (p.connected) { p.altPath = false; p.tlAt = 0; adapt(); } // rotation ends when the pair lands; D5 edge re-arms
         // D5: 'closed' out of nowhere (we didn't rebuild it and the peer is
@@ -14069,6 +14069,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       doorOffGrid.add(p.id);
       if (p.tile && p.tile.parentNode) p.tile.remove();
     }
+    // Seated, a pair my seat neither links nor names is no one in this room yet: a door, or a lone seat greeting me. An open channel alone is no face and no count.
+    function seatStranger(p) { const s = meshSeat(); return !!(s && s.hasCoord && s.state === 3 && !p.headless && !linkTo(p.id) && !meshKnows(p.id)); }
     function restoreDoorTile(p) {
       if (!p || !doorOffGrid.has(p.id)) return;
       doorOffGrid.delete(p.id);
@@ -15879,6 +15881,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       pwLog('pwreset-boot from=' + String((p && p.id) || '?').slice(0, 6) + ' ep=' + m.ep + ' myEp=' + pwEpoch);
       if (typeof clog === 'function') clog('pw-boot ep=' + m.ep + ' (admin changed the password)');
       storePwEpoch(m.ep);
+      pwLeaveForDoor();
+    }
+    function pwLeaveForDoor() {
       heldGrant = null; grantHoldUntil = 0; retainedGrant = null;
       storePw('');
       pwBlocked = true;
@@ -16871,7 +16876,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // is provably wrong, so it is forgotten instead of trapping the next
         // visit too. Bounded at three knocks, and only a device that REMEMBERS
         // a password ever pays for more than one.
-        onLocked: () => {
+        onLocked: (door) => {
+          const ms = meshSeat(), seated = !!(ms && ms.hasCoord && ms.state === 3);
+          // A seat moves on no door blob: anyone can register one. Only the door's own refusal is the password change.
+          if (seated && !door) { pwLog('R6 from door blobs, seated: stays seated'); pwBlocked = true; showPwModal(true, pwChangedWhy()); return; }
+          // An admin room's change that never reached me, and the door now refuses me: leave and re-enter. Entry asks for the password.
+          if (seated && hasAdminRoom() && !(admKey || amAdmin)) { pwLog('door refused a seated guest: leaving for the door'); pwLeaveForDoor(); return; }
           if (pwProbe === 'probing' && pwHeld) {
             pwLog('open-key probe refused at the door → the room IS locked; restoring the remembered password');
             pwProbe = 'restored'; roomPw = pwHeld; pwHeld = ''; pwFromStore = false; touchPw();
@@ -17579,7 +17589,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // media path for a while → say so on the tile instead of silent black.
         // A peer who merely STEPPED AWAY (phone locked, other app) is not a
         // firewall problem — their tile says away, never 'firewall'.
-        if (p.connected) { p.downSince = 0; restoreDoorTile(p); if (p.noRoute) { p.noRoute = false; updateTile(pid); } }
+        if (p.connected) { p.downSince = 0; if (!seatStranger(p)) restoreDoorTile(p); if (p.noRoute) { p.noRoute = false; updateTile(pid); } }
         else if (!p.absentSince) {
           if (!p.downSince) p.downSince = now;
           // A pair that never once connected is unreachable, not away (see
@@ -35509,7 +35519,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // anti-entropy fills the rest. NOT product surface: pure diagnostics.
       forceSeat: (pc, r, i, occSeed) => {
         if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
-        const seat = meshNode && meshNode.seat; if (!seat) return { err: 'no seat yet' };
+        const seat = meshNode && meshNode.raw; if (!seat) return { err: 'no seat yet' };   // the ported Seat: the page's view has no doMove
         const T = net.topo, target = { pc: +pc, r: +r, i: +i };
         // occSeed ({'pc/r.i': fullPeerId, …}) teaches this seat the room so the
         // dial at the target addresses real neighbours. MUST travel as `nbrs`
@@ -35522,14 +35532,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (occSeed) for (const k of Object.keys(occSeed)) {
           const mm = /^(\d+)\/(\d+)\.(\d+)$/.exec(k); if (!mm) continue;
           const key = T.ckey({ pc: +mm[1], r: +mm[2], i: +mm[3] });
-          if (occSeed[k] && occSeed[k] !== seat.id) nbrs.push({ k: key, v: occSeed[k] });
+          const nv = occSeed[k] ? meshNode.nidOf(occSeed[k]) : -1;
+          if (nv >= 0 && nv !== seat.id) nbrs.push({ k: key, v: nv });
         }
         // The teleport rides the SAME atomic path as every heal move (law T):
         // dual-hold doMove — take the target while still holding the old seat,
         // vacate with LEAVE(mvd)+tombstone on confirm, roll back if contradicted.
         try {
-          if (seat.hasCoord) seat.doMove(target, null, nbrs);
-          else seat.take(target, null, nbrs);
+          if (seat.hasCoord) seat.doMove(target, -1, nbrs);
+          else seat.take(target, -1, nbrs);
         } catch (e) { return { err: String(e).slice(0, 80) }; }
         try { renderFromOcc(); } catch (e) {}
         return { seated: target.pc + '/' + target.r + '.' + target.i, seeded: nbrs.length, transit: !!seat.moving };
