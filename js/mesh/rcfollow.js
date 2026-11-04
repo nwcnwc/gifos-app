@@ -37,9 +37,6 @@
       mine(this.rootDig); mine(this.rootDec);
     },
 
-    // C++: mesh_rcfollow.inc:Seat::l64Keep
-    l64Keep(hole) { return this.hasCoord && pcDepth(hole.pc) < pcDepth(this.coord.pc) && this.onStageOrTalking(); },
-
     // C++: mesh_rcfollow.inc:Seat::l920Note
     l920Note() {
       if (!this.hasCoord) return;

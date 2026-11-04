@@ -60,7 +60,7 @@
     L29_ASK_T: 8,             // L29.1: a seat that has shed both classes this long asks its row head to move it to a cell that carries less (one beat)
     L29_BEAT: 16,             // L29.3: a light seat repeats its word to its head this often (two beats); the head forgets the word after three of these
     L29_BUD_D: 60,            // L29.1: a desktop's media budget in load units (a hot copy to one seat costs L29_HOT, a parked copy L29_PARK): the device can carry this much and no more
-    L29_BUD_M: 40,            // L29.1: a mobile's media budget in load units (two thirds of a desktop's): it carries any cell whole with its tenth of headroom, a Section-1 cell (own camera to 8 rook peers, their flood, a down feed, a parked copy: 35-36) included
+    L29_BUD_M: 40,            // L29.1: a mobile's media budget in load units (two thirds of a desktop's): it carries any cell whole with its tenth of headroom, a Section-1 cell (own camera to 8 rook peers, their flood, a down feed, a parked copy: 35-36) included, but for a full Section-1 head: that one sheds to 33 and asks to swap
     L29_CALM: 16,             // L29.1: ...for this long (two beats); and a seat that moved for load is light again only after twice this long at its full budget
     L29_HOT: 2,               // L29.1: the load of one hot copy to one seat: a seat's own camera to a receiver costs this; a forward costs one for its high-priority part (the stage) and one for its low-priority part (the stadium, the gallery mix)
     L29_PARK: 1,              // L29.1: the load of one parked copy (a backup held ready); a parked copy woken by its receiver costs L29_HOT
@@ -82,6 +82,8 @@
     L31_ACK_WAIT: 8,          // L31.4: a small room's direct placement waits this long (4 s, two dials) for the assent of the cell's designated admitter; without it the newcomer takes the parent's path, so a silently dead admitter keeps its ring hold
     L31_COMMIT: 2,            // L31.4: a direct placement in a small room is a proposal for this long (1 s: a record crosses Section 1 in at most two hops) before it commits, so two greeters that picked one free cell see each other first
     L31_REC_HOLD: 20,         // L31.4: a rook seat that accepted a greeter's placement record for a free cell holds that cell for its seeker this long (10 s, past the slowest mobile dial) against any later record, so the earlier placement stands
+    L4_ENTRY_N: 2,            // L4.6: this many different seekers on my FINDs inside L4_ENTRY_T read as a mass entry
+    L4_ENTRY_T: 16,           // L4.6: the window of the mass-entry sense, and so how long it outlasts the last seeker
     L4_HOPS: 5,               // L4.2: tier and NAT hops a FIND takes (to a row-mate's child row) looking for a cell that suits its seeker before it takes the one in hand
     L4_LEAD: 10,              // L4.3: the head sets the exchange tick this far ahead, past the pair's greeting round trip (a dial of up to 10 ticks)
     L4_PERIOD: 16,            // L4.3: min ticks from one tier swap of a row to the next order for it

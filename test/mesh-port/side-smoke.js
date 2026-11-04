@@ -59,7 +59,7 @@ const SPECS = [
   ['l2512Tell', (s) => [mate(s)]], ['l2512Heard', (s) => [mk('CHALLENGE', { from: mate(s), ck: cell(s) })]], ['l2512Rook', (s) => [mate(s)]], ['l2512Decide', () => [true]], ['l2512TellHeard', (s) => [mate(s)]],
   ['l2512Witness', () => []], ['l2513Asked', (s) => [mk('CHALLENGE', { asker: mate(s), ck: cell(s) })]], ['l2513Order', (s) => [mk('CHALLENGE', { id: mate(s), pp: 3, ppAt: 4, ppL: 5, ck: cell(s) })]],
   ['l2514Drop', (s) => [mk('FINDLEAF', { from: mate(s), hole: s.coord })]], ['l2513Later', (s) => [mk('CHALLENGE', { id: mate(s), pp: 3, ppAt: 4, ppL: 5 })]], ['l2513Decide', () => [true]],
-  ['l191Loop', (s) => [mk('ROUTE', { tag: 1, asker: mate(s), target: s.coord }), 2]], ['l919Rollback', () => []], ['l64Keep', (s) => [s.coord]], ['l920Note', () => []], ['l920Deaf', () => [0]],
+  ['l191Loop', (s) => [mk('ROUTE', { tag: 1, asker: mate(s), target: s.coord }), 2]], ['l919Rollback', () => []], ['l920Note', () => []], ['l920Deaf', () => [0]],
   ['linkRole', (s) => [mate(s), 31]], ['linkPeers', () => [[], 31]], ['keepHeld', (s) => [mate(s)]], ['keepAdd', (s) => [mate(s), 20]],
   ['lgRecvCells', () => []], ['lgIsWit', (s) => [mate(s)]], ['lgLightSeat', (s) => [mate(s)]], ['lgHeadPick', (s) => [[s.id, 5, 6, -1, -1], [0, 0, 1, -1, -1], 1]],
   ['l24Take', (s) => [mk('FIND', { from: mate(s), nc: mate(s), fsig: true })]], ['l26Check', (s) => [mk('FINDLEAF', { from: mate(s), hole: s.coord })]],
