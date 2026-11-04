@@ -12766,20 +12766,31 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { pc = makePc(); } catch (e) { resolve('unknown'); return; }
         if (!pc) { resolve('unknown'); return; }
         let done = false;
-        const finish = (v) => { if (done) return; done = true; clearTimeout(timer); try { pc.close(); } catch (e) {} resolve(v); };
+        const finish = (v) => { if (done) return; done = true; clearTimeout(timer); clearTimeout(settle); try { pc.close(); } catch (e) {} resolve(v); };
         const timer = setTimeout(() => finish('blocked'), timeoutMs);
+        // Two STUN servers map the same local socket: one public port for both is an open (cone) NAT, two ports is a
+        // strict one (endpoint-dependent mapping), which pairs badly with another strict seat. A short wait after the
+        // first reflexive candidate lets the second server's answer arrive.
+        const maps = new Map(); let settle = null;
+        const verdict = () => { for (const ports of maps.values()) if (ports.size > 1) return 'strict'; return 'ok'; };
         pc.onicecandidate = (ev) => {
           const c = ev && ev.candidate;
-          if (!c) { finish('blocked'); return; } // end of candidates, none reflexive
-          if (c.type === 'srflx' || / typ srflx(?: |$)/.test(String(c.candidate || ''))) finish('ok');
+          if (!c) { finish(maps.size ? verdict() : 'blocked'); return; } // end of candidates
+          const line = String(c.candidate || '');
+          if (!(c.type === 'srflx' || / typ srflx(?: |$)/.test(line))) return;
+          const m = / (\S+) (\d+) typ srflx(?: raddr (\S+) rport (\d+))?/.exec(line);
+          // the local socket; a browser that hides it (rport 0) is read by its public address instead
+          const base = m ? (m[4] && m[4] !== '0' ? m[3] + ':' + m[4] : 'ip ' + m[1]) : '?';
+          let ports = maps.get(base); if (!ports) maps.set(base, ports = new Set()); ports.add(m ? m[2] : '?');
+          if (!settle) settle = setTimeout(() => finish(verdict()), 1500);
         };
-        pc.onicegatheringstatechange = () => { if (pc.iceGatheringState === 'complete') finish('blocked'); };
+        pc.onicegatheringstatechange = () => { if (pc.iceGatheringState === 'complete') finish(maps.size ? verdict() : 'blocked'); };
         try { pc.createDataChannel('probe'); } catch (e) {}
         Promise.resolve().then(() => pc.createOffer()).then((o) => pc.setLocalDescription(o)).catch(() => finish('unknown'));
       });
     }
     const REACH_PROBE_MS = 8000;
-    let directPath = 'pending'; // 'pending' | 'ok' | 'blocked' | 'unknown' — this network's verdict
+    let directPath = 'pending'; // 'pending' | 'ok' | 'strict' | 'blocked' | 'unknown' — this network's verdict
     let directPathRun = 0;
     // Run (or re-run) the probe. Called when the meeting starts and when the
     // browser reports the network came back, since a new network is a new
@@ -12789,7 +12800,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function startDirectPathProbe() {
       const gen = ++directPathRun;
       const forced = (typeof DEBUG_ON !== 'undefined' && DEBUG_ON && window.__gifosDirectPath) ? String(window.__gifosDirectPath) : '';
-      if (forced === 'ok' || forced === 'blocked') { directPath = forced; updateStatus(); if (meshNode && meshNode.remeasure) meshNode.remeasure(); return Promise.resolve(forced); }
+      if (forced === 'ok' || forced === 'blocked' || forced === 'strict') { directPath = forced; updateStatus(); if (meshNode && meshNode.remeasure) meshNode.remeasure(); return Promise.resolve(forced); }
       if (typeof RTCPeerConnection !== 'function') { directPath = 'unknown'; return Promise.resolve('unknown'); }
       return probeDirectPath(() => new RTCPeerConnection({ iceServers: ICE_SERVERS }), REACH_PROBE_MS).then((v) => {
         if (gen !== directPathRun) return v; // a newer probe owns the verdict
@@ -16797,8 +16808,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         },
         sendDC: meshSendDC,
         measure: {   // the device class and the network's verdict this page already keeps (L4)
-          tier: () => { const E = GifOS.meshConsts.enums; return IS_MOBILE ? E.TIER_MOBILE : E.TIER_DESKTOP; },
-          nat: () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' ? E.NAT_BLOCKED : E.NAT_OPEN; },
+          tier: () => { const E = GifOS.meshConsts.enums, hc = navigator.hardwareConcurrency | 0; return IS_MOBILE || (hc > 0 && hc <= 2) ? E.TIER_MOBILE : E.TIER_DESKTOP; },   // a 2-core desktop carries like a phone
+          nat: () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' ? E.NAT_BLOCKED : directPath === 'strict' ? E.NAT_STRICT : E.NAT_OPEN; },
         },
         // The seat's pcs (js/mesh/page/env.js calls these; it decides, the page carries out).
         pc: {
