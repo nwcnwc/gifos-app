@@ -311,7 +311,11 @@ function install(fab) {
     if (L.state !== LK_OPEN && L.state !== LK_DIALING) return;
     const wasOpen = L.state === LK_OPEN;
     L.state = LK_CLOSED; L.epoch = U32(L.epoch + 1); L.q.length = 0; L.half = 0; L.halfAt = -1;
-    if (!wasOpen) { for (let k = 0; k < 2; k++) if (L.view[k] === LK_DIALING) L.view[k] = LK_CLOSED; return; }
+    if (!wasOpen) {
+      for (let k = 0; k < 2; k++) if (L.view[k] === LK_DIALING) L.view[k] = LK_CLOSED;
+      if (why === 'leave-close' && b < nextId() && alive[b] && !seats[b].hasCoord) { const m = msg.newMsg('TRANSLOST'); m.id = a; m.to = b; m.from = -1; m.hard = true; m.bye = true; fab.busPush(TICK() + 1, m); }   // L45
+      return;
+    }
     let da = fail ? TICK() + K.LINK_FAILED_PERSIST : TICK() + ldraw(K.LINK_DC_MIN, K.LINK_DC_MAX, a, b, 0x6463);
     let db = fail ? TICK() + K.LINK_FAILED_PERSIST : TICK() + ldraw(K.LINK_DC_MIN, K.LINK_DC_MAX, b, a, 0x6463);
     if (!fail && why === 'leave-close') { da = Math.max(da, L.arrAt[lEnd(a, b)] + 1); db = Math.max(db, L.arrAt[lEnd(b, a)] + 1); }
@@ -440,7 +444,7 @@ function install(fab) {
           if (v.why === 'disconnected-persist' || v.why === 'failed-persist') se.l13CrashAt = TICK();
         }
         const hard = !(v.why === 'failed-persist' || v.why === 'disconnected-persist' || v.why === 'starve' || v.why === 'starve-dead');
-        const m = msg.newMsg('TRANSLOST'); m.id = x; m.to = e; m.from = -1; m.hard = hard; m.pst = v.why === 'disconnected-persist' || v.why === 'failed-persist'; fab.busPush(TICK(), m); return;
+        const m = msg.newMsg('TRANSLOST'); m.id = x; m.to = e; m.from = -1; m.hard = hard; m.pst = v.why === 'disconnected-persist' || v.why === 'failed-persist'; m.bye = v.why === 'leave-close' && !seats[e].hasCoord; fab.busPush(TICK(), m); return;
       }
       case EV_ICE: case EV_DISC: {
         const L = Lp; if (L.epoch !== v.epoch || L.state !== LK_OPEN || L.half === 0 || L.halfAt !== v.ref) return;

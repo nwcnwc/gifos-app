@@ -161,6 +161,7 @@
         case 'U2BEAT': case 'U2ACK': this.onU2(m); return;   // L2
         case 'E1STATE': this.onE1State(m); return;
         case 'TRANSLOST': {   // D5: fabric event: MY OWN transport to m.id died (hard: its channel closed; quiet: it only went silent)
+          if (m.bye) this.l45Bye(m.id);   // L45
           this.l33ChildGone(m.id);   // L33.12
           if (this.f.fabricDoors() && !this.hasCoord && this.state === 2 && m.id >= 0 && m.id === this.gateway && m.hard) this.l16GwClosed = true;   // L16.3
           if (m.id >= 0 && m.id !== id && !(this.f.fabricDoors() && !this.hasCoord)) this.dials.holdGone(m.id, TICK + K.GONE_DIAL);   // L16.3 + L17
