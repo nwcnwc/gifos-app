@@ -42,10 +42,10 @@
  *   fabricNoteSwap       meas   count
  *   fabricReloadBye      A1     as fabricLeft, pcs closed RELOAD_CLOSE_LAG ticks later, o.onLeft(true)
  *   fabricSend           A1     the sim's path choice from the sender's view (FARVIEW); link step -> A2.send
- *   fabricUnreachable    A1     false: friend-hop is off on the page (fhopActive false)
+ *   fabricUnreachable    A1     the sim's typing: FH_ICE_N of my dials failed and both NAT kinds (mine, its status beat's) cannot meet
  *   fabricVerdict        meas   D5 forensics
- *   fhopActive           A1     false (friend-hop rungs: later; the sim's friend-hop is off in this profile)
- *   fhopFriendFor        A1     false
+ *   fhopActive           A1     true where the page gave a friend-hop face (o.fhop), as the sim's LINKMODEL && FHOP_ON
+ *   fhopFriendFor        A1     sponsorSend's friend rung would carry it (o.fhop.friendFor)
  *   l164Of               A1     LINKMODEL && !islandStand(s, IS_L164)
  *   l18Deliv             A2     L18 count
  *   l18Hop               A2     L18 next hop
@@ -87,6 +87,7 @@
   const fnv = req('../fnv.js', 'meshFnv');
   const fmt = req('../fmt.js', 'meshFmt');
   const seatM = req('../seat.js', 'meshSeat');
+  const fhopM = req('../fhop.js', 'meshFhop');
   const shared = req('../shared.js', 'meshShared');
   const pcWireM = () => (isNode ? (GifOS.meshPcWire || tryReq('./pclaws-wire.js')) : GifOS.meshPcWire);
   function tryReq(f) { try { return require(f); } catch (e) { return null; } }
@@ -94,7 +95,7 @@
 
   const K = C_.consts, E = C_.enums;
   const { ckey, ckPc, ckR, ownedLinks } = topo;
-  const { LS_OPEN, LS_DIALING, LK_OPEN } = E;
+  const { LS_OPEN, LS_DIALING, LK_OPEN, LK_NONE, LK_DIALING } = E;
   const ID_BITS = 52, ID_MAX = 2 ** ID_BITS;
   const NOSOCK_WIN = 40;      // ticks: a relay nosock and the seat's ask (fabricNoSock) pair up within this window
   const REF_STALE = 20;       // ticks: an incomplete referral list over the relay is dropped after this
@@ -138,11 +139,12 @@
   function create(o) {
     if (!o || !o.peer) throw new Error('mesh env: create needs o.peer');
     const pc = o.pc || {}, relay = o.relay || {}, measure = o.measure || {};
+    const fh = o.fhop || null;   // friend-hop's page face (run.html's rungs, conns gossip and relay jobs); ids there are page peer ids
     const ID = o.ids || ids();
     const me = ID.learn(o.peer);
     if (!(Number.isSafeInteger(me) && me >= 0 && me < ID_MAX)) throw new Error('mesh env: my id ' + me + ' is not an integer below 2^52');
     const lv = Object.assign({}, C_.levers, { LINKMODEL: true, TIERS_ACTIVE: true, nextId: ID_MAX }, o.levers || {});
-    const st = { rx: 0, tx: 0, inboxMax: 0, delay: [0, 0, 0], drops: {}, relay: { knock: 0, unlist: 0, greeters: 0, nosock: 0, nosockBusy: 0, busyIn: 0, busyOut: 0, refIn: 0 }, lawErr: {} };
+    const st = { rx: 0, tx: 0, fhSponsored: 0, fhRouteDrop: 0, fhIn: 0, inboxMax: 0, delay: [0, 0, 0], drops: {}, relay: { knock: 0, unlist: 0, greeters: 0, nosock: 0, nosockBusy: 0, busyIn: 0, busyOut: 0, refIn: 0 }, lawErr: {} };
     const drop = (why) => { st.drops[why] = (st.drops[why] || 0) + 1; };
 
     // the trace sink: the sim's JSONL line {t, s, e, c, d} (harness fabric.js traceLine), or off
@@ -168,7 +170,7 @@
     const bus = new Map();        // tick -> frames for my seat (synthesized: GREETERS, BUSY, deliveries the laws post)
     let inbox = [];               // frames off the dcs since the last tick, in arrival order: [m, arrivedAtTick]
     const busAt = (t, m) => { let s = bus.get(t); if (!s) { s = []; bus.set(t, s); } s.push(m); };
-    const inboxPush = (m) => { inbox.push([m, w.TICK]); if (inbox.length > st.inboxMax) st.inboxMax = inbox.length; };
+    const inboxPush = (m, envl) => { inbox.push([m, w.TICK, !!envl]); if (inbox.length > st.inboxMax) st.inboxMax = inbox.length; };
 
     // C++: mesh.cpp:wireTx  (CLOCKS: the frame leaves now; its holder-clock fields are on my clock)
     function wireTx(m) {
@@ -249,8 +251,63 @@
     function parSend(from, to, m0) {
       const m = msg.clone(m0);
       if (to < 0 || to === me) { drop('self'); return; }
-      if (m.l10E || m.dgOnly) { if (F.fabricLinkState(me, to) !== LS_OPEN) { drop('l10'); return; } }
+      if (m.l10E || m.dgOnly) { if (F.fabricLinkState(me, to) !== LS_OPEN) { drop('l10'); return; } pcw.send(to, m); return; }
+      if (fh && fhopSchedule(to, m)) return;   // C++: mesh.cpp:schedule  (no open channel at my end: the page sponsors the frame)
       pcw.send(to, m);
+    }
+
+    // ---- friend-hop (C++: mesh_fhop.inc): the seat-frame rung. The rungs themselves are run.html's (sponsorSend, fwdOnward, the crumb);
+    // here is only which frames take them, from my own end. The relay is never one of them.
+    // C++: mesh_fhop.inc:fhopSponsor   (the origin stamps the frame; sponsors forward it as it is)
+    function fhopSponsor(to, m0) {
+      const p = ID.pid(to); if (!p || !o.send || !fh.canSponsor(p)) return false;
+      const m = msg.clone(m0); wireTx(m); m.to = to; m.from = me;
+      st.fhSponsored++; trace('FH-SPONSOR', me, null, 'to=%d mt=%d', to, msg.MT_NAMES.indexOf(m.t));
+      o.send(p, m, dirFor(m));
+      return true;
+    }
+    // C++: mesh_fhop.inc:fhopSchedule  (true: consumed; false: the link step runs)
+    function fhopSchedule(to, m) {
+      const s = seat(); if (!s || to < 0 || to === me || m.fhTo >= 0) return false;
+      if (m.gwc && farView(s, to).seat !== 1) return false;   // L16.3: an answer to a joiner outside rides my own door
+      if (pcw.fhDcRaw(to)) return false;   // the frame rides the open channel
+      const st0 = pcw.fhState(to);
+      const names = !!(s.hasCoord && s.linkRole(to, E.LR_OWNED | E.LR_E2)), outside = farView(s, to).seat === -1;
+      // a pc that is coming (none yet, or dialing) carries the frames that wait for it
+      if ((st0 === LK_NONE || st0 === LK_DIALING) && (names || outside || s.state !== 3 || (s.l13On() && (m.t === 'MEET' || m.t === 'MEETACK')) || (s.l13('L13.2') && m.t === 'FINDLEAF') || (s.l13('L13.7') && m.t === 'LEAVE' && m.mv) || (s.l13('L13.1') && m.t === 'YIELD') || (m.t === 'ROUTE' && m.tag === 1 && m.asker === me && m.via === me) || (m.t === 'WHOHOME' && m.from === me && s.hasCoord && s.coord.pc !== 0 && s.coord.i === 0))) return false;
+      const entry = s.state !== 3 && (m.t === 'WHOHOME' || m.t === 'FIND' || m.t === 'HOME');   // handOnce: also waits for its own channel
+      if (!fhopSponsor(to, m)) return false;
+      if (entry) return false;
+      pcw.fhDialBehind(to, m, names, outside);
+      return true;
+    }
+    // C++: mesh_fhop.inc:fhopRouteDrop   (a routed frame in transit whose ideal next hop is vacant: the other rungs, toward the seat my occ names there)
+    function fhopRouteDrop(s, m) {
+      if (!s.hasCoord) return false;
+      const held = w.TICK - s.clkHeld;
+      const leaseHit = (s.leaseUntil >= 0 && held <= s.leaseUntil && ckey(m.rdst) === s.leaseCk) || (s.moving && ckey(m.rdst) === s.oldCk);
+      if (ckey(s.coord) === ckey(m.rdst) || leaseHit || m.rttl <= 0) return false;
+      if (s.strictNextHop(m.rdst) >= 0) return false;
+      if (m.rfinal >= 0 && (m.t === 'PLACE' || m.t === 'NOROOM' || m.t === 'FINDACK')) return false;   // L16.3: the answer door's
+      const tgt = m.rfinal >= 0 ? m.rfinal : s.occGet(ckey(m.rdst)); if (tgt < 0 || tgt === me) return false;
+      const mm = msg.clone(m); mm.rttl = m.rttl - 1; mm.rvia = me;
+      if (!fhopSponsor(tgt, mm)) return false;
+      st.fhRouteDrop++; return true;
+    }
+    // C++: mesh_fhop.inc:fabricUnreachable   (my own failed dials, and the two networks' own words)
+    function fabricUnreachable(a, x) {
+      if (!fh || a !== me || x < 0) return false;
+      if (F.fabricDialFails(me, x) < K.FH_ICE_N) return false;
+      const mine = fh.natMine(); if (mine == null || mine < 0) return false;
+      const p = ID.pid(x); const n = p ? fh.natOf(p) : null; if (n == null || n < 0) return false;
+      return !fhopM.fhNatMeet(mine, n);
+    }
+    // C++: mesh_fhop.inc:fhopFriendFor
+    function fhopFriendFor(a, x) { if (!fh || a !== me || x < 0) return false; const p = ID.pid(x); return !!p && !!fh.friendFor(p); }
+    // what the pc laws read (linkWhy LW_FHOP): my relay roles, as ints
+    function fhRoles() {
+      const r = fh.roles(); const n = (p) => learnPeer(p);
+      return { jobs: r.jobs.map((j) => ({ target: n(j.target), req: n(j.req) })), peer: r.vias.map((v) => ({ via: n(v) })) };
     }
 
     // C++: mesh.cpp:fabricSend  (the sim's order; past the direct link the path is the sender's picture of `to`)
@@ -274,7 +331,7 @@
         const doors = F.fabricDoors();
         if (!directLink && m.direct) {
           if (mineCell && !(s.socketed() && farSock(fv))) { drop('direct-mine'); return; }
-          if (vIn && !mineCell) { s.route(fv.c, -1, msg.clone(m)); return; }
+          if (vIn && !mineCell) { if (fh && s.hasCoord && s.strictNextHop(fv.c) < 0 && fhopSponsor(to, m)) return; s.route(fv.c, -1, msg.clone(m)); return; }
         } else if (!directLink && m.t === 'TAKEOVER' && !s.hasCoord && doors) {
           /* L16.2: the joiner dials the admitter its FIND was handed to */
         } else if (!directLink && doors && !vIn && s.hasCoord && s.state === 3 && F.fabricLinkState(from, to) === LS_OPEN) {
@@ -286,9 +343,9 @@
         } else if (!directLink) {
           if (doors && s.socketed() && farSock(fv) && s.hasCoord && s.state === 3 && fv.seat === -1 && fv.gw >= 0 && fv.gw !== from && fv.gcOk && F.fabricLinkState(from, to) !== LS_OPEN && F.fabricLinkState(from, to) !== LS_DIALING) { s.route(fv.gc, to, msg.clone(m)); return; }
           else if (s.socketed() && farSock(fv)) { /* both hold sockets (greeting scope): the relay signals a pc; a socketless target answers nosock */ }
-          else if (vIn) { s.route(fv.c, s.l13('L13.1') ? to : -1, msg.clone(m)); return; }
+          else if (vIn) { if (fh && s.hasCoord && ckey(s.coord) !== ckey(fv.c) && s.strictNextHop(fv.c) < 0 && fhopSponsor(to, m)) return; s.route(fv.c, s.l13('L13.1') ? to : -1, msg.clone(m)); return; }
           else if (fv.gw >= 0 && fv.gcOk) { s.route(fv.gc, to, msg.clone(m)); return; }
-          else { drop('nowhere'); return; }   // nowhere I know: the seat retries on its own clock
+          else { if (fh && fhopSponsor(to, m)) return; drop('nowhere'); return; }   // nowhere I know: the seat retries on its own clock
         }
       }
       parSend(from, to, m);
@@ -343,7 +400,7 @@
     const OWN = {
       fabricAdmitLog: noop, fabricDupMint: noop, fabricNoteBackoff: noop, fabricNoteReseat: noop, fabricNoteRollback: noop,
       fabricNoteSwap: noop, fabricVerdict: noop, l18UxDeliv: noop, descEnd: noop, descNote: noop, g4Joined: noop,   // g4Joined: the sim's L40 contest lever only (X1 55c97d1)
-      fabricFreeCells, fabricLieFor: () => null, fabricUnreachable: () => false, fhopActive: () => false, fhopFriendFor: () => false,
+      fabricFreeCells, fabricLieFor: () => null, fabricUnreachable, fhopActive: () => !!fh, fhopFriendFor,
       fabricMyTier: () => ((measure.tier ? measure.tier() : E.TIER_DESKTOP) | 0),
       fabricMyNat: () => ((measure.nat ? measure.nat() : E.NAT_OPEN) | 0),
       fabricLeft: () => leaveNow(false), fabricReloadBye: () => leaveNow(true),
@@ -355,7 +412,7 @@
     // ---- the pc laws (A2) over my io ----------------------------------------------------------------------------
     const PW = pcWireM();
     if (!PW || !PW.create) throw new Error('mesh env: GifOS.meshPcWire (js/mesh/page/pclaws-wire.js) is not loaded');
-    const pcw = PW.create({ me, seat, w, trace, io, wireTx, l392Contest: o.l392Contest });
+    const pcw = PW.create({ me, seat, w, trace, io, wireTx, l392Contest: o.l392Contest, fh: fh ? { friendFor: fhopFriendFor, roles: fhRoles } : null });
     // a law that throws must not take the page down: trace it, count it, answer as "no"
     const guard = (n, fn) => (...a) => {
       try { return fn(...a); } catch (e) {
@@ -386,7 +443,7 @@
         for (const t of [...bus.keys()].sort((a, b) => a - b)) { if (t > w.TICK) break; due.push(...bus.get(t)); bus.delete(t); }
         const ib = inbox; inbox = [];
         for (const m of due) recvOne(s, m);
-        for (const [m, at] of ib) { const d = w.TICK - at;   /* 0: the first boundary after arrival (the sim's 1-tick hop) */ st.delay[d <= 0 ? 0 : d === 1 ? 1 : 2]++; recvOne(s, m); }
+        for (const [m, at, envl] of ib) { const d = w.TICK - at;   /* 0: the first boundary after arrival (the sim's 1-tick hop) */ st.delay[d <= 0 ? 0 : d === 1 ? 1 : 2]++; if (fh && !envl && m.routing && fhopRouteDrop(s, m)) continue; /* C++: mesh_fhop.inc:fhopIntercept: an envelope for me is the seat's, as it is */ recvOne(s, m); }
         if (woken) { woken = false; guard('seat.tick', () => s.tick())(); }
         noteLinks(s);
       } else { bus.clear(); inbox = []; }
@@ -412,7 +469,8 @@
 
     // a verified frame off viaPeer's dc (A3 decodes and checks signatures); dir: the sender's id directory
     // direct: run.html's word that the frame came off viaPeer's own dc after §DCAUTH. `from` and `lk` are the fabric's, never the frame's.
-    function frame(m, viaPeer, dir, direct) {
+    // sponsored: this frame came in a friend's envelope; provenFrom: the envelope's origin, when mesh-wire proved it (the sim's m.from = fhOrig, never first-hand). Unproven: the delivering peer's, as a routed frame's last hop.
+    function frame(m, viaPeer, dir, direct, sponsored, provenFrom) {
       if (dead || !m) return;
       const x = learnPeer(viaPeer); if (x < 0) { drop('frame-nopeer'); return; }
       learnDir(dir);
@@ -420,7 +478,8 @@
       if (pcw.frame && pcw.frame(x, m, direct === true)) return;   // a pcbye, or a frame lost to a close at my end
       if (!m.t || m.t === 'pcbye') return;
       m.to = me; m.from = x;
-      inboxPush(m);
+      if (sponsored) { st.fhIn++; if (provenFrom != null && direct !== true) { const ox = learnPeer(provenFrom); if (ox >= 0 && ox !== me) m.from = ox; } }
+      inboxPush(m, sponsored);
     }
 
     // a pc / dc event at my end for viaPeer

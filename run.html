@@ -6648,7 +6648,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let pulseHalt = false; // test hook: simulates a throttled phone's silent pulse gaps
     // My status pulse as one frame: what every beat carries, and what a pair
     // gets the moment its channel opens (wireDc onopen).
-    const statusPayload = () => ({ kind: 'status', s: myStatus, conns: myConns(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined });
+    // My network's kind for friend-hop's typing (a seat tells a blip from an unreachable pair), in the seat's GT_ words. The probe knows open or blocked; -1: not known yet.
+    const natWord = () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' ? E.GT_BLOCKED : directPath === 'ok' ? E.GT_PUBLIC : -1; };
+    const statusPayload = () => ({ kind: 'status', s: myStatus, conns: myConns(), nat: natWord(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined });
     function broadcastStatus(answer) {
       if (pulseHalt && !answer) return; // the halt models a throttled clock; an answer to a newcomer is driven by its frame, not the clock
       myStatus.at = Date.now(); // timestamped: out-of-order gossip can't roll me back
@@ -14560,6 +14562,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // plain rooms — the transport no longer matters, only the proof.
       takeMod(from, msg);
       if (msg.conns) setConns(from, msg.conns);
+      if (Number.isInteger(msg.nat)) natOf.set(from, msg.nat);
       if ('sid' in msg && p && sidIsNews(p, msg.sid)) { p.ownSid = msg.sid; claimOwnStream(p); }
     }
 
@@ -14636,7 +14639,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function ckReply(t0) { return { k: 'ck2', t0: t0, t1: performance.now() }; }
 
     function onSignal(from, msg, adm) {
-      if (isSevered(from)) return; // DEBUG sever — see severPair
+      if (isSevered(from) && !(sigProven && !isEjected(from))) return; // DEBUG sever cuts the pair's own transport (severPair); its author's gossip carried by a third page still lands, as through a real block. An ejected forger never does.
       if (!msg || !msg.kind) return;
       msg = sigSansIce(from, msg); // fault injection: a blocked pair yields nothing
       if (!msg) return;
@@ -16884,6 +16887,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
         },
         sendDC: meshSendDC,
+        // Friend-hop's page face (env.js decides which frames; sponsorSend and fwdOnward are the rungs).
+        fhop: {
+          friendFor: (pid) => { const c = myConns().filter((r) => r !== pid && (connsOf.get(r) || []).includes(pid)).sort(); const fp = c.length ? peers.get(c[0]) : null; return !!(fp && fp.dc && fp.dc.readyState === 'open'); },
+          canSponsor: (pid) => { for (const [r, q] of peers) if (r !== pid && r !== myId && q.connected && q.dc && q.dc.readyState === 'open') return true; return false; },
+          natMine: natWord, natOf: (pid) => natOf.get(pid),
+          roles: () => ({ jobs: Array.from(relayJobs.values(), (j) => ({ target: j.target, req: j.requester })), vias: Array.from(relayVia.values(), (r) => r.via) }),
+        },
         measure: {   // the device class and the network's verdict this page already keeps (L4)
           tier: () => { const E = GifOS.meshConsts.enums; return IS_MOBILE ? E.TIER_MOBILE : E.TIER_DESKTOP; },
           nat: () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' ? E.NAT_BLOCKED : E.NAT_OPEN; },
@@ -21072,7 +21082,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // channel, else one ttl-bounded unicast mesh step (fwdOnward).
         noteCrumb(m.from, p.id);
         if (m.m && (m.m.t === 'FIND' || m.m.t === 'WHOHOME')) noteCrumb(m.m.t === 'FIND' ? m.m.nc : m.m.from, p.id);
-        if (m.to === myId) { if (meshNode && m.m) meshNode.recvCtl(m.m, p.id); return; } // the envelope's origin is its sender's own claim (any member can write it): the frame is the delivering peer's, as a routed frame's last hop, and never `direct`
+        if (m.to === myId) { if (meshNode && m.m) meshNode.recvCtl(m.m, p.id, false, String(m.from || '')); return; } // never `direct`. The envelope's origin is its sender's own claim: mesh-wire takes it only with the origin's signature, else the frame is the delivering peer's, as a routed frame's last hop
         fwdOnward('fmesh', m, p.id);
       } else if (m.k === 'rreq') { // OFFER TURNS: the polite side asks
         if (p.pc && iInitiate(p.id)) giveTurn(p);
@@ -22343,6 +22353,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const relayJobs = new Map();    // target + '>' + requester -> { senders }   (as relayer)
     const relayRefusal = new Map(); // target -> { viaPid: refusedAt }
     const connsOf = new Map();      // pid -> [connected pids] (gossiped)
+    const natOf = new Map();        // pid -> its network's kind (natWord), from the same beat
     // claimantsOf: the reverse of connsOf (target -> peers that report a link
     // to it). doorPeers reads it per forwarded frame; a greeter's socket list
     // is thousands long in a join wave, so the forward map alone made every
@@ -22356,7 +22367,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function forgetConns(pid) {
       for (const t of (connsOf.get(pid) || [])) { const c = claimantsOf.get(t); if (c) { c.delete(pid); if (!c.size) claimantsOf.delete(t); } }
-      connsOf.delete(pid);
+      connsOf.delete(pid); natOf.delete(pid);
     }
     const MAX_RELAY_JOBS = 4;       // a phone volunteers only so much upload
     // Senders that carry OTHER people's media (relay jobs, composites, forwarded
@@ -36484,6 +36495,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       tileSid: (id) => { const p = peers.get(id); const s = p && p.video.srcObject; return s ? s.id : null; },
       relayedVia: (id) => { const p = peers.get(id); return (p && p.relayed) || null; },
       relayMapSid: (id) => { const r = relayVia.get(id); return r ? r.streamId : null; },
+      // Friend-hop proof: what the carried stream of `id` really delivers on the friend's pc (frames decoded, audio samples), the tile's frames, and the stats a room needs.
+      relayFlowForTest: async (id) => {
+        const r = relayVia.get(id), vp = r && peers.get(r.via), p = peers.get(id); const out = { via: r ? String(r.via).slice(0, 8) : null, claimed: !!(r && r.stream), direct: !!(p && p.connected), tile: !!(p && p.video && r && r.stream && p.video.srcObject === r.stream), frames: 0, samples: 0 };
+        if (p && p.video && p.video.getVideoPlaybackQuality) out.painted = p.video.getVideoPlaybackQuality().totalVideoFrames;
+        if (!r || !r.stream || !vp || !vp.pc) return out;
+        const ids = new Set(r.stream.getTracks().map((t) => t.id)); const rep = await vp.pc.getStats();
+        rep.forEach((s) => { if (s.type === 'inbound-rtp' && ids.has(s.trackIdentifier)) { if (s.kind === 'video') out.frames += s.framesDecoded || 0; else out.samples += s.totalSamplesReceived || 0; } });
+        return out;
+      },
+      fhopStatsForTest: () => { const st = meshNode && window.__meshEnv ? window.__meshEnv.stats() : {}; return { sponsored: st.fhSponsored, routeDrop: st.fhRouteDrop, in: st.fhIn, fwdMesh: txStats.fwdMesh, hopFwd: txStats.hopFwd, relayJobs: relayJobs.size, relayVia: relayVia.size }; },
       awayOf: (id) => peerAway(id),
       // fault injection: simulate lost gossip / a dead transport
       // Read-only forensics for the sick-status-path family (the false
