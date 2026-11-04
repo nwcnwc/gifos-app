@@ -316,6 +316,7 @@
       if (!topo.TOPO_XDROP && this.coord.i > 0 && TICK >= this.xlinkAt) { this.xlinkAt = TICK + 150 + Math.trunc(this.rng() * 100); const x = crossLink(this.coord); if (x && this.occGet(ckey(x)) < 0) this.routeTo(x, 1); }
       if (this.drainAt && TICK >= this.drainAt) { this.reseatViaRoster(); return; }
       const didHeal = this.healOwner();   // 11a VERTICAL: a head heals its dead owner cell from its subtree
+      if (!this.hasCoord) return;   // L47: it knocked again
       this.drainOrCompact(didHeal);
     },
 
@@ -331,6 +332,8 @@
         const confirm = (haveOc && oc.pc === 0) ? K.LEASE_T : 60;
         let ownEarly = haveOc && this.translostConfirmed(ok);
         if (ownEarly && this.l2OwnerHold(ok)) ownEarly = false;
+        // L47: never blind on a D5 verdict. A head with no live link but the dead one (or that knows no Section-1 seat but its owner) probed over no path: its verdict says the pair died, not the owner. Healed anyway, a live owner's cell gets a tenant that reaches nobody and stays (a second home ring, a stage feed shipped into it). Knock again, as D6 does.
+        if (ownEarly && oc.pc === 0 && !this.ownPathUp(ok)) { this.requeue('L47-blind'); this.f.wake(id); return false; }
         if (!ownEarly && haveOc && this.ownDeadCk === ok && (this.ownDeadId >= 0 || (this.occGet(ok) < 0)) && (this.occGet(ok) < 0 || this.occGet(ok) === this.ownDeadId) && TICK - this.ownDeadAt <= 2 * 8 + K.EARLY_HOLD && TICK - this.ownVouchAt > 2 * 8 + K.EARLY_HOLD) {   /* L1.4 */
           ownEarly = true; if (this.l2DeathTr !== this.ownDeadAt) { this.l2DeathTr = this.ownDeadAt; this.trace('L2-DEATH', id, oc, 'via=e2'); }
         }   // L2.9
