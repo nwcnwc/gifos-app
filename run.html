@@ -17325,15 +17325,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // channel that cannot deliver (a phone back from the background on a
       // radio still waking) leaves the far main parked for good; a far
       // rollback can do the same to its encoder. Neither full screen nor
-      // a stage step-down touches either. No frame decoded for 3s, 1.5s of
-      // it watchable: re-assert the lift and ask the far side to re-seat
-      // its camera (vkick), again every 3s; 8s after the first ask with
-      // still nothing, rebuild the pair (the NEW-PC RULE resets the park).
+      // a stage step-down touches either. No frame decoded and no packet
+      // arriving for 3s, 1.5s of it watchable: re-assert the lift and ask the
+      // far side to re-seat its camera (vkick), again every 3s.
       // The evidence survives a spell hidden or on stage (the far main is
       // meant to be parked then, so nothing is judged), and a stale park
       // is caught 1.5-2.5s after the tile is watchable again. A busy phone can
-      // decode nothing for a second or two; a wrong ask costs one re-seat,
-      // and only 8s more of nothing rebuilds the pair.
+      // decode nothing for a second or two; a wrong ask costs one re-seat.
       {
         const skip = frozenTileSkip(pid, p);
         const keep = skip === 'hidden' || skip === 'staged';
@@ -17342,7 +17340,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (rx) {
           const pc0 = p.pc;
           rx.getStats().then((st) => {
-            let fd = -1; st.forEach((x) => { if (x.type === 'inbound-rtp' && x.kind === 'video') fd = Math.max(fd, x.framesDecoded || 0); });
+            let fd = -1, pk = 0; st.forEach((x) => { if (x.type === 'inbound-rtp' && x.kind === 'video') { fd = Math.max(fd, x.framesDecoded || 0); pk += x.packetsReceived || 0; } });
             if (p.freezeTick) p.freezeTick.statsAt = Date.now();
             // No inbound video entry at all is no frames, not no evidence: a
             // renegotiation can move the far sender to a stream that has not
@@ -17364,9 +17362,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               else if (!sp || sp.pc !== pc0 || sp.track !== vtr || pv !== sp.pv || v.currentTime !== sp.ct) p.paintProbe = { pc: pc0, track: vtr, pv, ct: v.currentTime, fd, at: t };
               else if (t - sp.at >= 3000 && fd - sp.fd >= 3 && t - (p.sinkRebuiltAt || 0) > 30000) {
                 p.sinkRebuiltAt = t; p.paintProbe = null; p.freezeProbe = null;
-                if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' painted tile: decoded ' + (fd - sp.fd) + ' in ' + Math.round((t - sp.at) / 1000) + 's, none shown: rebuild');
-                newPcFor(p);
-                sendOffer(pid, false);
+                // The element is what stands still, so the element is what starts over: the pair is working, and it stays.
+                if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' painted tile: decoded ' + (fd - sp.fd) + ' in ' + Math.round((t - sp.at) / 1000) + 's, none shown: rebind');
+                try { v.srcObject = null; v.srcObject = p.stream; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {}
                 return;
               }
             }
@@ -17374,17 +17372,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (!judged) { fz.seenAt = 0; fz.askAt = 0; fz.firstAsk = 0; return; }
             if (!fz.seenAt) { fz.seenAt = t; return; }
             if (t - fz.at < 3000 || t - fz.seenAt < 1500) return;
-            if (fz.firstAsk && t - fz.firstAsk >= 8000) {
-              if (t - (p.sinkRebuiltAt || 0) < 30000) return;
-              p.sinkRebuiltAt = t; p.freezeProbe = null;
-              if (typeof clog === 'function') clog('frozen-tile ' + String(pid).slice(0, 6) + ' no frame in ' + Math.round((t - fz.at) / 1000) + 's after re-seat asks: rebuild');
-              newPcFor(p);
-              sendOffer(pid, false);
-              return;
-            }
+            // Packets still arriving: the far end is sending and this page is behind. Nothing to ask of anyone.
+            if (pk !== fz.pk) { fz.pk = pk; return; }
+            // A sender gone quiet is asked again every 3s (an ask into a channel still waking is lost). The pair is never rebuilt
+            // for it: its channel works, a real loss is the seat's to find (D5), and a rebuild here once closed a backup link and working pairs.
             if (t - fz.askAt < 3000) return;
-            fz.askAt = t; if (!fz.firstAsk) fz.firstAsk = t;
-            if (typeof clog === 'function') clog('frozen-tile ' + String(pid).slice(0, 6) + ' no frame in ' + Math.round((t - fz.at) / 1000) + 's: vkick');
+            fz.askAt = t; const firstAsk = !fz.firstAsk; if (firstAsk) fz.firstAsk = t;
+            if (firstAsk && typeof clog === 'function') clog('frozen-tile ' + String(pid).slice(0, 6) + ' no frame in ' + Math.round((t - fz.at) / 1000) + 's: vkick');
             visParkSent.set(pid, false);
             dcSend(p, { k: 'vis', park: false });
             dcSend(p, { k: 'vkick' });
