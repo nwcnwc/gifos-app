@@ -676,5 +676,7 @@
   "meet.stCreatingYourRoomTakesA": "🛡 Creating your room… (takes a few seconds)",
   "meet.stThisAppIsPasskeyLocked2": "This app is passkey-locked. Other people in the meeting cannot unlock it, so it cannot be shared live.",
   "meet.stYouStoppedTheSharedApp": "🧩 You stopped the shared app for everyone here.",
-  "meet.stOnlyThisRoomSAdmins2": "🛡 Only this room’s admins can stop the shared app."
+  "meet.stOnlyThisRoomSAdmins2": "🛡 Only this room’s admins can stop the shared app.",
+  "meet.mediaReconnecting": "⟳ Reconnecting…",
+  "meet.massLeaveBanner": "Many people just left. Reconnecting the meeting, expect a short delay."
 }

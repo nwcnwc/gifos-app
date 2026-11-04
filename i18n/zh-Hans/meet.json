@@ -676,5 +676,7 @@
  "meet.stCreatingYourRoomTakesA": "🛡 正在创建你的房间…（需要几秒钟）",
  "meet.stThisAppIsPasskeyLocked2": "此应用已用通行密钥锁定。会议中的其他人无法解锁，所以无法实时共享。",
  "meet.stYouStoppedTheSharedApp": "🧩 你已为这里的所有人停止了共享应用。",
- "meet.stOnlyThisRoomSAdmins2": "🛡 只有本房间的管理员才能停止共享应用。"
+ "meet.stOnlyThisRoomSAdmins2": "🛡 只有本房间的管理员才能停止共享应用。",
+ "meet.mediaReconnecting": "⟳ 正在重新连接…",
+ "meet.massLeaveBanner": "刚刚有很多人离开。正在重新连接会议，请稍候。"
 }

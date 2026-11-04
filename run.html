@@ -696,6 +696,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* Stage feeds are verbatim cameras: show the FULL broadcast frame, exactly
      as the room's recording captures it — never a crop. */
   #stagefeed .rowtile video { object-fit: contain; }
+  .rowtile .stallnote { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 4px 10px; border-radius: 6px;
+    background: rgba(0, 0, 0, .72); color: #fff; font: 600 .85rem/1.3 system-ui, sans-serif; pointer-events: none; white-space: nowrap; }
+  #massbanner { position: fixed; top: 56px; left: 50%; transform: translateX(-50%); z-index: 9000; max-width: 92vw; padding: 8px 14px; border-radius: 8px;
+    background: rgba(24, 24, 28, .94); color: #fff; font: 600 .9rem/1.35 system-ui, sans-serif; text-align: center; pointer-events: none; }
   .rowtile .rlabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 2px 6px;
     font-size: .65rem; color: #e0e0f0; background: rgba(10,10,15,.7);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -6751,6 +6755,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         ad: a ? { s: a.s, k: a.k, relay: a.relay, name: a.name, mesh: !!a.mesh, pk: a.pk, ts: a.ts, byName: a.byName, audio: !!a.audio } : null,
         away: !!myStatus.away, vup: myStatus.vup || [], vdn: myStatus.vdn || [], vab: myStatus.vab || [] });
       if (typeof meshNode.setRefuses === 'function') meshNode.setRefuses(!consents(myStatus));
+      // L10.1: a hand is one of the seat's own facts, so a change goes out early instead of on the next beat
+      try { const r = meshNode.raw; if (r && !r.handT !== !myStatus.hand) r.handT = myStatus.hand ? r.TICK + 1 : 0; } catch (e) {}
     }
     // Presence: the mesh occ map IS the local count — distinct peers at
     // distinct coords in my view of the tree, me included. Past one section
@@ -10160,6 +10166,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { ccMixSync(); } catch (e) {}
     }
     let meterHiddenTick = 0, meterQuietTick = 0, meterAnyLive = false;
+    let talkOn = false, talkLoud = 0, talkQuiet = 0;   // the seat's talk verb (L6.2), fed below
     setInterval(() => {
       // Hidden tab: sample at 900ms, not 180ms — the only hidden consumer is
       // the PiP re-aim (worker heartbeat, 4s), and five WebAudio reads/sec
@@ -10213,6 +10220,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         speakingOf.set(id, speaking); // fed to the packer overlay (green talking frame on composite faces)
         if (speaking) ccGapSee(id, speaking); // a paused neighbour's voice is kept for the one speech session
       }
+      // L6.2/L6.3: the seat keeps a stager or a talker where it sits, and only the page knows who is one. Talking is
+      // the mic meter with hysteresis: on after 2 loud beats, off after 5 quiet ones. Being on stage is the seat's pin.
+      try {
+        const r = meshNode && meshNode.raw;
+        if (r) {
+          if (speakingOf.get('me')) { talkQuiet = 0; talkLoud++; } else { talkLoud = 0; talkQuiet++; }
+          const want = talkOn ? talkQuiet < 5 : talkLoud >= 2;
+          if (want !== talkOn) { talkOn = want; if (typeof clog === 'function') clog('talk-' + (want ? 'on' : 'off')); }
+          r.talkSet(talkOn);
+          if (!r.pinT !== !myStatus.stg) r.pinT = myStatus.stg ? r.TICK + 1 : 0;
+        }
+      } catch (e) {}
       if (fsSel === 'auto' && fsview.classList.contains('on')) fsRefresh();
     }, 180);
     function tileNote(t, msg) {
@@ -12738,20 +12757,31 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { pc = makePc(); } catch (e) { resolve('unknown'); return; }
         if (!pc) { resolve('unknown'); return; }
         let done = false;
-        const finish = (v) => { if (done) return; done = true; clearTimeout(timer); try { pc.close(); } catch (e) {} resolve(v); };
+        const finish = (v) => { if (done) return; done = true; clearTimeout(timer); clearTimeout(settle); try { pc.close(); } catch (e) {} resolve(v); };
         const timer = setTimeout(() => finish('blocked'), timeoutMs);
+        // Two STUN servers map the same local socket: one public port for both is an open (cone) NAT, two ports is a
+        // strict one (endpoint-dependent mapping), which pairs badly with another strict seat. A short wait after the
+        // first reflexive candidate lets the second server's answer arrive.
+        const maps = new Map(); let settle = null;
+        const verdict = () => { for (const ports of maps.values()) if (ports.size > 1) return 'strict'; return 'ok'; };
         pc.onicecandidate = (ev) => {
           const c = ev && ev.candidate;
-          if (!c) { finish('blocked'); return; } // end of candidates, none reflexive
-          if (c.type === 'srflx' || / typ srflx(?: |$)/.test(String(c.candidate || ''))) finish('ok');
+          if (!c) { finish(maps.size ? verdict() : 'blocked'); return; } // end of candidates
+          const line = String(c.candidate || '');
+          if (!(c.type === 'srflx' || / typ srflx(?: |$)/.test(line))) return;
+          const m = / (\S+) (\d+) typ srflx(?: raddr (\S+) rport (\d+))?/.exec(line);
+          // the local socket; a browser that hides it (rport 0) is read by its public address instead
+          const base = m ? (m[4] && m[4] !== '0' ? m[3] + ':' + m[4] : 'ip ' + m[1]) : '?';
+          let ports = maps.get(base); if (!ports) maps.set(base, ports = new Set()); ports.add(m ? m[2] : '?');
+          if (!settle) settle = setTimeout(() => finish(verdict()), 1500);
         };
-        pc.onicegatheringstatechange = () => { if (pc.iceGatheringState === 'complete') finish('blocked'); };
+        pc.onicegatheringstatechange = () => { if (pc.iceGatheringState === 'complete') finish(maps.size ? verdict() : 'blocked'); };
         try { pc.createDataChannel('probe'); } catch (e) {}
         Promise.resolve().then(() => pc.createOffer()).then((o) => pc.setLocalDescription(o)).catch(() => finish('unknown'));
       });
     }
     const REACH_PROBE_MS = 8000;
-    let directPath = 'pending'; // 'pending' | 'ok' | 'blocked' | 'unknown' — this network's verdict
+    let directPath = 'pending'; // 'pending' | 'ok' | 'strict' | 'blocked' | 'unknown' — this network's verdict
     let directPathRun = 0;
     // Run (or re-run) the probe. Called when the meeting starts and when the
     // browser reports the network came back, since a new network is a new
@@ -12761,7 +12791,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function startDirectPathProbe() {
       const gen = ++directPathRun;
       const forced = (typeof DEBUG_ON !== 'undefined' && DEBUG_ON && window.__gifosDirectPath) ? String(window.__gifosDirectPath) : '';
-      if (forced === 'ok' || forced === 'blocked') { directPath = forced; updateStatus(); if (meshNode && meshNode.remeasure) meshNode.remeasure(); return Promise.resolve(forced); }
+      if (forced === 'ok' || forced === 'blocked' || forced === 'strict') { directPath = forced; updateStatus(); if (meshNode && meshNode.remeasure) meshNode.remeasure(); return Promise.resolve(forced); }
       if (typeof RTCPeerConnection !== 'function') { directPath = 'unknown'; return Promise.resolve('unknown'); }
       return probeDirectPath(() => new RTCPeerConnection({ iceServers: ICE_SERVERS }), REACH_PROBE_MS).then((v) => {
         if (gen !== directPathRun) return v; // a newer probe owns the verdict
@@ -16182,8 +16212,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // contradicting.
         try { const st = meshSeat(); if (st && st.goodbye) st.goodbye(pid); } catch (err) {}
         // A seat whose links all ran through the forger is cut off from the
-        // room: cutOffByEjection (below) sends it back through the door.
-        ejectWatchUntil = Date.now() + 120000;
+        // room: the seat's own dark-seat law (D6) sends it back through the door.
       };
       Promise.race([whoObserve(pid), new Promise((r) => setTimeout(r, 1500))]).then(drop, drop);
       rosterIds = rosterIds.filter((x) => x !== pid);
@@ -16202,29 +16231,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { updateStatus(); } catch (err) {}
       whoRefresh();
     }
-    // CUT OFF BY AN EJECTION. A seat whose only links ran through an ejected
-    // forger hears nobody, and nothing else will rescue it: the room's own
-    // fragment rescue stands down while the room is known to hold others. So
-    // for two minutes after any ejection, a SEATED page with no live link to
-    // anyone not ejected, while the room was heard from lately, goes back
-    // through the door (at most every 15 s). A one-shot check right after the
-    // ejection was not enough: a seat still joining at that moment — e.g.
-    // seated by a forger that came back under a new key — was never
-    // re-checked and stayed alone.
-    let ejectWatchUntil = 0, cutOffSince = 0, ejectRequeueAt = 0;
-    function cutOffByEjection() {
-      if (!ejectWatchUntil || Date.now() > ejectWatchUntil) { cutOffSince = 0; return; }
-      const st = meshSeat();
-      if (!st || !st.hasCoord || st.state !== 3 || typeof st.requeue !== 'function') { cutOffSince = 0; return; }
-      const linked = [...peers.values()].some((q) => q.connected && !isEjected(q.id));
-      const roomHeard = [...whoLog].some(([pid, e]) => !isEjected(pid) && Date.now() - e.last < 60000);
-      if (linked || !roomHeard) { cutOffSince = 0; return; }
-      if (!cutOffSince) { cutOffSince = Date.now(); return; }
-      if (Date.now() - cutOffSince < 3000 || Date.now() - ejectRequeueAt < 15000) return;
-      cutOffSince = 0; ejectRequeueAt = Date.now();
-      try { st.requeue(); } catch (err) {}
-    }
-    setInterval(cutOffByEjection, 1500);
     // A departure: stamp what is about to be forgotten elsewhere.
     function whoGone(pid) {
       const e = whoLog.get(pid); if (!e) return;
@@ -16897,8 +16903,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           roles: () => ({ jobs: Array.from(relayJobs.values(), (j) => ({ target: j.target, req: j.requester })), vias: Array.from(relayVia.values(), (r) => r.via) }),
         },
         measure: {   // the device class and the network's verdict this page already keeps (L4)
-          tier: () => { const E = GifOS.meshConsts.enums; return IS_MOBILE ? E.TIER_MOBILE : E.TIER_DESKTOP; },
-          nat: () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' ? E.NAT_BLOCKED : E.NAT_OPEN; },
+          tier: () => { const E = GifOS.meshConsts.enums, hc = navigator.hardwareConcurrency | 0; return IS_MOBILE || (hc > 0 && hc <= 2) ? E.TIER_MOBILE : E.TIER_DESKTOP; },   // a 2-core desktop carries like a phone
+          nat: () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' ? E.NAT_BLOCKED : directPath === 'strict' ? E.NAT_STRICT : E.NAT_OPEN; },
         },
         // The seat's pcs (js/mesh/page/env.js calls these; it decides, the page carries out).
         pc: {
@@ -17377,6 +17383,47 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
     }
     GifOS.meshMedia.workerClock(1000, () => { for (const [pid, p] of peers) { try { frozenTileTick(pid, p); } catch (e) {} } });
+    // A picture that stops says so, never a silent frozen tile. A Stage strip or Stadium that had frames and has shown none
+    // for STALL_MS while the tab is in view gets a plain line; a shared screen may rightly stand still. The banner adds why,
+    // and only when both hold: this seat's picture stalled, and its own mass-leave sense names many people gone. Two goodbyes
+    // arm that sense for the seat's healing; ordinary churn does that, so the banner wants MASS_MANY of them.
+    const STALL_MS = 4000, MASS_MANY = 3;
+    const stallOf = new WeakMap();
+    let massMany = false, massBannerEl = null, massBannerAt = 0;
+    const BANNER_HOLD = 5000;
+    function stallSweep() {
+      const now = Date.now(); let n = 0;
+      for (const el of document.querySelectorAll('#stagefeed .rowtile, #stadium .rowtile')) {
+        const v = el.querySelector('video'); if (!v) continue;
+        const q = v.getVideoPlaybackQuality ? v.getVideoPlaybackQuality() : null, fr = q ? q.totalVideoFrames : -1;
+        let st = stallOf.get(v); if (!st) { st = { fr, at: now, had: false }; stallOf.set(v, st); }   // keyed on the element: a new stream that brings no frame is still a stall
+        if (fr !== st.fr) { st.had = st.had || fr > 0; st.fr = fr; st.at = now; }
+        if (document.hidden) st.at = now;   // a hidden tab presents nothing, so its count says nothing
+        const stalled = st.had && now - st.at >= STALL_MS && !el.querySelector('.sharelabel');
+        let note = el.querySelector('.stallnote');
+        if (stalled && !note) { note = document.createElement('div'); note.className = 'stallnote'; note.setAttribute('role', 'status'); note.textContent = uiText('mediaReconnecting', '⟳ Reconnecting…'); el.appendChild(note); if (typeof clog === 'function') clog('media-stall on ' + el.dataset.row); }
+        else if (!stalled && note) { note.remove(); if (typeof clog === 'function') clog('media-stall off ' + el.dataset.row); }
+        if (stalled) n++;
+      }
+      return n;
+    }
+    function massBannerTick() {
+      const stalled = stallSweep(), r = meshNode && meshNode.raw;
+      if (!r || !r.l13MassV) massMany = false;
+      else if (!massMany) {
+        let gone = 0; for (const at of r.byeIds.values()) if (r.TICK - at <= GifOS.meshConsts.consts.LEASE_T) gone++;
+        const down = new Set(); for (let q = 0; q < r.l13DownAt.length; q++) if (r.TICK - r.l13DownAt[q] <= GifOS.meshConsts.consts.LEASE_T) down.add(q < r.l13DownPeer.length ? r.l13DownPeer[q] : -1 - q);
+        massMany = Math.max(gone, down.size) >= MASS_MANY;
+      }
+      // held BANNER_HOLD past the last stalled beat, so a picture that comes and goes does not make it flicker
+      if (massMany && stalled > 0) massBannerAt = Date.now();
+      const on = massMany && Date.now() - massBannerAt < BANNER_HOLD;
+      if (on === !!massBannerEl) return;
+      if (typeof clog === 'function') clog('mass-banner ' + (on ? 'on' : 'off'));
+      if (on) { massBannerEl = document.createElement('div'); massBannerEl.id = 'massbanner'; massBannerEl.setAttribute('role', 'status'); massBannerEl.setAttribute('aria-live', 'polite'); massBannerEl.textContent = uiText('massLeaveBanner', 'Many people just left. Reconnecting the meeting, expect a short delay.'); document.body.appendChild(massBannerEl); }
+      else { massBannerEl.remove(); massBannerEl = null; }
+    }
+    GifOS.meshMedia.workerClock(1000, () => { try { massBannerTick(); } catch (e) {} });
     // A WEBKIT SENDER THAT NEVER ENCODES. Measured 2026-10-21 (gate-1812
     // diag d1/d5): a WebKit seat's camera track was live and playing on its
     // own tile, seated on the main sender of two connected mates, and
@@ -20560,7 +20607,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // frames from now on are the peer's own word: re-announce so my
           // HELLO reaches it as a first-hand claim, not a hint (and greet
           // it — see dc.onopen)
-          try { const s = meshSeat(); if (s && s.hasCoord && s.state === 3) { s.announce(); if (s.greet) s.greet(p.id); } } catch (e) {}
         }).catch(() => {});
     }
     function wireDc(p, dc) {
@@ -20619,7 +20665,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // to the other, the row-mate's YIELDs went unbacked, and both held
         // 0/0.0 for good (chaos seed 6 #2 on 403c6f81). The healer's mesh
         // settles a claim on its own cell from here (the rival branch).
-        try { const s = meshSeat(); if (s && s.hasCoord && s.state === 3) { s.announce(); if (s.greet) s.greet(p.id); } } catch (e) {}
       };
       // D5: my channel to this peer died. On an ungraceful peer death (mobile
       // tab kill, OOM, crash) this lands within ~1-5s — first-hand evidence

@@ -676,5 +676,7 @@
   "meet.stCreatingYourRoomTakesA": "🛡 Creando tu sala… (tarda unos segundos)",
   "meet.stThisAppIsPasskeyLocked2": "Esta app está bloqueada con passkey. Las demás personas de la reunión no pueden desbloquearla, así que no se puede compartir en vivo.",
   "meet.stYouStoppedTheSharedApp": "🧩 Detuviste la app compartida para todos.",
-  "meet.stOnlyThisRoomSAdmins2": "🛡 Solo los anfitriones de esta sala pueden detener la app compartida."
+  "meet.stOnlyThisRoomSAdmins2": "🛡 Solo los anfitriones de esta sala pueden detener la app compartida.",
+  "meet.mediaReconnecting": "⟳ Reconectando…",
+  "meet.massLeaveBanner": "Muchas personas acaban de salir. Reconectando la reunión; espera un momento."
 }

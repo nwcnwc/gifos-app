@@ -676,5 +676,7 @@
   "meet.stCreatingYourRoomTakesA": "🛡 Ihr Raum wird erstellt … (dauert einige Sekunden)",
   "meet.stThisAppIsPasskeyLocked2": "Diese App ist per Passkey gesperrt. Andere Teilnehmende der Besprechung können sie nicht entsperren, daher kann sie nicht live geteilt werden.",
   "meet.stYouStoppedTheSharedApp": "🧩 Sie haben die geteilte App für alle hier beendet.",
-  "meet.stOnlyThisRoomSAdmins2": "🛡 Nur die Admins dieses Raums können die geteilte App beenden."
+  "meet.stOnlyThisRoomSAdmins2": "🛡 Nur die Admins dieses Raums können die geteilte App beenden.",
+  "meet.mediaReconnecting": "⟳ Verbindung wird wiederhergestellt…",
+  "meet.massLeaveBanner": "Viele Personen sind gerade gegangen. Die Besprechung verbindet sich neu, bitte kurz warten."
 }
