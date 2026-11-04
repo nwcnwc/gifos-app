@@ -25273,14 +25273,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (pri && !inCand(pri) && pri.deadAt && now - pri.deadAt > MOS_GRACE) { dropMosIn(rk); pri = null; repaintRedun(rk, null); }
       // A copy flows only while its sender holds the feed (stgCarry).
       if (rk.indexOf('stg:') === 0) {
-        // Gone (no announcer, no stream): every copy stops, so a dead feed cannot circle. Dark (a
-        // blip, or the seat above dying): only the copy to my row's E2 source stops, so that seat
-        // sees E1's copy stop and moves to E2 at once; the rest of my row waits for my own swap.
         // Every pass: a stopped copy is restored even after this slot's state was rebuilt.
-        const gone = !!(pri && !inCand(pri)), sv = meshSeat(), src = sv ? sv.e2Src() : null;
-        if (gone) stgCarry(rk, false, pri);
-        else if (pri && fb.dark && src && src !== myId) stgCarry(rk, false, pri, src);
-        else stgCarry(rk, true);
+        // A relayed track whose source stopped sends silence with every packet, so nobody below
+        // can tell. Dark or gone, my copies of it stop; they start again with my next flowing claim.
+        if (pri && (fb.dark || !inCand(pri))) stgCarry(rk, false, pri); else stgCarry(rk, true);
       }
       if (!cand.length) { mosFb.delete(rk); return; }
       // DEMAND — the ONE-PIPE law: only the primary moves bits. The standby is
