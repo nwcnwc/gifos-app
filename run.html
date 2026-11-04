@@ -14030,7 +14030,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           p.incoming.push(stream);
         }
         // Cap dead renegotiation leftovers — but a busy mosaic link legitimately
-        // carries MANY live aux streams (sdm + sdx + sgs + stg:* + the
+        // carries MANY live aux streams (sdm + sdx + sdxc + sgs + stg:* + the
         // camera); the old cap of 8 evicted still-LIVE streams, which made
         // mosLive() false for a healthy pipe → claim drop → tile flap. Evict
         // streams with no live tracks first; only then trim by age.
@@ -23213,7 +23213,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // STAGE-MOS-EL
     function mosNeedsVideo(rk) {
       if (rk === 'subraw' || rk === 'x1') return false;
-      if (typeof rk === 'string' && rk.indexOf('x2:') === 0) return false;
+      if (typeof rk === 'string' && (rk.indexOf('x2:') === 0 || rk.indexOf('sdxc:') === 0)) return false;
       return true;
     }
     // END-STAGE-MOS-EL
@@ -23452,7 +23452,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const rlk = key + '>' + (fromPid || '');
       if (now - (kfLast.get(rlk) || 0) < 2000) { kfEv(key, 'rl', fromPid ? { from: String(fromPid).slice(0, 6) } : undefined); return; }
       kfLast.set(rlk, now);
-      // A relay's job key is not its claim slot (sub/x2/sdrow/sdn).
+      // A relay's job key is not its claim slot (sub/x2/sdrow/sdn/sdx^x).
       // upKey is the slot the bytes came from. The asker's job wins; any job
       // for this key is the fallback.
       let cl = null;
@@ -24027,8 +24027,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // and the mirror stopped forming on the quiet room (measured: drills
       // tier 2026-08-08, 'E holds sdn PRIMARY + mirror STANDBY' red on a
       // room that renegotiates almost never).
-      // The x1 -> x2 -> sdrow backup chain is born parked the same way
-      // (chainBornParked below).
+      // The x1 -> x2 -> sdrow and sdxc -> sdx^x backup chains are born parked
+      // the same way (chainBornParked below).
       if (chainBornParked(key, upKey)) { setJobActive(jk, false); renegotiate(p); }
       compKick(to);
       return jk;
@@ -24049,18 +24049,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // MOS_SETTLE, so failback cannot be observed through it at all.)
     // CHAIN-PARK
     // Backup relay chains are born parked and woken end to end on demand:
-    // x1 -> x2 -> sdrow (a head's product over the row and column fabric).
-    // x1 leaves the head from a local canvas, so a hot spare there is a real
-    // encoder that nobody watches. Every hop of the chain has one consumer, so
-    // a want or an idle that reaches a hop is passed to the hop it relays.
+    // x1 -> x2 -> sdrow (a head's product over the row and column fabric) and
+    // sdxc -> sdx^x (a column ingredient over a carrier row-mate). x1 and sdxc
+    // leave the head from local canvases, so a hot spare there is a real
+    // encoder that nobody watches. Every hop of these chains has one consumer,
+    // so a want or an idle that reaches a hop is passed to the hop it relays.
     function chainUpKey(upKey) {
       if (typeof upKey !== 'string') return null;
       if (upKey === 'x1') return 'x1';
       if (upKey.indexOf('x2:') === 0) return 'x2';
+      if (upKey.indexOf('sdxc:') === 0) return 'sdxc';
       return null;
     }
     function chainBornParked(key, upKey) {
-      return key === 'x1' || !!chainUpKey(upKey);
+      return key === 'x1' || key === 'sdxc' || !!chainUpKey(upKey);
     }
     function chainDemandUp(job, want) {
       const parked = job ? mosStandby.get(job.upKey) : null; // E2 up: the copy I climb with can be one I hold parked
@@ -24305,7 +24307,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (key.indexOf('sdrow') === 0) return iAmHead && meta && meta.row != null && meta.row !== c.r ? 'sdrow:' + meta.row : null;
       // MIX-MINUS streams (docs/media-plane.md): per-branch, single-producer.
       if (key === 'sdm') return iAmHead ? null : 'sdm'; // my head's finished row view — my Stadium
-      if (key === 'sdx') return !iAmHead && meta && meta.col === c.i ? 'sdx' : null; // my column's child-branch ingredient
+      // sdx: my column's child-branch ingredient (direct, or the 'sdx^x' copy a
+      // carrier row-mate hands me — same slot, second pipe in the row). sdxc: a
+      // NEIGHBOUR column's copy I carry sideways to its target seat.
+      if (key === 'sdx' || key === 'sdx^x') return !iAmHead && meta && meta.col === c.i ? 'sdx' : null;
+      if (key === 'sdxc') return !iAmHead && meta && meta.col != null && meta.col !== c.i ? 'sdxc:' + meta.col : null;
       if (key === 'sdn') return iAmHead ? 'sdn' : null;  // my branch's outside-world ingredient (from above)
       if (key === 'sgs') return 'sgs';        // the composited Stage strip, fanned down
       // an individual stager feed (per-stager slot); an older client's '^' suffix
@@ -25137,7 +25143,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         mosIn.set(rk, { via: from, streamId: ann.streamId, stream: st, el: mosNeedsVideo(rk) ? mosVideo(st) : null, meta: annMeta(ann) });
         structuralSeen.add(rk);
       }
-      // A structural slot (sub, x1, x2) has no second announcer
+      // A structural slot (sub, x1, x2, sdxc) has no second announcer
       // and no claimRedun pass. Once its announce ages out, or the peer is
       // gone, nothing in the announcer loop visits it, and the last frame
       // stays painted. Keep it only while someone still announces it AND the
@@ -25707,6 +25713,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             const jk4 = i === c.i ? shipMos('sdn', childPid, pk.stream, m)
               : shipMos('sdx', occPid({ pc: c.pc, r: c.r, i }), pk.stream, Object.assign({ col: i }, m));
             if (jk4) wanted.add(jk4);
+            // >2-REDUNDANCY (the control-plane discipline, on the media budget):
+            // the SAME mix over a second link-disjoint pipe — me → a carrier
+            // row-mate → seat i ('sdxc' → 'sdx^x', same slot). ONE-PIPE law:
+            // claimRedun keeps ONE pipe moving bits; the carrier copy sits as
+            // the parked standby (replaceTrack(null), zero media) until a
+            // failure demand-wakes it.
+            if (i !== c.i) {
+              let carrier = null;
+              for (let d = 1; d < C; d++) { const k2 = (i + d) % C; if (k2 === 0 || k2 === i) continue; const cp = occPid({ pc: c.pc, r: c.r, i: k2 }); if (cp) { carrier = cp; break; } }
+              if (carrier) { const jk6 = shipMos('sdxc', carrier, pk.stream, Object.assign({ col: i }, m)); if (jk6) wanted.add(jk6); }
+            }
           }
         } else {
           if (sdPack) { sdPack.stop(); sdPack = null; }
@@ -25750,6 +25767,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // "outside my branch" ('sdn').
         const sdx = mosIn.get('sdx');
         if (sdx) { const jn = shipMos('sdn', occPid(T.down(c)), sdx.stream, blockMeta(sdx), 'sdx'); if (jn) wanted.add(jn); }
+        // Carrier leg of the sdx redundancy: hand my head's 'sdxc' copies to
+        // their target seat as 'sdx^x' — the same slot over a second pipe.
+        for (const [mk, xc] of mosIn) {
+          if (mk.indexOf('sdxc:') !== 0) continue;
+          const tcol = +mk.slice(5);
+          const jc = shipMos('sdx^x', occPid({ pc: c.pc, r: c.r, i: tcol }), xc.stream, Object.assign({ col: tcol }, blockMeta(xc)), mk); if (jc) wanted.add(jc);
+        }
         // Lateral second pipe for the row view: re-fan my claimed 'sdm' to my
         // row-mates (skip the head, skip whoever it came from). Same mix over
         // a second link-disjoint path — a mate that loses the head's direct
