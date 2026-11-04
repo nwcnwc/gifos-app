@@ -210,7 +210,7 @@
     };
 
     // ---- gossip ---------------------------------------------------------------------------------------------
-    let gseq = 0; const gseen = new Map(); let grecent = []; const bkt = new Map();
+    let gseq = Date.now();   /* a gossip id must not repeat across a reload of the same identity: the room still holds the old ones as seen and drops the new as copies */ const gseen = new Map(); let grecent = []; const bkt = new Map();
     function sectionPeers() {
       const s = raw(), out = new Set(); if (!s || !s.hasCoord) return out;
       for (const olc of o.ownedLinks(s.coord)) { if (olc.pc !== s.coord.pc) continue; const x = s.occ.get(olc.pc * 65536 + olc.r * 256 + olc.i); const p = P(x); if (p != null && p !== me) out.add(p); }
