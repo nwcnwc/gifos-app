@@ -5982,8 +5982,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // The Stage seat comes back with its original claim time, so the person
     // keeps their place in step-up order. A grant that has not arrived yet
     // must not disarm it (reactStageLost waits out stageResumeUntil).
-    let stageResumeUntil = 0;
+    let stageResumeUntil = 0, stageLeaving = false;
     if (updateResume && +updateResume.stg > 0) { myStatus.stg = +updateResume.stg; stageResumeUntil = Date.now() + 20000; }
+    // A RELOAD KEEPS THE STAGE SEAT (Nathan, 0.9.25: back on stage right after the reload). This
+    // tab writes its stage seat on pagehide; Leave removes it, and a closed tab takes it with it
+    // (sessionStorage is per tab). Same room and within a minute only; the seat's own order stands.
+    const STAGE_RELOAD_KEY = 'gifos_stage_reload';
+    try {
+      const raw = sessionStorage.getItem(STAGE_RELOAD_KEY); sessionStorage.removeItem(STAGE_RELOAD_KEY);
+      const o = raw ? JSON.parse(raw) : null;
+      if (!myStatus.stg && o && o.room === updateRoomKey() && Date.now() - (+o.at || 0) < 60000 && +o.stg > 0) { myStatus.stg = +o.stg; stageResumeUntil = Date.now() + 20000; }
+    } catch (e) {}
     window.__gifosRoomTrust = {
       setRecording(on) {
         myStatus.rec = !!on;
@@ -6159,7 +6168,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let reactPending = false;
     const memoPass = (k, f) => { if (!passMemo) return f(); if (!(k in passMemo)) passMemo[k] = f(); return passMemo[k]; };
     const stageHeldAt = new Map(), STAGE_FOLD_HOLD_MS = 25000;
-    const stageFeedAt = new Map(), STAGE_FEED_LOST_MS = 10000;
+    const stageFeedAt = new Map(), STAGE_FEED_LOST_MS = 2500;
     const stageIds = () => memoPass('stg', stageIdsNow);
     const stageIdsNow = () => {
       // A stage seat needs a LIVE status — the same stHold rule as consent and
@@ -6203,14 +6212,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         for (const e of dg.stage) {
           if (!e.id || have.has(e.id) || e.id === myId || botOf(e.id) || stHold(e.id) || !notTomb(e.id) || !(canStage(e.id) || ((e.f & 2) && mayShareScreen(e.id)))) continue;
           if (vt) { const dv = e.dv || devFor(e.id); if (dv && (vt.down[dv] || 0) >= stageNeed(vt, dv)) continue; }
-          // The fold keeps a dead seat's lists under its lease (L3.12, up to 110 s), so it can't say
-          // a stager died. Its feed can: I held it and it has been gone a while, so nobody is there.
-          let feedNow = false; try { feedNow = !!mosIn.get('stg:' + e.id); } catch (x) {}
-          if (feedNow) stageFeedAt.set(e.id, Date.now());
-          else if (stageFeedAt.has(e.id) && Date.now() - stageFeedAt.get(e.id) > STAGE_FEED_LOST_MS) continue;
           out.push([e.id, e.k]);
         }
-        for (const id of stageFeedAt.keys()) if (!dg.stage.some((e) => e.id === id)) stageFeedAt.delete(id);
+      }
+      // A/V gets no grace (Nathan, 0.9.25): a stager whose feed I held and lost is off the stage
+      // at once, whatever a status or the fold still says (both lag a death by up to a minute).
+      // Short of a blip only: the watchdog calls a pipe dark after 0.7 s of silence. A new claim
+      // (a reload, the feed back) puts the stager back.
+      {
+        const nowF = Date.now();
+        for (let i = out.length - 1; i >= 0; i--) {
+          const id = out[i][0]; if (id === myId) continue;
+          let feedNow = false; try { feedNow = !stgLost('stg:' + id); } catch (x) {}
+          if (feedNow) stageFeedAt.set(id, nowF);
+          else if (stageFeedAt.has(id) && nowF - stageFeedAt.get(id) > STAGE_FEED_LOST_MS) out.splice(i, 1);
+        }
+        for (const id of [...stageFeedAt.keys()]) if (!out.some((x) => x[0] === id) && nowF - stageFeedAt.get(id) > 120000) stageFeedAt.delete(id);
       }
       // A deep stager's entry reaches the far room through its row's fold, and that path breaks
       // when the seat above it dies, until E2 carries the fold. The stager did not step down and
@@ -6224,7 +6241,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (out.some((x) => x[0] === id)) continue;
         const said = statusOf.get(id);
         const fresh = said && nowH - stSeen(said) <= 15000;
-        let held = false; try { held = !!mosIn.get('stg:' + id); } catch (e) {} // a dead primary still counts: its claim ends after the grace unless a standby takes the slot
+        let held = false; try { held = !!mosIn.get('stg:' + id) && !(mosFb.get('stg:' + id) || {}).dark; } catch (e) {} // a dead primary counts until the grace ends; a dark one (silent ring or dead path) does not
         if (nowH - h.at > STAGE_FOLD_HOLD_MS || id === myId || !held || meshGone.has(id) || (fresh && !said.stg)) { stageHeldAt.delete(id); continue; }
         out.push([id, h.k]);
       }
@@ -8220,6 +8237,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Any way out of the page that is not an update reload drops the note,
     // so the next join starts fresh (Max blur, off the Stage).
     window.addEventListener('pagehide', () => {
+      try { if (!stageLeaving && +myStatus.stg > 0) sessionStorage.setItem(STAGE_RELOAD_KEY, JSON.stringify({ room: updateRoomKey(), at: Date.now(), stg: +myStatus.stg })); } catch (e) {}
       if (updateLeaving) return;
       try { sessionStorage.removeItem(UPDATE_RESUME_KEY); } catch (e) {}
     });
@@ -24134,7 +24152,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             const wantsPipe = kind === 'video' && pipeEnabled() && !pipeDeny.has(jk) && !pipeJobs.has(jk)
               && (() => { try { return !!MPipe.receiverForTrack(nt, [...peers.values()].map((q) => q.pc).filter(Boolean)); } catch (e) { return false; } })();
             if (wantsPipe) { mosDetach(cur, jk, p, i); mosAttach(cur, jk, p, nt); ops.push('relane:' + kind); have = haveIdx(kind); continue; }
-            if (cur.active && !(typeof outgoingHeld !== 'undefined' && outgoingHeld)) { try { cur.senders[i].replaceTrack(nt); } catch (e) {} }
+            if (cur.active && !cur.carryOff && !(typeof outgoingHeld !== 'undefined' && outgoingHeld)) { try { cur.senders[i].replaceTrack(nt); } catch (e) {} }
             cur.trackList[i] = nt; cur.srcTracks[i] = nt; ops.push('swap:' + kind);
           }
           // grow: the source gained a track of this kind — a fresh m-line
@@ -24315,7 +24333,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!!job.active === !!on) return;
       job.active = !!on;
       for (let i = 0; i < job.senders.length; i++) {
-        try { job.senders[i].replaceTrack(on ? (job.trackList[i] || null) : null); } catch (e) {}
+        try { job.senders[i].replaceTrack(on && !job.carryOff ? (job.trackList[i] || null) : null); } catch (e) {} // a copy of a dark claim stays stopped (stgCarry)
       }
       // A PIPED job's dormancy must reach the worker: a parked pipe's minted
       // templates die at the detached track, so its tap must stop queueing
@@ -24724,7 +24742,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     async function sampleStandby(rk, fb) {
       if (fb.dark || fb.wakeAt) {
         const std = mosStandby.get(rk);
-        const s = std ? await pipeBytes(std) : -1;
+        const s = std ? await pipeBytes(std, rk.indexOf('stg:') === 0) : -1;
         if (s !== -1 && s.d >= 0) {
           // First post-wake sample IS the baseline; a sample BELOW the
           // baseline means the standby's receiver was renegotiated and its
@@ -24755,7 +24773,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // hot void and wake the standby for nothing.
           if (pri.stream && !pri.stream.getTracks().length) { await sampleStandby(rk, fb); continue; }
           if (mosHeld(pri)) continue; // parked on purpose while its decoder restarts (mosDecoderSweep): this silence is not death
-          const bytes = await pipeBytes(pri);
+          const bytes = await pipeBytes(pri, rk.indexOf('stg:') === 0);
           // Forensics ring (frza17: a husk claim's standby was never woken and
           // no theory survived — record what each sample actually SAW). Widened
           // 2026-08-07 from stg/sgs to EVERY redundant key, and records the
@@ -24907,9 +24925,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // packetsReceived) for a voice-only feed. Returns -1 when the pipe has no
     // receiver for that track (forming, or a rebuilt transport whose
     // receivers no longer carry it).
-    async function pipeBytes(ent) {
+    async function pipeBytes(ent, voice) {
       try {
         const p = peers.get(ent.via); if (!p || !p.pc || !ent.stream) return -1;
+        // A stage feed is judged on its voice: a share's picture can flow on its own pipe
+        // while the voice beside it has stopped.
+        if (voice && ent.stream.getAudioTracks()[0]) return pipeAudioBytes(p, ent.stream.getAudioTracks()[0]);
         const vt = ent.stream.getVideoTracks()[0];
         if (!vt) return pipeAudioBytes(p, ent.stream.getAudioTracks()[0]);
         const rcv = p.pc.getReceivers().find((r) => r.track === vt); if (!rcv) return -1;
@@ -25022,13 +25043,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const trs = ent.stream ? ent.stream.getTracks() : [];
       return !!job.srcTracks && job.srcTracks.some((t) => trs.indexOf(t) >= 0);
     }
-    function stgCarry(rk, on) {
-      const sv = meshSeat(), src = sv ? sv.e2Src() : null;
-      if (!src || src === myId) return;
+    // A copy flows only while its sender holds the feed (mesh_media.inc: the feed is a search
+    // from a live source). Every copy I relay from this claim stops while the claim is dark or
+    // gone, and starts again the moment it flows. Without this, Section 1's rook flood keeps a
+    // dead stager's feed circling as silence, as a ring the path list cannot see past 12 seats.
+    function stgCarry(rk, on, pri, onlyTo) {
       for (const job of mosJobs.values()) {
-        if (job.upKey !== rk || !job.active || job.to !== src) continue;
-        job.senders.forEach((sd, i) => { const t = job.trackList[i]; if (t && t.kind === 'audio') { try { sd.replaceTrack(on ? t : null); } catch (e) {} } });
+        if (job.upKey !== rk || !job.active || !job.senders) continue;
+        if (on ? !job.carryOff : !(pri && stgFedBy(job, pri))) continue; // a copy fed by my parked standby is the way out: never stop it
+        if (!on && onlyTo && job.to !== onlyTo) { if (job.carryOff) { job.carryOff = false; job.senders.forEach((sd, i) => { const t = job.trackList[i]; if (t) { try { sd.replaceTrack(t); } catch (e) {} } }); } continue; }
+        job.carryOff = !on;
+        job.senders.forEach((sd, i) => { const t = job.trackList[i]; if (t) { try { sd.replaceTrack(on ? t : null); } catch (e) {} } });
+        const jk = job.key + '>' + job.to; if (pipeJobs.has(jk) && MPipe) { try { MPipe.pausePipe(jk, !on); } catch (e) {} } // a piped picture stops at the worker too
       }
+    }
+    // Is my claim on this stage feed one I may relay or count as a feed? Not while it is dark or
+    // gone. A dark claim that kept announcing let a whole Section 1 row keep "live" claims on a
+    // dead stager, with no media at all, for as long as the fold listed it (room v3ring).
+    function stgLost(rk) {
+      const f = mosIn.get(rk); if (!f) return true;
+      const fb = mosFb.get(rk);
+      return !!(f.deadAt || (fb && fb.dark));
     }
     function prefCand(rk, cand) {
       const c = meshCoord(); if (!c) return null;
@@ -25046,6 +25081,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // is supposed to come from; fall back to the old key-only match when that
       // cell's occupant is not known yet, so a gap in occ cannot leave a head
       // with no primary at all.
+      // L2.7: while the seat holds E2 hot, E2's copy of the strip is the path too (the stage feed's rule below).
+      if (rk === 'sgs') { const hot = meshSeat(); if (hot && hot.u2Hot) { const e2 = cand.find((x) => x.live && x.from === hot.u2Id); if (e2) return e2; } }
       if (rk === 'sdx' || rk === 'sdn') {
         const src = rk === 'sdn' ? net.topo.up(c) : { pc: c.pc, r: c.r, i: 0 };
         const srcPid = src ? occPid(src) : null;
@@ -25238,6 +25275,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // My new source may still hold my old copy of this feed: its source is gone, and it looks
           // alive for 12 s, so that seat would fail back onto it. End it.
           if (rk.indexOf('stg:') === 0 && mosJobs.has(rk + '>' + pri.via)) unshipMos(rk + '>' + pri.via, true);
+          // A share on the new path: seats below me need a key frame to decode my new source, so ask now.
+          if (rk.indexOf('stg:') === 0 && pri.stream && pri.stream.getVideoTracks().length) { try { kfNeed(rk); } catch (e) {} }
           pri.deadAt = 0; fb.lastSwitch = now; fb.wakeAt = 0; fb.prefSince = 0;
           fb.dark = false; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; fb.fp = 0; fb.fpDecayAt = 0; fb.b0 = -1; fb.d0 = -1; fb.stdFdec = -1; fb.stdAdvAt = 0; fb.claimAt = now; // fresh primary — the watchdog re-baselines and the penalty clears
           repaintRedun(rk, pri.stream);
@@ -25247,14 +25286,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } else { fb.wakeAt = 0; if (!stdIsPref) fb.prefSince = 0; }
       // GRACE teardown: a dead primary whose standby never materialized/flowed.
       if (pri && !inCand(pri) && pri.deadAt && now - pri.deadAt > MOS_GRACE) { dropMosIn(rk); pri = null; repaintRedun(rk, null); }
-      // A copy flows only while its sender holds the feed (mesh_media.inc). A relayed audio
-      // track never stops by itself: with no source it sends silence, and my row's E2 source
-      // would never see E1's copy stop. So a dark claim stops what it sends that seat. The
-      // rest of my row and my subtree just wait for my swap: nothing ripples.
+      // A copy flows only while its sender holds the feed (stgCarry).
       if (rk.indexOf('stg:') === 0) {
-        const lost = !!(pri && (fb.dark || !inCand(pri)));
-        if (lost || fb.held) stgCarry(rk, !lost);
-        fb.held = lost;
+        // Every pass: a stopped copy is restored even after this slot's state was rebuilt.
+        // A relayed track whose source stopped sends silence with every packet, so nobody below
+        // can tell. Dark or gone, my copies of it stop; they start again with my next flowing claim.
+        if (pri && (fb.dark || !inCand(pri))) stgCarry(rk, false, pri); else stgCarry(rk, true);
       }
       if (!cand.length) { mosFb.delete(rk); return; }
       // DEMAND — the ONE-PIPE law: only the primary moves bits. The standby is
@@ -26131,8 +26168,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (!f.meta || !f.meta.ao || !sb || !sb.meta || sb.meta.ao) continue;
           for (const t of e2Up) if (t !== sb.via && stgPath(sb).indexOf(vpId(t)) < 0) { const jk = shipMos(k, t, sb.stream, { h: stgHop(sb), vp: stgPath(sb) }, k); if (jk) wanted.add(jk); }
         }
-        for (const k of heldStg) { const f = mosIn.get(k); relayStg(k, f.stream, f.via, stgHop(f), !!(f.meta && f.meta.ao), stgPath(f)); }
+        for (const k of heldStg) { if (stgLost(k)) continue; const f = mosIn.get(k); relayStg(k, f.stream, f.via, stgHop(f), !!(f.meta && f.meta.ao), stgPath(f)); }
         if (iAmHead) for (const k of heldStg) { // my row folds at its ears too
+          if (stgLost(k)) continue;
           const f = mosIn.get(k);
           const owner = k.slice(4).split('^')[0];
           for (let j = 1; j < C; j++) {
@@ -26185,7 +26223,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
         };
         if (amStager) { const st = mySelfStream(); if (st) floodOne('stg:' + myId, st, null, 0); }
-        for (const k of heldStg) { const hf = mosIn.get(k); floodOne(k, hf.stream, hf.via, stgHop(hf), stgPath(hf)); }
+        for (const k of heldStg) { if (stgLost(k)) continue; const hf = mosIn.get(k); floodOne(k, hf.stream, hf.via, stgHop(hf), stgPath(hf)); }
         // composite the strip in stage order; fan 'sgs' down my subtree
         const selfSt = soloSelf ? selfStageStream() : null;
         if (!stagers.length) { paintStageStrip(null); }
@@ -33427,6 +33465,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (rbNow) rbQuit();
       if (DEBUG_ON) { try { (window.__bcTrace = window.__bcTrace || []).push({ ev: 'leave', t: Date.now(), seeding: bcSeeding, seed: bcSeedOnLeave(), kept: bcKept, host: !!bcHostStored(), rec: recRec ? recRec.state : 'none' }); } catch (e) {} }
       try { updateLeaving = false; sessionStorage.removeItem(UPDATE_RESUME_KEY); } catch (e) {} // a real leave: the next join starts at Max blur
+      try { stageLeaving = true; sessionStorage.removeItem(STAGE_RELOAD_KEY); } catch (e) {} // and off the stage
       if (!bcSeeding && bcSeedOnLeave()) return endServiceKeepSeat();
       leftBehind = Math.max(0, headerCount() - 1);
       const flushing = stopLocalCapture();
@@ -35608,6 +35647,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       stageEarStreamForTest: () => (stageEar && stageEar.el.srcObject ? { stream: stageEar.el.srcObject, muted: !!stageEar.el.muted, paused: !!stageEar.el.paused } : null),
       stageRouteForTest: () => { const o = {}; for (const [k, v] of mosIn) { if (k.indexOf("stg:") !== 0 && k !== "sgs") continue; const d = mosStandby.get(k); o[k.slice(0, 8)] = String(v.via).slice(2, 8) + (d ? "|" + String(d.via).slice(2, 8) : ""); } return o; },
       stageWhyForTest: (id) => { const st = statusOf.get(id), d = digLists(), e = d ? d.stage.find((x) => x.id === id) : null; let f = null; try { f = mosIn.get('stg:' + id); } catch (x) {} return { on: stageIds().includes(id), fold: !!e, foldAge: d ? d.age : null, stAge: st ? Date.now() - stSeen(st) : null, stStg: st ? st.stg || 0 : null, stHold: stHold(id), tomb: !notTomb(id), gone: meshGone.has(id), held: typeof stageHeldAt !== 'undefined' && stageHeldAt.has(id), claim: f ? { via: String(f.via).slice(0, 8), dead: f.deadAt ? Date.now() - f.deadAt : 0 } : null }; },
+      stgPathForTest: () => { const six = (x) => String(x || '').slice(0, 8); const o = {}; for (const [k, f] of mosIn) { if (k.indexOf('stg:') !== 0) continue; const d = mosStandby.get(k); const m = (e) => (e ? { via: six(e.via), key: e.key || null, h: e.meta ? e.meta.h : null, ao: !!(e.meta && e.meta.ao), vp: (e.meta && e.meta.vp) || [] } : null); const hot = []; for (const j of mosJobs.values()) if (j.upKey === k && j.active) hot.push(six(j.to)); o[six(k.slice(4))] = { pri: m(f), std: m(d), dead: f.deadAt ? Date.now() - f.deadAt : 0, hot }; } const jobs = []; for (const [jk, j] of mosJobs) if (j.key.indexOf('stg:') === 0) jobs.push({ k: six(j.key.slice(4)), to: six(j.to), up: j.upKey ? six(j.upKey.slice(4)) : null, active: !!j.active, off: !!j.carryOff, src: (j.srcTracks || []).map((t) => t.kind[0] + (t.readyState === 'live' ? (t.muted ? 'm' : 'L') : 'E')).join(''), sending: j.senders.map((sd) => sd.track ? 1 : 0).join(''), tl: j.tracklessAt ? Date.now() - j.tracklessAt : 0 }); const ann = []; for (const [ak, a] of mosAnn) if (ak.indexOf('|stg:') > 0) ann.push({ from: six(ak.slice(0, ak.indexOf('|'))), k: six(ak.slice(ak.indexOf('|') + 5)), age: Date.now() - (a.at || 0), h: a.h }); return { me: six(myId), coord: meshCoord(), o, jobs, ann }; },
       stgHiccupForTest: (ms) => { const jobs = [...mosJobs.values()].filter((b) => b.key.indexOf("stg:") === 0 && b.active); for (const b of jobs) b.senders.forEach((sd, i) => { const t = b.trackList[i]; if (t && t.kind === "audio") { try { sd.replaceTrack(null); } catch (e) {} } }); setTimeout(() => { for (const b of jobs) b.senders.forEach((sd, i) => { const t = b.trackList[i]; if (t && t.kind === "audio") { try { sd.replaceTrack(t); } catch (e) {} } }); }, ms); return jobs.length; },
       stageEarLevel: (ms) => new Promise((resolve) => {
         if (!stageEar || !stageEar.el.srcObject || !ac) return resolve(-1);
