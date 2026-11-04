@@ -17472,6 +17472,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     GifOS.meshMedia.workerClock(2000, () => { try { lgRead(); } catch (e) {} });
     // L29.2: a seat that has shed wakes no parked copy; one that has not wakes only what fits.
     const lgWoken = new Set();
+    // What a wake is on this page: a parked REDUNDANCY copy a receiver asks for when its hot copy stopped: the column
+    // ring (x2, and the sdrow re-fanned from it), the sdx carrier copies (sdxc, sdx^x), a stage copy on a second path.
+    // My own product and a tree forward (the mix, the row view and block, sdx, sdn, sub, my stage) are the cell's
+    // duties, which the ladder counts as such (fwd, the head duty); a receiver's demand for one is no wake, and level 1
+    // keeps them, as the sim keeps its hot edges (mesh_lguard.inc lgEdgeOk). Charging every demanded duty as a wake put
+    // a full row's head over its budget with a healthy device, and level 1 then parked its row's mix and view every 8 s
+    // (the ladder's calm) for as long as the room asked for them.
+    function lgParkedCopy(job) {
+      if (!job) return false;
+      const k = job.key;
+      if (k === 'x2' || k === 'sdxc' || k === 'sdx^x') return true;
+      if (!job.upKey) return false;
+      return k.indexOf('sdrow:') === 0 || k.indexOf('stg:') === 0 || k === 'sgs';
+    }
     function lgRefuseWake() {
       const r = meshNode && meshNode.raw, K = GifOS.meshConsts.consts; if (!r || !r.lgBud0) return false;
       return r.lgLvl >= 1 || (r.lgLd[0] + K.L29_HOT) * 100 > r.lgBud * K.L29_SHED;
@@ -21120,9 +21134,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // The streamId must match the CURRENT job: a stale demand aimed at a
         // dead ship must never flip the live one (the dark-primary inversion
         // the redun-drill caught).
-        const jw = mosJobs.get(m.key + '>' + p.id);
-        if (jw && !jw.active && lgRefuseWake()) { /* L29.2: nothing to spare */ }
-        else if (jw && (!m.streamId || jw.streamId === m.streamId)) { if (!jw.active) lgWoken.add(m.key + '>' + p.id); setJobActive(m.key + '>' + p.id, true); chainDemandUp(jw, true); }
+        const jw = mosJobs.get(m.key + '>' + p.id), copy = lgParkedCopy(jw); // a duty is never refused and never a wake (L29.2)
+        if (jw && !jw.active && copy && lgRefuseWake()) { /* L29.2: nothing to spare */ }
+        else if (jw && (!m.streamId || jw.streamId === m.streamId)) { if (!jw.active && copy) lgWoken.add(m.key + '>' + p.id); setJobActive(m.key + '>' + p.id, true); chainDemandUp(jw, true); }
         else if (jw && m.streamId && jw.streamId !== m.streamId) {
           // STALE SID ON A WANT — ANSWER IT, DO NOT JUST DROP IT.
           //
