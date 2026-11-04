@@ -10175,6 +10175,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { ccMixSync(); } catch (e) {}
     }
     let meterHiddenTick = 0, meterQuietTick = 0, meterAnyLive = false;
+    let talkOn = false, talkLoud = 0, talkQuiet = 0;   // the seat's talk verb (L6.2), fed below
     setInterval(() => {
       // Hidden tab: sample at 900ms, not 180ms — the only hidden consumer is
       // the PiP re-aim (worker heartbeat, 4s), and five WebAudio reads/sec
@@ -10228,6 +10229,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         speakingOf.set(id, speaking); // fed to the packer overlay (green talking frame on composite faces)
         if (speaking) ccGapSee(id, speaking); // a paused neighbour's voice is kept for the one speech session
       }
+      // L6.2/L6.3: the seat keeps a stager or a talker where it sits, and only the page knows who is one. Talking is
+      // the mic meter with hysteresis: on after 2 loud beats, off after 5 quiet ones. Being on stage is the seat's pin.
+      try {
+        const r = meshNode && meshNode.raw;
+        if (r) {
+          if (speakingOf.get('me')) { talkQuiet = 0; talkLoud++; } else { talkLoud = 0; talkQuiet++; }
+          const want = talkOn ? talkQuiet < 5 : talkLoud >= 2;
+          if (want !== talkOn) { talkOn = want; if (typeof clog === 'function') clog('talk-' + (want ? 'on' : 'off')); }
+          r.talkSet(talkOn);
+          if (!r.pinT !== !myStatus.stg) r.pinT = myStatus.stg ? r.TICK + 1 : 0;
+        }
+      } catch (e) {}
       if (fsSel === 'auto' && fsview.classList.contains('on')) fsRefresh();
     }, 180);
     function tileNote(t, msg) {
