@@ -44,7 +44,7 @@ function installMedia(fab) {
   const MFEEDS = [];
   const MCELL = new Map();   // ground truth this tick: cell -> seat
   // C++: mesh_media.inc:MRx
-  const newRx = () => ({ lastHot: -1, hotRun: 0, promoted: false, cur: 0, maxGap: 0 });
+  const newRx = () => ({ lastHot: -1, hotRun: 0, promoted: false, promAt: -1, cur: 0, maxGap: 0 });
   // C++: mesh_media.inc:MFeedSt
   const newFeed = () => ({ src: -1, row: 0, stadium: false, rx: new Map() });
 
@@ -62,6 +62,15 @@ function installMedia(fab) {
     const L = lk().linkFind(s, q); if (!L || L.state !== E.LK_OPEN) return false;
     return !(L.half & (1 << lk().lEnd(s, q)));
   }
+  // C++: mesh_media.inc:mTouch, mReady   (a directed pair's media setup: a measurement; mFlow stays as it was)
+  const MEDIA_SETUP_T = 2, MEDIA_WAKE_T = 1; const MPAIRS = new Map(); let MSEED = -1;
+  function mTouch(s, t) {
+    if (!lv.LINKMODEL || !mFlow(s, t)) return; const L = lk().linkFind(s, t); const key = hash.idPair(s, t); let m = MPAIRS.get(key); if (m === undefined) { m = { ep: 0, readyAt: 0, last: -2 }; MPAIRS.set(key, m); } if (m.last === TICK()) return;
+    if (m.last === -2 || m.ep !== L.openEp) m.readyAt = (m.last === -2 && TICK() <= MSEED) ? TICK() : TICK() + MEDIA_SETUP_T;
+    else if (m.last < TICK() - 1) m.readyAt = TICK() + MEDIA_WAKE_T;
+    m.ep = L.openEp; m.last = TICK();
+  }
+  function mReady(s, t) { if (!lv.LINKMODEL) return true; const m = MPAIRS.get(hash.idPair(s, t)); return m !== undefined && TICK() >= m.readyAt; }
   // C++: mesh_media.inc:mBuildCells
   function mBuildCells() {
     MCELL.clear();
@@ -125,6 +134,7 @@ function installMedia(fab) {
       if (!F.stadium && (F.src < 0 || F.src >= lv.nextId || !alive[F.src] || !seats[F.src].hasCoord)) continue;
       if (F.stadium) { const row = rowOfKey(F.row); let any = false; for (let j = 0; j < C; j++) if (mOcc({ pc: row.pc, r: row.r, i: j })) any = true; if (!any) continue; }
       const out = mEdges(F); const n = lv.nextId; const have = new Uint8Array(n), hotOk = new Uint8Array(n); const q = [];
+      if (lv.LINKMODEL) for (let s = 0; s < n; s++) for (const [t] of out[s]) mTouch(s, t);
       if (F.stadium) { const row = rowOfKey(F.row); for (let j = 0; j < C; j++) { const s = mAt({ pc: row.pc, r: row.r, i: j }); if (s >= 0 && mCarry(s)) { have[s] = 1; q.push(s); } } }
       else if (mCarry(F.src)) { have[F.src] = 1; q.push(F.src); }
       const par = new Int32Array(n).fill(-1);   // split horizon: a hot copy counts for t only if the feed did not reach its sender through t
@@ -132,11 +142,11 @@ function installMedia(fab) {
       for (let hh = 0; hh < q.length; hh++) {
         const s = q[hh];
         for (const [t, hot] of out[s]) {
-          if (!mFlow(s, t)) continue;
+          if (!mFlow(s, t) || !mReady(s, t)) continue;
           if (hot && lv.LG_ON && !X.lgEdgeOk(s, t, true, F.stadium)) continue;
           if (hot && !via(s, t)) hotOk[t] = 1;
           if (have[t]) continue;
-          if (!hot) { const it = F.rx.get(t); if (it === undefined || !it.promoted) continue; if (lv.LG_ON && !X.lgEdgeOk(s, t, false, F.stadium)) continue; }
+          if (!hot) { const it = F.rx.get(t); if (it === undefined || !it.promoted) continue; if (lv.LINKMODEL && TICK() < it.promAt + MEDIA_WAKE_T) continue; if (lv.LG_ON && !X.lgEdgeOk(s, t, false, F.stadium)) continue; }
           have[t] = 1; par[t] = s; q.push(t);
         }
       }
@@ -146,7 +156,7 @@ function installMedia(fab) {
         let r = F.rx.get(t); if (r === undefined) { r = newRx(); F.rx.set(t, r); }
         if (r.lastHot < 0) r.lastHot = TICK();
         if (hotOk[t]) { r.lastHot = TICK(); r.hotRun++; if (r.promoted && r.hotRun >= K.L2_PARK) r.promoted = false; }
-        else { r.hotRun = 0; if (TICK() - r.lastHot >= K.L2_PROMOTE) r.promoted = true; }
+        else { r.hotRun = 0; if (TICK() - r.lastHot >= K.L2_PROMOTE && !r.promoted) { r.promoted = true; r.promAt = TICK(); } }
         const measured = !F.stadium || seats[t].coord.pc === 0;   // a stadium mix is read where the stadium is composed
         if (!measured) continue;
         if (have[t]) r.cur = 0; else { r.cur++; if (r.cur > r.maxGap) r.maxGap = r.cur; }
@@ -155,6 +165,7 @@ function installMedia(fab) {
   }
   // C++: mesh_media.inc:mediaSetup
   function mediaSetup() {
+    MSEED = TICK() + 1;
     MFEEDS.length = 0; mBuildCells();
     for (const x of MSTAGE) if (x >= 0 && x < lv.nextId && alive[x] && seats[x].hasCoord) { const f = newFeed(); f.src = x; MFEEDS.push(f); }
     const rs = new Set(); for (const [k] of MCELL) { const c = unckey(k); if (c.pc !== 0) rs.add(rowKeyOf(c)); }
@@ -315,7 +326,7 @@ function installMedia(fab) {
   function mgapPaths() {
     mBuildCells(); const n = lv.nextId; const reach = new Uint8Array(n);
     const adj = []; for (let q = 0; q < n; q++) adj.push([]);
-    const add = (a, b) => { if (a < 0 || b < 0 || a === b) return; if (!(mFlow(a, b) && mFlow(b, a))) return; adj[a].push(b); adj[b].push(a); };
+    const add = (a, b) => { if (a < 0 || b < 0 || a === b) return; mTouch(a, b); mTouch(b, a); if (!(mFlow(a, b) && mFlow(b, a) && mReady(a, b) && mReady(b, a))) return; adj[a].push(b); adj[b].push(a); };
     const q = [];
     for (let s = 0; s < n; s++) {
       if (!mCarry(s)) continue; const ol = ownedLinks(seats[s].coord); for (const c of ol) add(s, mAt(c));
@@ -341,6 +352,7 @@ function installMedia(fab) {
   }
   // C++: mesh_media.inc:mgapOn
   function mgapOn() {
+    MSEED = TICK() + 1;
     lv.MGAP = true; lv.MGAP_T0 = TICK(); MGS = []; for (let s = 0; s < lv.nextId; s++) MGS.push(newGap());
     const reach = mgapPaths(); lv.MGAP_PRE = 0; for (let s = 0; s < lv.nextId; s++) if (alive[s] && !reach[s]) lv.MGAP_PRE++;
   }
@@ -373,6 +385,7 @@ function installMedia(fab) {
   }
 
   const api = {
+    mPairsReset: () => { MPAIRS.clear(); MSEED = -1; },
     mediaTick, mgapTick, mgapOn, mgapReport, mgapSeats, mediaSetup, mediaReset, mediaReport,
     mstage: () => MSTAGE, mstageClear: () => { MSTAGE.length = 0; }, mstagePush: (x) => { MSTAGE.push(x); }, mfeeds: () => MFEEDS,
     mBuildCells, mcell: () => MCELL, mAt, mOcc, mFlow, mCarry, mHash,

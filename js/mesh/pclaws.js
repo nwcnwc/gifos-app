@@ -514,7 +514,7 @@
       noteCall(me, x);
       if (l23Refused(x, me)) return;
       l23MakeRoom(me, x);
-      const L = ph().linkGet(me, x); if (L.state === LK_NONE || L.state === LK_CLOSED) { ph().startDial(me, x, L); L.dialHow = 1; }
+      const L = ph().linkGet(me, x); if (L.state === LK_NONE || L.state === LK_CLOSED) { ph().startDial(me, x, L); L.dialHow = 1; } else if (L.state === LK_DIALING && ph().sigAsked) ph().sigAsked(L, me, x);
     }
     // C++: mesh_link.inc:fabricDialJoin   [end]
     function fabricDialJoin(me, x) {
@@ -524,7 +524,7 @@
       noteCall(me, x);
       if (l23Refused(x, me)) return;
       l23MakeRoom(me, x);
-      const L = ph().linkGet(me, x); if (L.state === LK_NONE || L.state === LK_CLOSED) { ph().startDial(me, x, L); L.dialHow = 2; } else if (L.state === LK_DIALING) L.view[lEnd(me, x)] = LK_DIALING;
+      const L = ph().linkGet(me, x); if (L.state === LK_NONE || L.state === LK_CLOSED) { ph().startDial(me, x, L); L.dialHow = 2; } else if (L.state === LK_DIALING) { L.view[lEnd(me, x)] = LK_DIALING; if (ph().sigAsked) ph().sigAsked(L, me, x); }
     }
     // C++: mesh_link.inc:linkHeld   [end]
     function linkHeld(x) {
