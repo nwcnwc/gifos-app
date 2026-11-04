@@ -25,6 +25,7 @@
   const msg = req('./msg.js', 'meshMsg');
   const topo = req('./topo.js', 'meshTopo');
   const roles = req('./roles.js', 'meshRoles');
+  const e2f = req('./e2fold.js', 'meshE2fold');   // L48
   const sm = req('./seat.js', 'meshSeat');
   const { Seat, FREE, roomTerm, l165Earlier } = sm;
 
@@ -604,7 +605,7 @@
       if (this.u2Id >= 0 && this.u2Id !== id && TICK - this.u2BeatAt >= 8) {
         this.u2BeatAt = TICK;
         const ls = this.f.fabricLinkState(id, this.u2Id); if (ls === LS_CLOSED || ls === LS_NONE) this.f.fabricDial(id, this.u2Id);
-        const m = newMsg('U2BEAT'); m.id = id; m.coord = cc(this.coord); m.e1dn = this.u2Hot; if (this.u2Hot && lv.DIGEST) m.dgUp = (this.coord.i === 0) ? this.pubDig(this.rowDig) : this.u2RowDig; this.emit(this.u2Id, m);
+        const m = newMsg('U2BEAT'); m.id = id; m.coord = cc(this.coord); m.e1dn = this.u2Hot; if (this.u2Hot && lv.DIGEST) m.dgUp = (this.coord.i === 0) ? this.pubDig(this.rowDig) : (e2f.L48_OFF ? this.u2RowDig : (this.u2RowDig.at >= 0 && this.occGet(ckey(cell(this.coord.pc, this.coord.r, 0))) === this.u2RowDig.by ? this.wireDig(this.u2RowDig) : ((this.occGet(ckey(cell(this.coord.pc, this.coord.r, 0))) < 0 || this.headGone()) ? this.l48SiFold() : msg.newDig()))); this.emit(this.u2Id, m);
       }
       const e2dn = this.u2AckAt >= 0 && (TICK - this.u2AckAt > 8 + K.EARLY_HOLD || this.f.fabricLinkState(id, this.u2Id) === LS_CLOSED);   // E2 once carried and has stopped
       if (this.u3Id >= 0 && this.u3Id !== id && (this.u2Hot || e2dn) && TICK - this.u3BeatAt >= 8) {
