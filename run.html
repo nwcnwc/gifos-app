@@ -25273,8 +25273,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // A copy flows only while its sender holds the feed (stgCarry).
       if (rk.indexOf('stg:') === 0) {
         const lost = !!(pri && !inCand(pri));
-        if (lost || fb.held) stgCarry(rk, !lost, pri);
-        fb.held = lost;
+        stgCarry(rk, !lost, pri);   // every pass: a stopped copy is restored even after this slot's state was rebuilt (a re-claim)
       }
       if (!cand.length) { mosFb.delete(rk); return; }
       // DEMAND — the ONE-PIPE law: only the primary moves bits. The standby is
