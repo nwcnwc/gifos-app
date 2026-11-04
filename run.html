@@ -11086,12 +11086,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // mainHoldUntil: a held re-seat a peer asked for (holdMainVideo) —
           // the park must outlive this beat, or the beat seats the camera
           // back before the far side has bound its tile.
-          const heldNow = !!(p.mainHoldUntil && p.mainHoldUntil > Date.now());
+          const heldNow = !!(p.mainHoldUntil && p.mainHoldUntil > Date.now()) || seatSelfLeased();
           if (!cam || !vt || p.remoteParkMain || heldNow) { if (p.mainV.track) p.mainV.replaceTrack(null).catch(() => {}); }
           else if (p.mainV.track !== vt) p.mainV.replaceTrack(vt).catch(() => {});
         }
         if (p.mainA) {
-          if (staged) { if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
+          if (staged || seatSelfLeased()) { if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
           else if (at && p.mainA.track !== at) p.mainA.replaceTrack(at).catch(() => {});
         }
       }
@@ -24277,10 +24277,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // stage feed (a copy it already ships keeps going). DEBUG only.
     const relayHeldForTest = (key, to) => DEBUG_ON && (window.__relayHoldUntil || 0) > Date.now() && !mosJobs.has(key + '>' + to);
     const jobPinned = (jk) => DEBUG_ON && window.__parkedJobs && (window.__parkedJobs.get(jk) || 0) > Date.now();
+    // A seat that leased its own cell has lost every channel and is on its way out of that cell: it carries no media, in or
+    // onward, until a channel proves back (the sim's mCarry). What it was shipping goes back on when the lease ends.
+    const seatSelfLeased = () => !!(meshNode && meshNode.raw && meshNode.raw.selfLeaseAt >= 0);
+    let leaseShown = false; const leaseJobs = new Set();
+    function selfLeaseTick() {
+      const on = seatSelfLeased(); if (on === leaseShown) return;
+      leaseShown = on; if (typeof clog === 'function') clog('self-lease ' + (on ? 'on' : 'off'));
+      if (on) { for (const [jk, job] of mosJobs) if (job.active) { leaseJobs.add(jk); setJobActive(jk, false); } }
+      else { for (const jk of leaseJobs) setJobActive(jk, true); leaseJobs.clear(); }
+      try { refreshOutbound(); } catch (e) {}
+    }
+    GifOS.meshMedia.workerClock(1000, () => { try { selfLeaseTick(); } catch (e) {} });
     function setJobActive(jk, on) {
       const job = mosJobs.get(jk); if (!job) return;
       if (on && typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (on && jobPinned(jk)) return; // pinned parked — ignore the wake
+      if (on && seatSelfLeased()) return; // a self-leased seat carries nothing (below)
       if (!!job.active === !!on) return;
       job.active = !!on;
       for (let i = 0; i < job.senders.length; i++) {
