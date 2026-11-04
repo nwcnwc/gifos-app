@@ -29,7 +29,7 @@
   const { Seat, FREE, roomTerm, l165Earlier } = sm;
 
   const K = C_.consts, E = C_.enums;
-  const { ckey, unckey, ownedLinks, colMates, rowMates, down, crossLink, parentPath, cc } = topo;
+  const { ckey, unckey, ownedLinks, colMates, rowMates, down, parentPath, cc } = topo;
   const { eraseFirst } = req('./util.js', 'meshUtil');
   const C = topo.C, MAXLINKS = topo.MAXLINKS;
   const { LS_OPEN, LS_DIALING, LS_CLOSED, LS_NONE } = E;
@@ -314,7 +314,6 @@
           }
         }
       }
-      if (!topo.TOPO_XDROP && this.coord.i > 0 && TICK >= this.xlinkAt) { this.xlinkAt = TICK + 150 + Math.trunc(this.rng() * 100); const x = crossLink(this.coord); if (x && this.occGet(ckey(x)) < 0) this.routeTo(x, 1); }
       if (this.drainAt && TICK >= this.drainAt) { this.reseatViaRoster(); return; }
       const didHeal = this.healOwner();   // 11a VERTICAL: a head heals its dead owner cell from its subtree
       if (!this.hasCoord) return;   // L47: it knocked again
@@ -468,9 +467,8 @@
         return;
       }   // id: a DRAIN is honoured only from the receiver's anchor
       if (TICK - this.rosterAskAt > 40) {
-        this.rosterAskAt = TICK; const x = crossLink(coord); let xid = -1; if (x) xid = this.occGet(ckey(x));
-        if (xid >= 0 && xid !== id) { const m = newMsg('WHOHOME'); m.from = id; m.via = id; m.ttl = 60; this.emit(xid, m); }
-        else {
+        this.rosterAskAt = TICK;
+        {
           const rm = rowMates(coord); const ri = [0, 1, 2, 3]; for (let k = 3; k > 0; k--) { const j = Math.trunc(this.rng() * (k + 1)); const t = ri[k]; ri[k] = ri[j]; ri[j] = t; }
           for (const q of ri) { const rr = this.occGet(ckey(rm[q])); if (rr >= 0 && rr !== id) { const m = newMsg('WHOHOME'); m.from = id; m.via = id; m.ttl = 60; this.emit(rr, m); break; } }
         }

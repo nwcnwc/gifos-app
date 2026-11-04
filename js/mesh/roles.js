@@ -18,7 +18,7 @@
   const GifOS = root.GifOS = root.GifOS || {};
   const topo = (typeof require === 'function' && typeof module !== 'undefined' && module.exports)
     ? require('./topo.js') : GifOS.meshTopo;
-  const { C, parentPath, lastDigit, childPath, ckey, crossLink, up, down } = topo;
+  const { C, parentPath, lastDigit, childPath, ckey, up, down } = topo;
 
   // C++: roles.h:fullRow
   function fullRow() { return true; }
@@ -73,7 +73,7 @@
   }
 
   // C++: roles.h:EdgeCls
-  const E_ROW = 0, E_COL = 1, E_CROSS = 2, E_UP = 3, E_DOWN = 4, E_UP2 = 5, E_DOWN2 = 6;
+  const E_ROW = 0, E_COL = 1, E_UP = 2, E_DOWN = 3, E_UP2 = 4, E_DOWN2 = 5;
   // C++: roles.h:MAXLINKS_E
   const MAXLINKS_E = 2 * C + 1;
 
@@ -85,7 +85,6 @@
     if (s.pc === 0) { for (let j = 0; j < C; j++) if (j !== s.r) { out.push({ pc: s.pc, r: j, i: s.i }); cls.push(E_COL); } }
     else {
       let x;
-      if (!l2 && (x = crossLink(s))) { out.push(x); cls.push(E_CROSS); }
       if ((x = up(s))) { out.push(x); cls.push(E_UP); }
     }
     out.push(down(s)); cls.push(E_DOWN);
@@ -102,7 +101,7 @@
 
   const api = Object.freeze({
     fullRow, ownerOf, heirOf, rightWalk, backupOwnerOf, standbyOf, e2SrcOf,
-    E_ROW, E_COL, E_CROSS, E_UP, E_DOWN, E_UP2, E_DOWN2, MAXLINKS_E, ownedLinksE,
+    E_ROW, E_COL, E_UP, E_DOWN, E_UP2, E_DOWN2, MAXLINKS_E, ownedLinksE,
   });
   GifOS.meshRoles = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

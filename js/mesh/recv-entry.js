@@ -25,7 +25,7 @@
   const { eraseFirst } = req('./util.js', 'meshUtil');
 
   const K = C_.consts, E = C_.enums;
-  const { ckey, ckPc, unckey, down, pcDepth, lastDigit, parentPath, crossLink, rowMates } = topo;
+  const { ckey, ckPc, unckey, down, pcDepth, lastDigit, parentPath, rowMates } = topo;
   const C = topo.C;
   const newMsg = (t) => msg.newMsg(t);
   const kvCopy = (a) => a.map((e) => ({ k: e.k, v: e.v }));
@@ -91,8 +91,6 @@
       }
       const fwd = (x) => { if (x >= 0 && x !== id && x !== m.via) { const w = newMsg('WHOHOME'); w.from = m.from; w.via = id; w.ttl = m.ttl - 1; w.knock = m.knock; this.emit(x, w); return true; } return false; };
       if (this.coord.i !== 0) { if (fwd(this.occGet(ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 })))) return; } else { if (fwd(this.ownerId())) return; }
-      const x = crossLink(this.coord); if (x && fwd(this.occGet(ckey(x)))) return;
-      const rm = rowMates(this.coord); for (let q = 0; q < C - 1; q++) { const cx = crossLink(rm[q]); if (cx && fwd(this.occGet(ckey(cx)))) return; }
       if (this.l13On()) {   // L13: my way up is gone: the ask goes to a home seat I name
         let best = -1;
         for (const [k, v] of this.occ) { if (ckPc(k) !== 0 || v < 0 || v === id || v === m.via || v === m.from) continue; if (this.firstHandLive(k)) { best = v; break; } if (best < 0) best = v; }
