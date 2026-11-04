@@ -678,5 +678,6 @@
   "meet.stYouStoppedTheSharedApp": "🧩 You stopped the shared app for everyone here.",
   "meet.stOnlyThisRoomSAdmins2": "🛡 Only this room’s admins can stop the shared app.",
   "meet.mediaReconnecting": "⟳ Reconnecting…",
-  "meet.massLeaveBanner": "Many people just left. Reconnecting the meeting, expect a short delay."
+  "meet.massLeaveBanner": "Many people just left. Reconnecting the meeting, expect a short delay.",
+  "meet.islandLabel": "You're in a separate part of this meeting: some people can't reach your network yet. It joins up by itself when they can."
 }
