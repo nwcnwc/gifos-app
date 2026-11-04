@@ -513,6 +513,7 @@
       busyFrom: (x) => refused(x, { busy: 1 }),
       link: (x) => LINKS.get(x) || null, dump: () => [...LINKS].map(([x, L]) => ({ x, state: L.state, view: L.view[mine(x)], outside: L.outside, gone: L.gone, q: L.q.length })),
       dialHeld: (x) => pc.dialHeld(me, x), laws: pc, BYE,
+      doorForgive: (x) => pc.S.L16COOL.delete(hash.idPair(me, x)),   // the admin's Admit: the waiting room's idle knocks are not this person's fault
     };
   }
 
