@@ -17366,6 +17366,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // The relay introduces and that is all: a closed socket says who it can reach for the door list, nothing about a person. Death comes from the pc, the dc and silence, as in the sim.
         relaySocketed.delete(m.peer);
       }
+      else if (m.t === 'greeter-crash') {
+        // Only the relay's socket gets here, and the relay only says it when a greeter's socket died with no close frame: that greeter's goodbye.
+        relaySocketed.delete(m.peer);
+        const p = peers.get(m.peer); if (p) p.byeSeen = Date.now();
+        try { if (meshNode && meshNode.transport) meshNode.transport(m.peer, 'greeter-crash'); } catch (e) {}
+      }
       else if (m.t === 'error') {
         pwLog('relay-error: ' + String(m.error || '?').slice(0, 60));
         // Password gate is handled by the wire (onLocked / R6 sealing); bans

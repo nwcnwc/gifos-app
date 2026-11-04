@@ -377,14 +377,16 @@ function install(fab) {
   // C++: mesh_link.inc:linkOnLeave
   const linkOnLeave = api.linkOnLeave = (id) => { if (lv.LINKMODEL) LPENDCLOSE.push(id); };
   // C++: mesh_link.inc:linkCrash
+  const relayLists = (x) => { const t = fab.relayGreeters.get(x); return t !== undefined && t >= TICK() && !fab.sockClosed(x); };
   const linkCrash = (id) => {
-    lEnsure(id); const ps = LINKPEERS[id].slice();
+    lEnsure(id); const ps = LINKPEERS[id].slice(); const told = relayLists(id);
+    if (told) for (const p of fab.relayGreeters.keys()) { if (p === id || p >= nextId() || !alive[p] || !relayLists(p)) continue; const m = seats[p].crashBye(id); if (m) { m.to = p; m.from = id; fab.busPush(TICK() + 1, m); } }
     for (const p of ps) {
       const L = linkFind(id, p); if (!L) continue;
-      const greeter = p < nextId() && !!alive[p] && seats[p].hasCoord && seats[p].coord.pc === 0;
+      const greeter = told && p < nextId() && !!alive[p] && relayLists(p);
       if (greeter && (L.state === LK_OPEN || L.state === LK_DIALING)) {
         const wasOpen = L.state === LK_OPEN; L.state = LK_CLOSED; L.epoch = U32(L.epoch + 1); L.q.length = 0; L.half = 0; L.halfAt = -1;
-        if (wasOpen) downAt(TICK() + 1, p, id, L.epoch, 'relay-leave'); else L.view[lEnd(p, id)] = LK_CLOSED;
+        if (wasOpen) downAt(TICK() + 1, p, id, L.epoch, 'leave-close'); else L.view[lEnd(p, id)] = LK_CLOSED;
       } else linkHalf(L, id, p, 3, false);
     }
   };
@@ -441,7 +443,7 @@ function install(fab) {
         if (it !== undefined && TICK() - it < K.LINK_TL_DEBOUNCE) { LSTAT[5]++; return; }
         TLDEB.set(dk, TICK()); LSTAT[4]++;
         trace('LINK-DOWN', e, null, 'peer=%d why=%s', x, v.why);
-        if (v.why === 'disconnected-persist' || v.why === 'failed-persist' || v.why === 'leave-close' || v.why === 'relay-leave') {
+        if (v.why === 'disconnected-persist' || v.why === 'failed-persist' || v.why === 'leave-close') {
           const se = seats[e]; const da = se.l13DownAt, dp = se.l13DownPeer, dc = se.l13DownCrash;
           da.push(se.TICK); dp.push(x); dc.push(v.why === 'disconnected-persist' || v.why === 'failed-persist' ? 1 : 0);
           if (da.length > 32) { da.shift(); dp.shift(); dc.shift(); }
