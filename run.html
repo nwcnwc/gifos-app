@@ -25118,6 +25118,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // My new source may still hold my old copy of this feed: its source is gone, and it looks
           // alive for 12 s, so that seat would fail back onto it. End it.
           if (rk.indexOf('stg:') === 0 && mosJobs.has(rk + '>' + pri.via)) unshipMos(rk + '>' + pri.via, true);
+          // A share on the new path: seats below me need a key frame to decode my new source, so ask now.
+          if (rk.indexOf('stg:') === 0 && pri.stream && pri.stream.getVideoTracks().length) { try { kfNeed(rk); } catch (e) {} }
           pri.deadAt = 0; fb.lastSwitch = now; fb.wakeAt = 0; fb.prefSince = 0;
           fb.dark = false; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; fb.fp = 0; fb.fpDecayAt = 0; fb.b0 = -1; fb.d0 = -1; fb.stdFdec = -1; fb.stdAdvAt = 0; fb.claimAt = now; // fresh primary — the watchdog re-baselines and the penalty clears
           repaintRedun(rk, pri.stream);
