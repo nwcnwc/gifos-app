@@ -23161,6 +23161,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let sdEmptyAt = 0;   // since when a head's sdPack has been EMPTY (blank-tile grace)
     const sdnPacks = new Map(); // col -> packer: per-child DOWN ingredients (mix-minus)
     const l14Packs = new Map(); // head -> packer: the down ingredient of a cut-off branch I serve (L14)
+    const l14RelPacks = new Map(); // head -> packer: the outside of a branch my row-mate serves, built here, handed down by that mate
     // STAGE AUDIO folds AT THE EAR (mix-minus): the strip is video-only; every
     // device sums the per-stager feeds it holds, skipping its OWN — a stager
     // never hears their own voice come back.
@@ -24582,6 +24583,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // sdx: my column's child-branch ingredient (direct, or the 'sdx^x' copy a
       // carrier row-mate hands me — same slot, second pipe in the row). sdxc: a
       // NEIGHBOUR column's copy I carry sideways to its target seat.
+      if (key === 'sdxu') return !iAmHead && meta && meta.via ? 'sdxu:' + String(meta.via).slice(0, 64) : null; // L14: my head's outside for a branch I serve
       if (key === 'sdx' || key === 'sdx^x') return !iAmHead && meta && meta.col === c.i ? 'sdx' : null;
       if (key === 'sdxc') return !iAmHead && meta && meta.col != null && meta.col !== c.i ? 'sdxc:' + meta.col : null;
       if (key === 'sdn') return iAmHead ? 'sdn' : null;  // my branch's outside-world ingredient (from above)
@@ -25618,6 +25620,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       sdnPacks.clear();
       for (const pk of l14Packs.values()) pk.stop();
       l14Packs.clear();
+      for (const pk of l14RelPacks.values()) pk.stop();
+      l14RelPacks.clear();
       if (stripPack) { stripPack.stop(); stripPack = null; }
       if (stageEar) { stageEar.fold.clear(); stageEar.sids.clear(); }
       paintStadiumTile(null); paintStageStrip(null);
@@ -25667,7 +25671,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // strip here left the stage blank until the mesh caught up (or
         // forever, with no seat). Keep the slide.
         const localShare = !!(myStatus.scr && screenStream);
-        if (mosJobs.size || mosIn.size || mosStandby.size || prodPack || sdPack || sdnPacks.size || l14Packs.size || stripPack) stopMosaic();
+        if (mosJobs.size || mosIn.size || mosStandby.size || prodPack || sdPack || sdnPacks.size || l14Packs.size || l14RelPacks.size || stripPack) stopMosaic();
         else if (compOf.size && !localShare) { paintStadiumTile(null); paintStageStrip(null); }
         if (localShare) paintStageStrip(selfStageStream());
         return;
@@ -25873,7 +25877,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         for (const h of l14Heads) {
           let pk = l14Packs.get(h);
           if (!pk) { pk = MM.createPacker({ shape: 'stad', fps: compFps(), ac: (ensureAc(), ac) }).start(); l14Packs.set(h, pk); }
-          fill(pk); l14Blocks(pk, h, (q) => 20 + C + q);
+          fill(pk, h); l14Blocks(pk, h, (q) => 20 + C + q);
           if (pk.count() > 0) { const jk = shipMos('sdn', h, pk.stream, metaOf(pk)); if (jk) wanted.add(jk); }
         }
       };
@@ -26048,11 +26052,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             for (let j = 0; j < C; j++) { const fp0 = j === c.i ? myId : (actHead && j === 0 ? null : occPid({ pc: c.pc, r: c.r, i: j })); const fp = fp0 && stagers.includes(fp0) ? null : fp0; const sc = fp ? srcFor(fp) : null; if (sc && sc.el) pk.setTile('f' + j, 10 + j, sc.el, sc.stream, { n: 1, cols: 1, lbl: stadLbl(fp), fit: fitFor(fp), pid: fp }); else pk.delTile('f' + j); }
             for (let j = 0; j < C; j++) { const sub = mosIn.get('sub:' + j); if (sub) setBlock(pk, 's' + j, 20 + j, sub); else pk.delTile('s' + j); }
           }, packMeta);
+          // A branch a row-mate serves: I hold everything but that branch, so I build its outside and the mate hands it
+          // down (the mate's own view, my 'sdm', now carries the branch and would play it back to itself).
+          const relHere = new Set();
+          for (const [mk, uf] of mosIn) {
+            if (mk.indexOf('subu:') !== 0) continue; const h = mk.slice(5); if (l14Heads.includes(h) || !uf || uf.via === h || !rowMatePid(uf.via)) continue;
+            relHere.add(h); let pk = l14RelPacks.get(h);
+            if (!pk) { pk = MM.createPacker({ shape: 'stad', fps: compFps(), ac: (ensureAc(), ac) }).start(); l14RelPacks.set(h, pk); }
+            setOutside(pk);
+            for (let j = 0; j < C; j++) { const fp0 = j === c.i ? myId : (actHead && j === 0 ? null : occPid({ pc: c.pc, r: c.r, i: j })); const fp = fp0 && stagers.includes(fp0) ? null : fp0; const sc = fp ? srcFor(fp) : null; if (sc && sc.el) pk.setTile('f' + j, 10 + j, sc.el, sc.stream, { n: 1, cols: 1, lbl: stadLbl(fp), fit: fitFor(fp), pid: fp }); else pk.delTile('f' + j); }
+            for (let j = 0; j < C; j++) { const sub = mosIn.get('sub:' + j); if (sub) setBlock(pk, 's' + j, 20 + j, sub); else pk.delTile('s' + j); }
+            l14Blocks(pk, h, (q) => 20 + C + q);
+            if (pk.count() > 0) { const jr = shipMos('sdxu', uf.via, pk.stream, Object.assign({ via: h }, packMeta(pk))); if (jr) wanted.add(jr); }
+          }
+          for (const [h, pk] of [...l14RelPacks]) if (!relHere.has(h)) { pk.stop(); l14RelPacks.delete(h); }
         } else {
           if (sdPack) { sdPack.stop(); sdPack = null; }
           for (const pk of sdnPacks.values()) pk.stop();
           sdnPacks.clear();
           l14Down(null);
+          for (const pk of l14RelPacks.values()) pk.stop();
+          l14RelPacks.clear();
           paintStadiumTile(null);
         }
       } else {
@@ -26063,6 +26083,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (sdPack) { sdPack.stop(); sdPack = null; }
         for (const pk of sdnPacks.values()) pk.stop();
         sdnPacks.clear();
+        for (const pk of l14RelPacks.values()) pk.stop();
+        l14RelPacks.clear();
         sdEmptyAt = 0;
         // NON-HEAD relays: my down-child's product -> my head (tagged with my
         // column); my head's x1 -> down my COLUMN to its destination row; any x2:q I hold ->
@@ -26072,8 +26094,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         for (const [mk, uf] of mosIn) { if (mk.indexOf('subu:') !== 0) continue; const ju = shipMos('sub', headPid, uf.stream, Object.assign({ l14: 1, via: mk.slice(5) }, blockMeta(uf)), mk); if (ju) wanted.add(ju); } // L14: a branch I serve, into my row's product
         if (beyondRow) {
           const sdmM = mosIn.get('sdm'), packMetaM = (pk) => ({ n: pk.count(), cols: pk.cols() });
-          l14Down((pk) => {
-            if (sdmM) setBlock(pk, 'o', 0, sdmM); else pk.delTile('o');
+          l14Down((pk, h) => {
+            // the branch's outside, built by my head (it holds everything but that branch); my own view now carries the branch
+            const rel = mosIn.get('sdxu:' + h);
+            if (rel) { setBlock(pk, 'o', 0, rel); for (let j = 0; j < C; j++) pk.delTile('f' + j); return; }
+            pk.delTile('o');
             for (let j = 0; j < C; j++) { const fp0 = j === c.i ? myId : occPid({ pc: c.pc, r: c.r, i: j }); const fp = fp0 && stagers.includes(fp0) ? null : fp0; const sc = fp ? srcFor(fp) : null; if (sc && sc.el) pk.setTile('f' + j, 10 + j, sc.el, sc.stream, { n: 1, cols: 1, lbl: stadLbl(fp), fit: fitFor(fp), pid: fp }); else pk.delTile('f' + j); }
           }, packMetaM);
         } else l14Down(null);
