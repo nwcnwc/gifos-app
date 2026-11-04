@@ -365,7 +365,7 @@
     // C++: mesh_seat.inc:Seat::s1Take
     // § G intake for the Section-1 table.
     s1Take(k, u) {
-      { const g = this.digForgot.get(k); if (g !== undefined && g[0] === u.by && u.at <= g[1] && this.LT() - g[1] <= K.DIG_TTL) return; }   // a vacated cell's last report stamped before the vacate and coming back in a relayed table is the same report, not a second person (a mover counted in its old cell and its new)
+      { const g = this.digForgot.get(k); if (g !== undefined && g[0] === u.by && u.rx <= g[1] + 8 && this.LT() - g[1] <= K.DIG_TTL) return; }   // a vacated cell's last report received no later than a relay hop (8 ticks) after the vacate and coming back in a relayed table is the same report, not a second person (a mover counted in its old cell and its new)
       const it = this.s1tab.get(k);
       if (it === undefined) { this.l10Dirty(null, u); this.s1tab.set(k, dig.cloneDig(u)); return; }
       if (it.by === u.by) { if (u.at > it.at) { this.l10Dirty(it, u); this.s1tab.set(k, dig.cloneDig(u)); } return; }
