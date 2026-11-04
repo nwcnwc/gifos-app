@@ -6241,7 +6241,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (out.some((x) => x[0] === id)) continue;
         const said = statusOf.get(id);
         const fresh = said && nowH - stSeen(said) <= 15000;
-        let held = false; try { held = !!mosIn.get('stg:' + id) && !(mosFb.get('stg:' + id) || {}).dark; } catch (e) {} // a dead primary counts until the grace ends; a dark one (silent ring or dead path) does not
+        let held = false; try { held = !!mosIn.get('stg:' + id) && !(mosFb.get('stg:' + id) || {}).dark && !stgStale('stg:' + id); } catch (e) {} // a dead primary counts until the grace ends; a dark one (silent ring or dead path) does not
         if (nowH - h.at > STAGE_FOLD_HOLD_MS || id === myId || !held || meshGone.has(id) || (fresh && !said.stg)) { stageHeldAt.delete(id); continue; }
         out.push([id, h.k]);
       }
@@ -21106,6 +21106,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           && ((prevAnn.ids || []).join(',') !== (annIds || []).join(',') || prevAnn.n !== m.n || prevAnn.cols !== m.cols);
         mosAnn.set(ak, { streamId: m.streamId, col: m.col, row: m.row, n: m.n, cols: m.cols, mt: m.mt, h: (typeof m.h === 'number' ? m.h : undefined), ao: (m.ao === 1 ? 1 : undefined), sb: (m.sb === 1 ? 1 : undefined), vp: mxPath(m.vp), ids: annIds, at: Date.now() });
         if (annNew || stripReorder) schedReconcile(); else schedClaim();
+      } else if (m.k === 'mx-beat') {
+        stgBeatIn(p, m);
       } else if (m.k === 'mx-end' && typeof m.key === 'string') {
         mosAnn.delete(p.id + '|' + m.key);
         // Structural slots drop hard; REDUNDANT slots go through claimMos so the
@@ -25122,8 +25124,38 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function stgLost(rk) {
       const f = mosIn.get(rk); if (!f) return true;
       const fb = mosFb.get(rk);
-      return !!(f.deadAt || (fb && fb.dark));
+      return !!(f.deadAt || (fb && fb.dark) || stgStale(rk));
     }
+    // THE STAGER'S BEAT. Only a live stager can make a new beat, so it says what no announce can:
+    // the source is there. Announces and hop counts cannot: with the stager dead, seats fed by each
+    // other swap to longer and longer paths (hop counts only rise), and every copy still looks
+    // live (room v6ring, 49 s). Each page passes an unseen beat on once, over its data channels, so
+    // no media path is needed and the flood ends when the source does. A new value counts, not a
+    // larger one: a forger can hold a dead stager on stage for its lease, never push a live one off.
+    const stgBeats = new Map(), STG_BEAT_MS = 1000, STG_BEAT_STALE_MS = 5000, STG_BEAT_SEEN = 16;
+    function stgBeatNew(key, b) {
+      let e = stgBeats.get(key); if (!e) { e = { seen: [], at: 0 }; stgBeats.set(key, e); }
+      if (e.seen.indexOf(b) >= 0) return false;
+      e.seen.push(b); if (e.seen.length > STG_BEAT_SEEN) e.seen.shift();
+      e.at = Date.now();
+      return true;
+    }
+    function stgBeatFlood(key, b, from) {
+      for (const [pid, p] of peers) if (pid !== from && p.dc && p.dc.readyState === 'open') dcSend(p, { k: 'mx-beat', key, b });
+    }
+    function stgBeatIn(p, m) {
+      if (typeof m.key !== 'string' || m.key.indexOf('stg:') !== 0 || m.key.length > 128 || !Number.isFinite(m.b)) return;
+      if (m.key === 'stg:' + myId || mediaOk(p.id) === false || !stgBeatNew(m.key, m.b)) return;
+      stgBeatFlood(m.key, m.b, p.id);
+    }
+    // A stager that never beat (an older page) is judged as before.
+    function stgStale(rk) { const e = stgBeats.get(rk); return !!e && Date.now() - e.at > STG_BEAT_STALE_MS; }
+    setInterval(() => {
+      try {
+        if (stageIds().includes(myId)) { const key = 'stg:' + myId, b = Date.now(); stgBeatNew(key, b); stgBeatFlood(key, b, null); }
+        for (const [k, e] of stgBeats) if (Date.now() - e.at > 300000) stgBeats.delete(k);
+      } catch (e) {}
+    }, STG_BEAT_MS);
     function prefCand(rk, cand) {
       const c = meshCoord(); if (!c) return null;
       // IDENTITY, NOT JUST KEY (2026-08-01). These two used to match on the
@@ -25350,7 +25382,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Every pass: a stopped copy is restored even after this slot's state was rebuilt.
         // A relayed track whose source stopped sends silence with every packet, so nobody below
         // can tell. Dark or gone, my copies of it stop; they start again with my next flowing claim.
-        if (pri && (fb.dark || !inCand(pri))) stgCarry(rk, false, pri); else stgCarry(rk, true);
+        if (pri && (fb.dark || !inCand(pri) || stgStale(rk))) stgCarry(rk, false, pri); else stgCarry(rk, true);
       }
       if (!cand.length) { mosFb.delete(rk); return; }
       // DEMAND — the ONE-PIPE law: only the primary moves bits. The standby is
@@ -35747,6 +35779,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       stgJobsForTest: () => [...mosJobs.entries()].filter(([, j]) => j.key.indexOf('stg:') === 0).map(([jk, j]) => { const p = peers.get(j.to); return { to: String(j.to).slice(0, 8), key: j.key.slice(0, 12), active: !!j.active, sid: String(j.streamId).slice(0, 8), sb: !!(j.meta && j.meta.sb), ao: !!(j.meta && j.meta.ao), kinds: j.trackList.map((t) => t ? t.kind + ':' + t.readyState + (t.enabled ? '' : ':off') : 'null').join(), sending: j.senders.map((sd) => sd.track ? sd.track.kind : 'null').join(), held: typeof outgoingHeld !== 'undefined' && !!outgoingHeld, pc: p && p.pc ? p.pc.connectionState : 'none' }; }),
       stageEarStreamForTest: () => (stageEar && stageEar.el.srcObject ? { stream: stageEar.el.srcObject, muted: !!stageEar.el.muted, paused: !!stageEar.el.paused } : null),
       stageRouteForTest: () => { const o = {}; for (const [k, v] of mosIn) { if (k.indexOf("stg:") !== 0 && k !== "sgs") continue; const d = mosStandby.get(k); o[k.slice(0, 8)] = String(v.via).slice(2, 8) + (d ? "|" + String(d.via).slice(2, 8) : ""); } return o; },
+      stgBeatAgeForTest: (id) => { const e = stgBeats.get('stg:' + id); return e ? Date.now() - e.at : null; },
       stageWhyForTest: (id) => { const st = statusOf.get(id), d = digLists(), e = d ? d.stage.find((x) => x.id === id) : null; let f = null; try { f = mosIn.get('stg:' + id); } catch (x) {} return { on: stageIds().includes(id), fold: !!e, foldAge: d ? d.age : null, stAge: st ? Date.now() - stSeen(st) : null, stStg: st ? st.stg || 0 : null, stHold: stHold(id), tomb: !notTomb(id), gone: meshGone.has(id), held: typeof stageHeldAt !== 'undefined' && stageHeldAt.has(id), claim: f ? { via: String(f.via).slice(0, 8), dead: f.deadAt ? Date.now() - f.deadAt : 0 } : null }; },
       stgPathForTest: () => { const six = (x) => String(x || '').slice(0, 8); const o = {}; for (const [k, f] of mosIn) { if (k.indexOf('stg:') !== 0) continue; const d = mosStandby.get(k); const m = (e) => (e ? { via: six(e.via), key: e.key || null, h: e.meta ? e.meta.h : null, ao: !!(e.meta && e.meta.ao), vp: (e.meta && e.meta.vp) || [] } : null); const hot = []; for (const j of mosJobs.values()) if (j.upKey === k && j.active) hot.push(six(j.to)); o[six(k.slice(4))] = { pri: m(f), std: m(d), dead: f.deadAt ? Date.now() - f.deadAt : 0, hot }; } const jobs = []; for (const [jk, j] of mosJobs) if (j.key.indexOf('stg:') === 0) jobs.push({ k: six(j.key.slice(4)), to: six(j.to), up: j.upKey ? six(j.upKey.slice(4)) : null, active: !!j.active, off: !!j.carryOff, src: (j.srcTracks || []).map((t) => t.kind[0] + (t.readyState === 'live' ? (t.muted ? 'm' : 'L') : 'E')).join(''), sending: j.senders.map((sd) => sd.track ? 1 : 0).join(''), tl: j.tracklessAt ? Date.now() - j.tracklessAt : 0 }); const ann = []; for (const [ak, a] of mosAnn) if (ak.indexOf('|stg:') > 0) ann.push({ from: six(ak.slice(0, ak.indexOf('|'))), k: six(ak.slice(ak.indexOf('|') + 5)), age: Date.now() - (a.at || 0), h: a.h }); return { me: six(myId), coord: meshCoord(), o, jobs, ann }; },
       stgHiccupForTest: (ms) => { const jobs = [...mosJobs.values()].filter((b) => b.key.indexOf("stg:") === 0 && b.active); for (const b of jobs) b.senders.forEach((sd, i) => { const t = b.trackList[i]; if (t && t.kind === "audio") { try { sd.replaceTrack(null); } catch (e) {} } }); setTimeout(() => { for (const b of jobs) b.senders.forEach((sd, i) => { const t = b.trackList[i]; if (t && t.kind === "audio") { try { sd.replaceTrack(t); } catch (e) {} } }); }, ms); return jobs.length; },
