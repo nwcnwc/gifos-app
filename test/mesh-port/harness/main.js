@@ -9,7 +9,8 @@
  *   node main.js N [leaveFrac]                                                           batch: JOIN N, report
  *
  * Environment (as the sim): MESH_NOTIME (no wall-clock numbers), MESH_THREADS (read, ignored: the JS tick is
- * serial), MESH_SKEW, MESH_CLKOFF, MESH_PROOF=<dir> (frames.jsonl, hash.jsonl, summary.json), MESH_PROOF_STATE.
+ * serial), MESH_SKEW, MESH_CLKOFF, MESH_PROOF=<dir> (frames.jsonl, hash.jsonl, summary.json), MESH_PROOF_STATE,
+ * MESH_L48_OFF=1 (the sim's -DL48_OFF=1 build: the parent's laws; read by js/mesh/e2fold.js).
  * MESH_PROOF_TAPES (the per-seat tapes) is not ported. Stderr diagnostics keep their C++ names.
  *
  * `--tolerant`: a verb that needs a unit nobody plugged ("not wired") or that is not ported prints no line and the

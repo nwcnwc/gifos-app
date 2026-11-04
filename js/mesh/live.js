@@ -23,6 +23,7 @@
   const topo = req('./topo.js', 'meshTopo');
   const roles = req('./roles.js', 'meshRoles');
   const digM = req('./dig.js', 'meshDig');
+  const e2f = req('./e2fold.js', 'meshE2fold');   // L48
   const { ins, eraseFirst } = req('./util.js', 'meshUtil');
   const sm = req('./seat.js', 'meshSeat');
   const { cellOk, coordStr } = req('./shared.js', 'meshShared');
@@ -184,6 +185,7 @@
       // Every honest PHONE comes from one of MY owned links; an UNPROVEN one may only refresh a pairing I already hold.
       if (!this.ownedLinkCell(ckey(m.coord))) return;
       if (!sure && this.occGet(ckey(m.coord)) !== m.id) return;
+      if (m.tag === 5 && !e2f.L48_OFF && lv.DIGEST && this.state === 3 && m.dgSi.at >= 0 && this.coord.pc !== 0 && this.coord.i !== 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r && m.coord.i !== 0) { const u = digM.cloneDig(m.dgSi); this.rxDig(u); u.rows.length = 0; if (this.siKids.size >= C) this.siKids.clear(); this.siKids.set(ckey(m.coord), u); }   // L48: a row-mate's own report while I stand in for our head
       let l810 = false;   // L8.10: this phone is the other ring.
       { // E2 at the ARBITER
         const k0 = ckey(m.coord), p0 = this.occGet(k0);
@@ -397,6 +399,7 @@
       }
       // § G UP-LEG (payload on the beat, G0)
       if (lv.DIGEST && this.state === 3 && !standIn) { m.dgUp = this.pubDig((this.coord.pc !== 0 && this.coord.i === 0) ? this.rowDig : this.myDig); this.noteUp(m.dgUp); }
+      else if (lv.DIGEST && this.state === 3 && !e2f.L48_OFF && this.myDig.at >= 0) { m.dgSi = this.wireDig(this.myDig); m.dgSi.rows.length = 0; }   // L48: my own report, for the heir's stand-in fold
       this.emit(tid, m); this.l10Sent = true;
       if (early) return;
       // A GHOST PHONE TARGET MUST BE FALSIFIABLE (2026-08-05, churn-combos leg C): see the sim for the long form.

@@ -171,6 +171,8 @@
     L163_CONFIRM_WIN: 14,   // C++: mesh.cpp:L163_CONFIRM_WIN
     L711_TAG: 71,   // C++: mesh.cpp:L711_TAG
     FARV_CAP: 256,   // C++: mesh_farview.inc:FARV_CAP
+    get L48_E2MAX() { return byC([4,6,8,10]); },   // C++: mesh_e2fold.inc:L48_E2MAX  (2*C)
+    L48_BEAT: 20,   // C++: mesh_e2fold.inc:L48_BEAT  (8+EARLY_HOLD)
     L12_WAVE: 1800,   // C++: mesh_seat.inc:L12_WAVE
     L12_QUIET: 7000,   // C++: mesh_seat.inc:L12_QUIET
     L12_HOLD: 1200,   // C++: mesh_seat.inc:L12_HOLD
@@ -240,9 +242,18 @@
     RELAY_FRAME_STRIKES: 3,   // C++: mesh_net.inc:RELAY_FRAME_STRIKES
     RELAY_FRAME_BYTES: 256,   // C++: mesh_net.inc:RELAY_FRAME_BYTES
     RELAY_DOOR_X: 4,   // C++: mesh_net.inc:RELAY_DOOR_X
+    MEDIA_SETUP_T: 2,   // C++: mesh_media.inc:MEDIA_SETUP_T
+    MEDIA_WAKE_T: 1,   // C++: mesh_media.inc:MEDIA_WAKE_T
     FH_DISC: 14,   // C++: mesh_fhop.inc:FH_DISC
     FH_UNLINK: 30,   // C++: mesh_fhop.inc:FH_UNLINK
     FH_RENEG: 2,   // C++: mesh_fhop.inc:FH_RENEG
+    SIG_NOSOCK_T: 60,   // C++: mesh_dialsig_fab.inc:SIG_NOSOCK_T
+    SIG_DEEP_GRACE: 20,   // C++: mesh_dialsig_fab.inc:SIG_DEEP_GRACE
+    SIG_RETRY_DOOR: 8,   // C++: mesh_dialsig_fab.inc:SIG_RETRY_DOOR
+    SIG_RETRY_UP: 16,   // C++: mesh_dialsig_fab.inc:SIG_RETRY_UP
+    SIG_RETRY_CURE: 24,   // C++: mesh_dialsig_fab.inc:SIG_RETRY_CURE
+    SIG_RETRY_POLITE: 10,   // C++: mesh_dialsig_fab.inc:SIG_RETRY_POLITE
+    SIG_RETRY_QUIET: 60,   // C++: mesh_dialsig_fab.inc:SIG_RETRY_QUIET
     RC_W1: 2,   // C++: mesh_realcheck.inc:RC_W1
     RC_W10: 20,   // C++: mesh_realcheck.inc:RC_W10
     RC_HIST: 33,   // C++: mesh_realcheck.inc:RC_HIST
@@ -386,6 +397,9 @@
     L16BO_BASE: 2,   // C++: mesh.cpp:L16BO_BASE
     L16BO_CAP: 8,   // C++: mesh.cpp:L16BO_CAP
     EVIL_RECLAIM: false,   // C++: mesh.cpp:EVIL_RECLAIM
+    L48_FORGER: -1,   // C++: mesh_e2fold.inc:L48_FORGER
+    L48_FORGE_K: 0,   // C++: mesh_e2fold.inc:L48_FORGE_K
+    L48_FORGE_BY: -1,   // C++: mesh_e2fold.inc:L48_FORGE_BY
     PN_SEQ: 0,   // C++: mesh_seat.inc:PN_SEQ
     RSEQ: 0,   // C++: mesh_seat.inc:RSEQ
     L16HEDGE: 4,   // C++: mesh_island.inc:L16HEDGE
@@ -471,6 +485,7 @@
     JM_A: 0,   // C++: mesh.cpp:JM_A
     JM_B: 0,   // C++: mesh.cpp:JM_B
     MEDIA: false,   // C++: mesh_media.inc:MEDIA
+    MSEED: -1,   // C++: mesh_media.inc:MSEED
     PCS_TRACK: false,   // C++: mesh_media.inc:PCS_TRACK
     PCS_PEAK: 0,   // C++: mesh_media.inc:PCS_PEAK
     PCS_PEAK_SEAT: -1,   // C++: mesh_media.inc:PCS_PEAK_SEAT
@@ -512,6 +527,13 @@
     HM_STEAL_TRY: 0,   // C++: mesh_hostile.inc:HM_STEAL_TRY
     HM_STEAL_SEEN: 0,   // C++: mesh_hostile.inc:HM_STEAL_SEEN
     HM_STEAL_NAMED: 0,   // C++: mesh_hostile.inc:HM_STEAL_NAMED
+    E2C_HEAD: -1,   // C++: mesh_e2fold_fab.inc:E2C_HEAD
+    E2C_OWN: -1,   // C++: mesh_e2fold_fab.inc:E2C_OWN
+    E2C_HEIR: -1,   // C++: mesh_e2fold_fab.inc:E2C_HEIR
+    E2C_HAND: -1,   // C++: mesh_e2fold_fab.inc:E2C_HAND
+    E2C_STAGE: -1,   // C++: mesh_e2fold_fab.inc:E2C_STAGE
+    E2C_ROW: 0,   // C++: mesh_e2fold_fab.inc:E2C_ROW
+    E2C_AT: -1,   // C++: mesh_e2fold_fab.inc:E2C_AT
     C7FORGE_ID: -1,   // C++: mesh_c7proof_fab.inc:C7FORGE_ID
     L18R_REACH: 0,   // C++: mesh_l18.inc:L18R_REACH
     L18R_UNREACH: 0,   // C++: mesh_l18.inc:L18R_UNREACH
@@ -594,6 +616,8 @@
     EV_RADIOEND: 6,   // C++: mesh_link.inc:EV_RADIOEND
     EV_FRESH: 7,   // C++: mesh_link.inc:EV_FRESH
     EV_DSMALL: 8,   // C++: mesh_link.inc:EV_DSMALL
+    EV_SIGO: 9,   // C++: mesh_link.inc:EV_SIGO
+    EV_SIGA: 10,   // C++: mesh_link.inc:EV_SIGA
     PB_DOORS: 0,   // C++: mesh_link.inc:PB_DOORS
     PB_KNOCKS: 1,   // C++: mesh_link.inc:PB_KNOCKS
     PB_S1: 2,   // C++: mesh_link.inc:PB_S1
