@@ -381,7 +381,11 @@ function install(fab) {
     lEnsure(id); const ps = LINKPEERS[id].slice();
     for (const p of ps) {
       const L = linkFind(id, p); if (!L) continue;
-      linkHalf(L, id, p, 3, false);
+      const greeter = p < nextId() && !!alive[p] && seats[p].hasCoord && seats[p].coord.pc === 0;
+      if (greeter && (L.state === LK_OPEN || L.state === LK_DIALING)) {
+        const wasOpen = L.state === LK_OPEN; L.state = LK_CLOSED; L.epoch = U32(L.epoch + 1); L.q.length = 0; L.half = 0; L.halfAt = -1;
+        if (wasOpen) downAt(TICK() + 1, p, id, L.epoch, 'relay-leave'); else L.view[lEnd(p, id)] = LK_CLOSED;
+      } else linkHalf(L, id, p, 3, false);
     }
   };
   // C++: mesh_link.inc:crashTransport
@@ -437,7 +441,7 @@ function install(fab) {
         if (it !== undefined && TICK() - it < K.LINK_TL_DEBOUNCE) { LSTAT[5]++; return; }
         TLDEB.set(dk, TICK()); LSTAT[4]++;
         trace('LINK-DOWN', e, null, 'peer=%d why=%s', x, v.why);
-        if (v.why === 'disconnected-persist' || v.why === 'failed-persist' || v.why === 'leave-close') {
+        if (v.why === 'disconnected-persist' || v.why === 'failed-persist' || v.why === 'leave-close' || v.why === 'relay-leave') {
           const se = seats[e]; const da = se.l13DownAt, dp = se.l13DownPeer, dc = se.l13DownCrash;
           da.push(se.TICK); dp.push(x); dc.push(v.why === 'disconnected-persist' || v.why === 'failed-persist' ? 1 : 0);
           if (da.length > 32) { da.shift(); dp.shift(); dc.shift(); }
