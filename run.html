@@ -8279,8 +8279,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { releaseAudioContext(); } catch (e) {}
       const cm = document.getElementById('closed-modal'); if (cm) cm.style.display = 'flex';
     }
-    // Drive purely off the relay's admin roster (the one authority a client
-    // can trust). amAdmin ⇒ I'm in `admins` ⇒ present ⇒ never counts against me.
+    // One path whether the admin never came or has left: `admins` is adminsNow(),
+    // built from the signed proofs this page has seen (admSeen), not from the
+    // relay's roster. The status beat runs this too, so a member with no relay
+    // socket still arms it. amAdmin ⇒ I'm in `admins` ⇒ never counts against me.
     function adminWatch() {
       if (!hasAdminRoom()) { clearAdminClose(); return; }
       if (admins.length > 0) { clearAdminClose(); return; }
