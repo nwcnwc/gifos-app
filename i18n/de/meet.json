@@ -679,5 +679,6 @@
   "meet.stOnlyThisRoomSAdmins2": "🛡 Nur die Admins dieses Raums können die geteilte App beenden.",
   "meet.mediaReconnecting": "⟳ Verbindung wird wiederhergestellt…",
   "meet.massLeaveBanner": "Viele Personen sind gerade gegangen. Die Besprechung verbindet sich neu, bitte kurz warten.",
-  "meet.islandLabel": "Du bist in einem getrennten Teil dieser Besprechung: Manche Personen können dein Netzwerk noch nicht erreichen. Sobald sie es können, wird alles automatisch verbunden."
+  "meet.islandLabel": "Du bist in einem getrennten Teil dieser Besprechung: Manche Personen können dein Netzwerk noch nicht erreichen. Sobald sie es können, wird alles automatisch verbunden.",
+  "meet.deviceOverload": "Dein Gerät verweigert die Übertragung der Besprechungsdaten oder kann sie nicht leisten."
 }
