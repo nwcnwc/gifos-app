@@ -11141,7 +11141,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const [pid, p] of peers) {
         if (rosterIds.includes(pid)) { n++; continue; }
         const heard = Math.max(p.lastHeard || 0, p.meshRxAt || 0);
-        if (p.connected && now - heard < 30000) n++;
+        if (p.connected && now - heard < 30000 && !seatStranger(p)) n++;
       }
       return n;
     }
@@ -14130,7 +14130,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // persistence gate for the rebuild-on-offer path (transients recover
         // via ICE restart and must never trigger a teardown)
         if (pc.connectionState === 'failed' || pc.connectionState === 'closed') { if (!p.deadSince) p.deadSince = Date.now(); }
-        else if (p.connected) { p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; restoreDoorTile(p); try { updateTile(p.id); } catch (e) {} }
+        else if (p.connected) { p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; if (!seatStranger(p)) restoreDoorTile(p); try { updateTile(p.id); } catch (e) {} }
         updateStatus();
         if (p.connected) { p.altPath = false; p.tlAt = 0; adapt(); } // rotation ends when the pair lands; D5 edge re-arms
         // D5: 'closed' out of nowhere (we didn't rebuild it and the peer is
@@ -14156,6 +14156,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       doorOffGrid.add(p.id);
       if (p.tile && p.tile.parentNode) p.tile.remove();
     }
+    // Seated, a pair my seat neither links nor names is no one in this room yet: a door, or a lone seat greeting me. An open channel alone is no face and no count.
+    function seatStranger(p) { const s = meshSeat(); return !!(s && s.hasCoord && s.state === 3 && !p.headless && !linkTo(p.id) && !meshKnows(p.id)); }
     function restoreDoorTile(p) {
       if (!p || !doorOffGrid.has(p.id)) return;
       doorOffGrid.delete(p.id);
@@ -16000,6 +16002,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       pwLog('pwreset-boot from=' + String((p && p.id) || '?').slice(0, 6) + ' ep=' + m.ep + ' myEp=' + pwEpoch);
       if (typeof clog === 'function') clog('pw-boot ep=' + m.ep + ' (admin changed the password)');
       storePwEpoch(m.ep);
+      pwLeaveForDoor();
+    }
+    function pwLeaveForDoor() {
       heldGrant = null; grantHoldUntil = 0; retainedGrant = null;
       storePw('');
       pwBlocked = true;
@@ -17015,7 +17020,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // is provably wrong, so it is forgotten instead of trapping the next
         // visit too. Bounded at three knocks, and only a device that REMEMBERS
         // a password ever pays for more than one.
-        onLocked: () => {
+        onLocked: (door) => {
+          const ms = meshSeat(), seated = !!(ms && ms.hasCoord && ms.state === 3);
+          // A seat moves on no door blob: anyone can register one. Only the door's own refusal is the password change.
+          if (seated && !door) { pwLog('R6 from door blobs, seated: stays seated'); pwBlocked = true; showPwModal(true, pwChangedWhy()); return; }
+          // An admin room's change that never reached me, and the door now refuses me: leave and re-enter. Entry asks for the password.
+          if (seated && hasAdminRoom() && !(admKey || amAdmin)) { pwLog('door refused a seated guest: leaving for the door'); pwLeaveForDoor(); return; }
           if (pwProbe === 'probing' && pwHeld) {
             pwLog('open-key probe refused at the door → the room IS locked; restoring the remembered password');
             pwProbe = 'restored'; roomPw = pwHeld; pwHeld = ''; pwFromStore = false; touchPw();
@@ -17053,9 +17063,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           pwLog('R6-LOCKED → pw modal');
           if (pwFromStore || pwProbe === 'restored') forgetPw('neither it nor the open key reads this room');
           pwBlocked = true; showPwModal(true, pwChangedWhy());
-          // At the prompt this page holds no seat: left running, the seat keeps its old key and founds a room of its own (L8) behind the prompt.
-          { const gen = meshBootGen; try { meshNode && meshNode.leave(); } catch (e) {} meshNode = null;
-            setTimeout(() => { if (gen !== meshBootGen) return; for (const pid of Array.from(peers.keys())) dropPeer(pid); rosterIds = []; updateStatus(); }, 300); }
         },
         // THE DOOR SAID NO, IN A CLOSE CODE (2026-07-29): a policy-cut socket
         // is the ONLY way a re-seeded ban reaches a squatter who was already
@@ -17764,7 +17771,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // media path for a while → say so on the tile instead of silent black.
         // A peer who merely STEPPED AWAY (phone locked, other app) is not a
         // firewall problem — their tile says away, never 'firewall'.
-        if (p.connected) { p.downSince = 0; restoreDoorTile(p); if (p.noRoute) { p.noRoute = false; updateTile(pid); } }
+        if (p.connected) { p.downSince = 0; if (!seatStranger(p)) restoreDoorTile(p); if (p.noRoute) { p.noRoute = false; updateTile(pid); } }
         else if (!p.absentSince) {
           if (!p.downSince) p.downSince = now;
           // A pair that never once connected is unreachable, not away (see

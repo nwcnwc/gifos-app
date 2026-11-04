@@ -180,7 +180,7 @@
     const gkStr = () => (raw ? 'g' + ((raw.genKey || raw.myKey) >>> 0).toString(16) : myKey);
     const dropDeep = opts.dropDeepSocket !== false;
     const ident = GifOS.meshIdentity || null;
-    let stopped = false, lockedFired = false, strandedFired = false, rejFired = false;
+    let stopped = false, lockedFired = false, doorFired = false, strandedFired = false, rejFired = false;
     // Waiting room (relay-admit.js). A `wait` frame holds the seat off the
     // greeter list so an empty list cannot mint. The admit token is presented
     // on the next connect, once, then dropped.
@@ -646,7 +646,7 @@
             : (m.t === 'greeters' ? 'seat' : 'other');
           // A bad password is the lock prompt, not the waiting room, and it
           // must not stick a hold that would refuse the corrected proof.
-          if (m.t === 'locked') { fireLocked(); return; }
+          if (m.t === 'locked') { fireLocked(true); return; }
           if (m.t === 'wait' || m.t === 'denied') {
             waitingHold = true;
             admitPresented = false;
@@ -686,7 +686,7 @@
         // an unrelated frame aborting an in-flight FIND descent thrashes the
         // dance. The seat's own 20/60-tick retries govern pre-seat pacing.)
         if (m.t === 'nosock' && penv) { try { penv.relayFrame(m); } catch (e) {} }   // L33.11: the seat hears the bounce as BUSY{nosock}
-        if (m.t === 'error' && /password/i.test(m.error || '')) fireLocked(); // relay courtesy gate
+        if (m.t === 'error' && /password/i.test(m.error || '')) fireLocked(true); // relay courtesy gate
         if (opts.onRelayMsg) opts.onRelayMsg(m);
       };
     }
@@ -781,7 +781,7 @@
       if (greeterTrace.length > GREETER_TRACE_CAP) greeterTrace.shift();
     }
 
-    function fireLocked() { if (!lockedFired) { lockedFired = true; if (opts.onLocked) opts.onLocked(); } }
+    function fireLocked(door) { if (!lockedFired || (door && !doorFired)) { lockedFired = true; if (door) doorFired = true; if (opts.onLocked) opts.onLocked(!!door); } }   // door: the door itself refused me; else only blobs I cannot open
 
     async function onGreeters(m) {
       const list = m.list || [];
@@ -888,7 +888,7 @@
       // count above guards are told apart exactly: a setter, or a member that
       // just took the new key, opens its neighbours' not-yet-re-keyed blobs
       // with the key it replaced.
-      if (preState === 3 && seat.hasCoord && list.length && !ids.length && !olderSeen && sealedFps.some((f) => f[0] === 'X')) fireLocked();
+      if (preState === 3 && seat.hasCoord && seat.occ.size <= 1 && list.length && !ids.length && !olderSeen && sealedFps.some((f) => f[0] === 'X')) fireLocked();
       if (preState === 3 && ids.length && seat.hasCoord && seat.occ.size <= 1 && (shrankSolo || (env.TICK - (seat.seatedAt || 0)) > 90)) {
         greeterTrace.push({ t: Date.now(), tick: env.TICK, state: preState, post: seat.state,
           listLen: list.length, open: ids.length, founded: !!m.founded, action: 'fragment-rescue', sealed: sealedFps });
@@ -1039,7 +1039,7 @@
         // a password changed while I was away, the same verdict as a sealed
         // door (R6), so the same challenge. Not within 15 s of my own key
         // change: my new proof can still be on its way.
-        if (sock && sock.rejected === 4003 && Date.now() - keySetAt > 15000) fireLocked();
+        if (sock && sock.rejected === 4003 && Date.now() - keySetAt > 15000) fireLocked(true);
         if (sock && sock.rejected && !rejFired) { rejFired = true; try { const L = (window.__pwLog = window.__pwLog || []); L.push(Date.now() + ' relay-socket REJECTED code=' + sock.rejected + ' — door unreachable'); if (L.length > 64) L.shift(); } catch (e) {} if (opts.onRejected) { try { opts.onRejected(sock.rejected); } catch (e) {} } }
         // Greeter socket health (wire-level, not mesh law — the sim has no
         // sockets). A NAT/middlebox drops a silent websocket without telling
@@ -1260,7 +1260,7 @@
       // holding the new password can't decrypt any greeter blob (R6 reads as
       // "wrong password") until every greeter's E3 re-knock… which would also
       // have used the stale key, locking them out until a reload.
-      setKey(k) { if (k) { if (k !== roomKey) { oldKeys.unshift(roomKey); if (oldKeys.length > 4) oldKeys.length = 4; keySetAt = Date.now(); lockedFired = false; /* a new key re-arms the door challenge: a seated page re-keys in place (no new node), and a later change it misses must still ask */ } roomKey = k; sealedSoloRuns = 0; /* the counter means "sealed replies under MY CURRENT key" — evidence gathered under the old key must not fire a challenge past a re-key */ try { if (sock && sock.rejected) sock.kick(); } catch (e) {} /* credential change: the ONE sanctioned re-arm of a policy-rejected socket */ try { if (seat && seat.hasCoord && seat.state === 3 && seat.coord.pc === 0) { lastRegAt = 0; /* the old key's blob is what the door serves until this lands: never wait out the throttle */ reregister('setkey'); } } catch (e) {} } },
+      setKey(k) { if (k) { if (k !== roomKey) { oldKeys.unshift(roomKey); if (oldKeys.length > 4) oldKeys.length = 4; keySetAt = Date.now(); lockedFired = false; doorFired = false; /* a new key re-arms the door challenge: a seated page re-keys in place (no new node), and a later change it misses must still ask */ } roomKey = k; sealedSoloRuns = 0; /* the counter means "sealed replies under MY CURRENT key" — evidence gathered under the old key must not fire a challenge past a re-key */ try { if (sock && sock.rejected) sock.kick(); } catch (e) {} /* credential change: the ONE sanctioned re-arm of a policy-rejected socket */ try { if (seat && seat.hasCoord && seat.state === 3 && seat.coord.pc === 0) { lastRegAt = 0; /* the old key's blob is what the door serves until this lands: never wait out the throttle */ reregister('setkey'); } } catch (e) {} } },
       stats() { return { peer, state: seat ? seat.state : 0, coord: (seat && seat.hasCoord) ? { pc: seat.coord.pc, r: seat.coord.r, i: seat.coord.i } : null, stranded: !!(seat && seat.stranded), tick: env.TICK, relayRefused, relayUnsent, adapter: (penv && penv.stats) ? penv.stats() : null, closes: relayCloses.slice() }; },
       // Greeter-list forensics: ring of recent onGreeters outcomes (listLen /
       // open / founded / action). See greeterTrace push in onGreeters.
