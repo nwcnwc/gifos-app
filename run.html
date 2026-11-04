@@ -24709,7 +24709,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     async function sampleStandby(rk, fb) {
       if (fb.dark || fb.wakeAt) {
         const std = mosStandby.get(rk);
-        const s = std ? await pipeBytes(std) : -1;
+        const s = std ? await pipeBytes(std, rk.indexOf('stg:') === 0) : -1;
         if (s !== -1 && s.d >= 0) {
           // First post-wake sample IS the baseline; a sample BELOW the
           // baseline means the standby's receiver was renegotiated and its
@@ -24740,7 +24740,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // hot void and wake the standby for nothing.
           if (pri.stream && !pri.stream.getTracks().length) { await sampleStandby(rk, fb); continue; }
           if (mosHeld(pri)) continue; // parked on purpose while its decoder restarts (mosDecoderSweep): this silence is not death
-          const bytes = await pipeBytes(pri);
+          const bytes = await pipeBytes(pri, rk.indexOf('stg:') === 0);
           // Forensics ring (frza17: a husk claim's standby was never woken and
           // no theory survived — record what each sample actually SAW). Widened
           // 2026-08-07 from stg/sgs to EVERY redundant key, and records the
@@ -24892,9 +24892,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // packetsReceived) for a voice-only feed. Returns -1 when the pipe has no
     // receiver for that track (forming, or a rebuilt transport whose
     // receivers no longer carry it).
-    async function pipeBytes(ent) {
+    async function pipeBytes(ent, voice) {
       try {
         const p = peers.get(ent.via); if (!p || !p.pc || !ent.stream) return -1;
+        // A stage feed is judged on its voice: a share's picture can flow on its own pipe
+        // while the voice beside it has stopped.
+        if (voice && ent.stream.getAudioTracks()[0]) return pipeAudioBytes(p, ent.stream.getAudioTracks()[0]);
         const vt = ent.stream.getVideoTracks()[0];
         if (!vt) return pipeAudioBytes(p, ent.stream.getAudioTracks()[0]);
         const rcv = p.pc.getReceivers().find((r) => r.track === vt); if (!rcv) return -1;
@@ -25017,6 +25020,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (on ? !job.carryOff : !(pri && stgFedBy(job, pri))) continue; // a copy fed by my parked standby is the way out: never stop it
         job.carryOff = !on;
         job.senders.forEach((sd, i) => { const t = job.trackList[i]; if (t) { try { sd.replaceTrack(on ? t : null); } catch (e) {} } });
+        const jk = job.key + '>' + job.to; if (pipeJobs.has(jk) && MPipe) { try { MPipe.pausePipe(jk, !on); } catch (e) {} } // a piped picture stops at the worker too
       }
     }
     // Is my claim on this stage feed one I may relay? It is not while it is dark or gone.
