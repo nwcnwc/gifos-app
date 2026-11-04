@@ -888,7 +888,8 @@
       // count above guards are told apart exactly: a setter, or a member that
       // just took the new key, opens its neighbours' not-yet-re-keyed blobs
       // with the key it replaced.
-      if (preState === 3 && seat.hasCoord && seat.occ.size <= 1 && list.length && !ids.length && !olderSeen && sealedFps.some((f) => f[0] === 'X')) fireLocked();
+      // A page still hearing someone under its own key is not behind it: junk at the door proves nothing.
+      if (preState === 3 && seat.hasCoord && list.length && !ids.length && !olderSeen && sealedFps.some((f) => f[0] === 'X') && !(raw && Array.from(raw.occ).some(([k, v]) => { const at = v !== raw.id ? raw.live.get(k) : undefined; return at !== undefined && raw.TICK - at <= 16; }))) fireLocked();   // 16 ticks: two beats
       if (preState === 3 && ids.length && seat.hasCoord && seat.occ.size <= 1 && (shrankSolo || (env.TICK - (seat.seatedAt || 0)) > 90)) {
         greeterTrace.push({ t: Date.now(), tick: env.TICK, state: preState, post: seat.state,
           listLen: list.length, open: ids.length, founded: !!m.founded, action: 'fragment-rescue', sealed: sealedFps });
