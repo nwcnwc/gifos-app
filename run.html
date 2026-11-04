@@ -17319,7 +17319,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // arm that sense for the seat's healing; ordinary churn does that, so the banner wants MASS_MANY of them.
     const STALL_MS = 4000, MASS_MANY = 3;
     const stallOf = new WeakMap();
-    let massMany = false, massBannerEl = null;
+    let massMany = false, massBannerEl = null, massBannerAt = 0;
+    const BANNER_HOLD = 5000;
     function stallSweep() {
       const now = Date.now(); let n = 0;
       for (const el of document.querySelectorAll('#stagefeed .rowtile, #stadium .rowtile')) {
@@ -17344,7 +17345,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const down = new Set(); for (let q = 0; q < r.l13DownAt.length; q++) if (r.TICK - r.l13DownAt[q] <= GifOS.meshConsts.consts.LEASE_T) down.add(q < r.l13DownPeer.length ? r.l13DownPeer[q] : -1 - q);
         massMany = Math.max(gone, down.size) >= MASS_MANY;
       }
-      const on = massMany && stalled > 0;
+      // held BANNER_HOLD past the last stalled beat, so a picture that comes and goes does not make it flicker
+      if (massMany && stalled > 0) massBannerAt = Date.now();
+      const on = massMany && Date.now() - massBannerAt < BANNER_HOLD;
       if (on === !!massBannerEl) return;
       if (typeof clog === 'function') clog('mass-banner ' + (on ? 'on' : 'off'));
       if (on) { massBannerEl = document.createElement('div'); massBannerEl.id = 'massbanner'; massBannerEl.setAttribute('role', 'status'); massBannerEl.setAttribute('aria-live', 'polite'); massBannerEl.textContent = uiText('massLeaveBanner', 'Many people just left. Reconnecting the meeting, expect a short delay.'); document.body.appendChild(massBannerEl); }
