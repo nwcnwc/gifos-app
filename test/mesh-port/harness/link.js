@@ -382,7 +382,7 @@ function install(fab) {
   const l15LastLink = (x, y) => { for (const p of LINKPEERS[x]) { if (p === y) continue; const L = linkFind(x, p); if (L && L.state === LK_OPEN) return false; } return true; };
   const linkCrash = (id) => {
     lEnsure(id); const ps = LINKPEERS[id].slice(); const told = relayLists(id);
-    if (told) for (const p of fab.relayGreeters.keys()) { if (p === id || p >= nextId() || !alive[p] || !relayLists(p)) continue; const m = seats[p].crashBye(id); if (m) { m.to = p; m.from = id; fab.busPush(TICK() + 1, m); } }
+    if (told) for (const p of fab.relayGreeters.keys()) { if (p === id || p >= nextId() || !alive[p] || !relayLists(p)) continue; const m = seats[p].goneBye(id); if (m) { m.to = p; m.from = id; fab.busPush(TICK() + 1, m); } }
     for (const p of ps) {
       const L = linkFind(id, p); if (!L) continue;
       const greeter = told && p < nextId() && !!alive[p] && relayLists(p);

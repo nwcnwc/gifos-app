@@ -17189,11 +17189,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // reload mints a new id. Clearing the set would raise the ghost tile.
         setStatus('\u2705 ' + (nameForDev(m.dev) || banNames()[m.dev] || 'A device') + ' was unbanned by ' + (nameForPeer(m.by) || 'an admin'));
       }
-      else if (m.t === 'votes') { /* DEPRECATED: delete in 0.9.27: no relay sends it */ voteTally = m.tally || {}; voteNeed = m.need || 0; refreshAllTiles(); }
-      else if (m.t === 'greeter-crash') {
-        // Only the relay's socket gets here, and the relay only says it when a greeter's socket died with no close frame: that greeter's goodbye.
+      else if (m.t === 'greeter-gone') {
+        // Only the relay's socket gets here, and the relay only says it when a live greeter's socket closed with no unlist first: that greeter's goodbye.
         const p = peers.get(m.peer); if (p) { p.byeSeen = Date.now(); p.byeWhy = 'leave'; }
-        try { if (meshNode && meshNode.transport) meshNode.transport(m.peer, 'greeter-crash'); } catch (e) {}
+        try { if (meshNode && meshNode.transport) meshNode.transport(m.peer, 'greeter-gone'); } catch (e) {}
       }
       else if (m.t === 'error') {
         pwLog('relay-error: ' + String(m.error || '?').slice(0, 60));

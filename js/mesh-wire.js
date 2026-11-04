@@ -633,27 +633,13 @@
         if (stopped) return;
         lastRelayRx = Date.now();
         let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
-        // DEPRECATED: delete in 0.9.27: wait, locked, denied, admit-tok: no relay sends them (js/relay-admit.js's door is not the relay's); the waiting room is the page's own
-        if (m.t === 'greeters' || m.t === 'wait' || m.t === 'locked' || m.t === 'denied' || m.t === 'admit-tok') {
+        if (m.t === 'greeters') {
           const verdict = (GifOS.relayAdmit && GifOS.relayAdmit.clientDoor)
             ? GifOS.relayAdmit.clientDoor(m, { waitingHold: waitingHold, admitPresented: admitPresented, state: seat ? seat.state : 0, badPassword: lockedFired })
             : (m.t === 'greeters' ? 'seat' : 'other');
-          // A bad password is the lock prompt, not the waiting room, and it
-          // must not stick a hold that would refuse the corrected proof.
-          if (m.t === 'locked') { fireLocked(); return; }
-          if (m.t === 'wait' || m.t === 'denied') {
-            waitingHold = true;
-            admitPresented = false;
-            if (opts.onDoor) { try { opts.onDoor('unseated', m); } catch (e) {} }
-            return;
-          }
-          if (m.t === 'greeters' && verdict === 'unseated') {
+          if (verdict === 'unseated') {
             // not onGreeters: an empty list here would mint a founder
             if (!lockedFired && opts.onDoor) { try { opts.onDoor('unseated', m); } catch (e) {} }
-            return;
-          }
-          if (m.t === 'admit-tok') {
-            if (verdict === 'reconnect') presentAdmit(m.tok);
             return;
           }
           if (admitPresented) { admitTok = ''; waitingHold = false; admitPresented = false; }
@@ -1282,7 +1268,7 @@
       // None pre-signed for what I would say now: then it is a plain leave, or a closed tab would hold its cell for a whole lease.
       byeIsHeld(pid) { return byeHeld.has(String(pid)); },
       byesHeld() { return byeHeld.size; },   // pages gone whose cell is held: no face, no head in the count
-      leave(reload) { if (reload && !sendHeldByes()) reload = false; try { if (raw) { if (penv && penv.leave) penv.leave(!!reload); else raw.leave(!!reload); } } catch (e) {} node.stop(); },
+      leave(reload) { if (reload && !sendHeldByes()) reload = false; try { if (raw) { if (penv && penv.leave) penv.leave(!!reload); else raw.leave(!!reload); } } catch (e) {} try { if (sock) sendRaw({ t: 'unlist' }); } catch (e) {} node.stop(); },   // goodbye to the peers, then off the greeter list, then the socket closes: no greeter-gone for a page leaving in order
       // Transport events from the page's pc/dc callbacks and watchdogs (env.js maps hard/quiet and debounces).
       remeasure() { if (!raw || !opts.measure) return; const n0 = opts.measure.nat() & 0xff; if (raw.cnat === raw.nat) raw.cnat = n0; raw.nat = n0; },   // a network verdict that lands after the join (seat.join reads it once)
       transport(pid, ev, arg) { if (stopped || !penv) return undefined; try { return penv.transport(String(pid), ev, arg); } catch (e) { return undefined; } },

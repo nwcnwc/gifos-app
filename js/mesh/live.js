@@ -606,10 +606,11 @@
       this.hasCoord = false; this.occ.clear(); this.ledgerSeen.clear(); this.s1seen.clear(); this.holeSince.clear(); this.byeAt.clear(); this.tlClear(); this.authClear(); this.drainAt = 0; this.join();
     },
 
-    // C++: mesh_seat.inc:Seat::crashBye
-    // The relay's greeter-crash read as that greeter's goodbye: what its own leave() would say, from my view of its cell.
-    crashBye(x) {
+    // C++: mesh_seat.inc:Seat::goneBye
+    // The relay's greeter-gone read as that greeter's goodbye: what its own leave() would say, from my view of its cell.
+    goneBye(x) {
       if (!this.hasCoord || this.state !== 3) return null;
+      { const rm = this.relMark.get(x); if (rm !== undefined && this.TICK - rm <= K.RELOAD_MARK_T) return null; }
       let ck = -1; for (const [k, v] of this.occ) if (v === x) { ck = k; break; }
       if (ck === -1) return null;
       const c = unck(ck), bm = newMsg('LEAVE'), TICK = this.TICK; bm.ck = ck; bm.id = x; bm.bye = true; bm.sig = true; bm.sigAt = TICK; bm.sigL = TICK;
