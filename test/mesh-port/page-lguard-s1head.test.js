@@ -115,7 +115,7 @@ const rowOf = (R, x) => R.seated().filter((p) => p !== x && p.seat.coord.pc === 
 function deepHead(R) { return R.seated().find((p) => p.seat.coord.pc !== 0 && p.seat.coord.i === 0 && rowOf(R, p).length >= 2); }
 
 
-// L29.0 (healing-laws, Nathan 2026-11-04; sim mesh_lguard.inc lgDuties): a Section-1 head also carries its head duty, charged as
+// L29.0: a Section-1 head also carries its head duty, charged as
 // copies: each row-mate taken in L29_PARK, the row block and the row view L29_HOT each (high), one mix per child branch L29_HOT
 // (low). A full Section-1 head reads 52 at level 0 against a mobile budget of 40, so a phone in that cell sheds, goes light and
 // asks to swap (L29.3, Section 1 exchanges). The page's reading (env.js lgFabric) must say the same, or a phone head never asks.
