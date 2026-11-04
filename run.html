@@ -6679,7 +6679,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // My status pulse as one frame: what every beat carries, and what a pair
     // gets the moment its channel opens (wireDc onopen).
     // My network's kind for friend-hop's typing (a seat tells a blip from an unreachable pair), in the seat's GT_ words. The probe knows open or blocked; -1: not known yet.
-    const natWord = () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' ? E.GT_BLOCKED : directPath === 'ok' ? E.GT_PUBLIC : -1; };
+    const natWord = () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' && directMeasured ? E.GT_BLOCKED : directPath === 'ok' ? E.GT_PUBLIC : -1; };
     const statusPayload = () => ({ kind: 'status', s: myStatus, conns: myConns(), nat: natWord(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined });
     function broadcastStatus(answer) {
       if (pulseHalt && !answer) return; // the halt models a throttled clock; an answer to a newcomer is driven by its frame, not the clock
@@ -12767,14 +12767,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // this network lets a direct connection out; gathering that ENDS, or
     // times out, without one means it does not. A probe that cannot even
     // start (no WebRTC, offer refused) proves nothing: 'unknown'.
-    function probeDirectPath(makePc, timeoutMs) {
+    // late (optional): with no reflexive candidate at the limit the answer is still 'blocked' for now, but that is no
+    // measure: late(null) says so, gathering goes on, and late(verdict) brings its own end or a slow server's word.
+    function probeDirectPath(makePc, timeoutMs, late) {
       return new Promise((resolve) => {
         let pc;
         try { pc = makePc(); } catch (e) { resolve('unknown'); return; }
         if (!pc) { resolve('unknown'); return; }
         let done = false;
-        const finish = (v) => { if (done) return; done = true; clearTimeout(timer); clearTimeout(settle); try { pc.close(); } catch (e) {} resolve(v); };
-        const timer = setTimeout(() => finish('blocked'), timeoutMs);
+        let waiting = false;
+        const finish = (v) => { if (done) return; done = true; clearTimeout(timer); clearTimeout(settle); try { pc.close(); } catch (e) {} if (waiting) late(v); else resolve(v); };
+        const timer = setTimeout(() => { if (maps.size) finish(verdict()); else if (late) { waiting = true; late(null); resolve('blocked'); } else finish('blocked'); }, timeoutMs);
         // Two STUN servers map the same local socket: one public port for both is an open (cone) NAT, two ports is a
         // strict one (endpoint-dependent mapping), which pairs badly with another strict seat. A short wait after the
         // first reflexive candidate lets the second server's answer arrive.
@@ -12799,17 +12802,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const REACH_PROBE_MS = 8000;
     let directPath = 'pending'; // 'pending' | 'ok' | 'strict' | 'blocked' | 'unknown' — this network's verdict
     let directPathRun = 0;
+    let directMeasured = true;   // false while 'blocked' only means no STUN word yet: the seat's NAT kind (L4.1) is measured, and a slow answer measures nothing
     // Run (or re-run) the probe. Called when the meeting starts and when the
     // browser reports the network came back, since a new network is a new
     // verdict. Under DEBUG a test may fix the verdict (window.__gifosDirectPath)
     // instead of asking the network, so a page under test on a machine with
     // no outside reach is not read as a blocked office.
     function startDirectPathProbe() {
-      const gen = ++directPathRun;
+      const gen = ++directPathRun; directMeasured = true;
       const forced = (typeof DEBUG_ON !== 'undefined' && DEBUG_ON && window.__gifosDirectPath) ? String(window.__gifosDirectPath) : '';
       if (forced === 'ok' || forced === 'blocked' || forced === 'strict') { directPath = forced; updateStatus(); if (meshNode && meshNode.remeasure) meshNode.remeasure(); return Promise.resolve(forced); }
       if (typeof RTCPeerConnection !== 'function') { directPath = 'unknown'; return Promise.resolve('unknown'); }
-      return probeDirectPath(() => new RTCPeerConnection({ iceServers: ICE_SERVERS }), REACH_PROBE_MS).then((v) => {
+      return probeDirectPath(() => new RTCPeerConnection({ iceServers: ICE_SERVERS }), REACH_PROBE_MS, (v) => {
+        if (gen !== directPathRun) return;
+        directMeasured = v !== null; if (v === null) return;
+        directPath = v; updateStatus(); if (meshNode && meshNode.remeasure) meshNode.remeasure();
+      }).then((v) => {
         if (gen !== directPathRun) return v; // a newer probe owns the verdict
         directPath = v; updateStatus(); if (meshNode && meshNode.remeasure) meshNode.remeasure(); return v;
       });
@@ -14106,7 +14114,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (pc.connectionState === 'failed' || pc.connectionState === 'closed') { if (!p.deadSince) p.deadSince = Date.now(); }
         else if (p.connected) { p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; if (!seatStranger(p)) restoreDoorTile(p); try { updateTile(p.id); } catch (e) {} }
         updateStatus();
-        if (p.connected) { p.altPath = false; p.tlAt = 0; adapt(); } // rotation ends when the pair lands; D5 edge re-arms
+        if (p.connected) { p.altPath = false; p.tlAt = 0; p.hungUp = false; adapt(); } // rotation ends when the pair lands; D5 edge re-arms
         // D5: 'closed' out of nowhere (we didn't rebuild it and the peer is
         // still in the room) is a hard transport death — first-hand evidence.
         // 'failed' waits for the sweeper (must persist past the ICE-restart
@@ -15000,7 +15008,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // The seat asked for this pc. A live channel carries it now (the far end dialled first): the mark crosses and the
     // Link opens. Else a fresh dial, unless one is already forming; a goodbye in flight ends in pcCloseNow, which dials.
     function seatDial(pid) {
-      const p = peers.get(pid);
+      const p = peers.get(pid); if (p) p.hungUp = false;
       if (p && p.byeSent && Date.now() - p.byeSent < 400) return;
       if (p && p.dc && p.dc.readyState === 'open') {
         if (!p.dc.__pcOffered && meshNode && meshNode.transport) { const dc = p.dc; dc.__pcOffered = true; clearTimeout(dc.__pcMarkWait); try { dcSend(p, { k: 'pcmark', d: seatMark.get(pid) || null }); } catch (e) {} }
@@ -15031,10 +15039,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     // L17: the seat holds its dials to this peer: no page clock dials it either.
     function seatHolds(pid) { return !!(meshNode && meshNode.dialHeld && meshNode.dialHeld(pid)); }
-    function pcMarkOpen(p, dc, mk, src) {
+    function pcMarkOpen(p, dc, mk, src, word) {
       if (!dc || dc.__pcOffered || p.dc !== dc || !meshNode || !meshNode.transport) return;
       dc.__pcOffered = true; clearTimeout(dc.__pcMarkWait);
-      const m = mk || { s: meshKnows(p.id) ? 1 : 0 };
+      const m = mk || { s: word !== undefined ? (word ? 1 : 0) : (meshKnows(p.id) ? 1 : 0) };
       if (typeof clog === 'function') clog('pc-offer ' + String(p.id).slice(0, 6) + ' src=' + src + ' s=' + m.s + ' mt=' + (m.mt || '-'));
       const ok = meshNode.transport(p.id, 'offer', m) !== false;
       if (!ok) { if (typeof clog === 'function') clog('pc-refused ' + String(p.id).slice(0, 6)); pcBye(p.id, 'declined'); return; }   // no peer makes me keep a pc
@@ -15049,7 +15057,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return;
       }
       if (m.d !== undefined) pcMarkOpen(p, dc, cleanMark(m.d), m.d ? 'mark' : 'nomark');
-      else if (m.n) pcMarkOpen(p, dc, null, 'occ');   // neither end's seat dialled (a page-own dial): my view decides
+      else if (m.n) pcMarkOpen(p, dc, null, 'occ', m.s);   // neither end's seat dialled (a page-own dial): each end says whether it sits
     }
     // Establish or retire ONE peer's media link per the seat arithmetic. Also
     // run by the sweeper: occupancy gossip settling can change who my
@@ -16920,7 +16928,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         },
         measure: {   // the device class and the network's verdict this page already keeps (L4)
           tier: () => { const E = GifOS.meshConsts.enums, hc = navigator.hardwareConcurrency | 0; return IS_MOBILE || (hc > 0 && hc <= 2) ? E.TIER_MOBILE : E.TIER_DESKTOP; },   // a 2-core desktop carries like a phone
-          nat: () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' ? E.NAT_BLOCKED : directPath === 'strict' ? E.NAT_STRICT : E.NAT_OPEN; },
+          nat: () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' && directMeasured ? E.NAT_BLOCKED : directPath === 'strict' ? E.NAT_STRICT : E.NAT_OPEN; },
           lgHealth: () => lgHealth(), lgCamOn: () => myStatus.camOff === false, lgWoke: () => lgWoken.size, lgStarve: () => lgStarvedNow(), lgLeave: () => lgLeave(),
         },
         // The seat's pcs (js/mesh/page/env.js calls these; it decides, the page carries out).
@@ -17416,17 +17424,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const jobs = [];
       for (const p of peers.values()) if (p.pc && p.connected) jobs.push(p.pc.getStats().then((rep) => ({ p, rep })).catch(() => null));
       Promise.all(jobs).then((list) => {
-        let lim = 0, all = 0, lost = 0;
+        let lim = 0, all = 0, lost = 0; const losses = [];
         const seen = new Set();
         for (const it of list) { if (!it) continue;
           it.rep.forEach((r) => {
-            if (r.type === 'remote-inbound-rtp' && r.fractionLost > lost) lost = r.fractionLost;
+            // What my uplink loses is what most of my receivers lose: one receiver on a bad network loses alone, and
+            // its word must not read as this device failing (it would shed every forward and leave its cell for it).
+            if (r.type === 'remote-inbound-rtp' && Number.isFinite(r.fractionLost)) losses.push(r.fractionLost);
             if (r.type !== 'outbound-rtp' || r.kind !== 'video' || !r.qualityLimitationDurations) return;
             const key = it.p.id + '|' + r.id, d = r.qualityLimitationDurations, was = lgPrev.get(key); seen.add(key); lgPrev.set(key, { d });
             if (was) { const c = d.cpu - was.d.cpu; lim += c; all += c + (d.bandwidth - was.d.bandwidth) + (d.none - was.d.none) + (d.other - was.d.other); }
           });
         }
         for (const k of [...lgPrev.keys()]) if (!seen.has(k)) lgPrev.delete(k);
+        if (losses.length) { losses.sort((a, b) => a - b); lost = losses[Math.floor(losses.length / 2)]; }   // the median receiver
         const share = all > 0 ? lim / all : 0;
         // A joining room ramps up and a busy second passes: only three low reads in a row say anything about the device.
         const low = share >= 0.5 || lag >= 500 || lost >= 0.2; lgLowReads = low ? lgLowReads + 1 : 0;
@@ -17667,7 +17678,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // frame a second for the whole call, so those pairs wait 30s. A pair
         // that was up and then wedged keeps the 8s clock.
         const stuckQuiet = p.neverUp === true && (st === 'new' || st === 'connecting');
-        if (!p.absentSince && iInitiate(pid) && !p.connected && (st === 'connecting' || st === 'new') && !seatHolds(pid)
+        // A pair the far seat hung up on purpose (pcbye) is redialled by a seat's word only (seatDial), as the sim's laws do: the page's own clocks leave it.
+        if (!p.absentSince && iInitiate(pid) && !p.connected && !p.hungUp && (st === 'connecting' || st === 'new') && !seatHolds(pid)
             && p.downSince && now - p.downSince > 12000 && now - (p.cureAt || 0) > (stuckQuiet ? 30000 : 8000)) {
           p.cureAt = now;
           p.lastKick = now + Math.random() * 1500;
@@ -17697,7 +17709,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // side never learns and never offers. The lower-id side has the occ
         // seed and must break the deadlock. Glare is handled in onSignal.
         const reofferGap = stuckQuiet ? 30000 : 6000;
-        if (!p.absentSince && !p.connected && linkTo(pid) && !seatHolds(pid)
+        if (!p.absentSince && !p.connected && !p.hungUp && linkTo(pid) && !seatHolds(pid)
             && (st === 'failed' || st === 'disconnected' || st === 'new' || st === 'connecting')
             && now - p.lastKick > reofferGap
             && (iInitiate(pid) || (p.downSince && now - p.downSince > 4000))) {
@@ -20715,7 +20727,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try {
           if (meshNode && meshNode.transport && p.dc === dc) {
             if (seatAsked(p.id)) { dc.__pcOffered = true; dcSend(p, { k: 'pcmark', d: seatMark.get(p.id) || null }); meshNode.transport(p.id, 'open'); }
-            else { dcSend(p, { k: 'pcmark', n: 1 }); dc.__pcMarkWait = setTimeout(() => { try { pcMarkOpen(p, dc, null, 'timeout'); } catch (e) {} }, 3000); }
+            else { dcSend(p, { k: 'pcmark', n: 1, s: meshNode.mark && meshNode.mark(p.id).s ? 1 : 0 }); dc.__pcMarkWait = setTimeout(() => { try { pcMarkOpen(p, dc, null, 'timeout'); } catch (e) {} }, 3000); }
           }
         } catch (e) {}
         clearTimeout(p.hiLate); p.hiLate = null;
@@ -21201,7 +21213,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } else if (m.k === 'pcbye') {
         // A deliberate close from the far end (A2's pc laws): its why reaches the seat's world, and the
         // channel's close that follows is no loss.
-        if (dc && dc.__authBy === p.id) { p.byeSeen = Date.now(); p.byeWhy = m.why; try { if (meshNode && meshNode.transport) meshNode.transport(p.id, 'bye', typeof m.why === 'string' ? m.why.slice(0, 16) : 'call'); } catch (e) {} if (typeof clog === 'function') clog('pcbye-in ' + String(p.id).slice(0, 6) + ' ' + m.why); }
+        if (dc && dc.__authBy === p.id) { p.byeSeen = Date.now(); p.byeWhy = m.why; p.hungUp = true; try { if (meshNode && meshNode.transport) meshNode.transport(p.id, 'bye', typeof m.why === 'string' ? m.why.slice(0, 16) : 'call'); } catch (e) {} if (typeof clog === 'function') clog('pcbye-in ' + String(p.id).slice(0, 6) + ' ' + m.why); }
         // L27, the refused side: a seat that refuses me says 'kick'. It moves nothing here: only the line (refusedLine) reads it.
         if (dc && dc.__authBy === p.id && m.why === 'kick' && !hasAdminRoom()) { kickByesIn.add(p.id); if (typeof clog === 'function') clog('kick-heard ' + String(p.id).slice(0, 6) + ' of ' + kickByesIn.size); updateStatus(); }
       } else if (m.k === 'dcauth') {
