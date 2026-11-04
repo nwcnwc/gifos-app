@@ -120,7 +120,7 @@
       // The handover hold (rollup).
       { const hold = K.CONFIRM_TTL + (this.lastPubDepth + 3) * K.DIG_HOLD_LEVEL; const s1Only = (this.lastPubDepth === 0 && c.pc === 0);
         if (!s1Only && this.lastPubAt >= 0 && TICK - this.lastPubAt < hold) this.digHoldUntil = TICK + hold; }
-      this.rowKids.clear(); this.rowUsed.clear(); if (c.pc !== 0) this.s1tab.clear();
+      this.rowKids.clear(); this.rowUsed.clear(); if (c.pc !== 0) this.s1tab.clear(); this.siKids.clear();
       this.lastAck = TICK; this.lastPhone = (owner >= 0 && c.pc !== 0 && c.i === 0) ? TICK - 8 : TICK;   // L7.6 (I10)
       if (owner >= 0) { const m = newMsg('CLAIM'); m.ck = ckey(c); m.id = id; this.emit(owner, m); }
       else { const adm = this.ppAdmitter(c); if (adm >= 0 && adm !== id) { this.ppAskAt = TICK; const m = newMsg('CLAIM'); m.ck = ckey(c); m.id = id; this.emit(adm, m); } }   // PP
