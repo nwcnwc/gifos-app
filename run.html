@@ -26124,7 +26124,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const subraw = mosIn.get('subraw');
         if (subraw) { const jk = shipMos('sub', headPid, subraw.stream, Object.assign({ col: c.i }, blockMeta(subraw)), 'subraw'); if (jk) wanted.add(jk); }
         const x1 = mosIn.get('x1');
-        if (x1 && c.pc === 0) {
+        // Carry only my row's live product: an x1 that died with its head, or came from a seat no longer my row's head,
+        // is a husk that other heads would claim as this row and play as silence.
+        if (x1 && c.pc === 0 && !x1.deadAt && (x1.via === occPid({ pc: 0, r: c.r, i: 0 }) || x1.via === headPid)) {
           // As mate i of my row I carry my head's product to DEST row i (row 0
           // when i===r — my column's seat there covers the wrap), via my
           // COLUMN-mate sitting in that row, who hands it to its head. This is
@@ -26158,7 +26160,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // (ONE-PIPE law), and after a heal the mate fails back to the head's
         // direct pipe make-before-break.
         const sdmH = mosIn.get('sdm');
-        if (sdmH) for (let j = 1; j < C; j++) {
+        // Re-fan only the copy that came from my row's head (or the heir standing in): a copy a mate re-fanned to me, fanned on,
+        // closes a ring of mates holding a dead head's view, which nothing breaks while the new head is not reachable.
+        if (sdmH && !sdmH.deadAt && sdmH.via === headPid) for (let j = 1; j < C; j++) {
           if (j === c.i) continue;
           const mate = occPid({ pc: c.pc, r: c.r, i: j });
           if (!mate || mate === sdmH.via) continue;
