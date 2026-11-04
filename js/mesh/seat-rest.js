@@ -187,6 +187,7 @@
       if (lv.DIGEST && this.state === 3 && this.hasCoord && this.coord.pc === 0)
         for (const e of m.digs) {
           if (ckPc(e.k) !== 0 || !cellOk(e.k)) continue; if (this.hasCoord && e.k === ckey(this.coord)) continue;
+          if (e.d.at < 0 && e.d.by >= 0 && e.d.n === -1) { const st = this.s1tab.get(e.k); const vl = this.LT() - (e.d.ag < 0 ? 0 : e.d.ag); if (st !== undefined && st.by === e.d.by && st.rx <= vl + 8) { this.s1tab.delete(e.k); this.digForgot.set(e.k, [e.d.by, vl]); this.l10Mark(); } else if (st === undefined && !this.digForgot.has(e.k)) this.digForgot.set(e.k, [e.d.by, vl]); continue; }   // a mover's vacate, told on: the report it made at the cell it left (stamped before the vacate) is not a second person
           if (e.d.at < 0 && e.d.by >= 0) { const st = this.s1tab.get(e.k); if (st !== undefined && st.by === e.d.by && this.LT() - st.rx > K.DIG_TTL) { this.s1tab.delete(e.k); this.digGone.set(e.k, [e.d.by, this.TICK | 0]); } continue; }
           const u = dig.cloneDig(e.d); this.rxDig(u); if (u.at < 0 || this.LT() - u.rx > K.DIG_TTL) continue; if (u.kl.length) this.kIntake(u, u.by, false, e.k, false); this.s1Take(e.k, u);
         }
