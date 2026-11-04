@@ -17404,8 +17404,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // beat runs, and the far ends' report of what my uplink loses. An encoder's 'bandwidth' word says nothing (a low cap on a
     // small stream reads it for good), nor does a camera's frame rate (a still picture sends few frames); a hidden tab is held back on purpose.
     let lgHealthNow = 1, lgBeatAt = 0, lgLowReads = 0; const lgPrev = new Map();
-    function lgHealth() { const f = DEBUG_ON ? window.__gifosLgHealth : undefined; return typeof f === 'number' ? f : lgHealthNow; }
+    // Test rooms only (DEBUG): __gifosLgHealth fixes the reading; __gifosLgReadOff stops it, since a loaded test box reads as a weak device.
+    const lgReadOff = () => !!(DEBUG_ON && window.__gifosLgReadOff);
+    function lgHealth() { const f = DEBUG_ON ? window.__gifosLgHealth : undefined; return typeof f === 'number' ? f : (lgReadOff() ? 1 : lgHealthNow); }
     function lgRead() {
+      if (lgReadOff()) return;
       const beat = Date.now(), lag = lgBeatAt ? Math.max(0, beat - lgBeatAt - 2000) : 0; lgBeatAt = beat;
       if (document.hidden) { lgHealthNow = 1; return; }
       const jobs = [];
