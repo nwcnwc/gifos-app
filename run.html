@@ -6157,6 +6157,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let reactPending = false;
     const memoPass = (k, f) => { if (!passMemo) return f(); if (!(k in passMemo)) passMemo[k] = f(); return passMemo[k]; };
     const stageHeldAt = new Map(), STAGE_FOLD_HOLD_MS = 25000;
+    const stageFeedAt = new Map(), STAGE_FEED_LOST_MS = 10000;
     const stageIds = () => memoPass('stg', stageIdsNow);
     const stageIdsNow = () => {
       // A stage seat needs a LIVE status — the same stHold rule as consent and
@@ -6200,8 +6201,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         for (const e of dg.stage) {
           if (!e.id || have.has(e.id) || e.id === myId || botOf(e.id) || stHold(e.id) || !notTomb(e.id) || !(canStage(e.id) || ((e.f & 2) && mayShareScreen(e.id)))) continue;
           if (vt) { const dv = e.dv || devFor(e.id); if (dv && (vt.down[dv] || 0) >= stageNeed(vt, dv)) continue; }
+          // The fold keeps a dead seat's lists under its lease (L3.12, up to 110 s), so it can't say
+          // a stager died. Its feed can: I held it and it has been gone a while, so nobody is there.
+          let feedNow = false; try { feedNow = !!mosIn.get('stg:' + e.id); } catch (x) {}
+          if (feedNow) stageFeedAt.set(e.id, Date.now());
+          else if (stageFeedAt.has(e.id) && Date.now() - stageFeedAt.get(e.id) > STAGE_FEED_LOST_MS) continue;
           out.push([e.id, e.k]);
         }
+        for (const id of stageFeedAt.keys()) if (!dg.stage.some((e) => e.id === id)) stageFeedAt.delete(id);
       }
       // A deep stager's entry reaches the far room through its row's fold, and that path breaks
       // when the seat above it dies, until E2 carries the fold. The stager did not step down and
@@ -6213,7 +6220,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (out.some((x) => x[0] === id)) continue;
         const said = statusOf.get(id);
         const fresh = said && nowH - stSeen(said) <= 15000;
-        let held = false; try { const f = mosIn.get('stg:' + id); held = !!f && !f.deadAt; } catch (e) {}
+        let held = false; try { held = !!mosIn.get('stg:' + id); } catch (e) {} // a dead primary still counts: its claim ends after the grace unless a standby takes the slot
         if (nowH - h.at > STAGE_FOLD_HOLD_MS || id === myId || !held || meshGone.has(id) || (fresh && !said.stg)) { stageHeldAt.delete(id); continue; }
         out.push([id, h.k]);
       }
@@ -35480,6 +35487,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       stgJobsForTest: () => [...mosJobs.entries()].filter(([, j]) => j.key.indexOf('stg:') === 0).map(([jk, j]) => { const p = peers.get(j.to); return { to: String(j.to).slice(0, 8), key: j.key.slice(0, 12), active: !!j.active, sid: String(j.streamId).slice(0, 8), sb: !!(j.meta && j.meta.sb), ao: !!(j.meta && j.meta.ao), kinds: j.trackList.map((t) => t ? t.kind + ':' + t.readyState + (t.enabled ? '' : ':off') : 'null').join(), sending: j.senders.map((sd) => sd.track ? sd.track.kind : 'null').join(), held: typeof outgoingHeld !== 'undefined' && !!outgoingHeld, pc: p && p.pc ? p.pc.connectionState : 'none' }; }),
       stageEarStreamForTest: () => (stageEar && stageEar.el.srcObject ? { stream: stageEar.el.srcObject, muted: !!stageEar.el.muted, paused: !!stageEar.el.paused } : null),
       stageRouteForTest: () => { const o = {}; for (const [k, v] of mosIn) { if (k.indexOf("stg:") !== 0 && k !== "sgs") continue; const d = mosStandby.get(k); o[k.slice(0, 8)] = String(v.via).slice(2, 8) + (d ? "|" + String(d.via).slice(2, 8) : ""); } return o; },
+      stageWhyForTest: (id) => { const st = statusOf.get(id), d = digLists(), e = d ? d.stage.find((x) => x.id === id) : null; let f = null; try { f = mosIn.get('stg:' + id); } catch (x) {} return { on: stageIds().includes(id), fold: !!e, foldAge: d ? d.age : null, stAge: st ? Date.now() - stSeen(st) : null, stStg: st ? st.stg || 0 : null, stHold: stHold(id), tomb: !notTomb(id), gone: meshGone.has(id), held: typeof stageHeldAt !== 'undefined' && stageHeldAt.has(id), claim: f ? { via: String(f.via).slice(0, 8), dead: f.deadAt ? Date.now() - f.deadAt : 0 } : null }; },
       stgHiccupForTest: (ms) => { const jobs = [...mosJobs.values()].filter((b) => b.key.indexOf("stg:") === 0 && b.active); for (const b of jobs) b.senders.forEach((sd, i) => { const t = b.trackList[i]; if (t && t.kind === "audio") { try { sd.replaceTrack(null); } catch (e) {} } }); setTimeout(() => { for (const b of jobs) b.senders.forEach((sd, i) => { const t = b.trackList[i]; if (t && t.kind === "audio") { try { sd.replaceTrack(t); } catch (e) {} } }); }, ms); return jobs.length; },
       stageEarLevel: (ms) => new Promise((resolve) => {
         if (!stageEar || !stageEar.el.srcObject || !ac) return resolve(-1);
