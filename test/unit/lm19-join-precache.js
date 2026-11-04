@@ -3,7 +3,7 @@
 // Loading /run.html registers sw.js. The install handler cache.adds CORE.
 // CORE is the whole origin shell, so one clean join fetches pages and scripts
 // the meeting never runs. This fails while that install still requests
-// /404.html, /js/pay.js, or /llms.txt. It passes when the install list for
+// /route.html, /js/pay.js, or /llms.txt. It passes when the install list for
 // this worker no longer contains those paths and still fetches /run.html.
 //
 //   node test/unit/lm19-join-precache.js
@@ -20,7 +20,7 @@ const check = (n, c, d) => {
 
 const root = path.join(__dirname, '..', '..');
 const src = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
-const banned = ['/404.html', '/js/pay.js', '/llms.txt'];
+const banned = ['/route.html', '/js/pay.js', '/llms.txt'];
 const listeners = {};
 const added = [];
 const sandbox = {
@@ -64,7 +64,7 @@ if (install) {
 
 pending.then(() => {
   const hit = banned.filter((p) => added.indexOf(p) >= 0);
-  check('a join install does not fetch /404.html, /js/pay.js, or /llms.txt', hit.length === 0, { hit, added: added.length });
+  check('a join install does not fetch /route.html, /js/pay.js, or /llms.txt', hit.length === 0, { hit, added: added.length });
   check('a join install still fetches the meeting page', added.indexOf('/run.html') >= 0, added.filter((p) => /run\.html|mesh\.js/.test(p)));
   if (fails) process.exit(1);
 }).catch((e) => {
