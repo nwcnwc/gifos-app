@@ -21,6 +21,7 @@
   const topo = req('./topo.js', 'meshTopo');
   const hash = req('./hash.js', 'meshHash');
   const dig = req('./dig.js', 'meshDig');
+  const e2f = req('./e2fold.js', 'meshE2fold');   // L48
   const C_ = req('./consts.js', 'meshConsts');
   const state = req('./state.js', 'meshState');
   const books = req('./books.js', 'meshBooks');
@@ -339,9 +340,10 @@
       if (echo.n !== r.n || echo.refuse !== r.refuse || dig.digListHash(echo) !== r.lh) { this.digArm = 1; return true; }  // (1) the lists too (G9)
       if (pub.n < base + echo.n || pub.refuse < echo.refuse) { this.digArm = 2; return true; }  // (2)
       // (2, G9) every list entry I authored is in the published fold, or the fold is FULL of entries that outrank it.
-      if (pub.handN < echo.handN || pub.awayN < echo.awayN
-        || !dig.listHolds(pub.hands, echo.hands, K_HAND, true) || !dig.listHolds(pub.stage, echo.stage, K_STAGE, true)
-        || !dig.listHolds(pub.apps, echo.apps, K_APP, false) || !dig.votesHold(pub.votes, echo.votes)) { this.digArm = 4; return true; }
+      const ec = e2f.l48Echo(pub, echo);   // L48: a copy of a row the fold replaced by a newer one is not mine to find in it
+      if (pub.handN < ec.handN || pub.awayN < ec.awayN
+        || !dig.listHolds(pub.hands, ec.hands, K_HAND, true) || !dig.listHolds(pub.stage, ec.stage, K_STAGE, true)
+        || !dig.listHolds(pub.apps, ec.apps, K_APP, false) || !dig.votesHold(pub.votes, ec.votes)) { this.digArm = 4; return true; }
       return false;
     },
     // C++: mesh_seat.inc:Seat::scopeGap
@@ -369,7 +371,7 @@
     },
     // C++: mesh_seat.inc:Seat::digForget1
     digForget1(k) {
-      this.rowKids.delete(k); this.s1tab.delete(k); if (this.kvKid.size) this.kvKid.delete(k);   // L27: a vacated cell's vote goes with its report
+      this.rowKids.delete(k); this.s1tab.delete(k); if (this.siKids.size) this.siKids.delete(k); if (this.kvKid.size) this.kvKid.delete(k);   // L27: a vacated cell's vote goes with its report
       if (this.hasCoord && k === ckey(down(this.coord))) this.downDig = msg.newDig();
     },
     // C++: mesh_seat.inc:Seat::digHeld
@@ -408,19 +410,39 @@
           for (let c2 = 0; c2 < C; c2++) { const k = ckey(rc[c2]); if (this.occ.has(k) || this.sitting.has(k)) continue; const dk2 = ckey(down(rc[c2])); if (this.occ.has(dk2) || this.sitting.has(dk2)) continue; d.freeC++; }
           if (d.freeC) d.dmin = pcDepth(this.coord.pc) + 1;
         }
-        const dk = ckey(down(this.coord)); this.digGap = 0; this.downUsed = msg.newDig();
-        if (this.downDig.at >= 0 && this.LT() - this.downDig.rx <= K.DIG_TTL) { dig.digFold(d, this.downDig); this.downUsed = dig.cloneDig(this.downDig); this.kAddKid(d, dk); }   // L27: my child head's own vote, taken first-hand
-        else if (this.downDig.at >= 0 && this.digHeld(dk, this.downDig)) { if (this.scopeGap(dk)) { d.part = 1; d.refuse += 1; this.digGap = 1; } dig.digFoldHeld(d, this.downDig); }   // L3.12: not echoed (downUsed stays empty): the author is silent
+        const dk = ckey(down(this.coord)); this.digGap = 0; this.downUsed = msg.newDig(); let l48h = 0;
+        if (this.downDig.at >= 0 && this.LT() - this.downDig.rx <= K.DIG_TTL) { dig.digFold(d, this.downDig); this.downUsed = dig.cloneDig(this.downDig); this.kAddKid(d, dk); l48h = 1; }   // L27: my child head's own vote, taken first-hand
+        else if (this.downDig.at >= 0 && this.digHeld(dk, this.downDig)) { if (this.scopeGap(dk)) { d.part = 1; d.refuse += 1; this.digGap = 1; } dig.digFoldHeld(d, this.downDig); l48h = 2; }   // L3.12: not echoed (downUsed stays empty): the author is silent
         else if (this.scopeGap(dk)) { d.part = 1; d.refuse += 1; this.digGap = 1; }   // G3 FAIL-CLOSED
+        this.l48Up(d, dk, l48h);   // L48: the child row I fold, and the rows I serve over E2
         dig.digTrim(d);
         this.myDig = dig.cloneDig(d); this.lastPubAt = TICK; this.lastPubDepth = pcDepth(this.coord.pc);
         // --- (2) deep ROW HEAD: fold my row (my owner is linked only to me) --------
         if (this.coord.pc !== 0 && this.coord.i === 0) {
           const r = dig.cloneDig(this.myDig); r.at = this.LT(); r.rx = r.at; r.by = id; this.rowUsed.clear();
+          // L48: the owner and the backup owner of a row below are row-mates, so the two copies of that row meet here: keep the newest
+          const kc = new Array(C).fill(null); let l48any = false, l48lone = true;
+          if (!e2f.L48_OFF) {
+            for (const x of this.myDig.rows) if (x.e2 === 1) l48any = true;
+            for (let j = 1; j < C; j++) {
+              const rk = ckey({ pc: this.coord.pc, r: this.coord.r, i: j }); const it = this.rowKids.get(rk); if (it === undefined) continue;
+              if (this.LT() - it.rx <= K.DIG_TTL || this.digHeld(rk, it)) { l48lone = false; for (const x of it.rows) if (x.e2 === 1) l48any = true; }
+            }
+            const won = [];
+            if (l48any) {
+              const inp = [{ d: r, age0: this.LT() - this.myDig.rx }];
+              for (let j = 1; j < C; j++) {
+                const rk = ckey({ pc: this.coord.pc, r: this.coord.r, i: j }); const it = this.rowKids.get(rk); if (it === undefined) continue;
+                if (this.LT() - it.rx <= K.DIG_TTL || this.digHeld(rk, it)) { kc[j] = dig.cloneDig(it); inp.push({ d: kc[j], age0: this.LT() - it.rx }); }
+              }
+              e2f.l48Resolve(inp, won);
+            }
+            r.rows = won; if (l48lone) for (const x of this.myDig.rows) if (x.e2 !== 2) r.rows.push(dig.cloneDRow(x));   // a lone row's rows go on up (L2.2b)
+          }
           for (let j = 1; j < C; j++) {
             const rk = ckey({ pc: this.coord.pc, r: this.coord.r, i: j }); const it = this.rowKids.get(rk);
-            if (it !== undefined && this.LT() - it.rx <= K.DIG_TTL) { dig.digFold(r, it); this.rowUsed.set(rk, dig.cloneDig(it)); this.kAddKid(r, rk); }   // L27: the row-mate's own vote, taken first-hand
-            else if (it !== undefined && this.digHeld(rk, it)) { if (this.scopeGap(rk)) { r.part = 1; r.refuse += 1; this.digGap |= 2; } dig.digFoldHeld(r, it); }   // L3.12
+            if (it !== undefined && this.LT() - it.rx <= K.DIG_TTL) { dig.digFold(r, l48any ? kc[j] : it); this.rowUsed.set(rk, dig.cloneDig(it)); this.kAddKid(r, rk); }   // L27: the row-mate's own vote, taken first-hand
+            else if (it !== undefined && this.digHeld(rk, it)) { if (this.scopeGap(rk)) { r.part = 1; r.refuse += 1; this.digGap |= 2; } dig.digFoldHeld(r, l48any ? kc[j] : it); }   // L3.12
             else if (this.scopeGap(rk)) { r.part = 1; r.refuse += 1; this.digGap |= 2; }
           }
           dig.digTrim(r);
@@ -441,13 +463,34 @@
         const R = msg.newDig(); R.at = this.LT(); R.rx = R.at; R.by = id;
         const newest = new Map();   // author -> its newest stamp among my fresh entries (my own report: I am here now)
         for (const e of this.s1tab.values()) if (e.by >= 0 && this.LT() - e.rx <= K.DIG_TTL) { const nb = newest.get(e.by); if (nb === undefined || nb < e.at) newest.set(e.by, e.at); }
+        // L48: an owner row in Section 1 and its backup owner are both here: of the two copies of the row below, keep the newest
+        const l48c = new Map();
+        if (!e2f.L48_OFF) {
+          let any = false; const ks = [];
+          for (let r0 = 0; r0 < C; r0++) for (let i0 = 0; i0 < C; i0++) {
+            const k = ckey({ pc: 0, r: r0, i: i0 }); let x = null;
+            if (this.hasCoord && k === ckey(this.coord)) x = this.myDig;
+            else {
+              const it = this.s1tab.get(k); if (it === undefined) continue; const fr = this.LT() - it.rx <= K.DIG_TTL;
+              if (fr && it.by >= 0 && (it.by === id || ins(newest, it.by, () => 0) !== it.at)) continue;
+              if (fr || (this.digHeld(k, it) && (!newest.has(it.by) || ins(newest, it.by, () => 0) <= it.at))) x = it;
+            }
+            if (!x) continue; ks.push(k); for (const w of x.rows) if (w.e2 === 1) any = true;
+          }
+          if (any) {
+            const inp = []; for (const k of ks) { const x = (this.hasCoord && k === ckey(this.coord)) ? this.myDig : this.s1tab.get(k); l48c.set(k, dig.cloneDig(x)); }
+            for (const k of ks) { const x = l48c.get(k); inp.push({ d: x, age0: this.LT() - x.rx }); }
+            const won = []; e2f.l48Resolve(inp, won);
+          }
+        }
+        const l48d = (k, x) => { if (!l48c.size) return x; const c = l48c.get(k); return c === undefined ? x : c; };
         for (let r0 = 0; r0 < C; r0++) for (let i0 = 0; i0 < C; i0++) {
           const k = ckey({ pc: 0, r: r0, i: i0 });
-          if (this.hasCoord && k === ckey(this.coord)) { dig.digFold(R, this.myDig); if (this.myDig.kOwn.voter >= 0) this.kAddS1(R, k, this.myDig.kOwn); continue; }
+          if (this.hasCoord && k === ckey(this.coord)) { dig.digFold(R, l48d(k, this.myDig)); if (this.myDig.kOwn.voter >= 0) this.kAddS1(R, k, this.myDig.kOwn); continue; }
           const it = this.s1tab.get(k);
           if (it !== undefined && this.LT() - it.rx <= K.DIG_TTL && it.by >= 0 && (it.by === id || ins(newest, it.by, () => 0) !== it.at)) continue;   // superseded: the author is me, or it has a newer report from another cell
-          if (it !== undefined && this.LT() - it.rx <= K.DIG_TTL) { dig.digFold(R, it); if (it.kOwn.voter >= 0) this.kAddS1(R, k, it.kOwn); }
-          else if (it !== undefined && this.digHeld(k, it) && (!newest.has(it.by) || ins(newest, it.by, () => 0) <= it.at)) { if (!extra && this.scopeGap(k)) { R.part = 1; R.refuse += 1; this.digGap |= 4; } dig.digFoldHeld(R, it); }   // L3.12
+          if (it !== undefined && this.LT() - it.rx <= K.DIG_TTL) { dig.digFold(R, l48d(k, it)); if (it.kOwn.voter >= 0) this.kAddS1(R, k, it.kOwn); }
+          else if (it !== undefined && this.digHeld(k, it) && (!newest.has(it.by) || ins(newest, it.by, () => 0) <= it.at)) { if (!extra && this.scopeGap(k)) { R.part = 1; R.refuse += 1; this.digGap |= 4; } dig.digFoldHeld(R, l48d(k, it)); }   // L3.12
           else if (extra) { if (this.occ.has(k)) return; }   // an extra fold decides no gap
           else if (this.scopeGap(k)) { R.part = 1; R.refuse += 1; this.digGap |= 4; }
         }

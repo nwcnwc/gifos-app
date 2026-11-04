@@ -168,6 +168,8 @@
     L163_CONFIRM_WIN: 14,   // C++: mesh.cpp:L163_CONFIRM_WIN
     L711_TAG: 71,   // C++: mesh.cpp:L711_TAG
     FARV_CAP: 256,   // C++: mesh_farview.inc:FARV_CAP
+    L48_E2MAX: 10,   // C++: mesh_e2fold.inc:L48_E2MAX  (2*C)
+    L48_BEAT: 20,   // C++: mesh_e2fold.inc:L48_BEAT  (8+EARLY_HOLD)
     L12_WAVE: 1800,   // C++: mesh_seat.inc:L12_WAVE
     L12_QUIET: 7000,   // C++: mesh_seat.inc:L12_QUIET
     L12_HOLD: 1200,   // C++: mesh_seat.inc:L12_HOLD
@@ -506,6 +508,13 @@
     HM_FPSSEAT: -1,   // C++: mesh_hostile.inc:HM_FPSSEAT
     HM_SHOWNMAX: 0,   // C++: mesh_hostile.inc:HM_SHOWNMAX
     HM_RELAY: 0,   // C++: mesh_hostile.inc:HM_RELAY
+    E2C_HEAD: -1,   // C++: mesh_e2fold_fab.inc:E2C_HEAD
+    E2C_OWN: -1,   // C++: mesh_e2fold_fab.inc:E2C_OWN
+    E2C_HEIR: -1,   // C++: mesh_e2fold_fab.inc:E2C_HEIR
+    E2C_HAND: -1,   // C++: mesh_e2fold_fab.inc:E2C_HAND
+    E2C_STAGE: -1,   // C++: mesh_e2fold_fab.inc:E2C_STAGE
+    E2C_ROW: 0,   // C++: mesh_e2fold_fab.inc:E2C_ROW
+    E2C_AT: -1,   // C++: mesh_e2fold_fab.inc:E2C_AT
     C7FORGE_ID: -1,   // C++: mesh_c7proof_fab.inc:C7FORGE_ID
     L18R_REACH: 0,   // C++: mesh_l18.inc:L18R_REACH
     L18R_UNREACH: 0,   // C++: mesh_l18.inc:L18R_UNREACH

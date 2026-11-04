@@ -26,6 +26,7 @@
   const msg = req('./msg.js', 'meshMsg');
   const topo = req('./topo.js', 'meshTopo');
   const dig = req('./dig.js', 'meshDig');
+  const e2f = req('./e2fold.js', 'meshE2fold');   // L48
   const state = req('./state.js', 'meshState');
   const roles = req('./roles.js', 'meshRoles');
   const { eraseFirst, ins } = req('./util.js', 'meshUtil');
@@ -482,7 +483,7 @@
       if (this.coord.pc !== 0) {
         const oc = this.ownerCoord(); const fromOwner = this.coord.i === 0 && !!oc && ckey(oc) === pk, fromHead = this.coord.i !== 0 && pk === ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 });   // L2
         if (fromOwner || fromHead) { this.bkId = m.bkId; this.bkCk = m.bkCk; this.sbId = m.u3Id; this.sbCk = m.u3Ck; }
-        if (fromHead) { this.headAckAt = TICK; this.headEver = true; this.headE1Dn = m.e1dn; this.headE1At = m.e1At; if (this.w.lv.DIGEST && m.dgPub.at >= 0) this.u2RowDig = dig.cloneDig(m.dgPub); }
+        if (fromHead) { this.headAckAt = TICK; this.headEver = true; this.headE1Dn = m.e1dn; this.headE1At = m.e1At; if (this.w.lv.DIGEST && m.dgPub.at >= 0) { this.u2RowDig = dig.cloneDig(m.dgPub); if (!e2f.L48_OFF) this.u2RowDig.rx = this.LT() - this.u2RowDig.ag; } }   // L48: held with its age, so the copy over E2 ages on
       }
       if (m.coord.pc === 0) { this.setOcc(pk, pid); this.liveMark(pk); this.noteS1(pk); }   // FIRST-HAND
       if (this.pendYBy === pid && TICK - this.pendYAt <= 8 && this.hasCoord && this.state === 3 && this.pendYCk === ckey(this.coord) && this.arbOk(pid)) {
@@ -534,7 +535,7 @@
       const ukey = u2RowKey(ckey(row), m.tag === 3);   // key = ckey*2 + variant flag
       const u = ins(this.u2Rows, ukey, () => state.newStruct('U2Row'));
       if (m.e1dn && !u.hot) this.trace('UP2-SERVE', id, this.coord, 'row=%s heir=%d%s', coordStr(row), m.id, m.tag === 3 ? ' standby' : '');
-      u.heir = m.id; u.at = TICK; u.hot = m.e1dn; if (m.e1dn && m.dgUp.at >= 0) u.dig = dig.cloneDig(m.dgUp);   // the row's fold, held while I serve it
+      u.heir = m.id; u.at = TICK; u.hot = m.e1dn; if (m.e1dn && m.dgUp.at >= 0) { u.dig = dig.cloneDig(m.dgUp); if (!e2f.L48_OFF) u.dig.rx = this.LT() - u.dig.ag; } else if (!e2f.L48_OFF) u.dig = msg.newDig();   // L48: a parked beat, or a hot one with no fold, ends the copy   // the row's fold, held while I serve it
       const a = newMsg('U2ACK'); a.id = id; a.coord = cc(this.coord);
       {
         const oc2 = roles.ownerOf(row);

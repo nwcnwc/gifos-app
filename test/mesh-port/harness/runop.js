@@ -42,7 +42,7 @@ const NOT_PORTED = new Set(['subnets', 'medialocal', 'pairs', 'stalehints', 'hol
 // Verbs that reach a unit another job ports (through fab.X). Kept as data so the corpus scan can name them.
 const EXTERNAL_VERBS = {
   link: 'linkLever', keep: 'keepLever', linkset: 'linksetLever', radio: 'radioLever', l18: 'l18Lever', feedcase: 'feedCase',
-  ijmeasure: 'ijLever', ijstat: 'ijLever', ijforge: 'ijLever', ijvia: 'ijLever', fhop: 'fhopLever', fhstat: 'fhopLever', l30stat: 'l30Stat',
+  ijmeasure: 'ijLever', ijstat: 'ijLever', ijforge: 'ijLever', ijvia: 'ijLever', fhop: 'fhopLever', fhstat: 'fhopLever', e2cut: 'e2cutLever', l30stat: 'l30Stat',
   netgroups: 'netLever', island: 'netLever', netjoin: 'netLever', netmove: 'netLever', netcut: 'netLever', netlift: 'netLever', relaystat: 'netLever', islands: 'netLever', netfind: 'netLever',
   freeze: 'timeLever', tickslow: 'timeLever', hide: 'timeLever', reload: 'timeLever', reloadnew: 'timeLever', twocells: 'timeLever', resume: 'timeLever', doordark: 'timeLever', verdicts: 'timeLever', linked: 'timeLever', allsee: 'timeLever',
 };
@@ -875,6 +875,8 @@ function createOps(fab, opts) {
   };
   // C++: mesh.cpp:runOp (hostile)
   V.hostile = (tk) => { X.hostileVerb(tk); };
+  // C++: mesh.cpp:runOp (e2cut)
+  V.e2cut = (tk) => { X.e2cutLever(tk); };   // L48 (e2fold-fab.js)
   // C++: mesh.cpp:runOp (lie)
   V.lie = (tk) => {
     if (X.tierLie(tk)) return;
