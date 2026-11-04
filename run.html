@@ -6243,6 +6243,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const said = statusOf.get(id);
         const fresh = said && nowH - stSeen(said) <= 15000;
         let held = false; try { held = !!mosIn.get('stg:' + id) && !(mosFb.get('stg:' + id) || {}).dark && !stgStale('stg:' + id); } catch (e) {} // a dead primary counts until the grace ends; a dark one (silent ring or dead path) does not
+        // A beat in date says the stager is there, whatever the fold says: a reload moves its seat, and the
+        // fold takes half a minute to list it again (room v8ring, 36 s off stage with its beat never late).
+        let beating = false; try { beating = stgBeats.has('stg:' + id) && !stgStale('stg:' + id); } catch (e) {}
+        if (beating && id !== myId && !(fresh && !said.stg)) { if (!meshGone.has(id)) out.push([id, h.k]); continue; }
         if (nowH - h.at > STAGE_FOLD_HOLD_MS || id === myId || !held || meshGone.has(id) || (fresh && !said.stg)) { stageHeldAt.delete(id); continue; }
         out.push([id, h.k]);
       }
