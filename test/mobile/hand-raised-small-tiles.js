@@ -7,7 +7,7 @@
  * A raised hand reads in full, on the tile, upright and sideways, and stays
  * clear of Full screen and the name.
  *
- * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/hand-raised-small-tiles.js
+ * Gate: NODE_PATH=~/gifos-swarm/node_modules node test/mobile/hand-raised-small-tiles.js
  */
 const fs = require('fs');
 const path = require('path');

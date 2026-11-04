@@ -11,7 +11,7 @@
  * and the full line with the names reads whole, on screen, with nothing
  * over it (after one tap if the screen only has room for a button).
  *
- * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/hand-queue-clear.js
+ * Gate: NODE_PATH=~/gifos-swarm/node_modules node test/mobile/hand-queue-clear.js
  */
 const fs = require('fs');
 const path = require('path');

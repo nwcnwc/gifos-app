@@ -10,7 +10,7 @@
  * whole tile each chip must show inside the tile, clear of the name, of
  * Full screen, of a camera-off tile's big initial and of every other chip.
  *
- * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/short-tile-chips.js
+ * Gate: NODE_PATH=~/gifos-swarm/node_modules node test/mobile/short-tile-chips.js
  */
 const fs = require('fs');
 const path = require('path');
