@@ -4661,7 +4661,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <script src="js/mesh/page/env.js" defer></script>
   <script src="js/mesh/page/pclaws-wire.js" defer></script>
   <script src="js/mesh/page/layer.js" defer></script>
-  <script src="js/relay-admit.js" defer></script>
   <script src="js/mesh-identity.js" defer></script>
   <script src="js/mesh-wire.js" defer></script>
   <script src="js/mesh-media.js" defer></script>
@@ -16783,17 +16782,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
         doorHeld: (id) => { try { const b = meetWait.blocks(id); if (b && id && amAdmin) meetWait.note(id, rosterNames[id] || 'Someone waiting'); if (b && id) sayHeld(id); return b; } catch (e) { return false; } },   // a withheld knock goes on the host's list: nothing else names a plain room's knocker
         onDoor: (kind, frame) => {
-          if (kind === 'unseated') {
-            meetWait.waiting(true);
-            const denied = frame && frame.t === 'denied';
-            const h = document.querySelector('#waitdoor h1');
-            const p = document.querySelector('#waitdoor p');
-            if (denied) {
-              if (h) h.textContent = 'Not admitted';
-              if (p) p.textContent = 'The host didn\u2019t let you in. You are not in the meeting.';
-              setStatus('The host didn\u2019t let you in.');
-            } else showHeldScreen();
-          } else if (kind === 'seated') {
+          if (kind === 'seated') {
             meetWait.waiting(false);
           }
         },

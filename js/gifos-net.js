@@ -734,8 +734,6 @@
     unban: { dev: { str: 16, re: RELAY_DEV_RE }, w: { obj: RELAY_ORDER } },
     votekick: { devs: { list: 24, item: { str: 16, re: RELAY_DEV_RE } }, abs: { list: 24, item: { str: 16, re: RELAY_ABS_RE }, opt: 1 } },
     banlist: { devs: { list: 20, item: { obj: { d: { str: 16, re: RELAY_DEV_RE } } } }, w: { obj: RELAY_ORDER } },
-    // Waiting room (relay-admit.js). Admin-signed. `on` is '1' or '0'.
-    // `id` is the knocker the admin is admitting or turning away.
   };
   function sealedOk(m) {
     if (!m || typeof m !== 'object' || Array.isArray(m) || m.e !== 1 || typeof m.iv !== 'string' || typeof m.ct !== 'string') return false;
