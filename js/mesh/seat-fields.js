@@ -350,6 +350,7 @@
     ["hoSeen", "i64"],   // long long = -100000  (line 1057)
     ["hoMoveAt", "i64"],   // long long = -100000  (line 1057)
     ["hoNbrs", "[KV]"],   // vector<KV>  (line 1057)
+    ["l1341Hello", "[i32]"],   // vector<int>  (line 1057)
     ["gaFindAt", "i32"],   // int = -1  (line 1058)
     ["gaFindPrev", "i32"],   // int = -1  (line 1058)
     ["gaFindTo", "i32"],   // int = -1  (line 1058)
