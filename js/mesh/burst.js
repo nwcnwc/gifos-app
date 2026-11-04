@@ -54,6 +54,35 @@
       this.w.lv.L44_REASK++;
       return true;
     },
+
+    // L45: a seat with no cell hears the goodbye of a door it was asking: the door is off its lists at once, and it asks the next one or knocks again now.
+    // C++: mesh_burst.inc:Seat::l45Bye
+    l45Bye(x) {
+      if (this.hasCoord || this.state === 3 || x < 0 || x === this.id || (this.rcPendAt >= 0 && this.oldCell)) return;
+      let was = x === this.gateway || x === this.lastAsked;
+      if (this.lastGreeters.includes(x)) { was = true; this.lastGreeters = this.lastGreeters.filter(g => g !== x); }
+      if (this.roster.some(e => e.v === x)) { was = true; this.roster = this.roster.filter(e => e.v !== x); }
+      if (!was) return;
+      this.noteBye(x); this.dials.holdGone(x, this.TICK + K.GONE_DIAL); this.trace('L45-RELEASE', this.id, null, 'door=%d state=%d left=%d', x, this.state, this.lastGreeters.length);
+      if (this.state === 2) {
+        if (this.lastAsked !== x) return;   // my FIND lives on past the door that handed it
+        if (this.haveRoster && this.roster.length) { const t = this.pickRoster(); if (t >= 0) { this.askSeat(t); return; } }
+        this.join(); return;
+      }
+      if (!this.lastGreeters.length || !this.resumeAsk()) this.join();
+    },
+
+    // L45.3: my one door has not answered through a retry: I knock, the relay knows its socket.
+    // C++: mesh_burst.inc:Seat::l45Lone
+    l45Lone() { return this.state === 1 && this.lastGreeters.length === 1 && this.lastReach < 0; },
+
+    // L45: a list naming a door within L45_LIST_WAIT of its goodbye is its socket's close not seen yet.
+    // C++: mesh_burst.inc:Seat::l45Stale
+    l45Stale(list) {
+      if (this.hasCoord || this.state === 3) return false;
+      for (const g of list) { const b = this.byeIds.get(g); if (b !== undefined && this.TICK - b <= K.L45_LIST_WAIT) return true; }
+      return false;
+    },
   });
   GifOS.meshBurst = Object.freeze({});
   if (isNode) module.exports = GifOS.meshBurst;

@@ -139,7 +139,7 @@
           if (a && this.haveRoster && this.roster.length) { const t = this.pickRoster(); if (t >= 0) { this.askSeat(t); wake(); return true; } }
           this.join(); wake(); return true;
         }
-        if ((this.state === 0 || this.state === 1) && TICK - this.retryAt > 20) { if (this.rcPendAt >= 0 && this.oldCell) { this.retryAt = TICK; } /* L3.10.6 */ else if (!this.resumeAsk()) this.join(); }
+        if ((this.state === 0 || this.state === 1) && TICK - this.retryAt > 20) { if (this.rcPendAt >= 0 && this.oldCell) { this.retryAt = TICK; } /* L3.10.6 */ else if (this.l45Lone() || !this.resumeAsk()) this.join(); }
         else if (this.state === 2) {
           if (TICK - this.retryAt > (this.findAckAt < 0 ? K.FIND_ACK_WAIT : this.l44AckWait()) || this.l44LinkLost()) {
             this.l381Lost();   /* L38.1 */

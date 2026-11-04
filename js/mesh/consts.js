@@ -89,6 +89,7 @@
     REDIAL_GAP: 8,   // C++: mesh.cpp:REDIAL_GAP  (LAW_REDIAL_GAP)
     REDIAL_MAX: 64,   // C++: mesh.cpp:REDIAL_MAX  (LAW_REDIAL_MAX)
     GONE_DIAL: 40,   // C++: mesh.cpp:GONE_DIAL
+    L45_LIST_WAIT: 4,   // C++: mesh.cpp:L45_LIST_WAIT
     FH_ICE_N: 3,   // C++: mesh.cpp:FH_ICE_N  (LAW_FH_ICE_N)
     FHOP_TTL: 12,   // C++: mesh.cpp:FHOP_TTL  (LAW_FHOP_TTL)
     FHOP_BEAT: 8,   // C++: mesh.cpp:FHOP_BEAT  (LAW_FHOP_BEAT)

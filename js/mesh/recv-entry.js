@@ -35,6 +35,7 @@
     // C++: mesh_seat.inc:Seat::onGreeters
     onGreeters(m) {
       const TICK = this.TICK, id = this.id, lv = this.w.lv;
+      if ((this.state === 0 || this.state === 1) && this.l45Stale(m.list)) { this.reJoin = true; this.f.wake(id); return; }   // L45
       if (m.list.length === 0) {
         if (this.state === 0) { this.genKey = this.linkKey; this.take({ pc: 0, r: 0, i: 0 }, -1, [], -1, -1, [], -1); this.lineAdopt(id, 'genesis'); }
         else if (this.state === 3) { this.lastGreeters = []; this.greetersAt = TICK; }

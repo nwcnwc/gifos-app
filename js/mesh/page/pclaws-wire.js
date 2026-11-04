@@ -450,6 +450,7 @@
       const L = LINKS.get(x); if (!L) return; const e = mine(x);
       trace('PC-BYE-IN', me, null, 'peer=%d why=%s', x, why);
       L.byeIn = true; doorEndCount(L);
+      if (why === 'leave') { const s = mySeat(); if (s && !s.dead) s.l45Bye(x); }   // L45: the page's own word for the sim's leave-close
       if (L.state === LK_OPEN || L.state === LK_DIALING) { L.state = LK_CLOSED; L.epoch = (L.epoch + 1) >>> 0; L.q = []; L.half = 0; L.halfAt = -1; }
       L.view[e] = LK_CLOSED; L.gone |= (1 << e); L.callClosed = true; L.outside = 0;
       if (L.agreed[e]) {
