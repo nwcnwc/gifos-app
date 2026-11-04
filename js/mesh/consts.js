@@ -169,7 +169,7 @@
     L12_QUIET: 7000,   // C++: mesh_seat.inc:L12_QUIET
     L12_HOLD: 1200,   // C++: mesh_seat.inc:L12_HOLD
     L12_OPEN_END: 2700,   // C++: mesh_seat.inc:L12_OPEN_END
-    L13_CHAIN_MAX: 6,   // C++: mesh_heal.inc:L13_CHAIN_MAX
+    L13_CHAIN_MAX: 6,   // C++: mesh_heal.inc:L13_CHAIN_MAX  (LAW_L13_CHAIN_MAX)
     L16_EVIL_EVERY: 8,   // C++: mesh_island.inc:L16_EVIL_EVERY
     L16_FAN: 1,   // C++: mesh_island.inc:L16_FAN
     L16_WAVE: 12,   // C++: mesh_island.inc:L16_WAVE
@@ -290,6 +290,8 @@
     ISLAND_PICK: 1,   // C++: mesh.cpp:ISLAND_PICK
     URL_KEY: 0,   // C++: mesh.cpp:URL_KEY
     relayGenesisKey: 0,   // C++: mesh.cpp:relayGenesisKey
+    L44_STAY: 0,   // C++: mesh.cpp:L44_STAY
+    L44_LIVEW: 0,   // C++: mesh.cpp:L44_LIVEW
     L31_NOACK: 0,   // C++: mesh.cpp:L31_NOACK
     L31_REPLACED: 0,   // C++: mesh.cpp:L31_REPLACED
     L31_LOST: 0,   // C++: mesh.cpp:L31_LOST

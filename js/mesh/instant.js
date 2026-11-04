@@ -30,17 +30,17 @@
 
   Seat.unit('mesh_instant.inc', {
     // C++: mesh_instant.inc:Seat::l31Held
-    l31Held(k, nc) { const a = this.l31Acc.get(k); return a !== undefined && a.q !== nc && this.TICK - a.at <= K.L31_REC_HOLD; },
+    l31Held(k, nc) { const a = this.l31Acc.get(k); return a !== undefined && !a.left && a.q !== nc && this.TICK - a.at <= K.L31_REC_HOLD; },
 
     // C++: mesh_instant.inc:Seat::l31Note
     l31Note(k, q, at, by, commit) {
       const a = this.l31Acc.get(k);
-      if (a !== undefined && this.TICK - a.at <= K.L31_REC_HOLD) {
+      if (a !== undefined && !a.left && this.TICK - a.at <= K.L31_REC_HOLD) {
         if (a.q === q) { if (commit) a.commit = true; return true; }
         if (!l31Beats(at, by, q, a.at, a.by, a.q)) return false;
       }
       if (this.l31Acc.size >= 4 * C) { const old = []; for (const [ek, ev] of this.l31Acc) if (this.TICK - ev.at > K.L31_REC_HOLD) old.push(ek); for (const o of old) this.l31Acc.delete(o); if (this.l31Acc.size >= 4 * C) this.l31Acc.clear(); }
-      this.l31Acc.set(k, { q, at, by, commit }); return true;
+      this.l31Acc.set(k, { q, at, by, commit, left: false }); return true;
     },
 
     // C++: mesh_instant.inc:Seat::l31CellOk
@@ -48,9 +48,10 @@
       const k = ckey(cell);
       if (cell.pc !== 0 || (this.hasCoord && k === ckey(this.coord))) return false;
       if (this.cellReserved(k) || this.courtHeld(k) || this.l31Held(k, this.findNc)) return false;
-      for (let j = cell.i + 1; j < C; j++) { const rk = ckey({ pc: 0, r: cell.r, i: j }); if (this.occ.has(rk) || this.softSitting(rk) || this.l31Held(rk, this.findNc)) return false; }
-      { const ht = this.healTry.get(k); if (ht !== undefined && this.TICK - ht <= 45) return false; }
-      { const b = this.byeAt.get(k); if (b !== undefined && this.TICK - b <= K.LEASE_T) return false; }
+      const l44h = this.l44Hole(k);   // L44.3 (burst.js)
+      if (!l44h) for (let j = cell.i + 1; j < C; j++) { const rk = ckey({ pc: 0, r: cell.r, i: j }); if (this.occ.has(rk) || this.softSitting(rk) || this.l31Held(rk, this.findNc)) return false; }
+      { const ht = this.healTry.get(k); if (!l44h && ht !== undefined && this.TICK - ht <= 45) return false; }
+      { const b = this.byeAt.get(k); if (!l44h && b !== undefined && this.TICK - b <= K.LEASE_T) return false; }
       if (this.coord.i === 0 && !this.rowLedger && this.TICK - this.seatedAt <= 60) return false;
       return true;
     },
@@ -261,7 +262,7 @@
 
     // C++: mesh_instant.inc:Seat::l31Replace
     l31Replace(m) {
-      if (m.l31 === 7) { if (!this.hasCoord || this.state !== 3 || m.nc !== this.id || m.owner < 0 || m.owner !== this.myPlacer || ckey(m.coord) !== ckey(this.coord)) return false; this.trace('L31-WITHDRAWN', this.id, this.coord, 'by=%d', m.owner); this.requeue('l31-withdrawn'); return true; }
+      if (m.l31 === 7) { if (!this.hasCoord || this.state !== 3 || m.nc !== this.id || m.owner < 0 || m.owner !== this.myPlacer || ckey(m.coord) !== ckey(this.coord)) return false; if (this.l44Stay()) return true; this.trace('L31-WITHDRAWN', this.id, this.coord, 'by=%d', m.owner); this.requeue('l31-withdrawn'); return true; }
       if (!this.hasCoord || this.state !== 3 || m.nc !== this.id || m.owner < 0 || m.owner !== this.myPlacer || this.TICK - this.seatedAt > K.L31_REC_HOLD || ckey(m.coord) === ckey(this.coord) || m.coord.pc !== 0) return false;
       this.trace('L31-REPLACE', this.id, this.coord, 'to=%s by=%d', coordStr(m.coord), m.owner);
       this.requeue('l31-replace');
