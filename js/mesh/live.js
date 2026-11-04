@@ -436,6 +436,11 @@
       if (this.w.lv.DIGEST && this.state === 3) {
         digs.push({ k: ckey(this.coord), d: this.pubDig(this.myDig) });
         for (const [ek, ed] of this.s1tab) if (ek !== ckey(this.coord) && this.LT() - ed.rx <= K.DIG_TTL) digs.push({ k: ek, d: this.wireDig(ed) });
+        for (const [fk, fv] of Array.from(this.digForgot)) {   // a vacate (a mover left the cell): told on for a while, so a Section-1 seat that never heard it first-hand drops the old cell's report too
+          if (this.LT() - fv[1] > 40) { this.digForgot.delete(fk); continue; }
+          let have = this.digGone.has(fk); for (const d of digs) if (d.k === fk) have = true;
+          if (!have && digs.length < C * C) { const z = msg.newDig(); z.at = -1; z.n = -1; z.by = fv[0]; z.ag = Math.max(0, (this.LT() | 0) - fv[1]); digs.push({ k: fk, d: z }); }
+        }
         // L3.12: a section whose held report a lease verdict just ended goes out as a tombstone
         if (this.digGone.size) {
           for (const [gk, gv] of Array.from(this.digGone)) {
