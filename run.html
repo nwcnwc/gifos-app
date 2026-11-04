@@ -12879,9 +12879,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // THE RELAY HOOKS UP A JOINER AND A GREETER, nothing else. Once a mesh connection exists nobody contacts it: a seat never sends a seat a frame through it.
     // I may use it while I am at the door (no seat, or a seated seat that knocked: the seat's socketed()) for a peer my view seats nowhere, or one that spoke to me over it just now: it is at the door, whatever my view still says of its old seat.
     const relayHeardAt = new Map();
-    function anyChannelOpen() { for (const p of peers.values()) if (p.dc && p.dc.readyState === 'open') return true; return false; }
     function relayMayCarry(to) {
-      if (!anyChannelOpen()) return true;   // no live connection to anyone: nothing else can carry it (a lone deep head whose owner crashed)
       if (meshNode && !meshNode.socketed()) return false;
       if (!meshCoord()) return true;
       if (!coordKeyOf(to)) return true;
@@ -16788,7 +16786,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             meetWait.waiting(false);
           }
         },
-        wired: anyChannelOpen,
         sendDC: meshSendDC,
         measure: {   // the device class and the network's verdict this page already keeps (L4)
           tier: () => { const E = GifOS.meshConsts.enums; return IS_MOBILE ? E.TIER_MOBILE : E.TIER_DESKTOP; },
