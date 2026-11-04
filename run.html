@@ -6337,7 +6337,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         waitDeclined.delete(id);
         if (id) waitAdmitted.add(id);
         waitPaint();
-        if (hasAdminRoom() && amAdmin && id) pwAdmitGrant(id);
+        if (hasAdminRoom() && amAdmin && id) { pwAdmitGrant(id); try { meshNode.doorForgive(id); } catch (e) {} }   // the wait itself read as an idle knock at my door: the admit ends that
         // Every door lets them in now (a signed dadm, doorHeld false for them), and this one answers at once.
         if (hasAdminRoom() && amAdmin && id) {
           const mine = modTable[id] = modTable[id] || {};
@@ -7750,7 +7750,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // The TARGET cannot lift a restriction the group put on them —
           // every receiver rejects a self-authored "off" independently.
           if (inc.on === false && inc.byId === target) continue;
-          if (!mine[field] || inc.at > mine[field].at) { mine[field] = inc; changed = true; }
+          if (!mine[field] || inc.at > mine[field].at) { mine[field] = inc; changed = true; if (field === 'dadm' && inc.on) { try { meshNode.doorForgive(target); } catch (e) {} } }
         }
       }
       if (changed) { try { applyHostOrders(); } catch (e) {} enforceForcedCam(); refreshAllTiles(); refreshOutbound(); paintControls(); reactHandCall(); paintChatGate(); paintStage(); if (typeof applyCcAll === 'function') applyCcAll(); } // re-derive every tile + my broadcast; an admin cam-off stops my camera; a revoked screen share stops too; a fresh grant may be a call-up (don't wait for the beat); a chat/app order repaints its gates
@@ -12872,6 +12872,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // I may use it while I am at the door (no seat, or a seated seat that knocked: the seat's socketed()) for a peer my view seats nowhere, or one that spoke to me over it just now: it is at the door, whatever my view still says of its old seat.
     const relayHeardAt = new Map();
     function relayMayCarry(to) {
+      if (pwWaitKey.has(to) && hasAdminRoom() && amAdmin) return true;   // someone waiting through a ban has no channel and cannot read the door: only this reaches them
       if (meshNode && !meshNode.socketed()) return false;
       if (!meshCoord()) return true;
       if (!coordKeyOf(to)) return true;
@@ -13411,7 +13412,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (typeof bannedSeat !== 'undefined' && bannedSeat.has(pid)) return;
         if (typeof isEjected === 'function' && isEjected(pid) === true) return;
         const pd = peers.get(pid);
-        if (noList && (!(pd && pd.dc && pd.dc.__authBy === pid) || doorOutsider(pid) || meetWait.blocks(pid))) return;   // a ban's grant goes only to the signed id at the far end of this channel, a member
+        if (noList && (!(pd && pd.dc && pd.dc.__authBy === pid) || meetWait.blocks(pid))) return;   // a ban's grant goes only to the signed id at the far end of this channel, and not into the waiting room. A stale key is the member's proof: one back from a gap may have left my view
         staleHealAt.set(pid, now);
         if (typeof clog === 'function') clog('grant-heal ' + String(pid).slice(0, 6) + ' (prev-key frame)');
       pwLog('grant-heal→' + String(pid).slice(0, 6) + ' ep=' + pwEpoch);
@@ -15544,7 +15545,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function renderFromOcc() {
       const s = meshSeat();
       if (!s) return;
-      if (typeof bannedSeat !== 'undefined') for (const pid of bannedSeat) if (peers.has(pid) && !(Date.now() - (pwBarred.get(pid) || 0) < PW_BYE_MS)) dropPeer(pid); // a ban's seat stays down even if a tick rebuilt it
+      if (typeof bannedSeat !== 'undefined') for (const pid of bannedSeat) if (peers.has(pid) && !(Date.now() - (pwBarred.get(pid) || 0) < PW_BYE_MS)) { if (pwBarred.has(pid)) { const bq = peers.get(pid); bq.byeSeen = Date.now(); bq.byeWhy = 'leave'; try { meshNode.transport(pid, 'greeter-gone'); } catch (e) {} } dropPeer(pid); } // a ban's seat stays down even if a tick rebuilt it. The admin's signed statement is the goodbye a page that ignored the order will not send: the seat hears it as any leave
       // FRESHLY SEATED, ONE FLUSH. Before hasCoord is true, gossip() has no
       // section to speak to and drops the frame silently (sc === null) — so
       // a status authored in that window, including scheduleNewPeerBeat's
@@ -15871,10 +15872,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Admit, for someone who waited through a ban: the password, signed for that one id. The page takes it and holds no grant, so it heals nobody.
     async function pwAdmitGrant(id) {
       const key = pwWaitKey.get(id); if (!key) return;
-      pwWaitKey.delete(id);
       const w = await admSigned('pwinfo', { pw: roomPw, ep: pwEpoch, to: id }); if (!w) return;
-      const fs = pwFramesOf({ k: 'pwinfo', pw: roomPw, ep: pwEpoch, w });
-      if (fs) for (const f of fs) relaySendSealed(id, f.k, f, key);
+      const q = peers.get(id), g = { k: 'pwinfo', pw: roomPw, by: myName(), ep: pwEpoch, w };
+      if (q && q.dc && q.dc.readyState === 'open' && q.dc.__authBy === id) pwSealTo(q, g, key);
+      else { const fs = pwFramesOf(g); if (fs) for (const f of fs) relaySendSealed(id, f.k, f, key); }
+      pwWaitKey.delete(id);
       pwLog('admit-grant→' + String(id).slice(0, 6) + ' ep=' + pwEpoch);
     }
     function pwToOf(grant) { try { return JSON.parse(grant.w.sp).to || ''; } catch (e) { return ''; } }
@@ -16866,6 +16868,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         oldKeys: (prevRoomE2E && prevRoomE2E !== roomE2E) ? [prevRoomE2E] : [],   // a door blob this key opens is behind me, not ahead (mesh-wire R6)
         excluded: isEjected, // ejected forgers: their mesh frames never reach the seat
         urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
+        holdDoor: () => pwWaitProof && !meshCoord(),
         doorHeld: (id) => { try { const b = meetWait.blocks(id); if (b && id && amAdmin) meetWait.note(id, rosterNames[id] || 'Someone waiting'); if (b && id) sayHeld(id); return b; } catch (e) { return false; } },   // a withheld knock goes on the host's list: nothing else names a plain room's knocker
         onDoor: (kind, frame) => {
           if (kind === 'seated') {

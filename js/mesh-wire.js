@@ -727,6 +727,7 @@
     function fireLocked(door) { if (!lockedFired || (door && !doorFired)) { lockedFired = true; if (door) doorFired = true; if (opts.onLocked) opts.onLocked(!!door); } }   // door: the door itself refused me; else only blobs I cannot open
 
     async function onGreeters(m) {
+      if (opts.holdDoor && opts.holdDoor()) return;   // waiting on the admin with a lock I cannot read: a list I cannot open must not make me a founder
       const list = m.list || [];
       const ids = [], sealedFps = [], fa = [], behind = [];
       let olderSeen = 0;   // sealed blobs one of my replaced keys opens: their writers are behind me, not ahead
@@ -1243,6 +1244,7 @@
       leave(reload) { if (reload && !sendHeldByes()) reload = false; try { if (raw) { if (penv && penv.leave) penv.leave(!!reload); else raw.leave(!!reload); } } catch (e) {} try { if (sock) sendRaw({ t: 'unlist' }); } catch (e) {} node.stop(); },   // goodbye to the peers, then off the greeter list, then the socket closes: no greeter-gone for a page leaving in order
       // Transport events from the page's pc/dc callbacks and watchdogs (env.js maps hard/quiet and debounces).
       remeasure() { if (!raw || !opts.measure) return; const n0 = opts.measure.nat() & 0xff; if (raw.cnat === raw.nat) raw.cnat = n0; raw.nat = n0; },   // a network verdict that lands after the join (seat.join reads it once)
+      doorForgive(pid) { if (penv && penv.doorForgive) penv.doorForgive(String(pid)); },
       transport(pid, ev, arg) { if (stopped || !penv) return undefined; try { return penv.transport(String(pid), ev, arg); } catch (e) { return undefined; } },
       dialHeld(pid) { if (stopped || !penv || !penv.dialHeld) return false; try { return penv.dialHeld(String(pid)); } catch (e) { return false; } },
       mark(pid) { if (stopped || !penv || !penv.mark) return null; try { return penv.mark(String(pid)); } catch (e) { return null; } },   // A2's mark my answer carries back
