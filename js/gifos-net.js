@@ -728,18 +728,12 @@
   const RELAY_SHAPES = {
     peer: { to: { str: 64, re: RELAY_ID_RE }, ty: { one: RELAY_TYPES }, msg: { sealed: 1 } },
     knock: { gk: { str: 128, re: RELAY_GK_RE }, gblob: { sealedText: 1, opt: 1 } },
-    who: {},
     unlist: {},                                            // a seat that left Section 1 drops its greeter registration at once
     setpw: { pw: { str: 64, re: RELAY_PROOF_RE }, w: { obj: RELAY_ORDER, opt: 1 } },
     ban: { dev: { str: 16, re: RELAY_DEV_RE }, w: { obj: RELAY_ORDER } },
     unban: { dev: { str: 16, re: RELAY_DEV_RE }, w: { obj: RELAY_ORDER } },
     votekick: { devs: { list: 24, item: { str: 16, re: RELAY_DEV_RE } }, abs: { list: 24, item: { str: 16, re: RELAY_ABS_RE }, opt: 1 } },
     banlist: { devs: { list: 20, item: { obj: { d: { str: 16, re: RELAY_DEV_RE } } } }, w: { obj: RELAY_ORDER } },
-    // Waiting room (relay-admit.js). Admin-signed. `on` is '1' or '0'.
-    // `id` is the knocker the admin is admitting or turning away.
-    waitroom: { on: { str: 1, re: /^[01]$/ }, w: { obj: RELAY_ORDER } },
-    admit: { id: { str: 64, re: RELAY_ID_RE }, w: { obj: RELAY_ORDER } },
-    deny: { id: { str: 64, re: RELAY_ID_RE }, w: { obj: RELAY_ORDER } },
   };
   function sealedOk(m) {
     if (!m || typeof m !== 'object' || Array.isArray(m) || m.e !== 1 || typeof m.iv !== 'string' || typeof m.ct !== 'string') return false;

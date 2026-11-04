@@ -4661,7 +4661,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <script src="js/mesh/page/env.js" defer></script>
   <script src="js/mesh/page/pclaws-wire.js" defer></script>
   <script src="js/mesh/page/layer.js" defer></script>
-  <script src="js/relay-admit.js" defer></script>
   <script src="js/mesh-identity.js" defer></script>
   <script src="js/mesh-wire.js" defer></script>
   <script src="js/mesh-media.js" defer></script>
@@ -6218,10 +6217,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // (the greeter pool + in-flight joiners). This is exactly "who the relay can
     // reach right now" — a target NOT in this set is a socketless deep seat the
     // relay would silently drop, so signaling to it must sponsor-forward (§FWD).
-    let relaySocketed = new Set();
     const kickByesIn = new Set();   // peers that closed our pair with 'kick' (L27, the refused side)
-    let relayRosterScope = 'full';
-    let doorAnswerAt = 0;           // a dark return's {t:'who'} pull is pending: its roster answers the door's knockers once (answerDoor)  // 'door' ⇒ relaySocketed holds only the greeters (see the roster handler)
     let holdDoor = false;           // waiting room: do not auto-answer the door; the host admits from the list. Gate: node test/unit/wait-room.js
     let atWaitDoor = false;         // this page is the knocker, held by the relay, not seated
     const waitDeclined = new Set();
@@ -6330,7 +6326,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           room.dhold = { on: holdDoor, by: myName(), byId: myId, at: Date.now() };
           hostFlood();
           const bit = holdDoor ? '1' : '0';
-          admSigned('waitroom', { on: bit }).then((w) => { if (w) relaySendObj({ t: 'waitroom', on: bit, w }); });
         }
         return holdDoor;
       },
@@ -6352,7 +6347,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const mine = modTable[id] = modTable[id] || {};
           mine.dadm = { on: true, by: myName(), byId: myId, at: Date.now() };
           hostFlood();
-          admSigned('admit', { id: id }).then((w) => { if (w) relaySendObj({ t: 'admit', id: id, w }); });
         }
         // The door channel closed while they waited: reopen it, then answer on it.
         try { bootDial(id); } catch (e) {}
@@ -6366,7 +6360,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (id) waitDeclined.add(id);
         waitPaint();
         if (hasAdminRoom() && amAdmin) {
-          admSigned('deny', { id: id }).then((w) => { if (w) relaySendObj({ t: 'deny', id: id, w }); });
         }
         return true;
       },
@@ -6394,9 +6387,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       atDoor() { return atWaitDoor; },
     };
     try { (window.GifOS = window.GifOS || {}).meetWait = meetWait; } catch (e) {}
-    let pendingDoorGrant = null;    // an admin re-grant waiting on a pulled full list
-    // Peers the relay answered {t:'nosock'} for, and when. Under a 'door' roster
-    // this — not absence from the list — is what "unreachable by relay" means.
+    // Peers the relay answered {t:'nosock'} for, and when: what "unreachable by relay" means. Everyone routes one way: try the relay, nosock says no, then the sponsor path.
     const relayNoSock = new Map();
     const RELAY_NOSOCK_MS = 30000;
     const relayNoSockRecently = (id) => {
@@ -6450,11 +6441,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let admBeatAt = 0; // my last room-wide admin presence beat
     const freshSt = (id) => { const st = statusOf.get(id); return !!st && Date.now() - stSeen(st) <= 15000; };
     const digStageEntry = (id) => { const d = digLists(); return d ? d.stage.find((e) => e.id === id) || null : null; };
-    // devOf entries the RELAY attested (roster / peer-join). A status may carry
-    // its sender's own room-salted tag, which fills a gap but never overwrites
-    // one of these — it is exactly as trustworthy as the tag the same client
-    // self-asserts to the relay at connect (the relay enforces uniqueness only).
-    const devRelay = new Set();
     // ---- rows from COORDS (no more roster arithmetic, no deacons) ----------
     // My row is a fact of my SEAT: the occupants of (pc, r, 0..C-1). The old
     // computeRows derived rows from relay-roster join order with row 0 as the
@@ -7035,20 +7021,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // THE DARK RETURN: the OS says offline and then online again (a coverage
     // dropout). Nothing blocked our loop, so the beat gap never shows it;
     // the dark span is measured here and judged by the same threshold.
-    // THE DOOR ROUND (mesh.js doorRound): a seat that has
-    // waited at the door for more than 6 s pulls the relay's FULL socket list
-    // every ~6 s ({t:'who'}, inside the relay's 5 s rate limit) and hands it
-    // to the seat, which asks every socket for HOME. When every member is at
-    // the door at once nobody is seated to admit anyone; two complete rounds
-    // over the same sockets let the lowest id found (Seat.foundDoor).
-    let doorWaitSince = 0, doorRoundAt = 0, doorRoundPending = false;
-    function doorRoundBeat(now) {
-      const s = meshSeat();
-      if (!s || !s.doorRound || !(s.state === 1 || s.state === 2) || !relayUp()) { doorWaitSince = 0; return; }
-      if (!doorWaitSince) { doorWaitSince = now; return; }
-      if (now - doorWaitSince < 6000 || now - doorRoundAt < 6000) return;
-      try { relaySendObj({ t: 'who' }); doorRoundAt = now; doorRoundPending = true; } catch (e) {}
-    }
     function netDarkBeat(now) {
       const dark = typeof navigator !== 'undefined' && navigator.onLine === false;
       if (dark) { if (!netDarkAt) netDarkAt = now; return; }
@@ -7060,13 +7032,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // reported again (seed 11 #5: the mesh learned of a reloaded head only
       // from the RING_HOLD horizon).
       tlFiredPid.clear();
-      // ...and so are the relay's socket deltas (peer-join/peer-leave) of the
-      // dark span: who the relay can reach is pulled fresh ({t:'who'}). Left
-      // stale, a member that joined while I was dark read as socketless and
-      // every offer and dial request to it went to the sponsor path, where
-      // nothing carried it (preset 14a on b13bbf6e: the returning head's
-      // pair to the newcomer sat new for 11 s, relay path unused).
-      if (span > 2000) { try { relaySendObj({ t: 'who' }); doorAnswerAt = now; } catch (e) {} }   // ...and the list that comes back is the door's knockers (doorAnswerAt: the roster handler answers them once)
       if (span > 2000) { try { if (meshNode && meshNode.netBack) meshNode.netBack(); } catch (e) {} }   // ...and the door is read again: a password changed in the dark shows at once (mesh-wire R6)
       if (span > WAKE_SUSPECT_MS) wakeProbe(now, 'dark ' + Math.round(span / 1000) + 's');
     }
@@ -7129,7 +7094,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // (The sentinel usually probed this gap already, at the thaw: one probe a gap.)
       if (nap && !frozeGap && typeof starveDebtSince === 'function' && starveDebtSince(nowBeat - beatGap) > WAKE_SUSPECT_MS && !(wakeLastAt > nowBeat - beatGap)) wakeProbe(nowBeat, 'beat gap ' + Math.round(beatGap / 1000) + 's');
       netDarkBeat(nowBeat);
-      doorRoundBeat(nowBeat);
       // A hidden tab beats at a third of the pace (12s — still inside every 15s
       // freshness window): a phone in a pocket keeps its seat without waking
       // the relay 21,600 times a day. The worker clock makes the 12s REAL —
@@ -8603,10 +8567,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       + '<button class="grantbtn" data-mod="app" title="Let this person run and lead apps in your room" aria-label="Allow apps & stage">Allow apps & stage</button>'
       + '<button class="grantbtn" data-mod="share" title="Let this person share their screen" aria-label="Allow screen share">Allow screen share</button>'
       + '<button class="banbtn" data-adm="ban" title="Ban this person&#39;s device from the room" aria-label="Ban this device">Ban</button>';
-    // A BAN NAMES A DEVICE, so the tag must be one the RELAY attested
-    // (roster / peer-join). A tag a peer merely asserts in its own
-    // status may be somebody else's: banning the impostor would ban
-    // the victim. Unattested ⇒ ask the door once, and say so.
+    // A BAN NAMES A DEVICE: the tag comes from the person's own status over the mesh, as they gave it to the door when they connected.
     function wireModbar(modbar, id) {
       modbar.addEventListener('click', (e) => {
         const t = e.target && e.target.closest ? e.target.closest('button') : e.target;
@@ -8622,10 +8583,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         if (t.dataset.adm === 'ban') {
           e.stopPropagation();
-          const dev = devRelay.has(id) ? devOf[id] : '';
+          const dev = devOf[id] || '';
           if (window.__banDebug) console.error('[banclick]', id, dev, amAdmin, relayUp());
           if (!amAdmin) return;
-          if (!dev) { relaySendObj({ t: 'who' }); setStatus('🛡 The door has not vouched for this person' + String.fromCharCode(39) + 's device yet — try Ban again in a moment.'); return; }
+          if (!dev) { setStatus('🛡 This person' + String.fromCharCode(39) + 's device is not known yet — try Ban again in a moment.'); return; }
           rememberBanName(dev, (peers.get(id) || {}).name || rosterNames[id] || '');
           admSigned('ban', { dev }).then((w) => { if (w) relaySendObj({ t: 'ban', dev, w }); }); // no name, no by: the relay carries a device tag and the order's author id
           return;
@@ -8833,10 +8794,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       if (act === 'ban') {
         if (!amAdmin) return;
-        const dev = devRelay.has(id) ? devOf[id] : '';
+        const dev = devOf[id] || '';
         if (!dev) {
-          try { relaySendObj({ t: 'who' }); } catch (e) {}
-          setStatus('🛡 The door has not vouched for this person' + String.fromCharCode(39) + 's device yet — try Ban again in a moment.');
+          setStatus('🛡 This person' + String.fromCharCode(39) + 's device is not known yet — try Ban again in a moment.');
           return;
         }
         rememberBanName(dev, rosterNames[id] || '');
@@ -12916,8 +12876,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // and put it on the relay as a `ty` frame. A payload that does not fit is
     // counted (txStats.relayUnfit) and never sent. Resolves true when sent.
     const relayTxCount = { boot: 'relayBoot', fp: 'relayFp', ice: 'relayIce', name: 'relayName', password: 'relayPassword', pwsig: 'relayPassword', pwpub: 'relayPassword', pwby: 'relayPassword', busy: 'relayBusy' };
+    // THE RELAY HOOKS UP A JOINER AND A GREETER, nothing else. Once a mesh connection exists nobody contacts it: a seat never sends a seat a frame through it.
+    // I may use it while I am at the door (no seat, or a seated seat that knocked: the seat's socketed()) for a peer my view seats nowhere, or one that spoke to me over it just now: it is at the door, whatever my view still says of its old seat.
+    const relayHeardAt = new Map();
+    function relayMayCarry(to) {
+      if (meshNode && !meshNode.socketed()) return false;
+      if (!meshCoord()) return true;
+      if (!coordKeyOf(to)) return true;
+      const at = relayHeardAt.get(to);
+      return at != null && Date.now() - at < RELAY_NOSOCK_MS;
+    }
     function relaySendSealed(to, ty, obj, key) {
-      if (!RELAY_TYPES.has(ty) || !obj || obj.k !== ty) return Promise.resolve(false);
+      if (!RELAY_TYPES.has(ty) || !obj || obj.k !== ty || !relayMayCarry(to)) return Promise.resolve(false);
       // Call order is the send order. The page's txm is already a FIFO, but
       // the gate stubs it as identity, and a later smaller seal can resolve
       // first — the end mark then lands between the candidates it closes.
@@ -13095,47 +13065,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (pid == null || pid === myId || pid === to) return null; // hop IS the target ⇒ no channel (checked above)
       const p = peers.get(pid);
       return live(p) ? p : null;
-    }
-    // doorPeers: relay-REACHABLE seats that can carry an envelope into the
-    // mesh. Order matters — the friendless newcomer has no DCs of its own, so
-    // the door is the whole path. Prefer, in order:
-    //   (1) socketed peers that REPORT a live link to the target (connsOf) —
-    //       evidence they can deliver the last hop over a real DataChannel
-    //   (2) structural neighbours of the target (owner/head/row-mates) — hope
-    //       the geometry holds an open edge
-    //   (3) gateway + greeter pool + every other socketed peer
-    // A pure structural preference was the late-join wedge: doors[0] was often
-    // the up-parent whose down-link to the socketless target had never opened,
-    // so the greeter's hopRelay hit {t:'nosock'} and the envelope died — while
-    // a different greeter (or a peer that already held a DC to the target)
-    // would have delivered. The sender never learned: nosock lands on the
-    // greeter, not the newcomer, so retries hit the same dead door forever.
-    // Bounded work: sponsorSend reads at most 6 doors (nFan), so the list
-    // stops at DOOR_MAX and the claimant step reads the reverse index
-    // (claimantsOf) instead of scanning every socketed peer's links. A greeter
-    // holds the FULL socket list — thousands in a join wave — and this runs
-    // once per forwarded frame, before the per-target throttle.
-    function doorPeers(to, tck) {
-      const DOOR_MAX = 8;
-      const s = meshSeat(), T = net.topo, out = [], seen = new Set();
-      const add = (pid) => { if (out.length < DOOR_MAX && pid != null && pid !== myId && pid !== to && relaySocketed.has(pid) && !seen.has(pid)) { seen.add(pid); out.push(pid); } };
-      // (1) evidence first — a socketed peer that already claims the target
-      const claimed = [];
-      for (const pid of (claimantsOf.get(to) || [])) if (pid !== myId && relaySocketed.has(pid)) claimed.push(pid);
-      claimed.sort();
-      for (const pid of claimed) add(pid);
-      // (2) structural neighbours of the target's seat
-      const k = tck || coordKeyOf(to);
-      if (s && k) {
-        const t = T.unck(k);
-        if (t.pc !== 0) { const oc = T.up({ pc: t.pc, r: t.r, i: 0 }); if (oc) add(s.occGet(T.ckey(oc))); }
-        if (t.i !== 0) add(s.occGet(T.ckey({ pc: t.pc, r: t.r, i: 0 })));
-        for (const mte of T.rowMates(t)) add(s.occGet(T.ckey(mte)));
-      }
-      // (3) the public front door
-      if (s) { add(s.gateway); for (const g of (s.lastGreeters || [])) add(g); }
-      for (const pid of relaySocketed) { if (out.length >= DOOR_MAX) break; add(pid); }
-      return out;
     }
     // sponsorSend: carry envelope envl toward envl.to when the relay cannot
     // (§FWD). Returns true iff the frame was handed to SOME viable path.
@@ -13340,41 +13269,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         txStats.relaySig++;
       }
-      // 2) The RELAY is the PRIMARY handshake path — but only for a peer it can
-      // actually REACH (one holding a socket: the greeter pool + in-flight
-      // joiners). SPONSOR-FORWARD (docs/meet-security.md §FWD) is the fallback
-      // whenever the relay can't carry this frame to this peer — either my own
-      // relay path is DOWN, or the TARGET is socketless (a deep seat: the relay
-      // would peerSock→null and drop it, answering {t:'nosock'} — the old
-      // conn=0 late-join stall). sponsorSend tries, in order: a mutual friend's
-      // DataChannel (the classic one-hop), my own mesh next hop toward the
-      // target's seat, and the greeter DOOR (the friendless newcomer's one
-      // guaranteed contact) — then bounded unicast hops carry it to the seat.
-      // If no path exists at all we still fall through to the relay:
-      // best-effort, never worse; for a socketed target + live relay this path
-      // is unchanged (no sponsor, straight to the relay).
+      // 2) The relay carries the hookup of a joiner and a greeter (relayMayCarry). Everything else goes over the mesh, sponsorSend: a mutual friend's channel,
+      // my next hop toward the target's seat, the path its own frames took to me (a seater reaches a newcomer through the greeter's pc to it); with no path the beat retries.
       const relayDown = !relayUp();
-      // altPath (§FWD transport rotation): a pair whose relay offers keep
-      // dying UNANSWERED — no nosock, target listed as socketed, yet nothing
-      // arrives (a zombie socket on either end) — alternates its retries onto
-      // the sponsor path. The sweeper flips it per re-offer; connect clears it.
-      // Under a 'door' roster, NOT LISTED means UNKNOWN, not unreachable: a deep
-      // seat that re-opened its socket to wire a newcomer (wired() is all-links)
-      // holds only the doors, and treating the unlisted newcomer as unreachable
-      // sent its answers into the sponsor maze, where no hop could hand them
-      // back to the relay (e2e-latejoin: the pair sat in have-local-offer). So
-      // try the relay; its {t:'nosock'} answer marks the peer for the sponsor path.
-      const notOnRelay = relayRosterScope === 'full' ? !relaySocketed.has(to) : relayNoSockRecently(to);
+      // altPath (§FWD transport rotation): a pair whose relay offers keep dying unanswered alternates its retries onto the sponsor path. The sweeper flips it per re-offer; connect clears it.
+      const notOnRelay = relayNoSockRecently(to);
       const targetUnreachable = notOnRelay || !!(peers.get(to) || {}).altPath;
       // A description carrying media never fits the relay (the law): it goes
       // by the sponsor path or not at all — the pair's channel is down, so a
       // friend's channel carries the restart; with no path the beat retries.
       const mediaDesc = (msg.kind === 'offer' || msg.kind === 'answer') && !net.bootOf(msg.sdp, 0);
-      if (relayDown || targetUnreachable || mediaDesc) {
+      const mayRelay = relayMayCarry(to);
+      if (relayDown || targetUnreachable || mediaDesc || !mayRelay) {
         const m2 = sigSansIce(to, msg);
         if (!m2) return; // a blocked pair sends nothing on either path (fault injection)
         if (sponsorSend({ k: 'fsig', from: myId, to, tc: coordKeyOf(to), id: myId + ':' + (++fwdSeq), ttl: 12, m: m2 })) { txStats.fwdSig++; return; }
         if (mediaDesc) { txStats.relayUnfit++; return; } // no friend's channel either: the sweeper's next attempt rebuilds and bootstraps (sendOffer)
+        if (!mayRelay) return;
       }
       msg = sigSansIce(to, msg);
       if (!msg) return;
@@ -14923,10 +14834,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // updates nothing but the name and last-heard time.
         if (msg.name) rosterNames[from] = String(msg.name).slice(0, 40);
         if (msg.ip && sigProven) ipsOf[from] = String(msg.ip).slice(0, 64);
-        // A status may fill a GAP in devOf with its sender's own tag (votes and
-        // the fold key on it) — never over a relay-attested tag, and never a
-        // tag somebody ELSE already holds: one device, one seat.
-        if (typeof msg.dv === 'string' && msg.dv && !devRelay.has(from)) {
+        // A status gives its sender's own tag (votes, the fold and a ban key on it), never a tag somebody ELSE already holds: one device, one seat.
+        if (typeof msg.dv === 'string' && msg.dv) {
           const dv = msg.dv.slice(0, 16); let taken = dv === myDevHash;
           if (!taken) for (const k in devOf) if (k !== from && devOf[k] === dv) { taken = true; break; }
           if (!taken) devOf[from] = dv;
@@ -15928,16 +15837,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // A targeted relay copy is only for a socket the relay can deliver to,
     // and only when sendAll did not already hand the frame to an open
     // DataChannel. A socketless deep seat is dropped by the relay.
-    function relayCopyTargets() {
-      const out = [];
-      for (const pid of relaySocketed) {
-        if (!pid || pid === myId) continue;
-        const p = peers.get(pid);
-        if (p && p.dc && p.dc.readyState === 'open') continue;
-        out.push(pid);
-      }
-      return out;
-    }
     function channelsDrained() {
       for (const p of peers.values()) {
         if (p.dc && p.dc.readyState === 'open' && p.dc.bufferedAmount > 0) return false;
@@ -15965,28 +15864,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // the rest of one burst. One sealed grant is one frame. 480 leaves room
     // for this socket's own beats in that same instant. 500 ms stays under
     // 3/s once those beats are counted too.
-    const RELAY_COPY_BURST = 480;
-    const RELAY_COPY_GAP_MS = 500;
-    // paceRelayCopies(pids, grant, key): the password grant as a `password`
-    // frame to each socketed member, sealed per target under `key` (the
-    // generation they still read), paced under the relay's meter.
-    function paceRelayCopies(pids, grant, key) {
-      const ids = [];
-      for (const pid of pids) if (pid && pid !== myId) ids.push(pid);
-      const fs = pwFramesOf(grant);
-      if (!fs) return;
-      let i = 0;
-      const sendSome = (n) => { // n: a frame budget — a grant is fs.length frames per target
-        let sent = 0;
-        while (sent + fs.length <= n && i < ids.length && !leaving) {
-          const pid = ids[i++];
-          for (const f of fs) relaySendSealed(pid, f.k, f, key);
-          sent += fs.length;
-        }
-        if (i < ids.length && !leaving) setTimeout(() => sendSome(fs.length), RELAY_COPY_GAP_MS);
-      };
-      sendSome(RELAY_COPY_BURST);
-    }
     // ADMIN ROOMS: THE PASSWORD IS TYPED, NEVER HANDED OUT. When the admin
     // sets or changes it, everyone who does not hold the new generation
     // leaves the meeting and comes back through the door, which asks for the
@@ -16055,7 +15932,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // idempotent, so a lost hop costs a beat, not the message.
       //
       // CRITICAL: do NOT return false just because the target still appears in
-      // relaySocketed. That used to mean "the wire will sealed-relay it" — but
+      // the relay's list of sockets. That used to mean "the wire will sealed-relay it" — but
       // the relay fallback was ripped out of mesh-wire deliver() (it lied about
       // E2 liveness and parked heartbeats on the greeter socket). deliver() now
       // only carries the ENTRY handshake (WHOHOME/FIND/HOME/PLACE/NOROOM). A
@@ -16910,17 +16787,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
         doorHeld: (id) => { try { const b = meetWait.blocks(id); if (b && id && amAdmin) meetWait.note(id, rosterNames[id] || 'Someone waiting'); if (b && id) sayHeld(id); return b; } catch (e) { return false; } },   // a withheld knock goes on the host's list: nothing else names a plain room's knocker
         onDoor: (kind, frame) => {
-          if (kind === 'unseated') {
-            meetWait.waiting(true);
-            const denied = frame && frame.t === 'denied';
-            const h = document.querySelector('#waitdoor h1');
-            const p = document.querySelector('#waitdoor p');
-            if (denied) {
-              if (h) h.textContent = 'Not admitted';
-              if (p) p.textContent = 'The host didn\u2019t let you in. You are not in the meeting.';
-              setStatus('The host didn\u2019t let you in.');
-            } else showHeldScreen();
-          } else if (kind === 'seated') {
+          if (kind === 'seated') {
             meetWait.waiting(false);
           }
         },
@@ -16961,20 +16828,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // to it could only reach it by mesh hop, and a zombie geometric parent
         // ate the hop. While any owned-link neighbour is known in occ but
         // unbuilt, the seat is still "joining" that edge and needs the door.
-        wired: () => {
-          const s = meshSeat();
-          if (!s || !s.hasCoord) return false;
-          const want = s.linkPeers();
-          if (!want.size) {
-            for (const p of peers.values()) if (p.dc && p.dc.readyState === 'open') return true;
-            return false;
-          }
-          for (const pid of want) {
-            const p = peers.get(pid);
-            if (!(p && p.connected && p.dc && p.dc.readyState === 'open')) return false;
-          }
-          return true;
-        },
         // Room-wide app traffic arrives on the mesh gossip lane (fanOut's
         // counterpart): the same sealed payload shapes as ever, routed to the
         // same handlers.
@@ -17172,66 +17025,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // App-level relay frames the wire does not consume. The roster here is the
     // GREETER POOL, never the room \u2014 it drives door moderation only.
     function onRelayFrame(m) {
-      if (m.t === 'joined') { updateStatus(); broadcastStatus(); applyAdminUi(); }
-      else if (m.t === 'whoami') {
-        // The relay tells me MY OWN address (the one thing it may share with
-        // me, privately). I seal it to peers via the heartbeat; the relay
-        // never stores it or puts it in anyone's roster.
-        myIp = String(m.ip || '').slice(0, 64);
-        if (myId) ipsOf[myId] = myIp;
-        // The relay's SIGNED statement of that address, when it
-        // gives one: it rides my status so peers can show my address as
-        // relay-verified, which nobody else can claim for me.
-        // A new address with no usable statement: stop sending the old one,
-        // which names the old address and would read as a lie beside the new.
-        const attOk = !!m.att && typeof m.att.sp === 'string' && typeof m.att.sig === 'string' && m.att.sp.length <= IPA_SP_MAX && m.att.sig.length <= IPA_SIG_MAX;
-        if (!attOk) { myIpAtt = null; myIpAttV = null; }
-        else {
-          const a = { sp: m.att.sp, sig: m.att.sig }; // never cut: a cut statement no longer verifies, and reads as forged
-          myIpAtt = a; ipaSends = 0; ipaShownTo.clear();
-          verifyIpAtt(myId, a).then((v) => {
-            if (myIpAtt !== a) return;
-            myIpAttV = v && !v.forged ? v : null;
-            whoRefresh();
-            try { updateTile('me'); } catch (e) {}
-          });
-        }
-        broadcastStatus(); // push my sealed address out now
-      }
-      else if (m.t === 'roster') {
-        relaySocketed = new Set(m.peers || []); // who the relay can reach right now (socketed peers) \u2014 drives \u00a7FWD sponsor fallback
-        // SCOPE (relay 2026-09-28): a greeter gets the FULL socket list and then
-        // peer-join/peer-leave deltas; everyone else gets only the doors
-        // ('door'). A relay that sends no scope sends everyone the full list.
-        relayRosterScope = m.scope || 'full';
-        // A DOOR BACK FROM DARK answers the sockets still knocking at it (mesh.js
-        // answerDoor): once per dark return, on the full list
-        // the return pulled; a member's socket is skipped by the seat.
-        if (doorAnswerAt && Date.now() - doorAnswerAt < 15000 && relayRosterScope === 'full' && !atWaitDoor) {
-          doorAnswerAt = 0;
-          const ids = Array.from(relaySocketed).filter((id) => id !== myId);
-          try {
-            const s = meshSeat();
-            if (holdDoor && hasAdminRoom()) {
-              const members = new Set();
-              try { if (s) for (const v of s.occ.values()) if (v) members.add(v); } catch (e2) {}
-              for (const id of ids) {
-                if (members.has(id) || waitDeclined.has(id)) continue;
-                meetWait.note(id, rosterNames[id] || 'Someone waiting');
-              }
-            } else if (s && s.answerDoor) {
-              s.answerDoor(ids.filter((id) => !waitDeclined.has(id)));   // the relay's list only names who to answer; a knocker comes in by its own knock
-            }
-          } catch (e) {}
-        }
-        if (doorRoundPending && relayRosterScope === 'full' && !atWaitDoor) { doorRoundPending = false; try { const s = meshSeat(); if (s && s.doorRound) s.doorRound(Array.from(relaySocketed).filter((id) => id !== myId)); } catch (e) {} }   // the door round's list (doorRoundBeat). A knocker the relay is holding does not found a room from that list.
-        if (relayRosterScope === 'full' && pendingDoorGrant) { const g = pendingDoorGrant; pendingDoorGrant = null; g(); }
+      if (m.t === 'joined') {
+        updateStatus(); broadcastStatus();
         roomBan = m.ban || []; // admins[] comes from VERIFIED signatures (adminsNow, \u00a79), never the relay
-        Object.assign(devOf, m.devs || {}); // MERGE (absence grace keeps tiles whose Ban button must work)
-        for (const k of Object.keys(m.devs || {})) devRelay.add(k);
         // \u00a7LOCK, ADMIN ROOMS \u2014 A STORED PASSWORD IS PROVISIONAL UNTIL THE DOOR
         // VOUCHES (2026-07-29). In an admin room only a SIGNED setpw gates the
-        // door, so the roster's `locked` is an admin-rooted verdict on my
+        // door, so the joined frame's `locked` is an admin-rooted verdict on my
         // boot-time stored password: gated + my socket connected \u21d2 my proof
         // passed an admin-set gate \u2014 validated, keep the key. Open door \u21d2 an
         // unsigned stored password confers NOTHING \u2014 sealing under it would
@@ -17286,14 +17085,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
                 storePwEpoch(ep); retainedGrant = grant;
                 pwLog('pwreset-reassert ep=' + ep);
                 net.deriveMeetKey(room, av, '').then((openKey) => {
-                  // relaySocketed, not gossipIds(): the whole point is reaching
-                  // occupants I CANNOT yet read — the app roster is empty of
-                  // them by construction; the relay's socket list is not. A
-                  // non-greeter holds only the doors ('door' scope), so it PULLS
-                  // the full list first and fans on its arrival.
-                  const fan = () => paceRelayCopies(relaySocketed, grant, openKey);
-                  if (relayRosterScope === 'full') fan();
-                  else { pendingDoorGrant = fan; relaySendObj({ t: 'who' }); }
+                  void openKey; // retainedGrant heals them: a frame under the old key is what asks for it (healStaleFrom)
                 });
               });
             }
@@ -17306,12 +17098,39 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         reactRoomState();
         adminWatch();
       }
+      else if (m.t === 'whoami') {
+        // The relay tells me MY OWN address (the one thing it may share with
+        // me, privately). I seal it to peers via the heartbeat; the relay
+        // never stores it or puts it in anyone's roster.
+        myIp = String(m.ip || '').slice(0, 64);
+        if (myId) ipsOf[myId] = myIp;
+        // The relay's SIGNED statement of that address, when it
+        // gives one: it rides my status so peers can show my address as
+        // relay-verified, which nobody else can claim for me.
+        // A new address with no usable statement: stop sending the old one,
+        // which names the old address and would read as a lie beside the new.
+        const attOk = !!m.att && typeof m.att.sp === 'string' && typeof m.att.sig === 'string' && m.att.sp.length <= IPA_SP_MAX && m.att.sig.length <= IPA_SIG_MAX;
+        if (!attOk) { myIpAtt = null; myIpAttV = null; }
+        else {
+          const a = { sp: m.att.sp, sig: m.att.sig }; // never cut: a cut statement no longer verifies, and reads as forged
+          myIpAtt = a; ipaSends = 0; ipaShownTo.clear();
+          verifyIpAtt(myId, a).then((v) => {
+            if (myIpAtt !== a) return;
+            myIpAttV = v && !v.forged ? v : null;
+            whoRefresh();
+            try { updateTile('me'); } catch (e) {}
+          });
+        }
+        broadcastStatus(); // push my sealed address out now
+      }
       else if (m.t === 'nosock') {
         // §FWD: my routed frame's target holds no relay socket — the relay
         // said so explicitly instead of dropping silently. Mark it so the next
         // retry goes over the sponsor path immediately, not blind.
         txStats.nosock++;
-        if (m.to) { relaySocketed.delete(m.to); if (relayNoSock.size > 2048) relayNoSock.clear(); relayNoSock.set(m.to, Date.now()); }
+        if (m.to) { if (relayNoSock.size > 2048) relayNoSock.clear(); relayNoSock.set(m.to, Date.now()); }
+        // A greeter's joiner has gone: stop dialling it, its door slot is free. (A joiner's greeter that has gone: the seat hears BUSY{nosock} and asks the next.)
+        { const pn = m.to && peers.get(m.to); if (pn && pn.neverUp && meshCoord() && meshNode && meshNode.transport) { try { meshNode.transport(m.to, 'unanswered'); } catch (e) {} } }
       }
       else if (m.t === 'peer' && m.msg) {
         // A relay frame of the law's shape (the wire refused every other
@@ -17326,7 +17145,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // my next bootstrap to X takes the relay, whatever an earlier
         // {t:'nosock'} said (a seat that just asked to be dialled is on it).
         // (altPath too: an unanswered offer to the page it replaced rotated this pair onto a sponsor path that cannot reach a seatless returner.)
-        if (from) { relaySocketed.add(from); relayNoSock.delete(from); const pf = peers.get(from); if (pf) pf.altPath = false; }
+        if (from) { relayHeardAt.set(from, Date.now()); if (relayHeardAt.size > 2048) relayHeardAt.clear(); relayNoSock.delete(from); const pf = peers.get(from); if (pf) pf.altPath = false; }
         const take = (held) => rxm(() => net.open(roomE2E, piece).then((inner) => {
           if (!inner && !held && holdForRekey(take)) return; // sealed under the key my re-key is still deriving (rekeyHeld)
           if (!inner) return healStaleFrom(from, piece); // §LOCK: with the pair down, a stale member's frames arrive HERE — the relay path heals too
@@ -17338,6 +17157,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         take(false);
       }
       else if (m.t === 'ban') {
+        if (!roomBan.some((b) => b.d === m.dev)) roomBan.push({ d: m.dev });
         // A ban is not just signaling: sever the banned device's live P2P links.
         // Remember the id and confirm it gone. dropPeer alone is undone by the
         // next occ tick while the mesh still names the seat (RING_HOLD).
@@ -17354,20 +17174,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         } else setStatus(voted ? '\u26d4 ' + (nameForDev(m.dev) || 'Someone') + ' was voted off the meeting.' : '\u26d4 ' + (nameForDev(m.dev) || banNames()[m.dev] || 'A device') + ' was banned by ' + (nameForPeer(m.by) || 'an admin'));
       }
       else if (m.t === 'unban') {
+        roomBan = roomBan.filter((b) => b.d !== m.dev);
         // The old peer id stays in bannedSeat. Unban admits the device; the
         // reload mints a new id. Clearing the set would raise the ghost tile.
         setStatus('\u2705 ' + (nameForDev(m.dev) || banNames()[m.dev] || 'A device') + ' was unbanned by ' + (nameForPeer(m.by) || 'an admin'));
       }
-      else if (m.t === 'votes') { voteTally = m.tally || {}; voteNeed = m.need || 0; refreshAllTiles(); }
-      else if (m.t === 'peer-join') {
-        // Greeters only: a socket joined the session. Keeps the full list
-        // exact without the relay re-sending it on every connect.
-        if (m.peer) { relaySocketed.add(m.peer); relayNoSock.delete(m.peer); }
-        if (m.peer && m.dev) { devOf[m.peer] = m.dev; devRelay.add(m.peer); }
-      }
-      else if (m.t === 'peer-leave') {
-        // The relay introduces and that is all: a closed socket says who it can reach for the door list, nothing about a person. Death comes from the pc, the dc and silence, as in the sim.
-        relaySocketed.delete(m.peer);
+      else if (m.t === 'greeter-gone') {
+        // Only the relay's socket gets here, and the relay only says it when a live greeter's socket closed with no unlist first: that greeter's goodbye.
+        const p = peers.get(m.peer); if (p) { p.byeSeen = Date.now(); p.byeWhy = 'leave'; }
+        try { if (meshNode && meshNode.transport) meshNode.transport(m.peer, 'greeter-gone'); } catch (e) {}
       }
       else if (m.t === 'error') {
         pwLog('relay-error: ' + String(m.error || '?').slice(0, 60));
@@ -17878,8 +17693,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function applyBcAct(id, act) {
       if (!id || id === myId || !amAdmin) return;
       if (act === 'ban') {
-        const dev = devRelay.has(id) ? devOf[id] : '';
-        if (!dev) { relaySendObj({ t: 'who' }); setStatus('🛡 The door has not vouched for this person' + String.fromCharCode(39) + 's device yet — try Ban again in a moment.'); return; }
+        const dev = devOf[id] || '';
+        if (!dev) { setStatus('🛡 This person' + String.fromCharCode(39) + 's device is not known yet — try Ban again in a moment.'); return; }
         rememberBanName(dev, (peers.get(id) || {}).name || rosterNames[id] || '');
         admSigned('ban', { dev }).then((w) => { if (w) relaySendObj({ t: 'ban', dev, w }); });
         return;
@@ -18574,7 +18389,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             relaySendObj({ t: 'setpw', pw: pr, w: wRelay });
             const order = { k: 'pwreset', by: myName(), w: wOrder, ep };
             sendAll(order);
-            try { paceRelayCopies(relayCopyTargets(), order, roomE2E); } catch (e) {}
             storePwEpoch(ep); retainedGrant = order;
             pwLog('pwreset-sent ep=' + ep);
             txm(() => Promise.resolve()).then(() => rekeyRoom());
@@ -18604,7 +18418,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           try {
             // Paced like the door re-grant: one copy per target is one relay
             // frame, and a large room passes the relay's per-socket burst.
-            paceRelayCopies(relayCopyTargets(), grant, roomE2E);
           } catch (e) {}
           storePwEpoch(ep); retainedGrant = grant; // the setter retains its own grant — it heals stale neighbours like anyone else
           // KEY ROTATION (§8): the pwinfo above is sealed under the OLD key —
@@ -18876,8 +18689,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const act = b.dataset.bcMod;
       if (!id) return;
       if (act === 'ban') {
-        const dev = devRelay.has(id) ? devOf[id] : '';
-        if (!dev) { relaySendObj({ t: 'who' }); setStatus('🛡 The door has not vouched for this person' + String.fromCharCode(39) + 's device yet — try Ban again in a moment.'); return; }
+        const dev = devOf[id] || '';
+        if (!dev) { setStatus('🛡 This person' + String.fromCharCode(39) + 's device is not known yet — try Ban again in a moment.'); return; }
         rememberBanName(dev, (peers.get(id) || {}).name || rosterNames[id] || '');
         admSigned('ban', { dev }).then((w) => { if (w) relaySendObj({ t: 'ban', dev, w }); });
         return;
@@ -35293,9 +35106,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       relayUp: () => relayUp(), // does my mesh node hold a live relay socket right now?
       // Event-driven departures (D2/D5 → UI): the confirmed-gone tombstones.
       departed: () => Array.from(meshGone, ([pid, at]) => ({ id: String(pid).slice(0, 8), at })),
-      relayReach: () => Array.from(relaySocketed), // who I believe the relay can reach (roster + nosock)
-      relayScope: () => relayRosterScope,          // 'full' (a greeter, or an old relay) or 'door' (greeters only)
-      relayWho: () => relaySendObj({ t: 'who' }),  // pull the full list (the relay rate-limits it per socket)
       // Per-pair transport forensics (meet.js CLI + e2e): the raw WebRTC state.
       pairs: () => Array.from(peers.values()).map((p) => ({ id: String(p.id).slice(0, 8), boot: !!p.boot, neverUp: p.neverUp === true,
         pc: p.pc ? p.pc.connectionState : null, ice: p.pc ? p.pc.iceConnectionState : null,
@@ -35970,10 +35780,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // sleep is a wall gap with a near-zero monotonic gap.
       freezeGapForTest: (ms, mono) => { hbLastAt = Date.now() - (ms | 0); hbLastMono -= (mono === undefined ? ms : mono) | 0; },
       stageVoteNeed: () => stageVoteTallies().need,
-      devInfo: () => ({ devOf: Object.assign({}, devOf), attested: Array.from(devRelay) }), // which device tags the RELAY vouched for (Ban needs one)
+      devInfo: () => ({ devOf: Object.assign({}, devOf) }),
       _setDevForTest: (id, tag) => { if (DEBUG_ON) { devOf[id] = tag; devClaimAt.delete(id); } },
       _sayKickForTest: (id) => { const q = peers.get(id); if (!DEBUG_ON || !q || !q.dc || q.dc.readyState !== 'open') return false; dcSend(q, { k: 'pcbye', why: 'kick' }); return true; },
-      _unattestForTest: (id) => devRelay.delete(id), // leave devOf[id] as a tag known only by the peer's own word
       // THE STATUS PLANE, as this seat sees it.
       statusPlane: () => { const d = roomDig(); return { id: myId, mode: digestMode(), past: roomPastSection(), n: d ? d.n : null, age: d ? d.age : null,
         refuse: d ? d.refuse : null, part: d ? !!d.part : null, handN: d ? d.handN : null, hands: d ? d.hands.map((e) => e.id) : [], stage: d ? d.stage.map((e) => e.id) : [],
@@ -36117,7 +35926,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (rosterIds.indexOf(id) < 0) rosterIds.push(id);
         rosterNames[id] = name || 'Ada';
         devOf[id] = 'dev' + id;
-        devRelay.add(id);
         const o = opts || {};
         const st = { at: Date.now(), rx: Date.now() };
         if (o.hand) st.hand = Date.now();

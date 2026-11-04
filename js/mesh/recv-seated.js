@@ -542,7 +542,7 @@
           const ok2 = ckey(oc2); const o2 = this.occGet(ok2);
           if (ok2 === ckey(this.coord) || (o2 >= 0 && !this.translost.has(ok2) && (this.firstHandLive(ok2) || this.f.fabricLinkState(id, o2) === E.LS_OPEN))) { a.e1dn = true; a.oCk = ok2; a.owner = (ok2 === ckey(this.coord)) ? id : o2; }
           else if (ok2 !== ckey(this.coord) && ((this.translost.has(ok2) && this.tlHard.has(ok2) && this.tlHard.get(ok2) && this.translostConfirmed(ok2)) || (o2 < 0 && this.memo.has(ok2) && TICK - this.memo.get(ok2).at <= K.LEASE_T))) { a.hard = true; a.oCk = ok2; a.owner = (o2 >= 0) ? o2 : ins(this.memo, ok2, () => state.newStruct('Memo')).id; }   // memo[ok2]: inserts a default Memo when the hard loss came by the transport arm
-          else if (ok2 !== ckey(this.coord) && o2 < 0 && this.byeAt.has(ok2) && TICK - this.byeAt.get(ok2) <= K.LEASE_T) { a.hard = true; a.oCk = ok2; a.owner = -1; this.trace('BYE-REPORT', id, oc2, 'to=%d', m.id); }
+          else if (ok2 !== ckey(this.coord) && o2 < 0 && this.byeAt.has(ok2) && TICK - this.byeAt.get(ok2) <= K.LEASE_T) { a.hard = true; a.oCk = ok2; a.owner = this.byeId.has(ok2) ? this.byeId.get(ok2) : -1; this.trace('BYE-REPORT', id, oc2, 'to=%d', m.id); }
         }
       }   // L1.4 (I10): ...and its GOODBYE, the same way
       if (m.e1dn) { const oc4 = roles.ownerOf(row); const ok4 = oc4 ? ckey(oc4) : 0; const memo4 = (ok4 && this.memo.has(ok4)) ? 1 : 0, conf4 = (ok4 && this.translostConfirmed(ok4)) ? 1 : 0, tlh4 = (ok4 && this.tlHard.has(ok4) && this.tlHard.get(ok4)) ? 1 : 0, tl4 = (ok4 && this.translost.has(ok4)) ? 1 : 0;   // the arguments in the order the C++ binary runs them (right to left: translostConfirmed may drop the loss before tl is read)
