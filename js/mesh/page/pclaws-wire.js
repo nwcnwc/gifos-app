@@ -9,7 +9,7 @@
  *   - `pcbye {why}` on the ordered data channel before every deliberate close, so the far end reads NONE (an orderly
  *     hang-up), never a loss;
  *   - UPOFFER and the L14 decline (BUSY tag 14 with referrals) ride the data channel;
- *   - an L16 or L23 refusal of an offer goes back without a pc (io.refuse: the relay `busy` type, or the way the offer came).
+ *   - an L16 or L23 refusal of an offer goes back over the relay (io.refuse: the `busy` type) and the page closes the pc.
  * Ids are the seat's ints (the adapter's peer-id table). One instance per page; `me` is my seat id.
  * The page plumbing (io) owns the pcs; this file never touches one and never decides who is gone.
  */
@@ -426,6 +426,7 @@
     function opened(x) {
       const L = LINKS.get(x); if (!L || L.state === LK_OPEN) return;
       L.state = LK_OPEN; L.openEp = L.epoch; L.half = 0; L.halfAt = -1; L.stuck = false; L.view[0] = L.view[1] = LK_OPEN; L.opened = true;
+      L.byeIn = L.byeOut = false; L.callClosed = false; L.gone = 0;   // a new pc: the last one's close says nothing about it
       if (L.outside && L.dBorn >= 0) L.dProg = T();
       const s = mySeat(); if (s) { s.dials.opened(x); for (const [ck, v] of s.l13SplitCell) if (v[0] === x) { trace('L13.41-JOINED', me, null, 'peer=%d', x); s.l13SplitCell.delete(ck); } }
       if (L.wasOpen) trace('LINK-UP', me, null, 'peer=%d', x); L.wasOpen = true;
@@ -464,7 +465,15 @@
       const L = LINKS.get(x); if (!L) return;
       if (L.byeIn || L.byeOut || (L.callClosed && (L.gone & (1 << mine(x))))) return;
       if (L.state === LK_DIALING && !L.opened) { dialFailed(x); return; }
+      io.close(x, 'lost');   // one Link per pair, and a close is real: no open channel stays behind a closed Link. First, so a redial below finds no old channel
       lostNow(x, why || 'dc-close', false);
+    }
+    // the page closed this pc on its own, with its goodbye: an orderly close at my end too, no loss
+    function pageClosed(x) {
+      const L = LINKS.get(x); if (!L) return;
+      if (L.state === LK_OPEN || L.state === LK_DIALING) { L.state = LK_CLOSED; L.epoch = (L.epoch + 1) >>> 0; L.q = []; L.half = 0; L.halfAt = -1; }
+      L.byeOut = true; doorEndCount(L); L.view[mine(x)] = LK_CLOSED; L.gone |= (1 << mine(x)); L.callClosed = true; L.outside = 0;
+      trace('PC-PAGECLOSE', me, null, 'peer=%d', x);
     }
     // C++: mesh_link.inc:linkApply EV_DIAL failure   [my end]
     function dialFailed(x) {
@@ -474,10 +483,11 @@
       if (L.view[mine(x)] === LK_DIALING || L.view[mine(x)] === LK_NONE) L.view[mine(x)] = LK_CLOSED;
       trace('PC-DIALFAIL', me, null, 'peer=%d', x);
     }
-    // my offer came back refused without a pc: L16 busy -> BUSY for the seat; L23 -> my dial just ends (the sim drops it)
+    // my offer came back refused: L16 busy -> BUSY for the seat; L23 -> my dial just ends (the sim drops it).
+    // The callee's gate runs on the open dc, so my end may already read open: a refused dial never opened.
     function refused(x, info) {
       const L = LINKS.get(x);
-      if (L && L.state === LK_DIALING) { L.state = LK_NONE; L.epoch = (L.epoch + 1) >>> 0; L.q = []; L.view[mine(x)] = LK_NONE; doorEndCount(L); }
+      if (L && (L.state === LK_DIALING || L.state === LK_OPEN)) { L.state = LK_NONE; L.epoch = (L.epoch + 1) >>> 0; L.q = []; L.view[mine(x)] = LK_NONE; doorEndCount(L); io.close(x, 'refused'); }
       if (info && info.busy) { const b = msg.newMsg('BUSY'); b.id = x; b.from = -1; b.to = me; b.lk = -1; io.deliver(b); }
     }
     // the page's leave: a goodbye on every open pc (the seat's LEAVE went out before)
@@ -492,10 +502,10 @@
     delete fns.fabricNoSock;   // A1: the relay's bounce
     return {
       fns, lv, send: (x, m) => linkSchedule(me, x, m), tick, mark, offer, answered, opened, frame, lost,
-      byeIn: (x, why) => byeIn(x, BYE.includes(why) ? why : 'call'), dialFailed, refused, leaveAll,
+      byeIn: (x, why) => byeIn(x, BYE.includes(why) ? why : 'call'), dialFailed, refused, leaveAll, pageClosed,
       busyFrom: (x) => refused(x, { busy: 1 }),
       link: (x) => LINKS.get(x) || null, dump: () => [...LINKS].map(([x, L]) => ({ x, state: L.state, view: L.view[mine(x)], outside: L.outside, gone: L.gone, q: L.q.length })),
-      laws: pc, BYE,
+      dialHeld: (x) => pc.dialHeld(me, x), laws: pc, BYE,
     };
   }
 
