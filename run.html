@@ -17062,6 +17062,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           pwLog('R6-LOCKED → pw modal');
           if (pwFromStore || pwProbe === 'restored') forgetPw('neither it nor the open key reads this room');
           pwBlocked = true; showPwModal(true, pwChangedWhy());
+          // At the prompt this page holds no seat: left running, the seat keeps its old key and founds a room of its own (L8) behind the prompt.
+          { const gen = meshBootGen; try { meshNode && meshNode.leave(); } catch (e) {} meshNode = null;
+            setTimeout(() => { if (gen !== meshBootGen) return; for (const pid of Array.from(peers.keys())) dropPeer(pid); rosterIds = []; updateStatus(); }, 300); }
         },
         // THE DOOR SAID NO, IN A CLOSE CODE (2026-07-29): a policy-cut socket
         // is the ONLY way a re-seeded ban reaches a squatter who was already
@@ -35687,7 +35690,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // anti-entropy fills the rest. NOT product surface: pure diagnostics.
       forceSeat: (pc, r, i, occSeed) => {
         if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
-        const seat = meshNode && meshNode.seat; if (!seat) return { err: 'no seat yet' };
+        const seat = meshNode && meshNode.raw; if (!seat) return { err: 'no seat yet' };   // the ported Seat: the page's view has no doMove
         const T = net.topo, target = { pc: +pc, r: +r, i: +i };
         // occSeed ({'pc/r.i': fullPeerId, …}) teaches this seat the room so the
         // dial at the target addresses real neighbours. MUST travel as `nbrs`
@@ -35700,14 +35703,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (occSeed) for (const k of Object.keys(occSeed)) {
           const mm = /^(\d+)\/(\d+)\.(\d+)$/.exec(k); if (!mm) continue;
           const key = T.ckey({ pc: +mm[1], r: +mm[2], i: +mm[3] });
-          if (occSeed[k] && occSeed[k] !== seat.id) nbrs.push({ k: key, v: occSeed[k] });
+          const nv = occSeed[k] ? meshNode.nidOf(occSeed[k]) : -1;
+          if (nv >= 0 && nv !== seat.id) nbrs.push({ k: key, v: nv });
         }
         // The teleport rides the SAME atomic path as every heal move (law T):
         // dual-hold doMove — take the target while still holding the old seat,
         // vacate with LEAVE(mvd)+tombstone on confirm, roll back if contradicted.
         try {
-          if (seat.hasCoord) seat.doMove(target, null, nbrs);
-          else seat.take(target, null, nbrs);
+          if (seat.hasCoord) seat.doMove(target, -1, nbrs);
+          else seat.take(target, -1, nbrs);
         } catch (e) { return { err: String(e).slice(0, 80) }; }
         try { renderFromOcc(); } catch (e) {}
         return { seated: target.pc + '/' + target.r + '.' + target.i, seeded: nbrs.length, transit: !!seat.moving };
