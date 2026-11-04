@@ -414,6 +414,7 @@ function createFabric(opts) {
   // C++: mesh.cpp:relayKnock
   fab.relayKnock = (id, presentedKey, blob) => {
     if (lv.DOORDARK > TICK()) return;   // `doordark`: the relay is frozen too
+    if (fab.radioDark && fab.radioDark(id)) return;   // a seat whose radio is off reaches the relay no more than its peers
     if (lv.NETGRP && !X.netKnockOk(id)) return;   // the socket's meters refused it
     const rg = fab.relayGreeters;
     for (const [g, exp] of rg) if (exp < TICK() || sockClosed(g)) rg.delete(g);   // TTL, or the socket closed
