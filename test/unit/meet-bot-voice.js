@@ -26,7 +26,7 @@ function slice(startMark, endMark) {
 }
 
 const OUTBOUND = slice('    let camIdleT = null;', '    // Stage membership is DERIVED');
-const ENABLE = slice('    function enableMedia(p) {', '    function newPcFor(p) {');
+const ENABLE = slice('    function enableMedia(p) {', '    function newPcFor(p');
 const SPEECH = slice('      let botSpeechAudio = null;', '      GifOS.meetSession.install({');
 
 function track(kind, id) {
@@ -46,6 +46,7 @@ function world() {
     audios: [],
     contexts: [],
     beats: 0,
+    leased: false, // a self-leased seat carries no media (the page's seatSelfLeased)
   };
   w.addPeer = (id, withSender) => {
     const p = { id: id, pc: { addTrack(t) { return sender(t); } }, mediaOn: false };
@@ -78,6 +79,8 @@ function world() {
     paintControls() {}, broadcastStatus() { w.beats++; }, rememberBotSpoken() {}, writeBotSpoken() {},
     // refreshOutbound opens the Stage frame on a step-up; a bot is never on the Stage.
     meOnStage: () => false,
+    // The page's own self-lease reading; the world flips it with w.leased.
+    seatSelfLeased: () => w.leased,
     Blob: function () {}, URL: { createObjectURL: () => 'blob:x', revokeObjectURL() {} },
     Audio: FakeAudio, window: { AudioContext: FakeCtx },
   };
@@ -113,6 +116,18 @@ const sentOn = (p) => (p.mainA && p.mainA.track && p.mainA.track.id) || 'none';
   check('…and the bot reads as muted again', w.myStatus.muted === true);
   w.refreshOutbound();
   check('…and a later refresh keeps the mic (the old voice is not resurrected)', sentOn(a) === 'mic');
+}
+
+// 3b. A self-leased seat carries nothing, speech included; when the lease ends the line goes back on.
+{
+  const w = world();
+  const a = w.addPeer('k_a', true);
+  w.playBotSpeech({ bytes: new Uint8Array([1, 2, 3]), mime: 'audio/wav', text: 'hello' });
+  const voice = sentOn(a);
+  w.leased = true; w.refreshOutbound();
+  check('a self-leased seat puts nothing on its main audio sender', sentOn(a) === 'none', sentOn(a));
+  w.leased = false; w.refreshOutbound();
+  check('...and the speech track returns when the lease ends mid-line', sentOn(a) === voice, sentOn(a));
 }
 
 // 4. A second line replaces the first; stop puts the mic back and frees the old audio.

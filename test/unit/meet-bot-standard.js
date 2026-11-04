@@ -170,7 +170,8 @@ section('bubble', () => {
   const blurRules = html.match(/^[^\n{]*\.blur[12][^\n{]*\{[^}]*filter:[^}]*\}/gm) || [];
   check('blur filters are on the face only, never the tile or the bubble', blurRules.length > 0 && blurRules.every((r) => !/thinkbubble/.test(r) && !/\.tile\.blur/.test(r)), JSON.stringify(blurRules.slice(0, 6)));
   check('reduced motion stops the blink', /prefers-reduced-motion[\s\S]{0,200}\.thinkbubble[\s\S]{0,80}animation: none/.test(html));
-  check('the bubble is translated', /botThinking: 'Denkt nach…'/.test(html) && /botThinking: 'Pensando…'/.test(html));
+  const cat = (loc) => JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'i18n', loc, 'meet.json'), 'utf8'));
+  check('the bubble is translated', cat('de')['meet.botThinking'] === 'Denkt nach…' && cat('es')['meet.botThinking'] === 'Pensando…');
 });
 
 // ---- B: playBotSpeech ends the bubble, writes the line, skips the filler ----

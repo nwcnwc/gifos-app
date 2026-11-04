@@ -22,7 +22,7 @@ function slice(startMark, endMark) {
 }
 
 const WHISPER = slice('    const wspCaps = new Map();', '    const scribeSeen = new Set();');
-const ADD = slice('    function addTranscriptLine(text, at, forId)', '    // THE LANGUAGE IS A CHOICE');
+const ADD = slice('    function addTranscriptLine(text, at, forId', '    // THE LANGUAGE IS A CHOICE');
 const SHOW = slice('    function showCaption(byId, text)', '    let trDirty = false;');
 
 function flush() {
@@ -98,7 +98,7 @@ function world(o) {
   ].join('\n');
   w.api = new Function(
     'setInterval', 'setTimeout', 'clearTimeout', 'ccLang', 'lsGet', 'lsSet',
-    'CC_ENGINE_KEY', 'CC_TRANSLATE_KEY', 'CC_WORDS_KEY',
+    'CC_ENGINE_KEY', 'CC_TRANSLATE_KEY', 'CC_WORDS_KEY', 'CC_LANG_KEY', 'uiText',
     'IS_MOBILE', 'GifOS', 'setStatus', 'myStatus', 'peers', 'syncSpeech', 'paintCcState',
     'ensureAc', 'ac', 'meters', 'MediaStream', 'whisperReady', 'localStream', 'speakingOf', 'myVoiceAt',
     'WSP_PRE_MS', 'WSP_GAP_MS', 'WSP_MAX_S', 'WSP_MIN_S', 'WSP_BACKLOG', 'WSP_SCRIBE_MAX',
@@ -111,7 +111,7 @@ function world(o) {
     () => 'en',
     () => '',
     () => {},
-    'gifos_cc_engine', 'gifos_cc_translate', 'gifos_cc_words',
+    'gifos_cc_engine', 'gifos_cc_translate', 'gifos_cc_words', 'gifos_cc_lang', (k, en) => en,
     false,
     gifos,
     () => {},

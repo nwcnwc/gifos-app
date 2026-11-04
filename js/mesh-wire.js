@@ -161,7 +161,7 @@
   //                   on HOME for the pick-one UI
   //   onGossip(src,m,ageMs) room-wide app traffic delivery (exact-once); ageMs = time held by relays
   //   onRelayMsg(m)   every relay frame the wire does not consume — 'whoami',
-  //                   'pw', 'votes', 'joined', and 'peer' frames of the
+  //                   'joined', 'greeter-gone', 'error', and 'peer' frames of the
   //                   law's shape (boot / ice / name / password, one fixed
   //                   size; the rest are refused here) — so the app keeps its
   //                   existing handlers while the wire OWNS the one socket.
