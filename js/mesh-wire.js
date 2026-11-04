@@ -966,7 +966,7 @@
         } else lastTickAt = 0;
         if (seat.stranded && !strandedFired) { strandedFired = true; if (opts.onStranded) opts.onStranded(); }
         // Socket lifecycle, as the seat's socketed(): a joiner until seated, a greeter while it is one, a seat lost from the mesh that knocks. Anyone else is done with the relay: drop after a grace.
-        const needsRelay = !raw || raw.socketed() || !(!opts.wired || opts.wired());   // a seat with no open channel at all has no mesh to use: its door is the relay until one opens
+        const needsRelay = !raw || raw.socketed();
         if (needsRelay) deepSince = -1;
         else if (deepSince < 0) deepSince = env.TICK;
         if (dropDeep && !needsRelay && sock && deepSince >= 0 && env.TICK - deepSince > 20) { try { sock.close(); } catch (e) {} sock = null; }

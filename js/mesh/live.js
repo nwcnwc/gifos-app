@@ -87,6 +87,14 @@
       this.unp.set(x, TICK);
     },
 
+    // C++: mesh_seat.inc:Seat::orphanSeat
+    orphanSeat() {
+      if (!this.hasCoord || this.moving || this.state !== 3 || this.lkAnyAt < this.seatedAt) return false;
+      let since = this.lkAnyAt; if (this.backAt > since) since = this.backAt;
+      if (this.TICK - since <= K.DARK_LEAVE || (this.unpAnyAt >= 0 && this.TICK - this.unpAnyAt <= 16) || this.l2E2Up()) return false;
+      return true;
+    },
+
     // C++: mesh_seat.inc:Seat::darkSeat
     darkSeat() {
       if (!this.hasCoord || this.moving || this.state !== 3) return false;
