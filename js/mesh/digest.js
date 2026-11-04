@@ -3,7 +3,7 @@
  * (test/sim/mesh_seat.inc at gifos 37d787b2d).
  *
  *   compaction : compactDensifyCol, l12Origin/Score/Cand, l12SectionLone, l12Step, l12AdmitOnly, l12ClimbEnd,
- *                serveCompact, onStageOrTalking, l9Small, compactEligible, tryCompact
+ *                serveCompact, l9Small, compactEligible, tryCompact
  *   digest     : pubDig, noteUp, upRefuted, scopeGap, s1Take, digForget, digForget1, digHeld, rollup, rootFold
  *   L10        : l10OwnNow, l10UpNow, l10Take, l10Digest, l10Early
  *
@@ -210,13 +210,6 @@
       const o = this.ownerCoord(); if (o) { const oid = this.occGet(ckey(o)); if (oid >= 0 && oid !== id) { const m = msg.clone(mm); m.ttl = mm.ttl - 1; this.emit(oid, m); return; } }
       this.l12ClimbEnd(mm);   // L12: the chain ended with no slot
     },
-    // C++: mesh_seat.inc:Seat::onStageOrTalking
-    // L6.3: a stager or a talker keeps its row.
-    onStageOrTalking() {
-      if (this.ownStage()) return true;
-      for (const e of this.rootDec.talk) if (e.id === this.id) return true;
-      return false;
-    },
     // C++: mesh_seat.inc:Seat::l9Small
     l9Small() {
       const TICK = this.TICK, rd = this.rootDec;
@@ -247,7 +240,6 @@
         if (TICK - this.seatedAt < settle || TICK - this.healAt < settle || TICK - this.lastChurn < settle) return false;
       }
       if (this.hasChildren()) return false;                              // P: only a leaf may move
-      if (this.onStageOrTalking()) return false;                         // L5.1/L6.3: never on stage or talking
       // CLEAN-DEPARTURE gate: only the RIGHTMOST occupant of my row may compact.
       if (!l9small) for (let j = this.coord.i + 1; j < C; j++) if (this.occGet(ckey({ pc: this.coord.pc, r: this.coord.r, i: j })) >= 0) return false;
       return true;

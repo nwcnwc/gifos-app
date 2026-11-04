@@ -59,7 +59,7 @@ function makeWorld(o) {
   const cap = { id: 'me', rate: 16000 };
   w.api = new Function(
     'setInterval', 'setTimeout', 'clearTimeout', 'ccLang', 'lsGet', 'lsSet',
-    'CC_ENGINE_KEY', 'CC_TRANSLATE_KEY', 'CC_WORDS_KEY',
+    'CC_ENGINE_KEY', 'CC_TRANSLATE_KEY', 'CC_WORDS_KEY', 'CC_LANG_KEY', 'uiText',
     'IS_MOBILE', 'GifOS', 'setStatus', 'myStatus', 'addTranscriptLine', 'peers', 'syncSpeech', 'paintCcState',
     'ensureAc', 'ac', 'meters', 'MediaStream', 'whisperReady', 'localStream', 'speakingOf', 'myVoiceAt',
     'WSP_PRE_MS', 'WSP_GAP_MS', 'WSP_MAX_S', 'WSP_MIN_S', 'WSP_BACKLOG', 'WSP_SCRIBE_MAX',
@@ -71,7 +71,7 @@ function makeWorld(o) {
     () => 'en',
     (k) => w.mem[k] || '',
     (k, v) => { if (v) w.mem[k] = String(v); else delete w.mem[k]; },
-    'gifos_cc_engine', 'gifos_cc_translate', 'gifos_cc_words',
+    'gifos_cc_engine', 'gifos_cc_translate', 'gifos_cc_words', 'gifos_cc_lang', (k, en) => en,
     false,
     { providers: {
       call: (_role, req) => {

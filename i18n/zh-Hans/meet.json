@@ -678,5 +678,7 @@
  "meet.stYouStoppedTheSharedApp": "🧩 你已为这里的所有人停止了共享应用。",
  "meet.stOnlyThisRoomSAdmins2": "🛡 只有本房间的管理员才能停止共享应用。",
  "meet.mediaReconnecting": "⟳ 正在重新连接…",
- "meet.massLeaveBanner": "刚刚有很多人离开。正在重新连接会议，请稍候。"
+ "meet.massLeaveBanner": "刚刚有很多人离开。正在重新连接会议，请稍候。",
+ "meet.islandLabel": "你正处于这场会议的一个独立部分：有些人暂时无法连接到你的网络。等他们可以连接时，会议会自动合并。",
+ "meet.deviceOverload": "你的设备拒绝或无法传输会议数据。"
 }

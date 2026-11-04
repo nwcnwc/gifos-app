@@ -305,7 +305,7 @@ OK movemark tick=0
 ERR unknown: __m136
 MOVESTAT since=0 tick=0 moves=0 movers=0 twice=0 max=0 hist=- lastMove=- reseats=0 requeues=0 rollbacks=0 stagersMoved=0
 ERR unknown: __m137
-STAGESET truth=- obs=0 exact=0 stageUp=0 tick=0
+STAGESET truth=- obs=0 exact=0 tick=0
 ERR unknown: __m138
 ERR unknown: __m139
 ERR unknown: __m140

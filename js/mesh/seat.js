@@ -138,7 +138,7 @@
   // C++: mesh.cpp:l13MassOf
   function l13MassOf(s) { return s.l13Mass(); }
   // C++: mesh.cpp:l25OrdKey
-  function l25OrdKey(by, hole, at) { return hash.hmix(hash.hmixId(hash.hmix64(hash.H_INIT, hole), by), at >>> 0); }
+  function l25OrdKey(by, hole, at, to) { return hash.hmixId(hash.hmix(hash.hmixId(hash.hmix64(hash.H_INIT, hole), by), at >>> 0), to); }   // the order names the seat it was sent to
   // C++: mesh.cpp:Seat::ppSigOf
   function ppSigOf(from, at) { return hash.idPair(from, at >>> 0); }   // IdP{signer, tick}
   // C++: mesh.cpp:Seat::ppKey
@@ -776,8 +776,6 @@
       for (const v of this.l829Bye.values()) if (this.TICK - v <= K.RELAY_TTL) return true;
       return false;
     },
-    // C++: mesh.cpp:Seat::l4Stage
-    l4Stage() { return this.onStageOrTalking() || this.l4Hold; },
     // C++: mesh.cpp:Seat::l4Peer
     l4Peer(x) { return this.l4MarkUntil >= this.TICK && this.l4Old.has(x); },
     // C++: mesh.cpp:Seat::l13SplitHole
@@ -866,7 +864,8 @@
       if (m.t === 'FINDLEAF' && m.fo < 0) {
         const mm = msg.clone(m);
         if (this.flCur >= 0) { mm.fo = this.flCur; mm.foAt = this.flCurAt; mm.foL = this.flCurL; }
-        else { mm.fo = id; mm.foAt = TICK; const R = this.w.L25ORD; if (R.size > 2000000) R.clear(); R.add(l25OrdKey(id, ckey(m.hole), TICK)); }
+        else { mm.fo = id; mm.foAt = TICK; }
+        { const R = this.w.L25ORD; if (R.size > 2000000) R.clear(); R.add(l25OrdKey(mm.fo, ckey(m.hole), mm.foAt, to)); }
         this.emit(to, mm); return;   // L25.7
       }
       if ((m.t === 'HELLO' || m.t === 'CLAIM') && m.id === id && m.mpK === 0 && this.mpK > 0 && this.hasCoord && m.ck === this.mpCk && m.ck === ckey(this.coord)) { const mm = msg.clone(m); mm.mpK = this.mpK; mm.mpBy = this.mpBy; mm.mpAt = this.mpAt; mm.mpL = this.mpL; mm.mpOld = this.mpOld; this.emit(to, mm); return; }   // L25.7

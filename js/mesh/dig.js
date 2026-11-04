@@ -24,7 +24,7 @@
   // C++: mesh.cpp:K_HAND
   const K_HAND = LAWS.K_HAND, K_STAGE = LAWS.K_STAGE_PER_C * C, K_APP = LAWS.K_APP, K_VOTE = LAWS.K_VOTE;
   // C++: mesh.cpp:STAGE_CAP
-  const STAGE_CAP = LAWS.STAGE_CAP;
+  const STAGE_CAP = LAWS.STAGE_CAP_PER_C * C;
   // C++: mesh.cpp:TALK_ON
   const TALK_ON = LAWS.TALK_ON;
   // C++: mesh.cpp:TALK_HOLD
@@ -119,14 +119,14 @@
     for (const v of src) { let hit = false; for (const a of acc) if (a.tgt === v.tgt) { a.up += v.up; a.dn += v.dn; hit = true; break; } if (!hit) acc.push(cloneVE(v)); }
   }
   // C++: mesh.cpp:digFoldHeld
-  // L3.12: a report held past DIG_TTL under its lease (its seats count as leased, its lists are kept).
+  // L3.12: a report held past DIG_TTL under its lease (its seats count as leased, its lists are kept, the Stage list is not).
   function digFoldHeld(dst, s) {
     // C++ copies s into z and zeroes its counts; only z.handN and z.awayN are read after.
     const z = { handN: 0, awayN: 0 };
     z.handN = Math.min(s.handN, Math.max(0, s.n) + Math.max(0, s.leased)); z.awayN = Math.min(s.awayN, Math.max(0, s.n) + Math.max(0, s.leased));
     const seats = (s.n < 0 ? 0 : s.n) + (s.leased < 0 ? 0 : s.leased);
     dst.leased += seats; dst.handN += z.handN; dst.awayN += z.awayN;
-    listMerge(dst.hands, s.hands, K_HAND, true); listMerge(dst.stage, s.stage, K_STAGE, true); listMerge(dst.apps, s.apps, K_APP, false); talkMerge(dst.talk, s.talk);
+    listMerge(dst.hands, s.hands, K_HAND, true); listMerge(dst.apps, s.apps, K_APP, false); talkMerge(dst.talk, s.talk);   // no Stage under the lease
     const cap = (s.n < 0 ? 0 : s.n) + (s.leased < 0 ? 0 : s.leased);
     for (const v of s.votes) {
       const c = cloneVE(v); if (c.up > cap) c.up = cap; if (c.dn > cap) c.dn = cap;

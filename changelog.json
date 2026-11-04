@@ -10,19 +10,19 @@
         "Meetings run on a rebuilt mesh. People are seated in sections under a stage row, with trees that carry summaries up, so big rooms fill faster and heal themselves faster when people drop out, freeze or come back.",
         "Rooms of 25 or fewer heal toward the first section, and the stage always has five slots.",
         "GifOS follows your browser's language, with a choice in Settings. English, Spanish, Russian, Simplified Chinese and German are included for the desktop, the store, meetings and the built-in apps.",
-        "Dates, times, sizes and numbers show in your language's format.",
+        "Dates and times in meetings show in your language's format.",
         "Reloading the page keeps your seat in a meeting: you come back to the same place instead of queueing as a newcomer.",
         "The waiting room is for admin rooms only. In an open room there is no waiting-room button and nobody is held at the door; in an admin room the admin's Admit opens every door.",
         "A new broadcast starts with neutral wording; the run-of-show is an optional host template."
       ],
       "fixes": [
         "In a meeting with an admin password, setting or changing the password sends everyone who does not have the new one back to the door to type it, so people who slipped in early are asked too.",
-        "Hostile or broken pages can no longer lock new people out of the first section or leave duplicate seats that stay for good.",
+        "Hostile or broken pages have a harder time locking new people out of the first section or leaving duplicate seats. A large group of hostile pages holding the first section can still keep newcomers out.",
         "Vote-offs are counted inside the meeting, not on the relay.",
         "When the admin changes the password, the relay itself drops pages that do not hold the new one, so they return to the door right away."
       ],
       "notes": [
-        "The relay is updated first; older versions keep working with it, but a vote-off from an older page is ignored by the relay.",
+        "The relay is updated first. An older version still joins and talks through it, but until that page updates its Ban, Waiting room and vote-off buttons do nothing: the relay no longer carries those orders.",
         "Spanish, Russian, Simplified Chinese and German strings are new. Please report any wording that reads wrong."
       ]
     },

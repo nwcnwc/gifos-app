@@ -15,8 +15,16 @@
   'use strict';
   const GifOS = root.GifOS = root.GifOS || {};
 
-  // C++: topo.h:C
-  const C = 5;
+  // C++: topo.h:C (GIFOS_C, default 5). The section width: one value for the whole room, read once here when
+  // this file loads, before any seat starts; every unit takes it (and what derives from it) at its own load,
+  // so it never changes during a room. The page sets GifOS.meshC first (gifos-net.js: 5 unless a DEBUG page
+  // asked); the harness passes GIFOS_C to match a -DGIFOS_C sim build. 2..5 only: the base-6 path below.
+  function pickC() {
+    let v = GifOS.meshC;
+    if (v === undefined && typeof process !== 'undefined' && process.env && process.env.GIFOS_C) v = +process.env.GIFOS_C;
+    return Number.isInteger(v) && v >= 2 && v <= 5 ? v : 5;
+  }
+  const C = pickC();
   // C++: topo.h:MAXLINKS
   const MAXLINKS = 2 * C - 1;
   // C++: topo.h:NO_CK

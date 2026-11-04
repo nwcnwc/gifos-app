@@ -989,7 +989,7 @@ function createOps(fab, opts) {
     const isFree = (c) => !occAll.has(ckey(c));
     const fr = [0, 0, 0, 0];
     for (const [pc] of secRows) { const dp = depthOf(pc); if (dp > 2) continue; for (let r = 0; r < C; r++) for (let i = 0; i < C; i++) { const c = { pc, r, i }; if (!isFree(c)) continue; if (!isFree(down(c))) continue; fr[dp]++; } }
-    let minDepth = 0; { let capD = 25; let tier = 25; while (capD < seatN) { tier *= 5; capD += tier; minDepth++; } }   // theoretical minimal depth for seatN: cap(<=D) = 25*(5^(D+1)-1)/4
+    let minDepth = 0; { let capD = C * C; let tier = C * C; while (capD < seatN) { tier *= C; capD += tier; minDepth++; } }   // theoretical minimal depth for seatN: cap(<=D) = C^2*(C^(D+1)-1)/(C-1)
     P('COMPACT seats=%d occSections=%d maxDepth=%d minDepth=%d loneRowDeepSections=%d byDepth=', seatN, occSections, maxDepth, minDepth, loneDeep);
     for (let d = 0; d <= maxDepth; d++) P('%s%d:%d', d ? ',' : '', d, byDepth.has(d) ? byDepth.get(d) : 0);
     P(' frontier(d0=%d,d1=%d,d2=%d) cProbes=%lld cAdmits=%lld cPlaces=%lld cMoves=%lld cAtS1=%lld cOffers=%lld cOfferFires=%lld\n', fr[0], fr[1], fr[2], lv.COMPACT_PROBES, lv.COMPACT_ADMITS, lv.COMPACT_PLACES, lv.COMPACT_MOVES, lv.COMPACT_ATS1, lv.COMPACT_OFFERS, lv.COMPACT_OFFERFIRES);
@@ -1010,7 +1010,7 @@ function createOps(fab, opts) {
     const view = (q) => seats[q].dRoot().talk.map((e) => e.id);
     const eq = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
     const agree = (T) => { let ex = 0, obs = 0; for (let q = 0; q < lv.nextId; q++) if (alive[q] && seats[q].state === 3 && seats[q].dRoot().at >= 0) { obs++; if (eq(view(q), T)) ex++; } return { ex, obs }; };
-    if (op === 'stageset') { const T = truth(); const { ex, obs } = agree(T); P('STAGESET truth=%s obs=%d exact=%d stageUp=%lld tick=%lld\n', idsStr(T), obs, ex, lv.STAGEUP, TICK()); }
+    if (op === 'stageset') { const T = truth(); const { ex, obs } = agree(T); P('STAGESET truth=%s obs=%d exact=%d tick=%lld\n', idsStr(T), obs, ex, TICK()); }
     else if (op === 'stagewait') {   // stagewait <cap> | stagewait auto <extra>: auto = depth x 8 + 16 + extra
       let dep = 0; for (let q = 0; q < lv.nextId; q++) if (alive[q] && seats[q].state === 3 && seats[q].hasCoord) dep = Math.max(dep, 2 * pcDepth(seats[q].coord.pc) + 2);
       const au = tk.length > 1 && tk[1] === 'auto'; const cap = au ? (dep * 6 + 8) + (tk.length > 2 ? atoll(tk[2]) : 0) : (tk.length > 1 ? atoll(tk[1]) : 400); const start = TICK(); let ok = false, obs = 0, ex = 0, T = [];
@@ -1035,7 +1035,7 @@ function createOps(fab, opts) {
         }
         first = false; fab.doTick(); w.TICK++;
       }
-      P('STAGERUN ticks=%lld truthFlicker=%lld obsFlicker=%lld stageUp=%lld\n', n, tf, of, lv.STAGEUP);
+      P('STAGERUN ticks=%lld truthFlicker=%lld obsFlicker=%lld\n', n, tf, of);
     }
   };
   // C++: mesh.cpp:runOp (seatdump)

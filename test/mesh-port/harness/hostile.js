@@ -19,6 +19,7 @@ const M = path.join(__dirname, '..', '..', '..', 'js', 'mesh');
 const C_ = require(path.join(M, 'consts.js'));
 const msg = require(path.join(M, 'msg.js'));
 const topo = require(path.join(M, 'topo.js'));
+const shared = require(path.join(M, 'shared.js'));
 const hash = require(path.join(M, 'hash.js'));
 const rng = require(path.join(M, 'rng.js'));
 const seatM = require(path.join(M, 'seat.js'));
@@ -28,7 +29,7 @@ const { sprintf } = require('./cprintf.js');
 const K = C_.consts, E = C_.enums;
 const { ckey, unckey, ownedLinks, down, C } = topo;
 const MT = new Map(msg.MT_NAMES.map((n, i) => [n, i]));
-const { H_COLLUDE, H_VOTE, H_RINGLIE, H_HOLD, H_FLOOD, H_BYE, H_DIAL, H_TIER, H_HOLE, H_FORGE, H_MEDIA, H_FUZZ, H_REFLECT, H_BIG } = E;
+const { H_COLLUDE, H_VOTE, H_RINGLIE, H_HOLD, H_FLOOD, H_BYE, H_DIAL, H_TIER, H_HOLE, H_FORGE, H_MEDIA, H_FUZZ, H_REFLECT, H_BIG, H_STEAL } = E;
 const u32 = (x) => x >>> 0;
 const atoi = (s) => (parseInt(s, 10) | 0) || 0;
 const atof = (s) => { const v = parseFloat(s); return Number.isNaN(v) ? 0 : v; };
@@ -193,6 +194,10 @@ Seat.unit('mesh_hostile.inc seat side', {
         if (y >= 0) { r.routing = false; send(y, r); }   // replay: a captured signed frame, its signature intact
       }
     }
+    if ((h & H_STEAL) && this.hoSeen >= 0 && t - this.hoSeen <= 2 && this.hasCoord && this.state === 3 && !this.moving && ckey(this.coord) !== this.hoCk) {   // the honest mover's own path (promoteInto -> doMove -> take), with the overheard order as my proof
+      const sv = this.flCur, sva = this.flCurAt, svl = this.flCurL; this.flCur = this.hoBy; this.flCurAt = this.hoAt; this.flCurL = this.hoAt; this.mvWhy = 'steal'; const nb = this.hoNbrs.map((e) => ({ k: e.k, v: e.v })); this.doMove(unckey(this.hoCk), -1, nb, -1, -1, -1); this.flCur = sv; this.flCurAt = sva; this.flCurL = svl;
+      if (this.moving) { lv.HM_STEAL_TRY++; this.hoStole = this.hoCk; this.hoMoveAt = t; const named = this.w.L25ORD.has(seatM.l25OrdKey(this.hoBy, this.hoCk, this.hoAt, id)) ? 1 : 0; if (named) lv.HM_STEAL_NAMED++; this.trace('HOST-STEAL', id, null, 'cell=%s by=%d at=%d named=%d', shared.coordStr(unckey(this.hoCk)), this.hoBy, this.hoAt, named); } this.hoSeen = -100000;
+    }
     if (h & H_FUZZ) for (let q = 0; q < 4; q++) hostFuzz(fab, this, g);
     if ((h & H_REFLECT) && t % 2 === 0) {
       const v = hostPickHonest(fab, g, id); const to = hostPickHonest(fab, g, id);
@@ -239,7 +244,7 @@ function install(fab) {
     let mask = 0;
     if (mode === 'hold') mask = H_HOLD; else if (mode === 'flood') mask = H_FLOOD; else if (mode === 'bye') mask = H_BYE; else if (mode === 'dial') mask = H_DIAL; else if (mode === 'tier') mask = H_TIER;
     else if (mode === 'hole') mask = H_HOLE; else if (mode === 'forge') mask = H_FORGE; else if (mode === 'media') mask = H_MEDIA; else if (mode === 'fuzz') mask = H_FUZZ; else if (mode === 'reflect') mask = H_REFLECT;
-    else if (mode === 'big') mask = H_BIG; else if (mode === 'collude') mask = H_COLLUDE;
+    else if (mode === 'big') mask = H_BIG; else if (mode === 'collude') mask = H_COLLUDE; else if (mode === 'steal') mask = H_STEAL;
     else if (mode === 'vote') mask = H_VOTE; else if (mode === 'ringlie') mask = H_RINGLIE | H_FORGE | H_DIAL; else if (mode === 'mix') mask = -1;   // ringlie: forge and dial, every frame stamped with a foreign lineage (L8.38)
     const ids = []; for (let q = 0; q < lv.nextId; q++) if (alive[q] && seats[q].state === 3 && seats[q].hasCoord) ids.push(q);
     const rank = (q) => { const c = seats[q].coord; if (where === 's1') return c.pc === 0 ? 0 : 1; if (where === 'head') return (c.pc !== 0 && c.i === 0) ? 0 : (c.pc === 0 ? 1 : 2); return 0; };
@@ -313,6 +318,11 @@ function install(fab) {
     let shown = 0; for (let q = 0; q < lv.nextId; q++) if (alive[q] && !seats[q].hostile && seats[q].hasCoord) shown = Math.max(shown, seats[q].rootDig.n);
     let vb = 0; for (let q = 0; q < lv.nextId; q++) { if (!alive[q] || seats[q].hostile) continue; for (const [k] of seats[q].vban) if (k >= 0 && k < lv.nextId && alive[k] && !seats[k].hostile) vb++; }   // honest seats banning honest seats: a forged vote that acted
     P('HOSTFRAMES big=%lld relayOnly=%lld l24drop=%lld l26refused=%lld l25twice=%lld l23closed=%lld l23refused=%lld voteBans=%lld\n', lv.HM_BIG_TAKEN, lv.HM_RELAY, lv.L24_DROP, lv.L26_REFUSED, lv.L25_TWICE, lv.L23_CLOSED, lv.L23_REFUSED, vb);
+    if (lv.HM_STEAL_SEEN || lv.HM_STEAL_TRY) {
+      let won = 0, back = 0;
+      for (let q = 0; q < lv.nextId; q++) { if (!alive[q] || !seats[q].hostile || !seats[q].hoStole) continue; const s = seats[q]; if (s.state === 3 && s.hasCoord && ckey(s.coord) === s.hoStole) { let alone = true; for (let y = 0; y < lv.nextId; y++) if (y !== q && alive[y] && !seats[y].hostile && seats[y].hasCoord && seats[y].state === 3 && ckey(seats[y].coord) === s.hoStole) alone = false; if (alone) won++; } else back++; }
+      P('HOSTSTEAL seen=%lld tried=%lld named=%lld won=%lld lost=%lld\n', lv.HM_STEAL_SEEN, lv.HM_STEAL_TRY, lv.HM_STEAL_NAMED, won, back);   // won: the page sits in the cell the order was for, and no honest seat does
+    }
     P('HOSTSTAT tick=%lld hostile=%d honest=%lld seated=%lld unseated=%lld dups=%lld hostileSeated=%lld news=%lld newOut=%lld newMax=%lld pcS1=%lld@%lld pcDeep=%lld@%lld pcOver=%lld pcOverRun=%lld heldMax=%lld heldIdleMax=%lld heldSeat=%d heldNow=%lld fpsMax=%lld fpsSeat=%d shownMax=%lld moves=%lld evict=%lld bigTaken=%lld\n',
       w.TICK - lv.HOST_T0, lv.HOSTILE_N, honest, seated, honest - seated, dups, hseated, news, newOut, nmax, H.HM_PCMAX[0], H.HM_PCAT[0] - lv.HOST_T0, H.HM_PCMAX[1], H.HM_PCAT[1] - lv.HOST_T0, lv.HM_OVER, lv.HM_OVERRUN, lv.HM_HELDMAX, lv.HM_IDLEMAX, lv.HM_HELDSEAT, lv.HM_HELDPCS, lv.HM_FPSMAX, lv.HM_FPSSEAT, shown, lv.MOVES, lv.EVICTIONS, lv.HM_BIG_TAKEN);
   }

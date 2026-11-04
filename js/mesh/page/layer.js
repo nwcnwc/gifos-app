@@ -88,13 +88,13 @@
     const e = { tgt: v.tgt, up: v.up, dn: v.dn }; if (v.ab) e.ab = v.ab; acc.push(e);
   };
   const voteCopy = (v) => { const e = { tgt: v.tgt, up: v.up, dn: v.dn }; if (v.ab) e.ab = v.ab; return e; };
-  const digLists = (dst, s, cap) => {
+  const digLists = (dst, s, cap, held) => {
     dst.handN += Math.min(s.handN || 0, cap); dst.awayN += Math.min(s.awayN || 0, cap);
-    dst.hands = listMerge(dst.hands, s.hands, K_HAND, true); dst.stage = listMerge(dst.stage, s.stage, K_STAGE(), true); dst.apps = listMerge(dst.apps, s.apps, K_APP, false);
+    dst.hands = listMerge(dst.hands, s.hands, K_HAND, true); if (!held) dst.stage = listMerge(dst.stage, s.stage, K_STAGE(), true); dst.apps = listMerge(dst.apps, s.apps, K_APP, false);
     for (const v of (s.votes || [])) voteAdd(dst.votes, { tgt: v.tgt, up: Math.min(v.up, cap), dn: Math.min(v.dn, cap), ab: Math.min(v.ab || 0, cap) });
   };
   const digFold = (dst, s) => { const cap = (s.n < 0 ? 0 : s.n) + (s.leased || 0); dst.n += s.n; dst.leased += s.leased || 0; dst.refuse += s.refuse; if (s.part) dst.part = 1; digLists(dst, s, cap); };
-  const digFoldHeld = (dst, s) => { const cap = (s.n < 0 ? 0 : s.n) + (s.leased || 0); dst.leased += cap; digLists(dst, s, cap); };   // the seat's L3.12: held under its lease
+  const digFoldHeld = (dst, s) => { const cap = (s.n < 0 ? 0 : s.n) + (s.leased || 0); dst.leased += cap; digLists(dst, s, cap, true); };   // the seat's L3.12: held under its lease, with no Stage list
   const digTrim = (d) => {
     const cap = (d.n < 0 ? 0 : d.n) + (d.leased || 0);
     if (d.handN > cap) d.handN = cap; if (d.awayN > cap) d.awayN = cap;
@@ -205,6 +205,8 @@
       // L2.4: the rows' folds I hold while I serve them (read only; not folded into the room: healing-laws L2 'Not yet').
       u2Folds() { const s = raw(), out = []; if (!s) return out; for (const [k, d] of u2Folds) out.push({ row: k, n: d.n, leased: d.leased || 0, handN: d.handN || 0, hands: (d.hands || []).length, age: s.LT() - d.rx }); return out; },
       keepPeers() { return keepSet(); },
+      // L28: this device is using the pc to that peer, for so many ticks (my end only, budgeted by the seat).
+      keepAdd(peer, ticks) { const s = raw(); if (!s || !s.keepAdd) return; const x = ids.nid(peer); if (x >= 0) s.keepAdd(x, ticks); },
       // E2 and E3 as the seat holds them, as peers (read only): the media plane ships over these pcs.
       get u2Id() { const s = raw(); return s && s.hasCoord && s.coord.pc !== 0 && s.u2Id >= 0 && s.u2Id !== s.id ? P(s.u2Id) : null; },   // a head moved into Section 1 keeps a stale u2Id: it holds no E2
       get u3Id() { const s = raw(); return s && s.hasCoord && s.coord.pc !== 0 && s.u3Id >= 0 && s.u3Id !== s.id ? P(s.u3Id) : null; },
@@ -213,14 +215,20 @@
       get l14Up() { const s = raw(); return s && s.l14Up >= 0 && s.l14Up !== s.id ? P(s.l14Up) : null; },
       // L2.7: my row's head is gone in my own view and I am the row's heir (its lowest live column): its duties are mine
       // until it returns or the cell is refilled. Deep rows: the seat's own headGone; Section 1: the cell empty, dark (the seat's darkMate) or closed.
-      get actHead() {
+      get headGoneView() {
         const s = raw(), tp = TP(); if (!s || !s.hasCoord || s.state !== 3 || s.coord.i === 0) return false;
         const hk = tp.ckey({ pc: s.coord.pc, r: s.coord.r, i: 0 }), h = s.occGet(hk);
-        const gone = s.coord.pc !== 0 ? s.headGone() : (h < 0 || h === s.id || s.darkMate(hk) || s.f.fabricLinkState(s.id, h) === GifOS.meshConsts.LS_CLOSED);
-        if (!gone) return false;
-        for (let j = 1; j < s.coord.i; j++) { const k = tp.ckey({ pc: s.coord.pc, r: s.coord.r, i: j }); if (s.occGet(k) >= 0 && s.firstHandLive(k)) return false; }
-        return true;
+        return s.coord.pc !== 0 ? s.headGone() : (h < 0 || h === s.id || s.darkMate(hk) || s.f.fabricLinkState(s.id, h) === GifOS.meshConsts.LS_CLOSED);
       },
+      // The row's heir as my view names it: its lowest live column past the head, me included (read only).
+      rowHeir() {
+        const s = raw(), tp = TP(); if (!s || !s.hasCoord || s.state !== 3 || s.coord.i === 0) return null;
+        for (let j = 1; j < s.coord.i; j++) { const k = tp.ckey({ pc: s.coord.pc, r: s.coord.r, i: j }); if (s.occGet(k) >= 0 && s.firstHandLive(k)) return P(s.occGet(k)); }
+        return me;
+      },
+      // A frame of my row's head reached me first-hand after this tick (the seat's own record).
+      headHeardSince(t) { const s = raw(), tp = TP(); if (!s || !s.hasCoord) return false; const it = s.live.get(tp.ckey({ pc: s.coord.pc, r: s.coord.r, i: 0 })); return it !== undefined && it > t; },
+      get seatTick() { const s = raw(); return s ? s.TICK : 0; },
       get l14Cut() { const s = raw(); return !!(s && s.hasCoord && s.state === 3 && s.coord.pc !== 0 && s.l14Branch()); },   // my chain up is broken in the seat's own view (L14)
       l14Served() { const s = raw(), out = []; if (!s || !s.hasCoord) return out; for (const x of s.l14Served.keys()) { if (!s.l14Serve(x)) continue; const p = P(x); if (p != null && p !== me) out.push(p); } return out; },
       u2Heirs() { const s = raw(), out = []; if (!s || !s.hasCoord) return out; for (const e of s.u2Rows.values()) if (s.TICK - e.at <= 40) { const p = P(e.heir); if (p != null && p !== me && out.indexOf(p) < 0) out.push(p); } return out; },
@@ -306,6 +314,7 @@
     const TP = () => GifOS.meshTopo;
     let myDig = dig0(), rowDig = dig0(), rootDig = dig0(), downDig = dig0(), u2RowDig = dig0(), foldSig = null, foldBeat = -1, foldCell = -1;
     const rowKids = new Map(), s1tab = new Map(), u2Folds = new Map();
+    const servesHot = (s, to) => { const x = ids.nid(to); for (const e of s.u2Rows.values()) if (e.hot && e.heir === x) return true; return false; };
     const e2SrcIs = (s, to) => { const R = GifOS.meshRoles, tp = TP(); if (!R) return false; const x = R.e2SrcOf({ pc: s.coord.pc, r: s.coord.r, i: 0 }, (q) => s.occGet(tp.ckey(q)) >= 0); return !!x && P(s.occGet(tp.ckey(x))) === to; };
     const digSent = new Map(), digWant = new Map();
     const rxDig = (s, d) => { d.rx = s.LT() - (INT(d.ag) ? Math.min(Math.max(d.ag, 0), 1 << 20) : 0); return d; };
@@ -411,6 +420,10 @@
         pd = { s: a };
       } else if (m.t === 'U2BEAT' && m.dgUp && m.dgUp.at >= 0) {   // L2.4: hot E2, the row's fold rides the beat (head alone in its row: its own; the source: the head's last)
         const d = c.i === 0 ? rowDig : u2RowDig; if (d.at >= 0) pd = { u: wireDig(s, d) };
+      } else if (m.t === 'U2ACK' && rootDig.at >= 0 && servesHot(s, to)) {   // L2.4: the room's fold down the hot E2, as the head's PONG would carry it: a row whose up path is E2 still reads the room
+        const w = wireDig(s, rootDig); delete w.by; pd = { r: stubFor(s, to, 'root', rootDig, w) };
+      } else if (m.t === 'PONG' && m.tag === 5 && rootDig.at >= 0) {   // L2.7: a heir standing in for its head passes that fold on to the row
+        const w = wireDig(s, rootDig); delete w.by; pd = { r: stubFor(s, to, 'root', rootDig, w) };
       }
       if (m.t === 'PONG' && m.dgPub && m.dgPub.at >= 0 && c.pc !== 0 && c.i === 0 && rowDig.at >= 0 && e2SrcIs(s, to)) {   // the source's copy (the seat's u2RowDig, from its head's PONG)
         pd = pd || {}; pd.p = stubFor(s, to, 'rowp', rowDig, wireDig(s, rowDig));
@@ -431,7 +444,9 @@
         return;
       }
       if (!m.coord) return;
-      const pk = tp.ckey(m.coord); if (s.occGet(pk) !== m.id) return;
+      const pk = tp.ckey(m.coord);
+      const e2Far = m.t === 'U2ACK' && (m.id === s.u2Id || m.id === s.u3Id);   // the seat already took this far end from its row's PONG; a deep view need not name its cell
+      if (!e2Far && s.occGet(pk) !== m.id) return;
       if (pd.p && m.t === 'PONG' && c.pc !== 0 && c.i !== 0 && pk === tp.ckey({ pc: c.pc, r: c.r, i: 0 })) {
         if (pd.p.stub === 1) stubTake(s, pd.p, u2RowDig, 'row', from, 'rowp'); else { const u = digSane(pd.p); if (u) { u.by = from; u2RowDig = rxDig(s, u); } }
       }
@@ -444,7 +459,7 @@
         if (pk === tp.ckey(tp.down(c))) { const u = digSane(pd.u); if (u) { u.by = from; downDig = rxDig(s, u); } }
         else if (c.pc === 0 && m.coord.pc === 0) s1Slot(s, from, pk, pd.u, 'sec');
         else if (c.pc !== 0 && c.i === 0 && m.coord.pc === c.pc && m.coord.r === c.r) { const u = digSane(pd.u); if (u) { u.by = from; rowKids.set(pk, rxDig(s, u)); } }
-      } else if (pd.r && m.t === 'PONG' && c.pc !== 0 && s.ownedLinkCell(pk)) {
+      } else if (pd.r && c.pc !== 0 && ((m.t === 'PONG' && (s.ownedLinkCell(pk) || (m.tag === 5 && m.coord.pc === c.pc && m.coord.r === c.r))) || e2Far)) {
         if (pd.r.stub === 1) { stubTake(s, pd.r, rootDig, 'root', from, 'root'); return; }
         const rt = digSane(pd.r); if (!rt) return; rxDig(s, rt);
         if (rootDig.at < 0 || rt.rx > rootDig.rx) rootDig = rt;

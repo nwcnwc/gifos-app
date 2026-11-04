@@ -430,12 +430,12 @@
     return p;
   }
   function deriveMeetKey(roomCode, av, pw) {
-    const base = roomCode + '|' + (av || '');
+    const base = roomCode + '|' + (av || '') + cTag();
     if (!pw) return aesKey('meet-e2e', base);
     return stretchPw(roomCode, av, pw).then((s) => aesKey('meet-e2e-pw', base + '|' + s));
   }
   function deriveMeet(roomCode, av, pw) {
-    const base = roomCode + '|' + (av || '');
+    const base = roomCode + '|' + (av || '') + cTag();
     return Promise.all([dsHash('meet-sid', base), dsHash('meet-tok', base), deriveMeetKey(roomCode, av, pw || '')])
       .then(([sid, tok, key]) => ({ sid: sid.slice(0, 20) + (av ? '.' + av : ''), tok: tok.slice(0, 24), key }));
   }
@@ -581,6 +581,21 @@
     COMP_FPS: 8,  // composites are secondary tiles — 8fps halves the packer's CPU vs 12 with no perceptible loss (was 12)
     HB: 4000,         // status heartbeat ms — the gossip pulse everything idempotent rides
   }, root.GIFOS_SCALE || {});
+  // C is the room's shape: a real meeting is C=5. A different C (2..5) comes only from a DEBUG page
+  // (DEBUG=on in the URL, or the tab's sticky gifos_debug) that also set window.GIFOS_SCALE.C before
+  // load: never from the wire or a link alone. The mesh reads it once (GifOS.meshC, js/mesh/topo.js),
+  // and every page of a room must carry the same C: deriveMeet folds a C other than 5 into the room's
+  // session id, token and key, so pages that disagree land in different relay sessions and never meet.
+  {
+    let dbg = false;
+    try { dbg = /(?:^|[#&?])debug=(?:on|1|true)/i.test(root.location.hash + root.location.search); } catch (e) {}
+    try { if (!dbg) dbg = root.sessionStorage.getItem('gifos_debug') === '1'; } catch (e) {}
+    const c = SCALE.C;
+    SCALE.C = dbg && Number.isInteger(c) && c >= 2 && c <= 5 ? c : 5;
+    GifOS.meshC = SCALE.C;
+  }
+  // '' in a real room (C=5: the derivation is the one every client has always used); else the C tag.
+  const cTag = () => (SCALE.C === 5 ? '' : '|C' + SCALE.C);
 
   // ---- the mesh topology as arithmetic (port of test/sim/topo.h) ------------------
   // A coordinate is { pc, r, i }: pc the SECTION path encoded as an integer, r

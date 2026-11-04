@@ -143,7 +143,7 @@
     const ID = o.ids || ids();
     const me = ID.learn(o.peer);
     if (!(Number.isSafeInteger(me) && me >= 0 && me < ID_MAX)) throw new Error('mesh env: my id ' + me + ' is not an integer below 2^52');
-    const lv = Object.assign({}, C_.levers, { LINKMODEL: true, TIERS_ACTIVE: true, nextId: ID_MAX }, o.levers || {});
+    const lv = Object.assign({}, C_.levers, { LINKMODEL: true, TIERS_ACTIVE: true, nextId: ID_MAX, LG_ON: !!measure.lgHealth }, o.levers || {});
     const st = { rx: 0, tx: 0, fhSponsored: 0, fhRouteDrop: 0, fhIn: 0, inboxMax: 0, delay: [0, 0, 0], drops: {}, relay: { knock: 0, unlist: 0, greeters: 0, nosock: 0, nosockBusy: 0, busyIn: 0, busyOut: 0, refIn: 0 }, lawErr: {} };
     const drop = (why) => { st.drops[why] = (st.drops[why] || 0) + 1; };
 
@@ -446,11 +446,50 @@
         for (const [m, at, envl] of ib) { const d = w.TICK - at;   /* 0: the first boundary after arrival (the sim's 1-tick hop) */ st.delay[d <= 0 ? 0 : d === 1 ? 1 : 2]++; if (fh && !envl && m.routing && fhopRouteDrop(s, m)) continue; /* C++: mesh_fhop.inc:fhopIntercept: an envelope for me is the seat's, as it is */ recvOne(s, m); }
         if (woken) { woken = false; guard('seat.tick', () => s.tick())(); }
         noteLinks(s);
+        if (lv.LG_ON) guard('lgFabric', () => lgFabric(s))();
       } else { bus.clear(); inbox = []; }
       for (const [g, t] of noSockAsk) if (w.TICK - t > NOSOCK_WIN) noSockAsk.delete(g);
       for (const [g, t] of noSockSeen) if (w.TICK - t > NOSOCK_WIN) noSockSeen.delete(g);
       for (const [x, r] of refPend) if (w.TICK - r.at > REF_STALE) refPend.delete(x);
       w.TICK++;
+    }
+    // L29, the fabric's half (sim mesh_lguard.inc lguardFabTick): the duties my cell owes in load units, the budget my
+    // device shows it can carry, the ladder, the inbound watch, and the leave when my receivers and my own reading agree.
+    let lgCap = -1, lgReadAt = 0, lgLeft = false; const lgStarved = new Set();
+    function lgFabric(s) {
+      const K = C_.consts, full = s.tier === C_.enums.TIER_MOBILE ? K.L29_BUD_M : K.L29_BUD_D;
+      if (s.lgQuit && !lgLeft) { lgLeft = true; if (measure.lgLeave) measure.lgLeave(); return; }
+      if (!s.hasCoord || s.state !== 3) { s.lgLadder(); return; }
+      const c = s.coord, held = (x) => { const v = s.occGet(topo.ckey(x)); return v >= 0 && v !== s.id; };
+      let rx = 0;
+      for (let j = 0; j < topo.C; j++) {
+        if (j !== c.i && held({ pc: c.pc, r: c.r, i: j })) rx++;
+        if (c.pc === 0 && j !== c.r && held({ pc: 0, r: j, i: c.i })) rx++;
+      }
+      let fwd = c.pc === 0 || c.i === 0 ? rx : 0;
+      if (c.pc !== 0 && c.i === 0) { const o = s.ownerCoord(); if (o && held(o)) fwd++; }
+      const dn = topo.down(c); if (dn.pc > c.pc && held(dn)) fwd++;
+      const own = measure.lgCamOn && !measure.lgCamOn() ? 0 : rx, park = s.bkId >= 0 ? 1 + rx : 0, woke = measure.lgWoke ? measure.lgWoke() : 0;
+      // L29.0: a Section-1 head's duty (sim mesh_lguard.inc lgDuties): each row-mate taken in L29_PARK, the row block and the
+      // row view L29_HOT each (high), one mix per child branch of its row L29_HOT (low); only where there is a room to serve.
+      let hd = 0, hlow = 0;
+      if (c.pc === 0 && c.i === 0) {
+        let mates = 0, kids = 0, heads = 0;
+        for (let j = 0; j < topo.C; j++) { if (j > 0 && held({ pc: 0, r: c.r, i: j })) mates++; const dk = topo.down({ pc: 0, r: c.r, i: j }); if (dk.pc > 0 && held(dk)) kids++; if (j !== c.r && held({ pc: 0, r: j, i: 0 })) heads++; }
+        if (kids > 0 || heads > 0) { hd = mates * K.L29_PARK + 2 * K.L29_HOT; hlow = kids * K.L29_HOT; }
+      }
+      const l2 = own * K.L29_HOT + fwd + hd, l1 = l2 + fwd + hlow, l0 = l1 + park * K.L29_PARK + woke * K.L29_HOT;
+      s.lgLd[0] = l0; s.lgLd[1] = l1; s.lgLd[2] = l2; s.lgBud0 = full; s.lgOwn = own * K.L29_HOT;
+      if (lgCap < 0) lgCap = full;
+      // what the device carried, scaled by how well it kept up; a device keeping up earns its budget back slowly
+      if (w.TICK >= lgReadAt) { lgReadAt = w.TICK + K.L29_STARVE; const h = measure.lgHealth(); lgCap = h < 1 ? Math.min(lgCap, Math.ceil(s.lgLd[s.lgLvl] * h)) : Math.min(full, lgCap + 1); }
+      s.lgBud = lgCap;
+      s.lgLadder();
+      if (!measure.lgStarve) return;
+      const now = new Set(measure.lgStarve());
+      const say = (pid, hold) => { const m = msg.newMsg('LGSTARVE'); m.id = ID.nid(pid); m.to = me; m.from = -1; m.hold = hold ? 1 : 0; busAt(w.TICK + 1, m); };
+      for (const pid of now) if (!lgStarved.has(pid)) { lgStarved.add(pid); say(pid, true); }
+      for (const pid of [...lgStarved]) if (!now.has(pid)) { lgStarved.delete(pid); say(pid, false); }
     }
     function recvOne(s, m) {
       if (s.dead) return;

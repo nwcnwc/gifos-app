@@ -316,7 +316,7 @@ function installFhop(fab) {
 
   // ---- the seat-facing calls (js/mesh/fhop.js) and the plug ---------------------------------------------------------
   const ctx = { lv, K, seats, alive, X, get FH() { return fab.FH; }, get NETG() { return fab.NETG; }, grpOf, fhopActive, fhConns, fhClaims, fhDc };
-  fab.fhop = { ctx, fhConn, fhConns, fhDc, fhClaims, fhKeyOf, fhNextHop, fhopSponsor, fhopOnward, fhopRouteDrop, fhSweep, fhOnMsg, fhWebkit, fhEnsure, fhHasStream };
+  fab.fhop = { ctx, fhNoteCrumb, fhCrumb, fhConn, fhConns, fhDc, fhClaims, fhKeyOf, fhNextHop, fhopSponsor, fhopOnward, fhopRouteDrop, fhSweep, fhOnMsg, fhWebkit, fhEnsure, fhHasStream };
   fab.plug({
     fhopActive, fhopReset, fhopSchedule, fhopSponsorDrop, fhopIntercept, fhopTick,
     fhopFriendFor: (me, to) => fhopSeat.fhopFriendFor(ctx, me, to),

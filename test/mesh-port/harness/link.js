@@ -36,6 +36,7 @@ const K = C_.consts, E = C_.enums;
 const { ckey, ownedLinks, unckey } = topo;
 const { LK_NONE, LK_DIALING, LK_OPEN, LK_CLOSED, LS_NONE, LS_DIALING, LS_OPEN } = E;
 const { EV_DIAL, EV_DOWN, EV_ICE, EV_DISC, EV_STARVE1, EV_RADIOEND, EV_FRESH, EV_DSMALL } = E;
+const EV_SIGO = 9, EV_SIGA = 10;   // C++: mesh_link.inc (the fabric's own: no seat reads them)
 const { PB_DOORS, PB_KNOCKS, PB_S1, PB_CLASS } = E;
 const pkA = hash.pairA, pkB = hash.pairB;   // C++ pk.a, pk.b
 const U32 = (x) => x >>> 0;
@@ -198,7 +199,10 @@ function install(fab) {
     const mob = lMobile(a) || lMobile(b);
     const d = mob ? ldraw(K.LINK_DIAL_MOB_MIN, K.LINK_DIAL_MOB_MAX, a, b, 0x6469616c) : ldraw(K.LINK_DIAL_DESK_MIN, K.LINK_DIAL_DESK_MAX, a, b, 0x6469616c);
     levPush(TICK() + d, EV_DIAL, a, b, L.epoch, 'dial');
+    L.sigAt = -1; L.sigGot = 0; L.sigAsk = 1 << lEnd(a, b); levPush(TICK() + 1, EV_SIGO, a, b, L.epoch, 'sig', 0);   // dialsig.js: the offer leaves next tick
   };
+  // C++: mesh_link.inc:sigAsked
+  api.sigAsked = (L, me, x) => { const bit = 1 << lEnd(me, x); if (L.sigAsk & bit) return; L.sigAsk |= bit; levPush(TICK() + 1, EV_SIGO, me, x, L.epoch, 'sig', 0); };
 
   // C++: mesh_link.inc:linkDeliver
   // An open link carries the frame: the parent's loss / latency, no first-contact cost. `m` is the caller's (moved).
@@ -412,21 +416,26 @@ function install(fab) {
     if (s.l13SplitCell.size > 64) s.l13SplitCell.clear();
   };
 
+  // C++: mesh_link.inc:sigFail
+  const sigFail = api.sigFail = (L, a, b) => {
+    if (!X.grpReach(a, b)) l1341Note(a, b);
+    if (a < nextId() && alive[a]) { seats[a].dials.holdLost(b, seats[a].TICK); }
+    const farKnows = ((L.sigGot | L.sigAsk) & (1 << lEnd(b, a))) !== 0;
+    L.state = LK_CLOSED; L.epoch = U32(L.epoch + 1); L.q.length = 0; LSTAT[2]++;
+    { if (a < nextId()) seats[a].dials.failed(b, seats[a].TICK, true); if (farKnows && b < nextId()) seats[b].dials.failed(a, seats[b].TICK, true); }
+    for (let k = 0; k < 2; k++) { if (k === lEnd(b, a) && !farKnows) continue; if (L.view[k] === LK_DIALING || L.view[k] === LK_NONE) L.view[k] = LK_CLOSED; }
+  };
   // C++: mesh_link.inc:linkApply
   const linkApply = api.linkApply = (v) => {
     const Lp = linkFind(v.a, v.b); if (!Lp && v.kind !== EV_RADIOEND) return;
     switch (v.kind) {
       case EV_DIAL: {
         const L = Lp; if (L.epoch !== v.epoch || L.state !== LK_DIALING) return;
-        if (pathOk(v.a, v.b)) { linkOpenNow(L, v.a, v.b); return; }
+        if (pathOk(v.a, v.b) && L.sigAt >= 0 && TICK() >= L.sigAt) { linkOpenNow(L, v.a, v.b); return; }
         if (TICK() - L.dialAt < K.LINK_DIAL_FAIL) { levPush(TICK() + 1, EV_DIAL, v.a, v.b, v.epoch, 'dial'); return; }
-        if (!X.grpReach(v.a, v.b)) l1341Note(v.a, v.b);
-        if (v.a < nextId() && alive[v.a]) { seats[v.a].dials.holdLost(v.b, seats[v.a].TICK); }
-        L.state = LK_CLOSED; L.epoch = U32(L.epoch + 1); L.q.length = 0; LSTAT[2]++;
-        { if (v.a < nextId()) seats[v.a].dials.failed(v.b, seats[v.a].TICK, true); if (v.b < nextId()) seats[v.b].dials.failed(v.a, seats[v.b].TICK, true); }
-        for (let k = 0; k < 2; k++) if (L.view[k] === LK_DIALING || L.view[k] === LK_NONE) L.view[k] = LK_CLOSED;
-        return;
+        sigFail(L, v.a, v.b); return;
       }
+      case EV_SIGO: case EV_SIGA: if (X.sigEvent) X.sigEvent(Lp, v); else if (Lp.sigAt < 0) Lp.sigAt = TICK(); return;   // (a fabric-only check world, no friend-hop table: the path is taken as given)
       case EV_DOWN: {
         const L = Lp; if (v.why === 'unneeded' && !L.agreed[lEnd(v.a, v.b)]) X.l374Resend(v.a, v.b, L);
         if (L.openEp > v.epoch) return;
@@ -785,6 +794,7 @@ function install(fab) {
   };
   // C++: mesh_link.inc:linkReset
   const linkReset = api.linkReset = () => {
+    if (X.sigReset) X.sigReset();
     LINKS.clear(); LINKPEERS.length = 0; LEVQ.clear(); LBLOCK.clear(); RADIO.clear(); LRX.length = 0; LTX.length = 0; TLDEB.clear(); LPENDCLOSE = api.LPENDCLOSE = []; LDOORS.clear();
     lv.L15_CLOSED = 0; lv.CLOSEDROPS = 0; lv.ERASEDROPS = 0; DOORN = api.DOORN = []; DOORK = api.DOORK = []; L16CLOSING = api.L16CLOSING = []; L16COOL.clear();
     lv.L16_HANDED = lv.L16_DROP = lv.L16_UNN = lv.L16_BUSY = lv.L16_BYE = lv.L16_IDLEC = lv.L16_LIFEC = lv.L16_GWC = lv.L16_BACKOFF = lv.L16_DOORPEAK = lv.L16_ANSPEAK = lv.L16_EVILPEAK = 0;
@@ -825,7 +835,7 @@ function install(fab) {
     noteCall(me, x);
     if (l23Refused(x, me)) return;
     l23MakeRoom(me, x);
-    const L = linkGet(me, x); if (L.state === LK_NONE || L.state === LK_CLOSED) { startDial(me, x, L); L.dialHow = 1; }
+    const L = linkGet(me, x); if (L.state === LK_NONE || L.state === LK_CLOSED) { startDial(me, x, L); L.dialHow = 1; } else if (L.state === LK_DIALING) api.sigAsked(L, me, x);
   };
   // C++: mesh_link.inc:fabricDialJoin
   const fabricDialJoin = (me, x) => {
@@ -835,7 +845,7 @@ function install(fab) {
     noteCall(me, x);
     if (l23Refused(x, me)) return;
     l23MakeRoom(me, x);
-    const L = linkGet(me, x); if (L.state === LK_NONE || L.state === LK_CLOSED) { startDial(me, x, L); L.dialHow = 2; } else if (L.state === LK_DIALING) L.view[lEnd(me, x)] = LK_DIALING;
+    const L = linkGet(me, x); if (L.state === LK_NONE || L.state === LK_CLOSED) { startDial(me, x, L); L.dialHow = 2; } else if (L.state === LK_DIALING) { L.view[lEnd(me, x)] = LK_DIALING; api.sigAsked(L, me, x); }
   };
   // C++: mesh_link.inc:linkHeld
   const linkHeld = (x) => {
@@ -907,6 +917,7 @@ function install(fab) {
   api.linkDark = (id) => { linkCloseAll(id, false, 'dark'); };
 
   // ---- plug ---------------------------------------------------------------------------------------------------------
+  api.EV_SIGO = EV_SIGO; api.EV_SIGA = EV_SIGA; api.pathOk = api.pathOk || pathOk; api.radioOff = api.radioOff || radioOff; api.ldraw = api.ldraw || ldraw;
   fab.link = api;
   fab.plug({
     linkTick, linkSchedule, linkOpenFor, linkFind, closeFrom, linkBlackhole, linkOnLeave, crashTransport, linkReset, closedDrop,

@@ -113,7 +113,10 @@ const copySrcStart = desktop.indexOf('function pinHeadCopy(');
 const copySrcEnd = desktop.indexOf('function paintPinHead(');
 const copySrc = copySrcStart > 0 && copySrcEnd > copySrcStart ? desktop.slice(copySrcStart, copySrcEnd) : '';
 check('lift pinHeadCopy', copySrc.indexOf('function pinHeadCopy') === 0);
-const pinHeadCopy = new Function('const EDGE = "edge";\n' + copySrc + '\nreturn pinHeadCopy;')();
+// The header's words come from the settings catalog (ST = GifOS.i18n.t); the English catalog stands in here.
+const settingsCat = JSON.parse(fs.readFileSync(path.join(root, 'i18n', 'en', 'settings.json'), 'utf8'));
+const ST = (k, p) => String(settingsCat[k] || k).replace(/\{(\w+)\}/g, (_, n) => (p && p[n] != null ? p[n] : ''));
+const pinHeadCopy = new Function('ST', 'const EDGE = "edge";\n' + copySrc + '\nreturn pinHeadCopy;')(ST);
 const edge = pinHeadCopy('edge');
 const old = pinHeadCopy('0.9.12');
 check('edge header says pinned to edge', edge && edge.label === 'Pinned: edge' && edge.action === 'Back to current release', JSON.stringify(edge));

@@ -12,17 +12,20 @@
   'use strict';
   const GifOS = root.GifOS = root.GifOS || {};
 
+  // The room's C (topo.js): a constant that reads C has one value per C (2, 3, 4, 5).
+  const roomC = () => (GifOS.meshTopo || require('./topo.js')).C;
+  const byC = (vs) => vs[roomC() - 2];
   const consts = Object.freeze({
     RCH_MAX: 4194304,   // C++: mesh_rcheap.inc:RCH_MAX  (1<<22)
     H_INIT: 2166136261,   // C++: mesh.cpp:H_INIT  (2166136261u)
     K_HAND: 8,   // C++: mesh.cpp:K_HAND  (LAW_K_HAND)
-    K_STAGE: 10,   // C++: mesh.cpp:K_STAGE  (LAW_K_STAGE_PER_C*C)
+    get K_STAGE() { return byC([4,6,8,10]); },   // C++: mesh.cpp:K_STAGE  (LAW_K_STAGE_PER_C*C)
     K_APP: 3,   // C++: mesh.cpp:K_APP  (LAW_K_APP)
     K_VOTE: 16,   // C++: mesh.cpp:K_VOTE  (LAW_K_VOTE)
-    STAGE_CAP: 5,   // C++: mesh.cpp:STAGE_CAP  (LAW_STAGE_CAP)
+    get STAGE_CAP() { return byC([2,3,4,5]); },   // C++: mesh.cpp:STAGE_CAP  (LAW_STAGE_CAP_PER_C*C)
     TALK_ON: 4,   // C++: mesh.cpp:TALK_ON  (LAW_TALK_ON)
     TALK_HOLD: 10,   // C++: mesh.cpp:TALK_HOLD  (LAW_TALK_HOLD)
-    K_TALK: 5,   // C++: mesh.cpp:K_TALK  (STAGE_CAP)
+    get K_TALK() { return byC([2,3,4,5]); },   // C++: mesh.cpp:K_TALK  (STAGE_CAP)
     GA_TAG: 41,   // C++: mesh.cpp:GA_TAG
     L10_NEW_WAIT: 16,   // C++: mesh.cpp:L10_NEW_WAIT  (LAW_L10_NEW_WAIT)
     L10_EARLY_GAP: 2,   // C++: mesh.cpp:L10_EARLY_GAP  (LAW_L10_EARLY_GAP)
@@ -113,6 +116,8 @@
     L7_HOLD: 24,   // C++: mesh.cpp:L7_HOLD  (LAW_L7_HOLD)
     L5_SETTLE: 16,   // C++: mesh.cpp:L5_SETTLE  (LAW_L5_SETTLE)
     L5_PERIOD: 8,   // C++: mesh.cpp:L5_PERIOD  (LAW_L5_PERIOD)
+    L4_ENTRY_N: 2,   // C++: mesh.cpp:L4_ENTRY_N  (LAW_L4_ENTRY_N)
+    L4_ENTRY_T: 16,   // C++: mesh.cpp:L4_ENTRY_T  (LAW_L4_ENTRY_T)
     L29_BUD_D: 60,   // C++: mesh.cpp:L29_BUD_D  (LAW_L29_BUD_D)
     L29_BUD_M: 40,   // C++: mesh.cpp:L29_BUD_M  (LAW_L29_BUD_M)
     L29_HOT: 2,   // C++: mesh.cpp:L29_HOT  (LAW_L29_HOT)
@@ -270,7 +275,6 @@
     PROBEON: true,   // C++: mesh.cpp:PROBEON
     SPREAD: true,   // C++: mesh.cpp:SPREAD
     SPREAD_MINDEPTH: 4,   // C++: mesh.cpp:SPREAD_MINDEPTH
-    STAGEUP: 0,   // C++: mesh.cpp:STAGEUP
     DIGEST: true,   // C++: mesh.cpp:DIGEST
     L10_BUCKET: true,   // C++: mesh.cpp:L10_BUCKET
     L10_SPAM: -1,   // C++: mesh.cpp:L10_SPAM
@@ -505,6 +509,9 @@
     HM_FPSSEAT: -1,   // C++: mesh_hostile.inc:HM_FPSSEAT
     HM_SHOWNMAX: 0,   // C++: mesh_hostile.inc:HM_SHOWNMAX
     HM_RELAY: 0,   // C++: mesh_hostile.inc:HM_RELAY
+    HM_STEAL_TRY: 0,   // C++: mesh_hostile.inc:HM_STEAL_TRY
+    HM_STEAL_SEEN: 0,   // C++: mesh_hostile.inc:HM_STEAL_SEEN
+    HM_STEAL_NAMED: 0,   // C++: mesh_hostile.inc:HM_STEAL_NAMED
     C7FORGE_ID: -1,   // C++: mesh_c7proof_fab.inc:C7FORGE_ID
     L18R_REACH: 0,   // C++: mesh_l18.inc:L18R_REACH
     L18R_UNREACH: 0,   // C++: mesh_l18.inc:L18R_UNREACH
@@ -605,6 +612,7 @@
     H_FUZZ: 256,   // C++: mesh_hostile.inc:H_FUZZ
     H_REFLECT: 512,   // C++: mesh_hostile.inc:H_REFLECT
     H_BIG: 1024,   // C++: mesh_hostile.inc:H_BIG
+    H_STEAL: 16384,   // C++: mesh_hostile.inc:H_STEAL
     LW_ENTRY: 1,   // C++: mesh_linkset_fab.inc:LW_ENTRY
     LW_ROLE: 2,   // C++: mesh_linkset_fab.inc:LW_ROLE
     LW_CALL: 4,   // C++: mesh_linkset_fab.inc:LW_CALL

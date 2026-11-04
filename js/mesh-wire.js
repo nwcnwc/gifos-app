@@ -80,6 +80,7 @@
     FINDLEAF: { by: 'fo', flag: 'fo', only: ['fo', 'foAt', 'hole'] },   // the decider's order (L25.7); ttl, nbrs, tag change down the cascade
     RECLAIM: { by: 'id', flag: 't' },   // L3.10: always claimed: the signature under m.id is the proof of identity (the seat's tok is the sim's stand-in, anyone can compute it)
   };
+  const WIRE_VERSION = '0.9.25';   // sent as ?pv= on every relay socket (makeUrl): the relay's flag-day floor
   const FILL_WINDOW_MS = 10 * 60 * 1000;   // mesh-identity.js: a signature's time must lie this close to mine
   const REPLAY_MS = 30000;   // the seat's own goodbye window: 60 ticks (recv-seated.js)
   const BY_ID = { by: 'id' };   // a type no seat signs today: a claim on it still has to verify as m.id's whole frame
@@ -161,7 +162,7 @@
   //                   on HOME for the pick-one UI
   //   onGossip(src,m,ageMs) room-wide app traffic delivery (exact-once); ageMs = time held by relays
   //   onRelayMsg(m)   every relay frame the wire does not consume — 'whoami',
-  //                   'pw', 'votes', 'joined', and 'peer' frames of the
+  //                   'joined', 'greeter-gone', 'error', and 'peer' frames of the
   //                   law's shape (boot / ice / name / password, one fixed
   //                   size; the rest are refused here) — so the app keeps its
   //                   existing handlers while the wire OWNS the one socket.
@@ -292,10 +293,12 @@
     const ipProofFor = () => (identity && net.edSign
       ? net.edSign(identity.priv, JSON.stringify({ v: 1, act: 'ipatt', sid: opts.sid, peer: identity.peerId })).then((s) => { ipp = s || ''; }, () => {})
       : Promise.resolve());
+    // pv: the page's wire version. 0.9.25 was a flag day: the relay refuses a page that does not name
+    // 0.9.25 or newer with 4010, which every older page shows as "reload to update" and stops knocking.
     const makeUrl = () => {
       const extra = opts.urlParams ? String(opts.urlParams() || '') : '';
       return relayBase + '/s/' + opts.sid
-        + '?role=mesh&token=' + encodeURIComponent(opts.tok || '')
+        + '?role=mesh&pv=' + WIRE_VERSION + '&token=' + encodeURIComponent(opts.tok || '')
         + '&peer=' + encodeURIComponent(peer)
         + '&gk=' + encodeURIComponent(gkStr())
         + (rs ? '&rs=' + rs : '')
@@ -347,6 +350,43 @@
     const env = { TICK: 0 };   // legacy face (stats, debug): TICK mirrors the seat world's
     function keepSig(core, blk) { sigOf.delete(core); sigOf.set(core, blk); if (sigOf.size > 1024) sigOf.delete(sigOf.keys().next().value); }
     function clearClaim(f) { f.sig = false; f.fsig = false; f.fo = -1; }
+    // L25.7 A MOVE'S ORDER (the sim's L25ORD is one registry every seat reads; a page's holds only its own): the mover
+    // shows the decider's signature on (fo, foAt, hole) beside its frame, and a good one enters the receiver's registry.
+    // Without it a row-mate names a healed head on its bare word, and L23 closes that link every 26 ticks.
+    const ordSig = new Map();
+    function keepOrd(core, blk) { ordSig.delete(core); ordSig.set(core, blk); if (ordSig.size > 64) ordSig.delete(ordSig.keys().next().value); }
+    // L25.7 THE ORDER NAMES ITS MOVER. The decider's signature covers (fo, foAt, hole) and nothing more, so on its own it
+    // is a bearer token: every hop of the cascade and every neighbour a mover shows it to could move into the hole with
+    // it. So each seat that sends the order on also signs (order, the seat it sends it to), and that chain of namings
+    // rides with the order down the cascade. A mover shows the chain ending at itself; a receiver enters the order in its
+    // registry for that mover alone. A page that only overheard the order holds no naming of itself and cannot use it.
+    const ordChain = new Map();   // order core -> the namings that came with the order (the last names this page)
+    function keepChain(core, ch) { ordChain.delete(core); ordChain.set(core, ch); if (ordChain.size > 64) ordChain.delete(ordChain.keys().next().value); }
+    const nameCore = (core, to) => core + '|to=' + to;
+    function nameLink(core, to) { const ts = Date.now(); return net.edSign(identity.priv, JSON.stringify({ v: 3, c: nameCore(core, to), ts })).then((sig) => ({ ts, sig, pub: identity.pubB64, to })); }
+    async function signerOf(pub) { let who = pubPeer.get(pub); if (!who) { who = 'k_' + (await net.keyId(pub)).slice(0, 40); pubPeer.set(pub, who); if (pubPeer.size > 4096) pubPeer.delete(pubPeer.keys().next().value); } return who; }
+    // sound: link 0 signed by the decider `fo`, each next link by the seat the one before named, the last naming `end`
+    async function chainOk(core, ch, fo, end) {
+      if (!Array.isArray(ch) || !ch.length || ch.length > 16) return false;
+      let prev = fo; const now = Date.now();
+      for (const l of ch) {
+        if (!l || typeof l.sig !== 'string' || typeof l.pub !== 'string' || !Number.isFinite(l.ts) || !Number.isFinite(l.to) || l.to < 0 || Math.abs(l.ts - now) > FILL_WINDOW_MS) return false;
+        if (layer.ids.nid(await signerOf(l.pub)) !== prev || !await net.edVerify(l.pub, l.sig, JSON.stringify({ v: 3, c: nameCore(core, l.to), ts: l.ts }))) return false;
+        prev = l.to;
+      }
+      return prev === end;
+    }
+    function orderCore(msgM, m) {
+      if (m.mpK !== 1 || m.mpBy < 0 || m.mpAt < 0 || !m.ck) return null;
+      const o = msgM.newMsg('FINDLEAF'); o.fo = m.mpBy; o.foAt = m.mpAt; o.hole = GifOS.meshTopo.unckey(m.ck); return coreOf(msgM, o);
+    }
+    async function takeOrder(msgM, f, b, ch) {
+      const core = orderCore(msgM, f); if (!core || !b || typeof b.sig !== 'string' || typeof b.pub !== 'string' || !Number.isFinite(b.ts) || Math.abs(b.ts - Date.now()) > FILL_WINDOW_MS) return;
+      if (layer.ids.nid(await signerOf(b.pub)) !== f.mpBy || !await net.edVerify(b.pub, b.sig, JSON.stringify({ v: 3, c: core, ts: b.ts }))) return;
+      if (!await chainOk(core, ch, f.mpBy, f.id)) return;   // the order reached this mover by name, or it is not its order
+      keepOrd(core, Promise.resolve({ ts: b.ts, sig: b.sig, pub: b.pub }));
+      raw.w.L25ORD.add(GifOS.meshSeat.l25OrdKey(f.mpBy, f.ck, f.mpAt, f.id));
+    }
     function sendFrameTo(to, m, dir, sponsored) {   // a seat frame for peer `to`: encode, sign if mine, keep per-peer order (sponsored: it leaves in a friend's envelope, FHOP)
       const msgM = GifOS.meshMsg;
       // My goodbye goes on the pre-signed signature, now: this page may not live to finish a signature, and
@@ -366,7 +406,7 @@
         if (!blk || blk.tick !== raw.TICK) {
           const ts = Date.now(), rc = relayCoreOf(msgM, m), sign = (c) => net.edSign(identity.priv, JSON.stringify({ v: 3, c, ts }));
           blk = Promise.all([sign(core), rc ? sign(rc) : null]).then(([sig, r]) => { const b = { ts, sig, pub: identity.pubB64 }; if (r) b.r = r; return b; });
-          blk.tick = raw.TICK; keepSig(core, blk);
+          blk.tick = raw.TICK; keepSig(core, blk); if (m.t === 'FINDLEAF') keepOrd(core, blk);
         }
       } else if (claim >= 0) {
         blk = sigOf.get(core) || null;
@@ -378,10 +418,18 @@
         }
       }
       const pd = layer.sideOut(to, m);   // the page's display digest beside the seat's frame (layer.js; outside f and its signature)
+      const oc = orderCore(msgM, m), ordP = oc ? ordSig.get(oc) : null;
+      let ocP = oc ? (ordChain.get(oc) || null) : null;   // a mover's claim: the namings that brought it the order
+      if (m.t === 'FINDLEAF' && m.fo >= 0 && claim >= 0 && identity) {   // the order on its way: name the seat it goes to
+        const me = layer.ids.nid(peer), dst = m.routing && m.rfinal >= 0 ? m.rfinal : layer.ids.nid(to), had = ordChain.get(core);
+        if (m.fo === me) ocP = nameLink(core, dst).then((l) => [l]);
+        else if (had && had[had.length - 1].to === me) ocP = nameLink(core, dst).then((l) => had.concat([l]));
+        else ocP = had || null;   // (a router: the chain passes as it came)
+      }
       const prev = outq.get(to) || Promise.resolve();
       // An envelope's origin is its sender's word (any friend could write it): a frame I did not sign as its author carries my word that I am its origin.
       const os = (sponsored && claim !== layer.ids.nid(peer) && identity) ? originSign(to, f) : null;
-      const q = prev.then(() => blk).then((s4) => Promise.resolve(os).then((o) => { if (stopped && m.t !== 'LEAVE') return; const out = { t: 'MW2', f }; if (s4) out.s4 = s4; if (o) out.o = o; if (dir && typeof dir === 'object') out.dir = dir; if (pd) out.pd = pd; deliver(to, out); })).catch(() => {});
+      const q = prev.then(() => blk).then((s4) => Promise.all([os, ordP, ocP]).then(([o, ord, ocl]) => { if (stopped && m.t !== 'LEAVE') return; const out = { t: 'MW2', f }; if (s4) out.s4 = s4; if (o) out.o = o; if (ord) out.ord = ord; if (ocl) out.oc = ocl; if (dir && typeof dir === 'object') out.dir = dir; if (pd) out.pd = pd; deliver(to, out); })).catch(() => {});
       outq.set(to, q); q.then(() => { if (outq.get(to) === q) outq.delete(to); });
       return true;
     }
@@ -561,7 +609,7 @@
                 // test, is the forwarder's word.) No word from this signer yet: judge by the room's clocks as I have verified them;
                 // a signer whose clock runs far behind the room loses only its relayed goodbye.
                 ok = false; why = 'STALE';
-              } else if (isDirect ? fillPins.seen(s4.sig) : fillPins.seenRelayed(s4.sig)) {
+              } else if (isDirect ? fillPins.seen(s4.sig) : fillPins.seenRelayed(f.t === 'FIND' ? s4.sig + '|' + (f.th | 0) + '|' + (f.sh | 0) : s4.sig)) {   // an L4 or L7.5 hop may pass one seat twice: its hop count is what differs
                 // An exact copy. A forwarded copy has its own set, so one that wins the race never burns the claimant's own frame
                 // at the link behind it, and that frame still does its relaying (each signature: once direct, once forwarded).
                 ok = false; why = 'SEEN';
@@ -572,6 +620,13 @@
               layer.ids.learn(who);
               if (claim !== layer.ids.nid(String(via)) && opts.trace) { try { opts.trace('{"t":' + (env.TICK | 0) + ',"s":' + layer.ids.nid(peer) + ',"e":"SIG-FWD","c":null,"d":"mt=' + String(f.t).replace(/[^A-Z0-9_]/g, '') + ' claim=' + claim + ' rl=' + (f.rl ? 1 : 0) + '"}'); } catch (e) {} }   // DEBUG trace sink only: a forwarded claim that verified
               keepSig(core, Promise.resolve(s4));
+              if (f.t === 'FINDLEAF' && f.fo >= 0) {
+                const me = layer.ids.nid(peer);
+                if (f.routing && f.rfinal >= 0 && f.rfinal !== me) { if (Array.isArray(m.oc) && !ordChain.has(core)) keepChain(core, m.oc); keepOrd(core, Promise.resolve(s4)); }   // a router: not mine to read
+                else if (await chainOk(core, m.oc, f.fo, me)) { keepChain(core, m.oc); keepOrd(core, Promise.resolve(s4)); raw.w.L25ORD.add(GifOS.meshSeat.l25OrdKey(f.fo, GifOS.meshTopo.ckey(f.hole), f.foAt, me)); }
+                else { ok = false; why = 'ORDTO'; if (opts.trace) { try { opts.trace('{"t":' + (env.TICK | 0) + ',"s":' + me + ',"e":"SIG-ORDTO","c":null,"d":"fo=' + f.fo + ' via=' + layer.ids.nid(String(via)) + '"}'); } catch (e) {} } }   // an order nobody sent me by name: unsigned to my seat (L25.7)
+              }
+              if (m.ord && f.mpK === 1) await takeOrder(msgM, f, m.ord, m.oc);
               const rc = relayCoreOf(msgM, f);   // the author's word for a relay of this frame; a bad one fails at the next hop, on the author's account
               if (rc && typeof s4.r === 'string') keepSig(rc, Promise.resolve({ ts: s4.ts, sig: s4.r, pub: s4.pub }));
             }
