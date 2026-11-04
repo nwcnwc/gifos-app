@@ -698,6 +698,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #stagefeed .rowtile video { object-fit: contain; }
   .rowtile .stallnote { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 4px 10px; border-radius: 6px;
     background: rgba(0, 0, 0, .72); color: #fff; font: 600 .85rem/1.3 system-ui, sans-serif; pointer-events: none; white-space: nowrap; }
+  #islandnote { position: fixed; top: 104px; left: 50%; transform: translateX(-50%); z-index: 9000; width: max-content; max-width: 92vw; padding: 8px 14px; border-radius: 8px;
+    background: rgba(24, 24, 28, .94); color: #fff; font: 600 .9rem/1.35 system-ui, sans-serif; text-align: center; pointer-events: none; }
   #massbanner { position: fixed; top: 56px; left: 50%; transform: translateX(-50%); z-index: 9000; max-width: 92vw; padding: 8px 14px; border-radius: 8px;
     background: rgba(24, 24, 28, .94); color: #fff; font: 600 .9rem/1.35 system-ui, sans-serif; text-align: center; pointer-events: none; }
   .rowtile .rlabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 2px 6px;
@@ -17432,7 +17434,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (on) { massBannerEl = document.createElement('div'); massBannerEl.id = 'massbanner'; massBannerEl.setAttribute('role', 'status'); massBannerEl.setAttribute('aria-live', 'polite'); massBannerEl.textContent = uiText('massLeaveBanner', 'Many people just left. Reconnecting the meeting, expect a short delay.'); document.body.appendChild(massBannerEl); }
       else { massBannerEl.remove(); massBannerEl = null; }
     }
-    GifOS.meshMedia.workerClock(1000, () => { try { massBannerTick(); } catch (e) {} });
+    // L8.3: a room that split says so. The seat's own word that islands exist here stays set after a merge, so the note
+    // also wants a greeter of this room that my seat has no cell for: the door list the seat re-asks for (E3) is what ends it.
+    let islandNoteEl = null;
+    function islandNoteTick() {
+      const r = meshNode && meshNode.raw;
+      const on = !!(r && r.hasCoord && r.state === 3 && r.islandSeen() && (() => { const held = new Set(r.occ.values()); return r.lastGreeters.some((g) => g !== r.id && !held.has(g)); })());
+      if (on === !!islandNoteEl) return;
+      if (typeof clog === 'function') clog('island-note ' + (on ? 'on' : 'off'));
+      if (on) { islandNoteEl = document.createElement('div'); islandNoteEl.id = 'islandnote'; islandNoteEl.setAttribute('role', 'status'); islandNoteEl.textContent = uiText('islandLabel', "You're in a separate part of this meeting: some people can't reach your network yet. It joins up by itself when they can."); document.body.appendChild(islandNoteEl); }
+      else { islandNoteEl.remove(); islandNoteEl = null; }
+    }
+    GifOS.meshMedia.workerClock(1000, () => { try { massBannerTick(); } catch (e) {} try { islandNoteTick(); } catch (e) {} });
     // A WEBKIT SENDER THAT NEVER ENCODES. Measured 2026-10-21 (gate-1812
     // diag d1/d5): a WebKit seat's camera track was live and playing on its
     // own tile, seated on the main sender of two connected mates, and

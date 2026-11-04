@@ -678,5 +678,6 @@
   "meet.stYouStoppedTheSharedApp": "🧩 Detuviste la app compartida para todos.",
   "meet.stOnlyThisRoomSAdmins2": "🛡 Solo los anfitriones de esta sala pueden detener la app compartida.",
   "meet.mediaReconnecting": "⟳ Reconectando…",
-  "meet.massLeaveBanner": "Muchas personas acaban de salir. Reconectando la reunión; espera un momento."
+  "meet.massLeaveBanner": "Muchas personas acaban de salir. Reconectando la reunión; espera un momento.",
+  "meet.islandLabel": "Estás en una parte separada de esta reunión: algunas personas aún no pueden llegar a tu red. Se unirá sola cuando puedan."
 }
