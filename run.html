@@ -24514,8 +24514,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const p = peers.get(pri.via); if (!p || !p.pc || !pri.stream) return;
       rowFeedBusy = true;
       try {
-        let b = 0; for (const r of p.pc.getReceivers()) { if (!r.track || !pri.stream.getTracks().includes(r.track)) continue; (await r.getStats()).forEach((x) => { if (x.type === 'inbound-rtp') b += x.bytesReceived || 0; }); }
+        let b = 0, n = 0; for (const r of p.pc.getReceivers()) { if (!r.track || !pri.stream.getTracks().includes(r.track)) continue; n++; (await r.getStats()).forEach((x) => { if (x.type === 'inbound-rtp') b += x.bytesReceived || 0; }); }
         const now = Date.now();
+        if (!n) { rowFeed.via = null; return; }   // no receiver carries this claim's tracks (a rebound container): nothing to judge, and no silence
         if (rowFeed.via !== pri.via || rowFeed.sid !== pri.streamId || b !== rowFeed.bytes) { rowFeed.via = pri.via; rowFeed.sid = pri.streamId; rowFeed.bytes = b; rowFeed.at = now; }
         else if (now - rowFeed.at >= ROW_SILENT_MS) schedReconcile();
       } catch (e) {} finally { rowFeedBusy = false; }
@@ -24529,7 +24530,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } else rowHeadOut = null;
       if (!rowHeadOut && pid && !(rowOutSkip.get(pid) > now)) {
         const pri = mosIn.get('sdm'), fb = mosFb.get('sdm');
-        if (pri && pri.via === pid && (pri.deadAt || (rowFeed.via === pid && rowFeed.at && now - rowFeed.at >= ROW_SILENT_MS))) { rowHeadOut = { pid, tick: s.seatTick, pc: c.pc, r: c.r }; dbgRowHead('out'); if (fb) fb.dark = true; }
+        if (pri && pri.via === pid && (pri.deadAt || (rowFeed.via === pid && rowFeed.at && now - rowFeed.at >= ROW_SILENT_MS))) { rowHeadOut = { pid, tick: s.seatTick, pc: c.pc, r: c.r }; dbgRowHead(pri.deadAt ? 'out:gone' : 'out:silent'); if (fb) fb.dark = true; }
       }
       const out = !!rowHeadOut || s.headGoneView;
       if (rowWasOut && !out) rowHoldUntil = now + MOS_SETTLE + 2000;   // the heir's copy stays while the row fails back
