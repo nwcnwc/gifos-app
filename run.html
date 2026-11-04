@@ -25044,11 +25044,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const jk = job.key + '>' + job.to; if (pipeJobs.has(jk) && MPipe) { try { MPipe.pausePipe(jk, !on); } catch (e) {} } // a piped picture stops at the worker too
       }
     }
-    // Is my claim on this stage feed one I may relay? Not once it is gone (no announcer, no
-    // stream: deadAt). A dark pipe is a blip until then: its copies keep their place.
+    // Is my claim on this stage feed one I may relay or count as a feed? Not while it is dark or
+    // gone. A dark claim that kept announcing let a whole Section 1 row keep "live" claims on a
+    // dead stager, with no media at all, for as long as the fold listed it (room v3ring).
     function stgLost(rk) {
       const f = mosIn.get(rk); if (!f) return true;
-      return !!f.deadAt;
+      const fb = mosFb.get(rk);
+      return !!(f.deadAt || (fb && fb.dark));
     }
     function prefCand(rk, cand) {
       const c = meshCoord(); if (!c) return null;
