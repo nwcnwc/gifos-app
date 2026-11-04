@@ -6678,8 +6678,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let pulseHalt = false; // test hook: simulates a throttled phone's silent pulse gaps
     // My status pulse as one frame: what every beat carries, and what a pair
     // gets the moment its channel opens (wireDc onopen).
-    // My network's kind for friend-hop's typing (a seat tells a blip from an unreachable pair), in the seat's GT_ words. The probe knows open or blocked; -1: not known yet.
-    const natWord = () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' && directMeasured ? E.GT_BLOCKED : directPath === 'ok' ? E.GT_PUBLIC : -1; };
+    // My network's kind for friend-hop's typing (a seat tells a blip from an unreachable pair), in the seat's GT_ words: open, blocked, or
+    // strict (an endpoint-dependent mapping, which pairs badly with another strict seat). -1: not known yet.
+    const natWord = () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' && directMeasured ? E.GT_BLOCKED : directPath === 'strict' ? E.GT_SYM : directPath === 'ok' ? E.GT_PUBLIC : -1; };
     const statusPayload = () => ({ kind: 'status', s: myStatus, conns: myConns(), nat: natWord(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined });
     function broadcastStatus(answer) {
       if (pulseHalt && !answer) return; // the halt models a throttled clock; an answer to a newcomer is driven by its frame, not the clock
