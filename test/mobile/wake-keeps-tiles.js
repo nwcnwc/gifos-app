@@ -8,7 +8,7 @@
  * right after the tap and once the buttons settle, in Fit and in Scroll,
  * with one guest or twelve, and with you on the stage.
  *
- * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/wake-keeps-tiles.js
+ * Gate: NODE_PATH=~/gifos-swarm/node_modules node test/mobile/wake-keeps-tiles.js
  */
 const fs = require('fs');
 const path = require('path');

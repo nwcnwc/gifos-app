@@ -195,7 +195,7 @@ Running 30 tests using 1 worker
       124 |   await expect(page.locator('#help-modal')).toBeVisible();
       125 |   await expect(page.locator('#apphelp-modal')).toBeHidden();
       126 |   await page.click('#help-close');
-        at /home/nathan/rel23-gate-1017/wt/hdr-invite/test/desktop/os-header.spec.js:123:14
+        at ~/rel23-gate-1017/wt/hdr-invite/test/desktop/os-header.spec.js:123:14
 
     Error Context: test-results/os-header-Help-in-a-meetin-97381-s-own-help-and-Alt-does-too-chromium/error-context.md
 

@@ -7,7 +7,7 @@
  * and Blur for all, which stay 44px targets on the tile. A "✋ hand raised"
  * chip reads in full too, not squeezed between the two buttons.
  *
- * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/portrait-tile-names.js
+ * Gate: NODE_PATH=~/gifos-swarm/node_modules node test/mobile/portrait-tile-names.js
  */
 const fs = require('fs');
 const path = require('path');

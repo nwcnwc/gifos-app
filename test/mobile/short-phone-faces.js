@@ -14,7 +14,7 @@
  * "✋ hand raised" and the mute icon; on every whole face the chips, the
  * name and Full screen must stay clear of each other.
  *
- * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/short-phone-faces.js
+ * Gate: NODE_PATH=~/gifos-swarm/node_modules node test/mobile/short-phone-faces.js
  */
 const fs = require('fs');
 const path = require('path');

@@ -7,7 +7,7 @@
  * renames "iPhone (3)" to "Dana, Finance" hits the same thing.
  * A reaction names people the way their tile and People do.
  *
- * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/chat-react-renamed.js
+ * Gate: NODE_PATH=~/gifos-swarm/node_modules node test/mobile/chat-react-renamed.js
  */
 const fs = require('fs');
 const path = require('path');

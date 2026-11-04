@@ -36,7 +36,7 @@ PASS the posted body is 16 kHz float PCM
 EXIT:0
 
 # other gates that touch captions, the meeting page, or run.html
-# historical suites live in /home/nathan/h0922/gifos/test and were run read-only
+# historical suites live in ~/h0922/gifos/test and were run read-only
 # with readFileSync of gifos-app/run.html redirected at this worktree. None were edited.
 
 ## mu-whisper-speech.js EXIT:1
