@@ -99,9 +99,9 @@
   const NOSOCK_WIN = 40;      // ticks: a relay nosock and the seat's ask (fabricNoSock) pair up within this window
   const REF_STALE = 20;       // ticks: an incomplete referral list over the relay is dropped after this
   const TRACE_RING = 20000;   // DEBUG trace lines kept per page
-  // the page's death observations, as the sim's whys (hard: dc-close, pc-closed, relay-leave; the rest quiet)
+  // the page's death observations, as the sim's whys (hard: dc-close, pc-closed; the rest quiet)
   const WHY = {
-    'close': 'dc-close', 'dc-close': 'dc-close', 'pc-closed': 'pc-closed', 'relay-leave': 'relay-leave', 'relay-leave-hint': 'relay-leave',
+    'close': 'dc-close', 'dc-close': 'dc-close', 'pc-closed': 'pc-closed',
     'failed-persist': 'failed-persist', 'disconnected-persist': 'disconnected-persist', 'starve': 'starve', 'starve-dead': 'starve', 'starve-noobj': 'starve',
     'dark': 'disconnected-persist', 'wake-dead': 'disconnected-persist',
   };

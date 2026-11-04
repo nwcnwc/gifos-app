@@ -13898,8 +13898,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // 'disconnected' alone is a blip — the ICE-restart path owns it, never this.
     // Debounced per peer + edge-triggered in the mesh: one probe burst per
     // transition, so a flapping link cannot storm.
-    // The relay's word of a closed socket can beat the page's own goodbye on the channel, which still has its signature to clear, and a reload's mark must be read first.
-    function relayLeaveSoon(pid, why) { setTimeout(() => { if (!leaving) onTransportDead(pid, why); }, 800); }
     function onTransportDead(pid, why) {
       if (leaving || bannedOut) return;
       const p = peers.get(pid);
@@ -13923,12 +13921,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (leaving || bannedOut || !peers.has(pid)) return;
           if (starveDebtSince(Date.now() - 20000) > 2000) { setTimeout(recheck, 5000); return; }
           const pr = peers.get(pid);
-          // The relay watched this socket close. The local channel stays
-          // connected until ICE gives up, so treating that as healing dropped
-          // the report and the seat was still held. A peer that only closed
-          // its relay socket answers the probe and keeps the seat.
-          const relaySaw = why.indexOf('relay-leave') !== -1;
-          if (pr && pr.connected && !relaySaw) return;
+          if (pr && pr.connected) return;
           if (pr) pr.tlAt = 0;             // let the real fire through the throttle
           onTransportDead(pid, why + '-awake');
         };
@@ -17361,26 +17354,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (m.peer && m.dev) { devOf[m.peer] = m.dev; devRelay.add(m.peer); }
       }
       else if (m.t === 'peer-leave') {
-        relaySocketed.delete(m.peer); // the relay no longer reaches it (the delta a greeter's full list lives on)
-        const p = peers.get(m.peer); if (p && !p.absentSince) p.absentSince = Date.now() - (ABSENT_GRACE - 4000);
-        // D5: the relay WATCHED this peer's socket die (a transport observation
-        // by the dumb transport plane — a server frame no peer can forge, not
-        // gossip). On a SIGKILLed browser this lands in ~1-2s, long before the
-        // WebRTC stack downgrades the pair to 'failed' (~30s on desktop). It
-        // only STARTS the probe-gated confirm: a peer that merely dropped its
-        // deep socket on purpose (socket lifecycle) answers the probe over the
-        // mesh and keeps its seat — worst case, a spurious probe.
-        relayLeaveSoon(m.peer, 'relay-leave');
-        // D5 HINT (Nathan, 2026-07-28): peer-leave is broadcast-once — a member
-        // whose relay socket is down at that moment misses it and detects a
-        // crashed peer only via starve+probe (~18-24s vs ~7s). So the news
-        // rides my EXISTING open DataChannels, ONE hop, never re-forwarded
-        // (only the relay's first-hand broadcast fans out — no amplification,
-        // no new links, no extra beats). Receivers treat it as a PROBE TRIGGER
-        // and nothing more: a live peer answers its probe and keeps its seat,
-        // so a lying node can cause at most one spurious probe per peer per
-        // tlAt window — never an eviction.
-        for (const p of peers.values()) if (p.id !== m.peer && p.dc && p.dc.readyState === 'open') dcSend(p, { k: 'tlhint', peer: m.peer });
+        // The relay introduces and that is all: a closed socket says who it can reach for the door list, nothing about a person. Death comes from the pc, the dc and silence, as in the sim.
+        relaySocketed.delete(m.peer);
       }
       else if (m.t === 'error') {
         pwLog('relay-error: ' + String(m.error || '?').slice(0, 60));
@@ -20908,12 +20883,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           });
         }
       } else if (m.k === 'tlhint') {
-        // D5 HINT (see the peer-leave sender): a neighbour with a live relay
-        // socket heard the relay watch m.peer's socket die. PROBE TRIGGER
-        // ONLY — never re-forwarded, never about myself, only for a peer I
-        // actually hold a link to (no probing strangers on hearsay).
-        if (typeof clog === 'function') clog('tlhint ' + String(m.peer || '?').slice(0, 6) + ' from ' + String(p.id || '?').slice(0, 6) + (peers.has(m.peer) ? '' : ' (no link — ignored)'));
-        if (m.peer && m.peer !== myId && peers.has(m.peer)) relayLeaveSoon(m.peer, 'relay-leave-hint');
+        // older pages still spread the relay's peer-leave; it is no evidence of a death (see peer-leave)
       } else if (m.k === 'fmeta') {
         // Never re-broadcast to the ROOM (see chat) — but handed on, once, over
         // my OWN links: a file's bytes travel link by link (P0/P1 only), so

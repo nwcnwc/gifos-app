@@ -143,8 +143,8 @@
       // am asking, a door refusal.
       relayFrame: todo('relayFrame'),
       // A transport event from the page's watchdogs and channel callbacks:
-      // open, goodbye, close, failed-persist, disconnected-persist, starve,
-      // relay-leave. Hard: an unexplained close; quiet: the rest. One loss
+      // open, goodbye, close, failed-persist, disconnected-persist, starve.
+      // Hard: an unexplained close; quiet: the rest. One loss
       // per peer per debounce window.
       transport: todo('transport'),
       // A media or app use of a connection the seat does not name (L28): the
