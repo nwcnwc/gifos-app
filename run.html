@@ -25043,11 +25043,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const jk = job.key + '>' + job.to; if (pipeJobs.has(jk) && MPipe) { try { MPipe.pausePipe(jk, !on); } catch (e) {} } // a piped picture stops at the worker too
       }
     }
-    // Is my claim on this stage feed one I may relay? It is not while it is dark or gone.
+    // Is my claim on this stage feed one I may relay? Not once it is gone (no announcer, no
+    // stream: deadAt). A dark pipe is a blip until then: its copies keep their place.
     function stgLost(rk) {
       const f = mosIn.get(rk); if (!f) return true;
-      const fb = mosFb.get(rk);
-      return !!(f.deadAt || (fb && fb.dark));
+      return !!f.deadAt;
     }
     function prefCand(rk, cand) {
       const c = meshCoord(); if (!c) return null;
@@ -25272,7 +25272,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (pri && !inCand(pri) && pri.deadAt && now - pri.deadAt > MOS_GRACE) { dropMosIn(rk); pri = null; repaintRedun(rk, null); }
       // A copy flows only while its sender holds the feed (stgCarry).
       if (rk.indexOf('stg:') === 0) {
-        const lost = !!(pri && (fb.dark || !inCand(pri)));
+        const lost = !!(pri && !inCand(pri));
         if (lost || fb.held) stgCarry(rk, !lost, pri);
         fb.held = lost;
       }
