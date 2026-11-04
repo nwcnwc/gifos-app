@@ -1,5 +1,5 @@
 'use strict';
-// e2fold-fab.js: L48's levers and probe (C++: mesh_e2fold_fab.inc): `e2cut pick [first]|sever <T>|half|open|crash|hand|stage|probe`.
+// e2fold-fab.js: L48's levers and probe (C++: mesh_e2fold_fab.inc): `e2cut pick [first]|sever <T>|half|open|crash|hand|stage|probe|forge`.
 // A measurement and its cuts; the picked seats live in the levers E2C_* (the sim's file statics). Harness code: never shipped.
 const path = require('path');
 const M = path.join(__dirname, '..', '..', '..', 'js', 'mesh');
@@ -59,7 +59,12 @@ function install(fab) {
       let hs = 0; if (lv.E2C_HEIR >= 0 && alive[lv.E2C_HEIR] && seats[lv.E2C_HEIR].state === 3 && seats[lv.E2C_HEIR].hasCoord) { const hc = seats[lv.E2C_HEIR].coord, rr = unck(lv.E2C_ROW); hs = (hc.pc === rr.pc && hc.r === rr.r) ? 1 : 2; }   // the heir: 1 seated in the picked row, 2 seated elsewhere, 0 not seated
       P('E2PROBE t=%lld cut=%lld seated=%d obs=%d min=%d max=%d exact=%d under=%d over=%d s1=%d s1exact=%d hand=%d/%d stage=%d/%d heir=%d\n',
         TICK, lv.E2C_AT >= 0 ? TICK - lv.E2C_AT : -1, seated, obs, obs ? mn : -1, mx, ex, un, ov, s1, s1ex, lv.E2C_HAND >= 0 ? hn : -1, obs, lv.E2C_STAGE >= 0 ? sn : -1, obs, hs);
-    } else P('ERR e2cut pick|sever <T>|half|open|crash|hand|stage|probe\n');
+    } else if (sub === 'forge') {
+      if (lv.E2C_HEAD < 0) { P('ERR e2cut: pick first\n'); return; }   // a Section-1 seat outside the owner's row claims the picked row over E2 in its report
+      const oc = seats[lv.E2C_OWN].coord; let f = -1;
+      for (let q = 0; q < lv.nextId; q++) { if (!alive[q] || seats[q].state !== 3 || !seats[q].hasCoord) continue; const c = seats[q].coord; if (c.pc !== 0 || (c.pc === oc.pc && c.r === oc.r)) continue; f = q; break; }
+      if (f < 0) { P('E2FORGE none\n'); return; } lv.L48_FORGER = f; lv.L48_FORGE_K = lv.E2C_ROW; lv.L48_FORGE_BY = lv.E2C_HEAD; P('E2FORGE forger=%d at=%s\n', f, coordStr(seats[f].coord));
+    } else P('ERR e2cut pick|sever <T>|half|open|crash|hand|stage|probe|forge\n');
   }
   fab.plug({ e2cutLever });
 }

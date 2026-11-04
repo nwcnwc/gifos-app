@@ -385,6 +385,9 @@
     L16BO_BASE: 2,   // C++: mesh.cpp:L16BO_BASE
     L16BO_CAP: 8,   // C++: mesh.cpp:L16BO_CAP
     EVIL_RECLAIM: false,   // C++: mesh.cpp:EVIL_RECLAIM
+    L48_FORGER: -1,   // C++: mesh_e2fold.inc:L48_FORGER
+    L48_FORGE_K: 0,   // C++: mesh_e2fold.inc:L48_FORGE_K
+    L48_FORGE_BY: -1,   // C++: mesh_e2fold.inc:L48_FORGE_BY
     PN_SEQ: 0,   // C++: mesh_seat.inc:PN_SEQ
     RSEQ: 0,   // C++: mesh_seat.inc:RSEQ
     L16HEDGE: 4,   // C++: mesh_island.inc:L16HEDGE

@@ -301,6 +301,13 @@
       else if (this.lie === 2) { o.n += 1000; }
       // G9. Mode 3 SUPPRESSES the lists; mode 4 INFLATES every vote and adds a fabricated target.
       else if (this.lie === 3) { o.hands.length = 0; o.stage.length = 0; o.talk.length = 0; o.apps.length = 0; o.votes.length = 0; o.handN = 0; o.awayN = 0; }
+      // REVIEW lever: mode 5 is mode 3 on my fold plus L48's blind (every child row of every input I folded named a resolved
+      // winner under a stamp that is not the author's); mode 6 the same strip with no winners named (the control).
+      else if ((this.lie === 5 || this.lie === 6) && (d === this.rowDig || d === this.myDig)) {
+        o.hands.length = 0; o.stage.length = 0; o.talk.length = 0; o.apps.length = 0; o.votes.length = 0; o.handN = 0; o.awayN = 0;
+        if (this.lie === 5) { o.rows.length = 0; const blind = (inn) => { for (const x of inn.rows) if (x.e2 !== 2) { const w = msg.newDRow(); w.k = x.k; w.by = x.by; w.at = x.at + 1; w.e2 = 2; o.rows.push(w); } };
+          blind(this.downUsed); for (const e of this.rowUsed.values()) blind(e); }
+      }
       else if (this.lie === 4) { for (const v of o.votes) { v.up += 1000; v.dn += 1000; } o.votes.push({ tgt: 1 << 29, up: 1000, dn: 1000 }); }
       if (this.kEvil === 4 && this.kEvilT >= 0) {
         let hit = false; for (const v of o.kick) if (v.tgt === this.kEvilT) { v.up += 1000; hit = true; } if (!hit) o.kick.push({ tgt: this.kEvilT, up: 1000, dn: 0 });   // L27 hostile aggregator: inflates the vote-off of kEvilT
@@ -430,12 +437,12 @@
             }
             const won = [];
             if (l48any) {
-              const inp = [{ d: r, age0: this.LT() - this.myDig.rx }];
+              const inp = [{ d: r, age0: this.LT() - this.myDig.rx, ck: ckey(this.coord) }];
               for (let j = 1; j < C; j++) {
                 const rk = ckey({ pc: this.coord.pc, r: this.coord.r, i: j }); const it = this.rowKids.get(rk); if (it === undefined) continue;
-                if (this.LT() - it.rx <= K.DIG_TTL || this.digHeld(rk, it)) { kc[j] = dig.cloneDig(it); inp.push({ d: kc[j], age0: this.LT() - it.rx }); }
+                if (this.LT() - it.rx <= K.DIG_TTL || this.digHeld(rk, it)) { kc[j] = dig.cloneDig(it); inp.push({ d: kc[j], age0: this.LT() - it.rx, ck: rk }); }
               }
-              e2f.l48Resolve(inp, won);
+              e2f.l48Resolve(inp, won, (c) => ckey(c) === ckey(this.coord) || this.occGet(ckey(c)) >= 0);
             }
             r.rows = won; if (l48lone) for (const x of this.myDig.rows) if (x.e2 !== 2) r.rows.push(dig.cloneDRow(x));   // a lone row's rows go on up (L2.2b)
           }
@@ -479,8 +486,8 @@
           }
           if (any) {
             const inp = []; for (const k of ks) { const x = (this.hasCoord && k === ckey(this.coord)) ? this.myDig : this.s1tab.get(k); l48c.set(k, dig.cloneDig(x)); }
-            for (const k of ks) { const x = l48c.get(k); inp.push({ d: x, age0: this.LT() - x.rx }); }
-            const won = []; e2f.l48Resolve(inp, won);
+            for (const k of ks) { const x = l48c.get(k); inp.push({ d: x, age0: this.LT() - x.rx, ck: k }); }
+            const won = []; e2f.l48Resolve(inp, won, (c) => (this.hasCoord && ckey(c) === ckey(this.coord)) || this.occGet(ckey(c)) >= 0);
           }
         }
         const l48d = (k, x) => { if (!l48c.size) return x; const c = l48c.get(k); return c === undefined ? x : c; };

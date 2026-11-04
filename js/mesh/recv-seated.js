@@ -535,7 +535,7 @@
       const ukey = u2RowKey(ckey(row), m.tag === 3);   // key = ckey*2 + variant flag
       const u = ins(this.u2Rows, ukey, () => state.newStruct('U2Row'));
       if (m.e1dn && !u.hot) this.trace('UP2-SERVE', id, this.coord, 'row=%s heir=%d%s', coordStr(row), m.id, m.tag === 3 ? ' standby' : '');
-      u.heir = m.id; u.at = TICK; u.hot = m.e1dn; if (m.e1dn && m.dgUp.at >= 0) { u.dig = dig.cloneDig(m.dgUp); if (!e2f.L48_OFF) u.dig.rx = this.LT() - u.dig.ag; } else if (!e2f.L48_OFF) u.dig = msg.newDig();   // L48: a parked beat, or a hot one with no fold, ends the copy   // the row's fold, held while I serve it
+      u.heir = m.id; u.at = TICK; u.hot = m.e1dn; if (m.e1dn && m.dgUp.at >= 0 && (e2f.L48_OFF || m.coord.i !== 0 || m.dgUp.by === m.id)) { u.dig = dig.cloneDig(m.dgUp); if (!e2f.L48_OFF) u.dig.rx = this.LT() - u.dig.ag; } else if (!e2f.L48_OFF) u.dig = msg.newDig();   // L48: a parked beat, or a hot one with no fold, ends the copy   // the row's fold, held while I serve it
       const a = newMsg('U2ACK'); a.id = id; a.coord = cc(this.coord);
       {
         const oc2 = roles.ownerOf(row);

@@ -20,8 +20,11 @@
   const msg = req('./msg.js', 'meshMsg');
   const topo = req('./topo.js', 'meshTopo');
   const dig = req('./dig.js', 'meshDig');
+  // roles.js and shared.js load after this file on the page (run.html): read them at call time
+  const roles = { ownerOf: (r) => req('./roles.js', 'meshRoles').ownerOf(r), backupOwnerOf: (r, o) => req('./roles.js', 'meshRoles').backupOwnerOf(r, o), standbyOf: (r, o) => req('./roles.js', 'meshRoles').standbyOf(r, o) };
+  const coordStr = (c) => req('./shared.js', 'meshShared').coordStr(c);
   const K = C_.consts;
-  const { ckey } = topo;
+  const { ckey, unckey } = topo;
   const C = topo.C;
   const { K_HAND, K_STAGE, K_APP, digSeats, digLeasedIn, listMerge, talkMerge, leEq } = dig;
 
@@ -54,6 +57,20 @@
     d.leased -= r.n + r.leased; d.handN -= r.handN; if (d.handN < 0) d.handN = 0;
     l48Drop(d.hands, r.hands); l48Drop(d.stage, r.stage); l48Drop(d.apps, r.apps); l48Drop(d.talk, r.talk);
   }
+  // C++: mesh_e2fold.inc:l48MayCarry
+  // Who may carry a copy of row k into a fold (the folder's own view, occ): an owner's copy (e2=0) only a seat whose report
+  // covers the row (its owner, or a row head or owner further up that chain); a copy over E2 (e2=1) only the row's backup
+  // owner or its standby. Any other copy takes no part (a forger moves only its own report).
+  function l48MayCarry(c, k, e2, occ) {
+    const row = unckey(k); if (row.i !== 0 || row.pc === 0) return false;
+    if (e2 === 1) { const b = roles.backupOwnerOf(row, occ); if (b && ckey(b) === c) return true; const s = roles.standbyOf(row, occ); return !!s && ckey(s) === c; }
+    let x = roles.ownerOf(row); if (!x) return false;
+    for (let g = 0; g < 64; g++) {
+      if (ckey(x) === c) return true; if (x.pc === 0) return false;
+      const h = { pc: x.pc, r: x.r, i: 0 }; if (ckey(h) === c) return true; x = roles.ownerOf(h); if (!x) return false;
+    }
+    return false;
+  }
   // C++: mesh_e2fold.inc:l48Newer
   function l48Newer(a, aa, b, ab) {
     if (a.by >= 0 && a.by === b.by) { if (a.at !== b.at) return a.at > b.at; }
@@ -61,14 +78,14 @@
     return a.e2 === 0 && b.e2 !== 0;   // a tie keeps the owner's copy
   }
   // C++: mesh_e2fold.inc:l48Resolve
-  // in: [{ d, age0 }] (C++ L48In: an input of a fold and its age on the folder's clock). Resolve the rows of one fold's
-  // inputs; runs only when an E2 copy is among them.
-  function l48Resolve(inp, won) {
+  // in: [{ d, age0, ck }] (C++ L48In: an input of a fold, its age on the folder's clock, the cell it came from). Resolve the
+  // rows of one fold's inputs; runs only when an E2 copy an entitled carrier brought is among them. occ: the folder's view.
+  function l48Resolve(inp, won, occ) {
     if (L48_OFF) return;
-    let any = false; for (const x of inp) { for (const r of x.d.rows) if (r.e2 === 1) { any = true; break; } if (any) break; }
+    let any = false; for (const x of inp) { for (const r of x.d.rows) if (r.e2 === 1 && l48MayCarry(x.ck, r.k, r.e2, occ)) { any = true; break; } if (any) break; }
     if (!any) return;
     const g = new Map();
-    for (let i = 0; i < inp.length; i++) for (let j = 0; j < inp[i].d.rows.length; j++) { const rr = inp[i].d.rows[j]; if (rr.e2 === 2) continue; let a = g.get(rr.k); if (a === undefined) { a = []; g.set(rr.k, a); } a.push([i, j]); }
+    for (let i = 0; i < inp.length; i++) for (let j = 0; j < inp[i].d.rows.length; j++) { const rr = inp[i].d.rows[j]; if (rr.e2 === 2 || !l48MayCarry(inp[i].ck, rr.k, rr.e2, occ)) continue; let a = g.get(rr.k); if (a === undefined) { a = []; g.set(rr.k, a); } a.push([i, j]); }
     for (const v of g.values()) {
       if (v.length < 2) continue;
       let e2 = false; for (const p of v) if (inp[p[0]].d.rows[p[1]].e2 === 1) e2 = true; if (!e2) continue;
@@ -115,12 +132,15 @@
       for (const [k, u] of this.u2Rows) {
         if (u.heir < 0 || u.dig.at < 0 || u.dig.rx < 0 || this.TICK - u.at > K.L48_BEAT || this.LT() - u.dig.rx > K.LEASE_T) continue;
         if (ne >= K.L48_E2MAX) break; ne++;
-        l48AddE2(d, u.dig); d.rows.push(l48Row(u.dig, Math.floor(k / 2), true, this.LT() - u.dig.rx, 1));   // k: ckey*2 + variant flag (< 2^49)
+        const rk = Math.floor(k / 2);   // k: ckey*2 + variant flag (< 2^49)
+        l48AddE2(d, u.dig); d.rows.push(l48Row(u.dig, rk, true, this.LT() - u.dig.rx, 1)); this.trace('L48-E2', this.id, this.coord, 'row=%s seats=%d by=%d age=%lld', coordStr({ pc: Math.floor(rk / 256), r: rk % 256, i: 0 }), digSeats(u.dig), u.dig.by, this.LT() - u.dig.rx);
       }
+      const lv = this.w.lv;
+      if (this.id === lv.L48_FORGER) { const f = msg.newDRow(); f.k = lv.L48_FORGE_K; f.at = 1000000000; f.by = lv.L48_FORGE_BY; f.e2 = 1; d.rows.push(f); }   // e2cut forge: a copy over E2 of a row I do not serve, stamped newest
     },
   });
 
-  const api = Object.freeze({ L48_OFF, l48Row, l48AddE2, l48Drop, l48Sub, l48Newer, l48Resolve, l48Echo });
+  const api = Object.freeze({ L48_OFF, l48Row, l48AddE2, l48Drop, l48Sub, l48MayCarry, l48Newer, l48Resolve, l48Echo });
   GifOS.meshE2fold = api;
   if (isNode) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
