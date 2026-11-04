@@ -470,7 +470,15 @@
       if (c.pc !== 0 && c.i === 0) { const o = s.ownerCoord(); if (o && held(o)) fwd++; }
       const dn = topo.down(c); if (dn.pc > c.pc && held(dn)) fwd++;
       const own = measure.lgCamOn && !measure.lgCamOn() ? 0 : rx, park = s.bkId >= 0 ? 1 + rx : 0, woke = measure.lgWoke ? measure.lgWoke() : 0;
-      const l2 = own * K.L29_HOT + fwd, l1 = l2 + fwd, l0 = l1 + park * K.L29_PARK + woke * K.L29_HOT;
+      // L29.0: a Section-1 head's duty (sim mesh_lguard.inc lgDuties): each row-mate taken in L29_PARK, the row block and the
+      // row view L29_HOT each (high), one mix per child branch of its row L29_HOT (low); only where there is a room to serve.
+      let hd = 0, hlow = 0;
+      if (c.pc === 0 && c.i === 0) {
+        let mates = 0, kids = 0, heads = 0;
+        for (let j = 0; j < topo.C; j++) { if (j > 0 && held({ pc: 0, r: c.r, i: j })) mates++; const dk = topo.down({ pc: 0, r: c.r, i: j }); if (dk.pc > 0 && held(dk)) kids++; if (j !== c.r && held({ pc: 0, r: j, i: 0 })) heads++; }
+        if (kids > 0 || heads > 0) { hd = mates * K.L29_PARK + 2 * K.L29_HOT; hlow = kids * K.L29_HOT; }
+      }
+      const l2 = own * K.L29_HOT + fwd + hd, l1 = l2 + fwd + hlow, l0 = l1 + park * K.L29_PARK + woke * K.L29_HOT;
       s.lgLd[0] = l0; s.lgLd[1] = l1; s.lgLd[2] = l2; s.lgBud0 = full; s.lgOwn = own * K.L29_HOT;
       if (lgCap < 0) lgCap = full;
       // what the device carried, scaled by how well it kept up; a device keeping up earns its budget back slowly
