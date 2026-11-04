@@ -28,7 +28,7 @@
   const { cellOk, coordStr } = req('./shared.js', 'meshShared');
 
   const K = C_.consts, E = C_.enums;
-  const { ckey, unckey, ownedLinks, rowMates, colMates, up, down, crossLink, pcDepth, parentPath, lastDigit } = topo;
+  const { ckey, unckey, ownedLinks, rowMates, colMates, up, down, pcDepth, parentPath, lastDigit } = topo;
   const C = topo.C;
   const { H_INIT, hmix, hmix64, fmix32 } = hash;
   const newMsg = (t) => msg.newMsg(t);
@@ -45,20 +45,11 @@
     nextHopCoord(t) {
       const c = this.coord;
       if (c.pc === t.pc && c.r === t.r && c.i === t.i) return null;
-      if (topo.TOPO_XDROP && c.r !== t.r) {   // L2.5: no transpose cross-link: climb to Section 1, cross, descend
+      if (c.r !== t.r) {   // up and down keep the row, so a row changes only in Section 1: climb there, cross, descend
         if (c.pc !== 0) { if (c.i !== 0) return { pc: c.pc, r: c.r, i: 0 }; return up(c); }
         return { pc: 0, r: t.r, i: c.i };
       }
-      if (c.pc === t.pc) {                                    // SAME section: stay inside it, over owned links only
-        if (c.pc === 0) {                                     // W7: Section 1 = 5x5 ROOK'S GRAPH
-          if (c.r === t.r) return { pc: 0, r: c.r, i: t.i };  // same row: one hop to the target column
-          return { pc: 0, r: t.r, i: c.i };                   // else: column-mate straight into the target row
-        }
-        if (c.r === t.r) return { pc: c.pc, r: c.r, i: t.i }; // same row: row-mate straight to the target column
-        const tcol = (t.r === 0) ? c.r : t.r;                 // never 0 (t.r!=c.r), so my cross-link exists there
-        if (c.i !== tcol) return { pc: c.pc, r: c.r, i: tcol };   // hop 1: row-mate to that column
-        return crossLink(c);                                  // hop 2: transpose across to row t.r
-      }
+      if (c.pc === t.pc) return { pc: c.pc, r: c.r, i: t.i };   // same section, same row: row-mate straight to the target column
       // DIFFERENT section: climb to the common ancestor, or descend toward t.
       const digs = (pc, v) => { while (pc) { v.push(lastDigit(pc)); pc = parentPath(pc); } for (let a = 0, b = v.length - 1; a < b; a++, b--) { const x = v[a]; v[a] = v[b]; v[b] = x; } };
       const pa = [], pb = []; digs(c.pc, pa); digs(t.pc, pb);
@@ -78,7 +69,7 @@
         const rm = rowMates(this.coord); for (let q = 0; q < C - 1; q++) { const x = this.occGet(ckey(rm[q])); if (x >= 0 && x !== id && x !== exclude) return x; }
         return -1;
       }
-      if (topo.TOPO_XDROP) {   // L2.5: the alternates are my E2 edges (the far end sits beside my owner), then my row
+      {   // the alternates are my E2 edges (the far end sits beside my owner), then my row
         const usable = (x) => x >= 0 && x !== id && x !== exclude && this.f.fabricLinkState(id, x) === LS_OPEN;   // only a peer my own transport holds open
         if (usable(this.u2Id)) return this.u2Id;
         if (usable(this.u3Id)) return this.u3Id;
@@ -96,9 +87,6 @@
         const rm = rowMates(this.coord); for (let q = 0; q < C - 1; q++) { const x = this.occGet(ckey(rm[q])); if (x >= 0 && x !== id && x !== exclude) return x; }
         return -1;
       }
-      const xc = crossLink(this.coord); if (xc) { const x = this.occGet(ckey(xc)); if (x >= 0 && x !== id && x !== exclude) return x; }
-      const rm = rowMates(this.coord); for (let q = 0; q < C - 1; q++) { const cx = crossLink(rm[q]); if (!cx) continue; const x = this.occGet(ckey(cx)); if (x >= 0 && x !== id && x !== exclude) return x; }
-      return -1;
     },
     // C++: mesh_seat.inc:Seat::routeTo
     routeTo(target, tag) {

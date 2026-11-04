@@ -19,8 +19,6 @@
   const C = 5;
   // C++: topo.h:MAXLINKS
   const MAXLINKS = 2 * C - 1;
-  // C++: topo.h:TOPO_XDROP
-  const TOPO_XDROP = true;
   // C++: topo.h:NO_CK
   const NO_CK = 2 ** 53 - 1;   // a ckey sentinel that is no cell (ckeys are < 2^48), a plain JS number
 
@@ -57,13 +55,6 @@
   }
   // C++: topo.h:down
   function down(s) { return { pc: childPath(s.pc, s.i), r: s.r, i: 0 }; }
-  // C++: topo.h:crossLink
-  function crossLink(s) {
-    if (s.i === 0) return null;
-    if (s.r === s.i) return { pc: s.pc, r: 0, i: s.i };
-    if (s.r === 0) return { pc: s.pc, r: s.i, i: s.i };
-    return { pc: s.pc, r: s.i, i: s.r };
-  }
   // C++: topo.h:rowMates
   function rowMates(s) { const out = []; for (let j = 0; j < C; j++) if (j !== s.i) out.push({ pc: s.pc, r: s.r, i: j }); return out; }
   // C++: topo.h:colMates
@@ -74,17 +65,16 @@
     for (let j = 0; j < C; j++) if (j !== s.i) out.push({ pc: s.pc, r: s.r, i: j });
     if (s.pc === 0) { for (let j = 0; j < C; j++) if (j !== s.r) out.push({ pc: s.pc, r: j, i: s.i }); out.push(down(s)); return out; }
     let x;
-    if (!TOPO_XDROP && (x = crossLink(s))) out.push(x);
     if ((x = up(s))) out.push(x);
     out.push(down(s));
     return out;
   }
 
   const api = Object.freeze({
-    C, MAXLINKS, TOPO_XDROP, NO_CK,
+    C, MAXLINKS, NO_CK,
     coord, cc, same, ckey, ckPc, ckR, ckI, unckey,
     isRoot, childPath, parentPath, pcDepth, lastDigit,
-    up, down, crossLink, rowMates, colMates, ownedLinks,
+    up, down, rowMates, colMates, ownedLinks,
   });
   GifOS.meshTopo = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

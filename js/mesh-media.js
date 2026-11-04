@@ -11,7 +11,7 @@
  * up-link; the head one level up stacks C bands VERTICALLY into the full
  * frame. Row-layout horizontal, band-stack vertical — the H/V alternation of
  * the nested mosaic, by construction. Section-1 heads finish redundantly in
- * parallel over cross-links (no election) and the full Stadium flows back
+ * parallel over the rook (no election) and the full Stadium flows back
  * down every down-link. The Stage strip is the same band engine with the ≤C
  * chosen stagers as cells. Frame budget is CONSTANT per hop (SCALE.COMP_W ×
  * COMP_H) — a seat's forward cost never grows with the tree below it.

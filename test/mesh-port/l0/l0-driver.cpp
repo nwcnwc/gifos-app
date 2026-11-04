@@ -83,7 +83,7 @@ int main(int argc,char** argv){
     S+=",\"out\":{\"ckey\":"; unum(ckey(s)); S+=",\"childPath\":"; unum(childPath(s.pc,d)); S+=",\"parentPath\":"; unum(parentPath(s.pc));
     S+=",\"pcDepth\":"; num(pcDepth(s.pc)); S+=",\"lastDigit\":"; num(lastDigit(s.pc));
     Coord o; bool ok=up(s,o); S+=",\"up\":"; coordOrNull(ok,o);
-    S+=",\"down\":"; coordJ(down(s)); ok=crossLink(s,o); S+=",\"crossLink\":"; coordOrNull(ok,o);
+    S+=",\"down\":"; coordJ(down(s));
     Coord m[C-1]; rowMates(s,m); S+=",\"rowMates\":["; for(int j=0;j<C-1;j++){ if(j) S+=','; coordJ(m[j]); } S+=']';
     colMates(s,m); S+=",\"colMates\":["; for(int j=0;j<C-1;j++){ if(j) S+=','; coordJ(m[j]); } S+=']';
     Coord ol[MAXLINKS]; int n=ownedLinks(s,ol); S+=",\"ownedLinks\":["; for(int j=0;j<n;j++){ if(j) S+=','; coordJ(ol[j]); } S+="]}}"; line(); }
