@@ -1829,7 +1829,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     border-radius: .35rem; background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: 600 .9rem/1.3 ui-monospace, monospace; text-align: center; }
   .name-box #help-keys { min-height: 44px; padding: .3rem .6rem; border: 0; background: none; color: var(--accent, #7b5cff); text-decoration: underline; }
   .name-box p { color: var(--muted, #8888aa); font-size: .85rem; margin-bottom: 1rem; }
-  #adm-modal #adm-hint, #adm-modal #adm-banned-h { font-size: 16px; line-height: 1.45; }
+  #adm-modal #adm-hint { font-size: 16px; line-height: 1.45; }
   .name-box input { width: 100%; padding: .55rem .7rem; border-radius: .5rem; min-height: 48px;
     border: 1px solid var(--border, #2a2a3f); background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: inherit; margin-bottom: .8rem; }
   #nm-avatar { width: 72px; height: 72px; object-fit: cover; border-radius: 50%; display: block; margin: 0 auto .8rem; }
@@ -1912,10 +1912,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* The app grant only means something in an admin room, from an admin. */
   .modbar .grantbtn { display: none; }
   body.admroom.amadmin .modbar .grantbtn { display: inline-block; }
-  #adm-banned { max-height: 150px; margin: .5rem 0; }
   #who-list { max-height: 55vh; max-height: 55dvh; }
-  #adm-banned, #who-list { overflow-y: auto; text-align: left; font-size: .8rem; }
-  #adm-banned .brow, #who-list .brow { display: flex; align-items: center; gap: .5rem; padding: .25rem 0; border-bottom: 1px solid var(--surface, #1c1c2b); }
+  #who-list { overflow-y: auto; text-align: left; font-size: .8rem; }
+  #who-list .brow { display: flex; align-items: center; gap: .5rem; padding: .25rem 0; border-bottom: 1px solid var(--surface, #1c1c2b); }
   /* People is a name list, the same job as Zoom, Meet, Teams, and FaceTime.
      Addresses stay in the download, not on the sheet. */
   #who-modal .name-box { background: #fff; color: #1d1d1f; border: 0; border-radius: 20px;
@@ -1928,8 +1927,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #who-list .who-state { font-size: 1rem; color: #3a3a3f; text-align: right; }
   #who-modal #who-dl, #who-modal #who-close {
     background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; min-height: 44px; min-width: 44px; }
-  #adm-banned .brow button { padding: .15rem .5rem; font-size: .72rem; border-radius: .35rem;
-                             border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
   #adm-chat { margin: 0 0 1rem; padding: .6rem 0 .2rem; border-top: 1px solid var(--border, #2a2a3f); border-bottom: 1px solid var(--border, #2a2a3f); }
   #adm-chat h4 { margin: 0 0 .35rem; font-size: 16px; font-weight: 700; }
   #adm-chat .admopt { display: flex; align-items: center; gap: .6rem; min-height: 44px; font-size: 16px; line-height: 1.3; cursor: pointer; }
@@ -4437,8 +4434,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           <label class="admopt"><input type="checkbox" id="adm-chat-slow"><span><span data-t="admChatSlow">Slow mode</span><small data-t="admChatSlowSub">Guests post at most one line every 10 seconds.</small></span></label>
           <label class="admopt"><input type="checkbox" id="adm-chat-clink"><span><span data-t="admChatClink">Links in chat</span><small data-t="admChatClinkSub">Off: a guest's links stay plain text.</small></span></label>
         </section>
-        <p id="adm-banned-h" data-t="admBanned" style="margin-bottom:.2rem">Banned devices:</p>
-        <div id="adm-banned"></div>
       </div>
       <button id="adm-close" data-t="setClose" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
     </div>
@@ -6342,6 +6337,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         waitDeclined.delete(id);
         if (id) waitAdmitted.add(id);
         waitPaint();
+        if (hasAdminRoom() && amAdmin && id) pwAdmitGrant(id);
         // Every door lets them in now (a signed dadm, doorHeld false for them), and this one answers at once.
         if (hasAdminRoom() && amAdmin && id) {
           const mine = modTable[id] = modTable[id] || {};
@@ -8566,8 +8562,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const MODBAR_HTML = '<button data-mod="mute" aria-label="Mute for all">Mute for all</button><button data-mod="blur" aria-label="Blur for all">Blur for all</button>'
       + '<button class="grantbtn" data-mod="app" title="Let this person run and lead apps in your room" aria-label="Allow apps & stage">Allow apps & stage</button>'
       + '<button class="grantbtn" data-mod="share" title="Let this person share their screen" aria-label="Allow screen share">Allow screen share</button>'
-      + '<button class="banbtn" data-adm="ban" title="Ban this person&#39;s device from the room" aria-label="Ban this device">Ban</button>';
-    // A BAN NAMES A DEVICE: the tag comes from the person's own status over the mesh, as they gave it to the door when they connected.
+      + '<button class="banbtn" data-adm="ban" title="Ban this person from the room" aria-label="Ban this person">Ban</button>';
     function wireModbar(modbar, id) {
       modbar.addEventListener('click', (e) => {
         const t = e.target && e.target.closest ? e.target.closest('button') : e.target;
@@ -8583,12 +8578,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         if (t.dataset.adm === 'ban') {
           e.stopPropagation();
-          const dev = devOf[id] || '';
-          if (window.__banDebug) console.error('[banclick]', id, dev, amAdmin, relayUp());
-          if (!amAdmin) return;
-          if (!dev) { setStatus('🛡 This person' + String.fromCharCode(39) + 's device is not known yet — try Ban again in a moment.'); return; }
-          rememberBanName(dev, (peers.get(id) || {}).name || rosterNames[id] || '');
-          admSigned('ban', { dev }).then((w) => { if (w) relaySendObj({ t: 'ban', dev, w }); }); // no name, no by: the relay carries a device tag and the order's author id
+          pwBan(id);
           return;
         }
         const f = t.dataset.mod;
@@ -8793,14 +8783,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return;
       }
       if (act === 'ban') {
-        if (!amAdmin) return;
-        const dev = devOf[id] || '';
-        if (!dev) {
-          setStatus('🛡 This person' + String.fromCharCode(39) + 's device is not known yet — try Ban again in a moment.');
-          return;
-        }
-        rememberBanName(dev, rosterNames[id] || '');
-        admSigned('ban', { dev }).then((w) => { if (w) relaySendObj({ t: 'ban', dev, w }); });
+        pwBan(id);
       }
     }
     (function () {
@@ -12852,7 +12835,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const RELAY_NAME_MAX = 40, RELAY_PW_MAX = 64;
     const epOk = (ep) => Number.isInteger(ep) && ep >= 0;
     // The exact field set of each payload (the padding field `_` beside it).
-    const RELAY_PAYLOAD_KEYS = { boot: 'k,t,u,w,s,v', fp: 'k,v,fp', ice: 'k,c,end', name: 'k,n', password: 'k,pw,ep', pwsig: 'k,sig', pwpub: 'k,ep,ts,pub', pwby: 'k,ep,by', busy: 'k,g,i,n,ref,cool' };
+    const RELAY_PAYLOAD_KEYS = { boot: 'k,t,u,w,s,v', fp: 'k,v,fp', ice: 'k,c,end', name: 'k,n', password: 'k,pw,ep,pr', pwsig: 'k,sig', pwpub: 'k,ep,ts,pub', pwby: 'k,ep,by', busy: 'k,g,i,n,ref,cool' };
     function relayFrameAllowed(ty, inner) {
       if (!RELAY_TYPES.has(ty) || !inner || typeof inner !== 'object' || Array.isArray(inner) || inner.k !== ty || !net.fitsFixed(inner)) return null;
       const keys = RELAY_PAYLOAD_KEYS[ty].split(',');
@@ -12861,7 +12844,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (ty === 'fp') return net.fpOk(inner) ? ty : null;
       if (ty === 'ice') return (inner.end === 1 && !('c' in inner)) || (!('end' in inner) && !!net.candOfIce(inner)) ? ty : null;
       if (ty === 'name') return typeof inner.n === 'string' && inner.n.length <= RELAY_NAME_MAX ? ty : null;
-      if (ty === 'password') return typeof inner.pw === 'string' && inner.pw.length <= RELAY_PW_MAX && epOk(inner.ep) ? ty : null;
+      if (ty === 'password') return typeof inner.pw === 'string' && inner.pw.length <= RELAY_PW_MAX && epOk(inner.ep) && (inner.pr === undefined || (typeof inner.pr === 'string' && inner.pr.length <= 64)) ? ty : null;
       if (ty === 'pwsig') return typeof inner.sig === 'string' && /^[A-Za-z0-9+/]{86}==$/.test(inner.sig) ? ty : null;
       if (ty === 'pwpub') return epOk(inner.ep) && Number.isInteger(inner.ts) && inner.ts > 0 && typeof inner.pub === 'string' && /^[A-Za-z0-9+/]{43}=$/.test(inner.pub) ? ty : null;
       if (ty === 'busy') return Number.isInteger(inner.g) ? ty : null;   // a door's refusal (L16 BUSY, L14 decline, L23): read by the seat's world only
@@ -12927,7 +12910,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         for (const f of out) if (!net.fitsFixed(f)) return null;
         return out;
       }
-      if (!grant || grant.k !== 'pwinfo') return null;
+      if (!grant || grant.k !== 'pwinfo' || grant.no) return null;   // a ban's grant takes the channels only: its list does not fit, and the lock has closed every socket that lacks it
       const ep = grant.ep | 0;
       const out = [{ k: 'password', pw: String(grant.pw || ''), ep }];
       if (grant.w && typeof grant.w === 'object') {
@@ -12966,7 +12949,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!hasAdminRoom()) { pwParts.delete(from); return { k: 'pwinfo', pw: s.pw, by: rosterNames[from] || '', ep: s.ep }; }
       if (s.sig == null || s.pub == null || s.ts == null || s.by == null) return null;
       pwParts.delete(from);
-      return { k: 'pwinfo', pw: s.pw, by: rosterNames[s.by] || '', ep: s.ep, w: { sp: JSON.stringify({ act: 'pwinfo', ts: s.ts, room: roomKey(), by: s.by, pw: s.pw, ep: s.ep }), sig: s.sig, pub: s.pub } };
+      const named = s.pw ? { to: myId } : {};   // an admin room's password over the relay is only ever signed for one id (pwAdmitGrant)
+      return { k: 'pwinfo', pw: s.pw, by: rosterNames[s.by] || '', ep: s.ep, w: { sp: JSON.stringify(Object.assign({ act: 'pwinfo', ts: s.ts, room: roomKey(), by: s.by, pw: s.pw, ep: s.ep }, named)), sig: s.sig, pub: s.pub } };
     }
     // The bootstrap's halves (boot + fp), gathered by sender and session
     // version until both are here. pid -> { v, boot, fp, at }.
@@ -13348,6 +13332,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         onDialRequest(p || { id: from, dc: null });
         return;
       }
+      if (ty === 'password' && f.pr) {   // the admin, to someone in the waiting room: the door's new proof
+        if (meetWait.atDoor() && !meshCoord()) { pwProof = String(f.pr); pwWaitProof = true; pwLog('wait: the door moved, keeping my place'); }
+        return;
+      }
       if (ty === 'password' || ty === 'pwsig' || ty === 'pwpub' || ty === 'pwby') {
         if (doorOutsider(from) && !statusOf.has(from)) { doorDropped++; return; }   // TROLL GATE: a knocker never re-keys a seated room
         const g = takePwPart(from, ty, f);
@@ -13392,6 +13380,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!retainedGrant) return;
         const now = Date.now();
         if (now - (staleHealAt.get(pid) || 0) < 5000) return;
+        const noList = retainedGrant.no || null;
+        if (noList && noList.includes(pid)) {   // a barred peer asking, by any frame: the boot order, never the grant
+          const boot = pwBootOf(retainedGrant); if (!boot) return;
+          staleHealAt.set(pid, now);
+          pwLog('ban-boot→' + String(pid).slice(0, 6) + ' ep=' + boot.ep);
+          const qd = peers.get(pid);
+          if (qd && qd.dc && qd.dc.readyState === 'open') pwSealTo(qd, boot, prevRoomE2E);
+          else { const fs = pwFramesOf(boot); if (fs) for (const f of fs) relaySendSealed(pid, f.k, f, prevRoomE2E); }
+          return;
+        }
         // ELIGIBILITY IS THE KEY ITSELF (2026-10-20). This used to ask
         // for a pair older than the rotation, or a roster entry, and no
         // tombstone — three liveness gates that FAIL for exactly the member
@@ -13409,6 +13407,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (typeof clog === 'function') clog('grant-heal ' + String(pid).slice(0, 6) + ' (prev-key frame)');
       pwLog('grant-heal→' + String(pid).slice(0, 6) + ' ep=' + pwEpoch);
         const pd = peers.get(pid);
+        if (noList && !(pd && pd.dc && pd.dc.__authBy === pid)) return;   // a ban's grant goes only to the signed id at the far end of this channel
         if (pd && pd.dc && pd.dc.readyState === 'open') txm(() => net.seal(prevRoomE2E, retainedGrant).then((env) => net.sendChunked(env, (piece, str) => { try { pd.dc.send(str); } catch (e) {} })));
         else { const fs = pwFramesOf(retainedGrant); if (fs) for (const f of fs) relaySendSealed(pid, f.k, f, prevRoomE2E); }
       });
@@ -15536,7 +15535,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function renderFromOcc() {
       const s = meshSeat();
       if (!s) return;
-      if (typeof bannedSeat !== 'undefined') for (const pid of bannedSeat) if (peers.has(pid)) dropPeer(pid); // a ban's seat stays down even if a tick rebuilt it
+      if (typeof bannedSeat !== 'undefined') for (const pid of bannedSeat) if (peers.has(pid) && !(Date.now() - (pwBarred.get(pid) || 0) < PW_BYE_MS)) dropPeer(pid); // a ban's seat stays down even if a tick rebuilt it
       // FRESHLY SEATED, ONE FLUSH. Before hasCoord is true, gossip() has no
       // section to speak to and drops the frame silently (sc === null) — so
       // a status authored in that window, including scheduleNewPeerBeat's
@@ -15800,6 +15799,102 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let prevRoomE2E = null;   // exactly ONE previous generation, for stale-neighbour recognition + healing
     let pwEpoch = 0;          // generation counter, carried inside the signed grant
     let retainedGrant = null; // the admin's pwinfo, verbatim — replayable by any member
+    // A BAN IS A PASSWORD CHANGE EVERYONE HEARS BUT THE BANNED (admin rooms). The admin's signed pwinfo carries the new
+    // password and `no`, the peer ids (k_) it must not be shared with. It rides channels only, hop by hop, each page
+    // checking `no` first, and never the gossip lane (a seat there cannot choose who hears). A page holding the grant
+    // holds the list, because the list is inside the statement it replays. `no` accumulates: a later change that
+    // dropped Tom would let a neighbour heal him. The newest PW_NO_MAX ids stay; the oldest goes first, and it can
+    // only matter to someone still holding the key just replaced, which a person banned that many changes ago is not.
+    const PW_NO_MAX = 32, PW_BYE_MS = 2000;   // PW_BYE_MS: the barred seat's pair stays this long, to carry the boot order and its goodbye
+    const pwBarred = new Map();               // id -> when I heard the ban. Lifted by a frame from that id that opens under the current key: someone told them the password
+    function pwNoOf(grant) {
+      try { const o = JSON.parse(grant.w.sp); return Array.isArray(o.no) ? o.no.filter((x) => typeof x === 'string') : []; } catch (e) { return []; }
+    }
+    // What a barred peer does get: the plain signed change order (no password), which sends a page to the door as any change does.
+    function pwBootOf(grant) { return grant && grant.wb ? { k: 'pwreset', by: grant.by, w: grant.wb, ep: grant.ep } : null; }
+    function pwSealTo(q, msg, key) {
+      txm(() => net.seal(key, msg).then((env) => net.sendChunked(env, (piece, str) => { try { q.dc.send(str); } catch (e) {} })));
+    }
+    // One hop of a ban: my open, signed channels, under the key they still read. A peer on `no` gets the boot order instead.
+    function pwGrantOut(grant, key, fromId) {
+      const no = grant.no || [], boot = pwBootOf(grant);
+      for (const q of Array.from(peers.values())) {
+        if (q.id === fromId || !q.dc || q.dc.readyState !== 'open') continue;
+        if (no.includes(q.id)) { if (boot) pwSealTo(q, boot, key); continue; }
+        if (q.dc.__authBy === q.id && !doorOutsider(q.id)) pwSealTo(q, grant, key);
+      }
+    }
+    function pwBarOut(no) {
+      for (const id of no) {
+        if (id === myId) continue;
+        if (!pwBarred.has(id)) pwBarred.set(id, Date.now());
+        bannedSeat.add(id);
+        confirmGone(id, 'd5');   // d5: no tile now, the pair stays for PW_BYE_MS (renderFromOcc closes it)
+      }
+    }
+    function pwBarLift(id) {
+      const at = pwBarred.get(id);
+      if (at === undefined || rekeysPending || rekeyAt < at) return;   // until my key has moved, an old-key frame still opens: no proof of anything
+      pwBarred.delete(id);
+      bannedSeat.delete(id); meshGone.delete(id); meshGoneTick.delete(id);
+      if (typeof clog === 'function') clog('ban-lift ' + String(id).slice(0, 6) + ' (speaks the current key)');
+    }
+    const pwNoKey = () => 'gifos_vpwno_' + roomKey();   // the admin's own memory of `no`: a reload holds no grant
+    function pwNoStored() { try { const l = JSON.parse(localStorage.getItem(pwNoKey()) || '[]'); return Array.isArray(l) ? l.filter((x) => typeof x === 'string') : []; } catch (e) { return []; } }
+    function pwNoStore(list) { try { localStorage.setItem(pwNoKey(), JSON.stringify(list)); } catch (e) {} mirrorRoomState({ pwNo: list }); }
+    function pwRandom() {
+      const abc = 'abcdefghjkmnpqrstuvwxyz23456789', b = crypto.getRandomValues(new Uint8Array(12));
+      let out = ''; for (const x of b) out += abc[x % abc.length];
+      return out;
+    }
+    // Who stays on the list: everyone still barred (a person told the password has spoken under the key since, and is off it), and the new name.
+    function pwNoNext(id) {
+      const had = pwNoStored().concat(retainedGrant && retainedGrant.no ? retainedGrant.no : []);
+      const out = []; for (const x of had) if (x !== id && !out.includes(x) && (pwBarred.has(x) || !pwNoSeen.has(x))) out.push(x);
+      out.push(id);
+      return out.slice(-PW_NO_MAX);
+    }
+    const pwNoSeen = new Set();   // ids on my stored list heard under the current key since this page loaded
+    const pwNoAny = () => hasAdminRoom() && (pwBarred.size > 0 || amAdmin);
+    function pwHeardNow(id) { if (!id) return; pwBarLift(id); if (amAdmin) { pwNoSeen.add(id); if (pwNoSeen.size > 1024) pwNoSeen.clear(); } }
+    const pwWaitKey = new Map();   // admin: a person waiting through a ban -> the key they still read
+    let pwWaitProof = false;       // this page waits on a proof the admin sent: the lock it cannot read yet is not a prompt
+    // Admit, for someone who waited through a ban: the password, signed for that one id. The page takes it and holds no grant, so it heals nobody.
+    async function pwAdmitGrant(id) {
+      const key = pwWaitKey.get(id); if (!key) return;
+      pwWaitKey.delete(id);
+      const w = await admSigned('pwinfo', { pw: roomPw, ep: pwEpoch, to: id }); if (!w) return;
+      const fs = pwFramesOf({ k: 'pwinfo', pw: roomPw, ep: pwEpoch, w });
+      if (fs) for (const f of fs) relaySendSealed(id, f.k, f, key);
+      pwLog('admit-grant→' + String(id).slice(0, 6) + ' ep=' + pwEpoch);
+    }
+    function pwToOf(grant) { try { return JSON.parse(grant.w.sp).to || ''; } catch (e) { return ''; } }
+    let pwBanChain = Promise.resolve();
+    function pwBan(id) {
+      if (!amAdmin || !hasAdminRoom() || !id || id === myId) return pwBanChain;
+      pwBanChain = pwBanChain.then(() => pwBanNow(id)).catch((err) => pwChainFailed(err, false));
+      return pwBanChain;
+    }
+    async function pwBanNow(id) {
+      const v = pwRandom(), pr = await net.meetPwProof(room, av, v), ep = pwEpoch + 1, no = pwNoNext(id);
+      const wRelay = await admSigned('setpw', { pw: pr }), wPeers = await admSigned('pwinfo', { pw: v, ep, no }), wb = await admSigned('pwreset', { ep });
+      if (!wRelay || !wPeers || !wb) return;
+      const key = roomE2E;
+      storePw(v); pwProof = pr;
+      // Someone in the waiting room is not in the room: no grant. The lock would close their socket, so they get the door's
+      // proof (it opens the door, not one frame of the room) and keep their place; Admit sends them the password (pwAdmitGrant).
+      for (const wid of waitQueue.keys()) { if (!pwWaitKey.has(wid)) pwWaitKey.set(wid, key); relaySendSealed(wid, 'password', { k: 'password', pw: '', ep, pr }, pwWaitKey.get(wid)); }
+      relaySendObj({ t: 'setpw', pw: pr, w: wRelay });
+      const grant = { k: 'pwinfo', pw: v, by: myName(), w: wPeers, ep, wb, no };
+      pwGrantOut(grant, key, null);
+      storePwEpoch(ep); retainedGrant = grant;
+      pwNoStore(no);
+      pwBarOut(no);
+      pwLog('pwban-sent ep=' + ep + ' no=' + no.length);
+      await txm(() => Promise.resolve()).then(() => rekeyRoom());
+      renderFiles(); reactRoomState();
+      showPwModal(false, 'banned');
+    }
     // A GRANT BEFORE THE ROOM HAS SPOKEN (§LOCK). A member who typed the
     // password at the door holds the room's CURRENT password but knows no
     // generation number yet (epoch 0): the epoch guard alone cannot tell an
@@ -15884,6 +15979,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       pwLeaveForDoor();
     }
     function pwLeaveForDoor() {
+      if (DEBUG_ON && window.__pwHoldBoot) { pwLog('sent to the door, stays (test lever: a hostile page)'); return; }
       heldGrant = null; grantHoldUntil = 0; retainedGrant = null;
       storePw('');
       pwBlocked = true;
@@ -15966,7 +16062,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // by a random locally-persisted token (honest limitation: wiping site
     // data mints a new device — bans deter, they don't imprison).
     let av = null; // the room's admin verifier — set at join, immutable
-    let admKey = null, amAdmin = false, admins = [], devOf = {}, roomBan = [], bannedOut = false, banSeeded = false, pwReasserted = false;
+    let admKey = null, amAdmin = false, admins = [], devOf = {}, bannedOut = false, pwReasserted = false;
     if (BROADCAST) {
       try { paintOnAir(); } catch (e) {}
       try { paintBroadcastJoinNote(bcRole()); } catch (e) {}
@@ -16400,13 +16496,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     const roomKey = () => room + (av ? '.' + av : ''); // storage + session identity
     const admStoreKey = () => 'gifos_vadm_' + roomKey();
-    const banStoreKey = () => 'gifos_vban_' + roomKey();
     // ---- THE DURABLE MIRROR: a room's non-secret admin state rides the computer.
     // localStorage is the hot path (every reader below is synchronous) but it
     // is DEVICE state: the whole-computer backup GIF packs IndexedDB and
-    // nothing else (desktop.js backupDesktopInner), so a banlist kept only
+    // nothing else (desktop.js backupDesktopInner), so a list kept only
     // here dies with the browser's site data and a restored computer arrives
-    // with an empty room. A room's banlist, banned names and password
+    // with an empty room. A room's list of who a password must not reach and its password
     // GENERATION are COMPUTER state (docs/roadmap.md §24b): every write below
     // mirrors into one GifOS.store state record per administered room,
     // 'meet::<room>.<V>', and hydrateRoomState() reads it back BEFORE the
@@ -16454,8 +16549,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         let localAt = 0; try { localAt = parseInt(localStorage.getItem(MIRROR_AT_PFX + base), 10) || 0; } catch (e) {}
         const newer = (rec.updatedAt || 0) > localAt;
         try {
-          if (newer && Array.isArray(rec.bans)) localStorage.setItem('gifos_vban_' + base, JSON.stringify(rec.bans.slice(0, 100)));
-          if (newer && rec.banNames && typeof rec.banNames === 'object') localStorage.setItem('gifos_vbannames_' + base, JSON.stringify(rec.banNames));
+          if (newer && Array.isArray(rec.pwNo)) localStorage.setItem('gifos_vpwno_' + base, JSON.stringify(rec.pwNo.slice(-PW_NO_MAX)));
           const localEp = parseInt(localStorage.getItem('gifos_vpwep_' + base), 10) || 0;
           if (pwEpInt(rec.pwEp) && rec.pwEp > localEp) localStorage.setItem('gifos_vpwep_' + base, String(rec.pwEp));
           if (newer) localStorage.setItem(MIRROR_AT_PFX + base, String(rec.updatedAt || 0));
@@ -16463,32 +16557,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return newer;
       });
       return Promise.race([read, new Promise((res) => setTimeout(() => res(false), 1500))]).catch(() => false);
-    }
-    // Admin rooms only: the admin carries the ban list in their own storage
-    // and re-seeds an emptied room from it (the relay stores nothing).
-    function loadBans() { try { return JSON.parse(localStorage.getItem(banStoreKey()) || '[]') || []; } catch (e) { return []; } }
-    // Who a banned device WAS is the admin's own memory, kept here — the relay
-    // holds a device tag and nothing else. Everyone else resolves a tag to a
-    // name from their own sealed roster (nameForDev).
-    const banNamesKey = () => 'gifos_vbannames_' + roomKey();
-    function banNames() { try { return JSON.parse(localStorage.getItem(banNamesKey()) || '{}') || {}; } catch (e) { return {}; } }
-    function rememberBanName(dev, name) {
-      if (!dev || !name) return;
-      const m = banNames(); m[dev] = String(name).slice(0, 40);
-      const keys = Object.keys(m); if (keys.length > 100) delete m[keys[0]];
-      try { localStorage.setItem(banNamesKey(), JSON.stringify(m)); } catch (e) {}
-      mirrorRoomState({ banNames: m });
-    }
-    function nameForDev(dev) {
-      for (const pid of Object.keys(devOf)) if (devOf[pid] === dev) return (peers.get(pid) || {}).name || rosterNames[pid] || '';
-      return '';
-    }
-    // The `by` on a relay-authored ban/unban/pw frame is the signed order's
-    // author — a PEER ID — or the vote marker; a name is looked up here.
-    function nameForPeer(pid) { return pid === 'the room (vote)' ? pid : ((peers.get(pid) || {}).name || rosterNames[pid] || ''); }
-    function saveBans(list) {
-      try { localStorage.setItem(banStoreKey(), JSON.stringify(list.slice(0, 100))); } catch (e) {}
-      mirrorRoomState({ bans: list.slice(0, 100) });
     }
     function loadAdm() {
       try { admKey = localStorage.getItem(admStoreKey()); } catch (e) { admKey = null; }
@@ -16504,7 +16572,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // no admin and never can, so there's nothing for this button to do there.
       ab.style.display = hasAdmin ? '' : 'none';
       ab.textContent = amAdmin ? uiText('admBtn', 'Admin') : uiText('admSignIn', 'Admin sign-in');
-      ab.title = amAdmin ? uiText('admTipOn', 'Admin controls: banned devices, room password')
+      ab.title = amAdmin ? uiText('admTipOn', 'Admin controls: room password, chat and waiting room')
         : uiText('admTipOff', 'This room has an admin — enter the admin password to get admin controls');
       const pwb = document.getElementById('pwbtn');
       pwb.disabled = hasAdmin && !amAdmin;
@@ -16513,7 +16581,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         : uiText('pwTip', 'Lock this room with a password');
       // Vote-off only exists where there is no admin to ban bad actors.
       document.body.classList.toggle('canvote', !hasAdmin);
-      renderBanned();
       if (typeof updateMuteAllBtn === 'function') updateMuteAllBtn();
       if (typeof updateBlurAllBtn === 'function') updateBlurAllBtn();
       if (typeof updateCamAllBtn === 'function') updateCamAllBtn();
@@ -16523,6 +16590,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       refreshOutbound(); // admin presence changes what clears
       if (typeof paintBroadcastChrome === 'function') paintBroadcastChrome();
     }
+
+    // A signed order's `by` is a peer id; a name is looked up here.
+    function nameForPeer(pid) { return (peers.get(pid) || {}).name || rosterNames[pid] || ''; }
 
     const pwKey = () => 'gifos_vpw_' + roomKey();
     // §LOCK epoch PERSISTENCE: the replay guard is only as durable as the
@@ -16877,6 +16947,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // visit too. Bounded at three knocks, and only a device that REMEMBERS
         // a password ever pays for more than one.
         onLocked: (door) => {
+          if (pwWaitProof && meetWait.atDoor()) { pwLog('R6 while waiting on the admin: stays waiting'); return; }
           const ms = meshSeat(), seated = !!(ms && ms.hasCoord && ms.state === 3);
           // A seat moves on no door blob: anyone can register one. Only the door's own refusal is the password change.
           if (seated && !door) { pwLog('R6 from door blobs, seated: stays seated'); pwBlocked = true; showPwModal(true, pwChangedWhy()); return; }
@@ -16920,21 +16991,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (pwFromStore || pwProbe === 'restored') forgetPw('neither it nor the open key reads this room');
           pwBlocked = true; showPwModal(true, pwChangedWhy());
         },
-        // THE DOOR SAID NO, IN A CLOSE CODE (2026-07-29): a policy-cut socket
-        // is the ONLY way a re-seeded ban reaches a squatter who was already
-        // inside when the admin returned — the {t:'ban'} broadcast died with
-        // the socket, so the client sat 'reconnecting' forever, banned in
-        // fact but never told. Map the two verdict codes to the same honest
-        // state the in-band ban sets; every other policy code (replaced,
-        // stale host, bad token) keeps its own path.
+        // THE DOOR SAID NO, IN A CLOSE CODE: 4007 is a vote-off's verdict; every other policy code keeps its own path.
         onRejected: (code) => {
           if (code === 4011) { setStatus(uiText('stThisRoomAlreadyHasYou', '\u26d4 This room already has you connected from another device. Close it there, or reload here.')); return; }
           if (code === 4013 || code === 4010) { setStatus(uiText('stThisMeetingNeedsTheCurrent', '\u26d4 This meeting needs the current GifOS. Reload the page to update.')); return; } // 4010: the relay saw no key proof
-          if (code !== 4004 && code !== 4007) return;
+          if (code !== 4007) return;
           bannedOut = true;
           for (const pid of Array.from(peers.keys())) dropPeer(pid);
           try { meshNode && meshNode.stop(); } catch (e) {}
-          setStatus(code === 4007 ? '⛔ The people on this meeting voted you off.' : '⛔ You were banned from this room.');
+          setStatus('⛔ The people on this meeting voted you off.');
         },
         onStranded: () => updateStatus(), // R6: the line reads the seat's verdict (REACH_MSG 'cannot-reach-room') until the re-knock gets in
         // FRAGMENT SELF-RESCUE: the wire proved the door knows members my
@@ -17030,7 +17095,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function onRelayFrame(m) {
       if (m.t === 'joined') {
         updateStatus(); broadcastStatus();
-        roomBan = m.ban || []; // admins[] comes from VERIFIED signatures (adminsNow, \u00a79), never the relay
+        // admins[] comes from VERIFIED signatures (adminsNow, \u00a79), never the relay
         // \u00a7LOCK, ADMIN ROOMS \u2014 A STORED PASSWORD IS PROVISIONAL UNTIL THE DOOR
         // VOUCHES (2026-07-29). In an admin room only a SIGNED setpw gates the
         // door, so the joined frame's `locked` is an admin-rooted verdict on my
@@ -17062,14 +17127,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               const st = parseInt(localStorage.getItem(pwEpochKey()), 10);
               if (pwEpInt(st) && st > pwEpoch) { pwEpoch = st; myStatus.pwEp = pwEpoch; }
             } catch (e) {}
-            if (roomBan.length) saveBans(roomBan);
-            else if (!banSeeded) {
-              // Fresh DO after eviction \u2014 re-seed the ban list from this device
-              // (SIGNED, \u00a79); the relay cuts any listed socket on re-seed.
-              const stored = loadBans();
-              if (stored.length) admSigned('banlist', { devs: stored }).then((w) => { if (w) relaySendObj({ t: 'banlist', devs: stored, w }); });
-            }
-            banSeeded = true;
             // Re-assert the DOOR LOCK once per socket (\u00a79-signed) \u2014 after an
             // eviction the waiting room may have reopened lockless.
             if (roomPw && pwProof && !pwReasserted) {
@@ -17155,32 +17212,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const label = relayFrameAllowed(ty, inner);
           if (!label) { const d = relayFrameLabel(ty, inner); rxStats.relayDropped[d] = (rxStats.relayDropped[d] || 0) + 1; return; }
           rxStats.relayAccepted[label] = (rxStats.relayAccepted[label] || 0) + 1;
+          if (pwNoAny()) pwHeardNow(from);
           onRelayPeer(from, ty, inner);
         }));
         take(false);
-      }
-      else if (m.t === 'ban') {
-        if (!roomBan.some((b) => b.d === m.dev)) roomBan.push({ d: m.dev });
-        // A ban is not just signaling: sever the banned device's live P2P links.
-        // Remember the id and confirm it gone. dropPeer alone is undone by the
-        // next occ tick while the mesh still names the seat (RING_HOLD).
-        for (const pid of Object.keys(devOf)) if (devOf[pid] === m.dev && pid !== myId) {
-          bannedSeat.add(pid);
-          confirmGone(pid, 'ban');
-        }
-        const voted = m.by === 'the room (vote)';
-        if (m.dev === myDevHash) {
-          bannedOut = true;
-          for (const pid of Array.from(peers.keys())) dropPeer(pid);
-          try { meshNode && meshNode.stop(); } catch (e) {}
-          setStatus(voted ? '\u26d4 The people on this meeting voted you off.' : '\u26d4 You were banned from this room by ' + (nameForPeer(m.by) || 'an admin'));
-        } else setStatus(voted ? '\u26d4 ' + (nameForDev(m.dev) || 'Someone') + ' was voted off the meeting.' : '\u26d4 ' + (nameForDev(m.dev) || banNames()[m.dev] || 'A device') + ' was banned by ' + (nameForPeer(m.by) || 'an admin'));
-      }
-      else if (m.t === 'unban') {
-        roomBan = roomBan.filter((b) => b.d !== m.dev);
-        // The old peer id stays in bannedSeat. Unban admits the device; the
-        // reload mints a new id. Clearing the set would raise the ghost tile.
-        setStatus('\u2705 ' + (nameForDev(m.dev) || banNames()[m.dev] || 'A device') + ' was unbanned by ' + (nameForPeer(m.by) || 'an admin'));
       }
       else if (m.t === 'greeter-gone') {
         // Only the relay's socket gets here, and the relay only says it when a live greeter's socket closed with no unlist first: that greeter's goodbye.
@@ -17189,11 +17224,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       else if (m.t === 'error') {
         pwLog('relay-error: ' + String(m.error || '?').slice(0, 60));
-        // Password gate is handled by the wire (onLocked / R6 sealing); bans
-        // and vote-offs land here. No walk \u2014 the session cap is the greeter
+        // Password gate is handled by the wire (onLocked / R6 sealing); vote-offs
+        // land here. No walk \u2014 the session cap is the greeter
         // pool\u2019s, and newcomers drop their socket after seating anyway.
         if (/voted-off/.test(m.error || '')) { bannedOut = true; setStatus(uiText('stThePeopleInThisRoom', '\u26d4 The people in this room voted not to let this device in.')); }
-        else if (/banned/.test(m.error || '')) { bannedOut = true; setStatus(uiText('stThisDeviceWasBannedFrom', '\u26d4 This device was banned from the room by its admin.')); }
         // The door's own refusals are written for a machine. Say the ONE that a
         // person can actually trigger in the same words the button uses \u2014 one
         // rule, one sentence \u2014 and never show the raw wire text for it.
@@ -17696,10 +17730,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function applyBcAct(id, act) {
       if (!id || id === myId || !amAdmin) return;
       if (act === 'ban') {
-        const dev = devOf[id] || '';
-        if (!dev) { setStatus('🛡 This person' + String.fromCharCode(39) + 's device is not known yet — try Ban again in a moment.'); return; }
-        rememberBanName(dev, (peers.get(id) || {}).name || rosterNames[id] || '');
-        admSigned('ban', { dev }).then((w) => { if (w) relaySendObj({ t: 'ban', dev, w }); });
+        pwBan(id);
         return;
       }
       if (act === 'promote') setMod(id, 'app', true);
@@ -18284,6 +18315,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         ? (locked
           ? 'Enter the viewer password to see the stage clearly.'
           : 'Optional. It is not part of the link. People can still watch, and the stage stays blurred until it is set.')
+        : why === 'banned' ? uiText('pwHintBanned', 'They are out, and this is the room\'s new password. Everyone still here already has it. Anyone joining later needs it, so copy it and send it to them yourself. To let a banned person back in, tell them this password.')
         : (locked
           ? (why === 'changed'
             ? uiText('pwHintChanged', 'The admin changed the room password. Enter the new password to rejoin the meeting.')
@@ -18295,6 +18327,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       document.getElementById('pw-cur').value = roomPw;
       pwEyeHide(document.getElementById('pw-cur')); // every open starts hidden — the eye reveals on demand
       pwEyeHide(document.getElementById('pw-new'));
+      if (why === 'banned') { const cur = document.getElementById('pw-cur'), eye = document.getElementById('pweye-pw-cur'); if (eye) eye.click(); else cur.type = 'text'; }   // the admin needs to read it: nobody told them yet
       const inp = document.getElementById('pw-new');
       inp.value = ''; inp.placeholder = locked ? uiText('pwWord', 'Password') : uiText('pwNew', 'New password');
       document.getElementById('pw-save').textContent = locked ? uiText('join', 'Join') : uiText('pwSave', 'Save');
@@ -18303,7 +18336,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       cancel.textContent = locked ? uiText('pwLeave', 'Leave') : uiText('pwClose', 'Close');
       pwModal.dataset.mode = locked ? 'join' : 'manage';
       pwModal.style.display = 'flex';
-      inp.focus();
+      if (why === 'banned') { const cur = document.getElementById('pw-cur'); cur.focus(); cur.select(); } else inp.focus();
     }
     document.getElementById('pwbtn').onclick = () => showPwModal(false);
     document.getElementById('waitbtn').onclick = () => {
@@ -18449,22 +18482,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 
     // ---- admin UI --------------------------------------------------------------
     const admModal = document.getElementById('adm-modal');
-    function renderBanned() {
-      const box = document.getElementById('adm-banned');
-      if (!box) return;
-      box.innerHTML = '';
-      if (!amAdmin) return;
-      if (!roomBan.length) { box.innerHTML = '<span style="color:#667">' + uiText('admNobody', 'Nobody is banned.') + '</span>'; return; }
-      const names = banNames();
-      for (const b of roomBan) {
-        const row = document.createElement('div'); row.className = 'brow';
-        const nm = document.createElement('span'); nm.style.flex = '1';
-        nm.textContent = (names[b.d] || nameForDev(b.d) || uiText('admUnnamed', 'unnamed')) + ' · ' + b.d;
-        const btn = document.createElement('button'); btn.textContent = uiText('admUnban', 'Unban');
-        btn.onclick = () => { admSigned('unban', { dev: b.d }).then((w) => { if (w) relaySendObj({ t: 'unban', dev: b.d, w }); }); };
-        row.appendChild(nm); row.appendChild(btn); box.appendChild(row);
-      }
-    }
     function showAdmModal() {
       const setup = document.getElementById('adm-setup'), panel = document.getElementById('adm-panel');
       const btn = document.getElementById('adm-enable');
@@ -18474,8 +18491,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (amAdmin) {
         setup.style.display = 'none'; panel.style.display = '';
         paintChatOptions();
-        document.getElementById('adm-hint').textContent = uiText('admHintOn', 'You are an admin of this room. Admins can lock the room with a password (the key to clear video), mute or blur someone for everyone, and ban devices. Anyone who knows the admin password can open Admin and sign in too.');
-        renderBanned();
+        document.getElementById('adm-hint').textContent = uiText('admHintOn', 'You are an admin of this room. Admins can lock the room with a password (the key to clear video), mute or blur someone for everyone, and ban people. Anyone who knows the admin password can open Admin and sign in too.');
       } else {
         setup.style.display = ''; panel.style.display = 'none';
         btn.textContent = uiText('admEnable', 'Sign in as admin');
@@ -18692,10 +18708,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const act = b.dataset.bcMod;
       if (!id) return;
       if (act === 'ban') {
-        const dev = devOf[id] || '';
-        if (!dev) { setStatus('🛡 This person' + String.fromCharCode(39) + 's device is not known yet — try Ban again in a moment.'); return; }
-        rememberBanName(dev, (peers.get(id) || {}).name || rosterNames[id] || '');
-        admSigned('ban', { dev }).then((w) => { if (w) relaySendObj({ t: 'ban', dev, w }); });
+        pwBan(id);
         return;
       }
       if (act === 'stage') setMod(id, 'app', !(modOf(id).app && modOf(id).app.on));
@@ -20459,6 +20472,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // as the DC path; anything that needs a channel to answer (file
     // 'want'/'fc') is skipped by the null-dc guards in onDc.
     function onRemote(from, m) {
+      if (pwNoAny()) pwHeardNow(from);
       const p = peers.get(from);
       onDc(p || { id: from, dc: null }, null, m);
     }
@@ -20581,7 +20595,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
         m = meshDefrag(m, 'dc|' + p.id); if (!m) return;
         const take = (held) => rxm(() => net.open(roomE2E, m).then((inner) => {
-          if (inner && inner.k) { const dk = rxStats.dcKinds; const kk = String(inner.k).slice(0, 16); dk[kk] = (dk[kk] || 0) + 1; onDc(p, dc, inner); return; }
+          if (inner && inner.k) { const dk = rxStats.dcKinds; const kk = String(inner.k).slice(0, 16); dk[kk] = (dk[kk] || 0) + 1; if (pwNoAny()) { pwHeardNow(p.id); pwHeardNow(inner.from); } onDc(p, dc, inner); return; }
           if (!inner && !held && holdForRekey(take)) return; // sealed under the key my re-key is still deriving (rekeyHeld)
           return healStaleFrom(p.id, m, dc, p); // §LOCK: a previous-key frame is the staleness signal — see healStaleFrom
         }));
@@ -21082,7 +21096,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // In an admin room a password is never handed to the people inside:
         // they type it at the door (see 'pwreset'). Only the admin's order
         // to REMOVE the lock still travels this way — it gives away nothing.
-        if (hasAdminRoom() && String(m.pw || '') !== '') { pwLog('pwinfo-refused (admin room: a password is typed, never granted) ep=' + m.ep); return; }
+        // The one exception is a ban: the admin's statement names who must not hear it.
+        const grantNo = hasAdminRoom() && String(m.pw || '') !== '' ? pwNoOf(m) : null;
+        const grantMine = !!grantNo && pwToOf(m) === myId;   // admitted from the waiting room
+        if (grantNo && !grantNo.length && !grantMine) { pwLog('pwinfo-refused (admin room: a password is typed, never granted) ep=' + m.ep); return; }
         // EPOCH GUARD (§LOCK healing): a grant at or below my own generation
         // is a replay — dead on arrival. Nobody can roll a member backwards;
         // an ep-less grant is a legacy client's, treated as next-generation.
@@ -21097,10 +21114,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           setTimeout(() => { if (grantHoldUntil === until) releaseHeldGrant(true); }, Math.max(0, until - Date.now()) + 10);
           return;
         }
+        if (grantNo && grantNo.includes(myId)) { pwLog('pwinfo-refused (the statement bars me) ep=' + m.ep); const boot = pwBootOf(m); if (boot) onDc(p, null, boot); return; }   // a neighbour broke the rule: not taken
         const cleared = !m.pw && roomPw;
+        const oldKey = roomE2E;
         pwLog('pwinfo-adopt from=' + String(p.id || '?').slice(0, 6) + ' by=' + (m.by || '?') + ' ep=' + m.ep + ' myEp=' + pwEpoch + ' pwSame=' + (String(m.pw || '') === String(roomPw || '')));
         storePwEpoch(m.ep != null ? m.ep : pwEpoch + 1);
         retainedGrant = { k: 'pwinfo', pw: m.pw, by: m.by, w: m.w, ep: pwEpoch }; // retained VERBATIM — any member can heal a stale neighbour with the admin's own signature
+        if (grantMine) { retainedGrant = null; pwWaitProof = false; }
+        else if (grantNo) {
+          retainedGrant.no = grantNo; retainedGrant.wb = m.wb;
+          pwGrantOut(retainedGrant, oldKey, p.id);
+          pwBarOut(grantNo);
+          if (amAdmin) pwNoStore(grantNo);
+        }
         storePw(m.pw || '');
         // A GRANT ANSWERS THE DOOR CHALLENGE (2026-07-29). A member whose
         // churned socket re-knocked mid-rotation gets the R6 "This room is
@@ -21136,7 +21162,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }).catch((err) => pwChainFailed(err, wasBlocked));
         const purged = cleared ? purgeAllFiles(false) : 0; // password gone → shared files go with it
         renderFiles();
-        setStatus(m.pw ? '🔒 Room password ' + (m.by ? 'set by ' + m.by : 'updated')
+        if (grantMine) { /* nothing to say: they are about to sit */ }
+        else if (grantNo) setStatus(uiText('pwBanHeard', '🔒 The admin removed someone and changed the room password. You stay in the meeting.'));
+        else setStatus(m.pw ? '🔒 Room password ' + (m.by ? 'set by ' + m.by : 'updated')
           : '🔓 Password removed' + (m.by ? ' by ' + m.by : '') + ' — the room is blurred again' + (purged ? ' and shared files were cleared' : ''));
         reactRoomState(); // the password is the key to clear video
       } else if (m.k === 'roffer') {
@@ -35497,6 +35525,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       meshLinks: () => { const s = meshSeat(); return s ? Array.from(s.linkPeers()) : []; },
       adapterStats: () => (meshNode && meshNode.adapterStats ? meshNode.adapterStats() : null),
       // DEBUG lever (test/browsertests T3): vote the peer shown under `name` off, as a tap on its vote dot does (L27).
+      stageAudioForTest: async () => { let b = 0; for (const [k, v] of mosIn) { if (!k.startsWith("stg:") || !v.stream) continue; const tr = v.stream.getAudioTracks(); const p = peers.get(v.via); if (!p || !p.pc) continue; for (const t of tr) { const st = await p.pc.getStats(t); st.forEach((x) => { if (x.type === "inbound-rtp" && x.kind === "audio") b += x.packetsReceived || 0; }); } } return b; },
       voteOffForTest: (name) => { const pid = Object.keys(rosterNames).find((k) => rosterNames[k] === name); if (!pid || !devOf[pid]) return 'no-peer'; if (!myVoteoffs.has(devOf[pid])) toggleVote(pid); try { meshVoteBeat(); } catch (e) {} return 'voted ' + String(pid).slice(0, 6); },   // the seat world's tick/inbox/delay counters (env.js stats)
       // Greeter-list forensics (fragment founding): what onGreeters saw —
       // listLen, decryptable count, relay founded flag, action taken.
@@ -36274,7 +36303,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       gossipStats: () => (meshNode && meshNode.seat ? { dropped: meshNode.seat.gspDropped || 0, refused: meshNode.seat.gspRefused || 0, forged: meshNode.seat.gspForged || 0, inAll: meshNode.seat.gspInAll || 0, roomFlood: txStats.roomFlood || 0 } : null),
       forgeGossipForTest: (src, n) => { if (!meshNode || !meshNode._forgeGossipForTest) return 0; const ps = []; for (let i = 0; i < (n | 0); i++) ps.push({ a: 1, msg: { k: 'chat', m: { id: 'forged_' + i, by: 'Impostor', byId: src, at: Date.now(), text: 'forged line ' + i } } }); return meshNode._forgeGossipForTest(src, ps); }, // a hostile client speaking in someone else's name, with a valid signature of its own
       localStreamActive: () => !!localStream,
-      banList: () => roomBan,
+      pwBanForTest: (id) => pwBan(id),
       bannedOut: () => bannedOut,
       deviceId,
       devHash: () => myDevHash, // the ROOM-SALTED device tag actually sent to the relay (bans/votes key on this)
