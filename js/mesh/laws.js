@@ -60,7 +60,7 @@
     L29_ASK_T: 8,             // L29.1: a seat that has shed both classes this long asks its row head to move it to a cell that carries less (one beat)
     L29_BEAT: 16,             // L29.3: a light seat repeats its word to its head this often (two beats); the head forgets the word after three of these
     L29_BUD_D: 60,            // L29.1: a desktop's media budget in load units (a hot copy to one seat costs L29_HOT, a parked copy L29_PARK): the device can carry this much and no more
-    L29_BUD_M: 40,            // L29.1: a mobile's media budget in load units (two thirds of a desktop's): it carries any cell whole with its tenth of headroom, a Section-1 cell (own camera to 8 rook peers, their flood, a down feed, a parked copy: 35-36) included
+    L29_BUD_M: 40,            // L29.1: a mobile's media budget in load units (two thirds of a desktop's): it carries any cell whole with its tenth of headroom, a Section-1 cell (own camera to 8 rook peers, their flood, a down feed, a parked copy: 35-36) included, but for a full Section-1 head: that one sheds to 33 and asks to swap
     L29_CALM: 16,             // L29.1: ...for this long (two beats); and a seat that moved for load is light again only after twice this long at its full budget
     L29_HOT: 2,               // L29.1: the load of one hot copy to one seat: a seat's own camera to a receiver costs this; a forward costs one for its high-priority part (the stage) and one for its low-priority part (the stadium, the gallery mix)
     L29_PARK: 1,              // L29.1: the load of one parked copy (a backup held ready); a parked copy woken by its receiver costs L29_HOT

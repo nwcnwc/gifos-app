@@ -102,7 +102,7 @@
         if (pick < 0) return null;
         return { a: this.id, b: col[pick] };
       }
-      if (heir >= 0 && tr[heir] === E.TIER_MOBILE) {
+      if (this.coord.pc !== 0 && heir >= 0 && tr[heir] === E.TIER_MOBILE) {
         for (let j = heir + 1; j < C; j++) if (col[j] >= 0 && tr[j] === E.TIER_DESKTOP && lgOk(col[j])) return { a: col[heir], b: col[j] };
       }
       return null;
@@ -124,7 +124,7 @@
 
     // C++: mesh_tier.inc:Seat::l4Ready
     l4Ready(q) {
-      if (!this.w.lv.TIERS_ACTIVE || !this.hasCoord || this.state !== 3 || this.moving || this.l4ExecAt >= 0 || this.coord.pc === 0) return false;
+      if (!this.w.lv.TIERS_ACTIVE || !this.hasCoord || this.state !== 3 || this.moving || this.l4ExecAt >= 0) return false;
       const mine = ckey(this.coord);
       if (!((q.swA === this.id && q.swCa === mine) || (q.swB === this.id && q.swCb === mine))) return false;
       if (this.l4Hold) return false;
@@ -234,7 +234,7 @@
       const lv = this.w.lv;
       if (this.l4Out) { if (this.TICK - this.l4OutAt > 2 * this.w.lv.L4_LEAD) { this.trace('SWAP-ABORT', this.id, null, 'partner=%d never answered: out', this.l4Partner); this.l4Back(false); this.requeue('l4-out-lost'); } else this.f.wake(this.id); return; }
       if (!lv.TIERS_ACTIVE) { if (this.l4ExecAt >= 0 || this.l4o.at > -1000) { this.l4ExecAt = -1; this.l4o = newL4Order(); } return; }
-      if (!this.hasCoord || this.state !== 3 || this.coord.pc === 0) { this.l4ExecAt = -1; this.l4o = newL4Order(); return; }
+      if (!this.hasCoord || this.state !== 3) { this.l4ExecAt = -1; this.l4o = newL4Order(); return; }
       if (this.l4ExecAt >= 0) {
         if (this.l4Pinged < 0) { this.l4Pinged = this.TICK; const p = newMsg('SWAPRDY'); p.id = this.id; p.tag = 2; this.emit(this.l4Partner, p); }
         if (!this.l4Acked && this.TICK >= this.l4ExecAt - 3) {

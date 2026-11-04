@@ -200,6 +200,7 @@
     // tick steps of a Section-1 seat (this.coord.pc==0)
     tickSection1() {
       const TICK = this.TICK, id = this.id;
+      this.l4Tick(); if (!this.hasCoord) { this.f.wake(id); return; }   // L4.3
       if (this.anyRookLive(this.backAt >= 0 ? this.backAt : -1)) { this.rookSeenAt = TICK; this.rookEver = true; }   // fragment detector
       if (this.rivalId >= 0) this.loneAsk();
       if (this.movedClaimId >= 0) {

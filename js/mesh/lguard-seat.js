@@ -51,8 +51,8 @@
       let own = -1; { const oc = this.ownerCoord(); if (oc) own = this.occGet(ckey(oc)); }
       let pick = -1, pickT = 99;
       for (let j = 1; j < C; j++) {
-        const x = col[j]; if (x < 0 || j === ask || j === heir || this.lgLightSeat(x)) continue;
-        const k = ckey({ pc: this.coord.pc, r: this.coord.r, i: j }); if (this.occGet(ckey(down(unckey(k)))) >= 0 || (this.kidful.has(k) && this.kidful.get(k))) continue;
+        const x = col[j]; if (x < 0 || j === ask || (j === heir && this.coord.pc !== 0) || this.lgLightSeat(x)) continue;
+        const k = ckey({ pc: this.coord.pc, r: this.coord.r, i: j }); if (this.coord.pc !== 0 && (this.occGet(ckey(down(unckey(k)))) >= 0 || (this.kidful.has(k) && this.kidful.get(k)))) continue;
         if (ask === 0 && own >= 0 && own !== x && !l4Meet(this.l4NatOf(x), this.l4NatOf(own))) continue;
         const t = tr[j] === E.TIER_DESKTOP ? 0 : 1; if (t < pickT) { pickT = t; pick = j; }
       }
@@ -72,7 +72,7 @@
       }
       if (!this.hasCoord || this.state !== 3 || m.id < 0 || m.id === this.id) return;
       if (m.t === 'LGASK') {
-        if (this.coord.pc === 0 || this.coord.i !== 0 || !this.linkIs(m, m.id)) return;
+        if (this.coord.i !== 0 || !this.linkIs(m, m.id)) return;
         const c = unckey(m.ck); if (c.pc !== this.coord.pc || c.r !== this.coord.r || c.i === 0 || this.occGet(m.ck) !== m.id) return;
         this.lgAsk.set(m.id, [this.TICK, m.tag]); return;
       }
@@ -104,7 +104,7 @@
     lgTick() {
       if (!this.w.lv.LG_ON || !this.hasCoord || this.state !== 3) return;
       const bud = this.lgBud; const over = this.lgLvl >= 2;
-      if (this.lgLight && this.coord.pc !== 0 && this.coord.i !== 0 && this.TICK - this.lgAskSent >= K.L29_BEAT) { const h = this.occGet(ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 })); if (h >= 0 && h !== this.id) { const a = newMsg('LGASK'); a.id = this.id; a.ck = ckey(this.coord); a.tag = over ? 1 : 2; this.emit(h, a); } this.lgAskSent = this.TICK; }
+      if (this.lgLight && this.coord.i !== 0 && this.TICK - this.lgAskSent >= K.L29_BEAT) { const h = this.occGet(ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 })); if (h >= 0 && h !== this.id) { const a = newMsg('LGASK'); a.id = this.id; a.ck = ckey(this.coord); a.tag = over ? 1 : 2; this.emit(h, a); } this.lgAskSent = this.TICK; }
       if (this.lgAsk.size && this.coord.i !== 0) this.lgAsk.clear();
       for (const [x, since] of this.lgStv) {
         const xk = this.lgIsWit(x);
