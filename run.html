@@ -35657,7 +35657,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       meshLinks: () => { const s = meshSeat(); return s ? Array.from(s.linkPeers()) : []; },
       adapterStats: () => (meshNode && meshNode.adapterStats ? meshNode.adapterStats() : null),
       // DEBUG lever (test/browsertests T3): vote the peer shown under `name` off, as a tap on its vote dot does (L27).
-      stageAudioForTest: async () => { let b = 0; for (const [k, v] of mosIn) { if (!k.startsWith("stg:") || !v.stream) continue; const tr = v.stream.getAudioTracks(); const p = peers.get(v.via); if (!p || !p.pc) continue; for (const t of tr) { const st = await p.pc.getStats(t); st.forEach((x) => { if (x.type === "inbound-rtp" && x.kind === "audio") b += x.packetsReceived || 0; }); } } return b; },
       voteOffForTest: (name) => { const pid = Object.keys(rosterNames).find((k) => rosterNames[k] === name); if (!pid || !devOf[pid]) return 'no-peer'; if (!myVoteoffs.has(devOf[pid])) toggleVote(pid); try { meshVoteBeat(); } catch (e) {} return 'voted ' + String(pid).slice(0, 6); },   // the seat world's tick/inbox/delay counters (env.js stats)
       // Greeter-list forensics (fragment founding): what onGreeters saw —
       // listLen, decryptable count, relay founded flag, action taken.
