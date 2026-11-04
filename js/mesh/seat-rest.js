@@ -223,7 +223,7 @@
       if (m.mpK === 1) {
         if (m.mpBy < 0 || m.mpAt < 0 || m.mpL < 0 || m.mpL > this.TICK || this.TICK - m.mpL > K.L25_ORD_AGE) return false;
         if (m.mpBy === m.id && !(c.pc !== 0 && c.i !== 0 && this.occGet(ckey({ pc: c.pc, r: c.r, i: 0 })) === m.id)) return false;
-        if (!this.w.L25ORD.has(l25OrdKey(m.mpBy, m.ck, m.mpAt))) return false;
+        if (!this.w.L25ORD.has(l25OrdKey(m.mpBy, m.ck, m.mpAt, m.id))) return false;   /* the order named this mover */
         { const sp = this.l25Spent.get(m.ck); if (sp !== undefined && sp.by === m.mpBy && sp.at === m.mpAt && sp.x !== m.id) return false; }
         let ok = m.mpBy === id || this.ppAdm(m.ck, m.mpBy, m.id) || this.occGet(dk) === m.mpBy;
         if (!ok) { const ch = this.childOf.get(m.ck); ok = ch !== undefined && ch === m.mpBy; }
@@ -298,6 +298,10 @@
     // C++: mesh_hostile.inc:Seat::hostileRecv
     hostileRecv(m) {
       const w = this.w, id = this.id, lv = w.lv, h = this.hostile;
+      if (h & E.H_STEAL) {   // the stolen order: a heal order relayed through me (I am a hop of the cascade), or the proof a mover shows beside its claim (its originator signed (hole, at); nothing names the mover)
+        if (m.t === 'FINDLEAF' && m.fo >= 0 && m.fo !== id) { this.hoBy = m.fo; this.hoAt = m.foAt; this.hoCk = ckey(m.hole); this.hoNbrs = m.nbrs.map((e) => ({ k: e.k, v: e.v })); this.hoSeen = this.TICK; lv.HM_STEAL_SEEN++; }
+        else if ((m.t === 'HELLO' || m.t === 'CLAIM') && m.mpK === 1 && m.id !== id && m.mpBy !== id) { this.hoBy = m.mpBy; this.hoAt = m.mpAt; this.hoCk = m.ck; this.hoNbrs = []; this.hoSeen = this.TICK; lv.HM_STEAL_SEEN++; }
+      }
       if (m.sig && m.id >= 0 && m.id !== id && this.hostRec.length < 32) this.hostRec.push(msg.clone(m));
       if ((h & (E.H_HOLD | E.H_DIAL)) && m.t === 'UNNEEDED') return true;
       const mateOf = () => { let mate = -1; for (let q = 0; q < w.nextId; q++) { const y = (id + 1 + q) % w.nextId; if (y !== id && w.alive[y] && (w.seats[y].hostile & E.H_COLLUDE)) { mate = y; break; } } return mate; };
