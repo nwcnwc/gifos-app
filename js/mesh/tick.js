@@ -179,7 +179,7 @@
       if (roomTerm(this, 1) && TICK - this.seatedAt === 81) this.islandFork(this.lastGreeters);   // L8.3
       if (lv.LG_ON) this.lgTick();   // L29: my load ladder
       if (this.retireDead()) { this.f.wake(id); return true; }   // one owned link lost its channel; the higher id vacates
-      if (this.orphanSeat()) { let since = this.lkAnyAt; if (this.backAt > since) since = this.backAt; if (this.greetersAt > since + K.DARK_LEAVE) { this.requeue('D6c-orphan'); this.f.wake(id); return true; } if (TICK - this.cutAskAt >= 24) { this.cutAskAt = TICK; this.emitRelay(this.genKey); } }   // D6c
+      if (this.orphanSeat()) { let since = this.lkAnyAt; if (this.backAt > since) since = this.backAt; if (this.greetersAt > since + K.DARK_LEAVE && TICK - this.greetersAt >= 16) { this.requeue('D6c-orphan'); this.f.wake(id); return true; } if (TICK - this.cutAskAt >= 24) { this.cutAskAt = TICK; this.emitRelay(this.genKey); } }   // D6c
       if (this.darkSeat() && !this.d6Lease()) { this.dark6++; this.d6Mark = true; this.requeue('D6-dark'); this.f.wake(id); return true; }   // D6
       if (this.islanded() && TICK - this.islandSince() > K.LEASE_T && !(this.l13('L13.6') && this.l13Mass() && TICK - this.l13CrashAt <= 64)) { this.trace('ISLAND-OUT', id, this.coord, 'since=%lld', this.islandSince()); this.requeue('L3-island'); this.f.wake(id); return true; }   // L3.6b
       // T: transit bookkeeping: a claim window that closes with NO contradiction CONFIRMS; the tombstone self-expires (T3).
@@ -317,6 +317,7 @@
       if (!topo.TOPO_XDROP && this.coord.i > 0 && TICK >= this.xlinkAt) { this.xlinkAt = TICK + 150 + Math.trunc(this.rng() * 100); const x = crossLink(this.coord); if (x && this.occGet(ckey(x)) < 0) this.routeTo(x, 1); }
       if (this.drainAt && TICK >= this.drainAt) { this.reseatViaRoster(); return; }
       const didHeal = this.healOwner();   // 11a VERTICAL: a head heals its dead owner cell from its subtree
+      if (!this.hasCoord) return;   // L47: it knocked again
       this.drainOrCompact(didHeal);
     },
 
@@ -332,6 +333,8 @@
         const confirm = (haveOc && oc.pc === 0) ? K.LEASE_T : 60;
         let ownEarly = haveOc && this.translostConfirmed(ok);
         if (ownEarly && this.l2OwnerHold(ok)) ownEarly = false;
+        // L47: never blind on a D5 verdict. A head with no live link but the dead one (or that knows no Section-1 seat but its owner) probed over no path: its verdict says the pair died, not the owner. Healed anyway, a live owner's cell gets a tenant that reaches nobody and stays (a second home ring, a stage feed shipped into it). Knock again, as D6 does.
+        if (ownEarly && oc.pc === 0 && !this.ownPathUp(ok)) { this.requeue('L47-blind'); this.f.wake(id); return false; }
         if (!ownEarly && haveOc && this.ownDeadCk === ok && (this.ownDeadId >= 0 || (this.occGet(ok) < 0)) && (this.occGet(ok) < 0 || this.occGet(ok) === this.ownDeadId) && TICK - this.ownDeadAt <= 2 * 8 + K.EARLY_HOLD && TICK - this.ownVouchAt > 2 * 8 + K.EARLY_HOLD) {   /* L1.4 */
           ownEarly = true; if (this.l2DeathTr !== this.ownDeadAt) { this.l2DeathTr = this.ownDeadAt; this.trace('L2-DEATH', id, oc, 'via=e2'); }
         }   // L2.9

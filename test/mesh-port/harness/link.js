@@ -891,6 +891,8 @@ function install(fab) {
     else if (op === 'close') { const fail = tk.length > 4 && tk[4] === 'fail'; closeBoth(L, a, b, fail, fail ? 'failed-persist' : 'dc-close'); }
     else if (op === 'open') { L.epoch = U32(L.epoch + 1); L.leverHalf = false; LBLOCK.delete(pairKey(a, b)); linkOpenNow(L, a, b); }
   };
+  // C++: mesh_link.inc:radioDark
+  fab.radioDark = (id) => { const t = RADIO.get(id); return t !== undefined && t > TICK(); };
   // C++: mesh_link.inc:radioLever
   api.radioLever = (tk) => {
     const id = tk.length > 1 ? atoi(tk[1]) : -1; const t = tk.length > 2 ? atoi(tk[2]) : 40;

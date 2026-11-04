@@ -13776,7 +13776,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function isRowMate(pid) {
       const c = meshCoord(), s = meshSeat(); if (!c || !s) return true;
       let k = null; for (const [kk, v] of s.occ) if (v === pid) { k = kk; break; }
-      if (!k) return true;
+      // A peer the seat holds by a role but names at no cell is the far end of a backup uplink (E2): a parked pc, no camera.
+      if (!k) return !s.linkPeers().has(pid);
       const cc = net.topo.unck(k);
       return cc.pc === c.pc && cc.r === c.r;
     }
@@ -17262,6 +17263,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!p.video || !tileHolds(p.video, p.stream) || p.video.paused || p.video.readyState === 0) return 'element';
       if (!p.dc || p.dc.readyState !== 'open') return 'dc';
       if (!camPeer(pid) || mediaOk(pid) === false) return 'mate';
+      // Only a row-mate my seat names can be judged: rebuilding any other pair closes a link the seat may be standing on.
+      if (meshCoord() && meshSeat() && !Array.from(meshSeat().occ.values()).includes(pid)) return 'mate';
       if (!fst || fst.camOff || fst.scr || forcedCamOff(pid)) return 'cam';
       if (peerAway(pid)) return 'away';
       if (stageIds().includes(pid)) return 'staged';
@@ -23298,13 +23301,37 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // their counts.
     const MOS_RESTART_HOLD = 2500;   // ms the feed stays parked: re-bind at 1 s, resume at 2.5 s
     const mosHeld = (e) => !!(e && e.el && e.el._mosHold);
+    // THE FEED'S SINKS. A mosaic feed plays in more than its 2x2 decoder: every
+    // stadium face plays the composite stream, the Stage strip plays the
+    // sharer's stg feed through a video-only wrapper (stageDirect). On WebKit
+    // each is bound AFTER the feed flows, and a player bound to a flowing remote
+    // track never starts: the decoder paints while the share stays black. The
+    // park cures any element re-bound while nothing flows, so the sweep judges
+    // and re-binds all of a feed's sinks, found by track identity. A sink is the
+    // decoder or an element on screen at 16 px or more: the 4x4 .stad-src source
+    // never loads on WebKit and is nobody's picture.
+    function mosSinks(ent, vt) {
+      const out = [ent.el];
+      let all = null; try { all = document.querySelectorAll('video'); } catch (e) {}
+      if (!all) return out;
+      for (const x of all) {
+        if (x === ent.el || !x.isConnected) continue;
+        const so = x.srcObject; const t = so && so.getVideoTracks ? so.getVideoTracks()[0] : null;
+        if (!t || t !== vt) continue;
+        if (!(x.clientWidth >= 16 && x.clientHeight >= 16)) continue;
+        out.push(x);
+      }
+      return out;
+    }
     function mosDecoderSweep() {
       const now = Date.now();
       const ents = [...mosIn.entries(), ...mosStandby.entries()];
       for (const [rk, ent] of ents) {
         const v = ent && ent.el, st = v && (ent.stream || v.srcObject);
         if (!st || !v.isConnected) continue;
-        const rebind = () => { try { v.srcObject = null; if (typeof wkBindVideo === 'function') wkBindVideo(v, st); else v.srcObject = st; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {} };
+        const vt = st.getVideoTracks ? st.getVideoTracks()[0] : null;
+        // Every sink is re-bound: the decoder to the entry's stream, each other sink to the stream it holds.
+        const rebind = () => { for (const x of (vt ? mosSinks(ent, vt) : [v])) { const own = x === v ? st : x.srcObject; try { x.srcObject = null; if (typeof wkBindVideo === 'function') wkBindVideo(x, own); else x.srcObject = own; const pr = x.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {} } };
         const dmd = (want) => { if (ent.key && ent.via) { try { demand(ent.via, ent.key, ent.streamId, want); } catch (e) {} } };
         if (v._mosHold) {
           const age = now - v._mosHold;
@@ -23316,15 +23343,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
           continue;
         }
-        const vt = st.getVideoTracks ? st.getVideoTracks()[0] : null;
         if (!vt || vt.readyState !== 'live' || vt.muted) { v._mosFlowAt = 0; continue; } // nothing arriving: nothing to restart
-        if (v.videoWidth > 0) { v._mosFlowAt = 0; continue; }                                 // it paints
+        const sinks = mosSinks(ent, vt);
+        const dead = sinks.filter((x) => !(x.videoWidth > 0));
+        if (!dead.length) { v._mosFlowAt = 0; continue; }                                    // every sink paints
         if (!v._mosFlowAt) { v._mosFlowAt = now; continue; }
         if (v._mosRestarts >= 8 || now - v._mosFlowAt < 1500 * Math.pow(2, v._mosRestarts)) continue;
         v._mosRestarts++; v._mosFlowAt = now;
         if (ent.key && ent.via) { v._mosHold = now; v._mosRebound = false; dmd(false); }
         else rebind();
-        if (window.__mosRestartLog) window.__mosRestartLog.push({ t: now, n: v._mosRestarts, key: rk, sid: String(st.id).slice(0, 8), park: !!v._mosHold });
+        if (window.__mosRestartLog) window.__mosRestartLog.push({ t: now, n: v._mosRestarts, key: rk, sid: String(st.id).slice(0, 8), park: !!v._mosHold, sinks: sinks.length, dead: dead.length });
       }
     }
     setInterval(mosDecoderSweep, 1000);
@@ -25509,7 +25537,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // the sharer's frozen camera picture labelled as their screen. The
         // stg feed is the one that carries the screen.
         const sc = srcFor(sid, 'stg:' + sid, true);
-        if (!sc || !sc.el || !sc.stream || !sc.el.videoWidth) return null; // no pixels yet — the strip stands, the next sweep switches
+        // A HELD decoder keeps the direct screen: the sweep parks the feed to restart a sink that never started (this strip), and the decoder has no pixels while parked. Falling back to the composite re-bound the strip mid-park and back after the resume, after flow both times, so the park could never cure it.
+        if (!sc || !sc.el || !sc.stream || (!sc.el.videoWidth && !sc.el._mosHold)) return null; // no pixels yet — the strip stands, the next sweep switches
         const vt = sc.stream.getVideoTracks ? sc.stream.getVideoTracks()[0] : null;
         if (!vt || vt.readyState === 'ended') return null;
         if (!stageDirectSt || stageDirectSt.getVideoTracks()[0] !== vt) stageDirectSt = new MediaStream([vt]);
