@@ -356,8 +356,8 @@
     function setRefuses(b) { refuses = !!b; }
     const KC = () => (GifOS.meshConsts ? GifOS.meshConsts.consts : { LEASE_T: 220 });
     const TP = () => GifOS.meshTopo;
-    let myDig = dig0(), rowDig = dig0(), rootDig = dig0(), downDig = dig0(), u2RowDig = dig0(), foldSig = null, foldBeat = -1, foldCell = -1;
-    const rowKids = new Map(), s1tab = new Map(), u2Folds = new Map();
+    let myDig = dig0(), rowDig = dig0(), rootDig = dig0(), downDig = dig0(), u2RowDig = dig0(), siDig = dig0(), foldSig = null, foldBeat = -1, foldCell = -1;
+    const rowKids = new Map(), s1tab = new Map(), u2Folds = new Map(), siKids = new Map();   // siKids: my row-mates' own reports while I stand in for our head (L48)
     const servesHot = (s, to) => { const x = ids.nid(to); for (const e of s.u2Rows.values()) if (e.hot && e.heir === x) return true; return false; };
     const e2SrcIs = (s, to) => { const R = GifOS.meshRoles, tp = TP(); if (!R) return false; const x = R.e2SrcOf({ pc: s.coord.pc, r: s.coord.r, i: 0 }, (q) => s.occGet(tp.ckey(q)) >= 0); return !!x && P(s.occGet(tp.ckey(x))) === to; };
     const digSent = new Map(), digWant = new Map();
@@ -397,7 +397,7 @@
     function slotSig(s, k, e) { const LT = s.LT(); return (e && e.at >= 0 && named(s, k, e) && LT - e.rx <= DIG_TTL) ? ':' + digHash(e) : (gapAt(s, k) ? ':*' : ':.') + (e && held(s, k, e) ? digHash(e) : ''); }
     function rollupP(s) {
       const C = SC(), c = s.coord, tp = TP(), LT = s.LT(), mine = tp.ckey(c);
-      if (mine !== foldCell) { foldCell = mine; downDig = dig0(); rowKids.clear(); s1tab.clear(); foldSig = null; u2RowDig = dig0(); u2Folds.clear(); }
+      if (mine !== foldCell) { foldCell = mine; downDig = dig0(); rowKids.clear(); s1tab.clear(); foldSig = null; u2RowDig = dig0(); u2Folds.clear(); siKids.clear(); siDig = dig0(); }
       const L = leaf, dk = tp.ckey(tp.down(c));
       const newest = new Map();
       if (c.pc === 0) for (const e of s1tab.values()) if (e.by != null && LT - e.rx <= DIG_TTL) { const nb = newest.get(e.by); if (nb === undefined || nb < e.at) newest.set(e.by, e.at); }
@@ -407,12 +407,14 @@
         + ',' + L.nm + ',' + L.dv + ',' + (L.ad ? JSON.stringify(L.ad) : '') + ',' + L.vup.join('\n') + ',' + L.vdn.join('\n') + ',' + L.vab.join('\n');
       if (c.pc !== 0 && c.i === 0) for (let j = 1; j < C; j++) { const rk = tp.ckey({ pc: c.pc, r: c.r, i: j }); sig += slotSig(s, rk, rowKids.get(rk)); }
       for (const [rk, u] of u2Folds) if (e2Live(s, rk, u)) sig += ';e2' + rk + ':' + digHash(u);
+      const si = c.pc !== 0 && c.i !== 0 && siKids.size > 0;
+      if (si) for (let j = 1; j < C; j++) if (j !== c.i) { const rk = tp.ckey({ pc: c.pc, r: c.r, i: j }); sig += ';si' + slotSig(s, rk, siKids.get(rk)); }
       if (c.pc === 0) for (let r0 = 0; r0 < C; r0++) for (let i0 = 0; i0 < C; i0++) {
         const k = tp.ckey({ pc: 0, r: r0, i: i0 }); if (k === mine) { sig += ':me'; continue; }
         const it = s1tab.get(k); sig += it && superseded(it) ? ':-' : slotSig(s, k, it);
       }
       if (foldSig === sig && myDig.at >= 0) {
-        myDig.at = LT; myDig.rx = LT; if (c.pc !== 0 && c.i === 0) { rowDig.at = LT; rowDig.rx = LT; } if (c.pc === 0) { rootDig.at = LT; rootDig.rx = LT; }
+        myDig.at = LT; myDig.rx = LT; if (c.pc !== 0 && c.i === 0) { rowDig.at = LT; rowDig.rx = LT; } if (si) { siDig.at = LT; siDig.rx = LT; } if (c.pc === 0) { rootDig.at = LT; rootDig.rx = LT; }
         return;
       }
       foldSig = sig;
@@ -420,6 +422,11 @@
       if (dm) { d.rows.push(rowOf(downDig, dk, dm === 2, 0)); for (const x of downDig.rows || []) if (x.e !== 2) d.rows.push(rowCopy(x)); }   // L48: my child row's copy (a lone row's own rows go on up)
       for (const [rk, u] of u2Folds) if (e2Live(s, rk, u)) { addE2(d, u); d.rows.push(rowOf(u, rk, true, 1)); }   // L48: the rows I serve over E2
       digTrim(d); myDig = d;
+      if (si) {   // L48 the stand-in fold: a heir standing in for its head folds its own report and its row-mates' (their stand-in PHONEs)
+        const r = digCopy(d); r.at = LT; r.rx = LT; r.by = me; r.rows = [];
+        for (let j = 1; j < C; j++) if (j !== c.i) { const rk = tp.ckey({ pc: c.pc, r: c.r, i: j }); foldSlot(s, r, rk, siKids.get(rk)); }
+        digTrim(r); siDig = r;
+      } else siDig = dig0();
       if (c.pc !== 0 && c.i === 0) {   // a deep row head folds its row (its owner is linked only to it)
         const r = digCopy(d); r.at = LT; r.rx = LT; r.by = me;
         const kids = []; for (let j = 1; j < C; j++) { const rk = tp.ckey({ pc: c.pc, r: c.r, i: j }), e = rowKids.get(rk); kids.push([rk, e, slotMode(s, rk, e)]); }
@@ -479,6 +486,8 @@
       if (m.t === 'PHONE' && m.dgUp && m.dgUp.at >= 0) {
         if (c.pc === 0) pd = { u: stubFor(s, to, 'sec', myDig, wireDig(s, myDig)) };   // rook peers: the section digest, stubbed
         else pd = { u: wireDig(s, c.i === 0 ? rowDig : myDig) };                       // to an aggregator: whole, every beat
+      } else if (m.t === 'PHONE' && m.tag === 5 && c.pc !== 0 && c.i !== 0 && myDig.at >= 0) {   // L48: a stand-in beat carries my own report to the heir (the seat's dgSi)
+        pd = { u: wireDig(s, myDig) };
       } else if (m.t === 'PONG' && m.dgRoot && m.dgRoot.at >= 0 && rootDig.at >= 0) {
         const w = wireDig(s, rootDig); delete w.by; pd = { r: stubFor(s, to, 'root', rootDig, w) };
       } else if (m.t === 'S1SYNC' && m.digs && m.digs.length && c.pc === 0) {
@@ -486,8 +495,9 @@
         for (const [k, e] of s1tab) if (k !== mine && s.LT() - e.rx <= DIG_TTL) a.push({ k, d: stubFor(s, to, 's1:' + k, e, wireDig(s, e)) });
         pd = { s: a };
       } else if (m.t === 'U2BEAT' && m.dgUp && m.dgUp.at >= 0) {   // L2.4: hot E2, the row's fold rides the beat (head alone in its row: its own; the source: the head's last)
-        const d = c.i === 0 ? rowDig : u2RowDig, hk = tp.ckey({ pc: c.pc, r: c.r, i: 0 });
-        if (d.at >= 0 && (c.i === 0 || (d.by != null && P(s.occGet(hk)) === d.by))) { const w = wireDig(s, d); delete w.rows; pd = { u: w }; }   // L48: the head's last fold, only while I still name that head
+        const hk = tp.ckey({ pc: c.pc, r: c.r, i: 0 }), hn = s.occGet(hk);
+        const d = c.i === 0 ? rowDig : (u2RowDig.at >= 0 && u2RowDig.by != null && hn >= 0 && P(hn) === u2RowDig.by) ? u2RowDig : (hn < 0 || s.headGone()) ? (siDig.at >= 0 ? siDig : myDig) : null;
+        if (d && d.at >= 0) { const w = wireDig(s, d); delete w.rows; pd = { u: w }; }   // L48: the head's last fold while I still name that head, else the row's own fold (mine and my mates')
       } else if (m.t === 'U2ACK' && rootDig.at >= 0 && servesHot(s, to)) {   // L2.4: the room's fold down the hot E2, as the head's PONG would carry it: a row whose up path is E2 still reads the room
         const w = wireDig(s, rootDig); delete w.by; pd = { r: stubFor(s, to, 'root', rootDig, w) };
       } else if (m.t === 'PONG' && m.tag === 5 && rootDig.at >= 0) {   // L2.7: a heir standing in for its head passes that fold on to the row
@@ -513,14 +523,18 @@
       }
       if (!m.coord) return;
       const pk = tp.ckey(m.coord);
+      if (pd.u && m.t === 'U2BEAT') {   // the seat's U2Row.dig: held while I serve that row, by the source the seat names (its own check: a backup owner need not name a deep cell)
+        const rk = tp.ckey({ pc: m.coord.pc, r: m.coord.r, i: 0 }), e = s.u2Rows.get(rk * 2); if (!e || e.heir !== m.id) return;
+        const u = digSane(pd.u); if (u) { if (u.by == null) u.by = from; if (u2Folds.size > 2 * C) u2Folds.clear(); u2Folds.set(rk, rxDig(s, u)); }   // L48: the row's author stays (one author's copies compare by its stamp)
+        return;
+      }
       const e2Far = m.t === 'U2ACK' && (m.id === s.u2Id || m.id === s.u3Id);   // the seat already took this far end from its row's PONG; a deep view need not name its cell
       if (!e2Far && s.occGet(pk) !== m.id) return;
       if (pd.p && m.t === 'PONG' && c.pc !== 0 && c.i !== 0 && pk === tp.ckey({ pc: c.pc, r: c.r, i: 0 })) {
         if (pd.p.stub === 1) stubTake(s, pd.p, u2RowDig, 'row', from, 'rowp'); else { const u = digSane(pd.p); if (u) { u.by = from; u2RowDig = rxDig(s, u); } }
       }
-      if (pd.u && m.t === 'U2BEAT') {   // the seat's U2Row.dig: held while I serve that row, by the source the seat names
-        const rk = tp.ckey({ pc: m.coord.pc, r: m.coord.r, i: 0 }), e = s.u2Rows.get(rk * 2); if (!e || e.heir !== m.id) return;
-        const u = digSane(pd.u); if (u) { if (u.by == null) u.by = from; if (u2Folds.size > 2 * C) u2Folds.clear(); u2Folds.set(rk, rxDig(s, u)); }   // L48: the row's author stays (one author's copies compare by its stamp)
+      if (pd.u && m.t === 'PHONE' && m.tag === 5) {   // L48: a row-mate's own report while I stand in for our head (the seat takes the PHONE only then)
+        if (m.tock === tp.ckey(c) && c.pc !== 0 && c.i !== 0 && m.coord.pc === c.pc && m.coord.r === c.r && m.coord.i !== 0 && s.headGone()) { const u = digSane(pd.u); if (u) { u.by = from; delete u.rows; if (siKids.size >= C) siKids.clear(); siKids.set(pk, rxDig(s, u)); } }
         return;
       }
       if (pd.u && m.t === 'PHONE' && m.tock === tp.ckey(c)) {
