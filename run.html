@@ -16088,8 +16088,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // contradicting.
         try { const st = meshSeat(); if (st && st.goodbye) st.goodbye(pid); } catch (err) {}
         // A seat whose links all ran through the forger is cut off from the
-        // room: cutOffByEjection (below) sends it back through the door.
-        ejectWatchUntil = Date.now() + 120000;
+        // room: the seat's own dark-seat law (D6) sends it back through the door.
       };
       Promise.race([whoObserve(pid), new Promise((r) => setTimeout(r, 1500))]).then(drop, drop);
       rosterIds = rosterIds.filter((x) => x !== pid);
@@ -16108,29 +16107,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { updateStatus(); } catch (err) {}
       whoRefresh();
     }
-    // CUT OFF BY AN EJECTION. A seat whose only links ran through an ejected
-    // forger hears nobody, and nothing else will rescue it: the room's own
-    // fragment rescue stands down while the room is known to hold others. So
-    // for two minutes after any ejection, a SEATED page with no live link to
-    // anyone not ejected, while the room was heard from lately, goes back
-    // through the door (at most every 15 s). A one-shot check right after the
-    // ejection was not enough: a seat still joining at that moment — e.g.
-    // seated by a forger that came back under a new key — was never
-    // re-checked and stayed alone.
-    let ejectWatchUntil = 0, cutOffSince = 0, ejectRequeueAt = 0;
-    function cutOffByEjection() {
-      if (!ejectWatchUntil || Date.now() > ejectWatchUntil) { cutOffSince = 0; return; }
-      const st = meshSeat();
-      if (!st || !st.hasCoord || st.state !== 3 || typeof st.requeue !== 'function') { cutOffSince = 0; return; }
-      const linked = [...peers.values()].some((q) => q.connected && !isEjected(q.id));
-      const roomHeard = [...whoLog].some(([pid, e]) => !isEjected(pid) && Date.now() - e.last < 60000);
-      if (linked || !roomHeard) { cutOffSince = 0; return; }
-      if (!cutOffSince) { cutOffSince = Date.now(); return; }
-      if (Date.now() - cutOffSince < 3000 || Date.now() - ejectRequeueAt < 15000) return;
-      cutOffSince = 0; ejectRequeueAt = Date.now();
-      try { st.requeue(); } catch (err) {}
-    }
-    setInterval(cutOffByEjection, 1500);
     // A departure: stamp what is about to be forgotten elsewhere.
     function whoGone(pid) {
       const e = whoLog.get(pid); if (!e) return;
@@ -20570,7 +20546,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // frames from now on are the peer's own word: re-announce so my
           // HELLO reaches it as a first-hand claim, not a hint (and greet
           // it — see dc.onopen)
-          try { const s = meshSeat(); if (s && s.hasCoord && s.state === 3) { s.announce(); if (s.greet) s.greet(p.id); } } catch (e) {}
         }).catch(() => {});
     }
     function wireDc(p, dc) {
@@ -20629,7 +20604,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // to the other, the row-mate's YIELDs went unbacked, and both held
         // 0/0.0 for good (chaos seed 6 #2 on 403c6f81). The healer's mesh
         // settles a claim on its own cell from here (the rival branch).
-        try { const s = meshSeat(); if (s && s.hasCoord && s.state === 3) { s.announce(); if (s.greet) s.greet(p.id); } } catch (e) {}
       };
       // D5: my channel to this peer died. On an ungraceful peer death (mobile
       // tab kill, OOM, crash) this lands within ~1-5s — first-hand evidence
