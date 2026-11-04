@@ -201,7 +201,7 @@
       if (it !== undefined && T() - it < K.LINK_TL_DEBOUNCE) return;
       TLDEB.set(dk, T());
       trace('LINK-DOWN', me, null, 'peer=%d why=%s', x, why);
-      if (why === 'disconnected-persist' || why === 'failed-persist' || why === 'leave-close' || why === 'relay-leave') {
+      if (why === 'disconnected-persist' || why === 'failed-persist' || why === 'leave-close') {
         s.l13DownAt.push(s.TICK); s.l13DownPeer.push(x); s.l13DownCrash.push(why === 'disconnected-persist' || why === 'failed-persist' ? 1 : 0);
         if (s.l13DownAt.length > 32) { s.l13DownAt.shift(); s.l13DownPeer.shift(); s.l13DownCrash.shift(); }
         if (why === 'disconnected-persist' || why === 'failed-persist') s.l13CrashAt = T();
