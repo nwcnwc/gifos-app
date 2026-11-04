@@ -21,7 +21,7 @@ function install(fab) {
   const sigReset = () => { HEARD.clear(); NOSOCK.clear(); if (X.mPairsReset) X.mPairsReset(); };
   const sigSeated = (x) => seats[x].hasCoord && seats[x].state === 3;
   const sigInit = (a, b) => { const s = U32(U32(lv.SEED0) ^ 0x696e6974), ha = lmix(hash.hmixId(s, a)), hb = lmix(hash.hmixId(s, b)); return ha !== hb ? ha > hb : a > b; };
-  const sigSock = (x) => { if (x < 0 || x >= nextId() || !alive[x] || lk().radioOff(x) || fab.sockClosed(x)) return false; const s = seats[x]; return s.socketed() || TICK() - s.seatedAt <= SIG_DEEP_GRACE; };
+  const sigSock = (x) => { if (x < 0 || x >= nextId() || !alive[x] || lk().radioOff(x)) return false; const s = seats[x]; return s.socketed() || TICK() - s.seatedAt <= SIG_DEEP_GRACE; };
   const sigMayRelay = (me, to) => {
     const s = seats[me]; if (!s.socketed()) return false; if (!s.hasCoord) return true; if (!F.fhKeyOf(me, to)) return true;
     const at = HEARD.get(idPair(me, to)); return at !== undefined && TICK() - at < SIG_NOSOCK_T;
