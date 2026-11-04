@@ -267,6 +267,8 @@
     }
     // C++: mesh.cpp:fabricKickClose
     function fabricKickClose(a, x) { if (a !== me || x < 0 || x === me) return; const L = LINKS.get(x); if (L && L.state === LK_OPEN) closeFrom(L, me, x, 'voted-off'); }
+    // C++: mesh_link.inc:fabricOpenPeers
+    function fabricOpenPeers(a) { const out = []; if (a !== me) return out; for (const [x, L] of LINKS) if (L.state === LK_OPEN && F.fabricLinkState(a, x) === LS_OPEN) out.push(x); return out; }
     // C++: mesh.cpp:fabricLinkOpen
     function fabricLinkOpen(a, x) { return F.fabricLinkState(a, x) === LS_OPEN; }
     // C++: mesh_link.inc:fabricDoorDrop   [pclaws.js's, then my goodbye: l16Close's far down]
@@ -481,7 +483,7 @@
     function leaveAll() { for (const [x, L] of LINKS) if (L.state === LK_OPEN || L.state === LK_DIALING) { L.state = LK_CLOSED; L.view[mine(x)] = LK_CLOSED; L.gone |= (1 << mine(x)); bye(x, 'leave', L); } }
 
     const fns = Object.assign({}, F, {
-      fabricDial, fabricDialJoin, fabricDialUplink, fabricUpDecline, fabricKickClose, fabricLinkOpen, fabricDoorDrop,
+      fabricDial, fabricDialJoin, fabricDialUplink, fabricUpDecline, fabricKickClose, fabricLinkOpen, fabricOpenPeers, fabricDoorDrop,
       fabricMyDoors: (a) => (a === me ? (S.DOORN[me] || 0) : 0), fabricMyKnocks: (a) => (a === me ? (S.DOORK[me] || 0) : 0),
       fabricL23Busy: (a, x) => (a === me ? F.fabricL23Busy(a, x) : false),
       l22Need: (a, x) => (a === me ? F.l22Need(a, x) : true),

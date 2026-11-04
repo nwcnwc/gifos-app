@@ -495,20 +495,33 @@
     // A PAGE GONE, TAB CLOSED OR RELOADED (L3.11): no browser says which at unload, so the leaver sends both words. The reload
     // mark holds its cell; its plain goodbye (`rh`, outside the signature) waits here RELOAD_HOLD_MS for it to come back. Any
     // frame of its own after that means it did, and the goodbye is dropped; else the goodbye lands and it was a real leave.
-    const byeHeld = new Map();   // leaver's peer id -> timer
+    const byeHeld = new Map(), byeArmed = new Map(), byeMark = new Map(), BYE_STRAY_MS = 800;   // leaver's peer id -> timer, when it started
+    function byeTrace(e, k, d) { if (opts.trace) { try { opts.trace('{"t":' + (env.TICK | 0) + ',"s":' + layer.ids.nid(peer) + ',"e":"' + e + '","c":null,"d":"peer=' + String(k).slice(0, 8) + ' ' + d + '"}'); } catch (x) {} } }   // DEBUG
+    function armBye(k, id, land) {
+      clearTimeout(byeHeld.get(k)); byeArmed.set(k, Date.now()); byeTrace('BYE-HOLD', k, '');
+      if (opts.onByeHold) { try { opts.onByeHold(k); } catch (e) {} }   // the tile goes now; the cell stays held for the hold
+      byeHeld.set(k, setTimeout(() => {
+        byeHeld.delete(k); if (stopped || !raw) return; byeTrace('BYE-LAND', k, '');
+        raw.relMark.delete(id);   // the mark was for a return that never came: the seat hears a plain goodbye, its closes read as ever
+        if (opts.onByeHeld) { try { opts.onByeHeld(k); } catch (e) {} }
+        const mk = byeMark.get(k); byeMark.delete(k); if (mk) mk(); else land();   // the verified mark's own words, when it came: nothing left to check
+      }, RELOAD_HOLD_MS));
+    }
+    // A reload mark with no plain goodbye beside it (a link whose channel was not open yet carried the mark by another way): the verified mark starts the same hold.
+    function markBye(f, via, dir) {
+      const k = String(layer.ids.pid(f.id) || via); byeMark.set(k, () => { f.rel = false; penv.frame(f, String(via), dir); });
+      if (!byeHeld.has(k)) armBye(k, f.id, () => {});
+    }
     function holdBye(m, f, via, direct) {
       const k = String(via);
       if (m.rh && direct === true && f.t === 'LEAVE' && f.bye && !f.rel) {
-        clearTimeout(byeHeld.get(k));
-        byeHeld.set(k, setTimeout(() => {
-          byeHeld.delete(k); if (stopped || !raw) return;
-          raw.relMark.delete(f.id);   // the mark was for a return that never came: the seat hears a plain goodbye, its closes read as ever
-          if (opts.onByeHeld) { try { opts.onByeHeld(k); } catch (e) {} }
-          const g = Object.assign({}, m); delete g.rh; ingest(g, via, direct);
-        }, RELOAD_HOLD_MS));
+        // Its channel's close can reach the seat before the mark clears its signature: a close read as hard would heal over the cell. Its own word about its own seat, on its own channel.
+        if (raw && layer.ids.pid(f.id) === k && !raw.relMark.has(f.id)) raw.relMark.set(f.id, raw.TICK);
+        armBye(k, f.id, () => { const g = Object.assign({}, m); delete g.rh; ingest(g, via, direct); });
         return true;
       }
-      if (byeHeld.has(k) && f.t !== 'LEAVE') { clearTimeout(byeHeld.get(k)); byeHeld.delete(k); }
+      // (frames it signed just before the goodbye can land just after it: a page takes longer than this to come back)
+      if (byeHeld.has(k) && f.t !== 'LEAVE' && Date.now() - (byeArmed.get(k) || 0) > BYE_STRAY_MS) { clearTimeout(byeHeld.get(k)); byeHeld.delete(k); byeMark.delete(k); byeTrace('BYE-BACK', k, f.t); }
       return false;
     }
     function ingest(m, via, direct) {
@@ -542,6 +555,7 @@
           if (!ok && f.t === 'RECLAIM') return;   // no proof, no reclaim: the seat never hears it
           if (f.t === 'WHOHOME' && doorBlocks(f, via, m.dir)) return;   // waiting room: no HOME, no roster
           if (ok && dir && m.pd) layer.sideIn(String(via), f, m.pd);
+          if (ok && f.t === 'LEAVE' && f.rel && f.bye && !f.mvd) markBye(msgM.clone(relayForm(msgM, f)), via, dirOf(m.dir));
           penv.frame(ok ? relayForm(msgM, f) : f, String(via), dirOf(m.dir));
         };
         if (claim === -1) { verifyChain(() => Promise.resolve().then(() => done(true))); return; }
@@ -1341,6 +1355,8 @@
       myCell() { return raw && raw.state === 3 && raw.hasCoord ? GifOS.meshTopo.ckey(raw.coord) : -1; },   // for the page's seat memory (L3.10)
       // reload: the page may be coming back with this identity (L3.11). Its plain goodbye goes first, for the far end to hold.
       // None pre-signed for what I would say now: then it is a plain leave, or a closed tab would hold its cell for a whole lease.
+      byeIsHeld(pid) { return byeHeld.has(String(pid)); },
+      byesHeld() { return byeHeld.size; },   // pages gone whose cell is held: no face, no head in the count
       leave(reload) { if (reload && !sendHeldByes()) reload = false; try { if (raw) { if (penv && penv.leave) penv.leave(!!reload); else raw.leave(!!reload); } } catch (e) {} node.stop(); },
       // Transport events from the page's pc/dc callbacks and watchdogs (env.js maps hard/quiet and debounces).
       transport(pid, ev, arg) { if (stopped || !penv) return undefined; try { return penv.transport(String(pid), ev, arg); } catch (e) { return undefined; } },

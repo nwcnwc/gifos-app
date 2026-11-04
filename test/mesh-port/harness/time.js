@@ -84,7 +84,7 @@ function install(fab) {
       const f = firstTick(RESUMEQ); const v = RESUMEQ.get(f); RESUMEQ.delete(f);
       for (const e of v) {
         const id = e[0]; seats[id] = new Seat(id, w); alive[id] = 1; seats[id].oldCell = e[1]; seats[id].join(); lv.N += 1;
-        trace('RESUME-KNOCK', id, null, 'old=%s', e[1] ? fab.coordStr(unckey(e[1])) : '-');
+        trace('RESUME-KNOCK', id, null, 'old=%s', e[1] ? fab.coordStr(unckey(e[1] - 1)) : '-');
       }
     }
     while (RELOADQ.size && firstTick(RELOADQ) <= TICK()) {
@@ -140,7 +140,7 @@ function install(fab) {
     } else if (op === 'resume') {
       const id = liveId(1); const d = tk.length > 2 ? atoi(tk[2]) : 2;
       if (id < 0 || d < 1) return;
-      fab.FROZEN.delete(id); fab.SLOW.delete(id); const oc = seats[id].hasCoord ? ckey(seats[id].coord) : 0;
+      fab.FROZEN.delete(id); fab.SLOW.delete(id); const oc = seats[id].hasCoord ? ckey(seats[id].coord) + 1 : 0;
       fab.fabricKill(id, TICK() + K.SOCK_CLOSE_CRASH); X.crashTransport(id); if (lv.LINKMODEL) L.linkResume(id); lv.N -= 1;
       fab.RESUMEQ.set(TICK() + d, (fab.RESUMEQ.get(TICK() + d) || []).concat([[id, oc]]));
       trace('RESUME', id, oc ? seats[id].coord : null, 'knocks at %lld', TICK() + d);
