@@ -142,13 +142,6 @@
   //                   fresh S4 identity and use peer-id = H(pubkey).
   //   tickMs          logical tick (default 500 — the canonical mapping)
   //   dropDeepSocket  drop the relay socket when seated deep (default true)
-  //   wired()         optional: does this node hold at least one OPEN
-  //                   DataChannel? While false, a deep seat NEEDS the relay —
-  //                   it keeps (and reopens) its socket until its first
-  //                   channel opens. A channel-less socketless seat is
-  //                   unreachable by anything (§FWD: the late-join deadlock's
-  //                   terminal case), so R2's greeting scope reads "joining,
-  //                   greeting, or not yet wired".
   //   sendDC(to, m)   the path: deliver control object m to peer `to` over
   //                   an existing DataChannel (or a forward over the mesh's
   //                   channels); return false if there is no path. Nothing
@@ -671,6 +664,7 @@
         if (stopped) return;
         lastRelayRx = Date.now();
         let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+        // DEPRECATED: delete in 0.9.27: wait, locked, denied, admit-tok: no relay sends them (js/relay-admit.js's door is not the relay's); the waiting room is the page's own
         if (m.t === 'greeters' || m.t === 'wait' || m.t === 'locked' || m.t === 'denied' || m.t === 'admit-tok') {
           const verdict = (GifOS.relayAdmit && GifOS.relayAdmit.clientDoor)
             ? GifOS.relayAdmit.clientDoor(m, { waitingHold: waitingHold, admitPresented: admitPresented, state: seat ? seat.state : 0, badPassword: lockedFired })
@@ -760,15 +754,7 @@
       // Another tab owns this seat; we have no right to keep knocking.
       // The one sanctioned re-arm is an app credential change (setKey).
       if (sock.rejected) return;
-      // A seat below Section 1 drops this socket 20 ticks after it sat
-      // (deepSince is that seating tick). PLACE, NOROOM and HOME to an
-      // unseated joiner leave through here: the target has no DataChannel,
-      // so the frame is queued and the socket reopens. Leaving deepSince at
-      // the seating tick closed that socket on the next mesh tick, before
-      // the handshake, and steadySocket close() discards the queue. The
-      // admitter kept the vouch and the joiner never saw PLACE. Restart the
-      // grace at the send that needs the socket.
-      if (seat && seat.state === 3 && seat.hasCoord && seat.coord.pc !== 0) deepSince = env.TICK;
+      if (raw && !raw.socketed()) deepSince = env.TICK;   // an admin's door verb from a seat past the door: its socket stays for the send
       sock.send(obj);
     }
     const iAmInsideTheRoom = () => !!(seat && seat.hasCoord && seat.state === 3);
@@ -1077,16 +1063,8 @@
           treeMemAsk(); refreshPreLeave();
         } else lastTickAt = 0;
         if (seat.stranded && !strandedFired) { strandedFired = true; if (opts.onStranded) opts.onStranded(); }
-        // Socket lifecycle: deep-seated ⇒ the relay is done with me; drop after a
-        // grace (Section-1 seats and joiners keep theirs — knock traffic). An
-        // UNWIRED deep seat (opts.wired() false: not one open DataChannel) is
-        // unreachable any other way, so it NEEDS the relay — it keeps its
-        // socket, and REOPENS it if a channel death left it both socketless and
-        // channel-less. A seat nobody can reach serves nobody (§FWD: the
-        // late-join deadlock's terminal case — two adjacent socketless seats
-        // with no channel between them could otherwise never exchange the
-        // signaling that would wire them).
-        const needsRelay = !(seat.state === 3 && seat.hasCoord && seat.coord.pc !== 0) || !(!opts.wired || opts.wired());
+        // Socket lifecycle, as the seat's socketed(): a joiner until seated, a greeter while it is one, a seat lost from the mesh that knocks. Anyone else is done with the relay: drop after a grace.
+        const needsRelay = !raw || raw.socketed();
         if (needsRelay) deepSince = -1;
         else if (deepSince < 0) deepSince = env.TICK;
         if (dropDeep && !needsRelay && sock && deepSince >= 0 && env.TICK - deepSince > 20) { try { sock.close(); } catch (e) {} sock = null; }
@@ -1260,6 +1238,7 @@
         for (const m of payloads) { const f = { t: 'GSP', gid: who + ':forge' + (++n) + ':' + Date.now(), src: who, m }; ident.signGossip(identity, f).then((s4) => { f.s4 = s4; for (const p of seat.linkPeers()) deliver(p, Object.assign({}, f)); }); }
         return n;
       },
+      socketed() { return !raw || raw.socketed(); },   // the seat's own word: am I at the door (a joiner, a greeter, a seat that knocked)
       setRefuses(b) { if (layer) layer.setRefuses(b); },
       roomDigest() { return (layer && env.DIGEST !== false) ? layer.roomDigest() : null; },   // the display fold beside the seat (layer.js leaf)
       // App access to the wire's relay socket (the ONE socket): signaling

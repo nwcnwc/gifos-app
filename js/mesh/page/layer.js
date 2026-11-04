@@ -204,7 +204,7 @@
       linkPeers() { return linkSet(15); },
       keepPeers() { return keepSet(); },
       // The old page's door and fork helpers: the new seat runs its own L16 knocker and L8 islands decide.
-      heardFrom() {}, answerDoor() {}, doorRound() {}, chooseFork() { return false; },
+      heardFrom() {}, answerDoor() {}, chooseFork() { return false; },
       get gspInAll() { return counters.gspInAll; }, get gspRefused() { return counters.gspRefused; },
       get gspForged() { return counters.gspForged; }, get gspDropped() { return counters.gspDropped; },
     };
