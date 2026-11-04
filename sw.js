@@ -41,7 +41,7 @@
  */
 'use strict';
 
-var SHELL_VERSION = 'v18'; // v18: every surface's en catalog joins the shell, plus meet.json and the built-in apps (v17: gifos-i18n.js and the en catalogs join the shell (v16: 0.9.24 hotfix, gifos-update.js reads a four-part `latest`; v15: gifos-charge.js joins the shell)
+var SHELL_VERSION = 'v19'; // v19: 0.9.25 cut (shell now holds every en catalog and the new version.json/changelog) (v18: every surface's en catalog joins the shell, plus meet.json and the built-in apps (v17: gifos-i18n.js and the en catalogs join the shell (v16: 0.9.24 hotfix, gifos-update.js reads a four-part `latest`; v15: gifos-charge.js joins the shell)
 var CACHE = 'gifos-shell-' + SHELL_VERSION;
 
 // ONE CACHE KEY PER FILE. pages.yml stamps `?v=<sha>` onto every local css/js
