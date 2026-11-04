@@ -292,6 +292,8 @@
     relayGenesisKey: 0,   // C++: mesh.cpp:relayGenesisKey
     L44_STAY: 0,   // C++: mesh.cpp:L44_STAY
     L44_LIVEW: 0,   // C++: mesh.cpp:L44_LIVEW
+    L44_REASK: 0,   // C++: mesh.cpp:L44_REASK
+    L44_CLOSEDW: 0,   // C++: mesh.cpp:L44_CLOSEDW
     L31_NOACK: 0,   // C++: mesh.cpp:L31_NOACK
     L31_REPLACED: 0,   // C++: mesh.cpp:L31_REPLACED
     L31_LOST: 0,   // C++: mesh.cpp:L31_LOST
