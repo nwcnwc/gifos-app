@@ -6677,7 +6677,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // My status pulse as one frame: what every beat carries, and what a pair
     // gets the moment its channel opens (wireDc onopen).
     // My network's kind for friend-hop's typing (a seat tells a blip from an unreachable pair), in the seat's GT_ words. The probe knows open or blocked; -1: not known yet.
-    const natWord = () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' ? E.GT_BLOCKED : directPath === 'ok' ? E.GT_PUBLIC : -1; };
+    const natWord = () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' && directMeasured ? E.GT_BLOCKED : directPath === 'ok' ? E.GT_PUBLIC : -1; };
     const statusPayload = () => ({ kind: 'status', s: myStatus, conns: myConns(), nat: natWord(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined });
     function broadcastStatus(answer) {
       if (pulseHalt && !answer) return; // the halt models a throttled clock; an answer to a newcomer is driven by its frame, not the clock
@@ -12762,14 +12762,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // this network lets a direct connection out; gathering that ENDS, or
     // times out, without one means it does not. A probe that cannot even
     // start (no WebRTC, offer refused) proves nothing: 'unknown'.
-    function probeDirectPath(makePc, timeoutMs) {
+    // late (optional): with no reflexive candidate at the limit the answer is still 'blocked' for now, but that is no
+    // measure: late(null) says so, gathering goes on, and late(verdict) brings its own end or a slow server's word.
+    function probeDirectPath(makePc, timeoutMs, late) {
       return new Promise((resolve) => {
         let pc;
         try { pc = makePc(); } catch (e) { resolve('unknown'); return; }
         if (!pc) { resolve('unknown'); return; }
         let done = false;
-        const finish = (v) => { if (done) return; done = true; clearTimeout(timer); clearTimeout(settle); try { pc.close(); } catch (e) {} resolve(v); };
-        const timer = setTimeout(() => finish('blocked'), timeoutMs);
+        let waiting = false;
+        const finish = (v) => { if (done) return; done = true; clearTimeout(timer); clearTimeout(settle); try { pc.close(); } catch (e) {} if (waiting) late(v); else resolve(v); };
+        const timer = setTimeout(() => { if (maps.size) finish(verdict()); else if (late) { waiting = true; late(null); resolve('blocked'); } else finish('blocked'); }, timeoutMs);
         // Two STUN servers map the same local socket: one public port for both is an open (cone) NAT, two ports is a
         // strict one (endpoint-dependent mapping), which pairs badly with another strict seat. A short wait after the
         // first reflexive candidate lets the second server's answer arrive.
@@ -12794,17 +12797,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const REACH_PROBE_MS = 8000;
     let directPath = 'pending'; // 'pending' | 'ok' | 'strict' | 'blocked' | 'unknown' — this network's verdict
     let directPathRun = 0;
+    let directMeasured = true;   // false while 'blocked' only means no STUN word yet: the seat's NAT kind (L4.1) is measured, and a slow answer measures nothing
     // Run (or re-run) the probe. Called when the meeting starts and when the
     // browser reports the network came back, since a new network is a new
     // verdict. Under DEBUG a test may fix the verdict (window.__gifosDirectPath)
     // instead of asking the network, so a page under test on a machine with
     // no outside reach is not read as a blocked office.
     function startDirectPathProbe() {
-      const gen = ++directPathRun;
+      const gen = ++directPathRun; directMeasured = true;
       const forced = (typeof DEBUG_ON !== 'undefined' && DEBUG_ON && window.__gifosDirectPath) ? String(window.__gifosDirectPath) : '';
       if (forced === 'ok' || forced === 'blocked' || forced === 'strict') { directPath = forced; updateStatus(); if (meshNode && meshNode.remeasure) meshNode.remeasure(); return Promise.resolve(forced); }
       if (typeof RTCPeerConnection !== 'function') { directPath = 'unknown'; return Promise.resolve('unknown'); }
-      return probeDirectPath(() => new RTCPeerConnection({ iceServers: ICE_SERVERS }), REACH_PROBE_MS).then((v) => {
+      return probeDirectPath(() => new RTCPeerConnection({ iceServers: ICE_SERVERS }), REACH_PROBE_MS, (v) => {
+        if (gen !== directPathRun) return;
+        directMeasured = v !== null; if (v === null) return;
+        directPath = v; updateStatus(); if (meshNode && meshNode.remeasure) meshNode.remeasure();
+      }).then((v) => {
         if (gen !== directPathRun) return v; // a newer probe owns the verdict
         directPath = v; updateStatus(); if (meshNode && meshNode.remeasure) meshNode.remeasure(); return v;
       });
@@ -15026,10 +15034,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     // L17: the seat holds its dials to this peer: no page clock dials it either.
     function seatHolds(pid) { return !!(meshNode && meshNode.dialHeld && meshNode.dialHeld(pid)); }
-    function pcMarkOpen(p, dc, mk, src) {
+    function pcMarkOpen(p, dc, mk, src, word) {
       if (!dc || dc.__pcOffered || p.dc !== dc || !meshNode || !meshNode.transport) return;
       dc.__pcOffered = true; clearTimeout(dc.__pcMarkWait);
-      const m = mk || { s: meshKnows(p.id) ? 1 : 0 };
+      const m = mk || { s: word !== undefined ? (word ? 1 : 0) : (meshKnows(p.id) ? 1 : 0) };
       if (typeof clog === 'function') clog('pc-offer ' + String(p.id).slice(0, 6) + ' src=' + src + ' s=' + m.s + ' mt=' + (m.mt || '-'));
       const ok = meshNode.transport(p.id, 'offer', m) !== false;
       if (!ok) { if (typeof clog === 'function') clog('pc-refused ' + String(p.id).slice(0, 6)); pcBye(p.id, 'declined'); return; }   // no peer makes me keep a pc
@@ -15044,7 +15052,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return;
       }
       if (m.d !== undefined) pcMarkOpen(p, dc, cleanMark(m.d), m.d ? 'mark' : 'nomark');
-      else if (m.n) pcMarkOpen(p, dc, null, 'occ');   // neither end's seat dialled (a page-own dial): my view decides
+      else if (m.n) pcMarkOpen(p, dc, null, 'occ', m.s);   // neither end's seat dialled (a page-own dial): each end says whether it sits
     }
     // Establish or retire ONE peer's media link per the seat arithmetic. Also
     // run by the sweeper: occupancy gossip settling can change who my
@@ -16915,7 +16923,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         },
         measure: {   // the device class and the network's verdict this page already keeps (L4)
           tier: () => { const E = GifOS.meshConsts.enums, hc = navigator.hardwareConcurrency | 0; return IS_MOBILE || (hc > 0 && hc <= 2) ? E.TIER_MOBILE : E.TIER_DESKTOP; },   // a 2-core desktop carries like a phone
-          nat: () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' ? E.NAT_BLOCKED : directPath === 'strict' ? E.NAT_STRICT : E.NAT_OPEN; },
+          nat: () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' && directMeasured ? E.NAT_BLOCKED : directPath === 'strict' ? E.NAT_STRICT : E.NAT_OPEN; },
         },
         // The seat's pcs (js/mesh/page/env.js calls these; it decides, the page carries out).
         pc: {
@@ -20640,7 +20648,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try {
           if (meshNode && meshNode.transport && p.dc === dc) {
             if (seatAsked(p.id)) { dc.__pcOffered = true; dcSend(p, { k: 'pcmark', d: seatMark.get(p.id) || null }); meshNode.transport(p.id, 'open'); }
-            else { dcSend(p, { k: 'pcmark', n: 1 }); dc.__pcMarkWait = setTimeout(() => { try { pcMarkOpen(p, dc, null, 'timeout'); } catch (e) {} }, 3000); }
+            else { dcSend(p, { k: 'pcmark', n: 1, s: meshNode.mark && meshNode.mark(p.id).s ? 1 : 0 }); dc.__pcMarkWait = setTimeout(() => { try { pcMarkOpen(p, dc, null, 'timeout'); } catch (e) {} }, 3000); }
           }
         } catch (e) {}
         clearTimeout(p.hiLate); p.hiLate = null;

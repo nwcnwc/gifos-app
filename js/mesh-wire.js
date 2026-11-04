@@ -561,7 +561,7 @@
                 // test, is the forwarder's word.) No word from this signer yet: judge by the room's clocks as I have verified them;
                 // a signer whose clock runs far behind the room loses only its relayed goodbye.
                 ok = false; why = 'STALE';
-              } else if (isDirect ? fillPins.seen(s4.sig) : fillPins.seenRelayed(s4.sig)) {
+              } else if (isDirect ? fillPins.seen(s4.sig) : fillPins.seenRelayed(f.t === 'FIND' ? s4.sig + '|' + (f.th | 0) + '|' + (f.sh | 0) : s4.sig)) {   // an L4 or L7.5 hop may pass one seat twice: its hop count is what differs
                 // An exact copy. A forwarded copy has its own set, so one that wins the race never burns the claimant's own frame
                 // at the link behind it, and that frame still does its relaying (each signature: once direct, once forwarded).
                 ok = false; why = 'SEEN';
