@@ -6157,6 +6157,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const REACT_COALESCE_MS = 250; // gossip repaints coalesce into one pass per window (scheduleRoomReact)
     let reactPending = false;
     const memoPass = (k, f) => { if (!passMemo) return f(); if (!(k in passMemo)) passMemo[k] = f(); return passMemo[k]; };
+    const stageHeldAt = new Map(), STAGE_FOLD_HOLD_MS = 25000;
     const stageIds = () => memoPass('stg', stageIdsNow);
     const stageIdsNow = () => {
       // A stage seat needs a LIVE status — the same stHold rule as consent and
@@ -6202,6 +6203,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (vt) { const dv = e.dv || devFor(e.id); if (dv && (vt.down[dv] || 0) >= stageNeed(vt, dv)) continue; }
           out.push([e.id, e.k]);
         }
+      }
+      // A deep stager's entry reaches the far room through its row's fold, and that path breaks
+      // when the seat above it dies, until E2 carries the fold. The stager did not step down and
+      // its feed still arrives: hold the seat. A status that says it stepped down, or a known
+      // death, ends the hold at once; a feed that is gone ends it too.
+      const nowH = Date.now();
+      for (const x of out) stageHeldAt.set(x[0], { k: x[1], at: nowH });
+      for (const [id, h] of stageHeldAt) {
+        if (out.some((x) => x[0] === id)) continue;
+        const said = statusOf.get(id);
+        const fresh = said && nowH - stSeen(said) <= 15000;
+        let held = false; try { const f = mosIn.get('stg:' + id); held = !!f && !f.deadAt; } catch (e) {}
+        if (nowH - h.at > STAGE_FOLD_HOLD_MS || id === myId || !held || meshGone.has(id) || (fresh && !said.stg)) { stageHeldAt.delete(id); continue; }
+        out.push([id, h.k]);
       }
       return out.sort((a, b) => (a[1] - b[1]) || (a[0] < b[0] ? -1 : 1)).slice(0, SCALE.C).map((x) => x[0]);
     };
@@ -24478,7 +24493,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // forwarded track keeps its trackIdentifier through every re-ship, so only
     // object identity names ONE pipe. A rebuilt transport simply misses the
     // lookup and skips — the rebuilt pipe re-baselines when it flows again.
-    let dogBusy = false, dogU2Hot = false;
+    let dogBusy = false, dogU2Hot = false, dogPass = 0;
+    let dogVoiceFast = false;
+    const stgVoiceClaim = (rk, pri) => rk.indexOf('stg:') === 0 && !!pri.stream && !pri.stream.getVideoTracks().length && !!pri.stream.getAudioTracks().length;
     function stgFoNote(rk, e, via) { // failover forensics, read by test hooks
       if (rk.indexOf('stg:') !== 0) return;
       const l = (window.__stgFoLog = window.__stgFoLog || []);
@@ -24507,9 +24524,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try {
         const now = Date.now();
         { const sv = meshSeat(), hot = !!(sv && sv.u2Hot); if (hot !== dogU2Hot) { dogU2Hot = hot; schedReconcile(); } } // L2.7
+        dogPass++;
         for (const [rk, pri] of mosIn) {
           if (!isRedun(rk)) continue;
           const fb = mosFb.get(rk); if (!fb) continue; // claimRedun mints it; no claim, no watch
+          // Stage audio sets the fast beat; every other slot keeps its own, one pass in three.
+          if (dogEvery === 300 && dogVoiceFast && dogPass % 3 && !fb.dark && !fb.wakeAt && !stgVoiceClaim(rk, pri)) continue;
           // A voice-only claim is judged on its own audio packets (pipeBytes). A
           // muted stager still sends silence frames, so a live voice pipe advances.
           // A claim with no track at all has no pipe to judge: -1 would read as a
@@ -24649,14 +24669,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         //     is really just "notice when that changes"
         // The guarantee is unchanged: darkness is still declared on byte
         // silence, and the fast path still exists exactly when it can act.
-        let urgent = false, watchable = false;
-        for (const [rk] of mosIn) {
+        let urgent = false, watchable = false; dogVoiceFast = false;
+        for (const [rk, pv] of mosIn) {
           if (!isRedun(rk)) continue;
           const fb = mosFb.get(rk); if (!fb) continue;
+          if (stgVoiceClaim(rk, pv)) dogVoiceFast = true;
           if ((fb.dark || fb.wakeAt) && !fb.suspect) { urgent = true; break; }
           if (fb.suspect || mosStandby.get(rk) || rk.indexOf('stg:') === 0) watchable = true;
         }
-        dogEvery = urgent ? 300 : (watchable ? 900 : 3000);
+        dogEvery = (urgent || dogVoiceFast) ? 300 : (watchable ? 900 : 3000);
       } catch (e) {}
       dogBusy = false;
       dogT = setTimeout(mosWatchdog, dogEvery);
@@ -24991,6 +25012,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (flowing && settled) {
           const old = pri;
           mosIn.set(rk, std); mosStandby.delete(rk); pri = std; std = null; stgFoNote(rk, 'swap', pri.via);
+          // My new source may still hold my old copy of this feed: its source is gone, and it looks
+          // alive for 12 s, so that seat would fail back onto it. End it.
+          if (rk.indexOf('stg:') === 0 && mosJobs.has(rk + '>' + pri.via)) unshipMos(rk + '>' + pri.via, true);
           pri.deadAt = 0; fb.lastSwitch = now; fb.wakeAt = 0; fb.prefSince = 0;
           fb.dark = false; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; fb.fp = 0; fb.fpDecayAt = 0; fb.b0 = -1; fb.d0 = -1; fb.stdFdec = -1; fb.stdAdvAt = 0; fb.claimAt = now; // fresh primary — the watchdog re-baselines and the penalty clears
           repaintRedun(rk, pri.stream);
