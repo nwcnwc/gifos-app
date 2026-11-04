@@ -78,7 +78,7 @@ function install(fab) {
   }
   // C++: mesh_lguard.inc:lgDuties
   function lgDuties() {
-    const D = []; for (let i = 0; i < lv.nextId; i++) D.push({ own: 0, fwd: 0, park: 0, rx: [] });
+    const D = []; for (let i = 0; i < lv.nextId; i++) D.push({ own: 0, fwd: 0, park: 0, hd: 0, hlow: 0, rx: [] });
     X.mBuildCells(); const MCELL = X.mcell();
     for (const [ek, x] of MCELL) {
       const c = unckey(ek); const d = D[x];
@@ -94,6 +94,11 @@ function install(fab) {
       }
       d.own = L.LG_CAMOFF.has(x) ? 0 : d.rx.length;
       const dn = down(c); if (dn.pc > c.pc && X.mOcc(dn)) d.fwd++;
+      if (c.pc === 0 && c.i === 0) {   // L29.0: a Section-1 head's duty
+        let mates = 0, kids = 0, heads = 0;
+        for (let j = 0; j < C; j++) { if (j > 0 && X.mAt({ pc: 0, r: c.r, i: j }) >= 0) mates++; const dk = down({ pc: 0, r: c.r, i: j }); if (dk.pc > 0 && X.mOcc(dk)) kids++; if (j !== c.r && X.mAt({ pc: 0, r: j, i: 0 }) >= 0) heads++; }
+        if (kids > 0 || heads > 0) { d.hd = mates * K.L29_PARK + 2 * K.L29_HOT; d.hlow = kids * K.L29_HOT; }
+      }
     }
     const rs = new Set(); for (const [ek] of MCELL) { const c = unckey(ek); if (c.pc !== 0) rs.add(rowKeyOf(c)); }
     const rv = [...rs].sort((a, b) => a - b);
@@ -124,7 +129,7 @@ function install(fab) {
     for (let x = 0; x < lv.nextId; x++) {
       if (!alive[x] || !seats[x]) continue; const s = seats[x];
       const d = D[x]; const woke = L.LG_WOKE_PREV[x].size;
-      const l2 = d.own * K.L29_HOT + d.fwd, l1 = l2 + d.fwd, l0 = l1 + d.park * K.L29_PARK + woke * K.L29_HOT;
+      const l2 = d.own * K.L29_HOT + d.fwd + d.hd, l1 = l2 + d.fwd + d.hlow, l0 = l1 + d.park * K.L29_PARK + woke * K.L29_HOT;
       const bud = lgBudOf(x), full = s.tier === TIER_MOBILE ? K.L29_BUD_M : K.L29_BUD_D;
       s.lgLd[0] = l0; s.lgLd[1] = l1; s.lgLd[2] = l2; s.lgBud = bud; s.lgBud0 = full; s.lgOwn = d.own * K.L29_HOT;
       if (on) s.lgLadder();   // the seat's own reflex, on its own reading (L29.1)

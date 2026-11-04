@@ -6218,6 +6218,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // death, ends the hold at once; a feed that is gone ends it too.
       const nowH = Date.now();
       for (const x of out) stageHeldAt.set(x[0], { k: x[1], at: nowH });
+      // No fold in date says nothing about who is on stage: a fold that aged out on a row cut off from it must not stop a feed still arriving. Only a fold in date can leave a stager out.
+      if (!dg) for (const h of stageHeldAt.values()) h.at = nowH;
       for (const [id, h] of stageHeldAt) {
         if (out.some((x) => x[0] === id)) continue;
         const said = statusOf.get(id);
@@ -11086,12 +11088,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // mainHoldUntil: a held re-seat a peer asked for (holdMainVideo) —
           // the park must outlive this beat, or the beat seats the camera
           // back before the far side has bound its tile.
-          const heldNow = !!(p.mainHoldUntil && p.mainHoldUntil > Date.now());
+          const heldNow = !!(p.mainHoldUntil && p.mainHoldUntil > Date.now()) || seatSelfLeased();
           if (!cam || !vt || p.remoteParkMain || heldNow) { if (p.mainV.track) p.mainV.replaceTrack(null).catch(() => {}); }
           else if (p.mainV.track !== vt) p.mainV.replaceTrack(vt).catch(() => {});
         }
         if (p.mainA) {
-          if (staged) { if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
+          if (staged || seatSelfLeased()) { if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
           else if (at && p.mainA.track !== at) p.mainA.replaceTrack(at).catch(() => {});
         }
       }
@@ -11575,8 +11577,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const carriesScreen = isStageSd ? screenOnStage : (!isAuxSd && myScreen);
           const wantDeg = carriesScreen ? 'maintain-resolution' : 'balanced';
           const degNow = degOf.has(sender) ? degOf.get(sender) : (prm.degradationPreference || 'balanced');
-          if (prm.encodings[0].maxBitrate === want && degNow === wantDeg) continue; // already set — and a no-op setParameters can still race a sender teardown into the renderer-killing CHECK above, so only touch what must change
+          const lowOn = !(lowSenders.has(sender) && meshNode && meshNode.raw && meshNode.raw.lgLvl >= 2);   // L29.1: level 2 stops the low-priority forwards' pictures
+          if (prm.encodings[0].maxBitrate === want && degNow === wantDeg && prm.encodings[0].active !== false === lowOn) continue; // already set — and a no-op setParameters can still race a sender teardown into the renderer-killing CHECK above, so only touch what must change
           prm.encodings[0].maxBitrate = want;
+          prm.encodings[0].active = lowOn;
           prm.degradationPreference = wantDeg;
           degOf.set(sender, wantDeg);
           sender.setParameters(prm).catch(() => {});
@@ -11611,6 +11615,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // encodes, fewer packets, fewer radio wakeups.
     function compFps() {
       const base = (net.SCALE && net.SCALE.COMP_FPS) || 8;
+      if (meshNode && meshNode.raw && meshNode.raw.lgLvl >= 2) return 1;   // L29.1: nothing is encoding these
       if (!IS_MOBILE) return base;
       const deep = battTier >= 3 || drainTier >= 3 || idleNow;
       return deep ? Math.max(4, Math.round(base * 0.6)) : base;
@@ -16916,6 +16921,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         measure: {   // the device class and the network's verdict this page already keeps (L4)
           tier: () => { const E = GifOS.meshConsts.enums, hc = navigator.hardwareConcurrency | 0; return IS_MOBILE || (hc > 0 && hc <= 2) ? E.TIER_MOBILE : E.TIER_DESKTOP; },   // a 2-core desktop carries like a phone
           nat: () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' ? E.NAT_BLOCKED : directPath === 'strict' ? E.NAT_STRICT : E.NAT_OPEN; },
+          lgHealth: () => lgHealth(), lgCamOn: () => myStatus.camOff === false, lgWoke: () => lgWoken.size, lgStarve: () => lgStarvedNow(), lgLeave: () => lgLeave(),
         },
         // The seat's pcs (js/mesh/page/env.js calls these; it decides, the page carries out).
         pc: {
@@ -17325,15 +17331,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // channel that cannot deliver (a phone back from the background on a
       // radio still waking) leaves the far main parked for good; a far
       // rollback can do the same to its encoder. Neither full screen nor
-      // a stage step-down touches either. No frame decoded for 3s, 1.5s of
-      // it watchable: re-assert the lift and ask the far side to re-seat
-      // its camera (vkick), again every 3s; 8s after the first ask with
-      // still nothing, rebuild the pair (the NEW-PC RULE resets the park).
+      // a stage step-down touches either. No frame decoded and no packet
+      // arriving for 3s, 1.5s of it watchable: re-assert the lift and ask the
+      // far side to re-seat its camera (vkick), again every 3s.
       // The evidence survives a spell hidden or on stage (the far main is
       // meant to be parked then, so nothing is judged), and a stale park
       // is caught 1.5-2.5s after the tile is watchable again. A busy phone can
-      // decode nothing for a second or two; a wrong ask costs one re-seat,
-      // and only 8s more of nothing rebuilds the pair.
+      // decode nothing for a second or two; a wrong ask costs one re-seat.
       {
         const skip = frozenTileSkip(pid, p);
         const keep = skip === 'hidden' || skip === 'staged';
@@ -17342,7 +17346,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (rx) {
           const pc0 = p.pc;
           rx.getStats().then((st) => {
-            let fd = -1; st.forEach((x) => { if (x.type === 'inbound-rtp' && x.kind === 'video') fd = Math.max(fd, x.framesDecoded || 0); });
+            let fd = -1, pk = 0; st.forEach((x) => { if (x.type === 'inbound-rtp' && x.kind === 'video') { fd = Math.max(fd, x.framesDecoded || 0); pk += x.packetsReceived || 0; } });
             if (p.freezeTick) p.freezeTick.statsAt = Date.now();
             // No inbound video entry at all is no frames, not no evidence: a
             // renegotiation can move the far sender to a stream that has not
@@ -17350,6 +17354,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // reports nothing for it.
             if (fd < 0) fd = 0;
             if (p.pc !== pc0) return;
+            // L29's inbound watch: a watched mate's feed with no new frame. A rebuild starts its count again, and that is no frame.
+            { const sk = frozenTileSkip(pid, p); if (!sk) { if (fd > (p.lgFd || 0) || !p.lgFdAt) p.lgFdAt = Date.now(); p.lgFd = fd; } else if (!lgWatchHolds(sk)) p.lgFdAt = 0; }
             const t = Date.now(), fz = p.freezeProbe, judged = !frozenTileSkip(pid, p);
             // THE SINK, AFTER A PICTURE. The sweep's dead sink, on a tile that
             // had already painted: frames decode, the element presents none
@@ -17364,9 +17370,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               else if (!sp || sp.pc !== pc0 || sp.track !== vtr || pv !== sp.pv || v.currentTime !== sp.ct) p.paintProbe = { pc: pc0, track: vtr, pv, ct: v.currentTime, fd, at: t };
               else if (t - sp.at >= 3000 && fd - sp.fd >= 3 && t - (p.sinkRebuiltAt || 0) > 30000) {
                 p.sinkRebuiltAt = t; p.paintProbe = null; p.freezeProbe = null;
-                if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' painted tile: decoded ' + (fd - sp.fd) + ' in ' + Math.round((t - sp.at) / 1000) + 's, none shown: rebuild');
-                newPcFor(p);
-                sendOffer(pid, false);
+                // The element is what stands still, so the element is what starts over: the pair is working, and it stays.
+                if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' painted tile: decoded ' + (fd - sp.fd) + ' in ' + Math.round((t - sp.at) / 1000) + 's, none shown: rebind');
+                try { v.srcObject = null; v.srcObject = p.stream; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {}
                 return;
               }
             }
@@ -17374,26 +17380,95 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (!judged) { fz.seenAt = 0; fz.askAt = 0; fz.firstAsk = 0; return; }
             if (!fz.seenAt) { fz.seenAt = t; return; }
             if (t - fz.at < 3000 || t - fz.seenAt < 1500) return;
-            if (fz.firstAsk && t - fz.firstAsk >= 8000) {
-              if (t - (p.sinkRebuiltAt || 0) < 30000) return;
-              p.sinkRebuiltAt = t; p.freezeProbe = null;
-              if (typeof clog === 'function') clog('frozen-tile ' + String(pid).slice(0, 6) + ' no frame in ' + Math.round((t - fz.at) / 1000) + 's after re-seat asks: rebuild');
-              newPcFor(p);
-              sendOffer(pid, false);
-              return;
-            }
+            // Packets still arriving: the far end is sending and this page is behind. Nothing to ask of anyone.
+            if (pk !== fz.pk) { fz.pk = pk; return; }
+            // A sender gone quiet is asked again every 3s (an ask into a channel still waking is lost). The pair is never rebuilt
+            // for it: its channel works, a real loss is the seat's to find (D5), and a rebuild here once closed a backup link and working pairs.
             if (t - fz.askAt < 3000) return;
-            fz.askAt = t; if (!fz.firstAsk) fz.firstAsk = t;
-            if (typeof clog === 'function') clog('frozen-tile ' + String(pid).slice(0, 6) + ' no frame in ' + Math.round((t - fz.at) / 1000) + 's: vkick');
+            fz.askAt = t; const firstAsk = !fz.firstAsk; if (firstAsk) fz.firstAsk = t;
+            if (firstAsk && typeof clog === 'function') clog('frozen-tile ' + String(pid).slice(0, 6) + ' no frame in ' + Math.round((t - fz.at) / 1000) + 's: vkick');
             visParkSent.set(pid, false);
             dcSend(p, { k: 'vis', park: false });
             dcSend(p, { k: 'vkick' });
           }).catch(() => {});
         }
-        else { p.freezeProbe = null; p.paintProbe = null; }
+        else { p.freezeProbe = null; p.paintProbe = null; if (!lgWatchHolds(skip)) p.lgFdAt = 0; }
       }
     }
     GifOS.meshMedia.workerClock(1000, () => { for (const [pid, p] of peers) { try { frozenTileTick(pid, p); } catch (e) {} } });
+    const lgWatchHolds = (skip) => skip === 'link' || skip === 'element' || skip === 'dc' || skip === 'track';   // a rebuild passing through: still no frame
+    function lgStarvedNow() {
+      const now = Date.now(), ms = GifOS.meshConsts.consts.L29_STARVE * 500, out = [];
+      for (const [pid, p] of peers) if (p.lgFdAt && now - p.lgFdAt >= ms) out.push(pid);
+      return out;
+    }
+    // L29: what this device shows it can carry: the encoders' own word that the CPU limits them, how late this page's own
+    // beat runs, and the far ends' report of what my uplink loses. An encoder's 'bandwidth' word says nothing (a low cap on a
+    // small stream reads it for good), nor does a camera's frame rate (a still picture sends few frames); a hidden tab is held back on purpose.
+    let lgHealthNow = 1, lgBeatAt = 0, lgLowReads = 0; const lgPrev = new Map();
+    // Test rooms only (DEBUG): __gifosLgHealth fixes the reading; __gifosLgReadOff stops it, since a loaded test box reads as a weak device.
+    const lgReadOff = () => !!(DEBUG_ON && window.__gifosLgReadOff);
+    function lgHealth() { const f = DEBUG_ON ? window.__gifosLgHealth : undefined; return typeof f === 'number' ? f : (lgReadOff() ? 1 : lgHealthNow); }
+    function lgRead() {
+      if (lgReadOff()) return;
+      const beat = Date.now(), lag = lgBeatAt ? Math.max(0, beat - lgBeatAt - 2000) : 0; lgBeatAt = beat;
+      if (document.hidden) { lgHealthNow = 1; return; }
+      const jobs = [];
+      for (const p of peers.values()) if (p.pc && p.connected) jobs.push(p.pc.getStats().then((rep) => ({ p, rep })).catch(() => null));
+      Promise.all(jobs).then((list) => {
+        let lim = 0, all = 0, lost = 0;
+        const seen = new Set();
+        for (const it of list) { if (!it) continue;
+          it.rep.forEach((r) => {
+            if (r.type === 'remote-inbound-rtp' && r.fractionLost > lost) lost = r.fractionLost;
+            if (r.type !== 'outbound-rtp' || r.kind !== 'video' || !r.qualityLimitationDurations) return;
+            const key = it.p.id + '|' + r.id, d = r.qualityLimitationDurations, was = lgPrev.get(key); seen.add(key); lgPrev.set(key, { d });
+            if (was) { const c = d.cpu - was.d.cpu; lim += c; all += c + (d.bandwidth - was.d.bandwidth) + (d.none - was.d.none) + (d.other - was.d.other); }
+          });
+        }
+        for (const k of [...lgPrev.keys()]) if (!seen.has(k)) lgPrev.delete(k);
+        const share = all > 0 ? lim / all : 0;
+        // A joining room ramps up and a busy second passes: only three low reads in a row say anything about the device.
+        const low = share >= 0.5 || lag >= 500 || lost >= 0.2; lgLowReads = low ? lgLowReads + 1 : 0;
+        const h = lgLowReads >= 3 ? Math.max(0, Math.min(1 - share / 2, 2000 / (2000 + lag), 1 - lost)) : 1;
+        if ((h < 1) !== (lgHealthNow < 1) && typeof clog === 'function') clog('lg-read ' + (h < 1 ? 'low' : 'ok') + ' cpu=' + share.toFixed(2) + ' lag=' + lag + ' lost=' + lost.toFixed(2));
+        lgHealthNow = h;
+        if (DEBUG_ON) window.__lgReadForTest = { share, lag, lost, h };
+      }).catch(() => {});
+    }
+    GifOS.meshMedia.workerClock(2000, () => { try { lgRead(); } catch (e) {} });
+    // L29.2: a seat that has shed wakes no parked copy; one that has not wakes only what fits.
+    const lgWoken = new Set();
+    function lgRefuseWake() {
+      const r = meshNode && meshNode.raw, K = GifOS.meshConsts.consts; if (!r || !r.lgBud0) return false;
+      return r.lgLvl >= 1 || (r.lgLd[0] + K.L29_HOT) * 100 > r.lgBud * K.L29_SHED;
+    }
+    // L29.1, as the page carries it: level 1 takes back what I woke; level 2 stops the low-priority half of my forwards,
+    // the picture only (the mix's sound rides on), and the packers behind them slow down.
+    let lgLvlShown = 0;
+    function lgLevelTick() {
+      const r = meshNode && meshNode.raw, lvl = r ? r.lgLvl : 0; if (lvl === lgLvlShown) return;
+      if (typeof clog === 'function') clog('lg-level ' + lgLvlShown + '>' + lvl);
+      lgLvlShown = lvl;
+      if (lvl >= 1) { for (const jk of lgWoken) setJobActive(jk, false); lgWoken.clear(); }
+      const fps = compFps();
+      for (const pk of [prodPack, sdPack, ...sdnPacks.values(), ...l14Packs.values()]) { try { if (pk) pk.setFps(fps); } catch (e) {} }
+      try { adapt(); } catch (e) {}
+    }
+    GifOS.meshMedia.workerClock(1000, () => { try { lgLevelTick(); } catch (e) {} });
+    // L29.4: my receivers and my own reading agree: leave with the reason and knock again as a newcomer (sim: lguard rejoin 40).
+    let lgNoteEl = null;
+    function lgLeave() {
+      if (typeof clog === 'function') clog('lg-leave device-overload');
+      if (!lgNoteEl) { lgNoteEl = document.createElement('div'); lgNoteEl.id = 'massbanner'; lgNoteEl.setAttribute('role', 'status'); lgNoteEl.textContent = uiText('deviceOverload', 'Your device is refusing or unable to carry meeting traffic.'); document.body.appendChild(lgNoteEl); }
+      try { meshNode && meshNode.leave(false); } catch (e) {}
+      setTimeout(() => {
+        for (const pid of Array.from(peers.keys())) { try { dropPeer(pid); } catch (e) {} }
+        if (typeof clog === 'function') clog('lg-rejoin');
+        startMesh();
+        setTimeout(() => { if (lgNoteEl) { lgNoteEl.remove(); lgNoteEl = null; } }, 30000);
+      }, 20000);
+    }
     // A picture that stops says so, never a silent frozen tile. A Stage strip or Stadium that had frames and has shown none
     // for STALL_MS while the tab is in view gets a plain line; a shared screen may rightly stand still. The banner adds why,
     // and only when both hold: this seat's picture stalled, and its own mass-leave sense names many people gone. Two goodbyes
@@ -21012,7 +21087,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // dead ship must never flip the live one (the dark-primary inversion
         // the redun-drill caught).
         const jw = mosJobs.get(m.key + '>' + p.id);
-        if (jw && (!m.streamId || jw.streamId === m.streamId)) { setJobActive(m.key + '>' + p.id, true); chainDemandUp(jw, true); }
+        if (jw && !jw.active && lgRefuseWake()) { /* L29.2: nothing to spare */ }
+        else if (jw && (!m.streamId || jw.streamId === m.streamId)) { if (!jw.active) lgWoken.add(m.key + '>' + p.id); setJobActive(m.key + '>' + p.id, true); chainDemandUp(jw, true); }
         else if (jw && m.streamId && jw.streamId !== m.streamId) {
           // STALE SID ON A WANT — ANSWER IT, DO NOT JUST DROP IT.
           //
@@ -22448,6 +22524,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // constant. Membership is by job key — the per-stager feeds ('stg:<id>')
     // and the composited strip ('sgs').
     const stageSenders = new Set();
+    const lowSenders = new WeakSet();   // the stadium and gallery forwards (L29.1's low priority)
     // (isStageJob, not isStageKey — that name is taken further down by the mixer's
     // ROW-key test ('s:' prefix). This one classifies a mosaic JOB key.)
     const isStageJob = (k) => k === 'sgs' || String(k).indexOf('stg:') === 0;
@@ -23850,7 +23927,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (MPipe.pipeSender(sd, srcId, jk, carrier)) {
               pipeJobs.set(jk, { srcId, carrier, srcTrack: tr, w0: null, stale: 0 });
               job.senders.push(sd); job.trackList.push(carrier.track); job.srcTracks.push(tr);
-              if (isStageJob(job.key)) stageSenders.add(sd);
+              if (isStageJob(job.key)) stageSenders.add(sd); else lowSenders.add(sd);
               if (!job.active) { try { sd.replaceTrack(null); } catch (e) {} try { MPipe.pausePipe(jk, true); } catch (e) {} }
               else if (typeof outgoingHeld !== 'undefined' && outgoingHeld) { try { sd.replaceTrack(null); } catch (e) {} }
               job.attachErr = null;
@@ -23863,7 +23940,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try {
         const sd = addAux(p.pc, tr, job.container);
         job.senders.push(sd); job.trackList.push(tr); job.srcTracks.push(tr);
-        if (isStageJob(job.key)) stageSenders.add(sd);
+        if (isStageJob(job.key)) stageSenders.add(sd); else lowSenders.add(sd);
         if (!job.active) { try { sd.replaceTrack(null); } catch (e) {} }
         else if (typeof outgoingHeld !== 'undefined' && outgoingHeld) { try { sd.replaceTrack(null); } catch (e) {} }
         job.attachErr = null;
@@ -24205,10 +24282,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // stage feed (a copy it already ships keeps going). DEBUG only.
     const relayHeldForTest = (key, to) => DEBUG_ON && (window.__relayHoldUntil || 0) > Date.now() && !mosJobs.has(key + '>' + to);
     const jobPinned = (jk) => DEBUG_ON && window.__parkedJobs && (window.__parkedJobs.get(jk) || 0) > Date.now();
+    // A seat that leased its own cell has lost every channel and is on its way out of that cell: it carries no media, in or
+    // onward, until a channel proves back (the sim's mCarry). What it was shipping goes back on when the lease ends.
+    const seatSelfLeased = () => !!(meshNode && meshNode.raw && meshNode.raw.selfLeaseAt >= 0);
+    let leaseShown = false; const leaseJobs = new Set();
+    function selfLeaseTick() {
+      const on = seatSelfLeased(); if (on === leaseShown) return;
+      leaseShown = on; if (typeof clog === 'function') clog('self-lease ' + (on ? 'on' : 'off'));
+      if (on) { for (const [jk, job] of mosJobs) if (job.active) { leaseJobs.add(jk); setJobActive(jk, false); } }
+      else { for (const jk of leaseJobs) setJobActive(jk, true); leaseJobs.clear(); }
+      try { refreshOutbound(); } catch (e) {}
+    }
+    GifOS.meshMedia.workerClock(1000, () => { try { selfLeaseTick(); } catch (e) {} });
     function setJobActive(jk, on) {
       const job = mosJobs.get(jk); if (!job) return;
       if (on && typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (on && jobPinned(jk)) return; // pinned parked — ignore the wake
+      if (on && seatSelfLeased()) return; // a self-leased seat carries nothing (below)
       if (!!job.active === !!on) return;
       job.active = !!on;
       for (let i = 0; i < job.senders.length; i++) {
@@ -24967,6 +25057,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (own && !(own.ann && own.ann.sb === 1)) return own;
         // Below Section 1 the preferred path is E1, the tree hop; E2's copy is the second path.
         if (c.pc !== 0) {
+          // L2.7: while the seat holds E2 hot, E2's copy is the path. Ranking anything else first swaps
+          // back off it each settle window and u2Over swaps on again: every feed I relay flaps with it.
+          const hot = meshSeat();
+          if (hot && hot.u2Hot) { const e2 = cand.find((x) => x.live && x.from === hot.u2Id && x.key.indexOf('^') < 0); if (e2) return e2; }
           const hop = occPid(c.i === 0 ? net.topo.up(c) : { pc: c.pc, r: c.r, i: 0 });
           const e1 = hop ? cand.find((x) => x.live && x.from === hop) : null;
           if (e1) return e1;
