@@ -6,6 +6,7 @@
 'use strict';
 const path = require('path'), assert = require('assert');
 const M = path.join(__dirname, '..', '..', 'js', 'mesh');
+require('./load-all.js');   // every unit: digest.js now calls l43Fold from ijoin.js
 const { Seat, newWorld, stubFabric, FREE } = require(path.join(M, 'seat.js'));
 require(path.join(M, 'digest.js')); require(path.join(M, 'route.js'));
 const msg = require(path.join(M, 'msg.js'));
