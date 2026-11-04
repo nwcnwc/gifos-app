@@ -203,6 +203,12 @@
       // The seat's link set (owned, E2/E3, L4, L14 roles), as peers; keeps are apart (keepPeers).
       linkPeers() { return linkSet(15); },
       keepPeers() { return keepSet(); },
+      // E2 and E3 as the seat holds them, as peers (read only): the media plane ships over these pcs.
+      get u2Id() { const s = raw(); return s && s.u2Id >= 0 && s.u2Id !== s.id ? P(s.u2Id) : null; },
+      get u3Id() { const s = raw(); return s && s.u3Id >= 0 && s.u3Id !== s.id ? P(s.u3Id) : null; },
+      get u2Hot() { const s = raw(); return !!(s && s.u2Hot); },
+      u2Heirs() { const s = raw(), out = []; if (!s || !s.hasCoord) return out; for (const e of s.u2Rows.values()) if (s.TICK - e.at <= 40) { const p = P(e.heir); if (p != null && p !== me && out.indexOf(p) < 0) out.push(p); } return out; },
+      e2Src() { const s = raw(), R = GifOS.meshRoles, Tp = GifOS.meshTopo; if (!s || !s.hasCoord || s.coord.pc === 0 || !R || !Tp) return null; const src = R.e2SrcOf({ pc: s.coord.pc, r: s.coord.r, i: 0 }, (c) => s.occGet(Tp.ckey(c)) >= 0); return src ? P(s.occGet(Tp.ckey(src))) : null; },
       // The old page's door and fork helpers: the new seat runs its own L16 knocker and L8 islands decide.
       heardFrom() {}, answerDoor() {}, chooseFork() { return false; },
       get gspInAll() { return counters.gspInAll; }, get gspRefused() { return counters.gspRefused; },
