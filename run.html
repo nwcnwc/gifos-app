@@ -5982,8 +5982,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // The Stage seat comes back with its original claim time, so the person
     // keeps their place in step-up order. A grant that has not arrived yet
     // must not disarm it (reactStageLost waits out stageResumeUntil).
-    let stageResumeUntil = 0;
+    let stageResumeUntil = 0, stageLeaving = false;
     if (updateResume && +updateResume.stg > 0) { myStatus.stg = +updateResume.stg; stageResumeUntil = Date.now() + 20000; }
+    // A RELOAD KEEPS THE STAGE SEAT (Nathan, 0.9.25: back on stage right after the reload). This
+    // tab writes its stage seat on pagehide; Leave removes it, and a closed tab takes it with it
+    // (sessionStorage is per tab). Same room and within a minute only; the seat's own order stands.
+    const STAGE_RELOAD_KEY = 'gifos_stage_reload';
+    try {
+      const raw = sessionStorage.getItem(STAGE_RELOAD_KEY); sessionStorage.removeItem(STAGE_RELOAD_KEY);
+      const o = raw ? JSON.parse(raw) : null;
+      if (!myStatus.stg && o && o.room === updateRoomKey() && Date.now() - (+o.at || 0) < 60000 && +o.stg > 0) { myStatus.stg = +o.stg; stageResumeUntil = Date.now() + 20000; }
+    } catch (e) {}
     window.__gifosRoomTrust = {
       setRecording(on) {
         myStatus.rec = !!on;
@@ -8227,6 +8236,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Any way out of the page that is not an update reload drops the note,
     // so the next join starts fresh (Max blur, off the Stage).
     window.addEventListener('pagehide', () => {
+      try { if (!stageLeaving && +myStatus.stg > 0) sessionStorage.setItem(STAGE_RELOAD_KEY, JSON.stringify({ room: updateRoomKey(), at: Date.now(), stg: +myStatus.stg })); } catch (e) {}
       if (updateLeaving) return;
       try { sessionStorage.removeItem(UPDATE_RESUME_KEY); } catch (e) {}
     });
@@ -33438,6 +33448,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (rbNow) rbQuit();
       if (DEBUG_ON) { try { (window.__bcTrace = window.__bcTrace || []).push({ ev: 'leave', t: Date.now(), seeding: bcSeeding, seed: bcSeedOnLeave(), kept: bcKept, host: !!bcHostStored(), rec: recRec ? recRec.state : 'none' }); } catch (e) {} }
       try { updateLeaving = false; sessionStorage.removeItem(UPDATE_RESUME_KEY); } catch (e) {} // a real leave: the next join starts at Max blur
+      try { stageLeaving = true; sessionStorage.removeItem(STAGE_RELOAD_KEY); } catch (e) {} // and off the stage
       if (!bcSeeding && bcSeedOnLeave()) return endServiceKeepSeat();
       leftBehind = Math.max(0, headerCount() - 1);
       const flushing = stopLocalCapture();
