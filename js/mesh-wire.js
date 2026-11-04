@@ -1359,6 +1359,7 @@
       byesHeld() { return byeHeld.size; },   // pages gone whose cell is held: no face, no head in the count
       leave(reload) { if (reload && !sendHeldByes()) reload = false; try { if (raw) { if (penv && penv.leave) penv.leave(!!reload); else raw.leave(!!reload); } } catch (e) {} node.stop(); },
       // Transport events from the page's pc/dc callbacks and watchdogs (env.js maps hard/quiet and debounces).
+      remeasure() { if (!raw || !opts.measure) return; const n0 = opts.measure.nat() & 0xff; if (raw.cnat === raw.nat) raw.cnat = n0; raw.nat = n0; },   // a network verdict that lands after the join (seat.join reads it once)
       transport(pid, ev, arg) { if (stopped || !penv) return undefined; try { return penv.transport(String(pid), ev, arg); } catch (e) { return undefined; } },
       mark(pid) { if (stopped || !penv || !penv.mark) return null; try { return penv.mark(String(pid)); } catch (e) { return null; } },   // A2's mark my answer carries back
       // A sealed relay `busy` frame from a door (opened by the page): the seat's world turns it into BUSY.

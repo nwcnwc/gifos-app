@@ -7002,15 +7002,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               // Our own rebuild drew no answer: that id is not there. Closing
               // it lets the next dial-request build a pair to whoever is.
               // Rebuilding again would offer the same corpse for the settle.
-              if (ours) { p.fragDialAt = 0; try { pc.close(); } catch (e) {} onTransportDead(pid, 'unanswered'); return; }
+              if (ours) { p.fragDialAt = 0; try { pc.close(); } catch (e) {} return; }   // the seat's own dial clock (LINK_DIAL_FAIL) says when it failed
               rebuild(pid, p, 'unanswered'); return;
             }
-            // No check has gone out yet. Waiting for the settle to say so
-            // starts the mesh confirm only after that window, and the confirm
-            // itself is as long again: a seat that left during the dark is
-            // still the occupant past a short return. Tell the mesh now. The
-            // offer stays up, so a live seat's answer clears the probe.
-            if (ours && v === 'soon') onTransportDead(pid, 'unanswered');
             if (v === 'soon' && again) setTimeout(() => hushOne(pid, p, pc, false, ours), 1000);
           });
         };
@@ -7338,8 +7332,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // in the room still names.
           const roomKnows = occNamed.has(pid)
             || rosterSet.has(pid)
-            || (statusOf && statusOf.has(pid))
-            || (typeof relaySocketed !== 'undefined' && relaySocketed.has(pid));
+            || (statusOf && statusOf.has(pid));
           if (!tlFiredPid.has(pid) && !formingAlive && !roomKnows && (!dcOpen || !carried)) { tlFiredPid.add(pid); onTransportDead(pid, 'starve-dead'); }
           if (typeof clog === 'function') clog('mesh-starve rebuild ' + String(pid).slice(0, 6));
           newPcFor(p);
@@ -12840,11 +12833,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function startDirectPathProbe() {
       const gen = ++directPathRun;
       const forced = (typeof DEBUG_ON !== 'undefined' && DEBUG_ON && window.__gifosDirectPath) ? String(window.__gifosDirectPath) : '';
-      if (forced === 'ok' || forced === 'blocked') { directPath = forced; updateStatus(); return Promise.resolve(forced); }
+      if (forced === 'ok' || forced === 'blocked') { directPath = forced; updateStatus(); if (meshNode && meshNode.remeasure) meshNode.remeasure(); return Promise.resolve(forced); }
       if (typeof RTCPeerConnection !== 'function') { directPath = 'unknown'; return Promise.resolve('unknown'); }
       return probeDirectPath(() => new RTCPeerConnection({ iceServers: ICE_SERVERS }), REACH_PROBE_MS).then((v) => {
         if (gen !== directPathRun) return v; // a newer probe owns the verdict
-        directPath = v; updateStatus(); return v;
+        directPath = v; updateStatus(); if (meshNode && meshNode.remeasure) meshNode.remeasure(); return v;
       });
     }
     try { window.addEventListener('online', () => { if (meshNode) startDirectPathProbe(); }); } catch (e) {}
@@ -13957,11 +13950,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // freeze up to 75 s; 90 s clears it with the wake and the sweep's 2 s,
     // and a dead seat still leaves at ~96 s (it held 150-300 s before).
     // A radio dropout keeps the pc connected, so it never reaches this.
-    const DISCONNECTED_DEAD_MS = 90000;
+    // L30.2: a page in small mode times the pc out at 78 s (L30_DISC_DEAD 170 ticks from the cut; the pc reads disconnected at 12-16).
+    const DISCONNECTED_DEAD_MS = 90000, DISCONNECTED_DEAD_SMALL_MS = 78000;
     function pcDeadWhy(p, st, now) {
       if (!p || p.connected || !p.downSince) return null;
       if (st === 'failed' && now - p.downSince > 9000) return 'failed-persist';
-      if (st === 'disconnected' && now - p.downSince > DISCONNECTED_DEAD_MS && now - peerHeardAt(p) > DISCONNECTED_DEAD_MS) return 'disconnected-persist';
+      const s = meshSeat(), dead = s && s.raw && s.raw.l30 ? DISCONNECTED_DEAD_SMALL_MS : DISCONNECTED_DEAD_MS;
+      if (st === 'disconnected' && now - p.downSince > dead && now - peerHeardAt(p) > dead) return 'disconnected-persist';
       return null;
     }
     // A dark-return rebuild marks the pair (p.darkDead). The mark is handed
@@ -15449,8 +15444,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // even when the census still seated them (edc4392 a1 P3→P5).
           if (s.translost.has(k)) {
             const roomKnows = (Array.isArray(rosterIds) && rosterIds.includes(pid))
-              || (statusOf && statusOf.has(pid))
-              || (typeof relaySocketed !== 'undefined' && relaySocketed.has(pid));
+              || (statusOf && statusOf.has(pid));
             if (roomKnows) continue;   // display only: the seat's own D5 owns its translost (no write into the seat)
             confirmGone(pid, 'd5'); continue;
           }
@@ -15482,11 +15476,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // close marked a live member gone, and that mark then refused the
           // very link the move needed. Two things say the member is still
           // here: the pair was a door that is no tree link of mine (doors
-          // are closed on purpose once a seat's own links are up), or the
-          // relay still reaches the member's socket (a page that went away
-          // closed it). The pair is retired and the member keeps its status;
-          // a real departure is still judged by its own links.
-          const stillHere = (p && p.boot && !linkTo(pid)) || (typeof relaySocketed !== 'undefined' && relaySocketed.has(pid));
+          // are closed on purpose once a seat's own links are up), or it never
+          // said goodbye (the seat's own laws judge a silent close; a socket
+          // says nothing, deep members hold none). The pair is retired and the
+          // member keeps its status; a real departure is still judged by its own links.
+          const stillHere = (p && p.boot && !linkTo(pid)) || !(p && p.byeWhy === 'leave');
           if (stillHere) { if (typeof clog === 'function') clog('pair-closed ' + String(pid).slice(0, 6) + ' (still here, not a goodbye)'); dropPeer(pid, true); continue; }
           confirmGone(pid, 'left');
         }
@@ -16900,6 +16894,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
         },
         sendDC: meshSendDC,
+        measure: {   // the device class and the network's verdict this page already keeps (L4)
+          tier: () => { const E = GifOS.meshConsts.enums; return IS_MOBILE ? E.TIER_MOBILE : E.TIER_DESKTOP; },
+          nat: () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' ? E.NAT_BLOCKED : E.NAT_OPEN; },
+        },
         // The seat's pcs (js/mesh/page/env.js calls these; it decides, the page carries out).
         pc: {
           ensure: (pid, o) => { if (!pid || pid === myId) return; seatAskAt.set(pid, Date.now()); if (seatAskAt.size > 256) seatAskAt.delete(seatAskAt.keys().next().value); seatMark.set(pid, cleanMark(o && o.mark)); if (seatMark.size > 256) seatMark.delete(seatMark.keys().next().value); const s = meshSeat(); if (!(s && s.hasCoord && s.state === 3)) bootDial(pid); else ensureLink(pid); },
@@ -17202,14 +17200,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
                 meetWait.note(id, rosterNames[id] || 'Someone waiting');
               }
             } else if (s && s.answerDoor) {
-              s.answerDoor(ids.filter((id) => !waitDeclined.has(id)));
-              // The one HOME above is easy to lose: the knocker's WHOHOME during
-              // the dark never arrived, and nothing retries it. Open the door
-              // channel now, or the next ask is a whole retry later (fix-drk).
-              const members = new Set();
-              try { for (const v of s.occ.values()) if (v) members.add(v); } catch (e2) {}
-              let n = 0;
-              for (const id of ids) { if (n >= 8) break; if (members.has(id) || waitDeclined.has(id)) continue; n++; try { bootDial(id); } catch (e3) {} }
+              s.answerDoor(ids.filter((id) => !waitDeclined.has(id)));   // the relay's list only names who to answer; a knocker comes in by its own knock
             }
           } catch (e) {}
         }
@@ -21175,7 +21166,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } else if (m.k === 'pcbye') {
         // A deliberate close from the far end (A2's pc laws): its why reaches the seat's world, and the
         // channel's close that follows is no loss.
-        if (dc && dc.__authBy === p.id) { p.byeSeen = Date.now(); try { if (meshNode && meshNode.transport) meshNode.transport(p.id, 'bye', typeof m.why === 'string' ? m.why.slice(0, 16) : 'call'); } catch (e) {} if (typeof clog === 'function') clog('pcbye-in ' + String(p.id).slice(0, 6) + ' ' + m.why); }
+        if (dc && dc.__authBy === p.id) { p.byeSeen = Date.now(); p.byeWhy = m.why; try { if (meshNode && meshNode.transport) meshNode.transport(p.id, 'bye', typeof m.why === 'string' ? m.why.slice(0, 16) : 'call'); } catch (e) {} if (typeof clog === 'function') clog('pcbye-in ' + String(p.id).slice(0, 6) + ' ' + m.why); }
         // L27 for the refused device: a seat that refuses me says 'kick'. Two distinct seats saying it (the vote-off
         // bar is never below 2) while I am kept out is the room's standing verdict on this device: tell the person.
         if (dc && dc.__authBy === p.id && m.why === 'kick' && !bannedOut && !hasAdminRoom()) {

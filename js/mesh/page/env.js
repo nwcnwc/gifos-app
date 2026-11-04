@@ -103,7 +103,7 @@
   const WHY = {
     'close': 'dc-close', 'dc-close': 'dc-close', 'pc-closed': 'pc-closed',
     'failed-persist': 'failed-persist', 'disconnected-persist': 'disconnected-persist', 'starve': 'starve', 'starve-dead': 'starve', 'starve-noobj': 'starve',
-    'dark': 'disconnected-persist', 'wake-dead': 'disconnected-persist',
+    'dark': 'dark', 'wake-dead': 'dark',   // the sim's dark: a hard close, no persist flag
   };
 
   // ---- ids ----------------------------------------------------------------------------------------------------
@@ -427,7 +427,6 @@
     function transport(peer, ev, arg) {
       const x = learnPeer(peer); if (x < 0) return false;
       if (sink) trace('ENV-PC', me, null, 'peer=%d ev=%s', x, String(ev));
-      if (ev === 'unanswered') ev = 'dial-failed';
       switch (ev) {
         case 'offer': return pcw.offer ? pcw.offer(x, arg || {}) !== false : true;
         case 'answer': if (pcw.answered) pcw.answered(x, arg || {}); return true;   // the callee's mark came back with its answer
@@ -437,6 +436,7 @@
           if (pcw.opened) pcw.opened(x); return true;
         case 'bye': if (pcw.byeIn) pcw.byeIn(x, arg || 'call'); return true;   // the page seam parsed {k:'pcbye'} itself
         case 'dial-failed': if (pcw.dialFailed) pcw.dialFailed(x); return true;
+        case 'wake-dead': { const L = pcw.link ? pcw.link(x) : null; if (L && L.state === LK_OPEN) break; return true; }   // a dial still running has its own LINK_DIAL_FAIL
         case 'refused': if (pcw.refused) pcw.refused(x, arg || {}); return true;
       }
       if (WHY[ev]) { if (pcw.lost) pcw.lost(x, WHY[ev]); return true; }
