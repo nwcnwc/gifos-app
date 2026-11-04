@@ -15638,7 +15638,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (typeof bannedSeat !== 'undefined') for (const pid of bannedSeat) if (peers.has(pid) && !(Date.now() - (pwBarred.get(pid) || 0) < PW_BYE_MS)) { if (pwBarred.has(pid)) { const bq = peers.get(pid); bq.byeSeen = Date.now(); bq.byeWhy = 'leave'; } dropPeer(pid); }
       // Every page that holds the admin's statement reads it as the barred seat's goodbye, pair or no pair: a LEAVE in its name is
       // not carried hop to hop (it is not his signature), so a page with no pair to him would hold his cell. Once per id.
-      for (const [pid, at] of pwBarred) if (!pwByeSaid.has(pid) && Date.now() - at >= PW_BYE_MS) { pwByeSaid.add(pid); try { meshNode.transport(pid, 'greeter-gone'); } catch (e) {} } // a ban's seat stays down even if a tick rebuilt it. The admin's signed statement is the goodbye a page that ignored the order will not send: the seat hears it as any leave
+      for (const [pid, at] of pwBarred) if (!pwByeSaid.has(pid) && Date.now() - at >= PW_BYE_MS) { pwByeSaid.add(pid); try { meshNode.transport(pid, 'greeter-gone'); } catch (e) {} }
+      // A booted seat: the same goodbye, no ban. Its own goodbye, sent as it left for the door, is marked reload (a page at the
+      // door reloads), and a seat holds a reload-marked leaver's cell for RELOAD_MARK_T, so the first word would be refused: the
+      // mark is cleared first, and the word repeats each tick until the seat names the id nowhere (bounded: a page that typed
+      // the new password speaks under the new key and is lifted by pwHeardNow; a fresh status under the new key stops it too).
+      for (const [pid, at] of pwBooted) {
+        if (Date.now() - at < PW_BYE_MS || Date.now() - at > 60000 || pwByeSaid.has(pid)) continue;
+        let named = false; for (const v of s.occ.values()) if (v === pid) { named = true; break; }
+        if (DEBUG_ON) meshTraceSink('{"t":0,"s":0,"e":"PW-BOOT-BYE","c":null,"d":"pid=' + String(pid).slice(0, 8) + ' named=' + named + '"}');
+        if (!named) { pwByeSaid.add(pid); continue; }
+        try { const x = meshNode.nidOf ? meshNode.nidOf(pid) : -1, rs = typeof meshNode.raw === 'function' ? meshNode.raw() : (meshNode.raw || null); if (rs && rs.relMark && x >= 0) rs.relMark.delete(x); meshNode.transport(pid, 'greeter-gone'); } catch (e) { if (DEBUG_ON) meshTraceSink('{"t":0,"s":0,"e":"PW-BOOT-ERR","c":null,"d":"' + String(e).slice(0, 60).replace(/"/g, '') + '"}'); }
+      } // a ban's seat stays down even if a tick rebuilt it. The admin's signed statement is the goodbye a page that ignored the order will not send: the seat hears it as any leave
       // FRESHLY SEATED, ONE FLUSH. Before hasCoord is true, gossip() has no
       // section to speak to and drops the frame silently (sc === null) — so
       // a status authored in that window, including scheduleNewPeerBeat's
@@ -15936,6 +15947,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         confirmGone(id, 'd5');   // d5: no tile now, the pair stays for PW_BYE_MS (renderFromOcc closes it)
       }
     }
+    // A SEAT SENT TO THE DOOR IS OUT OF THE ROOM. The change order sends every other page to the prompt, and that page's own
+    // goodbye leaves under the key it still reads, which this page no longer opens: its seat would linger here for the lease and
+    // every page that re-enters would count it. So the admin's page gives each booted seat the goodbye a ban gives (the pair
+    // stays PW_BYE_MS to carry the order, then the relay's word ends the seat), and a page that speaks the new key is a newcomer.
+    const pwBooted = new Map();   // id -> when the change order went out; lifted by a frame from that id under the current key
+    function pwBootOut(ids) {
+      for (const id of ids) { if (id === myId || pwBarred.has(id)) continue; if (!pwBooted.has(id)) pwBooted.set(id, Date.now()); pwByeSaid.delete(id); }
+    }
     function pwBarLift(id) {
       const at = pwBarred.get(id);
       if (at === undefined || rekeysPending || rekeyAt < at) return;   // until my key has moved, an old-key frame still opens: no proof of anything
@@ -15960,7 +15979,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     const pwNoSeen = new Set();   // ids on my stored list heard under the current key since this page loaded
     const pwNoAny = () => hasAdminRoom() && (pwBarred.size > 0 || amAdmin);
-    function pwHeardNow(id) { if (!id) return; pwBarLift(id); if (amAdmin) { pwNoSeen.add(id); if (pwNoSeen.size > 1024) pwNoSeen.clear(); } }
+    function pwHeardNow(id) { if (!id) return; pwBarLift(id); if (pwBooted.has(id) && !rekeysPending && rekeyAt >= pwBooted.get(id)) { pwBooted.delete(id); pwByeSaid.delete(id); } if (amAdmin) { pwNoSeen.add(id); if (pwNoSeen.size > 1024) pwNoSeen.clear(); } }
     const pwWaitKey = new Map();   // admin: a person waiting through a ban -> the key they still read
     let pwWaitProof = false;       // this page waits on a proof the admin sent: the lock it cannot read yet is not a prompt
     // Admit, for someone who waited through a ban: the password, signed for that one id. The page takes it and holds no grant, so it heals nobody.
@@ -18655,6 +18674,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             relaySendObj({ t: 'setpw', pw: pr, w: wRelay });
             const order = { k: 'pwreset', by: myName(), w: wOrder, ep };
             sendAll(order);
+            pwBootOut(Array.from(peers.keys()));   // every present page is out of the room until it types the new password: its seat is given its goodbye
             storePwEpoch(ep); retainedGrant = order;
             pwLog('pwreset-sent ep=' + ep);
             txm(() => Promise.resolve()).then(() => rekeyRoom());
