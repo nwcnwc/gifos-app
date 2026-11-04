@@ -6757,6 +6757,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         ad: a ? { s: a.s, k: a.k, relay: a.relay, name: a.name, mesh: !!a.mesh, pk: a.pk, ts: a.ts, byName: a.byName, audio: !!a.audio } : null,
         away: !!myStatus.away, vup: myStatus.vup || [], vdn: myStatus.vdn || [], vab: myStatus.vab || [] });
       if (typeof meshNode.setRefuses === 'function') meshNode.setRefuses(!consents(myStatus));
+      // L10.1: a hand is one of the seat's own facts, so a change goes out early instead of on the next beat
+      try { const r = meshNode.raw; if (r && !r.handT !== !myStatus.hand) r.handT = myStatus.hand ? r.TICK + 1 : 0; } catch (e) {}
     }
     // Presence: the mesh occ map IS the local count — distinct peers at
     // distinct coords in my view of the tree, me included. Past one section
