@@ -10561,6 +10561,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // which keeps ticking when the tab is hidden and main-thread timers are
       // clamped (a backgrounded phone used to broadcast a near-frozen blur).
       const onFrame = () => { if (blurPipe !== pipe) return; pipe.rvfcN = (pipe.rvfcN || 0) + 1; paint(); if (src.requestVideoFrameCallback) pipe.rvfc = src.requestVideoFrameCallback(onFrame); };
+      // The source never stays paused. Chrome pauses every playing <video>
+      // when it resumes a tab it froze in the background (a phone after an
+      // app switch). A paused source brings no frame callbacks, and while the
+      // tab is visible nothing else paints, so the room would get the last
+      // frame for good while the camera runs.
+      const keepPlaying = () => { if (blurPipe === pipe && src.paused && src.srcObject) src.play().catch(() => {}); };
+      src.addEventListener('pause', keepPlaying);
       src.play().catch(() => {});
       const stream = canvas.captureStream(15);
       pipe.track = stream.getVideoTracks()[0];
@@ -10594,6 +10601,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       let metroOff = null;
       const syncMetro = () => {
         if (blurPipe !== pipe) return;
+        keepPlaying();
         if (!rvfcDrives || document.hidden) { if (!metroOff) metroOff = metroSub(tick); }
         else if (metroOff) { metroOff(); metroOff = null; }
       };
@@ -10601,6 +10609,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       document.addEventListener('visibilitychange', syncMetro);
       pipe.unsub = () => {
         document.removeEventListener('visibilitychange', syncMetro);
+        src.removeEventListener('pause', keepPlaying);
         if (metroOff) { metroOff(); metroOff = null; }
       };
       // A camera grabbed again feeds this same canvas, so the track the room
@@ -11101,7 +11110,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const [pid, p] of peers) {
         if (rosterIds.includes(pid)) { n++; continue; }
         const heard = Math.max(p.lastHeard || 0, p.meshRxAt || 0);
-        if (p.connected && now - heard < 30000) n++;
+        if (p.connected && now - heard < 30000 && !seatStranger(p)) n++;
       }
       return n;
     }
@@ -13944,6 +13953,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       p.turnAskT = p.turnOkT = p.turnGivenT = null; p.turnOk = p.turnGiven = p.turnWanted = false; p.offeredPend = "";
       p.pc = pc; p.connected = false; p.pendingIce = []; p.dc = null; p.incoming = []; p.deadSince = 0; p.rebuiltAt = Date.now();
       p.offering = null; // an offer still minting belongs to the closed pc (sendOffer drops it)
+      p.makingOffer = false; // ...and so does a renegotiation's (renegotiate: its chain never settles)
       p.offerFp = ''; // no remote offer has landed on this pc yet (onSignal's new-pc rule)
       // A new pc gathers afresh: its first host candidate must leave at once,
       // so the old pc's batch (sawHost, a pending flush) is dropped.
@@ -14041,7 +14051,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // persistence gate for the rebuild-on-offer path (transients recover
         // via ICE restart and must never trigger a teardown)
         if (pc.connectionState === 'failed' || pc.connectionState === 'closed') { if (!p.deadSince) p.deadSince = Date.now(); }
-        else if (p.connected) { p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; restoreDoorTile(p); try { updateTile(p.id); } catch (e) {} }
+        else if (p.connected) { p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; if (!seatStranger(p)) restoreDoorTile(p); try { updateTile(p.id); } catch (e) {} }
         updateStatus();
         if (p.connected) { p.altPath = false; p.tlAt = 0; adapt(); } // rotation ends when the pair lands; D5 edge re-arms
         // D5: 'closed' out of nowhere (we didn't rebuild it and the peer is
@@ -14067,6 +14077,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       doorOffGrid.add(p.id);
       if (p.tile && p.tile.parentNode) p.tile.remove();
     }
+    // Seated, a pair my seat neither links nor names is no one in this room yet: a door, or a lone seat greeting me. An open channel alone is no face and no count.
+    function seatStranger(p) { const s = meshSeat(); return !!(s && s.hasCoord && s.state === 3 && !p.headless && !linkTo(p.id) && !meshKnows(p.id)); }
     function restoreDoorTile(p) {
       if (!p || !doorOffGrid.has(p.id)) return;
       doorOffGrid.delete(p.id);
@@ -15877,6 +15889,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       pwLog('pwreset-boot from=' + String((p && p.id) || '?').slice(0, 6) + ' ep=' + m.ep + ' myEp=' + pwEpoch);
       if (typeof clog === 'function') clog('pw-boot ep=' + m.ep + ' (admin changed the password)');
       storePwEpoch(m.ep);
+      pwLeaveForDoor();
+    }
+    function pwLeaveForDoor() {
       heldGrant = null; grantHoldUntil = 0; retainedGrant = null;
       storePw('');
       pwBlocked = true;
@@ -16868,7 +16883,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // is provably wrong, so it is forgotten instead of trapping the next
         // visit too. Bounded at three knocks, and only a device that REMEMBERS
         // a password ever pays for more than one.
-        onLocked: () => {
+        onLocked: (door) => {
+          const ms = meshSeat(), seated = !!(ms && ms.hasCoord && ms.state === 3);
+          // A seat moves on no door blob: anyone can register one. Only the door's own refusal is the password change.
+          if (seated && !door) { pwLog('R6 from door blobs, seated: stays seated'); pwBlocked = true; showPwModal(true, pwChangedWhy()); return; }
+          // An admin room's change that never reached me, and the door now refuses me: leave and re-enter. Entry asks for the password.
+          if (seated && hasAdminRoom() && !(admKey || amAdmin)) { pwLog('door refused a seated guest: leaving for the door'); pwLeaveForDoor(); return; }
           if (pwProbe === 'probing' && pwHeld) {
             pwLog('open-key probe refused at the door → the room IS locked; restoring the remembered password');
             pwProbe = 'restored'; roomPw = pwHeld; pwHeld = ''; pwFromStore = false; touchPw();
@@ -17576,7 +17596,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // media path for a while → say so on the tile instead of silent black.
         // A peer who merely STEPPED AWAY (phone locked, other app) is not a
         // firewall problem — their tile says away, never 'firewall'.
-        if (p.connected) { p.downSince = 0; restoreDoorTile(p); if (p.noRoute) { p.noRoute = false; updateTile(pid); } }
+        if (p.connected) { p.downSince = 0; if (!seatStranger(p)) restoreDoorTile(p); if (p.noRoute) { p.noRoute = false; updateTile(pid); } }
         else if (!p.absentSince) {
           if (!p.downSince) p.downSince = now;
           // A pair that never once connected is unreachable, not away (see
@@ -22789,17 +22809,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!iInitiate(p.id) && !p.turnOk && !p.turnLegacy) { p.renegAgain = true; askTurn(p); return; } // OFFER TURNS
       if (iInitiate(p.id) && p.turnGiven) { p.renegAgain = true; return; } // their turn is out: mine waits for their offer
       if (p.makingOffer || p.pc.signalingState !== 'stable') { p.renegAgain = true; return; }
-      p.makingOffer = true;
+      // The mark and the chain belong to this pc. A pc closed mid-offer never
+      // settles its createOffer/setLocalDescription in Chromium, so a rebuild
+      // drops the mark (newPcFor); left set, the new pc never offered and held
+      // then dropped every offer the far end sent.
+      const pc = p.pc, mark = {};
+      p.makingOffer = mark;
       // This offer carries every change made so far, so nothing is owed
       // after its answer. Left set, afterNeg re-offered on every answer and
       // a polite side looped rreq → rgo → roffer → ranswer for good (Q78).
       p.renegAgain = false;
-      preferHwVideo(p.pc); // renegotiations add fresh m-lines (folds, stg, relay jobs) — they must inherit the preference
-      p.pc.createOffer()
-        .then((o) => { if (p.pc.signalingState !== 'stable') { const e = new Error('raced'); e.name = 'GlareRace'; throw e; } return p.pc.setLocalDescription(o); })
+      preferHwVideo(pc); // renegotiations add fresh m-lines (folds, stg, relay jobs) — they must inherit the preference
+      pc.createOffer()
+        .then((o) => { if (pc.signalingState !== 'stable') { const e = new Error('raced'); e.name = 'GlareRace'; throw e; } return pc.setLocalDescription(o); })
         .then(() => {
           endTurn(p); // this offer is the turn's one offer
-          const send = () => { dcSend(p, { k: 'roffer', sdp: p.pc.localDescription }); if (typeof clog === 'function') clog('roffer→' + String(p.id).slice(0, 6)); };
+          const send = () => { dcSend(p, { k: 'roffer', sdp: pc.localDescription }); if (typeof clog === 'function') clog('roffer→' + String(p.id).slice(0, 6)); };
           // DEBUG lever (e2e-glare-first-offer): hold the wire to this peer
           // (this offer and everything after it, in order). When both ends
           // offer within the hold of each other, as they do the moment a
@@ -22809,8 +22834,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (hold > 0 && !p.wireHold) p.wireHold = new Promise((r) => setTimeout(() => { p.wireHold = null; r(); }, hold));
           send();
         })
-        .catch((e) => { if (typeof clog === 'function') clog('roffer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); p.renegAgain = true; maybeRebuildNeg(p, e); })
-        .finally(() => { p.makingOffer = false; if (p.turnWanted) giveTurn(p); });
+        .catch((e) => { if (p.pc !== pc) return; if (typeof clog === 'function') clog('roffer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); p.renegAgain = true; maybeRebuildNeg(p, e); })
+        .finally(() => { if (p.makingOffer === mark) p.makingOffer = false; if (p.turnWanted) giveTurn(p); });
     }
     function startRelayJob(reqP, target) {
       const key = target + '>' + reqP.id;
@@ -35506,7 +35531,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // anti-entropy fills the rest. NOT product surface: pure diagnostics.
       forceSeat: (pc, r, i, occSeed) => {
         if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
-        const seat = meshNode && meshNode.seat; if (!seat) return { err: 'no seat yet' };
+        const seat = meshNode && meshNode.raw; if (!seat) return { err: 'no seat yet' };   // the ported Seat: the page's view has no doMove
         const T = net.topo, target = { pc: +pc, r: +r, i: +i };
         // occSeed ({'pc/r.i': fullPeerId, …}) teaches this seat the room so the
         // dial at the target addresses real neighbours. MUST travel as `nbrs`
@@ -35519,14 +35544,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (occSeed) for (const k of Object.keys(occSeed)) {
           const mm = /^(\d+)\/(\d+)\.(\d+)$/.exec(k); if (!mm) continue;
           const key = T.ckey({ pc: +mm[1], r: +mm[2], i: +mm[3] });
-          if (occSeed[k] && occSeed[k] !== seat.id) nbrs.push({ k: key, v: occSeed[k] });
+          const nv = occSeed[k] ? meshNode.nidOf(occSeed[k]) : -1;
+          if (nv >= 0 && nv !== seat.id) nbrs.push({ k: key, v: nv });
         }
         // The teleport rides the SAME atomic path as every heal move (law T):
         // dual-hold doMove — take the target while still holding the old seat,
         // vacate with LEAVE(mvd)+tombstone on confirm, roll back if contradicted.
         try {
-          if (seat.hasCoord) seat.doMove(target, null, nbrs);
-          else seat.take(target, null, nbrs);
+          if (seat.hasCoord) seat.doMove(target, -1, nbrs);
+          else seat.take(target, -1, nbrs);
         } catch (e) { return { err: String(e).slice(0, 80) }; }
         try { renderFromOcc(); } catch (e) {}
         return { seated: target.pc + '/' + target.r + '.' + target.i, seeded: nbrs.length, transit: !!seat.moving };
