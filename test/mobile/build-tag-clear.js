@@ -8,7 +8,7 @@
  * button or header. It tucks with the dock, so once the buttons are away
  * it is gone and cannot cover a face.
  *
- * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/build-tag-clear.js
+ * Gate: NODE_PATH=~/gifos-swarm/node_modules node test/mobile/build-tag-clear.js
  */
 const fs = require('fs');
 const path = require('path');

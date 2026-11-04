@@ -8,7 +8,7 @@
  * below it, and a tap on the room name opens People. Once the bar is
  * dismissed the header goes back to the top.
  *
- * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/update-bar-clear.js
+ * Gate: NODE_PATH=~/gifos-swarm/node_modules node test/mobile/update-bar-clear.js
  */
 const fs = require('fs');
 const path = require('path');

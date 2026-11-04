@@ -10,7 +10,7 @@
  * must show whole: inside the tile, clear of the name and of every chip,
  * and still big enough to read (20px or more).
  *
- * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/short-tile-initial.js
+ * Gate: NODE_PATH=~/gifos-swarm/node_modules node test/mobile/short-tile-initial.js
  */
 const fs = require('fs');
 const path = require('path');

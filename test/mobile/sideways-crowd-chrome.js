@@ -6,7 +6,7 @@
  * face up whole. A name or Full screen that the dock does not cover is
  * still the thing under the pointer.
  *
- * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/sideways-crowd-chrome.js
+ * Gate: NODE_PATH=~/gifos-swarm/node_modules node test/mobile/sideways-crowd-chrome.js
  */
 const fs = require('fs');
 const path = require('path');

@@ -7,7 +7,7 @@
  * letter and its label. A seat still connecting keeps "…" (its name may
  * be on the way).
  *
- * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/guest-tile-name.js
+ * Gate: NODE_PATH=~/gifos-swarm/node_modules node test/mobile/guest-tile-name.js
  */
 const fs = require('fs');
 const path = require('path');

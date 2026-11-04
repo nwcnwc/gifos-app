@@ -1,6 +1,6 @@
 # Whisper silent give-up
 
-Branch `cc-0923-whisper-stall`. Page: `run.html`. The historical gate under `/home/nathan/h0922/gifos/test` was run read-only and was not edited. `versions/` was not edited.
+Branch `cc-0923-whisper-stall`. Page: `run.html`. The historical gate under `~/h0922/gifos/test` was run read-only and was not edited. `versions/` was not edited.
 
 ## Cause
 
@@ -43,7 +43,7 @@ The late answer was written. The hard cap stopped the provider once (`stops: 1`)
 
 ## Other gates
 
-Run read-only from `/home/nathan/h0922/gifos/test`, with `readFileSync` of `gifos-app/run.html` redirected at this worktree. No suite was edited, skipped, or loosened.
+Run read-only from `~/h0922/gifos/test`, with `readFileSync` of `gifos-app/run.html` redirected at this worktree. No suite was edited, skipped, or loosened.
 
 | Suite | This tree | Unmodified `run.html` |
 |---|---|---|

@@ -22686,7 +22686,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       video._wrapOf = stream; video._pic = pic; video._followId = tr.id; video._wkAsks = 0;
       if (!video._wkErrHook) {
         // The engine's own player can fail on a picture the page cannot
-        // see into: Jetson WebKit (wk0056 a3j2/a3cb) picks the host's
+        // see into: an ARM WebKit (wk0056 a3j2/a3cb) picks the host's
         // nvv4l2decoder, which rejects every VP8/H264 caps, and the element
         // ends in error 4 while inbound-rtp framesDecoded keeps climbing.
         // That is not a dead sink to re-seat: every held re-seat parks the

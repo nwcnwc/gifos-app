@@ -9,7 +9,7 @@
  * buttons leave. With the buttons away every face shows whole, with no
  * "↓2" and no scroll; with them up nothing lies under the dock.
  *
- * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/chrome-hold-tiles.js
+ * Gate: NODE_PATH=~/gifos-swarm/node_modules node test/mobile/chrome-hold-tiles.js
  */
 const fs = require('fs');
 const path = require('path');

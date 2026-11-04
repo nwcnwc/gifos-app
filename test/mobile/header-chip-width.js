@@ -11,7 +11,7 @@
  * none of Fit, the build name, Unmute or the faces; the hand button stays
  * whole and tappable.
  *
- * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/header-chip-width.js
+ * Gate: NODE_PATH=~/gifos-swarm/node_modules node test/mobile/header-chip-width.js
  */
 const fs = require('fs');
 const path = require('path');
