@@ -197,7 +197,7 @@
       const TICK = this.TICK, id = this.id;
       if (m.tag === K.L711_TAG) { this.l711Reask('lost'); return; }   // L7.11
       if (this.state === 2) {
-        if (m.nd >= K.SPREAD_MINDEPTH) this.noroomSeen++; this.triedSilent.delete(m.id); if (this.lastAsked >= 0) this.triedSilent.delete(this.lastAsked); this.retryAt = TICK;
+        if (m.nd >= this.w.lv.SPREAD_MINDEPTH) this.noroomSeen++; this.triedSilent.delete(m.id); if (this.lastAsked >= 0) this.triedSilent.delete(this.lastAsked); this.retryAt = TICK;
         if (this.f.fabricDoors() && m.split && this.l16Next < this.l16List.length) { this.trace('L16-SPLIT-FAN', id, null, 'from=%d rest=%d', m.id, this.l16List.length - this.l16Next); this.l16Wave(this.l16List.length); return; }   // L16
         if (this.f.fabricDoors() && m.gwc && m.id >= 0 && m.id !== id && this.f.fabricLinkState(id, m.id) === E.LS_OPEN && this.haveRoster && this.roster.length && ++this.seatTries <= 6) { this.askSeat(m.id, true); return; }   // L16.3
         if (this.haveRoster && this.roster.length && ++this.seatTries <= 6) { const t = this.pickRoster(); if (t >= 0) { this.askSeat(t); return; } }
