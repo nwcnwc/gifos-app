@@ -80,6 +80,7 @@
     FINDLEAF: { by: 'fo', flag: 'fo', only: ['fo', 'foAt', 'hole'] },   // the decider's order (L25.7); ttl, nbrs, tag change down the cascade
     RECLAIM: { by: 'id', flag: 't' },   // L3.10: always claimed: the signature under m.id is the proof of identity (the seat's tok is the sim's stand-in, anyone can compute it)
   };
+  const WIRE_VERSION = '0.9.25';   // sent as ?pv= on every relay socket (makeUrl): the relay's flag-day floor
   const FILL_WINDOW_MS = 10 * 60 * 1000;   // mesh-identity.js: a signature's time must lie this close to mine
   const REPLAY_MS = 30000;   // the seat's own goodbye window: 60 ticks (recv-seated.js)
   const BY_ID = { by: 'id' };   // a type no seat signs today: a claim on it still has to verify as m.id's whole frame
@@ -292,10 +293,12 @@
     const ipProofFor = () => (identity && net.edSign
       ? net.edSign(identity.priv, JSON.stringify({ v: 1, act: 'ipatt', sid: opts.sid, peer: identity.peerId })).then((s) => { ipp = s || ''; }, () => {})
       : Promise.resolve());
+    // pv: the page's wire version. 0.9.25 was a flag day: the relay refuses a page that does not name
+    // 0.9.25 or newer with 4010, which every older page shows as "reload to update" and stops knocking.
     const makeUrl = () => {
       const extra = opts.urlParams ? String(opts.urlParams() || '') : '';
       return relayBase + '/s/' + opts.sid
-        + '?role=mesh&token=' + encodeURIComponent(opts.tok || '')
+        + '?role=mesh&pv=' + WIRE_VERSION + '&token=' + encodeURIComponent(opts.tok || '')
         + '&peer=' + encodeURIComponent(peer)
         + '&gk=' + encodeURIComponent(gkStr())
         + (rs ? '&rs=' + rs : '')
