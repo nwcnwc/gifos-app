@@ -93,7 +93,8 @@
     dst.hands = listMerge(dst.hands, s.hands, K_HAND, true); dst.stage = listMerge(dst.stage, s.stage, K_STAGE(), true); dst.apps = listMerge(dst.apps, s.apps, K_APP, false);
     for (const v of (s.votes || [])) voteAdd(dst.votes, { tgt: v.tgt, up: Math.min(v.up, cap), dn: Math.min(v.dn, cap), ab: Math.min(v.ab || 0, cap) });
   };
-  const digFold = (dst, s) => { const cap = Math.max(0, (s.n < 0 ? 0 : s.n) + (s.leased || 0)); dst.n += s.n; dst.leased += s.leased || 0; dst.refuse += s.refuse; if (s.part) dst.part = 1; digLists(dst, s, cap); };
+  const leasedIn = (s) => Math.max(s.leased || 0, -Math.max(0, s.n));   // the seat's digLeasedIn: a dropped copy can take back no more than the report counted
+  const digFold = (dst, s) => { const cap = Math.max(0, (s.n < 0 ? 0 : s.n) + (s.leased || 0)); dst.n += s.n; dst.leased += leasedIn(s); dst.refuse += s.refuse; if (s.part) dst.part = 1; digLists(dst, s, cap); };
   const digFoldHeld = (dst, s) => { const cap = Math.max(0, (s.n < 0 ? 0 : s.n) + (s.leased || 0)); dst.leased += cap; digLists(dst, s, cap); };   // the seat's L3.12: held under its lease
   const digTrim = (d) => {
     const cap = Math.max(0, (d.n < 0 ? 0 : d.n) + (d.leased || 0));
@@ -176,10 +177,25 @@
   };
   const subRow = (d, r) => { d.leased = (d.leased || 0) - (r.n + r.l); d.handN = Math.max(0, (d.handN || 0) - r.h); d.hands = dropL(d.hands, r.hands); d.stage = dropL(d.stage, r.stage); d.apps = dropL(d.apps, r.apps); };
   const rowNewer = (a, b) => { if (a.by != null && a.by === b.by) { if (a.at !== b.at) return a.at > b.at; } else if (a.rx !== b.rx) return a.rx > b.rx; return a.e === 0 && b.e !== 0; };
-  function rowResolve(ins) {   // ins: the copies a fold is about to fold; returns the winners
-    let any = false; for (const d of ins) for (const r of d.rows || []) if (r.e === 1) any = true;
+  // Who may carry a copy of row k into a fold (the folder's own view, occ): an owner's copy (e 0) only a seat whose report
+  // covers the row (its owner, or a row head or owner further up that chain); a copy over E2 (e 1) only the row's backup owner
+  // or its standby. Any other copy takes no part: it can neither win nor take another input's copy out.
+  function mayCarry(c, k, e, occ) {
+    const R = GifOS.meshRoles, tp = GifOS.meshTopo; if (!R || !tp) return false;
+    const row = tp.unckey(k); if (row.i !== 0 || row.pc === 0) return false;
+    if (e === 1) { const b = R.backupOwnerOf(row, occ), sb = R.standbyOf(row, occ); return (!!b && tp.ckey(b) === c) || (!!sb && tp.ckey(sb) === c); }
+    let x = R.ownerOf(row);
+    for (let g = 0; x && g < 64; g++) {
+      if (tp.ckey(x) === c) return true; if (x.pc === 0) return false;
+      const h = { pc: x.pc, r: x.r, i: 0 }; if (tp.ckey(h) === c) return true; x = R.ownerOf(h);
+    }
+    return false;
+  }
+  function rowResolve(ins, cells, occ) {   // ins: the copies a fold is about to fold, cells: the cell each came from; returns the winners
+    const ok = (i, r) => mayCarry(cells[i], r.k, r.e, occ);
+    let any = false; ins.forEach((d, i) => { for (const r of d.rows || []) if (r.e === 1 && ok(i, r)) any = true; });
     if (!any) return [];
-    const g = new Map(); ins.forEach((d, i) => (d.rows || []).forEach((r, j) => { if (r.e === 2) return; let a = g.get(r.k); if (!a) g.set(r.k, a = []); a.push([i, j]); }));
+    const g = new Map(); ins.forEach((d, i) => (d.rows || []).forEach((r, j) => { if (r.e === 2 || !ok(i, r)) return; let a = g.get(r.k); if (!a) g.set(r.k, a = []); a.push([i, j]); }));
     const won = [];
     for (const v of g.values()) {
       if (v.length < 2 || !v.some(([i, j]) => ins[i].rows[j].e === 1)) continue;
@@ -359,7 +375,7 @@
     let myDig = dig0(), rowDig = dig0(), rootDig = dig0(), downDig = dig0(), u2RowDig = dig0(), siDig = dig0(), foldSig = null, foldBeat = -1, foldCell = -1;
     const rowKids = new Map(), s1tab = new Map(), u2Folds = new Map(), siKids = new Map();   // siKids: my row-mates' own reports while I stand in for our head (L48)
     const servesHot = (s, to) => { const x = ids.nid(to); for (const e of s.u2Rows.values()) if (e.hot && e.heir === x) return true; return false; };
-    const e2SrcIs = (s, to) => { const R = GifOS.meshRoles, tp = TP(); if (!R) return false; const x = R.e2SrcOf({ pc: s.coord.pc, r: s.coord.r, i: 0 }, (q) => s.occGet(tp.ckey(q)) >= 0); return !!x && P(s.occGet(tp.ckey(x))) === to; };
+    const e2SrcIs = (s, to) => { const R = GifOS.meshRoles, tp = GifOS.meshTopo; if (!R || !tp) return false; const x = R.e2SrcOf({ pc: s.coord.pc, r: s.coord.r, i: 0 }, (q) => s.occGet(tp.ckey(q)) >= 0); return !!x && P(s.occGet(tp.ckey(x))) === to; };
     const digSent = new Map(), digWant = new Map();
     const rxDig = (s, d) => { d.rx = s.LT() - (INT(d.ag) ? Math.min(Math.max(d.ag, 0), 1 << 20) : 0); for (const r of d.rows || []) { r.rx = s.LT() - (r.ag || 0); delete r.ag; } return d; };
     const wireDig = (s, d) => { const c = digCopy(d); const st = d.rx != null ? d.rx : d.at; c.ag = st >= 0 ? Math.max(0, s.LT() - st) : 0;
@@ -378,7 +394,7 @@
     const slotMode = (s, k, e) => (e && e.at >= 0 && named(s, k, e) && s.LT() - e.rx <= DIG_TTL) ? 1 : (e && held(s, k, e) ? 2 : 0);   // foldSlot's choice, read only
     const L48_BEAT = () => 8 + (KC().EARLY_HOLD || 12);
     // L48: the rows I serve over E2 (the seat's U2Row still beats me and still holds a fold) and their copies, at most LEASE_T old
-    const e2Live = (s, rk, u) => { const e = s.u2Rows && s.u2Rows.get(rk * 2); return !!e && e.heir >= 0 && s.TICK - e.at <= L48_BEAT() && !!e.dig && e.dig.at >= 0 && u.at >= 0 && s.LT() - u.rx <= KC().LEASE_T; };
+    const e2Live = (s, rk, u) => { const e = s.u2Rows && s.u2Rows.get(rk * 2); return !!e && e.hot && e.heir >= 0 && s.TICK - e.at <= L48_BEAT() && !!e.dig && e.dig.at >= 0 && u.at >= 0 && s.LT() - u.rx <= KC().LEASE_T; };
     function ownDig(s, LT) {
       const L = leaf, d = dig0(); d.n = 1; d.refuse = refuses ? 1 : 0; d.at = LT; d.rx = LT; d.by = me;
       if (L.hand) { d.handN = 1; d.hands.push({ id: me, k: L.hand, nm: L.nm }); }
@@ -406,6 +422,7 @@
         + ',' + (L.hand || 0) + ',' + (L.stage || 0) + ',' + (L.sf | 0) + ',' + (L.app || 0) + ',' + (L.away ? 1 : 0)
         + ',' + L.nm + ',' + L.dv + ',' + (L.ad ? JSON.stringify(L.ad) : '') + ',' + L.vup.join('\n') + ',' + L.vdn.join('\n') + ',' + L.vab.join('\n');
       if (c.pc !== 0 && c.i === 0) for (let j = 1; j < C; j++) { const rk = tp.ckey({ pc: c.pc, r: c.r, i: j }); sig += slotSig(s, rk, rowKids.get(rk)); }
+      for (const [rk, u] of u2Folds) if (!e2Live(s, rk, u)) u2Folds.delete(rk);   // L48: a parked beat, a beat with no fold, or a copy past its lease ends the copy
       for (const [rk, u] of u2Folds) if (e2Live(s, rk, u)) sig += ';e2' + rk + ':' + digHash(u);
       const si = c.pc !== 0 && c.i !== 0 && siKids.size > 0;
       if (si) for (let j = 1; j < C; j++) if (j !== c.i) { const rk = tp.ckey({ pc: c.pc, r: c.r, i: j }); sig += ';si' + slotSig(s, rk, siKids.get(rk)); }
@@ -432,7 +449,8 @@
         const kids = []; for (let j = 1; j < C; j++) { const rk = tp.ckey({ pc: c.pc, r: c.r, i: j }), e = rowKids.get(rk); kids.push([rk, e, slotMode(s, rk, e)]); }
         const any = d.rows.some((x) => x.e === 1) || kids.some(([, e, m]) => m && (e.rows || []).some((x) => x.e === 1));
         const cp = kids.map(([, e, m]) => (any && m ? digCopyRx(e) : e));
-        const won = any ? rowResolve([r].concat(cp.filter((x, i) => kids[i][2]))) : [];   // L48: the owner and the backup owner of a row below meet here
+        const occV = (q) => tp.ckey(q) === mine || s.occGet(tp.ckey(q)) >= 0;
+        const won = any ? rowResolve([r].concat(cp.filter((x, i) => kids[i][2])), [mine].concat(kids.filter((x) => x[2]).map((x) => x[0])), occV) : [];   // L48: the owner and the backup owner of a row below meet here
         kids.forEach(([rk], i) => foldSlot(s, r, rk, cp[i]));
         r.rows = won; if (kids.every((x) => !x[2])) for (const x of d.rows) if (x.e !== 2) r.rows.push(rowCopy(x));
         digTrim(r); rowDig = r;
@@ -445,7 +463,7 @@
           const it = s1tab.get(k); if (!it || superseded(it) || !slotMode(s, k, it)) continue; ins.set(k, it);
         }
         let cps = null;
-        if ([...ins.values()].some((x) => (x.rows || []).some((y) => y.e === 1))) { cps = new Map(); for (const [k, x] of ins) cps.set(k, digCopyRx(x)); rowResolve([...cps.values()]); }
+        if ([...ins.values()].some((x) => (x.rows || []).some((y) => y.e === 1))) { cps = new Map(); for (const [k, x] of ins) cps.set(k, digCopyRx(x)); rowResolve([...cps.values()], [...cps.keys()], (q) => tp.ckey(q) === mine || s.occGet(tp.ckey(q)) >= 0); }
         const pick = (k, x) => (cps && cps.has(k) ? cps.get(k) : x);
         for (let r0 = 0; r0 < C; r0++) for (let i0 = 0; i0 < C; i0++) {
           const k = tp.ckey({ pc: 0, r: r0, i: i0 }); if (k === mine) { digFold(R, pick(k, myDig)); continue; }
@@ -525,7 +543,8 @@
       const pk = tp.ckey(m.coord);
       if (pd.u && m.t === 'U2BEAT') {   // the seat's U2Row.dig: held while I serve that row, by the source the seat names (its own check: a backup owner need not name a deep cell)
         const rk = tp.ckey({ pc: m.coord.pc, r: m.coord.r, i: 0 }), e = s.u2Rows.get(rk * 2); if (!e || e.heir !== m.id) return;
-        const u = digSane(pd.u); if (u) { if (u.by == null) u.by = from; if (u2Folds.size > 2 * C) u2Folds.clear(); u2Folds.set(rk, rxDig(s, u)); }   // L48: the row's author stays (one author's copies compare by its stamp)
+        const u = digSane(pd.u); if (u && m.coord.i === 0 && u.by != null && u.by !== from) return;   // a head beats with its own row fold only
+        if (u) { if (u.by == null) u.by = from; if (u2Folds.size > 2 * C) u2Folds.clear(); u2Folds.set(rk, rxDig(s, u)); }   // L48: the row's author stays (one author's copies compare by its stamp)
         return;
       }
       const e2Far = m.t === 'U2ACK' && (m.id === s.u2Id || m.id === s.u3Id);   // the seat already took this far end from its row's PONG; a deep view need not name its cell
