@@ -24,7 +24,7 @@
   // C++: mesh.cpp:K_HAND
   const K_HAND = LAWS.K_HAND, K_STAGE = LAWS.K_STAGE_PER_C * C, K_APP = LAWS.K_APP, K_VOTE = LAWS.K_VOTE;
   // C++: mesh.cpp:STAGE_CAP
-  const STAGE_CAP = LAWS.STAGE_CAP;
+  const STAGE_CAP = LAWS.STAGE_CAP_PER_C * C;
   // C++: mesh.cpp:TALK_ON
   const TALK_ON = LAWS.TALK_ON;
   // C++: mesh.cpp:TALK_HOLD

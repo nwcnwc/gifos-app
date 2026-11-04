@@ -32,7 +32,9 @@ function files(file, seen = new Set()) {
 }
 const lines = files('mesh.cpp');
 const LAWS = (() => { const j = JSON.parse(fs.readFileSync(path.join(dir, 'laws.json'), 'utf8')).laws; return j; })();
-const C = 5;
+// C (the section width) is a room parameter (topo.js, 2..5): a constant whose initializer reads C is evaluated at
+// each C and the module picks its value by the room's C when it is read.
+const CS = [2, 3, 4, 5];
 
 const SCALAR = '(?:unsigned |signed )?(?:bool|int|long long|unsigned long long|double|float|uint8_t|uint16_t|uint32_t|uint64_t|int64_t|size_t|unsigned)';
 const DECL = new RegExp('^\\s*static\\s+(thread_local\\s+)?(const\\s+|constexpr\\s+|inline\\s+)*(' + SCALAR + ')\\s+(.*)$');
@@ -53,6 +55,7 @@ function declarators(s) {
 }
 
 const env = {};       // name -> value, as declared so far (C++ reads earlier names)
+const envC = {};      // name -> its value at each C of CS, for a constant that reads C (directly or through a name)
 const entries = [];   // {name, value, isConst, type, file, line}
 const skipped = [];
 const enums = [];      // {name, value, file, group}
@@ -108,17 +111,24 @@ for (const L0 of lines) for (const st of statements(L0.text)) {
       .replace(/\(\s*(?:long long|int|uint32_t|uint64_t|size_t|double)\s*\)/g, '')
       .replace(/\bLAW_([A-Z0-9_]+?)_PER_C\b/g, (_, n) => 'LAWS.' + n + '.perC')
       .replace(/\bLAW_([A-Z0-9_]+)\b/g, (_, n) => 'LAWS.' + n + '.value');
-    let value;
+    let value, byC = null;
     try {
       // eslint-disable-next-line no-new-func
-      value = Function('LAWS', 'C', 'env', 'with (env) { return (' + js + '); }')(LAWS, C, env);
+      const f = Function('LAWS', 'C', 'env', 'with (env) { return (' + js + '); }');
+      value = f(LAWS, 5, env);
+      const viaC = Object.keys(envC).some((n) => new RegExp('\\b' + n + '\\b').test(js));
+      if (/\bC\b/.test(js) || viaC) byC = CS.map((c, q) => f(LAWS, c, Object.assign({}, env, Object.fromEntries(Object.entries(envC).map(([n, vs]) => [n, vs[q]])))));
     } catch (e) { skipped.push(L.file + ':' + L.line + ' ' + name + ' = ' + expr); continue; }
+    if (byC && byC.every((v) => v === value)) byC = null;
+    if (byC && !isConst) { skipped.push(L.file + ':' + L.line + ' ' + name + ' = ' + expr + ' (a lever that reads C)'); continue; }
+    if (byC && (/int|long|size_t|unsigned/.test(type) && !/double|float/.test(type))) byC = byC.map(Math.trunc);
     if (typeof value === 'boolean') { /* keep */ }
     else if (typeof value !== 'number' || !Number.isFinite(value)) { skipped.push(L.file + ':' + L.line + ' ' + name + ' = ' + expr); continue; }
     else if (/int|long|size_t|unsigned/.test(type) && !/double|float/.test(type)) value = Math.trunc(value);
     if (/^uint32_t|^unsigned$/.test(type)) value = value >>> 0;
-    entries.push({ name, value, isConst, type, file: L.file, line: L.line, expr: expr.replace(/\s+/g, ' ') });
+    entries.push({ name, value, isConst, type, file: L.file, line: L.line, expr: expr.replace(/\s+/g, ' '), byC });
     env[name] = value;
+    if (byC) envC[name] = byC;
   }
 }
 
@@ -143,8 +153,18 @@ P('(function (root) {');
 P("  'use strict';");
 P('  const GifOS = root.GifOS = root.GifOS || {};');
 P('');
+const anyC = [...byName.values()].some((e) => e.isConst && e.byC);
+if (anyC) {
+  P('  // The room\'s C (topo.js): a constant that reads C has one value per C (' + CS.join(', ') + ').');
+  P("  const roomC = () => (GifOS.meshTopo || require('./topo.js')).C;");
+  P('  const byC = (vs) => vs[roomC() - ' + CS[0] + '];');
+}
 P('  const consts = Object.freeze({');
-for (const e of byName.values()) if (e.isConst) P('    ' + e.name + ': ' + JSON.stringify(e.value) + ',   // C++: ' + e.file + ':' + e.name + (e.expr && e.expr !== String(e.value) ? '  (' + e.expr.replace(/\*\//g, '* /') + ')' : ''));
+for (const e of byName.values()) if (e.isConst) {
+  const tail = ',   // C++: ' + e.file + ':' + e.name + (e.expr && e.expr !== String(e.value) ? '  (' + e.expr.replace(/\*\//g, '* /') + ')' : '');
+  if (e.byC) P('    get ' + e.name + '() { return byC(' + JSON.stringify(e.byC) + '); }' + tail);
+  else P('    ' + e.name + ': ' + JSON.stringify(e.value) + tail);
+}
 P('  });');
 P('');
 P('  // Mutable: the harness writes these before (or during) a run.');

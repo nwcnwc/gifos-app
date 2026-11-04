@@ -7,7 +7,8 @@
  *
  *   node port-diff.js <list> <mesh binary> --out <dir> [-j N] [--max-sec S] [--js-sec S] [--keep K] [--state]
  *
- * <list>: stream files, one per line, or JSON lines with an `f` field (and `n`, `h`). Results go to
+ * <list>: stream files, one per line, or JSON lines with an `f` field (and `n`, `h`, and `c`: the room's C, given to
+ * the JS as GIFOS_C; the binary must then be a -DGIFOS_C=<c> build). Results go to
  * <dir>/results.jsonl (one line per case: PASS, DIFF with the first differing file and line, JSCRASH, CXXSLOW,
  * JSSLOW, SKIP when the JS skipped a verb as not wired). Every case's run dir is deleted once compared, except the
  * first K non-PASS ones (--keep, default 0: rerun a case alone to look at it). Stops below 3 GB free.
@@ -72,6 +73,7 @@ async function oneCase(c, o, idx) {
   const input = fs.readFileSync(c.f);
   const base = Object.assign({}, process.env, { MESH_NOTIME: '1', MESH_THREADS: '1', MESH_PROOF_TAPES: 'none' });
   if (o.state) base.MESH_PROOF_STATE = '1';
+  if (c.c) base.GIFOS_C = String(c.c);   // the room's C for the JS side; the sim binary must be the -DGIFOS_C=<c> build
   const cr = await run(o.bin, ['--service', '--trace', path.join(dir, 'c', 'trace')], input, Object.assign({}, base, { MESH_PROOF: path.join(dir, 'c') }), o.maxSec);
   const res = { id, f: c.f, n: c.n, cms: cr.ms };
   if (cr.timedOut) { res.status = 'CXXSLOW'; fs.rmSync(dir, { recursive: true, force: true }); return res; }

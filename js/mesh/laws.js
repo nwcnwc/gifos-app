@@ -121,7 +121,7 @@
     SIT_TTL: 90,              // soft sitting-down mark backstop
     SPREAD: true,             // T7: spread after an explicit NOROOM
     SPREAD_MINDEPTH: 4,       // T7: a NOROOM counts as spread evidence only from depth >= this
-    STAGE_CAP: 5,             // L6.2: the stage holds at most this many seats: the pinned first, then the talkers
+    STAGE_CAP_PER_C: 1,       // L6.2: the stage holds at most this many seats (one row's width): the pinned first, then the talkers
     STRAND_TTL: 500,          // R6: a newcomer that reaches no greeter this long re-checks (take over an empty room, else stranded)
     TALK_HOLD: 10,            // L6.2: a talker who stops keeps its place on the stage this long (a restart inside it is no flicker)
     TALK_ON: 4,               // L6.2: a seat talks this long before it enters the stage set
