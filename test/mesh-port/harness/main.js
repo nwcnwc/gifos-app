@@ -66,7 +66,7 @@ async function main(argv, env) {
     const M = path.join(__dirname, '..', '..', '..', 'js', 'mesh');
     require(path.join(M, 'seat.js'));
     for (const f of fs.readdirSync(M).sort()) if (f.endsWith('.js') && f !== 'seat.js') require(path.join(M, f));
-    fab.pcl = installPcLaws(fab); installFhop(fab); installMedia(fab);
+    fab.pcl = installPcLaws(fab); installFhop(fab); require('./dialsig.js').install(fab); installMedia(fab);
   }
   const ops = createOps(fab, { out: o.out });
   if (!opts_noUnits) {   // the measurement units and their levers (l18, instant join, realcheck, the friend-hop lever)

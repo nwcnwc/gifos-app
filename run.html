@@ -12955,6 +12955,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (meshNode && !meshNode.socketed()) return false;
       if (!meshCoord()) return true;
       if (!coordKeyOf(to)) return true;
+      // Two seats with no open connection, both on the relay, may set one up through it (the relay bounces a frame for a
+      // socketless seat with nosock). Any socket holder can already do this; once the pair is connected, mesh only.
+      { const pt = peers.get(to); if (!(pt && pt.connected && pt.dc && pt.dc.readyState === 'open')) return true; }
       const at = relayHeardAt.get(to);
       return at != null && Date.now() - at < RELAY_NOSOCK_MS;
     }
