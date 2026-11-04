@@ -14109,7 +14109,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (pc.connectionState === 'failed' || pc.connectionState === 'closed') { if (!p.deadSince) p.deadSince = Date.now(); }
         else if (p.connected) { p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; if (!seatStranger(p)) restoreDoorTile(p); try { updateTile(p.id); } catch (e) {} }
         updateStatus();
-        if (p.connected) { p.altPath = false; p.tlAt = 0; adapt(); } // rotation ends when the pair lands; D5 edge re-arms
+        if (p.connected) { p.altPath = false; p.tlAt = 0; p.hungUp = false; adapt(); } // rotation ends when the pair lands; D5 edge re-arms
         // D5: 'closed' out of nowhere (we didn't rebuild it and the peer is
         // still in the room) is a hard transport death — first-hand evidence.
         // 'failed' waits for the sweeper (must persist past the ICE-restart
@@ -15003,7 +15003,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // The seat asked for this pc. A live channel carries it now (the far end dialled first): the mark crosses and the
     // Link opens. Else a fresh dial, unless one is already forming; a goodbye in flight ends in pcCloseNow, which dials.
     function seatDial(pid) {
-      const p = peers.get(pid);
+      const p = peers.get(pid); if (p) p.hungUp = false;
       if (p && p.byeSent && Date.now() - p.byeSent < 400) return;
       if (p && p.dc && p.dc.readyState === 'open') {
         if (!p.dc.__pcOffered && meshNode && meshNode.transport) { const dc = p.dc; dc.__pcOffered = true; clearTimeout(dc.__pcMarkWait); try { dcSend(p, { k: 'pcmark', d: seatMark.get(pid) || null }); } catch (e) {} }
@@ -17600,7 +17600,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // frame a second for the whole call, so those pairs wait 30s. A pair
         // that was up and then wedged keeps the 8s clock.
         const stuckQuiet = p.neverUp === true && (st === 'new' || st === 'connecting');
-        if (!p.absentSince && iInitiate(pid) && !p.connected && (st === 'connecting' || st === 'new') && !seatHolds(pid)
+        // A pair the far seat hung up on purpose (pcbye) is redialled by a seat's word only (seatDial), as the sim's laws do: the page's own clocks leave it.
+        if (!p.absentSince && iInitiate(pid) && !p.connected && !p.hungUp && (st === 'connecting' || st === 'new') && !seatHolds(pid)
             && p.downSince && now - p.downSince > 12000 && now - (p.cureAt || 0) > (stuckQuiet ? 30000 : 8000)) {
           p.cureAt = now;
           p.lastKick = now + Math.random() * 1500;
@@ -17630,7 +17631,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // side never learns and never offers. The lower-id side has the occ
         // seed and must break the deadlock. Glare is handled in onSignal.
         const reofferGap = stuckQuiet ? 30000 : 6000;
-        if (!p.absentSince && !p.connected && linkTo(pid) && !seatHolds(pid)
+        if (!p.absentSince && !p.connected && !p.hungUp && linkTo(pid) && !seatHolds(pid)
             && (st === 'failed' || st === 'disconnected' || st === 'new' || st === 'connecting')
             && now - p.lastKick > reofferGap
             && (iInitiate(pid) || (p.downSince && now - p.downSince > 4000))) {
@@ -21133,7 +21134,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } else if (m.k === 'pcbye') {
         // A deliberate close from the far end (A2's pc laws): its why reaches the seat's world, and the
         // channel's close that follows is no loss.
-        if (dc && dc.__authBy === p.id) { p.byeSeen = Date.now(); p.byeWhy = m.why; try { if (meshNode && meshNode.transport) meshNode.transport(p.id, 'bye', typeof m.why === 'string' ? m.why.slice(0, 16) : 'call'); } catch (e) {} if (typeof clog === 'function') clog('pcbye-in ' + String(p.id).slice(0, 6) + ' ' + m.why); }
+        if (dc && dc.__authBy === p.id) { p.byeSeen = Date.now(); p.byeWhy = m.why; p.hungUp = true; try { if (meshNode && meshNode.transport) meshNode.transport(p.id, 'bye', typeof m.why === 'string' ? m.why.slice(0, 16) : 'call'); } catch (e) {} if (typeof clog === 'function') clog('pcbye-in ' + String(p.id).slice(0, 6) + ' ' + m.why); }
         // L27, the refused side: a seat that refuses me says 'kick'. It moves nothing here: only the line (refusedLine) reads it.
         if (dc && dc.__authBy === p.id && m.why === 'kick' && !hasAdminRoom()) { kickByesIn.add(p.id); if (typeof clog === 'function') clog('kick-heard ' + String(p.id).slice(0, 6) + ' of ' + kickByesIn.size); updateStatus(); }
       } else if (m.k === 'dcauth') {
