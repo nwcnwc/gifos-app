@@ -201,6 +201,8 @@
     }
     // C++: mesh_link.inc:fabricDoorHeard   [end]
     function fabricDoorHeard(me, x, ep) { if (!lv.LINKMODEL || x < 0 || x >= lv.nextId || me === x) return; const L = linkFind(me, x); if (L && L.outside && L.epoch === ep) L.dHeard |= (1 << lEnd(me, x)); }
+    // C++: mesh_link.inc:l15LastLink
+    function l15LastLink(x, y) { for (const p of P.LINKPEERS[x]) { if (p === y) continue; const L = linkFind(x, p); if (L && L.state === LK_OPEN) return false; } return true; }
     // C++: mesh_link.inc:l15Doors   [fabric]
     function l15Doors() {
       for (const pk of ldoorsAsc()) {
@@ -213,6 +215,7 @@
           if (x >= lv.nextId || !alive[x] || !l15Seated(x)) continue;
           if ((L.outside & (1 << lEnd(y, x))) && !doorHeard(L, x, y)) continue;
           if (l15Names(x, y) || l15NamedBy(x, y)) continue;
+          if (l15LastLink(x, y)) continue;
           if (L.backAt[lEnd(x, y)] >= 0 && T() - L.backAt[lEnd(x, y)] < K.L15_BACK_HOLD) continue;
           k = x; break;
         }

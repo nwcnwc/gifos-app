@@ -160,6 +160,9 @@
     const trace = (ev, s, cell, f, ...a) => { if (sink) traceLine(ev, s, cell, fmt.sprintf(f, ...a)); };
 
     const w = seatM.newWorld({ levers: lv, trace: sink ? traceLine : null });
+    // A page's clock starts far from 0. The law reads a stamp older than my clock's start as 0, and in the sim all seats share one clock; on a page
+    // starting at 0 every seat older than my page lost its true birth, so a lone seat founded minutes ago read as older than the room (L16.7).
+    w.TICK = 1 << 24;
     const seat = () => (typeof o.seat === 'function' ? o.seat() : null);
     let woken = false, dead = false, closeAt = -1;
     const bus = new Map();        // tick -> frames for my seat (synthesized: GREETERS, BUSY, deliveries the laws post)
@@ -432,6 +435,7 @@
           if (pcw.link && !pcw.link(x) && pcw.offer && pcw.offer(x, arg || {}) === false) { io.close(x); return false; }
           if (pcw.opened) pcw.opened(x); return true;
         case 'bye': if (pcw.byeIn) pcw.byeIn(x, arg || 'call'); return true;   // the page seam parsed {k:'pcbye'} itself
+        case 'greeter-gone': { if (x === me) return false; const s = seat(), m = s ? s.goneBye(x) : null; if (!m) return true; frame(m, peer); if (pcw.byeIn) pcw.byeIn(x, 'leave'); return true; }   // the relay's word, read as the dead greeter's goodbye and pcbye
         case 'dial-failed': if (pcw.dialFailed) pcw.dialFailed(x); return true;
         case 'wake-dead': { const L = pcw.link ? pcw.link(x) : null; if (L && L.state === LK_OPEN) break; return true; }   // a dial still running has its own LINK_DIAL_FAIL
         case 'refused': if (pcw.refused) pcw.refused(x, arg || {}); return true;

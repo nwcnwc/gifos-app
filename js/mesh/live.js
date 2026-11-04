@@ -87,6 +87,14 @@
       this.unp.set(x, TICK);
     },
 
+    // C++: mesh_seat.inc:Seat::orphanSeat
+    orphanSeat() {
+      if (!this.hasCoord || this.moving || this.state !== 3 || this.lkAnyAt < this.seatedAt) return false;
+      let since = this.lkAnyAt; if (this.backAt > since) since = this.backAt;
+      if (this.TICK - since <= K.DARK_LEAVE || (this.unpAnyAt >= 0 && this.TICK - this.unpAnyAt <= 16) || this.l2E2Up()) return false;
+      return true;
+    },
+
     // C++: mesh_seat.inc:Seat::darkSeat
     darkSeat() {
       if (!this.hasCoord || this.moving || this.state !== 3) return false;
@@ -604,6 +612,20 @@
       if (this.hasCoord) this.live.delete(ckey(this.coord));   // my own cell's stamp: never refreshed while I sat there
       this.f.relayUnlist(id);   // L16.4
       this.hasCoord = false; this.occ.clear(); this.ledgerSeen.clear(); this.s1seen.clear(); this.holeSince.clear(); this.byeAt.clear(); this.tlClear(); this.authClear(); this.drainAt = 0; this.join();
+    },
+
+    // C++: mesh_seat.inc:Seat::goneBye
+    // The relay's greeter-gone read as that greeter's goodbye: what its own leave() would say, from my view of its cell.
+    goneBye(x) {
+      if (!this.hasCoord || this.state !== 3) return null;
+      { const rm = this.relMark.get(x); if (rm !== undefined && this.TICK - rm <= K.RELOAD_MARK_T) return null; }
+      let ck = -1; for (const [k, v] of this.occ) if (v === x) { ck = k; break; }
+      if (ck === -1) return null;
+      const c = unck(ck), bm = newMsg('LEAVE'), TICK = this.TICK; bm.ck = ck; bm.id = x; bm.bye = true; bm.sig = true; bm.sigAt = TICK; bm.sigL = TICK;
+      { const t = this.tenOf.get(ck); if (t !== undefined && t[0] === x) bm.tn = t[1]; }
+      if (c.pc === 0) { bm.child = this.occGet(ckey(down(c))); for (const o of ownedLinks(c)) { const lk = ckey(o), y = this.occGet(lk); if (y >= 0 && y !== x && o.pc === 0) bm.nbrs.push({ k: lk, v: y }); } }
+      if (this.l13('L13.7')) bm.kids = bm.child >= 0;
+      return bm;
     },
 
     // C++: mesh_seat.inc:Seat::leave
