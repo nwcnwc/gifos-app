@@ -24954,6 +24954,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (own && !(own.ann && own.ann.sb === 1)) return own;
         // Below Section 1 the preferred path is E1, the tree hop; E2's copy is the second path.
         if (c.pc !== 0) {
+          // L2.7: while the seat holds E2 hot, E2's copy is the path. Ranking anything else first swaps
+          // back off it each settle window and u2Over swaps on again: every feed I relay flaps with it.
+          const hot = meshSeat();
+          if (hot && hot.u2Hot) { const e2 = cand.find((x) => x.live && x.from === hot.u2Id && x.key.indexOf('^') < 0); if (e2) return e2; }
           const hop = occPid(c.i === 0 ? net.topo.up(c) : { pc: c.pc, r: c.r, i: 0 });
           const e1 = hop ? cand.find((x) => x.live && x.from === hop) : null;
           if (e1) return e1;
