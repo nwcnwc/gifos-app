@@ -1239,6 +1239,8 @@
       get identity() { return identity; },
       // DataChannel ingestion: the DC layer hands OPENED control objects here
       // (production unwraps its own sealed frames; {mw:1, m} envelopes route m).
+      // A stale-key frame's one way in: a plain or reload LEAVE of the seat the channel belongs to (ingest still checks its signature).
+      isOwnGoodbye(m, pid) { try { const f = GifOS.meshMsg.readMsg(m.f); return m.t === 'MW2' && f.t === 'LEAVE' && !!f.bye && !f.mvd && String(layer.ids.pid(f.id)) === String(pid); } catch (e) { return false; } },
       recvCtl(m, via, direct) { if (!stopped && seat && m) ingest(m, via, direct); }, // via: the delivering peer; direct === true ONLY for a frame off that peer's own DataChannel (run.html's pair intake) — never for a sponsor envelope or the relay
       // Room-wide app traffic (chat/status/votes/files): flood over the mesh —
       // the relay session is only the greeter pool now, not the room.

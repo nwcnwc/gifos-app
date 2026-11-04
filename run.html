@@ -13500,21 +13500,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const now = Date.now();
       for (const h of rekeyHeld.splice(0)) if (now - h.at <= REKEY_HOLD_MS) h.take(true);
     }
-    function staleGoodbye(m) {
-      if (m.k === 'bye' || m.k === 'pcbye') return true;
-      if (m.k !== 'mesh' || !m.m || !m.m.f) return false;
-      try { return GifOS.meshMsg.readMsg(m.m.f).t === 'LEAVE'; } catch (e) { return false; }
-    }
+    const STALE_BYE_MS = 30000;   // a goodbye under the key I replaced is read this long after the change
     function healStaleFrom(pid, envPiece, dc, pair) {
-      if (!prevRoomE2E || !retainedGrant || !pid) return;
+      if (!prevRoomE2E || !pid) return;
       return net.open(prevRoomE2E, envPiece).then((old) => {
         if (!old || (!old.k && !old.kind)) return; // not a previous-generation frame — just noise
-        // The one stale frame that is processed: a goodbye on the leaver's own
-        // authenticated channel. A password change sends everyone to the door
-        // under the key it replaced; read as a crash, the room holds the seat
-        // and its death verdict later closes the pair they come back on. A
-        // goodbye can only ever take its own sender out.
-        if (pair && dc && dc.__authBy === pid && staleGoodbye(old)) { onDc(pair, dc, old); return; }
+        // The one stale frame that is handled: the sender's own signed goodbye on
+        // its own channel, just after the change. A password change sends everyone
+        // to the door under the key it replaced; read as a crash, the room holds the
+        // seat and its death verdict later closes the pair they come back on.
+        if (pair && dc && dc.__authBy === pid && old.k === 'mesh' && Date.now() - rekeyAt < STALE_BYE_MS && meshNode && meshNode.isOwnGoodbye && meshNode.isOwnGoodbye(old.m, pid)) { onDc(pair, dc, old); return; }
+        if (!retainedGrant) return;
         const now = Date.now();
         if (now - (staleHealAt.get(pid) || 0) < 5000) return;
         // ELIGIBILITY IS THE KEY ITSELF (2026-10-20). This used to ask
