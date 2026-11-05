@@ -377,7 +377,7 @@
     // table its S1SYNC. The seat is only read; nothing here reaches a seat decision.
     const leaf = newLeaf(); let refuses = false;
     function setLeaf(f) { cleanLeaf(leaf, f); }
-    function setRefuses(b) { refuses = !!b; }
+    function setRefuses(b) { refuses = !!b; const s = raw(); if (s) s.refuses = refuses; }
     const KC = () => (GifOS.meshConsts ? GifOS.meshConsts.consts : { LEASE_T: 220 });
     const TP = () => GifOS.meshTopo;
     let myDig = dig0(), rowDig = dig0(), rootDig = dig0(), downDig = dig0(), u2RowDig = dig0(), siDig = dig0(), foldSig = null, foldBeat = -1, foldCell = -1;
@@ -593,8 +593,9 @@
     }
     function roomDigest() {
       const s = raw(); if (!s || s.state !== 3 || !foldNow(s) || !rootDig || rootDig.at < 0) return null;
-      const d = rootDig;
-      return { at: d.at, age: s.LT() - (d.rx != null ? d.rx : d.at), n: d.n + (d.leased || 0), refuse: d.refuse, part: d.part, handN: d.handN || 0, awayN: d.awayN || 0,
+      const d = rootDig, R = s.rootDig;   // one room count: the seat's own fold (the lists stay this layer's: they name people)
+      if (R.at < 0) return null;
+      return { at: R.at, age: s.LT() - (R.rx >= 0 ? R.rx : R.at), n: R.n + R.leased, refuse: R.refuse, part: R.part, handN: d.handN || 0, awayN: d.awayN || 0,
         hands: (d.hands || []).map((e) => Object.assign({}, e)), stage: (d.stage || []).map((e) => Object.assign({}, e)),
         apps: (d.apps || []).map((e) => Object.assign({}, e)), votes: (d.votes || []).map((v) => Object.assign({}, v)) };
     }
@@ -647,7 +648,7 @@
     }
 
     // ---- per tick (after the seat's tick) -------------------------------------------------------------------------
-    function afterTick() { bump(); replayNew(); refan(); }
+    function afterTick() { const s = raw(); if (s) s.refuses = refuses; bump(); replayNew(); refan(); }
 
     // seen(gid): a gossip frame I already took (the wire skips the signature check for its later copies)
     const seen = (gid) => typeof gid === 'string' && gseen.has(gid);
