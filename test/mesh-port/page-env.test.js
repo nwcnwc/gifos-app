@@ -252,15 +252,18 @@ test('room of 4: one crashes (pcs die without a goodbye, socket gone); survivors
   assert(rest.every((p) => ![...p.seat.occ.values()].includes(C.env.me)), 'the crashed seat is out of every view');
 });
 
-test('room of 3: the page drops a pc without telling the env; the next failed send closes my end (no frames into a dead dc)', () => {
+test('room of 3: the page drops a pc without telling the env; a failed send on it is traced and is no loss (551d3369), no frame goes into the dead dc', () => {
   const { R } = seatRoom(3, 1200);
   const [A, B] = [...R.pages.values()];
   const k = A.peer < B.peer ? A.peer + '|' + B.peer : B.peer + '|' + A.peer;
   R.pcs.delete(k);   // the page's own dropPeer: no transport event to either env
   R.run(60);
   const sa = A.env.stats().drops['send-closed'] || 0, sb = B.env.stats().drops['send-closed'] || 0;
-  console.log('  silent drop: send-closed ' + sa + '/' + sb + ', ENV-SENDCLOSED lines ' + A.traces.filter((l) => l.includes('ENV-SENDCLOSED')).length);
-  assert(sa + sb > 0 && sa <= 2 && sb <= 2, 'each end notices within a send or two: ' + sa + '/' + sb);
+  const fails = [...A.traces, ...B.traces].filter((l) => l.includes('PCW-SENDFAIL')).length;
+  console.log('  silent drop: PCW-SENDFAIL lines ' + fails + ', env send-closed drops ' + sa + '/' + sb);
+  // 551d3369: a failed send on a pc being replaced is no loss, so the env no longer drops/closes on it (send-closed is gone); the pc laws trace the failed send
+  assert(fails > 0, 'the failed sends are traced by the pc laws (PCW-SENDFAIL), not silent');
+  assert(sa === 0 && sb === 0, 'a failed send is no loss: the env does not count a send-closed drop (551d3369): ' + sa + '/' + sb);
   assert(R.seated().length === 3, 'all still seated');
 });
 

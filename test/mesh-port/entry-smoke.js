@@ -11,6 +11,7 @@ const fs = require('fs'), path = require('path'), crypto = require('crypto');
 const M = path.join(__dirname, '..', '..', 'js', 'mesh');
 const seatM = require(path.join(M, 'seat.js'));
 const { Seat } = seatM;
+require('./load-all.js');   // every unit, so the callees the unit makes are the real ones
 require(path.join(M, 'entry.js'));
 const state = require(path.join(M, 'state.js'));
 const msg = require(path.join(M, 'msg.js'));

@@ -11,6 +11,7 @@
 'use strict';
 const fs = require('fs'), path = require('path'), crypto = require('crypto');
 const M = process.env.RECVA_MESH || path.join(__dirname, '..', '..', 'js', 'mesh');
+require('./load-all.js');   // every unit, so the callees the unit makes are the real ones
 const seatM = require(path.join(M, 'seat.js'));
 const { Seat } = seatM;
 for (const f of fs.readdirSync(M).sort()) if (/^(entry|heal|digest|route|live|ring|island|instant|roomterm|small|tier|witness|rcleft|rcleft-l25|rcdead|rcfollow|linkset|mltail|farview|gaps|hostile-laws|lguard-seat)\.js$/.test(f)) require(path.join(M, f));

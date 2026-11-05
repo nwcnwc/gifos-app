@@ -9,6 +9,7 @@
 const fs = require('fs'), path = require('path');
 const M = path.join(__dirname, '..', '..', '..', 'js', 'mesh');
 const topo = require(path.join(M, 'topo.js'));
+require('../load-all.js');   // every unit, so the callees the unit makes are the real ones
 const seatM = require(path.join(M, 'seat.js'));
 const { Seat, FREE, FABRIC_CALLS } = seatM;
 const state = require(path.join(M, 'state.js'));
@@ -41,7 +42,7 @@ function mkRng(seed) { let s = (seed >>> 0) || 1; return { next() { s = (Math.im
 // ---- the world, the fabric ---------------------------------------------------------------------------------------
 function mkWorld(tick, rng, log) {
   const w = seatM.newWorld({});
-  w.TICK = tick;
+  w.TICK = tick; w.lv.RSEQ = 0; w.lv.TN_SEQ = 0; w.lv.PN_SEQ = 0; w.lv.MOVES = 0;   // the sim's global counters: same start for the twin run
   const f = {};
   for (const n of FABRIC_CALLS) f[n] = (...a) => { log.push('F ' + n + ' ' + JSON.stringify(a)); return ans(n, a); };
   function ans(n, a) {

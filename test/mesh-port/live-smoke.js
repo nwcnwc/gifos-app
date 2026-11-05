@@ -7,6 +7,7 @@
 'use strict';
 const fs = require('fs'), path = require('path');
 const M = path.join(__dirname, '..', '..', 'js', 'mesh');
+require('./load-all.js');   // every unit, so the callees the unit makes are the real ones
 const sm = require(path.join(M, 'seat.js'));
 const { Seat, FREE, FABRIC_CALLS } = sm;
 const state = require(path.join(M, 'state.js'));
@@ -26,7 +27,7 @@ const fields = new Set(SF.FIELDS.map((f) => f[0]));
 const stubbed = new Set();
 const STUBV = { kVerify: () => 0, pubDig: (d) => msgM.newDig(), l1DeepKid: () => -1, l211Stamp: () => 0, ringName: () => 0, l165Have: () => null, bornOf: () => null,
   ownedLinkCell(k) { return this.hasCoord && topo.ownedLinks(this.coord).some((c) => topo.ckey(c) === k); } };
-Seat.unit('smoke stub islandSeen', { islandSeen: () => false }); stubbed.add('islandSeen');
+if (!('islandSeen' in Seat.prototype)) { Seat.unit('smoke stub islandSeen', { islandSeen: () => false }); stubbed.add('islandSeen'); }
 for (const m of src.matchAll(/this\.(\w+)\(/g)) {
   const n = m[1];
   if (n in Seat.prototype || fields.has(n)) continue;
@@ -37,8 +38,8 @@ FREE.l13Ring = () => []; FREE.islandStandM = () => false;
 
 function world(t, log) {
   const w = sm.newWorld({});
-  w.TICK = t;
-  for (const n of FABRIC_CALLS) w.f[n] = (...a) => { log.push([n, a]); return n === 'fabricLinkState' ? 0 : (n === 'fabricDialFails' ? 0 : false); };
+  w.TICK = t; w.lv.RSEQ = 0; w.lv.TN_SEQ = 0; w.lv.PN_SEQ = 0;   // the sim's global counters: same start for the twin run
+  for (const n of FABRIC_CALLS) w.f[n] = (...a) => { log.push([n, a]); return n === 'fabricOpenPeers' ? [] : n === 'fabricLinkState' ? 0 : (n === 'fabricDialFails' ? 0 : false); };
   w.f.fabricSend = (from, to, m) => { log.push(['send', from, to, JSON.stringify(msgM.writeMsg ? msgM.writeMsg(m) : m)]); };
   return w;
 }

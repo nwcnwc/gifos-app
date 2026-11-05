@@ -8,6 +8,7 @@
 'use strict';
 const fs = require('fs'), path = require('path');
 const M = path.join(__dirname, '..', '..', 'js', 'mesh');
+require('./load-all.js');   // every unit, so the callees the unit makes are the real ones
 const sm = require(path.join(M, 'seat.js'));
 const { Seat, FREE, FABRIC_CALLS } = sm;
 const state = require(path.join(M, 'state.js'));
@@ -40,7 +41,7 @@ if (!FREE.l13Ring) FREE.l13Ring = () => []; if (!FREE.islandStandM) FREE.islandS
 
 function world(t, log) {
   const w = sm.newWorld({});
-  w.TICK = t; w.lv.RSEQ = 0; w.lv.TN_SEQ = 0;   // the sim's global counters: same start for the twin run
+  w.TICK = t; w.lv.RSEQ = 0; w.lv.TN_SEQ = 0; w.lv.PN_SEQ = 0;   // the sim's global counters: same start for the twin run
   for (const n of FABRIC_CALLS) w.f[n] = (...a) => { log.push([n, a.map((x) => (x && typeof x === 'object' && x.t ? x.t : x))]); return n === 'fabricLinkState' ? 2 : (n === 'fabricDialFails' ? 0 : false); };
   w.f.fabricSend = (from, to, m) => { log.push(['send', from, to, JSON.stringify(msgM.writeMsg(m))]); };
   return w;
