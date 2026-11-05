@@ -69,6 +69,7 @@
         if (ls === LS_DIALING) continue;
         let it = this.redial.get(x); if (it === undefined) { it = [TICK, K.REDIAL_GAP]; this.redial.set(x, it); }
         if (TICK < it[0]) continue;
+        { const g = this.dials.goneAt(x); if (g >= 0 && TICK - g >= K.LEASE_T) { this.dials.lapse(x); this.trace('L17.3-LAPSE', id, ol[q], 'peer=%d held=%lld', x, TICK - g); } }   // L17.3: a seat dead that long is off my view; one I still name lives, so the hold ends (its next failure starts a new one)
         this.trace('REDIAL', id, ol[q], 'peer=%d gap=%d', x, it[1]);
         this.f.fabricDial(id, x); it[0] = TICK + it[1]; it[1] = Math.min(it[1] * 2, K.REDIAL_MAX);
       }
