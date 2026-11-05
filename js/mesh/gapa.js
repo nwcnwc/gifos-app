@@ -99,11 +99,20 @@
       if (!this.gaAsk.length) { lv.GA_CONF_VOTE++; this.trace('L41.2-FREE', this.id, this.coord, 'n=%d', this.gaFreeN); this.gaCk = 0; this.confirmMove(); }
     },
 
-    // L41.2: the claim window closed. true: handled here.
+    // L41.2, L41.3: the claim window closed. true: handled here.
     // C++: mesh_gapa.inc:Seat::gaWindow
     gaWindow() {
       const lv = this.w.lv;
       if (!this.gaLive() || !this.gaAsk.length) return false;
+      if (this.gaFreeN === 0 && this.TICK - this.moveAt <= 2 * K.CONFIRM_TTL) {   // L41.3: no word yet, and a pc to an asked seat is forming or open: the question has not had its window
+        let wait = false;
+        for (const x of this.gaAsk) {
+          const ls = this.f.fabricLinkState(this.id, x);
+          if (ls === E.LS_DIALING) wait = true;
+          else if (ls === E.LS_OPEN) { wait = true; if ((this.TICK - this.moveAt - K.CONFIRM_TTL) % K.GA_REASK === 1) { const c = newMsg('CHALLENGE'); c.ck = this.gaCk; c.from = this.id; c.tag = K.GA_TAG; c.nc = this.id; this.emit(x, c); this.trace('L41.3-REASK', this.id, this.coord, 'to=%d', x); } }   // (the first ask may have died at L23 or on a closed link)
+        }
+        if (wait) return true;
+      }
       this.gaCk = 0;
       if (this.gaFreeN > 0) { lv.GA_CONF_WIN++; this.confirmMove(); return true; }
       lv.GA_RB++; this.trace('L41.2-NOWORD', this.id, this.coord, 'placer=%d', this.gaPlacer); this.rbWhy = 'gapa-noword'; this.rollbackMove(); return true;
