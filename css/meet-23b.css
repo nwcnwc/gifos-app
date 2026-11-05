@@ -171,8 +171,12 @@ body.comfy.show-stage .tile.me > .chips .stopshare { display: none; }
 body.head-calm .topchip, body.chrome-away .topchip { opacity: 1 !important; visibility: visible !important; background: transparent !important; box-shadow: none !important; }
 /* The room line (#status) stays: on a phone it is the tap that opens the
    full sentence (who tried to reach you). Fading it left the chip's parent
-   taking the tap. */
+   taking the tap. head-calm sets pointer-events none on the whole chip, and
+   that inherits, so the line and the mark must take the tap back themselves.
+   The faded logo stays click-through. */
 body.head-calm .topchip > :not(#txmark):not(#status), body.chrome-away .topchip > :not(#txmark):not(#status) { opacity: 0; pointer-events: none; transition: opacity .8s ease; }
+body.head-calm .topchip #status, body.head-calm .topchip #txmark,
+body.chrome-away .topchip #status, body.chrome-away .topchip #txmark { pointer-events: auto; }
 /* A shared screen is laid out by the zones like any Stage: the feed fills
    the screen (the older phone share band pinned it 76-110px down). */
 body.comfy.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
@@ -238,15 +242,26 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
   body.broadcast #rundown h3, body.broadcast #rundown li.now + li { display: none; }
 }
 /* Sideways on a phone the link and the Order of service share one band
-   under the title, side by side, each one line: the item on now and Next. */
+   under the title, side by side, each one line: the item on now and Next.
+   The count stays on that same line. A second chip row pushed the band
+   down onto Record and Captions. */
 @media (max-height: 500px) {
+  /* One row. The phone rule wraps the status sentence onto a second line,
+     and a nowrap row that still let that sentence wrap grew the chip until
+     the link sat on Record (a 320px-tall screen). The sentence ellipsizes;
+     the count stays. */
+  body.broadcast .topchip { flex-wrap: nowrap; align-items: center; width: max-content; max-width: calc(100dvw - 28px); }
+  body.broadcast .topchip .title { white-space: nowrap; flex: 0 0 auto; }
+  body.broadcast .topchip .status { order: 0; display: flex; align-items: center; flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; }
+  body.broadcast .topchip #statuscount { flex: 0 1 auto; min-width: 0; }
+  body.broadcast .topchip #statusrest { display: block; flex: 1 1 auto; min-width: 0; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   body.broadcast #bc-link.on { flex-direction: row; align-items: center; padding: 4px; gap: 6px;
     left: 14px; right: auto; width: calc(50% - 21px); margin: 0; }
   body.broadcast #bc-link.on p { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  body.broadcast #bc-link.on input { flex: 1 1 auto; min-width: 0; }
-  body.broadcast #bc-link.on button { padding: 0 14px; }
+  body.broadcast #bc-link.on input { flex: 1 1 auto; min-width: 0; min-height: 44px; }
+  body.broadcast #bc-link.on button { min-height: 44px; padding: 0 14px; }
   body.broadcast #rundown { top: var(--bclinktop, 64px); bottom: auto; left: calc(50% + 7px); right: 14px; width: auto;
-    max-height: none; flex-direction: row; align-items: center; padding: 4px 4px 4px 14px; gap: 8px; }
+    max-height: var(--bclinkmax, none); flex-direction: row; align-items: center; padding: 4px 4px 4px 14px; gap: 8px; }
   body.broadcast #rundown h3, body.broadcast #rundown li, body.broadcast #rundown #song-edit { display: none; }
   body.broadcast #rundown ol { flex: 1 1 auto; min-width: 0; }
   body.broadcast #rundown li.now { display: flex; }
