@@ -5046,6 +5046,21 @@
         // horizon branch (occ cleared + lastAck past the confirm window)
         // remains the backstop. An owner whose probe answers is never touched.
         const ownEarly = ok != null && this.translostConfirmed(ok);
+        // ...AND NEVER BLIND ON A D5 VERDICT. That verdict needs a probe that
+        // went unanswered on every path, and a head with no live link but the
+        // dead one (or that knows no Section-1 seat but its owner) sent its
+        // probe nowhere: its verdict says the pair died, not the owner. Healed
+        // anyway, a live owner's cell got a second tenant that reached nobody,
+        // confirmed alone and stayed (my child, or me): a second home ring, my
+        // stage feed shipped up into it (e2e-mosaic starve leg, dark past the
+        // end of a 45 s sever). Knowing the ring's ids is not a path to it. So
+        // I knock again, as D6 does: the door seats me with new pairings, my
+        // heir heals my cell, and a dead owner's cell is its ring's to heal.
+        if (ownEarly && oc.pc === 0) {
+          let path = false;
+          for (const olc of topo.ownedLinks(this.coord)) { const k = ck(olc), x = this.occGet(k); if (k !== ok && x != null && x !== this.id && this.heldRightNow(k)) { path = true; break; } }
+          if (!path || !this.knowsRing(ok)) { this.requeue(); this.wake(); return; }
+        }
         // NEVER BLIND INTO SECTION 1. A deep head whose Section-1 owner was a
         // ghost (never PONGed) knows no Section-1 seat at all: its promoted
         // leaf's CLAIM named only cells below the hole, reached no arbiter,
