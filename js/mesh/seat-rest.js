@@ -175,6 +175,7 @@
     // § G UP-LEG intake: the digest a phoner sent me, filed by its relation to me.
     takeUp(m) {
       const pk = ckey(m.coord); const u = dig.cloneDig(m.dgUp); this.rxDig(u);
+      if (pk === ckey(down(this.coord)) && !this.linkIs(m, m.id) && this.downDig.at >= 0 && u.by === this.downDig.by && u.at <= this.downDig.at) return;   // L3.12.2
       if (u.kl.length) this.kIntake(u, m.id, this.linkIs(m, m.id), pk, pk === ckey(down(this.coord)));
       if (pk === ckey(down(this.coord))) { this.l10Dirty(this.downDig.at >= 0 ? this.downDig : null, u); this.downDig = u; }
       else if (this.coord.pc === 0 && m.coord.pc === 0) this.s1Take(pk, u);
