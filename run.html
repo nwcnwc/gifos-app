@@ -34622,6 +34622,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // this; one that cannot leaves a permanently split room, and the app should
     // eventually survive that too.
     const SUCC_CONTRADICTION_MS = 180000;
+    let succBusy = false;
     function ownerAway() {
       if (!appFrozen) {
         appEv('owner-away-freeze');
@@ -34630,7 +34631,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         document.getElementById('appwho').textContent = '⏸ paused — the host is away';
       }
       if (ROOM.join && ROOM.join.owned) return; // owned room: freeze is the whole story
-      if (succT || myStatus.app) return;
+      if (succT || succBusy || myStatus.app) return;
       const cands = [String(myId)];
       for (const pid of roomConsentIds()) if (pid !== myId && stHold(pid)) cands.push(String(pid));
       cands.sort();
@@ -34663,6 +34664,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const ctl = appClientCtl;
         if (!ctl || !ctl.snapshot) return;
         const nm = document.getElementById('appname').textContent || 'App';
+        succBusy = true; // succT is spent and the app not yet mine: without this the next beat arms a second seize, two files and two runApp on one mount
         ctl.snapshot().then((bytes) => {
           const fid = GifOS.store.uid('file');
           return GifOS.store.putFile({ id: fid, name: nm + '.gif', bytes: bytes, kind: 'gif', isApp: true, mime: 'image/gif' })
@@ -34673,7 +34675,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               appFrozen = false;
               return runApp(fid, nm);
             });
-        }).catch(() => {});
+        }).catch(() => {}).then(() => { succBusy = false; });
       }, 6000); // grace: a blip must not trigger a takeover
     }
     // Keep the app buttons honest about what a tap will do.
