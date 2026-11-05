@@ -23406,8 +23406,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (w.trackId !== t.id) { w.trackId = t.id; w.tries = 0; w.settleUntil = 0; }
             if (w.settleUntil && Date.now() < w.settleUntil) continue;
             const raw = await stageEarRawPeak(t, 180);
+            w.rawPeak = raw; w.foldPeak = null; w.peakAt = Date.now(); // earState reads the watch's last sample: it makes no audio nodes of its own
             if (raw > 0.02) {
               const fold = await stageEarFoldPeak(180);
+              w.foldPeak = fold;
               if (fold > 0.02) { w.tries = 0; w.settleUntil = Date.now() + 2500; }
               else if (w.tries < 12) {
                 let ok = false;
@@ -23430,6 +23432,67 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!stageEar.watch) stageEar.watch = new Map();
       if (!stageEar.watch.has(k2)) stageEar.watch.set(k2, { tries: 0, settleUntil: 0 });
       scheduleStageEarWatch();
+    }
+    // ONE READ OF A STAGE SEAT: every record the page keeps about this person being on stage, in
+    // one object, and whether I can hear them. Read-only, and it starts no audio node: the peaks
+    // are the watch's last sample (null when the watch has not sampled). A listing is not sound, so
+    // `audible` is the listing AND a feed that moves bytes (stgLost, the byte watchdog and the
+    // stager's beat) AND a sink bound to that very stream, with no moderator mute, my ear open and
+    // the fold not latched silent under a loud wire. A quiet stager with a live feed is audible:
+    // the moment they speak, I hear them. For myself it says whether my voice goes out.
+    function earState(id, listing) {
+      const listed = (listing || stageSeats()).includes(id);
+      const st = id === myId ? myStatus : statusOf.get(id);
+      const dg = digLists(), entry = dg ? dg.stage.find((e) => e.id === id) : null;
+      const beat = stgBeats.get('stg:' + id);
+      let mute = null; try { mute = modOf(id).mute; } catch (e) {}
+      const out = { id, me: id === myId, listed, audible: false,
+        said: (st && st.stg) || 0, fold: !!entry, foldAge: dg ? dg.age : null,
+        held: stageHeldAt.has(id), feedAt: stageFeedAt.get(id) || 0, beatAge: beat ? Date.now() - beat.at : null,
+        claim: null, lost: true, bound: false, trackLive: false, modMuted: !!(mute && mute.on), earOpen: false,
+        rawPeak: null, foldPeak: null, peakAge: null, tries: 0, lapsed: false,
+        strip: !!(compOf.get('sgs') && (compOf.get('sgs').names || []).includes(id)), view: stageViewNow };
+      if (out.me) {
+        const t = (rbNow && rbNow.v) ? (rbNow.a || null) : ((localStream && localStream.getAudioTracks()[0]) || null);
+        out.trackLive = !!t && t.readyState === 'live' && t.enabled !== false;
+        out.audible = listed && out.trackLive && !myStatus.muted && !out.modMuted;
+        return out;
+      }
+      const keys = [...mosIn.keys()].filter((k) => k.indexOf('stg:') === 0 && k.slice(4).split('^')[0] === id);
+      const ear = stageEar;
+      const k2 = keys.find((k) => ear && ear.sids.has(k)) || keys[0];
+      const f = k2 ? mosIn.get(k2) : null;
+      if (!f) return out;
+      const fb = mosFb.get(k2);
+      out.claim = { key: k2, via: String(f.via).slice(0, 8), dead: !!f.deadAt, dark: !!(fb && fb.dark), hop: f.meta ? f.meta.h : null };
+      out.lost = stgLost(k2);
+      out.bound = !!(ear && ear.sids.has(k2) && ear.bound && f.stream && ear.bound.get(k2) === f.stream);
+      if (f.stream) { const t = stageEarLiveTrack(f.stream); out.trackLive = !!t && t.readyState === 'live'; }
+      if (ear) out.earOpen = !ear.el.muted && !ear.el.paused;
+      const w = ear && ear.watch ? ear.watch.get(k2) : null;
+      if (w) {
+        out.rawPeak = w.rawPeak == null ? null : w.rawPeak; out.foldPeak = w.foldPeak == null ? null : w.foldPeak;
+        out.peakAge = w.peakAt ? Date.now() - w.peakAt : null; out.tries = w.tries; out.lapsed = w.tries >= 12;
+      }
+      const latched = out.rawPeak != null && out.rawPeak > 0.02 && out.foldPeak != null && out.foldPeak <= 0.02;
+      out.audible = listed && out.bound && !out.lost && out.trackLive && !out.modMuted && out.earOpen && !latched;
+      return out;
+    }
+    const stageAudible = (id) => earState(id).audible;
+    // DEBUG trace: each time a listed stager goes in or out of earshot, with why.
+    const earNoted = new Map();
+    function earNote(stagers) {
+      if (typeof clog !== 'function') return;
+      try {
+        for (const id of stagers) {
+          if (id === myId) continue;
+          const e = earState(id, stagers);
+          if (earNoted.get(id) === e.audible) continue;
+          earNoted.set(id, e.audible);
+          clog('stage-ear', String(id).slice(0, 8), e.audible ? 'audible' : 'silent', 'lost=' + e.lost, 'bound=' + e.bound, 'track=' + e.trackLive, 'open=' + e.earOpen, 'mute=' + e.modMuted, 'raw=' + e.rawPeak, 'fold=' + e.foldPeak);
+        }
+        for (const id of [...earNoted.keys()]) if (!stagers.includes(id)) earNoted.delete(id);
+      } catch (e) {} // a trace line must never stop the sweep
     }
     // My own outbound feed as a STABLE MediaStream (what I broadcast — the
     // blurred/raw video plus my mic). While staged this aux feed is the ONLY
@@ -26528,6 +26591,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // STAGE EAR: sum the per-stager feeds I hold, skipping my own.
       if (stagers.length) ensureStageEar();
       syncStageEar(stagers);
+      earNote(stagers);
       // DEBOUNCED UNSHIP: the wanted set is rebuilt from occ every sweep, and
       // occ flickers during gossip churn (a seat transiently unknown, a heal in
       // flight). Ripping a live pipe on ONE missed sweep sends mx-end + a
@@ -36323,6 +36387,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // stage + buses
       stageIds: () => stageIds(),
       onStage: () => stageIds().includes(myId),
+      stageSeats: () => stageSeats(),
+      earState: (id) => earState(id),
+      stageAudible: (id) => stageAudible(id),
       stageFlagForTest: () => myStatus.stg || 0,   // my raw step-up claim, painted or not
       stageFlipsForTest: () => stgFlips,          // how many times setStage ran
       setStageForTest: (on) => setStage(!!on),
