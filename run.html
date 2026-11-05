@@ -17026,6 +17026,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     // DEBUG-only lever (DEBUG=on and &DEBUGFAIL=identity-once | adminkey-once | identity-hang-once | adminkey-hang-once):
     // the first startMesh's identity or open-key step rejects (or never settles), so a test can make the boot fail on purpose.
+    let meshBootRetry = 0; const MESH_BOOT_WATCH_MS = 10000;
     let debugFailUsed = false;
     function debugFail(step, p) {
       if (!DEBUG_ON || debugFailUsed) return p;
@@ -17040,8 +17041,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (meshNode) { try { meshNode.stop(); } catch (e) {} meshNode = null; }
       meshBootGen++;
       if (directPath === 'pending') startDirectPathProbe(); // this network's verdict, once per page (re-run when the network comes back)
-      if (!myId) myIdReady = new Promise((res) => { myIdReadyResolve = res; });
+      if (!myId && !myIdReadyResolve) myIdReady = new Promise((res) => { myIdReadyResolve = res; });   // a re-arm keeps the promise the waiters already hold
+      // Why a retry: one rejected or hung identity/open-key step used to leave meshNode null for good (the page loaded, never opened its relay socket).
+      const bootGen = meshBootGen; let booted = false;
+      const reArm = (why) => {
+        if (booted || bootGen !== meshBootGen) return;   // a newer startMesh owns the boot
+        const wait = Math.min(8000, 500 * Math.pow(2, meshBootRetry++));
+        try { if (typeof clog === 'function') clog('startMesh re-arm ' + why + ' in ' + wait + 'ms'); } catch (e) {}
+        setTimeout(() => { if (booted || bootGen !== meshBootGen || leaving || bannedOut || pwBlocked || meshNode) return; startMesh(); }, wait);
+      };
+      const bootWatch = setTimeout(() => { if (!booted && bootGen === meshBootGen) reArm('hung'); }, MESH_BOOT_WATCH_MS);
       Promise.all([debugFail('identity', ensureIdentity()), debugFail('adminkey', adminOpenKeyNow())]).then(([identity, openKey]) => {
+      if (bootGen !== meshBootGen) return;   // superseded while the identity was minting
+      booted = true; meshBootRetry = 0; clearTimeout(bootWatch);
       myId = identity.peerId; // S4: peer id = H(pubkey), unforgeable
       if (myIdReadyResolve) { const resolveId = myIdReadyResolve; myIdReadyResolve = null; resolveId(); }
       try { tryBroadcastStage(); } catch (e) {}
@@ -17299,7 +17311,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         onByeHold: (pid) => { try { confirmGone(pid, 'bye'); } catch (e) {} },   // a page gone: its tile leaves at once, a reload brings it back
       });
       updateStatus(); applyAdminUi();
-      });
+      }).catch((err) => { clearTimeout(bootWatch); if (bootGen !== meshBootGen || meshNode) return; reArm('rejected ' + String(err && err.message || err).slice(0, 60)); });   // a throw after the node stood must not tear it down
     }
     // App-level relay frames the wire does not consume. The roster here is the
     // GREETER POOL, never the room \u2014 it drives door moderation only.
