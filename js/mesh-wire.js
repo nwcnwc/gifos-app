@@ -1203,6 +1203,7 @@
         for (const m of payloads) { const f = { t: 'GSP', gid: who + ':forge' + (++n) + ':' + Date.now(), src: who, m }; ident.signGossip(identity, f).then((s4) => { f.s4 = s4; for (const p of seat.linkPeers()) deliver(p, Object.assign({}, f)); }); }
         return n;
       },
+      _signGossipForTest(f) { return (identity && ident.signGossip) ? ident.signGossip(identity, f) : Promise.resolve(''); },   // TEST ONLY — my own signature on a frame I hold back
       socketed() { return !raw || raw.socketed(); },   // the seat's own word: am I at the door (a joiner, a greeter, a seat that knocked)
       setRefuses(b) { if (layer) layer.setRefuses(b); },
       roomDigest() { return (layer && env.DIGEST !== false) ? layer.roomDigest() : null; },   // the display fold beside the seat (layer.js leaf)
