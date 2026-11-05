@@ -36250,7 +36250,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const nbrs = [];
         if (occSeed) for (const k of Object.keys(occSeed)) {
           const mm = /^(\d+)\/(\d+)\.(\d+)$/.exec(k); if (!mm) continue;
-          const key = T.ckey({ pc: +mm[1], r: +mm[2], i: +mm[3] });
+          const key = GifOS.meshTopo.ckey({ pc: +mm[1], r: +mm[2], i: +mm[3] });   // the ported Seat's cell number, not the page's text key
           const nv = occSeed[k] ? meshNode.nidOf(occSeed[k]) : -1;
           if (nv >= 0 && nv !== seat.id) nbrs.push({ k: key, v: nv });
         }
@@ -36273,11 +36273,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // is still in flight over a lossy sponsor path.
       learnOcc: (coord, pid) => {
         if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
-        const seat = meshNode && meshNode.seat; if (!seat) return { err: 'no seat yet' };
+        const seat = meshNode && meshNode.raw; if (!seat) return { err: 'no seat yet' };   // the ported Seat, as forceSeat: the page's view is a read of it
         const mm = /^(\d+)\/(\d+)\.(\d+)$/.exec(String(coord || ''));
         if (!mm || !pid) return { err: 'bad args' };
-        const key = net.topo.ckey({ pc: +mm[1], r: +mm[2], i: +mm[3] });
-        seat.occ.set(key, String(pid));
+        const key = GifOS.meshTopo.ckey({ pc: +mm[1], r: +mm[2], i: +mm[3] });
+        seat.occ.set(key, meshNode.nidOf(String(pid)));
         try { renderFromOcc(); } catch (e) {}
         return { ok: true, key, pid: String(pid).slice(0, 12) };
       },
