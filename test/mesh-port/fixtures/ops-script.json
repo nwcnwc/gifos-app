@@ -1,2 +1,0 @@
-{"N":12,"C":5,"seeds":[3],"net":{"loss":0.05,"lat":2,"subnets":2},"setup":[{"op":"joinmode","args":["burst"]},{"op":"compacton","args":[0]}],
- "acts":[{"at":0,"op":"state"},{"at":"+0","op":"find","args":["/0.0"]},{"at":0,"op":"killat","args":["/0.1"]},{"at":0,"op":"bogus\tverb"},{"at":"+0","op":"quit"},{"at":0,"op":"state"}]}
