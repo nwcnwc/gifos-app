@@ -12902,12 +12902,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const RELAY_NAME_MAX = 40, RELAY_PW_MAX = 64;
     const epOk = (ep) => Number.isInteger(ep) && ep >= 0;
     // The exact field set of each payload (the padding field `_` beside it).
-    const RELAY_PAYLOAD_KEYS = { boot: 'k,t,u,w,s,v', fp: 'k,v,fp', ice: 'k,c,end', name: 'k,n', password: 'k,pw,ep,pr', pwsig: 'k,sig', pwpub: 'k,ep,ts,pub', pwby: 'k,ep,by', busy: 'k,g,i,n,ref,cool' };
+    const RELAY_PAYLOAD_KEYS = { boot: 'k,t,u,w,s,v,dr', fp: 'k,v,fp', ice: 'k,c,end', name: 'k,n', password: 'k,pw,ep,pr', pwsig: 'k,sig', pwpub: 'k,ep,ts,pub', pwby: 'k,ep,by', busy: 'k,g,i,n,ref,cool' };
     function relayFrameAllowed(ty, inner) {
       if (!RELAY_TYPES.has(ty) || !inner || typeof inner !== 'object' || Array.isArray(inner) || inner.k !== ty || !net.fitsFixed(inner)) return null;
       const keys = RELAY_PAYLOAD_KEYS[ty].split(',');
       for (const k of Object.keys(inner)) if (k !== '_' && keys.indexOf(k) < 0) return null;
-      if (ty === 'boot') return net.bootOk(inner) ? ty : null;
+      if (ty === 'boot') return net.bootOk(inner) && (inner.dr === undefined || inner.dr === 1) ? ty : null;   // dr: an unseated dialler at the door (sendOffer)
       if (ty === 'fp') return net.fpOk(inner) ? ty : null;
       if (ty === 'ice') return (inner.end === 1 && !('c' in inner)) || (!('end' in inner) && !!net.candOfIce(inner)) ? ty : null;
       if (ty === 'name') return typeof inner.n === 'string' && inner.n.length <= RELAY_NAME_MAX ? ty : null;
@@ -13416,6 +13416,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const b = net.bootOf(msg.sdp, ++bootSeq);
         if (!b) { txStats.relayUnfit++; if (typeof clog === 'function') clog('relay: a description with media never leaves (' + msg.kind + ' to ' + String(to).slice(0, 6) + ')'); return; }
         relaySendSealed(to, 'name', { k: 'name', n: net.relayNameFit(myName()) }); // the name beside every bootstrap: both sides can say who tried to reach them
+        if (msg.kind === 'offer' && msg.dr === 1) b.boot.dr = 1;   // the door's gate reads it (onSignal): an unseated dialler is not a stale member
         relaySendSealed(to, 'boot', b.boot);
         relaySendSealed(to, 'fp', b.fp);
         return;
@@ -13434,9 +13435,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function onRelayPeer(from, ty, f) {
       if (ty === 'busy') { try { if (meshNode && meshNode.relayBusyIn) meshNode.relayBusyIn(from, f); } catch (e) {} return; }
       if (ty === 'boot' || ty === 'fp') {
+        const bootF = ty === 'boot' ? f : (bootParts.get(from) || {}).boot;
         const desc = takeBootPart(from, ty, f);
         if (!desc) return;
-        onSignal(from, { kind: desc.type, sdp: desc, ib: 1, boot: 1 });
+        const sig = { kind: desc.type, sdp: desc, ib: 1, boot: 1 };
+        if (bootF && bootF.dr === 1) sig.dr = 1;
+        onSignal(from, sig);
         return;
       }
       if (ty === 'ice') {
@@ -14520,7 +14524,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           settled();
           if (p.pc !== pc) return; // rebuilt while minting: this offer belongs to a closed pc
           p.offerSentAt = Date.now(); p.offerSentPc = pc;
-          sendSig(peerId, { kind: 'offer', sdp: pc.localDescription, ib: 1, dr: (() => { const ms = meshSeat(); return ms && ms.hasCoord && ms.state === 3 ? 0 : 1; })(), name: myName(), ip: myIp, st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), sid: mySid() });
+          sendSig(peerId, { kind: 'offer', sdp: pc.localDescription, ib: 1, dr: (() => { const ms = meshSeat(); return ms && ms.hasCoord && ms.state === 3 && ms.seatTick - ms.seatedAt > 40 ? 0 : 1; })(), name: myName(), ip: myIp, st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), sid: mySid() });
         })
         .catch((e) => { settled(); if (p.pc === pc) noteNegFail('offer', peerId, e); });
     }
@@ -14788,7 +14792,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!linkTo(from) && meshKnows(from)) {
           let linkUp = false;
           for (const [q, pp] of peers) if (q !== from && pp && pp.dc && pp.dc.readyState === 'open' && linkTo(q)) { linkUp = true; break; }
-          // ...and an unseated dialler is at my door (dr): a member that requeued, its goodbye not yet here. L16 and L23 are the door's gates.
+          // ...and a dialler at my door (dr: unseated, or its seat under 20 s old): a member that requeued or moved, my view not yet told. L16 and L23 are the door's gates.
           if (linkUp && !msg.dr) { rxStats.offerRejected++; return; }
           if (typeof clog === 'function') clog('offer from ' + String(from).slice(0, 6) + ' taken: no link of mine is up');
         }
@@ -24995,6 +24999,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // hot void and wake the standby for nothing.
           if (pri.stream && !pri.stream.getTracks().length) { await sampleStandby(rk, fb); continue; }
           if (mosHeld(pri)) continue; // parked on purpose while its decoder restarts (mosDecoderSweep): this silence is not death
+          if (rk.indexOf('stg:') === 0) await stgPicCheck(rk, pri, fb, now);
           const bytes = await pipeBytes(pri, rk.indexOf('stg:') === 0);
           // Forensics ring (frza17: a husk claim's standby was never woken and
           // no theory survived — record what each sample actually SAW). Widened
@@ -25300,7 +25305,53 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (e.seen.indexOf(b) >= 0) return false;
       e.seen.push(b); if (e.seen.length > STG_BEAT_SEEN) e.seen.shift();
       e.at = Date.now();
+      stgPicNote(e, b);
       return true;
+    }
+    // THE PICTURE KEEPALIVE. A stage feed is judged on its voice, because a still share legitimately sends no frames: frozen picture and still picture read the same at a
+    // receiver. So the stager's beat says how many frames it encoded: low 12 bits of the signed value (old pages treat b as opaque). Frames made at the source while my decoder
+    // stands still is a dead picture on my path; no new frames at the source is a still picture, and no verdict.
+    const STG_PIC_WORD = 4096, STG_PIC_MIN_B = Math.pow(2, 44), STG_PIC_FRAMES = 5, STG_PIC_DEAD_MS = 4000, STG_PIC_RETRY_MS = 15000;
+    function stgPicNote(e, b) {
+      if (b < STG_PIC_MIN_B) return;   // a beat with no count: a page that has no video job, or an older page
+      const t = Math.floor(b / STG_PIC_WORD), n = b % STG_PIC_WORD;
+      if (e.pfT !== undefined && t <= e.pfT) return;   // the flood can reorder
+      e.pfN = e.pfN === undefined ? 0 : e.pfN + ((n - e.pf + STG_PIC_WORD) % STG_PIC_WORD);
+      e.pf = n; e.pfT = t; e.pfAt = Date.now();
+    }
+    let stgPicCount = 0, stgPicSd = null, stgPicEnc = 0, stgPicKnown = false;
+    function stgPicSample() {   // my own frames encoded, on one active stage job (its sender; a new sender re-baselines)
+      let sd = null;
+      for (const job of mosJobs.values()) { if (job.active && job.key === 'stg:' + myId) { sd = (job.senders || []).find((x) => x && x.track && x.track.kind === 'video') || null; if (sd) break; } }
+      if (!sd) { stgPicKnown = false; stgPicSd = null; return; }
+      sd.getStats().then((rep) => {
+        let enc = -1; rep.forEach((r) => { if (r.type === 'outbound-rtp' && r.kind === 'video') enc = r.framesEncoded || 0; });
+        if (enc < 0) return;
+        if (stgPicSd === sd && enc > stgPicEnc) stgPicCount = (stgPicCount + enc - stgPicEnc) % STG_PIC_WORD;
+        stgPicSd = sd; stgPicEnc = enc; stgPicKnown = true;
+      }).catch(() => {});
+    }
+    // My copy's decoder against the source's count. One getStats a second, only for a feed whose stager tells its count.
+    async function stgPicCheck(rk, pri, fb, now) {
+      const e = stgBeats.get(rk), vt = pri.stream && pri.stream.getVideoTracks()[0];
+      if (!vt || !e || e.pfN === undefined || now - e.pfAt > STG_BEAT_STALE_MS) { if (fb.picDead) { fb.picDead = false; schedReconcile(); } fb.picRef = null; return; }
+      if (fb.picCheckAt && now - fb.picCheckAt < 900) return;
+      fb.picCheckAt = now;
+      const v = await pipeBytes(pri, false); if (v === -1) return;
+      if (fb.picRef !== pri || v.d !== fb.picD) {
+        if (fb.picDead) { fb.picDead = false; fb.picStdOk = false; fb.picStd0 = null; schedReconcile(); }   // it came back by itself
+        fb.picRef = pri; fb.picD = v.d; fb.picN = e.pfN; fb.picAt = now; return;
+      }
+      if (!fb.picDead && e.pfN - fb.picN >= STG_PIC_FRAMES && now - fb.picAt >= STG_PIC_DEAD_MS) {
+        fb.picDead = true; fb.picDeadAt = now; fb.picStdOk = false; fb.picStd0 = null; stgFoNote(rk, 'pic-dead', pri.via);
+        try { kfNeed(rk); } catch (err) {}   // a lost key looks the same: ask first
+        schedReconcile();
+      }
+      if (fb.picDead) {
+        const std = mosStandby.get(rk);
+        if (std) { const sv = await pipeBytes(std, false); if (sv !== -1) { if (fb.picStd0 == null || sv.d < fb.picStd0) fb.picStd0 = sv.d; else if (sv.d > fb.picStd0 && !fb.picStdOk) { fb.picStdOk = true; schedReconcile(); } } }
+        if (now - fb.picDeadAt > STG_PIC_RETRY_MS) { fb.picDead = false; fb.picRef = null; schedReconcile(); }   // no copy showed a picture: judge afresh
+      }
     }
     // THE BEAT IS SIGNED by the stager's identity key, the key that names it (the pid is derived from the
     // public key). A page passes on only a beat whose signature checks, so nobody else can make one: a
@@ -25331,7 +25382,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     GifOS.meshMedia.workerClock(STG_BEAT_MS, () => {
       try {
         const t0 = stgBeatCost ? performance.now() : 0;
-        if (stageIds().includes(myId) && myIdentity) { const key = 'stg:' + myId, b = Date.now(); stgBeatNew(key, b); const pub = myIdentity.pubB64; net.edSign(myIdentity.priv, stgBeatSp(key, b)).then((sig) => stgBeatFlood(key, b, null, sig, pub)).catch(() => {}); }
+        if (stageIds().includes(myId) && myIdentity) { stgPicSample(); const key = 'stg:' + myId, b = stgPicKnown ? Date.now() * STG_PIC_WORD + stgPicCount : Date.now(); stgBeatNew(key, b); const pub = myIdentity.pubB64; net.edSign(myIdentity.priv, stgBeatSp(key, b)).then((sig) => stgBeatFlood(key, b, null, sig, pub)).catch(() => {}); }
         if (stgBeatCost) stgBeatCost.ms += performance.now() - t0;
         for (const [k, e] of stgBeats) if (Date.now() - e.at > 300000) stgBeats.delete(k);
       } catch (e) {}
@@ -25493,7 +25544,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // L2.7: the seat holds E2 hot, so E2's copy takes over even while E1's still moves packets.
       const seatE2 = meshSeat();
       const u2Over = !!(pri && std && seatE2 && seatE2.u2Hot && std.via === seatE2.u2Id && pri.via !== std.via && (rk.indexOf('stg:') === 0 || rk === 'sgs'));
-      const wantSwap = !!(pri && std && (!priLive || fb.dark || u2Over || (stdIsPref && !priIsPref)));
+      const wantSwap = !!(pri && std && (!priLive || fb.dark || fb.picDead || u2Over || (stdIsPref && !priIsPref)));
       if (wantSwap) {
         if (std && !std.el && std.stream) std.el = mosVideo(std.stream); // mint the decoder on wake, not while parked
         if (!fb.wakeAt) { fb.wakeAt = now; fb.f0 = frames(std.el); }
@@ -25532,14 +25583,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // no stale frame to lie with and the swap is the recovery.
         const stdAdvanced = fb.d0 >= 0 && fb.stdFdec > fb.d0;
         const stdRecent = stdAdvanced && fb.stdAdvAt && now - fb.stdAdvAt < 3000;
-        const flowing = (voiceOnly || ((fb.dark || u2Over) && priLive))
+        const flowing = (fb.picDead && priLive && !voiceOnly) ? !!fb.picStdOk   // the picture is the complaint, so its frames are the evidence
+          : (voiceOnly || ((fb.dark || u2Over) && priLive))
           ? stdAdvanced
           : ((frames(std.el) > fb.f0 || (std.el && std.el.videoWidth > 0 && now - fb.wakeAt > 1500)) && (!priLive || stdRecent));
         // A dead-or-dark primary swaps the moment the standby flows; a live one
         // (pure failback) additionally waits out the settle window — hysteresis
         // (dark skips it: dark IS a failover, and MOS_SETTLE on lastSwitch
         // still bounds any stall/recover oscillation to one swap per window).
-        const settled = !priLive || fb.dark || u2Over || ((now - fb.prefSince >= MOS_SETTLE) && (now - fb.lastSwitch >= MOS_SETTLE));
+        const settled = !priLive || fb.dark || fb.picDead || u2Over || ((now - fb.prefSince >= MOS_SETTLE) && (now - fb.lastSwitch >= MOS_SETTLE));
         if (flowing && settled) {
           const old = pri;
           mosIn.set(rk, std); mosStandby.delete(rk); pri = std; std = null; stgFoNote(rk, 'swap', pri.via);
@@ -25549,6 +25601,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // A share on the new path: seats below me need a key frame to decode my new source, so ask now.
           if (rk.indexOf('stg:') === 0 && pri.stream && pri.stream.getVideoTracks().length) { try { kfNeed(rk); } catch (e) {} }
           pri.deadAt = 0; fb.lastSwitch = now; fb.wakeAt = 0; fb.prefSince = 0;
+          fb.picDead = false; fb.picStdOk = false; fb.picStd0 = null; fb.picRef = null;
           fb.dark = false; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; fb.fp = 0; fb.fpDecayAt = 0; fb.b0 = -1; fb.d0 = -1; fb.stdFdec = -1; fb.stdAdvAt = 0; fb.claimAt = now; // fresh primary — the watchdog re-baselines and the penalty clears
           repaintRedun(rk, pri.stream);
           if (inCand(old)) { std = { via: old.via, key: old.key, streamId: old.streamId, stream: old.stream, el: old.el, meta: old.meta }; mosStandby.set(rk, std); } // failback: the loser re-parks as the standby
