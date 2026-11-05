@@ -16971,7 +16971,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // meshSendDC also returns true for a dump onto some other peer; the
         // wire must not treat that as the door (mesh-wire entryDelivered).
         dcOpen: (to) => { const p = peers.get(to); return !!(p && p.dc && p.dc.readyState === 'open'); },
-        dial: bootDial, // a knocker's entry ask has no channel to its greeter: open one (the bootstrap over the relay)
         onBehind: healBehindDoor, // door blobs a key I replaced opens: their writers missed the grant (§LOCK door-side heal)
         // Deep-socket drop waits until at least one DataChannel is open (§FWD:
         // an unwired deep newcomer must stay relay-reachable or inbound
@@ -19922,10 +19921,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // The boot promise deliberately does NOT wait on the prompt.
         });
     }
-    // ---- ONE RUNTIME entry dispatch (docs/one-runtime.md) -------------------
-    // An app entry never runs the meeting boot: no lobby, no camera consent
-    // flow, and for SOLO no network object at all. The meeting entry keeps its
-    // exact flow.
     let soloCtl = null; // the running solo app's runtime control — Invite (step 2) hosts from it
     // LOCAL facts about this copy for the Credits at the bottom of Help: when
     // it was installed here (store.js storeMeta.installedAt) and who signed
@@ -25556,7 +25551,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!st) continue;
         if (cur) dropMosIn(rk);
         mosIn.set(rk, { via: from, streamId: ann.streamId, stream: st, el: mosNeedsVideo(rk) ? mosVideo(st) : null, meta: annMeta(ann) });
-        structuralSeen.add(rk);
       }
       // A structural slot (sub, x1, x2, sdxc) has no second announcer
       // and no claimRedun pass. Once its announce ages out, or the peer is
@@ -26225,7 +26219,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const headPid = rowHeadPid(c); // the head, or the heir while the head's feed is gone
         for (const [mk, uf] of mosIn) { if (mk.indexOf('subu:') !== 0) continue; const ju = shipMos('sub', headPid, uf.stream, Object.assign({ l14: 1, via: mk.slice(5) }, blockMeta(uf)), mk); if (ju) wanted.add(ju); } // L14: a branch I serve, into my row's product
         if (beyondRow) {
-          const sdmM = mosIn.get('sdm'), packMetaM = (pk) => ({ n: pk.count(), cols: pk.cols() });
+          const packMetaM = (pk) => ({ n: pk.count(), cols: pk.cols() });
           l14Down((pk, h) => {
             // the branch's outside, built by my head (it holds everything but that branch); my own view now carries the branch
             const rel = mosIn.get('sdxu:' + h);
