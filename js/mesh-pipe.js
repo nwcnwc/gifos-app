@@ -378,7 +378,7 @@ onrtctransform = (e) => {
           // PAIRED REAL CONTENT KEY.
           if (frame.type === 'key') {
             p.kdrop = (p.kdrop || 0) + 1;
-            if (p.kdrop === 3 || p.kdrop % 30 === 0) askKey(o.srcId, o.pipeId);
+            if (p.kdrop === 3 || p.kdrop % 30 === 0) askKey(p.srcId || o.srcId, o.pipeId); // p.srcId: a reroute moved the source, o.srcId is the transform's first
           }
           continue;
         }
@@ -408,8 +408,8 @@ onrtctransform = (e) => {
           // keykick (seed the last key so a still share paints now, hold
           // deltas until a fresh key lands) and ask upstream.
           p.kdrop = (p.kdrop || 0) + 1;
-          if (p.kdrop === 3) { p.q.length = 0; p.needKey = true; p.nkDrop = 0; p.seeded = false; seedKey(o.srcId, o.pipeId); }
-          if (p.kdrop === 3 || p.kdrop % 30 === 0) askKey(o.srcId, o.pipeId);
+          if (p.kdrop === 3) { p.q.length = 0; p.needKey = true; p.nkDrop = 0; p.seeded = false; seedKey(p.srcId || o.srcId, o.pipeId); }
+          if (p.kdrop === 3 || p.kdrop % 30 === 0) askKey(p.srcId || o.srcId, o.pipeId); // p.srcId: a reroute moved the source, o.srcId is the transform's first
           continue;
         }
         p.q.shift(); p.kfAsk = 0;
