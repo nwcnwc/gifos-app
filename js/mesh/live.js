@@ -48,8 +48,9 @@
       if (this.w.lv.DIGEST && this.state === 3 && this.hasCoord && this.coord.pc !== 0) {
         if (m.dgRoot.at >= 0) {
           const rt = digM.cloneDig(m.dgRoot); this.rxDig(rt);
-          if (!m.dgOnly && (this.rootDig.at < 0 || rt.rx > this.rootDig.rx)) { this.rootDig = rt; this.rootDec = digM.cloneDig(rt); this.l43Fold(); }   // the room fold, one level per period; fresher ON MY CLOCK wins (G0b)
-        }   // L10: the shown fold takes an early push too; the decision copy (rootDec) is the regular beat's only
+          if (this.rootDig.at < 0 || rt.rx > this.rootDig.rx) this.rootDig = rt;   // the room fold, shown: a regular beat or an L10.3 early push (dgOnly), fresher ON MY CLOCK wins (G0b)
+          if (!m.dgOnly && (this.rootDec.at < 0 || rt.rx > this.rootDec.rx)) { this.rootDec = digM.cloneDig(rt); this.l43Fold(); }   // L10.6: the decision copy takes the regular beat only (one level per period)
+        }
         if (m.dgPub.at >= 0) {
           const oc = this.coord.i === 0 ? this.ownerCoord() : null; const isOwner = !!oc && ckey(m.coord) === ckey(oc);
           const isHead = this.coord.i > 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r && m.coord.i === 0;
@@ -320,7 +321,7 @@
       if (lv.DIGEST && this.state === 3 && m.tag !== 5) {
         p.dgRoot = this.wireDig(this.rootDig); p.dgRoot.kl.length = 0;   // L27.9: the list rides up only
         if (this.kFakeT >= 0) { p.dgRoot.part = 0; p.dgRoot.kick.push({ tgt: this.kFakeT, up: Math.max(0, p.dgRoot.n) + Math.max(0, p.dgRoot.leased), dn: 0 }); }   // L27 `kfake`
-        { this.l10DgTo.set(m.id, TICK); this.l10DgN.set(m.id, this.rootDig.n + this.rootDig.leased); }
+        { this.l10DgTo.set(m.id, TICK); this.l10DgN.set(m.id, digM.digSig(this.rootDig) | 0); }   // L10.3: the fold this beat carried, by signature (a list change is news too)
         const isDownKid = ckey(m.coord) === ckey(down(this.coord));
         p.dgPub = this.pubDig(isDownKid ? this.myDig : ((this.coord.pc !== 0 && this.coord.i === 0) ? this.rowDig : this.myDig));
         // ...and the ECHO: the report I actually folded FROM THIS PEER (downUsed / rowUsed, snapshotted at rollup).
