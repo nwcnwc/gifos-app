@@ -110,7 +110,7 @@
     let upNext = -1;
     function mark(x) {
       const L = LINKS.get(x); const q0 = L && L.q.length ? L.q[0] : null;
-      return { s: mySeated() ? 1 : 0, up: (L && L.uplink) || upNext === x ? 1 : 0, mt: q0 ? q0.t : null, ck: q0 && (q0.t === 'HELLO' || q0.t === 'CLAIM' || (q0.t === 'CHALLENGE' && q0.tag === 25)) ? q0.ck : 0, tier: mySeat() ? mySeat().ctier : 0 };
+      return { s: mySeated() ? 1 : 0, up: (L && L.uplink) || upNext === x ? 1 : 0, mt: q0 ? q0.t : null, ck: q0 && (q0.t === 'HELLO' || q0.t === 'CLAIM' || (q0.t === 'CHALLENGE' && (q0.tag === 25 || q0.tag === K.GA_TAG))) ? q0.ck : 0, tier: mySeat() ? mySeat().ctier : 0 };
     }
 
     // door progress (sim linkDeliver), run by each end for the frames it sends and the frames it receives
@@ -229,11 +229,11 @@
     // linkWhy's friend-hop reason reads FH[me]: my relay roles, now (the ids are too wide for an array: only my own slot)
     const FH = { get length() { return me + 1; } };
     Object.defineProperty(FH, me, { get: () => o.fh.roles() });
-    // L39.2: a question about my cell reaches me at my budget (the page passed no contest, so it read false)
+    // L39.2, L41.4: a question about my cell, or a cell of my links, reaches me at my budget (the page passed no contest, so it read false)
     // C++: mesh_gaps3_fab.inc:l392Contest
     function l392Page(a, b, mt, ck) {
       const s = seats[a]; if (mt !== 'CHALLENGE' || !ck || !s || !s.hasCoord || s.state !== 3) return false;
-      if (ckey(s.coord) !== ck) return false;
+      if (ckey(s.coord) !== ck && !s.ownedLinkCell(ck)) return false;
       return pc.l23GreetSlot(a, b, ck);
     }
     const P = {
