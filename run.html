@@ -6958,7 +6958,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         sv.kicked++; sv.why.wake = (sv.why.wake || 0) + 1;
         p.meshKickAt = Date.now(); p.wakeBuiltAt = at;
         if (typeof clog === 'function') clog('wake rebuild ' + String(pid).slice(0, 6) + ' (' + stage + ') pc=' + (p.pc.connectionState || '?') + ' dc=' + (p.dc ? p.dc.readyState : 'none'));
-        newPcFor(p);
+        rebuildPc(p, 'wake');
         sendOffer(pid, false);
       };
       // BACK FROM THE DARK, a pair with no open channel and no live transport
@@ -7148,7 +7148,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // N=2 coin flip), and nothing notices because nothing measures RECEIVE
       // silence. So measure it: a mesh-named, connected, open pair that has
       // delivered NOTHING mesh-level inbound for 12s is a zombie — the
-      // deterministic dialer side rebuilds the transport (full newPcFor +
+      // deterministic dialer side rebuilds the transport (full rebuildPc +
       // re-offer; renegotiate() on the same broken pc heals nothing). PHONE
       // re-claims then repair occupancy within a beat or two.
       try {
@@ -7164,7 +7164,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // here. While OUR radio is off, 12s of nothing received proves
           // nothing about any peer; it is OUR deafness, not their death.
           // Unguarded, this sweep read its own radio-dropout as every
-          // peer dying at once and closed all of them for real (newPcFor),
+          // peer dying at once and closed all of them for real (rebuildPc),
           // forcing a full re-knock with glare once the radio returned —
           // the pairs it tore down were fine the whole time and would have
           // answered wakeProbe's wping in one round trip the instant the
@@ -7274,7 +7274,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               sv.kicked++;
               if (seatHolds(pid)) { why('held'); continue; }
               if (typeof clog === 'function') clog('dc-watchdog rebuild ' + String(pid).slice(0, 6));
-              newPcFor(p);
+              rebuildPc(p, 'dc-watchdog');
               sendOffer(pid, false);
             }
             why('dcwatch'); continue;
@@ -7309,7 +7309,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (seatHolds(pid)) { why('held'); continue; }   // L17
           if (p.hungUp) { why('hungup'); continue; }   // the far seat hung up on purpose (pcbye): only a seat's dial brings this pair back (seatDial)
           if (typeof clog === 'function') clog('mesh-starve rebuild ' + String(pid).slice(0, 6));
-          newPcFor(p);
+          rebuildPc(p, 'mesh-starve');
           sendOffer(pid, false);
         }
         // THE FORMATION GAP (behavior battery 14a residual): a pair whose
@@ -13388,7 +13388,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // sender's name beside an offer; a candidate batch goes out one `ice`
     // frame per candidate, the end mark as its own. A description carrying
     // media (bootOf returns null) is NEVER sent here: the dial path keeps
-    // the pc media-free until its channel is open (newPcFor / sendOffer),
+    // the pc media-free until its channel is open (rebuildPc / sendOffer),
     // and media is negotiated over that channel (wireDc onopen).
     let bootSeq = 0;
     // A person who reaches no one keeps asking every door in the room for as
@@ -14026,10 +14026,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       return added;
     }
+    // THE ONE PLACE A PAIR GETS A PC. `why` names the rebuild in the DEBUG trace. opts.closing: a real close, the far end's
+    // to read. opts.keepIce: their trickle already queued for the offer being answered stays. Per-pc ICE settings go here.
     // A rebuild replaces a pc and closes no link. On a live channel the far end hears so first (the channel is ordered,
     // the close follows), so the old channel's close reads as the replacement it is: a fresh pc replacing a live one is
     // no loss at either end. Not for a real close (closing): that one is the far end's to read.
-    function newPcFor(p, closing) {
+    function rebuildPc(p, why, opts) {
+      const closing = !!(opts && opts.closing), queued = opts && opts.keepIce ? p.pendingIce : null;
+      if (typeof clog === 'function') clog('pc-new ' + String(p.id).slice(0, 6) + ' ' + (why || '?') + (p.pc ? ' was ' + p.pc.connectionState + '/' + p.pc.signalingState : ''));
       const pcOld = p.pc;
       if (!closing && pcOld && p.dc && p.dc.readyState === 'open') { try { dcSend(p, { k: 'pcfresh' }); } catch (e) {} setTimeout(() => { try { pcOld.close(); } catch (e) {} }, 300); }
       else { try { pcOld && pcOld.close(); } catch (e) {} }
@@ -14063,7 +14067,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // typeof guard is what hid this for however long it has been here.
       try {
         for (const [jk, job] of [...mosJobs]) if (job.to === p.id) unshipMos(jk, false);
-      } catch (e) { if (typeof clog === 'function') clog('newPcFor: mosaic job cleanup failed ' + String(e).slice(0, 60)); }
+      } catch (e) { if (typeof clog === 'function') clog('rebuildPc: mosaic job cleanup failed ' + String(e).slice(0, 60)); }
       const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
       // A glare yield armed against the OLD pc must never fire at the new
       // one: its rollback would target a connection that never offered.
@@ -14076,7 +14080,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // Offer turns belong to the old pc. turnSeen/turnLegacy describe the peer and stay.
       clearTimeout(p.turnAskT); clearTimeout(p.turnOkT); clearTimeout(p.turnGivenT);
       p.turnAskT = p.turnOkT = p.turnGivenT = null; p.turnOk = p.turnGiven = p.turnWanted = false; p.offeredPend = "";
-      p.pc = pc; p.connected = false; p.pendingIce = []; p.dc = null; p.incoming = []; p.deadSince = 0; p.rebuiltAt = Date.now();
+      p.pc = pc; p.connected = false; p.pendingIce = queued || []; p.dc = null; p.incoming = []; p.deadSince = 0; p.rebuiltAt = Date.now();
       p.offering = null; // an offer still minting belongs to the closed pc (sendOffer drops it)
       p.makingOffer = false; // ...and so does a renegotiation's (renegotiate: its chain never settles)
       p.offerFp = ''; // no remote offer has landed on this pc yet (onSignal's new-pc rule)
@@ -14238,7 +14242,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       peers.set(peerId, p);
       if (isHeld(peerId)) holdPeer(p);
       recSrcDirty = true;
-      newPcFor(p);
+      rebuildPc(p, 'born');
       adapt();
       return p;
     }
@@ -14444,7 +14448,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // rollback: an answer made after rolling back an offer gathers no ICE
         // candidate in Chromium (see onSignal's collision branch).
         const fresh = noLiveTransport(p);
-        if (fresh) { const queued = p.pendingIce; newPcFor(p); p.pendingIce = queued; }
+        if (fresh) rebuildPc(p, 'glare-yield', { keepIce: true });
         const pc = p.pc;
         Promise.resolve(fresh ? null : pc.setLocalDescription({ type: 'rollback' }))
           .then(() => answerOffer(pc, p, m, true, (sdp) => sendSig(from, { kind: 'answer', sdp, ib: 1, name: myName(), ip: myIp,
@@ -14453,7 +14457,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (p.pc !== pc) return; // whoever replaced the pc owns the pair now
             // Rollback failed. Rebuild and dial from this side too. Dialling
             // only from the higher id left the polite side with a pc nobody offered on.
-            try { newPcFor(p); sendOffer(from, false); } catch (e2) { noteNegFail('glare', from, e2 || e); }
+            try { rebuildPc(p, 'glare-failed'); sendOffer(from, false); } catch (e2) { noteNegFail('glare', from, e2 || e); }
           });
       }, stale ? 0 : GLARE_YIELD_MS);
     }
@@ -14499,7 +14503,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // two-person meeting) rebuilds and bootstraps over the relay.
       const dcLive0 = p.dc && (p.dc.readyState === 'open' || p.dc.readyState === 'connecting');
       const pcDead = !p.pc || p.pc.connectionState === 'closed' || p.pc.signalingState === 'closed'; // a closed transport restarts nothing: rebuilt whatever the friends
-      if (!dcLive0 && (pcDead || (p.mediaOn && !friendDcOpen(peerId)))) { newPcFor(p); iceRestart = false; }
+      if (!dcLive0 && (pcDead || (p.mediaOn && !friendDcOpen(peerId)))) { rebuildPc(p, 'dial-dead'); iceRestart = false; }
       // The OFFERER creates the DataChannel (whoever dials — id-initiator,
       // unwired newcomer, or a starved answerer-side rebuild), BEFORE
       // createOffer so the data m-line rides this offer. Idempotent: a
@@ -14829,7 +14833,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // death has PERSISTED (deadSince > 12s): rebuilding on any transient
         // 'failed' tore down recovering pairs in a loop the moment both tabs
         // were hidden/throttled (the 06a regression this line first caused).
-        if (p.pc && p.deadSince && Date.now() - p.deadSince > 12000) newPcFor(p);
+        if (p.pc && p.deadSince && Date.now() - p.deadSince > 12000) rebuildPc(p, 'offer-dead');
         // THE NEW-PC RULE: an offer whose DTLS fingerprint is not the one our
         // remote description holds comes from a DIFFERENT RTCPeerConnection —
         // the peer REBUILT the pair (its starve kick while we were frozen,
@@ -14853,8 +14857,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const fp = fpOf(msg.sdp);
           const cur = p.pc ? (p.pc.remoteDescription ? fpOf(p.pc.remoteDescription) : (p.offerFp || '')) : '';
           if (p.pc && fp && cur && fp !== cur) {
-            if (typeof clog === 'function') clog('offer from a new pc: fresh pc for ' + String(from).slice(0, 6) + ' (was ' + p.pc.connectionState + '/' + p.pc.signalingState + ')');
-            newPcFor(p);
+            rebuildPc(p, 'offer-new-pc');
           }
           if (fp) p.offerFp = fp; }
         // A NEVER-OPENED pair is the other corpse class (pair-probe.js): ICE
@@ -14864,12 +14867,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // arriving for a pair that never carried a byte and never opened its
         // DC past formation age gets a fresh pc to land on.
         if (p.pc && p.connected && !(p.dc && p.dc.readyState === 'open') && !p.meshRxAt && !p.dcRxAt
-            && Date.now() - (p.rebuiltAt || p.bornAt) > 5000) newPcFor(p);
+            && Date.now() - (p.rebuiltAt || p.bornAt) > 5000) rebuildPc(p, 'offer-wedged');
         // A BOOTSTRAP OFFER (over the relay: a DataChannel-only description)
         // lands on a media-free transport: a pc that already carries media
         // had a channel that is now dead, and is rebuilt (sendOffer's rule,
         // on the answering side).
-        if (msg.boot && p.pc && p.mediaOn && !(p.dc && p.dc.readyState === 'open')) newPcFor(p);
+        if (msg.boot && p.pc && p.mediaOn && !(p.dc && p.dc.readyState === 'open')) rebuildPc(p, 'offer-boot');
         drainPreIce(from, p); // after any rebuild, which clears pendingIce
         // p.connected is LOAD-BEARING in that gate: the wedge signature is
         // connected-WITHOUT-DC. A pair still in ICE 'connecting' receiving an
@@ -14899,10 +14902,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // brings its own DataChannel. Their trickle already queued for
             // this offer is kept.
             if (noLiveTransport(p)) {
-              const queued = p.pendingIce;
-              newPcFor(p);
-              p.pendingIce = queued;
-              p.offering = null;
+              rebuildPc(p, 'glare-polite', { keepIce: true });
               accept();
               return;
             }
@@ -15098,7 +15098,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function pcCloseNow(pid, p) {
       if (peers.get(pid) !== p) return;
       if (!linkTo(pid)) { dropPeer(pid, true); return; }
-      newPcFor(p, true); p.byeSent = 0;
+      rebuildPc(p, 'close', { closing: true }); p.byeSent = 0;
       if (seatAsked(pid)) seatDial(pid);   // the seat re-dialled while the goodbye left
     }
     // My goodbye (the pc laws, or a refused offer), then the close: the channel is ordered, 300 ms lets it leave.
@@ -15215,7 +15215,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // pair's return (066ba4-room-six: 12.6 s). A dark offer is re-made after 2 s.
       if ((participantCount() <= 1 || !pLive) && !forming && iInitiate(p.id) && Date.now() - (p.fragDialAt || 0) > (darkOffer ? 2000 : 5000)) {
         p.fragDialAt = Date.now();
-        if (!pLive && p.pc) newPcFor(p);
+        if (!pLive && p.pc) rebuildPc(p, 'frag-dial');
         makePeer(p.id, null); sendOffer(p.id, false);
       }
     }
@@ -15278,7 +15278,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // A stale transport — an offer never answered, a pair dead since a
       // dark spell — is rebuilt: the door needs a fresh bootstrap, not a
       // renegotiation of a corpse.
-      if (p && p.pc) { newPcFor(p); if (p.neverUp === true && manyDoors) p.dialWait = Math.min(DOOR_REDIAL_CAP, (p.dialWait || 5000) * 2); }
+      if (p && p.pc) { rebuildPc(p, 'door-redial'); if (p.neverUp === true && manyDoors) p.dialWait = Math.min(DOOR_REDIAL_CAP, (p.dialWait || 5000) * 2); }
       // THE INITIATOR DIALS THE DOOR. A knocker's offer is also a name, and
       // that name is a dial request: the id-order initiator offers back
       // (onDialRequest). A polite knocker that offers too crosses that offer
@@ -17683,7 +17683,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         p.txKicks = n + 1; p.txKickAt = t; p.txProbe = null;
         if (typeof clog === 'function') clog('tx-stall ' + String(pid).slice(0, 6) + ' encoded ' + fe + ' frames total, none in ' + Math.round((t - q.at) / 1000) + 's: ' + (n < 2 ? 're-seat ' + (n + 1) : 'rebuild'));
         if (n < 2) { s.replaceTrack(null).then(() => new Promise((r) => setTimeout(r, 300))).then(() => { if (p.mainV === s && !p.remoteParkMain && !(p.mainHoldUntil && p.mainHoldUntil > Date.now()) && tr.readyState === 'live') return s.replaceTrack(tr); }).catch(() => {}); }
-        else { newPcFor(p); sendOffer(pid, false); }
+        else { rebuildPc(p, 'tx-stall'); sendOffer(pid, false); }
       }).catch(() => {});
     }
     GifOS.meshMedia.workerClock(2000, () => { for (const [pid, p] of peers) { try { txStallTick(pid, p); } catch (e) {} } });
@@ -17813,7 +17813,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           p.cureAt = now;
           p.lastKick = now + Math.random() * 1500;
           p.altPath = !p.altPath; // §FWD transport rotation — see sendSig
-          if (now - p.downSince > 25000) { newPcFor(p); sendOffer(pid); }
+          if (now - p.downSince > 25000) { rebuildPc(p, 'down-25s'); sendOffer(pid); }
           else sendOffer(pid, true);
         }
         // D5 (mesh early-probe): a pc sitting in 'failed' PAST the ICE-restart
@@ -17911,7 +17911,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               }
               p.sinkRebuiltAt = t; p.sinkProbe = null;
               if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' decoded ' + (fd - prev.fd) + ' in ' + Math.round((t - prev.at) / 1000) + 's, none shown: rebuild');
-              newPcFor(p);
+              rebuildPc(p, 'dead-sink');
               sendOffer(pid, false);
             }).catch(() => {});
           }
@@ -23132,7 +23132,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const now = Date.now();
       if (p.rebuildNegAt && now - p.rebuildNegAt < 8000) return;
       p.rebuildNegAt = now;
-      try { newPcFor(p); sendOffer(p.id, false); } catch (e2) {}
+      try { rebuildPc(p, 'neg-fail'); sendOffer(p.id, false); } catch (e2) {}
     }
     // PERFECT NEGOTIATION over the DataChannel: EITHER side may re-offer (a
     // fold sender must be able to open its own m-lines — an answer can never
@@ -23155,7 +23155,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (p.makingOffer || p.pc.signalingState !== 'stable') { p.renegAgain = true; return; }
       // The mark and the chain belong to this pc. A pc closed mid-offer never
       // settles its createOffer/setLocalDescription in Chromium, so a rebuild
-      // drops the mark (newPcFor); left set, the new pc never offered and held
+      // drops the mark (rebuildPc); left set, the new pc never offered and held
       // then dropped every offer the far end sent.
       const pc = p.pc, mark = {};
       p.makingOffer = mark;
@@ -24189,11 +24189,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const jk = key + '>' + to;
       const cur = mosJobs.get(jk);
       // ORPHANED BY A TRANSPORT SWAP? A job's senders belong to the pc they
-      // were added to. Replace that pc — newPcFor on a hard mobile network
+      // were added to. Replace that pc — rebuildPc on a hard mobile network
       // change, a long freeze, an ICE failure — and those senders can never
       // carry media again, yet the fast path below would happily RE-ANNOUNCE
       // this job forever, advertising a streamId the receiver can never
-      // resolve. newPcFor now drops these jobs itself, but this is the general
+      // resolve. rebuildPc now drops these jobs itself, but this is the general
       // guard: ANY path that swaps a pc is covered, not just the one we found.
       // Cheap: identity check of one sender against the live pc.
       const orphaned = !!(cur && cur.senders && cur.senders.length && p && p.pc
@@ -36025,7 +36025,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       rebuildPair: (pid) => {
         if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
         const p = peers.get(pid); if (!p) return { err: 'no such peer' };
-        newPcFor(p);
+        rebuildPc(p, 'debug');
         if (iInitiate(pid)) sendOffer(pid, false);
         return { ok: true, rebuilt: String(pid).slice(0, 8) };
       },
@@ -36061,7 +36061,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       rebuildPairForTest: (pid) => {
         if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
         const p = peers.get(pid); if (!p) return { err: 'no such peer' };
-        newPcFor(p); sendOffer(pid, false);
+        rebuildPc(p, 'debug'); sendOffer(pid, false);
         return { ok: true };
       },
       killDcForTest: (pid) => {
