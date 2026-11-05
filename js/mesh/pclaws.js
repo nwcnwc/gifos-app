@@ -717,7 +717,7 @@
       // the fabric halves, called by the tick (linkTick)
       l15Doors, l16Doors, l22Tick, l1611Guard,
       // the pieces the physics and the checks reach
-      pcBudget, l14Budget, l16Refuse, l23Refused, l23Full, l23Stretch, l1610Full, l1610Held, noteCall, dialHeld, doorEnd, doorHeard, l15Seated, l15Names, l15NamedBy,
+      pcBudget, l14Budget, l16Refuse, l23Refused, l23GreetSlot, l23Full, l23Stretch, l1610Full, l1610Held, noteCall, dialHeld, doorEnd, doorHeard, l15Seated, l15Names, l15NamedBy,
       l16Mobile, l16MobBudget, l16Close, l22Release, l23CloseAlone, l23MakeRoom, l23Suspect, l23RealRole, l23Word, l23WordPeek, linkWhy, l22Beside, l18Role, l18Dist, l18NoDial,
       fabricDoorFrom, linkHeld, l221Sent,
     };

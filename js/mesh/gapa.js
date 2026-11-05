@@ -104,7 +104,7 @@
     gaWindow() {
       const lv = this.w.lv;
       if (!this.gaLive() || !this.gaAsk.length) return false;
-      if (this.gaFreeN === 0 && this.TICK - this.moveAt <= 2 * K.CONFIRM_TTL) {   // L41.3: no word yet, and a pc to an asked seat is forming or open: the question has not had its window
+      if (this.TICK - this.moveAt <= 2 * K.CONFIRM_TTL) {   // L41.3, L41.4: a pc to a seat that has not answered is forming or open: its question has not had its window (a first "free" does not end the wait: the seat still silent may be the one that hears the holder)
         let wait = false;
         for (const x of this.gaAsk) {
           const ls = this.f.fabricLinkState(this.id, x);
