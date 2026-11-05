@@ -588,7 +588,7 @@
       if (!x || typeof x !== 'object') return;
       if (x.stub === 1) { stubTake(s, x, s1tab.get(k), 's1', from, slot); return; }
       const u = digSane(x); if (!u || u.by == null) return; rxDig(s, u); if (u.at < 0 || s.LT() - u.rx > DIG_TTL) return;
-      { const g = s.digForgot.get(k); if (g !== undefined && g[0] === ids.nid(u.by) && u.rx <= g[1] + 8 && s.LT() - g[1] <= DIG_TTL) return; }   // the seat's s1Take: a vacated cell's last report
+      { const g = s.digForgot && s.digForgot.get(k); if (g !== undefined && g[0] === ids.nid(u.by) && u.rx <= g[1] + 8 && s.LT() - g[1] <= DIG_TTL) return; }   // the seat's s1Take: a vacated cell's last report
       const cur = s1tab.get(k); if (cur && cur.by === u.by && !(u.at > cur.at)) return;   // same author, a newer author stamp wins
       if (cur && cur.by !== u.by && !(cur.rx <= u.rx)) return;   // the seat's s1Take: another author's report takes the slot only if received no earlier
       s1tab.set(k, u);
