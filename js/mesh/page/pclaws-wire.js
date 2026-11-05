@@ -446,7 +446,7 @@
       if (L.outside && L.dBorn >= 0) L.dProg = T();
       const s = mySeat(); if (s) { s.dials.opened(x); let hello = false; for (const [ck, v] of s.l13SplitCell) if (v[0] === x) { trace('L13.41-JOINED', me, null, 'peer=%d', x); s.l13SplitCell.delete(ck); hello = true; }
         if (!hello && !L.outside && s.hasCoord && s.state === 3) { let named = false; for (const v of s.occ.values()) if (v === x) { named = true; break; } if (!named) hello = true; }   // L13.41.2: a pc between members to a seat my view names nowhere (the page cannot read the far seat's state: a door pc is outside, every other pc is between members)
-        if (hello && s.l1341Hello.length < 64) s.l1341Hello.push(x); }
+        if (hello && s.l1341Hello.length < 64) s.l1341Hello.push(x); s.l213HeadPc(x); }
       if (L.wasOpen) trace('LINK-UP', me, null, 'peer=%d', x); L.wasOpen = true;
       const q = L.q; L.q = [];
       if (s && q.some((m) => seatM.l13Frame(m)) && seatM.roomTerm(s, -1)) pc.noteCall(me, x);
