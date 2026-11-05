@@ -17311,7 +17311,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         onByeHold: (pid) => { try { confirmGone(pid, 'bye'); } catch (e) {} },   // a page gone: its tile leaves at once, a reload brings it back
       });
       updateStatus(); applyAdminUi();
-      }).catch((err) => { clearTimeout(bootWatch); if (bootGen !== meshBootGen || meshNode) return; reArm('rejected ' + String(err && err.message || err).slice(0, 60)); });   // a throw after the node stood must not tear it down
+      }).catch((err) => { clearTimeout(bootWatch); if (bootGen !== meshBootGen || meshNode) return; booted = false; reArm('rejected ' + String(err && err.message || err).slice(0, 60)); });   // a throw after the node stood must not tear it down
     }
     // App-level relay frames the wire does not consume. The roster here is the
     // GREETER POOL, never the room \u2014 it drives door moderation only.
