@@ -66,6 +66,7 @@
       if (this.l25WitRival > this.l25WitMe) { this.trace('L25-OUTVOTED', this.id, this.coord, 'rival=%d me=%d asked=%d unanswered=%zu', this.l25WitRival, this.l25WitMe, this.l25WitAskedN, this.l25WitAsk.length); return 1; }
       if (this.l25WitMe > this.l25WitRival && 2 * this.l25WitMe > this.l25WitAskedN && this.l25WitMe >= K.L25_WIT_MIN) { this.trace('L25-WITNESSED', this.id, this.coord, 'rival=%d me=%d asked=%d unanswered=%zu', this.l25WitRival, this.l25WitMe, this.l25WitAskedN, this.l25WitAsk.length); return 2; }
       if (this.l371Keep()) { this.trace('L37.1-KEEP', this.id, this.coord, 'rival=%d me=%d asked=%d unanswered=%zu', this.l25WitRival, this.l25WitMe, this.l25WitAskedN, this.l25WitAsk.length); return 2; }
+      if (this.l258Rep && this.l25WitRival < 1) { this.trace('L25.8.1-UNWITNESSED', this.id, this.coord, 'rival=%d me=%d asked=%d unanswered=%zu', this.l25WitRival, this.l25WitMe, this.l25WitAskedN, this.l25WitAsk.length); return 2; }   // L25.8.1: a re-placement moves me only with one counted witness that hears the rival in my cell
       this.trace('L25-WITTHIN', this.id, this.coord, 'rival=%d me=%d asked=%d unanswered=%zu', this.l25WitRival, this.l25WitMe, this.l25WitAskedN, this.l25WitAsk.length); return 1;
     },
 
