@@ -15911,6 +15911,40 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // tap the console); production stays exactly as silent as before (null →
     // typeof 'object' → every guard stays false).
     const DEBUGFAIL_AT_LOAD = (() => { const m = /(?:^|[#&?])debugfail=([a-z-]+)/i.exec(location.hash + location.search); return m ? m[1].toLowerCase() : ''; })();   // read at load: the boot rewrites the hash later
+    // MEM SAMPLES (DEBUG only): every 30 s one small record of what this page holds, so a long room shows what only grows.
+    // JS heap (performance.memory where it exists), live workers, mesh/pc maps, pipe-worker queues, media tracks, pcs by state.
+    // Own ring (window.__memSamples, 240 records = 2 h), plus one MEM line in the mesh trace so it rides the participant's trace file. Numbers only: no ids, no names.
+    if (DEBUG_ON) {
+      const MS = window.__memSamples = window.__memSamples || [];
+      let workersLive = 0, workersMade = 0;
+      try {
+        const RW = window.Worker;
+        if (typeof RW === 'function' && !RW.__memCounted) {
+          const W = function (a, b) { const w = new RW(a, b); workersMade++; workersLive++; const t = w.terminate; w.terminate = function () { if (workersLive > 0) workersLive--; return t.apply(this, arguments); }; return w; };
+          W.prototype = RW.prototype; W.__memCounted = true; window.Worker = W;
+        }
+      } catch (e) {}
+      const sz = (x) => { try { return x == null ? null : (typeof x.size === 'number' ? x.size : (typeof x.length === 'number' ? x.length : null)); } catch (e) { return null; } };
+      const memSample = async () => {
+        const o = { t: Date.now() };
+        try { const m = performance.memory; if (m) { o.heapUsed = m.usedJSHeapSize; o.heapTotal = m.totalJSHeapSize; } } catch (e) {}
+        o.workersLive = workersLive; o.workersMade = workersMade;
+        try {
+          const pcs = {}; let recv = 0, send = 0, live = 0;
+          for (const v of peers.values()) { const pc = v && v.pc; if (!pc) continue; pcs[pc.connectionState] = (pcs[pc.connectionState] || 0) + 1; try { recv += pc.getReceivers().length; send += pc.getSenders().length; } catch (e) {} }
+          o.pcs = pcs; o.receivers = recv; o.senders = send;
+          const els = document.querySelectorAll('video,audio'); let withStream = 0, tracks = 0, liveTracks = 0;
+          for (const el of els) { const ms = el.srcObject; if (ms && ms.getTracks) { withStream++; for (const t of ms.getTracks()) { tracks++; if (t.readyState === 'live') liveTracks++; } } }
+          o.mediaEls = els.length; o.elStreams = withStream; o.elTracks = tracks; o.elLiveTracks = liveTracks;
+        } catch (e) {}
+        try { o.maps = { peers: sz(peers), seatAskAt: sz(seatAskAt), seatMark: sz(seatMark), bcTrace: sz(window.__bcTrace), traceRing: window.__meshTraceRing ? window.__meshTraceRing.ring.length : 0 }; } catch (e) {}
+        try { const s = meshSeat(); if (s) o.seat = { occ: sz(s.occ), sitting: sz(s.sitting) }; } catch (e) {}
+        try { const P = GifOS.meshPipe; if (P) { o.pipe = Object.assign({}, P._debugSizes ? P._debugSizes() : {}); const st = await P.stats(); let q = 0, n = 0; for (const k of Object.keys(st || {})) { n++; q += st[k].q || 0; } o.pipe.pipes = n; o.pipe.qFrames = q; } } catch (e) {}
+        MS.push(o); if (MS.length > 240) MS.splice(0, 40);
+        try { meshTraceSink(JSON.stringify({ t: 0, s: 0, e: 'MEM', c: null, d: JSON.stringify(o) })); } catch (e) {}
+      };
+      setInterval(() => { memSample().catch(() => {}); }, 30000);
+    }
     const clog = DEBUG_ON ? function () { try { console.log.apply(console, ['[clog]'].concat(Array.from(arguments))); } catch (e) {} } : null;
     function meshSelfReport() { // DEBUG-TREE
       const c = meshCoord(), s = meshSeat();
@@ -36251,6 +36285,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // The seat's decision trace (the sim's JSONL shape {t, s, e, c, d}) rides a page ring while DEBUG is on
       // (meshTraceSink, the seat world's trace sink); meet.js writes it into each participant's jsonl.
       meshTraceForTest: () => !!DEBUG_ON,
+      memSamples: () => (window.__memSamples ? window.__memSamples.slice() : []),
       meshTraceDump: () => { const G = window.__meshTraceRing; return G ? G.ring.map((e) => e[1]) : []; },
       meshForensics: (since) => {
         const G = window.__meshTraceRing || { ring: [], seq: 0 }; const s = meshSeat(); if (!s) return null;
