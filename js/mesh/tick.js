@@ -181,7 +181,7 @@
       if (roomTerm(this, 1) && TICK - this.seatedAt === 81) this.islandFork(this.lastGreeters);   // L8.3
       if (lv.LG_ON) this.lgTick();   // L29: my load ladder
       if (this.retireDead()) { this.f.wake(id); return true; }   // one owned link lost its channel; the higher id vacates
-      if (this.orphanSeat()) { let since = this.lkAnyAt; if (this.backAt > since) since = this.backAt; if (this.greetersAt > since + K.DARK_LEAVE && TICK - this.greetersAt >= 16 && (this.coord.pc !== 0 || this.d6cOther())) { this.f.fabricDropHalf(id); this.requeue('D6c-orphan'); this.f.wake(id); return true; } if (TICK - this.cutAskAt >= 24) { this.cutAskAt = TICK; this.emitRelay(this.genKey); } }   // D6c
+      if (this.orphanSeat()) { let since = this.d6cBeat(); if (this.backAt > since) since = this.backAt; if (this.greetersAt > since + K.DARK_LEAVE && TICK - this.greetersAt >= 16 && (this.coord.pc !== 0 || this.d6cOther())) { this.f.fabricDropHalf(id); this.requeue('D6c-orphan'); this.f.wake(id); return true; } if (TICK - this.cutAskAt >= 24) { this.cutAskAt = TICK; this.emitRelay(this.genKey); } }   // D6c
       if (this.darkSeat() && !this.d6Lease()) { this.dark6++; this.d6Mark = true; this.requeue('D6-dark'); this.f.wake(id); return true; }   // D6
       if (this.islanded() && TICK - this.islandSince() > K.LEASE_T && !(this.l13('L13.6') && this.l13Mass() && TICK - this.l13CrashAt <= 64)) { this.trace('ISLAND-OUT', id, this.coord, 'since=%lld', this.islandSince()); this.requeue('L3-island'); this.f.wake(id); return true; }   // L3.6b
       // T: transit bookkeeping: a claim window that closes with NO contradiction CONFIRMS; the tombstone self-expires (T3).
