@@ -17313,7 +17313,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         txStats.nosock++;
         if (m.to) { if (relayNoSock.size > 2048) relayNoSock.clear(); relayNoSock.set(m.to, Date.now()); }
         // A greeter's joiner has gone: stop dialling it, its door slot is free. (A joiner's greeter that has gone: the seat hears BUSY{nosock} and asks the next.)
-        { const pn = m.to && peers.get(m.to); if (pn && pn.neverUp && meshCoord() && meshNode && meshNode.transport) { try { meshNode.transport(m.to, 'unanswered'); } catch (e) {} } }
+        { const pn = m.to && peers.get(m.to); if (pn && pn.neverUp && meshCoord() && !coordKeyOf(m.to) && meshNode && meshNode.transport) { try { meshNode.transport(m.to, 'unanswered'); } catch (e) {} } }   // L33.13: a seat my view seats went deep, it did not go: no failed dial, the next offer walks (relayNoSock)
       }
       else if (m.t === 'peer' && m.msg) {
         // A relay frame of the law's shape (the wire refused every other
