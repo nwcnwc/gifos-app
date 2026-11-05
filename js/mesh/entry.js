@@ -110,12 +110,14 @@
           const s = state.newStruct('SoftSit'); s.joiner = e.v; s.assigner = owner; s.at = TICK; s.pingAt = -1; this.sitting.set(e.k, s);
         }
       }   // L7.7
+      if (this.lkAnyAt > this.lkCarried) this.lkCarried = this.lkAnyAt;   // D6c.2
       this.lkAnyAt = -1; this.unpAnyAt = -1; this.lkAt.clear(); this.unpAt.clear(); this.unpSince.clear(); this.darkHold.clear();   // D6
       if (this.l13Tell.length) { for (const v of this.l13Tell) { if (v < 0 || v === id) continue; this.f.fabricDialJoin(id, v); this.l13Answer(v, ckey(c)); } this.l13Tell.length = 0; }   // L13.4
       this.l20Out.clear(); this.l20Hold.clear();   // L20
       this.drainAt = 0; this.seatTries = 0; this.searchAt = -1; this.l917Ck = 0; this.seatedAt = TICK; this.rookSeenAt = TICK; this.rookEver = false; this.estAt = TICK; this.nbrAt = TICK; this.pendYBy = -1; this.challToId = -1; this.lateY.clear();   // grace
       // G: a seat change re-parents me; every digest relationship starts over.
       this.upLogI = 0; this.upSince = -1; this.lastAgg = -1; for (let q = 0; q < 16; q++) this.upLog[q] = state.newStruct('UpRec');
+      this.rootKeep = this.rootDig;   // L3.12.3
       this.downDig = msg.newDig(); this.downUsed = msg.newDig(); this.myDig = msg.newDig(); this.rowDig = msg.newDig(); this.rootDig = msg.newDig(); this.rootDec = msg.newDig(); this.l43Since = -1; this.l43Over = -1;
       // The handover hold (rollup).
       { const hold = K.CONFIRM_TTL + (this.lastPubDepth + 3) * K.DIG_HOLD_LEVEL; const s1Only = (this.lastPubDepth === 0 && c.pc === 0);
@@ -552,7 +554,7 @@
       const c = unckey(m.ck); const p = this.pinned.get(m.id); const ok = p !== undefined && p === m.tok;
       const cur = this.occGet(m.ck); const held = cur === m.id; const mm = this.memo.get(m.ck);
       const remembered = cur < 0 && mm !== undefined && mm.id === m.id && TICK - mm.at <= K.LEASE_T;
-      if (!ok || !(held || remembered)) { this.trace('RECLAIM-REFUSED', id, c, 'id=%d why=%s', m.id, !ok ? 'token' : (cur >= 0 ? 'held-by-other' : 'no-memory')); const r = newMsg('RECLAIMNO'); r.nc = m.id; this.emit(m.id, r); return; }
+      if (!ok || !(held || remembered)) { this.trace('RECLAIM-REFUSED', id, c, 'id=%d why=%s', m.id, !ok ? 'token' : (cur >= 0 ? 'held-by-other' : 'no-memory')); const r = newMsg('RECLAIMNO'); r.nc = m.id; if (ok && cur >= 0) r.tag = 3; this.emit(m.id, r); return; }   // L3.10.7
       this.rcHanded.set(m.ck, [m.id, TICK]);   // L3.10.4
       const nbrs = []; const ol = ownedLinks(c); const n = ol.length; for (let i = 0; i < n; i++) { const x = this.occGet(ckey(ol[i])); if (x >= 0 && x !== m.id) nbrs.push({ k: ckey(ol[i]), v: x }); }
       { const dk = ckey(down(c)); let has = false; for (const kv of nbrs) if (kv.k === dk) has = true; const h = this.childOf.get(m.ck); if (!has && h !== undefined && h >= 0 && h !== m.id) nbrs.push({ k: dk, v: h }); }   // L3.10.6

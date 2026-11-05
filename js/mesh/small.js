@@ -16,6 +16,7 @@
 
   // C++: mesh_small.inc:l30DeepWhy
   function l30DeepWhy(s) {
+    if (!s.w.lv.DIGEST) return 6;
     if (s.hasChildren()) return 1;
     if (s.occGet(ckey(down(s.coord))) >= 0) return 2;
     if (s.myDig.at >= 0 && s.myDig.n + s.myDig.leased > 1) return 3;

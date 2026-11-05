@@ -1138,7 +1138,7 @@
       });
       seat = layer.view; seat.answerDoor = answerHeld;
       penv = GifOS.meshPageEnv.create({
-        peer, ids: layer.ids, seat: () => raw,
+        peer, ids: layer.ids, seat: () => raw, tickMs,
         pc: Object.assign({}, opts.pc || {}, { send: (to, m, dir) => ((typeof opts.dcOpen !== 'function' || opts.dcOpen(to)) ? sendFrameTo(to, m, dir) : false) }),
         relay: {
           knock: (gk, blobOk) => { const k = gkStr(); /* the room's string, as every register presents it ('g' + hex): a decimal genKey was refused (admitted:false), and three refusals requeued a seated greeter */ if (blobOk && iAmAGreeter()) REGISTER_MYSELF_AS_A_GREETER(gk || k); else KNOCK_FOR_THE_GREETER_LIST(gk || k); },
@@ -1319,6 +1319,7 @@
       leave(reload) { if (reload && !sendHeldByes()) reload = false; try { if (raw) { if (penv && penv.leave) penv.leave(!!reload); else raw.leave(!!reload); } } catch (e) {} try { if (sock) sendRaw({ t: 'unlist' }); } catch (e) {} node.stop(); },   // goodbye to the peers, then off the greeter list, then the socket closes: no greeter-gone for a page leaving in order
       // Transport events from the page's pc/dc callbacks and watchdogs (env.js maps hard/quiet and debounces).
       remeasure() { if (!raw || !opts.measure) return; const n0 = opts.measure.nat() & 0xff; if (raw.cnat === raw.nat) raw.cnat = n0; raw.nat = n0; },   // a network verdict that lands after the join (seat.join reads it once)
+      doorWalked(pid) { if (penv && penv.doorWalked) penv.doorWalked(String(pid)); },
       doorForgive(pid) { if (penv && penv.doorForgive) penv.doorForgive(String(pid)); },
       transport(pid, ev, arg) { if (stopped || !penv) return undefined; try { return penv.transport(String(pid), ev, arg); } catch (e) { return undefined; } },
       dialHeld(pid) { if (stopped || !penv || !penv.dialHeld) return false; try { return penv.dialHeld(String(pid)); } catch (e) { return false; } },

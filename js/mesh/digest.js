@@ -504,7 +504,9 @@
           else if (this.scopeGap(k)) { R.part = 1; R.refuse += 1; this.digGap |= 4; }
         }
         dig.digTrim(R);
-        this.rootDig = R; if (!extra) { this.rootDec = dig.cloneDig(R); this.l43Fold(); }   // rootDec: the fold as the pulse made it, the one a decision may read (L5)
+        { let thin = false; if (this.TICK - this.seatedAt <= 16 && this.rootKeep.at >= 0 && R.n + R.leased < this.rootKeep.n + this.rootKeep.leased) { let nm = 0, fl = 0; for (const [ek, ev] of this.occ) { if (ek >= 65536 || ev < 0 || ek === ckey(this.coord)) continue; nm++; const t = this.s1tab.get(ek); if (t !== undefined && t.at >= 0 && this.LT() - t.rx <= K.LEASE_T) fl++; } thin = fl < nm; }
+          if (!thin) this.rootDig = R; else if (this.rootDig.at < 0) this.rootDig = this.rootKeep; }   // L3.12.3
+        if (!extra) { this.rootDec = dig.cloneDig(R); this.l43Fold(); }   // rootDec: the fold as the pulse made it, the one a decision may read (L5)
       } finally { this.findNc = svFind; }
     },
   });

@@ -56,7 +56,7 @@
       state: LK_NONE, view: [LK_NONE, LK_NONE], half: 0, stuck: false, leverHalf: false, wasOpen: false, carried: false,
       epoch: 0, openEp: 0, dialAt: -1, halfAt: -1, askAt: -1000000, txAt: [-1, -1], nnAt: [-1, -1], nnAsk: [-1000000, -1000000],
       arrAt: [-1, -1], q: [], outside: 0, dialBy: -1, dialT: -3, dialHow: 0, callClosed: false, gone: 0,
-      agreed: [false, false], hold: [[], []], closingAt: [-1, -1], farAsk: [-1000000, -1000000], uplink: false, dHeard: 0,
+      agreed: [false, false], hold: [[], []], closingAt: [-1, -1], farAsk: [-1000000, -1000000], uplink: false, dHeard: 0, dPlaced: 0,
       backAt: [-1, -1], dBorn: -1, dProg: -1, dAsked: false, dHomed: false, dGw: false, dIn: false, dSat: false, dHoAt: -1, dWait: -1,
       dOwed: false, dWaitAtFind: -1, dOwedAt: -1,
     };
@@ -716,7 +716,7 @@
       // the fabric halves, called by the tick (linkTick)
       l15Doors, l16Doors, l22Tick, l1611Guard,
       // the pieces the physics and the checks reach
-      pcBudget, l14Budget, l16Refuse, l23Refused, l23Full, l23Stretch, l1610Full, l1610Held, noteCall, dialHeld, doorEnd, doorHeard, l15Seated, l15Names, l15NamedBy,
+      pcBudget, l14Budget, l16Refuse, l23Refused, l23GreetSlot, l23Full, l23Stretch, l1610Full, l1610Held, noteCall, dialHeld, doorEnd, doorHeard, l15Seated, l15Names, l15NamedBy,
       l16Mobile, l16MobBudget, l16Close, l22Release, l23CloseAlone, l23MakeRoom, l23Suspect, l23RealRole, l23Word, l23WordPeek, linkWhy, l22Beside, l18Role, l18Dist, l18NoDial,
       fabricDoorFrom, linkHeld, l221Sent,
     };

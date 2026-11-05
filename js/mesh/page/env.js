@@ -164,7 +164,8 @@
     const w = seatM.newWorld({ levers: lv, trace: sink ? traceLine : null });
     // A page's clock starts far from 0. The law reads a stamp older than my clock's start as 0, and in the sim all seats share one clock; on a page
     // starting at 0 every seat older than my page lost its true birth, so a lone seat founded minutes ago read as older than the room (L16.7).
-    w.TICK = 1 << 24;
+    // The same clock across a reload of one identity: the seat's digest stamps (Dig.at) must keep rising, or mates refuse the returning page's report until it outlives the old one, and read the room short meanwhile.
+    w.TICK = (1 << 24) + Math.floor((Date.now() - 1700000000000) / (o.tickMs || 500));
     const seat = () => (typeof o.seat === 'function' ? o.seat() : null);
     let woken = false, dead = false, closeAt = -1;
     const bus = new Map();        // tick -> frames for my seat (synthesized: GREETERS, BUSY, deliveries the laws post)
@@ -598,7 +599,7 @@
     function stats() { return Object.assign({ tick: w.TICK, me, ids: ID.size(), woken, dead }, JSON.parse(JSON.stringify(st))); }
 
     const env = {
-      me, world: w, traces: () => ring.slice(), ids: ID, f: F, pcw, tick, frame, transport, doorForgive: (peer) => { const x = learnPeer(peer); if (x >= 0 && pcw.doorForgive) pcw.doorForgive(x); }, dialHeld: (peer) => { const x = learnPeer(peer); return x >= 0 && !!pcw.dialHeld && pcw.dialHeld(x); }, relayFrame, absence, leave, stats, links,
+      me, world: w, traces: () => ring.slice(), ids: ID, f: F, pcw, tick, frame, transport, doorWalked: (peer) => { const x = learnPeer(peer); if (x >= 0) pcw.doorWalked(x); }, doorForgive: (peer) => { const x = learnPeer(peer); if (x >= 0 && pcw.doorForgive) pcw.doorForgive(x); }, dialHeld: (peer) => { const x = learnPeer(peer); return x >= 0 && !!pcw.dialHeld && pcw.dialHeld(x); }, relayFrame, absence, leave, stats, links,
       dirFor, learnDir, relayBusyList,
       // the mark my answer to peer carries back to it (A2), for the pc layer's answer
       mark: (peer) => { const x = ID.pid(ID.nid(peer)) === String(peer) ? ID.nid(peer) : learnPeer(peer); return x >= 0 && pcw.mark ? pcw.mark(x) : null; }, farView: (to) => farView(seat(), to),
