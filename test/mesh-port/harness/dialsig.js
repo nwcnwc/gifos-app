@@ -27,6 +27,8 @@ function install(fab) {
     const at = HEARD.get(idPair(me, to)); return at !== undefined && TICK() - at < SIG_NOSOCK_T;
   };
   const sigHeard = (me, from) => { if (HEARD.size > 2048) HEARD.clear(); HEARD.set(idPair(me, from), TICK()); NOSOCK.delete(idPair(me, from)); };
+  // C++: mesh_dialsig_fab.inc:sigHeardQ
+  const sigHeardQ = (from, to) => { if (!sigSock(from) || !NOSOCK.has(idPair(to, from))) return; sigHeard(to, from); };
   const sigCarries = (a, b) => {
     if (!lk().pathOk(a, b)) return false; const L = lk().linkFind(a, b); if (!L || L.state !== E.LK_OPEN || (L.half & (1 << lEnd(a, b)))) return false;
     const sv = fab.severedUntil.get(fab.pairKey(a, b)); if (sv !== undefined && sv > TICK()) return false;
@@ -109,6 +111,6 @@ function install(fab) {
     }
     lk().levPush(TICK() + sigGap(L, a, b, n, init), lk().EV_SIGO, a, b, L.epoch, 'sig', n + 1);
   };
-  fab.plug({ sigEvent, sigReset });
+  fab.plug({ sigEvent, sigReset, sigHeardQ });
 }
 module.exports = { install };

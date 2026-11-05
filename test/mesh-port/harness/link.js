@@ -289,6 +289,7 @@ function install(fab) {
         { lv.L16_DEFER = false; if (l16Refuse(from, to, m.t)) { if (lv.L16_DEFER) { lv.L16_DEFER = false; deferDoor(from, to, m, L); } return; } }
         startDial(from, to, L); L.dialT = mtIdx(m.t); m.from = from; m.to = to; if (L.q.length < K.LINK_QCAP) L.q.push(m); LTX[from] = TICK(); return;
       case LK_DIALING:
+        if (L.dialBy !== from && L.sigAt < 0 && X.sigHeardQ) X.sigHeardQ(from, to);   // L3.15.1
         if (L.dialT < 0) L.dialT = mtIdx(m.t); m.from = from; m.to = to; if (L.q.length < K.LINK_QCAP) L.q.push(m); LTX[from] = TICK(); return;
       case LK_CLOSED:
         LTX[from] = TICK();
@@ -386,7 +387,7 @@ function install(fab) {
   // C++: mesh_link.inc:linkCrash
   const relayLists = (x) => { const t = fab.relayGreeters.get(x); return t !== undefined && t >= TICK() && !fab.sockClosed(x); };
   // C++: mesh_link.inc:l15LastLink
-  const l15LastLink = (x, y) => { for (const p of LINKPEERS[x]) { if (p === y) continue; const L = linkFind(x, p); if (L && L.state === LK_OPEN) return false; } return true; };
+  const l15LastLink = (x, y) => { for (const p of LINKPEERS[x]) { if (p === y) continue; const L = linkFind(x, p); if (L && L.state === LK_OPEN && (!L.outside || l15Names(x, p) || l15NamedBy(x, p))) return false; } return true; };
   const linkCrash = (id) => {
     lEnsure(id); const ps = LINKPEERS[id].slice(); const told = relayLists(id);
     if (told) for (const p of fab.relayGreeters.keys()) { if (p === id || p >= nextId() || !alive[p] || !relayLists(p)) continue; const m = seats[p].goneBye(id); if (m) { m.to = p; m.from = id; fab.busPush(TICK() + 1, m); } }
@@ -711,6 +712,8 @@ function install(fab) {
   // l23Refused: one copy, the laws' (js/mesh/pclaws.js, plugged over this file's names by pclaws-fab.js). The link
   // physics' own dial paths reach it through fab.X so both see one decision.
   const l23Refused = api.l23Refused = (me, from, mt = null, ck = 0) => X.l23Refused(me, from, mt, ck);
+  // C++: mesh_link.inc:fabricDropHalf
+  api.fabricDropHalf = (me) => { if (!lv.LINKMODEL) return; lEnsure(me); const ps = LINKPEERS[me].slice(); for (const x of ps) { const L = linkFind(me, x); if (L && L.state === LK_OPEN && (L.half & (1 << lEnd(me, x)))) l22Close(me, x); } };
   // C++: mesh_link.inc:l23CloseAlone
   const l23CloseAlone = (me, x, strike = true) => {
     const L = linkFind(me, x); if (!L || L.state !== LK_OPEN) return; l22Close(me, x); lv.L23_CLOSED++; if (strike) l23Strike(me, x); trace('L23-CLOSE', me, null, 'peer=%d strike=%d', x, strike ? 1 : 0);
@@ -926,6 +929,7 @@ function install(fab) {
     linkTick, linkSchedule, linkOpenFor, linkFind, closeFrom, linkBlackhole, linkOnLeave, crashTransport, linkReset, closedDrop,
     fabricLinkState, fabricDial, fabricDialJoin, fabricDialUplink, fabricDialFails, fabricUpTake, fabricUpDecline, fabricDoorDrop,
     fabricDoorHanded, fabricMyDoors, fabricMyKnocks, fabricNoSock, fabricL23Busy, fabricCallFrame,
+    fabricDropHalf: api.fabricDropHalf,
     l22Quiet, l22Close, l22CloseAsk, l22Agree, l222Note,
     // for the friend-hop unit (fhop.js reads these names from fab.X)
     linkPeers: (id) => (id >= 0 && id < LINKPEERS.length) ? LINKPEERS[id] : [], linkGet, lEnsure, linkTx: (id) => { LTX[id] = TICK(); }, startDial,
