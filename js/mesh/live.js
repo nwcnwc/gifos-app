@@ -642,7 +642,7 @@
       { const t = this.tenOf.get(ck); if (t !== undefined && t[0] === x) bm.tn = t[1]; }
       if (c.pc === 0) { bm.child = this.occGet(ckey(down(c))); for (const o of ownedLinks(c)) { const lk = ckey(o), y = this.occGet(lk); if (y >= 0 && y !== x && o.pc === 0) bm.nbrs.push({ k: lk, v: y }); } }
       if (this.l13('L13.7')) bm.kids = bm.child >= 0;
-      return bm;
+      this.l3108Id = x; this.l3108Ck = ck; this.l3108At = TICK; return bm;
     },
 
     // C++: mesh_seat.inc:Seat::leave
