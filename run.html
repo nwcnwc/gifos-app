@@ -13080,7 +13080,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // the target. Sealed under the room key the whole way (the relay carries
     // only opaque {t:'peer'} ciphertext — R2 unchanged); dedup kills loops.
     const coordKeyOf = (pid) => { const s = meshSeat(); if (s) { for (const [k, v] of s.occ) if (v === pid) return k; } return null; };
+    // An envelope id names its page LOAD as well as its sender: forwarders and targets drop an id they have
+    // seen (loop-kill, dedup), and they keep ids for a long time in a quiet room. A page back from a reload
+    // that counted from one again reused its old ids, so its first envelopes after the reload (its answer to
+    // a row-mate's offer) were dropped as loops by the very seat that carried them: the pair waited for the
+    // mate's offer to go stale and rebuild through the door (8-14 s).
     let fwdSeq = 0;
+    const fwdEpoch = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const fwdId = (tag) => myId + ':' + fwdEpoch + ':' + (tag ? tag + ':' : '') + (++fwdSeq);
     const fwdSeen = new Map(); // envelope id -> at (hop dedup / loop-kill)
     function fwdSeenNote(map, id, now) {
       if (!id || !map) return;
@@ -13330,7 +13337,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // path over the mesh's channels. None of them is a relay type.
         if (msg.kind !== 'appstop') return;
         const m2 = sigSansIce(to, msg);
-        if (m2) { if (sponsorSend({ k: 'fsig', from: myId, to, tc: coordKeyOf(to), id: myId + ':' + (++fwdSeq), ttl: 12, m: m2 })) txStats.fwdSig++; }
+        if (m2) { if (sponsorSend({ k: 'fsig', from: myId, to, tc: coordKeyOf(to), id: fwdId(), ttl: 12, m: m2 })) txStats.fwdSig++; }
         return;
       }
       // POST-JOIN SIGNALING ON THE PAIR'S OWN CHANNEL (docs/meet-security.md §FWD):
@@ -13367,7 +13374,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (relayDown || targetUnreachable || mediaDesc || !mayRelay) {
         const m2 = sigSansIce(to, msg);
         if (!m2) return; // a blocked pair sends nothing on either path (fault injection)
-        if (sponsorSend({ k: 'fsig', from: myId, to, tc: coordKeyOf(to), id: myId + ':' + (++fwdSeq), ttl: 12, m: m2 })) { txStats.fwdSig++; return; }
+        if (sponsorSend({ k: 'fsig', from: myId, to, tc: coordKeyOf(to), id: fwdId(), ttl: 12, m: m2 })) { txStats.fwdSig++; return; }
         if (mediaDesc) { txStats.relayUnfit++; return; } // no friend's channel either: the sweeper's next attempt rebuilds and bootstraps (sendOffer)
         if (!mayRelay) return;
       }
@@ -15126,7 +15133,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // it from there). A channel-less newcomer gets it over the mesh's
     // DataChannel hops (fhi), or on its first channel opening (wireDc).
     function deliverLateHi(pid, hi) {
-      sponsorSend({ k: 'fhi', from: myId, to: pid, tc: coordKeyOf(pid), id: myId + ':hi:' + (++fwdSeq), ttl: 12, m: hi });
+      sponsorSend({ k: 'fhi', from: myId, to: pid, tc: coordKeyOf(pid), id: fwdId('hi'), ttl: 12, m: hi });
     }
     // A DIAL REQUEST to the id-order initiator of a pair that is not forming:
     // no channel, nothing being negotiated on my side, and nothing heard from
@@ -16171,7 +16178,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // have-local-offer forever on one side and stable/dc:null on the other.
       // Sponsor EVERY channel-less mesh frame; if the target really does hold a
       // socket, door/hopRelay still reaches it.
-      if (sponsorSend({ k: 'fmesh', from: myId, to, tc: coordKeyOf(to), id: myId + ':' + (++fwdSeq), ttl: 12, m })) { txStats.fwdMesh++; return true; }
+      if (sponsorSend({ k: 'fmesh', from: myId, to, tc: coordKeyOf(to), id: fwdId(), ttl: 12, m })) { txStats.fwdMesh++; return true; }
       return false; // no path at all
     };
 
