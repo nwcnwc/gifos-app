@@ -513,6 +513,7 @@
     FHM_PEAKAT: -1,   // C++: mesh_fhop.inc:FHM_PEAKAT
     FHM_PEAKSEAT: -1,   // C++: mesh_fhop.inc:FHM_PEAKSEAT
     FHM_PEAKRELAYERS: 0,   // C++: mesh_fhop.inc:FHM_PEAKRELAYERS
+    SIG_RTSEQ: 0,   // C++: mesh_dialsig_fab.inc:SIG_RTSEQ
     HOSTILE_N: 0,   // C++: mesh_hostile.inc:HOSTILE_N
     HOST_OUT: 0,   // C++: mesh_hostile.inc:HOST_OUT
     HOST_ON: false,   // C++: mesh_hostile.inc:HOST_ON
@@ -622,6 +623,7 @@
     EV_DSMALL: 8,   // C++: mesh_link.inc:EV_DSMALL
     EV_SIGO: 9,   // C++: mesh_link.inc:EV_SIGO
     EV_SIGA: 10,   // C++: mesh_link.inc:EV_SIGA
+    EV_SIGN: 11,   // C++: mesh_link.inc:EV_SIGN
     PB_DOORS: 0,   // C++: mesh_link.inc:PB_DOORS
     PB_KNOCKS: 1,   // C++: mesh_link.inc:PB_KNOCKS
     PB_S1: 2,   // C++: mesh_link.inc:PB_S1

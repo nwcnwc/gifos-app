@@ -340,6 +340,8 @@
         } else if (!directLink && doors && !s.hasCoord && F.fabricLinkState(from, to) === LS_OPEN) {
           /* L16.3: a seeker outside with an open door to a seated seat hands its frame over that door */
         } else if (!directLink && doors && !vIn && s.hasCoord && s.state === 3 && m.t !== 'HOME' && m.gwc) {
+          // L16.3.3: a seat with no socket cannot signal a door to a seeker (no seat to walk to, the greeter's door closed): the answer climbs to my Section-1 ancestor, whose socket does.
+          if (!s.socketed() && s.coord.pc !== 0 && !m.adoor && !m.routing) { let an = s.coord; for (let q = 0; q < 16 && an.pc !== 0; q++) { const u = topo.up({ pc: an.pc, r: an.r, i: 0 }); if (!u) break; an = u; } if (an.pc === 0) { s.route(an, to, msg.clone(m)); return; } }
           /* L16.3: a deep seat's answer to a joiner outside rides a door of its own, dialled for it */
         } else if (!directLink) {
           if (doors && s.socketed() && farSock(fv) && s.hasCoord && s.state === 3 && fv.seat === -1 && fv.gw >= 0 && fv.gw !== from && fv.gcOk && F.fabricLinkState(from, to) !== LS_OPEN && F.fabricLinkState(from, to) !== LS_DIALING) { s.route(fv.gc, to, msg.clone(m)); return; }
