@@ -299,6 +299,7 @@
           if (chain) { const hk = ckey({ pc: 0, r: t - 1, i: 0 }); const hd = this.sitting.get(hk); chain = (this.hasCoord && ckey(this.coord) === hk) || (hd !== undefined && hd.assigner === id && !this.occ.has(hk)); }   // the row above's head is me, or still my vouch
           if (!prevFull && !chain && !this.l33DeadRow(t - 1)) { break; }   // L33.14
         }
+        if (this.l33DeadRow(t)) { rowHeld[t] = false; rowSeen[t] = false; }   // L33.14
         const liveRow = rowLive[t], everSeen = rowSeen[t];
         // A VACATED row is not a corpse. RESURRECTION exists for a row that DIED wholesale.
         if (!liveRow && everSeen && rowHeld[t]) {

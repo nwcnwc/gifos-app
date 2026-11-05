@@ -39,6 +39,7 @@
     l33DeadRow(r) {
       const id = this.id;
       if (!this.hasCoord || this.state !== 3 || this.coord.pc !== 0 || this.coord.r === r || this.TICK - this.seatedAt < K.LEASE_T) return false;
+      { let full = true; for (let j = 0; j < C; j++) if (!this.occ.has(ckey({ pc: 0, r, i: j }))) full = false; if (full) return false; }
       for (let j = 0; j < C; j++) {
         const k = ckey({ pc: 0, r, i: j }); const x = this.occGet(k);
         if (this.softSitting(k) || this.sitting.has(k) || this.firstHandLive(k) || this.s1Fresh(k)) return false;
