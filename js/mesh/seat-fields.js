@@ -871,6 +871,7 @@
     ["l4Old", "<i32>"],   // OSet<int>  (line 1872)
     ["l842Join", "<i32>"],   // OSet<int>  (line 1873)
     ["l13SplitCell", "{u64:(i32,i32)}"],   // OMap<uint64_t,pair<int,int>>  (line 1873)
+    ["l13Across", "{i32:i32}"],   // OMap<int,int>  (line 1873)
     ["lgLd", "[i32;3]"],   // int[3] = {0,0,0}  (line 1875)
     ["lgBud", "i32"],   // int = 0  (line 1875)
     ["lgBud0", "i32"],   // int = 0  (line 1875)

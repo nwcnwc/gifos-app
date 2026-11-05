@@ -456,7 +456,7 @@
       L.state = LK_OPEN; L.openEp = L.epoch; L.half = 0; L.halfAt = -1; L.stuck = false; L.view[0] = L.view[1] = LK_OPEN; L.opened = true;
       L.byeIn = L.byeOut = false; L.callClosed = false; L.gone = 0;   // a new pc: the last one's close says nothing about it
       if (L.outside && L.dBorn >= 0) { L.dProg = T(); L.dOpenAt = T(); }
-      const s = mySeat(); if (s) { s.dials.opened(x); let hello = false; for (const [ck, v] of s.l13SplitCell) if (v[0] === x) { trace('L13.41-JOINED', me, null, 'peer=%d', x); s.l13SplitCell.delete(ck); hello = true; }
+      const s = mySeat(); if (s) { s.dials.opened(x); let hello = s.l13Across.delete(x); for (const [ck, v] of s.l13SplitCell) if (v[0] === x) { trace('L13.41-JOINED', me, null, 'peer=%d', x); s.l13SplitCell.delete(ck); hello = true; }
         if (!hello && !L.outside && s.hasCoord && s.state === 3) { let named = false; for (const v of s.occ.values()) if (v === x) { named = true; break; } if (!named) hello = true; }   // L13.41.2: a pc between members to a seat my view names nowhere (the page cannot read the far seat's state: a door pc is outside, every other pc is between members)
         if (hello && s.l1341Hello.length < 64) s.l1341Hello.push(x); s.l213HeadPc(x); }
       if (L.wasOpen) trace('LINK-UP', me, null, 'peer=%d', x); L.wasOpen = true;

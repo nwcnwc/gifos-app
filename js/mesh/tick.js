@@ -73,8 +73,17 @@
         this.trace('REDIAL', id, ol[q], 'peer=%d gap=%d', x, it[1]);
         this.f.fabricDial(id, x); it[0] = TICK + it[1]; it[1] = Math.min(it[1] * 2, K.REDIAL_MAX);
       }
+      for (const [x, at] of Array.from(this.l13Across)) {   // L13.41.3: a peer my dials proved alive across a split stays dialled after my view gave its cell to a mate of my side, while each failed dial still proves it alive (else it ages out): the first that opens is L13.41.2's meeting
+        if (x === id || TICK - at > K.RELAY_TTL) { this.l13Across.delete(x); continue; }
+        let own = false; for (let q = 0; q < n && !own; q++) if (this.occGet(ckey(ol[q])) === x) own = true; if (own) continue;
+        const ls = this.f.fabricLinkState(id, x); if (ls === LS_OPEN || ls === LS_DIALING) continue;
+        let it = this.redial.get(x); if (it === undefined) { it = [TICK, K.REDIAL_GAP]; this.redial.set(x, it); }
+        if (TICK < it[0]) continue;
+        this.trace('REDIAL', id, this.coord, 'peer=%d gap=%d across=1', x, it[1]);
+        this.f.fabricDial(id, x); it[0] = TICK + it[1]; it[1] = Math.min(it[1] * 2, K.REDIAL_MAX);
+      }
       if (this.dials.heldN() > 64) { const nm = new Set(); for (const v of this.occ.values()) nm.add(v); this.dials.sweepHeld(TICK, (x) => nm.has(x)); }   // L17: a seat nobody in my view names is one I have no reason to dial; its mark goes
-      if (this.redial.size > MAXLINKS) { for (const x of Array.from(this.redial.keys())) { let named = false; for (let q = 0; q < n && !named; q++) if (this.occGet(ckey(ol[q])) === x) named = true; if (!named) this.redial.delete(x); } }   // forget peers I no longer name
+      if (this.redial.size > MAXLINKS) { for (const x of Array.from(this.redial.keys())) { let named = false; for (let q = 0; q < n && !named; q++) if (this.occGet(ckey(ol[q])) === x) named = true; if (!named && !this.l13Across.has(x)) this.redial.delete(x); } }   // forget peers I no longer name
     },
 
     // C++: mesh_seat.inc:Seat::tick
