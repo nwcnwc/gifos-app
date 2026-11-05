@@ -1,6 +1,6 @@
 /*
  * meet-views.js — place comfy tiles, show the stadium whole, drag the bar.
- * Geometry comes from meet-layout.js. This file touches the DOM and nothing
+ * Geometry comes from meet-zones.js and meet-layout.js. This file touches the DOM and nothing
  * about peers: the page hands it elements and numbers.
  *
  * The row is the direct feeds the page passes in. The stadium is one
@@ -721,15 +721,7 @@
     const MZ = GifOS.meetZones;
     const byId = {};
     for (let i = 0; i < tiles.length; i++) byId[tiles[i].id] = tiles[i];
-    let lay = MZ ? zonesLayout(MZ, tiles, box, Object.assign({}, opts, { stadCount: allFaces.length })) : ML.layoutFor({
-      mode: opts.mode || 'gallery',
-      tiles: tiles,
-      box: box,
-      phone: !!opts.phone,
-      swapSelf: !!opts.swapSelf,
-      self: opts.self != null ? opts.self : (opts.selfView || 'tile'),
-      gallery: opts.gallery === 'scroll' ? 'scroll' : 'fit',
-    });
+    let lay = zonesLayout(MZ, tiles, box, Object.assign({}, opts, { stadCount: allFaces.length }));
     // Stopping the faces above Record must not shrink a phone face under the
     // 96px Fit floor (a 320x460 SE made seven 76x108 slivers). Then the faces
     // fill the screen and the dock floats over them (Nathan 2026-10-19 16:42).
