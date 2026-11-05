@@ -587,8 +587,8 @@
         let again = false;
         for (let q = 0; q < kids.length; q++) {
           const sd = this.l10DgTo.get(kids[q]);
-          if (sd !== undefined && TICK - sd < K.L10_EARLY_GAP) { let retry = false; { const shown = this.rootDig.n + this.rootDig.leased; const pn = this.l10DgN.get(kids[q]); if (pn === undefined || pn !== shown) retry = true; } if (retry) again = true; continue; }
-          this.l10DgTo.set(kids[q], TICK); this.l10DgN.set(kids[q], this.rootDig.n + this.rootDig.leased); this.emit(kids[q], b);
+          if (sd !== undefined && TICK - sd < K.L10_EARLY_GAP) { let retry = false; { const sig = dig.digSig(this.rootDig) | 0; const pn = this.l10DgN.get(kids[q]); if (pn === undefined || pn !== sig) retry = true; } if (retry) again = true; continue; }
+          this.l10DgTo.set(kids[q], TICK); this.l10DgN.set(kids[q], dig.digSig(this.rootDig) | 0); this.emit(kids[q], b);
         }
         if (again) this.l10DirtyDn = true;   // the beat just filled this kid's early slot, so the fold waits out the gap
       }

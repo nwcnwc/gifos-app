@@ -195,8 +195,10 @@
     // C++: mesh_link.inc:doorEnd   [end]
     function doorEnd(L, me, x) {
       if (!L.outside) return false;
-      if ((L.outside & (1 << lEnd(me, x))) && !l15Seated(me)) return true;
-      if ((L.outside & (1 << lEnd(x, me))) && !doorHeard(L, me, x)) return true;
+      const mine = (L.outside & (1 << lEnd(me, x))) !== 0, far = (L.outside & (1 << lEnd(x, me))) !== 0;
+      if (mine && far) { const s = seats[me]; return !(s.hasCoord && s.state === 3); }   // K5.1: a connection both ends dialled from outside is a door at this end only while this end has no seat; once seated, the no-reason close owns it
+      if (mine && !l15Seated(me)) return true;
+      if (far && !doorHeard(L, me, x)) return true;
       return false;
     }
     // C++: mesh_link.inc:fabricDoorHeard   [end]
