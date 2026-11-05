@@ -17539,7 +17539,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       lgLvlShown = lvl;
       if (lvl >= 1) { for (const jk of lgWoken) setJobActive(jk, false); lgWoken.clear(); }
       const fps = compFps();
-      for (const pk of [prodPack, sdPack, ...sdnPacks.values(), ...l14Packs.values()]) { try { if (pk) pk.setFps(fps); } catch (e) {} }
+      for (const pk of [prodPack, sdPack, ...sdnPacks.values(), ...l14Packs.values(), ...l14RelPacks.values()]) { try { if (pk) pk.setFps(fps); } catch (e) {} }
       try { adapt(); } catch (e) {}
     }
     GifOS.meshMedia.workerClock(1000, () => { try { lgLevelTick(); } catch (e) {} });
