@@ -35428,7 +35428,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return { ok: true, ended: !vt || vt.readyState === 'ended', n: stopped.length };
       },
       participants: headerCount, // the header counts every face on the grid, including a bot the ladder has not seated
-      shareInvite: () => { const b = document.getElementById('appinvite'); if (b) b.click(); },
       markJoinedForTest: (id) => {
         const pid = String(id || 'peer').slice(0, 80);
         if (pid && !rosterIds.includes(pid)) rosterIds.push(pid);
@@ -35562,39 +35561,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       liveLinks: () => Array.from(peers.values()).filter((p) => p.connected).length,
       // ICE AND an open DataChannel — the gate every data-path assertion must
       // use: a half-open pair passes liveLinks and carries nothing (pair-probe.js).
-      doorDropped: () => doorDropped, doorDropKinds: () => doorDropKinds,
       liveDataLinks: () => Array.from(peers.values()).filter((p) => p.connected && p.dc && p.dc.readyState === 'open').length,
-      txKindBytes: () => Object.assign({}, txKindBytes), // channel bytes sent, by kind
       txStats: () => Object.assign({}, txStats), // heartbeat transport split (relay vs DC vs sponsor hops)
       // REACH: the meeting-wide connectivity verdict (REACH_MSG): state id
       // ('udp-blocked' | 'cannot-reach-room' | 'outsiders-cannot-reach-me' |
       // 'partial' | null) with the live/dead pair counts, the people count
       // and this network's probe verdict behind it.
       reachState: () => reachInfo(),
-      // RTP counters per pair (by screen name), and the candidate types the
-      // pair's selected path uses: what crosses each connection, measured.
-      turnRtp: async () => {
-        const out = [];
-        for (const p of peers.values()) {
-          const rec = { name: rosterNames[p.id] || p.name || null, inbound: [], outbound: [], local: null, remote: null };
-          if (p.pc) {
-            try {
-              const rep = await p.pc.getStats();
-              const byId = new Map(); rep.forEach((x) => byId.set(x.id, x));
-              rep.forEach((x) => {
-                if (x.type === 'inbound-rtp') rec.inbound.push({ kind: x.kind, mid: x.mid, packets: x.packetsReceived || 0, bytes: x.bytesReceived || 0, energy: x.totalAudioEnergy || 0, frames: x.framesDecoded || 0 });
-                else if (x.type === 'outbound-rtp') rec.outbound.push({ kind: x.kind, mid: x.mid, packets: x.packetsSent || 0, bytes: x.bytesSent || 0 });
-                else if (x.type === 'transport' && x.selectedCandidatePairId) {
-                  const cp = byId.get(x.selectedCandidatePairId);
-                  if (cp) { rec.local = (byId.get(cp.localCandidateId) || {}).candidateType || null; rec.remote = (byId.get(cp.remoteCandidateId) || {}).candidateType || null; }
-                }
-              });
-            } catch (e) { rec.err = String(e).slice(0, 60); }
-          }
-          out.push(rec);
-        }
-        return out;
-      },
       // Every close code the relay socket saw in this node's life, newest
       // last ({code, at}) — a policy cut reads differently from a drop.
       relayCloses: () => { try { return meshNode ? meshNode.stats().closes : []; } catch (e) { return []; } },
@@ -35811,11 +35784,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // folded per-stager audio. -1 = no ear/no stream. The 2026-07-29 bar:
       // a room must HEAR its stage, not merely hold the feed (held keys and
       // "active" fan jobs stayed green through a fully silent stage).
-      rebroadcastStreamForTest: () => (rbNow && rbNow.v ? new MediaStream([rbNow.v, rbNow.a].filter(Boolean)) : null),
-      stageViaForTest: () => { for (const [k, f] of mosIn) if (k.indexOf('stg:') === 0 && k !== 'stg:' + myId) return { via: String(f.via).slice(0, 8), me: String(myId).slice(0, 8) }; return null; },
       rebroadcastForTest: () => (rbNow ? { pos: rbNow.vid.currentTime, len: rbNow.vid.duration, paused: rbNow.vid.paused, title: rbNow.title, sending: !!rbNow.v, vId: rbNow.v ? rbNow.v.id : '' } : null),
-      // The stage feed this phone receives (stream with picture and sound).
-      stageFeedForTest: () => { for (const [k, f] of mosIn) if (k.indexOf('stg:') === 0 && k !== 'stg:' + myId && f.stream) return f.stream; return null; },
       chatForTest: () => Array.from(chat.values()).map((m) => String(m.text || "")),
       stageAudioForTest: async () => { let b = 0; for (const [k, v] of mosIn) { if (!k.startsWith("stg:") || !v.stream) continue; const tr = v.stream.getAudioTracks(); const p = peers.get(v.via); if (!p || !p.pc) continue; for (const t of tr) { const st = await p.pc.getStats(t); st.forEach((x) => { if (x.type === "inbound-rtp" && x.kind === "audio") b += x.packetsReceived || 0; }); } } return b; },
       uplinkForTest: () => { const r = meshNode && meshNode.raw; if (!r) return null; let conn = false, dc = false; for (const p of peers.values()) { if (parseInt(String(p.id).slice(2, 15), 16) === r.u2Id) { conn = !!p.connected; dc = !!(p.dc && p.dc.readyState === "open"); } } let stgStd = false, upStd = false; for (const k of mosIn.keys()) { if (mosStandby.has(k)) { if (k.startsWith("stg:") || k === "sgs") stgStd = true; else upStd = true; } } return { u2: r.u2Id, conn, dc, ackAge: r.u2AckAt >= 0 ? r.TICK - r.u2AckAt : -1, hot: r.u2Hot, stgStd, upStd }; },
@@ -35933,13 +35902,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         window.__parkedJobs.set(jk, Date.now() + (ms || 15000));
         setJobActive(jk, false);
         return { ok: true, jk: jk.slice(0, 24), ms: ms || 15000, active: !!(mosJobs.get(jk) || {}).active };
-      },
-      // A SLOW RELAY: for ms, this seat starts no new relay of a stage feed,
-      // so a newcomer hears the stager's own copy first (Q80).
-      holdRelayForTest: (ms) => {
-        if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
-        window.__relayHoldUntil = Date.now() + (ms || 0);
-        return { ok: true, ms: ms || 0 };
       },
       unparkJobForTest: (key, toPid) => {
         if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
@@ -36190,28 +36152,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // w/h: the hidden source <video>'s own size; pack: the local composite's canvas; src: what the face cut used (chaos-1019: the two disagreed, 330 against 440)
         tile: (() => { const v = stadiumEl.querySelector('[data-row="sd"] video'); const cl = window.__comfyLast; return v ? { live: v.videoWidth > 0, w: v.videoWidth, h: v.videoHeight, pack: (sdPack && sdPack.canvas) ? [sdPack.canvas.width, sdPack.canvas.height] : null, src: cl && cl.src ? cl.src : null } : null; })(),
         strip: (() => { const v = stagefeedEl.querySelector('[data-row="sgs"] video'); return v ? { live: v.videoWidth > 0 } : null; })(), stagers: stageIds().length }; },
-      // Every sender on every link, and who owns it: which media a link
-      // carries, and why (Q80: a parked job's link still carried media).
-      sendersByPeer: () => {
-        const own = new Map();
-        for (const [k, j] of mosJobs) for (const sd of j.senders) own.set(sd, { job: k.slice(0, k.indexOf('>')).slice(0, 14), active: !!j.active });
-        const out = {};
-        for (const [pid, p] of peers) {
-          if (!p.pc) continue;
-          // pc: this link's index in a test's RTCPeerConnection tap, if any.
-          out[String(pid).slice(0, 8)] = { pc: window.__pcs ? window.__pcs.indexOf(p.pc) : -1, tx: p.pc.getTransceivers().map((t) => {
-            const sd = t.sender, o = own.get(sd);
-            return { mid: t.mid, dir: t.currentDirection, kind: sd.track ? sd.track.kind : null, live: !!(sd.track && sd.track.readyState === 'live'),
-              main: sd === p.mainA ? 'A' : sd === p.mainV ? 'V' : '', stage: stageSenders.has(sd), job: o ? o.job : null, active: o ? o.active : null };
-          }) };
-        }
-        return out;
-      },
       relayUpNow: () => relayUp(),
       rosterIdsNow: () => rosterIds.slice(),
       linkToPeer: (pid) => linkTo(pid),
-      iInit: (pid) => iInitiate(pid),
-      incomingIds: (pid) => { const p = peers.get(pid); return p && p.incoming ? p.incoming.map((s) => s.id) : null; },
       pcState: (pid) => { const p = peers.get(pid); if (!p || !p.pc) return null; return { sig: p.pc.signalingState, conn: p.pc.connectionState,
         tx: p.pc.getTransceivers().map((t) => (t.mid || '?') + ':' + (t.sender && t.sender.track ? t.sender.track.kind : '-') + ':' + t.direction + ':' + (t.currentDirection || '?')) }; },
       stadium: () => Array.from(compOf.entries())
@@ -36298,9 +36241,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // sleep is a wall gap with a near-zero monotonic gap.
       freezeGapForTest: (ms, mono) => { hbLastAt = Date.now() - (ms | 0); hbLastMono -= (mono === undefined ? ms : mono) | 0; },
       stageVoteNeed: () => stageVoteTallies().need,
-      devInfo: () => ({ devOf: Object.assign({}, devOf) }),
-      _setDevForTest: (id, tag) => { if (DEBUG_ON) { devOf[id] = tag; devClaimAt.delete(id); } },
-      _sayKickForTest: (id) => { const q = peers.get(id); if (!DEBUG_ON || !q || !q.dc || q.dc.readyState !== 'open') return false; dcSend(q, { k: 'pcbye', why: 'kick' }); return true; },
       // THE STATUS PLANE, as this seat sees it.
       statusPlane: () => { const d = roomDig(); return { id: myId, mode: digestMode(), past: roomPastSection(), n: d ? d.n : null, age: d ? d.age : null,
         refuse: d ? d.refuse : null, part: d ? !!d.part : null, handN: d ? d.handN : null, hands: d ? d.hands.map((e) => e.id) : [], stage: d ? d.stage.map((e) => e.id) : [],
@@ -36313,7 +36253,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       handqText: () => handqEl.textContent,
       handRaised: () => !!myStatus.hand,
       raiseHand: (on) => { myStatus.hand = on ? Date.now() : null; paintHand(); broadcastStatus(); layout(); renderHandq(); },
-      placeViewerHand: () => placeViewerHand(),
       // exact raise stamp — lets tests force a same-millisecond tie and assert the id tie-break
       raiseHandAtForTest: (t) => { myStatus.hand = +t || Date.now(); paintHand(); broadcastStatus(); layout(); },
       guestTileForTest: (name) => { const made = makeTile('qa-guest', name || 'Jordan Lee', false, false); return made.tile.dataset.peer; },
@@ -36342,7 +36281,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         m[field] = { on: true, by: myName(), byId: myId, at: Date.now() };
         modFlood();
       },
-      zoomRow: (row) => { const el = stadiumEl.querySelector('[data-row="' + String(row) + '"]'); if (el) el.classList.toggle('zoom'); return !!el && el.classList.contains('zoom'); },
       // stage + buses
       stageIds: () => stageIds(),
       onStage: () => stageIds().includes(myId),
@@ -36369,11 +36307,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       canStageNow: () => canStage(myId),
       mix: () => Object.assign({}, mix),
       setMix: (bus, v) => { mix[bus] = v; applyBuses(); },
-      mixFaderShown: (bus) => { const l = document.getElementById('mixlab-' + bus); return l ? l.style.display !== 'none' : true; },
-      tileVolume: (pid) => { const p = peers.get(pid); return p ? p.video.volume : null; },
-      stadiumVolume: (row) => { const el = stadiumEl.querySelector('[data-row="' + row + '"] video'); return el ? el.volume : null; },
       appWinner: () => { const w = findSharedApp(); return w ? w.s : null; },
-      appSharerName: () => { const w = findSharedApp(); return w ? (w.byName || null) : null; },
       appHidden: () => appHiddenSid,
       appLeading: () => appLeadOn,
       canRunApp: () => canIRunApp(),
@@ -36541,7 +36475,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       addTranscript: (t) => addTranscriptLine(t),
       transcriptTexts: () => Array.from(trs.values()).sort((a, b) => a.at - b.at).map((l) => l.by + ': ' + l.text),
       transcriptBlocks: () => trBlocks().map((l) => l.by + ': ' + l.text),
-      transcriptDrops: () => trDrops,
       captionsForTest: () => ({ writes: myStatus.ccv || [], mix: Array.from(ccMix.ins.keys()), drops: trDrops,
         show: !!ccShow, cc: !!myStatus.cc,
         lines: Array.from(trs.values()).sort((a, b) => a.at - b.at).map((l) => ({ by: l.by, byId: l.byId, scribe: l.scribe || null, at: l.at, text: l.text })) }),
@@ -36643,8 +36576,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       ccViewOn: () => !!ccShow,
       ownVoice: () => ({ wanted: !!ownVoiceArmed, cc: !!myStatus.cc, muted: !!myStatus.muted }),
       scribeForTest: (on) => { myStatus.scribe = !!on; broadcastStatus(); syncSpeech(); },
-      // A service's start time and Visit link, here and in the gossip.
-      bcPeekForTest: () => ({ quiet: bcQuietLine(headerCount(), false, false), count: headerCount(), stagers: stageIds().map((id) => [String(id).slice(0, 6), stagePersonLive(id)]), rowtile: !!document.querySelector('#stagefeed .rowtile'), hold: Math.max(0, statusHoldUntil - Date.now()), banned: !!bannedOut, at: bcStartAt(), visit: bcVisit(), mine: { bcat: myStatus.bcat || 0, bcvisit: myStatus.bcvisit || '' }, host: bcHostStored(), params: { at: params.get('at') || '', visit: params.get('visit') || '' }, gossip: Array.from(statusOf.values()).map((st) => [st.bcat || 0, st.bcvisit || '']) }),
       // Why a scribe takes or skips each peer (the conditions wspSync reads).
       scribeWhyForTest: () => Array.from(peers.keys()).map((pid) => {
         const st = statusOf.get(pid) || {}; const p = peers.get(pid);
@@ -36652,10 +36583,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           ccv: st.ccv || null, ccst: st.ccst || null, connected: !!(p && p.connected), source: !!(p && wspSource(pid)) };
       }),
       ccSourceForTest: (id) => { ccSourceId = id || null; syncSpeech(); scribeWatch(); },
-      installWhisperForTest: () => installWhisper(true),
-      whisperEngineForTest: (eng) => { lsSet(CC_ENGINE_KEY, eng === 'whisper' ? 'whisper' : ''); syncSpeech(); },
-      audioBlockedForTest: () => blockedAudio.size,
-      audioBlockForTest: (el, name) => audioBlocked(el, { name }),
       takeTrForTest: (m) => takeTr(m),
       markBotForTest: (on) => {
         myStatus.bot = !!on;
@@ -36663,12 +36590,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { broadcastStatus(); } catch (e) {}
         try { layout(); } catch (e) {}
         return !!myStatus.bot;
-      },
-      setAvatarForTest: (url) => {
-        if (url) myStatus.avatar = String(url); else delete myStatus.avatar;
-        try { updateTile('me'); } catch (e) {}
-        try { broadcastStatus(); } catch (e) {}
-        return myStatus.avatar || '';
       },
       comfyForTest: () => {
         const feed = document.getElementById('feed');
@@ -36784,7 +36705,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       nameOf: (pid) => rosterNames[pid] || (peers.get(pid) || {}).name || '', // what this seat calls a peer (the sealed pulse teaches it)
       poisonEpochForTest: (n) => { myStatus.pwEp = n; broadcastStatus(); }, // a hostile client's pulse claiming generation n (its own epoch is untouched)
       sealedCopyForTest: async (to, obj) => { const fs = obj && obj.k === 'pwinfo' ? pwFramesOf(obj) : [obj]; if (!fs) return false; let ok = true; for (const f of fs) ok = (await relaySendSealed(to, f && f.k, f)) && ok; return ok; }, // a member's relay copy of a grant to one peer (what a replayed grant looks like on the wire)
-      heldGrantForTest: () => !!heldGrant,
       floodForTest: (n, kind) => { let k = 0; for (let i = 0; i < (n | 0); i++) { if (meshNode) { meshNode.gossip({ a: 1, msg: kind === 'status' ? { kind: 'status', s: Object.assign({}, myStatus, { at: Date.now() + i }), name: 'flood' } : { k: 'noop', i } }); k++; } } return k; }, // a hostile client's room-wide flood
       gossipStats: () => (meshNode && meshNode.seat ? { dropped: meshNode.seat.gspDropped || 0, refused: meshNode.seat.gspRefused || 0, forged: meshNode.seat.gspForged || 0, inAll: meshNode.seat.gspInAll || 0, roomFlood: txStats.roomFlood || 0 } : null),
       forgeGossipForTest: (src, n) => { if (!meshNode || !meshNode._forgeGossipForTest) return 0; const ps = []; for (let i = 0; i < (n | 0); i++) ps.push({ a: 1, msg: { k: 'chat', m: { id: 'forged_' + i, by: 'Impostor', byId: src, at: Date.now(), text: 'forged line ' + i } } }); return meshNode._forgeGossipForTest(src, ps); }, // a hostile client speaking in someone else's name, with a valid signature of its own
@@ -36807,7 +36727,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         grace: !!admGraceT, closing: !!admCloseT,
         mesh: (meshNode && meshNode.tlState) ? meshNode.tlState() : null,
       }),
-      closedShown: () => { const el = document.getElementById('closed-modal'); return !!el && el.style.display !== 'none'; },
       myBlur: () => blurLevel(myStatus.blur),
       updateResumed: () => { if (!updateResume) return null; const o = JSON.parse(JSON.stringify(updateResume)); delete o.seed; return o; }, // what an update reload brought back (null on a normal join)
       waitStateForTest: () => ({ hold: holdDoor, admitted: Array.from(waitAdmitted), declined: Array.from(waitDeclined), queue: Array.from(waitQueue.keys()) }),
@@ -36820,13 +36739,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       setVqForTest: (label) => setVq(label || ''),
       rungNow: () => lastQ && lastQ.label,
       forceAdapt: () => { adapt(); return trackQ.k; },
-      // what the camera actually DELIVERS (the capture's true shape) — the ask
-      // (camConstraint) can be right while an aspect-locked capture stays wrong
-      camSettings: () => { try { const t = localStream && localStream.getVideoTracks()[0]; const s = t && t.getSettings ? t.getSettings() : null; return s && s.width ? { w: s.width, h: s.height } : null; } catch (e) { return null; } },
-      blurNoneEnabled: () => !document.getElementById('blur-none').classList.contains('dis'),
-      blurLocked: () => blurSeg.classList.contains('locked'),
       micMuted: () => myStatus.muted,
-      micLocked: () => micBtn.classList.contains('locked'),
       camOff: () => myStatus.camOff,
       // effective blur SHOWN on a tile: the ME tile is WYSIWYG (its source is
       // the pre-blurred outbound, no CSS class), so report its effective level;
