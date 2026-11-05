@@ -10714,11 +10714,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (track && track.requestFrame) { try { track.requestFrame(); } catch (e) {} }
       return track;
     }
+    // stream may be a function that makes it: called only when the tile needs a new one. Every MediaStream built on a track
+    // lives as long as that track (the track keeps each stream that holds it), so a stream made per repaint and thrown away is kept.
     function showAvatarTrack(video, stream, track) {
       if (!video || !track) return;
       const cur = video.srcObject && video.srcObject.getVideoTracks()[0];
       if (cur !== track) {
-        video.srcObject = stream;
+        video.srcObject = typeof stream === 'function' ? stream() : stream;
         const pr = video.play();
         if (pr && pr.catch) pr.catch(() => {});
       }
@@ -10800,7 +10802,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         let vt = null;
         try { vt = sentVideoTrack(); } catch (e) {}
         if (dark && !vt) vt = avatarOutboundTrack(myName(), blurLevelFor('me') | 0);
-        if (vt) showAvatarTrack(t.video, (vt === (avatarPipe && avatarPipe.track) ? avatarPipe.stream : new MediaStream([vt])), vt);
+        if (vt) showAvatarTrack(t.video, () => (vt === (avatarPipe && avatarPipe.track) ? avatarPipe.stream : new MediaStream([vt])), vt);
         // My own tile on a phone shows the letter overlay too; the baked track still goes out.
         if (t.avatar && t.avatar.classList) t.avatar.classList.toggle('rides-off', !!(dark && phoneLayout()));
         return;
