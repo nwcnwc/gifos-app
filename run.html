@@ -36249,7 +36249,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const nbrs = [];
         if (occSeed) for (const k of Object.keys(occSeed)) {
           const mm = /^(\d+)\/(\d+)\.(\d+)$/.exec(k); if (!mm) continue;
-          const key = T.ckey({ pc: +mm[1], r: +mm[2], i: +mm[3] });
+          const key = GifOS.meshTopo.ckey({ pc: +mm[1], r: +mm[2], i: +mm[3] });   // the ported Seat's cell number, not the page's text key
           const nv = occSeed[k] ? meshNode.nidOf(occSeed[k]) : -1;
           if (nv >= 0 && nv !== seat.id) nbrs.push({ k: key, v: nv });
         }
