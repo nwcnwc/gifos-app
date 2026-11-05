@@ -286,7 +286,7 @@
       get headGoneView() {
         const s = raw(), tp = TP(); if (!s || !s.hasCoord || s.state !== 3 || s.coord.i === 0) return false;
         const hk = tp.ckey({ pc: s.coord.pc, r: s.coord.r, i: 0 }), h = s.occGet(hk);
-        return s.coord.pc !== 0 ? s.headGone() : (h < 0 || h === s.id || s.darkMate(hk) || s.f.fabricLinkState(s.id, h) === GifOS.meshConsts.LS_CLOSED);
+        return s.coord.pc !== 0 ? s.headGone() : (h < 0 || h === s.id || s.darkMate(hk) || s.f.fabricLinkState(s.id, h) === GifOS.meshConsts.enums.LS_CLOSED);
       },
       // The row's heir as my view names it: its lowest live column past the head, me included (read only).
       rowHeir() {
@@ -528,7 +528,7 @@
         const w = wireDig(s, rootDig); delete w.by; pd = { r: stubFor(s, to, 'root', rootDig, w) };
       } else if (m.t === 'S1SYNC' && m.digs && m.digs.length && c.pc === 0) {
         const mine = tp.ckey(c), a = [{ k: mine, d: stubFor(s, to, 's1:' + mine, myDig, wireDig(s, myDig)) }];
-        for (const [k, e] of s1tab) if (k !== mine && s.LT() - e.rx <= DIG_TTL) a.push({ k, d: stubFor(s, to, 's1:' + k, e, wireDig(s, e)) });
+        for (const [k, e] of s1tab) if (k !== mine && s.LT() - e.rx <= DIG_TTL && (e.by == null || seatHolds(s, k, ids.nid(e.by)))) a.push({ k, d: stubFor(s, to, 's1:' + k, e, wireDig(s, e)) });   // the seat relays its cleaned table
         pd = { s: a };
       } else if (m.t === 'U2BEAT' && m.dgUp && m.dgUp.at >= 0) {   // L2.4: hot E2, the row's fold rides the beat (head alone in its row: its own; the source: the head's last)
         const hk = tp.ckey({ pc: c.pc, r: c.r, i: 0 }), hn = s.occGet(hk);
@@ -588,7 +588,9 @@
       if (!x || typeof x !== 'object') return;
       if (x.stub === 1) { stubTake(s, x, s1tab.get(k), 's1', from, slot); return; }
       const u = digSane(x); if (!u || u.by == null) return; rxDig(s, u); if (u.at < 0 || s.LT() - u.rx > DIG_TTL) return;
+      { const g = s.digForgot && s.digForgot.get(k); if (g !== undefined && g[0] === ids.nid(u.by) && u.rx <= g[1] + 8 && s.LT() - g[1] <= DIG_TTL) return; }   // the seat's s1Take: a vacated cell's last report
       const cur = s1tab.get(k); if (cur && cur.by === u.by && !(u.at > cur.at)) return;   // same author, a newer author stamp wins
+      if (cur && cur.by !== u.by && !(cur.rx <= u.rx)) return;   // the seat's s1Take: another author's report takes the slot only if received no earlier
       s1tab.set(k, u);
     }
     function roomDigest() {
