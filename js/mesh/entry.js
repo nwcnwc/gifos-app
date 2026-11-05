@@ -554,13 +554,13 @@
       const c = unckey(m.ck); const p = this.pinned.get(m.id); const ok = p !== undefined && p === m.tok;
       const cur = this.occGet(m.ck); const held = cur === m.id; const mm = this.memo.get(m.ck);
       const remembered = cur < 0 && mm !== undefined && mm.id === m.id && TICK - mm.at <= K.LEASE_T;
-      if (!ok || !(held || remembered)) { this.trace('RECLAIM-REFUSED', id, c, 'id=%d why=%s', m.id, !ok ? 'token' : (cur >= 0 ? 'held-by-other' : 'no-memory')); const r = newMsg('RECLAIMNO'); r.nc = m.id; if (ok && cur >= 0) r.tag = 3; this.emit(m.id, r); return; }   // L3.10.7
+      if (!ok || !(held || remembered)) { this.trace('RECLAIM-REFUSED', id, c, 'id=%d why=%s', m.id, !ok ? 'token' : (cur >= 0 ? 'held-by-other' : 'no-memory')); const r = newMsg('RECLAIMNO'); r.nc = m.id; if (ok && cur >= 0) r.tag = 3; if (m.oCk && cellOk(m.oCk - 1)) this.route(unckey(m.oCk - 1), m.id, r); else this.emit(m.id, r); return; }   // L3.10.7, L3.11.1
       this.rcHanded.set(m.ck, [m.id, TICK]);   // L3.10.4
       const nbrs = []; const ol = ownedLinks(c); const n = ol.length; for (let i = 0; i < n; i++) { const x = this.occGet(ckey(ol[i])); if (x >= 0 && x !== m.id) nbrs.push({ k: ckey(ol[i]), v: x }); }
       { const dk = ckey(down(c)); let has = false; for (const kv of nbrs) if (kv.k === dk) has = true; const h = this.childOf.get(m.ck); if (!has && h !== undefined && h >= 0 && h !== m.id) nbrs.push({ k: dk, v: h }); }   // L3.10.6
       const r = newMsg('RECLAIMED'); r.nc = m.id; r.coord = co(c); r.owner = id; r.nbrs = nbrs; r.pp = id; r.ppAt = TICK;
       { const rm = this.relMark.get(m.id); if (held && rm !== undefined && TICK - rm <= K.LEASE_T - 4 * K.RC_WAIT - 10) r.tag = 2; }   // L3.11
-      this.emit(m.id, r);
+      if (m.oCk && cellOk(m.oCk - 1)) this.route(unckey(m.oCk - 1), m.id, r); else this.emit(m.id, r);   // L3.11.1
       this.trace('RECLAIMED', id, c, 'id=%d %s%s', m.id, held ? 'leased' : 'remembered', r.tag === 2 ? ' reload' : '');
     },
 
@@ -585,10 +585,10 @@
       }
       // L3.11: a deep cell's neighbours are not in the HOME roster: the proof travels the mesh as a routed frame.
       if (greeter >= 0 && oc.pc !== 0) {
-        let routed = 0;
+        let routed = 0, gck = 0; for (const e of ro) if (e.v === greeter) gck = e.k + 1;   // L3.11.1
         for (let i = 0; i < n; i++) {
           if (ol[i].pc === 0) continue; let inRoster = false; for (const e of ro) if (e.k === ckey(ol[i]) && e.v >= 0) { inRoster = true; break; } if (inRoster) continue;
-          const m = newMsg('RECLAIM'); m.ck = this.oldCell - 1; m.id = id; m.tok = fabricToken(lv, id); m.routing = true; m.rdst = co(ol[i]); m.rfinal = -1; m.rttl = 64; m.rvia = id; this.emit(greeter, m); routed++;
+          const m = newMsg('RECLAIM'); m.ck = this.oldCell - 1; m.id = id; m.tok = fabricToken(lv, id); m.oCk = gck; m.routing = true; m.rdst = co(ol[i]); m.rfinal = -1; m.rttl = 64; m.rvia = id; this.emit(greeter, m); routed++;
         }
         if (routed) { this.trace('RECLAIM-ROUTED', id, oc, 'via=%d cells=%d', greeter, routed); sent += routed; }
       }

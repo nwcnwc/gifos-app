@@ -126,7 +126,7 @@
     function linkDeliver(from, to, m, L) {
       L.carried = true; L.txAt[mine(to)] = T();
       if (L.outside) m.dsat = mySeated();
-      doorProg(L, m.t); if (m.t === 'PLACE' && L.outside && L.dBorn >= 0) L.dPlaced |= (1 << mine(to));   // L16.3.1: my end sent it
+      doorProg(L, m.t); if ((m.t === 'PLACE' || m.t === 'RECLAIMED') && L.outside && L.dBorn >= 0) L.dPlaced |= (1 << mine(to));   // L16.3.1: my end sent it
       m.to = to; m.from = from; m.lk = (m.rvia < 0) ? from : -1; m.lkEp = L.epoch;
       if (!io.send(to, m)) trace('PCW-SENDFAIL', me, null, 'peer=%d mt=%d', to, mtI(m.t));
     }
