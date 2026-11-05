@@ -17023,6 +17023,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (adminOpenKey) return Promise.resolve(adminOpenKey);
       return net.deriveMeetKey(room, av, '').then((k) => (adminOpenKey = k), () => null);
     }
+    // DEBUG-only lever (DEBUG=on and &DEBUGFAIL=identity-once | adminkey-once | identity-hang-once | adminkey-hang-once):
+    // the first startMesh's identity or open-key step rejects (or never settles), so a test can make the boot fail on purpose.
+    let debugFailUsed = false;
+    function debugFail(step, p) {
+      if (!DEBUG_ON || debugFailUsed) return p;
+      const m = /(?:^|[#&?])debugfail=([a-z-]+)/i.exec(location.hash + location.search);
+      const v = m ? m[1].toLowerCase() : '';
+      if (v === step + '-once') { debugFailUsed = true; return p.then(() => { throw new Error('DEBUGFAIL ' + v); }); }
+      if (v === step + '-hang-once') { debugFailUsed = true; return new Promise(() => {}); }
+      return p;
+    }
     function startMesh() {
       const relay = relayUrl();
       if (!relay) { setStatus(uiText('stNoConnectionServiceIsSet', 'No connection service is set up, so nobody can be invited in.')); return; }
@@ -17030,7 +17041,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       meshBootGen++;
       if (directPath === 'pending') startDirectPathProbe(); // this network's verdict, once per page (re-run when the network comes back)
       if (!myId) myIdReady = new Promise((res) => { myIdReadyResolve = res; });
-      Promise.all([ensureIdentity(), adminOpenKeyNow()]).then(([identity, openKey]) => {
+      Promise.all([debugFail('identity', ensureIdentity()), debugFail('adminkey', adminOpenKeyNow())]).then(([identity, openKey]) => {
       myId = identity.peerId; // S4: peer id = H(pubkey), unforgeable
       if (myIdReadyResolve) { const resolveId = myIdReadyResolve; myIdReadyResolve = null; resolveId(); }
       try { tryBroadcastStage(); } catch (e) {}
