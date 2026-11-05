@@ -110,6 +110,7 @@
           const s = state.newStruct('SoftSit'); s.joiner = e.v; s.assigner = owner; s.at = TICK; s.pingAt = -1; this.sitting.set(e.k, s);
         }
       }   // L7.7
+      if (this.lkAnyAt > this.lkCarried) this.lkCarried = this.lkAnyAt;   // D6c.2
       this.lkAnyAt = -1; this.unpAnyAt = -1; this.lkAt.clear(); this.unpAt.clear(); this.unpSince.clear(); this.darkHold.clear();   // D6
       if (this.l13Tell.length) { for (const v of this.l13Tell) { if (v < 0 || v === id) continue; this.f.fabricDialJoin(id, v); this.l13Answer(v, ckey(c)); } this.l13Tell.length = 0; }   // L13.4
       this.l20Out.clear(); this.l20Hold.clear();   // L20
