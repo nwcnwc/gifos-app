@@ -647,10 +647,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     background: var(--surface, #14141f); border: 1px solid var(--border, #2a2a3f);
     border-radius: .6rem; overflow: hidden; }
   #stagefeed .rowtile { aspect-ratio: 16 / 9; } /* stage feeds are verbatim cameras */
-  /* Zone bands: a full-width label naming the near/far boundary in the mosaic. */
-  .feedband { grid-column: 1 / -1; font-size: .7rem; letter-spacing: .05em; text-transform: uppercase;
-    font-weight: 700; color: var(--muted, #8888aa); padding: .55rem .2rem .15rem; margin-top: .15rem;
-    border-top: 1px solid var(--border, #2a2a3f); }
   /* Recording options popup. */
   .rec-sec { margin: .7rem 0 .3rem; }
   #rec-stage-only { color: inherit; font-size: .95rem; margin: .15rem 0 .35rem; }
@@ -717,7 +713,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      stadium faders appear only once those buses have members. */
   .tile.onstage { border-color: var(--accent, #7b5cff); box-shadow: 0 0 0 1px var(--accent, #7b5cff);
     grid-column: 1 / -1; aspect-ratio: 16 / 9; } /* the stage is the big tile */
-  .rowtile.stagetile { border-color: var(--accent, #7b5cff); box-shadow: 0 0 0 1px var(--accent, #7b5cff); }
   /* Zoom = pick your depth: a tapped stadium tile grows to a readable size
      (and back). The global hand queue reads as one ordered line. */
   .rowtile.zoom { grid-column: 1 / -1; }
@@ -1822,7 +1817,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     background: #3b4d78; color: #fff; font: 700 40px/96px system-ui, sans-serif; }
   #appear .appear-face img { width: 100%; height: 100%; object-fit: cover; display: block; }
   #appear .appear-name { font-size: 18px; font-weight: 700; color: #1d1d1f; margin-bottom: 18px; }
-  #appear .appear-lab { display: block; text-align: left; font-size: 14px; font-weight: 700; color: #3a3a3f; margin: 0 0 6px; }
   #appear input { color: #1d1d1f; background: #fff; border: 1.5px solid #8d93a0; text-align: left; }
   #appear .appear-actions { display: flex; gap: 12px; justify-content: flex-end; align-items: center; }
   #appear #nmcancel { background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; flex: 0 0 auto; }
@@ -1840,19 +1834,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     border: 1px solid var(--border, #2a2a3f); background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: inherit; margin-bottom: .8rem; }
   #nm-avatar { width: 72px; height: 72px; object-fit: cover; border-radius: 50%; display: block; margin: 0 auto .8rem; }
   #nm-avatar[hidden] { display: none; }
-  .appear-preview { display: flex; align-items: center; gap: 12px; text-align: left; margin: 0 0 14px; padding: 12px;
-    border-radius: 16px; background: #e8ecf1; }
   .appear-face { position: relative; width: 72px; height: 72px; min-width: 72px; border-radius: 50%; overflow: hidden;
     background: #3a3a3f; color: #fff; font-weight: 700; font-size: 1.6rem; display: flex; align-items: center; justify-content: center; }
   .appear-face #nm-avatar, .appear-face #nm-cam { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; width: 100%; height: 100%; margin: 0;
     border-radius: 0; object-fit: cover; }
   .appear-face #nm-cam[hidden], .appear-face #nm-avatar[hidden] { display: none; }
   #nm-preview-name { display: block; font-size: 1.05rem; line-height: 1.25; overflow-wrap: anywhere; }
-  .appear-label { display: block; text-align: left; font-size: .85rem; font-weight: 700; margin: 0 0 .35rem; }
-  .appear-edits { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-start; margin: 0 0 12px; }
-  .name-box.appear-box .appear-edits button { min-height: 44px; min-width: 44px; padding: .4rem .8rem; border-radius: 12px;
-    background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
-  .appear-err { color: #9f1239; font-size: .82rem; min-height: 1em; text-align: left; margin: 0 0 .4rem; }
   .name-box button { padding: .5rem 1.4rem; min-height: 48px; border-radius: .5rem; border: 1px solid var(--accent, #7b5cff); background: var(--accent, #7b5cff); color: var(--onaccent, #fff); cursor: pointer; }
   .appear-box { background: #fff; color: #1d1d1f; max-width: 400px; }
   .appear-box h3 { color: #1d1d1f; font-size: 1.35rem; }
@@ -1889,7 +1876,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .help-box h4 { margin: 1.1rem 0 .35rem; font-size: .98rem; color: var(--text, #e0e0f0); }
   .help-box p { color: var(--muted, #8888aa); font-size: .88rem; line-height: 1.5; margin-bottom: .5rem; }
   .help-box .help-lead { color: var(--text, #e0e0f0); font-size: .92rem; }
-  .help-box .help-note { font-style: italic; }
   .help-list { list-style: none; margin: 0 0 .5rem; padding: 0; }
   .help-list li { color: var(--muted, #8888aa); font-size: .88rem; line-height: 1.5; padding: .18rem 0 .18rem .9rem; position: relative; }
   .help-list li::before { content: '·'; position: absolute; left: .1rem; color: var(--accent, #7b5cff); font-weight: 700; }
@@ -1946,9 +1932,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #lobby.show { display: flex; align-items: flex-start; justify-content: center; }
   .lobby-card { width: 100%; max-width: 440px; margin: auto; }
   .lobby-card h1 { font-size: 1.6rem; margin: .2rem 0 1.1rem; text-align: center; }
-  .lob-pair { display: flex; gap: 8px; align-items: stretch; margin-bottom: .6rem; }
-  .lob-pair .lob-action { flex: 1 1 0; min-width: 0; width: auto; margin-bottom: 0; padding: 10px 8px; text-align: center; }
-  .lob-pair .lob-action small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; -webkit-line-clamp: unset; }
   .lob-primary, .lob-action { display: block; width: 100%; text-align: left; border-radius: .7rem;
     padding: .85rem 1rem; margin-bottom: .6rem; border: 1px solid var(--border, #2a2a3f);
     background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; font-size: 1rem; line-height: 1.25; }
@@ -1970,7 +1953,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #lob-guest-reveal.lob-text, #lob-key-reveal.lob-text { display: inline-flex; align-items: center; min-height: 44px; margin: 4px 0 8px; padding: 8px 0;
     border: 0; background: transparent; color: #0064c8; font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
   #lob-guest-reveal[hidden], #lob-guest-extra[hidden], #lob-key-reveal[hidden], #lob-key-block[hidden], #lob-admin-name-lab[hidden] { display: none !important; }
-  .lob-namelab { display: block; font-size: 1rem; font-weight: 700; color: #1d1d1f; margin: 0 0 .35rem; }
   .lob-sep { border-top: 1px solid var(--border, #2a2a3f); margin: 1rem 0 .7rem; }
   .lob-hist-h { font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; opacity: 1; color: #1d1d1f; font-weight: 700; margin-bottom: .4rem; }
   .lob-item { display: flex; align-items: center; gap: .6rem; padding: .5rem .55rem; border-radius: .5rem; cursor: pointer; }
@@ -1987,7 +1969,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   button.row-del:hover { color: #ff5c5c; }
   button.row-del svg { display: block; pointer-events: none; }
   .lob-empty { opacity: .5; font-size: .88rem; text-align: center; padding: .8rem 0; }
-  .lob-namebar { text-align: center; margin-top: 1.1rem; font-size: .85rem; opacity: .78; }
   .lob-link { background: none; border: none; color: var(--accent, #6f9bff); cursor: pointer; font: inherit; padding: 0; text-decoration: underline; }
 
   /* aspect-ratio is Chrome 88 / Firefox 89 / Safari 15. The JS floor is older.
@@ -3160,10 +3141,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (min-width: 701px) and (min-height: 431px) {
     #lobby.show .lob-appear { right: auto; width: min(440px, 42vw); left: 28px; top: 28px; }
   }
-  .lob-appear-kicker { color: #3a3a3f; font-size: 13px; font-weight: 650; line-height: 1.2; }
-  .lob-appear-text { flex: 1; min-width: 0; }
-  .lob-appear-text b { display: block; color: #1d1d1f; font-size: 1.05rem; line-height: 1.25;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #lob-rename { flex: 0 0 auto; min-width: 44px; min-height: 44px; padding: 8px 14px; border-radius: 12px;
     background: #fff; border: 1.5px solid #8d93a0; color: #1d1d1f; font-weight: 700; font-size: 1rem;
     text-decoration: none; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
@@ -3174,12 +3151,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     #lobby .lob-preview { max-height: 18vh; }
     #lobby .lobby-card { max-width: none; min-height: 0; margin: -18px 0 0; border-radius: 22px 22px 0 0; padding: 16px 16px 18px; overflow: auto; position: relative; }
     .lob-pv-name { bottom: 28px; }
-    /* The line under each action is an essay. At 200% text it pushed Join
-       off an SE. The button title is the action, and the padding stays a
-       fixed 10px so the label can grow without leaving the screen. */
-    #lobby .lob-actions small { display: none; }
-    #lobby.show .lob-actions .lob-primary,
-    #lobby.show .lob-actions .lob-action { padding: 10px 12px; margin-bottom: 8px; }
   }
   @media (min-width: 701px) {
     #lobby.show { grid-template-columns: 1.35fr .8fr; }
@@ -3526,8 +3497,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     #lobby .lob-quiet { display: none; }
     #lobby .lobby-card { margin-top: 0; border-radius: 0; }
     #lobby .lobby-card h1 { margin: 0 0 8px; font-size: 1.35rem; }
-    .lob-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; align-items: stretch; }
-    .lob-actions .lob-primary, .lob-actions .lob-action { margin-bottom: 0; min-height: 44px; height: 100%; }
   }
   /* Opening Start broadcasting used to leave Create & enter below the fold.
      Park the rest of the lobby and keep Cancel / Create in the card while
@@ -3541,8 +3510,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #lobby.form-open .lob-sep,
   #lobby.form-open .lob-hist-h,
   #lobby.form-open #lob-list,
-  #lobby.form-open #lob-empty,
-  #lobby.form-open .lob-namebar { display: none !important; }
+  #lobby.form-open #lob-empty { display: none !important; }
   #lobby.form-open h1 { font-size: 1.25rem; margin: 0 0 .35rem; }
   #lobby.form-open .lobby-card {
     display: flex; flex-direction: column; min-height: 0; overflow: hidden;
@@ -3552,7 +3520,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   }
   /* Grow only when the fields overflow, so a short form keeps Go live
      under the name instead of pinning it to the bottom of a tall card. */
-  #lobby.form-open .lob-form-body { flex: 0 1 auto; min-height: 0; overflow: auto; }
   #lobby.form-open #lob-admin .lob-row { flex: 0 0 auto; margin-top: 12px; }
   /* A broadcast opens on the service. Go live is the only filled action.
      Watch and the host key sit in More, off this sheet. Cancel is not a step. */
@@ -3575,8 +3542,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #lobby.form-open.service-ready .lob-quiet { display: block !important; margin: 0 0 0.5rem; }
   /* A desk names the service and goes live. The host key is still minted.
      More opens Watch and Change host key, with the same readable key and Generate. */
-  #lobby.form-open.service-ready #lob-admin,
-  #lobby.form-open.service-ready #lob-admin .lob-form-body { display: contents; }
+  #lobby.form-open.service-ready #lob-admin { display: contents; }
   #lobby.service-ready #lob-admin-name-lab { order: 1; }
   #lobby.service-ready #lob-admin-name { order: 2; }
   #lobby.service-ready #lob-admin .lob-row { order: 3; }
@@ -3590,8 +3556,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #lobby.service-ready .lob-sep,
   #lobby.service-ready .lob-hist-h,
   #lobby.service-ready #lob-list,
-  #lobby.service-ready #lob-empty,
-  #lobby.service-ready .lob-namebar { order: 20; }
+  #lobby.service-ready #lob-empty { order: 20; }
   #lob-desk-more[hidden] { display: none !important; }
   #lobby.service-ready #lob-desk-more {
     position: absolute; top: 12px; right: 16px; z-index: 4;
@@ -3605,7 +3570,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     #lobby.form-open.service-ready.show { grid-template-rows: 40px minmax(0, 1fr); }
     #lobby.form-open.service-ready .lob-preview { max-height: 40px; }
     #lobby.form-open.service-ready .lobby-card { padding: 8px 12px; }
-    #lobby.form-open.service-ready .lob-form-body { flex-shrink: 0; }
   }
   @media (min-width: 701px) {
     #lobby.form-open.show { grid-template-columns: 1.35fr .8fr; grid-template-rows: minmax(0, 1fr); }
@@ -3706,7 +3670,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .lob-keyrow input { flex: 1 1 auto; width: auto; min-width: 0; margin-bottom: 0; }
   @media (max-width: 700px) { .lob-keyrow { flex-direction: column; } #lob-keygen.lob-ghost { width: 100%; } }
   /* Restored: broadcast stream link, ended card, Visit, captions, questions,
-     rebroadcast, flip camera, key button and appear-row styles that a
+     rebroadcast, flip camera and key button styles that a
      merge left out (the markup and code were kept, the styles were not). */
   .rec-replay { position: fixed; top: 0; right: 0; bottom: 0; left: 0; inset: 0; z-index: 70; background: #0c0e12; }
   .rec-replay video { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #0c0e12; }
@@ -3808,7 +3772,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     #lob-keygen.lob-ghost { width: 100%; }
   }
   .topchip .status .statustext { display: block; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .appear-row { display: flex; align-items: center; gap: 12px; }
 
 
   /* Restored: broadcast, town hall, start time, Visit, flip camera and
@@ -3841,18 +3804,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (max-width: 700px) and (min-height: 421px) {
     .bar > #hand .docklab { display: block; }
   }
-  #hand .handmark { display: none; }
-  .barmore #hand .docklab, .barmore #hand .handmark { display: none !important; }
-  .bar > #hand .handword { display: none; }
+  .barmore #hand .docklab { display: none !important; }
   @media (max-width: 700px), (max-height: 500px) {
     .bar > #hand { width: clamp(44px, 2.75rem, 88px); min-width: 44px; min-height: 44px; height: auto; padding: 4px 0 3px; border: 0; border-radius: 16px; box-sizing: border-box; background: #e8ecf1; color: #1d1d1f; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; flex: 0 0 auto; }
-    .bar > #hand .handmark { display: block; width: clamp(22px, 1.375rem, 44px); height: clamp(22px, 1.375rem, 44px); }
     .bar > #hand.on { background: #0064c8; color: #fff; }
   }
   @media (max-height: 420px) {
     .bar > #hand, .bar > #hand.on { width: clamp(44px, 1.5rem, 48px); height: clamp(44px, 1.5rem, 48px); min-width: 44px; min-height: 44px; background: transparent; color: #1d1d1f; filter: drop-shadow(0 0 1px rgba(255,255,255,.95)); }
     .bar > #hand.on { color: #0064c8; background: transparent; }
-    .bar > #hand .handmark { width: clamp(18px, 1rem, 24px); height: clamp(18px, 1rem, 24px); }
   }
   @media (max-height: 380px) {
     body.broadcast { --banner-h: 44px; }
