@@ -14831,6 +14831,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!msg || !msg.kind) return;
       msg = sigSansIce(from, msg); // fault injection: a blocked pair yields nothing
       if (!msg) return;
+      if (msg.sdp) noteGecko(peers.get(from), msg.sdp);
       if (rxStats[msg.kind] !== undefined) rxStats[msg.kind]++;
       // §HEARD (Nathan, 2026-07-28): a sealed signaling frame IS the peer,
       // alive, right now — feed the mesh's evidence intake so a pair
@@ -21525,6 +21526,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         reactRoomState(); // the password is the key to clear video
       } else if (m.k === 'roffer') {
         if (!p.pc) return; // relay-only pseudo-peer — media relay needs a channel pair
+        noteGecko(p, m.sdp);
         turnBack(p);
         // Glare: if I have my own offer in flight and I'm the IMPOLITE side
         // (the pair's initiator), their offer loses — they'll roll back and
@@ -21622,6 +21624,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         applyRoffer(m);
       } else if (m.k === 'ranswer') {
         if (!p.pc) return;
+        noteGecko(p, m.sdp);
         const carried = p.connected || (p.dc && p.dc.readyState === 'open');
         const srd = () => p.pc.setRemoteDescription(m.sdp);
         // A renegotiation answer that never settles (lost on the wire, or a
@@ -22715,10 +22718,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // sending on it (negotiated sendrecv/recvonly) the m-line only loses my
     // track; the far side's mainGone check heals one stopped before its offer
     // landed here.
+    // A far side's own description says Firefox as it arrives; the browser rewrites that line once applied.
+    const geckoPcs = new WeakSet();
+    function noteGecko(p, desc) { if (p && p.pc && desc && /^o=mozilla/m.test(String(desc.sdp || ''))) geckoPcs.add(p.pc); }
     function stopAuxTx(pc, sd, key) {
       try {
         const tx = pc.getTransceivers().find((t) => t.sender === sd);
         if (!tx || !tx.stop || tx.stopped) return;
+        // A stopped m-line is reused by the next new track of either kind, and
+        // Firefox refuses an offer that changes a line's kind ("changes the
+        // media type"), so every later change on this pair is lost: no Stage, no
+        // shared screen. Toward Firefox the line only loses my track and sleeps.
+        if (geckoPcs.has(pc)) return;
         const cd = tx.currentDirection;
         if (cd === 'sendrecv' || cd === 'recvonly') {
           if (typeof clog === 'function') clog('aux-keep ' + String(key) + ' mid=' + tx.mid + ' ' + cd + ': far side sends on it');
