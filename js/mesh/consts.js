@@ -57,6 +57,7 @@
     E3_PERIOD: 200,   // C++: mesh.cpp:E3_PERIOD  (LAW_E3_PERIOD)
     STRAND_TTL: 500,   // C++: mesh.cpp:STRAND_TTL  (LAW_STRAND_TTL)
     HEAD_HEIR_WAIT: 40,   // C++: mesh.cpp:HEAD_HEIR_WAIT  (LAW_HEAD_HEIR_WAIT)
+    VACATE_SLACK: 8,   // C++: mesh.cpp:VACATE_SLACK
     LEASE_T: 220,   // C++: mesh.cpp:LEASE_T  (LAW_LEASE_T)
     L30_DISC_DEAD: 170,   // C++: mesh.cpp:L30_DISC_DEAD  (LAW_L30_DISC_DEAD)
     L30_SILENT: 24,   // C++: mesh.cpp:L30_SILENT  (LAW_L30_SILENT)

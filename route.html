@@ -33,7 +33,7 @@
 <script>
 /*
  * route.html is the pretty-link router. Cloudflare Pages serves it with a 200
- * for /meet, /cast, /join and /store (see _redirects). The code in a link is a
+ * for /meet, /cast, /join and /store/<slug> (see _redirects). The code in a link is a
  * SECRET CAPABILITY: the client derives the relay-facing session id, token and
  * end-to-end key from it; the relay never sees the code itself.
  * Anything unrecognized just goes home.

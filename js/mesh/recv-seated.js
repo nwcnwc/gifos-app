@@ -320,6 +320,7 @@
       const id = this.id, f = this.f;
       if (m.from < 0 || m.from === id) return;
       if (m.tag !== 4) this.l14Served.delete(m.from);   // L14
+      if (m.tag === 5) { if (!f.l22Need(id, m.from)) f.l22Agree(id, m.from); else { f.l222Note(id, m.from); f.l28Reply(id, m.from); } return; }   // L14.9: the deep end released the uplink I served: that word was my only reason for the pc, so I agree now, with no settle of my own (a reason of my own keeps it, as any ask)
       if (m.tag === 1) { if (!f.l22Need(id, m.from)) f.l22CloseAsk(id, m.from); return; }   // L22 handshake
       if (m.tag === 3) { f.l22Close(id, m.from); return; }
       if (m.tag === 4) { if (!f.l22Need(id, m.from) && f.l22Quiet(id, m.from)) f.l22Close(id, m.from); return; }   // L28
