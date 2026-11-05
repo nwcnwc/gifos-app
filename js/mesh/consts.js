@@ -467,6 +467,8 @@
     G4_A: -1,   // C++: mesh_gaps4_fab.inc:G4_A
     G4_B: -1,   // C++: mesh_gaps4_fab.inc:G4_B
     G4_AT: -1,   // C++: mesh_gaps4_fab.inc:G4_AT
+    L25E_MV: 0,   // C++: mesh_l25e_fab.inc:L25E_MV
+    L25E_MVAT: -1,   // C++: mesh_l25e_fab.inc:L25E_MVAT
     KNOCK_T: -1,   // C++: mesh_net.inc:KNOCK_T
     KNOCK_N: 0,   // C++: mesh_net.inc:KNOCK_N
     KNOCK_PEAK: 0,   // C++: mesh_net.inc:KNOCK_PEAK
