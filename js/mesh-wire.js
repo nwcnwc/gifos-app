@@ -635,7 +635,8 @@
           gpending.delete(m.gid);
           if (stopped) return;
           if (v && v.ok) { m.s4ok = true; layer.gossipRecv(m); }
-        }).catch(() => { gpending.delete(m.gid); }));
+          else layer.countForged();   // unsigned, forged or impostor gossip: dropped unforwarded, and counted
+        }).catch(() => { gpending.delete(m.gid); layer.countForged(); }));
         return;
       }
       // anything else is not a mesh frame on the new path: dropped
@@ -1121,7 +1122,7 @@
       layer = GifOS.meshPortLayer.create({
         peer, raw: () => raw,
         emit: (to, f) => { if (!stopped || f.t === 'GSP') env2send(to, f); },
-        onGossip: opts.onGossip ? (src, m, ag, scoped) => (stopped ? undefined : opts.onGossip(src, m, (ag || 0) * tickMs, !!scoped)) : null,
+        onGossip: opts.onGossip ? (src, m, ag, scoped, link) => (stopped ? undefined : opts.onGossip(src, m, (ag || 0) * tickMs, !!scoped, link)) : null,
         ckey: (c) => net.topo.ckey(c), ownedLinks: (c) => net.topo.ownedLinks(c),
       });
       seat = layer.view; seat.answerDoor = answerHeld;
