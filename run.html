@@ -5619,7 +5619,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // colour. Ordinary notices keep the 4s beat. An explicit hold wins.
     // .bar .status is nowrap + ellipsis: the title carries the whole line
     // (a long refusal on a phone), written only when it changes.
-    const setStatus = (m, hold, why) => {
+    const setStatus = (m, hold) => {
       const blocking = /^(🛡|📷)/.test(String(m));
       const countEl = document.getElementById('statuscount');
       const restEl = document.getElementById('statusrest');
@@ -5631,7 +5631,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       else statusEl.textContent = m;
       if (statusEl.title !== String(m)) statusEl.title = String(m);
       // Why this line is on screen is state (data-why / data-link / data-back), not words: the live badge reads these, never the sentence.
-      if (statusEl.dataset) { statusEl.dataset.why = why || ''; statusEl.dataset.link = ''; statusEl.dataset.back = ''; }
+      if (statusEl.dataset) { statusEl.dataset.why = ''; statusEl.dataset.link = ''; statusEl.dataset.back = ''; }
       statusEl.classList.toggle('alert', blocking || !!hold);
       statusHoldUntil = Date.now() + (hold || (blocking ? 12000 : 4000));
       // The OFF AIR / LIVE banner follows the line (and the camera) on every paint.
@@ -17360,7 +17360,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // person can actually trigger in the same words the button uses \u2014 one
         // rule, one sentence \u2014 and never show the raw wire text for it.
         else if (/admins only/.test(m.error || '')) setStatus(PW_ADMIN_ONLY);
-        else if (!/password required|session is full/.test(m.error || '')) setStatus('Connection trouble: ' + m.error, 0, 'trouble');
+        else if (!/password required|session is full/.test(m.error || '')) { setStatus('Connection trouble: ' + m.error); try { statusEl.dataset.why = 'trouble'; paintLiveBadge(); } catch (e) {} }
       }
     }
     // The steady socket kicks itself on visibility/online; only the camera
@@ -19302,7 +19302,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         sessId = d.sid; sessTok = d.tok; roomE2E = d.key; pwProof = pr;
         myDevHash = dh.slice(0, 16);
         startMesh();
-      }).catch((err) => setStatus('Could not join the meeting (' + ((err && err.name) || 'Error') + ').', 0, 'nojoin'));
+      }).catch((err) => { setStatus('Could not join the meeting (' + ((err && err.name) || 'Error') + ').'); try { statusEl.dataset.why = 'nojoin'; paintLiveBadge(); } catch (e2) {} });
     }
 
     // Meetings joined via a shared link go in the same list the desktop's
@@ -19816,7 +19816,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (BROADCAST) {
             const hint = document.querySelector('.share .hint');
             if (hint) hint.textContent = 'Share this link — anyone who opens it is watching:';
-            if (!bcHostStored()) setStatus(uiText('bcStageLine', 'Joining the broadcast…'), 0, 'joining');
+            if (!bcHostStored()) { setStatus(uiText('bcStageLine', 'Joining the broadcast…')); try { statusEl.dataset.why = 'joining'; paintLiveBadge(); } catch (e) {} }
             else {
               // The HOST auto-steps onto the Stage: a broadcast page's whole
               // point, and the Stage is where their camera reaches the room.
