@@ -203,14 +203,15 @@
         const a = [], z = []; for (const g of tail) (this.f.fabricLinkState(this.id, g) !== LS_CLOSED ? a : z).push(g);
         this.l16List.length = 0; this.l16List.push(...head, ...a, ...z);
       }
-      let n = 0;
+      let n = 0, fresh = false;
       while (n < k && this.l16Next < this.l16List.length) {
         const first = (this.l16Next === 0); const g = this.l16List[this.l16Next++];
-        if (!this.l16Ask.includes(g)) this.l16Ask.push(g);
+        if (!this.l16Ask.includes(g)) { this.l16Ask.push(g); fresh = true; }
         const w = newMsg('WHOHOME'); w.from = this.id; w.ttl = 60; if (first && !this.oldCell) w.l31 = 1; this.emit(g, w); this.l33NoSockAsk(g); n++;
       }
       if (n > 0 && this.gateway < 0) this.gateway = this.l16List[0];
-      this.l16WaveAt = this.TICK; this.state = 1; this.retryAt = this.TICK; if (this.islandAskAt < 0) this.islandAskAt = this.TICK;
+      if (fresh || this.l16WaveAt < 0) this.l16WaveAt = this.TICK;   // L16.14: a re-ask of greeters already asked this round never restarts the silence clock (C++: mesh_island.inc:l16Wave)
+      this.state = 1; this.retryAt = this.TICK; if (this.islandAskAt < 0) this.islandAskAt = this.TICK;
     },
 
     // C++: mesh_island.inc:Seat::l16WaveTick
