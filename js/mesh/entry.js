@@ -553,7 +553,7 @@
       const c = unckey(m.ck); const p = this.pinned.get(m.id); const ok = p !== undefined && p === m.tok;
       const cur = this.occGet(m.ck); const held = cur === m.id; const mm = this.memo.get(m.ck);
       const remembered = cur < 0 && mm !== undefined && mm.id === m.id && TICK - mm.at <= K.LEASE_T;
-      if (!ok || !(held || remembered)) { this.trace('RECLAIM-REFUSED', id, c, 'id=%d why=%s', m.id, !ok ? 'token' : (cur >= 0 ? 'held-by-other' : 'no-memory')); const r = newMsg('RECLAIMNO'); r.nc = m.id; this.emit(m.id, r); return; }
+      if (!ok || !(held || remembered)) { this.trace('RECLAIM-REFUSED', id, c, 'id=%d why=%s', m.id, !ok ? 'token' : (cur >= 0 ? 'held-by-other' : 'no-memory')); const r = newMsg('RECLAIMNO'); r.nc = m.id; if (ok && cur >= 0) r.tag = 3; this.emit(m.id, r); return; }   // L3.10.7
       this.rcHanded.set(m.ck, [m.id, TICK]);   // L3.10.4
       const nbrs = []; const ol = ownedLinks(c); const n = ol.length; for (let i = 0; i < n; i++) { const x = this.occGet(ckey(ol[i])); if (x >= 0 && x !== m.id) nbrs.push({ k: ckey(ol[i]), v: x }); }
       { const dk = ckey(down(c)); let has = false; for (const kv of nbrs) if (kv.k === dk) has = true; const h = this.childOf.get(m.ck); if (!has && h !== undefined && h >= 0 && h !== m.id) nbrs.push({ k: dk, v: h }); }   // L3.10.6
