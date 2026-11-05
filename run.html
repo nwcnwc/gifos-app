@@ -24156,18 +24156,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // scaleResolutionDownBy jiggle that never touches capture.
     function mosAttach(job, jk, p, tr) {
       pipeDenyCurrent(jk); // a lapsed deny is not a deny
-      // A WebKit seat never re-sends a track it RECEIVED (wkRemoteTrack): on
-      // this engine addTransceiver(remoteTrack) deadlocks the web process
-      // main thread against its WebRTC signaling thread once the track
-      // flows (wk0056 fr2 and every share-start HUNG of wk0440: the seat
-      // had just shipped the stage copy to three peers). The job declines
-      // (attach-failed, no retry on this pc) and the room's other copies
-      // carry the feed. Local tracks (camera, mic, packers, folds) ship.
-      if (typeof wkRemoteTrack === 'function' && wkRemoteTrack(tr)) {
-        job.attachErr = 'wk-remote';
-        if (!job.wkDeclined) { job.wkDeclined = true; if (typeof clog === 'function') clog('wk-forward declined ' + String(jk).slice(0, 40)); }
-        return null;
-      }
       if (tr.kind === 'video' && pipeEnabled() && !pipeDeny.has(jk) && !pipeJobs.has(jk)) {
         try {
           const rcv = MPipe.receiverForTrack(tr, [...peers.values()].map((q) => q.pc).filter(Boolean));
