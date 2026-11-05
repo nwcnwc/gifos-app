@@ -50,8 +50,17 @@
     // C++: mesh_burst.inc:Seat::l44LinkLost
     l44LinkLost() {
       if (!this.f.fabricDoors() || this.lastAsked < 0 || !this.haveRoster || this.roster.length >= C * C || this.TICK <= this.retryAt || this.f.fabricLinkState(this.id, this.lastAsked) !== LS_CLOSED) return false;
+      if (this.findAckAt >= 0) return false;   // L44.5.1: the seat I asked acknowledged my FIND: it handed it on, and its door's close is the plan, not a lost ask
       this.trace('L44-REASK', this.id, null, 'asked=%d after=%d', this.lastAsked, this.TICK - this.retryAt);
       this.w.lv.L44_REASK++;
+      return true;
+    },
+
+    // L44.6: an early re-ask can send me back to the door (state 1) while the FIND I sent before it is still alive: a seat with no cell takes the chair its own FIND earned.
+    // C++: mesh_burst.inc:Seat::l44Answer
+    l44Answer(m) {
+      if (this.state !== 1 || this.hasCoord || m.nc !== this.id || this.lastAsked < 0) return false;
+      this.trace('L44-ANSWER', this.id, null, 'from=%d owner=%d asked=%d', m.from, m.owner, this.lastAsked);
       return true;
     },
 
