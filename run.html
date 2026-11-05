@@ -14114,8 +14114,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // arrives via ondatachannel below — and an answer cannot add an m-line
       // the offer lacked anyway, so creating one here was dead weight on the
       // answering side.
-      pc.ondatachannel = (ev) => { try { ev.channel.__pc = pc; } catch (e) {} wireDc(p, ev.channel); };
+      // A replaced pc lives on for 300 ms so its goodbye can leave. What it still reports is not this pair's truth:
+      // its channel must not take p.dc from the new pc (the next offer would then skip the data m-line), nor its candidates or tracks.
+      pc.ondatachannel = (ev) => { if (p.pc !== pc) return; try { ev.channel.__pc = pc; } catch (e) {} wireDc(p, ev.channel); };
       pc.ontrack = (ev) => {
+        if (p.pc !== pc) return;
         if ((typeof isEjected === 'function' && isEjected(p.id) === true)) { try { ev.track.stop(); } catch (e) {} return; } // no media from a forger
         const stream = ev.streams[0];
         if (typeof clog === 'function') clog('trk ' + String(p.id).slice(0, 6) + ' ' + (stream ? String(stream.id).slice(0, 8) : 'NOSTREAM') + ' mid=' + (ev.transceiver && ev.transceiver.mid));
@@ -14168,7 +14171,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         fsRefreshIfOpen();
         if (p.video && fsview.classList.contains('on')) p.video.addEventListener('resize', () => fsRefreshIfOpen(), { once: true });
       };
-      pc.onicecandidate = (ev) => { noteIce(p.id, ev.candidate || null); };
+      pc.onicecandidate = (ev) => { if (p.pc !== pc) return; noteIce(p.id, ev.candidate || null); };
       pc.onconnectionstatechange = () => {
         if (p.pc !== pc) return; // a replaced transport's tail events — not this pair's truth
         p.connected = pc.connectionState === 'connected';
@@ -14442,14 +14445,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // candidate in Chromium (see onSignal's collision branch).
         const fresh = noLiveTransport(p);
         if (fresh) { const queued = p.pendingIce; newPcFor(p); p.pendingIce = queued; }
-        Promise.resolve(fresh ? null : p.pc.setLocalDescription({ type: 'rollback' }))
-          .then(() => p.pc.setRemoteDescription(typeof wkStripH264 === 'function' ? wkStripH264(m.sdp, p.pc) : m.sdp))
-          .then(() => { for (const c of p.pendingIce.splice(0)) p.pc.addIceCandidate(c).catch(() => {}); })
-          .then(() => { preferHwVideo(p.pc); return p.pc.createAnswer(); })
-          .then((ans) => p.pc.setLocalDescription(ans))
-          .then(() => sendSig(from, { kind: 'answer', sdp: p.pc.localDescription, ib: 1, name: myName(), ip: myIp,
-                                      st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), sid: mySid() }))
+        const pc = p.pc;
+        Promise.resolve(fresh ? null : pc.setLocalDescription({ type: 'rollback' }))
+          .then(() => answerOffer(pc, p, m, true, (sdp) => sendSig(from, { kind: 'answer', sdp, ib: 1, name: myName(), ip: myIp,
+                                      st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), sid: mySid() })))
           .catch((e) => {
+            if (p.pc !== pc) return; // whoever replaced the pc owns the pair now
             // Rollback failed. Rebuild and dial from this side too. Dialling
             // only from the higher id left the polite side with a pc nobody offered on.
             try { newPcFor(p); sendOffer(from, false); } catch (e2) { noteNegFail('glare', from, e2 || e); }
@@ -14457,6 +14458,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }, stale ? 0 : GLARE_YIELD_MS);
     }
 
+    // ONE ANSWER, start to end, on the pc it began on: an offer is set, the ICE that waited for it goes in
+    // (signaling only: a renegotiation's channel carries none), and the answer goes out through `send`. A pc replaced
+    // meanwhile ends the chain with PcReplaced: that offer described a pc now closed, and the answer must not leave.
+    function answerOffer(pc, p, msg, drainIce, send) {
+      const same = () => { if (p.pc !== pc) { const e = new Error('pc replaced'); e.name = 'PcReplaced'; throw e; } };
+      return pc.setRemoteDescription(typeof wkStripH264 === 'function' ? wkStripH264(msg.sdp, pc) : msg.sdp)
+        .then(() => { same(); if (drainIce) for (const c of p.pendingIce.splice(0)) pc.addIceCandidate(c).catch(() => {}); })
+        .then(() => { same(); preferHwVideo(pc); return pc.createAnswer(); })
+        .then((ans) => { same(); return pc.setLocalDescription(ans); })
+        .then(() => { same(); send(pc.localDescription); });
+    }
     // Is any OTHER pair's channel open — a friend a sponsored frame can start from?
     function friendDcOpen(except) {
       for (const [pid, q] of peers) if (pid !== except && q.connected && q.dc && q.dc.readyState === 'open') return true;
@@ -14871,12 +14883,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // side recovers from a never-arriving remote offer (see sweeper). The
         // polite peer (lower id) rolls back its local offer and accepts; the
         // impolite peer ignores the remote offer and keeps its own.
-        const accept = () => p.pc.setRemoteDescription(typeof wkStripH264 === 'function' ? wkStripH264(msg.sdp, p.pc) : msg.sdp)
-          .then(() => { for (const c of p.pendingIce.splice(0)) p.pc.addIceCandidate(c).catch(() => {}); })
-          .then(() => { preferHwVideo(p.pc); return p.pc.createAnswer(); })
-          .then((ans) => p.pc.setLocalDescription(ans))
-          .then(() => sendSig(from, { kind: 'answer', sdp: p.pc.localDescription, ib: 1, name: myName(), ip: myIp, st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), sid: mySid() }))
-          .catch((e) => { noteNegFail('accept', from, e); if (/extension ID reassignment/i.test(String((e && e.message) || ''))) maybeRebuildNeg(p, e); });
+        const accept = () => { const pc = p.pc; return answerOffer(pc, p, msg, true, (sdp) => sendSig(from, { kind: 'answer', sdp, ib: 1, name: myName(), ip: myIp, st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), sid: mySid() }))
+          .catch((e) => { if (p.pc !== pc) return; noteNegFail('accept', from, e); if (/extension ID reassignment/i.test(String((e && e.message) || ''))) maybeRebuildNeg(p, e); }); };
         // A COLLISION is my own offer applied (have-local-offer) or, on a pair
         // with no live transport, still being minted (p.offering — see
         // sendOffer; the pc reads 'stable' until it lands).
@@ -21493,15 +21501,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // and MUST re-offer afterwards, or its rolled-back m-lines are
         // orphaned forever (the browser's negotiationneeded would refire
         // here; our hand-rolled offers need the explicit flag).
-        const applyRoffer = (msg) => p.pc.setRemoteDescription(typeof wkStripH264 === 'function' ? wkStripH264(msg.sdp, p.pc) : msg.sdp)
-          .then(() => { preferHwVideo(p.pc); return p.pc.createAnswer(); })
-          .then((a) => p.pc.setLocalDescription(a))
-          .then(() => {
-            dcSend(p, { k: 'ranswer', sdp: p.pc.localDescription });
+        const applyRoffer = (msg) => { const pc = p.pc; return answerOffer(pc, p, msg, false, (sdp) => {
+            dcSend(p, { k: 'ranswer', sdp });
             if (typeof clog === 'function') clog('ranswer→' + String(p.id).slice(0, 6));
             afterNeg(p, true);
           })
-          .catch((e) => { if (typeof clog === 'function') clog('roffer-APPLY-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name) + ' ' + String((e && e.message) || '').slice(0, 140)); maybeRebuildNeg(p, e); });
+          .catch((e) => { if (p.pc !== pc) return; if (typeof clog === 'function') clog('roffer-APPLY-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name) + ' ' + String((e && e.message) || '').slice(0, 140)); maybeRebuildNeg(p, e); }); };
         // Firefox offers carry o=mozilla. Applying one while our own offer is
         // still local throws and does not roll back, and the answer to our
         // offer then dies on the poisoned pc. Hold that offer. Every other
