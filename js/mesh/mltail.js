@@ -35,6 +35,28 @@
     // C++: mesh_mltail.inc:Seat::l33RowGate
     l33RowGate() { return this.l13Mass(); },
 
+    // C++: mesh_mltail.inc:Seat::l33DeadRow
+    l33DeadRow(r) {
+      const id = this.id;
+      if (!this.hasCoord || this.state !== 3 || this.coord.pc !== 0 || this.coord.r === r || this.TICK - this.seatedAt < K.LEASE_T) return false;
+      for (let j = 0; j < C; j++) {
+        const k = ckey({ pc: 0, r, i: j }); const x = this.occGet(k);
+        if (this.softSitting(k) || this.sitting.has(k) || this.firstHandLive(k) || this.s1Fresh(k)) return false;
+        const ss = this.s1seen.get(k); if (ss !== undefined && this.TICK - ss < K.LEASE_T) return false;
+        if (x >= 0) { if (x === id) return false; for (const g of this.lastGreeters) if (g === x) return false; }
+      }
+      if (this.greetersAt < 0 || this.TICK - this.greetersAt > 64) {
+        if (this.TICK - this.l13KnockAt >= 32) { this.l13KnockAt = this.TICK; this.emitRelay(this.genKey); this.trace('L13-KNOCK', id, this.coord, 'dead-row'); }
+        return false;
+      }
+      for (let j = 0; j < C; j++) {
+        const k = ckey({ pc: 0, r, i: j }); if (!this.occ.has(k)) continue;
+        this.trace('L33.14-DEADROW', id, this.coord, 'row=%d was=%d', r, this.occGet(k));
+        this.occDrop(k, 'dead-row'); this.live.delete(k); this.s1seen.delete(k); this.kidful.delete(k); this.tlForget(k);
+      }
+      return true;
+    },
+
     // C++: mesh_mltail.inc:Seat::l33WordDenied
     l33WordDenied(ok) { this.l33Deny.set(ok, this.TICK); if (this.l33Deny.size > 64) { for (const k of this.l33Deny.keys()) { this.l33Deny.delete(k); break; } } },
 

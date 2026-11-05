@@ -297,7 +297,7 @@
           let prevFull = true, chain = true;
           for (let j = 0; j < C; j++) { const pk = ckey({ pc: 0, r: t - 1, i: j }); if (this.occ.has(pk)) continue; prevFull = false; const it = this.sitting.get(pk); if (!(it !== undefined && it.assigner === id && TICK - it.at <= K.SIT_RECHECK)) chain = false; }
           if (chain) { const hk = ckey({ pc: 0, r: t - 1, i: 0 }); const hd = this.sitting.get(hk); chain = (this.hasCoord && ckey(this.coord) === hk) || (hd !== undefined && hd.assigner === id && !this.occ.has(hk)); }   // the row above's head is me, or still my vouch
-          if (!prevFull && !chain) { break; }
+          if (!prevFull && !chain && !this.l33DeadRow(t - 1)) { break; }   // L33.14
         }
         const liveRow = rowLive[t], everSeen = rowSeen[t];
         // A VACATED row is not a corpse. RESURRECTION exists for a row that DIED wholesale.
