@@ -46,9 +46,10 @@
         const ss = this.s1seen.get(k); if (ss !== undefined && this.TICK - ss < K.LEASE_T) return false;
         if (x >= 0) { if (x === id) return false; for (const g of this.lastGreeters) if (g === x) return false; }
       }
-      if (this.greetersAt < 0 || this.TICK - this.greetersAt > 64) {
-        if (this.TICK - this.l13KnockAt >= 32) { this.l13KnockAt = this.TICK; this.emitRelay(this.genKey); this.trace('L13-KNOCK', id, this.coord, 'dead-row'); }
-        return false;
+      {
+        let newest = this.seatedAt;
+        for (let j = 0; j < C; j++) { const k = ckey({ pc: 0, r, i: j }); const ss = this.s1seen.get(k); if (ss !== undefined && ss > newest) newest = ss; const lv = this.live.get(k); if (lv !== undefined && lv > newest) newest = lv; }
+        if (this.greetersAt < newest) return false;
       }
       for (let j = 0; j < C; j++) {
         const k = ckey({ pc: 0, r, i: j }); if (!this.occ.has(k)) continue;
