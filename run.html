@@ -513,6 +513,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 <meta name="apple-mobile-web-app-title" content="GifOS">
 <script id="gifos-load-gate">/* Load completeness: record every <script src> that failed to load (error events do not bubble: capture on window), and every script that threw while a failed one was missing. startMesh() checks this before it seats anything (see unitsGate). */(function(){var g=window.__gifosLoadGate={failed:[],threw:[],tries:0,state:'ok',trace:[]};
 function key(u){try{var x=new URL(u,location.href);return x.pathname.replace(/^\//,'');}catch(e){return String(u);}}
+/* The offline layer (sw.js) answers an uncached script with an EMPTY 200 when the network fails: no error event, a unit that never ran. A script that arrives with no body counts as failed too. */
+try{new PerformanceObserver(function(l){l.getEntries().forEach(function(en){try{if(en.initiatorType==='script'&&en.decodedBodySize===0&&/\.js$/.test(new URL(en.name).pathname)){var k=key(en.name);if(g.failed.indexOf(k)<0)g.failed.push(k);}}catch(x){}});}).observe({type:'resource',buffered:true});}catch(e){}
 window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagName==='SCRIPT'&&t.src){var k=key(t.src);if(g.failed.indexOf(k)<0)g.failed.push(k);}else if(e&&e.filename&&g.failed.length){var f=key(e.filename);if(g.threw.indexOf(f)<0)g.threw.push(f);}}catch(x){}},true);})();</script>
 <script src="js/sw-register.js" defer></script>
 <script src="js/build.js" defer></script>
@@ -17050,7 +17052,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           g.running = true;
           const order = Array.from(document.querySelectorAll('script[src]')).map((el) => { try { return new URL(el.src, location.href).pathname.replace(/^\//, ''); } catch (e) { return ''; } });
           const note = (m) => { g.trace.push(m); if (typeof clog === 'function') clog('load-gate ' + m); };
-          const load = (src) => new Promise((res) => { const el = document.createElement('script'); el.async = false; el.src = src; el.onload = () => res(true); el.onerror = () => { el.remove(); res(false); }; document.head.appendChild(el); });
+          const load = (src) => new Promise((res) => { const el = document.createElement('script'); el.async = false; el.src = src + '?lc=' + g.tries;   // a fresh URL: never the cached miss el.onload = () => { const en = performance.getEntriesByName(el.src).pop(); if (en && en.decodedBodySize === 0) { el.remove(); res(false); } else res(true); }; el.onerror = () => { el.remove(); res(false); }; document.head.appendChild(el); });
           (async () => {
             note('missing ' + g.failed.join(',') + (g.threw.length ? ' threw ' + g.threw.join(',') : ''));
             let todo = g.failed.slice();
