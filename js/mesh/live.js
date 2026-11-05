@@ -89,10 +89,12 @@
       this.unp.set(x, TICK);
     },
 
+    // C++: mesh_seat.inc:Seat::d6cBeat
+    d6cBeat() { return this.lkAnyAt >= this.seatedAt ? this.lkAnyAt : this.lkCarried; },
     // C++: mesh_seat.inc:Seat::orphanSeat
     orphanSeat() {
-      if (!this.hasCoord || this.moving || this.state !== 3 || this.lkAnyAt < this.seatedAt) return false;
-      let since = this.lkAnyAt; if (this.backAt > since) since = this.backAt;
+      if (!this.hasCoord || this.moving || this.state !== 3 || this.d6cBeat() < 0) return false;
+      let since = this.d6cBeat(); if (this.backAt > since) since = this.backAt;
       if (this.TICK - since <= K.DARK_LEAVE || (this.unpAnyAt >= 0 && this.TICK - this.unpAnyAt <= 16) || this.l2E2Up()) return false;
       return true;
     },
@@ -609,6 +611,7 @@
     // C++: mesh_seat.inc:Seat::requeue
     requeue(why = '') {
       const TICK = this.TICK, lv = this.w.lv, id = this.id;
+      this.lkAnyAt = -1; this.lkCarried = -1;   // D6c.2
       this.l13ReqN++;
       if (this.l815N > 0) { for (let i = 0; i < this.l815N; i++) { const y = newMsg('YIELD'); y.ck = this.l815Ck[i]; y.id = id; y.nc = this.l815Prev[i]; this.emit(this.l815To[i], y); } this.l815N = 0; }
       if (roomTerm(this, 1)) this.searchAt = TICK;
