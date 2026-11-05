@@ -95,6 +95,7 @@
     function doorEndCount(L) { if (L.outside && L.outside !== 3 && L.dG === me && !L.dUncounted) { L.dUncounted = true; doorCount(me, L.dIn, -1); } }
     function freshState(L, a, b) {
       L.nnAt[0] = L.nnAt[1] = -1;
+      L.ans = false;   // L13.41: the far page has not answered this dial yet
       L.state = LK_DIALING; L.epoch = (L.epoch + 1) >>> 0; L.dialAt = T(); L.half = 0; L.halfAt = -1; L.stuck = false; L.backAt[0] = L.backAt[1] = -1;
       L.view[mine(other(a, b))] = LK_DIALING; L.dialBy = a; L.callClosed = false; L.gone = 0; L.uplink = false; L.dialT = -1; L.dialHow = 0;
       L.byeIn = L.byeOut = false; L.dUncounted = false; L.dG = -1; L.opened = false;
@@ -445,6 +446,7 @@
     function answered(x, mk) {
       const L = LINKS.get(x); if (!L || !mk) return; const sat = mk.s ? 1 : 0; const f = far(x); f.seated = sat; if (mk.tier) f.tier = mk.tier;
       if (L.state !== LK_DIALING && L.state !== LK_OPEN) return;
+      L.ans = true;   // L13.41: the far page is alive on the relay (its socket answered my offer)
       if (L.outside && L.dBorn >= 0) L.dProg = T();   // as offer
       const oo = (L.outside & (1 << mine(x))) | (sat ? 0 : (1 << theirs(x)));
       if (oo === L.outside) return;
@@ -513,6 +515,13 @@
       L.state = LK_CLOSED; L.epoch = (L.epoch + 1) >>> 0; L.q = []; doorEndCount(L);
       if (L.view[mine(x)] === LK_DIALING || L.view[mine(x)] === LK_NONE) L.view[mine(x)] = LK_CLOSED;
       trace('PC-DIALFAIL', me, null, 'peer=%d', x);
+      if (s && L.dialBy === me && L.ans && L.wasOpen) l1341Note(s, x);
+    }
+    // C++: mesh_link.inc:l1341Note   [my dial to a peer I once held a pc with found no path while its page answered: a split, not a leave]
+    function l1341Note(s, x) {
+      for (const [ck, ox] of s.occ) if (ox === x) { const c = s.l13SplitCell.get(ck); if (!c || c[1] !== s.TICK) trace('L13.41-SPLIT', me, s.hasCoord ? s.coord : null, 'peer=%d', x); s.l13SplitCell.set(ck, [x, s.TICK]); }
+      if (s.l13SplitCell.size > 64) s.l13SplitCell.clear();
+      s.l13Across.set(x, s.TICK); if (s.l13Across.size > 64) s.l13Across.clear();   // L13.41.3: the peer itself stays mine to dial, whoever my view seats in its cell
     }
     // my offer came back refused: L16 busy -> BUSY for the seat; L23 -> my dial just ends (the sim drops it).
     // The callee's gate runs on the open dc, so my end may already read open: a refused dial never opened.
