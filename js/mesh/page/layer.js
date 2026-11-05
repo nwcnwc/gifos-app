@@ -380,7 +380,7 @@
     function setRefuses(b) { refuses = !!b; }
     const KC = () => (GifOS.meshConsts ? GifOS.meshConsts.consts : { LEASE_T: 220 });
     const TP = () => GifOS.meshTopo;
-    let myDig = dig0(), rowDig = dig0(), rootDig = dig0(), downDig = dig0(), u2RowDig = dig0(), siDig = dig0(), foldSig = null, foldBeat = -1, foldCell = -1;
+    let myDig = dig0(), rowDig = dig0(), rootDig = dig0(), downDig = dig0(), u2RowDig = dig0(), siDig = dig0(), foldSig = null, foldBeat = -1, foldCell = -1, rootKeep = null, rootKeepAt = -1, rootHeld = false;
     const rowKids = new Map(), s1tab = new Map(), u2Folds = new Map(), siKids = new Map();   // siKids: my row-mates' own reports while I stand in for our head (L48)
     const servesHot = (s, to) => { const x = ids.nid(to); for (const e of s.u2Rows.values()) if (e.hot && e.heir === x) return true; return false; };
     const e2SrcIs = (s, to) => { const R = GifOS.meshRoles, tp = GifOS.meshTopo; if (!R || !tp) return false; const x = R.e2SrcOf({ pc: s.coord.pc, r: s.coord.r, i: 0 }, (q) => s.occGet(tp.ckey(q)) >= 0); return !!x && P(s.occGet(tp.ckey(x))) === to; };
@@ -431,7 +431,7 @@
     function slotSig(s, k, e) { const LT = s.LT(); return (e && e.at >= 0 && named(s, k, e) && LT - e.rx <= DIG_TTL) ? ':' + digHash(e) : (gapAt(s, k) ? ':*' : ':.') + (e && held(s, k, e) ? digHash(e) : ''); }
     function rollupP(s) {
       const C = SC(), c = s.coord, tp = TP(), LT = s.LT(), mine = tp.ckey(c);
-      if (mine !== foldCell) { foldCell = mine; downDig = dig0(); rowKids.clear(); s1tab.clear(); foldSig = null; u2RowDig = dig0(); u2Folds.clear(); siKids.clear(); siDig = dig0(); }
+      if (mine !== foldCell) { foldCell = mine; rootKeep = rootDig; rootKeepAt = s.TICK; downDig = dig0(); rowKids.clear(); s1tab.clear(); foldSig = null; u2RowDig = dig0(); u2Folds.clear(); siKids.clear(); siDig = dig0(); }
       const L = leaf, dk = tp.ckey(tp.down(c));
       const newest = new Map();
       if (c.pc === 0) for (const e of s1tab.values()) if (e.by != null && LT - e.rx <= DIG_TTL) { const nb = newest.get(e.by); if (nb === undefined || nb < e.at) newest.set(e.by, e.at); }
@@ -488,7 +488,8 @@
           const it = s1tab.get(k); if (it && superseded(it)) continue;
           foldSlot(s, R, k, pick(k, it));
         }
-        digTrim(R); rootDig = R;
+        digTrim(R); let thin = false; if (rootKeep && rootKeep.at >= 0 && s.TICK - rootKeepAt <= 16 && R.n + (R.leased || 0) < rootKeep.n + (rootKeep.leased || 0)) { let nm = 0, fl = 0; for (const [ek, ev] of s.occ) { if (ek >= 65536 || ev < 0 || ek === mine) continue; nm++; const t = s1tab.get(ek); if (t && t.at >= 0) fl++; } thin = fl < nm; }   // L3.12.3: new in Section 1, a seat I name has no report in my table yet: keep the room I knew
+        rootHeld = thin; rootDig = thin ? rootKeep : R;
       }
     }
     // One fold per beat: the seat's rollup stamped lastPubAt this tick, and its frames go out right after.
@@ -595,8 +596,9 @@
     }
     function roomDigest() {
       const s = raw(); if (!s || s.state !== 3 || !foldNow(s) || !rootDig || rootDig.at < 0) return null;
-      const d = rootDig;
-      return { at: d.at, age: s.LT() - (d.rx != null ? d.rx : d.at), n: d.n + (d.leased || 0), refuse: d.refuse, part: d.part, handN: d.handN || 0, awayN: d.awayN || 0,
+      const d = rootDig; let shown = d.n + (d.leased || 0);
+      if (rootHeld) { const sr = s.dRoot(); if (sr && sr.at >= 0 && sr.n + (sr.leased || 0) < shown) shown = sr.n + (sr.leased || 0); }   // L3.12.3: a held fold never reads above my seat's
+      return { at: d.at, age: s.LT() - (d.rx != null ? d.rx : d.at), n: shown, refuse: d.refuse, part: d.part, handN: d.handN || 0, awayN: d.awayN || 0,
         hands: (d.hands || []).map((e) => Object.assign({}, e)), stage: (d.stage || []).map((e) => Object.assign({}, e)),
         apps: (d.apps || []).map((e) => Object.assign({}, e)), votes: (d.votes || []).map((v) => Object.assign({}, v)) };
     }
