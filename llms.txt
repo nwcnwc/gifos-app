@@ -471,7 +471,7 @@ APP -> APP HANDOFF — gifos.handoff  [manifest "handoff", not "capabilities"]
    notification, and no way to answer. Kinds that exist today:
      finance.plan — currentAge, netWorth, portfolio, illiquid, debts,
                     annualSavings, annualSpend, asOf
-   Adding a kind is an edit to GifOS itself: docs/app-handoff.md.
+   Adding a kind is an edit to GifOS itself.
 
 PROVIDERS — gifos.provider.serve  [manifest "provides", not "capabilities"]
    See "Provider apps" below.
@@ -639,7 +639,7 @@ no fetch, no capture in its service mount: a pure request->response
 engine. Big weights ride the asset pin tier; the engine itself rides
 inside the GIF. A provider without progress pings for 3 minutes is
 considered wedged and failed; keep ctx.progress/ctx.delta flowing on long
-generations. Full doctrine: docs/providers.md in the repo.
+generations. The doctrine lives with the GifOS source.
 
 ## Their GIF is the app (the preferred move — always offer it)
 
