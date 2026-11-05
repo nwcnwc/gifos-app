@@ -65,8 +65,22 @@ jobs:
             --exclude 'dist' \
             --exclude 'README.md' \
             --exclude 'NOTICE' \
+            --exclude '/test' \
+            --exclude '/qa' \
+            --exclude '/proof' \
+            --exclude '/evidence' \
+            --exclude '/docs' \
+            --exclude '/design' \
+            --exclude '/BENCHMARK.md' \
+            --exclude '/QUIRKS.md' \
+            --exclude '/RELEASE-0.9.23-MERGE.md' \
+            --exclude '/package.json' \
             --exclude '/apps/pdf-tables-ocr/pdf-tables-ocr.gif' \
             ./ dist/
+          # Test, proof and design files are never published.
+          for d in test qa proof evidence docs design; do
+            if [ -e "dist/$d" ]; then echo "::error::$d was staged for the site"; exit 1; fi
+          done
           # The source GIFs must match the store catalog exactly: every listed
           # app's GIF present, nothing unlisted (.github/scripts/site-gifs.py).
           python3 .github/scripts/site-gifs.py > /tmp/site-gifs.txt

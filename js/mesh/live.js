@@ -97,6 +97,9 @@
       return true;
     },
 
+    // C++: mesh_seat.inc:Seat::d6cOther
+    d6cOther() { for (const g of this.lastGreeters) if (g >= 0 && g !== this.id) return true; return false; },
+
     // C++: mesh_seat.inc:Seat::darkSeat
     darkSeat() {
       if (!this.hasCoord || this.moving || this.state !== 3) return false;
