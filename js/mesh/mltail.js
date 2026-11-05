@@ -100,7 +100,7 @@
       if (this.state !== 1) return;
       let asked = false; for (let q = 0; q < this.l16Ask.length; q++) if (this.l16Ask[q] === g) { this.l16Ask.splice(q, 1); asked = true; break; } if (!asked) return;
       this.f.fabricDoorDrop(this.id, g); this.doorAsk.delete(g); this.trace('L33-NOSOCK', this.id, null, 'greeter=%d', g);
-      if (this.l16Next < this.l16List.length) { const at = this.l16WaveAt; this.l16Wave(1); this.l16WaveAt = at; return; }
+      if (this.l16Next < this.l16List.length) { const at = this.l16WaveAt, fa = this.l16FreshAt; this.l16Wave(1); this.l16WaveAt = at; this.l16FreshAt = fa; return; }
       if (this.l16Ask.length && this.l16Busy.length >= this.l16Ask.length) this.l16Backoff('all-busy');
     },
 

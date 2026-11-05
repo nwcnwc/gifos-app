@@ -41,7 +41,7 @@
     islandTick() {
       if (!this.entryTerm() || !(this.state === 0 || this.state === 1) || this.islandAskAt < 0 || this.lastReach >= this.islandAskAt) return false;
       if (this.TICK - this.islandAskAt < K.ISLAND_WAIT || this.lastGreeters.length === 0) return false;
-      if (this.f.fabricDoors() && this.islandAskAt >= 0 && (this.l16Next < this.l16List.length || this.TICK - this.l16WaveAt < K.ISLAND_WAIT)) return false;
+      if (this.f.fabricDoors() && this.islandAskAt >= 0 && (this.l16Next < this.l16List.length || this.TICK - this.l16FreshAt < K.ISLAND_WAIT)) return false;
       if (this.l16Saw) { this.l16Backoff('silent'); return true; }
       this.trace('ISLAND', this.id, null, 'asked=%zu since=%d', this.lastGreeters.length, this.islandAskAt);
       this.islandAskAt = -1; this.genKey = this.w.lv.URL_KEY; const e = []; this.take({ pc: 0, r: 0, i: 0 }, -1, e); this.islandFounder = true; this.lineAdopt(this.id, 'found'); this.lineFork = true;
@@ -210,7 +210,7 @@
         const w = newMsg('WHOHOME'); w.from = this.id; w.ttl = 60; if (first && !this.oldCell) w.l31 = 1; this.emit(g, w); this.l33NoSockAsk(g); n++;
       }
       if (n > 0 && this.gateway < 0) this.gateway = this.l16List[0];
-      if (fresh || this.l16WaveAt < 0) this.l16WaveAt = this.TICK;   // L16.14: a re-ask of greeters already asked this round never restarts the silence clock (C++: mesh_island.inc:l16Wave)
+      this.l16WaveAt = this.TICK; if (fresh || this.l16FreshAt < 0) this.l16FreshAt = this.TICK;   // L16.14: the wave clock paces waves; the island's silence clock restarts only on a wave that asks a greeter not yet asked this round (C++: mesh_island.inc:l16Wave)
       this.state = 1; this.retryAt = this.TICK; if (this.islandAskAt < 0) this.islandAskAt = this.TICK;
     },
 
@@ -218,7 +218,7 @@
     l16WaveTick() {
       const lv = this.w.lv;
       if (!this.f.fabricDoors() || this.state !== 1 || this.l16WaveAt < 0 || this.l16Next >= this.l16List.length || this.islandAskAt < 0 || this.lastReach >= this.islandAskAt) return false;
-      if (this.TICK - this.l16WaveAt < K.L16_WAVE) { if (lv.L16HEDGE > 0 && !this.l16Hedged && this.TICK - this.l16WaveAt >= lv.L16HEDGE && this.l16Busy.length === 0) { const at = this.l16WaveAt; this.l16Wave(1); this.l16WaveAt = at; this.l16Hedged = true; return true; } return false; }
+      if (this.TICK - this.l16WaveAt < K.L16_WAVE) { if (lv.L16HEDGE > 0 && !this.l16Hedged && this.TICK - this.l16WaveAt >= lv.L16HEDGE && this.l16Busy.length === 0) { const at = this.l16WaveAt, fa = this.l16FreshAt; this.l16Wave(1); this.l16WaveAt = at; this.l16FreshAt = fa; this.l16Hedged = true; return true; } return false; }
       this.l16Wave(this.l16List.length); return true;
     },
 
@@ -226,7 +226,7 @@
     l16Gateway(g, t) {
       this.l16GwClosed = false;
       for (const x of this.l16Ask) if (x !== g && x !== t) { this.f.fabricDoorDrop(this.id, x); this.doorAsk.delete(x); }
-      this.l16Ask.length = 0; this.l16Busy.length = 0; this.l16Last = -1; this.l16List.length = 0; this.l16Next = 0; this.l16WaveAt = -1; this.l16Round = 0; this.l16Saw = false;
+      this.l16Ask.length = 0; this.l16Busy.length = 0; this.l16Last = -1; this.l16List.length = 0; this.l16Next = 0; this.l16WaveAt = -1; this.l16FreshAt = -1; this.l16Round = 0; this.l16Saw = false;
     },
 
     // C++: mesh_island.inc:Seat::l16Backoff
@@ -234,7 +234,7 @@
       let w = this.w.lv.L16BO_BASE << Math.min(this.l16Round, 8); if (w > this.w.lv.L16BO_CAP) w = this.w.lv.L16BO_CAP; if (this.l16Round < 8) this.l16Round++;
       let d = Math.trunc(this.rng() * (w + 1)); if (d < 1) d = 1;
       for (const x of this.l16Ask) this.f.fabricDoorDrop(this.id, x);
-      this.l16Anch = false; this.l16Ho = -1; this.l16Until = this.TICK + d; this.state = 0; this.islandAskAt = -1; this.gateway = -1; this.l16Ask.length = 0; this.l16Busy.length = 0; this.l16Last = -1; this.l16List.length = 0; this.l16Next = 0; this.l16WaveAt = -1; this.f.fabricNoteBackoff(this.id);
+      this.l16Anch = false; this.l16Ho = -1; this.l16Until = this.TICK + d; this.state = 0; this.islandAskAt = -1; this.gateway = -1; this.l16Ask.length = 0; this.l16Busy.length = 0; this.l16Last = -1; this.l16List.length = 0; this.l16Next = 0; this.l16WaveAt = -1; this.l16FreshAt = -1; this.f.fabricNoteBackoff(this.id);
       this.trace('BACKOFF', this.id, null, 'why=%s round=%d wait=%d', why, this.l16Round, d);
     },
 
