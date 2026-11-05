@@ -173,7 +173,8 @@
     onPhone(m) {
       const id = this.id, TICK = this.TICK, lv = this.w.lv;
       if (m.id < 0) return;
-      const sure = this.linkIs(m, m.id); if (sure) this.l711Phone(m);   // L7.11   // FRAME AUTHORITY: a PHONE is unsigned
+      const sure = this.linkIs(m, m.id); if (sure && m.dgRoot.at >= 0 && lv.DIGEST && this.state === 3 && this.hasCoord && this.coord.pc !== 0 && this.coord.i === 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r && this.occGet(ckey(m.coord)) === m.id) { const rt = digM.cloneDig(m.dgRoot); this.rxDig(rt); if (this.rootDig.at < 0 || rt.rx > this.rootDig.rx) this.rootDig = rt; }   // L2.4.1
+      if (sure) this.l711Phone(m);   // L7.11   // FRAME AUTHORITY: a PHONE is unsigned
       const dsig = !sure && signedBy(m, m.id);   // its own signed word, for the digest only
       if (m.kv.voter >= 0) { const wv = this.kVerify(m, sure); this.kLastWhy = wv; if (wv === 0) { this.kvKid.set(ckey(m.coord), [digM.cloneKStmt(m.kv), TICK]); const sv = ins(this.kSeen, m.kv.voter, () => 0); if (m.kv.ver > sv) this.kSeen.set(m.kv.voter, m.kv.ver); this.kTaken++; } else this.kRef[wv]++; }   // L27: checked before anything this frame does
       if (this.hasCoord && this.moving && !this.l4X && m.tock === this.oldCk && m.tock !== ckey(this.coord)) {   // T1 dual-hold: the OLD seat still answers while the claim is in flight
@@ -408,6 +409,7 @@
       // § G UP-LEG (payload on the beat, G0)
       if (lv.DIGEST && this.state === 3 && !standIn) { m.dgUp = this.pubDig((this.coord.pc !== 0 && this.coord.i === 0) ? this.rowDig : this.myDig); this.noteUp(m.dgUp); }
       else if (lv.DIGEST && this.state === 3 && !e2f.L48_OFF && this.myDig.at >= 0) { m.dgSi = this.wireDig(this.myDig); m.dgSi.rows.length = 0; }   // L48: my own report, for the heir's stand-in fold
+      if (!early && !standIn && this.u2Hot && lv.DIGEST && this.state === 3 && this.coord.pc !== 0 && this.coord.i !== 0 && this.rootDig.at >= 0) { m.dgRoot = this.wireDig(this.rootDig); m.dgRoot.kl.length = 0; }   // L2.4.1
       this.emit(tid, m); this.l10Sent = true;
       if (early) return;
       // A GHOST PHONE TARGET MUST BE FALSIFIABLE (2026-08-05, churn-combos leg C): see the sim for the long form.

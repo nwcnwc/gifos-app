@@ -520,6 +520,7 @@
       if (!this.hasCoord || this.state !== 3 || m.id < 0) return;
       if (m.t === 'U2ACK') {
         if (m.id === this.u2Id || (m.id === this.u3Id && 1 >= 1)) {
+          if (this.u2Hot && m.dgRoot.at >= 0 && this.w.lv.DIGEST && this.state === 3 && this.hasCoord && this.coord.pc !== 0) { const rt = dig.cloneDig(m.dgRoot); this.rxDig(rt); if (this.rootDig.at < 0 || rt.rx > this.rootDig.rx) this.rootDig = rt; }   // L2.4.1
           this.l211Ack(m); if (m.id === this.u2Id) this.u2AckAt = TICK; if (m.id === this.u3Id) this.u3AckAt = TICK;
           if (this.u2Hot && this.coord.i !== 0 && this.headEver) this.u2UpAt = TICK;   // only a heir whose head once answered it in this row is serving a GONE head
           if (m.e1dn) { this.ownVouchAt = TICK; this.vouchOwner = m.owner; this.vouchOCk = m.oCk; }
@@ -549,6 +550,7 @@
       }   // L1.4 (I10): ...and its GOODBYE, the same way
       if (m.e1dn) { const oc4 = roles.ownerOf(row); const ok4 = oc4 ? ckey(oc4) : 0; const memo4 = (ok4 && this.memo.has(ok4)) ? 1 : 0, conf4 = (ok4 && this.translostConfirmed(ok4)) ? 1 : 0, tlh4 = (ok4 && this.tlHard.has(ok4) && this.tlHard.get(ok4)) ? 1 : 0, tl4 = (ok4 && this.translost.has(ok4)) ? 1 : 0;   // the arguments in the order the C++ binary runs them (right to left: translostConfirmed may drop the loss before tl is read)
         this.trace('UP2-ACK', id, this.coord, 'to=%d e1dn=%d hard=%d occ=%d tl=%d tlhard=%d conf=%d memo=%d', m.id, a.e1dn ? 1 : 0, a.hard ? 1 : 0, ok4 ? this.occGet(ok4) : -2, tl4, tlh4, conf4, memo4); }   // diagnostic
+      if (m.e1dn && this.w.lv.DIGEST && this.state === 3 && this.rootDig.at >= 0) { a.dgRoot = this.wireDig(this.rootDig); a.dgRoot.kl.length = 0; }   // L2.4.1
       this.emit(m.id, a);   // L2.7 / L2.9
       if (this.u2Rows.size > 2 * C) for (const [k, v] of this.u2Rows) { if (TICK - v.at > 60) this.u2Rows.delete(k); }
     },
