@@ -1004,12 +1004,14 @@
       }
       if (!anc) return null; const ak = ckey(anc); const x = this.occGet(ak);
       if (x < 0) return anc;
-      if (this.coord.i === 0 && x === this.l14PcPeer && this.l14PcDown >= 0 && TICK - this.l14PcDown >= 32 && this.f.fabricLinkState(id, x) !== LS_OPEN) return anc;   // L14.10
+      if (this.coord.i === 0 && x === this.l14PcPeer && this.l14PcCut() && this.f.fabricLinkState(id, x) !== LS_OPEN) return anc;   // L14.10
       if (this.firstHandLive(ak)) return null;
       let heard = false; { const pb = this.pongBy.get(ak); heard = pb !== undefined && pb[0] === x && pb[1] >= this.seatedAt + 128; }
       return ((this.f.fabricLinkState(id, x) !== LS_OPEN || (heard && TICK - this.lastAck >= 40)) && TICK - this.lastAck >= 32) ? anc : null;
     },
     // C++: mesh_heal.inc:Seat::l14Uplink
+    // C++: mesh_heal.inc:Seat::l14PcCut
+    l14PcCut() { return this.l14PcDown >= 0 && (this.TICK - this.l14PcDown >= 32 || this.l2RowE2Down()); },
     // C++: mesh_heal.inc:Seat::l14PcWatch
     l14PcWatch() {
       if (!this.hasCoord || this.state !== 3 || this.coord.pc === 0 || this.coord.i !== 0) return; const o = this.ownerCoord(); if (!o) return; const x = this.occGet(ckey(o)); if (x < 0) return;
@@ -1022,7 +1024,7 @@
       const anc = this.l14Branch(); const cut = anc !== null;
       if (!cut) { this.l14UpFirst = -1; if (this.l14Up >= 0 && (TICK - this.l14UpAt >= K.LEASE_T || this.f.fabricLinkState(id, this.l14Up) === LS_CLOSED)) { this.trace('L14-DOWN', id, this.coord, 'was=%d', this.l14Up); const was = this.l14Up; this.l14Up = -1; this.l14Failed.clear(); this.l14Refused.clear(); if (this.f.fabricLinkState(id, was) === LS_OPEN) { const u = newMsg('UNNEEDED'); u.id = id; u.tag = 5; this.emit(was, u); } } return; }   // L14.9: the uplink I let go is asked closed on the spot, marked as a released uplink (tag 5): the head served it on my word alone and would otherwise hold the pc through L22's settle and ask, ten ticks past the lease
       if (this.l14Up >= 0) { const ls = this.f.fabricLinkState(id, this.l14Up); if (ls === LS_OPEN) return; if (ls === LS_DIALING && TICK - this.l14UpAt < 48) return; this.l14Failed.set(this.l14Up, TICK | 0); this.l14Refused.delete(this.l14Up); this.trace('L14-FAIL', id, anc, 'to=%d ls=%d', this.l14Up, ls); this.l14Up = -1; }
-      let any = this.l13Mass(); if (!any) { for (const b of this.byeIds.values()) if (TICK - b <= K.LEASE_T) { any = true; break; } for (const t of this.l13DownAt) if (TICK - t <= K.LEASE_T) { any = true; break; } if (TICK - this.lastAck >= 40 || (this.l14PcDown >= 0 && TICK - this.l14PcDown >= 32)) any = true; }
+      let any = this.l13Mass(); if (!any) { for (const b of this.byeIds.values()) if (TICK - b <= K.LEASE_T) { any = true; break; } for (const t of this.l13DownAt) if (TICK - t <= K.LEASE_T) { any = true; break; } if (TICK - this.lastAck >= 40 || this.l14PcCut()) any = true; }
       let ancBye = -1; { const ab = this.byeAt.get(ckey(anc)); if (ab !== undefined && TICK - ab <= K.LEASE_T && this.occGet(ckey(anc)) < 0) { any = true; ancBye = ab; } }
       if (!any || TICK - this.l14UpAt < (this.l14Up < 0 && this.l14Refused.size > 0 ? 2 : 8)) return;
       const closed = (x) => { if (this.f.fabricLinkState(id, x) === LS_CLOSED) return true; for (let q = 0; q < this.l13DownAt.length; q++) if (this.l13DownPeer[q] === x && TICK - this.l13DownAt[q] <= K.LEASE_T) return true; return false; };
