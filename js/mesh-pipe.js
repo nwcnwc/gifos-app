@@ -84,7 +84,7 @@
     const s = taps.get(srcId);
     if (!s) return;
     s.delete(pipeId);
-    if (!s.size) { taps.delete(srcId); tapTs.delete(srcId); skrLast.delete(srcId); }
+    if (!s.size) { taps.delete(srcId); skrLast.delete(srcId); } // tapTs stays: onrtctransform fires once per receiver, so the SKR handle lives as long as the tap's frame loop
   }
   // The worker cannot see the page's functions, so it carries its own copy of
   // the two helpers above, as plain source inside the literal (worker-source-
@@ -99,7 +99,7 @@ function releaseTap(taps, tapTs, skrLast, srcId, pipeId) {
   const s = taps.get(srcId);
   if (!s) return;
   s.delete(pipeId);
-  if (!s.size) { taps.delete(srcId); tapTs.delete(srcId); skrLast.delete(srcId); }
+  if (!s.size) { taps.delete(srcId); skrLast.delete(srcId); } // tapTs stays: onrtctransform fires once per receiver, so the SKR handle lives as long as the tap's frame loop
 }
 const taps = new Map();   // srcId -> Set(pipeId)
 const tapTs = new Map();  // srcId -> the tap's transformer (the SKR handle)
@@ -272,7 +272,7 @@ onrtctransform = (e) => {
   (async () => {
     for (;;) {
       const { value: frame, done } = await reader.read();
-      if (done) { if (o.role === 'tap') lastKey.delete(o.srcId); break; }
+      if (done) { if (o.role === 'tap') { lastKey.delete(o.srcId); if (tapTs.get(o.srcId) === t) tapTs.delete(o.srcId); } break; }
       if (o.role === 'tap') {
         const routed = taps.get(o.srcId);
         // COPY EARLY: the passthrough write below detaches frame.data. Every
