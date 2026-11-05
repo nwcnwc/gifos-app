@@ -628,6 +628,7 @@
     ["l16List", "[i32]"],   // vector<int>  (line 1746)
     ["l16Next", "i32"],   // int = 0  (line 1746)
     ["l16WaveAt", "i32"],   // int = -1  (line 1746)
+    ["l16FreshAt", "i32"],   // int = -1  (line 1746)
     ["l16Last", "i32"],   // int = -1  (line 1746)
     ["l16Round", "i32"],   // int = 0  (line 1746)
     ["l16Until", "i64"],   // long long = -1  (line 1746)
@@ -1181,6 +1182,7 @@
     l16GwClosed: false,
     l16Next: 0,
     l16WaveAt: -1,
+    l16FreshAt: -1,
     l16Last: -1,
     l16Round: 0,
     l16Until: -1,
