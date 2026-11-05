@@ -504,7 +504,7 @@
           else if (this.scopeGap(k)) { R.part = 1; R.refuse += 1; this.digGap |= 4; }
         }
         dig.digTrim(R);
-        if (!(this.TICK - this.seatedAt <= 16 && this.rootKeep.at >= 0 && R.n + R.leased < this.rootKeep.n + this.rootKeep.leased)) this.rootDig = R; else if (this.rootDig.at < 0) this.rootDig = this.rootKeep;   // L3.12.2
+        if (!(this.TICK - this.seatedAt <= 16 && this.rootKeep.at >= 0 && R.n + R.leased < this.rootKeep.n + this.rootKeep.leased)) this.rootDig = R; else if (this.rootDig.at < 0) this.rootDig = this.rootKeep;   // L3.12.3
         if (!extra) { this.rootDec = dig.cloneDig(R); this.l43Fold(); }   // rootDec: the fold as the pulse made it, the one a decision may read (L5)
       } finally { this.findNc = svFind; }
     },

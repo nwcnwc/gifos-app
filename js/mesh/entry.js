@@ -117,7 +117,7 @@
       this.drainAt = 0; this.seatTries = 0; this.searchAt = -1; this.l917Ck = 0; this.seatedAt = TICK; this.rookSeenAt = TICK; this.rookEver = false; this.estAt = TICK; this.nbrAt = TICK; this.pendYBy = -1; this.challToId = -1; this.lateY.clear();   // grace
       // G: a seat change re-parents me; every digest relationship starts over.
       this.upLogI = 0; this.upSince = -1; this.lastAgg = -1; for (let q = 0; q < 16; q++) this.upLog[q] = state.newStruct('UpRec');
-      this.rootKeep = this.rootDig;   // L3.12.2
+      this.rootKeep = this.rootDig;   // L3.12.3
       this.downDig = msg.newDig(); this.downUsed = msg.newDig(); this.myDig = msg.newDig(); this.rowDig = msg.newDig(); this.rootDig = msg.newDig(); this.rootDec = msg.newDig(); this.l43Since = -1; this.l43Over = -1;
       // The handover hold (rollup).
       { const hold = K.CONFIRM_TTL + (this.lastPubDepth + 3) * K.DIG_HOLD_LEVEL; const s1Only = (this.lastPubDepth === 0 && c.pc === 0);
