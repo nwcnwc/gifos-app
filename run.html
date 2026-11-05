@@ -14026,6 +14026,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       return added;
     }
+    // ONE RECORD OF ONE PC'S NEGOTIATION, born with the pc and dropped with it, so no mark or timer can reach the next pc.
+    // minting: the offer being made on this pc (createOffer to setLocalDescription), whichever path started it; the pc still
+    // reads 'stable' meanwhile. kind says what the pc is for. What describes the peer (turnSeen, turnLegacy) stays on p.
+    const newNeg = (why, kind) => ({ why: why || '', kind: kind || 'pair', at: Date.now(), minting: null, offerFp: '',
+      glareTimer: null, glareOffer: null, rofferYieldTimer: null, rofferYield: null, kickVideo: false,
+      turnAskT: null, turnOkT: null, turnGivenT: null, turnOk: false, turnGiven: false, turnWanted: false, offeredPend: '' });
+    function endNeg(n) {
+      if (!n) return;
+      clearTimeout(n.glareTimer); clearTimeout(n.rofferYieldTimer); clearTimeout(n.turnAskT); clearTimeout(n.turnOkT); clearTimeout(n.turnGivenT);
+    }
     // THE ONE PLACE A PAIR GETS A PC. `why` names the rebuild in the DEBUG trace. opts.closing: a real close, the far end's
     // to read. opts.keepIce: their trickle already queued for the offer being answered stays. Per-pc ICE settings go here.
     // A rebuild replaces a pc and closes no link. On a live channel the far end hears so first (the channel is ordered,
@@ -14069,21 +14079,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         for (const [jk, job] of [...mosJobs]) if (job.to === p.id) unshipMos(jk, false);
       } catch (e) { if (typeof clog === 'function') clog('rebuildPc: mosaic job cleanup failed ' + String(e).slice(0, 60)); }
       const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-      // A glare yield armed against the OLD pc must never fire at the new
-      // one: its rollback would target a connection that never offered.
-      try { if (p.glareTimer) clearTimeout(p.glareTimer); } catch (e) {}
-      p.glareTimer = null; p.glareOffer = null;
-      // A renegotiation yield armed against the old pc must not answer on the
-      // new one: its offer describes m-lines the fresh pc never had.
-      try { if (p.rofferYieldTimer) clearTimeout(p.rofferYieldTimer); } catch (e) {}
-      p.rofferYieldTimer = null; p.rofferYield = null; p.kickVideo = false;
-      // Offer turns belong to the old pc. turnSeen/turnLegacy describe the peer and stay.
-      clearTimeout(p.turnAskT); clearTimeout(p.turnOkT); clearTimeout(p.turnGivenT);
-      p.turnAskT = p.turnOkT = p.turnGivenT = null; p.turnOk = p.turnGiven = p.turnWanted = false; p.offeredPend = "";
+      // Whatever was armed against the OLD pc must never fire at the new one: a glare yield's rollback would target a
+      // connection that never offered, a held renegotiation describes m-lines the fresh pc never had, and offer turns
+      // belong to the old pc. An offer still minting belongs to it too: its chain never settles on a closed pc.
+      endNeg(p.neg);
+      p.neg = newNeg(why);
       p.pc = pc; p.connected = false; p.pendingIce = queued || []; p.dc = null; p.incoming = []; p.deadSince = 0; p.rebuiltAt = Date.now();
-      p.offering = null; // an offer still minting belongs to the closed pc (sendOffer drops it)
-      p.makingOffer = false; // ...and so does a renegotiation's (renegotiate: its chain never settles)
-      p.offerFp = ''; // no remote offer has landed on this pc yet (onSignal's new-pc rule)
       // A new pc gathers afresh: its first host candidate must leave at once,
       // so the old pc's batch (sawHost, a pending flush) is dropped.
       { const ib = iceBatch.get(p.id); if (ib && ib.t) clearTimeout(ib.t); iceBatch.delete(p.id); }
@@ -14433,14 +14434,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // bootstrap glare (no channel yet) still waits, so the other side can
     // answer.
     function armGlareYield(p, from, msg) {
-      p.glareOffer = msg;
-      if (p.glareTimer) return;                       // already waiting
+      p.neg.glareOffer = msg;
+      if (p.neg.glareTimer) return;                       // already waiting
       const built = Math.max(p.rebuiltAt || 0, p.bornAt || 0);
       const intoDark = (p.dcRxAt || 0) > 0 && built - p.dcRxAt > GLARE_YIELD_MS;
       const stale = noLiveTransport(p) && (Date.now() - built > GLARE_YIELD_MS || intoDark);
-      p.glareTimer = setTimeout(() => {
-        p.glareTimer = null;
-        const m = p.glareOffer; p.glareOffer = null;
+      p.neg.glareTimer = setTimeout(() => {
+        p.neg.glareTimer = null;
+        const m = p.neg.glareOffer; p.neg.glareOffer = null;
         if (!m || !p.pc || leaving) return;
         if (p.pc.signalingState !== 'have-local-offer') return;  // it healed; leave it alone
         if (typeof clog === 'function') clog('glare-yield ' + String(from).slice(0, 6));
@@ -14490,7 +14491,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // sweep, so every rebuild logged exactly that neg-fail. The offer in
       // flight IS this pair's offer; a restart asked for meanwhile comes
       // round on the next sweep.
-      if (p.offering) return;
+      if (p.neg.minting) return;
       // A DIAL WITH NO LIVE CHANNEL IS A BOOTSTRAP, and the relay carries
       // only a DataChannel-only description: a transport that already
       // carries media (its channel opened once and died) is rebuilt first,
@@ -14529,12 +14530,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // implicitly, and Chromium gathers no ICE candidate for an answer made
       // after that rollback, so the pair sat sig=stable/ice=new until a
       // 12-25 s healer (e2e-video's three-phone mesh, traced 3 Oct 2026:
-      // 16 s, and past its 30 s budget under load). p.offering marks the
+      // 16 s, and past its 30 s budget under load). p.neg.minting marks the
       // window for onSignal's collision test. The chain stays on the pc it
       // started on, and an offer whose pc was replaced meanwhile is not sent.
       const pc = p.pc, mark = {};
-      p.offering = mark;
-      const settled = () => { if (p.offering === mark) p.offering = null; };
+      p.neg.minting = mark;
+      const settled = () => { if (p.neg.minting === mark) p.neg.minting = null; };
       pc.createOffer(opts).then((offer) => (p.pc === pc ? pc.setLocalDescription(offer) : null))
         .then(() => {
           settled();
@@ -14846,7 +14847,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Nothing of ours is lost: the pc we hold was built against a pc the
         // peer has closed.
         // The fingerprint compared is the one of the LAST OFFER ROUTED INTO
-        // THIS PC (p.offerFp, stamped synchronously below), not
+        // THIS PC (p.neg.offerFp, stamped synchronously below), not
         // pc.remoteDescription: two offers from two of the peer's pcs drain in
         // one burst at a thaw (a throttled row-mate's wake probe rebuilt its
         // pair with the frozen page every beat), and the second arrived while
@@ -14855,11 +14856,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // first's pc ("m-lines in subsequent offer", seed 12 #1: 25.8 s).
         { const fpOf = (sdp) => { const m = /\r?\na=fingerprint:([^\r\n]+)/.exec(String(sdp && sdp.sdp || sdp || '')); return m ? m[1] : ''; };
           const fp = fpOf(msg.sdp);
-          const cur = p.pc ? (p.pc.remoteDescription ? fpOf(p.pc.remoteDescription) : (p.offerFp || '')) : '';
+          const cur = p.pc ? (p.pc.remoteDescription ? fpOf(p.pc.remoteDescription) : (p.neg.offerFp || '')) : '';
           if (p.pc && fp && cur && fp !== cur) {
             rebuildPc(p, 'offer-new-pc');
           }
-          if (fp) p.offerFp = fp; }
+          if (fp) p.neg.offerFp = fp; }
         // A NEVER-OPENED pair is the other corpse class (pair-probe.js): ICE
         // says connected, the DC never opened, and this side reads healthy
         // (deadSince=0) — so the dialer's dc-watchdog rebuild offer was
@@ -14889,9 +14890,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const accept = () => { const pc = p.pc; return answerOffer(pc, p, msg, true, (sdp) => sendSig(from, { kind: 'answer', sdp, ib: 1, name: myName(), ip: myIp, st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), sid: mySid() }))
           .catch((e) => { if (p.pc !== pc) return; noteNegFail('accept', from, e); if (/extension ID reassignment/i.test(String((e && e.message) || ''))) maybeRebuildNeg(p, e); }); };
         // A COLLISION is my own offer applied (have-local-offer) or, on a pair
-        // with no live transport, still being minted (p.offering — see
+        // with no live transport, still being minted (p.neg.minting — see
         // sendOffer; the pc reads 'stable' until it lands).
-        if (p.pc.signalingState === 'have-local-offer' || (p.offering && noLiveTransport(p))) {
+        if (p.pc.signalingState === 'have-local-offer' || (p.neg.minting && noLiveTransport(p))) {
           if (myId && myId < from) {
             // Polite, on a pair with no live transport: answer on a FRESH pc.
             // Rolling back an offer whose gathering has begun (here, or
@@ -15090,7 +15091,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const s = meshSeat();
       if (!(s && s.hasCoord && s.state === 3)) { bootDial(pid); return; }
       if (!p) { ensureLink(pid); return; }
-      if (p.offering || (p.pc && p.pc.connectionState !== 'closed' && p.pc.connectionState !== 'failed' && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000 && p.pc.signalingState !== 'stable')) return;
+      if (p.neg.minting || (p.pc && p.pc.connectionState !== 'closed' && p.pc.connectionState !== 'failed' && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000 && p.pc.signalingState !== 'stable')) return;
       if (iInitiate(pid)) sendOffer(pid, false); else askDial(pid, p);
     }
     // A close is real: the pc ends. A peer the seat still names keeps its record and tile, with a fresh idle pc for the
@@ -15205,7 +15206,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // A fresh pc nothing has happened on (no offer either way, no ICE) is idle, not forming: the one a
       // goodbye leaves behind for the seat's next dial. Counting it as forming made a dial request from a
       // page back from a reload wait out this window and its own 4 s retries: the pair came up at 8-9 s.
-      const idle = !!(p.pc && p.pc.signalingState === 'stable' && p.pc.connectionState === 'new' && !p.offering);
+      const idle = !!(p.pc && p.pc.signalingState === 'stable' && p.pc.connectionState === 'new' && !p.neg.minting);
       const forming = !pLive && p.pc && !darkOffer && !idle && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000 && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
       if (typeof clog === 'function') clog('dial-request from ' + String(p.id || '?').slice(0, 6) + ' solo=' + (participantCount() <= 1) + ' live=' + !!pLive
         + ' init=' + iInitiate(p.id) + ' forming=' + !!forming + ' dark=' + !!darkOffer + ' pc=' + (p.pc ? p.pc.connectionState + '/' + p.pc.signalingState : '-')
@@ -15244,7 +15245,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return;
       }
       const p = peers.get(pid);
-      if (p && (p.connected || (p.dc && p.dc.readyState === 'open') || p.offering)) {
+      if (p && (p.connected || (p.dc && p.dc.readyState === 'open') || p.neg.minting)) {
         if (p.connected || (p.dc && p.dc.readyState === 'open')) clearDoorRetry(p); // reachable already, or an offer is minting
         return;
       }
@@ -17856,12 +17857,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // harmlessly (ranswer-FAIL).
         {
           const lsd = p.pc.signalingState === 'have-local-offer' && p.pc.localDescription;
-          if (lsd && p.connected && p.dc && p.dc.readyState === 'open' && !p.makingOffer && !p.glareTimer && !p.rofferYieldTimer) {
+          if (lsd && p.connected && p.dc && p.dc.readyState === 'open' && !p.neg.minting && !p.neg.glareTimer && !p.neg.rofferYieldTimer) {
             if (p.staleOfferSdp !== lsd.sdp) { p.staleOfferSdp = lsd.sdp; p.staleOfferAt = now; }
             else if (now - p.staleOfferAt > 2 * GLARE_YIELD_MS + 2000) {
               p.staleOfferSdp = null;
               if (typeof clog === 'function') clog('offer-stale ' + String(pid).slice(0, 6) + ' ' + Math.round((now - p.staleOfferAt) / 1000) + 's: re-offer');
-              p.kickVideo = true; // a rollback stops the video encoder; reseat once the new answer lands
+              p.neg.kickVideo = true; // a rollback stops the video encoder; reseat once the new answer lands
               Promise.resolve(p.pc.setLocalDescription({ type: 'rollback' })).then(() => renegotiate(p)).catch(() => {});
             }
           } else p.staleOfferSdp = null;
@@ -21513,26 +21514,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // glare yield is unchanged: cancelling it, or rebuilding when the
         // answer failed, dropped people who had just sat down.
         const fxOffer = (msg) => /o=mozilla/i.test(String((msg && msg.sdp && msg.sdp.sdp) || '').slice(0, 80));
-        if (p.makingOffer || p.pc.signalingState === 'have-local-offer') {
+        if (p.neg.minting || p.pc.signalingState === 'have-local-offer') {
           if (fxOffer(m)) {
-            p.rofferYield = m;
-            if (!p.rofferYieldTimer) {
+            p.neg.rofferYield = m;
+            if (!p.neg.rofferYieldTimer) {
               let n = 0;
               const armFx = () => {
-                p.rofferYieldTimer = setTimeout(() => {
-                  p.rofferYieldTimer = null;
-                  const ym = p.rofferYield;
-                  if (!ym || !p.pc || leaving) { p.rofferYield = null; return; }
-                  if (p.makingOffer || p.pc.signalingState === 'have-local-offer') {
+                p.neg.rofferYieldTimer = setTimeout(() => {
+                  p.neg.rofferYieldTimer = null;
+                  const ym = p.neg.rofferYield;
+                  if (!ym || !p.pc || leaving) { p.neg.rofferYield = null; return; }
+                  if (p.neg.minting || p.pc.signalingState === 'have-local-offer') {
                     n += 1;
-                    if (n > 8) { p.rofferYield = null; return; }
+                    if (n > 8) { p.neg.rofferYield = null; return; }
                     armFx();
                     return;
                   }
-                  p.rofferYield = null;
+                  p.neg.rofferYield = null;
                   if (p.pc.signalingState === 'closed') return;
                   if (typeof clog === 'function') clog('roffer-yield ' + String(p.id).slice(0, 6) + ' fx');
-                  p.kickVideo = true;
+                  p.neg.kickVideo = true;
                   applyRoffer(ym);
                 }, n ? 250 : GLARE_YIELD_MS);
               };
@@ -21553,12 +21554,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // in have-local-offer. An explicit rollback first leaves the old
             // m-line order in place and the answer throws, and the camera
             // transceiver then never negotiates.
-            p.rofferYield = m;
-            if (!p.rofferYieldTimer) {
-              p.rofferYieldTimer = setTimeout(() => {
-                p.rofferYieldTimer = null;
-                let ym = p.rofferYield; p.rofferYield = null;
-                if (!ym || !p.pc || leaving || p.makingOffer) return;
+            p.neg.rofferYield = m;
+            if (!p.neg.rofferYieldTimer) {
+              p.neg.rofferYieldTimer = setTimeout(() => {
+                p.neg.rofferYieldTimer = null;
+                let ym = p.neg.rofferYield; p.neg.rofferYield = null;
+                if (!ym || !p.pc || leaving || p.neg.minting) return;
                 // The bootstrap offer was already answered: applying the twin
                 // restarts ICE before the channel opens. A firewalled pair is
                 // the exception: the first offer can carry candidates before
@@ -21568,23 +21569,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
                 const carried = p.connected || (p.dc && p.dc.readyState === 'open');
                 if (!carried && p.pc.signalingState === 'stable' && !iceBlocked(p.id)) return;
                 if (typeof clog === 'function') clog('roffer-yield ' + String(p.id).slice(0, 6));
-                p.kickVideo = true;
+                p.neg.kickVideo = true;
                 applyRoffer(ym);
               }, GLARE_YIELD_MS);
             }
             return;
           }
           p.renegAgain = true; // polite rollback: my changes go again after I answer
-          p.kickVideo = true; // that rollback stops the video encoder; reseat once stable
+          p.neg.kickVideo = true; // that rollback stops the video encoder; reseat once stable
         }
         // A NEWER OFFER SUPERSEDES ONE I HELD. They rolled the held one back
         // to send this, so it describes a state they no longer have. Applying
         // it later on the yield timer answered an offer they had dropped, so
         // they refused the answer and my pc kept the stale description. Their
         // camera then never reached me.
-        if (p.rofferYield) {
-          p.rofferYield = null;
-          if (p.rofferYieldTimer) { clearTimeout(p.rofferYieldTimer); p.rofferYieldTimer = null; }
+        if (p.neg.rofferYield) {
+          p.neg.rofferYield = null;
+          if (p.neg.rofferYieldTimer) { clearTimeout(p.neg.rofferYieldTimer); p.neg.rofferYieldTimer = null; }
           if (typeof clog === 'function') clog('roffer-held-drop ' + String(p.id).slice(0, 6));
         }
         applyRoffer(m);
@@ -21614,14 +21615,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // our offer won, and applying theirs restarts the pair before
             // the channel opens. A renegotiation on a live channel still
             // belongs to its timer.
-            if (p.rofferYield) {
-              const ym = p.rofferYield;
+            if (p.neg.rofferYield) {
+              const ym = p.neg.rofferYield;
               const fx = /o=mozilla/i.test(String((ym.sdp && ym.sdp.sdp) || '').slice(0, 80));
               // Keep the timer for a firewalled pair so the twin can drop the
               // candidates the first offer raced through (fix-rel-newcomer).
               if ((fx || !carried) && !(typeof iceBlocked === 'function' && iceBlocked(p.id))) {
-                p.rofferYield = null;
-                if (p.rofferYieldTimer) { clearTimeout(p.rofferYieldTimer); p.rofferYieldTimer = null; }
+                p.neg.rofferYield = null;
+                if (p.neg.rofferYieldTimer) { clearTimeout(p.neg.rofferYieldTimer); p.neg.rofferYieldTimer = null; }
               }
             }
             if (typeof clog === 'function') clog('ranswer←' + String(p.id).slice(0, 6));
@@ -21630,9 +21631,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           .catch((e) => {
             if (typeof clog === 'function') clog('ranswer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name) + ' ' + String((e && e.message) || '').slice(0, 140));
             if (e && e.name === 'RanswerTimeout' && carried && p.pc && p.pc.signalingState === 'have-local-offer'
-                && !p.makingOffer && !p.glareTimer && !p.rofferYieldTimer) {
+                && !p.neg.minting && !p.neg.glareTimer && !p.neg.rofferYieldTimer) {
               p.staleOfferSdp = null;
-              p.kickVideo = true;
+              p.neg.kickVideo = true;
               Promise.resolve(p.pc.setLocalDescription({ type: 'rollback' })).then(() => renegotiate(p)).catch(() => maybeRebuildNeg(p, e));
             }
           });
@@ -23035,53 +23036,53 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // (glare rules still apply), and stops asking that peer.
     const TURN_ASK_MS = 2500, TURN_BUSY_MS = 8000, TURN_MS = 3000;
     function askTurn(p) {
-      if (p.turnAskT || !p.dc || p.dc.readyState !== 'open') return;
+      if (p.neg.turnAskT || !p.dc || p.dc.readyState !== 'open') return;
       dcSend(p, { k: 'rreq' });
       const pc0 = p.pc;
-      p.turnAskT = setTimeout(() => {
-        p.turnAskT = null;
+      p.neg.turnAskT = setTimeout(() => {
+        p.neg.turnAskT = null;
         if (p.pc !== pc0 || leaving) return;
         if (!p.turnSeen) p.turnLegacy = true; // never answered: an older client
-        p.turnOk = true; // offer anyway, as before turns
+        p.neg.turnOk = true; // offer anyway, as before turns
         renegotiate(p);
       }, TURN_ASK_MS);
     }
     function gotTurn(p) {
-      clearTimeout(p.turnAskT); p.turnAskT = null;
+      clearTimeout(p.neg.turnAskT); p.neg.turnAskT = null;
       p.turnSeen = true; p.turnLegacy = false;
-      p.turnOk = true;
-      clearTimeout(p.turnOkT);
-      p.turnOkT = setTimeout(() => { p.turnOk = false; p.turnOkT = null; }, TURN_MS - 500);
+      p.neg.turnOk = true;
+      clearTimeout(p.neg.turnOkT);
+      p.neg.turnOkT = setTimeout(() => { p.neg.turnOk = false; p.neg.turnOkT = null; }, TURN_MS - 500);
       renegotiate(p); // even with nothing new: the offer hands the turn back
     }
     function turnWait(p) { // the initiator is busy; it will give the turn
       p.turnSeen = true; p.turnLegacy = false;
-      if (!p.turnAskT) return;
-      clearTimeout(p.turnAskT);
+      if (!p.neg.turnAskT) return;
+      clearTimeout(p.neg.turnAskT);
       const pc0 = p.pc;
-      p.turnAskT = setTimeout(() => { p.turnAskT = null; if (p.pc !== pc0 || leaving) return; p.turnOk = true; renegotiate(p); }, TURN_BUSY_MS);
+      p.neg.turnAskT = setTimeout(() => { p.neg.turnAskT = null; if (p.pc !== pc0 || leaving) return; p.neg.turnOk = true; renegotiate(p); }, TURN_BUSY_MS);
     }
     function endTurn(p) {
       if (iInitiate(p.id)) return;
-      p.turnOk = false; clearTimeout(p.turnOkT); p.turnOkT = null;
+      p.neg.turnOk = false; clearTimeout(p.neg.turnOkT); p.neg.turnOkT = null;
     }
     function giveTurn(p) {
       if (!p.pc || !p.dc || p.dc.readyState !== 'open') return;
-      if (p.makingOffer || p.pc.signalingState !== 'stable') {
-        if (!p.turnWanted) dcSend(p, { k: 'rwait' });
-        p.turnWanted = true;
+      if (p.neg.minting || p.pc.signalingState !== 'stable') {
+        if (!p.neg.turnWanted) dcSend(p, { k: 'rwait' });
+        p.neg.turnWanted = true;
         return;
       }
-      p.turnWanted = false;
-      p.turnGiven = true;
-      clearTimeout(p.turnGivenT);
+      p.neg.turnWanted = false;
+      p.neg.turnGiven = true;
+      clearTimeout(p.neg.turnGivenT);
       const pc0 = p.pc;
-      p.turnGivenT = setTimeout(() => { p.turnGivenT = null; p.turnGiven = false; if (p.pc === pc0) afterNeg(p); }, TURN_MS);
+      p.neg.turnGivenT = setTimeout(() => { p.neg.turnGivenT = null; p.neg.turnGiven = false; if (p.pc === pc0) afterNeg(p); }, TURN_MS);
       dcSend(p, { k: 'rgo' });
     }
     function turnBack(p) { // their offer arrived: the turn is over
-      if (!p.turnGiven) return;
-      p.turnGiven = false; clearTimeout(p.turnGivenT); p.turnGivenT = null;
+      if (!p.neg.turnGiven) return;
+      p.neg.turnGiven = false; clearTimeout(p.neg.turnGivenT); p.neg.turnGivenT = null;
     }
     function pendingSig(p) {
       try {
@@ -23090,21 +23091,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function afterNeg(p) {
       if (!p) return;
-      if (p.turnWanted) giveTurn(p);
+      if (p.neg.turnWanted) giveTurn(p);
       // An offer that was just answered and left the same senders pending
       // must not be sent again. Repeating it is how a fresh link's channel
       // closes (fault 2b): the answer did not clear the pending set, so the
       // next offer is the same one, and the pair dies a few seconds in.
       const pend = hasPendingTx(p);
       const sig = pend ? pendingSig(p) : "";
-      if (p.renegAgain || (pend && sig !== p.offeredPend)) {
+      if (p.renegAgain || (pend && sig !== p.neg.offeredPend)) {
         p.renegAgain = false;
-        if (pend) p.offeredPend = sig;
+        if (pend) p.neg.offeredPend = sig;
         renegotiate(p);
         return;
       }
-      if (!pend) p.offeredPend = "";
-      if (p.kickVideo) { p.kickVideo = false; kickMainVideo(p); kickMainAudio(p); }
+      if (!pend) p.neg.offeredPend = "";
+      if (p.neg.kickVideo) { p.neg.kickVideo = false; kickMainVideo(p); kickMainAudio(p); }
     }
     // createOffer/setRemoteDescription failed in a way this pc will repeat.
     // An m-line order mismatch on a channel that just opened wedges the
@@ -23150,15 +23151,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // added tracks (composite folds!) were orphaned with no retry. Standard
       // perfect-negotiation: at most one offer in flight; re-check stability
       // after the async createOffer; any failure re-arms renegAgain.
-      if (!iInitiate(p.id) && !p.turnOk && !p.turnLegacy) { p.renegAgain = true; askTurn(p); return; } // OFFER TURNS
-      if (iInitiate(p.id) && p.turnGiven) { p.renegAgain = true; return; } // their turn is out: mine waits for their offer
-      if (p.makingOffer || p.pc.signalingState !== 'stable') { p.renegAgain = true; return; }
+      if (!iInitiate(p.id) && !p.neg.turnOk && !p.turnLegacy) { p.renegAgain = true; askTurn(p); return; } // OFFER TURNS
+      if (iInitiate(p.id) && p.neg.turnGiven) { p.renegAgain = true; return; } // their turn is out: mine waits for their offer
+      if (p.neg.minting || p.pc.signalingState !== 'stable') { p.renegAgain = true; return; }
       // The mark and the chain belong to this pc. A pc closed mid-offer never
       // settles its createOffer/setLocalDescription in Chromium, so a rebuild
       // drops the mark (rebuildPc); left set, the new pc never offered and held
       // then dropped every offer the far end sent.
       const pc = p.pc, mark = {};
-      p.makingOffer = mark;
+      p.neg.minting = mark;
       // This offer carries every change made so far, so nothing is owed
       // after its answer. Left set, afterNeg re-offered on every answer and
       // a polite side looped rreq → rgo → roffer → ranswer for good (Q78).
@@ -23179,7 +23180,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           send();
         })
         .catch((e) => { if (p.pc !== pc) return; if (typeof clog === 'function') clog('roffer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); p.renegAgain = true; maybeRebuildNeg(p, e); })
-        .finally(() => { if (p.makingOffer === mark) p.makingOffer = false; if (p.turnWanted) giveTurn(p); });
+        .finally(() => { if (p.neg.minting === mark) p.neg.minting = null; if (p.neg.turnWanted) giveTurn(p); });
     }
     function startRelayJob(reqP, target) {
       const key = target + '>' + reqP.id;
@@ -35459,7 +35460,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           built._qaCanvas = c;
         } catch (e) { built.tile.classList.add('cam-off'); }
         peers.set(id, Object.assign(built, {
-          id: id, name: name, qa: true, headless: false,
+          id: id, name: name, qa: true, headless: false, neg: newNeg(),
           // connected:false is the room Nathan saw: the faces are already on
           // the wall, and the transport has not vouched for them yet.
           connected: spec.connected !== false,
@@ -35520,7 +35521,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (pr && pr.catch) pr.catch(function () {});
       } catch (e) { built.tile.classList.add('cam-off'); }
       const p = Object.assign(built, {
-        id: id, name: name, qa: true, headless: false, connected: true,
+        id: id, name: name, qa: true, headless: false, connected: true, neg: newNeg(),
         lastHeard: Date.now(), meshRxAt: Date.now(), bornAt: Date.now(),
         pc: qaStubPc(), dc: null, noRoute: false, absentSince: 0,
         _qaTracks: stream ? stream.getTracks() : [],
@@ -35784,7 +35785,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // `stored` says an offer was set aside to answer. Neither firing and
         // neither stored means the offer never reached the handler at all,
         // which is a different bug from a yield that armed and failed.
-        glareArmed: !!p.glareTimer, glareStored: !!p.glareOffer,
+        glareArmed: !!p.neg.glareTimer, glareStored: !!p.neg.glareOffer, negWhy: p.neg.why, negKind: p.neg.kind,
         // why a pair is kept: door flags and the seat arithmetic's verdict
         bootOut: !!p.bootOut, link: linkTo(p.id), knows: meshKnows(p.id), ageS: Math.round((Date.now() - (p.bornAt || 0)) / 1000) })),
       grid: () => ({ // the alignment engine's live state: clocks, tiers, timing, sing, mic
@@ -36379,16 +36380,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       remoteFrameForTest: (from, m) => { onRemote(String(from), m); },
       // a peer whose channel just opened, before the roster has caught up; it
       // records the frames handed to it
-      openLinkForTest: (id) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [] }); },
+      openLinkForTest: (id) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [], neg: newNeg() }); },
       // a linked peer by name whose status says camera off (scr: sharing a screen)
       stageStripForTest: (stream) => paintStageStrip(stream || null),
-      camOffPeerForTest: (id, name, scr) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [] }); peers.get(id).name = name; rosterNames[id] = name; statusOf.set(id, { camOff: true, muted: true, scr: scr ? 1 : 0, at: Date.now() }); paintBroadcastIdent(); },
+      camOffPeerForTest: (id, name, scr) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [], neg: newNeg() }); peers.get(id).name = name; rosterNames[id] = name; statusOf.set(id, { camOff: true, muted: true, scr: scr ? 1 : 0, at: Date.now() }); paintBroadcastIdent(); },
       // a linked, recently heard peer: the status line counts it as here
-      livePeerForTest: (id, name) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, dc: { readyState: 'open', label: 'test' }, testTx: [] }); const p = peers.get(id); p.connected = true; p.lastHeard = Date.now(); if (name) { p.name = name; rosterNames[id] = name; } updateStatus(); return participantCount(); },
+      livePeerForTest: (id, name) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, dc: { readyState: 'open', label: 'test' }, testTx: [], neg: newNeg() }); const p = peers.get(id); p.connected = true; p.lastHeard = Date.now(); if (name) { p.name = name; rosterNames[id] = name; } updateStatus(); return participantCount(); },
       // a joined peer by name whose fresh status has a hand up, as the host's queue line reads it
-      handPeerForTest: (id, name) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [] }); peers.get(id).name = name; rosterNames[id] = name; if (!rosterIds.includes(id)) rosterIds.push(id); const t = Date.now(); statusOf.set(id, { camOff: true, muted: true, hand: t, at: t, rx: t }); renderHandq(); return handqEl.textContent; },
+      handPeerForTest: (id, name) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [], neg: newNeg() }); peers.get(id).name = name; rosterNames[id] = name; if (!rosterIds.includes(id)) rosterIds.push(id); const t = Date.now(); statusOf.set(id, { camOff: true, muted: true, hand: t, at: t, rx: t }); renderHandq(); return handqEl.textContent; },
       chatGateForTest: (off, admin) => { chatGateOverride = { off: !!off, admin: !!admin }; paintChatGate(); return document.getElementById('chat-in').placeholder; },
-      stageHostForTest: (id, name, stg) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [] }); peers.get(id).name = name; rosterNames[id] = name; if (!admins.includes(id)) admins.push(id); if (!rosterIds.includes(id)) rosterIds.push(id); statusOf.set(id, { camOff: false, muted: false, stg: stg === undefined ? 1 : stg, at: Date.now(), rx: Date.now() }); paintBroadcastIdent(); return stageIds().slice(); }, // a host whose status says on stage, camera on, before any feed
+      stageHostForTest: (id, name, stg) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [], neg: newNeg() }); peers.get(id).name = name; rosterNames[id] = name; if (!admins.includes(id)) admins.push(id); if (!rosterIds.includes(id)) rosterIds.push(id); statusOf.set(id, { camOff: false, muted: false, stg: stg === undefined ? 1 : stg, at: Date.now(), rx: Date.now() }); paintBroadcastIdent(); return stageIds().slice(); }, // a host whose status says on stage, camera on, before any feed
       hostPeerForTest: (id) => { id = String(id); admSeen.set(id, Date.now()); if (!admins.includes(id)) admins.push(id); updateStatus(); return admins.slice(); }, // admSeen, as a verified host frame does, so the watch count leaves them out
       linkFramesForTest: (id) => { const p = peers.get(String(id)); return p && p.testTx ? p.testTx.slice() : null; },
       sentFramesForTest: () => sentFrames.slice(),
@@ -36964,7 +36965,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         let p = peers.get(id);
         if (!p) {
           const tile = makeTile(id, name, false);
-          p = { id, pc: null, tile: tile.tile, video: tile.video, label: tile.label, avatar: tile.avatar, chips: tile.chips, cap: tile.cap, modbar: tile.modbar, voteBtn: tile.voteBtn,
+          p = { id, pc: null, neg: newNeg(), tile: tile.tile, video: tile.video, label: tile.label, avatar: tile.avatar, chips: tile.chips, cap: tile.cap, modbar: tile.modbar, voteBtn: tile.voteBtn,
             name, headless: false, connected: true, pendingIce: [], absentSince: 0, lastKick: 0, lastHeard: Date.now(), bornAt: Date.now(), incoming: [], neverUp: false, stream: null };
           peers.set(id, p);
         }
