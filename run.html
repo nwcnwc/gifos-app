@@ -6150,12 +6150,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // The sender's claim that the video leaving them is a screen, before the
     // grant is applied. A fresh status wins; past one section the fold's
     // share bit (f & 2) is the only word a far section has.
+    const shareHeard = new Set(); // stagers whose last word, status or fold, was a share
     const shareClaim = (id) => {
       if (id === myId || id === 'me') return !!myStatus.scr;
       const st = statusOf.get(id);
-      if (st && freshSt(id)) return !!st.scr;
-      const e = digStageEntry(id);
-      if (e) return !!(e.f & 2);
+      const e = st && freshSt(id) ? null : digStageEntry(id);
+      const word = st && freshSt(id) ? !!st.scr : (e ? !!(e.f & 2) : null);
+      if (word !== null) { if (word) shareHeard.add(id); else shareHeard.delete(id); return word; }
+      // Nobody has a word: a stager's up seat died and its branch is out of the fold for ~12 s. A beating
+      // stager is still there and still sharing as far as I know. Reading that as "stopped" cut the video
+      // from every down copy, and the picture stayed off until the fold came back (room c2).
+      let beating = false; try { beating = stgBeats.has('stg:' + id) && !stgStale('stg:' + id); } catch (x) {}
+      if (shareHeard.has(id)) { if (beating) return true; shareHeard.delete(id); }
       return !!(st && st.scr);
     };
     // ONE DERIVATION PER REPAINT PASS. stageIds() and allConsent() walk the
@@ -10130,18 +10136,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // scr=true. Every caller is a stage-media choice; none of them lifts a
     // moderator's blur (the strip bakes it on a share too).
     const sharingScreen = (pid) => {
-      let claimed;
-      if (pid === myId) claimed = !!myStatus.scr;
-      else {
-        const st = statusOf.get(pid);
-        if (st && freshSt(pid)) claimed = !!st.scr;
-        else {
-          const e = digStageEntry(pid);
-          if (e) claimed = !!(e.f & 2);
-          else claimed = !!(st && st.scr);
-        }
-      }
-      if (!claimed) return false;
+      if (!shareClaim(pid)) return false;
       // A claim is not a share unless this room allows that person to share.
       // Where that rule is not in scope, the claim stands as it did before.
       if (typeof mayShareScreen === 'function' && !mayShareScreen(pid)) return false;
@@ -35764,6 +35759,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // a face cut out of the received strip; luma is the mean brightness of
       // the pixels that box shows (sampled from its own <video>), so a guard
       // can tell a live face from an empty box.
+      // Why this page reads a stager as sharing: its fresh status, the fold's bit, the grant.
+      shareWhyForTest: (id) => { const st = statusOf.get(id), e = digStageEntry(id); return { share: !!sharingScreen(id), fresh: freshSt(id), scr: st ? st.scr || 0 : null, age: st ? Date.now() - stSeen(st) : -1, dig: e ? e.f : null, may: !!mayShareScreen(id) }; },
       stageFacesForTest: () => {
         const host = stagefeedEl && stagefeedEl.querySelector('[data-row="sgs"]');
         const out = { view: stageViewNow, stagers: stageIds().slice(), screenSid: null, faces: [] };
