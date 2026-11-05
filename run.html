@@ -5946,6 +5946,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // keeps their place in step-up order. A grant that has not arrived yet
     // must not disarm it (reactStageLost waits out stageResumeUntil).
     let stageResumeUntil = 0, stageLeaving = false;
+    // HAS THIS PERSON JOINED? A camera or mic on in this page outlives a reload only if the person is on
+    // stage or this is true: the page has been seated past every door (renderFromOcc), or it came back from
+    // a page that had (applyRecoverMedia). Reaching a door again ends it (quietAtDoor).
+    let mediaJoined = false;
     if (updateResume && +updateResume.stg > 0) { myStatus.stg = +updateResume.stg; stageResumeUntil = Date.now() + 20000; }
     // A RELOAD KEEPS THE STAGE SEAT (Nathan, 0.9.25: back on stage right after the reload). This
     // tab writes its stage seat on pagehide; Leave removes it, and a closed tab takes it with it
@@ -8225,7 +8229,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // A stager comes back as it left: the stage seat, and the mic and camera as they were (the
       // recover note, this room, two minutes). Without the note a reload joins quiet, and the
       // stage is silent until a tap; the room must hear the stager right after the reload.
-      try { if (!stageLeaving && +myStatus.stg > 0) { sessionStorage.setItem(STAGE_RELOAD_KEY, JSON.stringify({ room: updateRoomKey(), at: Date.now(), stg: +myStatus.stg })); if (typeof localStream !== 'undefined' && localStream && typeof stashRecoverMedia === 'function') stashRecoverMedia(true); } } catch (e) {}
+      try { if (!stageLeaving && onStageNow()) { sessionStorage.setItem(STAGE_RELOAD_KEY, JSON.stringify({ room: updateRoomKey(), at: Date.now(), stg: +myStatus.stg })); if (typeof localStream !== 'undefined' && localStream && typeof stashRecoverMedia === 'function') stashRecoverMedia(true); } } catch (e) {}
       if (updateLeaving) return;
       try { sessionStorage.removeItem(UPDATE_RESUME_KEY); } catch (e) {}
     });
@@ -15725,6 +15729,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // closes that gap (without it, a newcomer's status arrived at ~4.4 s
       // instead of within 3 s).
       if (s.hasCoord && s.state === 3 && !seatedBeatSent) { seatedBeatSent = true; try { broadcastStatus(); } catch (e) {} }
+      if (s.hasCoord && s.state === 3 && !pwBlocked && !bannedOut && !iAmWaiting()) mediaJoined = true;
       departSweep(s); // D2/D5 event intake FIRST — a freed seat leaves the view this tick
       const ids = new Set();
       // An occ id is a PARTICIPANT only with a liveness signal: a fresh status
@@ -16173,6 +16178,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       heldGrant = null; grantHoldUntil = 0; retainedGrant = null;
       storePw('');
       pwBlocked = true;
+      quietAtDoor();
       // The same identity comes back (ensureIdentity): one peer id, so the
       // room never holds this person twice while the old seat is let go.
       try { sessionStorage.setItem(PW_CHANGED_KEY, JSON.stringify({ room: roomKey(), seed: myIdentitySeed || '', at: Date.now() })); } catch (e) {}
@@ -17180,7 +17186,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
           pwLog('R6-LOCKED → pw modal');
           if (pwFromStore || pwProbe === 'restored') forgetPw('neither it nor the open key reads this room');
-          pwBlocked = true; showPwModal(true, pwChangedWhy());
+          pwBlocked = true; quietAtDoor(); showPwModal(true, pwChangedWhy());
         },
         // THE DOOR SAID NO, IN A CLOSE CODE: 4007 is a vote-off's verdict; every other policy code keeps its own path.
         onRejected: (code) => {
@@ -17188,6 +17194,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (code === 4013 || code === 4010) { setStatus(uiText('stThisMeetingNeedsTheCurrent', '\u26d4 This meeting needs the current GifOS. Reload the page to update.')); return; } // 4010: the relay saw no key proof
           if (code !== 4007) return;
           bannedOut = true;
+          quietAtDoor();
           for (const pid of Array.from(peers.keys())) dropPeer(pid);
           try { meshNode && meshNode.stop(); } catch (e) {}
           setStatus('⛔ The people on this meeting voted you off.');
@@ -17418,7 +17425,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Password gate is handled by the wire (onLocked / R6 sealing); vote-offs
         // land here. No walk \u2014 the session cap is the greeter
         // pool\u2019s, and newcomers drop their socket after seating anyway.
-        if (/voted-off/.test(m.error || '')) { bannedOut = true; setStatus(uiText('stThePeopleInThisRoom', '\u26d4 The people in this room voted not to let this device in.')); }
+        if (/voted-off/.test(m.error || '')) { bannedOut = true; quietAtDoor(); setStatus(uiText('stThePeopleInThisRoom', '\u26d4 The people in this room voted not to let this device in.')); }
         // The door's own refusals are written for a machine. Say the ONE that a
         // person can actually trigger in the same words the button uses \u2014 one
         // rule, one sentence \u2014 and never show the raw wire text for it.
@@ -27428,6 +27435,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // flight may exclude me for one) and the flag disarms itself.
     let stgLostSince = 0;
     function reactStageLost() {
+      // Listed: a grant has arrived, so the wait for one after a reload is over, and a revoke counts from here.
+      if (myStatus.stg && stageIds().includes(myId)) stageResumeUntil = 0;
       if (!myStatus.stg || stageIds().includes(myId)) { stgLostSince = 0; return; }
       if (stageResumeUntil > Date.now()) { stgLostSince = 0; return; } // an update reload's seat waits for its grant
       if (!stgLostSince) { stgLostSince = Date.now(); return; }
@@ -27575,7 +27584,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let recoverShareTimer = 0;
     const RECOVER_MEDIA_KEY = 'gifos_recover_media';
     const RECOVER_MEDIA_TTL = 120000;
+    // myStatus.stg is what I last claimed, and it outlives a revoked grant by two beats (reactStageLost).
+    // A note needs the stage itself: the room's own list, or the wait for it after a reload (stageResumeUntil).
+    function onStageNow() {
+      return +myStatus.stg > 0 && (stageResumeUntil > Date.now() || stageIds().includes(myId));
+    }
     function stashRecoverMedia(away) {
+      // This note is the only thing that overrides the quiet boot, so writing it is the whole rule:
+      // only a person past the door may leave one, whichever way out of the page wrote it.
+      if (pwBlocked || bannedOut || !(mediaJoined || onStageNow())) {
+        try { sessionStorage.removeItem(RECOVER_MEDIA_KEY); } catch (e) {}
+        return;
+      }
       try {
         sessionStorage.setItem(RECOVER_MEDIA_KEY, JSON.stringify({
           v: 1,
@@ -27586,7 +27606,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           sharing: !away && !!(myStatus && myStatus.scr),
           at: Date.now(),
           away: !!away,
-          room: away && typeof updateRoomKey === 'function' ? updateRoomKey() : '',
+          room: typeof updateRoomKey === 'function' ? updateRoomKey() : '',
         }));
       } catch (e) {}
     }
@@ -27621,8 +27641,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { o = JSON.parse(raw); } catch (e) { return null; }
       if (!o || o.v !== 1 || typeof o.at !== 'number') return null;
       if (Date.now() - o.at > RECOVER_MEDIA_TTL) return null;
-      if (o.away && typeof updateRoomKey === 'function' && o.room !== updateRoomKey()) return null;
+      // An empty room is only an older build's freeze or update note, in the reload that replaces it.
+      if ((o.away || o.room) && typeof updateRoomKey === 'function' && o.room !== updateRoomKey()) return null;
       return o;
+    }
+    // A door ends the membership: the old 'on' belonged to the seat just lost. Quiet now, nothing left to
+    // restore, and on again only by a tap. Runs for a page that came back on its note and then found the door shut.
+    function quietAtDoor() {
+      mediaJoined = false;
+      try { sessionStorage.removeItem(RECOVER_MEDIA_KEY); } catch (e) {}
+      if (!localStream) return;
+      for (const tr of localStream.getTracks()) tr.enabled = false;
+      myStatus.muted = true;
+      myStatus.camOff = true;
+      try { paintControls(); paintOnAir(); refreshOutbound(); broadcastStatus(); syncSpeech(); updateMediaSession(); } catch (e) {}
     }
     function showResharePrompt() {
       shareRecoverMode = false;
@@ -27650,6 +27682,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function applyRecoverMedia() {
       const o = takeRecoverMedia();
       if (!o) return false;
+      mediaJoined = true; // the page that wrote it had joined; the door still has its say (quietAtDoor)
       if (localStream) {
         const mic = localStream.getAudioTracks()[0];
         if (mic) {
