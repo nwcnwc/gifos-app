@@ -12,10 +12,11 @@
  *           (net.topo.ckey), the names the old page read. Read-only.
  *   gossip  GSP / GSPS: room-wide and section-scoped app traffic, flooded over
  *           the seat's link peers with dedup, a per-link budget and a re-fan.
- *   leaf    setLeaf / roomDigest: the 0.9.24 display digest (js/mesh.js G9, same
- *           caps, stale rule and stubs), folded on the seat's beat along the seat's
- *           tree. It rides beside the seat's own digest frames (MW2 `pd`, no frame
- *           of its own); the seat's frames and decisions never see it.
+ *   leaf    setLeaf: my facts go into the seat's own fields (handT, stageT, stageF, appT, away, refuses, vup, vdn), and the
+ *           seat folds them up its tree. The seat's digest is the only fold of the room.
+ *   facts   what the seat's digest cannot hold: a person's peer id, name and device, an app's ad, a vote's string tag.
+ *           They ride beside the seat's digest frames (MW2 `pd`) for the people and tags those frames name, once per
+ *           peer and change; roomDigest joins them onto the seat's lists. No frame of its own, no decision reads them.
  * Nothing here touches a pc, a socket or the DOM.
  */
 (function (root) {
@@ -39,7 +40,6 @@
   // ---- the leaf beside the sim's leaf (G9 display facts) ---------------------------------------------------------
   // 0.9.24 js/mesh.js:253-261 (run.html's myStatus.app shape)
   const STR = (x, n) => typeof x === 'string' && x.length <= n;
-  const INT = Number.isInteger;
   const AD_STR = ['s', 'k', 'relay', 'name', 'pk', 'byName'], AD_BOOL = ['mesh', 'audio'];
   const saneAd = (a) => !!a && typeof a === 'object' && !Array.isArray(a)
     && Object.keys(a).every((k) => AD_STR.indexOf(k) >= 0 || AD_BOOL.indexOf(k) >= 0 || k === 'ts')
@@ -67,144 +67,19 @@
 
   const GSP_RATE = 10, GSP_BURST = 200, GSP_SRC_RATE = 2, GSP_SRC_BURST = 80;
 
-  // ---- the display digest, 0.9.24 js/mesh.js:163,182-219,262-276,294-298,331,338-347 ----------------------------
-  // hands {id,k,nm}, stage {id,k,f,nm,dv}, apps {id,k,a}, votes {tgt,up,dn[,ab]}; handN/awayN counts. freeC/dmin and
-  // the G4 echo stay out: they fed seat decisions, which are the sim's on the new seat. `leased` is the seat's L3.12.
-  const DIG_TTL = 60, STUB_FULL = 240, K_HAND = 8, K_APP = 3, K_VOTE = 16;
-  const SC = () => (GifOS.meshTopo ? GifOS.meshTopo.C : 5);
-  const K_STAGE = () => 2 * SC();
-  const dig0 = () => ({ n: 0, leased: 0, refuse: 0, at: -1, by: null, part: 0, handN: 0, awayN: 0, hands: [], stage: [], apps: [], votes: [], rows: [] });
-  const leAsc = (a, b) => (a.k !== b.k ? a.k - b.k : (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-  const leDesc = (a, b) => (a.k !== b.k ? b.k - a.k : (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  // ---- what the seat's digest cannot hold -------------------------------------------------------------------------------
+  // A vote's tag is a device hash, the seat's target an int: hash it, and let the frames that name the int carry the string.
+  // The seat's vote has up and dn only, so an abstain on t is an up-vote on a second target, t + AB.
+  const AB = '\u0001ab', FACT_FULL = 240, FACTS_MAX = 512;
+  const tagInt = (t) => { let h = 2166136261; for (let i = 0; i < t.length; i++) h = Math.imul(h ^ t.charCodeAt(i), 16777619); return (h >>> 0) % 2147483647; };
   const veOrd = (a, b) => { const ta = a.up + a.dn, tb = b.up + b.dn; return ta !== tb ? tb - ta : (a.tgt < b.tgt ? -1 : a.tgt > b.tgt ? 1 : 0); };
-  const listMerge = (dst, src, K, asc) => {
-    if (!src || !src.length) return dst;
-    const all = dst.concat(src).sort(asc ? leAsc : leDesc), out = [], seen = new Set();
-    for (const e of all) { if (out.length >= K) break; if (!seen.has(e.id)) { seen.add(e.id); out.push(e); } }
-    return out;
-  };
-  const voteAdd = (acc, v) => {
-    for (const a of acc) if (a.tgt === v.tgt) { a.up += v.up; a.dn += v.dn; if (v.ab) a.ab = (a.ab || 0) + v.ab; return; }
-    const e = { tgt: v.tgt, up: v.up, dn: v.dn }; if (v.ab) e.ab = v.ab; acc.push(e);
-  };
-  const voteCopy = (v) => { const e = { tgt: v.tgt, up: v.up, dn: v.dn }; if (v.ab) e.ab = v.ab; return e; };
-  const digLists = (dst, s, cap, held) => {
-    dst.handN += Math.min(s.handN || 0, cap); dst.awayN += Math.min(s.awayN || 0, cap);
-    dst.hands = listMerge(dst.hands, s.hands, K_HAND, true); if (!held) dst.stage = listMerge(dst.stage, s.stage, K_STAGE(), true); dst.apps = listMerge(dst.apps, s.apps, K_APP, false);
-    for (const v of (s.votes || [])) voteAdd(dst.votes, { tgt: v.tgt, up: Math.min(v.up, cap), dn: Math.min(v.dn, cap), ab: Math.min(v.ab || 0, cap) });
-  };
-  const leasedIn = (s) => Math.max(s.leased || 0, -Math.max(0, s.n));   // the seat's digLeasedIn: a dropped copy can take back no more than the report counted
-  const digFold = (dst, s) => { const cap = Math.max(0, (s.n < 0 ? 0 : s.n) + (s.leased || 0)); dst.n += s.n; dst.leased += leasedIn(s); dst.refuse += s.refuse; if (s.part) dst.part = 1; digLists(dst, s, cap); };
-  const digFoldHeld = (dst, s) => { const cap = Math.max(0, (s.n < 0 ? 0 : s.n) + (s.leased || 0)); dst.leased += cap; digLists(dst, s, cap, true); };   // the seat's L3.12: held under its lease, with no Stage list
-  const digTrim = (d) => {
-    const cap = Math.max(0, (d.n < 0 ? 0 : d.n) + (d.leased || 0));
-    if (d.handN > cap) d.handN = cap; if (d.awayN > cap) d.awayN = cap;
-    for (const v of d.votes) { if (v.up > cap) v.up = cap; if (v.dn > cap) v.dn = cap; if (v.ab > cap) { if (cap) v.ab = cap; else delete v.ab; } }
-    d.votes.sort(veOrd); if (d.votes.length > K_VOTE) d.votes.length = K_VOTE;
-  };
-  const DIG_H = Symbol('h');
-  const digHash = (d) => {
-    const hit = d[DIG_H]; if (hit) return hit;
-    const a0 = [d.n, d.leased || 0, d.refuse, d.part ? 1 : 0, d.handN || 0, d.awayN || 0, d.hands || [], d.stage || [], d.apps || [], d.votes || []];
-    if (d.rows && d.rows.length) a0.push(d.rows.map((r) => [r.k, r.at, r.by, r.n, r.l, r.h, r.e, r.hands || [], r.stage || [], r.apps || []]));   // a row's age is not content
-    const t = JSON.stringify(a0);
-    let a = 2166136261 >>> 0, b = 0x9e3779b9 >>> 0;
-    for (let i = 0; i < t.length; i++) { const c = t.charCodeAt(i); a = Math.imul(a ^ c, 16777619); b = Math.imul(b ^ c, 2246822519); }
-    const h = (a >>> 0).toString(36) + (b >>> 0).toString(36);
-    d[DIG_H] = h;
-    return h;
-  };
-  const leCopy = (e) => { const c = Object.assign({}, e); if (e.a) c.a = Object.assign({}, e.a); return c; };
-  // A row one fold carried (the seat's DRow, L48): k the row (its head cell), at/by its report's author stamp, rx its receipt on my
-  // clock (ag on the wire), n/l the seats it put into the carrier's n and leased, h its handN, e 0 the owner's copy, 1 a copy over
-  // E2, 2 a resolved winner (named only), and its lists.
-  const rowCopy = (r) => { const c = { k: r.k, at: r.at, by: r.by, rx: r.rx, n: r.n | 0, l: r.l | 0, h: r.h | 0, e: r.e | 0 };
-    if (r.e !== 2) { c.hands = (r.hands || []).map(leCopy); c.stage = (r.stage || []).map(leCopy); c.apps = (r.apps || []).map(leCopy); } return c; };
-  const digCopy = (d) => ({ n: d.n, leased: d.leased || 0, refuse: d.refuse, at: d.at, by: d.by, part: d.part, handN: d.handN || 0, awayN: d.awayN || 0,
-    hands: (d.hands || []).map(leCopy), stage: (d.stage || []).map(leCopy), apps: (d.apps || []).map(leCopy), votes: (d.votes || []).map(voteCopy), rows: (d.rows || []).map(rowCopy) });
-  const digCopyRx = (d) => { const c = digCopy(d); c.rx = d.rx; return c; };
-  const digPack = (o) => {
-    if (!o.leased) delete o.leased; if (!o.part) delete o.part; if (!o.ag) delete o.ag;
-    if (!o.handN) delete o.handN; if (!o.awayN) delete o.awayN;
-    for (const f of ['hands', 'stage', 'apps', 'votes', 'rows']) if (!o[f] || !o[f].length) delete o[f];
-    return o;
-  };
-  const saneLE = (e, kind) => !!e && STR(e.id, 64) && Number.isFinite(e.k) && (e.f === undefined || INT(e.f)) && (e.nm === undefined || STR(e.nm, 24))
-    && (e.dv === undefined || STR(e.dv, 16)) && (kind !== 'app' || e.a === undefined || saneAd(e.a));
-  const digSane = (d) => {
-    if (!d || typeof d !== 'object' || !INT(d.n) || !INT(d.refuse) || !Number.isFinite(d.at)) return null;
-    const o = { n: d.n, leased: INT(d.leased) && INT(d.n) ? Math.max(d.leased, -Math.max(0, d.n)) : 0, refuse: d.refuse, at: d.at, ag: INT(d.ag) && d.ag >= 0 ? Math.min(d.ag, 1 << 20) : 0, by: d.by == null ? null : String(d.by).slice(0, 64), part: d.part ? 1 : 0,
-      handN: INT(d.handN) && d.handN >= 0 ? d.handN : 0, awayN: INT(d.awayN) && d.awayN >= 0 ? d.awayN : 0, hands: [], stage: [], apps: [], votes: [], rows: [] };
-    const lists = [['hands', K_HAND, 'hand'], ['stage', K_STAGE(), 'stage'], ['apps', K_APP, 'app']];
-    for (const [f, K, kind] of lists) {
-      const a = d[f]; if (a === undefined) continue;
-      if (!Array.isArray(a) || a.length > K || !a.every((e) => saneLE(e, kind))) return null;
-      o[f] = a.map((e) => { const c = { id: e.id, k: e.k }; if (e.f !== undefined) c.f = e.f; if (e.nm !== undefined) c.nm = e.nm; if (e.dv !== undefined) c.dv = e.dv; if (e.a !== undefined) c.a = copyAd(e.a); return c; });
-    }
-    if (d.votes !== undefined) {
-      if (!Array.isArray(d.votes) || d.votes.length > K_VOTE || !d.votes.every((v) => v && STR(v.tgt, 16) && INT(v.up) && v.up >= 0 && INT(v.dn) && v.dn >= 0 && (v.ab === undefined || (INT(v.ab) && v.ab >= 0)))) return null;
-      o.votes = d.votes.map(voteCopy);
-    }
-    if (d.rows !== undefined) {   // L48: bounded (a seat's own child row, a lone row's carried rows, the rows it serves over E2)
-      if (!Array.isArray(d.rows) || d.rows.length > 2 * SC() + 16) return null;
-      for (const r of d.rows) {
-        const e2 = r && r.e === undefined ? 0 : r && r.e;
-        if (!r || typeof r !== 'object' || !INT(r.k) || !Number.isFinite(r.at) || !INT(e2) || e2 < 0 || e2 > 2) return null;
-        const c = { k: r.k, at: r.at, by: r.by == null ? null : String(r.by).slice(0, 64), ag: INT(r.ag) && r.ag >= 0 ? Math.min(r.ag, 1 << 20) : 0, n: INT(r.n) ? r.n : 0, l: INT(r.l) ? r.l : 0, h: INT(r.h) && r.h >= 0 ? r.h : 0, e: e2 };
-        if (e2 !== 2) for (const [f, K, kind] of lists) { const a = r[f]; if (a === undefined) { c[f] = []; continue; } if (!Array.isArray(a) || a.length > K || !a.every((e) => saneLE(e, kind))) return null;
-          c[f] = a.map((e) => { const x = { id: e.id, k: e.k }; if (e.f !== undefined) x.f = e.f; if (e.nm !== undefined) x.nm = e.nm; if (e.dv !== undefined) x.dv = e.dv; if (e.a !== undefined) x.a = copyAd(e.a); return x; }); }
-        o.rows.push(c);
-      }
-    }
-    return o;
-  };
-
-  // ---- L48: a row's fold over E2 while its E1 is down, and the newest copy of each row ------------------------------------
-  // The backup owner folds the row's E2 copy into what a person is shown (leased, handN, hands, Stage, ads); a fold that sees
-  // two copies of one row (the owner row's head, or Section 1 when the owner row is there) keeps the newest and takes every older
-  // copy out of the input that carried it. One author's copies compare by its own stamp, two authors' by receipt on my clock.
-  const leSame = (a, b) => a.id === b.id && a.k === b.k && (a.f | 0) === (b.f | 0);
-  const dropL = (v, gone) => (gone && gone.length && v && v.length ? v.filter((e) => !gone.some((g) => leSame(g, e))) : v);
-  const rowOf = (d, k, asLeased, e2) => {
-    const seats = Math.max(0, (d.n < 0 ? 0 : d.n) + (d.leased || 0));
-    return { k, at: d.at, by: d.by, rx: d.rx != null ? d.rx : d.at, n: asLeased ? 0 : d.n, l: asLeased ? seats : (d.leased || 0), h: Math.min(d.handN || 0, seats), e: e2,
-      hands: (d.hands || []).map(leCopy), stage: (d.stage || []).map(leCopy), apps: (d.apps || []).map(leCopy) };
-  };
-  const addE2 = (dst, s) => {
-    const seats = Math.max(0, (s.n < 0 ? 0 : s.n) + (s.leased || 0));
-    dst.leased += seats; dst.handN += Math.min(s.handN || 0, seats);
-    dst.hands = listMerge(dst.hands, s.hands, K_HAND, true); dst.stage = listMerge(dst.stage, s.stage, K_STAGE(), true); dst.apps = listMerge(dst.apps, s.apps, K_APP, false);
-  };
-  const subRow = (d, r) => { d.leased = (d.leased || 0) - (r.n + r.l); d.handN = Math.max(0, (d.handN || 0) - r.h); d.hands = dropL(d.hands, r.hands); d.stage = dropL(d.stage, r.stage); d.apps = dropL(d.apps, r.apps); };
-  const rowNewer = (a, b) => { if (a.by != null && a.by === b.by) { if (a.at !== b.at) return a.at > b.at; } else if (a.rx !== b.rx) return a.rx > b.rx; return a.e === 0 && b.e !== 0; };
-  // Who may carry a copy of row k into a fold (the folder's own view, occ): an owner's copy (e 0) only a seat whose report
-  // covers the row (its owner, or a row head or owner further up that chain); a copy over E2 (e 1) only the row's backup owner
-  // or its standby. Any other copy takes no part: it can neither win nor take another input's copy out.
-  function mayCarry(c, k, e, occ) {
-    const R = GifOS.meshRoles, tp = GifOS.meshTopo; if (!R || !tp) return false;
-    const row = tp.unckey(k); if (row.i !== 0 || row.pc === 0) return false;
-    if (e === 1) { const b = R.backupOwnerOf(row, occ), sb = R.standbyOf(row, occ); return (!!b && tp.ckey(b) === c) || (!!sb && tp.ckey(sb) === c); }
-    let x = R.ownerOf(row);
-    for (let g = 0; x && g < 64; g++) {
-      if (tp.ckey(x) === c) return true; if (x.pc === 0) return false;
-      const h = { pc: x.pc, r: x.r, i: 0 }; if (tp.ckey(h) === c) return true; x = R.ownerOf(h);
-    }
-    return false;
-  }
-  function rowResolve(ins, cells, occ) {   // ins: the copies a fold is about to fold, cells: the cell each came from; returns the winners
-    const ok = (i, r) => mayCarry(cells[i], r.k, r.e, occ);
-    let any = false; ins.forEach((d, i) => { for (const r of d.rows || []) if (r.e === 1 && ok(i, r)) any = true; });
-    if (!any) return [];
-    const g = new Map(); ins.forEach((d, i) => (d.rows || []).forEach((r, j) => { if (r.e === 2 || !ok(i, r)) return; let a = g.get(r.k); if (!a) g.set(r.k, a = []); a.push([i, j]); }));
-    const won = [];
-    for (const v of g.values()) {
-      if (v.length < 2 || !v.some(([i, j]) => ins[i].rows[j].e === 1)) continue;
-      let b = 0; for (let q = 1; q < v.length; q++) if (rowNewer(ins[v[q][0]].rows[v[q][1]], ins[v[b][0]].rows[v[b][1]])) b = q;
-      const w = ins[v[b][0]].rows[v[b][1]];
-      v.forEach(([i, j], q) => { if (q !== b) subRow(ins[i], ins[i].rows[j]); });
-      won.push({ k: w.k, at: w.at, by: w.by, rx: w.rx, n: 0, l: 0, h: 0, e: 2 });
-    }
-    return won;
+  const arr = (x) => (Array.isArray(x) ? x : []);
+  // The digests a seat frame carries (written or wire form; dgEcho only repeats what its receiver wrote).
+  const framesDigs = (m) => { const a = []; for (const f of ['dgUp', 'dgPub', 'dgRoot', 'dgSi']) if (m[f] && m[f].at >= 0) a.push(m[f]); for (const e of arr(m.digs)) if (e && e.d) a.push(e.d); return a; };
+  function eachName(d, who, tag) {
+    const les = (x) => { for (const f of ['hands', 'stage', 'apps']) for (const e of arr(x[f])) if (e) who(e.id); };
+    les(d); for (const r of arr(d.rows)) if (r) les(r);
+    for (const v of arr(d.votes)) if (v) tag(v.tgt);
   }
 
   /**
@@ -270,8 +145,8 @@
       get greetersAt() { const s = raw(); return s ? s.greetersAt : -1; },
       // The seat's link set (owned, E2/E3, L4, L14 roles), as peers; keeps are apart (keepPeers).
       linkPeers() { return linkSet(15); },
-      // L2.4: the rows' folds I hold while I serve them (read only; not folded into the room: healing-laws L2 'Not yet').
-      u2Folds() { const s = raw(), out = []; if (!s) return out; for (const [k, d] of u2Folds) out.push({ row: k, n: d.n, leased: d.leased || 0, handN: d.handN || 0, hands: (d.hands || []).length, age: s.LT() - d.rx }); return out; },
+      // L48: the rows' folds I hold while I serve them, as the seat's l48Up reads them (read only).
+      u2Folds() { const s = raw(), out = [], K = KC(); if (!s) return out; for (const [k, e] of s.u2Rows) { const d = e.dig; if (e.heir < 0 || d.at < 0 || d.rx < 0 || s.TICK - e.at > K.L48_BEAT || s.LT() - d.rx > K.LEASE_T) continue; out.push({ row: Math.floor(k / 2), n: d.n, leased: d.leased, handN: d.handN, hands: d.hands.length, age: s.LT() - d.rx }); } return out; },
       keepPeers() { return keepSet(); },
       // L28: this device is using the pc to that peer, for so many ticks (my end only, budgeted by the seat).
       keepAdd(peer, ticks) { const s = raw(); if (!s || !s.keepAdd) return; const x = ids.nid(peer); if (x >= 0) s.keepAdd(x, ticks); },
@@ -371,233 +246,90 @@
       lastLinks = now;
     }
 
-    // ---- leaf and digest: the 0.9.24 fold over the new seat's tree ---------------------------------------------
-    // Same slots as the seat's digest (seat-rest.js takeUp, live.js pongDig, s1SyncDigs): one fold per beat (the
-    // seat's own rollup is the clock), a deep seat's report rides its PHONE, the room fold its PONG, Section 1's
-    // table its S1SYNC. The seat is only read; nothing here reaches a seat decision.
-    const leaf = newLeaf(); let refuses = false;
-    function setLeaf(f) { cleanLeaf(leaf, f); }
-    function setRefuses(b) { refuses = !!b; const s = raw(); if (s) s.refuses = refuses; }
+    // ---- leaf: my facts into the seat, and the people the seat's digest names ---------------------------------
+    const leaf = newLeaf(); let refuses = false, fedSeat = null, fedGen = 0, leafGen = 1;
     const KC = () => (GifOS.meshConsts ? GifOS.meshConsts.consts : { LEASE_T: 220 });
     const TP = () => GifOS.meshTopo;
-    let myDig = dig0(), rowDig = dig0(), rootDig = dig0(), downDig = dig0(), u2RowDig = dig0(), siDig = dig0(), foldSig = null, foldBeat = -1, foldCell = -1;
-    const rowKids = new Map(), s1tab = new Map(), u2Folds = new Map(), siKids = new Map();   // siKids: my row-mates' own reports while I stand in for our head (L48)
-    const servesHot = (s, to) => { const x = ids.nid(to); for (const e of s.u2Rows.values()) if (e.hot && e.heir === x) return true; return false; };
-    const e2SrcIs = (s, to) => { const R = GifOS.meshRoles, tp = GifOS.meshTopo; if (!R || !tp) return false; const x = R.e2SrcOf({ pc: s.coord.pc, r: s.coord.r, i: 0 }, (q) => s.occGet(tp.ckey(q)) >= 0); return !!x && P(s.occGet(tp.ckey(x))) === to; };
-    const digSent = new Map(), digWant = new Map();
-    const rxDig = (s, d) => { d.rx = s.LT() - (INT(d.ag) ? Math.min(Math.max(d.ag, 0), 1 << 20) : 0); for (const r of d.rows || []) { r.rx = s.LT() - (r.ag || 0); delete r.ag; } return d; };
-    const wireDig = (s, d) => { const c = digCopy(d); const st = d.rx != null ? d.rx : d.at; c.ag = st >= 0 ? Math.max(0, s.LT() - st) : 0;
-      for (const r of c.rows) { const t = r.rx != null ? r.rx : r.at; r.ag = t >= 0 ? Math.max(0, s.LT() - t) : 0; delete r.rx; for (const f of ['hands', 'stage', 'apps']) if (r[f] && !r[f].length) delete r[f]; for (const f of ['n', 'l', 'h', 'e', 'ag']) if (!r[f]) delete r[f]; } return digPack(c); };
-    // A cell whose occupant the seat no longer names (0.9.24 digForget): a different seat there, or nobody.
-    // And a cell whose report the seat itself no longer holds by that author (its s1tab / rowKids / siKids / downDig):
-    // the seat ends a report on a confirmed vacate (digForget1) and on an L3.12 tombstone, while the occ view may still
-    // name the mover at the cell it left for a lease. This table had no vacate rule, so a mover's old report was counted
-    // beside its new cell, fresh for DIG_TTL then held to LEASE_T: a 25-room read 25 for ~110 s after one Section-1 crash.
-    const seatHolds = (s, k, x) => {
-      const tp = TP(); if (s.hasCoord && k === tp.ckey(tp.down(s.coord))) return !!s.downDig && s.downDig.at >= 0 && s.downDig.by === x;
-      const t = Math.floor(k / 65536) === 0 ? s.s1tab : s.rowKids; let e = t ? t.get(k) : undefined;
-      if (e === undefined && s.siKids) e = s.siKids.get(k);
-      return e !== undefined && e.by === x;
-    };
-    const named = (s, k, e) => { const x = s.occGet(k); return x >= 0 && e.by != null && x === ids.nid(e.by) && seatHolds(s, k, x); };
-    const held = (s, k, e) => e.at >= 0 && named(s, k, e) && s.LT() - e.rx <= KC().LEASE_T;
-    const gapAt = (s, k) => { const sv = s.findNc; s.findNc = -1; try { return s.scopeGap(k); } finally { s.findNc = sv; } };   // the seat's own G3 read, scoped as its rollup scopes it
-    function foldSlot(s, dst, k, e) {   // 0.9.24 rollup: fresh folds, stale fails closed (the seat's L3.12 lease in between)
-      const LT = s.LT();
-      if (e && e.at >= 0 && named(s, k, e) && LT - e.rx <= DIG_TTL) { digFold(dst, e); return 1; }
-      if (gapAt(s, k)) { dst.part = 1; dst.refuse += 1; }
-      if (e && held(s, k, e)) { digFoldHeld(dst, e); return 2; }
-      return 0;
+    const facts = new Map(), tags = new Map();   // seat id -> { p, v, nm, dv, a, seen }; tag int -> { t, seen }
+    const sent = new Map(), wants = new Map();   // peer -> Map(what -> { v, at }): what it has from me; peer -> Set(what): what it lacks from me
+    const learnTag = (t, tick) => { const k = tagInt(t), g = tags.get(k); if (g && g.t === t) g.seen = tick; else tags.set(k, { t, seen: tick }); };
+    function feed(s) {   // the seat's rollup reads these on its own beat, and L10 sends a change early
+      if (!s || (s === fedSeat && fedGen === leafGen)) return;
+      fedSeat = s; fedGen = leafGen;
+      const L = leaf, ab = L.vab.filter((t) => t !== '*'), allAb = ab.length !== L.vab.length;
+      s.refuses = refuses;
+      s.handT = Math.floor(L.hand); s.stageT = Math.floor(L.stage); s.stageF = L.sf; s.appT = L.ad ? Math.floor(L.app) : 0;
+      s.away = L.away || allAb;
+      for (const t of L.vup.concat(L.vdn)) learnTag(t, s.TICK); for (const t of ab) learnTag(t + AB, s.TICK);
+      s.vup = L.vup.filter((t) => !ab.includes(t)).map(tagInt).concat(ab.map((t) => tagInt(t + AB)));
+      s.vdn = L.vdn.filter((t) => !ab.includes(t)).map(tagInt);
     }
-    const slotMode = (s, k, e) => (e && e.at >= 0 && named(s, k, e) && s.LT() - e.rx <= DIG_TTL) ? 1 : (e && held(s, k, e) ? 2 : 0);   // foldSlot's choice, read only
-    const L48_BEAT = () => 8 + (KC().EARLY_HOLD || 12);
-    // L48: the rows I serve over E2 (the seat's U2Row still beats me and still holds a fold) and their copies, at most LEASE_T old
-    const e2Live = (s, rk, u) => { const e = s.u2Rows && s.u2Rows.get(rk * 2); return !!e && e.hot && e.heir >= 0 && s.TICK - e.at <= L48_BEAT() && !!e.dig && e.dig.at >= 0 && u.at >= 0 && s.LT() - u.rx <= KC().LEASE_T; };
-    function ownDig(s, LT) {
-      const L = leaf, d = dig0(); d.n = 1; d.refuse = refuses ? 1 : 0; d.at = LT; d.rx = LT; d.by = me;
-      if (L.hand) { d.handN = 1; d.hands.push({ id: me, k: L.hand, nm: L.nm }); }
-      if (L.stage) d.stage.push({ id: me, k: L.stage, f: L.sf, nm: L.nm, dv: L.dv });
-      if (L.app && L.ad) d.apps.push({ id: me, k: L.app, a: copyAd(L.ad) });
-      if (L.away || L.vab.includes('*')) d.awayN = 1;
-      else {
-        for (const t of L.vup) if (!L.vab.includes(t)) voteAdd(d.votes, { tgt: t, up: 1, dn: 0 });
-        for (const t of L.vdn) if (!L.vab.includes(t)) voteAdd(d.votes, { tgt: t, up: 0, dn: 1 });
-        for (const t of L.vab) voteAdd(d.votes, { tgt: t, up: 0, dn: 0, ab: 1 });
-      }
-      if (s.TICK < s.digHoldUntil) { d.votes = []; d.handN = 0; d.awayN = 0; }   // THE HANDOVER HOLD
-      return d;
+    function setLeaf(f) {
+      cleanLeaf(leaf, f); leafGen++;
+      const my = ids.nid(me), c = facts.get(my), nm = leaf.nm, dv = leaf.dv, a = leaf.ad;
+      if (!c || c.nm !== nm || c.dv !== dv || JSON.stringify(c.a) !== JSON.stringify(a)) facts.set(my, { p: me, v: Math.max(c ? c.v + 1 : 0, Date.now()), nm, dv, a, seen: Infinity });
+      feed(raw());
     }
-    // A settled room's fold inputs do not change between beats: a matching signature only moves the stamps (0.9.24).
-    function slotSig(s, k, e) { const LT = s.LT(); return (e && e.at >= 0 && named(s, k, e) && LT - e.rx <= DIG_TTL) ? ':' + digHash(e) : (gapAt(s, k) ? ':*' : ':.') + (e && held(s, k, e) ? digHash(e) : ''); }
-    function rollupP(s) {
-      const C = SC(), c = s.coord, tp = TP(), LT = s.LT(), mine = tp.ckey(c);
-      if (mine !== foldCell) { foldCell = mine; downDig = dig0(); rowKids.clear(); s1tab.clear(); foldSig = null; u2RowDig = dig0(); u2Folds.clear(); siKids.clear(); siDig = dig0(); }
-      const L = leaf, dk = tp.ckey(tp.down(c));
-      const newest = new Map();
-      if (c.pc === 0) for (const e of s1tab.values()) if (e.by != null && LT - e.rx <= DIG_TTL) { const nb = newest.get(e.by); if (nb === undefined || nb < e.at) newest.set(e.by, e.at); }
-      const superseded = (it) => LT - it.rx <= DIG_TTL && it.by != null && (it.by === me || newest.get(it.by) !== it.at);
-      let sig = (refuses ? 1 : 0) + ',' + (s.TICK < s.digHoldUntil ? 1 : 0) + ',' + slotSig(s, dk, downDig)
-        + ',' + (L.hand || 0) + ',' + (L.stage || 0) + ',' + (L.sf | 0) + ',' + (L.app || 0) + ',' + (L.away ? 1 : 0)
-        + ',' + L.nm + ',' + L.dv + ',' + (L.ad ? JSON.stringify(L.ad) : '') + ',' + L.vup.join('\n') + ',' + L.vdn.join('\n') + ',' + L.vab.join('\n');
-      if (c.pc !== 0 && c.i === 0) for (let j = 1; j < C; j++) { const rk = tp.ckey({ pc: c.pc, r: c.r, i: j }); sig += slotSig(s, rk, rowKids.get(rk)); }
-      for (const [rk, u] of u2Folds) if (!e2Live(s, rk, u)) u2Folds.delete(rk);   // L48: a parked beat, a beat with no fold, or a copy past its lease ends the copy
-      for (const [rk, u] of u2Folds) if (e2Live(s, rk, u)) sig += ';e2' + rk + ':' + digHash(u);
-      const si = c.pc !== 0 && c.i !== 0 && siKids.size > 0;
-      if (si) for (let j = 1; j < C; j++) if (j !== c.i) { const rk = tp.ckey({ pc: c.pc, r: c.r, i: j }); sig += ';si' + slotSig(s, rk, siKids.get(rk)); }
-      if (c.pc === 0) for (let r0 = 0; r0 < C; r0++) for (let i0 = 0; i0 < C; i0++) {
-        const k = tp.ckey({ pc: 0, r: r0, i: i0 }); if (k === mine) { sig += ':me'; continue; }
-        const it = s1tab.get(k); sig += it && superseded(it) ? ':-' : slotSig(s, k, it);
-      }
-      if (foldSig === sig && myDig.at >= 0) {
-        myDig.at = LT; myDig.rx = LT; if (c.pc !== 0 && c.i === 0) { rowDig.at = LT; rowDig.rx = LT; } if (si) { siDig.at = LT; siDig.rx = LT; } if (c.pc === 0) { rootDig.at = LT; rootDig.rx = LT; }
-        return;
-      }
-      foldSig = sig;
-      const d = ownDig(s, LT), dm = foldSlot(s, d, dk, downDig);
-      if (dm) { d.rows.push(rowOf(downDig, dk, dm === 2, 0)); for (const x of downDig.rows || []) if (x.e !== 2) d.rows.push(rowCopy(x)); }   // L48: my child row's copy (a lone row's own rows go on up)
-      for (const [rk, u] of u2Folds) if (e2Live(s, rk, u)) { addE2(d, u); d.rows.push(rowOf(u, rk, true, 1)); }   // L48: the rows I serve over E2
-      digTrim(d); myDig = d;
-      if (si) {   // L48 the stand-in fold: a heir standing in for its head folds its own report and its row-mates' (their stand-in PHONEs)
-        const r = digCopy(d); r.at = LT; r.rx = LT; r.by = me; r.rows = [];
-        for (let j = 1; j < C; j++) if (j !== c.i) { const rk = tp.ckey({ pc: c.pc, r: c.r, i: j }); foldSlot(s, r, rk, siKids.get(rk)); }
-        digTrim(r); siDig = r;
-      } else siDig = dig0();
-      if (c.pc !== 0 && c.i === 0) {   // a deep row head folds its row (its owner is linked only to it)
-        const r = digCopy(d); r.at = LT; r.rx = LT; r.by = me;
-        const kids = []; for (let j = 1; j < C; j++) { const rk = tp.ckey({ pc: c.pc, r: c.r, i: j }), e = rowKids.get(rk); kids.push([rk, e, slotMode(s, rk, e)]); }
-        const any = d.rows.some((x) => x.e === 1) || kids.some(([, e, m]) => m && (e.rows || []).some((x) => x.e === 1));
-        const cp = kids.map(([, e, m]) => (any && m ? digCopyRx(e) : e));
-        const occV = (q) => tp.ckey(q) === mine || s.occGet(tp.ckey(q)) >= 0;
-        const won = any ? rowResolve([r].concat(cp.filter((x, i) => kids[i][2])), [mine].concat(kids.filter((x) => x[2]).map((x) => x[0])), occV) : [];   // L48: the owner and the backup owner of a row below meet here
-        kids.forEach(([rk], i) => foldSlot(s, r, rk, cp[i]));
-        r.rows = won; if (kids.every((x) => !x[2])) for (const x of d.rows) if (x.e !== 2) r.rows.push(rowCopy(x));
-        digTrim(r); rowDig = r;
-      }
-      if (c.pc === 0) {   // Section 1 folds the room; one author, one section (its newest report)
-        const R = dig0(); R.at = LT; R.rx = LT; R.by = me;
-        const ins = new Map();   // L48: an owner row in Section 1 and its backup owner are both here
-        for (let r0 = 0; r0 < C; r0++) for (let i0 = 0; i0 < C; i0++) {
-          const k = tp.ckey({ pc: 0, r: r0, i: i0 }); if (k === mine) { ins.set(k, myDig); continue; }
-          const it = s1tab.get(k); if (!it || superseded(it) || !slotMode(s, k, it)) continue; ins.set(k, it);
-        }
-        let cps = null;
-        if ([...ins.values()].some((x) => (x.rows || []).some((y) => y.e === 1))) { cps = new Map(); for (const [k, x] of ins) cps.set(k, digCopyRx(x)); rowResolve([...cps.values()], [...cps.keys()], (q) => tp.ckey(q) === mine || s.occGet(tp.ckey(q)) >= 0); }
-        const pick = (k, x) => (cps && cps.has(k) ? cps.get(k) : x);
-        for (let r0 = 0; r0 < C; r0++) for (let i0 = 0; i0 < C; i0++) {
-          const k = tp.ckey({ pc: 0, r: r0, i: i0 }); if (k === mine) { digFold(R, pick(k, myDig)); continue; }
-          const it = s1tab.get(k); if (it && superseded(it)) continue;
-          foldSlot(s, R, k, pick(k, it));
-        }
-        digTrim(R); rootDig = R;
-      }
-    }
-    // One fold per beat: the seat's rollup stamped lastPubAt this tick, and its frames go out right after.
-    function foldNow(s) {
-      if (!s || s.state !== 3 || !s.hasCoord) return false;
-      if (foldBeat === s.lastPubAt && foldCell === TP().ckey(s.coord)) return true;
-      if (s.lastPubAt < 0) return false;
-      foldBeat = s.lastPubAt; rollupP(s); return true;
-    }
-    // THE STUB (0.9.24 stubFor): whole when changed or STUB_FULL ticks passed, else "what I sent is still true, and this old".
-    function stubFor(s, to, slot, d, w) {
-      const key = to + '|' + slot, h = digHash(d), st = digSent.get(key), t = s.TICK;
-      if (st && st.h === h && t - st.full < STUB_FULL) { const sb = { stub: 1, at: w.at, ag: w.ag || 0, h }; if (w.by != null) sb.by = w.by; return sb; }
-      if (digSent.size > 1024) digSent.clear();
-      digSent.set(key, { h, full: t });
-      return w;
-    }
-    function want(peer, slot) { let q = digWant.get(peer); if (!q) { if (digWant.size > 64) digWant.clear(); digWant.set(peer, q = new Set()); } if (q.size < 32) q.add(slot); }
-    function stubTake(s, m, h, how, peer, slot) {
-      if (m.stub !== 1 || typeof m.h !== 'string' || m.h.length > 24 || !Number.isFinite(m.at) || m.at < 0) return;
-      if (!h || h.at < 0 || digHash(h) !== m.h || (m.by !== undefined && String(m.by).slice(0, 64) !== h.by)) { want(peer, slot); return; }
-      const a = INT(m.ag) ? Math.min(Math.max(m.ag, 0), 1 << 20) : 0;
-      if (how === 'root') { if (!(h.rx == null || s.LT() - a > h.rx)) return; if (m.at > h.at) h.at = m.at; h.ag = a; rxDig(s, h); return; }
-      if (!(m.at > h.at)) return;
-      h.at = m.at; h.ag = a; rxDig(s, h);
-    }
-    // sideOut: what rides beside seat frame m to peer `to` (null: nothing). Same frames and targets as the seat's digests.
+    function setRefuses(b) { refuses = !!b; leafGen++; feed(raw()); }
+    function want(peer, what) { let q = wants.get(peer); if (!q) { if (wants.size > 64) wants.clear(); wants.set(peer, q = new Set()); } if (q.size < 32) q.add(what); }
+    // sideOut: what rides beside seat frame m to peer `to` (null: nothing): the facts of those its digests name, once per peer and change.
     function sideOut(to, m) {
-      const s = raw(); if (!m || !s || !foldNow(s) || (m.t !== 'S1SYNC' && m.id !== s.id)) return null;   // my own frames (S1SYNC names no author: it is my link's)
-      const c = s.coord, tp = TP(); let pd = null;
-      if (m.t === 'PHONE' && m.dgUp && m.dgUp.at >= 0) {
-        if (c.pc === 0) pd = { u: stubFor(s, to, 'sec', myDig, wireDig(s, myDig)) };   // rook peers: the section digest, stubbed
-        else pd = { u: wireDig(s, c.i === 0 ? rowDig : myDig) };                       // to an aggregator: whole, every beat
-      } else if (m.t === 'PHONE' && m.tag === 5 && c.pc !== 0 && c.i !== 0 && myDig.at >= 0) {   // L48: a stand-in beat carries my own report to the heir (the seat's dgSi)
-        pd = { u: wireDig(s, myDig) };
-      } else if (m.t === 'PONG' && m.dgRoot && m.dgRoot.at >= 0 && rootDig.at >= 0) {
-        const w = wireDig(s, rootDig); delete w.by; pd = { r: stubFor(s, to, 'root', rootDig, w) };
-      } else if (m.t === 'S1SYNC' && m.digs && m.digs.length && c.pc === 0) {
-        const mine = tp.ckey(c), a = [{ k: mine, d: stubFor(s, to, 's1:' + mine, myDig, wireDig(s, myDig)) }];
-        for (const [k, e] of s1tab) if (k !== mine && s.LT() - e.rx <= DIG_TTL) a.push({ k, d: stubFor(s, to, 's1:' + k, e, wireDig(s, e)) });
-        pd = { s: a };
-      } else if (m.t === 'U2BEAT' && m.dgUp && m.dgUp.at >= 0) {   // L2.4: hot E2, the row's fold rides the beat (head alone in its row: its own; the source: the head's last)
-        const hk = tp.ckey({ pc: c.pc, r: c.r, i: 0 }), hn = s.occGet(hk);
-        const d = c.i === 0 ? rowDig : (u2RowDig.at >= 0 && u2RowDig.by != null && hn >= 0 && P(hn) === u2RowDig.by) ? u2RowDig : (hn < 0 || s.headGone()) ? (siDig.at >= 0 ? siDig : myDig) : null;
-        if (d && d.at >= 0) { const w = wireDig(s, d); delete w.rows; pd = { u: w }; }   // L48: the head's last fold while I still name that head, else the row's own fold (mine and my mates')
-      } else if (m.t === 'U2ACK' && rootDig.at >= 0 && servesHot(s, to)) {   // L2.4: the room's fold down the hot E2, as the head's PONG would carry it: a row whose up path is E2 still reads the room
-        const w = wireDig(s, rootDig); delete w.by; pd = { r: stubFor(s, to, 'root', rootDig, w) };
-      } else if (m.t === 'PONG' && m.tag === 5 && rootDig.at >= 0) {   // L2.7: a heir standing in for its head passes that fold on to the row
-        const w = wireDig(s, rootDig); delete w.by; pd = { r: stubFor(s, to, 'root', rootDig, w) };
-      }
-      if (m.t === 'PONG' && m.dgPub && m.dgPub.at >= 0 && c.pc !== 0 && c.i === 0 && rowDig.at >= 0 && e2SrcIs(s, to)) {   // the source's copy (the seat's u2RowDig, from its head's PONG)
-        pd = pd || {}; pd.p = stubFor(s, to, 'rowp', rowDig, wireDig(s, rowDig));
-      }
-      const q = digWant.get(to); if (q && q.size) { pd = pd || {}; pd.dw = Array.from(q); digWant.delete(to); }
+      const s = raw(); if (!m || !s || (m.t !== 'S1SYNC' && m.id !== s.id)) return null;   // my own frames (S1SYNC names no author: it is my link's)
+      const t = s.TICK; let pd = null, sn = null;
+      const fresh = (what, v) => {
+        if (!sn) { sn = sent.get(to); if (!sn) { if (sent.size > 64) sent.clear(); sent.set(to, sn = new Map()); } }
+        const st = sn.get(what); if (st && st.v === v && t - st.at < FACT_FULL) return false;
+        sn.set(what, { v, at: t }); return true;
+      };
+      for (const d of framesDigs(m)) eachName(d, (x) => {
+        const f = facts.get(x); if (!f) return; if (f.seen !== Infinity) f.seen = t;
+        if (fresh(x, f.v)) { pd = pd || {}; (pd.x = pd.x || []).push(f.a ? [f.p, f.v, f.nm, f.dv, f.a] : [f.p, f.v, f.nm, f.dv]); }
+      }, (x) => {
+        const g = tags.get(x); if (!g) return; g.seen = t;
+        if (fresh('t' + x, 1)) { pd = pd || {}; (pd.vt = pd.vt || []).push(g.t); }
+      });
+      const q = wants.get(to); if (q && q.size) { pd = pd || {}; pd.dw = Array.from(q); wants.delete(to); }
       return pd;
     }
     // sideIn: what rode beside a verified frame over the dc from peer `from` (the wire calls it for direct frames only).
     function sideIn(from, m, pd) {
-      const s = raw(); if (!s || s.state !== 3 || !s.hasCoord || !pd || typeof pd !== 'object' || !m || (m.t !== 'S1SYNC' && m.id !== ids.nid(from))) return;
-      const c = s.coord, tp = TP(), C = SC();
-      if (Array.isArray(pd.dw)) for (const sl of pd.dw.slice(0, 32)) if (typeof sl === 'string' && sl.length <= 24) digSent.delete(from + '|' + sl);
-      if (pd.s && Array.isArray(pd.s) && m.t === 'S1SYNC' && c.pc === 0 && pd.s.length <= C * C) {
-        for (const e of pd.s) {
-          if (!e || !INT(e.k) || Math.floor(e.k / 65536) !== 0 || e.k === tp.ckey(c)) continue;
-          s1Slot(s, from, e.k, e.d, 's1:' + e.k);
+      const s = raw(); if (!s || !m || (m.t !== 'S1SYNC' && m.id !== ids.nid(from))) return;
+      const t = s.TICK;
+      if (pd && typeof pd === 'object') {
+        const sn = sent.get(from); if (sn) for (const w of arr(pd.dw).slice(0, 32)) sn.delete(w);
+        for (const e of arr(pd.x).slice(0, FACTS_MAX)) {
+          if (!Array.isArray(e) || !STR(e[0], 64) || !Number.isFinite(e[1]) || !STR(e[2], 24) || !STR(e[3], 16) || (e[4] !== undefined && !saneAd(e[4]))) continue;
+          const x = ids.nid(e[0]), c = facts.get(x); if (x < 0 || x === ids.nid(me) || (c && e[1] <= c.v && e[0] !== from)) continue;   // the newest of an author's changes; its own word always
+          if (!c && facts.size >= FACTS_MAX) continue;
+          facts.set(x, { p: e[0], v: e[1], nm: e[2], dv: e[3], a: e[4] ? copyAd(e[4]) : null, seen: t });
         }
-        return;
+        for (const v of arr(pd.vt).slice(0, 64)) if (STR(v, 16 + AB.length) && (tags.size < FACTS_MAX || tags.has(tagInt(v)))) learnTag(v, t);
       }
-      if (!m.coord) return;
-      const pk = tp.ckey(m.coord);
-      if (pd.u && m.t === 'U2BEAT') {   // the seat's U2Row.dig: held while I serve that row, by the source the seat names (its own check: a backup owner need not name a deep cell)
-        const rk = tp.ckey({ pc: m.coord.pc, r: m.coord.r, i: 0 }), e = s.u2Rows.get(rk * 2); if (!e || e.heir !== m.id) return;
-        const u = digSane(pd.u); if (u && m.coord.i === 0 && u.by != null && u.by !== from) return;   // a head beats with its own row fold only
-        if (u) { if (u.by == null) u.by = from; if (u2Folds.size > 2 * C) u2Folds.clear(); u2Folds.set(rk, rxDig(s, u)); }   // L48: the row's author stays (one author's copies compare by its stamp)
-        return;
-      }
-      const e2Far = m.t === 'U2ACK' && (m.id === s.u2Id || m.id === s.u3Id);   // the seat already took this far end from its row's PONG; a deep view need not name its cell
-      if (!e2Far && s.occGet(pk) !== m.id) return;
-      if (pd.p && m.t === 'PONG' && c.pc !== 0 && c.i !== 0 && pk === tp.ckey({ pc: c.pc, r: c.r, i: 0 })) {
-        if (pd.p.stub === 1) stubTake(s, pd.p, u2RowDig, 'row', from, 'rowp'); else { const u = digSane(pd.p); if (u) { u.by = from; u2RowDig = rxDig(s, u); } }
-      }
-      if (pd.u && m.t === 'PHONE' && m.tag === 5) {   // L48: a row-mate's own report while I stand in for our head (the seat takes the PHONE only then)
-        if (m.tock === tp.ckey(c) && c.pc !== 0 && c.i !== 0 && m.coord.pc === c.pc && m.coord.r === c.r && m.coord.i !== 0 && s.headGone()) { const u = digSane(pd.u); if (u) { u.by = from; delete u.rows; if (siKids.size >= C) siKids.clear(); siKids.set(pk, rxDig(s, u)); } }
-        return;
-      }
-      if (pd.u && m.t === 'PHONE' && m.tock === tp.ckey(c)) {
-        if (pk === tp.ckey(tp.down(c))) { const u = digSane(pd.u); if (u) { u.by = from; downDig = rxDig(s, u); } }
-        else if (c.pc === 0 && m.coord.pc === 0) s1Slot(s, from, pk, pd.u, 'sec');
-        else if (c.pc !== 0 && c.i === 0 && m.coord.pc === c.pc && m.coord.r === c.r) { const u = digSane(pd.u); if (u) { u.by = from; rowKids.set(pk, rxDig(s, u)); } }
-      } else if (pd.r && c.pc !== 0 && ((m.t === 'PONG' && (s.ownedLinkCell(pk) || (m.tag === 5 && m.coord.pc === c.pc && m.coord.r === c.r))) || e2Far)) {
-        if (pd.r.stub === 1) { stubTake(s, pd.r, rootDig, 'root', from, 'root'); return; }
-        const rt = digSane(pd.r); if (!rt) return; rxDig(s, rt);
-        if (rootDig.at < 0 || rt.rx > rootDig.rx) rootDig = rt;
-      }
+      for (const d of framesDigs(m)) eachName(d, (x) => { const f = facts.get(x); if (f) { if (f.seen !== Infinity) f.seen = t; } else if (Number.isFinite(x)) want(from, x); },
+        (x) => { const g = tags.get(x); if (g) g.seen = t; else if (Number.isFinite(x)) want(from, 't' + x); });
     }
-    function s1Slot(s, from, k, x, slot) {
-      if (!x || typeof x !== 'object') return;
-      if (x.stub === 1) { stubTake(s, x, s1tab.get(k), 's1', from, slot); return; }
-      const u = digSane(x); if (!u || u.by == null) return; rxDig(s, u); if (u.at < 0 || s.LT() - u.rx > DIG_TTL) return;
-      const cur = s1tab.get(k); if (cur && cur.by === u.by && !(u.at > cur.at)) return;   // same author, a newer author stamp wins
-      s1tab.set(k, u);
+    function factsSweep(t) {   // nobody's digest has named them for two leases
+      const old = 2 * KC().LEASE_T;
+      for (const [x, f] of facts) if (t - f.seen > old) facts.delete(x);
+      const mine = new Set(leaf.vup.concat(leaf.vdn, leaf.vab.map((v) => v + AB)));
+      for (const [x, g] of tags) if (t - g.seen > old && !mine.has(g.t)) tags.delete(x);
     }
+    // The seat's room fold, as the page reads it: its counts as they are, its lists with the people's names on.
     function roomDigest() {
-      const s = raw(); if (!s || s.state !== 3 || !foldNow(s) || !rootDig || rootDig.at < 0) return null;
-      const d = rootDig, R = s.rootDig;   // one room count: the seat's own fold (the lists stay this layer's: they name people)
-      if (R.at < 0) return null;
-      return { at: R.at, age: s.LT() - (R.rx >= 0 ? R.rx : R.at), n: R.n + R.leased, refuse: R.refuse, part: R.part, handN: d.handN || 0, awayN: d.awayN || 0,
-        hands: (d.hands || []).map((e) => Object.assign({}, e)), stage: (d.stage || []).map((e) => Object.assign({}, e)),
-        apps: (d.apps || []).map((e) => Object.assign({}, e)), votes: (d.votes || []).map((v) => Object.assign({}, v)) };
+      const s = raw(); if (!s || s.state !== 3 || !s.hasCoord) return null;
+      const d = s.rootDig; if (!d || d.at < 0) return null;
+      const t = s.TICK, who = (x) => { const f = facts.get(x); if (f && f.seen !== Infinity) f.seen = t; return f || null; };
+      const hands = [], stage = [], apps = [], votes = new Map();
+      for (const e of d.hands) { const id = P(e.id); if (id == null) continue; const f = who(e.id); hands.push({ id, k: e.k, nm: f ? f.nm : '' }); }
+      for (const e of d.stage) { const id = P(e.id); if (id == null) continue; const f = who(e.id); stage.push({ id, k: e.k, f: e.f, nm: f ? f.nm : '', dv: f ? f.dv : '' }); }
+      for (const e of d.apps) { const id = P(e.id), f = who(e.id); if (id != null && f && f.a) apps.push({ id, k: e.k, a: copyAd(f.a) }); }   // an ad not yet here is no app yet
+      for (const v of d.votes) {
+        const g = tags.get(v.tgt); if (!g) continue; g.seen = t;
+        const isAb = g.t.endsWith(AB), tag = isAb ? g.t.slice(0, -AB.length) : g.t;
+        let o = votes.get(tag); if (!o) votes.set(tag, o = { tgt: tag, up: 0, dn: 0 });
+        if (isAb) { if (v.up) o.ab = v.up; } else { o.up = v.up; o.dn = v.dn; }
+      }
+      return { at: d.at, age: s.LT() - (d.rx >= 0 ? d.rx : d.at), n: d.n + d.leased, refuse: d.refuse, part: d.part, handN: d.handN, awayN: d.awayN, hands, stage, apps, votes: Array.from(votes.values()).sort(veOrd) };
     }
 
     // ---- L27 vote-off: the page's choice into the seat's statement, the seat's fold back to the page ------------
@@ -648,7 +380,7 @@
     }
 
     // ---- per tick (after the seat's tick) -------------------------------------------------------------------------
-    function afterTick() { const s = raw(); if (s) s.refuses = refuses; bump(); replayNew(); refan(); }
+    function afterTick() { const s = raw(); feed(s); if (s && !(s.TICK & 63)) factsSweep(s.TICK); bump(); replayNew(); refan(); }
 
     // seen(gid): a gossip frame I already took (the wire skips the signature check for its later copies)
     const seen = (gid) => typeof gid === 'string' && gseen.has(gid);
