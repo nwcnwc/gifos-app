@@ -347,10 +347,10 @@
           const placed = !!(L.dPlaced & (1 << mine(x)));   // L16.3.1: the placee closes it (L15.5), or the life limit from the PLACE
           if (!placed && L.dHoAt >= 0 && T() - L.dHoAt >= K.L16_HO_CLOSE && !(L.dOwed && L.dWait >= 0)) why = 'handed';
           else if (L.dGw && !L.dIn) { if (idle > K.L16_GW_IDLE && !(L.dWait >= 0)) why = 'gw-idle'; else if (age > K.L16_GW_LIFE) why = 'gw-life'; }
-          else if (placed) { if (idle > K.L16_LIFE) why = 'life'; }
+          else if (placed) { if (L.state === LK_OPEN && idle > K.L16_LIFE) why = 'life'; }
           else if (L.dIn && L.state === LK_OPEN && !L.dAsked && L.dProg === L.dBorn) { if (age > DOOR_FIRST_FRAME) why = 'unnamed'; }   // the sim delivers the dial's queued frame with the open; here it follows the dc's open over the verify chain
           else if (L.dIn && !L.dAsked && L.state === LK_OPEN && idle > K.L16_ANS_IDLE) why = 'idle';
-          else if (idle > K.L16_IDLE) why = 'idle'; else if (age > K.L16_LIFE) why = 'life';
+          else if (L.state === LK_OPEN && idle > K.L16_IDLE) why = 'idle'; else if (L.state === LK_OPEN && T() - L.dOpenAt > K.L16_LIFE) why = 'life';   // a door's clocks read an open door, from its open; a dial ends on its own clock
           if (why) {
             const c0 = why[0];
             trace('DOOR-LIMIT', me, null, 'peer=%d why=%s age=%lld idle=%lld', x, why, age, idle);
@@ -453,7 +453,7 @@
       const L = LINKS.get(x); if (!L || L.state === LK_OPEN) return;
       L.state = LK_OPEN; L.openEp = L.epoch; L.half = 0; L.halfAt = -1; L.stuck = false; L.view[0] = L.view[1] = LK_OPEN; L.opened = true;
       L.byeIn = L.byeOut = false; L.callClosed = false; L.gone = 0;   // a new pc: the last one's close says nothing about it
-      if (L.outside && L.dBorn >= 0) L.dProg = T();
+      if (L.outside && L.dBorn >= 0) { L.dProg = T(); L.dOpenAt = T(); }
       const s = mySeat(); if (s) { s.dials.opened(x); let hello = false; for (const [ck, v] of s.l13SplitCell) if (v[0] === x) { trace('L13.41-JOINED', me, null, 'peer=%d', x); s.l13SplitCell.delete(ck); hello = true; }
         if (!hello && !L.outside && s.hasCoord && s.state === 3) { let named = false; for (const v of s.occ.values()) if (v === x) { named = true; break; } if (!named) hello = true; }   // L13.41.2: a pc between members to a seat my view names nowhere (the page cannot read the far seat's state: a door pc is outside, every other pc is between members)
         if (hello && s.l1341Hello.length < 64) s.l1341Hello.push(x); s.l213HeadPc(x); }
