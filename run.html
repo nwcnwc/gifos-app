@@ -4865,7 +4865,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const btn = document.getElementById('airsound');
       if (!btn) return;
       let bc = false;
-      try { bc = typeof BROADCAST !== 'undefined' && !!BROADCAST; } catch (e) { bc = false; }
+      try { bc = !!BROADCAST; } catch (e) { bc = false; }
       btn.hidden = !bc;
       if (!bc) return;
       const muted = !serviceHeard;
@@ -4891,7 +4891,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // stage are not watching, so a host alone reads 0. null off a service.
     function serviceWatchCount() {
       let bc = false;
-      try { bc = typeof BROADCAST !== 'undefined' && !!BROADCAST; } catch (e) { bc = false; }
+      try { bc = !!BROADCAST; } catch (e) { bc = false; }
       if (!bc) return null;
       const up = new Set();
       try { stageIds().forEach((id) => up.add(id)); } catch (e) {}
@@ -4926,7 +4926,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       maybeShowRecNotice();
     }
     function recRoomWord() {
-      return (typeof BROADCAST !== 'undefined' && BROADCAST) ? 'broadcast' : 'meeting';
+      return (BROADCAST) ? 'broadcast' : 'meeting';
     }
     function recNoticeTitle() {
       let subject = '';
@@ -4969,7 +4969,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { mine = !!(typeof myStatus !== 'undefined' && myStatus && myStatus.rec); } catch (e) {}
       try { onStage = typeof myStatus !== 'undefined' && !!myStatus.stg; } catch (e) {}
       try { host = (typeof bcHostStored === 'function' && !!bcHostStored()) || document.body.classList.contains('amadmin'); } catch (e) {}
-      const service = typeof BROADCAST !== 'undefined' && BROADCAST;
+      const service = BROADCAST;
       const ask = !mine && (!service || (onStage && !host));
       const bg = document.createElement('div');
       bg.id = 'rec-notice';
@@ -5009,7 +5009,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // The full-width bar names the room and the seat. Its colour follows the
     // lamp: live only while a camera or a microphone is actually sending.
     function paintBroadcastAir() {
-      if (typeof BROADCAST === 'undefined' || !BROADCAST) return;
+      if (!BROADCAST) return;
       const role = bcRoleSafe();
       const sending = bcSendingSafe();
       let onStage = false;
@@ -5024,7 +5024,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // so it never grows notadmin, and the dock would keep Unmute, Video,
     // and Stage. Hand stays on that seat.
     function bcWatchingViewer() {
-      if (typeof BROADCAST === 'undefined' || !BROADCAST) return false;
+      if (!BROADCAST) return false;
       // Watching is the viewer role itself (bcRole), so a stage grant or the
       // host key, pending or verified, takes the seat off bc-watching.
       return bcRoleSafe() === 'viewer';
@@ -5048,7 +5048,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // opens. A phone keeps them in this row. A broadcast does not use this
     // (placeDockForWidth still parks a service's own buttons).
     function seatUseRow() {
-      if (typeof BROADCAST !== 'undefined' && BROADCAST) return;
+      if (BROADCAST) return;
       const bar = document.querySelector('.bar');
       const row = moreRow('use');
       if (!bar || !row) return;
@@ -5083,7 +5083,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const more = document.getElementById('barmore');
       if (!bar || !more) return;
       const phone = phoneLayout();
-      const service = typeof BROADCAST !== 'undefined' && BROADCAST;
+      const service = BROADCAST;
       const put = (id, group, before, lead) => {
         const el = document.getElementById(id);
         if (!el) return;
@@ -5128,7 +5128,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // window where older eyes read them at 16px (qa-meet-desktop).
       // A service dock carries Step on, Invite and Full screen too: under 1100px
       // it keeps the short words so Leave stays on screen.
-      const narrowService = typeof BROADCAST !== 'undefined' && BROADCAST && window.innerWidth < 1100;
+      const narrowService = BROADCAST && window.innerWidth < 1100;
       const dockWords = (phone || narrowService)
         ? { reactbtn: 'React', sharebtn: 'Share' }
         : { reactbtn: uiText('react', 'Reactions'), sharebtn: uiText('shareScreen', 'Share screen') };
@@ -5730,7 +5730,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       bg.id = 'appear-modal';
       bg.setAttribute('role', 'dialog'); bg.setAttribute('aria-modal', 'true');
       bg.setAttribute('aria-labelledby', 'appear-title');
-      const viewerJoin = (typeof BROADCAST !== 'undefined' && BROADCAST) && !(typeof bcHostStored === 'function' && bcHostStored());
+      const viewerJoin = (BROADCAST) && !(typeof bcHostStored === 'function' && bcHostStored());
       if (viewerJoin) bg.setAttribute('aria-describedby', 'appear-note');
       bg.innerHTML = '<div class="name-box appear-box"><h3 id="appear-title">' + (viewerJoin ? 'Watching the broadcast' : uiText('appearTitle', 'This is how you\'ll appear')) + '</h3>' +
         (viewerJoin ? '<p id="appear-note">You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.</p>' : '') +
@@ -5840,7 +5840,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function paintStreamLink() {
       const card = document.getElementById('bc-link');
       if (!card) return;
-      const host = typeof BROADCAST !== 'undefined' && BROADCAST && typeof bcHostStored === 'function' && bcHostStored();
+      const host = BROADCAST && typeof bcHostStored === 'function' && bcHostStored();
       const onAir = myStatus && myStatus.camOff === false;
       const url = (typeof shareUrl !== 'undefined' && shareUrl && shareUrl.value) || '';
       const show = !!(host && url);
@@ -7481,7 +7481,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!v || document.pictureInPictureElement === v) {
         // A tap with no picture used to do nothing. Auto-float on leaving the
         // tab stays quiet: there is still nothing to show.
-        if (manual && !v) setStatus((typeof BROADCAST !== 'undefined' && BROADCAST) ? 'Nothing on the stage to float yet.' : 'Nothing to float yet.');
+        if (manual && !v) setStatus((BROADCAST) ? 'Nothing on the stage to float yet.' : 'Nothing to float yet.');
         return;
       }
       pipManual = !!manual;
@@ -8301,7 +8301,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (v.classList.contains('stageface')) continue;
         if (pipReady(v)) out.push({ key: 'stage:' + ((v.closest('.rowtile') || {}).dataset || {}).row, label: 'On stage', v });
       }
-      if (typeof BROADCAST !== 'undefined' && BROADCAST) return out;
+      if (BROADCAST) return out;
       for (const [pid, p] of peers) {
         if (!p.connected) continue;
         // Every connected peer is listed. A dark one (camera off, admin
@@ -8339,7 +8339,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (letter) letter.textContent = ch ? ch.toUpperCase() : '\u2022';
         if (nm) nm.textContent = text;
       };
-      const broadcastFs = typeof BROADCAST !== 'undefined' && BROADCAST;
+      const broadcastFs = BROADCAST;
       // A service stage with the camera off wears its card (#bc-ident:
       // picture or initial, name, Camera off). Full screen shows that card,
       // not the black frame under it.
@@ -8666,7 +8666,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function paintStageMod() {
       const el = document.getElementById('stagemod');
       if (!el) return;
-      const broadcast = typeof BROADCAST !== 'undefined' && BROADCAST;
+      const broadcast = BROADCAST;
       const host = broadcast && ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin'));
       const blocked = document.body.classList.contains('admroom') && document.body.classList.contains('notadmin');
       const ids = (!broadcast || !host || blocked) ? [] : stageModList();
@@ -8736,7 +8736,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function paintRaisedHands() {
       const el = document.getElementById('handraise');
       if (!el) return;
-      const broadcast = typeof BROADCAST !== 'undefined' && BROADCAST;
+      const broadcast = BROADCAST;
       const host = broadcast && ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin'));
       const watching = document.body.classList.contains('bc-watching');
       const rows = (!broadcast || !host || watching) ? [] : raisedHandRows();
@@ -9209,7 +9209,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         } else paintAvatarImg(t.avatar, t.avatarUrl || '', t.avatarHash || '');
         if (typeof setTileLetter === 'function') setTileLetter(t.avatar, nameInitial(isMe ? myName() : (hostRename(id) || displayName(id))));
       }
-      if (typeof BROADCAST !== 'undefined' && BROADCAST) paintBroadcastIdent();
+      if (BROADCAST) paintBroadcastIdent();
       t.video.classList.remove('blur1', 'blur2');
       // The ME tile already SHOWS the pre-blurred outbound pixels (WYSIWYG), so
       // a CSS blur on top would double it; receiver-side CSS blur is for the
@@ -12114,7 +12114,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { paintLyrics(); } catch (e) {}
         return;
       }
-      const host = typeof BROADCAST !== 'undefined' && BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored())) && rundownTpl() === 'service';
+      const host = BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored())) && rundownTpl() === 'service';
       el.classList.toggle('open', !!host);
       document.body.classList.toggle('rundown', !!host);
       try { paintLyrics(); } catch (e) {}
@@ -12211,7 +12211,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { sessionStorage.setItem(lyricStoreKey(), String(n)); } catch (e) {}
     }
     function lyricSongOn() {
-      const host = typeof BROADCAST !== 'undefined' && BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored())) && rundownTpl() === 'service';
+      const host = BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored())) && rundownTpl() === 'service';
       return !!(host && songSlotOf(rundownAt()) >= 0);
     }
     // The line the room sees on the booth's camera, or '' outside Song.
@@ -13650,7 +13650,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const el = document.getElementById('bc-stage');
       const line = document.getElementById('bc-stage-line');
       if (!el || !line) return;
-      if (typeof BROADCAST === 'undefined' || !BROADCAST) { el.hidden = true; return; }
+      if (!BROADCAST) { el.hidden = true; return; }
       const ident = document.getElementById('bc-ident');
       const picture = !!document.querySelector('#stagefeed .rowtile') || !!(ident && ident.classList.contains('on'));
       el.hidden = picture;
@@ -13694,7 +13694,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function paintBroadcastIdent() {
       const el = document.getElementById('bc-ident');
       if (!el) return;
-      if (typeof BROADCAST === 'undefined' || !BROADCAST) { el.classList.remove('on'); return; }
+      if (!BROADCAST) { el.classList.remove('on'); return; }
       const stage = (typeof stageIds === 'function') ? stageIds() : [];
       let pid = stage.length ? stage[0] : null;
       if (!pid && typeof amAdmin !== 'undefined' && amAdmin) pid = myId;
@@ -18541,7 +18541,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // ---- room password UI: one modal, two moods -------------------------------
     const pwModal = document.getElementById('pw-modal');
     function showPwModal(locked, why) {
-      const service = typeof BROADCAST !== 'undefined' && BROADCAST;
+      const service = BROADCAST;
       document.getElementById('pw-title').textContent = service ? 'Viewer password' : (locked ? uiText('pwTitleLocked', 'This room is locked') : uiText('pwTitle', 'Room password'));
       document.getElementById('pw-hint').textContent = service
         ? (locked
@@ -19130,7 +19130,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     if (airWho) airWho.onclick = showWhoModal;
     const airSound = document.getElementById('airsound');
     if (airSound) airSound.onclick = () => {
-      if (typeof BROADCAST === 'undefined' || !BROADCAST) return;
+      if (!BROADCAST) return;
       serviceHeard = !serviceHeard;
       try { applyBuses(); } catch (e) {}
       try { paintServiceSound(); } catch (e) {}
@@ -20218,14 +20218,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       else if (ROOM.kind === 'app' && ROOM.founder) show = true;
       else if (!document.body.classList.contains('app-room')) {
         const kind = (statusEl && statusEl.dataset && statusEl.dataset.kind) || '';
-        const hostHere = typeof BROADCAST !== 'undefined' && BROADCAST
+        const hostHere = BROADCAST
           && (((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin')));
         const hostAlone = !!(hostHere && kind === 'alone');
         const phoneAlone = kind === 'alone' && phoneLayout();
         // A meeting keeps Invite while an app is shared. Hiding it here
         // replaced the OS slot with the app bar (Help / Hide / Stop) and
         // left guests with no way to share the meeting link.
-        if (typeof BROADCAST !== 'undefined' && BROADCAST) show = !document.body.classList.contains('has-app') && (hostAlone || phoneAlone);
+        if (BROADCAST) show = !document.body.classList.contains('has-app') && (hostAlone || phoneAlone);
         else show = true;
         // A person held in the waiting room is not in the meeting yet: no
         // Invite until they are admitted (the line says "In the waiting room").
@@ -20234,7 +20234,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       btn.style.display = show ? '' : 'none';
       const tip = (ROOM.kind === 'app' || document.body.classList.contains('app-room'))
         ? 'barInviteTip'
-        : (typeof BROADCAST !== 'undefined' && BROADCAST)
+        : (BROADCAST)
           ? 'Invite someone to this broadcast — one link'
           : 'invTip';
       if (tip === 'invTip' || tip === 'barInviteTip') {
@@ -20258,7 +20258,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function applyPageHeader() {
       if (window.__gifosHeaderApp) { applyHeaderChoice(window.__gifosHeaderApp); return; }
-      if (typeof BROADCAST !== 'undefined' && BROADCAST) { applyHeaderChoice(''); return; }
+      if (BROADCAST) { applyHeaderChoice(''); return; }
       if (ROOM.kind === 'meet') applyHeaderChoice(GifOS.runtime.SYSTEM_HEADER.meet);
       else applyHeaderChoice('');
     }
@@ -20396,7 +20396,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function qaChatOn() {
       if (chatOptOverride && Object.prototype.hasOwnProperty.call(chatOptOverride, 'qa'))
         return !!chatOptOverride.qa;
-      const svc = (typeof BROADCAST !== 'undefined' && BROADCAST) || (typeof TOWNHALL !== 'undefined' && TOWNHALL);
+      const svc = (BROADCAST) || (typeof TOWNHALL !== 'undefined' && TOWNHALL);
       if (!hasAdminRoom()) return !!svc;
       const m = modTable['*'] && modTable['*'].qa;
       if (!m || typeof m.on !== 'boolean') return !!svc;
@@ -27145,10 +27145,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function paintStage() {
       const claimed = !!myStatus.stg;
       const seated = claimed && stageIds().includes(myId);
-      const on = (typeof BROADCAST !== 'undefined' && BROADCAST) ? claimed : seated;
+      const on = (BROADCAST) ? claimed : seated;
       stageBtn.classList.toggle('on', on);
-      const hostHere = (typeof BROADCAST !== 'undefined' && BROADCAST) && ((typeof bcHostStored === 'function' && bcHostStored()) || amAdmin);
-      const promoted = (typeof BROADCAST !== 'undefined' && BROADCAST) && (!!myStatus.stg || !!(modOf(myId).app && modOf(myId).app.on));
+      const hostHere = (BROADCAST) && ((typeof bcHostStored === 'function' && bcHostStored()) || amAdmin);
+      const promoted = (BROADCAST) && (!!myStatus.stg || !!(modOf(myId).app && modOf(myId).app.on));
       if (promoted && !hostHere) {
         const bar = document.querySelector('.bar');
         const anchor = document.getElementById('reactbtn');
@@ -27312,11 +27312,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // phone dock and a narrow service window (placeDockForWidth). Never
         // textContent: that wipes the icon when the button moves into More.
         const inSheet = shareBtn.closest && shareBtn.closest('#barmore');
-        const shortShare = !inSheet && (phoneLayout() || (typeof BROADCAST !== 'undefined' && BROADCAST && window.innerWidth < 1100));
+        const shortShare = !inSheet && (phoneLayout() || (BROADCAST && window.innerWidth < 1100));
         shareLab.textContent = on ? uiText('stopShare', shortShare ? 'Stop' : 'Stop sharing') : (shortShare ? 'Share' : uiText('shareScreen', 'Share screen'));
       }
       shareBtn.setAttribute('aria-label', sharingLabel);
-      shareBtn.title = (typeof BROADCAST !== 'undefined' && BROADCAST)
+      shareBtn.title = (BROADCAST)
         ? (on ? 'You are sharing your screen on the stage. Tap to stop.' : 'Show the stage a window, a tab, or your desktop.')
         : (on
           ? uiText('shareTipOn', 'You are sharing your screen with the meeting — tap to stop')
@@ -28111,7 +28111,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       let base = 1;
       try { base = mix.stage; } catch (e) { base = 1; }
       try {
-        if (typeof BROADCAST !== 'undefined' && BROADCAST && !serviceHeard) return 0;
+        if (BROADCAST && !serviceHeard) return 0;
       } catch (e) {}
       return base;
     }
@@ -30859,7 +30859,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // 'program' (a kept service) is the stage too, with the host alone on
         // it before the strip exists; turning it into 'stage' failed the
         // first try and put "nothing to record" on the live host's line.
-        if (typeof BROADCAST !== 'undefined' && BROADCAST && scope !== 'app' && scope !== 'program') scope = 'stage';
+        if (BROADCAST && scope !== 'app' && scope !== 'program') scope = 'stage';
         recMatchMix = opts.matchMix !== false;
         recQuality = REC_QUALITY[opts.quality] ? opts.quality : recDefaultQuality(IS_MOBILE);
         const q = REC_QUALITY[recQuality];
@@ -31036,7 +31036,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // has people: the stadium needs "everything", a row records the row,
       // and an empty stage is never the default — Start used to pick it,
       // bail, and close the sheet before anyone could read why.
-      const service = typeof BROADCAST !== 'undefined' && BROADCAST;
+      const service = BROADCAST;
       const srcNow = recSources();
       const scopeDefault = service ? 'stage' : (srcNow.stage.length ? 'stage' : (srcNow.stadium.length ? 'all' : (srcNow.row.length ? 'row' : 'stage')));
       const stageSub = srcNow.stage.length
@@ -31249,7 +31249,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!collapsed && wakeForSheet) wakeForSheet();
         bar.classList.toggle('collapsed', collapsed);
         toggle.setAttribute('aria-expanded', String(!collapsed));
-        const service = typeof BROADCAST !== 'undefined' && BROADCAST;
+        const service = BROADCAST;
         const surface = service ? 'broadcast' : 'meeting';
         bar.setAttribute('aria-label', service ? 'Broadcast controls' : 'Meeting controls');
         toggle.setAttribute('aria-label', collapsed ? 'More' : 'Hide ' + surface + ' controls');
@@ -31291,7 +31291,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // A small group tucks the dock once the call sits quiet (qa-meet-mobile);
       // a wide window also fades it sooner (dock-calm, qa-meet-desktop). A service
       // keeps it: volunteers need the large controls without hunting for them.
-      const personalCall = () => !(typeof BROADCAST !== 'undefined' && BROADCAST);
+      const personalCall = () => !(BROADCAST);
       const dockBusy = () => {
         if (!bar.classList.contains('collapsed')) return true;
         const tray = document.getElementById('reacttray');
@@ -31678,7 +31678,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!callOpen() || !phoneCall()) return true;
         // A service host alone keeps the link and the dock up to invite
         // people, as the desktop dock does (busy(): alone needs Invite).
-        if (typeof BROADCAST !== 'undefined' && BROADCAST && document.body.classList.contains('bc-host') && participantCount() < 2) return true;
+        if (BROADCAST && document.body.classList.contains('bc-host') && participantCount() < 2) return true;
         if (bar && !bar.classList.contains('collapsed')) return true;
         const chat = document.getElementById('chatpanel');
         if (chat && chat.classList.contains('open')) return true;
@@ -31866,7 +31866,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const audienceReactRate = new Map();
     let audienceReactFade = 0;
     function takeAudienceReact(emoji, fromId) {
-      if (typeof BROADCAST === 'undefined' || !BROADCAST) return false;
+      if (!BROADCAST) return false;
       emoji = String(emoji || '');
       if (AUDIENCE_REACTS.indexOf(emoji) < 0) return false;
       const who = String(fromId || 'me');
@@ -32016,7 +32016,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // A service hides the gallery, so the same clap has to land on the
         // stage or the person who sent it never sees it. The count is what
         // everyone else sees: one pill per emoji, not one burst per person.
-        if (typeof BROADCAST !== 'undefined' && BROADCAST) {
+        if (BROADCAST) {
           flashBurst(document.getElementById('bc-react'));
           sendAudienceReact(label);
         }
@@ -32126,7 +32126,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const mic = document.getElementById('avmic');
       const cam = document.getElementById('avcam');
       if (!bar || !mic || !cam) return;
-      const watching = typeof BROADCAST !== 'undefined' && BROADCAST && !(bcHostStored() || document.body.classList.contains('amadmin'));
+      const watching = BROADCAST && !(bcHostStored() || document.body.classList.contains('amadmin'));
       let muted = false, camOff = false, locked = false;
       try {
         if (!watching && typeof myStatus !== 'undefined' && myStatus) {
@@ -32470,7 +32470,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // viewer has it on the dock, and anyone in a small group can raise one.
     function canRaiseHand() {
       if (!handBtn || handBtn.style.display === 'none') return false;
-      const svc = typeof BROADCAST !== 'undefined' && BROADCAST;
+      const svc = BROADCAST;
       return !svc || !!(handBtn.parentElement && handBtn.parentElement.classList.contains('bar'));
     }
     // Share is offered when its button is not hidden by the room's rules;
@@ -33658,7 +33658,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // immediate, which is what a hang-up and the test hook use. A service
     // still asks: you are live, and Stay puts the microphone back.
     if (leaveBtn) leaveBtn.onclick = () => {
-      if (typeof BROADCAST !== 'undefined' && BROADCAST) {
+      if (BROADCAST) {
         try { holdLeaveAsk(); } catch (e) {}
         if (leaveAsk) leaveAsk.style.display = 'flex';
         return;
@@ -34790,7 +34790,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const SYSTEM_APPS = { meet: 1, video: 1, broadcast: 1, appstore: 1 };
       const apps = (files || []).filter((f) => f.isApp && !SYSTEM_APPS[f.appId]);
       if (!apps.length) {
-        const where = (typeof BROADCAST !== 'undefined' && BROADCAST) ? 'on this broadcast' : 'in a meeting';
+        const where = (BROADCAST) ? 'on this broadcast' : 'in a meeting';
         list.innerHTML = '<small style="color:#667">No apps on this computer yet. Make one with ＋ Add on your Home Screen, then run it ' + where + '.</small>';
         return;
       }
