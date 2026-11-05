@@ -350,7 +350,7 @@
           else if (placed) { if (idle > K.L16_LIFE) why = 'life'; }
           else if (L.dIn && L.state === LK_OPEN && !L.dAsked && L.dProg === L.dBorn) { if (age > DOOR_FIRST_FRAME) why = 'unnamed'; }   // the sim delivers the dial's queued frame with the open; here it follows the dc's open over the verify chain
           else if (L.dIn && !L.dAsked && L.state === LK_OPEN && idle > K.L16_ANS_IDLE) why = 'idle';
-          else if (idle > K.L16_IDLE) why = 'idle'; else if (age > K.L16_LIFE) why = 'life';
+          else if (idle > K.L16_IDLE) why = 'idle'; else if (L.state === LK_OPEN && T() - L.dOpenAt > K.L16_LIFE) why = 'life';   // a door's life runs from its open; a dial ends on its own clock
           if (why) {
             const c0 = why[0];
             trace('DOOR-LIMIT', me, null, 'peer=%d why=%s age=%lld idle=%lld', x, why, age, idle);
@@ -419,6 +419,7 @@
     // the callee's gate on an incoming offer: L23 (refused), L16 (busy over the relay); else my end starts DIALING
     function offer(x, mk) {
       mk = mk || {}; const s = mySeat(); if (!s || s.dead || x === me || x < 0) return false;
+      { const D = LINKS.get(x); if (D && D.outside && D.dBorn >= 0) D.dProg = T(); }   // a signal on a live dial keeps its door: the two ends share one connection
       const sat = mk.s ? 1 : 0;
       const f = far(x); f.seated = sat; if (mk.tier) f.tier = mk.tier;
       const mt = mk.mt || null, ck = mk.ck || 0;
@@ -444,6 +445,7 @@
     function answered(x, mk) {
       const L = LINKS.get(x); if (!L || !mk) return; const sat = mk.s ? 1 : 0; const f = far(x); f.seated = sat; if (mk.tier) f.tier = mk.tier;
       if (L.state !== LK_DIALING && L.state !== LK_OPEN) return;
+      if (L.outside && L.dBorn >= 0) L.dProg = T();   // as offer
       const oo = (L.outside & (1 << mine(x))) | (sat ? 0 : (1 << theirs(x)));
       if (oo === L.outside) return;
       doorEndCount(L); L.dUncounted = false; L.dG = -1; doorInit(L, L.dialBy, L.dialBy === me ? x : me, oo); if (!oo) l1611Mine(x, L);
@@ -453,7 +455,7 @@
       const L = LINKS.get(x); if (!L || L.state === LK_OPEN) return;
       L.state = LK_OPEN; L.openEp = L.epoch; L.half = 0; L.halfAt = -1; L.stuck = false; L.view[0] = L.view[1] = LK_OPEN; L.opened = true;
       L.byeIn = L.byeOut = false; L.callClosed = false; L.gone = 0;   // a new pc: the last one's close says nothing about it
-      if (L.outside && L.dBorn >= 0) L.dProg = T();
+      if (L.outside && L.dBorn >= 0) { L.dProg = T(); L.dOpenAt = T(); }
       const s = mySeat(); if (s) { s.dials.opened(x); let hello = false; for (const [ck, v] of s.l13SplitCell) if (v[0] === x) { trace('L13.41-JOINED', me, null, 'peer=%d', x); s.l13SplitCell.delete(ck); hello = true; }
         if (!hello && !L.outside && s.hasCoord && s.state === 3) { let named = false; for (const v of s.occ.values()) if (v === x) { named = true; break; } if (!named) hello = true; }   // L13.41.2: a pc between members to a seat my view names nowhere (the page cannot read the far seat's state: a door pc is outside, every other pc is between members)
         if (hello && s.l1341Hello.length < 64) s.l1341Hello.push(x); s.l213HeadPc(x); }
