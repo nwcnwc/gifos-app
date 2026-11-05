@@ -17052,7 +17052,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           g.running = true;
           const order = Array.from(document.querySelectorAll('script[src]')).map((el) => { try { return new URL(el.src, location.href).pathname.replace(/^\//, ''); } catch (e) { return ''; } });
           const note = (m) => { g.trace.push(m); if (typeof clog === 'function') clog('load-gate ' + m); };
-          const load = (src) => new Promise((res) => { const el = document.createElement('script'); el.async = false; el.src = src + '?lc=' + g.tries;   // a fresh URL: never the cached miss el.onload = () => { const en = performance.getEntriesByName(el.src).pop(); if (en && en.decodedBodySize === 0) { el.remove(); res(false); } else res(true); }; el.onerror = () => { el.remove(); res(false); }; document.head.appendChild(el); });
+          const load = (src) => new Promise((res) => { const el = document.createElement('script'); el.async = false; el.src = src + '?lc=' + g.tries; el.onload = () => { const en = performance.getEntriesByName(el.src).pop(); if (en && en.decodedBodySize === 0) { el.remove(); res(false); } else res(true); }; el.onerror = () => { el.remove(); res(false); }; document.head.appendChild(el); });
           (async () => {
             note('missing ' + g.failed.join(',') + (g.threw.length ? ' threw ' + g.threw.join(',') : ''));
             let todo = g.failed.slice();
@@ -36295,6 +36295,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // The seat's decision trace (the sim's JSONL shape {t, s, e, c, d}) rides a page ring while DEBUG is on
       // (meshTraceSink, the seat world's trace sink); meet.js writes it into each participant's jsonl.
       meshTraceForTest: () => !!DEBUG_ON,
+      countPeekForTest: (vp) => { const now = Date.now(); const d = roomDig(); const p = peers.get(vp), st = statusOf.get(vp), s = meshSeat();
+        let occHas = 0; if (s) for (const v of s.occ.values()) if (v === vp) occHas++;
+        let tab = null, forg = null, lt = null; try { const s = meshNode && meshNode.raw; if (s && s.s1tab) { tab = []; for (const [k, d] of s.s1tab) tab.push([String(k), String(d.by), d.at, Math.round(s.LT() - d.rx), d.n, d.leased || 0, String(s.occGet(k))]); } if (s && s.digForgot) forg = [...s.digForgot].map(([k, v]) => [String(k), String(v[0]), v[1]]); lt = s.LT(); } catch (e) { tab = String(e); }
+        return { tab, forg, lt, vp: String(vp), disp: displayCount(), pc: participantCount(), leaf: leafCount(), lp: livePeerCount(), kt: knownTotal(), dn: d ? d.n : null, part: d ? !!d.part : null, shown: shownPeerCount(), faces: facesOnScreen(), byes: (meshNode && meshNode.byesHeld) ? meshNode.byesHeld() : 0, past: roomPastSection(), deep: deepInView(),
+          v: { roster: rosterIds.includes(vp), peer: p ? { conn: !!p.connected, heard: Math.round((now - Math.max(p.lastHeard || 0, p.meshRxAt || 0)) / 1000) } : null, st: st ? Math.round((now - stSeen(st)) / 1000) : null, occ: occHas, first: occFirstSeen.has(vp) ? Math.round((now - occFirstSeen.get(vp)) / 1000) : null, gone: meshGone.has(vp) ? Math.round((now - meshGone.get(vp)) / 1000) : null } }; },
       meshTraceDump: () => { const G = window.__meshTraceRing; return G ? G.ring.map((e) => e[1]) : []; },
       meshForensics: (since) => {
         const G = window.__meshTraceRing || { ring: [], seq: 0 }; const s = meshSeat(); if (!s) return null;
