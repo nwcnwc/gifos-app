@@ -282,10 +282,10 @@
           const placed = !!(L.dPlaced & (1 << lEnd(g, k)));   // L16.3.1: the placee closes it (L15.5), or the life limit from the PLACE
           if (!placed && L.dHoAt >= 0 && T() - L.dHoAt >= K.L16_HO_CLOSE && !(L.dOwed && L.dWait >= 0)) why = 'handed';
           else if (L.dGw && !L.dIn) { if (idle > K.L16_GW_IDLE && !(L.dWait >= 0)) why = 'gw-idle'; else if (age > K.L16_GW_LIFE) why = 'gw-life'; }
-          else if (placed) { if (L.state === LK_OPEN && idle > K.L16_LIFE) why = 'life'; }
+          else if (placed) { if (idle > K.L16_LIFE) why = 'life'; }
           else if (L.dIn && L.state === LK_OPEN && !L.dAsked && L.dProg === L.dBorn) why = 'unnamed';
           else if (L.dIn && !L.dAsked && L.state === LK_OPEN && idle > K.L16_ANS_IDLE) why = 'idle';
-          else if (L.state === LK_OPEN && idle > K.L16_IDLE) why = 'idle'; else if (L.state === LK_OPEN && T() - L.dOpenAt > K.L16_LIFE) why = 'life';   // a door's clocks read an open door, from its open; a dial ends on its own clock
+          else if (idle > K.L16_IDLE) why = 'idle'; else if (L.state === LK_OPEN && T() - L.dOpenAt > K.L16_LIFE) why = 'life';   // a door's life runs from its open; a dial ends on its own clock
           if (why) {
             const c0 = why[0];
             if (c0 === 'h') lv.L16_HANDED++; else if (c0 === 'g') lv.L16_GWC++; else if (c0 === 'i') lv.L16_IDLEC++; else if (c0 === 'u') lv.L16_UNN++; else lv.L16_LIFEC++;

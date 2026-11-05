@@ -347,10 +347,10 @@
           const placed = !!(L.dPlaced & (1 << mine(x)));   // L16.3.1: the placee closes it (L15.5), or the life limit from the PLACE
           if (!placed && L.dHoAt >= 0 && T() - L.dHoAt >= K.L16_HO_CLOSE && !(L.dOwed && L.dWait >= 0)) why = 'handed';
           else if (L.dGw && !L.dIn) { if (idle > K.L16_GW_IDLE && !(L.dWait >= 0)) why = 'gw-idle'; else if (age > K.L16_GW_LIFE) why = 'gw-life'; }
-          else if (placed) { if (L.state === LK_OPEN && idle > K.L16_LIFE) why = 'life'; }
+          else if (placed) { if (idle > K.L16_LIFE) why = 'life'; }
           else if (L.dIn && L.state === LK_OPEN && !L.dAsked && L.dProg === L.dBorn) { if (age > DOOR_FIRST_FRAME) why = 'unnamed'; }   // the sim delivers the dial's queued frame with the open; here it follows the dc's open over the verify chain
           else if (L.dIn && !L.dAsked && L.state === LK_OPEN && idle > K.L16_ANS_IDLE) why = 'idle';
-          else if (L.state === LK_OPEN && idle > K.L16_IDLE) why = 'idle'; else if (L.state === LK_OPEN && T() - L.dOpenAt > K.L16_LIFE) why = 'life';   // a door's clocks read an open door, from its open; a dial ends on its own clock
+          else if (idle > K.L16_IDLE) why = 'idle'; else if (L.state === LK_OPEN && T() - L.dOpenAt > K.L16_LIFE) why = 'life';   // a door's life runs from its open; a dial ends on its own clock
           if (why) {
             const c0 = why[0];
             trace('DOOR-LIMIT', me, null, 'peer=%d why=%s age=%lld idle=%lld', x, why, age, idle);
@@ -419,6 +419,7 @@
     // the callee's gate on an incoming offer: L23 (refused), L16 (busy over the relay); else my end starts DIALING
     function offer(x, mk) {
       mk = mk || {}; const s = mySeat(); if (!s || s.dead || x === me || x < 0) return false;
+      { const D = LINKS.get(x); if (D && D.outside && D.dBorn >= 0) D.dProg = T(); }   // a signal on a live dial keeps its door: the two ends share one connection
       const sat = mk.s ? 1 : 0;
       const f = far(x); f.seated = sat; if (mk.tier) f.tier = mk.tier;
       const mt = mk.mt || null, ck = mk.ck || 0;
@@ -444,6 +445,7 @@
     function answered(x, mk) {
       const L = LINKS.get(x); if (!L || !mk) return; const sat = mk.s ? 1 : 0; const f = far(x); f.seated = sat; if (mk.tier) f.tier = mk.tier;
       if (L.state !== LK_DIALING && L.state !== LK_OPEN) return;
+      if (L.outside && L.dBorn >= 0) L.dProg = T();   // as offer
       const oo = (L.outside & (1 << mine(x))) | (sat ? 0 : (1 << theirs(x)));
       if (oo === L.outside) return;
       doorEndCount(L); L.dUncounted = false; L.dG = -1; doorInit(L, L.dialBy, L.dialBy === me ? x : me, oo); if (!oo) l1611Mine(x, L);
