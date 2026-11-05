@@ -15912,27 +15912,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // typeof 'object' → every guard stays false).
     const DEBUGFAIL_AT_LOAD = (() => { const m = /(?:^|[#&?])debugfail=([a-z-]+)/i.exec(location.hash + location.search); return m ? m[1].toLowerCase() : ''; })();   // read at load: the boot rewrites the hash later
     // MEM SAMPLES (DEBUG only): every 30 s one small record of what this page holds, so a long room shows what only grows.
-    // JS heap (performance.memory where it exists), live workers, mesh/pc maps, pipe-worker queues, media tracks, pcs by state.
+    // JS heap (performance.memory where it exists), mesh/pc maps, pipe-worker queues, media element tracks, pcs by state.
+    // It never calls into a live RTCPeerConnection (no getSenders/getReceivers) and never wraps Worker: suspected in a 40-page room whose renderers crashed (rtp_sender CHECK).
     // Own ring (window.__memSamples, 240 records = 2 h), plus one MEM line in the mesh trace so it rides the participant's trace file. Numbers only: no ids, no names.
     if (DEBUG_ON) {
       const MS = window.__memSamples = window.__memSamples || [];
-      let workersLive = 0, workersMade = 0;
-      try {
-        const RW = window.Worker;
-        if (typeof RW === 'function' && !RW.__memCounted) {
-          const W = function (a, b) { const w = new RW(a, b); workersMade++; workersLive++; const t = w.terminate; w.terminate = function () { if (workersLive > 0) workersLive--; return t.apply(this, arguments); }; return w; };
-          W.prototype = RW.prototype; W.__memCounted = true; window.Worker = W;
-        }
-      } catch (e) {}
       const sz = (x) => { try { return x == null ? null : (typeof x.size === 'number' ? x.size : (typeof x.length === 'number' ? x.length : null)); } catch (e) { return null; } };
       const memSample = async () => {
         const o = { t: Date.now() };
         try { const m = performance.memory; if (m) { o.heapUsed = m.usedJSHeapSize; o.heapTotal = m.totalJSHeapSize; } } catch (e) {}
-        o.workersLive = workersLive; o.workersMade = workersMade;
         try {
           const pcs = {}; let recv = 0, send = 0, live = 0;
-          for (const v of peers.values()) { const pc = v && v.pc; if (!pc) continue; pcs[pc.connectionState] = (pcs[pc.connectionState] || 0) + 1; try { recv += pc.getReceivers().length; send += pc.getSenders().length; } catch (e) {} }
-          o.pcs = pcs; o.receivers = recv; o.senders = send;
+          for (const v of peers.values()) { const pc = v && v.pc; if (!pc) continue; pcs[pc.connectionState] = (pcs[pc.connectionState] || 0) + 1; }
+          o.pcs = pcs;
           const els = document.querySelectorAll('video,audio'); let withStream = 0, tracks = 0, liveTracks = 0;
           for (const el of els) { const ms = el.srcObject; if (ms && ms.getTracks) { withStream++; for (const t of ms.getTracks()) { tracks++; if (t.readyState === 'live') liveTracks++; } } }
           o.mediaEls = els.length; o.elStreams = withStream; o.elTracks = tracks; o.elLiveTracks = liveTracks;
