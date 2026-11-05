@@ -160,8 +160,9 @@
   // like page timers (the heartbeat's bgClock and the blur pipe's metroSub
   // in run.html already ride one for the same reason).
   //
-  // workerClock(ms, fn) — a dedicated Worker posting every `ms`; plain
-  //   setInterval where a Worker cannot be made. Returns { via, stop() }.
+  // workerClock(ms, fn) — the page's one Worker posts every `ms` for this
+  //   subscriber; plain setInterval where a Worker cannot be made. Returns
+  //   { via, stop() }.
   // createBgClock() — clock(fn, ms) -> stop(). Each subscriber keeps its
   //   plain setInterval (a VISIBLE tab paints exactly as before); while the
   //   tab is hidden ONE shared Worker beat (BG_BEAT_MS) also ticks every
@@ -178,25 +179,50 @@
       now: env.now || (() => Date.now()),
     };
   }
+  // ONE WORKER PER PAGE. Every workerClock on a page rides one Worker, which holds one timer per
+  // subscriber. Each subscriber still gets its own period and its own message, so each tick stays
+  // its own task on the main thread, and the timers start in the order the page asked for them.
+  // The Worker exists while it has a subscriber. Where none can be made, plain setIntervals.
+  const CLOCK_WORKER_SRC = 'var T={};onmessage=function(e){var m=e.data;if(m[1])T[m[0]]=setInterval(function(){postMessage(m[0])},m[1]);else{clearInterval(T[m[0]]);delete T[m[0]]}}';
+  const clockHubs = new WeakMap(); // env -> hub: a test's injected world has its own Worker
+  let pageHub = null;
+  function clockHub(env) {
+    if (!env) return pageHub = pageHub || { w: null, url: null, subs: new Map(), seq: 0 };
+    let h = clockHubs.get(env);
+    if (!h) { h = { w: null, url: null, subs: new Map(), seq: 0 }; clockHubs.set(env, h); }
+    return h;
+  }
   function workerClock(ms, fn, env) {
-    const E = clockEnv(env);
+    const E = clockEnv(env), hub = clockHub(env);
     ms = Math.max(1, ms | 0);
-    let w = null, url = null, iv = null;
+    let id = 0, iv = null;
     try {
-      if (typeof E.Worker !== 'function' || !E.URL || typeof E.Blob !== 'function') throw new Error('no Worker');
-      url = E.URL.createObjectURL(new E.Blob(['setInterval(function(){postMessage(0)},' + ms + ')'], { type: 'text/javascript' }));
-      w = new E.Worker(url);
-      w.onmessage = () => fn(); // an error still surfaces as the page's own, as it did from setInterval
+      if (!hub.w) {
+        if (typeof E.Worker !== 'function' || !E.URL || typeof E.Blob !== 'function') throw new Error('no Worker');
+        hub.url = E.URL.createObjectURL(new E.Blob([CLOCK_WORKER_SRC], { type: 'text/javascript' }));
+        hub.w = new E.Worker(hub.url);
+        hub.w.onmessage = (e) => { const f = hub.subs.get(e.data); if (f) f(); }; // an error still surfaces as the page's own, as it did from setInterval
+      }
+      id = ++hub.seq;
+      hub.subs.set(id, fn);
+      hub.w.postMessage([id, ms]);
     } catch (e) {
-      w = null;
-      if (url) { try { E.URL.revokeObjectURL(url); } catch (e2) {} url = null; }
+      id = 0;
+      if (hub.url && !hub.w) { try { E.URL.revokeObjectURL(hub.url); } catch (e2) {} hub.url = null; }
       iv = E.setInterval(fn, ms);
     }
     return {
-      via: w ? 'worker' : 'interval',
+      via: id ? 'worker' : 'interval',
       stop() {
-        if (w) { try { w.terminate(); } catch (e) {} w = null; }
-        if (url) { try { E.URL.revokeObjectURL(url); } catch (e) {} url = null; }
+        if (id) {
+          hub.subs.delete(id);
+          if (hub.w) { try { hub.w.postMessage([id, 0]); } catch (e) {} }
+          id = 0;
+          if (!hub.subs.size && hub.w) {
+            try { hub.w.terminate(); } catch (e) {} hub.w = null;
+            if (hub.url) { try { E.URL.revokeObjectURL(hub.url); } catch (e) {} hub.url = null; }
+          }
+        }
         if (iv) { E.clearInterval(iv); iv = null; }
       },
     };
