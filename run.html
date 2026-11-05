@@ -8242,7 +8242,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Any way out of the page that is not an update reload drops the note,
     // so the next join starts fresh (Max blur, off the Stage).
     window.addEventListener('pagehide', () => {
-      try { if (!stageLeaving && +myStatus.stg > 0) sessionStorage.setItem(STAGE_RELOAD_KEY, JSON.stringify({ room: updateRoomKey(), at: Date.now(), stg: +myStatus.stg })); } catch (e) {}
+      // A stager comes back as it left: the stage seat, and the mic and camera as they were (the
+      // recover note, this room, two minutes). Without the note a reload joins quiet, and the
+      // stage is silent until a tap; the room must hear the stager right after the reload.
+      try { if (!stageLeaving && +myStatus.stg > 0) { sessionStorage.setItem(STAGE_RELOAD_KEY, JSON.stringify({ room: updateRoomKey(), at: Date.now(), stg: +myStatus.stg })); if (typeof localStream !== 'undefined' && localStream && typeof stashRecoverMedia === 'function') stashRecoverMedia(true); } } catch (e) {}
       if (updateLeaving) return;
       try { sessionStorage.removeItem(UPDATE_RESUME_KEY); } catch (e) {}
     });
@@ -15155,7 +15158,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const pLive = p.connected && p.dc && p.dc.readyState === 'open';
       const unanswered = !!(p.pc && p.pc.signalingState === 'have-local-offer');
       const darkOffer = unanswered && (tlFiredPid.has(p.id) || (p.offerSentPc === p.pc && Date.now() - (p.offerSentAt || 0) >= LOST_OFFER_MS));
-      const forming = !pLive && p.pc && !darkOffer && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000 && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
+      // A fresh pc nothing has happened on (no offer either way, no ICE) is idle, not forming: the one a
+      // goodbye leaves behind for the seat's next dial. Counting it as forming made a dial request from a
+      // page back from a reload wait out this window and its own 4 s retries: the pair came up at 8-9 s.
+      const idle = !!(p.pc && p.pc.signalingState === 'stable' && p.pc.connectionState === 'new' && !p.offering);
+      const forming = !pLive && p.pc && !darkOffer && !idle && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000 && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
       if (typeof clog === 'function') clog('dial-request from ' + String(p.id || '?').slice(0, 6) + ' solo=' + (participantCount() <= 1) + ' live=' + !!pLive
         + ' init=' + iInitiate(p.id) + ' forming=' + !!forming + ' dark=' + !!darkOffer + ' pc=' + (p.pc ? p.pc.connectionState + '/' + p.pc.signalingState : '-')
         + ' age=' + Math.round((Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0)) / 100) / 10 + 's frag=' + Math.round((Date.now() - (p.fragDialAt || 0)) / 100) / 10 + 's');
@@ -25170,8 +25177,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // other swap to longer and longer paths (hop counts only rise), and every copy still looks
     // live (room v6ring, 49 s). Each page passes an unseen beat on once, over its data channels, so
     // no media path is needed and the flood ends when the source does. A new value counts, not a
-    // larger one: a forger can hold a dead stager on stage for its lease, never push a live one off.
+    // larger one, and only the stager can make one (the beat is signed, below).
     const stgBeats = new Map(), STG_BEAT_MS = 1000, STG_BEAT_STALE_MS = 5000, STG_BEAT_SEEN = 16;
+    function stgBeatSeen(key, b) { const e = stgBeats.get(key); return !!e && e.seen.indexOf(b) >= 0; }
     function stgBeatNew(key, b) {
       let e = stgBeats.get(key); if (!e) { e = { seen: [], at: 0 }; stgBeats.set(key, e); }
       if (e.seen.indexOf(b) >= 0) return false;
@@ -25179,19 +25187,36 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       e.at = Date.now();
       return true;
     }
-    function stgBeatFlood(key, b, from) {
-      for (const [pid, p] of peers) if (pid !== from && p.dc && p.dc.readyState === 'open') dcSend(p, { k: 'mx-beat', key, b });
+    // THE BEAT IS SIGNED by the stager's identity key, the key that names it (the pid is derived from the
+    // public key). A page passes on only a beat whose signature checks, so nobody else can make one: a
+    // forger could otherwise hold a dead stager on stage with made-up values until its lease ran out.
+    // The seen list drops a replay before any check; the derivation of pid from key is kept per key.
+    const stgBeatSp = (key, b) => 'mx-beat|' + key + '|' + b;
+    const stgBeatPids = new Map();
+    function stgBeatPid(pub) { let q = stgBeatPids.get(pub); if (!q) { q = Promise.resolve(GifOS.meshIdentity.peerIdOf(pub)).catch(() => null); stgBeatPids.set(pub, q); if (stgBeatPids.size > 64) stgBeatPids.delete(stgBeatPids.keys().next().value); } return q; }
+    function stgBeatFlood(key, b, from, sig, pub) {
+      for (const [pid, p] of peers) if (pid !== from && p.dc && p.dc.readyState === 'open') { dcSend(p, { k: 'mx-beat', key, b, sig, pub }); if (stgBeatCost) stgBeatCost.out++; }
     }
+    // The beat's own cost, read by the room tests (DEBUG): frames in and out, and the time spent on them.
+    const stgBeatCost = DEBUG_ON ? { in: 0, out: 0, ms: 0 } : null;
     function stgBeatIn(p, m) {
-      if (typeof m.key !== 'string' || m.key.indexOf('stg:') !== 0 || m.key.length > 128 || !Number.isFinite(m.b)) return;
-      if (m.key === 'stg:' + myId || mediaOk(p.id) === false || !stgBeatNew(m.key, m.b)) return;
-      stgBeatFlood(m.key, m.b, p.id);
+      const t0 = stgBeatCost ? performance.now() : 0;
+      if (stgBeatCost) stgBeatCost.in++;
+      if (typeof m.key !== 'string' || m.key.indexOf('stg:') !== 0 || m.key.length > 128 || !Number.isFinite(m.b) || typeof m.sig !== 'string' || m.sig.length > 256 || typeof m.pub !== 'string' || m.pub.length > 128) return;
+      if (m.key === 'stg:' + myId || mediaOk(p.id) === false || stgBeatSeen(m.key, m.b)) { if (stgBeatCost) stgBeatCost.ms += performance.now() - t0; return; }
+      const key = m.key, b = m.b, sig = m.sig, pub = m.pub, from = p.id;
+      stgBeatPid(pub).then((pid) => (pid && pid === key.slice(4) ? net.edVerify(pub, sig, stgBeatSp(key, b)) : false))
+        .then((ok) => { const t1 = stgBeatCost ? performance.now() : 0; if (ok && stgBeatNew(key, b)) stgBeatFlood(key, b, from, sig, pub); if (stgBeatCost) stgBeatCost.ms += performance.now() - t1; })
+        .catch(() => {});
+      if (stgBeatCost) stgBeatCost.ms += performance.now() - t0;
     }
     // A stager that never beat (an older page) is judged as before.
     function stgStale(rk) { const e = stgBeats.get(rk); return !!e && Date.now() - e.at > STG_BEAT_STALE_MS; }
     setInterval(() => {
       try {
-        if (stageIds().includes(myId)) { const key = 'stg:' + myId, b = Date.now(); stgBeatNew(key, b); stgBeatFlood(key, b, null); }
+        const t0 = stgBeatCost ? performance.now() : 0;
+        if (stageIds().includes(myId) && myIdentity) { const key = 'stg:' + myId, b = Date.now(); stgBeatNew(key, b); const pub = myIdentity.pubB64; net.edSign(myIdentity.priv, stgBeatSp(key, b)).then((sig) => stgBeatFlood(key, b, null, sig, pub)).catch(() => {}); }
+        if (stgBeatCost) stgBeatCost.ms += performance.now() - t0;
         for (const [k, e] of stgBeats) if (Date.now() - e.at > 300000) stgBeats.delete(k);
       } catch (e) {}
     }, STG_BEAT_MS);
@@ -35819,6 +35844,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       stgJobsForTest: () => [...mosJobs.entries()].filter(([, j]) => j.key.indexOf('stg:') === 0).map(([jk, j]) => { const p = peers.get(j.to); return { to: String(j.to).slice(0, 8), key: j.key.slice(0, 12), active: !!j.active, sid: String(j.streamId).slice(0, 8), sb: !!(j.meta && j.meta.sb), ao: !!(j.meta && j.meta.ao), kinds: j.trackList.map((t) => t ? t.kind + ':' + t.readyState + (t.enabled ? '' : ':off') : 'null').join(), sending: j.senders.map((sd) => sd.track ? sd.track.kind : 'null').join(), held: typeof outgoingHeld !== 'undefined' && !!outgoingHeld, pc: p && p.pc ? p.pc.connectionState : 'none' }; }),
       stageEarStreamForTest: () => (stageEar && stageEar.el.srcObject ? { stream: stageEar.el.srcObject, muted: !!stageEar.el.muted, paused: !!stageEar.el.paused } : null),
       stageRouteForTest: () => { const o = {}; for (const [k, v] of mosIn) { if (k.indexOf("stg:") !== 0 && k !== "sgs") continue; const d = mosStandby.get(k); o[k.slice(0, 8)] = String(v.via).slice(2, 8) + (d ? "|" + String(d.via).slice(2, 8) : ""); } return o; },
+      stgBeatCostForTest: () => (stgBeatCost ? { in: stgBeatCost.in, out: stgBeatCost.out, ms: Math.round(stgBeatCost.ms * 10) / 10, upS: Math.round(performance.now() / 1000) } : null),
       stgBeatAgesForTest: () => { const o = {}, n = Date.now(); for (const [k, e] of stgBeats) o[k.slice(4, 12)] = n - e.at; return o; },
       stageWhyForTest: (id) => { const st = statusOf.get(id), d = digLists(), e = d ? d.stage.find((x) => x.id === id) : null; let f = null; try { f = mosIn.get('stg:' + id); } catch (x) {} return { on: stageIds().includes(id), fold: !!e, foldAge: d ? d.age : null, stAge: st ? Date.now() - stSeen(st) : null, stStg: st ? st.stg || 0 : null, stHold: stHold(id), tomb: !notTomb(id), gone: meshGone.has(id), held: typeof stageHeldAt !== 'undefined' && stageHeldAt.has(id), claim: f ? { via: String(f.via).slice(0, 8), dead: f.deadAt ? Date.now() - f.deadAt : 0 } : null }; },
       stgPathForTest: () => { const six = (x) => String(x || '').slice(0, 8); const o = {}; for (const [k, f] of mosIn) { if (k.indexOf('stg:') !== 0) continue; const d = mosStandby.get(k); const m = (e) => (e ? { via: six(e.via), key: e.key || null, h: e.meta ? e.meta.h : null, ao: !!(e.meta && e.meta.ao), vp: (e.meta && e.meta.vp) || [] } : null); const hot = []; for (const j of mosJobs.values()) if (j.upKey === k && j.active) hot.push(six(j.to)); o[six(k.slice(4))] = { pri: m(f), std: m(d), dead: f.deadAt ? Date.now() - f.deadAt : 0, hot }; } const jobs = []; for (const [jk, j] of mosJobs) if (j.key.indexOf('stg:') === 0) jobs.push({ k: six(j.key.slice(4)), to: six(j.to), up: j.upKey ? six(j.upKey.slice(4)) : null, active: !!j.active, off: !!j.carryOff, src: (j.srcTracks || []).map((t) => t.kind[0] + (t.readyState === 'live' ? (t.muted ? 'm' : 'L') : 'E')).join(''), sending: j.senders.map((sd) => sd.track ? 1 : 0).join(''), tl: j.tracklessAt ? Date.now() - j.tracklessAt : 0 }); const ann = []; for (const [ak, a] of mosAnn) if (ak.indexOf('|stg:') > 0) ann.push({ from: six(ak.slice(0, ak.indexOf('|'))), k: six(ak.slice(ak.indexOf('|') + 5)), age: Date.now() - (a.at || 0), h: a.h }); return { me: six(myId), coord: meshCoord(), o, jobs, ann }; },
