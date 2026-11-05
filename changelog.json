@@ -23,7 +23,8 @@
       ],
       "notes": [
         "The relay is updated first. An older version still joins and talks through it, but until that page updates its Ban, Waiting room and vote-off buttons do nothing: the relay no longer carries those orders.",
-        "Spanish, Russian, Simplified Chinese and German strings are new. Please report any wording that reads wrong."
+        "Spanish, Russian, Simplified Chinese and German strings are new. Please report any wording that reads wrong.",
+        "Known issues: in very large rooms (about 1000 people) joining can be slow, and a large hostile crowd can still slow the room or keep newcomers out of the first section. When many people leave at once, the room can take a while to settle. On some phones memory use grows slowly during a very long meeting, and on some Linux and small single-board computers many open meeting pages use a lot of memory. A rare browser renderer crash on WebKit is still being tracked down."
       ]
     },
     {
