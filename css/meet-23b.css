@@ -564,6 +564,11 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
 #help-modal .help-meet .help-list { margin: 0 0 .25rem; }
 #help-modal .help-meet .help-list li { line-height: 1.25; padding: 0 0 1px .85rem; font-size: 13px; }
 #help-modal .help-meet p { margin-bottom: .25rem; font-size: 13px; line-height: 1.3; }
+/* A phone in portrait gives the list 35px more height, so a wider system font
+   (DejaVu on some Linux phones) still keeps the last heading in column two. */
+@media (max-width: 700px) and (min-height: 600px) {
+  #help-modal .help-scroll.help-meet { max-height: calc(100dvh - 215px); }
+}
 #shortcutsheet .name-box { padding: 8px 12px; width: min(780px, calc(100vw - 16px)); max-width: min(780px, calc(100vw - 16px)); }
 #shortcutsheet h3 { font-size: 1.15rem; margin-bottom: 4px; }
 #shortcutsheet ul { columns: 2; column-gap: 16px; }
