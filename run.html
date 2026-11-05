@@ -511,6 +511,9 @@ function chk(){if(shown)return;if(h.style.getPropertyValue('--accent'))show();el
 requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GifOS">
+<script id="gifos-load-gate">/* Load completeness: record every <script src> that failed to load (error events do not bubble: capture on window), and every script that threw while a failed one was missing. startMesh() checks this before it seats anything (see unitsGate). */(function(){var g=window.__gifosLoadGate={failed:[],threw:[],tries:0,state:'ok',trace:[]};
+function key(u){try{var x=new URL(u,location.href);return x.pathname.replace(/^\//,'');}catch(e){return String(u);}}
+window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagName==='SCRIPT'&&t.src){var k=key(t.src);if(g.failed.indexOf(k)<0)g.failed.push(k);}else if(e&&e.filename&&g.failed.length){var f=key(e.filename);if(g.threw.indexOf(f)<0)g.threw.push(f);}}catch(x){}},true);})();</script>
 <script src="js/sw-register.js" defer></script>
 <script src="js/build.js" defer></script>
 <script src="js/build-badge.js" defer></script>
@@ -17035,7 +17038,46 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (v === step + '-hang-once') { debugFailUsed = true; return new Promise(() => {}); }
       return p;
     }
+    // LOAD COMPLETENESS: a page that missed one of its own scripts (a flaky network) must not seat: a seat without every unit throws "is not a function" in the middle of a room.
+    // A missing script is loaded again (in page order, with backoff); if it still fails the page refuses to join, says so on screen and in the DEBUG trace.
+    const UNITS_BACKOFF = [0, 400, 1200, 2400];
+    function unitsGate() {
+      const g = window.__gifosLoadGate;
+      if (!g || g.state === 'ok' && !g.failed.length) return false;   // the normal page: nothing failed, no wait
+      if (g.state === 'ok' || g.state === 'retry') {
+        g.state = 'retry';
+        if (!g.running) {
+          g.running = true;
+          const order = Array.from(document.querySelectorAll('script[src]')).map((el) => { try { return new URL(el.src, location.href).pathname.replace(/^\//, ''); } catch (e) { return ''; } });
+          const note = (m) => { g.trace.push(m); if (typeof clog === 'function') clog('load-gate ' + m); };
+          const load = (src) => new Promise((res) => { const el = document.createElement('script'); el.async = false; el.src = src; el.onload = () => res(true); el.onerror = () => { el.remove(); res(false); }; document.head.appendChild(el); });
+          (async () => {
+            note('missing ' + g.failed.join(',') + (g.threw.length ? ' threw ' + g.threw.join(',') : ''));
+            let todo = g.failed.slice();
+            for (const w of UNITS_BACKOFF) {
+              if (w) await new Promise((r) => setTimeout(r, w));
+              g.tries++;
+              const first = Math.min.apply(null, todo.map((k) => order.indexOf(k)).filter((i) => i >= 0));
+              const redo = todo.concat(g.threw.filter((k) => order.indexOf(k) > first && todo.indexOf(k) < 0)).sort((x, y) => order.indexOf(x) - order.indexOf(y));
+              const bad = [];
+              for (const k of redo) { if (!(await load(k))) bad.push(k); }
+              note('try ' + g.tries + ' reloaded ' + redo.length + ' still-missing ' + bad.length);
+              todo = bad.filter((k) => g.failed.indexOf(k) >= 0 || todo.indexOf(k) >= 0);
+              if (!bad.length) break;
+            }
+            g.running = false;
+            if (!todo.length) { g.failed.length = 0; g.threw.length = 0; g.state = 'ok'; note('recovered'); startMesh(); return; }
+            g.state = 'refused'; g.missing = todo;
+            note('refuse ' + todo.join(','));
+            setStatus(uiText('stLoadIncomplete', 'This page did not finish loading, so it cannot join safely. Reload the page to try again.'), true);
+          })();
+        }
+        return true;
+      }
+      return true;   // refused
+    }
     function startMesh() {
+      if (unitsGate()) return;
       const relay = relayUrl();
       if (!relay) { setStatus(uiText('stNoConnectionServiceIsSet', 'No connection service is set up, so nobody can be invited in.')); return; }
       if (meshNode) { try { meshNode.stop(); } catch (e) {} meshNode = null; }

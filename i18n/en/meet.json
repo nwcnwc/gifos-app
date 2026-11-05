@@ -624,6 +624,7 @@
   "meet.stPluggedInButTheBattery": "🔋 Plugged in, but the battery is falling. Sending lighter video.",
   "meet.stPhoneLooksParkedLettingThe": "😴 Phone looks parked — letting the screen rest. Tap for full quality.",
   "meet.stNoConnectionServiceIsSet": "No connection service is set up, so nobody can be invited in.",
+  "meet.stLoadIncomplete": "This page did not finish loading, so it cannot join safely. Reload the page to try again.",
   "meet.stThisRoomAlreadyHasYou": "⛔ This room already has you connected from another device. Close it there, or reload here.",
   "meet.stThisMeetingNeedsTheCurrent": "⛔ This meeting needs the current GifOS. Reload the page to update.",
   "meet.stThePeopleInThisRoom": "⛔ The people in this room voted not to let this device in.",
