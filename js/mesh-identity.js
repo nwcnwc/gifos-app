@@ -65,50 +65,8 @@
     return { priv: k.priv, pubB64: k.pubB64, peerId };
   }
 
-  // Canonical signed string for a fill frame. Deterministic, minted by the
-  // signer and verified byte-for-byte by the receiver (no key-order ambiguity —
-  // the exact §SIG discipline). It commits to the frame TYPE, the COORD/HOLE the
-  // frame authors (so a signature for one hole can't be replayed onto another),
-  // and the signer's own peer id `from` (so the receiver can bind H(pub)===from).
-  function fillKeyOf(m) {
-    // the coordinate a fill frame authoritatively acts on
-    if (m.hole) return 'h:' + net.topo.ckey(m.hole);
-    if (m.coord) return 'c:' + net.topo.ckey(m.coord);
-    // A goodbye (LEAVE / MOVED) also commits to WHERE its author went, so a
-    // carrier cannot re-point it (only the new eviction frames carry mvd, and
-    // no older client verifies them, so no older statement changes).
-    // A LEAVE also commits to the TENANCY it ends (`tn`, the seat's nonce
-    // for this stay in this cell), so it cannot free a later stay.
-    if (m.ck) return 'k:' + m.ck + (m.mvd != null ? '>' + m.mvd : '') + ((m.t === 'LEAVE' || m.t === 'MOVED') && m.tn != null ? '#' + m.tn : '') + (m.t === 'SITXFER' ? '|' + ledgerOf(m) : '');
-    return '-';
-  }
-  // A SITXFER also commits to the ledger it hands over, so a hop that
-  // carries it cannot rewrite the vouches or the row occ.
-  function ledgerOf(m) {
-    const kv = (a) => (Array.isArray(a) ? a.map((e) => (e && typeof e === 'object' ? [e.k === undefined ? null : e.k, e.v === undefined ? null : e.v] : null)) : null);   // raw values: ['k_x'] and 'k_x' commit differently
-    return JSON.stringify([kv(m.vouches), kv(m.rowOcc)]);
-  }
-  // `ts` is the minting time: Ed25519 is deterministic, so two honest
-  // re-sends of one CLAIM would otherwise be byte-identical, and a replay
-  // could not be told from a re-send. With it, an exact replay is the one
-  // thing a receiver has seen before (verifyFill's seen set), and a captured
-  // frame older than the window is stale on its face.
-  function statement(from, m, ts) {
-    return JSON.stringify({ v: 2, t: m.t, k: fillKeyOf(m), id: (m.id != null ? m.id : null), from, ts: (+ts || 0) });
-  }
-  const FILL_WINDOW_MS = 10 * 60 * 1000;
   const SEEN_MAX = 4096;
   const PIN_MAX = 4096;
-
-  // Sign a fill frame as `identity`. Returns a {sp, sig, pub} block (mirrors the
-  // admin §SIG shape) to attach to the frame as m.s4. `from` is the signer's
-  // stable peer id (H(pub)); the receiver re-derives H(pub) and checks it equals
-  // `from`, so the id can't be lied about.
-  async function signFill(identity, m) {
-    const sp = statement(identity.peerId, m, Date.now());
-    const sig = await net.edSign(identity.priv, sp);
-    return { sp, sig, pub: identity.pubB64 };
-  }
 
   // A TOFU pin store: participant peer id -> pinned pubB64. First key seen for a
   // participant wins and is recognised thereafter, across links and moves.
@@ -148,85 +106,6 @@
     };
   }
 
-  // Verify a signed fill frame. Returns { ok, from } (from = the authenticated
-  // signer peer id, pinned on success). Rejects when:
-  //   - the s4 block is missing/malformed,
-  //   - H(pub) !== the signer's claimed peer id `from`      (id not bound to key)
-  //   - for an occupant frame (CLAIM/HELLO carrying m.id), the occupant m.id
-  //     !== the signer `from`                               (claiming another's seat)
-  //   - the recomputed canonical statement !== the signed sp (frame tampered)
-  //   - the Ed25519 signature does not verify                (not the key holder)
-  //   - TOFU conflict: pub != the key pinned for `from`      (key-swap / impostor)
-  //   - minted outside FILL_WINDOW_MS on a VERIFIED signature → { reason: 'skew', skewMs }
-  // opt.relayed: the frame is a byeRelay copy of a goodbye (mesh.js, D2
-  // relay). It carries its author's own signature, which the direct copy also
-  // carries, so it neither consumes nor meets the exact-replay set: consumed,
-  // a copy that won the race dropped the leaver's own LEAVE at the link behind
-  // it, and the link kept the leaver live ~60 ticks (e2e-vanish 4/8 red). It
-  // has an exact-replay set of its own (seenRelayed), so each signature is
-  // taken once as the author's frame and once as a relayed copy. A relayed
-  // goodbye still needs its tenancy or to be said now (mesh.js LEAVE), and a
-  // seat with a stake in the cell only passes it on.
-  async function verifyFill(pins, m, opt) {
-    const s = m && m.s4;
-    if (!s || typeof s.sp !== 'string' || !s.sig || !s.pub) return { ok: false, from: null };
-    let sp;
-    try { sp = JSON.parse(s.sp); } catch (e) { return { ok: false, from: null }; }
-    const from = sp.from;
-    if (!from || typeof from !== 'string') return { ok: false, from: null };
-    // (1) id is bound to the key: H(pub) === from
-    if ((await peerIdOf(s.pub)) !== from) return { ok: false, from: null };
-    // the signed statement must describe THIS frame (no cross-frame replay),
-    // be minted inside the window, and not be one this seat already accepted
-    if (statement(from, m, sp.ts) !== s.sp) return { ok: false, from: null };
-    // an occupant-bearing frame must be signed BY that occupant. A SITXFER
-    // is the one frame whose `id` names the RECEIVER (the row head it hands
-    // the ledger to): it is signed by the assigner, never by that head, and
-    // mesh.js takes it only from the seat that placed the head (admBy).
-    if (m.t === 'SITXFER') { if (m.id == null || m.id === from) return { ok: false, from: null }; }
-    else if (m.id != null && m.id !== from) return { ok: false, from: null };
-    // (2) the signer actually holds the private key
-    if (!(await net.edVerify(s.pub, s.sig, s.sp))) return { ok: false, from: null };
-    // Minted outside the window: still refused, but NAMED. Checked after the
-    // signature so only a key holder's frame can report a skew (a forgery
-    // says nothing). skewMs = the signer's clock minus mine.
-    const skewMs = (+sp.ts || 0) - Date.now();
-    if (Math.abs(skewMs) > FILL_WINDOW_MS) return { ok: false, from: null, reason: 'skew', skewMs };
-    // The exact-replay set takes a signature only once the frame has passed
-    // every check above. Taken before the signature check, anyone who knew a
-    // real signature could burn it at a seat with a forged frame (a statement
-    // that matches its fields, another ts) and the real frame was refused.
-    if (opt && opt.relayed) { if (pins.seenRelayed && pins.seenRelayed(String(s.sig))) return { ok: false, from: null }; }
-    else if (pins.seen && pins.seen(String(s.sig))) return { ok: false, from: null };
-    // (3) TOFU: pin on first contact, reject a key that conflicts with the pin
-    const p = pins.pin(from, s.pub);
-    if (!p.ok) return { ok: false, from: null };
-    return { ok: true, from, ts: +sp.ts || 0 };   // ts: the signed minting time (a goodbye's freshness)
-  }
-
-  // ---- PLACEMENT PROOF (PP; docs/meet-security.md §AUTH) -------------------
-  // The admitter signs {PP, cell, joiner} once, with the PLACE that seats the
-  // joiner (or as a grant on a healer's CLAIM). The block rides the joiner's
-  // HELLO / CLAIM about that cell (m.pp) and is verified once per
-  // presentation by the receiver's wire (never per beat). Same statement
-  // discipline as a fill, two differences: `id` names the JOINER and must
-  // differ from the signer, and there is no minting window — a proof is as
-  // old as the stay it proves.
-  function signPP(identity, coord, id) { return signFill(identity, { t: 'PP', coord, id }); }
-  async function verifyPP(pins, coord, id, s) {
-    if (!s || typeof s.sp !== 'string' || !s.sig || !s.pub || id == null || !coord) return { ok: false, from: null };
-    let sp;
-    try { sp = JSON.parse(s.sp); } catch (e) { return { ok: false, from: null }; }
-    const from = sp.from;
-    if (!from || typeof from !== 'string' || from === id) return { ok: false, from: null };
-    if ((await peerIdOf(s.pub)) !== from) return { ok: false, from: null };
-    if (statement(from, { t: 'PP', coord, id }, sp.ts) !== s.sp) return { ok: false, from: null };
-    if (!(await net.edVerify(s.pub, s.sig, s.sp))) return { ok: false, from: null };
-    const p = pins.pin(from, s.pub);
-    if (!p.ok) return { ok: false, from: null };
-    return { ok: true, from, ts: +sp.ts || 0 };
-  }
-
   // ---- GOSSIP (GSP / GSPS): the AUTHOR signs, every hop verifies ----------
   // A gossip frame names its author (`src`) and the flood guard budgets by
   // author, so the name must be unforgeable: the author signs a statement
@@ -261,43 +140,5 @@
     return { ok: true, from };
   }
 
-  // ---- SIGNED DIGEST FRAMES (PHONE / PONG with dsg) -------------------------
-  // The room fold rides the PHONE / PONG beat and is taken only from the
-  // frame's own author. A pair whose DataChannel never opens trades its beats
-  // over other peers, and those frames name nobody, so the seat marks its
-  // digest frames to such a peer `dsg` and they are signed here. The
-  // statement commits to the frame type, its cell and target cell, the author,
-  // a hash of the digest payload (dgUp, dgRoot, dgPub, dgEcho, dw) and the
-  // minting time; a carrier can neither rewrite the digest nor replay it
-  // later. A frame that fails is still delivered, unsigned: the seat then
-  // takes no digest from it, exactly as before.
-  const DIG_T = new Set(['PHONE', 'PONG']);
-  const DIG_WINDOW_MS = 30 * 1000;
-  const nz = (x) => (x === undefined ? null : x);
-  async function digStatement(from, m, ts) {
-    const dh = await net.sha256hex(JSON.stringify([nz(m.dgUp), nz(m.dgRoot), nz(m.dgPub), nz(m.dgEcho), nz(m.dw)]));
-    return JSON.stringify({ v: 2, t: m.t, k: fillKeyOf(m), tock: (m.tock == null ? null : String(m.tock)), id: (m.id != null ? m.id : null), from, dh, ts: (+ts || 0) });
-  }
-  async function signDig(identity, m) {
-    const sp = await digStatement(identity.peerId, m, Date.now());
-    const sig = await net.edSign(identity.priv, sp);
-    return { sp, sig, pub: identity.pubB64 };
-  }
-  async function verifyDig(pins, m) {
-    const s = m && m.s4;
-    if (!DIG_T.has(m && m.t) || !s || typeof s.sp !== 'string' || !s.sig || !s.pub) return { ok: false, from: null };
-    let sp; try { sp = JSON.parse(s.sp); } catch (e) { return { ok: false, from: null }; }
-    const from = sp.from;
-    if (!from || typeof from !== 'string' || m.id !== from) return { ok: false, from: null };   // the beat's author IS the signer
-    if (Math.abs((+sp.ts || 0) - Date.now()) > DIG_WINDOW_MS) return { ok: false, from: null };  // fresh: an old digest frame is not replayed as new
-    if ((await peerIdOf(s.pub)) !== from) return { ok: false, from: null };
-    if ((await digStatement(from, m, sp.ts)) !== s.sp) return { ok: false, from: null };
-    if (!(await net.edVerify(s.pub, s.sig, s.sp))) return { ok: false, from: null };
-    if (pins.seen && pins.seen(String(s.sig))) return { ok: false, from: null };   // only a verified frame takes its signature (verifyFill)
-    const p = pins.pin(from, s.pub);
-    if (!p.ok) return { ok: false, from: null };
-    return { ok: true, from };
-  }
-
-  GifOS.meshIdentity = { mint, peerIdOf, signFill, verifyFill, signPP, verifyPP, newPins, statement, signGossip, verifyGossip, GOSSIP_T, PIN_MAX, signDig, verifyDig, DIG_T };
+  GifOS.meshIdentity = { mint, peerIdOf, newPins, signGossip, verifyGossip, GOSSIP_T, PIN_MAX };
 })(typeof window !== 'undefined' ? window : globalThis);

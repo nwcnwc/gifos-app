@@ -262,16 +262,6 @@
   // tail — reassembly then hangs forever (the app RPC has no timeout). Paced
   // sends honor the channel's backpressure so every fragment lands.
   const chunk = (msg) => { const a = []; sendChunked(msg, (o, s) => a.push({ o, s })); return a; };
-  const PUMP_HIGH = 4 * 1024 * 1024; // keep the channel's send buffer well under its ceiling
-  const pumpChannel = (chan, pieces, mk) => new Promise((resolve) => {
-    let i = 0;
-    (function pump() {
-      if (!chan || chan.readyState !== 'open') return resolve(); // channel died mid-flush; peer will re-request
-      try { while (i < pieces.length && chan.bufferedAmount < PUMP_HIGH) chan.send(mk(pieces[i++])); }
-      catch (e) { return resolve(); }
-      if (i < pieces.length) setTimeout(pump, 40); else resolve();
-    })();
-  });
   // Byte ceiling on what one receiver holds in partial messages, all senders
   // together: two full-size messages (two 25MB shared videos side by side).
   // The count bound alone (8 partials x 512 pieces) let a room member park
@@ -667,16 +657,6 @@
     return { childPath, parentPath, lastDigit, pcDepth, isRoot, isHead, ckey, unck, eq, up, down, rowMates, colMates, ownedLinks, MAXLINKS };
   })();
 
-  // ---- P1: single-hop forwarding through a friend -----------------------------
-  // {t:'fwd', src, to, p} — p is ONE piece (a sealed envelope, or one {t:'frag'}
-  // fragment of one). The forwarder relays pieces verbatim and statelessly:
-  // it never defragments, never decrypts, and never forwards to another
-  // forwarder (single hop by construction — 'to' must be its DIRECT link).
-  // The receiver defragments with the ORIGINAL sender as the key, so pieces
-  // arriving via different friends still reassemble.
-  const fwdWrap = (src, to, piece) => ({ t: 'fwd', src, to, p: piece });
-  const isFwd = (m) => !!(m && m.t === 'fwd' && m.p && typeof m.src === 'string' && typeof m.to === 'string');
-
   // ---- THE RELAY LAW: a fixed list of message types, one fixed size ----------
   // A member-to-member relay frame is {t:'peer', to, ty, msg}: `ty` is the
   // type in the clear, `msg` is sealed under the room key. The relay carries
@@ -900,12 +880,11 @@
     bootOf, bootOk, fpOk, sdpOfBoot, iceOf, candOfIce,
     ICE_SERVERS, hasP2P, holdSessionLock,
     steadySocket,
-    FRAG_PART, FRAG_BUDGET, sendChunked, chunk, pumpChannel, makeDefrag,
+    FRAG_PART, FRAG_BUDGET, sendChunked, chunk, makeDefrag,
     shortCode, randHex, sha256hex, sha256hexOfBytes, keyId, keyVerifier,
     deriveMeet, deriveMeetKey, meetPwProof, mintGenesisKey,
     edKeysFromSeedHex, edSign, edVerify, edProven,
     seal, open, isSealed, makeChain,
-    fwdWrap, isFwd,
     SCALE, topo,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

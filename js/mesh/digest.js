@@ -178,6 +178,7 @@
             this.l43SelfEcho(k, mm);   // L43.3 (ijoin.js)
             if (this.occGet(k) >= 0 || this.sitting.has(k) || this.occGet(ckey(down(c))) >= 0 || (FREE.l1MoverCell(this, c) !== 0 && !this.l43MoverLate(c))) continue;
             { const ht = this.healTry.get(k); if (ht !== undefined && TICK - ht <= 45) continue; }
+            if ((this.l3109Ck === k + 1 && TICK - this.l3109At <= 2 * K.RC_WAIT) || (this.leaseCk === k && this.leaseUntil >= 0 && TICK <= this.leaseUntil && TICK - (this.leaseUntil - K.LEASE_TTL) <= 2 * K.RC_WAIT)) continue;   // L3.10.9
             this.l5At = TICK; this.w.ADMIT_SITE = 'l5-home'; this.admit(c, mm); return;
           }
           // A wholly empty home row has no head to seat anyone.

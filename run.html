@@ -647,10 +647,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     background: var(--surface, #14141f); border: 1px solid var(--border, #2a2a3f);
     border-radius: .6rem; overflow: hidden; }
   #stagefeed .rowtile { aspect-ratio: 16 / 9; } /* stage feeds are verbatim cameras */
-  /* Zone bands: a full-width label naming the near/far boundary in the mosaic. */
-  .feedband { grid-column: 1 / -1; font-size: .7rem; letter-spacing: .05em; text-transform: uppercase;
-    font-weight: 700; color: var(--muted, #8888aa); padding: .55rem .2rem .15rem; margin-top: .15rem;
-    border-top: 1px solid var(--border, #2a2a3f); }
   /* Recording options popup. */
   .rec-sec { margin: .7rem 0 .3rem; }
   #rec-stage-only { color: inherit; font-size: .95rem; margin: .15rem 0 .35rem; }
@@ -717,7 +713,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      stadium faders appear only once those buses have members. */
   .tile.onstage { border-color: var(--accent, #7b5cff); box-shadow: 0 0 0 1px var(--accent, #7b5cff);
     grid-column: 1 / -1; aspect-ratio: 16 / 9; } /* the stage is the big tile */
-  .rowtile.stagetile { border-color: var(--accent, #7b5cff); box-shadow: 0 0 0 1px var(--accent, #7b5cff); }
   /* Zoom = pick your depth: a tapped stadium tile grows to a readable size
      (and back). The global hand queue reads as one ordered line. */
   .rowtile.zoom { grid-column: 1 / -1; }
@@ -1822,7 +1817,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     background: #3b4d78; color: #fff; font: 700 40px/96px system-ui, sans-serif; }
   #appear .appear-face img { width: 100%; height: 100%; object-fit: cover; display: block; }
   #appear .appear-name { font-size: 18px; font-weight: 700; color: #1d1d1f; margin-bottom: 18px; }
-  #appear .appear-lab { display: block; text-align: left; font-size: 14px; font-weight: 700; color: #3a3a3f; margin: 0 0 6px; }
   #appear input { color: #1d1d1f; background: #fff; border: 1.5px solid #8d93a0; text-align: left; }
   #appear .appear-actions { display: flex; gap: 12px; justify-content: flex-end; align-items: center; }
   #appear #nmcancel { background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; flex: 0 0 auto; }
@@ -1840,19 +1834,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     border: 1px solid var(--border, #2a2a3f); background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: inherit; margin-bottom: .8rem; }
   #nm-avatar { width: 72px; height: 72px; object-fit: cover; border-radius: 50%; display: block; margin: 0 auto .8rem; }
   #nm-avatar[hidden] { display: none; }
-  .appear-preview { display: flex; align-items: center; gap: 12px; text-align: left; margin: 0 0 14px; padding: 12px;
-    border-radius: 16px; background: #e8ecf1; }
   .appear-face { position: relative; width: 72px; height: 72px; min-width: 72px; border-radius: 50%; overflow: hidden;
     background: #3a3a3f; color: #fff; font-weight: 700; font-size: 1.6rem; display: flex; align-items: center; justify-content: center; }
   .appear-face #nm-avatar, .appear-face #nm-cam { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; width: 100%; height: 100%; margin: 0;
     border-radius: 0; object-fit: cover; }
   .appear-face #nm-cam[hidden], .appear-face #nm-avatar[hidden] { display: none; }
   #nm-preview-name { display: block; font-size: 1.05rem; line-height: 1.25; overflow-wrap: anywhere; }
-  .appear-label { display: block; text-align: left; font-size: .85rem; font-weight: 700; margin: 0 0 .35rem; }
-  .appear-edits { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-start; margin: 0 0 12px; }
-  .name-box.appear-box .appear-edits button { min-height: 44px; min-width: 44px; padding: .4rem .8rem; border-radius: 12px;
-    background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
-  .appear-err { color: #9f1239; font-size: .82rem; min-height: 1em; text-align: left; margin: 0 0 .4rem; }
   .name-box button { padding: .5rem 1.4rem; min-height: 48px; border-radius: .5rem; border: 1px solid var(--accent, #7b5cff); background: var(--accent, #7b5cff); color: var(--onaccent, #fff); cursor: pointer; }
   .appear-box { background: #fff; color: #1d1d1f; max-width: 400px; }
   .appear-box h3 { color: #1d1d1f; font-size: 1.35rem; }
@@ -1889,7 +1876,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .help-box h4 { margin: 1.1rem 0 .35rem; font-size: .98rem; color: var(--text, #e0e0f0); }
   .help-box p { color: var(--muted, #8888aa); font-size: .88rem; line-height: 1.5; margin-bottom: .5rem; }
   .help-box .help-lead { color: var(--text, #e0e0f0); font-size: .92rem; }
-  .help-box .help-note { font-style: italic; }
   .help-list { list-style: none; margin: 0 0 .5rem; padding: 0; }
   .help-list li { color: var(--muted, #8888aa); font-size: .88rem; line-height: 1.5; padding: .18rem 0 .18rem .9rem; position: relative; }
   .help-list li::before { content: '·'; position: absolute; left: .1rem; color: var(--accent, #7b5cff); font-weight: 700; }
@@ -1946,9 +1932,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #lobby.show { display: flex; align-items: flex-start; justify-content: center; }
   .lobby-card { width: 100%; max-width: 440px; margin: auto; }
   .lobby-card h1 { font-size: 1.6rem; margin: .2rem 0 1.1rem; text-align: center; }
-  .lob-pair { display: flex; gap: 8px; align-items: stretch; margin-bottom: .6rem; }
-  .lob-pair .lob-action { flex: 1 1 0; min-width: 0; width: auto; margin-bottom: 0; padding: 10px 8px; text-align: center; }
-  .lob-pair .lob-action small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; -webkit-line-clamp: unset; }
   .lob-primary, .lob-action { display: block; width: 100%; text-align: left; border-radius: .7rem;
     padding: .85rem 1rem; margin-bottom: .6rem; border: 1px solid var(--border, #2a2a3f);
     background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; font-size: 1rem; line-height: 1.25; }
@@ -1970,7 +1953,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #lob-guest-reveal.lob-text, #lob-key-reveal.lob-text { display: inline-flex; align-items: center; min-height: 44px; margin: 4px 0 8px; padding: 8px 0;
     border: 0; background: transparent; color: #0064c8; font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
   #lob-guest-reveal[hidden], #lob-guest-extra[hidden], #lob-key-reveal[hidden], #lob-key-block[hidden], #lob-admin-name-lab[hidden] { display: none !important; }
-  .lob-namelab { display: block; font-size: 1rem; font-weight: 700; color: #1d1d1f; margin: 0 0 .35rem; }
   .lob-sep { border-top: 1px solid var(--border, #2a2a3f); margin: 1rem 0 .7rem; }
   .lob-hist-h { font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; opacity: 1; color: #1d1d1f; font-weight: 700; margin-bottom: .4rem; }
   .lob-item { display: flex; align-items: center; gap: .6rem; padding: .5rem .55rem; border-radius: .5rem; cursor: pointer; }
@@ -1987,7 +1969,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   button.row-del:hover { color: #ff5c5c; }
   button.row-del svg { display: block; pointer-events: none; }
   .lob-empty { opacity: .5; font-size: .88rem; text-align: center; padding: .8rem 0; }
-  .lob-namebar { text-align: center; margin-top: 1.1rem; font-size: .85rem; opacity: .78; }
   .lob-link { background: none; border: none; color: var(--accent, #6f9bff); cursor: pointer; font: inherit; padding: 0; text-decoration: underline; }
 
   /* aspect-ratio is Chrome 88 / Firefox 89 / Safari 15. The JS floor is older.
@@ -3160,10 +3141,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (min-width: 701px) and (min-height: 431px) {
     #lobby.show .lob-appear { right: auto; width: min(440px, 42vw); left: 28px; top: 28px; }
   }
-  .lob-appear-kicker { color: #3a3a3f; font-size: 13px; font-weight: 650; line-height: 1.2; }
-  .lob-appear-text { flex: 1; min-width: 0; }
-  .lob-appear-text b { display: block; color: #1d1d1f; font-size: 1.05rem; line-height: 1.25;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #lob-rename { flex: 0 0 auto; min-width: 44px; min-height: 44px; padding: 8px 14px; border-radius: 12px;
     background: #fff; border: 1.5px solid #8d93a0; color: #1d1d1f; font-weight: 700; font-size: 1rem;
     text-decoration: none; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
@@ -3174,12 +3151,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     #lobby .lob-preview { max-height: 18vh; }
     #lobby .lobby-card { max-width: none; min-height: 0; margin: -18px 0 0; border-radius: 22px 22px 0 0; padding: 16px 16px 18px; overflow: auto; position: relative; }
     .lob-pv-name { bottom: 28px; }
-    /* The line under each action is an essay. At 200% text it pushed Join
-       off an SE. The button title is the action, and the padding stays a
-       fixed 10px so the label can grow without leaving the screen. */
-    #lobby .lob-actions small { display: none; }
-    #lobby.show .lob-actions .lob-primary,
-    #lobby.show .lob-actions .lob-action { padding: 10px 12px; margin-bottom: 8px; }
   }
   @media (min-width: 701px) {
     #lobby.show { grid-template-columns: 1.35fr .8fr; }
@@ -3526,8 +3497,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     #lobby .lob-quiet { display: none; }
     #lobby .lobby-card { margin-top: 0; border-radius: 0; }
     #lobby .lobby-card h1 { margin: 0 0 8px; font-size: 1.35rem; }
-    .lob-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; align-items: stretch; }
-    .lob-actions .lob-primary, .lob-actions .lob-action { margin-bottom: 0; min-height: 44px; height: 100%; }
   }
   /* Opening Start broadcasting used to leave Create & enter below the fold.
      Park the rest of the lobby and keep Cancel / Create in the card while
@@ -3541,8 +3510,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #lobby.form-open .lob-sep,
   #lobby.form-open .lob-hist-h,
   #lobby.form-open #lob-list,
-  #lobby.form-open #lob-empty,
-  #lobby.form-open .lob-namebar { display: none !important; }
+  #lobby.form-open #lob-empty { display: none !important; }
   #lobby.form-open h1 { font-size: 1.25rem; margin: 0 0 .35rem; }
   #lobby.form-open .lobby-card {
     display: flex; flex-direction: column; min-height: 0; overflow: hidden;
@@ -3552,7 +3520,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   }
   /* Grow only when the fields overflow, so a short form keeps Go live
      under the name instead of pinning it to the bottom of a tall card. */
-  #lobby.form-open .lob-form-body { flex: 0 1 auto; min-height: 0; overflow: auto; }
   #lobby.form-open #lob-admin .lob-row { flex: 0 0 auto; margin-top: 12px; }
   /* A broadcast opens on the service. Go live is the only filled action.
      Watch and the host key sit in More, off this sheet. Cancel is not a step. */
@@ -3575,8 +3542,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #lobby.form-open.service-ready .lob-quiet { display: block !important; margin: 0 0 0.5rem; }
   /* A desk names the service and goes live. The host key is still minted.
      More opens Watch and Change host key, with the same readable key and Generate. */
-  #lobby.form-open.service-ready #lob-admin,
-  #lobby.form-open.service-ready #lob-admin .lob-form-body { display: contents; }
+  #lobby.form-open.service-ready #lob-admin { display: contents; }
   #lobby.service-ready #lob-admin-name-lab { order: 1; }
   #lobby.service-ready #lob-admin-name { order: 2; }
   #lobby.service-ready #lob-admin .lob-row { order: 3; }
@@ -3590,8 +3556,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #lobby.service-ready .lob-sep,
   #lobby.service-ready .lob-hist-h,
   #lobby.service-ready #lob-list,
-  #lobby.service-ready #lob-empty,
-  #lobby.service-ready .lob-namebar { order: 20; }
+  #lobby.service-ready #lob-empty { order: 20; }
   #lob-desk-more[hidden] { display: none !important; }
   #lobby.service-ready #lob-desk-more {
     position: absolute; top: 12px; right: 16px; z-index: 4;
@@ -3605,7 +3570,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     #lobby.form-open.service-ready.show { grid-template-rows: 40px minmax(0, 1fr); }
     #lobby.form-open.service-ready .lob-preview { max-height: 40px; }
     #lobby.form-open.service-ready .lobby-card { padding: 8px 12px; }
-    #lobby.form-open.service-ready .lob-form-body { flex-shrink: 0; }
   }
   @media (min-width: 701px) {
     #lobby.form-open.show { grid-template-columns: 1.35fr .8fr; grid-template-rows: minmax(0, 1fr); }
@@ -3706,7 +3670,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .lob-keyrow input { flex: 1 1 auto; width: auto; min-width: 0; margin-bottom: 0; }
   @media (max-width: 700px) { .lob-keyrow { flex-direction: column; } #lob-keygen.lob-ghost { width: 100%; } }
   /* Restored: broadcast stream link, ended card, Visit, captions, questions,
-     rebroadcast, flip camera, key button and appear-row styles that a
+     rebroadcast, flip camera and key button styles that a
      merge left out (the markup and code were kept, the styles were not). */
   .rec-replay { position: fixed; top: 0; right: 0; bottom: 0; left: 0; inset: 0; z-index: 70; background: #0c0e12; }
   .rec-replay video { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #0c0e12; }
@@ -3808,7 +3772,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     #lob-keygen.lob-ghost { width: 100%; }
   }
   .topchip .status .statustext { display: block; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .appear-row { display: flex; align-items: center; gap: 12px; }
 
 
   /* Restored: broadcast, town hall, start time, Visit, flip camera and
@@ -3841,18 +3804,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (max-width: 700px) and (min-height: 421px) {
     .bar > #hand .docklab { display: block; }
   }
-  #hand .handmark { display: none; }
-  .barmore #hand .docklab, .barmore #hand .handmark { display: none !important; }
-  .bar > #hand .handword { display: none; }
+  .barmore #hand .docklab { display: none !important; }
   @media (max-width: 700px), (max-height: 500px) {
     .bar > #hand { width: clamp(44px, 2.75rem, 88px); min-width: 44px; min-height: 44px; height: auto; padding: 4px 0 3px; border: 0; border-radius: 16px; box-sizing: border-box; background: #e8ecf1; color: #1d1d1f; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; flex: 0 0 auto; }
-    .bar > #hand .handmark { display: block; width: clamp(22px, 1.375rem, 44px); height: clamp(22px, 1.375rem, 44px); }
     .bar > #hand.on { background: #0064c8; color: #fff; }
   }
   @media (max-height: 420px) {
     .bar > #hand, .bar > #hand.on { width: clamp(44px, 1.5rem, 48px); height: clamp(44px, 1.5rem, 48px); min-width: 44px; min-height: 44px; background: transparent; color: #1d1d1f; filter: drop-shadow(0 0 1px rgba(255,255,255,.95)); }
     .bar > #hand.on { color: #0064c8; background: transparent; }
-    .bar > #hand .handmark { width: clamp(18px, 1rem, 24px); height: clamp(18px, 1rem, 24px); }
   }
   @media (max-height: 380px) {
     body.broadcast { --banner-h: 44px; }
@@ -4906,7 +4865,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const btn = document.getElementById('airsound');
       if (!btn) return;
       let bc = false;
-      try { bc = typeof BROADCAST !== 'undefined' && !!BROADCAST; } catch (e) { bc = false; }
+      try { bc = !!BROADCAST; } catch (e) { bc = false; }
       btn.hidden = !bc;
       if (!bc) return;
       const muted = !serviceHeard;
@@ -4932,7 +4891,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // stage are not watching, so a host alone reads 0. null off a service.
     function serviceWatchCount() {
       let bc = false;
-      try { bc = typeof BROADCAST !== 'undefined' && !!BROADCAST; } catch (e) { bc = false; }
+      try { bc = !!BROADCAST; } catch (e) { bc = false; }
       if (!bc) return null;
       const up = new Set();
       try { stageIds().forEach((id) => up.add(id)); } catch (e) {}
@@ -4967,7 +4926,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       maybeShowRecNotice();
     }
     function recRoomWord() {
-      return (typeof BROADCAST !== 'undefined' && BROADCAST) ? 'broadcast' : 'meeting';
+      return (BROADCAST) ? 'broadcast' : 'meeting';
     }
     function recNoticeTitle() {
       let subject = '';
@@ -5010,7 +4969,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { mine = !!(typeof myStatus !== 'undefined' && myStatus && myStatus.rec); } catch (e) {}
       try { onStage = typeof myStatus !== 'undefined' && !!myStatus.stg; } catch (e) {}
       try { host = (typeof bcHostStored === 'function' && !!bcHostStored()) || document.body.classList.contains('amadmin'); } catch (e) {}
-      const service = typeof BROADCAST !== 'undefined' && BROADCAST;
+      const service = BROADCAST;
       const ask = !mine && (!service || (onStage && !host));
       const bg = document.createElement('div');
       bg.id = 'rec-notice';
@@ -5050,7 +5009,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // The full-width bar names the room and the seat. Its colour follows the
     // lamp: live only while a camera or a microphone is actually sending.
     function paintBroadcastAir() {
-      if (typeof BROADCAST === 'undefined' || !BROADCAST) return;
+      if (!BROADCAST) return;
       const role = bcRoleSafe();
       const sending = bcSendingSafe();
       let onStage = false;
@@ -5065,7 +5024,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // so it never grows notadmin, and the dock would keep Unmute, Video,
     // and Stage. Hand stays on that seat.
     function bcWatchingViewer() {
-      if (typeof BROADCAST === 'undefined' || !BROADCAST) return false;
+      if (!BROADCAST) return false;
       // Watching is the viewer role itself (bcRole), so a stage grant or the
       // host key, pending or verified, takes the seat off bc-watching.
       return bcRoleSafe() === 'viewer';
@@ -5089,7 +5048,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // opens. A phone keeps them in this row. A broadcast does not use this
     // (placeDockForWidth still parks a service's own buttons).
     function seatUseRow() {
-      if (typeof BROADCAST !== 'undefined' && BROADCAST) return;
+      if (BROADCAST) return;
       const bar = document.querySelector('.bar');
       const row = moreRow('use');
       if (!bar || !row) return;
@@ -5124,7 +5083,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const more = document.getElementById('barmore');
       if (!bar || !more) return;
       const phone = phoneLayout();
-      const service = typeof BROADCAST !== 'undefined' && BROADCAST;
+      const service = BROADCAST;
       const put = (id, group, before, lead) => {
         const el = document.getElementById(id);
         if (!el) return;
@@ -5169,7 +5128,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // window where older eyes read them at 16px (qa-meet-desktop).
       // A service dock carries Step on, Invite and Full screen too: under 1100px
       // it keeps the short words so Leave stays on screen.
-      const narrowService = typeof BROADCAST !== 'undefined' && BROADCAST && window.innerWidth < 1100;
+      const narrowService = BROADCAST && window.innerWidth < 1100;
       const dockWords = (phone || narrowService)
         ? { reactbtn: 'React', sharebtn: 'Share' }
         : { reactbtn: uiText('react', 'Reactions'), sharebtn: uiText('shareScreen', 'Share screen') };
@@ -5771,7 +5730,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       bg.id = 'appear-modal';
       bg.setAttribute('role', 'dialog'); bg.setAttribute('aria-modal', 'true');
       bg.setAttribute('aria-labelledby', 'appear-title');
-      const viewerJoin = (typeof BROADCAST !== 'undefined' && BROADCAST) && !(typeof bcHostStored === 'function' && bcHostStored());
+      const viewerJoin = (BROADCAST) && !(typeof bcHostStored === 'function' && bcHostStored());
       if (viewerJoin) bg.setAttribute('aria-describedby', 'appear-note');
       bg.innerHTML = '<div class="name-box appear-box"><h3 id="appear-title">' + (viewerJoin ? 'Watching the broadcast' : uiText('appearTitle', 'This is how you\'ll appear')) + '</h3>' +
         (viewerJoin ? '<p id="appear-note">You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.</p>' : '') +
@@ -5881,7 +5840,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function paintStreamLink() {
       const card = document.getElementById('bc-link');
       if (!card) return;
-      const host = typeof BROADCAST !== 'undefined' && BROADCAST && typeof bcHostStored === 'function' && bcHostStored();
+      const host = BROADCAST && typeof bcHostStored === 'function' && bcHostStored();
       const onAir = myStatus && myStatus.camOff === false;
       const url = (typeof shareUrl !== 'undefined' && shareUrl && shareUrl.value) || '';
       const show = !!(host && url);
@@ -6179,8 +6138,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const memoPass = (k, f) => { if (!passMemo) return f(); if (!(k in passMemo)) passMemo[k] = f(); return passMemo[k]; };
     const stageHeldAt = new Map(), STAGE_FOLD_HOLD_MS = 25000;
     const stageFeedAt = new Map(), STAGE_FEED_LOST_MS = 2500;
+    // ONE STAGE LISTING. stageRead is the whole answer and writes no stage state: it says who is
+    // on the stage now and what the hold maps should remember. stageSeats is that answer for a
+    // reader that must not disturb anything (earState, tests). stageIds is what the page reads,
+    // once per repaint pass, and it alone records the holds, so they move exactly when they did
+    // while one getter did both. A hold is only ever read here (and by stageWhyForTest).
     const stageIds = () => memoPass('stg', stageIdsNow);
-    const stageIdsNow = () => {
+    const stageIdsNow = () => { const r = stageRead(); stageRecord(r); return r.ids; };
+    const stageSeats = () => stageRead().ids;
+    // A person's own word that they are on stage, while it counts: mine at once, a peer's for as
+    // long as its status holds (stHold, below).
+    const stageClaimOf = (id) => {
+      if (id === myId) return myStatus.stg || 0;
+      const st = statusOf.get(id);
+      if (!st || !stHold(id)) return 0;
+      return st.stg || 0;
+    };
+    const stageRead = () => {
       // A stage seat needs a LIVE status — the same stHold rule as consent and
       // the roster: fresh within 15s, or held for HOLDOVER_MS while the peer
       // honestly said away or transport still vouches for it. A departed
@@ -6188,12 +6162,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // painting a strip whose feed is gone — a big black tile); a stager
       // whose hidden-tab beat merely landed late must not be torn out of
       // every phone's strip and rebuilt on the next beat.
-      const stgOf = (id) => {
-        if (id === myId) return myStatus.stg || 0;
-        const st = statusOf.get(id);
-        if (!st || !stHold(id)) return 0;
-        return st.stg || 0;
-      };
       const out = [];
       // A meeting bot never takes the stage. It stays a small tile.
       const botOf = (id) => id === myId ? !!myStatus.bot : !!((statusOf.get(id) || {}).bot);
@@ -6205,7 +6173,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const vt = hasAdminRoom() ? null : stageVoteTallies();
       for (const id of new Set([myId, ...rosterIds])) {
         if (!id) continue;
-        const t = stgOf(id);
+        const t = stageClaimOf(id);
         // A share grant is a stage seat only while they are actually sharing.
         // It is not a general pass onto the stage.
         if (botOf(id)) continue;
@@ -6229,24 +6197,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // at once, whatever a status or the fold still says (both lag a death by up to a minute).
       // Short of a blip only: the watchdog calls a pipe dark after 0.7 s of silence. A new claim
       // (a reload, the feed back) puts the stager back.
-      {
-        const nowF = Date.now();
-        for (let i = out.length - 1; i >= 0; i--) {
-          const id = out[i][0]; if (id === myId) continue;
-          let feedNow = false; try { feedNow = stgBeats.has('stg:' + id) ? !stgStale('stg:' + id) : !stgLost('stg:' + id); } catch (x) {} // a beating stager is alive, whatever my path to it is doing
-          if (feedNow) stageFeedAt.set(id, nowF);
-          else if (stageFeedAt.has(id) && nowF - stageFeedAt.get(id) > STAGE_FEED_LOST_MS) out.splice(i, 1);
-        }
-        for (const id of [...stageFeedAt.keys()]) if (!out.some((x) => x[0] === id) && nowF - stageFeedAt.get(id) > 120000) stageFeedAt.delete(id);
+      const nowF = Date.now(), feedSeen = [], feedDrop = [];
+      for (let i = out.length - 1; i >= 0; i--) {
+        const id = out[i][0]; if (id === myId) continue;
+        let feedNow = false; try { feedNow = stgBeats.has('stg:' + id) ? !stgStale('stg:' + id) : !stgLost('stg:' + id); } catch (x) {} // a beating stager is alive, whatever my path to it is doing
+        if (feedNow) feedSeen.push(id);
+        else if (stageFeedAt.has(id) && nowF - stageFeedAt.get(id) > STAGE_FEED_LOST_MS) out.splice(i, 1);
       }
+      for (const [id, at] of stageFeedAt) if (!out.some((x) => x[0] === id) && nowF - at > 120000) feedDrop.push(id);
       // A deep stager's entry reaches the far room through its row's fold, and that path breaks
       // when the seat above it dies, until E2 carries the fold. The stager did not step down and
       // its feed still arrives: hold the seat. A status that says it stepped down, or a known
       // death, ends the hold at once; a feed that is gone ends it too.
-      const nowH = Date.now();
-      for (const x of out) stageHeldAt.set(x[0], { k: x[1], at: nowH });
-      // No fold in date says nothing about who is on stage: a fold that aged out on a row cut off from it must not stop a feed still arriving. Only a fold in date can leave a stager out.
-      if (!dg) for (const h of stageHeldAt.values()) h.at = nowH;
+      const nowH = Date.now(), heldSet = out.slice(), heldDrop = [];
       for (const [id, h] of stageHeldAt) {
         if (out.some((x) => x[0] === id)) continue;
         const said = statusOf.get(id);
@@ -6256,10 +6219,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // fold takes half a minute to list it again (room v8ring, 36 s off stage with its beat never late).
         let beating = false; try { beating = stgBeats.has('stg:' + id) && !stgStale('stg:' + id); } catch (e) {}
         if (beating && id !== myId && !(fresh && !said.stg)) { if (!meshGone.has(id)) out.push([id, h.k]); continue; }
-        if (nowH - h.at > STAGE_FOLD_HOLD_MS || id === myId || !held || meshGone.has(id) || (fresh && !said.stg)) { stageHeldAt.delete(id); continue; }
+        // No fold in date says nothing about who is on stage: a fold that aged out on a row cut off from it must not stop a feed still arriving. Only a fold in date can leave a stager out (stageRecord renews every hold then).
+        if ((dg && nowH - h.at > STAGE_FOLD_HOLD_MS) || id === myId || !held || meshGone.has(id) || (fresh && !said.stg)) { heldDrop.push(id); continue; }
         out.push([id, h.k]);
       }
-      return out.sort((a, b) => (a[1] - b[1]) || (a[0] < b[0] ? -1 : 1)).slice(0, SCALE.C).map((x) => x[0]);
+      const ids = out.sort((a, b) => (a[1] - b[1]) || (a[0] < b[0] ? -1 : 1)).slice(0, SCALE.C).map((x) => x[0]);
+      return { ids, nowF, nowH, foldIn: !!dg, feedSeen, feedDrop, heldSet, heldDrop };
+    };
+    // What the listing remembers from a read. Only stageIdsNow calls this.
+    const stageRecord = (r) => {
+      for (const id of r.feedSeen) stageFeedAt.set(id, r.nowF);
+      for (const id of r.feedDrop) stageFeedAt.delete(id);
+      for (const x of r.heldSet) stageHeldAt.set(x[0], { k: x[1], at: r.nowH });
+      if (!r.foldIn) for (const h of stageHeldAt.values()) h.at = r.nowH;
+      for (const id of r.heldDrop) stageHeldAt.delete(id);
     };
     // The room DIRECTORY: everyone we know to be in the room — the mesh occ
     // map (coord → peer, maintained by the healing laws) unioned with fresh
@@ -6813,8 +6786,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         ad: a ? { s: a.s, k: a.k, relay: a.relay, name: a.name, mesh: !!a.mesh, pk: a.pk, ts: a.ts, byName: a.byName, audio: !!a.audio } : null,
         away: !!myStatus.away, vup: myStatus.vup || [], vdn: myStatus.vdn || [], vab: myStatus.vab || [] });
       if (typeof meshNode.setRefuses === 'function') meshNode.setRefuses(!consents(myStatus));
-      // L10.1: a hand is one of the seat's own facts, so a change goes out early instead of on the next beat
-      try { const r = meshNode.raw; if (r && !r.handT !== !myStatus.hand) r.handT = myStatus.hand ? r.TICK + 1 : 0; } catch (e) {}
     }
     // Presence: the mesh occ map IS the local count — distinct peers at
     // distinct coords in my view of the tree, me included. Past one section
@@ -6987,7 +6958,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         sv.kicked++; sv.why.wake = (sv.why.wake || 0) + 1;
         p.meshKickAt = Date.now(); p.wakeBuiltAt = at;
         if (typeof clog === 'function') clog('wake rebuild ' + String(pid).slice(0, 6) + ' (' + stage + ') pc=' + (p.pc.connectionState || '?') + ' dc=' + (p.dc ? p.dc.readyState : 'none'));
-        newPcFor(p);
+        rebuildPc(p, 'wake');
         sendOffer(pid, false);
       };
       // BACK FROM THE DARK, a pair with no open channel and no live transport
@@ -7006,7 +6977,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (p.wakeAt !== at || !p.pc || p.wakeAsked) continue;
         const dcDead = p.dc && (p.dc.readyState === 'closed' || p.dc.readyState === 'closing');
         if (!dcDead && p.connected) continue;
-        if (Math.max(p.rebuiltAt || 0, p.bornAt || 0) >= at) continue;
+        if (pcBuiltAt(p) >= at) continue;
         rebuild(pid, p, 'dark');
         // The channel just torn down was already dead. Tell the mesh on the
         // return tick, after netHold (reportDarkDeaths, from onUpdate): its
@@ -7026,7 +6997,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (p.wakeAt !== at || !p.pc) continue;
           if (p.wakePongAt > at) { p.wakeAt = 0; continue; }                   // it answered: the pair survived
           if (!p.wakeAsked && p.connected && p.dc && p.dc.readyState === 'open') { p.wakeAt = 0; continue; } // not asked (no channel at the wake) and open now: it formed since — alive
-          const built = Math.max(p.rebuiltAt || 0, p.bornAt || 0), st = p.pc.connectionState;
+          const built = pcBuiltAt(p), st = p.pc.connectionState;
           // (re)built at the wake — judged at WAKE_SETTLE_MS, unless the
           // channel we asked was replaced by an offer whose checks draw no
           // answer. That offer drained from a pc the peer has closed; the
@@ -7075,7 +7046,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // (chaos seed 11 #5: a row-mate back from 45 s dark held the head's
           // old id for 46 s more, and a rejoiner was NOROOM'd the whole time).
           if (p.wakeBuiltAt === at) { onTransportDead(pid, 'wake-dead'); continue; }
-          if (Math.max(p.rebuiltAt || 0, p.bornAt || 0) > at + WAKE_PROBE_MS) continue; // a later healer's pc, still forming
+          if (pcBuiltAt(p) > at + WAKE_PROBE_MS) continue; // a later healer's pc, still forming
           rebuild(pid, p, 'unsettled');
         }
       }, WAKE_SETTLE_MS);
@@ -7177,7 +7148,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // N=2 coin flip), and nothing notices because nothing measures RECEIVE
       // silence. So measure it: a mesh-named, connected, open pair that has
       // delivered NOTHING mesh-level inbound for 12s is a zombie — the
-      // deterministic dialer side rebuilds the transport (full newPcFor +
+      // deterministic dialer side rebuilds the transport (full rebuildPc +
       // re-offer; renegotiate() on the same broken pc heals nothing). PHONE
       // re-claims then repair occupancy within a beat or two.
       try {
@@ -7193,7 +7164,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // here. While OUR radio is off, 12s of nothing received proves
           // nothing about any peer; it is OUR deafness, not their death.
           // Unguarded, this sweep read its own radio-dropout as every
-          // peer dying at once and closed all of them for real (newPcFor),
+          // peer dying at once and closed all of them for real (rebuildPc),
           // forcing a full re-knock with glare once the radio returned —
           // the pairs it tore down were fine the whole time and would have
           // answered wakeProbe's wping in one round trip the instant the
@@ -7303,7 +7274,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               sv.kicked++;
               if (seatHolds(pid)) { why('held'); continue; }
               if (typeof clog === 'function') clog('dc-watchdog rebuild ' + String(pid).slice(0, 6));
-              newPcFor(p);
+              rebuildPc(p, 'dc-watchdog');
               sendOffer(pid, false);
             }
             why('dcwatch'); continue;
@@ -7338,7 +7309,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (seatHolds(pid)) { why('held'); continue; }   // L17
           if (p.hungUp) { why('hungup'); continue; }   // the far seat hung up on purpose (pcbye): only a seat's dial brings this pair back (seatDial)
           if (typeof clog === 'function') clog('mesh-starve rebuild ' + String(pid).slice(0, 6));
-          newPcFor(p);
+          rebuildPc(p, 'mesh-starve');
           sendOffer(pid, false);
         }
         // THE FORMATION GAP (behavior battery 14a residual): a pair whose
@@ -7522,7 +7493,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!v || document.pictureInPictureElement === v) {
         // A tap with no picture used to do nothing. Auto-float on leaving the
         // tab stays quiet: there is still nothing to show.
-        if (manual && !v) setStatus((typeof BROADCAST !== 'undefined' && BROADCAST) ? 'Nothing on the stage to float yet.' : 'Nothing to float yet.');
+        if (manual && !v) setStatus((BROADCAST) ? 'Nothing on the stage to float yet.' : 'Nothing to float yet.');
         return;
       }
       pipManual = !!manual;
@@ -8164,11 +8135,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // window — deliberately a janitor, not a lock: an admin-less room is
     // already blurred and unmoderated, so squatting one gains little.
     const ADMIN_GRACE_MS = 10000, ADMIN_CLOSE_MS = 5 * 60 * 1000;
-    let admGraceT = null, admCloseT = null, admTickT = null, admDeadline = 0;
+    let admGraceT = null, admTickT = null, admDeadline = 0;
     const fmtLeft = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
     function clearAdminClose() {
-      clearTimeout(admGraceT); clearTimeout(admCloseT); clearInterval(admTickT);
-      admGraceT = admCloseT = admTickT = null; admDeadline = 0;
+      clearTimeout(admGraceT); clearInterval(admTickT);
+      admGraceT = admTickT = null; admDeadline = 0;
       const el = document.getElementById('admcount'); if (el) el.style.display = 'none';
     }
     function tickAdminClose() {
@@ -8181,7 +8152,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function startAdminCountdown() {
       admGraceT = null;
       admDeadline = Date.now() + ADMIN_CLOSE_MS;
-      admCloseT = setTimeout(closeRoomNoHost, ADMIN_CLOSE_MS);
       admTickT = setInterval(tickAdminClose, 1000);
       tickAdminClose();
     }
@@ -8293,7 +8263,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // The admin proof must still be inside HOLDOVER_MS, admSeenLive's cap.
       const now = Date.now();
       for (const [pid, t] of admSeen) if (now - t < HOLDOVER_MS && stHold(pid)) { clearAdminClose(); return; }
-      if (admGraceT || admCloseT) return;      // already in grace or counting
+      if (admGraceT || admTickT) return;       // already in grace or counting
       admGraceT = setTimeout(startAdminCountdown, ADMIN_GRACE_MS); // silent 10s grace
     }
 
@@ -8342,7 +8312,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (v.classList.contains('stageface')) continue;
         if (pipReady(v)) out.push({ key: 'stage:' + ((v.closest('.rowtile') || {}).dataset || {}).row, label: 'On stage', v });
       }
-      if (typeof BROADCAST !== 'undefined' && BROADCAST) return out;
+      if (BROADCAST) return out;
       for (const [pid, p] of peers) {
         if (!p.connected) continue;
         // Every connected peer is listed. A dark one (camera off, admin
@@ -8380,7 +8350,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (letter) letter.textContent = ch ? ch.toUpperCase() : '\u2022';
         if (nm) nm.textContent = text;
       };
-      const broadcastFs = typeof BROADCAST !== 'undefined' && BROADCAST;
+      const broadcastFs = BROADCAST;
       // A service stage with the camera off wears its card (#bc-ident:
       // picture or initial, name, Camera off). Full screen shows that card,
       // not the black frame under it.
@@ -8707,7 +8677,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function paintStageMod() {
       const el = document.getElementById('stagemod');
       if (!el) return;
-      const broadcast = typeof BROADCAST !== 'undefined' && BROADCAST;
+      const broadcast = BROADCAST;
       const host = broadcast && ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin'));
       const blocked = document.body.classList.contains('admroom') && document.body.classList.contains('notadmin');
       const ids = (!broadcast || !host || blocked) ? [] : stageModList();
@@ -8777,7 +8747,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function paintRaisedHands() {
       const el = document.getElementById('handraise');
       if (!el) return;
-      const broadcast = typeof BROADCAST !== 'undefined' && BROADCAST;
+      const broadcast = BROADCAST;
       const host = broadcast && ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin'));
       const watching = document.body.classList.contains('bc-watching');
       const rows = (!broadcast || !host || watching) ? [] : raisedHandRows();
@@ -9250,7 +9220,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         } else paintAvatarImg(t.avatar, t.avatarUrl || '', t.avatarHash || '');
         if (typeof setTileLetter === 'function') setTileLetter(t.avatar, nameInitial(isMe ? myName() : (hostRename(id) || displayName(id))));
       }
-      if (typeof BROADCAST !== 'undefined' && BROADCAST) paintBroadcastIdent();
+      if (BROADCAST) paintBroadcastIdent();
       t.video.classList.remove('blur1', 'blur2');
       // The ME tile already SHOWS the pre-blurred outbound pixels (WYSIWYG), so
       // a CSS blur on top would double it; receiver-side CSS blur is for the
@@ -12155,7 +12125,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { paintLyrics(); } catch (e) {}
         return;
       }
-      const host = typeof BROADCAST !== 'undefined' && BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored())) && rundownTpl() === 'service';
+      const host = BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored())) && rundownTpl() === 'service';
       el.classList.toggle('open', !!host);
       document.body.classList.toggle('rundown', !!host);
       try { paintLyrics(); } catch (e) {}
@@ -12252,7 +12222,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { sessionStorage.setItem(lyricStoreKey(), String(n)); } catch (e) {}
     }
     function lyricSongOn() {
-      const host = typeof BROADCAST !== 'undefined' && BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored())) && rundownTpl() === 'service';
+      const host = BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored())) && rundownTpl() === 'service';
       return !!(host && songSlotOf(rundownAt()) >= 0);
     }
     // The line the room sees on the booth's camera, or '' outside Song.
@@ -12932,12 +12902,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const RELAY_NAME_MAX = 40, RELAY_PW_MAX = 64;
     const epOk = (ep) => Number.isInteger(ep) && ep >= 0;
     // The exact field set of each payload (the padding field `_` beside it).
-    const RELAY_PAYLOAD_KEYS = { boot: 'k,t,u,w,s,v', fp: 'k,v,fp', ice: 'k,c,end', name: 'k,n', password: 'k,pw,ep,pr', pwsig: 'k,sig', pwpub: 'k,ep,ts,pub', pwby: 'k,ep,by', busy: 'k,g,i,n,ref,cool' };
+    const RELAY_PAYLOAD_KEYS = { boot: 'k,t,u,w,s,v,dr', fp: 'k,v,fp', ice: 'k,c,end', name: 'k,n', password: 'k,pw,ep,pr', pwsig: 'k,sig', pwpub: 'k,ep,ts,pub', pwby: 'k,ep,by', busy: 'k,g,i,n,ref,cool' };
     function relayFrameAllowed(ty, inner) {
       if (!RELAY_TYPES.has(ty) || !inner || typeof inner !== 'object' || Array.isArray(inner) || inner.k !== ty || !net.fitsFixed(inner)) return null;
       const keys = RELAY_PAYLOAD_KEYS[ty].split(',');
       for (const k of Object.keys(inner)) if (k !== '_' && keys.indexOf(k) < 0) return null;
-      if (ty === 'boot') return net.bootOk(inner) ? ty : null;
+      if (ty === 'boot') return net.bootOk(inner) && (inner.dr === undefined || inner.dr === 1) ? ty : null;   // dr: an unseated dialler at the door (sendOffer)
       if (ty === 'fp') return net.fpOk(inner) ? ty : null;
       if (ty === 'ice') return (inner.end === 1 && !('c' in inner)) || (!('end' in inner) && !!net.candOfIce(inner)) ? ty : null;
       if (ty === 'name') return typeof inner.n === 'string' && inner.n.length <= RELAY_NAME_MAX ? ty : null;
@@ -13162,6 +13132,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // (§FWD). Returns true iff the frame was handed to SOME viable path.
     function sponsorSend(envl) {
       const to = envl.to;
+      // L16.3.2: a reply starts back along the list its frame crossed. No such channel now: the rungs, the list dropped.
+      if (Array.isArray(envl.rt)) {
+        const back = envl.rt.length ? peers.get(envl.rt[envl.rt.length - 1]) : null;
+        if (back && back.connected && back.dc && back.dc.readyState === 'open') { envl.rt = envl.rt.slice(0, -1); dcSend(back, envl); return true; }
+        delete envl.rt;
+      }
       // 1) the classic mutual-DC friend (one hop, deterministic pick)
       const cands = myConns().filter((r) => r !== to && (connsOf.get(r) || []).includes(to)).sort();
       const fp = cands.length ? peers.get(cands[0]) : null;
@@ -13223,6 +13199,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const pidFirstSeen = new Map(); // pid → first time the starve sweep considered it
     const doorLast = new Map(); // per-target door-send throttle (§FWD)
     const sponsorReplyTo = new Set(); // offers that arrived sponsored — answer along the same path (§FWD)
+    // L16.3.2: the seats the last walked frame from a peer crossed, its end first. The crumb is one word per seat, the last frame on ANY
+    // walk, and retracing by crumbs loops; the list is this frame's own. Taken once by the reply, 60 s, bounded.
+    const fwdRoute = new Map();
+    function noteRoute(pid, list) {
+      fwdRoute.set(String(pid), { list: Array.isArray(list) ? list.slice(0, 13).map(String) : [], at: Date.now() });
+      if (fwdRoute.size > 256) { const now = Date.now(); for (const [k, v] of fwdRoute) if (now - v.at > 60000) fwdRoute.delete(k); }
+    }
+    function takeRoute(pid) {
+      const r = fwdRoute.get(String(pid)); if (!r) return null;
+      fwdRoute.delete(String(pid));
+      return Date.now() - r.at > 60000 ? null : r.list;
+    }
     // fwdOnward: an fsig/fmesh envelope reached me but names someone else —
     // pass it one bounded step onward. Order:
     //   1) direct channel / geometric mesh next hop (nextHopDc)
@@ -13246,11 +13234,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const ttl = (m.ttl == null ? 1 : m.ttl | 0) - 1; // legacy envelope: one direct-channel hop only
       if (ttl < 0) return;
       const envl = { k: kind, from: m.from, to: m.to, tc: m.tc, id: m.id, ttl, m: m.m };
+      // L16.3.2: an fsig carries the seats it crossed; no hop takes a seat on that list.
+      const crossed = kind === 'fsig' && Array.isArray(m.p) ? m.p.slice(0, 13).map(String) : [];
+      if (kind === 'fsig') envl.p = crossed.concat(myId);
       const handoff = (p) => {
-        if (!p || p.id === viaPid || !(p.connected && p.dc && p.dc.readyState === 'open')) return false;
+        if (!p || p.id === viaPid || p.id === m.from || crossed.includes(p.id) || !(p.connected && p.dc && p.dc.readyState === 'open')) return false;
         if (m.id) fwdSeenNote(fwdSeen, m.id);
         txStats.hopFwd++; dcSend(p, envl); if (kind === 'fsig') { try { meshNode.doorWalked(p.id); } catch (e) {} } return true;   // L16.3.1: a door carrying a placee's set-up is in use
       };
+      // L16.3.2: a reply goes back along its list: my channel to the asker, else the seat before me on the list. Neither open: the rungs, the list dropped.
+      if (kind === 'fsig' && Array.isArray(m.rt)) {
+        const back = m.rt.slice(0, 13).map(String);
+        if (back[back.length - 1] === myId) back.pop();
+        if (handoff(peers.get(m.to))) return;
+        if (back.length) { envl.rt = back.slice(0, -1); if (handoff(peers.get(back[back.length - 1]))) return; delete envl.rt; }
+      }
       const hp = nextHopDc(m.to, m.tc);
       if (hp && handoff(hp)) return;
       // Mutual-friend hop: someone we hold a live channel to already claims
@@ -13268,7 +13266,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (m.ttl != null && ttl >= 0) {
         const alts = [];
         for (const [pid, p] of peers) {
-          if (pid === viaPid || pid === m.to || pid === myId) continue;
+          if (pid === viaPid || pid === m.to || pid === myId || pid === m.from || crossed.includes(pid)) continue;
           if (p.connected && p.dc && p.dc.readyState === 'open') alts.push(pid);
         }
         alts.sort();
@@ -13375,7 +13373,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (relayDown || targetUnreachable || mediaDesc || !mayRelay) {
         const m2 = sigSansIce(to, msg);
         if (!m2) return; // a blocked pair sends nothing on either path (fault injection)
-        if (sponsorSend({ k: 'fsig', from: myId, to, tc: coordKeyOf(to), id: fwdId(), ttl: 12, m: m2 })) { txStats.fwdSig++; return; }
+        const rt = (m2.kind === 'offer' || m2.kind === 'answer') ? takeRoute(to) : null;   // L16.3.2: the reply to a walked frame retraces it
+        if (sponsorSend(Object.assign({ k: 'fsig', from: myId, to, tc: coordKeyOf(to), id: fwdId(), ttl: 12, m: m2 }, rt ? { rt } : {}))) { txStats.fwdSig++; return; }
         if (mediaDesc) { txStats.relayUnfit++; return; } // no friend's channel either: the sweeper's next attempt rebuilds and bootstraps (sendOffer)
         if (!mayRelay) return;
       }
@@ -13389,7 +13388,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // sender's name beside an offer; a candidate batch goes out one `ice`
     // frame per candidate, the end mark as its own. A description carrying
     // media (bootOf returns null) is NEVER sent here: the dial path keeps
-    // the pc media-free until its channel is open (newPcFor / sendOffer),
+    // the pc media-free until its channel is open (rebuildPc / sendOffer),
     // and media is negotiated over that channel (wireDc onopen).
     let bootSeq = 0;
     // A person who reaches no one keeps asking every door in the room for as
@@ -13417,6 +13416,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const b = net.bootOf(msg.sdp, ++bootSeq);
         if (!b) { txStats.relayUnfit++; if (typeof clog === 'function') clog('relay: a description with media never leaves (' + msg.kind + ' to ' + String(to).slice(0, 6) + ')'); return; }
         relaySendSealed(to, 'name', { k: 'name', n: net.relayNameFit(myName()) }); // the name beside every bootstrap: both sides can say who tried to reach them
+        if (msg.kind === 'offer' && msg.dr === 1) b.boot.dr = 1;   // the door's gate reads it (onSignal): an unseated dialler is not a stale member
         relaySendSealed(to, 'boot', b.boot);
         relaySendSealed(to, 'fp', b.fp);
         return;
@@ -13435,9 +13435,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function onRelayPeer(from, ty, f) {
       if (ty === 'busy') { try { if (meshNode && meshNode.relayBusyIn) meshNode.relayBusyIn(from, f); } catch (e) {} return; }
       if (ty === 'boot' || ty === 'fp') {
+        const bootF = ty === 'boot' ? f : (bootParts.get(from) || {}).boot;
         const desc = takeBootPart(from, ty, f);
         if (!desc) return;
-        onSignal(from, { kind: desc.type, sdp: desc, ib: 1, boot: 1 });
+        const sig = { kind: desc.type, sdp: desc, ib: 1, boot: 1 };
+        if (bootF && bootF.dr === 1) sig.dr = 1;
+        onSignal(from, sig);
         return;
       }
       if (ty === 'ice') {
@@ -13714,7 +13717,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const el = document.getElementById('bc-stage');
       const line = document.getElementById('bc-stage-line');
       if (!el || !line) return;
-      if (typeof BROADCAST === 'undefined' || !BROADCAST) { el.hidden = true; return; }
+      if (!BROADCAST) { el.hidden = true; return; }
       const ident = document.getElementById('bc-ident');
       const picture = !!document.querySelector('#stagefeed .rowtile') || !!(ident && ident.classList.contains('on'));
       el.hidden = picture;
@@ -13735,7 +13738,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // A host whose live status says on stage counts before the roster
       // lists them (it lags their first status by a beat or more).
       const others = stageIds().filter((id) => id !== myId)
-        .concat(admins.filter((id) => id !== myId && stHold(id) && (statusOf.get(id) || {}).stg));
+        .concat(admins.filter((id) => id !== myId && stageClaimOf(id)));
       if (others.length) {
         const nm = others.map(nameOf).find((x) => x);
         line.textContent = nm ? 'Connecting to ' + nm + '…' : 'Connecting to the stage…';
@@ -13758,7 +13761,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function paintBroadcastIdent() {
       const el = document.getElementById('bc-ident');
       if (!el) return;
-      if (typeof BROADCAST === 'undefined' || !BROADCAST) { el.classList.remove('on'); return; }
+      if (!BROADCAST) { el.classList.remove('on'); return; }
       const stage = (typeof stageIds === 'function') ? stageIds() : [];
       let pid = stage.length ? stage[0] : null;
       if (!pid && typeof amAdmin !== 'undefined' && amAdmin) pid = myId;
@@ -14023,10 +14026,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       return added;
     }
+    // When this pair's current pc was made.
+    const pcBuiltAt = (p) => Math.max(p.rebuiltAt || 0, p.bornAt || 0);
+    // ONE RECORD OF ONE PC'S NEGOTIATION, born with the pc and dropped with it, so no mark or timer can reach the next pc.
+    // minting: the offer being made on this pc (createOffer to setLocalDescription), whichever path started it; the pc still
+    // reads 'stable' meanwhile. kind says what the pc is for. What describes the peer (turnSeen, turnLegacy) stays on p.
+    const newNeg = (why, kind) => ({ why: why || '', kind: kind || 'pair', at: Date.now(), minting: null, offerFp: '',
+      glareTimer: null, glareOffer: null, rofferYieldTimer: null, rofferYield: null, kickVideo: false,
+      turnAskT: null, turnOkT: null, turnGivenT: null, turnOk: false, turnGiven: false, turnWanted: false, offeredPend: '' });
+    function endNeg(n) {
+      if (!n) return;
+      clearTimeout(n.glareTimer); clearTimeout(n.rofferYieldTimer); clearTimeout(n.turnAskT); clearTimeout(n.turnOkT); clearTimeout(n.turnGivenT);
+    }
+    // THE ONE PLACE A PAIR GETS A PC. `why` names the rebuild in the DEBUG trace. opts.closing: a real close, the far end's
+    // to read. opts.keepIce: their trickle already queued for the offer being answered stays. Per-pc ICE settings go here.
     // A rebuild replaces a pc and closes no link. On a live channel the far end hears so first (the channel is ordered,
     // the close follows), so the old channel's close reads as the replacement it is: a fresh pc replacing a live one is
     // no loss at either end. Not for a real close (closing): that one is the far end's to read.
-    function newPcFor(p, closing) {
+    function rebuildPc(p, why, opts) {
+      const closing = !!(opts && opts.closing), queued = opts && opts.keepIce ? p.pendingIce : null;
+      if (typeof clog === 'function') clog('pc-new ' + String(p.id).slice(0, 6) + ' ' + (why || '?') + (p.pc ? ' was ' + p.pc.connectionState + '/' + p.pc.signalingState : ''));
       const pcOld = p.pc;
       if (!closing && pcOld && p.dc && p.dc.readyState === 'open') { try { dcSend(p, { k: 'pcfresh' }); } catch (e) {} setTimeout(() => { try { pcOld.close(); } catch (e) {} }, 300); }
       else { try { pcOld && pcOld.close(); } catch (e) {} }
@@ -14060,23 +14079,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // typeof guard is what hid this for however long it has been here.
       try {
         for (const [jk, job] of [...mosJobs]) if (job.to === p.id) unshipMos(jk, false);
-      } catch (e) { if (typeof clog === 'function') clog('newPcFor: mosaic job cleanup failed ' + String(e).slice(0, 60)); }
+      } catch (e) { if (typeof clog === 'function') clog('rebuildPc: mosaic job cleanup failed ' + String(e).slice(0, 60)); }
       const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-      // A glare yield armed against the OLD pc must never fire at the new
-      // one: its rollback would target a connection that never offered.
-      try { if (p.glareTimer) clearTimeout(p.glareTimer); } catch (e) {}
-      p.glareTimer = null; p.glareOffer = null;
-      // A renegotiation yield armed against the old pc must not answer on the
-      // new one: its offer describes m-lines the fresh pc never had.
-      try { if (p.rofferYieldTimer) clearTimeout(p.rofferYieldTimer); } catch (e) {}
-      p.rofferYieldTimer = null; p.rofferYield = null; p.kickVideo = false;
-      // Offer turns belong to the old pc. turnSeen/turnLegacy describe the peer and stay.
-      clearTimeout(p.turnAskT); clearTimeout(p.turnOkT); clearTimeout(p.turnGivenT);
-      p.turnAskT = p.turnOkT = p.turnGivenT = null; p.turnOk = p.turnGiven = p.turnWanted = false; p.offeredPend = "";
-      p.pc = pc; p.connected = false; p.pendingIce = []; p.dc = null; p.incoming = []; p.deadSince = 0; p.rebuiltAt = Date.now();
-      p.offering = null; // an offer still minting belongs to the closed pc (sendOffer drops it)
-      p.makingOffer = false; // ...and so does a renegotiation's (renegotiate: its chain never settles)
-      p.offerFp = ''; // no remote offer has landed on this pc yet (onSignal's new-pc rule)
+      // Whatever was armed against the OLD pc must never fire at the new one: a glare yield's rollback would target a
+      // connection that never offered, a held renegotiation describes m-lines the fresh pc never had, and offer turns
+      // belong to the old pc. An offer still minting belongs to it too: its chain never settles on a closed pc.
+      endNeg(p.neg);
+      p.neg = newNeg(why);
+      p.pc = pc; p.connected = false; p.pendingIce = queued || []; p.dc = null; p.incoming = []; p.deadSince = 0; p.rebuiltAt = Date.now();
       // A new pc gathers afresh: its first host candidate must leave at once,
       // so the old pc's batch (sawHost, a pending flush) is dropped.
       { const ib = iceBatch.get(p.id); if (ib && ib.t) clearTimeout(ib.t); iceBatch.delete(p.id); }
@@ -14111,8 +14121,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // arrives via ondatachannel below — and an answer cannot add an m-line
       // the offer lacked anyway, so creating one here was dead weight on the
       // answering side.
-      pc.ondatachannel = (ev) => { try { ev.channel.__pc = pc; } catch (e) {} wireDc(p, ev.channel); };
+      // A replaced pc lives on for 300 ms so its goodbye can leave. What it still reports is not this pair's truth:
+      // its channel must not take p.dc from the new pc (the next offer would then skip the data m-line), nor its candidates or tracks.
+      pc.ondatachannel = (ev) => { if (p.pc !== pc) return; try { ev.channel.__pc = pc; } catch (e) {} wireDc(p, ev.channel); };
       pc.ontrack = (ev) => {
+        if (p.pc !== pc) return;
         if ((typeof isEjected === 'function' && isEjected(p.id) === true)) { try { ev.track.stop(); } catch (e) {} return; } // no media from a forger
         const stream = ev.streams[0];
         if (typeof clog === 'function') clog('trk ' + String(p.id).slice(0, 6) + ' ' + (stream ? String(stream.id).slice(0, 8) : 'NOSTREAM') + ' mid=' + (ev.transceiver && ev.transceiver.mid));
@@ -14165,7 +14178,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         fsRefreshIfOpen();
         if (p.video && fsview.classList.contains('on')) p.video.addEventListener('resize', () => fsRefreshIfOpen(), { once: true });
       };
-      pc.onicecandidate = (ev) => { noteIce(p.id, ev.candidate || null); };
+      pc.onicecandidate = (ev) => { if (p.pc !== pc) return; noteIce(p.id, ev.candidate || null); };
       pc.onconnectionstatechange = () => {
         if (p.pc !== pc) return; // a replaced transport's tail events — not this pair's truth
         p.connected = pc.connectionState === 'connected';
@@ -14232,7 +14245,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       peers.set(peerId, p);
       if (isHeld(peerId)) holdPeer(p);
       recSrcDirty = true;
-      newPcFor(p);
+      rebuildPc(p, 'born');
       adapt();
       return p;
     }
@@ -14423,14 +14436,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // bootstrap glare (no channel yet) still waits, so the other side can
     // answer.
     function armGlareYield(p, from, msg) {
-      p.glareOffer = msg;
-      if (p.glareTimer) return;                       // already waiting
-      const built = Math.max(p.rebuiltAt || 0, p.bornAt || 0);
+      p.neg.glareOffer = msg;
+      if (p.neg.glareTimer) return;                       // already waiting
+      const built = pcBuiltAt(p);
       const intoDark = (p.dcRxAt || 0) > 0 && built - p.dcRxAt > GLARE_YIELD_MS;
       const stale = noLiveTransport(p) && (Date.now() - built > GLARE_YIELD_MS || intoDark);
-      p.glareTimer = setTimeout(() => {
-        p.glareTimer = null;
-        const m = p.glareOffer; p.glareOffer = null;
+      p.neg.glareTimer = setTimeout(() => {
+        p.neg.glareTimer = null;
+        const m = p.neg.glareOffer; p.neg.glareOffer = null;
         if (!m || !p.pc || leaving) return;
         if (p.pc.signalingState !== 'have-local-offer') return;  // it healed; leave it alone
         if (typeof clog === 'function') clog('glare-yield ' + String(from).slice(0, 6));
@@ -14438,22 +14451,80 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // rollback: an answer made after rolling back an offer gathers no ICE
         // candidate in Chromium (see onSignal's collision branch).
         const fresh = noLiveTransport(p);
-        if (fresh) { const queued = p.pendingIce; newPcFor(p); p.pendingIce = queued; }
-        Promise.resolve(fresh ? null : p.pc.setLocalDescription({ type: 'rollback' }))
-          .then(() => p.pc.setRemoteDescription(typeof wkStripH264 === 'function' ? wkStripH264(m.sdp, p.pc) : m.sdp))
-          .then(() => { for (const c of p.pendingIce.splice(0)) p.pc.addIceCandidate(c).catch(() => {}); })
-          .then(() => { preferHwVideo(p.pc); return p.pc.createAnswer(); })
-          .then((ans) => p.pc.setLocalDescription(ans))
-          .then(() => sendSig(from, { kind: 'answer', sdp: p.pc.localDescription, ib: 1, name: myName(), ip: myIp,
-                                      st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), sid: mySid() }))
+        if (fresh) rebuildPc(p, 'glare-yield', { keepIce: true });
+        const pc = p.pc;
+        Promise.resolve(fresh ? null : pc.setLocalDescription({ type: 'rollback' }))
+          .then(() => answerOffer(pc, p, m, true, (sdp) => sendSig(from, Object.assign({ kind: 'answer', sdp, ib: 1 }, sigMeta()))))
           .catch((e) => {
+            if (p.pc !== pc) return; // whoever replaced the pc owns the pair now
             // Rollback failed. Rebuild and dial from this side too. Dialling
             // only from the higher id left the polite side with a pc nobody offered on.
-            try { newPcFor(p); sendOffer(from, false); } catch (e2) { noteNegFail('glare', from, e2 || e); }
+            try { rebuildPc(p, 'glare-failed'); sendOffer(from, false); } catch (e2) { noteNegFail('glare', from, e2 || e); }
           });
       }, stale ? 0 : GLARE_YIELD_MS);
     }
 
+    // What every offer and answer tells about me, after its own fields.
+    const sigMeta = () => ({ name: myName(), ip: myIp, st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), sid: mySid() });
+    // THE RULES THAT REBUILD BEFORE AN OFFER LANDS, first match wins. After a rebuild none of the later ones can
+    // hold: a fresh pc has no death, no remote description, no connection and no media.
+    const offerFpOf = (sdp) => { const m = /\r?\na=fingerprint:([^\r\n]+)/.exec(String(sdp && sdp.sdp || sdp || '')); return m ? m[1] : ''; };
+    function offerNeedsFreshPc(p, msg) {
+      if (!p.pc) return '';
+      // A fresh offer onto a LONG-DEAD local pc negotiates into a corpse:
+      // the tunnel-return stall (behavior battery 06c, 2026-07-26) — the
+      // evicted side's zombie ate the returning offers until the vouch
+      // reap cleared it minutes later. Rebuild first — but ONLY when the
+      // death has PERSISTED (deadSince > 12s): rebuilding on any transient
+      // 'failed' tore down recovering pairs in a loop the moment both tabs
+      // were hidden/throttled (the 06a regression this line first caused).
+      if (p.deadSince && Date.now() - p.deadSince > 12000) return 'offer-dead';
+      // THE NEW-PC RULE: an offer whose DTLS fingerprint is not the one our
+      // remote description holds comes from a DIFFERENT RTCPeerConnection —
+      // the peer REBUILT the pair (its starve kick while we were frozen,
+      // its rescue dial after it gave us up). A certificate is minted per
+      // pc, so a renegotiation or ICE restart of the pc we hold keeps its
+      // fingerprint and is never touched. Negotiated into our old pc the
+      // offer fails ("the order of m-lines in subsequent offer doesn't
+      // match", chaos seed 8 at the thaw) and the pair waits 12-27 s for a
+      // healer; on a fresh pc it is the reunion itself, one round trip.
+      // Nothing of ours is lost: the pc we hold was built against a pc the
+      // peer has closed.
+      // The fingerprint compared is the one of the LAST OFFER ROUTED INTO
+      // THIS PC (p.neg.offerFp, stamped synchronously below), not
+      // pc.remoteDescription: two offers from two of the peer's pcs drain in
+      // one burst at a thaw (a throttled row-mate's wake probe rebuilt its
+      // pair with the frozen page every beat), and the second arrived while
+      // the first's setRemoteDescription was still pending — remoteDescription
+      // read null, the rule stood down, and the second offer failed on the
+      // first's pc ("m-lines in subsequent offer", seed 12 #1: 25.8 s).
+      const fp = offerFpOf(msg.sdp), cur = p.pc.remoteDescription ? offerFpOf(p.pc.remoteDescription) : (p.neg.offerFp || '');
+      if (fp && cur && fp !== cur) return 'offer-new-pc';
+      // A NEVER-OPENED pair is the other corpse class (pair-probe.js): ICE
+      // says connected, the DC never opened, and this side reads healthy
+      // (deadSince=0) — so the dialer's dc-watchdog rebuild offer was
+      // negotiated into the wedged old pc and the pair re-wedged. An offer
+      // arriving for a pair that never carried a byte and never opened its
+      // DC past formation age gets a fresh pc to land on.
+      if (p.connected && !(p.dc && p.dc.readyState === 'open') && !p.meshRxAt && !p.dcRxAt && Date.now() - pcBuiltAt(p) > 5000) return 'offer-wedged';
+      // A BOOTSTRAP OFFER (over the relay: a DataChannel-only description)
+      // lands on a media-free transport: a pc that already carries media
+      // had a channel that is now dead, and is rebuilt (sendOffer's rule,
+      // on the answering side).
+      if (msg.boot && p.mediaOn && !(p.dc && p.dc.readyState === 'open')) return 'offer-boot';
+      return '';
+    }
+    // ONE ANSWER, start to end, on the pc it began on: an offer is set, the ICE that waited for it goes in
+    // (signaling only: a renegotiation's channel carries none), and the answer goes out through `send`. A pc replaced
+    // meanwhile ends the chain with PcReplaced: that offer described a pc now closed, and the answer must not leave.
+    function answerOffer(pc, p, msg, drainIce, send) {
+      const same = () => { if (p.pc !== pc) { const e = new Error('pc replaced'); e.name = 'PcReplaced'; throw e; } };
+      return pc.setRemoteDescription(typeof wkStripH264 === 'function' ? wkStripH264(msg.sdp, pc) : msg.sdp)
+        .then(() => { same(); if (drainIce) for (const c of p.pendingIce.splice(0)) pc.addIceCandidate(c).catch(() => {}); })
+        .then(() => { same(); preferHwVideo(pc); return pc.createAnswer(); })
+        .then((ans) => { same(); return pc.setLocalDescription(ans); })
+        .then(() => { same(); send(pc.localDescription); });
+    }
     // Is any OTHER pair's channel open — a friend a sponsored frame can start from?
     function friendDcOpen(except) {
       for (const [pid, q] of peers) if (pid !== except && q.connected && q.dc && q.dc.readyState === 'open') return true;
@@ -14471,7 +14542,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // sweep, so every rebuild logged exactly that neg-fail. The offer in
       // flight IS this pair's offer; a restart asked for meanwhile comes
       // round on the next sweep.
-      if (p.offering) return;
+      if (p.neg.minting) return;
       // A DIAL WITH NO LIVE CHANNEL IS A BOOTSTRAP, and the relay carries
       // only a DataChannel-only description: a transport that already
       // carries media (its channel opened once and died) is rebuilt first,
@@ -14484,7 +14555,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // two-person meeting) rebuilds and bootstraps over the relay.
       const dcLive0 = p.dc && (p.dc.readyState === 'open' || p.dc.readyState === 'connecting');
       const pcDead = !p.pc || p.pc.connectionState === 'closed' || p.pc.signalingState === 'closed'; // a closed transport restarts nothing: rebuilt whatever the friends
-      if (!dcLive0 && (pcDead || (p.mediaOn && !friendDcOpen(peerId)))) { newPcFor(p); iceRestart = false; }
+      if (!dcLive0 && (pcDead || (p.mediaOn && !friendDcOpen(peerId)))) { rebuildPc(p, 'dial-dead'); iceRestart = false; }
       // The OFFERER creates the DataChannel (whoever dials — id-initiator,
       // unwired newcomer, or a starved answerer-side rebuild), BEFORE
       // createOffer so the data m-line rides this offer. Idempotent: a
@@ -14510,18 +14581,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // implicitly, and Chromium gathers no ICE candidate for an answer made
       // after that rollback, so the pair sat sig=stable/ice=new until a
       // 12-25 s healer (e2e-video's three-phone mesh, traced 3 Oct 2026:
-      // 16 s, and past its 30 s budget under load). p.offering marks the
+      // 16 s, and past its 30 s budget under load). p.neg.minting marks the
       // window for onSignal's collision test. The chain stays on the pc it
       // started on, and an offer whose pc was replaced meanwhile is not sent.
       const pc = p.pc, mark = {};
-      p.offering = mark;
-      const settled = () => { if (p.offering === mark) p.offering = null; };
+      p.neg.minting = mark;
+      const settled = () => { if (p.neg.minting === mark) p.neg.minting = null; };
       pc.createOffer(opts).then((offer) => (p.pc === pc ? pc.setLocalDescription(offer) : null))
         .then(() => {
           settled();
           if (p.pc !== pc) return; // rebuilt while minting: this offer belongs to a closed pc
           p.offerSentAt = Date.now(); p.offerSentPc = pc;
-          sendSig(peerId, { kind: 'offer', sdp: pc.localDescription, ib: 1, dr: (() => { const ms = meshSeat(); return ms && ms.hasCoord && ms.state === 3 ? 0 : 1; })(), name: myName(), ip: myIp, st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), sid: mySid() });
+          sendSig(peerId, Object.assign({ kind: 'offer', sdp: pc.localDescription, ib: 1, dr: (() => { const ms = meshSeat(); return ms && ms.hasCoord && ms.state === 3 && ms.seatTick - ms.seatedAt > 40 ? 0 : 1; })() }, sigMeta()));
         })
         .catch((e) => { settled(); if (p.pc === pc) noteNegFail('offer', peerId, e); });
     }
@@ -14790,7 +14861,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!linkTo(from) && meshKnows(from)) {
           let linkUp = false;
           for (const [q, pp] of peers) if (q !== from && pp && pp.dc && pp.dc.readyState === 'open' && linkTo(q)) { linkUp = true; break; }
-          // ...and an unseated dialler is at my door (dr): a member that requeued, its goodbye not yet here. L16 and L23 are the door's gates.
+          // ...and a dialler at my door (dr: unseated, or its seat under 20 s old): a member that requeued or moved, my view not yet told. L16 and L23 are the door's gates.
           if (linkUp && !msg.dr) { rxStats.offerRejected++; return; }
           if (typeof clog === 'function') clog('offer from ' + String(from).slice(0, 6) + ' taken: no link of mine is up');
         }
@@ -14808,54 +14879,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           else if (Date.now() - (doorsShut.get(from) || 0) < DOOR_SHUT_MS) p.bootOut = true;
           if (typeof clog === 'function') clog('door-in ' + String(from).slice(0, 6) + ' out=' + !!p.bootOut + ' new=' + !p.pc + ' age=' + Math.round((Date.now() - (p.bornAt || 0)) / 1000));
         }
-        // A fresh offer onto a LONG-DEAD local pc negotiates into a corpse:
-        // the tunnel-return stall (behavior battery 06c, 2026-07-26) — the
-        // evicted side's zombie ate the returning offers until the vouch
-        // reap cleared it minutes later. Rebuild first — but ONLY when the
-        // death has PERSISTED (deadSince > 12s): rebuilding on any transient
-        // 'failed' tore down recovering pairs in a loop the moment both tabs
-        // were hidden/throttled (the 06a regression this line first caused).
-        if (p.pc && p.deadSince && Date.now() - p.deadSince > 12000) newPcFor(p);
-        // THE NEW-PC RULE: an offer whose DTLS fingerprint is not the one our
-        // remote description holds comes from a DIFFERENT RTCPeerConnection —
-        // the peer REBUILT the pair (its starve kick while we were frozen,
-        // its rescue dial after it gave us up). A certificate is minted per
-        // pc, so a renegotiation or ICE restart of the pc we hold keeps its
-        // fingerprint and is never touched. Negotiated into our old pc the
-        // offer fails ("the order of m-lines in subsequent offer doesn't
-        // match", chaos seed 8 at the thaw) and the pair waits 12-27 s for a
-        // healer; on a fresh pc it is the reunion itself, one round trip.
-        // Nothing of ours is lost: the pc we hold was built against a pc the
-        // peer has closed.
-        // The fingerprint compared is the one of the LAST OFFER ROUTED INTO
-        // THIS PC (p.offerFp, stamped synchronously below), not
-        // pc.remoteDescription: two offers from two of the peer's pcs drain in
-        // one burst at a thaw (a throttled row-mate's wake probe rebuilt its
-        // pair with the frozen page every beat), and the second arrived while
-        // the first's setRemoteDescription was still pending — remoteDescription
-        // read null, the rule stood down, and the second offer failed on the
-        // first's pc ("m-lines in subsequent offer", seed 12 #1: 25.8 s).
-        { const fpOf = (sdp) => { const m = /\r?\na=fingerprint:([^\r\n]+)/.exec(String(sdp && sdp.sdp || sdp || '')); return m ? m[1] : ''; };
-          const fp = fpOf(msg.sdp);
-          const cur = p.pc ? (p.pc.remoteDescription ? fpOf(p.pc.remoteDescription) : (p.offerFp || '')) : '';
-          if (p.pc && fp && cur && fp !== cur) {
-            if (typeof clog === 'function') clog('offer from a new pc: fresh pc for ' + String(from).slice(0, 6) + ' (was ' + p.pc.connectionState + '/' + p.pc.signalingState + ')');
-            newPcFor(p);
-          }
-          if (fp) p.offerFp = fp; }
-        // A NEVER-OPENED pair is the other corpse class (pair-probe.js): ICE
-        // says connected, the DC never opened, and this side reads healthy
-        // (deadSince=0) — so the dialer's dc-watchdog rebuild offer was
-        // negotiated into the wedged old pc and the pair re-wedged. An offer
-        // arriving for a pair that never carried a byte and never opened its
-        // DC past formation age gets a fresh pc to land on.
-        if (p.pc && p.connected && !(p.dc && p.dc.readyState === 'open') && !p.meshRxAt && !p.dcRxAt
-            && Date.now() - (p.rebuiltAt || p.bornAt) > 5000) newPcFor(p);
-        // A BOOTSTRAP OFFER (over the relay: a DataChannel-only description)
-        // lands on a media-free transport: a pc that already carries media
-        // had a channel that is now dead, and is rebuilt (sendOffer's rule,
-        // on the answering side).
-        if (msg.boot && p.pc && p.mediaOn && !(p.dc && p.dc.readyState === 'open')) newPcFor(p);
+        { const fresh = offerNeedsFreshPc(p, msg); if (fresh) rebuildPc(p, fresh); }
+        { const fp = offerFpOf(msg.sdp); if (fp) p.neg.offerFp = fp; }
         drainPreIce(from, p); // after any rebuild, which clears pendingIce
         // p.connected is LOAD-BEARING in that gate: the wedge signature is
         // connected-WITHOUT-DC. A pair still in ICE 'connecting' receiving an
@@ -14869,16 +14894,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // side recovers from a never-arriving remote offer (see sweeper). The
         // polite peer (lower id) rolls back its local offer and accepts; the
         // impolite peer ignores the remote offer and keeps its own.
-        const accept = () => p.pc.setRemoteDescription(typeof wkStripH264 === 'function' ? wkStripH264(msg.sdp, p.pc) : msg.sdp)
-          .then(() => { for (const c of p.pendingIce.splice(0)) p.pc.addIceCandidate(c).catch(() => {}); })
-          .then(() => { preferHwVideo(p.pc); return p.pc.createAnswer(); })
-          .then((ans) => p.pc.setLocalDescription(ans))
-          .then(() => sendSig(from, { kind: 'answer', sdp: p.pc.localDescription, ib: 1, name: myName(), ip: myIp, st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), sid: mySid() }))
-          .catch((e) => { noteNegFail('accept', from, e); if (/extension ID reassignment/i.test(String((e && e.message) || ''))) maybeRebuildNeg(p, e); });
+        const accept = () => { const pc = p.pc; return answerOffer(pc, p, msg, true, (sdp) => sendSig(from, Object.assign({ kind: 'answer', sdp, ib: 1 }, sigMeta())))
+          .catch((e) => { if (p.pc !== pc) return; noteNegFail('accept', from, e); if (/extension ID reassignment/i.test(String((e && e.message) || ''))) maybeRebuildNeg(p, e); }); };
         // A COLLISION is my own offer applied (have-local-offer) or, on a pair
-        // with no live transport, still being minted (p.offering — see
+        // with no live transport, still being minted (p.neg.minting — see
         // sendOffer; the pc reads 'stable' until it lands).
-        if (p.pc.signalingState === 'have-local-offer' || (p.offering && noLiveTransport(p))) {
+        if (p.pc.signalingState === 'have-local-offer' || (p.neg.minting && noLiveTransport(p))) {
           if (myId && myId < from) {
             // Polite, on a pair with no live transport: answer on a FRESH pc.
             // Rolling back an offer whose gathering has begun (here, or
@@ -14889,10 +14910,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // brings its own DataChannel. Their trickle already queued for
             // this offer is kept.
             if (noLiveTransport(p)) {
-              const queued = p.pendingIce;
-              newPcFor(p);
-              p.pendingIce = queued;
-              p.offering = null;
+              rebuildPc(p, 'glare-polite', { keepIce: true });
               accept();
               return;
             }
@@ -15080,7 +15098,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const s = meshSeat();
       if (!(s && s.hasCoord && s.state === 3)) { bootDial(pid); return; }
       if (!p) { ensureLink(pid); return; }
-      if (p.offering || (p.pc && p.pc.connectionState !== 'closed' && p.pc.connectionState !== 'failed' && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000 && p.pc.signalingState !== 'stable')) return;
+      if (p.neg.minting || (p.pc && p.pc.connectionState !== 'closed' && p.pc.connectionState !== 'failed' && Date.now() - pcBuiltAt(p) < 5000 && p.pc.signalingState !== 'stable')) return;
       if (iInitiate(pid)) sendOffer(pid, false); else askDial(pid, p);
     }
     // A close is real: the pc ends. A peer the seat still names keeps its record and tile, with a fresh idle pc for the
@@ -15088,7 +15106,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function pcCloseNow(pid, p) {
       if (peers.get(pid) !== p) return;
       if (!linkTo(pid)) { dropPeer(pid, true); return; }
-      newPcFor(p, true); p.byeSent = 0;
+      rebuildPc(p, 'close', { closing: true }); p.byeSent = 0;
       if (seatAsked(pid)) seatDial(pid);   // the seat re-dialled while the goodbye left
     }
     // My goodbye (the pc laws, or a refused offer), then the close: the channel is ordered, 300 ms lets it leave.
@@ -15169,6 +15187,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (p.pc && p.pc.signalingState !== 'stable') return;   // an offer is in flight one way or the other
       const now = Date.now(); if (now - (p.dialReqAt || 0) < 5000) return;
       p.dialReqAt = now;
+      // L16.3.2: the relay may not carry my ask (a deep seat): it walks. The polite side still only asks; an offer here would cross the initiator's at birth (e2e-sixth-audio).
+      if (!relayUp() || !relayMayCarry(pid)) { sponsorSend({ k: 'fsig', from: myId, to: pid, tc: coordKeyOf(pid), id: fwdId(), ttl: 12, m: { kind: 'dialask' } }); return; }
       try { relayName(pid); } catch (e) {}
     }
     // onDialRequest(p): a member sent me its name over the relay with no live
@@ -15193,17 +15213,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // A fresh pc nothing has happened on (no offer either way, no ICE) is idle, not forming: the one a
       // goodbye leaves behind for the seat's next dial. Counting it as forming made a dial request from a
       // page back from a reload wait out this window and its own 4 s retries: the pair came up at 8-9 s.
-      const idle = !!(p.pc && p.pc.signalingState === 'stable' && p.pc.connectionState === 'new' && !p.offering);
-      const forming = !pLive && p.pc && !darkOffer && !idle && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000 && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
+      const idle = !!(p.pc && p.pc.signalingState === 'stable' && p.pc.connectionState === 'new' && !p.neg.minting);
+      const forming = !pLive && p.pc && !darkOffer && !idle && Date.now() - pcBuiltAt(p) < 5000 && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
       if (typeof clog === 'function') clog('dial-request from ' + String(p.id || '?').slice(0, 6) + ' solo=' + (participantCount() <= 1) + ' live=' + !!pLive
         + ' init=' + iInitiate(p.id) + ' forming=' + !!forming + ' dark=' + !!darkOffer + ' pc=' + (p.pc ? p.pc.connectionState + '/' + p.pc.signalingState : '-')
-        + ' age=' + Math.round((Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0)) / 100) / 10 + 's frag=' + Math.round((Date.now() - (p.fragDialAt || 0)) / 100) / 10 + 's');
+        + ' age=' + Math.round((Date.now() - pcBuiltAt(p)) / 100) / 10 + 's frag=' + Math.round((Date.now() - (p.fragDialAt || 0)) / 100) / 10 + 's');
       // A request answered by an offer that went into the dark (the asker's
       // side was cut when it left): a 5 s re-offer gate put up to 5 s on a cut
       // pair's return (066ba4-room-six: 12.6 s). A dark offer is re-made after 2 s.
       if ((participantCount() <= 1 || !pLive) && !forming && iInitiate(p.id) && Date.now() - (p.fragDialAt || 0) > (darkOffer ? 2000 : 5000)) {
         p.fragDialAt = Date.now();
-        if (!pLive && p.pc) newPcFor(p);
+        if (!pLive && p.pc) rebuildPc(p, 'frag-dial');
         makePeer(p.id, null); sendOffer(p.id, false);
       }
     }
@@ -15232,7 +15252,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return;
       }
       const p = peers.get(pid);
-      if (p && (p.connected || (p.dc && p.dc.readyState === 'open') || p.offering)) {
+      if (p && (p.connected || (p.dc && p.dc.readyState === 'open') || p.neg.minting)) {
         if (p.connected || (p.dc && p.dc.readyState === 'open')) clearDoorRetry(p); // reachable already, or an offer is minting
         return;
       }
@@ -15259,14 +15279,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // Under the wire's four-second ask, so that ask is the redial.
       const fewDoorWait = 3500;
       const wait = (p && p.neverUp === true) ? (manyDoors ? (p.dialWait || 5000) : fewDoorWait) : 5000;
-      if (p && p.pc && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < wait && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed') {
+      if (p && p.pc && Date.now() - pcBuiltAt(p) < wait && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed') {
         if (!manyDoors) armDoorRetry(pid, p); // forming: its turn is not yet, but the four-second retry stays armed
         return;
       }
       // A stale transport — an offer never answered, a pair dead since a
       // dark spell — is rebuilt: the door needs a fresh bootstrap, not a
       // renegotiation of a corpse.
-      if (p && p.pc) { newPcFor(p); if (p.neverUp === true && manyDoors) p.dialWait = Math.min(DOOR_REDIAL_CAP, (p.dialWait || 5000) * 2); }
+      if (p && p.pc) { rebuildPc(p, 'door-redial'); if (p.neverUp === true && manyDoors) p.dialWait = Math.min(DOOR_REDIAL_CAP, (p.dialWait || 5000) * 2); }
       // THE INITIATOR DIALS THE DOOR. A knocker's offer is also a name, and
       // that name is a dial request: the id-order initiator offers back
       // (onDialRequest). A polite knocker that offers too crosses that offer
@@ -16275,6 +16295,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // channel can carry someone else's name, so nothing it says may be
     // written on their record, let alone make them a forger.
     let sigProven = false;
+    let gossipVouched = false;   // the flood frame in hand came over a member's proven channel (onGossip)
     function whoHeard(pid, msg, proven) {
       const e = whoEntry(pid); if (!e) return;
       e.last = Date.now();
@@ -16409,7 +16430,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       return Promise.all(jobs);
     }
-    setInterval(() => { if (peers.size) { whoObserve(); tellOutdated(); } }, 15000);
+    GifOS.meshMedia.workerClock(15000, () => { if (peers.size) { whoObserve(); tellOutdated(); } });
     // TELL AN OUT-OF-DATE PEER WHAT TO DO. A participant whose page sends no
     // relay statement is running a GifOS older than this meeting needs: its
     // video and sound reach nobody who verifies, and its own page (frozen
@@ -16948,10 +16969,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // went unreadable and no second dial ever came; 95s of solitude with a
       // remembered target). As long as I stay solo and remember who the
       // other half is, re-dial every ~15s; repopulation ends it.
-      if (!fragRetryT) fragRetryT = setInterval(() => {
-        if (participantCount() > 1) { clearInterval(fragRetryT); fragRetryT = 0; fragPingId = null; return; }
+      if (!fragRetryT) fragRetryT = GifOS.meshMedia.workerClock(16000, () => {
+        if (participantCount() > 1) { fragRetryT.stop(); fragRetryT = 0; fragPingId = null; return; }
         if (fragPingId) { fragPingAt = 0; fragRescue(fragPingId); }
-      }, 16000);
+      });
     }
     // RELOAD TREE MEMORY: while seated, the tab keeps the
     // genesis key and the Section-1 member ids of the tree it sits in
@@ -17045,7 +17066,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // meshSendDC also returns true for a dump onto some other peer; the
         // wire must not treat that as the door (mesh-wire entryDelivered).
         dcOpen: (to) => { const p = peers.get(to); return !!(p && p.dc && p.dc.readyState === 'open'); },
-        dial: bootDial, // a knocker's entry ask has no channel to its greeter: open one (the bootstrap over the relay)
         onBehind: healBehindDoor, // door blobs a key I replaced opens: their writers missed the grant (§LOCK door-side heal)
         // Deep-socket drop waits until at least one DataChannel is open (§FWD:
         // an unwired deep newcomer must stay relay-reachable or inbound
@@ -17060,9 +17080,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Room-wide app traffic arrives on the mesh gossip lane (fanOut's
         // counterpart): the same sealed payload shapes as ever, routed to the
         // same handlers.
-        onGossip: (src, g, ageMs, scoped) => {
+        onGossip: (src, g, ageMs, scoped, link) => {
           if (!g || g.a !== 1 || !g.msg) return;
           if ((typeof isEjected === 'function' && isEjected(src) === true)) return false; // refused AND not forwarded: a forger's gossip stops at this seat
+          // TROLL GATE, for a room's flood. Past one section most authors are neither a link of mine nor in my occ, so the author
+          // alone cannot tell a far seat from a knocker. The channel can: a line a member handed me on its own proven channel is the room's.
+          // One that came from a stranger, or by no proven channel, stops here, so every member's forward is one a member took.
+          const vouched = link != null && !doorOutsider(String(link));
+          if (DOOR_DENY.has(g.msg.k) && !(g.msg.k === 'pwreset' && hasAdminRoom()) && doorOutsider(src) && !vouched) { doorDropped++; const dk = 'gsp.' + g.msg.k; doorDropKinds[dk] = (doorDropKinds[dk] || 0) + 1; return false; }
           // RULE 1: a status is heard from my SECTION or over my own link —
           // never off the room-wide flood. Refusing it here also stops it at
           // this seat (the mesh forwards nothing the app refused), so a client
@@ -17078,10 +17103,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // replayed pulse never reads as newly said.
           gossipAgeMs = ageMs > 0 ? ageMs : 0;
           sigProven = true; // gossip's author is S4-verified (verifyGossip)
+          gossipVouched = vouched;
           try {
             if (g.msg.kind) onSignal(src, g.msg);
             else if (g.msg.k) onRemote(src, g.msg);
-          } finally { gossipAgeMs = 0; sigProven = false; }
+          } finally { gossipAgeMs = 0; sigProven = false; gossipVouched = false; }
         },
         // R6 — "not one of the greeter blobs opens", which the wire also fires
         // for the door's own 'password required'. THAT SENTENCE HAS TWO CAUSES
@@ -17672,7 +17698,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         p.txKicks = n + 1; p.txKickAt = t; p.txProbe = null;
         if (typeof clog === 'function') clog('tx-stall ' + String(pid).slice(0, 6) + ' encoded ' + fe + ' frames total, none in ' + Math.round((t - q.at) / 1000) + 's: ' + (n < 2 ? 're-seat ' + (n + 1) : 'rebuild'));
         if (n < 2) { s.replaceTrack(null).then(() => new Promise((r) => setTimeout(r, 300))).then(() => { if (p.mainV === s && !p.remoteParkMain && !(p.mainHoldUntil && p.mainHoldUntil > Date.now()) && tr.readyState === 'live') return s.replaceTrack(tr); }).catch(() => {}); }
-        else { newPcFor(p); sendOffer(pid, false); }
+        else { rebuildPc(p, 'tx-stall'); sendOffer(pid, false); }
       }).catch(() => {});
     }
     GifOS.meshMedia.workerClock(2000, () => { for (const [pid, p] of peers) { try { txStallTick(pid, p); } catch (e) {} } });
@@ -17742,7 +17768,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // then (pcCloseNow), and nothing retired it once the name went. A seated member, past any dial in flight: it goes.
           const sq = meshSeat();
           if (sq && sq.hasCoord && sq.state === 3 && !sq.moving && !theyOutside && !p.connected && !(p.dc && p.dc.readyState === 'open')
-              && now - Math.max(p.rebuiltAt || 0, p.bornAt || 0) > UNOWNED_PC_MS) {
+              && now - pcBuiltAt(p) > UNOWNED_PC_MS) {
             if (typeof clog === 'function') clog('pc-unowned ' + String(pid).slice(0, 6));
             p.envClosing = now; // no Link and no channel: nothing to tell the seat's world
             dropPeer(pid, true);
@@ -17802,7 +17828,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           p.cureAt = now;
           p.lastKick = now + Math.random() * 1500;
           p.altPath = !p.altPath; // §FWD transport rotation — see sendSig
-          if (now - p.downSince > 25000) { newPcFor(p); sendOffer(pid); }
+          if (now - p.downSince > 25000) { rebuildPc(p, 'down-25s'); sendOffer(pid); }
           else sendOffer(pid, true);
         }
         // D5 (mesh early-probe): a pc sitting in 'failed' PAST the ICE-restart
@@ -17845,12 +17871,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // harmlessly (ranswer-FAIL).
         {
           const lsd = p.pc.signalingState === 'have-local-offer' && p.pc.localDescription;
-          if (lsd && p.connected && p.dc && p.dc.readyState === 'open' && !p.makingOffer && !p.glareTimer && !p.rofferYieldTimer) {
+          if (lsd && p.connected && p.dc && p.dc.readyState === 'open' && !p.neg.minting && !p.neg.glareTimer && !p.neg.rofferYieldTimer) {
             if (p.staleOfferSdp !== lsd.sdp) { p.staleOfferSdp = lsd.sdp; p.staleOfferAt = now; }
             else if (now - p.staleOfferAt > 2 * GLARE_YIELD_MS + 2000) {
               p.staleOfferSdp = null;
               if (typeof clog === 'function') clog('offer-stale ' + String(pid).slice(0, 6) + ' ' + Math.round((now - p.staleOfferAt) / 1000) + 's: re-offer');
-              p.kickVideo = true; // a rollback stops the video encoder; reseat once the new answer lands
+              p.neg.kickVideo = true; // a rollback stops the video encoder; reseat once the new answer lands
               Promise.resolve(p.pc.setLocalDescription({ type: 'rollback' })).then(() => renegotiate(p)).catch(() => {});
             }
           } else p.staleOfferSdp = null;
@@ -17900,7 +17926,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               }
               p.sinkRebuiltAt = t; p.sinkProbe = null;
               if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' decoded ' + (fd - prev.fd) + ' in ' + Math.round((t - prev.at) / 1000) + 's, none shown: rebuild');
-              newPcFor(p);
+              rebuildPc(p, 'dead-sink');
               sendOffer(pid, false);
             }).catch(() => {});
           }
@@ -18616,7 +18642,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // ---- room password UI: one modal, two moods -------------------------------
     const pwModal = document.getElementById('pw-modal');
     function showPwModal(locked, why) {
-      const service = typeof BROADCAST !== 'undefined' && BROADCAST;
+      const service = BROADCAST;
       document.getElementById('pw-title').textContent = service ? 'Viewer password' : (locked ? uiText('pwTitleLocked', 'This room is locked') : uiText('pwTitle', 'Room password'));
       document.getElementById('pw-hint').textContent = service
         ? (locked
@@ -19205,7 +19231,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     if (airWho) airWho.onclick = showWhoModal;
     const airSound = document.getElementById('airsound');
     if (airSound) airSound.onclick = () => {
-      if (typeof BROADCAST === 'undefined' || !BROADCAST) return;
+      if (!BROADCAST) return;
       serviceHeard = !serviceHeard;
       try { applyBuses(); } catch (e) {}
       try { paintServiceSound(); } catch (e) {}
@@ -19996,10 +20022,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // The boot promise deliberately does NOT wait on the prompt.
         });
     }
-    // ---- ONE RUNTIME entry dispatch (docs/one-runtime.md) -------------------
-    // An app entry never runs the meeting boot: no lobby, no camera consent
-    // flow, and for SOLO no network object at all. The meeting entry keeps its
-    // exact flow.
     let soloCtl = null; // the running solo app's runtime control — Invite (step 2) hosts from it
     // LOCAL facts about this copy for the Credits at the bottom of Help: when
     // it was installed here (store.js storeMeta.installedAt) and who signed
@@ -20102,7 +20124,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // but does NOT arm meeting-admin semantics — the owner's authority is over
     // app STATE only (the lane's owner key), never the door.
     const appRoomStr = (j) => 'app~' + (j.owned ? j.short + '~' + j.av + '~' : '') + j.k;
+    let appRoomTicking = false;
+    const armAppRoomTick = () => { if (!appRoomTicking) { appRoomTicking = true; setInterval(appRoomTick, 2000); } }; // only an app room runs it
     function bootAppRoom() {
+      armAppRoomTick();
       document.body.classList.add('app-room');
       try { refreshAudioBtn(); } catch (e) {}
       // A solo app that Invite turns into a room now speaks for the room.
@@ -20297,14 +20322,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       else if (ROOM.kind === 'app' && ROOM.founder) show = true;
       else if (!document.body.classList.contains('app-room')) {
         const kind = (statusEl && statusEl.dataset && statusEl.dataset.kind) || '';
-        const hostHere = typeof BROADCAST !== 'undefined' && BROADCAST
+        const hostHere = BROADCAST
           && (((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin')));
         const hostAlone = !!(hostHere && kind === 'alone');
         const phoneAlone = kind === 'alone' && phoneLayout();
         // A meeting keeps Invite while an app is shared. Hiding it here
         // replaced the OS slot with the app bar (Help / Hide / Stop) and
         // left guests with no way to share the meeting link.
-        if (typeof BROADCAST !== 'undefined' && BROADCAST) show = !document.body.classList.contains('has-app') && (hostAlone || phoneAlone);
+        if (BROADCAST) show = !document.body.classList.contains('has-app') && (hostAlone || phoneAlone);
         else show = true;
         // A person held in the waiting room is not in the meeting yet: no
         // Invite until they are admitted (the line says "In the waiting room").
@@ -20313,7 +20338,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       btn.style.display = show ? '' : 'none';
       const tip = (ROOM.kind === 'app' || document.body.classList.contains('app-room'))
         ? 'barInviteTip'
-        : (typeof BROADCAST !== 'undefined' && BROADCAST)
+        : (BROADCAST)
           ? 'Invite someone to this broadcast — one link'
           : 'invTip';
       if (tip === 'invTip' || tip === 'barInviteTip') {
@@ -20337,7 +20362,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function applyPageHeader() {
       if (window.__gifosHeaderApp) { applyHeaderChoice(window.__gifosHeaderApp); return; }
-      if (typeof BROADCAST !== 'undefined' && BROADCAST) { applyHeaderChoice(''); return; }
+      if (BROADCAST) { applyHeaderChoice(''); return; }
       if (ROOM.kind === 'meet') applyHeaderChoice(GifOS.runtime.SYSTEM_HEADER.meet);
       else applyHeaderChoice('');
     }
@@ -20367,7 +20392,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // The CALL LAYER in an app room is opt-in, always: the plane being
     // available obligates nobody's camera. A quiet member sees who's live and
     // chooses; their own mic/cam tap opts them in too. Never silent tiles.
-    setInterval(() => {
+    const appRoomTick = () => {
       if (!document.body.classList.contains('app-room')) return;
       // App rooms may go beat-quiet (a 2-person room whose owner died sends
       // nothing) — reconcile on the tick so owner-away is TIME-driven, not
@@ -20391,7 +20416,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         document.getElementById('callbanner-txt').textContent = live + (live === 1 ? ' person is' : ' people are') + ' on the call in this room';
         b.style.display = 'flex';
       } else b.style.display = 'none';
-    }, 2000);
+    };
     document.getElementById('callbanner-join').onclick = () => {
       document.body.classList.add('call-on');
       document.getElementById('callbanner').style.display = 'none';
@@ -20475,7 +20500,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function qaChatOn() {
       if (chatOptOverride && Object.prototype.hasOwnProperty.call(chatOptOverride, 'qa'))
         return !!chatOptOverride.qa;
-      const svc = (typeof BROADCAST !== 'undefined' && BROADCAST) || (typeof TOWNHALL !== 'undefined' && TOWNHALL);
+      const svc = (BROADCAST) || (typeof TOWNHALL !== 'undefined' && TOWNHALL);
       if (!hasAdminRoom()) return !!svc;
       const m = modTable['*'] && modTable['*'].qa;
       if (!m || typeof m.on !== 'boolean') return !!svc;
@@ -20941,7 +20966,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // last frame of each kind is held (bounded) and replayed once the pair is a member, so a real joiner's first
       // status/avatar/history is not lost; a knocker that is never seated never shows.
       if (p.id && (DOOR_DENY.has(m.k) || (m.k === 'sig' && m.msg && DOOR_DENY_SIG.has(m.msg.kind)))) {
-        if (doorOutsider(p.id) && !(m.k === 'pwreset' && hasAdminRoom())) {   // an admin's change order: its signature decides (below), and a returning admin stands outside the room she re-locks
+        if (doorOutsider(p.id) && !gossipVouched && !(m.k === 'pwreset' && hasAdminRoom())) {   // an admin's change order: its signature decides (below), and a returning admin stands outside the room she re-locks
           doorDropped++; const dk = m.k === 'sig' ? 'sig.' + m.msg.kind : m.k; doorDropKinds[dk] = (doorDropKinds[dk] || 0) + 1;
           if (!p.doorHeld) p.doorHeld = new Map();
           if (p.doorHeld.has(dk) || p.doorHeld.size < 8) p.doorHeld.set(dk, m);   // one per kind: a flood holds at most 8 frames
@@ -21136,7 +21161,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Authority is unchanged: the appstop handler admVerify's the signed
         // w in admin rooms; open rooms take anyone's word by design.
         const k3 = m.m && m.m.kind;
-        if (!(k3 === 'offer' || k3 === 'answer' || k3 === 'ice' || k3 === 'appstop')) return;
+        if (!(k3 === 'offer' || k3 === 'answer' || k3 === 'ice' || k3 === 'appstop' || k3 === 'dialask')) return;
         noteCrumb(m.from, p && p.id); // the answer retraces this path
         if (p) { try { meshNode.doorWalked(p.id); } catch (e) {} }   // L16.3.1: a door carrying a placee's set-up is in use
         if (m.to === myId) {
@@ -21147,6 +21172,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // An offer that REACHED me sponsored gets its answer sent back the
             // same way — the direct relay leg may be exactly what's rotten.
             if (k3 === 'offer') sponsorReplyTo.add(String(m.from));
+            if (k3 === 'offer' || k3 === 'dialask') noteRoute(m.from, m.p);
+            // L16.3.2: a walked dial request, the relay's name frame for a seat the relay may not carry. The initiator offers back, over the ask's list.
+            if (k3 === 'dialask') { const pa = peers.get(String(m.from)); if (pa) pa.altPath = true; onDialRequest(pa || { id: String(m.from), dc: null }); return; }
             onSignal(String(m.from), m.m);
           }
           return;
@@ -21489,41 +21517,38 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // and MUST re-offer afterwards, or its rolled-back m-lines are
         // orphaned forever (the browser's negotiationneeded would refire
         // here; our hand-rolled offers need the explicit flag).
-        const applyRoffer = (msg) => p.pc.setRemoteDescription(typeof wkStripH264 === 'function' ? wkStripH264(msg.sdp, p.pc) : msg.sdp)
-          .then(() => { preferHwVideo(p.pc); return p.pc.createAnswer(); })
-          .then((a) => p.pc.setLocalDescription(a))
-          .then(() => {
-            dcSend(p, { k: 'ranswer', sdp: p.pc.localDescription });
+        const applyRoffer = (msg) => { const pc = p.pc; return answerOffer(pc, p, msg, false, (sdp) => {
+            dcSend(p, { k: 'ranswer', sdp });
             if (typeof clog === 'function') clog('ranswer→' + String(p.id).slice(0, 6));
             afterNeg(p, true);
           })
-          .catch((e) => { if (typeof clog === 'function') clog('roffer-APPLY-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name) + ' ' + String((e && e.message) || '').slice(0, 140)); maybeRebuildNeg(p, e); });
+          .catch((e) => { if (p.pc !== pc) return; if (typeof clog === 'function') clog('roffer-APPLY-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name) + ' ' + String((e && e.message) || '').slice(0, 140)); maybeRebuildNeg(p, e); }); };
         // Firefox offers carry o=mozilla. Applying one while our own offer is
         // still local throws and does not roll back, and the answer to our
         // offer then dies on the poisoned pc. Hold that offer. Every other
         // glare yield is unchanged: cancelling it, or rebuilding when the
         // answer failed, dropped people who had just sat down.
         const fxOffer = (msg) => /o=mozilla/i.test(String((msg && msg.sdp && msg.sdp.sdp) || '').slice(0, 80));
-        if (p.makingOffer || p.pc.signalingState === 'have-local-offer') {
+        if (p.neg.minting || p.pc.signalingState === 'have-local-offer') {
           if (fxOffer(m)) {
-            p.rofferYield = m;
-            if (!p.rofferYieldTimer) {
+            p.neg.rofferYield = m;
+            if (!p.neg.rofferYieldTimer) {
               let n = 0;
               const armFx = () => {
-                p.rofferYieldTimer = setTimeout(() => {
-                  p.rofferYieldTimer = null;
-                  const ym = p.rofferYield;
-                  if (!ym || !p.pc || leaving) { p.rofferYield = null; return; }
-                  if (p.makingOffer || p.pc.signalingState === 'have-local-offer') {
+                p.neg.rofferYieldTimer = setTimeout(() => {
+                  p.neg.rofferYieldTimer = null;
+                  const ym = p.neg.rofferYield;
+                  if (!ym || !p.pc || leaving) { p.neg.rofferYield = null; return; }
+                  if (p.neg.minting || p.pc.signalingState === 'have-local-offer') {
                     n += 1;
-                    if (n > 8) { p.rofferYield = null; return; }
+                    if (n > 8) { p.neg.rofferYield = null; return; }
                     armFx();
                     return;
                   }
-                  p.rofferYield = null;
+                  p.neg.rofferYield = null;
                   if (p.pc.signalingState === 'closed') return;
                   if (typeof clog === 'function') clog('roffer-yield ' + String(p.id).slice(0, 6) + ' fx');
-                  p.kickVideo = true;
+                  p.neg.kickVideo = true;
                   applyRoffer(ym);
                 }, n ? 250 : GLARE_YIELD_MS);
               };
@@ -21544,12 +21569,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // in have-local-offer. An explicit rollback first leaves the old
             // m-line order in place and the answer throws, and the camera
             // transceiver then never negotiates.
-            p.rofferYield = m;
-            if (!p.rofferYieldTimer) {
-              p.rofferYieldTimer = setTimeout(() => {
-                p.rofferYieldTimer = null;
-                let ym = p.rofferYield; p.rofferYield = null;
-                if (!ym || !p.pc || leaving || p.makingOffer) return;
+            p.neg.rofferYield = m;
+            if (!p.neg.rofferYieldTimer) {
+              p.neg.rofferYieldTimer = setTimeout(() => {
+                p.neg.rofferYieldTimer = null;
+                let ym = p.neg.rofferYield; p.neg.rofferYield = null;
+                if (!ym || !p.pc || leaving || p.neg.minting) return;
                 // The bootstrap offer was already answered: applying the twin
                 // restarts ICE before the channel opens. A firewalled pair is
                 // the exception: the first offer can carry candidates before
@@ -21559,23 +21584,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
                 const carried = p.connected || (p.dc && p.dc.readyState === 'open');
                 if (!carried && p.pc.signalingState === 'stable' && !iceBlocked(p.id)) return;
                 if (typeof clog === 'function') clog('roffer-yield ' + String(p.id).slice(0, 6));
-                p.kickVideo = true;
+                p.neg.kickVideo = true;
                 applyRoffer(ym);
               }, GLARE_YIELD_MS);
             }
             return;
           }
           p.renegAgain = true; // polite rollback: my changes go again after I answer
-          p.kickVideo = true; // that rollback stops the video encoder; reseat once stable
+          p.neg.kickVideo = true; // that rollback stops the video encoder; reseat once stable
         }
         // A NEWER OFFER SUPERSEDES ONE I HELD. They rolled the held one back
         // to send this, so it describes a state they no longer have. Applying
         // it later on the yield timer answered an offer they had dropped, so
         // they refused the answer and my pc kept the stale description. Their
         // camera then never reached me.
-        if (p.rofferYield) {
-          p.rofferYield = null;
-          if (p.rofferYieldTimer) { clearTimeout(p.rofferYieldTimer); p.rofferYieldTimer = null; }
+        if (p.neg.rofferYield) {
+          p.neg.rofferYield = null;
+          if (p.neg.rofferYieldTimer) { clearTimeout(p.neg.rofferYieldTimer); p.neg.rofferYieldTimer = null; }
           if (typeof clog === 'function') clog('roffer-held-drop ' + String(p.id).slice(0, 6));
         }
         applyRoffer(m);
@@ -21606,14 +21631,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // our offer won, and applying theirs restarts the pair before
             // the channel opens. A renegotiation on a live channel still
             // belongs to its timer.
-            if (p.rofferYield) {
-              const ym = p.rofferYield;
+            if (p.neg.rofferYield) {
+              const ym = p.neg.rofferYield;
               const fx = /o=mozilla/i.test(String((ym.sdp && ym.sdp.sdp) || '').slice(0, 80));
               // Keep the timer for a firewalled pair so the twin can drop the
               // candidates the first offer raced through (fix-rel-newcomer).
               if ((fx || !carried) && !(typeof iceBlocked === 'function' && iceBlocked(p.id))) {
-                p.rofferYield = null;
-                if (p.rofferYieldTimer) { clearTimeout(p.rofferYieldTimer); p.rofferYieldTimer = null; }
+                p.neg.rofferYield = null;
+                if (p.neg.rofferYieldTimer) { clearTimeout(p.neg.rofferYieldTimer); p.neg.rofferYieldTimer = null; }
               }
             }
             if (typeof clog === 'function') clog('ranswer←' + String(p.id).slice(0, 6));
@@ -21622,9 +21647,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           .catch((e) => {
             if (typeof clog === 'function') clog('ranswer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name) + ' ' + String((e && e.message) || '').slice(0, 140));
             if (e && e.name === 'RanswerTimeout' && carried && p.pc && p.pc.signalingState === 'have-local-offer'
-                && !p.makingOffer && !p.glareTimer && !p.rofferYieldTimer) {
+                && !p.neg.minting && !p.neg.glareTimer && !p.neg.rofferYieldTimer) {
               p.staleOfferSdp = null;
-              p.kickVideo = true;
+              p.neg.kickVideo = true;
               Promise.resolve(p.pc.setLocalDescription({ type: 'rollback' })).then(() => renegotiate(p)).catch(() => maybeRebuildNeg(p, e));
             }
           });
@@ -23035,53 +23060,53 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // (glare rules still apply), and stops asking that peer.
     const TURN_ASK_MS = 2500, TURN_BUSY_MS = 8000, TURN_MS = 3000;
     function askTurn(p) {
-      if (p.turnAskT || !p.dc || p.dc.readyState !== 'open') return;
+      if (p.neg.turnAskT || !p.dc || p.dc.readyState !== 'open') return;
       dcSend(p, { k: 'rreq' });
       const pc0 = p.pc;
-      p.turnAskT = setTimeout(() => {
-        p.turnAskT = null;
+      p.neg.turnAskT = setTimeout(() => {
+        p.neg.turnAskT = null;
         if (p.pc !== pc0 || leaving) return;
         if (!p.turnSeen) p.turnLegacy = true; // never answered: an older client
-        p.turnOk = true; // offer anyway, as before turns
+        p.neg.turnOk = true; // offer anyway, as before turns
         renegotiate(p);
       }, TURN_ASK_MS);
     }
     function gotTurn(p) {
-      clearTimeout(p.turnAskT); p.turnAskT = null;
+      clearTimeout(p.neg.turnAskT); p.neg.turnAskT = null;
       p.turnSeen = true; p.turnLegacy = false;
-      p.turnOk = true;
-      clearTimeout(p.turnOkT);
-      p.turnOkT = setTimeout(() => { p.turnOk = false; p.turnOkT = null; }, TURN_MS - 500);
+      p.neg.turnOk = true;
+      clearTimeout(p.neg.turnOkT);
+      p.neg.turnOkT = setTimeout(() => { p.neg.turnOk = false; p.neg.turnOkT = null; }, TURN_MS - 500);
       renegotiate(p); // even with nothing new: the offer hands the turn back
     }
     function turnWait(p) { // the initiator is busy; it will give the turn
       p.turnSeen = true; p.turnLegacy = false;
-      if (!p.turnAskT) return;
-      clearTimeout(p.turnAskT);
+      if (!p.neg.turnAskT) return;
+      clearTimeout(p.neg.turnAskT);
       const pc0 = p.pc;
-      p.turnAskT = setTimeout(() => { p.turnAskT = null; if (p.pc !== pc0 || leaving) return; p.turnOk = true; renegotiate(p); }, TURN_BUSY_MS);
+      p.neg.turnAskT = setTimeout(() => { p.neg.turnAskT = null; if (p.pc !== pc0 || leaving) return; p.neg.turnOk = true; renegotiate(p); }, TURN_BUSY_MS);
     }
     function endTurn(p) {
       if (iInitiate(p.id)) return;
-      p.turnOk = false; clearTimeout(p.turnOkT); p.turnOkT = null;
+      p.neg.turnOk = false; clearTimeout(p.neg.turnOkT); p.neg.turnOkT = null;
     }
     function giveTurn(p) {
       if (!p.pc || !p.dc || p.dc.readyState !== 'open') return;
-      if (p.makingOffer || p.pc.signalingState !== 'stable') {
-        if (!p.turnWanted) dcSend(p, { k: 'rwait' });
-        p.turnWanted = true;
+      if (p.neg.minting || p.pc.signalingState !== 'stable') {
+        if (!p.neg.turnWanted) dcSend(p, { k: 'rwait' });
+        p.neg.turnWanted = true;
         return;
       }
-      p.turnWanted = false;
-      p.turnGiven = true;
-      clearTimeout(p.turnGivenT);
+      p.neg.turnWanted = false;
+      p.neg.turnGiven = true;
+      clearTimeout(p.neg.turnGivenT);
       const pc0 = p.pc;
-      p.turnGivenT = setTimeout(() => { p.turnGivenT = null; p.turnGiven = false; if (p.pc === pc0) afterNeg(p); }, TURN_MS);
+      p.neg.turnGivenT = setTimeout(() => { p.neg.turnGivenT = null; p.neg.turnGiven = false; if (p.pc === pc0) afterNeg(p); }, TURN_MS);
       dcSend(p, { k: 'rgo' });
     }
     function turnBack(p) { // their offer arrived: the turn is over
-      if (!p.turnGiven) return;
-      p.turnGiven = false; clearTimeout(p.turnGivenT); p.turnGivenT = null;
+      if (!p.neg.turnGiven) return;
+      p.neg.turnGiven = false; clearTimeout(p.neg.turnGivenT); p.neg.turnGivenT = null;
     }
     function pendingSig(p) {
       try {
@@ -23090,21 +23115,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function afterNeg(p) {
       if (!p) return;
-      if (p.turnWanted) giveTurn(p);
+      if (p.neg.turnWanted) giveTurn(p);
       // An offer that was just answered and left the same senders pending
       // must not be sent again. Repeating it is how a fresh link's channel
       // closes (fault 2b): the answer did not clear the pending set, so the
       // next offer is the same one, and the pair dies a few seconds in.
       const pend = hasPendingTx(p);
       const sig = pend ? pendingSig(p) : "";
-      if (p.renegAgain || (pend && sig !== p.offeredPend)) {
+      if (p.renegAgain || (pend && sig !== p.neg.offeredPend)) {
         p.renegAgain = false;
-        if (pend) p.offeredPend = sig;
+        if (pend) p.neg.offeredPend = sig;
         renegotiate(p);
         return;
       }
-      if (!pend) p.offeredPend = "";
-      if (p.kickVideo) { p.kickVideo = false; kickMainVideo(p); kickMainAudio(p); }
+      if (!pend) p.neg.offeredPend = "";
+      if (p.neg.kickVideo) { p.neg.kickVideo = false; kickMainVideo(p); kickMainAudio(p); }
     }
     // createOffer/setRemoteDescription failed in a way this pc will repeat.
     // An m-line order mismatch on a channel that just opened wedges the
@@ -23132,7 +23157,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const now = Date.now();
       if (p.rebuildNegAt && now - p.rebuildNegAt < 8000) return;
       p.rebuildNegAt = now;
-      try { newPcFor(p); sendOffer(p.id, false); } catch (e2) {}
+      try { rebuildPc(p, 'neg-fail'); sendOffer(p.id, false); } catch (e2) {}
     }
     // PERFECT NEGOTIATION over the DataChannel: EITHER side may re-offer (a
     // fold sender must be able to open its own m-lines — an answer can never
@@ -23150,15 +23175,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // added tracks (composite folds!) were orphaned with no retry. Standard
       // perfect-negotiation: at most one offer in flight; re-check stability
       // after the async createOffer; any failure re-arms renegAgain.
-      if (!iInitiate(p.id) && !p.turnOk && !p.turnLegacy) { p.renegAgain = true; askTurn(p); return; } // OFFER TURNS
-      if (iInitiate(p.id) && p.turnGiven) { p.renegAgain = true; return; } // their turn is out: mine waits for their offer
-      if (p.makingOffer || p.pc.signalingState !== 'stable') { p.renegAgain = true; return; }
+      if (!iInitiate(p.id) && !p.neg.turnOk && !p.turnLegacy) { p.renegAgain = true; askTurn(p); return; } // OFFER TURNS
+      if (iInitiate(p.id) && p.neg.turnGiven) { p.renegAgain = true; return; } // their turn is out: mine waits for their offer
+      if (p.neg.minting || p.pc.signalingState !== 'stable') { p.renegAgain = true; return; }
       // The mark and the chain belong to this pc. A pc closed mid-offer never
       // settles its createOffer/setLocalDescription in Chromium, so a rebuild
-      // drops the mark (newPcFor); left set, the new pc never offered and held
+      // drops the mark (rebuildPc); left set, the new pc never offered and held
       // then dropped every offer the far end sent.
       const pc = p.pc, mark = {};
-      p.makingOffer = mark;
+      p.neg.minting = mark;
       // This offer carries every change made so far, so nothing is owed
       // after its answer. Left set, afterNeg re-offered on every answer and
       // a polite side looped rreq → rgo → roffer → ranswer for good (Q78).
@@ -23179,7 +23204,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           send();
         })
         .catch((e) => { if (p.pc !== pc) return; if (typeof clog === 'function') clog('roffer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); p.renegAgain = true; maybeRebuildNeg(p, e); })
-        .finally(() => { if (p.makingOffer === mark) p.makingOffer = false; if (p.turnWanted) giveTurn(p); });
+        .finally(() => { if (p.neg.minting === mark) p.neg.minting = null; if (p.neg.turnWanted) giveTurn(p); });
     }
     function startRelayJob(reqP, target) {
       const key = target + '>' + reqP.id;
@@ -23451,8 +23476,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (w.trackId !== t.id) { w.trackId = t.id; w.tries = 0; w.settleUntil = 0; }
             if (w.settleUntil && Date.now() < w.settleUntil) continue;
             const raw = await stageEarRawPeak(t, 180);
+            w.rawPeak = raw; w.foldPeak = null; w.peakAt = Date.now(); // earState reads the watch's last sample: it makes no audio nodes of its own
             if (raw > 0.02) {
               const fold = await stageEarFoldPeak(180);
+              w.foldPeak = fold;
               if (fold > 0.02) { w.tries = 0; w.settleUntil = Date.now() + 2500; }
               else if (w.tries < 12) {
                 let ok = false;
@@ -23475,6 +23502,67 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!stageEar.watch) stageEar.watch = new Map();
       if (!stageEar.watch.has(k2)) stageEar.watch.set(k2, { tries: 0, settleUntil: 0 });
       scheduleStageEarWatch();
+    }
+    // ONE READ OF A STAGE SEAT: every record the page keeps about this person being on stage, in
+    // one object, and whether I can hear them. Read-only, and it starts no audio node: the peaks
+    // are the watch's last sample (null when the watch has not sampled). A listing is not sound, so
+    // `audible` is the listing AND a feed that moves bytes (stgLost, the byte watchdog and the
+    // stager's beat) AND a sink bound to that very stream, with no moderator mute, my ear open and
+    // the fold not latched silent under a loud wire. A quiet stager with a live feed is audible:
+    // the moment they speak, I hear them. For myself it says whether my voice goes out.
+    function earState(id, listing) {
+      const listed = (listing || stageSeats()).includes(id);
+      const st = id === myId ? myStatus : statusOf.get(id);
+      const dg = digLists(), entry = dg ? dg.stage.find((e) => e.id === id) : null;
+      const beat = stgBeats.get('stg:' + id);
+      let mute = null; try { mute = modOf(id).mute; } catch (e) {}
+      const out = { id, me: id === myId, listed, audible: false,
+        said: (st && st.stg) || 0, fold: !!entry, foldAge: dg ? dg.age : null,
+        held: stageHeldAt.has(id), feedAt: stageFeedAt.get(id) || 0, beatAge: beat ? Date.now() - beat.at : null,
+        claim: null, lost: true, bound: false, trackLive: false, modMuted: !!(mute && mute.on), earOpen: false,
+        rawPeak: null, foldPeak: null, peakAge: null, tries: 0, lapsed: false,
+        strip: !!(compOf.get('sgs') && (compOf.get('sgs').names || []).includes(id)), view: stageViewNow };
+      if (out.me) {
+        const t = (rbNow && rbNow.v) ? (rbNow.a || null) : ((localStream && localStream.getAudioTracks()[0]) || null);
+        out.trackLive = !!t && t.readyState === 'live' && t.enabled !== false;
+        out.audible = listed && out.trackLive && !myStatus.muted && !out.modMuted;
+        return out;
+      }
+      const keys = [...mosIn.keys()].filter((k) => k.indexOf('stg:') === 0 && k.slice(4).split('^')[0] === id);
+      const ear = stageEar;
+      const k2 = keys.find((k) => ear && ear.sids.has(k)) || keys[0];
+      const f = k2 ? mosIn.get(k2) : null;
+      if (!f) return out;
+      const fb = mosFb.get(k2);
+      out.claim = { key: k2, via: String(f.via).slice(0, 8), dead: !!f.deadAt, dark: !!(fb && fb.dark), hop: f.meta ? f.meta.h : null };
+      out.lost = stgLost(k2);
+      out.bound = !!(ear && ear.sids.has(k2) && ear.bound && f.stream && ear.bound.get(k2) === f.stream);
+      if (f.stream) { const t = stageEarLiveTrack(f.stream); out.trackLive = !!t && t.readyState === 'live'; }
+      if (ear) out.earOpen = !ear.el.muted && !ear.el.paused;
+      const w = ear && ear.watch ? ear.watch.get(k2) : null;
+      if (w) {
+        out.rawPeak = w.rawPeak == null ? null : w.rawPeak; out.foldPeak = w.foldPeak == null ? null : w.foldPeak;
+        out.peakAge = w.peakAt ? Date.now() - w.peakAt : null; out.tries = w.tries; out.lapsed = w.tries >= 12;
+      }
+      const latched = out.rawPeak != null && out.rawPeak > 0.02 && out.foldPeak != null && out.foldPeak <= 0.02;
+      out.audible = listed && out.bound && !out.lost && out.trackLive && !out.modMuted && out.earOpen && !latched;
+      return out;
+    }
+    const stageAudible = (id) => earState(id).audible;
+    // DEBUG trace: each time a listed stager goes in or out of earshot, with why.
+    const earNoted = new Map();
+    function earNote(stagers) {
+      if (typeof clog !== 'function') return;
+      try {
+        for (const id of stagers) {
+          if (id === myId) continue;
+          const e = earState(id, stagers);
+          if (earNoted.get(id) === e.audible) continue;
+          earNoted.set(id, e.audible);
+          clog('stage-ear', String(id).slice(0, 8), e.audible ? 'audible' : 'silent', 'lost=' + e.lost, 'bound=' + e.bound, 'track=' + e.trackLive, 'open=' + e.earOpen, 'mute=' + e.modMuted, 'raw=' + e.rawPeak, 'fold=' + e.foldPeak);
+        }
+        for (const id of [...earNoted.keys()]) if (!stagers.includes(id)) earNoted.delete(id);
+      } catch (e) {} // a trace line must never stop the sweep
     }
     // My own outbound feed as a STABLE MediaStream (what I broadcast — the
     // blurred/raw video plus my mic). While staged this aux feed is the ONLY
@@ -24126,11 +24214,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const jk = key + '>' + to;
       const cur = mosJobs.get(jk);
       // ORPHANED BY A TRANSPORT SWAP? A job's senders belong to the pc they
-      // were added to. Replace that pc — newPcFor on a hard mobile network
+      // were added to. Replace that pc — rebuildPc on a hard mobile network
       // change, a long freeze, an ICE failure — and those senders can never
       // carry media again, yet the fast path below would happily RE-ANNOUNCE
       // this job forever, advertising a streamId the receiver can never
-      // resolve. newPcFor now drops these jobs itself, but this is the general
+      // resolve. rebuildPc now drops these jobs itself, but this is the general
       // guard: ANY path that swaps a pc is covered, not just the one we found.
       // Cheap: identity check of one sender against the live pc.
       const orphaned = !!(cur && cur.senders && cur.senders.length && p && p.pc
@@ -24941,6 +25029,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // hot void and wake the standby for nothing.
           if (pri.stream && !pri.stream.getTracks().length) { await sampleStandby(rk, fb); continue; }
           if (mosHeld(pri)) continue; // parked on purpose while its decoder restarts (mosDecoderSweep): this silence is not death
+          if (rk.indexOf('stg:') === 0) await stgPicCheck(rk, pri, fb, now);
           const bytes = await pipeBytes(pri, rk.indexOf('stg:') === 0);
           // Forensics ring (frza17: a husk claim's standby was never woken and
           // no theory survived — record what each sample actually SAW). Widened
@@ -25246,7 +25335,53 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (e.seen.indexOf(b) >= 0) return false;
       e.seen.push(b); if (e.seen.length > STG_BEAT_SEEN) e.seen.shift();
       e.at = Date.now();
+      stgPicNote(e, b);
       return true;
+    }
+    // THE PICTURE KEEPALIVE. A stage feed is judged on its voice, because a still share legitimately sends no frames: frozen picture and still picture read the same at a
+    // receiver. So the stager's beat says how many frames it encoded: low 12 bits of the signed value (old pages treat b as opaque). Frames made at the source while my decoder
+    // stands still is a dead picture on my path; no new frames at the source is a still picture, and no verdict.
+    const STG_PIC_WORD = 4096, STG_PIC_MIN_B = Math.pow(2, 44), STG_PIC_FRAMES = 5, STG_PIC_DEAD_MS = 4000, STG_PIC_RETRY_MS = 15000;
+    function stgPicNote(e, b) {
+      if (b < STG_PIC_MIN_B) return;   // a beat with no count: a page that has no video job, or an older page
+      const t = Math.floor(b / STG_PIC_WORD), n = b % STG_PIC_WORD;
+      if (e.pfT !== undefined && t <= e.pfT) return;   // the flood can reorder
+      e.pfN = e.pfN === undefined ? 0 : e.pfN + ((n - e.pf + STG_PIC_WORD) % STG_PIC_WORD);
+      e.pf = n; e.pfT = t; e.pfAt = Date.now();
+    }
+    let stgPicCount = 0, stgPicSd = null, stgPicEnc = 0, stgPicKnown = false;
+    function stgPicSample() {   // my own frames encoded, on one active stage job (its sender; a new sender re-baselines)
+      let sd = null;
+      for (const job of mosJobs.values()) { if (job.active && job.key === 'stg:' + myId) { sd = (job.senders || []).find((x) => x && x.track && x.track.kind === 'video') || null; if (sd) break; } }
+      if (!sd) { stgPicKnown = false; stgPicSd = null; return; }
+      sd.getStats().then((rep) => {
+        let enc = -1; rep.forEach((r) => { if (r.type === 'outbound-rtp' && r.kind === 'video') enc = r.framesEncoded || 0; });
+        if (enc < 0) return;
+        if (stgPicSd === sd && enc > stgPicEnc) stgPicCount = (stgPicCount + enc - stgPicEnc) % STG_PIC_WORD;
+        stgPicSd = sd; stgPicEnc = enc; stgPicKnown = true;
+      }).catch(() => {});
+    }
+    // My copy's decoder against the source's count. One getStats a second, only for a feed whose stager tells its count.
+    async function stgPicCheck(rk, pri, fb, now) {
+      const e = stgBeats.get(rk), vt = pri.stream && pri.stream.getVideoTracks()[0];
+      if (!vt || !e || e.pfN === undefined || now - e.pfAt > STG_BEAT_STALE_MS) { if (fb.picDead) { fb.picDead = false; schedReconcile(); } fb.picRef = null; return; }
+      if (fb.picCheckAt && now - fb.picCheckAt < 900) return;
+      fb.picCheckAt = now;
+      const v = await pipeBytes(pri, false); if (v === -1) return;
+      if (fb.picRef !== pri || v.d !== fb.picD) {
+        if (fb.picDead) { fb.picDead = false; fb.picStdOk = false; fb.picStd0 = null; schedReconcile(); }   // it came back by itself
+        fb.picRef = pri; fb.picD = v.d; fb.picN = e.pfN; fb.picAt = now; return;
+      }
+      if (!fb.picDead && e.pfN - fb.picN >= STG_PIC_FRAMES && now - fb.picAt >= STG_PIC_DEAD_MS) {
+        fb.picDead = true; fb.picDeadAt = now; fb.picStdOk = false; fb.picStd0 = null; stgFoNote(rk, 'pic-dead', pri.via);
+        try { kfNeed(rk); } catch (err) {}   // a lost key looks the same: ask first
+        schedReconcile();
+      }
+      if (fb.picDead) {
+        const std = mosStandby.get(rk);
+        if (std) { const sv = await pipeBytes(std, false); if (sv !== -1) { if (fb.picStd0 == null || sv.d < fb.picStd0) fb.picStd0 = sv.d; else if (sv.d > fb.picStd0 && !fb.picStdOk) { fb.picStdOk = true; schedReconcile(); } } }
+        if (now - fb.picDeadAt > STG_PIC_RETRY_MS) { fb.picDead = false; fb.picRef = null; schedReconcile(); }   // no copy showed a picture: judge afresh
+      }
     }
     // THE BEAT IS SIGNED by the stager's identity key, the key that names it (the pid is derived from the
     // public key). A page passes on only a beat whose signature checks, so nobody else can make one: a
@@ -25273,14 +25408,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     // A stager that never beat (an older page) is judged as before.
     function stgStale(rk) { const e = stgBeats.get(rk); return !!e && Date.now() - e.at > STG_BEAT_STALE_MS; }
-    setInterval(() => {
+    // On the worker clock: a stale beat stops relayed media and delists the stager, so a hidden stager's throttled page timer must not reach it.
+    GifOS.meshMedia.workerClock(STG_BEAT_MS, () => {
       try {
         const t0 = stgBeatCost ? performance.now() : 0;
-        if (stageIds().includes(myId) && myIdentity) { const key = 'stg:' + myId, b = Date.now(); stgBeatNew(key, b); const pub = myIdentity.pubB64; net.edSign(myIdentity.priv, stgBeatSp(key, b)).then((sig) => stgBeatFlood(key, b, null, sig, pub)).catch(() => {}); }
+        if (stageIds().includes(myId) && myIdentity) { stgPicSample(); const key = 'stg:' + myId, b = stgPicKnown ? Date.now() * STG_PIC_WORD + stgPicCount : Date.now(); stgBeatNew(key, b); const pub = myIdentity.pubB64; net.edSign(myIdentity.priv, stgBeatSp(key, b)).then((sig) => stgBeatFlood(key, b, null, sig, pub)).catch(() => {}); }
         if (stgBeatCost) stgBeatCost.ms += performance.now() - t0;
         for (const [k, e] of stgBeats) if (Date.now() - e.at > 300000) stgBeats.delete(k);
       } catch (e) {}
-    }, STG_BEAT_MS);
+    });
     function prefCand(rk, cand) {
       const c = meshCoord(); if (!c) return null;
       // IDENTITY, NOT JUST KEY (2026-08-01). These two used to match on the
@@ -25438,7 +25574,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // L2.7: the seat holds E2 hot, so E2's copy takes over even while E1's still moves packets.
       const seatE2 = meshSeat();
       const u2Over = !!(pri && std && seatE2 && seatE2.u2Hot && std.via === seatE2.u2Id && pri.via !== std.via && (rk.indexOf('stg:') === 0 || rk === 'sgs'));
-      const wantSwap = !!(pri && std && (!priLive || fb.dark || u2Over || (stdIsPref && !priIsPref)));
+      const wantSwap = !!(pri && std && (!priLive || fb.dark || fb.picDead || u2Over || (stdIsPref && !priIsPref)));
       if (wantSwap) {
         if (std && !std.el && std.stream) std.el = mosVideo(std.stream); // mint the decoder on wake, not while parked
         if (!fb.wakeAt) { fb.wakeAt = now; fb.f0 = frames(std.el); }
@@ -25477,14 +25613,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // no stale frame to lie with and the swap is the recovery.
         const stdAdvanced = fb.d0 >= 0 && fb.stdFdec > fb.d0;
         const stdRecent = stdAdvanced && fb.stdAdvAt && now - fb.stdAdvAt < 3000;
-        const flowing = (voiceOnly || ((fb.dark || u2Over) && priLive))
+        const flowing = (fb.picDead && priLive && !voiceOnly) ? !!fb.picStdOk   // the picture is the complaint, so its frames are the evidence
+          : (voiceOnly || ((fb.dark || u2Over) && priLive))
           ? stdAdvanced
           : ((frames(std.el) > fb.f0 || (std.el && std.el.videoWidth > 0 && now - fb.wakeAt > 1500)) && (!priLive || stdRecent));
         // A dead-or-dark primary swaps the moment the standby flows; a live one
         // (pure failback) additionally waits out the settle window — hysteresis
         // (dark skips it: dark IS a failover, and MOS_SETTLE on lastSwitch
         // still bounds any stall/recover oscillation to one swap per window).
-        const settled = !priLive || fb.dark || u2Over || ((now - fb.prefSince >= MOS_SETTLE) && (now - fb.lastSwitch >= MOS_SETTLE));
+        const settled = !priLive || fb.dark || fb.picDead || u2Over || ((now - fb.prefSince >= MOS_SETTLE) && (now - fb.lastSwitch >= MOS_SETTLE));
         if (flowing && settled) {
           const old = pri;
           mosIn.set(rk, std); mosStandby.delete(rk); pri = std; std = null; stgFoNote(rk, 'swap', pri.via);
@@ -25494,6 +25631,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // A share on the new path: seats below me need a key frame to decode my new source, so ask now.
           if (rk.indexOf('stg:') === 0 && pri.stream && pri.stream.getVideoTracks().length) { try { kfNeed(rk); } catch (e) {} }
           pri.deadAt = 0; fb.lastSwitch = now; fb.wakeAt = 0; fb.prefSince = 0;
+          fb.picDead = false; fb.picStdOk = false; fb.picStd0 = null; fb.picRef = null;
           fb.dark = false; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; fb.fp = 0; fb.fpDecayAt = 0; fb.b0 = -1; fb.d0 = -1; fb.stdFdec = -1; fb.stdAdvAt = 0; fb.claimAt = now; // fresh primary — the watchdog re-baselines and the penalty clears
           repaintRedun(rk, pri.stream);
           if (inCand(old)) { std = { via: old.via, key: old.key, streamId: old.streamId, stream: old.stream, el: old.el, meta: old.meta }; mosStandby.set(rk, std); } // failback: the loser re-parks as the standby
@@ -25641,7 +25779,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!st) continue;
         if (cur) dropMosIn(rk);
         mosIn.set(rk, { via: from, streamId: ann.streamId, stream: st, el: mosNeedsVideo(rk) ? mosVideo(st) : null, meta: annMeta(ann) });
-        structuralSeen.add(rk);
       }
       // A structural slot (sub, x1, x2, sdxc) has no second announcer
       // and no claimRedun pass. Once its announce ages out, or the peer is
@@ -26310,7 +26447,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const headPid = rowHeadPid(c); // the head, or the heir while the head's feed is gone
         for (const [mk, uf] of mosIn) { if (mk.indexOf('subu:') !== 0) continue; const ju = shipMos('sub', headPid, uf.stream, Object.assign({ l14: 1, via: mk.slice(5) }, blockMeta(uf)), mk); if (ju) wanted.add(ju); } // L14: a branch I serve, into my row's product
         if (beyondRow) {
-          const sdmM = mosIn.get('sdm'), packMetaM = (pk) => ({ n: pk.count(), cols: pk.cols() });
+          const packMetaM = (pk) => ({ n: pk.count(), cols: pk.cols() });
           l14Down((pk, h) => {
             // the branch's outside, built by my head (it holds everything but that branch); my own view now carries the branch
             const rel = mosIn.get('sdxu:' + h);
@@ -26574,6 +26711,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // STAGE EAR: sum the per-stager feeds I hold, skipping my own.
       if (stagers.length) ensureStageEar();
       syncStageEar(stagers);
+      earNote(stagers);
       // DEBOUNCED UNSHIP: the wanted set is rebuilt from occ every sweep, and
       // occ flickers during gossip churn (a seat transiently unknown, a heal in
       // flight). Ripping a live pipe on ONE missed sweep sends mx-end + a
@@ -27236,10 +27374,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function paintStage() {
       const claimed = !!myStatus.stg;
       const seated = claimed && stageIds().includes(myId);
-      const on = (typeof BROADCAST !== 'undefined' && BROADCAST) ? claimed : seated;
+      const on = (BROADCAST) ? claimed : seated;
       stageBtn.classList.toggle('on', on);
-      const hostHere = (typeof BROADCAST !== 'undefined' && BROADCAST) && ((typeof bcHostStored === 'function' && bcHostStored()) || amAdmin);
-      const promoted = (typeof BROADCAST !== 'undefined' && BROADCAST) && (!!myStatus.stg || !!(modOf(myId).app && modOf(myId).app.on));
+      const hostHere = (BROADCAST) && ((typeof bcHostStored === 'function' && bcHostStored()) || amAdmin);
+      const promoted = (BROADCAST) && (!!myStatus.stg || !!(modOf(myId).app && modOf(myId).app.on));
       if (promoted && !hostHere) {
         const bar = document.querySelector('.bar');
         const anchor = document.getElementById('reactbtn');
@@ -27403,11 +27541,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // phone dock and a narrow service window (placeDockForWidth). Never
         // textContent: that wipes the icon when the button moves into More.
         const inSheet = shareBtn.closest && shareBtn.closest('#barmore');
-        const shortShare = !inSheet && (phoneLayout() || (typeof BROADCAST !== 'undefined' && BROADCAST && window.innerWidth < 1100));
+        const shortShare = !inSheet && (phoneLayout() || (BROADCAST && window.innerWidth < 1100));
         shareLab.textContent = on ? uiText('stopShare', shortShare ? 'Stop' : 'Stop sharing') : (shortShare ? 'Share' : uiText('shareScreen', 'Share screen'));
       }
       shareBtn.setAttribute('aria-label', sharingLabel);
-      shareBtn.title = (typeof BROADCAST !== 'undefined' && BROADCAST)
+      shareBtn.title = (BROADCAST)
         ? (on ? 'You are sharing your screen on the stage. Tap to stop.' : 'Show the stage a window, a tab, or your desktop.')
         : (on
           ? uiText('shareTipOn', 'You are sharing your screen with the meeting — tap to stop')
@@ -28202,7 +28340,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       let base = 1;
       try { base = mix.stage; } catch (e) { base = 1; }
       try {
-        if (typeof BROADCAST !== 'undefined' && BROADCAST && !serviceHeard) return 0;
+        if (BROADCAST && !serviceHeard) return 0;
       } catch (e) {}
       return base;
     }
@@ -30950,7 +31088,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // 'program' (a kept service) is the stage too, with the host alone on
         // it before the strip exists; turning it into 'stage' failed the
         // first try and put "nothing to record" on the live host's line.
-        if (typeof BROADCAST !== 'undefined' && BROADCAST && scope !== 'app' && scope !== 'program') scope = 'stage';
+        if (BROADCAST && scope !== 'app' && scope !== 'program') scope = 'stage';
         recMatchMix = opts.matchMix !== false;
         recQuality = REC_QUALITY[opts.quality] ? opts.quality : recDefaultQuality(IS_MOBILE);
         const q = REC_QUALITY[recQuality];
@@ -31127,7 +31265,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // has people: the stadium needs "everything", a row records the row,
       // and an empty stage is never the default — Start used to pick it,
       // bail, and close the sheet before anyone could read why.
-      const service = typeof BROADCAST !== 'undefined' && BROADCAST;
+      const service = BROADCAST;
       const srcNow = recSources();
       const scopeDefault = service ? 'stage' : (srcNow.stage.length ? 'stage' : (srcNow.stadium.length ? 'all' : (srcNow.row.length ? 'row' : 'stage')));
       const stageSub = srcNow.stage.length
@@ -31340,7 +31478,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!collapsed && wakeForSheet) wakeForSheet();
         bar.classList.toggle('collapsed', collapsed);
         toggle.setAttribute('aria-expanded', String(!collapsed));
-        const service = typeof BROADCAST !== 'undefined' && BROADCAST;
+        const service = BROADCAST;
         const surface = service ? 'broadcast' : 'meeting';
         bar.setAttribute('aria-label', service ? 'Broadcast controls' : 'Meeting controls');
         toggle.setAttribute('aria-label', collapsed ? 'More' : 'Hide ' + surface + ' controls');
@@ -31382,7 +31520,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // A small group tucks the dock once the call sits quiet (qa-meet-mobile);
       // a wide window also fades it sooner (dock-calm, qa-meet-desktop). A service
       // keeps it: volunteers need the large controls without hunting for them.
-      const personalCall = () => !(typeof BROADCAST !== 'undefined' && BROADCAST);
+      const personalCall = () => !(BROADCAST);
       const dockBusy = () => {
         if (!bar.classList.contains('collapsed')) return true;
         const tray = document.getElementById('reacttray');
@@ -31769,7 +31907,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!callOpen() || !phoneCall()) return true;
         // A service host alone keeps the link and the dock up to invite
         // people, as the desktop dock does (busy(): alone needs Invite).
-        if (typeof BROADCAST !== 'undefined' && BROADCAST && document.body.classList.contains('bc-host') && participantCount() < 2) return true;
+        if (BROADCAST && document.body.classList.contains('bc-host') && participantCount() < 2) return true;
         if (bar && !bar.classList.contains('collapsed')) return true;
         const chat = document.getElementById('chatpanel');
         if (chat && chat.classList.contains('open')) return true;
@@ -31957,7 +32095,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const audienceReactRate = new Map();
     let audienceReactFade = 0;
     function takeAudienceReact(emoji, fromId) {
-      if (typeof BROADCAST === 'undefined' || !BROADCAST) return false;
+      if (!BROADCAST) return false;
       emoji = String(emoji || '');
       if (AUDIENCE_REACTS.indexOf(emoji) < 0) return false;
       const who = String(fromId || 'me');
@@ -32107,7 +32245,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // A service hides the gallery, so the same clap has to land on the
         // stage or the person who sent it never sees it. The count is what
         // everyone else sees: one pill per emoji, not one burst per person.
-        if (typeof BROADCAST !== 'undefined' && BROADCAST) {
+        if (BROADCAST) {
           flashBurst(document.getElementById('bc-react'));
           sendAudienceReact(label);
         }
@@ -32217,7 +32355,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const mic = document.getElementById('avmic');
       const cam = document.getElementById('avcam');
       if (!bar || !mic || !cam) return;
-      const watching = typeof BROADCAST !== 'undefined' && BROADCAST && !(bcHostStored() || document.body.classList.contains('amadmin'));
+      const watching = BROADCAST && !(bcHostStored() || document.body.classList.contains('amadmin'));
       let muted = false, camOff = false, locked = false;
       try {
         if (!watching && typeof myStatus !== 'undefined' && myStatus) {
@@ -32561,7 +32699,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // viewer has it on the dock, and anyone in a small group can raise one.
     function canRaiseHand() {
       if (!handBtn || handBtn.style.display === 'none') return false;
-      const svc = typeof BROADCAST !== 'undefined' && BROADCAST;
+      const svc = BROADCAST;
       return !svc || !!(handBtn.parentElement && handBtn.parentElement.classList.contains('bar'));
     }
     // Share is offered when its button is not hidden by the room's rules;
@@ -33749,7 +33887,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // immediate, which is what a hang-up and the test hook use. A service
     // still asks: you are live, and Stay puts the microphone back.
     if (leaveBtn) leaveBtn.onclick = () => {
-      if (typeof BROADCAST !== 'undefined' && BROADCAST) {
+      if (BROADCAST) {
         try { holdLeaveAsk(); } catch (e) {}
         if (leaveAsk) leaveAsk.style.display = 'flex';
         return;
@@ -34881,7 +35019,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const SYSTEM_APPS = { meet: 1, video: 1, broadcast: 1, appstore: 1 };
       const apps = (files || []).filter((f) => f.isApp && !SYSTEM_APPS[f.appId]);
       if (!apps.length) {
-        const where = (typeof BROADCAST !== 'undefined' && BROADCAST) ? 'on this broadcast' : 'in a meeting';
+        const where = (BROADCAST) ? 'on this broadcast' : 'in a meeting';
         list.innerHTML = '<small style="color:#667">No apps on this computer yet. Make one with ＋ Add on your Home Screen, then run it ' + where + '.</small>';
         return;
       }
@@ -35346,7 +35484,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           built._qaCanvas = c;
         } catch (e) { built.tile.classList.add('cam-off'); }
         peers.set(id, Object.assign(built, {
-          id: id, name: name, qa: true, headless: false,
+          id: id, name: name, qa: true, headless: false, neg: newNeg(),
           // connected:false is the room Nathan saw: the faces are already on
           // the wall, and the transport has not vouched for them yet.
           connected: spec.connected !== false,
@@ -35407,7 +35545,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (pr && pr.catch) pr.catch(function () {});
       } catch (e) { built.tile.classList.add('cam-off'); }
       const p = Object.assign(built, {
-        id: id, name: name, qa: true, headless: false, connected: true,
+        id: id, name: name, qa: true, headless: false, connected: true, neg: newNeg(),
         lastHeard: Date.now(), meshRxAt: Date.now(), bornAt: Date.now(),
         pc: qaStubPc(), dc: null, noRoute: false, absentSince: 0,
         _qaTracks: stream ? stream.getTracks() : [],
@@ -35513,7 +35651,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return { ok: true, ended: !vt || vt.readyState === 'ended', n: stopped.length };
       },
       participants: headerCount, // the header counts every face on the grid, including a bot the ladder has not seated
-      shareInvite: () => { const b = document.getElementById('appinvite'); if (b) b.click(); },
       markJoinedForTest: (id) => {
         const pid = String(id || 'peer').slice(0, 80);
         if (pid && !rosterIds.includes(pid)) rosterIds.push(pid);
@@ -35647,39 +35784,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       liveLinks: () => Array.from(peers.values()).filter((p) => p.connected).length,
       // ICE AND an open DataChannel — the gate every data-path assertion must
       // use: a half-open pair passes liveLinks and carries nothing (pair-probe.js).
-      doorDropped: () => doorDropped, doorDropKinds: () => doorDropKinds,
       liveDataLinks: () => Array.from(peers.values()).filter((p) => p.connected && p.dc && p.dc.readyState === 'open').length,
-      txKindBytes: () => Object.assign({}, txKindBytes), // channel bytes sent, by kind
       txStats: () => Object.assign({}, txStats), // heartbeat transport split (relay vs DC vs sponsor hops)
       // REACH: the meeting-wide connectivity verdict (REACH_MSG): state id
       // ('udp-blocked' | 'cannot-reach-room' | 'outsiders-cannot-reach-me' |
       // 'partial' | null) with the live/dead pair counts, the people count
       // and this network's probe verdict behind it.
       reachState: () => reachInfo(),
-      // RTP counters per pair (by screen name), and the candidate types the
-      // pair's selected path uses: what crosses each connection, measured.
-      turnRtp: async () => {
-        const out = [];
-        for (const p of peers.values()) {
-          const rec = { name: rosterNames[p.id] || p.name || null, inbound: [], outbound: [], local: null, remote: null };
-          if (p.pc) {
-            try {
-              const rep = await p.pc.getStats();
-              const byId = new Map(); rep.forEach((x) => byId.set(x.id, x));
-              rep.forEach((x) => {
-                if (x.type === 'inbound-rtp') rec.inbound.push({ kind: x.kind, mid: x.mid, packets: x.packetsReceived || 0, bytes: x.bytesReceived || 0, energy: x.totalAudioEnergy || 0, frames: x.framesDecoded || 0 });
-                else if (x.type === 'outbound-rtp') rec.outbound.push({ kind: x.kind, mid: x.mid, packets: x.packetsSent || 0, bytes: x.bytesSent || 0 });
-                else if (x.type === 'transport' && x.selectedCandidatePairId) {
-                  const cp = byId.get(x.selectedCandidatePairId);
-                  if (cp) { rec.local = (byId.get(cp.localCandidateId) || {}).candidateType || null; rec.remote = (byId.get(cp.remoteCandidateId) || {}).candidateType || null; }
-                }
-              });
-            } catch (e) { rec.err = String(e).slice(0, 60); }
-          }
-          out.push(rec);
-        }
-        return out;
-      },
       // Every close code the relay socket saw in this node's life, newest
       // last ({code, at}) — a policy cut reads differently from a drop.
       relayCloses: () => { try { return meshNode ? meshNode.stats().closes : []; } catch (e) { return []; } },
@@ -35698,7 +35809,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // `stored` says an offer was set aside to answer. Neither firing and
         // neither stored means the offer never reached the handler at all,
         // which is a different bug from a yield that armed and failed.
-        glareArmed: !!p.glareTimer, glareStored: !!p.glareOffer,
+        glareArmed: !!p.neg.glareTimer, glareStored: !!p.neg.glareOffer, negWhy: p.neg.why, negKind: p.neg.kind,
         // why a pair is kept: door flags and the seat arithmetic's verdict
         bootOut: !!p.bootOut, link: linkTo(p.id), knows: meshKnows(p.id), ageS: Math.round((Date.now() - (p.bornAt || 0)) / 1000) })),
       grid: () => ({ // the alignment engine's live state: clocks, tiers, timing, sing, mic
@@ -35896,11 +36007,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // folded per-stager audio. -1 = no ear/no stream. The 2026-07-29 bar:
       // a room must HEAR its stage, not merely hold the feed (held keys and
       // "active" fan jobs stayed green through a fully silent stage).
-      rebroadcastStreamForTest: () => (rbNow && rbNow.v ? new MediaStream([rbNow.v, rbNow.a].filter(Boolean)) : null),
-      stageViaForTest: () => { for (const [k, f] of mosIn) if (k.indexOf('stg:') === 0 && k !== 'stg:' + myId) return { via: String(f.via).slice(0, 8), me: String(myId).slice(0, 8) }; return null; },
       rebroadcastForTest: () => (rbNow ? { pos: rbNow.vid.currentTime, len: rbNow.vid.duration, paused: rbNow.vid.paused, title: rbNow.title, sending: !!rbNow.v, vId: rbNow.v ? rbNow.v.id : '' } : null),
-      // The stage feed this phone receives (stream with picture and sound).
-      stageFeedForTest: () => { for (const [k, f] of mosIn) if (k.indexOf('stg:') === 0 && k !== 'stg:' + myId && f.stream) return f.stream; return null; },
       chatForTest: () => Array.from(chat.values()).map((m) => String(m.text || "")),
       stageAudioForTest: async () => { let b = 0; for (const [k, v] of mosIn) { if (!k.startsWith("stg:") || !v.stream) continue; const tr = v.stream.getAudioTracks(); const p = peers.get(v.via); if (!p || !p.pc) continue; for (const t of tr) { const st = await p.pc.getStats(t); st.forEach((x) => { if (x.type === "inbound-rtp" && x.kind === "audio") b += x.packetsReceived || 0; }); } } return b; },
       uplinkForTest: () => { const r = meshNode && meshNode.raw; if (!r) return null; let conn = false, dc = false; for (const p of peers.values()) { if (parseInt(String(p.id).slice(2, 15), 16) === r.u2Id) { conn = !!p.connected; dc = !!(p.dc && p.dc.readyState === "open"); } } let stgStd = false, upStd = false; for (const k of mosIn.keys()) { if (mosStandby.has(k)) { if (k.startsWith("stg:") || k === "sgs") stgStd = true; else upStd = true; } } return { u2: r.u2Id, conn, dc, ackAge: r.u2AckAt >= 0 ? r.TICK - r.u2AckAt : -1, hot: r.u2Hot, stgStd, upStd }; },
@@ -35943,7 +36050,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       rebuildPair: (pid) => {
         if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
         const p = peers.get(pid); if (!p) return { err: 'no such peer' };
-        newPcFor(p);
+        rebuildPc(p, 'debug');
         if (iInitiate(pid)) sendOffer(pid, false);
         return { ok: true, rebuilt: String(pid).slice(0, 8) };
       },
@@ -35979,7 +36086,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       rebuildPairForTest: (pid) => {
         if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
         const p = peers.get(pid); if (!p) return { err: 'no such peer' };
-        newPcFor(p); sendOffer(pid, false);
+        rebuildPc(p, 'debug'); sendOffer(pid, false);
         return { ok: true };
       },
       killDcForTest: (pid) => {
@@ -36018,13 +36125,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         window.__parkedJobs.set(jk, Date.now() + (ms || 15000));
         setJobActive(jk, false);
         return { ok: true, jk: jk.slice(0, 24), ms: ms || 15000, active: !!(mosJobs.get(jk) || {}).active };
-      },
-      // A SLOW RELAY: for ms, this seat starts no new relay of a stage feed,
-      // so a newcomer hears the stager's own copy first (Q80).
-      holdRelayForTest: (ms) => {
-        if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
-        window.__relayHoldUntil = Date.now() + (ms || 0);
-        return { ok: true, ms: ms || 0 };
       },
       unparkJobForTest: (key, toPid) => {
         if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
@@ -36275,28 +36375,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // w/h: the hidden source <video>'s own size; pack: the local composite's canvas; src: what the face cut used (chaos-1019: the two disagreed, 330 against 440)
         tile: (() => { const v = stadiumEl.querySelector('[data-row="sd"] video'); const cl = window.__comfyLast; return v ? { live: v.videoWidth > 0, w: v.videoWidth, h: v.videoHeight, pack: (sdPack && sdPack.canvas) ? [sdPack.canvas.width, sdPack.canvas.height] : null, src: cl && cl.src ? cl.src : null } : null; })(),
         strip: (() => { const v = stagefeedEl.querySelector('[data-row="sgs"] video'); return v ? { live: v.videoWidth > 0 } : null; })(), stagers: stageIds().length }; },
-      // Every sender on every link, and who owns it: which media a link
-      // carries, and why (Q80: a parked job's link still carried media).
-      sendersByPeer: () => {
-        const own = new Map();
-        for (const [k, j] of mosJobs) for (const sd of j.senders) own.set(sd, { job: k.slice(0, k.indexOf('>')).slice(0, 14), active: !!j.active });
-        const out = {};
-        for (const [pid, p] of peers) {
-          if (!p.pc) continue;
-          // pc: this link's index in a test's RTCPeerConnection tap, if any.
-          out[String(pid).slice(0, 8)] = { pc: window.__pcs ? window.__pcs.indexOf(p.pc) : -1, tx: p.pc.getTransceivers().map((t) => {
-            const sd = t.sender, o = own.get(sd);
-            return { mid: t.mid, dir: t.currentDirection, kind: sd.track ? sd.track.kind : null, live: !!(sd.track && sd.track.readyState === 'live'),
-              main: sd === p.mainA ? 'A' : sd === p.mainV ? 'V' : '', stage: stageSenders.has(sd), job: o ? o.job : null, active: o ? o.active : null };
-          }) };
-        }
-        return out;
-      },
       relayUpNow: () => relayUp(),
       rosterIdsNow: () => rosterIds.slice(),
       linkToPeer: (pid) => linkTo(pid),
-      iInit: (pid) => iInitiate(pid),
-      incomingIds: (pid) => { const p = peers.get(pid); return p && p.incoming ? p.incoming.map((s) => s.id) : null; },
       pcState: (pid) => { const p = peers.get(pid); if (!p || !p.pc) return null; return { sig: p.pc.signalingState, conn: p.pc.connectionState,
         tx: p.pc.getTransceivers().map((t) => (t.mid || '?') + ':' + (t.sender && t.sender.track ? t.sender.track.kind : '-') + ':' + t.direction + ':' + (t.currentDirection || '?')) }; },
       stadium: () => Array.from(compOf.entries())
@@ -36323,16 +36404,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       remoteFrameForTest: (from, m) => { onRemote(String(from), m); },
       // a peer whose channel just opened, before the roster has caught up; it
       // records the frames handed to it
-      openLinkForTest: (id) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [] }); },
+      openLinkForTest: (id) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [], neg: newNeg() }); },
       // a linked peer by name whose status says camera off (scr: sharing a screen)
       stageStripForTest: (stream) => paintStageStrip(stream || null),
-      camOffPeerForTest: (id, name, scr) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [] }); peers.get(id).name = name; rosterNames[id] = name; statusOf.set(id, { camOff: true, muted: true, scr: scr ? 1 : 0, at: Date.now() }); paintBroadcastIdent(); },
+      camOffPeerForTest: (id, name, scr) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [], neg: newNeg() }); peers.get(id).name = name; rosterNames[id] = name; statusOf.set(id, { camOff: true, muted: true, scr: scr ? 1 : 0, at: Date.now() }); paintBroadcastIdent(); },
       // a linked, recently heard peer: the status line counts it as here
-      livePeerForTest: (id, name) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, dc: { readyState: 'open', label: 'test' }, testTx: [] }); const p = peers.get(id); p.connected = true; p.lastHeard = Date.now(); if (name) { p.name = name; rosterNames[id] = name; } updateStatus(); return participantCount(); },
+      livePeerForTest: (id, name) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, dc: { readyState: 'open', label: 'test' }, testTx: [], neg: newNeg() }); const p = peers.get(id); p.connected = true; p.lastHeard = Date.now(); if (name) { p.name = name; rosterNames[id] = name; } updateStatus(); return participantCount(); },
       // a joined peer by name whose fresh status has a hand up, as the host's queue line reads it
-      handPeerForTest: (id, name) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [] }); peers.get(id).name = name; rosterNames[id] = name; if (!rosterIds.includes(id)) rosterIds.push(id); const t = Date.now(); statusOf.set(id, { camOff: true, muted: true, hand: t, at: t, rx: t }); renderHandq(); return handqEl.textContent; },
+      handPeerForTest: (id, name) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [], neg: newNeg() }); peers.get(id).name = name; rosterNames[id] = name; if (!rosterIds.includes(id)) rosterIds.push(id); const t = Date.now(); statusOf.set(id, { camOff: true, muted: true, hand: t, at: t, rx: t }); renderHandq(); return handqEl.textContent; },
       chatGateForTest: (off, admin) => { chatGateOverride = { off: !!off, admin: !!admin }; paintChatGate(); return document.getElementById('chat-in').placeholder; },
-      stageHostForTest: (id, name, stg) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [] }); peers.get(id).name = name; rosterNames[id] = name; if (!admins.includes(id)) admins.push(id); if (!rosterIds.includes(id)) rosterIds.push(id); statusOf.set(id, { camOff: false, muted: false, stg: stg === undefined ? 1 : stg, at: Date.now(), rx: Date.now() }); paintBroadcastIdent(); return stageIds().slice(); }, // a host whose status says on stage, camera on, before any feed
+      stageHostForTest: (id, name, stg) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [], neg: newNeg() }); peers.get(id).name = name; rosterNames[id] = name; if (!admins.includes(id)) admins.push(id); if (!rosterIds.includes(id)) rosterIds.push(id); statusOf.set(id, { camOff: false, muted: false, stg: stg === undefined ? 1 : stg, at: Date.now(), rx: Date.now() }); paintBroadcastIdent(); return stageIds().slice(); }, // a host whose status says on stage, camera on, before any feed
       hostPeerForTest: (id) => { id = String(id); admSeen.set(id, Date.now()); if (!admins.includes(id)) admins.push(id); updateStatus(); return admins.slice(); }, // admSeen, as a verified host frame does, so the watch count leaves them out
       linkFramesForTest: (id) => { const p = peers.get(String(id)); return p && p.testTx ? p.testTx.slice() : null; },
       sentFramesForTest: () => sentFrames.slice(),
@@ -36383,9 +36464,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // sleep is a wall gap with a near-zero monotonic gap.
       freezeGapForTest: (ms, mono) => { hbLastAt = Date.now() - (ms | 0); hbLastMono -= (mono === undefined ? ms : mono) | 0; },
       stageVoteNeed: () => stageVoteTallies().need,
-      devInfo: () => ({ devOf: Object.assign({}, devOf) }),
-      _setDevForTest: (id, tag) => { if (DEBUG_ON) { devOf[id] = tag; devClaimAt.delete(id); } },
-      _sayKickForTest: (id) => { const q = peers.get(id); if (!DEBUG_ON || !q || !q.dc || q.dc.readyState !== 'open') return false; dcSend(q, { k: 'pcbye', why: 'kick' }); return true; },
       // THE STATUS PLANE, as this seat sees it.
       statusPlane: () => { const d = roomDig(); return { id: myId, mode: digestMode(), past: roomPastSection(), n: d ? d.n : null, age: d ? d.age : null,
         refuse: d ? d.refuse : null, part: d ? !!d.part : null, handN: d ? d.handN : null, hands: d ? d.hands.map((e) => e.id) : [], stage: d ? d.stage.map((e) => e.id) : [],
@@ -36398,7 +36476,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       handqText: () => handqEl.textContent,
       handRaised: () => !!myStatus.hand,
       raiseHand: (on) => { myStatus.hand = on ? Date.now() : null; paintHand(); broadcastStatus(); layout(); renderHandq(); },
-      placeViewerHand: () => placeViewerHand(),
       // exact raise stamp — lets tests force a same-millisecond tie and assert the id tie-break
       raiseHandAtForTest: (t) => { myStatus.hand = +t || Date.now(); paintHand(); broadcastStatus(); layout(); },
       guestTileForTest: (name) => { const made = makeTile('qa-guest', name || 'Jordan Lee', false, false); return made.tile.dataset.peer; },
@@ -36427,10 +36504,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         m[field] = { on: true, by: myName(), byId: myId, at: Date.now() };
         modFlood();
       },
-      zoomRow: (row) => { const el = stadiumEl.querySelector('[data-row="' + String(row) + '"]'); if (el) el.classList.toggle('zoom'); return !!el && el.classList.contains('zoom'); },
       // stage + buses
       stageIds: () => stageIds(),
       onStage: () => stageIds().includes(myId),
+      stageSeats: () => stageSeats(),
+      earState: (id) => earState(id),
+      stageAudible: (id) => stageAudible(id),
       stageFlagForTest: () => myStatus.stg || 0,   // my raw step-up claim, painted or not
       stageFlipsForTest: () => stgFlips,          // how many times setStage ran
       setStageForTest: (on) => setStage(!!on),
@@ -36454,11 +36533,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       canStageNow: () => canStage(myId),
       mix: () => Object.assign({}, mix),
       setMix: (bus, v) => { mix[bus] = v; applyBuses(); },
-      mixFaderShown: (bus) => { const l = document.getElementById('mixlab-' + bus); return l ? l.style.display !== 'none' : true; },
-      tileVolume: (pid) => { const p = peers.get(pid); return p ? p.video.volume : null; },
-      stadiumVolume: (row) => { const el = stadiumEl.querySelector('[data-row="' + row + '"] video'); return el ? el.volume : null; },
       appWinner: () => { const w = findSharedApp(); return w ? w.s : null; },
-      appSharerName: () => { const w = findSharedApp(); return w ? (w.byName || null) : null; },
       appHidden: () => appHiddenSid,
       appLeading: () => appLeadOn,
       canRunApp: () => canIRunApp(),
@@ -36626,7 +36701,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       addTranscript: (t) => addTranscriptLine(t),
       transcriptTexts: () => Array.from(trs.values()).sort((a, b) => a.at - b.at).map((l) => l.by + ': ' + l.text),
       transcriptBlocks: () => trBlocks().map((l) => l.by + ': ' + l.text),
-      transcriptDrops: () => trDrops,
       captionsForTest: () => ({ writes: myStatus.ccv || [], mix: Array.from(ccMix.ins.keys()), drops: trDrops,
         show: !!ccShow, cc: !!myStatus.cc,
         lines: Array.from(trs.values()).sort((a, b) => a.at - b.at).map((l) => ({ by: l.by, byId: l.byId, scribe: l.scribe || null, at: l.at, text: l.text })) }),
@@ -36655,6 +36729,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       appBarForTest: (talkOn) => {
         document.body.classList.add('has-app');
         if (talkOn) {
+          armAppRoomTick();
           document.body.classList.add('app-room');
           appMode = 'host';
           myStatus.app = Object.assign(myStatus.app || { s: 'qa-talk' }, { audio: true });
@@ -36728,8 +36803,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       ccViewOn: () => !!ccShow,
       ownVoice: () => ({ wanted: !!ownVoiceArmed, cc: !!myStatus.cc, muted: !!myStatus.muted }),
       scribeForTest: (on) => { myStatus.scribe = !!on; broadcastStatus(); syncSpeech(); },
-      // A service's start time and Visit link, here and in the gossip.
-      bcPeekForTest: () => ({ quiet: bcQuietLine(headerCount(), false, false), count: headerCount(), stagers: stageIds().map((id) => [String(id).slice(0, 6), stagePersonLive(id)]), rowtile: !!document.querySelector('#stagefeed .rowtile'), hold: Math.max(0, statusHoldUntil - Date.now()), banned: !!bannedOut, at: bcStartAt(), visit: bcVisit(), mine: { bcat: myStatus.bcat || 0, bcvisit: myStatus.bcvisit || '' }, host: bcHostStored(), params: { at: params.get('at') || '', visit: params.get('visit') || '' }, gossip: Array.from(statusOf.values()).map((st) => [st.bcat || 0, st.bcvisit || '']) }),
       // Why a scribe takes or skips each peer (the conditions wspSync reads).
       scribeWhyForTest: () => Array.from(peers.keys()).map((pid) => {
         const st = statusOf.get(pid) || {}; const p = peers.get(pid);
@@ -36737,10 +36810,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           ccv: st.ccv || null, ccst: st.ccst || null, connected: !!(p && p.connected), source: !!(p && wspSource(pid)) };
       }),
       ccSourceForTest: (id) => { ccSourceId = id || null; syncSpeech(); scribeWatch(); },
-      installWhisperForTest: () => installWhisper(true),
-      whisperEngineForTest: (eng) => { lsSet(CC_ENGINE_KEY, eng === 'whisper' ? 'whisper' : ''); syncSpeech(); },
-      audioBlockedForTest: () => blockedAudio.size,
-      audioBlockForTest: (el, name) => audioBlocked(el, { name }),
       takeTrForTest: (m) => takeTr(m),
       markBotForTest: (on) => {
         myStatus.bot = !!on;
@@ -36748,12 +36817,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { broadcastStatus(); } catch (e) {}
         try { layout(); } catch (e) {}
         return !!myStatus.bot;
-      },
-      setAvatarForTest: (url) => {
-        if (url) myStatus.avatar = String(url); else delete myStatus.avatar;
-        try { updateTile('me'); } catch (e) {}
-        try { broadcastStatus(); } catch (e) {}
-        return myStatus.avatar || '';
       },
       comfyForTest: () => {
         const feed = document.getElementById('feed');
@@ -36869,9 +36932,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       nameOf: (pid) => rosterNames[pid] || (peers.get(pid) || {}).name || '', // what this seat calls a peer (the sealed pulse teaches it)
       poisonEpochForTest: (n) => { myStatus.pwEp = n; broadcastStatus(); }, // a hostile client's pulse claiming generation n (its own epoch is untouched)
       sealedCopyForTest: async (to, obj) => { const fs = obj && obj.k === 'pwinfo' ? pwFramesOf(obj) : [obj]; if (!fs) return false; let ok = true; for (const f of fs) ok = (await relaySendSealed(to, f && f.k, f)) && ok; return ok; }, // a member's relay copy of a grant to one peer (what a replayed grant looks like on the wire)
-      heldGrantForTest: () => !!heldGrant,
       floodForTest: (n, kind) => { let k = 0; for (let i = 0; i < (n | 0); i++) { if (meshNode) { meshNode.gossip({ a: 1, msg: kind === 'status' ? { kind: 'status', s: Object.assign({}, myStatus, { at: Date.now() + i }), name: 'flood' } : { k: 'noop', i } }); k++; } } return k; }, // a hostile client's room-wide flood
-      gossipStats: () => (meshNode && meshNode.seat ? { dropped: meshNode.seat.gspDropped || 0, refused: meshNode.seat.gspRefused || 0, forged: meshNode.seat.gspForged || 0, inAll: meshNode.seat.gspInAll || 0, roomFlood: txStats.roomFlood || 0 } : null),
+      gossipStats: () => (meshNode && meshNode.seat ? { dropped: meshNode.seat.gspDropped || 0, refused: meshNode.seat.gspRefused || 0, forged: meshNode.seat.gspForged || 0, inAll: meshNode.seat.gspInAll || 0, roomFlood: txStats.roomFlood || 0, door: Object.assign({}, doorDropKinds) } : null),
+      strangerLineForTest: async (text, via, direct) => { const I = GifOS.meshIdentity, who = await I.mint(), id = 'stranger_' + Date.now(); const f = { t: 'GSP', gid: who.peerId + ':' + Date.now(), src: who.peerId, m: { a: 1, msg: { k: 'chat', m: { id, by: 'Stranger', byId: who.peerId, at: Date.now(), text: String(text) } } } }; f.s4 = await I.signGossip(who, f); meshNode.recvCtl(f, via || who.peerId, direct !== false); return id; }, // a knocker's signed line: over its own door pair (no via), or by no proven channel (direct false)
       forgeGossipForTest: (src, n) => { if (!meshNode || !meshNode._forgeGossipForTest) return 0; const ps = []; for (let i = 0; i < (n | 0); i++) ps.push({ a: 1, msg: { k: 'chat', m: { id: 'forged_' + i, by: 'Impostor', byId: src, at: Date.now(), text: 'forged line ' + i } } }); return meshNode._forgeGossipForTest(src, ps); }, // a hostile client speaking in someone else's name, with a valid signature of its own
       localStreamActive: () => !!localStream,
       pwBanForTest: (id) => pwBan(id),
@@ -36889,10 +36952,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         admins: admins.map((x) => String(x).slice(0, 6)),
         seen: Array.from(admSeen.entries()).map(([p, t]) => String(p).slice(0, 6) + ':' + (Date.now() - t) + 'ms'),
         gone: Array.from(meshGone.entries()).map(([p, t]) => String(p).slice(0, 6) + ':' + (Date.now() - t) + 'ms'),
-        grace: !!admGraceT, closing: !!admCloseT,
+        grace: !!admGraceT, closing: !!admTickT,
         mesh: (meshNode && meshNode.tlState) ? meshNode.tlState() : null,
       }),
-      closedShown: () => { const el = document.getElementById('closed-modal'); return !!el && el.style.display !== 'none'; },
       myBlur: () => blurLevel(myStatus.blur),
       updateResumed: () => { if (!updateResume) return null; const o = JSON.parse(JSON.stringify(updateResume)); delete o.seed; return o; }, // what an update reload brought back (null on a normal join)
       waitStateForTest: () => ({ hold: holdDoor, admitted: Array.from(waitAdmitted), declined: Array.from(waitDeclined), queue: Array.from(waitQueue.keys()) }),
@@ -36905,13 +36967,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       setVqForTest: (label) => setVq(label || ''),
       rungNow: () => lastQ && lastQ.label,
       forceAdapt: () => { adapt(); return trackQ.k; },
-      // what the camera actually DELIVERS (the capture's true shape) — the ask
-      // (camConstraint) can be right while an aspect-locked capture stays wrong
-      camSettings: () => { try { const t = localStream && localStream.getVideoTracks()[0]; const s = t && t.getSettings ? t.getSettings() : null; return s && s.width ? { w: s.width, h: s.height } : null; } catch (e) { return null; } },
-      blurNoneEnabled: () => !document.getElementById('blur-none').classList.contains('dis'),
-      blurLocked: () => blurSeg.classList.contains('locked'),
       micMuted: () => myStatus.muted,
-      micLocked: () => micBtn.classList.contains('locked'),
       camOff: () => myStatus.camOff,
       // effective blur SHOWN on a tile: the ME tile is WYSIWYG (its source is
       // the pre-blurred outbound, no CSS class), so report its effective level;
@@ -36934,7 +36990,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         let p = peers.get(id);
         if (!p) {
           const tile = makeTile(id, name, false);
-          p = { id, pc: null, tile: tile.tile, video: tile.video, label: tile.label, avatar: tile.avatar, chips: tile.chips, cap: tile.cap, modbar: tile.modbar, voteBtn: tile.voteBtn,
+          p = { id, pc: null, neg: newNeg(), tile: tile.tile, video: tile.video, label: tile.label, avatar: tile.avatar, chips: tile.chips, cap: tile.cap, modbar: tile.modbar, voteBtn: tile.voteBtn,
             name, headless: false, connected: true, pendingIce: [], absentSince: 0, lastKick: 0, lastHeard: Date.now(), bornAt: Date.now(), incoming: [], neverUp: false, stream: null };
           peers.set(id, p);
         }
