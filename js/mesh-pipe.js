@@ -84,7 +84,7 @@
     const s = taps.get(srcId);
     if (!s) return;
     s.delete(pipeId);
-    if (!s.size) { taps.delete(srcId); tapTs.delete(srcId); skrLast.delete(srcId); }
+    if (!s.size) { taps.delete(srcId); skrLast.delete(srcId); } // tapTs stays: onrtctransform fires once per receiver, so the SKR handle lives as long as the tap's frame loop
   }
   // The worker cannot see the page's functions, so it carries its own copy of
   // the two helpers above, as plain source inside the literal (worker-source-
@@ -99,7 +99,7 @@ function releaseTap(taps, tapTs, skrLast, srcId, pipeId) {
   const s = taps.get(srcId);
   if (!s) return;
   s.delete(pipeId);
-  if (!s.size) { taps.delete(srcId); tapTs.delete(srcId); skrLast.delete(srcId); }
+  if (!s.size) { taps.delete(srcId); skrLast.delete(srcId); } // tapTs stays: onrtctransform fires once per receiver, so the SKR handle lives as long as the tap's frame loop
 }
 const taps = new Map();   // srcId -> Set(pipeId)
 const tapTs = new Map();  // srcId -> the tap's transformer (the SKR handle)
@@ -272,7 +272,7 @@ onrtctransform = (e) => {
   (async () => {
     for (;;) {
       const { value: frame, done } = await reader.read();
-      if (done) { if (o.role === 'tap') lastKey.delete(o.srcId); break; }
+      if (done) { if (o.role === 'tap') { lastKey.delete(o.srcId); if (tapTs.get(o.srcId) === t) tapTs.delete(o.srcId); } break; }
       if (o.role === 'tap') {
         const routed = taps.get(o.srcId);
         // COPY EARLY: the passthrough write below detaches frame.data. Every
@@ -316,7 +316,10 @@ onrtctransform = (e) => {
               // only a keyless queue pays the clear + ask.
               let ki = -1;
               for (let qi = p.q.length - 1; qi >= 0; qi--) if (p.q[qi].type === 'key') { ki = qi; break; }
-              if (ki >= 0) { p.q.splice(0, ki); p.dropped++; }
+              if (ki > 0) { p.q.splice(0, ki); p.dropped++; }
+              // The latest key already heads a full queue: nothing is draining, so splice has nothing to drop.
+              // Hold that key alone and wait for a fresh one (deltas after this gap would break its chain).
+              else if (ki === 0) { p.q.length = 1; p.needKey = true; p.nkDrop = 0; p.seeded = false; p.dropped++; askKey(o.srcId, pid); }
               else { p.q.length = 0; p.needKey = true; p.dropped++; askKey(o.srcId, pid); }
             }
             if (p.needKey && frame.type !== 'key') {
@@ -375,7 +378,7 @@ onrtctransform = (e) => {
           // PAIRED REAL CONTENT KEY.
           if (frame.type === 'key') {
             p.kdrop = (p.kdrop || 0) + 1;
-            if (p.kdrop === 3 || p.kdrop % 30 === 0) askKey(o.srcId, o.pipeId);
+            if (p.kdrop === 3 || p.kdrop % 30 === 0) askKey(p.srcId || o.srcId, o.pipeId); // p.srcId: a reroute moved the source, o.srcId is the transform's first
           }
           continue;
         }
@@ -405,8 +408,8 @@ onrtctransform = (e) => {
           // keykick (seed the last key so a still share paints now, hold
           // deltas until a fresh key lands) and ask upstream.
           p.kdrop = (p.kdrop || 0) + 1;
-          if (p.kdrop === 3) { p.q.length = 0; p.needKey = true; p.nkDrop = 0; p.seeded = false; seedKey(o.srcId, o.pipeId); }
-          if (p.kdrop === 3 || p.kdrop % 30 === 0) askKey(o.srcId, o.pipeId);
+          if (p.kdrop === 3) { p.q.length = 0; p.needKey = true; p.nkDrop = 0; p.seeded = false; seedKey(p.srcId || o.srcId, o.pipeId); }
+          if (p.kdrop === 3 || p.kdrop % 30 === 0) askKey(p.srcId || o.srcId, o.pipeId); // p.srcId: a reroute moved the source, o.srcId is the transform's first
           continue;
         }
         p.q.shift(); p.kfAsk = 0;
