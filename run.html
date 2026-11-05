@@ -16294,6 +16294,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // channel can carry someone else's name, so nothing it says may be
     // written on their record, let alone make them a forger.
     let sigProven = false;
+    let gossipVouched = false;   // the flood frame in hand came over a member's proven channel (onGossip)
     function whoHeard(pid, msg, proven) {
       const e = whoEntry(pid); if (!e) return;
       e.last = Date.now();
@@ -17078,9 +17079,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Room-wide app traffic arrives on the mesh gossip lane (fanOut's
         // counterpart): the same sealed payload shapes as ever, routed to the
         // same handlers.
-        onGossip: (src, g, ageMs, scoped) => {
+        onGossip: (src, g, ageMs, scoped, link) => {
           if (!g || g.a !== 1 || !g.msg) return;
           if ((typeof isEjected === 'function' && isEjected(src) === true)) return false; // refused AND not forwarded: a forger's gossip stops at this seat
+          // TROLL GATE, for a room's flood. Past one section most authors are neither a link of mine nor in my occ, so the author
+          // alone cannot tell a far seat from a knocker. The channel can: a line a member handed me on its own proven channel is the room's.
+          // One that came from a stranger, or by no proven channel, stops here, so every member's forward is one a member took.
+          const vouched = link != null && !doorOutsider(String(link));
+          if (DOOR_DENY.has(g.msg.k) && !(g.msg.k === 'pwreset' && hasAdminRoom()) && doorOutsider(src) && !vouched) { doorDropped++; const dk = 'gsp.' + g.msg.k; doorDropKinds[dk] = (doorDropKinds[dk] || 0) + 1; return false; }
           // RULE 1: a status is heard from my SECTION or over my own link —
           // never off the room-wide flood. Refusing it here also stops it at
           // this seat (the mesh forwards nothing the app refused), so a client
@@ -17096,10 +17102,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // replayed pulse never reads as newly said.
           gossipAgeMs = ageMs > 0 ? ageMs : 0;
           sigProven = true; // gossip's author is S4-verified (verifyGossip)
+          gossipVouched = vouched;
           try {
             if (g.msg.kind) onSignal(src, g.msg);
             else if (g.msg.k) onRemote(src, g.msg);
-          } finally { gossipAgeMs = 0; sigProven = false; }
+          } finally { gossipAgeMs = 0; sigProven = false; gossipVouched = false; }
         },
         // R6 — "not one of the greeter blobs opens", which the wire also fires
         // for the door's own 'password required'. THAT SENTENCE HAS TWO CAUSES
@@ -20958,7 +20965,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // last frame of each kind is held (bounded) and replayed once the pair is a member, so a real joiner's first
       // status/avatar/history is not lost; a knocker that is never seated never shows.
       if (p.id && (DOOR_DENY.has(m.k) || (m.k === 'sig' && m.msg && DOOR_DENY_SIG.has(m.msg.kind)))) {
-        if (doorOutsider(p.id) && !(m.k === 'pwreset' && hasAdminRoom())) {   // an admin's change order: its signature decides (below), and a returning admin stands outside the room she re-locks
+        if (doorOutsider(p.id) && !gossipVouched && !(m.k === 'pwreset' && hasAdminRoom())) {   // an admin's change order: its signature decides (below), and a returning admin stands outside the room she re-locks
           doorDropped++; const dk = m.k === 'sig' ? 'sig.' + m.msg.kind : m.k; doorDropKinds[dk] = (doorDropKinds[dk] || 0) + 1;
           if (!p.doorHeld) p.doorHeld = new Map();
           if (p.doorHeld.has(dk) || p.doorHeld.size < 8) p.doorHeld.set(dk, m);   // one per kind: a flood holds at most 8 frames
@@ -36915,7 +36922,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       poisonEpochForTest: (n) => { myStatus.pwEp = n; broadcastStatus(); }, // a hostile client's pulse claiming generation n (its own epoch is untouched)
       sealedCopyForTest: async (to, obj) => { const fs = obj && obj.k === 'pwinfo' ? pwFramesOf(obj) : [obj]; if (!fs) return false; let ok = true; for (const f of fs) ok = (await relaySendSealed(to, f && f.k, f)) && ok; return ok; }, // a member's relay copy of a grant to one peer (what a replayed grant looks like on the wire)
       floodForTest: (n, kind) => { let k = 0; for (let i = 0; i < (n | 0); i++) { if (meshNode) { meshNode.gossip({ a: 1, msg: kind === 'status' ? { kind: 'status', s: Object.assign({}, myStatus, { at: Date.now() + i }), name: 'flood' } : { k: 'noop', i } }); k++; } } return k; }, // a hostile client's room-wide flood
-      gossipStats: () => (meshNode && meshNode.seat ? { dropped: meshNode.seat.gspDropped || 0, refused: meshNode.seat.gspRefused || 0, forged: meshNode.seat.gspForged || 0, inAll: meshNode.seat.gspInAll || 0, roomFlood: txStats.roomFlood || 0 } : null),
+      gossipStats: () => (meshNode && meshNode.seat ? { dropped: meshNode.seat.gspDropped || 0, refused: meshNode.seat.gspRefused || 0, forged: meshNode.seat.gspForged || 0, inAll: meshNode.seat.gspInAll || 0, roomFlood: txStats.roomFlood || 0, door: Object.assign({}, doorDropKinds) } : null),
+      strangerLineForTest: async (text, via, direct) => { const I = GifOS.meshIdentity, who = await I.mint(), id = 'stranger_' + Date.now(); const f = { t: 'GSP', gid: who.peerId + ':' + Date.now(), src: who.peerId, m: { a: 1, msg: { k: 'chat', m: { id, by: 'Stranger', byId: who.peerId, at: Date.now(), text: String(text) } } } }; f.s4 = await I.signGossip(who, f); meshNode.recvCtl(f, via || who.peerId, direct !== false); return id; }, // a knocker's signed line: over its own door pair (no via), or by no proven channel (direct false)
       forgeGossipForTest: (src, n) => { if (!meshNode || !meshNode._forgeGossipForTest) return 0; const ps = []; for (let i = 0; i < (n | 0); i++) ps.push({ a: 1, msg: { k: 'chat', m: { id: 'forged_' + i, by: 'Impostor', byId: src, at: Date.now(), text: 'forged line ' + i } } }); return meshNode._forgeGossipForTest(src, ps); }, // a hostile client speaking in someone else's name, with a valid signature of its own
       localStreamActive: () => !!localStream,
       pwBanForTest: (id) => pwBan(id),

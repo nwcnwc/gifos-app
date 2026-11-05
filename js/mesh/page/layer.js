@@ -87,7 +87,7 @@
    *   o.peer           my peer id (string)
    *   o.raw()          the ported Seat (or null before build)
    *   o.emit(peer, f)  hand a page frame (GSP / GSPS) to the wire (it signs gossip and sends on the dc)
-   *   o.onGossip(src, m, ageTicks, scoped) -> false refuses
+   *   o.onGossip(src, m, ageTicks, scoped, link) -> false refuses (link: the peer whose own proven channel carried it, if any)
    *   o.ckey(c)        the page's string cell key (net.topo.ckey)
    *   o.ownedLinks(c)  topo owned links of a coord (for the section scope)
    *   o.GSP_GUARD      false turns the flood guard off: harness controls only (0.9.24 env.GSP_GUARD; no wire passes it)
@@ -225,7 +225,7 @@
       ids.learn(m.src);
       const ag = Number.isInteger(m.ag) && m.ag > 0 ? Math.min(m.ag, 1 << 20) : 0;
       let own = m.m; try { if (m.m && typeof m.m === 'object') own = JSON.parse(JSON.stringify(m.m)); } catch (e) {}
-      if (o.onGossip) { let ok; try { ok = o.onGossip(m.src, own, ag, scoped); } catch (e) {} if (ok === false) { counters.gspRefused++; return; } }
+      if (o.onGossip) { let ok; try { ok = o.onGossip(m.src, own, ag, scoped, m.lk); } catch (e) {} if (ok === false) { counters.gspRefused++; return; } }
       const tx = new Map(); tx.set(m.src, 1); if (m.from != null) tx.set(m.from, 2);
       if (!m.eph) remember(m.gid, m.src, m.m, scoped ? m.sc : undefined, ag, m.s4, tx);
       const e = { gid: m.gid, src: m.src, m: m.m, sc: scoped ? m.sc : undefined, eph: m.eph ? 1 : 0, ag0: ag, s4: m.s4 };
@@ -384,7 +384,7 @@
 
     // seen(gid): a gossip frame I already took (the wire skips the signature check for its later copies)
     const seen = (gid) => typeof gid === 'string' && gseen.has(gid);
-    return { ids, view, gossip, gossipRecv, seen, setKicks, kickTally, kickDevs, kickCarry, kicked, setLeaf, setRefuses, roomDigest, sideOut, sideIn, afterTick, bump };
+    return { ids, view, gossip, gossipRecv, countForged: () => { counters.gspForged++; }, seen, setKicks, kickTally, kickDevs, kickCarry, kicked, setLeaf, setRefuses, roomDigest, sideOut, sideIn, afterTick, bump };
   }
 
   const api = Object.freeze({ create, makeIds });
