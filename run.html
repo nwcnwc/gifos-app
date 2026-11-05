@@ -15,8 +15,11 @@
      the runtime's bridge with none of the app CSP (site/js/runtime.js,
      clientShim / mountApp): this policy makes every non-about: target a
      refused navigation, in the browser, before any script runs. Guarded by
-     test/browser/e2e-app-frame-navigate.js. -->
-<meta http-equiv="Content-Security-Policy" content="frame-src about:">
+     test/browser/e2e-app-frame-navigate.js. The one other source is the
+     relay join check's Cloudflare Turnstile widget (gifos-net.js
+     relayTicket): an app frame sent there stays in its sandbox, and the
+     page there is Cloudflare's challenge, not anything an app can write. -->
+<meta http-equiv="Content-Security-Policy" content="frame-src about: https://challenges.cloudflare.com">
 <meta name="referrer" content="same-origin">
 <meta name="robots" content="noindex">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
@@ -4668,6 +4671,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <script src="js/mesh-media.js" defer></script>
   <script src="js/meet-pack.js" defer></script>
   <script src="js/meet-layout.js" defer></script>
+  <script src="js/meet-turn.js" defer></script>
+  <script src="js/meet-video-anywhere.js" defer></script>
   <script src="js/meet-leave.js" defer></script>
   <script src="js/meet-zones.js" defer></script>
   <script src="js/meet-views.js" defer></script>
