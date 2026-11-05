@@ -15158,7 +15158,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const pLive = p.connected && p.dc && p.dc.readyState === 'open';
       const unanswered = !!(p.pc && p.pc.signalingState === 'have-local-offer');
       const darkOffer = unanswered && (tlFiredPid.has(p.id) || (p.offerSentPc === p.pc && Date.now() - (p.offerSentAt || 0) >= LOST_OFFER_MS));
-      const forming = !pLive && p.pc && !darkOffer && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000 && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
+      // A fresh pc nothing has happened on (no offer either way, no ICE) is idle, not forming: the one a
+      // goodbye leaves behind for the seat's next dial. Counting it as forming made a dial request from a
+      // page back from a reload wait out this window and its own 4 s retries: the pair came up at 8-9 s.
+      const idle = !!(p.pc && p.pc.signalingState === 'stable' && p.pc.connectionState === 'new' && !p.offering);
+      const forming = !pLive && p.pc && !darkOffer && !idle && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000 && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
       if (typeof clog === 'function') clog('dial-request from ' + String(p.id || '?').slice(0, 6) + ' solo=' + (participantCount() <= 1) + ' live=' + !!pLive
         + ' init=' + iInitiate(p.id) + ' forming=' + !!forming + ' dark=' + !!darkOffer + ' pc=' + (p.pc ? p.pc.connectionState + '/' + p.pc.signalingState : '-')
         + ' age=' + Math.round((Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0)) / 100) / 10 + 's frag=' + Math.round((Date.now() - (p.fragDialAt || 0)) / 100) / 10 + 's');
