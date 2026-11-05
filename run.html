@@ -13390,7 +13390,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // the pc media-free until its channel is open (newPcFor / sendOffer),
     // and media is negotiated over that channel (wireDc onopen).
     let bootSeq = 0;
+    // A person who reaches no one keeps asking every door in the room for as
+    // long as the page is open, seated in a room of their own or not, and each
+    // redial is a fresh pc and a new record, so it can't remember its own wait.
+    // Remember it here, by person: while four or more have never answered, each
+    // is asked at a growing interval up to the cap, which keeps the page under
+    // the relay's rate at any number of doors. An answer is never held back.
+    const doorPace = new Map();
+    function doorPaceOk(to) {
+      const now = Date.now(), p = peers.get(to);
+      if (p && (p.connected || (p.dc && p.dc.readyState === 'open'))) { doorPace.delete(to); return true; }
+      const e = doorPace.get(to);
+      if (!e) { doorPace.set(to, { wait: 5000, at: now }); return true; }
+      let waiting = 0;
+      for (const v of doorPace.values()) if (now - v.at < 2 * DOOR_REDIAL_CAP) waiting++;
+      if (waiting < 4) { e.at = now; return true; }
+      if (now - e.at < e.wait) return false;
+      e.at = now; e.wait = Math.min(DOOR_REDIAL_CAP, e.wait * 2);
+      return true;
+    }
     function relayBootSend(to, msg) {
+      if (msg.kind === 'offer' && !doorPaceOk(to)) return;
       if (msg.kind === 'offer' || msg.kind === 'answer') {
         const b = net.bootOf(msg.sdp, ++bootSeq);
         if (!b) { txStats.relayUnfit++; if (typeof clog === 'function') clog('relay: a description with media never leaves (' + msg.kind + ' to ' + String(to).slice(0, 6) + ')'); return; }
@@ -13407,7 +13427,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // relayName(pid): my name to a socketed member — the dial request ("I am
     // here, dial me": onRelayPeer dials back when it is the initiator and no
     // pair is live), and the name the locked-out line shows them.
-    function relayName(pid) { return relaySendSealed(pid, 'name', { k: 'name', n: net.relayNameFit(myName()) }); }
+    function relayName(pid) { if (!doorPaceOk(pid)) return; return relaySendSealed(pid, 'name', { k: 'name', n: net.relayNameFit(myName()) }); }
     // onRelayPeer(from, ty, f): a relay frame of the law's shape, opened and
     // checked (relayFrameAllowed). Dispatch by its type.
     function onRelayPeer(from, ty, f) {
@@ -14151,7 +14171,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // persistence gate for the rebuild-on-offer path (transients recover
         // via ICE restart and must never trigger a teardown)
         if (pc.connectionState === 'failed' || pc.connectionState === 'closed') { if (!p.deadSince) p.deadSince = Date.now(); }
-        else if (p.connected) { p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; if (!seatStranger(p)) restoreDoorTile(p); try { updateTile(p.id); } catch (e) {} }
+        else if (p.connected) { doorPace.delete(p.id); p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; if (!seatStranger(p)) restoreDoorTile(p); try { updateTile(p.id); } catch (e) {} }
         updateStatus();
         if (p.connected) { p.altPath = false; p.tlAt = 0; p.hungUp = false; adapt(); } // rotation ends when the pair lands; D5 edge re-arms
         // D5: 'closed' out of nowhere (we didn't rebuild it and the peer is
