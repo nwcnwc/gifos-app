@@ -316,7 +316,10 @@ onrtctransform = (e) => {
               // only a keyless queue pays the clear + ask.
               let ki = -1;
               for (let qi = p.q.length - 1; qi >= 0; qi--) if (p.q[qi].type === 'key') { ki = qi; break; }
-              if (ki >= 0) { p.q.splice(0, ki); p.dropped++; }
+              if (ki > 0) { p.q.splice(0, ki); p.dropped++; }
+              // The latest key already heads a full queue: nothing is draining, so splice has nothing to drop.
+              // Hold that key alone and wait for a fresh one (deltas after this gap would break its chain).
+              else if (ki === 0) { p.q.length = 1; p.needKey = true; p.nkDrop = 0; p.seeded = false; p.dropped++; askKey(o.srcId, pid); }
               else { p.q.length = 0; p.needKey = true; p.dropped++; askKey(o.srcId, pid); }
             }
             if (p.needKey && frame.type !== 'key') {
