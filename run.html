@@ -12932,12 +12932,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const RELAY_NAME_MAX = 40, RELAY_PW_MAX = 64;
     const epOk = (ep) => Number.isInteger(ep) && ep >= 0;
     // The exact field set of each payload (the padding field `_` beside it).
-    const RELAY_PAYLOAD_KEYS = { boot: 'k,t,u,w,s,v', fp: 'k,v,fp', ice: 'k,c,end', name: 'k,n', password: 'k,pw,ep,pr', pwsig: 'k,sig', pwpub: 'k,ep,ts,pub', pwby: 'k,ep,by', busy: 'k,g,i,n,ref,cool' };
+    const RELAY_PAYLOAD_KEYS = { boot: 'k,t,u,w,s,v,dr', fp: 'k,v,fp', ice: 'k,c,end', name: 'k,n', password: 'k,pw,ep,pr', pwsig: 'k,sig', pwpub: 'k,ep,ts,pub', pwby: 'k,ep,by', busy: 'k,g,i,n,ref,cool' };
     function relayFrameAllowed(ty, inner) {
       if (!RELAY_TYPES.has(ty) || !inner || typeof inner !== 'object' || Array.isArray(inner) || inner.k !== ty || !net.fitsFixed(inner)) return null;
       const keys = RELAY_PAYLOAD_KEYS[ty].split(',');
       for (const k of Object.keys(inner)) if (k !== '_' && keys.indexOf(k) < 0) return null;
-      if (ty === 'boot') return net.bootOk(inner) ? ty : null;
+      if (ty === 'boot') return net.bootOk(inner) && (inner.dr === undefined || inner.dr === 1) ? ty : null;   // dr: an unseated dialler at the door (sendOffer)
       if (ty === 'fp') return net.fpOk(inner) ? ty : null;
       if (ty === 'ice') return (inner.end === 1 && !('c' in inner)) || (!('end' in inner) && !!net.candOfIce(inner)) ? ty : null;
       if (ty === 'name') return typeof inner.n === 'string' && inner.n.length <= RELAY_NAME_MAX ? ty : null;
@@ -13397,6 +13397,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const b = net.bootOf(msg.sdp, ++bootSeq);
         if (!b) { txStats.relayUnfit++; if (typeof clog === 'function') clog('relay: a description with media never leaves (' + msg.kind + ' to ' + String(to).slice(0, 6) + ')'); return; }
         relaySendSealed(to, 'name', { k: 'name', n: net.relayNameFit(myName()) }); // the name beside every bootstrap: both sides can say who tried to reach them
+        if (msg.kind === 'offer' && msg.dr === 1) b.boot.dr = 1;   // the door's gate reads it (onSignal): an unseated dialler is not a stale member
         relaySendSealed(to, 'boot', b.boot);
         relaySendSealed(to, 'fp', b.fp);
         return;
@@ -13415,9 +13416,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function onRelayPeer(from, ty, f) {
       if (ty === 'busy') { try { if (meshNode && meshNode.relayBusyIn) meshNode.relayBusyIn(from, f); } catch (e) {} return; }
       if (ty === 'boot' || ty === 'fp') {
+        const bootF = ty === 'boot' ? f : (bootParts.get(from) || {}).boot;
         const desc = takeBootPart(from, ty, f);
         if (!desc) return;
-        onSignal(from, { kind: desc.type, sdp: desc, ib: 1, boot: 1 });
+        const sig = { kind: desc.type, sdp: desc, ib: 1, boot: 1 };
+        if (bootF && bootF.dr === 1) sig.dr = 1;
+        onSignal(from, sig);
         return;
       }
       if (ty === 'ice') {
