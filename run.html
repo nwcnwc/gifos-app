@@ -32981,7 +32981,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function toggleVote(id) {
       if (hasAdminRoom()) return; // admin rooms use the admin's ban, not votes
       const dev = devOf[id];
-      if (!dev) return;
+      if (!dev) { setStatus(uiText('stStillLearningWhoThisIs', 'Still learning who this is — try again in a moment.')); return; }
       const on = !myVoteoffs.has(dev);
       if (on) myVoteoffs.add(dev); else myVoteoffs.delete(dev);
       saveVoteoffs(myVoteoffs);
