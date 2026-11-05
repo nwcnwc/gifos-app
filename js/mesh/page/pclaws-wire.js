@@ -23,6 +23,7 @@
   const hash = req('../hash.js', 'meshHash');
   const seatM = req('../seat.js', 'meshSeat');
   const PCL = req('../pclaws.js', 'meshPcLaws');
+  const { ckey } = req('../topo.js', 'meshTopo');
 
   const K = C_.consts, E = C_.enums;
   const { LK_NONE, LK_DIALING, LK_OPEN, LK_CLOSED, LS_NONE, LS_OPEN } = E;
@@ -88,7 +89,7 @@
     // a door's own fields (sim startDial), at either end: o = the outside bits, a = the dialler
     function doorInit(L, a, b, o) {
       L.outside = o; if (!o) return;
-      L.dBorn = L.dProg = T(); L.dAsked = L.dHomed = L.dGw = L.dSat = false; L.dHoAt = -1; L.dWait = -1; L.dOwed = false; L.dWaitAtFind = -1; L.dOwedAt = -1; L.dHeard = 0; L.dIn = !(o & (1 << lEnd(a, b)));
+      L.dBorn = L.dProg = T(); L.dAsked = L.dHomed = L.dGw = L.dSat = false; L.dHoAt = -1; L.dWait = -1; L.dOwed = false; L.dWaitAtFind = -1; L.dOwedAt = -1; L.dHeard = 0; L.dPlaced = 0; L.dIn = !(o & (1 << lEnd(a, b)));
       if (o !== 3) { const g = (o & (1 << lEnd(a, b))) ? b : a; L.dG = g; doorCount(g, L.dIn, +1); }
     }
     function doorEndCount(L) { if (L.outside && L.outside !== 3 && L.dG === me && !L.dUncounted) { L.dUncounted = true; doorCount(me, L.dIn, -1); } }
@@ -109,7 +110,7 @@
     let upNext = -1;
     function mark(x) {
       const L = LINKS.get(x); const q0 = L && L.q.length ? L.q[0] : null;
-      return { s: mySeated() ? 1 : 0, up: (L && L.uplink) || upNext === x ? 1 : 0, mt: q0 ? q0.t : null, ck: q0 && (q0.t === 'HELLO' || q0.t === 'CLAIM' || (q0.t === 'CHALLENGE' && q0.tag === 25)) ? q0.ck : 0, tier: mySeat() ? mySeat().ctier : 0 };
+      return { s: mySeated() ? 1 : 0, up: (L && L.uplink) || upNext === x ? 1 : 0, mt: q0 ? q0.t : null, ck: q0 && (q0.t === 'HELLO' || q0.t === 'CLAIM' || (q0.t === 'CHALLENGE' && (q0.tag === 25 || q0.tag === K.GA_TAG))) ? q0.ck : 0, tier: mySeat() ? mySeat().ctier : 0 };
     }
 
     // door progress (sim linkDeliver), run by each end for the frames it sends and the frames it receives
@@ -125,7 +126,7 @@
     function linkDeliver(from, to, m, L) {
       L.carried = true; L.txAt[mine(to)] = T();
       if (L.outside) m.dsat = mySeated();
-      doorProg(L, m.t);
+      doorProg(L, m.t); if (m.t === 'PLACE' && L.outside && L.dBorn >= 0) L.dPlaced |= (1 << mine(to));   // L16.3.1: my end sent it
       m.to = to; m.from = from; m.lk = (m.rvia < 0) ? from : -1; m.lkEp = L.epoch;
       if (!io.send(to, m)) trace('PCW-SENDFAIL', me, null, 'peer=%d mt=%d', to, mtI(m.t));
     }
@@ -228,10 +229,17 @@
     // linkWhy's friend-hop reason reads FH[me]: my relay roles, now (the ids are too wide for an array: only my own slot)
     const FH = { get length() { return me + 1; } };
     Object.defineProperty(FH, me, { get: () => o.fh.roles() });
+    // L39.2, L41.4: a question about my cell, or a cell of my links, reaches me at my budget (the page passed no contest, so it read false)
+    // C++: mesh_gaps3_fab.inc:l392Contest
+    function l392Page(a, b, mt, ck) {
+      const s = seats[a]; if (mt !== 'CHALLENGE' || !ck || !s || !s.hasCoord || s.state !== 3) return false;
+      if (ckey(s.coord) !== ck && !s.ownedLinkCell(ck)) return false;
+      return pc.l23GreetSlot(a, b, ck);
+    }
     const P = {
       w, lv, seats, alive, isFrozen: () => false, radioOff: () => false, trace,
       busPush: (due, m) => busPush(m), schedL10, wireTx: () => {}, pairKey, grpReach: () => true,
-      l392Contest: (a, b, mt, ck) => (o.l392Contest ? o.l392Contest(a, b, mt, ck) : false), relayMeter: () => {},
+      l392Contest: (a, b, mt, ck) => (o.l392Contest ? o.l392Contest(a, b, mt, ck) : l392Page(a, b, mt, ck)), relayMeter: () => {},
       fhopActive: () => !!o.fh, FH, fhopFriendFor: (a, b) => !!o.fh && a === me && o.fh.friendFor(a, b),
       phys, S, LINKS: new Map(), LINKPEERS,
     };
@@ -339,6 +347,7 @@
           if (L.dHoAt >= 0 && T() - L.dHoAt >= K.L16_HO_CLOSE && !(L.dOwed && L.dWait >= 0)) why = 'handed';
           else if (L.dGw && !L.dIn) { if (idle > K.L16_GW_IDLE && !(L.dWait >= 0)) why = 'gw-idle'; else if (age > K.L16_GW_LIFE) why = 'gw-life'; }
           else if (L.dIn && L.state === LK_OPEN && !L.dAsked && L.dProg === L.dBorn) { if (age > DOOR_FIRST_FRAME) why = 'unnamed'; }   // the sim delivers the dial's queued frame with the open; here it follows the dc's open over the verify chain
+          else if (L.dIn && (L.dPlaced & (1 << mine(x)))) { if (age > K.L16_LIFE) why = 'life'; }   // L16.3.1: the placee closes it (L15.5), or the life limit
           else if (L.dIn && !L.dAsked && L.state === LK_OPEN && idle > K.L16_ANS_IDLE) why = 'idle';
           else if (idle > K.L16_IDLE) why = 'idle'; else if (age > K.L16_LIFE) why = 'life';
           if (why) {

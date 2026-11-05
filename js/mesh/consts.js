@@ -190,6 +190,7 @@
     L25_WIT_WAIT: 16,   // C++: mesh_witness.inc:L25_WIT_WAIT  (L25_WAIT)
     L25_WIT_MIN: 3,   // C++: mesh_witness.inc:L25_WIT_MIN
     L43_WAIT: 76,   // C++: mesh_ijoin.inc:L43_WAIT  (60+L5_SETTLE)
+    GA_REASK: 4,   // C++: mesh_gapa.inc:GA_REASK
     GA_FIND_WIN: 90,   // C++: mesh_gapa.inc:GA_FIND_WIN  ((int)LAW_COMPACT_PERIOD)
     SOCK_CLOSE_CRASH: 4,   // C++: mesh.cpp:SOCK_CLOSE_CRASH
     H_RINGLIE_BIT: 8192,   // C++: mesh.cpp:H_RINGLIE_BIT
