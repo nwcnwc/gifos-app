@@ -23,6 +23,7 @@
   const hash = req('../hash.js', 'meshHash');
   const seatM = req('../seat.js', 'meshSeat');
   const PCL = req('../pclaws.js', 'meshPcLaws');
+  const { ckey } = req('../topo.js', 'meshTopo');
 
   const K = C_.consts, E = C_.enums;
   const { LK_NONE, LK_DIALING, LK_OPEN, LK_CLOSED, LS_NONE, LS_OPEN } = E;
@@ -228,10 +229,17 @@
     // linkWhy's friend-hop reason reads FH[me]: my relay roles, now (the ids are too wide for an array: only my own slot)
     const FH = { get length() { return me + 1; } };
     Object.defineProperty(FH, me, { get: () => o.fh.roles() });
+    // L39.2: a question about my cell reaches me at my budget (the page passed no contest, so it read false)
+    // C++: mesh_gaps3_fab.inc:l392Contest
+    function l392Page(a, b, mt, ck) {
+      const s = seats[a]; if (mt !== 'CHALLENGE' || !ck || !s || !s.hasCoord || s.state !== 3) return false;
+      if (ckey(s.coord) !== ck) return false;
+      return pc.l23GreetSlot(a, b, ck);
+    }
     const P = {
       w, lv, seats, alive, isFrozen: () => false, radioOff: () => false, trace,
       busPush: (due, m) => busPush(m), schedL10, wireTx: () => {}, pairKey, grpReach: () => true,
-      l392Contest: (a, b, mt, ck) => (o.l392Contest ? o.l392Contest(a, b, mt, ck) : false), relayMeter: () => {},
+      l392Contest: (a, b, mt, ck) => (o.l392Contest ? o.l392Contest(a, b, mt, ck) : l392Page(a, b, mt, ck)), relayMeter: () => {},
       fhopActive: () => !!o.fh, FH, fhopFriendFor: (a, b) => !!o.fh && a === me && o.fh.friendFor(a, b),
       phys, S, LINKS: new Map(), LINKPEERS,
     };
