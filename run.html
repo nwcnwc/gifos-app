@@ -13249,7 +13249,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const handoff = (p) => {
         if (!p || p.id === viaPid || !(p.connected && p.dc && p.dc.readyState === 'open')) return false;
         if (m.id) fwdSeenNote(fwdSeen, m.id);
-        txStats.hopFwd++; dcSend(p, envl); return true;
+        txStats.hopFwd++; dcSend(p, envl); if (kind === 'fsig') { try { meshNode.doorWalked(p.id); } catch (e) {} } return true;   // L16.3.1: a door carrying a placee's set-up is in use
       };
       const hp = nextHopDc(m.to, m.tc);
       if (hp && handoff(hp)) return;
@@ -21117,6 +21117,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const k3 = m.m && m.m.kind;
         if (!(k3 === 'offer' || k3 === 'answer' || k3 === 'ice' || k3 === 'appstop')) return;
         noteCrumb(m.from, p && p.id); // the answer retraces this path
+        if (p) { try { meshNode.doorWalked(p.id); } catch (e) {} }   // L16.3.1: a door carrying a placee's set-up is in use
         if (m.to === myId) {
           // The same envelope id arrives once per door. Take the first copy.
           // An intermediate hop still records the id only on handoff, so a
