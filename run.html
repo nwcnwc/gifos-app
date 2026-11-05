@@ -5630,6 +5630,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (countEl && restEl) { countEl.textContent = ''; countEl.hidden = true; restEl.textContent = m; }
       else statusEl.textContent = m;
       if (statusEl.title !== String(m)) statusEl.title = String(m);
+      // Why this line is on screen is state (data-why / data-link / data-back), not words: the live badge reads these, never the sentence.
+      if (statusEl.dataset) { statusEl.dataset.why = ''; statusEl.dataset.link = ''; statusEl.dataset.back = ''; }
       statusEl.classList.toggle('alert', blocking || !!hold);
       statusHoldUntil = Date.now() + (hold || (blocking ? 12000 : 4000));
       // The OFF AIR / LIVE banner follows the line (and the camera) on every paint.
@@ -5826,15 +5828,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const b = document.getElementById('livebadge');
       if (!b) return;
       if (!document.body.classList.contains('broadcast')) { b.dataset.state = ''; return; }
-      const text = statusDetail || statusEl.textContent || '';
+      const sd = statusEl.dataset || {};
       const kind = (statusEl.dataset && statusEl.dataset.kind) || '';
       const reachDown = !!(statusEl.dataset && statusEl.dataset.reach && statusEl.dataset.reach !== 'partial');
       // A viewer who is still arriving, or who is alone because the service
       // has not started, is off air. RECONNECTING is a link that dropped, a
       // door they are knocking on again, or a network that cannot get through.
-      const joining = /Joining the broadcast/i.test(text);
+      const joining = sd.why === 'joining';
       const alone = kind === 'alone';
-      const linkDown = /reconnecting|Joining the broadcast|Connection trouble|Could not join|Getting you back/i.test(text) || reachDown;
+      const linkDown = sd.link === '1' || sd.back === '1' || !!sd.why || reachDown;
       const host = typeof bcHostStored === 'function' && bcHostStored();
       const picture = myStatus && !myStatus.camOff;
       // A rebroadcast is never LIVE (Q77): the host's own, or one on the
@@ -9300,12 +9302,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let focusId = null;
     function layout() {
       reactStats.layouts++;
-      const hands = [];
-      const collect = (id, st) => { if (st && st.hand) hands.push([id, st.hand]); };
-      collect('me', myStatus);
-      for (const pid of peers.keys()) collect(pid, statusOf.get(pid));
-      hands.sort((a, b) => a[1] - b[1]);
-      const rank = new Map(hands.map((h, i) => [h[0], i]));
+      // One order: the banner's queue (handQueue), so a tile and the banner never disagree.
+      const rank = new Map(handQueue().map((e, i) => [e.i === myId ? 'me' : e.i, i]));
       const stg = stageIds(); // the Stage floats first, in step-up order
       const apply = (id, t) => {
         const focused = focusId === id;
@@ -11939,6 +11937,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const plus = foldPartial ? '+' : '';
       let countText = '';
       let restText = '';
+      let gettingBack = false;
       if (refused) {
         restText = uiText('stThePeopleInThisRoom', '\u26d4 The people in this room voted not to let this device in.');
       } else if (atPwPrompt()) {
@@ -11952,6 +11951,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } else if (shown === 1) {
         if (atDoor) {
           countText = uiText('backIn', 'Getting you back in');
+          gettingBack = true;
           restText = ' — ' + uiText('waiting', 'waiting for the others to answer…') + tail;
         } else if (BROADCAST) {
           // A service seat says what it is. The host's sentence follows the lamp.
@@ -12000,6 +12000,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (statusEl.dataset.kind !== statusKind) statusEl.dataset.kind = statusKind;
         const dr = leftUp ? '' : (reachState || ''), du = !leftUp && reachState === 'partial' ? String(reach.dead) : '';
         if (statusEl.dataset.reach !== dr) statusEl.dataset.reach = dr;
+        // The badge's inputs, written with the line: a link note shows in every branch but the refusal and the password prompt.
+        statusEl.dataset.why = '';
+        statusEl.dataset.link = (link && !refused && !atPwPrompt()) ? '1' : '';
+        statusEl.dataset.back = gettingBack ? '1' : '';
         if (statusEl.dataset.unreached !== du) statusEl.dataset.unreached = du;
       }
       if (reachLine) statusEl.classList.add('alert');
@@ -17356,7 +17360,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // person can actually trigger in the same words the button uses \u2014 one
         // rule, one sentence \u2014 and never show the raw wire text for it.
         else if (/admins only/.test(m.error || '')) setStatus(PW_ADMIN_ONLY);
-        else if (!/password required|session is full/.test(m.error || '')) setStatus('Connection trouble: ' + m.error);
+        else if (!/password required|session is full/.test(m.error || '')) { setStatus('Connection trouble: ' + m.error); try { statusEl.dataset.why = 'trouble'; paintLiveBadge(); } catch (e) {} }
       }
     }
     // The steady socket kicks itself on visibility/online; only the camera
@@ -17539,7 +17543,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       lgLvlShown = lvl;
       if (lvl >= 1) { for (const jk of lgWoken) setJobActive(jk, false); lgWoken.clear(); }
       const fps = compFps();
-      for (const pk of [prodPack, sdPack, ...sdnPacks.values(), ...l14Packs.values()]) { try { if (pk) pk.setFps(fps); } catch (e) {} }
+      for (const pk of [prodPack, sdPack, ...sdnPacks.values(), ...l14Packs.values(), ...l14RelPacks.values()]) { try { if (pk) pk.setFps(fps); } catch (e) {} }
       try { adapt(); } catch (e) {}
     }
     GifOS.meshMedia.workerClock(1000, () => { try { lgLevelTick(); } catch (e) {} });
@@ -19298,7 +19302,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         sessId = d.sid; sessTok = d.tok; roomE2E = d.key; pwProof = pr;
         myDevHash = dh.slice(0, 16);
         startMesh();
-      }).catch((err) => setStatus('Could not join the meeting (' + ((err && err.name) || 'Error') + ').'));
+      }).catch((err) => { setStatus('Could not join the meeting (' + ((err && err.name) || 'Error') + ').'); try { statusEl.dataset.why = 'nojoin'; paintLiveBadge(); } catch (e2) {} });
     }
 
     // Meetings joined via a shared link go in the same list the desktop's
@@ -19812,7 +19816,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (BROADCAST) {
             const hint = document.querySelector('.share .hint');
             if (hint) hint.textContent = 'Share this link — anyone who opens it is watching:';
-            if (!bcHostStored()) setStatus(uiText('bcStageLine', 'Joining the broadcast…'));
+            if (!bcHostStored()) { setStatus(uiText('bcStageLine', 'Joining the broadcast…')); try { statusEl.dataset.why = 'joining'; paintLiveBadge(); } catch (e) {} }
             else {
               // The HOST auto-steps onto the Stage: a broadcast page's whole
               // point, and the Stage is where their camera reaches the room.
