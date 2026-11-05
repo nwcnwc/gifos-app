@@ -8135,11 +8135,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // window — deliberately a janitor, not a lock: an admin-less room is
     // already blurred and unmoderated, so squatting one gains little.
     const ADMIN_GRACE_MS = 10000, ADMIN_CLOSE_MS = 5 * 60 * 1000;
-    let admGraceT = null, admCloseT = null, admTickT = null, admDeadline = 0;
+    let admGraceT = null, admTickT = null, admDeadline = 0;
     const fmtLeft = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
     function clearAdminClose() {
-      clearTimeout(admGraceT); clearTimeout(admCloseT); clearInterval(admTickT);
-      admGraceT = admCloseT = admTickT = null; admDeadline = 0;
+      clearTimeout(admGraceT); clearInterval(admTickT);
+      admGraceT = admTickT = null; admDeadline = 0;
       const el = document.getElementById('admcount'); if (el) el.style.display = 'none';
     }
     function tickAdminClose() {
@@ -8152,7 +8152,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function startAdminCountdown() {
       admGraceT = null;
       admDeadline = Date.now() + ADMIN_CLOSE_MS;
-      admCloseT = setTimeout(closeRoomNoHost, ADMIN_CLOSE_MS);
       admTickT = setInterval(tickAdminClose, 1000);
       tickAdminClose();
     }
@@ -8264,7 +8263,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // The admin proof must still be inside HOLDOVER_MS, admSeenLive's cap.
       const now = Date.now();
       for (const [pid, t] of admSeen) if (now - t < HOLDOVER_MS && stHold(pid)) { clearAdminClose(); return; }
-      if (admGraceT || admCloseT) return;      // already in grace or counting
+      if (admGraceT || admTickT) return;       // already in grace or counting
       admGraceT = setTimeout(startAdminCountdown, ADMIN_GRACE_MS); // silent 10s grace
     }
 
@@ -16410,7 +16409,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       return Promise.all(jobs);
     }
-    setInterval(() => { if (peers.size) { whoObserve(); tellOutdated(); } }, 15000);
+    GifOS.meshMedia.workerClock(15000, () => { if (peers.size) { whoObserve(); tellOutdated(); } });
     // TELL AN OUT-OF-DATE PEER WHAT TO DO. A participant whose page sends no
     // relay statement is running a GifOS older than this meeting needs: its
     // video and sound reach nobody who verifies, and its own page (frozen
@@ -16949,10 +16948,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // went unreadable and no second dial ever came; 95s of solitude with a
       // remembered target). As long as I stay solo and remember who the
       // other half is, re-dial every ~15s; repopulation ends it.
-      if (!fragRetryT) fragRetryT = setInterval(() => {
-        if (participantCount() > 1) { clearInterval(fragRetryT); fragRetryT = 0; fragPingId = null; return; }
+      if (!fragRetryT) fragRetryT = GifOS.meshMedia.workerClock(16000, () => {
+        if (participantCount() > 1) { fragRetryT.stop(); fragRetryT = 0; fragPingId = null; return; }
         if (fragPingId) { fragPingAt = 0; fragRescue(fragPingId); }
-      }, 16000);
+      });
     }
     // RELOAD TREE MEMORY: while seated, the tab keeps the
     // genesis key and the Section-1 member ids of the tree it sits in
@@ -20098,7 +20097,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // but does NOT arm meeting-admin semantics — the owner's authority is over
     // app STATE only (the lane's owner key), never the door.
     const appRoomStr = (j) => 'app~' + (j.owned ? j.short + '~' + j.av + '~' : '') + j.k;
+    let appRoomTicking = false;
+    const armAppRoomTick = () => { if (!appRoomTicking) { appRoomTicking = true; setInterval(appRoomTick, 2000); } }; // only an app room runs it
     function bootAppRoom() {
+      armAppRoomTick();
       document.body.classList.add('app-room');
       try { refreshAudioBtn(); } catch (e) {}
       // A solo app that Invite turns into a room now speaks for the room.
@@ -20363,7 +20365,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // The CALL LAYER in an app room is opt-in, always: the plane being
     // available obligates nobody's camera. A quiet member sees who's live and
     // chooses; their own mic/cam tap opts them in too. Never silent tiles.
-    setInterval(() => {
+    const appRoomTick = () => {
       if (!document.body.classList.contains('app-room')) return;
       // App rooms may go beat-quiet (a 2-person room whose owner died sends
       // nothing) — reconcile on the tick so owner-away is TIME-driven, not
@@ -20387,7 +20389,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         document.getElementById('callbanner-txt').textContent = live + (live === 1 ? ' person is' : ' people are') + ' on the call in this room';
         b.style.display = 'flex';
       } else b.style.display = 'none';
-    }, 2000);
+    };
     document.getElementById('callbanner-join').onclick = () => {
       document.body.classList.add('call-on');
       document.getElementById('callbanner').style.display = 'none';
@@ -25325,14 +25327,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     // A stager that never beat (an older page) is judged as before.
     function stgStale(rk) { const e = stgBeats.get(rk); return !!e && Date.now() - e.at > STG_BEAT_STALE_MS; }
-    setInterval(() => {
+    // On the worker clock: a stale beat stops relayed media and delists the stager, so a hidden stager's throttled page timer must not reach it.
+    GifOS.meshMedia.workerClock(STG_BEAT_MS, () => {
       try {
         const t0 = stgBeatCost ? performance.now() : 0;
         if (stageIds().includes(myId) && myIdentity) { const key = 'stg:' + myId, b = Date.now(); stgBeatNew(key, b); const pub = myIdentity.pubB64; net.edSign(myIdentity.priv, stgBeatSp(key, b)).then((sig) => stgBeatFlood(key, b, null, sig, pub)).catch(() => {}); }
         if (stgBeatCost) stgBeatCost.ms += performance.now() - t0;
         for (const [k, e] of stgBeats) if (Date.now() - e.at > 300000) stgBeats.delete(k);
       } catch (e) {}
-    }, STG_BEAT_MS);
+    });
     function prefCand(rk, cand) {
       const c = meshCoord(); if (!c) return null;
       // IDENTITY, NOT JUST KEY (2026-08-01). These two used to match on the
@@ -36643,6 +36646,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       appBarForTest: (talkOn) => {
         document.body.classList.add('has-app');
         if (talkOn) {
+          armAppRoomTick();
           document.body.classList.add('app-room');
           appMode = 'host';
           myStatus.app = Object.assign(myStatus.app || { s: 'qa-talk' }, { audio: true });
@@ -36864,7 +36868,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         admins: admins.map((x) => String(x).slice(0, 6)),
         seen: Array.from(admSeen.entries()).map(([p, t]) => String(p).slice(0, 6) + ':' + (Date.now() - t) + 'ms'),
         gone: Array.from(meshGone.entries()).map(([p, t]) => String(p).slice(0, 6) + ':' + (Date.now() - t) + 'ms'),
-        grace: !!admGraceT, closing: !!admCloseT,
+        grace: !!admGraceT, closing: !!admTickT,
         mesh: (meshNode && meshNode.tlState) ? meshNode.tlState() : null,
       }),
       myBlur: () => blurLevel(myStatus.blur),
