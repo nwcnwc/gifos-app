@@ -6772,8 +6772,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         ad: a ? { s: a.s, k: a.k, relay: a.relay, name: a.name, mesh: !!a.mesh, pk: a.pk, ts: a.ts, byName: a.byName, audio: !!a.audio } : null,
         away: !!myStatus.away, vup: myStatus.vup || [], vdn: myStatus.vdn || [], vab: myStatus.vab || [] });
       if (typeof meshNode.setRefuses === 'function') meshNode.setRefuses(!consents(myStatus));
-      // L10.1: a hand is one of the seat's own facts, so a change goes out early instead of on the next beat
-      try { const r = meshNode.raw; if (r && !r.handT !== !myStatus.hand) r.handT = myStatus.hand ? r.TICK + 1 : 0; } catch (e) {}
     }
     // Presence: the mesh occ map IS the local count — distinct peers at
     // distinct coords in my view of the tree, me included. Past one section
@@ -13208,7 +13206,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const handoff = (p) => {
         if (!p || p.id === viaPid || !(p.connected && p.dc && p.dc.readyState === 'open')) return false;
         if (m.id) fwdSeenNote(fwdSeen, m.id);
-        txStats.hopFwd++; dcSend(p, envl); return true;
+        txStats.hopFwd++; dcSend(p, envl); if (kind === 'fsig') { try { meshNode.doorWalked(p.id); } catch (e) {} } return true;   // L16.3.1: a door carrying a placee's set-up is in use
       };
       const hp = nextHopDc(m.to, m.tc);
       if (hp && handoff(hp)) return;
@@ -13351,7 +13349,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // the pc media-free until its channel is open (newPcFor / sendOffer),
     // and media is negotiated over that channel (wireDc onopen).
     let bootSeq = 0;
+    // A person who reaches no one keeps asking every door in the room for as
+    // long as the page is open, seated in a room of their own or not, and each
+    // redial is a fresh pc and a new record, so it can't remember its own wait.
+    // Remember it here, by person: while four or more have never answered, each
+    // is asked at a growing interval up to the cap, which keeps the page under
+    // the relay's rate at any number of doors. An answer is never held back.
+    const doorPace = new Map();
+    function doorPaceOk(to) {
+      const now = Date.now(), p = peers.get(to);
+      if (p && (p.connected || (p.dc && p.dc.readyState === 'open'))) { doorPace.delete(to); return true; }
+      const e = doorPace.get(to);
+      if (!e) { doorPace.set(to, { wait: 5000, at: now }); return true; }
+      let waiting = 0;
+      for (const v of doorPace.values()) if (now - v.at < 2 * DOOR_REDIAL_CAP) waiting++;
+      if (waiting < 4) { e.at = now; return true; }
+      if (now - e.at < e.wait) return false;
+      e.at = now; e.wait = Math.min(DOOR_REDIAL_CAP, e.wait * 2);
+      return true;
+    }
     function relayBootSend(to, msg) {
+      if (msg.kind === 'offer' && !doorPaceOk(to)) return;
       if (msg.kind === 'offer' || msg.kind === 'answer') {
         const b = net.bootOf(msg.sdp, ++bootSeq);
         if (!b) { txStats.relayUnfit++; if (typeof clog === 'function') clog('relay: a description with media never leaves (' + msg.kind + ' to ' + String(to).slice(0, 6) + ')'); return; }
@@ -13368,7 +13386,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // relayName(pid): my name to a socketed member — the dial request ("I am
     // here, dial me": onRelayPeer dials back when it is the initiator and no
     // pair is live), and the name the locked-out line shows them.
-    function relayName(pid) { return relaySendSealed(pid, 'name', { k: 'name', n: net.relayNameFit(myName()) }); }
+    function relayName(pid) { if (!doorPaceOk(pid)) return; return relaySendSealed(pid, 'name', { k: 'name', n: net.relayNameFit(myName()) }); }
     // onRelayPeer(from, ty, f): a relay frame of the law's shape, opened and
     // checked (relayFrameAllowed). Dispatch by its type.
     function onRelayPeer(from, ty, f) {
@@ -13402,7 +13420,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return;
       }
       if (ty === 'password' || ty === 'pwsig' || ty === 'pwpub' || ty === 'pwby') {
-        if (doorOutsider(from) && !statusOf.has(from)) { doorDropped++; return; }   // TROLL GATE: a knocker never re-keys a seated room
+        // TROLL GATE: a knocker never re-keys a seated room. An admin room's order frames pass: its signature decides, and a returning admin has no other way to the room she re-locks.
+        if (doorOutsider(from) && !statusOf.has(from) && !(hasAdminRoom() && ty !== 'password')) { doorDropped++; return; }
         const g = takePwPart(from, ty, f);
         if (g) onRemote(from, g);
       }
@@ -13492,8 +13511,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // under the room's key, and heals its own mates over their pairs. Paced
     // per writer; the epoch guard absorbs a grant the writer already took.
     const behindHealAt = new Map(); // pid -> last door-grant (throttle)
+    let behindHeld = [];   // writers read at the door before this socket's order was signed: the lock closes the door to them, so this may be the only sight of them
     function healBehindDoor(list) {
-      if (!retainedGrant || !Array.isArray(list) || !list.length) return;
+      if (!Array.isArray(list) || !list.length) return;
+      if (!retainedGrant) { if (hasAdminRoom() && amAdmin) behindHeld = list.slice(0, 64); return; }
       const fs = pwFramesOf(retainedGrant);
       if (!fs) return;
       const now = Date.now();
@@ -14109,7 +14130,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // persistence gate for the rebuild-on-offer path (transients recover
         // via ICE restart and must never trigger a teardown)
         if (pc.connectionState === 'failed' || pc.connectionState === 'closed') { if (!p.deadSince) p.deadSince = Date.now(); }
-        else if (p.connected) { p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; if (!seatStranger(p)) restoreDoorTile(p); try { updateTile(p.id); } catch (e) {} }
+        else if (p.connected) { doorPace.delete(p.id); p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; if (!seatStranger(p)) restoreDoorTile(p); try { updateTile(p.id); } catch (e) {} }
         updateStatus();
         if (p.connected) { p.altPath = false; p.tlAt = 0; p.hungUp = false; adapt(); } // rotation ends when the pair lands; D5 edge re-arms
         // D5: 'closed' out of nowhere (we didn't rebuild it and the peer is
@@ -16913,6 +16934,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return { gkey: String(o.gkey), ids: o.ids.slice(0, 64).map(String) };
       } catch (e) { return null; }
     }
+    // A room that emptied re-seeds on the OPEN key, so a returning admin who holds the password finds its
+    // early occupants at the door under the open key. They are behind her: she reads their door entries with it
+    // and sends them the change order (healBehindDoor). No pair of hers can reach them.
+    let adminOpenKey = null;
+    function adminOpenKeyNow() {
+      if (!(hasAdminRoom() && (admKey || amAdmin) && roomPw)) return Promise.resolve(null);
+      if (adminOpenKey) return Promise.resolve(adminOpenKey);
+      return net.deriveMeetKey(room, av, '').then((k) => (adminOpenKey = k), () => null);
+    }
     function startMesh() {
       const relay = relayUrl();
       if (!relay) { setStatus(uiText('stNoConnectionServiceIsSet', 'No connection service is set up, so nobody can be invited in.')); return; }
@@ -16920,7 +16950,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       meshBootGen++;
       if (directPath === 'pending') startDirectPathProbe(); // this network's verdict, once per page (re-run when the network comes back)
       if (!myId) myIdReady = new Promise((res) => { myIdReadyResolve = res; });
-      ensureIdentity().then((identity) => {
+      Promise.all([ensureIdentity(), adminOpenKeyNow()]).then(([identity, openKey]) => {
       myId = identity.peerId; // S4: peer id = H(pubkey), unforgeable
       if (myIdReadyResolve) { const resolveId = myIdReadyResolve; myIdReadyResolve = null; resolveId(); }
       try { tryBroadcastStage(); } catch (e) {}
@@ -16928,7 +16958,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       meshNode = GifOS.meshWire.createMeshNode({
         relayUrl: relay.replace(/\/$/, ''),
         sid: sessId, tok: sessTok, key: roomE2E, identity, tickMs: 500,
-        oldKeys: (prevRoomE2E && prevRoomE2E !== roomE2E) ? [prevRoomE2E] : [],   // a door blob this key opens is behind me, not ahead (mesh-wire R6)
+        oldKeys: [prevRoomE2E, openKey].filter((k, i, all) => k && k !== roomE2E && all.indexOf(k) === i),   // a door blob one of these opens is behind me, not ahead (mesh-wire R6)
         excluded: isEjected, // ejected forgers: their mesh frames never reach the seat
         urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
         holdDoor: () => pwWaitProof && !meshCoord(),
@@ -17225,9 +17255,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
                 const grant = { k: 'pwreset', by: myName(), w: wOrder, ep };
                 storePwEpoch(ep); retainedGrant = grant;
                 pwLog('pwreset-reassert ep=' + ep);
-                net.deriveMeetKey(room, av, '').then((openKey) => {
-                  void openKey; // retainedGrant heals them: a frame under the old key is what asks for it (healStaleFrom)
-                });
+                // The occupants' door entries are the only way to them: heal the writers this socket has read, and any it reads next (healBehindDoor).
+                const held = behindHeld; behindHeld = [];
+                healBehindDoor(held);
               });
             }
             pwReasserted = true;
@@ -17271,7 +17301,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         txStats.nosock++;
         if (m.to) { if (relayNoSock.size > 2048) relayNoSock.clear(); relayNoSock.set(m.to, Date.now()); }
         // A greeter's joiner has gone: stop dialling it, its door slot is free. (A joiner's greeter that has gone: the seat hears BUSY{nosock} and asks the next.)
-        { const pn = m.to && peers.get(m.to); if (pn && pn.neverUp && meshCoord() && meshNode && meshNode.transport) { try { meshNode.transport(m.to, 'unanswered'); } catch (e) {} } }
+        { const pn = m.to && peers.get(m.to); if (pn && pn.neverUp && meshCoord() && !coordKeyOf(m.to) && meshNode && meshNode.transport) { try { meshNode.transport(m.to, 'unanswered'); } catch (e) {} } }   // L33.13: a seat my view seats went deep, it did not go: no failed dial, the next offer walks (relayNoSock)
       }
       else if (m.t === 'peer' && m.msg) {
         // A relay frame of the law's shape (the wire refused every other
@@ -20862,7 +20892,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // last frame of each kind is held (bounded) and replayed once the pair is a member, so a real joiner's first
       // status/avatar/history is not lost; a knocker that is never seated never shows.
       if (p.id && (DOOR_DENY.has(m.k) || (m.k === 'sig' && m.msg && DOOR_DENY_SIG.has(m.msg.kind)))) {
-        if (doorOutsider(p.id)) {
+        if (doorOutsider(p.id) && !(m.k === 'pwreset' && hasAdminRoom())) {   // an admin's change order: its signature decides (below), and a returning admin stands outside the room she re-locks
           doorDropped++; const dk = m.k === 'sig' ? 'sig.' + m.msg.kind : m.k; doorDropKinds[dk] = (doorDropKinds[dk] || 0) + 1;
           if (!p.doorHeld) p.doorHeld = new Map();
           if (p.doorHeld.has(dk) || p.doorHeld.size < 8) p.doorHeld.set(dk, m);   // one per kind: a flood holds at most 8 frames
@@ -21059,6 +21089,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const k3 = m.m && m.m.kind;
         if (!(k3 === 'offer' || k3 === 'answer' || k3 === 'ice' || k3 === 'appstop')) return;
         noteCrumb(m.from, p && p.id); // the answer retraces this path
+        if (p) { try { meshNode.doorWalked(p.id); } catch (e) {} }   // L16.3.1: a door carrying a placee's set-up is in use
         if (m.to === myId) {
           // The same envelope id arrives once per door. Take the first copy.
           // An intermediate hop still records the id only on handoff, so a

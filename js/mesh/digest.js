@@ -178,6 +178,7 @@
             this.l43SelfEcho(k, mm);   // L43.3 (ijoin.js)
             if (this.occGet(k) >= 0 || this.sitting.has(k) || this.occGet(ckey(down(c))) >= 0 || (FREE.l1MoverCell(this, c) !== 0 && !this.l43MoverLate(c))) continue;
             { const ht = this.healTry.get(k); if (ht !== undefined && TICK - ht <= 45) continue; }
+            if ((this.l3109Ck === k + 1 && TICK - this.l3109At <= 2 * K.RC_WAIT) || (this.leaseCk === k && this.leaseUntil >= 0 && TICK <= this.leaseUntil && TICK - (this.leaseUntil - K.LEASE_TTL) <= 2 * K.RC_WAIT)) continue;   // L3.10.9
             this.l5At = TICK; this.w.ADMIT_SITE = 'l5-home'; this.admit(c, mm); return;
           }
           // A wholly empty home row has no head to seat anyone.
@@ -504,7 +505,9 @@
           else if (this.scopeGap(k)) { R.part = 1; R.refuse += 1; this.digGap |= 4; }
         }
         dig.digTrim(R);
-        this.rootDig = R; if (!extra) { this.rootDec = dig.cloneDig(R); this.l43Fold(); }   // rootDec: the fold as the pulse made it, the one a decision may read (L5)
+        { let thin = false; if (this.TICK - this.seatedAt <= 16 && this.rootKeep.at >= 0 && R.n + R.leased < this.rootKeep.n + this.rootKeep.leased) { let nm = 0, fl = 0; for (const [ek, ev] of this.occ) { if (ek >= 65536 || ev < 0 || ek === ckey(this.coord)) continue; nm++; const t = this.s1tab.get(ek); if (t !== undefined && t.at >= 0 && this.LT() - t.rx <= K.LEASE_T) fl++; } thin = fl < nm; }
+          if (!thin) this.rootDig = R; else if (this.rootDig.at < 0) this.rootDig = this.rootKeep; }   // L3.12.3
+        if (!extra) { this.rootDec = dig.cloneDig(R); this.l43Fold(); }   // rootDec: the fold as the pulse made it, the one a decision may read (L5)
       } finally { this.findNc = svFind; }
     },
   });
