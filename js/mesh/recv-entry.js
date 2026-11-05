@@ -17,7 +17,7 @@
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
   const seatM = req('./seat.js', 'meshSeat');
-  const { cellOk } = req('./shared.js', 'meshShared');
+  const { cellOk, coordStr } = req('./shared.js', 'meshShared');
   const { Seat, FREE, roomTerm, islandStand } = seatM;
   const C_ = req('./consts.js', 'meshConsts');
   const msg = req('./msg.js', 'meshMsg');
@@ -224,6 +224,7 @@
       const id = this.id;
       if (m.tag === 1 && (this.state === 1 || this.state === 2) && m.nc === id && this.oldCell && m.ck === this.oldCell - 1) { this.rcPendAt = -1; }   // L3.10.4
       if (m.tag !== 1 && (this.rcPendAt >= 0 || this.rcRound2) && m.nc === id && this.oldCell) return;   // L3.10.6
+      if (m.tag === 3 && this.state === 1 && m.nc === id && this.oldCell) { this.rcPendAt = -1; this.rcRound2 = true; this.rcRound2At = this.TICK; this.rcPendWait = K.RC_WAIT; this.rcTries = 1; this.trace('RECLAIM-ROUND2', id, null, 'old=%s held', coordStr(unckey(this.oldCell - 1))); if (!this.resumeAsk()) this.join(); this.f.wake(id); return; }   // L3.10.7
       if ((this.state === 1 || (m.tag === 1 && this.state === 2)) && m.nc === id && this.oldCell) { this.movedOnFrom = this.oldCell; this.oldCell = 0; this.rcTries = 9; this.retryAt = this.TICK - 21; this.f.wake(id); }   // L3.10.5
     },
 

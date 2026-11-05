@@ -13247,7 +13247,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const handoff = (p) => {
         if (!p || p.id === viaPid || !(p.connected && p.dc && p.dc.readyState === 'open')) return false;
         if (m.id) fwdSeenNote(fwdSeen, m.id);
-        txStats.hopFwd++; dcSend(p, envl); return true;
+        txStats.hopFwd++; dcSend(p, envl); if (kind === 'fsig') { try { meshNode.doorWalked(p.id); } catch (e) {} } return true;   // L16.3.1: a door carrying a placee's set-up is in use
       };
       const hp = nextHopDc(m.to, m.tc);
       if (hp && handoff(hp)) return;
@@ -13441,7 +13441,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return;
       }
       if (ty === 'password' || ty === 'pwsig' || ty === 'pwpub' || ty === 'pwby') {
-        if (doorOutsider(from) && !statusOf.has(from)) { doorDropped++; return; }   // TROLL GATE: a knocker never re-keys a seated room
+        // TROLL GATE: a knocker never re-keys a seated room. An admin room's order frames pass: its signature decides, and a returning admin has no other way to the room she re-locks.
+        if (doorOutsider(from) && !statusOf.has(from) && !(hasAdminRoom() && ty !== 'password')) { doorDropped++; return; }
         const g = takePwPart(from, ty, f);
         if (g) onRemote(from, g);
       }
@@ -13531,8 +13532,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // under the room's key, and heals its own mates over their pairs. Paced
     // per writer; the epoch guard absorbs a grant the writer already took.
     const behindHealAt = new Map(); // pid -> last door-grant (throttle)
+    let behindHeld = [];   // writers read at the door before this socket's order was signed: the lock closes the door to them, so this may be the only sight of them
     function healBehindDoor(list) {
-      if (!retainedGrant || !Array.isArray(list) || !list.length) return;
+      if (!Array.isArray(list) || !list.length) return;
+      if (!retainedGrant) { if (hasAdminRoom() && amAdmin) behindHeld = list.slice(0, 64); return; }
       const fs = pwFramesOf(retainedGrant);
       if (!fs) return;
       const now = Date.now();
@@ -16952,6 +16955,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return { gkey: String(o.gkey), ids: o.ids.slice(0, 64).map(String) };
       } catch (e) { return null; }
     }
+    // A room that emptied re-seeds on the OPEN key, so a returning admin who holds the password finds its
+    // early occupants at the door under the open key. They are behind her: she reads their door entries with it
+    // and sends them the change order (healBehindDoor). No pair of hers can reach them.
+    let adminOpenKey = null;
+    function adminOpenKeyNow() {
+      if (!(hasAdminRoom() && (admKey || amAdmin) && roomPw)) return Promise.resolve(null);
+      if (adminOpenKey) return Promise.resolve(adminOpenKey);
+      return net.deriveMeetKey(room, av, '').then((k) => (adminOpenKey = k), () => null);
+    }
     function startMesh() {
       const relay = relayUrl();
       if (!relay) { setStatus(uiText('stNoConnectionServiceIsSet', 'No connection service is set up, so nobody can be invited in.')); return; }
@@ -16959,7 +16971,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       meshBootGen++;
       if (directPath === 'pending') startDirectPathProbe(); // this network's verdict, once per page (re-run when the network comes back)
       if (!myId) myIdReady = new Promise((res) => { myIdReadyResolve = res; });
-      ensureIdentity().then((identity) => {
+      Promise.all([ensureIdentity(), adminOpenKeyNow()]).then(([identity, openKey]) => {
       myId = identity.peerId; // S4: peer id = H(pubkey), unforgeable
       if (myIdReadyResolve) { const resolveId = myIdReadyResolve; myIdReadyResolve = null; resolveId(); }
       try { tryBroadcastStage(); } catch (e) {}
@@ -16967,7 +16979,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       meshNode = GifOS.meshWire.createMeshNode({
         relayUrl: relay.replace(/\/$/, ''),
         sid: sessId, tok: sessTok, key: roomE2E, identity, tickMs: 500,
-        oldKeys: (prevRoomE2E && prevRoomE2E !== roomE2E) ? [prevRoomE2E] : [],   // a door blob this key opens is behind me, not ahead (mesh-wire R6)
+        oldKeys: [prevRoomE2E, openKey].filter((k, i, all) => k && k !== roomE2E && all.indexOf(k) === i),   // a door blob one of these opens is behind me, not ahead (mesh-wire R6)
         excluded: isEjected, // ejected forgers: their mesh frames never reach the seat
         urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
         holdDoor: () => pwWaitProof && !meshCoord(),
@@ -17265,9 +17277,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
                 const grant = { k: 'pwreset', by: myName(), w: wOrder, ep };
                 storePwEpoch(ep); retainedGrant = grant;
                 pwLog('pwreset-reassert ep=' + ep);
-                net.deriveMeetKey(room, av, '').then((openKey) => {
-                  void openKey; // retainedGrant heals them: a frame under the old key is what asks for it (healStaleFrom)
-                });
+                // The occupants' door entries are the only way to them: heal the writers this socket has read, and any it reads next (healBehindDoor).
+                const held = behindHeld; behindHeld = [];
+                healBehindDoor(held);
               });
             }
             pwReasserted = true;
@@ -17311,7 +17323,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         txStats.nosock++;
         if (m.to) { if (relayNoSock.size > 2048) relayNoSock.clear(); relayNoSock.set(m.to, Date.now()); }
         // A greeter's joiner has gone: stop dialling it, its door slot is free. (A joiner's greeter that has gone: the seat hears BUSY{nosock} and asks the next.)
-        { const pn = m.to && peers.get(m.to); if (pn && pn.neverUp && meshCoord() && meshNode && meshNode.transport) { try { meshNode.transport(m.to, 'unanswered'); } catch (e) {} } }
+        { const pn = m.to && peers.get(m.to); if (pn && pn.neverUp && meshCoord() && !coordKeyOf(m.to) && meshNode && meshNode.transport) { try { meshNode.transport(m.to, 'unanswered'); } catch (e) {} } }   // L33.13: a seat my view seats went deep, it did not go: no failed dial, the next offer walks (relayNoSock)
       }
       else if (m.t === 'peer' && m.msg) {
         // A relay frame of the law's shape (the wire refused every other
@@ -20906,7 +20918,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // last frame of each kind is held (bounded) and replayed once the pair is a member, so a real joiner's first
       // status/avatar/history is not lost; a knocker that is never seated never shows.
       if (p.id && (DOOR_DENY.has(m.k) || (m.k === 'sig' && m.msg && DOOR_DENY_SIG.has(m.msg.kind)))) {
-        if (doorOutsider(p.id)) {
+        if (doorOutsider(p.id) && !(m.k === 'pwreset' && hasAdminRoom())) {   // an admin's change order: its signature decides (below), and a returning admin stands outside the room she re-locks
           doorDropped++; const dk = m.k === 'sig' ? 'sig.' + m.msg.kind : m.k; doorDropKinds[dk] = (doorDropKinds[dk] || 0) + 1;
           if (!p.doorHeld) p.doorHeld = new Map();
           if (p.doorHeld.has(dk) || p.doorHeld.size < 8) p.doorHeld.set(dk, m);   // one per kind: a flood holds at most 8 frames
@@ -21103,6 +21115,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const k3 = m.m && m.m.kind;
         if (!(k3 === 'offer' || k3 === 'answer' || k3 === 'ice' || k3 === 'appstop')) return;
         noteCrumb(m.from, p && p.id); // the answer retraces this path
+        if (p) { try { meshNode.doorWalked(p.id); } catch (e) {} }   // L16.3.1: a door carrying a placee's set-up is in use
         if (m.to === myId) {
           // The same envelope id arrives once per door. Take the first copy.
           // An intermediate hop still records the id only on handoff, so a
@@ -23315,8 +23328,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const gm = modOf(k2.slice(4).split('^')[0]).mute;
         if (stageEar.fold.setGain) stageEar.fold.setGain(k2, (gm && gm.on) ? 0 : 1); // a cached older fold lacks it: held at 1, as before
       }
-      stageEar.el.volume = mix.stage;
-      stageEar.el.muted = iAmWaiting() || !(mix.stage > 0); // iOS ignores volume; 0 must be `muted`
+      setStageEarLevel();
     }
     // A stage source built while the sender was muted latches that silence.
     // The track often never fires `unmute` (silence frames, not a mute edge),
@@ -28146,6 +28158,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       el._aud.muted = !!el._gmute || !(vol > 0); // group mute rides the same pipe as the faders
     }
     // Service mute is a local gate on the stage bus. The saved fader stays put.
+    // The one writer of the stage ear's level: a viewer's sound off and the waiting room hold through every reconcile (iOS ignores volume; 0 must be `muted`).
+    function setStageEarLevel() {
+      if (!stageEar) return;
+      const v = heardStage();
+      stageEar.el.volume = v;
+      stageEar.el.muted = iAmWaiting() || !(v > 0);
+    }
     function heardStage() {
       let base = 1;
       try { base = mix.stage; } catch (e) { base = 1; }
@@ -28189,7 +28208,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const stadLab = document.getElementById('mixlab-stadium');
       const stadMark = hasStadium ? '1' : '0';
       if (stadLab && stadLab.dataset.on !== stadMark) { stadLab.dataset.on = stadMark; stadLab.style.display = hasStadium ? '' : 'none'; }
-      if (stageEar) { stageEar.el.volume = stageVol; stageEar.el.muted = !(stageVol > 0); } // the Stage fader drives the ear fold (muted at 0: iOS ignores volume)
+      setStageEarLevel(); // the Stage fader drives the ear fold
       kickPausedAudio();
     }
     // The Settings modal: the sound mix's new home (same fader ids as when it
@@ -34625,6 +34644,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // this; one that cannot leaves a permanently split room, and the app should
     // eventually survive that too.
     const SUCC_CONTRADICTION_MS = 180000;
+    let succBusy = false;
     function ownerAway() {
       if (!appFrozen) {
         appEv('owner-away-freeze');
@@ -34633,7 +34653,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         document.getElementById('appwho').textContent = '⏸ paused — the host is away';
       }
       if (ROOM.join && ROOM.join.owned) return; // owned room: freeze is the whole story
-      if (succT || myStatus.app) return;
+      if (succT || succBusy || myStatus.app) return;
       const cands = [String(myId)];
       for (const pid of roomConsentIds()) if (pid !== myId && stHold(pid)) cands.push(String(pid));
       cands.sort();
@@ -34666,6 +34686,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const ctl = appClientCtl;
         if (!ctl || !ctl.snapshot) return;
         const nm = document.getElementById('appname').textContent || 'App';
+        succBusy = true; // succT is spent and the app not yet mine: without this the next beat arms a second seize, two files and two runApp on one mount
         ctl.snapshot().then((bytes) => {
           const fid = GifOS.store.uid('file');
           return GifOS.store.putFile({ id: fid, name: nm + '.gif', bytes: bytes, kind: 'gif', isApp: true, mime: 'image/gif' })
@@ -34676,7 +34697,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               appFrozen = false;
               return runApp(fid, nm);
             });
-        }).catch(() => {});
+        }).catch(() => {}).then(() => { succBusy = false; });
       }, 6000); // grace: a blip must not trigger a takeover
     }
     // Keep the app buttons honest about what a tap will do.

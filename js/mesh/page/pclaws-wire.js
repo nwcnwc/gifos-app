@@ -347,7 +347,6 @@
           if (L.dHoAt >= 0 && T() - L.dHoAt >= K.L16_HO_CLOSE && !(L.dOwed && L.dWait >= 0)) why = 'handed';
           else if (L.dGw && !L.dIn) { if (idle > K.L16_GW_IDLE && !(L.dWait >= 0)) why = 'gw-idle'; else if (age > K.L16_GW_LIFE) why = 'gw-life'; }
           else if (L.dIn && L.state === LK_OPEN && !L.dAsked && L.dProg === L.dBorn) { if (age > DOOR_FIRST_FRAME) why = 'unnamed'; }   // the sim delivers the dial's queued frame with the open; here it follows the dc's open over the verify chain
-          else if (L.dIn && (L.dPlaced & (1 << mine(x)))) { if (age > K.L16_LIFE) why = 'life'; }   // L16.3.1: the placee closes it (L15.5), or the life limit
           else if (L.dIn && !L.dAsked && L.state === LK_OPEN && idle > K.L16_ANS_IDLE) why = 'idle';
           else if (idle > K.L16_IDLE) why = 'idle'; else if (age > K.L16_LIFE) why = 'life';
           if (why) {
@@ -455,7 +454,7 @@
       if (L.outside && L.dBorn >= 0) L.dProg = T();
       const s = mySeat(); if (s) { s.dials.opened(x); let hello = false; for (const [ck, v] of s.l13SplitCell) if (v[0] === x) { trace('L13.41-JOINED', me, null, 'peer=%d', x); s.l13SplitCell.delete(ck); hello = true; }
         if (!hello && !L.outside && s.hasCoord && s.state === 3) { let named = false; for (const v of s.occ.values()) if (v === x) { named = true; break; } if (!named) hello = true; }   // L13.41.2: a pc between members to a seat my view names nowhere (the page cannot read the far seat's state: a door pc is outside, every other pc is between members)
-        if (hello && s.l1341Hello.length < 64) s.l1341Hello.push(x); }
+        if (hello && s.l1341Hello.length < 64) s.l1341Hello.push(x); s.l213HeadPc(x); }
       if (L.wasOpen) trace('LINK-UP', me, null, 'peer=%d', x); L.wasOpen = true;
       const q = L.q; L.q = [];
       if (s && q.some((m) => seatM.l13Frame(m)) && seatM.roomTerm(s, -1)) pc.noteCall(me, x);
@@ -535,6 +534,7 @@
       busyFrom: (x) => refused(x, { busy: 1 }),
       link: (x) => LINKS.get(x) || null, dump: () => [...LINKS].map(([x, L]) => ({ x, state: L.state, view: L.view[mine(x)], outside: L.outside, gone: L.gone, q: L.q.length })),
       dialHeld: (x) => pc.dialHeld(me, x), laws: pc, BYE,
+      doorWalked: (x) => { const L = LINKS.get(x); if (L && L.outside && L.dBorn >= 0 && L.dPlaced) L.dProg = T(); },   // L16.3.1 (C++: mesh_dialsig_fab.inc:sigWalk): a walked signal crossed my door that carried a PLACE
       doorForgive: (x) => pc.S.L16COOL.delete(hash.idPair(me, x)),   // the admin's Admit: the waiting room's idle knocks are not this person's fault
     };
   }
