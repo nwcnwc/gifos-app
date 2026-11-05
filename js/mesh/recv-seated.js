@@ -545,7 +545,7 @@
         if (oc2) {
           const ok2 = ckey(oc2); const o2 = this.occGet(ok2);
           if (ok2 === ckey(this.coord) || (o2 >= 0 && !this.translost.has(ok2) && (this.firstHandLive(ok2) || this.f.fabricLinkState(id, o2) === E.LS_OPEN))) { a.e1dn = true; a.oCk = ok2; a.owner = (ok2 === ckey(this.coord)) ? id : o2; }
-          else if (ok2 !== ckey(this.coord) && ((this.translost.has(ok2) && this.tlHard.has(ok2) && this.tlHard.get(ok2) && this.translostConfirmed(ok2)) || (o2 < 0 && this.memo.has(ok2) && TICK - this.memo.get(ok2).at <= K.LEASE_T))) { a.hard = true; a.oCk = ok2; a.owner = (o2 >= 0) ? o2 : ins(this.memo, ok2, () => state.newStruct('Memo')).id; }   // memo[ok2]: inserts a default Memo when the hard loss came by the transport arm
+          else if (ok2 !== ckey(this.coord) && ((this.translost.has(ok2) && this.tlHard.has(ok2) && this.tlHard.get(ok2) && this.translostConfirmed(ok2)) || (o2 < 0 && this.memo.has(ok2) && TICK - this.memo.get(ok2).at <= K.LEASE_T))) { a.hard = true; a.oCk = ok2; a.owner = (o2 >= 0) ? o2 : ins(this.memo, ok2, () => state.newStruct('Memo')).id; this.trace('HARD-ANS', id, oc2, 'to=%d o2=%d tl=%d memo=%d', m.id, o2, this.translost.has(ok2) ? 1 : 0, this.memo.has(ok2) ? 1 : 0); }   // memo[ok2]: inserts a default Memo when the hard loss came by the transport arm
           else if (ok2 !== ckey(this.coord) && o2 < 0 && this.byeAt.has(ok2) && TICK - this.byeAt.get(ok2) <= K.LEASE_T) { a.hard = true; a.oCk = ok2; a.owner = this.byeId.has(ok2) ? this.byeId.get(ok2) : -1; this.trace('BYE-REPORT', id, oc2, 'to=%d', m.id); }
         }
       }   // L1.4 (I10): ...and its GOODBYE, the same way
@@ -556,11 +556,26 @@
       if (this.u2Rows.size > 2 * C) for (const [k, v] of this.u2Rows) { if (TICK - v.at > 60) this.u2Rows.delete(k); }
     },
 
+    // C++: mesh_seat.inc:Seat::onRouted
+    // ROUTED intake (L3.4.1: one body for the answer over a channel and the answer that walked back)
+    onRouted(m) {
+      const id = this.id, TICK = this.TICK;
+      if (m.tag === 1 || m.tag === 2) {
+        const tk = ckey(m.target); const cur = this.occGet(tk);
+        if (m.id >= 0 && this.hasCoord && tk !== ckey(this.coord) && this.probeAsked(tk, m.pn) && !(cur >= 0 && cur !== m.id && this.holdsCell(tk, 60))) {
+          this.setOcc(ckey(m.target), m.id); this.noteS1(ckey(m.target)); this.probeAck.set(ckey(m.target), TICK); this.upAck.set(ckey(m.target), [m.id, TICK]); if (this.upAck.size > 64) eraseFirst(this.upAck);
+          { const ex = this.upExpired.get(ckey(m.target)); if (ex !== undefined && ex === m.id) this.upExpired.delete(ckey(m.target)); }
+          const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = id; this.emit(m.id, h);
+        }
+      }
+    },   // probeAck AFTER setOcc (a changed occupant clears the observation first); never about MY OWN cell
+
     // C++: mesh_seat.inc:Seat::onRoute
     onRoute(m) {
       const id = this.id, TICK = this.TICK;
       if (!this.hasCoord) return;
       if (ckey(this.coord) === ckey(m.target)) {
+        if (m.tag === 4) { const r = newMsg('ROUTED'); r.tag = 1; r.target = unck(m.ck); r.id = m.asker; r.pn = m.pn; this.trace('ROUTED-BACK', id, r.target, 'from=%d asked=%d', m.asker, this.probeAsked(m.ck, m.pn) ? 1 : 0); this.onRouted(r); return; }   // L3.4.1: a probe answer that walked back to my cell: the same answer as one over a channel
         if (m.tag === 3) { if (!this.translost.has(m.ck) || !this.probeAsked(m.ck, m.pn)) return; this.probeAck.set(m.ck, TICK); return; }   // a D5 probe ANSWER routed back around the dead link
         if (m.tag === 2) {
           // D5 translost probe reached me: I am alive: answer AROUND the dead link
@@ -568,7 +583,9 @@
           if (nh2 >= 0) { const a = newMsg('ROUTE'); a.target = cc(m.coord); a.asker = id; a.tag = 3; a.ttl = 60; a.via = id; a.pseq = ++this.w.lv.RSEQ; a.ck = ckey(this.coord); a.pn = m.pn; this.emit(nh2, a); }
         }
         if (m.tag === 1 && m.asker >= 0 && m.asker !== id && m.ck && cellOk(m.ck) && m.ck !== ckey(this.coord) && this.ownedLinkCell(m.ck) && this.occGet(m.ck) < 0) { this.setOcc(m.ck, m.asker); this.emit(m.asker, hello(ckey(this.coord), id)); return; }   // L9.9
-        const r = newMsg('ROUTED'); r.tag = m.tag; r.target = cc(m.target); r.id = id; r.pn = m.pn; this.emit(m.asker, r); return;
+        const r = newMsg('ROUTED'); r.tag = m.tag; r.target = cc(m.target); r.id = id; r.pn = m.pn;
+        if (this.f.fabricLinkState(id, m.asker) !== E.LS_OPEN && m.tag === 1 && this.hasCoord && ckey(m.coord) !== ckey(this.coord)) { const nh4 = this.nextHopToward(m.coord, -1); if (nh4 >= 0) { const a = newMsg('ROUTE'); a.target = cc(m.coord); a.asker = id; a.tag = 4; a.ttl = 60; a.via = id; a.pseq = ++this.w.lv.RSEQ; a.ck = ckey(this.coord); a.pn = m.pn; this.emit(nh4, a); return; } }   // L3.4.1: no channel to the asker (a NAT pair, a closed pc): the answer walks back to its cell the way the probe came
+        this.emit(m.asker, r); return;
       }
       if (m.ttl <= 0) { const r = newMsg('ROUTED'); r.tag = m.tag; r.target = cc(m.target); r.id = -1; r.pn = m.pn; this.emit(m.asker, r); return; }
       // FORWARD WITH THE PROBE PAYLOAD

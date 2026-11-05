@@ -507,7 +507,7 @@
       const del = [];
       // L3.5 / D7 / L3.2: a return is not a horizon; a row-mate I once heard first-hand and now do not is leased.
       const hz = K.LEASE_T;
-      for (const [ek, ev] of this.live) { let since = ev; if (since < this.seatedAt) since = this.seatedAt; if (this.backAt >= 0 && since < this.backAt) since = this.backAt; if (TICK - since <= hz) continue; const c = unck(ek); if (c.pc === this.coord.pc && c.r === this.coord.r && c.i > 0) { del.push(ek); this.holeSince.set(ek, since); } }   // L3.4: the lease ends ONCE
+      for (const [ek, ev] of this.live) { let since = this.heardAny(ek, ev); if (since < this.seatedAt) since = this.seatedAt; if (this.backAt >= 0 && since < this.backAt) since = this.backAt; if (TICK - since <= hz) continue; const c = unck(ek); if (c.pc === this.coord.pc && c.r === this.coord.r && c.i > 0) { del.push(ek); this.holeSince.set(ek, since); } }   // L3.4: the lease ends ONCE
       // ...and a DEEP row cell I have NEVER heard: an occ entry with no live stamp, believed for longer than the same horizon.
       if (this.coord.pc !== 0) for (const [ek, ev] of this.occ) { const c = unck(ek); if (c.pc !== this.coord.pc || c.r !== this.coord.r || c.i === 0 || ev === this.id || this.live.has(ek)) continue; const b = this.born.get(ek); if (b !== undefined && this.LT() - b <= 50) continue; del.push(ek); }
       // L13.33 (mass leave): a HOME row cell I have never heard since I sat, 60 ticks after I sat, whose occupant my own dial cannot reach, is gone.
@@ -580,6 +580,7 @@
       if (this.live.has(hk) && mine) since = this.live.get(hk);
       else if (this.holeSince.has(hk)) since = this.holeSince.get(hk);
       else { this.holeSince.set(hk, TICK); since = TICK; }
+      since = this.heardAny(hk, since);   // L3.4.1: an answered probe is a path the occupant was heard on
       if (since < this.seatedAt) since = this.seatedAt;   // L3.5
       if (this.backAt >= 0 && since < this.backAt) since = this.backAt;   // A RETURN IS NOT A HORIZON (LM-42)
       return TICK - since > K.LEASE_T;
