@@ -15073,14 +15073,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (seatAsked(pid)) return true;   // the seat dialled it (a door, a call, an audit): its own reason
       if (!s || !s.hasCoord) return false;
       if (s.l14Served && s.l14Served().includes(pid)) return true;   // L14: a cut-off head dialled me for its branch's media
-      return s.linkPeers().has(pid) || (typeof s.keepPeers === 'function' && s.keepPeers().has(pid));   // every media target is a link peer or carries a keep reason (L28)
-    }
-    // The seat names this peer only as its row's standby (E3), and no edge is down: a name, not a reason to hold a pc.
-    function idleStandby(pid) {
-      const s = meshSeat();
-      if (!s || !s.hasCoord || s.state !== 3 || s.moving || s.u3Id !== pid || s.u2Hot || s.u2Id === pid || s.l14Up === pid) return false;
-      if (seatAsked(pid) || (s.l14Served && s.l14Served().includes(pid)) || (typeof s.keepPeers === 'function' && s.keepPeers().has(pid))) return false;
-      return true;
+      // A row's standby (E3) is a pc only while an up edge is down: the seat's dial says so above, and u2Hot here. Idle, it is a name, as an idle row holds no third pc.
+      return (!(pid === s.u3Id && !s.u2Hot) && s.linkPeers().has(pid)) || (typeof s.keepPeers === 'function' && s.keepPeers().has(pid));   // every media target is a link peer or carries a keep reason (L28)
     }
     // Peers the seat asked to dial (pc.ensure), for a while: the seat's dial is its reason.
     const seatAskAt = new Map();
@@ -17783,18 +17777,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             dropPeer(pid, true);
             continue;
           }
-        } else {
-          p.absentSince = 0; // a mesh-named neighbour is never absent
-          // An idle row's standby holds no pc: the seat dials it when E1 or E2 goes down, and that dial builds a fresh one.
-          // One that outlived the far end's hang-up (pcCloseNow) is no Link and nothing retires it otherwise.
-          if (idleStandby(pid) && !p.connected && !(p.dc && p.dc.readyState === 'open')
-              && now - Math.max(p.rebuiltAt || 0, p.bornAt || 0) > UNOWNED_PC_MS) {
-            if (typeof clog === 'function') clog('pc-standby-idle ' + String(pid).slice(0, 6));
-            p.envClosing = now;
-            dropPeer(pid, true);
-            continue;
-          }
-        }
+        } else { p.absentSince = 0; } // a mesh-named neighbour is never absent
         const st = p.pc.connectionState;
         if (p.absentSince && !p.connected && now - p.absentSince > ABSENT_GRACE) { dropPeer(pid); continue; }
         // A pc that lands in 'closed' can't be ICE-restarted; it is dropped.
