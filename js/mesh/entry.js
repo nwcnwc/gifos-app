@@ -600,6 +600,7 @@
     // C++: mesh_seat.inc:Seat::reseatViaRoster
     reseatViaRoster() {
       const id = this.id;
+      this.lkAnyAt = -1; this.lkCarried = -1;   // D6c.2: back through the door, as requeue
       this.l13ReqN++; if (this.l815N > 0) { for (let i = 0; i < this.l815N; i++) { const y = newMsg('YIELD'); y.ck = this.l815Ck[i]; y.id = id; y.nc = this.l815Prev[i]; this.emit(this.l815To[i], y); } this.l815N = 0; }
       this.w.lv.MOVES++; this.f.fabricNoteReseat(id); this.trace('RESEAT', id, this.hasCoord ? this.coord : null, '');
       if (this.hasCoord) {
