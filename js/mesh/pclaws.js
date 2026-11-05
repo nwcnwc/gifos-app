@@ -181,6 +181,7 @@
       if (s.seatedAt < 0 || s.TICK - s.seatedAt < lv.L15_SETTLE) return false;
       for (const c of ownedLinks(s.coord)) { const x = s.occGet(ckey(c)); if (x < 0 || x === id) continue; const L = linkFind(id, x); if (L && L.state === LK_OPEN && L.view[lEnd(id, x)] === LK_OPEN) return true; }
       const o = s.ownerCoord(); if (o) { const x = s.occGet(ckey(o)); if (x >= 0 && x !== id) { const L = linkFind(id, x); if (L && L.state === LK_OPEN && L.view[lEnd(id, x)] === LK_OPEN) return true; } }
+      { const u = s.l14Up; if (u >= 0 && u !== id) { const L = linkFind(id, u); if (L && L.state === LK_OPEN && L.view[lEnd(id, u)] === LK_OPEN) return true; } }
       return false;
     }
     // C++: mesh_link.inc:l15NamedBy   [end]

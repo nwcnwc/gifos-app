@@ -13133,6 +13133,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // (§FWD). Returns true iff the frame was handed to SOME viable path.
     function sponsorSend(envl) {
       const to = envl.to;
+      // L16.3.2: a reply starts back along the list its frame crossed. No such channel now: the rungs, the list dropped.
+      if (Array.isArray(envl.rt)) {
+        const back = envl.rt.length ? peers.get(envl.rt[envl.rt.length - 1]) : null;
+        if (back && back.connected && back.dc && back.dc.readyState === 'open') { envl.rt = envl.rt.slice(0, -1); dcSend(back, envl); return true; }
+        delete envl.rt;
+      }
       // 1) the classic mutual-DC friend (one hop, deterministic pick)
       const cands = myConns().filter((r) => r !== to && (connsOf.get(r) || []).includes(to)).sort();
       const fp = cands.length ? peers.get(cands[0]) : null;
@@ -13194,6 +13200,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const pidFirstSeen = new Map(); // pid → first time the starve sweep considered it
     const doorLast = new Map(); // per-target door-send throttle (§FWD)
     const sponsorReplyTo = new Set(); // offers that arrived sponsored — answer along the same path (§FWD)
+    // L16.3.2: the seats the last walked frame from a peer crossed, its end first. The crumb is one word per seat, the last frame on ANY
+    // walk, and retracing by crumbs loops; the list is this frame's own. Taken once by the reply, 60 s, bounded.
+    const fwdRoute = new Map();
+    function noteRoute(pid, list) {
+      fwdRoute.set(String(pid), { list: Array.isArray(list) ? list.slice(0, 13).map(String) : [], at: Date.now() });
+      if (fwdRoute.size > 256) { const now = Date.now(); for (const [k, v] of fwdRoute) if (now - v.at > 60000) fwdRoute.delete(k); }
+    }
+    function takeRoute(pid) {
+      const r = fwdRoute.get(String(pid)); if (!r) return null;
+      fwdRoute.delete(String(pid));
+      return Date.now() - r.at > 60000 ? null : r.list;
+    }
     // fwdOnward: an fsig/fmesh envelope reached me but names someone else —
     // pass it one bounded step onward. Order:
     //   1) direct channel / geometric mesh next hop (nextHopDc)
@@ -13217,11 +13235,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const ttl = (m.ttl == null ? 1 : m.ttl | 0) - 1; // legacy envelope: one direct-channel hop only
       if (ttl < 0) return;
       const envl = { k: kind, from: m.from, to: m.to, tc: m.tc, id: m.id, ttl, m: m.m };
+      // L16.3.2: an fsig carries the seats it crossed; no hop takes a seat on that list.
+      const crossed = kind === 'fsig' && Array.isArray(m.p) ? m.p.slice(0, 13).map(String) : [];
+      if (kind === 'fsig') envl.p = crossed.concat(myId);
       const handoff = (p) => {
-        if (!p || p.id === viaPid || !(p.connected && p.dc && p.dc.readyState === 'open')) return false;
+        if (!p || p.id === viaPid || p.id === m.from || crossed.includes(p.id) || !(p.connected && p.dc && p.dc.readyState === 'open')) return false;
         if (m.id) fwdSeenNote(fwdSeen, m.id);
         txStats.hopFwd++; dcSend(p, envl); if (kind === 'fsig') { try { meshNode.doorWalked(p.id); } catch (e) {} } return true;   // L16.3.1: a door carrying a placee's set-up is in use
       };
+      // L16.3.2: a reply goes back along its list: my channel to the asker, else the seat before me on the list. Neither open: the rungs, the list dropped.
+      if (kind === 'fsig' && Array.isArray(m.rt)) {
+        const back = m.rt.slice(0, 13).map(String);
+        if (back[back.length - 1] === myId) back.pop();
+        if (handoff(peers.get(m.to))) return;
+        if (back.length) { envl.rt = back.slice(0, -1); if (handoff(peers.get(back[back.length - 1]))) return; delete envl.rt; }
+      }
       const hp = nextHopDc(m.to, m.tc);
       if (hp && handoff(hp)) return;
       // Mutual-friend hop: someone we hold a live channel to already claims
@@ -13239,7 +13267,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (m.ttl != null && ttl >= 0) {
         const alts = [];
         for (const [pid, p] of peers) {
-          if (pid === viaPid || pid === m.to || pid === myId) continue;
+          if (pid === viaPid || pid === m.to || pid === myId || pid === m.from || crossed.includes(pid)) continue;
           if (p.connected && p.dc && p.dc.readyState === 'open') alts.push(pid);
         }
         alts.sort();
@@ -13346,7 +13374,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (relayDown || targetUnreachable || mediaDesc || !mayRelay) {
         const m2 = sigSansIce(to, msg);
         if (!m2) return; // a blocked pair sends nothing on either path (fault injection)
-        if (sponsorSend({ k: 'fsig', from: myId, to, tc: coordKeyOf(to), id: fwdId(), ttl: 12, m: m2 })) { txStats.fwdSig++; return; }
+        const rt = (m2.kind === 'offer' || m2.kind === 'answer') ? takeRoute(to) : null;   // L16.3.2: the reply to a walked frame retraces it
+        if (sponsorSend(Object.assign({ k: 'fsig', from: myId, to, tc: coordKeyOf(to), id: fwdId(), ttl: 12, m: m2 }, rt ? { rt } : {}))) { txStats.fwdSig++; return; }
         if (mediaDesc) { txStats.relayUnfit++; return; } // no friend's channel either: the sweeper's next attempt rebuilds and bootstraps (sendOffer)
         if (!mayRelay) return;
       }
@@ -15139,6 +15168,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (p.pc && p.pc.signalingState !== 'stable') return;   // an offer is in flight one way or the other
       const now = Date.now(); if (now - (p.dialReqAt || 0) < 5000) return;
       p.dialReqAt = now;
+      // L16.3.2: the relay may not carry my ask (a deep seat): it walks. The polite side still only asks; an offer here would cross the initiator's at birth (e2e-sixth-audio).
+      if (!relayUp() || !relayMayCarry(pid)) { sponsorSend({ k: 'fsig', from: myId, to: pid, tc: coordKeyOf(pid), id: fwdId(), ttl: 12, m: { kind: 'dialask' } }); return; }
       try { relayName(pid); } catch (e) {}
     }
     // onDialRequest(p): a member sent me its name over the relay with no live
@@ -21101,7 +21132,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Authority is unchanged: the appstop handler admVerify's the signed
         // w in admin rooms; open rooms take anyone's word by design.
         const k3 = m.m && m.m.kind;
-        if (!(k3 === 'offer' || k3 === 'answer' || k3 === 'ice' || k3 === 'appstop')) return;
+        if (!(k3 === 'offer' || k3 === 'answer' || k3 === 'ice' || k3 === 'appstop' || k3 === 'dialask')) return;
         noteCrumb(m.from, p && p.id); // the answer retraces this path
         if (p) { try { meshNode.doorWalked(p.id); } catch (e) {} }   // L16.3.1: a door carrying a placee's set-up is in use
         if (m.to === myId) {
@@ -21112,6 +21143,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // An offer that REACHED me sponsored gets its answer sent back the
             // same way — the direct relay leg may be exactly what's rotten.
             if (k3 === 'offer') sponsorReplyTo.add(String(m.from));
+            if (k3 === 'offer' || k3 === 'dialask') noteRoute(m.from, m.p);
+            // L16.3.2: a walked dial request, the relay's name frame for a seat the relay may not carry. The initiator offers back, over the ask's list.
+            if (k3 === 'dialask') { const pa = peers.get(String(m.from)); if (pa) pa.altPath = true; onDialRequest(pa || { id: String(m.from), dc: null }); return; }
             onSignal(String(m.from), m.m);
           }
           return;
