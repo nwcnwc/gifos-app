@@ -23317,8 +23317,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const gm = modOf(k2.slice(4).split('^')[0]).mute;
         if (stageEar.fold.setGain) stageEar.fold.setGain(k2, (gm && gm.on) ? 0 : 1); // a cached older fold lacks it: held at 1, as before
       }
-      stageEar.el.volume = mix.stage;
-      stageEar.el.muted = iAmWaiting() || !(mix.stage > 0); // iOS ignores volume; 0 must be `muted`
+      setStageEarLevel();
     }
     // A stage source built while the sender was muted latches that silence.
     // The track often never fires `unmute` (silence frames, not a mute edge),
@@ -28148,6 +28147,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       el._aud.muted = !!el._gmute || !(vol > 0); // group mute rides the same pipe as the faders
     }
     // Service mute is a local gate on the stage bus. The saved fader stays put.
+    // The one writer of the stage ear's level: a viewer's sound off and the waiting room hold through every reconcile (iOS ignores volume; 0 must be `muted`).
+    function setStageEarLevel() {
+      if (!stageEar) return;
+      const v = heardStage();
+      stageEar.el.volume = v;
+      stageEar.el.muted = iAmWaiting() || !(v > 0);
+    }
     function heardStage() {
       let base = 1;
       try { base = mix.stage; } catch (e) { base = 1; }
@@ -28191,7 +28197,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const stadLab = document.getElementById('mixlab-stadium');
       const stadMark = hasStadium ? '1' : '0';
       if (stadLab && stadLab.dataset.on !== stadMark) { stadLab.dataset.on = stadMark; stadLab.style.display = hasStadium ? '' : 'none'; }
-      if (stageEar) { stageEar.el.volume = stageVol; stageEar.el.muted = !(stageVol > 0); } // the Stage fader drives the ear fold (muted at 0: iOS ignores volume)
+      setStageEarLevel(); // the Stage fader drives the ear fold
       kickPausedAudio();
     }
     // The Settings modal: the sound mix's new home (same fader ids as when it
@@ -34627,6 +34633,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // this; one that cannot leaves a permanently split room, and the app should
     // eventually survive that too.
     const SUCC_CONTRADICTION_MS = 180000;
+    let succBusy = false;
     function ownerAway() {
       if (!appFrozen) {
         appEv('owner-away-freeze');
@@ -34635,7 +34642,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         document.getElementById('appwho').textContent = '⏸ paused — the host is away';
       }
       if (ROOM.join && ROOM.join.owned) return; // owned room: freeze is the whole story
-      if (succT || myStatus.app) return;
+      if (succT || succBusy || myStatus.app) return;
       const cands = [String(myId)];
       for (const pid of roomConsentIds()) if (pid !== myId && stHold(pid)) cands.push(String(pid));
       cands.sort();
@@ -34668,6 +34675,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const ctl = appClientCtl;
         if (!ctl || !ctl.snapshot) return;
         const nm = document.getElementById('appname').textContent || 'App';
+        succBusy = true; // succT is spent and the app not yet mine: without this the next beat arms a second seize, two files and two runApp on one mount
         ctl.snapshot().then((bytes) => {
           const fid = GifOS.store.uid('file');
           return GifOS.store.putFile({ id: fid, name: nm + '.gif', bytes: bytes, kind: 'gif', isApp: true, mime: 'image/gif' })
@@ -34678,7 +34686,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               appFrozen = false;
               return runApp(fid, nm);
             });
-        }).catch(() => {});
+        }).catch(() => {}).then(() => { succBusy = false; });
       }, 6000); // grace: a blip must not trigger a takeover
     }
     // Keep the app buttons honest about what a tap will do.
