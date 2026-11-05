@@ -550,7 +550,7 @@
       if (this.rowLedgerAt >= 0 && TICK - this.rowLedgerAt <= K.CHILD_LEDGER_H) return;
       for (let c = 0; c < C; c++) {
         const k = ckey(rc[c]); if (!this.occ.has(k) || this.firstHandLive(k) || this.softSitting(k)) continue;
-        if (k === ckey(down(this.coord)) && this.downDig.at >= 0 && this.downDig.by === this.occGet(k) && this.LT() - this.downDig.rx <= K.DIG_TTL) continue;   // L3.12.2
+        if (k === ckey(down(this.coord)) && this.downDig.at >= 0 && this.downDig.by === this.occGet(k) && this.LT() - this.downDig.rx <= K.LEASE_T) continue;   // L3.12.2
         const b = this.born.get(k); if (b !== undefined && this.LT() - b <= K.CHILD_LEDGER_H) continue;
         this.occDrop(k, 'child-silent'); this.live.delete(k); this.kidful.delete(k); this.childOf.delete(k); this.tlForget(k); this.healTry.set(k, TICK);
       }
