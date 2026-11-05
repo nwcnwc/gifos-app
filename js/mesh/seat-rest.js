@@ -134,7 +134,10 @@
       const answer = () => { if (this.TICK - this.challAt > 20) { this.challAt = this.TICK | 0; const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = id; this.emit(by, h); } };
       if (m.nc < 0 || m.nc === id || m.nc === by) { this.trace('L25-REFUSED', id, this.coord, 'by=%d nc=%d', by, m.nc); answer(); return true; }
       if (this.l25Nc === m.nc && this.l25Ck === m.ck && this.TICK - this.l25At <= K.L25_WAIT) { if (this.l25By !== by) { this.trace('L25-QUORUM', id, this.coord, 'by=%d and %d rival=%d', by, this.l25By, m.nc); this.l25Nc = -1; return false; } return true; }
-      if (this.TICK - this.l25At <= K.L25_WAIT && this.l25Nc >= 0) return true;
+      if (this.TICK - this.l25At <= K.L25_WAIT && this.l25Nc >= 0) {   // one question at a time...
+        if (this.l25ONc === m.nc && this.l25OCk === m.ck && this.l25OBy !== by && this.TICK - this.l25OAt <= K.L25_WAIT) { this.trace('L25-QUORUM', id, this.coord, 'by=%d and %d rival=%d asked=%d', by, this.l25OBy, m.nc, this.l25Nc); this.l25Nc = -1; this.l25ONc = -1; return false; }   // L25.17: ...but it hides no quorum: two arbiters naming the same other rival move me as two naming the asked one do
+        this.l25ONc = m.nc; this.l25OCk = m.ck; this.l25OBy = by; this.l25OAt = this.TICK | 0; return true;
+      }
       this.l25Ask(m, by); answer(); return true;
     },
 

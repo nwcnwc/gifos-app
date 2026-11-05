@@ -65,8 +65,14 @@
       { const ideal = this.nextHopCoord(target); if (ideal) { const x = this.occGet(ckey(ideal)); if (x >= 0 && x !== id && x !== exclude && !(this.f.fabricLinkState(id, x) === LS_CLOSED)) return x; } }   // L2: never hand a frame to a link my own transport says is cut
       { const x = this.l2Around(target, exclude, false); if (x >= 0) return x; }   // L2: around a dead E1, by E2 (owner -> backup owner -> heir -> row)
       if (this.coord.pc === 0) {   // W7: Section 1 rook: any live column- or row-mate can carry it onward
-        const cm = colMates(this.coord); for (let q = 0; q < C - 1; q++) { const x = this.occGet(ckey(cm[q])); if (x >= 0 && x !== id && x !== exclude) return x; }
-        const rm = rowMates(this.coord); for (let q = 0; q < C - 1; q++) { const x = this.occGet(ckey(rm[q])); if (x >= 0 && x !== id && x !== exclude) return x; }
+        // L3.4.2: the step goes to a mate beside the target's Section-1 cell over an open link first, then over any open link, then any mate
+        let tp = target.pc, tc = target.i; while (tp) { tc = lastDigit(tp); tp = parentPath(tp); }   // the target's Section-1 cell: its row, the column its subtree hangs from
+        const cm = colMates(this.coord), rm = rowMates(this.coord);
+        for (let pass = 0; pass < 3; pass++) for (let s = 0; s < 2; s++) for (let q = 0; q < C - 1; q++) {
+          const c = s ? rm[q] : cm[q]; const x = this.occGet(ckey(c)); if (x < 0 || x === id || x === exclude) continue;
+          const open = this.f.fabricLinkState(id, x) === LS_OPEN, beside = (c.r === target.r || c.i === tc);
+          if (pass === 2 || (open && (pass === 1 || beside))) return x;
+        }
         return -1;
       }
       {   // the alternates are my E2 edges (the far end sits beside my owner), then my row

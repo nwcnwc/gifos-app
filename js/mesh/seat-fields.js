@@ -318,6 +318,10 @@
     ["l25By", "i32"],   // int = -1  (line 1076)
     ["l25At", "i32"],   // int = -100000  (line 1076)
     ["l25Ck", "u64"],   // uint64_t = 0  (line 1076)
+    ["l25ONc", "i32"],   // int = -1  (line 1076)
+    ["l25OBy", "i32"],   // int = -1  (line 1076)
+    ["l25OAt", "i32"],   // int = -100000  (line 1076)
+    ["l25OCk", "u64"],   // uint64_t = 0  (line 1076)
     ["l25YieldTo", "{i32:i64}"],   // OMap<int,long long>  (line 1076)
     ["l25WitAsk", "[i32]"],   // vector<int>  (line 1076)
     ["l25WitAt", "i32"],   // int = -100000  (line 1076)
@@ -979,6 +983,10 @@
     l25By: -1,
     l25At: -100000,
     l25Ck: 0,
+    l25ONc: -1,
+    l25OBy: -1,
+    l25OAt: -100000,
+    l25OCk: 0,
     l25WitAt: -100000,
     l25WitMe: 0,
     l25WitRival: 0,
