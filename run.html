@@ -6138,8 +6138,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const memoPass = (k, f) => { if (!passMemo) return f(); if (!(k in passMemo)) passMemo[k] = f(); return passMemo[k]; };
     const stageHeldAt = new Map(), STAGE_FOLD_HOLD_MS = 25000;
     const stageFeedAt = new Map(), STAGE_FEED_LOST_MS = 2500;
+    // ONE STAGE LISTING. stageRead is the whole answer and writes no stage state: it says who is
+    // on the stage now and what the hold maps should remember. stageSeats is that answer for a
+    // reader that must not disturb anything (earState, tests). stageIds is what the page reads,
+    // once per repaint pass, and it alone records the holds, so they move exactly when they did
+    // while one getter did both. A hold is only ever read here (and by stageWhyForTest).
     const stageIds = () => memoPass('stg', stageIdsNow);
-    const stageIdsNow = () => {
+    const stageIdsNow = () => { const r = stageRead(); stageRecord(r); return r.ids; };
+    const stageSeats = () => stageRead().ids;
+    // A person's own word that they are on stage, while it counts: mine at once, a peer's for as
+    // long as its status holds (stHold, below).
+    const stageClaimOf = (id) => {
+      if (id === myId) return myStatus.stg || 0;
+      const st = statusOf.get(id);
+      if (!st || !stHold(id)) return 0;
+      return st.stg || 0;
+    };
+    const stageRead = () => {
       // A stage seat needs a LIVE status — the same stHold rule as consent and
       // the roster: fresh within 15s, or held for HOLDOVER_MS while the peer
       // honestly said away or transport still vouches for it. A departed
@@ -6147,12 +6162,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // painting a strip whose feed is gone — a big black tile); a stager
       // whose hidden-tab beat merely landed late must not be torn out of
       // every phone's strip and rebuilt on the next beat.
-      const stgOf = (id) => {
-        if (id === myId) return myStatus.stg || 0;
-        const st = statusOf.get(id);
-        if (!st || !stHold(id)) return 0;
-        return st.stg || 0;
-      };
       const out = [];
       // A meeting bot never takes the stage. It stays a small tile.
       const botOf = (id) => id === myId ? !!myStatus.bot : !!((statusOf.get(id) || {}).bot);
@@ -6164,7 +6173,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const vt = hasAdminRoom() ? null : stageVoteTallies();
       for (const id of new Set([myId, ...rosterIds])) {
         if (!id) continue;
-        const t = stgOf(id);
+        const t = stageClaimOf(id);
         // A share grant is a stage seat only while they are actually sharing.
         // It is not a general pass onto the stage.
         if (botOf(id)) continue;
@@ -6188,24 +6197,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // at once, whatever a status or the fold still says (both lag a death by up to a minute).
       // Short of a blip only: the watchdog calls a pipe dark after 0.7 s of silence. A new claim
       // (a reload, the feed back) puts the stager back.
-      {
-        const nowF = Date.now();
-        for (let i = out.length - 1; i >= 0; i--) {
-          const id = out[i][0]; if (id === myId) continue;
-          let feedNow = false; try { feedNow = stgBeats.has('stg:' + id) ? !stgStale('stg:' + id) : !stgLost('stg:' + id); } catch (x) {} // a beating stager is alive, whatever my path to it is doing
-          if (feedNow) stageFeedAt.set(id, nowF);
-          else if (stageFeedAt.has(id) && nowF - stageFeedAt.get(id) > STAGE_FEED_LOST_MS) out.splice(i, 1);
-        }
-        for (const id of [...stageFeedAt.keys()]) if (!out.some((x) => x[0] === id) && nowF - stageFeedAt.get(id) > 120000) stageFeedAt.delete(id);
+      const nowF = Date.now(), feedSeen = [], feedDrop = [];
+      for (let i = out.length - 1; i >= 0; i--) {
+        const id = out[i][0]; if (id === myId) continue;
+        let feedNow = false; try { feedNow = stgBeats.has('stg:' + id) ? !stgStale('stg:' + id) : !stgLost('stg:' + id); } catch (x) {} // a beating stager is alive, whatever my path to it is doing
+        if (feedNow) feedSeen.push(id);
+        else if (stageFeedAt.has(id) && nowF - stageFeedAt.get(id) > STAGE_FEED_LOST_MS) out.splice(i, 1);
       }
+      for (const [id, at] of stageFeedAt) if (!out.some((x) => x[0] === id) && nowF - at > 120000) feedDrop.push(id);
       // A deep stager's entry reaches the far room through its row's fold, and that path breaks
       // when the seat above it dies, until E2 carries the fold. The stager did not step down and
       // its feed still arrives: hold the seat. A status that says it stepped down, or a known
       // death, ends the hold at once; a feed that is gone ends it too.
-      const nowH = Date.now();
-      for (const x of out) stageHeldAt.set(x[0], { k: x[1], at: nowH });
-      // No fold in date says nothing about who is on stage: a fold that aged out on a row cut off from it must not stop a feed still arriving. Only a fold in date can leave a stager out.
-      if (!dg) for (const h of stageHeldAt.values()) h.at = nowH;
+      const nowH = Date.now(), heldSet = out.slice(), heldDrop = [];
       for (const [id, h] of stageHeldAt) {
         if (out.some((x) => x[0] === id)) continue;
         const said = statusOf.get(id);
@@ -6215,10 +6219,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // fold takes half a minute to list it again (room v8ring, 36 s off stage with its beat never late).
         let beating = false; try { beating = stgBeats.has('stg:' + id) && !stgStale('stg:' + id); } catch (e) {}
         if (beating && id !== myId && !(fresh && !said.stg)) { if (!meshGone.has(id)) out.push([id, h.k]); continue; }
-        if (nowH - h.at > STAGE_FOLD_HOLD_MS || id === myId || !held || meshGone.has(id) || (fresh && !said.stg)) { stageHeldAt.delete(id); continue; }
+        // No fold in date says nothing about who is on stage: a fold that aged out on a row cut off from it must not stop a feed still arriving. Only a fold in date can leave a stager out (stageRecord renews every hold then).
+        if ((dg && nowH - h.at > STAGE_FOLD_HOLD_MS) || id === myId || !held || meshGone.has(id) || (fresh && !said.stg)) { heldDrop.push(id); continue; }
         out.push([id, h.k]);
       }
-      return out.sort((a, b) => (a[1] - b[1]) || (a[0] < b[0] ? -1 : 1)).slice(0, SCALE.C).map((x) => x[0]);
+      const ids = out.sort((a, b) => (a[1] - b[1]) || (a[0] < b[0] ? -1 : 1)).slice(0, SCALE.C).map((x) => x[0]);
+      return { ids, nowF, nowH, foldIn: !!dg, feedSeen, feedDrop, heldSet, heldDrop };
+    };
+    // What the listing remembers from a read. Only stageIdsNow calls this.
+    const stageRecord = (r) => {
+      for (const id of r.feedSeen) stageFeedAt.set(id, r.nowF);
+      for (const id of r.feedDrop) stageFeedAt.delete(id);
+      for (const x of r.heldSet) stageHeldAt.set(x[0], { k: x[1], at: r.nowH });
+      if (!r.foldIn) for (const h of stageHeldAt.values()) h.at = r.nowH;
+      for (const id of r.heldDrop) stageHeldAt.delete(id);
     };
     // The room DIRECTORY: everyone we know to be in the room — the mesh occ
     // map (coord → peer, maintained by the healing laws) unioned with fresh
@@ -13692,7 +13706,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // A host whose live status says on stage counts before the roster
       // lists them (it lags their first status by a beat or more).
       const others = stageIds().filter((id) => id !== myId)
-        .concat(admins.filter((id) => id !== myId && stHold(id) && (statusOf.get(id) || {}).stg));
+        .concat(admins.filter((id) => id !== myId && stageClaimOf(id)));
       if (others.length) {
         const nm = others.map(nameOf).find((x) => x);
         line.textContent = nm ? 'Connecting to ' + nm + '…' : 'Connecting to the stage…';
