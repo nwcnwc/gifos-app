@@ -6977,7 +6977,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (p.wakeAt !== at || !p.pc || p.wakeAsked) continue;
         const dcDead = p.dc && (p.dc.readyState === 'closed' || p.dc.readyState === 'closing');
         if (!dcDead && p.connected) continue;
-        if (Math.max(p.rebuiltAt || 0, p.bornAt || 0) >= at) continue;
+        if (pcBuiltAt(p) >= at) continue;
         rebuild(pid, p, 'dark');
         // The channel just torn down was already dead. Tell the mesh on the
         // return tick, after netHold (reportDarkDeaths, from onUpdate): its
@@ -6997,7 +6997,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (p.wakeAt !== at || !p.pc) continue;
           if (p.wakePongAt > at) { p.wakeAt = 0; continue; }                   // it answered: the pair survived
           if (!p.wakeAsked && p.connected && p.dc && p.dc.readyState === 'open') { p.wakeAt = 0; continue; } // not asked (no channel at the wake) and open now: it formed since — alive
-          const built = Math.max(p.rebuiltAt || 0, p.bornAt || 0), st = p.pc.connectionState;
+          const built = pcBuiltAt(p), st = p.pc.connectionState;
           // (re)built at the wake — judged at WAKE_SETTLE_MS, unless the
           // channel we asked was replaced by an offer whose checks draw no
           // answer. That offer drained from a pc the peer has closed; the
@@ -7046,7 +7046,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // (chaos seed 11 #5: a row-mate back from 45 s dark held the head's
           // old id for 46 s more, and a rejoiner was NOROOM'd the whole time).
           if (p.wakeBuiltAt === at) { onTransportDead(pid, 'wake-dead'); continue; }
-          if (Math.max(p.rebuiltAt || 0, p.bornAt || 0) > at + WAKE_PROBE_MS) continue; // a later healer's pc, still forming
+          if (pcBuiltAt(p) > at + WAKE_PROBE_MS) continue; // a later healer's pc, still forming
           rebuild(pid, p, 'unsettled');
         }
       }, WAKE_SETTLE_MS);
@@ -14026,6 +14026,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       return added;
     }
+    // When this pair's current pc was made.
+    const pcBuiltAt = (p) => Math.max(p.rebuiltAt || 0, p.bornAt || 0);
     // ONE RECORD OF ONE PC'S NEGOTIATION, born with the pc and dropped with it, so no mark or timer can reach the next pc.
     // minting: the offer being made on this pc (createOffer to setLocalDescription), whichever path started it; the pc still
     // reads 'stable' meanwhile. kind says what the pc is for. What describes the peer (turnSeen, turnLegacy) stays on p.
@@ -14436,7 +14438,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function armGlareYield(p, from, msg) {
       p.neg.glareOffer = msg;
       if (p.neg.glareTimer) return;                       // already waiting
-      const built = Math.max(p.rebuiltAt || 0, p.bornAt || 0);
+      const built = pcBuiltAt(p);
       const intoDark = (p.dcRxAt || 0) > 0 && built - p.dcRxAt > GLARE_YIELD_MS;
       const stale = noLiveTransport(p) && (Date.now() - built > GLARE_YIELD_MS || intoDark);
       p.neg.glareTimer = setTimeout(() => {
@@ -14452,8 +14454,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (fresh) rebuildPc(p, 'glare-yield', { keepIce: true });
         const pc = p.pc;
         Promise.resolve(fresh ? null : pc.setLocalDescription({ type: 'rollback' }))
-          .then(() => answerOffer(pc, p, m, true, (sdp) => sendSig(from, { kind: 'answer', sdp, ib: 1, name: myName(), ip: myIp,
-                                      st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), sid: mySid() })))
+          .then(() => answerOffer(pc, p, m, true, (sdp) => sendSig(from, Object.assign({ kind: 'answer', sdp, ib: 1 }, sigMeta()))))
           .catch((e) => {
             if (p.pc !== pc) return; // whoever replaced the pc owns the pair now
             // Rollback failed. Rebuild and dial from this side too. Dialling
@@ -14463,6 +14464,56 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }, stale ? 0 : GLARE_YIELD_MS);
     }
 
+    // What every offer and answer tells about me, after its own fields.
+    const sigMeta = () => ({ name: myName(), ip: myIp, st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), sid: mySid() });
+    // THE RULES THAT REBUILD BEFORE AN OFFER LANDS, first match wins. After a rebuild none of the later ones can
+    // hold: a fresh pc has no death, no remote description, no connection and no media.
+    const offerFpOf = (sdp) => { const m = /\r?\na=fingerprint:([^\r\n]+)/.exec(String(sdp && sdp.sdp || sdp || '')); return m ? m[1] : ''; };
+    function offerNeedsFreshPc(p, msg) {
+      if (!p.pc) return '';
+      // A fresh offer onto a LONG-DEAD local pc negotiates into a corpse:
+      // the tunnel-return stall (behavior battery 06c, 2026-07-26) — the
+      // evicted side's zombie ate the returning offers until the vouch
+      // reap cleared it minutes later. Rebuild first — but ONLY when the
+      // death has PERSISTED (deadSince > 12s): rebuilding on any transient
+      // 'failed' tore down recovering pairs in a loop the moment both tabs
+      // were hidden/throttled (the 06a regression this line first caused).
+      if (p.deadSince && Date.now() - p.deadSince > 12000) return 'offer-dead';
+      // THE NEW-PC RULE: an offer whose DTLS fingerprint is not the one our
+      // remote description holds comes from a DIFFERENT RTCPeerConnection —
+      // the peer REBUILT the pair (its starve kick while we were frozen,
+      // its rescue dial after it gave us up). A certificate is minted per
+      // pc, so a renegotiation or ICE restart of the pc we hold keeps its
+      // fingerprint and is never touched. Negotiated into our old pc the
+      // offer fails ("the order of m-lines in subsequent offer doesn't
+      // match", chaos seed 8 at the thaw) and the pair waits 12-27 s for a
+      // healer; on a fresh pc it is the reunion itself, one round trip.
+      // Nothing of ours is lost: the pc we hold was built against a pc the
+      // peer has closed.
+      // The fingerprint compared is the one of the LAST OFFER ROUTED INTO
+      // THIS PC (p.neg.offerFp, stamped synchronously below), not
+      // pc.remoteDescription: two offers from two of the peer's pcs drain in
+      // one burst at a thaw (a throttled row-mate's wake probe rebuilt its
+      // pair with the frozen page every beat), and the second arrived while
+      // the first's setRemoteDescription was still pending — remoteDescription
+      // read null, the rule stood down, and the second offer failed on the
+      // first's pc ("m-lines in subsequent offer", seed 12 #1: 25.8 s).
+      const fp = offerFpOf(msg.sdp), cur = p.pc.remoteDescription ? offerFpOf(p.pc.remoteDescription) : (p.neg.offerFp || '');
+      if (fp && cur && fp !== cur) return 'offer-new-pc';
+      // A NEVER-OPENED pair is the other corpse class (pair-probe.js): ICE
+      // says connected, the DC never opened, and this side reads healthy
+      // (deadSince=0) — so the dialer's dc-watchdog rebuild offer was
+      // negotiated into the wedged old pc and the pair re-wedged. An offer
+      // arriving for a pair that never carried a byte and never opened its
+      // DC past formation age gets a fresh pc to land on.
+      if (p.connected && !(p.dc && p.dc.readyState === 'open') && !p.meshRxAt && !p.dcRxAt && Date.now() - pcBuiltAt(p) > 5000) return 'offer-wedged';
+      // A BOOTSTRAP OFFER (over the relay: a DataChannel-only description)
+      // lands on a media-free transport: a pc that already carries media
+      // had a channel that is now dead, and is rebuilt (sendOffer's rule,
+      // on the answering side).
+      if (msg.boot && p.mediaOn && !(p.dc && p.dc.readyState === 'open')) return 'offer-boot';
+      return '';
+    }
     // ONE ANSWER, start to end, on the pc it began on: an offer is set, the ICE that waited for it goes in
     // (signaling only: a renegotiation's channel carries none), and the answer goes out through `send`. A pc replaced
     // meanwhile ends the chain with PcReplaced: that offer described a pc now closed, and the answer must not leave.
@@ -14541,7 +14592,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           settled();
           if (p.pc !== pc) return; // rebuilt while minting: this offer belongs to a closed pc
           p.offerSentAt = Date.now(); p.offerSentPc = pc;
-          sendSig(peerId, { kind: 'offer', sdp: pc.localDescription, ib: 1, dr: (() => { const ms = meshSeat(); return ms && ms.hasCoord && ms.state === 3 && ms.seatTick - ms.seatedAt > 40 ? 0 : 1; })(), name: myName(), ip: myIp, st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), sid: mySid() });
+          sendSig(peerId, Object.assign({ kind: 'offer', sdp: pc.localDescription, ib: 1, dr: (() => { const ms = meshSeat(); return ms && ms.hasCoord && ms.state === 3 && ms.seatTick - ms.seatedAt > 40 ? 0 : 1; })() }, sigMeta()));
         })
         .catch((e) => { settled(); if (p.pc === pc) noteNegFail('offer', peerId, e); });
     }
@@ -14827,53 +14878,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           else if (Date.now() - (doorsShut.get(from) || 0) < DOOR_SHUT_MS) p.bootOut = true;
           if (typeof clog === 'function') clog('door-in ' + String(from).slice(0, 6) + ' out=' + !!p.bootOut + ' new=' + !p.pc + ' age=' + Math.round((Date.now() - (p.bornAt || 0)) / 1000));
         }
-        // A fresh offer onto a LONG-DEAD local pc negotiates into a corpse:
-        // the tunnel-return stall (behavior battery 06c, 2026-07-26) — the
-        // evicted side's zombie ate the returning offers until the vouch
-        // reap cleared it minutes later. Rebuild first — but ONLY when the
-        // death has PERSISTED (deadSince > 12s): rebuilding on any transient
-        // 'failed' tore down recovering pairs in a loop the moment both tabs
-        // were hidden/throttled (the 06a regression this line first caused).
-        if (p.pc && p.deadSince && Date.now() - p.deadSince > 12000) rebuildPc(p, 'offer-dead');
-        // THE NEW-PC RULE: an offer whose DTLS fingerprint is not the one our
-        // remote description holds comes from a DIFFERENT RTCPeerConnection —
-        // the peer REBUILT the pair (its starve kick while we were frozen,
-        // its rescue dial after it gave us up). A certificate is minted per
-        // pc, so a renegotiation or ICE restart of the pc we hold keeps its
-        // fingerprint and is never touched. Negotiated into our old pc the
-        // offer fails ("the order of m-lines in subsequent offer doesn't
-        // match", chaos seed 8 at the thaw) and the pair waits 12-27 s for a
-        // healer; on a fresh pc it is the reunion itself, one round trip.
-        // Nothing of ours is lost: the pc we hold was built against a pc the
-        // peer has closed.
-        // The fingerprint compared is the one of the LAST OFFER ROUTED INTO
-        // THIS PC (p.neg.offerFp, stamped synchronously below), not
-        // pc.remoteDescription: two offers from two of the peer's pcs drain in
-        // one burst at a thaw (a throttled row-mate's wake probe rebuilt its
-        // pair with the frozen page every beat), and the second arrived while
-        // the first's setRemoteDescription was still pending — remoteDescription
-        // read null, the rule stood down, and the second offer failed on the
-        // first's pc ("m-lines in subsequent offer", seed 12 #1: 25.8 s).
-        { const fpOf = (sdp) => { const m = /\r?\na=fingerprint:([^\r\n]+)/.exec(String(sdp && sdp.sdp || sdp || '')); return m ? m[1] : ''; };
-          const fp = fpOf(msg.sdp);
-          const cur = p.pc ? (p.pc.remoteDescription ? fpOf(p.pc.remoteDescription) : (p.neg.offerFp || '')) : '';
-          if (p.pc && fp && cur && fp !== cur) {
-            rebuildPc(p, 'offer-new-pc');
-          }
-          if (fp) p.neg.offerFp = fp; }
-        // A NEVER-OPENED pair is the other corpse class (pair-probe.js): ICE
-        // says connected, the DC never opened, and this side reads healthy
-        // (deadSince=0) — so the dialer's dc-watchdog rebuild offer was
-        // negotiated into the wedged old pc and the pair re-wedged. An offer
-        // arriving for a pair that never carried a byte and never opened its
-        // DC past formation age gets a fresh pc to land on.
-        if (p.pc && p.connected && !(p.dc && p.dc.readyState === 'open') && !p.meshRxAt && !p.dcRxAt
-            && Date.now() - (p.rebuiltAt || p.bornAt) > 5000) rebuildPc(p, 'offer-wedged');
-        // A BOOTSTRAP OFFER (over the relay: a DataChannel-only description)
-        // lands on a media-free transport: a pc that already carries media
-        // had a channel that is now dead, and is rebuilt (sendOffer's rule,
-        // on the answering side).
-        if (msg.boot && p.pc && p.mediaOn && !(p.dc && p.dc.readyState === 'open')) rebuildPc(p, 'offer-boot');
+        { const fresh = offerNeedsFreshPc(p, msg); if (fresh) rebuildPc(p, fresh); }
+        { const fp = offerFpOf(msg.sdp); if (fp) p.neg.offerFp = fp; }
         drainPreIce(from, p); // after any rebuild, which clears pendingIce
         // p.connected is LOAD-BEARING in that gate: the wedge signature is
         // connected-WITHOUT-DC. A pair still in ICE 'connecting' receiving an
@@ -14887,7 +14893,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // side recovers from a never-arriving remote offer (see sweeper). The
         // polite peer (lower id) rolls back its local offer and accepts; the
         // impolite peer ignores the remote offer and keeps its own.
-        const accept = () => { const pc = p.pc; return answerOffer(pc, p, msg, true, (sdp) => sendSig(from, { kind: 'answer', sdp, ib: 1, name: myName(), ip: myIp, st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), sid: mySid() }))
+        const accept = () => { const pc = p.pc; return answerOffer(pc, p, msg, true, (sdp) => sendSig(from, Object.assign({ kind: 'answer', sdp, ib: 1 }, sigMeta())))
           .catch((e) => { if (p.pc !== pc) return; noteNegFail('accept', from, e); if (/extension ID reassignment/i.test(String((e && e.message) || ''))) maybeRebuildNeg(p, e); }); };
         // A COLLISION is my own offer applied (have-local-offer) or, on a pair
         // with no live transport, still being minted (p.neg.minting — see
@@ -15091,7 +15097,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const s = meshSeat();
       if (!(s && s.hasCoord && s.state === 3)) { bootDial(pid); return; }
       if (!p) { ensureLink(pid); return; }
-      if (p.neg.minting || (p.pc && p.pc.connectionState !== 'closed' && p.pc.connectionState !== 'failed' && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000 && p.pc.signalingState !== 'stable')) return;
+      if (p.neg.minting || (p.pc && p.pc.connectionState !== 'closed' && p.pc.connectionState !== 'failed' && Date.now() - pcBuiltAt(p) < 5000 && p.pc.signalingState !== 'stable')) return;
       if (iInitiate(pid)) sendOffer(pid, false); else askDial(pid, p);
     }
     // A close is real: the pc ends. A peer the seat still names keeps its record and tile, with a fresh idle pc for the
@@ -15207,10 +15213,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // goodbye leaves behind for the seat's next dial. Counting it as forming made a dial request from a
       // page back from a reload wait out this window and its own 4 s retries: the pair came up at 8-9 s.
       const idle = !!(p.pc && p.pc.signalingState === 'stable' && p.pc.connectionState === 'new' && !p.neg.minting);
-      const forming = !pLive && p.pc && !darkOffer && !idle && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000 && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
+      const forming = !pLive && p.pc && !darkOffer && !idle && Date.now() - pcBuiltAt(p) < 5000 && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
       if (typeof clog === 'function') clog('dial-request from ' + String(p.id || '?').slice(0, 6) + ' solo=' + (participantCount() <= 1) + ' live=' + !!pLive
         + ' init=' + iInitiate(p.id) + ' forming=' + !!forming + ' dark=' + !!darkOffer + ' pc=' + (p.pc ? p.pc.connectionState + '/' + p.pc.signalingState : '-')
-        + ' age=' + Math.round((Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0)) / 100) / 10 + 's frag=' + Math.round((Date.now() - (p.fragDialAt || 0)) / 100) / 10 + 's');
+        + ' age=' + Math.round((Date.now() - pcBuiltAt(p)) / 100) / 10 + 's frag=' + Math.round((Date.now() - (p.fragDialAt || 0)) / 100) / 10 + 's');
       // A request answered by an offer that went into the dark (the asker's
       // side was cut when it left): a 5 s re-offer gate put up to 5 s on a cut
       // pair's return (066ba4-room-six: 12.6 s). A dark offer is re-made after 2 s.
@@ -15272,7 +15278,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // Under the wire's four-second ask, so that ask is the redial.
       const fewDoorWait = 3500;
       const wait = (p && p.neverUp === true) ? (manyDoors ? (p.dialWait || 5000) : fewDoorWait) : 5000;
-      if (p && p.pc && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < wait && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed') {
+      if (p && p.pc && Date.now() - pcBuiltAt(p) < wait && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed') {
         if (!manyDoors) armDoorRetry(pid, p); // forming: its turn is not yet, but the four-second retry stays armed
         return;
       }
@@ -17754,7 +17760,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // then (pcCloseNow), and nothing retired it once the name went. A seated member, past any dial in flight: it goes.
           const sq = meshSeat();
           if (sq && sq.hasCoord && sq.state === 3 && !sq.moving && !theyOutside && !p.connected && !(p.dc && p.dc.readyState === 'open')
-              && now - Math.max(p.rebuiltAt || 0, p.bornAt || 0) > UNOWNED_PC_MS) {
+              && now - pcBuiltAt(p) > UNOWNED_PC_MS) {
             if (typeof clog === 'function') clog('pc-unowned ' + String(pid).slice(0, 6));
             p.envClosing = now; // no Link and no channel: nothing to tell the seat's world
             dropPeer(pid, true);
