@@ -279,8 +279,10 @@
         const named = l15Names(g, k) || l15NamedBy(g, k);
         if (!heard && !named && alive[g] && L.dBorn >= 0) {
           const idle = T() - L.dProg, age = T() - L.dBorn; let why = null;
-          if (L.dHoAt >= 0 && T() - L.dHoAt >= K.L16_HO_CLOSE && !(L.dOwed && L.dWait >= 0)) why = 'handed';
+          const placed = !!(L.dPlaced & (1 << lEnd(g, k)));   // L16.3.1: the placee closes it (L15.5), or the life limit from the PLACE
+          if (!placed && L.dHoAt >= 0 && T() - L.dHoAt >= K.L16_HO_CLOSE && !(L.dOwed && L.dWait >= 0)) why = 'handed';
           else if (L.dGw && !L.dIn) { if (idle > K.L16_GW_IDLE && !(L.dWait >= 0)) why = 'gw-idle'; else if (age > K.L16_GW_LIFE) why = 'gw-life'; }
+          else if (placed) { if (idle > K.L16_LIFE) why = 'life'; }
           else if (L.dIn && L.state === LK_OPEN && !L.dAsked && L.dProg === L.dBorn) why = 'unnamed';
           else if (L.dIn && !L.dAsked && L.state === LK_OPEN && idle > K.L16_ANS_IDLE) why = 'idle';
           else if (idle > K.L16_IDLE) why = 'idle'; else if (age > K.L16_LIFE) why = 'life';
