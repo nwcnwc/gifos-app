@@ -15910,6 +15910,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // re-pair wedge hunt was flying blind. DEBUG pages log them now (drills
     // tap the console); production stays exactly as silent as before (null →
     // typeof 'object' → every guard stays false).
+    const DEBUGFAIL_AT_LOAD = (() => { const m = /(?:^|[#&?])debugfail=([a-z-]+)/i.exec(location.hash + location.search); return m ? m[1].toLowerCase() : ''; })();   // read at load: the boot rewrites the hash later
     const clog = DEBUG_ON ? function () { try { console.log.apply(console, ['[clog]'].concat(Array.from(arguments))); } catch (e) {} } : null;
     function meshSelfReport() { // DEBUG-TREE
       const c = meshCoord(), s = meshSeat();
@@ -17028,8 +17029,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let debugFailUsed = false;
     function debugFail(step, p) {
       if (!DEBUG_ON || debugFailUsed) return p;
-      const m = /(?:^|[#&?])debugfail=([a-z-]+)/i.exec(location.hash + location.search);
-      const v = m ? m[1].toLowerCase() : '';
+      const v = DEBUGFAIL_AT_LOAD;
       if (v === step + '-once') { debugFailUsed = true; return p.then(() => { throw new Error('DEBUGFAIL ' + v); }); }
       if (v === step + '-hang-once') { debugFailUsed = true; return new Promise(() => {}); }
       return p;
