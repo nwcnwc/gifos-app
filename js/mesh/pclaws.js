@@ -56,7 +56,7 @@
       state: LK_NONE, view: [LK_NONE, LK_NONE], half: 0, stuck: false, leverHalf: false, wasOpen: false, carried: false,
       epoch: 0, openEp: 0, dialAt: -1, halfAt: -1, askAt: -1000000, txAt: [-1, -1], nnAt: [-1, -1], nnAsk: [-1000000, -1000000],
       arrAt: [-1, -1], q: [], outside: 0, dialBy: -1, dialT: -3, dialHow: 0, callClosed: false, gone: 0,
-      agreed: [false, false], hold: [[], []], closingAt: [-1, -1], farAsk: [-1000000, -1000000], uplink: false, dHeard: 0,
+      agreed: [false, false], hold: [[], []], closingAt: [-1, -1], farAsk: [-1000000, -1000000], uplink: false, dHeard: 0, dPlaced: 0,
       backAt: [-1, -1], dBorn: -1, dProg: -1, dAsked: false, dHomed: false, dGw: false, dIn: false, dSat: false, dHoAt: -1, dWait: -1,
       dOwed: false, dWaitAtFind: -1, dOwedAt: -1,
     };
@@ -281,6 +281,7 @@
           if (L.dHoAt >= 0 && T() - L.dHoAt >= K.L16_HO_CLOSE && !(L.dOwed && L.dWait >= 0)) why = 'handed';
           else if (L.dGw && !L.dIn) { if (idle > K.L16_GW_IDLE && !(L.dWait >= 0)) why = 'gw-idle'; else if (age > K.L16_GW_LIFE) why = 'gw-life'; }
           else if (L.dIn && L.state === LK_OPEN && !L.dAsked && L.dProg === L.dBorn) why = 'unnamed';
+          else if (L.dIn && (L.dPlaced & (1 << lEnd(g, k)))) { if (age > K.L16_LIFE) why = 'life'; }   // L16.3.1: the placee closes it (L15.5), or the life limit
           else if (L.dIn && !L.dAsked && L.state === LK_OPEN && idle > K.L16_ANS_IDLE) why = 'idle';
           else if (idle > K.L16_IDLE) why = 'idle'; else if (age > K.L16_LIFE) why = 'life';
           if (why) {
