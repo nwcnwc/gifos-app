@@ -42,15 +42,6 @@
  *   - MINT: on createMeshNode we mint a per-participant identity (unless the
  *     caller supplies opts.identity, or a legacy client-set opts.peer). The
  *     peer id is peer-id = H(pubkey) — retiring the client-set-id hole.
- *   - SIGN: every occupancy-authoring frame the seat emits (FINDLEAF / PLACE /
- *     CLAIM) and the HELLO announce is signed with the participant's stable key
- *     before it goes on the wire — the signature (m.s4 = {sp,sig,pub}) is the
- *     participant's portable name, valid across links and moves.
- *   - VERIFY + PIN: an inbound signed frame is verified against the TOFU-pinned
- *     key for its signer BEFORE it reaches the seat. A good frame is delivered
- *     with m.s4ok stamped (mesh.js's verifyFill gate passes) and its key pinned;
- *     a forged/impostor/key-swapped frame is DROPPED. Verification is chained
- *     FIFO so crypto never reorders a sender's frames.
  * S4 is MANDATORY — there is no off switch: mesh-identity.js must be loaded
  * (hard fail otherwise), every node mints (or is handed) an identity, and
  * signing + verification are unconditional.
@@ -200,7 +191,6 @@
     // gates and fires one immediate door probe; the door's greeter list is
     // ground truth, and a genuinely-emptied room costs one no-op probe.
     let sealedSoloRuns = 0; // consecutive sealed-only door replies while a fragment suspect (key-divergence evidence)
-    let lastOccSize = 0;   // seat.occ.size last tick (state 3 only)
     let everPopulated = false; // this PAGE-LIFE saw a room of >=2 — a reseat/requeue cannot launder it
     let everLinked = false, cutSince = 0; // a seated seat that held links and now holds none (wall clock of the cut, 0 = not cut)
     let shrankSolo = false; // armed while everPopulated && solo; disarmed by a door reply proving we are truly alone, or by repopulation
@@ -229,7 +219,6 @@
     let identity = opts.identity || null;   // else minted below (async, existing flow)
     const wantMint = !identity;             // ALWAYS mint when none is supplied
     let peer = identity ? identity.peerId : null;   // set post-mint
-    const s4on = true;                      // unconditional — no off switch
     const gossipChain = net.makeChain();   // gossip has its own lane: a chat burst must never queue a newcomer's seating frame behind it
     const verifyChain = net.makeChain();   // one inbound chain for every signed seat frame (order kept)
     const fillPins = ident.newPins();      // the exact-replay sets for claimed frames, bounded as 0.9.24's (mesh-identity SEEN_MAX)
@@ -1071,7 +1060,6 @@
           const osz = (seat && seat.state === 3 && seat.hasCoord) ? seat.occ.size : 0;
           if (osz >= 2) { everPopulated = true; shrankSolo = false; }
           else if (osz === 1 && everPopulated) shrankSolo = true;
-          lastOccSize = osz;
         }
         {
           const nl = (seat && seat.state === 3 && seat.hasCoord) ? seat.linkPeers().size : -1;
@@ -1151,8 +1139,6 @@
         trace: opts.trace || null,
         onLinks: opts.onLinks || null,
         onLeft: (reload) => { if (opts.onLeft) { try { opts.onLeft(reload); } catch (e) {} } },
-        onTake: () => {},
-        onRecv: (_s, m) => { if (!stopped) { netEdge(); noteRequeue(m); } },
       });
       raw = penv.newSeat ? penv.newSeat() : new GifOS.meshSeat.Seat(penv.me, penv.world);   // the seat is mine (A3); env.seat() reads it back
       penv.world.onRecv = (_s, m) => { if (!stopped) { netEdge(); noteRequeue(m); } };
@@ -1310,7 +1296,6 @@
         } : null;
       },
       // R5/E5§2: after onFork, the app picks one genesis key; seat joins only that room.
-      chooseFork() { return false; },   // L8 islands decide; no human pick on the new mesh
       myCell() { return raw && raw.state === 3 && raw.hasCoord ? GifOS.meshTopo.ckey(raw.coord) : -1; },   // for the page's seat memory (L3.10)
       // reload: the page may be coming back with this identity (L3.11). Its plain goodbye goes first, for the far end to hold.
       // None pre-signed for what I would say now: then it is a plain leave, or a closed tab would hold its cell for a whole lease.
