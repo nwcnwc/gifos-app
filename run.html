@@ -13240,7 +13240,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const handoff = (p) => {
         if (!p || p.id === viaPid || p.id === m.from || crossed.includes(p.id) || !(p.connected && p.dc && p.dc.readyState === 'open')) return false;
         if (m.id) fwdSeenNote(fwdSeen, m.id);
-        txStats.hopFwd++; dcSend(p, envl); if (kind === 'fsig') { try { meshNode.doorWalked(p.id); } catch (e) {} } return true;   // L16.3.1: a door carrying a placee's set-up is in use
+        txStats.hopFwd++; dcSend(p, envl); return true;
       };
       // L16.3.2: a reply goes back along its list: my channel to the asker, else the seat before me on the list. Neither open: the rungs, the list dropped.
       if (kind === 'fsig' && Array.isArray(m.rt)) {
@@ -17090,6 +17090,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         onGossip: (src, g, ageMs, scoped, link) => {
           if (!g || g.a !== 1 || !g.msg) return;
           if ((typeof isEjected === 'function' && isEjected(src) === true)) return false; // refused AND not forwarded: a forger's gossip stops at this seat
+          // A person this room refused (the verdict my seat holds, an admin's ban, or my own vote) is not heard through a member's forward either: refused AND not forwarded.
+          if ((meshNode && meshNode.kicked && meshNode.kicked(src)) || bannedSeat.has(src) || (devOf[src] && myVoteoffs.has(devOf[src]))) return false;
           // TROLL GATE, for a room's flood. Past one section most authors are neither a link of mine nor in my occ, so the author
           // alone cannot tell a far seat from a knocker. The channel can: a line a member handed me on its own proven channel is the room's.
           // One that came from a stranger, or by no proven channel, stops here, so every member's forward is one a member took.
@@ -21181,7 +21183,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const k3 = m.m && m.m.kind;
         if (!(k3 === 'offer' || k3 === 'answer' || k3 === 'ice' || k3 === 'appstop' || k3 === 'dialask')) return;
         noteCrumb(m.from, p && p.id); // the answer retraces this path
-        if (p) { try { meshNode.doorWalked(p.id); } catch (e) {} }   // L16.3.1: a door carrying a placee's set-up is in use
         if (m.to === myId) {
           // The same envelope id arrives once per door. Take the first copy.
           // An intermediate hop still records the id only on handoff, so a
@@ -36952,6 +36953,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       sealedCopyForTest: async (to, obj) => { const fs = obj && obj.k === 'pwinfo' ? pwFramesOf(obj) : [obj]; if (!fs) return false; let ok = true; for (const f of fs) ok = (await relaySendSealed(to, f && f.k, f)) && ok; return ok; }, // a member's relay copy of a grant to one peer (what a replayed grant looks like on the wire)
       floodForTest: (n, kind) => { let k = 0; for (let i = 0; i < (n | 0); i++) { if (meshNode) { meshNode.gossip({ a: 1, msg: kind === 'status' ? { kind: 'status', s: Object.assign({}, myStatus, { at: Date.now() + i }), name: 'flood' } : { k: 'noop', i } }); k++; } } return k; }, // a hostile client's room-wide flood
       gossipStats: () => (meshNode && meshNode.seat ? { dropped: meshNode.seat.gspDropped || 0, refused: meshNode.seat.gspRefused || 0, forged: meshNode.seat.gspForged || 0, inAll: meshNode.seat.gspInAll || 0, roomFlood: txStats.roomFlood || 0, door: Object.assign({}, doorDropKinds) } : null),
+      ownLineForTest: async (text) => { const id = 'own_' + Date.now(), f = { t: 'GSP', gid: myId + ':own' + Date.now(), src: myId, m: { a: 1, msg: { k: 'chat', m: { id, by: myName(), byId: myId, at: Date.now(), text: String(text) } } } }; f.s4 = await meshNode._signGossipForTest(f); window.__ownLine = { id, frame: f }; return id; }, // my signed line, held back (not sent): a copy a member could still be holding
+      voteWithdrawForTest: () => { for (const d of Array.from(myVoteoffs)) myVoteoffs.delete(d); saveVoteoffs(myVoteoffs); try { meshVoteBeat(); } catch (e) {} return 1; }, // take back every vote I cast
+      kickedForTest: (pid) => !!(meshNode && meshNode.kicked && meshNode.kicked(String(pid))), // my seat holds the verdict on this peer
+      rosterNameForTest: (pid) => rosterNames[pid] || '', // the name a person sees for this peer
+      handedLineForTest: (frame, via) => { meshNode.recvCtl(frame, via, true); return 1; }, // a member's forward of that copy, over its own proven channel
       strangerLineForTest: async (text, via, direct) => { const I = GifOS.meshIdentity, who = await I.mint(), id = 'stranger_' + Date.now(); const f = { t: 'GSP', gid: who.peerId + ':' + Date.now(), src: who.peerId, m: { a: 1, msg: { k: 'chat', m: { id, by: 'Stranger', byId: who.peerId, at: Date.now(), text: String(text) } } } }; f.s4 = await I.signGossip(who, f); meshNode.recvCtl(f, via || who.peerId, direct !== false); return id; }, // a knocker's signed line: over its own door pair (no via), or by no proven channel (direct false)
       forgeGossipForTest: (src, n) => { if (!meshNode || !meshNode._forgeGossipForTest) return 0; const ps = []; for (let i = 0; i < (n | 0); i++) ps.push({ a: 1, msg: { k: 'chat', m: { id: 'forged_' + i, by: 'Impostor', byId: src, at: Date.now(), text: 'forged line ' + i } } }); return meshNode._forgeGossipForTest(src, ps); }, // a hostile client speaking in someone else's name, with a valid signature of its own
       localStreamActive: () => !!localStream,

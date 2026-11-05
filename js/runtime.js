@@ -1280,6 +1280,21 @@
     // in IndexedDB, so we only need to tell our own app to re-read.
     if (chan) chan.onmessage = (e) => onChange(e.data.collection);
     const notify = (collection) => { if (chan) chan.postMessage({ collection }); onChange(collection); };
+    // A put waits behind any other tab's transaction and closing the tab aborts it, so it is written ahead until it
+    // commits, and the next open of this app finishes what a closed tab left. Only plain JSON fits; the rest goes as before.
+    const pendingPrefix = 'gifos_pending_put_' + store.dbName + '_' + fileId + '_';
+    const plainJson = (k, v) => { if (v && typeof v === 'object' && !Array.isArray(v) && ![Object.prototype, null].includes(Object.getPrototypeOf(v))) throw new Error('not plain'); return v; };
+    const writeAhead = (collection, rec) => {
+      const key = pendingPrefix + store.uid('put');
+      try { root.localStorage.setItem(key, JSON.stringify({ collection, rec }, plainJson)); } catch (e) { /* too big or not plain */ }
+      return () => { try { root.localStorage.removeItem(key); } catch (e) { /* storage blocked */ } };
+    };
+    try {
+      Object.keys(root.localStorage).filter((key) => key.startsWith(pendingPrefix)).forEach((key) => {
+        const left = JSON.parse(root.localStorage.getItem(key));
+        store.appAddOnce(fileId, left.collection, safeRecord(left.rec)).then((rec) => { root.localStorage.removeItem(key); if (rec) notify(left.collection); }).catch(() => {});
+      });
+    } catch (e) { /* storage blocked */ }
     // A per-record app's full state, assembled on demand from its rows.
     const full = () => store.getState(fileId).then((s) => (s && s.collections ? s : emptyState()));
     return {
@@ -1295,7 +1310,10 @@
         if (op === 'dump') return full();
         if (op === 'get') return store.appGet(fileId, collection, key);
         if (op === 'getAll') return store.appGetAll(fileId, collection);
-        if (op === 'put') return store.appAdd(fileId, collection, safeRecord(value)).then((rec) => { notify(collection); return rec; });
+        if (op === 'put') {
+          const rec = safeRecord(value), done = writeAhead(collection, rec);
+          return store.appAdd(fileId, collection, rec).then((saved) => { done(); notify(collection); return saved; }, (e) => { done(); throw e; });
+        }
         if (op === 'delete') return store.appDelete(fileId, collection, key).then(() => { notify(collection); return true; });
         // setVisibility(collection, id, level) — stamp one record's per-record
         // visibility override (`_vis`). Owner-only: the host runs this against

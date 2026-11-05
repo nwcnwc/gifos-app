@@ -53,6 +53,8 @@
     holdGone(x, until) { const r = ins(this.recs, x, newRec); if (r.goneAt < 0) r.goneAt = until; }   // L17: its goodbye: gone for GONE_DIAL
     // C++: mesh.cpp:heard
     heard(x) { const it = this.recs.get(x); if (it !== undefined) it.goneAt = -1; }   // L17: I hear it: it lives
+    // C++: mesh.cpp:lapse
+    lapse(x) { const it = this.recs.get(x); if (it !== undefined) it.goneAt = -1; }   // L17.3: the hold outlived a lease on a seat I still name: one more dial
     // C++: mesh.cpp:heldN
     heldN() { let n = 0; for (const r of this.recs.values()) if (r.goneAt >= 0) n++; return n; }
     // C++: mesh.cpp:sweepHeld

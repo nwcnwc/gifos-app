@@ -39,15 +39,17 @@
     l33DeadRow(r) {
       const id = this.id;
       if (!this.hasCoord || this.state !== 3 || this.coord.pc !== 0 || this.coord.r === r || this.TICK - this.seatedAt < K.LEASE_T) return false;
+      { let full = true; for (let j = 0; j < C; j++) if (!this.occ.has(ckey({ pc: 0, r, i: j }))) full = false; if (full) return false; }
       for (let j = 0; j < C; j++) {
         const k = ckey({ pc: 0, r, i: j }); const x = this.occGet(k);
         if (this.softSitting(k) || this.sitting.has(k) || this.firstHandLive(k) || this.s1Fresh(k)) return false;
         const ss = this.s1seen.get(k); if (ss !== undefined && this.TICK - ss < K.LEASE_T) return false;
         if (x >= 0) { if (x === id) return false; for (const g of this.lastGreeters) if (g === x) return false; }
       }
-      if (this.greetersAt < 0 || this.TICK - this.greetersAt > 64) {
-        if (this.TICK - this.l13KnockAt >= 32) { this.l13KnockAt = this.TICK; this.emitRelay(this.genKey); this.trace('L13-KNOCK', id, this.coord, 'dead-row'); }
-        return false;
+      {
+        let newest = this.seatedAt;
+        for (let j = 0; j < C; j++) { const k = ckey({ pc: 0, r, i: j }); const ss = this.s1seen.get(k); if (ss !== undefined && ss > newest) newest = ss; const lv = this.live.get(k); if (lv !== undefined && lv > newest) newest = lv; }
+        if (this.greetersAt < newest) return false;
       }
       for (let j = 0; j < C; j++) {
         const k = ckey({ pc: 0, r, i: j }); if (!this.occ.has(k)) continue;

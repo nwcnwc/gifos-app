@@ -331,6 +331,17 @@
     // { storeName: objectStore } map. Multi-store reads/writes here are atomic
     // and isolated by IndexedDB itself — two tabs writing the same app take
     // turns, so a seq counter can be read-modify-written without any extra lock.
+    // One record into an open appstate+apprecords transaction: the skeleton read, seq bump and record write together.
+    function appWrite(s, fileId, coll, rec) {
+      return reqP(s.appstate.get(fileId)).then((r) => {
+        const skel = (r && r.state && r.state._perRecord) ? r.state : { _perRecord: true, collections: {} };
+        const c = skel.collections[coll] || (skel.collections[coll] = { seq: 1 });
+        if (rec.id == null) rec.id = coll + '_' + (c.seq++);
+        s.apprecords.put({ fileId, collection: coll, id: rec.id, rec });
+        s.appstate.put({ fileId, state: skel, updatedAt: nowISO() });
+        return rec;
+      });
+    }
     function txMulti(stores, mode, fn) {
       return open().then((db) => new Promise((resolve, reject) => {
         const t = db.transaction(stores, mode);
@@ -521,14 +532,13 @@
       // counter (in the skeleton) when the record has none — the skeleton read,
       // seq bump and record write all happen in ONE transaction, so concurrent
       // tabs never reuse an id.
-      appAdd: (fileId, coll, rec) => badCollectionName(coll) ? Promise.reject(new Error('bad collection name')) : txMulti(['appstate', 'apprecords'], 'readwrite', (s) =>
-        reqP(s.appstate.get(fileId)).then((r) => {
-          const skel = (r && r.state && r.state._perRecord) ? r.state : { _perRecord: true, collections: {} };
-          const c = skel.collections[coll] || (skel.collections[coll] = { seq: 1 });
-          if (rec.id == null) rec.id = coll + '_' + (c.seq++);
-          s.apprecords.put({ fileId, collection: coll, id: rec.id, rec });
-          s.appstate.put({ fileId, state: skel, updatedAt: nowISO() });
-          return rec;
+      appAdd: (fileId, coll, rec) => badCollectionName(coll) ? Promise.reject(new Error('bad collection name')) : txMulti(['appstate', 'apprecords'], 'readwrite', (s) => appWrite(s, fileId, coll, rec)),
+      // The same write unless the collection already holds this record: for finishing a put whose
+      // tab closed, which may have committed after all. Null when there was nothing to do.
+      appAddOnce: (fileId, coll, rec) => badCollectionName(coll) ? Promise.reject(new Error('bad collection name')) : txMulti(['appstate', 'apprecords'], 'readwrite', (s) =>
+        reqP(s.apprecords.getAll(collRange(fileId, coll))).then((rows) => {
+          const body = (x) => JSON.stringify(rec.id == null ? Object.assign({}, x, { id: undefined }) : x);
+          return (rows || []).some((row) => body(row.rec) === body(rec)) ? null : appWrite(s, fileId, coll, rec);
         })),
       appDelete: (fileId, coll, id) => tx('apprecords', 'readwrite', (os) => reqP(os.delete([fileId, coll, id]))),
       allFiles: () => tx('files', 'readonly', (os) => reqP(os.getAll())).then(thawAll),
