@@ -494,6 +494,8 @@
 
     // ===================================================================================================================
     // DIALS (the seat's calls)
+    // C++: mesh_link.inc:fabricLinkCarries   [end: D6c.3, my end reads the pc open and not half-open]
+    function fabricLinkCarries(me, x) { if (!lv.LINKMODEL) return false; if (fabricLinkState(me, x) !== LS_OPEN) return false; const L = linkFind(me, x); return !!L && !(L.half & (1 << lEnd(me, x))); }
     // C++: mesh_link.inc:fabricLinkState   [end: my end's own view]
     function fabricLinkState(me, x) {
       if (!lv.LINKMODEL) return LS_OPEN;
@@ -712,7 +714,7 @@
     Object.assign(fns, {
       fabricLinkState, fabricDial, fabricDialJoin, fabricDialUplink, fabricDialFails, fabricUpTake, fabricUpDecline, fabricDoors,
       fabricDoorDrop, fabricDoorHanded, fabricDoorHeard, fabricMyDoors, fabricMyKnocks, fabricNoSock, fabricL23Busy, fabricCallFrame,
-      l22Quiet, l222Note, l22Agree, l22Close, fabricDropHalf, l22CloseAsk, l22Need, l28Reply, l18Route, l18Cell, l18Hop, l18Deliv,
+      l22Quiet, l222Note, l22Agree, l22Close, fabricDropHalf, fabricLinkCarries, l22CloseAsk, l22Need, l28Reply, l18Route, l18Cell, l18Hop, l18Deliv,
     });
     return {
       S, fns, newLink: newLink,
