@@ -23,6 +23,7 @@
   const hash = req('../hash.js', 'meshHash');
   const seatM = req('../seat.js', 'meshSeat');
   const PCL = req('../pclaws.js', 'meshPcLaws');
+  const { ckey } = req('../topo.js', 'meshTopo');
 
   const K = C_.consts, E = C_.enums;
   const { LK_NONE, LK_DIALING, LK_OPEN, LK_CLOSED, LS_NONE, LS_OPEN } = E;
@@ -109,7 +110,7 @@
     let upNext = -1;
     function mark(x) {
       const L = LINKS.get(x); const q0 = L && L.q.length ? L.q[0] : null;
-      return { s: mySeated() ? 1 : 0, up: (L && L.uplink) || upNext === x ? 1 : 0, mt: q0 ? q0.t : null, ck: q0 && (q0.t === 'HELLO' || q0.t === 'CLAIM' || (q0.t === 'CHALLENGE' && q0.tag === 25)) ? q0.ck : 0, tier: mySeat() ? mySeat().ctier : 0 };
+      return { s: mySeated() ? 1 : 0, up: (L && L.uplink) || upNext === x ? 1 : 0, mt: q0 ? q0.t : null, ck: q0 && (q0.t === 'HELLO' || q0.t === 'CLAIM' || (q0.t === 'CHALLENGE' && (q0.tag === 25 || q0.tag === K.GA_TAG))) ? q0.ck : 0, tier: mySeat() ? mySeat().ctier : 0 };
     }
 
     // door progress (sim linkDeliver), run by each end for the frames it sends and the frames it receives
@@ -228,10 +229,17 @@
     // linkWhy's friend-hop reason reads FH[me]: my relay roles, now (the ids are too wide for an array: only my own slot)
     const FH = { get length() { return me + 1; } };
     Object.defineProperty(FH, me, { get: () => o.fh.roles() });
+    // L39.2, L41.4: a question about my cell, or a cell of my links, reaches me at my budget (the page passed no contest, so it read false)
+    // C++: mesh_gaps3_fab.inc:l392Contest
+    function l392Page(a, b, mt, ck) {
+      const s = seats[a]; if (mt !== 'CHALLENGE' || !ck || !s || !s.hasCoord || s.state !== 3) return false;
+      if (ckey(s.coord) !== ck && !s.ownedLinkCell(ck)) return false;
+      return pc.l23GreetSlot(a, b, ck);
+    }
     const P = {
       w, lv, seats, alive, isFrozen: () => false, radioOff: () => false, trace,
       busPush: (due, m) => busPush(m), schedL10, wireTx: () => {}, pairKey, grpReach: () => true,
-      l392Contest: (a, b, mt, ck) => (o.l392Contest ? o.l392Contest(a, b, mt, ck) : false), relayMeter: () => {},
+      l392Contest: (a, b, mt, ck) => (o.l392Contest ? o.l392Contest(a, b, mt, ck) : l392Page(a, b, mt, ck)), relayMeter: () => {},
       fhopActive: () => !!o.fh, FH, fhopFriendFor: (a, b) => !!o.fh && a === me && o.fh.friendFor(a, b),
       phys, S, LINKS: new Map(), LINKPEERS,
     };

@@ -1126,7 +1126,7 @@
       });
       seat = layer.view; seat.answerDoor = answerHeld;
       penv = GifOS.meshPageEnv.create({
-        peer, ids: layer.ids, seat: () => raw,
+        peer, ids: layer.ids, seat: () => raw, tickMs,
         pc: Object.assign({}, opts.pc || {}, { send: (to, m, dir) => ((typeof opts.dcOpen !== 'function' || opts.dcOpen(to)) ? sendFrameTo(to, m, dir) : false) }),
         relay: {
           knock: (gk, blobOk) => { const k = gkStr(); /* the room's string, as every register presents it ('g' + hex): a decimal genKey was refused (admitted:false), and three refusals requeued a seated greeter */ if (blobOk && iAmAGreeter()) REGISTER_MYSELF_AS_A_GREETER(gk || k); else KNOCK_FOR_THE_GREETER_LIST(gk || k); },
