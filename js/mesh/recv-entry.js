@@ -180,6 +180,7 @@
     // C++: mesh_seat.inc:Seat::onPlace
     onPlace(m) {
       const id = this.id, lv = this.w.lv;
+      if (this.state === 2 && m.l31 === 7) return;   // L31.4: a withdrawal is no placement: the seeker has already moved on, and it names no neighbours
       if (this.state === 2 && roomTerm(this, 1) && this.TICK - this.c7At < K.RELAY_TTL && (this.c7Old.has(m.owner) || this.c7Old.has(m.from))) return;   // L8.5
       if (this.state === 2 && this.l25BadPlacer.size && (this.l25Bad(m.owner) || this.l25Bad(m.from))) { this.trace('L25-BADPLACER', id, null, 'owner=%d', m.owner); if (m.nc === id) this.l711Reask('badplacer'); return; }
       if (this.state === 2 && m.nbrs.length === 0 && ckey(m.coord) !== 0) { lv.L25_TWICE++; this.l25Mark(m.owner, true); this.trace('L25-BARE-PLACE', id, m.coord, 'owner=%d', m.owner); if (m.nc === id) this.l711Reask('bare'); return; }   // L25
