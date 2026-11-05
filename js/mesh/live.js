@@ -89,10 +89,12 @@
       this.unp.set(x, TICK);
     },
 
+    // C++: mesh_seat.inc:Seat::d6cBeat
+    d6cBeat() { return this.lkAnyAt >= this.seatedAt ? this.lkAnyAt : this.lkCarried; },
     // C++: mesh_seat.inc:Seat::orphanSeat
     orphanSeat() {
-      if (!this.hasCoord || this.moving || this.state !== 3 || this.lkAnyAt < this.seatedAt) return false;
-      let since = this.lkAnyAt; if (this.backAt > since) since = this.backAt;
+      if (!this.hasCoord || this.moving || this.state !== 3 || this.d6cBeat() < 0) return false;
+      let since = this.d6cBeat(); if (this.backAt > since) since = this.backAt;
       if (this.TICK - since <= K.DARK_LEAVE || (this.unpAnyAt >= 0 && this.TICK - this.unpAnyAt <= 16) || this.l2E2Up()) return false;
       return true;
     },
@@ -368,6 +370,8 @@
       }
     },
 
+    // C++: mesh_seat.inc:Seat::l213HeadPc
+    l213HeadPc(o) { if (this.hasCoord && this.state === 3 && this.coord.pc !== 0 && this.coord.i !== 0 && this.occGet(ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 })) === o) this.headAckAt = this.TICK; },
     // C++: mesh_seat.inc:Seat::phoneHome
     // early (L10): the state beat sent sooner: no stand-in, no probe of a vacant cell, none of the silence bookkeeping below the send
     phoneHome(early = false) {
@@ -375,7 +379,7 @@
       let tc = null, have = false;
       if (this.hasCoord) { if (this.coord.i !== 0) { tc = { pc: this.coord.pc, r: this.coord.r, i: 0 }; have = true; } else { tc = this.ownerCoord(); have = !!tc; } }
       let standIn = false;   // L2.7
-      if (!early && have && this.coord.pc !== 0 && this.coord.i !== 0) { const h0 = this.occGet(ckey(tc)); if (h0 >= 0 && h0 !== this.l9HeadSeen) { this.l9HeadSeen = h0; this.headAckAt = TICK; } }   // L9.10, L9.17
+      if (!early && have && this.coord.pc !== 0 && this.coord.i !== 0) { const h0 = this.occGet(ckey(tc)); if (h0 < 0) this.l9HeadSeen = -1; else if (h0 !== this.l9HeadSeen) { this.l9HeadSeen = h0; this.headAckAt = TICK; } }   // L9.10, L9.17, L2.13
       if (have && this.coord.pc !== 0 && this.coord.i !== 0 && this.state === 3 && TICK - this.seatedAt > 8 + K.EARLY_HOLD) {
         const hk = ckey(tc); const h = this.occGet(hk);
         if (h < 0 || this.translost.has(hk) || TICK - this.headAckAt > 8 + K.EARLY_HOLD) {
@@ -609,6 +613,7 @@
     // C++: mesh_seat.inc:Seat::requeue
     requeue(why = '') {
       const TICK = this.TICK, lv = this.w.lv, id = this.id;
+      this.lkAnyAt = -1; this.lkCarried = -1;   // D6c.2
       this.l13ReqN++;
       if (this.l815N > 0) { for (let i = 0; i < this.l815N; i++) { const y = newMsg('YIELD'); y.ck = this.l815Ck[i]; y.id = id; y.nc = this.l815Prev[i]; this.emit(this.l815To[i], y); } this.l815N = 0; }
       if (roomTerm(this, 1)) this.searchAt = TICK;
