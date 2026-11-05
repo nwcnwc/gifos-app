@@ -494,6 +494,7 @@
     PCS_PEAK: 0,   // C++: mesh_media.inc:PCS_PEAK
     PCS_PEAK_SEAT: -1,   // C++: mesh_media.inc:PCS_PEAK_SEAT
     PCS_PEAK_AT: -1,   // C++: mesh_media.inc:PCS_PEAK_AT
+    MGAP_FIRST: false,   // C++: mesh_media.inc:MGAP_FIRST
     MGAP: false,   // C++: mesh_media.inc:MGAP
     MGAP_T0: 0,   // C++: mesh_media.inc:MGAP_T0
     MGAP_PRE: 0,   // C++: mesh_media.inc:MGAP_PRE

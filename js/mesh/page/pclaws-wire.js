@@ -344,8 +344,10 @@
         const heard = pc.doorHeard(L, me, x); const named = pc.l15Names(me, x) || pc.l15NamedBy(me, x) || (!!mySeat() && (mySeat().l14Serve(x) || mySeat().l14Up === x));   // L14: my uplink, or one I took, is no door (in the sim both ends are seated); my view need not hold the head's cell
         if (!heard && !named && L.dBorn >= 0) {
           const idle = T() - L.dProg, age = T() - L.dBorn; let why = null;
-          if (L.dHoAt >= 0 && T() - L.dHoAt >= K.L16_HO_CLOSE && !(L.dOwed && L.dWait >= 0)) why = 'handed';
+          const placed = !!(L.dPlaced & (1 << mine(x)));   // L16.3.1: the placee closes it (L15.5), or the life limit from the PLACE
+          if (!placed && L.dHoAt >= 0 && T() - L.dHoAt >= K.L16_HO_CLOSE && !(L.dOwed && L.dWait >= 0)) why = 'handed';
           else if (L.dGw && !L.dIn) { if (idle > K.L16_GW_IDLE && !(L.dWait >= 0)) why = 'gw-idle'; else if (age > K.L16_GW_LIFE) why = 'gw-life'; }
+          else if (placed) { if (idle > K.L16_LIFE) why = 'life'; }
           else if (L.dIn && L.state === LK_OPEN && !L.dAsked && L.dProg === L.dBorn) { if (age > DOOR_FIRST_FRAME) why = 'unnamed'; }   // the sim delivers the dial's queued frame with the open; here it follows the dc's open over the verify chain
           else if (L.dIn && !L.dAsked && L.state === LK_OPEN && idle > K.L16_ANS_IDLE) why = 'idle';
           else if (idle > K.L16_IDLE) why = 'idle'; else if (age > K.L16_LIFE) why = 'life';
@@ -534,7 +536,6 @@
       busyFrom: (x) => refused(x, { busy: 1 }),
       link: (x) => LINKS.get(x) || null, dump: () => [...LINKS].map(([x, L]) => ({ x, state: L.state, view: L.view[mine(x)], outside: L.outside, gone: L.gone, q: L.q.length })),
       dialHeld: (x) => pc.dialHeld(me, x), laws: pc, BYE,
-      doorWalked: (x) => { const L = LINKS.get(x); if (L && L.outside && L.dBorn >= 0 && L.dPlaced) L.dProg = T(); },   // L16.3.1 (C++: mesh_dialsig_fab.inc:sigWalk): a walked signal crossed my door that carried a PLACE
       doorForgive: (x) => pc.S.L16COOL.delete(hash.idPair(me, x)),   // the admin's Admit: the waiting room's idle knocks are not this person's fault
     };
   }
