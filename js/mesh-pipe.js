@@ -541,7 +541,8 @@ onrtctransform = (e) => {
     const SIDE = BIG ? 320 : 48;
     c.width = SIDE; c.height = SIDE;
     const ctx = c.getContext('2d');
-    let n = 0, kside = SIDE;
+    let n = 0, kside = SIDE, flipAt = 0;
+    const KEY_FLIP_MS = 150; // longer than a capture takes on a busy page
     const paint = () => { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, c.width, c.height); ctx.fillStyle = '#111'; ctx.fillRect(++n % 40, (n >> 3) % 40, 2, 2); };
     paint();
     const stream = c.captureStream(0);
@@ -550,7 +551,10 @@ onrtctransform = (e) => {
       track,
       mint(key) {
         this.mints = (this.mints || 0) + 1;
-        if (key) { kside = kside === SIDE ? SIDE - 1 : SIDE; c.width = kside; c.height = kside; }
+        // One size change per capture. The worker wants a key on every content frame and every delta template, so two
+        // wants between captures flipped the size there and back: the encoder saw no change and a relayed picture froze.
+        const nowMs = Date.now();
+        if (key && nowMs - flipAt >= KEY_FLIP_MS) { flipAt = nowMs; kside = kside === SIDE ? SIDE - 1 : SIDE; c.width = kside; c.height = kside; }
         paint();
         try { track.requestFrame ? track.requestFrame() : stream.requestFrame(); } catch (e) {}
       },
