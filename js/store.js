@@ -581,10 +581,20 @@
   }
 
   // ---------- detail ----------
+  // A link may name an app by its short name (/store/chess is Chess Grandmaster,
+  // whose slug is chess-grandmaster). A real slug always wins, and a short name
+  // two apps share names neither. The address bar keeps what the link said.
+  function listingSlug(slug) {
+    const apps = (catalog && catalog.apps) || [];
+    if (apps.some((a) => a.slug === slug)) return slug;
+    const named = apps.filter((a) => String(a.shortName || '').toLowerCase() === slug);
+    return named.length === 1 ? named[0].slug : slug;
+  }
+
   async function showDetail(slug, push) {
     let app;
     try {
-      const r = await fetch('/apps/' + encodeURIComponent(slug) + '/app.json', { cache: 'no-cache' });
+      const r = await fetch('/apps/' + encodeURIComponent(listingSlug(slug)) + '/app.json', { cache: 'no-cache' });
       if (!r.ok) throw new Error('not found');
       app = await r.json();
     } catch (e) { showBrowse(true); return; }
