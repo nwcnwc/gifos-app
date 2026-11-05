@@ -389,7 +389,17 @@
     const wireDig = (s, d) => { const c = digCopy(d); const st = d.rx != null ? d.rx : d.at; c.ag = st >= 0 ? Math.max(0, s.LT() - st) : 0;
       for (const r of c.rows) { const t = r.rx != null ? r.rx : r.at; r.ag = t >= 0 ? Math.max(0, s.LT() - t) : 0; delete r.rx; for (const f of ['hands', 'stage', 'apps']) if (r[f] && !r[f].length) delete r[f]; for (const f of ['n', 'l', 'h', 'e', 'ag']) if (!r[f]) delete r[f]; } return digPack(c); };
     // A cell whose occupant the seat no longer names (0.9.24 digForget): a different seat there, or nobody.
-    const named = (s, k, e) => { const x = s.occGet(k); return x >= 0 && e.by != null && x === ids.nid(e.by); };
+    // And a cell whose report the seat itself no longer holds by that author (its s1tab / rowKids / siKids / downDig):
+    // the seat ends a report on a confirmed vacate (digForget1) and on an L3.12 tombstone, while the occ view may still
+    // name the mover at the cell it left for a lease. This table had no vacate rule, so a mover's old report was counted
+    // beside its new cell, fresh for DIG_TTL then held to LEASE_T: a 25-room read 25 for ~110 s after one Section-1 crash.
+    const seatHolds = (s, k, x) => {
+      const tp = TP(); if (s.hasCoord && k === tp.ckey(tp.down(s.coord))) return !!s.downDig && s.downDig.at >= 0 && s.downDig.by === x;
+      const t = Math.floor(k / 65536) === 0 ? s.s1tab : s.rowKids; let e = t ? t.get(k) : undefined;
+      if (e === undefined && s.siKids) e = s.siKids.get(k);
+      return e !== undefined && e.by === x;
+    };
+    const named = (s, k, e) => { const x = s.occGet(k); return x >= 0 && e.by != null && x === ids.nid(e.by) && seatHolds(s, k, x); };
     const held = (s, k, e) => e.at >= 0 && named(s, k, e) && s.LT() - e.rx <= KC().LEASE_T;
     const gapAt = (s, k) => { const sv = s.findNc; s.findNc = -1; try { return s.scopeGap(k); } finally { s.findNc = sv; } };   // the seat's own G3 read, scoped as its rollup scopes it
     function foldSlot(s, dst, k, e) {   // 0.9.24 rollup: fresh folds, stale fails closed (the seat's L3.12 lease in between)

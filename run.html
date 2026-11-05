@@ -6224,7 +6224,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const nowF = Date.now();
         for (let i = out.length - 1; i >= 0; i--) {
           const id = out[i][0]; if (id === myId) continue;
-          let feedNow = false; try { feedNow = !stgLost('stg:' + id); } catch (x) {}
+          let feedNow = false; try { feedNow = stgBeats.has('stg:' + id) ? !stgStale('stg:' + id) : !stgLost('stg:' + id); } catch (x) {} // a beating stager is alive, whatever my path to it is doing
           if (feedNow) stageFeedAt.set(id, nowF);
           else if (stageFeedAt.has(id) && nowF - stageFeedAt.get(id) > STAGE_FEED_LOST_MS) out.splice(i, 1);
         }
@@ -6242,7 +6242,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (out.some((x) => x[0] === id)) continue;
         const said = statusOf.get(id);
         const fresh = said && nowH - stSeen(said) <= 15000;
-        let held = false; try { held = !!mosIn.get('stg:' + id) && !(mosFb.get('stg:' + id) || {}).dark; } catch (e) {} // a dead primary counts until the grace ends; a dark one (silent ring or dead path) does not
+        let held = false; try { held = !!mosIn.get('stg:' + id) && !(mosFb.get('stg:' + id) || {}).dark && !stgStale('stg:' + id); } catch (e) {} // a dead primary counts until the grace ends; a dark one (silent ring or dead path) does not
+        // A beat in date says the stager is there, whatever the fold says: a reload moves its seat, and the
+        // fold takes half a minute to list it again (room v8ring, 36 s off stage with its beat never late).
+        let beating = false; try { beating = stgBeats.has('stg:' + id) && !stgStale('stg:' + id); } catch (e) {}
+        if (beating && id !== myId && !(fresh && !said.stg)) { if (!meshGone.has(id)) out.push([id, h.k]); continue; }
         if (nowH - h.at > STAGE_FOLD_HOLD_MS || id === myId || !held || meshGone.has(id) || (fresh && !said.stg)) { stageHeldAt.delete(id); continue; }
         out.push([id, h.k]);
       }
@@ -8238,7 +8242,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Any way out of the page that is not an update reload drops the note,
     // so the next join starts fresh (Max blur, off the Stage).
     window.addEventListener('pagehide', () => {
-      try { if (!stageLeaving && +myStatus.stg > 0) sessionStorage.setItem(STAGE_RELOAD_KEY, JSON.stringify({ room: updateRoomKey(), at: Date.now(), stg: +myStatus.stg })); } catch (e) {}
+      // A stager comes back as it left: the stage seat, and the mic and camera as they were (the
+      // recover note, this room, two minutes). Without the note a reload joins quiet, and the
+      // stage is silent until a tap; the room must hear the stager right after the reload.
+      try { if (!stageLeaving && +myStatus.stg > 0) { sessionStorage.setItem(STAGE_RELOAD_KEY, JSON.stringify({ room: updateRoomKey(), at: Date.now(), stg: +myStatus.stg })); if (typeof localStream !== 'undefined' && localStream && typeof stashRecoverMedia === 'function') stashRecoverMedia(true); } } catch (e) {}
       if (updateLeaving) return;
       try { sessionStorage.removeItem(UPDATE_RESUME_KEY); } catch (e) {}
     });
@@ -15151,7 +15158,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const pLive = p.connected && p.dc && p.dc.readyState === 'open';
       const unanswered = !!(p.pc && p.pc.signalingState === 'have-local-offer');
       const darkOffer = unanswered && (tlFiredPid.has(p.id) || (p.offerSentPc === p.pc && Date.now() - (p.offerSentAt || 0) >= LOST_OFFER_MS));
-      const forming = !pLive && p.pc && !darkOffer && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000 && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
+      // A fresh pc nothing has happened on (no offer either way, no ICE) is idle, not forming: the one a
+      // goodbye leaves behind for the seat's next dial. Counting it as forming made a dial request from a
+      // page back from a reload wait out this window and its own 4 s retries: the pair came up at 8-9 s.
+      const idle = !!(p.pc && p.pc.signalingState === 'stable' && p.pc.connectionState === 'new' && !p.offering);
+      const forming = !pLive && p.pc && !darkOffer && !idle && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000 && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
       if (typeof clog === 'function') clog('dial-request from ' + String(p.id || '?').slice(0, 6) + ' solo=' + (participantCount() <= 1) + ' live=' + !!pLive
         + ' init=' + iInitiate(p.id) + ' forming=' + !!forming + ' dark=' + !!darkOffer + ' pc=' + (p.pc ? p.pc.connectionState + '/' + p.pc.signalingState : '-')
         + ' age=' + Math.round((Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0)) / 100) / 10 + 's frag=' + Math.round((Date.now() - (p.fragDialAt || 0)) / 100) / 10 + 's');
@@ -15634,7 +15645,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (typeof bannedSeat !== 'undefined') for (const pid of bannedSeat) if (peers.has(pid) && !(Date.now() - (pwBarred.get(pid) || 0) < PW_BYE_MS)) { if (pwBarred.has(pid)) { const bq = peers.get(pid); bq.byeSeen = Date.now(); bq.byeWhy = 'leave'; } dropPeer(pid); }
       // Every page that holds the admin's statement reads it as the barred seat's goodbye, pair or no pair: a LEAVE in its name is
       // not carried hop to hop (it is not his signature), so a page with no pair to him would hold his cell. Once per id.
-      for (const [pid, at] of pwBarred) if (!pwByeSaid.has(pid) && Date.now() - at >= PW_BYE_MS) { pwByeSaid.add(pid); try { meshNode.transport(pid, 'greeter-gone'); } catch (e) {} } // a ban's seat stays down even if a tick rebuilt it. The admin's signed statement is the goodbye a page that ignored the order will not send: the seat hears it as any leave
+      for (const [pid, at] of pwBarred) if (!pwByeSaid.has(pid) && Date.now() - at >= PW_BYE_MS) { pwByeSaid.add(pid); try { meshNode.transport(pid, 'greeter-gone'); } catch (e) {} }
+      // A booted seat: the same goodbye, no ban. Its own goodbye, sent as it left for the door, is marked reload (a page at the
+      // door reloads), and a seat holds a reload-marked leaver's cell for RELOAD_MARK_T, so the first word would be refused: the
+      // mark is cleared first, and the word repeats each tick until the seat names the id nowhere (bounded: a page that typed
+      // the new password speaks under the new key and is lifted by pwHeardNow; a fresh status under the new key stops it too).
+      for (const [pid, at] of pwBooted) {
+        if (Date.now() - at < PW_BYE_MS || Date.now() - at > 60000 || pwByeSaid.has(pid)) continue;
+        let named = false; for (const v of s.occ.values()) if (v === pid) { named = true; break; }
+        if (DEBUG_ON) meshTraceSink('{"t":0,"s":0,"e":"PW-BOOT-BYE","c":null,"d":"pid=' + String(pid).slice(0, 8) + ' named=' + named + '"}');
+        if (!named) { pwByeSaid.add(pid); continue; }
+        try { const x = meshNode.nidOf ? meshNode.nidOf(pid) : -1, rs = typeof meshNode.raw === 'function' ? meshNode.raw() : (meshNode.raw || null); if (rs && rs.relMark && x >= 0) rs.relMark.delete(x); meshNode.transport(pid, 'greeter-gone'); } catch (e) { if (DEBUG_ON) meshTraceSink('{"t":0,"s":0,"e":"PW-BOOT-ERR","c":null,"d":"' + String(e).slice(0, 60).replace(/"/g, '') + '"}'); }
+      } // a ban's seat stays down even if a tick rebuilt it. The admin's signed statement is the goodbye a page that ignored the order will not send: the seat hears it as any leave
       // FRESHLY SEATED, ONE FLUSH. Before hasCoord is true, gossip() has no
       // section to speak to and drops the frame silently (sc === null) — so
       // a status authored in that window, including scheduleNewPeerBeat's
@@ -15932,6 +15954,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         confirmGone(id, 'd5');   // d5: no tile now, the pair stays for PW_BYE_MS (renderFromOcc closes it)
       }
     }
+    // A SEAT SENT TO THE DOOR IS OUT OF THE ROOM. The change order sends every other page to the prompt, and that page's own
+    // goodbye leaves under the key it still reads, which this page no longer opens: its seat would linger here for the lease and
+    // every page that re-enters would count it. So the admin's page gives each booted seat the goodbye a ban gives (the pair
+    // stays PW_BYE_MS to carry the order, then the relay's word ends the seat), and a page that speaks the new key is a newcomer.
+    const pwBooted = new Map();   // id -> when the change order went out; lifted by a frame from that id under the current key
+    function pwBootOut(ids) {
+      for (const id of ids) { if (id === myId || pwBarred.has(id)) continue; if (!pwBooted.has(id)) pwBooted.set(id, Date.now()); pwByeSaid.delete(id); }
+    }
     function pwBarLift(id) {
       const at = pwBarred.get(id);
       if (at === undefined || rekeysPending || rekeyAt < at) return;   // until my key has moved, an old-key frame still opens: no proof of anything
@@ -15956,7 +15986,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     const pwNoSeen = new Set();   // ids on my stored list heard under the current key since this page loaded
     const pwNoAny = () => hasAdminRoom() && (pwBarred.size > 0 || amAdmin);
-    function pwHeardNow(id) { if (!id) return; pwBarLift(id); if (amAdmin) { pwNoSeen.add(id); if (pwNoSeen.size > 1024) pwNoSeen.clear(); } }
+    function pwHeardNow(id) { if (!id) return; pwBarLift(id); if (pwBooted.has(id) && !rekeysPending && rekeyAt >= pwBooted.get(id)) { pwBooted.delete(id); pwByeSaid.delete(id); } if (amAdmin) { pwNoSeen.add(id); if (pwNoSeen.size > 1024) pwNoSeen.clear(); } }
     const pwWaitKey = new Map();   // admin: a person waiting through a ban -> the key they still read
     let pwWaitProof = false;       // this page waits on a proof the admin sent: the lock it cannot read yet is not a prompt
     // Admit, for someone who waited through a ban: the password, signed for that one id. The page takes it and holds no grant, so it heals nobody.
@@ -18651,6 +18681,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             relaySendObj({ t: 'setpw', pw: pr, w: wRelay });
             const order = { k: 'pwreset', by: myName(), w: wOrder, ep };
             sendAll(order);
+            pwBootOut(Array.from(peers.keys()));   // every present page is out of the room until it types the new password: its seat is given its goodbye
             storePwEpoch(ep); retainedGrant = order;
             pwLog('pwreset-sent ep=' + ep);
             txm(() => Promise.resolve()).then(() => rekeyRoom());
@@ -21121,6 +21152,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           && ((prevAnn.ids || []).join(',') !== (annIds || []).join(',') || prevAnn.n !== m.n || prevAnn.cols !== m.cols);
         mosAnn.set(ak, { streamId: m.streamId, col: m.col, row: m.row, n: m.n, cols: m.cols, mt: m.mt, h: (typeof m.h === 'number' ? m.h : undefined), ao: (m.ao === 1 ? 1 : undefined), sb: (m.sb === 1 ? 1 : undefined), vp: mxPath(m.vp), ids: annIds, at: Date.now() });
         if (annNew || stripReorder) schedReconcile(); else schedClaim();
+      } else if (m.k === 'mx-beat') {
+        stgBeatIn(p, m);
       } else if (m.k === 'mx-end' && typeof m.key === 'string') {
         mosAnn.delete(p.id + '|' + m.key);
         // Structural slots drop hard; REDUNDANT slots go through claimMos so the
@@ -25137,8 +25170,56 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function stgLost(rk) {
       const f = mosIn.get(rk); if (!f) return true;
       const fb = mosFb.get(rk);
-      return !!(f.deadAt || (fb && fb.dark));
+      return !!(f.deadAt || (fb && fb.dark) || stgStale(rk));
     }
+    // THE STAGER'S BEAT. Only a live stager can make a new beat, so it says what no announce can:
+    // the source is there. Announces and hop counts cannot: with the stager dead, seats fed by each
+    // other swap to longer and longer paths (hop counts only rise), and every copy still looks
+    // live (room v6ring, 49 s). Each page passes an unseen beat on once, over its data channels, so
+    // no media path is needed and the flood ends when the source does. A new value counts, not a
+    // larger one, and only the stager can make one (the beat is signed, below).
+    const stgBeats = new Map(), STG_BEAT_MS = 1000, STG_BEAT_STALE_MS = 5000, STG_BEAT_SEEN = 16;
+    function stgBeatSeen(key, b) { const e = stgBeats.get(key); return !!e && e.seen.indexOf(b) >= 0; }
+    function stgBeatNew(key, b) {
+      let e = stgBeats.get(key); if (!e) { e = { seen: [], at: 0 }; stgBeats.set(key, e); }
+      if (e.seen.indexOf(b) >= 0) return false;
+      e.seen.push(b); if (e.seen.length > STG_BEAT_SEEN) e.seen.shift();
+      e.at = Date.now();
+      return true;
+    }
+    // THE BEAT IS SIGNED by the stager's identity key, the key that names it (the pid is derived from the
+    // public key). A page passes on only a beat whose signature checks, so nobody else can make one: a
+    // forger could otherwise hold a dead stager on stage with made-up values until its lease ran out.
+    // The seen list drops a replay before any check; the derivation of pid from key is kept per key.
+    const stgBeatSp = (key, b) => 'mx-beat|' + key + '|' + b;
+    const stgBeatPids = new Map();
+    function stgBeatPid(pub) { let q = stgBeatPids.get(pub); if (!q) { q = Promise.resolve(GifOS.meshIdentity.peerIdOf(pub)).catch(() => null); stgBeatPids.set(pub, q); if (stgBeatPids.size > 64) stgBeatPids.delete(stgBeatPids.keys().next().value); } return q; }
+    function stgBeatFlood(key, b, from, sig, pub) {
+      for (const [pid, p] of peers) if (pid !== from && p.dc && p.dc.readyState === 'open') { dcSend(p, { k: 'mx-beat', key, b, sig, pub }); if (stgBeatCost) stgBeatCost.out++; }
+    }
+    // The beat's own cost, read by the room tests (DEBUG): frames in and out, and the time spent on them.
+    const stgBeatCost = DEBUG_ON ? { in: 0, out: 0, ms: 0 } : null;
+    function stgBeatIn(p, m) {
+      const t0 = stgBeatCost ? performance.now() : 0;
+      if (stgBeatCost) stgBeatCost.in++;
+      if (typeof m.key !== 'string' || m.key.indexOf('stg:') !== 0 || m.key.length > 128 || !Number.isFinite(m.b) || typeof m.sig !== 'string' || m.sig.length > 256 || typeof m.pub !== 'string' || m.pub.length > 128) return;
+      if (m.key === 'stg:' + myId || mediaOk(p.id) === false || stgBeatSeen(m.key, m.b)) { if (stgBeatCost) stgBeatCost.ms += performance.now() - t0; return; }
+      const key = m.key, b = m.b, sig = m.sig, pub = m.pub, from = p.id;
+      stgBeatPid(pub).then((pid) => (pid && pid === key.slice(4) ? net.edVerify(pub, sig, stgBeatSp(key, b)) : false))
+        .then((ok) => { const t1 = stgBeatCost ? performance.now() : 0; if (ok && stgBeatNew(key, b)) stgBeatFlood(key, b, from, sig, pub); if (stgBeatCost) stgBeatCost.ms += performance.now() - t1; })
+        .catch(() => {});
+      if (stgBeatCost) stgBeatCost.ms += performance.now() - t0;
+    }
+    // A stager that never beat (an older page) is judged as before.
+    function stgStale(rk) { const e = stgBeats.get(rk); return !!e && Date.now() - e.at > STG_BEAT_STALE_MS; }
+    setInterval(() => {
+      try {
+        const t0 = stgBeatCost ? performance.now() : 0;
+        if (stageIds().includes(myId) && myIdentity) { const key = 'stg:' + myId, b = Date.now(); stgBeatNew(key, b); const pub = myIdentity.pubB64; net.edSign(myIdentity.priv, stgBeatSp(key, b)).then((sig) => stgBeatFlood(key, b, null, sig, pub)).catch(() => {}); }
+        if (stgBeatCost) stgBeatCost.ms += performance.now() - t0;
+        for (const [k, e] of stgBeats) if (Date.now() - e.at > 300000) stgBeats.delete(k);
+      } catch (e) {}
+    }, STG_BEAT_MS);
     function prefCand(rk, cand) {
       const c = meshCoord(); if (!c) return null;
       // IDENTITY, NOT JUST KEY (2026-08-01). These two used to match on the
@@ -25365,7 +25446,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Every pass: a stopped copy is restored even after this slot's state was rebuilt.
         // A relayed track whose source stopped sends silence with every packet, so nobody below
         // can tell. Dark or gone, my copies of it stop; they start again with my next flowing claim.
-        if (pri && (fb.dark || !inCand(pri))) stgCarry(rk, false, pri); else stgCarry(rk, true);
+        if (pri && (fb.dark || !inCand(pri) || stgStale(rk))) stgCarry(rk, false, pri); else stgCarry(rk, true);
       }
       if (!cand.length) { mosFb.delete(rk); return; }
       // DEMAND — the ONE-PIPE law: only the primary moves bits. The standby is
@@ -26473,6 +26554,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       gatePack(prodPack); gatePack(sdPack); gatePack(stripPack);
       for (const pk of sdnPacks.values()) gatePack(pk);
       for (const pk of l14Packs.values()) gatePack(pk);
+      for (const pk of l14RelPacks.values()) gatePack(pk);   // the branch outsides built for a row-mate pass through the same gate
     }
 
     // ============ THE STAGE DATA LANE (§11 — docs/media-plane.md, Channel St):
@@ -35762,6 +35844,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       stgJobsForTest: () => [...mosJobs.entries()].filter(([, j]) => j.key.indexOf('stg:') === 0).map(([jk, j]) => { const p = peers.get(j.to); return { to: String(j.to).slice(0, 8), key: j.key.slice(0, 12), active: !!j.active, sid: String(j.streamId).slice(0, 8), sb: !!(j.meta && j.meta.sb), ao: !!(j.meta && j.meta.ao), kinds: j.trackList.map((t) => t ? t.kind + ':' + t.readyState + (t.enabled ? '' : ':off') : 'null').join(), sending: j.senders.map((sd) => sd.track ? sd.track.kind : 'null').join(), held: typeof outgoingHeld !== 'undefined' && !!outgoingHeld, pc: p && p.pc ? p.pc.connectionState : 'none' }; }),
       stageEarStreamForTest: () => (stageEar && stageEar.el.srcObject ? { stream: stageEar.el.srcObject, muted: !!stageEar.el.muted, paused: !!stageEar.el.paused } : null),
       stageRouteForTest: () => { const o = {}; for (const [k, v] of mosIn) { if (k.indexOf("stg:") !== 0 && k !== "sgs") continue; const d = mosStandby.get(k); o[k.slice(0, 8)] = String(v.via).slice(2, 8) + (d ? "|" + String(d.via).slice(2, 8) : ""); } return o; },
+      stgBeatCostForTest: () => (stgBeatCost ? { in: stgBeatCost.in, out: stgBeatCost.out, ms: Math.round(stgBeatCost.ms * 10) / 10, upS: Math.round(performance.now() / 1000) } : null),
+      stgBeatAgesForTest: () => { const o = {}, n = Date.now(); for (const [k, e] of stgBeats) o[k.slice(4, 12)] = n - e.at; return o; },
       stageWhyForTest: (id) => { const st = statusOf.get(id), d = digLists(), e = d ? d.stage.find((x) => x.id === id) : null; let f = null; try { f = mosIn.get('stg:' + id); } catch (x) {} return { on: stageIds().includes(id), fold: !!e, foldAge: d ? d.age : null, stAge: st ? Date.now() - stSeen(st) : null, stStg: st ? st.stg || 0 : null, stHold: stHold(id), tomb: !notTomb(id), gone: meshGone.has(id), held: typeof stageHeldAt !== 'undefined' && stageHeldAt.has(id), claim: f ? { via: String(f.via).slice(0, 8), dead: f.deadAt ? Date.now() - f.deadAt : 0 } : null }; },
       stgPathForTest: () => { const six = (x) => String(x || '').slice(0, 8); const o = {}; for (const [k, f] of mosIn) { if (k.indexOf('stg:') !== 0) continue; const d = mosStandby.get(k); const m = (e) => (e ? { via: six(e.via), key: e.key || null, h: e.meta ? e.meta.h : null, ao: !!(e.meta && e.meta.ao), vp: (e.meta && e.meta.vp) || [] } : null); const hot = []; for (const j of mosJobs.values()) if (j.upKey === k && j.active) hot.push(six(j.to)); o[six(k.slice(4))] = { pri: m(f), std: m(d), dead: f.deadAt ? Date.now() - f.deadAt : 0, hot }; } const jobs = []; for (const [jk, j] of mosJobs) if (j.key.indexOf('stg:') === 0) jobs.push({ k: six(j.key.slice(4)), to: six(j.to), up: j.upKey ? six(j.upKey.slice(4)) : null, active: !!j.active, off: !!j.carryOff, src: (j.srcTracks || []).map((t) => t.kind[0] + (t.readyState === 'live' ? (t.muted ? 'm' : 'L') : 'E')).join(''), sending: j.senders.map((sd) => sd.track ? 1 : 0).join(''), tl: j.tracklessAt ? Date.now() - j.tracklessAt : 0 }); const ann = []; for (const [ak, a] of mosAnn) if (ak.indexOf('|stg:') > 0) ann.push({ from: six(ak.slice(0, ak.indexOf('|'))), k: six(ak.slice(ak.indexOf('|') + 5)), age: Date.now() - (a.at || 0), h: a.h }); return { me: six(myId), coord: meshCoord(), o, jobs, ann }; },
       stgHiccupForTest: (ms) => { const jobs = [...mosJobs.values()].filter((b) => b.key.indexOf("stg:") === 0 && b.active); for (const b of jobs) b.senders.forEach((sd, i) => { const t = b.trackList[i]; if (t && t.kind === "audio") { try { sd.replaceTrack(null); } catch (e) {} } }); setTimeout(() => { for (const b of jobs) b.senders.forEach((sd, i) => { const t = b.trackList[i]; if (t && t.kind === "audio") { try { sd.replaceTrack(t); } catch (e) {} } }); }, ms); return jobs.length; },

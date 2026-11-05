@@ -355,7 +355,10 @@ function install(fab) {
       L1341_OPENED.add(pairKey(a, b));
       for (let k = 0; k < 2; k++) {
         const p = k ? b : a, o = k ? a : b;
-        if (p < nextId() && seats[p]) for (const [ck, v] of seats[p].l13SplitCell) if (v[0] === o) { trace('L13.41-JOINED', p, null, 'peer=%d', o); seats[p].l13SplitCell.delete(ck); }
+        if (p >= nextId() || !seats[p]) continue; let hello = false;
+        for (const [ck, v] of seats[p].l13SplitCell) if (v[0] === o) { trace('L13.41-JOINED', p, null, 'peer=%d', o); seats[p].l13SplitCell.delete(ck); hello = true; }
+        if (!hello && o < nextId() && seats[o] && alive[o] && seats[p].hasCoord && seats[p].state === 3 && seats[o].hasCoord && seats[o].state === 3) { let named = false; for (const v of seats[p].occ.values()) if (v === o) { named = true; break; } if (!named) hello = true; }   // L13.41.2: a pc to a seated seat my view names nowhere, or one I held across a split: the two sides meet here, and only a word about cells starts the contest
+        if (hello && seats[p].l1341Hello.length < 64) seats[p].l1341Hello.push(o);
       }
     }
     if (L.outside && L.dBorn >= 0) L.dProg = TICK();
