@@ -92,7 +92,7 @@
     routeTo(target, tag) {
       const id = this.id;
       const nh = this.nextHopToward(target, -1); if (ckey(this.coord) === ckey(target)) return;
-      if (nh >= 0) { const pn = this.probeNote(ckey(target)); const m = newMsg('ROUTE'); m.target = cc(target); m.asker = id; m.tag = tag; m.ttl = 60; m.via = id; m.pseq = ++this.w.lv.RSEQ; m.pn = pn; this.emit(nh, m); }
+      if (nh >= 0) { const pn = this.probeNote(ckey(target)); const m = newMsg('ROUTE'); m.target = cc(target); m.asker = id; m.tag = tag; m.ttl = 60; m.via = id; m.pseq = ++this.w.lv.RSEQ; m.pn = pn; m.coord = cc(this.coord); this.emit(nh, m); }   // L3.4.1: my cell rides along: the answer comes back by route when the answerer has no channel to me
     },
     // C++: mesh_seat.inc:Seat::routeToProbe
     // The D5 translost probe: it travels the mesh, not the dead link.

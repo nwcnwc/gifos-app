@@ -26,7 +26,6 @@
   const msg = req('./msg.js', 'meshMsg');
   const topo = req('./topo.js', 'meshTopo');
   const hash = req('./hash.js', 'meshHash');
-    const { eraseFirst } = req('./util.js', 'meshUtil');
   if (isNode) require('./recv-entry.js');
 
   const K = C_.consts;
@@ -145,16 +144,7 @@
         case 'PHONE': this.onPhone(m); return;
         case 'PONG': this.onPong(m); return;
         case 'ROUTE': this.onRoute(m); return;
-        case 'ROUTED':
-          if (m.tag === 1 || m.tag === 2) {
-            const tk = ckey(m.target); const cur = this.occGet(tk);
-            if (m.id >= 0 && this.hasCoord && tk !== ckey(this.coord) && this.probeAsked(tk, m.pn) && !(cur >= 0 && cur !== m.id && this.holdsCell(tk, 60))) {
-              this.setOcc(ckey(m.target), m.id); this.noteS1(ckey(m.target)); this.probeAck.set(ckey(m.target), TICK); this.upAck.set(ckey(m.target), [m.id, TICK]); if (this.upAck.size > 64) eraseFirst(this.upAck);
-              { const ex = this.upExpired.get(ckey(m.target)); if (ex !== undefined && ex === m.id) this.upExpired.delete(ckey(m.target)); }
-              const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = id; this.emit(m.id, h);
-            }
-          }
-          return;   // probeAck AFTER setOcc (a changed occupant clears the observation first); never about MY OWN cell
+        case 'ROUTED': this.onRouted(m); return;
         case 'WALK': this.onWalk(m); return;
         case 'MEET': if (this.l13On()) this.l13OnMeet(m); return;   // L13.1
         case 'MEETACK': if (this.l13On()) this.l13OnMeetAck(m); return;   // L13.1

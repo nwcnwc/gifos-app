@@ -278,6 +278,7 @@
     occDrop(k, why) {
       if (this.occ.has(k)) this.f.fabricVerdict(this.id, k, this.occGet(k), why);
       if (this.occ.has(k) && deathWhy(why)) { if (this.hasCoord && this.coord.pc === 0 && ckPc(k) === 0 && this.occGet(k) >= 0) this.digGone.set(k, [this.occGet(k), this.TICK]); this.digForget(k); if (this.hasCoord && this.coord.pc === 0) this.rootFold(true); }
+      if (this.occ.has(k) && deathWhy(why) && ckPc(k) === 0) this.trace('OCC-DEATH', this.id, unckey(k), 'gone=%d why=%s', this.occGet(k), why);   // forensics: a Section-1 occupant read dead, by whom and why
       if (this.occ.has(k) && deathWhy(why)) { const x = this.occGet(k); if (x >= 0 && x !== this.id) this.memo.set(k, { id: x, tok: this.pinned.has(x) ? ins(this.pinned, x, () => 0) : 0, at: this.TICK }); }
       if (this.occ.has(k) && deathWhy(why)) { const kf = this.kidful.get(k); if (kf !== undefined && kf) { this.kidMemo.set(k, this.TICK); if (this.kidMemo.size > 64) eraseFirst(this.kidMemo); } }
       if ((why === 'hint-move' || why === 'moved-by-gossip' || why === 'moved-confirmed') && this.hasCoord && this.coord.pc === 0 && ckPc(k) === 0) { const st = this.s1tab.get(k); if (st !== undefined && st.by >= 0 && st.by === this.occGet(k)) this.digForget(k); }   // the occupant moved to another cell: its report here is not a second person
@@ -320,6 +321,9 @@
     s1Told(ck) { const t = this.s1told.get(ck); if (t === undefined) return false; const it = this.s1seen.get(ck); return it !== undefined && it === t; },
     // C++: mesh.cpp:Seat::s1Fresh
     s1Fresh(ck) { const it = this.s1seen.get(ck); return it !== undefined && this.TICK - it < 120 && this.occ.has(ck); },
+    // C++: mesh.cpp:Seat::heardAny
+    // L3.4.1: "unheard on every path": the lease counts from the later of the last frame and the last answered probe
+    heardAny(k, since) { const pa = this.probeAck.get(k); return (pa !== undefined && pa > since) ? pa : since; },
     // C++: mesh.cpp:Seat::firstHandLive
     firstHandLive(ck) { const it = this.live.get(ck); return it !== undefined && this.TICK - it <= 60; },
     // C++: mesh.cpp:Seat::darkMate
