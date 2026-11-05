@@ -204,7 +204,7 @@
     // C++: mesh_link.inc:fabricDoorHeard   [end]
     function fabricDoorHeard(me, x, ep) { if (!lv.LINKMODEL || x < 0 || x >= lv.nextId || me === x) return; const L = linkFind(me, x); if (L && L.outside && L.epoch === ep) L.dHeard |= (1 << lEnd(me, x)); }
     // C++: mesh_link.inc:l15LastLink
-    function l15LastLink(x, y) { for (const p of P.LINKPEERS[x]) { if (p === y) continue; const L = linkFind(x, p); if (L && L.state === LK_OPEN) return false; } return true; }
+    function l15LastLink(x, y) { for (const p of P.LINKPEERS[x]) { if (p === y) continue; const L = linkFind(x, p); if (L && L.state === LK_OPEN && (!L.outside || l15Names(x, p) || l15NamedBy(x, p))) return false; } return true; }
     // C++: mesh_link.inc:l15Doors   [fabric]
     function l15Doors() {
       for (const pk of ldoorsAsc()) {
@@ -433,6 +433,8 @@
       }
       return false;
     }
+    // C++: mesh_link.inc:fabricDropHalf   [end: D6c.1, my end lets go of every pc it reads half-open]
+    function fabricDropHalf(me) { if (!lv.LINKMODEL) return; lEnsure(me); const ps = P.LINKPEERS[me].slice(); for (const x of ps) { const L = linkFind(me, x); if (L && L.state === LK_OPEN && (L.half & (1 << lEnd(me, x)))) l22Close(me, x); } }
     // C++: mesh_link.inc:l23CloseAlone   [end]
     function l23CloseAlone(me, x, strike = true) { const L = linkFind(me, x); if (!L || L.state !== LK_OPEN) return; l22Close(me, x); lv.L23_CLOSED++; if (strike) l23Strike(me, x); trace('L23-CLOSE', me, null, 'peer=%d strike=%d', x, strike ? 1 : 0); }
     const cmpPair = (p, q) => (p[0] - q[0]) || (p[1] - q[1]);
@@ -707,7 +709,7 @@
     Object.assign(fns, {
       fabricLinkState, fabricDial, fabricDialJoin, fabricDialUplink, fabricDialFails, fabricUpTake, fabricUpDecline, fabricDoors,
       fabricDoorDrop, fabricDoorHanded, fabricDoorHeard, fabricMyDoors, fabricMyKnocks, fabricNoSock, fabricL23Busy, fabricCallFrame,
-      l22Quiet, l222Note, l22Agree, l22Close, l22CloseAsk, l22Need, l28Reply, l18Route, l18Cell, l18Hop, l18Deliv,
+      l22Quiet, l222Note, l22Agree, l22Close, fabricDropHalf, l22CloseAsk, l22Need, l28Reply, l18Route, l18Cell, l18Hop, l18Deliv,
     });
     return {
       S, fns, newLink: newLink,
