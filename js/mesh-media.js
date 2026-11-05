@@ -3,19 +3,6 @@
  * Pure engine, no transport: run.html feeds it sources (video elements) and
  * ships its output tracks over the links the mesh already holds.
  *
- * THE MODEL (media-plane "concrete rendering recursion"): every mosaic frame
- * is a C×C grid for one section; cell (r,i) shows seat (pc,r,i)'s camera if it
- * is a leaf, else its subtree's sub-mosaic. Assembly is DISTRIBUTED: a row
- * HEAD composites its row's BAND — a horizontal 1×C strip (each cell = that
- * seat's camera or its down-link's sub-mosaic) — and sends ONE band up its
- * up-link; the head one level up stacks C bands VERTICALLY into the full
- * frame. Row-layout horizontal, band-stack vertical — the H/V alternation of
- * the nested mosaic, by construction. Section-1 heads finish redundantly in
- * parallel over the rook (no election) and the full Stadium flows back
- * down every down-link. The Stage strip is the same band engine with the ≤C
- * chosen stagers as cells. Frame budget is CONSTANT per hop (SCALE.COMP_W ×
- * COMP_H) — a seat's forward cost never grows with the tree below it.
- *
  * GOVERNOR (learned the hard way — see the blur-pipe stall, 0698bb8): every
  * draw loop here is gated by its own measured cost (next paint ≥ max(frame
  * budget, 3× last cost)). Compositing may DROP frames, never queue them —
@@ -25,11 +12,6 @@
   const GifOS = root.GifOS = root.GifOS || {};
   const net = GifOS.net;
 
-  // ---- layout math (pure — Node-testable) ----------------------------------
-  // A BAND: 1×C horizontal strip, cell i at [i*W/C, 0, W/C, H].
-  // A FRAME: C bands stacked, band r at [0, r*H/C, W, H/C].
-  // Cells keep the slot even when empty (space is by tree POSITION, not
-  // population — the nested-space property, accepted by design).
   // PACK-GOVERNOR
   // THE PACKERS' PAINT GOVERNOR (same rule as run.html's blur canvas,
   // STAGE-BLUR-GOVERNOR). It used to wait 3x the LAST paint's cost after a
@@ -44,16 +26,6 @@
   function packWait(cost, avg, minMs) { return Math.max(minMs, cost + Math.min(2 * avg, PACK_REST_MAX_MS)); }
   function packAvg(avg, cost, n) { const c = Math.min(cost, PACK_REST_MAX_MS); return n ? avg * 0.7 + c * 0.3 : c; }
   // END-PACK-GOVERNOR
-  function bandRects(C, W, H) {
-    const out = []; const cw = W / C;
-    for (let i = 0; i < C; i++) out.push({ x: Math.round(i * cw), y: 0, w: Math.round((i + 1) * cw) - Math.round(i * cw), h: H });
-    return out;
-  }
-  function frameRects(C, W, H) {
-    const out = []; const bh = H / C;
-    for (let r = 0; r < C; r++) out.push({ x: 0, y: Math.round(r * bh), w: W, h: Math.round((r + 1) * bh) - Math.round(r * bh) });
-    return out;
-  }
   // A CENTERED SQUARE cut from the source's SHORTEST dimension — the same for a
   // landscape webcam or a portrait phone (a conference call is a mix of both).
   // Cells are square, so this square fills the cell with no distortion; faces
@@ -79,101 +51,6 @@
     const s = Math.min(cell / (sw || 1), cell / (sh || 1));
     const dw = (sw || 1) * s, dh = (sh || 1) * s;
     return { dx: (cell - dw) / 2, dy: (cell - dh) / 2, dw, dh };
-  }
-
-  // ---- the composite engine --------------------------------------------------
-  // createComposite({ kind:'band'|'frame', C, w, h, fps, label }) →
-  //   { canvas, stream, track, setCell(idx, videoEl|null, meta), cells,
-  //     start(), stop(), stats() }
-  // Draw is driven by an interval at fps, gated by the governor. Empty cells
-  // paint a quiet placeholder (dark + slot index) so the grid reads as seats.
-  function createComposite(opts) {
-    const C = opts.C || (net && net.SCALE.C) || 5;
-    const W = opts.w || (net && net.SCALE.COMP_W) || 756;
-    const H = opts.h || (net && net.SCALE.COMP_H) || 1344;
-    const fps = opts.fps || (net && net.SCALE.COMP_FPS) || 12;
-    const N = opts.cells || C; // a head's product = band + C subs = C+1 slots
-    const rects = (opts.kind === 'frame' ? frameRects : bandRects)(N, W, H);
-    const canvas = (typeof document !== 'undefined') ? document.createElement('canvas') : null;
-    if (canvas) { canvas.width = W; canvas.height = H; }
-    const ctx = canvas ? canvas.getContext('2d') : null;
-    const cells = new Array(N).fill(null); // { el, streamId } | null
-    // Optional AUDIO FOLD: the composite's audio is the summed audio of its
-    // cells' source streams. A nested sub-mosaic's stream already carries its
-    // OWN fold, so folding it re-sums recursively up the tree — a band folds
-    // its row, a frame folds its bands, and so on, by construction.
-    const fold = (opts.ac && createAudioFold(opts.ac)) || null;
-    let timer = null, last = 0, cost = 0, costAvg = 0, costN = 0, drawn = 0, dropped = 0;
-
-    function drawCell(i) {
-      const r = rects[i], c = cells[i];
-      const el = c && c.el;
-      const sw = el ? (el.videoWidth || el.width || 0) : 0;   // <video> or <canvas> source
-      const sh = el ? (el.videoHeight || el.height || 0) : 0;
-      if (!sw || !sh) {
-        ctx.fillStyle = '#101418'; ctx.fillRect(r.x, r.y, r.w, r.h);
-        return;
-      }
-      // WHAT a cell holds depends on the KIND, not on <video> vs <canvas> (a
-      // received sub-mosaic arrives as a <video> too, so tag-name can't tell):
-      //   BAND cells  = LEAF faces → centered-square crop, so every face is square.
-      //   FRAME cells = NESTED composites (a row band, a sub-product, the stadium)
-      //                 → draw WHOLE, aspect-preserved (contain), NEVER cropped —
-      //                 else a 756×151 strip of 5 faces gets its centre square cut
-      //                 out and smeared across the cell (the stretched bands bug).
-      if (opts.kind === 'frame') {
-        const s = Math.min(r.w / sw, r.h / sh);
-        const dw = sw * s, dh = sh * s, dx = r.x + (r.w - dw) / 2, dy = r.y + (r.h - dh) / 2;
-        ctx.fillStyle = '#101418'; ctx.fillRect(r.x, r.y, r.w, r.h);
-        try { ctx.drawImage(el, 0, 0, sw, sh, dx, dy, dw, dh); } catch (e) {}
-        return;
-      }
-      const b = coverBox(sw, sh, r);
-      try { ctx.drawImage(el, b.sx, b.sy, b.sw, b.sh, r.x, r.y, r.w, r.h); } catch (e) {}
-    }
-    function paint() {
-      const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-      if (now - last < packWait(cost, costAvg, 1000 / fps)) { dropped++; return; } // GOVERNOR: drop, never queue
-      for (let i = 0; i < N; i++) drawCell(i);
-      last = now; cost = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - now; costAvg = packAvg(costAvg, cost, costN++); drawn++;
-    }
-
-    const comp = {
-      canvas, cells, rects,
-      stream: null, track: null,
-      setCell(i, el, stream) {
-        const sid = stream ? stream.id : null;
-        const prev = cells[i];
-        if (!el) { if (fold && prev) fold.remove('c' + i); cells[i] = null; return; }
-        if (fold) {
-          if (prev && prev.streamId !== sid) fold.remove('c' + i);
-          // A matching stream id can still be unfolded: the first add records
-          // nothing when the audio track has not arrived yet.
-          if (sid && !fold.has('c' + i)) fold.add('c' + i, stream, opts.gain == null ? 1 : opts.gain);
-          else if (sid) fold.follow('c' + i, stream);
-        }
-        cells[i] = { el, streamId: sid };
-      },
-      start() {
-        if (timer || !canvas) return comp;
-        const vTrack = canvas.captureStream(fps).getVideoTracks()[0];
-        const aTrack = fold && fold.track();
-        comp.stream = new MediaStream(aTrack ? [vTrack, aTrack] : [vTrack]);
-        comp.track = vTrack;
-        timer = setInterval(paint, Math.max(20, 1000 / fps));
-        paint();
-        return comp;
-      },
-      stop() {
-        if (timer) { clearInterval(timer); timer = null; }
-        if (fold) fold.clear();
-        cells.fill(null);
-        if (comp.track) { try { comp.track.stop(); } catch (e) {} }
-        comp.stream = null; comp.track = null;
-      },
-      stats() { return { drawn, dropped, cost: Math.round(cost * 10) / 10 }; },
-    };
-    return comp;
   }
 
   // ---- the GAPLESS PACKER (docs/media-plane.md, approach A) -------------------
@@ -811,83 +688,6 @@
     return pk;
   }
 
-  // ---- the PER-LINK BUNDLE (approach A: one stream per link) ------------------
-  // A seat owes a neighbour several composites (its band, the stadium, a product
-  // to forward…). Encoding each as its own track is one WebRTC encode PER
-  // composite PER peer — the 10-15-encodes blowup. A bundle packs all the
-  // composites bound for ONE peer into ONE canvas (stacked, each scaled to a
-  // fixed width by its own aspect) and ships ONE stream; a MANIFEST of normalised
-  // rects + each part's {key,n,cols} rides the announce so the receiver crops
-  // each part back out (a cheap draw, no decode-per-part). Encodes now = LINKS.
-  function createBundle(opts) {
-    opts = opts || {};
-    const W = opts.w || 512, fps = opts.fps || (net && net.SCALE.COMP_FPS) || 8;
-    const canvas = (typeof document !== 'undefined') ? document.createElement('canvas') : null;
-    const ctx = canvas ? canvas.getContext('2d') : null;
-    const parts = new Map(); // key -> { el, n, cols, ord }
-    const fold = (opts.ac && createAudioFold(opts.ac)) || null;
-    let timer = null, last = 0, cost = 0, costAvg = 0, costN = 0, active = true;
-    const layout = () => { // vertical stack, each part W wide, h = W/aspect
-      const ps = [...parts.entries()].sort((a, b) => (a[1].ord < b[1].ord ? -1 : 1));
-      let y = 0; const rects = []; let H = 0;
-      for (const [key, p] of ps) {
-        const sw = p.el ? (p.el.videoWidth || p.el.width || 1) : 1, sh = p.el ? (p.el.videoHeight || p.el.height || 1) : 1;
-        const h = Math.max(1, Math.round(W * sh / sw));
-        rects.push({ key, x: 0, y, w: W, h, n: p.n, cols: p.cols, el: p.el }); y += h; H = y;
-      }
-      return { rects, H: Math.max(1, H) };
-    };
-    function paint() {
-      if (!ctx || !active) return;
-      const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-      if (now - last < packWait(cost, costAvg, 1000 / fps)) return;
-      const { rects, H } = layout();
-      if (canvas.width !== W) canvas.width = W;
-      if (canvas.height !== H) canvas.height = H;
-      ctx.fillStyle = '#101418'; ctx.fillRect(0, 0, W, H);
-      for (const r of rects) { const sw = r.el && (r.el.videoWidth || r.el.width), sh = r.el && (r.el.videoHeight || r.el.height);
-        if (sw && sh) { try { ctx.drawImage(r.el, 0, 0, sw, sh, r.x, r.y, r.w, r.h); } catch (e) {} } }
-      last = now; cost = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - now; costAvg = packAvg(costAvg, cost, costN++);
-    }
-    const bd = {
-      canvas, stream: null, track: null,
-      setPart(key, ord, el, stream, meta) {
-        const prev = parts.get(key);
-        const sid = stream && stream.id;
-        if (!el) { if (fold && prev) fold.remove('p' + key); parts.delete(key); return; }
-        if (fold) {
-          if (prev && prev.sid !== sid) fold.remove('p' + key);
-          if (sid && !fold.has('p' + key)) fold.add('p' + key, stream, 1);
-          else if (sid) fold.follow('p' + key, stream);
-        }
-        parts.set(key, { el, ord, sid, n: (meta && meta.n) || 1, cols: (meta && meta.cols) || 1 });
-      },
-      has: (key) => parts.has(key), keys: () => [...parts.keys()], count: () => parts.size,
-      // The manifest that rides the announce: normalised rects + per-part meta.
-      manifest() { const { rects, H } = layout(); return rects.map((r) => ({ key: r.key, y: r.y / H, h: r.h / H, n: r.n, cols: r.cols })); },
-      setActive(on) { active = on !== false; },
-      start() { if (timer || !canvas) return bd; const v = canvas.captureStream(fps).getVideoTracks()[0]; const a = fold && fold.track(); bd.stream = new MediaStream(a ? [v, a] : [v]); bd.track = v; timer = setInterval(paint, Math.max(20, 1000 / fps)); paint(); return bd; },
-      stop() { if (timer) { clearInterval(timer); timer = null; } if (fold) fold.clear(); if (bd.track) { try { bd.track.stop(); } catch (e) {} } bd.stream = null; },
-    };
-    return bd;
-  }
-  // Receiver side: a cropped view of one part of a bundle — a tiny <canvas> that
-  // redraws the bundle video's normalised {y,h} band each frame, so downstream
-  // code can treat it exactly like a standalone composite source element.
-  function cropView(bundleVideo, band, fps) {
-    const c = (typeof document !== 'undefined') ? document.createElement('canvas') : null;
-    if (!c) return { el: null, stop() {} };
-    const ctx = c.getContext('2d'); let timer = null;
-    const draw = () => {
-      if (bundleVideo.paused || bundleVideo.ended) return;
-      const vw = bundleVideo.videoWidth || 0, vh = bundleVideo.videoHeight || 0; if (!vw || !vh) return;
-      const sy = Math.round(band.y * vh), sh = Math.max(1, Math.round(band.h * vh));
-      if (c.width !== vw) c.width = vw; if (c.height !== sh) c.height = sh;
-      try { ctx.drawImage(bundleVideo, 0, sy, vw, sh, 0, 0, vw, sh); } catch (e) {} };
-    timer = setInterval(draw, Math.max(20, 1000 / (fps || 8))); draw();
-    return { el: c, stop() { if (timer) clearInterval(timer); } };
-  }
-
   // ---- audio fold (WebAudio sum, bounded) ------------------------------------
   // A band's audio = the sum of its cells' audio tracks through per-cell gains
   // (the recorder's primitive). Callers own the AudioContext lifecycle.
@@ -1014,5 +814,5 @@
     };
   }
 
-  GifOS.meshMedia = { workerClock, createBgClock, bandRects, frameRects, coverBox, fitBox, createComposite, createAudioFold, packGrid, stadiumGrid, stadiumTiny, cellSize, faceSrcRect, cellCrop, createPacker, createBundle, cropView };
+  GifOS.meshMedia = { workerClock, createBgClock, coverBox, fitBox, createAudioFold, packGrid, stadiumGrid, stadiumTiny, cellSize, faceSrcRect, cellCrop, createPacker };
 })(typeof window !== 'undefined' ? window : globalThis);
