@@ -17090,6 +17090,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         onGossip: (src, g, ageMs, scoped, link) => {
           if (!g || g.a !== 1 || !g.msg) return;
           if ((typeof isEjected === 'function' && isEjected(src) === true)) return false; // refused AND not forwarded: a forger's gossip stops at this seat
+          // A person this room refused (the verdict my seat holds, an admin's ban, or my own vote) is not heard through a member's forward either: refused AND not forwarded.
+          if ((meshNode && meshNode.kicked && meshNode.kicked(src)) || bannedSeat.has(src) || (devOf[src] && myVoteoffs.has(devOf[src]))) return false;
           // TROLL GATE, for a room's flood. Past one section most authors are neither a link of mine nor in my occ, so the author
           // alone cannot tell a far seat from a knocker. The channel can: a line a member handed me on its own proven channel is the room's.
           // One that came from a stranger, or by no proven channel, stops here, so every member's forward is one a member took.
