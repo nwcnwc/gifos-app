@@ -221,7 +221,7 @@
       if (!this.moving && this.placer >= 0 && this.placer !== by && TICK - this.seatedAt < K.L11_ARRIVE) this.l25Mark(this.placer);
       if (!this.moving && this.l25OrderBy >= 0 && TICK - this.l25OrderAt <= 2 * K.L11_ARRIVE && this.l25OrderBy !== by && TICK - this.seatedAt < K.L11_ARRIVE) this.l25Mark(this.l25OrderBy);
       this.trace('YIELD-TAKEN', id, this.coord, 'by=%d site=%d nc=%d ypp=%d yppAt=%d mypp=%d myppAt=%d born=%lld moving=%d', by, m.tag, m.nc, m.pp, m.ppAt, this.pp, this.ppAt, this.rmBornAt, this.moving ? 1 : 0);
-      if (this.moving) { this.rbWhy = 'yield'; this.rollbackMove(); } else this.requeue('T1-yield');   // T1
+      if (this.moving) { this.rbWhy = 'yield'; this.rollbackMove(); } else this.l40Go(m.nc !== id ? m.nc : -1, 'T1-yield');   // T1 (L40.3: an arbiter's yield names the cell's holder too)
       if (m.nc >= 0 && m.nc !== id && this.hasCoord && this.state === 3 && ckey(this.coord) !== m.ck && this.occGet(m.ck) !== m.nc && !this.liveElsewhere(m.nc, m.ck)) { this.setOcc(m.ck, m.nc); this.noteS1(m.ck); }   // L11
     },
 
@@ -450,6 +450,7 @@
     // C++: mesh_seat.inc:Seat::onSitPing
     onSitPing(m) {
       // V4: my assigner asks whether its vouch for me at m.ck is still live.
+      if (m.id === this.id && !this.hasCoord && this.state === 2 && this.l317DeclinedAt(m.ck, m.from)) return;   // L31.7: a vouch for a placement I declined: silent, so it frees
       if (m.id === this.id) {
         if (this.hasCoord && this.state === 3 && ckey(this.coord) === m.ck) { const p = newMsg('SITPONG'); p.ck = m.ck; p.id = this.id; p.tag = 1; this.emit(m.from, p); }
         else if (!this.hasCoord && this.state === 2) { const p = newMsg('SITPONG'); p.ck = m.ck; p.id = this.id; p.tag = 0; this.emit(m.from, p); }
@@ -495,7 +496,7 @@
         if (this.l167Stand(this.pendYNc, this.pendYBorn)) { this.emit(pid, hello(ckey(this.coord), id)); this.trace('L16.7-STAND', id, this.coord, 'by=%d rival=%d deferred', pid, this.pendYNc); return; }   // L16.7
         if (!this.moving && (roomTerm(this, -1) || this.lineForeign())) { const y = newMsg('YIELD'); y.ck = this.pendYCk; y.id = pid; y.nc = this.pendYNc; y.pp = this.pendYPp; y.ppAt = this.pendYPpAt; y.ppL = this.pendYPpL; y.born = this.pendYBorn; if (this.l25Yield(y, pid)) { this.trace('L25.11-DEFERRED', id, this.coord, 'by=%d nc=%d', pid, this.pendYNc); return; } }   // L25.11
         if (!this.moving && this.l25Nonsense(pid, this.pendYNc, 'deferred')) return;   // L25.15
-        this.trace('YIELD-TAKEN', id, this.coord, 'by=%d site=pendY nc=%d ypp=%d yppAt=%d mypp=%d myppAt=%d born=%lld moving=%d', this.pendYBy, this.pendYNc, this.pendYPp, this.pendYPpAt, this.pp, this.ppAt, this.rmBornAt, this.moving ? 1 : 0); if (this.moving) { this.rbWhy = 'pendY'; this.rollbackMove(); } else this.requeue('T1-yield'); return;
+        this.trace('YIELD-TAKEN', id, this.coord, 'by=%d site=pendY nc=%d ypp=%d yppAt=%d mypp=%d myppAt=%d born=%lld moving=%d', this.pendYBy, this.pendYNc, this.pendYPp, this.pendYPpAt, this.pp, this.ppAt, this.rmBornAt, this.moving ? 1 : 0); if (this.moving) { this.rbWhy = 'pendY'; this.rollbackMove(); } else this.l40Go(this.pendYNc !== id ? this.pendYNc : -1, 'T1-yield'); return;
       }
       {
         const ob = this.byeAt.get(m.oCk); let byeHeld = ob !== undefined && TICK - ob <= K.LEASE_T && !this.firstHandLive(m.oCk); if (byeHeld) { const bi = this.byeId.get(m.oCk); if (bi !== undefined && bi !== m.owner) byeHeld = false; }   // L9.3

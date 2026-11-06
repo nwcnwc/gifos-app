@@ -259,10 +259,22 @@
     const F = pc.fns;
 
     // ---- the seat's dials, my end ([end] in pclaws.js, minus the far end's L23 read: the far page refuses at its offer) ----
+    // C++: none (page-only: the sim reads the callee for free). The sim's dialler skips a dial l23Refused(x, me) would refuse;
+    // my page learns it only from the refusal, so it keeps the callee's l23Strike back-off per peer: the first refusal is free
+    // (n>=2, as the callee's strike), then COOL0 doubling to COOL_MAX. Plain seat dials only: a dial for a queued frame
+    // (linkSchedule) still reaches the callee's gate, which exempts greets, contests and needs.
+    const DECL = new Map();   // x -> {until, last, n}
+    function declNote(x) {
+      if (DECL.size > 64 && !DECL.has(x)) DECL.clear();
+      let k = DECL.get(x); if (!k) { k = { until: -1, last: -1, n: 0 }; DECL.set(x, k); }
+      if (k.last >= 0 && T() - k.last > 4 * K.L23_COOL_MAX) k.n = 0; k.n++; k.last = T(); k.until = T() + Math.min(K.L23_COOL0 << Math.min(k.n - 1, 10), K.L23_COOL_MAX);
+    }
+    const declined = (x) => { const k = DECL.get(x); return !!k && k.n >= 2 && T() < k.until; };
     // C++: mesh_link.inc:fabricDial
     function fabricDial(a, x) {
       if (a !== me || x < 0 || x === me) return;
       if (pc.dialHeld(me, x)) return; if (pc.l18NoDial(me, x)) return;
+      if (declined(x)) return;   // the sim's l23Refused(x, me), from the callee's last word
       pc.noteCall(me, x); pc.l23MakeRoom(me, x);
       const L = linkGet(me, x); if (L.state === LK_NONE || L.state === LK_CLOSED) { startDial(me, x, L); L.dialHow = 1; }
     }
@@ -270,6 +282,7 @@
     function fabricDialJoin(a, x) {
       if (a !== me || x < 0 || x === me) return;
       if (pc.l18NoDial(me, x)) return; if (pc.dialHeld(me, x)) return;
+      if (declined(x)) return;   // as fabricDial
       pc.noteCall(me, x); pc.l23MakeRoom(me, x);
       const L = linkGet(me, x); if (L.state === LK_NONE || L.state === LK_CLOSED) { startDial(me, x, L); L.dialHow = 2; } else if (L.state === LK_DIALING) L.view[mine(x)] = LK_DIALING;
     }
@@ -420,6 +433,7 @@
     // the callee's gate on an incoming offer: L23 (refused), L16 (busy over the relay); else my end starts DIALING
     function offer(x, mk) {
       mk = mk || {}; const s = mySeat(); if (!s || s.dead || x === me || x < 0) return false;
+      DECL.delete(x);   // its offer reached me: its refusal is old news
       { const D = LINKS.get(x); if (D && D.outside && D.dBorn >= 0) D.dProg = T(); }   // a signal on a live dial keeps its door: the two ends share one connection
       const sat = mk.s ? 1 : 0;
       const f = far(x); f.seated = sat; if (mk.tier) f.tier = mk.tier;
@@ -455,6 +469,7 @@
     // C++: mesh_link.inc:linkOpenNow   [my end]
     function opened(x) {
       const L = LINKS.get(x); if (!L || L.state === LK_OPEN) return;
+      DECL.delete(x);
       L.state = LK_OPEN; L.openEp = L.epoch; L.half = 0; L.halfAt = -1; L.stuck = false; L.view[0] = L.view[1] = LK_OPEN; L.opened = true;
       L.byeIn = L.byeOut = false; L.callClosed = false; L.gone = 0;   // a new pc: the last one's close says nothing about it
       if (L.outside && L.dBorn >= 0) { L.dProg = T(); L.dOpenAt = T(); }
@@ -528,6 +543,7 @@
     function refused(x, info) {
       const L = LINKS.get(x);
       if (L && (L.state === LK_DIALING || L.state === LK_OPEN)) { L.state = LK_NONE; L.epoch = (L.epoch + 1) >>> 0; L.q = []; L.view[mine(x)] = LK_NONE; doorEndCount(L); io.close(x, 'refused'); }
+      if (!(info && info.busy)) declNote(x);   // L23: remember it (fabricDial); L16 busy has its own BUSY path
       if (info && info.busy) { const b = msg.newMsg('BUSY'); b.id = x; b.from = -1; b.to = me; b.lk = -1; io.deliver(b); }
     }
     // the page's leave: a goodbye on every open pc (the seat's LEAVE went out before)

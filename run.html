@@ -7757,15 +7757,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (age < 15000) return true;
       if (age >= HOLDOVER_MS) return false;
       const p = peers.get(pid);
-      // A DOOR ALONE DOES NOT HOLD A STATUS OPEN. A boot/door pair that is
-      // not also one of my bounded links (linkTo) is the channel a knocker
-      // or greeter came in by, not a vouched-for neighbour — and
-      // retireBootPairs only drops it once I locally learn the far side is
-      // seated, which a door to a distant section may never do (af875b5).
-      // Such a door staying "connected" must not keep a stale direct status
-      // held for the full HOLDOVER_MS: past 15s it falls through to the
-      // fold, same as any other far seat's status would.
-      if (p && p.boot && !linkTo(pid)) return !!st.away;
+      // A PAIR THAT CARRIES NO BEAT DOES NOT HOLD A STATUS OPEN. Transport
+      // vouches for a quiet peer only when that peer's beat rides this pair
+      // (beatsHere): a neighbour both ends name. A door, or a pc my seat
+      // holds for a reason of my end alone (my dial, my keep, my row's
+      // standby), stays "connected" while the far end never beats on it, so
+      // its status would stand stale for the full HOLDOVER_MS. Past 15s it
+      // falls through to the fold, same as any other far seat's status.
+      if (p && !beatsHere(pid)) return !!st.away;
       return !!st.away || !!(p && p.connected);
     };
     function mergeMod(incoming) {
@@ -15084,14 +15083,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (seatAsked(pid)) return true;   // the seat dialled it (a door, a call, an audit): its own reason
       if (!s || !s.hasCoord) return false;
       if (s.l14Served && s.l14Served().includes(pid)) return true;   // L14: a cut-off head dialled me for its branch's media
-      return s.linkPeers().has(pid) || (typeof s.keepPeers === 'function' && s.keepPeers().has(pid));   // every media target is a link peer or carries a keep reason (L28)
+      // A row's standby (E3) is a pc only while an up edge is down: the seat's dial says so above, and u2Hot here. Idle, it is a name, as an idle row holds no third pc.
+      return (!(pid === s.u3Id && !s.u2Hot) && s.linkPeers().has(pid)) || (typeof s.keepPeers === 'function' && s.keepPeers().has(pid));   // every media target is a link peer or carries a keep reason (L28)
     }
-    // The seat names this peer only as its row's standby (E3), and no edge is down: a name, not a reason to hold a pc.
-    function idleStandby(pid) {
+    // Does this peer's status beat reach me over our pair? Its direct beat rides only ITS links (broadcastStatus), so
+    // only a link both ends name carries one: a neighbour by the arithmetic, an E2 edge, an L14 uplink. A pc held for
+    // a reason of my end alone carries none: a door or a call my seat dialled (seatAsked), a keep (L28), and my row's
+    // standby (E3), whose far end holds no end of the edge while E2 is up.
+    function beatsHere(pid) {
       const s = meshSeat();
-      if (!s || !s.hasCoord || s.state !== 3 || s.moving || s.u3Id !== pid || s.u2Hot || s.u2Id === pid || s.l14Up === pid) return false;
-      if (seatAsked(pid) || (s.l14Served && s.l14Served().includes(pid)) || (typeof s.keepPeers === 'function' && s.keepPeers().has(pid))) return false;
-      return true;
+      if (!s || !s.hasCoord) return false;
+      if (s.l14Served && s.l14Served().includes(pid)) return true;
+      if (!s.linkPeers().has(pid)) return false;
+      return !(s.u3Id === pid && !s.u2Hot && s.u2Id !== pid && s.l14Up !== pid);
     }
     // Peers the seat asked to dial (pc.ensure), for a while: the seat's dial is its reason.
     const seatAskAt = new Map();
@@ -15916,6 +15920,32 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // tap the console); production stays exactly as silent as before (null →
     // typeof 'object' → every guard stays false).
     const DEBUGFAIL_AT_LOAD = (() => { const m = /(?:^|[#&?])debugfail=([a-z-]+)/i.exec(location.hash + location.search); return m ? m[1].toLowerCase() : ''; })();   // read at load: the boot rewrites the hash later
+    // MEM SAMPLES (DEBUG only): every 30 s one small record of what this page holds, so a long room shows what only grows.
+    // JS heap (performance.memory where it exists), mesh/pc maps, pipe-worker queues, media element tracks, pcs by state.
+    // It never calls into a live RTCPeerConnection (no getSenders/getReceivers) and never wraps Worker: suspected in a 40-page room whose renderers crashed (rtp_sender CHECK).
+    // Own ring (window.__memSamples, 240 records = 2 h), plus one MEM line in the mesh trace so it rides the participant's trace file. Numbers only: no ids, no names.
+    if (DEBUG_ON) {
+      const MS = window.__memSamples = window.__memSamples || [];
+      const sz = (x) => { try { return x == null ? null : (typeof x.size === 'number' ? x.size : (typeof x.length === 'number' ? x.length : null)); } catch (e) { return null; } };
+      const memSample = async () => {
+        const o = { t: Date.now() };
+        try { const m = performance.memory; if (m) { o.heapUsed = m.usedJSHeapSize; o.heapTotal = m.totalJSHeapSize; } } catch (e) {}
+        try {
+          const pcs = {}; let recv = 0, send = 0, live = 0;
+          for (const v of peers.values()) { const pc = v && v.pc; if (!pc) continue; pcs[pc.connectionState] = (pcs[pc.connectionState] || 0) + 1; }
+          o.pcs = pcs;
+          const els = document.querySelectorAll('video,audio'); let withStream = 0, tracks = 0, liveTracks = 0;
+          for (const el of els) { const ms = el.srcObject; if (ms && ms.getTracks) { withStream++; for (const t of ms.getTracks()) { tracks++; if (t.readyState === 'live') liveTracks++; } } }
+          o.mediaEls = els.length; o.elStreams = withStream; o.elTracks = tracks; o.elLiveTracks = liveTracks;
+        } catch (e) {}
+        try { o.maps = { peers: sz(peers), seatAskAt: sz(seatAskAt), seatMark: sz(seatMark), bcTrace: sz(window.__bcTrace), traceRing: window.__meshTraceRing ? window.__meshTraceRing.ring.length : 0 }; } catch (e) {}
+        try { const s = meshSeat(); if (s) o.seat = { occ: sz(s.occ), sitting: sz(s.sitting) }; } catch (e) {}
+        try { const P = GifOS.meshPipe; if (P) { o.pipe = Object.assign({}, P._debugSizes ? P._debugSizes() : {}); const st = await P.stats(); let q = 0, n = 0; for (const k of Object.keys(st || {})) { n++; q += st[k].q || 0; } o.pipe.pipes = n; o.pipe.qFrames = q; } } catch (e) {}
+        MS.push(o); if (MS.length > 240) MS.splice(0, 40);
+        try { meshTraceSink(JSON.stringify({ t: 0, s: 0, e: 'MEM', c: null, d: JSON.stringify(o) })); } catch (e) {}
+      };
+      setInterval(() => { memSample().catch(() => {}); }, 30000);
+    }
     const clog = DEBUG_ON ? function () { try { console.log.apply(console, ['[clog]'].concat(Array.from(arguments))); } catch (e) {} } : null;
     function meshSelfReport() { // DEBUG-TREE
       const c = meshCoord(), s = meshSeat();
@@ -17862,18 +17892,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             dropPeer(pid, true);
             continue;
           }
-        } else {
-          p.absentSince = 0; // a mesh-named neighbour is never absent
-          // An idle row's standby holds no pc: the seat dials it when E1 or E2 goes down, and that dial builds a fresh one.
-          // One that outlived the far end's hang-up (pcCloseNow) is no Link and nothing retires it otherwise.
-          if (idleStandby(pid) && !p.connected && !(p.dc && p.dc.readyState === 'open')
-              && now - Math.max(p.rebuiltAt || 0, p.bornAt || 0) > UNOWNED_PC_MS) {
-            if (typeof clog === 'function') clog('pc-standby-idle ' + String(pid).slice(0, 6));
-            p.envClosing = now;
-            dropPeer(pid, true);
-            continue;
-          }
-        }
+        } else { p.absentSince = 0; } // a mesh-named neighbour is never absent
         const st = p.pc.connectionState;
         if (p.absentSince && !p.connected && now - p.absentSince > ABSENT_GRACE) { dropPeer(pid); continue; }
         // A pc that lands in 'closed' can't be ICE-restarted; it is dropped.
@@ -36303,6 +36322,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         let tab = null, forg = null, lt = null; try { const s = meshNode && meshNode.raw; if (s && s.s1tab) { tab = []; for (const [k, d] of s.s1tab) tab.push([String(k), String(d.by), d.at, Math.round(s.LT() - d.rx), d.n, d.leased || 0, String(s.occGet(k))]); } if (s && s.digForgot) forg = [...s.digForgot].map(([k, v]) => [String(k), String(v[0]), v[1]]); lt = s.LT(); } catch (e) { tab = String(e); }
         return { tab, forg, lt, vp: String(vp), disp: displayCount(), pc: participantCount(), leaf: leafCount(), lp: livePeerCount(), kt: knownTotal(), dn: d ? d.n : null, part: d ? !!d.part : null, shown: shownPeerCount(), faces: facesOnScreen(), byes: (meshNode && meshNode.byesHeld) ? meshNode.byesHeld() : 0, past: roomPastSection(), deep: deepInView(),
           v: { roster: rosterIds.includes(vp), peer: p ? { conn: !!p.connected, heard: Math.round((now - Math.max(p.lastHeard || 0, p.meshRxAt || 0)) / 1000) } : null, st: st ? Math.round((now - stSeen(st)) / 1000) : null, occ: occHas, first: occFirstSeen.has(vp) ? Math.round((now - occFirstSeen.get(vp)) / 1000) : null, gone: meshGone.has(vp) ? Math.round((now - meshGone.get(vp)) / 1000) : null } }; },
+      memSamples: () => (window.__memSamples ? window.__memSamples.slice() : []),
       meshTraceDump: () => { const G = window.__meshTraceRing; return G ? G.ring.map((e) => e[1]) : []; },
       meshForensics: (since) => {
         const G = window.__meshTraceRing || { ring: [], seq: 0 }; const s = meshSeat(); if (!s) return null;
