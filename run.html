@@ -8619,7 +8619,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           showName(true, main.label);
         } else {
           const st = main.stream;
-          if (fsmain.srcObject !== st) { fsmain.srcObject = st; const pr = fsmain.play(); if (pr && pr.catch) pr.catch(() => {}); }
+          // The view borrows the tile's stream. A <video> that never started
+          // on its bind (WebKit leaves one on a canvas stream now and then)
+          // is bound again with a fresh wrapper of the same tracks, once its
+          // tile shows frames and it has had a moment, at most every refresh.
+          const unstarted = !!(st && fsmain._from === st && fsmain.srcObject && !fsmain.videoWidth && main.v && main.v.videoWidth > 0
+            && Date.now() - (fsmain._boundAt || 0) >= 1500 && typeof st.getVideoTracks === 'function');
+          if (fsmain._from !== st || !fsmain.srcObject || unstarted) {
+            fsmain._from = st; fsmain._boundAt = Date.now();
+            fsmain.srcObject = unstarted ? new MediaStream(st.getVideoTracks()) : st;
+            const pr = fsmain.play(); if (pr && pr.catch) pr.catch(() => {});
+          }
           fsmain.classList.remove('dark');
           fsBlurClass(fsmain, main.bl);
           showName(false);
@@ -10695,6 +10705,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       src.style.cssText = 'position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1';
       src.srcObject = new MediaStream([srcTrack]);
       document.body.appendChild(src);
+      startLocalView(src, srcTrack, 0); // the pipe paints from this element: it must start too
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       const tune = blurPipeTune(level);
@@ -10936,6 +10947,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (track && track.requestFrame) { try { track.requestFrame(); } catch (e) {} }
       return track;
     }
+    // A LOCAL PICTURE MUST START. These tracks are canvas streams made on this
+    // page (my sent picture, the letter cards). WebKit now and then leaves a
+    // muted <video> on a canvas stream at readyState 0 for good, whether it was
+    // bound before the canvas painted or after: a black self view, and the
+    // black-camera watch then restarted a working camera. A fresh wrapper of
+    // the same track starts it. Look again shortly after each bind, a few
+    // times, while the element still shows that track and has no frames.
+    function startLocalView(video, track, n) {
+      setTimeout(() => {
+        const s = video.srcObject;
+        if (!s || typeof s.getVideoTracks !== 'function' || s.getVideoTracks()[0] !== track) return; // rebound since
+        if (video.videoWidth > 0 || track.readyState !== 'live') return;
+        video.srcObject = new MediaStream([track]);
+        const pr = video.play(); if (pr && pr.catch) pr.catch(() => {});
+        if (track.requestFrame) { try { track.requestFrame(); } catch (e) {} }
+        if (n < 3) startLocalView(video, track, n + 1);
+      }, 700 * (n + 1));
+    }
     // stream may be a function that makes it: called only when the tile needs a new one. Every MediaStream built on a track
     // lives as long as that track (the track keeps each stream that holds it), so a stream made per repaint and thrown away is kept.
     function showAvatarTrack(video, stream, track) {
@@ -10945,6 +10974,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         video.srcObject = typeof stream === 'function' ? stream() : stream;
         const pr = video.play();
         if (pr && pr.catch) pr.catch(() => {});
+        startLocalView(video, track, 0);
       }
       if (track.requestFrame) {
         try { track.requestFrame(); } catch (e) {}
@@ -11269,6 +11299,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!cur || cur.getVideoTracks()[0] !== vt) {
           meTile.video.srcObject = new MediaStream([vt]);
           const pr = meTile.video.play(); if (pr && pr.catch) pr.catch(() => {});
+          startLocalView(meTile.video, vt, 0);
         }
       }
       // MAIN senders only (p.mainV / p.mainA — aux senders carry other
@@ -18720,7 +18751,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const probe = document.createElement('canvas');
       probe.width = 32; probe.height = 18;
       const pctx = probe.getContext('2d', { willReadFrequently: true });
-      let darkTicks = 0, revives = 0, lastPainted = 0, endedTries = 0, tick = 0;
+      let darkTicks = 0, revives = 0, lastPainted = 0, endedTries = 0, tick = 0, viewKickAt = -99;
       // 0 = picture, 1 = dark, 2 = pure black, 3 = no frames. A dark room
       // still has sensor noise above 2; a camera that lost its frames paints
       // exact zeros.
@@ -18783,6 +18814,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // line. A dim room that is still sending frames is a room, not a
         // dead camera: it never counts toward a re-grab.
         const silent = window.__gifosForceBlackCamHold === true || (judge.muted && !painting);
+        // THE VIEW, NOT THE CAMERA. While the blur pipe paints from a camera
+        // that has frames, a self view with no frames is a <video> that never
+        // started on its bind, not a dead camera. WebKit leaves a muted
+        // <video> on a canvas stream unstarted now and then, and a fresh bind
+        // starts it. Re-bind the view (once every two seconds at most) and
+        // never re-grab a working camera for it.
+        const v = meTile && meTile.video;
+        if (!silent && painting && blurPipe && blurPipe.src && blurPipe.src.videoWidth > 0 && v && v.srcObject && !v.videoWidth) {
+          if (tick - viewKickAt >= 2) {
+            viewKickAt = tick;
+            const tracks = v.srcObject.getVideoTracks();
+            if (tracks.length) { v.srcObject = new MediaStream(tracks); const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); }
+          }
+          return;
+        }
         const shade = silent ? 0 : dark();
         if (silent || shade >= 2) {
           if (silent || shade === 2) showCamBack(true);
@@ -20431,7 +20477,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             maybeShowFlip();
             const n = meTile.tile.querySelector('.note'); if (n) n.remove();
             meTile.video.style.display = '';
-            wkBindVideo(meTile.video, localStream);
+            // The self tile shows the picture this page sends (updateTile and
+            // refreshOutbound bind it). Binding the raw camera here as well
+            // swapped the element's source twice within a few milliseconds,
+            // and WebKit left it loading for good: a black self view.
             meterFor('me', localStream);
             updateTile('me');
             // Any pc born between the knock and the grant was built recvonly —
@@ -33449,7 +33498,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             maybeShowFlip();
             const n = meTile.tile.querySelector('.note'); if (n) n.remove();
             meTile.video.style.display = '';
-            wkBindVideo(meTile.video, localStream);
+            // The self tile is bound by refreshOutbound below, to the picture this page sends.
             meterFor('me', localStream);
           } else {
             // partial stream (mic-only / cam-only): merge the missing kinds
@@ -36262,7 +36311,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             held.enabled = true;
             myStatus.camOff = false;
             try {
-              if (meTile && meTile.video) { meTile.video.style.display = ''; if (localStream) wkBindVideo(meTile.video, localStream); }
+              if (meTile && meTile.video) meTile.video.style.display = ''; // refreshOutbound and updateTile bind the sent picture
               paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateTile('me'); updateMediaSession();
             } catch (e) {}
             return { camera: true };
@@ -36280,7 +36329,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             myStatus.camOff = false;
             try { attachLocalTracks(); } catch (e) {}
             try {
-              if (meTile && meTile.video) { meTile.video.style.display = ''; wkBindVideo(meTile.video, localStream); const pr = meTile.video.play(); if (pr && pr.catch) pr.catch(() => {}); }
+              if (meTile && meTile.video) meTile.video.style.display = ''; // refreshOutbound and updateTile bind the sent picture
               const n = meTile && meTile.tile && meTile.tile.querySelector('.note');
               if (n) n.remove();
               paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateTile('me'); updateMediaSession();
