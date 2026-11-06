@@ -21434,9 +21434,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           }
         }
       } else if (m.k === 'mx-idle' && typeof m.key === 'string') {
-        // A receiver keeps this spare parked at zero bandwidth (ONE-PIPE law).
+        // A receiver keeps this spare parked at zero bandwidth (ONE-PIPE law). v:1 parks the picture only (a decoder
+        // restart): the copy stays active, its voice flows on, and nothing upstream changes.
         const ji = mosJobs.get(m.key + '>' + p.id);
-        if (ji && (!m.streamId || ji.streamId === m.streamId)) { setJobActive(m.key + '>' + p.id, false); chainDemandUp(ji, false); }
+        if (ji && (!m.streamId || ji.streamId === m.streamId)) {
+          if (m.v === 1) parkJobVideo(m.key + '>' + p.id);
+          else { setJobActive(m.key + '>' + p.id, false); chainDemandUp(ji, false); }
+        }
       } else if (m.k === 'mx-kf' && typeof m.key === 'string') {
         // ENCODED-PASSTHROUGH keyframe walk (§9a): a downstream pipe starves
         // for key content. Relay toward the producer (kfNeed forwards to my
@@ -23866,7 +23870,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const vt = st.getVideoTracks ? st.getVideoTracks()[0] : null;
         // Every sink is re-bound: the decoder to the entry's stream, each other sink to the stream it holds.
         const rebind = () => { for (const x of (vt ? mosSinks(ent, vt) : [v])) { const own = x === v ? st : x.srcObject; try { x.srcObject = null; if (typeof wkBindVideo === 'function') wkBindVideo(x, own); else x.srcObject = own; const pr = x.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {} } };
-        const dmd = (want) => { if (ent.key && ent.via) { try { demand(ent.via, ent.key, ent.streamId, want); } catch (e) {} } };
+        const dmd = (want) => { if (ent.key && ent.via) { try { demand(ent.via, ent.key, ent.streamId, want, false, !want); } catch (e) {} } }; // the park stops the picture only
         if (v._mosHold) {
           const age = now - v._mosHold;
           if (!v._mosRebound && age >= 1000) { rebind(); v._mosRebound = true; }
@@ -24294,7 +24298,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               pipeJobs.set(jk, { srcId, carrier, srcTrack: tr, w0: null, stale: 0 });
               job.senders.push(sd); job.trackList.push(carrier.track); job.srcTracks.push(tr);
               if (isStageJob(job.key)) stageSenders.add(sd); else lowSenders.add(sd);
-              if (!job.active) { try { sd.replaceTrack(null); } catch (e) {} try { MPipe.pausePipe(jk, true); } catch (e) {} }
+              if (!job.active || job.vParked) { try { sd.replaceTrack(null); } catch (e) {} try { MPipe.pausePipe(jk, true); } catch (e) {} }
               else if (typeof outgoingHeld !== 'undefined' && outgoingHeld) { try { sd.replaceTrack(null); } catch (e) {} }
               job.attachErr = null;
               return sd;
@@ -24307,7 +24311,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const sd = addAux(p.pc, tr, job.container);
         job.senders.push(sd); job.trackList.push(tr); job.srcTracks.push(tr);
         if (isStageJob(job.key)) stageSenders.add(sd); else lowSenders.add(sd);
-        if (!job.active) { try { sd.replaceTrack(null); } catch (e) {} }
+        if (!job.active || (job.vParked && tr.kind === 'video')) { try { sd.replaceTrack(null); } catch (e) {} }
         else if (typeof outgoingHeld !== 'undefined' && outgoingHeld) { try { sd.replaceTrack(null); } catch (e) {} }
         job.attachErr = null;
         return sd;
@@ -24487,7 +24491,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             const wantsPipe = kind === 'video' && pipeEnabled() && !pipeDeny.has(jk) && !pipeJobs.has(jk)
               && (() => { try { return !!MPipe.receiverForTrack(nt, [...peers.values()].map((q) => q.pc).filter(Boolean)); } catch (e) { return false; } })();
             if (wantsPipe) { mosDetach(cur, jk, p, i); mosAttach(cur, jk, p, nt); ops.push('relane:' + kind); have = haveIdx(kind); continue; }
-            if (cur.active && !cur.carryOff && !(typeof outgoingHeld !== 'undefined' && outgoingHeld)) { try { cur.senders[i].replaceTrack(nt); } catch (e) {} }
+            if (cur.active && !cur.carryOff && jobSendsAt(cur, i) && !(typeof outgoingHeld !== 'undefined' && outgoingHeld)) { try { cur.senders[i].replaceTrack(nt); } catch (e) {} }
             cur.trackList[i] = nt; cur.srcTracks[i] = nt; ops.push('swap:' + kind);
           }
           // grow: the source gained a track of this kind — a fresh m-line
@@ -24665,6 +24669,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (on && typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (on && jobPinned(jk)) return; // pinned parked — ignore the wake
       if (on && seatSelfLeased()) return; // a self-leased seat carries nothing (below)
+      if (job.vParked) {
+        // A want ends a picture-only park; a full park covers it.
+        job.vParked = false;
+        if (on && job.active) {
+          for (let i = 0; i < job.senders.length; i++) if (jobVideoAt(job, i)) { try { job.senders[i].replaceTrack(job.carryOff ? null : job.trackList[i]); } catch (e) {} }
+          if (pipeJobs.has(jk) && MPipe && !job.carryOff) { try { MPipe.pausePipe(jk, false); } catch (e) {} } // a wake starts a fresh GOP
+          compKick(job.to);
+          return;
+        }
+      }
       if (!!job.active === !!on) return;
       job.active = !!on;
       for (let i = 0; i < job.senders.length; i++) {
@@ -24676,6 +24690,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // spare — measured). A WAKE starts a fresh GOP: the worker re-arms
       // needKey and fires the keyframe walk itself.
       if (pipeJobs.has(jk) && MPipe) { try { MPipe.pausePipe(jk, !on); } catch (e) {} }
+      compKick(job.to);
+    }
+    // PICTURE-ONLY PARK (mx-idle v:1): the receiver restarts its decoder. Only the job's video stops (a piped picture at
+    // the worker too); the job stays active, so its voice keeps flowing and the next want is no wake of a parked copy.
+    const jobVideoAt = (job, i) => !!(job.trackList[i] && job.trackList[i].kind === 'video');
+    const jobSendsAt = (job, i) => !(job.vParked && jobVideoAt(job, i));
+    function parkJobVideo(jk) {
+      const job = mosJobs.get(jk); if (!job || !job.active || job.vParked) return;
+      job.vParked = true;
+      for (let i = 0; i < job.senders.length; i++) if (jobVideoAt(job, i)) { try { job.senders[i].replaceTrack(null); } catch (e) {} }
+      if (pipeJobs.has(jk) && MPipe) { try { MPipe.pausePipe(jk, true); } catch (e) {} }
       compKick(job.to);
     }
     function unshipMos(jk, notify) {
@@ -25061,15 +25086,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // takes back the spares it woke and refuses new wakes at level 1; a primary is a duty, never shed (L29.2). Every stage
     // relay is born parked and woken by this message, so without the flag the sender cannot tell: a seat that became the
     // relay of its row's children after the stager's up seat died shed them all at once (tv-chain 461a, 8-12 s of silence).
-    function demand(from, key, sid, want, prim) {
-      const dk = from + '|' + key + '|' + sid, st = want ? (prim ? 'p' : 'w') : 'i', now = Date.now();
+    // PICTURE ONLY (vOnly, mx-idle v:1): a decoder restart is a picture remedy and never stops the voice. The sender parks
+    // only the copy's video; the next want brings it back. An older sender reads it as a plain idle.
+    function demand(from, key, sid, want, prim, vOnly) {
+      const dk = from + '|' + key + '|' + sid, st = want ? (prim ? 'p' : 'w') : (vOnly ? 'v' : 'i'), now = Date.now();
       const cur = subWant.get(dk);
       if (cur && cur.st === st && now - cur.at < 6000) return;
       const p = peers.get(from);
       if (!(p && p.dc && p.dc.readyState === 'open')) return;
       subWant.set(dk, { st, at: now });
       if (want) stgFoNote(key, 'want', from);
-      dcSend(p, want ? (prim ? { k: 'mx-want', key, streamId: sid, pr: 1 } : { k: 'mx-want', key, streamId: sid }) : { k: 'mx-idle', key, streamId: sid });
+      dcSend(p, want ? (prim ? { k: 'mx-want', key, streamId: sid, pr: 1 } : { k: 'mx-want', key, streamId: sid }) : (vOnly ? { k: 'mx-idle', key, streamId: sid, v: 1 } : { k: 'mx-idle', key, streamId: sid }));
     }
     function repaintRedun(rk, stream) {
       // Respect the same position guards reconcileMosaic paints under, so an
@@ -25512,10 +25539,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       for (const job of mosJobs.values()) {
         if (job.upKey !== rk || !job.active || !job.senders) continue;
         if (on ? !job.carryOff : !(pri && stgFedBy(job, pri))) continue; // a copy fed by my parked standby is the way out: never stop it
-        if (!on && onlyTo && job.to !== onlyTo) { if (job.carryOff) { job.carryOff = false; job.senders.forEach((sd, i) => { const t = job.trackList[i]; if (t) { try { sd.replaceTrack(t); } catch (e) {} } }); } continue; }
+        if (!on && onlyTo && job.to !== onlyTo) { if (job.carryOff) { job.carryOff = false; job.senders.forEach((sd, i) => { const t = job.trackList[i]; if (t && jobSendsAt(job, i)) { try { sd.replaceTrack(t); } catch (e) {} } }); } continue; }
         job.carryOff = !on;
-        job.senders.forEach((sd, i) => { const t = job.trackList[i]; if (t) { try { sd.replaceTrack(on ? t : null); } catch (e) {} } });
-        const jk = job.key + '>' + job.to; if (pipeJobs.has(jk) && MPipe) { try { MPipe.pausePipe(jk, !on); } catch (e) {} } // a piped picture stops at the worker too
+        job.senders.forEach((sd, i) => { const t = job.trackList[i]; if (t) { try { sd.replaceTrack(on && jobSendsAt(job, i) ? t : null); } catch (e) {} } });
+        const jk = job.key + '>' + job.to; if (pipeJobs.has(jk) && MPipe) { try { MPipe.pausePipe(jk, !on || !!job.vParked); } catch (e) {} } // a piped picture stops at the worker too
       }
     }
     // Is my claim on this stage feed one I may relay or count as a feed? Not while it is dark or
@@ -25923,6 +25950,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const primSet = new Set(); // the copy I play and relay on: a duty to its sender, not a spare (demand)
       if (pri && inCand(pri) && !mosHeld(pri)) { hot.add(pri.via + '|' + pri.streamId); primSet.add(pri.via + '|' + pri.streamId); } // a held feed (mosDecoderSweep) stays parked until its decoder is re-bound
       if (std && stdHot && !mosHeld(std)) hot.add(std.via + '|' + std.streamId);
+      const picOnly = new Set(); // a held feed is parked for its picture only: its voice keeps flowing (demand vOnly)
+      if (pri && inCand(pri) && mosHeld(pri)) picOnly.add(pri.via + '|' + pri.streamId);
+      if (std && stdHot && mosHeld(std)) picOnly.add(std.via + '|' + std.streamId);
       if (std && u2Over) hot.add(std.via + '|' + std.streamId);
       if (std && (rk.indexOf('stg:') === 0 || rk === 'sgs')) for (const job of mosJobs.values()) if (job.active && job.upKey === rk && stgFedBy(job, std)) { hot.add(std.via + '|' + std.streamId); break; }
       // YOU CANNOT CLAIM WHAT YOU HAVE TOLD THE SENDER NOT TO SEND.
@@ -25959,7 +25989,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         })[0];
         if (seed) { hot.add(seed.from + '|' + seed.sid); primSet.add(seed.from + '|' + seed.sid); }
       }
-      for (const x of cand) demand(x.from, x.key, x.sid, hot.has(x.from + '|' + x.sid), primSet.has(x.from + '|' + x.sid));
+      for (const x of cand) demand(x.from, x.key, x.sid, hot.has(x.from + '|' + x.sid), primSet.has(x.from + '|' + x.sid), picOnly.has(x.from + '|' + x.sid));
     }
     // keep: an announcer still names the slot and its stream is on that peer.
     // Otherwise stamp deadAt and drop once MOS_GRACE has passed. A fresh stamp
