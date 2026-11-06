@@ -107,6 +107,7 @@
       if (this.state === 3 && TICK - this.rosterAskAt > 120) return;   // a SEATED seat hears HOME only as the answer to its own WHOHOME
       if (m.gkey) this.genKey = m.gkey;   // THIS meeting's genesis key
       if (this.state === 1 && roomTerm(this, 1) && m.from >= 0 && this.c7Old.has(m.from) && TICK - this.c7At < K.RELAY_TTL) return;   // L8.5
+      if (this.state === 1 && this.l851Moves(m)) return;   // L8.5.1
       if (this.state === 1 && m.l31 === 1 && this.l31TakeDoor(m)) return;   // L31.1
       if (this.state === 1 && this.oldCell && this.rcTries < 2 && !(this.rcPendAt >= 0) && m.roster.length && this.tryReclaim(m.roster, m.from)) { this.rcGreeter = m.from; this.rcTries++; this.roster = kvCopy(m.roster); this.haveRoster = true; this.lastReach = TICK; this.retryAt = TICK; return; }   // L3.10
       if (this.state === 1 && this.oldCell && (this.rcPendAt >= 0 || this.rcRound2) && m.roster.length) { this.roster = kvCopy(m.roster); this.haveRoster = true; this.lastReach = TICK; return; }   // L3.10.6
@@ -184,6 +185,7 @@
       if (this.state === 2 && m.l31 === 7) return;   // L31.4: a withdrawal is no placement: the seeker has already moved on, and it names no neighbours
       if (this.state === 2 && this.l317Declined(m)) { this.trace('L31.7-DECLINED', id, m.coord, 'owner=%d at=%d', m.owner, m.ppAt); return; }   // L31.7: a placement I declined while seated is no answer to this search
       if (this.state === 2 && roomTerm(this, 1) && this.TICK - this.c7At < K.RELAY_TTL && (this.c7Old.has(m.owner) || this.c7Old.has(m.from))) return;   // L8.5
+      if (this.state === 2 && this.l851Moves(m)) return;   // L8.5.1
       if (this.state === 2 && this.l25BadPlacer.size && (this.l25Bad(m.owner) || this.l25Bad(m.from))) { this.trace('L25-BADPLACER', id, null, 'owner=%d', m.owner); if (m.nc === id) this.l711Reask('badplacer'); return; }
       if (this.state === 2 && m.nbrs.length === 0 && ckey(m.coord) !== 0) { lv.L25_TWICE++; this.l25Mark(m.owner, true); this.trace('L25-BARE-PLACE', id, m.coord, 'owner=%d', m.owner); if (m.nc === id) this.l711Reask('bare'); return; }   // L25
       if (this.state === 2) { if (m.line >= 0) { this.lineAdopt(m.line, 'place'); if (m.lineF) this.lineFork = true; } this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, m.row, m.ppL); if (this.pp >= 0 && this.pp !== id) this.placer = this.pp; return; }   // placer: only this intake
