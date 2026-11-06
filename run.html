@@ -517,6 +517,7 @@ function key(u){try{var x=new URL(u,location.href);return x.pathname.replace(/^\
 try{new PerformanceObserver(function(l){l.getEntries().forEach(function(en){try{if(en.initiatorType==='script'&&en.decodedBodySize===0&&/\.js$/.test(new URL(en.name).pathname)){var k=key(en.name);if(g.failed.indexOf(k)<0)g.failed.push(k);}}catch(x){}});}).observe({type:'resource',buffered:true});}catch(e){}
 window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagName==='SCRIPT'&&t.src){var k=key(t.src);if(g.failed.indexOf(k)<0)g.failed.push(k);}else if(e&&e.filename&&g.failed.length){var f=key(e.filename);if(g.threw.indexOf(f)<0)g.threw.push(f);}}catch(x){}},true);})();</script>
 <script src="js/sw-register.js" defer></script>
+<script src="js/dialog.js" defer></script>
 <script src="js/build.js" defer></script>
 <script src="js/build-badge.js" defer></script>
 <script>/* Global UI text size (Settings → Text size). Scales the meeting chrome; applied early, live across tabs. */(function(){function ap(){try{var s=parseFloat(localStorage.getItem('gifos_ui_scale'))||1;s=Math.max(0.2,Math.min(3,s));document.documentElement.style.fontSize=(s===1?'':(16*s).toFixed(2)+'px');document.documentElement.classList.toggle('ui-large',s>=1.5);}catch(e){}}ap();try{window.addEventListener('storage',function(e){if(!e||e.key==='gifos_ui_scale')ap();});}catch(e){}})();</script>
@@ -3813,7 +3814,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
 
 </style>
 <link rel="stylesheet" href="css/meet-23b.css">
-<link rel="stylesheet" href="css/dialog.css">
 <script src="js/gifos-themes.js"></script>
 </head>
 <body>
@@ -4376,6 +4376,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <div class="name-box appear-box">
       <h3 data-t="invTitle">Share this meeting</h3>
       <div id="inv-body"></div>
+      <div id="inv-actions" class="appear-actions"></div>
     </div>
   </div>
 
@@ -33746,9 +33747,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const isApp = ROOM.kind === 'app' || document.body.classList.contains('app-room');
       document.querySelector('#inv-modal h3').textContent =
         isApp ? uiText('invTitleApp', 'Share this app') : BROADCAST ? 'Share this broadcast' : uiText('invTitle', 'Share this meeting');
-      const closeRow = '<div class="appear-actions"><button id="inv-done" type="button" class="appear-secondary">' + esc(uiText('invClose', 'Close')) + '</button></div>';
+      // Close is the dialog's action: it stays on screen below the body, outside its scroll.
+      document.getElementById('inv-actions').innerHTML = '<button id="inv-done" type="button" class="appear-secondary">' + esc(uiText('invClose', 'Close')) + '</button>';
       if (isApp) {
-        body.innerHTML = '<p>' + uiText('invApp', 'Send this link. They join you live inside this app.') + '</p>' + linkRowHtml() + closeRow;
+        body.innerHTML = '<p>' + uiText('invApp', 'Send this link. They join you live inside this app.') + '</p>' + linkRowHtml();
       } else if (hasAdminRoom() || BROADCAST) {
         // A service is a hosted room even before the verifier is stored.
         // The link lets people in. It does not hand them the host password.
@@ -33760,12 +33762,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             ? 'Send this link. People who open it are watching. The host password stays with you.'
             : 'Send this link. People who open it are watching.')
           : 'Send this link. People who open it can join. The host password stays with you.';
-        body.innerHTML = '<p>' + line + '</p>' + linkRowHtml() + closeRow;
+        body.innerHTML = '<p>' + line + '</p>' + linkRowHtml();
       } else {
         body.innerHTML =
           '<p>' + uiText('invOpen', 'Send this link. Anyone who opens it joins you.') + '</p>' +
           linkRowHtml() +
-          closeRow +
           '<button id="inv-mkadm" type="button" class="inv-more">' + esc(uiText('invMk', 'A room you run')) + '</button>' +
           '<div id="inv-adm-open" style="display:none">' +
             '<p>This makes a new room that you run. Name it, then set a host password only you know.</p>' +

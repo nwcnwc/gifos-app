@@ -510,9 +510,9 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
 /* People is a column: the title, the lead and the buttons keep their height
    and the list takes what is left, so the card never grows past the window.
    Fifteen people at 1366x768 put the title above the top edge. */
-#who-modal .name-box { display: flex; flex-direction: column; }
-#who-modal .name-box > * { flex: 0 0 auto; }
-#who-modal .name-box > #who-list { flex: 0 1 auto; min-height: 0; }
+#who-modal .name-box > .dlg-body { display: flex; flex-direction: column; }
+#who-modal .name-box > .dlg-body > * { flex: 0 0 auto; }
+#who-modal .name-box > .dlg-body > #who-list { flex: 0 1 auto; min-height: 0; }
 /* Short cards: the list inside may scroll. The card may not. */
 @media (max-height: 640px) {
   #who-modal .name-box { padding: 10px 12px; }
