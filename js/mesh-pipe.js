@@ -155,6 +155,7 @@ function mintIn(p, key) {
 }
 function want(pipeId, key, q) {
   const p = pipes.get(pipeId);
+  if (p) { p.askAt = nowMs(); p.askOpen = true; }   // the catch-up times the answer from here
   if (p && p.cw && mintIn(p, key)) return;
   postMessage({ op: 'want', pipeId, key, q });
 }
@@ -231,20 +232,26 @@ setInterval(() => {
 // non-empty queue that has not been written for half a second asks again,
 // typed by its head; an extra delta template is dropped free at the idle
 // gate, an extra key template is one tiny resize.
+// The same holds for ANY lost template, not only the first: every queued frame
+// waits for a template, so one the encoder dropped leaves a frame behind for
+// good, and each later frame ships one content beat late (measured: a standing
+// q of 1 held every 8 fps Stadium forward at 205-218 ms). So an ask that no
+// template answered within its due time asks again, until the queue is empty.
+// Due = twice this pipe's own measured ask-to-template time, at least
+// CATCH_MIN_MS: a slow template is not taken for a lost one. Each re-ask that
+// goes unanswered doubles the wait, up to CATCH_MAX_MS (a carrier not yet
+// negotiated answers nothing, and is asked at the old half-second beat).
+const CATCH_MIN_MS = 30, CATCH_MAX_MS = 500;
 setInterval(() => {
-  const now = Date.now();
+  const now = nowMs();
   for (const [id, p] of pipes) {
-    if (p.paused || !p.q.length || now - (p.lastWriteAt || 0) < 500 || now - (p.reWantAt || 0) < 500) continue;
-    p.reWantAt = now; p.reWant = (p.reWant || 0) + 1;
+    if (p.paused || !p.q.length) continue;
+    const due = Math.min(CATCH_MAX_MS, Math.max(CATCH_MIN_MS, 2 * (p.tlEw || 0)) * Math.pow(2, p.reAskN || 0));
+    if (now - (p.askAt || 0) < due) continue;
+    p.reWant = (p.reWant || 0) + 1; p.reAskN = (p.reAskN || 0) + 1;
     want(id, p.q[0].type === 'key', p.q.length);
   }
-}, 250);
-// CATCH-UP for an in-worker mint: a template the encoder dropped leaves a
-// queued frame behind; one extra mint per beat drains it (deltas only: an
-// extra delta template on an empty queue is dropped free at the idle gate).
-setInterval(() => {
-  for (const [id, p] of pipes) if (p.cw && !p.paused && p.q.length > 1) mintIn(p, p.q[0].type === 'key');
-}, 40);
+}, 10);
 onmessage = (e) => {
   const m = e.data;
   if (m.op === 'route') {
@@ -288,7 +295,7 @@ onmessage = (e) => {
   else if (m.op === 'unroute') { releaseTap(taps, tapTs, skrLast, m.srcId, m.pipeId); pipes.delete(m.pipeId); }
   else if (m.op === 'stats') {
     const out = {};
-    for (const [id, p] of pipes) out[id] = { q: p.q.length, wrote: p.wrote, seen: p.seen || 0, tmpl: p.tmpl || 0, primed: p.primed || 0, dropped: p.dropped, swapErr: p.swapErr, kfAsk: p.kfAsk, kdrop: p.kdrop || 0, nkDrop: p.nkDrop || 0, skr: p.skr || 0, seeded: p.seedN || 0, reWant: p.reWant || 0, paused: !!p.paused, needKey: !!p.needKey, lastWriteAt: p.lastWriteAt, mime: p.mime, tmplMime: p.tmplMime, detached: p.detached || 0, lastBytes: p.lastBytes || 0, inWorker: !!p.cw, mints: p.mints || 0, mintErr: p.mintErr || 0, lat: p.latN ? Math.round(p.latEw) : null, latMax: p.latMax ? Math.round(p.latMax) : null, latN: p.latN || 0 };
+    for (const [id, p] of pipes) out[id] = { q: p.q.length, wrote: p.wrote, seen: p.seen || 0, tmpl: p.tmpl || 0, primed: p.primed || 0, dropped: p.dropped, swapErr: p.swapErr, kfAsk: p.kfAsk, kdrop: p.kdrop || 0, nkDrop: p.nkDrop || 0, skr: p.skr || 0, seeded: p.seedN || 0, reWant: p.reWant || 0, paused: !!p.paused, needKey: !!p.needKey, lastWriteAt: p.lastWriteAt, mime: p.mime, tmplMime: p.tmplMime, detached: p.detached || 0, lastBytes: p.lastBytes || 0, inWorker: !!p.cw, mints: p.mints || 0, mintErr: p.mintErr || 0, lat: p.latN ? Math.round(p.latEw) : null, latMax: p.latMax ? Math.round(p.latMax) : null, latN: p.latN || 0, tl: p.tlN ? Math.round(p.tlEw) : null };
     postMessage({ op: 'stats', seq: m.seq, stats: out });
   }
 };
@@ -384,6 +391,9 @@ onrtctransform = (e) => {
       } else if (o.role === 'pipe') {
         const p = pipeFor(o.pipeId);
         p.tmpl = (p.tmpl || 0) + 1;
+        // ask-to-template time (the first template after an ask): what the catch-up's due time is made of
+        p.reAskN = 0;   // answered: the next loss is caught at the short wait again
+        if (p.askOpen) { p.askOpen = false; const tl = nowMs() - p.askAt; p.tlN = (p.tlN || 0) + 1; p.tlEw = p.tlN === 1 ? tl : p.tlEw * 0.9 + tl * 0.1; }
         p.writer = p.writer || writer;
         try { const md = frame.getMetadata(); p.tmplMime = md.mimeType || null; } catch (err) {}
         // Known codecs must match (p.mime !== p.tmplMime). A missing mimeType
