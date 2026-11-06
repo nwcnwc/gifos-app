@@ -23509,7 +23509,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // The drawn Stadium, held `ms` behind its source: a short ring of copies.
     let avHold = null; // { src, ms, ring, free, out, stop }
-    const avHoldOff = () => { try { return localStorage.getItem('gifos_av_hold') === 'off'; } catch (e) { return false; } };
+    // Off by default: measured, the forwarded picture still reaches a seat after its sound, so holding it would widen the gap. gifos_av_hold=on turns it on.
+    const avHoldOff = () => { try { return localStorage.getItem('gifos_av_hold') !== 'on'; } catch (e) { return true; } };
     function avHoldStop() { const H = avHold; avHold = null; if (H && H.stop) { try { H.stop(); } catch (e) {} } }
     function heldEl(src, ms) {
       ms = Math.max(0, Math.min(800, Math.round(ms || 0)));
