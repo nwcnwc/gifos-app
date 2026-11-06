@@ -9359,12 +9359,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         video = srcEl ? srcEl.querySelector('video') : null;
       } catch (e) {}
       try {
-        if (sdPack && sdPack.count && sdPack.count() > 0) {
-          n = sdPack.count(); cols = sdPack.cols() || 0; const ci = sdPack.cellIds ? sdPack.cellIds() : null; if (ci && ci.length === n) ids = ci;
+        if (sdView && sdView.count && sdView.count() > 0) {
+          n = sdView.count(); cols = sdView.cols() || 0; const ci = sdView.cellIds ? sdView.cellIds() : null; if (ci && ci.length === n) ids = ci;
           // The composite's own canvas is the frame size (the hidden source
           // <video> lies on an engine that never loads it, or stops following
           // its growth: chaos-1019, the lone row-3 letters).
-          if (video && video.srcObject === sdPack.stream && sdPack.canvas) { w = sdPack.canvas.width | 0; h = sdPack.canvas.height | 0; }
+          if (video && sdView.canvas && video.srcObject && video.srcObject.getVideoTracks()[0] === sdView.track) { w = sdView.canvas.width | 0; h = sdView.canvas.height | 0; }
         }
       } catch (e) {}
       try {
@@ -17728,7 +17728,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       lgLvlShown = lvl;
       if (lvl >= 1) { for (const jk of lgWoken) setJobActive(jk, false); lgWoken.clear(); }
       const fps = compFps();
-      for (const pk of [prodPack, sdPack, ...sdnPacks.values(), ...l14Packs.values(), ...l14RelPacks.values()]) { try { if (pk) pk.setFps(fps); } catch (e) {} }
+      for (const pk of [prodPack, roomPack, sdView, ...l14Packs.values()]) { try { if (pk) pk.setFps(fps); } catch (e) {} }
       try { adapt(); } catch (e) {}
     }
     GifOS.meshMedia.workerClock(1000, () => { try { lgLevelTick(); } catch (e) {} });
@@ -23439,7 +23439,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const mosStandby = new Map(); // resolvedKey -> { via, streamId, stream, el, meta } (parked 2nd claim)
     const subWant = new Map();    // from + '|' + key + '|' + sid -> 'w'|'i' (last demand sent — debounce)
     const mosJobs = new Map();  // key + '>' + to -> { senders, trackList, active, sig, to, key, meta } (outbound ships)
-    let prodPack = null, sdPack = null, stripPack = null; // GAPLESS packers (approach A)
+    let prodPack = null, roomPack = null, sdView = null, stripPack = null; // GAPLESS packers (approach A); roomPack: Section 1's whole-room pack; sdView: my Stadium (the room less my row), painted here only
     // MY VOICE IN MY OWN CELL. A head's composites (its row's product, the
     // down-mixes for its children) fold each cell's audio from the cell's
     // stream. My self-view is picture-only (refreshOutbound gives it the sent
@@ -23459,10 +23459,99 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     let dbgRowFaces = []; // test observability: {i, pid8} the head drew this sweep (stale-seat dup guard)
     let mosBeyondAt = 0; // last time beyondRow was RAW-true (teardown hysteresis)
-    let sdEmptyAt = 0;   // since when a head's sdPack has been EMPTY (blank-tile grace)
-    const sdnPacks = new Map(); // col -> packer: per-child DOWN ingredients (mix-minus)
+    let sdEmptyAt = 0;   // since when my Stadium view has been EMPTY (blank-tile grace)
+    const downFolds = new Map();   // receiver key -> audio fold: the sound that rides the room pack to it, its own voices left out
+    const downStreams = new Map(); // receiver key -> MediaStream [room picture, that receiver's sound], kept while the tracks stand
+    // A receiver's stream: the room picture and that receiver's sound, one
+    // container while both tracks stand (either may be absent).
+    function downStream(key, v, a) {
+      if (!v && !a) { downStreams.delete(key); return null; }
+      const cur = downStreams.get(key);
+      if (cur && (cur.getVideoTracks()[0] || null) === (v || null) && (cur.getAudioTracks()[0] || null) === (a || null)) return cur;
+      const st = new MediaStream([v, a].filter(Boolean)); downStreams.set(key, st); return st;
+    }
+    // Keep a fold summing exactly `parts` (key -> stream). A key whose stream
+    // changed is folded again; the same stream follows its live audio track.
+    function foldSync(f, parts) {
+      const sid = f._sid || (f._sid = new Map());
+      for (const k of [...sid.keys()]) if (!parts.has(k)) { f.remove(k); sid.delete(k); }
+      for (const [k, st] of parts) {
+        if (sid.get(k) !== st.id) { f.remove(k); sid.set(k, st.id); }
+        if (!f.has(k)) f.add(k, st, 1); else f.follow(k, st);
+      }
+    }
+    // MY STADIUM: the room pack less my own row, hidden here by the cell ids
+    // the pack carries (a pack that names no cells, past the dense threshold,
+    // shows whole: never a blank where someone else is). Painted locally, never
+    // encoded. `sound` is the stream whose audio I hear with it.
+    let sdViewSrc = null, sdViewSt = null;
+    function paintRoomView(el, meta, sound, c) {
+      if (el && meta && meta.n) {
+        const hide = [];
+        if (c) for (let j = 0; j < SCALE.C; j++) { const pid = j === c.i ? myId : occPid({ pc: c.pc, r: c.r, i: j }); if (pid) hide.push(String(pid)); }
+        if (!sdView) sdView = MM.createPacker({ shape: 'stad', fps: compFps() }).start();
+        sdView.setTile('v', 0, el, null, Object.assign({}, meta, { hide }));
+        sdViewSrc = el;
+      } else if (sdView) sdView.delTile('v');
+      if (sdView && sdView.count() > 0 && sdView.track) {
+        sdEmptyAt = 0;
+        const vt = sdView.track, at = sound && sound.getAudioTracks ? (sound.getAudioTracks()[0] || null) : null;
+        if (!sdViewSt || sdViewSt.getVideoTracks()[0] !== vt || (sdViewSt.getAudioTracks()[0] || null) !== at) sdViewSt = new MediaStream(at ? [vt, at] : [vt]);
+        paintStadiumTile(sdViewSt);
+        return;
+      }
+      // Nothing to show: a tile already on screen lingers MOS_GRACE, so a
+      // transient empty beat never flaps it; none is ever created empty.
+      if (!sdEmptyAt) sdEmptyAt = Date.now();
+      const shown = !!stadiumEl.querySelector('[data-row="sd"]');
+      if (!shown || Date.now() - sdEmptyAt > MOS_GRACE) {
+        paintStadiumTile(null);
+        if (sdView) { sdView.stop(); sdView = null; }
+        sdViewSrc = null; sdViewSt = null;
+      }
+    }
+    // ENCODE ONCE. A canvas track added to N peer connections runs N encoders.
+    // Section 1's room pack is encoded once over a loopback pair inside the
+    // page, and the received copy rides the pipe lane (mesh-pipe.js): every
+    // ship of it forwards those encoded bytes, and a far end's key request
+    // reaches this one encoder over RTCP. Where the pipe lane is off, the
+    // canvas track ships as before.
+    let packLoop = null; // { a, b, src, sender, rx, dead, at }
+    function packLoopStop() { const L = packLoop; packLoop = null; if (!L) return; try { L.a.close(); } catch (e) {} try { L.b.close(); } catch (e) {} }
+    function packLoopTrack(track) {
+      if (!track || !pipeEnabled()) { packLoopStop(); return null; }
+      if (packLoop && packLoop.src === track) {
+        if (!packLoop.dead) return packLoop.rx && packLoop.rx.readyState !== 'ended' ? packLoop.rx : null;
+        if (Date.now() - packLoop.at < 10000) return null; // a failed loop is retried after a pause; the canvas ships meanwhile
+      }
+      packLoopStop();
+      let a = null, b = null;
+      try { a = new RTCPeerConnection(); b = new RTCPeerConnection(); } catch (e) { try { if (a) a.close(); } catch (e2) {} return null; }
+      const L = packLoop = { a, b, src: track, sender: null, rx: null, dead: false, at: Date.now() };
+      const fail = () => { if (packLoop === L) { L.dead = true; L.rx = null; L.at = Date.now(); schedReconcile(); } };
+      a.onicecandidate = (e) => { if (e.candidate) b.addIceCandidate(e.candidate).catch(() => {}); };
+      b.onicecandidate = (e) => { if (e.candidate) a.addIceCandidate(e.candidate).catch(() => {}); };
+      a.onconnectionstatechange = () => { if (a.connectionState === 'failed' || a.connectionState === 'closed') fail(); };
+      b.ontrack = (e) => {
+        if (packLoop !== L || !e.track || e.track.kind !== 'video') return;
+        if (!MPipe.tapReceiver(e.receiver, 'rx:' + e.track.id)) { fail(); return; }
+        L.rx = e.track; L.rcv = e.receiver; schedReconcile();
+      };
+      try {
+        L.sender = a.addTrack(track, new MediaStream([track]));
+        preferHwVideo(a);   // the same codec order every peer link prefers, so the forwarded bytes match the far ends' templates
+        const prm = L.sender.getParameters();
+        if (prm.encodings && prm.encodings[0]) { prm.encodings[0].maxBitrate = 900000; L.sender.setParameters(prm).catch(() => {}); }   // the composite budget (auxBudget)
+      } catch (e) { fail(); return null; }
+      (async () => {
+        const o = await a.createOffer(); await a.setLocalDescription(o); await b.setRemoteDescription(o);
+        const an = await b.createAnswer(); await b.setLocalDescription(an); await a.setRemoteDescription(an);
+      })().catch(fail);
+      return null;
+    }
+    // Every pc a forwarded track can arrive on: the peer links, and the loop.
+    const pipePcs = () => { const out = [...peers.values()].map((q) => q.pc).filter(Boolean); if (packLoop && packLoop.b) out.push(packLoop.b); return out; };
     const l14Packs = new Map(); // head -> packer: the down ingredient of a cut-off branch I serve (L14)
-    const l14RelPacks = new Map(); // head -> packer: the outside of a branch my row-mate serves, built here, handed down by that mate
     // STAGE AUDIO folds AT THE EAR (mix-minus): the strip is video-only; every
     // device sums the per-stager feeds it holds, skipping its OWN — a stager
     // never hears their own voice come back.
@@ -24247,7 +24336,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       pipeDenyCurrent(jk); // a lapsed deny is not a deny
       if (tr.kind === 'video' && pipeEnabled() && !pipeDeny.has(jk) && !pipeJobs.has(jk)) {
         try {
-          const rcv = MPipe.receiverForTrack(tr, [...peers.values()].map((q) => q.pc).filter(Boolean));
+          const rcv = MPipe.receiverForTrack(tr, pipePcs());
           const srcId = rcv && 'rx:' + tr.id;
           if (rcv && MPipe.tapReceiver(rcv, srcId)) {
             const carrier = MPipe.makeCarrier();
@@ -24430,7 +24519,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               let rr = false;
               try {
                 pipeDenyCurrent(jk);
-                const rcv = pipeEnabled() && !pipeDeny.has(jk) && MPipe.receiverForTrack(nt, [...peers.values()].map((q) => q.pc).filter(Boolean));
+                const rcv = pipeEnabled() && !pipeDeny.has(jk) && MPipe.receiverForTrack(nt, pipePcs());
                 const srcId = rcv && 'rx:' + nt.id;
                 if (rcv && MPipe.tapReceiver(rcv, srcId)) {
                   MPipe.reroute(jk, pj.srcId, srcId);
@@ -24447,7 +24536,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             // (its track object persists and only the content changes).
             pipeDenyCurrent(jk);
             const wantsPipe = kind === 'video' && pipeEnabled() && !pipeDeny.has(jk) && !pipeJobs.has(jk)
-              && (() => { try { return !!MPipe.receiverForTrack(nt, [...peers.values()].map((q) => q.pc).filter(Boolean)); } catch (e) { return false; } })();
+              && (() => { try { return !!MPipe.receiverForTrack(nt, pipePcs()); } catch (e) { return false; } })();
             if (wantsPipe) { mosDetach(cur, jk, p, i); mosAttach(cur, jk, p, nt); ops.push('relane:' + kind); have = haveIdx(kind); continue; }
             if (cur.active && !cur.carryOff && !(typeof outgoingHeld !== 'undefined' && outgoingHeld)) { try { cur.senders[i].replaceTrack(nt); } catch (e) {} }
             cur.trackList[i] = nt; cur.srcTracks[i] = nt; ops.push('swap:' + kind);
@@ -25032,10 +25121,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function repaintRedun(rk, stream) {
       // Respect the same position guards reconcileMosaic paints under, so an
       // instant-failover repaint never clobbers a locally-ORIGINATED composite:
-      // every head owns its row's Stadium view (sdPack); every S1 seat owns its own
-      // Stage strip (stripPack). Those seats manage their own <video>.
+      // every Stadium is a local view of the room pack (sdView, rebuilt on the
+      // sweep); every S1 seat owns its own Stage strip (stripPack).
       const c = meshCoord();
-      if (rk === 'sdm') { if (c && c.i === 0) return; paintStadiumTile(stream); }
+      if (rk === 'sdm') { if (c && c.i === 0) return; schedReconcile(); }
       else if (rk === 'sgs') { if (c && c.pc === 0) return; schedReconcile(); }
       // stg:* has no <video> of its own, but the Stage paints from it: the
       // strip compositor re-reads mosIn on the sweep, and a shared screen is
@@ -26065,13 +26154,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       pipeDeny.clear(); pipeDenyUntil.clear(); pipeDenyN.clear();
       attachFailAt.clear(); stgAudioMemo = new WeakMap();
       if (prodPack) { prodPack.stop(); prodPack = null; }
-      if (sdPack) { sdPack.stop(); sdPack = null; }
-      for (const pk of sdnPacks.values()) pk.stop();
-      sdnPacks.clear();
+      if (roomPack) { roomPack.stop(); roomPack = null; }
+      if (sdView) { sdView.stop(); sdView = null; }
+      packLoopStop();
+      for (const f of downFolds.values()) f.clear();
+      downFolds.clear(); downStreams.clear();
       for (const pk of l14Packs.values()) pk.stop();
       l14Packs.clear();
-      for (const pk of l14RelPacks.values()) pk.stop();
-      l14RelPacks.clear();
       if (stripPack) { stripPack.stop(); stripPack = null; }
       if (stageEar) { stageEar.fold.clear(); stageEar.sids.clear(); }
       paintStadiumTile(null); paintStageStrip(null);
@@ -26121,7 +26210,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // strip here left the stage blank until the mesh caught up (or
         // forever, with no seat). Keep the slide.
         const localShare = !!(myStatus.scr && screenStream);
-        if (mosJobs.size || mosIn.size || mosStandby.size || prodPack || sdPack || sdnPacks.size || l14Packs.size || l14RelPacks.size || stripPack) stopMosaic();
+        if (mosJobs.size || mosIn.size || mosStandby.size || prodPack || roomPack || sdView || downFolds.size || l14Packs.size || stripPack) stopMosaic();
         else if (compOf.size && !localShare) { paintStadiumTile(null); paintStageStrip(null); }
         if (localShare) paintStageStrip(selfStageStream());
         return;
@@ -26321,10 +26410,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const l14Blocks = (pk, skip, ordOf) => {
         let q = 0; for (const [mk, uf] of mosIn) { if (mk.indexOf('subu:') !== 0) continue; const h = mk.slice(5); if (h === skip || !l14Keep(h, uf)) { pk.delTile('u' + h); continue; } setBlock(pk, 'u' + h, ordOf(q++), uf); }
       };
-      const l14Down = (fill, metaOf) => {
-        for (const [h, pk] of [...l14Packs]) if (!fill || !l14Heads.includes(h)) { pk.stop(); l14Packs.delete(h); }
+      const l14Down = (fill, metaOf, direct) => {
+        for (const [h, pk] of [...l14Packs]) if (!fill || !l14Heads.includes(h) || (direct && direct.has(h))) { pk.stop(); l14Packs.delete(h); }
         if (!fill) return;
         for (const h of l14Heads) {
+          if (direct && direct.has(h)) continue;
           let pk = l14Packs.get(h);
           if (!pk) { pk = MM.createPacker({ shape: 'stad', fps: compFps(), ac: (ensureAc(), ac) }).start(); l14Packs.set(h, pk); }
           fill(pk, h); l14Blocks(pk, h, (q) => 20 + C + q);
@@ -26394,148 +26484,119 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             const jk = shipMos('x1', mate, prodPack.stream, Object.assign({ row: c.r }, prodMeta())); if (jk) wanted.add(jk);
           }
         }
-        // ---- MIX-MINUS down-flow (docs/media-plane.md): every mix is built
-        // ADDITIVELY from pieces this head already holds separately; nobody
-        // ever receives a mix containing their own row.
+        // ---- ONE PACK DOWN THE TREE (docs/media-plane.md) ----------------------
+        // The whole-room pack is composited once, at Section 1, and goes down the
+        // tree as one encoded stream. Every head forwards the SAME encoded pack to
+        // its row and to its child rows unchanged: no re-encode and no per-branch
+        // re-composite on the way down (the forwarded bytes ride the pipe lane).
+        // Each receiver hides its own row's tiles itself, by the cell ids the pack
+        // carries. Mixed audio cannot be un-mixed, so the sound stays per receiver:
+        // one audio fold each, leaving out that receiver's own voices.
         if (beyondRow) {
-          // "Outside my branch": at S1 the other rows' sdrow blocks; deeper,
-          // the sdn ingredient my up-seat relayed down.
-          const setOutside = (pk) => {
-            if (c.pc === 0) {
-              pk.delTile('dn');
-              for (let q = 0; q < C; q++) {
-                if (q === c.r) { pk.delTile('q' + q); continue; }
-                const rowIn = mosIn.get('sdrow:' + q);
-                if (rowIn) setBlock(pk, 'q' + q, 1 + q, rowIn); else pk.delTile('q' + q);
-                if (rowIn && rowIn.via !== occPid({ pc: 0, r: q, i: 0 })) { const sk = meshSeat(); if (sk && sk.keepAdd) sk.keepAdd(rowIn.via, 16); } // L28: a carried copy stays until the direct one lands
-              }
-            } else {
-              for (let q = 0; q < C; q++) pk.delTile('q' + q);
-              const dn = mosIn.get('sdn');
-              if (dn) setBlock(pk, 'dn', 0, dn); else pk.delTile('dn');
+          // THE ROOM'S PICTURE: built here at Section 1 (the other rows' products
+          // and mine, cell for cell), received from above deeper down.
+          let roomV = null, roomEl = null, roomMeta = null;
+          const dn = c.pc === 0 ? null : mosIn.get('sdn');
+          if (c.pc === 0) {
+            if (!roomPack) roomPack = MM.createPacker({ shape: 'stad', fps: compFps() }).start();   // video only
+            for (let q = 0; q < C; q++) {
+              const rowIn = q === c.r ? null : mosIn.get('sdrow:' + q);
+              if (rowIn) setBlock(roomPack, 'q' + q, 'c' + q, rowIn); else roomPack.delTile('q' + q);
+              if (rowIn && rowIn.via !== occPid({ pc: 0, r: q, i: 0 })) { const sk = meshSeat(); if (sk && sk.keepAdd) sk.keepAdd(rowIn.via, 16); } // L28: a carried copy stays until the direct one lands
             }
-          };
-          // MY ROW'S VIEW ('sdm'): outside + my child blocks. My own row's
-          // faces are ABSENT — they are the Channel R tiles on the same
-          // screen. Every face on screen exactly once; audio matches video.
-          if (!sdPack) sdPack = MM.createPacker({ shape: 'stad', fps: compFps(), ac: (ensureAc(), ac) }).start();
-          setOutside(sdPack);
-          for (let j = 0; j < C; j++) { const sub = mosIn.get('sub:' + j); if (sub) setBlock(sdPack, 's' + j, 20 + j, sub); else sdPack.delTile('s' + j); }
-          l14Blocks(sdPack, null, (i) => 20 + C + i);
-          // An EMPTY view (fragmented mesh, nothing claimable beyond the row
-          // yet — the live 175s-black-tile signature) paints NO tile rather
-          // than an eternal 2×2 black one. A tile is never CREATED for an
-          // empty pack; one already shown lingers MOS_GRACE (a transient
-          // empty beat never flaps it off/on).
-          const headView = actHead ? mosIn.get('sdm') : null, headFlows = !!headView && !(mosFb.get('sdm') || {}).dark && !headView.deadAt; // a false alarm must not take the heir's own ears off its head's view
-          if (headFlows) paintStadiumTile(headView.stream);
-          else if (sdPack.count() > 0) { sdEmptyAt = 0; paintStadiumTile(sdPack.stream); }
-          else {
-            if (!sdEmptyAt) sdEmptyAt = Date.now();
-            const sdShown = !!stadiumEl.querySelector('[data-row="sd"]');
-            if (sdShown) paintStadiumTile(Date.now() - sdEmptyAt > MOS_GRACE ? null : sdPack.stream);
+            if (prodPack.count() > 0) roomPack.setTile('p', 'c' + c.r, prodPack.canvas, null, prodMeta()); else roomPack.delTile('p');
+            if (roomPack.count() > 0) { roomEl = roomPack.canvas; roomMeta = packMeta(roomPack); roomV = packLoopTrack(roomPack.track) || roomPack.track; }
+          } else {
+            if (roomPack) { roomPack.stop(); roomPack = null; }
+            packLoopStop();
+            const dv = dn && dn.stream ? dn.stream.getVideoTracks()[0] : null;
+            if (dv && dv.readyState !== 'ended') { roomV = dv; roomEl = dn.el; roomMeta = blockMeta(dn); }
           }
-          const sdMeta = () => packMeta(sdPack);
-          for (let j = 1; j < C; j++) {
+          // THE SOUND, per receiver. Pieces: the outside (Section 1: the other
+          // rows; deeper: the pack from above, whose sound already leaves my
+          // branch out), my row's voices, each child row's block, each L14 branch.
+          const outA = new Map(), rowA = new Map(), subA = new Map(), l14A = new Map();
+          if (c.pc === 0) { for (let q = 0; q < C; q++) { if (q === c.r) continue; const f = mosIn.get('sdrow:' + q); if (f && f.stream) outA.set('q' + q, f.stream); } }
+          else if (dn && dn.stream) outA.set('dn', dn.stream);
+          for (let j = 0; j < C; j++) {
+            const fp0 = j === c.i ? myId : (actHead && j === 0 ? null : occPid({ pc: c.pc, r: c.r, i: j }));
+            const fp = fp0 && stagers.includes(fp0) ? null : fp0;
+            const sc = fp ? srcFor(fp) : null;
+            if (sc && sc.stream) rowA.set('f' + j, sc.stream);
+            const sub = mosIn.get('sub:' + j); if (sub && sub.stream) subA.set('s' + j, sub.stream);
+          }
+          for (const [mk, uf] of mosIn) { if (mk.indexOf('subu:') !== 0) continue; const h = mk.slice(5); if (uf && uf.stream && l14Keep(h, uf)) l14A.set('u' + h, uf.stream); }
+          const mixOf = (row, skip) => { const m = new Map(outA); if (row) for (const [k, v] of rowA) m.set(k, v); for (const [k, v] of subA) if (k !== skip) m.set(k, v); for (const [k, v] of l14A) if (k !== skip) m.set(k, v); return m; };
+          const fold = (key, parts) => { let f = downFolds.get(key); if (!f) { ensureAc(); if (!ac) return null; f = MM.createAudioFold(ac); downFolds.set(key, f); } foldSync(f, parts); return f; };
+          const foldsNow = new Set();
+          const avOf = (key, parts) => { foldsNow.add(key); const f = fold(key, parts); return downStream(key, roomV, f ? f.track() : null); };
+          // MY ROW (and my own ear): everything but my row's voices.
+          const earSt = avOf('ear', mixOf(false, null));
+          if (roomV) for (let j = 1; j < C; j++) {
             const mate = occPid({ pc: c.pc, r: c.r, i: j });
-            const jk3 = shipMos('sdm', mate, sdPack.stream, sdMeta()); if (jk3) wanted.add(jk3);
+            const jk3 = shipMos('sdm', mate, earSt, roomMeta); if (jk3) wanted.add(jk3);
           }
-          // PER-CHILD DOWN INGREDIENTS ('sdx' -> 'sdn'): outside + MY row's
-          // faces + every OTHER child's block. The one piece left out is the
-          // receiving branch itself — built by adding, never subtracting.
-          // childPid: occ first, then the HEIR (Nathan, 2026-07-28 — "every
-          // node should use every bit of info they possess"): a head's occ
-          // never converges its ROW-MATES' down-children (occ gossip is
-          // S1-only by design; post-03c hygiene prunes the rest), so the
-          // whole down plane for other columns starved — no sdx, no sdn, no
-          // mirror (mirror-drill dossier). The mesh ALREADY knows: every
-          // PONG carries m.child, and cousins-in-PONG spreads row-mates'
-          // heirs (Seat.childOf, the H-CHAIN machinery). Heir serves
-          // ROW-MATES' columns ONLY (i !== c.i): a mate's own PONGs refresh
-          // its entry every beat, first-hand and current; my OWN column
-          // never needs it — a real own-child is directly linked — and
-          // trusting it there let a STALE row-gossip heir mint a phantom
-          // sdn producer (mirror-heir-1 dossier). RE-LANDED after the
-          // redun-drill bisect exonerated it — the stage-redundancy
-          // displacement was §HEARD's broad stamping (fixed in 6bd3727),
-          // not this.
+          // MY CHILD ROWS. The picture reaches a child row the way it reaches me:
+          // the seat above it forwards the stadium it holds (my own child: me, as
+          // 'sdn'; a row-mate's child: that mate, from its 'sdm'). Only the sound
+          // is mine to make per branch: 'sdx' carries it to the mate (sound only),
+          // who joins it to the picture it forwards. childPid: occ first, then the HEIR (Nathan, 2026-07-28 —
+          // "every node should use every bit of info they possess"): a head's occ
+          // never converges its ROW-MATES' down-children (occ gossip is S1-only by
+          // design), but every PONG carries m.child (Seat.childOf). Heir serves
+          // ROW-MATES' columns only (i !== c.i): my own child is directly linked.
           const heirOf = (cell) => { const s = meshSeat(); if (!s || !s.childOf) return null; const v = s.childOf.get(net.topo.ckey(cell)); return v == null ? null : v; };
           for (let i = 0; i < C; i++) {
             const childPid = occPid(T.down({ pc: c.pc, r: c.r, i })) || (i !== c.i ? heirOf({ pc: c.pc, r: c.r, i }) : null);
-            if (!childPid) { const old = sdnPacks.get(i); if (old) { old.stop(); sdnPacks.delete(i); } continue; }
-            let pk = sdnPacks.get(i);
-            if (!pk) { pk = MM.createPacker({ shape: 'stad', fps: compFps(), ac: (ensureAc(), ac) }).start(); sdnPacks.set(i, pk); }
-            setOutside(pk);
-            for (let j = 0; j < C; j++) {
-              const fp0 = j === c.i ? myId : (actHead && j === 0 ? null : occPid({ pc: c.pc, r: c.r, i: j }));
-              const fp = fp0 && stagers.includes(fp0) ? null : fp0;
-              const sc = fp ? srcFor(fp) : null;
-              if (sc && sc.el) pk.setTile('f' + j, 10 + j, sc.el, sc.stream, { n: 1, cols: 1, lbl: stadLbl(fp), fit: fitFor(fp), pid: fp });
-              else pk.delTile('f' + j);
-            }
-            for (let j = 0; j < C; j++) {
-              if (j === i) { pk.delTile('s' + j); continue; }
-              const sub = mosIn.get('sub:' + j);
-              if (sub) setBlock(pk, 's' + j, 20 + j, sub); else pk.delTile('s' + j);
-            }
-            l14Blocks(pk, null, (q) => 20 + C + q);
-            const m = packMeta(pk);
-            const jk4 = i === c.i ? shipMos('sdn', childPid, pk.stream, m)
-              : shipMos('sdx', occPid({ pc: c.pc, r: c.r, i }), pk.stream, Object.assign({ col: i }, m));
+            if (!childPid || !roomV) continue;
+            const own = i === c.i, m = roomMeta;
+            foldsNow.add('c' + i); const fi = fold('c' + i, mixOf(true, 's' + i));
+            const st = downStream('c' + i, own ? roomV : null, fi ? fi.track() : null);
+            const jk4 = own ? shipMos('sdn', childPid, st, m)
+              : shipMos('sdx', occPid({ pc: c.pc, r: c.r, i }), st, Object.assign({ col: i }, m));
             if (jk4) wanted.add(jk4);
-            // >2-REDUNDANCY (the control-plane discipline, on the media budget):
-            // the SAME mix over a second link-disjoint pipe — me → a carrier
-            // row-mate → seat i ('sdxc' → 'sdx^x', same slot). ONE-PIPE law:
-            // claimRedun keeps ONE pipe moving bits; the carrier copy sits as
-            // the parked standby (replaceTrack(null), zero media) until a
-            // failure demand-wakes it.
+            // >2-REDUNDANCY: the SAME stream over a second link-disjoint pipe —
+            // me → a carrier row-mate → seat i ('sdxc' → 'sdx^x', same slot),
+            // parked (ONE-PIPE law) until a failure demand-wakes it.
             if (i !== c.i) {
               let carrier = null;
               for (let d = 1; d < C; d++) { const k2 = (i + d) % C; if (k2 === 0 || k2 === i) continue; const cp = occPid({ pc: c.pc, r: c.r, i: k2 }); if (cp) { carrier = cp; break; } }
-              if (carrier) { const jk6 = shipMos('sdxc', carrier, pk.stream, Object.assign({ col: i }, m)); if (jk6) wanted.add(jk6); }
+              if (carrier) { const jk6 = shipMos('sdxc', carrier, st, Object.assign({ col: i }, m)); if (jk6) wanted.add(jk6); }
             }
           }
-          // L14: a cut-off head that dialled me gets its branch's outside from me, as my own child would: outside + my
-          // row's faces + every child block + the other branches I serve. Its own block is left out (mix-minus).
-          l14Down((pk) => {
-            setOutside(pk);
-            for (let j = 0; j < C; j++) { const fp0 = j === c.i ? myId : (actHead && j === 0 ? null : occPid({ pc: c.pc, r: c.r, i: j })); const fp = fp0 && stagers.includes(fp0) ? null : fp0; const sc = fp ? srcFor(fp) : null; if (sc && sc.el) pk.setTile('f' + j, 10 + j, sc.el, sc.stream, { n: 1, cols: 1, lbl: stadLbl(fp), fit: fitFor(fp), pid: fp }); else pk.delTile('f' + j); }
-            for (let j = 0; j < C; j++) { const sub = mosIn.get('sub:' + j); if (sub) setBlock(pk, 's' + j, 20 + j, sub); else pk.delTile('s' + j); }
-          }, packMeta);
-          // A branch a row-mate serves: I hold everything but that branch, so I build its outside and the mate hands it
-          // down (the mate's own view, my 'sdm', now carries the branch and would play it back to itself).
-          const relHere = new Set();
-          for (const [mk, uf] of mosIn) {
-            if (mk.indexOf('subu:') !== 0) continue; const h = mk.slice(5); if (l14Heads.includes(h) || !uf || uf.via === h || !rowMatePid(uf.via)) continue;
-            relHere.add(h); let pk = l14RelPacks.get(h);
-            if (!pk) { pk = MM.createPacker({ shape: 'stad', fps: compFps(), ac: (ensureAc(), ac) }).start(); l14RelPacks.set(h, pk); }
-            setOutside(pk);
-            for (let j = 0; j < C; j++) { const fp0 = j === c.i ? myId : (actHead && j === 0 ? null : occPid({ pc: c.pc, r: c.r, i: j })); const fp = fp0 && stagers.includes(fp0) ? null : fp0; const sc = fp ? srcFor(fp) : null; if (sc && sc.el) pk.setTile('f' + j, 10 + j, sc.el, sc.stream, { n: 1, cols: 1, lbl: stadLbl(fp), fit: fitFor(fp), pid: fp }); else pk.delTile('f' + j); }
-            for (let j = 0; j < C; j++) { const sub = mosIn.get('sub:' + j); if (sub) setBlock(pk, 's' + j, 20 + j, sub); else pk.delTile('s' + j); }
-            l14Blocks(pk, h, (q) => 20 + C + q);
-            if (pk.count() > 0) { const jr = shipMos('sdxu', uf.via, pk.stream, Object.assign({ via: h }, packMeta(pk))); if (jr) wanted.add(jr); }
-          }
-          for (const [h, pk] of [...l14RelPacks]) if (!relHere.has(h)) { pk.stop(); l14RelPacks.delete(h); }
-        } else {
-          if (sdPack) { sdPack.stop(); sdPack = null; }
-          for (const pk of sdnPacks.values()) pk.stop();
-          sdnPacks.clear();
+          // L14: a cut-off head that dialled me, and a branch a row-mate serves
+          // (the mate hands it down): the same pack, with a sound that leaves
+          // that branch out.
           l14Down(null);
-          for (const pk of l14RelPacks.values()) pk.stop();
-          l14RelPacks.clear();
-          paintStadiumTile(null);
+          if (roomV) for (const h of l14Heads) { const jk = shipMos('sdn', h, avOf('u' + h, mixOf(true, 'u' + h)), roomMeta); if (jk) wanted.add(jk); }
+          if (roomV) for (const [mk, uf] of mosIn) {
+            if (mk.indexOf('subu:') !== 0) continue; const h = mk.slice(5); if (l14Heads.includes(h) || !uf || uf.via === h || !rowMatePid(uf.via)) continue;
+            const jr = shipMos('sdxu', uf.via, avOf('r' + h, mixOf(true, 'u' + h)), Object.assign({ via: h }, roomMeta)); if (jr) wanted.add(jr);
+          }
+          for (const [k, f] of [...downFolds]) if (!foldsNow.has(k)) { f.clear(); downFolds.delete(k); downStreams.delete(k); }
+          // MY OWN STADIUM: the room's picture less my row, and my ear. The heir
+          // standing in keeps its head's copy while it flows.
+          const headView = actHead ? mosIn.get('sdm') : null, headFlows = !!headView && !(mosFb.get('sdm') || {}).dark && !headView.deadAt; // a false alarm must not take the heir's own ears off its head's view
+          if (headFlows) paintRoomView(headView.el, blockMeta(headView), headView.stream, c);
+          else paintRoomView(roomEl, roomMeta, earSt, c);
+        } else {
+          if (roomPack) { roomPack.stop(); roomPack = null; }
+          packLoopStop();
+          for (const f of downFolds.values()) f.clear();
+          downFolds.clear(); downStreams.clear();
+          l14Down(null);
+          paintRoomView(null, null, null, c);
         }
       } else {
         // ROLE-CHANGE hygiene: a seat that moved head → non-head (heal,
         // teleport) must not keep its head packers painting + encoding
         // forever. Receivers of the old streams re-claim the new head's mixes.
         if (prodPack) { prodPack.stop(); prodPack = null; }
-        if (sdPack) { sdPack.stop(); sdPack = null; }
-        for (const pk of sdnPacks.values()) pk.stop();
-        sdnPacks.clear();
-        for (const pk of l14RelPacks.values()) pk.stop();
-        l14RelPacks.clear();
-        sdEmptyAt = 0;
+        if (roomPack) { roomPack.stop(); roomPack = null; }
+        packLoopStop();
+        for (const f of downFolds.values()) f.clear();
+        downFolds.clear();
+        for (const k of [...downStreams.keys()]) if (k !== 'fwd') downStreams.delete(k);
         // NON-HEAD relays: my down-child's product -> my head (tagged with my
         // column); my head's x1 -> down my COLUMN to its destination row; any x2:q I hold ->
         // to my head as sdrow:q. Meta {n, cols} is FORWARDED so the far end
@@ -26544,13 +26605,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         for (const [mk, uf] of mosIn) { if (mk.indexOf('subu:') !== 0) continue; const ju = shipMos('sub', headPid, uf.stream, Object.assign({ l14: 1, via: mk.slice(5) }, blockMeta(uf)), mk); if (ju) wanted.add(ju); } // L14: a branch I serve, into my row's product
         if (beyondRow) {
           const packMetaM = (pk) => ({ n: pk.count(), cols: pk.cols() });
+          // A branch I serve gets my head's pack as it came (the same encoded picture, its own sound), handed down as is.
+          const relDirect = new Set();
+          for (const h of l14Heads) { const rel = mosIn.get('sdxu:' + h); if (!rel || !rel.stream) continue; relDirect.add(h); const jr = shipMos('sdn', h, rel.stream, blockMeta(rel), 'sdxu:' + h); if (jr) wanted.add(jr); }
           l14Down((pk, h) => {
-            // the branch's outside, built by my head (it holds everything but that branch); my own view now carries the branch
-            const rel = mosIn.get('sdxu:' + h);
-            if (rel) { setBlock(pk, 'o', 0, rel); for (let j = 0; j < C; j++) pk.delTile('f' + j); return; }
-            pk.delTile('o');
+            // no pack from my head for this branch yet: my row's faces, packed here
             for (let j = 0; j < C; j++) { const fp0 = j === c.i ? myId : occPid({ pc: c.pc, r: c.r, i: j }); const fp = fp0 && stagers.includes(fp0) ? null : fp0; const sc = fp ? srcFor(fp) : null; if (sc && sc.el) pk.setTile('f' + j, 10 + j, sc.el, sc.stream, { n: 1, cols: 1, lbl: stadLbl(fp), fit: fitFor(fp), pid: fp }); else pk.delTile('f' + j); }
-          }, packMetaM);
+          }, packMetaM, relDirect);
         } else l14Down(null);
         const subraw = mosIn.get('subraw');
         if (subraw) { const jk = shipMos('sub', headPid, subraw.stream, Object.assign({ col: c.i }, blockMeta(subraw)), 'subraw'); if (jk) wanted.add(jk); }
@@ -26574,8 +26635,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // MIX-MINUS relay: my column's child-branch ingredient — my head built
         // it, I hand it to my down-child, where it becomes that head's
         // "outside my branch" ('sdn').
-        const sdx = mosIn.get('sdx');
-        if (sdx) { const jn = shipMos('sdn', occPid(T.down(c)), sdx.stream, blockMeta(sdx), 'sdx'); if (jn) wanted.add(jn); }
+        // ONE PACK DOWN THE TREE: the stadium I hold ('sdm') goes on to my down
+        // link unchanged (the same encoded frames), with the sound my head made
+        // for that branch ('sdx'), which leaves the branch's own voices out.
+        const sdx = mosIn.get('sdx'), sdmF = mosIn.get('sdm');
+        const fwdV = sdmF && !sdmF.deadAt && sdmF.stream ? sdmF.stream.getVideoTracks()[0] || null : null;
+        const fwdA = sdx && sdx.stream ? sdx.stream.getAudioTracks()[0] || null : null;
+        const fwdSt = fwdV ? downStream('fwd', fwdV, fwdA) : null;
+        if (fwdSt) { const jn = shipMos('sdn', occPid(T.down(c)), fwdSt, blockMeta(sdmF), 'sdx'); if (jn) wanted.add(jn); }
         // Carrier leg of the sdx redundancy: hand my head's 'sdxc' copies to
         // their target seat as 'sdx^x' — the same slot over a second pipe.
         for (const [mk, xc] of mosIn) {
@@ -26803,7 +26870,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // already excludes my row. Per-branch mixes are single-producer by
       // construction (a neighbour's mix would contain MY row), so the old
       // verbatim re-fan of the shared 'sd' is gone with the shared 'sd'.
-      if (!iAmHead && !actHead) { const sdm = mosIn.get('sdm'); paintStadiumTile(sdm ? sdm.stream : null); }
+      // Non-heads: my head's room pack ('sdm') is my Stadium, less my row (hidden here, by the ids it carries).
+      if (!iAmHead && !actHead) { const sdm = mosIn.get('sdm'); paintRoomView(sdm ? sdm.el : null, sdm ? blockMeta(sdm) : null, sdm ? sdm.stream : null, c); }
       // STAGE EAR: sum the per-stager feeds I hold, skipping my own.
       if (stagers.length) ensureStageEar();
       syncStageEar(stagers);
@@ -26846,10 +26914,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!pk || !pk.setActive) return;
         pk.setActive(!!(pk.track && shippedTracks.has(pk.track)) || !!(pk.stream && paintedSids.has(pk.stream.id)));
       };
-      gatePack(prodPack); gatePack(sdPack); gatePack(stripPack);
-      for (const pk of sdnPacks.values()) gatePack(pk);
+      if (sdView && sdView.setActive) sdView.setActive(!!(sdViewSt && paintedSids.has(sdViewSt.id)));   // my Stadium paints while it is on screen
+      gatePack(stripPack);
+      // The room pack paints while anyone takes it: a ship of its own track or of its encode-once copy, or my own view.
+      if (roomPack && roomPack.setActive) roomPack.setActive(!!(roomPack.track && shippedTracks.has(roomPack.track)) || !!(packLoop && packLoop.rx && shippedTracks.has(packLoop.rx)) || !!(sdView && sdView.stats().active && roomPack.canvas && sdViewSrc === roomPack.canvas));
+      // My product paints for its ships, and for the room pack it sits in.
+      if (prodPack && prodPack.setActive) prodPack.setActive(!!(prodPack.track && shippedTracks.has(prodPack.track)) || !!(roomPack && roomPack.stats().active));
       for (const pk of l14Packs.values()) gatePack(pk);
-      for (const pk of l14RelPacks.values()) gatePack(pk);   // the branch outsides built for a row-mate pass through the same gate
     }
 
     // ============ THE STAGE DATA LANE (§11 — docs/media-plane.md, Channel St):
@@ -36464,7 +36535,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // docs/bug-pipe-stg-freeze-2026-08-05.md).
         me: String(myId || '').slice(0, 8),
         up: c ? tgt(T.up(c)) : null, down: c ? tgt(T.down(c)) : null,
-        prodStream: !!(prodPack && prodPack.stream), sdStream: !!(sdPack && sdPack.stream),
+        prodStream: !!(prodPack && prodPack.stream), sdStream: !!(sdView && sdView.stream), roomStream: !!(roomPack && roomPack.stream), loop: !!(packLoop && packLoop.rx),
         restarts: [...mosIn.entries(), ...mosStandby.entries()].filter(([, e]) => e && e.el).map(([rk, e]) => ({ key: rk, sid: e.el.srcObject ? String(e.el.srcObject.id).slice(0, 8) : null, vw: e.el.videoWidth, rs: e.el.readyState, n: e.el._mosRestarts || 0, held: !!e.el._mosHold })), // decoders restarted (parked, re-bound, resumed) because they showed no picture while the feed flowed (WebKit)
         jobs: [...mosJobs.keys()], claims: [...mosIn.keys()], ann: [...mosAnn.keys()],
         // An announcer is only a CANDIDATE if its announced streamId resolves
@@ -36522,10 +36593,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         standbyVia: [...mosStandby.entries()].map(([rk, c]) => ({ rk, via: c.via, sid: c.streamId })),
         // wake/failback forensics: per-slot wake-in-progress + settle stamps
         fb: [...mosFb.entries()].map(([rk, f]) => ({ rk, wakeAt: f.wakeAt, prefSince: f.prefSince, lastSwitch: f.lastSwitch, dark: !!f.dark, lastAdvanceAt: f.lastAdvanceAt || 0, lastBytes: f.lastBytes != null ? f.lastBytes : -1, d0: f.d0 != null ? f.d0 : -1, stdFdec: f.stdFdec != null ? f.stdFdec : -1, flowSince: f.flowSince || 0, q: f.q || 0, fp: f.fp || 0 })),
-        prod: prodPack && prodPack.stats(), sd: sdPack && sdPack.stats(),
+        prod: prodPack && prodPack.stats(), sd: sdView && sdView.stats(), room: roomPack && roomPack.stats(),
         rowFaces: dbgRowFaces.slice(), // which pid the packer drew at each of my row's seats (test observability, 2026-07-29 stale-seat dup)
         // w/h: the hidden source <video>'s own size; pack: the local composite's canvas; src: what the face cut used (chaos-1019: the two disagreed, 330 against 440)
-        tile: (() => { const v = stadiumEl.querySelector('[data-row="sd"] video'); const cl = window.__comfyLast; return v ? { live: v.videoWidth > 0, w: v.videoWidth, h: v.videoHeight, pack: (sdPack && sdPack.canvas) ? [sdPack.canvas.width, sdPack.canvas.height] : null, src: cl && cl.src ? cl.src : null } : null; })(),
+        tile: (() => { const v = stadiumEl.querySelector('[data-row="sd"] video'); const cl = window.__comfyLast; return v ? { live: v.videoWidth > 0, w: v.videoWidth, h: v.videoHeight, pack: (sdView && sdView.canvas) ? [sdView.canvas.width, sdView.canvas.height] : null, src: cl && cl.src ? cl.src : null } : null; })(),
         strip: (() => { const v = stagefeedEl.querySelector('[data-row="sgs"] video'); return v ? { live: v.videoWidth > 0 } : null; })(), stagers: stageIds().length }; },
       relayUpNow: () => relayUp(),
       rosterIdsNow: () => rosterIds.slice(),
@@ -37347,8 +37418,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           demand: [...subWant.entries()].map(([k, v]) => { const a = k.split('|'); return { k: String(a[0]).slice(0, 8) + '|' + a[1], v: v.st }; }),
           ear: (typeof stageEar !== 'undefined' && stageEar) ? [...stageEar.sids.keys()] : [],
           packs: { prod: prodPack ? Object.assign({ w: prodPack.canvas.width, h: prodPack.canvas.height }, prodPack.stats()) : null,
-                   sd: sdPack ? Object.assign({ w: sdPack.canvas.width, h: sdPack.canvas.height }, sdPack.stats()) : null,
-                   sdn: sdnPacks.size, strip: stripPack ? stripPack.stats() : null },
+                   sd: sdView ? Object.assign({ w: sdView.canvas.width, h: sdView.canvas.height }, sdView.stats()) : null,
+                   room: roomPack ? roomPack.stats() : null, folds: downFolds.size, strip: stripPack ? stripPack.stats() : null },
           stagers: stageIds().length, peers: peers.size,
         };
       },

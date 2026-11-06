@@ -479,7 +479,7 @@
       if (c.pc === 0 && c.i === 0) {
         let mates = 0, kids = 0, heads = 0;
         for (let j = 0; j < topo.C; j++) { if (j > 0 && held({ pc: 0, r: c.r, i: j })) mates++; const dk = topo.down({ pc: 0, r: c.r, i: j }); if (dk.pc > 0 && held(dk)) kids++; if (j !== c.r && held({ pc: 0, r: j, i: 0 })) heads++; }
-        if (kids > 0 || heads > 0) { hd = mates * K.L29_PARK + 2 * K.L29_HOT; hlow = kids * K.L29_HOT; }
+        if (kids > 0 || heads > 0) { hd = mates * K.L29_PARK + 2 * K.L29_HOT; hlow = 0; }   // one room pack encoded once: no mix per child branch
       }
       const l2 = own * K.L29_HOT + fwd + hd, l1 = l2 + fwd + hlow, l0 = l1 + park * K.L29_PARK + woke * K.L29_HOT;
       s.lgLd[0] = l0; s.lgLd[1] = l1; s.lgLd[2] = l2; s.lgBud0 = full; s.lgOwn = own * K.L29_HOT;
