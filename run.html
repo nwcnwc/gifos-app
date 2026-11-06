@@ -35841,6 +35841,34 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // (wrote/primed/dropped/kfAsk/mimes) — the proof a hop is forwarding
       // bytes instead of re-encoding them.
       pipeInfo: () => ({ enabled: pipeEnabled(), jobs: [...pipeJobs.keys()], deny: [...pipeDeny] }),
+      // DOWN-PACK ENCODERS (docs/media-plane.md, one pack down the tree): every
+      // live video sender of a down job (sdm, sdx, sdn, sdxc, sdxu) that is not a
+      // pipe carrier runs a content encoder; a carrier forwards encoded bytes.
+      // The page's own encode-once sender (packLoop) counts as one encoder.
+      packEncForTest: () => {
+        const DOWN = { sdm: 1, sdx: 1, sdn: 1, sdxc: 1, sdxu: 1 };
+        const to = new Set(), enc = [], srcs = new Set(); let jobs = 0, piped = 0;
+        for (const [jk, job] of mosJobs) {
+          if (!DOWN[job.key]) continue;
+          jobs++;
+          for (const sd of job.senders || []) {
+            if (!sd || !sd.track || sd.track.kind !== 'video' || sd.track.readyState === 'ended') continue;
+            to.add(job.to);
+            const pj = pipeJobs.get(jk);
+            if (pj && pj.carrier && sd.track === pj.carrier.track) { piped++; continue; }
+            enc.push(job.key + '>' + String(job.to).slice(0, 6)); srcs.add(sd.track.id);
+          }
+        }
+        const lp = (typeof packLoop !== 'undefined' && packLoop) ? packLoop : null;
+        if (lp && lp.sender && lp.sender.track) { enc.push('loop'); srcs.add(lp.sender.track.id); }
+        return { coord: meshCoord(), me: String(myId || ''), jobs, receivers: to.size, encoders: enc.length, encSrcs: srcs.size, piped, enc };
+      },
+      // What my Stadium shows, by the cell ids it carries, and my row.
+      stadIdsForTest: () => {
+        const c = meshCoord(), m = comfyStadMeta(), v = m.video;
+        const row = []; if (c) for (let j = 0; j < SCALE.C; j++) { const pid = j === c.i ? myId : occPid({ pc: c.pc, r: c.r, i: j }); if (pid) row.push(String(pid)); }
+        return { coord: c, me: String(myId || ''), n: m.n, ids: m.ids, live: !!(v && v.videoWidth > 0), w: v ? v.videoWidth : 0, h: v ? v.videoHeight : 0, row, stagers: stageIds().map(String) };
+      },
       pipeStats: () => (MPipe ? MPipe.stats() : Promise.resolve({})),
       // Per-DESTINATION carrier state. A sender forwards one feed to several
       // peers through a carrier minted per destination, so two peers can be fed
