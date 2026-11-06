@@ -25185,7 +25185,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const l = (window.__stgFoLog = window.__stgFoLog || []);
       l.push({ t: Date.now(), k: rk.slice(4, 12), e, via: via ? String(via).slice(0, 8) : undefined });
       if (l.length > 200) l.shift();
-      if (DEBUG_ON && rk.indexOf('stg:') === 0) stgPicNote(rk, e, why || '');
+      if (DEBUG_ON && rk.indexOf('stg:') === 0) swapPicNote(rk, e, why || '');
     }
     // Swap picture forensics (debugDump swapPic, DEBUG only, bounded, no behaviour): on every stage primary/standby decision, the pic state of
     // the stage <video> of each copy (did it draw?), the track states and the byte/frame counters, so a black stager tile after a swap names itself.
@@ -25209,7 +25209,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       } catch (err) { o.err = String(err).slice(0, 40); }
       return o;
     }
-    function stgPicNote(rk, e, why, follow) {
+    function swapPicNote(rk, e, why, follow) {
       try {
         if (!DEBUG_ON) return;
         const now = Date.now();
@@ -25218,7 +25218,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const r = { t: now, k: rk.slice(4, 12), e: e === 'want' ? 'wake' : e, why: String(why || '').slice(0, 90), p: stgPicOf(mosIn.get(rk)), s: stgPicOf(mosStandby.get(rk)),
           lb: fb.lastBytes, sb: fb.stdB, fd: fb.stdFdec, d0: fb.d0, dark: fb.dark ? 1 : 0, sus: fb.suspect ? 1 : 0, pd: fb.picDead ? 1 : 0 };
         swapPicRing.push(r); if (swapPicRing.length > 40) swapPicRing.shift();
-        if (e === 'swap' && !follow) for (const ms of [1500, 3000]) setTimeout(() => stgPicNote(rk, 'after' + ms, 'swap +' + ms + 'ms', true), ms);
+        if (e === 'swap' && !follow) for (const ms of [1500, 3000]) setTimeout(() => swapPicNote(rk, 'after' + ms, 'swap +' + ms + 'ms', true), ms);
       } catch (err) {}
     }
     async function sampleStandby(rk, fb) {
@@ -25808,7 +25808,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const pick = pref || cand.find((x) => x.live);
         if (pick) {
           pri = mkEnt(pick); mosIn.set(rk, pri); repaintRedun(rk, pri.stream);
-          if (DEBUG_ON && rk.indexOf('stg:') === 0) stgPicNote(rk, 'claim', 'first claim ' + (pref && pick === pref ? 'pref' : 'live'));
+          if (DEBUG_ON && rk.indexOf('stg:') === 0) swapPicNote(rk, 'claim', 'first claim ' + (pref && pick === pref ? 'pref' : 'live'));
           fb.claimAt = now; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; fb.suspect = false; fb.stdTried = null; // fresh primary — the watchdog re-baselines
           if (std && std.via === pri.via && std.streamId === pri.streamId) { dropStandby(rk); std = null; }
         }
@@ -25861,7 +25861,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const wantSwap = !!(pri && std && (!priLive || fb.dark || fb.picDead || u2Over || (stdIsPref && !priIsPref)));
       if (wantSwap) {
         if (std && !std.el && std.stream) std.el = mosVideo(std.stream); // mint the decoder on wake, not while parked
-        if (!fb.wakeAt) { fb.wakeAt = now; fb.f0 = frames(std.el); if (DEBUG_ON && rk.indexOf('stg:') === 0) stgPicNote(rk, 'wake', 'wantSwap priLive=' + (priLive ? 1 : 0) + ' dark=' + (fb.dark ? 1 : 0) + ' picDead=' + (fb.picDead ? 1 : 0)); }
+        if (!fb.wakeAt) { fb.wakeAt = now; fb.f0 = frames(std.el); if (DEBUG_ON && rk.indexOf('stg:') === 0) swapPicNote(rk, 'wake', 'wantSwap priLive=' + (priLive ? 1 : 0) + ' dark=' + (fb.dark ? 1 : 0) + ' picDead=' + (fb.picDead ? 1 : 0)); }
         if (stdIsPref && !fb.prefSince) fb.prefSince = now;
         // A DARK-initiated swap (primary transport still alive) demands STRICT
         // flow evidence: the standby's stats-side framesDecoded advancing since
@@ -25909,7 +25909,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // (dark skips it: dark IS a failover, and MOS_SETTLE on lastSwitch
         // still bounds any stall/recover oscillation to one swap per window).
         const settled = !priLive || fb.dark || fb.picDead || u2Over || ((now - fb.prefSince >= MOS_SETTLE) && (now - fb.lastSwitch >= MOS_SETTLE));
-        if (DEBUG_ON && !(flowing && settled) && rk.indexOf('stg:') === 0) stgPicNote(rk, 'hold', 'flowing=' + (flowing ? 1 : 0) + ' settled=' + (settled ? 1 : 0) + ' f0=' + fb.f0 + ' stdAdv=' + (stdAdvanced ? 1 : 0));
+        if (DEBUG_ON && !(flowing && settled) && rk.indexOf('stg:') === 0) swapPicNote(rk, 'hold', 'flowing=' + (flowing ? 1 : 0) + ' settled=' + (settled ? 1 : 0) + ' f0=' + fb.f0 + ' stdAdv=' + (stdAdvanced ? 1 : 0));
         if (flowing && settled) {
           const old = pri;
           mosIn.set(rk, std); mosStandby.delete(rk); pri = std; std = null; stgFoNote(rk, 'swap', pri.via, 'flowing=' + (flowing ? 1 : 0) + ' dark=' + (fb.dark ? 1 : 0) + ' priLive=' + (priLive ? 1 : 0) + ' picDead=' + (fb.picDead ? 1 : 0) + ' u2=' + (u2Over ? 1 : 0));
@@ -25970,7 +25970,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // One read per pass: the call parks a stale wake as it answers, so a
       // second read would see the state the first one just changed.
       const stdHot = standbyStaysHot(fb, now, WAKE_MAX, std ? std.via + '|' + std.streamId : null, rk.indexOf('stg:') === 0 ? STG_ZERO_MS : 0);
-      if (fb.suspect && fb.suspectAt === now && DEBUG_ON && rk.indexOf('stg:') === 0) stgPicNote(rk, 'wake-failed', 'standbyStaysHot: wake stale, standby never flowed');
+      if (fb.suspect && fb.suspectAt === now && DEBUG_ON && rk.indexOf('stg:') === 0) swapPicNote(rk, 'wake-failed', 'standbyStaysHot: wake stale, standby never flowed');
       if (fb.suspect && fb.suspectAt === now) schedReconcile(); // a wake just failed: the next pass picks the next candidate
       const hot = new Set();
       const primSet = new Set(); // the copy I play and relay on: a duty to its sender, not a spare (demand)
