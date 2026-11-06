@@ -23162,9 +23162,22 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // transceiver per track guarantees the receiver an ontrack that carries
     // the container stream. (m-lines accumulate over restarts — bounded by
     // churn, and unused ones go dormant on removeTrack.)
+    // FORWARDED SOUND IS RE-ENCODED AT EVERY HOP. A head re-mixes its mix-minus for each row and child, so a deep seat
+    // hears the room after several Opus generations, and at Opus's default 32 kbps each generation lifts the noise floor
+    // (seven talkers measured over four chained hops: tone-to-floor 30-35 dB at the source, 19-24 dB after three or four
+    // generations; at 128 kbps 26-29 dB). Every forwarded audio sender (mix-minus, relay, stage feed) is allowed 128 kbps.
+    const AUX_AUDIO_BPS = 128000;
     const addAux = (pc, tr, container) => {
       const t = pc.addTransceiver(tr, { streams: [container] });
       auxSenders.add(t.sender);
+      if (tr && tr.kind === 'audio') {
+        try {
+          const prm = t.sender.getParameters();
+          if (!prm.encodings || !prm.encodings.length) prm.encodings = [{}];
+          prm.encodings[0].maxBitrate = AUX_AUDIO_BPS;
+          t.sender.setParameters(prm).catch(() => {});
+        } catch (e) {}
+      }
       return t.sender;
     };
 
