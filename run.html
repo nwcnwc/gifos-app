@@ -7675,6 +7675,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // never revive a confirmed departure. HOLDOVER_MS stays well under the
     // mesh E-timers: real death is still the mesh's call, not this one.
     const HOLDOVER_MS = 60000;
+    // Why each status past its first 15 s was held or dropped, last verdict per peer (debugDump heldWhy). Bounded.
+    const heldWhy = new Map();
+    function heldWhyNote(pid, why, age, debt) {
+      heldWhy.set(pid, { why, age: Math.round(age), debt: Math.round(debt), at: Date.now() });
+      if (heldWhy.size > 256) heldWhy.delete(heldWhy.keys().next().value);
+    }
+    // The roster rebuild (renderFromOcc): when it last finished, how many times, which ids came from the seat's cells,
+    // and how many rebuilds threw before the roster was assigned (debugDump rosterBuild).
+    const rosterBuild = { at: 0, n: 0, throws: 0, err: '', fromOcc: new Set() };
     // THE JUDGE MUST HAVE BEEN AWAKE FOR THE WINDOW IT JUDGES. healing-laws D
     // confirms a death only for a peer "unreachable on every path for the
     // settled window" — which silently presumes the observer was CONSCIOUS for
@@ -7748,9 +7757,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const stHold = (pid) => {
       const st = statusOf.get(pid);
       if (!st) return false;
-      const age = Date.now() - stSeen(st) - holdDebtSince(stSeen(st));
-      if (age < 15000) return true;
-      if (age >= HOLDOVER_MS) return false;
+      const seen = stSeen(st), debt = holdDebtSince(seen), age = Date.now() - seen - debt;
+      const note = (why) => { if (typeof heldWhyNote === 'function') heldWhyNote(pid, why, age, debt); };
+      if (age < 15000) { if (age + debt >= 15000) note('fresh-by-debt'); return true; }
+      if (age >= HOLDOVER_MS) { note('past-holdover'); return false; }
       const p = peers.get(pid);
       // A PAIR THAT CARRIES NO BEAT DOES NOT HOLD A STATUS OPEN. Transport
       // vouches for a quiet peer only when that peer's beat rides this pair
@@ -7759,8 +7769,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // standby), stays "connected" while the far end never beats on it, so
       // its status would stand stale for the full HOLDOVER_MS. Past 15s it
       // falls through to the fold, same as any other far seat's status.
-      if (p && !beatsHere(pid)) return !!st.away;
-      return !!st.away || !!(p && p.connected);
+      const held = (p && !beatsHere(pid)) ? !!st.away : (!!st.away || !!(p && p.connected));
+      note(!held ? 'quiet' : st.away ? 'away' : 'link');
+      return held;
     };
     function mergeMod(incoming) {
       let changed = false;
@@ -15791,8 +15802,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (peers.has(v)) { if (linkTo(v)) askDial(v, peers.get(v)); continue; }
         if (linkTo(v)) ensureLink(v, rosterNames[v] || null);
       }
+      const fromOcc = new Set(ids);
       for (const [pid] of statusOf) if (pid !== myId && stHold(pid) && notTomb(pid)) ids.add(pid);
       rosterIds = Array.from(ids);
+      rosterBuild.at = Date.now(); rosterBuild.n++; rosterBuild.fromOcc = fromOcc;
       // A pocketed phone blocks clear video for up to a minute, then drops
       // out of this set. Repaint then, or No blur stays pending after the
       // room has already gone clear.
@@ -17334,7 +17347,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             return { stage: stg, stadium: [...stad] };
           } catch (e) { return { stage: [], stadium: [] }; }
         },
-        onUpdate: () => { renderFromOcc(); saveTreeMem(); try { reportDarkDeaths(); } catch (e) {} try { meshVoteBeat(); } catch (e) {} },
+        onUpdate: () => { try { renderFromOcc(); } catch (e) { rosterBuild.throws++; rosterBuild.err = String((e && e.message) || e).slice(0, 80); throw e; } saveTreeMem(); try { reportDarkDeaths(); } catch (e) {} try { meshVoteBeat(); } catch (e) {} },
         onRelayMsg: onRelayFrame,
         prevTree: readTreeMem(),
         oldCell: seatMemNow ? seatMemNow.ck : -1,
@@ -36379,6 +36392,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // e2e-vanish lesson, browser edition).
           rowsFh: (() => { if (!c || !s) return []; const g = []; for (let r = 0; r < SCALE.C; r++) { const row = []; for (let i = 0; i < SCALE.C; i++) { const co = { pc: c.pc, r, i }; const pid = meshOccAt(co); let fh = false; try { const at = s.live.get(net.topo.ckey(co)); fh = at !== undefined && (s.env.TICK - at) <= 60; } catch (e) {} row.push(pid && fh ? String(pid).slice(0, 8) : null); } g.push(row); } return g; })(),
           ghosts: ghosts.map((p) => String(p).slice(0, 12)), dups,
+          // Why a ghost is still listed: the path it entered by (a seat cell or a held status), its status age and the
+          // stHold verdict with the judge's own blockage subtracted (debtMs), and the roster rebuild's last run.
+          heldWhy: ghosts.slice(0, 32).map((pid) => { const st = statusOf.get(pid), h = heldWhy.get(pid);
+            return { peer: String(pid).slice(0, 12), via: rosterBuild.fromOcc.has(pid) ? 'cell' : 'status', ageS: st ? Math.round((now - stSeen(st)) / 1000) : null,
+              why: h ? h.why : null, holdAgeS: h ? Math.round(h.age / 1000) : null, debtMs: h ? h.debt : null, noteAgoS: h ? Math.round((now - h.at) / 1000) : null }; }),
+          rosterBuild: { agoMs: rosterBuild.at ? now - rosterBuild.at : null, n: rosterBuild.n, throws: rosterBuild.throws, err: rosterBuild.err || null },
           // D5 confirm forensics: standing translosts + probe-answer stamps by
           // coord, in ticks-ago — a stalled confirm shows here as a translost
           // aging far past EARLY_HOLD with no gone.
