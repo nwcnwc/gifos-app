@@ -35411,7 +35411,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             wspPaused = false;
           }
           setTrMode(on ? 'share' : 'keep');
-          return { ok: true, mode: trMode(), view: !!ccShow };
+          return { ok: true, cc: on, mode: trMode(), view: !!ccShow }; // cc: what an older bot reads back
         },
         sendXfer(msg) {
           const x = (msg && msg.xfer) || {};
