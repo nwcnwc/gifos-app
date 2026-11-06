@@ -30325,8 +30325,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // the engines and tells the room.
     function setTrMode(v) {
       v = v === 'keep' || v === 'share' ? v : '';
-      trModeSet = v;
-      lsSet(TR_MODE_KEY, v || 'off'); // off is a choice and is remembered as one
+      trModeSet = v || 'off'; // off is a choice: held and saved as 'off', never as "nothing chosen"
+      lsSet(TR_MODE_KEY, v || 'off');
       if (!v) { for (const id of Array.from(trs.keys())) trs.delete(id); trDirty = true; }
       refreshTrBtn();
       try { syncSpeech(); } catch (e) {}
@@ -37078,7 +37078,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       captionsForTest: () => ({ mix: Array.from(ccMix.ins.keys()), drops: trDrops, show: !!ccShow, send: capSend(), mode: trMode(),
         lines: Array.from(trs.values()).sort((a, b) => a.at - b.at).map((l) => ({ by: l.by, byId: l.byId, w: l.w, src: l.src, lang: l.lang || '', ld: l.ld || 0, at: l.at, text: l.text })) }),
       // The transcript settings and what they produced on this page.
-      transcriptForTest: () => ({ send: capSend(), mode: trMode(), cap: !!myStatus.cap, lang: trLang(), learned: trLangLearned, mark: txMarkWhy(), speech: speechRunning(), ear: !!(speech && speech.input),
+      transcriptForTest: () => ({ send: capSend(), mode: trMode(), cap: !!myStatus.cap, lang: trLang(), known: trLangKnown(), learned: trLangLearned, mark: txMarkWhy(), speech: speechRunning(), ear: !!(speech && speech.input),
         lines: Array.from(trs.values()).sort((a, b) => a.at - b.at).map((l) => ({ id: l.id, by: l.by, byId: l.byId, w: l.w, src: l.src, lang: l.lang || '', ld: l.ld || 0, at: l.at, text: l.text })) }),
       setTranscriptForTest: (o) => { o = o || {}; if ('send' in o) setCapSend(!!o.send); if ('mode' in o) setTrMode(o.mode); return { send: capSend(), mode: trMode() }; },
       ownVoiceForTest: () => {
