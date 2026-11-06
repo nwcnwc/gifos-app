@@ -7555,6 +7555,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // nothing left to close it. Settle against the tab as it is NOW.
       if (!document.hidden && !pipManual && !(pipAwayAt && !document.hasFocus())) exitPip();
     }
+    const pipFloating = () => !!(document.pictureInPictureElement
+      || Array.from(document.querySelectorAll('video')).some((v) => v.webkitPresentationMode === 'picture-in-picture'));
     function exitPip() {
       try {
         if (document.pictureInPictureElement) document.exitPictureInPicture().catch(() => {});
@@ -7669,8 +7671,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // hard-bugs-1018/3-black-float-tile). Focus is the one sign of the
     // return there: the float closes, the tile plays. A desktop float the
     // person asked for still stays up across a window switch.
+    // The float's state is read at the blur itself, not when the timer runs:
+    // on a phone a float the person asks for takes the window's focus as it
+    // opens, and that blur comes BEFORE the float is up. Only a blur while a
+    // float is already up means the person left with it; the focus that
+    // follows the opening blur must not close the float just asked for.
     let pipAwayAt = 0, pipAwayT = 0, pipLeftAt = 0;
     window.addEventListener('blur', () => {
+      const upAtBlur = pipFloating();
       if (pipAwayT) clearTimeout(pipAwayT);
       pipAwayT = setTimeout(() => {
         pipAwayT = 0;
@@ -7679,7 +7687,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const ae = document.activeElement;
         if (ae && ae.tagName === 'IFRAME') return;
         awayFull(true);
-        if (pipManual) { pipLeftAt = Date.now(); return; }
+        if (pipManual) { if (upAtBlur) pipLeftAt = Date.now(); return; }
         pipAwayAt = Date.now();
         enterPip();
       }, 250);
