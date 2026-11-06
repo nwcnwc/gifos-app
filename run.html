@@ -25608,6 +25608,27 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const at = fb.stdTried && fb.stdTried.get(id);
       return !!at && now - at < 120000;
     }
+    // THE STANDBY TAKES ANOTHER ROAD. A slot's standby is the preferred path when the primary is not it (failback
+    // staging), else a live candidate on a different path; a candidate whose wake already failed waits until every
+    // other path has had its turn. A stage copy names the seats it came through (vp). A standby whose path shares a
+    // seat with the primary's dies with that seat: in Section 1 every copy that entered through the stager's up seat
+    // dies with it, and a slot that held such a standby (or failed over onto one) got its voice back only after
+    // zero-byte timeouts down the fabric, hop by hop. So the standby is a copy whose path shares no seat with the
+    // primary's whenever one is live, and a failover (primary gone or dark) never goes to one that shares a seat
+    // while another is live: the copy that failed may have died at any seat on its path. A failback to the
+    // preferred path is staged only while the primary still flows. A copy that names no path (the stager's own,
+    // or an older page) shares no seat anyone can name.
+    function stdPick(rk, cand, pri, pref, fb, now, failover) {
+      const fresh = (x) => !stdTried(fb, x.from + '|' + x.sid, now);
+      const isPri = (x) => !!pri && x.from === pri.via && x.sid === pri.streamId;
+      const others = cand.filter((x) => x.live && !isPri(x));
+      if (fb.stdTried && !others.some(fresh)) fb.stdTried = null; // every path has had its turn: start the round again
+      const pp = (rk.indexOf('stg:') === 0 && pri && pri.meta && Array.isArray(pri.meta.vp)) ? pri.meta.vp : [];
+      const apart = (x) => !(x.ann && Array.isArray(x.ann.vp) && x.ann.vp.some((s) => pp.indexOf(s) >= 0));
+      const ownStd = stgOwnStandby(rk, cand, pri);
+      if (pref && pri && !isPri(pref) && fresh(pref) && (!failover || apart(pref))) return pref;
+      return (ownStd && fresh(ownStd) ? ownStd : null) || others.find((x) => fresh(x) && apart(x)) || others.find(fresh) || ownStd || others[0];
+    }
     // END-STAGE-DARK-HOLD
     const MOS_GRACE = 5000;
     const MOS_SETTLE = 5000; // failback hysteresis: preferred must be back this long
@@ -25933,16 +25954,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           }
         }
       }
-      // STANDBY SELECTION (parked): the preferred path when the primary is not
-      // it (failback staging), else any live candidate on a DIFFERENT path.
-      // A candidate whose wake already failed waits until every other path has had its turn.
-      const fresh = (x) => !stdTried(fb, x.from + '|' + x.sid, now);
-      const others = cand.filter((x) => x.live && !(pri && x.from === pri.via && x.sid === pri.streamId));
-      if (fb.stdTried && !others.some(fresh)) fb.stdTried = null; // every path has had its turn: start the round again
-      const ownStd = stgOwnStandby(rk, cand, pri);
-      const wantStd = (pref && pri && !priIsPref && !(pri.via === pref.from && pri.streamId === pref.sid) && fresh(pref))
-        ? pref
-        : ((ownStd && fresh(ownStd) ? ownStd : null) || others.find(fresh) || ownStd || others[0]);
+      // STANDBY SELECTION (parked): stdPick. A failover is a primary that is gone or dark.
+      const wantStd = stdPick(rk, cand, pri, pref, fb, now, !!(pri && (!priLive || fb.dark)));
       if (pri && wantStd && (!std || std.via !== wantStd.from || std.streamId !== wantStd.sid || std.stream !== wantStd.st)) {
         if (std) dropStandby(rk);
         std = { via: wantStd.from, key: wantStd.key, streamId: wantStd.sid, stream: wantStd.st, el: null, meta: annMeta(wantStd.ann) };
