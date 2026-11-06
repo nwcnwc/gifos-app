@@ -85,6 +85,11 @@
   // footprint stays fixed. stadiumGrid gives the grid; createPacker('stad') sizes
   // the square against the fixed footprint width so the cap/densify falls out.
   const STAD_COLS = 5, STAD_CAP = 100;
+  // Tapestry mark colours (drawOverlay past STAD_CAP): one clear hue per kind.
+  const TALK_COLOR = '#37d67a';   // talking: green, as the talking frame
+  const HAND_COLOR = '#fff200';   // raised hand: yellow
+  // Clap is amber gold, well off the hand's yellow; yes is cyan, never the talking green.
+  const REACT_COLOR = { '❤️': '#ff1f3d', '👏': '#ff9900', '👍': '#00e5ff', '👎': '#2f5bff', '😂': '#ff3dd0', '?': '#ffffff' };   // heart red, clap gold, yes cyan, no blue, laugh pink
   function stadiumGrid(T) {
     if (T <= 0) return { cols: 1, rows: 1, dense: false };
     if (T <= 25) { const cols = Math.max(1, Math.ceil(Math.sqrt(T))); return { cols, rows: Math.ceil(T / cols), dense: false }; }
@@ -411,17 +416,11 @@
     // react: a reaction emoji, shown top-left while it lasts.
     function drawOverlay(dx, dy, cell, lbl) {
       if (!lbl) return;
-      // TAPESTRY mode (stadium past the overlay threshold): no name/frame — too
-      // small to read — just a small light-green shaded dot when the seat is
-      // talking, so you can see whose audio is blended into the mix.
-      if (lbl.dot) {
-        if (lbl.talking) {
-          const rr = Math.max(2, cell * 0.16);
-          ctx.beginPath(); ctx.arc(dx + cell - rr * 1.4, dy + rr * 1.4, rr, 0, 7);
-          ctx.fillStyle = 'rgba(120,231,150,0.9)'; ctx.fill();
-        }
-        return;
-      }
+      // TAPESTRY mode (stadium past the overlay threshold): only the NAME goes,
+      // too small to read. Talking, a raised hand and a reaction stay as plain
+      // colour marks that still read when a face is a few pixels, or one
+      // (markOverlay below).
+      if (lbl.dot) { markOverlay(dx, dy, cell, lbl); return; }
       if (lbl.talking) {
         const lw = Math.max(2, cell * 0.035);
         ctx.strokeStyle = '#37d67a'; ctx.lineWidth = lw;
@@ -447,6 +446,39 @@
         const r = Math.max(7, cell * 0.15);
         ctx.font = (r * 1.4 | 0) + 'px system-ui'; ctx.textBaseline = 'top';
         ctx.fillText(String(lbl.react).slice(0, 8), dx + r * 0.3, dy + r * 0.3);
+      }
+    }
+    // TAPESTRY MARKS. Each kind has its own bright hue, so a crowd reads at a
+    // glance: a room of hearts lights up red, a room talking lights up green.
+    //   talking: a green border ring (the same green as the talking frame)
+    //   hand or reaction: its colour in the top-left corner (a large cell) or
+    //   over the whole inside of the ring (a small one); with both, the
+    //   reaction takes the corner and the hand the opposite corner
+    // A cell of 1-2 px is one colour, by priority reaction > hand > talking: a
+    // reaction is brief and the thing a room watches for, a hand stays up
+    // until it is answered, and talking is the most common and would bury both.
+    function markOverlay(dx, dy, cell, lbl) {
+      const mark = lbl.react ? (REACT_COLOR[lbl.react] || REACT_COLOR['?']) : lbl.hand ? HAND_COLOR : null;
+      const px = Math.max(1, Math.round(cell));
+      if (px <= 2) {
+        const c = mark || (lbl.talking ? TALK_COLOR : null);
+        if (c) { ctx.fillStyle = c; ctx.fillRect(dx, dy, px, px); }
+        return;
+      }
+      const ring = lbl.talking ? Math.max(1, Math.round(px * 0.12)) : 0;
+      if (mark) {
+        const inner = px - ring * 2;
+        const side = px >= 12 ? Math.max(1, Math.round(px * 0.4)) : inner;
+        ctx.fillStyle = mark; ctx.fillRect(dx + ring, dy + ring, side, side);
+        if (lbl.react && lbl.hand && px >= 6) {
+          const hs = Math.max(1, Math.round(px * 0.3));
+          ctx.fillStyle = HAND_COLOR; ctx.fillRect(dx + px - ring - hs, dy + ring, hs, hs);
+        }
+      }
+      if (ring) {
+        ctx.fillStyle = TALK_COLOR;
+        ctx.fillRect(dx, dy, px, ring); ctx.fillRect(dx, dy + px - ring, px, ring);
+        ctx.fillRect(dx, dy + ring, ring, px - ring * 2); ctx.fillRect(dx + px - ring, dy + ring, ring, px - ring * 2);
       }
     }
     // STILL-FRAME SKIP (2026-07-30 power work). The governor below bounds how
