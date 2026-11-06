@@ -29941,11 +29941,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // into peers first, so eight silent row-mates filled it.
         const key = (a) => (capCovered(a) ? 4 : 0) + (stageSet.has(a) ? 0 : 2) + (talking(a) ? 0 : 1);
         queued.sort((a, b) => key(a) - key(b));
+        let others = 0; // WSP_SCRIBE_MAX other voices, with or without my own capture
         for (const pid of queued) {
-          if (want.size >= WSP_SCRIBE_MAX + 1) break;
-          want.add(pid);
+          if (others >= WSP_SCRIBE_MAX) break;
+          want.add(pid); others++;
         }
-        if (want.size < WSP_SCRIBE_MAX + 1 && wspFoldNeeded(queued) && wspFoldTracks().length) want.add('fold');
+        if (others < WSP_SCRIBE_MAX && wspFoldNeeded(queued) && wspFoldTracks().length) want.add('fold');
       }
       for (const id of Array.from(wspCaps.keys())) if (!want.has(id)) wspStop(id);
       for (const id of want) {
@@ -30561,7 +30562,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     (function wireCcAll() {
       const btn = document.getElementById('ccall'); if (!btn) return;
-      btn.onclick = () => { setStatus(uiText('stCaptionsAreOnlyOnYour', 'Captions are only on your screen. The transcript is already on for everyone.')); };
+      // The order is the admin's signed room-wide 'cc' switch (the same table as
+      // the chat switch): every screen shows captions until someone taps CC off.
+      btn.onclick = () => { setMod('*', 'cc', !ccAllInfo()); applyCcAll(); };
     })();
     function setPanelView(showTr) {
       const w = document.getElementById('trwrap'), c = document.getElementById('chatlog');
