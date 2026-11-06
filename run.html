@@ -23536,54 +23536,32 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       return held;
     }
-    function stageEarRawPeak(track, ms) {
-      return new Promise((resolve) => {
-        let src = null;
-        try {
-          if (ac && ac.state !== 'running') { try { ac.resume(); } catch (e) {} }
-          const an = ac.createAnalyser(); an.fftSize = 1024;
-          src = ac.createMediaStreamSource(new MediaStream([track]));
-          src.connect(an);
-          const buf = new Float32Array(an.fftSize);
-          let peak = 0; const t0 = Date.now();
-          const step = () => {
-            try {
-              an.getFloatTimeDomainData(buf);
-              for (let i = 0; i < buf.length; i++) { const a = Math.abs(buf[i]); if (a > peak) peak = a; }
-            } catch (e) {}
-            if (Date.now() - t0 < ms) { setTimeout(step, 40); return; }
-            try { src.disconnect(); } catch (e) {}
-            resolve(peak);
-          };
-          step();
-        } catch (e) { try { if (src) src.disconnect(); } catch (e2) {} resolve(0); }
-      });
+    // THE WIRE'S LEVEL, read from the receiver's own stats: the peak sample of the decoded audio (inbound-rtp
+    // audioLevel, 0..1), before Web Audio, so a source node latched silent cannot hide it. A read makes no audio
+    // node: a MediaStreamAudioSourceNode lives as long as its running context and keeps pulling its track, so a
+    // fresh node per read (as this was) grew memory and CPU for as long as anyone stood on the stage.
+    // null: no stats for this track (no pc, or an engine without the field): the caller treats it as unknown.
+    function stageEarRawPeak(track, ms, f) {
+      const p = f ? peers.get(f.via) : null, pc = p && p.pc;
+      const read = async () => {
+        if (!pc || !track) return null;
+        let lv = null;
+        try { (await pc.getStats()).forEach((s) => { if (s.type === 'inbound-rtp' && s.kind === 'audio' && s.trackIdentifier === track.id && typeof s.audioLevel === 'number') lv = Math.max(lv || 0, s.audioLevel); }); } catch (e) {}
+        return lv;
+      };
+      return (async () => {
+        const a = await read();
+        await new Promise((r) => setTimeout(r, ms));
+        const b = await read();
+        return a == null && b == null ? null : Math.max(a || 0, b || 0);
+      })();
     }
-    // A fresh node each sample. A long-lived one born while the fold was
-    // still silent would keep reading 0 after the fold recovered, and the
-    // watch would reseat a good ear back into silence.
+    // THE EAR'S LEVEL: what the fold sends to the ear, from the fold's one tap (a node made once with the fold;
+    // it sits after the source nodes, so it reads a latched source as the silence the person hears).
     function stageEarFoldPeak(ms) {
-      return new Promise((resolve) => {
-        let src = null;
-        try {
-          if (!stageEar || !stageEar.el.srcObject || !ac) return resolve(0);
-          const an = ac.createAnalyser(); an.fftSize = 2048;
-          src = ac.createMediaStreamSource(stageEar.el.srcObject);
-          src.connect(an);
-          const buf = new Float32Array(an.fftSize);
-          let peak = 0; const t0 = Date.now();
-          const step = () => {
-            try {
-              an.getFloatTimeDomainData(buf);
-              for (let i = 0; i < buf.length; i++) { const a = Math.abs(buf[i]); if (a > peak) peak = a; }
-            } catch (e) {}
-            if (Date.now() - t0 < ms) { setTimeout(step, 40); return; }
-            try { src.disconnect(); } catch (e) {}
-            resolve(peak);
-          };
-          step();
-        } catch (e) { try { if (src) src.disconnect(); } catch (e2) {} resolve(0); }
-      });
+      if (!stageEar || !stageEar.fold || typeof stageEar.fold.peak !== 'function' || !ac) return Promise.resolve(0);
+      if (ac.state !== 'running') { try { ac.resume(); } catch (e) {} }
+      return stageEar.fold.peak(ms);
     }
     function scheduleStageEarWatch() {
       if (stageEarWatchT) return;
@@ -23605,7 +23583,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             const w = stageEar.watch.get(k2);
             if (w.trackId !== t.id) { w.trackId = t.id; w.tries = 0; w.settleUntil = 0; }
             if (w.settleUntil && Date.now() < w.settleUntil) continue;
-            const raw = await stageEarRawPeak(t, 180);
+            const raw = await stageEarRawPeak(t, 180, f);
             w.rawPeak = raw; w.foldPeak = null; w.peakAt = Date.now(); // earState reads the watch's last sample: it makes no audio nodes of its own
             if (raw > 0.02) {
               const fold = await stageEarFoldPeak(180);
@@ -36172,22 +36150,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       stageWhyForTest: (id) => { const st = statusOf.get(id), d = digLists(), e = d ? d.stage.find((x) => x.id === id) : null; let f = null; try { f = mosIn.get('stg:' + id); } catch (x) {} return { on: stageIds().includes(id), fold: !!e, foldAge: d ? d.age : null, stAge: st ? Date.now() - stSeen(st) : null, stStg: st ? st.stg || 0 : null, stHold: stHold(id), tomb: !notTomb(id), gone: meshGone.has(id), held: typeof stageHeldAt !== 'undefined' && stageHeldAt.has(id), claim: f ? { via: String(f.via).slice(0, 8), dead: f.deadAt ? Date.now() - f.deadAt : 0 } : null }; },
       stgPathForTest: () => { const six = (x) => String(x || '').slice(0, 8); const o = {}; for (const [k, f] of mosIn) { if (k.indexOf('stg:') !== 0) continue; const d = mosStandby.get(k); const m = (e) => (e ? { via: six(e.via), key: e.key || null, h: e.meta ? e.meta.h : null, ao: !!(e.meta && e.meta.ao), vp: (e.meta && e.meta.vp) || [] } : null); const hot = []; for (const j of mosJobs.values()) if (j.upKey === k && j.active) hot.push(six(j.to)); o[six(k.slice(4))] = { pri: m(f), std: m(d), dead: f.deadAt ? Date.now() - f.deadAt : 0, hot }; } const jobs = []; for (const [jk, j] of mosJobs) if (j.key.indexOf('stg:') === 0) jobs.push({ k: six(j.key.slice(4)), to: six(j.to), up: j.upKey ? six(j.upKey.slice(4)) : null, active: !!j.active, off: !!j.carryOff, src: (j.srcTracks || []).map((t) => t.kind[0] + (t.readyState === 'live' ? (t.muted ? 'm' : 'L') : 'E')).join(''), sending: j.senders.map((sd) => sd.track ? 1 : 0).join(''), tl: j.tracklessAt ? Date.now() - j.tracklessAt : 0 }); const ann = []; for (const [ak, a] of mosAnn) if (ak.indexOf('|stg:') > 0) ann.push({ from: six(ak.slice(0, ak.indexOf('|'))), k: six(ak.slice(ak.indexOf('|') + 5)), age: Date.now() - (a.at || 0), h: a.h }); return { me: six(myId), coord: meshCoord(), o, jobs, ann }; },
       stgHiccupForTest: (ms) => { const jobs = [...mosJobs.values()].filter((b) => b.key.indexOf("stg:") === 0 && b.active); for (const b of jobs) b.senders.forEach((sd, i) => { const t = b.trackList[i]; if (t && t.kind === "audio") { try { sd.replaceTrack(null); } catch (e) {} } }); setTimeout(() => { for (const b of jobs) b.senders.forEach((sd, i) => { const t = b.trackList[i]; if (t && t.kind === "audio") { try { sd.replaceTrack(t); } catch (e) {} } }); }, ms); return jobs.length; },
-      stageEarLevel: (ms) => new Promise((resolve) => {
-        if (!stageEar || !stageEar.el.srcObject || !ac) return resolve(-1);
+      stageEarLevel: (ms) => {
+        if (!stageEar || !stageEar.el.srcObject || !ac) return Promise.resolve(-1);
         if (ac.state !== 'running') { try { ac.resume(); } catch (e) {} }
-        let src, an;
-        try { an = ac.createAnalyser(); an.fftSize = 2048; src = ac.createMediaStreamSource(stageEar.el.srcObject); src.connect(an); }
-        catch (e) { return resolve(-1); }
-        const buf = new Float32Array(an.fftSize); let peak = 0; const t0 = Date.now();
-        const tick = () => {
-          an.getFloatTimeDomainData(buf);
-          for (let i = 0; i < buf.length; i++) { const a = Math.abs(buf[i]); if (a > peak) peak = a; }
-          if (Date.now() - t0 < (ms || 600)) return setTimeout(tick, 60);
-          try { src.disconnect(); } catch (e) {}
-          resolve(peak);
-        };
-        tick();
-      }),
+        if (!stageEar.fold || typeof stageEar.fold.peak !== 'function') return Promise.resolve(-1);
+        return stageEar.fold.peak(ms || 600);   // the fold's one tap: a read builds no audio node
+      },
       // DEBUG: force a pair's transport rebuild — the deterministic ORPHAN
       // WINDOW for the §LOCK grant-healing drill (a pw save mid-rebuild used
       // to cryptographically orphan the far side; healing must recover it).

@@ -719,6 +719,11 @@
   // (the recorder's primitive). Callers own the AudioContext lifecycle.
   function createAudioFold(ac) {
     const dest = ac.createMediaStreamDestination();
+    // One tap on everything the fold sends to its destination, made once. A level read takes samples from it and
+    // builds no node: a MediaStreamAudioSourceNode lives as long as its running context (disconnect does not free
+    // it) and keeps pulling its track, so a node per read grows memory and CPU for the whole meeting.
+    const tap = ac.createAnalyser(); tap.fftSize = 2048;
+    const tapBuf = new Float32Array(tap.fftSize);
     const srcs = new Map(); // key -> { src, gain }
     const waiting = new Map(); // key -> { stream, fn } until an audio track exists
     function dropWait(key) {
@@ -753,7 +758,7 @@
       if (!t) return false;
       try {
         const g = ac.createGain(); g.gain.value = gain == null ? 1 : gain;
-        g.connect(dest);
+        g.connect(dest); g.connect(tap);
         const rec = { src: null, gain: g, track: t, onUnmute: null };
         rec.src = bindSource(rec);
         srcs.set(key, rec);
@@ -772,6 +777,18 @@
     return {
       dest, track: () => dest.stream.getAudioTracks()[0] || null,
       has: (key) => srcs.has(key),
+      // Peak sample level of the folded sound over ms milliseconds (0..1), read from the one tap.
+      peak(ms) {
+        return new Promise((resolve) => {
+          let peak = 0; const t0 = Date.now();
+          const step = () => {
+            try { tap.getFloatTimeDomainData(tapBuf); for (let i = 0; i < tapBuf.length; i++) { const a = Math.abs(tapBuf[i]); if (a > peak) peak = a; } } catch (e) {}
+            if (Date.now() - t0 < (ms || 0)) { setTimeout(step, 40); return; }
+            resolve(peak);
+          };
+          step();
+        });
+      },
       add(key, stream, gain) {
         if (srcs.has(key) || !stream) return;
         if (attach(key, stream, gain)) { dropWait(key); return; }
