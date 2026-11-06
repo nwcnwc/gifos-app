@@ -36887,7 +36887,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       followWaitState: () => followWait ? { id: followWait.id, needed: Array.from(followWait.needed), acked: Array.from(followWait.acked) } : null,
       statusText: () => statusEl.textContent,
       addTranscript: (t) => addTranscriptLine(t),
-      transcriptTexts: () => Array.from(trs.values()).sort((a, b) => a.at - b.at).map((l) => l.by + ': ' + l.text),
+      transcriptTexts: () => (trKeeps() ? Array.from(trs.values()).sort((a, b) => a.at - b.at) : []).map((l) => l.by + ': ' + l.text), // a page with Transcript off holds only a 20 s window for the CC overlay: it reads as nothing here, as in its Transcript window
       transcriptBlocks: () => trBlocks().map((l) => l.by + ': ' + l.text),
       captionsForTest: () => ({ mix: Array.from(ccMix.ins.keys()), drops: trDrops, show: !!ccShow, send: capSend(), mode: trMode(),
         lines: Array.from(trs.values()).sort((a, b) => a.at - b.at).map((l) => ({ by: l.by, byId: l.byId, w: l.w, src: l.src, lang: l.lang || '', ld: l.ld || 0, at: l.at, text: l.text })) }),
