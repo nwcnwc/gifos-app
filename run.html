@@ -15606,7 +15606,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         late.hiLate = setTimeout(() => {
           if (peers.get(pid) !== late || (late.dc && late.dc.readyState === 'open')) return;
           if (!lateHiSender(myId, targetLinkIds(pid))) return;
-          deliverLateHi(pid, { k: 'hi', chats: Array.from(chat.values()).slice(-200), trs: trKeeps() ? Array.from(trs.values()).slice(-100) : [], metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj(), reacts: myReactsObj() });
+          deliverLateHi(pid, { k: 'hi', chats: chatWire(Array.from(chat.values()).slice(-200)), trs: trKeeps() ? Array.from(trs.values()).slice(-100) : [], metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj(), reacts: myReactsObj() });
         }, 20000);
       }
       p.absentSince = 0;
@@ -21324,7 +21324,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (amAdmin) { try { dcSend(p, { k: 'sig', msg: { kind: 'mod', mod: modTable, modw: gossipModW() } }); } catch (e) {} }
         try { if (enableMedia(p)) renegotiate(p); } catch (e) {}
         try { if (linkTo(p.id)) retireBootPairs(); } catch (e) {} // a seat's own link is open: the door I came in by closes
-        dcSend(p, { k: 'hi', chats: Array.from(chat.values()).slice(-500), trs: trKeeps() ? Array.from(trs.values()).slice(-300) : [], metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj(), reacts: myReactsObj() });
+        dcSend(p, { k: 'hi', chats: chatWire(Array.from(chat.values()).slice(-500)), trs: trKeeps() ? Array.from(trs.values()).slice(-300) : [], metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj(), reacts: myReactsObj() });
         // THE MOMENT A CHANNEL EXISTS is the moment the stage pulls can finally
         // travel. Everything below was silently impossible a millisecond ago:
         // sgaFan delivers only to peers whose DC is already OPEN, so a
@@ -21432,10 +21432,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         freshChats.forEach((c) => { if (c.ackReq) sendChatAck(c.id, c.byId); });
         if (freshTrs.length) renderTranscript();
         if ((freshChats.length || freshTrs.length) && chatRateOk('hi:' + p.id, 1)) {
+          const fwdChats = chatWire(freshChats.map((c) => chat.get(c.id) || c));   // each with the age it has now, not the age it came with
           for (const pid of gossipIds()) {
             const q = peers.get(pid);
             if (q && q.id === p.id) continue; // fhi applies on a stand-in; do not hand the frame back to its author
-            if (q && q !== p && q.dc && q.dc.readyState === 'open') dcSend(q, { k: 'hi', chats: freshChats, trs: freshTrs }); }
+            if (q && q !== p && q.dc && q.dc.readyState === 'open') dcSend(q, { k: 'hi', chats: fwdChats, trs: freshTrs }); }
         }
         for (const id in m.tombs || {}) takeTomb(id, m.tombs[id]);
         // Chat tombstones re-prove themselves: each carries its own signed
@@ -22120,18 +22121,36 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       for (let i = 0; i < old.length - max; i++) { map.delete(old[i][0]); if ((old[i][1].at || 0) > floor) floor = old[i][1].at || 0; }
       map.floorAt = floor;
     }
+    // Chat lines as a 'hi' frame carries them: each with its age (ag, ms since it was said, from this page's clock),
+    // so the receiver can tell a line said while it was here from history (takeChat). My own lines are aged by their
+    // own time; a line whose age this page never learned goes without one and reads as history.
+    function chatWire(list) {
+      const now = Date.now();
+      return list.map((e) => {
+        const o = Object.assign({}, e); delete o.hs; delete o.ag;
+        const said = e.hs != null ? e.hs : (e.byId === myId && e.at > 0 ? e.at : null);
+        if (said != null) o.ag = Math.max(0, now - said);
+        return o;
+      });
+    }
     function takeChat(m, backfill, opts) { // backfill: a 'hi' replay — bounded by its frame, not by the live limiter
       if (!m || !m.id || chat.has(m.id) || ((m.at || 0) > 0 && (m.at || 0) <= (chat.floorAt || 0))) return false;
       const kept = chatTombs.get(m.id);
       if (kept && (!kept.ownBy || m.byId === kept.ownBy)) return false;
       // History off drops the replay. A question still lands: it is the Questions sheet, not the log.
       const qaEarly = m.q === 1 || !!m.qv || m.qs != null;
-      if (backfill && !lateJoinerSeesHistory() && !qaEarly) return false;
-      // The mesh also replays its gossip backlog to a new neighbour as ordinary
-      // chat, aged by how long relays held it (this page's clock). A line held
-      // longer than this page has been open was said before we arrived. A live
-      // hop is younger than the page, so it still lands.
-      if (!backfill && !lateJoinerSeesHistory() && !qaEarly && gossipAgeMs > (Date.now() - chatHereSince)) return false;
+      // HISTORY IS WHAT WAS SAID BEFORE THIS PAGE ARRIVED, on any road. A line's
+      // age is how long pages have held it since it was said, as durations on
+      // each holder's own clock, never the author's timestamp (clocks differ):
+      // a gossip hop carries the relays' hold time (gossipAgeMs), a 'hi' replay
+      // carries each line's age as its sender held it (ag, chatWire). A line
+      // older than this page was said before we got here; a younger one was
+      // said while we were here and lands whichever road brought it, so a line
+      // sent while a reloaded page's links were still forming comes in with
+      // the replay its links send on open. A replay line with no age (an older
+      // page) counts as history.
+      const ageMs = backfill ? (typeof m.ag === 'number' && m.ag >= 0 ? m.ag : Infinity) : gossipAgeMs;
+      if (!lateJoinerSeesHistory() && !qaEarly && ageMs > (Date.now() - chatHereSince)) return false;
       if (!backfill && m.byId !== myId && !chatRateOk(m.byId)) return false;
       // Slow mode is receiver-enforced. note() passes fixture so a test can plant several lines.
       if (!backfill && !(opts && opts.fixture) && slowBlocks(m)) return false;
@@ -22155,7 +22174,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const text = String(m.reply.text || '').slice(0, 160);
         if (id && text) reply = { id: id, by: by, text: text };
       }
-      chat.set(m.id, { id: m.id, by: String(m.by || '?').slice(0, 40), byId: m.byId, at: m.at || 0, text: String(m.text || '').slice(0, 2000), link, reply, prayer: m.prayer ? 1 : 0 });
+      // hs: when the line was said, on THIS page's clock (now less its age; unknown for an unaged replay). It never crosses the wire (chatWire).
+      chat.set(m.id, { id: m.id, by: String(m.by || '?').slice(0, 40), byId: m.byId, at: m.at || 0, text: String(m.text || '').slice(0, 2000), link, reply, prayer: m.prayer ? 1 : 0, hs: Number.isFinite(ageMs) ? Date.now() - ageMs : undefined });
       trimMap(chat, CHAT_MAX);
       return true;
     }
