@@ -342,17 +342,25 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
   mask: var(--mi) center / contain no-repeat;
 }
 .bar:not(.collapsed) #barmore .morerow > button { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle fill='black' cx='12' cy='12' r='5'/%3E%3C/svg%3E"); }
-#barmore #hand { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M8 11V6a1.4 1.4 0 0 1 2.8 0V11M11 10V5a1.4 1.4 0 0 1 2.8 0v6M14 10V6.5a1.4 1.4 0 0 1 2.8 0V14c0 2.8-1.8 5-4.8 5S7 16.8 7 14V8.2A1.4 1.4 0 0 1 9.8 8'/%3E%3C/svg%3E"); }
-#barmore #ccbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M3 6h18v12H3zM7 10h3v1.6H8.6V14H7zm6 0h3v1.6h-1.4V14H13z'/%3E%3C/svg%3E"); }
-#barmore #whobtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle fill='black' cx='9' cy='8' r='3'/%3E%3Ccircle fill='black' cx='16' cy='9' r='2.2'/%3E%3Cpath fill='black' d='M3.5 18c.4-3 2.6-4.5 5.5-4.5s5.1 1.5 5.5 4.5zm8-1.2c.4-1.6 1.6-2.6 3.4-2.6 2.2 0 3.8 1.2 4.2 3.8H11.5z'/%3E%3C/svg%3E"); }
-#barmore #qabtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 13.2a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4zM12 7c1.8 0 3 1 3 2.4 0 1.6-1.2 2.2-2.1 2.7-.5.3-.9.6-.9 1.2v.4h-1.6v-.6c0-1.2.7-1.8 1.6-2.3.6-.3 1.1-.6 1.1-1.3 0-.6-.5-1-1.2-1-.8 0-1.3.5-1.4 1.2H9.1C9.3 8 10.4 7 12 7z'/%3E%3C/svg%3E"); }
-#barmore #pwbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M8 10V8a4 4 0 0 1 8 0v2h1v10H7V10zm2 0h4V8a2 2 0 0 0-4 0z'/%3E%3C/svg%3E"); }
-#barmore #recbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle fill='black' cx='12' cy='12' r='5'/%3E%3C/svg%3E"); }
-#barmore #votebtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M5 12.5 9.2 17 19 7l-1.6-1.6L9.2 13.8 6.6 11z'/%3E%3C/svg%3E"); }
-#barmore #stagebtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle fill='black' cx='12' cy='7' r='2.6'/%3E%3Cpath fill='black' d='M7 19v-2.2C7 14.2 9 13 12 13s5 1.2 5 3.8V19z'/%3E%3C/svg%3E"); }
-#barmore #appbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M4 4h7v7H4zm9 0h7v7h-7zM4 13h7v7H4zm9 0h7v7h-7z'/%3E%3C/svg%3E"); }
-#barmore #setbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M4 7h10v2H4zm12 0h4v2h-4zM4 15h6v2H4zm8 0h8v2h-8zM10 5h2v6h-2zm6 8h2v6h-2z'/%3E%3C/svg%3E"); }
-#barmore #keysbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle fill='black' cx='8' cy='12' r='3.2'/%3E%3Cpath fill='black' d='M11 11h9v2h-2v2h-2v-2h-5z'/%3E%3C/svg%3E"); }
+/* Every item in More carries a line icon drawn like the bar's (2px stroke). */
+#barmore #hand { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8a8 8 0 0 0 8 8h0a6 6 0 0 0 6-6v-5a2 2 0 0 0-4 0'/%3E%3C/svg%3E"); }
+#barmore #ccbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='14' rx='2'/%3E%3Cpath d='M10 10a2 2 0 1 0 0 4M17 10a2 2 0 1 0 0 4'/%3E%3C/svg%3E"); }
+#barmore #whobtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='9' cy='8' r='3.5'/%3E%3Cpath d='M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5'/%3E%3Cpath d='M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.8c1.7.8 2.7 2.5 3 5.2'/%3E%3C/svg%3E"); }
+#barmore #qabtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M9.5 9.5a2.5 2.5 0 1 1 3.4 2.3c-.6.3-.9.8-.9 1.4V14'/%3E%3Cpath d='M12 17.2h.01'/%3E%3C/svg%3E"); }
+#barmore #pwbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='11' width='14' height='10' rx='2'/%3E%3Cpath d='M8 11V7a4 4 0 0 1 8 0v4'/%3E%3C/svg%3E"); }
+#barmore #waitbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 3h12M6 21h12M7 3c0 5 10 5 10 9s-10 4-10 9M17 3c0 5-10 5-10 9s10 4 10 9'/%3E%3C/svg%3E"); }
+#barmore #recbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Ccircle cx='12' cy='12' r='3.5'/%3E%3C/svg%3E"); }
+#barmore #votebtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='4' width='16' height='16' rx='3'/%3E%3Cpath d='M8 12.5l2.8 2.8L16 9.5'/%3E%3C/svg%3E"); }
+#barmore #stagebtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='7' r='3'/%3E%3Cpath d='M6 21v-1.5a6 6 0 0 1 12 0V21'/%3E%3Cpath d='M3 21h18'/%3E%3C/svg%3E"); }
+#barmore #appbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='4' width='7' height='7' rx='1.5'/%3E%3Crect x='13' y='4' width='7' height='7' rx='1.5'/%3E%3Crect x='4' y='13' width='7' height='7' rx='1.5'/%3E%3Crect x='13' y='13' width='7' height='7' rx='1.5'/%3E%3C/svg%3E"); }
+#barmore #rbbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12a9 9 0 1 0 3-6.7L3 8'/%3E%3Cpath d='M3 3v5h5'/%3E%3Cpath d='M10 9l5 3-5 3z'/%3E%3C/svg%3E"); }
+#barmore #muteall { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='2' width='6' height='12' rx='3'/%3E%3Cpath d='M5 11a7 7 0 0 0 14 0M12 18v4'/%3E%3Cpath d='M3 3l18 18'/%3E%3C/svg%3E"); }
+#barmore #blurall { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z'/%3E%3C/svg%3E"); }
+#barmore #camall { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2' y='6' width='13' height='12' rx='2'/%3E%3Cpath d='M15 10.5L22 7v10l-7-3.5'/%3E%3Cpath d='M3 3l18 18'/%3E%3C/svg%3E"); }
+#barmore #shareall { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='12' rx='2'/%3E%3Cpath d='M8 20h8M12 16v4'/%3E%3C/svg%3E"); }
+#barmore #admbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l8 3v6c0 4.5-3.4 8.2-8 9-4.6-.8-8-4.5-8-9V6z'/%3E%3C/svg%3E"); }
+#barmore #setbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 7h9M17 7h3M4 17h3M11 17h9'/%3E%3Ccircle cx='15' cy='7' r='2'/%3E%3Ccircle cx='9' cy='17' r='2'/%3E%3C/svg%3E"); }
+#barmore #keysbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2' y='6' width='20' height='12' rx='2'/%3E%3Cpath d='M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10'/%3E%3C/svg%3E"); }
 @media (min-width: 1100px) and (min-height: 680px) {
   .bar:not(.collapsed) #barmore .morerow > button svg,
   .bar:not(.collapsed) #barmore .morerow > button:not(:has(svg))::before { width: 18px; height: 18px; flex-basis: 18px; }
@@ -753,3 +761,41 @@ body.comfy.has-app #airbar.on #airrec { background: rgba(12,14,18,.92); color: #
   #chatpanel #chatform #pray .pray-ico { display: inline; }
   #chatpanel #chatform #pray .pray-word { display: none; }
 }
+
+/* The More sheet: one tidy menu at every size. A group's items share one
+   grid of equal columns and equal rows, so every item in it is one size.
+   run.html (layoutSheet) sets --mcols per group to the fewest lines that
+   fit, spread evenly, so no item is left alone on a line. An item is a 20px
+   line icon with its label beside it on a wide window and under it on a
+   phone. Every column is one width across the whole sheet (--mmax is how
+   many fit), so a group with fewer items keeps the same item size. The
+   floating bar keeps its own large buttons. */
+.bar:not(.collapsed) #barmore .moregroup > .morerow {
+  display: grid; grid-auto-rows: 1fr; gap: 6px;
+  grid-template-columns: repeat(var(--mcols, 4), calc((100% - (var(--mmax, 4) - 1) * 6px) / var(--mmax, 4)));
+}
+.bar:not(.collapsed) #barmore .moregroup > .morerow > label { grid-column: 1 / -1; }
+.bar:not(.collapsed) #barmore .moregroup > .morerow > button {
+  display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 10px;
+  width: 100%; height: auto; min-height: 44px; min-width: 0; max-width: none; margin: 0;
+  padding: 8px 12px; box-sizing: border-box; border: 0; border-radius: 10px;
+  font: 600 15px/1.2 system-ui, -apple-system, "Segoe UI", sans-serif; letter-spacing: normal;
+  text-align: left; white-space: normal; overflow-wrap: anywhere;
+}
+.bar:not(.collapsed) #barmore .moregroup > .morerow > button[hidden] { display: none; }
+.bar:not(.collapsed) #barmore .moregroup > .morerow > button > svg,
+.bar:not(.collapsed) #barmore .moregroup > .morerow > button:not(:has(svg))::before {
+  display: block; width: 20px; height: 20px; flex: 0 0 20px;
+}
+.bar:not(.collapsed) #barmore .moregroup > .morerow > button .docklab.dockword,
+.bar:not(.collapsed) #barmore .moregroup > .morerow > button .blab { display: inline; margin: 0; font: inherit; white-space: normal; }
+@media (min-width: 701px) and (min-height: 501px) {
+  .bar:not(.collapsed) #barmore { width: min(860px, calc(100vw - 24px)); }
+}
+@media (max-width: 700px), (max-height: 500px) {
+  .bar:not(.collapsed) #barmore .moregroup > .morerow > button {
+    flex-direction: column; justify-content: center; text-align: center; gap: 4px;
+    min-height: 56px; padding: 6px 4px; font-size: 12px;
+  }
+}
+html.ui-large .bar:not(.collapsed) #barmore .moregroup > .morerow > button { font-size: 1rem; }

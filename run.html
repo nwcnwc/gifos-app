@@ -32422,10 +32422,37 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // Every open popover of the dock, placed again: on open, on a drag, on a
     // resize or rotation, and when the keyboard comes or goes.
+    // Columns for each group of the More sheet: the fewest lines that fit
+    // the sheet's width, with the items spread evenly over them, so a group
+    // never leaves one item alone on its last line (6 items are 3 and 3,
+    // not 5 and 1). The grid itself is in css/meet-23b.css (--mcols).
+    function layoutSheet() {
+      const sheet = document.getElementById('barmore');
+      if (!sheet || !sheet.getClientRects().length) return;
+      const phone = phoneLayout();
+      const minW = phone ? 76 : 150, gap = 6;
+      for (const row of sheet.querySelectorAll('.moregroup > .morerow')) {
+        let n = 0;
+        for (const el of row.children) if (el.tagName === 'BUTTON' && el.getClientRects().length) n++;
+        if (!n) continue;
+        const most = Math.max(1, Math.floor((row.clientWidth + gap) / (minW + gap)));
+        const lines = Math.ceil(n / most);
+        let cols = Math.ceil(n / lines);
+        for (let c = cols; c <= most; c++) {
+          if (n <= c || n % c !== 1) { cols = c; break; }
+        }
+        const v = String(Math.min(cols, most));
+        if (row.style.getPropertyValue('--mcols') !== v) row.style.setProperty('--mcols', v);
+        if (row.style.getPropertyValue('--mmax') !== String(most)) row.style.setProperty('--mmax', String(most));
+      }
+    }
     function placeDockPopovers() {
       const bar = document.querySelector('.bar');
       if (!bar) return;
-      if (!bar.classList.contains('collapsed')) placeDockPopover(document.getElementById('barmore'), bar);
+      if (!bar.classList.contains('collapsed')) {
+        try { layoutSheet(); } catch (e) {}
+        placeDockPopover(document.getElementById('barmore'), bar);
+      }
       const tray = document.getElementById('reacttray');
       if (tray && !tray.hasAttribute('hidden')) placeDockPopover(tray, bar);
     }
