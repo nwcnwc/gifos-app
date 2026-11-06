@@ -87,7 +87,8 @@
    *   o.peer           my peer id (string)
    *   o.raw()          the ported Seat (or null before build)
    *   o.emit(peer, f)  hand a page frame (GSP / GSPS) to the wire (it signs gossip and sends on the dc)
-   *   o.onGossip(src, m, ageTicks, scoped, link) -> false refuses (link: the peer whose own proven channel carried it, if any)
+   *   o.onGossip(src, m, ageTicks, scoped, link) -> false refuses the frame; 'link' refuses only this copy, for the way it came
+   *                    (link: the peer whose own proven channel carried it, if any)
    *   o.ckey(c)        the page's string cell key (net.topo.ckey)
    *   o.ownedLinks(c)  topo owned links of a coord (for the section scope)
    *   o.GSP_GUARD      false turns the flood guard off: harness controls only (0.9.24 env.GSP_GUARD; no wire passes it)
@@ -111,7 +112,7 @@
     function occView() { const s = raw(); if (!s) return new Map(); if (occCache && occAt === s.TICK && occGen === gen) return occCache; occCache = mapCells(s.occ); occAt = s.TICK; occGen = gen; return occCache; }
     function linkSet(want) { const s = raw(), out = new Set(); if (!s) return out; const a = []; s.linkPeers(a, want); for (const x of a) { const p = P(x); if (p != null && p !== me) out.add(p); } return out; }
     function keepSet() { const s = raw(), out = new Set(); if (!s || !s.keeps) return out; for (const k of s.keeps) if (s.TICK < k.until) { const p = P(k.peer); if (p != null) out.add(p); } return out; }
-    const counters = { gspInAll: 0, gspRefused: 0, gspForged: 0, gspDropped: 0, gspStale: 0 };
+    const counters = { gspInAll: 0, gspRefused: 0, gspRefusedLink: 0, gspForged: 0, gspDropped: 0, gspStale: 0 };
     const view = {
       id: me,
       get raw() { return raw(); },
@@ -179,7 +180,7 @@
       // The old page's door and fork helpers: the new seat runs its own L16 knocker and L8 islands decide.
       heardFrom() {}, answerDoor() {}, chooseFork() { return false; },
       get gspInAll() { return counters.gspInAll; }, get gspRefused() { return counters.gspRefused; },
-      get gspForged() { return counters.gspForged; }, get gspDropped() { return counters.gspDropped; },
+      get gspForged() { return counters.gspForged; }, get gspDropped() { return counters.gspDropped; }, get gspRefusedLink() { return counters.gspRefusedLink; },
     };
 
     // ---- gossip ---------------------------------------------------------------------------------------------
@@ -190,6 +191,13 @@
     // identity (gseq), so a frame this far behind the newest verified seq from its source is minutes old on every
     // path: nothing new, not verified, never passed on. Only a verified newer seq moves the mark.
     const gmark = new Map(); const GMARK_BEHIND = 1024;
+    // A COPY REFUSED FOR THE WAY IT CAME IS NOT THE FRAME'S ANSWER. The app may refuse a copy for its channel alone
+    // (onGossip -> 'link': room content from an author it does not know, on no member's proven channel). That copy
+    // must not mark the gid seen: the same frame handed on by a member over its own channel is the room's, and a
+    // seen gid would drop it. What is kept is the (gid, channel) pair, so that channel's later copies are copies
+    // (never verified again) while another channel's copy is still heard. It is never forwarded, so it cannot cascade.
+    const gref = new Map(); const GREF_MAX = 4096;
+    const copyKey = (gid, lk) => gid + '|' + (lk == null ? '' : lk);
     const gseqOf = (gid, src) => +gid.slice(src.length + 1);
     const gstale = (gid, src) => { const mk = gmark.get(src); if (mk === undefined) return false; const n = gseqOf(gid, src); return Number.isFinite(n) && n < mk - GMARK_BEHIND; };
     const gmarkUp = (gid, src) => { const n = gseqOf(gid, src); if (!Number.isFinite(n) || gmark.get(src) > n) return; gmark.set(src, n); if (gmark.size > 4096) gmark.delete(gmark.keys().next().value); };
@@ -227,7 +235,7 @@
       if (scoped && (!Number.isInteger(m.sc) || !s.hasCoord || s.coord.pc !== m.sc)) return;
       if (typeof m.gid !== 'string' || typeof m.src !== 'string' || !m.gid.startsWith(m.src + ':')) { counters.gspForged++; return; }
       if (gstale(m.gid, m.src)) { counters.gspStale++; return; }
-      if (gseen.has(m.gid)) return;
+      if (gseen.has(m.gid) || gref.has(copyKey(m.gid, m.lk))) return;
       if (!budget(m.lk != null ? m.lk : m.from, m.src)) { counters.gspDropped++; return; }
       gseen.set(m.gid, T()); gmarkUp(m.gid, m.src);
       if (gseen.size > 4096) { for (const [k, at] of gseen) { if (T() - at > 600) gseen.delete(k); else break; } }
@@ -235,7 +243,11 @@
       ids.learn(m.src);
       const ag = Number.isInteger(m.ag) && m.ag > 0 ? Math.min(m.ag, 1 << 20) : 0;
       let own = m.m; try { if (m.m && typeof m.m === 'object') own = JSON.parse(JSON.stringify(m.m)); } catch (e) {}
-      if (o.onGossip) { let ok; try { ok = o.onGossip(m.src, own, ag, scoped, m.lk); } catch (e) {} if (ok === false) { counters.gspRefused++; return; } }
+      if (o.onGossip) {
+        let ok; try { ok = o.onGossip(m.src, own, ag, scoped, m.lk); } catch (e) {}
+        if (ok === 'link') { gseen.delete(m.gid); gref.set(copyKey(m.gid, m.lk), T()); if (gref.size > GREF_MAX) gref.delete(gref.keys().next().value); counters.gspRefusedLink++; return; }
+        if (ok === false) { counters.gspRefused++; return; }
+      }
       const tx = new Map(); tx.set(m.src, 1); if (m.from != null) tx.set(m.from, 2);
       if (!m.eph) remember(m.gid, m.src, m.m, scoped ? m.sc : undefined, ag, m.s4, tx);
       const e = { gid: m.gid, src: m.src, m: m.m, sc: scoped ? m.sc : undefined, eph: m.eph ? 1 : 0, ag0: ag, s4: m.s4 };
@@ -392,8 +404,9 @@
     // ---- per tick (after the seat's tick) -------------------------------------------------------------------------
     function afterTick() { const s = raw(); feed(s); if (s && !(s.TICK & 63)) factsSweep(s.TICK); bump(); replayNew(); refan(); }
 
-    // seen(gid): a gossip frame I already took, or one behind its source's mark (the wire skips the signature check for both)
-    const seen = (gid) => typeof gid === 'string' && (gseen.has(gid) || gstale(gid, gid.slice(0, gid.lastIndexOf(':'))));
+    // seen(gid, lk): a gossip frame I already took, one behind its source's mark, or a copy over a channel whose copy of it
+    // was refused for that channel (the wire skips the signature check for all three)
+    const seen = (gid, lk) => typeof gid === 'string' && (gseen.has(gid) || gref.has(copyKey(gid, lk)) || gstale(gid, gid.slice(0, gid.lastIndexOf(':'))));
     return { ids, view, gossip, gossipRecv, countForged: () => { counters.gspForged++; }, seen, setKicks, kickTally, kickDevs, kickCarry, kicked, setLeaf, setRefuses, roomDigest, sideOut, sideIn, afterTick, bump };
   }
 

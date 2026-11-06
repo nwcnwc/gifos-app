@@ -627,15 +627,18 @@
         delete m.lk; delete m.s4ok;
         if (direct === true && via != null) m.lk = via;
         if (via != null && m.from == null) m.from = via;
-        if (layer.seen && layer.seen(m.gid)) return;   // a copy of a frame already taken: dedup BEFORE paying for a verification
-        if (gpending.has(m.gid)) return;   // one whose verification is in flight
-        gpending.add(m.gid);
+        if (layer.seen && layer.seen(m.gid, m.lk)) return;   // a copy of a frame already taken: dedup BEFORE paying for a verification
+        // one whose verification is in flight, by the same kind of way: a copy on a proven channel is not held back by
+        // one on no channel, which the app may refuse for its channel alone (layer.js gref)
+        const pk = m.gid + (m.lk != null ? '|lk' : '|');
+        if (gpending.has(pk)) return;
+        gpending.add(pk);
         gossipChain(() => ident.verifyGossip(gpins, m).then((v) => {
-          gpending.delete(m.gid);
+          gpending.delete(pk);
           if (stopped) return;
           if (v && v.ok) { m.s4ok = true; layer.gossipRecv(m); }
           else layer.countForged();   // unsigned, forged or impostor gossip: dropped unforwarded, and counted
-        }).catch(() => { gpending.delete(m.gid); layer.countForged(); }));
+        }).catch(() => { gpending.delete(pk); layer.countForged(); }));
         return;
       }
       // anything else is not a mesh frame on the new path: dropped

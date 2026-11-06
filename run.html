@@ -17475,8 +17475,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // TROLL GATE, for a room's flood. Past one section most authors are neither a link of mine nor in my occ, so the author
           // alone cannot tell a far seat from a knocker. The channel can: a line a member handed me on its own proven channel is the room's.
           // One that came from a stranger, or by no proven channel, stops here, so every member's forward is one a member took.
+          // The refusal is of THIS COPY ('link'), not of the frame: the author may hand a seat link it has no channel to its own
+          // frame through a friend (no proven channel), and the same frame from a member over that member's channel is the room's.
           const vouched = link != null && !doorOutsider(String(link));
-          if (DOOR_DENY.has(g.msg.k) && !(g.msg.k === 'pwreset' && hasAdminRoom()) && doorOutsider(src) && !vouched) { doorDropped++; const dk = 'gsp.' + g.msg.k; doorDropKinds[dk] = (doorDropKinds[dk] || 0) + 1; return false; }
+          if (DOOR_DENY.has(g.msg.k) && !(g.msg.k === 'pwreset' && hasAdminRoom()) && doorOutsider(src) && !vouched) { doorDropped++; const dk = 'gsp.' + g.msg.k; doorDropKinds[dk] = (doorDropKinds[dk] || 0) + 1; return 'link'; }
           // RULE 1: a status is heard from my SECTION or over my own link —
           // never off the room-wide flood. Refusing it here also stops it at
           // this seat (the mesh forwards nothing the app refused), so a client
@@ -37974,7 +37976,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       poisonEpochForTest: (n) => { myStatus.pwEp = n; broadcastStatus(); }, // a hostile client's pulse claiming generation n (its own epoch is untouched)
       sealedCopyForTest: async (to, obj) => { const fs = obj && obj.k === 'pwinfo' ? pwFramesOf(obj) : [obj]; if (!fs) return false; let ok = true; for (const f of fs) ok = (await relaySendSealed(to, f && f.k, f)) && ok; return ok; }, // a member's relay copy of a grant to one peer (what a replayed grant looks like on the wire)
       floodForTest: (n, kind) => { let k = 0; for (let i = 0; i < (n | 0); i++) { if (meshNode) { meshNode.gossip({ a: 1, msg: kind === 'status' ? { kind: 'status', s: Object.assign({}, myStatus, { at: Date.now() + i }), name: 'flood' } : { k: 'noop', i } }); k++; } } return k; }, // a hostile client's room-wide flood
-      gossipStats: () => (meshNode && meshNode.seat ? { dropped: meshNode.seat.gspDropped || 0, refused: meshNode.seat.gspRefused || 0, forged: meshNode.seat.gspForged || 0, inAll: meshNode.seat.gspInAll || 0, roomFlood: txStats.roomFlood || 0, door: Object.assign({}, doorDropKinds) } : null),
+      gossipStats: () => (meshNode && meshNode.seat ? { dropped: meshNode.seat.gspDropped || 0, refused: meshNode.seat.gspRefused || 0, refusedLink: meshNode.seat.gspRefusedLink || 0, forged: meshNode.seat.gspForged || 0, inAll: meshNode.seat.gspInAll || 0, roomFlood: txStats.roomFlood || 0, door: Object.assign({}, doorDropKinds) } : null),
       ownLineForTest: async (text) => { const id = 'own_' + Date.now(), f = { t: 'GSP', gid: myId + ':own' + Date.now(), src: myId, m: { a: 1, msg: { k: 'chat', m: { id, by: myName(), byId: myId, at: Date.now(), text: String(text) } } } }; f.s4 = await meshNode._signGossipForTest(f); window.__ownLine = { id, frame: f }; return id; }, // my signed line, held back (not sent): a copy a member could still be holding
       voteWithdrawForTest: () => { for (const d of Array.from(myVoteoffs)) myVoteoffs.delete(d); saveVoteoffs(myVoteoffs); try { meshVoteBeat(); } catch (e) {} return 1; }, // take back every vote I cast
       kickedForTest: (pid) => !!(meshNode && meshNode.kicked && meshNode.kicked(String(pid))), // my seat holds the verdict on this peer
