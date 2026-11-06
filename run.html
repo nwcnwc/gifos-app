@@ -30063,6 +30063,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // comes out as anything, translated.
       const cap0 = wspCaps.get(job.id);
       const cont = (cap0 && cap0.lastLang && cap0.lastEnd && job.at - cap0.lastEnd < 1500) ? cap0.lastLang : '';
+      const contFound = !!(cont && cap0.lastFound); // the inherited language was found by Whisper on the previous cut
       const lang = cont || (job.id === 'me' ? (lsGet(CC_LANG_KEY) || 'auto') : 'auto');
       let model = 'base';
       if (typeof wspModel === 'function') {
@@ -30165,10 +30166,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // ld only when Whisper was asked to FIND the language: told a
           // language, it echoes it back, and told the wrong one for the
           // audio it writes a translation; neither is a detection.
-          const found = lang === 'auto';
-          const rl = found ? ((r && r.language) ? String(r.language) : '') : lang;
+          // ld only when Whisper was asked to FIND the language, or this cut
+          // continues one where it did: told a language, it echoes it back,
+          // and told the wrong one for the audio it writes a translation.
+          const found = lang === 'auto' || contFound;
+          const rl = lang === 'auto' ? ((r && r.language) ? String(r.language) : '') : lang;
           const capNow = wspCaps.get(job.id);
-          if (capNow) { capNow.lastEnd = job.at + clipMs; if (rl) capNow.lastLang = rl; }
+          if (capNow) { capNow.lastEnd = job.at + clipMs; if (rl) { capNow.lastLang = rl; capNow.lastFound = found; } }
           const end = job.at + clipMs; // the clip's span: a mix clip opens with the first voice in it, so its start says little
           if (job.id === 'me') { addTranscriptLine(text, job.at, null, null, 'mic', rl, found, end); }
           else if (job.id === 'fold') { if (trWrites()) addTranscriptLine(text, job.at, 'stadium', 'Stadium', 'mix', rl, found, end); }   // a far-row line, labelled by its channel
