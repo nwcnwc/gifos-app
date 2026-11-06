@@ -36599,6 +36599,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return { ok: false };
       },
       liveTracksForTest: () => (localStream && localStream.getTracks ? localStream.getTracks().filter((t) => t.readyState === 'live').length : 0),
+      awayForTest: () => !!myStatus.away,
       setTabHiddenForTest: (hidden) => {
         try { Object.defineProperty(document, 'hidden', { configurable: true, get: () => !!hidden }); } catch (e) {}
         document.dispatchEvent(new Event('visibilitychange'));
