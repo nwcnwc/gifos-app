@@ -6450,7 +6450,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // its section's too; its signed presence rides a slower room-wide beat.
     const digestMode = () => !(typeof window !== 'undefined' && window.GIFOS_DIGEST === false) && !!meshNode && typeof meshNode.roomDigest === 'function'; // ON by default; GIFOS_DIGEST=false is the pre-plane room flood
     let roomDigBox = null;
-    function roomDigNow() { if (!digestMode()) return null; const d = meshNode.roomDigest(); return d && d.age <= 120 ? d : null; } // 2 x DIG_TTL ticks: an older fold is not the room
+    // DEBUG forensics (hand.seen): when handQueue last read and what the fold gave it; when the fold was last refused as too old.
+    const dbgHand = { qAt: 0, qN: 0, qIds: [], digAt: 0, digN: -1, nullAt: 0, nullAge: null, nullWhy: '' };
+    function roomDigNow() {
+      if (!digestMode()) return null;
+      const d = meshNode.roomDigest();
+      if (d && d.age <= 120) { dbgHand.digAt = Date.now(); dbgHand.digN = d.hands.length; return d; } // 2 x DIG_TTL ticks: an older fold is not the room
+      dbgHand.nullAt = Date.now(); dbgHand.nullAge = d ? d.age : null; dbgHand.nullWhy = d ? 'aged' : 'none';
+      return null;
+    }
     function roomDig() {
       // roomDigest deep-copies the fold. One copy per turn, not one per roster id.
       if (passMemo && ('dig' in passMemo)) return passMemo.dig;
@@ -14758,7 +14766,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!e.id || e.id === myId || q.has(e.id) || stHold(e.id) || !notTomb(e.id)) continue;
         q.set(e.id, { i: e.id, t: e.k, n: foldName(e.nm, (peers.get(e.id) || {}).name || rosterNames[e.id]) });
       }
-      return Array.from(q.values()).sort((a, b) => (a.t - b.t) || (a.i < b.i ? -1 : 1));
+      const out = Array.from(q.values()).sort((a, b) => (a.t - b.t) || (a.i < b.i ? -1 : 1));
+      dbgHand.qAt = Date.now(); dbgHand.qN = out.length; dbgHand.qIds = out.slice(0, 12).map((e) => String(e.i).slice(0, 6));
+      return out;
     }
     // How many hands are up in the WHOLE room: the fold's total past one section.
     // A seat beyond my section: the fold's name (leaf nm, cut to 24) is the
@@ -36497,6 +36507,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // so a count that flaps names the cell whose report dropped out and for how long.
           fold: (() => { try { const r = meshNode && meshNode.raw; if (!r || !r.rootDig || r.rootDig.at < 0) return null; const six = (x) => (x == null ? null : String(x).slice(0, 6)); const LT = r.LT(); const rd = r.rootDig;
             const o = { n: rd.n, leased: rd.leased || 0, part: rd.part ? 1 : 0, ageT: LT - (rd.rx != null ? rd.rx : rd.at), by: six(rd.by), s1: null };
+            // hand.seen forensics: when the root fold was computed (wall ms, 500 ms ticks), its age, the hands it lists, and what handQueue last read.
+            // No throttled hand sampler exists on the page: handQueue is read on demand (banner, tiles, the test's handQueue hook).
+            const nowMs = Date.now(), H = dbgHand;
+            o.at = nowMs - (LT - rd.at) * 500; o.ageMs = (LT - rd.at) * 500; o.hands = rd.hands ? rd.hands.length : 0; o.handIds = rd.hands ? rd.hands.slice(0, 12).map((e) => six(e.id)) : [];
+            o.hq = { n: H.qN, ids: H.qIds, agoMs: H.qAt ? nowMs - H.qAt : null, digAgoMs: H.digAt ? nowMs - H.digAt : null, digHands: H.digN, nullAgoMs: H.nullAt ? nowMs - H.nullAt : null, nullAge: H.nullAge, nullWhy: H.nullWhy };
             if (r.s1tab && r.coord && r.coord.pc === 0) { o.s1 = []; for (const [k, d] of r.s1tab) { if (o.s1.length >= 40) break; o.s1.push([String(k), six(d.by), LT - d.rx, d.n, d.leased || 0, six(r.occGet(k))]); } }
             return o; } catch (e) { return { err: String(e).slice(0, 60) }; } })(),
           // D5 confirm forensics: standing translosts + probe-answer stamps by
