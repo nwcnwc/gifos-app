@@ -23243,8 +23243,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // FORWARDED SOUND IS RE-ENCODED AT EVERY HOP. A head re-mixes its mix-minus for each row and child, so a deep seat
     // hears the room after several Opus generations, and at Opus's default 32 kbps each generation lifts the noise floor
     // (seven talkers measured over four chained hops: tone-to-floor 30-35 dB at the source, 19-24 dB after three or four
-    // generations; at 128 kbps 26-29 dB). Every forwarded audio sender (mix-minus, relay, stage feed) is allowed 128 kbps.
-    const AUX_AUDIO_BPS = 128000;
+    // generations; at 128 kbps 26-29 dB; 64 kbps chosen: about 25 dB through four re-mix hops at half the data). Every forwarded audio sender (mix-minus, relay, stage feed) is allowed 64 kbps.
+    const AUX_AUDIO_BPS = 64000;
     const addAux = (pc, tr, container) => {
       const init = { streams: [container] };
       if (tr && tr.kind === 'audio') init.sendEncodings = [{ maxBitrate: AUX_AUDIO_BPS }];   // set at creation: valid before negotiation in every engine
