@@ -407,7 +407,8 @@
     // Burn identity onto a leaf face cell: a green TALKING frame, the NAME on a
     // bottom strip, a HAND glyph top-right. Baked at the leaf so it travels the
     // tree inside the one blended stream — no extra bandwidth, no receiver-side
-    // identity (approach A). lbl = { name, hand, talking } | null.
+    // identity (approach A). lbl = { name, hand, talking, react } | null;
+    // react: a reaction emoji, shown top-left while it lasts.
     function drawOverlay(dx, dy, cell, lbl) {
       if (!lbl) return;
       // TAPESTRY mode (stadium past the overlay threshold): no name/frame — too
@@ -442,6 +443,11 @@
         ctx.font = (r * 1.4 | 0) + 'px system-ui'; ctx.textBaseline = 'top';
         ctx.fillText('✋', dx + cell - r * 1.6, dy + r * 0.3);
       }
+      if (lbl.react) {
+        const r = Math.max(7, cell * 0.15);
+        ctx.font = (r * 1.4 | 0) + 'px system-ui'; ctx.textBaseline = 'top';
+        ctx.fillText(String(lbl.react).slice(0, 8), dx + r * 0.3, dy + r * 0.3);
+      }
     }
     // STILL-FRAME SKIP (2026-07-30 power work). The governor below bounds how
     // OFTEN we paint; nothing asked whether painting would change anything.
@@ -467,7 +473,7 @@
         s += t.n + 'x' + t.cols + (t.hid && t.hid.size ? '-' + [...t.hid].join('.') : '') + ';';
         if (t.dark) s += 'D|';
         if (t.blur) s += 'B' + t.blur + '|';
-        if (t.lbl) s += (t.lbl.talking ? 'T' : '') + (t.lbl.hand ? 'H' : '') + (t.lbl.name || '') + '|';
+        if (t.lbl) s += (t.lbl.talking ? 'T' : '') + (t.lbl.hand ? 'H' : '') + (t.lbl.react ? 'R' + t.lbl.react : '') + (t.lbl.name || '') + '|';
         if (t.fit) s += t.fit + '|'; // a cover→contain flip changes the frame with the source untouched
       }
       return s;
