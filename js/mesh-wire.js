@@ -168,7 +168,6 @@
     let stopped = false, lockedFired = false, doorFired = false, strandedFired = false, rejFired = false;
     let sock = null, deepSince = -1, wasNetDark = false, netDarkAt = 0;   // netDarkAt: wall clock of the offline edge (the dark span is an absence — see tick())
     let lastTickAt = 0, workerClock = false;   // wall clock of the last tick run; workerClock: the tick timer is a Worker (the wall-time clock applies: see tick())
-    const TICK_CATCHUP = 4, TICK_FREEZE_MS = 10000;
     // Wire-level greeter registration health (production only — the sim has no
     // sockets, so none of this is mesh law). The relay's greeter pool is pure
     // socket-attachment state: an entry dies WITH its socket, and the E3
@@ -1019,13 +1018,19 @@
           const nowT = Date.now();
           let n = 1;
           if (workerClock && lastTickAt > 0) {
-            const gap = nowT - lastTickAt;
-            n = gap > TICK_FREEZE_MS ? 1 : Math.max(1, Math.min(TICK_CATCHUP, Math.floor((gap + tickMs / 2) / tickMs)));
+            // NEVER AHEAD OF THE WALL: lastTickAt is the wall time the ticks run so far
+            // stand for, not the last fire. A busy main thread gets the Worker's queued
+            // posts back to back: the first one catches the stall up, and a per-fire
+            // clock ran one more tick for every post behind it, so a slow device's seat
+            // ran a minute ahead of real time. Every silence it timed was inflated: it
+            // read a live neighbour as gone (L9.12 echo) and pulled healthy seats out of
+            // their own seats into that neighbour's cell, again and again.
             // The frozen gap is an ABSENCE (mesh.js absence): one tick runs,
             // and every first-hand stamp ages by the ticks the gap held.
-            if (gap > TICK_FREEZE_MS) { try { penv.absence(Math.floor(gap / tickMs)); } catch (e) {} }
-          }
-          lastTickAt = nowT;
+            const w = wallTicks(lastTickAt, nowT, tickMs);
+            n = w.n; lastTickAt = w.at;
+            if (w.absent > 0) { try { penv.absence(w.absent); } catch (e) {} }
+          } else lastTickAt = nowT;
           for (let i = 0; i < n && !stopped; i++) { penv.tick(); env.TICK = penv.world.TICK; layer.afterTick(); }
           treeMemAsk(); refreshPreLeave();
         } else lastTickAt = 0;
@@ -1339,5 +1344,17 @@
     return node;
   }
 
-  GifOS.meshWire = { createMeshNode, goodbyeLive, claims: { CLAIMS, STAMPS, claimOf, coreOf, relayCoreOf, relayForm } };
+  // The Worker clock's arithmetic (see tick()): `at` is the wall time the ticks run so far stand
+  // for. A fire owes the whole ticks since then, at most TICK_CATCHUP (the rest carry to the next
+  // fire); a post queued behind a catch-up owes nothing and runs no tick. A gap past TICK_FREEZE_MS
+  // is a frozen tab: one tick, the gap an absence, the clock re-based on now.
+  const TICK_CATCHUP = 4, TICK_FREEZE_MS = 10000;
+  function wallTicks(at, nowT, tickMs) {
+    const gap = nowT - at;
+    if (gap > TICK_FREEZE_MS) return { n: 1, at: nowT, absent: Math.floor(gap / tickMs) };
+    const n = Math.max(0, Math.min(TICK_CATCHUP, Math.floor((gap + tickMs / 2) / tickMs)));
+    return { n, at: at + n * tickMs, absent: 0 };
+  }
+
+  GifOS.meshWire = { createMeshNode, goodbyeLive, wallTicks, claims: { CLAIMS, STAMPS, claimOf, coreOf, relayCoreOf, relayForm } };
 })(typeof window !== 'undefined' ? window : globalThis);
