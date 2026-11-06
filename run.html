@@ -29959,7 +29959,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // The 2 s tick keeps the captures and the room ear in step with who is
     // here, muted, on the Stage or captioned, and the mark with the engine.
-    setInterval(() => { if (wspCaps.size || (trWrites() && ccEngine() === 'whisper' && whisperReady())) wspSync(); if (ccMix.dest) ccMixSync(); trForget(); paintTxMark(); }, 2000);
+    // The room ear follows the voices: it stops when the mix empties and
+    // starts when a voice appears (syncSpeech decides on the mix's size).
+    function earTick() {
+      if (ccMix.dest) { ccMixSync(); if (!ccMix.ins.size) syncSpeech(); return; }
+      if (trWrites() && !(ccEngine() === 'whisper' && whisperReady()) && !(speech && speech.input) && ccTrackInput() && ccMixVoices().size) syncSpeech();
+    }
+    setInterval(() => { if (wspCaps.size || (trWrites() && ccEngine() === 'whisper' && whisperReady())) wspSync(); earTick(); trForget(); paintTxMark(); }, 2000);
     // ONE TAP TO INSTALL. The provider is a signed 13 MB GIF on this very site:
     // GifOS.providers.install downloads, checks the catalog hash and the
     // gifos.app signature, files it into the Providers folder and we assign it
@@ -30472,7 +30478,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         capPublish();
         return;
       }
-      if (hearRoom && ccTrackInput()) {
+      // The room ear runs only while there is a voice to hear: an engine on an
+      // empty mix is a speech session open over silence.
+      if (hearRoom && ccTrackInput() && ccMixVoices().size) {
         if (speechRunning() && !speech.input) stopSpeech(); // a raw-microphone engine hands over to the room ear
         const input = ccMixStart();
         if (input) {
