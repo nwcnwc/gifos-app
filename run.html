@@ -7587,6 +7587,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // black when you come back.
       if (!manual && IS_MOBILE && pageFull()) return;
       const v = pipSource();
+      if (docPip) { docPipAim(); return; }
       if (!v || document.pictureInPictureElement === v) {
         // A tap with no picture used to do nothing. Auto-float on leaving the
         // tab stays quiet: there is still nothing to show.
@@ -7594,6 +7595,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return;
       }
       pipManual = !!manual;
+      // A desktop browser with a document float opens the small meeting
+      // window; the video element's own float is the fallback.
+      if (docPipOk() && await openDocPip()) {
+        if (!document.hidden && !pipManual && !(pipAwayAt && !document.hasFocus())) exitPip();
+        return;
+      }
       try {
         if (v.requestPictureInPicture) await v.requestPictureInPicture();
         else if (v.webkitSupportsPresentationMode && v.webkitSupportsPresentationMode('picture-in-picture')) v.webkitSetPresentationMode('picture-in-picture');
@@ -7603,7 +7610,92 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // nothing left to close it. Settle against the tab as it is NOW.
       if (!document.hidden && !pipManual && !(pipAwayAt && !document.hasFocus())) exitPip();
     }
+    const pipFloating = () => !!(docPip || document.pictureInPictureElement
+      || Array.from(document.querySelectorAll('video')).some((v) => v.webkitPresentationMode === 'picture-in-picture'));
+    // ---- The desktop float (Document Picture-in-Picture: Chrome, Edge). A
+    // small always-on-top window with the talker or the stage, your mic and
+    // Leave. It plays its OWN <video> on the same stream, so the tile in the
+    // room keeps its picture, and it shows only what pipSource() allows
+    // (moderation included); it never turns a camera or microphone on.
+    // Phones keep the video element's float (no document float there).
+    let docPip = null;
+    const docPipOk = () => !IS_MOBILE && !!(window.documentPictureInPicture && typeof window.documentPictureInPicture.requestWindow === 'function');
+    function docPipName(v) {
+      if (!v) return '';
+      const t = v.closest('[data-peer]');
+      if (t) { const nm = t.querySelector(':scope > .name'); return nm ? nm.textContent : ''; }
+      if (v.closest('.rowtile, #stagefeed')) return uiText('stage', 'Stage');
+      return v === (meTile && meTile.video) ? uiText('you', 'You') : '';
+    }
+    function docPipPaint() {
+      if (!docPip) return;
+      const micBtn = document.getElementById('mic');
+      const muted = !micBtn || micBtn.classList.contains('off');
+      docPip.mic.textContent = muted ? uiText('unmute', 'Unmute') : uiText('mute', 'Mute');
+      docPip.mic.classList.toggle('off', muted);
+      docPip.mic.disabled = !micBtn || micBtn.disabled || micBtn.style.display === 'none';
+    }
+    // Re-aimed when the talker or the stage changes (the heartbeat), and when
+    // a float is asked for again while one is up.
+    function docPipAim() {
+      if (!docPip) return;
+      const v = pipSource();
+      const src = v ? v.srcObject : null;
+      if (docPip.video.srcObject !== src) {
+        docPip.video.srcObject = src;
+        if (src) { const pr = docPip.video.play(); if (pr && pr.catch) pr.catch(() => {}); }
+      }
+      docPip.name.textContent = v ? docPipName(v) : uiText('nothingToFloatShort', 'Nobody on screen yet');
+      docPip.root.classList.toggle('empty', !src);
+      docPipPaint();
+    }
+    // Each call asks at once, inside the caller's task: the browser allows the
+    // window only there (a tap, or its own auto-float action), so a request
+    // that is still pending is never reused. A newer window replaces an older.
+    async function openDocPip() {
+      if (docPip) return true;
+      let win;
+      try { win = await window.documentPictureInPicture.requestWindow({ width: 360, height: 250 }); } catch (e) { return false; }
+      const d = win.document;
+      const st = d.createElement('style');
+      st.textContent = 'html,body{margin:0;height:100%;background:#0d0f14;color:#fff;font:14px system-ui,sans-serif;overflow:hidden}'
+        + '.pf{position:relative;height:100%;display:flex;flex-direction:column}'
+        + '.pf video{flex:1;min-height:0;width:100%;object-fit:cover;background:#000}'
+        + '.pf.empty video{visibility:hidden}'
+        + '.pf .nm{position:absolute;left:8px;top:8px;max-width:calc(100% - 16px);padding:2px 8px;border-radius:6px;background:rgba(0,0,0,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+        + '.pf .row{display:flex;gap:8px;padding:8px;justify-content:center;background:#171a21}'
+        + '.pf button{min-height:36px;padding:0 16px;border:0;border-radius:18px;font:inherit;font-weight:600;cursor:pointer;background:#2b303b;color:#fff}'
+        + '.pf button.off{background:#b3261e}.pf button.leave{background:#b3261e}.pf button:disabled{opacity:.5;cursor:default}';
+      d.head.appendChild(st);
+      d.title = document.title;
+      const root = d.createElement('div'); root.className = 'pf';
+      const video = d.createElement('video');
+      video.autoplay = true; video.muted = true; video.playsInline = true; // the picture only: the voices keep playing in the meeting
+      const name = d.createElement('div'); name.className = 'nm';
+      const row = d.createElement('div'); row.className = 'row';
+      const mic = d.createElement('button'); mic.type = 'button'; mic.id = 'pf-mic';
+      const leave = d.createElement('button'); leave.type = 'button'; leave.className = 'leave'; leave.id = 'pf-leave';
+      leave.textContent = uiText('leave', 'Leave');
+      mic.onclick = () => { const b = document.getElementById('mic'); if (b && !b.disabled) b.click(); docPipPaint(); };
+      // A broadcast asks before leaving: that question is in the meeting
+      // page, so the float closes to show it.
+      leave.onclick = () => { const b = document.getElementById('leavebtn'); if (b) b.click(); exitPip(); };
+      row.append(mic, leave);
+      root.append(video, name, row);
+      d.body.appendChild(root);
+      const micEl = document.getElementById('mic');
+      const mo = micEl ? new MutationObserver(docPipPaint) : null;
+      if (mo) mo.observe(micEl, { attributes: true, attributeFilter: ['class', 'disabled', 'style'] });
+      win.addEventListener('pagehide', () => {
+        if (mo) mo.disconnect();
+        if (docPip && docPip.win === win) { docPip = null; pipManual = false; }
+      });
+      docPip = { win, root, video, name, mic };
+      docPipAim();
+      return true;
+    }
     function exitPip() {
+      if (docPip) { const w = docPip.win; docPip = null; try { w.close(); } catch (e) {} }
       try {
         if (document.pictureInPictureElement) document.exitPictureInPicture().catch(() => {});
         else for (const v of document.querySelectorAll('video')) if (v.webkitPresentationMode === 'picture-in-picture') v.webkitSetPresentationMode('inline');
@@ -7621,12 +7713,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     (() => {
       const btn = document.getElementById('pipbtn');
       const testV = document.createElement('video');
-      const capable = !!(document.pictureInPictureEnabled || typeof testV.webkitSetPresentationMode === 'function');
+      const capable = !!(document.pictureInPictureEnabled || typeof testV.webkitSetPresentationMode === 'function' || window.documentPictureInPicture);
       if (!capable) return;
       btn.style.display = '';
-      const floating = () => !!(document.pictureInPictureElement
-        || Array.from(document.querySelectorAll('video')).some((v) => v.webkitPresentationMode === 'picture-in-picture'));
-      btn.onclick = () => { if (floating()) exitPip(); else enterPip(true); };
+      btn.onclick = () => { if (pipFloating()) exitPip(); else enterPip(true); };
     })();
     // Safari's auto-PiP flag rides the current best candidate; re-aimed on the
     // heartbeat since who's on stage / who's talking drifts.
@@ -7634,6 +7724,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function pipReaim() {
       const v = pipSource();
       sendVisPark(); // hidden-viewer dormancy re-aims with the float (and catches mates that connected while hidden)
+      docPipAim();
       if (v === pipAimed) return;
       try { if (pipAimed) pipAimed.autoPictureInPicture = false; } catch (e) {}
       try { if (v) v.autoPictureInPicture = true; } catch (e) {}
@@ -7670,9 +7761,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       dcSend(p, { k: 'vis', park: false });
       visParkSent.set(pid, false);
     }
+    // A phone browser opens a float only from a tap, never on its own when
+    // you switch apps. Someone who left with no float, while one was there to
+    // show, is told once where Float is when they come back.
+    let pipHintArmed = false, pipHintDone = false;
+    const pipBtnShown = () => { const b = document.getElementById('pipbtn'); return !!b && b.style.display !== 'none'; };
     document.addEventListener('visibilitychange', () => {
       awayFull(document.hidden);
-      if (document.hidden) enterPip(); else exitPip();
+      if (document.hidden) {
+        pipHintArmed = IS_MOBILE && !pipHintDone && !pipFloating() && pipBtnShown() && !!pipSource();
+        enterPip();
+      } else {
+        exitPip();
+        if (pipHintArmed) {
+          pipHintDone = true;
+          setStatus(uiText('floatHint', 'Before you switch apps, tap More › Float.'), 9000);
+        }
+        pipHintArmed = false;
+      }
       sendVisPark();
     });
     document.addEventListener('fullscreenchange', () => { if (!pageFull()) awayFull(false); });
@@ -7717,8 +7823,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // hard-bugs-1018/3-black-float-tile). Focus is the one sign of the
     // return there: the float closes, the tile plays. A desktop float the
     // person asked for still stays up across a window switch.
+    // The float's state is read at the blur itself, not when the timer runs:
+    // on a phone a float the person asks for takes the window's focus as it
+    // opens, and that blur comes BEFORE the float is up. Only a blur while a
+    // float is already up means the person left with it; the focus that
+    // follows the opening blur must not close the float just asked for.
     let pipAwayAt = 0, pipAwayT = 0, pipLeftAt = 0;
     window.addEventListener('blur', () => {
+      const upAtBlur = pipFloating();
       if (pipAwayT) clearTimeout(pipAwayT);
       pipAwayT = setTimeout(() => {
         pipAwayT = 0;
@@ -7727,7 +7839,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const ae = document.activeElement;
         if (ae && ae.tagName === 'IFRAME') return;
         awayFull(true);
-        if (pipManual) { pipLeftAt = Date.now(); return; }
+        if (pipManual) { if (upAtBlur) pipLeftAt = Date.now(); return; }
         pipAwayAt = Date.now();
         enterPip();
       }, 250);
@@ -37134,13 +37246,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // PiP forensics: what the overlay would float right now, and whether one is up.
       pip: () => ({
         aimed: (() => { const v = pipSource(); if (!v) return null; const t = v.closest('[data-peer]'); if (t) return 'peer:' + t.dataset.peer; const r = v.closest('.rowtile'); return r ? 'row:' + r.dataset.row : 'other'; })(),
-        active: !!(document.pictureInPictureElement || Array.from(document.querySelectorAll('video')).some((v) => v.webkitPresentationMode === 'picture-in-picture')),
+        active: pipFloating(),
+        doc: docPip ? { name: docPip.name.textContent, live: !!docPip.video.srcObject, frames: (() => { try { return docPip.video.getVideoPlaybackQuality().totalVideoFrames; } catch (e) { return -1; } })(), mic: docPip.mic.textContent } : null,
         // capability forensics: which PiP doors exist on THIS browser
         caps: {
           api: !!document.pictureInPictureEnabled,
           req: typeof HTMLVideoElement.prototype.requestPictureInPicture === 'function',
           webkit: typeof document.createElement('video').webkitSetPresentationMode === 'function',
           autoAttr: 'autoPictureInPicture' in HTMLVideoElement.prototype,
+          doc: !!window.documentPictureInPicture,
         },
         btnShown: (() => { const b = document.getElementById('pipbtn'); return !!b && b.style.display !== 'none'; })(),
       }),

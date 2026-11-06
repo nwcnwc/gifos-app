@@ -505,6 +505,8 @@
   "meet.blurMin": "Min.",
   "meet.tile": "Kachel",
   "meet.float": "Bild-in-Bild",
+  "meet.floatHint": "Vor dem App-Wechsel: Mehr › Bild-in-Bild.",
+  "meet.nothingToFloatShort": "Noch niemand im Bild",
   "meet.strip": "Leiste",
   "meet.size": "Größe",
   "meet.selfcornerLbl": "Ecke",

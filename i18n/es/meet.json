@@ -505,6 +505,8 @@
   "meet.blurMin": "Mín.",
   "meet.tile": "Cuadro",
   "meet.float": "Flotar",
+  "meet.floatHint": "Antes de cambiar de app: Más › Flotar.",
+  "meet.nothingToFloatShort": "Aún no hay nadie en pantalla",
   "meet.strip": "Franja",
   "meet.size": "Tamaño",
   "meet.selfcornerLbl": "Esquina",

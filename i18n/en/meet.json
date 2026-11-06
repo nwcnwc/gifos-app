@@ -505,6 +505,8 @@
   "meet.blurMin": "Min",
   "meet.tile": "Tile",
   "meet.float": "Float",
+  "meet.floatHint": "Before you switch apps, tap More › Float.",
+  "meet.nothingToFloatShort": "Nobody on screen yet",
   "meet.strip": "Strip",
   "meet.size": "Size",
   "meet.selfcornerLbl": "Corner",

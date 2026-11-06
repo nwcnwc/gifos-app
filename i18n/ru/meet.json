@@ -505,6 +505,8 @@
  "meet.blurMin": "Мин.",
  "meet.tile": "Плитка",
  "meet.float": "Окно",
+ "meet.floatHint": "Перед сменой приложения: Ещё › Окно.",
+ "meet.nothingToFloatShort": "Пока никого на экране",
  "meet.strip": "Полоса",
  "meet.size": "Размер",
  "meet.selfcornerLbl": "Угол",
