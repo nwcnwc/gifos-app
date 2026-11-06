@@ -325,7 +325,7 @@
   function createStagePump(o) {
     const now = o.now || (() => Date.now());
     const later = o.setTimer || ((fn, ms) => setTimeout(fn, ms));
-    const DELTA_MS = o.deltaMs != null ? o.deltaMs : 500;   // one mesh tick
+    const DELTA_MS = o.deltaMs != null ? o.deltaMs : 250;   // four batches a second at most
     const SNAP_MS = o.snapMs != null ? o.snapMs : 1200;
     const SNAP_MIN_MS = o.snapMinMs != null ? o.snapMinMs : 3000;
     const FIRST_MS = 40;

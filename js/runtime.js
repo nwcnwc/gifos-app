@@ -4544,7 +4544,7 @@
             // THE PUMP (app-owner createStagePump) owns what leaves and when:
             // the full-state snap (retained, for latecomers) and, per change,
             // a delta of only the records that changed, coalesced to one batch
-            // per mesh tick. It used to sign and flood the FULL state 40 ms
+            // per quarter second. It used to sign and flood the FULL state 40 ms
             // after every write: with every guest writing a heartbeat that was
             // O(N) full states a second, flooded to every page.
             let stagePump = null;
@@ -4605,7 +4605,7 @@
                   else if (m.kind === 'pool') poolOnFrame(m.d);
                 });
                 // Every change: the pump sends the changed records (a lone change
-                // at once, a busy lane once per tick) and refreshes the retained
+                // at once, a busy lane once per quarter second) and refreshes the retained
                 // snap on a slower drum.
                 stageOnChange = (collection) => { stagePump.change(collection); };
                 announceConn({ mode: 'host', counts: { up: 0, soft: 0, warn: 0 }, total: 0, p2p: 0, self: 'up' });
