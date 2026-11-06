@@ -7078,6 +7078,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     } catch (e) {}
     if (bgClock(SCALE.HB, () => {
       hbTick++;
+      loopRan(Date.now());   // a beat handled here is the main thread awake (see loopRan)
       // THE FREEZE DETECTOR'S CLOCK — the gap is measured HERE, before the
       // clock refreshes, and LATCHED. Measuring only in visibilitychange lost
       // a race on resume: the worker's queued beat flushes FIRST when the
@@ -7696,11 +7697,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // receive-silence clocks, never the mesh's first-hand departure edges).
     const loopBlocks = [];             // { at, ms }, most-recent-last
     let loopLastBeat = Date.now();
+    // A BLOCK IS A GAP IN WHICH NOTHING RAN. The sentinel is a page timer, and a
+    // page timer can lag while the main thread is free: a hidden tab throttles it,
+    // and a busy renderer runs Worker messages ahead of timers. The beat clock's
+    // Worker messages are handled on this same thread, so each one proves the
+    // thread was awake. loopRanAt is the last time EITHER clock ran here; a block
+    // is only the gap since then. Measured from the sentinel's own last fire, a
+    // page whose ticks kept running read 40 s of timer lag as blocked time, and the
+    // holdover kept a 45 s-old status of a departed seat as fresh.
+    let loopRanAt = Date.now();
+    function loopRan(now) {
+      const gap = now - loopRanAt - 250;
+      if (now > loopRanAt) loopRanAt = now;
+      if (gap > 1000) loopBlocks.push({ at: now, ms: gap });
+    }
     loopSentinel = setInterval(() => {
       const now = Date.now();
       const late = now - loopLastBeat - 250;
       loopLastBeat = now;
-      if (late > 1000) loopBlocks.push({ at: now, ms: late });
+      loopRan(now);
       while (loopBlocks.length && now - loopBlocks[0].at > 300000) loopBlocks.shift();
       // THE WAKE, FIRST-HAND. The loop slept past every peer's silence
       // threshold and the beat clock was silent through it as well (a frozen
@@ -7723,8 +7738,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // instant the damage happens (the first guard run caught exactly that:
       // freeze-and-seize within milliseconds of waking). The gap since the
       // last beat IS provable blockage at read time, so count it live.
-      const pending = Date.now() - loopLastBeat - 250;
-      if (pending > 1000) d += (t0 <= loopLastBeat ? pending : Math.min(pending, Date.now() - t0));
+      const pending = Date.now() - loopRanAt - 250;
+      if (pending > 1000) d += (t0 <= loopRanAt ? pending : Math.min(pending, Date.now() - t0));
       return d;
     };
     // THE HOLDOVER COUNTS ONLY THE BLOCK IT IS WAKING FROM. A pulse that lands
@@ -7741,8 +7756,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const now = Date.now();
       let d = 0;
       for (const b of loopBlocks) if (b.at > t0 && now - b.at < DRAIN_MS) d += Math.min(b.ms, b.at - t0);
-      const pending = now - loopLastBeat - 250;
-      if (pending > 1000) d += (t0 <= loopLastBeat ? pending : Math.min(pending, now - t0));
+      const pending = now - loopRanAt - 250;
+      if (pending > 1000) d += (t0 <= loopRanAt ? pending : Math.min(pending, now - t0));
       return d;
     };
     const stHold = (pid) => {
