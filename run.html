@@ -25127,11 +25127,46 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     let dogBusy = false, dogU2Hot = false, dogPass = 0;
     let dogVoiceFast = false;
     const stgVoiceClaim = (rk, pri) => rk.indexOf('stg:') === 0 && !!pri.stream && !pri.stream.getVideoTracks().length && !!pri.stream.getAudioTracks().length;
-    function stgFoNote(rk, e, via) { // failover forensics, read by test hooks
+    function stgFoNote(rk, e, via, why) { // failover forensics, read by test hooks
       if (rk.indexOf('stg:') !== 0 && rk !== 'sdm') return;
       const l = (window.__stgFoLog = window.__stgFoLog || []);
       l.push({ t: Date.now(), k: rk.slice(4, 12), e, via: via ? String(via).slice(0, 8) : undefined });
       if (l.length > 200) l.shift();
+      if (DEBUG_ON && rk.indexOf('stg:') === 0) stgPicNote(rk, e, why || '');
+    }
+    // Swap picture forensics (debugDump swapPic, DEBUG only, bounded, no behaviour): on every stage primary/standby decision, the pic state of
+    // the stage <video> of each copy (did it draw?), the track states and the byte/frame counters, so a black stager tile after a swap names itself.
+    // A swap also records its own follow-ups 1.5 s and 3 s later. Reads only; never touches a stream or the claim.
+    const swapPicRing = [], swapPicLast = new Map(), swapPicHoldAt = new Map();
+    function stgPicOf(ent) {
+      if (!ent) return null;
+      const el = ent.el, st = ent.stream || (el && el.srcObject) || null, o = { via: String(ent.via || '').slice(0, 8) };
+      try {
+        if (el) {
+          const q = el.getVideoPlaybackQuality ? el.getVideoPlaybackQuality() : null, tf = q ? q.totalVideoFrames : null;
+          o.rs = el.readyState; o.vw = el.videoWidth; o.vh = el.videoHeight; o.pa = !!el.paused; o.ct = Math.round(el.currentTime * 100) / 100;
+          o.tf = tf; o.df = q ? q.droppedVideoFrames : null;
+          const lk = swapPicLast.get(el); o.dtf = (lk != null && tf != null) ? tf - lk : null; // frames drawn since the last record of this element
+          if (tf != null) { if (swapPicLast.size > 64) swapPicLast.delete(swapPicLast.keys().next().value); swapPicLast.set(el, tf); }
+        } else o.noEl = 1;
+        if (st) {
+          const v = st.getVideoTracks(), a = st.getAudioTracks();
+          o.vt = v.map((x) => [x.readyState, x.muted ? 1 : 0]); o.at = a.map((x) => [x.readyState, x.muted ? 1 : 0]);
+        }
+      } catch (err) { o.err = String(err).slice(0, 40); }
+      return o;
+    }
+    function stgPicNote(rk, e, why, follow) {
+      try {
+        if (!DEBUG_ON) return;
+        const now = Date.now();
+        if (e === 'want' || e === 'hold') { const hk = e + rk; if (now - (swapPicHoldAt.get(hk) || 0) < 3000) return; if (swapPicHoldAt.size > 64) swapPicHoldAt.delete(swapPicHoldAt.keys().next().value); swapPicHoldAt.set(hk, now); }
+        const fb = mosFb.get(rk) || {};
+        const r = { t: now, k: rk.slice(4, 12), e: e === 'want' ? 'wake' : e, why: String(why || '').slice(0, 90), p: stgPicOf(mosIn.get(rk)), s: stgPicOf(mosStandby.get(rk)),
+          lb: fb.lastBytes, sb: fb.stdB, fd: fb.stdFdec, d0: fb.d0, dark: fb.dark ? 1 : 0, sus: fb.suspect ? 1 : 0, pd: fb.picDead ? 1 : 0 };
+        swapPicRing.push(r); if (swapPicRing.length > 40) swapPicRing.shift();
+        if (e === 'swap' && !follow) for (const ms of [1500, 3000]) setTimeout(() => stgPicNote(rk, 'after' + ms, 'swap +' + ms + 'ms', true), ms);
+      } catch (err) {}
     }
     async function sampleStandby(rk, fb) {
       if (fb.dark || fb.wakeAt) {
@@ -25247,7 +25282,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             if (!fb.suspect && ((std && std.key) || rk.indexOf('stg:') === 0) && fb.lastAdvanceAt
                 && now - fb.lastAdvanceAt > MOS_DARK_MS
                 && now - fb.lastAdvanceAt < MOS_FLOWED_RECENT) {
-              fb.dark = true; stgFoNote(rk, 'dark', std && std.via);
+              fb.dark = true; stgFoNote(rk, 'dark', std && std.via, 'bytes flat ' + (now - fb.lastAdvanceAt) + 'ms');
               if (std && std.key) demand(std.via, std.key, std.streamId, true); // wake NOW — don't wait for the sweep
               schedReconcile();
             }
@@ -25275,7 +25310,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             // zero bytes for HOT_VOID_MS with a live standby is death.
             const std = mosStandby.get(rk);
             if (!fb.suspect && std && std.key) {
-              fb.dark = true; stgFoNote(rk, 'dark', std.via);
+              fb.dark = true; stgFoNote(rk, 'dark', std.via, 'void: zero bytes HOT_VOID');
               demand(std.via, std.key, std.streamId, true); // wake NOW — don't wait for the sweep
               schedReconcile();
             }
@@ -25287,7 +25322,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               && fb.claimAt && now - fb.claimAt > STG_ZERO_MS) {
             const std = mosStandby.get(rk);
             if (std && std.key) {
-              fb.dark = true; stgFoNote(rk, 'dark', std.via);
+              fb.dark = true; stgFoNote(rk, 'dark', std.via, 'zero-byte dead rule');
               demand(std.via, std.key, std.streamId, true); // wake NOW — don't wait for the sweep
               schedReconcile();
             }
@@ -25560,7 +25595,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         fb.picRef = pri; fb.picD = v.d; fb.picN = e.pfN; fb.picAt = now; return;
       }
       if (!fb.picDead && e.pfN - fb.picN >= STG_PIC_FRAMES && now - fb.picAt >= STG_PIC_DEAD_MS) {
-        fb.picDead = true; fb.picDeadAt = now; fb.picStdOk = false; fb.picStd0 = null; stgFoNote(rk, 'pic-dead', pri.via);
+        fb.picDead = true; fb.picDeadAt = now; fb.picStdOk = false; fb.picStd0 = null; stgFoNote(rk, 'pic-dead', pri.via, 'frames flat');
         try { kfNeed(rk); } catch (err) {}   // a lost key looks the same: ask first
         schedReconcile();
       }
@@ -25720,6 +25755,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const pick = pref || cand.find((x) => x.live);
         if (pick) {
           pri = mkEnt(pick); mosIn.set(rk, pri); repaintRedun(rk, pri.stream);
+          if (DEBUG_ON && rk.indexOf('stg:') === 0) stgPicNote(rk, 'claim', 'first claim ' + (pref && pick === pref ? 'pref' : 'live'));
           fb.claimAt = now; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; fb.suspect = false; fb.stdTried = null; // fresh primary — the watchdog re-baselines
           if (std && std.via === pri.via && std.streamId === pri.streamId) { dropStandby(rk); std = null; }
         }
@@ -25772,7 +25808,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const wantSwap = !!(pri && std && (!priLive || fb.dark || fb.picDead || u2Over || (stdIsPref && !priIsPref)));
       if (wantSwap) {
         if (std && !std.el && std.stream) std.el = mosVideo(std.stream); // mint the decoder on wake, not while parked
-        if (!fb.wakeAt) { fb.wakeAt = now; fb.f0 = frames(std.el); }
+        if (!fb.wakeAt) { fb.wakeAt = now; fb.f0 = frames(std.el); if (DEBUG_ON && rk.indexOf('stg:') === 0) stgPicNote(rk, 'wake', 'wantSwap priLive=' + (priLive ? 1 : 0) + ' dark=' + (fb.dark ? 1 : 0) + ' picDead=' + (fb.picDead ? 1 : 0)); }
         if (stdIsPref && !fb.prefSince) fb.prefSince = now;
         // A DARK-initiated swap (primary transport still alive) demands STRICT
         // flow evidence: the standby's stats-side framesDecoded advancing since
@@ -25820,9 +25856,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // (dark skips it: dark IS a failover, and MOS_SETTLE on lastSwitch
         // still bounds any stall/recover oscillation to one swap per window).
         const settled = !priLive || fb.dark || fb.picDead || u2Over || ((now - fb.prefSince >= MOS_SETTLE) && (now - fb.lastSwitch >= MOS_SETTLE));
+        if (DEBUG_ON && !(flowing && settled) && rk.indexOf('stg:') === 0) stgPicNote(rk, 'hold', 'flowing=' + (flowing ? 1 : 0) + ' settled=' + (settled ? 1 : 0) + ' f0=' + fb.f0 + ' stdAdv=' + (stdAdvanced ? 1 : 0));
         if (flowing && settled) {
           const old = pri;
-          mosIn.set(rk, std); mosStandby.delete(rk); pri = std; std = null; stgFoNote(rk, 'swap', pri.via);
+          mosIn.set(rk, std); mosStandby.delete(rk); pri = std; std = null; stgFoNote(rk, 'swap', pri.via, 'flowing=' + (flowing ? 1 : 0) + ' dark=' + (fb.dark ? 1 : 0) + ' priLive=' + (priLive ? 1 : 0) + ' picDead=' + (fb.picDead ? 1 : 0) + ' u2=' + (u2Over ? 1 : 0));
           // My new source may still hold my old copy of this feed: its source is gone, and it looks
           // alive for 12 s, so that seat would fail back onto it. End it.
           if (rk.indexOf('stg:') === 0 && mosJobs.has(rk + '>' + pri.via)) unshipMos(rk + '>' + pri.via, true);
@@ -25880,6 +25917,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // One read per pass: the call parks a stale wake as it answers, so a
       // second read would see the state the first one just changed.
       const stdHot = standbyStaysHot(fb, now, WAKE_MAX, std ? std.via + '|' + std.streamId : null, rk.indexOf('stg:') === 0 ? STG_ZERO_MS : 0);
+      if (fb.suspect && fb.suspectAt === now && DEBUG_ON && rk.indexOf('stg:') === 0) stgPicNote(rk, 'wake-failed', 'standbyStaysHot: wake stale, standby never flowed');
       if (fb.suspect && fb.suspectAt === now) schedReconcile(); // a wake just failed: the next pass picks the next candidate
       const hot = new Set();
       const primSet = new Set(); // the copy I play and relay on: a duty to its sender, not a spare (demand)
@@ -36597,6 +36635,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // tl-chain base.clean forensics (DEBUG dump only, bounded): the room fold this page shows (n, part, age in ticks, leased seats)
           // and, on a Section-1 seat, each section report it folds from (cell, author, age in ticks, n, leased, who sits there now),
           // so a count that flaps names the cell whose report dropped out and for how long.
+          swapPic: swapPicRing.slice(), // stage swap/claim/wake/fail-over decisions with each copy's pic state (DEBUG only, cap 40)
           fold: (() => { try { const r = meshNode && meshNode.raw; if (!r || !r.rootDig || r.rootDig.at < 0) return null; const six = (x) => (x == null ? null : String(x).slice(0, 6)); const LT = r.LT(); const rd = r.rootDig;
             const o = { n: rd.n, leased: rd.leased || 0, part: rd.part ? 1 : 0, ageT: LT - (rd.rx != null ? rd.rx : rd.at), by: six(rd.by), s1: null };
             if (r.s1tab && r.coord && r.coord.pc === 0) { o.s1 = []; for (const [k, d] of r.s1tab) { if (o.s1.length >= 40) break; o.s1.push([String(k), six(d.by), LT - d.rx, d.n, d.leased || 0, six(r.occGet(k))]); } }
