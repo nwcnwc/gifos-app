@@ -24791,7 +24791,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return null;
     }
     function chainBornParked(key, upKey) {
-      return key === 'x1' || key === 'sdxc' || !!chainUpKey(upKey);
+      return key === 'x1' || key === 'sdxc' || !!chainUpKey(upKey) || stgRootKey(key); // a second-root stage copy waits for a want (STG-SECOND-ROOT)
     }
     function chainDemandUp(job, want) {
       const parked = job ? mosStandby.get(job.upKey) : null; // E2 up: the copy I climb with can be one I hold parked
@@ -25623,6 +25623,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // is remembered (stdTried), so the next wake goes to another candidate, not the same dead copy.
     // quickMs (stage): a standby woken for a dark primary that has not moved one byte quickMs after the
     // wake is as dead as a stale wake, so the next candidate gets its turn in seconds.
+    // A wake while the primary still flows (failback to the preferred copy, a picture complaint) that has not
+    // ended in a swap within wakeMax failed the same way: it is parked at once and the copy is remembered
+    // (fb.fbTried, the same window), so no failback or picture wake goes to it until the window lapses. A
+    // failover (primary gone or dark) still may: there the copy is judged on its voice, not on the picture
+    // the failback waited for. Without it a failback that never completed held its second pipe hot with no
+    // retry, and a copy left because it failed was staged and woken again on every swap.
     function standbyStaysHot(fb, now, wakeMax, stdId, quickMs) {
       if (fb.suspect && !(fb.lastBytes > 0) && now - (fb.suspectAt || 0) > wakeMax) fb.suspect = false;
       const quickDead = !!(quickMs && fb.dark && fb.wakeAt && now - fb.wakeAt > quickMs && fb.d0 >= 0 && fb.b0 >= 0 && !(fb.stdB > fb.b0));
@@ -25631,14 +25637,39 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (fb.dark && wakeStale && !flowed) {
         fb.dark = false; fb.suspect = true; fb.suspectAt = now; fb.wakeAt = 0;
         if (stdId) (fb.stdTried = fb.stdTried || new Map()).set(stdId, now);
+      } else if (!fb.dark && wakeStale) {
+        fb.wakeAt = 0; fb.prefSince = 0;
+        if (stdId) (fb.fbTried = fb.fbTried || new Map()).set(stdId, now);
       }
       const wakeLive = !!(fb.wakeAt && now - fb.wakeAt <= wakeMax);
       return !fb.suspect && (wakeLive || !!fb.dark);
     }
     // A standby whose wake did not flow sits out for a while; failback to it is tried again later.
-    function stdTried(fb, id, now) {
-      const at = fb.stdTried && fb.stdTried.get(id);
+    // which: 'stdTried' (failover order, the default) or 'fbTried' (failback and picture wakes).
+    function stdTried(fb, id, now, which) {
+      const m = fb[which || 'stdTried'], at = m && m.get(id);
       return !!at && now - at < 120000;
+    }
+    // THE STANDBY TAKES ANOTHER ROAD. A slot's standby is the preferred path when the primary is not it (failback
+    // staging), else a live candidate on a different path; a candidate whose wake already failed waits until every
+    // other path has had its turn. A stage copy names the seats it came through (vp). A standby whose path shares a
+    // seat with the primary's dies with that seat: in Section 1 every copy that entered through the stager's up seat
+    // dies with it, and a slot that held such a standby (or failed over onto one) got its voice back only after
+    // zero-byte timeouts down the fabric, hop by hop. So the standby is a copy whose path shares no seat with the
+    // primary's whenever one is live, and a failover (primary gone or dark) never goes to one that shares a seat
+    // while another is live: the copy that failed may have died at any seat on its path. A failback to the
+    // preferred path is staged only while the primary still flows. A copy that names no path (the stager's own,
+    // or an older page) shares no seat anyone can name.
+    function stdPick(rk, cand, pri, pref, fb, now, failover) {
+      const fresh = (x) => !stdTried(fb, x.from + '|' + x.sid, now);
+      const isPri = (x) => !!pri && x.from === pri.via && x.sid === pri.streamId;
+      const others = cand.filter((x) => x.live && !isPri(x));
+      if (fb.stdTried && !others.some(fresh)) fb.stdTried = null; // every path has had its turn: start the round again
+      const pp = (rk.indexOf('stg:') === 0 && pri && pri.meta && Array.isArray(pri.meta.vp)) ? pri.meta.vp : [];
+      const apart = (x) => !(x.ann && Array.isArray(x.ann.vp) && x.ann.vp.some((s) => pp.indexOf(s) >= 0));
+      const ownStd = stgOwnStandby(rk, cand, pri);
+      if (pref && pri && !isPri(pref) && fresh(pref) && (!failover || apart(pref))) return pref;
+      return (ownStd && fresh(ownStd) ? ownStd : null) || others.find((x) => fresh(x) && apart(x)) || others.find(fresh) || ownStd || others[0];
     }
     // END-STAGE-DARK-HOLD
     const MOS_GRACE = 5000;
@@ -25689,6 +25720,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         && !(pri && x.from === pri.via && x.sid === pri.streamId)) || null;
     }
     // END-STG-DIRECT
+    // STG-SECOND-ROOT
+    // EVERY SECTION 1 SEAT HOLDS A COPY BY A SECOND ROOT. A stage feed enters Section 1 at the stager's up seat
+    // and at its second way up, and the flood passes on only each seat's claimed primary, so most of Section 1
+    // holds copies that all entered at the one seat: when it leaves, those seats have no other copy to fail over
+    // to until the fabric re-routes, seconds later. So a Section 1 seat whose parked standby entered by another
+    // root (its path shares no seat with the primary's) passes that standby on too, beside the primary, under the
+    // slot's second-root key (stg:<id>^r, the same slot at every receiver). One extra copy per held feed. The copy
+    // is born parked: a receiver that wants it wakes it, and that want wakes my parked standby upstream
+    // (chainDemandUp), so it costs nothing until a failover needs it.
+    const STG_ROOT2 = '^r';
+    function stgSecondRoot(f, sb) {
+      if (!f || !sb || !sb.stream || sb.stream === f.stream || !sb.meta || sb.meta.ao) return null;
+      const sv = Array.isArray(sb.meta.vp) ? sb.meta.vp : null; if (!sv || !sv.length) return null; // a copy with no path names no root
+      const pv = f.meta && Array.isArray(f.meta.vp) ? f.meta.vp : [];
+      return sv.some((s) => pv.indexOf(s) >= 0) ? null : sb;
+    }
+    function stgRootKey(key) { return typeof key === 'string' && key.indexOf('stg:') === 0 && key.slice(-STG_ROOT2.length) === STG_ROOT2; }
+    // END-STG-SECOND-ROOT
     function stgFedBy(job, ent) {
       const trs = ent.stream ? ent.stream.getTracks() : [];
       return !!job.srcTracks && job.srcTracks.some((t) => trs.indexOf(t) >= 0);
@@ -25965,16 +26014,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           }
         }
       }
-      // STANDBY SELECTION (parked): the preferred path when the primary is not
-      // it (failback staging), else any live candidate on a DIFFERENT path.
-      // A candidate whose wake already failed waits until every other path has had its turn.
-      const fresh = (x) => !stdTried(fb, x.from + '|' + x.sid, now);
-      const others = cand.filter((x) => x.live && !(pri && x.from === pri.via && x.sid === pri.streamId));
-      if (fb.stdTried && !others.some(fresh)) fb.stdTried = null; // every path has had its turn: start the round again
-      const ownStd = stgOwnStandby(rk, cand, pri);
-      const wantStd = (pref && pri && !priIsPref && !(pri.via === pref.from && pri.streamId === pref.sid) && fresh(pref))
-        ? pref
-        : ((ownStd && fresh(ownStd) ? ownStd : null) || others.find(fresh) || ownStd || others[0]);
+      // STANDBY SELECTION (parked): stdPick. A failover is a primary that is gone or dark.
+      const wantStd = stdPick(rk, cand, pri, pref, fb, now, !!(pri && (!priLive || fb.dark)));
       if (pri && wantStd && (!std || std.via !== wantStd.from || std.streamId !== wantStd.sid || std.stream !== wantStd.st)) {
         if (std) dropStandby(rk);
         std = { via: wantStd.from, key: wantStd.key, streamId: wantStd.sid, stream: wantStd.st, el: null, meta: annMeta(wantStd.ann) };
@@ -25994,7 +26035,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // L2.7: the seat holds E2 hot, so E2's copy takes over even while E1's still moves packets.
       const seatE2 = meshSeat();
       const u2Over = !!(pri && std && seatE2 && seatE2.u2Hot && std.via === seatE2.u2Id && pri.via !== std.via && (rk.indexOf('stg:') === 0 || rk === 'sgs'));
-      const wantSwap = !!(pri && std && (!priLive || fb.dark || fb.picDead || u2Over || (stdIsPref && !priIsPref)));
+      // A failback or picture wake never goes to a copy whose last such wake failed, or that was just left for failing,
+      // until the window lapses (fbTried); a failover (primary gone or dark) is not held by it.
+      const stdFbOk = !!std && !stdTried(fb, std.via + '|' + std.streamId, now, 'fbTried');
+      const wantSwap = !!(pri && std && (!priLive || fb.dark || u2Over || (stdFbOk && (fb.picDead || (stdIsPref && !priIsPref)))));
       if (wantSwap) {
         if (std && !std.el && std.stream) std.el = mosVideo(std.stream); // mint the decoder on wake, not while parked
         if (!fb.wakeAt) { fb.wakeAt = now; fb.f0 = frames(std.el); if (DEBUG_ON && rk.indexOf('stg:') === 0) swapPicNote(rk, 'wake', 'wantSwap priLive=' + (priLive ? 1 : 0) + ' dark=' + (fb.dark ? 1 : 0) + ' picDead=' + (fb.picDead ? 1 : 0)); }
@@ -26048,6 +26092,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (DEBUG_ON && !(flowing && settled) && rk.indexOf('stg:') === 0) swapPicNote(rk, 'hold', 'flowing=' + (flowing ? 1 : 0) + ' settled=' + (settled ? 1 : 0) + ' f0=' + fb.f0 + ' stdAdv=' + (stdAdvanced ? 1 : 0));
         if (flowing && settled) {
           const old = pri;
+          // The copy left because it failed (dark, picture dead) is not the next failback.
+          if (fb.dark || fb.picDead) (fb.fbTried = fb.fbTried || new Map()).set(old.via + '|' + old.streamId, now);
           mosIn.set(rk, std); mosStandby.delete(rk); pri = std; std = null; stgFoNote(rk, 'swap', pri.via, 'flowing=' + (flowing ? 1 : 0) + ' dark=' + (fb.dark ? 1 : 0) + ' priLive=' + (priLive ? 1 : 0) + ' picDead=' + (fb.picDead ? 1 : 0) + ' u2=' + (u2Over ? 1 : 0));
           // My new source may still hold my old copy of this feed: its source is gone, and it looks
           // alive for 12 s, so that seat would fail back onto it. End it.
@@ -27017,31 +27063,38 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // Skipping it silently deleted the stage lane's redundancy, and
         // redun-drill caught it as "no receiver holding a relayed stg primary
         // + standby".
-        const floodOne = (key, stream, via, h, vp) => {
+        // upKey: the slot a second-root copy is fed from (its parked standby); such a copy skips the seats on its path.
+        const floodOne = (key, stream, via, h, vp, upKey) => {
           if (!stream || flooded.has(stream.id)) return; flooded.add(stream.id);
           const owner = key.indexOf('stg:') === 0 ? key.slice(4).split('^')[0] : null;
-          const skip = (t) => !t || (owner && t === owner);
+          const skip = (t) => !t || (owner && t === owner) || (!!upKey && vp.indexOf(vpId(t)) >= 0);
+          const up = upKey || key;
           const hm = vp ? { h, vp } : { h }; // hop count from the producer — claims prefer min-h (see prefCand); vp: the seats this copy came through
           // My OWN feed: two neighbours watch it directly, the rest get an
           // sb:1 copy they keep parked (STG-DIRECT).
           const direct = owner === myId ? stgDirectSet(T.rowMates(c).map((m) => occPid(m)), T.colMates(c).map((m) => occPid(m)),
             (t) => { const q = peers.get(t); return !!(q && q.pc && q.connected); }) : null;
           const hmSb = { h, sb: 1 };
-          for (const t of s1peers) { if (skip(t) || (owner !== myId && relayHeldForTest(key, t))) continue; const jk = shipMos(key, t, stream, (direct && !direct.has(t)) ? hmSb : hm, key); if (jk) wanted.add(jk); }
+          for (const t of s1peers) { if (skip(t) || (owner !== myId && relayHeldForTest(key, t))) continue; const jk = shipMos(key, t, stream, (direct && !direct.has(t)) ? hmSb : hm, up); if (jk) wanted.add(jk); }
           const dnP = occPid(T.down(c)); // and DOWN — Stage audio folds at every ear
           if (!skip(dnP)) {
             const dnSt = stgDownShip(key, stream, !!(owner && sharingScreen(owner)), stgAudioMemo);
-            if (dnSt) { const jk = shipMos(key, dnP, dnSt, stgDownMeta(hm, dnSt, stream), key); if (jk) wanted.add(jk); }
+            if (dnSt) { const jk = shipMos(key, dnP, dnSt, stgDownMeta(hm, dnSt, stream), up); if (jk) wanted.add(jk); }
           }
           // E2: the rows I back up hold a parked copy.
           for (const t of (meshSeat() ? meshSeat().u2Heirs().concat(meshSeat().l14Served()) : [])) {
             if (skip(t)) continue;
             const dnSt = stgDownShip(key, stream, !!(owner && sharingScreen(owner)), stgAudioMemo);
-            if (dnSt) { const jk = shipMos(key, t, dnSt, stgDownMeta(hm, dnSt, stream), key); if (jk) wanted.add(jk); }
+            if (dnSt) { const jk = shipMos(key, t, dnSt, stgDownMeta(hm, dnSt, stream), up); if (jk) wanted.add(jk); }
           }
         };
         if (amStager) { const st = mySelfStream(); if (st) floodOne('stg:' + myId, st, null, 0); }
-        for (const k of heldStg) { if (stgLost(k)) continue; const hf = mosIn.get(k); floodOne(k, hf.stream, hf.via, stgHop(hf), stgPath(hf)); }
+        for (const k of heldStg) {
+          const hf = mosIn.get(k);
+          if (!stgLost(k)) floodOne(k, hf.stream, hf.via, stgHop(hf), stgPath(hf));
+          const sb2 = stgSecondRoot(hf, mosStandby.get(k)); // STG-SECOND-ROOT
+          if (sb2) floodOne(k + STG_ROOT2, sb2.stream, sb2.via, stgHop(sb2), stgPath(sb2), k);
+        }
         // composite the strip in stage order; fan 'sgs' down my subtree
         const selfSt = soloSelf ? selfStageStream() : null;
         if (!stagers.length) { paintStageStrip(null); }
