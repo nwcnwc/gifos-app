@@ -229,16 +229,13 @@
   // made only of those is not a line. A lowercase "you" after a finished
   // sentence ("Okay. you") is the same noise on the end of a real line.
   // -> the line to keep, or '' for none.
-  // What Whisper writes for silence or a near-silent tail: not words anyone said.
-  var WHISPER_SILENCE = /^(?:(?:you )*you|thank you|thanks for watching|thank you for watching|thanks for listening|amen|bye|subscribe|please subscribe)$/;
+  // Whisper's own notation, never words: bracketed or parenthesised tags
+  // ("[BLANK_AUDIO]", "(music)") and music marks. Whether anyone SPOKE is
+  // decided by the clip's audio in the meeting page, never by the words:
+  // a person who says "Thank you", "Bye" or "Amen" is written down.
   function dropWhisperNoise(text) {
-    var t = String(text || '').replace(/\[[^\]]*\]|\([^)]*\)|[♪♫*]/g, ' ').replace(/\s+/g, ' ').trim()
-      .replace(/([.!?])(?:\s+you)+\s*$/, '$1');
-    var n = normLine(t);
-    if (!n || WHISPER_SILENCE.test(n)) return '';
-    var words = n.split(' ');
-    if (words.length && words.every(function (w) { return w === 'you' || w === 'thank'; })) return '';
-    return t;
+    var t = String(text || '').replace(/\[[^\]]*\]|\([^)]*\)|[♪♫*]/g, ' ').replace(/\s+/g, ' ').trim();
+    return normLine(t) ? t : '';
   }
 
   root.GifOS = root.GifOS || {};
