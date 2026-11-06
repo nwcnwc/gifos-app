@@ -21360,7 +21360,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // down, and a deeper seat would crop them with the old order.
         const stripReorder = m.key === 'sgs' && !!prevAnn && !annNew
           && ((prevAnn.ids || []).join(',') !== (annIds || []).join(',') || prevAnn.n !== m.n || prevAnn.cols !== m.cols);
-        mosAnn.set(ak, { streamId: m.streamId, col: m.col, row: m.row, n: m.n, cols: m.cols, mt: m.mt, h: (typeof m.h === 'number' ? m.h : undefined), ao: (m.ao === 1 ? 1 : undefined), sb: (m.sb === 1 ? 1 : undefined), vp: mxPath(m.vp), ids: annIds, at: Date.now() });
+        mosAnn.set(ak, { streamId: m.streamId, col: m.col, row: m.row, n: m.n, cols: m.cols, mt: m.mt, h: (typeof m.h === 'number' ? m.h : undefined), ao: (m.ao === 1 ? 1 : undefined), sb: (m.sb === 1 ? 1 : undefined), vp: mxPath(m.vp), ids: annIds, alag: (typeof m.alag === 'number' && isFinite(m.alag) ? Math.max(0, Math.min(2000, m.alag)) : undefined), at: Date.now() });
         if (annNew || stripReorder) schedReconcile(); else schedClaim();
       } else if (m.k === 'mx-beat') {
         stgBeatIn(p, m);
@@ -23480,18 +23480,73 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!f.has(k)) f.add(k, st, 1); else f.follow(k, st);
       }
     }
+    // LIP SYNC. The picture is forwarded as encoded frames the moment they
+    // arrive (nothing gates it), while the sound is re-mixed at every head on
+    // the way down, so the sound reaches a deep seat later than the picture.
+    // Each pack carries `alag`: how far its sound trails its picture (ms),
+    // summed hop by hop. A seat that re-mixes or relays the sound adds its own
+    // audio hop (its inbound jitter buffer, the mixing graph, one Opus frame);
+    // the receiver holds its drawn Stadium by `alag`, so the faces line up with
+    // the voices. The forward itself never waits for any of this.
+    const audioHop = new Map(); // audio track -> { ms, jb, n, at }
+    function audioHopMs(track) {
+      if (!track) return 0;
+      let h = audioHop.get(track);
+      if (!h) { if (audioHop.size > 32) for (const t of [...audioHop.keys()]) if (t.readyState === 'ended') audioHop.delete(t); h = { ms: 0, jb: 0, n: 0, at: 0 }; audioHop.set(track, h); }
+      const now = Date.now();
+      if (now - h.at > 3000) {
+        h.at = now;
+        let rcv = null; for (const pc of pipePcs()) { try { for (const r of pc.getReceivers()) if (r.track === track) rcv = r; } catch (e) {} }
+        if (rcv && rcv.getStats) rcv.getStats().then((rep) => rep.forEach((r) => {
+          if (r.type !== 'inbound-rtp' || r.kind !== 'audio') return;
+          const jb = r.jitterBufferDelay || 0, n = r.jitterBufferEmittedCount || 0;
+          if (n > h.n && h.n) h.ms = Math.round((jb - h.jb) / (n - h.n) * 1000);
+          h.jb = jb; h.n = n;
+        })).catch(() => {});
+      }
+      const graph = ac ? Math.round(((ac.baseLatency || 0) + (ac.outputLatency || 0)) * 1000) : 0;
+      return Math.max(0, h.ms) + graph + 20;   // 20: one Opus frame before the re-mixed sound leaves
+    }
+    // The drawn Stadium, held `ms` behind its source: a short ring of copies.
+    let avHold = null; // { src, ms, ring, free, out, stop }
+    const avHoldOff = () => { try { return localStorage.getItem('gifos_av_hold') === 'off'; } catch (e) { return false; } };
+    function avHoldStop() { const H = avHold; avHold = null; if (H && H.stop) { try { H.stop(); } catch (e) {} } }
+    function heldEl(src, ms) {
+      ms = Math.max(0, Math.min(800, Math.round(ms || 0)));
+      if (!src || ms < 15 || avHoldOff()) { avHoldStop(); return src; }
+      if (avHold && avHold.src === src) { avHold.ms = ms; return avHold.out; }
+      avHoldStop();
+      const out = document.createElement('canvas'); out.width = 0; out.height = 0;
+      const H = avHold = { src, ms, ring: [], free: [], out, stop: null };
+      const tick = () => {
+        const w = src.videoWidth || src.width || 0, h = src.videoHeight || src.height || 0;
+        if (!w || !h || (src.videoWidth === undefined && w <= 2)) return;
+        const now = performance.now();
+        const cv = H.free.pop() || document.createElement('canvas');
+        if (cv.width !== w) cv.width = w; if (cv.height !== h) cv.height = h;
+        try { cv.getContext('2d').drawImage(src, 0, 0); } catch (e) { H.free.push(cv); return; }
+        H.ring.push({ cv, at: now });
+        let pick = null;
+        while (H.ring.length && now - H.ring[0].at >= H.ms) { if (pick) H.free.push(pick.cv); pick = H.ring.shift(); }
+        while (H.ring.length > 40) H.free.push(H.ring.shift().cv);   // a bounded ring: 800 ms at the 20 ms beat
+        if (pick) { if (out.width !== w) out.width = w; if (out.height !== h) out.height = h; try { out.getContext('2d').drawImage(pick.cv, 0, 0); } catch (e) {} H.free.push(pick.cv); }
+      };
+      const clk = MM.workerClock(20, tick); H.stop = clk && clk.stop ? clk.stop : null;
+      return out;
+    }
     // MY STADIUM: the room pack less my own row, hidden here by the cell ids
     // the pack carries (a pack that names no cells, past the dense threshold,
     // shows whole: never a blank where someone else is). Painted locally, never
     // encoded. `sound` is the stream whose audio I hear with it.
     let sdViewSrc = null, sdViewSt = null;
-    function paintRoomView(el, meta, sound, c) {
+    function paintRoomView(src, meta, sound, c, lagMs) {
+      const el = src ? heldEl(src, lagMs) : (avHoldStop(), null);
       if (el && meta && meta.n) {
         const hide = [];
         if (c) for (let j = 0; j < SCALE.C; j++) { const pid = j === c.i ? myId : occPid({ pc: c.pc, r: c.r, i: j }); if (pid) hide.push(String(pid)); }
         if (!sdView) sdView = MM.createPacker({ shape: 'stad', fps: compFps() }).start();
         sdView.setTile('v', 0, el, null, Object.assign({}, meta, { hide }));
-        sdViewSrc = el;
+        sdViewSrc = src;
       } else if (sdView) sdView.delTile('v');
       if (sdView && sdView.count() > 0 && sdView.track) {
         sdEmptyAt = 0;
@@ -23507,7 +23562,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!shown || Date.now() - sdEmptyAt > MOS_GRACE) {
         paintStadiumTile(null);
         if (sdView) { sdView.stop(); sdView = null; }
-        sdViewSrc = null; sdViewSt = null;
+        sdViewSrc = null; sdViewSt = null; avHoldStop();
       }
     }
     // ENCODE ONCE. A canvas track added to N peer connections runs N encoders.
@@ -25053,7 +25108,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // the row+column fabric, two link-disjoint paths. Structural relay slots
     // (sub/x1/x2) keep the plain single sticky claim.
     const isRedun = (rk) => rk === 'sdm' || rk === 'sdx' || rk === 'sdn' || rk === 'sgs' || rk.indexOf('stg:') === 0 || rk.indexOf('sdrow:') === 0;
-    const annMeta = (ann) => ({ col: ann.col, row: ann.row, n: ann.n, cols: ann.cols, mt: ann.mt, h: ann.h, ids: ann.ids, ao: ann.ao, sb: ann.sb, vp: ann.vp });
+    const annMeta = (ann) => ({ col: ann.col, row: ann.row, n: ann.n, cols: ann.cols, mt: ann.mt, h: ann.h, ids: ann.ids, ao: ann.ao, sb: ann.sb, vp: ann.vp, alag: ann.alag });
     // The strip's CELL ORDER (STAGE-FACES): who sits in cell 0..n-1, as the
     // compositing seat packed it. At most C peer ids, each a short string;
     // anything else is dropped, and a receiver without it falls back to the
@@ -26386,7 +26441,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // internal holes; the announce meta carries {n, cols} so any receiver can
       // blit faces out by sub-rect and repack. Empty seats are never drawn.
       const blockMeta = (f) => {
-        if (f && f.meta && f.meta.n) { const m = { n: f.meta.n, cols: f.meta.cols || f.meta.n }; if (Array.isArray(f.meta.ids) && f.meta.ids.length === m.n) m.ids = f.meta.ids.slice(); return m; } // ids: who sits in each cell (STADIUM-FACES), relayed as the strip's are
+        if (f && f.meta && f.meta.n) { const m = { n: f.meta.n, cols: f.meta.cols || f.meta.n }; if (Array.isArray(f.meta.ids) && f.meta.ids.length === m.n) m.ids = f.meta.ids.slice(); if (typeof f.meta.alag === 'number') m.alag = f.meta.alag; return m; } // ids: who sits in each cell (STADIUM-FACES), relayed as the strip's are
         const w = f && f.el ? (f.el.videoWidth || 0) : 0, h = f && f.el ? (f.el.videoHeight || 0) : 0;
         const k = (w && h) ? Math.max(1, Math.round(Math.max(w, h) / Math.min(w, h))) : 1;
         return { n: k, cols: k }; // legacy bar self-describes via aspect (5 − max/min = free)
@@ -26512,6 +26567,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             const dv = dn && dn.stream ? dn.stream.getVideoTracks()[0] : null;
             if (dv && dv.readyState !== 'ended') { roomV = dv; roomEl = dn.el; roomMeta = blockMeta(dn); }
           }
+          // LIP SYNC: Section 1 re-makes both the picture and the sound, so its pack starts level (alag 0).
+          // Deeper, the picture passes through and the sound is re-mixed here: my audio hop adds to what came down.
+          const alag = c.pc === 0 ? 0 : Math.round(((dn && dn.meta && dn.meta.alag) || 0) + audioHopMs(dn && dn.stream ? dn.stream.getAudioTracks()[0] : null));
+          if (roomMeta) roomMeta = Object.assign({}, roomMeta, { alag });
           // THE SOUND, per receiver. Pieces: the outside (Section 1: the other
           // rows; deeper: the pack from above, whose sound already leaves my
           // branch out), my row's voices, each child row's block, each L14 branch.
@@ -26577,15 +26636,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // MY OWN STADIUM: the room's picture less my row, and my ear. The heir
           // standing in keeps its head's copy while it flows.
           const headView = actHead ? mosIn.get('sdm') : null, headFlows = !!headView && !(mosFb.get('sdm') || {}).dark && !headView.deadAt; // a false alarm must not take the heir's own ears off its head's view
-          if (headFlows) paintRoomView(headView.el, blockMeta(headView), headView.stream, c);
-          else paintRoomView(roomEl, roomMeta, earSt, c);
+          if (headFlows) paintRoomView(headView.el, blockMeta(headView), headView.stream, c, (headView.meta && headView.meta.alag) || 0);
+          else paintRoomView(roomEl, roomMeta, earSt, c, alag);
         } else {
           if (roomPack) { roomPack.stop(); roomPack = null; }
           packLoopStop();
           for (const f of downFolds.values()) f.clear();
           downFolds.clear(); downStreams.clear();
           l14Down(null);
-          paintRoomView(null, null, null, c);
+          paintRoomView(null, null, null, c, 0);
         }
       } else {
         // ROLE-CHANGE hygiene: a seat that moved head → non-head (heal,
@@ -26642,7 +26701,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const fwdV = sdmF && !sdmF.deadAt && sdmF.stream ? sdmF.stream.getVideoTracks()[0] || null : null;
         const fwdA = sdx && sdx.stream ? sdx.stream.getAudioTracks()[0] || null : null;
         const fwdSt = fwdV ? downStream('fwd', fwdV, fwdA) : null;
-        if (fwdSt) { const jn = shipMos('sdn', occPid(T.down(c)), fwdSt, blockMeta(sdmF), 'sdx'); if (jn) wanted.add(jn); }
+        // the sound passes through me (decoded, sent again): my audio hop adds to its lag; the picture does not wait
+        const fwdLag = Math.round(((sdx && sdx.meta && typeof sdx.meta.alag === 'number') ? sdx.meta.alag : ((sdmF && sdmF.meta && sdmF.meta.alag) || 0)) + (fwdA ? audioHopMs(fwdA) : 0));
+        if (fwdSt) { const jn = shipMos('sdn', occPid(T.down(c)), fwdSt, Object.assign(blockMeta(sdmF), { alag: fwdLag }), 'sdx'); if (jn) wanted.add(jn); }
         // Carrier leg of the sdx redundancy: hand my head's 'sdxc' copies to
         // their target seat as 'sdx^x' — the same slot over a second pipe.
         for (const [mk, xc] of mosIn) {
@@ -26871,7 +26932,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // construction (a neighbour's mix would contain MY row), so the old
       // verbatim re-fan of the shared 'sd' is gone with the shared 'sd'.
       // Non-heads: my head's room pack ('sdm') is my Stadium, less my row (hidden here, by the ids it carries).
-      if (!iAmHead && !actHead) { const sdm = mosIn.get('sdm'); paintRoomView(sdm ? sdm.el : null, sdm ? blockMeta(sdm) : null, sdm ? sdm.stream : null, c); }
+      if (!iAmHead && !actHead) { const sdm = mosIn.get('sdm'); paintRoomView(sdm ? sdm.el : null, sdm ? blockMeta(sdm) : null, sdm ? sdm.stream : null, c, sdm && sdm.meta ? (sdm.meta.alag || 0) : 0); }
       // STAGE EAR: sum the per-stager feeds I hold, skipping my own.
       if (stagers.length) ensureStageEar();
       syncStageEar(stagers);
@@ -35938,7 +35999,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       stadIdsForTest: () => {
         const c = meshCoord(), m = comfyStadMeta(), v = m.video;
         const row = []; if (c) for (let j = 0; j < SCALE.C; j++) { const pid = j === c.i ? myId : occPid({ pc: c.pc, r: c.r, i: j }); if (pid) row.push(String(pid)); }
-        return { coord: c, me: String(myId || ''), n: m.n, ids: m.ids, live: !!(v && v.videoWidth > 0), w: v ? v.videoWidth : 0, h: v ? v.videoHeight : 0, row, stagers: stageIds().map(String) };
+        return { coord: c, me: String(myId || ''), n: m.n, ids: m.ids, live: !!(v && v.videoWidth > 0), w: v ? v.videoWidth : 0, h: v ? v.videoHeight : 0, row, stagers: stageIds().map(String), hold: (typeof avHold !== 'undefined' && avHold) ? avHold.ms : 0 };
       },
       pipeStats: () => (MPipe ? MPipe.stats() : Promise.resolve({})),
       // Per-DESTINATION carrier state. A sender forwards one feed to several
