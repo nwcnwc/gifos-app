@@ -2,6 +2,7 @@
  "meet.lobTitle": "会议",
  "meet.lobQuiet": "请在通话中开启麦克风和摄像头。",
  "meet.lobJoinOff": "你将以关闭摄像头和麦克风的状态加入。准备好后再开启。",
+ "meet.captionsNotice": "本次会议已开启字幕。你说的话可能会被其他人的设备记录成文字。",
  "meet.lobJoinShown": "你加入时的样子就和这里显示的一样。",
  "meet.lobCamOn": "摄像头已开",
  "meet.lobMicOff": "麦克风已关",

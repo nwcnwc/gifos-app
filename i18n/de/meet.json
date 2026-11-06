@@ -2,6 +2,7 @@
   "meet.lobTitle": "Besprechung",
   "meet.lobQuiet": "Mikrofon und Kamera schalten Sie im Anruf ein.",
   "meet.lobJoinOff": "Sie treten mit ausgeschalteter Kamera und ausgeschaltetem Mikrofon bei. Schalten Sie beides ein, wenn Sie bereit sind.",
+  "meet.captionsNotice": "In dieser Besprechung sind Untertitel an. Was Sie sagen, kann auf den Geräten anderer mitgeschrieben werden.",
   "meet.lobJoinShown": "Sie treten genau so bei, wie Sie es hier sehen.",
   "meet.lobCamOn": "Kamera an",
   "meet.lobMicOff": "Mikro aus",

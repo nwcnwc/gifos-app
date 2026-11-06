@@ -3140,6 +3140,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   .lob-pv-name { position: absolute; left: 16px; bottom: 16px; background: rgba(8,10,14,.78); color: #f4f7fb;
     font-size: 0.9375rem; font-weight: 650; padding: 0.3rem 0.75rem; border-radius: 999px; }
   .lob-quiet { color: #3a3a3f; font-size: 0.875rem; line-height: 1.35; margin: 0 0 0.875rem; text-align: center; }
+  /* Others' devices keep a transcript by default, so the lobby says so in one quiet line under Start. */
+  .lob-capnote { color: #5a5a62; font-size: 0.8125rem; line-height: 1.35; margin: -0.25rem 0 0.75rem; text-align: center; }
+  .help-capnote { font-size: 0.875rem; line-height: 1.4; margin: 0 0 0.75rem; text-align: center; opacity: .8; }
   .lobby-card { background: #fff; color: #1d1d1f; }
   .lobby-card h1 { color: #1d1d1f; }
   #lobby.show .lob-primary, #lobby.show .lob-action, #lob-admin-go, #lob-join-go, .lob-row button {
@@ -3876,6 +3879,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <h1 data-t="lobTitle">Meeting</h1>
       <p class="lob-quiet" data-t="lobJoinOff" id="lob-quiet">You'll join with your camera and microphone off. Turn them on when you're ready.</p>
       <button id="lob-open" class="lob-primary"><span data-t="lobStart">Start a call</span><small data-t="lobStartSub">Anyone with the link can join</small></button>
+      <p class="lob-capnote" data-t="captionsNotice" id="lob-capnote">Captions are on in this meeting. What you say may be written down by other people's devices.</p>
       <button data-t="lobAdminBtn" type="button" id="lob-admin-btn" class="lob-link">Host this call</button>
       <div id="lob-admin" class="lob-expand" style="display:none">
         <input data-ph="lobAdminNamePh" id="lob-admin-name" maxlength="40" placeholder="Name this call" autocomplete="off">
@@ -4465,6 +4469,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <div class="name-modal" role="dialog" aria-modal="true" id="help-modal" style="display:none">
     <div class="name-box help-box" style="max-width:600px;text-align:left">
       <h3 style="text-align:center" data-t="helpTitle">How this meeting works</h3>
+      <p class="help-capnote" data-t="captionsNotice" id="help-capnote">Captions are on in this meeting. What you say may be written down by other people's devices.</p>
       <div class="help-scroll help-meet">
         <p class="help-lead">This meeting has <b>no size limit</b>. The dream: the <b>whole Earth in
         one meeting at once</b> — everyone able to speak. Your phone talks only to a handful of neighbors.</p>
