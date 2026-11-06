@@ -24754,7 +24754,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return null;
     }
     function chainBornParked(key, upKey) {
-      return key === 'x1' || key === 'sdxc' || !!chainUpKey(upKey);
+      return key === 'x1' || key === 'sdxc' || !!chainUpKey(upKey) || stgRootKey(key); // a second-root stage copy waits for a want (STG-SECOND-ROOT)
     }
     function chainDemandUp(job, want) {
       const parked = job ? mosStandby.get(job.upKey) : null; // E2 up: the copy I climb with can be one I hold parked
@@ -25673,6 +25673,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         && !(pri && x.from === pri.via && x.sid === pri.streamId)) || null;
     }
     // END-STG-DIRECT
+    // STG-SECOND-ROOT
+    // EVERY SECTION 1 SEAT HOLDS A COPY BY A SECOND ROOT. A stage feed enters Section 1 at the stager's up seat
+    // and at its second way up, and the flood passes on only each seat's claimed primary, so most of Section 1
+    // holds copies that all entered at the one seat: when it leaves, those seats have no other copy to fail over
+    // to until the fabric re-routes, seconds later. So a Section 1 seat whose parked standby entered by another
+    // root (its path shares no seat with the primary's) passes that standby on too, beside the primary, under the
+    // slot's second-root key (stg:<id>^r, the same slot at every receiver). One extra copy per held feed. The copy
+    // is born parked: a receiver that wants it wakes it, and that want wakes my parked standby upstream
+    // (chainDemandUp), so it costs nothing until a failover needs it.
+    const STG_ROOT2 = '^r';
+    function stgSecondRoot(f, sb) {
+      if (!f || !sb || !sb.stream || sb.stream === f.stream || !sb.meta || sb.meta.ao) return null;
+      const sv = Array.isArray(sb.meta.vp) ? sb.meta.vp : null; if (!sv || !sv.length) return null; // a copy with no path names no root
+      const pv = f.meta && Array.isArray(f.meta.vp) ? f.meta.vp : [];
+      return sv.some((s) => pv.indexOf(s) >= 0) ? null : sb;
+    }
+    function stgRootKey(key) { return typeof key === 'string' && key.indexOf('stg:') === 0 && key.slice(-STG_ROOT2.length) === STG_ROOT2; }
+    // END-STG-SECOND-ROOT
     function stgFedBy(job, ent) {
       const trs = ent.stream ? ent.stream.getTracks() : [];
       return !!job.srcTracks && job.srcTracks.some((t) => trs.indexOf(t) >= 0);
@@ -26993,31 +27011,38 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // Skipping it silently deleted the stage lane's redundancy, and
         // redun-drill caught it as "no receiver holding a relayed stg primary
         // + standby".
-        const floodOne = (key, stream, via, h, vp) => {
+        // upKey: the slot a second-root copy is fed from (its parked standby); such a copy skips the seats on its path.
+        const floodOne = (key, stream, via, h, vp, upKey) => {
           if (!stream || flooded.has(stream.id)) return; flooded.add(stream.id);
           const owner = key.indexOf('stg:') === 0 ? key.slice(4).split('^')[0] : null;
-          const skip = (t) => !t || (owner && t === owner);
+          const skip = (t) => !t || (owner && t === owner) || (!!upKey && vp.indexOf(vpId(t)) >= 0);
+          const up = upKey || key;
           const hm = vp ? { h, vp } : { h }; // hop count from the producer — claims prefer min-h (see prefCand); vp: the seats this copy came through
           // My OWN feed: two neighbours watch it directly, the rest get an
           // sb:1 copy they keep parked (STG-DIRECT).
           const direct = owner === myId ? stgDirectSet(T.rowMates(c).map((m) => occPid(m)), T.colMates(c).map((m) => occPid(m)),
             (t) => { const q = peers.get(t); return !!(q && q.pc && q.connected); }) : null;
           const hmSb = { h, sb: 1 };
-          for (const t of s1peers) { if (skip(t) || (owner !== myId && relayHeldForTest(key, t))) continue; const jk = shipMos(key, t, stream, (direct && !direct.has(t)) ? hmSb : hm, key); if (jk) wanted.add(jk); }
+          for (const t of s1peers) { if (skip(t) || (owner !== myId && relayHeldForTest(key, t))) continue; const jk = shipMos(key, t, stream, (direct && !direct.has(t)) ? hmSb : hm, up); if (jk) wanted.add(jk); }
           const dnP = occPid(T.down(c)); // and DOWN — Stage audio folds at every ear
           if (!skip(dnP)) {
             const dnSt = stgDownShip(key, stream, !!(owner && sharingScreen(owner)), stgAudioMemo);
-            if (dnSt) { const jk = shipMos(key, dnP, dnSt, stgDownMeta(hm, dnSt, stream), key); if (jk) wanted.add(jk); }
+            if (dnSt) { const jk = shipMos(key, dnP, dnSt, stgDownMeta(hm, dnSt, stream), up); if (jk) wanted.add(jk); }
           }
           // E2: the rows I back up hold a parked copy.
           for (const t of (meshSeat() ? meshSeat().u2Heirs().concat(meshSeat().l14Served()) : [])) {
             if (skip(t)) continue;
             const dnSt = stgDownShip(key, stream, !!(owner && sharingScreen(owner)), stgAudioMemo);
-            if (dnSt) { const jk = shipMos(key, t, dnSt, stgDownMeta(hm, dnSt, stream), key); if (jk) wanted.add(jk); }
+            if (dnSt) { const jk = shipMos(key, t, dnSt, stgDownMeta(hm, dnSt, stream), up); if (jk) wanted.add(jk); }
           }
         };
         if (amStager) { const st = mySelfStream(); if (st) floodOne('stg:' + myId, st, null, 0); }
-        for (const k of heldStg) { if (stgLost(k)) continue; const hf = mosIn.get(k); floodOne(k, hf.stream, hf.via, stgHop(hf), stgPath(hf)); }
+        for (const k of heldStg) {
+          const hf = mosIn.get(k);
+          if (!stgLost(k)) floodOne(k, hf.stream, hf.via, stgHop(hf), stgPath(hf));
+          const sb2 = stgSecondRoot(hf, mosStandby.get(k)); // STG-SECOND-ROOT
+          if (sb2) floodOne(k + STG_ROOT2, sb2.stream, sb2.via, stgHop(sb2), stgPath(sb2), k);
+        }
         // composite the strip in stage order; fan 'sgs' down my subtree
         const selfSt = soloSelf ? selfStageStream() : null;
         if (!stagers.length) { paintStageStrip(null); }
