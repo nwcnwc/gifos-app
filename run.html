@@ -3109,6 +3109,34 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     padding: 7px 14px; border-radius: 999px; background: rgba(8,10,14,.78); color: #f4f7fb;
     font-size: 15px; font-weight: 600; line-height: 1.3; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .lob-preview video { width: 100%; height: 100%; object-fit: cover; display: block; background: #1a1d24; }
+  /* The lobby shows the join, not the camera: off is your picture and
+     "Camera off", on is the camera as blurred as the room will see it. */
+  #lob-preview[data-cam="off"] video { display: none; }
+  #lob-preview[data-cam="on"] .lob-pv-off { display: none; }
+  .lob-preview video.blur1 { filter: blur(11px) saturate(.9); transform: scale(1.07); }
+  .lob-preview video.blur2 { filter: blur(26px) saturate(.75); transform: scale(1.15); }
+  .lob-pv-off { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 12px; color: #f4f7fb; pointer-events: none; }
+  .lob-pv-face { width: 112px; height: 112px; border-radius: 50%; background: #2c313b; color: #f4f7fb; overflow: hidden;
+    display: flex; align-items: center; justify-content: center; font-size: 44px; font-weight: 700; }
+  .lob-pv-face img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .lob-pv-offtxt { font-size: 1rem; font-weight: 650; }
+  .lob-av { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; gap: 10px; z-index: 2; }
+  .lob-av[hidden] { display: none; }
+  .lob-avbtn { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px; border-radius: 999px;
+    background: rgba(8,10,14,.78); color: #f4f7fb; border: 1.5px solid rgba(244,247,251,.45); font: inherit;
+    font-size: 15px; font-weight: 650; white-space: nowrap; cursor: pointer; }
+  .lob-avbtn[data-on="1"] { background: #f4f7fb; color: #1d1d1f; border-color: #f4f7fb; }
+  .lob-avbtn:not([data-on="1"]) .lob-avico { filter: grayscale(1); opacity: .8; }
+  /* A phone's preview is a strip: the two switches say the state there. */
+  @media (max-width: 700px) {
+    .lob-pv-off { display: none; }
+    .lob-av { top: 58px; bottom: auto; }
+  }
+  @media (max-width: 700px) and (max-height: 640px) {
+    #lobby .lob-pv-note { display: none; }
+    .lob-av { top: 12px; }
+  }
   .lob-pv-name { position: absolute; left: 16px; bottom: 16px; background: rgba(8,10,14,.78); color: #f4f7fb;
     font-size: 0.9375rem; font-weight: 650; padding: 0.3rem 0.75rem; border-radius: 999px; }
   .lob-quiet { color: #3a3a3f; font-size: 0.875rem; line-height: 1.35; margin: 0 0 0.875rem; text-align: center; }
@@ -3582,6 +3610,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   @media (max-width: 700px), (max-height: 520px) {
     #lobby.form-open.show { grid-template-columns: none; grid-template-rows: 72px minmax(0, 1fr); }
     #lobby.form-open .lob-preview { min-height: 0; max-height: 72px; margin: 0; border-radius: 0; }
+    #lobby.form-open .lob-pv-note, #lobby.form-open .lob-pv-off { display: none; }
+    #lobby.form-open .lob-av { top: 14px; bottom: auto; }
   }
   /* A stream on a phone is the camera. The picture is the whole screen.
      Go live sits on that picture, and a tap on the picture is the same
@@ -3829,15 +3859,22 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
 </head>
 <body>
   <div id="lobby">
-    <div class="lob-preview" id="lob-preview">
+    <!-- The preview is the join: your camera and mic as the call will open
+         them (off unless you turn them on here), blurred as the room sees you. -->
+    <div class="lob-preview" id="lob-preview" data-cam="off" data-mic="off">
       <video id="lob-preview-vid" autoplay muted playsinline></video>
+      <div class="lob-pv-off" id="lob-pv-off"><span class="lob-pv-face" id="lob-pv-face" aria-hidden="true"></span><span data-t="camOffChip" class="lob-pv-offtxt">Camera off</span></div>
       <span data-t="lobPreviewName" class="lob-pv-name" id="lob-preview-name">You</span>
       <button data-al="lobDeskMoreAria" data-t="more" type="button" id="lob-desk-more" hidden aria-pressed="false" aria-label="Watch, or change the host key">More</button>
-      <span data-t="youJoinMutedWith" class="lob-pv-note">You join muted, with the camera off</span>
+      <span data-t="youJoinMutedWith" class="lob-pv-note" id="lob-pv-note">You join muted, with the camera off</span>
+      <div class="lob-av" id="lob-av">
+        <button type="button" id="lob-mic" class="lob-avbtn"><span class="lob-avico" aria-hidden="true">🎤</span><span data-t="lobMicOff" class="lob-avtxt">Mic off</span></button>
+        <button type="button" id="lob-cam" class="lob-avbtn"><span class="lob-avico" aria-hidden="true">📷</span><span data-t="camOffChip" class="lob-avtxt">Camera off</span></button>
+      </div>
     </div>
     <div class="lobby-card">
       <h1 data-t="lobTitle">Meeting</h1>
-      <p class="lob-quiet" data-t="lobQuiet">Turn your mic and camera on from the call.</p>
+      <p class="lob-quiet" data-t="lobJoinOff" id="lob-quiet">You'll join with your camera and microphone off. Turn them on when you're ready.</p>
       <button id="lob-open" class="lob-primary"><span data-t="lobStart">Start a call</span><small data-t="lobStartSub">Anyone with the link can join</small></button>
       <button data-t="lobAdminBtn" type="button" id="lob-admin-btn" class="lob-link">Host this call</button>
       <div id="lob-admin" class="lob-expand" style="display:none">
@@ -5947,6 +5984,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // privacy rule, guarded in the release gate by test/unit/meet-join-max-blur.js.
     try { localStorage.removeItem('gifos_blur'); } catch (e) {}
     const myStatus = { muted: true, camOff: true, blur: 2, hand: null, rec: false, pwEp: 0, scr: 0 };
+    // What the person turned on in the lobby just before this load (JOIN_AV_KEY,
+    // written by enterMeeting). Taken once: a later reload of the call joins
+    // quiet as ever. Absent, stale or not a room: null, the quiet join.
+    const joinAvChoice = (() => {
+      let raw = null;
+      try { raw = sessionStorage.getItem('gifos_join_av'); sessionStorage.removeItem('gifos_join_av'); } catch (e) { return null; }
+      if (!raw || !params.get('v')) return null;
+      let o = null;
+      try { o = JSON.parse(raw); } catch (e) { return null; }
+      if (!o || o.v !== 1 || typeof o.at !== 'number' || Date.now() - o.at > 60000) return null;
+      return { cam: o.cam === true, mic: o.mic === true };
+    })();
     // The Stage seat comes back with its original claim time, so the person
     // keeps their place in step-up order. A grant that has not arrived yet
     // must not disarm it (reactStageLost waits out stageResumeUntil).
@@ -10288,7 +10337,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const METRO_SRC = URL.createObjectURL(new Blob(['setInterval(function(){postMessage(1)},66)'], { type: 'text/javascript' }));
     let metro = null;
     const metroSubs = new Set(); // callbacks ticked ~15x/s, background included
+    let pageUnloading = false;
+    window.addEventListener('pagehide', () => { pageUnloading = true; });
+    window.addEventListener('pageshow', () => { pageUnloading = false; });
     function metroSub(fn) {
+      // An unloading page needs no clock. The hidden flip of an unload lands
+      // after pagehide, and WebKit refuses a Worker started from a blob in a
+      // document that is unloading (a page error on every reload with blur on).
+      if (pageUnloading) return () => {};
       if (!metro) {
         try {
           metro = new Worker(METRO_SRC);
@@ -19642,29 +19698,78 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // people never saw each other. Only `av` is case-folded: it is a hex digest.
       return { room, av, relay, bc: bc && !!av, th: th && !!av && !bc }; // bc and th are skins on an admin room
     }
+    // THE LOBBY SHOWS THE JOIN (0.9.25). The lobby used to open the camera on
+    // load and show it clear behind the menu, which read as "you will join on
+    // camera, unblurred": both wrong. Now one record, joinAv, is both what the
+    // lobby paints and what the call turns on at boot (JOIN_AV_KEY). It starts
+    // off; only a tap here turns the camera or mic on, and only that tap opens
+    // the camera. Turned on, the preview is blurred by the same rule the room
+    // uses for you (blurLevelFor), so it is the picture others will get.
+    const joinAv = { cam: false, mic: false };
+    let lobbyCamGen = 0;
     function stopLobbyPreview() {
+      lobbyCamGen++;
       const vid = document.getElementById('lob-preview-vid');
       if (!vid || !vid.srcObject) return;
       try { vid.srcObject.getTracks().forEach((t) => t.stop()); } catch (e) {}
       vid.srcObject = null;
     }
-    function startLobbyPreview() {
+    function paintLobbyAv() {
+      const pv = document.getElementById('lob-preview');
+      if (!pv) return;
+      pv.dataset.cam = joinAv.cam ? 'on' : 'off';
+      pv.dataset.mic = joinAv.mic ? 'on' : 'off';
+      const word = (el, key, en) => { if (!el) return; el.setAttribute('data-t', key); el.textContent = uiText(key, en); };
+      const btn = (id, on, onKey, onEn, offKey, offEn) => {
+        const b = document.getElementById(id);
+        if (!b) return;
+        b.dataset.on = on ? '1' : '0';
+        word(b.querySelector('.lob-avtxt'), on ? onKey : offKey, on ? onEn : offEn);
+      };
+      btn('lob-cam', joinAv.cam, 'lobCamOn', 'Camera on', 'camOffChip', 'Camera off');
+      btn('lob-mic', joinAv.mic, 'lobMicOn', 'Mic on', 'lobMicOff', 'Mic off');
+      const quiet = joinAv.cam || joinAv.mic;
+      word(document.getElementById('lob-pv-note'), quiet ? 'appearTitle' : 'youJoinMutedWith', quiet ? 'This is how you\'ll appear' : 'You join muted, with the camera off');
+      if (!BC_INTENT) word(document.getElementById('lob-quiet'), quiet ? 'lobJoinShown' : 'lobJoinOff', quiet ? 'You\'ll join just as shown here.' : 'You\'ll join with your camera and microphone off. Turn them on when you\'re ready.');
+      const face = document.getElementById('lob-pv-face');
+      if (face) { const me = GifOS.store.identity(); paintAppearFace(face, me.name, me.avatar); }
       const vid = document.getElementById('lob-preview-vid');
-      const name = document.getElementById('lob-preview-name');
-      if (name) name.textContent = myName();
-      if (!vid || vid.srcObject) return;
+      if (vid) {
+        let bl = 2;
+        try { bl = blurLevelFor('me', true); } catch (e) {}
+        vid.classList.toggle('blur1', bl === 1);
+        vid.classList.toggle('blur2', bl === 2);
+        vid.dataset.blur = String(bl);
+      }
+    }
+    function setLobbyCam(on) {
+      if (!on) { joinAv.cam = false; stopLobbyPreview(); paintLobbyAv(); return; }
       const md = navigator.mediaDevices;
       if (!md || !md.getUserMedia) return;
+      const gen = ++lobbyCamGen;
       md.getUserMedia({ video: true, audio: false }).then((stream) => {
         const lob = document.getElementById('lobby');
-        if (!lob || !lob.classList.contains('show')) {
+        const vid = document.getElementById('lob-preview-vid');
+        if (gen !== lobbyCamGen || !vid || !lob || !lob.classList.contains('show')) {
           try { stream.getTracks().forEach((t) => t.stop()); } catch (e) {}
           return;
         }
         vid.srcObject = stream;
-      }).catch(() => {});
+        joinAv.cam = true;
+        paintLobbyAv();
+      }).catch(() => { if (gen === lobbyCamGen) { joinAv.cam = false; paintLobbyAv(); } });
+    }
+    // Handed to the call through sessionStorage: enterMeeting writes it, boot
+    // takes it once (joinAvChoice). Nothing on means nothing written.
+    const JOIN_AV_KEY = 'gifos_join_av';
+    function stashJoinAv() {
+      try {
+        if (joinAv.cam || joinAv.mic) sessionStorage.setItem(JOIN_AV_KEY, JSON.stringify({ v: 1, cam: joinAv.cam, mic: joinAv.mic, at: Date.now() }));
+        else sessionStorage.removeItem(JOIN_AV_KEY);
+      } catch (e) {}
     }
     function enterMeeting(hashOrUrl) {
+      if (document.getElementById('lobby').classList.contains('show')) stashJoinAv();
       stopLobbyPreview();
       try {
         const typed = document.getElementById('lob-name-in');
@@ -19709,6 +19814,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const lob = document.getElementById('lobby');
       const toggle = (id) => { const el = document.getElementById(id); el.style.display = el.style.display === 'none' ? '' : 'none'; };
       document.getElementById('lob-open').onclick = () => { enterMeeting('#v=' + shortCode()); };
+      const lobCam = document.getElementById('lob-cam');
+      if (lobCam) lobCam.onclick = () => setLobbyCam(!joinAv.cam);
+      const lobMic = document.getElementById('lob-mic');
+      if (lobMic) lobMic.onclick = () => { joinAv.mic = !joinAv.mic; paintLobbyAv(); };
       const streamBtn = document.getElementById('lob-stream');
       if (streamBtn) streamBtn.onclick = () => { enterMeeting('#bc=1&st=1'); };
       // Host this call mints an admin small group; Start a town hall mints
@@ -19883,6 +19992,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const input = document.getElementById('lob-name-in');
       if (input && document.activeElement !== input) input.value = me.name || '';
       paintAppearFace(document.getElementById('lob-face'), input ? input.value : me.name, me.avatar);
+      const pvFace = document.getElementById('lob-pv-face');
+      if (pvFace) paintAppearFace(pvFace, input ? input.value : me.name, me.avatar);
       const legacy = document.getElementById('lob-name');
       if (legacy) legacy.textContent = me.name || '…';
     }
@@ -19941,7 +20052,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (key && !key.value) key.value = mintHostKey();
       }
       document.getElementById('lobby').classList.add('show');
-      startLobbyPreview();
+      // No camera until a tap asks for it: the preview paints the join (off).
+      const pvName = document.getElementById('lob-preview-name');
+      if (pvName) pvName.textContent = myName();
+      // Go live is the broadcast's camera choice; its lobby has no switches.
+      const avRow = document.getElementById('lob-av');
+      if (avRow) avRow.hidden = !!BC_INTENT;
+      paintLobbyAv();
       placeDeskName();
     }
     function placeDeskName() {
@@ -20115,6 +20232,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
                 try { paintControls(); } catch (e) {}
                 try { updateStatus(); } catch (e) {}
               }
+            }
+            // The lobby's switches are the same choice, made in its preview:
+            // what was on there is on here, nothing else (room orders still win).
+            const lobbyAv = typeof joinAvChoice !== 'undefined' ? joinAvChoice : null;
+            if (!restored && lobbyAv && !BROADCAST) {
+              const cam = localStream.getVideoTracks()[0];
+              if (lobbyAv.cam && cam && !(typeof forcedCamOff === 'function' && forcedCamOff('me'))) { cam.enabled = true; myStatus.camOff = false; }
+              const mic = localStream.getAudioTracks()[0];
+              if (lobbyAv.mic && mic && !(typeof amGloballyMuted === 'function' && amGloballyMuted())) { mic.enabled = true; myStatus.muted = false; }
+              try { paintControls(); reactRoomState(); syncSpeech(); updateMediaSession(); updateStatus(); } catch (e) {}
             }
             // A reload leaves remote companions and the stage ear paused.
             // Start them again on this boot, before the first paint, so the

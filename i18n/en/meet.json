@@ -1,6 +1,11 @@
 {
   "meet.lobTitle": "Meeting",
   "meet.lobQuiet": "Turn your mic and camera on from the call.",
+  "meet.lobJoinOff": "You'll join with your camera and microphone off. Turn them on when you're ready.",
+  "meet.lobJoinShown": "You'll join just as shown here.",
+  "meet.lobCamOn": "Camera on",
+  "meet.lobMicOff": "Mic off",
+  "meet.lobMicOn": "Mic on",
   "meet.lobStart": "Start a call",
   "meet.lobStartSub": "Anyone with the link can join",
   "meet.lobRecent": "Recent & saved",

@@ -1,6 +1,11 @@
 {
   "meet.lobTitle": "Besprechung",
   "meet.lobQuiet": "Mikrofon und Kamera schalten Sie im Anruf ein.",
+  "meet.lobJoinOff": "Sie treten mit ausgeschalteter Kamera und ausgeschaltetem Mikrofon bei. Schalten Sie beides ein, wenn Sie bereit sind.",
+  "meet.lobJoinShown": "Sie treten genau so bei, wie Sie es hier sehen.",
+  "meet.lobCamOn": "Kamera an",
+  "meet.lobMicOff": "Mikro aus",
+  "meet.lobMicOn": "Mikro an",
   "meet.lobStart": "Besprechung starten",
   "meet.lobStartSub": "Offener Raum · wer den Link hat, kommt rein",
   "meet.lobRecent": "Zuletzt und gemerkt",

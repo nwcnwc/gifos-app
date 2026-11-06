@@ -1,6 +1,11 @@
 {
   "meet.lobTitle": "Reunión",
   "meet.lobQuiet": "Activa el micrófono y la cámara desde la llamada.",
+  "meet.lobJoinOff": "Entrarás con la cámara y el micrófono apagados. Actívalos cuando quieras.",
+  "meet.lobJoinShown": "Entrarás tal como se ve aquí.",
+  "meet.lobCamOn": "Cámara encendida",
+  "meet.lobMicOff": "Micrófono apagado",
+  "meet.lobMicOn": "Micrófono encendido",
   "meet.lobStart": "Empezar una reunión",
   "meet.lobStartSub": "Sala abierta · quien tenga el enlace entra",
   "meet.lobRecent": "Recientes y guardadas",
