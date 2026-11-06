@@ -25448,13 +25448,25 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // live (room v6ring, 49 s). Each page passes an unseen beat on once, over its data channels, so
     // no media path is needed and the flood ends when the source does. A new value counts, not a
     // larger one, and only the stager can make one (the beat is signed, below).
+    // A BEAT OLDER THAN THE NEWEST HEARD SAYS NOTHING NEW. The seen list holds the last 16 values,
+    // so a copy that reached a page after sixteen newer beats (a page stalled by a heal, then
+    // draining its channels) read as new, was flooded again by every page, pushed the newer values
+    // out of every list, and the room flooded itself with its own old beats: 85k to 1.5M beats
+    // received per page in five minutes, 5000 a second, each one decrypted and verified on the main
+    // thread, pages growing 9 MB/s until they died (40-page chains, 2026-11-05). A beat whose time
+    // (the stager's clock, stgBeatT) is behind the newest verified one by more than the stale window
+    // is dropped before the verify and never passed on. Only a verified beat moves that mark, so a
+    // forged value cannot hold the real ones back.
     const stgBeats = new Map(), STG_BEAT_MS = 1000, STG_BEAT_STALE_MS = 5000, STG_BEAT_SEEN = 16;
     function stgBeatSeen(key, b) { const e = stgBeats.get(key); return !!e && e.seen.indexOf(b) >= 0; }
+    const stgBeatT = (b) => (b >= STG_PIC_MIN_B ? Math.floor(b / STG_PIC_WORD) : b); // the stager's clock, from either form of the value (stgPicNote)
+    function stgBeatOld(key, b) { const e = stgBeats.get(key); return !!e && e.newest > 0 && stgBeatT(b) < e.newest - STG_BEAT_STALE_MS; }
     function stgBeatNew(key, b) {
-      let e = stgBeats.get(key); if (!e) { e = { seen: [], at: 0 }; stgBeats.set(key, e); }
-      if (e.seen.indexOf(b) >= 0) return false;
+      let e = stgBeats.get(key); if (!e) { e = { seen: [], at: 0, newest: 0 }; stgBeats.set(key, e); }
+      if (e.seen.indexOf(b) >= 0 || stgBeatOld(key, b)) return false;
       e.seen.push(b); if (e.seen.length > STG_BEAT_SEEN) e.seen.shift();
       e.at = Date.now();
+      const t = stgBeatT(b); if (t > e.newest) e.newest = t;
       stgPicNote(e, b);
       return true;
     }
@@ -25519,7 +25531,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const t0 = stgBeatCost ? performance.now() : 0;
       if (stgBeatCost) stgBeatCost.in++;
       if (typeof m.key !== 'string' || m.key.indexOf('stg:') !== 0 || m.key.length > 128 || !Number.isFinite(m.b) || typeof m.sig !== 'string' || m.sig.length > 256 || typeof m.pub !== 'string' || m.pub.length > 128) return;
-      if (m.key === 'stg:' + myId || mediaOk(p.id) === false || stgBeatSeen(m.key, m.b)) { if (stgBeatCost) stgBeatCost.ms += performance.now() - t0; return; }
+      if (m.key === 'stg:' + myId || mediaOk(p.id) === false || stgBeatSeen(m.key, m.b) || stgBeatOld(m.key, m.b)) { if (stgBeatCost) stgBeatCost.ms += performance.now() - t0; return; }
       const key = m.key, b = m.b, sig = m.sig, pub = m.pub, from = p.id;
       stgBeatPid(pub).then((pid) => (pid && pid === key.slice(4) ? net.edVerify(pub, sig, stgBeatSp(key, b)) : false))
         .then((ok) => { const t1 = stgBeatCost ? performance.now() : 0; if (ok && stgBeatNew(key, b)) stgBeatFlood(key, b, from, sig, pub); if (stgBeatCost) stgBeatCost.ms += performance.now() - t1; })
