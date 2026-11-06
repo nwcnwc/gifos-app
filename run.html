@@ -5133,18 +5133,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return document.querySelector('#barmore .moregroup[data-group="' + group + '"] > .morerow');
     }
     // Chat, Share screen, Hand, Captions, People, then Transcript and
-    // Questions. On a desktop the first two stay on the dock until More
-    // opens. A phone keeps them in this row. A broadcast does not use this
-    // (placeDockForWidth still parks a service's own buttons).
+    // Questions. On a desktop the first two stay on the dock, whether More
+    // is open or not. A phone keeps them in this row. A broadcast does not
+    // use this (placeDockForWidth still parks a service's own buttons).
+    // The dock never changes when More opens or closes: pulling Chat and
+    // Share off it on open re-centred the dock and put Leave where More had
+    // been, so a second tap to close the sheet left the call (a real
+    // meeting, 0.9.25). Only the window's width decides where these two live.
     function seatUseRow() {
       if (BROADCAST) return;
       const bar = document.querySelector('.bar');
       const row = moreRow('use');
       if (!bar || !row) return;
       const phone = phoneLayout();
-      const open = !bar.classList.contains('collapsed');
       const skipHand = (id) => id === 'hand' && typeof viewerHandOnDock === 'function' && viewerHandOnDock();
-      if (phone || open) {
+      if (phone) {
         ['chatbtn', 'sharebtn', 'hand', 'ccbtn', 'whobtn', 'trbtn', 'qabtn'].forEach((id) => {
           if (skipHand(id)) return;
           const el = document.getElementById(id);
@@ -32467,7 +32470,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         toggle.title = collapsed ? 'More' : 'Hide ' + surface + ' controls';
         const word = toggle.querySelector('.docklab');
         if (word) word.textContent = collapsed ? uiText('more', 'More') : uiText('hide', 'Hide');
-        try { seatUseRow(); } catch (e) {}
         // An upright phone shows the whole sheet when it fits above the
         // dock (a guest's 577px sheet, Settings and Keys included: LM-44).
         // A host's longer sheet would reach the top of the call, so it
@@ -32766,6 +32768,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         try { localStorage.setItem('gifos_meet_bar', '1'); } catch (err) {}
         if (returnFocus) toggle.focus();
       });
+      // More closes the way a menu does: the toggle again, Escape (the
+      // modal keydown handler), or a tap anywhere outside the sheet and the
+      // bar. The tap still reaches what it landed on. A tap on the bar is
+      // the bar's own (the toggle folds).
+      const foldSheet = () => {
+        if (bar.classList.contains('collapsed')) return false;
+        const returnFocus = !!(moreSheet && moreSheet.contains(document.activeElement));
+        apply(true);
+        try { localStorage.setItem('gifos_meet_bar', '1'); } catch (err) {}
+        if (returnFocus) toggle.focus();
+        return true;
+      };
+      document.addEventListener('pointerdown', (e) => {
+        if (bar.classList.contains('collapsed') || !e.isTrusted) return;
+        const t = e.target;
+        if (t && t.closest && (bar.contains(t) || t.closest('#reacttray'))) return;
+        foldSheet();
+      }, true);
       // Publish the bar's own height so the fixed overlays that hang from the
       // top (the chat panel) can start BELOW it instead of on top of it. It has
       // to be measured, not assumed: the bar wraps, and collapsing it changes
@@ -34140,17 +34160,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (rb) { rb.setAttribute('aria-expanded', 'false'); rb.setAttribute('aria-pressed', 'false'); rb.classList.remove('on'); try { rb.focus(); } catch (err) {} }
           return;
         }
-        // An open chat closes before More folds, as a side panel does in
-        // Meet and Zoom, and the keyboard lands back on Chat.
-        if (chatPanelOpen()) {
-          e.preventDefault();
-          closeChatToButton();
-          return;
-        }
+        // An open More sheet is the top layer: it folds first, so Escape
+        // always closes the menu the person just opened, and the dock does
+        // not move under the pointer. Then an open chat closes, as a side
+        // panel does in Meet and Zoom, and the keyboard lands back on Chat.
         const barEl = document.querySelector('.bar');
         if (barEl && !barEl.classList.contains('collapsed')) {
           const toggle = document.getElementById('bartoggle');
           if (toggle) { e.preventDefault(); toggle.click(); }
+          return;
+        }
+        if (chatPanelOpen()) {
+          e.preventDefault();
+          closeChatToButton();
           return;
         }
         if (voteMode) setVoteMode(null);
