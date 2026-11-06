@@ -25460,13 +25460,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const stgBeats = new Map(), STG_BEAT_MS = 1000, STG_BEAT_STALE_MS = 5000, STG_BEAT_SEEN = 16;
     function stgBeatSeen(key, b) { const e = stgBeats.get(key); return !!e && e.seen.indexOf(b) >= 0; }
     const stgBeatT = (b) => (b >= STG_PIC_MIN_B ? Math.floor(b / STG_PIC_WORD) : b); // the stager's clock, from either form of the value (stgPicNote)
-    function stgBeatOld(key, b) { const e = stgBeats.get(key); return !!e && e.newest > 0 && stgBeatT(b) < e.newest - STG_BEAT_STALE_MS; }
+    // The mark holds only while the stager is heard (a beat accepted within the stale window). A stager whose clock
+    // stepped back sends values behind its own mark for good; once its feed has gone stale here, the next verified
+    // beat re-bases the mark wherever it is, and the feed resumes. A page draining old beats after its own stall is
+    // stale too, so it passes each one on once, in order, and its live peers drop them: bounded, never a flood.
+    const stgBeatLive = (e) => e.at > 0 && Date.now() - e.at < STG_BEAT_STALE_MS;
+    function stgBeatOld(key, b) { const e = stgBeats.get(key); return !!e && e.newest > 0 && stgBeatLive(e) && stgBeatT(b) < e.newest - STG_BEAT_STALE_MS; }
     function stgBeatNew(key, b) {
       let e = stgBeats.get(key); if (!e) { e = { seen: [], at: 0, newest: 0 }; stgBeats.set(key, e); }
       if (e.seen.indexOf(b) >= 0 || stgBeatOld(key, b)) return false;
+      const live = stgBeatLive(e);
       e.seen.push(b); if (e.seen.length > STG_BEAT_SEEN) e.seen.shift();
       e.at = Date.now();
-      const t = stgBeatT(b); if (t > e.newest) e.newest = t;
+      const t = stgBeatT(b); if (t > e.newest || !live) e.newest = t;
       stgPicNote(e, b);
       return true;
     }
