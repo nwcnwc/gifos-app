@@ -296,6 +296,7 @@ onmessage = (e) => {
   else if (m.op === 'stats') {
     const out = {};
     for (const [id, p] of pipes) out[id] = { q: p.q.length, wrote: p.wrote, seen: p.seen || 0, tmpl: p.tmpl || 0, primed: p.primed || 0, dropped: p.dropped, swapErr: p.swapErr, kfAsk: p.kfAsk, kdrop: p.kdrop || 0, nkDrop: p.nkDrop || 0, skr: p.skr || 0, seeded: p.seedN || 0, reWant: p.reWant || 0, paused: !!p.paused, needKey: !!p.needKey, lastWriteAt: p.lastWriteAt, mime: p.mime, tmplMime: p.tmplMime, detached: p.detached || 0, lastBytes: p.lastBytes || 0, inWorker: !!p.cw, mints: p.mints || 0, mintErr: p.mintErr || 0, lat: p.latN ? Math.round(p.latEw) : null, latMax: p.latMax ? Math.round(p.latMax) : null, latN: p.latN || 0, tl: p.tlN ? Math.round(p.tlEw) : null };
+    if (m.wlog) for (const [id, p] of pipes) if (out[id]) out[id].wlog = (p.wlog || []).slice();
     postMessage({ op: 'stats', seq: m.seq, stats: out });
   }
 };
@@ -470,6 +471,8 @@ onrtctransform = (e) => {
         else p.lastBytes = head.bytes.byteLength;
         // FORWARD LATENCY: content arrival at the tap to its write here (the hop's own delay before the pacer)
         if (head.at) { const l = nowMs() - head.at; p.latN = (p.latN || 0) + 1; p.latEw = p.latN === 1 ? l : p.latEw * 0.9 + l * 0.1; if (l > (p.latMax || 0)) p.latMax = l; }
+        // WRITE LOG: the last 64 writes' wall time and size, read only by a stats ask with wlog (per-frame hop timing)
+        (p.wlog || (p.wlog = [])).push([Date.now(), head.bytes.byteLength]); if (p.wlog.length > 64) p.wlog.shift();
         try { frame.data = head.bytes; writer.write(frame).then(() => { p.wrote++; p.lastWriteAt = Date.now(); }, () => { p.swapErr++; }); }
         catch (err) { p.swapErr++; }
       } else writer.write(frame);
@@ -653,12 +656,12 @@ onrtctransform = (e) => {
     stopDrain();
   }
   function chain(pipeId) { const cr = carriers.get(pipeId); return { wants: wantN.get(pipeId) || 0, mints: cr ? (cr.mints || 0) : -1 }; }
-  function stats() {
+  function stats(opts) {
     return new Promise((res) => {
       if (!worker) { res({}); return; }
       const seq = ++statsSeq;
       statsWaiters.set(seq, res);
-      worker.postMessage({ op: 'stats', seq });
+      worker.postMessage({ op: 'stats', seq, wlog: !!(opts && opts.wlog) });
       setTimeout(() => { if (statsWaiters.get(seq) === res) { statsWaiters.delete(seq); res({}); } }, 1000);
     });
   }
