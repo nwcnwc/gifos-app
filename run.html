@@ -21674,7 +21674,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // the redun-drill caught).
         const jw = mosJobs.get(m.key + '>' + p.id), copy = lgWakeIsSpare(jw, m); // a duty is never refused and never a wake (L29.2)
         if (jw && !jw.active && copy && lgRefuseWake()) { /* L29.2: nothing to spare */ }
-        else if (jw && (!m.streamId || jw.streamId === m.streamId)) { if (!jw.active && copy) lgWoken.add(m.key + '>' + p.id); else if (!copy) lgWoken.delete(m.key + '>' + p.id); setJobActive(m.key + '>' + p.id, true); chainDemandUp(jw, true); }
+        else if (jw && (!m.streamId || jw.streamId === m.streamId)) { if (!jw.active && copy) lgWoken.add(m.key + '>' + p.id); else if (!copy) lgWoken.delete(m.key + '>' + p.id); jw.prim = m.pr === 1; setJobActive(m.key + '>' + p.id, true); chainDemandUp(jw, true); }
         else if (jw && m.streamId && jw.streamId !== m.streamId) {
           // STALE SID ON A WANT — ANSWER IT, DO NOT JUST DROP IT.
           //
@@ -21706,7 +21706,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const ji = mosJobs.get(m.key + '>' + p.id);
         if (ji && (!m.streamId || ji.streamId === m.streamId)) {
           if (m.v === 1) parkJobVideo(m.key + '>' + p.id);
-          else { setJobActive(m.key + '>' + p.id, false); chainDemandUp(ji, false); }
+          else { ji.prim = false; setJobActive(m.key + '>' + p.id, false); chainDemandUp(ji, false); }
         }
       } else if (m.k === 'mx-kf' && typeof m.key === 'string') {
         // ENCODED-PASSTHROUGH keyframe walk (§9a): a downstream pipe starves
@@ -25060,9 +25060,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function chainBornParked(key, upKey) {
       return key === 'x1' || key === 'sdxc' || !!chainUpKey(upKey) || stgRootKey(key); // a second-root stage copy waits for a want (STG-SECOND-ROOT)
     }
+    // A copy my receiver plays as its primary (its want said pr:1) is a duty all the way up: the want I pass to the
+    // copy that feeds it says so too, or a sender at its load budget refuses it as a spare and the receiver plays the
+    // silence a parked source relays.
     function chainDemandUp(job, want) {
       const parked = job ? mosStandby.get(job.upKey) : null; // E2 up: the copy I climb with can be one I hold parked
-      if (want && parked && stgFedBy(job, parked)) demand(parked.via, parked.key, parked.streamId, true);
+      if (want && parked && stgFedBy(job, parked)) demand(parked.via, parked.key, parked.streamId, true, !!job.prim);
       const uk = job ? chainUpKey(job.upKey) : null; if (!uk) return;
       const up = mosIn.get(job.upKey);
       if (up) demand(up.via, uk, up.streamId, want);
@@ -26458,7 +26461,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (pri && inCand(pri) && mosHeld(pri)) picOnly.add(pri.via + '|' + pri.streamId);
       if (std && stdHot && mosHeld(std)) picOnly.add(std.via + '|' + std.streamId);
       if (std && u2Over) hot.add(std.via + '|' + std.streamId);
-      if (std && (rk.indexOf('stg:') === 0 || rk === 'sgs')) for (const job of mosJobs.values()) if (job.active && job.upKey === rk && stgFedBy(job, std)) { hot.add(std.via + '|' + std.streamId); break; }
+      // A standby that feeds a copy someone plays stays hot (a picture-only park keeps the job active), and is my
+      // primary's duty to its sender while that receiver plays it as its own primary (chainDemandUp).
+      if (std && (rk.indexOf('stg:') === 0 || rk === 'sgs')) for (const job of mosJobs.values()) if (job.active && job.upKey === rk && stgFedBy(job, std)) { hot.add(std.via + '|' + std.streamId); if (job.prim) primSet.add(std.via + '|' + std.streamId); }
       // YOU CANNOT CLAIM WHAT YOU HAVE TOLD THE SENDER NOT TO SEND.
       //
       // With no primary, `hot` was EMPTY, so every announcer for this slot was
