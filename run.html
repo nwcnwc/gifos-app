@@ -15931,6 +15931,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         } catch (e) {}
         try { o.maps = { peers: sz(peers), seatAskAt: sz(seatAskAt), seatMark: sz(seatMark), bcTrace: sz(window.__bcTrace), traceRing: window.__meshTraceRing ? window.__meshTraceRing.ring.length : 0 }; } catch (e) {}
         try { const s = meshSeat(); if (s) o.seat = { occ: sz(s.occ), sitting: sz(s.sitting) }; } catch (e) {}
+        // the media plane's holders: claimed and parked feeds (each a hidden decoder), outbound ship jobs and their containers, composites
+        try {
+          let dec = 0, act = 0;
+          for (const v of mosIn.values()) if (v && v.el) dec++;
+          for (const v of mosStandby.values()) if (v && v.el) dec++;
+          for (const j of mosJobs.values()) if (j && j.active) act++;
+          o.mos = { in: mosIn.size, standby: mosStandby.size, decoders: dec, jobs: mosJobs.size, jobsActive: act, containers: shipContainers.size, fb: mosFb.size, relayJobs: relayJobs.size,
+            packs: (prodPack ? 1 : 0) + (sdPack ? 1 : 0) + (stripPack ? 1 : 0) + sdnPacks.size + l14Packs.size + l14RelPacks.size };
+        } catch (e) {}
         try { const P = GifOS.meshPipe; if (P) { o.pipe = Object.assign({}, P._debugSizes ? P._debugSizes() : {}); const st = await P.stats(); let q = 0, n = 0; for (const k of Object.keys(st || {})) { n++; q += st[k].q || 0; } o.pipe.pipes = n; o.pipe.qFrames = q; } } catch (e) {}
         MS.push(o); if (MS.length > 240) MS.splice(0, 40);
         try { meshTraceSink(JSON.stringify({ t: 0, s: 0, e: 'MEM', c: null, d: JSON.stringify(o) })); } catch (e) {}
