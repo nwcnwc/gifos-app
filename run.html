@@ -26151,6 +26151,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // A stager that never beat (an older page) is judged as before.
     function stgStale(rk) { const e = stgBeats.get(rk); return !!e && Date.now() - e.at > STG_BEAT_STALE_MS; }
+    // A STAGE THAT ENDED ENDS ON EVERY ROAD. The beat is the stager's own word that its feed is there, so once it has
+    // gone stale here (or, on the stager's page, once I am off the stage) this page relays no copy of that stage by any
+    // road (the flood of its primary, its second-root copy, a copy a receiver plays), ends the copies it ships at once,
+    // and takes none as a claim or standby. Gating the primary flood alone (stgLost) left the second-root copies:
+    // each Section 1 seat kept passing its parked standby on, and that standby was another seat's second-root copy,
+    // so the copies fed each other in a ring that outlived the stager by 40 s in a 40-page meeting, with pages
+    // waking and swapping between copies of a stage that had ended. A relayed track keeps sending (silence), so no
+    // media test can see the end: only the beat can.
+    function stgEnded(rk) {
+      if (typeof rk !== 'string' || rk.indexOf('stg:') !== 0) return false;
+      const base = rk.split('^')[0];
+      return base === 'stg:' + myId ? !stageIds().includes(myId) : stgStale(base);
+    }
     // On the worker clock: a stale beat stops relayed media and delists the stager, so a hidden stager's throttled page timer must not reach it.
     GifOS.meshMedia.workerClock(STG_BEAT_MS, () => {
       try {
@@ -26251,7 +26264,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const now = Date.now();
       // Resolve every announcer to its (possibly parked) incoming stream.
       const cand = [];
-      for (const a of arr) {
+      for (const a of (stgEnded(rk) ? [] : arr)) { // an ended stage has no copy to claim: the standby goes now, the claim after MOS_GRACE
         const p = peers.get(a.from);
         const st = (p && p.incoming) ? p.incoming.find((s) => s.id === a.ann.streamId && s.id !== p.ownSid) : null;
         cand.push({ from: a.from, key: a.key, sid: a.ann.streamId, ann: a.ann, st, live: !!st && !stgLoopsBack(rk, a.ann) });
@@ -27267,7 +27280,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // per-stager key); at S1 they FLOOD the row+cross mesh (dedup by streamId,
       // exactly like mesh gossip) so every S1 seat holds every stager; each S1
       // seat composites the strip itself and fans it down the SAME tree as 'sd'.
-      const heldStg = [...mosIn.keys()].filter((k) => k.indexOf('stg:') === 0);
+      const heldStg = [...mosIn.keys()].filter((k) => k.indexOf('stg:') === 0 && !stgEnded(k)); // an ended stage is relayed by no road
       if (c.pc !== 0 && stripPack) { stripPack.stop(); stripPack = null; } // role-change hygiene: left Section 1
       if (c.pc !== 0) {
         // relay every stage feed I hold (and my own) UP toward Section 1. E2 is the
@@ -27496,7 +27509,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const nowU = Date.now();
       for (const [jk, job] of [...mosJobs]) {
         if (wanted.has(jk)) { job.unwantedAt = 0; continue; }
-        if (!peers.has(job.to)) { unshipMos(jk, true); continue; }
+        if (!peers.has(job.to) || stgEnded(job.key)) { unshipMos(jk, true); continue; } // a copy of an ended stage has no flicker to wait out: the beat already waited
         if (!job.unwantedAt) job.unwantedAt = nowU;
         else if (nowU - job.unwantedAt > MOS_GRACE) unshipMos(jk, true);
       }
