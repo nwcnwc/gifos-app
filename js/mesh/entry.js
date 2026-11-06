@@ -96,8 +96,9 @@
           }   // L13.4
           if (!ok) { if (!adm || kv.v !== owner) continue; adm = false; }
           // L8.8: a hint learned while I was unseated is not first-hand; the admitter's word replaces it.
+          // L8.8.1: the admitter naming itself at its own cell is first-hand in any room, the room term on or off.
           {
-            const l88 = roomTerm(this, 1) && this.occ.has(kv.k) && this.occGet(kv.k) !== kv.v && !this.firstHandLive(kv.k);
+            const l88 = (roomTerm(this, 1) || kv.v === owner) && this.occ.has(kv.k) && this.occGet(kv.k) !== kv.v && !this.firstHandLive(kv.k);
             if (!this.occ.has(kv.k) || l88) { if (l88 && kv.v === owner) this.noChan.delete(kv.v); this.setOcc(kv.k, kv.v); if (!l88 || this.occGet(kv.k) === kv.v) { this.noteS1(kv.k); if (kv.v !== owner && ckPc(kv.k) === 0) this.s1told.set(kv.k, TICK); } }
           }
         }
