@@ -17739,6 +17739,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!job.upKey) return false;
       return k.indexOf('sdrow:') === 0 || k.indexOf('stg:') === 0 || k === 'sgs';
     }
+    // A stage relay woken as the receiver's PRIMARY (pr:1) is a duty, not a spare: never counted in lgWoken, never refused.
+    // A wake without the flag (an older page) is read as before.
+    function lgWakeIsSpare(job, m) { return lgParkedCopy(job) && !(m && m.pr === 1 && job && job.key.indexOf('stg:') === 0); }
     function lgRefuseWake() {
       const r = meshNode && meshNode.raw, K = GifOS.meshConsts.consts; if (!r || !r.lgBud0) return false;
       return r.lgLvl >= 1 || (r.lgLd[0] + K.L29_HOT) * 100 > r.lgBud * K.L29_SHED;
@@ -21402,9 +21405,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // The streamId must match the CURRENT job: a stale demand aimed at a
         // dead ship must never flip the live one (the dark-primary inversion
         // the redun-drill caught).
-        const jw = mosJobs.get(m.key + '>' + p.id), copy = lgParkedCopy(jw); // a duty is never refused and never a wake (L29.2)
+        const jw = mosJobs.get(m.key + '>' + p.id), copy = lgWakeIsSpare(jw, m); // a duty is never refused and never a wake (L29.2)
         if (jw && !jw.active && copy && lgRefuseWake()) { /* L29.2: nothing to spare */ }
-        else if (jw && (!m.streamId || jw.streamId === m.streamId)) { if (!jw.active && copy) lgWoken.add(m.key + '>' + p.id); setJobActive(m.key + '>' + p.id, true); chainDemandUp(jw, true); }
+        else if (jw && (!m.streamId || jw.streamId === m.streamId)) { if (!jw.active && copy) lgWoken.add(m.key + '>' + p.id); else if (!copy) lgWoken.delete(m.key + '>' + p.id); setJobActive(m.key + '>' + p.id, true); chainDemandUp(jw, true); }
         else if (jw && m.streamId && jw.streamId !== m.streamId) {
           // STALE SID ON A WANT — ANSWER IT, DO NOT JUST DROP IT.
           //
@@ -25051,15 +25054,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // the wrong active state, the receiver's debounce never re-sends — the
     // dark-primary deadlock the redun-drill caught). Never record an unsent
     // state: if the DC isn't open, the next sweep retries.
-    function demand(from, key, sid, want) {
-      const dk = from + '|' + key + '|' + sid, st = want ? 'w' : 'i', now = Date.now();
+    // PRIMARY (prim): the want is for the copy I play and relay on, not a spare I woke. The sender's load governor (L29)
+    // takes back the spares it woke and refuses new wakes at level 1; a primary is a duty, never shed (L29.2). Every stage
+    // relay is born parked and woken by this message, so without the flag the sender cannot tell: a seat that became the
+    // relay of its row's children after the stager's up seat died shed them all at once (tv-chain 461a, 8-12 s of silence).
+    function demand(from, key, sid, want, prim) {
+      const dk = from + '|' + key + '|' + sid, st = want ? (prim ? 'p' : 'w') : 'i', now = Date.now();
       const cur = subWant.get(dk);
       if (cur && cur.st === st && now - cur.at < 6000) return;
       const p = peers.get(from);
       if (!(p && p.dc && p.dc.readyState === 'open')) return;
       subWant.set(dk, { st, at: now });
       if (want) stgFoNote(key, 'want', from);
-      dcSend(p, { k: want ? 'mx-want' : 'mx-idle', key, streamId: sid });
+      dcSend(p, want ? (prim ? { k: 'mx-want', key, streamId: sid, pr: 1 } : { k: 'mx-want', key, streamId: sid }) : { k: 'mx-idle', key, streamId: sid });
     }
     function repaintRedun(rk, stream) {
       // Respect the same position guards reconcileMosaic paints under, so an
@@ -25829,7 +25836,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // second read would see the state the first one just changed.
       const stdHot = standbyStaysHot(fb, now, WAKE_MAX);
       const hot = new Set();
-      if (pri && inCand(pri) && !mosHeld(pri)) hot.add(pri.via + '|' + pri.streamId); // a held feed (mosDecoderSweep) stays parked until its decoder is re-bound
+      const primSet = new Set(); // the copy I play and relay on: a duty to its sender, not a spare (demand)
+      if (pri && inCand(pri) && !mosHeld(pri)) { hot.add(pri.via + '|' + pri.streamId); primSet.add(pri.via + '|' + pri.streamId); } // a held feed (mosDecoderSweep) stays parked until its decoder is re-bound
       if (std && stdHot && !mosHeld(std)) hot.add(std.via + '|' + std.streamId);
       if (std && u2Over) hot.add(std.via + '|' + std.streamId);
       if (std && (rk.indexOf('stg:') === 0 || rk === 'sgs')) for (const job of mosJobs.values()) if (job.active && job.upKey === rk && stgFedBy(job, std)) { hot.add(std.via + '|' + std.streamId); break; }
@@ -25865,9 +25873,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const hb = (b.ann && typeof b.ann.h === 'number') ? b.ann.h : 998;
           return ha !== hb ? ha - hb : String(a.from).localeCompare(String(b.from));
         })[0];
-        if (seed) hot.add(seed.from + '|' + seed.sid);
+        if (seed) { hot.add(seed.from + '|' + seed.sid); primSet.add(seed.from + '|' + seed.sid); }
       }
-      for (const x of cand) demand(x.from, x.key, x.sid, hot.has(x.from + '|' + x.sid));
+      for (const x of cand) demand(x.from, x.key, x.sid, hot.has(x.from + '|' + x.sid), primSet.has(x.from + '|' + x.sid));
     }
     // keep: an announcer still names the slot and its stream is on that peer.
     // Otherwise stamp deadAt and drop once MOS_GRACE has passed. A fresh stamp
