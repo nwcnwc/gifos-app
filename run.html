@@ -29423,16 +29423,25 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // line leaves and m keeps the earlier of the two times, so the transcript
     // keeps its order and the sentence its true start).
     function trMerge(m) {
-      let same = null;
-      for (const l of trs.values()) if (trSame(l, m)) { if (!same || trBetter(l, same)) same = l; }
-      if (!same) return 'new';
-      if (clog) clog('tr same', String(m.byId).slice(0, 6), m.src, m.at, 'held', String(same.byId).slice(0, 6), same.src, same.at);
-      // Whichever copy stays, the sentence keeps the earlier of the two times,
-      // so the order is the same on every page whatever arrived first.
-      if (!trBetter(m, same)) { if ((m.at || 0) > 0 && (m.at || 0) < (same.at || 0)) same.at = m.at; trDrops++; return 'dup'; }
-      trs.delete(same.id);
-      if ((same.at || 0) > 0 && (same.at || 0) < (m.at || 0)) m.at = same.at;
-      return same;
+      // EVERY held line this one matches is the same utterance (two engines
+      // cut it differently, so a long line can match several short ones). The
+      // best of them all survives with the earliest time; the rest leave.
+      const same = [];
+      for (const l of trs.values()) if (trSame(l, m)) same.push(l);
+      if (!same.length) return 'new';
+      let best = same[0];
+      for (const l of same) if (trBetter(l, best)) best = l;
+      let at = m.at || 0;
+      for (const l of same) if ((l.at || 0) > 0 && (at <= 0 || l.at < at)) at = l.at;
+      if (clog) clog('tr same', String(m.byId).slice(0, 6), m.src, m.at, 'held', String(best.byId).slice(0, 6), best.src, best.at, 'x' + same.length);
+      if (!trBetter(m, best)) {
+        for (const l of same) if (l !== best) trs.delete(l.id);
+        if (at > 0 && at < (best.at || 0)) best.at = at;
+        trDrops++; return 'dup';
+      }
+      for (const l of same) trs.delete(l.id);
+      if (at > 0) m.at = at;
+      return best;
     }
     // A line arrives here from the wire ('tr' frame, or a 'hi' replay = backfill)
     // and from this page's own engine (addTranscriptLine). The device that wrote
