@@ -15448,11 +15448,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // (tlFiredPid, cleared by its next mesh frame), went into the dark; the
     // request is the peer back with no pair. Waiting it out held a returning
     // member off a newcomer until the next re-offer, seconds later.
+    // So is an offer the relay bounced, however young: its {t:'nosock'} came
+    // after the offer left, so the offer reached no page. A neighbour that
+    // reloads is dialled again at its goodbye, before its new page holds a
+    // socket; its new page's first request then came under a second after
+    // that offer, the pair was left to "form", and the returner waited 8.5 s
+    // for its own door redial (the mesh law: a page that sends on a pair it
+    // holds no pc of asks for one, and the dialler offers back at once).
     const LOST_OFFER_MS = 1000;
     function onDialRequest(p) {
       const pLive = p.connected && p.dc && p.dc.readyState === 'open';
       const unanswered = !!(p.pc && p.pc.signalingState === 'have-local-offer');
-      const darkOffer = unanswered && (tlFiredPid.has(p.id) || (p.offerSentPc === p.pc && Date.now() - (p.offerSentAt || 0) >= LOST_OFFER_MS));
+      const bounced = unanswered && p.offerSentPc === p.pc && (p.offerNoSockAt || 0) >= (p.offerSentAt || 0);   // the relay said nosock after this offer left
+      const darkOffer = unanswered && (bounced || tlFiredPid.has(p.id) || (p.offerSentPc === p.pc && Date.now() - (p.offerSentAt || 0) >= LOST_OFFER_MS));
       // A fresh pc nothing has happened on (no offer either way, no ICE) is idle, not forming: the one a
       // goodbye leaves behind for the seat's next dial. Counting it as forming made a dial request from a
       // page back from a reload wait out this window and its own 4 s retries: the pair came up at 8-9 s.
@@ -17721,6 +17729,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // retry goes over the sponsor path immediately, not blind.
         txStats.nosock++;
         if (m.to) { if (relayNoSock.size > 2048) relayNoSock.clear(); relayNoSock.set(m.to, Date.now()); }
+        { const pb = m.to && peers.get(m.to); if (pb && pb.pc && pb.offerSentPc === pb.pc && pb.pc.signalingState === 'have-local-offer') pb.offerNoSockAt = Date.now(); }   // my unanswered offer reached no page: a dial request from it is answered at once (onDialRequest)
         // A greeter's joiner has gone: stop dialling it, its door slot is free. (A joiner's greeter that has gone: the seat hears BUSY{nosock} and asks the next.)
         { const pn = m.to && peers.get(m.to); if (pn && pn.neverUp && meshCoord() && !coordKeyOf(m.to) && meshNode && meshNode.transport) { try { meshNode.transport(m.to, 'unanswered'); } catch (e) {} } }   // L33.13: a seat my view seats went deep, it did not go: no failed dial, the next offer walks (relayNoSock)
       }
