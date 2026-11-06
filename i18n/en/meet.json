@@ -499,6 +499,7 @@
   "meet.blurMin": "Min",
   "meet.tile": "Tile",
   "meet.float": "Float",
+  "meet.floatHint": "To keep the meeting on screen in other apps, tap More, then Float, before you switch.",
   "meet.strip": "Strip",
   "meet.size": "Size",
   "meet.selfcornerLbl": "Corner",

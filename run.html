@@ -7624,9 +7624,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       dcSend(p, { k: 'vis', park: false });
       visParkSent.set(pid, false);
     }
+    // A phone browser opens a float only from a tap, never on its own when
+    // you switch apps. Someone who left with no float, while one was there to
+    // show, is told once where Float is when they come back.
+    let pipHintArmed = false, pipHintDone = false;
+    const pipBtnShown = () => { const b = document.getElementById('pipbtn'); return !!b && b.style.display !== 'none'; };
     document.addEventListener('visibilitychange', () => {
       awayFull(document.hidden);
-      if (document.hidden) enterPip(); else exitPip();
+      if (document.hidden) {
+        pipHintArmed = IS_MOBILE && !pipHintDone && !pipFloating() && pipBtnShown() && !!pipSource();
+        enterPip();
+      } else {
+        exitPip();
+        if (pipHintArmed) {
+          pipHintDone = true;
+          setStatus(uiText('floatHint', 'To keep the meeting on screen in other apps, tap More, then Float, before you switch.'), 9000);
+        }
+        pipHintArmed = false;
+      }
       sendVisPark();
     });
     document.addEventListener('fullscreenchange', () => { if (!pageFull()) awayFull(false); });

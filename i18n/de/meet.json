@@ -499,6 +499,7 @@
   "meet.blurMin": "Min.",
   "meet.tile": "Kachel",
   "meet.float": "Bild-in-Bild",
+  "meet.floatHint": "Damit das Meeting in anderen Apps sichtbar bleibt, tippen Sie vor dem Wechsel auf Mehr und dann auf Bild-in-Bild.",
   "meet.strip": "Leiste",
   "meet.size": "Größe",
   "meet.selfcornerLbl": "Ecke",
