@@ -736,6 +736,21 @@
     // it) and keeps pulling its track, so a node per read grows memory and CPU for the whole meeting.
     const tap = ac.createAnalyser(); tap.fftSize = 2048;
     const tapBuf = new Float32Array(tap.fftSize);
+    // HEADROOM. The fold is additive (mix-minus, never subtraction), so several people talking at once can sum past
+    // full scale, and the encoder's int16 input clips: everyone downstream hears the distortion. Every source joins
+    // one bus, and the bus reaches the destination through a limiter that only acts on the loudest moments (above
+    // -3 dBFS); below that the mix passes unchanged. The tap reads the bus, so peak() is the summed level itself.
+    const bus = ac.createGain();
+    let limiter = null;
+    if (typeof ac.createDynamicsCompressor === 'function') {
+      try {
+        limiter = ac.createDynamicsCompressor();
+        limiter.threshold.value = -3; limiter.knee.value = 0; limiter.ratio.value = 20;
+        limiter.attack.value = 0.002; limiter.release.value = 0.1;
+      } catch (e) { limiter = null; }
+    }
+    if (limiter) { bus.connect(limiter); limiter.connect(dest); } else bus.connect(dest);
+    bus.connect(tap);
     const srcs = new Map(); // key -> { src, gain }
     const waiting = new Map(); // key -> { stream, fn } until an audio track exists
     function dropWait(key) {
@@ -770,7 +785,7 @@
       if (!t) return false;
       try {
         const g = ac.createGain(); g.gain.value = gain == null ? 1 : gain;
-        g.connect(dest); g.connect(tap);
+        g.connect(bus);
         const rec = { src: null, gain: g, track: t, onUnmute: null };
         rec.src = bindSource(rec);
         srcs.set(key, rec);
