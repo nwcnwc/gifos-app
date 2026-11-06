@@ -10215,6 +10215,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     document.addEventListener('pointerdown', () => ensureAc());
     var myVoiceAt = 0; // last tick my OWN echo-cancelled mic carried voice (the caption gate reads it)
+    var myVoiceFrom = 0; // when the current stretch of my voice began (a caption line's span starts here)
     function meterFor(id, stream) {
       if (!stream || !ensureAc()) return;
       const track = stream.getAudioTracks()[0];
@@ -10283,7 +10284,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           speaking = Math.sqrt(dev / m.data.length) > 5;
         }
         t.tile.classList.toggle('speaking', speaking);
-        if (id === 'me' && speaking) { lastActive = Date.now(); myVoiceAt = lastActive; } // talking IS activity — a speaker's phone is never "parked"
+        if (id === 'me' && speaking) { lastActive = Date.now(); if (lastActive - myVoiceAt > 1500) myVoiceFrom = lastActive; myVoiceAt = lastActive; } // talking IS activity — a speaker's phone is never "parked"
         speakingOf.set(id, speaking); // fed to the packer overlay (green talking frame on composite faces)
       }
       if (fsSel === 'auto' && fsview.classList.contains('on')) fsRefresh();
@@ -30162,7 +30163,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const pcm = wspPcm16k(job.chunks, job.rate);
       // My own voice: the picker (auto = let Whisper find it). Another voice:
       // the language its page advertises, else found by Whisper. A mix: found.
-      const lang = job.lang || (job.id === 'me' ? (lsGet(CC_LANG_KEY) || 'auto') : 'auto');
+      // A cut that continues the previous cut of the same capture (under 1.5 s
+      // of gap) keeps that cut's language: nobody switches language mid-sentence,
+      // and a short tail detected on its own comes out as anything, translated.
+      // My own voice: the picker, else the language this page knows, else found.
+      const cap0 = wspCaps.get(job.id);
+      const cont = (cap0 && cap0.lastLang && cap0.lastEnd && job.at - cap0.lastEnd < 1500) ? cap0.lastLang : '';
+      const lang = cont || job.lang || (job.id === 'me' ? (lsGet(CC_LANG_KEY) || trLangKnown() || 'auto') : 'auto');
       let model = 'base';
       if (typeof wspModel === 'function') {
         const picked = wspModel();
@@ -30263,6 +30270,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // audio it writes a translation; neither is a detection.
           const found = lang === 'auto';
           const rl = found ? ((r && r.language) ? String(r.language) : '') : lang;
+          const capNow = wspCaps.get(job.id);
+          if (capNow) { capNow.lastEnd = job.at + clipMs; if (rl) capNow.lastLang = rl; }
           const end = job.at + clipMs; // the clip's span: a mix clip opens with the first voice in it, so its start says little
           if (job.id === 'me') { addTranscriptLine(text, job.at, null, null, 'mic', rl, found, end); }
           else if (job.id === 'fold') { if (trWrites()) addTranscriptLine(text, job.at, 'stadium', 'Stadium', 'mix', rl, found, end); }   // a far-row line, labelled by its channel
@@ -30328,6 +30337,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const cap = wspCaps.get(id);
         const sid = wspStageSid(id);
         if (cap && (cap.stageSid || null) !== (sid || null)) wspStop(id);
+        else if (cap && id !== 'me' && id !== 'fold' && (cap.lang || 'auto') !== (((statusOf.get(id) || {}).lang) || 'auto')) wspStop(id);   // the speaker's page now tells its language (or stopped): ask Whisper for that
         else if (cap && cap.fold && cap.foldSig !== wspFoldSig()) wspStop(id);   // the mix's tracks changed: capture the new ones
         if (!wspCaps.has(id)) wspStart(id);
       }
@@ -30752,7 +30762,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               if (!e.results[i].isFinal) continue;
               const who = ccMixSpeaker();
               if (!who) { trDrops++; continue; }
-              if (who === 'me') addTranscriptLine(e.results[i][0].transcript, 0, null, null, 'mic', rec.langTag);
+              if (who === 'me') addTranscriptLine(e.results[i][0].transcript, myVoiceFrom || 0, null, null, 'mic', rec.langTag, rec.langTag === trLangKnown(), Date.now());
               else addTranscriptLine(e.results[i][0].transcript, 0, who, null, 'ear', rec.langTag);
             }
             return;
@@ -30765,7 +30775,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           for (let i = e.resultIndex; i < e.results.length; i++) {
             if (!e.results[i].isFinal) continue;
             if (!heard) { trDrops++; continue; }
-            addTranscriptLine(e.results[i][0].transcript, 0, null, null, 'mic', rec.langTag);
+            // the line spans from when this stretch of my voice began to now; its language is as good as
+            // detected when it is the one this page knows (picked, or learned from the room's Whisper pages)
+            addTranscriptLine(e.results[i][0].transcript, myVoiceFrom || 0, null, null, 'mic', rec.langTag, rec.langTag === trLangKnown(), Date.now());
           }
         };
         speech.onend = () => {
