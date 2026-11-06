@@ -163,12 +163,26 @@
           for (const wk of v.keys()) { this.l842Join.add(wk); const l = this.lineOf(wk); if (l >= 0 && l !== this.line) ls.add(l); }
           for (const x of this.occ.values()) { if (x < 0 || x === this.id) continue; const l = this.lineOf(x); if ((l >= 0 && ls.has(l)) || this.l828RingOf(x) === theirs) this.l842Join.add(x); }
         }
-        this.trace('C7', this.id, this.coord, 'mine=%d theirs=%d', mine, theirs); this.c7Yield(mine); this.l842Join.clear(); return true;
+        this.trace('C7', this.id, this.coord, 'mine=%d theirs=%d', mine, theirs); this.c7Yield(mine, 'C7-merge', theirs); this.l842Join.clear(); return true;
       }
       if (gated) return false;
       const t = this.c7Told.get(m.id);
       if (t === undefined || this.TICK - t >= 16) { this.c7Told.set(m.id, this.TICK); if (this.c7Told.size > 64) eraseFirst(this.c7Told); const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = this.id; this.emit(m.id, h); }
       return true;
+    },
+
+    // C++: mesh_island.inc:Seat::l851Note   [L8.5.1: a seat that left its cell to a lower ring enters a ring that stays]
+    l851Note(up) {
+      if (!roomTerm(this, 1) || up < 0) return;
+      for (const [name, at] of this.l828Ring.values()) if (name >= 0 && name + 1 < up && this.TICK - at <= K.RELAY_TTL) up = name + 1;
+      for (const [r, v] of this.c7Vouch) { if (r < 0 || r + 1 >= up) continue; for (const at of v.values()) if (this.TICK - at <= K.RELAY_TTL) { up = r + 1; break; } }
+      this.l851Up = up; this.l851At = this.TICK;
+    },
+
+    // C++: mesh_island.inc:Seat::l851Moves   [true: this HOME or chair is from a ring that moves too]
+    l851Moves(m) {
+      if (!roomTerm(this, 1) || this.l851Up < 0 || this.TICK - this.l851At >= K.RELAY_TTL || m.c7Min < 0 || m.c7Min < this.l851Up) return false;
+      this.trace('L8.5.1-REFUSE', this.id, null, 'from=%d owner=%d ring=%d up=%d', m.from, m.owner, m.c7Min, this.l851Up); return true;
     },
 
     // C++: mesh_island.inc:Seat::c7Follow
@@ -183,7 +197,7 @@
     },
 
     // C++: mesh_island.inc:Seat::c7Yield
-    c7Yield(rmin, why = 'C7-merge') {
+    c7Yield(rmin, why = 'C7-merge', toward = -1) {
       if (!this.hasCoord || this.state !== 3) return;
       const ol = ownedLinks(this.coord), n = ol.length; const told = new Set();
       const b = newMsg('LEAVE'); b.ck = ckey(this.coord); b.id = this.id; b.c7 = true; b.c7Min = rmin;
@@ -192,6 +206,7 @@
       tell(this.occGet(ckey(down(this.coord))));
       tell(this.ownerId());
       this.c7Old.clear(); for (const v of this.occ.values()) if (v >= 0 && v !== this.id && !this.l842Join.has(v)) this.c7Old.add(v); this.c7At = this.TICK;
+      this.l851Note(toward >= 0 ? toward + 1 : rmin);   // L8.5.1
       if (roomTerm(this, 1)) this.l834Y = rmin;
       this.requeue(why); this.l834Y = -1;
     },

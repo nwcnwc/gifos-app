@@ -24,7 +24,10 @@
 
   Seat.unit('mesh_gaps4.inc', {
     // C++: mesh_gaps4.inc:Seat::l40Go
-    l40Go(rival, why) { this.l40To = rival; this.requeue(why); this.l40To = -1; },
+    l40Go(rival, why) {
+      if (rival >= 0 && rival !== this.id && this.hasCoord && this.state === 3) { const r = this.l828RingOf(rival); if (r >= 0 && r < this.ringName()) this.l851Note(r + 1); }   // L8.5.1: I leave my cell to a lower ring
+      this.l40To = rival; this.requeue(why); this.l40To = -1;
+    },
 
     // C++: mesh_gaps4.inc:Seat::l404Empty   [L40.4: nobody left in the rook to ask; a third seat in it yielded me naming the rival]
     l404Empty(rival) {

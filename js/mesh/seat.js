@@ -850,6 +850,7 @@
       }
       if (roomTerm(this, 1) && m.t === 'PONG' && m.id === id && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); this.emit(to, mm); return; }   // L8.31
       if (roomTerm(this, 1) && m.t === 'HELLO' && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); mm.c7Held = this.l845Held(); this.emit(to, mm); return; }   // L8.5
+      if (roomTerm(this, 1) && ((m.t === 'HOME' && m.id === id) || (m.t === 'PLACE' && m.pp === id)) && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); this.emit(to, mm); return; }   // L8.5.1
       if (roomTerm(this, 1) && m.t === 'PHONE' && m.id === id && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); this.emit(to, mm); return; }   // L8.10
       if (m.t === 'WHOHOME' && !this.hasCoord && m.from === id) this.noteDoorAsk(to);   // dark-greeter evidence
       if (roomTerm(this, 1) && m.t === 'CONFIRM' && m.id === id && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); this.emit(to, mm); return; }   // L8.11

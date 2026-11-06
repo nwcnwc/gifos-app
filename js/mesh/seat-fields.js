@@ -819,6 +819,8 @@
     ["heirNotMine", "<i32>"],   // OSet<int>  (line 1862)
     ["c7Old", "<i32>"],   // OSet<int>  (line 1862)
     ["c7At", "i32"],   // int = -1000000  (line 1862)
+    ["l851Up", "i32"],   // int = -1  (line 1862)
+    ["l851At", "i32"],   // int = -1000000  (line 1862)
     ["searchAt", "i32"],   // int = -1  (line 1862)
     ["l815N", "i32"],   // int = 0  (line 1862)
     ["l815At", "[i32;8]"],   // int[8] = {}  (line 1862)
@@ -1321,6 +1323,8 @@
     islandFounder: false,
     forkSilent: false,
     c7At: -1000000,
+    l851Up: -1,
+    l851At: -1000000,
     searchAt: -1,
     l815N: 0,
     l917Ck: 0,
