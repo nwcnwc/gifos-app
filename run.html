@@ -25827,6 +25827,22 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return sv.some((s) => pv.indexOf(s) >= 0) ? null : sb;
     }
     function stgRootKey(key) { return typeof key === 'string' && key.indexOf('stg:') === 0 && key.slice(-STG_ROOT2.length) === STG_ROOT2; }
+    // A SECOND-ROOT COPY A RECEIVER PLAYS KEEPS ITS SOURCE. My parked standby is re-picked as paths come and go, and a
+    // failover makes it my primary. Re-pointing a played copy at whatever I hold parked next changed its root under the
+    // same stream id: the receiver kept playing what it took for the root it had chosen and heard a parked chain that
+    // never woke, or a copy from the seat that had just died. So while a receiver plays it (the job is active), the copy
+    // stays on its source as long as I hold that source (primary or standby) and the source does not come through the
+    // receiver; once I hold it no more, the copy ends and the receiver fails over by its own rules. A parked copy
+    // follows my standby: nobody plays it, and its announce carries the new path.
+    // Returns the held entry to ship, false when the played copy just ended, null when the job is not played.
+    function stgRootHold(jk, slot, to) {
+      const job = mosJobs.get(jk);
+      if (!job || !job.active || !job.srcTracks || !job.srcTracks.length) return null;
+      const ent = [mosIn.get(slot), mosStandby.get(slot)].find((e) => !!(e && e.stream && stgFedBy(job, e)));
+      if (ent && stgPath(ent).indexOf(vpId(to)) < 0) return ent;
+      unshipMos(jk, true); shipContainers.delete(jk); // the next copy gets a fresh id, never the one the receiver played
+      return false;
+    }
     // END-STG-SECOND-ROOT
     function stgFedBy(job, ent) {
       const trs = ent.stream ? ent.stream.getTracks() : [];
@@ -27154,36 +27170,44 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // redun-drill caught it as "no receiver holding a relayed stg primary
         // + standby".
         // upKey: the slot a second-root copy is fed from (its parked standby); such a copy skips the seats on its path.
+        // A second-root copy is visited with no stream too, so a copy a receiver plays is kept (stgRootHold).
         const floodOne = (key, stream, via, h, vp, upKey) => {
-          if (!stream || flooded.has(stream.id)) return; flooded.add(stream.id);
+          if (stream) { if (flooded.has(stream.id)) return; flooded.add(stream.id); } else if (!upKey) return;
           const owner = key.indexOf('stg:') === 0 ? key.slice(4).split('^')[0] : null;
-          const skip = (t) => !t || (owner && t === owner) || (!!upKey && vp.indexOf(vpId(t)) >= 0);
+          const skip = (t) => !t || (owner && t === owner) || (!!upKey && !!vp && vp.indexOf(vpId(t)) >= 0);
           const up = upKey || key;
           const hm = vp ? { h, vp } : { h }; // hop count from the producer — claims prefer min-h (see prefCand); vp: the seats this copy came through
+          // What goes to t: a played second-root copy's own source, else this stream.
+          const pick = (t) => {
+            const held = upKey && t ? stgRootHold(key + '>' + t, upKey, t) : null;
+            if (held) return { st: held.stream, m: { h: stgHop(held), vp: stgPath(held) } };
+            return stream && !skip(t) ? { st: stream, m: hm } : null;
+          };
           // My OWN feed: two neighbours watch it directly, the rest get an
           // sb:1 copy they keep parked (STG-DIRECT).
           const direct = owner === myId ? stgDirectSet(T.rowMates(c).map((m) => occPid(m)), T.colMates(c).map((m) => occPid(m)),
             (t) => { const q = peers.get(t); return !!(q && q.pc && q.connected); }) : null;
           const hmSb = { h, sb: 1 };
-          for (const t of s1peers) { if (skip(t) || (owner !== myId && relayHeldForTest(key, t))) continue; const jk = shipMos(key, t, stream, (direct && !direct.has(t)) ? hmSb : hm, up); if (jk) wanted.add(jk); }
+          for (const t of s1peers) { if (owner !== myId && relayHeldForTest(key, t)) continue; const s = pick(t); if (!s) continue; const jk = shipMos(key, t, s.st, (direct && !direct.has(t)) ? hmSb : s.m, up); if (jk) wanted.add(jk); }
           const dnP = occPid(T.down(c)); // and DOWN — Stage audio folds at every ear
-          if (!skip(dnP)) {
-            const dnSt = stgDownShip(key, stream, !!(owner && sharingScreen(owner)), stgAudioMemo);
-            if (dnSt) { const jk = shipMos(key, dnP, dnSt, stgDownMeta(hm, dnSt, stream), up); if (jk) wanted.add(jk); }
+          const sd = pick(dnP);
+          if (sd) {
+            const dnSt = stgDownShip(key, sd.st, !!(owner && sharingScreen(owner)), stgAudioMemo);
+            if (dnSt) { const jk = shipMos(key, dnP, dnSt, stgDownMeta(sd.m, dnSt, sd.st), up); if (jk) wanted.add(jk); }
           }
           // E2: the rows I back up hold a parked copy.
           for (const t of (meshSeat() ? meshSeat().u2Heirs().concat(meshSeat().l14Served()) : [])) {
-            if (skip(t)) continue;
-            const dnSt = stgDownShip(key, stream, !!(owner && sharingScreen(owner)), stgAudioMemo);
-            if (dnSt) { const jk = shipMos(key, t, dnSt, stgDownMeta(hm, dnSt, stream), up); if (jk) wanted.add(jk); }
+            const s = pick(t); if (!s) continue;
+            const dnSt = stgDownShip(key, s.st, !!(owner && sharingScreen(owner)), stgAudioMemo);
+            if (dnSt) { const jk = shipMos(key, t, dnSt, stgDownMeta(s.m, dnSt, s.st), up); if (jk) wanted.add(jk); }
           }
         };
         if (amStager) { const st = mySelfStream(); if (st) floodOne('stg:' + myId, st, null, 0); }
         for (const k of heldStg) {
           const hf = mosIn.get(k);
           if (!stgLost(k)) floodOne(k, hf.stream, hf.via, stgHop(hf), stgPath(hf));
-          const sb2 = stgSecondRoot(hf, mosStandby.get(k)); // STG-SECOND-ROOT
-          if (sb2) floodOne(k + STG_ROOT2, sb2.stream, sb2.via, stgHop(sb2), stgPath(sb2), k);
+          const sb2 = stgSecondRoot(hf, mosStandby.get(k)); // STG-SECOND-ROOT (with none, a copy a receiver plays is still kept)
+          floodOne(k + STG_ROOT2, sb2 ? sb2.stream : null, sb2 ? sb2.via : null, sb2 ? stgHop(sb2) : 0, sb2 ? stgPath(sb2) : null, k);
         }
         // composite the strip in stage order; fan 'sgs' down my subtree
         const selfSt = soloSelf ? selfStageStream() : null;
