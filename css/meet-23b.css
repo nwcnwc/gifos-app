@@ -451,79 +451,60 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
   #tilewin .tw-side button.tw-btn { font-size: 16px; padding: 4px; }
 }
 
-/* Settings is one card. Desktop: video, stage and name on one row; captions
-   beside the mix. Phone: name beside the mix. Every control stays visible,
-   including both caption engines and the stadium fader. The card does not scroll. */
-#set-modal .name-box {
-  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px; align-items: start;
-  width: min(1000px, calc(100vw - 16px)); max-width: min(1000px, calc(100vw - 16px));
-  padding: 8px 10px; box-sizing: border-box;
+/* Settings is a normal settings screen: groups with headings, one setting a
+   row (label, then the control with its help under it), readable sizes and
+   44px controls. The body scrolls; the title and Close stay put (.dlg). */
+#set-modal .name-box.set-box {
+  width: min(720px, calc(100vw - 32px)); max-width: none; padding: 0; text-align: left;
+  color: var(--text, #1d1d1f);
 }
-#set-modal #set-title { grid-column: 1 / -1; grid-row: 1; margin: 0; font-size: 16px; }
-#set-modal #set-video { grid-column: 1; grid-row: 2; }
-#set-modal #set-stage-video { grid-column: 2; grid-row: 2; }
-#set-modal .set-sec:not([id]) { grid-column: 3; grid-row: 2; }
-/* The stage and name blocks share a wrapper. It is only a column on a phone. */
-#set-modal #set-col-a { display: contents; }
-#set-modal #set-captions { grid-column: 1 / span 2; grid-row: 3; }
-#set-modal #mixpanel { grid-column: 3; grid-row: 3; }
-#set-modal .name-box > div:last-child { grid-column: 1 / -1; grid-row: 4; margin-top: 0; }
-#set-modal .name-box p { margin: 0; }
-#set-modal .set-sec { margin: 0; gap: 4px; }
-#set-modal .set-help, #set-modal .rec-opt small { font-size: 11px; line-height: 1.25; }
-#set-modal .rec-opt { min-height: 0; padding: 2px 0; }
-#set-modal #ccengine-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px; }
-#set-modal #ccengine-row #ccsource { grid-column: 1 / -1; }
-#set-modal .seg { min-height: 28px; padding: 2px 6px; }
-#set-modal .name-box button { min-height: 32px; padding: 4px 8px; }
-#set-modal #mixpanel { gap: 4px; margin: 0; }
-#set-modal #mixpanel label { min-height: 0; }
-#set-modal #mixpanel input[type=range] { width: 88px; height: 18px; min-height: 0; margin: 0; }
-#set-modal #set-avatar-file { height: 28px; min-height: 0; font-size: 12px; padding: 0; }
-#set-modal #set-close { margin-top: 0; }
-@media (max-width: 700px), (max-height: 500px) {
-  #set-modal .name-box { grid-template-columns: 1fr 1fr; width: min(1000px, calc(100vw - 12px)); max-width: min(1000px, calc(100vw - 12px)); }
-  #set-modal #set-video { grid-column: 1 / -1; grid-row: 2; }
-  #set-modal #vqrow { flex-wrap: nowrap; }
-  #set-modal #vqrow .seg { flex: 1 1 0; min-width: 0; padding: 2px 1px; font-size: 11px; }
-  #set-modal #set-stage-video { grid-column: 1; grid-row: 3; }
-  #set-modal #mixpanel { grid-column: 2; grid-row: 3; }
-  #set-modal .set-sec:not([id]) { grid-column: 1 / -1; grid-row: 4; }
-  #set-modal #set-captions { grid-column: 1 / -1; grid-row: 5; }
-  #set-modal .name-box > div:last-child { grid-row: 6; }
-  #set-modal #ccengine-row { max-height: 72px; overflow-y: auto; }
+#set-modal .set-box > .dlg-head { padding: 16px 20px 12px; border-bottom: 1px solid var(--border, #d9dce3); }
+#set-modal .set-box > .dlg-head h3 { margin: 0; font-size: 1.25rem; line-height: 1.3; text-align: left; }
+#set-modal .set-box > .dlg-body { padding: 4px 20px 16px; }
+#set-modal .set-box > .dlg-actions { padding: 12px 20px; border-top: 1px solid var(--border, #d9dce3); justify-content: flex-end; }
+#set-modal .set-group { margin: 0; }
+#set-modal .set-group > h4 { margin: 24px 0 4px; padding-bottom: 6px; border-bottom: 2px solid var(--accent, #0064c8); font-size: 1.1rem; line-height: 1.3; font-weight: 700; color: var(--text, #1d1d1f); }
+#set-modal .set-group:first-child > h4 { margin-top: 12px; }
+#set-modal .set-row {
+  display: grid; grid-template-columns: 11rem minmax(0, 1fr); gap: 6px 16px; align-items: start;
+  margin: 0; padding: 12px 0; border-top: 1px solid var(--border, #e4e4ea); font-size: 1rem;
 }
-/* A 360-wide phone. The 72px cap above clipped the caption engines (194>72),
-   and the stadium fader pushed the card 5px past the viewport (711>706).
-   Tighter rhythm lets both engines show in full and the card still fits.
-   A short wide window keeps the cap: this block is width only. */
-@media (max-width: 700px) {
-  #set-modal .name-box { padding: 4px 6px; gap: 2px 6px; }
-  #set-modal .set-sec { gap: 2px; }
-  #set-modal .set-help, #set-modal .rec-opt small { font-size: 10px; line-height: 1.15; }
-  #set-modal #ccengine-row { max-height: none; overflow: visible; margin-top: 2px; gap: 4px; }
-  #set-modal #mixpanel { gap: 1px; }
-  #set-modal #mixpanel input[type=range] { height: 16px; }
-  #set-modal .name-box button, #set-modal .seg { min-height: 28px; }
-  #set-modal #set-avatar-file { height: 24px; min-height: 0; }
-  #set-modal .rec-opt input { min-height: 0; }
-  /* A phone that is offered a Meeting Bot's captions gets the Captions
-     source block, and the card ran 108px past a 773px screen. Two columns
-     hold the lower half: the name block sits under the stage block (one
-     column, so the two sides stack on their own), and the captions
-     language, its help and the language menu sit under the sound mix. The engine row spans the card, and the Captions source
-     block takes the empty column under Whisper, beside the phone's
-     Whisper warning. Close stays on screen without scrolling. */
-  #set-modal #set-captions { display: contents; }
-  #set-modal #set-col-a { display: flex; flex-direction: column; gap: 2px; grid-column: 1; grid-row: 3 / span 4; }
-  #set-modal #set-col-a > .set-sec { grid-column: auto; grid-row: auto; }
-  #set-modal #set-captions > b { grid-column: 2; grid-row: 4; }
-  #set-modal #set-captions > .set-help:not(#ccall-row) { grid-column: 2; grid-row: 5; }
-  #set-modal #cclang { grid-column: 2; grid-row: 6; }
-  #set-modal #ccengine-row { grid-column: 1 / -1; grid-row: 7; margin-top: 0 !important; }
-  #set-modal #ccall-row { grid-column: 1 / -1; grid-row: 8; }
-  #set-modal .name-box > div:last-child { grid-row: 9; }
-  #set-modal #ccengine-row #ccsource { grid-column: 2; grid-row: 2; margin-top: 0 !important; }
+#set-modal .set-group > h4 + .set-row, #set-modal #mixpanel > .set-row:first-child { border-top: 0; }
+#set-modal #mixpanel { display: block; }
+#set-modal .set-row > b { grid-column: 1; font-size: 1rem; line-height: 1.4; font-weight: 600; padding-top: 10px; }
+#set-modal .set-row > .set-ctl { grid-column: 2; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
+#set-modal .set-row.set-wide > * { grid-column: 1 / -1; }
+#set-modal .set-help, #set-modal .rec-opt small { font-size: .875rem; line-height: 1.45; margin: 0; color: var(--muted, #5a6070); }
+#set-modal p.set-help { margin: 0; }
+#set-modal .rec-opt { min-height: 44px; padding: 6px 0; gap: 12px; align-items: flex-start; font-size: 1rem; width: 100%; box-sizing: border-box; }
+#set-modal .rec-opt span b { font-weight: 600; }
+#set-modal .name-box .rec-opt input { width: 20px; min-width: 20px; height: 20px; margin: 2px 0 0; }
+#set-modal .name-box .rec-opt.inline input { margin: 0; }
+#set-modal .seg, #set-modal .name-box button { min-height: 44px; padding: 8px 14px; font-size: 1rem; }
+#set-modal #vqrow { display: flex; flex-wrap: wrap; max-width: 100%; }
+#set-modal #vqrow .seg { min-width: 44px; padding: 8px 10px; }
+#set-modal #cclang { min-height: 44px; width: 100%; font-size: 1rem; box-sizing: border-box; }
+#set-modal #ccwhisper, #set-modal #ccwhisper-weak { margin: 0 !important; align-self: stretch; }
+#set-modal #ccwords { font-size: 1rem !important; box-sizing: border-box; }
+#set-modal #set-avatar-file { width: 100%; min-height: 44px; margin: 0; font-size: 1rem; box-sizing: border-box; }
+#set-modal .set-mix { align-items: stretch; }
+#set-modal .set-mix label { display: grid; grid-template-columns: 7.5rem minmax(0, 18rem); align-items: center; gap: 12px; min-height: 44px; font-size: 1rem; }
+#set-modal .set-mix input[type=range] { width: 100%; min-height: 44px; margin: 0; padding: 0; border: 0; background: none; }
+#set-modal #timingrow { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+#set-modal #timingrow button { flex: 1 1 8rem; min-height: 44px; font-size: 1rem; padding: 8px 10px; }
+#set-modal #set-close { min-width: 112px; }
+/* A short window keeps the fixed title and Close slim, so the body has the room. */
+@media (max-height: 500px) {
+  #set-modal .set-box > .dlg-head { padding-top: 10px; padding-bottom: 8px; }
+  #set-modal .set-box > .dlg-actions { padding-top: 8px; padding-bottom: 8px; }
+}
+/* A narrow card puts each label over its control. */
+@media (max-width: 640px) {
+  #set-modal .name-box.set-box { width: calc(100vw - 16px); }
+  #set-modal .set-box > .dlg-head, #set-modal .set-box > .dlg-body, #set-modal .set-box > .dlg-actions { padding-left: 16px; padding-right: 16px; }
+  #set-modal .set-row { grid-template-columns: minmax(0, 1fr); }
+  #set-modal .set-row > b, #set-modal .set-row > .set-ctl { grid-column: 1; }
+  #set-modal .set-row > b { padding-top: 0; }
 }
 
 /* People is a column: the title, the lead and the buttons keep their height

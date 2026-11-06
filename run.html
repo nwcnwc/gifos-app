@@ -786,19 +786,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   @media (max-height: 500px) and (orientation: landscape) {
     body.comfy #handq.open, body.screen-on #handq.open { top: calc(62px + var(--gtop, 0px)); }
   }
-  /* The Settings modal sections (video quality, and the sound mix that used
-     to float as its own Mix panel — same element ids, new home). */
-  .set-sec { display: flex; flex-direction: column; gap: .45rem; font-size: .8rem; margin-bottom: .9rem; }
-  .set-sec > b, #mixpanel > b { font-size: .85rem; }
+  /* Settings rows (layout in css/meet-23b.css). */
+  .set-sec { display: flex; flex-direction: column; gap: .45rem; }
   .set-help { color: var(--muted, #8888aa); font-size: .76rem; line-height: 1.35; margin: 0; }
-  #vqrow { display: flex; flex-wrap: wrap; }
-  #mixpanel { display: flex; flex-direction: column; gap: .45rem; font-size: .8rem; }
-  #mixpanel label { display: flex; align-items: center; justify-content: space-between; gap: .6rem; color: var(--text, #e0e0f0); }
-  #timingrow { display: flex; gap: .35rem; }
-  #timingrow button { flex: 1; padding: .3rem .4rem; border-radius: .45rem; font-size: .72rem; cursor: pointer;
+  #timingrow button { border-radius: .45rem; cursor: pointer;
     background: none; border: 1px solid var(--border, #2a2a3f); color: var(--muted, #8a8aa8); }
   #timingrow button.on { border-color: var(--accent, #7b5cff); color: var(--text, #e0e0f0); background: rgba(123,92,255,.14); }
-  #mixpanel input[type=range] { width: 120px; }
   /* App-in-meeting: the app takes the Stage seat a shared screen takes
      (meet-views lays out #appseat and the pane is pinned on it): the whole
      left side sideways, the top band upright, the people beside or under it.
@@ -3820,6 +3813,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
 
 </style>
 <link rel="stylesheet" href="css/meet-23b.css">
+<link rel="stylesheet" href="css/dialog.css">
 <script src="js/gifos-themes.js"></script>
 </head>
 <body>
@@ -4170,13 +4164,38 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <div id="grid"></div>
     <div id="stadium"></div>
   </div>
-  <div class="name-modal" role="dialog" aria-modal="true" id="set-modal" style="display:none">
-    <div class="name-box" style="text-align:left">
-      <h3 id="set-title" style="text-align:center" data-t="setTitle">Settings</h3>
-      <div class="set-sec" id="set-video">
-        <b data-t="setVideo">Video quality</b>
-        <p class="set-help" data-t="setVideoHelp">What <b>your own camera</b> records and sends. <b>Auto</b> adapts to the room's size and your battery; a fixed choice pins it.</p>
-        <span class="segwrap" id="vqrow" role="group" aria-label="Video quality" data-al="setVideo">
+  <!-- Settings: a scrolling settings screen. Groups by meaning, one setting a
+       row (label, control, help under it); the title and Close stay put while
+       the body scrolls (.dlg). -->
+  <div class="name-modal" role="dialog" aria-modal="true" aria-labelledby="set-title" id="set-modal" style="display:none">
+    <div class="name-box dlg set-box">
+      <div class="dlg-head"><h3 id="set-title" data-t="setTitle">Settings</h3></div>
+      <div class="dlg-body">
+      <section class="set-group" id="set-g-you">
+        <h4 data-t="setGroupYou">Profile</h4>
+        <div class="set-sec set-row">
+          <b data-t="setName">Your name</b>
+          <div class="set-ctl">
+            <p class="set-help"><span data-t="setNameHelp">What everyone sees on your tile:</span> <b id="set-name-cur">…</b> <button id="set-rename" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem;margin-left:.4rem" data-t="setChange">Change</button></p>
+          </div>
+        </div>
+        <div class="set-sec set-row">
+          <b data-t="setPicture">Picture</b>
+          <div class="set-ctl">
+            <img id="set-avatar-preview" alt="" hidden style="width:72px;height:72px;object-fit:cover;border-radius:.5rem">
+            <input id="set-avatar-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp,.gif,.png,.jpg,.jpeg,.webp" aria-label="Picture" data-al="setPicture">
+            <button type="button" id="set-avatar-remove" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem" data-t="setRemove">Remove</button>
+            <p class="set-help" data-t="setPicHelp">Your picture, when the camera is off. An animated GIF stays animated.</p>
+            <p id="set-avatar-err" class="set-help" role="alert"></p>
+          </div>
+        </div>
+      </section>
+      <section class="set-group" id="set-g-av">
+        <h4 data-t="setGroupAv">Audio and video</h4>
+        <div class="set-sec set-row" id="set-video">
+          <b data-t="setVideo">Video quality</b>
+          <div class="set-ctl">
+            <span class="segwrap" id="vqrow" role="group" aria-label="Video quality" data-al="setVideo">
           <button class="seg" data-vq="" data-t="setAuto">Auto</button>
           <button class="seg" data-vq="1080p">1080p</button>
           <button class="seg" data-vq="720p">720p</button>
@@ -4185,33 +4204,61 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           <button class="seg" data-vq="240p">240p</button>
           <button class="seg" data-vq="144p">144p</button>
         </span>
-      </div>
-      <div id="set-col-a">
-      <div class="set-sec" id="set-stage-video">
-        <button type="button" id="adjust-stage" class="seg" data-t="adjustStage" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem;align-self:flex-start">Adjust stage video</button>
-        <p class="set-help" data-t="adjustStageHelp">Preview and frame what your camera would send on the stage. This does not put anyone on the stage.</p>
-      </div>
-      <div class="set-sec">
-        <b data-t="setName">Your name</b>
-        <p class="set-help"><span data-t="setNameHelp">What everyone sees on your tile:</span> <b id="set-name-cur">…</b> <button id="set-rename" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem;margin-left:.4rem" data-t="setChange">Change</button></p>
-        <p class="set-help" data-t="setPicHelp">Your picture, when the camera is off. An animated GIF stays animated.</p>
-        <img id="set-avatar-preview" alt="" hidden style="width:72px;height:72px;object-fit:cover;border-radius:.5rem">
-        <input id="set-avatar-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp,.gif,.png,.jpg,.jpeg,.webp" aria-label="Picture" data-al="setPicture">
-        <button type="button" id="set-avatar-remove" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem;align-self:flex-start" data-t="setRemove">Remove</button>
-        <p id="set-avatar-err" class="set-help" role="alert"></p>
-      </div>
-      </div>
-      <div class="set-sec" id="set-captions">
-        <label class="rec-opt"><input type="checkbox" id="ccsend" checked><span><b data-t="setCcSend">Send my captions</b><small data-t="setCcSendHelp">Your voice is written down while your mic is on and sent to the meeting as captions, so everyone can read you. Your browser's speech service (Google, Apple or Microsoft) hears your voice unless you pick Whisper below, which keeps it on this device. Off: the others' devices may still write you down.</small></span></label>
-        <p class="set-help" id="ccsend-can" style="display:none;color:#ffd23c" data-t="setCcSendCant">This browser has no speech engine, so it cannot send your captions. A device in the meeting that keeps a transcript writes you down instead.</p>
-        <b data-t="setTr" style="margin-top:.5rem">Transcript</b>
-        <label class="rec-opt"><input type="radio" name="trmode" value="off"><span><b data-t="setTrOff">Off</b><small data-t="setTrOffHelp">Captions show on your screen when CC is on, and nothing is kept on this device.</small></span></label>
-        <label class="rec-opt"><input type="radio" name="trmode" value="keep"><span><b data-t="setTrKeep">Keep a transcript for me</b><small data-t="setTrKeepHelp">The usual setting. Every line is kept on this device, in the Transcript window, and can be downloaded. This device also writes down the people nobody is captioning, by name when it knows it, or as Stage or Stadium.</small></span></label>
-        <label class="rec-opt"><input type="radio" name="trmode" value="share"><span><b data-t="setTrShare">Keep and share with the room</b><small data-t="setTrShareHelp">The same, and the lines this device writes about others go to everyone. Your tile shows a transcript badge.</small></span></label>
-        <b data-t="setCcLang" style="margin-top:.5rem">Captions language</b>
-        <p class="set-help" data-t="setCcHelp">What <b>your own device</b> listens for. The browser engine cannot guess: it uses this device's language unless you pick one here. Whisper finds the language by itself.</p>
-        <select id="cclang" style="padding:.35rem .5rem;border-radius:.4rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);max-width:100%"></select>
-        <div id="ccengine-row" style="margin-top:.6rem">
+            <p class="set-help" data-t="setVideoHelp">What <b>your own camera</b> records and sends. <b>Auto</b> adapts to the room's size and your battery; a fixed choice pins it.</p>
+          </div>
+        </div>
+        <div class="set-sec set-row" id="set-stage-video">
+          <b data-t="setStageVid">Stage video</b>
+          <div class="set-ctl">
+            <button type="button" id="adjust-stage" class="seg" data-t="adjustStage" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Adjust stage video</button>
+            <p class="set-help" data-t="adjustStageHelp">Preview and frame what your camera would send on the stage. This does not put anyone on the stage.</p>
+          </div>
+        </div>
+        <div id="mixpanel">
+          <div class="set-row">
+            <b data-t="setMix">Sound mix</b>
+            <div class="set-ctl set-mix">
+              <label><span data-t="setStage">Stage</span> <input type="range" id="mix-stage" min="0" max="100" value="100"></label>
+              <label><span data-t="setRow">My row</span> <input type="range" id="mix-row" min="0" max="100" value="100"></label>
+              <label id="mixlab-stadium"><span data-t="setStadium">The stadium</span> <input type="range" id="mix-stadium" min="0" max="100" value="100"></label>
+            </div>
+          </div>
+          <div class="set-row">
+            <b data-t="setTiming">Timing</b>
+            <div class="set-ctl">
+            <div id="timingrow">
+          <button data-timing="chat" data-ti="setTalkTip" title="Snappiest replies — your ears align to your own links only; across the room, timing may stagger"><span data-t="setTalk">Conversation</span></button>
+          <button data-timing="unison" data-ti="setUnisonTip" title="Everyone hears everyone at the same synced instant — reactions, responses and spontaneous song land together (the room may wait for its slowest link, capped)"><span data-t="setUnison">Unison</span></button>
+          <button data-timing="song" data-ti="setSongTip" title="Lead the room in song — steps you onto the stage with a music-grade mic and lines everyone's sound up to you; tap again to end (earbuds recommended for singers)">🎵 <span data-t="rdSong">Song</span></button>
+        </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="set-group" id="set-captions">
+        <h4 data-t="setGroupCc">Captions and transcript</h4>
+        <div class="set-row set-wide">
+          <label class="rec-opt"><input type="checkbox" id="ccsend" checked><span><b data-t="setCcSend">Send my captions</b><small data-t="setCcSendHelp">Your voice is written down while your mic is on and sent to the meeting as captions, so everyone can read you. Your browser's speech service (Google, Apple or Microsoft) hears your voice unless you pick Whisper below, which keeps it on this device. Off: the others' devices may still write you down.</small></span></label>
+          <p class="set-help" id="ccsend-can" style="display:none;color:#ffd23c" data-t="setCcSendCant">This browser has no speech engine, so it cannot send your captions. A device in the meeting that keeps a transcript writes you down instead.</p>
+        </div>
+        <div class="set-row">
+          <b data-t="setTr">Transcript</b>
+          <div class="set-ctl" role="radiogroup" aria-label="Transcript" data-al="setTr">
+            <label class="rec-opt"><input type="radio" name="trmode" value="off"><span><b data-t="setTrOff">Off</b><small data-t="setTrOffHelp">Captions show on your screen when CC is on, and nothing is kept on this device.</small></span></label>
+            <label class="rec-opt"><input type="radio" name="trmode" value="keep"><span><b data-t="setTrKeep">Keep a transcript for me</b><small data-t="setTrKeepHelp">The usual setting. Every line is kept on this device, in the Transcript window, and can be downloaded. This device also writes down the people nobody is captioning, by name when it knows it, or as Stage or Stadium.</small></span></label>
+            <label class="rec-opt"><input type="radio" name="trmode" value="share"><span><b data-t="setTrShare">Keep and share with the room</b><small data-t="setTrShareHelp">The same, and the lines this device writes about others go to everyone. Your tile shows a transcript badge.</small></span></label>
+          </div>
+        </div>
+        <div class="set-row">
+          <b data-t="setCcLang">Captions language</b>
+          <div class="set-ctl">
+            <select id="cclang" style="padding:.35rem .5rem;border-radius:.4rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);max-width:100%"></select>
+            <p class="set-help" data-t="setCcHelp">What <b>your own device</b> listens for. The browser engine cannot guess: it uses this device's language unless you pick one here. Whisper finds the language by itself.</p>
+          </div>
+        </div>
+        <div id="ccengine-row" class="set-row">
+          <b data-t="setCcEngine">Captions engine</b>
+          <div class="set-ctl">
           <label class="rec-opt"><input type="radio" name="ccengine" value="browser"><span><b data-t="setCcBrowser">Browser captions</b><small data-t="setCcBrowserHelp">Instant. One fixed language, picked above; two-word lines without punctuation on some devices. Your browser may send your voice to its maker's speech service (Chrome: Google).</small></span></label>
           <label class="rec-opt"><input type="radio" name="ccengine" value="whisper"><span><b data-t="setCcWhisper">Whisper on this device</b><small data-t="setCcWhisperHelp">Any language, found by itself. Real sentences with punctuation. Your own names and words. Can write everything in English. A sentence appears a few seconds after it is said; on a phone it is slower and uses battery. Nothing leaves the device.</small></span></label>
           <div id="ccwhisper-weak" class="set-help" style="display:none;margin:.2rem 0 0 1.6rem"></div>
@@ -4220,22 +4267,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             <label class="rec-opt inline"><input type="checkbox" id="cctranslate"><span data-t="setCcEnglish">Write everything in English</span></label>
             <textarea id="ccwords" rows="2" data-ph="setCcWords" placeholder="Names and words to recognise: Siobhan, Kubernetes, GifOS…" style="width:100%;margin-top:.4rem;padding:.4rem .5rem;border-radius:.4rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);font:inherit;font-size:.85rem"></textarea>
           </div>
+          </div>
         </div>
-        <p class="set-help" id="ccall-row" style="display:none;margin-top:.5rem"><button data-t="setCcAllOff" id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span data-t="ccallNote" id="ccall-note">Admins only — every screen shows captions. Anyone can tap Captions to hide them.</span></p>
+        <p class="set-help set-row set-wide" id="ccall-row" style="display:none"><button data-t="setCcAllOff" id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span data-t="ccallNote" id="ccall-note">Admins only — every screen shows captions. Anyone can tap Captions to hide them.</span></p>
+      </section>
       </div>
-      <div id="mixpanel">
-        <b data-t="setMix">Sound mix</b>
-        <label><span data-t="setStage">Stage</span> <input type="range" id="mix-stage" min="0" max="100" value="100"></label>
-        <label><span data-t="setRow">My row</span> <input type="range" id="mix-row" min="0" max="100" value="100"></label>
-        <label id="mixlab-stadium"><span data-t="setStadium">The stadium</span> <input type="range" id="mix-stadium" min="0" max="100" value="100"></label>
-        <b data-t="setTiming">Timing</b>
-        <div id="timingrow">
-          <button data-timing="chat" data-ti="setTalkTip" title="Snappiest replies — your ears align to your own links only; across the room, timing may stagger"><span data-t="setTalk">Conversation</span></button>
-          <button data-timing="unison" data-ti="setUnisonTip" title="Everyone hears everyone at the same synced instant — reactions, responses and spontaneous song land together (the room may wait for its slowest link, capped)"><span data-t="setUnison">Unison</span></button>
-          <button data-timing="song" data-ti="setSongTip" title="Lead the room in song — steps you onto the stage with a music-grade mic and lines everyone's sound up to you; tap again to end (earbuds recommended for singers)">🎵 <span data-t="rdSong">Song</span></button>
-        </div>
-      </div>
-      <div style="display:flex;justify-content:center;margin-top:.9rem">
+      <div class="dlg-actions">
         <button id="set-close" data-t="setClose" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
       </div>
     </div>
