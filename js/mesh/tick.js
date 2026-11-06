@@ -235,7 +235,7 @@
           if (this.f.fabricDoors() && !this.moving && this.coord.pc === 0 && this.pendYPp >= 0 && this.pendYPpL >= 0 && this.pp >= 0 && this.ppL >= 0 && this.ppCk === ckey(this.coord) && this.pendYNc >= 0 && this.pendYNc !== id && l165Earlier(this.ppL, this.pp, id, this.pendYPpL, this.pendYPp, this.pendYNc)) { const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = id; this.emit(pyBy, h); this.trace('L16.5-STAND', id, this.coord, 'by=%d rival=%d deferred-tick', pyBy, this.pendYNc); }
           else if (this.l167Stand(this.pendYNc, this.pendYBorn)) { const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = id; this.emit(pyBy, h); this.trace('L16.7-STAND', id, this.coord, 'by=%d rival=%d deferred-tick', pyBy, this.pendYNc); }
           else if (!this.moving && this.l25Nonsense(pyBy, this.pendYNc, 'deferred-tick')) { /* L25.15 */ }
-          else { if (this.moving) this.rollbackMove(); else this.requeue('T1-yield'); this.f.wake(id); return; }
+          else { if (this.moving) this.rollbackMove(); else this.l40Go(this.pendYNc !== id ? this.pendYNc : -1, 'T1-yield'); this.f.wake(id); return; }
         }
       }   // a YIELD held for its arbiter's verdict (L16.5: not when it names a later placement than mine)
       this.l10Early();

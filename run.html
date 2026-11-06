@@ -511,6 +511,11 @@ function chk(){if(shown)return;if(h.style.getPropertyValue('--accent'))show();el
 requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GifOS">
+<script id="gifos-load-gate">/* Load completeness: record every <script src> that failed to load (error events do not bubble: capture on window), and every script that threw while a failed one was missing. startMesh() checks this before it seats anything (see unitsGate). */(function(){var g=window.__gifosLoadGate={failed:[],threw:[],tries:0,state:'ok',trace:[]};
+function key(u){try{var x=new URL(u,location.href);return x.pathname.replace(/^\//,'');}catch(e){return String(u);}}
+/* The offline layer (sw.js) answers an uncached script with an EMPTY 200 when the network fails: no error event, a unit that never ran. A script that arrives with no body counts as failed too. */
+try{new PerformanceObserver(function(l){l.getEntries().forEach(function(en){try{if(en.initiatorType==='script'&&en.decodedBodySize===0&&/\.js$/.test(new URL(en.name).pathname)){var k=key(en.name);if(g.failed.indexOf(k)<0)g.failed.push(k);}}catch(x){}});}).observe({type:'resource',buffered:true});}catch(e){}
+window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagName==='SCRIPT'&&t.src){var k=key(t.src);if(g.failed.indexOf(k)<0)g.failed.push(k);}else if(e&&e.filename&&g.failed.length){var f=key(e.filename);if(g.threw.indexOf(f)<0)g.threw.push(f);}}catch(x){}},true);})();</script>
 <script src="js/sw-register.js" defer></script>
 <script src="js/build.js" defer></script>
 <script src="js/build-badge.js" defer></script>
@@ -7675,6 +7680,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // never revive a confirmed departure. HOLDOVER_MS stays well under the
     // mesh E-timers: real death is still the mesh's call, not this one.
     const HOLDOVER_MS = 60000;
+    // Why each status past its first 15 s was held or dropped, last verdict per peer (debugDump heldWhy). Bounded.
+    const heldWhy = new Map();
+    function heldWhyNote(pid, why, age, debt) {
+      heldWhy.set(pid, { why, age: Math.round(age), debt: Math.round(debt), at: Date.now() });
+      if (heldWhy.size > 256) heldWhy.delete(heldWhy.keys().next().value);
+    }
+    // The roster rebuild (renderFromOcc): when it last finished, how many times, which ids came from the seat's cells,
+    // and how many rebuilds threw before the roster was assigned (debugDump rosterBuild).
+    const rosterBuild = { at: 0, n: 0, throws: 0, err: '', fromOcc: new Set() };
     // THE JUDGE MUST HAVE BEEN AWAKE FOR THE WINDOW IT JUDGES. healing-laws D
     // confirms a death only for a peer "unreachable on every path for the
     // settled window" — which silently presumes the observer was CONSCIOUS for
@@ -7748,20 +7762,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const stHold = (pid) => {
       const st = statusOf.get(pid);
       if (!st) return false;
-      const age = Date.now() - stSeen(st) - holdDebtSince(stSeen(st));
-      if (age < 15000) return true;
-      if (age >= HOLDOVER_MS) return false;
+      const seen = stSeen(st), debt = holdDebtSince(seen), age = Date.now() - seen - debt;
+      const note = (why) => { if (typeof heldWhyNote === 'function') heldWhyNote(pid, why, age, debt); };
+      if (age < 15000) { if (age + debt >= 15000) note('fresh-by-debt'); return true; }
+      if (age >= HOLDOVER_MS) { note('past-holdover'); return false; }
       const p = peers.get(pid);
-      // A DOOR ALONE DOES NOT HOLD A STATUS OPEN. A boot/door pair that is
-      // not also one of my bounded links (linkTo) is the channel a knocker
-      // or greeter came in by, not a vouched-for neighbour — and
-      // retireBootPairs only drops it once I locally learn the far side is
-      // seated, which a door to a distant section may never do (af875b5).
-      // Such a door staying "connected" must not keep a stale direct status
-      // held for the full HOLDOVER_MS: past 15s it falls through to the
-      // fold, same as any other far seat's status would.
-      if (p && p.boot && !linkTo(pid)) return !!st.away;
-      return !!st.away || !!(p && p.connected);
+      // A PAIR THAT CARRIES NO BEAT DOES NOT HOLD A STATUS OPEN. Transport
+      // vouches for a quiet peer only when that peer's beat rides this pair
+      // (beatsHere): a neighbour both ends name. A door, or a pc my seat
+      // holds for a reason of my end alone (my dial, my keep, my row's
+      // standby), stays "connected" while the far end never beats on it, so
+      // its status would stand stale for the full HOLDOVER_MS. Past 15s it
+      // falls through to the fold, same as any other far seat's status.
+      const held = (p && !beatsHere(pid)) ? !!st.away : (!!st.away || !!(p && p.connected));
+      note(!held ? 'quiet' : st.away ? 'away' : 'link');
+      return held;
     };
     function mergeMod(incoming) {
       let changed = false;
@@ -8226,10 +8241,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Any way out of the page that is not an update reload drops the note,
     // so the next join starts fresh (Max blur, off the Stage).
     window.addEventListener('pagehide', () => {
-      // A stager comes back as it left: the stage seat, and the mic and camera as they were (the
-      // recover note, this room, two minutes). Without the note a reload joins quiet, and the
-      // stage is silent until a tap; the room must hear the stager right after the reload.
-      try { if (!stageLeaving && onStageNow()) { sessionStorage.setItem(STAGE_RELOAD_KEY, JSON.stringify({ room: updateRoomKey(), at: Date.now(), stg: +myStatus.stg })); if (typeof localStream !== 'undefined' && localStream && typeof stashRecoverMedia === 'function') stashRecoverMedia(true); } } catch (e) {}
+      // A stager's reload keeps the STAGE SEAT and nothing else: mic and camera come back OFF, and the stager turns them on
+      // (privacy; a reload never turns a device on by itself). The hidden/freeze writers may have left a media note a moment
+      // ago, so drop it here; an update reload (updateLeaving) keeps its own note.
+      try { if (!stageLeaving && onStageNow()) { sessionStorage.setItem(STAGE_RELOAD_KEY, JSON.stringify({ room: updateRoomKey(), at: Date.now(), stg: +myStatus.stg })); if (!updateLeaving) sessionStorage.removeItem(RECOVER_MEDIA_KEY); } } catch (e) {}
       if (updateLeaving) return;
       try { sessionStorage.removeItem(UPDATE_RESUME_KEY); } catch (e) {}
     });
@@ -15079,14 +15094,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (seatAsked(pid)) return true;   // the seat dialled it (a door, a call, an audit): its own reason
       if (!s || !s.hasCoord) return false;
       if (s.l14Served && s.l14Served().includes(pid)) return true;   // L14: a cut-off head dialled me for its branch's media
-      return s.linkPeers().has(pid) || (typeof s.keepPeers === 'function' && s.keepPeers().has(pid));   // every media target is a link peer or carries a keep reason (L28)
+      // A row's standby (E3) is a pc only while an up edge is down: the seat's dial says so above, and u2Hot here. Idle, it is a name, as an idle row holds no third pc.
+      return (!(pid === s.u3Id && !s.u2Hot) && s.linkPeers().has(pid)) || (typeof s.keepPeers === 'function' && s.keepPeers().has(pid));   // every media target is a link peer or carries a keep reason (L28)
     }
-    // The seat names this peer only as its row's standby (E3), and no edge is down: a name, not a reason to hold a pc.
-    function idleStandby(pid) {
+    // Does this peer's status beat reach me over our pair? Its direct beat rides only ITS links (broadcastStatus), so
+    // only a link both ends name carries one: a neighbour by the arithmetic, an E2 edge, an L14 uplink. A pc held for
+    // a reason of my end alone carries none: a door or a call my seat dialled (seatAsked), a keep (L28), and my row's
+    // standby (E3), whose far end holds no end of the edge while E2 is up.
+    function beatsHere(pid) {
       const s = meshSeat();
-      if (!s || !s.hasCoord || s.state !== 3 || s.moving || s.u3Id !== pid || s.u2Hot || s.u2Id === pid || s.l14Up === pid) return false;
-      if (seatAsked(pid) || (s.l14Served && s.l14Served().includes(pid)) || (typeof s.keepPeers === 'function' && s.keepPeers().has(pid))) return false;
-      return true;
+      if (!s || !s.hasCoord) return false;
+      if (s.l14Served && s.l14Served().includes(pid)) return true;
+      if (!s.linkPeers().has(pid)) return false;
+      return !(s.u3Id === pid && !s.u2Hot && s.u2Id !== pid && s.l14Up !== pid);
     }
     // Peers the seat asked to dial (pc.ensure), for a while: the seat's dial is its reason.
     const seatAskAt = new Map();
@@ -15787,8 +15807,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (peers.has(v)) { if (linkTo(v)) askDial(v, peers.get(v)); continue; }
         if (linkTo(v)) ensureLink(v, rosterNames[v] || null);
       }
+      const fromOcc = new Set(ids);
       for (const [pid] of statusOf) if (pid !== myId && stHold(pid) && notTomb(pid)) ids.add(pid);
       rosterIds = Array.from(ids);
+      rosterBuild.at = Date.now(); rosterBuild.n++; rosterBuild.fromOcc = fromOcc;
       // A pocketed phone blocks clear video for up to a minute, then drops
       // out of this set. Repaint then, or No blur stays pending after the
       // room has already gone clear.
@@ -17070,7 +17092,49 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (v === step + '-hang-once') { debugFailUsed = true; return new Promise(() => {}); }
       return p;
     }
+    // LOAD COMPLETENESS: a page that missed one of its own scripts (a flaky network) must not seat: a seat without every unit throws "is not a function" in the middle of a room.
+    // A missing script is loaded again (in page order, with backoff); if it still fails the page refuses to join, says so on screen and in the DEBUG trace.
+    const UNITS_BACKOFF = [0, 400, 1200, 2400];
+    function unitsGate() {
+      const g = window.__gifosLoadGate;
+      if (!g || g.state === 'ok' && !g.failed.length) return false;   // the normal page: nothing failed, no wait
+      if (g.state === 'ok' || g.state === 'retry') {
+        g.state = 'retry';
+        if (!g.running) {
+          g.running = true;
+          const order = Array.from(document.querySelectorAll('script[src]')).map((el) => { try { return new URL(el.src, location.href).pathname.replace(/^\//, ''); } catch (e) { return ''; } });
+          const note = (m) => { g.trace.push(m); if (typeof clog === 'function') clog('load-gate ' + m); };
+          const load = (src) => new Promise((res) => { const el = document.createElement('script'); el.async = false; el.src = src + '?lc=' + g.tries; el.onload = () => { const en = performance.getEntriesByName(el.src).pop(); if (en && en.decodedBodySize === 0) { el.remove(); res(false); } else res(true); }; el.onerror = () => { el.remove(); res(false); }; document.head.appendChild(el); });
+          (async () => {
+            note('missing ' + g.failed.join(',') + (g.threw.length ? ' threw ' + g.threw.join(',') : ''));
+            let todo = g.failed.slice();
+            for (const w of UNITS_BACKOFF) {
+              if (w) await new Promise((r) => setTimeout(r, w));
+              g.tries++;
+              const first = Math.min.apply(null, todo.map((k) => order.indexOf(k)).filter((i) => i >= 0));
+              const redo = todo.concat(g.threw.filter((k) => order.indexOf(k) > first && todo.indexOf(k) < 0)).sort((x, y) => order.indexOf(x) - order.indexOf(y));
+              const bad = [];
+              for (const k of redo) { if (!(await load(k))) bad.push(k); }
+              note('try ' + g.tries + ' reloaded ' + redo.length + ' still-missing ' + bad.length);
+              todo = bad.filter((k) => g.failed.indexOf(k) >= 0 || todo.indexOf(k) >= 0);
+              if (!bad.length) break;
+            }
+            g.running = false;
+            if (!todo.length) { g.failed.length = 0; g.threw.length = 0; g.state = 'ok'; note('recovered'); startMesh(); return; }
+            g.state = 'refused'; g.missing = todo;
+            note('refuse ' + todo.join(','));
+            // the status line is rewritten by the page's own ticks: the refusal also lives in a banner nothing else touches
+            const msg = uiText('stLoadIncomplete', 'This page did not finish loading, so it cannot join safely. Reload the page to try again.');
+            try { const d = document.createElement('div'); d.id = 'load-gate-msg'; d.setAttribute('role', 'alert'); d.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:2147483647;padding:14px 16px;background:#b00020;color:#fff;font:16px system-ui,sans-serif;text-align:center'; d.textContent = msg; document.body.appendChild(d); } catch (e) {}
+            setStatus(msg, true);
+          })();
+        }
+        return true;
+      }
+      return true;   // refused
+    }
     function startMesh() {
+      if (unitsGate()) return;
       const relay = relayUrl();
       if (!relay) { setStatus(uiText('stNoConnectionServiceIsSet', 'No connection service is set up, so nobody can be invited in.')); return; }
       if (meshNode) { try { meshNode.stop(); } catch (e) {} meshNode = null; }
@@ -17339,7 +17403,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             return { stage: stg, stadium: [...stad] };
           } catch (e) { return { stage: [], stadium: [] }; }
         },
-        onUpdate: () => { renderFromOcc(); saveTreeMem(); try { reportDarkDeaths(); } catch (e) {} try { meshVoteBeat(); } catch (e) {} },
+        onUpdate: () => { try { renderFromOcc(); } catch (e) { rosterBuild.throws++; rosterBuild.err = String((e && e.message) || e).slice(0, 80); throw e; } saveTreeMem(); try { reportDarkDeaths(); } catch (e) {} try { meshVoteBeat(); } catch (e) {} },
         onRelayMsg: onRelayFrame,
         prevTree: readTreeMem(),
         oldCell: seatMemNow ? seatMemNow.ck : -1,
@@ -17850,18 +17914,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             dropPeer(pid, true);
             continue;
           }
-        } else {
-          p.absentSince = 0; // a mesh-named neighbour is never absent
-          // An idle row's standby holds no pc: the seat dials it when E1 or E2 goes down, and that dial builds a fresh one.
-          // One that outlived the far end's hang-up (pcCloseNow) is no Link and nothing retires it otherwise.
-          if (idleStandby(pid) && !p.connected && !(p.dc && p.dc.readyState === 'open')
-              && now - Math.max(p.rebuiltAt || 0, p.bornAt || 0) > UNOWNED_PC_MS) {
-            if (typeof clog === 'function') clog('pc-standby-idle ' + String(pid).slice(0, 6));
-            p.envClosing = now;
-            dropPeer(pid, true);
-            continue;
-          }
-        }
+        } else { p.absentSince = 0; } // a mesh-named neighbour is never absent
         const st = p.pc.connectionState;
         if (p.absentSince && !p.connected && now - p.absentSince > ABSENT_GRACE) { dropPeer(pid); continue; }
         // A pc that lands in 'closed' can't be ICE-restarted; it is dropped.
@@ -36254,6 +36307,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // The seat's decision trace (the sim's JSONL shape {t, s, e, c, d}) rides a page ring while DEBUG is on
       // (meshTraceSink, the seat world's trace sink); meet.js writes it into each participant's jsonl.
       meshTraceForTest: () => !!DEBUG_ON,
+      countPeekForTest: (vp) => { const now = Date.now(); const d = roomDig(); const p = peers.get(vp), st = statusOf.get(vp), s = meshSeat();
+        let occHas = 0; if (s) for (const v of s.occ.values()) if (v === vp) occHas++;
+        let tab = null, forg = null, lt = null; try { const s = meshNode && meshNode.raw; if (s && s.s1tab) { tab = []; for (const [k, d] of s.s1tab) tab.push([String(k), String(d.by), d.at, Math.round(s.LT() - d.rx), d.n, d.leased || 0, String(s.occGet(k))]); } if (s && s.digForgot) forg = [...s.digForgot].map(([k, v]) => [String(k), String(v[0]), v[1]]); lt = s.LT(); } catch (e) { tab = String(e); }
+        return { tab, forg, lt, vp: String(vp), disp: displayCount(), pc: participantCount(), leaf: leafCount(), lp: livePeerCount(), kt: knownTotal(), dn: d ? d.n : null, part: d ? !!d.part : null, shown: shownPeerCount(), faces: facesOnScreen(), byes: (meshNode && meshNode.byesHeld) ? meshNode.byesHeld() : 0, past: roomPastSection(), deep: deepInView(),
+          v: { roster: rosterIds.includes(vp), peer: p ? { conn: !!p.connected, heard: Math.round((now - Math.max(p.lastHeard || 0, p.meshRxAt || 0)) / 1000) } : null, st: st ? Math.round((now - stSeen(st)) / 1000) : null, occ: occHas, first: occFirstSeen.has(vp) ? Math.round((now - occFirstSeen.get(vp)) / 1000) : null, gone: meshGone.has(vp) ? Math.round((now - meshGone.get(vp)) / 1000) : null } }; },
       memSamples: () => (window.__memSamples ? window.__memSamples.slice() : []),
       meshTraceDump: () => { const G = window.__meshTraceRing; return G ? G.ring.map((e) => e[1]) : []; },
       meshForensics: (since) => {
@@ -36363,6 +36421,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // e2e-vanish lesson, browser edition).
           rowsFh: (() => { if (!c || !s) return []; const g = []; for (let r = 0; r < SCALE.C; r++) { const row = []; for (let i = 0; i < SCALE.C; i++) { const co = { pc: c.pc, r, i }; const pid = meshOccAt(co); let fh = false; try { const at = s.live.get(net.topo.ckey(co)); fh = at !== undefined && (s.env.TICK - at) <= 60; } catch (e) {} row.push(pid && fh ? String(pid).slice(0, 8) : null); } g.push(row); } return g; })(),
           ghosts: ghosts.map((p) => String(p).slice(0, 12)), dups,
+          // Why a ghost is still listed: the path it entered by (a seat cell or a held status), its status age and the
+          // stHold verdict with the judge's own blockage subtracted (debtMs), and the roster rebuild's last run.
+          heldWhy: ghosts.slice(0, 32).map((pid) => { const st = statusOf.get(pid), h = heldWhy.get(pid);
+            return { peer: String(pid).slice(0, 12), via: rosterBuild.fromOcc.has(pid) ? 'cell' : 'status', ageS: st ? Math.round((now - stSeen(st)) / 1000) : null,
+              why: h ? h.why : null, holdAgeS: h ? Math.round(h.age / 1000) : null, debtMs: h ? h.debt : null, noteAgoS: h ? Math.round((now - h.at) / 1000) : null }; }),
+          rosterBuild: { agoMs: rosterBuild.at ? now - rosterBuild.at : null, n: rosterBuild.n, throws: rosterBuild.throws, err: rosterBuild.err || null },
           // D5 confirm forensics: standing translosts + probe-answer stamps by
           // coord, in ticks-ago — a stalled confirm shows here as a translost
           // aging far past EARLY_HOLD with no gone.
