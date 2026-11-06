@@ -8241,10 +8241,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // Any way out of the page that is not an update reload drops the note,
     // so the next join starts fresh (Max blur, off the Stage).
     window.addEventListener('pagehide', () => {
-      // A stager comes back as it left: the stage seat, and the mic and camera as they were (the
-      // recover note, this room, two minutes). Without the note a reload joins quiet, and the
-      // stage is silent until a tap; the room must hear the stager right after the reload.
-      try { if (!stageLeaving && onStageNow()) { sessionStorage.setItem(STAGE_RELOAD_KEY, JSON.stringify({ room: updateRoomKey(), at: Date.now(), stg: +myStatus.stg })); if (typeof localStream !== 'undefined' && localStream && typeof stashRecoverMedia === 'function') stashRecoverMedia(true); } } catch (e) {}
+      // A stager's reload keeps the STAGE SEAT and nothing else: mic and camera come back OFF, and the stager turns them on
+      // (privacy; a reload never turns a device on by itself). The hidden/freeze writers may have left a media note a moment
+      // ago, so drop it here; an update reload (updateLeaving) keeps its own note.
+      try { if (!stageLeaving && onStageNow()) { sessionStorage.setItem(STAGE_RELOAD_KEY, JSON.stringify({ room: updateRoomKey(), at: Date.now(), stg: +myStatus.stg })); if (!updateLeaving) sessionStorage.removeItem(RECOVER_MEDIA_KEY); } } catch (e) {}
       if (updateLeaving) return;
       try { sessionStorage.removeItem(UPDATE_RESUME_KEY); } catch (e) {}
     });
