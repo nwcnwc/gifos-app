@@ -10395,6 +10395,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     document.addEventListener('pointerdown', () => ensureAc());
     var myVoiceAt = 0; // last tick my OWN echo-cancelled mic carried voice (the caption gate reads it)
     var myVoiceFrom = 0; // when the current stretch of my voice began (a caption line's span starts here)
+    var myVoiceSinceFinal = false; // my mic carried voice since the engine's previous final (the own-voice gate reads it)
     function meterFor(id, stream) {
       if (!stream || !ensureAc()) return;
       const track = stream.getAudioTracks()[0];
@@ -10463,7 +10464,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           speaking = Math.sqrt(dev / m.data.length) > 5;
         }
         t.tile.classList.toggle('speaking', speaking);
-        if (id === 'me' && speaking) { lastActive = Date.now(); if (lastActive - myVoiceAt > 1500) myVoiceFrom = lastActive; myVoiceAt = lastActive; } // talking IS activity — a speaker's phone is never "parked"
+        if (id === 'me' && speaking) { lastActive = Date.now(); if (lastActive - myVoiceAt > 1500) myVoiceFrom = lastActive; myVoiceAt = lastActive; myVoiceSinceFinal = true; } // talking IS activity — a speaker's phone is never "parked"
         speakingOf.set(id, speaking); // fed to the packer overlay (green talking frame on composite faces)
       }
       if (fsSel === 'auto' && fsview.classList.contains('on')) fsRefresh();
@@ -29940,7 +29941,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (typeof window !== 'undefined' && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'transcript', line: { by: line.by, byId: line.byId, text: line.text, at: line.at, w: line.w, src: line.src, lang: line.lang || '' } });
     }
     function takeTr(m, backfill) { // backfill: a 'hi' replay — see takeChat
-      if (!m || !m.id || trs.has(m.id) || ((m.at || 0) > 0 && (m.at || 0) <= (trs.floorAt || 0))) return false;
+      if (!m || !m.id || trs.has(m.id) || ((m.at || 0) > 0 && (m.at || 0) <= (trs.floorAt || 0))) { if (clog && m && m.w === myId) clog('tr own drop', trs.has(m.id) ? 'held' : 'floor', m.at, trs.floorAt || 0); return false; }
       const w = String(m.w || m.byId);
       // The flood limit is per writer AND voice: one sharing device writes
       // down a whole row, and a single shared budget dropped real sentences.
@@ -31157,14 +31158,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // my own echo-cancelled mic in the last 3s means I only heard this
           // through them. No meter yet (AudioContext not born) ⇒ no verdict ⇒
           // let it through.
-          const heard = !meters.has('me') || (Date.now() - myVoiceAt < 3000);
+          // ... or carried voice at any time since the previous final: an engine
+          // hands a long utterance's final over seconds after the voice stopped,
+          // and a line a person really said is never thrown away for that.
+          const sinceVoice = Date.now() - myVoiceAt;
+          const heard = !meters.has('me') || myVoiceSinceFinal || sinceVoice < 3000;
           for (let i = e.resultIndex; i < e.results.length; i++) {
             if (!e.results[i].isFinal) continue;
-            if (!heard) { trDrops++; continue; }
+            if (!heard) { trDrops++; if (clog) clog('tr own drop', 'gate', sinceVoice, String(e.results[i][0].transcript).slice(0, 40)); continue; }
             // the line spans from when this stretch of my voice began to now; its language is as good as
             // detected when it is the one this page knows (picked, or learned from the room's Whisper pages)
             addTranscriptLine(e.results[i][0].transcript, myVoiceFrom || 0, null, null, 'mic', rec.langTag, rec.langTag === trLangKnown(), Date.now());
           }
+          myVoiceSinceFinal = false;
         };
         speech.onend = () => {
           if (!(speech === rec && speechKeep(rec))) return;
