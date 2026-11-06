@@ -36442,6 +36442,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             return { peer: String(pid).slice(0, 12), via: rosterBuild.fromOcc.has(pid) ? 'cell' : 'status', ageS: st ? Math.round((now - stSeen(st)) / 1000) : null,
               why: h ? h.why : null, holdAgeS: h ? Math.round(h.age / 1000) : null, debtMs: h ? h.debt : null, noteAgoS: h ? Math.round((now - h.at) / 1000) : null }; }),
           rosterBuild: { agoMs: rosterBuild.at ? now - rosterBuild.at : null, n: rosterBuild.n, throws: rosterBuild.throws, err: rosterBuild.err || null },
+          // tl-chain base.clean forensics (DEBUG dump only, bounded): the room fold this page shows (n, part, age in ticks, leased seats)
+          // and, on a Section-1 seat, each section report it folds from (cell, author, age in ticks, n, leased, who sits there now),
+          // so a count that flaps names the cell whose report dropped out and for how long.
+          fold: (() => { try { const r = meshNode && meshNode.raw; if (!r || !r.rootDig || r.rootDig.at < 0) return null; const six = (x) => (x == null ? null : String(x).slice(0, 6)); const LT = r.LT(); const rd = r.rootDig;
+            const o = { n: rd.n, leased: rd.leased || 0, part: rd.part ? 1 : 0, ageT: LT - (rd.rx != null ? rd.rx : rd.at), by: six(rd.by), s1: null };
+            if (r.s1tab && r.coord && r.coord.pc === 0) { o.s1 = []; for (const [k, d] of r.s1tab) { if (o.s1.length >= 40) break; o.s1.push([String(k), six(d.by), LT - d.rx, d.n, d.leased || 0, six(r.occGet(k))]); } }
+            return o; } catch (e) { return { err: String(e).slice(0, 60) }; } })(),
           // D5 confirm forensics: standing translosts + probe-answer stamps by
           // coord, in ticks-ago — a stalled confirm shows here as a translost
           // aging far past EARLY_HOLD with no gone.
