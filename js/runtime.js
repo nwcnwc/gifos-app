@@ -2270,14 +2270,12 @@
         return loadTimings().then((tt) => {
           const rec = tt[c.app] || {};
           busyStart(name, { cold, expect: cold ? rec.cold : rec.warm });
+          // Required pins only: an optional pin (Whisper base when the call
+          // asks for tiny) downloads when the app reads it with gifos.assets(),
+          // not here. The progress line goes to the busy pill.
           const prep = A
-            ? A.missing(arc.files, m, cache).then((need) => need.length
-              // The weights are the biggest wait there is and the OS is the one
-              // fetching them — before this, gigabytes downloaded behind a
-              // completely silent screen because ensure() was handed a null.
-                ? A.ensure(arc.files, m, (s, frac) => busyNote(s, frac), cache)
-                  .catch((e) => { try { console.warn(name + ': asset download did not complete — the app will run in whatever degraded mode it offers. ' + (e && e.message || e)); } catch (_) {} return null; })
-                : null)
+            ? A.backfill(arc.files, m, (s, frac) => busyNote(s, frac), cache)
+              .catch((e) => { try { console.warn(name + ': asset download did not complete — the app will run in whatever degraded mode it offers. ' + (e && e.message || e)); } catch (_) {} return null; })
             : Promise.resolve();
           return prep
             .then(live)

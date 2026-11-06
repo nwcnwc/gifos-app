@@ -30326,7 +30326,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { syncSpeech(); } catch (e) {}
       try { paintCcState(); } catch (e) {}
     }
-    function wspStallGiveUp() {
+    // msg / pausedMsg: what the status line says when the browser engine takes
+    // over, or when there is none (defaults: Whisper stalled, Captions paused).
+    function wspStallGiveUp(msg, pausedMsg) {
       if (wspPaused) return;
       wspPaused = true;
       wspQ.behind = false;
@@ -30340,9 +30342,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const hasSr = hasWindow && (window.SpeechRecognition || window.webkitSpeechRecognition);
       try { if (typeof updateTile === 'function') updateTile('me'); } catch (e) {}
       try { if (typeof broadcastStatus === 'function') broadcastStatus(); } catch (e) {}
-      if (hasWindow && !hasSr) { setStatus(uiText('stCaptionsPaused', 'Captions paused'), 10000); return; }
+      if (hasWindow && !hasSr) { setStatus(pausedMsg || uiText('stCaptionsPaused', 'Captions paused'), 10000); return; }
       try { syncSpeech(); } catch (e) {}
-      setStatus(uiText('stWhisperCaptionsStalledBrowserCaptions', 'Whisper captions stalled — browser captions are on.'), 10000);
+      setStatus(msg || uiText('stWhisperCaptionsStalledBrowserCaptions', 'Whisper captions stalled — browser captions are on.'), 10000);
     }
     // Unload the speech-to-text provider: a clip it is still working on, or a
     // model it is still loading, stops now instead of finishing for nobody.
@@ -30503,6 +30505,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const msg = (e && e.message) || String(e);
         if (/PROVIDER_STOPPED|AbortError/.test(msg)) return; // unloaded on purpose
         if (/NOT_CONFIGURED|PROVIDER_MISSING|PROVIDER_NOT_IN_FOLDER/.test(msg)) { wspProviderGone(); return; }
+        // The model could not be downloaded (its host is down, or this device
+        // is offline): browser captions take over for this meeting. The choice
+        // stays Whisper, so picking it again, or the next meeting, tries again.
+        if (/could not be downloaded|Asset not available|download failed/i.test(msg)) {
+          wspStallGiveUp(uiText('stWhisperModelFailedBrowserCaptions', 'Whisper couldn’t load its model — browser captions are on.'),
+            uiText('stWhisperModelFailedPaused', 'Whisper couldn’t load its model — captions paused.'));
+          return;
+        }
         setStatus('Whisper captions failed: ' + msg.slice(0, 160), 10000);
       }).then(() => { if (!done) release(); });
     }
@@ -30582,7 +30592,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       whisperInstalling = GifOS.providers.install(WHISPER_APP_ID, (t) => note(t)).then((p) => {
         if (!GifOS.providers.assigned('stt')) GifOS.providers.assign('stt', p);
         lsSet(WHISPER_SEED_KEY, 'done');
-        if (say) setStatus(uiText('stOfflineCaptionsWhisperIsInstalled', '✅ Offline Captions (Whisper) is installed and ready — the model itself downloads the first time captions run.'), 10000);
+        if (say) setStatus(uiText('stOfflineCaptionsWhisperIsInstalled', '✅ Offline Captions (Whisper) is installed and ready — the model itself downloads once from gifos.app the first time captions run.'), 10000);
         return p;
       }).catch((e) => {
         const msg = (e && e.message) || String(e);
@@ -30645,7 +30655,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           + (IS_MOBILE ? ' <span style="color:#ffd23c">' + uiText('setCcPhoneSlow', 'On a phone a sentence can take 5 to 10 seconds to appear, and it uses battery.') + '</span>' : '');
         return;
       }
-      state.innerHTML = uiText('setCcNeed', 'Needs the <b>Offline Captions (Whisper)</b> app — 13 MB, once per computer; the model itself downloads the first time captions run.')
+      state.innerHTML = uiText('setCcNeed', 'Needs the <b>Offline Captions (Whisper)</b> app — 13 MB, once per computer; the model itself downloads once from gifos.app the first time captions run, and stays on this device.')
         + ' <button id="ccwhisper-install" class="seg" style="border:1px solid var(--accent,#7b5cff);border-radius:.4rem;color:#fff;background:var(--accent,#7b5cff)"' + (whisperInstalling ? ' disabled' : '') + '>' + uiText('setCcInstall', 'Install it now') + '</button> '
         + '<span id="ccwhisper-prog"></span> <a href="store.html#app=' + WHISPER_APP_ID + '" target="_blank" rel="noopener" style="color:var(--accent2,#ff5caa);font-size:.8rem">' + uiText('setCcStore', 'or from the App Store') + '</a>';
       document.getElementById('ccwhisper-install').onclick = () => { installWhisper(true).catch(() => {}); paintCcState(); };
