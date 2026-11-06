@@ -10947,7 +10947,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // alive, and shipMos re-fires on its own because the track changed.
       //
       // It is returned BEFORE the no-camera bail on purpose: the camera
-      // idle-stop removes the video track after 20s of camOff (reactCamIdle),
+      // idle-stop removes the video track as soon as the camera is off (reactCamIdle),
       // and sharing a screen with the camera off is the normal case — bailing
       // first would have silently dropped the share 20 seconds in, which is
       // exactly the shape of the stage-voice bug (see mySelfStream).
@@ -10995,10 +10995,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       stopBlurPipe();
       return cam;
     }
-    // CAMERA IDLE-STOP: join-quiet is the default, so phones commonly sit a
-    // whole meeting "camera off" — but a merely-disabled track keeps the
-    // SENSOR + ISP capturing (black frames), a few hundred mW forever on a
-    // phone. After 20s of camOff, stop the hardware track and REMOVE it from
+    // CAMERA OFF STOPS THE CAMERA. A merely-disabled track keeps the sensor
+    // open: the camera light stays on while the page says camera off (a
+    // privacy fault), and the ISP keeps capturing black frames (a few hundred
+    // mW on a phone). As soon as camOff holds, stop the hardware track and REMOVE it from
     // localStream (removal — not just stop — keeps reviveCamera's ended-track
     // check from re-grabbing on tab return). The Camera button's lateMedia
     // path re-grabs on demand (~half a second); the blur pipe dies with its
@@ -11008,6 +11008,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function reactCamIdle() {
       if (!myStatus.camOff) { if (camIdleT) { clearTimeout(camIdleT); camIdleT = null; } return; }
       if (camIdleT) return;
+      // A timer of 0, not a stop inside this call: a step that turns the camera
+      // back on in the same task (a boot restoring its choice, a joined tap)
+      // lands first, and then camOff no longer holds.
       camIdleT = setTimeout(() => {
         camIdleT = null;
         if (!myStatus.camOff || !localStream) return;
@@ -11017,7 +11020,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         try { localStream.removeTrack(vt); } catch (e) {}
         stopBlurPipe();
         refreshOutbound(); // mains park on the now-null track; senders stay negotiated
-      }, 20000);
+      }, 0);
     }
     // THE VOICE MY MAIN AUDIO SENDERS CARRY. Normally the mic. While a meeting
     // bot speaks it is the speech track instead, and every path that seats a
@@ -20184,8 +20187,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // The combined ask falls back to the microphone alone when the
           // camera is missing, disabled or held (gumWithMicFallback): a
           // webcam-less desktop joins with a mic, not view-only for life.
+          // A CAMERA THAT IS OFF IS NOT OPEN. The boot asks for the camera only
+          // when this boot turns it on (bootWantsCamera); otherwise the mic
+          // alone, and the Camera button opens the camera when it is tapped
+          // (lateMedia). A held, disabled camera keeps the camera light on.
           const gum = (md && md.getUserMedia)
-            ? gumWithMicFallback(md, { video: camVideoConstraints(), audio: true }).then((r) => {
+            ? gumWithMicFallback(md, bootWantsCamera() ? { video: camVideoConstraints(), audio: true } : { audio: true }).then((r) => {
               if (r.camErr) { try { window.__gumBootNoCam = r.camErr.name || String(r.camErr); } catch (e) {} } // harness breadcrumb: mic-only boot, and why
               return r.stream;
             })
@@ -23971,7 +23978,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // meeting bug: a staged member with the camera off went SILENT to the
     // whole room ~20 seconds in. Join-quiet is the default (`myStatus =
     // { muted: true, camOff: true }`), the camera idle-stop then STOPS AND
-    // REMOVES the video track after 20s of camOff (reactCamIdle), so
+    // REMOVES the video track as soon as the camera is off (reactCamIdle), so
     // sentVideoTrack() goes null — and while staged this aux stream is the
     // ONLY way anything leaves the device, because refreshOutbound parks the
     // main senders ("stagers live on the Stage ONLY"). Measured 2026-08-06,
@@ -28227,11 +28234,27 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     document.addEventListener('freeze', () => {
       if (typeof localStream !== 'undefined' && localStream && !leaving) stashRecoverMedia(true);
     });
-    function takeRecoverMedia() {
+    // Will this boot turn the camera on? The same notes the boot reads once
+    // its media lands, read here without taking them: the lobby's switch, a
+    // broadcast host's Go live tap or an update reload on air, and a freeze or
+    // discard reload of a page whose camera was on.
+    function bootWantsCamera() {
+      try {
+        if (typeof joinAvChoice !== 'undefined' && joinAvChoice && joinAvChoice.cam && !BROADCAST) return true;
+        if (BROADCAST && typeof bcHostStored === 'function' && bcHostStored()) {
+          if (updateResume && updateResume.onAir) return true;
+          if (sessionStorage.getItem('gifos_bc_golive_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase()) === '1') return true;
+        }
+        const o = takeRecoverMedia(true);
+        return !!(o && o.camOff === false);
+      } catch (e) { return false; }
+    }
+    // peek: read the note without taking it.
+    function takeRecoverMedia(peek) {
       let raw = null;
       try {
         raw = sessionStorage.getItem(RECOVER_MEDIA_KEY);
-        sessionStorage.removeItem(RECOVER_MEDIA_KEY);
+        if (!peek) sessionStorage.removeItem(RECOVER_MEDIA_KEY);
       } catch (e) { return null; }
       if (!raw) return null;
       let o = null;
@@ -33169,6 +33192,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       track.enabled = !track.enabled;
       myStatus.camOff = !track.enabled;
+      // The on-tap opens the camera (lateMedia) and says "Camera on."; the
+      // off-tap says so too, or that line would stand over a camera that is off.
+      if (myStatus.camOff) setStatus('Camera off.');
       paintControls();
       try { paintOnAir(); } catch (e) {}
       refreshOutbound(); // camera on while blurring → start the blur canvas
