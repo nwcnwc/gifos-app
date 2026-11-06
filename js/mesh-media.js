@@ -509,6 +509,9 @@
       }
       drawOverlay(dx, dy, cell, t.lbl);                       // BURN IN name/hand/talking (approach A: baked once at the leaf, rides pixels up the tree)
     }
+    // the paint clock's callback: paint, and capture a frame when the paint drew one (see start())
+    let reqFrame = null;
+    function tick() { const d0 = drawn; paint(); if (reqFrame && drawn !== d0) reqFrame(); }
     function paint() {
       if (!ctx || active === false) return;                                    // demand-gated: a composite nobody ships or shows isn't painted (static canvas ⇒ ~0 encode too)
       const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -682,7 +685,7 @@
         const q = Math.max(1, Math.min(60, n));
         if (q === fps) return;
         fps = q;
-        if (timer) { timer(); timer = (opts.clock || bgClock())(paint, Math.max(20, 1000 / fps)); }
+        if (timer) { timer(); timer = (opts.clock || bgClock())(tick, Math.max(20, 1000 / fps)); }
       },
       clearTiles() { for (const id of [...tiles.keys()]) pk.delTile(id); },
       ids: () => [...tiles.keys()],
@@ -700,12 +703,22 @@
       count: total, cols: () => G, rows: () => R,
       start() {
         if (timer || !canvas) return pk;
-        const vTrack = canvas.captureStream(fps).getVideoTracks()[0];
+        // A FRAME PER PAINT. captureStream(fps) is a ceiling, and a ceiling equal to the paint rate leaves no margin:
+        // with the paint clock's jitter one browser (Firefox) captures only every other paint, so an 8 fps pack goes
+        // out at 4 fps and a forwarded picture waits up to 250 ms for its frame. Capture on demand instead: one frame
+        // for every real paint (none for a skipped still frame). An engine without requestFrame keeps a ceiling
+        // with headroom above the paint rate.
+        let cap = canvas.captureStream(0);
+        let vTrack = cap.getVideoTracks()[0];
+        if (!(vTrack && typeof vTrack.requestFrame === 'function') && typeof cap.requestFrame !== 'function') {
+          try { vTrack.stop(); } catch (e) {}
+          cap = canvas.captureStream(Math.min(60, fps * 2)); vTrack = cap.getVideoTracks()[0]; reqFrame = null;
+        } else reqFrame = () => { try { if (typeof vTrack.requestFrame === 'function') vTrack.requestFrame(); else cap.requestFrame(); } catch (e) {} };
         const aTrack = fold && fold.track();
         pk.stream = new MediaStream(aTrack ? [vTrack, aTrack] : [vTrack]);
         pk.track = vTrack;
-        timer = (opts.clock || bgClock())(paint, Math.max(20, 1000 / fps)); // a Worker-backed tick while hidden: a relay seat's branch must not freeze when its tab does
-        paint();
+        timer = (opts.clock || bgClock())(tick, Math.max(20, 1000 / fps)); // a Worker-backed tick while hidden: a relay seat's branch must not freeze when its tab does
+        tick();
         return pk;
       },
       stop() {
