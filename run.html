@@ -25809,7 +25809,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const stdAdvanced = fb.d0 >= 0 && fb.stdFdec > fb.d0;
         const stdRecent = stdAdvanced && fb.stdAdvAt && now - fb.stdAdvAt < 3000;
         const flowing = (fb.picDead && priLive && !voiceOnly) ? !!fb.picStdOk   // the picture is the complaint, so its frames are the evidence
-          : (voiceOnly || ((fb.dark || u2Over) && priLive))
+          // A stage slot is judged on its voice (pipeBytes): with the primary gone, the standby's audio packets since
+          // the wake are the evidence, not its <video> (a stager without a camera has a video track that never draws;
+          // tv-chain 1325: that gate held a dead copy for the 5 s grace).
+          : (voiceOnly || ((fb.dark || u2Over) && priLive) || (!priLive && rk.indexOf('stg:') === 0))
           ? stdAdvanced
           : ((frames(std.el) > fb.f0 || (std.el && std.el.videoWidth > 0 && now - fb.wakeAt > 1500)) && (!priLive || stdRecent));
         // A dead-or-dark primary swaps the moment the standby flows; a live one
