@@ -31,6 +31,8 @@
   const { ckey, ckPc, ckR, ckI, unckey, ownedLinks, down, up, pcDepth, lastDigit, parentPath } = topo;
   const C = topo.C;
   const newMsg = (t) => msg.newMsg(t);
+  // the sim's #define L3_11_2_OFF in mesh.cpp (a build-time switch): MESH_L3_11_2_OFF=1 under node, read once at load; a page always runs the law
+  const L3_11_2_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L3_11_2_OFF === '1') ? 1 : 0;
 
   // ---- free helpers the entry functions call (private copies of small statics) ---------------------------
   // C++: mesh.cpp:descOn (the MESH_DESC switch; a measurement, never read by protocol code)
@@ -592,10 +594,27 @@
           if (ol[i].pc === 0) continue; let inRoster = false; for (const e of ro) if (e.k === ckey(ol[i]) && e.v >= 0) { inRoster = true; break; } if (inRoster) continue;
           const m = newMsg('RECLAIM'); m.ck = this.oldCell - 1; m.id = id; m.tok = fabricToken(lv, id); m.oCk = gck; m.routing = true; m.rdst = co(ol[i]); m.rfinal = -1; m.rttl = 64; m.rvia = id; this.emit(greeter, m); routed++;
         }
-        if (routed) { this.trace('RECLAIM-ROUTED', id, oc, 'via=%d cells=%d', greeter, routed); sent += routed; }
+        if (routed) { this.trace('RECLAIM-ROUTED', id, oc, 'via=%d cells=%d', greeter, routed); sent += routed; if (!L3_11_2_OFF) this.rcRtAt = this.TICK; }   // L3.11.2: the answer is awaited (tickHeld resends it through another greeter)
       }
       if (sent) this.trace('RECLAIM', id, oc, 'to=%d neighbours', sent);
       return sent > 0;
+    },
+
+    // L3.11.2 (C++: the L3_11_2_OFF call sites in onHome, onReclaimed, onReclaimNo, tickHeld): the law's switch, read by the recv and tick units
+    l3112On() { return !L3_11_2_OFF; },
+
+    // C++: mesh_seat.inc:Seat::l3112Resend
+    // L3.11.2: a routed RECLAIM unanswered for RC_RESEND goes again through another Section-1 seat of my roster, at most RC_RESEND_N times per return.
+    l3112Resend() {
+      const id = this.id;
+      if (this.state !== 1 || !this.oldCell || this.rcPendAt >= 0 || this.rcRound2 || this.rcTries >= 9 || !this.haveRoster || !this.roster.length) { this.rcRtAt = -1; return; }
+      if (this.TICK - this.rcRtAt < K.RC_RESEND) { this.f.wake(id); return; }
+      if (this.rcRtN >= K.RC_RESEND_N) { this.rcRtAt = -1; return; }
+      const cand = []; for (const e of this.roster) { if (e.v < 0 || e.v === id || e.v === this.rcGreeter || ckPc(e.k) !== 0) continue; if (!cand.includes(e.v)) cand.push(e.v); }
+      if (!cand.length) { this.rcRtAt = -1; return; }
+      const g = cand[this.rcRtN % cand.length]; this.rcRtN++; this.rcRtAt = -1;
+      this.trace('RECLAIM-RESEND', id, null, 'via=%d was=%d n=%d', g, this.rcGreeter, this.rcRtN);
+      if (this.tryReclaim(this.roster, g)) this.rcGreeter = g;
     },
 
     // C++: mesh_seat.inc:Seat::reseatViaRoster

@@ -71,6 +71,8 @@
     L31_ACK_WAIT: 8,   // C++: mesh.cpp:L31_ACK_WAIT  (LAW_L31_ACK_WAIT)
     RELOAD_MARK_T: 40,   // C++: mesh.cpp:RELOAD_MARK_T  (LAW_RELOAD_MARK_T)
     RC_WAIT: 20,   // C++: mesh.cpp:RC_WAIT  (LAW_RC_WAIT)
+    RC_RESEND: 4,   // C++: mesh.cpp:RC_RESEND  (LAW_RC_RESEND)
+    RC_RESEND_N: 2,   // C++: mesh.cpp:RC_RESEND_N  (LAW_RC_RESEND_N)
     RC_LAND: 4,   // C++: mesh.cpp:RC_LAND
     L2_PARK: 20,   // C++: mesh.cpp:L2_PARK  (LAW_L2_PARK)
     L2_PROMOTE: 4,   // C++: mesh.cpp:L2_PROMOTE  (LAW_L2_PROMOTE)
@@ -423,6 +425,7 @@
     HOST_ANY: false,   // C++: mesh.cpp:HOST_ANY
     LOSE_T: -1,   // C++: mesh.cpp:LOSE_T
     LOSE_NC: -1,   // C++: mesh.cpp:LOSE_NC
+    LOSE_AT: -1,   // C++: mesh.cpp:LOSE_AT
     L10SEQ: 0,   // C++: mesh.cpp:L10SEQ
     L22SEQ: 0,   // C++: mesh.cpp:L22SEQ
     DESC_ON: -1,   // C++: mesh.cpp:DESC_ON

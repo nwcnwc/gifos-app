@@ -131,6 +131,7 @@
         const m = msg.clone(this.rcPend); this.rcPendAt = -1; this.oldCell = 0; this.trace('RECLAIM-TAKE', id, m.coord, 'from=%d', m.owner); this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, [], m.ppL); if (this.pp >= 0 && this.pp !== id) this.placer = this.pp; this.f.wake(id); return true;   // L3.10: my old cell, handed back with its neighbours; no new seat, no requeue
       }
       if (this.rcPendAt >= 0 && (!this.oldCell || this.state === 3)) this.rcPendAt = -1; else if (this.state !== 3 && this.rcPendAt >= 0) this.f.wake(id);
+      if (this.l3112On() && this.rcRtAt >= 0) this.l3112Resend();   // L3.11.2
       if (this.state !== 3 && this.rcRound2 && this.oldCell && this.rcPendAt < 0 && TICK - this.rcRound2At > 2 * K.RC_WAIT) { this.rcRound2 = false; this.movedOnFrom = this.oldCell; this.oldCell = 0; this.rcTries = 9; this.retryAt = TICK - 21; this.f.wake(id); }   // L3.10.6: the second round brought no seat: a newcomer from here
       return false;
     },
