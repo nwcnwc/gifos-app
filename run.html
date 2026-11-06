@@ -3888,7 +3888,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <div class="topchip">
     <span data-al="livebadgeAria" id="livebadge" data-state="off" aria-label="You are off air"><i class="livedot" aria-hidden="true"></i><span data-t="livebadgeTxt" id="livebadge-txt">OFF AIR</span></span>
     <a data-ti="openYourGifosComputerTip" class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
-    <span data-ti="txmarkTip" data-al="transcribing" id="txmark" role="status" aria-label="Transcribing" title="This meeting is written down while people speak. Each browser writes its own voice; Meet Bot writes the rest.">📝 <span data-t="transcribing">Transcribing</span></span>
+    <span data-ti="txmarkTip" data-al="sendingCaptions" id="txmark" role="status" aria-label="Sending captions" style="display:none" title="Your voice is written down and sent to the meeting as captions while your mic is on. Your browser's speech service (Google, Apple or Microsoft) hears you, unless you picked Whisper. Settings → Captions to change this.">📝 <span data-t="sendingCaptions">Sending captions</span></span>
     <span id="onair" hidden><i class="lamp" aria-hidden="true"></i><span class="words"></span></span>
     <span class="status" id="status"><button data-t="statuscount" type="button" id="statuscount" aria-expanded="false" aria-controls="roster">Joining…</button><span id="statusrest" class="statustext"></span></span>
     <button type="button" id="hdrhand" aria-expanded="false" aria-controls="handq"></button>
@@ -4207,8 +4207,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       </div>
       </div>
       <div class="set-sec" id="set-captions">
-        <b data-t="setCcLang">Captions language</b>
-        <p class="set-help" data-t="setCcHelp">What <b>your own device</b> listens for when CC is on. It cannot guess: a phone set to Russian writes English down as nonsense, so pick the language you will speak.</p>
+        <label class="rec-opt"><input type="checkbox" id="ccsend" checked><span><b data-t="setCcSend">Send my captions</b><small data-t="setCcSendHelp">Your voice is written down while your mic is on and sent to the meeting as captions, so everyone can read you. Your browser's speech service (Google, Apple or Microsoft) hears your voice unless you pick Whisper below, which keeps it on this device. Off: the others' devices may still write you down.</small></span></label>
+        <p class="set-help" id="ccsend-can" style="display:none;color:#ffd23c" data-t="setCcSendCant">This browser has no speech engine, so it cannot send your captions. A device in the meeting that keeps a transcript writes you down instead.</p>
+        <b data-t="setTr" style="margin-top:.5rem">Transcript</b>
+        <label class="rec-opt"><input type="radio" name="trmode" value="off"><span><b data-t="setTrOff">Off</b><small data-t="setTrOffHelp">Captions show on your screen when CC is on, and nothing is kept.</small></span></label>
+        <label class="rec-opt"><input type="radio" name="trmode" value="keep"><span><b data-t="setTrKeep">Keep a transcript for me</b><small data-t="setTrKeepHelp">Every line is kept on this device, in the Transcript window, and can be downloaded. This device also writes down the people nobody is captioning, by name when it knows it, or as Stage or Stadium.</small></span></label>
+        <label class="rec-opt"><input type="radio" name="trmode" value="share"><span><b data-t="setTrShare">Keep and share with the room</b><small data-t="setTrShareHelp">The same, and the lines this device writes about others go to everyone. Your tile shows a transcript badge.</small></span></label>
+        <b data-t="setCcLang" style="margin-top:.5rem">Captions language</b>
+        <p class="set-help" data-t="setCcHelp">What <b>your own device</b> listens for. The browser engine cannot guess: it uses this device's language unless you pick one here. Whisper finds the language by itself.</p>
         <select id="cclang" style="padding:.35rem .5rem;border-radius:.4rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);max-width:100%"></select>
         <div id="ccengine-row" style="margin-top:.6rem">
           <label class="rec-opt"><input type="radio" name="ccengine" value="browser"><span><b data-t="setCcBrowser">Browser captions</b><small data-t="setCcBrowserHelp">Instant. One fixed language, picked above; two-word lines without punctuation on some devices. Your browser may send your voice to its maker's speech service (Chrome: Google).</small></span></label>
@@ -4218,11 +4224,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             <div id="ccwhisper-state" class="set-help" style="margin-bottom:.4rem"></div>
             <label class="rec-opt inline"><input type="checkbox" id="cctranslate"><span data-t="setCcEnglish">Write everything in English</span></label>
             <textarea id="ccwords" rows="2" data-ph="setCcWords" placeholder="Names and words to recognise: Siobhan, Kubernetes, GifOS…" style="width:100%;margin-top:.4rem;padding:.4rem .5rem;border-radius:.4rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);font:inherit;font-size:.85rem"></textarea>
-            <label class="rec-opt" id="ccscribe-row" style="margin-top:.4rem"><input type="checkbox" id="ccscribe"><span><b data-t="setCcScribe">Write down everyone here (scribe)</b><small data-t="setCcScribeHelp">Your device transcribes every voice it hears with Whisper and offers to be the others' captions, so their devices can stop transcribing. The most work a device can do here — best on a strong computer.</small></span></label>
           </div>
-          <div id="ccsource" style="margin-top:.5rem;display:none"></div>
         </div>
-        <p class="set-help" id="ccall-row" style="display:none;margin-top:.5rem"><button data-t="setCcAllOff" id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span data-t="ccallNote" id="ccall-note">Admins only — every device starts writing down the voices it hears. Anyone can tap Captions to opt out.</span></p>
+        <p class="set-help" id="ccall-row" style="display:none;margin-top:.5rem"><button data-t="setCcAllOff" id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span data-t="ccallNote" id="ccall-note">Admins only — every screen shows captions. Anyone can tap Captions to hide them.</span></p>
       </div>
       <div id="mixpanel">
         <b data-t="setMix">Sound mix</b>
@@ -5539,10 +5543,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           try { stopScreenShare('viewers do not publish'); } catch (e) {}
         }
         if (myStatus.stg) myStatus.stg = 0;
-        if (myStatus.cc) {
-          myStatus.cc = false;
-          try { syncSpeech(); } catch (e) {}
-        }
         if (localStream) {
           for (const tr of localStream.getTracks()) { try { tr.enabled = false; tr.stop(); } catch (e) {} }
           localStream = null;
@@ -5946,7 +5946,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // chosen in it does too; Leave or closing the tab clears that note. A
     // privacy rule, guarded in the release gate by test/unit/meet-join-max-blur.js.
     try { localStorage.removeItem('gifos_blur'); } catch (e) {}
-    const myStatus = { muted: true, camOff: true, blur: 2, hand: null, rec: false, cc: false, pwEp: 0, scr: 0, scribe: false };
+    const myStatus = { muted: true, camOff: true, blur: 2, hand: null, rec: false, pwEp: 0, scr: 0 };
     // The Stage seat comes back with its original claim time, so the person
     // keeps their place in step-up order. A grant that has not arrived yet
     // must not disarm it (reactStageLost waits out stageResumeUntil).
@@ -5979,30 +5979,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       },
     };
     const statusOf = new Map();  // peerId -> { muted, camOff, blur, scr }
-    // How many OTHER seats' held statuses advertise captions or a scribe.
-    // refreshTrBtn and the scribe interval read the counts. They do not scan
-    // statusOf on the hot path.
-    let ccOthers = 0, anyScribeStatus = 0;
+    // A seat's caption facts (cap, lang, trs) change what this page writes
+    // down: the next 2 s tick re-syncs the captures (wspSync, ccMixSync).
     function noteStatusFlags(prev, next) {
-      const wasCc = !!(prev && prev.cc), nowCc = !!(next && next.cc);
-      if (wasCc !== nowCc) {
-        ccOthers += nowCc ? 1 : -1;
-        try { if (typeof paintCallState === 'function') paintCallState(); } catch (e) {}
-        try { if (typeof refreshTrBtn === 'function') refreshTrBtn(); } catch (e) {}
-      }
-      const wasSc = !!(prev && prev.scribe), nowSc = !!(next && next.scribe);
-      if (wasSc !== nowSc) anyScribeStatus += nowSc ? 1 : -1;
-      if (ccOthers < 0) ccOthers = 0;
-      if (anyScribeStatus < 0) anyScribeStatus = 0;
+      const a = prev || {}, b = next || {};
+      if (!!a.cap !== !!b.cap || (a.lang || '') !== (b.lang || '')) { if (ccMix.dest) { try { ccMixSync(); } catch (e) {} } }
     }
     function dropStatus(pid) {
       const st = statusOf.get(pid);
       if (!st) return;
-      const wasScribe = !!st.scribe;
       if (typeof DEBUG_ON !== 'undefined' && DEBUG_ON) { try { ((L) => { L.push({ t: Date.now(), ev: 'drop', from: String(pid).slice(0, 8), bcend: st.bcend || 0 }); if (L.length > 400) L.shift(); })(window.__bcTrace = window.__bcTrace || []); } catch (e) {} }
       noteStatusFlags(st, null);
       statusOf.delete(pid);
-      if (wasScribe && typeof scribeWatch === 'function') scribeWatch();
     }
     // IS THIS SEAT DARK? Not the same question as "is its camera off".
     // Sharing a screen with the camera off is the COMMON case — nobody puts
@@ -6788,7 +6776,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         fanOut({ kind: 'mod', mod: modTable, modw: gossipModW() }, null, { ephemeral: true });
       }
       if (digestMode()) pushLeaf();
-      if (typeof scribeAdvert === 'function') scribeAdvert();
       updateTile('me');
     }
     // My OWN room-global facts into the fold (healing-laws G9), and my own
@@ -8971,30 +8958,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       el.appendChild(b);
     }
 
-    // What the tile says. Captions and transcribing are one thing. The chip
-    // uses the word Captions, including when Whisper is paused or behind.
-    function ccLiveLabel(st) {
-      if (st && st.ccst === 'paused') return 'Captions paused';
-      if (st && st.ccst === 'behind') return 'Captions behind, skipping old audio';
-      return 'Captions';
-    }
-    // Captions are one room state. The button is on when anyone here is
-    // writing the room down, not only when this phone turned it on.
-    function roomCaptionOn() {
-      if (myStatus.cc) return true;
-      for (const st of statusOf.values()) if (st && st.cc) return true;
-      return false;
-    }
-    function captionWriterName() {
-      if (myStatus.cc) { try { return myName(); } catch (e) { return 'You'; } }
-      for (const [id, st] of statusOf) {
-        if (!st || !st.cc) continue;
-        try { if (typeof displayName === 'function') return displayName(id) || 'Someone'; } catch (e) {}
-        try { if (typeof rosterNames !== 'undefined' && rosterNames[id]) return rosterNames[id]; } catch (e2) {}
-        return 'Someone';
-      }
-      return '';
-    }
     // Open rooms: anyone may blur anyone else. Admin rooms: only an admin.
     // Never yourself (setMod refuses myId). The corner box is that power,
     // visible, not a hover menu.
@@ -9211,8 +9174,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // The same room word as the card and the room bar (recRoomWord):
       // recordingIndicatorsOk reads this chip before any recording starts.
       if (st.rec) { const rw = 'recording this ' + recRoomWord(); chips.push('<span class="warn rec" title="' + rw + '"><b>⏺</b> ' + rw + '</span>'); }
-      // No per-person transcription chip. Captions are a local display, and
-      // every browser is already writing its own voice.
+      // A page that shares a transcript writes other people's words to the
+      // room, so its tile says so. Sending one's own captions is no badge.
+      if (st.trs) chips.push(txChip('long', '📝', uiText('trShareChip', 'sharing a transcript')));
       // Status icons only: a muted mic, a camera-off glyph. No icon when the
       // camera is on. Blur is the picture itself, never a badge. A bot has
       // neither a mic nor a camera.
@@ -10277,7 +10241,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         t.tile.classList.toggle('speaking', speaking);
         if (id === 'me' && speaking) { lastActive = Date.now(); myVoiceAt = lastActive; } // talking IS activity — a speaker's phone is never "parked"
         speakingOf.set(id, speaking); // fed to the packer overlay (green talking frame on composite faces)
-        if (speaking) ccGapSee(id, speaking); // a paused neighbour's voice is kept for the one speech session
       }
       if (fsSel === 'auto' && fsview.classList.contains('on')) fsRefresh();
     }, 180);
@@ -14693,7 +14656,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       st.rx = Date.now() - gossipAgeMs; // the departure tombstone (notTomb) trusts only statuses that arrived after its verdict
       if (cur && (cur.at || 0) === (st.at || 0) && (cur.rx || 0) > st.rx) st.rx = cur.rx;
       Object.defineProperty(st, 'raw', { value: raw });
-      const scribeBit = !!(cur && cur.scribe) !== !!st.scribe;
       const shareBit = !!(cur && cur.scr) !== !!st.scr;
       const waitBit = !cur || (cur.wt !== st.wt);
       if (typeof noteStatusFlags === 'function') noteStatusFlags(cur, st);
@@ -14726,7 +14688,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // for this peer come back (unparkMod). notTomb lifts the tombstone on
       // this same frame, so mergeMod treats them as an ordinary target again.
       if (typeof unparkMod === 'function' && notTomb(from)) unparkMod(from);
-      if (scribeBit && typeof scribeWatch === 'function') scribeWatch();
       // §LOCK EPOCH FLOOR: a member whose sealed frames I can OPEN is speaking
       // my key generation — so its epoch number is mine too, and adopting the
       // NUMBER (never a password) re-arms the replay guard on a fresh page.
@@ -15413,7 +15374,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         late.hiLate = setTimeout(() => {
           if (peers.get(pid) !== late || (late.dc && late.dc.readyState === 'open')) return;
           if (!lateHiSender(myId, targetLinkIds(pid))) return;
-          deliverLateHi(pid, { k: 'hi', chats: Array.from(chat.values()).slice(-200), trs: Array.from(trs.values()).slice(-100), metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj(), reacts: myReactsObj() });
+          deliverLateHi(pid, { k: 'hi', chats: Array.from(chat.values()).slice(-200), trs: trKeeps() ? Array.from(trs.values()).slice(-100) : [], metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj(), reacts: myReactsObj() });
         }, 20000);
       }
       p.absentSince = 0;
@@ -20972,7 +20933,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // its first link opens. File BODIES ride the DataChannels only (P0/P1, by
     // budget policy).
     const sentFrames = []; // the last app frames I sent to the room (sentFramesForTest)
-    function sendAll(msg, opts) { // opts: a gossip scope (captionScope) — chat, files and deletions stay room-wide
+    function sendAll(msg, opts) { // opts: a gossip scope (the status plane) — chat, transcript lines, files and deletions stay room-wide
       sentFrames.push(msg); if (sentFrames.length > 20) sentFrames.shift();
       fanOut(msg, (p) => dcSend(p, msg), opts);
     }
@@ -21055,7 +21016,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (amAdmin) { try { dcSend(p, { k: 'sig', msg: { kind: 'mod', mod: modTable, modw: gossipModW() } }); } catch (e) {} }
         try { if (enableMedia(p)) renegotiate(p); } catch (e) {}
         try { if (linkTo(p.id)) retireBootPairs(); } catch (e) {} // a seat's own link is open: the door I came in by closes
-        dcSend(p, { k: 'hi', chats: Array.from(chat.values()).slice(-500), trs: Array.from(trs.values()).slice(-300), metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj(), reacts: myReactsObj() });
+        dcSend(p, { k: 'hi', chats: Array.from(chat.values()).slice(-500), trs: trKeeps() ? Array.from(trs.values()).slice(-300) : [], metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj(), reacts: myReactsObj() });
         // THE MOMENT A CHANNEL EXISTS is the moment the stage pulls can finally
         // travel. Everything below was silently impossible a millisecond ago:
         // sgaFan delivers only to peers whose DC is already OPEN, so a
@@ -21289,14 +21250,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }
         const from = p && p.id;
         if (ids.every((id) => { const f = files.get(id); return fdelAllowed(true, false, f && f.byId, from); })) apply();
-      } else if (m.k === 'scribe') {
-        noteScribe(p.id, !!m.on, m.name, m.at);
-        if (m.name && p.id && p.id !== myId) rosterNames[p.id] = String(m.name).slice(0, 40);
-        if (typeof scribeWatch === 'function') scribeWatch();
       } else if (m.k === 'tr') {
         if (takeTr(m.m)) {
-          renderTranscript();
-          showCaption(m.m.byId, m.m.text);
+          if (trKeeps()) renderTranscript(); // a page that keeps no transcript shows the line (CC) and lets it go (trForget)
+          showCaption(m.m.byId, m.m.text, m.m.w !== m.m.byId ? String(m.m.by || '').slice(0, 40) : '');
+          paintTxMark();
           // not gossiped onward (see chat): a caption line is one flood
         }
       } else if (m.k === 'sig') {
@@ -21840,8 +21798,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return true;
     }
     // Drops the oldest by `at`, deleting by KEY: chat and trs are keyed by id,
-    // trSeen by the line's text, and deleting by value.id trimmed only the
-    // first two (trSeen grew for the life of the tab and sorted on every line).
+    // deleting by value.id would trim a map keyed another way.
     // THE LINES A FULL HISTORY LET GO SET A FLOOR. A line at or behind the newest time ever trimmed from a map
     // is older than everything held, so it is not new: it was held once and let go. Without the floor a trimmed
     // line read as new again on every page that had let it go, was taken, trimmed at once, still counted as
@@ -29172,131 +29129,159 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     });
     paintTiming();
 
-    // ---- live transcript: every browser writes down its own voice ------------
-    // The meeting is always transcribed. Each device writes its own voice
-    // while it is unmuted, whatever CC is set to. CC only shows or hides
-    // those lines on this screen. A scribe can still write the other voices.
-    // Final lines gossip over the DataChannels (dedupe by id, exactly like
-    // chat) and merge into one attributed transcript on every phone. No server
+    // ---- live transcript: one line kind, one merge rule (2026-11-06) ----------
+    // Every page sends its OWN voice as caption lines while "Send my captions"
+    // is on (default on), room-wide like chat. A page whose Transcript setting
+    // is keep or share also writes down the voices nobody is captioning (a
+    // row-mate or stager it hears first-hand, by name; the Stadium mix by its
+    // channel's name) and keeps those lines for itself (keep) or sends them to
+    // the room too (share). Every receiver merges all of it into one transcript
+    // with one rule, so every page converges on the same lines. No server
     // anywhere — though the browser itself may use its vendor's speech service.
+    // A line: { id, byId, by, at, text, w, src, lang }. byId is the speaker (or
+    // 'stadium' / 'stage' for a mix with no name), w is the writer whose engine
+    // heard it, src is 'mic' (the writer's own voice), 'ear' (a named voice
+    // heard first-hand) or 'mix' (a mix of several voices), lang the language
+    // the engine listened in or detected ('' unknown).
     const trs = new Map(); // id -> { id, byId, by, at, text }
-    // ONE VOICE, WRITTEN DOWN ONCE (2026-10-02, the first customer meeting).
-    // The speech engine listens to the device's raw microphone, not to the
-    // echo-cancelled track the call sends — so a laptop on speakers wrote
-    // down everyone it could hear, and the transcript held every sentence
-    // twice under two names. Two guards, belt and braces:
-    //  1. the GATE (speech.onresult): a final result counts only if MY own
-    //     echo-cancelled mic carried voice in the last 3s (the meter's verdict;
-    //     see myVoiceAt). Speaker playback is cancelled on that track, so a
-    //     sentence I merely heard arrives with my mic silent and is dropped.
-    //  2. the DEDUPE (takeTr / addTranscriptLine): the same words from a
-    //     different device within 8s are one utterance. The earlier line wins
-    //     — the real speaker's engine fires first, the echo lags by the
-    //     speaker path — and a late-arriving earlier line replaces the echo.
-    // A line about ANOTHER person carries byId (who spoke) and scribe (whose
-    // device wrote it). Several devices that caption all hear the same voice,
-    // so one utterance arrives once per writer, worded a little differently by
-    // each engine: trSameVoice keeps ONE line per utterance, and as for echoes
-    // the earlier line wins.
-    const trNorm = (t) => String(t || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
-    const trSrc = (m) => String(m.scribe || m.byId);
-    const trSeen = new Map(); // normalized text -> { at, src, id } of the line that holds it
+    const TR_SEND_KEY = 'gifos_cc_send', TR_MODE_KEY = 'gifos_tr_mode';
     let trDrops = 0;
-    var ccSourceId = null; // the scribe whose lines I chose to take instead of my own device's (per meeting)
+    let trRxAt = 0; // when a shared line from another writer last arrived (the "receiving" mark)
+    // Remembered on this device like the other caption settings (lsGet).
+    function capSend() { return lsGet(TR_SEND_KEY) !== 'off'; }
+    // '' (off, the default): lines are shown by CC and thrown away. 'keep':
+    // stored and shown here, and this page writes down the voices nobody
+    // captions. 'share': keep, and those lines go to the room. A Meet Bot is
+    // in the room to write, so with no choice saved it keeps.
+    let trModeSet = null; // this meeting's choice, when storage cannot hold it (a bot's frame)
+    function trMode() {
+      const v = trModeSet !== null ? trModeSet : lsGet(TR_MODE_KEY);
+      if (v === 'keep' || v === 'share') return v;
+      return (typeof myStatus !== 'undefined' && myStatus && myStatus.bot) ? 'keep' : '';
+    }
+    function trKeeps() { return trMode() !== ''; }
+    const trNorm = (t) => String(t || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
     const trWords = (n) => new Set(n.split(' ').filter(Boolean));
-    // The same utterance heard by two writers: same speaker, within 8s, and
-    // most of the shorter line's words are in the longer one (engines cut and
-    // spell differently). -> the held line it duplicates, or null.
-    function trSameVoice(m, n, src) {
-      const w = trWords(n);
-      if (!w.size) return null;
-      for (const l of trs.values()) {
-        if (l.byId !== m.byId || trSrc(l) === src || Math.abs((l.at || 0) - (m.at || 0)) >= 8000) continue;
-        const lw = trWords(trNorm(l.text));
-        let both = 0; for (const x of w) if (lw.has(x)) both++;
-        const small = Math.min(w.size, lw.size);
-        if (small && both / small >= 0.6 && (small >= 3 || both === Math.max(w.size, lw.size))) return l;
-      }
-      return null;
+    const trLangOf = (l) => String(l || '').toLowerCase().split(/[-_]/)[0];
+    // A mix carries several voices and no name: its label is the channel's.
+    function trGeneric(byId) { return byId === 'stadium' || byId === 'stage'; }
+    // Higher wins: a name beats a channel label; the writer's own microphone
+    // beats a voice heard first-hand, which beats a mix.
+    function trRank(l) { return (trGeneric(l.byId) ? 0 : 4) + (l.src === 'mic' ? 2 : l.src === 'ear' ? 1 : 0); }
+    // The same sentence, heard by two engines: within 8 s, most of the shorter
+    // line's words are in the longer one (engines cut and spell differently;
+    // three words at least, or every word of a short one), and not two known
+    // languages that differ (an engine in the wrong language writes nonsense,
+    // which must not pass for the right line).
+    // One exception: the same named speaker, one line's language DETECTED
+    // (Whisper, ld) and the other's assumed (a browser engine told what to
+    // hear), and they differ: that is one utterance, and the assumed one is
+    // nonsense by construction (the engine listened in the wrong language),
+    // so no words can match. The detected line wins (trBetter).
+    function trLangClash(a, b) {
+      const la = trLangOf(a.lang), lb = trLangOf(b.lang);
+      return !!(la && lb && la !== lb && !!a.ld !== !!b.ld && a.byId === b.byId && !trGeneric(a.byId));
     }
-    function trEcho(m) { // -> false (new), true (drop: an echo), or the entry this earlier line should replace
-      const n = trNorm(m.text);
-      const same = trSameVoice(m, n, trSrc(m));
-      if (same) {
-        if (clog) clog('cc same-voice', String(m.byId).slice(0, 6), 'by', trSrc(m).slice(0, 6), m.at, 'held', trSrc(same).slice(0, 6), same.at);
-        if ((m.at || 0) + 300 >= (same.at || 0)) { trDrops++; return true; }
-        trs.delete(same.id); // a late-arriving earlier line replaces the copy
-      }
-      if (n.length < 12) return false; // "yes", "okay", "can you hear me" legitimately repeat
-      const s = trSeen.get(n), src = trSrc(m);
-      // The raw mic files a heard sentence under ME. A paused neighbour's clip
-      // files the same sentence under THEM, and this device is the scribe, so
-      // both lines share a source. One of them has a scribe and the other does
-      // not: that is one utterance, and the earlier stamp wins. Two scribed
-      // lines for two speakers stay (they may have said the same words).
-      if (s && Math.abs((m.at || 0) - s.at) < 8000) {
-        const held = trs.get(s.id);
-        if (held && held.byId !== m.byId && (!!m.scribe !== !!held.scribe)) {
-          if ((m.at || 0) + 300 < s.at) { trs.delete(s.id); trSeen.set(n, { at: m.at || 0, src, id: m.id }); return s; }
-          trDrops++; return true;
-        }
-      }
-      if (s && s.src !== src && Math.abs((m.at || 0) - s.at) < 8000) {
-        if ((m.at || 0) + 300 < s.at) { trs.delete(s.id); trSeen.set(n, { at: m.at || 0, src, id: m.id }); return s; }
-        trDrops++; return true;
-      }
-      if (!s || s.src === src) { trSeen.set(n, { at: m.at || 0, src, id: m.id }); trimMap(trSeen, CHAT_MAX); }
-      return false;
+    function trSame(a, b) {
+      if (Math.abs((a.at || 0) - (b.at || 0)) >= 8000) return false;
+      if (trLangClash(a, b)) return true;
+      const la = trLangOf(a.lang), lb = trLangOf(b.lang);
+      if (la && lb && la !== lb) return false;
+      const wa = trWords(trNorm(a.text)), wb = trWords(trNorm(b.text));
+      if (!wa.size || !wb.size) return false;
+      let both = 0; for (const x of wa) if (wb.has(x)) both++;
+      const small = Math.min(wa.size, wb.size);
+      return both / small >= 0.6 && (small >= 3 || both === Math.max(wa.size, wb.size));
     }
-    // A remote caption arrives only through takeTr (k:'tr'). The device that
-    // heard the voice writes it in addTranscriptLine and emits there. Everyone
-    // else, including a Meet Bot that does not caption that voice, hears it
-    // only here. A 'hi' replay is history, not a new line.
+    // Better: a higher rank; the same rank, the earlier time; the same time,
+    // the lower id. Order-independent, so every page keeps the same line.
+    function trBetter(a, b) {
+      if (trLangClash(a, b)) return !!a.ld;
+      const ra = trRank(a), rb = trRank(b);
+      if (ra !== rb) return ra > rb;
+      if ((a.at || 0) !== (b.at || 0)) return (a.at || 0) < (b.at || 0);
+      return String(a.id) < String(b.id);
+    }
+    // -> 'new' (no held line is this sentence), 'dup' (a held line is as good
+    // or better: drop it), or the held line m REPLACES (m is better; the held
+    // line leaves and m keeps the earlier of the two times, so the transcript
+    // keeps its order and the sentence its true start).
+    function trMerge(m) {
+      let same = null;
+      for (const l of trs.values()) if (trSame(l, m)) { if (!same || trBetter(l, same)) same = l; }
+      if (!same) return 'new';
+      if (clog) clog('tr same', String(m.byId).slice(0, 6), m.src, m.at, 'held', String(same.byId).slice(0, 6), same.src, same.at);
+      if (!trBetter(m, same)) { trDrops++; return 'dup'; }
+      trs.delete(same.id);
+      if ((same.at || 0) < (m.at || 0)) m.at = same.at;
+      return same;
+    }
+    // A line arrives here from the wire ('tr' frame, or a 'hi' replay = backfill)
+    // and from this page's own engine (addTranscriptLine). The device that wrote
+    // it emits it to the bot; everyone else emits here. A replay is history.
     function emitLiveTranscript(line) {
       if (!line) return;
       // The bot's own voice is not news. Another person's line still is,
       // which is the whole reason a bot listens to takeTr.
       if (myStatus.bot && (!line.byId || line.byId === myId)) return;
-      if (typeof window !== 'undefined' && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'transcript', line: { by: line.by, text: line.text, at: line.at, scribeBy: line.scribeBy || '' } });
+      if (typeof window !== 'undefined' && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'transcript', line: { by: line.by, byId: line.byId, text: line.text, at: line.at, w: line.w, src: line.src, lang: line.lang || '' } });
     }
     function takeTr(m, backfill) { // backfill: a 'hi' replay — see takeChat
       if (!m || !m.id || trs.has(m.id) || ((m.at || 0) > 0 && (m.at || 0) <= (trs.floorAt || 0))) return false;
-      const writer = String(m.scribe || m.byId);
-      // The flood limit is per writer AND voice: one captioning device writes
+      const w = String(m.w || m.byId);
+      // The flood limit is per writer AND voice: one sharing device writes
       // down a whole row, and a single shared budget dropped real sentences.
-      if (!backfill && writer !== myId && !chatRateOk('tr:' + writer + '>' + String(m.byId))) return false;
-      // Every captioning device's lines are taken, whoever wrote them: that is
-      // how a person who never pressed CC reaches the transcript. A line
-      // written for someone else shows its writer (✍) on every device.
-      if (m.scribe && m.scribe === m.byId) return false; // a writer's own voice rides as their own plain line
-      const line = { id: m.id, byId: m.byId, by: String(m.by || '?').slice(0, 40), at: m.at || 0, text: String(m.text || '').slice(0, 400) };
-      if (m.scribe) { line.scribe = String(m.scribe); line.scribeBy = String(m.scribeBy || '?').slice(0, 40); }
-      if (trEcho(line) === true) return false;
+      if (!backfill && w !== myId && !chatRateOk('tr:' + w + '>' + String(m.byId))) return false;
+      const src = m.src === 'mic' || m.src === 'ear' || m.src === 'mix' ? m.src : (w === String(m.byId) ? 'mic' : 'ear');
+      const line = { id: m.id, byId: m.byId, by: String(m.by || '?').slice(0, 40), at: m.at || 0, text: String(m.text || '').slice(0, 400), w, src, lang: trLangOf(m.lang) };
+      if (m.ld) line.ld = 1;
+      if (trMerge(line) === 'dup') return false;
       trs.set(m.id, line);
       trimMap(trs, CHAT_MAX);
+      if (!backfill && w !== myId) { trRxAt = Date.now(); trLearnLang(line); }
       if (!backfill) emitLiveTranscript(line);
       return true;
+    }
+    // A page that keeps no transcript still merges for the CC overlay: lines
+    // older than 20 s leave, so the store is a window, never a history.
+    function trForget() {
+      if (trKeeps()) return;
+      const cut = Date.now() - 20000;
+      for (const [id, l] of trs) if ((l.at || 0) < cut) trs.delete(id);
+    }
+    // THE SPEAKER'S OWN LANGUAGE. A browser engine listens in ONE language
+    // and cannot detect it: the saved picker, else the device's language
+    // (trLang). A person who speaks another language on that device sends
+    // nonsense captions — unless a Whisper page in the room hears them and
+    // detects the language: two detected lines about ME in a row that agree
+    // on a language other than my engine's, and my engine restarts in theirs
+    // (this meeting only; the picker is still the person's choice).
+    let trHeardLang = '', trHeardN = 0, trLangLearned = '';
+    function trLang() { const v = trLangLearned || ccLang(); return trLangOf(v === 'auto' ? (navigator.language || 'en') : v); }
+    function trLearnLang(line) {
+      if (!line || !line.ld || line.byId !== myId || !line.lang || trLangLearned === line.lang) return;
+      if (line.lang === trLangOf(ccLang() === 'auto' ? navigator.language : ccLang()) && !trLangLearned) return;
+      if (trHeardLang === line.lang) trHeardN++; else { trHeardLang = line.lang; trHeardN = 1; }
+      if (trHeardN < 2) return;
+      trLangLearned = line.lang;
+      if (clog) clog('tr lang learned', line.lang);
+      try { if (typeof speechRunning === 'function' && speechRunning()) { stopSpeech(); syncSpeech(); } } catch (e) {}
+      try { if (typeof broadcastStatus === 'function') broadcastStatus(); } catch (e) {}
+      try { setStatus(uiText('stCaptionsNowListenFor', 'Captions now listen for {lang}.').replace('{lang}', line.lang), 6000); } catch (e) {}
     }
     // Consecutive lines from one person, close together, read as one
     // paragraph. The engine hands over two-word finals with no punctuation;
     // the lines stay as they came (ids, times), only the reading view joins them.
     function trBlocks() {
+      if (!trKeeps()) return [];
       const lines = Array.from(trs.values()).sort((a, b) => a.at - b.at);
       const out = [];
       for (const l of lines) {
         const last = out[out.length - 1];
-        if (last && last.byId === l.byId && (last.scribeBy || '') === (l.scribeBy || '') && l.at - last.end < 5000 && last.text.length + l.text.length < 700) { last.text += ' ' + l.text; last.end = l.at; }
-        else out.push({ byId: l.byId, by: l.by, at: l.at, end: l.at, text: l.text, scribeBy: l.scribeBy });
+        if (last && last.byId === l.byId && last.w === l.w && (last.lang || '') === (l.lang || '') && l.at - last.end < 5000 && last.text.length + l.text.length < 700) { last.text += ' ' + l.text; last.end = l.at; }
+        else out.push({ byId: l.byId, by: l.by, at: l.at, end: l.at, text: l.text, w: l.w, src: l.src, lang: l.lang || '' });
       }
       return out;
-    }
-    // The speaker's own lines enter here, not through takeTr. takeTr trims.
-    // This path used to leave trs unbounded for the life of the caption.
-    function keepOwnTranscript(m) {
-      if (trEcho(m) === true) return false;
-      trs.set(m.id, m);
-      trimMap(trs, CHAT_MAX);
-      return true;
     }
     let ccShow = false;
     try { ccShow = localStorage.getItem('gifos_cc_view') === '1'; } catch (e) {} // this screen's own choice (qa-meet-mobile)
@@ -29304,14 +29289,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const nodes = document.querySelectorAll('.tile .cap.show');
       for (let i = 0; i < nodes.length; i++) nodes[i].classList.remove('show');
     }
-    function showCaption(byId, text) {
+    function showCaption(byId, text, label) {
       if (!ccShow) return;
       const bar = document.getElementById('livecap');
       if (bar) {
-        let name = '';
+        let name = label || '';
         try {
-          if (byId === myId) name = myName();
-          else { const p = peers.get(byId); name = (p && p.name) || ''; }
+          if (!name) { if (byId === myId) name = myName(); else { const p = peers.get(byId); name = (p && p.name) || ''; } }
         } catch (e) {}
         bar.textContent = (name ? name + '. ' : '') + String(text || '');
         bar.classList.add('show');
@@ -29332,20 +29316,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       trDirty = false;
       const log = document.getElementById('trlog');
       const lines = trBlocks();
+      const mine = trLang();
       const html = lines.length
-        ? lines.map((l) => '<div class="trline"><b>' + (typeof avatarChip === 'function' ? (avatarChip(l.byId) || '') : '') + esc(l.by) + '</b>' + esc(l.text) + (l.scribeBy ? ' <small style="color:var(--muted,#8888aa)">✍ ' + esc(l.scribeBy) + '</small>' : '') + '</div>').join('')
+        ? lines.map((l) => '<div class="trline"><b>' + (typeof avatarChip === 'function' ? (avatarChip(l.byId) || '') : '') + esc(l.by) + '</b>' + esc(l.text) + (l.lang && l.lang !== mine ? ' <small style="color:var(--muted,#8888aa)">' + esc(l.lang) + '</small>' : '') + '</div>').join('')
         : '<small data-t="trEmpty" style="color:#667">' + esc(uiText('trEmpty', 'This meeting is being written down. Lines gather here under each speaker\'s name. Anyone here can open this and download it.')) + '</small>';
       paintLog(log, html);
     }
-    // CAPTIONS FOLLOW THE EAR (2026-10-03). A caption line was a room-wide
-    // flood, so with "Captions for everyone" every device received every
-    // device's lines: O(N) inbound per phone, and the per-writer limiter
-    // dropped real sentences without a trace. A listener hears its row
-    // first-hand and the Stage everywhere (the Stadium is a mix nobody
-    // captions), so a line goes to the speaker's SECTION — the status
-    // plane's scope, which holds the row — unless the speaker is on the
-    // Stage, whose ≤C voices reach the whole room and so do their lines.
-    function captionScope(byId) { return stageIds().includes(byId) ? undefined : { scope: 'section' }; }
     // Lines the bot played. A caption of that voice is not written down again.
     const botSpokenLines = [];
     function rememberBotSpoken(text) {
@@ -29354,26 +29330,37 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       botSpokenLines.push(t);
       if (botSpokenLines.length > 20) botSpokenLines.splice(0, botSpokenLines.length - 20);
     }
-    function addTranscriptLine(text, at, forId, label) { // forId: a scribe writing down THAT person; label: a channel's name ('Stadium') instead of a person's
+    // This page's engine heard a line. No forId: my own voice, a caption line,
+    // sent room-wide while "Send my captions" is on. forId: a voice this page
+    // writes down for the room's transcript (keep/share) — a person by name
+    // (src 'ear'), or a mix by its channel's label (src 'mix'); sent only when
+    // sharing. Stored here when this page keeps a transcript.
+    function addTranscriptLine(text, at, forId, label, src, lang, detected) { // detected: the engine found the language itself (Whisper)
       text = String(text || '').trim();
       if (!text) return;
       // The bot's own microphone is never written down, and neither is a line
       // that repeats something the bot just played. Another person's line stays.
       if (window.GifOS && GifOS.meetHost && typeof GifOS.meetHost.suppressBotLine === 'function'
           && GifOS.meetHost.suppressBotLine(!!myStatus.bot, text, forId, myId, botSpokenLines)) return;
-      const m = { id: uid('t'), byId: myId, by: myName(), at: at || Date.now(), text: text.slice(0, 400) };
-      if (forId && forId !== myId) { m.byId = forId; m.by = String(label || rosterNames[forId] || (peers.get(forId) || {}).name || '…').slice(0, 40); m.scribe = myId; m.scribeBy = myName(); }
-      if (!keepOwnTranscript(m)) return; // I only HEARD this — another device already wrote it down
-      sendAll({ k: 'tr', m }, captionScope(m.byId));
+      const mine = !forId || forId === myId;
+      const m = { id: uid('t'), byId: myId, by: myName(), at: at || Date.now(), text: text.slice(0, 400), w: myId, src: 'mic', lang: trLangOf(lang || trLang()) };
+      if (detected && m.lang) m.ld = 1;
+      if (!mine) {
+        m.byId = forId;
+        m.src = src === 'mix' || trGeneric(forId) ? 'mix' : 'ear';
+        m.by = String(label || rosterNames[forId] || (peers.get(forId) || {}).name || '…').slice(0, 40);
+      }
+      const send = mine ? capSend() : trMode() === 'share';
+      if (!send && !trKeeps()) return;
+      if (!takeTr(m)) return; // the same sentence is already held by a better line
+      if (send) sendAll({ k: 'tr', m });
       renderTranscript();
-      showCaption(m.byId, m.text);
-      if (typeof window !== 'undefined' && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'transcript', line: { by: m.by, text: m.text, at: m.at, scribeBy: m.scribeBy || '' } });
+      showCaption(m.byId, m.text, mine ? '' : m.by);
     }
     // What the bot SAYS is written down by the bot, from the words it was
     // handed: its microphone is never captioned (above), so this is the only
-    // way the room's transcript holds the bot's side. A spoken line goes to
-    // the whole room, not the section: it is one line per reply, not a stream.
-    // Lines over a caption's 400 characters are cut at a space into several.
+    // way the room's transcript holds the bot's side. One line per reply, to
+    // the whole room. Lines over a caption's 400 characters are cut at a space.
     function writeBotSpoken(text) {
       let rest = String(text || '').replace(/\s+/g, ' ').trim();
       if (!rest || !myStatus.bot) return;
@@ -29381,9 +29368,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       for (let i = 0; rest; i++) {
         let cut = rest.length <= 400 ? rest.length : rest.lastIndexOf(' ', 400);
         if (cut <= 0) cut = 400;
-        const m = { id: uid('t'), byId: myId, by: myName(), at: at + i, text: rest.slice(0, cut).trim() };
+        const m = { id: uid('t'), byId: myId, by: myName(), at: at + i, text: rest.slice(0, cut).trim(), w: myId, src: 'mic', lang: trLang() };
         rest = rest.slice(cut).trim();
-        if (keepOwnTranscript(m)) sendAll({ k: 'tr', m });
+        if (takeTr(m)) sendAll({ k: 'tr', m });
       }
       renderTranscript();
     }
@@ -29406,7 +29393,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       sel.value = saved;
       sel.onchange = () => {
         try { if (sel.value) localStorage.setItem(CC_LANG_KEY, sel.value); else localStorage.removeItem(CC_LANG_KEY); } catch (e) {}
+        trLangLearned = ''; trHeardLang = ''; trHeardN = 0;
         if (speechRunning()) { stopSpeech(); syncSpeech(); }
+        capPublish();
         setStatus('Captions now listen for ' + ccLangLabel() + '.');
       };
     })();
@@ -29417,7 +29406,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // Offline Captions provider app, through GifOS.providers — does all four,
     // and it is fed the ECHO-CANCELLED track the call already sends, so a
     // laptop on speakers no longer writes down the room (the browser engine
-    // hears the raw microphone; see trEcho).
+    // hears the raw microphone; see the gate in startSpeech).
     // Utterances are cut by the same meter that paints the talking ring:
     // voice → open (with 400 ms of pre-roll); 700 ms of silence → close and
     // hand the clip to the provider; 15 s → close and reopen at once. One
@@ -29448,7 +29437,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const WSP_PRE_MS = 400, WSP_GAP_MS = 700, WSP_MAX_S = 15, WSP_MIN_S = 0.4, WSP_BACKLOG = 3, WSP_SCRIBE_MAX = 8;
     const WHISPER_SEED_KEY = 'gifos_store_default_' + 'offline-stt-whisper'; // the same stamp the Home Screen's lazy seed writes (gifos-install.js)
     // One capture per VOICE: 'me' (my own echo-cancelled track) and, for a
-    // scribe, each direct-link neighbour whose audio already feeds a meter.
+    // keep/share page, each direct-link neighbour whose audio already feeds a meter.
     // Every capture cuts its own utterances; one shared queue hands them to
     // the provider one at a time.
     const wspCaps = new Map(); // 'me' | pid -> capture
@@ -29492,8 +29481,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return tr ? c.stream : null;
     }
     function wspStageSid(id) { const st = wspStageStream(id); return st ? (st.id || 'stg') : null; }
-    // THE FAR-ROW MIX (cross-row scribe). A voice from another row reaches me
-    // only inside the stadium mix. A scribe that has no source of its own for
+    // THE FAR-ROW MIX. A voice from another row reaches me
+    // only inside the stadium mix. A keep/share page that has no source of its own for
     // a present person captures that mix as one more voice ('fold'), and its
     // lines are labelled by the CHANNEL they came on: "Stadium". Naming the
     // speaker inside a mix is later work (Nathan 2026-10-22 22:58).
@@ -29511,13 +29500,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // Is anyone present that I hold no source for (a far-row voice)?
     function wspFoldNeeded(queued) {
       const now = Date.now();
-      if (typeof statusOf === 'undefined' || typeof peers === 'undefined' || typeof ccWrittenElsewhere !== 'function') return false;
+      if (typeof statusOf === 'undefined' || typeof peers === 'undefined' || typeof capCovered !== 'function') return false;
       for (const [pid, st] of statusOf) {
         if (!st || (typeof myId !== 'undefined' && pid === myId) || st.muted || st.bot || queued.indexOf(pid) >= 0) continue;
         if (now - (st.rx || st.at || 0) > 15000) continue;
         const p = peers.get(pid);
         if (p && p.connected && wspSource(pid)) continue;
-        if (ccWrittenElsewhere(pid)) continue;
+        if (capCovered(pid)) continue;
         return true;
       }
       return false;
@@ -29615,14 +29604,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         try { src = ac.createMediaStreamSource(new MediaStream([localStream.getAudioTracks()[0]])); own = true; } catch (e) { return false; }
       }
       // The bot's microphone is muted silence. The words it speaks go out on
-      // botVoiceTrack. A scribe that kept the mic would write Whisper's
+      // botVoiceTrack. A capture that kept the mic would write Whisper's
       // silence phrases ("you", "I'm sorry.", "BEEP") over the whole line.
       if (id === 'me' && botVoiceTrack && botVoiceTrack.readyState === 'live') {
         try { src = ac.createMediaStreamSource(new MediaStream([botVoiceTrack])); own = true; stageSid = null; } catch (e) { /* keep the mic */ }
       }
       if (!src) return false;
       const w = { id, src, node: null, own, rate: ac.sampleRate, stageSid, pre: [], preMs: 0, utt: null, uttStart: 0, lastVoice: 0, worklet: false };
-      if (id === 'fold') { w.fold = true; w.foldSig = wspFoldSig(); }
+      // Whisper is told the language when it is known: mine from the picker
+      // (wspDrain), another person's from their status; a mix is found by Whisper.
+      if (id !== 'me' && id !== 'fold') { const st = statusOf.get(id); w.lang = (st && st.lang) ? String(st.lang) : 'auto'; }
+      if (id === 'fold') { w.fold = true; w.foldSig = wspFoldSig(); w.lang = 'auto'; }
       if (wspUseWorklet(id, w)) return true;
       let node;
       try { node = ac.createScriptProcessor(4096, 1, 1); } catch (e) { return false; }
@@ -29719,7 +29711,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           setStatus(uiText('stCaptionsBehindSkippingOldAudio', 'Captions behind, skipping old audio'), 8000);
         }
       }
-      const job = { id: w.id, chunks, at, rate: rate || w.rate, keep: !!keep, stage: !!w.stageSid };
+      const job = { id: w.id, chunks, at, rate: rate || w.rate, keep: !!keep, stage: !!w.stageSid, lang: w.lang || '' };
       if (keep) wspQ.items.unshift(job); else wspQ.items.push(job);
       wspDrain();
     }
@@ -29782,7 +29774,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       speechGaveUp = false;
       try { stopWhisper(); } catch (e) {}
       wspRelease();
-      if (myStatus.scribe) { myStatus.scribe = false; try { broadcastStatus(); } catch (e) {} }
       try { paintCcState(); } catch (e) {}
       try { syncSpeech(); } catch (e) {}
       if (say) setStatus(say, 10000);
@@ -29793,7 +29784,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!wspCaps.has(job.id)) { wspDrain(); return; } // its voice left while it waited
       wspQ.busy = true;
       const pcm = wspPcm16k(job.chunks, job.rate);
-      const lang = lsGet(CC_LANG_KEY) || 'auto';
+      // My own voice: the picker (auto = let Whisper find it). Another voice:
+      // the language its page advertises, else found by Whisper. A mix: found.
+      const lang = job.lang || (job.id === 'me' ? (lsGet(CC_LANG_KEY) || 'auto') : 'auto');
       let model = 'base';
       if (typeof wspModel === 'function') {
         const picked = wspModel();
@@ -29889,9 +29882,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         let text = r && r.text ? String(r.text).trim() : '';
         if (text && GifOS.meetHost && typeof GifOS.meetHost.dropWhisperNoise === 'function') text = GifOS.meetHost.dropWhisperNoise(text);
         if (text && wspCaps.has(job.id)) {
-          if (job.id === 'me') { addTranscriptLine(text, job.at); }
-          else if (job.id === 'fold') { if (scribeOn()) addTranscriptLine(text, job.at, 'stadium', 'Stadium'); }   // a far-row line, labelled by its channel
-          else if (scribeOn() && (peers.has(job.id) || job.stage)) addTranscriptLine(text, job.at, job.id);
+          const rl = (r && r.language) ? String(r.language) : (lang === 'auto' ? '' : lang);
+          const found = !!(r && r.language) || lang === 'auto';
+          if (job.id === 'me') { addTranscriptLine(text, job.at, null, null, 'mic', rl, found); }
+          else if (job.id === 'fold') { if (trWrites()) addTranscriptLine(text, job.at, 'stadium', 'Stadium', 'mix', rl, found); }   // a far-row line, labelled by its channel
+          else if (trWrites() && (peers.has(job.id) || job.stage)) addTranscriptLine(text, job.at, job.id, null, 'ear', rl, found);
         }
         if (!wspQ.items.length && myStatus && myStatus.ccst === 'behind') {
           wspQ.behind = false;
@@ -29905,21 +29900,22 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         setStatus('Whisper captions failed: ' + msg.slice(0, 160), 10000);
       }).then(() => { if (!done) release(); });
     }
-    // THE SCRIBE: one strong device writes down every voice it hears, so the
-    // others need no engine of their own. Each direct-link neighbour's audio
-    // already feeds a meter (meterFor); the same source node feeds a capture
-    // here, cut by that neighbour's own talking verdict. Lines go out
-    // attributed to the SPEAKER and stamped with the scribe; a receiver keeps
-    // them only if it chose this scribe (takeTr) — a scribe can offer, never
-    // impose, because a scribe could also lie.
-    // CC with Whisper writes down every voice too: a scribe is CC that also
-    // offers itself as the others' captions. A device that chose a scribe who
-    // hears it directly leaves the room to that scribe.
-    function scribeOn() { return (!!myStatus.scribe || (!!myStatus.cc && !ccSourceWritesMe())) && ccEngine() === 'whisper' && whisperReady(); }
+    // WHO THIS PAGE WRITES DOWN (keep / share). Its own voice while "Send my
+    // captions" is on. With Whisper: every unmuted voice it hears first-hand
+    // (a row-mate's direct audio, a stager's feed), covered by that person's
+    // own captions or not — only Whisper detects a language, so only it can
+    // catch a caption sent in the wrong one — plus the Stadium mix when
+    // someone present is captioned by nobody and heard by nobody first-hand.
+    // The browser engine's room ear writes only voices nobody captions, in
+    // its own language (earLangOk). Capped at WSP_SCRIBE_MAX voices.
+    function capCovered(pid) { const st = statusOf.get(pid); return !!(st && st.cap === 1); }
+    function earLangOk(pid) { const st = statusOf.get(pid); const l = st && trLangOf(st.lang); return !l || l === trLang(); }
+    function trWrites() { return trKeeps(); }
     function wspSync() {
       const want = new Set();
-      if (!wspPaused && (myStatus.cc || ownVoiceWanted()) && ccEngine() === 'whisper' && whisperReady() && (!ccSourceId || !ccSourceWritesMe()) && !myStatus.muted) want.add('me');
-      if (!wspPaused && scribeOn()) {
+      const me = capSend() && ccEngine() === 'whisper' && whisperReady() && !myStatus.muted;
+      if (!wspPaused && me) want.add('me');
+      if (!wspPaused && trWrites() && ccEngine() === 'whisper' && whisperReady()) {
         const stagers = (typeof stageIds === 'function') ? stageIds() : [];
         const stageSet = new Set(stagers);
         const talking = (pid) => (typeof speakingOf !== 'undefined' && speakingOf && speakingOf.get(pid));
@@ -29927,8 +29923,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const consider = (pid) => {
           if (!pid || (typeof myId !== 'undefined' && pid === myId) || queued.indexOf(pid) >= 0) return;
           const st = statusOf.get(pid) || {};
-          if (st.muted || (modOf(pid).mute && modOf(pid).mute.on)) return;
-          if (ccWrittenElsewhere(pid)) return;
+          if (st.muted || st.bot || (modOf(pid).mute && modOf(pid).mute.on)) return;
           const p = peers.get(pid);
           const onStage = stageSet.has(pid) && !!wspStageSid(pid);
           if (!onStage && !(p && p.connected && wspSource(pid))) return;
@@ -29936,10 +29931,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         };
         for (const pid of stagers) consider(pid);
         for (const [pid, p] of peers) if (p && p.connected) consider(pid);
-        // Stage first, then a talking voice ahead of a silent one. The cap
-        // used to keep whoever was inserted into peers first, so eight silent
-        // row-mates filled it and the stage speaker never got a slot.
-        queued.sort((a, b) => ((stageSet.has(a) ? 0 : 2) + (talking(a) ? 0 : 1)) - ((stageSet.has(b) ? 0 : 2) + (talking(b) ? 0 : 1)));
+        // A voice nobody captions first, then the Stage, then a talking voice
+        // ahead of a silent one. The cap used to keep whoever was inserted
+        // into peers first, so eight silent row-mates filled it.
+        const key = (a) => (capCovered(a) ? 4 : 0) + (stageSet.has(a) ? 0 : 2) + (talking(a) ? 0 : 1);
+        queued.sort((a, b) => key(a) - key(b));
         for (const pid of queued) {
           if (want.size >= WSP_SCRIBE_MAX + 1) break;
           want.add(pid);
@@ -29954,109 +29950,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         else if (cap && cap.fold && cap.foldSig !== wspFoldSig()) wspStop(id);   // the mix's tracks changed: capture the new ones
         if (!wspCaps.has(id)) wspStart(id);
       }
-      ccvPublish();
+      capPublish();
     }
-    const scribeSeen = new Set();
-    const scribeOffers = new Map(); // pid -> { name, at, rx } from the room-wide advert
-    let scribeBeatAt = 0;
-    const SCRIBE_OFFER_MS = 30000;
-    function noteScribe(pid, on, name, at) {
-      if (!pid || pid === myId) return;
-      const t = at || 0;
-      const cur = scribeOffers.get(pid);
-      if (cur && t && (cur.at || 0) > t) return;
-      if (!on) { scribeOffers.delete(pid); return; }
-      const age = (typeof gossipAgeMs === 'number' && gossipAgeMs > 0) ? gossipAgeMs : 0;
-      const rx = Date.now() - age;
-      scribeOffers.set(pid, {
-        name: String(name || (cur && cur.name) || '').slice(0, 40),
-        at: t,
-        rx: (cur && cur.at === t) ? Math.max(cur.rx || 0, rx) : rx,
-      });
-    }
-    // One ephemeral room-wide frame while this device is a scribe, about every
-    // 12s. Status heartbeats are section-scoped, so a seat outside the section
-    // never saw the offer. Caption LINES stay on sendAll (that flood is a
-    // separate decision). This frame is the offer only. Gossip is S4-signed.
-    // Only a room past one section needs it: below that (or with the digest
-    // off, where statuses flood) the status heartbeat already carries the
-    // scribe flag to every seat, so the advert would be a second flood for
-    // nothing — the same gate as the admin presence beat. A retraction goes
-    // out only for an offer that was actually advertised.
-    function scribeAdvert(force) {
-      const on = !!myStatus.scribe;
-      const now = Date.now();
-      if (!on) {
-        if (!scribeBeatAt) return;
-        scribeBeatAt = 0;
-      } else if (!(digestMode() && roomPastSection())) return;
-      else if (!force && scribeBeatAt && now - scribeBeatAt < 12000) return;
-      else scribeBeatAt = now;
-      const msg = { k: 'scribe', on: on, name: myName(), at: now };
-      fanOut(msg, (p) => dcSend(p, msg), { ephemeral: true });
-    }
-    function ccScribes() {
-      const now = Date.now();
-      const out = [];
-      const seen = new Set();
-      for (const [pid, st] of statusOf) {
-        if (!st || !st.scribe || pid === myId) continue;
-        seen.add(pid);
-        out.push({ id: pid, name: rosterNames[pid] || (peers.get(pid) || {}).name || '…' });
-      }
-      for (const [pid, o] of scribeOffers) {
-        if (now - (o.rx || 0) > SCRIBE_OFFER_MS) { scribeOffers.delete(pid); continue; }
-        if (seen.has(pid) || pid === myId) continue;
-        const st = statusOf.get(pid);
-        if (st && !st.scribe) { scribeOffers.delete(pid); continue; }
-        out.push({ id: pid, name: o.name || rosterNames[pid] || '…' });
-      }
-      return out;
-    }
-    function scribeWatch() {
-      const list = ccScribes();
-      const live = new Set(list.map((sc) => sc.id));
-      for (const id of Array.from(scribeSeen)) if (!live.has(id)) scribeSeen.delete(id);
-      for (const sc of list) {
-        if (scribeSeen.has(sc.id)) continue;
-        scribeSeen.add(sc.id);
-        if (!ccSourceId) setStatus('✍ ' + sc.name + ' offers captions for everyone — Settings → Captions → Use ' + sc.name + '’s captions.', 10000);
-      }
-      if (ccSourceId && !live.has(ccSourceId)) {
-        const nm = rosterNames[ccSourceId] || 'The scribe'; ccSourceId = null;
-        setStatus(nm + ' stopped writing captions — your own device takes over.', 8000);
-        syncSpeech();
-      }
-      paintCcSource();
-    }
-    function paintCcSource() {
-      const box = document.getElementById('ccsource'); if (!box) return;
-      const ccModal = document.getElementById('set-modal');
-      if (ccModal && ccModal.style.display === 'none') return;
-      const list = ccScribes();
-      const near = (id) => !!(peers.get(id) || {}).connected;
-      const key = list.map((sc) => sc.id + ':' + sc.name + (near(sc.id) ? '+' : '')).join('|') + '#' + (ccSourceId || '');
-      if (box.dataset.key === key) return;
-      box.dataset.key = key;
-      if (!list.length && !ccSourceId) { box.style.display = 'none'; box.innerHTML = ''; return; }
-      box.style.display = '';
-      box.innerHTML = '<b>' + uiText('setCcSource', 'Captions source') + '</b>'
-        + '<label class="rec-opt"><input type="radio" name="ccsource" value=""' + (!ccSourceId ? ' checked' : '') + '><span>' + uiText('setCcMine', 'My own device writes me down') + '</span></label>'
-        + list.map((sc) => '<label class="rec-opt"><input type="radio" name="ccsource" value="' + esc(sc.id) + '"' + (ccSourceId === sc.id ? ' checked' : '')
-          + '><span>' + uiText('setCcUse', 'Use {name}’s captions').replace('{name}', '<b>' + esc(sc.name) + '</b>') + '<small>' + (near(sc.id)
-            ? uiText('setCcNear', 'Their device writes down everyone, you included, and yours stops transcribing.')
-            : uiText('setCcFar', 'Their device writes down the people it hears. It is not linked to you directly, so your own device keeps writing you down.'))
-          + ' ' + uiText('setCcTrust', 'Every line they write carries their name — choose this only if you trust them.')
-          + '</small></span></label>').join('');
-      for (const r of box.querySelectorAll('input[name="ccsource"]')) r.onchange = () => {
-        if (!r.checked) return;
-        ccSourceId = r.value || null; box.dataset.key = '';
-        syncSpeech();
-        setStatus(!ccSourceId ? 'Your own device writes you down again.'
-          : 'Using ' + (rosterNames[ccSourceId] || 'their') + '’s captions — ' + (ccSourceWritesMe() ? 'your device is no longer transcribing.' : 'your own device still writes you down.'), 6000);
-      };
-    }
-    setInterval(() => { if (ccSourceId && ccSourceWritesMe() !== ccSrcDirect) syncSpeech(); if (wspCaps.size || scribeOn() || ccSourceId) wspSync(); if (ccMix.dest) ccMixSync(); if (!ccOthers) ccFillOptOut = false; if (ccFilling() !== ccFillOn) syncSpeech(); if (scribeSeen.size || ccSourceId || anyScribeStatus || scribeOffers.size) scribeWatch(); }, 2000);
+    // The 2 s tick keeps the captures and the room ear in step with who is
+    // here, muted, on the Stage or captioned, and the mark with the engine.
+    setInterval(() => { if (wspCaps.size || (trWrites() && ccEngine() === 'whisper' && whisperReady())) wspSync(); if (ccMix.dest) ccMixSync(); trForget(); paintTxMark(); }, 2000);
     // ONE TAP TO INSTALL. The provider is a signed 13 MB GIF on this very site:
     // GifOS.providers.install downloads, checks the catalog hash and the
     // gifos.app signature, files it into the Providers folder and we assign it
@@ -30126,11 +30024,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           };
         }
       }
-      const sc = document.getElementById('ccscribe'); if (sc) sc.checked = !!myStatus.scribe;
-      const scRow = document.getElementById('ccscribe-row');
       if (!on) return;
       const a = whisperReady() ? GifOS.providers.assigned('stt') : null;
-      if (scRow) scRow.style.display = a ? '' : 'none';
       if (a) {
         state.innerHTML = '✅ ' + uiText('setCcReady', 'Ready:') + ' <b>' + esc(a.appName || 'your speech-to-text app') + '</b> ' + uiText('setCcReadyTail', 'answers on this device.')
           + (IS_MOBILE ? ' <span style="color:#ffd23c">' + uiText('setCcPhoneSlow', 'On a phone a sentence can take 5 to 10 seconds to appear, and it uses battery.') + '</span>' : '');
@@ -30153,7 +30048,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // as Whisper is chosen, loading or working.
     function paintWspChip() {
       const chip = document.getElementById('ccwsp-off'); if (!chip) return;
-      const on = (myStatus.cc && ccEngine() === 'whisper' && !wspPaused) || wspCaps.size > 0;
+      const on = ((capSend() || trWrites()) && ccEngine() === 'whisper' && !wspPaused) || wspCaps.size > 0;
       const want = on ? '' : 'none';
       if (chip.style.display !== want) chip.style.display = want;
     }
@@ -30180,15 +30075,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }, WSP_TICK_MS);
     (function wireCcEngine() {
       const radios = Array.from(document.querySelectorAll('input[name="ccengine"]')); if (!radios.length) return;
-      const tr = document.getElementById('cctranslate'), words = document.getElementById('ccwords'), scribe = document.getElementById('ccscribe');
+      const tr = document.getElementById('cctranslate'), words = document.getElementById('ccwords');
       tr.checked = lsGet(CC_TRANSLATE_KEY) === '1'; words.value = lsGet(CC_WORDS_KEY);
       tr.onchange = () => lsSet(CC_TRANSLATE_KEY, tr.checked ? '1' : '');
       words.onchange = () => lsSet(CC_WORDS_KEY, words.value.replace(/\s+/g, ' ').trim().slice(0, 400));
-      scribe.onchange = () => {
-        myStatus.scribe = scribe.checked;
-        broadcastStatus(); syncSpeech();
-        setStatus(scribe.checked ? '✍ You are writing everyone down — the others can pick your captions under Settings → Captions.' + (myStatus.muted ? ' (You are muted, so your own voice is not written.)' : '') : 'You stopped writing everyone down.', 8000);
-      };
+      wireTranscriptControls();
       for (const r of radios) r.onchange = () => {
         if (!r.checked) return;
         if (r.value === 'whisper' && !whisperAllowed()) { paintCcState(); return; } // only the explicit override turns it on here
@@ -30196,12 +30087,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (r.value !== 'whisper') speechGaveUp = false;
         if (r.value === 'whisper') { wspPaused = false; wspQ.stalls = 0; wspQ.behind = false; if (myStatus.ccst === 'behind' || myStatus.ccst === 'paused') delete myStatus.ccst; } // a deliberate re-pick retries a stalled Whisper
         if (r.value === 'whisper' && IS_MOBILE) setStatus(uiText('stOnAPhoneWhisperRuns', 'On a phone, Whisper runs on the processor: a sentence can take 5 to 10 seconds to appear, and it uses battery. Browser captions stay instant.'), 12000);
-        if (r.value !== 'whisper' && myStatus.scribe) { myStatus.scribe = false; broadcastStatus(); }
         paintCcState();
         syncSpeech();
       };
       paintCcState();
-      document.getElementById('setbtn').addEventListener('click', () => { paintCcState(); paintCcSource(); });
+      document.getElementById('setbtn').addEventListener('click', () => { paintCcState(); paintTranscriptControls(); });
       document.getElementById('ccwsp-off').onclick = () => { wspToBrowser('Browser captions are on. Whisper is off on this device.'); paintWspChip(); };
       // The quiet seed: 20 s into a meeting, on an unmetered computer, once. Idle, so it
       // does not compete with the call. A phone or a cellular link never starts it.
@@ -30218,61 +30108,89 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         else run();
       }, 20000);
     })();
-    // ---- ONE WRITER PER VOICE ------------------------------------------------
-    // Every captioning device could write down every voice it hears, and two
-    // engines cut and word the same sentence differently, so text matching
-    // alone leaves copies. Each writing device publishes the voices it is
-    // writing down (status ccv, peer ids). A voice is left to its own device
-    // when that device captions itself, else to the writer with the lowest id
-    // that hears it; everyone else stops writing it. A writer that leaves, or
-    // stops hearing the voice, drops it from its list, and the next device in
-    // line takes it on the following tick.
-    //   A device FILLING IN (ccFilling: CC is on elsewhere in my section, not
-    // here) also yields every voice a captioning device writes, its own
-    // included: it writes only what no captioning device hears.
-    function ccWrittenElsewhere(pid) {
-      const filling = !myStatus.cc;
-      for (const [w, ws] of statusOf) {
-        if (w === myId || !ws || !Array.isArray(ws.ccv) || ws.ccv.indexOf(pid) < 0) continue;
-        if (ws.cc && (filling || w === pid)) return true;
-        // A browser that writes its own voice is not written twice. One whose
-        // engine stopped (ccst 'paused') writes nothing, so a scribe takes it.
-        if (w === pid && !ws.muted && ws.ccst !== 'paused') return true;
-        if (w !== pid && String(w) < String(myId)) return true;
-      }
-      return false;
+    // ---- WHAT THIS PAGE TELLS THE ROOM ----------------------------------------
+    // cap: 1 while this page sends its own captions and its engine is live (a
+    // real line has come, or Whisper captures the mic); a keep/share page reads
+    // it to leave captioned voices to their own pages (the browser ear) or to
+    // rank them last (Whisper). lang: the language this page captions itself
+    // in — the speaker's language, read by a writer for its engine. trs: 1
+    // while this page shares a transcript (the tile badge).
+    function capLive() {
+      if (!capSend() || myStatus.muted) return false;
+      if (wspCaps.has('me')) return true;
+      return !!(speech && speechProved);
     }
-    // CC ON ANYWHERE IN MY SECTION COVERS ME TOO. A captioning device hears
-    // its own row first-hand; a voice in another row reaches it only inside
-    // that row's mix, with no name on it. So while some device in my section
-    // captions, this one writes down the voices it alone hears directly (its
-    // own included) — the gaps, never a voice a captioning device writes.
-    // Lines stay in the section (captionScope), so this never runs for a
-    // captioning device past it. Tapping CC on and off again opts out until
-    // the section's captions stop.
-    var ccFillOptOut = false, ccFillSaid = false, ccFillOn = false;
-    function ccFilling() { return false; } // a peer's captions do not start or stop this browser
-    function ccvPublish() {
-      const ids = new Set();
-      // Wanting to write is not writing. ownVoiceWanted is true as soon as the
-      // mic is on and a speech constructor exists, which is before any words.
-      // Publishing that wish as ccv made every scribe skip the person
-      // (ccWrittenElsewhere), so a constructor that never returned a result
-      // left captures empty for the whole meeting. A voice is claimed here
-      // only after a real line (speechProved) or while Whisper is capturing it.
-      const proved = (typeof speechProved !== 'undefined' && !!speechProved);
-      if (myStatus.cc || ccFilling() || ownVoiceWanted()) {
-        for (const id of ccMix.ins.keys()) ids.add(id === 'me' ? myId : id);
-        for (const id of wspCaps.keys()) ids.add(id === 'me' ? myId : id);
-        if (speech && !speech.input && !myStatus.muted && proved) ids.add(myId);
+    function capPublish() {
+      const next = { cap: capLive() ? 1 : 0, lang: trLang(), trs: trMode() === 'share' ? 1 : 0 };
+      const prev = { cap: myStatus.cap || 0, lang: myStatus.lang || '', trs: myStatus.trs || 0 };
+      if (next.cap === prev.cap && next.lang === prev.lang && next.trs === prev.trs) return;
+      if (next.cap) myStatus.cap = 1; else delete myStatus.cap;
+      if (next.lang) myStatus.lang = next.lang; else delete myStatus.lang;
+      if (next.trs) myStatus.trs = 1; else delete myStatus.trs;
+      if (clog) clog('cap', next.cap, next.lang, next.trs);
+      try { if (typeof updateTile === 'function') updateTile('me'); } catch (e) {}
+      try { if (typeof broadcastStatus === 'function') broadcastStatus(); } catch (e) {}
+      paintTxMark();
+    }
+    // THE MARK says what is true: "Sending captions" while this page's engine
+    // sends my voice; "Captions paused" while it should and cannot; "Receiving
+    // captions" while shared lines arrive from another page; nothing otherwise.
+    function txMarkWhy() {
+      if (capSend() && capLive()) return 'sending';
+      if (capSend() && !myStatus.muted && myStatus.ccst === 'paused') return 'paused';
+      if (trRxAt && Date.now() - trRxAt < 20000) return 'receiving';
+      return '';
+    }
+    function paintTxMark() {
+      const el = document.getElementById('txmark'); if (!el) return;
+      const why = txMarkWhy();
+      const words = why === 'sending' ? uiText('sendingCaptions', 'Sending captions') : why === 'paused' ? uiText('stCaptionsPaused', 'Captions paused') : why === 'receiving' ? uiText('receivingCaptions', 'Receiving captions') : '';
+      const want = why ? '' : 'none';
+      if (el.style.display !== want) el.style.display = want;
+      if (el.dataset.why !== why) {
+        el.dataset.why = why;
+        const w = el.querySelector('span'); if (w) w.textContent = words;
+        el.setAttribute('aria-label', words);
       }
-      if (!myStatus.muted && (wspCaps.has('me') || (speech && !speech.input && proved))) ids.add(myId);
-      const next = Array.from(ids).filter(Boolean).sort();
-      const prev = myStatus.ccv || [];
-      if (next.length === prev.length && next.every((x, i) => x === prev[i])) return;
-      if (next.length) myStatus.ccv = next; else delete myStatus.ccv;
-      if (clog) clog('cc writes', next.map((x) => String(x).slice(0, 6)).join(','));
-      broadcastStatus();
+    }
+    // The two settings, remembered on this device: Send my captions (default
+    // on) and Transcript off | keep | share (default off). A change restarts
+    // the engines and tells the room.
+    function setTrMode(v) {
+      v = v === 'keep' || v === 'share' ? v : '';
+      trModeSet = v;
+      lsSet(TR_MODE_KEY, v);
+      if (!v) { for (const id of Array.from(trs.keys())) trs.delete(id); trDirty = true; }
+      refreshTrBtn();
+      try { syncSpeech(); } catch (e) {}
+      capPublish();
+      paintTranscriptControls();
+    }
+    function setCapSend(on) {
+      lsSet(TR_SEND_KEY, on ? '' : 'off');
+      try { syncSpeech(); } catch (e) {}
+      capPublish();
+      paintTranscriptControls();
+    }
+    function paintTranscriptControls() {
+      const send = document.getElementById('ccsend'); if (send) send.checked = capSend();
+      const mode = trMode();
+      for (const r of document.querySelectorAll('input[name="trmode"]')) r.checked = (r.value || '') === (mode || 'off') || (r.value === 'off' && !mode);
+      const can = document.getElementById('ccsend-can');
+      if (can) {
+        const ok = !(typeof browserCaptionsMissing === 'function' && browserCaptionsMissing()) || (ccEngine() === 'whisper' && whisperReady());
+        can.style.display = ok ? 'none' : '';
+      }
+    }
+    function wireTranscriptControls() {
+      const send = document.getElementById('ccsend');
+      if (send) send.onchange = () => { setCapSend(send.checked); setStatus(send.checked ? uiText('stSendingCaptionsOn', 'Sending your captions to the meeting.') : uiText('stSendingCaptionsOff', 'Your captions are off. The others may still write you down.'), 6000); };
+      for (const r of document.querySelectorAll('input[name="trmode"]')) r.onchange = () => {
+        if (!r.checked) return;
+        setTrMode(r.value === 'off' ? '' : r.value);
+        setStatus(r.value === 'share' ? uiText('stTranscriptShare', 'You keep a transcript and share the voices you write down with the room.') : r.value === 'keep' ? uiText('stTranscriptKeep', 'You keep a transcript on this device.') : uiText('stTranscriptOff', 'No transcript is kept on this device.'), 6000);
+      };
+      paintTranscriptControls();
     }
     // ---- THE ROOM EAR: one browser engine hears every voice ------------------
     // A browser runs ONE speech session at a time (a second start aborts the
@@ -30283,7 +30201,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // level meter, and a final line is written down under the voice that talked
     // most since the previous line; with nobody talking it is dropped. A
     // browser without track input keeps the old engine: the raw microphone,
-    // my own voice only, behind the echo gate (see trEcho).
+    // my own voice only, behind the echo gate (see startSpeech).
     // Track input and processLocally arrived together in Chrome's engine; an
     // engine without them would ignore the track and listen to the microphone.
     function ccTrackInput() {
@@ -30295,7 +30213,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function ccMixVoices() { // id ('me' | pid) -> a source node in ac
       const out = new Map();
       const meM = meters.get('me');
-      if (!myStatus.muted && meM && meM.src && (myStatus.cc || !ccWrittenElsewhere(myId))) out.set('me', { node: meM.src });
+      if (!myStatus.muted && meM && meM.src && capSend()) out.set('me', { node: meM.src });
+      if (!trWrites()) return out; // only my own voice: the mix carries me alone
       const stagers = (typeof stageIds === 'function') ? stageIds() : [];
       for (const pid of stagers) {
         if (pid === myId) continue;
@@ -30309,7 +30228,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const m = meters.get(pid);
         if (m && m.src) out.set(pid, { node: m.src });
       }
-      for (const id of Array.from(out.keys())) if (id !== 'me' && ccWrittenElsewhere(id)) out.delete(id);
+      // One engine, one language: a voice its own page captions is left to
+      // that page, and a voice in another language would come out as nonsense.
+      for (const id of Array.from(out.keys())) if (id !== 'me' && (capCovered(id) || !earLangOk(id))) out.delete(id);
       return out;
     }
     function ccMixDrop(id) {
@@ -30341,7 +30262,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           ccMix.ins.set(id, { node, an, g, own, sid: w.stage ? w.stage.id : null, buf: new Float32Array(an.fftSize) });
         } catch (e) { if (own) { try { node.disconnect(); } catch (x) {} } }
       }
-      ccvPublish();
+      capPublish();
     }
     function ccMixStart() {
       if (ccMix.dest) return ccMix.dest.stream.getAudioTracks()[0] || null;
@@ -30364,7 +30285,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       for (const id of Array.from(ccMix.ins.keys())) ccMixDrop(id);
       clearInterval(ccMix.tick); ccMix.tick = null;
       ccMix.dest = null; ccMix.talk.clear(); ccMix.last = null;
-      ccvPublish();
+      capPublish();
     }
     // Who said the line the engine just finished: the voice that talked most
     // since the previous line. An engine also hands over one long utterance
@@ -30384,14 +30305,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     let speech = null, speechFails = 0, speechRetry = null, speechGaveUp = false, speechProved = false;
     // A browser whose speech engine cannot run tells the room so (ccst
-    // 'paused'): it writes nothing, and a scribe takes its voice instead.
-    // The first line it writes again takes the word back.
+    // 'paused'): it sends no captions, and a keep/share page writes that
+    // voice instead. The first line it writes again takes the word back.
     let speechSaidPaused = false;
     function speechEngineDown() {
       speechProved = false;
       if (typeof myStatus === 'undefined' || !myStatus || myStatus.ccst === 'paused') return;
       myStatus.ccst = 'paused'; speechSaidPaused = true;
-      try { ccvPublish(); } catch (e) {}
+      try { capPublish(); } catch (e) {}
       try { if (typeof updateTile === 'function') updateTile('me'); } catch (e) {}
       try { if (typeof broadcastStatus === 'function') broadcastStatus(); } catch (e) {}
     }
@@ -30404,138 +30325,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         try { if (typeof broadcastStatus === 'function') broadcastStatus(); } catch (e) {}
       }
     }
+    // Does this engine still have a job: my own voice (sending, unmuted), or
+    // the room ear (a keep/share page).
     function speechKeep(rec) {
       if (!rec) return false;
-      if (rec.input) return !!(myStatus.cc || myStatus.scribe || ccFilling());
-      return !myStatus.muted && !ccWrittenElsewhere(myId);
+      if (rec.input) return !!(trWrites() || (capSend() && !myStatus.muted));
+      return capSend() && !myStatus.muted;
     }
     function speechRunning() { return !!speech; }
     function speechRetryDelay(n) { return Math.min(30000, 1000 * Math.pow(2, Math.max(0, n - 1))); }
-    // A paused engine writes nothing (ccst 'paused'). The room still hears that
-    // voice. This browser keeps the utterance and, after it ends, plays it to
-    // the one speech session — a second live session would abort the first —
-    // and writes the line under that person. The raw mic keeps writing me.
-    const ccGap = new Map();
-    const ccGapQ = [];
-    const ccGapHold = [];
-    const ccGapLog = [];
-    let ccGapBusy = false;
-    function ccGapNote(m) {
-      ccGapLog.push(String(m));
-      if (ccGapLog.length > 40) ccGapLog.shift();
-      try { window.__ccGapLog = ccGapLog; } catch (e) {}
+    // The language the browser engine is asked for: the picker, else the
+    // device's language, else one the room's Whisper pages detected for me.
+    function speechLangFor() {
+      if (trLangLearned) return trLangLearned;
+      const v = ccLang();
+      return v === 'auto' ? (navigator.language || 'en-US') : v;
     }
-    function ccGapSee(id, speaking) {
-      if (!speaking || id === 'me' || !id) return;
-      const st = (typeof statusOf !== 'undefined' && statusOf.get(id)) || {};
-      if (st.ccst !== 'paused' || st.muted) return;
-      if (typeof modOf === 'function' && modOf(id).mute && modOf(id).mute.on) return;
-      ccGapArm(id);
-    }
-    function ccGapArm(id) {
-      if (ccGap.has(id) || !ensureAc()) return;
-      const src = (typeof wspSource === 'function') ? wspSource(id) : null;
-      if (!src) return;
-      let node;
-      try { node = ac.createScriptProcessor(4096, 1, 1); } catch (e) { ccGapNote('no-proc'); return; }
-      const w = { id: id, src: src, node: node, pre: [], preMs: 0, utt: null, uttStart: 0, lastVoice: 0, rate: ac.sampleRate };
-      node.onaudioprocess = (e) => {
-        // Zero first. This node stays on ac.destination, so a stale arm
-        // that returns early would pass the leftover buffer onward.
-        const out = e.outputBuffer.getChannelData(0);
-        for (let i = 0; i < out.length; i++) out[i] = 0;
-        if (ccGap.get(id) !== w) return;
-        const ch = e.inputBuffer.getChannelData(0);
-        ccGapOnChunk(w, new Float32Array(ch));
-      };
-      try { src.connect(node); node.connect(ac.destination); } catch (e) { return; }
-      ccGap.set(id, w);
-      ccGapNote('arm ' + String(id).slice(0, 6));
-    }
-    function ccGapOnChunk(w, chunk) {
-      const ms = chunk.length / w.rate * 1000;
-      const now = Date.now();
-      const talking = !!(typeof speakingOf !== 'undefined' && speakingOf && speakingOf.get(w.id));
-      if (w.utt) {
-        w.utt.push(chunk);
-        if (talking) w.lastVoice = now;
-        const secs = (now - w.uttStart) / 1000;
-        if (!talking && now - w.lastVoice > 700) {
-          const done = w.utt, at = w.uttStart;
-          w.utt = null;
-          if (secs >= 0.4) ccGapEnqueue(w, done, at);
-        } else if (secs >= 15) {
-          const done = w.utt, at = w.uttStart;
-          w.utt = null;
-          if (secs >= 0.4) ccGapEnqueue(w, done, at);
-        }
-      } else if (talking) {
-        w.utt = [];
-        w.utt.push(chunk);
-        w.uttStart = now;
-        w.lastVoice = now;
-      }
-    }
-    function ccGapEnqueue(w, chunks, at) {
-      const st = (typeof statusOf !== 'undefined' && statusOf.get(w.id)) || {};
-      if (st.ccst !== 'paused') return;
-      ccGapNote('clip ' + String(w.id).slice(0, 6) + ' ' + chunks.length);
-      // The raw mic's finals land on a short delay. Wait so this voice's own
-      // line, if any engine still wrote it, is already the earlier one.
-      setTimeout(() => {
-        ccGapQ.push({ id: w.id, chunks: chunks, at: at, rate: w.rate });
-        while (ccGapQ.length > 4) ccGapQ.shift();
-        ccGapDrain();
-      }, 800);
-    }
-    function ccGapPlay(job) {
-      if (!ensureAc() || !job.chunks || !job.chunks.length) return null;
-      let n = 0;
-      for (const c of job.chunks) n += c.length;
-      if (n < 1000) return null;
-      try {
-        const all = new Float32Array(n);
-        let o = 0;
-        for (const c of job.chunks) { all.set(c, o); o += c.length; }
-        const buf = ac.createBuffer(1, all.length, job.rate || ac.sampleRate);
-        buf.copyToChannel(all, 0);
-        const src = ac.createBufferSource();
-        src.buffer = buf;
-        const dest = ac.createMediaStreamDestination();
-        src.connect(dest);
-        src.start();
-        ccGapHold.push(src);
-        if (ccGapHold.length > 4) ccGapHold.shift();
-        return dest.stream.getAudioTracks()[0] || null;
-      } catch (e) { return null; }
-    }
-    function ccGapDone(rec) {
-      if (!rec || rec._gapDone) return;
-      rec._gapDone = true;
-      ccGapBusy = false;
-      if (speech === rec) { try { stopSpeech(); } catch (e) {} }
-      try { syncSpeech(); } catch (e) {}
-      setTimeout(ccGapDrain, 50);
-    }
-    function ccGapDrain() {
-      if (ccGapBusy || !ccGapQ.length) return;
-      if (typeof ccTrackInput === 'function' && !ccTrackInput()) { ccGapNote('no-track'); return; }
-      const job = ccGapQ.shift();
-      const st = (typeof statusOf !== 'undefined' && statusOf.get(job.id)) || {};
-      if (st.ccst !== 'paused') { ccGapDrain(); return; }
-      const track = ccGapPlay(job);
-      if (!track) { ccGapNote('silent ' + String(job.id).slice(0, 6)); ccGapDrain(); return; }
-      ccGapBusy = true;
-      ccGapNote('play ' + String(job.id).slice(0, 6));
-      if (speechRunning()) { try { stopSpeech(); } catch (e) {} }
-      const ok = startSpeech(track, { id: job.id, at: job.at || Date.now() });
-      if (!ok) { ccGapBusy = false; try { syncSpeech(); } catch (e) {} return; }
-      const rec = speech;
-      const dur = Math.min(20000, Math.round((job.chunks.reduce((s, c) => s + c.length, 0) / (job.rate || 48000)) * 1000) + 2500);
-      setTimeout(() => { if (rec && !rec._gapDone) ccGapDone(rec); }, dur);
-    }
-    function startSpeech(input, cover) { // input: a mix or a paused voice's clip; none = the raw microphone. cover: { id, at } attributes the clip to that person
-      if (speechGaveUp && !(cover && cover.id)) return false;
+    function startSpeech(input) { // input: the room-ear mix; none = the raw microphone
+      if (speechGaveUp) return false;
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) { setStatus(uiText('stThisBrowserCannotWriteDown', 'This browser cannot write down what people say.')); return false; }
       speechFails = 0;
@@ -30543,47 +30350,38 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         speech = new SR();
         const rec = speech;
         rec.input = input || null;
-        rec.coverId = cover && cover.id || null;
-        rec.coverAt = cover && cover.at || 0;
         const go = () => { if (rec.input) rec.start(rec.input); else rec.start(); };
         speech.continuous = true;
         speech.interimResults = false;
-        speech.lang = ccLang() === 'auto' ? (navigator.language || 'en-US') : ccLang();
+        speech.lang = speechLangFor();
+        rec.langTag = trLangOf(speech.lang);
         speech.onresult = (e) => {
           speechFails = 0;
           speechProved = true;
           speechEngineUp();
-          try { ccvPublish(); } catch (err) {}
-          if (rec.coverId) {
-            for (let i = e.resultIndex; i < e.results.length; i++) {
-              if (!e.results[i].isFinal) continue;
-              addTranscriptLine(e.results[i][0].transcript, rec.coverAt, rec.coverId);
-            }
-            if (typeof ccGapDone === 'function') ccGapDone(rec);
-            return;
-          }
+          try { capPublish(); } catch (err) {}
           if (rec.input) {
             for (let i = e.resultIndex; i < e.results.length; i++) {
               if (!e.results[i].isFinal) continue;
               const who = ccMixSpeaker();
               if (!who) { trDrops++; continue; }
-              if (who === 'me') addTranscriptLine(e.results[i][0].transcript);
-              else addTranscriptLine(e.results[i][0].transcript, 0, who);
+              if (who === 'me') addTranscriptLine(e.results[i][0].transcript, 0, null, null, 'mic', rec.langTag);
+              else addTranscriptLine(e.results[i][0].transcript, 0, who, null, 'ear', rec.langTag);
             }
             return;
           }
-          // THE GATE (see trEcho): no voice on my own echo-cancelled mic in
-          // the last 3s means I only heard this through the speakers. No
-          // meter yet (AudioContext not born) ⇒ no verdict ⇒ let it through.
+          // THE GATE: the raw microphone hears the speakers too. No voice on
+          // my own echo-cancelled mic in the last 3s means I only heard this
+          // through them. No meter yet (AudioContext not born) ⇒ no verdict ⇒
+          // let it through.
           const heard = !meters.has('me') || (Date.now() - myVoiceAt < 3000);
           for (let i = e.resultIndex; i < e.results.length; i++) {
             if (!e.results[i].isFinal) continue;
             if (!heard) { trDrops++; continue; }
-            addTranscriptLine(e.results[i][0].transcript);
+            addTranscriptLine(e.results[i][0].transcript, 0, null, null, 'mic', rec.langTag);
           }
         };
         speech.onend = () => {
-          if (rec.coverId) { if (typeof ccGapDone === 'function') ccGapDone(rec); return; }
           if (!(speech === rec && speechKeep(rec))) return;
           if (speechFails > 0) {
             const wait = speechRetryDelay(speechFails);
@@ -30597,11 +30395,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         };
         speech.onerror = (e) => {
           if (speech !== rec) return;
-          if (rec.coverId) { if (typeof ccGapDone === 'function') ccGapDone(rec); return; }
           if (e.error === 'not-allowed' || e.error === 'service-not-allowed' || e.error === 'language-not-supported') {
             stopSpeech();
             speechEngineDown();
-            setStatus(uiText('stTranscriptionPaused', 'Transcription paused'));
+            setStatus(uiText('stCaptionsPaused', 'Captions paused'));
             return;
           }
           if (e.error === 'network' || e.error === 'audio-capture' || e.error === 'aborted') {
@@ -30612,7 +30409,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               speechGaveUp = true;
               stopSpeech();
               speechEngineDown();
-              setStatus(uiText('stTranscriptionPaused', 'Transcription paused'), 15000);
+              setStatus(uiText('stCaptionsPaused', 'Captions paused'), 15000);
               setTimeout(() => { speechGaveUp = false; speechFails = 0; try { syncSpeech(); } catch (err) {} }, 20000);
             }
           }
@@ -30627,18 +30424,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (speechRetry) { clearTimeout(speechRetry); speechRetry = null; }
       if (sp) { try { sp.stop(); } catch (e) {} }
       ccMixStop();
-      ccvPublish(); // a stopped engine writes nobody: the others take its voices on
-    }
-    // A chosen scribe writes me down only if it hears me: its wspSync captures
-    // its direct, connected peers (and stagers, capped). A far scribe picked
-    // from the room-wide advert still supplies everyone else's lines, but my
-    // own engine keeps writing me down; where both copies exist, trEcho keeps
-    // one. ccSrcDirect is the verdict syncSpeech last acted on, so the 2 s
-    // tick re-syncs when that link comes or goes.
-    let ccSrcDirect = false;
-    function ccSourceWritesMe() {
-      const p = ccSourceId ? peers.get(ccSourceId) : null;
-      return !!(p && p.connected);
+      capPublish(); // a stopped engine sends nothing: the keep/share pages take my voice on
     }
     // A real page has a window object. A lifted test has no window, or a
     // stand-in that is not an object, and must still be allowed to call
@@ -30652,35 +30438,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { if (typeof broadcastStatus === 'function') broadcastStatus(); } catch (e) {}
       try { setStatus(uiText('stCaptionsPaused', 'Captions paused')); } catch (e) {}
     }
-    // Each browser writes its own voice whenever it is unmuted. CC does not
-    // start or stop that. A chosen scribe who already hears me is the exception.
-    function ownVoiceWanted() {
-      if (!myStatus || myStatus.muted) return false;
-      try { if (typeof ccSourceWritesMe === 'function' && ccSourceWritesMe()) return false; } catch (e) {}
-      // Only a browser that can write speech claims its own voice; one with
-      // no engine leaves it to a scribe (Meet Bot) instead of to no one.
-      try {
-        const whisperOk = typeof ccEngine === 'function' && ccEngine() === 'whisper' && typeof whisperReady === 'function' && whisperReady();
-        if (!whisperOk && typeof browserCaptionsMissing === 'function' && browserCaptionsMissing()) return false;
-      } catch (e) {}
-      return true;
-    }
-    var ownVoiceArmed = false;
-    function syncSpeech() { // own voice is written while I am unmuted; CC only shows the lines here
-      ownVoiceArmed = ownVoiceWanted();
+    // THE ENGINES FOLLOW THE SETTINGS. "Send my captions" on and unmuted: my
+    // own voice is written (Whisper's mic capture, or the browser engine).
+    // Transcript keep/share: the voices nobody captions too (Whisper captures
+    // per voice; the browser engine's room ear where start() takes a track).
+    // Neither: no engine runs, and this page only receives.
+    function syncSpeech() {
       paintWspChip(); // the way back shows the moment Whisper is chosen; the 250 ms tick keeps it in step
-      const mine = !myStatus.muted && (myStatus.cc || ownVoiceWanted());
-      const hearRoom = !!(myStatus.cc || myStatus.scribe);
-      ccSrcDirect = ccSourceWritesMe();
-      if (ccSrcDirect) { // the chosen scribe hears me directly: no engine of my own
-        if (speechRunning()) stopSpeech();
-        ccMixStop();
-        wspStop('me'); wspSync();
-        return;
-      }
-      if ((myStatus.cc || ownVoiceWanted()) && ccEngine() === 'whisper' && !wspPaused && whisperReady()) {
-        // Whisper cuts each voice on its own capture (wspSync): mine while
-        // unmuted, and every voice I hear first-hand when I am the scribe.
+      const mine = capSend() && !myStatus.muted;
+      const hearRoom = trWrites();
+      if ((mine || hearRoom) && ccEngine() === 'whisper' && !wspPaused && whisperReady()) {
         if (!mine || wspCaps.has('me') || startWhisper()) {
           if (speechRunning()) stopSpeech();
           ccMixStop();
@@ -30693,17 +30460,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // track): the browser engine carries on, when this browser has one.
       }
       wspStop('me'); wspSync();
-      const filling = ccFilling();
-      ccFillOn = filling;
-      if (!myStatus.cc && !filling && !ownVoiceWanted()) { if (speechRunning()) stopSpeech(); ccvPublish(); return; }
-      if (filling && !ccFillSaid) { ccFillSaid = true; setStatus(uiText('stCaptionsAreOnInThis', 'Captions are on in this meeting — this device also writes down the voices only it hears. Tap CC twice to opt out.'), 8000); }
+      if (!mine && !hearRoom) { if (speechRunning()) stopSpeech(); capPublish(); paintTxMark(); return; }
       if (typeof browserCaptionsMissing === 'function' && browserCaptionsMissing()) {
         if (speechRunning()) stopSpeech();
-        if (mine || hearRoom || filling) noteNoBrowserSpeech();
-        ccvPublish();
+        noteNoBrowserSpeech();
+        capPublish();
         return;
       }
-      if ((hearRoom || filling) && ccTrackInput()) {
+      if (hearRoom && ccTrackInput()) {
         if (speechRunning() && !speech.input) stopSpeech(); // a raw-microphone engine hands over to the room ear
         const input = ccMixStart();
         if (input) {
@@ -30713,10 +30477,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }
       }
       // No track input, or this device is only writing itself: my microphone.
-      const meToo = mine && !ccWrittenElsewhere(myId);
-      if (meToo && !speechRunning()) startSpeech();
-      if (!meToo && speechRunning()) stopSpeech();
-      ccvPublish();
+      if (speechRunning() && speech.input) stopSpeech(); // the room ear stands down to the plain microphone
+      if (mine && !speechRunning()) startSpeech();
+      if (!mine && speechRunning()) stopSpeech();
+      capPublish();
     }
     // CC only shows or hides captions on this screen. The More button and the
     // dock button are one switch.
@@ -30807,9 +30571,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       paintChatBtn();
     };
     function refreshTrBtn() {
-      // The meeting is always transcribed, so the button always shows.
+      // The Transcript window exists only on a page that keeps one.
       const btn = document.getElementById('trbtn');
-      if (btn) btn.style.display = '';
+      if (btn) btn.style.display = trKeeps() ? '' : 'none';
+      if (!trKeeps()) { const w = document.getElementById('trwrap'); if (w && w.classList.contains('show')) setPanelView(false); }
     }
     refreshTrBtn();
     // Every meeting download (transcript, recording) is filed as
@@ -30833,7 +30598,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     document.getElementById('trdl').onclick = () => {
       const blocks = trBlocks();
-      const lines = blocks.map((l) => '[' + new Date(l.at).toLocaleTimeString() + '] ' + l.by + (l.scribeBy ? ' (written down by ' + l.scribeBy + ')' : '') + ': ' + l.text);
+      const mine = trLang();
+      const lines = blocks.map((l) => '[' + new Date(l.at).toLocaleTimeString() + '] ' + l.by + (l.lang && l.lang !== mine ? ' (' + l.lang + ')' : '') + ': ' + l.text);
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([lines.join('\n') + '\n'], { type: 'text/plain' }));
       a.download = meetDownloadName('Transcript', room, blocks.length ? blocks[0].at : 0, 'txt');
@@ -30906,7 +30672,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function ccIndicatorOn(text) {
       text = String(text || '');
-      return text.indexOf('Captions') >= 0 || text.indexOf('transcribing') >= 0
+      return text.indexOf('Captions') >= 0 || text.indexOf('captions') >= 0 || text.indexOf('transcribing') >= 0
         || text.indexOf('writing everyone down') >= 0
         || text.indexOf('Transcription paused') >= 0 || text.indexOf('Captions paused') >= 0
         || text.indexOf('Transcription behind') >= 0 || text.indexOf('Captions behind') >= 0;
@@ -35623,18 +35389,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           return { ok: true, id: m.id };
         },
         transcribe(msg) {
-          // Every browser that can writes its own voice. The bot is the scribe
-          // for the rest (a browser with no speech engine): with on, it writes
-          // down, with Whisper, every unmuted voice nobody else writes. It does
-          // not light a tile or change anyone's captions.
+          // The bot keeps the room's transcript and, with on, writes down every
+          // voice it hears with Whisper and shares those lines with the room
+          // (Transcript: share). Off: it keeps what the others send.
           const on = !(msg && msg.on === false);
-          myStatus.scribe = on;
           if (on) {
             try { localStorage.setItem('gifos_cc_engine', 'whisper'); } catch (e) {}
             wspPaused = false;
           }
-          try { broadcastStatus(); syncSpeech(); } catch (e) {}
-          return { ok: true, cc: false, scribe: on, always: true, view: !!ccShow };
+          setTrMode(on ? 'share' : 'keep');
+          return { ok: true, mode: trMode(), view: !!ccShow };
         },
         sendXfer(msg) {
           const x = (msg && msg.xfer) || {};
@@ -36060,7 +35824,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       setDockCalmMsForTest: (ms) => { dockCalmMs = Math.max(0, ms | 0); return { ok: true }; },
       statusNoticeForTest: (m) => { setStatus(String(m)); return { ok: true }; },
       bot: () => !!myStatus.bot,
-      ccOn: () => !!myStatus.cc,
+      ccOn: () => trKeeps(),
       // Strip-teardown forensics (e2e-mosaic): whose status holds a stage
       // seat, and which stg pipes this page still holds. Read-only peeks.
       statusPeekForTest: (id) => { const st = statusOf.get(id); return st ? { stg: st.stg || 0, camOff: st.camOff === true, ageMs: Date.now() - (st.at || 0), rxAgeMs: Date.now() - (st.rx || 0) } : null; },
@@ -37112,21 +36876,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       addTranscript: (t) => addTranscriptLine(t),
       transcriptTexts: () => Array.from(trs.values()).sort((a, b) => a.at - b.at).map((l) => l.by + ': ' + l.text),
       transcriptBlocks: () => trBlocks().map((l) => l.by + ': ' + l.text),
-      captionsForTest: () => ({ writes: myStatus.ccv || [], mix: Array.from(ccMix.ins.keys()), drops: trDrops,
-        show: !!ccShow, cc: !!myStatus.cc,
-        lines: Array.from(trs.values()).sort((a, b) => a.at - b.at).map((l) => ({ by: l.by, byId: l.byId, scribe: l.scribe || null, at: l.at, text: l.text })) }),
-      markCcForTest: (id) => {
-        const st = statusOf.get(id) || {};
-        st.cc = true; st.ccst = 'behind';
-        statusOf.set(id, st);
-        try { updateTile(id); } catch (e) {}
-        const p = peers.get(id);
-        return p && p.chips ? (p.chips.textContent || '') : '';
-      },
+      captionsForTest: () => ({ mix: Array.from(ccMix.ins.keys()), drops: trDrops, show: !!ccShow, send: capSend(), mode: trMode(),
+        lines: Array.from(trs.values()).sort((a, b) => a.at - b.at).map((l) => ({ by: l.by, byId: l.byId, w: l.w, src: l.src, lang: l.lang || '', ld: l.ld || 0, at: l.at, text: l.text })) }),
+      // The transcript settings and what they produced on this page.
+      transcriptForTest: () => ({ send: capSend(), mode: trMode(), cap: !!myStatus.cap, lang: trLang(), learned: trLangLearned, mark: txMarkWhy(), speech: speechRunning(), ear: !!(speech && speech.input),
+        lines: Array.from(trs.values()).sort((a, b) => a.at - b.at).map((l) => ({ id: l.id, by: l.by, byId: l.byId, w: l.w, src: l.src, lang: l.lang || '', ld: l.ld || 0, at: l.at, text: l.text })) }),
+      setTranscriptForTest: (o) => { o = o || {}; if ('send' in o) setCapSend(!!o.send); if ('mode' in o) setTrMode(o.mode); return { send: capSend(), mode: trMode() }; },
       ownVoiceForTest: () => {
         myStatus.muted = false;
         syncSpeech();
-        return { cc: !!myStatus.cc, show: !!ccShow, speech: speechRunning() };
+        return { send: capSend(), show: !!ccShow, speech: speechRunning() };
       },
       whoFileForTest: () => whoFileText(),
       appStopForTest: (mine) => {
@@ -37209,18 +36968,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           headerCam: !!document.getElementById('showcam'),
         };
       },
-      whisperForTest: () => ({ engine: ccEngine(), live: !!wsp, ready: whisperReady(), queue: wspQ.items.length, sent: wspQ.sent, dropped: wspQ.dropped, rate: wsp ? wsp.rate : 0, captures: Array.from(wspCaps.keys()), scribe: scribeOn(), source: ccSourceId, inFlight: !!wspQ.busy, behind: !!wspQ.behind, paused: !!wspPaused, lastLatencyMs: wspQ.lastLatencyMs || 0, model: wspModel(), scribes: ccScribes().map((x) => x.id) }),
+      whisperForTest: () => ({ engine: ccEngine(), live: !!wsp, ready: whisperReady(), queue: wspQ.items.length, sent: wspQ.sent, dropped: wspQ.dropped, rate: wsp ? wsp.rate : 0, captures: Array.from(wspCaps.keys()), writes: trWrites(), inFlight: !!wspQ.busy, behind: !!wspQ.behind, paused: !!wspPaused, lastLatencyMs: wspQ.lastLatencyMs || 0, model: wspModel() }),
       whisperFeedForTest: (f32, rate, forId) => { const w = wspCaps.get(forId || 'me'); if (!w) return false; wspEnqueue(w, [Float32Array.from(f32)], Date.now(), rate || 16000, true); return true; },
       ccViewOn: () => !!ccShow,
-      ownVoice: () => ({ wanted: !!ownVoiceArmed, cc: !!myStatus.cc, muted: !!myStatus.muted }),
-      scribeForTest: (on) => { myStatus.scribe = !!on; broadcastStatus(); syncSpeech(); },
-      // Why a scribe takes or skips each peer (the conditions wspSync reads).
+      ownVoice: () => ({ wanted: capSend() && !myStatus.muted, send: capSend(), muted: !!myStatus.muted }),
+      // Why a keep/share page takes or skips each peer (the conditions wspSync and the room ear read).
       scribeWhyForTest: () => Array.from(peers.keys()).map((pid) => {
         const st = statusOf.get(pid) || {}; const p = peers.get(pid);
-        return { id: String(pid).slice(0, 6), muted: !!st.muted, modMute: !!(modOf(pid).mute && modOf(pid).mute.on), elsewhere: ccWrittenElsewhere(pid),
-          ccv: st.ccv || null, ccst: st.ccst || null, connected: !!(p && p.connected), source: !!(p && wspSource(pid)) };
+        return { id: String(pid).slice(0, 6), muted: !!st.muted, modMute: !!(modOf(pid).mute && modOf(pid).mute.on), covered: capCovered(pid), langOk: earLangOk(pid),
+          cap: st.cap || 0, lang: st.lang || '', trs: st.trs || 0, ccst: st.ccst || null, connected: !!(p && p.connected), source: !!(p && wspSource(pid)) };
       }),
-      ccSourceForTest: (id) => { ccSourceId = id || null; syncSpeech(); scribeWatch(); },
       takeTrForTest: (m) => takeTr(m),
       markBotForTest: (on) => {
         myStatus.bot = !!on;
@@ -37556,8 +37313,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (extra && typeof extra === 'object') {
           if (extra.away) st.away = true;
           if (extra.bot) st.bot = true;
-          if (extra.cc) st.cc = true;
-          if (extra.scribe) st.scribe = true;
+          if (extra.cap) st.cap = 1;
+          if (extra.trs) st.trs = 1;
+          if (extra.lang) st.lang = String(extra.lang);
           if (typeof extra.blur === 'number') st.blur = extra.blur;
           if (extra.camOff === false) st.camOff = false;
         }
