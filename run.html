@@ -23542,8 +23542,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function paintRoomView(src, meta, sound, c, lagMs) {
       const el = src ? heldEl(src, lagMs) : (avHoldStop(), null);
       if (el && meta && meta.n) {
+        // Own-row hiding stops at section size (Nathan): a Stadium of more than C×C people shows everyone and hides nothing.
         const hide = [];
-        if (c) for (let j = 0; j < SCALE.C; j++) { const pid = j === c.i ? myId : occPid({ pc: c.pc, r: c.r, i: j }); if (pid) hide.push(String(pid)); }
+        if (c && meta.n <= SCALE.C * SCALE.C) for (let j = 0; j < SCALE.C; j++) { const pid = j === c.i ? myId : occPid({ pc: c.pc, r: c.r, i: j }); if (pid) hide.push(String(pid)); }
         if (!sdView) sdView = MM.createPacker({ shape: 'stad', fps: compFps() }).start();
         sdView.setTile('v', 0, el, null, Object.assign({}, meta, { hide }));
         sdViewSrc = src;
