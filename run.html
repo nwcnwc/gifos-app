@@ -25280,12 +25280,27 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               schedReconcile();
             }
           }
+          // A stage copy that has not delivered one byte STG_ZERO_MS after its claim is dead, not slow: a live
+          // stager's copy carries packets (silence frames too) within a second. Only a copy that never
+          // delivered: a primary that flowed and froze is judged by the qualified dark rail above.
+          if (rk.indexOf('stg:') === 0 && !fb.dark && !fb.suspect && bytes.b <= 0 && !(fb.lastBytes > 0)
+              && fb.claimAt && now - fb.claimAt > STG_ZERO_MS) {
+            const std = mosStandby.get(rk);
+            if (std && std.key) {
+              fb.dark = true; stgFoNote(rk, 'dark', std.via);
+              demand(std.via, std.key, std.streamId, true); // wake NOW — don't wait for the sweep
+              schedReconcile();
+            }
+          }
           // While a wake/failback overlap runs, sample the STANDBY too: its
           // framesDecoded (decode path — render throttling can't touch it) is
           // the strict "demonstrably FLOWS" evidence a dark-initiated swap
           // requires. v1's re-park break lived here: the videoWidth>0 swap
           // fallback read a camOff standby's STALE last frame as flowing.
           await sampleStandby(rk, fb);
+          // A stage standby woken for a dark primary with no byte STG_ZERO_MS later: the claim pass parks it
+          // (standbyStaysHot) and picks the next candidate now, not at the next sweep.
+          if (rk.indexOf('stg:') === 0 && fb.dark && fb.wakeAt && now - fb.wakeAt > STG_ZERO_MS && fb.d0 >= 0 && !(fb.stdB > fb.b0)) schedReconcile();
         }
         // ADAPTIVE CADENCE (2026-07-30 power work). This loop was a flat
         // 300ms getStats() sweep, forever, on every device — 3.3 wakeups/sec
@@ -25382,9 +25397,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // A primary that has never delivered a byte is a husk, not a pipe that froze: no advance will ever clear
     // its suspicion, so it lapses after one wake window and the rails re-arm. The standby that did not flow
     // is remembered (stdTried), so the next wake goes to another candidate, not the same dead copy.
-    function standbyStaysHot(fb, now, wakeMax, stdId) {
+    // quickMs (stage): a standby woken for a dark primary that has not moved one byte quickMs after the
+    // wake is as dead as a stale wake, so the next candidate gets its turn in seconds.
+    function standbyStaysHot(fb, now, wakeMax, stdId, quickMs) {
       if (fb.suspect && !(fb.lastBytes > 0) && now - (fb.suspectAt || 0) > wakeMax) fb.suspect = false;
-      const wakeStale = !!(fb.wakeAt && now - fb.wakeAt > wakeMax);
+      const quickDead = !!(quickMs && fb.dark && fb.wakeAt && now - fb.wakeAt > quickMs && fb.d0 >= 0 && fb.b0 >= 0 && !(fb.stdB > fb.b0));
+      const wakeStale = !!(fb.wakeAt && now - fb.wakeAt > wakeMax) || quickDead;
       const flowed = fb.d0 >= 0 && fb.stdFdec > fb.d0;
       if (fb.dark && wakeStale && !flowed) {
         fb.dark = false; fb.suspect = true; fb.suspectAt = now; fb.wakeAt = 0;
@@ -25408,6 +25426,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const MOS_DARK_MS = 700;   // no byte advance on a previously-flowing hot pipe = dark
     const MOS_FLOWED_RECENT = 10000; // "previously flowing" horizon — never fires on a pipe that never delivered
     const MOS_QUALIFY = 8;     // consecutive advancing samples before a pipe earns the watchdog (~2.4s at the 300ms loop, 7.2s at the watchable 900ms cadence — see the 2026-08-08 note in mosWatchdog for why this stays a COUNT, not a clock)
+    const STG_ZERO_MS = 2000;  // stage audio gets no grace: a stage copy with zero bytes this long after its claim, or after its wake, is dead
     const HOT_VOID_MS = 12000; // hot-and-VOID: a hot primary with ZERO bytes this long is a husk, not a slow pipe (frza5)
     const mosFb = new Map(); // rk -> { wakeAt, f0, prefSince, lastSwitch, dark, lastBytes, lastAdvanceAt, q, fp, fpDecayAt, flowSince, b0, d0, stdFdec, claimAt } (wake/failback/watchdog state)
     const mkFb = () => ({ wakeAt: 0, f0: 0, prefSince: 0, lastSwitch: 0, dark: false, lastBytes: -1, lastAdvanceAt: 0, q: 0, fp: 0, fpDecayAt: 0, flowSince: 0, b0: -1, d0: -1, stdFdec: -1, stdB: -1, stdAdvAt: 0, claimAt: 0 });
@@ -25735,6 +25754,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (std) dropStandby(rk);
         std = { via: wantStd.from, key: wantStd.key, streamId: wantStd.sid, stream: wantStd.st, el: null, meta: annMeta(wantStd.ann) };
         mosStandby.set(rk, std); fb.wakeAt = 0; fb.d0 = -1; fb.stdFdec = -1; fb.stdAdvAt = 0; // fresh standby — the watchdog re-baselines its flow evidence
+        // A husk primary after a failed wake: the new standby is untried, so the rails re-arm at once, and a
+        // stage copy past STG_ZERO_MS wakes it in this pass (dark -> wantSwap below).
+        if (fb.suspect && !(fb.lastBytes > 0)) { fb.suspect = false; if (rk.indexOf('stg:') === 0 && fb.claimAt && now - fb.claimAt > STG_ZERO_MS) fb.dark = true; }
       }
       // FAILOVER / FAILBACK — make-before-break. The old primary stays painted
       // (dead ⇒ frozen last frame under the grace linger; alive-but-secondary
@@ -25854,7 +25876,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // the primary advances again.
       // One read per pass: the call parks a stale wake as it answers, so a
       // second read would see the state the first one just changed.
-      const stdHot = standbyStaysHot(fb, now, WAKE_MAX, std ? std.via + '|' + std.streamId : null);
+      const stdHot = standbyStaysHot(fb, now, WAKE_MAX, std ? std.via + '|' + std.streamId : null, rk.indexOf('stg:') === 0 ? STG_ZERO_MS : 0);
+      if (fb.suspect && fb.suspectAt === now) schedReconcile(); // a wake just failed: the next pass picks the next candidate
       const hot = new Set();
       const primSet = new Set(); // the copy I play and relay on: a duty to its sender, not a spare (demand)
       if (pri && inCand(pri) && !mosHeld(pri)) { hot.add(pri.via + '|' + pri.streamId); primSet.add(pri.via + '|' + pri.streamId); } // a held feed (mosDecoderSweep) stays parked until its decoder is re-bound
