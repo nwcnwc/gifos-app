@@ -151,7 +151,7 @@
       // L28: this device is using the pc to that peer, for so many ticks (my end only, budgeted by the seat).
       keepAdd(peer, ticks) { const s = raw(); if (!s || !s.keepAdd) return; const x = ids.nid(peer); if (x >= 0) s.keepAdd(x, ticks); },
       // E2 and E3 as the seat holds them, as peers (read only): the media plane ships over these pcs.
-      get u2Id() { const s = raw(); return s && s.hasCoord && s.coord.pc !== 0 && s.u2Id >= 0 && s.u2Id !== s.id ? P(s.u2Id) : null; },   // a head moved into Section 1 keeps a stale u2Id: it holds no E2
+      get u2Id() { const s = raw(); return s && s.hasCoord && s.coord.pc !== 0 && s.u2Id >= 0 && s.u2Id !== s.id ? P(s.u2Id) : null; },   // a seat in Section 1 holds no E2 (the seat clears it there; the guard stays for a tick read before that)
       get u3Id() { const s = raw(); return s && s.hasCoord && s.coord.pc !== 0 && s.u3Id >= 0 && s.u3Id !== s.id ? P(s.u3Id) : null; },
       get u2Hot() { const s = raw(); return !!(s && s.hasCoord && s.coord.pc !== 0 && s.u2Hot); },
       // L14 as the seat holds it, as peers (read only): my branch's temporary uplink, and the heads whose uplink I took.
