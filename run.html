@@ -23872,7 +23872,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (!v._mosRebound && age >= 1000) { rebind(); v._mosRebound = true; }
           if (age >= MOS_RESTART_HOLD) {
             v._mosHold = 0; v._mosRebound = false; v._mosFlowAt = 0;
-            const fb = mosFb.get(rk); if (fb) { fb.lastAdvanceAt = now; fb.q = 0; } // the silence was ours, not the pipe's
+            // The silence was ours, not the pipe's: only the held pipe's clock moves. A primary that never
+            // delivered a byte is credited the hold, not a fresh void window, or each restart restarts the void.
+            const fb = mosIn.get(rk) === ent ? mosFb.get(rk) : null;
+            if (fb) { fb.lastAdvanceAt = fb.lastBytes > 0 ? now : Math.min(now, (fb.lastAdvanceAt || now) + MOS_RESTART_HOLD); fb.q = 0; }
             dmd(true);
           }
           continue;
@@ -25376,12 +25379,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // my legitimate mix — never a neighbour's). Grace only ever delays
     // destruction, never recovery.
     // STAGE-DARK-HOLD
-    function standbyStaysHot(fb, now, wakeMax) {
+    // A primary that has never delivered a byte is a husk, not a pipe that froze: no advance will ever clear
+    // its suspicion, so it lapses after one wake window and the rails re-arm. The standby that did not flow
+    // is remembered (stdTried), so the next wake goes to another candidate, not the same dead copy.
+    function standbyStaysHot(fb, now, wakeMax, stdId) {
+      if (fb.suspect && !(fb.lastBytes > 0) && now - (fb.suspectAt || 0) > wakeMax) fb.suspect = false;
       const wakeStale = !!(fb.wakeAt && now - fb.wakeAt > wakeMax);
       const flowed = fb.d0 >= 0 && fb.stdFdec > fb.d0;
-      if (fb.dark && wakeStale && !flowed) { fb.dark = false; fb.suspect = true; fb.wakeAt = 0; }
+      if (fb.dark && wakeStale && !flowed) {
+        fb.dark = false; fb.suspect = true; fb.suspectAt = now; fb.wakeAt = 0;
+        if (stdId) (fb.stdTried = fb.stdTried || new Map()).set(stdId, now);
+      }
       const wakeLive = !!(fb.wakeAt && now - fb.wakeAt <= wakeMax);
       return !fb.suspect && (wakeLive || !!fb.dark);
+    }
+    // A standby whose wake did not flow sits out for a while; failback to it is tried again later.
+    function stdTried(fb, id, now) {
+      const at = fb.stdTried && fb.stdTried.get(id);
+      return !!at && now - at < 120000;
     }
     // END-STAGE-DARK-HOLD
     const MOS_GRACE = 5000;
@@ -25686,7 +25701,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const pick = pref || cand.find((x) => x.live);
         if (pick) {
           pri = mkEnt(pick); mosIn.set(rk, pri); repaintRedun(rk, pri.stream);
-          fb.claimAt = now; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; // fresh primary — the watchdog re-baselines
+          fb.claimAt = now; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; fb.suspect = false; fb.stdTried = null; // fresh primary — the watchdog re-baselines
           if (std && std.via === pri.via && std.streamId === pri.streamId) { dropStandby(rk); std = null; }
         }
       }
@@ -25708,9 +25723,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       // STANDBY SELECTION (parked): the preferred path when the primary is not
       // it (failback staging), else any live candidate on a DIFFERENT path.
-      const wantStd = (pref && pri && !priIsPref && !(pri.via === pref.from && pri.streamId === pref.sid))
+      // A candidate whose wake already failed waits until every other path has had its turn.
+      const fresh = (x) => !stdTried(fb, x.from + '|' + x.sid, now);
+      const others = cand.filter((x) => x.live && !(pri && x.from === pri.via && x.sid === pri.streamId));
+      if (fb.stdTried && !others.some(fresh)) fb.stdTried = null; // every path has had its turn: start the round again
+      const ownStd = stgOwnStandby(rk, cand, pri);
+      const wantStd = (pref && pri && !priIsPref && !(pri.via === pref.from && pri.streamId === pref.sid) && fresh(pref))
         ? pref
-        : (stgOwnStandby(rk, cand, pri) || cand.find((x) => x.live && !(pri && x.from === pri.via && x.sid === pri.streamId)));
+        : ((ownStd && fresh(ownStd) ? ownStd : null) || others.find(fresh) || ownStd || others[0]);
       if (pri && wantStd && (!std || std.via !== wantStd.from || std.streamId !== wantStd.sid || std.stream !== wantStd.st)) {
         if (std) dropStandby(rk);
         std = { via: wantStd.from, key: wantStd.key, streamId: wantStd.sid, stream: wantStd.st, el: null, meta: annMeta(wantStd.ann) };
@@ -25785,7 +25805,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (rk.indexOf('stg:') === 0 && pri.stream && pri.stream.getVideoTracks().length) { try { kfNeed(rk); } catch (e) {} }
           pri.deadAt = 0; fb.lastSwitch = now; fb.wakeAt = 0; fb.prefSince = 0;
           fb.picDead = false; fb.picStdOk = false; fb.picStd0 = null; fb.picRef = null;
-          fb.dark = false; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; fb.fp = 0; fb.fpDecayAt = 0; fb.b0 = -1; fb.d0 = -1; fb.stdFdec = -1; fb.stdAdvAt = 0; fb.claimAt = now; // fresh primary — the watchdog re-baselines and the penalty clears
+          fb.dark = false; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; fb.fp = 0; fb.fpDecayAt = 0; fb.b0 = -1; fb.d0 = -1; fb.stdFdec = -1; fb.stdAdvAt = 0; fb.claimAt = now; fb.suspect = false; fb.stdTried = null; // fresh primary — the watchdog re-baselines and the penalty clears
           repaintRedun(rk, pri.stream);
           if (inCand(old)) { std = { via: old.via, key: old.key, streamId: old.streamId, stream: old.stream, el: old.el, meta: old.meta }; mosStandby.set(rk, std); } // failback: the loser re-parks as the standby
           else { try { releaseAudio(old.el); old.el.srcObject = null; old.el.remove(); } catch (e) {} }
@@ -25834,7 +25854,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // the primary advances again.
       // One read per pass: the call parks a stale wake as it answers, so a
       // second read would see the state the first one just changed.
-      const stdHot = standbyStaysHot(fb, now, WAKE_MAX);
+      const stdHot = standbyStaysHot(fb, now, WAKE_MAX, std ? std.via + '|' + std.streamId : null);
       const hot = new Set();
       const primSet = new Set(); // the copy I play and relay on: a duty to its sender, not a spare (demand)
       if (pri && inCand(pri) && !mosHeld(pri)) { hot.add(pri.via + '|' + pri.streamId); primSet.add(pri.via + '|' + pri.streamId); } // a held feed (mosDecoderSweep) stays parked until its decoder is re-bound
