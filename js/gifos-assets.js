@@ -46,7 +46,9 @@
  * payload arriving by a second route — same trust as the GIF itself.
  *
  * URL forms: absolute https://…, or origin-relative /… (resolved against the
- * serving origin — what the test harness uses). `bytes` is UX (progress
+ * serving origin — what the test harness uses). A pin GifOS keeps its own
+ * copy of (MIRROR below) is fetched from models.gifos.app instead, checked
+ * against the same hash. `bytes` is UX (progress
  * labels, the store's "+N GB download" copy) — never trusted for anything.
  *
  * Attaches to `GifOS.assets`. Loaded by store.html and run.html.
@@ -123,6 +125,30 @@
     const origin = (root.location && root.location.origin) || '';
     return origin + url;
   }
+
+  // FIRST-PARTY COPIES. Some public model files are served by GifOS itself,
+  // from models.gifos.app (an R2 bucket behind the gifos.app edge cache), so
+  // a page that uses them never contacts an outside site. Keyed by the pin's
+  // sha256: the app's manifest (signed, already on people's computers) keeps
+  // its URL and hash; the OS fetches the SAME bytes from here and checks them
+  // against the same pin. Each path holds the hash, so a file never changes
+  // in place. A pin listed here is fetched ONLY from here: if this host
+  // fails, the download fails and the app says so (no second host is tried).
+  const MIRROR_ORIGIN = 'https://models.gifos.app';
+  const MIRROR = {
+    // Offline Captions (Whisper): onnx-community int8 exports.
+    '2af4a414ca47aa30f61246017e5fe82b0a8d229281d1255ba666a2a7f6b84d19': 'whisper-tiny/2af4a414ca47aa30f61246017e5fe82b0a8d229281d1255ba666a2a7f6b84d19/encoder_model_quantized.onnx',
+    '25e807a962b6349356d0ea5d0dfe530b7e5bf0e2a484aeca0359d03143faddd3': 'whisper-tiny/25e807a962b6349356d0ea5d0dfe530b7e5bf0e2a484aeca0359d03143faddd3/decoder_model_merged_quantized.onnx',
+    '5862993336bf33acd23736071aae2b32261d3b1b2f37780194460d4ef974dd46': 'whisper-base/5862993336bf33acd23736071aae2b32261d3b1b2f37780194460d4ef974dd46/encoder_model_quantized.onnx',
+    'fa3ef9902734ce5ae6f9ef2bdb2ba9a6c4b5785b09f4f420ce036573dc9d090b': 'whisper-base/fa3ef9902734ce5ae6f9ef2bdb2ba9a6c4b5785b09f4f420ce036573dc9d090b/decoder_model_merged_quantized.onnx',
+  };
+  // Where the OS really fetches a pin from: the first-party copy when there
+  // is one, else the author's URL.
+  function sourceUrl(pin) {
+    const sha = String((pin && pin.sha256) || '').toLowerCase();
+    if (Object.prototype.hasOwnProperty.call(MIRROR, sha)) return MIRROR_ORIGIN + '/' + MIRROR[sha];
+    return resolveUrl(String((pin && pin.url) || ''));
+  }
   // Same host = one server. Origin-relative pins resolve against this page.
   function assetHost(url) {
     const abs = resolveUrl(url);
@@ -133,7 +159,7 @@
   function groupByHost(pins) {
     const groups = Object.create(null), order = [];
     for (let i = 0; i < (pins || []).length; i++) {
-      const h = assetHost(pins[i].url);
+      const h = assetHost(sourceUrl(pins[i]));
       if (!groups[h]) { groups[h] = []; order.push(h); }
       groups[h].push(pins[i]);
     }
@@ -196,7 +222,7 @@
     const name = a.path.split('/').pop();
     const label = name + (a.bytes ? ' (' + fmtMB(a.bytes) + ')' : '');
     say('Downloading ' + label + ofN + '…', 0);
-    return fetch(resolveUrl(a.url), { credentials: 'omit', redirect: 'follow' })
+    return fetch(sourceUrl(a), { credentials: 'omit', redirect: 'follow' })
       .then((r) => {
         if (!r.ok) throw new Error('the download failed (' + r.status + ')');
         return readWithProgress(r, a.bytes, (got, total) => {
@@ -326,8 +352,17 @@
     return ensure(files, one, onStatus, cache);
   }
 
+  // Boot backfill for a mounted app or provider: the REQUIRED pins only. An
+  // optional pin (a model size nobody picked) arrives when gifos.assets(path)
+  // asks for it, so picking Whisper tiny downloads tiny and never base.
+  // Resolves null when nothing was missing.
+  function backfill(files, manifest, onStatus, cache) {
+    const opts = { requiredOnly: true };
+    return missing(files, manifest, cache, opts).then((need) => (need.length ? ensure(files, manifest, onStatus, cache, opts) : null));
+  }
+
   GifOS.assets = {
-    DIR, list, missing, ensure, ensurePath, key, normPath, assetCache, rowMatches,
-    assetHost, groupByHost,
+    DIR, list, missing, ensure, ensurePath, backfill, key, normPath, assetCache, rowMatches,
+    assetHost, groupByHost, sourceUrl, MIRROR_ORIGIN,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
