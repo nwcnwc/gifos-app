@@ -29403,11 +29403,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // detects as anything), and no words can match across the guesses.
       // Overlapping spans make it one utterance; the better line wins.
       if (la && lb && la !== lb) return trOverlap(a, b);
+      return trWithin(a, b) || trWithin(b, a);
+    }
+    // Every word of a is in b (a is a cut or a copy of b), three words at
+    // least, or the same words for a shorter line. "We review the budget
+    // today" and "... tomorrow" share most words and are two sentences: an
+    // extra line in a transcript is far better than a missing one.
+    function trWithin(a, b) {
       const wa = trWords(trNorm(a.text)), wb = trWords(trNorm(b.text));
-      if (!wa.size || !wb.size) return false;
-      let both = 0; for (const x of wa) if (wb.has(x)) both++;
-      const small = Math.min(wa.size, wb.size);
-      return both / small >= 0.6 && (small >= 3 || both === Math.max(wa.size, wb.size));
+      if (!wa.size || !wb.size || wa.size > wb.size) return false;
+      for (const x of wa) if (!wb.has(x)) return false;
+      return wa.size >= 3 || wa.size === wb.size;
     }
     // Better: a higher rank; the same rank, the earlier time; the same time,
     // the lower id. Order-independent, so every page keeps the same line.
@@ -29425,23 +29431,26 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function trMerge(m) {
       // EVERY held line this one matches is the same utterance (two engines
       // cut it differently, so a long line can match several short ones). The
-      // best of them all survives with the earliest time; the rest leave.
+      // best of them all survives with the earliest time, and folds only the
+      // lines whose words it holds (or nonsense in an assumed language, the
+      // clash): a line with words the survivor lacks stays, whatever its rank.
       const same = [];
       for (const l of trs.values()) if (trSame(l, m)) same.push(l);
       if (!same.length) return 'new';
-      let best = same[0];
+      let best = m;
       for (const l of same) if (trBetter(l, best)) best = l;
-      let at = m.at || 0;
-      for (const l of same) if ((l.at || 0) > 0 && (at <= 0 || l.at < at)) at = l.at;
+      const folds = (l) => l !== best && (trLangClash(l, best) || trWithin(l, best));
+      let at = best.at || 0;
+      for (const l of same.concat([m])) if (folds(l) && (l.at || 0) > 0 && (at <= 0 || l.at < at)) at = l.at;
       if (clog) clog('tr same', String(m.byId).slice(0, 6), m.src, m.at, 'held', String(best.byId).slice(0, 6), best.src, best.at, 'x' + same.length);
-      if (!trBetter(m, best)) {
-        for (const l of same) if (l !== best) trs.delete(l.id);
+      for (const l of same) if (folds(l)) trs.delete(l.id);
+      if (best !== m) {
         if (at > 0 && at < (best.at || 0)) best.at = at;
-        trDrops++; return 'dup';
+        if (folds(m)) { trDrops++; return 'dup'; }
+        return 'new'; // the new line has words the better one lacks: both stay
       }
-      for (const l of same) trs.delete(l.id);
       if (at > 0) m.at = at;
-      return best;
+      return same[0];
     }
     // A line arrives here from the wire ('tr' frame, or a 'hi' replay = backfill)
     // and from this page's own engine (addTranscriptLine). The device that wrote
