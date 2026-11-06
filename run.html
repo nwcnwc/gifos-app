@@ -29428,26 +29428,39 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // or better: drop it), or the held line m REPLACES (m is better; the held
     // line leaves and m keeps the earlier of the two times, so the transcript
     // keeps its order and the sentence its true start).
+    // One voice speaks one language at a time: two lines under the SAME
+    // named speaker whose spans overlap and whose languages differ are one
+    // stretch of that voice, one of them rendered in the wrong language. A
+    // mix (Stadium) may hold another person's voice, so a generic line in
+    // another language is left alone.
+    function trSameVoiceOtherLang(a, b) {
+      const la = trLangOf(a.lang), lb = trLangOf(b.lang);
+      return !!(la && lb && la !== lb && a.byId === b.byId && !trGeneric(a.byId) && trOverlap(a, b));
+    }
     function trMerge(m) {
       // EVERY held line this one matches is the same utterance (two engines
       // cut it differently, so a long line can match several short ones). The
       // best of them all survives with the earliest time, and folds only the
-      // lines whose words it holds (or nonsense in an assumed language, the
-      // clash): a line with words the survivor lacks stays, whatever its rank.
+      // lines whose words it holds, or the same voice rendered in another
+      // language (the clash, or an overlap): a line with words the survivor
+      // lacks stays, whatever its rank. An extra line is better than a lost one.
       const same = [];
       for (const l of trs.values()) if (trSame(l, m)) same.push(l);
       if (!same.length) return 'new';
       let best = m;
       for (const l of same) if (trBetter(l, best)) best = l;
-      const folds = (l) => l !== best && (trLangClash(l, best) || trWithin(l, best));
+      const folds = (l, into) => l !== into && (trLangClash(l, into) || trSameVoiceOtherLang(l, into) || trWithin(l, into));
       let at = best.at || 0;
-      for (const l of same.concat([m])) if (folds(l) && (l.at || 0) > 0 && (at <= 0 || l.at < at)) at = l.at;
+      for (const l of same.concat([m])) if (folds(l, best) && (l.at || 0) > 0 && (at <= 0 || l.at < at)) at = l.at;
       if (clog) clog('tr same', String(m.byId).slice(0, 6), m.src, m.at, 'held', String(best.byId).slice(0, 6), best.src, best.at, 'x' + same.length);
-      for (const l of same) if (folds(l)) trs.delete(l.id);
+      for (const l of same) if (folds(l, best)) trs.delete(l.id);
       if (best !== m) {
         if (at > 0 && at < (best.at || 0)) best.at = at;
-        if (folds(m)) { trDrops++; return 'dup'; }
-        return 'new'; // the new line has words the better one lacks: both stay
+        if (folds(m, best)) { trDrops++; return 'dup'; }
+        // the new line has words the better one lacks: both stay, and the
+        // new one takes in the held lines it holds the words of
+        for (const l of same) if (trs.has(l.id) && trBetter(m, l) && folds(l, m)) { trs.delete(l.id); if ((l.at || 0) > 0 && (l.at < (m.at || 0) || !(m.at > 0))) m.at = l.at; }
+        return 'new';
       }
       if (at > 0) m.at = at;
       return same[0];
