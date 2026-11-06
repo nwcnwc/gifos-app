@@ -26331,9 +26331,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // fb.dark: the pipe watchdog observed the primary byte-flat while
       // previously flowing — treat like a dead primary for WAKE and SWAP
       // purposes (never for teardown; see the watchdog comment above).
-      // L2.7: the seat holds E2 hot, so E2's copy takes over even while E1's still moves packets.
+      // L2.7: the seat holds E2 hot, so E2's copy takes over even while E1's still moves packets. E2's copy is the one
+      // prefCand names (it ranks it first while E2 is hot): any other copy from that seat (a second-root copy, a copy
+      // whose path loops back) is no takeover. Taking one swapped a row-mate off the stager's own copy, which never
+      // used E1, onto a parked chain rooted at the dead up seat that carried silence, and failback swapped it back.
       const seatE2 = meshSeat();
-      const u2Over = !!(pri && std && seatE2 && seatE2.u2Hot && std.via === seatE2.u2Id && pri.via !== std.via && (rk.indexOf('stg:') === 0 || rk === 'sgs'));
+      const u2Over = !!(pri && std && seatE2 && seatE2.u2Hot && std.via === seatE2.u2Id && pri.via !== std.via && stdIsPref && !priIsPref && (rk.indexOf('stg:') === 0 || rk === 'sgs'));
       // A failback or picture wake never goes to a copy whose last such wake failed, or that was just left for failing,
       // until the window lapses (fbTried); a failover (primary gone or dark) is not held by it.
       const stdFbOk = !!std && !stdTried(fb, std.via + '|' + std.streamId, now, 'fbTried');
