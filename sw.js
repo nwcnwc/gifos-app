@@ -41,7 +41,7 @@
  */
 'use strict';
 
-var SHELL_VERSION = 'v19'; // v19: 0.9.25 cut (shell now holds every en catalog and the new version.json/changelog) (v18: every surface's en catalog joins the shell, plus meet.json and the built-in apps (v17: gifos-i18n.js and the en catalogs join the shell (v16: 0.9.24 hotfix, gifos-update.js reads a four-part `latest`; v15: gifos-charge.js joins the shell)
+var SHELL_VERSION = 'v20'; // v20: js/dialog.js joins the shell (the dialogs' scroll frame, parsed by every page) (v19: 0.9.25 cut (shell now holds every en catalog and the new version.json/changelog) (v18: every surface's en catalog joins the shell, plus meet.json and the built-in apps (v17: gifos-i18n.js and the en catalogs join the shell (v16: 0.9.24 hotfix, gifos-update.js reads a four-part `latest`; v15: gifos-charge.js joins the shell)
 var CACHE = 'gifos-shell-' + SHELL_VERSION;
 
 // ONE CACHE KEY PER FILE. pages.yml stamps `?v=<sha>` onto every local css/js
@@ -67,7 +67,7 @@ var CORE = [
   '/css/desktop.css',
   '/js/gifos-gif.js', '/js/gifos-help.js', '/js/gifos-charge.js', '/js/gifos-sign.js', '/js/gifos-ed.js', '/js/gifos-lock.js', '/js/gifos-zip.js', '/js/gifos-icons.js',
   '/js/gifos-themes.js', '/js/gifos-avatar.js', '/js/gifos-store.js', '/js/gifos-install.js', '/js/gifos-fullscreen.js', '/js/irl-apps.js', '/js/sample-apps.js', '/js/store.js', '/js/gifos-cash.js',
-  '/js/desktop.js', '/js/runtime.js', '/js/meet-host.js', '/js/camera-studio.js', '/js/relay-config.js', '/js/sw-register.js', '/js/build.js', '/js/build-badge.js', '/js/gifos-update.js',
+  '/js/dialog.js', '/js/desktop.js', '/js/runtime.js', '/js/meet-host.js', '/js/camera-studio.js', '/js/relay-config.js', '/js/sw-register.js', '/js/build.js', '/js/build-badge.js', '/js/gifos-update.js',
   '/js/gifos-i18n.js', '/i18n/en/common.json', '/i18n/en/settings.json', '/i18n/en/desktop.json', '/i18n/en/store.json', '/i18n/en/runtime.json',
   '/i18n/en/boot.json', '/i18n/en/sign.json', '/i18n/en/help.json', '/i18n/en/update.json', '/i18n/en/charge.json', '/i18n/en/install.json',
   '/i18n/en/meet.json',
