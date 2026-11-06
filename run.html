@@ -23497,6 +23497,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     let sdEmptyAt = 0;   // since when a head's sdPack has been EMPTY (blank-tile grace)
     const sdnPacks = new Map(); // col -> packer: per-child DOWN ingredients (mix-minus)
     const l14Packs = new Map(); // head -> packer: the down ingredient of a cut-off branch I serve (L14)
+    // The cut-off branches this seat packs an 'sdn' for: the heads its seat serves an uplink to, minus its own
+    // down-child. That child rides the sdx -> sdn relay (the head's mix-minus for my column), and one down pipe
+    // has one source.
+    function l14DownHeads(sv, beyondRow, ownChild) {
+      if (!sv || !beyondRow || typeof sv.l14Served !== 'function') return [];
+      return sv.l14Served().filter((h) => h !== ownChild);
+    }
     const l14RelPacks = new Map(); // head -> packer: the outside of a branch my row-mate serves, built here, handed down by that mate
     // STAGE AUDIO folds AT THE EAR (mix-minus): the strip is video-only; every
     // device sums the per-stager feeds it holds, skipping its OWN — a stager
@@ -26454,7 +26461,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       };
       // L14 (fast media, slow tidy): the cut-off branches that took me as their uplink. Their products ride into what I
       // make ('subu:<head>'); each gets one down pack of everything I hold but itself, as 'sdn' (its outside).
-      const l14Heads = (() => { const sv = meshSeat(); return sv && beyondRow ? sv.l14Served() : []; })();
+      // My own down-child is never a cut-off branch: its outside is the mix-minus my head builds for my column (sdx,
+      // relayed down as sdn). A head that dialled me while cut off and then settled under me stays in the seat's served
+      // list (the mesh keeps the uplink), but a second 'sdn' from the L14 pack would replace that relay in the same job
+      // with a pack of my row's faces only, and the child's whole branch would hear nobody outside the row.
+      const l14Heads = l14DownHeads(meshSeat(), beyondRow, occPid(T.down(c)));
       // A branch one of my row-mates serves reaches me as that mate's relay (sub {l14, via}): the mate relays only the
       // branches it serves, and its announce ages out when it stops. A head packs those as its own, so the branch
       // goes up in the row product and into the stadium.
