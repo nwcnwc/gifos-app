@@ -69,7 +69,7 @@
   "meet.setCcBrowser": "Subtítulos del navegador",
   "meet.setCcBrowserHelp": "Al instante. Un idioma fijo, el de arriba. En algunos dispositivos son dos palabras sin puntuación. El navegador puede enviar tu voz al servicio de su fabricante (Chrome: Google).",
   "meet.setCcWhisper": "Whisper en este dispositivo",
-  "meet.setCcWhisperHelp": "Cualquier idioma, lo detecta solo. Frases de verdad, con puntuación. Tus nombres y palabras. Puede escribir todo en inglés. Una frase aparece unos segundos después. En el teléfono va más lento y gasta batería. Nada sale del dispositivo.",
+  "meet.setCcWhisperHelp": "Cualquier idioma, lo detecta solo. Frases de verdad, con puntuación. Tus nombres y palabras. Puede escribir todo en inglés. Una frase aparece unos segundos después. En el teléfono va más lento y gasta batería. Tu voz se queda en este dispositivo; solo las palabras escritas pueden ir a la reunión.",
   "meet.setCcEnglish": "Escribir todo en inglés",
   "meet.setCcWords": "Nombres y palabras: Siobhan, Kubernetes, GifOS…",
   "meet.setMix": "Mezcla",

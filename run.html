@@ -4250,7 +4250,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <select id="cclang" style="padding:.35rem .5rem;border-radius:.4rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);max-width:100%"></select>
         <div id="ccengine-row" style="margin-top:.6rem">
           <label class="rec-opt"><input type="radio" name="ccengine" value="browser"><span><b data-t="setCcBrowser">Browser captions</b><small data-t="setCcBrowserHelp">Instant. One fixed language, picked above; two-word lines without punctuation on some devices. Your browser may send your voice to its maker's speech service (Chrome: Google).</small></span></label>
-          <label class="rec-opt"><input type="radio" name="ccengine" value="whisper"><span><b data-t="setCcWhisper">Whisper on this device</b><small data-t="setCcWhisperHelp">Any language, found by itself. Real sentences with punctuation. Your own names and words. Can write everything in English. A sentence appears a few seconds after it is said; on a phone it is slower and uses battery. Nothing leaves the device.</small></span></label>
+          <label class="rec-opt"><input type="radio" name="ccengine" value="whisper"><span><b data-t="setCcWhisper">Whisper on this device</b><small data-t="setCcWhisperHelp">Any language, found by itself. Real sentences with punctuation. Your own names and words. Can write everything in English. A sentence appears a few seconds after it is said; on a phone it is slower and uses battery. Your voice stays on this device; only the written words can go to the meeting.</small></span></label>
           <div id="ccwhisper-weak" class="set-help" style="display:none;margin:.2rem 0 0 1.6rem"></div>
           <div id="ccwhisper" style="display:none;margin:.2rem 0 0 1.6rem">
             <div id="ccwhisper-state" class="set-help" style="margin-bottom:.4rem"></div>
@@ -29785,6 +29785,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // the provider one at a time.
     const wspCaps = new Map(); // 'me' | pid -> capture
     const wspQ = { items: [], busy: false, sent: 0, dropped: 0, behind: false, lastLatencyMs: 0 };
+    // A loopback http(s) address names a server on this device; anything else is ''.
+    function wspLocalUrl(raw) {
+      let u; try { u = new URL(String(raw || '')); } catch (e) { return ''; }
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+      const h = u.hostname.toLowerCase();
+      const loop = h === 'localhost' || h === '[::1]' || h === '::1' || /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(h);
+      return loop && !u.username && !u.password ? u.href : '';
+    }
     let wsp = null; // my own capture, by the name the older call sites use
     let wspPaused = false; // Whisper stood down (no browser speech engine to fall back to) until re-picked or CC is turned on
     // The worklet posts 4096-sample chunks off the main thread. A ScriptProcessor
@@ -30168,9 +30176,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const warm = !!wspQ.answered;
       const softMs = warm ? clipMs * 4 + 10000 : Math.max(clipMs * 4 + 10000, 180000);
       const hardMs = Math.max(clipMs * 8, 120000, warm ? 0 : 180000);
+      // A speech server the person runs themselves answers in place of the
+      // provider app, but only on THIS device (a loopback address): Whisper
+      // is offered as keeping the voice here, so the clip is never posted to
+      // another machine. Any other address is ignored and the app answers.
       let url = '';
-      try { url = String(lsGet('gifos_cc_stt_url') || ''); } catch (e) {}
-      const remote = /^https?:\/\//.test(url) && typeof fetch === 'function';
+      try { url = wspLocalUrl(lsGet('gifos_cc_stt_url')); } catch (e) {}
+      const remote = !!url && typeof fetch === 'function';
       let pending;
       if (remote) {
         const ctrl = (typeof AbortController === 'function') ? new AbortController() : null;

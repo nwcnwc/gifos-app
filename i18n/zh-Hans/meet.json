@@ -69,7 +69,7 @@
  "meet.setCcBrowser": "浏览器字幕",
  "meet.setCcBrowserHelp": "即时显示。使用上方选定的单一语言；部分设备上只有不带标点的短句。你的浏览器可能会把你的语音发送给其厂商的语音服务（Chrome 为 Google）。",
  "meet.setCcWhisper": "本机 Whisper",
- "meet.setCcWhisperHelp": "支持任何语言，自动识别。有标点的完整句子，能认出你自己的名字和词汇，还能把一切写成英文。一句话在说完几秒后出现；在手机上更慢且更耗电。内容不会离开本机。",
+ "meet.setCcWhisperHelp": "支持任何语言，自动识别。有标点的完整句子，能认出你自己的名字和词汇，还能把一切写成英文。一句话在说完几秒后出现；在手机上更慢且更耗电。你的声音留在本机；只有写下的文字可能发送到会议。",
  "meet.setCcEnglish": "一律写成英文",
  "meet.setCcWords": "需要识别的名字和词汇：Siobhan、Kubernetes、GifOS……",
  "meet.setMix": "混音",
