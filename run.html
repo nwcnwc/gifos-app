@@ -29182,8 +29182,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const la = trLangOf(a.lang), lb = trLangOf(b.lang);
       return !!(la && lb && la !== lb && !!a.ld !== !!b.ld && a.byId === b.byId && !trGeneric(a.byId));
     }
+    // Two named speakers are two speakers, whatever they said: only a line
+    // with no name (a mix) folds into a named one, or the same name into itself.
     function trSame(a, b) {
       if (Math.abs((a.at || 0) - (b.at || 0)) >= 8000) return false;
+      if (a.byId !== b.byId && !trGeneric(a.byId) && !trGeneric(b.byId)) return false;
       if (trLangClash(a, b)) return true;
       const la = trLangOf(a.lang), lb = trLangOf(b.lang);
       if (la && lb && la !== lb) return false;
@@ -29211,9 +29214,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       for (const l of trs.values()) if (trSame(l, m)) { if (!same || trBetter(l, same)) same = l; }
       if (!same) return 'new';
       if (clog) clog('tr same', String(m.byId).slice(0, 6), m.src, m.at, 'held', String(same.byId).slice(0, 6), same.src, same.at);
-      if (!trBetter(m, same)) { trDrops++; return 'dup'; }
+      // Whichever copy stays, the sentence keeps the earlier of the two times,
+      // so the order is the same on every page whatever arrived first.
+      if (!trBetter(m, same)) { if ((m.at || 0) > 0 && (m.at || 0) < (same.at || 0)) same.at = m.at; trDrops++; return 'dup'; }
       trs.delete(same.id);
-      if ((same.at || 0) < (m.at || 0)) m.at = same.at;
+      if ((same.at || 0) > 0 && (same.at || 0) < (m.at || 0)) m.at = same.at;
       return same;
     }
     // A line arrives here from the wire ('tr' frame, or a 'hi' replay = backfill)
