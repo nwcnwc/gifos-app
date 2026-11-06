@@ -450,6 +450,7 @@
     // C++: mesh_seat.inc:Seat::onSitPing
     onSitPing(m) {
       // V4: my assigner asks whether its vouch for me at m.ck is still live.
+      if (m.id === this.id && !this.hasCoord && this.state === 2 && this.l317DeclinedAt(m.ck, m.from)) return;   // L31.7: a vouch for a placement I declined: silent, so it frees
       if (m.id === this.id) {
         if (this.hasCoord && this.state === 3 && ckey(this.coord) === m.ck) { const p = newMsg('SITPONG'); p.ck = m.ck; p.id = this.id; p.tag = 1; this.emit(m.from, p); }
         else if (!this.hasCoord && this.state === 2) { const p = newMsg('SITPONG'); p.ck = m.ck; p.id = this.id; p.tag = 0; this.emit(m.from, p); }

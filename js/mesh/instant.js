@@ -271,6 +271,18 @@
       return true;
     },
 
+    // C++: mesh_instant.inc:Seat::l317Decline   [L31.7: a placement I got while seated by another one]
+    l317Decline(m) {
+      if (this.l317Decl.size >= 16) { for (const k of this.l317Decl.keys()) { this.l317Decl.delete(k); break; } }
+      this.l317Decl.set(seatM.ppKey(ckey(m.coord), m.owner), m.ppAt);
+    },
+    // C++: mesh_instant.inc:Seat::l317Declined
+    l317Declined(m) {
+      if (m.owner < 0) return false; const v = this.l317Decl.get(seatM.ppKey(ckey(m.coord), m.owner)); return v !== undefined && v === m.ppAt;
+    },
+    // C++: mesh_instant.inc:Seat::l317DeclinedAt
+    l317DeclinedAt(k, by) { return by >= 0 && this.l317Decl.has(seatM.ppKey(k, by)); },
+
     // C++: mesh_instant.inc:Seat::l31Hold
     l31Hold(c, nc, m) {
       if (this.l31Cap || !this.l31On() || c.pc !== 0 || nc < 0 || nc === this.id || m.tag === 1) return false;

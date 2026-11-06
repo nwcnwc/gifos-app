@@ -182,10 +182,12 @@
       const id = this.id, lv = this.w.lv;
       if (this.l44Answer(m)) this.state = 2;   // L44.6: the answer to my own FIND, after an early re-ask sent me back to the door
       if (this.state === 2 && m.l31 === 7) return;   // L31.4: a withdrawal is no placement: the seeker has already moved on, and it names no neighbours
+      if (this.state === 2 && this.l317Declined(m)) { this.trace('L31.7-DECLINED', id, m.coord, 'owner=%d at=%d', m.owner, m.ppAt); return; }   // L31.7: a placement I declined while seated is no answer to this search
       if (this.state === 2 && roomTerm(this, 1) && this.TICK - this.c7At < K.RELAY_TTL && (this.c7Old.has(m.owner) || this.c7Old.has(m.from))) return;   // L8.5
       if (this.state === 2 && this.l25BadPlacer.size && (this.l25Bad(m.owner) || this.l25Bad(m.from))) { this.trace('L25-BADPLACER', id, null, 'owner=%d', m.owner); if (m.nc === id) this.l711Reask('badplacer'); return; }
       if (this.state === 2 && m.nbrs.length === 0 && ckey(m.coord) !== 0) { lv.L25_TWICE++; this.l25Mark(m.owner, true); this.trace('L25-BARE-PLACE', id, m.coord, 'owner=%d', m.owner); if (m.nc === id) this.l711Reask('bare'); return; }   // L25
       if (this.state === 2) { if (m.line >= 0) { this.lineAdopt(m.line, 'place'); if (m.lineF) this.lineFork = true; } this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, m.row, m.ppL); if (this.pp >= 0 && this.pp !== id) this.placer = this.pp; return; }   // placer: only this intake
+      if (this.state === 3 && m.nc === id && m.owner >= 0 && m.owner !== id && m.l31 !== 5 && m.l31 !== 7 && m.tag !== 1 && this.hasCoord && !(m.owner === this.myPlacer && m.ppAt === this.ppAt)) this.l317Decline(m);   // L31.7
       if (this.state === 3 && (m.l31 === 5 || m.l31 === 7) && this.l31Replace(m)) return;   // L31.4
       if (this.state === 3 && m.tag === 1 && m.nc === id) lv.COMPACT_PLACES++;
       if (this.state === 3 && m.tag === 1 && m.nc === id && this.hasCoord && !this.moving && !this.hasChildren() && pcDepth(m.coord.pc) < pcDepth(this.coord.pc) && !this.firstHandLive(ckey(m.coord))) {
