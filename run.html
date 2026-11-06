@@ -29330,8 +29330,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // Two named speakers are two speakers, whatever they said: only a line
     // with no name (a mix) folds into a named one, or the same name into itself.
+    // Two engines cut the same speech differently, and a MIX clip opens
+    // when any voice in it starts, so its start can sit long before the
+    // speaker's own line: the gap between the two SPANS (start to end) is
+    // what must be short, not the gap between the starts. A line without
+    // an end (the browser engine) spans its start only.
+    function trGap(a, b) {
+      const a0 = a.at || 0, a1 = Math.max(a0, a.end || 0), b0 = b.at || 0, b1 = Math.max(b0, b.end || 0);
+      return Math.max(0, Math.max(a0, b0) - Math.min(a1, b1));
+    }
     function trSame(a, b) {
-      if (Math.abs((a.at || 0) - (b.at || 0)) >= 8000) return false;
+      if (trGap(a, b) >= 8000) return false;
       if (a.byId !== b.byId && !trGeneric(a.byId) && !trGeneric(b.byId)) return false;
       if (trLangClash(a, b)) return true;
       const la = trLangOf(a.lang), lb = trLangOf(b.lang);
@@ -29386,6 +29395,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const src = m.src === 'mic' || m.src === 'ear' || m.src === 'mix' ? m.src : (w === String(m.byId) ? 'mic' : 'ear');
       const line = { id: m.id, byId: m.byId, by: String(m.by || '?').slice(0, 40), at: m.at || 0, text: String(m.text || '').slice(0, 400), w, src, lang: trLangOf(m.lang) };
       if (m.ld) line.ld = 1;
+      if (m.end > line.at && m.end - line.at <= 60000) line.end = m.end; // the clip's end, when the engine knows it (bounded: a clip is 15 s at most)
       if (trMerge(line) === 'dup') return false;
       trs.set(m.id, line);
       trimMap(trs, CHAT_MAX);
@@ -29492,7 +29502,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // writes down for the room's transcript (keep/share) — a person by name
     // (src 'ear'), or a mix by its channel's label (src 'mix'); sent only when
     // sharing. Stored here when this page keeps a transcript.
-    function addTranscriptLine(text, at, forId, label, src, lang, detected) { // detected: the engine found the language itself (Whisper)
+    function addTranscriptLine(text, at, forId, label, src, lang, detected, end) { // detected: the engine found the language itself (Whisper); end: when the clip ended
       text = String(text || '').trim();
       if (!text) return;
       // The bot's own microphone is never written down, and neither is a line
@@ -29502,6 +29512,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const mine = !forId || forId === myId;
       const m = { id: uid('t'), byId: myId, by: myName(), at: at || Date.now(), text: text.slice(0, 400), w: myId, src: 'mic', lang: trLangOf(lang || trLang()) };
       if (detected && m.lang) m.ld = 1;
+      if (end > m.at) m.end = end;
       if (!mine) {
         m.byId = forId;
         m.src = src === 'mix' || trGeneric(forId) ? 'mix' : 'ear';
@@ -30044,9 +30055,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // audio it writes a translation; neither is a detection.
           const found = lang === 'auto';
           const rl = found ? ((r && r.language) ? String(r.language) : '') : lang;
-          if (job.id === 'me') { addTranscriptLine(text, job.at, null, null, 'mic', rl, found); }
-          else if (job.id === 'fold') { if (trWrites()) addTranscriptLine(text, job.at, 'stadium', 'Stadium', 'mix', rl, found); }   // a far-row line, labelled by its channel
-          else if (trWrites() && (peers.has(job.id) || job.stage)) addTranscriptLine(text, job.at, job.id, null, 'ear', rl, found);
+          const end = job.at + clipMs; // the clip's span: a mix clip opens with the first voice in it, so its start says little
+          if (job.id === 'me') { addTranscriptLine(text, job.at, null, null, 'mic', rl, found, end); }
+          else if (job.id === 'fold') { if (trWrites()) addTranscriptLine(text, job.at, 'stadium', 'Stadium', 'mix', rl, found, end); }   // a far-row line, labelled by its channel
+          else if (trWrites() && (peers.has(job.id) || job.stage)) addTranscriptLine(text, job.at, job.id, null, 'ear', rl, found, end);
         }
         if (!wspQ.items.length && myStatus && myStatus.ccst === 'behind') {
           wspQ.behind = false;
@@ -37079,7 +37091,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         lines: Array.from(trs.values()).sort((a, b) => a.at - b.at).map((l) => ({ by: l.by, byId: l.byId, w: l.w, src: l.src, lang: l.lang || '', ld: l.ld || 0, at: l.at, text: l.text })) }),
       // The transcript settings and what they produced on this page.
       transcriptForTest: () => ({ send: capSend(), mode: trMode(), cap: !!myStatus.cap, lang: trLang(), known: trLangKnown(), learned: trLangLearned, mark: txMarkWhy(), speech: speechRunning(), ear: !!(speech && speech.input),
-        lines: Array.from(trs.values()).sort((a, b) => a.at - b.at).map((l) => ({ id: l.id, by: l.by, byId: l.byId, w: l.w, src: l.src, lang: l.lang || '', ld: l.ld || 0, at: l.at, text: l.text })) }),
+        lines: Array.from(trs.values()).sort((a, b) => a.at - b.at).map((l) => ({ id: l.id, by: l.by, byId: l.byId, w: l.w, src: l.src, lang: l.lang || '', ld: l.ld || 0, at: l.at, end: l.end || 0, text: l.text })) }),
       setTranscriptForTest: (o) => { o = o || {}; if ('send' in o) setCapSend(!!o.send); if ('mode' in o) setTrMode(o.mode); return { send: capSend(), mode: trMode() }; },
       ownVoiceForTest: () => {
         myStatus.muted = false;
