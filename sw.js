@@ -217,7 +217,7 @@ function raceNetwork(req, cache, ms, key) {
 // deleted file forever, and turning it into degrade()'s empty 200 (which used
 // to happen ONLINE, for any missing script or stylesheet) told a fetch() caller
 // "ok" with nothing in it. The cached copy is dropped at the same time. The
-// empty 200 remains what an offline, uncached parser-blocking load gets — that
+// empty 200 remains what an offline, uncached STYLESHEET gets (a script gets a network error) — that
 // is a stall averted, not a lie about the server.
 function revalidate(req, cache, ms, passRouted, key) {
   return new Promise(function (resolve) {
@@ -251,9 +251,10 @@ function notInstalled(v) {
 // (offline / stalled), so a request can NEVER hang the page:
 //  - a navigation → the app shell FOR THAT CHANNEL (its scripts boot from
 //    cache/IndexedDB);
-//  - a script/style (e.g. a theme-override the cascade document.writes) → an
-//    EMPTY 200 so the parser-blocking <script> resolves instead of stalling the
-//    tab; a missing override simply falls back to the base;
+//  - a script → a network error (the error event resolves a parser-blocking
+//    <script> at once, and the caller learns it is missing; an empty 200 hid
+//    that); a style → an EMPTY 200 so the sheet resolves; a missing override
+//    simply falls back to the base;
 //  - anything else → a clean error the caller can handle.
 //
 // A DEGRADE NEVER CROSSES THE CHANNEL BOUNDARY (bug ledger #3, 2026-08-06).
@@ -282,7 +283,10 @@ async function degrade(req, url, cache) {
     if (pin) return notInstalled(pin[1]);
   }
   if (req.destination === 'script' || /\.m?js(\?|$)/.test(url.pathname)) {
-    return new Response('', { status: 200, headers: { 'Content-Type': 'application/javascript' } });
+    // A network error, never an empty 200: an empty script "loads", runs nothing and fires no error event, so a unit
+    // silently never exists (mesh seat without rcfollow.js). An error fires the script's error event at once, so a
+    // parser-blocking tag still does not stall, and the page's load gate (run.html unitsGate) sees it and retries.
+    return Response.error();
   }
   if (req.destination === 'style' || /\.css(\?|$)/.test(url.pathname)) {
     return new Response('', { status: 200, headers: { 'Content-Type': 'text/css' } });

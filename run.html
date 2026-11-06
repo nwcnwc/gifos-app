@@ -511,6 +511,11 @@ function chk(){if(shown)return;if(h.style.getPropertyValue('--accent'))show();el
 requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GifOS">
+<script id="gifos-load-gate">/* Load completeness: record every <script src> that failed to load (error events do not bubble: capture on window), and every script that threw while a failed one was missing. startMesh() checks this before it seats anything (see unitsGate). */(function(){var g=window.__gifosLoadGate={failed:[],threw:[],tries:0,state:'ok',trace:[]};
+function key(u){try{var x=new URL(u,location.href);return x.pathname.replace(/^\//,'');}catch(e){return String(u);}}
+/* The offline layer (sw.js) answers an uncached script with an EMPTY 200 when the network fails: no error event, a unit that never ran. A script that arrives with no body counts as failed too. */
+try{new PerformanceObserver(function(l){l.getEntries().forEach(function(en){try{if(en.initiatorType==='script'&&en.decodedBodySize===0&&/\.js$/.test(new URL(en.name).pathname)){var k=key(en.name);if(g.failed.indexOf(k)<0)g.failed.push(k);}}catch(x){}});}).observe({type:'resource',buffered:true});}catch(e){}
+window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagName==='SCRIPT'&&t.src){var k=key(t.src);if(g.failed.indexOf(k)<0)g.failed.push(k);}else if(e&&e.filename&&g.failed.length){var f=key(e.filename);if(g.threw.indexOf(f)<0)g.threw.push(f);}}catch(x){}},true);})();</script>
 <script src="js/sw-register.js" defer></script>
 <script src="js/build.js" defer></script>
 <script src="js/build-badge.js" defer></script>
@@ -17078,7 +17083,49 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (v === step + '-hang-once') { debugFailUsed = true; return new Promise(() => {}); }
       return p;
     }
+    // LOAD COMPLETENESS: a page that missed one of its own scripts (a flaky network) must not seat: a seat without every unit throws "is not a function" in the middle of a room.
+    // A missing script is loaded again (in page order, with backoff); if it still fails the page refuses to join, says so on screen and in the DEBUG trace.
+    const UNITS_BACKOFF = [0, 400, 1200, 2400];
+    function unitsGate() {
+      const g = window.__gifosLoadGate;
+      if (!g || g.state === 'ok' && !g.failed.length) return false;   // the normal page: nothing failed, no wait
+      if (g.state === 'ok' || g.state === 'retry') {
+        g.state = 'retry';
+        if (!g.running) {
+          g.running = true;
+          const order = Array.from(document.querySelectorAll('script[src]')).map((el) => { try { return new URL(el.src, location.href).pathname.replace(/^\//, ''); } catch (e) { return ''; } });
+          const note = (m) => { g.trace.push(m); if (typeof clog === 'function') clog('load-gate ' + m); };
+          const load = (src) => new Promise((res) => { const el = document.createElement('script'); el.async = false; el.src = src + '?lc=' + g.tries; el.onload = () => { const en = performance.getEntriesByName(el.src).pop(); if (en && en.decodedBodySize === 0) { el.remove(); res(false); } else res(true); }; el.onerror = () => { el.remove(); res(false); }; document.head.appendChild(el); });
+          (async () => {
+            note('missing ' + g.failed.join(',') + (g.threw.length ? ' threw ' + g.threw.join(',') : ''));
+            let todo = g.failed.slice();
+            for (const w of UNITS_BACKOFF) {
+              if (w) await new Promise((r) => setTimeout(r, w));
+              g.tries++;
+              const first = Math.min.apply(null, todo.map((k) => order.indexOf(k)).filter((i) => i >= 0));
+              const redo = todo.concat(g.threw.filter((k) => order.indexOf(k) > first && todo.indexOf(k) < 0)).sort((x, y) => order.indexOf(x) - order.indexOf(y));
+              const bad = [];
+              for (const k of redo) { if (!(await load(k))) bad.push(k); }
+              note('try ' + g.tries + ' reloaded ' + redo.length + ' still-missing ' + bad.length);
+              todo = bad.filter((k) => g.failed.indexOf(k) >= 0 || todo.indexOf(k) >= 0);
+              if (!bad.length) break;
+            }
+            g.running = false;
+            if (!todo.length) { g.failed.length = 0; g.threw.length = 0; g.state = 'ok'; note('recovered'); startMesh(); return; }
+            g.state = 'refused'; g.missing = todo;
+            note('refuse ' + todo.join(','));
+            // the status line is rewritten by the page's own ticks: the refusal also lives in a banner nothing else touches
+            const msg = uiText('stLoadIncomplete', 'This page did not finish loading, so it cannot join safely. Reload the page to try again.');
+            try { const d = document.createElement('div'); d.id = 'load-gate-msg'; d.setAttribute('role', 'alert'); d.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:2147483647;padding:14px 16px;background:#b00020;color:#fff;font:16px system-ui,sans-serif;text-align:center'; d.textContent = msg; document.body.appendChild(d); } catch (e) {}
+            setStatus(msg, true);
+          })();
+        }
+        return true;
+      }
+      return true;   // refused
+    }
     function startMesh() {
+      if (unitsGate()) return;
       const relay = relayUrl();
       if (!relay) { setStatus(uiText('stNoConnectionServiceIsSet', 'No connection service is set up, so nobody can be invited in.')); return; }
       if (meshNode) { try { meshNode.stop(); } catch (e) {} meshNode = null; }
@@ -36283,6 +36330,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // The seat's decision trace (the sim's JSONL shape {t, s, e, c, d}) rides a page ring while DEBUG is on
       // (meshTraceSink, the seat world's trace sink); meet.js writes it into each participant's jsonl.
       meshTraceForTest: () => !!DEBUG_ON,
+      countPeekForTest: (vp) => { const now = Date.now(); const d = roomDig(); const p = peers.get(vp), st = statusOf.get(vp), s = meshSeat();
+        let occHas = 0; if (s) for (const v of s.occ.values()) if (v === vp) occHas++;
+        let tab = null, forg = null, lt = null; try { const s = meshNode && meshNode.raw; if (s && s.s1tab) { tab = []; for (const [k, d] of s.s1tab) tab.push([String(k), String(d.by), d.at, Math.round(s.LT() - d.rx), d.n, d.leased || 0, String(s.occGet(k))]); } if (s && s.digForgot) forg = [...s.digForgot].map(([k, v]) => [String(k), String(v[0]), v[1]]); lt = s.LT(); } catch (e) { tab = String(e); }
+        return { tab, forg, lt, vp: String(vp), disp: displayCount(), pc: participantCount(), leaf: leafCount(), lp: livePeerCount(), kt: knownTotal(), dn: d ? d.n : null, part: d ? !!d.part : null, shown: shownPeerCount(), faces: facesOnScreen(), byes: (meshNode && meshNode.byesHeld) ? meshNode.byesHeld() : 0, past: roomPastSection(), deep: deepInView(),
+          v: { roster: rosterIds.includes(vp), peer: p ? { conn: !!p.connected, heard: Math.round((now - Math.max(p.lastHeard || 0, p.meshRxAt || 0)) / 1000) } : null, st: st ? Math.round((now - stSeen(st)) / 1000) : null, occ: occHas, first: occFirstSeen.has(vp) ? Math.round((now - occFirstSeen.get(vp)) / 1000) : null, gone: meshGone.has(vp) ? Math.round((now - meshGone.get(vp)) / 1000) : null } }; },
       memSamples: () => (window.__memSamples ? window.__memSamples.slice() : []),
       meshTraceDump: () => { const G = window.__meshTraceRing; return G ? G.ring.map((e) => e[1]) : []; },
       meshForensics: (since) => {
