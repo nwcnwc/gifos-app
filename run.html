@@ -2347,17 +2347,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   }
   /* The dock steps right when the column needs the room (--dockshift). */
   body .bar { margin-left: var(--dockshift, 0px); }
-  /* The sheet hangs off the dock; it stays put when the dock steps right, so its
-     last column (Help) does not leave the screen on a sideways SE. */
-  #barmore { margin-left: calc(-1 * var(--dockshift, 0px)); }
-  /* A phone sheet is the screen's width, so it also steps back by the
-     dock's drag (--dockx); a dock dragged left cut off its first column. */
+  /* The More sheet and the reactions tray are placed from the dock's real
+     box when they open (placeDockPopover): the side with room, inside the
+     window. The offsets below are only where they start before that. */
+  /* A sheet opened below the dock sits on it from underneath. */
   @media (max-width: 700px), (max-height: 500px) {
-    #barmore { margin-left: calc(-1 * (var(--dockshift, 0px) + var(--dockx, 0px))); }
-    /* A dock dragged up: the sheet fits the room on its larger side (placeDock). */
-    /* vh first: a floor that does not know dvh still caps the raised sheet. */
-    .bar.dock-raised:not(.collapsed) #barmore { max-height: var(--sheet-room, 50vh); max-height: var(--sheet-room, 50dvh); }
-    .bar.dock-raised.sheet-below:not(.collapsed) #barmore { top: 100%; bottom: auto; }
+    .bar:not(.collapsed) #barmore[data-side="below"] { border-radius: 0 0 22px 22px; }
   }
   body.solo-app #callstate { display: none !important; }
   #call-live, #call-rec {
@@ -31776,6 +31771,65 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     if (lobWatch) callStateWatch.observe(lobWatch, { attributes: true, attributeFilter: ['class'] });
     paintCallState();
 
+    // ---- popovers that hang off the dock (More, Reactions) ---------------------
+    // The dock can be dragged anywhere, so a popover is placed from where the
+    // dock really is, never at a fixed offset: above the dock when it fits
+    // there, else below it when it fits there, else on the larger side with its
+    // height capped to that side (it scrolls inside). Sideways it centres on
+    // the dock and is kept inside the window. The window is the visual
+    // viewport, so an on-screen keyboard counts as covered. Width and the
+    // design's own height cap come from the stylesheet.
+    function placeDockPopover(el, anchor) {
+      if (!el || !anchor || !el.getClientRects().length) return null;
+      const s = el.style;
+      s.maxHeight = ''; s.bottom = 'auto'; s.right = 'auto'; s.transform = 'none'; s.margin = '0';
+      s.top = '0px'; s.left = '0px';
+      const o = el.getBoundingClientRect(); // the origin of the box that holds it
+      const cap = parseFloat(getComputedStyle(el).maxHeight);
+      const want = Math.min(el.scrollHeight + (el.offsetHeight - el.clientHeight), isFinite(cap) ? cap : Infinity);
+      const vv = window.visualViewport;
+      const vl = vv ? vv.offsetLeft : 0, vt = vv ? vv.offsetTop : 0;
+      const vw = vv ? vv.width : window.innerWidth, vh = vv ? vv.height : window.innerHeight;
+      const pad = 8, gap = 8;
+      const a = anchor.getBoundingClientRect();
+      const above = Math.floor(a.top - gap - (vt + pad));
+      const below = Math.floor((vt + vh - pad) - (a.bottom + gap));
+      const side = want <= above ? 'above' : (want <= below ? 'below' : (above >= below ? 'above' : 'below'));
+      const room = Math.max(0, side === 'above' ? above : below);
+      const h = Math.min(want, room);
+      const w = o.width;
+      const y = side === 'above' ? a.top - gap - h : a.bottom + gap;
+      const x = w >= vw - 2 * pad ? vl + (vw - w) / 2
+        : Math.max(vl + pad, Math.min(vl + vw - pad - w, a.left + a.width / 2 - w / 2));
+      s.maxHeight = Math.floor(Math.min(room, isFinite(cap) ? cap : room)) + 'px';
+      s.left = Math.round(x - o.left) + 'px';
+      s.top = Math.round(y - o.top) + 'px';
+      el.dataset.side = side;
+      return side;
+    }
+    // Every open popover of the dock, placed again: on open, on a drag, on a
+    // resize or rotation, and when the keyboard comes or goes.
+    function placeDockPopovers() {
+      const bar = document.querySelector('.bar');
+      if (!bar) return;
+      if (!bar.classList.contains('collapsed')) placeDockPopover(document.getElementById('barmore'), bar);
+      const tray = document.getElementById('reacttray');
+      if (tray && !tray.hasAttribute('hidden')) placeDockPopover(tray, bar);
+    }
+    {
+      let popFrame = 0;
+      const later = () => {
+        if (popFrame) return;
+        popFrame = requestAnimationFrame(() => { popFrame = 0; try { placeDockPopovers(); } catch (e) {} });
+      };
+      window.addEventListener('resize', later);
+      window.addEventListener('orientationchange', later);
+      if (window.visualViewport) {
+        visualViewport.addEventListener('resize', later);
+        visualViewport.addEventListener('scroll', later);
+      }
+    }
+
     // ---- controls: mic + camera (traffic-light icons), blur (3-way slider) -----
     const micBtn = document.getElementById('mic');
     const unmuteBtn = document.getElementById('unmute');
@@ -31827,6 +31881,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // The fold is what shows Live again. Measure it after the class
         // changes, not while More still hides the row.
         try { paintCallState(); } catch (e) {}
+        if (!collapsed) placeDockPopovers();
       }
       toggle.onclick = function () {
         const next = !bar.classList.contains('collapsed'); apply(next);
@@ -31982,28 +32037,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         bar.style.right = '';
         bar.style.top = '';
         bar.style.bottom = '';
-        // The phone's More sheet rides inside this transform; --dockx lets it
-        // step back by the drag so it stays on the screen (#barmore below).
-        const dx = dockx + 'px';
-        if (bar.style.getPropertyValue('--dockx') !== dx) bar.style.setProperty('--dockx', dx);
-        // A dock dragged up leaves less room above it than the sheet's usual
-        // cap, so the sheet takes the larger side of the dock and fits it.
-        // offsetTop is where the fixed dock rests before its transform.
-        const raised = docky > 0;
-        bar.classList.toggle('dock-raised', raised);
-        if (raised) {
-          const restTop = bar.offsetTop - docky;
-          const above = Math.max(0, restTop - 8), below = Math.max(0, window.innerHeight - restTop - h - 8);
-          bar.classList.toggle('sheet-below', below > above);
-          const room = Math.round(Math.max(above, below)) + 'px';
-          if (bar.style.getPropertyValue('--sheet-room') !== room) bar.style.setProperty('--sheet-room', room);
-        } else bar.classList.toggle('sheet-below', false);
         const extra = tucked ? (h + Math.max(0, docky) + 40) : 0;
-        if (!extra && dockx === 0 && docky === 0 && !cx) {
-          bar.style.transform = '';
-          return;
-        }
-        bar.style.transform = 'translateX(-50%) translate(' + (cx + dockx) + 'px, ' + (-docky + extra) + 'px)';
+        if (!extra && dockx === 0 && docky === 0 && !cx) bar.style.transform = '';
+        else bar.style.transform = 'translateX(-50%) translate(' + (cx + dockx) + 'px, ' + (-docky + extra) + 'px)';
+        // The open sheet and tray follow the dock to wherever it now stands.
+        placeDockPopovers();
       };
       const markTuck = (on) => {
         tucked = !!on;
@@ -32065,7 +32103,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       let fitFrame = 0;
       const fitWatch = new MutationObserver((recs) => {
         if (fitFrame) return;
-        if (!recs.some((r) => (r.type === 'childList' && r.target === bar) || (r.type === 'attributes' && r.target.parentElement === bar && r.target.id !== 'barmore'))) return;
+        // A popover's own placement (its style) is not a change to the dock's buttons.
+        if (!recs.some((r) => (r.type === 'childList' && r.target === bar) || (r.type === 'attributes' && r.target.parentElement === bar && r.target.id !== 'barmore' && !(r.target.id === 'reacttray' && r.attributeName === 'style')))) return;
         fitFrame = requestAnimationFrame(() => {
           fitFrame = 0;
           try { placeDock(); } catch (e) {}
@@ -32536,6 +32575,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const rh = document.getElementById('react-hand');
           if (rh) rh.hidden = !canRaiseHand();
           tray.removeAttribute('hidden');
+          placeDockPopovers();
           btn.setAttribute('aria-expanded', 'true');
           btn.setAttribute('aria-pressed', 'true');
           btn.classList.add('on');
