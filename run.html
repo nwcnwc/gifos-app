@@ -35875,7 +35875,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       ccOn: () => !!myStatus.cc,
       // Strip-teardown forensics (e2e-mosaic): whose status holds a stage
       // seat, and which stg pipes this page still holds. Read-only peeks.
-      statusPeekForTest: (id) => { const st = statusOf.get(id); return st ? { stg: st.stg || 0, ageMs: Date.now() - (st.at || 0), rxAgeMs: Date.now() - (st.rx || 0) } : null; },
+      statusPeekForTest: (id) => { const st = statusOf.get(id); return st ? { stg: st.stg || 0, camOff: st.camOff === true, ageMs: Date.now() - (st.at || 0), rxAgeMs: Date.now() - (st.rx || 0) } : null; },
       // ORIGIN-side beat forensics (e2e-handq's starved-box dump): how stale is
       // MY OWN last broadcast (myStatus.at — the stamp every receiver ages),
       // which clock drives it, and whether this page is even seated. Separates
