@@ -24934,6 +24934,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (rowHeadOut && rowHeadOut.pc === c.pc && rowHeadOut.r === c.r) {
         if (rowHeadOut.pid !== pid) { dbgRowHead('new-head'); rowHeadOut = null; }
         else if (s.headHeardSince(rowHeadOut.tick + 1)) { rowOutSkip.set(pid, now + 30000); dbgRowHead('heard'); rowHeadOut = null; }
+        // The head's view flowing again is the head back, on the evidence that called it out: a seat's first-hand word
+        // of its head can stay old for minutes while the head's feed runs, and the heir would stand in for a live head
+        // (its branch then hears nothing from outside the row, since an heir holds no outside of its own).
+        else if (rowHeadFeedBack(pid, now)) { rowOutSkip.set(pid, now + 30000); dbgRowHead('heard:feed'); rowHeadOut = null; }
       } else rowHeadOut = null;
       if (!rowHeadOut && pid && !(rowOutSkip.get(pid) > now)) {
         const pri = mosIn.get('sdm'), fb = mosFb.get('sdm');
@@ -24942,6 +24946,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const out = !!rowHeadOut || s.headGoneView;
       if (rowWasOut && !out) rowHoldUntil = now + MOS_SETTLE + 2000;   // the heir's copy stays while the row fails back
       rowWasOut = out; return out;
+    }
+    // The head's view is back: my row-view claim is on that head, not dead, and its bytes advanced within the silence bound.
+    function rowHeadFeedBack(pid, now) {
+      const pri = mosIn.get('sdm');
+      return !!(pri && pri.via === pid && !pri.deadAt && rowFeed.via === pid && rowFeed.at && now - rowFeed.at < ROW_SILENT_MS);
     }
     // A carrier whose target just moved up to its row's head cell keeps handing it the row's product (L28 at both ends), so the
     // new head's view does not go dark between the carried copy and the direct one.
