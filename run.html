@@ -1094,6 +1094,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   #fsview.on { display: block; }
   body.fsopen #grid video { visibility: hidden; }
   #fsmain { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+  /* A face fills the screen: a landscape camera on a portrait phone would
+     otherwise be a thin strip between two black bars. Cropped at the same
+     point as the meeting tiles, so the head stays in view. A shared screen
+     or a packed picture keeps contain (data-fit unset), so nothing is cut. */
+  #fsmain[data-fit="cover"] { object-fit: cover; object-position: 50% 40%; }
   /* A camera-off (or moderated) talker is a name card. The video element stays
      in the tree but must not paint: srcObject is null, and this hides any
      frame that was still attached. */
@@ -8379,11 +8384,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // Follow speaker does not skip a camera-off person: that person is a
     // name card in the strip (fsSources).
+    // Each source says what it carries. fit 'cover' is one camera face, which
+    // fills the screen; 'contain' is a shared screen, a service program or a
+    // packed picture of several people, which must show whole. The stage is
+    // one face only while one person is on it and nobody shares.
     function fsSources() {
       const out = [];
+      let stageFit = null;
       for (const v of stagefeedEl.querySelectorAll('.rowtile video')) {
         if (v.classList.contains('stageface')) continue;
-        if (pipReady(v)) out.push({ key: 'stage:' + ((v.closest('.rowtile') || {}).dataset || {}).row, label: 'On stage', v });
+        if (!pipReady(v)) continue;
+        if (!stageFit) stageFit = (BROADCAST || screenSharers().length || stageIds().length !== 1) ? 'contain' : 'cover';
+        out.push({ key: 'stage:' + ((v.closest('.rowtile') || {}).dataset || {}).row, label: 'On stage', v, fit: stageFit });
       }
       if (BROADCAST) return out;
       for (const [pid, p] of peers) {
@@ -8396,11 +8408,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const blocked = forcedCamOff(pid) || (typeof shareBlocked === 'function' && shareBlocked(pid));
         const dark = !pipReady(p.video) || seatDark(statusOf.get(pid)) || blocked;
         if (dark) out.push({ key: 'peer:' + pid, label: label, v: null, dark: true });
-        else out.push({ key: 'peer:' + pid, label: label, v: p.video, bl: blurLevelFor(pid) });
+        else out.push({ key: 'peer:' + pid, label: label, v: p.video, bl: blurLevelFor(pid), fit: sharingScreen(pid) ? 'contain' : 'cover' });
       }
       const sd = stadiumEl.querySelector('[data-row="sd"] video');
-      if (pipReady(sd)) out.push({ key: 'sd', label: 'The stadium', v: sd });
-      if (meTile && !seatDark(myStatus) && pipReady(meTile.video)) out.push({ key: 'me', label: 'You', v: meTile.video });
+      if (pipReady(sd)) out.push({ key: 'sd', label: 'The stadium', v: sd, fit: 'contain' });
+      if (meTile && !seatDark(myStatus) && pipReady(meTile.video)) out.push({ key: 'me', label: 'You', v: meTile.video, fit: myStatus.scr ? 'contain' : 'cover' });
       return out;
     }
     function fsPaintSel() { for (const th of fsstrip.children) th.classList.toggle('sel', th.dataset.key === fsSel); }
@@ -8458,8 +8470,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           showName(false);
         }
         fsmain.dataset.key = main.key;
+        if (main.fit === 'cover') fsmain.dataset.fit = 'cover'; else delete fsmain.dataset.fit;
       } else {
-        fsmain.srcObject = null; fsmain.dataset.key = ''; fsmain.classList.remove('dark'); fsBlurClass(fsmain, 0);
+        fsmain.srcObject = null; fsmain.dataset.key = ''; fsmain.classList.remove('dark'); fsBlurClass(fsmain, 0); delete fsmain.dataset.fit;
         if (identOn) identCard();
         else if (broadcastFs) {
           const lineEl = document.getElementById('bc-stage-line');
@@ -8565,6 +8578,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       document.body.classList.remove('fsopen');
       fsmain.srcObject = null;
       fsmain.classList.remove('dark');
+      delete fsmain.dataset.fit;
       fsname.classList.remove('on', 'ident', 'pic');
       for (const tv of fsstrip.querySelectorAll('video')) tv.srcObject = null; // no leftover sinks — decode work ends with the view
       fsstrip.textContent = ''; fsstrip.dataset.set = '';
@@ -37033,7 +37047,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       fsSourcesForTest: () => fsSources().map((s) => ({ key: s.key, bl: s.bl || 0 })),
       openFsForTest: (key) => openFsView(key),
       closeFsForTest: () => closeFsView(),
-      fsMain: () => ({ key: fsmain.dataset.key || null, bl: fsmain.classList.contains('blur2') ? 2 : fsmain.classList.contains('blur1') ? 1 : 0 }),
+      fsMain: () => ({ key: fsmain.dataset.key || null, bl: fsmain.classList.contains('blur2') ? 2 : fsmain.classList.contains('blur1') ? 1 : 0, fit: getComputedStyle(fsmain).objectFit }),
       fsThumbBlur: (key) => { const th = Array.from(fsstrip.children).find((t) => t.dataset.key === key); const tv = th && th.querySelector('video'); if (!tv) return null; return tv.classList.contains('blur2') ? 2 : tv.classList.contains('blur1') ? 1 : 0; },
       peerCamOff: (pid) => seatDark(statusOf.get(pid)),
       defyCamOffForTest: () => { if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return false; const t = localStream && localStream.getVideoTracks()[0]; if (!t) return false; camDefiant = true; t.enabled = true; myStatus.camOff = false; broadcastStatus(); return true; },
