@@ -295,7 +295,9 @@
       return heldRows;
     }
 
-    const total = () => { let t = 0; for (const v of tiles.values()) t += v.n; return t; };
+    // A tile's faces as drawn: its n cells less the ones the receiver hides (meta.hide, by cell id).
+    const vis = (t) => t.n - (t.hid ? t.hid.size : 0);
+    const total = () => { let t = 0; for (const v of tiles.values()) t += vis(v); return t; };
 
     // ---- DENSE MODE: compose composites, not faces (3 Oct 2026 audit) ----
     // Per-face blits cost one drawImage per face in the room, and a Section-1
@@ -334,9 +336,14 @@
     // list stays within STAD_CAP draws, so loose faces can fill the gaps
     // between big blocks. paint() keeps whichever layout scores better.
     function denseItems(order, splitOn) {
-      const items = order.map((t) => Object.assign({ t, j: -1 }, blockGeom(t)));
+      const items = [];
+      for (const t of order) {
+        const g = blockGeom(t);
+        if (!(t.hid && t.hid.size && g.sw && g.sh && t.n <= STAD_CAP)) { items.push(Object.assign({ t, j: -1 }, g)); continue; }
+        for (let j = 0; j < t.n; j++) if (!t.hid.has(j)) items.push({ t, j, w: 1, h: 1, sw: g.sw, sh: g.sh, src: faceSrcRect(j, t.n, t.cols, g.sw, g.sh) });
+      }
       let budget = STAD_CAP - items.length;
-      const small = items.filter((it) => it.t.n > 1 && it.t.n <= STAD_CAP && it.sw && it.sh)
+      const small = items.filter((it) => it.j < 0 && it.t.n > 1 && it.t.n <= STAD_CAP && it.sw && it.sh)
         .sort((a, b) => a.t.n - b.t.n);
       const split = new Set();
       for (const it of small) { if (it.t.n - 1 > budget) break; budget -= it.t.n - 1; split.add(it); }
@@ -457,7 +464,7 @@
         // videos report currentTime; canvases cannot, so force a redraw
         if (el && typeof el.currentTime === 'number') s += id + ':' + el.currentTime.toFixed(3) + ';';
         else return null;
-        s += t.n + 'x' + t.cols + ';';
+        s += t.n + 'x' + t.cols + (t.hid && t.hid.size ? '-' + [...t.hid].join('.') : '') + ';';
         if (t.dark) s += 'D|';
         if (t.blur) s += 'B' + t.blur + '|';
         if (t.lbl) s += (t.lbl.talking ? 'T' : '') + (t.lbl.hand ? 'H' : '') + (t.lbl.name || '') + '|';
@@ -593,8 +600,9 @@
         const el = t.el;
         const sw = el ? (el.videoWidth || el.width || 0) : 0;
         const sh = el ? (el.videoHeight || el.height || 0) : 0;
-        for (let j = 0; j < t.n; j++, f++) {
-          const dx = (f % G) * cell, dy = Math.floor(f / G) * cell;
+        for (let j = 0; j < t.n; j++) {
+          if (t.hid && t.hid.has(j)) continue; // a cell this receiver hides takes no place: the grid stays gapless
+          const dx = (f % G) * cell, dy = Math.floor(f / G) * cell; f++;
           // VIDEO OFF BY AN ADMIN. The cell keeps its place, because a receiver
           // cuts faces out by position, and it keeps the name. No pixel of the
           // source is drawn, whatever the source still sends.
@@ -638,8 +646,12 @@
         // ids: who sits in each of this tile's n cells (a leaf's pid, a block's
         // relayed cell list) — read back by cellIds() for the pack's own meta.
         const ids = (meta && Array.isArray(meta.ids) && meta.ids.length === n) ? meta.ids.slice() : (n === 1 && meta && meta.pid != null) ? [String(meta.pid)] : null;
+        // hide: ids of cells this receiver must not show (its own row, docs/media-plane.md "One pack down the tree").
+        // Only a block that names its cells can hide any: with no ids every cell shows, never a blank in their place.
+        let hid = null;
+        if (ids && meta && Array.isArray(meta.hide) && meta.hide.length) { const h = new Set(meta.hide.map(String)); for (let j = 0; j < n; j++) if (ids[j] != null && h.has(String(ids[j]))) (hid || (hid = new Set())).add(j); }
         tiles.set(id, { ord, el, streamId: sid, n, cols, lbl: (meta && meta.lbl) || null, fit: (meta && meta.fit) || null,
-          dark: !!(meta && meta.dark), blur: Math.max(0, Math.min(2, (meta && meta.blur) | 0)), ids });
+          dark: !!(meta && meta.dark), blur: Math.max(0, Math.min(2, (meta && meta.blur) | 0)), ids, hid });
       },
       // Update just the overlay (name/hand/talking) without touching the source
       // — called every tick from status/audio so the frame tracks speech live.
@@ -682,7 +694,7 @@
         if (DENSE && total() > STAD_CAP) return null;   // paint's own dense rule, decided here without waiting for a paint
         const out = [];
         const order = [...tiles.values()].sort((a, b) => (a.ord < b.ord ? -1 : a.ord > b.ord ? 1 : 0));
-        for (const t of order) for (let j = 0; j < t.n; j++) out.push(t.ids ? (t.ids[j] == null ? null : String(t.ids[j])) : null);
+        for (const t of order) for (let j = 0; j < t.n; j++) { if (t.hid && t.hid.has(j)) continue; out.push(t.ids ? (t.ids[j] == null ? null : String(t.ids[j])) : null); }
         return out;
       },
       count: total, cols: () => G, rows: () => R,
