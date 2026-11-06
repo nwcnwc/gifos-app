@@ -10705,6 +10705,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       src.style.cssText = 'position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1';
       src.srcObject = new MediaStream([srcTrack]);
       document.body.appendChild(src);
+      startLocalView(src, srcTrack, 0); // the pipe paints from this element: it must start too
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       const tune = blurPipeTune(level);
@@ -10946,6 +10947,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (track && track.requestFrame) { try { track.requestFrame(); } catch (e) {} }
       return track;
     }
+    // A LOCAL PICTURE MUST START. These tracks are canvas streams made on this
+    // page (my sent picture, the letter cards). WebKit now and then leaves a
+    // muted <video> on a canvas stream at readyState 0 for good, whether it was
+    // bound before the canvas painted or after: a black self view, and the
+    // black-camera watch then restarted a working camera. A fresh wrapper of
+    // the same track starts it. Look again shortly after each bind, a few
+    // times, while the element still shows that track and has no frames.
+    function startLocalView(video, track, n) {
+      setTimeout(() => {
+        const s = video.srcObject;
+        if (!s || typeof s.getVideoTracks !== 'function' || s.getVideoTracks()[0] !== track) return; // rebound since
+        if (video.videoWidth > 0 || track.readyState !== 'live') return;
+        video.srcObject = new MediaStream([track]);
+        const pr = video.play(); if (pr && pr.catch) pr.catch(() => {});
+        if (track.requestFrame) { try { track.requestFrame(); } catch (e) {} }
+        if (n < 3) startLocalView(video, track, n + 1);
+      }, 700 * (n + 1));
+    }
     // stream may be a function that makes it: called only when the tile needs a new one. Every MediaStream built on a track
     // lives as long as that track (the track keeps each stream that holds it), so a stream made per repaint and thrown away is kept.
     function showAvatarTrack(video, stream, track) {
@@ -10955,6 +10974,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         video.srcObject = typeof stream === 'function' ? stream() : stream;
         const pr = video.play();
         if (pr && pr.catch) pr.catch(() => {});
+        startLocalView(video, track, 0);
       }
       if (track.requestFrame) {
         try { track.requestFrame(); } catch (e) {}
@@ -11279,6 +11299,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!cur || cur.getVideoTracks()[0] !== vt) {
           meTile.video.srcObject = new MediaStream([vt]);
           const pr = meTile.video.play(); if (pr && pr.catch) pr.catch(() => {});
+          startLocalView(meTile.video, vt, 0);
         }
       }
       // MAIN senders only (p.mainV / p.mainA — aux senders carry other
