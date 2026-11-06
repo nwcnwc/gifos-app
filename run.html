@@ -17728,7 +17728,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       lgLvlShown = lvl;
       if (lvl >= 1) { for (const jk of lgWoken) setJobActive(jk, false); lgWoken.clear(); }
       const fps = compFps();
-      for (const pk of [prodPack, roomPack, sdView, ...l14Packs.values()]) { try { if (pk) pk.setFps(fps); } catch (e) {} }
+      for (const pk of [prodPack, roomPack, ...l14Packs.values()]) { try { if (pk) pk.setFps(fps); } catch (e) {} }
       try { adapt(); } catch (e) {}
     }
     GifOS.meshMedia.workerClock(1000, () => { try { lgLevelTick(); } catch (e) {} });
@@ -23540,13 +23540,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // shows whole: never a blank where someone else is). Painted locally, never
     // encoded. `sound` is the stream whose audio I hear with it.
     let sdViewSrc = null, sdViewSt = null;
+    const VIEW_FPS = 30;
     function paintRoomView(src, meta, sound, c, lagMs) {
       const el = src ? heldEl(src, lagMs) : (avHoldStop(), null);
       if (el && meta && meta.n) {
         // Own-row hiding stops at section size (Nathan): a Stadium of more than C×C people shows everyone and hides nothing.
         const hide = [];
         if (c && meta.n <= SCALE.C * SCALE.C) for (let j = 0; j < SCALE.C; j++) { const pid = j === c.i ? myId : occPid({ pc: c.pc, r: c.r, i: j }); if (pid) hide.push(String(pid)); }
-        if (!sdView) sdView = MM.createPacker({ shape: 'stad', fps: compFps() }).start();
+        if (!sdView) sdView = MM.createPacker({ shape: 'stad', fps: VIEW_FPS }).start();   // a local paint, never encoded: draw at display rate so the view adds little delay
         sdView.setTile('v', 0, el, null, Object.assign({}, meta, { hide }));
         sdViewSrc = src;
       } else if (sdView) sdView.delTile('v');
@@ -26561,7 +26562,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               if (rowIn) setBlock(roomPack, 'q' + q, 'c' + q, rowIn); else roomPack.delTile('q' + q);
               if (rowIn && rowIn.via !== occPid({ pc: 0, r: q, i: 0 })) { const sk = meshSeat(); if (sk && sk.keepAdd) sk.keepAdd(rowIn.via, 16); } // L28: a carried copy stays until the direct one lands
             }
-            if (prodPack.count() > 0) roomPack.setTile('p', 'c' + c.r, prodPack.canvas, null, prodMeta()); else roomPack.delTile('p');
+            // My row straight from its sources (faces and child blocks), not through my product's canvas: one paint, not two in series.
+            roomPack.delTile('p');
+            for (let j = 0; j < C; j++) {
+              const fp0 = j === c.i ? myId : (actHead && j === 0 ? null : occPid({ pc: c.pc, r: c.r, i: j }));
+              const fp = fp0 && stagers.includes(fp0) ? null : fp0;
+              const sc = fp ? srcFor(fp) : null;
+              if (sc && sc.el) roomPack.setTile('f' + j, 'c' + c.r + 'a' + j, sc.el, null, { n: 1, cols: 1, lbl: stadLbl(fp), fit: fitFor(fp), pid: fp });
+              else roomPack.delTile('f' + j);
+              const sub = mosIn.get('sub:' + j);
+              if (sub) setBlock(roomPack, 's' + j, 'c' + c.r + 'b' + j, sub); else roomPack.delTile('s' + j);
+            }
+            l14Blocks(roomPack, null, (i) => 'c' + c.r + 'd' + i);
             if (roomPack.count() > 0) { roomEl = roomPack.canvas; roomMeta = packMeta(roomPack); roomV = packLoopTrack(roomPack.track) || roomPack.track; }
           } else {
             if (roomPack) { roomPack.stop(); roomPack = null; }
@@ -26981,8 +26993,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       gatePack(stripPack);
       // The room pack paints while anyone takes it: a ship of its own track or of its encode-once copy, or my own view.
       if (roomPack && roomPack.setActive) roomPack.setActive(!!(roomPack.track && shippedTracks.has(roomPack.track)) || !!(packLoop && packLoop.rx && shippedTracks.has(packLoop.rx)) || !!(sdView && sdView.stats().active && roomPack.canvas && sdViewSrc === roomPack.canvas));
-      // My product paints for its ships, and for the room pack it sits in.
-      if (prodPack && prodPack.setActive) prodPack.setActive(!!(prodPack.track && shippedTracks.has(prodPack.track)) || !!(roomPack && roomPack.stats().active));
+      gatePack(prodPack);
       for (const pk of l14Packs.values()) gatePack(pk);
     }
 
