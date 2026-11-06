@@ -111,7 +111,7 @@
     function occView() { const s = raw(); if (!s) return new Map(); if (occCache && occAt === s.TICK && occGen === gen) return occCache; occCache = mapCells(s.occ); occAt = s.TICK; occGen = gen; return occCache; }
     function linkSet(want) { const s = raw(), out = new Set(); if (!s) return out; const a = []; s.linkPeers(a, want); for (const x of a) { const p = P(x); if (p != null && p !== me) out.add(p); } return out; }
     function keepSet() { const s = raw(), out = new Set(); if (!s || !s.keeps) return out; for (const k of s.keeps) if (s.TICK < k.until) { const p = P(k.peer); if (p != null) out.add(p); } return out; }
-    const counters = { gspInAll: 0, gspRefused: 0, gspForged: 0, gspDropped: 0 };
+    const counters = { gspInAll: 0, gspRefused: 0, gspForged: 0, gspDropped: 0, gspStale: 0 };
     const view = {
       id: me,
       get raw() { return raw(); },
@@ -184,6 +184,15 @@
 
     // ---- gossip ---------------------------------------------------------------------------------------------
     let gseq = Date.now();   /* a gossip id must not repeat across a reload of the same identity: the room still holds the old ones as seen and drops the new as copies */ const gseen = new Map(); let grecent = []; const bkt = new Map();
+    // THE NEWEST VERIFIED GOSSIP FROM A SOURCE SETS ITS MARK. gseen forgets a gid after ten minutes (or past 65536
+    // entries), so a frame delayed longer than that (a page stalled, then draining its channels) read as new on
+    // every page and was flooded again by each of them. A gid is src:seq with seq counting up for the life of the
+    // identity (gseq), so a frame this far behind the newest verified seq from its source is minutes old on every
+    // path: nothing new, not verified, never passed on. Only a verified newer seq moves the mark.
+    const gmark = new Map(); const GMARK_BEHIND = 1024;
+    const gseqOf = (gid, src) => +gid.slice(src.length + 1);
+    const gstale = (gid, src) => { const mk = gmark.get(src); if (mk === undefined) return false; const n = gseqOf(gid, src); return Number.isFinite(n) && n < mk - GMARK_BEHIND; };
+    const gmarkUp = (gid, src) => { const n = gseqOf(gid, src); if (!Number.isFinite(n) || gmark.get(src) > n) return; gmark.set(src, n); if (gmark.size > 4096) gmark.delete(gmark.keys().next().value); };
     function sectionPeers() {
       const s = raw(), out = new Set(); if (!s || !s.hasCoord) return out;
       for (const olc of o.ownedLinks(s.coord)) { if (olc.pc !== s.coord.pc) continue; const x = s.occ.get(olc.pc * 65536 + olc.r * 256 + olc.i); const p = P(x); if (p != null && p !== me) out.add(p); }
@@ -205,7 +214,7 @@
       const sc = opt && opt.scope === 'section' ? (s.hasCoord ? s.coord.pc : null) : undefined;
       if (sc === null) return;
       const eph = !!(opt && opt.ephemeral);
-      const gid = me + ':' + (++gseq); gseen.set(gid, T());
+      const gid = me + ':' + (++gseq); gseen.set(gid, T()); gmarkUp(gid, me);
       const tx = new Map();
       if (!eph) remember(gid, me, payload, sc, 0, undefined, tx);
       for (const p of peersFor(sc)) { o.emit(p, frameOf({ gid, src: me, m: payload, sc, eph })); tx.set(p, 1); }
@@ -217,9 +226,10 @@
       const scoped = m.t === 'GSPS';
       if (scoped && (!Number.isInteger(m.sc) || !s.hasCoord || s.coord.pc !== m.sc)) return;
       if (typeof m.gid !== 'string' || typeof m.src !== 'string' || !m.gid.startsWith(m.src + ':')) { counters.gspForged++; return; }
+      if (gstale(m.gid, m.src)) { counters.gspStale++; return; }
       if (gseen.has(m.gid)) return;
       if (!budget(m.lk != null ? m.lk : m.from, m.src)) { counters.gspDropped++; return; }
-      gseen.set(m.gid, T());
+      gseen.set(m.gid, T()); gmarkUp(m.gid, m.src);
       if (gseen.size > 4096) { for (const [k, at] of gseen) { if (T() - at > 600) gseen.delete(k); else break; } }
       if (gseen.size > 65536) { let n = gseen.size - 32768; for (const k of gseen.keys()) { if (n-- <= 0) break; gseen.delete(k); } }
       ids.learn(m.src);
@@ -382,8 +392,8 @@
     // ---- per tick (after the seat's tick) -------------------------------------------------------------------------
     function afterTick() { const s = raw(); feed(s); if (s && !(s.TICK & 63)) factsSweep(s.TICK); bump(); replayNew(); refan(); }
 
-    // seen(gid): a gossip frame I already took (the wire skips the signature check for its later copies)
-    const seen = (gid) => typeof gid === 'string' && gseen.has(gid);
+    // seen(gid): a gossip frame I already took, or one behind its source's mark (the wire skips the signature check for both)
+    const seen = (gid) => typeof gid === 'string' && (gseen.has(gid) || gstale(gid, gid.slice(0, gid.lastIndexOf(':'))));
     return { ids, view, gossip, gossipRecv, countForged: () => { counters.gspForged++; }, seen, setKicks, kickTally, kickDevs, kickCarry, kicked, setLeaf, setRefuses, roomDigest, sideOut, sideIn, afterTick, bump };
   }
 
