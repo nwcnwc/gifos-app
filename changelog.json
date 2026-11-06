@@ -13,7 +13,8 @@
         "Dates and times in meetings show in your language's format.",
         "Reloading the page keeps your seat in a meeting: you come back to the same place instead of queueing as a newcomer.",
         "The waiting room is for admin rooms only. In an open room there is no waiting-room button and nobody is held at the door; in an admin room the admin's Admit opens every door.",
-        "A new broadcast starts with neutral wording; the run-of-show is an optional host template."
+        "A new broadcast starts with neutral wording; the run-of-show is an optional host template.",
+        "Captions are sent to the meeting by default, and you can turn that off in Settings. A new Transcript setting keeps a transcript for you or shares it with the room, writing down the people nobody is captioning by name or as Stage or Stadium, with the language of each line. The \"Transcribing\" mark is now \"Sending captions\" and shows only when it is true."
       ],
       "fixes": [
         "In a meeting with an admin password, setting or changing the password sends everyone who does not have the new one back to the door to type it, so people who slipped in early are asked too.",
