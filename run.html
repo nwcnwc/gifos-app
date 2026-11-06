@@ -18711,7 +18711,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const probe = document.createElement('canvas');
       probe.width = 32; probe.height = 18;
       const pctx = probe.getContext('2d', { willReadFrequently: true });
-      let darkTicks = 0, revives = 0, lastPainted = 0, endedTries = 0, tick = 0;
+      let darkTicks = 0, revives = 0, lastPainted = 0, endedTries = 0, tick = 0, viewKickAt = -99;
       // 0 = picture, 1 = dark, 2 = pure black, 3 = no frames. A dark room
       // still has sensor noise above 2; a camera that lost its frames paints
       // exact zeros.
@@ -18774,6 +18774,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // line. A dim room that is still sending frames is a room, not a
         // dead camera: it never counts toward a re-grab.
         const silent = window.__gifosForceBlackCamHold === true || (judge.muted && !painting);
+        // THE VIEW, NOT THE CAMERA. While the blur pipe paints from a camera
+        // that has frames, a self view with no frames is a <video> that never
+        // started on its bind, not a dead camera. WebKit leaves a muted
+        // <video> on a canvas stream unstarted now and then, and a fresh bind
+        // starts it. Re-bind the view (once every two seconds at most) and
+        // never re-grab a working camera for it.
+        const v = meTile && meTile.video;
+        if (!silent && painting && blurPipe && blurPipe.src && blurPipe.src.videoWidth > 0 && v && v.srcObject && !v.videoWidth) {
+          if (tick - viewKickAt >= 2) {
+            viewKickAt = tick;
+            const tracks = v.srcObject.getVideoTracks();
+            if (tracks.length) { v.srcObject = new MediaStream(tracks); const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); }
+          }
+          return;
+        }
         const shade = silent ? 0 : dark();
         if (silent || shade >= 2) {
           if (silent || shade === 2) showCamBack(true);
@@ -20422,7 +20437,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             maybeShowFlip();
             const n = meTile.tile.querySelector('.note'); if (n) n.remove();
             meTile.video.style.display = '';
-            wkBindVideo(meTile.video, localStream);
+            // The self tile shows the picture this page sends (updateTile and
+            // refreshOutbound bind it). Binding the raw camera here as well
+            // swapped the element's source twice within a few milliseconds,
+            // and WebKit left it loading for good: a black self view.
             meterFor('me', localStream);
             updateTile('me');
             // Any pc born between the knock and the grant was built recvonly —
@@ -33336,7 +33354,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             maybeShowFlip();
             const n = meTile.tile.querySelector('.note'); if (n) n.remove();
             meTile.video.style.display = '';
-            wkBindVideo(meTile.video, localStream);
+            // The self tile is bound by refreshOutbound below, to the picture this page sends.
             meterFor('me', localStream);
           } else {
             // partial stream (mic-only / cam-only): merge the missing kinds
@@ -36149,7 +36167,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             held.enabled = true;
             myStatus.camOff = false;
             try {
-              if (meTile && meTile.video) { meTile.video.style.display = ''; if (localStream) wkBindVideo(meTile.video, localStream); }
+              if (meTile && meTile.video) meTile.video.style.display = ''; // refreshOutbound and updateTile bind the sent picture
               paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateTile('me'); updateMediaSession();
             } catch (e) {}
             return { camera: true };
@@ -36167,7 +36185,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             myStatus.camOff = false;
             try { attachLocalTracks(); } catch (e) {}
             try {
-              if (meTile && meTile.video) { meTile.video.style.display = ''; wkBindVideo(meTile.video, localStream); const pr = meTile.video.play(); if (pr && pr.catch) pr.catch(() => {}); }
+              if (meTile && meTile.video) meTile.video.style.display = ''; // refreshOutbound and updateTile bind the sent picture
               const n = meTile && meTile.tile && meTile.tile.querySelector('.note');
               if (n) n.remove();
               paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateTile('me'); updateMediaSession();
