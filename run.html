@@ -21825,13 +21825,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // Drops the oldest by `at`, deleting by KEY: chat and trs are keyed by id,
     // trSeen by the line's text, and deleting by value.id trimmed only the
     // first two (trSeen grew for the life of the tab and sorted on every line).
+    // THE LINES A FULL HISTORY LET GO SET A FLOOR. A line at or behind the newest time ever trimmed from a map
+    // is older than everything held, so it is not new: it was held once and let go. Without the floor a trimmed
+    // line read as new again on every page that had let it go, was taken, trimmed at once, still counted as
+    // fresh, and rode the next 'hi' to the other pages, which took it the same way and sent it back: the old
+    // line circled the room for good, one history frame per link every ten seconds.
+    // The floor is kept on the map itself (map.floorAt): the newest `at` ever trimmed from it.
     function trimMap(map, max) {
       if (map.size <= max) return;
       const old = Array.from(map.entries()).sort((a, b) => (a[1].at || 0) - (b[1].at || 0));
-      for (let i = 0; i < old.length - max; i++) map.delete(old[i][0]);
+      let floor = map.floorAt || 0;
+      for (let i = 0; i < old.length - max; i++) { map.delete(old[i][0]); if ((old[i][1].at || 0) > floor) floor = old[i][1].at || 0; }
+      map.floorAt = floor;
     }
     function takeChat(m, backfill, opts) { // backfill: a 'hi' replay — bounded by its frame, not by the live limiter
-      if (!m || !m.id || chat.has(m.id)) return false;
+      if (!m || !m.id || chat.has(m.id) || ((m.at || 0) > 0 && (m.at || 0) <= (chat.floorAt || 0))) return false;
       const kept = chatTombs.get(m.id);
       if (kept && (!kept.ownBy || m.byId === kept.ownBy)) return false;
       // History off drops the replay. A question still lands: it is the Questions sheet, not the log.
@@ -29064,7 +29072,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (typeof window !== 'undefined' && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'transcript', line: { by: line.by, text: line.text, at: line.at, scribeBy: line.scribeBy || '' } });
     }
     function takeTr(m, backfill) { // backfill: a 'hi' replay — see takeChat
-      if (!m || !m.id || trs.has(m.id)) return false;
+      if (!m || !m.id || trs.has(m.id) || ((m.at || 0) > 0 && (m.at || 0) <= (trs.floorAt || 0))) return false;
       const writer = String(m.scribe || m.byId);
       // The flood limit is per writer AND voice: one captioning device writes
       // down a whole row, and a single shared budget dropped real sentences.
