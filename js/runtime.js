@@ -4478,7 +4478,7 @@
               }
               return { collections: cols };
             };
-            let stageBus = null, stageSigner = null, stageUnsub = null, snapTimer = null, deltaTimer = null;
+            let stageBus = null, stageSigner = null, stageUnsub = null;
             // Binary (My Media's photo/video Uint8Array) rides the state RAW:
             // the mesh transport (gifos-net seal/open) already round-trips a
             // typed array losslessly, and canonical() signs it to a stable
@@ -4541,23 +4541,28 @@
               if (appSeeded) return;
               Promise.resolve().then(() => sendAppBytes()).catch(() => {});
             };
-            const sendSnap = () => {
+            // THE PUMP (app-owner createStagePump) owns what leaves and when:
+            // the full-state snap (retained, for latecomers) and, per change,
+            // a delta of only the records that changed, coalesced to one batch
+            // per mesh tick. It used to sign and flood the FULL state 40 ms
+            // after every write: with every guest writing a heartbeat that was
+            // O(N) full states a second, flooded to every page.
+            let stagePump = null;
+            const signSend = (kind, body) => stageSigner.sign(sid, kind, body).then((f) => stageBus.send(kind, f));
+            const pumpEmit = (kind, x) => {
               if (!stageBus || !stageSigner) return Promise.resolve();
-              return db.getFullState().then((s) => {
-                const body = { name: manifest.name || 'App', state: filterForGuests(s), lead: leadBody() };
-                return stageSigner.sign(sid, 'snap', body).then((f) => stageBus.send('snap', f));
-              }).catch(() => {});
+              if (kind === 'snap') return signSend('snap', { name: manifest.name || 'App', state: x, lead: leadBody() });
+              if (kind === 'full') return signSend('delta', { state: x, lead: leadBody() });
+              return signSend('delta', { collection: x.collection, items: x.items, lead: leadBody() });
             };
+            const sendSnap = () => {
+              if (!stageBus || !stageSigner || !stagePump) return Promise.resolve();
+              return stagePump.snap();
+            };
+            // A full-state delta, at once: the lead fence changed (setLead).
             const sendDelta = () => {
-              if (!stageBus || !stageSigner) return Promise.resolve();
-              // A lightweight full-state patch (no app bytes) for already-joined
-              // clients; the retained snap (with app bytes) is refreshed on a
-              // short debounce so late joiners stay current without paying the
-              // app-byte cost on every keystroke.
-              return db.getFullState().then((s) => {
-                const body = { state: filterForGuests(s), lead: leadBody() };
-                return stageSigner.sign(sid, 'delta', body).then((f) => stageBus.send('delta', f));
-              }).catch(() => {});
+              if (!stageBus || !stageSigner || !stagePump) return Promise.resolve();
+              return stagePump.full();
             };
             // A client op-PROPOSAL: validate exactly as the relay host would
             // (leadership fence + collection visibility), then apply to the
@@ -4584,8 +4589,9 @@
             };
             const attachStageBus = (bus) => {
               if (!bus || typeof bus.send !== 'function' || typeof bus.subscribe !== 'function') return Promise.reject(new Error('bad stage bus'));
-              return appOwnerLib().then((AO) => AO.createSigner(sec || undefined)).then((signer) => {
+              return appOwnerLib().then((AO) => AO.createSigner(sec || undefined).then((signer) => {
                 stageSigner = signer; stageBus = bus;
+                stagePump = AO.createStagePump({ state: () => db.getFullState().then(filterForGuests), emit: pumpEmit });
                 // The pool rides the same lane, UNSIGNED and by design: any peer
                 // may answer, and what it answers is content addressed by URL —
                 // an owner signature would say only that the owner relayed it,
@@ -4598,15 +4604,10 @@
                   if (m.kind === 'act') onAct(m.d);
                   else if (m.kind === 'pool') poolOnFrame(m.d);
                 });
-                // Refresh the retained snapshot (with app bytes) on a debounce,
-                // and push a live delta immediately, on every change.
-                // The delta is coalesced on a short trailing edge: every put
-                // used to assemble, sign and broadcast the FULL state, so an
-                // app writing per keystroke multiplied that by its rate.
-                stageOnChange = () => {
-                  if (!deltaTimer) deltaTimer = setTimeout(() => { deltaTimer = null; sendDelta(); }, 40);
-                  if (!snapTimer) snapTimer = setTimeout(() => { snapTimer = null; sendSnap(); }, 1200);
-                };
+                // Every change: the pump sends the changed records (a lone change
+                // at once, a busy lane once per tick) and refreshes the retained
+                // snap on a slower drum.
+                stageOnChange = (collection) => { stagePump.change(collection); };
                 announceConn({ mode: 'host', counts: { up: 0, soft: 0, warn: 0 }, total: 0, p2p: 0, self: 'up' });
                 setStatus(T('runtime.status.liveMesh'));
                 seedApp();                       // fire-and-forget; retried by the drum below
@@ -4615,7 +4616,7 @@
                   seedApp();
                 }, 3000);
                 return sendSnap().then(() => ({ pk: signer.pkHex }));
-              });
+              }));
             };
             const setLead = (on) => { meshLead.on = !!on; try { hostApi.setLead(on); } catch (e) {} if (stageBus) sendDelta(); return Promise.resolve(); };
 

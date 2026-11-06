@@ -27412,8 +27412,41 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const dk = m.sid + '|' + m.seq;
       if (sgaSeen.has(dk)) return;
       sgaNoteSeen(dk);
+      if (typeof m.oc === 'string' && (m.kind === 'snap' || m.kind === 'delta')) sgaOwnerCell.set(m.sid, { pid: sgaSnapSender(m.seq), ck: m.oc });
+      if (m.kind === 'act' && typeof m.to === 'string' && m.to) {
+        if (m.to === myId) { sgaDeliver(m); return; } // the owner: one copy, nothing to pass on
+        sgaRoute(m, fromPid);
+        return;
+      }
       sgaDeliver(m);
       sgaFan(m, fromPid);
+    }
+    // AN ACT GOES TO THE OWNER, NOT TO THE ROOM. An act is a proposal only the
+    // owner reads; it used to ride the same flood as the owner's state, so
+    // every guest write (a 3 s heartbeat each, in Pixel Paint) reached every
+    // page: O(N) acts a second for each page to carry. Now the act names the
+    // owner (`to`, the seat whose ad names the sid) and walks the mesh toward
+    // its cell one channel at a time (nextHopDc: the same step the forwarded
+    // envelopes take); the owner answers with one delta for the room. Where a
+    // page has no step toward the owner (owner unknown, cell unknown, no open
+    // channel that way) the act floods from there as before, and a page that
+    // predates `to` floods it too: the flood is the fallback, never a loss.
+    const sgaOwnerCell = new Map(); // sid -> { pid, ck }: the cell the owner's own frames name
+    const sgaActOnce = new WeakSet(); // acts already sent once: a retry floods
+    const sgaRouteStats = { routed: 0, fell: 0 };
+    function sgaActTarget(sid, d) {
+      if (d && typeof d === 'object') { if (sgaActOnce.has(d)) return null; sgaActOnce.add(d); } // no echo the first time: the route may be the problem
+      const host = sgaSnapHost(sid);
+      if (!host || host === myId) return null;
+      const oc = sgaOwnerCell.get(sid);
+      return { pid: host, ck: coordKeyOf(host) || (oc && oc.pid === host ? oc.ck : null) };
+    }
+    function sgaRoute(m, fromPid) {
+      let hp = null;
+      try { hp = nextHopDc(m.to, coordKeyOf(m.to) || (typeof m.tc === 'string' ? m.tc : null)); } catch (e) { hp = null; }
+      if (hp && hp.id !== fromPid) { dcSend(hp, m); sgaRouteStats.routed++; return 1; }
+      sgaRouteStats.fell++;
+      return sgaFan(m, fromPid);
     }
     // The bus a mesh-native app runtime plugs into. Host side broadcasts state
     // ('snap' periodically, 'delta' per change); clients render from subscribe
@@ -27423,13 +27456,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const stageData = {
       broadcast(sid, kind, d) {
         const m = { k: 'sga', sid, seq: myId + ':' + (++sgaSeq), kind: kind || 'delta', d, at: Date.now() };
+        if (m.kind === 'snap' || m.kind === 'delta') { const c = meshCoord(); if (c) m.oc = net.topo.ckey(c); } // where acts find me
+        if (m.kind === 'act') { const t = sgaActTarget(sid, d); if (t) { m.to = t.pid; if (t.ck) m.tc = t.ck; } }
         sgaSeen.set(sid + '|' + m.seq, Date.now());
         // sgaDeliver retains an 'app' frame, so the OWNER seeds itself here and
         // can answer sga-appreq like any other holder. Without this the owner
         // would broadcast the bytes and keep no copy to serve, which is what
         // forced every latecomer back to the direct 'need-app' path.
         if (kind === 'app') sgaRetainApp(m); else sgaDeliver(m); // my own bytes need no verifying
-        sgaFan(m, null);
+        if (m.to) sgaRoute(m, null); else sgaFan(m, null);
         return m.seq;
       },
       subscribe(sid, cb) {
@@ -27449,8 +27484,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         else sgaAppChase(sid);
         return () => { s.delete(cb); if (!s.size) sgaSubs.delete(sid); };
       },
+      routeStats() { return Object.assign({}, sgaRouteStats); }, // acts walked toward the owner / fell back to the flood
       drop(sid) {
-        sgaSnap.delete(sid); sgaSubs.delete(sid); sgaWant.delete(sid);
+        sgaSnap.delete(sid); sgaSubs.delete(sid); sgaWant.delete(sid); sgaOwnerCell.delete(sid);
         sgaApp.delete(sid); sgaAppWant.delete(sid); sgaAppVer.delete(sid);
         const ta = sgaAppTimer.get(sid); if (ta) { clearTimeout(ta); sgaAppTimer.delete(sid); }
         const t = sgaReqTimer.get(sid); if (t) { clearTimeout(t); sgaReqTimer.delete(sid); }
