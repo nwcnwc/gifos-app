@@ -7752,15 +7752,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (age < 15000) return true;
       if (age >= HOLDOVER_MS) return false;
       const p = peers.get(pid);
-      // A DOOR ALONE DOES NOT HOLD A STATUS OPEN. A boot/door pair that is
-      // not also one of my bounded links (linkTo) is the channel a knocker
-      // or greeter came in by, not a vouched-for neighbour — and
-      // retireBootPairs only drops it once I locally learn the far side is
-      // seated, which a door to a distant section may never do (af875b5).
-      // Such a door staying "connected" must not keep a stale direct status
-      // held for the full HOLDOVER_MS: past 15s it falls through to the
-      // fold, same as any other far seat's status would.
-      if (p && p.boot && !linkTo(pid)) return !!st.away;
+      // A PAIR THAT CARRIES NO BEAT DOES NOT HOLD A STATUS OPEN. Transport
+      // vouches for a quiet peer only when that peer's beat rides this pair
+      // (beatsHere): a neighbour both ends name. A door, or a pc my seat
+      // holds for a reason of my end alone (my dial, my keep, my row's
+      // standby), stays "connected" while the far end never beats on it, so
+      // its status would stand stale for the full HOLDOVER_MS. Past 15s it
+      // falls through to the fold, same as any other far seat's status.
+      if (p && !beatsHere(pid)) return !!st.away;
       return !!st.away || !!(p && p.connected);
     };
     function mergeMod(incoming) {
@@ -15081,6 +15080,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (s.l14Served && s.l14Served().includes(pid)) return true;   // L14: a cut-off head dialled me for its branch's media
       // A row's standby (E3) is a pc only while an up edge is down: the seat's dial says so above, and u2Hot here. Idle, it is a name, as an idle row holds no third pc.
       return (!(pid === s.u3Id && !s.u2Hot) && s.linkPeers().has(pid)) || (typeof s.keepPeers === 'function' && s.keepPeers().has(pid));   // every media target is a link peer or carries a keep reason (L28)
+    }
+    // Does this peer's status beat reach me over our pair? Its direct beat rides only ITS links (broadcastStatus), so
+    // only a link both ends name carries one: a neighbour by the arithmetic, an E2 edge, an L14 uplink. A pc held for
+    // a reason of my end alone carries none: a door or a call my seat dialled (seatAsked), a keep (L28), and my row's
+    // standby (E3), whose far end holds no end of the edge while E2 is up.
+    function beatsHere(pid) {
+      const s = meshSeat();
+      if (!s || !s.hasCoord) return false;
+      if (s.l14Served && s.l14Served().includes(pid)) return true;
+      if (!s.linkPeers().has(pid)) return false;
+      return !(s.u3Id === pid && !s.u2Hot && s.u2Id !== pid && s.l14Up !== pid);
     }
     // Peers the seat asked to dial (pc.ensure), for a while: the seat's dial is its reason.
     const seatAskAt = new Map();
