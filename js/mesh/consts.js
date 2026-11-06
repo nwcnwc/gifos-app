@@ -426,6 +426,7 @@
     LOSE_T: -1,   // C++: mesh.cpp:LOSE_T
     LOSE_NC: -1,   // C++: mesh.cpp:LOSE_NC
     LOSE_AT: -1,   // C++: mesh.cpp:LOSE_AT
+    TREEMEM_ID: -1,   // C++: mesh.cpp:TREEMEM_ID
     L10SEQ: 0,   // C++: mesh.cpp:L10SEQ
     L22SEQ: 0,   // C++: mesh.cpp:L22SEQ
     DESC_ON: -1,   // C++: mesh.cpp:DESC_ON

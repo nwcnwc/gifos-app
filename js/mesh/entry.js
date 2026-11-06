@@ -33,6 +33,8 @@
   const newMsg = (t) => msg.newMsg(t);
   // the sim's #define L3_11_2_OFF in mesh.cpp (a build-time switch): MESH_L3_11_2_OFF=1 under node, read once at load; a page always runs the law
   const L3_11_2_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L3_11_2_OFF === '1') ? 1 : 0;
+  // the sim's #define L3_11_3_OFF (same reading): MESH_L3_11_3_OFF=1 under node builds the parent
+  const L3_11_3_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L3_11_3_OFF === '1') ? 1 : 0;
 
   // ---- free helpers the entry functions call (private copies of small statics) ---------------------------
   // C++: mesh.cpp:descOn (the MESH_DESC switch; a measurement, never read by protocol code)
@@ -597,11 +599,14 @@
         if (routed) { this.trace('RECLAIM-ROUTED', id, oc, 'via=%d cells=%d', greeter, routed); sent += routed; if (!L3_11_2_OFF) this.rcRtAt = this.TICK; }   // L3.11.2: the answer is awaited (tickHeld resends it through another greeter)
       }
       if (sent) this.trace('RECLAIM', id, oc, 'to=%d neighbours', sent);
+      if (sent && !L3_11_3_OFF) this.rcSentAt = this.TICK;   // L3.11.3: this round's answer is awaited
       return sent > 0;
     },
 
     // L3.11.2 (C++: the L3_11_2_OFF call sites in onHome, onReclaimed, onReclaimNo, tickHeld): the law's switch, read by the recv and tick units
     l3112On() { return !L3_11_2_OFF; },
+    // L3.11.3 (C++: the L3_11_3_OFF call sites in tryReclaim and onHome): the law's switch
+    l3113On() { return !L3_11_3_OFF; },
 
     // C++: mesh_seat.inc:Seat::l3112Resend
     // L3.11.2: a routed RECLAIM unanswered for RC_RESEND goes again through another Section-1 seat of my roster, at most RC_RESEND_N times per return.

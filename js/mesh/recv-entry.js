@@ -109,6 +109,7 @@
       if (this.state === 1 && roomTerm(this, 1) && m.from >= 0 && this.c7Old.has(m.from) && TICK - this.c7At < K.RELAY_TTL) return;   // L8.5
       if (this.state === 1 && this.l851Moves(m)) return;   // L8.5.1
       if (this.state === 1 && m.l31 === 1 && this.l31TakeDoor(m)) return;   // L31.1
+      if (this.l3113On() && this.state === 1 && this.oldCell && this.rcSentAt >= 0 && TICK - this.rcSentAt < K.RC_RESEND && m.roster.length) { this.roster = kvCopy(m.roster); this.haveRoster = true; this.lastReach = TICK; return; }   // L3.11.3: my RECLAIM round is in flight; a HOME now (the reload tree memory's burst) keeps its roster but starts no round and seats me nowhere: as a newcomer I would close the door its RECLAIMED comes back on
       if (this.state === 1 && this.oldCell && this.rcTries < 2 && !(this.rcPendAt >= 0) && m.roster.length && (!this.l3112On() || this.rcTries > 0 || ((this.rcRtN = 0), (this.rcRtAt = -1), true)) && this.tryReclaim(m.roster, m.from)) { this.rcGreeter = m.from; this.rcTries++; this.roster = kvCopy(m.roster); this.haveRoster = true; this.lastReach = TICK; this.retryAt = TICK; return; }   // L3.10
       if (this.state === 1 && this.oldCell && (this.rcPendAt >= 0 || this.rcRound2) && m.roster.length) { this.roster = kvCopy(m.roster); this.haveRoster = true; this.lastReach = TICK; return; }   // L3.10.6
       if (this.state === 1) {
@@ -214,6 +215,7 @@
     // C++: mesh_seat.inc:Seat::onReclaimed
     onReclaimed(m) {
       if (this.l3112On() && m.nc === this.id) this.rcRtAt = -1;   // L3.11.2: answered
+      if (m.nc === this.id) this.rcSentAt = -1;   // L3.11.3: answered
       const TICK = this.TICK, id = this.id;
       if ((this.state === 1 || this.state === 2) && m.nc === id && this.oldCell) {
         if (m.tag === 1 && m.ck === this.oldCell - 1) { this.oldCell = 0; this.rcPendAt = -1; this.trace('RECLAIM-TAKE', id, m.coord, 'from=%d beside', m.owner); this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, [], m.ppL); if (this.pp >= 0 && this.pp !== id) this.placer = this.pp; return; }   // the hole's mover already holds my old cell
@@ -229,6 +231,7 @@
     // C++: mesh_seat.inc:Seat::onReclaimNo
     onReclaimNo(m) {
       if (this.l3112On() && m.nc === this.id) this.rcRtAt = -1;   // L3.11.2: answered
+      if (m.nc === this.id) this.rcSentAt = -1;   // L3.11.3: answered
       const id = this.id;
       if (m.tag === 1 && (this.state === 1 || this.state === 2) && m.nc === id && this.oldCell && m.ck === this.oldCell - 1) { this.rcPendAt = -1; }   // L3.10.4
       if (m.tag !== 1 && (this.rcPendAt >= 0 || this.rcRound2) && m.nc === id && this.oldCell) return;   // L3.10.6
