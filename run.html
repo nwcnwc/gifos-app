@@ -7083,6 +7083,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     } catch (e) {}
     if (bgClock(SCALE.HB, () => {
       hbTick++;
+      loopRan(Date.now());   // a beat handled here is the main thread awake (see loopRan)
       // THE FREEZE DETECTOR'S CLOCK — the gap is measured HERE, before the
       // clock refreshes, and LATCHED. Measuring only in visibilitychange lost
       // a race on resume: the worker's queued beat flushes FIRST when the
@@ -7710,11 +7711,25 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // receive-silence clocks, never the mesh's first-hand departure edges).
     const loopBlocks = [];             // { at, ms }, most-recent-last
     let loopLastBeat = Date.now();
+    // A BLOCK IS A GAP IN WHICH NOTHING RAN. The sentinel is a page timer, and a
+    // page timer can lag while the main thread is free: a hidden tab throttles it,
+    // and a busy renderer runs Worker messages ahead of timers. The beat clock's
+    // Worker messages are handled on this same thread, so each one proves the
+    // thread was awake. loopRanAt is the last time EITHER clock ran here; a block
+    // is only the gap since then. Measured from the sentinel's own last fire, a
+    // page whose ticks kept running read 40 s of timer lag as blocked time, and the
+    // holdover kept a 45 s-old status of a departed seat as fresh.
+    let loopRanAt = Date.now();
+    function loopRan(now) {
+      const gap = now - loopRanAt - 250;
+      if (now > loopRanAt) loopRanAt = now;
+      if (gap > 1000) loopBlocks.push({ at: now, ms: gap });
+    }
     loopSentinel = setInterval(() => {
       const now = Date.now();
       const late = now - loopLastBeat - 250;
       loopLastBeat = now;
-      if (late > 1000) loopBlocks.push({ at: now, ms: late });
+      loopRan(now);
       while (loopBlocks.length && now - loopBlocks[0].at > 300000) loopBlocks.shift();
       // THE WAKE, FIRST-HAND. The loop slept past every peer's silence
       // threshold and the beat clock was silent through it as well (a frozen
@@ -7737,8 +7752,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // instant the damage happens (the first guard run caught exactly that:
       // freeze-and-seize within milliseconds of waking). The gap since the
       // last beat IS provable blockage at read time, so count it live.
-      const pending = Date.now() - loopLastBeat - 250;
-      if (pending > 1000) d += (t0 <= loopLastBeat ? pending : Math.min(pending, Date.now() - t0));
+      const pending = Date.now() - loopRanAt - 250;
+      if (pending > 1000) d += (t0 <= loopRanAt ? pending : Math.min(pending, Date.now() - t0));
       return d;
     };
     // THE HOLDOVER COUNTS ONLY THE BLOCK IT IS WAKING FROM. A pulse that lands
@@ -7755,8 +7770,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const now = Date.now();
       let d = 0;
       for (const b of loopBlocks) if (b.at > t0 && now - b.at < DRAIN_MS) d += Math.min(b.ms, b.at - t0);
-      const pending = now - loopLastBeat - 250;
-      if (pending > 1000) d += (t0 <= loopLastBeat ? pending : Math.min(pending, now - t0));
+      const pending = now - loopRanAt - 250;
+      if (pending > 1000) d += (t0 <= loopRanAt ? pending : Math.min(pending, now - t0));
       return d;
     };
     const stHold = (pid) => {
@@ -15953,6 +15968,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         } catch (e) {}
         try { o.maps = { peers: sz(peers), seatAskAt: sz(seatAskAt), seatMark: sz(seatMark), bcTrace: sz(window.__bcTrace), traceRing: window.__meshTraceRing ? window.__meshTraceRing.ring.length : 0 }; } catch (e) {}
         try { const s = meshSeat(); if (s) o.seat = { occ: sz(s.occ), sitting: sz(s.sitting) }; } catch (e) {}
+        // the media plane's holders: claimed and parked feeds (each a hidden decoder), outbound ship jobs and their containers, composites
+        try {
+          let dec = 0, act = 0;
+          for (const v of mosIn.values()) if (v && v.el) dec++;
+          for (const v of mosStandby.values()) if (v && v.el) dec++;
+          for (const j of mosJobs.values()) if (j && j.active) act++;
+          o.mos = { in: mosIn.size, standby: mosStandby.size, decoders: dec, jobs: mosJobs.size, jobsActive: act, containers: shipContainers.size, fb: mosFb.size, relayJobs: relayJobs.size,
+            packs: (prodPack ? 1 : 0) + (sdPack ? 1 : 0) + (stripPack ? 1 : 0) + sdnPacks.size + l14Packs.size + l14RelPacks.size };
+        } catch (e) {}
         try { const P = GifOS.meshPipe; if (P) { o.pipe = Object.assign({}, P._debugSizes ? P._debugSizes() : {}); const st = await P.stats(); let q = 0, n = 0; for (const k of Object.keys(st || {})) { n++; q += st[k].q || 0; } o.pipe.pipes = n; o.pipe.qFrames = q; } } catch (e) {}
         MS.push(o); if (MS.length > 240) MS.splice(0, 40);
         try { meshTraceSink(JSON.stringify({ t: 0, s: 0, e: 'MEM', c: null, d: JSON.stringify(o) })); } catch (e) {}
@@ -17715,6 +17739,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!job.upKey) return false;
       return k.indexOf('sdrow:') === 0 || k.indexOf('stg:') === 0 || k === 'sgs';
     }
+    // A stage relay woken as the receiver's PRIMARY (pr:1) is a duty, not a spare: never counted in lgWoken, never refused.
+    // A wake without the flag (an older page) is read as before.
+    function lgWakeIsSpare(job, m) { return lgParkedCopy(job) && !(m && m.pr === 1 && job && job.key.indexOf('stg:') === 0); }
     function lgRefuseWake() {
       const r = meshNode && meshNode.raw, K = GifOS.meshConsts.consts; if (!r || !r.lgBud0) return false;
       return r.lgLvl >= 1 || (r.lgLd[0] + K.L29_HOT) * 100 > r.lgBud * K.L29_SHED;
@@ -21378,9 +21405,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // The streamId must match the CURRENT job: a stale demand aimed at a
         // dead ship must never flip the live one (the dark-primary inversion
         // the redun-drill caught).
-        const jw = mosJobs.get(m.key + '>' + p.id), copy = lgParkedCopy(jw); // a duty is never refused and never a wake (L29.2)
+        const jw = mosJobs.get(m.key + '>' + p.id), copy = lgWakeIsSpare(jw, m); // a duty is never refused and never a wake (L29.2)
         if (jw && !jw.active && copy && lgRefuseWake()) { /* L29.2: nothing to spare */ }
-        else if (jw && (!m.streamId || jw.streamId === m.streamId)) { if (!jw.active && copy) lgWoken.add(m.key + '>' + p.id); setJobActive(m.key + '>' + p.id, true); chainDemandUp(jw, true); }
+        else if (jw && (!m.streamId || jw.streamId === m.streamId)) { if (!jw.active && copy) lgWoken.add(m.key + '>' + p.id); else if (!copy) lgWoken.delete(m.key + '>' + p.id); setJobActive(m.key + '>' + p.id, true); chainDemandUp(jw, true); }
         else if (jw && m.streamId && jw.streamId !== m.streamId) {
           // STALE SID ON A WANT — ANSWER IT, DO NOT JUST DROP IT.
           //
@@ -21801,13 +21828,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // Drops the oldest by `at`, deleting by KEY: chat and trs are keyed by id,
     // trSeen by the line's text, and deleting by value.id trimmed only the
     // first two (trSeen grew for the life of the tab and sorted on every line).
+    // THE LINES A FULL HISTORY LET GO SET A FLOOR. A line at or behind the newest time ever trimmed from a map
+    // is older than everything held, so it is not new: it was held once and let go. Without the floor a trimmed
+    // line read as new again on every page that had let it go, was taken, trimmed at once, still counted as
+    // fresh, and rode the next 'hi' to the other pages, which took it the same way and sent it back: the old
+    // line circled the room for good, one history frame per link every ten seconds.
+    // The floor is kept on the map itself (map.floorAt): the newest `at` ever trimmed from it.
     function trimMap(map, max) {
       if (map.size <= max) return;
       const old = Array.from(map.entries()).sort((a, b) => (a[1].at || 0) - (b[1].at || 0));
-      for (let i = 0; i < old.length - max; i++) map.delete(old[i][0]);
+      let floor = map.floorAt || 0;
+      for (let i = 0; i < old.length - max; i++) { map.delete(old[i][0]); if ((old[i][1].at || 0) > floor) floor = old[i][1].at || 0; }
+      map.floorAt = floor;
     }
     function takeChat(m, backfill, opts) { // backfill: a 'hi' replay — bounded by its frame, not by the live limiter
-      if (!m || !m.id || chat.has(m.id)) return false;
+      if (!m || !m.id || chat.has(m.id) || ((m.at || 0) > 0 && (m.at || 0) <= (chat.floorAt || 0))) return false;
       const kept = chatTombs.get(m.id);
       if (kept && (!kept.ownBy || m.byId === kept.ownBy)) return false;
       // History off drops the replay. A question still lands: it is the Questions sheet, not the log.
@@ -23984,7 +24019,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (!v._mosRebound && age >= 1000) { rebind(); v._mosRebound = true; }
           if (age >= MOS_RESTART_HOLD) {
             v._mosHold = 0; v._mosRebound = false; v._mosFlowAt = 0;
-            const fb = mosFb.get(rk); if (fb) { fb.lastAdvanceAt = now; fb.q = 0; } // the silence was ours, not the pipe's
+            // The silence was ours, not the pipe's: only the held pipe's clock moves. A primary that never
+            // delivered a byte is credited the hold, not a fresh void window, or each restart restarts the void.
+            const fb = mosIn.get(rk) === ent ? mosFb.get(rk) : null;
+            if (fb) { fb.lastAdvanceAt = fb.lastBytes > 0 ? now : Math.min(now, (fb.lastAdvanceAt || now) + MOS_RESTART_HOLD); fb.q = 0; }
             dmd(true);
           }
           continue;
@@ -25166,15 +25204,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // the wrong active state, the receiver's debounce never re-sends — the
     // dark-primary deadlock the redun-drill caught). Never record an unsent
     // state: if the DC isn't open, the next sweep retries.
-    function demand(from, key, sid, want) {
-      const dk = from + '|' + key + '|' + sid, st = want ? 'w' : 'i', now = Date.now();
+    // PRIMARY (prim): the want is for the copy I play and relay on, not a spare I woke. The sender's load governor (L29)
+    // takes back the spares it woke and refuses new wakes at level 1; a primary is a duty, never shed (L29.2). Every stage
+    // relay is born parked and woken by this message, so without the flag the sender cannot tell: a seat that became the
+    // relay of its row's children after the stager's up seat died shed them all at once (tv-chain 461a, 8-12 s of silence).
+    function demand(from, key, sid, want, prim) {
+      const dk = from + '|' + key + '|' + sid, st = want ? (prim ? 'p' : 'w') : 'i', now = Date.now();
       const cur = subWant.get(dk);
       if (cur && cur.st === st && now - cur.at < 6000) return;
       const p = peers.get(from);
       if (!(p && p.dc && p.dc.readyState === 'open')) return;
       subWant.set(dk, { st, at: now });
       if (want) stgFoNote(key, 'want', from);
-      dcSend(p, { k: want ? 'mx-want' : 'mx-idle', key, streamId: sid });
+      dcSend(p, want ? (prim ? { k: 'mx-want', key, streamId: sid, pr: 1 } : { k: 'mx-want', key, streamId: sid }) : { k: 'mx-idle', key, streamId: sid });
     }
     function repaintRedun(rk, stream) {
       // Respect the same position guards reconcileMosaic paints under, so an
@@ -25385,12 +25427,27 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               schedReconcile();
             }
           }
+          // A stage copy that has not delivered one byte STG_ZERO_MS after its claim is dead, not slow: a live
+          // stager's copy carries packets (silence frames too) within a second. Only a copy that never
+          // delivered: a primary that flowed and froze is judged by the qualified dark rail above.
+          if (rk.indexOf('stg:') === 0 && !fb.dark && !fb.suspect && bytes.b <= 0 && !(fb.lastBytes > 0)
+              && fb.claimAt && now - fb.claimAt > STG_ZERO_MS) {
+            const std = mosStandby.get(rk);
+            if (std && std.key) {
+              fb.dark = true; stgFoNote(rk, 'dark', std.via);
+              demand(std.via, std.key, std.streamId, true); // wake NOW — don't wait for the sweep
+              schedReconcile();
+            }
+          }
           // While a wake/failback overlap runs, sample the STANDBY too: its
           // framesDecoded (decode path — render throttling can't touch it) is
           // the strict "demonstrably FLOWS" evidence a dark-initiated swap
           // requires. v1's re-park break lived here: the videoWidth>0 swap
           // fallback read a camOff standby's STALE last frame as flowing.
           await sampleStandby(rk, fb);
+          // A stage standby woken for a dark primary with no byte STG_ZERO_MS later: the claim pass parks it
+          // (standbyStaysHot) and picks the next candidate now, not at the next sweep.
+          if (rk.indexOf('stg:') === 0 && fb.dark && fb.wakeAt && now - fb.wakeAt > STG_ZERO_MS && fb.d0 >= 0 && !(fb.stdB > fb.b0)) schedReconcile();
         }
         // ADAPTIVE CADENCE (2026-07-30 power work). This loop was a flat
         // 300ms getStats() sweep, forever, on every device — 3.3 wakeups/sec
@@ -25484,12 +25541,27 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // my legitimate mix — never a neighbour's). Grace only ever delays
     // destruction, never recovery.
     // STAGE-DARK-HOLD
-    function standbyStaysHot(fb, now, wakeMax) {
-      const wakeStale = !!(fb.wakeAt && now - fb.wakeAt > wakeMax);
+    // A primary that has never delivered a byte is a husk, not a pipe that froze: no advance will ever clear
+    // its suspicion, so it lapses after one wake window and the rails re-arm. The standby that did not flow
+    // is remembered (stdTried), so the next wake goes to another candidate, not the same dead copy.
+    // quickMs (stage): a standby woken for a dark primary that has not moved one byte quickMs after the
+    // wake is as dead as a stale wake, so the next candidate gets its turn in seconds.
+    function standbyStaysHot(fb, now, wakeMax, stdId, quickMs) {
+      if (fb.suspect && !(fb.lastBytes > 0) && now - (fb.suspectAt || 0) > wakeMax) fb.suspect = false;
+      const quickDead = !!(quickMs && fb.dark && fb.wakeAt && now - fb.wakeAt > quickMs && fb.d0 >= 0 && fb.b0 >= 0 && !(fb.stdB > fb.b0));
+      const wakeStale = !!(fb.wakeAt && now - fb.wakeAt > wakeMax) || quickDead;
       const flowed = fb.d0 >= 0 && fb.stdFdec > fb.d0;
-      if (fb.dark && wakeStale && !flowed) { fb.dark = false; fb.suspect = true; fb.wakeAt = 0; }
+      if (fb.dark && wakeStale && !flowed) {
+        fb.dark = false; fb.suspect = true; fb.suspectAt = now; fb.wakeAt = 0;
+        if (stdId) (fb.stdTried = fb.stdTried || new Map()).set(stdId, now);
+      }
       const wakeLive = !!(fb.wakeAt && now - fb.wakeAt <= wakeMax);
       return !fb.suspect && (wakeLive || !!fb.dark);
+    }
+    // A standby whose wake did not flow sits out for a while; failback to it is tried again later.
+    function stdTried(fb, id, now) {
+      const at = fb.stdTried && fb.stdTried.get(id);
+      return !!at && now - at < 120000;
     }
     // END-STAGE-DARK-HOLD
     const MOS_GRACE = 5000;
@@ -25501,6 +25573,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const MOS_DARK_MS = 700;   // no byte advance on a previously-flowing hot pipe = dark
     const MOS_FLOWED_RECENT = 10000; // "previously flowing" horizon — never fires on a pipe that never delivered
     const MOS_QUALIFY = 8;     // consecutive advancing samples before a pipe earns the watchdog (~2.4s at the 300ms loop, 7.2s at the watchable 900ms cadence — see the 2026-08-08 note in mosWatchdog for why this stays a COUNT, not a clock)
+    const STG_ZERO_MS = 2000;  // stage audio gets no grace: a stage copy with zero bytes this long after its claim, or after its wake, is dead
     const HOT_VOID_MS = 12000; // hot-and-VOID: a hot primary with ZERO bytes this long is a husk, not a slow pipe (frza5)
     const mosFb = new Map(); // rk -> { wakeAt, f0, prefSince, lastSwitch, dark, lastBytes, lastAdvanceAt, q, fp, fpDecayAt, flowSince, b0, d0, stdFdec, claimAt } (wake/failback/watchdog state)
     const mkFb = () => ({ wakeAt: 0, f0: 0, prefSince: 0, lastSwitch: 0, dark: false, lastBytes: -1, lastAdvanceAt: 0, q: 0, fp: 0, fpDecayAt: 0, flowSince: 0, b0: -1, d0: -1, stdFdec: -1, stdB: -1, stdAdvAt: 0, claimAt: 0 });
@@ -25571,13 +25644,31 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // live (room v6ring, 49 s). Each page passes an unseen beat on once, over its data channels, so
     // no media path is needed and the flood ends when the source does. A new value counts, not a
     // larger one, and only the stager can make one (the beat is signed, below).
+    // A BEAT OLDER THAN THE NEWEST HEARD SAYS NOTHING NEW. The seen list holds the last 16 values,
+    // so a copy that reached a page after sixteen newer beats (a page stalled by a heal, then
+    // draining its channels) read as new, was flooded again by every page, pushed the newer values
+    // out of every list, and the room flooded itself with its own old beats: 85k to 1.5M beats
+    // received per page in five minutes, 5000 a second, each one decrypted and verified on the main
+    // thread, pages growing 9 MB/s until they died (40-page chains, 2026-11-05). A beat whose time
+    // (the stager's clock, stgBeatT) is behind the newest verified one by more than the stale window
+    // is dropped before the verify and never passed on. Only a verified beat moves that mark, so a
+    // forged value cannot hold the real ones back.
     const stgBeats = new Map(), STG_BEAT_MS = 1000, STG_BEAT_STALE_MS = 5000, STG_BEAT_SEEN = 16;
     function stgBeatSeen(key, b) { const e = stgBeats.get(key); return !!e && e.seen.indexOf(b) >= 0; }
+    const stgBeatT = (b) => (b >= STG_PIC_MIN_B ? Math.floor(b / STG_PIC_WORD) : b); // the stager's clock, from either form of the value (stgPicNote)
+    // The mark holds only while the stager is heard (a beat accepted within the stale window). A stager whose clock
+    // stepped back sends values behind its own mark for good; once its feed has gone stale here, the next verified
+    // beat re-bases the mark wherever it is, and the feed resumes. A page draining old beats after its own stall is
+    // stale too, so it passes each one on once, in order, and its live peers drop them: bounded, never a flood.
+    const stgBeatLive = (e) => e.at > 0 && Date.now() - e.at < STG_BEAT_STALE_MS;
+    function stgBeatOld(key, b) { const e = stgBeats.get(key); return !!e && e.newest > 0 && stgBeatLive(e) && stgBeatT(b) < e.newest - STG_BEAT_STALE_MS; }
     function stgBeatNew(key, b) {
-      let e = stgBeats.get(key); if (!e) { e = { seen: [], at: 0 }; stgBeats.set(key, e); }
-      if (e.seen.indexOf(b) >= 0) return false;
+      let e = stgBeats.get(key); if (!e) { e = { seen: [], at: 0, newest: 0 }; stgBeats.set(key, e); }
+      if (e.seen.indexOf(b) >= 0 || stgBeatOld(key, b)) return false;
+      const live = stgBeatLive(e);
       e.seen.push(b); if (e.seen.length > STG_BEAT_SEEN) e.seen.shift();
       e.at = Date.now();
+      const t = stgBeatT(b); if (t > e.newest || !live) e.newest = t;
       stgPicNote(e, b);
       return true;
     }
@@ -25642,7 +25733,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const t0 = stgBeatCost ? performance.now() : 0;
       if (stgBeatCost) stgBeatCost.in++;
       if (typeof m.key !== 'string' || m.key.indexOf('stg:') !== 0 || m.key.length > 128 || !Number.isFinite(m.b) || typeof m.sig !== 'string' || m.sig.length > 256 || typeof m.pub !== 'string' || m.pub.length > 128) return;
-      if (m.key === 'stg:' + myId || mediaOk(p.id) === false || stgBeatSeen(m.key, m.b)) { if (stgBeatCost) stgBeatCost.ms += performance.now() - t0; return; }
+      if (m.key === 'stg:' + myId || mediaOk(p.id) === false || stgBeatSeen(m.key, m.b) || stgBeatOld(m.key, m.b)) { if (stgBeatCost) stgBeatCost.ms += performance.now() - t0; return; }
       const key = m.key, b = m.b, sig = m.sig, pub = m.pub, from = p.id;
       stgBeatPid(pub).then((pid) => (pid && pid === key.slice(4) ? net.edVerify(pub, sig, stgBeatSp(key, b)) : false))
         .then((ok) => { const t1 = stgBeatCost ? performance.now() : 0; if (ok && stgBeatNew(key, b)) stgBeatFlood(key, b, from, sig, pub); if (stgBeatCost) stgBeatCost.ms += performance.now() - t1; })
@@ -25776,7 +25867,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const pick = pref || cand.find((x) => x.live);
         if (pick) {
           pri = mkEnt(pick); mosIn.set(rk, pri); repaintRedun(rk, pri.stream);
-          fb.claimAt = now; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; // fresh primary — the watchdog re-baselines
+          fb.claimAt = now; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; fb.suspect = false; fb.stdTried = null; // fresh primary — the watchdog re-baselines
           if (std && std.via === pri.via && std.streamId === pri.streamId) { dropStandby(rk); std = null; }
         }
       }
@@ -25798,13 +25889,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       // STANDBY SELECTION (parked): the preferred path when the primary is not
       // it (failback staging), else any live candidate on a DIFFERENT path.
-      const wantStd = (pref && pri && !priIsPref && !(pri.via === pref.from && pri.streamId === pref.sid))
+      // A candidate whose wake already failed waits until every other path has had its turn.
+      const fresh = (x) => !stdTried(fb, x.from + '|' + x.sid, now);
+      const others = cand.filter((x) => x.live && !(pri && x.from === pri.via && x.sid === pri.streamId));
+      if (fb.stdTried && !others.some(fresh)) fb.stdTried = null; // every path has had its turn: start the round again
+      const ownStd = stgOwnStandby(rk, cand, pri);
+      const wantStd = (pref && pri && !priIsPref && !(pri.via === pref.from && pri.streamId === pref.sid) && fresh(pref))
         ? pref
-        : (stgOwnStandby(rk, cand, pri) || cand.find((x) => x.live && !(pri && x.from === pri.via && x.sid === pri.streamId)));
+        : ((ownStd && fresh(ownStd) ? ownStd : null) || others.find(fresh) || ownStd || others[0]);
       if (pri && wantStd && (!std || std.via !== wantStd.from || std.streamId !== wantStd.sid || std.stream !== wantStd.st)) {
         if (std) dropStandby(rk);
         std = { via: wantStd.from, key: wantStd.key, streamId: wantStd.sid, stream: wantStd.st, el: null, meta: annMeta(wantStd.ann) };
         mosStandby.set(rk, std); fb.wakeAt = 0; fb.d0 = -1; fb.stdFdec = -1; fb.stdAdvAt = 0; // fresh standby — the watchdog re-baselines its flow evidence
+        // A husk primary after a failed wake: the new standby is untried, so the rails re-arm at once, and a
+        // stage copy past STG_ZERO_MS wakes it in this pass (dark -> wantSwap below).
+        if (fb.suspect && !(fb.lastBytes > 0)) { fb.suspect = false; if (rk.indexOf('stg:') === 0 && fb.claimAt && now - fb.claimAt > STG_ZERO_MS) fb.dark = true; }
       }
       // FAILOVER / FAILBACK — make-before-break. The old primary stays painted
       // (dead ⇒ frozen last frame under the grace linger; alive-but-secondary
@@ -25875,7 +25974,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (rk.indexOf('stg:') === 0 && pri.stream && pri.stream.getVideoTracks().length) { try { kfNeed(rk); } catch (e) {} }
           pri.deadAt = 0; fb.lastSwitch = now; fb.wakeAt = 0; fb.prefSince = 0;
           fb.picDead = false; fb.picStdOk = false; fb.picStd0 = null; fb.picRef = null;
-          fb.dark = false; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; fb.fp = 0; fb.fpDecayAt = 0; fb.b0 = -1; fb.d0 = -1; fb.stdFdec = -1; fb.stdAdvAt = 0; fb.claimAt = now; // fresh primary — the watchdog re-baselines and the penalty clears
+          fb.dark = false; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; fb.fp = 0; fb.fpDecayAt = 0; fb.b0 = -1; fb.d0 = -1; fb.stdFdec = -1; fb.stdAdvAt = 0; fb.claimAt = now; fb.suspect = false; fb.stdTried = null; // fresh primary — the watchdog re-baselines and the penalty clears
           repaintRedun(rk, pri.stream);
           if (inCand(old)) { std = { via: old.via, key: old.key, streamId: old.streamId, stream: old.stream, el: old.el, meta: old.meta }; mosStandby.set(rk, std); } // failback: the loser re-parks as the standby
           else { try { releaseAudio(old.el); old.el.srcObject = null; old.el.remove(); } catch (e) {} }
@@ -25924,9 +26023,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // the primary advances again.
       // One read per pass: the call parks a stale wake as it answers, so a
       // second read would see the state the first one just changed.
-      const stdHot = standbyStaysHot(fb, now, WAKE_MAX);
+      const stdHot = standbyStaysHot(fb, now, WAKE_MAX, std ? std.via + '|' + std.streamId : null, rk.indexOf('stg:') === 0 ? STG_ZERO_MS : 0);
+      if (fb.suspect && fb.suspectAt === now) schedReconcile(); // a wake just failed: the next pass picks the next candidate
       const hot = new Set();
-      if (pri && inCand(pri) && !mosHeld(pri)) hot.add(pri.via + '|' + pri.streamId); // a held feed (mosDecoderSweep) stays parked until its decoder is re-bound
+      const primSet = new Set(); // the copy I play and relay on: a duty to its sender, not a spare (demand)
+      if (pri && inCand(pri) && !mosHeld(pri)) { hot.add(pri.via + '|' + pri.streamId); primSet.add(pri.via + '|' + pri.streamId); } // a held feed (mosDecoderSweep) stays parked until its decoder is re-bound
       if (std && stdHot && !mosHeld(std)) hot.add(std.via + '|' + std.streamId);
       if (std && u2Over) hot.add(std.via + '|' + std.streamId);
       if (std && (rk.indexOf('stg:') === 0 || rk === 'sgs')) for (const job of mosJobs.values()) if (job.active && job.upKey === rk && stgFedBy(job, std)) { hot.add(std.via + '|' + std.streamId); break; }
@@ -25962,9 +26063,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const hb = (b.ann && typeof b.ann.h === 'number') ? b.ann.h : 998;
           return ha !== hb ? ha - hb : String(a.from).localeCompare(String(b.from));
         })[0];
-        if (seed) hot.add(seed.from + '|' + seed.sid);
+        if (seed) { hot.add(seed.from + '|' + seed.sid); primSet.add(seed.from + '|' + seed.sid); }
       }
-      for (const x of cand) demand(x.from, x.key, x.sid, hot.has(x.from + '|' + x.sid));
+      for (const x of cand) demand(x.from, x.key, x.sid, hot.has(x.from + '|' + x.sid), primSet.has(x.from + '|' + x.sid));
     }
     // keep: an announcer still names the slot and its stream is on that peer.
     // Otherwise stamp deadAt and drop once MOS_GRACE has passed. A fresh stamp
@@ -27456,8 +27557,41 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const dk = m.sid + '|' + m.seq;
       if (sgaSeen.has(dk)) return;
       sgaNoteSeen(dk);
+      if (typeof m.oc === 'string' && (m.kind === 'snap' || m.kind === 'delta')) sgaOwnerCell.set(m.sid, { pid: sgaSnapSender(m.seq), ck: m.oc });
+      if (m.kind === 'act' && typeof m.to === 'string' && m.to) {
+        if (m.to === myId) { sgaDeliver(m); return; } // the owner: one copy, nothing to pass on
+        sgaRoute(m, fromPid);
+        return;
+      }
       sgaDeliver(m);
       sgaFan(m, fromPid);
+    }
+    // AN ACT GOES TO THE OWNER, NOT TO THE ROOM. An act is a proposal only the
+    // owner reads; it used to ride the same flood as the owner's state, so
+    // every guest write (a 3 s heartbeat each, in Pixel Paint) reached every
+    // page: O(N) acts a second for each page to carry. Now the act names the
+    // owner (`to`, the seat whose ad names the sid) and walks the mesh toward
+    // its cell one channel at a time (nextHopDc: the same step the forwarded
+    // envelopes take); the owner answers with one delta for the room. Where a
+    // page has no step toward the owner (owner unknown, cell unknown, no open
+    // channel that way) the act floods from there as before, and a page that
+    // predates `to` floods it too: the flood is the fallback, never a loss.
+    const sgaOwnerCell = new Map(); // sid -> { pid, ck }: the cell the owner's own frames name
+    const sgaActOnce = new WeakSet(); // acts already sent once: a retry floods
+    const sgaRouteStats = { routed: 0, fell: 0 };
+    function sgaActTarget(sid, d) {
+      if (d && typeof d === 'object') { if (sgaActOnce.has(d)) return null; sgaActOnce.add(d); } // no echo the first time: the route may be the problem
+      const host = sgaSnapHost(sid);
+      if (!host || host === myId) return null;
+      const oc = sgaOwnerCell.get(sid);
+      return { pid: host, ck: coordKeyOf(host) || (oc && oc.pid === host ? oc.ck : null) };
+    }
+    function sgaRoute(m, fromPid) {
+      let hp = null;
+      try { hp = nextHopDc(m.to, coordKeyOf(m.to) || (typeof m.tc === 'string' ? m.tc : null)); } catch (e) { hp = null; }
+      if (hp && hp.id !== fromPid) { dcSend(hp, m); sgaRouteStats.routed++; return 1; }
+      sgaRouteStats.fell++;
+      return sgaFan(m, fromPid);
     }
     // The bus a mesh-native app runtime plugs into. Host side broadcasts state
     // ('snap' periodically, 'delta' per change); clients render from subscribe
@@ -27467,13 +27601,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const stageData = {
       broadcast(sid, kind, d) {
         const m = { k: 'sga', sid, seq: myId + ':' + (++sgaSeq), kind: kind || 'delta', d, at: Date.now() };
+        if (m.kind === 'snap' || m.kind === 'delta') { const c = meshCoord(); if (c) m.oc = net.topo.ckey(c); } // where acts find me
+        if (m.kind === 'act') { const t = sgaActTarget(sid, d); if (t) { m.to = t.pid; if (t.ck) m.tc = t.ck; } }
         sgaSeen.set(sid + '|' + m.seq, Date.now());
         // sgaDeliver retains an 'app' frame, so the OWNER seeds itself here and
         // can answer sga-appreq like any other holder. Without this the owner
         // would broadcast the bytes and keep no copy to serve, which is what
         // forced every latecomer back to the direct 'need-app' path.
         if (kind === 'app') sgaRetainApp(m); else sgaDeliver(m); // my own bytes need no verifying
-        sgaFan(m, null);
+        if (m.to) sgaRoute(m, null); else sgaFan(m, null);
         return m.seq;
       },
       subscribe(sid, cb) {
@@ -27493,8 +27629,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         else sgaAppChase(sid);
         return () => { s.delete(cb); if (!s.size) sgaSubs.delete(sid); };
       },
+      routeStats() { return Object.assign({}, sgaRouteStats); }, // acts walked toward the owner / fell back to the flood
       drop(sid) {
-        sgaSnap.delete(sid); sgaSubs.delete(sid); sgaWant.delete(sid);
+        sgaSnap.delete(sid); sgaSubs.delete(sid); sgaWant.delete(sid); sgaOwnerCell.delete(sid);
         sgaApp.delete(sid); sgaAppWant.delete(sid); sgaAppVer.delete(sid);
         const ta = sgaAppTimer.get(sid); if (ta) { clearTimeout(ta); sgaAppTimer.delete(sid); }
         const t = sgaReqTimer.get(sid); if (t) { clearTimeout(t); sgaReqTimer.delete(sid); }
@@ -29167,7 +29304,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (typeof window !== 'undefined' && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'transcript', line: { by: line.by, text: line.text, at: line.at, scribeBy: line.scribeBy || '' } });
     }
     function takeTr(m, backfill) { // backfill: a 'hi' replay — see takeChat
-      if (!m || !m.id || trs.has(m.id)) return false;
+      if (!m || !m.id || trs.has(m.id) || ((m.at || 0) > 0 && (m.at || 0) <= (trs.floorAt || 0))) return false;
       const writer = String(m.scribe || m.byId);
       // The flood limit is per writer AND voice: one captioning device writes
       // down a whole row, and a single shared budget dropped real sentences.
@@ -35970,7 +36107,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       ccOn: () => !!myStatus.cc,
       // Strip-teardown forensics (e2e-mosaic): whose status holds a stage
       // seat, and which stg pipes this page still holds. Read-only peeks.
-      statusPeekForTest: (id) => { const st = statusOf.get(id); return st ? { stg: st.stg || 0, ageMs: Date.now() - (st.at || 0), rxAgeMs: Date.now() - (st.rx || 0) } : null; },
+      statusPeekForTest: (id) => { const st = statusOf.get(id); return st ? { stg: st.stg || 0, camOff: st.camOff === true, ageMs: Date.now() - (st.at || 0), rxAgeMs: Date.now() - (st.rx || 0) } : null; },
       // ORIGIN-side beat forensics (e2e-handq's starved-box dump): how stale is
       // MY OWN last broadcast (myStatus.at — the stamp every receiver ages),
       // which clock drives it, and whether this page is even seated. Separates
@@ -36319,10 +36456,46 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       stageEarStreamForTest: () => (stageEar && stageEar.el.srcObject ? { stream: stageEar.el.srcObject, muted: !!stageEar.el.muted, paused: !!stageEar.el.paused } : null),
       stageRouteForTest: () => { const o = {}; for (const [k, v] of mosIn) { if (k.indexOf("stg:") !== 0 && k !== "sgs") continue; const d = mosStandby.get(k); o[k.slice(0, 8)] = String(v.via).slice(2, 8) + (d ? "|" + String(d.via).slice(2, 8) : ""); } return o; },
       stgBeatCostForTest: () => (stgBeatCost ? { in: stgBeatCost.in, out: stgBeatCost.out, ms: Math.round(stgBeatCost.ms * 10) / 10, upS: Math.round(performance.now() / 1000) } : null),
+      // One stager's feed as this page holds it: the claim, its audio tracks, the wire's own level (null when the stats cannot be read), the ear's level, and the watch's state.
+      stageWireForTest: async (id) => {
+        const keys = [...mosIn.keys()].filter((k) => k.indexOf('stg:') === 0 && k.slice(4).split('^')[0] === id), k2 = keys.find((k) => stageEar && stageEar.sids.has(k)) || keys[0], f = k2 ? mosIn.get(k2) : null;
+        const out = { keys: keys.map((k) => k.slice(0, 16)), has: !!f, stream: !!(f && f.stream), tracks: [], live: null, wire: null, fold: null, watch: null, earSid: !!(k2 && stageEar && stageEar.sids.has(k2)) };
+        if (!f || !f.stream) return out;
+        out.tracks = f.stream.getTracks().map((t) => ({ kind: t.kind, rs: t.readyState, muted: !!t.muted, en: !!t.enabled, id: String(t.id).slice(0, 8) }));
+        const t = stageEarLiveTrack(f.stream); out.live = t ? String(t.id).slice(0, 8) : null;
+        try { out.wire = t ? await stageEarRawPeak(t, 180, f) : null; } catch (e) { out.wire = null; }
+        try { out.fold = await stageEarFoldPeak(180); } catch (e) { out.fold = null; }
+        const w = stageEar && stageEar.watch ? stageEar.watch.get(k2) : null; if (w) out.watch = { tries: w.tries, settle: w.settleUntil ? w.settleUntil - Date.now() : 0, raw: w.rawPeak == null ? null : w.rawPeak, foldP: w.foldPeak == null ? null : w.foldPeak, trackId: w.trackId ? String(w.trackId).slice(0, 8) : null };
+        return out;
+      },
       stgBeatAgesForTest: () => { const o = {}, n = Date.now(); for (const [k, e] of stgBeats) o[k.slice(4, 12)] = n - e.at; return o; },
       stageWhyForTest: (id) => { const st = statusOf.get(id), d = digLists(), e = d ? d.stage.find((x) => x.id === id) : null; let f = null; try { f = mosIn.get('stg:' + id); } catch (x) {} return { on: stageIds().includes(id), fold: !!e, foldAge: d ? d.age : null, stAge: st ? Date.now() - stSeen(st) : null, stStg: st ? st.stg || 0 : null, stHold: stHold(id), tomb: !notTomb(id), gone: meshGone.has(id), held: typeof stageHeldAt !== 'undefined' && stageHeldAt.has(id), claim: f ? { via: String(f.via).slice(0, 8), dead: f.deadAt ? Date.now() - f.deadAt : 0 } : null }; },
       stgPathForTest: () => { const six = (x) => String(x || '').slice(0, 8); const o = {}; for (const [k, f] of mosIn) { if (k.indexOf('stg:') !== 0) continue; const d = mosStandby.get(k); const m = (e) => (e ? { via: six(e.via), key: e.key || null, h: e.meta ? e.meta.h : null, ao: !!(e.meta && e.meta.ao), vp: (e.meta && e.meta.vp) || [] } : null); const hot = []; for (const j of mosJobs.values()) if (j.upKey === k && j.active) hot.push(six(j.to)); o[six(k.slice(4))] = { pri: m(f), std: m(d), dead: f.deadAt ? Date.now() - f.deadAt : 0, hot }; } const jobs = []; for (const [jk, j] of mosJobs) if (j.key.indexOf('stg:') === 0) jobs.push({ k: six(j.key.slice(4)), to: six(j.to), up: j.upKey ? six(j.upKey.slice(4)) : null, active: !!j.active, off: !!j.carryOff, src: (j.srcTracks || []).map((t) => t.kind[0] + (t.readyState === 'live' ? (t.muted ? 'm' : 'L') : 'E')).join(''), sending: j.senders.map((sd) => sd.track ? 1 : 0).join(''), tl: j.tracklessAt ? Date.now() - j.tracklessAt : 0 }); const ann = []; for (const [ak, a] of mosAnn) if (ak.indexOf('|stg:') > 0) ann.push({ from: six(ak.slice(0, ak.indexOf('|'))), k: six(ak.slice(ak.indexOf('|') + 5)), age: Date.now() - (a.at || 0), h: a.h }); return { me: six(myId), coord: meshCoord(), o, jobs, ann }; },
       stgHiccupForTest: (ms) => { const jobs = [...mosJobs.values()].filter((b) => b.key.indexOf("stg:") === 0 && b.active); for (const b of jobs) b.senders.forEach((sd, i) => { const t = b.trackList[i]; if (t && t.kind === "audio") { try { sd.replaceTrack(null); } catch (e) {} } }); setTimeout(() => { for (const b of jobs) b.senders.forEach((sd, i) => { const t = b.trackList[i]; if (t && t.kind === "audio") { try { sd.replaceTrack(t); } catch (e) {} } }); }, ms); return jobs.length; },
+      // PRIVACY PROBE (test-only): what this page actually receives as VIDEO from one stager's stage feed, read off the track itself
+      // (not the roster, not a status): { feed, track, state, w, luma }. luma is the mean brightness (0..1) of up to 4 decoded frames,
+      // the max seen; null when the track is live but no frame decoded in the window. A camera-off stager must read dark (<= 0.05) or no track.
+      stageVideoProbeForTest: async (idPrefix) => {
+        const pre = String(idPrefix || '').slice(0, 8); let f = null;
+        for (const [k, v] of mosIn) { if (k.indexOf('stg:' + pre) === 0 && k !== 'stg:' + myId && v.stream) { f = v; break; } }
+        if (!f) return { feed: false, track: false };
+        const vt = f.stream.getVideoTracks()[0];
+        if (!vt) return { feed: true, track: false };
+        const out = { feed: true, track: true, state: vt.readyState, enabled: vt.enabled, w: 0, luma: null };
+        if (vt.readyState !== 'live') return out;
+        const el = document.createElement('video'); el.muted = true; el.playsInline = true; el.srcObject = new MediaStream([vt]);
+        try { await el.play(); } catch (e) {}
+        const cv = document.createElement('canvas'); cv.width = 24; cv.height = 24; const x = cv.getContext('2d');
+        for (let i = 0; i < 12 && (out.luma === null || i < 6); i++) {
+          await new Promise((r) => setTimeout(r, 250));
+          if (!el.videoWidth) continue;
+          out.w = el.videoWidth;
+          try { x.drawImage(el, 0, 0, 24, 24); const d = x.getImageData(0, 0, 24, 24).data; let sum = 0; for (let j = 0; j < d.length; j += 4) sum += d[j] + d[j + 1] + d[j + 2];
+            out.luma = Math.max(out.luma || 0, +(sum / (d.length / 4) / 765).toFixed(4)); } catch (e) {}
+        }
+        try { el.srcObject = null; } catch (e) {}
+        return out;
+      },
       stageEarLevel: (ms) => {
         if (!stageEar || !stageEar.el.srcObject || !ac) return Promise.resolve(-1);
         if (ac.state !== 'running') { try { ac.resume(); } catch (e) {} }
@@ -36591,6 +36764,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             return { peer: String(pid).slice(0, 12), via: rosterBuild.fromOcc.has(pid) ? 'cell' : 'status', ageS: st ? Math.round((now - stSeen(st)) / 1000) : null,
               why: h ? h.why : null, holdAgeS: h ? Math.round(h.age / 1000) : null, debtMs: h ? h.debt : null, noteAgoS: h ? Math.round((now - h.at) / 1000) : null }; }),
           rosterBuild: { agoMs: rosterBuild.at ? now - rosterBuild.at : null, n: rosterBuild.n, throws: rosterBuild.throws, err: rosterBuild.err || null },
+          // tl-chain base.clean forensics (DEBUG dump only, bounded): the room fold this page shows (n, part, age in ticks, leased seats)
+          // and, on a Section-1 seat, each section report it folds from (cell, author, age in ticks, n, leased, who sits there now),
+          // so a count that flaps names the cell whose report dropped out and for how long.
+          fold: (() => { try { const r = meshNode && meshNode.raw; if (!r || !r.rootDig || r.rootDig.at < 0) return null; const six = (x) => (x == null ? null : String(x).slice(0, 6)); const LT = r.LT(); const rd = r.rootDig;
+            const o = { n: rd.n, leased: rd.leased || 0, part: rd.part ? 1 : 0, ageT: LT - (rd.rx != null ? rd.rx : rd.at), by: six(rd.by), s1: null };
+            if (r.s1tab && r.coord && r.coord.pc === 0) { o.s1 = []; for (const [k, d] of r.s1tab) { if (o.s1.length >= 40) break; o.s1.push([String(k), six(d.by), LT - d.rx, d.n, d.leased || 0, six(r.occGet(k))]); } }
+            return o; } catch (e) { return { err: String(e).slice(0, 60) }; } })(),
           // D5 confirm forensics: standing translosts + probe-answer stamps by
           // coord, in ticks-ago — a stalled confirm shows here as a translost
           // aging far past EARLY_HOLD with no gone.

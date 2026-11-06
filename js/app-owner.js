@@ -272,8 +272,117 @@
     return String(collection) + '_c' + rnd;
   }
 
+  // ---- the owner's emission schedule --------------------------------------
+  // Every db change used to make the owner sign and flood the FULL state 40 ms
+  // later. In a room where each guest writes a small heartbeat (Pixel Paint:
+  // one row per player every 3 s) that is one full-state frame per beat per
+  // guest, flooded to every page: O(N) full states a second, O(N^2) for the
+  // room, and a real stroke queues behind them. The pump sends what CHANGED
+  // instead: a per-collection { collection, items:{id:rec|null} } delta (the
+  // shape every client has applied since the lane began), coalesced so the
+  // owner emits at most one batch per DELTA_MS whatever the room's size. A
+  // lone change still leaves at once (FIRST_MS): only a busy lane waits.
+  // The retained snap stays the full state, for latecomers and as the room's
+  // anti-entropy (a client that missed a delta is whole again at the next
+  // snap); it is held to one per SNAP_MIN_MS.
+  function bytesOf(v) { return v instanceof ArrayBuffer ? new Uint8Array(v) : new Uint8Array(v.buffer, v.byteOffset, v.byteLength); }
+  // Equal as canonical() would sign them (undefined keys skipped, bytes by
+  // value), without building the string: a blob compares byte for byte.
+  function sameValue(a, b) {
+    if (a === b) return true;
+    if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return a !== a && b !== b;
+    const ba = ArrayBuffer.isView(a) || a instanceof ArrayBuffer, bb = ArrayBuffer.isView(b) || b instanceof ArrayBuffer;
+    if (ba || bb) {
+      if (!(ba && bb)) return false;
+      const x = bytesOf(a), y = bytesOf(b);
+      if (x.length !== y.length) return false;
+      for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return false;
+      return true;
+    }
+    if (Array.isArray(a) !== Array.isArray(b)) return false;
+    if (Array.isArray(a)) {
+      if (a.length !== b.length) return false;
+      for (let i = 0; i < a.length; i++) if (!sameValue(a[i], b[i])) return false;
+      return true;
+    }
+    const ka = Object.keys(a).filter((k) => a[k] !== undefined), kb = Object.keys(b).filter((k) => b[k] !== undefined);
+    if (ka.length !== kb.length) return false;
+    for (const k of ka) if (b[k] === undefined || !sameValue(a[k], b[k])) return false;
+    return true;
+  }
+  // { id: rec | null } for every record that differs between two items maps, or null when none does.
+  function diffItems(prev, next) {
+    const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+    let out = null;
+    for (const id of Object.keys(next)) if (!has(prev, id) || !sameValue(prev[id], next[id])) (out || (out = Object.create(null)))[id] = next[id];
+    for (const id of Object.keys(prev)) if (!has(next, id)) (out || (out = Object.create(null)))[id] = null;
+    return out;
+  }
+  // o.state()            -> Promise<state> (already filtered for guests)
+  // o.emit(kind, x)      -> Promise; kind 'snap' / 'full' with a state, 'diff' with { collection, items }
+  // o.now, o.setTimer    the clock (tests drive a virtual one)
+  // o.deltaMs, o.snapMs, o.snapMinMs
+  function createStagePump(o) {
+    const now = o.now || (() => Date.now());
+    const later = o.setTimer || ((fn, ms) => setTimeout(fn, ms));
+    const DELTA_MS = o.deltaMs != null ? o.deltaMs : 250;   // four batches a second at most
+    const SNAP_MS = o.snapMs != null ? o.snapMs : 1200;
+    const SNAP_MIN_MS = o.snapMinMs != null ? o.snapMinMs : 3000;
+    const FIRST_MS = 40;
+    let told = null;                  // collection -> items, as the room was last told (snap or delta)
+    let dirty = new Set(), dirtyAll = false;
+    let dT = null, sT = null, lastDelta = -Infinity, lastSnap = -Infinity;
+    let chain = Promise.resolve();
+    const stats = { snaps: 0, fulls: 0, diffs: 0, empty: 0 };
+    // one queue: every frame reads the state and signs in order, so the deltas
+    // always describe the change since the frame before them
+    const run = (fn) => (chain = chain.then(fn).catch(() => {}));
+    const tellAll = (s) => {
+      told = Object.create(null);
+      const cols = (s && s.collections) || {};
+      for (const n of Object.keys(cols)) told[n] = Object.assign(Object.create(null), deepCopy((cols[n] && cols[n].items) || {}));
+    };
+    const whole = (kind) => run(() => Promise.resolve(o.state()).then((s) => {
+      if (kind === 'snap') { lastSnap = now(); stats.snaps++; } else { lastDelta = now(); stats.fulls++; }
+      tellAll(s);
+      return o.emit(kind, s);
+    }));
+    const flush = () => run(() => {
+      const all = dirtyAll || !told, names = [...dirty];
+      dirty = new Set(); dirtyAll = false;
+      return Promise.resolve(o.state()).then((s) => {
+        lastDelta = now();
+        if (!told) { tellAll(s); stats.fulls++; return o.emit('full', s); }
+        const cols = (s && s.collections) || {};
+        const list = all ? [...new Set(Object.keys(cols).concat(Object.keys(told)))] : names;
+        const out = [];
+        for (const n of list) {
+          const d = diffItems(told[n] || {}, (cols[n] && cols[n].items) || {});
+          if (!d) continue;
+          const t = told[n] || (told[n] = Object.create(null));
+          for (const id of Object.keys(d)) { if (d[id] === null) delete t[id]; else t[id] = deepCopy(d[id]); }
+          out.push({ collection: n, items: d });
+        }
+        if (!out.length) { stats.empty++; return null; }
+        stats.diffs += out.length;
+        return out.reduce((p, body) => p.then(() => o.emit('diff', body)), Promise.resolve());
+      });
+    });
+    return {
+      stats,
+      snap: () => whole('snap'),
+      full: () => whole('full'),
+      change(collection) {
+        if (typeof collection === 'string' && collection && collection !== '*') dirty.add(collection); else dirtyAll = true;
+        if (!dT) dT = later(() => { dT = null; flush(); }, Math.max(FIRST_MS, lastDelta + DELTA_MS - now()));
+        if (!sT) sT = later(() => { sT = null; whole('snap'); }, Math.max(SNAP_MS, lastSnap + SNAP_MIN_MS - now()));
+      },
+    };
+  }
+
   return {
     createSigner, makeVerifier, canonical, canonicalBytes, sha256hex, deepCopy,
     emptyState, applySnap, applyDelta, applyOp, newRecordId,
+    sameValue, diffItems, createStagePump,
   };
 });

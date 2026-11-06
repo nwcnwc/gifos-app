@@ -213,6 +213,7 @@
     tickSection1() {
       const TICK = this.TICK, id = this.id;
       this.l4Tick(); if (!this.hasCoord) { this.f.wake(id); return; }   // L4.3
+      if (this.u2Hot) { this.u2Hot = false; this.trace('UP2-PARK', id, this.coord, 'why=section1'); } this.u2Id = -1; this.u3Id = -1; this.u2SrcAt = -1; this.u2Row = topo.NO_CK;   // L2: a seat in Section 1 holds no E2 or E3 end (up2Tick runs on deep seats only); a deep row it comes back to is read afresh
       if (this.anyRookLive(this.backAt >= 0 ? this.backAt : -1)) { this.rookSeenAt = TICK; this.rookEver = true; }   // fragment detector
       if (this.rivalId >= 0) this.loneAsk();
       if (this.movedClaimId >= 0) {
