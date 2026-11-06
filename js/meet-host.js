@@ -229,7 +229,8 @@
   // made only of those is not a line. A lowercase "you" after a finished
   // sentence ("Okay. you") is the same noise on the end of a real line.
   // -> the line to keep, or '' for none.
-  var WHISPER_SILENCE = /^(?:(?:you )*you|thank you|thanks for watching|thank you for watching)$/;
+  // What Whisper writes for silence or a near-silent tail: not words anyone said.
+  var WHISPER_SILENCE = /^(?:(?:you )*you|thank you|thanks for watching|thank you for watching|thanks for listening|amen|bye|subscribe|please subscribe)$/;
   function dropWhisperNoise(text) {
     var t = String(text || '').replace(/\[[^\]]*\]|\([^)]*\)|[♪♫*]/g, ' ').replace(/\s+/g, ' ').trim()
       .replace(/([.!?])(?:\s+you)+\s*$/, '$1');

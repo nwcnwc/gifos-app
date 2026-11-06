@@ -29837,10 +29837,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       if (!src) return false;
       const w = { id, src, node: null, own, rate: ac.sampleRate, stageSid, pre: [], preMs: 0, utt: null, uttStart: 0, lastVoice: 0, worklet: false };
-      // Whisper is told the language when it is known: mine from the picker
-      // (wspDrain), another person's from their status; a mix is found by Whisper.
-      if (id !== 'me' && id !== 'fold') { const st = statusOf.get(id); w.lang = (st && st.lang) ? String(st.lang) : 'auto'; }
-      if (id === 'fold') { w.fold = true; w.foldSig = wspFoldSig(); w.lang = 'auto'; }
+      if (id === 'fold') { w.fold = true; w.foldSig = wspFoldSig(); }
       if (wspUseWorklet(id, w)) return true;
       let node;
       try { node = ac.createScriptProcessor(4096, 1, 1); } catch (e) { return false; }
@@ -29937,7 +29934,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           setStatus(uiText('stCaptionsBehindSkippingOldAudio', 'Captions behind, skipping old audio'), 8000);
         }
       }
-      const job = { id: w.id, chunks, at, rate: rate || w.rate, keep: !!keep, stage: !!w.stageSid, lang: w.lang || '' };
+      const job = { id: w.id, chunks, at, rate: rate || w.rate, keep: !!keep, stage: !!w.stageSid };
       if (keep) wspQ.items.unshift(job); else wspQ.items.push(job);
       wspDrain();
     }
@@ -30012,13 +30009,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const pcm = wspPcm16k(job.chunks, job.rate);
       // My own voice: the picker (auto = let Whisper find it). Another voice:
       // the language its page advertises, else found by Whisper. A mix: found.
-      // A cut that continues the previous cut of the same capture (under 1.5 s
-      // of gap) keeps that cut's language: nobody switches language mid-sentence,
-      // and a short tail detected on its own comes out as anything, translated.
-      // My own voice: the picker, else the language this page knows, else found.
+      // Whisper finds the language itself: a person may switch languages, and
+      // detection is what Whisper is here for. Only the picker tells it one
+      // (my own voice). A cut that continues the previous cut of the same
+      // capture (under 1.5 s of gap) keeps that cut's language: nobody
+      // switches language mid-sentence, and a short tail detected on its own
+      // comes out as anything, translated.
       const cap0 = wspCaps.get(job.id);
       const cont = (cap0 && cap0.lastLang && cap0.lastEnd && job.at - cap0.lastEnd < 1500) ? cap0.lastLang : '';
-      const lang = cont || job.lang || (job.id === 'me' ? (lsGet(CC_LANG_KEY) || trLangKnown() || 'auto') : 'auto');
+      const lang = cont || (job.id === 'me' ? (lsGet(CC_LANG_KEY) || 'auto') : 'auto');
       let model = 'base';
       if (typeof wspModel === 'function') {
         const picked = wspModel();
@@ -30186,7 +30185,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const cap = wspCaps.get(id);
         const sid = wspStageSid(id);
         if (cap && (cap.stageSid || null) !== (sid || null)) wspStop(id);
-        else if (cap && id !== 'me' && id !== 'fold' && (cap.lang || 'auto') !== (((statusOf.get(id) || {}).lang) || 'auto')) wspStop(id);   // the speaker's page now tells its language (or stopped): ask Whisper for that
         else if (cap && cap.fold && cap.foldSig !== wspFoldSig()) wspStop(id);   // the mix's tracks changed: capture the new ones
         if (!wspCaps.has(id)) wspStart(id);
       }
