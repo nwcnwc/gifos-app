@@ -29759,11 +29759,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // detects as anything), and no words can match across the guesses.
       // Overlapping spans make it one utterance; the better line wins.
       if (la && lb && la !== lb) return trOverlap(a, b);
+      return trWithin(a, b) || trWithin(b, a);
+    }
+    // Every word of a is in b (a is a cut or a copy of b), three words at
+    // least, or the same words for a shorter line. "We review the budget
+    // today" and "... tomorrow" share most words and are two sentences: an
+    // extra line in a transcript is far better than a missing one.
+    function trWithin(a, b) {
       const wa = trWords(trNorm(a.text)), wb = trWords(trNorm(b.text));
-      if (!wa.size || !wb.size) return false;
-      let both = 0; for (const x of wa) if (wb.has(x)) both++;
-      const small = Math.min(wa.size, wb.size);
-      return both / small >= 0.6 && (small >= 3 || both === Math.max(wa.size, wb.size));
+      if (!wa.size || !wb.size || wa.size > wb.size) return false;
+      for (const x of wa) if (!wb.has(x)) return false;
+      return wa.size >= 3 || wa.size === wb.size;
     }
     // Better: a higher rank; the same rank, the earlier time; the same time,
     // the lower id. Order-independent, so every page keeps the same line.
@@ -29778,17 +29784,42 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // or better: drop it), or the held line m REPLACES (m is better; the held
     // line leaves and m keeps the earlier of the two times, so the transcript
     // keeps its order and the sentence its true start).
+    // One voice speaks one language at a time: two lines under the SAME
+    // named speaker whose spans overlap and whose languages differ are one
+    // stretch of that voice, one of them rendered in the wrong language. A
+    // mix (Stadium) may hold another person's voice, so a generic line in
+    // another language is left alone.
+    function trSameVoiceOtherLang(a, b) {
+      const la = trLangOf(a.lang), lb = trLangOf(b.lang);
+      return !!(la && lb && la !== lb && a.byId === b.byId && !trGeneric(a.byId) && trOverlap(a, b));
+    }
     function trMerge(m) {
-      let same = null;
-      for (const l of trs.values()) if (trSame(l, m)) { if (!same || trBetter(l, same)) same = l; }
-      if (!same) return 'new';
-      if (clog) clog('tr same', String(m.byId).slice(0, 6), m.src, m.at, 'held', String(same.byId).slice(0, 6), same.src, same.at);
-      // Whichever copy stays, the sentence keeps the earlier of the two times,
-      // so the order is the same on every page whatever arrived first.
-      if (!trBetter(m, same)) { if ((m.at || 0) > 0 && (m.at || 0) < (same.at || 0)) same.at = m.at; trDrops++; return 'dup'; }
-      trs.delete(same.id);
-      if ((same.at || 0) > 0 && (same.at || 0) < (m.at || 0)) m.at = same.at;
-      return same;
+      // EVERY held line this one matches is the same utterance (two engines
+      // cut it differently, so a long line can match several short ones). The
+      // best of them all survives with the earliest time, and folds only the
+      // lines whose words it holds, or the same voice rendered in another
+      // language (the clash, or an overlap): a line with words the survivor
+      // lacks stays, whatever its rank. An extra line is better than a lost one.
+      const same = [];
+      for (const l of trs.values()) if (trSame(l, m)) same.push(l);
+      if (!same.length) return 'new';
+      let best = m;
+      for (const l of same) if (trBetter(l, best)) best = l;
+      const folds = (l, into) => l !== into && (trLangClash(l, into) || trSameVoiceOtherLang(l, into) || trWithin(l, into));
+      let at = best.at || 0;
+      for (const l of same.concat([m])) if (folds(l, best) && (l.at || 0) > 0 && (at <= 0 || l.at < at)) at = l.at;
+      if (clog) clog('tr same', String(m.byId).slice(0, 6), m.src, m.at, 'held', String(best.byId).slice(0, 6), best.src, best.at, 'x' + same.length);
+      for (const l of same) if (folds(l, best)) trs.delete(l.id);
+      if (best !== m) {
+        if (at > 0 && at < (best.at || 0)) best.at = at;
+        if (folds(m, best)) { trDrops++; return 'dup'; }
+        // the new line has words the better one lacks: both stay, and the
+        // new one takes in the held lines it holds the words of
+        for (const l of same) if (trs.has(l.id) && trBetter(m, l) && folds(l, m)) { trs.delete(l.id); if ((l.at || 0) > 0 && (l.at < (m.at || 0) || !(m.at > 0))) m.at = l.at; }
+        return 'new';
+      }
+      if (at > 0) m.at = at;
+      return same[0];
     }
     // A line arrives here from the wire ('tr' frame, or a 'hi' replay = backfill)
     // and from this page's own engine (addTranscriptLine). The device that wrote
@@ -30201,10 +30232,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       if (!src) return false;
       const w = { id, src, node: null, own, rate: ac.sampleRate, stageSid, pre: [], preMs: 0, utt: null, uttStart: 0, lastVoice: 0, worklet: false };
-      // Whisper is told the language when it is known: mine from the picker
-      // (wspDrain), another person's from their status; a mix is found by Whisper.
-      if (id !== 'me' && id !== 'fold') { const st = statusOf.get(id); w.lang = (st && st.lang) ? String(st.lang) : 'auto'; }
-      if (id === 'fold') { w.fold = true; w.foldSig = wspFoldSig(); w.lang = 'auto'; }
+      if (id === 'fold') { w.fold = true; w.foldSig = wspFoldSig(); }
       if (wspUseWorklet(id, w)) return true;
       let node;
       try { node = ac.createScriptProcessor(4096, 1, 1); } catch (e) { return false; }
@@ -30240,6 +30268,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function startWhisper() { return !wspPaused && wspStart('me'); }
     function stopWhisper() { for (const id of Array.from(wspCaps.keys())) wspStop(id); wspQ.items.length = 0; }
+    // How much VOICE a clip holds: 20 ms frames at speech level (an RMS above
+    // WSP_VOICE_RMS on the 16 kHz samples). Whisper asked about a clip with no
+    // voice in it invents words ("Amen.", "Thank you."); the clip's own
+    // samples, never the words, say whether anyone spoke.
+    const WSP_VOICE_RMS = 0.01, WSP_VOICE_FRAMES = 5;
+    function wspVoiceFrames(pcm, rate) {
+      const n = Math.max(1, Math.round((rate || 16000) / 50));
+      let frames = 0;
+      for (let i = 0; i + n <= pcm.length; i += n) {
+        let acc = 0; for (let j = i; j < i + n; j++) acc += pcm[j] * pcm[j];
+        if (Math.sqrt(acc / n) > WSP_VOICE_RMS) frames++;
+      }
+      return frames;
+    }
     function wspPcm16k(chunks, rate) { // concatenate, then a box-filter resample to 16 kHz
       let n = 0; for (const c of chunks) n += c.length;
       const all = new Float32Array(n); let o = 0; for (const c of chunks) { all.set(c, o); o += c.length; }
@@ -30301,7 +30343,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           setStatus(uiText('stCaptionsBehindSkippingOldAudio', 'Captions behind, skipping old audio'), 8000);
         }
       }
-      const job = { id: w.id, chunks, at, rate: rate || w.rate, keep: !!keep, stage: !!w.stageSid, lang: w.lang || '' };
+      const job = { id: w.id, chunks, at, rate: rate || w.rate, keep: !!keep, stage: !!w.stageSid };
       if (keep) wspQ.items.unshift(job); else wspQ.items.push(job);
       wspDrain();
     }
@@ -30374,15 +30416,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!wspCaps.has(job.id)) { wspDrain(); return; } // its voice left while it waited
       wspQ.busy = true;
       const pcm = wspPcm16k(job.chunks, job.rate);
+      job.voiced = wspVoiceFrames(pcm, 16000);
       // My own voice: the picker (auto = let Whisper find it). Another voice:
       // the language its page advertises, else found by Whisper. A mix: found.
-      // A cut that continues the previous cut of the same capture (under 1.5 s
-      // of gap) keeps that cut's language: nobody switches language mid-sentence,
-      // and a short tail detected on its own comes out as anything, translated.
-      // My own voice: the picker, else the language this page knows, else found.
+      // Whisper finds the language itself: a person may switch languages, and
+      // detection is what Whisper is here for. Only the picker tells it one
+      // (my own voice). A cut that continues the previous cut of the same
+      // capture (under 1.5 s of gap) keeps that cut's language: nobody
+      // switches language mid-sentence, and a short tail detected on its own
+      // comes out as anything, translated.
       const cap0 = wspCaps.get(job.id);
       const cont = (cap0 && cap0.lastLang && cap0.lastEnd && job.at - cap0.lastEnd < 1500) ? cap0.lastLang : '';
-      const lang = cont || job.lang || (job.id === 'me' ? (lsGet(CC_LANG_KEY) || trLangKnown() || 'auto') : 'auto');
+      const contFound = !!(cont && cap0.lastFound); // the inherited language was found by Whisper on the previous cut
+      const lang = cont || (job.id === 'me' ? (lsGet(CC_LANG_KEY) || 'auto') : 'auto');
       let model = 'base';
       if (typeof wspModel === 'function') {
         const picked = wspModel();
@@ -30481,14 +30527,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         wspQ.lastLatencyMs = Math.max(0, Date.now() - t0);
         let text = r && r.text ? String(r.text).trim() : '';
         if (text && GifOS.meetHost && typeof GifOS.meetHost.dropWhisperNoise === 'function') text = GifOS.meetHost.dropWhisperNoise(text);
+        // Words answered for a clip that held no voice are Whisper's own: dropped
+        // by the audio, never by what the words are (a real "Thank you." stays).
+        if (text && (job.voiced || 0) < WSP_VOICE_FRAMES) { if (clog) clog('wsp hallucination', job.id, job.voiced, text.slice(0, 30)); text = ''; }
         if (text && wspCaps.has(job.id)) {
           // ld only when Whisper was asked to FIND the language: told a
           // language, it echoes it back, and told the wrong one for the
           // audio it writes a translation; neither is a detection.
-          const found = lang === 'auto';
-          const rl = found ? ((r && r.language) ? String(r.language) : '') : lang;
+          // ld only when Whisper was asked to FIND the language, or this cut
+          // continues one where it did: told a language, it echoes it back,
+          // and told the wrong one for the audio it writes a translation.
+          const found = lang === 'auto' || contFound;
+          const rl = lang === 'auto' ? ((r && r.language) ? String(r.language) : '') : lang;
           const capNow = wspCaps.get(job.id);
-          if (capNow) { capNow.lastEnd = job.at + clipMs; if (rl) capNow.lastLang = rl; }
+          if (capNow) { capNow.lastEnd = job.at + clipMs; if (rl) { capNow.lastLang = rl; capNow.lastFound = found; } }
           const end = job.at + clipMs; // the clip's span: a mix clip opens with the first voice in it, so its start says little
           if (job.id === 'me') { addTranscriptLine(text, job.at, null, null, 'mic', rl, found, end); }
           else if (job.id === 'fold') { if (trWrites()) addTranscriptLine(text, job.at, 'stadium', 'Stadium', 'mix', rl, found, end); }   // a far-row line, labelled by its channel
@@ -30554,7 +30606,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const cap = wspCaps.get(id);
         const sid = wspStageSid(id);
         if (cap && (cap.stageSid || null) !== (sid || null)) wspStop(id);
-        else if (cap && id !== 'me' && id !== 'fold' && (cap.lang || 'auto') !== (((statusOf.get(id) || {}).lang) || 'auto')) wspStop(id);   // the speaker's page now tells its language (or stopped): ask Whisper for that
         else if (cap && cap.fold && cap.foldSig !== wspFoldSig()) wspStop(id);   // the mix's tracks changed: capture the new ones
         if (!wspCaps.has(id)) wspStart(id);
       }
