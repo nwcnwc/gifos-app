@@ -29387,12 +29387,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const a0 = a.at || 0, a1 = Math.max(a0, a.end || 0), b0 = b.at || 0, b1 = Math.max(b0, b.end || 0);
       return Math.max(0, Math.max(a0, b0) - Math.min(a1, b1));
     }
+    // Do the two spans overlap in time (a line without an end is a point)?
+    function trOverlap(a, b) {
+      const a0 = a.at || 0, a1 = Math.max(a0, a.end || 0), b0 = b.at || 0, b1 = Math.max(b0, b.end || 0);
+      return a0 <= b1 && b0 <= a1;
+    }
     function trSame(a, b) {
       if (trGap(a, b) >= 8000) return false;
       if (a.byId !== b.byId && !trGeneric(a.byId) && !trGeneric(b.byId)) return false;
       if (trLangClash(a, b)) return true;
       const la = trLangOf(a.lang), lb = trLangOf(b.lang);
-      if (la && lb && la !== lb) return false;
+      // Two engines heard the SAME stretch of one voice and named different
+      // languages: one of them guessed wrong (a short tail of a sentence
+      // detects as anything), and no words can match across the guesses.
+      // Overlapping spans make it one utterance; the better line wins.
+      if (la && lb && la !== lb) return trOverlap(a, b);
       const wa = trWords(trNorm(a.text)), wb = trWords(trNorm(b.text));
       if (!wa.size || !wb.size) return false;
       let both = 0; for (const x of wa) if (wb.has(x)) both++;
