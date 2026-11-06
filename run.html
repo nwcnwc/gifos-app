@@ -27526,10 +27526,22 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // same pipe two seconds later. A job must stay unwanted for MOS_GRACE
       // before it is really unshipped. (A job to a DEPARTED peer drops at once;
       // dropPeer already cleaned the far side.)
+      // MY OWN MOVE IS NO FLICKER. A Stadium-lane job carries what my cell
+      // makes (my row's product, a view, a mix, a relay of my head's), and
+      // those streams keep their objects when I move: a deep head that moves
+      // up to a Section 1 head cell keeps one product pack, which now packs its
+      // NEW row. Its old 'sub' up-ship, kept for the grace, carried that row's
+      // own voices to its old up seat, which mixed them into the row view it
+      // made as heir: the row heard itself on row and Stadium at once for the
+      // whole grace. A job last wanted from another cell of mine is unshipped
+      // at once. Stage copies carry their stager whatever my cell, so they keep
+      // the grace.
       const nowU = Date.now();
+      const ckU = c.pc + '/' + c.r + '.' + c.i;
       for (const [jk, job] of [...mosJobs]) {
-        if (wanted.has(jk)) { job.unwantedAt = 0; continue; }
+        if (wanted.has(jk)) { job.unwantedAt = 0; job.wantCk = ckU; continue; }
         if (!peers.has(job.to) || stgEnded(job.key)) { unshipMos(jk, true); continue; } // a copy of an ended stage has no flicker to wait out: the beat already waited
+        if (job.wantCk && job.wantCk !== ckU && job.key.indexOf('stg:') !== 0 && job.key !== 'sgs') { unshipMos(jk, true); continue; }
         if (!job.unwantedAt) job.unwantedAt = nowU;
         else if (nowU - job.unwantedAt > MOS_GRACE) unshipMos(jk, true);
       }
