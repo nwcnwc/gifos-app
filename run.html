@@ -17071,7 +17071,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             if (!todo.length) { g.failed.length = 0; g.threw.length = 0; g.state = 'ok'; note('recovered'); startMesh(); return; }
             g.state = 'refused'; g.missing = todo;
             note('refuse ' + todo.join(','));
-            setStatus(uiText('stLoadIncomplete', 'This page did not finish loading, so it cannot join safely. Reload the page to try again.'), true);
+            // the status line is rewritten by the page's own ticks: the refusal also lives in a banner nothing else touches
+            const msg = uiText('stLoadIncomplete', 'This page did not finish loading, so it cannot join safely. Reload the page to try again.');
+            try { const d = document.createElement('div'); d.id = 'load-gate-msg'; d.setAttribute('role', 'alert'); d.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:2147483647;padding:14px 16px;background:#b00020;color:#fff;font:16px system-ui,sans-serif;text-align:center'; d.textContent = msg; document.body.appendChild(d); } catch (e) {}
+            setStatus(msg, true);
           })();
         }
         return true;
