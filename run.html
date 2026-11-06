@@ -25620,6 +25620,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const fb = mosFb.get(rk) || {};
         const r = { t: now, k: rk.slice(4, 12), e: e === 'want' ? 'wake' : e, why: String(why || '').slice(0, 90), p: stgPicOf(mosIn.get(rk)), s: stgPicOf(mosStandby.get(rk)),
           lb: fb.lastBytes, sb: fb.stdB, fd: fb.stdFdec, d0: fb.d0, dark: fb.dark ? 1 : 0, sus: fb.suspect ? 1 : 0, pd: fb.picDead ? 1 : 0 };
+        // np: no picture is owed. A camera-off sender keeps a live, unmuted video track that sends only black frames, so a still
+        // or empty picture from its slot is the one promised. Set only when the owner's own status says camera off and no screen share.
+        { const own = String(rk).slice(4).split('^')[0], st = own === myId ? myStatus : statusOf.get(own); if (st && st.camOff && !sharingScreen(own)) r.np = 1; }
         swapPicRing.push(r); if (swapPicRing.length > 40) swapPicRing.shift();
         if (e === 'swap' && !follow) for (const ms of [1500, 3000]) setTimeout(() => swapPicNote(rk, 'after' + ms, 'swap +' + ms + 'ms', true), ms);
       } catch (err) {}
