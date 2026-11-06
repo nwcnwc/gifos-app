@@ -25591,6 +25591,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // is remembered (stdTried), so the next wake goes to another candidate, not the same dead copy.
     // quickMs (stage): a standby woken for a dark primary that has not moved one byte quickMs after the
     // wake is as dead as a stale wake, so the next candidate gets its turn in seconds.
+    // A wake while the primary still flows (failback to the preferred copy, a picture complaint) that has not
+    // ended in a swap within wakeMax failed the same way: it is parked at once and the copy is remembered
+    // (fb.fbTried, the same window), so no failback or picture wake goes to it until the window lapses. A
+    // failover (primary gone or dark) still may: there the copy is judged on its voice, not on the picture
+    // the failback waited for. Without it a failback that never completed held its second pipe hot with no
+    // retry, and a copy left because it failed was staged and woken again on every swap.
     function standbyStaysHot(fb, now, wakeMax, stdId, quickMs) {
       if (fb.suspect && !(fb.lastBytes > 0) && now - (fb.suspectAt || 0) > wakeMax) fb.suspect = false;
       const quickDead = !!(quickMs && fb.dark && fb.wakeAt && now - fb.wakeAt > quickMs && fb.d0 >= 0 && fb.b0 >= 0 && !(fb.stdB > fb.b0));
@@ -25599,13 +25605,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (fb.dark && wakeStale && !flowed) {
         fb.dark = false; fb.suspect = true; fb.suspectAt = now; fb.wakeAt = 0;
         if (stdId) (fb.stdTried = fb.stdTried || new Map()).set(stdId, now);
+      } else if (!fb.dark && wakeStale) {
+        fb.wakeAt = 0; fb.prefSince = 0;
+        if (stdId) (fb.fbTried = fb.fbTried || new Map()).set(stdId, now);
       }
       const wakeLive = !!(fb.wakeAt && now - fb.wakeAt <= wakeMax);
       return !fb.suspect && (wakeLive || !!fb.dark);
     }
     // A standby whose wake did not flow sits out for a while; failback to it is tried again later.
-    function stdTried(fb, id, now) {
-      const at = fb.stdTried && fb.stdTried.get(id);
+    // which: 'stdTried' (failover order, the default) or 'fbTried' (failback and picture wakes).
+    function stdTried(fb, id, now, which) {
+      const m = fb[which || 'stdTried'], at = m && m.get(id);
       return !!at && now - at < 120000;
     }
     // THE STANDBY TAKES ANOTHER ROAD. A slot's standby is the preferred path when the primary is not it (failback
@@ -25975,7 +25985,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // L2.7: the seat holds E2 hot, so E2's copy takes over even while E1's still moves packets.
       const seatE2 = meshSeat();
       const u2Over = !!(pri && std && seatE2 && seatE2.u2Hot && std.via === seatE2.u2Id && pri.via !== std.via && (rk.indexOf('stg:') === 0 || rk === 'sgs'));
-      const wantSwap = !!(pri && std && (!priLive || fb.dark || fb.picDead || u2Over || (stdIsPref && !priIsPref)));
+      // A failback or picture wake never goes to a copy whose last such wake failed, or that was just left for failing,
+      // until the window lapses (fbTried); a failover (primary gone or dark) is not held by it.
+      const stdFbOk = !!std && !stdTried(fb, std.via + '|' + std.streamId, now, 'fbTried');
+      const wantSwap = !!(pri && std && (!priLive || fb.dark || u2Over || (stdFbOk && (fb.picDead || (stdIsPref && !priIsPref)))));
       if (wantSwap) {
         if (std && !std.el && std.stream) std.el = mosVideo(std.stream); // mint the decoder on wake, not while parked
         if (!fb.wakeAt) { fb.wakeAt = now; fb.f0 = frames(std.el); if (DEBUG_ON && rk.indexOf('stg:') === 0) swapPicNote(rk, 'wake', 'wantSwap priLive=' + (priLive ? 1 : 0) + ' dark=' + (fb.dark ? 1 : 0) + ' picDead=' + (fb.picDead ? 1 : 0)); }
@@ -26029,6 +26042,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (DEBUG_ON && !(flowing && settled) && rk.indexOf('stg:') === 0) swapPicNote(rk, 'hold', 'flowing=' + (flowing ? 1 : 0) + ' settled=' + (settled ? 1 : 0) + ' f0=' + fb.f0 + ' stdAdv=' + (stdAdvanced ? 1 : 0));
         if (flowing && settled) {
           const old = pri;
+          // The copy left because it failed (dark, picture dead) is not the next failback.
+          if (fb.dark || fb.picDead) (fb.fbTried = fb.fbTried || new Map()).set(old.via + '|' + old.streamId, now);
           mosIn.set(rk, std); mosStandby.delete(rk); pri = std; std = null; stgFoNote(rk, 'swap', pri.via, 'flowing=' + (flowing ? 1 : 0) + ' dark=' + (fb.dark ? 1 : 0) + ' priLive=' + (priLive ? 1 : 0) + ' picDead=' + (fb.picDead ? 1 : 0) + ' u2=' + (u2Over ? 1 : 0));
           // My new source may still hold my old copy of this feed: its source is gone, and it looks
           // alive for 12 s, so that seat would fail back onto it. End it.
