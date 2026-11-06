@@ -8619,7 +8619,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           showName(true, main.label);
         } else {
           const st = main.stream;
-          if (fsmain.srcObject !== st) { fsmain.srcObject = st; const pr = fsmain.play(); if (pr && pr.catch) pr.catch(() => {}); }
+          // The view borrows the tile's stream. A <video> that never started
+          // on its bind (WebKit leaves one on a canvas stream now and then)
+          // is bound again with a fresh wrapper of the same tracks, once its
+          // tile shows frames and it has had a moment, at most every refresh.
+          const unstarted = !!(st && fsmain._from === st && fsmain.srcObject && !fsmain.videoWidth && main.v && main.v.videoWidth > 0
+            && Date.now() - (fsmain._boundAt || 0) >= 1500 && typeof st.getVideoTracks === 'function');
+          if (fsmain._from !== st || !fsmain.srcObject || unstarted) {
+            fsmain._from = st; fsmain._boundAt = Date.now();
+            fsmain.srcObject = unstarted ? new MediaStream(st.getVideoTracks()) : st;
+            const pr = fsmain.play(); if (pr && pr.catch) pr.catch(() => {});
+          }
           fsmain.classList.remove('dark');
           fsBlurClass(fsmain, main.bl);
           showName(false);
