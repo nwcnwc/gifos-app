@@ -4210,8 +4210,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <label class="rec-opt"><input type="checkbox" id="ccsend" checked><span><b data-t="setCcSend">Send my captions</b><small data-t="setCcSendHelp">Your voice is written down while your mic is on and sent to the meeting as captions, so everyone can read you. Your browser's speech service (Google, Apple or Microsoft) hears your voice unless you pick Whisper below, which keeps it on this device. Off: the others' devices may still write you down.</small></span></label>
         <p class="set-help" id="ccsend-can" style="display:none;color:#ffd23c" data-t="setCcSendCant">This browser has no speech engine, so it cannot send your captions. A device in the meeting that keeps a transcript writes you down instead.</p>
         <b data-t="setTr" style="margin-top:.5rem">Transcript</b>
-        <label class="rec-opt"><input type="radio" name="trmode" value="off"><span><b data-t="setTrOff">Off</b><small data-t="setTrOffHelp">Captions show on your screen when CC is on, and nothing is kept.</small></span></label>
-        <label class="rec-opt"><input type="radio" name="trmode" value="keep"><span><b data-t="setTrKeep">Keep a transcript for me</b><small data-t="setTrKeepHelp">Every line is kept on this device, in the Transcript window, and can be downloaded. This device also writes down the people nobody is captioning, by name when it knows it, or as Stage or Stadium.</small></span></label>
+        <label class="rec-opt"><input type="radio" name="trmode" value="off"><span><b data-t="setTrOff">Off</b><small data-t="setTrOffHelp">Captions show on your screen when CC is on, and nothing is kept on this device.</small></span></label>
+        <label class="rec-opt"><input type="radio" name="trmode" value="keep"><span><b data-t="setTrKeep">Keep a transcript for me</b><small data-t="setTrKeepHelp">The usual setting. Every line is kept on this device, in the Transcript window, and can be downloaded. This device also writes down the people nobody is captioning, by name when it knows it, or as Stage or Stadium.</small></span></label>
         <label class="rec-opt"><input type="radio" name="trmode" value="share"><span><b data-t="setTrShare">Keep and share with the room</b><small data-t="setTrShareHelp">The same, and the lines this device writes about others go to everyone. Your tile shows a transcript badge.</small></span></label>
         <b data-t="setCcLang" style="margin-top:.5rem">Captions language</b>
         <p class="set-help" data-t="setCcHelp">What <b>your own device</b> listens for. The browser engine cannot guess: it uses this device's language unless you pick one here. Whisper finds the language by itself.</p>
@@ -29294,15 +29294,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     let trRxAt = 0; // when a shared line from another writer last arrived (the "receiving" mark)
     // Remembered on this device like the other caption settings (lsGet).
     function capSend() { return lsGet(TR_SEND_KEY) !== 'off'; }
-    // '' (off, the default): lines are shown by CC and thrown away. 'keep':
-    // stored and shown here, and this page writes down the voices nobody
-    // captions. 'share': keep, and those lines go to the room. A Meet Bot is
-    // in the room to write, so with no choice saved it keeps.
+    // 'keep' (the default): lines are stored and shown here, and this page
+    // writes down the voices nobody captions, so a late joiner always finds
+    // the history on someone's page. 'share': keep, and those lines go to the
+    // room. '' (off, saved as 'off', a choice): lines are shown by CC and
+    // thrown away.
     let trModeSet = null; // this meeting's choice, when storage cannot hold it (a bot's frame)
     function trMode() {
       const v = trModeSet !== null ? trModeSet : lsGet(TR_MODE_KEY);
       if (v === 'keep' || v === 'share') return v;
-      return (typeof myStatus !== 'undefined' && myStatus && myStatus.bot) ? 'keep' : '';
+      return v === 'off' ? '' : 'keep';
     }
     function trKeeps() { return trMode() !== ''; }
     const trNorm = (t) => String(t || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
@@ -29388,7 +29389,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (trMerge(line) === 'dup') return false;
       trs.set(m.id, line);
       trimMap(trs, CHAT_MAX);
-      if (!backfill && w !== myId) { trRxAt = Date.now(); trLearnLang(line); }
+      if (!backfill && w !== myId) trRxAt = Date.now();
+      if (!backfill) trLearnLang(line); // the room's Whisper pages teach me my language, and so does my own
       if (!backfill) emitLiveTranscript(line);
       return true;
     }
@@ -29408,15 +29410,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // (this meeting only; the picker is still the person's choice).
     let trHeardLang = '', trHeardN = 0, trLangLearned = '';
     function trLang() { const v = trLangLearned || ccLang(); return trLangOf(v === 'auto' ? (navigator.language || 'en') : v); }
+    // What this page KNOWS about the speaker's language, for the room: a
+    // picked language, or one learned from detected lines (the room's or
+    // its own Whisper). A device default is a guess and is not advertised,
+    // so a writer's Whisper is left to find the language itself.
+    function trLangKnown() { const v = ccLang(); return trLangOf(trLangLearned || (lsGet(CC_LANG_KEY) && v !== 'auto' ? v : '')); }
     function trLearnLang(line) {
       if (!line || !line.ld || line.byId !== myId || !line.lang || trLangLearned === line.lang) return;
-      if (line.lang === trLangOf(ccLang() === 'auto' ? navigator.language : ccLang()) && !trLangLearned) return;
+      if (line.lang === trLangKnown()) return; // nothing new: already picked or learned
       if (trHeardLang === line.lang) trHeardN++; else { trHeardLang = line.lang; trHeardN = 1; }
       if (trHeardN < 2) return;
       trLangLearned = line.lang;
       if (clog) clog('tr lang learned', line.lang);
       try { if (typeof speechRunning === 'function' && speechRunning()) { stopSpeech(); syncSpeech(); } } catch (e) {}
-      try { if (typeof broadcastStatus === 'function') broadcastStatus(); } catch (e) {}
+      try { if (typeof capPublish === 'function') capPublish(); } catch (e) {} // the room's writers ask Whisper for my language from now on
       try { setStatus(uiText('stCaptionsNowListenFor', 'Captions now listen for {lang}.').replace('{lang}', line.lang), 6000); } catch (e) {}
     }
     // Consecutive lines from one person, close together, read as one
@@ -30032,8 +30039,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         let text = r && r.text ? String(r.text).trim() : '';
         if (text && GifOS.meetHost && typeof GifOS.meetHost.dropWhisperNoise === 'function') text = GifOS.meetHost.dropWhisperNoise(text);
         if (text && wspCaps.has(job.id)) {
-          const rl = (r && r.language) ? String(r.language) : (lang === 'auto' ? '' : lang);
-          const found = !!(r && r.language) || lang === 'auto';
+          // ld only when Whisper was asked to FIND the language: told a
+          // language, it echoes it back, and told the wrong one for the
+          // audio it writes a translation; neither is a detection.
+          const found = lang === 'auto';
+          const rl = found ? ((r && r.language) ? String(r.language) : '') : lang;
           if (job.id === 'me') { addTranscriptLine(text, job.at, null, null, 'mic', rl, found); }
           else if (job.id === 'fold') { if (trWrites()) addTranscriptLine(text, job.at, 'stadium', 'Stadium', 'mix', rl, found); }   // a far-row line, labelled by its channel
           else if (trWrites() && (peers.has(job.id) || job.stage)) addTranscriptLine(text, job.at, job.id, null, 'ear', rl, found);
@@ -30278,7 +30288,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return !!(speech && speechProved);
     }
     function capPublish() {
-      const next = { cap: capLive() ? 1 : 0, lang: trLang(), trs: trMode() === 'share' ? 1 : 0 };
+      const next = { cap: capLive() ? 1 : 0, lang: trLangKnown(), trs: trMode() === 'share' ? 1 : 0 };
       const prev = { cap: myStatus.cap || 0, lang: myStatus.lang || '', trs: myStatus.trs || 0 };
       if (next.cap === prev.cap && next.lang === prev.lang && next.trs === prev.trs) return;
       if (next.cap) myStatus.cap = 1; else delete myStatus.cap;
@@ -30316,7 +30326,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function setTrMode(v) {
       v = v === 'keep' || v === 'share' ? v : '';
       trModeSet = v;
-      lsSet(TR_MODE_KEY, v);
+      lsSet(TR_MODE_KEY, v || 'off'); // off is a choice and is remembered as one
       if (!v) { for (const id of Array.from(trs.keys())) trs.delete(id); trDirty = true; }
       refreshTrBtn();
       try { syncSpeech(); } catch (e) {}
