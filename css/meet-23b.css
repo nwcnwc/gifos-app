@@ -116,7 +116,7 @@ body:not(.has-app):not(.solo-app):not(.app-room) #apppane { display: block; posi
    the same inset the meeting's own top row already takes. A phone keeps
    the panel over the call. */
 @media (min-width: 800px) {
-  body.chatside:not(.has-app):not(.solo-app):not(.app-room) #apppane { right: 340px; }
+  body.chatside:not(.has-app):not(.solo-app):not(.app-room) #apppane { right: var(--sidew, 340px); }
 }
 body:not(.has-app):not(.solo-app):not(.app-room) #appmount { display: none; }
 body:not(.has-app):not(.solo-app):not(.app-room) #appbar { justify-content: flex-end; background: transparent; border-bottom-color: transparent; }

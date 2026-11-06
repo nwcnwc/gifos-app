@@ -1499,8 +1499,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
      Meet and Zoom do; the dock moves into the call too when it fits there.
      A phone keeps the panel over the call. */
   @media (min-width: 800px) {
-    body.chatside { padding-right: 340px; }
-    body.chatside .fitbtn { right: 354px; }
+    /* --sidew is the panel's width: the call, the OS header, the build
+       label and Fit all end at it, so none of them sits on another. */
+    body.chatside { --sidew: 340px; padding-right: var(--sidew); }
+    body.chatside .fitbtn { right: calc(14px + var(--sidew)); }
     body.chatside .topchip { max-width: calc(100% - 460px); }
     /* The dock sits in the call beside the chat (placeDock), so the composer
        takes the band it used to keep clear. */
@@ -2445,7 +2447,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
      name is a faint line under that row, not a second button. */
   /* A wide window wears the build name as a pill at the top right, beside Fit (qa-meet-desktop). */
   @media (min-width: 701px) and (min-height: 501px) {
-    #gifos-build-float { top: calc(14px + var(--gtop, 0px)) !important; right: calc(14px + var(--osw, 0px)) !important; bottom: auto !important; left: auto !important;
+    #gifos-build-float { top: calc(14px + var(--gtop, 0px)) !important; right: calc(14px + var(--sidew, 0px) + var(--osw, 0px)) !important; bottom: auto !important; left: auto !important;
       opacity: 1 !important; color: #e7ebf2 !important; background: rgba(12,14,18,.92); padding: 4px 10px;
       border-radius: 999px; z-index: 6 !important; text-shadow: none !important; }
   }
@@ -22917,6 +22919,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       chatBtn.setAttribute('aria-expanded', chatPanelOpen() ? 'true' : 'false');
       document.body.classList.toggle('chatside', chatPanelOpen());
       if (window.__gifosDock) window.__gifosDock.place();
+      // The header's right end moved with the panel: Fit and the hand line follow it.
+      try { placeHandq(); } catch (e) {}
     }).observe(chatPanel, { attributes: true, attributeFilter: ['class'] });
     chatBtn.setAttribute('aria-expanded', chatPanelOpen() ? 'true' : 'false');
     chatBtn.onclick = () => {
