@@ -549,12 +549,18 @@
       if (L && (L.state === LK_OPEN || L.state === LK_DIALING)) { const o = msg.newMsg('UPOFFER'); o.id = me; o.tag = had ? 1 : 0; o.to = x; o.from = -1; o.lk = -1; P.wireTx(o, me); P.busPush(T() + 1, o); }
       return true;
     }
+    // C++: mesh_link.inc:fhCarriers   [fabric: the offer's far page counts the uplinks it serves that friend-hop holds as carriers, L18.8]
+    function fhCarriers(x) {
+      lEnsure(x); let n = 0;
+      for (const p of P.LINKPEERS[x]) { if (p >= lv.nextId || !alive[p] || seats[p].l14Up !== x) continue; const L = linkFind(x, p); if (L && L.state === LK_OPEN && !(L.half & (1 << lEnd(p, x))) && P.fhConn && P.fhConn(x, p)) n++; }
+      return n;
+    }
     // C++: mesh_link.inc:fabricUpTake   [end: the far page decides from its own pcs and chain]; 0 take, 1 chain cut, 2 at budget
     function fabricUpTake(x, h) {
       if (!lv.LINKMODEL || x < 0 || h < 0 || x >= lv.nextId || h >= lv.nextId) return 0;
       const sx = seats[x];
       if (sx.hasCoord && sx.state === 3 && sx.coord.pc !== 0 && sx.l14Branch() && !(sx.l14Up >= 0 && fabricLinkState(x, sx.l14Up) === LS_OPEN)) { trace('L14-REFUSE', x, null, 'from=%d cut=1', h); return 1; }
-      if (linkHeld(x) > pcBudget(x, E.PB_CLASS)) { lv.L14_REFUSED++; trace('L14-REFUSE', x, null, 'from=%d held=%d budget=%d', h, linkHeld(x), pcBudget(x, E.PB_CLASS)); return 2; }
+      if (linkHeld(x) - fhCarriers(x) > pcBudget(x, E.PB_CLASS)) { lv.L14_REFUSED++; trace('L14-REFUSE', x, null, 'from=%d held=%d budget=%d', h, linkHeld(x), pcBudget(x, E.PB_CLASS)); return 2; }
       return 0;
     }
     // C++: mesh_link.inc:fabricUpDecline   [end: the far page refuses the pc and sends its referrals]
