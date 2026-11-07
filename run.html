@@ -513,9 +513,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 <meta name="apple-mobile-web-app-title" content="GifOS">
 <script id="gifos-load-gate">/* Load completeness: record every <script src> that failed to load (error events do not bubble: capture on window), and every script that threw while a failed one was missing. startMesh() checks this before it seats anything (see unitsGate). */(function(){var g=window.__gifosLoadGate={failed:[],threw:[],tries:0,state:'ok',trace:[]};
 function key(u){try{var x=new URL(u,location.href);return x.pathname.replace(/^\//,'');}catch(e){return String(u);}}
+/* OPTIONAL: a theme OVERRIDE file (themes/<label>/theme.js, icons.js, eggs.js, wallpaper.js; js/gifos-themes.js asks for one per host label, any label works) may be absent: that is a clean fallback to the base theme, never a failed load. The base themes/*.js stay required. */
+function opt(k){return /^(?:versions\/[^\/]+\/)?themes\/[^\/]+\/(?:theme|icons|eggs|wallpaper)\.js$/i.test(k);}
 /* The offline layer (sw.js) answers an uncached script with an EMPTY 200 when the network fails: no error event, a unit that never ran. A script that arrives with no body counts as failed too. */
-try{new PerformanceObserver(function(l){l.getEntries().forEach(function(en){try{if(en.initiatorType==='script'&&en.decodedBodySize===0&&/\.js$/.test(new URL(en.name).pathname)){var k=key(en.name);if(g.failed.indexOf(k)<0)g.failed.push(k);}}catch(x){}});}).observe({type:'resource',buffered:true});}catch(e){}
-window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagName==='SCRIPT'&&t.src){var k=key(t.src);if(g.failed.indexOf(k)<0)g.failed.push(k);}else if(e&&e.filename&&g.failed.length){var f=key(e.filename);if(g.threw.indexOf(f)<0)g.threw.push(f);}}catch(x){}},true);})();</script>
+try{new PerformanceObserver(function(l){l.getEntries().forEach(function(en){try{if(en.initiatorType==='script'&&en.decodedBodySize===0&&/\.js$/.test(new URL(en.name).pathname)){var k=key(en.name);if(!opt(k)&&g.failed.indexOf(k)<0)g.failed.push(k);}}catch(x){}});}).observe({type:'resource',buffered:true});}catch(e){}
+window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagName==='SCRIPT'&&t.src){var k=key(t.src);if(!opt(k)&&g.failed.indexOf(k)<0)g.failed.push(k);}else if(e&&e.filename&&g.failed.length){var f=key(e.filename);if(g.threw.indexOf(f)<0)g.threw.push(f);}}catch(x){}},true);})();</script>
 <script src="js/sw-register.js" defer></script>
 <script src="js/dialog.js" defer></script>
 <script src="js/build.js" defer></script>
