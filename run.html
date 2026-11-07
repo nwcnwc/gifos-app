@@ -14589,7 +14589,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // agree from the start.
       if (!name && rosterNames[peerId]) name = rosterNames[peerId];
       // An outsider's knock never puts a face on a seated page: no face until a channel opens or the mesh seats it.
-      if (!headless && ((!linkTo(peerId) && !meshKnows(peerId)) || (meshNode && meshNode.byeIsHeld && meshNode.byeIsHeld(peerId)))) doorOffGrid.add(peerId);   // (nor a redial at a page gone, while its cell is held)
+      // Seated, a dial my seat asked for on its own (a HELLO to a greeter the relay still lists, a door, an audit) is no face either:
+      // the relay lists a frozen page until its socket closes, so a dead seat's id came back on the grid and in the count.
+      const seatedNow = !!(meshSeat() && meshSeat().hasCoord && meshSeat().state === 3);
+      if (!headless && ((!(seatedNow ? seatLinks(peerId) : linkTo(peerId)) && !meshKnows(peerId)) || (meshNode && meshNode.byeIsHeld && meshNode.byeIsHeld(peerId)))) doorOffGrid.add(peerId);   // (nor a redial at a page gone, while its cell is held)
       const t = makeTile(peerId, name, false, headless);
       if (!headless && doorOffGrid.has(peerId) && t.tile.parentNode) t.tile.remove(); // grace already took this name off the grid
       const p = { id: peerId, pc: null, tile: t.tile, video: t.video, label: t.label, avatar: t.avatar, chips: t.chips, cap: t.cap, modbar: t.modbar, voteBtn: t.voteBtn,
@@ -15423,6 +15426,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // old "bootstrap = whole roster" relic full-meshed a stalled joiner (27
       // RTCPeerConnections, every tile black) — the last unbounded path, gone.
       if (seatAsked(pid)) return true;   // the seat dialled it (a door, a call, an audit): its own reason
+      return seatLinks(pid);
+    }
+    // The links my seat names by its own arithmetic and keep reasons (linkTo without the seat's one-off dials).
+    // A seat-asked dial (a door, a call, an audit, a HELLO to a greeter the relay lists) holds a pc, never a face.
+    function seatLinks(pid) {
+      const s = meshSeat();
       if (!s || !s.hasCoord) return false;
       if (s.l14Served && s.l14Served().includes(pid)) return true;   // L14: a cut-off head dialled me for its branch's media
       // A row's standby (E3) is a pc only while an up edge is down: the seat's dial says so above, and u2Hot here. Idle, it is a name, as an idle row holds no third pc.
