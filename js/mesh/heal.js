@@ -640,6 +640,9 @@
       }
       this.moving = true; this.moveAt = this.TICK | 0;
       this.take(hole, owner, nbrs, ppFrom, ppTick, [], ppTickL);
+      // D7.x: my signed word about the cell I took goes to the seats that fold my report at the old one, now (a pure notice: mv)
+      if (this.hasCoord) { const told = new Set(); { const nl = ownedLinks(this.coord); for (let k = 0; k < nl.length; k++) { const x = this.occGet(ckey(nl[k])); if (x >= 0) told.add(x); } }   // (a seat that is also my new neighbour hears my claim itself)
+        const tell = (x) => { if (x < 0 || x === id || told.has(x)) return; told.add(x); const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = id; h.sig = true; h.sigAt = this.TICK | 0; h.mv = true; h.mpOld = this.oldCk; this.emit(x, h); }; for (const x of this.oldNbrIds) tell(x); tell(this.oldOwnerId); }
       this.lastAck = this.TICK | 0; this.lastPhone = (this.TICK | 0) - 100;
       let anyNbr = false;
       { const ol = ownedLinks(this.coord); const n = ol.length; for (let k = 0; k < n; k++) { const x = this.occGet(ckey(ol[k])); if (x >= 0 && x !== id) { anyNbr = true; break; } } }

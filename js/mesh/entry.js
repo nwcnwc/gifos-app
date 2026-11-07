@@ -128,7 +128,7 @@
       this.downDig = msg.newDig(); this.downUsed = msg.newDig(); this.myDig = msg.newDig(); this.rowDig = msg.newDig(); this.rootDig = msg.newDig(); this.rootDec = msg.newDig(); this.l43Since = -1; this.l43Over = -1;
       // The handover hold (rollup).
       { const hold = K.CONFIRM_TTL + (this.lastPubDepth + 3) * K.DIG_HOLD_LEVEL; const s1Only = (this.lastPubDepth === 0 && c.pc === 0);
-        if (!s1Only && this.lastPubAt >= 0 && TICK - this.lastPubAt < hold) this.digHoldUntil = TICK + hold; }
+        if (!s1Only && this.lastPubAt >= 0 && TICK - this.lastPubAt < hold) { this.digHoldUntil = TICK + hold; this.digNHoldUntil = TICK + Math.max(K.L10_NEW_WAIT, Math.trunc((this.lastPubDepth + 1) * K.DIG_HOLD_LEVEL / 2)); } }   // D7.x
       this.rowKids.clear(); this.rowUsed.clear(); if (c.pc !== 0) this.s1tab.clear(); this.siKids.clear();
       this.lastAck = TICK; this.lastPhone = (owner >= 0 && c.pc !== 0 && c.i === 0) ? TICK - 8 : TICK;   // L7.6 (I10)
       if (owner >= 0) { const m = newMsg('CLAIM'); m.ck = ckey(c); m.id = id; this.emit(owner, m); }
