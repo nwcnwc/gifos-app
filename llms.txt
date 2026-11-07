@@ -120,6 +120,12 @@ a .zip for multi-file apps). GifOS packs the GIF there.
    (P2P, permanent room links, moderation, room passwords) — and note that
    ANY app can be RUN INSIDE a Meeting, so all participants share it live
    with audio/video around it without the app touching the camera.
+   The same page also starts a Broadcast (one host on the stage, everyone
+   else watches and chats) and a Town hall (a room you run where people
+   with the link watch off camera, ask questions, and come on stage when the
+   host calls them up). Meeting captions can be turned on, and a transcript
+   is kept on the device by default or shared with the room. None of this changes
+   what an app can do.
 9. Every gifos.* call can REJECT — the user can turn any declared capability
    off per-app (the Abilities chip on the app's tab), a key may not be set
    up yet, a guest's write may be refused. Catch rejections and show the
