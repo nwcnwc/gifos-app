@@ -24149,7 +24149,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       } else if (sdView) sdView.delTile('v');
       if (sdView && sdView.count() > 0 && sdView.track) {
         sdEmptyAt = 0;
-        const vt = sdView.track, at = sound && sound.getAudioTracks ? (sound.getAudioTracks()[0] || null) : null;
+        // The sound's LIVE track: a renegotiated pair can leave its ended track first in the same stream, and a Stadium bound to
+        // the ended one is silent for good (WebKit folds this voice into its one ear by that track).
+        const vt = sdView.track, at = stageEarLiveTrack(sound);
         if (!sdViewSt || sdViewSt.getVideoTracks()[0] !== vt || (sdViewSt.getAudioTracks()[0] || null) !== at) sdViewSt = new MediaStream(at ? [vt, at] : [vt]);
         paintStadiumTile(sdViewSt);
         return;
