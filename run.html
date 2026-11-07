@@ -22008,6 +22008,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // orphaned forever (the browser's negotiationneeded would refire
         // here; our hand-rolled offers need the explicit flag).
         const applyRoffer = (msg) => { const pc = p.pc; return answerOffer(pc, p, msg, false, (sdp) => {
+            // DEBUG lever __answerHoldTo/__answerHoldMs (a peer id prefix, once): hold this answer, and everything after it to that peer, as a slow page would
+            const ahTo = DEBUG_ON ? window.__answerHoldTo : null;
+            const ah = ahTo && String(p.id).indexOf(String(ahTo)) === 0 ? +window.__answerHoldMs || 0 : 0;
+            if (ah > 0 && !p.wireHold) { p.wireHold = new Promise((r) => setTimeout(() => { p.wireHold = null; r(); }, ah)); window.__answerHoldTo = null; window.__answerHeldAt = Date.now(); }
             dcSend(p, { k: 'ranswer', sdp });
             if (typeof clog === 'function') clog('ranswer→' + String(p.id).slice(0, 6));
             afterNeg(p, true);
