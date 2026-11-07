@@ -15807,13 +15807,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // re-dials them, however long the mesh keeps greeting the id (a door list
     // can name a leaver for a while). Kept past the tombstone's 60 s.
     const saidGone = new Set();
-    // Display guard for the d5 verdict: while the roster or the status flood still names a member, the page does not show
-    // them as gone (the seat's own occ verdict is untouched). One predicate for the occ-diff and the drained-deaths paths.
+    // Display guard for the d5 verdict: while the member's own presence is fresh, the page does not show them as gone
+    // (the seat's own occ verdict is untouched). One predicate for the occ-diff and the drained-deaths paths.
+    // FRESH IS THE MEMBER'S OWN WORD inside the count's window (PEER_SILENT_MS, the same clock that marks a tile
+    // "Reconnecting…"): a status (only its author says one) or a frame on a pair. A status this page merely keeps
+    // (the away/transport holdover, and the roster built from it) is not the room naming them: a frozen phone that
+    // last said "away" held the header one above the faces for half a minute after its tile went.
     function roomStillNames(pid) {
-      return (Array.isArray(rosterIds) && rosterIds.includes(pid)) || !!(statusOf && statusOf.has(pid));
+      const st = statusOf.get(pid), p = peers.get(pid);
+      const at = Math.max(stSeen(st), p ? peerHeardAt(p) : 0);
+      return at > 0 && Date.now() - at - holdDebtSince(at) < PEER_SILENT_MS;
     }
     // A drained death the guard skipped is kept (pid -> first skip time) and judged again each sweep: once the room stops naming
-    // the member (status stale, roster dropped) it is confirmed gone d5, once. Back in the seat's occ, or already confirmed: forgotten.
+    // the member (their presence past the window) it is confirmed gone d5, once. Back in the seat's occ, or already confirmed: forgotten.
     const d5Guarded = new Map();
     function d5Verdict(pid) {
       if (!pid || pid === myId) return;
