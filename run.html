@@ -1499,8 +1499,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
      Meet and Zoom do; the dock moves into the call too when it fits there.
      A phone keeps the panel over the call. */
   @media (min-width: 800px) {
-    body.chatside { padding-right: 340px; }
-    body.chatside .fitbtn { right: 354px; }
+    /* --sidew is the panel's width: the call, the OS header, the build
+       label and Fit all end at it, so none of them sits on another. */
+    body.chatside { --sidew: 340px; padding-right: var(--sidew); }
+    body.chatside .fitbtn { right: calc(14px + var(--sidew)); }
     body.chatside .topchip { max-width: calc(100% - 460px); }
     /* The dock sits in the call beside the chat (placeDock), so the composer
        takes the band it used to keep clear. */
@@ -2445,7 +2447,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
      name is a faint line under that row, not a second button. */
   /* A wide window wears the build name as a pill at the top right, beside Fit (qa-meet-desktop). */
   @media (min-width: 701px) and (min-height: 501px) {
-    #gifos-build-float { top: calc(14px + var(--gtop, 0px)) !important; right: calc(14px + var(--osw, 0px)) !important; bottom: auto !important; left: auto !important;
+    #gifos-build-float { top: calc(14px + var(--gtop, 0px)) !important; right: calc(14px + var(--sidew, 0px) + var(--osw, 0px)) !important; bottom: auto !important; left: auto !important;
       opacity: 1 !important; color: #e7ebf2 !important; background: rgba(12,14,18,.92); padding: 4px 10px;
       border-radius: 999px; z-index: 6 !important; text-shadow: none !important; }
   }
@@ -5133,18 +5135,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return document.querySelector('#barmore .moregroup[data-group="' + group + '"] > .morerow');
     }
     // Chat, Share screen, Hand, Captions, People, then Transcript and
-    // Questions. On a desktop the first two stay on the dock until More
-    // opens. A phone keeps them in this row. A broadcast does not use this
-    // (placeDockForWidth still parks a service's own buttons).
+    // Questions. On a desktop the first two stay on the dock, whether More
+    // is open or not. A phone keeps them in this row. A broadcast does not
+    // use this (placeDockForWidth still parks a service's own buttons).
+    // The dock never changes when More opens or closes: pulling Chat and
+    // Share off it on open re-centred the dock and put Leave where More had
+    // been, so a second tap to close the sheet left the call (a real
+    // meeting, 0.9.25). Only the window's width decides where these two live.
     function seatUseRow() {
       if (BROADCAST) return;
       const bar = document.querySelector('.bar');
       const row = moreRow('use');
       if (!bar || !row) return;
       const phone = phoneLayout();
-      const open = !bar.classList.contains('collapsed');
       const skipHand = (id) => id === 'hand' && typeof viewerHandOnDock === 'function' && viewerHandOnDock();
-      if (phone || open) {
+      if (phone) {
         ['chatbtn', 'sharebtn', 'hand', 'ccbtn', 'whobtn', 'trbtn', 'qabtn'].forEach((id) => {
           if (skipHand(id)) return;
           const el = document.getElementById(id);
@@ -22927,6 +22932,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       chatBtn.setAttribute('aria-expanded', chatPanelOpen() ? 'true' : 'false');
       document.body.classList.toggle('chatside', chatPanelOpen());
       if (window.__gifosDock) window.__gifosDock.place();
+      // The header's right end moved with the panel: Fit and the hand line follow it.
+      try { placeHandq(); } catch (e) {}
     }).observe(chatPanel, { attributes: true, attributeFilter: ['class'] });
     chatBtn.setAttribute('aria-expanded', chatPanelOpen() ? 'true' : 'false');
     chatBtn.onclick = () => {
@@ -32428,10 +32435,37 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // Every open popover of the dock, placed again: on open, on a drag, on a
     // resize or rotation, and when the keyboard comes or goes.
+    // Columns for each group of the More sheet: the fewest lines that fit
+    // the sheet's width, with the items spread evenly over them, so a group
+    // never leaves one item alone on its last line (6 items are 3 and 3,
+    // not 5 and 1). The grid itself is in css/meet-23b.css (--mcols).
+    function layoutSheet() {
+      const sheet = document.getElementById('barmore');
+      if (!sheet || !sheet.getClientRects().length) return;
+      const phone = phoneLayout();
+      const minW = phone ? 76 : 150, gap = 6;
+      for (const row of sheet.querySelectorAll('.moregroup > .morerow')) {
+        let n = 0;
+        for (const el of row.children) if (el.tagName === 'BUTTON' && el.getClientRects().length) n++;
+        if (!n) continue;
+        const most = Math.max(1, Math.floor((row.clientWidth + gap) / (minW + gap)));
+        const lines = Math.ceil(n / most);
+        let cols = Math.ceil(n / lines);
+        for (let c = cols; c <= most; c++) {
+          if (n <= c || n % c !== 1) { cols = c; break; }
+        }
+        const v = String(Math.min(cols, most));
+        if (row.style.getPropertyValue('--mcols') !== v) row.style.setProperty('--mcols', v);
+        if (row.style.getPropertyValue('--mmax') !== String(most)) row.style.setProperty('--mmax', String(most));
+      }
+    }
     function placeDockPopovers() {
       const bar = document.querySelector('.bar');
       if (!bar) return;
-      if (!bar.classList.contains('collapsed')) placeDockPopover(document.getElementById('barmore'), bar);
+      if (!bar.classList.contains('collapsed')) {
+        try { layoutSheet(); } catch (e) {}
+        placeDockPopover(document.getElementById('barmore'), bar);
+      }
       const tray = document.getElementById('reacttray');
       if (tray && !tray.hasAttribute('hidden')) placeDockPopover(tray, bar);
     }
@@ -32480,7 +32514,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         toggle.title = collapsed ? 'More' : 'Hide ' + surface + ' controls';
         const word = toggle.querySelector('.docklab');
         if (word) word.textContent = collapsed ? uiText('more', 'More') : uiText('hide', 'Hide');
-        try { seatUseRow(); } catch (e) {}
         // An upright phone shows the whole sheet when it fits above the
         // dock (a guest's 577px sheet, Settings and Keys included: LM-44).
         // A host's longer sheet would reach the top of the call, so it
@@ -32779,6 +32812,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         try { localStorage.setItem('gifos_meet_bar', '1'); } catch (err) {}
         if (returnFocus) toggle.focus();
       });
+      // More closes the way a menu does: the toggle again, Escape (the
+      // modal keydown handler), or a tap anywhere outside the sheet and the
+      // bar. The tap still reaches what it landed on. A tap on the bar is
+      // the bar's own (the toggle folds).
+      const foldSheet = () => {
+        if (bar.classList.contains('collapsed')) return false;
+        const returnFocus = !!(moreSheet && moreSheet.contains(document.activeElement));
+        apply(true);
+        try { localStorage.setItem('gifos_meet_bar', '1'); } catch (err) {}
+        if (returnFocus) toggle.focus();
+        return true;
+      };
+      document.addEventListener('pointerdown', (e) => {
+        if (bar.classList.contains('collapsed') || !e.isTrusted) return;
+        const t = e.target;
+        if (t && t.closest && (bar.contains(t) || t.closest('#reacttray'))) return;
+        foldSheet();
+      }, true);
       // Publish the bar's own height so the fixed overlays that hang from the
       // top (the chat panel) can start BELOW it instead of on top of it. It has
       // to be measured, not assumed: the bar wraps, and collapsing it changes
@@ -34153,17 +34204,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (rb) { rb.setAttribute('aria-expanded', 'false'); rb.setAttribute('aria-pressed', 'false'); rb.classList.remove('on'); try { rb.focus(); } catch (err) {} }
           return;
         }
-        // An open chat closes before More folds, as a side panel does in
-        // Meet and Zoom, and the keyboard lands back on Chat.
-        if (chatPanelOpen()) {
-          e.preventDefault();
-          closeChatToButton();
-          return;
-        }
+        // An open More sheet is the top layer: it folds first, so Escape
+        // always closes the menu the person just opened, and the dock does
+        // not move under the pointer. Then an open chat closes, as a side
+        // panel does in Meet and Zoom, and the keyboard lands back on Chat.
         const barEl = document.querySelector('.bar');
         if (barEl && !barEl.classList.contains('collapsed')) {
           const toggle = document.getElementById('bartoggle');
           if (toggle) { e.preventDefault(); toggle.click(); }
+          return;
+        }
+        if (chatPanelOpen()) {
+          e.preventDefault();
+          closeChatToButton();
           return;
         }
         if (voteMode) setVoteMode(null);
