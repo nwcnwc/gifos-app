@@ -173,6 +173,9 @@
     LEDGER_FRESH: 16,   // C++: mesh.cpp:LEDGER_FRESH
     L163_CONFIRM_WIN: 14,   // C++: mesh.cpp:L163_CONFIRM_WIN
     L711_TAG: 71,   // C++: mesh.cpp:L711_TAG
+    D51_PROBE: 21,   // C++: mesh.cpp:D51_PROBE
+    D51_ANS: 23,   // C++: mesh.cpp:D51_ANS
+    D51_TTL: 8,   // C++: mesh.cpp:D51_TTL
     FARV_CAP: 256,   // C++: mesh_farview.inc:FARV_CAP
     get L48_E2MAX() { return byC([4,6,8,10]); },   // C++: mesh_e2fold.inc:L48_E2MAX  (2*C)
     L48_BEAT: 20,   // C++: mesh_e2fold.inc:L48_BEAT  (8+EARLY_HOLD)
