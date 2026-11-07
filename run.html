@@ -21556,7 +21556,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         try { if (enableMedia(p)) renegotiate(p); } catch (e) {}
         try { headLinkUp(p.id); } catch (e) {}   // the channel to my row's head is up: my sends to it go now
         try { if (linkTo(p.id)) retireBootPairs(); } catch (e) {} // a seat's own link is open: the door I came in by closes
-        dcSend(p, { k: 'hi', chats: chatWire(Array.from(chat.values()).slice(-500)), trs: trKeeps() ? Array.from(trs.values()).filter((l) => !l.lo).slice(-300) : [], metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj(), reacts: myReactsObj() });
+        dcSend(p, historyHi());
         // THE MOMENT A CHANNEL EXISTS is the moment the stage pulls can finally
         // travel. Everything below was silently impossible a millisecond ago:
         // sgaFan delivers only to peers whose DC is already OPEN, so a
@@ -21614,6 +21614,22 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // been verified (the handler re-enters itself with it). It is a parameter,
     // not a field on the frame: m is the peer's decrypted JSON, and a field
     // there is the peer's to set.
+    // The history frame a channel carries the moment it opens: chat, transcript, file metas, tombstones, reactions.
+    function historyHi() {
+      return { k: 'hi', chats: chatWire(Array.from(chat.values()).slice(-500)), trs: trKeeps() ? Array.from(trs.values()).filter((l) => !l.lo).slice(-300) : [], metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj(), reacts: myReactsObj() };
+    }
+    // A CHANNEL BACK FROM SILENCE CARRIES THE HISTORY AGAIN, as if it had just opened. A coverage dropout can leave the pc and
+    // its channel open (no close event at either end) while every frame of the dark span is lost; the open-time 'hi' never
+    // runs again, so a chat line said in the dark never reached the returner (gate2 marathon 12c: Jo's tunnel, the pair kept).
+    // Dark is past the starve horizon (12 s: a healthy pair carries a status at least that often). Once per pair per 10 s.
+    const DARK_RESUME_MS = 12000;
+    function resumeHi(p, dc, darkMs) {
+      if (!(darkMs > DARK_RESUME_MS) || !p || !p.id || !dc || dc.readyState !== 'open') return false;
+      if (!linkTo(p.id) && !meshKnows(p.id)) return false;   // a door pair carries no room content
+      if (!chatRateOk('resume:' + p.id, 1)) return false;
+      dcSend(p, historyHi());
+      return true;
+    }
     function onDc(p, dc, m, admOk) {
       if (p && p.id && isSevered(p.id)) return; // DEBUG sever — see severPair; and an ejected forger
       if (m && m.from != null && (typeof isEjected === 'function' && isEjected(String(m.from)) === true)) return; // a forwarded frame FROM a forger (fsig/fhi/fmesh)
@@ -21625,8 +21641,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // over blank space, the exact demo-killer class. Statuses ride the DCs
       // every <=12s in any healthy pair; a zombie pair receives NOTHING —
       // silence alone was never the evidence, this is.
+      const darkMs = p.dcRxAt ? Date.now() - p.dcRxAt : 0;
       p.dcRxAt = Date.now();
       if (p.id) { meshRxByPid.set(p.id, p.dcRxAt); tlFiredPid.delete(p.id); }
+      try { resumeHi(p, dc, darkMs); } catch (e) {}
       // §HEARD: app frames over the DC are the same end-to-end liveness
       // evidence as signaling — feed the mesh intake (see onSignal).
       try { const s = meshSeat(); if (s && s.heardFrom && p.id) s.heardFrom(p.id); } catch (e) {}
