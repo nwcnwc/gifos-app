@@ -195,6 +195,9 @@
     L25_WIT_WAIT: 16,   // C++: mesh_witness.inc:L25_WIT_WAIT  (L25_WAIT)
     L25_WIT_MIN: 3,   // C++: mesh_witness.inc:L25_WIT_MIN
     L43_WAIT: 76,   // C++: mesh_ijoin.inc:L43_WAIT  (60+L5_SETTLE)
+    D52_FLIGHT: 4,   // C++: mesh_headword.inc:D52_FLIGHT
+    D52_TTL: 40,   // C++: mesh_headword.inc:D52_TTL
+    D52_KEEPMAX: 120,   // C++: mesh_headword.inc:D52_KEEPMAX
     GA_REASK: 4,   // C++: mesh_gapa.inc:GA_REASK
     GA_FIND_WIN: 90,   // C++: mesh_gapa.inc:GA_FIND_WIN  ((int)LAW_COMPACT_PERIOD)
     SOCK_CLOSE_CRASH: 4,   // C++: mesh.cpp:SOCK_CLOSE_CRASH
@@ -415,6 +418,10 @@
     L2_TAKE_N: 0,   // C++: mesh_seat.inc:L2_TAKE_N
     L2_TAKE_MAX: 0,   // C++: mesh_seat.inc:L2_TAKE_MAX
     L2_TAKE_SUM: 0,   // C++: mesh_seat.inc:L2_TAKE_SUM
+    D52_DROP: 0,   // C++: mesh_headword.inc:D52_DROP
+    D52_KEEP: 0,   // C++: mesh_headword.inc:D52_KEEP
+    D52_FLAG: 0,   // C++: mesh_headword.inc:D52_FLAG
+    D52_RESTORE: 0,   // C++: mesh_headword.inc:D52_RESTORE
     GA_DENSE_N: 0,   // C++: mesh_gapa.inc:GA_DENSE_N
     GA_B1_REFUSED: 0,   // C++: mesh_gapa.inc:GA_B1_REFUSED
     GA_ASKS: 0,   // C++: mesh_gapa.inc:GA_ASKS
@@ -653,6 +660,7 @@
     H_REFLECT: 512,   // C++: mesh_hostile.inc:H_REFLECT
     H_BIG: 1024,   // C++: mesh_hostile.inc:H_BIG
     H_STEAL: 16384,   // C++: mesh_hostile.inc:H_STEAL
+    H_VACLIE: 32768,   // C++: mesh_hostile.inc:H_VACLIE
     LW_ENTRY: 1,   // C++: mesh_linkset_fab.inc:LW_ENTRY
     LW_ROLE: 2,   // C++: mesh_linkset_fab.inc:LW_ROLE
     LW_CALL: 4,   // C++: mesh_linkset_fab.inc:LW_CALL
