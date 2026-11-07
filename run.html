@@ -25887,7 +25887,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // never pass and the dark swap wedges (seen live: d0=16, fdec=13).
           if (fb.d0 === -1 || s.d < fb.d0) { fb.d0 = s.d; fb.b0 = s.b; fb.stdAdvAt = 0; }
           if (fb.stdFdec >= 0 && s.d > fb.stdFdec) fb.stdAdvAt = Date.now(); // the last decode-side advance (the failback gate reads it)
-          if (fb.dark && s.d > fb.d0 && fb.stdFdec <= fb.d0) { stgFoNote(rk, 'first'); schedReconcile(); } // the swap waits for no sweep
+          const pg = mosIn.get(rk); // a gone primary (deadAt) swaps on the first flow as a dark one does
+          if ((fb.dark || (pg && pg.deadAt)) && s.d > fb.d0 && fb.stdFdec <= fb.d0) { stgFoNote(rk, 'first'); schedReconcile(); } // the swap waits for no sweep
           fb.stdFdec = s.d; fb.stdB = s.b;
         }
       } else if (fb.d0 !== -1 || fb.stdFdec !== -1) { fb.d0 = -1; fb.stdFdec = -1; fb.stdB = -1; }
@@ -25936,6 +25937,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               const std0 = mosStandby.get(rk);
               if (std0 && std0.key) { fb.dark = true; demand(std0.via, std0.key, std0.streamId, true); schedReconcile(); }
             }
+            // A primary whose transport closed (its seat died) has no stats row either. Its woken standby is still
+            // measured: without that evidence the swap never comes and the slot waits out MOS_GRACE in silence.
+            await sampleStandby(rk, fb);
+            if (rk.indexOf('stg:') === 0 && fb.wakeAt && now - fb.wakeAt > STG_ZERO_MS && fb.d0 >= 0 && !(fb.stdB > fb.b0)) schedReconcile();
             continue;
           }
           if (!fb.dark && fb.lastBytes !== -1 && bytes.b < fb.lastBytes) {
@@ -26043,7 +26048,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           await sampleStandby(rk, fb);
           // A stage standby woken for a dark primary with no byte STG_ZERO_MS later: the claim pass parks it
           // (standbyStaysHot) and picks the next candidate now, not at the next sweep.
-          if (rk.indexOf('stg:') === 0 && fb.dark && fb.wakeAt && now - fb.wakeAt > STG_ZERO_MS && fb.d0 >= 0 && !(fb.stdB > fb.b0)) schedReconcile();
+          if (rk.indexOf('stg:') === 0 && (fb.dark || pri.deadAt) && fb.wakeAt && now - fb.wakeAt > STG_ZERO_MS && fb.d0 >= 0 && !(fb.stdB > fb.b0)) schedReconcile();
         }
         // ADAPTIVE CADENCE (2026-07-30 power work). This loop was a flat
         // 300ms getStats() sweep, forever, on every device — 3.3 wakeups/sec
@@ -26148,13 +26153,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // failover (primary gone or dark) still may: there the copy is judged on its voice, not on the picture
     // the failback waited for. Without it a failback that never completed held its second pipe hot with no
     // retry, and a copy left because it failed was staged and woken again on every swap.
-    function standbyStaysHot(fb, now, wakeMax, stdId, quickMs) {
+    // gone: the primary's announce or stream is gone (not merely dark). Its woken standby is judged the same quick way,
+    // and one that did not flow is passed over for the next candidate at once; there is no primary left to re-arm, so
+    // no suspicion is latched (a latch would keep every later standby parked until the grace drops the claim).
+    function standbyStaysHot(fb, now, wakeMax, stdId, quickMs, gone) {
       if (fb.suspect && !(fb.lastBytes > 0) && now - (fb.suspectAt || 0) > wakeMax) fb.suspect = false;
-      const quickDead = !!(quickMs && fb.dark && fb.wakeAt && now - fb.wakeAt > quickMs && fb.d0 >= 0 && fb.b0 >= 0 && !(fb.stdB > fb.b0));
+      const quickDead = !!(quickMs && (fb.dark || gone) && fb.wakeAt && now - fb.wakeAt > quickMs && fb.d0 >= 0 && fb.b0 >= 0 && !(fb.stdB > fb.b0));
       const wakeStale = !!(fb.wakeAt && now - fb.wakeAt > wakeMax) || quickDead;
       const flowed = fb.d0 >= 0 && fb.stdFdec > fb.d0;
       if (fb.dark && wakeStale && !flowed) {
         fb.dark = false; fb.suspect = true; fb.suspectAt = now; fb.wakeAt = 0;
+        if (stdId) (fb.stdTried = fb.stdTried || new Map()).set(stdId, now);
+      } else if (gone && wakeStale && !flowed) {
+        fb.wakeAt = 0; fb.goneTriedAt = now;
         if (stdId) (fb.stdTried = fb.stdTried || new Map()).set(stdId, now);
       } else if (!fb.dark && wakeStale) {
         fb.wakeAt = 0; fb.prefSince = 0;
@@ -26185,10 +26196,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const others = cand.filter((x) => x.live && !isPri(x));
       if (fb.stdTried && !others.some(fresh)) fb.stdTried = null; // every path has had its turn: start the round again
       const pp = (rk.indexOf('stg:') === 0 && pri && pri.meta && Array.isArray(pri.meta.vp)) ? pri.meta.vp : [];
-      const apart = (x) => !(x.ann && Array.isArray(x.ann.vp) && x.ann.vp.some((s) => pp.indexOf(s) >= 0));
+      // Where a copy parts from my primary's path: 0 when it shares no seat, else 1 + the place on that path of the
+      // last seat they share. Every copy often shares the first seats (the stager's own way up), so "shares a seat"
+      // alone picked by list order and kept a copy through my own carrier, the seat most likely to die. The copy that
+      // parts earliest survives a death at any seat after that point, my carrier included.
+      const deep = (x) => (x.ann && Array.isArray(x.ann.vp)) ? x.ann.vp.reduce((m, s) => Math.max(m, pp.indexOf(s) + 1), 0) : 0;
+      const apart = (x) => deep(x) === 0;
       const ownStd = stgOwnStandby(rk, cand, pri);
       if (pref && pri && !isPri(pref) && fresh(pref) && (!failover || apart(pref))) return pref;
-      return (ownStd && fresh(ownStd) ? ownStd : null) || others.find((x) => fresh(x) && apart(x)) || others.find(fresh) || ownStd || others[0];
+      const best = others.filter(fresh).reduce((b, x) => (!b || deep(x) < deep(b) ? x : b), null);
+      return (ownStd && fresh(ownStd) ? ownStd : null) || best || ownStd || others[0];
     }
     // END-STAGE-DARK-HOLD
     const MOS_GRACE = 5000;
@@ -26702,13 +26719,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // the primary advances again.
       // One read per pass: the call parks a stale wake as it answers, so a
       // second read would see the state the first one just changed.
-      const stdHot = standbyStaysHot(fb, now, WAKE_MAX, std ? std.via + '|' + std.streamId : null, rk.indexOf('stg:') === 0 ? STG_ZERO_MS : 0);
+      const priGone = !!(pri && !inCand(pri));
+      const stdHot = standbyStaysHot(fb, now, WAKE_MAX, std ? std.via + '|' + std.streamId : null, rk.indexOf('stg:') === 0 ? STG_ZERO_MS : 0, priGone && rk.indexOf('stg:') === 0);
       if (fb.suspect && fb.suspectAt === now && DEBUG_ON && rk.indexOf('stg:') === 0) swapPicNote(rk, 'wake-failed', 'standbyStaysHot: wake stale, standby never flowed');
-      if (fb.suspect && fb.suspectAt === now) schedReconcile(); // a wake just failed: the next pass picks the next candidate
+      if ((fb.suspect && fb.suspectAt === now) || fb.goneTriedAt === now) schedReconcile(); // a wake just failed: the next pass picks the next candidate
       const hot = new Set();
       const primSet = new Set(); // the copy I play and relay on: a duty to its sender, not a spare (demand)
       if (pri && inCand(pri) && !mosHeld(pri)) { hot.add(pri.via + '|' + pri.streamId); primSet.add(pri.via + '|' + pri.streamId); } // a held feed (mosDecoderSweep) stays parked until its decoder is re-bound
       if (std && stdHot && !mosHeld(std)) hot.add(std.via + '|' + std.streamId);
+      // A standby woken because my primary is gone or dark is the copy I am about to play, not a spare: its sender
+      // must not refuse it to shed load (L29.2), or the slot stays silent until the grace re-claims that same copy.
+      if (std && stdHot && rk.indexOf('stg:') === 0 && (priGone || fb.dark)) primSet.add(std.via + '|' + std.streamId);
       const picOnly = new Set(); // a held feed is parked for its picture only: its voice keeps flowing (demand vOnly)
       if (pri && inCand(pri) && mosHeld(pri)) picOnly.add(pri.via + '|' + pri.streamId);
       if (std && stdHot && mosHeld(std)) picOnly.add(std.via + '|' + std.streamId);
