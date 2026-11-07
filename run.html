@@ -7280,7 +7280,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // pid's silence clock survives object churn.
           const heardPid = Math.max(meshRxByPid.get(pid) || 0, p.dcRxAt || 0);
           if (!pidFirstSeen.has(pid)) pidFirstSeen.set(pid, nowHb);
-          const basePid = Math.max(heardPid, pidFirstSeen.get(pid));
+          // A PC'S SILENCE IS ITS OWN: the clock starts at this pc's birth (rebuiltAt, or the pair's bornAt), never
+          // earlier, so a pc still forming gets the full 12 s connect budget before any starve rebuild. Judged on
+          // the id's older silence, a fresh pc toward a peer back from a stall was torn down 2 s into ICE and the
+          // pair churned for 36 s; the id's own silence is the wake/kick path's to judge, not this sweep's.
+          const basePid = Math.max(heardPid, pidFirstSeen.get(pid), p.rebuiltAt || p.bornAt || 0);
           // Receive-silence measured while OUR OWN loop was blocked is our
           // starvation, not the peer's (see starveDebtSince above): the
           // stamps this clock reads are written by JS handlers that could
