@@ -16546,9 +16546,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       pwLog('pwreset-boot from=' + String((p && p.id) || '?').slice(0, 6) + ' ep=' + m.ep + ' myEp=' + pwEpoch);
       if (typeof clog === 'function') clog('pw-boot ep=' + m.ep + ' (admin changed the password)');
       storePwEpoch(m.ep);
-      pwLeaveForDoor();
+      pwLeaveForDoor(m.ep);
     }
-    function pwLeaveForDoor() {
+    function pwLeaveForDoor(ep) {
       if (DEBUG_ON && window.__pwHoldBoot) { pwLog('sent to the door, stays (test lever: a hostile page)'); return; }
       heldGrant = null; grantHoldUntil = 0; retainedGrant = null;
       storePw('');
@@ -16556,7 +16556,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       quietAtDoor();
       // The same identity comes back (ensureIdentity): one peer id, so the
       // room never holds this person twice while the old seat is let go.
-      try { sessionStorage.setItem(PW_CHANGED_KEY, JSON.stringify({ room: roomKey(), seed: myIdentitySeed || '', at: Date.now() })); } catch (e) {}
+      // ep: the signed order's generation, for the typing that follows (pwHeldOnTyping)
+      try { sessionStorage.setItem(PW_CHANGED_KEY, JSON.stringify({ room: roomKey(), seed: myIdentitySeed || '', at: Date.now(), ep: pwEpInt(ep) ? ep : undefined })); } catch (e) {}
       // Left as a reload, not stopped: a stopped node sends no reload mark, so
       // the seat coming back waits out the crash path's reclaim wait (10 s).
       sendMeshLeave({ type: 'pagehide' });
@@ -17170,6 +17171,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // check here. That grant must not then read as a replay.
     function raisePwFloor(ep) { pwEpoch = ep; try { myStatus.pwEp = ep; } catch (e) {} try { localStorage.setItem(pwEpochKey(), String(ep)); } catch (e) {} mirrorRoomState({ pwEp: ep }); }
     function storePwEpoch(ep) { pwHeldEp = ep; pwEpoch = ep; try { myStatus.pwEp = ep; } catch (e) {} try { localStorage.setItem(pwEpochKey(), String(ep)); } catch (e) {} mirrorRoomState({ pwEp: ep }); }
+    // Typing the password at the door: the door takes only the room's current
+    // password, so a page the admin's SIGNED order for generation g sent here
+    // holds at least g (the order's ep rides the door note, pwLeaveForDoor).
+    // A pulse never sets it. With no order behind the typing, no held
+    // generation is known and the floor stands in for it (pwreset).
+    function pwHeldOnTyping() { const n = pwBootNote(); if (n && pwEpInt(n.ep) && n.ep > pwHeldEp) pwHeldEp = n.ep; }
     // The held grant goes back through the pwinfo handler: once the room's
     // generation is known the epoch guard decides it; past the deadline
     // (expired) the hold is dropped and the old rule applies.
@@ -19176,6 +19183,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!v) return;
         storePw(v);
         pwBlocked = false;
+        pwHeldOnTyping();
         if (pwEpoch === 0) grantHoldUntil = Date.now() + PW_GRANT_HOLD_MS; // typed at the door: grants wait for the room's generation (heldGrant)
         pwModal.style.display = 'none';
         setStatus(uiText('pwTrying', 'Trying the password…'));
@@ -21975,7 +21983,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           admVerify(m.w, 'pwreset').then((o) => { if (o && pwEpInt(o.ep) && o.ep === m.ep) onDc(p, null, m, true); });
           return;
         }
-        if (!pwEpInt(m.ep) || m.ep <= pwEpoch) return; // this generation (or a newer one) is already mine
+        // An order for generation g retires every password older than g. It acts
+        // only when the password I HOLD is older than g; holding g or newer it is
+        // a replay. The floor (any member's pulse) never decides it: a pulse at g
+        // racing the order must not keep me on a dead password. With no held
+        // generation known (typed with no signed order behind it, or restored
+        // from the store) the floor stands in, as the room's word.
+        const heldEp = pwHeldEp > 0 ? pwHeldEp : pwEpoch;
+        if (!pwEpInt(m.ep) || m.ep <= heldEp) return; // this generation (or a newer one) is already mine
         if (roomPw && pwEpoch === 0 && Date.now() < grantHoldUntil) {
           // Typed at the door, no generation yet: the room's first pulse
           // decides whether this order is older than what I typed (heldGrant).
