@@ -4309,13 +4309,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           <b data-t="setCcEngine">Captions engine</b>
           <div class="set-ctl">
           <label class="rec-opt"><input type="radio" name="ccengine" value="browser"><span><b data-t="setCcBrowser">Browser captions</b><small data-t="setCcBrowserHelp">Instant. One fixed language, picked above; two-word lines without punctuation on some devices. Your browser may send your voice to its maker's speech service (Chrome: Google).</small></span></label>
-          <label class="rec-opt"><input type="radio" name="ccengine" value="whisper"><span><b data-t="setCcWhisper">Whisper on this device</b><small data-t="setCcWhisperHelp">Any language, found by itself. Real sentences with punctuation. Your own names and words. Can write everything in English. A sentence appears a few seconds after it is said; on a phone it is slower and uses battery. Your voice stays on this device; only the written words can go to the meeting.</small></span></label>
+          <label class="rec-opt"><input type="radio" name="ccengine" value="whisper"><span><b data-t="setCcWhisper">Whisper on this device</b><small data-t="setCcWhisperHelp">Any language, found by itself. Real sentences with punctuation. Your own names and words. Can translate everything to English. A sentence appears a few seconds after it is said; on a phone it is slower and uses battery. Your voice stays on this device; only the written words can go to the meeting.</small></span></label>
           <div id="ccwhisper-weak" class="set-help" style="display:none;margin:.2rem 0 0 1.6rem"></div>
           <div id="ccwhisper" style="display:none;margin:.2rem 0 0 1.6rem">
             <div id="ccwhisper-state" class="set-help" style="margin-bottom:.4rem"></div>
-            <label class="rec-opt inline"><input type="checkbox" id="cctranslate"><span data-t="setCcEnglish">Write everything in English</span></label>
             <textarea id="ccwords" rows="2" data-ph="setCcWords" placeholder="Names and words to recognise: Siobhan, Kubernetes, GifOS…" style="width:100%;margin-top:.4rem;padding:.4rem .5rem;border-radius:.4rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);font:inherit;font-size:.85rem"></textarea>
           </div>
+          <label class="rec-opt" id="cctranslate-row"><input type="checkbox" id="cctranslate"><span><b data-t="setCcEnglish">Translate everything to English</b><small data-t="setCcEnglishHelp">Whisper on this device translates every voice you hear. Your captions and your transcript show only English: lines others send in English, and this device's own translations. What you send to the meeting stays in your own language.</small></span></label>
+          <p class="set-help" id="cctranslate-no" style="display:none;margin:.1rem 0 0 1.6rem" data-t="setCcEnglishNo">Whisper not supported on this browser</p>
           </div>
         </div>
         <p class="set-help set-row set-wide" id="ccall-row" style="display:none"><button data-t="setCcAllOff" id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span data-t="ccallNote" id="ccall-note">Admins only — every screen shows captions. Anyone can tap Captions to hide them.</span></p>
@@ -15679,7 +15680,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         late.hiLate = setTimeout(() => {
           if (peers.get(pid) !== late || (late.dc && late.dc.readyState === 'open')) return;
           if (!lateHiSender(myId, targetLinkIds(pid))) return;
-          deliverLateHi(pid, { k: 'hi', chats: chatWire(Array.from(chat.values()).slice(-200)), trs: trKeeps() ? Array.from(trs.values()).slice(-100) : [], metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj(), reacts: myReactsObj() });
+          deliverLateHi(pid, { k: 'hi', chats: chatWire(Array.from(chat.values()).slice(-200)), trs: trKeeps() ? Array.from(trs.values()).filter((l) => !l.lo).slice(-100) : [], metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj(), reacts: myReactsObj() });
         }, 20000);
       }
       p.absentSince = 0;
@@ -21439,7 +21440,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (amAdmin) { try { dcSend(p, { k: 'sig', msg: { kind: 'mod', mod: modTable, modw: gossipModW() } }); } catch (e) {} }
         try { if (enableMedia(p)) renegotiate(p); } catch (e) {}
         try { if (linkTo(p.id)) retireBootPairs(); } catch (e) {} // a seat's own link is open: the door I came in by closes
-        dcSend(p, { k: 'hi', chats: chatWire(Array.from(chat.values()).slice(-500)), trs: trKeeps() ? Array.from(trs.values()).slice(-300) : [], metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj(), reacts: myReactsObj() });
+        dcSend(p, { k: 'hi', chats: chatWire(Array.from(chat.values()).slice(-500)), trs: trKeeps() ? Array.from(trs.values()).filter((l) => !l.lo).slice(-300) : [], metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj(), reacts: myReactsObj() });
         // THE MOMENT A CHANNEL EXISTS is the moment the stage pulls can finally
         // travel. Everything below was silently impossible a millisecond ago:
         // sgaFan delivers only to peers whose DC is already OPEN, so a
@@ -29965,6 +29966,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const TR_SEND_KEY = 'gifos_cc_send', TR_MODE_KEY = 'gifos_tr_mode';
     let trDrops = 0;
     let trRxAt = 0; // when a shared line from another writer last arrived (the "receiving" mark)
+    // Translate everything to English is live on this page (trEnSync keeps it).
+    let trEnOn = false;
     // Remembered on this device like the other caption settings (lsGet).
     function capSend() { return lsGet(TR_SEND_KEY) !== 'off'; }
     // 'keep' (the default): lines are stored and shown here, and this page
@@ -30017,10 +30020,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const a0 = a.at || 0, a1 = Math.max(a0, a.end || 0), b0 = b.at || 0, b1 = Math.max(b0, b.end || 0);
       return a0 <= b1 && b0 <= a1;
     }
+    // A translation's words are the translator's, not the speaker's, so no
+    // word match can be asked of it: a translated line (tl) and another line
+    // of the SAME named voice whose spans overlap are one stretch of that voice.
+    function trTlSame(a, b) {
+      return !!((a.tl || b.tl) && a.byId === b.byId && !trGeneric(a.byId) && trOverlap(a, b));
+    }
     function trSame(a, b) {
       if (trGap(a, b) >= 8000) return false;
       if (a.byId !== b.byId && !trGeneric(a.byId) && !trGeneric(b.byId)) return false;
-      if (trLangClash(a, b)) return true;
+      if (trLangClash(a, b) || trTlSame(a, b)) return true;
       const la = trLangOf(a.lang), lb = trLangOf(b.lang);
       // Two engines heard the SAME stretch of one voice and named different
       // languages: one of them guessed wrong (a short tail of a sentence
@@ -30073,7 +30082,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!same.length) return 'new';
       let best = m;
       for (const l of same) if (trBetter(l, best)) best = l;
-      const folds = (l, into) => l !== into && (trLangClash(l, into) || trSameVoiceOtherLang(l, into) || trWithin(l, into));
+      const folds = (l, into) => l !== into && (trLangClash(l, into) || trSameVoiceOtherLang(l, into) || trTlSame(l, into) || trWithin(l, into));
       let at = best.at || 0;
       for (const l of same.concat([m])) if (folds(l, best) && (l.at || 0) > 0 && (at <= 0 || l.at < at)) at = l.at;
       if (clog) clog('tr same', String(m.byId).slice(0, 6), m.src, m.at, 'held', String(best.byId).slice(0, 6), best.src, best.at, 'x' + same.length);
@@ -30102,12 +30111,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function takeTr(m, backfill) { // backfill: a 'hi' replay — see takeChat
       if (!m || !m.id || trs.has(m.id) || ((m.at || 0) > 0 && (m.at || 0) <= (trs.floorAt || 0))) { if (clog && m && m.w === myId) clog('tr own drop', trs.has(m.id) ? 'held' : 'floor', m.at, trs.floorAt || 0); return false; }
       const w = String(m.w || m.byId);
+      // TRANSLATE EVERYTHING TO ENGLISH: this page holds and shows English
+      // lines only. A line in another language is left out; this page's own
+      // Whisper translates that voice instead.
+      if (trEnOn && trLangOf(m.lang) !== 'en') return false;
       // The flood limit is per writer AND voice: one sharing device writes
       // down a whole row, and a single shared budget dropped real sentences.
       if (!backfill && w !== myId && !chatRateOk('tr:' + w + '>' + String(m.byId))) return false;
       const src = m.src === 'mic' || m.src === 'ear' || m.src === 'mix' ? m.src : (w === String(m.byId) ? 'mic' : 'ear');
       const line = { id: m.id, byId: m.byId, by: String(m.by || '?').slice(0, 40), at: m.at || 0, text: String(m.text || '').slice(0, 400), w, src, lang: trLangOf(m.lang) };
       if (m.ld) line.ld = 1;
+      if (m.tl) line.tl = 1; // a translation (its words are not the speaker's)
+      if (m.lo) line.lo = 1; // kept on this page only: a 'hi' replay leaves it out (the room has my own words)
       if (m.end > line.at && m.end - line.at <= 60000) line.end = m.end; // the clip's end, when the engine knows it (bounded: a clip is 15 s at most)
       if (trMerge(line) === 'dup') return false;
       trs.set(m.id, line);
@@ -30116,6 +30131,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!backfill) trLearnLang(line); // the room's Whisper pages teach me my language, and so does my own
       if (!backfill) emitLiveTranscript(line);
       return true;
+    }
+    // Translate everything to English just came on: the lines held in other
+    // languages leave this page's captions and transcript.
+    function trEnOnlyEnglish() {
+      let n = 0;
+      for (const [id, l] of trs) if (trLangOf(l.lang) !== 'en') { trs.delete(id); n++; }
+      if (n) { trDirty = true; try { renderTranscript(); } catch (e) {} }
     }
     // A page that keeps no transcript still merges for the CC overlay: lines
     // older than 20 s leave, so the store is a window, never a history.
@@ -30215,7 +30237,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // writes down for the room's transcript (keep/share) — a person by name
     // (src 'ear'), or a mix by its channel's label (src 'mix'); sent only when
     // sharing. Stored here when this page keeps a transcript.
-    function addTranscriptLine(text, at, forId, label, src, lang, detected, end) { // detected: the engine found the language itself (Whisper); end: when the clip ended
+    // how: '' as above; 'tl' a translation (kept and sent as above, marked);
+    // 'lo' a translation of my own voice, kept and shown here only; 'out' my
+    // own words for the room, sent only (this page shows its translation).
+    function addTranscriptLine(text, at, forId, label, src, lang, detected, end, how) { // detected: the engine found the language itself (Whisper); end: when the clip ended
       text = String(text || '').trim();
       if (!text) return;
       // The bot's own microphone is never written down, and neither is a line
@@ -30226,13 +30251,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const m = { id: uid('t'), byId: myId, by: myName(), at: at || Date.now(), text: text.slice(0, 400), w: myId, src: 'mic', lang: trLangOf(lang || trLang()) };
       if (detected && m.lang) m.ld = 1;
       if (end > m.at) m.end = end;
+      if (how === 'tl' || how === 'lo') m.tl = 1;
+      if (how === 'lo') m.lo = 1;
       if (!mine) {
         m.byId = forId;
         m.src = src === 'mix' || trGeneric(forId) ? 'mix' : 'ear';
         m.by = String(label || rosterNames[forId] || (peers.get(forId) || {}).name || '…').slice(0, 40);
       }
-      const send = mine ? capSend() : trMode() === 'share';
-      if (!send && !trKeeps()) return;
+      const send = how === 'lo' ? false : mine ? capSend() : trMode() === 'share';
+      if (how === 'out') { if (send) sendAll({ k: 'tr', m }); return; }
+      if (!send && !trKeeps() && !trEnOn) return;
       if (!takeTr(m)) return; // the same sentence is already held by a better line
       if (send) sendAll({ k: 'tr', m });
       renderTranscript();
@@ -30315,6 +30343,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const ccEngine = () => (lsGet(CC_ENGINE_KEY) === 'whisper' && whisperAllowed() ? 'whisper' : 'browser');
     const WHISPER_APP_ID = 'offline-stt-whisper';
     const whisperReady = () => !!(window.GifOS && GifOS.providers && GifOS.providers.assigned('stt'));
+    // Can this browser run Whisper at all: allowed on this device, and an
+    // audio graph to cut the voices from.
+    const whisperSupported = () => whisperAllowed() && !!(window.AudioContext || window.webkitAudioContext);
     const WSP_PRE_MS = 400, WSP_GAP_MS = 700, WSP_MAX_S = 15, WSP_MIN_S = 0.4, WSP_BACKLOG = 3, WSP_SCRIBE_MAX = 8;
     const WHISPER_SEED_KEY = 'gifos_store_default_' + 'offline-stt-whisper'; // the same stamp the Home Screen's lazy seed writes (gifos-install.js)
     // One capture per VOICE: 'me' (my own echo-cancelled track) and, for a
@@ -30386,8 +30417,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return out;
     }
     function wspFoldSig() { return wspFoldTracks().map((t) => t.id).sort().join(','); }
-    // Is anyone present that I hold no source for (a far-row voice)?
-    function wspFoldNeeded(queued) {
+    // Is anyone present that I hold no source for (a far-row voice)? all: a
+    // voice someone else captions counts too (this page translates them all).
+    function wspFoldNeeded(queued, all) {
       const now = Date.now();
       if (typeof statusOf === 'undefined' || typeof peers === 'undefined' || typeof capCovered !== 'function') return false;
       for (const [pid, st] of statusOf) {
@@ -30395,7 +30427,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (now - (st.rx || st.at || 0) > 15000) continue;
         const p = peers.get(pid);
         if (p && p.connected && wspSource(pid)) continue;
-        if (capCovered(pid)) continue;
+        if (!all && capCovered(pid)) continue;
         return true;
       }
       return false;
@@ -30695,17 +30727,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // capture (under 1.5 s of gap) keeps that cut's language: nobody
       // switches language mid-sentence, and a short tail detected on its own
       // comes out as anything, translated.
+      // A second pass of a clip (my own words for the room, after this page's
+      // English translation of them) is told the language the first pass found.
+      const told = job.told || '';
       const cap0 = wspCaps.get(job.id);
-      const cont = (cap0 && cap0.lastLang && cap0.lastEnd && job.at - cap0.lastEnd < 1500) ? cap0.lastLang : '';
-      const contFound = !!(cont && cap0.lastFound); // the inherited language was found by Whisper on the previous cut
-      const lang = cont || (job.id === 'me' ? (lsGet(CC_LANG_KEY) || 'auto') : 'auto');
+      const cont = (!told && cap0 && cap0.lastLang && cap0.lastEnd && job.at - cap0.lastEnd < 1500) ? cap0.lastLang : '';
+      const contFound = told ? !!job.found : !!(cont && cap0.lastFound); // the inherited language was found by Whisper on the previous cut
+      const lang = told || cont || (job.id === 'me' ? (lsGet(CC_LANG_KEY) || 'auto') : 'auto');
+      const task = job.task || (trEnOn ? 'translate' : 'transcribe');
       let model = 'base';
       if (typeof wspModel === 'function') {
         const picked = wspModel();
         if (picked === 'tiny' || picked === 'base' || picked === 'small') model = picked;
       }
       const req = { bytes: pcm.buffer, mime: 'audio/pcm;rate=16000;bits=32', language: lang === 'auto' ? 'auto' : lang,
-        task: lsGet(CC_TRANSLATE_KEY) === '1' ? 'translate' : 'transcribe', prompt: lsGet(CC_WORDS_KEY).slice(0, 400), model: model };
+        task: task, prompt: lsGet(CC_WORDS_KEY).slice(0, 400), model: model };
       wspQ.sent++;
       let done = false, abandoned = false;
       const t0 = Date.now();
@@ -30807,14 +30843,29 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // ld only when Whisper was asked to FIND the language, or this cut
           // continues one where it did: told a language, it echoes it back,
           // and told the wrong one for the audio it writes a translation.
-          const found = lang === 'auto' || contFound;
+          const found = (lang === 'auto' && !told) || contFound;
           const rl = lang === 'auto' ? ((r && r.language) ? String(r.language) : '') : lang;
           const capNow = wspCaps.get(job.id);
           if (capNow) { capNow.lastEnd = job.at + clipMs; if (rl) { capNow.lastLang = rl; capNow.lastFound = found; } }
           const end = job.at + clipMs; // the clip's span: a mix clip opens with the first voice in it, so its start says little
-          if (job.id === 'me') { addTranscriptLine(text, job.at, null, null, 'mic', rl, found, end); }
-          else if (job.id === 'fold') { if (trWrites()) addTranscriptLine(text, job.at, 'stadium', 'Stadium', 'mix', rl, found, end); }   // a far-row line, labelled by its channel
-          else if (trWrites() && (peers.has(job.id) || job.stage)) addTranscriptLine(text, job.at, job.id, null, 'ear', rl, found, end);
+          // A translate answer is English. Spoken in English, it is the
+          // speaker's own words; otherwise it is a translation (tl), and the
+          // language Whisper found is the speaker's, not the line's.
+          const translated = task === 'translate';
+          const own = !translated || trLangOf(rl) === 'en';
+          const ll = translated ? 'en' : rl, lf = own && found, how = own ? '' : 'tl';
+          if (job.id === 'me') {
+            if (job.out) addTranscriptLine(text, job.at, null, null, 'mic', rl, found, end, 'out');
+            else if (own) addTranscriptLine(text, job.at, null, null, 'mic', ll, lf, end);
+            else {
+              addTranscriptLine(text, job.at, null, null, 'mic', 'en', false, end, 'lo');
+              // The room reads my own words: the same clip once more, told the
+              // language just found, sent and not shown here. It goes first.
+              if (capSend()) wspQ.items.unshift({ id: 'me', chunks: job.chunks, at: job.at, rate: job.rate, keep: job.keep, task: 'transcribe', out: true, told: rl || '', found: found });
+            }
+          }
+          else if (job.id === 'fold') { if (trWrites() || trEnOn) addTranscriptLine(text, job.at, 'stadium', 'Stadium', 'mix', ll, lf, end, how); }   // a far-row line, labelled by its channel
+          else if ((trWrites() || trEnOn) && (peers.has(job.id) || job.stage)) addTranscriptLine(text, job.at, job.id, null, 'ear', ll, lf, end, how);
         }
         if (!wspQ.items.length && myStatus && myStatus.ccst === 'behind') {
           wspQ.behind = false;
@@ -30847,11 +30898,29 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function capCovered(pid) { const st = statusOf.get(pid); return !!(st && st.cap === 1); }
     function earLangOk(pid) { const st = statusOf.get(pid); const l = st && trLangOf(st.lang); return !l || l === trLang(); }
     function trWrites() { return trKeeps(); }
+    // Translating everything to English, the page hears EVERY voice through
+    // its own Whisper: my own (even with Send off, for my own captions),
+    // every first-hand voice whether captioned or not, and the Stadium mix
+    // whenever a present voice reaches me only there. No cap: a capture costs
+    // only while its voice speaks; the one queue carries the real work.
+    // TRANSLATE EVERYTHING TO ENGLISH (Settings → Captions). Only Whisper
+    // translates, so the setting is live while Whisper is this page's engine
+    // and running. Then this page translates every voice it hears, and its
+    // captions and transcript hold English lines only: lines sent in English,
+    // and its own translations. What it sends stays in the speaker's language.
+    function trEn() { return lsGet(CC_TRANSLATE_KEY) === '1' && ccEngine() === 'whisper' && whisperReady() && !wspPaused; }
+    function trEnSync() {
+      const on = trEn();
+      if (on && !trEnOn) { trEnOn = true; trEnOnlyEnglish(); }
+      trEnOn = on;
+      return on;
+    }
     function wspSync() {
       const want = new Set();
-      const me = capSend() && ccEngine() === 'whisper' && whisperReady() && !myStatus.muted;
+      const en = trEnOn;
+      const me = (capSend() || en) && ccEngine() === 'whisper' && whisperReady() && !myStatus.muted;
       if (!wspPaused && me) want.add('me');
-      if (!wspPaused && trWrites() && ccEngine() === 'whisper' && whisperReady()) {
+      if (!wspPaused && (trWrites() || en) && ccEngine() === 'whisper' && whisperReady()) {
         const stagers = (typeof stageIds === 'function') ? stageIds() : [];
         const stageSet = new Set(stagers);
         const talking = (pid) => (typeof speakingOf !== 'undefined' && speakingOf && speakingOf.get(pid));
@@ -30872,12 +30941,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // into peers first, so eight silent row-mates filled it.
         const key = (a) => (capCovered(a) ? 4 : 0) + (stageSet.has(a) ? 0 : 2) + (talking(a) ? 0 : 1);
         queued.sort((a, b) => key(a) - key(b));
+        const max = en ? Infinity : WSP_SCRIBE_MAX;
         let others = 0; // WSP_SCRIBE_MAX other voices, with or without my own capture
         for (const pid of queued) {
-          if (others >= WSP_SCRIBE_MAX) break;
+          if (others >= max) break;
           want.add(pid); others++;
         }
-        if (others < WSP_SCRIBE_MAX && wspFoldNeeded(queued) && wspFoldTracks().length) want.add('fold');
+        if (others < max && wspFoldNeeded(queued, en) && wspFoldTracks().length) want.add('fold');
       }
       for (const id of Array.from(wspCaps.keys())) if (!want.has(id)) wspStop(id);
       for (const id of want) {
@@ -30897,7 +30967,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (ccMix.dest) { ccMixSync(); if (!ccMix.ins.size) syncSpeech(); return; }
       if (trWrites() && !(ccEngine() === 'whisper' && whisperReady()) && !(speech && speech.input) && ccTrackInput() && ccMixVoices().size) syncSpeech();
     }
-    setInterval(() => { if (wspCaps.size || (trWrites() && ccEngine() === 'whisper' && whisperReady())) wspSync(); earTick(); trForget(); paintTxMark(); }, 2000);
+    setInterval(() => { trEnSync(); if (wspCaps.size || trEnOn || (trWrites() && ccEngine() === 'whisper' && whisperReady())) wspSync(); earTick(); trForget(); paintTxMark(); }, 2000);
     // ONE TAP TO INSTALL. The provider is a signed 13 MB GIF on this very site:
     // GifOS.providers.install downloads, checks the catalog hash and the
     // gifos.app signature, files it into the Providers folder and we assign it
@@ -30948,6 +31018,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // an explicit "use it anyway" stand in for it.
       const allowed = whisperAllowed();
       for (const r of radios) if (r.value === 'whisper') r.disabled = !allowed;
+      paintTrEnBox();
       const weak = document.getElementById('ccwhisper-weak');
       if (weak) {
         if (allowed) { weak.style.display = 'none'; weak.innerHTML = ''; }
@@ -30979,6 +31050,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         + '<span id="ccwhisper-prog"></span> <a href="store.html#app=' + WHISPER_APP_ID + '" target="_blank" rel="noopener" style="color:var(--accent2,#ff5caa);font-size:.8rem">' + uiText('setCcStore', 'or from the App Store') + '</a>';
       document.getElementById('ccwhisper-install').onclick = () => { installWhisper(true).catch(() => {}); paintCcState(); };
       armWhisperRescan();
+    }
+    // Translate everything to English: greyed, with the reason, where this
+    // browser cannot run Whisper; otherwise it shows the saved choice.
+    function paintTrEnBox() {
+      const tr = document.getElementById('cctranslate'), no = document.getElementById('cctranslate-no'), row = document.getElementById('cctranslate-row');
+      if (!tr) return;
+      const ok = whisperSupported();
+      tr.disabled = !ok;
+      tr.checked = ok && lsGet(CC_TRANSLATE_KEY) === '1';
+      if (row) row.style.opacity = ok ? '' : '.5';
+      if (no) no.style.display = ok ? 'none' : '';
     }
     function whisperSeedBlocked() {
       // A phone or a weak computer, a data-saver flag, or a cellular link does not fetch the 13 MB app on its own.
@@ -31019,8 +31101,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     (function wireCcEngine() {
       const radios = Array.from(document.querySelectorAll('input[name="ccengine"]')); if (!radios.length) return;
       const tr = document.getElementById('cctranslate'), words = document.getElementById('ccwords');
-      tr.checked = lsGet(CC_TRANSLATE_KEY) === '1'; words.value = lsGet(CC_WORDS_KEY);
-      tr.onchange = () => lsSet(CC_TRANSLATE_KEY, tr.checked ? '1' : '');
+      words.value = lsGet(CC_WORDS_KEY);
+      // Only Whisper translates: ticking the box picks Whisper as the engine
+      // (one tap, the same as picking it above). Unticking leaves the engine.
+      tr.onchange = () => {
+        if (tr.checked && !whisperSupported()) { paintTrEnBox(); return; }
+        lsSet(CC_TRANSLATE_KEY, tr.checked ? '1' : '');
+        const wr = radios.find((r) => r.value === 'whisper');
+        if (tr.checked && ccEngine() !== 'whisper' && wr) { wr.checked = true; wr.onchange(); }
+        try { trEnSync(); wspSync(); } catch (e) {}
+        paintCcState();
+      };
       words.onchange = () => lsSet(CC_WORDS_KEY, words.value.replace(/\s+/g, ' ').trim().slice(0, 400));
       wireTranscriptControls();
       for (const r of radios) r.onchange = () => {
