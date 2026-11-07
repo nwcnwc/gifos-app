@@ -83,7 +83,7 @@
       if (!this.hasCoord) { const h = newMsg('HOME'); this.emit(m.from, h); return; }
       if (m.ttl <= 0) return;
       if (this.coord.pc === 0) {
-        const h = newMsg('HOME'); h.roster = this.s1Roster(); h.id = id; h.gkey = this.genKey;
+        const h = newMsg('HOME'); h.roster = this.s1Roster(); h.small = this.homeSmall(); h.id = id; h.gkey = this.genKey;
         if (m.knock) { h.knock = true; this.f.fabricDialJoin(id, m.from); h.mass = this.l13On() && this.l13Mass(); }   // L13.25
         for (const [bk, bv] of this.byeAt) { if (ckPc(bk) !== 0 || this.occGet(bk) >= 0 || TICK - bv > K.LEASE_T) continue; h.byes.push(bk); if (h.byes.length >= C * C) break; }   // L1.5
         if (!this.l31Door(m, h)) this.emit(m.from, h);
@@ -109,20 +109,20 @@
       if (this.state === 1 && roomTerm(this, 1) && m.from >= 0 && this.c7Old.has(m.from) && TICK - this.c7At < K.RELAY_TTL) return;   // L8.5
       if (this.state === 1 && this.l851Moves(m)) return;   // L8.5.1
       if (this.state === 1 && m.l31 === 1 && this.l31TakeDoor(m)) return;   // L31.1
-      if (this.l3113On() && this.state === 1 && this.oldCell && this.rcSentAt >= 0 && TICK - this.rcSentAt < K.RC_RESEND && m.roster.length) { this.roster = kvCopy(m.roster); this.haveRoster = true; this.lastReach = TICK; return; }   // L3.11.3: my RECLAIM round is in flight; a HOME now (the reload tree memory's burst) keeps its roster but starts no round and seats me nowhere: as a newcomer I would close the door its RECLAIMED comes back on
-      if (this.state === 1 && this.oldCell && this.rcTries < 2 && !(this.rcPendAt >= 0) && m.roster.length && (!this.l3112On() || this.rcTries > 0 || ((this.rcRtN = 0), (this.rcRtAt = -1), true)) && this.tryReclaim(m.roster, m.from)) { this.rcGreeter = m.from; this.rcTries++; this.roster = kvCopy(m.roster); this.haveRoster = true; this.lastReach = TICK; this.retryAt = TICK; return; }   // L3.10
-      if (this.state === 1 && this.oldCell && (this.rcPendAt >= 0 || this.rcRound2) && m.roster.length) { this.roster = kvCopy(m.roster); this.haveRoster = true; this.lastReach = TICK; return; }   // L3.10.6
+      if (this.l3113On() && this.state === 1 && this.oldCell && this.rcSentAt >= 0 && TICK - this.rcSentAt < K.RC_RESEND && m.roster.length) { this.roster = kvCopy(m.roster); this.haveRoster = true; this.rosterSmall = m.small; this.lastReach = TICK; return; }   // L3.11.3: my RECLAIM round is in flight; a HOME now (the reload tree memory's burst) keeps its roster but starts no round and seats me nowhere: as a newcomer I would close the door its RECLAIMED comes back on
+      if (this.state === 1 && this.oldCell && this.rcTries < 2 && !(this.rcPendAt >= 0) && m.roster.length && (!this.l3112On() || this.rcTries > 0 || ((this.rcRtN = 0), (this.rcRtAt = -1), true)) && this.tryReclaim(m.roster, m.from)) { this.rcGreeter = m.from; this.rcTries++; this.roster = kvCopy(m.roster); this.haveRoster = true; this.rosterSmall = m.small; this.lastReach = TICK; this.retryAt = TICK; return; }   // L3.10
+      if (this.state === 1 && this.oldCell && (this.rcPendAt >= 0 || this.rcRound2) && m.roster.length) { this.roster = kvCopy(m.roster); this.haveRoster = true; this.rosterSmall = m.small; this.lastReach = TICK; return; }   // L3.10.6
       if (this.state === 1) {
         if (m.roster.length === 0) { this.retryAt = TICK - 10; return; }
         if (this.entryTerm() && m.from >= 0) { this.gateway = m.from; this.islandAskAt = -1; }
         if (m.line >= 0) { this.lineAdopt(m.line, 'home'); if (m.lineF) this.lineFork = true; }
-        this.roster = kvCopy(m.roster); this.haveRoster = true; this.lastReach = TICK; this.seatTries = 0; this.resumeTries = 0;
+        this.roster = kvCopy(m.roster); this.haveRoster = true; this.rosterSmall = m.small; this.lastReach = TICK; this.seatTries = 0; this.resumeTries = 0;
         let t;
         if (this.f.fabricDoors() && m.from >= 0) { this.gateway = m.from; t = lv.L16PICK ? this.pickRoster() : m.from; this.l16Gateway(m.from, lv.L16PICK === 2 ? -1 : t); }   // L16
         else t = this.pickRoster();
         if (t >= 0) this.askSeat(t); else this.retryAt = TICK - 10;
       } else if (this.state === 3 && m.roster.length) {
-        this.roster = kvCopy(m.roster); this.haveRoster = true; this.rmHomeAt = TICK;   // L11
+        this.roster = kvCopy(m.roster); this.haveRoster = true; this.rosterSmall = m.small; this.rmHomeAt = TICK;   // L11
         if (this.hasCoord && this.coord.pc !== 0 && this.coord.i === 0) { const oc = this.ownerCoord(); if (oc && oc.pc === 0) { const ok = ckey(oc); if (!this.byeAt.has(ok) && !this.firstHandLive(ok) && TICK - this.lastAck >= K.L9_LONE) for (const b of m.byes) if (b === ok) { this.byeAt.set(ok, TICK); if (this.occ.has(ok)) { this.occDrop(ok, 'ring-bye'); this.live.delete(ok); this.kidful.delete(ok); } this.trace('BYE-LEARNED', id, oc, 'from=%d', m.id); break; } } }   // L9.9
         if (this.l13('L13.9') && this.hasCoord && this.coord.pc !== 0 && this.coord.i !== 0) {
           const H = { pc: this.coord.pc, r: this.coord.r, i: 0 }; const chain = FREE.l13Chain(this, H); const nc = chain.length;

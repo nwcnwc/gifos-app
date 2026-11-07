@@ -42,14 +42,14 @@
     // L44.4: a room whose Section 1 is not full has no queue to protect: a FIND a door acknowledged is asked again one tick past L7_HOLD, not after 60.
     // C++: mesh_burst.inc:Seat::l44AckWait
     l44AckWait() {
-      if (!this.haveRoster || this.roster.length >= C * C) return 60;
+      if (!this.haveRoster || !this.rosterSmall) return 60;
       return K.L7_HOLD + 1;
     },
 
     // L44.5: the link to the seat I asked is closed, in a room not yet full: nothing more comes over it, so I ask again now.
     // C++: mesh_burst.inc:Seat::l44LinkLost
     l44LinkLost() {
-      if (!this.f.fabricDoors() || this.lastAsked < 0 || !this.haveRoster || this.roster.length >= C * C || this.TICK <= this.retryAt || this.f.fabricLinkState(this.id, this.lastAsked) !== LS_CLOSED) return false;
+      if (!this.f.fabricDoors() || this.lastAsked < 0 || !this.haveRoster || !this.rosterSmall || this.TICK <= this.retryAt || this.f.fabricLinkState(this.id, this.lastAsked) !== LS_CLOSED) return false;
       if (this.findAckAt >= 0) return false;   // L44.5.1: the seat I asked acknowledged my FIND: it handed it on, and its door's close is the plan, not a lost ask
       this.trace('L44-REASK', this.id, null, 'asked=%d after=%d', this.lastAsked, this.TICK - this.retryAt);
       this.w.lv.L44_REASK++;

@@ -139,7 +139,7 @@
     // C++: mesh_instant.inc:Seat::l31TakeDoor
     l31TakeDoor(m) {
       if (this.hasCoord || m.nc !== this.id || m.owner < 0 || m.owner !== m.from || m.roster.length === 0) return false;
-      this.roster = cpKV(m.roster); this.haveRoster = true; this.lastReach = this.TICK; this.seatTries = 0; this.resumeTries = 0;
+      this.roster = cpKV(m.roster); this.haveRoster = true; this.rosterSmall = m.small; this.lastReach = this.TICK; this.seatTries = 0; this.resumeTries = 0;
       this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, m.row, m.ppL); if (this.pp >= 0 && this.pp !== this.id) this.placer = this.pp;
       this.l31Bridge = m.from; this.l31BridgeCk = ckey(m.coord);
       return true;

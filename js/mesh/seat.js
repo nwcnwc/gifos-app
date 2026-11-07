@@ -723,6 +723,8 @@
       if (!pool.length) return -1; return pool[Math.floor(this.rng() * pool.length)];
     },
     // C++: mesh.cpp:Seat::s1Roster
+    // L44.7: the greeter's word that the room is not past Section 1. C++: mesh.cpp Seat::homeSmall
+    homeSmall() { let n = 1; for (const [ek, ev] of this.occ) if (ek < 65536 && ev !== this.id) n++; return n < C * C && this.rootDig.n + this.rootDig.leased <= C * C; },
     s1Roster() {
       const out = []; if (this.hasCoord && this.coord.pc === 0) out.push({ k: ckey(this.coord), v: this.id });
       for (const [k, v] of this.occ) if (ckPc(k) === 0 && v !== this.id && this.s1Fresh(k) && !this.translost.has(k) && !this.s1Told(k) && !this.l315Cell(k)) out.push({ k, v });
