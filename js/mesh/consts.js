@@ -264,6 +264,9 @@
     SIG_RETRY_CURE: 24,   // C++: mesh_dialsig_fab.inc:SIG_RETRY_CURE
     SIG_RETRY_POLITE: 10,   // C++: mesh_dialsig_fab.inc:SIG_RETRY_POLITE
     SIG_RETRY_QUIET: 60,   // C++: mesh_dialsig_fab.inc:SIG_RETRY_QUIET
+    L49_TTL: 2,   // C++: mesh_rowmix.inc:L49_TTL
+    L49_PULL: 8,   // C++: mesh_rowmix.inc:L49_PULL
+    L49_ELECT: 16,   // C++: mesh_rowmix.inc:L49_ELECT
     RC_W1: 2,   // C++: mesh_realcheck.inc:RC_W1
     RC_W10: 20,   // C++: mesh_realcheck.inc:RC_W10
     RC_HIST: 33,   // C++: mesh_realcheck.inc:RC_HIST
@@ -688,7 +691,8 @@
     RB_CLOSING: 16,   // C++: mesh_realcheck.inc:RB_CLOSING
     RB_L23CLOSE: 17,   // C++: mesh_realcheck.inc:RB_L23CLOSE
     RB_LEAK: 18,   // C++: mesh_realcheck.inc:RB_LEAK
-    RB_N: 19,   // C++: mesh_realcheck.inc:RB_N
+    RB_FHUP: 19,   // C++: mesh_realcheck.inc:RB_FHUP
+    RB_N: 20,   // C++: mesh_realcheck.inc:RB_N
     RBL_TOPO: 0,   // C++: mesh_realcheck.inc:RBL_TOPO
     RBL_DOOR: 1,   // C++: mesh_realcheck.inc:RBL_DOOR
     RBL_KNOCK: 2,   // C++: mesh_realcheck.inc:RBL_KNOCK
