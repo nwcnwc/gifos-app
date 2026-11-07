@@ -24161,6 +24161,38 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     let sdEmptyAt = 0;   // since when my Stadium view has been EMPTY (blank-tile grace)
     const downFolds = new Map();   // receiver key -> audio fold: the sound that rides the room pack to it, its own voices left out
     const downStreams = new Map(); // receiver key -> MediaStream [room picture, that receiver's sound], kept while the tracks stand
+    // THE MIX CLOCK. A head's folds are the only road its row's voices take to the rest of the room (the row
+    // product up, the mix-minus to its mates and children), so a head whose audio graph stops silences everyone
+    // beyond its row while its pictures and links still flow, and no other seat has a path to those voices
+    // (2026-11-07: a Safari row head kept its seat with a stopped context; the Section-1 head heard nobody in row 1
+    // until that page was killed). A slow device must never break the room: every few seconds the clock of the
+    // context the folds run in is read, and one that has not moved for MIX_STALL_MS (resume() tried first) is
+    // replaced. The folds move to a fresh context and the next sweep ships the new mixes. Only the head's folds
+    // move; the meters, the stage ear and Whisper stay where they were.
+    const MIX_STALL_MS = 4000, MIX_REBUILD_GAP_MS = 10000;
+    let mixAc = null; // the fresh context the folds moved to after a stall (null: they run in the meeting context)
+    const mixClock = { ctx: null, t: -1, stuckSince: 0, rebuilds: 0, lastAt: 0, fails: 0 };
+    function mixCtx() { if (mixAc && mixAc.state !== 'closed') return mixAc; ensureAc(); return ac; }
+    function acClockInfo() { return { mix: mixAc ? 'fresh' : 'meeting', mixSt: mixAc ? mixAc.state : null, stuckMs: mixClock.stuckSince ? Date.now() - mixClock.stuckSince : 0, rebuilds: mixClock.rebuilds, fails: mixClock.fails, agoMs: mixClock.lastAt ? Date.now() - mixClock.lastAt : null }; }
+    function mixClockCheck() {
+      if (!downFolds.size) { mixClock.ctx = null; mixClock.stuckSince = 0; return; }
+      const c = mixCtx(); if (!c) return;
+      const now = Date.now(), t = +c.currentTime || 0;
+      if (mixClock.ctx !== c || t > mixClock.t) { mixClock.ctx = c; mixClock.t = t; mixClock.stuckSince = 0; return; }
+      if (!mixClock.stuckSince) { mixClock.stuckSince = now; try { const pr = c.resume(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {} return; }
+      if (now - mixClock.stuckSince < MIX_STALL_MS || now - mixClock.lastAt < MIX_REBUILD_GAP_MS) return;
+      let nc = null; try { nc = newMeetAudioContext(); } catch (e) { nc = null; }
+      mixClock.lastAt = now;
+      if (!nc) { mixClock.fails++; return; }
+      try { const pr = nc.resume(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {}
+      const old = mixAc; mixAc = nc;
+      for (const f of downFolds.values()) { try { f.clear(); } catch (e) {} }
+      downFolds.clear(); downStreams.clear();
+      if (old) { try { old.close(); } catch (e) {} }
+      mixClock.rebuilds++; mixClock.ctx = null; mixClock.stuckSince = 0;
+      if (clog) clog('mix-ac-rebuild', 'n=' + mixClock.rebuilds, 'old=' + (old ? old.state : (ac ? ac.state : '-')), 'new=' + nc.state);
+      schedReconcile();
+    }
     // A receiver's stream: the room picture and that receiver's sound, one
     // container while both tracks stand (either may be absent).
     function downStream(key, v, a) {
@@ -27576,7 +27608,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           }
           for (const [mk, uf] of mosIn) { if (mk.indexOf('subu:') !== 0) continue; const h = mk.slice(5); if (uf && uf.stream && l14Keep(h, uf)) l14A.set('u' + h, uf.stream); }
           const mixOf = (row, skip) => { const m = new Map(outA); if (row) for (const [k, v] of rowA) m.set(k, v); for (const [k, v] of subA) if (k !== skip) m.set(k, v); for (const [k, v] of l14A) if (k !== skip) m.set(k, v); return m; };
-          const fold = (key, parts) => { let f = downFolds.get(key); if (!f) { ensureAc(); if (!ac) return null; f = MM.createAudioFold(ac); downFolds.set(key, f); } foldSync(f, parts); return f; };
+          const fold = (key, parts) => { let f = downFolds.get(key); if (!f) { const mc = mixCtx(); if (!mc) return null; f = MM.createAudioFold(mc); downFolds.set(key, f); } foldSync(f, parts); return f; };
           const foldsNow = new Set();
           const avOf = (key, parts) => { foldsNow.add(key); const f = fold(key, parts); return downStream(key, roomV, f ? f.track() : null); };
           // MY ROW (and my own ear): everything but my row's voices.
@@ -29716,6 +29748,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (typeof ac !== 'undefined' && ac && typeof ensureAc === 'function') ensureAc();
       } catch (e) {}
       try { if (typeof kickPausedAudio === 'function') kickPausedAudio(); } catch (e) {}
+      try { mixClockCheck(); } catch (e) {}
     }
     function armAudioKeepAlive() {
       const kick = () => { try { keepMeetingAudio(); } catch (e) {} };
@@ -35424,6 +35457,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try {
         if (ac && typeof ac.close === 'function') { const c = ac; ac = null; c.close(); }
       } catch (e) {}
+      try { if (mixAc) { const c = mixAc; mixAc = null; c.close(); } } catch (e) {}
     }
     // THE FAREWELL LEAVES BEFORE THE CONNECTIONS CLOSE. A direct goodbye is
     // sealed first and sent after, and send() only queues bytes on the
@@ -37203,6 +37237,35 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
 
     // Test hook: lets the e2e suite observe mesh + quality state.
+    // AUDIO-OUT FORENSICS (debugDump audio, read-only): where each voice should leave the page. Every media
+    // element (the DOM ones and the detached companions on tile videos), the meeting context and its clock, the
+    // WebKit one ear, the stage ear, my Stadium's sound, every fold a head builds (sources and the bus's level now)
+    // and the composite streams' audio tracks. A deaf page (penguin, 2026-11-07) had none of this in its dump.
+    function audioDump() {
+      const tr = (t) => (t ? t.readyState[0] + (t.muted ? 'M' : '') + (t.enabled ? '' : 'X') + ':' + String(t.id).slice(0, 6) : null);
+      const trs = (st) => (st && st.getAudioTracks ? st.getAudioTracks().map(tr) : null);
+      const el = (e) => (e ? { p: !!e.paused, m: !!e.muted, v: +(+e.volume || 0).toFixed(2), rs: e.readyState, sink: e.sinkId === undefined ? null : String(e.sinkId), a: trs(e.srcObject), bl: blockedAudio.has(e) } : null);
+      const els = [];
+      for (const v of document.querySelectorAll('video, audio')) {
+        if (els.length >= 40) break;
+        const t = v.closest && v.closest('[data-peer],[data-row]');
+        els.push(Object.assign({ who: t ? String(t.dataset.peer || ('row:' + t.dataset.row)).slice(0, 10) : (v.id || v.tagName.toLowerCase()), tag: v.tagName[0] }, el(v), { aud: v._aud ? el(v._aud) : undefined }));
+      }
+      const foldOf = (f) => (f ? { pk: f.peakNow ? f.peakNow() : null, src: f.info ? f.info() : (f.keys ? f.keys() : null), out: tr(f.track ? f.track() : null) } : null);
+      const folds = {}; for (const [k, f] of downFolds) folds[k] = foldOf(f);
+      const comp = {}; for (const [k, m] of mosIn) comp[k] = { via: String(m.via || '').slice(0, 8), a: trs(m.stream), el: m.el ? { p: !!m.el.paused, rs: m.el.readyState } : null };
+      const sb = {}; for (const [k, m] of mosStandby) sb[k] = { via: String(m.via || '').slice(0, 8), a: trs(m.stream) };
+      let sink = null; try { sink = ac && ac.sinkId !== undefined ? (typeof ac.sinkId === 'object' ? ((ac.sinkId && ac.sinkId.type) || 'obj') : String(ac.sinkId)) : null; } catch (e) {}
+      return {
+        ac: ac ? { st: ac.state, sink, t: +(+ac.currentTime || 0).toFixed(2), clock: acClockInfo() } : null,
+        act: { sticky: !!(navigator.userActivation && navigator.userActivation.hasBeenActive), kickArmed: !!audioKickArmed, blocked: blockedAudio.size, vis: document.visibilityState },
+        mix: (() => { try { return Object.assign({}, mix); } catch (e) { return null; } })(), waiting: (typeof iAmWaiting === 'function') ? iAmWaiting() : null,
+        mic: localStream ? trs(localStream) : null,
+        els, wkEar: (typeof wkEar !== 'undefined' && wkEar) ? { el: el(wkEar.el), fold: foldOf(wkEar.fold) } : null,
+        stageEar: stageEar ? { el: el(stageEar.el), fold: foldOf(stageEar.fold) } : null,
+        stadium: sdViewSt ? { a: trs(sdViewSt) } : null, folds, comp, standby: sb,
+      };
+    }
     window.__gifosVideo = {
       seedGalleryForTest: (spec) => seedGalleryForTest(spec),
       // A seat whose device never sent a name (joined from a link, no name typed).
@@ -38033,6 +38096,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           d5: s ? { tl: [...s.translost.entries()].map(([k, at]) => [k, s.env.TICK - at]), pa: [...s.probeAck.entries()].map(([k, at]) => [k, s.env.TICK - at]), log: (s.tlLog || []).map(([k, tk, why]) => k + '@-' + (s.env.TICK - tk) + ':' + why) } : null,
           consent: (typeof allConsent === 'function' ? allConsent() : null), hbVia,
           mosaic: mos, roster: rosterIds.map(info),
+          audio: (() => { try { return audioDump(); } catch (e) { return { err: String(e).slice(0, 80) }; } })(),
         };
       },
       mosaic: () => { const c = meshCoord(); const T = net.topo; const tgt = (co) => { if (!co) return null; const pid = occPid(co); const p = pid && peers.get(pid); return { pid: (pid||'').slice(0,6), has: !!p, conn: p && p.connected, dc: !!(p && p.dc && p.dc.readyState === 'open') }; };

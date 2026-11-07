@@ -932,6 +932,9 @@
       setGain(key, v) { const s = srcs.get(key); if (s && s.gain.gain.value !== v) s.gain.gain.value = v; },
       clear() { for (const k of new Set([...srcs.keys(), ...waiting.keys()])) this.remove(k); },
       keys: () => [...srcs.keys()],
+      // Forensics (debugDump audio): the bus's peak in the tap's current window, and each source's track and gain.
+      peakNow() { let pk = 0; try { tap.getFloatTimeDomainData(tapBuf); for (let i = 0; i < tapBuf.length; i++) { const a = Math.abs(tapBuf[i]); if (a > pk) pk = a; } } catch (e) {} return +pk.toFixed(3); },
+      info() { const o = []; for (const [k, r] of srcs) o.push({ k, g: +r.gain.gain.value.toFixed(2), tr: r.track ? r.track.readyState + (r.track.muted ? '/muted' : '') + (r.track.enabled ? '' : '/off') : null }); for (const k of waiting.keys()) o.push({ k, wait: true }); return o; },
     };
   }
 
