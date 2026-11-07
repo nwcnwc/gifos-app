@@ -802,9 +802,7 @@
     ["rcRtAt", "i32"],   // int = -1  (line 1868)
     ["rcRtN", "i32"],   // int = 0  (line 1868)
     ["rcSentAt", "i32"],   // int = -1  (line 1869)
-    ["l3108Id", "i32"],   // int = -1  (line 1870)
-    ["l3108At", "i32"],   // int = -1  (line 1870)
-    ["l3108Ck", "u64"],   // uint64_t = 0  (line 1870)
+    ["l3108Gone", "{u64:(i32,i32)}"],   // OMap<uint64_t,pair<int,int>>  (line 1870)
     ["rootKeep", "Dig"],   // Dig  (line 1871)
     ["headAckAt", "i64"],   // long long = -1000  (line 1872)
     ["hdLeaseAt", "i64"],   // long long = -1000  (line 1873)
@@ -1317,9 +1315,6 @@
     rcRtAt: -1,
     rcRtN: 0,
     rcSentAt: -1,
-    l3108Id: -1,
-    l3108At: -1,
-    l3108Ck: 0,
     headAckAt: -1000,
     hdLeaseAt: -1000,
     hdLeaseId: -1,

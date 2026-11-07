@@ -647,7 +647,8 @@
       { const t = this.tenOf.get(ck); if (t !== undefined && t[0] === x) bm.tn = t[1]; }
       if (c.pc === 0) { bm.child = this.occGet(ckey(down(c))); for (const o of ownedLinks(c)) { const lk = ckey(o), y = this.occGet(lk); if (y >= 0 && y !== x && o.pc === 0) bm.nbrs.push({ k: lk, v: y }); } }
       if (this.l13('L13.7')) bm.kids = bm.child >= 0;
-      this.l3108Id = x; this.l3108Ck = ck; this.l3108At = TICK; return bm;
+      for (const [gk, gv] of [...this.l3108Gone]) if (TICK - gv[1] > 16) this.l3108Gone.delete(gk);   // L3.10.8.1: a word older than its 16 ticks keeps nothing
+      this.l3108Gone.set(ck, [x, TICK]); return bm;
     },
 
     // C++: mesh_seat.inc:Seat::leave

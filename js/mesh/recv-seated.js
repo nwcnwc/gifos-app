@@ -254,7 +254,7 @@
       if (m.rel) { this.relMark.set(m.id, TICK); this.trace('RELOAD-BYE', id, this.hasCoord ? this.coord : null, 'from=%d cell=%s', m.id, coordStr(unck(m.ck))); return; }   // L3.11
       if (m.bye && !m.mvd) { this.noteBye(m.id); if (m.id !== id) this.dials.holdGone(m.id, TICK + K.GONE_DIAL); }
       if (m.mvd && m.ck < 65536) { this.l3109Ck = m.ck + 1; this.l3109At = this.TICK; }   // L3.10.9
-      if (m.id === this.l3108Id && m.ck === this.l3108Ck && this.TICK - this.l3108At <= 16) this.memo.set(m.ck, { id: m.id, tok: this.pinned.has(m.id) ? this.pinned.get(m.id) : 0, at: this.l3108At }); else this.memo.delete(m.ck);   // L3.10a, L3.10.8
+      { const g = this.l3108Gone.get(m.ck); if (g !== undefined && g[0] === m.id && this.TICK - g[1] <= 16) this.memo.set(m.ck, { id: m.id, tok: this.pinned.has(m.id) ? this.pinned.get(m.id) : 0, at: g[1] }); else this.memo.delete(m.ck); }   // L3.10a, L3.10.8
       if (m.mv && m.nc >= 0 && m.nc !== m.id && this.hasCoord && ckey(this.coord) !== m.ck && this.occGet(m.ck) === m.id) { this.setOcc(m.ck, m.nc); this.live.delete(m.ck); this.trace('HANDED', id, this.coord, 'cell=%s to=%d by=%d', coordStr(unck(m.ck)), m.nc, m.id); return; }   // L3.10.4
       // D2 RELAY
       if (m.rl && m.yl) {   // L21
