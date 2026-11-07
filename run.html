@@ -14540,7 +14540,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (pc.connectionState === 'failed' || pc.connectionState === 'closed') { if (!p.deadSince) p.deadSince = Date.now(); }
         else if (p.connected) { doorPace.delete(p.id); p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; if (!seatStranger(p)) restoreDoorTile(p); try { updateTile(p.id); } catch (e) {} }
         updateStatus();
-        if (p.connected) { p.altPath = false; p.tlAt = 0; p.hungUp = false; adapt(); } // rotation ends when the pair lands; D5 edge re-arms
+        if (p.connected) { p.altPath = false; p.tlAt = 0; p.hungUp = false; adapt(); try { headLinkUp(p.id); } catch (e) {} } // rotation ends when the pair lands; D5 edge re-arms; a link up to my row's head re-routes my sends now
         // D5: 'closed' out of nowhere (we didn't rebuild it and the peer is
         // still in the room) is a hard transport death — first-hand evidence.
         // 'failed' waits for the sweeper (must persist past the ICE-restart
@@ -17789,7 +17789,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             return { stage: stg, stadium: [...stad] };
           } catch (e) { return { stage: [], stadium: [] }; }
         },
-        onUpdate: () => { try { renderFromOcc(); } catch (e) { rosterBuild.throws++; rosterBuild.err = String((e && e.message) || e).slice(0, 80); throw e; } saveTreeMem(); try { reportDarkDeaths(); } catch (e) {} try { meshVoteBeat(); } catch (e) {} },
+        onUpdate: () => { try { renderFromOcc(); } catch (e) { rosterBuild.throws++; rosterBuild.err = String((e && e.message) || e).slice(0, 80); throw e; } saveTreeMem(); try { reportDarkDeaths(); } catch (e) {} try { meshVoteBeat(); } catch (e) {} try { if (headSendsStale()) schedReconcile(); } catch (e) {} },
         onRelayMsg: onRelayFrame,
         prevTree: readTreeMem(),
         oldCell: seatMemNow ? seatMemNow.ck : -1,
@@ -21510,6 +21510,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         try { sendAvatarTo(p); } catch (e) {}
         if (amAdmin) { try { dcSend(p, { k: 'sig', msg: { kind: 'mod', mod: modTable, modw: gossipModW() } }); } catch (e) {} }
         try { if (enableMedia(p)) renegotiate(p); } catch (e) {}
+        try { headLinkUp(p.id); } catch (e) {}   // the channel to my row's head is up: my sends to it go now
         try { if (linkTo(p.id)) retireBootPairs(); } catch (e) {} // a seat's own link is open: the door I came in by closes
         dcSend(p, { k: 'hi', chats: chatWire(Array.from(chat.values()).slice(-500)), trs: trKeeps() ? Array.from(trs.values()).filter((l) => !l.lo).slice(-300) : [], metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj(), reacts: myReactsObj() });
         // THE MOMENT A CHANNEL EXISTS is the moment the stage pulls can finally
@@ -25620,6 +25621,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const s = meshSeat(), head = occPid({ pc: c.pc, r: c.r, i: 0 });
       return rowHeadIsOut(c) && s && s.rowHeir ? (s.rowHeir() || head) : head;
     }
+    // A NEW HEAD IN MY ROW: my jobs to my row's head ('sub', 'sdrow') follow rowHeadPid, which stays on the heir until my
+    // seat hears the head cell's new occupant first-hand. Re-route them the moment that target moves (checked each mesh
+    // tick) or the link to the head comes up, not at the next 2 s sweep: one coalesced reconcile per such event.
+    let headShipTo = null;   // the head my last reconcile shipped to
+    function headSendsStale() { const c = meshCoord(); return !!c && c.i !== 0 && rowHeadPid(c) !== headShipTo; }
+    function headLinkUp(pid) {
+      const c = meshCoord(); if (!c || c.i === 0 || !pid) return;
+      if (pid === occPid({ pc: c.pc, r: c.r, i: 0 }) || pid === rowHeadPid(c)) schedReconcile();
+    }
     function actingHead() {
       const c = meshCoord(), s = meshSeat(); if (!c || !s || c.i === 0 || !s.rowHeir) return false;
       return (rowHeadIsOut(c) || rowHoldUntil > Date.now()) && s.rowHeir() === myId;
@@ -27011,6 +27021,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function reconcileMosaic() {
       const s = meshSeat(), c = meshCoord();
+      headShipTo = c && c.i !== 0 ? rowHeadPid(c) : null;
       // Container-registry hygiene: a job key's forever-container survives
       // unship ON PURPOSE (same sid on re-ship), but a container whose PEER
       // has left the room can never be shipped again — reap those, bounded
