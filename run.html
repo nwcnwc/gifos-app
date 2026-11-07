@@ -23958,7 +23958,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if ((typeof isEjected === 'function' && isEjected(target) === true)) { refuse(); return; }
       if (!tp || !tp.connected || !tp.stream || !reqP.connected || relayJobs.size >= MAX_RELAY_JOBS) { refuse(); return; }
       // A friend-relay re-sends the target's RECEIVED tracks: still refused on WebKit.
-      // The mesh's own forwards (mosAttach) run there and are watched by wkFwdTick;
+      // The mesh's own forwards (mosAttach) run there through wkFwdSrc;
       // a relay from a WebKit seat was not proven (2026-11-07: with this refusal
       // lifted the WebKit seat's web process died twice in phones/engines, at 90 s
       // and after the sever heals, where relays start), so it stays off until it is.
@@ -23970,7 +23970,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       relayJobs.set(key, { senders, requester: reqP.id, target, container });
       dcSend(reqP, { k: 'relay-stream', target, streamId: container.id });
       renegotiate(reqP);
-      wkFwdStart();
     }
     function stopRelayJob(target, requesterPid, notify) {
       const key = target + '>' + requesterPid;
@@ -25043,9 +25042,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         } catch (e) {}
       }
       try {
-        const sd = addAux(p.pc, tr, job.container);
-        if (tr.kind === 'video') wkFwdStart();
-        job.senders.push(sd); job.trackList.push(tr); job.srcTracks.push(tr);
+        const st = wkFwdSrc(tr, job.key);   // WebKit: a fixed-size copy of a received picture
+        const sd = addAux(p.pc, st, job.container);
+        job.senders.push(sd); job.trackList.push(st); job.srcTracks.push(tr);
         if (isStageJob(job.key)) stageSenders.add(sd); else lowSenders.add(sd);
         if (!job.active || (job.vParked && tr.kind === 'video')) { try { sd.replaceTrack(null); } catch (e) {} }
         else if (typeof outgoingHeld !== 'undefined' && outgoingHeld) { try { sd.replaceTrack(null); } catch (e) {} }
@@ -25067,86 +25066,68 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       job.senders.splice(idx, 1); job.trackList.splice(idx, 1); job.srcTracks.splice(idx, 1);
     }
-    // A FORWARD ON THE GSTREAMER WEBKIT MOVES TO A FRESH M-LINE WHEN ITS PICTURE
-    // CHANGES SIZE. Measured 2026-11-07 on the Playwright WebKit shell (no
+    // A WEBKIT FORWARD SHIPS A FIXED-SIZE COPY OF THE PICTURE IT RECEIVED.
+    // Measured 2026-11-07 on the Playwright WebKit shell (no
     // RTCRtpScriptTransform, so no pipe lane: a received video is re-encoded):
-    // a sender that forwards a received video encodes nothing more, for good,
-    // once that picture changes size (a pack that gains a face, a share that
-    // starts). replaceTrack, a null-then-track kick and a fresh canvas copy put
-    // on the same sender all stay dead; the same track on a NEW transceiver
-    // streams at the new size (bare probes bare5-bare8: Chromium source
-    // 320x240 -> 220x110 -> 440x220, C decodes +94/+109 frames at each size).
-    // In a room that was the WebKit seat sending its column mate 14 frames of
-    // the row's product and then nothing (phones/engines, the mate whose only
-    // link is the WebKit seat). So on that port a forwarded slot whose sender
-    // stopped encoding while its source still decodes is re-laned: the m-line
-    // stops and the same track ships on a new one inside the same container
-    // (the receiver keeps its claim, as on any relane). Chromium and Firefox
-    // never take this path; a WebKit slot on the pipe lane is skipped.
-    const wkFwdWatch = new WeakMap(); // sender -> { fe, fd, w, h, stuck }
-    const wkRelaneAt = new Map();     // jk or relay key -> last relane time
+    // a video sender encodes nothing more, for good, once its source changes
+    // size (a pack that gains a face, a share that starts). replaceTrack, a
+    // null-then-track kick and a new track of a new size on the same sender all
+    // stay dead (bare probes bare5-bare8: Chromium source 320x240 -> 220x110);
+    // a new transceiver revives it, but re-laning that way killed the web
+    // process in 4 of 4 rooms. So the forward never changes size: the received
+    // video is drawn into a canvas of one fixed size, and that canvas's track is
+    // what ships, on one sender, for the life of the forward. A pack is drawn
+    // width-fit from the top (cells stay square; the black below is the row-step
+    // tail faceSrcRect already ignores); a stage or shared screen is drawn
+    // contain-fit, centred. Audio ships as received. Chromium and Firefox, and a
+    // WebKit slot on the pipe lane, never take this path.
+    const WK_FWD_PACK = { w: 320, h: 1280, fps: 20 };   // a Stadium column: 5 wide x 20 rows fits
+    const WK_FWD_STAGE = { w: 640, h: 360, fps: 30 };
+    const wkFwdCopies = new Map(); // `${profile}|${track.id}` -> { src, track, stop }
     let wkFwdClock = null;
-    function wkFwdNeeded() { return typeof WEBKIT_ENGINE !== 'undefined' && !!WEBKIT_ENGINE; } // any WebKit: the watch acts only on a forward that is dead while its source decodes
-    function wkFwdStart() { if (!wkFwdClock && wkFwdNeeded()) wkFwdClock = setInterval(() => { wkFwdTick().catch(() => {}); }, 2000); }
-    function wkRecvOf(tr) { // { pc, mid } of the transceiver that receives tr
-      for (const q of peers.values()) {
-        const pc = q && q.pc; if (!pc) continue;
-        try { for (const t of pc.getTransceivers()) if (t.receiver && t.receiver.track === tr) return t.mid == null ? null : { pc, mid: t.mid }; } catch (e) {}
-      }
-      return null;
-    }
-    // Is this sender's forward dead? Polled every 2 s: the receiver of its source
-    // decodes while the sender encodes nothing, twice running, or once right after
-    // the source changed size. Parked senders (no track) and unnegotiated lines are
-    // never judged.
-    async function wkFwdDead(pc, sd, tr) {
-      if (!sd || !tr || sd.track !== tr || tr.readyState === 'ended') return false;
-      const tx = pc.getTransceivers().find((t) => t.sender === sd);
-      if (!tx || (tx.currentDirection !== 'sendonly' && tx.currentDirection !== 'sendrecv')) return false;
-      const src = wkRecvOf(tr); if (!src || tx.mid == null) return false;
-      // pc.getStats by mid: this shell's per-sender/receiver getStats come back without the rtp entries
-      let fe = 0, fd = 0, w = 0, h = 0;
-      (await pc.getStats()).forEach((s) => { if (s.type === 'outbound-rtp' && s.kind === 'video' && String(s.mid) === String(tx.mid)) fe = s.framesEncoded || 0; });
-      (await src.pc.getStats()).forEach((s) => { if (s.type === 'inbound-rtp' && s.kind === 'video' && String(s.mid) === String(src.mid)) { fd = s.framesDecoded || 0; w = s.frameWidth || 0; h = s.frameHeight || 0; } });
-      const o = wkFwdWatch.get(sd);
-      wkFwdWatch.set(sd, { fe, fd, w, h, stuck: o && fe === o.fe && fd > o.fd ? o.stuck + 1 : 0 });
-      if (!o) return false;
-      const resized = !!(o.w && w && (o.w !== w || o.h !== h));
-      return fe === o.fe && fd > o.fd && (resized || o.stuck + 1 >= 2);
-    }
-    async function wkFwdTick() {
-      if (!wkFwdNeeded()) return;
-      for (const [jk, job] of [...mosJobs]) {
-        const p = peers.get(job.to); if (!p || !p.pc || !p.connected || pipeJobs.has(jk)) continue;
-        for (let i = 0; i < job.senders.length; i++) {
-          const tr = job.srcTracks[i];
-          if (!tr || tr.kind !== 'video' || job.trackList[i] !== tr || !wkRemoteTrack(tr)) continue;
-          if (!(await wkFwdDead(p.pc, job.senders[i], tr))) continue;
-          if (mosJobs.get(jk) !== job || job.senders[i] === undefined || Date.now() - (wkRelaneAt.get(jk) || 0) < 6000) continue;
-          wkRelaneAt.set(jk, Date.now());
-          mosDetach(job, jk, p, i); mosAttach(job, jk, p, tr); renegotiate(p);
-          if (typeof clog === 'function') clog('wk-relane ' + String(jk).slice(0, 40));
-          try { (window.__wkRelane = window.__wkRelane || []).push({ t: Date.now(), jk: String(jk).slice(0, 40) }); if (window.__wkRelane.length > 40) window.__wkRelane.shift(); } catch (e) {}
-          break; // the job's slots moved: the next tick looks again
+    function wkFwdNeeded() { return typeof WEBKIT_ENGINE !== 'undefined' && !!WEBKIT_ENGINE; }
+    function wkFwdSrc(tr, key) {
+      if (!wkFwdNeeded() || !tr || tr.kind !== 'video' || typeof wkRemoteTrack !== 'function' || !wkRemoteTrack(tr)) return tr;
+      const stage = isStageJob(key), prof = stage ? WK_FWD_STAGE : WK_FWD_PACK, ck = (stage ? 's' : 'p') + '|' + tr.id;
+      const have = wkFwdCopies.get(ck);
+      if (have && have.track.readyState !== 'ended') return have.track;
+      const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.autoplay = true;
+      v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none';
+      v.srcObject = new MediaStream([tr]);   // video only: no audio device opens on this bind
+      try { document.body.appendChild(v); } catch (e) {}   // a detached <video> never starts on this WebKit
+      const pr = v.play(); if (pr && pr.catch) pr.catch(() => {});
+      const cv = document.createElement('canvas'); cv.width = prof.w; cv.height = prof.h;
+      const g = cv.getContext('2d');
+      g.fillStyle = '#000'; g.fillRect(0, 0, prof.w, prof.h);
+      const out = cv.captureStream(prof.fps).getVideoTracks()[0];
+      let kickAt = Date.now();
+      const paint = () => {
+        const w = v.videoWidth, h = v.videoHeight;
+        if (!w || !h) {
+          // This WebKit can leave a fresh <video> at readyState 0 on its first bind; a re-bind with a new stream starts it (webkit-media 2026-11-06).
+          if (v.readyState === 0 && Date.now() - kickAt > 2000 && tr.readyState !== 'ended') { kickAt = Date.now(); try { v.srcObject = new MediaStream([tr]); const p2 = v.play(); if (p2 && p2.catch) p2.catch(() => {}); } catch (e) {} }
+          return;
         }
-      }
-      for (const [key, job] of [...relayJobs]) {
-        const rp = peers.get(job.requester); if (!rp || !rp.pc || !rp.connected || !job.container) continue;
-        for (let i = 0; i < job.senders.length; i++) {
-          const sd = job.senders[i], tr = sd && sd.track;
-          if (!tr || tr.kind !== 'video' || !wkRemoteTrack(tr)) continue;
-          if (!(await wkFwdDead(rp.pc, sd, tr))) continue;
-          if (relayJobs.get(key) !== job || Date.now() - (wkRelaneAt.get(key) || 0) < 6000) continue;
-          wkRelaneAt.set(key, Date.now());
-          auxSenders.delete(sd);
-          try { rp.pc.removeTrack(sd); } catch (e) {}
-          stopAuxTx(rp.pc, sd, 'relay');
-          try { job.senders[i] = addAux(rp.pc, tr, job.container); } catch (e) { job.senders.splice(i, 1); }
-          renegotiate(rp);
-          if (typeof clog === 'function') clog('wk-relane relay ' + String(key).slice(0, 40));
-          break;
-        }
-      }
+        let dw = prof.w, dh = Math.round(h * prof.w / w), dx = 0, dy = 0;
+        if (stage) { const k = Math.min(prof.w / w, prof.h / h); dw = Math.round(w * k); dh = Math.round(h * k); dx = (prof.w - dw) >> 1; dy = (prof.h - dh) >> 1; }
+        else if (dh > prof.h) { dh = prof.h; dw = Math.round(w * prof.h / h); }   // taller than the column: shrink (cells stay square, a strip on the right stays black)
+        g.fillRect(0, 0, prof.w, prof.h);
+        try { g.drawImage(v, dx, dy, dw, dh); } catch (e) {}
+      };
+      const clk = MM.workerClock(Math.round(1000 / prof.fps), paint);
+      const c = { src: tr, v, track: out, stop: () => { try { clk && clk.stop && clk.stop(); } catch (e) {} try { out.stop(); } catch (e) {} try { v.srcObject = null; v.remove(); } catch (e) {} } };
+      wkFwdCopies.set(ck, c);
+      try { tr.addEventListener('ended', () => { if (wkFwdCopies.get(ck) === c) { wkFwdCopies.delete(ck); c.stop(); } }); } catch (e) {}
+      if (!wkFwdClock) wkFwdClock = setInterval(wkFwdGc, 5000);
+      try { (window.__wkFwd = window.__wkFwd || []).push({ t: Date.now(), key: String(key).slice(0, 24), prof: stage ? 'stage' : 'pack' }); if (window.__wkFwd.length > 40) window.__wkFwd.shift(); } catch (e) {}
+      return out;
+    }
+    // A copy no job ships any more is stopped (its paint clock and encoder source go with it).
+    function wkFwdGc() {
+      if (!wkFwdCopies.size) return;
+      const used = new Set();
+      for (const job of mosJobs.values()) for (const t of job.trackList) used.add(t);
+      for (const [ck, c] of [...wkFwdCopies]) if (!used.has(c.track)) { wkFwdCopies.delete(ck); c.stop(); }
     }
     // STAGE-ANN-DUE
     // A repeat announce is a refresh. Send on a new container, a new meta,
@@ -25308,8 +25289,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             const wantsPipe = kind === 'video' && pipeEnabled() && !pipeDeny.has(jk) && !pipeJobs.has(jk)
               && (() => { try { return !!MPipe.receiverForTrack(nt, pipePcs()); } catch (e) { return false; } })();
             if (wantsPipe) { mosDetach(cur, jk, p, i); mosAttach(cur, jk, p, nt); ops.push('relane:' + kind); have = haveIdx(kind); continue; }
-            if (cur.active && !cur.carryOff && jobSendsAt(cur, i) && !(typeof outgoingHeld !== 'undefined' && outgoingHeld)) { try { cur.senders[i].replaceTrack(nt); } catch (e) {} }
-            cur.trackList[i] = nt; cur.srcTracks[i] = nt; ops.push('swap:' + kind);
+            const st = wkFwdSrc(nt, cur.key);   // WebKit: the new source's fixed-size copy, the same size the sender already encodes
+            if (cur.active && !cur.carryOff && jobSendsAt(cur, i) && !(typeof outgoingHeld !== 'undefined' && outgoingHeld)) { try { cur.senders[i].replaceTrack(st); } catch (e) {} }
+            cur.trackList[i] = st; cur.srcTracks[i] = nt; ops.push('swap:' + kind);
           }
           // grow: the source gained a track of this kind — a fresh m-line
           // INSIDE the same container (addAux guarantees the receiver an
@@ -29597,8 +29579,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return sink;
     }
     // Is this track one a pair DELIVERED to me (a receiver's track on one of
-    // my transports)? Only asked on WebKit, where such a track is forwarded like
-    // any other and watched by wkFwdTick. (2026-10-22 it read as a deadlock on
+    // my transports)? Only asked on WebKit, where such a video is forwarded as a
+    // fixed-size copy (wkFwdSrc). (2026-10-22 it read as a deadlock on
     // forward, out/wk0440; 2026-11-07 the same shell forwards received audio and
     // video by addTrack, addTransceiver and replaceTrack, muted or flowing, to 4
     // pcs at once, no hang in 3/3: bare probes bare.js, bare2.js.)
@@ -37364,7 +37346,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // (wrote/primed/dropped/kfAsk/mimes) — the proof a hop is forwarding
       // bytes instead of re-encoding them.
       pipeInfo: () => ({ enabled: pipeEnabled(), jobs: [...pipeJobs.keys()], deny: [...pipeDeny] }),
-      wkFwdInfo: () => ({ on: wkFwdNeeded(), clock: !!wkFwdClock, relanes: (window.__wkRelane || []).slice() }),
+      wkFwdInfo: () => ({ on: wkFwdNeeded(), copies: [...wkFwdCopies.values()].map((c) => { const v = c.v; return v ? v.videoWidth + 'x' + v.videoHeight + '/rs' + v.readyState : '-'; }), made: (window.__wkFwd || []).slice() }),
       // DOWN-PACK ENCODERS (docs/media-plane.md, one pack down the tree): every
       // live video sender of a down job (sdm, sdx, sdn, sdxc, sdxu) that is not a
       // pipe carrier runs a content encoder; a carrier forwards encoded bytes.
