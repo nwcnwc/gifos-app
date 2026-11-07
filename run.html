@@ -23957,16 +23957,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const refuse = () => dcSend(reqP, { k: 'relay-no', target });
       if ((typeof isEjected === 'function' && isEjected(target) === true)) { refuse(); return; }
       if (!tp || !tp.connected || !tp.stream || !reqP.connected || relayJobs.size >= MAX_RELAY_JOBS) { refuse(); return; }
-      // A relay re-sends the target's RECEIVED tracks: never on WebKit (see
-      // mosAttach / wkRemoteTrack); the requester hears relay-no and moves on.
+      // A friend-relay re-sends the target's RECEIVED tracks: still refused on WebKit.
+      // The mesh's own forwards (mosAttach) run there and are watched by wkFwdTick;
+      // a relay from a WebKit seat was not proven (2026-11-07: with this refusal
+      // lifted the WebKit seat's web process died twice in phones/engines, at 90 s
+      // and after the sever heals, where relays start), so it stays off until it is.
       if (typeof wkRemoteTrack === 'function' && tp.stream.getTracks().some((tr) => wkRemoteTrack(tr))) { refuse(); return; }
       const container = new MediaStream();
       const senders = [];
       for (const tr of tp.stream.getTracks()) { try { senders.push(addAux(reqP.pc, tr, container)); } catch (e) {} }
       if (!senders.length) { refuse(); return; }
-      relayJobs.set(key, { senders, requester: reqP.id, target });
+      relayJobs.set(key, { senders, requester: reqP.id, target, container });
       dcSend(reqP, { k: 'relay-stream', target, streamId: container.id });
       renegotiate(reqP);
+      wkFwdStart();
     }
     function stopRelayJob(target, requesterPid, notify) {
       const key = target + '>' + requesterPid;
@@ -25040,6 +25044,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       try {
         const sd = addAux(p.pc, tr, job.container);
+        if (tr.kind === 'video') wkFwdStart();
         job.senders.push(sd); job.trackList.push(tr); job.srcTracks.push(tr);
         if (isStageJob(job.key)) stageSenders.add(sd); else lowSenders.add(sd);
         if (!job.active || (job.vParked && tr.kind === 'video')) { try { sd.replaceTrack(null); } catch (e) {} }
@@ -25061,6 +25066,87 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         stopAuxTx(p.pc, sd, job.key);
       }
       job.senders.splice(idx, 1); job.trackList.splice(idx, 1); job.srcTracks.splice(idx, 1);
+    }
+    // A FORWARD ON THE GSTREAMER WEBKIT MOVES TO A FRESH M-LINE WHEN ITS PICTURE
+    // CHANGES SIZE. Measured 2026-11-07 on the Playwright WebKit shell (no
+    // RTCRtpScriptTransform, so no pipe lane: a received video is re-encoded):
+    // a sender that forwards a received video encodes nothing more, for good,
+    // once that picture changes size (a pack that gains a face, a share that
+    // starts). replaceTrack, a null-then-track kick and a fresh canvas copy put
+    // on the same sender all stay dead; the same track on a NEW transceiver
+    // streams at the new size (bare probes bare5-bare8: Chromium source
+    // 320x240 -> 220x110 -> 440x220, C decodes +94/+109 frames at each size).
+    // In a room that was the WebKit seat sending its column mate 14 frames of
+    // the row's product and then nothing (phones/engines, the mate whose only
+    // link is the WebKit seat). So on that port a forwarded slot whose sender
+    // stopped encoding while its source still decodes is re-laned: the m-line
+    // stops and the same track ships on a new one inside the same container
+    // (the receiver keeps its claim, as on any relane). Chromium and Firefox
+    // never take this path; a WebKit slot on the pipe lane is skipped.
+    const wkFwdWatch = new WeakMap(); // sender -> { fe, fd, w, h, stuck }
+    const wkRelaneAt = new Map();     // jk or relay key -> last relane time
+    let wkFwdClock = null;
+    function wkFwdNeeded() { return typeof WEBKIT_ENGINE !== 'undefined' && !!WEBKIT_ENGINE; } // any WebKit: the watch acts only on a forward that is dead while its source decodes
+    function wkFwdStart() { if (!wkFwdClock && wkFwdNeeded()) wkFwdClock = setInterval(() => { wkFwdTick().catch(() => {}); }, 2000); }
+    function wkRecvOf(tr) { // { pc, mid } of the transceiver that receives tr
+      for (const q of peers.values()) {
+        const pc = q && q.pc; if (!pc) continue;
+        try { for (const t of pc.getTransceivers()) if (t.receiver && t.receiver.track === tr) return t.mid == null ? null : { pc, mid: t.mid }; } catch (e) {}
+      }
+      return null;
+    }
+    // Is this sender's forward dead? Polled every 2 s: the receiver of its source
+    // decodes while the sender encodes nothing, twice running, or once right after
+    // the source changed size. Parked senders (no track) and unnegotiated lines are
+    // never judged.
+    async function wkFwdDead(pc, sd, tr) {
+      if (!sd || !tr || sd.track !== tr || tr.readyState === 'ended') return false;
+      const tx = pc.getTransceivers().find((t) => t.sender === sd);
+      if (!tx || (tx.currentDirection !== 'sendonly' && tx.currentDirection !== 'sendrecv')) return false;
+      const src = wkRecvOf(tr); if (!src || tx.mid == null) return false;
+      // pc.getStats by mid: this shell's per-sender/receiver getStats come back without the rtp entries
+      let fe = 0, fd = 0, w = 0, h = 0;
+      (await pc.getStats()).forEach((s) => { if (s.type === 'outbound-rtp' && s.kind === 'video' && String(s.mid) === String(tx.mid)) fe = s.framesEncoded || 0; });
+      (await src.pc.getStats()).forEach((s) => { if (s.type === 'inbound-rtp' && s.kind === 'video' && String(s.mid) === String(src.mid)) { fd = s.framesDecoded || 0; w = s.frameWidth || 0; h = s.frameHeight || 0; } });
+      const o = wkFwdWatch.get(sd);
+      wkFwdWatch.set(sd, { fe, fd, w, h, stuck: o && fe === o.fe && fd > o.fd ? o.stuck + 1 : 0 });
+      if (!o) return false;
+      const resized = !!(o.w && w && (o.w !== w || o.h !== h));
+      return fe === o.fe && fd > o.fd && (resized || o.stuck + 1 >= 2);
+    }
+    async function wkFwdTick() {
+      if (!wkFwdNeeded()) return;
+      for (const [jk, job] of [...mosJobs]) {
+        const p = peers.get(job.to); if (!p || !p.pc || !p.connected || pipeJobs.has(jk)) continue;
+        for (let i = 0; i < job.senders.length; i++) {
+          const tr = job.srcTracks[i];
+          if (!tr || tr.kind !== 'video' || job.trackList[i] !== tr || !wkRemoteTrack(tr)) continue;
+          if (!(await wkFwdDead(p.pc, job.senders[i], tr))) continue;
+          if (mosJobs.get(jk) !== job || job.senders[i] === undefined || Date.now() - (wkRelaneAt.get(jk) || 0) < 6000) continue;
+          wkRelaneAt.set(jk, Date.now());
+          mosDetach(job, jk, p, i); mosAttach(job, jk, p, tr); renegotiate(p);
+          if (typeof clog === 'function') clog('wk-relane ' + String(jk).slice(0, 40));
+          try { (window.__wkRelane = window.__wkRelane || []).push({ t: Date.now(), jk: String(jk).slice(0, 40) }); if (window.__wkRelane.length > 40) window.__wkRelane.shift(); } catch (e) {}
+          break; // the job's slots moved: the next tick looks again
+        }
+      }
+      for (const [key, job] of [...relayJobs]) {
+        const rp = peers.get(job.requester); if (!rp || !rp.pc || !rp.connected || !job.container) continue;
+        for (let i = 0; i < job.senders.length; i++) {
+          const sd = job.senders[i], tr = sd && sd.track;
+          if (!tr || tr.kind !== 'video' || !wkRemoteTrack(tr)) continue;
+          if (!(await wkFwdDead(rp.pc, sd, tr))) continue;
+          if (relayJobs.get(key) !== job || Date.now() - (wkRelaneAt.get(key) || 0) < 6000) continue;
+          wkRelaneAt.set(key, Date.now());
+          auxSenders.delete(sd);
+          try { rp.pc.removeTrack(sd); } catch (e) {}
+          stopAuxTx(rp.pc, sd, 'relay');
+          try { job.senders[i] = addAux(rp.pc, tr, job.container); } catch (e) { job.senders.splice(i, 1); }
+          renegotiate(rp);
+          if (typeof clog === 'function') clog('wk-relane relay ' + String(key).slice(0, 40));
+          break;
+        }
+      }
     }
     // STAGE-ANN-DUE
     // A repeat announce is a refresh. Send on a new container, a new meta,
@@ -29511,12 +29597,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return sink;
     }
     // Is this track one a pair DELIVERED to me (a receiver's track on one of
-    // my transports)? Only asked on WebKit: such a track must never become a
-    // sender's source there. Measured 2026-10-22 on Playwright WebKit 27.2
-    // (out/wk0440/alsa/rebind5.html): a seat that forwards a received video
-    // track with addTransceiver hangs for good once that track flows, main
-    // thread and WebRTC signaling thread each waiting on the other; a
-    // forward of the still-muted track never carries at all.
+    // my transports)? Only asked on WebKit, where such a track is forwarded like
+    // any other and watched by wkFwdTick. (2026-10-22 it read as a deadlock on
+    // forward, out/wk0440; 2026-11-07 the same shell forwards received audio and
+    // video by addTrack, addTransceiver and replaceTrack, muted or flowing, to 4
+    // pcs at once, no hang in 3/3: bare probes bare.js, bare2.js.)
     function wkRemoteTrack(tr) {
       if (typeof WEBKIT_ENGINE === 'undefined' || !WEBKIT_ENGINE || !tr) return false;
       for (const q of peers.values()) {
@@ -37279,6 +37364,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // (wrote/primed/dropped/kfAsk/mimes) — the proof a hop is forwarding
       // bytes instead of re-encoding them.
       pipeInfo: () => ({ enabled: pipeEnabled(), jobs: [...pipeJobs.keys()], deny: [...pipeDeny] }),
+      wkFwdInfo: () => ({ on: wkFwdNeeded(), clock: !!wkFwdClock, relanes: (window.__wkRelane || []).slice() }),
       // DOWN-PACK ENCODERS (docs/media-plane.md, one pack down the tree): every
       // live video sender of a down job (sdm, sdx, sdn, sdxc, sdxu) that is not a
       // pipe carrier runs a content encoder; a carrier forwards encoded bytes.
