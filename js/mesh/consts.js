@@ -389,6 +389,8 @@
     L18_HOPS: 0,   // C++: mesh.cpp:L18_HOPS
     L18_HMAX: 0,   // C++: mesh.cpp:L18_HMAX
     L18MEAS: false,   // C++: mesh.cpp:L18MEAS
+    L376S_DROP: 0,   // C++: mesh.cpp:L376S_DROP
+    L376U_DROP: 0,   // C++: mesh.cpp:L376U_DROP
     L26_REFUSED: 0,   // C++: mesh.cpp:L26_REFUSED
     L25_TWICE: 0,   // C++: mesh.cpp:L25_TWICE
     HM_BIG_TAKEN: 0,   // C++: mesh.cpp:HM_BIG_TAKEN
