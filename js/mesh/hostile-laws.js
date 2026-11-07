@@ -61,7 +61,7 @@
           if (cellOk(ckey(m.hole))) {
             const signer = m.fo >= 0 ? m.fo : m.from; let c = null, ok = false, found = false;
             const standing = () => {
-              if (m.hole.pc === 0 ? c.pc === 0 : (c.pc === m.hole.pc && c.r === m.hole.r)) return true;
+              if (m.hole.pc === 0 ? (c.pc === 0 && (c.r === m.hole.r || (c.i === 0 && m.hole.r === (c.r + 1) % topo.C))) : (c.pc === m.hole.pc && c.r === m.hole.r)) return true;   // L37.6.1: a home hole's row, or the next row for a row head (L9.12's pull)
               let o, oo;
               if (m.hole.pc !== 0) { o = { pc: m.hole.pc, r: m.hole.r }; while (o.pc !== 0 && (oo = up({ pc: o.pc, r: o.r, i: 0 }))) { if (c.pc === oo.pc && c.r === oo.r) return true; o = oo; } }
               o = { pc: c.pc, r: c.r };
