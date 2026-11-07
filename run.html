@@ -30684,6 +30684,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     let wsp = null; // my own capture, by the name the older call sites use
     let wspPaused = false; // Whisper stood down (no browser speech engine to fall back to) until re-picked or CC is turned on
+    // One way back into Whisper. Every caller (Retry, re-picking it, the
+    // phone override, turning captions on, the bot) forgets the whole
+    // stand-down, not only the sentence that explained it. It sits with the
+    // pause flag, which is what those callers clear.
+    function wspResume() {
+      wspPaused = false;
+      wspFailWhy = '';
+      wspQ.stalls = 0;
+      wspQ.behind = false;
+      if (myStatus.ccst === 'behind' || myStatus.ccst === 'paused') delete myStatus.ccst;
+    }
     // The worklet posts 4096-sample chunks off the main thread. A ScriptProcessor
     // is the fallback when this context has no AudioWorklet yet, or the module failed.
     const WSP_WORKLET_JS = [
@@ -31368,7 +31379,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           document.getElementById('ccwhisper-anyway').onclick = () => {
             lsSet(CC_WHISPER_ANYWAY_KEY, '1');
             lsSet(CC_ENGINE_KEY, 'whisper');
-            wspPaused = false; wspQ.stalls = 0;
+            wspResume();
             setStatus(uiText('stWhisperIsOnByYour', 'Whisper is on by your choice. If the call gets slow, pick Browser captions in Settings → Captions; Whisper also steps back by itself.'), 12000);
             paintCcState();
             syncSpeech();
@@ -31483,11 +31494,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // Retry: the install again, or Whisper again after it stood down.
     function wspRetry() {
       if (!whisperReady()) { wspInst.err = ''; installWhisper(true).catch(() => {}); }
-      else {
-        wspPaused = false; wspFailWhy = ''; wspQ.stalls = 0; wspQ.behind = false;
-        if (myStatus.ccst === 'behind' || myStatus.ccst === 'paused') delete myStatus.ccst;
-        syncSpeech();
-      }
+      else { wspResume(); syncSpeech(); }
       paintCcState();
     }
     // THE WAY BACK, only while Whisper is chosen and NOT working (not
@@ -31558,8 +31565,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!r.checked) return;
         if (r.value === 'whisper' && !whisperAllowed()) { paintCcState(); return; } // only the explicit override turns it on here
         lsSet(CC_ENGINE_KEY, r.value === 'whisper' ? 'whisper' : '');
-        if (r.value !== 'whisper') speechGaveUp = false;
-        if (r.value === 'whisper') { wspPaused = false; wspQ.stalls = 0; wspQ.behind = false; if (myStatus.ccst === 'behind' || myStatus.ccst === 'paused') delete myStatus.ccst; } // a deliberate re-pick retries a stalled Whisper
+        if (r.value !== 'whisper') {
+          speechGaveUp = false;
+          // Picking Browser is the way back while a model is loading or answering:
+          // stop the capture and unload the provider, same as the meeting chip.
+          stopWhisper();
+          wspRelease();
+        }
+        if (r.value === 'whisper') wspResume(); // a deliberate re-pick retries a stalled Whisper and forgets why it last stopped
         if (r.value === 'whisper' && IS_MOBILE) setStatus(uiText('stOnAPhoneWhisperRuns', 'On a phone, Whisper runs on the processor: a sentence can take 5 to 10 seconds to appear, and it uses battery. Browser captions stay instant.'), 12000);
         paintCcState();
         syncSpeech();
@@ -32002,8 +32015,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // Turning captions on is the way back from a Whisper give-up: the pause
       // holds until Whisper is re-picked or CC is turned on.
       if (wspPaused) {
-        wspPaused = false; wspQ.stalls = 0; wspQ.behind = false;
-        if (myStatus.ccst === 'behind' || myStatus.ccst === 'paused') delete myStatus.ccst;
+        wspResume();
         try { syncSpeech(); } catch (e) {}
         try { paintCcState(); } catch (e) {}
       }
@@ -37081,7 +37093,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const on = !(msg && msg.on === false);
           if (on) {
             try { localStorage.setItem('gifos_cc_engine', 'whisper'); } catch (e) {}
-            wspPaused = false;
+            wspResume();
           }
           setTrMode(on ? 'share' : 'keep');
           return { ok: true, cc: on, mode: trMode(), view: !!ccShow }; // cc: what an older bot reads back
