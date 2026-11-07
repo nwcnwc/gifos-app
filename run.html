@@ -15467,10 +15467,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // no channel, nothing being negotiated on my side, and nothing heard from
     // its side. Throttled per pair; the frag-ping handler ignores a request
     // for a pair it is already forming.
+    // The ask gate sits just under the four-second door retry (armDoorRetry) and the sim's on-demand ask (LINK_ASK_GAP, 8 ticks):
+    // at five seconds it swallowed every other retry, and a returner really asked every eight.
+    const DIAL_ASK_GAP_MS = 3500;
     function askDial(pid, p) {
       if (!p || iInitiate(pid) || p.connected || (p.dc && p.dc.readyState === 'open')) return;
       if (p.pc && p.pc.signalingState !== 'stable') return;   // an offer is in flight one way or the other
-      const now = Date.now(); if (now - (p.dialReqAt || 0) < 5000) return;
+      const now = Date.now(); if (now - (p.dialReqAt || 0) < DIAL_ASK_GAP_MS) return;
       p.dialReqAt = now;
       // L16.3.2: the relay may not carry my ask (a deep seat): it walks. The polite side still only asks; an offer here would cross the initiator's at birth (e2e-sixth-audio).
       if (!relayUp() || !relayMayCarry(pid)) { sponsorSend({ k: 'fsig', from: myId, to: pid, tc: coordKeyOf(pid), id: fwdId(), ttl: 12, m: { kind: 'dialask' } }); return; }
