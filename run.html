@@ -22074,6 +22074,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // orphaned forever (the browser's negotiationneeded would refire
         // here; our hand-rolled offers need the explicit flag).
         const applyRoffer = (msg) => { const pc = p.pc; return answerOffer(pc, p, msg, false, (sdp) => {
+            // DEBUG lever __answerHoldTo/__answerHoldMs (a peer id prefix, once): hold this answer, and everything after it to that peer, as a slow page would
+            const ahTo = DEBUG_ON ? window.__answerHoldTo : null;
+            const ah = ahTo && String(p.id).indexOf(String(ahTo)) === 0 ? +window.__answerHoldMs || 0 : 0;
+            if (ah > 0 && !p.wireHold) { p.wireHold = new Promise((r) => setTimeout(() => { p.wireHold = null; r(); }, ah)); window.__answerHoldTo = null; window.__answerHeldAt = Date.now(); }
             dcSend(p, { k: 'ranswer', sdp });
             if (typeof clog === 'function') clog('ranswer→' + String(p.id).slice(0, 6));
             afterNeg(p, true);
@@ -22207,7 +22211,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               p.staleOfferSdp = null;
               p.neg.kickVideo = true;
               Promise.resolve(p.pc.setLocalDescription({ type: 'rollback' })).then(() => renegotiate(p)).catch(() => maybeRebuildNeg(p, e));
-            }
+            } else maybeRebuildNeg(p, e); // an answer whose m-lines differ from my offer: the far end applied an offer I took back
           });
       }
     }
@@ -23723,14 +23727,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (p.neg.kickVideo) { p.neg.kickVideo = false; kickMainVideo(p); kickMainAudio(p); }
     }
     // createOffer/setRemoteDescription failed in a way this pc will repeat.
-    // An m-line order mismatch on a channel that just opened wedges the
-    // join: a fresh pc accepts the next offer. An open channel that has
-    // already been the seat stays up, so a quiet person is not dropped.
-    // An extension-id collision is different: every later offer on that pc
-    // throws the same error, even while the channel still looks open.
+    // An m-line order mismatch means the two ends no longer hold the same
+    // m-line list: one applied an offer the other took back (an answer that
+    // arrived after the offer-stale rollback). No later offer from either
+    // end can apply on these pcs, so no new track (a mix-minus, a relay, a
+    // stage feed) ever reaches the far end again, while the old ones keep
+    // flowing and the channel looks healthy. A fresh pc is the only cure,
+    // at any channel age. An extension-id collision is the same: every
+    // later offer on that pc throws it.
     // Anything else (a lost glare race, a transport that is merely down)
     // is left alone: rebuilding it dropped the people who had just sat down.
-    // One rebuild per pair per 20s.
+    // One rebuild per pair per 8 s.
     function maybeRebuildNeg(p, e) {
       if (!p || !p.pc || leaving || !p.id) return;
       if (e && e.name === 'GlareRace') return;
@@ -23738,16 +23745,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // Only an m-line-order failure, or an extension-id collision that every
       // later offer on this pc will throw. A plain InvalidAccessError is also
       // how a lost glare race dies, and rebuilding on that tears the pair down.
-      // An open channel that has already been the seat stays up, except for
-      // the extension-id collision, which never heals on the same pc.
+      // Neither of these heals on the same pc, however long its channel has stood.
       const extPoison = /extension ID reassignment/i.test(msg);
       const mline = /m-line|order of/i.test(msg);
       if (!extPoison && !mline) return;
-      const age = p.rebuiltAt ? (Date.now() - p.rebuiltAt) : 0;
-      if (!extPoison && p.dc && p.dc.readyState === 'open' && age > 15000) return;
       const now = Date.now();
       if (p.rebuildNegAt && now - p.rebuildNegAt < 8000) return;
       p.rebuildNegAt = now;
+      if (typeof clog === 'function') clog('neg-desync ' + String(p.id).slice(0, 6) + ' ' + (extPoison ? 'ext' : 'm-line') + ': fresh pc');
       try { rebuildPc(p, 'neg-fail'); sendOffer(p.id, false); } catch (e2) {}
     }
     // PERFECT NEGOTIATION over the DataChannel: EITHER side may re-offer (a
@@ -23790,8 +23795,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // offer within the hold of each other, as they do the moment a
           // link's channel opens, each offer lands while the other is still
           // out: the offers cross (forced glare at link birth).
-          const hold = DEBUG_ON ? +window.__offerHoldMs || 0 : 0;
+          // __offerHoldTo (a peer id prefix) aims the lever at one pair, once: the next offer to that peer is held, then the lever clears.
+          const holdTo = DEBUG_ON ? window.__offerHoldTo : null;
+          const aimed = !holdTo || String(p.id).indexOf(String(holdTo)) === 0;
+          const hold = DEBUG_ON && aimed ? +window.__offerHoldMs || 0 : 0;
           if (hold > 0 && !p.wireHold) p.wireHold = new Promise((r) => setTimeout(() => { p.wireHold = null; r(); }, hold));
+          if (hold > 0 && holdTo) { window.__offerHoldTo = null; window.__offerHoldMs = 0; window.__offerHeldAt = Date.now(); }
           send();
         })
         .catch((e) => { if (p.pc !== pc) return; if (typeof clog === 'function') clog('roffer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); p.renegAgain = true; maybeRebuildNeg(p, e); })
@@ -37080,6 +37089,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const lp = (typeof packLoop !== 'undefined' && packLoop) ? packLoop : null;
         if (lp && lp.sender && lp.sender.track) { enc.push('loop'); srcs.add(lp.sender.track.id); }
         return { coord: meshCoord(), me: String(myId || ''), jobs, receivers: to.size, encoders: enc.length, encSrcs: srcs.size, piped, enc };
+      },
+      // My row's ear as I build it (a head) and the sound I take from above: does each stream carry a live audio track.
+      earForTest: () => {
+        const at = (st) => (st && st.getAudioTracks ? st.getAudioTracks().map((t) => ({ readyState: t.readyState, muted: !!t.muted, enabled: !!t.enabled })) : null);
+        const dn = mosIn.get('sdn'), sdx = mosIn.get('sdx');
+        return { coord: meshCoord(), ac: ac ? ac.state : null, ear: at(downStreams.get('ear')), fwd: at(downStreams.get('fwd')),
+          sdn: dn ? { via: String(dn.via).slice(0, 8), tracks: at(dn.stream) } : null, sdx: sdx ? { via: String(sdx.via).slice(0, 8), tracks: at(sdx.stream) } : null };
       },
       // What my Stadium shows, by the cell ids it carries, and my row.
       stadIdsForTest: () => {
