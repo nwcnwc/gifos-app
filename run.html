@@ -13819,7 +13819,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       if (ty === 'password' || ty === 'pwsig' || ty === 'pwpub' || ty === 'pwby') {
         // TROLL GATE: a knocker never re-keys a seated room. An admin room's order frames pass: its signature decides, and a returning admin has no other way to the room she re-locks.
-        if (doorOutsider(from) && !statusOf.has(from) && !(hasAdminRoom() && ty !== 'password')) { doorDropped++; return; }
+        // So does the door-side heal (§LOCK): when my own door list holds blobs no key of mine opens, part of the room moved to a
+        // password I missed, and its members (a tree I am not in, by then) hand me the grant over the relay. Dropping it here left
+        // the half that missed a mid-call password change unlocked for good.
+        const roomAhead = !!(meshNode && meshNode.doorAhead && meshNode.doorAhead());
+        if (doorOutsider(from) && !statusOf.has(from) && !roomAhead && !(hasAdminRoom() && ty !== 'password')) { doorDropped++; if (typeof clog === 'function') clog('troll-drop ' + ty + ' ' + String(from).slice(0, 6)); return; }
         const g = takePwPart(from, ty, f);
         if (g) onRemote(from, g);
       }

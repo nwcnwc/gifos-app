@@ -177,6 +177,7 @@
     // reconnects, FOUND a second meeting (the production room tear).
     let lastRelayRx = 0;   // last frame heard from the relay on the live socket
     let lastRegAt = 0;     // last time we sent a greeter registration
+    let doorAheadN = 0;    // blobs in my latest door reply that no key of mine (current or replaced) opens (doorAhead)
     let regPendingAt = 0;  // a registration awaiting its greeters reply (zombie detector)
     // SHRANK-TO-SOLO (the 2-person fork fix, 2026-07-29): a room that WAS
     // populated and collapsed to one is a fragment SUSPECT the moment it
@@ -797,6 +798,7 @@
       const list = m.list || [];
       const ids = [], sealedFps = [], fa = [], behind = [];
       let olderSeen = 0;   // sealed blobs one of my replaced keys opens: their writers are behind me, not ahead
+      let aheadN = 0;      // sealed blobs no key I hold or held opens: their writers are under a key I do not have
       for (const s of list) {
         try {
           const o = await net.open(roomKey, JSON.parse(s));
@@ -804,11 +806,14 @@
           else if (o && o.p === peer) sealedFps.push('SELF');
           else { /* net.open resolves NULL on wrong key — the sealed-under-a-different-key case */
             sealedFps.push('X' + blobFp(s));
-            for (const k of oldKeys) { try { const ob = await net.open(k, JSON.parse(s)); if (ob) { olderSeen++; if (ob.p && ob.p !== peer) behind.push({ p: ob.p, key: k }); break; } } catch (e) {} }
+            let old = false;
+            for (const k of oldKeys) { try { const ob = await net.open(k, JSON.parse(s)); if (ob) { old = true; olderSeen++; if (ob.p && ob.p !== peer) behind.push({ p: ob.p, key: k }); break; } } catch (e) {} }
+            if (!old) aheadN++;
           }
         } catch (e) { sealedFps.push('E' + blobFp(s)); }
       }
       if (stopped || !seat) return;
+      doorAheadN = aheadN;
       // WRITERS BEHIND ME: a blob a key I replaced opens was written
       // by a seat that missed the password change — a member sealed away,
       // possibly in a tree of its own by now, that no pair of mine will ever
@@ -1274,6 +1279,10 @@
       // Greeter-list forensics: ring of recent onGreeters outcomes (listLen /
       // open / founded / action). See greeterTrace push in onGreeters.
       greeterTrace() { return greeterTrace.slice(); },
+      // My latest door reply held blobs that no key I hold or held opens: part of this room is
+      // registered under a key I do not have (a password change I missed). The app lets a member
+      // of that part hand me its grant over the relay (run.html §LOCK door-side heal).
+      doorAhead() { return doorAheadN > 0; },
       // Fork-heal wire state (forensics): is the fragment suspicion armed,
       // how stale is the last registration, and the recent door replies.
       fragState() { return { shrank: shrankSolo, everPop: everPopulated, occ: seat ? seat.occ.size : -1, lastRegAgoMs: lastRegAt ? Date.now() - lastRegAt : null, trace: greeterTrace.slice(-4) }; },
