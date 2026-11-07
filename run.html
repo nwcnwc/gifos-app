@@ -7612,6 +7612,25 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // "still visible" at that instant was the 1-in-3 on a tab switch.
     let pipByBrowser = 0;
     const pipBrowserAsked = () => !!pipByBrowser && Date.now() - pipByBrowser < 3000;
+    // mediaAskPending: a camera, mic or screen ask the browser is still
+    // answering. Its permission prompt or picker takes the window's focus
+    // while the tap's activation is live, and the blur rule below read that
+    // as leaving and floated the meeting unasked (the first camera tap on
+    // two phones, 2026-11-06). Every ask goes through navigator.mediaDevices,
+    // so the count is kept there.
+    let mediaAskPending = 0;
+    (() => {
+      const md = navigator.mediaDevices; if (!md) return;
+      for (const k of ['getUserMedia', 'getDisplayMedia']) {
+        if (typeof md[k] !== 'function') continue;
+        const ask = md[k];
+        md[k] = function () {
+          mediaAskPending++;
+          let p; try { p = ask.apply(md, arguments); } catch (e) { mediaAskPending--; throw e; }
+          return Promise.resolve(p).finally(() => { mediaAskPending--; });
+        };
+      }
+    })();
     // The float's own trace (a 200-line ring, in the debug record as 'pip'):
     // every leave and return, the browser's action, each ask and its answer,
     // each close and why. Read it from Settings > Debug > Export after a few
@@ -7887,23 +7906,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }, true);
     // Switching to another window (the tab stays visible) floats the meeting
     // too, the way the tab switch does, as far as the browser allows; coming
-    // back closes it.
-    // pipLeftAt: the page lost the window's focus while a Float-button float
-    // was up. A PHONE back from Home never saw hidden -> visible: Chrome
-    // keeps a tab that hosts a float "visible" while the float plays, so the
-    // visibilitychange close above never ran and the floated tile stayed
-    // black in the room until a touch (2026-10-18, two phones, evidence/
-    // hard-bugs-1018/3-black-float-tile). Focus is the one sign of the
-    // return there: the float closes, the tile plays. A desktop float the
-    // person asked for still stays up across a window switch.
-    // The float's state is read at the blur itself, not when the timer runs:
-    // on a phone a float the person asks for takes the window's focus as it
-    // opens, and that blur comes BEFORE the float is up. Only a blur while a
-    // float is already up means the person left with it; the focus that
-    // follows the opening blur must not close the float just asked for.
-    let pipAwayAt = 0, pipAwayT = 0, pipLeftAt = 0;
+    // back closes it. Desktop only: a phone's app switch hides the page, and
+    // its blur alone means a prompt, a picker or the float's own opening.
+    // A float the person asked for, or the browser asked for, is never
+    // closed by a blur or a focus: only a real return closes it, which is
+    // hidden -> visible (above), a touch on the meeting (a phone, below), or
+    // the browser's own close. The focus-return close of a Float-button
+    // float (0.9.23-0.9.25) is gone: on Android the float's own opening
+    // blurs the window and gives the focus back 0.2-0.6 s later, in either
+    // order against the float coming up, and that rule closed the float the
+    // tap had just opened in 13 of 24 trials on two phones (tests
+    // evidence/pip-0925/phones-matrix). A real trip Home hides the page, so
+    // the visible return still closes the float.
+    let pipAwayAt = 0, pipAwayT = 0;
     window.addEventListener('blur', () => {
-      const upAtBlur = pipFloating();
       if (pipAwayT) clearTimeout(pipAwayT);
       pipAwayT = setTimeout(() => {
         pipAwayT = 0;
@@ -7912,7 +7928,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const ae = document.activeElement;
         if (ae && ae.tagName === 'IFRAME') return;
         awayFull(true);
-        if (pipManual) { if (upAtBlur) pipLeftAt = Date.now(); return; }
+        if (pipManual || IS_MOBILE || mediaAskPending) { pipNote('blur-skip', { manual: pipManual, ask: mediaAskPending }); return; }
         pipAwayAt = Date.now();
         pipNote('blur-away');
         enterPip();
@@ -7921,10 +7937,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     window.addEventListener('focus', () => {
       if (pipAwayT) { clearTimeout(pipAwayT); pipAwayT = 0; }
       awayFull(false);
-      if (pipLeftAt) { pipLeftAt = 0; if (IS_MOBILE && !document.hidden) exitPip('focus-back-phone'); }
       if (!pipAwayAt) return;
       pipAwayAt = 0;
-      if (!document.hidden && !pipManual) exitPip('focus-back');
+      if (!document.hidden && !pipManual && !pipBrowserAsked()) exitPip('focus-back');
     });
     // The tile left behind reads "Playing in picture-in-picture": tapping it
     // brings the video back into the page.
