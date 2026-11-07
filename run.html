@@ -4320,6 +4320,27 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         </div>
         <p class="set-help set-row set-wide" id="ccall-row" style="display:none"><button data-t="setCcAllOff" id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span data-t="ccallNote" id="ccall-note">Admins only — every screen shows captions. Anyone can tap Captions to hide them.</span></p>
       </section>
+      <!-- Debug: a log of this page kept on this device only, for finding
+           problems. Nothing leaves the device unless the person exports it. -->
+      <section class="set-group" id="set-g-debug">
+        <h4 data-t="setGroupDebug">Debug</h4>
+        <div class="set-row set-wide">
+          <label class="rec-opt"><input type="checkbox" id="dbglog-on" role="switch"><span><b data-t="setDbgOn">Debug logging</b><small data-t="setDbgOnHelp">The log stays on this device and may include meeting details, such as names and chat or transcript text.</small></span></label>
+          <p class="set-help" id="dbglog-state" role="status"></p>
+        </div>
+        <div class="set-row" id="dbglog-row">
+          <b data-t="setDbgLog">Debug log</b>
+          <div class="set-ctl">
+            <p class="set-help" id="dbglog-size">…</p>
+            <button type="button" id="dbglog-export" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem" data-t="setDbgExport">Export debug log</button>
+            <button type="button" id="dbglog-clear" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem" data-t="setDbgClear">Clear debug log</button>
+            <div id="dbglog-confirm" hidden>
+              <p class="set-help" data-t="setDbgClearAsk">Clear the whole debug log from this device?</p>
+              <span style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.4rem"><button type="button" id="dbglog-clear-yes" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem" data-t="setDbgClearYes">Clear it</button> <button type="button" id="dbglog-clear-no" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem" data-t="setDbgClearNo">Keep it</button></span>
+            </div>
+          </div>
+        </div>
+      </section>
       </div>
       <div class="dlg-actions">
         <button id="set-close" data-t="setClose" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
@@ -4720,6 +4741,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/meet-pack.js" defer></script>
   <script src="js/meet-layout.js" defer></script>
   <script src="js/meet-leave.js" defer></script>
+  <script src="js/meet-debuglog.js" defer></script>
   <script src="js/meet-zones.js" defer></script>
   <script src="js/meet-views.js" defer></script>
   <script src="js/mesh-pipe.js" defer></script>
@@ -16208,7 +16230,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // canonical-URL rewrite and the resume-self-heal reload drop the URL flag:
     // a diagnosed room must stay diagnosable after a member reloads, or the
     // census reads a healthy rejoiner as a silent corpse (2026-07-26).
+    // Settings → Debug logging adds the person's own remembered choice
+    // (localStorage, off by default); the link still turns it on for its page.
     const DEBUG_ON = (() => {
+      const D = GifOS.debugLog;
+      if (D && D.pageWants) { try { return D.pageWants(window).on; } catch (e) {} }
       const on = /(?:^|[#&?])debug=(?:on|1|true)/i.test(location.hash + location.search);
       try { if (on) sessionStorage.setItem('gifos_debug', '1'); } catch (e) {}
       try { return on || sessionStorage.getItem('gifos_debug') === '1'; } catch (e) { return on; }
@@ -29425,9 +29451,98 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     armAudioKeepAlive();
     // END-AUDIO-KEEPALIVE
+    // ---- DEBUG LOG (Settings → Debug) ----------------------------------------
+    // While debug is on, the page's debug record (mesh trace, the DEBUG rings,
+    // a debugDump snapshot every 30 s and on the way out) is copied in batches
+    // into this browser's IndexedDB (js/meet-debuglog.js: a 50 MB ring, oldest
+    // batches dropped first, each batch stamped with session, time and room).
+    // It stays on this device; Export is the only way out.
+    const DLOG = GifOS.debugLog || null;
+    let dlogStore = null, dlogRec = null;
+    function dlogStoreGet() {
+      if (!dlogStore && DLOG) { try { dlogStore = DLOG.makeStore(window.indexedDB ? DLOG.idbBackend(window.indexedDB) : DLOG.memoryBackend()); } catch (e) { dlogStore = null; } }
+      return dlogStore;
+    }
+    function dlogRecStart() {
+      if (!DLOG || !DEBUG_ON || !dlogStoreGet()) return false;
+      if (!dlogRec) dlogRec = DLOG.createRecorder({
+        store: dlogStore, every: 5000, snapEvery: 30000,
+        room: () => { try { return room || ''; } catch (e) { return ''; } },
+        rings: () => ({
+          trace: (window.__meshTraceRing && window.__meshTraceRing.ring) || null,
+          swapPic: swapPicRing, rowView: window.__rowViewLog || null, dog: window.__dogLog || null,
+          bc: window.__bcTrace || null, mem: window.__memSamples || null,
+        }),
+        snapshot: () => (window.__gifosVideo && window.__gifosVideo.debugDump ? window.__gifosVideo.debugDump() : null),
+      });
+      dlogRec.start();
+      return true;
+    }
+    if (DEBUG_ON) dlogRecStart();
+    const dlogOut = () => { if (dlogRec && dlogRec.live()) dlogRec.flush(true); };
+    window.addEventListener('pagehide', dlogOut);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') dlogOut(); });
+    function paintDebugLog() {
+      const sw = document.getElementById('dbglog-on'), st = document.getElementById('dbglog-state');
+      const sz = document.getElementById('dbglog-size'), ex = document.getElementById('dbglog-export');
+      const grp = document.getElementById('set-g-debug');
+      if (!DLOG) { if (grp) grp.hidden = true; return; }
+      let saved = ''; try { saved = DLOG.readSetting(localStorage); } catch (e) {}
+      const rec = !!(dlogRec && dlogRec.live());
+      if (sw) sw.checked = rec || saved === 'on';
+      if (st) st.textContent = rec ? (saved === 'on' ? uiText('setDbgRec', 'Recording on this page.') : uiText('setDbgUrl', 'Recording on this page, because its link turned debug on.'))
+        : (saved === 'on' ? uiText('setDbgNext', 'Recording starts the next time a meeting page opens.') : '');
+      const s = dlogStoreGet();
+      if (!s) { if (sz) sz.textContent = ''; return; }
+      s.bytes().then((b) => {
+        if (sz) sz.textContent = uiText('setDbgSize', 'Debug log: {size}').split('{size}').join(DLOG.fmtSize(b));
+        if (ex) ex.disabled = !(b > 0);
+        const cl = document.getElementById('dbglog-clear'); if (cl) cl.disabled = !(b > 0);
+      }).catch(() => { if (sz) sz.textContent = uiText('setDbgSize', 'Debug log: {size}').split('{size}').join('?'); });
+    }
+    {
+      const sw = document.getElementById('dbglog-on');
+      if (sw) sw.addEventListener('change', () => {
+        if (!DLOG) return;
+        if (sw.checked) { DLOG.saveSetting(localStorage, true); if (DEBUG_ON) dlogRecStart(); }
+        else { DLOG.turnOff(window); if (dlogRec) { dlogRec.flush(true); dlogRec.stop(); } }
+        paintDebugLog();
+      });
+      const ex = document.getElementById('dbglog-export');
+      if (ex) ex.addEventListener('click', async () => {
+        const s = dlogStoreGet(); if (!s || !DLOG) return;
+        const st = document.getElementById('dbglog-state');
+        ex.disabled = true;
+        try {
+          if (dlogRec && dlogRec.live()) await dlogRec.flush(true);
+          let ver = ''; try { ver = String(window.GIFOS_VERSION || 'edge') + ' build ' + String(window.GIFOS_BUILD || 0); } catch (e) {}
+          const out = await DLOG.exportBlob(s, { ver: ver, ua: navigator.userAgent });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(out.blob);
+          a.download = DLOG.fileName(Date.now()) + (out.gzip ? '.gz' : '');
+          a.style.display = 'none';
+          document.body.appendChild(a); a.click();
+          // release the file's memory once the browser has taken the download
+          setTimeout(() => { try { URL.revokeObjectURL(a.href); a.remove(); } catch (e) {} }, 60000);
+        } catch (e) { if (st) st.textContent = uiText('setDbgExportFail', 'Could not export the debug log.'); }
+        ex.disabled = false;
+        paintDebugLog();
+      });
+      const cl = document.getElementById('dbglog-clear'), cf = document.getElementById('dbglog-confirm');
+      const ask = (on) => { if (cf) cf.hidden = !on; if (cl) cl.hidden = !!on; };
+      if (cl) cl.addEventListener('click', () => ask(true));
+      const no = document.getElementById('dbglog-clear-no'); if (no) no.addEventListener('click', () => ask(false));
+      const yes = document.getElementById('dbglog-clear-yes');
+      if (yes) yes.addEventListener('click', async () => {
+        ask(false);
+        const s = dlogStoreGet(); if (s) { try { await s.clear(); } catch (e) {} }
+        paintDebugLog();
+      });
+    }
     const setModal = document.getElementById('set-modal');
     document.getElementById('setbtn').onclick = () => {
       paintVq();
+      paintDebugLog();
       applyBuses(); // refresh which faders show
       const nc = document.getElementById('set-name-cur'); if (nc) nc.textContent = myName();
       const car = document.getElementById('ccall-row'); if (car) car.style.display = (hasAdminRoom() && amAdmin) ? '' : 'none';

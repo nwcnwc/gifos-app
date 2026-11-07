@@ -705,5 +705,19 @@
   "meet.stTranscriptShare": "Sie führen ein Protokoll und teilen die Stimmen, die Sie mitschreiben, mit dem Raum.",
   "meet.stTranscriptKeep": "Sie führen ein Protokoll auf diesem Gerät.",
   "meet.stTranscriptOff": "Auf diesem Gerät wird kein Protokoll geführt.",
-  "meet.stLoadIncomplete": "Diese Seite wurde nicht fertig geladen und kann daher nicht sicher beitreten. Laden Sie die Seite neu und versuchen Sie es erneut."
+  "meet.stLoadIncomplete": "Diese Seite wurde nicht fertig geladen und kann daher nicht sicher beitreten. Laden Sie die Seite neu und versuchen Sie es erneut.",
+  "meet.setGroupDebug": "Fehlersuche",
+  "meet.setDbgOn": "Debug-Protokoll",
+  "meet.setDbgOnHelp": "Das Protokoll bleibt auf diesem Gerät und kann Details der Besprechung enthalten, etwa Namen und Text aus Chat oder Protokoll.",
+  "meet.setDbgLog": "Debug-Protokoll",
+  "meet.setDbgSize": "Debug-Protokoll: {size}",
+  "meet.setDbgExport": "Debug-Protokoll exportieren",
+  "meet.setDbgClear": "Debug-Protokoll löschen",
+  "meet.setDbgClearAsk": "Das gesamte Debug-Protokoll von diesem Gerät löschen?",
+  "meet.setDbgClearYes": "Löschen",
+  "meet.setDbgClearNo": "Behalten",
+  "meet.setDbgRec": "Auf dieser Seite wird aufgezeichnet.",
+  "meet.setDbgUrl": "Auf dieser Seite wird aufgezeichnet, weil ihr Link die Fehlersuche eingeschaltet hat.",
+  "meet.setDbgNext": "Die Aufzeichnung beginnt, wenn das nächste Mal eine Besprechungsseite geöffnet wird.",
+  "meet.setDbgExportFail": "Das Debug-Protokoll konnte nicht exportiert werden."
 }

@@ -705,5 +705,19 @@
   "meet.stTranscriptShare": "Guardas una transcripción y compartes con la sala las voces que transcribes.",
   "meet.stTranscriptKeep": "Guardas una transcripción en este dispositivo.",
   "meet.stTranscriptOff": "No se guarda ninguna transcripción en este dispositivo.",
-  "meet.stLoadIncomplete": "Esta página no terminó de cargar, así que no puede unirse de forma segura. Recarga la página para intentarlo de nuevo."
+  "meet.stLoadIncomplete": "Esta página no terminó de cargar, así que no puede unirse de forma segura. Recarga la página para intentarlo de nuevo.",
+  "meet.setGroupDebug": "Depuración",
+  "meet.setDbgOn": "Registro de depuración",
+  "meet.setDbgOnHelp": "El registro se queda en este dispositivo y puede incluir datos de la reunión, como nombres y texto del chat o de la transcripción.",
+  "meet.setDbgLog": "Registro de depuración",
+  "meet.setDbgSize": "Registro de depuración: {size}",
+  "meet.setDbgExport": "Exportar registro de depuración",
+  "meet.setDbgClear": "Borrar registro de depuración",
+  "meet.setDbgClearAsk": "¿Borrar todo el registro de depuración de este dispositivo?",
+  "meet.setDbgClearYes": "Borrarlo",
+  "meet.setDbgClearNo": "Conservarlo",
+  "meet.setDbgRec": "Grabando en esta página.",
+  "meet.setDbgUrl": "Grabando en esta página, porque su enlace activó la depuración.",
+  "meet.setDbgNext": "La grabación empieza la próxima vez que se abra una página de reunión.",
+  "meet.setDbgExportFail": "No se pudo exportar el registro de depuración."
 }

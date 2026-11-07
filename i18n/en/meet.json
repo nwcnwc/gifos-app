@@ -705,5 +705,19 @@
   "meet.stSendingCaptionsOff": "Your captions are off. The others may still write you down.",
   "meet.stTranscriptShare": "You keep a transcript and share the voices you write down with the room.",
   "meet.stTranscriptKeep": "You keep a transcript on this device.",
-  "meet.stTranscriptOff": "No transcript is kept on this device."
+  "meet.stTranscriptOff": "No transcript is kept on this device.",
+  "meet.setGroupDebug": "Debug",
+  "meet.setDbgOn": "Debug logging",
+  "meet.setDbgOnHelp": "The log stays on this device and may include meeting details, such as names and chat or transcript text.",
+  "meet.setDbgLog": "Debug log",
+  "meet.setDbgSize": "Debug log: {size}",
+  "meet.setDbgExport": "Export debug log",
+  "meet.setDbgClear": "Clear debug log",
+  "meet.setDbgClearAsk": "Clear the whole debug log from this device?",
+  "meet.setDbgClearYes": "Clear it",
+  "meet.setDbgClearNo": "Keep it",
+  "meet.setDbgRec": "Recording on this page.",
+  "meet.setDbgUrl": "Recording on this page, because its link turned debug on.",
+  "meet.setDbgNext": "Recording starts the next time a meeting page opens.",
+  "meet.setDbgExportFail": "Could not export the debug log."
 }

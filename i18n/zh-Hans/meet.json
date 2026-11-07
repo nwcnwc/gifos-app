@@ -705,5 +705,19 @@
  "meet.stTranscriptShare": "你正在保存文字记录，并与房间分享你记录下的声音。",
  "meet.stTranscriptKeep": "你正在本设备上保存文字记录。",
  "meet.stTranscriptOff": "本设备不保存文字记录。",
- "meet.stLoadIncomplete": "此页面未加载完成，因此无法安全加入。请刷新页面后重试。"
+ "meet.stLoadIncomplete": "此页面未加载完成，因此无法安全加入。请刷新页面后重试。",
+ "meet.setGroupDebug": "调试",
+ "meet.setDbgOn": "调试日志",
+ "meet.setDbgOnHelp": "日志只保存在此设备上，可能包含会议信息，例如姓名以及聊天或文字记录内容。",
+ "meet.setDbgLog": "调试日志",
+ "meet.setDbgSize": "调试日志：{size}",
+ "meet.setDbgExport": "导出调试日志",
+ "meet.setDbgClear": "清除调试日志",
+ "meet.setDbgClearAsk": "要从此设备清除全部调试日志吗？",
+ "meet.setDbgClearYes": "清除",
+ "meet.setDbgClearNo": "保留",
+ "meet.setDbgRec": "此页面正在记录。",
+ "meet.setDbgUrl": "此页面正在记录，因为它的链接开启了调试。",
+ "meet.setDbgNext": "下次打开会议页面时开始记录。",
+ "meet.setDbgExportFail": "无法导出调试日志。"
 }
