@@ -442,7 +442,7 @@
     function treeMemAsk() {
       if (!treeAsk || !raw || raw.state !== 1) return;
       const list = treeAsk; treeAsk = null; let n = 0;
-      for (const g of list) { if (g < 0 || g === raw.id || raw.l16Ask.includes(g)) continue; raw.l16Ask.push(g); const w = GifOS.meshMsg.newMsg('WHOHOME'); w.from = raw.id; w.ttl = 60; raw.emit(g, w); raw.l33NoSockAsk(g); n++; }
+      for (const g of list) { if (g < 0 || g === raw.id || raw.l16Ask.includes(g)) continue; raw.l16Ask.push(g); const w = GifOS.meshMsg.newMsg('WHOHOME'); w.from = raw.id; w.ttl = 60; raw.emit(g, w); raw.l33NoSockAsk(g); raw.l3115Knock(g); n++; }
       if (opts.trace) { try { opts.trace('{"t":' + (env.TICK | 0) + ',"s":' + raw.id + ',"e":"TREEMEM-ASK","c":null,"d":"doors=' + n + '"}'); } catch (e) {} }
     }
     function sendHeldByes() {
