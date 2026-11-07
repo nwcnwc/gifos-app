@@ -152,6 +152,8 @@
       const id = this.id, TICK = this.TICK;
       const leaseHit = this.hasCoord && ((this.leaseUntil >= 0 && TICK <= this.leaseUntil && ckey(m.rdst) === this.leaseCk)   // T3: in-flight frames for my just-vacated cell land HERE
         || (this.moving && ckey(m.rdst) === this.oldCk));                                                                      // T1 dual-hold
+      // L37.6 (mesh_seat.inc routeStep): a routed heal order carries its signer's name from the origin; a router never signs one for another seat
+      if (m.t === 'FINDLEAF' && m.fo < 0 && !(this.hasCoord && (ckey(this.coord) === ckey(m.rdst) || leaseHit) && (m.rfinal < 0 || m.rfinal === id))) { this.trace('L37.6-UNSIGNED', id, this.hasCoord ? this.coord : null, 'from=%d hole=%s final=%d', m.from, coordStr(m.hole), m.rfinal); this.w.lv.L376U_DROP++; return false; }
       if (this.hasCoord && (ckey(this.coord) === ckey(m.rdst) || leaseHit)) {
         if (m.rfinal < 0 || m.rfinal === id) { m.routing = false; this.f.l18Deliv(m); return true; }
         const h = msg.clone(m); h.routing = false;
