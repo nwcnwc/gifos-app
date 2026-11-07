@@ -678,6 +678,11 @@
           // nothing when the audio track has not arrived yet.
           if (sid && !fold.has('t' + id)) fold.add('t' + id, stream, opts.gain == null ? 1 : opts.gain);
           else if (sid) fold.follow('t' + id, stream);
+          // One seat, one source. A second tile for the same person (the cell
+          // left behind when that person reclaimed the seat) must not sum again.
+          const seat = (meta && meta.pid != null) ? String(meta.pid) : '';
+          if (seat && fold.claimSeat) fold.claimSeat('t' + id, seat);
+          if (fold.dedupeTracks) fold.dedupeTracks();
         }
         const n = Math.max(1, (meta && meta.n) | 0 || 1);
         const cols = Math.max(1, (meta && meta.cols) | 0 || n); // a bar's cols = n
@@ -698,6 +703,9 @@
       // — called every tick from status/audio so the frame tracks speech live.
       label(id, lbl) { const t = tiles.get(id); if (t) t.lbl = lbl; },
       delTile(id) { if (fold) fold.remove('t' + id); tiles.delete(id); },
+      // A reclaimed session retires its tracks. Drop them here too, so this
+      // pack's fold does not keep summing a track the seat has already left.
+      dropTracks(list) { if (fold && fold.dropTracks) fold.dropTracks(list); },
       setActive(on) { active = on !== false; }, // run.html gates a composite that has no consumer (not shipped, not displayed)
       // Resize the face cell on a LIVE packer. The power tier moves under a
       // long-lived composite (the Stage strip outlives many battery events), and
@@ -801,6 +809,16 @@
   // ---- audio fold (WebAudio sum, bounded) ------------------------------------
   // A band's audio = the sum of its cells' audio tracks through per-cell gains
   // (the recorder's primitive). Callers own the AudioContext lifecycle.
+  // A track retired by a reclaim stays out of every fold even while it still
+  // reports live: concealment after the sender is gone sounds like static, and
+  // the track object does not end until the page that holds the graph is
+  // reloaded. The new session's tracks are new objects, so they are not here.
+  const retiredAudio = new WeakSet();
+  function retireAudioTracks(list) {
+    if (!list || typeof list.length !== 'number') return;
+    for (let i = 0; i < list.length; i++) { const t = list[i]; if (t && typeof t === 'object') retiredAudio.add(t); }
+  }
+  function trackDead(t) { return !t || t.readyState === 'ended' || retiredAudio.has(t); }
   function createAudioFold(ac) {
     const dest = ac.createMediaStreamDestination();
     // One tap on everything the fold sends to its destination, made once. A level read takes samples from it and
@@ -837,14 +855,13 @@
     // live one (the track still in the container) is.
     function liveAudioTrack(stream) {
       const ts = stream && stream.getAudioTracks ? stream.getAudioTracks() : [];
-      let held = null;
+      let last = null;
       for (let i = 0; i < ts.length; i++) {
         const t = ts[i];
-        if (!t || t.readyState === 'ended') continue;
-        if (!t.muted) return t;
-        if (!held) held = t;
+        if (trackDead(t)) continue;
+        last = t; // the newest track is this session, even while it is still muted
       }
-      return held;
+      return last;
     }
     function bindSource(rec) {
       const src = ac.createMediaStreamSource(new MediaStream([rec.track]));
@@ -910,7 +927,10 @@
         const s = srcs.get(key);
         if (!s) return;
         if (s.onUnmute && s.track) { try { s.track.removeEventListener('unmute', s.onUnmute); } catch (e) {} }
-        try { if (s.src) s.src.disconnect(); s.gain.disconnect(); } catch (e) {}
+        // Separate tries: a source that will not disconnect must not leave its
+        // gain on the bus. The key would be gone and the sound would stay.
+        try { if (s.src) s.src.disconnect(); } catch (e) {}
+        try { s.gain.disconnect(); } catch (e) {}
         srcs.delete(key);
       },
       // Replace the source node. The gain stays, so a moderator mute holds.
@@ -923,7 +943,7 @@
         const s = srcs.get(key);
         if (!s) return false;
         const t = track || s.track;
-        if (!t || t.readyState === 'ended') return false;
+        if (trackDead(t)) { this.remove(key); return false; }
         const prev = s.track;
         s.track = t;
         let next = null;
@@ -945,8 +965,44 @@
       follow(key, stream) {
         if (!srcs.has(key) || !stream) return false;
         const t = liveAudioTrack(stream);
-        if (!t || t === srcs.get(key).track) return false;
+        // No live track: the ended or retired one must leave the sum. Leaving
+        // the key in place kept a dead source on the bus until the page reloaded.
+        if (!t) { this.remove(key); return false; }
+        if (t === srcs.get(key).track) return false;
         return this.rebind(key, t);
+      },
+      // One seat sums once. The key just attached wins; an earlier key for the
+      // same seat is the copy a reclaim left behind.
+      claimSeat(key, seat) {
+        const s = srcs.get(key);
+        if (!s) return;
+        s.seat = seat == null ? '' : String(seat);
+        if (!s.seat) return;
+        for (const [k, r] of [...srcs]) {
+          if (k === key || r.seat !== s.seat) continue;
+          if (trackDead(s.track) && !trackDead(r.track)) { this.remove(key); return; }
+          this.remove(k);
+        }
+      },
+      // The same track object under two keys is the same voice twice.
+      dedupeTracks() {
+        const seen = new Map();
+        for (const [k, r] of [...srcs]) {
+          if (!r.track || !srcs.has(k)) continue;
+          const prev = seen.get(r.track);
+          if (prev != null && srcs.has(prev)) this.remove(prev);
+          seen.set(r.track, k);
+        }
+      },
+      dropTracks(list) {
+        if (!list || typeof list.length !== 'number') return;
+        const drop = new Set();
+        for (let i = 0; i < list.length; i++) if (list[i]) drop.add(list[i]);
+        if (!drop.size) return;
+        for (const [k, r] of [...srcs]) if (r.track && drop.has(r.track)) this.remove(k);
+      },
+      scrub() {
+        for (const [k, r] of [...srcs]) if (trackDead(r.track)) this.remove(k);
       },
       // Drive a folded source's gain in place. 0 silences it and the node stays.
       // An unknown key is a no-op.
@@ -955,9 +1011,9 @@
       keys: () => [...srcs.keys()],
       // Forensics (debugDump audio): the bus's peak in the tap's current window, and each source's track and gain.
       peakNow() { let pk = 0; try { tap.getFloatTimeDomainData(tapBuf); for (let i = 0; i < tapBuf.length; i++) { const a = Math.abs(tapBuf[i]); if (a > pk) pk = a; } } catch (e) {} return +pk.toFixed(3); },
-      info() { const o = []; for (const [k, r] of srcs) o.push({ k, g: +r.gain.gain.value.toFixed(2), tr: r.track ? r.track.readyState + (r.track.muted ? '/muted' : '') + (r.track.enabled ? '' : '/off') : null }); for (const k of waiting.keys()) o.push({ k, wait: true }); return o; },
+      info() { const o = []; for (const [k, r] of srcs) o.push({ k, g: +r.gain.gain.value.toFixed(2), tr: r.track ? r.track.readyState + (r.track.muted ? '/muted' : '') + (r.track.enabled ? '' : '/off') : null, tid: r.track && r.track.id ? String(r.track.id).slice(0, 12) : null, seat: r.seat || null }); for (const k of waiting.keys()) o.push({ k, wait: true }); return o; },
     };
   }
 
-  GifOS.meshMedia = { workerClock, createBgClock, coverBox, fitBox, createAudioFold, packGrid, stadiumGrid, stadiumTiny, cellSize, faceSrcRect, cellCrop, createPacker };
+  GifOS.meshMedia = { workerClock, createBgClock, coverBox, fitBox, createAudioFold, packGrid, stadiumGrid, stadiumTiny, cellSize, faceSrcRect, cellCrop, createPacker, retireAudioTracks };
 })(typeof window !== 'undefined' ? window : globalThis);
