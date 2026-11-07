@@ -222,7 +222,7 @@
       while (n < k && this.l16Next < this.l16List.length) {
         const first = (this.l16Next === 0); const g = this.l16List[this.l16Next++];
         if (!this.l16Ask.includes(g)) { this.l16Ask.push(g); fresh = true; }
-        const w = newMsg('WHOHOME'); w.from = this.id; w.ttl = 60; if (first && !this.oldCell) w.l31 = 1; this.emit(g, w); this.l33NoSockAsk(g); n++;
+        const w = newMsg('WHOHOME'); w.from = this.id; w.ttl = 60; if (first && !this.oldCell) w.l31 = 1; this.emit(g, w); this.l33NoSockAsk(g); this.l3115Knock(g); n++;
       }
       if (n > 0 && this.gateway < 0) this.gateway = this.l16List[0];
       this.l16WaveAt = this.TICK; if (fresh || this.l16FreshAt < 0) this.l16FreshAt = this.TICK;   // L16.14: the wave clock paces waves; the island's silence clock restarts only on a wave that asks a greeter not yet asked this round (C++: mesh_island.inc:l16Wave)
