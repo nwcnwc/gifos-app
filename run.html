@@ -14436,6 +14436,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function rebuildPc(p, why, opts) {
       const closing = !!(opts && opts.closing), queued = opts && opts.keepIce ? p.pendingIce : null;
       if (typeof clog === 'function') clog('pc-new ' + String(p.id).slice(0, 6) + ' ' + (why || '?') + (p.pc ? ' was ' + p.pc.connectionState + '/' + p.pc.signalingState : ''));
+      // A new transport is an implicit goodbye for the old session. Retire its
+      // tracks before the close, including the 300 ms the goodbye is allowed
+      // to leave: a track that is still live in that window is concealment,
+      // and a fold that keeps it sums noise into every mix this head sends.
+      try { retireMixTracks(peerAudioTracks(p)); } catch (e) {}
       const pcOld = p.pc;
       if (!closing && pcOld && p.dc && p.dc.readyState === 'open') { try { dcSend(p, { k: 'pcfresh' }); } catch (e) {} setTimeout(() => { try { pcOld.close(); } catch (e) {} }, 300); }
       else { try { pcOld && pcOld.close(); } catch (e) {} }
@@ -14550,7 +14555,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // make every find-by-id below resolve the CORPSE first — replace,
           // never accumulate.
           const dup = p.incoming.findIndex((s) => s.id === stream.id);
-          if (dup >= 0) p.incoming.splice(dup, 1);
+          if (dup >= 0) {
+            try { retireMixTracks(p.incoming[dup].getAudioTracks()); } catch (e) {}
+            p.incoming.splice(dup, 1);
+          }
           p.incoming.push(stream);
         }
         // Cap dead renegotiation leftovers — but a busy mosaic link legitimately
@@ -14710,6 +14718,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // never connected (the higher id offers, so half the time a knocker is
       // dialled rather than knocking): their redial must not mint a new face.
       if (p.neverUp === true && !linkTo(peerId) && (p.boot || !meshKnows(peerId))) doorOffGrid.add(p.id);
+      try { retireMixTracks(peerAudioTracks(p)); } catch (e) {} // a leave with no goodbye: the fold must stop summing this session
       { const pc0 = p.pc; if (saidBye) setTimeout(() => { try { pc0.close(); } catch (e) {} }, 300); else { try { pc0.close(); } catch (e) {} } }   // the goodbye leaves before the close
       releaseAudio(p.video);
       // A member the roster still names keeps a face while the count keeps them (rosterTiles, above).
@@ -24212,6 +24221,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (cur && (cur.getVideoTracks()[0] || null) === (v || null) && (cur.getAudioTracks()[0] || null) === (a || null)) return cur;
       const st = new MediaStream([v, a].filter(Boolean)); downStreams.set(key, st); return st;
     }
+    // Audio tracks this pair is still holding. A rebuild or a leave retires
+    // them so a fold cannot keep the old session after the peer key comes back.
+    function peerAudioTracks(p) {
+      const out = [];
+      if (!p) return out;
+      const pushStream = (s) => { try { if (s && s.getAudioTracks) for (const t of s.getAudioTracks()) if (t) out.push(t); } catch (e) {} };
+      try { if (p.pc && p.pc.getReceivers) for (const r of p.pc.getReceivers()) if (r.track && r.track.kind === 'audio') out.push(r.track); } catch (e) {}
+      if (p.video) pushStream(p.video.srcObject);
+      for (const s of p.incoming || []) pushStream(s);
+      return out;
+    }
+    function retireMixTracks(tracks) {
+      if (!tracks || !tracks.length) return;
+      try { if (MM && MM.retireAudioTracks) MM.retireAudioTracks(tracks); } catch (e) {}
+      try { if (prodPack && prodPack.dropTracks) prodPack.dropTracks(tracks); } catch (e) {}
+      try { for (const pk of l14Packs.values()) if (pk && pk.dropTracks) pk.dropTracks(tracks); } catch (e) {}
+      try { for (const f of downFolds.values()) { if (f && f.dropTracks) f.dropTracks(tracks); if (f && f.scrub) f.scrub(); } } catch (e) {}
+    }
     // Keep a fold summing exactly `parts` (key -> stream). A key whose stream
     // changed is folded again; the same stream follows its live audio track.
     function foldSync(f, parts) {
@@ -24221,6 +24248,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (sid.get(k) !== st.id) { f.remove(k); sid.set(k, st.id); }
         if (!f.has(k)) f.add(k, st, 1); else f.follow(k, st);
       }
+      // A source whose track ended, or the same track summed twice, is out.
+      if (f.scrub) f.scrub();
+      if (f.dedupeTracks) f.dedupeTracks();
     }
     // LIP SYNC. The picture is forwarded as encoded frames the moment they
     // arrive (nothing gates it), while the sound is re-mixed at every head on
