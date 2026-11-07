@@ -1794,8 +1794,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     background: rgba(111,123,212,.10); border-radius: .45rem; padding: .55rem .7rem;
     font-size: .84rem; line-height: 1.4; margin: .2rem 0 .7rem; }
   .share-note.running { border-left-color: #37d67a; background: rgba(55,214,122,.10); }
-  #ccwsp-off { position: fixed; left: .6rem; bottom: .6rem; z-index: 39; max-width: calc(100vw - 1.2rem); padding: .45rem .8rem; border-radius: 999px;
-    border: 1px solid #ffd23c; background: rgba(20,20,32,.92); color: #fff; font: inherit; font-size: .85rem; cursor: pointer; touch-action: manipulation; }
+  #ccwsp-off { position: fixed; left: .6rem; bottom: .6rem; z-index: 39; max-width: calc(100vw - 1.2rem); padding: .1rem .15rem .1rem .45rem; border-radius: 999px;
+    display: flex; align-items: center; gap: .1rem; border: 1px solid #ffd23c; background: rgba(20,20,32,.92); color: #fff; font-size: .85rem; }
+  #ccwsp-off button { font: inherit; color: inherit; background: none; border: 0; padding: .35rem .35rem; cursor: pointer; touch-action: manipulation; text-align: left; }
+  #ccwsp-x { min-width: 2rem; min-height: 2rem; border-radius: 999px; opacity: .8; }
+  #txwsp { font-size: .78em; opacity: .85; }
+  #ccwhisper-st[data-st="failed"], #ccwhisper-st[data-st="unsupported"] { color: #ffd23c; }
+  #ccwhisper-st[data-st="ready"] { color: #37d67a; }
   #callbanner { display: none; align-items: center; gap: .6rem; padding: .4rem .9rem;
     background: var(--surface, #14141f); border-bottom: 1px solid var(--border, #2a2a3f); font-size: .85rem; }
   #callbanner button { padding: .25rem .7rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f);
@@ -3927,7 +3932,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <div class="topchip">
     <span data-al="livebadgeAria" id="livebadge" data-state="off" aria-label="You are off air"><i class="livedot" aria-hidden="true"></i><span data-t="livebadgeTxt" id="livebadge-txt">OFF AIR</span></span>
     <a data-ti="openYourGifosComputerTip" class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
-    <span data-ti="txmarkTip" data-al="sendingCaptions" id="txmark" role="status" aria-label="Sending captions" style="display:none" title="Your voice is written down and sent to the meeting as captions while your mic is on. Your browser's speech service (Google, Apple or Microsoft) hears you, unless you picked Whisper. Settings → Captions to change this.">📝 <span data-t="sendingCaptions">Sending captions</span></span>
+    <span data-ti="txmarkTip" data-al="sendingCaptions" id="txmark" role="status" aria-label="Sending captions" style="display:none" title="Your voice is written down and sent to the meeting as captions while your mic is on. Your browser's speech service (Google, Apple or Microsoft) hears you, unless you picked Whisper. Settings → Captions to change this.">📝 <span data-t="sendingCaptions">Sending captions</span><small id="txwsp"></small></span>
     <span id="onair" hidden><i class="lamp" aria-hidden="true"></i><span class="words"></span></span>
     <span class="status" id="status"><button data-t="statuscount" type="button" id="statuscount" aria-expanded="false" aria-controls="roster">Joining…</button><span id="statusrest" class="statustext"></span></span>
     <button type="button" id="hdrhand" aria-expanded="false" aria-controls="handq"></button>
@@ -4177,7 +4182,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <button data-t="invCopy" type="button" id="bc-link-copy">Copy</button>
   </div>
   <div id="callbanner"><span id="callbanner-txt"></span><button data-t="callbannerJoin" id="callbanner-join">Join the call</button></div>
-  <button data-ti="ccwspOffTip" id="ccwsp-off" type="button" style="display:none" title="Stop Whisper on this device and write captions with the browser">Whisper captions · <b>Switch to browser captions</b></button>
+  <div id="ccwsp-off" role="status" style="display:none"><button data-ti="ccwspOffTip" id="ccwsp-use" type="button" title="Pick browser captions for this device. Whisper stays installed; Settings → Captions turns it back on."><span data-t="ccwspOff">Whisper isn't running</span> · <b data-t="ccwspUse">Use browser captions</b></button><button data-al="ccwspHide" id="ccwsp-x" type="button" aria-label="Hide">✕</button></div>
   <div id="apppane">
     <div id="appbar">
       <a data-ti="openYourGifosComputerTip" class="brand" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
@@ -4312,6 +4317,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           <div class="set-ctl">
           <label class="rec-opt"><input type="radio" name="ccengine" value="browser"><span><b data-t="setCcBrowser">Browser captions</b><small data-t="setCcBrowserHelp">Instant. One fixed language, picked above; two-word lines without punctuation on some devices. Your browser may send your voice to its maker's speech service (Chrome: Google).</small></span></label>
           <label class="rec-opt"><input type="radio" name="ccengine" value="whisper"><span><b data-t="setCcWhisper">Whisper on this device</b><small data-t="setCcWhisperHelp">Any language, found by itself. Real sentences with punctuation. Your own names and words. Can translate everything to English. A sentence appears a few seconds after it is said; on a phone it is slower and uses battery. Your voice stays on this device; only the written words can go to the meeting.</small></span></label>
+          <div id="ccwhisper-st" class="set-help" role="status" style="display:none;margin:.2rem 0 0 1.6rem"></div>
           <div id="ccwhisper-weak" class="set-help" style="display:none;margin:.2rem 0 0 1.6rem"></div>
           <div id="ccwhisper" style="display:none;margin:.2rem 0 0 1.6rem">
             <div id="ccwhisper-state" class="set-help" style="margin-bottom:.4rem"></div>
@@ -4319,6 +4325,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           </div>
           <label class="rec-opt" id="cctranslate-row"><input type="checkbox" id="cctranslate"><span><b data-t="setCcEnglish">Translate everything to English</b><small data-t="setCcEnglishHelp">Whisper on this device translates every voice you hear. Your captions and your transcript show only English: lines others send in English, and this device's own translations. What you send to the meeting stays in your own language.</small></span></label>
           <p class="set-help" id="cctranslate-no" style="display:none;margin:.1rem 0 0 1.6rem" data-t="setCcEnglishNo">Whisper not supported on this browser</p>
+          <p class="set-help" id="cctranslate-need" style="display:none;margin:.1rem 0 0 1.6rem" data-t="setCcEnglishNeed">Needs Whisper installed: nothing is translated until it is.</p>
           </div>
         </div>
         <p class="set-help set-row set-wide" id="ccall-row" style="display:none"><button data-t="setCcAllOff" id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span data-t="ccallNote" id="ccall-note">Admins only — every screen shows captions. Anyone can tap Captions to hide them.</span></p>
@@ -31197,6 +31204,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // is offline): browser captions take over for this meeting. The choice
         // stays Whisper, so picking it again, or the next meeting, tries again.
         if (/could not be downloaded|Asset not available|download failed/i.test(msg)) {
+          wspFailWhy = uiText('wspErrModel', 'its model could not be downloaded');
           wspStallGiveUp(uiText('stWhisperModelFailedBrowserCaptions', 'Whisper couldn’t load its model — browser captions are on.'),
             uiText('stWhisperModelFailedPaused', 'Whisper couldn’t load its model — captions paused.'));
           return;
@@ -31292,10 +31300,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // quietly, the first time a meeting is up on a computer that lacks it
     // (WHISPER_SEED_KEY), so the app is simply there when someone picks it.
     let whisperInstalling = null;
+    // The install's progress and its last failure, kept so every repaint shows
+    // them (a note written into the panel was wiped by the next paint, and a
+    // 404 reached nobody but the console).
+    const wspInst = { note: '', frac: null, err: '' };
     function installWhisper(say) {
       if (whisperInstalling) return whisperInstalling;
-      const note = (t) => { const el = document.getElementById('ccwhisper-prog'); if (el) el.textContent = t || ''; };
-      whisperInstalling = GifOS.providers.install(WHISPER_APP_ID, (t) => note(t)).then((p) => {
+      const st = (typeof wspInst === 'object' && wspInst) || {};
+      st.err = ''; st.note = ''; st.frac = null;
+      const note = (t, f) => {
+        st.note = t || ''; st.frac = typeof f === 'number' && isFinite(f) ? f : null;
+        const el = document.getElementById('ccwhisper-prog'); if (el) el.textContent = t || '';
+      };
+      whisperInstalling = GifOS.providers.install(WHISPER_APP_ID, (t, f) => note(t, f)).then((p) => {
         if (!GifOS.providers.assigned('stt')) GifOS.providers.assign('stt', p);
         lsSet(WHISPER_SEED_KEY, 'done');
         if (say) setStatus(uiText('stOfflineCaptionsWhisperIsInstalled', '✅ Offline Captions (Whisper) is installed and ready — the model itself downloads once from gifos.app the first time captions run.'), 10000);
@@ -31303,6 +31320,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }).catch((e) => {
         const msg = (e && e.message) || String(e);
         note('⚠ ' + msg); lsSet(WHISPER_SEED_KEY, 'tried:' + Date.now());
+        // A fetch that never reached the server says "Failed to fetch": name it.
+        st.err = /failed to fetch|networkerror|load failed|network/i.test(msg) ? uiText('wspErrNetwork', 'network error, check the connection') : msg.slice(0, 160);
         if (say) setStatus('Could not install Whisper captions: ' + msg.slice(0, 160), 10000);
         throw e;
       }).then((p) => { whisperInstalling = null; paintCcState(); syncSpeech(); return p; }, (e) => { whisperInstalling = null; paintCcState(); throw e; });
@@ -31336,6 +31355,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const allowed = whisperAllowed();
       for (const r of radios) if (r.value === 'whisper') r.disabled = !allowed;
       paintTrEnBox();
+      paintWspStatus();
       const weak = document.getElementById('ccwhisper-weak');
       if (weak) {
         if (allowed) { weak.style.display = 'none'; weak.innerHTML = ''; }
@@ -31349,7 +31369,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             lsSet(CC_WHISPER_ANYWAY_KEY, '1');
             lsSet(CC_ENGINE_KEY, 'whisper');
             wspPaused = false; wspQ.stalls = 0;
-            setStatus(uiText('stWhisperIsOnByYour', 'Whisper is on by your choice. If the call gets slow, tap “Switch to browser captions” at the bottom of the screen.'), 12000);
+            setStatus(uiText('stWhisperIsOnByYour', 'Whisper is on by your choice. If the call gets slow, pick Browser captions in Settings → Captions; Whisper also steps back by itself.'), 12000);
             paintCcState();
             syncSpeech();
           };
@@ -31362,10 +31382,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           + (IS_MOBILE ? ' <span style="color:#ffd23c">' + uiText('setCcPhoneSlow', 'On a phone a sentence can take 5 to 10 seconds to appear, and it uses battery.') + '</span>' : '');
         return;
       }
+      // A failed install offers Retry on the status line above; one button, not two.
+      const failed = !whisperInstalling && !!wspInst.err;
       state.innerHTML = uiText('setCcNeed', 'Needs the <b>Offline Captions (Whisper)</b> app — 13 MB, once per computer; the model itself downloads once from gifos.app the first time captions run, and stays on this device.')
-        + ' <button id="ccwhisper-install" class="seg" style="border:1px solid var(--accent,#7b5cff);border-radius:.4rem;color:#fff;background:var(--accent,#7b5cff)"' + (whisperInstalling ? ' disabled' : '') + '>' + uiText('setCcInstall', 'Install it now') + '</button> '
-        + '<span id="ccwhisper-prog"></span> <a href="store.html#app=' + WHISPER_APP_ID + '" target="_blank" rel="noopener" style="color:var(--accent2,#ff5caa);font-size:.8rem">' + uiText('setCcStore', 'or from the App Store') + '</a>';
-      document.getElementById('ccwhisper-install').onclick = () => { installWhisper(true).catch(() => {}); paintCcState(); };
+        + (failed ? ' ' : ' <button id="ccwhisper-install" class="seg" style="border:1px solid var(--accent,#7b5cff);border-radius:.4rem;color:#fff;background:var(--accent,#7b5cff)"' + (whisperInstalling ? ' disabled' : '') + '>' + uiText('setCcInstall', 'Install it now') + '</button> ')
+        + '<span id="ccwhisper-prog">' + (whisperInstalling ? esc(wspInst.note) : '') + '</span> <a href="store.html#app=' + WHISPER_APP_ID + '" target="_blank" rel="noopener" style="color:var(--accent2,#ff5caa);font-size:.8rem">' + uiText('setCcStore', 'or from the App Store') + '</a>';
+      const ib = document.getElementById('ccwhisper-install');
+      if (ib) ib.onclick = () => { installWhisper(true).catch(() => {}); paintCcState(); };
       armWhisperRescan();
     }
     // Translate everything to English: greyed, with the reason, where this
@@ -31378,6 +31401,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       tr.checked = ok && lsGet(CC_TRANSLATE_KEY) === '1';
       if (row) row.style.opacity = ok ? '' : '.5';
       if (no) no.style.display = ok ? 'none' : '';
+      // Whisper can run here but is not installed: the box stays live (ticking
+      // it picks Whisper) and says that nothing is translated until it is.
+      const need = document.getElementById('cctranslate-need');
+      if (need) need.style.display = ok && !whisperReady() ? '' : 'none';
     }
     function whisperSeedBlocked() {
       // A phone or a weak computer, a data-saver flag, or a cellular link does not fetch the 13 MB app on its own.
@@ -31386,12 +31413,103 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (c && (c.saveData || c.type === 'cellular' || c.type === 'wimax')) return true;
       return false;
     }
-    // The one-tap chip on the meeting surface, outside every menu, for as long
-    // as Whisper is chosen, loading or working.
+    // WHISPER'S STATE, said plainly: a person must be able to tell whether
+    // Whisper runs on this browser, and if not, why. Exactly one of: missing, installing,
+    // downloading (its model), ready, unsupported, failed (the install, or the
+    // model / a stall in this meeting, with Retry). Whisper is "chosen" by the
+    // saved choice, so a device where it cannot run still says why.
+    let wspFailWhy = ''; // why Whisper stood down in this meeting
+    const whisperChosen = () => lsGet(CC_ENGINE_KEY) === 'whisper';
+    function wspState() {
+      if (!whisperSupported()) return { k: 'unsupported' };
+      if (whisperInstalling) return { k: 'installing', frac: wspInst.frac };
+      if (!whisperReady()) return wspInst.err ? { k: 'failed', at: 'install', why: wspInst.err } : { k: 'missing' };
+      if (wspPaused) return { k: 'failed', at: 'run', why: wspFailWhy || uiText('wspErrStalled', 'it fell behind the call') };
+      const b = wspCaps.size && !wspQ.answered && window.GifOS && GifOS.providerBusy ? GifOS.providerBusy.state : null;
+      if (b) return { k: 'downloading', frac: b.frac };
+      return { k: 'ready' };
+    }
+    function wspStateText(s) {
+      if (s.k === 'unsupported') return uiText('wspStUnsupported', 'Whisper: not supported on this browser');
+      if (s.k === 'installing') return uiText('wspStInstalling', 'Whisper: installing…') + (s.frac != null ? ' (' + Math.round(s.frac * 100) + '%)' : '');
+      if (s.k === 'downloading') return s.frac != null ? uiText('wspStDownloading', 'Whisper: downloading model ({n}%)').replace('{n}', Math.round(s.frac * 100)) : uiText('wspStLoading', 'Whisper: downloading model…');
+      if (s.k === 'ready') return uiText('wspStReady', 'Whisper: ready');
+      if (s.k === 'failed') return (s.at === 'install' ? uiText('wspStInstallFailed', 'Whisper: install failed: {why}') : uiText('wspStStopped', 'Whisper stopped: {why}')).replace('{why}', s.why);
+      return uiText('wspStMissing', 'Whisper not installed');
+    }
+    // Which captions this device writes right now: Whisper, the browser's, or none.
+    function capsRunningNow() {
+      if (wspCaps.size) return 'whisper';
+      if (speechRunning()) return 'browser';
+      if (browserCaptionsMissing()) return 'none';
+      return ((capSend() && !myStatus.muted) || trWrites()) ? 'browser' : 'none';
+    }
+    const wspWorking = (k) => k === 'ready' || k === 'downloading';
+    let wspStSig = '';
+    function paintWspStatus() {
+      const chosen = whisperChosen();
+      const s = chosen ? wspState() : { k: '' };
+      const run = chosen && !wspWorking(s.k) ? capsRunningNow() : '';
+      const label = chosen ? wspStateText(s) : '';
+      const retry = s.k === 'failed';
+      const sig = [s.k, label, run, chosen && s.k === 'installing' ? wspInst.note : ''].join('|');
+      if (sig === wspStSig) return;
+      wspStSig = sig;
+      const el = document.getElementById('ccwhisper-st');
+      if (el) {
+        el.style.display = chosen ? '' : 'none';
+        el.dataset.st = s.k;
+        const now = run === 'browser' ? uiText('wspRunBrowser', 'Browser captions are running now.') : run === 'none' ? uiText('wspRunNone', 'No captions are running from this device.') : '';
+        el.innerHTML = chosen ? '<b>' + esc(label) + '</b>'
+          + (retry ? ' <button id="ccwhisper-retry" class="seg" style="border:1px solid #ffd23c;border-radius:.4rem">' + esc(uiText('wspRetry', 'Retry')) + '</button>' : '')
+          + (s.k === 'installing' && wspInst.note ? ' <small>' + esc(wspInst.note) + '</small>' : '')
+          + (now ? ' ' + esc(now) : '') : '';
+        const rb = document.getElementById('ccwhisper-retry'); if (rb) rb.onclick = wspRetry;
+      }
+      // The meeting's own place: the captions mark in the header. It shows only
+      // while this page sends or receives captions (paintTxMark), so this adds
+      // to it and never shows it by itself.
+      const tx = document.getElementById('txwsp');
+      if (tx) {
+        tx.dataset.st = s.k;
+        tx.textContent = chosen ? ' · ' + label + (run === 'browser' ? uiText('wspRunBrowserShort', ', browser captions on') : run === 'none' ? uiText('wspRunNoneShort', ', no captions from you') : '') : '';
+      }
+    }
+    // Retry: the install again, or Whisper again after it stood down.
+    function wspRetry() {
+      if (!whisperReady()) { wspInst.err = ''; installWhisper(true).catch(() => {}); }
+      else {
+        wspPaused = false; wspFailWhy = ''; wspQ.stalls = 0; wspQ.behind = false;
+        if (myStatus.ccst === 'behind' || myStatus.ccst === 'paused') delete myStatus.ccst;
+        syncSpeech();
+      }
+      paintCcState();
+    }
+    // THE WAY BACK, only while Whisper is chosen and NOT working (not
+    // installed, failed, not supported here); never while it is ready or
+    // loading its model. It says the fact first, hides itself after
+    // WSP_CHIP_MS, comes back only when the state changes to another bad one,
+    // and once closed with ✕ stays closed for this meeting.
+    const WSP_CHIP_MS = 15000;
+    const wspChip = { k: '', at: 0, gone: false };
+    const wspChipRoom = () => { const m = /[#&]v=([^&]+)/.exec(location.hash || ''); return m ? m[1] : '-'; };
+    function wspChipGone() {
+      if (wspChip.gone) return true;
+      try { if (sessionStorage.getItem('gifos_wsp_chip_gone') === wspChipRoom()) wspChip.gone = true; } catch (e) {}
+      return wspChip.gone;
+    }
     function paintWspChip() {
       const chip = document.getElementById('ccwsp-off'); if (!chip) return;
-      const on = ((capSend() || trWrites()) && ccEngine() === 'whisper' && !wspPaused) || wspCaps.size > 0;
-      const want = on ? '' : 'none';
+      paintWspStatus();
+      let show = false;
+      if (myId && whisperChosen() && (capSend() || trWrites()) && !wspChipGone()) {
+        const k = wspState().k;
+        if (k === 'missing' || k === 'failed' || k === 'unsupported') {
+          if (wspChip.k !== k) { wspChip.k = k; wspChip.at = Date.now(); }
+          show = Date.now() - wspChip.at < WSP_CHIP_MS;
+        } else wspChip.k = '';
+      }
+      const want = show ? '' : 'none';
       if (chip.style.display !== want) chip.style.display = want;
     }
     // THE MEETING COMES FIRST. A 250 ms tick that lands more than a second late
@@ -31443,7 +31561,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       };
       paintCcState();
       document.getElementById('setbtn').addEventListener('click', () => { paintCcState(); paintTranscriptControls(); });
-      document.getElementById('ccwsp-off').onclick = () => { wspToBrowser('Browser captions are on. Whisper is off on this device.'); paintWspChip(); };
+      document.getElementById('ccwsp-use').onclick = () => { wspToBrowser(uiText('stBrowserCaptionsOnWhisperOff', 'Browser captions are on. Whisper is off on this device.')); paintWspChip(); };
+      document.getElementById('ccwsp-x').onclick = () => {
+        wspChip.gone = true;
+        try { sessionStorage.setItem('gifos_wsp_chip_gone', wspChipRoom()); } catch (e) {}
+        paintWspChip();
+      };
       // The quiet seed: 20 s into a meeting, on an unmetered computer, once. Idle, so it
       // does not compete with the call. A phone or a cellular link never starts it.
       setTimeout(() => {
