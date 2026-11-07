@@ -15697,6 +15697,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // re-dials them, however long the mesh keeps greeting the id (a door list
     // can name a leaver for a while). Kept past the tombstone's 60 s.
     const saidGone = new Set();
+    // Display guard for the d5 verdict: while the roster or the status flood still names a member, the page does not show
+    // them as gone (the seat's own occ verdict is untouched). One predicate for the occ-diff and the drained-deaths paths.
+    function roomStillNames(pid) {
+      return (Array.isArray(rosterIds) && rosterIds.includes(pid)) || !!(statusOf && statusOf.has(pid));
+    }
     function confirmGone(pid, why) {
       if (!pid || pid === myId || meshGone.has(pid)) return;
       whoGone(pid); // the Who log keeps them, with what is about to be forgotten
@@ -15812,7 +15817,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // evaporates without ever confirming. The ledger delivers the verdict
       // regardless of what the heal did to the view.
       if (meshNode && meshNode.drainDeaths) {
-        for (const [, pid] of meshNode.drainDeaths()) if (pid && pid !== myId) confirmGone(pid, 'd5');
+        for (const [, pid] of meshNode.drainDeaths()) if (pid && pid !== myId && !roomStillNames(pid)) confirmGone(pid, 'd5'); // display only: a member the room still names is not pulled
       }
       const occNow = new Map();
       for (const [k, v] of s.occ) if (v && v !== myId) occNow.set(v, k);
@@ -15832,9 +15837,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // plus a one-tick occ blink confirmed a live survivor gone as d5
           // even when the census still seated them (edc4392 a1 P3→P5).
           if (s.translost.has(k)) {
-            const roomKnows = (Array.isArray(rosterIds) && rosterIds.includes(pid))
-              || (statusOf && statusOf.has(pid));
-            if (roomKnows) continue;   // display only: the seat's own D5 owns its translost (no write into the seat)
+            if (roomStillNames(pid)) continue;   // display only: the seat's own D5 owns its translost (no write into the seat)
             confirmGone(pid, 'd5'); continue;
           }
           if (peers.has(pid) && !occVanish.has(pid)) occVanish.set(pid, Date.now());
