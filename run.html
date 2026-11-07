@@ -22145,7 +22145,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               p.staleOfferSdp = null;
               p.neg.kickVideo = true;
               Promise.resolve(p.pc.setLocalDescription({ type: 'rollback' })).then(() => renegotiate(p)).catch(() => maybeRebuildNeg(p, e));
-            }
+            } else maybeRebuildNeg(p, e); // an answer whose m-lines differ from my offer: the far end applied an offer I took back
           });
       }
     }
@@ -23659,14 +23659,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (p.neg.kickVideo) { p.neg.kickVideo = false; kickMainVideo(p); kickMainAudio(p); }
     }
     // createOffer/setRemoteDescription failed in a way this pc will repeat.
-    // An m-line order mismatch on a channel that just opened wedges the
-    // join: a fresh pc accepts the next offer. An open channel that has
-    // already been the seat stays up, so a quiet person is not dropped.
-    // An extension-id collision is different: every later offer on that pc
-    // throws the same error, even while the channel still looks open.
+    // An m-line order mismatch means the two ends no longer hold the same
+    // m-line list: one applied an offer the other took back (an answer that
+    // arrived after the offer-stale rollback). No later offer from either
+    // end can apply on these pcs, so no new track (a mix-minus, a relay, a
+    // stage feed) ever reaches the far end again, while the old ones keep
+    // flowing and the channel looks healthy. A fresh pc is the only cure,
+    // at any channel age. An extension-id collision is the same: every
+    // later offer on that pc throws it.
     // Anything else (a lost glare race, a transport that is merely down)
     // is left alone: rebuilding it dropped the people who had just sat down.
-    // One rebuild per pair per 20s.
+    // One rebuild per pair per 8 s.
     function maybeRebuildNeg(p, e) {
       if (!p || !p.pc || leaving || !p.id) return;
       if (e && e.name === 'GlareRace') return;
@@ -23674,16 +23677,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // Only an m-line-order failure, or an extension-id collision that every
       // later offer on this pc will throw. A plain InvalidAccessError is also
       // how a lost glare race dies, and rebuilding on that tears the pair down.
-      // An open channel that has already been the seat stays up, except for
-      // the extension-id collision, which never heals on the same pc.
+      // Neither of these heals on the same pc, however long its channel has stood.
       const extPoison = /extension ID reassignment/i.test(msg);
       const mline = /m-line|order of/i.test(msg);
       if (!extPoison && !mline) return;
-      const age = p.rebuiltAt ? (Date.now() - p.rebuiltAt) : 0;
-      if (!extPoison && p.dc && p.dc.readyState === 'open' && age > 15000) return;
       const now = Date.now();
       if (p.rebuildNegAt && now - p.rebuildNegAt < 8000) return;
       p.rebuildNegAt = now;
+      if (typeof clog === 'function') clog('neg-desync ' + String(p.id).slice(0, 6) + ' ' + (extPoison ? 'ext' : 'm-line') + ': fresh pc');
       try { rebuildPc(p, 'neg-fail'); sendOffer(p.id, false); } catch (e2) {}
     }
     // PERFECT NEGOTIATION over the DataChannel: EITHER side may re-offer (a
