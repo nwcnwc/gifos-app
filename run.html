@@ -13220,8 +13220,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const c = reachCounts(peers.values(), peerAway, isMember);
       // A page still outside after a minute reads the plain failure line, whatever the reason (a wrong clock looks just like this): the page cannot tell why, so it does not say.
       if (!s || s.state === 3 || (typeof iAmWaiting === 'function' && iAmWaiting())) outsideSince = 0; else if (!outsideSince) outsideSince = Date.now();
-      const f = { probe: directPath, n: participantCount(), live: c.live, dead: c.dead,
-        stranded: !!(s && s.stranded) || (outsideSince > 0 && Date.now() - outsideSince > 60000), atDoor };
+      // R6 also covers a page that founded a room of its own because every greeter it asked stayed silent:
+      // alone in that island while the door still lists the meeting's greeters, it is the one cut off. Read from the
+      // seat and the door, never from the pairs, whose redials restart their own clocks.
+      const n = participantCount();
+      const cutOff = n <= 1 && islandApart();
+      const f = { probe: directPath, n, live: c.live, dead: c.dead,
+        stranded: !!(s && s.stranded) || cutOff || (outsideSince > 0 && Date.now() - outsideSince > 60000), atDoor };
       f.state = reachStateOf(f);
       return f;
     }
@@ -18230,10 +18235,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // L8.3: a room that split says so. The seat's own word that islands exist here stays set after a merge, so the note
     // also wants a greeter of this room that my seat has no cell for: the door list the seat re-asks for (E3) is what ends it.
+    // islandApart() → true while my seat knows islands exist here and the door still lists a greeter my seat has no
+    // cell for: part of this meeting is on a network mine cannot reach.
+    function islandApart() {
+      const r = meshNode && meshNode.raw;
+      return !!(r && r.hasCoord && r.state === 3 && r.islandSeen() && (() => { const held = new Set(r.occ.values()); return r.lastGreeters.some((g) => g !== r.id && !held.has(g)); })());
+    }
     let islandNoteEl = null;
     function islandNoteTick() {
-      const r = meshNode && meshNode.raw;
-      const on = !!(r && r.hasCoord && r.state === 3 && r.islandSeen() && (() => { const held = new Set(r.occ.values()); return r.lastGreeters.some((g) => g !== r.id && !held.has(g)); })());
+      const on = islandApart();
       if (on === !!islandNoteEl) return;
       if (typeof clog === 'function') clog('island-note ' + (on ? 'on' : 'off'));
       if (on) { islandNoteEl = document.createElement('div'); islandNoteEl.id = 'islandnote'; islandNoteEl.setAttribute('role', 'status'); islandNoteEl.textContent = uiText('islandLabel', "You're in a separate part of this meeting: some people can't reach your network yet. It joins up by itself when they can."); document.body.appendChild(islandNoteEl); }
