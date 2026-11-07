@@ -660,6 +660,7 @@
     H_REFLECT: 512,   // C++: mesh_hostile.inc:H_REFLECT
     H_BIG: 1024,   // C++: mesh_hostile.inc:H_BIG
     H_STEAL: 16384,   // C++: mesh_hostile.inc:H_STEAL
+    H_VACLIE: 32768,   // C++: mesh_hostile.inc:H_VACLIE
     LW_ENTRY: 1,   // C++: mesh_linkset_fab.inc:LW_ENTRY
     LW_ROLE: 2,   // C++: mesh_linkset_fab.inc:LW_ROLE
     LW_CALL: 4,   // C++: mesh_linkset_fab.inc:LW_CALL
