@@ -24167,15 +24167,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // (2026-11-07: a Safari row head kept its seat with a stopped context; the Section-1 head heard nobody in row 1
     // until that page was killed). A slow device must never break the room: every few seconds the clock of the
     // context the folds run in is read, and one that has not moved for MIX_STALL_MS (resume() tried first) is
-    // replaced. The folds move to a fresh context and the next sweep ships the new mixes. Only the head's folds
-    // move; the meters, the stage ear and Whisper stay where they were.
+    // replaced. The downward folds are cleared and the next sweep rebuilds them on the fresh context. The row
+    // product (and an L14 pack) folds inside its packer, and that product is the mix the rest of the room hears,
+    // so those packers move onto the fresh context too. The meters, the stage ear and Whisper stay where they were.
     const MIX_STALL_MS = 4000, MIX_REBUILD_GAP_MS = 10000;
     let mixAc = null; // the fresh context the folds moved to after a stall (null: they run in the meeting context)
     const mixClock = { ctx: null, t: -1, stuckSince: 0, rebuilds: 0, lastAt: 0, fails: 0 };
     function mixCtx() { if (mixAc && mixAc.state !== 'closed') return mixAc; ensureAc(); return ac; }
     function acClockInfo() { return { mix: mixAc ? 'fresh' : 'meeting', mixSt: mixAc ? mixAc.state : null, stuckMs: mixClock.stuckSince ? Date.now() - mixClock.stuckSince : 0, rebuilds: mixClock.rebuilds, fails: mixClock.fails, agoMs: mixClock.lastAt ? Date.now() - mixClock.lastAt : null }; }
     function mixClockCheck() {
-      if (!downFolds.size) { mixClock.ctx = null; mixClock.stuckSince = 0; return; }
+      if (!downFolds.size && !prodPack && !l14Packs.size) { mixClock.ctx = null; mixClock.stuckSince = 0; return; }
       const c = mixCtx(); if (!c) return;
       const now = Date.now(), t = +c.currentTime || 0;
       if (mixClock.ctx !== c || t > mixClock.t) { mixClock.ctx = c; mixClock.t = t; mixClock.stuckSince = 0; return; }
@@ -24186,6 +24187,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!nc) { mixClock.fails++; return; }
       try { const pr = nc.resume(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {}
       const old = mixAc; mixAc = nc;
+      // The product's fold is not one of downFolds. Leave it and the row mix stays on the stopped context.
+      try { if (prodPack && prodPack.reseatAudio) prodPack.reseatAudio(nc); } catch (e) {}
+      try { for (const pk of l14Packs.values()) if (pk && pk.reseatAudio) pk.reseatAudio(nc); } catch (e) {}
       for (const f of downFolds.values()) { try { f.clear(); } catch (e) {} }
       downFolds.clear(); downStreams.clear();
       if (old) { try { old.close(); } catch (e) {} }
@@ -27482,7 +27486,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         for (const h of l14Heads) {
           if (direct && direct.has(h)) continue;
           let pk = l14Packs.get(h);
-          if (!pk) { pk = MM.createPacker({ shape: 'stad', fps: compFps(), ac: (ensureAc(), ac) }).start(); l14Packs.set(h, pk); }
+          if (!pk) { pk = MM.createPacker({ shape: 'stad', fps: compFps(), ac: mixCtx() }).start(); l14Packs.set(h, pk); }
           fill(pk, h); l14Blocks(pk, h, (q) => 20 + C + q);
           if (pk.count() > 0) { const jk = shipMos('sdn', h, pk.stream, metaOf(pk)); if (jk) wanted.add(jk); }
         }
@@ -27490,7 +27494,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (iAmHead || actHead) {
         // PRODUCT = my row's live faces + my row's sub-blocks, PACKED near-square
         // (no fixed C+1 slots — the tall-product blowup is gone).
-        if (!prodPack) prodPack = MM.createPacker({ shape: 'grid', fps: compFps(), ac: (ensureAc(), ac) }).start();
+        if (!prodPack) prodPack = MM.createPacker({ shape: 'grid', fps: compFps(), ac: mixCtx() }).start();
         dbgRowFaces = []; // test observability: which pid the packer drew at each row seat
         for (let j = 0; j < C; j++) {
           let pid0 = j === c.i ? myId : (actHead && j === 0 ? null : occPid({ pc: c.pc, r: c.r, i: j }));
@@ -37263,7 +37267,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         mic: localStream ? trs(localStream) : null,
         els, wkEar: (typeof wkEar !== 'undefined' && wkEar) ? { el: el(wkEar.el), fold: foldOf(wkEar.fold) } : null,
         stageEar: stageEar ? { el: el(stageEar.el), fold: foldOf(stageEar.fold) } : null,
-        stadium: sdViewSt ? { a: trs(sdViewSt) } : null, folds, comp, standby: sb,
+        stadium: sdViewSt ? { a: trs(sdViewSt) } : null,
+        prod: prodPack && prodPack.stream ? { a: trs(prodPack.stream), pk: prodPack.peakNow ? prodPack.peakNow() : null } : null,
+        folds, comp, standby: sb,
       };
     }
     window.__gifosVideo = {
