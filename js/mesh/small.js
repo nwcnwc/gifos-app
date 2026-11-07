@@ -49,12 +49,12 @@
       for (let q = 0; q < n; q++) {
         if (ol[q].pc !== 0) continue; const k = ckey(ol[q]); const x = this.occGet(k); if (x < 0 || x === this.id) continue;
         const lv = this.live.get(k); if (lv === undefined) continue;
-        const since = Math.max(lv, floor_);
+        let since = Math.max(lv, floor_); { const da = this.d5Ans.get(k); if (da !== undefined && da > since) since = da; }   // D5.1: an answered silence probe is a path it was heard on
         if (this.TICK - lv <= K.L30_FRESH) heard++;
         if (this.TICK - since > K.L30_SILENT && !this.translost.has(k)) qx.push(x);
       }
       if (heard < 1) { this.l30Deaf = this.TICK; return; }
-      for (let i = 0; i < qx.length; i++) { this.l30SilN++; this.transportLost(qx[i], true); }
+      for (let i = 0; i < qx.length; i++) { this.l30SilN++; this.transportLost(qx[i], true, true); }
     },
   });
   GifOS.meshSmall = Object.freeze({});

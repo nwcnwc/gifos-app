@@ -1499,8 +1499,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
      Meet and Zoom do; the dock moves into the call too when it fits there.
      A phone keeps the panel over the call. */
   @media (min-width: 800px) {
-    body.chatside { padding-right: 340px; }
-    body.chatside .fitbtn { right: 354px; }
+    /* --sidew is the panel's width: the call, the OS header, the build
+       label and Fit all end at it, so none of them sits on another. */
+    body.chatside { --sidew: 340px; padding-right: var(--sidew); }
+    body.chatside .fitbtn { right: calc(14px + var(--sidew)); }
     body.chatside .topchip { max-width: calc(100% - 460px); }
     /* The dock sits in the call beside the chat (placeDock), so the composer
        takes the band it used to keep clear. */
@@ -2445,7 +2447,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
      name is a faint line under that row, not a second button. */
   /* A wide window wears the build name as a pill at the top right, beside Fit (qa-meet-desktop). */
   @media (min-width: 701px) and (min-height: 501px) {
-    #gifos-build-float { top: calc(14px + var(--gtop, 0px)) !important; right: calc(14px + var(--osw, 0px)) !important; bottom: auto !important; left: auto !important;
+    #gifos-build-float { top: calc(14px + var(--gtop, 0px)) !important; right: calc(14px + var(--sidew, 0px) + var(--osw, 0px)) !important; bottom: auto !important; left: auto !important;
       opacity: 1 !important; color: #e7ebf2 !important; background: rgba(12,14,18,.92); padding: 4px 10px;
       border-radius: 999px; z-index: 6 !important; text-shadow: none !important; }
   }
@@ -4148,6 +4150,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <button data-al="yesAria" type="button" data-burst="👍" aria-label="Yes">👍</button>
       <button data-al="noAria" type="button" data-burst="👎" aria-label="No">👎</button>
       <button data-al="laughAria" type="button" data-burst="😂" aria-label="Laugh">😂</button>
+      <button data-al="heartAria" type="button" data-burst="❤️" aria-label="Heart">❤️</button>
     </div>
   </div>
   <div data-al="waitRoom" id="waitlist" hidden role="region" aria-label="Waiting room"></div>
@@ -4316,6 +4319,27 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           </div>
         </div>
         <p class="set-help set-row set-wide" id="ccall-row" style="display:none"><button data-t="setCcAllOff" id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span data-t="ccallNote" id="ccall-note">Admins only — every screen shows captions. Anyone can tap Captions to hide them.</span></p>
+      </section>
+      <!-- Debug: a log of this page kept on this device only, for finding
+           problems. Nothing leaves the device unless the person exports it. -->
+      <section class="set-group" id="set-g-debug">
+        <h4 data-t="setGroupDebug">Debug</h4>
+        <div class="set-row set-wide">
+          <label class="rec-opt"><input type="checkbox" id="dbglog-on" role="switch"><span><b data-t="setDbgOn">Debug logging</b><small data-t="setDbgOnHelp">The log stays on this device and may include meeting details, such as names and chat or transcript text.</small></span></label>
+          <p class="set-help" id="dbglog-state" role="status"></p>
+        </div>
+        <div class="set-row" id="dbglog-row">
+          <b data-t="setDbgLog">Debug log</b>
+          <div class="set-ctl">
+            <p class="set-help" id="dbglog-size">…</p>
+            <button type="button" id="dbglog-export" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem" data-t="setDbgExport">Export debug log</button>
+            <button type="button" id="dbglog-clear" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem" data-t="setDbgClear">Clear debug log</button>
+            <div id="dbglog-confirm" hidden>
+              <p class="set-help" data-t="setDbgClearAsk">Clear the whole debug log from this device?</p>
+              <span style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.4rem"><button type="button" id="dbglog-clear-yes" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem" data-t="setDbgClearYes">Clear it</button> <button type="button" id="dbglog-clear-no" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem" data-t="setDbgClearNo">Keep it</button></span>
+            </div>
+          </div>
+        </div>
       </section>
       </div>
       <div class="dlg-actions">
@@ -4717,6 +4741,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/meet-pack.js" defer></script>
   <script src="js/meet-layout.js" defer></script>
   <script src="js/meet-leave.js" defer></script>
+  <script src="js/meet-debuglog.js" defer></script>
   <script src="js/meet-zones.js" defer></script>
   <script src="js/meet-views.js" defer></script>
   <script src="js/mesh-pipe.js" defer></script>
@@ -5133,18 +5158,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return document.querySelector('#barmore .moregroup[data-group="' + group + '"] > .morerow');
     }
     // Chat, Share screen, Hand, Captions, People, then Transcript and
-    // Questions. On a desktop the first two stay on the dock until More
-    // opens. A phone keeps them in this row. A broadcast does not use this
-    // (placeDockForWidth still parks a service's own buttons).
+    // Questions. On a desktop the first two stay on the dock, whether More
+    // is open or not. A phone keeps them in this row. A broadcast does not
+    // use this (placeDockForWidth still parks a service's own buttons).
+    // The dock never changes when More opens or closes: pulling Chat and
+    // Share off it on open re-centred the dock and put Leave where More had
+    // been, so a second tap to close the sheet left the call (a real
+    // meeting, 0.9.25). Only the window's width decides where these two live.
     function seatUseRow() {
       if (BROADCAST) return;
       const bar = document.querySelector('.bar');
       const row = moreRow('use');
       if (!bar || !row) return;
       const phone = phoneLayout();
-      const open = !bar.classList.contains('collapsed');
       const skipHand = (id) => id === 'hand' && typeof viewerHandOnDock === 'function' && viewerHandOnDock();
-      if (phone || open) {
+      if (phone) {
         ['chatbtn', 'sharebtn', 'hand', 'ccbtn', 'whobtn', 'trbtn', 'qabtn'].forEach((id) => {
           if (skipHand(id)) return;
           const el = document.getElementById(id);
@@ -7280,7 +7308,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // pid's silence clock survives object churn.
           const heardPid = Math.max(meshRxByPid.get(pid) || 0, p.dcRxAt || 0);
           if (!pidFirstSeen.has(pid)) pidFirstSeen.set(pid, nowHb);
-          const basePid = Math.max(heardPid, pidFirstSeen.get(pid));
+          // A PC'S SILENCE IS ITS OWN: the clock starts at this pc's birth (rebuiltAt, or the pair's bornAt), never
+          // earlier, so a pc still forming gets the full 12 s connect budget before any starve rebuild. Judged on
+          // the id's older silence, a fresh pc toward a peer back from a stall was torn down 2 s into ICE and the
+          // pair churned for 36 s; the id's own silence is the wake/kick path's to judge, not this sweep's.
+          const basePid = Math.max(heardPid, pidFirstSeen.get(pid), p.rebuiltAt || p.bornAt || 0);
           // Receive-silence measured while OUR OWN loop was blocked is our
           // starvation, not the peer's (see starveDebtSince above): the
           // stamps this clock reads are written by JS handlers that could
@@ -10347,7 +10379,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // it must be the person's plain name (my self-tile shows "(you)" via its
       // own DOM label, not the burn-in).
       const name = displayName(pid);
-      return { name, hand: !!st.hand, talking: !!speakingOf.get(isMe ? 'me' : pid) };
+      return { name, hand: !!st.hand, talking: !!speakingOf.get(isMe ? 'me' : pid), react: faceReactOf(pid) };
     };
     // THE MEETING'S AUDIO GRAPH PLAYS NOTHING. It meters voices, mixes the
     // recording, folds the stage ear and feeds Whisper; every sound a person
@@ -15457,10 +15489,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // no channel, nothing being negotiated on my side, and nothing heard from
     // its side. Throttled per pair; the frag-ping handler ignores a request
     // for a pair it is already forming.
+    // The ask gate sits just under the four-second door retry (armDoorRetry) and the sim's on-demand ask (LINK_ASK_GAP, 8 ticks):
+    // at five seconds it swallowed every other retry, and a returner really asked every eight.
+    const DIAL_ASK_GAP_MS = 3500;
     function askDial(pid, p) {
       if (!p || iInitiate(pid) || p.connected || (p.dc && p.dc.readyState === 'open')) return;
       if (p.pc && p.pc.signalingState !== 'stable') return;   // an offer is in flight one way or the other
-      const now = Date.now(); if (now - (p.dialReqAt || 0) < 5000) return;
+      const now = Date.now(); if (now - (p.dialReqAt || 0) < DIAL_ASK_GAP_MS) return;
       p.dialReqAt = now;
       // L16.3.2: the relay may not carry my ask (a deep seat): it walks. The polite side still only asks; an offer here would cross the initiator's at birth (e2e-sixth-audio).
       if (!relayUp() || !relayMayCarry(pid)) { sponsorSend({ k: 'fsig', from: myId, to: pid, tc: coordKeyOf(pid), id: fwdId(), ttl: 12, m: { kind: 'dialask' } }); return; }
@@ -15492,7 +15527,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const pLive = p.connected && p.dc && p.dc.readyState === 'open';
       const unanswered = !!(p.pc && p.pc.signalingState === 'have-local-offer');
       const bounced = unanswered && p.offerSentPc === p.pc && (p.offerNoSockAt || 0) >= (p.offerSentAt || 0);   // the relay said nosock after this offer left
-      const darkOffer = unanswered && (bounced || tlFiredPid.has(p.id) || (p.offerSentPc === p.pc && Date.now() - (p.offerSentAt || 0) >= LOST_OFFER_MS));
+      // A peer whose reload goodbye the wire still holds has not been heard since its page left: this request is its new
+      // page's first word, and an offer I made before that word was made for the page that left (the seat re-dials at the
+      // goodbye). Such an offer can leave by a way that never says nosock, so it is dark whatever its age.
+      const back = !!(meshNode && meshNode.byeIsHeld && meshNode.byeIsHeld(p.id));
+      if (!back) p.backAskAt = 0; else if (!p.backAskAt) p.backAskAt = Date.now();
+      const forGone = unanswered && back && p.offerSentPc === p.pc && (p.offerSentAt || 0) < p.backAskAt;
+      const darkOffer = unanswered && (bounced || forGone || tlFiredPid.has(p.id) || (p.offerSentPc === p.pc && Date.now() - (p.offerSentAt || 0) >= LOST_OFFER_MS));
       // A fresh pc nothing has happened on (no offer either way, no ICE) is idle, not forming: the one a
       // goodbye leaves behind for the seat's next dial. Counting it as forming made a dial request from a
       // page back from a reload wait out this window and its own 4 s retries: the pair came up at 8-9 s.
@@ -15687,6 +15728,25 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // re-dials them, however long the mesh keeps greeting the id (a door list
     // can name a leaver for a while). Kept past the tombstone's 60 s.
     const saidGone = new Set();
+    // Display guard for the d5 verdict: while the roster or the status flood still names a member, the page does not show
+    // them as gone (the seat's own occ verdict is untouched). One predicate for the occ-diff and the drained-deaths paths.
+    function roomStillNames(pid) {
+      return (Array.isArray(rosterIds) && rosterIds.includes(pid)) || !!(statusOf && statusOf.has(pid));
+    }
+    // A drained death the guard skipped is kept (pid -> first skip time) and judged again each sweep: once the room stops naming
+    // the member (status stale, roster dropped) it is confirmed gone d5, once. Back in the seat's occ, or already confirmed: forgotten.
+    const d5Guarded = new Map();
+    function d5Verdict(pid) {
+      if (!pid || pid === myId) return;
+      if (!roomStillNames(pid)) { d5Guarded.delete(pid); confirmGone(pid, 'd5'); }
+      else if (!d5Guarded.has(pid)) { d5Guarded.set(pid, Date.now()); if (d5Guarded.size > 512) d5Guarded.delete(d5Guarded.keys().next().value); }
+    }
+    function d5Recheck(inOcc) {
+      for (const pid of Array.from(d5Guarded.keys())) {
+        if (inOcc(pid) || meshGone.has(pid)) d5Guarded.delete(pid);
+        else if (!roomStillNames(pid)) { d5Guarded.delete(pid); confirmGone(pid, 'd5'); }
+      }
+    }
     function confirmGone(pid, why) {
       if (!pid || pid === myId || meshGone.has(pid)) return;
       whoGone(pid); // the Who log keeps them, with what is about to be forgotten
@@ -15802,8 +15862,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // evaporates without ever confirming. The ledger delivers the verdict
       // regardless of what the heal did to the view.
       if (meshNode && meshNode.drainDeaths) {
-        for (const [, pid] of meshNode.drainDeaths()) if (pid && pid !== myId) confirmGone(pid, 'd5');
+        for (const [, pid] of meshNode.drainDeaths()) d5Verdict(pid); // display only: a member the room still names is not pulled yet, but kept to re-check
       }
+      d5Recheck((pid) => { for (const v of s.occ.values()) if (v === pid) return true; return false; });
       const occNow = new Map();
       for (const [k, v] of s.occ) if (v && v !== myId) occNow.set(v, k);
       const nowMs = Date.now();
@@ -15822,9 +15883,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // plus a one-tick occ blink confirmed a live survivor gone as d5
           // even when the census still seated them (edc4392 a1 P3→P5).
           if (s.translost.has(k)) {
-            const roomKnows = (Array.isArray(rosterIds) && rosterIds.includes(pid))
-              || (statusOf && statusOf.has(pid));
-            if (roomKnows) continue;   // display only: the seat's own D5 owns its translost (no write into the seat)
+            if (roomStillNames(pid)) continue;   // display only: the seat's own D5 owns its translost (no write into the seat)
             confirmGone(pid, 'd5'); continue;
           }
           if (peers.has(pid) && !occVanish.has(pid)) occVanish.set(pid, Date.now());
@@ -16171,7 +16230,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // canonical-URL rewrite and the resume-self-heal reload drop the URL flag:
     // a diagnosed room must stay diagnosable after a member reloads, or the
     // census reads a healthy rejoiner as a silent corpse (2026-07-26).
+    // Settings → Debug logging adds the person's own remembered choice
+    // (localStorage, off by default); the link still turns it on for its page.
     const DEBUG_ON = (() => {
+      const D = GifOS.debugLog;
+      if (D && D.pageWants) { try { return D.pageWants(window).on; } catch (e) {} }
       const on = /(?:^|[#&?])debug=(?:on|1|true)/i.test(location.hash + location.search);
       try { if (on) sessionStorage.setItem('gifos_debug', '1'); } catch (e) {}
       try { return on || sessionStorage.getItem('gifos_debug') === '1'; } catch (e) { return on; }
@@ -21534,8 +21597,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // count. It is not sent on again.
         // It comes over the direct link and over the mesh, so the id drops
         // the second copy.
+        // On a service it adds to the count; in a meeting it shows on the
+        // person's face (takeFaceReact).
         const who = p && p.id;
-        if (who && who !== myId && audienceReactFresh(m.id)) takeAudienceReact(m.e, who);
+        if (who && who !== myId && audienceReactFresh(m.id)) { if (BROADCAST) takeAudienceReact(m.e, who); else takeFaceReact(m.e, who); }
       } else if (m.k === 'bx' && typeof window !== 'undefined' && window.GifOS && GifOS.meetSession && typeof window.__gifosMeetEmit === 'function') {
         GifOS.meetSession.takeXfer(m, window.__gifosMeetEmit);
       } else if (m.k === 'chatack') {
@@ -22918,6 +22983,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       chatBtn.setAttribute('aria-expanded', chatPanelOpen() ? 'true' : 'false');
       document.body.classList.toggle('chatside', chatPanelOpen());
       if (window.__gifosDock) window.__gifosDock.place();
+      // The header's right end moved with the panel: Fit and the hand line follow it.
+      try { placeHandq(); } catch (e) {}
     }).observe(chatPanel, { attributes: true, attributeFilter: ['class'] });
     chatBtn.setAttribute('aria-expanded', chatPanelOpen() ? 'true' : 'false');
     chatBtn.onclick = () => {
@@ -26921,7 +26988,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // Driven by the gossiped room size, so every seat AND every up-tree
       // compositor (where a face's overlay is burned) agrees on tiny-or-not.
       const stadTiny = MM.stadiumTiny(roomPastSection() ? displayCount() : knownTotal()); // a display threshold — the fold's n is a label (G2)
-      const stadLbl = (pid) => stadTiny ? { dot: true, talking: labelFor(pid).talking } : labelFor(pid);
+      // Past the cap only the NAME goes: talking, a hand and a reaction stay as colour marks (mesh-media drawOverlay).
+      const stadLbl = (pid) => { const l = labelFor(pid); return stadTiny ? { dot: true, talking: l.talking, hand: l.hand, react: l.react } : l; };
       const stagers = stageIds();               // gossiped, ordered, <=C
       const amStager = stagers.includes(myId);
       // The Stage is me and nobody else ⇒ every strip in this sweep is a
@@ -29392,9 +29460,98 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     armAudioKeepAlive();
     // END-AUDIO-KEEPALIVE
+    // ---- DEBUG LOG (Settings → Debug) ----------------------------------------
+    // While debug is on, the page's debug record (mesh trace, the DEBUG rings,
+    // a debugDump snapshot every 30 s and on the way out) is copied in batches
+    // into this browser's IndexedDB (js/meet-debuglog.js: a 50 MB ring, oldest
+    // batches dropped first, each batch stamped with session, time and room).
+    // It stays on this device; Export is the only way out.
+    const DLOG = GifOS.debugLog || null;
+    let dlogStore = null, dlogRec = null;
+    function dlogStoreGet() {
+      if (!dlogStore && DLOG) { try { dlogStore = DLOG.makeStore(window.indexedDB ? DLOG.idbBackend(window.indexedDB) : DLOG.memoryBackend()); } catch (e) { dlogStore = null; } }
+      return dlogStore;
+    }
+    function dlogRecStart() {
+      if (!DLOG || !DEBUG_ON || !dlogStoreGet()) return false;
+      if (!dlogRec) dlogRec = DLOG.createRecorder({
+        store: dlogStore, every: 5000, snapEvery: 30000,
+        room: () => { try { return room || ''; } catch (e) { return ''; } },
+        rings: () => ({
+          trace: (window.__meshTraceRing && window.__meshTraceRing.ring) || null,
+          swapPic: swapPicRing, rowView: window.__rowViewLog || null, dog: window.__dogLog || null,
+          bc: window.__bcTrace || null, mem: window.__memSamples || null,
+        }),
+        snapshot: () => (window.__gifosVideo && window.__gifosVideo.debugDump ? window.__gifosVideo.debugDump() : null),
+      });
+      dlogRec.start();
+      return true;
+    }
+    if (DEBUG_ON) dlogRecStart();
+    const dlogOut = () => { if (dlogRec && dlogRec.live()) dlogRec.flush(true); };
+    window.addEventListener('pagehide', dlogOut);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') dlogOut(); });
+    function paintDebugLog() {
+      const sw = document.getElementById('dbglog-on'), st = document.getElementById('dbglog-state');
+      const sz = document.getElementById('dbglog-size'), ex = document.getElementById('dbglog-export');
+      const grp = document.getElementById('set-g-debug');
+      if (!DLOG) { if (grp) grp.hidden = true; return; }
+      let saved = ''; try { saved = DLOG.readSetting(localStorage); } catch (e) {}
+      const rec = !!(dlogRec && dlogRec.live());
+      if (sw) sw.checked = rec || saved === 'on';
+      if (st) st.textContent = rec ? (saved === 'on' ? uiText('setDbgRec', 'Recording on this page.') : uiText('setDbgUrl', 'Recording on this page, because its link turned debug on.'))
+        : (saved === 'on' ? uiText('setDbgNext', 'Recording starts the next time a meeting page opens.') : '');
+      const s = dlogStoreGet();
+      if (!s) { if (sz) sz.textContent = ''; return; }
+      s.bytes().then((b) => {
+        if (sz) sz.textContent = uiText('setDbgSize', 'Debug log: {size}').split('{size}').join(DLOG.fmtSize(b));
+        if (ex) ex.disabled = !(b > 0);
+        const cl = document.getElementById('dbglog-clear'); if (cl) cl.disabled = !(b > 0);
+      }).catch(() => { if (sz) sz.textContent = uiText('setDbgSize', 'Debug log: {size}').split('{size}').join('?'); });
+    }
+    {
+      const sw = document.getElementById('dbglog-on');
+      if (sw) sw.addEventListener('change', () => {
+        if (!DLOG) return;
+        if (sw.checked) { DLOG.saveSetting(localStorage, true); if (DEBUG_ON) dlogRecStart(); }
+        else { DLOG.turnOff(window); if (dlogRec) { dlogRec.flush(true); dlogRec.stop(); } }
+        paintDebugLog();
+      });
+      const ex = document.getElementById('dbglog-export');
+      if (ex) ex.addEventListener('click', async () => {
+        const s = dlogStoreGet(); if (!s || !DLOG) return;
+        const st = document.getElementById('dbglog-state');
+        ex.disabled = true;
+        try {
+          if (dlogRec && dlogRec.live()) await dlogRec.flush(true);
+          let ver = ''; try { ver = String(window.GIFOS_VERSION || 'edge') + ' build ' + String(window.GIFOS_BUILD || 0); } catch (e) {}
+          const out = await DLOG.exportBlob(s, { ver: ver, ua: navigator.userAgent });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(out.blob);
+          a.download = DLOG.fileName(Date.now()) + (out.gzip ? '.gz' : '');
+          a.style.display = 'none';
+          document.body.appendChild(a); a.click();
+          // release the file's memory once the browser has taken the download
+          setTimeout(() => { try { URL.revokeObjectURL(a.href); a.remove(); } catch (e) {} }, 60000);
+        } catch (e) { if (st) st.textContent = uiText('setDbgExportFail', 'Could not export the debug log.'); }
+        ex.disabled = false;
+        paintDebugLog();
+      });
+      const cl = document.getElementById('dbglog-clear'), cf = document.getElementById('dbglog-confirm');
+      const ask = (on) => { if (cf) cf.hidden = !on; if (cl) cl.hidden = !!on; };
+      if (cl) cl.addEventListener('click', () => ask(true));
+      const no = document.getElementById('dbglog-clear-no'); if (no) no.addEventListener('click', () => ask(false));
+      const yes = document.getElementById('dbglog-clear-yes');
+      if (yes) yes.addEventListener('click', async () => {
+        ask(false);
+        const s = dlogStoreGet(); if (s) { try { await s.clear(); } catch (e) {} }
+        paintDebugLog();
+      });
+    }
     const setModal = document.getElementById('set-modal');
     document.getElementById('setbtn').onclick = () => {
       paintVq();
+      paintDebugLog();
       applyBuses(); // refresh which faders show
       const nc = document.getElementById('set-name-cur'); if (nc) nc.textContent = myName();
       const car = document.getElementById('ccall-row'); if (car) car.style.display = (hasAdminRoom() && amAdmin) ? '' : 'none';
@@ -32424,10 +32581,37 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // Every open popover of the dock, placed again: on open, on a drag, on a
     // resize or rotation, and when the keyboard comes or goes.
+    // Columns for each group of the More sheet: the fewest lines that fit
+    // the sheet's width, with the items spread evenly over them, so a group
+    // never leaves one item alone on its last line (6 items are 3 and 3,
+    // not 5 and 1). The grid itself is in css/meet-23b.css (--mcols).
+    function layoutSheet() {
+      const sheet = document.getElementById('barmore');
+      if (!sheet || !sheet.getClientRects().length) return;
+      const phone = phoneLayout();
+      const minW = phone ? 76 : 150, gap = 6;
+      for (const row of sheet.querySelectorAll('.moregroup > .morerow')) {
+        let n = 0;
+        for (const el of row.children) if (el.tagName === 'BUTTON' && el.getClientRects().length) n++;
+        if (!n) continue;
+        const most = Math.max(1, Math.floor((row.clientWidth + gap) / (minW + gap)));
+        const lines = Math.ceil(n / most);
+        let cols = Math.ceil(n / lines);
+        for (let c = cols; c <= most; c++) {
+          if (n <= c || n % c !== 1) { cols = c; break; }
+        }
+        const v = String(Math.min(cols, most));
+        if (row.style.getPropertyValue('--mcols') !== v) row.style.setProperty('--mcols', v);
+        if (row.style.getPropertyValue('--mmax') !== String(most)) row.style.setProperty('--mmax', String(most));
+      }
+    }
     function placeDockPopovers() {
       const bar = document.querySelector('.bar');
       if (!bar) return;
-      if (!bar.classList.contains('collapsed')) placeDockPopover(document.getElementById('barmore'), bar);
+      if (!bar.classList.contains('collapsed')) {
+        try { layoutSheet(); } catch (e) {}
+        placeDockPopover(document.getElementById('barmore'), bar);
+      }
       const tray = document.getElementById('reacttray');
       if (tray && !tray.hasAttribute('hidden')) placeDockPopover(tray, bar);
     }
@@ -32476,7 +32660,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         toggle.title = collapsed ? 'More' : 'Hide ' + surface + ' controls';
         const word = toggle.querySelector('.docklab');
         if (word) word.textContent = collapsed ? uiText('more', 'More') : uiText('hide', 'Hide');
-        try { seatUseRow(); } catch (e) {}
         // An upright phone shows the whole sheet when it fits above the
         // dock (a guest's 577px sheet, Settings and Keys included: LM-44).
         // A host's longer sheet would reach the top of the call, so it
@@ -32775,6 +32958,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         try { localStorage.setItem('gifos_meet_bar', '1'); } catch (err) {}
         if (returnFocus) toggle.focus();
       });
+      // More closes the way a menu does: the toggle again, Escape (the
+      // modal keydown handler), or a tap anywhere outside the sheet and the
+      // bar. The tap still reaches what it landed on. A tap on the bar is
+      // the bar's own (the toggle folds).
+      const foldSheet = () => {
+        if (bar.classList.contains('collapsed')) return false;
+        const returnFocus = !!(moreSheet && moreSheet.contains(document.activeElement));
+        apply(true);
+        try { localStorage.setItem('gifos_meet_bar', '1'); } catch (err) {}
+        if (returnFocus) toggle.focus();
+        return true;
+      };
+      document.addEventListener('pointerdown', (e) => {
+        if (bar.classList.contains('collapsed') || !e.isTrusted) return;
+        const t = e.target;
+        if (t && t.closest && (bar.contains(t) || t.closest('#reacttray'))) return;
+        foldSheet();
+      }, true);
       // Publish the bar's own height so the fixed overlays that hang from the
       // top (the chat panel) can start BELOW it instead of on top of it. It has
       // to be measured, not assumed: the bar wraps, and collapsing it changes
@@ -33065,22 +33266,119 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
 
     // Audience reactions on a service. Each clap is one small frame. The stage
     // adds them up, so a room of claps is one pill, not a pile of emojis.
-    const AUDIENCE_REACTS = ['👏', '👍', '👎', '😂'];
-    const AUDIENCE_REACT_NAME = { '👏': 'claps', '👍': 'yes', '👎': 'no', '😂': 'laughs' };
+    const AUDIENCE_REACTS = ['👏', '👍', '👎', '😂', '❤️'];
+    const AUDIENCE_REACT_NAME = { '👏': 'claps', '👍': 'yes', '👎': 'no', '😂': 'laughs', '❤️': 'hearts' };
     const audienceReactCounts = new Map();
     const audienceReactRate = new Map();
     let audienceReactFade = 0;
-    function takeAudienceReact(emoji, fromId) {
-      if (!BROADCAST) return false;
-      emoji = String(emoji || '');
-      if (AUDIENCE_REACTS.indexOf(emoji) < 0) return false;
-      const who = String(fromId || 'me');
+    // At most 6 reactions in 10 s count from one person, on a service and in a meeting.
+    function reactRateOk(who) {
       const now = Date.now();
       const recent = (audienceReactRate.get(who) || []).filter((t) => now - t < 10000);
       if (recent.length >= 6) return false;
       recent.push(now);
       audienceReactRate.set(who, recent);
       if (audienceReactRate.size > 400) audienceReactRate.clear();
+      return true;
+    }
+    // The burst over a tile (or the service stage). The stylesheet owns the
+    // 1.6 s fade, so a second tap starts it again without a timer here.
+    function flashReactBurst(parent, label) {
+      if (!parent) return;
+      let burst = parent.querySelector('.reactburst');
+      if (!burst) { burst = document.createElement('div'); burst.className = 'reactburst'; parent.appendChild(burst); }
+      burst.textContent = label;
+      burst.classList.remove('show');
+      void burst.offsetWidth;
+      burst.classList.add('show');
+    }
+    // A REACTION IN A MEETING IS SEEN LIKE A RAISED HAND: by the whole room,
+    // wherever the person's face is drawn. It flashes on their tile, and the
+    // packers that draw their face burn it on (labelFor): their row's Stadium
+    // product and, for a stager, the Stage. The Stadium picture carries that
+    // mark to every other row and section, so the frame itself goes only as
+    // far as the seats that draw the face: the person's own section (their row,
+    // its packer, the section's tiles), and for a stager also its own links
+    // (the Stage roots). Never a room-wide flood: half of a huge room reacting
+    // at once costs each seat only its own section's reactions. At most 6 in
+    // 10 s count from one person, sent or taken.
+    const FACE_REACT_MS = 3000;
+    const faceReacts = new Map(); // peer id -> { e, until }
+    const faceReactRx = new Map(); // peer id -> reaction frames taken from them (reactRxForTest)
+    // Is this person seated in my section?
+    function inMySection(pid) {
+      try {
+        const c = meshCoord(); if (!c || !pid) return false;
+        for (let r = 0; r < SCALE.C; r++) for (let i = 0; i < SCALE.C; i++) if (occPid({ pc: c.pc, r, i }) === pid) return true;
+      } catch (e) {}
+      return false;
+    }
+    function faceReactOf(pid) {
+      const r = pid ? faceReacts.get(String(pid)) : null;
+      return r && Date.now() < r.until ? r.e : '';
+    }
+    // The composites that draw this face: my row (their packers are built here)
+    // and the Stage. They repaint at once, and again when the reaction ends.
+    function faceDrawnHere(pid) {
+      if (pid === myId) return true;
+      try {
+        const c = meshCoord();
+        if (c) for (let j = 0; j < SCALE.C; j++) if (occPid({ pc: c.pc, r: c.r, i: j }) === pid) return true;
+        return stageIds().includes(pid);
+      } catch (e) { return false; }
+    }
+    function takeFaceReact(emoji, fromId) {
+      emoji = String(emoji || '');
+      if (AUDIENCE_REACTS.indexOf(emoji) < 0) return false;
+      const who = String(fromId || '');
+      if (!who || !reactRateOk(who)) return false;
+      const now = Date.now();
+      if (who !== myId) { faceReactRx.set(who, (faceReactRx.get(who) || 0) + 1); if (faceReactRx.size > 400) faceReactRx.clear(); }
+      faceReacts.set(who, { e: emoji, until: now + FACE_REACT_MS });
+      if (faceReacts.size > 400) for (const [k, v] of faceReacts) if (now >= v.until) faceReacts.delete(k);
+      const mine = who === myId;
+      flashReactBurst(mine ? document.querySelector('.tile.me') : document.querySelector('.tile[data-peer="' + (window.CSS && CSS.escape ? CSS.escape(who) : who) + '"]'), emoji);
+      if (faceDrawnHere(who) && typeof schedReconcile === 'function') { schedReconcile(); setTimeout(schedReconcile, FACE_REACT_MS + 60); }
+      return true;
+    }
+    // One reaction frame to the room: the mesh flood, plus every open link the
+    // roster has not caught up with yet. The id drops the copy a peer gets both ways.
+    function sendReactFrame(emoji) {
+      const id = uid('r');
+      audienceReactFresh(id);
+      const msg = { k: 'react', e: emoji, id };
+      try { sendAll(msg, { ephemeral: true }); } catch (e) {}
+      try {
+        const sent = new Set(gossipIds());
+        for (const p of peers.values()) if (p && p.id && !sent.has(p.id) && p.dc && p.dc.readyState === 'open') dcSend(p, msg);
+      } catch (e) {}
+    }
+    // A meeting reaction: my section over the mesh (scoped, never re-fanned
+    // past it), and my open links in my section that the roster may not have
+    // caught up with. A stager also hands it to every open link, which holds
+    // the Stage roots that burn its face into the Stage.
+    function sendFaceFrame(emoji) {
+      const id = uid('r');
+      audienceReactFresh(id);
+      const msg = { k: 'react', e: emoji, id };
+      try { sentFrames.push(msg); if (sentFrames.length > 20) sentFrames.shift(); } catch (e) {}
+      try { if (meshNode) meshNode.gossip({ a: 1, msg }, { scope: 'section', ephemeral: true }); } catch (e) {}
+      let staged = false; try { staged = stageIds().includes(myId); } catch (e) {}
+      try {
+        for (const p of peers.values()) if (p && p.id && p.dc && p.dc.readyState === 'open' && (staged || inMySection(p.id))) dcSend(p, msg);
+      } catch (e) {}
+    }
+    function sendFaceReact(emoji) {
+      if (myId && takeFaceReact(emoji, myId)) sendFaceFrame(emoji);
+      else flashReactBurst(document.querySelector('.tile.me'), emoji);
+    }
+    function takeAudienceReact(emoji, fromId) {
+      if (!BROADCAST) return false;
+      emoji = String(emoji || '');
+      if (AUDIENCE_REACTS.indexOf(emoji) < 0) return false;
+      const who = String(fromId || 'me');
+      if (!reactRateOk(who)) return false;
+      const now = Date.now();
       const row = audienceReactCounts.get(emoji) || { n: 0, until: 0, who: [] };
       if (now > row.until) { row.n = 0; row.who = []; }
       row.n += 1;
@@ -33150,17 +33448,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function sendAudienceReact(emoji) {
       takeAudienceReact(emoji, (typeof myId !== 'undefined' && myId) || 'me');
-      const id = uid('r');
-      audienceReactFresh(id);
-      const msg = { k: 'react', e: emoji, id };
-      try { sendAll(msg, { ephemeral: true }); } catch (e) {}
-      // The roster catches up on its own tick, so a link that just opened can
-      // be missing from it. The clap goes over that link too. The id drops
-      // the copy a peer gets both ways.
-      try {
-        const sent = new Set(gossipIds());
-        for (const p of peers.values()) if (p && p.id && !sent.has(p.id) && p.dc && p.dc.readyState === 'open') dcSend(p, msg);
-      } catch (e) {}
+      sendReactFrame(emoji);
     }
     (function () {
       const btn = document.getElementById('reactbtn');
@@ -33207,25 +33495,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }
         const label = b.getAttribute('data-burst');
         if (!label) return;
-        // Restart the fade. The stylesheet owns the 1.6s, so a second tap
-        // starts the burst again without a timer in this script.
-        const flashBurst = (parent) => {
-          if (!parent) return;
-          let burst = parent.querySelector('.reactburst');
-          if (!burst) { burst = document.createElement('div'); burst.className = 'reactburst'; parent.appendChild(burst); }
-          burst.textContent = label;
-          burst.classList.remove('show');
-          void burst.offsetWidth;
-          burst.classList.add('show');
-        };
-        flashBurst(document.querySelector('.tile.me'));
         // A service hides the gallery, so the same clap has to land on the
         // stage or the person who sent it never sees it. The count is what
         // everyone else sees: one pill per emoji, not one burst per person.
         if (BROADCAST) {
-          flashBurst(document.getElementById('bc-react'));
+          flashReactBurst(document.querySelector('.tile.me'), label);
+          flashReactBurst(document.getElementById('bc-react'), label);
           sendAudienceReact(label);
-        }
+        } else sendFaceReact(label);
       });
     })();
 
@@ -34149,17 +34426,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (rb) { rb.setAttribute('aria-expanded', 'false'); rb.setAttribute('aria-pressed', 'false'); rb.classList.remove('on'); try { rb.focus(); } catch (err) {} }
           return;
         }
-        // An open chat closes before More folds, as a side panel does in
-        // Meet and Zoom, and the keyboard lands back on Chat.
-        if (chatPanelOpen()) {
-          e.preventDefault();
-          closeChatToButton();
-          return;
-        }
+        // An open More sheet is the top layer: it folds first, so Escape
+        // always closes the menu the person just opened, and the dock does
+        // not move under the pointer. Then an open chat closes, as a side
+        // panel does in Meet and Zoom, and the keyboard lands back on Chat.
         const barEl = document.querySelector('.bar');
         if (barEl && !barEl.classList.contains('collapsed')) {
           const toggle = document.getElementById('bartoggle');
           if (toggle) { e.preventDefault(); toggle.click(); }
+          return;
+        }
+        if (chatPanelOpen()) {
+          e.preventDefault();
+          closeChatToButton();
           return;
         }
         if (voteMode) setVoteMode(null);
@@ -36608,6 +36887,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return { ok: false };
       },
       liveTracksForTest: () => (localStream && localStream.getTracks ? localStream.getTracks().filter((t) => t.readyState === 'live').length : 0),
+      awayForTest: () => !!myStatus.away,
       setTabHiddenForTest: (hidden) => {
         try { Object.defineProperty(document, 'hidden', { configurable: true, get: () => !!hidden }); } catch (e) {}
         document.dispatchEvent(new Event('visibilitychange'));
@@ -37466,6 +37746,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }),
       pipEnterForTest: () => enterPip(true),
       audienceReactForTest: (emoji, fromId) => takeAudienceReact(emoji, fromId || 'viewer'),
+      // the reactions this page shows on faces now: { peerId: emoji }
+      reactsForTest: () => { const o = {}; for (const k of faceReacts.keys()) { const e = faceReactOf(k); if (e) o[k] = e; } return o; },
+      // reaction frames this page has taken, by sender
+      reactRxForTest: () => { const o = {}; for (const [k, n] of faceReactRx) o[k] = n; return o; },
       // one frame arriving from a peer, the way a DataChannel or the mesh hands it in
       remoteFrameForTest: (from, m) => { onRemote(String(from), m); },
       // a peer whose channel just opened, before the roster has caught up; it

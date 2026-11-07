@@ -588,14 +588,14 @@
     },
 
     // C++: mesh_seat.inc:Seat::transportLost
-    transportLost(pid, hard = true) {
+    transportLost(pid, hard = true, sil = false) {
       if (!this.hasCoord || this.state !== 3 || pid < 0 || pid === this.id) return;
       const ol = ownedLinks(this.coord);
       for (let q = 0; q < ol.length; q++) {
         const k = ckey(ol[q]);
         if (this.occGet(k) !== pid) continue;
         if (this.translost.has(k)) { if (hard) this.tlHard.set(k, 1); continue; }   // a quiet loss that later closes hard is hard from then on
-        this.translost.set(k, this.TICK); this.tlHard.set(k, hard ? 1 : 0); this.tlProbeAt.set(k, this.TICK); this.routeToProbe(ol[q]);   // probe NOW: across the mesh, not the dead link
+        this.translost.set(k, this.TICK); this.tlHard.set(k, hard ? (sil ? 2 : 1) : 0); this.tlProbeAt.set(k, this.TICK); this.routeToProbe(ol[q]);   // probe NOW: across the mesh, not the dead link
       }
       this.f.wake(this.id);
     },
@@ -607,7 +607,7 @@
       const lv = this.live.get(k), pa = this.probeAck.get(k);
       // L3.3: a frame that lands within the probe's round trip of the loss (at, at+1) was sent before it.
       const clearAt = at + 2;
-      if ((lv !== undefined && lv >= clearAt) || (pa !== undefined && pa >= at)) { this.tlForget(k); return false; }
+      if ((lv !== undefined && lv >= clearAt) || (pa !== undefined && pa >= at)) { if (pa !== undefined && pa >= at) { const h = this.tlHard.get(k); if (h === 2) this.d5Ans.set(k, pa); } this.tlForget(k); return false; }   // D5.1: an answered silence probe floors the next window
       const pt = this.tlProbeAt.get(k);
       if (pt === undefined || TICK - pt >= 6) { this.tlProbeAt.set(k, TICK); this.routeToProbe(unck(k)); }
       // L3.3: only a HARD close confirms before the lease runs out.

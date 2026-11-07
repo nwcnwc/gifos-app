@@ -105,6 +105,7 @@
     routeToProbe(target) {
       const id = this.id;
       const tk = ckey(target); if (!this.hasCoord || ckey(this.coord) === tk) return;
+      { const h = this.tlHard.get(tk); if (h === 2 && this.coord.pc === 0 && target.pc === 0) { this.d5Fan(target); return; } }   // D5.1: a loss read from silence is probed on every rook path
       const nh = this.probeHop(target, this.occGet(tk));
       if (nh >= 0) { const pn = this.probeNote(tk); const m = newMsg('ROUTE'); m.target = cc(target); m.asker = id; m.tag = 2; m.ttl = 60; m.via = id; m.pseq = ++this.w.lv.RSEQ; m.coord = cc(this.coord); m.pn = pn; this.emit(nh, m); }
     },
@@ -174,6 +175,34 @@
     return on;
   }
   Seat.free({ kOver });
+
+  // ---- D5.1: a death read from silence is checked on every rook path ------------------------------------------
+  Seat.unit('mesh_d5paths.inc', {
+    // C++: mesh_d5paths.inc:Seat::d5Fan
+    // the silence probe, one copy through each of my rook mates (never the probed seat)
+    d5Fan(target) {
+      const id = this.id;
+      const tk = ckey(target); const tx = this.occGet(tk); const pn = this.probeNote(tk);
+      const cm = colMates(this.coord), rm = rowMates(this.coord);
+      for (let s = 0; s < 2; s++) for (let q = 0; q < C - 1; q++) { const c = s ? cm[q] : rm[q]; if (ckey(c) === tk) continue; const x = this.occGet(ckey(c)); if (x < 0 || x === id || x === tx) continue;
+        const m = newMsg('ROUTE'); m.target = cc(target); m.asker = id; m.tag = K.D51_PROBE; m.ttl = K.D51_TTL; m.via = id; m.pseq = ++this.w.lv.RSEQ; m.coord = cc(this.coord); m.pn = pn; this.emit(x, m); }
+    },
+    // C++: mesh_d5paths.inc:Seat::d5AnsFan
+    // the probed seat's answer through each of its own rook mates (the asker's own copy goes as before)
+    d5AnsFan(p) {
+      const id = this.id;
+      const cm = colMates(this.coord), rm = rowMates(this.coord);
+      for (let s = 0; s < 2; s++) for (let q = 0; q < C - 1; q++) { const c = s ? cm[q] : rm[q]; const x = this.occGet(ckey(c)); if (x < 0 || x === id || x === p.asker) continue;
+        const a = newMsg('ROUTE'); a.target = cc(p.coord); a.asker = id; a.tag = K.D51_ANS; a.ttl = K.D51_TTL; a.via = id; a.pseq = ++this.w.lv.RSEQ; a.ck = ckey(this.coord); a.pn = p.pn; this.emit(x, a); }
+    },
+    // C++: mesh_d5paths.inc:Seat::d5Hop
+    // the next hop for an answer about cell ck: never the seat at ck (its own frames are what went missing)
+    d5Hop(m) {
+      const avoid = this.occGet(m.ck); let nh = this.nextHopToward(m.target, m.via);
+      if (nh >= 0 && nh === avoid) nh = this.nextHopToward(m.target, avoid);
+      return nh === avoid ? -1 : nh;
+    },
+  });
   // C++: mesh_seat.inc:kHash
   function kHash(a, b, c) { return fmix32(hmix(hmix64(hash.hmixId(H_INIT, a), b), c >>> 0)); }
   // C++: mesh_seat.inc:kSameVote

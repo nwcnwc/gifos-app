@@ -161,16 +161,17 @@
   // Squares of `side`, `per` across, short lines centered. Does not go back
   // through perLine: a side that fills the width lands on n.999 and floors
   // to one fewer column.
-  function placeRows(ids, box, side, per, y, gap) {
+  function placeRows(ids, box, side, per, y, gap, width) {
     const out = [];
     const n = Math.max(1, per | 0);
+    const tw = width > 0 ? width : side;
     for (let i = 0; i < ids.length; i += n) {
       const k = Math.min(n, ids.length - i);
-      const lineW = k * side + (k - 1) * gap;
+      const lineW = k * tw + (k - 1) * gap;
       let x = box.x + (box.w - lineW) / 2;
       for (let j = 0; j < k; j++) {
-        out.push({ id: ids[i + j], tier: 'row', x: x, y: y, w: side, h: side, fit: 'cover' });
-        x += side + gap;
+        out.push({ id: ids[i + j], tier: 'row', x: x, y: y, w: tw, h: side, fit: 'cover' });
+        x += tw + gap;
       }
       y += side + gap;
     }
@@ -227,53 +228,58 @@
     return lines * Math.max(1, side) + (lines - 1) * gap;
   }
 
-  // Squares that fit in maxH. A full last line wins, then a larger face.
-  // If nothing fits, the side shrinks so the line stays inside the band.
+  // A row packing is judged by the tile it really draws. fillBand gives each
+  // line the band's leftover height, so a square with height to spare is
+  // drawn taller than wide: five squares on one line in a tall band became
+  // five slivers a quarter as wide as tall (a real meeting in full screen, 0.9.25).
+  // The face is the largest square inside the drawn tile, min(w, h). A
+  // packing whose tile keeps a sane shape (SHAPE_MIN) beats one that does
+  // not, then the larger face wins, and a full last line breaks near-ties.
+  // A packing limited by height draws its tiles as wide as the line's cells
+  // (up to 16:9, cover), so the lines still fill the width.
+  const SHAPE_MIN = 0.5;
+  const SHAPE_MAX = 16 / 9;
+  const SLACK_WEIGHT = 40;
+  function packings(n, w, maxH, gap) {
+    const out = [];
+    for (let per = 1; per <= n; per++) {
+      const cw = (w - (per - 1) * gap) / per;
+      if (!(cw > 1)) continue;
+      const lines = Math.ceil(n / per);
+      const ch = (maxH - (lines - 1) * gap) / lines;
+      if (!(ch > 1)) continue;
+      const side = Math.min(cw, ch);
+      const tw = Math.min(cw, side * SHAPE_MAX); // drawn width
+      const shape = tw / ch; // drawn width over drawn height after the fill
+      const last = n % per || per;
+      const slack = (w - (last * tw + (last - 1) * gap)) / Math.max(1, w);
+      const score = (shape >= SHAPE_MIN - 1e-9 ? 100000 : 0) + side + (1 - Math.max(0, Math.min(1, slack))) * SLACK_WEIGHT;
+      out.push({ per: per, side: side, w: tw, slack: slack, last: last, fits: true, lines: lines, shape: shape, score: score });
+    }
+    return out;
+  }
   function packChoice(n, w, maxH, gap) {
     let best = null;
-    for (let per = 1; per <= n; per++) {
-      const side = (w - (per - 1) * gap) / per;
-      if (!(side > 1)) continue;
-      const lines = Math.ceil(n / per);
-      const rowH = lines * side + (lines - 1) * gap;
-      const fits = rowH <= maxH + 0.5;
-      if (!fits && per !== n) continue;
-      const last = n % per || per;
-      const slack = (w - (last * side + (last - 1) * gap)) / Math.max(1, w);
-      const score = (fits ? 1000 : 0) + (1 - Math.max(0, Math.min(1, slack))) * 400 + side;
-      if (!best || score > best.score) best = { per: per, side: side, slack: slack, last: last, fits: fits, lines: lines, score: score };
-    }
+    for (const c of packings(n, w, maxH, gap)) if (!best || c.score > best.score) best = c;
     if (!best) {
-      const side = Math.max(1, (w - (Math.max(1, n) - 1) * gap) / Math.max(1, n));
-      best = { per: Math.max(1, n), side: side, slack: 0, last: n, fits: false, lines: 1 };
-    }
-    if (!best.fits) {
-      const maxSide = (maxH - (best.lines - 1) * gap) / best.lines;
-      if (maxSide > 1 && maxSide < best.side) best = { per: best.per, side: maxSide, slack: best.slack, last: best.last, fits: true, lines: best.lines };
+      const per = Math.max(1, n);
+      best = { per: per, side: Math.max(1, Math.min((w - (per - 1) * gap) / per, maxH)), slack: 0, last: n, fits: false, lines: 1 };
     }
     return best;
   }
 
   // A packing the person cap already allows keeps five and five near half.
-  // A line of one face is not that packing. Otherwise the slack-first
-  // packing stands and the stadium shrinks once.
+  // A line of one face is not that packing. Otherwise the natural packing
+  // stands and the stadium shrinks once.
   function packFor(n, w, maxH, gap, stadW, stadH, faces) {
     const natural = packChoice(n, w, maxH, gap);
     if (cellOf(stadW, stadH, faces) <= natural.side * 1.15 + 0.5) return natural;
     let alt = null;
-    for (let per = 1; per <= n; per++) {
-      const side = (w - (per - 1) * gap) / per;
-      if (!(side > 1)) continue;
-      const lines = Math.ceil(n / per);
-      const rowH = lines * side + (lines - 1) * gap;
-      if (rowH > maxH + 0.5) continue;
-      const last = n % per || per;
-      if (last === 1 && n > 1) continue;
-      const slack = (w - (last * side + (last - 1) * gap)) / Math.max(1, w);
-      if (slack > 0.45) continue;
-      if (cellOf(stadW, stadH, faces) > side * 1.15 + 0.5) continue;
-      const score = (1 - Math.max(0, slack)) * 400 + side;
-      if (!alt || score > alt.score) alt = { per: per, side: side, slack: slack, last: last, fits: true, lines: lines };
+    for (const c of packings(n, w, maxH, gap)) {
+      if (c.last === 1 && n > 1) continue;
+      if (c.slack > 0.45) continue;
+      if (cellOf(stadW, stadH, faces) > c.side * 1.15 + 0.5) continue;
+      if (!alt || c.score > alt.score) alt = c;
     }
     return alt || natural;
   }
@@ -326,7 +332,7 @@
         picked = packChoice(nr, box.w, rowH, gap);
       }
       const rowBox = { x: box.x, y: box.y, w: box.w, h: rowH };
-      const a = placeRows(row, rowBox, picked.side, picked.per, rowBox.y, gap);
+      const a = placeRows(row, rowBox, picked.side, picked.per, rowBox.y, gap, picked.w);
       fillBand(a.rects, rowBox, gap);
       const st = { id: id, tier: 'stad', x: box.x + (box.w - stadW) / 2, y: box.y + rowH + gap, w: stadW, h: stadH, fit: 'contain' };
       return { rects: a.rects.concat([st]), contentH: box.h, side: picked.side, stadSide: Math.min(st.w, st.h), tooSmall: Math.min(st.w, st.h) < 28 };
@@ -343,7 +349,7 @@
     colW = box.w - stadW - gap;
     if (changed) picked = packChoice(nr, colW, box.h, gap);
     const col = { x: box.x, y: box.y, w: colW, h: box.h };
-    const a = placeRows(row, col, picked.side, picked.per, col.y, gap);
+    const a = placeRows(row, col, picked.side, picked.per, col.y, gap, picked.w);
     fillBand(a.rects, col, gap);
     const st = { id: id, tier: 'stad', x: box.x + box.w - stadW, y: box.y, w: stadW, h: stadH, fit: 'contain' };
     return { rects: a.rects.concat([st]), contentH: box.h, side: picked.side, stadSide: Math.min(st.w, st.h), tooSmall: Math.min(st.w, st.h) < 28 };

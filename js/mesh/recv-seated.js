@@ -578,14 +578,15 @@
       if (!this.hasCoord) return;
       if (ckey(this.coord) === ckey(m.target)) {
         if (m.tag === 4) { const r = newMsg('ROUTED'); r.tag = 1; r.target = unck(m.ck); r.id = m.asker; r.pn = m.pn; this.trace('ROUTED-BACK', id, r.target, 'from=%d asked=%d', m.asker, this.probeAsked(m.ck, m.pn) ? 1 : 0); this.onRouted(r); return; }   // L3.4.1: a probe answer that walked back to my cell: the same answer as one over a channel
-        if (m.tag === 3) { if (!this.translost.has(m.ck) || !this.probeAsked(m.ck, m.pn)) return; this.probeAck.set(m.ck, TICK); return; }   // a D5 probe ANSWER routed back around the dead link
-        if (m.tag === 2) {
+        if (m.tag === 3 || m.tag === K.D51_ANS) { if (!this.translost.has(m.ck) || !this.probeAsked(m.ck, m.pn)) return; this.probeAck.set(m.ck, TICK); return; }   // a D5 probe ANSWER routed back around the dead link
+        if (m.tag === 2 || m.tag === K.D51_PROBE) {
           // D5 translost probe reached me: I am alive: answer AROUND the dead link
           const nh2 = this.probeHop(m.coord, m.asker);
           if (nh2 >= 0) { const a = newMsg('ROUTE'); a.target = cc(m.coord); a.asker = id; a.tag = 3; a.ttl = 60; a.via = id; a.pseq = ++this.w.lv.RSEQ; a.ck = ckey(this.coord); a.pn = m.pn; this.emit(nh2, a); }
+          if (m.tag === K.D51_PROBE) this.d5AnsFan(m);   // D5.1: and through each of my rook mates
         }
         if (m.tag === 1 && m.asker >= 0 && m.asker !== id && m.ck && cellOk(m.ck) && m.ck !== ckey(this.coord) && this.ownedLinkCell(m.ck) && this.occGet(m.ck) < 0) { this.setOcc(m.ck, m.asker); this.emit(m.asker, hello(ckey(this.coord), id)); return; }   // L9.9
-        const r = newMsg('ROUTED'); r.tag = m.tag; r.target = cc(m.target); r.id = id; r.pn = m.pn;
+        const r = newMsg('ROUTED'); r.tag = m.tag === K.D51_PROBE ? 2 : m.tag; r.target = cc(m.target); r.id = id; r.pn = m.pn;
         if (this.f.fabricLinkState(id, m.asker) !== E.LS_OPEN && m.tag === 1 && this.hasCoord && ckey(m.coord) !== ckey(this.coord)) { const nh4 = this.nextHopToward(m.coord, -1); if (nh4 >= 0) { const a = newMsg('ROUTE'); a.target = cc(m.coord); a.asker = id; a.tag = 4; a.ttl = 60; a.via = id; a.pseq = ++this.w.lv.RSEQ; a.ck = ckey(this.coord); a.pn = m.pn; this.emit(nh4, a); return; } }   // L3.4.1: no channel to the asker (a NAT pair, a closed pc): the answer walks back to its cell the way the probe came
         this.emit(m.asker, r); return;
       }
@@ -598,7 +599,7 @@
           if ((ob !== undefined && TICK - ob <= K.LEASE_T) || this.translostConfirmed(tk)) { const g = newMsg('E1STATE'); g.tag = 3; g.id = id; g.oCk = tk; g.owner = m.asker; g.ck = m.ck; this.emit(m.nc, g); return; }
         }
       }   // L9.9
-      const nh = this.nextHopToward(m.target, m.via);
+      const nh = m.tag === K.D51_ANS ? this.d5Hop(m) : this.nextHopToward(m.target, m.via);
       if (nh >= 0 && this.l191Loop(m, nh)) { this.trace('L19.1-END', id, this.hasCoord ? this.coord : null, 'asker=%d tag=%d target=%s pseq=%d ttl=%d nh=%d', m.asker, m.tag, coordStr(m.target), m.pseq, m.ttl, nh); const r = newMsg('ROUTED'); r.tag = m.tag; r.target = cc(m.target); r.id = -1; r.pn = m.pn; this.emit(m.asker, r); return; }   // L19.1
       if (nh >= 0) { const r = newMsg('ROUTE'); r.target = cc(m.target); r.asker = m.asker; r.tag = m.tag; r.ttl = m.ttl - 1; r.via = id; r.pseq = m.pseq; r.ck = m.ck; r.coord = cc(m.coord); r.pn = m.pn; this.emit(nh, r); return; }
       const r = newMsg('ROUTED'); r.tag = m.tag; r.target = cc(m.target); r.id = -1; r.pn = m.pn; this.emit(m.asker, r);
