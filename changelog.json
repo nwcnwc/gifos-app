@@ -3,7 +3,7 @@
   "entries": [
     {
       "version": "0.9.25",
-      "date": "2026-11-03",
+      "date": "2026-11-06",
       "headline": "A new meeting mesh, and GifOS in five languages",
       "critical": false,
       "features": [
@@ -14,13 +14,25 @@
         "Reloading the page keeps your seat in a meeting: you come back to the same place instead of queueing as a newcomer.",
         "The waiting room is for admin rooms only. In an open room there is no waiting-room button and nobody is held at the door; in an admin room the admin's Admit opens every door.",
         "A new broadcast starts with neutral wording; the run-of-show is an optional host template.",
-        "Captions are sent to the meeting by default, and you can turn that off in Settings. A new Transcript setting keeps a transcript for you or shares it with the room, writing down the people nobody is captioning by name or as Stage or Stadium, with the language of each line. The \"Transcribing\" mark is now \"Sending captions\" and shows only when it is true."
+        "Stadium video is much faster: video passes straight through, and each row hides its own faces. Sound is clearer in big rooms, with a limiter on mixed sound and better quality on forwarded sound.",
+        "Reactions now reach the whole meeting, like a raised hand, and there is a new \u2764\ufe0f heart. In big rooms the Stadium marks talking (green), raised hands and reactions with colors, down to a single pixel per person.",
+        "Picture-in-picture: tap Float to keep the meeting in a small window, on Android and on desktop Chrome and Edge.",
+        "Joining is private: the screen before joining shows you with camera and mic off, and the camera does not turn on until you tap it. Turning the camera off really turns it off: the camera light goes out.",
+        "Captions are sent to the meeting by default, and you can turn that off in Settings. A new Transcript setting keeps a transcript for you or shares it with the room, writing down the people nobody is captioning by name or as Stage or Stadium, with the language of each line. The \"Transcribing\" mark is now \"Sending captions\" and shows only when it is true. Whisper captions download their model once from gifos.app and your voice never leaves your device. A short notice tells you when captions are on in a meeting.",
+        "Settings in a meeting is a normal scrolling screen, popup buttons stay visible while the content scrolls, the More menu is tidier, and the bar never moves when the menu opens, and full screen fills a phone screen for camera faces.",
+        "Debug logging in Settings: turn it on, export the log, see its size and clear it."
       ],
       "fixes": [
         "In a meeting with an admin password, setting or changing the password sends everyone who does not have the new one back to the door to type it, so people who slipped in early are asked too.",
         "Hostile or broken pages have a harder time locking new people out of the first section or leaving duplicate seats. A large group of hostile pages holding the first section can still keep newcomers out.",
         "Vote-offs are counted inside the meeting, not on the relay.",
-        "When the admin changes the password, the relay itself drops pages that do not hold the new one, so they return to the door right away."
+        "When the admin changes the password, the relay itself drops pages that do not hold the new one, so they return to the door right away.",
+        "Chat after a reload is no longer lost, and a line said while you reconnect still reaches you.",
+        "Transcript lines merge correctly across languages: a person who switches language is written in the new one, and overlapping lines no longer double up.",
+        "After a reload the stager comes back faster.",
+        "Sound recovers more quickly when someone on its path drops.",
+        "A live seat is no longer dropped while it is still reachable, and a person coming back after a stall reconnects on the first try.",
+        "The Meeting Bot no longer starts twice."
       ],
       "notes": [
         "The relay is updated first. An older version still joins and talks through it, but until that page updates its Ban, Waiting room and vote-off buttons do nothing: the relay no longer carries those orders.",
@@ -29,9 +41,10 @@
         "Known issue: someone still on an older version can join and talk, but their Ban, Waiting room and vote-off buttons do nothing until their page updates.",
         "Known issue: in very large rooms (about 1000 people) joining can be slow, and a large crowd of hostile pages can still slow the room or keep newcomers out of the first section.",
         "Known issue: when many people leave at once, the room can take a while to settle.",
-        "Known issue: in a Stadium, a picture passed on by someone using Firefox can arrive up to about 0.3 seconds late.",
-        "Known issue: on some phones memory use grows slowly during a very long meeting, and a small computer running many meeting pages at once can run short of memory.",
-        "Known issue: a rare page crash in WebKit browsers, such as Safari, during a meeting is still being tracked down."
+        "Known issue: in a Stadium, a picture passed on by someone using Firefox is usually only slightly late, and occasionally up to about 0.3 seconds.",
+        "Known issue: memory use can grow slowly during a very long meeting; this is still being studied. A small computer running many meeting pages at once can run short of memory.",
+        "Known issue: a rare page crash in WebKit browsers, such as Safari, during a meeting is still being tracked down.",
+        "Known issue: automatic picture-in-picture on a computer when you switch tabs is not reliable yet. Tap Float before you switch."
       ]
     },
     {
