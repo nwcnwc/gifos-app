@@ -25974,7 +25974,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               fb.dark = false; fb.suspect = false; fb.q = 0; fb.flowSince = 0; fb.fp = Math.min(3, (fb.fp || 0) + 1); fb.fpDecayAt = now;
               schedReconcile();
             }
-          } else if (!fb.dark && (fb.q || 0) >= (MOS_QUALIFY << Math.min(3, fb.fp || 0))) {
+          // A STAGE PRIMARY THAT FLOWED AND STOPPED IS DARK, QUALIFIED OR NOT. A stage claim is judged on its voice, and a
+          // live voice pipe sends packets even when muted, so bytes flat for MOS_DARK_MS after any advance are not a routine
+          // freeze. The count (and its doubling after a false fire) earns the watchdog for every other pipe; on a stage claim
+          // whose receiver had just been rebuilt (count back near zero) it kept the standby parked for 5 s of silence.
+          } else if (!fb.dark && ((fb.q || 0) >= (MOS_QUALIFY << Math.min(3, fb.fp || 0)) || (rk.indexOf('stg:') === 0 && (fb.q || 0) > 0))) {
             // QUALIFICATION (v2b — the gate-box bench conviction): some healthy
             // pipes freeze bytes for SECONDS while alive (a throttled
             // producer's canvas repack, a carrier copy, low-fps shares) —
@@ -26161,11 +26165,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const quickDead = !!(quickMs && (fb.dark || gone) && fb.wakeAt && now - fb.wakeAt > quickMs && fb.d0 >= 0 && fb.b0 >= 0 && !(fb.stdB > fb.b0));
       const wakeStale = !!(fb.wakeAt && now - fb.wakeAt > wakeMax) || quickDead;
       const flowed = fb.d0 >= 0 && fb.stdFdec > fb.d0;
-      if (fb.dark && wakeStale && !flowed) {
-        fb.dark = false; fb.suspect = true; fb.suspectAt = now; fb.wakeAt = 0;
-        if (stdId) (fb.stdTried = fb.stdTried || new Map()).set(stdId, now);
-      } else if (gone && wakeStale && !flowed) {
+      if (gone && wakeStale && !flowed) { // first: a gone primary that also went dark latches nothing either
         fb.wakeAt = 0; fb.goneTriedAt = now;
+        if (stdId) (fb.stdTried = fb.stdTried || new Map()).set(stdId, now);
+      } else if (fb.dark && wakeStale && !flowed) {
+        fb.dark = false; fb.suspect = true; fb.suspectAt = now; fb.wakeAt = 0;
         if (stdId) (fb.stdTried = fb.stdTried || new Map()).set(stdId, now);
       } else if (!fb.dark && wakeStale) {
         fb.wakeAt = 0; fb.prefSince = 0;
