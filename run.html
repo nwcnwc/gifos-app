@@ -33940,6 +33940,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (kind === 'mic' && amGloballyMuted()) return micLockWords();
       return null;
     }
+    // Test hooks only: the held camera track, opened (disabled) when none is held.
+    function camTrackForTest() {
+      const held = localStream && localStream.getVideoTracks()[0];
+      if (held) return Promise.resolve(held);
+      const md = navigator.mediaDevices;
+      if (!md || !md.getUserMedia) return Promise.resolve(null);
+      return md.getUserMedia({ video: camVideoConstraints() }).then((s) => {
+        const t = s.getVideoTracks()[0];
+        if (!t) return null;
+        t.enabled = false;
+        if (!localStream) localStream = s; else localStream.addTrack(t);
+        attachLocalTracks();
+        return t;
+      }, () => null);
+    }
     function lateMedia(kind) {
       if (bcWatchingViewer()) return;
       if (myStatus.bot) { setStatus(uiText('stABotDoesNotUse', 'A bot does not use a camera or speak.')); return; }
@@ -38019,9 +38034,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       fsMain: () => ({ key: fsmain.dataset.key || null, bl: fsmain.classList.contains('blur2') ? 2 : fsmain.classList.contains('blur1') ? 1 : 0, fit: getComputedStyle(fsmain).objectFit }),
       fsThumbBlur: (key) => { const th = Array.from(fsstrip.children).find((t) => t.dataset.key === key); const tv = th && th.querySelector('video'); if (!tv) return null; return tv.classList.contains('blur2') ? 2 : tv.classList.contains('blur1') ? 1 : 0; },
       peerCamOff: (pid) => seatDark(statusOf.get(pid)),
-      defyCamOffForTest: () => { if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return false; const t = localStream && localStream.getVideoTracks()[0]; if (!t) return false; camDefiant = true; t.enabled = true; myStatus.camOff = false; broadcastStatus(); return true; },
+      // A camera that is off is not open, so these two open one first, past every order check (an honest page never does).
+      defyCamOffForTest: () => { if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return Promise.resolve(false); return camTrackForTest().then((t) => { if (!t) return false; camDefiant = true; t.enabled = true; myStatus.camOff = false; refreshOutbound(); broadcastStatus(); return true; }); },
       // a camera that comes on by a path that never asked the order (the page itself is honest)
-      slipCamOnForTest: () => { const t = localStream && localStream.getVideoTracks()[0]; if (!t) return false; t.enabled = true; myStatus.camOff = false; try { paintOnAir(); } catch (e) {} return true; },
+      slipCamOnForTest: () => camTrackForTest().then((t) => { if (!t) return false; t.enabled = true; myStatus.camOff = false; try { paintOnAir(); } catch (e) {} return true; }),
       slipCamOffForTest: () => { const t = localStream && localStream.getVideoTracks()[0]; if (t) t.enabled = false; myStatus.camOff = true; try { paintOnAir(); } catch (e) {} return true; },
       recOnForTest: () => !!(recRec && recRec.state !== 'inactive'),
       // The blob Rebroadcast plays: the file saved when the host left the air.
