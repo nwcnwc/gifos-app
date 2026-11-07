@@ -29,7 +29,7 @@
         "When the admin changes the password, the server itself drops pages that do not hold the new one, so they return to the door right away.",
         "Chat after a reload is no longer lost, and a line said while you reconnect still reaches you.",
         "Transcript lines merge correctly across languages: a person who switches language is written in the new one, and overlapping lines no longer double up.",
-        "After a reload the stage picture comes back faster.",
+        "A speaker on stage who reloads the page is back on stage faster.",
         "Sound recovers more quickly when someone on its path drops.",
         "A live seat is no longer dropped while it is still reachable, and a person coming back after a stall reconnects on the first try.",
         "The Meeting Bot no longer starts twice."
