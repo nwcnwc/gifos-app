@@ -14987,7 +14987,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // raise the floor only to a safe integer at most PW_EP_MAX: a pulse
       // carrying 1e20 once set every listener's epoch to a number where
       // epoch + 1 === epoch, and no grant could ever land again (pwEpInt).
-      if (pwEpInt(st.pwEp) && st.pwEp <= PW_EP_MAX && st.pwEp > pwEpoch) { storePwEpoch(st.pwEp); if (heldGrant) releaseHeldGrant(false); } // the room has spoken: a held grant is decided now
+      if (pwEpInt(st.pwEp) && st.pwEp <= PW_EP_MAX && st.pwEp > pwEpoch) { raisePwFloor(st.pwEp); if (heldGrant) releaseHeldGrant(false); } // the room has spoken: a held grant is decided now
       recSrcDirty = true; // a new status can move who the recorder puts on the stage
       return true;
     }
@@ -16356,7 +16356,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // nobody can roll a member backwards. The epoch is PERSISTED beside the
     // stored password (loadPw/storePwEpoch), so a reload cannot disarm it.
     let prevRoomE2E = null;   // exactly ONE previous generation, for stale-neighbour recognition + healing
-    let pwEpoch = 0;          // generation counter, carried inside the signed grant
+    let pwEpoch = 0;          // generation counter, carried inside the signed grant: the room's FLOOR (a pulse may raise it)
+    let pwHeldEp = 0;         // the generation of the password this page HOLDS; a grant is a replay only at or below this
     let retainedGrant = null; // the admin's pwinfo, verbatim — replayable by any member
     // A BAN IS A PASSWORD CHANGE EVERYONE HEARS BUT THE BANNED (admin rooms). The admin's signed pwinfo carries the new
     // password and `no`, the peer ids (k_) it must not be shared with. It rides channels only, hop by hop, each page
@@ -17162,7 +17163,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // reads as 0 and the room floors it again.
     function pwEpInt(n) { return Number.isSafeInteger(n) && n >= 0; }
     const PW_EP_MAX = 1e9;
-    function storePwEpoch(ep) { pwEpoch = ep; try { myStatus.pwEp = ep; } catch (e) {} try { localStorage.setItem(pwEpochKey(), String(ep)); } catch (e) {} mirrorRoomState({ pwEp: ep }); }
+    // A pulse raises the room's floor (door and lock decisions, the replay guard
+    // for anything older than the room), never the held generation: a row-mate
+    // that adopted the admin's grant first pulses the new epoch while still
+    // sealing under the old key, and the grant itself may still be in signature
+    // check here. That grant must not then read as a replay.
+    function raisePwFloor(ep) { pwEpoch = ep; try { myStatus.pwEp = ep; } catch (e) {} try { localStorage.setItem(pwEpochKey(), String(ep)); } catch (e) {} mirrorRoomState({ pwEp: ep }); }
+    function storePwEpoch(ep) { pwHeldEp = ep; pwEpoch = ep; try { myStatus.pwEp = ep; } catch (e) {} try { localStorage.setItem(pwEpochKey(), String(ep)); } catch (e) {} mirrorRoomState({ pwEp: ep }); }
     // The held grant goes back through the pwinfo handler: once the room's
     // generation is known the epoch guard decides it; past the deadline
     // (expired) the hold is dropped and the old rule applies.
@@ -21999,8 +22006,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // is a replay — dead on arrival. Nobody can roll a member backwards;
         // an ep-less grant is a legacy client's, treated as next-generation.
         if (m.ep != null && !pwEpInt(m.ep)) return; // a generation that is not exact arithmetic is nobody's (pwEpInt)
-        if (m.ep != null && m.ep <= pwEpoch) return; // (no `pwEpoch &&`: epoch 0 is a real generation — see myStatus.pwEp)
-        if (String(m.pw || '') === String(roomPw || '')) { if (m.ep != null && m.ep > pwEpoch) storePwEpoch(m.ep); return; } // already adopted
+        // Older than the room, or at/below the password I hold: a replay. A grant AT the
+        // floor a pulse raised is the admin's password for that generation (the
+        // signature binds pw and ep), so a member who heard the epoch first still takes it.
+        if (m.ep != null && (m.ep < pwEpoch || m.ep <= pwHeldEp)) return; // (no `pwEpoch &&`: epoch 0 is a real generation — see myStatus.pwEp)
+        if (String(m.pw || '') === String(roomPw || '')) { if (m.ep != null && m.ep > pwHeldEp) storePwEpoch(m.ep); return; } // already adopted
         if (roomPw && pwEpoch === 0 && Date.now() < grantHoldUntil) {
           // Typed at the door, no generation yet (see heldGrant): keep the
           // newest grant and let the room's first pulse decide it.
