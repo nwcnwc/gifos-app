@@ -8,14 +8,15 @@
   const GifOS = root.GifOS = root.GifOS || {};
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
-  const { Seat } = req('./seat.js', 'meshSeat');
+  const { Seat, l25OrdKey } = req('./seat.js', 'meshSeat');
   const { cellOk } = req('./shared.js', 'meshShared');
   const C_ = req('./consts.js', 'meshConsts');
   const topo = req('./topo.js', 'meshTopo');
   const books = req('./books.js', 'meshBooks');
   const { ins } = req('./util.js', 'meshUtil');
   const K = C_.consts;
-  const { ckey } = topo;
+  const { ckey, unckey: unck, up } = topo;
+  const { coordStr } = req('./shared.js', 'meshShared');
 
   Seat.unit('mesh_seat.inc l24/l26', {
     // C++: mesh_seat.inc:Seat::l24Take
@@ -56,6 +57,21 @@
           if (!named) for (const v of this.childOf.values()) if (v === m.from) { named = true; break; }
           if (!named && this.callBook.inKnown(m.from) && !this.l372Fresh(m)) named = true;
           if (!named) return false;
+          // L37.6 (mesh_seat.inc l26Check): being named is not standing; the order's SIGNER (fo, else the sender) must sit, in my view, where an order for this hole comes from
+          if (cellOk(ckey(m.hole))) {
+            const signer = m.fo >= 0 ? m.fo : m.from; let c = null, ok = false, found = false;
+            const standing = () => {
+              if (m.hole.pc === 0 ? c.pc === 0 : (c.pc === m.hole.pc && c.r === m.hole.r)) return true;
+              let o, oo;
+              if (m.hole.pc !== 0) { o = { pc: m.hole.pc, r: m.hole.r }; while (o.pc !== 0 && (oo = up({ pc: o.pc, r: o.r, i: 0 }))) { if (c.pc === oo.pc && c.r === oo.r) return true; o = oo; } }
+              o = { pc: c.pc, r: c.r };
+              while (o.pc !== 0 && (oo = up({ pc: o.pc, r: o.r, i: 0 }))) { if (ckey(oo) === ckey(m.hole) || (oo.pc === m.hole.pc && oo.r === m.hole.r)) return true; o = oo; }
+              return false;
+            };
+            for (const [k, v] of this.occ) if (v === signer) { found = true; c = unck(k); if (standing()) { ok = true; break; } }   // any listing of the signer may stand: a seat that moved is still listed at its old cell
+            if (!found && m.fo >= 0 && this.w.L25ORD.has(l25OrdKey(signer, ckey(m.hole), m.foAt, this.id))) ok = true;   // a signer my view does not place: the order's own signature (L25.7)
+            if (!ok) { this.trace('L37.6-NOSTANDING', this.id, this.coord, 'from=%d signer=%d hole=%s signercell=%s', m.from, signer, coordStr(m.hole), found ? coordStr(c) : 'none'); this.w.lv.L376S_DROP++; return false; }
+          }
           if (!cellOk(ckey(m.hole))) return false;
           const hk = ckey(m.hole); const x = this.occGet(hk); if (x >= 0 && x !== this.id && x !== m.from && this.firstHandLive(hk)) return false;
           return true;
