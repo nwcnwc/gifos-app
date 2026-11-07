@@ -738,7 +738,7 @@
           const k = ckey(ring[q]); if (k === ckey(this.coord)) continue; let y = this.occGet(k); let newer = false;
           if (y >= 0 && byeOf(k)) { const bb = this.born.get(k); const by = this.byeAt.get(k); newer = bb !== undefined && by !== undefined && bb > by; }
           if (y < 0) { const cz = this.cousins.get(k); if (cz !== undefined) y = cz; }
-          if (y < 0 || y === id || (byeOf(k) && !newer)) continue; calls.push([y, ck2]);
+          if (y < 0 || y === id || (byeOf(k) && !newer)) continue; { const sz = this.l1343Stale.get(k); if (sz !== undefined && sz === y && !this.firstHandLive(k)) continue; } calls.push([y, ck2]);   // L13.43: a seat a hint named from a hearing a lease old is a cell, not a call
         }
       }
       {
@@ -841,6 +841,7 @@
       }
       if (a.owner < 0 && ok !== ckey(this.coord) && this.l394Placing(ok, to)) { a.wordHeld = true; for (let q = 0; q < a.byes.length; q++) if (a.byes[q] === ok) { a.byes.splice(q, 1); break; } }   /* L39.4: a seat I am placing there holds the cell from the word (gaps3.js) */
       for (const [ck_, cv] of this.cousins) if (cv >= 0 && cv !== id && cv !== to && FREE.l35HandOn(this, ck_, cv)) a.nbrs.push({ k: ck_, v: cv });
+      { const aged = (k) => { if (k === ckey(this.coord)) return; const lv = this.live.get(k); const ag = lv === undefined ? 100000 : TICK - lv; if (ag > K.LEASE_T) a.hage.push({ k, v: ag | 0 }); }; for (const e of a.row) aged(e.k); for (const e of a.nbrs) aged(e.k); }   /* L13.43: a name I pass on carries the age of my own hearing when it is past a lease */
       this.emit(to, a); this.trace('L13-ANSWER', id, H, 'to=%d owner=%d child=%d byes=%zu held=%d mass=%d', to, a.owner, a.child, a.byes.length, a.wordHeld ? 1 : 0, a.mass ? 1 : 0);
     },
     // The caller's side: the answerer is first-hand at its cell; its goodbyes and seats are installed.
@@ -940,7 +941,9 @@
       }
       const hint = (k, v) => {
         if (v < 0 || v === id || !FREE.cellOk(k) || !known(k) || k === ckey(this.coord)) return; const b = this.byeAt.get(k); if (b !== undefined && TICK - b <= K.LEASE_T) return;
-        if (this.occGet(k) < 0 && (onChain(k) || ckPc(k) === 0)) { this.setOcc(k, v); this.noteS1(k); news(); FREE.l35Hinted(this, k, v); const kc = unck(k); const mc = unck(m.ck); this.trace('L13-HINT', id, kc, 'v=%d by=%d at=%s', v, m.id, FREE.coordStr(mc)); }
+        let stale = false; for (const g of m.hage) if (g.k === k) { stale = true; break; }   // L13.43: the hinter last heard that seat more than a lease ago
+        if (this.occGet(k) < 0 && (onChain(k) || ckPc(k) === 0)) { this.setOcc(k, v); this.noteS1(k); news(); FREE.l35Hinted(this, k, v); if (stale) this.l1343Stale.set(k, v); const kc = unck(k); const mc = unck(m.ck); this.trace('L13-HINT', id, kc, 'v=%d by=%d at=%s', v, m.id, FREE.coordStr(mc)); }
+        if (stale) return;
         if (!this.cousins.has(k) && this.cousins.size < 8 * C) { this.cousins.set(k, v); FREE.l35Hinted(this, k, v); }
       };
       {
