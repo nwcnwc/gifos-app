@@ -654,6 +654,16 @@
     ["l2512Q", "i32"],   // int = -1  (line 1785)
     ["l2512Pend", "i32"],   // int = -1  (line 1785)
     ["l2512Rev", "bool"],   // bool = false  (line 1785)
+    ["l25131At", "{i32:i32}"],   // OMap<int,int>  (line 1786)
+    ["l25131Rv", "{i32:i32}"],   // OMap<int,int>  (line 1786)
+    ["l25131Ok", "{i32:(u64,i32)}"],   // OMap<int,pair<uint64_t,int>>  (line 1786)
+    ["l25131Go", "i32"],   // int = -1  (line 1786)
+    ["l25131GoP", "i32"],   // int = -1  (line 1786)
+    ["l25132Q", "i32"],   // int = -1  (line 1786)
+    ["l25132For", "i32"],   // int = -1  (line 1786)
+    ["l25132Old", "i32"],   // int = -1  (line 1786)
+    ["l25132At", "i32"],   // int = -100000  (line 1786)
+    ["l25132Ck", "u64"],   // uint64_t = 0  (line 1786)
     ["l2513AskedBy", "i32"],   // int = -1  (line 1786)
     ["l2513AskedAt", "i32"],   // int = -100000  (line 1786)
     ["l2513AskedCk", "u64"],   // uint64_t = 0  (line 1786)
@@ -1207,6 +1217,13 @@
     l2512Q: -1,
     l2512Pend: -1,
     l2512Rev: false,
+    l25131Go: -1,
+    l25131GoP: -1,
+    l25132Q: -1,
+    l25132For: -1,
+    l25132Old: -1,
+    l25132At: -100000,
+    l25132Ck: 0,
     l2513AskedBy: -1,
     l2513AskedAt: -100000,
     l2513AskedCk: 0,

@@ -7,7 +7,7 @@
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
   const { Seat, roomTerm } = req('./seat.js', 'meshSeat');
-  const { coordStr, cellOk } = req('./shared.js', 'meshShared');
+  const { coordStr, cellOk, ownerCoordOf } = req('./shared.js', 'meshShared');
   const C_ = req('./consts.js', 'meshConsts');
   const msg = req('./msg.js', 'meshMsg');
   const topo = req('./topo.js', 'meshTopo');
@@ -62,6 +62,54 @@
       if (this.l2512Pend < 0) return;
       if (this.l2512Pend !== this.l25WitRivalId || this.TICK - this.l25WitAt > K.L25_WIT_WAIT) { this.l2512Pend = -1; return; }
       if (this.l25WitRival > 0) { const r = this.l2512Pend; this.l2512Pend = -1; this.l2512Tell(r); }
+    },
+
+    // C++: mesh_rcleft_l25.inc:Seat::l25131Ask
+    l25131Ask(m) {
+      const p = m.pp; if (!this.w.lv.LINKMODEL || p < 0 || p === this.id || p === m.id || !this.hasCoord || this.state !== 3 || this.ppAdm(m.ck, p, m.id)) return;
+      const a = this.l25131At.get(p); if (a !== undefined && this.TICK - a <= K.L25_WAIT) return;
+      if (a === undefined && this.l25131At.size >= 16) this.l25131At.delete(this.l25131At.keys().next().value);
+      this.l25131At.set(p, this.TICK); this.l25131Rv.set(p, m.id);
+      this.f.fabricDialJoin(this.id, p); const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = this.id; this.emit(p, h);
+      this.trace('L25.13.1-ASK', this.id, this.coord, 'placer=%d rival=%d', p, m.id);
+    },
+
+    // C++: mesh_rcleft_l25.inc:Seat::l25131Note
+    l25131Note(m) {
+      if (m.id < 0 || m.id === this.id || !this.hasCoord || this.state !== 3 || !cellOk(m.ck)) return;
+      const yl = (m.t === 'YIELD');
+      if (yl && (m.from !== m.id || m.ck !== ckey(this.coord))) return;
+      const ask = this.l25131At.get(m.id); if (ask === undefined || this.TICK - ask > 2 * K.L25_WAIT) return;
+      const c = this.coord; const oc = c.pc === 0 ? null : ownerCoordOf(c); if (!oc) return;
+      const ak = yl ? ckey(oc) : m.ck; const ac = unckey(ak); if (ac.pc !== oc.pc || ac.r !== oc.r) return;
+      const x = this.occGet(ak); if (x >= 0 && x !== m.id && this.heldRightNow(ak) && !this.translost.has(ak)) return;
+      this.l25131Ok.set(m.id, [ak, this.TICK]); this.trace('L25.13.1-ANSWER', this.id, this.coord, 'placer=%d at=%s', m.id, coordStr(ac));
+      const rv = this.l25131Rv.get(m.id); if (rv !== undefined) { this.l25131Go = rv; this.l25131GoP = m.id; this.l25131Retry(); }
+    },
+
+    // C++: mesh_rcleft_l25.inc:Seat::l25131Retry
+    l25131Retry() {
+      if (this.l25131Go < 0) return;
+      const o = this.l25131Ok.get(this.l25131GoP);
+      if (!this.hasCoord || this.state !== 3 || this.moving || o === undefined || this.TICK - o[1] > 4 * K.L25_WAIT) { this.l25131Go = -1; return; }
+      if (this.l25WitPend || (this.TICK - this.l25At <= K.L25_WAIT && this.l25Nc >= 0)) return;
+      const q = newMsg('CHALLENGE'); q.nc = this.l25131Go; q.ck = ckey(this.coord); const by = this.l25131GoP; this.l25131Go = -1; this.l25Ask(q, by);
+    },
+
+    // C++: mesh_rcleft_l25.inc:Seat::l25132Tick
+    l25132Tick() {
+      if (!this.w.lv.LINKMODEL || !this.hasCoord || this.state !== 3 || this.moving) { this.l25132Q = -1; return; }
+      const oc = this.coord.pc === 0 ? null : ownerCoordOf(this.coord); if (!oc) return;
+      if (this.l25132Q < 0) {
+        if (this.l25Nc >= 0 && this.l25Ck === ckey(this.coord) && this.TICK - this.l25At > K.L25_WAIT && this.TICK - this.l25At <= 4 * K.L25_WAIT && this.l25132For !== this.l25At) {
+          this.l25132For = this.l25At; this.l25132Q = this.l25Nc; this.l25132Ck = ckey(oc); this.l25132Old = this.occGet(this.l25132Ck); this.l25132At = this.TICK; this.routeToProbe(oc);
+          this.trace('L25.13.2-REASK', this.id, this.coord, 'rival=%d arbiter=%d', this.l25132Q, this.l25By);
+        }
+        return;
+      }
+      if (this.TICK - this.l25132At > 4 * K.L25_WAIT) { this.l25132Q = -1; return; }
+      const h = this.occGet(this.l25132Ck); if (h < 0 || h === this.id || h === this.l25132Old || this.l25WitPend || (this.TICK - this.l25At <= K.L25_WAIT && this.l25Nc >= 0 && this.l25Ck === ckey(this.coord) && this.l25At !== this.l25132For)) return;
+      const q = newMsg('CHALLENGE'); q.nc = this.l25132Q; q.ck = ckey(this.coord); this.l25132Q = -1; this.l25Ask(q, h); this.trace('L25.13.2-ASKED', this.id, this.coord, 'arbiter=%d rival=%d', h, q.nc);
     },
 
     // C++: mesh_rcleft_l25.inc:Seat::l2513Asked

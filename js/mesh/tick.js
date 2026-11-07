@@ -173,6 +173,8 @@
       if (this.evil) this.attack();
       if (this.hostile) this.hostileTick();   // the hostile page
       if (this.l40Hold) this.l40Tick();   // L40.1: a tell that came while a question was open (gaps4.js)
+      if (this.l25131Go >= 0) this.l25131Retry();   // L25.13.1
+      this.l25132Tick();   // L25.13.2
       if (this.l25WitPend) this.l25WitTick();   // L25.9: a proven rival, witnesses still due
       if (this.l815N > 0) {
         let w = 0;

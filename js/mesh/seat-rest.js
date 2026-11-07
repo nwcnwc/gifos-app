@@ -207,6 +207,7 @@
         const oc = ownerCoordOf(c);
         if (oc) {
           if (this.occGet(ckey(oc)) === adm) return true;
+          { const o = this.l25131Ok.get(adm); if (o !== undefined && this.TICK - o[1] <= 4 * K.L25_WAIT) { const ac = unck(o[0]); if (ac.pc === oc.pc && ac.r === oc.r) return true; } }   // L25.13.1: the placer I asked answered as a holder of the owner cell's row
           for (let j = 0; j < C; j++) if (this.occGet(ckey({ pc: oc.pc, r: oc.r, i: j })) === adm) return true;
           for (const [ck, cv] of this.cousins) if (cv === adm && ckPc(ck) === ckPc(ckey(oc))) return true;
         }
