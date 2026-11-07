@@ -291,6 +291,7 @@
     // C++: mesh.cpp:Seat::absence
     absence(n) {
       if (n <= 0) return;
+      if (n >= K.L30_SILENT && this.hasCoord && this.state === 3) { this.rmBornAt = this.TICK; this.tn = ++this.w.lv.TN_SEQ; }   // L30.5.1: back from a gap of L30_SILENT or more, a new tenancy at the cell I still hold (as take() does): my claim is as old as my thaw
       { if (this.l30) { this.l30 = false; this.l30At = this.TICK; this.l30Flips++; } this.l30Since = -1; }
       for (const [k, v] of this.live) this.live.set(k, v - n);
       for (const [k, v] of this.s1seen) this.s1seen.set(k, v - n);

@@ -549,7 +549,7 @@
           if (pcw.link && !pcw.link(x) && pcw.offer && pcw.offer(x, arg || {}) === false) { io.close(x); return false; }
           if (pcw.opened) pcw.opened(x); return true;
         case 'bye': if (pcw.byeIn) pcw.byeIn(x, arg || 'call'); return true;   // the page seam parsed {k:'pcbye'} itself
-        case 'greeter-gone': { if (x === me) return false; const s = seat(), m = s ? s.goneBye(x) : null; if (!m) return true; frame(m, peer); if (pcw.byeIn) pcw.byeIn(x, 'leave'); return true; }   // the relay's word, read as the dead greeter's goodbye and pcbye
+        case 'greeter-gone': { if (x === me) return false; const L = pcw.link ? pcw.link(x) : null; if (L && pcw.lost) { pcw.lost(x, 'greeter-gone'); return true; } const m = msg.newMsg('TRANSLOST'); m.id = x; m.to = me; m.from = -1; m.hard = true; busAt(w.TICK + 1, m); return true; }   // the relay's word is the dead greeter's HARD loss (L3.1, D5), never its goodbye: a link is closed as a lost one, no link: the loss alone
         case 'dial-failed': if (pcw.dialFailed) pcw.dialFailed(x); return true;
         case 'wake-dead': { const L = pcw.link ? pcw.link(x) : null; if (L && L.state === LK_OPEN) break; return true; }   // a dial still running has its own LINK_DIAL_FAIL
         case 'refused': if (pcw.refused) pcw.refused(x, arg || {}); return true;

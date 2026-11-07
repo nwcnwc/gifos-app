@@ -636,21 +636,6 @@
       this.hasCoord = false; this.occ.clear(); this.ledgerSeen.clear(); this.s1seen.clear(); this.holeSince.clear(); this.byeAt.clear(); this.tlClear(); this.authClear(); this.drainAt = 0; this.join();
     },
 
-    // C++: mesh_seat.inc:Seat::goneBye
-    // The relay's greeter-gone read as that greeter's goodbye: what its own leave() would say, from my view of its cell.
-    goneBye(x) {
-      if (!this.hasCoord || this.state !== 3) return null;
-      { const rm = this.relMark.get(x); if (rm !== undefined && this.TICK - rm <= K.RELOAD_MARK_T) return null; }
-      let ck = -1; for (const [k, v] of this.occ) if (v === x) { ck = k; break; }
-      if (ck === -1) return null;
-      const c = unck(ck), bm = newMsg('LEAVE'), TICK = this.TICK; bm.ck = ck; bm.id = x; bm.bye = true; bm.sig = true; bm.sigAt = TICK; bm.sigL = TICK;
-      { const t = this.tenOf.get(ck); if (t !== undefined && t[0] === x) bm.tn = t[1]; }
-      if (c.pc === 0) { bm.child = this.occGet(ckey(down(c))); for (const o of ownedLinks(c)) { const lk = ckey(o), y = this.occGet(lk); if (y >= 0 && y !== x && o.pc === 0) bm.nbrs.push({ k: lk, v: y }); } }
-      if (this.l13('L13.7')) bm.kids = bm.child >= 0;
-      for (const [gk, gv] of [...this.l3108Gone]) if (TICK - gv[1] > 16) this.l3108Gone.delete(gk);   // L3.10.8.1: a word older than its 16 ticks keeps nothing
-      this.l3108Gone.set(ck, [x, TICK]); return bm;
-    },
-
     // C++: mesh_seat.inc:Seat::leave
     leave(reload = false) {
       const id = this.id;
