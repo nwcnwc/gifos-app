@@ -1794,8 +1794,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     background: rgba(111,123,212,.10); border-radius: .45rem; padding: .55rem .7rem;
     font-size: .84rem; line-height: 1.4; margin: .2rem 0 .7rem; }
   .share-note.running { border-left-color: #37d67a; background: rgba(55,214,122,.10); }
-  #ccwsp-off { position: fixed; left: .6rem; bottom: .6rem; z-index: 39; max-width: calc(100vw - 1.2rem); padding: .45rem .8rem; border-radius: 999px;
-    border: 1px solid #ffd23c; background: rgba(20,20,32,.92); color: #fff; font: inherit; font-size: .85rem; cursor: pointer; touch-action: manipulation; }
+  #ccwsp-off { position: fixed; left: .6rem; bottom: .6rem; z-index: 39; max-width: calc(100vw - 1.2rem); padding: .1rem .15rem .1rem .45rem; border-radius: 999px;
+    display: flex; align-items: center; gap: .1rem; border: 1px solid #ffd23c; background: rgba(20,20,32,.92); color: #fff; font-size: .85rem; }
+  #ccwsp-off button { font: inherit; color: inherit; background: none; border: 0; padding: .35rem .35rem; cursor: pointer; touch-action: manipulation; text-align: left; }
+  #ccwsp-x { min-width: 2rem; min-height: 2rem; border-radius: 999px; opacity: .8; }
+  #txwsp { font-size: .78em; opacity: .85; }
+  #ccwhisper-st[data-st="failed"], #ccwhisper-st[data-st="unsupported"] { color: #ffd23c; }
+  #ccwhisper-st[data-st="ready"] { color: #37d67a; }
   #callbanner { display: none; align-items: center; gap: .6rem; padding: .4rem .9rem;
     background: var(--surface, #14141f); border-bottom: 1px solid var(--border, #2a2a3f); font-size: .85rem; }
   #callbanner button { padding: .25rem .7rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f);
@@ -3927,7 +3932,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <div class="topchip">
     <span data-al="livebadgeAria" id="livebadge" data-state="off" aria-label="You are off air"><i class="livedot" aria-hidden="true"></i><span data-t="livebadgeTxt" id="livebadge-txt">OFF AIR</span></span>
     <a data-ti="openYourGifosComputerTip" class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
-    <span data-ti="txmarkTip" data-al="sendingCaptions" id="txmark" role="status" aria-label="Sending captions" style="display:none" title="Your voice is written down and sent to the meeting as captions while your mic is on. Your browser's speech service (Google, Apple or Microsoft) hears you, unless you picked Whisper. Settings → Captions to change this.">📝 <span data-t="sendingCaptions">Sending captions</span></span>
+    <span data-ti="txmarkTip" data-al="sendingCaptions" id="txmark" role="status" aria-label="Sending captions" style="display:none" title="Your voice is written down and sent to the meeting as captions while your mic is on. Your browser's speech service (Google, Apple or Microsoft) hears you, unless you picked Whisper. Settings → Captions to change this.">📝 <span data-t="sendingCaptions">Sending captions</span><small id="txwsp"></small></span>
     <span id="onair" hidden><i class="lamp" aria-hidden="true"></i><span class="words"></span></span>
     <span class="status" id="status"><button data-t="statuscount" type="button" id="statuscount" aria-expanded="false" aria-controls="roster">Joining…</button><span id="statusrest" class="statustext"></span></span>
     <button type="button" id="hdrhand" aria-expanded="false" aria-controls="handq"></button>
@@ -4177,7 +4182,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <button data-t="invCopy" type="button" id="bc-link-copy">Copy</button>
   </div>
   <div id="callbanner"><span id="callbanner-txt"></span><button data-t="callbannerJoin" id="callbanner-join">Join the call</button></div>
-  <button data-ti="ccwspOffTip" id="ccwsp-off" type="button" style="display:none" title="Stop Whisper on this device and write captions with the browser">Whisper captions · <b>Switch to browser captions</b></button>
+  <div id="ccwsp-off" role="status" style="display:none"><button data-ti="ccwspOffTip" id="ccwsp-use" type="button" title="Pick browser captions for this device. Whisper stays installed; Settings → Captions turns it back on."><span data-t="ccwspOff">Whisper isn't running</span> · <b data-t="ccwspUse">Use browser captions</b></button><button data-al="ccwspHide" id="ccwsp-x" type="button" aria-label="Hide">✕</button></div>
   <div id="apppane">
     <div id="appbar">
       <a data-ti="openYourGifosComputerTip" class="brand" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
@@ -4312,6 +4317,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           <div class="set-ctl">
           <label class="rec-opt"><input type="radio" name="ccengine" value="browser"><span><b data-t="setCcBrowser">Browser captions</b><small data-t="setCcBrowserHelp">Instant. One fixed language, picked above; two-word lines without punctuation on some devices. Your browser may send your voice to its maker's speech service (Chrome: Google).</small></span></label>
           <label class="rec-opt"><input type="radio" name="ccengine" value="whisper"><span><b data-t="setCcWhisper">Whisper on this device</b><small data-t="setCcWhisperHelp">Any language, found by itself. Real sentences with punctuation. Your own names and words. Can translate everything to English. A sentence appears a few seconds after it is said; on a phone it is slower and uses battery. Your voice stays on this device; only the written words can go to the meeting.</small></span></label>
+          <div id="ccwhisper-st" class="set-help" role="status" style="display:none;margin:.2rem 0 0 1.6rem"></div>
           <div id="ccwhisper-weak" class="set-help" style="display:none;margin:.2rem 0 0 1.6rem"></div>
           <div id="ccwhisper" style="display:none;margin:.2rem 0 0 1.6rem">
             <div id="ccwhisper-state" class="set-help" style="margin-bottom:.4rem"></div>
@@ -4319,6 +4325,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           </div>
           <label class="rec-opt" id="cctranslate-row"><input type="checkbox" id="cctranslate"><span><b data-t="setCcEnglish">Translate everything to English</b><small data-t="setCcEnglishHelp">Whisper on this device translates every voice you hear. Your captions and your transcript show only English: lines others send in English, and this device's own translations. What you send to the meeting stays in your own language.</small></span></label>
           <p class="set-help" id="cctranslate-no" style="display:none;margin:.1rem 0 0 1.6rem" data-t="setCcEnglishNo">Whisper not supported on this browser</p>
+          <p class="set-help" id="cctranslate-need" style="display:none;margin:.1rem 0 0 1.6rem" data-t="setCcEnglishNeed">Needs Whisper installed: nothing is translated until it is.</p>
           </div>
         </div>
         <p class="set-help set-row set-wide" id="ccall-row" style="display:none"><button data-t="setCcAllOff" id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span data-t="ccallNote" id="ccall-note">Admins only — every screen shows captions. Anyone can tap Captions to hide them.</span></p>
@@ -24161,6 +24168,42 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     let sdEmptyAt = 0;   // since when my Stadium view has been EMPTY (blank-tile grace)
     const downFolds = new Map();   // receiver key -> audio fold: the sound that rides the room pack to it, its own voices left out
     const downStreams = new Map(); // receiver key -> MediaStream [room picture, that receiver's sound], kept while the tracks stand
+    // THE MIX CLOCK. A head's folds are the only road its row's voices take to the rest of the room (the row
+    // product up, the mix-minus to its mates and children), so a head whose audio graph stops silences everyone
+    // beyond its row while its pictures and links still flow, and no other seat has a path to those voices
+    // (2026-11-07: a Safari row head kept its seat with a stopped context; the Section-1 head heard nobody in row 1
+    // until that page was killed). A slow device must never break the room: every few seconds the clock of the
+    // context the folds run in is read, and one that has not moved for MIX_STALL_MS (resume() tried first) is
+    // replaced. The downward folds are cleared and the next sweep rebuilds them on the fresh context. The row
+    // product (and an L14 pack) folds inside its packer, and that product is the mix the rest of the room hears,
+    // so those packers move onto the fresh context too. The meters, the stage ear and Whisper stay where they were.
+    const MIX_STALL_MS = 4000, MIX_REBUILD_GAP_MS = 10000;
+    let mixAc = null; // the fresh context the folds moved to after a stall (null: they run in the meeting context)
+    const mixClock = { ctx: null, t: -1, stuckSince: 0, rebuilds: 0, lastAt: 0, fails: 0 };
+    function mixCtx() { if (mixAc && mixAc.state !== 'closed') return mixAc; ensureAc(); return ac; }
+    function acClockInfo() { return { mix: mixAc ? 'fresh' : 'meeting', mixSt: mixAc ? mixAc.state : null, stuckMs: mixClock.stuckSince ? Date.now() - mixClock.stuckSince : 0, rebuilds: mixClock.rebuilds, fails: mixClock.fails, agoMs: mixClock.lastAt ? Date.now() - mixClock.lastAt : null }; }
+    function mixClockCheck() {
+      if (!downFolds.size && !prodPack && !l14Packs.size) { mixClock.ctx = null; mixClock.stuckSince = 0; return; }
+      const c = mixCtx(); if (!c) return;
+      const now = Date.now(), t = +c.currentTime || 0;
+      if (mixClock.ctx !== c || t > mixClock.t) { mixClock.ctx = c; mixClock.t = t; mixClock.stuckSince = 0; return; }
+      if (!mixClock.stuckSince) { mixClock.stuckSince = now; try { const pr = c.resume(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {} return; }
+      if (now - mixClock.stuckSince < MIX_STALL_MS || now - mixClock.lastAt < MIX_REBUILD_GAP_MS) return;
+      let nc = null; try { nc = newMeetAudioContext(); } catch (e) { nc = null; }
+      mixClock.lastAt = now;
+      if (!nc) { mixClock.fails++; return; }
+      try { const pr = nc.resume(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {}
+      const old = mixAc; mixAc = nc;
+      // The product's fold is not one of downFolds. Leave it and the row mix stays on the stopped context.
+      try { if (prodPack && prodPack.reseatAudio) prodPack.reseatAudio(nc); } catch (e) {}
+      try { for (const pk of l14Packs.values()) if (pk && pk.reseatAudio) pk.reseatAudio(nc); } catch (e) {}
+      for (const f of downFolds.values()) { try { f.clear(); } catch (e) {} }
+      downFolds.clear(); downStreams.clear();
+      if (old) { try { old.close(); } catch (e) {} }
+      mixClock.rebuilds++; mixClock.ctx = null; mixClock.stuckSince = 0;
+      if (clog) clog('mix-ac-rebuild', 'n=' + mixClock.rebuilds, 'old=' + (old ? old.state : (ac ? ac.state : '-')), 'new=' + nc.state);
+      schedReconcile();
+    }
     // A receiver's stream: the room picture and that receiver's sound, one
     // container while both tracks stand (either may be absent).
     function downStream(key, v, a) {
@@ -27450,7 +27493,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         for (const h of l14Heads) {
           if (direct && direct.has(h)) continue;
           let pk = l14Packs.get(h);
-          if (!pk) { pk = MM.createPacker({ shape: 'stad', fps: compFps(), ac: (ensureAc(), ac) }).start(); l14Packs.set(h, pk); }
+          if (!pk) { pk = MM.createPacker({ shape: 'stad', fps: compFps(), ac: mixCtx() }).start(); l14Packs.set(h, pk); }
           fill(pk, h); l14Blocks(pk, h, (q) => 20 + C + q);
           if (pk.count() > 0) { const jk = shipMos('sdn', h, pk.stream, metaOf(pk)); if (jk) wanted.add(jk); }
         }
@@ -27458,7 +27501,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (iAmHead || actHead) {
         // PRODUCT = my row's live faces + my row's sub-blocks, PACKED near-square
         // (no fixed C+1 slots — the tall-product blowup is gone).
-        if (!prodPack) prodPack = MM.createPacker({ shape: 'grid', fps: compFps(), ac: (ensureAc(), ac) }).start();
+        if (!prodPack) prodPack = MM.createPacker({ shape: 'grid', fps: compFps(), ac: mixCtx() }).start();
         dbgRowFaces = []; // test observability: which pid the packer drew at each row seat
         for (let j = 0; j < C; j++) {
           let pid0 = j === c.i ? myId : (actHead && j === 0 ? null : occPid({ pc: c.pc, r: c.r, i: j }));
@@ -27576,7 +27619,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           }
           for (const [mk, uf] of mosIn) { if (mk.indexOf('subu:') !== 0) continue; const h = mk.slice(5); if (uf && uf.stream && l14Keep(h, uf)) l14A.set('u' + h, uf.stream); }
           const mixOf = (row, skip) => { const m = new Map(outA); if (row) for (const [k, v] of rowA) m.set(k, v); for (const [k, v] of subA) if (k !== skip) m.set(k, v); for (const [k, v] of l14A) if (k !== skip) m.set(k, v); return m; };
-          const fold = (key, parts) => { let f = downFolds.get(key); if (!f) { ensureAc(); if (!ac) return null; f = MM.createAudioFold(ac); downFolds.set(key, f); } foldSync(f, parts); return f; };
+          const fold = (key, parts) => { let f = downFolds.get(key); if (!f) { const mc = mixCtx(); if (!mc) return null; f = MM.createAudioFold(mc); downFolds.set(key, f); } foldSync(f, parts); return f; };
           const foldsNow = new Set();
           const avOf = (key, parts) => { foldsNow.add(key); const f = fold(key, parts); return downStream(key, roomV, f ? f.track() : null); };
           // MY ROW (and my own ear): everything but my row's voices.
@@ -29716,6 +29759,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (typeof ac !== 'undefined' && ac && typeof ensureAc === 'function') ensureAc();
       } catch (e) {}
       try { if (typeof kickPausedAudio === 'function') kickPausedAudio(); } catch (e) {}
+      try { mixClockCheck(); } catch (e) {}
     }
     function armAudioKeepAlive() {
       const kick = () => { try { keepMeetingAudio(); } catch (e) {} };
@@ -30640,6 +30684,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     let wsp = null; // my own capture, by the name the older call sites use
     let wspPaused = false; // Whisper stood down (no browser speech engine to fall back to) until re-picked or CC is turned on
+    // One way back into Whisper. Every caller (Retry, re-picking it, the
+    // phone override, turning captions on, the bot) forgets the whole
+    // stand-down, not only the sentence that explained it. It sits with the
+    // pause flag, which is what those callers clear.
+    function wspResume() {
+      wspPaused = false;
+      wspFailWhy = '';
+      wspQ.stalls = 0;
+      wspQ.behind = false;
+      if (myStatus.ccst === 'behind' || myStatus.ccst === 'paused') delete myStatus.ccst;
+    }
     // The worklet posts 4096-sample chunks off the main thread. A ScriptProcessor
     // is the fallback when this context has no AudioWorklet yet, or the module failed.
     const WSP_WORKLET_JS = [
@@ -31160,6 +31215,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // is offline): browser captions take over for this meeting. The choice
         // stays Whisper, so picking it again, or the next meeting, tries again.
         if (/could not be downloaded|Asset not available|download failed/i.test(msg)) {
+          wspFailWhy = uiText('wspErrModel', 'its model could not be downloaded');
           wspStallGiveUp(uiText('stWhisperModelFailedBrowserCaptions', 'Whisper couldn’t load its model — browser captions are on.'),
             uiText('stWhisperModelFailedPaused', 'Whisper couldn’t load its model — captions paused.'));
           return;
@@ -31255,10 +31311,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // quietly, the first time a meeting is up on a computer that lacks it
     // (WHISPER_SEED_KEY), so the app is simply there when someone picks it.
     let whisperInstalling = null;
+    // The install's progress and its last failure, kept so every repaint shows
+    // them (a note written into the panel was wiped by the next paint, and a
+    // 404 reached nobody but the console).
+    const wspInst = { note: '', frac: null, err: '' };
     function installWhisper(say) {
       if (whisperInstalling) return whisperInstalling;
-      const note = (t) => { const el = document.getElementById('ccwhisper-prog'); if (el) el.textContent = t || ''; };
-      whisperInstalling = GifOS.providers.install(WHISPER_APP_ID, (t) => note(t)).then((p) => {
+      const st = (typeof wspInst === 'object' && wspInst) || {};
+      st.err = ''; st.note = ''; st.frac = null;
+      const note = (t, f) => {
+        st.note = t || ''; st.frac = typeof f === 'number' && isFinite(f) ? f : null;
+        const el = document.getElementById('ccwhisper-prog'); if (el) el.textContent = t || '';
+      };
+      whisperInstalling = GifOS.providers.install(WHISPER_APP_ID, (t, f) => note(t, f)).then((p) => {
         if (!GifOS.providers.assigned('stt')) GifOS.providers.assign('stt', p);
         lsSet(WHISPER_SEED_KEY, 'done');
         if (say) setStatus(uiText('stOfflineCaptionsWhisperIsInstalled', '✅ Offline Captions (Whisper) is installed and ready — the model itself downloads once from gifos.app the first time captions run.'), 10000);
@@ -31266,6 +31331,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }).catch((e) => {
         const msg = (e && e.message) || String(e);
         note('⚠ ' + msg); lsSet(WHISPER_SEED_KEY, 'tried:' + Date.now());
+        // A fetch that never reached the server says "Failed to fetch": name it.
+        st.err = /failed to fetch|networkerror|load failed|network/i.test(msg) ? uiText('wspErrNetwork', 'network error, check the connection') : msg.slice(0, 160);
         if (say) setStatus('Could not install Whisper captions: ' + msg.slice(0, 160), 10000);
         throw e;
       }).then((p) => { whisperInstalling = null; paintCcState(); syncSpeech(); return p; }, (e) => { whisperInstalling = null; paintCcState(); throw e; });
@@ -31299,6 +31366,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const allowed = whisperAllowed();
       for (const r of radios) if (r.value === 'whisper') r.disabled = !allowed;
       paintTrEnBox();
+      wspPaintSafe();
       const weak = document.getElementById('ccwhisper-weak');
       if (weak) {
         if (allowed) { weak.style.display = 'none'; weak.innerHTML = ''; }
@@ -31311,8 +31379,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           document.getElementById('ccwhisper-anyway').onclick = () => {
             lsSet(CC_WHISPER_ANYWAY_KEY, '1');
             lsSet(CC_ENGINE_KEY, 'whisper');
-            wspPaused = false; wspQ.stalls = 0;
-            setStatus(uiText('stWhisperIsOnByYour', 'Whisper is on by your choice. If the call gets slow, tap “Switch to browser captions” at the bottom of the screen.'), 12000);
+            wspResume();
+            setStatus(uiText('stWhisperIsOnByYour', 'Whisper is on by your choice. If the call gets slow, pick Browser captions in Settings → Captions; Whisper also steps back by itself.'), 12000);
             paintCcState();
             syncSpeech();
           };
@@ -31325,10 +31393,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           + (IS_MOBILE ? ' <span style="color:#ffd23c">' + uiText('setCcPhoneSlow', 'On a phone a sentence can take 5 to 10 seconds to appear, and it uses battery.') + '</span>' : '');
         return;
       }
+      // A failed install offers Retry on the status line above; one button, not two.
+      const failed = !whisperInstalling && !!wspInst.err;
       state.innerHTML = uiText('setCcNeed', 'Needs the <b>Offline Captions (Whisper)</b> app — 13 MB, once per computer; the model itself downloads once from gifos.app the first time captions run, and stays on this device.')
-        + ' <button id="ccwhisper-install" class="seg" style="border:1px solid var(--accent,#7b5cff);border-radius:.4rem;color:#fff;background:var(--accent,#7b5cff)"' + (whisperInstalling ? ' disabled' : '') + '>' + uiText('setCcInstall', 'Install it now') + '</button> '
-        + '<span id="ccwhisper-prog"></span> <a href="store.html#app=' + WHISPER_APP_ID + '" target="_blank" rel="noopener" style="color:var(--accent2,#ff5caa);font-size:.8rem">' + uiText('setCcStore', 'or from the App Store') + '</a>';
-      document.getElementById('ccwhisper-install').onclick = () => { installWhisper(true).catch(() => {}); paintCcState(); };
+        + (failed ? ' ' : ' <button id="ccwhisper-install" class="seg" style="border:1px solid var(--accent,#7b5cff);border-radius:.4rem;color:#fff;background:var(--accent,#7b5cff)"' + (whisperInstalling ? ' disabled' : '') + '>' + uiText('setCcInstall', 'Install it now') + '</button> ')
+        + '<span id="ccwhisper-prog">' + (whisperInstalling ? esc(wspInst.note) : '') + '</span> <a href="store.html#app=' + WHISPER_APP_ID + '" target="_blank" rel="noopener" style="color:var(--accent2,#ff5caa);font-size:.8rem">' + uiText('setCcStore', 'or from the App Store') + '</a>';
+      const ib = document.getElementById('ccwhisper-install');
+      if (ib) ib.onclick = () => { installWhisper(true).catch(() => {}); paintCcState(); };
       armWhisperRescan();
     }
     // Translate everything to English: greyed, with the reason, where this
@@ -31341,6 +31412,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       tr.checked = ok && lsGet(CC_TRANSLATE_KEY) === '1';
       if (row) row.style.opacity = ok ? '' : '.5';
       if (no) no.style.display = ok ? 'none' : '';
+      // Whisper can run here but is not installed: the box stays live (ticking
+      // it picks Whisper) and says that nothing is translated until it is.
+      const need = document.getElementById('cctranslate-need');
+      if (need) need.style.display = ok && !whisperReady() ? '' : 'none';
     }
     function whisperSeedBlocked() {
       // A phone or a weak computer, a data-saver flag, or a cellular link does not fetch the 13 MB app on its own.
@@ -31349,12 +31424,104 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (c && (c.saveData || c.type === 'cellular' || c.type === 'wimax')) return true;
       return false;
     }
-    // The one-tap chip on the meeting surface, outside every menu, for as long
-    // as Whisper is chosen, loading or working.
+    // WHISPER'S STATE, said plainly: a person must be able to tell whether
+    // Whisper runs on this browser, and if not, why. Exactly one of: missing, installing,
+    // downloading (its model), ready, unsupported, failed (the install, or the
+    // model / a stall in this meeting, with Retry). Whisper is "chosen" by the
+    // saved choice, so a device where it cannot run still says why.
+    let wspFailWhy = ''; // why Whisper stood down in this meeting
+    const whisperChosen = () => lsGet(CC_ENGINE_KEY) === 'whisper';
+    function wspState() {
+      if (!whisperSupported()) return { k: 'unsupported' };
+      if (whisperInstalling) return { k: 'installing', frac: wspInst.frac };
+      if (!whisperReady()) return wspInst.err ? { k: 'failed', at: 'install', why: wspInst.err } : { k: 'missing' };
+      if (wspPaused) return { k: 'failed', at: 'run', why: wspFailWhy || uiText('wspErrStalled', 'it fell behind the call') };
+      const b = wspCaps.size && !wspQ.answered && window.GifOS && GifOS.providerBusy ? GifOS.providerBusy.state : null;
+      if (b) return { k: 'downloading', frac: b.frac };
+      return { k: 'ready' };
+    }
+    function wspStateText(s) {
+      if (s.k === 'unsupported') return uiText('wspStUnsupported', 'Whisper: not supported on this browser');
+      if (s.k === 'installing') return uiText('wspStInstalling', 'Whisper: installing…') + (s.frac != null ? ' (' + Math.round(s.frac * 100) + '%)' : '');
+      if (s.k === 'downloading') return s.frac != null ? uiText('wspStDownloading', 'Whisper: downloading model ({n}%)').replace('{n}', Math.round(s.frac * 100)) : uiText('wspStLoading', 'Whisper: downloading model…');
+      if (s.k === 'ready') return uiText('wspStReady', 'Whisper: ready');
+      if (s.k === 'failed') return (s.at === 'install' ? uiText('wspStInstallFailed', 'Whisper: install failed: {why}') : uiText('wspStStopped', 'Whisper stopped: {why}')).replace('{why}', s.why);
+      return uiText('wspStMissing', 'Whisper not installed');
+    }
+    // Which captions this device writes right now: Whisper, the browser's, or none.
+    function capsRunningNow() {
+      if (wspCaps.size) return 'whisper';
+      if (speechRunning()) return 'browser';
+      if (browserCaptionsMissing()) return 'none';
+      return ((capSend() && !myStatus.muted) || trWrites()) ? 'browser' : 'none';
+    }
+    const wspWorking = (k) => k === 'ready' || k === 'downloading';
+    let wspStSig = '';
+    function paintWspStatus() {
+      const chosen = whisperChosen();
+      const s = chosen ? wspState() : { k: '' };
+      const run = chosen && !wspWorking(s.k) ? capsRunningNow() : '';
+      const label = chosen ? wspStateText(s) : '';
+      const retry = s.k === 'failed';
+      const sig = [s.k, label, run, chosen && s.k === 'installing' ? wspInst.note : ''].join('|');
+      if (sig === wspStSig) return;
+      wspStSig = sig;
+      const el = document.getElementById('ccwhisper-st');
+      if (el) {
+        el.style.display = chosen ? '' : 'none';
+        el.dataset.st = s.k;
+        const now = run === 'browser' ? uiText('wspRunBrowser', 'Browser captions are running now.') : run === 'none' ? uiText('wspRunNone', 'No captions are running from this device.') : '';
+        el.innerHTML = chosen ? '<b>' + esc(label) + '</b>'
+          + (retry ? ' <button id="ccwhisper-retry" class="seg" style="border:1px solid #ffd23c;border-radius:.4rem">' + esc(uiText('wspRetry', 'Retry')) + '</button>' : '')
+          + (s.k === 'installing' && wspInst.note ? ' <small>' + esc(wspInst.note) + '</small>' : '')
+          + (now ? ' ' + esc(now) : '') : '';
+        const rb = document.getElementById('ccwhisper-retry'); if (rb) rb.onclick = wspRetry;
+      }
+      // The meeting's own place: the captions mark in the header. It shows only
+      // while this page sends or receives captions (paintTxMark), so this adds
+      // to it and never shows it by itself.
+      const tx = document.getElementById('txwsp');
+      if (tx) {
+        tx.dataset.st = s.k;
+        tx.textContent = chosen ? ' · ' + label + (run === 'browser' ? uiText('wspRunBrowserShort', ', browser captions on') : run === 'none' ? uiText('wspRunNoneShort', ', no captions from you') : '') : '';
+      }
+    }
+    // The page boots in steps, and the captions engines it reads are declared
+    // further down: until they exist the status waits for the next tick.
+    function wspPaintSafe() {
+      try { paintWspStatus(); return true; } catch (e) { if (e instanceof ReferenceError) return false; throw e; }
+    }
+    // Retry: the install again, or Whisper again after it stood down.
+    function wspRetry() {
+      if (!whisperReady()) { wspInst.err = ''; installWhisper(true).catch(() => {}); }
+      else { wspResume(); syncSpeech(); }
+      paintCcState();
+    }
+    // THE WAY BACK, only while Whisper is chosen and NOT working (not
+    // installed, failed, not supported here); never while it is ready or
+    // loading its model. It says the fact first, hides itself after
+    // WSP_CHIP_MS, comes back only when the state changes to another bad one,
+    // and once closed with ✕ stays closed for this meeting.
+    const WSP_CHIP_MS = 15000;
+    const wspChip = { k: '', at: 0, gone: false };
+    const wspChipRoom = () => { const m = /[#&]v=([^&]+)/.exec(location.hash || ''); return m ? m[1] : '-'; };
+    function wspChipGone() {
+      if (wspChip.gone) return true;
+      try { if (sessionStorage.getItem('gifos_wsp_chip_gone') === wspChipRoom()) wspChip.gone = true; } catch (e) {}
+      return wspChip.gone;
+    }
     function paintWspChip() {
       const chip = document.getElementById('ccwsp-off'); if (!chip) return;
-      const on = ((capSend() || trWrites()) && ccEngine() === 'whisper' && !wspPaused) || wspCaps.size > 0;
-      const want = on ? '' : 'none';
+      if (!wspPaintSafe()) return;
+      let show = false;
+      if (myId && whisperChosen() && (capSend() || trWrites()) && !wspChipGone()) {
+        const k = wspState().k;
+        if (k === 'missing' || k === 'failed' || k === 'unsupported') {
+          if (wspChip.k !== k) { wspChip.k = k; wspChip.at = Date.now(); }
+          show = Date.now() - wspChip.at < WSP_CHIP_MS;
+        } else wspChip.k = '';
+      }
+      const want = show ? '' : 'none';
       if (chip.style.display !== want) chip.style.display = want;
     }
     // THE MEETING COMES FIRST. A 250 ms tick that lands more than a second late
@@ -31398,15 +31565,26 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!r.checked) return;
         if (r.value === 'whisper' && !whisperAllowed()) { paintCcState(); return; } // only the explicit override turns it on here
         lsSet(CC_ENGINE_KEY, r.value === 'whisper' ? 'whisper' : '');
-        if (r.value !== 'whisper') speechGaveUp = false;
-        if (r.value === 'whisper') { wspPaused = false; wspQ.stalls = 0; wspQ.behind = false; if (myStatus.ccst === 'behind' || myStatus.ccst === 'paused') delete myStatus.ccst; } // a deliberate re-pick retries a stalled Whisper
+        if (r.value !== 'whisper') {
+          speechGaveUp = false;
+          // Picking Browser is the way back while a model is loading or answering:
+          // stop the capture and unload the provider, same as the meeting chip.
+          stopWhisper();
+          wspRelease();
+        }
+        if (r.value === 'whisper') wspResume(); // a deliberate re-pick retries a stalled Whisper and forgets why it last stopped
         if (r.value === 'whisper' && IS_MOBILE) setStatus(uiText('stOnAPhoneWhisperRuns', 'On a phone, Whisper runs on the processor: a sentence can take 5 to 10 seconds to appear, and it uses battery. Browser captions stay instant.'), 12000);
         paintCcState();
         syncSpeech();
       };
       paintCcState();
       document.getElementById('setbtn').addEventListener('click', () => { paintCcState(); paintTranscriptControls(); });
-      document.getElementById('ccwsp-off').onclick = () => { wspToBrowser('Browser captions are on. Whisper is off on this device.'); paintWspChip(); };
+      document.getElementById('ccwsp-use').onclick = () => { wspToBrowser(uiText('stBrowserCaptionsOnWhisperOff', 'Browser captions are on. Whisper is off on this device.')); paintWspChip(); };
+      document.getElementById('ccwsp-x').onclick = () => {
+        wspChip.gone = true;
+        try { sessionStorage.setItem('gifos_wsp_chip_gone', wspChipRoom()); } catch (e) {}
+        paintWspChip();
+      };
       // The quiet seed: 20 s into a meeting, on an unmetered computer, once. Idle, so it
       // does not compete with the call. A phone or a cellular link never starts it.
       setTimeout(() => {
@@ -31837,8 +32015,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // Turning captions on is the way back from a Whisper give-up: the pause
       // holds until Whisper is re-picked or CC is turned on.
       if (wspPaused) {
-        wspPaused = false; wspQ.stalls = 0; wspQ.behind = false;
-        if (myStatus.ccst === 'behind' || myStatus.ccst === 'paused') delete myStatus.ccst;
+        wspResume();
         try { syncSpeech(); } catch (e) {}
         try { paintCcState(); } catch (e) {}
       }
@@ -35424,6 +35601,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try {
         if (ac && typeof ac.close === 'function') { const c = ac; ac = null; c.close(); }
       } catch (e) {}
+      try { if (mixAc) { const c = mixAc; mixAc = null; c.close(); } } catch (e) {}
     }
     // THE FAREWELL LEAVES BEFORE THE CONNECTIONS CLOSE. A direct goodbye is
     // sealed first and sent after, and send() only queues bytes on the
@@ -36915,7 +37093,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const on = !(msg && msg.on === false);
           if (on) {
             try { localStorage.setItem('gifos_cc_engine', 'whisper'); } catch (e) {}
-            wspPaused = false;
+            wspResume();
           }
           setTrMode(on ? 'share' : 'keep');
           return { ok: true, cc: on, mode: trMode(), view: !!ccShow }; // cc: what an older bot reads back
@@ -37203,6 +37381,37 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
 
     // Test hook: lets the e2e suite observe mesh + quality state.
+    // AUDIO-OUT FORENSICS (debugDump audio, read-only): where each voice should leave the page. Every media
+    // element (the DOM ones and the detached companions on tile videos), the meeting context and its clock, the
+    // WebKit one ear, the stage ear, my Stadium's sound, every fold a head builds (sources and the bus's level now)
+    // and the composite streams' audio tracks. A deaf page (penguin, 2026-11-07) had none of this in its dump.
+    function audioDump() {
+      const tr = (t) => (t ? t.readyState[0] + (t.muted ? 'M' : '') + (t.enabled ? '' : 'X') + ':' + String(t.id).slice(0, 6) : null);
+      const trs = (st) => (st && st.getAudioTracks ? st.getAudioTracks().map(tr) : null);
+      const el = (e) => (e ? { p: !!e.paused, m: !!e.muted, v: +(+e.volume || 0).toFixed(2), rs: e.readyState, sink: e.sinkId === undefined ? null : String(e.sinkId), a: trs(e.srcObject), bl: blockedAudio.has(e) } : null);
+      const els = [];
+      for (const v of document.querySelectorAll('video, audio')) {
+        if (els.length >= 40) break;
+        const t = v.closest && v.closest('[data-peer],[data-row]');
+        els.push(Object.assign({ who: t ? String(t.dataset.peer || ('row:' + t.dataset.row)).slice(0, 10) : (v.id || v.tagName.toLowerCase()), tag: v.tagName[0] }, el(v), { aud: v._aud ? el(v._aud) : undefined }));
+      }
+      const foldOf = (f) => (f ? { pk: f.peakNow ? f.peakNow() : null, src: f.info ? f.info() : (f.keys ? f.keys() : null), out: tr(f.track ? f.track() : null) } : null);
+      const folds = {}; for (const [k, f] of downFolds) folds[k] = foldOf(f);
+      const comp = {}; for (const [k, m] of mosIn) comp[k] = { via: String(m.via || '').slice(0, 8), a: trs(m.stream), el: m.el ? { p: !!m.el.paused, rs: m.el.readyState } : null };
+      const sb = {}; for (const [k, m] of mosStandby) sb[k] = { via: String(m.via || '').slice(0, 8), a: trs(m.stream) };
+      let sink = null; try { sink = ac && ac.sinkId !== undefined ? (typeof ac.sinkId === 'object' ? ((ac.sinkId && ac.sinkId.type) || 'obj') : String(ac.sinkId)) : null; } catch (e) {}
+      return {
+        ac: ac ? { st: ac.state, sink, t: +(+ac.currentTime || 0).toFixed(2), clock: acClockInfo() } : null,
+        act: { sticky: !!(navigator.userActivation && navigator.userActivation.hasBeenActive), kickArmed: !!audioKickArmed, blocked: blockedAudio.size, vis: document.visibilityState },
+        mix: (() => { try { return Object.assign({}, mix); } catch (e) { return null; } })(), waiting: (typeof iAmWaiting === 'function') ? iAmWaiting() : null,
+        mic: localStream ? trs(localStream) : null,
+        els, wkEar: (typeof wkEar !== 'undefined' && wkEar) ? { el: el(wkEar.el), fold: foldOf(wkEar.fold) } : null,
+        stageEar: stageEar ? { el: el(stageEar.el), fold: foldOf(stageEar.fold) } : null,
+        stadium: sdViewSt ? { a: trs(sdViewSt) } : null,
+        prod: prodPack && prodPack.stream ? { a: trs(prodPack.stream), pk: prodPack.peakNow ? prodPack.peakNow() : null } : null,
+        folds, comp, standby: sb,
+      };
+    }
     window.__gifosVideo = {
       seedGalleryForTest: (spec) => seedGalleryForTest(spec),
       // A seat whose device never sent a name (joined from a link, no name typed).
@@ -38033,6 +38242,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           d5: s ? { tl: [...s.translost.entries()].map(([k, at]) => [k, s.env.TICK - at]), pa: [...s.probeAck.entries()].map(([k, at]) => [k, s.env.TICK - at]), log: (s.tlLog || []).map(([k, tk, why]) => k + '@-' + (s.env.TICK - tk) + ':' + why) } : null,
           consent: (typeof allConsent === 'function' ? allConsent() : null), hbVia,
           mosaic: mos, roster: rosterIds.map(info),
+          audio: (() => { try { return audioDump(); } catch (e) { return { err: String(e).slice(0, 80) }; } })(),
         };
       },
       mosaic: () => { const c = meshCoord(); const T = net.topo; const tgt = (co) => { if (!co) return null; const pid = occPid(co); const p = pid && peers.get(pid); return { pid: (pid||'').slice(0,6), has: !!p, conn: p && p.connected, dc: !!(p && p.dc && p.dc.readyState === 'open') }; };

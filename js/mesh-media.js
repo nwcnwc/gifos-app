@@ -278,7 +278,7 @@
     const canvas = (typeof document !== 'undefined') ? document.createElement('canvas') : null;
     const ctx = canvas ? canvas.getContext('2d') : null;
     const tiles = new Map(); // id -> { ord, el, streamId, n, cols }
-    const fold = (opts.ac && createAudioFold(opts.ac)) || null;
+    let fold = (opts.ac && createAudioFold(opts.ac)) || null;
     let timer = null, last = 0, cost = 0, costAvg = 0, costN = 0, drawn = 0, dropped = 0, active = true;
     let G = 1, R = 1, lastNonEmpty = 0; // lastNonEmpty: empty-packer linger (see paint)
     // Stad canvas height is in ROW steps, not raw rows. A join that only
@@ -691,7 +691,7 @@
         // Only a block that names its cells can hide any: with no ids every cell shows, never a blank in their place.
         let hid = null;
         if (ids && meta && Array.isArray(meta.hide) && meta.hide.length) { const h = new Set(meta.hide.map(String)); for (let j = 0; j < n; j++) if (ids[j] != null && h.has(String(ids[j]))) (hid || (hid = new Set())).add(j); }
-        tiles.set(id, { ord, el, streamId: sid, n, cols, lbl: (meta && meta.lbl) || null, fit: (meta && meta.fit) || null,
+        tiles.set(id, { ord, el, stream, streamId: sid, n, cols, lbl: (meta && meta.lbl) || null, fit: (meta && meta.fit) || null,
           dark: !!(meta && meta.dark), blur: Math.max(0, Math.min(2, (meta && meta.blur) | 0)), ids, hid });
       },
       // Update just the overlay (name/hand/talking) without touching the source
@@ -759,6 +759,27 @@
         tick();
         return pk;
       },
+      // The mix lives in the context this packer was born on. A head whose context has stopped must move
+      // the fold to a fresh one: the picture track stays, and only the audio track in the same stream changes,
+      // so the sender can replace the voice without minting a new picture.
+      reseatAudio(ac2) {
+        if (!fold || !ac2) return false;
+        const kept = [];
+        for (const [id, t] of tiles) kept.push([id, t.stream]);
+        try { fold.clear(); } catch (e) {}
+        fold = createAudioFold(ac2);
+        const g = opts.gain == null ? 1 : opts.gain;
+        for (const [id, st] of kept) if (st) { try { fold.add('t' + id, st, g); } catch (e) {} }
+        const aTrack = fold.track();
+        if (pk.stream && aTrack) {
+          try {
+            for (const t of pk.stream.getAudioTracks()) if (t !== aTrack) pk.stream.removeTrack(t);
+            if (!pk.stream.getAudioTracks().some((t) => t === aTrack)) pk.stream.addTrack(aTrack);
+          } catch (e) {}
+        }
+        return true;
+      },
+      peakNow() { return fold && fold.peakNow ? fold.peakNow() : 0; },
       stop() {
         if (timer) { timer(); timer = null; }
         if (fold) fold.clear();
@@ -932,6 +953,9 @@
       setGain(key, v) { const s = srcs.get(key); if (s && s.gain.gain.value !== v) s.gain.gain.value = v; },
       clear() { for (const k of new Set([...srcs.keys(), ...waiting.keys()])) this.remove(k); },
       keys: () => [...srcs.keys()],
+      // Forensics (debugDump audio): the bus's peak in the tap's current window, and each source's track and gain.
+      peakNow() { let pk = 0; try { tap.getFloatTimeDomainData(tapBuf); for (let i = 0; i < tapBuf.length; i++) { const a = Math.abs(tapBuf[i]); if (a > pk) pk = a; } } catch (e) {} return +pk.toFixed(3); },
+      info() { const o = []; for (const [k, r] of srcs) o.push({ k, g: +r.gain.gain.value.toFixed(2), tr: r.track ? r.track.readyState + (r.track.muted ? '/muted' : '') + (r.track.enabled ? '' : '/off') : null }); for (const k of waiting.keys()) o.push({ k, wait: true }); return o; },
     };
   }
 

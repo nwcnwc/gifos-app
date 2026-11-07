@@ -2986,7 +2986,9 @@
   }
   // Exposed so the indicator can be asserted directly rather than inferred from
   // a screenshot — same reason the store exports its build decision.
-  GifOS.providerBusy = { start: busyStart, note: busyNote, end: busyEnd, get showing() { return !!busy.el; }, get text() { return busy.el ? busy.noteEl.textContent + ' | ' + busy.subEl.textContent : ''; } };
+  GifOS.providerBusy = { start: busyStart, note: busyNote, end: busyEnd, get showing() { return !!busy.el; }, get text() { return busy.el ? busy.noteEl.textContent + ' | ' + busy.subEl.textContent : ''; },
+    // What a waiting page can say itself (the meeting's Whisper status): null while idle.
+    get state() { return busy.n ? { name: busy.name, note: busy.note, frac: busy.frac } : null; } };
 
   // How long this provider took last time, so "warming up" can carry a number
   // instead of asking the user to guess. Cold (weights not loaded yet) and warm
