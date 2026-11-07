@@ -73,6 +73,8 @@
       if (m.from >= 0 && m.from !== id && m.byes.length > K.L26_LIST) { lv.HM_BIG_TAKEN++; }
       if (m.from >= 0 && m.from !== id && (seatM.l13Frame(m) || m.t === 'MEETACK')) this.callBook.noteIn(m.from, TICK);   // L23
       if (!this.l26Check(m)) { if (m.byes.length > K.L26_LIST) lv.HM_BIG_TAKEN--; lv.L26_REFUSED++; return; }   // L26
+      if ((m.t === 'HELLO' || m.t === 'CLAIM') && m.id >= 0 && m.id !== id && m.from === m.id && m.sig && m.ck && !m.l10E && !m.dgOnly) this.digMoverWord(m.id, m.ck);   // D7.x
+      if (m.t === 'HELLO' && m.mv && m.id !== id) return;   // D7.x: a mover's notice is that and nothing else
       this.framesInT[mtNum(m.t) & 63]++;   // measurement only (`digtop`)
       this.framesIn++;   // GAUGE only
       if (roomTerm(this, 1) && !(m.l10E || m.dgOnly) && m.c7Min >= 0 && m.id >= 0 && m.id !== id && (m.t === 'HELLO' || m.t === 'PHONE' || m.t === 'CONFIRM' || m.t === 'LEAVE' || m.t === 'PONG') && this.l42Own(m)) { this.l828Ring.set(m.id, [m.c7Min, TICK]); if (this.l828Ring.size > 256) this.l828Ring.clear(); }   // L8.28

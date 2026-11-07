@@ -185,6 +185,7 @@
         }
         this.l815N = w;
       }   // L8.15: the held arrival yield
+      this.d52Tick();
       this.redialTick();   // L3.8: dial back an owned link my transport lost
       this.serveHeld();    // L7.5: the seekers I hold, served again
       this.l827Note();       // L8.27: my ring's name over time

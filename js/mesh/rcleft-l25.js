@@ -102,6 +102,8 @@
       const oc = this.coord.pc === 0 ? null : ownerCoordOf(this.coord); if (!oc) return;
       if (this.l25132Q < 0) {
         if (this.l25Nc >= 0 && this.l25Ck === ckey(this.coord) && this.TICK - this.l25At > K.L25_WAIT && this.TICK - this.l25At <= 4 * K.L25_WAIT && this.l25132For !== this.l25At) {
+          const lb = this.l152Bye.get(this.l25Nc); const hop = this.probeHop(oc, this.occGet(ckey(oc)));   // re-read only a question whose rival's goodbye named this cell, and only when the next hop is still the arbiter that did not answer.
+          if (lb === undefined || lb[0] !== ckey(this.coord) || lb[1] < this.l25At - K.L25_WAIT || hop !== this.l25By) { this.l25132For = this.l25At; this.trace('L25.13.2-HOLD', this.id, this.coord, 'rival=%d hop=%d arbiter=%d', this.l25Nc, hop, this.l25By); return; }
           this.l25132For = this.l25At; this.l25132Q = this.l25Nc; this.l25132Ck = ckey(oc); this.l25132Old = this.occGet(this.l25132Ck); this.l25132At = this.TICK; this.routeToProbe(oc);
           this.trace('L25.13.2-REASK', this.id, this.coord, 'rival=%d arbiter=%d', this.l25132Q, this.l25By);
         }
@@ -109,6 +111,7 @@
       }
       if (this.TICK - this.l25132At > 4 * K.L25_WAIT) { this.l25132Q = -1; return; }
       const h = this.occGet(this.l25132Ck); if (h < 0 || h === this.id || h === this.l25132Old || this.l25WitPend || (this.TICK - this.l25At <= K.L25_WAIT && this.l25Nc >= 0 && this.l25Ck === ckey(this.coord) && this.l25At !== this.l25132For)) return;
+      if (this.l25Nc >= 0 && this.l25Nc !== this.l25132Q) { this.l25132Q = -1; return; }   // a question about a different rival is open: do not re-open the saved one over it
       const q = newMsg('CHALLENGE'); q.nc = this.l25132Q; q.ck = ckey(this.coord); this.l25132Q = -1; this.l25Ask(q, h); this.trace('L25.13.2-ASKED', this.id, this.coord, 'arbiter=%d rival=%d', h, q.nc);
     },
 

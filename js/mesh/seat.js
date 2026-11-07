@@ -126,7 +126,7 @@
   // C++: mesh.cpp:signedBy
   function signedBy(m, who) { return who >= 0 && m.sig && m.id === who; }
   // C++: mesh.cpp:DEATH_WHY
-  const DEATH_WHY = Object.freeze(['ack-horizon', 'child-silent', 'drain-sweep', 'head-early', 'owner-early', 'ring-dead', 'ring-dead-left', 'tlsweep', 'phantomclr', 'phantomclr-deep', 'sit-ttl-ghost']);
+  const DEATH_WHY = Object.freeze(['ack-horizon', 'child-silent', 'drain-sweep', 'head-early', 'owner-early', 'ring-dead', 'ring-dead-left', 'tlsweep', 'phantomclr', 'phantomclr-deep', 'sit-ttl-ghost', 'vac-word']);
   // C++: mesh.cpp:deathWhy
   function deathWhy(why) { return DEATH_WHY.includes(why); }
   // C++: mesh_ring.inc:islandStand
@@ -278,6 +278,7 @@
     occDrop(k, why) {
       if (this.occ.has(k)) this.f.fabricVerdict(this.id, k, this.occGet(k), why);
       if (this.occ.has(k) && deathWhy(why)) { if (this.hasCoord && this.coord.pc === 0 && ckPc(k) === 0 && this.occGet(k) >= 0) this.digGone.set(k, [this.occGet(k), this.TICK]); this.digForget(k); if (this.hasCoord && this.coord.pc === 0) this.rootFold(true); }
+      if (this.occ.has(k) && (deathWhy(why) || why === 'leave' || why === 'goodbye' || why === 'mate-unreach') && this.hasCoord && this.coord.pc === 0 && this.coord.i === 0 && ckPc(k) === 0 && ckR(k) === this.coord.r && ckI(k) !== 0) { const x = this.occGet(k); if (x >= 0 && x !== this.id) { if (this.vacOut.size >= C * C) this.vacOut.delete(this.vacOut.keys().next().value); this.vacOut.set(k, [x, this.TICK]); } }   // D5.2 (headword.js): a death verdict on a cell of my row is told to my row
       if (this.occ.has(k) && deathWhy(why) && ckPc(k) === 0) this.trace('OCC-DEATH', this.id, unckey(k), 'gone=%d why=%s', this.occGet(k), why);   // forensics: a Section-1 occupant read dead, by whom and why
       if (this.occ.has(k) && deathWhy(why)) { const x = this.occGet(k); if (x >= 0 && x !== this.id) this.memo.set(k, { id: x, tok: this.pinned.has(x) ? ins(this.pinned, x, () => 0) : 0, at: this.TICK }); }
       if (this.occ.has(k) && deathWhy(why)) { const kf = this.kidful.get(k); if (kf !== undefined && kf) { this.kidMemo.set(k, this.TICK); if (this.kidMemo.size > 64) eraseFirst(this.kidMemo); } }

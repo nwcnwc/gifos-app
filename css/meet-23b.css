@@ -541,21 +541,15 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
 #help-modal .name-box { padding: 10px 12px; }
 #help-modal h3 { margin: 0 0 6px; font-size: 1.15rem; }
 #help-modal .help-scroll { max-height: calc(100dvh - 250px); }
-/* The meeting help list shows its controls without scrolling. Two columns
-   keep that list inside the card on a short desktop and on a phone.
-   The people roster may still scroll; this list may not.
-   help-meet is the meeting story only. A broadcast story is longer, and
-   columns on it scroll sideways, so it keeps the vertical scroller. */
-#help-modal .help-scroll.help-meet { columns: 2; column-gap: 14px; }
-#help-modal .help-scroll.help-meet li,
-#help-modal .help-scroll.help-meet p,
-#help-modal .help-scroll.help-meet h4 { break-inside: avoid; }
+/* The meeting help list is one column that scrolls UP AND DOWN inside the
+   card (Close stays on screen). It was two CSS columns under a max-height;
+   columns under a height cap overflow into a third column to the SIDE as soon
+   as the text grows by a line (the Float line did), and a sideways scroll is
+   never acceptable on a sheet. */
 #help-modal .help-scroll.help-meet h4 { margin: .3rem 0 .1rem; font-size: .92rem; }
 #help-modal .help-meet .help-list { margin: 0 0 .25rem; }
 #help-modal .help-meet .help-list li { line-height: 1.25; padding: 0 0 1px .85rem; font-size: 13px; }
 #help-modal .help-meet p { margin-bottom: .25rem; font-size: 13px; line-height: 1.3; }
-/* A phone in portrait gives the list 35px more height, so a wider system font
-   (DejaVu on some Linux phones) still keeps the last heading in column two. */
 @media (max-width: 700px) and (min-height: 600px) {
   #help-modal .help-scroll.help-meet { max-height: calc(100dvh - 215px); }
 }

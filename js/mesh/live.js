@@ -335,6 +335,7 @@
         if (isDownKid) p.dgEcho = this.pubDig(this.downUsed);
         else if (this.coord.pc !== 0 && this.coord.i === 0) { const it = this.rowUsed.get(ckey(m.coord)); if (it !== undefined) p.dgEcho = this.pubDig(it); }
       }
+      if (this.coord.pc === 0 && this.coord.i === 0 && m.coord.pc === 0 && m.coord.r === this.coord.r && this.vacOut.size) this.d52Out(p);   // D5.2
       this.emit(m.id, p);   // p.coord: my coord, so the phoner gains FIRST-HAND liveness for me
       if (!l810 && prev >= 0 && prev !== m.id) { const y = newMsg('YIELD'); y.tag = 1695; y.ck = ck; y.id = id; if (this.f.fabricDoors()) { y.nc = m.id; y.born = this.claimBorn(m); } this.emit(prev, y); }   // L8.10
     },
@@ -478,7 +479,7 @@
       const cm = colMates(this.coord); for (let q = 0; q < C - 1; q++) { const t = this.occGet(ckey(cm[q])); if (t >= 0 && t !== this.id) tg.add(t); }
       // § G ROOT FOLD: the digest table rides S1SYNC, relayed at the author's stamp and a grown relative age.
       const digs = this.l10Digs();
-      for (const t of tg) { const m = newMsg('S1SYNC'); if (!early) m.ent = ents.map((e) => ({ ...e })); m.digs = digs.map(digM.cloneDigE); m.l10E = early; this.emit(t, m); }
+      for (const t of tg) { const m = newMsg('S1SYNC'); if (!early) m.ent = ents.map((e) => ({ ...e })); m.digs = digs.map(digM.cloneDigE); m.l10E = early; if (!early && this.vacSeen.size) this.d52Fh(m); this.emit(t, m); }
     },
 
     // C++: mesh_seat.inc:Seat::l13MateGone

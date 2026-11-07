@@ -513,9 +513,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 <meta name="apple-mobile-web-app-title" content="GifOS">
 <script id="gifos-load-gate">/* Load completeness: record every <script src> that failed to load (error events do not bubble: capture on window), and every script that threw while a failed one was missing. startMesh() checks this before it seats anything (see unitsGate). */(function(){var g=window.__gifosLoadGate={failed:[],threw:[],tries:0,state:'ok',trace:[]};
 function key(u){try{var x=new URL(u,location.href);return x.pathname.replace(/^\//,'');}catch(e){return String(u);}}
+/* OPTIONAL: a theme OVERRIDE file (themes/<label>/theme.js, icons.js, eggs.js, wallpaper.js; js/gifos-themes.js asks for one per host label, any label works) may be absent: that is a clean fallback to the base theme, never a failed load. The base themes/*.js stay required. */
+function opt(k){return /^(?:versions\/[^\/]+\/)?themes\/[^\/]+\/(?:theme|icons|eggs|wallpaper)\.js$/i.test(k);}
 /* The offline layer (sw.js) answers an uncached script with an EMPTY 200 when the network fails: no error event, a unit that never ran. A script that arrives with no body counts as failed too. */
-try{new PerformanceObserver(function(l){l.getEntries().forEach(function(en){try{if(en.initiatorType==='script'&&en.decodedBodySize===0&&/\.js$/.test(new URL(en.name).pathname)){var k=key(en.name);if(g.failed.indexOf(k)<0)g.failed.push(k);}}catch(x){}});}).observe({type:'resource',buffered:true});}catch(e){}
-window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagName==='SCRIPT'&&t.src){var k=key(t.src);if(g.failed.indexOf(k)<0)g.failed.push(k);}else if(e&&e.filename&&g.failed.length){var f=key(e.filename);if(g.threw.indexOf(f)<0)g.threw.push(f);}}catch(x){}},true);})();</script>
+try{new PerformanceObserver(function(l){l.getEntries().forEach(function(en){try{if(en.initiatorType==='script'&&en.decodedBodySize===0&&/\.js$/.test(new URL(en.name).pathname)){var k=key(en.name);if(!opt(k)&&g.failed.indexOf(k)<0)g.failed.push(k);}}catch(x){}});}).observe({type:'resource',buffered:true});}catch(e){}
+window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagName==='SCRIPT'&&t.src){var k=key(t.src);if(!opt(k)&&g.failed.indexOf(k)<0)g.failed.push(k);}else if(e&&e.filename&&g.failed.length){var f=key(e.filename);if(g.threw.indexOf(f)<0)g.threw.push(f);}}catch(x){}},true);})();</script>
 <script src="js/sw-register.js" defer></script>
 <script src="js/dialog.js" defer></script>
 <script src="js/build.js" defer></script>
@@ -4711,6 +4713,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/mesh/id.js" defer></script>
   <script src="js/mesh/ijoin.js" defer></script>
   <script src="js/mesh/burst.js" defer></script>
+  <script src="js/mesh/headword.js" defer></script>
   <script src="js/mesh/instant.js" defer></script>
   <script src="js/mesh/island.js" defer></script>
   <script src="js/mesh/lguard-seat.js" defer></script>
@@ -8063,12 +8066,25 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (pending > 1000) d += (t0 <= loopRanAt ? pending : Math.min(pending, now - t0));
       return d;
     };
+    // The seat's death verdicts the d5 display guard (roomStillNames) is still holding off, pid -> first time held
+    // (d5Verdict, d5Recheck). Every entry is a POSITIVE verdict drained from the seat (fabricVerdict, DEATH_WHY);
+    // the page's own silence never puts one here.
+    const d5Guarded = new Map();
     const stHold = (pid) => {
       const st = statusOf.get(pid);
       if (!st) return false;
       const seen = stSeen(st), debt = holdDebtSince(seen), age = Date.now() - seen - debt;
       const note = (why) => { if (typeof heldWhyNote === 'function') heldWhyNote(pid, why, age, debt); };
       if (age < 15000) { if (age + debt >= 15000) note('fresh-by-debt'); return true; }
+      // THE SEAT'S DEATH VERDICT ENDS THE HOLDOVER (Nathan 2026-11-07). The away and link holdovers carry a member
+      // the page merely has not heard from. Once the seat has POSITIVELY confirmed them dead (its own D5 verdict,
+      // drained into d5Guarded), only their own word holds them: the same predicate the display guard reads, so the
+      // sweep that lets the guard confirm them gone is the sweep the roster, the count and the tile let go. Silence
+      // alone never ends a holdover here: a frozen or away phone with no verdict keeps it.
+      if (typeof d5Guarded === 'object' && d5Guarded && d5Guarded.has(pid)) {
+        const heard = typeof roomStillNames === 'function' && roomStillNames(pid) === true;
+        note(heard ? 'seat-dead-heard' : 'seat-dead'); return heard;
+      }
       if (age >= HOLDOVER_MS) { note('past-holdover'); return false; }
       const p = peers.get(pid);
       // A PAIR THAT CARRIES NO BEAT DOES NOT HOLD A STATUS OPEN. Transport
@@ -8569,7 +8585,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { meshNode && meshNode.stop(); } catch (e) {}
       try { if (localStream) localStream.getTracks().forEach((t) => t.stop()); } catch (e) {}
       try { stopRoomClocks(); } catch (e) {}
-      for (const pid of Array.from(peers.keys())) { try { dropPeer(pid); } catch (e) {} }
+      for (const pid of Array.from(peers.keys())) { try { dropPeer(pid); } catch (e) {} } if (typeof clearRosterTiles === 'function') clearRosterTiles();
       try { releaseAudioContext(); } catch (e) {}
       const cm = document.getElementById('closed-modal'); if (cm) cm.style.display = 'flex';
     }
@@ -9517,7 +9533,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // pass, and rebuilding identical spans drops keyboard focus from the
       // .stopshare chip (role=button) and flashes every chip for nothing.
       const chipHtml = chips.join('');
-      if (t.chipsHtml !== chipHtml) { t.chipsHtml = chipHtml; t.chips.innerHTML = chipHtml; reactStats.chipWrites++; }
+      // The tile keeps this writer, so a held tile's "Reconnecting…" (holdRosterTile) goes through the same guard and
+      // chipsHtml never goes stale. It is the page's one writer of a tile's chips (repaint-cascade counts it).
+      if (typeof t.writeChips !== 'function') t.writeChips = (h) => { if (t.chipsHtml !== h) { t.chipsHtml = h; t.chips.innerHTML = h; reactStats.chipWrites++; } };
+      t.writeChips(chipHtml);
       try { paintTileChrome(t, id, isMe, st); } catch (e) {}
       const dark = rowFaceDark(st) || !!gCam || (!isMe && typeof shareBlocked === 'function' && !!shareBlocked(id));
       if (dark && t.avatar && typeof GifOS !== 'undefined' && GifOS.meetViews && GifOS.meetViews.paintShade) {
@@ -9621,6 +9640,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       remoteTiles.sort((a, b) => (parseFloat(a.style.order) || 0) - (parseFloat(b.style.order) || 0));
       let nRemote = 0;
       for (const [, p] of peers) if (!(p && p.held)) nRemote++;
+      if (typeof rosterTiles === 'object' && rosterTiles) for (const t of rosterTiles.values()) if (t && t.parentNode) { remoteTiles.push(t); nRemote++; } // held "Reconnecting…" faces take their place in the row
       document.body.classList.toggle('has-peers', nRemote > 0);
       if (grid) grid.setAttribute('data-remotes', String(nRemote));
       remoteTiles.forEach((t, i) => {
@@ -11503,6 +11523,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function shownPeerCount() {
       let n = 0;
       for (const p of peers.values()) if (p && !p.headless && p.tile && p.tile.parentNode) n++;
+      if (typeof rosterTiles === 'object' && rosterTiles) for (const t of rosterTiles.values()) if (t && t.parentNode) n++; // a held "Reconnecting…" face
       return n;
     }
     // Repaint a tile whose reconnecting verdict changed (rides the sweep).
@@ -11560,6 +11581,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       };
       try { if (meTile && meTile.tile) take('me', meTile.tile); } catch (e) {}
       for (const [pid, p] of peers) take(pid, p && p.tile);
+      if (typeof rosterTiles === 'object' && rosterTiles) for (const [pid, t] of rosterTiles) take(pid, t); // a held "Reconnecting…" face is on screen
       return n;
     }
     function headerCount() { const h = (meshNode && meshNode.byesHeld) ? meshNode.byesHeld() : 0; return Math.max(displayCount() - h, facesOnScreen()); }
@@ -14597,6 +14619,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // learned it. Use the name already heard, so the face and the line
       // agree from the start.
       if (!name && rosterNames[peerId]) name = rosterNames[peerId];
+      if (typeof dropRosterTile === 'function') dropRosterTile(peerId, 'new-pair'); // a new pair's tile takes the held one's place (typeof: lifted makePeer)
       // An outsider's knock never puts a face on a seated page: no face until a channel opens or the mesh seats it.
       // Seated, a dial my seat asked for on its own (a HELLO to a greeter the relay still lists, a door, an audit) is no face either:
       // the relay lists a frozen page until its socket closes, so a dead seat's id came back on the grid and in the count.
@@ -14621,6 +14644,45 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // keeps the status everyone holds of them — forgetting it made the next
     // beat read as a newcomer's first.
     let doorUnreachAt = 0;   // when a door I knocked closed without ever connecting (the knocker's own veil reads it)
+    // THE TILE FOLLOWS THE ROSTER, AS THE COUNT DOES (Nathan 2026-11-07). A row-mate's pair can drop while the member
+    // is still here (stillHere): a door retired, a pc that failed under a frozen phone. The count keeps them while the
+    // roster names them (stHold's holdover), so the face stays too, as "Reconnecting…" with their letter, until the
+    // roster lets them go (the holdover ends, or the seat's confirmed death does, through stHold and confirmGone).
+    // A new pair to them takes the place of the held tile (makePeer). Tile and count read one input: rosterIds.
+    const rosterTiles = new Map();   // pid -> the held tile of a member whose pair dropped while the roster named them
+    function holdRosterTile(pid, p) {
+      const t = p.tile;
+      try { if (p.video) { p.video.srcObject = null; } } catch (e) {}
+      try { t.classList.add('reconnecting'); t.classList.add('cam-off'); t.classList.add('rhold'); t.dataset.rhold = '1'; } catch (e) {}
+      try { if (typeof p.writeChips === 'function') p.writeChips('<span class="warn">⟳ Reconnecting…</span>'); } catch (e) {}   // the one diff-guarded writer updateTile left on the tile
+      rosterTiles.set(pid, t);
+      if (typeof clog === 'function') clog('tile-held ' + String(pid).slice(0, 6) + ' (rostered, pair dropped)');
+    }
+    function dropRosterTile(pid, why) {
+      const t = rosterTiles.get(pid);
+      if (!t) return false;
+      rosterTiles.delete(pid);
+      try { if (t.parentNode) t.remove(); } catch (e) {}
+      if (why && typeof clog === 'function') clog('tile-held-off ' + String(pid).slice(0, 6) + ' ' + why);
+      return true;
+    }
+    function clearRosterTiles() { for (const pid of Array.from(rosterTiles.keys())) dropRosterTile(pid); }
+    // After every roster change: a held tile goes with its member's roster entry, when a new pair to them carries a
+    // tile of its own, and when the seat places them outside my row (a stadium face, not a row tile).
+    function sweepRosterTiles() {
+      if (!rosterTiles.size) return false;
+      let changed = false;
+      const s = typeof meshSeat === 'function' ? meshSeat() : null, c = typeof meshCoord === 'function' ? meshCoord() : null;
+      for (const pid of Array.from(rosterTiles.keys())) {
+        let why = !(Array.isArray(rosterIds) && rosterIds.includes(pid)) ? 'unrostered' : peers.has(pid) ? 'new-pair' : null;
+        if (!why && s && s.occ && c) {
+          try { for (const [k, v] of s.occ) if (v === pid) { const cc = net.topo.unck(k); if (cc.pc !== c.pc || cc.r !== c.r) why = 'not-row'; break; } } catch (e) {}
+        }
+        if (why) { dropRosterTile(pid, why); changed = true; }
+      }
+      if (changed) { try { layout(); } catch (e) {} }
+      return changed;
+    }
     function dropPeer(peerId, stillHere) {
       const p = peers.get(peerId);
       if (!p) return;
@@ -14643,7 +14705,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (p.neverUp === true && !linkTo(peerId) && (p.boot || !meshKnows(peerId))) doorOffGrid.add(p.id);
       { const pc0 = p.pc; if (saidBye) setTimeout(() => { try { pc0.close(); } catch (e) {} }, 300); else { try { pc0.close(); } catch (e) {} } }   // the goodbye leaves before the close
       releaseAudio(p.video);
-      p.tile.remove();
+      // A member the roster still names keeps a face while the count keeps them (rosterTiles, above).
+      const tileShown = !!(p.tile && p.tile.parentNode && !(p.tile.style && p.tile.style.display === 'none'));
+      if (stillHere && !leaving && !p.headless && tileShown && Array.isArray(rosterIds) && rosterIds.includes(peerId) && typeof holdRosterTile === 'function') holdRosterTile(peerId, p);
+      else p.tile.remove();
       peers.delete(peerId);
       // A lifted dropPeer has no inbox. typeof stays quiet when the name is absent.
       if (typeof avInboxes !== 'undefined' && avInboxes && typeof avInboxes.delete === 'function') avInboxes.delete(peerId);
@@ -15820,7 +15885,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // A drained death the guard skipped is kept (pid -> first skip time) and judged again each sweep: once the room stops naming
     // the member (their presence past the window) it is confirmed gone d5, once. Back in the seat's occ, or already confirmed: forgotten.
-    const d5Guarded = new Map();
+    // (d5Guarded is declared beside stHold, which reads it: a guarded member is one the seat has confirmed dead.)
     function d5Verdict(pid) {
       if (!pid || pid === myId) return;
       if (!roomStillNames(pid)) { d5Guarded.delete(pid); confirmGone(pid, 'd5'); }
@@ -15860,6 +15925,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (typeof parkMod === 'function') parkMod(pid);
       delete modTable[pid];
       rosterIds = rosterIds.filter((x) => x !== pid); // the roster view drops them NOW, not next tick
+      if (typeof dropRosterTile === 'function') dropRosterTile(pid, why); // and a held tile with it (typeof: lifted confirmGone)
       recSrcDirty = true;
       // A change in my view closes no real pc: the pc laws close an open one with a goodbye once the seat stops naming it.
       { const q = peers.get(pid); if (q && why === 'd5' && q.dc && q.dc.readyState === 'open') { doorOffGrid.add(pid); if (q.tile) q.tile.remove(); layout(); reactRoomState(); } else if (q) dropPeer(pid); }   // tile + meters + consent react inside
@@ -16208,6 +16274,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const fromOcc = new Set(ids);
       for (const [pid] of statusOf) if (pid !== myId && stHold(pid) && notTomb(pid)) ids.add(pid);
       rosterIds = Array.from(ids);
+      if (typeof sweepRosterTiles === 'function') sweepRosterTiles(); // a held tile leaves with its roster entry, in the same pass as the count (typeof: lifted renderFromOcc)
       rosterBuild.at = Date.now(); rosterBuild.n++; rosterBuild.fromOcc = fromOcc;
       // A pocketed phone blocks clear video for up to a minute, then drops
       // out of this set. Repaint then, or No blur stays pending after the
@@ -17761,7 +17828,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (code !== 4007) return;
           bannedOut = true;
           quietAtDoor();
-          for (const pid of Array.from(peers.keys())) dropPeer(pid);
+          for (const pid of Array.from(peers.keys())) dropPeer(pid); if (typeof clearRosterTiles === 'function') clearRosterTiles();
           try { meshNode && meshNode.stop(); } catch (e) {}
           setStatus('⛔ The people on this meeting voted you off.');
         },
@@ -18194,7 +18261,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!lgNoteEl) { lgNoteEl = document.createElement('div'); lgNoteEl.id = 'massbanner'; lgNoteEl.setAttribute('role', 'status'); lgNoteEl.textContent = uiText('deviceOverload', 'Your device is refusing or unable to carry meeting traffic.'); document.body.appendChild(lgNoteEl); }
       try { meshNode && meshNode.leave(false); } catch (e) {}
       setTimeout(() => {
-        for (const pid of Array.from(peers.keys())) { try { dropPeer(pid); } catch (e) {} }
+        for (const pid of Array.from(peers.keys())) { try { dropPeer(pid); } catch (e) {} } if (typeof clearRosterTiles === 'function') clearRosterTiles();
         if (typeof clog === 'function') clog('lg-rejoin');
         startMesh();
         setTimeout(() => { if (lgNoteEl) { lgNoteEl.remove(); lgNoteEl = null; } }, 30000);
@@ -35454,7 +35521,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       sendMeshLeave();
       try { if (typeof stopRoomClocks === 'function') stopRoomClocks(); } catch (e) {}
       try { if (localStream) localStream.getTracks().forEach((t) => t.stop()); } catch (e) {}
-      afterFarewell(() => { for (const pid of Array.from(peers.keys())) { try { dropPeer(pid); } catch (e) {} } });
+      afterFarewell(() => { for (const pid of Array.from(peers.keys())) { try { dropPeer(pid); } catch (e) {} } if (typeof clearRosterTiles === 'function') clearRosterTiles(); });
       try { releaseAudioContext(); } catch (e) {}
       const lm = document.getElementById('left-modal'); if (lm) lm.style.display = 'flex';
       try { updateStatus(); } catch (e) {}
@@ -37945,6 +38012,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             return { peer: String(pid).slice(0, 12), via: rosterBuild.fromOcc.has(pid) ? 'cell' : 'status', ageS: st ? Math.round((now - stSeen(st)) / 1000) : null,
               why: h ? h.why : null, holdAgeS: h ? Math.round(h.age / 1000) : null, debtMs: h ? h.debt : null, noteAgoS: h ? Math.round((now - h.at) / 1000) : null }; }),
           rosterBuild: { agoMs: rosterBuild.at ? now - rosterBuild.at : null, n: rosterBuild.n, throws: rosterBuild.throws, err: rosterBuild.err || null },
+          rosterTiles: Array.from(rosterTiles.keys()).slice(0, 16).map((pid) => String(pid).slice(0, 12)),   // held "Reconnecting…" faces (rostered, pair dropped)
+          d5Guarded: Array.from(d5Guarded.keys()).slice(0, 16).map((pid) => String(pid).slice(0, 12)),   // the seat's death verdicts the display guard still holds off
           // tl-chain base.clean forensics (DEBUG dump only, bounded): the room fold this page shows (n, part, age in ticks, leased seats)
           // and, on a Section-1 seat, each section report it folds from (cell, author, age in ticks, n, leased, who sits there now),
           // so a count that flaps names the cell whose report dropped out and for how long.
