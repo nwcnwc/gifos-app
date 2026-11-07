@@ -331,6 +331,7 @@
     // C++: mesh_seat.inc:Seat::onS1Sync
     onS1Sync(m) {
       const TICK = this.TICK, id = this.id;
+      if (m.fhd.length) this.d52Told(m);   // D5.2
       if (m.ent.length > C * C || m.digs.length > C * C) return;   // Section-1 gossip: at most one entry per home cell
       this.s1SyncDigs(m);
       // GOSSIP updates the ROSTER HINT (occ/s1seen) only
@@ -348,6 +349,7 @@
         let took = false;
         if (this.liveElsewhere(eid, ck)) continue;
         { const bz = this.byeAt.get(ck); if (bz !== undefined && seen <= bz) continue; }
+        if (this.d52Echo(ck, eid, seen)) continue;   // D5.2
         { const gb = this.l152Bye.get(eid); if (gb !== undefined && gb[0] === ck && seen <= gb[1]) continue; }   // L21
         if (rm810 >= 0 && cur === rm810 && cur !== eid) { const xs = this.xrOk.get(eid); if ((this.strangeSeen.has(eid) && this.strangeSeen.get(eid) >= 2) || (xs !== undefined && TICK - xs <= 2 * K.RELAY_TTL)) continue; }   // L8.10
         if (seen > curSeen + 8 || (seen >= curSeen - 8 && cur >= 0 && eid < cur && (e.ba < 0 || e.ba <= 600))) { this.s1seen.set(ck, seen); this.s1told.delete(ck); took = true; if (cur !== eid) { this.setOcc(ck, eid); this.born.set(ck, (e.ba >= 0 ? eb : this.LT())); } }
@@ -476,6 +478,7 @@
       if (this.linkIs(m, pid) && m.id >= 0) for (const [ek, ev] of this.occ) if (ev === pid && ek !== pk && !this.firstHandLive(ek)) { if (this.elsewhere.size >= 64) eraseFirst(this.elsewhere); this.elsewhere.set(pid, TICK); if (ckPc(pk) !== 0 || this.l13AnchorElse(ek)) { const wk = ek; this.occDrop(wk, 'elsewhere'); } break; }   // L2
       if (this.linkIs(m, pid) && m.owner >= 0 && m.owner !== id && m.owner !== pid) { const oc = ownerCoordOf(m.coord); if (oc) { const kk = ckey(oc); if (kk !== pk && m.oCk === kk && this.ownedLinkCell(kk) && this.occGet(kk) === pid && !this.firstHandLive(kk) && !this.liveElsewhere(m.owner, kk)) { this.setOcc(kk, m.owner); this.noteS1(kk); if (ckPc(kk) === 0) this.s1told.set(kk, TICK); } } }   // MISDIRECTED
       if (!this.ownedLinkCell(pk)) return;
+      if (m.vac.length) this.d52Word(m, pid);   // D5.2: my head's word that a cell of my row is vacant
       if (m.tag === 7 && this.ppValid(m)) this.ppNote(pk, pid, seatM.ppSigOf(m.pp, m.ppAt), m.pp, m.ppL);   // PP
       if (!this.linkIs(m, pid)) {
         if (this.occGet(pk) !== pid) return; if (signedBy(m, pid)) this.pongDig(m, pid); this.upUsed.set(pk, TICK); if (!this.entryOpen(pk, pid)) return; this.lastAck = TICK; if (this.coord.pc !== 0 && this.coord.i !== 0 && pk === ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 })) this.headAckAt = TICK;   // L9.9
