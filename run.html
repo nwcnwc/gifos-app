@@ -23722,8 +23722,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // offer within the hold of each other, as they do the moment a
           // link's channel opens, each offer lands while the other is still
           // out: the offers cross (forced glare at link birth).
-          const hold = DEBUG_ON ? +window.__offerHoldMs || 0 : 0;
+          // __offerHoldTo (a peer id prefix) aims the lever at one pair, once: the next offer to that peer is held, then the lever clears.
+          const holdTo = DEBUG_ON ? window.__offerHoldTo : null;
+          const aimed = !holdTo || String(p.id).indexOf(String(holdTo)) === 0;
+          const hold = DEBUG_ON && aimed ? +window.__offerHoldMs || 0 : 0;
           if (hold > 0 && !p.wireHold) p.wireHold = new Promise((r) => setTimeout(() => { p.wireHold = null; r(); }, hold));
+          if (hold > 0 && holdTo) { window.__offerHoldTo = null; window.__offerHoldMs = 0; window.__offerHeldAt = Date.now(); }
           send();
         })
         .catch((e) => { if (p.pc !== pc) return; if (typeof clog === 'function') clog('roffer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); p.renegAgain = true; maybeRebuildNeg(p, e); })
@@ -36709,6 +36713,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const lp = (typeof packLoop !== 'undefined' && packLoop) ? packLoop : null;
         if (lp && lp.sender && lp.sender.track) { enc.push('loop'); srcs.add(lp.sender.track.id); }
         return { coord: meshCoord(), me: String(myId || ''), jobs, receivers: to.size, encoders: enc.length, encSrcs: srcs.size, piped, enc };
+      },
+      // My row's ear as I build it (a head) and the sound I take from above: does each stream carry a live audio track.
+      earForTest: () => {
+        const at = (st) => (st && st.getAudioTracks ? st.getAudioTracks().map((t) => ({ readyState: t.readyState, muted: !!t.muted, enabled: !!t.enabled })) : null);
+        const dn = mosIn.get('sdn'), sdx = mosIn.get('sdx');
+        return { coord: meshCoord(), ac: ac ? ac.state : null, ear: at(downStreams.get('ear')), fwd: at(downStreams.get('fwd')),
+          sdn: dn ? { via: String(dn.via).slice(0, 8), tracks: at(dn.stream) } : null, sdx: sdx ? { via: String(sdx.via).slice(0, 8), tracks: at(sdx.stream) } : null };
       },
       // What my Stadium shows, by the cell ids it carries, and my row.
       stadIdsForTest: () => {
