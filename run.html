@@ -4150,6 +4150,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <button data-al="yesAria" type="button" data-burst="👍" aria-label="Yes">👍</button>
       <button data-al="noAria" type="button" data-burst="👎" aria-label="No">👎</button>
       <button data-al="laughAria" type="button" data-burst="😂" aria-label="Laugh">😂</button>
+      <button data-al="heartAria" type="button" data-burst="❤️" aria-label="Heart">❤️</button>
     </div>
   </div>
   <div data-al="waitRoom" id="waitlist" hidden role="region" aria-label="Waiting room"></div>
@@ -10356,7 +10357,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // it must be the person's plain name (my self-tile shows "(you)" via its
       // own DOM label, not the burn-in).
       const name = displayName(pid);
-      return { name, hand: !!st.hand, talking: !!speakingOf.get(isMe ? 'me' : pid) };
+      return { name, hand: !!st.hand, talking: !!speakingOf.get(isMe ? 'me' : pid), react: faceReactOf(pid) };
     };
     // THE MEETING'S AUDIO GRAPH PLAYS NOTHING. It meters voices, mixes the
     // recording, folds the stage ear and feeds Whisper; every sound a person
@@ -21552,8 +21553,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // count. It is not sent on again.
         // It comes over the direct link and over the mesh, so the id drops
         // the second copy.
+        // On a service it adds to the count; in a meeting it shows on the
+        // person's face (takeFaceReact).
         const who = p && p.id;
-        if (who && who !== myId && audienceReactFresh(m.id)) takeAudienceReact(m.e, who);
+        if (who && who !== myId && audienceReactFresh(m.id)) { if (BROADCAST) takeAudienceReact(m.e, who); else takeFaceReact(m.e, who); }
       } else if (m.k === 'bx' && typeof window !== 'undefined' && window.GifOS && GifOS.meetSession && typeof window.__gifosMeetEmit === 'function') {
         GifOS.meetSession.takeXfer(m, window.__gifosMeetEmit);
       } else if (m.k === 'chatack') {
@@ -26932,7 +26935,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // Driven by the gossiped room size, so every seat AND every up-tree
       // compositor (where a face's overlay is burned) agrees on tiny-or-not.
       const stadTiny = MM.stadiumTiny(roomPastSection() ? displayCount() : knownTotal()); // a display threshold — the fold's n is a label (G2)
-      const stadLbl = (pid) => stadTiny ? { dot: true, talking: labelFor(pid).talking } : labelFor(pid);
+      // Past the cap only the NAME goes: talking, a hand and a reaction stay as colour marks (mesh-media drawOverlay).
+      const stadLbl = (pid) => { const l = labelFor(pid); return stadTiny ? { dot: true, talking: l.talking, hand: l.hand, react: l.react } : l; };
       const stagers = stageIds();               // gossiped, ordered, <=C
       const amStager = stagers.includes(myId);
       // The Stage is me and nobody else ⇒ every strip in this sweep is a
@@ -33120,22 +33124,119 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
 
     // Audience reactions on a service. Each clap is one small frame. The stage
     // adds them up, so a room of claps is one pill, not a pile of emojis.
-    const AUDIENCE_REACTS = ['👏', '👍', '👎', '😂'];
-    const AUDIENCE_REACT_NAME = { '👏': 'claps', '👍': 'yes', '👎': 'no', '😂': 'laughs' };
+    const AUDIENCE_REACTS = ['👏', '👍', '👎', '😂', '❤️'];
+    const AUDIENCE_REACT_NAME = { '👏': 'claps', '👍': 'yes', '👎': 'no', '😂': 'laughs', '❤️': 'hearts' };
     const audienceReactCounts = new Map();
     const audienceReactRate = new Map();
     let audienceReactFade = 0;
-    function takeAudienceReact(emoji, fromId) {
-      if (!BROADCAST) return false;
-      emoji = String(emoji || '');
-      if (AUDIENCE_REACTS.indexOf(emoji) < 0) return false;
-      const who = String(fromId || 'me');
+    // At most 6 reactions in 10 s count from one person, on a service and in a meeting.
+    function reactRateOk(who) {
       const now = Date.now();
       const recent = (audienceReactRate.get(who) || []).filter((t) => now - t < 10000);
       if (recent.length >= 6) return false;
       recent.push(now);
       audienceReactRate.set(who, recent);
       if (audienceReactRate.size > 400) audienceReactRate.clear();
+      return true;
+    }
+    // The burst over a tile (or the service stage). The stylesheet owns the
+    // 1.6 s fade, so a second tap starts it again without a timer here.
+    function flashReactBurst(parent, label) {
+      if (!parent) return;
+      let burst = parent.querySelector('.reactburst');
+      if (!burst) { burst = document.createElement('div'); burst.className = 'reactburst'; parent.appendChild(burst); }
+      burst.textContent = label;
+      burst.classList.remove('show');
+      void burst.offsetWidth;
+      burst.classList.add('show');
+    }
+    // A REACTION IN A MEETING IS SEEN LIKE A RAISED HAND: by the whole room,
+    // wherever the person's face is drawn. It flashes on their tile, and the
+    // packers that draw their face burn it on (labelFor): their row's Stadium
+    // product and, for a stager, the Stage. The Stadium picture carries that
+    // mark to every other row and section, so the frame itself goes only as
+    // far as the seats that draw the face: the person's own section (their row,
+    // its packer, the section's tiles), and for a stager also its own links
+    // (the Stage roots). Never a room-wide flood: half of a huge room reacting
+    // at once costs each seat only its own section's reactions. At most 6 in
+    // 10 s count from one person, sent or taken.
+    const FACE_REACT_MS = 3000;
+    const faceReacts = new Map(); // peer id -> { e, until }
+    const faceReactRx = new Map(); // peer id -> reaction frames taken from them (reactRxForTest)
+    // Is this person seated in my section?
+    function inMySection(pid) {
+      try {
+        const c = meshCoord(); if (!c || !pid) return false;
+        for (let r = 0; r < SCALE.C; r++) for (let i = 0; i < SCALE.C; i++) if (occPid({ pc: c.pc, r, i }) === pid) return true;
+      } catch (e) {}
+      return false;
+    }
+    function faceReactOf(pid) {
+      const r = pid ? faceReacts.get(String(pid)) : null;
+      return r && Date.now() < r.until ? r.e : '';
+    }
+    // The composites that draw this face: my row (their packers are built here)
+    // and the Stage. They repaint at once, and again when the reaction ends.
+    function faceDrawnHere(pid) {
+      if (pid === myId) return true;
+      try {
+        const c = meshCoord();
+        if (c) for (let j = 0; j < SCALE.C; j++) if (occPid({ pc: c.pc, r: c.r, i: j }) === pid) return true;
+        return stageIds().includes(pid);
+      } catch (e) { return false; }
+    }
+    function takeFaceReact(emoji, fromId) {
+      emoji = String(emoji || '');
+      if (AUDIENCE_REACTS.indexOf(emoji) < 0) return false;
+      const who = String(fromId || '');
+      if (!who || !reactRateOk(who)) return false;
+      const now = Date.now();
+      if (who !== myId) { faceReactRx.set(who, (faceReactRx.get(who) || 0) + 1); if (faceReactRx.size > 400) faceReactRx.clear(); }
+      faceReacts.set(who, { e: emoji, until: now + FACE_REACT_MS });
+      if (faceReacts.size > 400) for (const [k, v] of faceReacts) if (now >= v.until) faceReacts.delete(k);
+      const mine = who === myId;
+      flashReactBurst(mine ? document.querySelector('.tile.me') : document.querySelector('.tile[data-peer="' + (window.CSS && CSS.escape ? CSS.escape(who) : who) + '"]'), emoji);
+      if (faceDrawnHere(who) && typeof schedReconcile === 'function') { schedReconcile(); setTimeout(schedReconcile, FACE_REACT_MS + 60); }
+      return true;
+    }
+    // One reaction frame to the room: the mesh flood, plus every open link the
+    // roster has not caught up with yet. The id drops the copy a peer gets both ways.
+    function sendReactFrame(emoji) {
+      const id = uid('r');
+      audienceReactFresh(id);
+      const msg = { k: 'react', e: emoji, id };
+      try { sendAll(msg, { ephemeral: true }); } catch (e) {}
+      try {
+        const sent = new Set(gossipIds());
+        for (const p of peers.values()) if (p && p.id && !sent.has(p.id) && p.dc && p.dc.readyState === 'open') dcSend(p, msg);
+      } catch (e) {}
+    }
+    // A meeting reaction: my section over the mesh (scoped, never re-fanned
+    // past it), and my open links in my section that the roster may not have
+    // caught up with. A stager also hands it to every open link, which holds
+    // the Stage roots that burn its face into the Stage.
+    function sendFaceFrame(emoji) {
+      const id = uid('r');
+      audienceReactFresh(id);
+      const msg = { k: 'react', e: emoji, id };
+      try { sentFrames.push(msg); if (sentFrames.length > 20) sentFrames.shift(); } catch (e) {}
+      try { if (meshNode) meshNode.gossip({ a: 1, msg }, { scope: 'section', ephemeral: true }); } catch (e) {}
+      let staged = false; try { staged = stageIds().includes(myId); } catch (e) {}
+      try {
+        for (const p of peers.values()) if (p && p.id && p.dc && p.dc.readyState === 'open' && (staged || inMySection(p.id))) dcSend(p, msg);
+      } catch (e) {}
+    }
+    function sendFaceReact(emoji) {
+      if (myId && takeFaceReact(emoji, myId)) sendFaceFrame(emoji);
+      else flashReactBurst(document.querySelector('.tile.me'), emoji);
+    }
+    function takeAudienceReact(emoji, fromId) {
+      if (!BROADCAST) return false;
+      emoji = String(emoji || '');
+      if (AUDIENCE_REACTS.indexOf(emoji) < 0) return false;
+      const who = String(fromId || 'me');
+      if (!reactRateOk(who)) return false;
+      const now = Date.now();
       const row = audienceReactCounts.get(emoji) || { n: 0, until: 0, who: [] };
       if (now > row.until) { row.n = 0; row.who = []; }
       row.n += 1;
@@ -33205,17 +33306,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function sendAudienceReact(emoji) {
       takeAudienceReact(emoji, (typeof myId !== 'undefined' && myId) || 'me');
-      const id = uid('r');
-      audienceReactFresh(id);
-      const msg = { k: 'react', e: emoji, id };
-      try { sendAll(msg, { ephemeral: true }); } catch (e) {}
-      // The roster catches up on its own tick, so a link that just opened can
-      // be missing from it. The clap goes over that link too. The id drops
-      // the copy a peer gets both ways.
-      try {
-        const sent = new Set(gossipIds());
-        for (const p of peers.values()) if (p && p.id && !sent.has(p.id) && p.dc && p.dc.readyState === 'open') dcSend(p, msg);
-      } catch (e) {}
+      sendReactFrame(emoji);
     }
     (function () {
       const btn = document.getElementById('reactbtn');
@@ -33262,25 +33353,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }
         const label = b.getAttribute('data-burst');
         if (!label) return;
-        // Restart the fade. The stylesheet owns the 1.6s, so a second tap
-        // starts the burst again without a timer in this script.
-        const flashBurst = (parent) => {
-          if (!parent) return;
-          let burst = parent.querySelector('.reactburst');
-          if (!burst) { burst = document.createElement('div'); burst.className = 'reactburst'; parent.appendChild(burst); }
-          burst.textContent = label;
-          burst.classList.remove('show');
-          void burst.offsetWidth;
-          burst.classList.add('show');
-        };
-        flashBurst(document.querySelector('.tile.me'));
         // A service hides the gallery, so the same clap has to land on the
         // stage or the person who sent it never sees it. The count is what
         // everyone else sees: one pill per emoji, not one burst per person.
         if (BROADCAST) {
-          flashBurst(document.getElementById('bc-react'));
+          flashReactBurst(document.querySelector('.tile.me'), label);
+          flashReactBurst(document.getElementById('bc-react'), label);
           sendAudienceReact(label);
-        }
+        } else sendFaceReact(label);
       });
     })();
 
@@ -37517,6 +37597,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }),
       pipEnterForTest: () => enterPip(true),
       audienceReactForTest: (emoji, fromId) => takeAudienceReact(emoji, fromId || 'viewer'),
+      // the reactions this page shows on faces now: { peerId: emoji }
+      reactsForTest: () => { const o = {}; for (const k of faceReacts.keys()) { const e = faceReactOf(k); if (e) o[k] = e; } return o; },
+      // reaction frames this page has taken, by sender
+      reactRxForTest: () => { const o = {}; for (const [k, n] of faceReactRx) o[k] = n; return o; },
       // one frame arriving from a peer, the way a DataChannel or the mesh hands it in
       remoteFrameForTest: (from, m) => { onRemote(String(from), m); },
       // a peer whose channel just opened, before the roster has caught up; it
