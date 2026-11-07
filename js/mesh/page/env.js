@@ -189,6 +189,7 @@
     function wireTx(m) {
       const s = seat(); if (!s || m.fhTo >= 0) return;
       m.tx = w.TICK - s.clkHeld;
+      if (m.born >= 0) m.born = (w.TICK - m.born) - s.clkHeld;   // L16.7.1: a claim's birth travels as an age on my clock
       if (m.sigAt >= 0 && m.id === me) m.sigL = m.sigAt;
       if (m.ppAt >= 0 && m.pp === me) m.ppL = m.ppAt;
       if (m.mpAt >= 0 && m.mpBy === me) m.mpL = m.mpAt;

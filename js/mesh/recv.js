@@ -43,7 +43,7 @@
         const d = TICK - m.tx; m.tx = -1;
         const mv = (k) => { if (m[k] >= 0) m[k] = Math.max(0, m[k] + d); };
         mv('vAt'); mv('sigL'); mv('ppL'); mv('mpL'); mv('foL'); mv('l31L'); mv('swL');
-        if (m.e1At >= 0) m.e1At = Math.max(0, m.e1At + d); if (m.born >= 0) m.born = Math.max(0, m.born + d);
+        if (m.e1At >= 0) m.e1At = Math.max(0, m.e1At + d); if (m.born >= 0) m.born = Math.max(0, TICK - (m.born + d));   // L16.7.1: born crossed as an age: a birth on my clock again
       }
       if (this.l4Out) { if (m.t === 'SWAPRDY' && m.id === this.l4Partner && m.tag >= 5) this.l4OnRdy(m); else this.l4Held.push(msg.clone(m)); return; }   // L4.3
       if (w.proofRecv && w.L13CUR !== this && w.PROOF_OWN !== this) w.proofRecv(id, m);   // PROOF_IN("recv"): a frame in from outside the seat (not my own code's replay)
