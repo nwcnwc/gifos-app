@@ -13822,8 +13822,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // So does the door-side heal (§LOCK): when my own door list holds blobs no key of mine opens, part of the room moved to a
         // password I missed, and its members (a tree I am not in, by then) hand me the grant over the relay. Dropping it here left
         // the half that missed a mid-call password change unlocked for good.
-        const roomAhead = !!(meshNode && meshNode.doorAhead && meshNode.doorAhead());
-        if (doorOutsider(from) && !statusOf.has(from) && !roomAhead && !(hasAdminRoom() && ty !== 'password')) { doorDropped++; if (typeof clog === 'function') clog('troll-drop ' + ty + ' ' + String(from).slice(0, 6)); return; }
+        if (doorOutsider(from) && !statusOf.has(from) && !roomMovedOn() && !(hasAdminRoom() && ty !== 'password')) { doorDropped++; if (typeof clog === 'function') clog('troll-drop ' + ty + ' ' + String(from).slice(0, 6)); return; }
         const g = takePwPart(from, ty, f);
         if (g) onRemote(from, g);
       }
@@ -15410,6 +15409,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const s = meshSeat(); if (!s || !s.hasCoord || s.state !== 3) return false;
       return !linkTo(pid) && !meshKnows(pid);
     }
+    // My latest door reply held blobs no key of mine (current or replaced) opens: part of this room moved to a password
+    // I missed. Its members, a tree I am not in by then, hand me the grant over the relay (§LOCK door-side heal); both
+    // troll gates let that grant through, and only then.
+    function roomMovedOn() { return !!(meshNode && meshNode.doorAhead && meshNode.doorAhead()); }
     function meshKnows(pid) {
       const s = meshSeat();
       if (!s || !s.occ) return false;
@@ -21632,7 +21635,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // last frame of each kind is held (bounded) and replayed once the pair is a member, so a real joiner's first
       // status/avatar/history is not lost; a knocker that is never seated never shows.
       if (p.id && (DOOR_DENY.has(m.k) || (m.k === 'sig' && m.msg && DOOR_DENY_SIG.has(m.msg.kind)))) {
-        if (doorOutsider(p.id) && !gossipVouched && !(m.k === 'pwreset' && hasAdminRoom())) {   // an admin's change order: its signature decides (below), and a returning admin stands outside the room she re-locks
+        if (doorOutsider(p.id) && !gossipVouched && !(m.k === 'pwreset' && hasAdminRoom()) && !(m.k === 'pwinfo' && roomMovedOn())) {   // an admin's change order: its signature decides (below), and a returning admin stands outside the room she re-locks; the door-side heal's grant (roomMovedOn) likewise
           doorDropped++; const dk = m.k === 'sig' ? 'sig.' + m.msg.kind : m.k; doorDropKinds[dk] = (doorDropKinds[dk] || 0) + 1;
           if (!p.doorHeld) p.doorHeld = new Map();
           if (p.doorHeld.has(dk) || p.doorHeld.size < 8) p.doorHeld.set(dk, m);   // one per kind: a flood holds at most 8 frames
