@@ -25079,13 +25079,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // what ships, on one sender, for the life of the forward. A pack is drawn
     // width-fit from the top (cells stay square; the black below is the row-step
     // tail faceSrcRect already ignores); a stage or shared screen is drawn
-    // contain-fit, centred. Audio ships as received. Chromium and Firefox, and a
-    // WebKit slot on the pipe lane, never take this path.
+    // contain-fit, centred. Audio ships as received. Chromium and Firefox, real Safari (it has
+    // RTCRtpScriptTransform) and a WebKit slot on the pipe lane never take this path.
     const WK_FWD_PACK = { w: 320, h: 1280, fps: 20 };   // a Stadium column: 5 wide x 20 rows fits
     const WK_FWD_STAGE = { w: 640, h: 360, fps: 30 };
     const wkFwdCopies = new Map(); // `${profile}|${track.id}` -> { src, track, stop }
     let wkFwdClock = null;
-    function wkFwdNeeded() { return typeof WEBKIT_ENGINE !== 'undefined' && !!WEBKIT_ENGINE; }
+    // Only a WebKit with no RTCRtpScriptTransform (the Linux shell). Real Safari has it, and there a received
+    // track forwards as is through every size change (2026-11-07, Safari 27 on macOS: video, Stadium, stage and
+    // share reach two seats whose only uplink is the Safari seat, release code), so it never takes this path.
+    function wkFwdNeeded() { return typeof WEBKIT_ENGINE !== 'undefined' && !!WEBKIT_ENGINE && typeof RTCRtpScriptTransform === 'undefined'; }
     function wkFwdSrc(tr, key) {
       if (!wkFwdNeeded() || !tr || tr.kind !== 'video' || typeof wkRemoteTrack !== 'function' || !wkRemoteTrack(tr)) return tr;
       const stage = isStageJob(key), prof = stage ? WK_FWD_STAGE : WK_FWD_PACK, ck = (stage ? 's' : 'p') + '|' + tr.id;
