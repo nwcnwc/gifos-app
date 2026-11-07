@@ -30900,14 +30900,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // capture (under 1.5 s of gap) keeps that cut's language: nobody
       // switches language mid-sentence, and a short tail detected on its own
       // comes out as anything, translated.
-      // A second pass of a clip (my own words for the room, after this page's
-      // English translation of them) is told the language the first pass found.
+      // A second pass of a clip (this page's English translation of my own
+      // words, after they went to the room) is told the language the first found.
       const told = job.told || '';
       const cap0 = wspCaps.get(job.id);
       const cont = (!told && cap0 && cap0.lastLang && cap0.lastEnd && job.at - cap0.lastEnd < 1500) ? cap0.lastLang : '';
       const contFound = told ? !!job.found : !!(cont && cap0.lastFound); // the inherited language was found by Whisper on the previous cut
       const lang = told || cont || (job.id === 'me' ? (lsGet(CC_LANG_KEY) || 'auto') : 'auto');
-      const task = job.task || (trEnOn ? 'translate' : 'transcribe');
+      // Translating, my own voice is transcribed first while I send my captions
+      // (the room's line goes out as soon as it would without translating),
+      // and every other voice is translated.
+      const task = job.task || (trEnOn && !(job.id === 'me' && capSend()) ? 'translate' : 'transcribe');
       let model = 'base';
       if (typeof wspModel === 'function') {
         const picked = wspModel();
@@ -31028,13 +31031,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const own = !translated || trLangOf(rl) === 'en';
           const ll = translated ? 'en' : rl, lf = own && found, how = own ? '' : 'tl';
           if (job.id === 'me') {
-            if (job.out) addTranscriptLine(text, job.at, null, null, 'mic', rl, found, end, 'out');
-            else if (own) addTranscriptLine(text, job.at, null, null, 'mic', ll, lf, end);
+            if (job.lo || (translated && !own)) addTranscriptLine(text, job.at, null, null, 'mic', 'en', false, end, 'lo'); // my words in English, for this page only
+            else if (!trEnOn || trLangOf(rl) === 'en') addTranscriptLine(text, job.at, null, null, 'mic', ll, lf, end);
             else {
-              addTranscriptLine(text, job.at, null, null, 'mic', 'en', false, end, 'lo');
-              // The room reads my own words: the same clip once more, told the
-              // language just found, sent and not shown here. It goes first.
-              if (capSend()) wspQ.items.unshift({ id: 'me', chunks: job.chunks, at: job.at, rate: job.rate, keep: job.keep, task: 'transcribe', out: true, told: rl || '', found: found });
+              // My own words go to the room in my language; this page shows
+              // them in English: the same clip once more, told the language
+              // just found, translated. It goes first.
+              addTranscriptLine(text, job.at, null, null, 'mic', rl, found, end, 'out');
+              wspQ.items.unshift({ id: 'me', chunks: job.chunks, at: job.at, rate: job.rate, keep: job.keep, task: 'translate', lo: true, told: rl || '', found: found });
             }
           }
           else if (job.id === 'fold') { if (trWrites() || trEnOn) addTranscriptLine(text, job.at, 'stadium', 'Stadium', 'mix', ll, lf, end, how); }   // a far-row line, labelled by its channel
