@@ -100,9 +100,14 @@
     const cap = opts.cap || CAP;
     let chain = Promise.resolve();
     const serial = (fn) => { const p = chain.then(fn, fn); chain = p.catch(() => {}); return p; };
-    async function trim() {
+    // The ring is measured in full when the running estimate passes the cap,
+    // and every 30th batch anyway (another tab of this site writes here too).
+    let known = -1, since = 0;
+    async function trim(added) {
+      if (known >= 0 && known + added <= cap && ++since < 30) { known += added; return known; }
       const plan = dropPlan(await backend.sizes(), cap);
       if (plan.drop.length) await backend.del(plan.drop);
+      known = plan.total; since = 0;
       return plan.total;
     }
     return {
@@ -111,7 +116,7 @@
         const data = typeof rec.data === 'string' ? rec.data : JSON.stringify(rec.data);
         const bytes = byteLen(data);
         await backend.put({ sid: String(rec.sid || ''), room: rec.room == null ? '' : String(rec.room), t: rec.t || Date.now(), bytes: bytes, data: data });
-        return trim();
+        return trim(bytes);
       }),
       bytes: () => serial(async () => { let n = 0; for (const s of await backend.sizes()) n += s[1]; return n; }),
       sessions: () => serial(async () => {
@@ -134,7 +139,7 @@
         for (const r of recs) parts.push('{"sid":' + JSON.stringify(r.sid) + ',"room":' + JSON.stringify(r.room) + ',"t":' + (+r.t) + ',"batch":' + r.data + '}\n');
         return parts;
       }),
-      clear: () => serial(() => backend.clear()),
+      clear: () => serial(() => { known = 0; since = 0; return backend.clear(); }),
     };
   }
 
@@ -150,8 +155,9 @@
     };
   }
 
-  // IndexedDB: one database, two stores. 'batch' holds the text; 'size' holds
-  // only {id: bytes, t, sid} so the ring can be measured without reading the text.
+  // IndexedDB: one database, one store of batches with an index on their size,
+  // so the ring is measured from the index keys without reading any text, and
+  // a batch is one request that can commit at once (the way out of a page).
   function idbBackend(idb, name) {
     idb = idb || root.indexedDB;
     name = name || 'gifos-debug-log';
@@ -160,32 +166,30 @@
       const rq = idb.open(name, 1);
       rq.onupgradeneeded = () => {
         const db = rq.result;
-        if (!db.objectStoreNames.contains('batch')) db.createObjectStore('batch', { keyPath: 'id', autoIncrement: true });
-        if (!db.objectStoreNames.contains('size')) db.createObjectStore('size', { keyPath: 'id' });
+        const os = db.objectStoreNames.contains('batch') ? rq.transaction.objectStore('batch') : db.createObjectStore('batch', { keyPath: 'id', autoIncrement: true });
+        if (!os.indexNames.contains('bytes')) os.createIndex('bytes', 'bytes');
       };
       rq.onsuccess = () => { const db = rq.result; db.onversionchange = () => { try { db.close(); } catch (e) {} dbp = null; }; res(db); };
       rq.onerror = () => { dbp = null; rej(rq.error); };
       rq.onblocked = () => { dbp = null; rej(new Error('debug log store blocked')); };
     }));
-    const tx = (stores, mode, fn) => open().then((db) => new Promise((res, rej) => {
-      const t = db.transaction(stores, mode); let out;
-      t.oncomplete = () => res(out); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error || new Error('abort'));
-      out = fn(t);
+    const tx = (mode, fn) => open().then((db) => new Promise((res, rej) => {
+      const t = db.transaction(['batch'], mode); const box = {};
+      t.oncomplete = () => res(box.v); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error || new Error('abort'));
+      fn(t.objectStore('batch'), box);
+      if (mode === 'readwrite' && typeof t.commit === 'function') { try { t.commit(); } catch (e) {} }
     }));
-    const req = (r) => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
     return {
-      put: (r) => tx(['batch', 'size'], 'readwrite', (t) => {
-        const box = {};
-        const rq = t.objectStore('batch').add(r);
-        rq.onsuccess = () => { box.id = rq.result; t.objectStore('size').put({ id: rq.result, bytes: r.bytes, t: r.t, sid: r.sid }); };
-        return box;
-      }).then((b) => b.id),
-      sizes: () => tx(['size'], 'readonly', (t) => { const b = {}; req(t.objectStore('size').getAll()).then((v) => { b.v = v; }); return b; })
-        .then((b) => (b.v || []).sort((x, y) => x.id - y.id).map((s) => [s.id, s.bytes])),
-      del: (ids) => tx(['batch', 'size'], 'readwrite', (t) => { const B = t.objectStore('batch'), S = t.objectStore('size'); for (const id of ids) { B.delete(id); S.delete(id); } }),
-      all: () => tx(['batch'], 'readonly', (t) => { const b = {}; req(t.objectStore('batch').getAll()).then((v) => { b.v = v; }); return b; })
-        .then((b) => (b.v || []).sort((x, y) => x.id - y.id)),
-      clear: () => tx(['batch', 'size'], 'readwrite', (t) => { t.objectStore('batch').clear(); t.objectStore('size').clear(); }),
+      put: (r) => tx('readwrite', (os, box) => { const rq = os.add(r); rq.onsuccess = () => { box.v = rq.result; }; }),
+      sizes: () => tx('readonly', (os, box) => {
+        const out = box.v = [];
+        const rq = os.index('bytes').openKeyCursor();
+        rq.onsuccess = () => { const c = rq.result; if (!c) return; out.push([c.primaryKey, c.key]); c.continue(); };
+      }).then((v) => (v || []).sort((x, y) => x[0] - y[0])),
+      del: (ids) => tx('readwrite', (os) => { for (const id of ids) os.delete(id); }),
+      all: () => tx('readonly', (os, box) => { const rq = os.getAll(); rq.onsuccess = () => { box.v = rq.result; }; })
+        .then((v) => (v || []).sort((x, y) => x.id - y.id)),
+      clear: () => tx('readwrite', (os) => { os.clear(); }),
     };
   }
 
@@ -200,7 +204,7 @@
     const setT = o.setInterval || ((f, ms) => setInterval(f, ms)), clrT = o.clearInterval || ((h) => clearInterval(h));
     const sid = o.sid || (now().toString(36) + '-' + Math.random().toString(36).slice(2, 8));
     const lastOf = new Map();
-    let timer = null, lastSnap = 0, live = false, busy = null;
+    let timer = null, lastSnap = -Infinity, live = false, busy = null;   // the first batch carries a snapshot
     function gained(name, arr) {
       if (!Array.isArray(arr) || !arr.length) return [];
       const last = lastOf.get(name);
@@ -230,7 +234,7 @@
     }
     return {
       sid: sid,
-      start() { if (live) return; live = true; lastSnap = now(); timer = setT(() => { flush(false); }, every); },
+      start() { if (live) return; live = true; timer = setT(() => { flush(false); }, every); },
       stop() { live = false; if (timer != null) clrT(timer); timer = null; },
       live: () => live,
       flush: flush,
