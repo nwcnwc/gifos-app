@@ -35,6 +35,8 @@
   const L3_11_2_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L3_11_2_OFF === '1') ? 1 : 0;
   // the sim's #define L3_11_3_OFF (same reading): MESH_L3_11_3_OFF=1 under node builds the parent
   const L3_11_3_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L3_11_3_OFF === '1') ? 1 : 0;
+  // the sim's #define L3_11_5_OFF (same reading): MESH_L3_11_5_OFF=1 under node builds the parent
+  const L3_11_5_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L3_11_5_OFF === '1') ? 1 : 0;
 
   // ---- free helpers the entry functions call (private copies of small statics) ---------------------------
   // C++: mesh.cpp:descOn (the MESH_DESC switch; a measurement, never read by protocol code)
@@ -549,7 +551,9 @@
     // C++: mesh_seat.inc:Seat::serveReclaim
     serveReclaim(m) {
       const TICK = this.TICK, id = this.id;
+      if (m.knock && (L3_11_5_OFF || m.oCk)) return;   // L3.11.5: a proof that rode a knock is answered only as below
       if (this.hasCoord && this.state === 3 && m.id >= 0 && m.id !== id && m.ck === ckey(this.coord)) {   // L3.10.4: I am the hole's mover and already sit in the returner's old cell: healing wins
+        if (m.knock) return;   // L3.11.5: no hand-off from a knock: the round does that
         const p = this.pinned.get(m.id); const c = unckey(m.ck);
         const vac = this.moving ? this.oldCk : ((this.leaseUntil >= 0 && TICK <= this.leaseUntil) ? this.leaseCk : 0);
         if (p !== undefined && p === m.tok && vac && vac !== m.ck) { this.rcHanded.set(m.ck, [m.id, TICK]); return; }
@@ -560,6 +564,7 @@
       const c = unckey(m.ck); const p = this.pinned.get(m.id); const ok = p !== undefined && p === m.tok;
       const cur = this.occGet(m.ck); const held = cur === m.id; const mm = this.memo.get(m.ck);
       const remembered = cur < 0 && mm !== undefined && mm.id === m.id && TICK - mm.at <= K.LEASE_T;
+      if (m.knock) { const rk = this.relMark.get(m.id); if (!ok || !held || rk === undefined || TICK - rk > K.LEASE_T - 4 * K.RC_WAIT - 10) return; }   // L3.11.5: a knock's proof is answered only by the reload hand-back (tag 2)
       if (!ok || !(held || remembered)) { this.trace('RECLAIM-REFUSED', id, c, 'id=%d why=%s', m.id, !ok ? 'token' : (cur >= 0 ? 'held-by-other' : 'no-memory')); const r = newMsg('RECLAIMNO'); r.nc = m.id; if (ok && cur >= 0) r.tag = 3; if (m.oCk && cellOk(m.oCk - 1)) this.route(unckey(m.oCk - 1), m.id, r); else this.emit(m.id, r); return; }   // L3.10.7, L3.11.1
       this.rcHanded.set(m.ck, [m.id, TICK]);   // L3.10.4
       const nbrs = []; const ol = ownedLinks(c); const n = ol.length; for (let i = 0; i < n; i++) { const x = this.occGet(ckey(ol[i])); if (x >= 0 && x !== m.id) nbrs.push({ k: ckey(ol[i]), v: x }); }
@@ -601,6 +606,14 @@
       if (sent) this.trace('RECLAIM', id, oc, 'to=%d neighbours', sent);
       if (sent && !L3_11_3_OFF) this.rcSentAt = this.TICK;   // L3.11.3: this round's answer is awaited
       return sent > 0;
+    },
+
+    // C++: mesh_seat.inc:Seat::l3115Knock
+    // L3.11.5: the proof rides the knock: a greeter that holds my reload lease on one of its links hands the cell back at once.
+    l3115Knock(g) {
+      if (L3_11_5_OFF || !this.oldCell || this.hasCoord || g < 0 || g === this.id) return;
+      const m = newMsg('RECLAIM'); m.ck = this.oldCell - 1; m.id = this.id; m.tok = fabricToken(this.w.lv, this.id); m.knock = true; this.emit(g, m);
+      this.trace('RECLAIM-KNOCK', this.id, null, 'to=%d', g);
     },
 
     // L3.11.2 (C++: the L3_11_2_OFF call sites in onHome, onReclaimed, onReclaimNo, tickHeld): the law's switch, read by the recv and tick units
