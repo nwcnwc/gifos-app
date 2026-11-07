@@ -31355,7 +31355,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const allowed = whisperAllowed();
       for (const r of radios) if (r.value === 'whisper') r.disabled = !allowed;
       paintTrEnBox();
-      paintWspStatus();
+      wspPaintSafe();
       const weak = document.getElementById('ccwhisper-weak');
       if (weak) {
         if (allowed) { weak.style.display = 'none'; weak.innerHTML = ''; }
@@ -31475,6 +31475,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         tx.textContent = chosen ? ' · ' + label + (run === 'browser' ? uiText('wspRunBrowserShort', ', browser captions on') : run === 'none' ? uiText('wspRunNoneShort', ', no captions from you') : '') : '';
       }
     }
+    // The page boots in steps, and the captions engines it reads are declared
+    // further down: until they exist the status waits for the next tick.
+    function wspPaintSafe() {
+      try { paintWspStatus(); return true; } catch (e) { if (e instanceof ReferenceError) return false; throw e; }
+    }
     // Retry: the install again, or Whisper again after it stood down.
     function wspRetry() {
       if (!whisperReady()) { wspInst.err = ''; installWhisper(true).catch(() => {}); }
@@ -31500,7 +31505,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function paintWspChip() {
       const chip = document.getElementById('ccwsp-off'); if (!chip) return;
-      paintWspStatus();
+      if (!wspPaintSafe()) return;
       let show = false;
       if (myId && whisperChosen() && (capSend() || trWrites()) && !wspChipGone()) {
         const k = wspState().k;
