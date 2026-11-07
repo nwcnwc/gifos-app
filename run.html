@@ -32951,6 +32951,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // a wide window also fades it sooner (dock-calm, qa-meet-desktop). A service
       // keeps it: volunteers need the large controls without hunting for them.
       const personalCall = () => !(BROADCAST);
+      const dockShown = () => bar.getClientRects().length > 0;
       const dockBusy = () => {
         if (!bar.classList.contains('collapsed')) return true;
         const tray = document.getElementById('reacttray');
@@ -33113,7 +33114,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!personalCall()) return;
         const seen = roomCount();
         idleTimer = setTimeout(() => {
-          if (!personalCall() || dockBusy() || roomCount() !== seen) { scheduleIdle(); return; }
+          if (!personalCall() || dockBusy() || roomCount() !== seen || !dockShown()) { scheduleIdle(); return; }
           markTuck(true);
         }, idleMs);
       };
@@ -33121,6 +33122,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (tucked) markTuck(false);
         scheduleIdle();
       };
+      // A dock nobody can see (an app room before room audio) is not a quiet
+      // call: it never tucks, and when it appears it starts a whole quiet
+      // spell, so its controls come up where the person can reach them.
+      let dockWasShown = dockShown();
+      if (window.ResizeObserver) new ResizeObserver(() => {
+        const shown = dockShown();
+        if (shown && !dockWasShown) wakeDock();
+        dockWasShown = shown;
+      }).observe(bar);
       wakeForSheet = wakeDock;
       window.addEventListener('pointerdown', wakeDock, true);
       window.addEventListener('pointermove', wakeDock, true);
@@ -33131,7 +33141,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         get idleMs() { return idleMs; },
         setIdle(ms) { idleMs = ms; scheduleIdle(); },
         tuck() {
-          if (!personalCall() || dockBusy()) return false;
+          if (!personalCall() || dockBusy() || !dockShown()) return false;
           clearTimeout(idleTimer);
           markTuck(true);
           return true;
