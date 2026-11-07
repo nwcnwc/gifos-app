@@ -378,6 +378,14 @@
     digForget(k) {
       this.digForget1(k); this.l10Mark();   // L10: a seat left the fold: the change goes out early
     },
+    // C++: mesh_seat.inc:Seat::digMoverWord
+    // D7.x: the mover's word retires its old report.
+    digMoverWord(who, nk) {
+      const old = [];
+      for (const [k, e] of this.rowKids) if (k !== nk && e.by === who) old.push(k);
+      for (const [k, e] of this.s1tab) if (k !== nk && e.by === who) old.push(k);
+      for (const k of old) { if (this.hasCoord && k === ckey(this.coord)) continue; this.digForget1(k); this.l10Mark(); }
+    },
     // C++: mesh_seat.inc:Seat::digForget1
     digForget1(k) {
       { const st = this.s1tab.get(k); if (st !== undefined && st.by >= 0) this.digForgot.set(k, [st.by, this.LT() | 0]); }
@@ -399,7 +407,7 @@
       const svFind = this.findNc; this.findNc = -1;
       try {
         // --- (1) my SUBTREE = me + the child row I own -----------------------------
-        const d = msg.newDig(); d.n = 1; d.refuse = this.refuses ? 1 : 0; d.at = this.LT(); d.rx = d.at; d.by = id; d.part = 0; d.freeC = 0;
+        const d = msg.newDig(); d.n = (TICK < this.digNHoldUntil) ? 0 : 1; d.refuse = this.refuses ? 1 : 0; d.at = this.LT(); d.rx = d.at; d.by = id; d.part = 0; d.freeC = 0;
         // G9 my own leaf facts. An away device sits out voting.
         if (this.handT) { d.handN = 1; d.hands.push({ id, k: this.handT, f: 0 }); }
         if (this.stageT) d.stage.push({ id, k: this.stageT, f: this.stageF });

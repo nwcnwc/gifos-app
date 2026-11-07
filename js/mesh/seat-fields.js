@@ -453,6 +453,7 @@
     ["digMismatch", "i64"],   // long long = 0  (line 1185)
     ["digArm", "i32"],   // int = 0  (line 1186)
     ["digHoldUntil", "i32"],   // int = -1  (line 1187)
+    ["digNHoldUntil", "i32"],   // int = -1  (line 1187)
     ["lastPubAt", "i32"],   // int = -1  (line 1187)
     ["lastPubDepth", "i32"],   // int = 0  (line 1187)
     ["digGap", "i32"],   // int = 0  (line 1188)
@@ -1069,6 +1070,7 @@
     digMismatch: 0,
     digArm: 0,
     digHoldUntil: -1,
+    digNHoldUntil: -1,
     lastPubAt: -1,
     lastPubDepth: 0,
     digGap: 0,
