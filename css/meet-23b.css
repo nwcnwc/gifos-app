@@ -484,6 +484,7 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
 #set-modal .set-row.set-wide > * { grid-column: 1 / -1; }
 #set-modal .set-help, #set-modal .rec-opt small { font-size: .875rem; line-height: 1.45; margin: 0; color: var(--muted, #5a6070); }
 #set-modal p.set-help { margin: 0; }
+#set-modal #set-g-debug button:disabled { opacity: .45; cursor: default; }   /* Export and Clear with nothing stored */
 #set-modal .rec-opt { min-height: 44px; padding: 6px 0; gap: 12px; align-items: flex-start; font-size: 1rem; width: 100%; box-sizing: border-box; }
 #set-modal .rec-opt span b { font-weight: 600; }
 #set-modal .name-box .rec-opt input { width: 20px; min-width: 20px; height: 20px; margin: 2px 0 0; }
