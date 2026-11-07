@@ -50,7 +50,7 @@
         if (++n > C) break;
         const k = e.k, x = e.v, c = unckey(k);
         if (ckPc(k) !== 0 || c.r !== this.coord.r || c.i === 0 || k === ckey(this.coord) || x < 0 || x === id || this.occGet(k) !== x) continue;
-        const vt = TICK - e.age;
+        let vt = TICK - e.age; { const vs = this.vacSeen.get(k); if (vs !== undefined && vs[0] === x && vs[1] < vt) vt = vs[1]; }   // a repeated word keeps its first verdict tick: a liar cannot restamp it
         const ev = this.d52Evidence(k, x, vt, false);
         if (ev === 0) { this.d52Drop(k, x, head, vt); continue; }
         if (!this.vacSeen.has(k)) { this.w.lv.D52_KEEP++; this.trace('D5.2-KEEP', id, c, 'x=%d head=%d ev=%d', x, head, ev); }
@@ -107,11 +107,13 @@
     // C++: mesh_headword.inc:Seat::d52Tick
     d52Tick() {
       if (!this.vacSeen.size && !this.vacIn.size && !this.fhdIn.size) return;
-      const TICK = this.TICK;
+      const TICK = this.TICK, id = this.id;
       for (const [k, v] of Array.from(this.vacSeen)) {
         const x = v[0], vt = v[1];
         if (!this.hasCoord || this.occGet(k) !== x || TICK - vt > K.D52_KEEPMAX) { this.vacSeen.delete(k); continue; }
-        if (this.d52Evidence(k, x, vt, false) === 0) { const head = this.occGet(ckey({ pc: 0, r: this.coord.r, i: 0 })); this.vacSeen.delete(k); this.d52Drop(k, x, head, vt); }
+        const ev = this.d52Evidence(k, x, vt, false), head = this.occGet(ckey({ pc: 0, r: this.coord.r, i: 0 }));
+        if (ev === 0) { this.vacSeen.delete(k); this.d52Drop(k, x, head, vt); continue; }
+        if (ev === 2 && head >= 0 && !this.l25Bad(head)) { const c = unckey(k); this.w.lv.D52_FLAG++; this.trace('D5.2-HOSTILE-HEAD', id, c, 'x=%d head=%d', x, head); this.l25Mark(head); }
       }
       for (const [k, v] of Array.from(this.vacIn)) if (TICK - v[1] > 300) this.vacIn.delete(k);
       for (const [k, v] of Array.from(this.fhdIn)) if (TICK - v[1] > 300) this.fhdIn.delete(k);
