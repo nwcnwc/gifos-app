@@ -43,7 +43,7 @@
  *   fabricReloadBye      A1     as fabricLeft, pcs closed RELOAD_CLOSE_LAG ticks later, o.onLeft(true)
  *   fabricSend           A1     the sim's path choice from the sender's view (FARVIEW); link step -> A2.send
  *   fabricUnreachable    A1     the sim's typing: FH_ICE_N of my dials failed and both NAT kinds (mine, its status beat's) cannot meet
- *   fabricVerdict        meas   D5 forensics
+ *   fabricVerdict        A1     the seat's death verdicts (DEATH_WHY), drained by the page's departure intake
  *   fhopActive           A1     true where the page gave a friend-hop face (o.fhop), as the sim's LINKMODEL && FHOP_ON
  *   fhopFriendFor        A1     sponsorSend's friend rung would carry it (o.fhop.friendFor)
  *   l164Of               A1     LINKMODEL && !islandStand(s, IS_L164)
@@ -133,6 +133,18 @@
     if (typeof location === 'undefined') return false;
     if (/(?:^|[#&?])debug=(?:on|1|true)/i.test(String(location.hash) + String(location.search))) return true;
     try { return sessionStorage.getItem('gifos_debug') === '1'; } catch (e) { return false; }
+  }
+
+  // The seat's own death verdicts, for the page's departure intake. A death is what the seat calls one: an occupant
+  // dropped with a DEATH_WHY reason (a probe unanswered on every path, a lease horizon, a ghost). A cell that only
+  // leaves the view (a goodbye, a move, a link the seat no longer holds) is not a death, so the page never reads one
+  // from the view. Consume-once: a stale verdict must not take a returned member out again.
+  function deathLedger(me) {
+    let out = [];
+    return {
+      verdict(by, k, x, why) { if (by !== me || x < 0 || x === me || !seatM.deathWhy(why)) return; out.push([k, x]); if (out.length > 64) out.shift(); },
+      drain() { const d = out; out = []; return d; },
+    };
   }
 
   // ---- the env -------------------------------------------------------------------------------------------------
@@ -400,9 +412,10 @@
     }
 
     const noop = () => {};
+    const deaths = deathLedger(me);   // fabricVerdict: the seat's death verdicts, drained by the page (drainDeaths)
     const OWN = {
       fabricAdmitLog: noop, fabricDupMint: noop, fabricNoteBackoff: noop, fabricNoteReseat: noop, fabricNoteRollback: noop,
-      fabricNoteSwap: noop, fabricVerdict: noop, l18UxDeliv: noop, descEnd: noop, descNote: noop, g4Joined: noop,   // g4Joined: the sim's L40 contest lever only (X1 55c97d1)
+      fabricNoteSwap: noop, fabricVerdict: deaths.verdict, l18UxDeliv: noop, descEnd: noop, descNote: noop, g4Joined: noop,   // g4Joined: the sim's L40 contest lever only (X1 55c97d1)
       fabricFreeCells, fabricLieFor: () => null, fabricUnreachable, fhopActive: () => !!fh, fhopFriendFor,
       fabricMyTier: () => ((measure.tier ? measure.tier() : E.TIER_DESKTOP) | 0),
       fabricMyNat: () => ((measure.nat ? measure.nat() : E.NAT_OPEN) | 0),
@@ -607,13 +620,14 @@
       mark: (peer) => { const x = ID.pid(ID.nid(peer)) === String(peer) ? ID.nid(peer) : learnPeer(peer); return x >= 0 && pcw.mark ? pcw.mark(x) : null; }, farView: (to) => farView(seat(), to),
       // the seat's construction is the caller's (A3): new Seat(env.me, env.world)
       newSeat: () => new seatM.Seat(me, w),
+      drainDeaths: deaths.drain,   // [cellKey, seat id] the seat read dead since the last drain
     };
     if (dbg && typeof window !== 'undefined') window.__meshEnv = env;   // DEBUG: meet.js eval reaches the env (stats, traces, pcw.dump)
     if (dbg && typeof window !== 'undefined') window.__meshSeatRaw = seat;   // DEBUG: the ported seat, for a forced requeue in a repro
     return env;
   }
 
-  const api = Object.freeze({ create, ids, nidOf, ID_BITS });
+  const api = Object.freeze({ create, ids, nidOf, ID_BITS, deathLedger });
   GifOS.meshPageEnv = api;
   if (isNode) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

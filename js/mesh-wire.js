@@ -1150,7 +1150,7 @@
         onLeft: (reload) => { if (opts.onLeft) { try { opts.onLeft(reload); } catch (e) {} } },
       });
       raw = penv.newSeat ? penv.newSeat() : new GifOS.meshSeat.Seat(penv.me, penv.world);   // the seat is mine (A3); env.seat() reads it back
-      penv.world.onRecv = (_s, m) => { if (!stopped) { netEdge(); noteRequeue(m); } };
+      penv.world.onRecv = () => { if (!stopped) netEdge(); };
       if (opts.oldCell >= 0) raw.oldCell = opts.oldCell + 1;   // L3.10 (key + 1, 0 is none): my cell before this page loaded: the door's HOME sends me to its neighbours first
       node.seat = seat; node.raw = raw; node.penv = penv; node.__pc = opts.pc || {};
       makeSock();
@@ -1171,17 +1171,6 @@
       deliver(to, f);
     }
     const gpins = ident.newPins();
-    let lastOccDrain = new Map();
-    let lastDrainCk = null;   // my cell at the last drainDeaths (null: not seated)
-    // A LEAVE with no goodbye mark is a seat going back through the door (REQUEUE), not a departure: it stays in the
-    // meeting and its first WHOHOME rides these very channels. Reading its occ drop as a death closed its pcs under
-    // that WHOHOME, so it waited out the 20-tick retry. No word of it after REQUEUE_GRACE ticks: gone after all.
-    const REQUEUE_GRACE = 60;
-    const requeuing = new Map();   // peer -> the tick its goodbye-less LEAVE arrived
-    function noteRequeue(m) {
-      if (!m || m.t !== 'LEAVE' || m.bye || m.mvd || !(m.id >= 0)) { if (m && m.t === 'LEAVE' && m.bye && m.id >= 0) requeuing.delete(layer.ids.pid(m.id)); return; }
-      const p = layer.ids.pid(m.id); if (p) requeuing.set(p, env.TICK);
-    }
 
     const node = {
       peer, seat: null, env, whenReady: ready,
@@ -1280,18 +1269,12 @@
       // Probe-confirmed deaths since the last drain (consume-once). The app's
       // departure intake reads these as facts — diffing occ misses a death
       // whose heal rebuilt the view in the same tick (sole-survivor promotion).
-      drainDeaths() {   // tombstones for display, re-derived from occ (D5 itself lives inside the seat): [cellKey, peer] gone since the last drain
-        if (!seat) return []; const cur = seat.occ, out = []; const now = new Set(cur.values());
-        // Only while I sit in the same cell at both drains: a requeue clears my whole view and a move rebuilds
-        // it, and neither is anyone's death (read as deaths, the page tombstoned the room and closed every pc).
-        const ck = (seat.state === 3 && seat.hasCoord) ? seat.coord.pc + '/' + seat.coord.r + '.' + seat.coord.i : null;
-        const held = [];
-        if (ck !== null && ck === lastDrainCk) for (const [k, p] of lastOccDrain) if (!now.has(p)) {
-          const at = requeuing.get(p);
-          if (at !== undefined && env.TICK - at <= REQUEUE_GRACE) held.push([k, p]); else { requeuing.delete(p); out.push([k, p]); }
-        }
-        for (const p of now) requeuing.delete(p);
-        lastOccDrain = new Map(cur); for (const [, p] of held) lastOccDrain.set('q' + p, p); lastDrainCk = ck; return out;
+      drainDeaths() {   // [cellKey, peer]: the seat's own death verdicts since the last drain (env.js deathLedger), never a cell that only left my view
+        if (!seat || !penv || !penv.drainDeaths) return [];
+        const named = new Set(seat.occ.values()), out = [];
+        // a verdict is on a cell: a member my view still seats at another cell moved, and is not gone
+        for (const [k, x] of penv.drainDeaths()) { const p = layer.ids.pid(x); if (p && !named.has(p)) out.push([k, p]); }
+        return out;
       },
       // D5-observation forensics: the seat's standing translosts, its recent
       // forgotten ones (tlLog carries WHY each was dropped), and the occ view —
