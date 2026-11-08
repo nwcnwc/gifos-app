@@ -21910,6 +21910,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           paintTxMark();
           // not gossiped onward (see chat): a caption line is one flood
         }
+      } else if (m.k === 'vtalk') { if (window.__rowMixOn) window.__rowMixOn(p, m);
       } else if (m.k === 'sig') {
         // Pair-local signaling on the pair's own DataChannel (see sendSig,
         // docs/meet-security.md §FWD): status gossip AND this pair's offers/answers/
@@ -22008,7 +22009,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // down, and a deeper seat would crop them with the old order.
         const stripReorder = m.key === 'sgs' && !!prevAnn && !annNew
           && ((prevAnn.ids || []).join(',') !== (annIds || []).join(',') || prevAnn.n !== m.n || prevAnn.cols !== m.cols);
-        mosAnn.set(ak, { streamId: m.streamId, col: m.col, row: m.row, n: m.n, cols: m.cols, mt: m.mt, h: (typeof m.h === 'number' ? m.h : undefined), ao: (m.ao === 1 ? 1 : undefined), sb: (m.sb === 1 ? 1 : undefined), vp: mxPath(m.vp), ids: annIds, alag: (typeof m.alag === 'number' && isFinite(m.alag) ? Math.max(0, Math.min(2000, m.alag)) : undefined), at: Date.now() });
+        mosAnn.set(ak, { streamId: m.streamId, col: m.col, row: m.row, src: (m.src ? String(m.src).slice(0, 64) : undefined), n: m.n, cols: m.cols, mt: m.mt, h: (typeof m.h === 'number' ? m.h : undefined), ao: (m.ao === 1 ? 1 : undefined), sb: (m.sb === 1 ? 1 : undefined), vp: mxPath(m.vp), ids: annIds, alag: (typeof m.alag === 'number' && isFinite(m.alag) ? Math.max(0, Math.min(2000, m.alag)) : undefined), at: Date.now() });
         if (annNew || stripReorder) schedReconcile(); else schedClaim();
       } else if (m.k === 'mx-beat') {
         stgBeatIn(p, m);
@@ -24657,7 +24658,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // STAGE-MOS-EL
     function mosNeedsVideo(rk) {
       if (rk === 'subraw' || rk === 'x1') return false;
-      if (typeof rk === 'string' && (rk.indexOf('x2:') === 0 || rk.indexOf('sdxc:') === 0)) return false;
+      if (typeof rk === 'string' && (rk.indexOf('x2:') === 0 || rk.indexOf('sdxc:') === 0 || rk.indexOf('ra:') === 0 || rk.indexOf('rap:') === 0)) return false;
       return true;
     }
     // END-STAGE-MOS-EL
@@ -25773,11 +25774,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         else if (now - rowFeed.at >= ROW_SILENT_MS) schedReconcile();
       } catch (e) {} finally { rowFeedBusy = false; }
     }, 400);
+    let rowMixDeaf = false; // L49: mix level ~0. A live head still sends bytes, so heard:feed must not clear this out.
     function rowHeadIsOut(c) {
       const s = meshSeat(); if (!c || !s || c.i === 0 || !s.rowHeir) { rowHeadOut = null; return false; }
       const pid = occPid({ pc: c.pc, r: c.r, i: 0 }), now = Date.now();
       if (rowHeadOut && rowHeadOut.pc === c.pc && rowHeadOut.r === c.r) {
         if (rowHeadOut.pid !== pid) { dbgRowHead('new-head'); rowHeadOut = null; }
+        else if (rowHeadOut.deaf) { if (!rowMixDeaf) { dbgRowHead('heard:level'); rowHeadOut = null; } }
         else if (s.headHeardSince(rowHeadOut.tick + 1)) { rowOutSkip.set(pid, now + 30000); dbgRowHead('heard'); rowHeadOut = null; }
         // The head's view flowing again is the head back, on the evidence that called it out: a seat's first-hand word
         // of its head can stay old for minutes while the head's feed runs, and the heir would stand in for a live head
@@ -25809,6 +25812,188 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return rowX2To.pid;
     }
     const dbgRowHead = (e) => { const l = (window.__rowViewLog = window.__rowViewLog || []); l.push({ t: Date.now(), e }); if (l.length > 100) l.shift(); };
+    // L49. One sim tick is 500 ms. The seat that PLAYS a row mix (a Section-1 head) counts while that mix is near 0
+    // after it has been loud, and a seat in the row flags its own mic on a path that does not go through the row head.
+    // The heir's x1 copy of the same product is born parked, so it has no samples to meter. 8 ticks: the listener asks
+    // the talker to ship the mic, audio only. 16 ticks: the heir stands in. A quiet row never counts. Section 1 only.
+    const ROW_MIX_MS = 500, ROW_MIX_PULL = 8, ROW_MIX_ELECT = 16, ROW_MIX_TTL = 1000, ROW_MIX_LOUD = 5, ROW_MIX_QUIET = 2;
+    const vtalkSeen = new Map();
+    const rowSdLv = new Map(), rowSdDead = new Map(), rowSdHold = new Map();
+    let rowMixDeadN = 0, rowMixPull = false, rowMixHeard = false, rowMixElected = false, rowMixShipUntil = 0, rowMixArmed = false, rowMixSent = 0;
+    let rowMixAn = null, rowMixWhy = '';
+    function rowMixRms(slot, stream) {
+      const track = stream && stream.getAudioTracks ? stream.getAudioTracks()[0] : null;
+      if (!track || track.readyState === 'ended' || !ensureAc()) return -1;
+      if (!slot.an || slot.id !== track.id) {
+        try {
+          if (slot.src) slot.src.disconnect();
+          const src = ac.createMediaStreamSource(new MediaStream([track]));
+          const an = ac.createAnalyser(); an.fftSize = 256; src.connect(an);
+          slot.an = an; slot.src = src; slot.data = new Uint8Array(an.fftSize); slot.id = track.id;
+        } catch (e) { return -1; }
+      }
+      try {
+        slot.an.getByteTimeDomainData(slot.data);
+        let dev = 0; for (let i = 0; i < slot.data.length; i++) { const d = slot.data[i] - 128; dev += d * d; }
+        return Math.sqrt(dev / slot.data.length);
+      } catch (e) { return -1; }
+    }
+    function rowMixFresh(row, pc) {
+      const now = Date.now();
+      for (const v of vtalkSeen.values()) { if (v.row === row && v.pc === pc && now - v.at <= ROW_MIX_TTL) return true; }
+      return false;
+    }
+    function rowMixHold(q) { return rowSdHold.get(q) === 1; }
+    function rowMixVia() {
+      const c = meshCoord(); if (!c || c.pc !== 0) return null;
+      const dest = (c.i === c.r) ? 0 : c.i;
+      return x2Target({ pc: 0, r: dest, i: c.i });
+    }
+    function rowMixNote() {
+      const c = meshCoord(), vias = {}, rms = {}, nC = SCALE.C;
+      let rap = 0, rapRms = -1;
+      if (c && c.i === 0) {
+        for (let q = 0; q < nC; q++) {
+          const f = mosIn.get('sdrow:' + q);
+          if (f && f.via) vias[q] = String(f.via).slice(0, 8);
+          const slot = rowSdLv.get(q);
+          if (slot && typeof slot.rms === 'number') rms[q] = Math.round(slot.rms * 10) / 10;
+        }
+        for (const [mk, rf] of mosIn) {
+          if (String(mk).indexOf('rap:') !== 0 || !rf || !rf.stream) continue;
+          rap++;
+          const ps = rowSdLv.get('p' + mk) || {}; rowSdLv.set('p' + mk, ps);
+          const lv = rowMixRms(ps, rf.stream);
+          if (lv > rapRms) rapRms = Math.round(lv * 10) / 10;
+        }
+      }
+      const sv = rowMixVia();
+      window.__rowMix = { dead: rowMixDeadN, pulls: rowMixPull ? 1 : 0, heard: rowMixHeard ? 1 : 0, elected: rowMixElected ? 1 : 0, deaf: rowMixDeaf ? 1 : 0, ship: rowMixShipUntil > Date.now() ? 1 : 0, hold: [...rowSdHold.keys()], vias, arm: rowMixArmed ? 1 : 0, spk: speakingOf.get('me') ? 1 : 0, why: rowMixWhy, rap, rapRms, rms, sent: rowMixSent, shipVia: sv ? String(sv).slice(0, 8) : '' };
+    }
+    function rowMixOnVtalk(p, m) {
+      if (!p || !m || m.row == null) return;
+      const row = m.row | 0, pc = m.pc | 0, head = occPid({ pc, r: row, i: 0 });
+      if (p.id === head) return;
+      if (m.elect === 1 || m.elect === 0) {
+        const c = meshCoord(), s = meshSeat();
+        const mine = c && s && c.pc === pc && c.r === row && s.rowHeir && s.rowHeir() === myId;
+        if (mine) {
+          if (m.elect === 0) { if (rowHeadOut && rowHeadOut.deaf) { rowMixDeaf = false; dbgRowHead('heard:level'); schedReconcile(); } return; }
+          const headPid = occPid({ pc: c.pc, r: c.r, i: 0 });
+          rowMixElected = true; rowMixDeaf = true; rowMixShipUntil = 0;
+          if (!rowHeadOut || !rowHeadOut.deaf) { rowHeadOut = { pid: headPid, tick: s.seatTick, pc: c.pc, r: c.r, deaf: true }; dbgRowHead('out:deaf'); schedReconcile(); }
+          return;
+        }
+        if ((m.hop | 0) !== 0) return; // one hop: the listener is not a peer of the heir
+        const msg = { k: 'vtalk', elect: m.elect, row, pc, hop: 1 };
+        for (const [id, q] of peers) { if (id === head || id === p.id) continue; dcSend(q, msg); }
+        return;
+      }
+      if (m.pull === 1) {
+        if (m.src === myId) { rowMixPull = true; rowMixHeard = true; rowMixShipUntil = Date.now() + ROW_MIX_TTL + ROW_MIX_MS; schedReconcile(); return; }
+        if ((m.hop | 0) !== 0) return;
+        const msg = { k: 'vtalk', pull: 1, src: m.src, row, pc, hop: 1 };
+        // src is the talker. The hop that reaches them is a peer of src, so this forward includes src.
+        for (const [id, q] of peers) { if (id === head || id === p.id) continue; dcSend(q, msg); }
+        return;
+      }
+      if (m.src == null || m.src === head) return;
+      const hop = m.hop === 0 ? 0 : 1, src = String(m.src);
+      vtalkSeen.set(src, { at: Date.now(), hop, via: p.id, row, pc });
+      if (hop !== 0) return;
+      const msg = { k: 'vtalk', on: 1, src, hop: 1, row, pc };
+      for (const [id, q] of peers) { if (id === head || id === src || id === p.id) continue; dcSend(q, msg); }
+    }
+    window.__rowMixOn = rowMixOnVtalk;
+    function rowMixHeadLevel(q) {
+      const head = occPid({ pc: 0, r: q, i: 0 });
+      const pri = mosIn.get('sdrow:' + q), std = mosStandby.get('sdrow:' + q);
+      const src = pri && pri.via === head ? pri : (std && std.via === head ? std : null);
+      if (!src || !src.stream) return -1;
+      const slot = rowSdLv.get('h' + q) || {}; rowSdLv.set('h' + q, slot);
+      return rowMixRms(slot, src.stream);
+    }
+    function rowMixTick() {
+      const now = Date.now();
+      for (const [src, v] of vtalkSeen) if (now - v.at > ROW_MIX_TTL) vtalkSeen.delete(src);
+      const c = meshCoord(), s = meshSeat();
+      if (c && speakingOf.get('me')) {
+        const head = occPid({ pc: c.pc, r: c.r, i: 0 });
+        vtalkSeen.set(myId, { at: now, hop: 0, via: myId, row: c.r, pc: c.pc });
+        const msg = { k: 'vtalk', on: 1, src: myId, hop: 0, row: c.r, pc: c.pc };
+        for (const [id, p] of peers) { if (id === head) continue; dcSend(p, msg); }
+      }
+      if (c && s && c.i !== 0 && c.pc === 0 && s.rowHeir && s.rowHeir() === myId) {
+        const head = occPid({ pc: c.pc, r: c.r, i: 0 });
+        const x1 = mosIn.get('x1');
+        const level = (x1 && !x1.deadAt && x1.via === head && x1.stream) ? rowMixRms(rowMixAn || (rowMixAn = {}), x1.stream) : -1;
+        const flagged = rowMixFresh(c.r, c.pc);
+        rowMixWhy = (x1 ? (x1.deadAt ? 'xdead' : (x1.via === head ? 'xhead' : 'xvia')) : 'nox1') + ' lv=' + (typeof level === 'number' ? Math.round(level * 10) / 10 : level) + (rowMixArmed ? ' arm' : ' warm') + (flagged ? ' flag' : ' noflag');
+        if (level >= ROW_MIX_LOUD) rowMixArmed = true; // a mix we have heard: later silence is this fault, not "not connected yet"
+        if (level >= ROW_MIX_QUIET) { rowMixDeaf = false; rowMixDeadN = 0; }
+        else if (rowMixArmed && level >= 0 && level < ROW_MIX_QUIET && flagged) { rowMixDeadN++; rowMixDeaf = true; }
+        else rowMixDeadN = 0;
+        if (rowMixDeadN >= ROW_MIX_PULL && !rowMixPull) {
+          const via = rowMixVia();
+          if (via) { rowMixPull = true; rowMixHeard = true; dbgRowHead('pull'); schedReconcile(); }
+        }
+        if (rowMixPull && !rowMixElected && rowMixDeaf) {
+          let n = 0;
+          for (const [src, v] of vtalkSeen) {
+            if (v.pc !== c.pc || v.row !== c.r || now - v.at > ROW_MIX_TTL) continue;
+            if (n >= 2) break; n++;
+            if (src === myId) rowMixShipUntil = now + ROW_MIX_TTL + ROW_MIX_MS;
+            else { const p = peers.get(src); if (p) dcSend(p, { k: 'vtalk', pull: 1, src, row: c.r, pc: c.pc }); }
+          }
+        }
+        if (rowMixDeadN >= ROW_MIX_ELECT && rowMixHeard && !rowMixElected && rowMixPull && rowMixVia() && flagged && level >= 0 && level < ROW_MIX_QUIET) {
+          rowMixElected = true; rowMixShipUntil = 0;
+          rowHeadOut = { pid: head, tick: s.seatTick, pc: c.pc, r: c.r, deaf: true };
+          dbgRowHead('out:deaf'); schedReconcile();
+        }
+        if (rowHeadOut && rowHeadOut.deaf && !rowMixDeaf) { rowHeadOut = null; dbgRowHead('heard:level'); schedReconcile(); }
+      }
+      if (c && c.i === 0 && c.pc === 0) {
+        const nC = SCALE.C;
+        for (let q = 0; q < nC; q++) {
+          if (q === c.r) continue;
+          const f = mosIn.get('sdrow:' + q);
+          const slot = rowSdLv.get(q) || {}; rowSdLv.set(q, slot);
+          const level = (f && f.stream) ? rowMixRms(slot, f.stream) : -1;
+          slot.rms = level;
+          const head = occPid({ pc: 0, r: q, i: 0 });
+          const headLv = rowMixHeadLevel(q);
+          if (headLv >= ROW_MIX_LOUD) {
+            if (rowSdHold.get(q) === 1 || rowSdLv.get('el' + q)) { for (const [id, p] of peers) { if (id === head) continue; dcSend(p, { k: 'vtalk', elect: 0, row: q, pc: 0, hop: 0 }); } }
+            rowSdHold.delete(q); rowSdDead.set('e' + q, 0); rowSdLv.delete('el' + q); rowSdLv.set('arm' + q, 1);
+          } else if (level >= ROW_MIX_LOUD) rowSdLv.set('arm' + q, 1);
+          const armed = rowSdLv.get('arm' + q) === 1;
+          const quiet = armed && level >= 0 && level < ROW_MIX_QUIET && rowMixFresh(q, 0) && f && f.via === head;
+          const n = quiet ? (rowSdDead.get(q) || 0) + 1 : 0;
+          rowSdDead.set(q, n);
+          if (n >= ROW_MIX_PULL && !rowSdHold.get(q)) { rowSdHold.set(q, 1); dbgRowHead('sdrow-hold:' + q); schedReconcile(); }
+          // x1 at the heir is born parked, so the listener is who hears the mix die. Ask the talker for the mic now,
+          // and the heir to stand in if the playing copy stays quiet.
+          if (rowSdHold.get(q) === 1 && !(level >= ROW_MIX_LOUD)) {
+            let pn = 0;
+            for (const [src, v] of vtalkSeen) {
+              if (v.pc !== 0 || v.row !== q || now - v.at > ROW_MIX_TTL) continue;
+              if (pn >= 2) break; pn++;
+              for (const [id, p] of peers) { if (id === head) continue; dcSend(p, { k: 'vtalk', pull: 1, src, row: q, pc: 0, hop: 0 }); }
+            }
+            const en = (rowSdDead.get('e' + q) || 0) + 1;
+            rowSdDead.set('e' + q, en);
+            if (en >= ROW_MIX_ELECT && now - (rowSdLv.get('el' + q) || 0) > 2000) {
+              rowSdLv.set('el' + q, now);
+              for (const [id, p] of peers) { if (id === head) continue; dcSend(p, { k: 'vtalk', elect: 1, row: q, pc: 0, hop: 0 }); }
+              dbgRowHead('ask-elect:' + q);
+            }
+          }
+        }
+      }
+      rowMixNote();
+    }
+    setInterval(() => { try { rowMixTick(); } catch (e) { window.__rowMix = { err: String(e && e.message || e) }; } }, ROW_MIX_MS);
     function rowHeadPid(c) {
       const s = meshSeat(), head = occPid({ pc: c.pc, r: c.r, i: 0 });
       return rowHeadIsOut(c) && s && s.rowHeir ? (s.rowHeir() || head) : head;
@@ -25860,6 +26045,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (key === 'sdx' || key === 'sdx^x') return !iAmHead && meta && meta.col === c.i ? 'sdx' : null;
       if (key === 'sdxc') return !iAmHead && meta && meta.col != null && meta.col !== c.i ? 'sdxc:' + meta.col : null;
       if (key === 'sdn') return iAmHead ? 'sdn' : null;  // my branch's outside-world ingredient (from above)
+      // L49: a talker's mic pulled past a level-dead row head. Audio only. The head claims rap:<row>; a mate relays ra:<row>.
+      if (key === 'ra') {
+        if (c.pc !== 0 || !meta || meta.row == null) return null;
+        if (c.i === 0) return meta.row !== c.r ? 'rap:' + meta.row : null;
+        return 'ra:' + meta.row;
+      }
       if (key === 'sgs') return 'sgs';        // the composited Stage strip, fanned down
       // an individual stager feed (per-stager slot); an older client's '^' suffix
       // resolves to the same slot.
@@ -25907,7 +26098,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // the row+column fabric, two link-disjoint paths. Structural relay slots
     // (sub/x1/x2) keep the plain single sticky claim.
     const isRedun = (rk) => rk === 'sdm' || rk === 'sdx' || rk === 'sdn' || rk === 'sgs' || rk.indexOf('stg:') === 0 || rk.indexOf('sdrow:') === 0;
-    const annMeta = (ann) => ({ col: ann.col, row: ann.row, n: ann.n, cols: ann.cols, mt: ann.mt, h: ann.h, ids: ann.ids, ao: ann.ao, sb: ann.sb, vp: ann.vp, alag: ann.alag });
+    const annMeta = (ann) => { const m = { col: ann.col, row: ann.row, n: ann.n, cols: ann.cols, mt: ann.mt, h: ann.h, ids: ann.ids, ao: ann.ao, sb: ann.sb, vp: ann.vp, alag: ann.alag }; if (ann.src) m.src = String(ann.src).slice(0, 64); return m; };
     // The strip's CELL ORDER (STAGE-FACES): who sits in cell 0..n-1, as the
     // compositing seat packed it. At most C peer ids, each a short string;
     // anything else is dropped, and a receiver without it falls back to the
@@ -26731,7 +26922,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       let co = null;
       if (rk === 'sdm') co = { pc: c.pc, r: c.r, i: 0 };                                        // my head's own fan
       else if (rk === 'sgs') co = c.i === 0 ? net.topo.up(c) : { pc: c.pc, r: c.r, i: 0 };      // the tree hop (my head, or a head's parent)
-      else if (rk.indexOf('sdrow:') === 0) co = { pc: 0, r: +rk.slice(6), i: 0 };               // direct from head q over the S1 column
+      else if (rk.indexOf('sdrow:') === 0) {
+        const q = +rk.slice(6), head = occPid({ pc: 0, r: q, i: 0 });
+        // L49: while that row's mix is level-dead, the carrier is the copy. Byte flow on the head's picture must not win it back.
+        if (rowMixHold(q)) { const alt = cand.find((x) => x.live && head && x.from !== head); if (alt) return alt; }
+        co = { pc: 0, r: q, i: 0 };
+      }
       const pid = rk === 'sdm' ? rowHeadPid(c) : (co ? occPid(co) : null);
       return pid ? cand.find((x) => x.live && x.from === pid) || null : null;
     }
@@ -26812,10 +27008,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // A failback or picture wake never goes to a copy whose last such wake failed, or that was just left for failing,
       // until the window lapses (fbTried); a failover (primary gone or dark) is not held by it.
       const stdFbOk = !!std && !stdTried(fb, std.via + '|' + std.streamId, now, 'fbTried');
-      const wantSwap = !!(pri && std && (!priLive || fb.dark || u2Over || (stdFbOk && (fb.picDead || (stdIsPref && !priIsPref)))));
+      // L49: the playing sdrow is the row head and its mix level is ~0. Not fb.dark — picture bytes are still moving, and the watchdog would clear that.
+      const mixDeaf = !!(pri && rk.indexOf('sdrow:') === 0 && rowMixHold(+rk.slice(6)) && pri.via === occPid({ pc: 0, r: +rk.slice(6), i: 0 }));
+      const wantSwap = !!(pri && std && (!priLive || fb.dark || mixDeaf || u2Over || (stdFbOk && (fb.picDead || (stdIsPref && !priIsPref)))));
       if (wantSwap) {
         if (std && !std.el && std.stream) std.el = mosVideo(std.stream); // mint the decoder on wake, not while parked
         if (!fb.wakeAt) { fb.wakeAt = now; fb.f0 = frames(std.el); if (DEBUG_ON && rk.indexOf('stg:') === 0) swapPicNote(rk, 'wake', 'wantSwap priLive=' + (priLive ? 1 : 0) + ' dark=' + (fb.dark ? 1 : 0) + ' picDead=' + (fb.picDead ? 1 : 0)); }
+        if (mixDeaf && std && std.key) demand(std.via, std.key, std.streamId, true);
         if (stdIsPref && !fb.prefSince) fb.prefSince = now;
         // A DARK-initiated swap (primary transport still alive) demands STRICT
         // flow evidence: the standby's stats-side framesDecoded advancing since
@@ -26855,14 +27054,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // A stage slot is judged on its voice (pipeBytes): with the primary gone, the standby's audio packets since
           // the wake are the evidence, not its <video> (a stager without a camera has a video track that never draws;
           // tv-chain 1325: that gate held a dead copy for the 5 s grace).
-          : (voiceOnly || ((fb.dark || u2Over) && priLive) || (!priLive && rk.indexOf('stg:') === 0))
+          : (voiceOnly || ((fb.dark || mixDeaf || u2Over) && priLive) || (!priLive && rk.indexOf('stg:') === 0))
           ? stdAdvanced
           : ((frames(std.el) > fb.f0 || (std.el && std.el.videoWidth > 0 && now - fb.wakeAt > 1500)) && (!priLive || stdRecent));
         // A dead-or-dark primary swaps the moment the standby flows; a live one
         // (pure failback) additionally waits out the settle window — hysteresis
         // (dark skips it: dark IS a failover, and MOS_SETTLE on lastSwitch
         // still bounds any stall/recover oscillation to one swap per window).
-        const settled = !priLive || fb.dark || fb.picDead || u2Over || ((now - fb.prefSince >= MOS_SETTLE) && (now - fb.lastSwitch >= MOS_SETTLE));
+        const settled = !priLive || fb.dark || mixDeaf || fb.picDead || u2Over || ((now - fb.prefSince >= MOS_SETTLE) && (now - fb.lastSwitch >= MOS_SETTLE));
         if (DEBUG_ON && !(flowing && settled) && rk.indexOf('stg:') === 0) swapPicNote(rk, 'hold', 'flowing=' + (flowing ? 1 : 0) + ' settled=' + (settled ? 1 : 0) + ' f0=' + fb.f0 + ' stdAdv=' + (stdAdvanced ? 1 : 0));
         if (flowing && settled) {
           const old = pri;
@@ -27608,7 +27807,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // rows; deeper: the pack from above, whose sound already leaves my
           // branch out), my row's voices, each child row's block, each L14 branch.
           const outA = new Map(), rowA = new Map(), subA = new Map(), l14A = new Map();
-          if (c.pc === 0) { for (let q = 0; q < C; q++) { if (q === c.r) continue; const f = mosIn.get('sdrow:' + q); if (f && f.stream) outA.set('q' + q, f.stream); } }
+          if (c.pc === 0) {
+            for (let q = 0; q < C; q++) { if (q === c.r) continue; const f = mosIn.get('sdrow:' + q); if (f && f.stream) outA.set('q' + q, f.stream); }
+            // L49: the pulled mic, until the carried copy of that row is the one playing and it is hot. Cap 2.
+            let rapN = 0;
+            for (const [mk, rf] of mosIn) {
+              if (mk.indexOf('rap:') !== 0 || !rf || !rf.stream) continue;
+              const q = +mk.slice(4), slot = rowSdLv.get(q), head = occPid({ pc: 0, r: q, i: 0 });
+              const played = mosIn.get('sdrow:' + q);
+              if (played && played.via !== head && slot && slot.rms >= ROW_MIX_LOUD) continue;
+              if (rapN >= 2) continue;
+              outA.set('rap' + q, rf.stream); rapN++;
+            }
+          }
           else if (dn && dn.stream) outA.set('dn', dn.stream);
           for (let j = 0; j < C; j++) {
             const fp0 = j === c.i ? myId : (actHead && j === 0 ? null : occPid({ pc: c.pc, r: c.r, i: j }));
@@ -27724,6 +27935,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (xf.meta.row === c.r) continue; // never hand my head its own row back (a pre-move claim outlives the move)
           const jk = shipMos('sdrow:' + xf.meta.row, headPid, xf.stream, Object.assign({ row: xf.meta.row }, blockMeta(xf)), mk); if (jk) wanted.add(jk);
         }
+        // L49: relay a pulled mic up to my head, and ship my own while a consumer has asked.
+        if (c.pc === 0) {
+          for (const [mk, rf] of mosIn) {
+            if (mk.indexOf('ra:') !== 0 || !rf || !rf.stream || !rf.meta || rf.meta.row == null || rf.meta.row === c.r) continue;
+            const jr = shipMos('ra', headPid, rf.stream, { row: rf.meta.row, src: rf.meta.src }, mk); if (jr) wanted.add(jr);
+          }
+        }
         // MIX-MINUS relay: my column's child-branch ingredient — my head built
         // it, I hand it to my down-child, where it becomes that head's
         // "outside my branch" ('sdn').
@@ -27760,6 +27978,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (!mate || mate === sdmH.via) continue;
           const jr = shipMos('sdm', mate, sdmH.stream, blockMeta(sdmH)); if (jr) wanted.add(jr);
         }
+      }
+      // L49: the asked-for mic keeps shipping after this seat stands in as head. The relay of someone else's pull stays above, on a non-head.
+      if (c.pc === 0 && rowMixShipUntil > Date.now()) {
+        const via = rowMixVia(), mic = selfFoldStream();
+        const tr = mic && mic.getAudioTracks && mic.getAudioTracks()[0];
+        if (via && tr && tr.readyState !== 'ended') { const jr = shipMos('ra', via, mic, { row: c.r, src: myId }); if (jr) { wanted.add(jr); rowMixSent++; } }
       }
       // ---- STAGE lane: chosen <=C feeds -> S1 -> composited strip -> fan down --
       // Individual stager feeds ride UP to Section 1 (uncomposited passthrough,
