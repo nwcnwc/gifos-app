@@ -15967,7 +15967,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // goodbye leaves behind for the seat's next dial. Counting it as forming made a dial request from a
       // page back from a reload wait out this window and its own 4 s retries: the pair came up at 8-9 s.
       const idle = !!(p.pc && p.pc.signalingState === 'stable' && p.pc.connectionState === 'new' && !p.neg.minting);
-      const forming = !pLive && p.pc && !darkOffer && !idle && Date.now() - pcBuiltAt(p) < 5000 && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
+      // Age alone is not "still forming" once an answer has landed and ICE is
+      // working: a dial request at 5 s was rebuilding that handshake. A reload
+      // (back) is a new page; the old pc is left to fail.
+      const inIce = !!(p.pc && p.pc.remoteDescription && !back
+        && (p.pc.iceConnectionState === 'checking' || p.pc.iceConnectionState === 'connected' || p.pc.iceConnectionState === 'completed'));
+      const forming = !pLive && p.pc && !darkOffer && !idle && (inIce || Date.now() - pcBuiltAt(p) < 5000) && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
       if (typeof clog === 'function') clog('dial-request from ' + String(p.id || '?').slice(0, 6) + ' solo=' + (participantCount() <= 1) + ' live=' + !!pLive
         + ' init=' + iInitiate(p.id) + ' forming=' + !!forming + ' dark=' + !!darkOffer + ' pc=' + (p.pc ? p.pc.connectionState + '/' + p.pc.signalingState : '-')
         + ' age=' + Math.round((Date.now() - pcBuiltAt(p)) / 100) / 10 + 's frag=' + Math.round((Date.now() - (p.fragDialAt || 0)) / 100) / 10 + 's');
@@ -16032,7 +16037,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // Under the wire's four-second ask, so that ask is the redial.
       const fewDoorWait = 3500;
       const wait = (p && p.neverUp === true) ? (manyDoors ? (p.dialWait || 5000) : fewDoorWait) : 5000;
-      if (p && p.pc && Date.now() - pcBuiltAt(p) < wait && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed') {
+      // The 4 s retry is for an offer nobody answered. An answer already
+      // applied, with ICE checking or up, is that handshake still finishing:
+      // rebuilding it here is what tore the pair down. No remote description,
+      // or ICE still new, redials once `wait` is up, as before.
+      const ice = p && p.pc ? p.pc.iceConnectionState : '';
+      const cs = p && p.pc ? p.pc.connectionState : '';
+      const inIce = !!(p && p.pc && p.pc.remoteDescription
+        && (ice === 'checking' || ice === 'connected' || ice === 'completed')
+        && cs !== 'failed' && cs !== 'closed');
+      if (p && p.pc && (inIce || (Date.now() - pcBuiltAt(p) < wait && cs !== 'failed' && cs !== 'closed'))) {
         if (!manyDoors) armDoorRetry(pid, p); // forming: its turn is not yet, but the four-second retry stays armed
         return;
       }
@@ -18796,10 +18810,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // side never learns and never offers. The lower-id side has the occ
         // seed and must break the deadlock. Glare is handled in onSignal.
         const reofferGap = stuckQuiet ? 30000 : 6000;
-        if (!p.absentSince && !p.connected && !p.hungUp && linkTo(pid) && !seatHolds(pid)
+        // lastKick is 0 at birth, so this beat is already due. Do not spend it
+        // on a handshake whose answer landed and whose ICE is still working:
+        // that offer is a second fingerprint on a live check. The polite 4 s
+        // fallback is only when they never dialled (no remote description).
+        // failed and disconnected still offer; the 12 s cure above is separate.
+        const iceNow = p.pc.iceConnectionState;
+        const iceWorking = (iceNow === 'checking' || iceNow === 'connected' || iceNow === 'completed')
+          && st !== 'failed' && st !== 'disconnected';
+        if (!iceWorking && !p.absentSince && !p.connected && !p.hungUp && linkTo(pid) && !seatHolds(pid)
             && (st === 'failed' || st === 'disconnected' || st === 'new' || st === 'connecting')
             && now - p.lastKick > reofferGap
-            && (iInitiate(pid) || (p.downSince && now - p.downSince > 4000))) {
+            && (iInitiate(pid) || (p.downSince && now - p.downSince > 4000 && !p.pc.remoteDescription))) {
           p.lastKick = now + Math.random() * 1500;
           p.altPath = !p.altPath; // §FWD transport rotation — a rotting relay path must not eat every retry
           sendOffer(pid, st !== 'new' && st !== 'connecting');
