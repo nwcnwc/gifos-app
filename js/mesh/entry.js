@@ -91,7 +91,7 @@
         }   // L13
         for (const kv of nbrs) {
           if (kv.v < 0 && hasO && kv.k === ckey(oc)) { this.byeAt.set(kv.k, TICK); continue; }   // L9.3
-          if (kv.v < 0 || !cellOk(kv.k)) continue; let ok = false; for (let q = 0; q < n; q++) if (ckey(ol[q]) === kv.k) { ok = true; break; } if (!ok && hasO && ckey(oc) === kv.k) ok = true;
+          if (kv.v < 0 || !cellOk(kv.k)) continue; let ok = false, link = false; for (let q = 0; q < n; q++) if (ckey(ol[q]) === kv.k) { ok = true; link = true; break; } if (!ok && hasO && ckey(oc) === kv.k) ok = true;
           if (!ok && owner >= 0 && c.pc === 0 && ckPc(kv.k) === 0) ok = true;   // L7.7
           if (!ok && hasO && c.i === 0 && kv.k !== ckey(oc)) { const hc = unckey(kv.k); if (hc.pc === oc.pc && hc.r === oc.r) { this.l9BkId = kv.v; this.l9BkCk = kv.k; this.l9BkAt = TICK; } if (oc.pc === 0 && hc.pc === 0 && (hc.r === oc.r || hc.i === oc.i)) ok = true; }   // L9.3
           if (!ok && this.l13('L13.1') && hasO && c.pc !== 0) { const ring = FREE.l13Ring(oc); let inn = false; for (const rc of ring) if (ckey(rc) === kv.k) inn = true; if (inn) { if (this.cousins.has(kv.k) || this.cousins.size < 4 * C) this.cousins.set(kv.k, kv.v); continue; } }
@@ -106,8 +106,9 @@
           {
             const l88 = (roomTerm(this, 1) || kv.v === owner) && this.occ.has(kv.k) && this.occGet(kv.k) !== kv.v && !this.firstHandLive(kv.k);
             if (!this.occ.has(kv.k) || l88) { if (l88 && kv.v === owner) this.noChan.delete(kv.v); this.setOcc(kv.k, kv.v); if (!l88 || this.occGet(kv.k) === kv.v) { this.noteS1(kv.k); if (kv.v !== owner && ckPc(kv.k) === 0) this.s1told.set(kv.k, TICK); } }
-            // The admitter's confirm of this seat is a hearing. Their own cell on this PLACE is the hearing the other way. Anyone else's listing stays a listing.
-            if (kv.v === owner && hasO && kv.k === ckey(oc) && this.occGet(kv.k) === owner) this.liveMark(kv.k);
+            // The admitter's confirm of this seat is a hearing. Their own cell on this PLACE is the hearing the other way.
+            // Section 1 has no owner coord, so that hearing is the linked cell they name themselves at. Anyone else's listing stays a listing.
+            if (kv.v === owner && this.occGet(kv.k) === owner && ((hasO && kv.k === ckey(oc)) || (c.pc === 0 && ckPc(kv.k) === 0 && link))) this.liveMark(kv.k);
           }
         }
       }
