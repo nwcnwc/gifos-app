@@ -231,9 +231,11 @@ body.desk-ptr #hdrhand.on { display: none !important; }
     flex: 0 1 auto; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
   }
 }
-/* The Stage frame: a free rectangle with a corner grip. */
-#tilewin .tw-rect { box-shadow: 0 0 0 9999px rgba(0,0,0,.5); left: 0; top: 0; width: 100%; height: 100%; }
-#tilewin .tw-grip { position: absolute; right: -9px; bottom: -9px; width: 18px; height: 18px; border-radius: 50%;
+/* The Stage frame: a free rectangle with a corner grip. The grip stays
+   inside the pad. Past the edge it sits in the rounded corner and the
+   pad clips it, so a drag there never reaches the frame. */
+#tilewin .tw-rect { box-sizing: border-box; box-shadow: 0 0 0 9999px rgba(0,0,0,.5); left: 0; top: 0; width: 100%; height: 100%; }
+#tilewin .tw-grip { position: absolute; right: 4px; bottom: 4px; width: 18px; height: 18px; border-radius: 50%;
   background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
 /* Broadcast calm, at every screen size: the host's panels (the stream link,
    Order of service, song words) fade with the dock so the Stage is the
