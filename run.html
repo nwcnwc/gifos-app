@@ -1034,6 +1034,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     font: bold 1.5rem system-ui; }
   .stgvotes button .nm { font-size: .72rem; background: rgba(10,10,15,.75); padding: .1rem .45rem; border-radius: .35rem; }
   .stgvotes button.voted .x { box-shadow: 0 0 0 4px #fff, 0 0 20px rgba(255,255,255,.55); }
+  /* The same vote-off mark, on the stage picture. The row tile is gone. */
+  #stagefeed .stgvotes { z-index: 8; pointer-events: none; }
+  #stagefeed .stgvotes .votedot { display: none; position: relative; top: auto; right: auto; bottom: auto; left: auto; inset: auto; margin: 0;
+    width: 3.4rem; height: 3.4rem; border-radius: 50%; border: 3px solid rgba(255,255,255,.9); cursor: pointer;
+    align-items: center; justify-content: center; font: bold 1.7rem system-ui; color: #fff; padding: 0; pointer-events: auto; }
+  body.vm-down.canvote #stagefeed .stgvotes .votedot { display: flex; background: rgba(214,40,48,.92); }
+  body.vm-down #stagefeed .stgvotes .votedot::after { content: '✕'; }
+  #stagefeed .stgvotes .votedot.voted { box-shadow: 0 0 0 4px #fff, 0 0 20px rgba(255,255,255,.55); }
   /* Sits above the control bar (104px tall, 14px off the bottom) so a vote
      in progress never covers Camera or the other bar buttons. */
   #votebanner { position: fixed; bottom: 128px; left: 50%; transform: translateX(-50%); z-index: 40;
@@ -2847,8 +2855,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     z-index: 7; border-radius: 16px; border: 2px solid #fff; overflow: hidden; cursor: grab; touch-action: none;
     box-shadow: 0 12px 28px rgba(0,0,0,.45); }
   body.comfy .comfy-off { display: none !important; }
-  /* A camera on the Stage holds this seat. The picture is only on the Stage:
-     no video and no letter here, and the seat stays so nobody shifts into it. */
+  /* A camera on the Stage leaves this row (comfy-off). These cover a tile
+     that still carries the class while the layout catches up. */
   body.comfy .tile.seat-held > video { visibility: hidden !important; opacity: 0 !important; }
   body.comfy .tile.seat-held .avatar { display: none !important; }
   body.comfy .tile.seat-held { background: #0d0f14 !important; }
@@ -9785,21 +9793,36 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           try { if (tiles[i].el) tiles[i].el.classList.remove('seat-held'); } catch (e) {}
         }
         if (sgsOn) {
-          // The strip shows a camera that is on the Stage. That person keeps
-          // the same seat: video and initials off, nobody shifts into it.
-          // A sharer keeps their face (their camera is not the stage picture).
-          // A Pin keeps its tile.
+          // The strip is this person's picture. Their row tile leaves the
+          // layout so the others close up. A sharer keeps their face (their
+          // camera is not the stage picture). A Pin keeps its tile.
+          // comfy-off hides the element without setting style.display, so the
+          // stadium roster still counts a row-mate as already shown.
           let stagersNow = [];
           try { stagersNow = stageIds(); } catch (e) {}
+          const row = [];
           for (let i = 0; i < tiles.length; i++) {
             const t = tiles[i];
             const sid = t.me ? myId : t.id;
-            if (!sid || stagersNow.indexOf(sid) < 0 || t.shareFace || (focusId && t.id === focusId)) continue;
-            t.stage = false;
-            t.seatHeld = true;
-            try { t.el.classList.add('seat-held'); t.el.classList.remove('comfy-off'); } catch (e) {}
+            const onStrip = !!(sid && stagersNow.indexOf(sid) >= 0 && !t.shareFace && !(focusId && t.id === focusId));
+            t.seatHeld = onStrip;
+            try {
+              if (t.el) {
+                t.el.classList.toggle('seat-held', onStrip);
+                if (onStrip) t.el.classList.add('comfy-off');
+              }
+            } catch (e) {}
+            if (onStrip) { t.stage = false; continue; }
+            row.push(t);
           }
+          tiles.length = 0;
+          for (let i = 0; i < row.length; i++) tiles.push(row[i]);
           tiles.unshift({ id: 'stage:sgs', el: sgs, tier: 'row', stage: true, share: true, pz: 'stage:sgs' });
+        } else {
+          for (let i = 0; i < tiles.length; i++) {
+            tiles[i].seatHeld = false;
+            try { if (tiles[i].el) tiles[i].el.classList.remove('seat-held'); } catch (e) {}
+          }
         }
         // An app in the meeting takes the seat a shared screen takes. Its
         // pane stays where it is in the page (moving an iframe reloads it):
@@ -9833,7 +9856,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const off = !st || (!!st.camOff && !st.rb);
           let avatar = '';
           try { avatar = (MV.avatarUrl && MV.avatarUrl(st || {}, null)) || ''; } catch (e2) {}
-          // A camera on the Stage holds this stadium seat empty. A screen
+          // A camera on the Stage is left out of this drawing. A screen
           // share whose camera is not on stage is unchanged.
           let held = false;
           try {
@@ -9842,14 +9865,73 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           } catch (e3) { held = false; }
           faces.push({ id: id, name: name, initials: held ? '' : nameInitial(name), off: off || held, avatar: held ? '' : avatar, shade: shadeKey(id), held: held });
         }
-        // The view shows this composite whole. It does not cut a cell out of it.
+        // A camera on the Stage is not a stadium face here. Nothing is sent
+        // back. When this browser's picture already has one cell per person
+        // still in the stadium, the box is that count. A cell it still names
+        // is left out of the drawing. A picture this page cannot cut stays
+        // whole, so the box is not a slit around a larger frame.
         let cellOf = null;
-        if (Array.isArray(meta.ids) && meta.ids.length === meta.n) {
+        if (Array.isArray(meta.ids) && meta.ids.length === meta.n && meta.n > 0) {
           const at = new Map();
-          for (let k = meta.ids.length - 1; k >= 0; k--) at.set(meta.ids[k], k); // first cell wins, as indexOf did
+          for (let k = meta.ids.length - 1; k >= 0; k--) {
+            if (meta.ids[k] == null || meta.ids[k] === '') continue;
+            at.set(meta.ids[k], k); // first cell wins, as indexOf did
+          }
           cellOf = faces.map((f) => (at.has(f.id) ? at.get(f.id) : -1));
         }
-        const cols = cellOf ? (meta.cols || 0) : (meta.n === roster.length) ? (meta.cols || 0) : 0;
+        const shownFaces = [];
+        const skipCells = [];
+        const restIx = [];
+        const heldIx = [];
+        for (let fi = 0; fi < faces.length; fi++) (faces[fi].held ? heldIx : restIx).push(fi);
+        const nPic = meta.n | 0;
+        let pictureCells = 0;
+        let cut = false;
+        if (restIx.length === 0) {
+          // Everyone past the row is on the stage. No stadium box.
+        } else if (nPic === restIx.length || nPic === 0) {
+          for (let ri = 0; ri < restIx.length; ri++) shownFaces.push(faces[restIx[ri]]);
+        } else if (cellOf && nPic > restIx.length) {
+          const skip = [];
+          const seen = {};
+          let unnamedHeld = 0;
+          for (let hi = 0; hi < heldIx.length; hi++) {
+            const ix = cellOf[heldIx[hi]];
+            if (ix >= 0) { if (!seen[ix]) { seen[ix] = true; skip.push(ix); } }
+            else unnamedHeld++;
+          }
+          const nulls = [];
+          if (Array.isArray(meta.ids)) {
+            for (let ni = 0; ni < meta.ids.length; ni++) if ((meta.ids[ni] == null || meta.ids[ni] === '') && !seen[ni]) nulls.push(ni);
+          }
+          const namedOk = unnamedHeld === 0 && skip.length + restIx.length === nPic;
+          const paired = unnamedHeld > 0 && unnamedHeld === nulls.length && skip.length + nulls.length + restIx.length === nPic;
+          if (paired) for (let ni = 0; ni < nulls.length; ni++) skip.push(nulls[ni]);
+          let restFound = restIx.length > 0;
+          for (let ri = 0; ri < restIx.length; ri++) if (!(cellOf[restIx[ri]] >= 0)) restFound = false;
+          const MM = (typeof GifOS !== 'undefined' && GifOS.meshMedia) || null;
+          let square = false;
+          if (MM && typeof MM.faceSrcRect === 'function' && (meta.cols | 0) > 0 && meta.w > 2 && meta.h > 2) {
+            const s = MM.faceSrcRect(0, nPic, meta.cols | 0, meta.w, meta.h);
+            square = !!(s && s.sw > 0 && Math.abs(s.sw - s.sh) <= 0.08 * s.sw);
+          }
+          if (restFound && square && (paired || namedOk) && skip.length > 0) {
+            for (let si = 0; si < skip.length; si++) skipCells.push(skip[si]);
+            for (let ri = 0; ri < restIx.length; ri++) shownFaces.push(faces[restIx[ri]]);
+            cut = true;
+          }
+        }
+        if (!cut && restIx.length > 0 && shownFaces.length === 0) {
+          if (nPic === faces.length) {
+            for (let fi = 0; fi < faces.length; fi++) shownFaces.push(faces[fi]);
+          } else if (nPic > restIx.length) {
+            // The frame still has more cells than the people left. Size the
+            // box to the frame. Do not squeeze it down to the shorter count.
+            for (let ri = 0; ri < restIx.length; ri++) shownFaces.push(faces[restIx[ri]]);
+            pictureCells = nPic;
+          }
+        }
+        const cols = (skipCells.length && (meta.cols | 0) > 0) ? (meta.cols | 0) : cellOf ? (meta.cols || 0) : (meta.n === roster.length) ? (meta.cols || 0) : 0;
         if (meta.video && !meta.video._comfyRz) {
           meta.video._comfyRz = true;
           meta.video.addEventListener('resize', () => { try { layout(); } catch (e) {} });
@@ -9878,7 +9960,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           }
         }
         window.__comfyLast = MV.apply({
-          feed: feed, tiles: tiles, faces: faces, video: meta.video, srcW: meta.w, srcH: meta.h, cols: cols, cellN: cellOf ? meta.n : 0, cellOf: cellOf,
+          feed: feed, tiles: tiles, faces: shownFaces, video: meta.video, srcW: meta.w, srcH: meta.h, cols: cols, cellN: cellOf ? meta.n : 0, cellOf: cellOf, skipCells: skipCells, pictureCells: pictureCells,
           holdMs: holdMs, floor: floor,
           vw: window.innerWidth, vh: window.innerHeight, phone: phone, selfId: shadeKey('me'),
           pill: document.body.classList.contains('has-pill'), bottom: 0, holdBottom: 0, top: 0,
@@ -9902,7 +9984,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             }
           }
         }
-        if (meta.srcEl) meta.srcEl.classList.toggle('stad-src', faces.length > 0);
+        // Park the source while the feed shows the stadium, and while the
+        // only people past the row are on stage (the strip must not pop back).
+        if (meta.srcEl) meta.srcEl.classList.toggle('stad-src', shownFaces.length > 0 || heldIx.length > 0);
         try { applyViewerCrops(); } catch (e) {}
       } finally { comfyBusy = false; }
     }
@@ -24385,8 +24469,30 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // Own-row hiding stops at section size (Nathan): a Stadium of more than C×C people shows everyone and hides nothing.
         const hide = [];
         if (c && meta.n <= SCALE.C * SCALE.C) for (let j = 0; j < SCALE.C; j++) { const pid = j === c.i ? myId : occPid({ pc: c.pc, r: c.r, i: j }); if (pid) hide.push(String(pid)); }
+        // A camera on the Stage is left out of this browser's stadium only.
+        // The pack that arrived is unchanged, and a share stays in the grid.
+        try {
+          const stgHide = stageIds();
+          for (let si = 0; si < stgHide.length; si++) {
+            const sid = String(stgHide[si]);
+            let sharing = false;
+            try { sharing = sid === String(myId) ? !!myStatus.scr : (typeof sharingScreen === 'function' && !!sharingScreen(sid)); } catch (e2) {}
+            if (sharing || hide.indexOf(sid) >= 0) continue;
+            hide.push(sid);
+          }
+        } catch (e) {}
         if (!sdView) sdView = MM.createPacker({ shape: 'stad', fps: VIEW_FPS }).start();   // a local paint, never encoded: draw at display rate so the view adds little delay
-        sdView.setTile('v', 0, el, null, Object.assign({}, meta, { hide }));
+        // The shipped pack names every cell or none. This drawing still has
+        // the local list, nulls included, and does not write it back.
+        let viewMeta = meta;
+        try {
+          if (meta && roomPack && roomPack.canvas && src === roomPack.canvas && roomPack.cellIds &&
+              !(Array.isArray(meta.ids) && meta.ids.length === meta.n)) {
+            const localIds = roomPack.cellIds();
+            if (localIds && localIds.length === meta.n) viewMeta = Object.assign({}, meta, { ids: localIds });
+          }
+        } catch (e) {}
+        sdView.setTile('v', 0, el, null, Object.assign({}, viewMeta, { hide }));
         sdViewSrc = src;
       } else if (sdView) sdView.delTile('v');
       if (sdView && sdView.count() > 0 && sdView.track) {
@@ -35243,8 +35349,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       refreshAllTiles();
       paintStageVoteTargets();
     }
-    // Stagers have no .tile of their own (they live in the composited strip),
-    // so vote-off-stage paints one labeled ✕ per stager over the strip tile.
+    // The row tile is gone while the strip shows them, so the same vote-off
+    // mark sits on the stage picture. It still calls castVote.
     function paintStageVoteTargets() {
       for (const host of document.querySelectorAll('#stagefeed .rowtile')) {
         let box = host.querySelector('.stgvotes');
@@ -35257,8 +35363,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         box.innerHTML = '';
         for (const id of stg) {
           const b = document.createElement('button');
-          b.innerHTML = '<span class="x">✕</span><span class="nm"></span>';
-          b.querySelector('.nm').textContent = rosterNames[id] || 'them';
+          b.type = 'button';
+          b.className = 'votedot';
+          b.setAttribute('aria-label', 'Vote ' + (rosterNames[id] || 'them') + ' off the stage');
           if (devOf[id] && myStageVotes.down.has(devOf[id])) b.classList.add('voted');
           b.addEventListener('click', (e) => { e.stopPropagation(); castVote(id); paintStageVoteTargets(); });
           box.appendChild(b);

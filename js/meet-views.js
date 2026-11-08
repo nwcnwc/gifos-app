@@ -4,7 +4,8 @@
  * about peers: the page hands it elements and numbers.
  *
  * The row is the direct feeds the page passes in. The stadium is one
- * composite video in one box. Nothing is cut out of it.
+ * composite video in one box. A stage camera's cell is left out of this
+ * drawing only, when the page names that cell. Nothing is sent.
  */
 (function (root) {
   const GifOS = root.GifOS = root.GifOS || {};
@@ -353,6 +354,7 @@
 
   function clearRoot(feed) {
     if (!feed || !feed.querySelectorAll) return;
+    stopStadClose();
     const placed = feed.querySelectorAll('[data-comfy], .comfy-off');
     for (let i = 0; i < placed.length; i++) clearEl(placed[i]);
     const whole = feed.querySelector('#stadwhole');
@@ -524,6 +526,7 @@
   // The composite fills its box. left/top stay 0 and the video is the
   // element's own size, so the frame shows whole. A cell crop would shift
   // it by a negative offset and a width larger than the box.
+  // A stage camera is copied out of that frame onto one canvas instead.
   function showWhole(video) {
     if (!video || !video.style) return;
     video.style.position = 'absolute';
@@ -537,6 +540,94 @@
     video.style.objectPosition = 'center center';
     video.style.visibility = '';
     video.style.opacity = '';
+  }
+
+  // One canvas over the stadium video. It redraws the cells this browser
+  // keeps and leaves a stage camera's cell out. The source <video> stays
+  // playing underneath: hiding it can stop the decoder. Nothing is sent.
+  let stadClose = null;
+  function stopStadClose() {
+    const c = stadClose;
+    stadClose = null;
+    if (!c) return;
+    if (c.vfc && c.video && typeof c.video.cancelVideoFrameCallback === 'function') {
+      try { c.video.cancelVideoFrameCallback(c.vfc); } catch (e) {}
+    }
+    if (c.rafId) cancelAnimationFrame(c.rafId);
+    if (c.canvas && c.canvas.remove) c.canvas.remove();
+  }
+  function stadCellsSquare(n, cols, sw, sh) {
+    const MM = GifOS.meshMedia;
+    if (!MM || typeof MM.faceSrcRect !== 'function' || typeof MM.packGrid !== 'function') return false;
+    if (!Number.isInteger(n) || !Number.isInteger(cols) || n < 1 || cols < 1) return false;
+    if (!(sw > 2) || !(sh > 2)) return false;
+    const s = MM.faceSrcRect(0, n, cols, sw, sh);
+    return !!(s && s.sw > 0 && Math.abs(s.sw - s.sh) <= 0.08 * s.sw);
+  }
+  function drawStadClose(c) {
+    const video = c.video;
+    const sw = (video && video.videoWidth) || 0;
+    const sh = (video && video.videoHeight) || 0;
+    if (!c.ctx || !stadCellsSquare(c.n, c.cols, sw, sh)) return false;
+    const MM = GifOS.meshMedia;
+    const keep = c.keep;
+    const g = MM.packGrid(keep.length, 'stad');
+    const cell = Math.max(1, Math.round(sw / c.cols));
+    const W = cell * g.cols, H = cell * g.rows;
+    if (c.canvas.width !== W) c.canvas.width = W;
+    if (c.canvas.height !== H) c.canvas.height = H;
+    c.ctx.fillStyle = '#101418';
+    c.ctx.fillRect(0, 0, W, H);
+    for (let i = 0; i < keep.length; i++) {
+      const s = MM.faceSrcRect(keep[i], c.n, c.cols, sw, sh);
+      const dx = (i % g.cols) * cell, dy = Math.floor(i / g.cols) * cell;
+      try { c.ctx.drawImage(video, s.sx, s.sy, s.sw, s.sh, dx, dy, cell, cell); } catch (e) {}
+    }
+    return true;
+  }
+  function armStadClose(el, video, spec) {
+    const n = spec.n | 0, cols = spec.cols | 0;
+    const skip = {};
+    const skips = spec.skips || [];
+    for (let i = 0; i < skips.length; i++) {
+      const j = skips[i] | 0;
+      if (j >= 0 && j < n) skip[j] = true;
+    }
+    const keep = [];
+    for (let j = 0; j < n; j++) if (!skip[j]) keep.push(j);
+    const sw = (video && video.videoWidth) || 0;
+    const sh = (video && video.videoHeight) || 0;
+    if (!keep.length || keep.length === n || !stadCellsSquare(n, cols, sw, sh)) { stopStadClose(); return; }
+    if (stadClose && (stadClose.el !== el || stadClose.video !== video)) stopStadClose();
+    if (!stadClose) {
+      const doc = el.ownerDocument || document;
+      const canvas = doc.createElement('canvas');
+      canvas.className = 'stad-close';
+      canvas.setAttribute('aria-hidden', 'true');
+      const st = canvas.style;
+      st.position = 'absolute';
+      st.left = '0'; st.top = '0'; st.width = '100%'; st.height = '100%';
+      st.objectFit = 'contain';
+      st.background = '#101418';
+      st.zIndex = '1';
+      st.pointerEvents = 'none';
+      const name = el.querySelector('.name');
+      if (name) el.insertBefore(canvas, name); else el.appendChild(canvas);
+      stadClose = { el: el, video: video, canvas: canvas, ctx: canvas.getContext('2d'), rafId: 0, vfc: 0 };
+      const tick = function () {
+        if (!stadClose || stadClose.canvas !== canvas) return;
+        drawStadClose(stadClose);
+        const v = stadClose.video;
+        if (v && typeof v.requestVideoFrameCallback === 'function') stadClose.vfc = v.requestVideoFrameCallback(tick);
+        else stadClose.rafId = requestAnimationFrame(tick);
+      };
+      if (video && typeof video.requestVideoFrameCallback === 'function') stadClose.vfc = video.requestVideoFrameCallback(tick);
+      else stadClose.rafId = requestAnimationFrame(tick);
+    }
+    stadClose.n = n;
+    stadClose.cols = cols;
+    stadClose.keep = keep;
+    drawStadClose(stadClose);
   }
 
   // One resize listener, on the stadium <video>. Debounced, so a burst
@@ -695,6 +786,7 @@
       if (lb) lb.textContent = 'Stadium \u00b7 ' + allFaces.length;
       tiles.push({ id: 'stad:whole', tier: 'stad', el: stadEl, shade: 'stad' });
     } else {
+      stopStadClose();
       const old = feed.querySelector('#stadwhole');
       if (old) old.remove();
     }
@@ -721,7 +813,11 @@
     const MZ = GifOS.meetZones;
     const byId = {};
     for (let i = 0; i < tiles.length; i++) byId[tiles[i].id] = tiles[i];
-    let lay = zonesLayout(MZ, tiles, box, Object.assign({}, opts, { stadCount: allFaces.length }));
+    // pictureCells: the frame still has more cells than the faces we show.
+    // The box follows the frame so a shorter count cannot slit it.
+    const picN = opts.pictureCells | 0;
+    const stadN = picN > allFaces.length ? picN : allFaces.length;
+    let lay = zonesLayout(MZ, tiles, box, Object.assign({}, opts, { stadCount: stadN }));
     // Stopping the faces above Record must not shrink a phone face under the
     // 96px Fit floor (a 320x460 SE made seven 76x108 slivers). Then the faces
     // fill the screen and the dock floats over them (Nathan 2026-10-19 16:42).
@@ -850,6 +946,10 @@
       const cv = stadEl.querySelector('video');
       if (stream) playStream(cv, stream);
       showWhole(cv);
+      const skips = Array.isArray(opts.skipCells) ? opts.skipCells : [];
+      if (skips.length && (opts.cellN | 0) > 0 && (opts.cols | 0) > 0) {
+        armStadClose(stadEl, cv, { n: opts.cellN | 0, cols: opts.cols | 0, skips: skips });
+      } else stopStadClose();
       if (stream) frameVid = cv;
     }
     watchFrame(frameVid, typeof opts.onSettle === 'function' ? opts.onSettle : null);
