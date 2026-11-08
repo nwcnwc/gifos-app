@@ -7792,13 +7792,38 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       docPipAim();
       return true;
     }
-    function exitPip(why) {
+    // The OS can tear the float's window down without firing leavepictureinpicture.
+    // exitPictureInPicture then rejects, or finishes while this element is still
+    // the picture-in-picture element, and the tile stays on the browser's
+    // stand-in. Clearing that element's player drops the binding when the
+    // window is already gone. Only while the tab is visible: a float the
+    // person is still away in keeps its player. A refusal is recorded either
+    // way; an exit that already cleared the element must not reset it.
+    function pipRecover(v, refused) {
+      if (document.hidden || !v || document.pictureInPictureElement !== v) return;
+      let src = null; try { src = v.srcObject; } catch (e) { src = null; }
+      if (!src) return;
+      try { v.srcObject = null; } catch (e) {}
+      try { v.load(); } catch (e) {}
+      try { v.srcObject = src; } catch (e) {}
+      const pr = v.play(); if (pr && pr.catch) pr.catch(() => {});
+      pipNote('el-recover', { err: refused || '' });
+    }
+    async function exitPip(why) {
       pipNote('exit', { why: why || '' });
       if (docPip) { const w = docPip.win; docPip = null; try { w.close(); } catch (e) {} }
+      const v = document.pictureInPictureElement;
+      let refused = '';
       try {
-        if (document.pictureInPictureElement) document.exitPictureInPicture().catch(() => {});
-        else for (const v of document.querySelectorAll('video')) if (v.webkitPresentationMode === 'picture-in-picture') v.webkitSetPresentationMode('inline');
-      } catch (e) {}
+        if (v) {
+          try { await document.exitPictureInPicture(); }
+          catch (e) { refused = (e && e.name) || 'Error'; pipNote('exit-refused', { err: refused }); }
+        } else for (const el of document.querySelectorAll('video')) if (el.webkitPresentationMode === 'picture-in-picture') el.webkitSetPresentationMode('inline');
+      } catch (e) {
+        refused = (e && e.name) || 'Error';
+        pipNote('exit-refused', { err: refused });
+      }
+      try { pipRecover(v, refused); } catch (e) {}
     }
     try { navigator.mediaSession.setActionHandler('enterpictureinpicture', () => { pipNote('ms-action'); awayFull(true); enterPip(false, true); }); } catch (e) {}
     // The FLOAT button: Chrome's AUTO PiP on tab-leave is chrome-gated (the
