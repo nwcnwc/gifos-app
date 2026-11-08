@@ -7,6 +7,7 @@
   'use strict';
   const GifOS = root.GifOS = root.GifOS || {};
   GifOS.meshLaws = Object.freeze({
+    ASK_GAP: 2,               // A greeter asked again sooner than this (two ticks, under one second) is a burst: the newcomer's second ask waits the long time. A gap of this or more asks again one tick past L7_HOLD.
     CHAN_UP: 32,              // a channel counts as up only while its proof is this fresh
     CHILD_LEDGER_H: 300,      // no child-row ledger this long means an unheard child cell is an echo
     COMPACT_PERIOD: 90,       // Q2: min ticks between one leaf's compaction probes

@@ -117,6 +117,7 @@
     COMPACT_SETTLE: 300,   // C++: mesh.cpp:COMPACT_SETTLE  (LAW_COMPACT_SETTLE)
     COMPACT_TTL: 30,   // C++: mesh.cpp:COMPACT_TTL  (LAW_COMPACT_TTL)
     L7_HOLD: 24,   // C++: mesh.cpp:L7_HOLD  (LAW_L7_HOLD)
+    ASK_GAP: 2,   // C++: mesh.cpp:ASK_GAP  (LAW_ASK_GAP)
     L5_SETTLE: 16,   // C++: mesh.cpp:L5_SETTLE  (LAW_L5_SETTLE)
     L5_PERIOD: 8,   // C++: mesh.cpp:L5_PERIOD  (LAW_L5_PERIOD)
     L4_ENTRY_N: 2,   // C++: mesh.cpp:L4_ENTRY_N  (LAW_L4_ENTRY_N)
@@ -244,6 +245,7 @@
     L22_CLOSE_WAIT: 12,   // C++: mesh_link.inc:L22_CLOSE_WAIT
     L14_PC_ALLOW: 4,   // C++: mesh_link.inc:L14_PC_ALLOW
     L374_W: 5,   // C++: mesh_gaps_fab.inc:L374_W
+    DEAF_QCAP: 4096,   // C++: mesh_time.inc:DEAF_QCAP
     RELOAD_CLOSE_LAG: 3,   // C++: mesh_time.inc:RELOAD_CLOSE_LAG
     RELAY_FRAMES_PER_TICK: 1.5,   // C++: mesh_net.inc:RELAY_FRAMES_PER_TICK
     RELAY_FRAME_BURST: 600,   // C++: mesh_net.inc:RELAY_FRAME_BURST

@@ -84,6 +84,7 @@
       if (m.ttl <= 0) return;
       if (this.coord.pc === 0) {
         const h = newMsg('HOME'); h.roster = this.s1Roster(); h.id = id; h.gkey = this.genKey;
+        h.askGap = this.doorAskAt < 0 ? 1000000 : (TICK - this.doorAskAt) | 0; this.doorAskAt = TICK | 0;   // one clock for the whole door, read before this answer moves it
         if (m.knock) { h.knock = true; this.f.fabricDialJoin(id, m.from); h.mass = this.l13On() && this.l13Mass(); }   // L13.25
         for (const [bk, bv] of this.byeAt) { if (ckPc(bk) !== 0 || this.occGet(bk) >= 0 || TICK - bv > K.LEASE_T) continue; h.byes.push(bk); if (h.byes.length >= C * C) break; }   // L1.5
         if (!this.l31Door(m, h)) this.emit(m.from, h);
@@ -105,6 +106,7 @@
       if (m.id >= 0) this.doorAsk.delete(m.id);   // it answered: not dark
       if (this.l13On() && this.state === 3 && m.knock && (m.byes.length >= 2 || m.mass)) { let n = 0; for (const v of this.byeIds.values()) if (TICK - v <= K.LEASE_T) n++; let d = 0; for (const t of this.l13DownAt) if (TICK - t <= K.LEASE_T) d++; if (n + d >= 1) this.l13MassHeard(); }   // L13
       if (this.state === 3 && TICK - this.rosterAskAt > 120) return;   // a SEATED seat hears HOME only as the answer to its own WHOHOME
+      if (m.askGap >= 0) this.askGap = m.askGap | 0;   // the door's one clock, as of this answer
       if (m.gkey) this.genKey = m.gkey;   // THIS meeting's genesis key
       if (this.state === 1 && roomTerm(this, 1) && m.from >= 0 && this.c7Old.has(m.from) && TICK - this.c7At < K.RELAY_TTL) return;   // L8.5
       if (this.state === 1 && this.l851Moves(m)) return;   // L8.5.1

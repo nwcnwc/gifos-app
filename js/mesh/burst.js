@@ -39,17 +39,17 @@
       const a = this.l31Acc.get(k); return a !== undefined && a.left && this.TICK - a.at <= K.L31_REC_HOLD;
     },
 
-    // L44.4: a room whose Section 1 is not full has no queue to protect: a FIND a door acknowledged is asked again one tick past L7_HOLD, not after 60.
+    // L44.4: the second ask waits 60 ticks when the greeter was asked under a second ago, and one tick past L7_HOLD otherwise. The list's length is not the test.
     // C++: mesh_burst.inc:Seat::l44AckWait
     l44AckWait() {
-      if (!this.haveRoster || this.roster.length >= C * C) return 60;
+      if (this.askGap < K.ASK_GAP) return 60;
       return K.L7_HOLD + 1;
     },
 
-    // L44.5: the link to the seat I asked is closed, in a room not yet full: nothing more comes over it, so I ask again now.
+    // L44.5: the link to the seat I asked is closed, and the greeter was not just asked: nothing more comes over it, so I ask again now.
     // C++: mesh_burst.inc:Seat::l44LinkLost
     l44LinkLost() {
-      if (!this.f.fabricDoors() || this.lastAsked < 0 || !this.haveRoster || this.roster.length >= C * C || this.TICK <= this.retryAt || this.f.fabricLinkState(this.id, this.lastAsked) !== LS_CLOSED) return false;
+      if (!this.f.fabricDoors() || this.lastAsked < 0 || this.askGap < K.ASK_GAP || this.TICK <= this.retryAt || this.f.fabricLinkState(this.id, this.lastAsked) !== LS_CLOSED) return false;
       if (this.findAckAt >= 0) return false;   // L44.5.1: the seat I asked acknowledged my FIND: it handed it on, and its door's close is the plan, not a lost ask
       this.trace('L44-REASK', this.id, null, 'asked=%d after=%d', this.lastAsked, this.TICK - this.retryAt);
       this.w.lv.L44_REASK++;
