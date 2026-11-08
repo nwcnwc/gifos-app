@@ -573,6 +573,7 @@
     ringConfirmDead(h) {
       const TICK = this.TICK, hk = ckey(h);
       if (this.standDown()) return false;   // L3.6
+      if (this.earShut()) return false;   // L8.48: a shut ear heard no answer, so the silence is not the mate's
       // D5 EARLY-PROBE
       if (this.translostConfirmed(hk)) return true;
       if (this.firstHandLive(hk)) { this.holeSince.delete(hk); return false; }
@@ -585,6 +586,7 @@
       since = this.heardAny(hk, since);   // L3.4.1: an answered probe is a path the occupant was heard on
       if (since < this.seatedAt) since = this.seatedAt;   // L3.5
       if (this.backAt >= 0 && since < this.backAt) since = this.backAt;   // A RETURN IS NOT A HORIZON (LM-42)
+      if (this.deafFloor >= 0 && since < this.deafFloor) since = this.deafFloor;   // L8.48: the shut spell was not observed silence
       return TICK - since > K.LEASE_T;
     },
 

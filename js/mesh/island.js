@@ -55,18 +55,40 @@
       for (const g of list) if (g >= 0 && g !== this.id && !known.has(g)) { this.forkAt = this.TICK; this.trace('FORK', this.id, this.coord, 'stranger=%d', g); return; }
     },
 
+    // C++: mesh_island.inc:Seat::earNote
+    // L8.48: silence is the mate's fault only while this seat's own ear is open.
+    earNote(m) { if (m.from !== this.id) this.earAt = this.TICK; },
+    earWake() {
+      this.deafFloor = this.TICK;
+      for (const k of this.noneSince.keys()) this.noneSince.set(k, this.TICK);
+      this.rmAskFirst.clear(); this.rmAskT.clear(); this.rmPend.clear();
+    },
+    earGap() {
+      if (this.earAt >= 0 && this.earTick >= 0 && this.TICK - this.earTick > K.L30_SILENT) this.earWake();   // a gap longer than the silence window did not observe it
+      this.earTick = this.TICK;
+    },
+    earShut() {
+      if (this.earAt < 0) return false;   // nothing folded yet: the join path, not a shut ear
+      if (this.deafFloor >= 0 && this.earAt < this.deafFloor) return true;   // thawed, and no frame has folded since
+      return this.TICK - this.earAt > K.L30_SILENT;
+    },
+
     // C++: mesh_island.inc:Seat::islandForkLive
     islandForkLive() {
       if (this.forkAt >= 0 || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0 || this.TICK - this.seatedAt <= 80) return;
       if (this.l30 && this.TICK - this.l30At <= K.L30_SILENT + 1) return;   // L8.7: a seat just in small mode: L30.5 has the first word on a silent mate (a fork here turned small mode off and a young room waited 110 s on a dark head)
+      if (this.earShut()) return;   // L8.48: a shut ear cannot call a mate silent
       if (this.greetersAt < 0 || this.TICK - this.greetersAt > K.RELAY_TTL || this.lastGreeters.length === 0) return;
       const ol = ownedLinks(this.coord), n = ol.length;
       for (let q = 0; q < n; q++) {
         if (ol[q].pc !== 0) continue; const k = ckey(ol[q]); const x = this.occGet(k); if (x < 0 || x === this.id) continue;
         let listed = false; for (const g of this.lastGreeters) if (g === x) { listed = true; break; } if (!listed) continue;
         const lb = this.liveBy.get(k); if (lb === undefined || lb !== x) continue;
-        const it = this.live.get(k); if (it === undefined || it < this.seatedAt || this.TICK - it < K.NOTMINE_WAIT) continue;
-        this.forkAt = this.TICK; this.forkSilent = true; this.trace('FORK', this.id, this.coord, 'silent=%d age=%d', x, this.TICK - it); return;
+        if (this.f.fabricLinkCarries(this.id, x)) continue;   // L8.48: a link that still carries is not silence. A half-open cut does not carry
+        const it = this.live.get(k); if (it === undefined || it < this.seatedAt) continue;
+        let since = it; if (this.deafFloor >= 0 && this.deafFloor > since) since = this.deafFloor;
+        if (this.TICK - since < K.NOTMINE_WAIT) continue;
+        this.forkAt = this.TICK; this.forkSilent = true; this.trace('FORK', this.id, this.coord, 'silent=%d age=%d', x, this.TICK - since); return;
       }
     },
 
@@ -76,8 +98,10 @@
       const ol = ownedLinks(this.coord), n = ol.length; const cur = new Set();
       for (let q = 0; q < n; q++) {
         const k = ckey(ol[q]); const x = this.occGet(k); if (x < 0 || x === this.id) continue; cur.add(x);
+        if (this.earShut()) { this.noneSince.delete(x); continue; }   // L8.48: a shut ear does not start the drop clock
         { const ls = this.f.fabricLinkState(this.id, x); if ((ls !== LS_NONE && ls !== LS_CLOSED) || (this.live.has(k) && this.TICK - this.live.get(k) <= K.CHAN_UP)) { this.noneSince.delete(x); continue; } }
         const it = this.noneSince.get(x); if (it === undefined) { this.noneSince.set(x, this.TICK); continue; }
+        if (this.deafFloor >= 0 && it < this.deafFloor) { this.noneSince.set(x, this.TICK); continue; }   // L8.48: a none-stamp from before the ear reopened is not this window
         if (this.TICK - it < K.NOTMINE_WAIT) continue;
         this.trace('NOT-MINE', this.id, ol[q], 'peer=%d none=%d', x, this.TICK - it);
         if (this.coord.pc !== 0 && this.coord.i === 0 && ol[q].pc === this.coord.pc && ol[q].r === this.coord.r && ol[q].i !== 0 && this.f.fabricLinkState(this.id, x) === LS_NONE && this.f.fabricDialFails(this.id, x) > 0) { this.l20Out.set(k, [x, this.TICK]); if (this.l20Out.size > C) eraseFirst(this.l20Out); }
@@ -85,6 +109,7 @@
       }
       for (const key of this.noneSince.keys()) { if (!cur.has(key)) this.noneSince.delete(key); }
       if (this.noneSince.size > 4 * MAXLINKS) this.noneSince.clear();
+      if (this.earShut()) return;   // L8.48: a second-hand echo is not silence while my own ear is shut
       if ((this.TICK % 8) !== 0) return;
       const gone = [];
       for (const [k, v] of this.occ) {

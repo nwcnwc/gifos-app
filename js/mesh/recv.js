@@ -50,6 +50,7 @@
       const pOwn = w.PROOF_OWN; w.PROOF_OWN = this;   // the recv entry is mine until it returns (C++ PROOF_STK)
       try {
       if (this.dead) return;
+      this.earNote(m);   // L8.48: any folded frame, a fabric event included, is the ear open
       this.farLearn(m);   // FARVIEW
       if (m.dsat && m.lk >= 0 && m.lk !== id) this.f.fabricDoorHeard(id, m.lk, m.lkEp);   // K5
       if (this.vban.size && this.kDropIn(m)) { this.kRx++; return; }   // L27

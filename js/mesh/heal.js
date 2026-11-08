@@ -235,7 +235,9 @@
     },
     // C++: mesh_heal.inc:Seat::rmAloneAsked
     rmAloneAsked(hole) {
-      const f = this.rmAskFirst.get(ckey(hole)); return f !== undefined && this.TICK - f >= 24 && this.rmRingAlone(hole);
+      if (this.earShut()) return false;   // L8.48: unanswered probes prove nothing while my own ear is shut
+      const f = this.rmAskFirst.get(ckey(hole)); if (f === undefined || (this.deafFloor >= 0 && f < this.deafFloor)) return false;
+      return this.TICK - f >= 24 && this.rmRingAlone(hole);
     },
     // C++: mesh_heal.inc:Seat::rmRetry
     rmRetry() {
@@ -617,6 +619,7 @@
     doMove(hole, owner, nbrs, ppFrom = -1, ppTick = -1, ppTickL = -1) {
       const id = this.id;
       if (!this.hasCoord || ckey(this.coord) === ckey(hole) || this.moving || this.l4Busy()) { return; }
+      if (this.earShut()) return;   // L8.48: a shut ear does not promote and does not declare itself alone
       {
         let w = false; for (const kv of nbrs) if (kv.v >= 0 && kv.v !== id && this.rmWitCell(hole, kv.k)) { w = true; break; }
         if (!w) { const ww = this.rmWitness(hole, id); if (ww) { const all = ww.concat(nbrs); nbrs.length = 0; for (const e of all) nbrs.push(e); w = true; } }

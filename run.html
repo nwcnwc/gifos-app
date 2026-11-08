@@ -6935,6 +6935,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!s) return rosterIds.length || 1;
       const ids = new Set([myId]);
       const now = Date.now();
+      // makePeer stamps lastHeard at birth. That is not a frame. The join
+      // grace still covers a seat with no pair yet; a pair that has never
+      // sent a frame does not raise the count.
+      const frameHeard = (q) => {
+        if (!q) return false;
+        const stq = statusOf.get(q.id);
+        if (stq && stq.rx) return true;
+        if (q.meshRxAt || q.dcRxAt) return true;
+        const born = q.bornAt || 0, lh = q.lastHeard || 0;
+        return born ? lh > born : lh > 0;
+      };
       for (const v of s.occ.values()) {
         if (!v || v === myId) continue;
         // A confirmed departure (D2/D5 — the meshGone tombstone) never counts,
@@ -6964,8 +6975,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // only while we have actually HEARD something recently), at the
         // count's own 30s window.
         const heardAt = Math.max(p ? (p.lastHeard || 0) : 0, p ? (p.meshRxAt || 0) : 0, st ? (st.rx || 0) : 0);
-        if ((st && now - stSeen(st) < 30000) || (p && p.connected && now - heardAt < 30000)
-            || (now - (occFirstSeen.get(v) || 0) < 25000)) ids.add(v);
+        const grace = now - (occFirstSeen.get(v) || 0) < 25000 && !(p && p.bornAt && !frameHeard(p));
+        if ((st && now - stSeen(st) < 30000) || (p && p.connected && now - heardAt < 30000) || grace) ids.add(v);
       }
       for (const id of rosterIds) ids.add(id);
       return ids.size;
@@ -7792,13 +7803,38 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       docPipAim();
       return true;
     }
-    function exitPip(why) {
+    // The OS can tear the float's window down without firing leavepictureinpicture.
+    // exitPictureInPicture then rejects, or finishes while this element is still
+    // the picture-in-picture element, and the tile stays on the browser's
+    // stand-in. Clearing that element's player drops the binding when the
+    // window is already gone. Only while the tab is visible: a float the
+    // person is still away in keeps its player. A refusal is recorded either
+    // way; an exit that already cleared the element must not reset it.
+    function pipRecover(v, refused) {
+      if (document.hidden || !v || document.pictureInPictureElement !== v) return;
+      let src = null; try { src = v.srcObject; } catch (e) { src = null; }
+      if (!src) return;
+      try { v.srcObject = null; } catch (e) {}
+      try { v.load(); } catch (e) {}
+      try { v.srcObject = src; } catch (e) {}
+      const pr = v.play(); if (pr && pr.catch) pr.catch(() => {});
+      pipNote('el-recover', { err: refused || '' });
+    }
+    async function exitPip(why) {
       pipNote('exit', { why: why || '' });
       if (docPip) { const w = docPip.win; docPip = null; try { w.close(); } catch (e) {} }
+      const v = document.pictureInPictureElement;
+      let refused = '';
       try {
-        if (document.pictureInPictureElement) document.exitPictureInPicture().catch(() => {});
-        else for (const v of document.querySelectorAll('video')) if (v.webkitPresentationMode === 'picture-in-picture') v.webkitSetPresentationMode('inline');
-      } catch (e) {}
+        if (v) {
+          try { await document.exitPictureInPicture(); }
+          catch (e) { refused = (e && e.name) || 'Error'; pipNote('exit-refused', { err: refused }); }
+        } else for (const el of document.querySelectorAll('video')) if (el.webkitPresentationMode === 'picture-in-picture') el.webkitSetPresentationMode('inline');
+      } catch (e) {
+        refused = (e && e.name) || 'Error';
+        pipNote('exit-refused', { err: refused });
+      }
+      try { pipRecover(v, refused); } catch (e) {}
     }
     try { navigator.mediaSession.setActionHandler('enterpictureinpicture', () => { pipNote('ms-action'); awayFull(true); enterPip(false, true); }); } catch (e) {}
     // The FLOAT button: Chrome's AUTO PiP on tab-leave is chrome-gated (the
@@ -10423,6 +10459,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     let ac = null;
     const meters = new Map(); // id -> { an, src, data }
     const speakingOf = new Map(); // id ('me'|pid) -> bool, for the composite overlay
+    let rowMixTalkAt = 0; // L49: last hot sample of my own meter. A breath is not "stopped talking".
     function releaseMeter(id) {
       const m = meters.get(id);
       if (m) {
@@ -10583,6 +10620,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         t.tile.classList.toggle('speaking', speaking);
         if (id === 'me' && speaking) { lastActive = Date.now(); if (lastActive - myVoiceAt > 1500) myVoiceFrom = lastActive; myVoiceAt = lastActive; myVoiceSinceFinal = true; } // talking IS activity — a speaker's phone is never "parked"
         speakingOf.set(id, speaking); // fed to the packer overlay (green talking frame on composite faces)
+        if (id === 'me' && speaking) rowMixTalkAt = Date.now();
       }
       if (fsSel === 'auto' && fsview.classList.contains('on')) fsRefresh();
     }, 180);
@@ -11528,9 +11566,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return !!(p && !p.headless && Date.now() - peerHeardAt(p) > PEER_SILENT_MS);
     }
     function shownPeerCount() {
+      // A tile is not a person until a frame arrives. The birth stamp on
+      // lastHeard does not count. A heard peer who goes quiet keeps the
+      // stamp, so the tile stays in the count until it leaves.
+      const frameHeard = (q) => {
+        if (!q) return false;
+        const stq = statusOf.get(q.id);
+        if (stq && stq.rx) return true;
+        if (q.meshRxAt || q.dcRxAt) return true;
+        const born = q.bornAt || 0, lh = q.lastHeard || 0;
+        return born ? lh > born : lh > 0;
+      };
       let n = 0;
-      for (const p of peers.values()) if (p && !p.headless && p.tile && p.tile.parentNode) n++;
-      if (typeof rosterTiles === 'object' && rosterTiles) for (const t of rosterTiles.values()) if (t && t.parentNode) n++; // a held "Reconnecting…" face
+      for (const p of peers.values()) if (p && !p.headless && p.tile && p.tile.parentNode && frameHeard(p)) n++;
+      if (typeof rosterTiles === 'object' && rosterTiles) for (const t of rosterTiles.values()) if (t && t.parentNode) n++; // a held "Reconnecting…" face was heard before the hold
       return n;
     }
     // Repaint a tile whose reconnecting verdict changed (rides the sweep).
@@ -11581,13 +11630,26 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function facesOnScreen() {
       let n = 0;
       const seen = new Set();
+      // Same hearing rule as shownPeerCount: a visible tile of a seat that
+      // never sent a frame is not a face. Hiding is not the rule.
+      const frameHeard = (q) => {
+        if (!q) return false;
+        const stq = statusOf.get(q.id);
+        if (stq && stq.rx) return true;
+        if (q.meshRxAt || q.dcRxAt) return true;
+        const born = q.bornAt || 0, lh = q.lastHeard || 0;
+        return born ? lh > born : lh > 0;
+      };
       const take = (id, el) => {
         if (!id || seen.has(id) || !el || !el.isConnected || el.style.display === 'none') return;
         seen.add(id);
         n++;
       };
       try { if (meTile && meTile.tile) take('me', meTile.tile); } catch (e) {}
-      for (const [pid, p] of peers) take(pid, p && p.tile);
+      for (const [pid, p] of peers) {
+        if (p && !p.headless && !frameHeard(p)) continue;
+        take(pid, p && p.tile);
+      }
       if (typeof rosterTiles === 'object' && rosterTiles) for (const [pid, t] of rosterTiles) take(pid, t); // a held "Reconnecting…" face is on screen
       return n;
     }
@@ -25918,6 +25980,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // The heir's x1 copy of the same product is born parked, so it has no samples to meter. 8 ticks: the listener asks
     // the talker to ship the mic, audio only. 16 ticks: the heir stands in. A quiet row never counts. Section 1 only.
     const ROW_MIX_MS = 500, ROW_MIX_PULL = 8, ROW_MIX_ELECT = 16, ROW_MIX_TTL = 1000, ROW_MIX_LOUD = 5, ROW_MIX_QUIET = 2;
+    const ROW_MIX_TALK = 2000; // a breath inside one utterance, shorter than the pull window
     const vtalkSeen = new Map();
     const rowSdLv = new Map(), rowSdDead = new Map(), rowSdHold = new Map();
     let rowMixDeadN = 0, rowMixPull = false, rowMixHeard = false, rowMixElected = false, rowMixShipUntil = 0, rowMixArmed = false, rowMixSent = 0;
@@ -26014,11 +26077,41 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const slot = rowSdLv.get('h' + q) || {}; rowSdLv.set('h' + q, slot);
       return rowMixRms(slot, src.stream);
     }
+    // Video bytes of the played row mix. They keep climbing when only the mix gain is silent,
+    // and they stop when the head's renderer is stopped. The pull is the first one, not the second.
+    const rowMixFlowAt = new Map();
+    let rowMixFlowBusy = false;
+    function rowMixFlowing(q) {
+      const s = rowMixFlowAt.get(q);
+      return !!(s && s.at && Date.now() - s.at <= 2000);
+    }
+    setInterval(async () => {
+      if (rowMixFlowBusy) return;
+      const c = meshCoord();
+      if (!c || c.i !== 0 || c.pc !== 0) return;
+      rowMixFlowBusy = true;
+      try {
+        const now = Date.now(), nC = SCALE.C;
+        for (let q = 0; q < nC; q++) {
+          if (q === c.r) continue;
+          const f = mosIn.get('sdrow:' + q);
+          const head = occPid({ pc: 0, r: q, i: 0 });
+          if (!f || !f.stream || !head || f.via !== head) { rowMixFlowAt.delete(q); continue; }
+          const bytes = await pipeBytes(f, false);
+          if (!bytes || bytes < 0) continue;
+          const prev = rowMixFlowAt.get(q);
+          if (!prev || bytes.b < prev.b) rowMixFlowAt.set(q, { b: bytes.b, at: prev ? prev.at : 0 });
+          else if (bytes.b > prev.b) rowMixFlowAt.set(q, { b: bytes.b, at: now });
+        }
+      } catch (e) {} finally { rowMixFlowBusy = false; }
+    }, 400);
     function rowMixTick() {
       const now = Date.now();
       for (const [src, v] of vtalkSeen) if (now - v.at > ROW_MIX_TTL) vtalkSeen.delete(src);
       const c = meshCoord(), s = meshSeat();
-      if (c && speakingOf.get('me')) {
+      // One 180 ms sample misses a breath inside an utterance (over a second, under the 4 s pull).
+      // Refresh the flag while a recent hot sample still says this seat is talking. Silence stays silent.
+      if (c && (speakingOf.get('me') || (rowMixTalkAt && now - rowMixTalkAt <= ROW_MIX_TALK))) {
         const head = occPid({ pc: c.pc, r: c.r, i: 0 });
         vtalkSeen.set(myId, { at: now, hop: 0, via: myId, row: c.r, pc: c.pc });
         const msg = { k: 'vtalk', on: 1, src: myId, hop: 0, row: c.r, pc: c.pc };
@@ -26069,7 +26162,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             rowSdHold.delete(q); rowSdDead.set('e' + q, 0); rowSdLv.delete('el' + q); rowSdLv.set('arm' + q, 1);
           } else if (level >= ROW_MIX_LOUD) rowSdLv.set('arm' + q, 1);
           const armed = rowSdLv.get('arm' + q) === 1;
-          const quiet = armed && level >= 0 && level < ROW_MIX_QUIET && rowMixFresh(q, 0) && f && f.via === head;
+          // Picture bytes still advancing: the head's renderer is running. A freeze stops them, and that is not this pull.
+          const quiet = armed && level >= 0 && level < ROW_MIX_QUIET && rowMixFresh(q, 0) && f && f.via === head && rowMixFlowing(q);
           const n = quiet ? (rowSdDead.get(q) || 0) + 1 : 0;
           rowSdDead.set(q, n);
           if (n >= ROW_MIX_PULL && !rowSdHold.get(q)) { rowSdHold.set(q, 1); dbgRowHead('sdrow-hold:' + q); schedReconcile(); }
