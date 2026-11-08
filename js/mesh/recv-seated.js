@@ -70,7 +70,7 @@
           for (const [ek, ev] of this.occ) {
             if (ev !== m.id || ek === m.ck || !this.firstHandLive(ek)) continue;
             const l = this.linkedBy.get(ek); if (l === undefined || l !== m.id) continue;
-            const k2 = ek; if (!this.translost.has(k2)) { this.translost.set(k2, TICK); this.tlProbeAt.set(k2, TICK); this.routeToProbe(unck(k2)); }
+            const k2 = ek; if (!this.translost.has(k2)) { this.translost.set(k2, TICK); this.tlProbeAt.set(k2, TICK); if (this.routeToProbe(unck(k2)) && !this.tlSent.has(k2)) this.tlSent.set(k2, TICK); }
             this.movedClaimId = m.id; this.movedClaimK = k2; this.movedClaimAt = TICK; this.movedClaimMsg = msg.clone(m); break;
           }
         }   // the rival's word is PROBED, not taken

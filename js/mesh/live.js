@@ -598,7 +598,7 @@
         const k = ckey(ol[q]);
         if (this.occGet(k) !== pid) continue;
         if (this.translost.has(k)) { if (hard) this.tlHard.set(k, 1); continue; }   // a quiet loss that later closes hard is hard from then on
-        this.translost.set(k, this.TICK); this.tlHard.set(k, hard ? (sil ? 2 : 1) : 0); this.tlProbeAt.set(k, this.TICK); this.routeToProbe(ol[q]);   // probe NOW: across the mesh, not the dead link
+        this.translost.set(k, this.TICK); this.tlHard.set(k, hard ? (sil ? 2 : 1) : 0); this.tlProbeAt.set(k, this.TICK); if (this.routeToProbe(ol[q]) && !this.tlSent.has(k)) this.tlSent.set(k, this.TICK);   // probe NOW: across the mesh, not the dead link
       }
       this.f.wake(this.id);
     },
@@ -612,10 +612,11 @@
       const clearAt = at + 2;
       if ((lv !== undefined && lv >= clearAt) || (pa !== undefined && pa >= at)) { if (pa !== undefined && pa >= at) { const h = this.tlHard.get(k); if (h === 2) this.d5Ans.set(k, pa); } this.tlForget(k); return false; }   // D5.1: an answered silence probe floors the next window
       const pt = this.tlProbeAt.get(k);
-      if (pt === undefined || TICK - pt >= 6) { this.tlProbeAt.set(k, TICK); this.routeToProbe(unck(k)); }
+      if (pt === undefined || TICK - pt >= 6) { this.tlProbeAt.set(k, TICK); if (this.routeToProbe(unck(k)) && !this.tlSent.has(k)) this.tlSent.set(k, TICK); }
       // L3.3: only a HARD close confirms before the lease runs out.
       { const h = this.tlHard.get(k); if (h === undefined || !h) return false; }
-      return TICK - at > K.EARLY_HOLD;
+      if (!this.tlSent.has(k)) return false;   // no probe left: silence of an unsent frame is not a death; the lease is the horizon
+      return TICK - this.tlSent.get(k) > K.EARLY_HOLD;   // the window starts when the first probe leaves, not at the loss
     },
 
     // C++: mesh_seat.inc:Seat::requeue

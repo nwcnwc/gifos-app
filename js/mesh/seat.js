@@ -286,9 +286,9 @@
       this.occ.delete(k);
     },
     // C++: mesh.cpp:Seat::tlForget
-    tlForget(k) { this.translost.delete(k); this.tlProbeAt.delete(k); this.probeAck.delete(k); this.tlHard.delete(k); },
+    tlForget(k) { this.translost.delete(k); this.tlProbeAt.delete(k); this.probeAck.delete(k); this.tlHard.delete(k); this.tlSent.delete(k); },
     // C++: mesh.cpp:Seat::tlClear
-    tlClear() { this.translost.clear(); this.tlProbeAt.clear(); this.probeAck.clear(); },
+    tlClear() { this.translost.clear(); this.tlProbeAt.clear(); this.probeAck.clear(); this.tlSent.clear(); },
     // C++: mesh.cpp:Seat::absence
     absence(n) {
       if (n <= 0) return;
