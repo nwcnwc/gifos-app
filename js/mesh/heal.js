@@ -575,7 +575,6 @@
           for (let j = this.coord.i - 1; j >= 1; j--) { const k = ckey(cell(this.coord.pc, this.coord.r, j)); const x = this.occGet(k); if (x >= 0 && x !== id && !this.translost.has(k) && !this.l13Fresh(k) && !this.hasDownChild(unck(k))) { this.emit(x, flMsg(hole, nbrs, 0)); this.trace('FRESH-PASS', id, hole, 'to=%d', x); return; } }
           this.trace('FRESH-REFUSE', id, hole, '-'); return;
         }
-        if (this.occGet(ckey(hole)) >= 0) return;   // a cell I still name is not a hole
         this.promoteInto(hole, nbrs);
       } finally { this.rmVTag = 0; this.rmStrictNext = false; }
     },
