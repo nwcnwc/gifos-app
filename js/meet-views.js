@@ -737,20 +737,23 @@
   // 0.9.23b: Stage (true aspect), Row and Stadium (squares). meet-zones.js
   // does the geometry; this keeps the shape the rest of apply() reads.
   function zonesLayout(MZ, tiles, box, opts) {
-    const stage = [], row = [], stad = [];
+    const stage = [], share = [], row = [], stad = [];
     for (let i = 0; i < tiles.length; i++) {
       const t = tiles[i];
       if (t.tier === 'stad') stad.push(t.id);
-      else if (t.stage || t.share) stage.push({ id: t.id, aspect: t.aspect > 0 ? t.aspect : 16 / 9, fill: !!t.fill });
-      else row.push(t.id);
+      else if (t.kind === 'screen' || t.kind === 'app' || t.fill) {
+        share.push({ id: t.id, aspect: t.aspect > 0 ? t.aspect : 16 / 9, fill: !!t.fill || t.kind === 'app', kind: t.kind || (t.fill ? 'app' : 'screen') });
+      } else if (t.stage || t.kind === 'strip' || t.kind === 'person') {
+        stage.push({ id: t.id, aspect: t.aspect > 0 ? t.aspect : 16 / 9, kind: t.kind || 'person' });
+      } else row.push(t.id);
     }
-    const z = MZ.layout({ box: box, stage: stage, row: row, stad: stad, phone: !!opts.phone,
+    const z = MZ.layout({ box: box, stage: stage, share: share, row: row, stad: stad, phone: !!opts.phone,
       gallery: opts.gallery === 'scroll' ? 'scroll' : 'fit', gap: opts.phone ? 4 : MZ.GAP, floor: +opts.floor || 0,
       stadCount: opts.stadCount > 0 ? opts.stadCount : 0 });
     let band = null;
     if (z.tooSmall) band = { text: 'faces tiny \u00b7 Scroll is in \u25a6', x: box.x + 6, y: box.y + 6 };
-    return { mode: stage.length ? 'stage' : 'gallery', gallery: z.gallery, rects: z.rects, crowd: false, band: band,
-      box: box, regions: z.regions, stage: z.regions.stage, contentH: z.contentH, tooSmall: !!z.tooSmall,
+    return { mode: (stage.length || share.length) ? 'stage' : 'gallery', gallery: z.gallery, rects: z.rects, crowd: false, band: band,
+      box: box, regions: z.regions, stage: z.regions.stage, share: z.regions.share, contentH: z.contentH, tooSmall: !!z.tooSmall,
       self: { arrangement: 'tile' }, zones: true, side: z.side, stadSide: z.stadSide };
   }
 
@@ -829,6 +832,28 @@
         if (Math.min(r.w, r.h) < 96 - 0.5) { opts._float = true; return apply(opts); }
       }
     }
+    // A saved drag is a center fraction of the tab. Applied after the fit
+    // pass, so the default layout stays what the geometry tests measure.
+    if (ML.placeFloat && lay && lay.rects && lay.gallery !== 'scroll') {
+      const view = { x: 0, y: 0, w: +opts.vw || box.w || 1, h: +opts.vh || box.h || 1 };
+      let store = opts.store || null;
+      if (!store) { try { if (typeof localStorage !== 'undefined') store = localStorage; } catch (e) {} }
+      const orient = ML.floatOrient(view);
+      const next = lay.rects.slice();
+      let moved = false;
+      for (let kindi = 0; kindi < 2; kindi++) {
+        const kind = kindi ? 'row' : 'stage';
+        const group = [], idx = [];
+        for (let i = 0; i < next.length; i++) if (next[i].float === kind) { group.push(next[i]); idx.push(i); }
+        if (!group.length) continue;
+        const placed = ML.placeFloat(group, ML.loadFloat(store, kind, orient), view);
+        if (placed !== group) {
+          for (let k = 0; k < idx.length; k++) next[idx[k]] = placed[k];
+          moved = true;
+        }
+      }
+      if (moved) lay = Object.assign({}, lay, { rects: next });
+    }
     for (let i = 0; i < tiles.length; i++) {
       if (tiles[i].me || tiles[i].id === 'me') markSelf(tiles[i].el, lay.self);
     }
@@ -844,6 +869,8 @@
       placeEl(t.el, half ? { x: r.x + half, y: r.y + half, w: r.w - 2 * half, h: r.h - 2 * half } : r);
       if (half) t.el.dataset.gutter = '1'; else delete t.el.dataset.gutter;
       t.el.dataset.fit = r.fit || 'cover';
+      if (r.float) t.el.dataset.float = r.float;
+      else delete t.el.dataset.float;
       used.push(t.el);
     }
     if (!opts._lip && opts.phone && used.length && !tilesMeetChrome(feed.ownerDocument || document, used) && recordBeside(feed.ownerDocument || document, used)) {
@@ -853,7 +880,10 @@
     }
     const usedSet = new Set(used);
     for (let i = 0; i < tiles.length; i++) {
-      if (tiles[i].el && !usedSet.has(tiles[i].el)) parkEl(tiles[i].el);
+      if (tiles[i].el && !usedSet.has(tiles[i].el)) {
+        parkEl(tiles[i].el);
+        if (tiles[i].el.dataset) delete tiles[i].el.dataset.float;
+      }
     }
     // Absolute tiles do not grow scrollHeight. A 1px spacer does, so Scroll
     // can move through the stadium without a pager.
@@ -1201,6 +1231,92 @@
     return { get: function () { return spec; }, set: publish };
   }
 
+  // Drag a Fit panel (every tile that shares data-float). A 3px move starts
+  // the drag, so a tap still opens the tile. The group stays inside the tab.
+  function installFloat(opts) {
+    opts = opts || {};
+    const ML = GifOS.meetLayout;
+    const doc = root.document;
+    if (!ML || typeof ML.loadFloat !== 'function' || !doc || !doc.addEventListener) return null;
+    const store = opts.store || root.localStorage;
+    let drag = null;
+    function orient() { return ML.floatOrient({ w: root.innerWidth || 0, h: root.innerHeight || 0 }); }
+    function members(kind) { return doc.querySelectorAll ? doc.querySelectorAll('[data-float="' + kind + '"]') : []; }
+    function union(list) {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (let i = 0; i < list.length; i++) {
+        const r = list[i].getBoundingClientRect();
+        x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top);
+        x1 = Math.max(x1, r.right); y1 = Math.max(y1, r.bottom);
+      }
+      return { x: x0, y: y0, w: Math.max(0, x1 - x0), h: Math.max(0, y1 - y0) };
+    }
+    function relayout() {
+      const fn = opts.relayout || root.__meetRelayout;
+      if (typeof fn === 'function') { try { fn(); } catch (e) {} }
+    }
+    doc.addEventListener('pointerdown', function (e) {
+      if (!e.target || !e.target.closest) return;
+      const tile = e.target.closest('[data-float]');
+      if (!tile) return;
+      if (e.target.closest('button, a, input, textarea, .modbar')) return;
+      if (e.button != null && e.button !== 0) return;
+      const kind = tile.dataset.float;
+      const list = members(kind);
+      const origins = [];
+      for (let i = 0; i < list.length; i++) {
+        origins.push({ el: list[i], left: parseFloat(list[i].style.left) || 0, top: parseFloat(list[i].style.top) || 0 });
+      }
+      const g = union(list);
+      drag = { id: e.pointerId, x: e.clientX, y: e.clientY, kind: kind, origins: origins, gx: g.x, gy: g.y, gw: g.w, gh: g.h, moved: false };
+      try { tile.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+    doc.addEventListener('pointermove', function (e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
+      if (!drag.moved) return;
+      const vw = root.innerWidth || 0, vh = root.innerHeight || 0;
+      let nx = drag.gx + dx, ny = drag.gy + dy;
+      nx = Math.min(Math.max(0, nx), Math.max(0, vw - drag.gw));
+      ny = Math.min(Math.max(0, ny), Math.max(0, vh - drag.gh));
+      const adx = nx - drag.gx, ady = ny - drag.gy;
+      for (let i = 0; i < drag.origins.length; i++) {
+        drag.origins[i].el.style.left = (drag.origins[i].left + adx) + 'px';
+        drag.origins[i].el.style.top = (drag.origins[i].top + ady) + 'px';
+      }
+    });
+    function endDrag(e) {
+      if (!drag || (e && e.pointerId != null && e.pointerId !== drag.id)) return;
+      const moved = drag.moved;
+      const kind = drag.kind;
+      drag = null;
+      if (!moved) return;
+      const list = members(kind);
+      const g = union(list);
+      const vw = root.innerWidth || 1, vh = root.innerHeight || 1;
+      ML.saveFloat(store, kind, orient(), { cx: (g.x + g.w / 2) / vw, cy: (g.y + g.h / 2) / vh });
+      const stop = function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        doc.removeEventListener('click', stop, true);
+      };
+      doc.addEventListener('click', stop, true);
+      relayout();
+    }
+    doc.addEventListener('pointerup', endDrag);
+    doc.addEventListener('pointercancel', endDrag);
+    doc.addEventListener('dblclick', function (e) {
+      if (!e.target || !e.target.closest) return;
+      const tile = e.target.closest('[data-float]');
+      if (!tile) return;
+      e.preventDefault();
+      ML.clearFloat(store, tile.dataset.float, orient());
+      relayout();
+    });
+    return { orient: orient };
+  }
+
   const api = {
     comfyAllowed: comfyAllowed,
     placeEl: placeEl,
@@ -1219,6 +1335,7 @@
     stadFrameSize: stadFrameSize,
     installBar: installBar,
     installSelf: installSelf,
+    installFloat: installFloat,
     applyCrop: applyCrop,
   };
   GifOS.meetViews = api;
@@ -1231,5 +1348,6 @@
       try { installBar({ bar: bar, grip: grip, store: root.localStorage }); } catch (e) {}
     }
     try { installSelf({ store: root.localStorage }); } catch (e) {}
+    try { installFloat({ store: root.localStorage }); } catch (e) {}
   }
 })(typeof window !== 'undefined' ? window : globalThis);

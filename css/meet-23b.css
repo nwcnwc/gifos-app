@@ -17,6 +17,11 @@ body.comfy.show-stage #stagefeed > .rowtile[data-comfy="1"] {
   background: #000; border-radius: 12px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,.12); }
 body.comfy.show-stage #stagefeed > .rowtile[data-comfy="1"] video {
   width: 100%; height: 100%; object-fit: contain; background: #000; }
+/* A Fit panel floats over the picture: the stage over a share, or the row
+   when nothing is shared. Under the header chip and the Fit button (z 6)
+   and the dock (z 32), so a drag cannot cover a control for good. */
+body.comfy [data-float] { z-index: 5; }
+body.comfy:not(.gallery-scroll) [data-float] { touch-action: none; }
 /* Row and Stadium tiles are squares (meet-zones) with soft corners. */
 body.comfy:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile[data-comfy="1"],
 body.comfy.has-peers:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me[data-comfy="1"] { border-radius: 12px; overflow: hidden; }

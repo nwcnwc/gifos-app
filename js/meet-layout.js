@@ -175,10 +175,79 @@
     try { store.setItem(BAR_KEY, JSON.stringify(o)); } catch (e) {}
   }
 
+  // A floating stage or row. The saved spot is the center of the group as a
+  // fraction of the tab, so a resize keeps it and a rotation clamps it.
+  // One slot per orientation: the other orientation is the fallback, so the
+  // first rotate does not jump back to the default.
+  const FLOAT_KEY = 'meet.view.v1.float';
+  function floatOrient(view) {
+    const w = view && view.w > 0 ? view.w : 0;
+    const h = view && view.h > 0 ? view.h : 0;
+    return w >= h ? 'land' : 'port';
+  }
+  function floatSlot(kind, orient) { return (kind || 'row') + ':' + (orient === 'port' ? 'port' : 'land'); }
+  function readFloats(store) {
+    if (!store || typeof store.getItem !== 'function') return {};
+    try {
+      const o = JSON.parse(store.getItem(FLOAT_KEY) || '{}');
+      return o && typeof o === 'object' ? o : {};
+    } catch (e) { return {}; }
+  }
+  function loadFloat(store, kind, orient) {
+    const o = readFloats(store);
+    const hit = o[floatSlot(kind, orient)];
+    const alt = o[floatSlot(kind, orient === 'port' ? 'land' : 'port')];
+    const p = (hit && Number.isFinite(+hit.cx) && Number.isFinite(+hit.cy)) ? hit : alt;
+    if (!p || !Number.isFinite(+p.cx) || !Number.isFinite(+p.cy)) return null;
+    return { cx: +p.cx, cy: +p.cy };
+  }
+  function saveFloat(store, kind, orient, frac) {
+    if (!store || typeof store.setItem !== 'function' || !frac) return;
+    const o = readFloats(store);
+    o[floatSlot(kind, orient)] = { cx: +frac.cx, cy: +frac.cy };
+    try { store.setItem(FLOAT_KEY, JSON.stringify(o)); } catch (e) {}
+  }
+  function clearFloat(store, kind, orient) {
+    if (!store || typeof store.setItem !== 'function') return;
+    const o = readFloats(store);
+    delete o[floatSlot(kind, orient)];
+    try { store.setItem(FLOAT_KEY, JSON.stringify(o)); } catch (e) {}
+  }
+  function groupBox(rects) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let i = 0; i < rects.length; i++) {
+      const r = rects[i];
+      x0 = Math.min(x0, r.x); y0 = Math.min(y0, r.y);
+      x1 = Math.max(x1, r.x + r.w); y1 = Math.max(y1, r.y + r.h);
+    }
+    if (!rects.length) return { x: 0, y: 0, w: 0, h: 0 };
+    return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  }
+  // Move a group so its center sits at the saved fraction of the tab, then
+  // keep the whole group inside the tab. No saved spot returns the rects.
+  function placeFloat(rects, saved, view) {
+    if (!rects || !rects.length || !saved) return rects;
+    const g = groupBox(rects);
+    const vx = view && view.x || 0, vy = view && view.y || 0;
+    const vw = Math.max(1, view && view.w || 0), vh = Math.max(1, view && view.h || 0);
+    let nx = vx + saved.cx * vw - g.w / 2;
+    let ny = vy + saved.cy * vh - g.h / 2;
+    const maxX = vx + vw - g.w, maxY = vy + vh - g.h;
+    nx = Math.min(Math.max(vx, nx), Math.max(vx, maxX));
+    ny = Math.min(Math.max(vy, ny), Math.max(vy, maxY));
+    const dx = nx - g.x, dy = ny - g.y;
+    if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return rects;
+    const out = [];
+    for (let i = 0; i < rects.length; i++) out.push(Object.assign({}, rects[i], { x: rects[i].x + dx, y: rects[i].y + dy }));
+    return out;
+  }
+
   const api = {
     viewBox: viewBox,
     BAR_KEY: BAR_KEY, clampBar: clampBar, defaultBar: defaultBar, nudgeBar: nudgeBar,
     loadBar: loadBar, saveBar: saveBar,
+    FLOAT_KEY: FLOAT_KEY, floatOrient: floatOrient, loadFloat: loadFloat, saveFloat: saveFloat,
+    clearFloat: clearFloat, groupBox: groupBox, placeFloat: placeFloat,
     SELF_KEY: SELF_KEY, SELF_DEFAULT: SELF_DEFAULT, normalizeSelf: normalizeSelf,
     loadSelf: loadSelf, saveSelf: saveSelf, selfEdge: selfEdge,
     floatSelf: floatSelf, nudgeSelf: nudgeSelf,
