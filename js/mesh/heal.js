@@ -450,7 +450,7 @@
     },
 
     // C++: mesh_heal.inc:Seat::findLeaf
-    findLeaf(hole, nbrs, ttl, tag = 0) {
+    findLeaf(hole, nbrs, ttl, tag = 0, hop = -1) {
       const id = this.id;
       if (this.l13SplitHole(ckey(hole))) { this.trace('L13.41-NOHEAL', id, hole, 'tag=%d ttl=%d', tag, ttl); return; }
       if (!this.hasCoord) return;
@@ -563,7 +563,8 @@
           this.promoteInto(hole, nbrs); return;
         }
         if (this.coord.pc !== 0 && this.coord.pc !== hole.pc) {
-          for (let j = C - 1; j > this.coord.i; j--) { const k = ckey(cell(this.coord.pc, this.coord.r, j)); const x = this.occGet(k); if (x >= 0 && x !== id && !this.translost.has(k) && !(this.l13('L13.7') && this.l13Fresh(k)) && !(this.l13('L13.2') && this.hasDownChild(unck(k)))) { this.emit(x, flMsg(hole, nbrs, ttl)); return; } }
+          // The seat that handed this order over, and a seat already heard first-hand at another cell, are not the next mate. Handing the order back left the hop count unchanged.
+          for (let j = C - 1; j > this.coord.i; j--) { const k = ckey(cell(this.coord.pc, this.coord.r, j)); const x = this.occGet(k); if (x >= 0 && x !== id && x !== hop && !this.liveElsewhere(x, k) && !this.translost.has(k) && !(this.l13('L13.7') && this.l13Fresh(k)) && !(this.l13('L13.2') && this.hasDownChild(unck(k)))) { this.emit(x, flMsg(hole, nbrs, ttl)); return; } }
         }
         if (this.l13('L13.2') && this.hasChildren()) {
           const rc = this.rosterCells();

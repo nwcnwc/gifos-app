@@ -178,7 +178,7 @@
       if (roomTerm(this, 1) && m.from >= 0 && m.from !== this.id && this.hasCoord && this.state === 3 && this.coord.pc === 0 && TICK - this.c7At >= K.RELAY_TTL) { let c7Seen = false; for (const v of this.l829Bye.values()) if (TICK - v <= K.RELAY_TTL) { c7Seen = true; break; } const r = this.l828RingOf(m.from); if (c7Seen && r >= 0 && r !== this.ringName()) return; }   // L8.37
       if (this.l2514Drop(m)) return;   // L25.14
       if (m.from >= 0 && m.from !== this.id) { if (this.l25Bad(m.from)) return; this.l25OrderBy = m.from; this.l25OrderAt = TICK; }
-      { const sv = this.flCur, sva = this.flCurAt, svl = this.flCurL; this.flCur = m.fo >= 0 ? m.fo : m.from; this.flCurAt = m.fo >= 0 ? m.foAt : TICK; this.flCurL = m.fo >= 0 ? m.foL : TICK; this.findLeaf(m.hole, m.nbrs, m.ttl, m.tag); this.flCur = sv; this.flCurAt = sva; this.flCurL = svl; }   // L25.7
+      { const sv = this.flCur, sva = this.flCurAt, svl = this.flCurL; this.flCur = m.fo >= 0 ? m.fo : m.from; this.flCurAt = m.fo >= 0 ? m.foAt : TICK; this.flCurL = m.fo >= 0 ? m.foL : TICK; this.findLeaf(m.hole, m.nbrs, m.ttl, m.tag, m.from); this.flCur = sv; this.flCurAt = sva; this.flCurL = svl; }   // L25.7
     },
 
     // C++: mesh_seat.inc:Seat::onPlace
