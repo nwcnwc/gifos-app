@@ -6935,6 +6935,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!s) return rosterIds.length || 1;
       const ids = new Set([myId]);
       const now = Date.now();
+      // makePeer stamps lastHeard at birth. That is not a frame. The join
+      // grace still covers a seat with no pair yet; a pair that has never
+      // sent a frame does not raise the count.
+      const frameHeard = (q) => {
+        if (!q) return false;
+        const stq = statusOf.get(q.id);
+        if (stq && stq.rx) return true;
+        if (q.meshRxAt || q.dcRxAt) return true;
+        const born = q.bornAt || 0, lh = q.lastHeard || 0;
+        return born ? lh > born : lh > 0;
+      };
       for (const v of s.occ.values()) {
         if (!v || v === myId) continue;
         // A confirmed departure (D2/D5 — the meshGone tombstone) never counts,
@@ -6964,8 +6975,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // only while we have actually HEARD something recently), at the
         // count's own 30s window.
         const heardAt = Math.max(p ? (p.lastHeard || 0) : 0, p ? (p.meshRxAt || 0) : 0, st ? (st.rx || 0) : 0);
-        if ((st && now - stSeen(st) < 30000) || (p && p.connected && now - heardAt < 30000)
-            || (now - (occFirstSeen.get(v) || 0) < 25000)) ids.add(v);
+        const grace = now - (occFirstSeen.get(v) || 0) < 25000 && !(p && p.bornAt && !frameHeard(p));
+        if ((st && now - stSeen(st) < 30000) || (p && p.connected && now - heardAt < 30000) || grace) ids.add(v);
       }
       for (const id of rosterIds) ids.add(id);
       return ids.size;
@@ -11528,9 +11539,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return !!(p && !p.headless && Date.now() - peerHeardAt(p) > PEER_SILENT_MS);
     }
     function shownPeerCount() {
+      // A tile is not a person until a frame arrives. The birth stamp on
+      // lastHeard does not count. A heard peer who goes quiet keeps the
+      // stamp, so the tile stays in the count until it leaves.
+      const frameHeard = (q) => {
+        if (!q) return false;
+        const stq = statusOf.get(q.id);
+        if (stq && stq.rx) return true;
+        if (q.meshRxAt || q.dcRxAt) return true;
+        const born = q.bornAt || 0, lh = q.lastHeard || 0;
+        return born ? lh > born : lh > 0;
+      };
       let n = 0;
-      for (const p of peers.values()) if (p && !p.headless && p.tile && p.tile.parentNode) n++;
-      if (typeof rosterTiles === 'object' && rosterTiles) for (const t of rosterTiles.values()) if (t && t.parentNode) n++; // a held "Reconnecting…" face
+      for (const p of peers.values()) if (p && !p.headless && p.tile && p.tile.parentNode && frameHeard(p)) n++;
+      if (typeof rosterTiles === 'object' && rosterTiles) for (const t of rosterTiles.values()) if (t && t.parentNode) n++; // a held "Reconnecting…" face was heard before the hold
       return n;
     }
     // Repaint a tile whose reconnecting verdict changed (rides the sweep).
@@ -11581,13 +11603,26 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function facesOnScreen() {
       let n = 0;
       const seen = new Set();
+      // Same hearing rule as shownPeerCount: a visible tile of a seat that
+      // never sent a frame is not a face. Hiding is not the rule.
+      const frameHeard = (q) => {
+        if (!q) return false;
+        const stq = statusOf.get(q.id);
+        if (stq && stq.rx) return true;
+        if (q.meshRxAt || q.dcRxAt) return true;
+        const born = q.bornAt || 0, lh = q.lastHeard || 0;
+        return born ? lh > born : lh > 0;
+      };
       const take = (id, el) => {
         if (!id || seen.has(id) || !el || !el.isConnected || el.style.display === 'none') return;
         seen.add(id);
         n++;
       };
       try { if (meTile && meTile.tile) take('me', meTile.tile); } catch (e) {}
-      for (const [pid, p] of peers) take(pid, p && p.tile);
+      for (const [pid, p] of peers) {
+        if (p && !p.headless && !frameHeard(p)) continue;
+        take(pid, p && p.tile);
+      }
       if (typeof rosterTiles === 'object' && rosterTiles) for (const [pid, t] of rosterTiles) take(pid, t); // a held "Reconnecting…" face is on screen
       return n;
     }
