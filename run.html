@@ -2911,26 +2911,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
      just because faces got small. */
   body.comfy.gallery-scroll:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) #feed {
     overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-  /* A fade just above the dock when Scroll has more people below. */
-  body.comfy.gallery-scroll #feed.can-scroll::after {
-    content: ''; position: fixed; z-index: 5; left: 0; right: 0; height: 36px; pointer-events: none;
-    bottom: 112px; background: linear-gradient(to bottom, rgba(12,14,18,0), rgba(12,14,18,.92)); }
-  @media (min-width: 701px) and (min-height: 501px) {
-    body.comfy.gallery-scroll #feed.can-scroll::after { bottom: 128px; }
-  }
-  /* A sideways phone is 700-900px wide and under 500px tall: the desktop
-     128px put this band a third of the way up the screen, across the share
-     and the faces (the 2026-10-18 landscape "dark band"). Short and wide has
-     no room for a fade: the dock already marks the bottom. */
-  @media (max-height: 500px) {
-    body.comfy.gallery-scroll #feed.can-scroll::after { display: none; }
-  }
-  /* An upright phone is full-bleed and the dock tucks, so bottom:112px
-     lands across the lower tile (the portrait dark band). The fold is
-     the scroll. No gradient on a face. */
-  @media (max-width: 700px) {
-    body.comfy.gallery-scroll #feed.can-scroll::after { display: none; }
-  }
+  /* No fixed fade above the dock. That strip stayed on the screen while
+     Scroll moved, so it crossed a stage picture that fills the tile. The ↓N
+     hint already marks more people below. */
   /* Desktop gallery: a gutter between faces (meet-views.js) and soft corners. */
   body.comfy.has-peers:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) .tile[data-gutter="1"] { border-radius: 10px; overflow: hidden; }
   /* Gallery keeps the stage strip playing (PiP can aim it) but off the mosaic.
