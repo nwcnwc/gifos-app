@@ -7682,10 +7682,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       pipManual = !!manual;
       // A desktop browser with a document float opens the small meeting
-      // window; the video element's own float is the fallback.
-      if (docPipOk() && await openDocPip()) {
-        if (!byBrowser && !document.hidden && !pipManual && !(pipAwayAt && !document.hasFocus())) exitPip('settle-visible');
-        return;
+      // window from a tap, or from the browser's own float action. A hide
+      // must not ask: that call sits in the visibility handler, and a
+      // browser that never answers it never finishes hiding the tab. Where
+      // there is no document float, the video element's own float remains.
+      if (docPipOk()) {
+        if (!(manual || byBrowser)) return;
+        if (await openDocPip()) {
+          if (!byBrowser && !document.hidden && !pipManual && !(pipAwayAt && !document.hasFocus())) exitPip('settle-visible');
+          return;
+        }
       }
       try {
         if (v.requestPictureInPicture) await v.requestPictureInPicture();
@@ -7942,9 +7948,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     document.addEventListener('enterpictureinpicture', () => {
       if (!document.hidden && !pipManual && pipAwayAt === 0 && !pipBrowserAsked()) exitPip('el-visible');
     }, true);
-    // Switching to another window (the tab stays visible) floats the meeting
-    // too, the way the tab switch does, as far as the browser allows; coming
-    // back closes it. Desktop only: a phone's app switch hides the page, and
+    // Switching to another window (the tab stays visible) does not ask for a
+    // document window. A tap and the browser's own float action do. Coming
+    // back still closes a float that is already up. Desktop only: a phone's
+    // app switch hides the page, and
     // its blur alone means a prompt, a picker or the float's own opening.
     // A float the person asked for, or the browser asked for, is never
     // closed by a blur or a focus: only a real return closes it, which is
