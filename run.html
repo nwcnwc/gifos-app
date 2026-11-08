@@ -11703,9 +11703,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // twentysix ep 3, 25 present with one deep, showed 24 on Section-1 pages
       // and 2 on the deep one), and whenever I am deep or my occ names a deep
       // cell. A single-section room below C² reads first-hand exactly as
-      // before, so a leave drops its count at once.
+      // before, so a leave drops its count at once. A broadcast is the
+      // exception: a viewer's beat stays on its links, so first-hand drops
+      // a seated viewer after the join grace while a whole fold already
+      // has the room. A partial fold is still not that number.
       const pc = participantCount();
-      const n = (d && (roomPastSection() || d.n >= SCALE.C * SCALE.C || deepInView())) ? Math.max(pc, d.n) : pc;
+      const broadcastWhole = BROADCAST === true && d && !d.part; // viewer's presence rides the fold (Q79), not the link count
+      const n = (d && (roomPastSection() || d.n >= SCALE.C * SCALE.C || deepInView() || broadcastWhole)) ? Math.max(pc, d.n) : pc;
       return Math.max(n, 1 + shownPeerCount());
     }
     // Faces the page itself has put on screen (me, plus each real peer tile).
