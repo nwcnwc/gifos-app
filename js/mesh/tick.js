@@ -478,9 +478,9 @@
       if (this.haveRoster && this.roster.length) {
         if (!this.drainAt) {
           { let anc = null; if (coord.i !== 0) anc = cell(coord.pc, coord.r, 0); else anc = this.ownerCoord(); const ha = !!anc; this.trace('DRAIN', id, coord, 'anchor=%s occ=%d ackAge=%lld', ha ? coordStr(anc) : '-', ha ? this.occGet(ckey(anc)) : -2, TICK - this.lastAck); }
-          const rc = this.rosterCells(); for (let c = 0; c < C; c++) { const x = this.occGet(ckey(rc[c])); if (x >= 0 && x !== id) { const m = newMsg('DRAIN'); m.roster = kvs(this.roster); m.id = id; this.emit(x, m); } }
-          if (headRow) { for (let c = 1; c < C; c++) { const x = this.occGet(ckey(cell(coord.pc, coord.r, c))); if (x >= 0 && x !== id) { const m = newMsg('DRAIN'); m.roster = kvs(this.roster); m.id = id; m.tag = 1; this.emit(x, m); } } this.trace('ROW-DRAIN', id, coord, 'ackAge=%lld', TICK - this.lastAck); }   // L16.4
-          this.drainAt = TICK + 25 + Math.trunc(this.rng() * 10);
+          let told = 0; const rc = this.rosterCells(); for (let c = 0; c < C; c++) { const x = this.occGet(ckey(rc[c])); if (x >= 0 && x !== id) { told++; const m = newMsg('DRAIN'); m.roster = kvs(this.roster); m.id = id; this.emit(x, m); } }
+          if (headRow) { for (let c = 1; c < C; c++) { const x = this.occGet(ckey(cell(coord.pc, coord.r, c))); if (x >= 0 && x !== id) { told++; const m = newMsg('DRAIN'); m.roster = kvs(this.roster); m.id = id; m.tag = 1; this.emit(x, m); } } this.trace('ROW-DRAIN', id, coord, 'ackAge=%lld', TICK - this.lastAck); }   // L16.4
+          const wait = 25 + Math.trunc(this.rng() * 10); this.drainAt = TICK + (told ? wait : 0); // the extra wait is for the row that was told
         }
         return;
       }   // id: a DRAIN is honoured only from the receiver's anchor
