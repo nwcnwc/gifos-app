@@ -136,14 +136,19 @@
     return normalizeSelf(Object.assign({}, s, { anchor: 'free', x: moved.x, y: moved.y }));
   }
 
-  // Floating control bar. Free placement: the only adjustment is clamping
-  // the bar inside the viewport. No edge or centre snap.
+  // Floating control bar. No edge or centre snap. The left, top and bottom
+  // keep the whole bar on screen. Past the right, bar.tab is the width from
+  // the bar's left through the grab tab, and that tab stays fully on screen
+  // so the rest of the bar can move aside. A missing tab keeps the whole bar in.
   const BAR_KEY = 'gifos_bar_pos_v1';
   function barDevice(phone) { return phone ? 'p' : 'd'; }
   function clampBar(pos, bar, view) {
     const bw = Math.max(0, bar.w || 0), bh = Math.max(0, bar.h || 0);
-    const maxX = Math.max(0, (view.w || 0) - bw);
-    const maxY = Math.max(0, (view.h || 0) - bh);
+    const vw = Math.max(0, view.w || 0), vh = Math.max(0, view.h || 0);
+    const raw = bar && Number.isFinite(bar.tab) ? bar.tab : 0;
+    const tab = bw > 0 && raw > 0 ? Math.min(bw, raw) : bw;
+    const maxX = Math.max(0, vw - tab);
+    const maxY = Math.max(0, vh - bh);
     const x = pos && Number.isFinite(pos.x) ? pos.x : 0;
     const y = pos && Number.isFinite(pos.y) ? pos.y : 0;
     return { x: Math.min(maxX, Math.max(0, x)), y: Math.min(maxY, Math.max(0, y)) };

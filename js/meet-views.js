@@ -1017,9 +1017,16 @@
     };
   }
 
-  function metrics(bar) {
+  function metrics(bar, grip) {
+    let tab = 0;
+    if (grip && bar && bar.getBoundingClientRect) {
+      const br = bar.getBoundingClientRect();
+      const gr = grip.getBoundingClientRect();
+      // Both rects share the bar's translate, so the span is the tab's place in the bar.
+      if (gr.width > 0 && br.width > 0) tab = gr.right - br.left;
+    }
     return {
-      bar: { w: bar.offsetWidth, h: bar.offsetHeight },
+      bar: { w: bar.offsetWidth, h: bar.offsetHeight, tab: tab },
       view: { w: root.innerWidth || 0, h: root.innerHeight || 0 },
     };
   }
@@ -1043,7 +1050,7 @@
     const phoneNow = function () { return opts.phone ? !!opts.phone() : (root.innerWidth < 600); };
     let drag = null, lastTap = 0;
     function applyPos(pos, persist) {
-      const m = metrics(bar);
+      const m = metrics(bar, grip);
       const c = ML.clampBar(pos, m.bar, m.view);
       writeBar(bar, c);
       if (persist) ML.saveBar(store, phoneNow(), c);
@@ -1055,7 +1062,7 @@
       return applyPos(saved, false);
     }
     function reset() {
-      const m = metrics(bar);
+      const m = metrics(bar, grip);
       return applyPos(ML.defaultBar(m.bar, m.view, phoneNow()), true);
     }
     grip.addEventListener('pointerdown', function (e) {
@@ -1089,7 +1096,7 @@
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
       e.preventDefault();
       const r = bar.getBoundingClientRect();
-      const m = metrics(bar);
+      const m = metrics(bar, grip);
       applyPos(ML.nudgeBar({ x: r.left, y: r.top }, e.key, 16, m.bar, m.view), true);
     });
     grip.addEventListener('dblclick', function (e) {
