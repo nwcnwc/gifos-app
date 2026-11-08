@@ -106,6 +106,8 @@
           {
             const l88 = (roomTerm(this, 1) || kv.v === owner) && this.occ.has(kv.k) && this.occGet(kv.k) !== kv.v && !this.firstHandLive(kv.k);
             if (!this.occ.has(kv.k) || l88) { if (l88 && kv.v === owner) this.noChan.delete(kv.v); this.setOcc(kv.k, kv.v); if (!l88 || this.occGet(kv.k) === kv.v) { this.noteS1(kv.k); if (kv.v !== owner && ckPc(kv.k) === 0) this.s1told.set(kv.k, TICK); } }
+            // The admitter's confirm of this seat is a hearing. Their own cell on this PLACE is the hearing the other way. Anyone else's listing stays a listing.
+            if (kv.v === owner && hasO && kv.k === ckey(oc) && this.occGet(kv.k) === owner) this.liveMark(kv.k);
           }
         }
       }
