@@ -1286,7 +1286,8 @@
   }
 
   // Drag a Fit panel (every tile that shares data-float). A 3px move starts
-  // the drag, so a tap still opens the tile. The group stays inside the tab.
+  // the drag, so a tap still opens the tile. The group may go partly off any
+  // edge; 32px of it stay on the feed so it can be grabbed back.
   function installFloat(opts) {
     opts = opts || {};
     const ML = GifOS.meetLayout;

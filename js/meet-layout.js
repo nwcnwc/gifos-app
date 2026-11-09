@@ -181,10 +181,12 @@
   }
 
   // A floating stage or row. The saved spot is the center of the group as a
-  // fraction of the tab, so a resize keeps it and a rotation clamps it.
+  // fraction of the tab, so a resize keeps it. The group may go off any edge;
+  // the only rule is that FLOAT_KEEP px of it stay on screen to grab it back.
   // One slot per orientation: the other orientation is the fallback, so the
   // first rotate does not jump back to the default.
   const FLOAT_KEY = 'meet.view.v1.float';
+  const FLOAT_KEEP = 32;
   function floatOrient(view) {
     const w = view && view.w > 0 ? view.w : 0;
     const h = view && view.h > 0 ? view.h : 0;
@@ -235,31 +237,35 @@
     const aw = Math.max(1, area && area.w || 0), ah = Math.max(1, area && area.h || 0);
     return { cx: (box.x - ax + box.w / 2) / aw, cy: (box.y - ay + box.h / 2) / ah };
   }
-  // Keep a box's top-left so the whole box stays inside the area. Clamp only.
-  function clampFloat(box, area) {
+  // The one rule for a floating panel: it may sit partly off any edge of the
+  // area, but `keep` px of it (default FLOAT_KEEP, never more than the panel or
+  // the area has) stay inside, so it can be grabbed back. A box that already
+  // meets the rule is returned exactly as it is. The drag and the placement
+  // both use this, so a drop is never moved.
+  function clampFloat(box, area, keep) {
     const ax = area && area.x || 0, ay = area && area.y || 0;
     const aw = Math.max(0, area && area.w || 0), ah = Math.max(0, area && area.h || 0);
+    const bw = Math.max(0, box.w || 0), bh = Math.max(0, box.h || 0);
+    const k = keep >= 0 ? keep : FLOAT_KEEP;
+    const kx = Math.min(k, bw, aw), ky = Math.min(k, bh, ah);
     return {
-      x: Math.min(Math.max(ax, box.x), Math.max(ax, ax + aw - box.w)),
-      y: Math.min(Math.max(ay, box.y), Math.max(ay, ay + ah - box.h)),
+      x: Math.min(Math.max(ax + kx - bw, box.x), ax + aw - kx),
+      y: Math.min(Math.max(ay + ky - bh, box.y), ay + ah - ky),
     };
   }
   // Move a group so its center sits at the saved fraction of the area, then
-  // keep the whole group inside it. pad is how far the drawn tiles are inset
-  // from their cells (the gutter), so the drawn group reaches the area edge and
-  // no further. No saved spot returns the rects.
+  // apply the keep rule to the drawn group. pad is how far the drawn tiles are
+  // inset from their cells (the gutter). No saved spot returns the rects.
   function placeFloat(rects, saved, view, pad) {
     if (!rects || !rects.length || !saved) return rects;
     const g = groupBox(rects);
     const p = pad > 0 ? pad : 0;
     const vx = view && view.x || 0, vy = view && view.y || 0;
     const vw = Math.max(1, view && view.w || 0), vh = Math.max(1, view && view.h || 0);
-    let nx = vx + saved.cx * vw - g.w / 2;
-    let ny = vy + saved.cy * vh - g.h / 2;
-    const minX = vx - p, minY = vy - p;
-    nx = Math.min(Math.max(minX, nx), Math.max(minX, vx + vw + p - g.w));
-    ny = Math.min(Math.max(minY, ny), Math.max(minY, vy + vh + p - g.h));
-    const dx = nx - g.x, dy = ny - g.y;
+    const nx = vx + saved.cx * vw - g.w / 2;
+    const ny = vy + saved.cy * vh - g.h / 2;
+    const c = clampFloat({ x: nx + p, y: ny + p, w: Math.max(0, g.w - 2 * p), h: Math.max(0, g.h - 2 * p) }, { x: vx, y: vy, w: vw, h: vh });
+    const dx = c.x - p - g.x, dy = c.y - p - g.y;
     if (dx === 0 && dy === 0) return rects;
     const out = [];
     for (let i = 0; i < rects.length; i++) out.push(Object.assign({}, rects[i], { x: rects[i].x + dx, y: rects[i].y + dy }));
@@ -272,7 +278,7 @@
     loadBar: loadBar, saveBar: saveBar,
     FLOAT_KEY: FLOAT_KEY, floatOrient: floatOrient, loadFloat: loadFloat, saveFloat: saveFloat,
     clearFloat: clearFloat, groupBox: groupBox, placeFloat: placeFloat,
-    floatSpot: floatSpot, clampFloat: clampFloat,
+    floatSpot: floatSpot, clampFloat: clampFloat, FLOAT_KEEP: FLOAT_KEEP,
     SELF_KEY: SELF_KEY, SELF_DEFAULT: SELF_DEFAULT, normalizeSelf: normalizeSelf,
     loadSelf: loadSelf, saveSelf: saveSelf, selfEdge: selfEdge,
     floatSelf: floatSelf, nudgeSelf: nudgeSelf,
