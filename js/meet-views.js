@@ -204,14 +204,36 @@
     return true;
   }
 
-  // Faces stop where the call's buttons start. A shared screen and an app
-  // stay full-bleed. Desktop has no call-state row (it is display:none).
+  // env(safe-area-inset-bottom) in px, read from run.html's #gifos-safe-b probe.
+  function safeAreaBottom(doc) {
+    let p = doc && doc.getElementById ? doc.getElementById('gifos-safe-b') : null;
+    if (!p && doc && doc.createElement && doc.body) {
+      p = doc.createElement('div');
+      p.id = 'gifos-safe-b';
+      p.style.cssText = 'position:fixed;left:0;bottom:0;width:0;height:env(safe-area-inset-bottom,0px);pointer-events:none;visibility:hidden';
+      doc.body.appendChild(p);
+    }
+    return p ? (p.offsetHeight || 0) : 0;
+  }
+
+  // The faces reach the safe-area bottom on every screen; the call's buttons
+  // float over them (2026-11-09). A shared screen and an app stay full-bleed.
   function reserveCallChrome(feed, opts, header, tiles) {
     if (!feed || !feed.style) return 0;
     const doc = feed.ownerDocument || document;
     const body = doc.body;
     const skip = !opts || (body && body.classList && (body.classList.contains('screen-on') || body.classList.contains('has-app')));
     if (skip) { feed.style.bottom = ''; return 0; }
+    // Every screen uses the whole height below the header (Nathan 2026-11-09):
+    // the dock, Record and the chat line float over the faces and reserve no
+    // band, on a phone, a tablet, a desktop, sideways or upright. Only the
+    // system gesture bar (safe-area bottom) stays clear. A drag cannot change this.
+    {
+      callChromeTop = 0; callChromeEdge0 = 0; callChromeLipEdge = 0; callChromeEdge = 0; callChromeMarks = null;
+      const safe = safeAreaBottom(doc);
+      feed.style.bottom = safe > 0 ? safe + 'px' : '';
+      return safe;
+    }
     // apply() found that stopping above Record cost a face its 96px: the
     // faces take the whole screen and the controls float over them.
     if (opts._float) { feed.style.bottom = ''; return 0; }
@@ -840,13 +862,7 @@
     // 96px Fit floor (a 320x460 SE made seven 76x108 slivers). Then the faces
     // fill the screen and the dock floats over them (Nathan 2026-10-19 16:42).
     // The held line decides it, so a tuck or a wake gives the same answer.
-    if (!opts._float && opts.phone && chrome > 0 && lay && lay.rects) {
-      for (let i = 0; i < lay.rects.length; i++) {
-        const r = lay.rects[i], t = byId[r.id];
-        if (!t || t.tier === 'stad' || t.stage || t.share) continue;
-        if (Math.min(r.w, r.h) < 96 - 0.5) { opts._float = true; return apply(opts); }
-      }
-    }
+    // (2026-11-09: a phone reserves no band, so there is no float pass.)
     // A saved drag is a center fraction of the tab. Applied after the fit
     // pass, so the default layout stays what the geometry tests measure.
     if (ML.placeFloat && lay && lay.rects && lay.gallery !== 'scroll') {

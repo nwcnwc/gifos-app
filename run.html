@@ -3063,7 +3063,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   .wait-admit { background: #0064c8; color: #fff; border: 0; }
   .wait-no { background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
   .bar #bargrip:active { cursor: grabbing; }
-  body.screen-on #feed { padding-bottom: 132px; box-sizing: border-box; background: #0c0e12; }
+  body.screen-on #feed { padding-bottom: env(safe-area-inset-bottom, 0px); box-sizing: border-box; background: #0c0e12; }
   body.screen-on #grid { flex: 0 0 120px; height: 120px; min-height: 0; display: flex; overflow-x: auto; overflow-y: hidden; }
   body.screen-on #grid .tile { height: 104px; flex: 0 0 auto; width: auto; aspect-ratio: 16 / 9; }
   /* A presenting desktop's strip is 104px tall: chips wrap whole instead of
@@ -3117,8 +3117,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       flex: 0 0 auto; height: auto; width: max-content; flex-direction: column;
       overflow-x: hidden; overflow-y: auto; padding: 0 8px; }
   }
-  body.has-app:not(.comfy) #feed { margin-bottom: 132px; }
-  body.broadcast #feed { padding-bottom: 132px; box-sizing: border-box; }
+  body.has-app:not(.comfy) #feed { margin-bottom: env(safe-area-inset-bottom, 0px); }
+  body.broadcast #feed { padding-bottom: env(safe-area-inset-bottom, 0px); box-sizing: border-box; }
   #joinveil { background: transparent; pointer-events: none; align-items: flex-start; justify-content: center; padding-top: 72px; z-index: 18; }
   #joinveil .jv-box { pointer-events: auto; background: #fff; color: #1d1d1f; border-radius: 16px; padding: 1.1rem 1.3rem;
     box-shadow: 0 12px 32px rgba(0,0,0,.28); }
@@ -34572,7 +34572,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             lastDock = dock;
             // Record hangs off the dock: its header cap follows the new height.
             try { paintCallState(); } catch (e2) {}
-            try { layout(); } catch (e2) {}
           }
           const panel = document.getElementById('chatpanel');
           const br = bar.getBoundingClientRect();
