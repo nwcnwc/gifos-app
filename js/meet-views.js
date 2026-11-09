@@ -939,11 +939,11 @@
     const need = (lay.box ? lay.box.y : 0) + contentH;
     const overflows = !!(lay.box && contentH > lay.box.h + 1);
     const tail = overflows ? Math.max(0, (+opts.vh || 0) - lay.box.y - lay.box.h) : 0;
-    // A gallery that scrolls ends at the box, or below its first row when
-    // that row is taller than the band (it shows whole, over the empty part
-    // of the Record row, 3d2dd16). Rows that start past it are scrolled to, never
-    // painted under the call's buttons: a sideways SE with the buttons up
-    // has a 100px band for seven people.
+    // A gallery that scrolls folds at the box, or below its first row when
+    // that row is taller than the band (3d2dd16). clipY only places the
+    // "more below" hint: rows past it paint under the floating bar and the
+    // feed scrolls to them (Nathan 2026-11-09: Scroll and Fit both paint
+    // under the bar, which floats over them).
     let clipY = 0, past = 0;
     if (overflows) {
       clipY = lay.box.y + lay.box.h;
@@ -954,10 +954,8 @@
       // A face cut by the fold is below it too: the hint counts every face not whole.
       for (let i = 0; i < lay.rects.length; i++) if (lay.rects[i].y + lay.rects[i].h > clipY + 1) past++;
     }
-    // clipY is inside the feed. The feed starts `header` px down, so the
-    // bottom clip is measured from the viewport, not from the feed.
-    const viewClip = header + clipY;
-    if (feed.style && feed.style.setProperty) feed.style.setProperty('--comfy-clip', overflows ? Math.max(0, (+opts.vh || 0) - viewClip) + 'px' : '0px');
+    // No bottom clip: the feed runs to the bottom edge under the bar.
+    if (feed.style && feed.style.removeProperty) feed.style.removeProperty('--comfy-clip');
     if (feed.classList) { feed.classList.toggle('can-scroll', overflows); feed.classList.toggle('comfy-scroll', overflows); }
     let band = lay.band;
     // Short, in the bottom right corner, where a tile has no name or button.

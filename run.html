@@ -828,20 +828,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   body.broadcast:has(#stagefeed:not(:empty)) #bc-stage,
   body.broadcast:has(#bc-ident.on) #bc-stage { display: none !important; }
   body.broadcast #stagefeed .rowtile { max-height: 76vh; }
-  body.broadcast.bc-viewer #mic,
-  body.broadcast.bc-viewer #cam,
+  /* Camera, Mic, Step on and a docked Share keep their dock slots, grayed
+     (idleDock: the bar is the screen's, Nathan 2026-11-09). Share is hidden
+     only in More. */
   body.broadcast.bc-viewer #flipcam,
   body.broadcast.bc-viewer .blurctl,
   body.broadcast.bc-viewer #appbtn,
-  body.broadcast.bc-viewer #sharebtn,
+  body.broadcast.bc-viewer #barmore #sharebtn,
   body.broadcast.bc-viewer #recbtn,
   body.broadcast.bc-viewer #pwbtn,
-  body.broadcast.bc-viewer #stagebtn,
   body.broadcast.bc-viewer #set-video,
   body.broadcast.bc-viewer #set-captions,
   body.broadcast.bc-viewer #reshare-back,
   body.broadcast.bc-stage #appbtn,
-  body.broadcast.bc-stage #sharebtn,
+  body.broadcast.bc-stage #barmore #sharebtn,
   body.broadcast.bc-stage #recbtn,
   body.broadcast.bc-stage #pwbtn,
   body.broadcast.bc-stage #set-captions,
@@ -850,11 +850,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   /* A Watching seat is the person themselves: no host key, not an admin,
      and not called onto the stage. The session frame never sets notadmin,
      so the notadmin rules above do not reach it. Hand stays. */
-  body.broadcast.bc-watching #mic,
-  body.broadcast.bc-watching #cam,
   body.broadcast.bc-watching #flipcam,
-  body.broadcast.bc-watching .blurctl,
-  body.broadcast.bc-watching #stagebtn { display: none !important; }
+  body.broadcast.bc-watching .blurctl { display: none !important; }
   /* Nobody mixes in a broadcast: Stage audio is the only bus there is.
      Blur guests, Turn video off, and Allow screen share moderate a Meet
      row a broadcast does not have — a share grant must not let a viewer
@@ -1748,7 +1745,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
      paid for in pixels at every hop. The room does not need it, so it is not
      offered; e2e-screen-share.js proves the control is absent and that nothing
      on the app-pin path ever reaches getDisplayMedia. */
-  body.app-room #sharebtn { display: none !important; }
+  body.app-room #barmore #sharebtn { display: none !important; }
   /* A screen wants height. Same lever the broadcast skin already pulls, armed
      while anyone in the room is sharing (paintShare). */
   /* A SHARED SCREEN FILLS THE WINDOW (2026-10-02, the first customer
@@ -2460,7 +2457,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   body.comfy .tile[data-fit="contain"] > video { object-fit: contain; }
   .admcount { position: fixed; z-index: 6; top: calc(14px + 2.75rem + var(--inset-top, 0px)); left: calc(14px + var(--inset-left, 0px)); right: calc(14px + var(--inset-right, 0px)); }
   body.solo-app .topchip, body.app-room:not(.audio-on) .topchip { display: none !important; }
-  body.app-room #reactbtn, body.app-room #reacttray { display: none !important; }
+  body.app-room #barmore #reactbtn, body.app-room #reacttray { display: none !important; }
   /* The build name used to be a solid chip in the corner, beside Fit, and
      Fit hung down onto the top face. Fit shares the header row. The build
      name is a faint line under that row, not a second button. */
@@ -2591,6 +2588,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   .bar > #hand .dockface { font-size: 26px; line-height: 1; pointer-events: none; }
   .bar > #hand.on { background: #0064c8; color: #fff; }
   .bar #reactbtn.on, .bar #chatbtn.on, .bar #ccdock.on, .bar #bartoggle[aria-expanded="true"] { background: #0064c8; color: #fff; }
+  /* A slot that cannot be used right now: grayed in place, not clickable (the bar's click guard), its tooltip says why. */
+  .bar > button.idle, .bar > button[aria-disabled="true"] { opacity: .45; filter: grayscale(.7); cursor: not-allowed; }
   .bar:not(.collapsed) .bartoggle svg { transform: none; }
   .bar #leavebtn { width: 72px; height: 72px; min-width: 72px; min-height: 72px; margin-left: 6px; padding: 0;
     border: 0; border-radius: 22px; background: #b61622; color: #fff; display: inline-flex; flex-direction: column;
@@ -3738,7 +3737,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   #rec-replay-share[hidden] { display: none; }
   .rec-replay-actions.can-share #rec-replay-save { background: transparent; color: #f4f7fb; border: 1.5px solid #8d93a0; }
   #rec-replay-close { background: transparent; color: #f4f7fb; border: 1.5px solid #8d93a0; }
-  body.townhall.th-watch:not(.stage-granted) #mic, body.townhall.th-watch:not(.stage-granted) #cam, body.townhall.th-watch:not(.stage-granted) #flipcam, body.townhall.th-watch:not(.stage-granted) .blurctl, body.townhall.th-watch #appbtn, body.townhall.th-watch #sharebtn, body.townhall.th-watch #pwbtn, body.townhall.th-watch #recbtn { display: none !important; }
+  body.townhall.th-watch:not(.stage-granted) #flipcam, body.townhall.th-watch:not(.stage-granted) .blurctl, body.townhall.th-watch #appbtn, body.townhall.th-watch #barmore #sharebtn, body.townhall.th-watch #pwbtn, body.townhall.th-watch #recbtn { display: none !important; }
   #bc-link { display: none; }
   body.broadcast #bc-link.on { display: flex; position: fixed; z-index: 6; left: 16px; right: 16px; flex-direction: column; gap: 12px; overflow: auto; background: #fff; color: #1d1d1f; border-radius: 16px; padding: 16px; box-shadow: 0 12px 32px rgba(0,0,0,.28); box-sizing: border-box; max-width: 420px; margin: 0 auto; }
   #bc-link p { margin: 0; text-align: center; font-size: 0.875rem; line-height: 1.35; color: #3a3a3f; }
@@ -5179,83 +5178,155 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function moreRow(group) {
       return document.querySelector('#barmore .moregroup[data-group="' + group + '"] > .morerow');
     }
-    // Chat, Share screen, Hand, Captions, People, then Transcript and
-    // Questions. On a desktop the first two stay on the dock, whether More
-    // is open or not. A phone keeps them in this row. A broadcast does not
-    // use this (placeDockForWidth still parks a service's own buttons).
-    // The dock never changes when More opens or closes: pulling Chat and
-    // Share off it on open re-centred the dock and put Leave where More had
-    // been, so a second tap to close the sheet left the call (a real
-    // meeting, 0.9.25). Only the window's width decides where these two live.
-    function seatUseRow() {
-      if (BROADCAST) return;
-      const bar = document.querySelector('.bar');
-      const row = moreRow('use');
-      if (!bar || !row) return;
-      const phone = phoneLayout();
-      const skipHand = (id) => id === 'hand' && typeof viewerHandOnDock === 'function' && viewerHandOnDock();
-      if (phone) {
-        ['chatbtn', 'sharebtn', 'hand', 'ccbtn', 'whobtn', 'trbtn', 'qabtn'].forEach((id) => {
-          if (skipHand(id)) return;
-          const el = document.getElementById(id);
-          if (el) row.appendChild(el);
-        });
-      } else {
-        const chat = document.getElementById('chatbtn');
-        const share = document.getElementById('sharebtn');
-        const cc = document.getElementById('ccdock');
-        const toggle = document.getElementById('bartoggle');
-        if (chat && chat.parentElement !== bar) {
-          if (cc && cc.parentElement === bar) bar.insertBefore(chat, cc);
-          else if (toggle && toggle.parentElement === bar) bar.insertBefore(chat, toggle);
-        }
-        if (share && share.parentElement !== bar && toggle && toggle.parentElement === bar) bar.insertBefore(share, toggle);
-        ['hand', 'ccbtn', 'whobtn', 'trbtn', 'qabtn'].forEach((id) => {
-          if (skipHand(id)) return;
-          const el = document.getElementById(id);
-          if (el) row.appendChild(el);
-        });
+    // THE BAR IS THE SCREEN'S (Nathan 2026-11-09): one width, one set of
+    // buttons, one order and one set of words per screen size/orientation.
+    // barPlan (slots) and dockLabelSet (words) are pure: phone or wide, a
+    // service window under 1100px, and the room's kind fixed at load
+    // (barKind). A button that cannot be used right now is grayed in place
+    // (idleDock: aria-disabled, tooltip says why); never hidden, moved or
+    // re-worded. State shows in colour, aria-pressed, aria-label and title.
+    let barKindAtLoad = '';
+    function barKind() {
+      if (barKindAtLoad) return barKindAtLoad;
+      let host = false;
+      try { host = !!localStorage.getItem('gifos_vadm_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase()); } catch (e) { host = false; }
+      barKindAtLoad = BROADCAST ? (host ? 'bc-host' : 'bc-viewer') : ((TOWNHALL && !host) ? 'th-watch' : 'meeting');
+      return barKindAtLoad;
+    }
+    function barPlan(s) {
+      const phone = !!(s && s.phone), kind = s && s.kind;
+      const tail = ['ccbtn', 'whobtn', 'trbtn', 'qabtn'];
+      if (kind === 'bc-host') {
+        return phone
+          ? { dock: ['cam', 'mic', 'stagebtn', 'reactbtn', 'ccdock', 'sharebtn'], use: ['chatbtn', 'hand'].concat(tail), video: [] }
+          : { dock: ['cam', 'mic', 'stagebtn', 'reactbtn', 'chatbtn', 'ccdock', 'sharebtn'], use: ['hand'].concat(tail), video: [] };
+      }
+      if (kind === 'bc-viewer') {
+        return phone
+          ? { dock: ['cam', 'mic', 'hand', 'stagebtn', 'reactbtn', 'ccdock'], use: ['chatbtn'].concat(tail), video: ['sharebtn'] }
+          : { dock: ['cam', 'mic', 'hand', 'stagebtn', 'reactbtn', 'chatbtn', 'ccdock'], use: tail.slice(), video: ['sharebtn'] };
+      }
+      if (kind === 'th-watch' && phone) {
+        return { dock: ['cam', 'mic', 'hand', 'reactbtn', 'ccdock'], use: ['chatbtn', 'sharebtn'].concat(tail), video: [] };
+      }
+      return phone
+        ? { dock: ['cam', 'mic', 'reactbtn', 'ccdock'], use: ['chatbtn', 'sharebtn', 'hand'].concat(tail), video: [] }
+        : { dock: ['cam', 'mic', 'reactbtn', 'chatbtn', 'ccdock', 'sharebtn'], use: ['hand'].concat(tail), video: [] };
+    }
+    // One label set per screen: whole words where they fit, short words on a
+    // phone or a service window under 1100px. Never a state word.
+    function dockLabelSet(s) {
+      const short = !!(s && s.short);
+      const t = (s && typeof s.t === 'function')
+        ? (k, d) => { let v; try { v = s.t(k, d); } catch (e) {} return (typeof v === 'string' && v) ? v : d; }
+        : (k, d) => d;
+      return {
+        cam: short ? 'Video' : t('cam', 'Camera'),
+        mic: t('micWord', 'Mic'),
+        reactbtn: short ? 'React' : t('react', 'Reactions'),
+        chatbtn: t('chat', 'Chat'),
+        ccdock: 'CC',
+        sharebtn: short ? 'Share' : t('shareScreen', 'Share screen'),
+        stagebtn: t('stage', 'Stage'),
+        hand: t('hand', 'Hand'),
+        bartoggle: t('more', 'More'),
+        leavebtn: (s && s.end) ? 'End' : t('leave', 'Leave'),
+      };
+    }
+    // Gray a dock button in place (why = the tooltip), or bring it back.
+    // aria-disabled, not [disabled]: the tooltip still shows and the slot,
+    // index and box never change. The bar's click guard stops the press.
+    function idleDock(el, why) {
+      if (!el) return;
+      if (el.disabled) el.disabled = false;
+      if (why) {
+        el.classList.add('idle');
+        el.setAttribute('aria-disabled', 'true');
+        el.dataset.idleWhy = why;
+        if (el.title !== why) el.title = why;
+      } else if (el.classList.contains('idle') || el.getAttribute('aria-disabled') === 'true') {
+        const was = el.dataset.idleWhy;
+        el.classList.remove('idle');
+        el.removeAttribute('aria-disabled');
+        delete el.dataset.idleWhy;
+        if (was && el.title === was) el.title = '';
       }
     }
+    // Camera and Mic for a seat that may not publish; Reactions in an app room.
+    function paintBarIdle() {
+      const b = document.body.classList;
+      let watching = false;
+      if (BROADCAST) {
+        let pub = barKind() === 'bc-host';
+        try { pub = bcMayPublishAv(); } catch (e) {}
+        watching = !pub;
+      } else watching = b.contains('th-watch') && !b.contains('stage-granted');
+      const why = watching
+        ? (BROADCAST ? 'You are watching. The host can invite you on stage.' : 'You are watching. A host can invite you to speak.')
+        : '';
+      idleDock(document.getElementById('cam'), why);
+      idleDock(document.getElementById('mic'), why);
+      idleDock(document.getElementById('reactbtn'), b.contains('app-room') ? 'Reactions are off while an app has the room.' : '');
+    }
+    let barPlanKey = '';
     function placeDockForWidth() {
       const bar = document.querySelector('.bar');
       const more = document.getElementById('barmore');
-      if (!bar || !more) return;
+      const toggle = document.getElementById('bartoggle');
+      if (!bar || !more || !toggle) return;
       const phone = phoneLayout();
-      const service = BROADCAST;
-      const put = (id, group, before, lead) => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        if (phone) {
+      const kind = barKind();
+      const narrowKey = BROADCAST && window.innerWidth < 1100;
+      const key = kind + '|' + (phone ? 'phone' : 'wide') + '|' + (narrowKey ? 'narrow' : 'full');
+      if (!bar.dataset.idleGuard) {
+        bar.dataset.idleGuard = '1';
+        // A grayed slot is not clickable: a tap, Enter or a shortcut's
+        // .click() stops here, before the button's own handler.
+        bar.addEventListener('click', (e) => {
+          const b = e.target && e.target.closest ? e.target.closest('button') : null;
+          if (!b || b.parentElement !== bar || b.getAttribute('aria-disabled') !== 'true') return;
+          e.preventDefault();
+          e.stopImmediatePropagation();
+        }, true);
+      }
+      if (key !== barPlanKey) {
+        barPlanKey = key;
+        const plan = barPlan({ phone: phone, kind: kind });
+        const byId = (id) => document.getElementById(id);
+        let anchor = toggle;
+        for (let i = plan.dock.length - 1; i >= 0; i--) {
+          const el = byId(plan.dock[i]);
+          if (!el) continue;
+          if (el.parentElement !== bar || el.nextElementSibling !== anchor) bar.insertBefore(el, anchor);
+          anchor = el;
+        }
+        const seat = (group, ids) => {
           const row = moreRow(group);
-          if (row && el.parentElement !== row) row.insertBefore(el, lead ? row.firstChild : null);
-        } else if (el.parentElement !== bar) {
-          const anchor = document.getElementById(before);
-          if (anchor && anchor.parentElement === bar) bar.insertBefore(el, anchor); else bar.insertBefore(el, document.getElementById('bartoggle'));
+          if (!row) return;
+          ids.forEach((id) => { const el = byId(id); if (el && plan.dock.indexOf(id) < 0) row.appendChild(el); });
+        };
+        seat('use', plan.use);
+        seat('video', plan.video);
+        const stage = byId('stagebtn');
+        if (stage && plan.dock.indexOf('stagebtn') < 0 && stage.parentElement === bar) {
+          const room = moreRow('room'), app = byId('appbtn');
+          if (room) room.insertBefore(stage, app && app.parentElement === room ? app : null);
         }
-      };
-      // A service keeps Share beside the video tools and Chat in the first
-      // group. A meeting seats Chat and Share with Hand while More is open
-      // (and on a phone the whole time). seatUseRow does that.
-      // A phone host is the exception: Share stays on the dock, and fitDock
-      // moves Share, then Reactions, then Step off when the row does not fit.
-      if (service) {
-        let serviceHost = document.body.classList.contains('amadmin');
-        if (!serviceHost) {
-          try {
-            serviceHost = !!localStorage.getItem('gifos_vadm_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase());
-          } catch (e) { serviceHost = false; }
-        }
-        if (phone && serviceHost) {
-          const share = document.getElementById('sharebtn');
-          const toggle = document.getElementById('bartoggle');
-          if (share && toggle && share.parentElement !== bar) bar.insertBefore(share, toggle);
-        } else put('sharebtn', 'video', 'bartoggle');
-        const hand = document.getElementById('hand'), use = moreRow('use');
-        if (hand && use && hand.parentElement !== bar && hand.parentElement !== use) use.insertBefore(hand, use.firstChild);
-        put('chatbtn', 'use', 'ccdock', true);
-      } else {
-        try { seatUseRow(); } catch (e) {}
+        const faces = [
+          ['stagebtn', '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="7" r="2.4"/><path d="M8.2 13.2c.5-1.5 1.9-2.4 3.8-2.4s3.3.9 3.8 2.4"/><path d="M4 17.5h16"/></svg><span class="docklab dockword"></span>', 'Step on the stage', 'Stage'],
+          ['hand', '<span class="dockface" aria-hidden="true">\u270B</span><span class="docklab dockword"></span>', 'Raise hand', 'Hand'],
+        ];
+        faces.forEach(([id, face, aria, word]) => {
+          const el = byId(id);
+          if (!el) return;
+          if (el.parentElement === bar) {
+            if (!el.querySelector('.docklab')) { el.classList.add('iconbtn'); el.innerHTML = face; el.setAttribute('aria-label', aria); }
+          } else if (el.querySelector('.docklab')) {
+            el.classList.remove('iconbtn'); el.textContent = word; el.removeAttribute('aria-label');
+          }
+        });
+        const share = byId('sharebtn');
+        if (share && share.parentElement === bar) share.style.display = '';
       }
       // Plain words a volunteer knows (qa-meet-mobile) on a phone; People on
       // every width (the same word the phone already used).
@@ -5263,22 +5334,22 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         ? { whobtn: uiText('people', 'People'), pwbtn: 'Room password', votebtn: 'Vote on someone' }
         : { whobtn: uiText('people', 'People'), pwbtn: uiText('password', 'Password'), votebtn: uiText('vote', 'Vote') };
       Object.keys(words).forEach((id) => { const el = document.getElementById(id); if (el && el.textContent !== words[id]) el.textContent = words[id]; });
-      // Dock words: short on a phone (five buttons in 320px), whole on a wide
-      // window where older eyes read them at 16px (qa-meet-desktop).
-      // A service dock carries Step on, Invite and Full screen too: under 1100px
-      // it keeps the short words so Leave stays on screen.
+      // Dock words: one set per screen (dockLabelSet). Short on a phone (five
+      // buttons in 320px) and on a service window under 1100px; whole words
+      // on a wide window where older eyes read them at 16px (qa-meet-desktop).
       const narrowService = BROADCAST && window.innerWidth < 1100;
-      const dockWords = (phone || narrowService)
-        ? { reactbtn: 'React', sharebtn: 'Share' }
-        : { reactbtn: uiText('react', 'Reactions'), sharebtn: uiText('shareScreen', 'Share screen') };
-      Object.keys(dockWords).forEach((id) => {
-        const el = document.querySelector('#' + id + ' .dockword');
+      const labelSet = dockLabelSet({ short: phone || narrowService, end: barKind() === 'bc-host', t: uiText });
+      Object.keys(labelSet).forEach((id) => {
+        const el = document.querySelector('#' + id + ' .docklab');
         if (!el) return;
-        const inSheet = id === 'sharebtn' && el.closest && el.closest('#barmore');
-        const word = inSheet ? uiText('shareScreen', 'Share screen') : dockWords[id];
+        const inSheet = el.closest && el.closest('#barmore');
+        const word = (inSheet && id === 'sharebtn') ? uiText('shareScreen', 'Share screen') : labelSet[id];
         if (el.textContent !== word) el.textContent = word;
       });
+      try { paintBarIdle(); } catch (e) {}
       try { paintStage(); } catch (e) {}
+      try { paintHand(); } catch (e) {}
+      try { paintShare(); } catch (e) {}
     }
     window.addEventListener('resize', () => { try { placeDockForWidth(); } catch (e) {} });
     function paintBroadcastChrome() {
@@ -5317,7 +5388,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             leave.setAttribute('aria-label', 'Leave the meeting');
           }
         }
-        if (lab) lab.textContent = end ? 'End' : 'Leave';
+        // The dock word is the screen's (dockLabelSet: End only for a host at load); the mode lives in aria-label and title.
+        void lab;
         if (go) go.textContent = end ? 'End' : 'Leave';
         if (note) {
           note.hidden = !end;
@@ -5442,46 +5514,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const appStop = document.getElementById('appstop');
       if (appStop && appStop.title.indexOf('meeting') !== -1) appStop.title = 'Stop sharing this app with the broadcast';
       if (bar) bar.setAttribute('aria-label', 'Broadcast controls');
-      const shareOnDock = document.getElementById('sharebtn');
-      const moreSheet = document.getElementById('barmore');
       const host = bcHostStored() || document.body.classList.contains('amadmin');
-      // A viewer is known at boot; don't wait for the join (applyAdminUi) to
-      // take the camera and mic off their dock, or the name card shows them.
+      // A viewer is known at boot; their Camera and Mic stay in their slots, grayed (paintBarIdle).
       if (!host) document.body.classList.add('notadmin');
       paintLeave(host ? 'end' : 'watch');
-      // Slides and a window are how a host fills the stage. Share sits on the
-      // host dock on every width, including a phone, so fitDock can move it
-      // into More with Reactions and Step off. A viewer keeps it in More
-      // until they are allowed to share. placeDockForWidth already parked a
-      // phone viewer's Share; this puts a wide viewer's back if it wandered.
-      if (shareOnDock && moreSheet && bar && host) {
-        const moreBtn = document.getElementById('bartoggle');
-        if (shareOnDock.parentElement !== bar && moreBtn) bar.insertBefore(shareOnDock, moreBtn);
-      } else if (shareOnDock && moreSheet && bar && !phoneLayout() && !moreSheet.contains(shareOnDock) && moreRow('video')) {
-        moreRow('video').appendChild(shareOnDock);
-      }
-      if (host && bar) {
-        const stage = document.getElementById('stagebtn');
-        const anchor = document.getElementById('reactbtn');
-        if (stage && anchor && stage.parentElement !== bar) bar.insertBefore(stage, anchor);
-        // A service host has no hand to raise, so H is not theirs.
-        for (const id of ['hand', 'react-hand']) { const h = document.getElementById(id); if (h) h.removeAttribute('aria-keyshortcuts'); }
-        if (stage && !stage.querySelector('.docklab')) {
-          stage.classList.add('iconbtn');
-          stage.innerHTML = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="7" r="2.4"/><path d="M8.2 13.2c.5-1.5 1.9-2.4 3.8-2.4s3.3.9 3.8 2.4"/><path d="M4 17.5h16"/></svg><span class="docklab dockword">Step on</span>';
-          stage.setAttribute('aria-label', 'Step on the stage');
-        }
-      } else if (bar) {
-        const hand = document.getElementById('hand');
-        const anchor = document.getElementById('reactbtn');
-        if (hand && anchor && hand.parentElement !== bar) bar.insertBefore(hand, anchor);
-        if (hand && !hand.querySelector('.docklab')) {
-          hand.classList.add('iconbtn');
-          hand.innerHTML = '<span class="dockface" aria-hidden="true">\u270B</span><span class="docklab dockword">Raise hand</span>';
-          hand.setAttribute('aria-label', 'Raise hand');
-          hand.setAttribute('aria-pressed', 'false');
-        }
-      }
+      // Share, Step on and Hand keep the slots barPlan gave this screen
+      // (Nathan 2026-11-09): a role learned at the join does not move them.
+      // A service host has no hand to raise, so H is not theirs.
+      if (host) for (const id of ['hand', 'react-hand']) { const h = document.getElementById(id); if (h) h.removeAttribute('aria-keyshortcuts'); }
+      try { paintBarIdle(); } catch (e) {}
       paintBroadcastAir();
       const plate = document.getElementById('bc-stage');
       if (plate) plate.hidden = false;
@@ -5612,6 +5653,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { paintHand(); } catch (e) {}
       try { paintOnAir(); } catch (e) {}
       try { paintBroadcastJoinNote(role); } catch (e) {}
+      try { paintBarIdle(); } catch (e) {}
     }
     function bcSending() {
       if (bcCamLiveForTest) return true;
@@ -7892,7 +7934,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const muted = !micBtn || micBtn.classList.contains('off');
       docPip.mic.textContent = muted ? uiText('unmute', 'Unmute') : uiText('mute', 'Mute');
       docPip.mic.classList.toggle('off', muted);
-      docPip.mic.disabled = !micBtn || micBtn.disabled || micBtn.style.display === 'none';
+      docPip.mic.disabled = !micBtn || micBtn.disabled || micBtn.getAttribute('aria-disabled') === 'true' || micBtn.style.display === 'none';
     }
     // Re-aimed when the talker or the stage changes (the heartbeat), and when
     // a float is asked for again while one is up.
@@ -29567,26 +29609,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
 
     // ---- hand raise: float to the top in the order hands went up --------------
     const handBtn = document.getElementById('hand');
+    // Hand's slot is the screen's (barPlan), never the seat's.
     function viewerHandOnDock() {
-      let phone = false;
-      try { phone = window.matchMedia('(max-width: 700px), (max-height: 500px)').matches; } catch (e) {}
-      if (!phone || document.body.classList.contains('stage-granted')) return false;
-      const b = document.body.classList;
-      const host = typeof bcHostStored === 'function' && bcHostStored();
-      return (b.contains('broadcast') && b.contains('notadmin') && !host) || b.contains('th-watch');
+      return barPlan({ phone: phoneLayout(), kind: barKind() }).dock.indexOf('hand') >= 0;
     }
     function placeViewerHand() {
-      const hand = document.getElementById('hand');
-      const bar = document.querySelector('.bar');
-      const react = document.getElementById('reactbtn');
-      const talk = moreRow('use') || moreRow('talk');
-      const chat = document.getElementById('chatbtn');
-      if (!hand || !bar || !react || !talk) return;
-      if (viewerHandOnDock()) {
-        if (hand.parentElement !== bar) bar.insertBefore(hand, react);
-      } else if (hand.parentElement !== talk) {
-        talk.insertBefore(hand, chat && chat.parentElement === talk ? chat.nextSibling : talk.firstChild);
-      }
+      try { placeDockForWidth(); } catch (e) {}
     }
     try {
       const handMq = window.matchMedia('(max-width: 700px), (max-height: 500px)');
@@ -29597,8 +29625,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const docked = handBtn.parentElement && handBtn.parentElement.classList.contains('bar');
       const lab = handBtn.querySelector('.docklab');
       if (docked && lab) {
+        // The dock word stays the screen's ("Hand"); up or down is colour, aria-pressed and aria-label.
         handBtn.classList.toggle('on', up);
-        lab.textContent = up ? 'Lower hand' : 'Raise hand';
         handBtn.setAttribute('aria-label', up ? 'Lower hand' : 'Raise hand');
         handBtn.setAttribute('aria-pressed', up ? 'true' : 'false');
       } else {
@@ -29681,29 +29709,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const on = (BROADCAST) ? claimed : seated;
       stageBtn.classList.toggle('on', on);
       const hostHere = (BROADCAST) && ((typeof bcHostStored === 'function' && bcHostStored()) || amAdmin);
-      const promoted = (BROADCAST) && (!!myStatus.stg || !!(modOf(myId).app && modOf(myId).app.on));
-      if (promoted && !hostHere) {
-        const bar = document.querySelector('.bar');
-        const anchor = document.getElementById('reactbtn');
-        if (bar && anchor && stageBtn.parentElement !== bar) bar.insertBefore(stageBtn, anchor);
-        if (!stageBtn.querySelector('.docklab')) {
-          stageBtn.classList.add('iconbtn');
-          stageBtn.innerHTML = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="7" r="2.4"/><path d="M8.2 13.2c.5-1.5 1.9-2.4 3.8-2.4s3.3.9 3.8 2.4"/><path d="M4 17.5h16"/></svg><span class="docklab dockword">Step off</span>';
-        }
-      } else if (!hostHere && stageBtn.parentElement && stageBtn.parentElement.classList.contains('bar')) {
-        const room = moreRow('room'), app = document.getElementById('appbtn');
-        if (room) room.insertBefore(stageBtn, app && app.parentElement === room ? app : null);
-      }
+      // Stage keeps the slot barPlan gave it and the word dockLabelSet gave
+      // it. A seat change only colours it, re-labels it for a screen reader,
+      // and grays it when it cannot be used (Nathan 2026-11-09).
       const dockedNow = stageBtn.parentElement && stageBtn.parentElement.classList.contains('bar');
-      const labNow = stageBtn.querySelector('.docklab');
-      if (dockedNow && labNow) {
-        labNow.textContent = on ? 'Step off' : 'Step on';
+      const mayStage = !!(!hasAdminRoom() || amAdmin || hostHere || (modOf(myId).app && modOf(myId).app.on) || myStatus.stg);
+      if (dockedNow) {
         stageBtn.setAttribute('aria-label', on ? 'Step off the stage' : 'Step on the stage');
+        stageBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
         stageBtn.title = on ? 'Step off the stage. The room stops seeing you.' : 'Step onto the stage. The room sees and hears you.';
-      } else if (!dockedNow) {
+        stageBtn.style.display = '';
+        if (typeof idleDock === 'function') idleDock(stageBtn, mayStage ? '' : 'Only the host and the people they invite can step on the stage.');
+      } else {
         stageBtn.textContent = phoneLayout() ? (on ? 'Step off stage' : 'Step on stage') : (on ? 'Step down' : 'Stage');
+        stageBtn.style.display = mayStage ? '' : 'none';
       }
-      stageBtn.style.display = (!hasAdminRoom() || amAdmin || hostHere || (modOf(myId).app && modOf(myId).app.on) || myStatus.stg) ? '' : 'none';
       if (typeof paintStagePlate === 'function') paintStagePlate();
       if (typeof paintBroadcastAir === 'function') paintBroadcastAir();
       // Broadcast roles own the seat class. Meet still marks a stage grant
@@ -29714,6 +29734,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         try { paintBroadcastSeats(); } catch (e) {}
       } else document.body.classList.toggle('stage-granted', canStage(myId));
       try { paintWatchingSeat(); } catch (e) {}
+      try { paintBarIdle(); } catch (e) {}
     }
     // THE CAP IS DECIDED BY ARITHMETIC, NOT BY MY TAP. stageIds() keeps the C
     // earliest claims on every phone, so a step-up that lost a same-moment
@@ -29840,17 +29861,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!shareBtn) return;
       const on = !!myStatus.scr;
       shareBtn.classList.toggle('on', on);
+      // The word is the screen's (dockLabelSet); sharing shows in colour, aria-label and title.
       const sharingLabel = on ? 'Stop sharing' : 'Share screen';
-      const shareLab = shareBtn.querySelector('.docklab');
-      if (shareLab) {
-        // Whole words on the dock and in the sheet. Short words only on the
-        // phone dock and a narrow service window (placeDockForWidth). Never
-        // textContent: that wipes the icon when the button moves into More.
-        const inSheet = shareBtn.closest && shareBtn.closest('#barmore');
-        const shortShare = !inSheet && (phoneLayout() || (BROADCAST && window.innerWidth < 1100));
-        shareLab.textContent = on ? uiText('stopShare', shortShare ? 'Stop' : 'Stop sharing') : (shortShare ? 'Share' : uiText('shareScreen', 'Share screen'));
-      }
       shareBtn.setAttribute('aria-label', sharingLabel);
+      shareBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
       shareBtn.title = (BROADCAST)
         ? (on ? 'You are sharing your screen on the stage. Tap to stop.' : 'Show the stage a window, a tab, or your desktop.')
         : (on
@@ -29861,7 +29875,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // A greyed button whose only explanation was a clipped banner read as
       // broken. Where capture exists, Share screen stays in the first group.
       shareBtn.classList.remove('dim');
-      shareBtn.style.display = (!canScreenShare() || (BROADCAST && bcRole() !== 'host')) ? 'none' : '';
+      // On the dock Share is never hidden: when it cannot be used it is
+      // grayed in place and the tooltip says why (Nathan 2026-11-09). In
+      // More it stays out of the way for a browser or a role that cannot share.
+      const shareDocked = !!(shareBtn.parentElement && shareBtn.parentElement.classList && shareBtn.parentElement.classList.contains('bar'));
+      const shareRoleOff = !!(BROADCAST && bcRole() !== 'host');
+      let shareWhy = '';
+      if (!canScreenShare()) shareWhy = uiText('shareNoGdm', 'This browser cannot share a screen.');
+      else if (document.body.classList.contains('app-room')) shareWhy = 'Screen share is off while an app has the room.';
+      else if (shareRoleOff) shareWhy = 'Only the host shares to the stage.';
+      else if (TOWNHALL && document.body.classList.contains('th-watch') && !document.body.classList.contains('stage-granted')) shareWhy = 'You are watching. A host can invite you to speak.';
+      else if (!on && !mayShareScreen(myId)) shareWhy = uiText('shareNotAllowed', 'The host has not allowed you to share yet.');
+      else if (!on && screenSharers().some((id) => id !== myId && id !== 'me')) shareWhy = 'Someone else is sharing. Wait for them to stop.';
+      shareBtn.style.display = (!shareDocked && (!canScreenShare() || shareRoleOff)) ? 'none' : '';
+      if (typeof idleDock === 'function') idleDock(shareBtn, shareDocked ? shareWhy : '');
       // A screen on the Stage wants height. This does not rebuild the layout —
       // it lets the strip grow the way the broadcast skin already does.
       document.body.classList.toggle('screen-on', screenSharers().length > 0);
@@ -34269,8 +34296,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         bar.setAttribute('aria-label', service ? 'Broadcast controls' : 'Meeting controls');
         toggle.setAttribute('aria-label', collapsed ? 'More' : 'Hide ' + surface + ' controls');
         toggle.title = collapsed ? 'More' : 'Hide ' + surface + ' controls';
-        const word = toggle.querySelector('.docklab');
-        if (word) word.textContent = collapsed ? uiText('more', 'More') : uiText('hide', 'Hide');
+        // The word stays the screen's ("More"); open or shut is aria-expanded, aria-label and title.
         // An upright phone shows the whole sheet when it fits above the
         // dock (a guest's 577px sheet, Settings and Keys included: LM-44).
         // A host's longer sheet would reach the top of the call, so it
@@ -34290,6 +34316,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // The fold is what shows Live again. Measure it after the class
         // changes, not while More still hides the row.
         try { paintCallState(); } catch (e) {}
+        if (!collapsed) { try { paintStandIns(); } catch (e) {} }
         if (!collapsed) placeDockPopovers();
       }
       toggle.onclick = function () {
@@ -34337,10 +34364,29 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // where it stands, and its owner can drag it (Nathan 2026-11-09). The
       // panel's composer moves up by its own --barclear only where the bar
       // really stands over it (placeBarAvoiders).
-      // Only the window's own width sends a button to More (fitWindow). When
-      // the bar at home still runs past the window, these move one at a time.
-      // More shows a stand-in that presses the real button.
+      // Only the screen sends a button to More (fitWindow, Nathan 2026-11-09).
+      // When the bar at home still runs past the window, these move one at a
+      // time. More shows a stand-in that presses the real button.
       const fitOrder = ['sharebtn', 'reactbtn', 'stagebtn'];
+      let fitKey = '';
+      // Words are fixed per screen (dockLabelSet); only a state class can
+      // still change a slot's CSS width (a phone camera at Max or Min blur).
+      // Each slot is locked at its widest state when the screen is fitted.
+      const dockStateClasses = (id) => (id === 'cam' ? ['cam-max', 'cam-min'] : []);
+      const lockDockWidths = () => {
+        for (const b of bar.children) {
+          if (!b || !b.style || b.id === 'barmore' || b.id === 'reacttray' || b.id === 'bargrip') continue;
+          b.style.width = ''; b.style.minWidth = '';
+          let w = b.offsetWidth || 0;
+          for (const cls of dockStateClasses(b.id)) {
+            const had = b.classList.contains(cls);
+            b.classList.add(cls);
+            w = Math.max(w, b.offsetWidth || 0);
+            if (!had) b.classList.remove(cls);
+          }
+          if (w > 0) { b.style.boxSizing = 'border-box'; b.style.width = w + 'px'; b.style.minWidth = w + 'px'; }
+        }
+      };
       // The width the dock's own buttons need, even when the dock is capped
       // to the window and they run past its edge. More's panel is not counted.
       // The reaction tray is a popover on the bar, not a slot: counting it
@@ -34356,36 +34402,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const cs = getComputedStyle(bar);
         return hi - lo + (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0) + (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.borderRightWidth) || 0);
       };
-      const fitWindow = () => {
-        for (const id of fitOrder) { const b = document.getElementById(id); if (b) b.classList.remove('inmore'); }
-        const room = window.innerWidth;
-        // A dock that still runs past the window (a service host's: Step
-        // off, Reactions and Share beside Camera and Mic) moves Share, then
-        // Reactions, then Step off into More until it fits. Camera, Mic,
-        // More, End and the grip stay on the dock.
-        // React keeps its slot when every button is already on the screen.
-        // A 16px gutter on top of the span dropped it on a 393px phone (Leave
-        // sat at 382 of 393): More slid onto Leave, and the tap meant for More
-        // left the call. The span alone is not enough either — on a 390px host
-        // it rounded to the window while Leave still stuck out — so the right
-        // edge decides. A dragged dock is not a reason to give the slot up.
-        const rowPast = () => {
-          if (dockNeed() > room + 0.5) return true;
-          if (dockx !== 0) return false;
-          let hi = -Infinity, lo = Infinity;
-          for (const el of bar.children) {
-            if (el.id === 'barmore' || el.id === 'reacttray' || el.classList.contains('inmore')) continue;
-            for (const r of el.getClientRects()) {
-              if (r.width) { lo = Math.min(lo, r.left); hi = Math.max(hi, r.right); }
-            }
-          }
-          return hi > window.innerWidth + 0.5 || lo < -0.5;
-        };
-        for (const id of fitOrder) {
-          if (!rowPast()) break;
-          const b = document.getElementById(id);
-          if (b && b.parentElement === bar && !b.classList.contains('inmore') && b.getClientRects().length) b.classList.add('inmore');
-        }
+      const paintStandIns = () => {
         // The stand-ins and their row carry [hidden] in the markup; a
         // display style alone never showed them, so a moved button was
         // on neither the dock nor More.
@@ -34403,6 +34420,47 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }
         const row = document.getElementById('dockrow');
         if (row) row.hidden = !any;
+      };
+      // The fit is worked out only when the window's size changes (fitKey),
+      // with every slot at its widest state and the bar measured at home: a
+      // drag, a tuck, an open panel or More, a share, the stage, a hand, a
+      // grayed button or a host flag never sends a button to More or back.
+      // A dock past the window moves Share, then Reactions, then Step off
+      // into More; the right edge decides (a 390px host rounded the span to
+      // the window while Leave still stuck out).
+      const fitWindow = () => {
+        if (!bar.offsetWidth) return; // not on screen yet: its first paint fits it
+        const key = window.innerWidth + 'x' + window.innerHeight;
+        if (key !== fitKey) {
+          fitKey = key;
+          for (const id of fitOrder) { const b = document.getElementById(id); if (b) b.classList.remove('inmore'); }
+          lockDockWidths();
+          const room = window.innerWidth;
+          const st = bar.style;
+          const keep = [st.left, st.top, st.right, st.bottom, st.transform];
+          st.left = ''; st.top = ''; st.right = ''; st.bottom = ''; st.transform = '';
+          const rowPast = () => {
+            if (dockNeed() > room + 0.5) return true;
+            let hi = -Infinity, lo = Infinity;
+            for (const el of bar.children) {
+              if (el.id === 'barmore' || el.id === 'reacttray' || el.classList.contains('inmore')) continue;
+              for (const r of el.getClientRects()) {
+                if (r.width) { lo = Math.min(lo, r.left); hi = Math.max(hi, r.right); }
+              }
+            }
+            return hi > room + 0.5 || lo < -0.5;
+          };
+          try {
+            for (const id of fitOrder) {
+              if (!rowPast()) break;
+              const b = document.getElementById(id);
+              if (b && b.parentElement === bar && !b.classList.contains('inmore') && b.getClientRects().length) b.classList.add('inmore');
+            }
+          } finally {
+            st.left = keep[0]; st.top = keep[1]; st.right = keep[2]; st.bottom = keep[3]; st.transform = keep[4];
+          }
+        }
+        paintStandIns();
       };
       for (const p of bar.querySelectorAll('#barmore .dockmore')) {
         p.addEventListener('click', () => {
@@ -34488,9 +34546,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // call: it never tucks, and when it appears it starts a whole quiet
       // spell, so its controls come up where the person can reach them.
       let dockWasShown = dockShown();
+      // The first time the bar is on screen is when its fit can be measured.
       if (window.ResizeObserver) new ResizeObserver(() => {
         const shown = dockShown();
-        if (shown && !dockWasShown) wakeDock();
+        if (shown && !dockWasShown) { wakeDock(); try { placeDock(); } catch (e) {} }
         dockWasShown = shown;
       }).observe(bar);
       wakeForSheet = wakeDock;
@@ -34510,33 +34569,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         },
         wake() { wakeDock(); return !tucked; },
         place: placeDock,
+        refit() { fitKey = ''; placeDock(); },
       };
       const nudge = (dx, dy) => { try { dismissCamChooser(); } catch (e) {} dockx += dx; docky += dy; placeDock(); };
       const resetDock = () => { try { dismissCamChooser(); } catch (e) {} dockx = 0; docky = 0; placeDock(); };
       window.addEventListener('resize', () => { try { dismissCamChooser(); } catch (e) {} placeDock(); });
-      // A button that appears while the chat is open (Step on, Video for a
-      // promoted viewer) refits the dock beside it.
-      // The refit resizes the dock it watches, so it waits for the next frame.
-      let dockFrame = 0;
-      if (window.ResizeObserver) new ResizeObserver(() => {
-        if (dockFrame) return;
-        dockFrame = requestAnimationFrame(() => { dockFrame = 0; if (document.body.classList.contains('chatside')) placeDock(); });
-      }).observe(bar);
-      // A dock capped to the window does not resize when a button appears
-      // (Step off, Share for a host), so a change to the dock's own buttons
-      // refits it too. The refit's own changes are dropped, not re-run.
-      let fitFrame = 0;
-      const fitWatch = new MutationObserver((recs) => {
-        if (fitFrame) return;
-        // A popover's own placement (its style) is not a change to the dock's buttons.
-        if (!recs.some((r) => (r.type === 'childList' && r.target === bar) || (r.type === 'attributes' && r.target.parentElement === bar && r.target.id !== 'barmore' && !(r.target.id === 'reacttray' && r.attributeName === 'style')))) return;
-        fitFrame = requestAnimationFrame(() => {
-          fitFrame = 0;
-          try { placeDock(); } catch (e) {}
-          fitWatch.takeRecords();
-        });
-      });
-      fitWatch.observe(bar, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class', 'hidden'] });
+      // Nothing the call does refits the bar (Nathan 2026-11-09): no observer
+      // on its buttons, no refit beside the chat panel. A new window size
+      // does (resize above), and so does the first paint of the dock's font.
+      try {
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { fitKey = ''; try { placeDock(); } catch (e) {} });
+      } catch (e) {}
       if (grip) {
         grip.addEventListener('keydown', (e) => {
           const step = e.shiftKey ? 48 : 24;
@@ -35191,8 +35234,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       micBtn.setAttribute('aria-pressed', muted ? 'false' : 'true');
       const micWord = micLocked ? uiText('micHeld', 'Muted') : (muted ? uiText('unmute', 'Unmute') : uiText('mute', 'Mute'));
       micBtn.setAttribute('aria-label', micWord);
-      const micLab = micBtn.querySelector('.docklab');
-      if (micLab && micLab.textContent !== micWord) micLab.textContent = micWord;
+      // The dock word stays the screen's ("Mic"); the action is aria-label and title, the state is the colour.
       micBtn.title = micLocked
         ? (modOf('me').mute.wait ? micLockWords() : 'Muted for all' + (modOf('me').mute.by ? ' by ' + modOf('me').mute.by : '') + ' — someone else has to lift it')
         : (muted ? 'You are muted — tap to speak. Shortcut: M' : 'Your mic is on — tap to mute. Shortcut: M');
@@ -35210,13 +35252,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const lvl = blurLevel(myStatus.blur);
       if (!myStatus.camOff && lvl === 2) camBtn.classList.add('cam-max');
       if (!myStatus.camOff && lvl === 1) camBtn.classList.add('cam-min');
-      const camLab = camBtn.querySelector('.docklab');
-      const plain = phoneLayout() ? 'Video' : uiText('cam', 'Camera');
-      const word = myStatus.camOff ? plain
-        : (lvl === 2 ? uiText('camMaxBlur', 'Max blur')
-          : lvl === 1 ? uiText('camMinBlur', 'Min blur')
-          : plain);
-      if (camLab) camLab.textContent = word;
+      // The dock word stays the screen's (Video/Camera); the blur choice is the colour, aria-label and title.
       const choosing = typeof camChooserOpen === 'function' && camChooserOpen();
       camBtn.setAttribute('aria-pressed', myStatus.camOff ? 'false' : 'true');
       camBtn.setAttribute('aria-expanded', choosing ? 'true' : 'false');
@@ -35225,6 +35261,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         : (lvl === 2 ? uiText('camMaxBlur', 'Max blur') : lvl === 1 ? uiText('camMinBlur', 'Min blur') : 'Stop video'));
       camBtn.title = myStatus.camOff ? 'Camera off — tap to choose Max blur, Min blur, or No blur. Shortcut: V' : 'Camera on — tap to turn off. Shortcut: V';
       paintShare();
+      try { paintBarIdle(); } catch (e) {}
       if (typeof paintLiveBadge === 'function') paintLiveBadge();
       try { paintOnAir(); } catch (e) {}
       try { paintBroadcastAir(); } catch (e) {}
@@ -35680,6 +35717,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function shareOffered() {
       const b = document.getElementById('sharebtn');
       if (!b || document.body.classList.contains('app-room')) return false;
+      if (b.getAttribute('aria-disabled') === 'true') return false;
       return b.classList.contains('inmore') || getComputedStyle(b).display !== 'none';
     }
     // ? lists the keys that work for this person right now (a viewer has
@@ -35687,11 +35725,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const keysModal = document.getElementById('keys-modal');
     function openKeys() {
       const rows = [];
-      if (micBtn && micBtn.offsetParent !== null) rows.push(['M', 'Mute or unmute']);
-      if (camBtn && camBtn.offsetParent !== null) rows.push(['V', 'Choose Max blur, Min blur, or No blur, or turn video off']);
+      // A grayed slot is shown but not usable, so its key is not listed.
+      const usable = (b) => !!(b && b.offsetParent !== null && b.getAttribute('aria-disabled') !== 'true');
+      if (usable(micBtn)) rows.push(['M', 'Mute or unmute']);
+      if (usable(camBtn)) rows.push(['V', 'Choose Max blur, Min blur, or No blur, or turn video off']);
       const chatB = document.getElementById('chatbtn'), reactB = document.getElementById('reactbtn');
-      if (chatB && chatB.offsetParent !== null) rows.push(['C', 'Open or close the chat']);
-      if (reactB && reactB.offsetParent !== null) rows.push(['R', 'Open Reactions']);
+      if (usable(chatB)) rows.push(['C', 'Open or close the chat']);
+      if (usable(reactB)) rows.push(['R', 'Open Reactions']);
       if (canRaiseHand()) rows.push(['H', 'Raise or lower your hand']);
       const fsB = document.getElementById('appfull');
       if (fsB && fsB.offsetParent !== null) rows.push(['F', 'Open or close Full screen']);
