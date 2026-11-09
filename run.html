@@ -7692,6 +7692,145 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // face is laid out in the float and not in the band it just hid.
       try { layout(); } catch (e) {}
     }
+    // ---- The MEETING CARD float. A phone has no document float and can only
+    // float a <video>; with every camera off (the privacy-first reload brings
+    // everyone back that way) pipSource() offers none. Then the float is a
+    // small card painted here: the room, who is in it (names and initials,
+    // never a picture), who is talking, and the mic of each. It never reads a
+    // camera, a tile or a <video>, so nobody whose camera is off is shown, and
+    // it turns nothing on. Painted only when what it shows changes, at most
+    // PIP_CARD_FPS, on the page's Worker clock (it ticks in a hidden tab), and
+    // only while it floats. Kept ready (one frame, no clock) while there is no
+    // picture, so a tap or the browser's own action can ask in the same turn.
+    const PIP_CARD_W = 480, PIP_CARD_H = 270, PIP_CARD_FPS = 2, PIP_CARD_ROWS = 4, PIP_CARD_READY_MS = 1500;
+    let pipCard = null; // { canvas, ctx, stream, track, video, sig, stop }
+    // What a float ask gets when there is or is not a picture (gate2 page-unit meet-float-card).
+    function pipFallback(o) {
+      if (o.hasVideo) return 'video';
+      if (o.docOk && (o.manual || o.byBrowser)) return 'doc';
+      if (o.cardOk) return 'card';
+      return 'none';
+    }
+    function pipCardOk() {
+      try {
+        return !!(document.pictureInPictureEnabled && typeof HTMLVideoElement.prototype.requestPictureInPicture === 'function'
+          && typeof HTMLCanvasElement.prototype.captureStream === 'function');
+      } catch (e) { return false; }
+    }
+    function pipCardModel() {
+      const words = { you: uiText('you', 'you'), on: uiText('micOn', 'Mic on'), off: uiText('micOff', 'Mic off'), more: uiText('more', 'more') };
+      const room = String(document.title || '').replace(/\s*\u2014\s*GifOS\s*$/, '') || uiText('meeting', 'Meeting');
+      const me = { name: String(myName() || ''), you: 1, muted: myStatus.muted ? 1 : 0, talk: speakingOf.get('me') ? 1 : 0 };
+      const talk = [], rest = [];
+      let total = 1;
+      for (const pid of peers.keys()) {
+        total++;
+        const talking = !!speakingOf.get(pid);
+        if ((talking ? talk : rest).length >= PIP_CARD_ROWS) continue;
+        const st = statusOf.get(pid) || {};
+        (talking ? talk : rest).push({ name: String(displayName(pid) || ''), muted: st.muted ? 1 : 0, talk: talking ? 1 : 0 });
+      }
+      return { room, words, me, others: talk.concat(rest).slice(0, PIP_CARD_ROWS - 1), total };
+    }
+    function pipCardPaint(force) {
+      const c = pipCard; if (!c || !c.ctx) return false;
+      const m = pipCardModel();
+      const sig = JSON.stringify(m);
+      if (!force && sig === c.sig) return false;
+      c.sig = sig;
+      const x = c.ctx, W = PIP_CARD_W, H = PIP_CARD_H;
+      const fit = (s, max) => { s = String(s); if (x.measureText(s).width <= max) return s; while (s.length > 1 && x.measureText(s + '\u2026').width > max) s = s.slice(0, -1); return s + '\u2026'; };
+      x.fillStyle = '#0d0f14'; x.fillRect(0, 0, W, H);
+      x.textBaseline = 'middle'; x.textAlign = 'left';
+      x.font = '600 22px system-ui, sans-serif'; x.fillStyle = '#9aa3b2';
+      x.fillText(fit(m.room, W - 40), 20, 28);
+      const people = [m.me].concat(m.others);
+      for (let i = 0; i < people.length; i++) {
+        const p = people[i], y = 74 + i * 44;
+        x.beginPath(); x.arc(40, y, 17, 0, Math.PI * 2);
+        x.fillStyle = p.talk ? '#2fbf71' : '#2b303b'; x.fill();
+        x.font = '800 18px system-ui, sans-serif'; x.textAlign = 'center'; x.fillStyle = '#fff';
+        x.fillText(nameInitial(p.name), 40, y + 1);
+        x.font = '600 16px system-ui, sans-serif'; x.textAlign = 'right';
+        x.fillStyle = p.muted ? '#ff8a80' : '#7ee2a8';
+        x.fillText(p.muted ? m.words.off : m.words.on, W - 20, y);
+        x.font = '500 22px system-ui, sans-serif'; x.textAlign = 'left'; x.fillStyle = p.talk ? '#fff' : '#d6dae2';
+        x.fillText(fit(p.you ? p.name + ' (' + m.words.you + ')' : p.name, W - 190), 68, y);
+      }
+      if (m.total > people.length) {
+        x.font = '500 18px system-ui, sans-serif'; x.textAlign = 'left'; x.fillStyle = '#9aa3b2';
+        x.fillText('+' + (m.total - people.length) + ' ' + m.words.more, 68, 74 + PIP_CARD_ROWS * 44 - 6);
+      }
+      if (c.track && typeof c.track.requestFrame === 'function') { try { c.track.requestFrame(); } catch (e) {} }
+      return true;
+    }
+    function pipCardEnsure() {
+      if (pipCard) return pipCard;
+      if (!pipCardOk()) return null;
+      const canvas = document.createElement('canvas');
+      canvas.width = PIP_CARD_W; canvas.height = PIP_CARD_H;
+      const ctx = canvas.getContext('2d');
+      let stream = null;
+      try { stream = canvas.captureStream(0); } catch (e) { return null; }
+      const track = stream && stream.getVideoTracks()[0];
+      if (!ctx || !track) return null;
+      const video = document.createElement('video');
+      video.id = 'pipcard';
+      video.muted = true; video.playsInline = true; video.setAttribute('playsinline', ''); video.setAttribute('aria-hidden', 'true');
+      video.style.cssText = 'position:fixed;right:0;bottom:0;width:2px;height:2px;opacity:0;pointer-events:none;z-index:-1';
+      video.srcObject = stream;
+      document.body.appendChild(video);
+      pipCard = { canvas, ctx, stream, track, video, sig: '', stop: null };
+      pipCardPaint(true);
+      const pr = video.play(); if (pr && pr.catch) pr.catch(() => {});
+      return pipCard;
+    }
+    // Bounded: a card that has no frame yet is waited for at most PIP_CARD_READY_MS.
+    function pipCardReady(c) {
+      if (c.video.readyState >= 1) return Promise.resolve(true);
+      return new Promise((res) => {
+        let done = false, t = 0;
+        const fin = (ok) => { if (done) return; done = true; clearTimeout(t); c.video.removeEventListener('loadedmetadata', on); res(ok); };
+        const on = () => fin(true);
+        t = setTimeout(() => fin(c.video.readyState >= 1), PIP_CARD_READY_MS);
+        c.video.addEventListener('loadedmetadata', on);
+        if (c.track && typeof c.track.requestFrame === 'function') { try { c.track.requestFrame(); } catch (e) {} }
+      });
+    }
+    function pipCardRun(on) {
+      const c = pipCard; if (!c) return;
+      if (on && !c.stop) {
+        const ms = Math.round(1000 / PIP_CARD_FPS);
+        const tick = () => { try { pipCardPaint(false); } catch (e) {} };
+        const clk = GifOS.meshMedia && GifOS.meshMedia.workerClock;
+        if (typeof clk === 'function') { const h = clk(ms, tick); c.stop = () => h.stop(); }
+        else { const iv = setInterval(tick, ms); c.stop = () => clearInterval(iv); }
+        pipCardPaint(true);
+      } else if (!on && c.stop) { const s = c.stop; c.stop = null; s(); pipNote('card-stop'); }
+    }
+    function pipCardDrop() {
+      const c = pipCard; if (!c || document.pictureInPictureElement === c.video) return;
+      pipCardRun(false); pipCard = null;
+      try { c.track.stop(); } catch (e) {}
+      try { c.video.srcObject = null; c.video.remove(); } catch (e) {}
+    }
+    // Asks in the caller's turn when the card already has a frame (a tap's or
+    // the browser action's grant is for that turn); waits, bounded, only when not.
+    async function pipCardFloat(manual, byBrowser) {
+      const c = pipCardEnsure();
+      if (!c) return false;
+      if (document.pictureInPictureElement === c.video) { pipCardRun(true); return true; }
+      pipCardPaint(true);
+      pipManual = !!manual;
+      pipNote('card-ask', { rs: c.video.readyState });
+      if (c.video.readyState < 1 && !(await pipCardReady(c))) { pipNote('card-unready'); if (manual) pipManual = false; return false; }
+      try { await c.video.requestPictureInPicture(); }
+      catch (e) { pipNote('el-refused', { err: e && e.name, card: 1 }); if (manual) pipManual = false; return false; }
+      pipCardRun(true);
+      pipNote('card-open');
+      if (!byBrowser && !document.hidden && !pipManual && !(pipAwayAt && !document.hasFocus())) exitPip('settle-visible');
+      return true;
+    }
     async function enterPip(manual, byBrowser) {
       if (byBrowser) pipByBrowser = Date.now();
       pipNote('enter', { manual: !!manual, browser: !!byBrowser, src: (() => { try { const v = pipSource(); return v ? (v === (meTile && meTile.video) ? 'me' : 'peer') : null; } catch (e) { return '?'; } })() });
@@ -7701,10 +7840,22 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!manual && IS_MOBILE && pageFull()) return;
       const v = pipSource();
       if (docPip) { docPipAim(); return; }
-      if (!v || document.pictureInPictureElement === v) {
-        // A tap with no picture used to do nothing. Auto-float on leaving the
-        // tab stays quiet: there is still nothing to show.
-        if (manual && !v) setStatus((BROADCAST) ? 'Nothing on the stage to float yet.' : 'Nothing to float yet.');
+      if (v && document.pictureInPictureElement === v) return;
+      if (!v) {
+        // No live picture (every camera off): the document window where the
+        // browser has one and this ask may open it, else the meeting card.
+        // Auto-float on leaving stays quiet when neither can open.
+        const plan = pipFallback({ hasVideo: false, docOk: docPipOk(), manual: !!manual, byBrowser: !!byBrowser, cardOk: pipCardOk() });
+        pipNote('fallback', { plan });
+        if (plan === 'doc') {
+          pipManual = !!manual;
+          if (await openDocPip()) {
+            if (!byBrowser && !document.hidden && !pipManual && !(pipAwayAt && !document.hasFocus())) exitPip('settle-visible');
+            return;
+          }
+          pipManual = false;
+        } else if (plan === 'card' && await pipCardFloat(manual, byBrowser)) return;
+        if (manual) setStatus((BROADCAST) ? 'Nothing on the stage to float yet.' : 'Nothing to float yet.');
         return;
       }
       pipManual = !!manual;
@@ -7840,6 +7991,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     async function exitPip(why) {
       pipNote('exit', { why: why || '' });
+      pipCardRun(false); // coming back stops the card's painting
       if (docPip) { const w = docPip.win; docPip = null; try { w.close(); } catch (e) {} }
       const v = document.pictureInPictureElement;
       let refused = '';
@@ -7878,10 +8030,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const v = pipSource();
       sendVisPark(); // hidden-viewer dormancy re-aims with the float (and catches mates that connected while hidden)
       docPipAim();
-      if (v === pipAimed) return;
+      // No picture and no document float: keep the meeting card ready (one
+      // frame on change, no clock) so the next ask can open it at once.
+      let aim = v;
+      try {
+        if (v) pipCardDrop();
+        else if (meTile && !docPipOk() && pipCardEnsure()) { pipCardPaint(false); aim = pipCard.video; }
+      } catch (e) {}
+      if (aim === pipAimed) return;
       try { if (pipAimed) pipAimed.autoPictureInPicture = false; } catch (e) {}
-      try { if (v) v.autoPictureInPicture = true; } catch (e) {}
-      pipAimed = v;
+      try { if (aim) aim.autoPictureInPicture = true; } catch (e) {}
+      pipAimed = aim;
     }
     // HIDDEN-VIEWER DORMANCY (media-plane's demand law, applied to mains): a
     // hidden tab still made every row-mate run a full camera encoder AT it —
@@ -7923,7 +8082,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       pipNote(document.hidden ? 'hidden' : 'visible');
       awayFull(document.hidden);
       if (document.hidden) {
-        pipHintArmed = IS_MOBILE && !pipHintDone && !pipFloating() && pipBtnShown() && !!pipSource();
+        pipHintArmed = IS_MOBILE && !pipHintDone && !pipFloating() && pipBtnShown() && !!(pipSource() || (pipCard && pipCardOk()));
         enterPip();
       } else {
         exitPip('visible');
@@ -7953,6 +8112,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // next candidate. A float the USER dismissed stays dismissed.
     document.addEventListener('leavepictureinpicture', (e) => {
       pipManual = false;
+      if (pipCard && e.target === pipCard.video) pipCardRun(false);
       if (document.hidden && e.target && !e.target.isConnected) enterPip();
       // Closing the float with its ✕ PAUSES the element (Chrome), and a paused
       // live feed is a frozen or black tile back in the room. A meeting video
