@@ -770,7 +770,11 @@
           // the app already produced (gifos.ai); this page only plays it.
           raiseHand: function(id, on){ return rpc({ type:'meet', op:'raiseHand', meetingId: id, on: !!on }); },
           setMic: function(id, on){ return rpc({ type:'meet', op:'setMic', meetingId: id, on: !!on }); },
-          setCamera: function(id, on){ return rpc({ type:'meet', op:'setCamera', meetingId: id, on: !!on }); },
+          setCamera: function(id, on, blur){
+            const msg = { type:'meet', op:'setCamera', meetingId: id, on: !!on };
+            if (blur === 0 || blur === 1 || blur === 2) msg.blur = blur;
+            return rpc(msg);
+          },
           speak: function(id, audio){
             audio = audio || {};
             return rpc({ type:'meet', op:'speak', meetingId: id, bytes: audio.bytes || null, mime: audio.mime || '', text: audio.text == null ? '' : String(audio.text), filler: !!audio.filler });
@@ -3859,7 +3863,7 @@
             else if (op === 'setControl') { host.setControl(d.meetingId); reply({ ok: true, result: true }); }
             else if (op === 'raiseHand') done(host.raiseHand(d.meetingId, !!d.on));
             else if (op === 'setMic') done(host.setMic(d.meetingId, !!d.on));
-            else if (op === 'setCamera') done(host.setCamera(d.meetingId, !!d.on));
+            else if (op === 'setCamera') done(host.setCamera(d.meetingId, !!d.on, d.blur));
             else if (op === 'speak') done(host.speak(d.meetingId, { bytes: d.bytes, mime: d.mime, text: d.text, filler: !!d.filler }));
             else if (op === 'stopSpeaking') done(host.stopSpeaking(d.meetingId));
             else if (op === 'thinking') done(host.thinking(d.meetingId, !!d.on));

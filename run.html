@@ -1530,6 +1530,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     .bar.dockslim { gap: 6px; padding: 0 10px; }
     .bar.dockslim #cam, .bar.dockslim #mic, .bar.dockslim #reactbtn, .bar.dockslim #chatbtn, .bar.dockslim #bartoggle,
     .bar.dockslim > #sharebtn { width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
+    .bar.dockslim #cam.cam-max, .bar.dockslim #cam.cam-min { width: auto; min-width: 56px; padding: 0 8px; }
     .bar.dockslim > #stagebtn, .bar.dockslim > #hand { height: 56px; min-height: 56px; padding: 0 8px; }
     .bar.dockslim #leavebtn { width: 64px; height: 64px; min-width: 64px; min-height: 64px; margin-left: 4px; }
     .bar.dockslim > .inmore { display: none !important; }
@@ -2572,6 +2573,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
      and Meet, not a small slash on a gray circle. */
   .bar #mic.iconbtn:not(.off), .bar #cam.iconbtn:not(.off) { background: #146c36; color: #fff; }
   .bar #mic.iconbtn.off, .bar #cam.iconbtn.off { background: #b61622; color: #fff; border-color: transparent; }
+  /* The on colour is the person's own blur choice. Max is the lightest green,
+     Min sits between, No blur keeps today's camera-on green above. Off stays red. */
+  .bar #cam.iconbtn.cam-max:not(.off) { background: #e7f8ee; color: #0a3d24; }
+  .bar #cam.iconbtn.cam-min:not(.off) { background: #8fd4a8; color: #08331c; }
+  .bar #cam .docklab { max-width: none; }
   .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #chatbtn svg, .bar #ccdock svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 28px; height: 28px; }
   /* Share screen is a worded dock button like the rest (qa-meet-desktop); only its colour is its own. */
   .bar > #sharebtn { border: 0; }
@@ -2659,6 +2665,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     width: min(520px, calc(100vw - 24px)); margin: 0; padding: 8px 12px; border-radius: 10px; z-index: 40;
     background: #fff4d6; color: #1d1d1f; font: 600 15px/1.35 system-ui, sans-serif; box-sizing: border-box; pointer-events: none; }
   #blurnote[hidden] { display: none; }
+  /* The camera chooser hangs off the button that opened it (the dock, the lobby
+     switch, or Go live). It is not a child of the dock, so dragging the dock
+     does not count it as a slot. Above the anchor when it fits, else below. */
+  #camchooser { position: fixed; z-index: 45; left: 0; top: 0; display: flex; flex-direction: column; gap: 6px;
+    width: max-content; max-width: calc(100vw - 16px); padding: 8px; background: #fff; border-radius: 16px;
+    box-shadow: 0 10px 28px rgba(0,0,0,.28); }
+  #camchooser[hidden] { display: none !important; }
+  #camchooser button { min-height: 48px; min-width: 160px; border: 0; border-radius: 12px;
+    font: 700 16px/1.2 system-ui, sans-serif; padding: 8px 14px; text-align: left; cursor: pointer; }
+  #camchooser button:focus-visible { outline: 3px solid #1d1d1f; outline-offset: 2px; }
+  #campick-max { background: #e7f8ee; color: #0a3d24; }
+  #campick-min { background: #8fd4a8; color: #08331c; }
+  #campick-none { background: #146c36; color: #fff; }
   @media (min-width: 600px) {
     .bar:not(.collapsed) .barmore .moregroup { grid-template-columns: 7.5em minmax(0, 1fr); column-gap: 12px; align-items: center; }
     .bar:not(.collapsed) .barmore .moregroup > :not(h4) { grid-column: 2; }
@@ -2764,6 +2783,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     .bar { height: 88px; gap: 8px; padding: 0 10px; }
     .bar #cam, .bar #mic, .bar #reactbtn, .bar #chatbtn, .bar #ccdock, .bar #bartoggle {
       width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
+    .bar #cam.cam-max, .bar #cam.cam-min,
+    .bar.dockslim #cam.cam-max, .bar.dockslim #cam.cam-min { width: auto; min-width: 56px; max-width: none; padding: 0 8px; }
     .bar > #sharebtn { width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
     .bar > #sharebtn svg { width: 26px; height: 26px; }
     .bar > #stagebtn { height: 56px; min-height: 56px; padding: 0 8px; }
@@ -3992,7 +4013,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <button data-ti="bargripTip" data-al="bargripAria" id="bargrip" type="button" aria-label="Move the controls" title="Drag to move. Double-tap to reset. Arrow keys nudge.">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 8h14M5 12h14M5 16h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
     </button>
-    <button data-ti="camTip" data-al="camAria" id="cam" class="iconbtn off" aria-label="Start video" aria-keyshortcuts="Alt+V" title="Camera off — tap to turn on. Shortcut: V">
+    <button data-ti="camTip" data-al="camAria" id="cam" class="iconbtn off" aria-label="Start video" aria-expanded="false" aria-keyshortcuts="Alt+V" title="Camera off — tap to choose Max blur, Min blur, or No blur. Shortcut: V">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <rect x="2" y="6" width="13" height="12" rx="2"/><path d="M15 10.5 22 7v10l-7-3.5"/>
         <line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg>
@@ -4056,14 +4077,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <section class="moregroup" data-group="video">
       <h4 data-t="yourVideo">Your video</h4>
       <div class="moresegs">
-    <span data-ti="howMuchYourOwnTip" class="blurctl" title="How much your own video is blurred to everyone else">
-      <span class="blurlbl" data-t="blur">Blur</span>
-      <span data-al="blursegAria" id="blurseg" class="segwrap" role="group" aria-label="Blur level">
-        <button data-t="blurMax" class="seg" id="blur-max" data-blur="2">Max</button>
-        <button data-t="blurMin" class="seg" id="blur-min" data-blur="1">Min</button>
-        <button class="seg" id="blur-none" data-blur="0" data-t="noBlur">No blur</button>
-      </span>
-    </span>
     <span data-ti="selfctlTip" class="blurctl selfctl" id="selfctl" title="Where your own video sits. Tile is the default: you are a normal tile and you cover nobody.">
       <span data-t="lobPreviewName" class="blurlbl">You</span>
       <span data-al="yourVideo" class="segwrap" role="group" aria-label="Your video">
@@ -4158,6 +4171,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <button data-al="laughAria" type="button" data-burst="😂" aria-label="Laugh">😂</button>
       <button data-al="heartAria" type="button" data-burst="❤️" aria-label="Heart">❤️</button>
     </div>
+  </div>
+  <div id="camchooser" class="camchooser" role="menu" aria-label="Choose how you appear" hidden>
+    <button type="button" role="menuitemradio" id="campick-max" data-cam-blur="2" data-t="camMaxBlur" aria-checked="false">Max blur</button>
+    <button type="button" role="menuitemradio" id="campick-min" data-cam-blur="1" data-t="camMinBlur" aria-checked="false">Min blur</button>
+    <button type="button" role="menuitemradio" id="campick-none" data-cam-blur="0" data-t="camNoBlur" aria-checked="false">No blur</button>
   </div>
   <div data-al="waitRoom" id="waitlist" hidden role="region" aria-label="Waiting room"></div>
   <div id="waitdoor" hidden role="status">
@@ -4629,7 +4647,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <h3 id="shortcut-title" data-t="shortcutTitle">Keyboard shortcuts</h3>
       <ul>
         <li><kbd>Alt+A</kbd> <span data-t="keyMic">Mute or unmute</span></li>
-        <li><kbd>Alt+V</kbd> <span data-t="keyCam">Camera on or off</span></li>
+        <li><kbd>Alt+V</kbd> <span data-t="keyCam">Choose Max blur, Min blur, or No blur, or turn video off</span></li>
         <li><kbd>Alt+S</kbd> <span data-t="keyShare">Share or stop sharing</span></li>
         <li><kbd>Alt+C</kbd> <span data-t="keyChat">Open or close chat</span></li>
         <li><kbd>Alt+H</kbd> <span data-t="keyHand">Raise or lower your hand</span></li>
@@ -6076,7 +6094,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       let o = null;
       try { o = JSON.parse(raw); } catch (e) { return null; }
       if (!o || o.v !== 1 || typeof o.at !== 'number' || Date.now() - o.at > 60000) return null;
-      return { cam: o.cam === true, mic: o.mic === true };
+      const lvl = (o.blur === 0 || o.blur === 1 || o.blur === 2) ? o.blur : 2;
+      return { cam: o.cam === true, mic: o.mic === true, blur: lvl };
     })();
     // The Stage seat comes back with its original claim time, so the person
     // keeps their place in step-up order. A grant that has not arrived yet
@@ -20575,7 +20594,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         b.dataset.on = on ? '1' : '0';
         word(b.querySelector('.lob-avtxt'), on ? onKey : offKey, on ? onEn : offEn);
       };
-      btn('lob-cam', joinAv.cam, 'lobCamOn', 'Camera on', 'camOffChip', 'Camera off');
+      if (joinAv.cam) {
+        let lvl = 2;
+        try { lvl = blurLevel(myStatus.blur); } catch (e) {}
+        const onSpec = lvl === 2 ? ['camMaxBlur', 'Max blur'] : lvl === 1 ? ['camMinBlur', 'Min blur'] : ['lobCamOn', 'Camera on'];
+        btn('lob-cam', true, onSpec[0], onSpec[1], 'camOffChip', 'Camera off');
+      } else btn('lob-cam', false, 'lobCamOn', 'Camera on', 'camOffChip', 'Camera off');
       btn('lob-mic', joinAv.mic, 'lobMicOn', 'Mic on', 'lobMicOff', 'Mic off');
       const quiet = joinAv.cam || joinAv.mic;
       word(document.getElementById('lob-pv-note'), quiet ? 'appearTitle' : 'youJoinMutedWith', quiet ? 'This is how you\'ll appear' : 'You join muted, with the camera off');
@@ -20613,7 +20637,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const JOIN_AV_KEY = 'gifos_join_av';
     function stashJoinAv() {
       try {
-        if (joinAv.cam || joinAv.mic) sessionStorage.setItem(JOIN_AV_KEY, JSON.stringify({ v: 1, cam: joinAv.cam, mic: joinAv.mic, at: Date.now() }));
+        if (joinAv.cam || joinAv.mic) {
+          const note = { v: 1, cam: joinAv.cam, mic: joinAv.mic, at: Date.now() };
+          if (joinAv.cam) { try { note.blur = blurLevel(myStatus.blur); } catch (e) {} }
+          sessionStorage.setItem(JOIN_AV_KEY, JSON.stringify(note));
+        }
         else sessionStorage.removeItem(JOIN_AV_KEY);
       } catch (e) {}
     }
@@ -20664,7 +20692,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const toggle = (id) => { const el = document.getElementById(id); el.style.display = el.style.display === 'none' ? '' : 'none'; };
       document.getElementById('lob-open').onclick = () => { enterMeeting('#v=' + shortCode()); };
       const lobCam = document.getElementById('lob-cam');
-      if (lobCam) lobCam.onclick = () => setLobbyCam(!joinAv.cam);
+      if (lobCam) lobCam.onclick = () => {
+        if (joinAv.cam) { setLobbyCam(false); return; }
+        openCamChooser(lobCam, (level) => {
+          try { setPersonalBlur(level); } catch (e) {}
+          setLobbyCam(true);
+        });
+      };
       const lobMic = document.getElementById('lob-mic');
       if (lobMic) lobMic.onclick = () => { joinAv.mic = !joinAv.mic; paintLobbyAv(); };
       const streamBtn = document.getElementById('lob-stream');
@@ -20745,6 +20779,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         document.getElementById('lob-admin').style.display = 'none';
         document.getElementById('lobby').classList.remove('form-open');
       };
+      let goLiveBlurPick = null;
       document.getElementById('lob-admin-go').onclick = async () => {
         const err = document.getElementById('lob-admin-err');
         let rawName = document.getElementById('lob-admin-name').value || '';
@@ -20756,6 +20791,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!chosen) { err.textContent = uiText('needName', 'Give your room a name.'); return; }
         if (!pass) { err.textContent = uiText('needPass', 'Set a host password. It stays with you, not in the link.'); return; }
         const go = document.getElementById('lob-admin-go');
+        if (BC_INTENT && goLiveBlurPick == null) {
+          if (typeof camChooserOpen === 'function' && camChooserOpen()) { dismissCamChooser(); return; }
+          openCamChooser(go, (level) => {
+            goLiveBlurPick = blurLevel(level);
+            go.click();
+          });
+          return;
+        }
+        const picked = goLiveBlurPick;
+        goLiveBlurPick = null;
         if (!go.dataset.label) go.dataset.label = go.textContent;
         go.disabled = true; go.textContent = uiText('creating', 'Creating…');
         try {
@@ -20773,7 +20818,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (guest) { try { localStorage.setItem('gifos_vpw_' + chosen + '.' + V, guest); localStorage.setItem('gifos_vpwat_' + chosen + '.' + V, String(Date.now())); } catch (e) {} } // stamp the store's clock (§LOCK expiry)
           // Go live here is the deliberate tap: the stream boots with the
           // camera on. Opening the host link later lands off air.
-          if (BC_INTENT) { try { sessionStorage.setItem('gifos_bc_golive_' + chosen + '.' + V, '1'); } catch (e) {} }
+          if (BC_INTENT) { try { sessionStorage.setItem('gifos_bc_golive_' + chosen + '.' + V, 'b' + blurLevel(picked == null ? 2 : picked)); } catch (e) {} }
           enterMeeting('#v=' + chosen + '&av=' + V + (BC_INTENT ? '&bc=1' + (params.has('st') ? '&st=1' : '') : (lobTownHall ? '&th=1' : '')));
         } catch (e) { err.textContent = 'Could not create the room. Try again.'; go.disabled = false; go.textContent = go.dataset.label || 'Start'; }
       };
@@ -21069,17 +21114,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             // link lands off air, camera off, until they tap it. A meeting
             // still joins quiet. A reload that already chose keeps that choice.
             // The mic stays off. Blur stays on the video track; there is no avatar overlay.
-            let goLiveTap = false;
-            try {
-              const k = 'gifos_bc_golive_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase();
-              goLiveTap = sessionStorage.getItem(k) === '1';
-              sessionStorage.removeItem(k);
-            } catch (e) {}
-            // An update reload of a host who was on air is the same choice, made before the reload.
-            if (updateResume && updateResume.onAir) goLiveTap = true;
-            if (!restored && BROADCAST && bcHostStored() && goLiveTap) {
+            let goLiveLevel = null;
+            try { goLiveLevel = goLiveStoredLevel(false); } catch (e) {}
+            const updateOnAir = !!(updateResume && updateResume.onAir);
+            if (!restored && BROADCAST && bcHostStored() && (goLiveLevel != null || updateOnAir)) {
               const cam = localStream.getVideoTracks()[0];
               if (cam && !(typeof forcedCamOff === 'function' && forcedCamOff('me'))) {
+                if (!updateOnAir) { try { setPersonalBlur(goLiveLevel == null ? 2 : goLiveLevel); } catch (e) {} }
                 cam.enabled = true;
                 myStatus.camOff = false;
                 try { paintControls(); } catch (e) {}
@@ -21091,7 +21132,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             const lobbyAv = typeof joinAvChoice !== 'undefined' ? joinAvChoice : null;
             if (!restored && lobbyAv && !BROADCAST) {
               const cam = localStream.getVideoTracks()[0];
-              if (lobbyAv.cam && cam && !(typeof forcedCamOff === 'function' && forcedCamOff('me'))) { cam.enabled = true; myStatus.camOff = false; }
+              if (lobbyAv.cam && cam && !(typeof forcedCamOff === 'function' && forcedCamOff('me'))) {
+                try { setPersonalBlur(lobbyAv.blur === 0 || lobbyAv.blur === 1 || lobbyAv.blur === 2 ? lobbyAv.blur : 2); } catch (e) {}
+                cam.enabled = true;
+                myStatus.camOff = false;
+              }
               const mic = localStream.getAudioTracks()[0];
               if (lobbyAv.mic && mic && !(typeof amGloballyMuted === 'function' && amGloballyMuted())) { mic.enabled = true; myStatus.muted = false; }
               try { paintControls(); reactRoomState(); syncSpeech(); updateMediaSession(); updateStatus(); } catch (e) {}
@@ -29672,12 +29717,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // its media lands, read here without taking them: the lobby's switch, a
     // broadcast host's Go live tap or an update reload on air, and a freeze or
     // discard reload of a page whose camera was on.
+    // A Go live tap stores b0, b1 or b2. An older page stored '1', which means
+    // the tap happened, not Min blur: that boot still comes on at Max.
+    function goLiveStoredLevel(peek) {
+      try {
+        const k = 'gifos_bc_golive_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase();
+        const v = sessionStorage.getItem(k);
+        if (!peek) sessionStorage.removeItem(k);
+        if (v === 'b0' || v === 'b1' || v === 'b2') return +v.slice(1);
+        if (v === '1') return 2;
+      } catch (e) {}
+      return null;
+    }
     function bootWantsCamera() {
       try {
         if (typeof joinAvChoice !== 'undefined' && joinAvChoice && joinAvChoice.cam && !BROADCAST) return true;
         if (BROADCAST && typeof bcHostStored === 'function' && bcHostStored()) {
           if (updateResume && updateResume.onAir) return true;
-          if (sessionStorage.getItem('gifos_bc_golive_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase()) === '1') return true;
+          if (goLiveStoredLevel(true) != null) return true;
         }
         const o = takeRecoverMedia(true);
         return !!(o && o.camOff === false);
@@ -33881,6 +33938,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       const tray = document.getElementById('reacttray');
       if (tray && !tray.hasAttribute('hidden')) placeDockPopover(tray, bar);
+      const chooser = document.getElementById('camchooser');
+      if (chooser && !chooser.hidden) {
+        const anchor = document.getElementById(chooser.dataset.anchor || '') || document.getElementById('cam');
+        if (anchor) placeDockPopover(chooser, anchor);
+      }
     }
     {
       let popFrame = 0;
@@ -33896,13 +33958,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
     }
 
-    // ---- controls: mic + camera (traffic-light icons), blur (3-way slider) -----
+    // ---- controls: mic + camera. Blur is chosen when the camera turns on. -----
     const micBtn = document.getElementById('mic');
     const unmuteBtn = document.getElementById('unmute');
     const showcamBtn = document.getElementById('showcam');
     const camBtn = document.getElementById('cam');
-    const blurSeg = document.getElementById('blurseg');
-    const blurSegs = Array.from(blurSeg.querySelectorAll('.seg'));
 
     // Collapsible header — keep it to a single row (mic / camera / blur) and
     // fold the rest behind "More". More always starts closed. A stored open
@@ -33968,6 +34028,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!bar.classList.contains('collapsed')) return true;
         const tray = document.getElementById('reacttray');
         if (tray && !tray.hasAttribute('hidden')) return true;
+        const chooser = document.getElementById('camchooser');
+        if (chooser && !chooser.hidden) return true;
         const ae = document.activeElement;
         if (ae && ae !== document.body && ae !== document.documentElement) {
           if (bar.contains(ae)) return true;
@@ -34172,9 +34234,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         wake() { wakeDock(); return !tucked; },
         place: placeDock,
       };
-      const nudge = (dx, dy) => { dockx += dx; docky += dy; placeDock(); };
-      const resetDock = () => { dockx = 0; docky = 0; placeDock(); };
-      window.addEventListener('resize', placeDock);
+      const nudge = (dx, dy) => { try { dismissCamChooser(); } catch (e) {} dockx += dx; docky += dy; placeDock(); };
+      const resetDock = () => { try { dismissCamChooser(); } catch (e) {} dockx = 0; docky = 0; placeDock(); };
+      window.addEventListener('resize', () => { try { dismissCamChooser(); } catch (e) {} placeDock(); });
       // A button that appears while the chat is open (Step on, Video for a
       // promoted viewer) refits the dock beside it.
       // The refit resizes the dock it watches, so it waits for the next frame.
@@ -34210,6 +34272,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         let drag = null, lastTap = 0;
         grip.addEventListener('pointerdown', (e) => {
           if (e.button != null && e.button !== 0) return;
+          try { dismissCamChooser(); } catch (err) {}
           try { grip.setPointerCapture(e.pointerId); } catch (err) {}
           drag = { x: e.clientX, y: e.clientY, dockx: dockx, docky: docky, moved: false };
         });
@@ -34378,6 +34441,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (chat && chat.classList.contains('open')) return true;
         const tray = document.getElementById('reacttray');
         if (tray && !tray.hasAttribute('hidden')) return true;
+        const chooser = document.getElementById('camchooser');
+        if (chooser && !chooser.hidden) return true;
         const wait = document.getElementById('waitlist');
         if (wait && !wait.hasAttribute('hidden') && wait.getClientRects().length) return true;
         // A tile's window is open: its controls are the screen, not chrome.
@@ -34485,6 +34550,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       watchChrome(bar, ['class']);
       watchChrome(document.getElementById('chatpanel'), ['class']);
       watchChrome(document.getElementById('reacttray'), ['hidden']);
+      watchChrome(document.getElementById('camchooser'), ['hidden']);
       watchChrome(document.getElementById('waitlist'), ['hidden']);
       window.__gifosChrome = { ms: CHROME_IDLE_MS, idle: hideChrome, show: showChrome, safeBottom: safeBottomPx };
       syncChrome();
@@ -34864,28 +34930,29 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const inCall = !(lob && lob.classList.contains('show'));
         unmuteBtn.hidden = !inCall || !muted;
       }
-      // camera
+      // camera — the colour and the word are this person's consent (myStatus.blur),
+      // never the blur the room is actually sending. A password or a viewer who
+      // has not consented can keep the picture soft while the button stays on
+      // the green they picked.
       camBtn.classList.toggle('off', myStatus.camOff);
-      camBtn.setAttribute('aria-pressed', myStatus.camOff ? 'false' : 'true');
-      camBtn.setAttribute('aria-label', myStatus.camOff ? 'Start video' : 'Stop video');
-      const camLab = camBtn.querySelector('.docklab');
-      if (camLab) camLab.textContent = phoneLayout() ? 'Video' : uiText('cam', 'Camera');
-      camBtn.title = myStatus.camOff ? 'Camera off — tap to turn on. Shortcut: V' : 'Camera on — tap to turn off. Shortcut: V';
-      // The filled segment follows the blur that is actually on the feed
-      // (forced blur, room password, consent). The local wish is the fallback
-      // when this function is lifted without blurLevelFor in scope.
-      // The filled segment is the choice this person made (qa-meet-mobile). The
-      // feed can still be Min: the camera is off, or someone else is not ready.
-      // Painting that feed level left Min selected while the header said
-      // "No blur picked". The header says why clear video is not on yet.
+      camBtn.classList.remove('cam-max', 'cam-min');
       const lvl = blurLevel(myStatus.blur);
-      for (const seg of blurSegs) {
-        const segOn = +seg.dataset.blur === lvl;
-        seg.classList.remove('wait');
-        seg.classList.toggle('sel', segOn);
-        seg.setAttribute('aria-pressed', segOn ? 'true' : 'false');
-        if (seg.title === 'Chosen. Clear video shows when everyone here is ready.') seg.title = '';
-      }
+      if (!myStatus.camOff && lvl === 2) camBtn.classList.add('cam-max');
+      if (!myStatus.camOff && lvl === 1) camBtn.classList.add('cam-min');
+      const camLab = camBtn.querySelector('.docklab');
+      const plain = phoneLayout() ? 'Video' : uiText('cam', 'Camera');
+      const word = myStatus.camOff ? plain
+        : (lvl === 2 ? uiText('camMaxBlur', 'Max blur')
+          : lvl === 1 ? uiText('camMinBlur', 'Min blur')
+          : plain);
+      if (camLab) camLab.textContent = word;
+      const choosing = typeof camChooserOpen === 'function' && camChooserOpen();
+      camBtn.setAttribute('aria-pressed', myStatus.camOff ? 'false' : 'true');
+      camBtn.setAttribute('aria-expanded', choosing ? 'true' : 'false');
+      camBtn.setAttribute('aria-label', myStatus.camOff
+        ? (choosing ? uiText('camChooseAria', 'Choose how you appear') : 'Start video')
+        : (lvl === 2 ? uiText('camMaxBlur', 'Max blur') : lvl === 1 ? uiText('camMinBlur', 'Min blur') : 'Stop video'));
+      camBtn.title = myStatus.camOff ? 'Camera off — tap to choose Max blur, Min blur, or No blur. Shortcut: V' : 'Camera on — tap to turn off. Shortcut: V';
       paintShare();
       if (typeof paintLiveBadge === 'function') paintLiveBadge();
       try { paintOnAir(); } catch (e) {}
@@ -35184,28 +35251,100 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         sd.replaceTrack(null).then(seat).catch(() => {});
       }
     }
+    // The chooser is the only way on. A tap while the camera is off leaves it
+    // off and asks Max blur / Min blur / No blur. A tap while it is on turns
+    // it off at once. Dismissing the chooser turns nothing on.
+    let camPickThen = null, camChooserAnchor = null;
+    function camChooserOpen() {
+      const el = document.getElementById('camchooser');
+      return !!(el && !el.hidden);
+    }
+    function closeCamChooser() {
+      camPickThen = null;
+      try {
+        const el = document.getElementById('camchooser');
+        if (el) el.hidden = true;
+      } catch (e) {}
+      if (camBtn) { try { camBtn.setAttribute('aria-expanded', 'false'); } catch (e) {} }
+    }
+    function dismissCamChooser() {
+      const back = (camChooserAnchor && camChooserAnchor.isConnected) ? camChooserAnchor : camBtn;
+      closeCamChooser();
+      if (back && back.focus) { try { back.focus(); } catch (e) {} }
+    }
+    function openCamChooser(anchor, thenPick) {
+      const el = document.getElementById('camchooser');
+      if (!el) return;
+      const tray = document.getElementById('reacttray');
+      if (tray && !tray.hidden) {
+        tray.hidden = true;
+        const rb = document.getElementById('reactbtn');
+        if (rb) { rb.setAttribute('aria-expanded', 'false'); rb.setAttribute('aria-pressed', 'false'); rb.classList.remove('on'); }
+      }
+      const bar = document.querySelector('.bar');
+      const more = document.getElementById('bartoggle');
+      if (bar && more && !bar.classList.contains('collapsed') && anchor === camBtn) more.click();
+      camPickThen = typeof thenPick === 'function' ? thenPick : null;
+      camChooserAnchor = anchor || camBtn;
+      el.dataset.anchor = (camChooserAnchor && camChooserAnchor.id) || 'cam';
+      el.setAttribute('aria-label', uiText('camChooseAria', 'Choose how you appear'));
+      const wish = blurLevel(myStatus.blur);
+      for (const b of el.querySelectorAll('button')) b.setAttribute('aria-checked', String(+b.dataset.camBlur === wish));
+      el.hidden = false;
+      if (anchor === camBtn && camBtn) camBtn.setAttribute('aria-expanded', 'true');
+      placeDockPopover(el, camChooserAnchor);
+      const first = el.querySelector('#campick-max') || el.querySelector('button');
+      if (first) { try { first.focus(); } catch (e) {} }
+    }
+    function turnCameraOff() {
+      const cam = localStream && localStream.getVideoTracks()[0];
+      if (cam) cam.enabled = false;
+      myStatus.camOff = true;
+      try { setStatus('Camera off.'); } catch (e) {}
+      try { paintControls(); } catch (e) {}
+      try { paintOnAir(); } catch (e) {}
+      try { refreshOutbound(); } catch (e) {}
+      try { broadcastStatus(); } catch (e) {}
+      try { reactRoomState(); } catch (e) {}
+      try { updateMediaSession(); } catch (e) {}
+    }
+    function turnCameraOn() {
+      if (typeof forcedCamOff === 'function' && forcedCamOff('me')) {
+        setStatus(uiText('stAnAdminTurnedYourVideo2', '📷 An admin turned your video off for the room — only they can turn it back on.'));
+        return;
+      }
+      if (!localStream) return lateMedia('cam');
+      const track = localStream.getVideoTracks()[0];
+      if (!track) return lateMedia('cam');
+      track.enabled = true;
+      myStatus.camOff = false;
+      try { setStatus('Camera on.'); } catch (e) {}
+      try { paintControls(); } catch (e) {}
+      try { paintOnAir(); } catch (e) {}
+      try { refreshOutbound(); } catch (e) {}
+      try { broadcastStatus(); } catch (e) {}
+      try { reactRoomState(); } catch (e) {}
+      try { updateMediaSession(); } catch (e) {}
+    }
+    function pickCamera(level) {
+      const lvl = blurLevel(level);
+      closeCamChooser();
+      setPersonalBlur(lvl); // still off: the refresh before the track enables is the avatar
+      if (myStatus.camOff) turnCameraOn();
+      if (camBtn && camBtn.focus) { try { camBtn.focus(); } catch (e) {} }
+    }
     camBtn.onclick = () => {
       if (bcWatchingViewer()) return;
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (BROADCAST && !bcMayPublishAv()) { enforceBroadcastSeat(); return; }
       if (document.body.classList.contains('app-room')) { setStatus(uiText('stVideoIsNotAvailableIn', 'Video is not available in an app room yet — start a meeting and run the app from there.')); return; }
-      if (!localStream) return lateMedia('cam');
-      const track = localStream.getVideoTracks()[0]; if (!track) return lateMedia('cam');
-      if (forcedCamOff('me') && !track.enabled) {
+      if (!myStatus.camOff) { closeCamChooser(); turnCameraOff(); return; }
+      if (camChooserOpen()) { dismissCamChooser(); return; }
+      if (typeof forcedCamOff === 'function' && forcedCamOff('me')) {
         setStatus(uiText('stAnAdminTurnedYourVideo2', '📷 An admin turned your video off for the room — only they can turn it back on.'));
         return;
       }
-      track.enabled = !track.enabled;
-      myStatus.camOff = !track.enabled;
-      // The on-tap opens the camera (lateMedia) and says "Camera on."; the
-      // off-tap says so too, or that line would stand over a camera that is off.
-      if (myStatus.camOff) setStatus('Camera off.');
-      paintControls();
-      try { paintOnAir(); } catch (e) {}
-      refreshOutbound(); // camera on while blurring → start the blur canvas
-      broadcastStatus();
-      reactRoomState();  // camera on/off changes your consent
-      updateMediaSession();
+      openCamChooser(camBtn);
     };
     // M and V match the desktop habit (Meet uses different chords; the letter
     // under a thumb is what a volunteer remembers). Never while typing.
@@ -35275,7 +35414,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function openKeys() {
       const rows = [];
       if (micBtn && micBtn.offsetParent !== null) rows.push(['M', 'Mute or unmute']);
-      if (camBtn && camBtn.offsetParent !== null) rows.push(['V', 'Turn your video on or off']);
+      if (camBtn && camBtn.offsetParent !== null) rows.push(['V', 'Choose Max blur, Min blur, or No blur, or turn video off']);
       const chatB = document.getElementById('chatbtn'), reactB = document.getElementById('reactbtn');
       if (chatB && chatB.offsetParent !== null) rows.push(['C', 'Open or close the chat']);
       if (reactB && reactB.offsetParent !== null) rows.push(['R', 'Open Reactions']);
@@ -35333,7 +35472,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const ms = navigator.mediaSession; if (!ms || !ms.setActionHandler) return;
       const wire = (action, fn) => { try { ms.setActionHandler(action, fn); } catch (e) { /* action unsupported here */ } };
       wire('togglemicrophone', () => micBtn.onclick());
-      wire('togglecamera', () => camBtn.onclick());
+      wire('togglecamera', () => {
+        if (!myStatus.camOff) { camBtn.onclick(); return; }
+        if (document.hidden) return;
+        camBtn.onclick();
+      });
       // The OS hang-up is the Leave button: a recording in flight is flushed
       // and handed over first, and the page stays on the card for it.
       wire('hangup', () => { if (!leaveMeeting()) location.replace(homeHref()); });
@@ -35387,9 +35530,39 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         setStatus(uiText('stBlurOff', 'Blur off.'));
       }
     }
-    for (const seg of blurSegs) {
-      seg.onclick = () => setPersonalBlur(+seg.dataset.blur);
+    // Each choice is an explicit pick. A lobby or Go live opener supplies
+    // then(); the dock pick turns the camera on at that level.
+    const camChooserEl = document.getElementById('camchooser');
+    const camPicks = camChooserEl ? Array.from(camChooserEl.querySelectorAll('button')) : [];
+    for (const pick of camPicks) {
+      pick.onclick = () => {
+        const lvl = +pick.dataset.camBlur;
+        const then = camPickThen;
+        const back = camChooserAnchor || camBtn;
+        closeCamChooser();
+        if (then) { then(lvl); try { if (back && back.focus) back.focus(); } catch (e) {} return; }
+        pickCamera(lvl);
+      };
     }
+    if (camChooserEl) camChooserEl.addEventListener('keydown', (e) => {
+      const buttons = camPicks.filter((b) => !b.disabled && !b.hidden);
+      if (!buttons.length) return;
+      const i = buttons.indexOf(document.activeElement);
+      let next = -1;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') next = (i + 1) % buttons.length;
+      else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') next = (i - 1 + buttons.length) % buttons.length;
+      else if (e.key === 'Home') next = 0;
+      else if (e.key === 'End') next = buttons.length - 1;
+      if (next < 0) return;
+      e.preventDefault();
+      try { buttons[next].focus(); } catch (err) {}
+    });
+    document.addEventListener('pointerdown', (e) => {
+      if (!camChooserOpen()) return;
+      const t = e.target;
+      if (t && t.closest && t.closest('#camchooser, #cam, #lob-cam, #lob-admin-go')) return;
+      dismissCamChooser();
+    }, true);
     // "Blur guests" (admin) — ONE room-wide order, modTable['*'].blur, on the
     // same signed table as the per-tile block (see modOf). It binds every
     // non-admin in the room, linked to me or not, and everyone who joins while
@@ -35722,6 +35895,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (b) { e.preventDefault(); b.click(); queueMicrotask(syncModalFocus); }
           return;
         }
+        if (typeof camChooserOpen === 'function' && camChooserOpen()) {
+          e.preventDefault();
+          dismissCamChooser();
+          return;
+        }
         const tray = document.getElementById('reacttray');
         if (tray && !tray.hasAttribute('hidden')) {
           e.preventDefault();
@@ -35755,7 +35933,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!barEl) return;
         const trayOpen = !!(tray && !tray.hasAttribute('hidden'));
         const sheetOpen = !barEl.classList.contains('collapsed');
-        if (!trayOpen && !sheetOpen) return;
+        const chooser = document.getElementById('camchooser');
+        const chooserOpen = !!(chooser && !chooser.hidden);
+        if (!trayOpen && !sheetOpen && !chooserOpen) return;
         const nodes = [];
         for (const n of barEl.querySelectorAll('button, a[href], input, select, textarea')) {
           if (n.disabled || n.hidden) continue;
@@ -35770,9 +35950,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           }
           if (!hide) nodes.push(n);
         }
+        if (chooserOpen) {
+          for (const n of chooser.querySelectorAll('button')) {
+            if (n.disabled || n.hidden) continue;
+            nodes.push(n);
+          }
+        }
         if (nodes.length < 2) return;
         const first = nodes[0], last = nodes[nodes.length - 1];
-        const inside = barEl.contains(document.activeElement);
+        const inside = barEl.contains(document.activeElement) || (chooserOpen && chooser.contains(document.activeElement));
         if (e.shiftKey && (document.activeElement === first || !inside)) { e.preventDefault(); try { last.focus(); } catch (err) {} }
         else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); try { first.focus(); } catch (err) {} }
         return;
@@ -37934,15 +38120,23 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (!meetJoined) return Promise.reject(new Error('This meeting cannot show a camera.'));
           const on = !!(msg && msg.on);
           if (!on) {
-            myStatus.camOff = true;
+            try { closeCamChooser(); } catch (e) {}
             const vt = localStream && localStream.getVideoTracks()[0];
             if (vt) vt.enabled = false;
+            myStatus.camOff = true;
             try { paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateTile('me'); updateMediaSession(); } catch (e) {}
             return { camera: false };
           }
+          const raw = msg && msg.blur;
+          const picked = raw === 0 || raw === 1 || raw === 2 || raw === '0' || raw === '1' || raw === '2';
+          if (!picked) return Promise.reject(new Error('Pick Max blur, Min blur or No blur.'));
           if (typeof forcedCamOff === 'function' && forcedCamOff('me')) {
             return Promise.reject(new Error('This meeting cannot show a camera.'));
           }
+          const lvl = blurLevel(+raw);
+          try { closeCamChooser(); } catch (e) {}
+          try { setPersonalBlur(lvl); } catch (e) {}
+          const show = () => { if (lvl === 0) { try { setPersonalBlur(lvl); } catch (e) {} } };
           const held = localStream && localStream.getVideoTracks()[0];
           if (held && held.readyState === 'live') {
             held.enabled = true;
@@ -37951,6 +38145,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               if (meTile && meTile.video) meTile.video.style.display = ''; // refreshOutbound and updateTile bind the sent picture
               paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateTile('me'); updateMediaSession();
             } catch (e) {}
+            show();
             return { camera: true };
           }
           const md = navigator.mediaDevices;
@@ -37971,6 +38166,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               if (n) n.remove();
               paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateTile('me'); updateMediaSession();
             } catch (e) {}
+            show();
             return { camera: !myStatus.camOff };
           }).catch((e) => {
             if (e && /cannot show a camera/.test(String(e.message || e))) throw e;
@@ -39678,7 +39874,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       myBlur: () => blurLevel(myStatus.blur),
       updateResumed: () => { if (!updateResume) return null; const o = JSON.parse(JSON.stringify(updateResume)); delete o.seed; return o; }, // what an update reload brought back (null on a normal join)
       waitStateForTest: () => ({ hold: holdDoor, admitted: Array.from(waitAdmitted), declined: Array.from(waitDeclined), queue: Array.from(waitQueue.keys()) }),
-      setBlur: (v) => setPersonalBlur(v),        // drive the slider from tests
+      setBlur: (v) => setPersonalBlur(v),        // drive the level from tests; the button still picks through the chooser
+      pickCameraForTest: (v) => { pickCamera(v); return { camOff: myStatus.camOff, blur: blurLevel(myStatus.blur) }; },
+      camChooserOpenForTest: () => camChooserOpen(),
       // camera-orientation forensics: what adapt() last ASKED the camera for
       // ("WxH@fps"), and a way to drive a sweep. Guards the portrait<->landscape
       // oscillation (feedback from reading the camera's own echoed settings).

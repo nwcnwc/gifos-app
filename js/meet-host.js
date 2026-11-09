@@ -261,7 +261,11 @@
     setRemoteAllowed: function (on) { remoteOk = !!on; },
     raiseHand: function (id, on) { return call(id, 'raiseHand', { on: !!on }); },
     setMic: function (id, on) { return call(id, 'setMic', { on: !!on }); },
-    setCamera: function (id, on) { return call(id, 'setCamera', { on: !!on }); },
+    setCamera: function (id, on, blur) {
+      const msg = { on: !!on };
+      if (blur === 0 || blur === 1 || blur === 2) msg.blur = blur;
+      return call(id, 'setCamera', msg);
+    },
     speak: function (id, audio) {
       audio = audio || {};
       return call(id, 'speak', {
