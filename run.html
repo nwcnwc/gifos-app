@@ -1873,12 +1873,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   .appear-actions { display: flex; gap: 12px; justify-content: flex-end; }
   .name-box button.appear-primary { background: #0064c8; color: #fff; border: 0; min-width: 112px; }
   .name-box button.appear-secondary { background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; min-width: 112px; }
-  /* Invite is the same white card as Save. Copy is the blue action. */
-  #inv-modal .appear-box { max-width: 440px; text-align: left; }
+  /* Invite is the same white card as Save. Copy is the blue action.
+     The link is its own line: beside Copy and Share it was squeezed to a
+     prefix. A smaller face keeps a pretty link on one line; a long local
+     link wraps so the room name stays on screen. 16px on a coarse pointer
+     so focusing the field does not zoom the page. */
+  #inv-modal .appear-box { max-width: 440px; width: min(440px, calc(100vw - 32px)); text-align: left; }
   #inv-modal .appear-box p { font-size: 1rem; line-height: 1.4; color: #3a3a3f; margin: 0 0 12px; }
-  #inv-modal .inv-link { display: flex; gap: 12px; align-items: center; margin: 0 0 16px; }
+  #inv-modal .inv-link { display: flex; flex-direction: column; align-items: stretch; gap: 12px; margin: 0 0 16px; }
   #inv-modal .appear-box input { background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
-  #inv-modal .inv-link input { flex: 1; min-width: 0; margin: 0; }
+  #inv-modal .inv-link textarea { display: block; width: 100%; margin: 0; padding: 8px 10px; border-radius: .5rem;
+    border: 1.5px solid #8d93a0; background: #fff; color: #1d1d1f; font: 14px/1.35 system-ui, sans-serif;
+    resize: none; overflow: hidden; overflow-wrap: anywhere; word-break: break-all; field-sizing: content; min-height: 0; }
+  @media (pointer: coarse) { #inv-modal .inv-link textarea { font-size: 16px; } }
+  #inv-modal .inv-btns { display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap; }
   #inv-modal .name-box button.inv-more { display: block; margin: 14px 0 0; background: none; border: 0; color: #0064c8;
     min-height: 0; min-width: 0; padding: 8px 0; font-weight: 700; text-decoration: underline; cursor: pointer; }
   #inv-modal .lob-pwlab, #inv-modal .lob-pwlab b { color: #1d1d1f; }
@@ -35851,7 +35859,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return (shareUrl && shareUrl.value) || '';
     }
     function linkRowHtml() {
-      return '<div class="inv-link"><input id="inv-url" readonly value="' + esc(inviteLinkForModal()) + '"><button id="inv-copy" type="button" class="appear-primary">' + esc(uiText('invCopy', 'Copy')) + '</button><button id="inv-share" type="button" class="appear-secondary" style="display:none">' + esc(uiText('invShare', 'Share')) + '</button></div>';
+      return '<div class="inv-link"><textarea id="inv-url" readonly rows="1" spellcheck="false">' + esc(inviteLinkForModal()) + '</textarea><div class="inv-btns"><button id="inv-copy" type="button" class="appear-primary">' + esc(uiText('invCopy', 'Copy')) + '</button><button id="inv-share" type="button" class="appear-secondary" style="display:none">' + esc(uiText('invShare', 'Share')) + '</button></div></div>';
     }
     function showInviteModal() {
       const body = document.getElementById('inv-body');
@@ -35959,6 +35967,35 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       for (const i of body.querySelectorAll('input[type=password]')) pwEye(i); // the mint's two fields get their eyes before first focus
       try { closeInvModal(); } catch (e) {}
       invModal.style.display = 'flex';
+      // A tap (and the focus openModal gives the field) selects the whole link.
+      const invField = document.getElementById('inv-url');
+      if (invField && !invField.__selAll && typeof invField.addEventListener === 'function') {
+        invField.__selAll = true;
+        const selectAll = () => {
+          try { if (typeof invField.select === 'function') invField.select(); } catch (e) {}
+          try { if (typeof invField.setSelectionRange === 'function') invField.setSelectionRange(0, (invField.value || '').length); } catch (e) {}
+        };
+        invField.addEventListener('focus', selectAll);
+        invField.addEventListener('mouseup', (e) => { try { e.preventDefault(); } catch (err) {} selectAll(); });
+        invField.addEventListener('click', selectAll);
+      }
+      // Grow to the wrapped text. A hidden field reports no height, so this
+      // runs after the card is shown, and again on the next frame and on resize.
+      const fitInv = () => {
+        const u = document.getElementById('inv-url');
+        if (!u || typeof u.scrollHeight !== 'number') return;
+        u.style.height = 'auto';
+        u.style.height = u.scrollHeight + 'px';
+      };
+      fitInv();
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(fitInv);
+      if (typeof window !== 'undefined' && !window.__invLinkFitOn && typeof window.addEventListener === 'function') {
+        window.__invLinkFitOn = true;
+        window.addEventListener('resize', () => {
+          const m = document.getElementById('inv-modal');
+          if (m && m.style.display !== 'none') fitInv();
+        });
+      }
       closeInvModal = openModal(invModal, () => { invModal.style.display = 'none'; });
     }
 
