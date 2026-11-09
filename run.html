@@ -1506,35 +1506,28 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   #chatpanel.open { display: flex; }
   /* Beside the call, not over it: on a wide window the room bar, header and
      stage narrow by the panel's width (body.chatside follows the panel), as
-     Meet and Zoom do; the dock moves into the call too when it fits there.
-     A phone keeps the panel over the call. */
+     Meet and Zoom do. A phone keeps the panel over the call. The control bar
+     floats above the panel (z 32 over 31). When the panel opens, the bar does
+     not move, shrink or lose a button (placeDock). */
   @media (min-width: 800px) {
     /* --sidew is the panel's width: the call, the OS header, the build
        label and Fit all end at it, so none of them sits on another. */
     body.chatside { --sidew: 340px; padding-right: var(--sidew); }
     body.chatside .fitbtn { right: calc(14px + var(--sidew)); }
     body.chatside .topchip { max-width: calc(100% - 460px); }
-    /* The dock sits in the call beside the chat (placeDock), so the composer
-       takes the band it used to keep clear. */
-    body.chatside.dockbeside #chatpanel { padding-bottom: 12px; }
-    /* ...and runs the full height: the phone's stop-above-the-dock inset
-       left a dead band under Send. The keyboard inset still applies. */
-    body.chatside.dockbeside #chatpanel.open { bottom: var(--kb, 0px); }
+    /* The panel runs the full height. The keyboard inset still applies.
+       The composer moves up by --dock-clear only: that is how far the floating
+       bar reaches into the panel's lower half when it stands there
+       (setDockClear). Anywhere else the value is 0. A keyboard covers the bar
+       too, so with the keyboard up the composer sits right on the keyboard. */
+    body.chatside #chatpanel { padding-bottom: max(12px, var(--dock-clear, 0px)); }
+    html.kb-up body.chatside #chatpanel { padding-bottom: 12px; }
+    body.chatside #chatpanel.open { bottom: var(--kb, 0px); }
     /* The call beside the chat is 460-684px: the room bar's pills move to a
        row under the title rather than breaking "Not / recording". */
     body.chatside #airbar.on { flex-wrap: wrap; row-gap: 6px; padding: 6px 16px; }
     #airkind, #airrec, #airwho, #airsound { white-space: nowrap; }
-    /* A dock wider than the call goes to the phone sizes and moves Chat,
-       Invite, Full screen, then Share into More until it fits (placeDock);
-       it used to run over the chat with End on the panel. */
-    .bar.dockslim { gap: 6px; padding: 0 10px; }
-    .bar.dockslim #cam, .bar.dockslim #mic, .bar.dockslim #reactbtn, .bar.dockslim #chatbtn, .bar.dockslim #bartoggle,
-    .bar.dockslim > #sharebtn { width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
-    .bar.dockslim #cam.cam-max, .bar.dockslim #cam.cam-min { width: auto; min-width: 56px; padding: 0 8px; }
-    .bar.dockslim > #stagebtn, .bar.dockslim > #hand { height: 56px; min-height: 56px; padding: 0 8px; }
-    .bar.dockslim #leavebtn { width: 64px; height: 64px; min-width: 64px; min-height: 64px; margin-left: 4px; }
-    .bar.dockslim > .inmore { display: none !important; }
-    body.chatside.dockbeside .bar:not(.collapsed) .barmore { width: max-content; min-width: min(720px, calc(100vw - 364px)); max-width: calc(100vw - 364px); }
+    /* No slim bar beside the panel: the floating bar keeps its size (placeDock). */
   }
   #chathead { display: flex; align-items: center; flex-wrap: wrap; gap: .35rem .5rem; padding: .6rem .8rem; border-bottom: 1px solid var(--border, #2a2a3f); font-weight: 700; }
   /* The privacy line used to sit beside the title and collapse into a narrow
@@ -2783,8 +2776,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     .bar { height: 88px; gap: 8px; padding: 0 10px; }
     .bar #cam, .bar #mic, .bar #reactbtn, .bar #chatbtn, .bar #ccdock, .bar #bartoggle {
       width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
-    .bar #cam.cam-max, .bar #cam.cam-min,
-    .bar.dockslim #cam.cam-max, .bar.dockslim #cam.cam-min { width: auto; min-width: 56px; max-width: none; padding: 0 8px; }
+    .bar #cam.cam-max, .bar #cam.cam-min { width: auto; min-width: 56px; max-width: none; padding: 0 8px; }
     .bar > #sharebtn { width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
     .bar > #sharebtn svg { width: 26px; height: 26px; }
     .bar > #stagebtn { height: 56px; min-height: 56px; padding: 0 8px; }
@@ -34245,14 +34237,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // serialized as the inset shorthand, which also pins top, so the dock
       // cannot move upward. A tuck is an extra downward shift in the same
       // translate, including when the grip is still centered.
-      // With the chat open beside the call (body.chatside on a wide window),
-      // the dock centres on the call, not the window, when it fits there; it
-      // used to straddle the chat's edge with End over the panel.
+      // The bar floats over the call (z 32) and reserves no band. An open
+      // chat or transcript panel (body.chatside) never squishes it: no phone
+      // sizes, no button moved into More, no re-centring on the call. The bar
+      // keeps its size, its buttons and its spot, over the panel if that is
+      // where it stands, and its owner can drag it (Nathan 2026-11-09). The
+      // panel's composer moves up by --dock-clear only where the bar really
+      // stands over it (setDockClear).
       const chatPanelEl = document.getElementById('chatpanel');
-      // When the whole dock is wider than the call beside the chat, it goes to
-      // the phone sizes (.dockslim) and moves these into More, one at a time,
-      // until it fits; More shows a stand-in that presses the real button.
-      const slimOrder = ['chatbtn', 'sharebtn'];
+      // Only the window's own width sends a button to More (fitWindow). When
+      // the bar at home still runs past the window, these move one at a time.
+      // More shows a stand-in that presses the real button.
       const fitOrder = ['sharebtn', 'reactbtn', 'stagebtn'];
       // The width the dock's own buttons need, even when the dock is capped
       // to the window and they run past its edge. More's panel is not counted.
@@ -34269,18 +34264,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const cs = getComputedStyle(bar);
         return hi - lo + (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0) + (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.borderRightWidth) || 0);
       };
-      const fitBeside = (side) => {
-        bar.classList.remove('dockslim');
-        for (const id of slimOrder.concat(fitOrder)) { const b = document.getElementById(id); if (b) b.classList.remove('inmore'); }
-        const room = window.innerWidth - side;
-        if (side > 0 && bar.offsetWidth + 16 > room) {
-          bar.classList.add('dockslim');
-          for (const id of slimOrder) {
-            if (bar.offsetWidth + 16 <= room) break;
-            const b = document.getElementById(id);
-            if (b && b.parentElement === bar && b.getClientRects().length) b.classList.add('inmore');
-          }
-        }
+      const fitWindow = () => {
+        for (const id of fitOrder) { const b = document.getElementById(id); if (b) b.classList.remove('inmore'); }
+        const room = window.innerWidth;
         // A dock that still runs past the window (a service host's: Step
         // off, Reactions and Share beside Camera and Mic) moves Share, then
         // Reactions, then Step off into More until it fits. Camera, Mic,
@@ -34293,7 +34279,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // edge decides. A dragged dock is not a reason to give the slot up.
         const rowPast = () => {
           if (dockNeed() > room + 0.5) return true;
-          if (side > 0 || dockx !== 0) return false;
+          if (dockx !== 0) return false;
           let hi = -Infinity, lo = Infinity;
           for (const el of bar.children) {
             if (el.id === 'barmore' || el.id === 'reacttray' || el.classList.contains('inmore')) continue;
@@ -34352,17 +34338,35 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!(gr.width > 0) || !(br.width > 0)) return 0;
         return gr.right - br.left;
       };
+      // --dock-clear is how far an open side panel's composer moves up for the
+      // bar. It is set only when the floating bar really stands over the
+      // panel's lower half, and is capped at half the panel. A bar beside the
+      // panel or dragged high clears nothing. A tucked or faded bar keeps the
+      // last value, so the composer does not jump when the bar wakes.
+      const setDockClear = () => {
+        try {
+          if (bar.classList.contains('tucked') || document.body.classList.contains('chrome-away')) return;
+          const vh = window.innerHeight;
+          const br = bar.getBoundingClientRect();
+          let clear = 0;
+          if (chatPanelEl && chatPanelEl.classList.contains('open') && br.width > 0) {
+            const pr = chatPanelEl.getBoundingClientRect();
+            const overX = pr.width > 0 && br.right > pr.left + 4 && br.left < pr.right - 4;
+            const low = br.bottom > pr.top + pr.height / 2;
+            if (overX && low) clear = Math.max(0, Math.min(Math.round(vh - br.top + 12), Math.round(pr.height / 2)));
+          }
+          document.documentElement.style.setProperty('--dock-clear', clear + 'px');
+        } catch (e) {}
+      };
+      // Home is the window's centre. An open panel changes nothing here: the
+      // spot is the owner's (dockx, docky), clamped only to the window and the tab.
       const placeDock = () => {
         adoptFree();
-        const side = document.body.classList.contains('chatside') && window.innerWidth >= 800 && chatPanelEl ? chatPanelEl.offsetWidth : 0;
-        fitBeside(side);
+        fitWindow();
         const w = bar.offsetWidth, h = bar.offsetHeight;
-        const beside = side > 0 && w + 16 <= window.innerWidth - side;
-        document.body.classList.toggle('dockbeside', beside);
-        const cx = beside ? -side / 2 : 0;
-        const maxX = Math.max(0, (window.innerWidth - (beside ? side : 0) - w) / 2 - 8);
+        const maxX = Math.max(0, (window.innerWidth - w) / 2 - 8);
         const maxY = Math.max(0, window.innerHeight - h - 22);
-        const left0 = window.innerWidth / 2 - w / 2 + cx;
+        const left0 = window.innerWidth / 2 - w / 2;
         const span = tabSpan();
         if (window.GifOS && GifOS.meetLayout && typeof GifOS.meetLayout.clampBar === 'function' && span > 0) {
           const abs = GifOS.meetLayout.clampBar({ x: left0 + dockx, y: 0 }, { w: w, h: h, tab: span }, { w: window.innerWidth, h: window.innerHeight });
@@ -34376,10 +34380,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         bar.style.top = '';
         bar.style.bottom = '';
         const extra = tucked ? (h + Math.max(0, docky) + 40) : 0;
-        if (!extra && dockx === 0 && docky === 0 && !cx) bar.style.transform = '';
-        else bar.style.transform = 'translateX(-50%) translate(' + (cx + dockx) + 'px, ' + (-docky + extra) + 'px)';
+        if (!extra && dockx === 0 && docky === 0) bar.style.transform = '';
+        else bar.style.transform = 'translateX(-50%) translate(' + dockx + 'px, ' + (-docky + extra) + 'px)';
         // The open sheet and tray follow the dock to wherever it now stands.
         placeDockPopovers();
+        setDockClear();
       };
       const markTuck = (on) => {
         tucked = !!on;
@@ -34573,15 +34578,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             // Record hangs off the dock: its header cap follows the new height.
             try { paintCallState(); } catch (e2) {}
           }
-          const panel = document.getElementById('chatpanel');
-          const br = bar.getBoundingClientRect();
-          let clear = 0;
-          if (panel && panel.classList.contains('open') && br.width > 0) {
-            const pr = panel.getBoundingClientRect();
-            const overlapX = pr.width > 0 && br.right > pr.left + 4 && br.left < pr.right - 4;
-            if (overlapX) clear = Math.max(0, Math.round(window.innerHeight - br.top + 12));
-          }
-          document.documentElement.style.setProperty('--dock-clear', clear + 'px');
+          setDockClear();
         } catch (e) {}
       };
       // iOS keeps the layout viewport tall and overlays the keyboard.
