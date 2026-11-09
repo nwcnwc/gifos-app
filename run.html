@@ -14750,7 +14750,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // belong to the old pc. An offer still minting belongs to it too: its chain never settles on a closed pc.
       endNeg(p.neg);
       p.neg = newNeg(why);
-      p.pc = pc; p.connected = false; p.pendingIce = queued || []; p.dc = null; p.incoming = []; p.deadSince = 0; p.rebuiltAt = Date.now();
+      p.pc = pc; p.connected = false; p.pendingIce = queued || []; p.dc = null; p.incoming = []; p.deadSince = 0; p.rebuiltAt = Date.now(); p.checkingSince = 0;
       // A new pc gathers afresh: its first host candidate must leave at once,
       // so the old pc's batch (sawHost, a pending flush) is dropped.
       { const ib = iceBatch.get(p.id); if (ib && ib.t) clearTimeout(ib.t); iceBatch.delete(p.id); }
@@ -14846,6 +14846,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (p.video && fsview.classList.contains('on')) p.video.addEventListener('resize', () => fsRefreshIfOpen(), { once: true });
       };
       pc.onicecandidate = (ev) => { if (p.pc !== pc) return; noteIce(p.id, ev.candidate || null); };
+      pc.oniceconnectionstatechange = () => {
+        if (p.pc !== pc) return;
+        const ice = pc.iceConnectionState;
+        // The finish window starts once, when ICE leaves 'new'. Safari can
+        // report connected without a checking event. A later event must not
+        // extend the window; a restart re-stamps it when the offer is applied.
+        if ((ice === 'checking' || ice === 'connected' || ice === 'completed') && !p.checkingSince) p.checkingSince = Date.now();
+      };
       pc.onconnectionstatechange = () => {
         if (p.pc !== pc) return; // a replaced transport's tail events — not this pair's truth
         p.connected = pc.connectionState === 'connected';
@@ -14853,7 +14861,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // persistence gate for the rebuild-on-offer path (transients recover
         // via ICE restart and must never trigger a teardown)
         if (pc.connectionState === 'failed' || pc.connectionState === 'closed') { if (!p.deadSince) p.deadSince = Date.now(); }
-        else if (p.connected) { doorPace.delete(p.id); p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; if (!seatStranger(p)) restoreDoorTile(p); try { updateTile(p.id); } catch (e) {} }
+        else if (p.connected) { doorPace.delete(p.id); p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; p.checkingSince = 0; if (!seatStranger(p)) restoreDoorTile(p); try { updateTile(p.id); } catch (e) {} }
         updateStatus();
         if (p.connected) { p.altPath = false; p.tlAt = 0; p.hungUp = false; adapt(); try { headLinkUp(p.id); } catch (e) {} } // rotation ends when the pair lands; D5 edge re-arms; a link up to my row's head re-routes my sends now
         // D5: 'closed' out of nowhere (we didn't rebuild it and the peer is
@@ -14912,7 +14920,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const t = makeTile(peerId, name, false, headless);
       if (!headless && doorOffGrid.has(peerId) && t.tile.parentNode) t.tile.remove(); // grace already took this name off the grid
       const p = { id: peerId, pc: null, tile: t.tile, video: t.video, label: t.label, avatar: t.avatar, chips: t.chips, cap: t.cap, modbar: t.modbar, voteBtn: t.voteBtn,
-        name, headless: !!headless, connected: false, pendingIce: [], absentSince: 0, lastKick: 0, lastHeard: Date.now(), bornAt: Date.now(), incoming: [], neverUp: true }; // neverUp: no transport ever connected — such a pair is dead, never merely away (reachCounts)
+        name, headless: !!headless, connected: false, pendingIce: [], absentSince: 0, lastKick: 0, checkingSince: 0, lastHeard: Date.now(), bornAt: Date.now(), incoming: [], neverUp: true }; // neverUp: no transport ever connected — such a pair is dead, never merely away (reachCounts). lastKick stays 0 until a dial offer is sent (sendOffer): the polite side has not offered, and its 4 s deadlock-break reads that 0.
       peers.set(peerId, p);
       if (isHeld(peerId)) holdPeer(p);
       recSrcDirty = true;
@@ -15234,7 +15242,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function answerOffer(pc, p, msg, drainIce, send) {
       const same = () => { if (p.pc !== pc) { const e = new Error('pc replaced'); e.name = 'PcReplaced'; throw e; } };
       return pc.setRemoteDescription(typeof wkStripH264 === 'function' ? wkStripH264(msg.sdp, pc) : msg.sdp)
-        .then(() => { same(); if (drainIce) for (const c of p.pendingIce.splice(0)) pc.addIceCandidate(c).catch(() => {}); })
+        .then(() => {
+          same();
+          // A restart offer applied while ICE is already checking may not
+          // fire the state event again. The finish window starts over with
+          // this offer, or the door retry would rebuild the restart.
+          if (p.checkingSince) p.checkingSince = Date.now();
+          if (drainIce) for (const c of p.pendingIce.splice(0)) pc.addIceCandidate(c).catch(() => {});
+        })
         .then(() => { same(); preferHwVideo(pc); return pc.createAnswer(); })
         .then((ans) => { same(); return pc.setLocalDescription(ans); })
         .then(() => { same(); send(pc.localDescription); });
@@ -15257,6 +15272,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // flight IS this pair's offer; a restart asked for meanwhile comes
       // round on the next sweep.
       if (p.neg.minting) return;
+      // The re-offer gap is measured from the last dial, the way a re-dial is
+      // stamped when it is sent. Only a dial that has not connected counts.
+      // A polite peer that has never offered keeps lastKick at 0.
+      if (!p.connected && !p.lastKick) p.lastKick = Date.now();
       // A DIAL WITH NO LIVE CHANNEL IS A BOOTSTRAP, and the relay carries
       // only a DataChannel-only description: a transport that already
       // carries media (its channel opened once and died) is rebuilt first,
@@ -15952,6 +15971,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // for its own door redial (the mesh law: a page that sends on a pair it
     // holds no pc of asks for one, and the dialler offers back at once).
     const LOST_OFFER_MS = 1000;
+    // An answer has landed and ICE is checking, connected, or completed.
+    // That handshake is still finishing, but only for ICE_FINISH_MS. The
+    // initiator's 12 s cure is the hand-off: past this, lost candidates or a
+    // stuck DTLS handshake are rebuilt by the door retry or a dial request.
+    // A reload (back) is a new page; the old pc is not kept.
+    const ICE_FINISH_MS = 12000;
+    function iceFinishing(p, now, back) {
+      const pc = p && p.pc;
+      if (!pc || !pc.remoteDescription || back) return false;
+      const cs = pc.connectionState, ice = pc.iceConnectionState;
+      if (cs === 'failed' || cs === 'closed' || cs === 'disconnected') return false;
+      if (ice !== 'checking' && ice !== 'connected' && ice !== 'completed') return false;
+      if (!p.checkingSince) p.checkingSince = now; // the state event stamps this; a missed event starts the window here
+      return now - p.checkingSince < ICE_FINISH_MS;
+    }
     function onDialRequest(p) {
       const pLive = p.connected && p.dc && p.dc.readyState === 'open';
       const unanswered = !!(p.pc && p.pc.signalingState === 'have-local-offer');
@@ -15968,11 +16002,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // page back from a reload wait out this window and its own 4 s retries: the pair came up at 8-9 s.
       const idle = !!(p.pc && p.pc.signalingState === 'stable' && p.pc.connectionState === 'new' && !p.neg.minting);
       // Age alone is not "still forming" once an answer has landed and ICE is
-      // working: a dial request at 5 s was rebuilding that handshake. A reload
+      // inside its finish window. Past that window a dial request rebuilds,
+      // which is what a lost trickle used to wait out forever. A reload
       // (back) is a new page; the old pc is left to fail.
-      const inIce = !!(p.pc && p.pc.remoteDescription && !back
-        && (p.pc.iceConnectionState === 'checking' || p.pc.iceConnectionState === 'connected' || p.pc.iceConnectionState === 'completed'));
-      const forming = !pLive && p.pc && !darkOffer && !idle && (inIce || Date.now() - pcBuiltAt(p) < 5000) && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
+      const forming = !pLive && p.pc && !darkOffer && !idle && (iceFinishing(p, Date.now(), back) || Date.now() - pcBuiltAt(p) < 5000) && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
       if (typeof clog === 'function') clog('dial-request from ' + String(p.id || '?').slice(0, 6) + ' solo=' + (participantCount() <= 1) + ' live=' + !!pLive
         + ' init=' + iInitiate(p.id) + ' forming=' + !!forming + ' dark=' + !!darkOffer + ' pc=' + (p.pc ? p.pc.connectionState + '/' + p.pc.signalingState : '-')
         + ' age=' + Math.round((Date.now() - pcBuiltAt(p)) / 100) / 10 + 's frag=' + Math.round((Date.now() - (p.fragDialAt || 0)) / 100) / 10 + 's');
@@ -16038,15 +16071,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const fewDoorWait = 3500;
       const wait = (p && p.neverUp === true) ? (manyDoors ? (p.dialWait || 5000) : fewDoorWait) : 5000;
       // The 4 s retry is for an offer nobody answered. An answer already
-      // applied, with ICE checking or up, is that handshake still finishing:
-      // rebuilding it here is what tore the pair down. No remote description,
-      // or ICE still new, redials once `wait` is up, as before.
-      const ice = p && p.pc ? p.pc.iceConnectionState : '';
+      // applied is that handshake still finishing, for ICE_FINISH_MS only,
+      // so a slow check is not torn down at 4 s and a lost trickle is not
+      // kept forever. A reload is the new page: the old pc is not kept.
       const cs = p && p.pc ? p.pc.connectionState : '';
-      const inIce = !!(p && p.pc && p.pc.remoteDescription
-        && (ice === 'checking' || ice === 'connected' || ice === 'completed')
-        && cs !== 'failed' && cs !== 'closed');
-      if (p && p.pc && (inIce || (Date.now() - pcBuiltAt(p) < wait && cs !== 'failed' && cs !== 'closed'))) {
+      const back = !!(meshNode && meshNode.byeIsHeld && meshNode.byeIsHeld(pid));
+      if (p && p.pc && (iceFinishing(p, Date.now(), back) || (Date.now() - pcBuiltAt(p) < wait && cs !== 'failed' && cs !== 'closed'))) {
         if (!manyDoors) armDoorRetry(pid, p); // forming: its turn is not yet, but the four-second retry stays armed
         return;
       }
@@ -18785,8 +18815,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           p.cureAt = now;
           p.lastKick = now + Math.random() * 1500;
           p.altPath = !p.altPath; // §FWD transport rotation — see sendSig
-          if (now - p.downSince > 25000) { rebuildPc(p, 'down-25s'); sendOffer(pid); }
-          else sendOffer(pid, true);
+          // ICE already up while the connection is still 'connecting' is DTLS
+          // stuck: a restart keeps that transport, so this beat rebuilds.
+          // Lost candidates are still 'checking' and take the restart. The
+          // restart re-stamps the finish window so the door retry does not
+          // tear it down before it can gather.
+          const iceCure = p.pc.iceConnectionState;
+          const dtlsStuck = (iceCure === 'connected' || iceCure === 'completed') && st === 'connecting'
+            && p.checkingSince && now - p.checkingSince > ICE_FINISH_MS;
+          if (now - p.downSince > 25000 || dtlsStuck) { rebuildPc(p, dtlsStuck ? 'dtls-stuck' : 'down-25s'); sendOffer(pid); }
+          else { p.checkingSince = now; sendOffer(pid, true); }
         }
         // D5 (mesh early-probe): a pc sitting in 'failed' PAST the ICE-restart
         // kick window (first kick fires at ~6s) is a hard transport death, on
@@ -18810,15 +18848,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // side never learns and never offers. The lower-id side has the occ
         // seed and must break the deadlock. Glare is handled in onSignal.
         const reofferGap = stuckQuiet ? 30000 : 6000;
-        // lastKick is 0 at birth, so this beat is already due. Do not spend it
-        // on a handshake whose answer landed and whose ICE is still working:
-        // that offer is a second fingerprint on a live check. The polite 4 s
-        // fallback is only when they never dialled (no remote description).
-        // failed and disconnected still offer; the 12 s cure above is separate.
-        const iceNow = p.pc.iceConnectionState;
-        const iceWorking = (iceNow === 'checking' || iceNow === 'connected' || iceNow === 'completed')
-          && st !== 'failed' && st !== 'disconnected';
-        if (!iceWorking && !p.absentSince && !p.connected && !p.hungUp && linkTo(pid) && !seatHolds(pid)
+        // A dial still minting is not re-offered. An answer that landed is
+        // still finishing for ICE_FINISH_MS; the cure above owns that window,
+        // including a check that never gets a candidate and ICE that is up
+        // while DTLS is not. lastKick stays 0 until a dial offer is sent, so
+        // a polite side that was never dialled still breaks the deadlock at
+        // 4 s, and only when there is no remote description. A reload is not
+        // still finishing: that pc belongs to the page that left.
+        const backIce = !!(meshNode && meshNode.byeIsHeld && meshNode.byeIsHeld(pid));
+        if (!iceFinishing(p, now, backIce) && !(p.neg && p.neg.minting) && !p.absentSince && !p.connected && !p.hungUp && linkTo(pid) && !seatHolds(pid)
             && (st === 'failed' || st === 'disconnected' || st === 'new' || st === 'connecting')
             && now - p.lastKick > reofferGap
             && (iInitiate(pid) || (p.downSince && now - p.downSince > 4000 && !p.pc.remoteDescription))) {
