@@ -184,9 +184,12 @@
       if (e !== me) { const L = LINKS.get(e); bye(e, BYE_OF[why] || 'call', L); return; }
       lostNow(x, why, true);
     }
+    // assigned once the pc laws exist (this function is built before createPcLaws)
+    let greetRelease = () => {};
     // C++: mesh_link.inc:closeBoth   [my end of a deliberate close of both ends]
     function closeBoth(L, a, b, fail, why) {
       const x = other(a, b); if (L.state !== LK_OPEN && L.state !== LK_DIALING) return;
+      greetRelease(a, b); greetRelease(b, a);   // a greeting slot dies with the claimant's pc
       L.state = LK_CLOSED; L.epoch = (L.epoch + 1) >>> 0; L.q = []; L.half = 0; L.halfAt = -1; L.view[mine(x)] = LK_CLOSED; L.gone |= (1 << mine(x)); L.callClosed = true;
       bye(x, BYE_OF[why] || why, L);
     }
@@ -256,6 +259,7 @@
     function schedL10(from, to, m) { const L = LINKS.get(to); if (!L || L.state !== LK_OPEN) return; linkDeliver(from, to, m, L); }
 
     const pc = PCL.createPcLaws(P);
+    greetRelease = (me, holder) => pc.l23GreetRelease(me, holder);
     const F = pc.fns;
 
     // ---- the seat's dials, my end ([end] in pclaws.js, minus the far end's L23 read: the far page refuses at its offer) ----

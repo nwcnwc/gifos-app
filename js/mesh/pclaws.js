@@ -382,8 +382,13 @@
     // C++: mesh_link.inc:l23GreetSlot   [end]
     function l23GreetSlot(me, from, ck) {
       const key = hash.hmix64(hash.hmixId(hash.H_INIT, me), ck); const it = S.L23GREET.get(key);
-      if (it === undefined || T() - it[1] > K.L23_WORD_ || it[0] === from) { if (S.L23GREET.size > 100000) S.L23GREET.clear(); S.L23GREET.set(key, [from, T()]); return true; }
+      if (it === undefined || T() - it[1] > K.L23_WORD_ || it[0] === from) { if (S.L23GREET.size > 100000) S.L23GREET.clear(); S.L23GREET.set(key, [from, T(), me]); return true; }
       return false;
+    }
+    // C++: mesh_link.inc:l23GreetRelease   [the slot must not outlive the claimant's pc; me is stored because the key is a hash]
+    function l23GreetRelease(me, holder) {
+      if (holder < 0) return;
+      for (const [k, v] of S.L23GREET) if (v[2] === me && v[0] === holder) S.L23GREET.delete(k);
     }
     // C++: mesh.cpp:l23Word   [end]
     function l23Word(s, x) {
@@ -727,7 +732,7 @@
       // the fabric halves, called by the tick (linkTick)
       l15Doors, l16Doors, l22Tick, l1611Guard,
       // the pieces the physics and the checks reach
-      pcBudget, l14Budget, l16Refuse, l23Refused, l23GreetSlot, l23Full, l23Stretch, l1610Full, l1610Held, noteCall, dialHeld, doorEnd, doorHeard, l15Seated, l15Names, l15NamedBy,
+      pcBudget, l14Budget, l16Refuse, l23Refused, l23GreetSlot, l23GreetRelease, l23Full, l23Stretch, l1610Full, l1610Held, noteCall, dialHeld, doorEnd, doorHeard, l15Seated, l15Names, l15NamedBy,
       l16Mobile, l16MobBudget, l16Close, l22Release, l23CloseAlone, l23MakeRoom, l23Suspect, l23RealRole, l23Word, l23WordPeek, linkWhy, l22Beside, l18Role, l18Dist, l18NoDial,
       fabricDoorFrom, linkHeld, l221Sent,
     };
