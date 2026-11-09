@@ -6059,8 +6059,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // sessionStorage (this tab only). It is read once, here, and removed at
     // once. Only that path writes it; Leave and any other way out of the page
     // (pagehide that is not an update) clear it, so a real leave and rejoin
-    // still starts at Max blur. Mic, camera and screen share ride the same
-    // reload through stashRecoverMedia, as a freeze reload does.
+    // still starts at Max blur. A screen share rides the same reload as a
+    // one-tap re-ask (stashRecoverMedia); mic and camera never ride any reload.
     const UPDATE_RESUME_KEY = 'gifos_update_resume';
     const UPDATE_RESUME_TTL = 120000;
     const updateRoomKey = () => (params.get('v') || '') + '.' + String(params.get('av') || '').toLowerCase();
@@ -6101,9 +6101,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // keeps their place in step-up order. A grant that has not arrived yet
     // must not disarm it (reactStageLost waits out stageResumeUntil).
     let stageResumeUntil = 0, stageLeaving = false;
-    // HAS THIS PERSON JOINED? A camera or mic on in this page outlives a reload only if the person is on
-    // stage or this is true: the page has been seated past every door (renderFromOcc), or it came back from
-    // a page that had (applyRecoverMedia). Reaching a door again ends it (quietAtDoor).
+    // HAS THIS PERSON JOINED? True once the page has been seated past every door (renderFromOcc), or it came
+    // back from a page that had (applyRecoverMedia). Reaching a door again ends it (quietAtDoor). It gates the
+    // share re-ask note only: no camera or mic outlives a reload (Nathan 2026-11-08: privacy first, always).
     let mediaJoined = false;
     if (updateResume && +updateResume.stg > 0) { myStatus.stg = +updateResume.stg; stageResumeUntil = Date.now() + 20000; }
     // A RELOAD KEEPS THE STAGE SEAT (Nathan, 0.9.25: back on stage right after the reload). This
@@ -21039,22 +21039,23 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             // granted, instant to switch on) but disabled until you choose to
             // be seen/heard.
             for (const tr of localStream.getTracks()) tr.enabled = false;
-            // A freeze reload stashed the live mic/camera/share. Put them back
-            // before the first status goes out, so peers never see a quiet rejoin.
+            // A freeze or update reload stashed a live SHARE: offer it back as one tap.
+            // Mic and camera are never put back: every reload comes back camera off
+            // and mic muted (Nathan 2026-11-08, privacy first), and a tap turns them on.
             try { applyUpdateResumeBlur(); } catch (e) {}
             let restored = false;
             try { restored = typeof applyRecoverMedia === 'function' && applyRecoverMedia() === true; } catch (e) {}
             // The lobby's Go live tap is the camera. A host who opens their
             // link lands off air, camera off, until they tap it. A meeting
-            // still joins quiet. A reload that already chose keeps that choice.
+            // still joins quiet. A RELOAD of any kind (update, freeze, F5) lands
+            // off air too: the tap is the only thing that turns the camera on.
             // The mic stays off. Blur stays on the video track; there is no avatar overlay.
             let goLiveLevel = null;
             try { goLiveLevel = goLiveStoredLevel(false); } catch (e) {}
-            const updateOnAir = !!(updateResume && updateResume.onAir);
-            if (!restored && BROADCAST && bcHostStored() && (goLiveLevel != null || updateOnAir)) {
+            if (!restored && BROADCAST && bcHostStored() && goLiveLevel != null) {
               const cam = localStream.getVideoTracks()[0];
               if (cam && !(typeof forcedCamOff === 'function' && forcedCamOff('me'))) {
-                if (!updateOnAir) { try { setPersonalBlur(goLiveLevel == null ? 2 : goLiveLevel); } catch (e) {} }
+                try { setPersonalBlur(goLiveLevel); } catch (e) {}
                 cam.enabled = true;
                 myStatus.camOff = false;
                 try { paintControls(); } catch (e) {}
@@ -29595,8 +29596,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // A broadcast viewer has no share button until an admin allows them.
       document.body.classList.toggle('share-granted', mayShareScreen(myId));
     }
-    // A freeze reloads the tab. Mic, camera and share cannot ride that
-    // navigation unless we write them down first and put them back after boot.
+    // A freeze reloads the tab. The note written here lets the next boot know the
+    // person had joined and whether a screen share was up (one tap to share again).
+    // It carries NO mic or camera state: a reload of any kind comes back camera off
+    // and mic muted, stagers too (Nathan 2026-11-08: privacy first, always).
     let shareRecoverMode = false;
     let recoverShareTimer = 0;
     const RECOVER_MEDIA_KEY = 'gifos_recover_media';
@@ -29607,17 +29610,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return +myStatus.stg > 0 && (stageResumeUntil > Date.now() || stageIds().includes(myId));
     }
     function stashRecoverMedia(away) {
-      // This note is the only thing that overrides the quiet boot, so writing it is the whole rule:
-      // only a person past the door may leave one, whichever way out of the page wrote it.
+      // Only a person past the door leaves a note, whichever way out of the page wrote it. The note says
+      // "this tab had joined" and whether a screen share was up. It never names the mic or the camera: a
+      // reload of any kind comes back camera off and mic muted (Nathan 2026-11-08, privacy first, stagers too).
       if (pwBlocked || bannedOut || !(mediaJoined || onStageNow())) {
         try { sessionStorage.removeItem(RECOVER_MEDIA_KEY); } catch (e) {}
         return;
       }
       try {
         sessionStorage.setItem(RECOVER_MEDIA_KEY, JSON.stringify({
-          v: 1,
-          muted: !(myStatus && myStatus.muted === false),
-          camOff: !(myStatus && myStatus.camOff === false),
+          v: 2, // a v1 note (older build) carried the devices; the v2 reader does not take it
           // A share does not ride a discard: coming back must not re-ask for
           // the screen. A freeze or update reload (away false) still does.
           sharing: !away && !!(myStatus && myStatus.scr),
@@ -29629,10 +29631,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // Chrome can discard a phone tab in the background and load it again on
     // the return. freeze fires before the discard; sessionStorage survives.
-    // Nothing was written down, so the meeting came back camera and mic off
-    // (row B). Write the same note a freeze reload writes. Drop it only when
-    // THIS page comes back on its own (it still has the camera). A fresh
-    // load has no stream yet and must keep the note for boot.
+    // Write the same note a freeze reload writes (joined, share), so the page
+    // that comes back knows it was past the door. It brings no device back:
+    // camera off and mic muted after a discard too. Drop it only when THIS
+    // page comes back on its own. A fresh load has no stream yet and must
+    // keep the note for boot.
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
         if (typeof localStream !== 'undefined' && localStream && !leaving) stashRecoverMedia(true);
@@ -29647,10 +29650,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     document.addEventListener('freeze', () => {
       if (typeof localStream !== 'undefined' && localStream && !leaving) stashRecoverMedia(true);
     });
-    // Will this boot turn the camera on? The same notes the boot reads once
-    // its media lands, read here without taking them: the lobby's switch, a
-    // broadcast host's Go live tap or an update reload on air, and a freeze or
-    // discard reload of a page whose camera was on.
+    // Will this boot turn the camera on? Only a tap made moments ago on the
+    // way in: the lobby's switch or a broadcast host's Go live tap, read here
+    // without taking them. No reload note counts (privacy first: a reload of
+    // any kind, update or freeze or F5, comes back camera off and mic muted).
     // A Go live tap stores b0, b1 or b2. An older page stored '1', which means
     // the tap happened, not Min blur: that boot still comes on at Max.
     function goLiveStoredLevel(peek) {
@@ -29666,12 +29669,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function bootWantsCamera() {
       try {
         if (typeof joinAvChoice !== 'undefined' && joinAvChoice && joinAvChoice.cam && !BROADCAST) return true;
-        if (BROADCAST && typeof bcHostStored === 'function' && bcHostStored()) {
-          if (updateResume && updateResume.onAir) return true;
-          if (goLiveStoredLevel(true) != null) return true;
-        }
-        const o = takeRecoverMedia(true);
-        return !!(o && o.camOff === false);
+        if (BROADCAST && typeof bcHostStored === 'function' && bcHostStored() && goLiveStoredLevel(true) != null) return true;
+        return false;
       } catch (e) { return false; }
     }
     // peek: read the note without taking it.
@@ -29684,7 +29683,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!raw) return null;
       let o = null;
       try { o = JSON.parse(raw); } catch (e) { return null; }
-      if (!o || o.v !== 1 || typeof o.at !== 'number') return null;
+      if (!o || o.v !== 2 || typeof o.at !== 'number') return null;
       if (Date.now() - o.at > RECOVER_MEDIA_TTL) return null;
       // An empty room is only an older build's freeze or update note, in the reload that replaces it.
       if ((o.away || o.room) && typeof updateRoomKey === 'function' && o.room !== updateRoomKey()) return null;
@@ -29728,20 +29727,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const o = takeRecoverMedia();
       if (!o) return false;
       mediaJoined = true; // the page that wrote it had joined; the door still has its say (quietAtDoor)
-      if (localStream) {
-        const mic = localStream.getAudioTracks()[0];
-        if (mic) {
-          const allow = o.muted === false && !(typeof amGloballyMuted === 'function' && amGloballyMuted());
-          mic.enabled = !!allow;
-          myStatus.muted = !mic.enabled;
-        }
-        const cam = localStream.getVideoTracks()[0];
-        if (cam) {
-          const allowCam = o.camOff === false && !(typeof forcedCamOff === 'function' && forcedCamOff('me'));
-          cam.enabled = !!allowCam;
-          myStatus.camOff = !cam.enabled;
-        }
-      }
+      // Mic and camera stay as the quiet boot left them: off. Only a tap (the chooser) turns them on.
       try { paintControls(); } catch (e) {}
       if (o.sharing) { try { recoverScreenShare(); } catch (e) {} }
       return true;
@@ -39809,7 +39795,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       updateResumed: () => { if (!updateResume) return null; const o = JSON.parse(JSON.stringify(updateResume)); delete o.seed; return o; }, // what an update reload brought back (null on a normal join)
       waitStateForTest: () => ({ hold: holdDoor, admitted: Array.from(waitAdmitted), declined: Array.from(waitDeclined), queue: Array.from(waitQueue.keys()) }),
       setBlur: (v) => setPersonalBlur(v),        // drive the level from tests; the button still picks through the chooser
-      pickCameraForTest: (v) => { pickCamera(v); return { camOff: myStatus.camOff, blur: blurLevel(myStatus.blur) }; },
       camChooserOpenForTest: () => camChooserOpen(),
       // camera-orientation forensics: what adapt() last ASKED the camera for
       // ("WxH@fps"), and a way to drive a sweep. Guards the portrait<->landscape
