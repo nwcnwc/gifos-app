@@ -158,7 +158,8 @@
       if (x >= 0 && x !== this.id && x !== o && x !== m.from && this.l167HolderHeard(m.hole)) { this.trace('L25.14-HELD', this.id, m.hole, 'from=%d fo=%d holder=%d', m.from, m.fo, x); return true; }
       if (o < 0 || o === this.id) return false;
       let ok = 0, placed = false; for (const [ek, ev] of this.occ) if (ev === o && cellOk(ek)) { ok = ek; placed = true; break; }
-      if (!placed || ok === hk) return false;
+      if (!placed) { if (m.fo >= 0 && m.fo === m.from && m.hole.pc === 0) { this.trace('L25.14-UNPLACED', this.id, m.hole, 'from=%d fo=%d', m.from, m.fo); return true; } return false; }   // first receipt only; a hop already passed this check. A heard holder is still dropped above.
+      if (ok === hk) return false;
       const oc = unckey(ok); if (oc.pc === m.hole.pc && oc.r === m.hole.r) return false;
       const ol = ownedLinks(m.hole), n = ol.length; for (let k = 0; k < n; k++) if (ckey(ol[k]) === ok) return false;
       this.trace('L25.14-AWAY', this.id, m.hole, 'from=%d fo=%d at=%s', m.from, m.fo, coordStr(oc)); return true;
