@@ -572,7 +572,7 @@
       this.rcHanded.set(m.ck, [m.id, TICK]);   // L3.10.4
       const nbrs = []; const ol = ownedLinks(c); const n = ol.length; for (let i = 0; i < n; i++) { const x = this.occGet(ckey(ol[i])); if (x >= 0 && x !== m.id) nbrs.push({ k: ckey(ol[i]), v: x }); }
       { const dk = ckey(down(c)); let has = false; for (const kv of nbrs) if (kv.k === dk) has = true; const h = this.childOf.get(m.ck); if (!has && h !== undefined && h >= 0 && h !== m.id) nbrs.push({ k: dk, v: h }); }   // L3.10.6
-      const r = newMsg('RECLAIMED'); r.nc = m.id; r.coord = co(c); r.owner = id; r.nbrs = nbrs; r.pp = id; r.ppAt = TICK;
+      const r = newMsg('RECLAIMED'); r.nc = m.id; r.coord = co(c); r.owner = id; r.nbrs = nbrs; r.pp = id; r.ppAt = TICK; r.gkey = this.genKey;   // L3.11.5: the hand-back carries the genesis key (C++: mesh_seat.inc rcHandBack)
       { const rm = this.relMark.get(m.id); if (held && rm !== undefined && TICK - rm <= K.LEASE_T - 4 * K.RC_WAIT - 10) r.tag = 2; }   // L3.11
       if (m.oCk && cellOk(m.oCk - 1)) this.route(unckey(m.oCk - 1), m.id, r); else this.emit(m.id, r);   // L3.11.1
       this.trace('RECLAIMED', id, c, 'id=%d %s%s', m.id, held ? 'leased' : 'remembered', r.tag === 2 ? ' reload' : '');
@@ -583,7 +583,7 @@
     rcBeside(who, old, vac) {
       const vc = unckey(vac), c = unckey(old); const nbrs = []; const ol = ownedLinks(vc); const n = ol.length;
       for (let i = 0; i < n; i++) { const x = (ckey(ol[i]) === ckey(this.coord)) ? this.id : this.occGet(ckey(ol[i])); if (x >= 0 && x !== who) nbrs.push({ k: ckey(ol[i]), v: x }); }
-      const r = newMsg('RECLAIMED'); r.nc = who; r.coord = co(vc); r.owner = this.id; r.nbrs = nbrs; r.pp = this.id; r.ppAt = this.TICK; r.tag = 1; r.ck = old; this.emit(who, r);
+      const r = newMsg('RECLAIMED'); r.nc = who; r.coord = co(vc); r.owner = this.id; r.nbrs = nbrs; r.pp = this.id; r.ppAt = this.TICK; r.tag = 1; r.ck = old; r.gkey = this.genKey; this.emit(who, r);   // L3.11.5
       { const rowFree = this.f.fabricFreeCells(c.pc, c.r), secFree = this.f.fabricFreeCells(c.pc, -1);
         this.trace('RECLAIM-BESIDE', this.id, vc, 'id=%d old=%s rowfree=%d secfree=%d', who, coordStr(c), rowFree, secFree); }
     },

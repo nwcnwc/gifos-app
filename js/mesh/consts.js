@@ -47,6 +47,7 @@
     DIG_HOLD_LEVEL: 16,   // C++: mesh.cpp:DIG_HOLD_LEVEL  (LAW_DIG_HOLD_LEVEL)
     GREET_PERIOD: 800,   // C++: mesh.cpp:GREET_PERIOD
     ISLAND_WAIT: 24,   // C++: mesh.cpp:ISLAND_WAIT  (LAW_ISLAND_WAIT)
+    ISLAND_ASKS: 2,   // C++: mesh.cpp:ISLAND_ASKS  (LAW_ISLAND_ASKS)
     L827_HOLD: 50,   // C++: mesh.cpp:L827_HOLD
     L827_SETTLE: 40,   // C++: mesh.cpp:L827_SETTLE
     L828_HOLD: 100,   // C++: mesh.cpp:L828_HOLD

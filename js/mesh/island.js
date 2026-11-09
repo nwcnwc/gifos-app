@@ -24,6 +24,8 @@
     // C++: mesh_island.inc:Seat::islandAsk
     islandAsk(list) {
       const lv = this.w.lv;
+      { let fresh = false; for (const g of list) { if (g < 0 || g === this.id) continue; if (!this.islandAsked.has(g)) { this.islandAsked.add(g); fresh = true; } }
+        if (this.islandLast) { this.islandLast = false; if (!fresh) { this.islandFound(); return; } } }   // L8.1.2 (C++: islandAsk)
       if (this.f.fabricDoors()) {
         this.l16List.length = 0;
         for (const g of list) { if (g < 0 || g === this.id) continue; this.l16List.push(g); if (this.l16List.length >= 32) break; }
@@ -43,9 +45,25 @@
       if (this.TICK - this.islandAskAt < K.ISLAND_WAIT || this.lastGreeters.length === 0) return false;
       if (this.f.fabricDoors() && this.islandAskAt >= 0 && (this.l16Next < this.l16List.length || this.TICK - this.l16FreshAt < K.ISLAND_WAIT)) return false;
       if (this.l16Saw) { this.l16Backoff('silent'); return true; }
-      this.trace('ISLAND', this.id, null, 'asked=%zu since=%d', this.lastGreeters.length, this.islandAskAt);
-      this.islandAskAt = -1; this.genKey = this.w.lv.URL_KEY; const e = []; this.take({ pc: 0, r: 0, i: 0 }, -1, e); this.islandFounder = true; this.lineAdopt(this.id, 'found'); this.lineFork = true;
-      return true;
+      if (this.islandAskN + 1 < K.ISLAND_ASKS) {   // L8.1.1: a silent round is the door's list of one moment, not the room: knock again (bounded) before founding
+        this.islandAskN++; this.trace('ISLAND-REASK', this.id, null, 'round=%d asked=%zu since=%d', this.islandAskN, this.lastGreeters.length, this.islandAskAt);
+        for (const x of this.l16Ask) this.f.fabricDoorDrop(this.id, x);
+        this.l16Anch = false; this.l16Ho = -1; this.l16Ask.length = 0; this.l16Busy.length = 0; this.l16Last = -1; this.l16List.length = 0; this.l16Next = 0; this.l16WaveAt = -1; this.l16FreshAt = -1;
+        this.state = 0; this.islandAskAt = -1; this.gateway = -1; this.join();
+        return true;
+      }
+      if (!this.islandLast) {   // L8.1.2: one confirm knock; the list that comes back founds (islandAsk) unless it names a greeter never asked
+        this.islandLast = true; this.trace('ISLAND-CONFIRM', this.id, null, 'asked=%zu since=%d rounds=%d', this.islandAsked.size, this.islandAskAt, this.islandAskN + 1);
+        if (this.f.fabricDoors()) this.l16Backoff('island-confirm'); else { this.state = 0; this.islandAskAt = -1; this.gateway = -1; this.join(); }
+        return true;
+      }
+      this.islandFound(); return true;
+    },
+
+    // C++: mesh_island.inc:Seat::islandFound
+    islandFound() {
+      this.trace('ISLAND', this.id, null, 'asked=%zu since=%d rounds=%d', this.lastGreeters.length, this.islandAskAt, this.islandAskN + 1);
+      this.islandAskAt = -1; this.islandAskN = 0; this.islandAsked.clear(); this.islandLast = false; this.genKey = this.w.lv.URL_KEY; const e = []; this.take({ pc: 0, r: 0, i: 0 }, -1, e); this.islandFounder = true; this.lineAdopt(this.id, 'found'); this.lineFork = true;
     },
 
     // C++: mesh_island.inc:Seat::islandFork
@@ -85,6 +103,7 @@
         let listed = false; for (const g of this.lastGreeters) if (g === x) { listed = true; break; } if (!listed) continue;
         const lb = this.liveBy.get(k); if (lb === undefined || lb !== x) continue;
         if (this.f.fabricLinkCarries(this.id, x)) continue;   // L8.48: a link that still carries is not silence. A half-open cut does not carry
+        { const fh = this.fhdIn.get(k); if (fh !== undefined && fh[0] === x && fh[1] >= this.seatedAt && this.TICK - fh[1] < K.NOTMINE_WAIT) continue; }   // L8.7.1: a row-mate heard x first-hand at this cell inside the window: in my room, carried by a friend (C++: mesh_island.inc islandForkLive)
         const it = this.live.get(k); if (it === undefined || it < this.seatedAt) continue;
         let since = it; if (this.deafFloor >= 0 && this.deafFloor > since) since = this.deafFloor;
         if (this.TICK - since < K.NOTMINE_WAIT) continue;
@@ -258,7 +277,7 @@
     l16WaveTick() {
       const lv = this.w.lv;
       if (!this.f.fabricDoors() || this.state !== 1 || this.l16WaveAt < 0 || this.l16Next >= this.l16List.length || this.islandAskAt < 0 || this.lastReach >= this.islandAskAt) return false;
-      if (this.TICK - this.l16WaveAt < K.L16_WAVE) { if (lv.L16HEDGE > 0 && !this.l16Hedged && this.TICK - this.l16WaveAt >= lv.L16HEDGE && this.l16Busy.length === 0) { const at = this.l16WaveAt, fa = this.l16FreshAt; this.l16Wave(1); this.l16WaveAt = at; this.l16FreshAt = fa; this.l16Hedged = true; return true; } return false; }
+      if (this.TICK - this.l16WaveAt < K.L16_WAVE) { if (lv.L16HEDGE > 0 && !this.l16Hedged && this.TICK - this.l16WaveAt >= lv.L16HEDGE && this.l16Busy.length === 0) { const at = this.l16WaveAt; this.l16Wave(1); this.l16WaveAt = at; this.l16Hedged = true; return true; } return false; }   // L16.14.1: a hedge that asks a never-asked greeter restarts the island's silence clock (l16Wave does it on a fresh name)
       this.l16Wave(this.l16List.length); return true;
     },
 

@@ -70,7 +70,7 @@
         for (const g of m.list) if (g >= 0 && g !== id && !known.has(g)) {
           const seen = (this.strangeSeen.has(g) ? this.strangeSeen.get(g) : 0) + 1; next.set(g, seen);
           if (seen >= 2) { this.xrOk.set(g, TICK); if (this.xrOk.size > K.RELAY_CAP) { const old = []; for (const [k, v] of this.xrOk) if (TICK - v > 2 * K.RELAY_TTL) old.push(k); for (const o of old) this.xrOk.delete(o); } }
-          if (seen >= need) { const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = id; this.emit(g, h); next.delete(g); }
+          if (seen >= need) { const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = id; this.emit(g, h); next.set(g, need); }   // L8.5.4: greet a persistent stranger on every listing (a HELLO over a friend can die with the friend's dark spell)
         }
         this.strangeSeen = next;   // ids no longer listed/known drop out
       }
@@ -116,7 +116,7 @@
       if (this.state === 1 && this.oldCell && (this.rcPendAt >= 0 || this.rcRound2) && m.roster.length) { this.roster = kvCopy(m.roster); this.haveRoster = true; this.lastReach = TICK; return; }   // L3.10.6
       if (this.state === 1) {
         if (m.roster.length === 0) { this.retryAt = TICK - 10; return; }
-        if (this.entryTerm() && m.from >= 0) { this.gateway = m.from; this.islandAskAt = -1; }
+        if (this.entryTerm() && m.from >= 0) { this.gateway = m.from; this.islandAskAt = -1; this.islandAskN = 0; }
         if (m.line >= 0) { this.lineAdopt(m.line, 'home'); if (m.lineF) this.lineFork = true; }
         this.roster = kvCopy(m.roster); this.haveRoster = true; this.lastReach = TICK; this.seatTries = 0; this.resumeTries = 0;
         let t;
@@ -218,6 +218,7 @@
     onReclaimed(m) {
       if (this.l3112On() && m.nc === this.id) this.rcRtAt = -1;   // L3.11.2: answered
       if (m.nc === this.id) this.rcSentAt = -1;   // L3.11.3: answered
+      if (m.nc === this.id && m.gkey) this.genKey = m.gkey;   // L3.11.5: the hand-back carries this meeting's genesis key (C++: onReclaimed)
       const TICK = this.TICK, id = this.id;
       if ((this.state === 1 || this.state === 2) && m.nc === id && this.oldCell) {
         if (m.tag === 1 && m.ck === this.oldCell - 1) { this.oldCell = 0; this.rcPendAt = -1; this.trace('RECLAIM-TAKE', id, m.coord, 'from=%d beside', m.owner); this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, [], m.ppL); if (this.pp >= 0 && this.pp !== id) this.placer = this.pp; return; }   // the hole's mover already holds my old cell

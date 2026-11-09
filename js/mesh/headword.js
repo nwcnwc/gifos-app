@@ -78,6 +78,15 @@
         if (TICK - lv > W) continue;
         m.fhd.push({ k, v: v[0], age: TICK - lv, ch: -1, ba: -1, tn: 0 });
       }
+      // L8.7.1: the carrier's word — every Section-1 occupant I hear first-hand over a channel I hold (C++: d52Fh)
+      if (!this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return;
+      for (const c of ownedLinks(this.coord)) {
+        if (c.pc !== 0) continue; const k = ckey(c); const x = this.occGet(k); if (x < 0 || x === this.id) continue;
+        if (m.fhd.some((f) => f.k === k)) continue;
+        const lv = this.live.get(k); if (lv === undefined || TICK - lv > W) continue;
+        if (!this.f.fabricLinkCarries(this.id, x)) continue;
+        m.fhd.push({ k, v: x, age: TICK - lv, ch: -1, ba: -1, tn: 0 });
+      }
     },
 
     // S1SYNC in: another seat's first-hand word.

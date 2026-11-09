@@ -479,7 +479,7 @@
       const cm = colMates(this.coord); for (let q = 0; q < C - 1; q++) { const t = this.occGet(ckey(cm[q])); if (t >= 0 && t !== this.id) tg.add(t); }
       // § G ROOT FOLD: the digest table rides S1SYNC, relayed at the author's stamp and a grown relative age.
       const digs = this.l10Digs();
-      for (const t of tg) { const m = newMsg('S1SYNC'); if (!early) m.ent = ents.map((e) => ({ ...e })); m.digs = digs.map(digM.cloneDigE); m.l10E = early; if (!early && this.vacSeen.size) this.d52Fh(m); this.emit(t, m); }
+      for (const t of tg) { const m = newMsg('S1SYNC'); if (!early) m.ent = ents.map((e) => ({ ...e })); m.digs = digs.map(digM.cloneDigE); m.l10E = early; if (!early) this.d52Fh(m); this.emit(t, m); }
     },
 
     // C++: mesh_seat.inc:Seat::l13MateGone

@@ -674,7 +674,10 @@
       // address, so without this the pool stays empty until E3 (100-200s):
       // exactly the window the tear drill founds a second meeting in.
       sock.onopen = () => {
-        if (!stopped && iAmAGreeter()) reregister('reconnect');
+        // A reopened socket has NO pool entry (the entry was the old socket's attachment). The 8 s throttle
+        // exists to stop a reply chain looping, not to cover a reopen: a greeter that registered 3 s ago and
+        // reconnected now sent nothing and was off the door until E3 (aws01 2026-11-09: the next knocker founded).
+        if (!stopped && iAmAGreeter()) { lastRegAt = 0; reregister('reconnect'); }
       };
       sock.onmessage = (ev) => {
         if (stopped) return;
@@ -780,10 +783,14 @@
     // socket just reconnected, a greeters reply came back empty, or the idle
     // keepalive is due. Throttled so a solo greeter's own empty replies can
     // never chain into a knock loop. Every call is stamped into greeterTrace.
+    let regLateT = 0;   // one deferred register while the throttle holds: a throttled call is delayed, never lost
     function reregister(why) {
       if (stopped || !seat || !iAmAGreeter()) return;
       const now = Date.now();
-      if (now - lastRegAt < 8000) return;
+      if (now - lastRegAt < 8000) {
+        if (!regLateT) regLateT = setTimeout(() => { regLateT = 0; reregister(why + '-late'); }, 8000 - (now - lastRegAt));
+        return;
+      }
       lastRegAt = now; regPendingAt = now;
       REGISTER_MYSELF_AS_A_GREETER(gkStr());
       greeterTrace.push({ t: now, tick: env.TICK, state: seat.state, post: seat.state,

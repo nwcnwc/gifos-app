@@ -829,6 +829,9 @@
     ["l1ByeKidId", "{u64:i32}"],   // OMap<uint64_t,int>  (line 1887)
     ["l13Omit", "{u64:(i32,i32)}"],   // OMap<uint64_t,pair<int,int>>  (line 1888)
     ["islandAskAt", "i32"],   // int = -1  (line 1891)
+    ["islandAskN", "i32"],   // int = 0  (line 1891)
+    ["islandAsked", "<i32>"],   // OSet<int>  (L8.1.2: greeters asked this entry)
+    ["islandLast", "bool"],   // bool = false  (L8.1.2: the confirm knock is out)
     ["forkAt", "i32"],   // int = -1  (line 1891)
     ["islandFounder", "bool"],   // bool = false  (line 1891)
     ["forkSilent", "bool"],   // bool = false  (line 1891)
@@ -1354,6 +1357,8 @@
     u2Row: 9007199254740991,
     u2Told: -1,
     islandAskAt: -1,
+    islandAskN: 0,
+    islandLast: false,
     forkAt: -1,
     islandFounder: false,
     forkSilent: false,
