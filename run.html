@@ -16544,6 +16544,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // relay-roster reconcile — the relay's roster is the greeter pool, not
     // the room. Runs on the mesh node's onUpdate (each 500ms tick).
     let seatedBeatSent = false;
+    // True while this page holds its seat. A page that is still knocking has no roster yet,
+    // and the pcs it already opened are how it gets back in.
+    function seatHeld() {
+      const s = meshSeat();
+      return !!(s && s.hasCoord && s.state === 3);
+    }
+    // The absence backstop closes a disconnected pc only once this page is seated.
+    // While it is knocking, that close removed the only way back.
+    function pcAbsentDrop(p, now) {
+      if (!seatHeld()) return false;
+      return !!(p && p.absentSince && !p.connected && now - p.absentSince > ABSENT_GRACE);
+    }
     function renderFromOcc() {
       const s = meshSeat();
       if (!s) return;
@@ -16666,8 +16678,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // 15 s that makes it noRoute, and a locked-out page's line never read
       // 'cannot-reach-room' (reachCounts skips an absent pair). A door is
       // judged by its transport, not by the roster.
-      const seatedHere = (() => { const s = meshSeat(); return !!(s && s.hasCoord && s.state === 3); })();
-      for (const [pid, p] of peers) if (!p.qa && !ids.has(pid) && !linkTo(pid) && !(p.boot && !seatedHere) && !p.absentSince) p.absentSince = Date.now();
+      // Same for every pc, not only the door: occ was just cleared, so a carrier this page still
+      // holds is not in the roster and linkTo is false. Starting the clock here closed it.
+      const seatedHere = !!(s && s.hasCoord && s.state === 3);
+      if (seatedHere) for (const [pid, p] of peers) if (!p.qa && !ids.has(pid) && !linkTo(pid) && !p.absentSince) p.absentSince = Date.now();
       for (const pid of Object.keys(rosterNames)) if (!ids.has(pid)) delete rosterNames[pid];
       reconcileGrid();
       updateStatus();
@@ -18794,7 +18808,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           }
         } else { p.absentSince = 0; } // a mesh-named neighbour is never absent
         const st = p.pc.connectionState;
-        if (p.absentSince && !p.connected && now - p.absentSince > ABSENT_GRACE) { dropPeer(pid); continue; }
+        if (pcAbsentDrop(p, now)) { dropPeer(pid); continue; }
         // A pc that lands in 'closed' can't be ICE-restarted; it is dropped.
         if (!p.absentSince && st === 'closed') { dropPeer(pid, meshKnows(pid)); continue; } // the seat re-dials a pc it still needs
         // A pc WEDGED in 'connecting' never completed its first ICE handshake —
