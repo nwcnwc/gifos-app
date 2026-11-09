@@ -808,6 +808,32 @@
     return (w > 0 && h > 0) ? { w: w, h: h, from: 'source' } : { w: 0, h: 0, from: 'none' };
   }
 
+  // Put each saved Fit panel back where it was dropped: 'stage' over a share,
+  // 'row' with none. view is the area the panels live in, in the tiles' own
+  // coordinates (the feed), or a function returning it (read only when a spot
+  // is saved). pad is the gutter inset of the drawn tiles.
+  function placeFloats(lay, view, store, orient, pad) {
+    const ML = GifOS.meetLayout;
+    if (!ML || !ML.placeFloat || !lay || !lay.rects) return lay;
+    const next = lay.rects.slice();
+    let moved = false, area = null;
+    for (let kindi = 0; kindi < 2; kindi++) {
+      const kind = kindi ? 'row' : 'stage';
+      const saved = ML.loadFloat(store, kind, orient);
+      if (!saved) continue;
+      const group = [], idx = [];
+      for (let i = 0; i < next.length; i++) if (next[i].float === kind) { group.push(next[i]); idx.push(i); }
+      if (!group.length) continue;
+      if (!area) area = typeof view === 'function' ? view() : view;
+      const placed = ML.placeFloat(group, saved, area, pad);
+      if (placed !== group) {
+        for (let k = 0; k < idx.length; k++) next[idx[k]] = placed[k];
+        moved = true;
+      }
+    }
+    return moved ? Object.assign({}, lay, { rects: next }) : lay;
+  }
+
   // opts: { feed, tiles, faces, video, vw, vh, phone, now, onSettle }
   // tiles: the row (and the stage), each already a direct peer video.
   // faces: who is in the stadium. They become one box, not one tile each.
@@ -863,27 +889,17 @@
     // fill the screen and the dock floats over them (Nathan 2026-10-19 16:42).
     // The held line decides it, so a tuck or a wake gives the same answer.
     // (2026-11-09: a phone reserves no band, so there is no float pass.)
-    // A saved drag is a center fraction of the tab. Applied after the fit
-    // pass, so the default layout stays what the geometry tests measure.
+    // A saved drag is a center fraction of the feed, the same area the drag
+    // measured. Applied after the fit pass, so the default layout stays what
+    // the geometry tests measure. The tiles are drawn inset by the gutter.
     if (ML.placeFloat && lay && lay.rects && lay.gallery !== 'scroll') {
-      const view = { x: 0, y: 0, w: +opts.vw || box.w || 1, h: +opts.vh || box.h || 1 };
+      const pad = (opts.phone || lay.zones) ? 0 : GUTTER / 2;
       let store = opts.store || null;
       if (!store) { try { if (typeof localStorage !== 'undefined') store = localStorage; } catch (e) {} }
-      const orient = ML.floatOrient(view);
-      const next = lay.rects.slice();
-      let moved = false;
-      for (let kindi = 0; kindi < 2; kindi++) {
-        const kind = kindi ? 'row' : 'stage';
-        const group = [], idx = [];
-        for (let i = 0; i < next.length; i++) if (next[i].float === kind) { group.push(next[i]); idx.push(i); }
-        if (!group.length) continue;
-        const placed = ML.placeFloat(group, ML.loadFloat(store, kind, orient), view);
-        if (placed !== group) {
-          for (let k = 0; k < idx.length; k++) next[idx[k]] = placed[k];
-          moved = true;
-        }
-      }
-      if (moved) lay = Object.assign({}, lay, { rects: next });
+      const orient = ML.floatOrient({ w: +opts.vw || box.w || 1, h: +opts.vh || box.h || 1 });
+      lay = placeFloats(lay, function () {
+        return { x: 0, y: 0, w: feed.clientWidth > 0 ? feed.clientWidth : box.w, h: feed.clientHeight > 0 ? feed.clientHeight : box.h };
+      }, store, orient, pad);
     }
     for (let i = 0; i < tiles.length; i++) {
       if (tiles[i].me || tiles[i].id === 'me') markSelf(tiles[i].el, lay.self);
@@ -1279,6 +1295,13 @@
     const store = opts.store || root.localStorage;
     let drag = null;
     function orient() { return ML.floatOrient({ w: root.innerWidth || 0, h: root.innerHeight || 0 }); }
+    // The feed's box on screen: the area the panels are placed in and dragged in.
+    function area() {
+      const feed = doc.getElementById ? doc.getElementById('feed') : null;
+      const r = feed && feed.getBoundingClientRect ? feed.getBoundingClientRect() : null;
+      if (r && r.width > 0 && r.height > 0) return { x: r.left, y: r.top, w: r.width, h: r.height };
+      return { x: 0, y: 0, w: root.innerWidth || 0, h: root.innerHeight || 0 };
+    }
     function members(kind) { return doc.querySelectorAll ? doc.querySelectorAll('[data-float="' + kind + '"]') : []; }
     function union(list) {
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -1306,7 +1329,7 @@
         origins.push({ el: list[i], left: parseFloat(list[i].style.left) || 0, top: parseFloat(list[i].style.top) || 0 });
       }
       const g = union(list);
-      drag = { id: e.pointerId, x: e.clientX, y: e.clientY, kind: kind, origins: origins, gx: g.x, gy: g.y, gw: g.w, gh: g.h, moved: false };
+      drag = { id: e.pointerId, x: e.clientX, y: e.clientY, kind: kind, origins: origins, gx: g.x, gy: g.y, gw: g.w, gh: g.h, area: area(), moved: false };
       try { tile.setPointerCapture(e.pointerId); } catch (err) {}
     });
     doc.addEventListener('pointermove', function (e) {
@@ -1314,11 +1337,8 @@
       const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
       if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
       if (!drag.moved) return;
-      const vw = root.innerWidth || 0, vh = root.innerHeight || 0;
-      let nx = drag.gx + dx, ny = drag.gy + dy;
-      nx = Math.min(Math.max(0, nx), Math.max(0, vw - drag.gw));
-      ny = Math.min(Math.max(0, ny), Math.max(0, vh - drag.gh));
-      const adx = nx - drag.gx, ady = ny - drag.gy;
+      const c = ML.clampFloat({ x: drag.gx + dx, y: drag.gy + dy, w: drag.gw, h: drag.gh }, drag.area);
+      const adx = c.x - drag.gx, ady = c.y - drag.gy;
       for (let i = 0; i < drag.origins.length; i++) {
         drag.origins[i].el.style.left = (drag.origins[i].left + adx) + 'px';
         drag.origins[i].el.style.top = (drag.origins[i].top + ady) + 'px';
@@ -1328,12 +1348,10 @@
       if (!drag || (e && e.pointerId != null && e.pointerId !== drag.id)) return;
       const moved = drag.moved;
       const kind = drag.kind;
+      const box = drag.area;
       drag = null;
       if (!moved) return;
-      const list = members(kind);
-      const g = union(list);
-      const vw = root.innerWidth || 1, vh = root.innerHeight || 1;
-      ML.saveFloat(store, kind, orient(), { cx: (g.x + g.w / 2) / vw, cy: (g.y + g.h / 2) / vh });
+      ML.saveFloat(store, kind, orient(), ML.floatSpot(union(members(kind)), box));
       const stop = function (ev) {
         ev.preventDefault();
         ev.stopPropagation();
@@ -1375,6 +1393,7 @@
     dockRest: dockRest,
     installSelf: installSelf,
     installFloat: installFloat,
+    placeFloats: placeFloats,
     applyCrop: applyCrop,
   };
   GifOS.meetViews = api;

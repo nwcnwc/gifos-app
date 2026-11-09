@@ -228,20 +228,39 @@
     if (!rects.length) return { x: 0, y: 0, w: 0, h: 0 };
     return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
   }
-  // Move a group so its center sits at the saved fraction of the tab, then
-  // keep the whole group inside the tab. No saved spot returns the rects.
-  function placeFloat(rects, saved, view) {
+  // Where a box sits in an area, as the center fraction of that area. Drag
+  // and placement use the same area, so a drop is stored as released.
+  function floatSpot(box, area) {
+    const ax = area && area.x || 0, ay = area && area.y || 0;
+    const aw = Math.max(1, area && area.w || 0), ah = Math.max(1, area && area.h || 0);
+    return { cx: (box.x - ax + box.w / 2) / aw, cy: (box.y - ay + box.h / 2) / ah };
+  }
+  // Keep a box's top-left so the whole box stays inside the area. Clamp only.
+  function clampFloat(box, area) {
+    const ax = area && area.x || 0, ay = area && area.y || 0;
+    const aw = Math.max(0, area && area.w || 0), ah = Math.max(0, area && area.h || 0);
+    return {
+      x: Math.min(Math.max(ax, box.x), Math.max(ax, ax + aw - box.w)),
+      y: Math.min(Math.max(ay, box.y), Math.max(ay, ay + ah - box.h)),
+    };
+  }
+  // Move a group so its center sits at the saved fraction of the area, then
+  // keep the whole group inside it. pad is how far the drawn tiles are inset
+  // from their cells (the gutter), so the drawn group reaches the area edge and
+  // no further. No saved spot returns the rects.
+  function placeFloat(rects, saved, view, pad) {
     if (!rects || !rects.length || !saved) return rects;
     const g = groupBox(rects);
+    const p = pad > 0 ? pad : 0;
     const vx = view && view.x || 0, vy = view && view.y || 0;
     const vw = Math.max(1, view && view.w || 0), vh = Math.max(1, view && view.h || 0);
     let nx = vx + saved.cx * vw - g.w / 2;
     let ny = vy + saved.cy * vh - g.h / 2;
-    const maxX = vx + vw - g.w, maxY = vy + vh - g.h;
-    nx = Math.min(Math.max(vx, nx), Math.max(vx, maxX));
-    ny = Math.min(Math.max(vy, ny), Math.max(vy, maxY));
+    const minX = vx - p, minY = vy - p;
+    nx = Math.min(Math.max(minX, nx), Math.max(minX, vx + vw + p - g.w));
+    ny = Math.min(Math.max(minY, ny), Math.max(minY, vy + vh + p - g.h));
     const dx = nx - g.x, dy = ny - g.y;
-    if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return rects;
+    if (dx === 0 && dy === 0) return rects;
     const out = [];
     for (let i = 0; i < rects.length; i++) out.push(Object.assign({}, rects[i], { x: rects[i].x + dx, y: rects[i].y + dy }));
     return out;
@@ -253,6 +272,7 @@
     loadBar: loadBar, saveBar: saveBar,
     FLOAT_KEY: FLOAT_KEY, floatOrient: floatOrient, loadFloat: loadFloat, saveFloat: saveFloat,
     clearFloat: clearFloat, groupBox: groupBox, placeFloat: placeFloat,
+    floatSpot: floatSpot, clampFloat: clampFloat,
     SELF_KEY: SELF_KEY, SELF_DEFAULT: SELF_DEFAULT, normalizeSelf: normalizeSelf,
     loadSelf: loadSelf, saveSelf: saveSelf, selfEdge: selfEdge,
     floatSelf: floatSelf, nudgeSelf: nudgeSelf,
