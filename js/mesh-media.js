@@ -652,7 +652,14 @@
             drawOverlay(dx, dy, cell, t.lbl);
             continue;
           }
-          if (!sw || !sh) { continue; } // source not ready — leave dark, next paint fills
+          // NO FRAME YET (a copy swapping in, a carrier's first key, a throttled
+          // tab): the cell keeps its place AND its name, like an admin's dark
+          // cell. The name is the stager's own (lbl from labelFor(sid)), not the
+          // picture's, so it never waits for pixels. Next paint fills the face.
+          if (!sw || !sh) {
+            if (t.n === 1) { ctx.fillStyle = '#07090c'; ctx.fillRect(dx, dy, cell, cell); drawOverlay(dx, dy, cell, t.lbl); }
+            continue;
+          }
           try {
             if (t.n === 1 && t.cols === 1) {
               drawLeaf(t, el, sw, sh, dx, dy, cell);
