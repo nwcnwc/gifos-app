@@ -118,17 +118,31 @@
   }
 
 
-  function dockControlsTop(doc) {
-    const bar = doc.querySelector('.bar');
-    if (!bar) return 0;
-    let top = 0;
-    const nodes = bar.querySelectorAll('#cam, #mic, #reactbtn, #bartoggle, #leavebtn');
-    for (let i = 0; i < nodes.length; i++) {
-      const t = restingTop(nodes[i]);
-      if (t > 0 && (top === 0 || t < top)) top = t;
+  // Where the dock and its buttons stand at home. Both drag owners are
+  // undone for the reading: placeDock's translate and installBar's
+  // left/top. Clearing a button's own transform never undid the bar's.
+  const DOCK_DRAG_PROPS = ['left', 'top', 'right', 'bottom', 'transform'];
+  function dockRest(doc) {
+    const out = { top: 0, btnTop: 0 };
+    const bar = doc && doc.querySelector ? doc.querySelector('.bar') : null;
+    if (!bar || !bar.style) return out;
+    const keep = {};
+    for (let i = 0; i < DOCK_DRAG_PROPS.length; i++) keep[DOCK_DRAG_PROPS[i]] = bar.style[DOCK_DRAG_PROPS[i]];
+    for (let i = 0; i < DOCK_DRAG_PROPS.length; i++) bar.style[DOCK_DRAG_PROPS[i]] = '';
+    try {
+      out.top = restingTop(bar);
+      const nodes = bar.querySelectorAll('#cam, #mic, #reactbtn, #bartoggle, #leavebtn');
+      for (let i = 0; i < nodes.length; i++) {
+        const t = restingTop(nodes[i]);
+        if (t > 0 && (out.btnTop === 0 || t < out.btnTop)) out.btnTop = t;
+      }
+    } finally {
+      for (let i = 0; i < DOCK_DRAG_PROPS.length; i++) bar.style[DOCK_DRAG_PROPS[i]] = keep[DOCK_DRAG_PROPS[i]];
     }
-    return top;
+    return out;
   }
+
+  function dockControlsTop(doc) { return dockRest(doc).btnTop; }
 
   // The dock and the shown Live/Record buttons, as screen boxes.
   function chromeMarks(doc) {
@@ -212,7 +226,8 @@
       const bar = doc.querySelector('.bar');
       const a = restingTop(note);
       const b = restingTop(state);
-      const d = restingTop(bar);
+      const rest = dockRest(doc);
+      const d = bar ? rest.top : 0;
       let top = 0;
       if (a > 0 && b > 0) top = Math.min(a, b);
       else top = a > 0 ? a : b;
@@ -223,7 +238,7 @@
       // Video and Mic are the line a face must not cross. On a sideways
       // phone the dock is taller than Record and sticks up into the feed.
       let edge = callChromeTop;
-      const btnTop = dockControlsTop(doc);
+      const btnTop = rest.btnTop;
       // Sideways, Video sticks up past Record. Stop there.
       if (btnTop > 0 && (edge === 0 || btnTop < edge)) edge = btnTop;
       // Upright, the faces stop at Record's row (see-everyone, chat-preview,
@@ -1341,6 +1356,7 @@
     apply: apply,
     stadFrameSize: stadFrameSize,
     installBar: installBar,
+    dockRest: dockRest,
     installSelf: installSelf,
     installFloat: installFloat,
     applyCrop: applyCrop,
