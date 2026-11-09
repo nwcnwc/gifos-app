@@ -26217,12 +26217,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function rowMixRms(slot, stream) {
       const track = stream && stream.getAudioTracks ? stream.getAudioTracks()[0] : null;
       if (!track || track.readyState === 'ended' || !ensureAc()) return -1;
-      if (!slot.an || slot.id !== track.id) {
+      // Keyed by the track OBJECT, never its id: a transport rebuild resolves the same (via, sid) to a NEW track with the
+      // SAME id (claimRedun re-binds the claim in place), and a meter left on the ended object reads 0 for a mix that plays.
+      if (!slot.an || slot.track !== track) {
         try {
           if (slot.src) slot.src.disconnect();
           const src = ac.createMediaStreamSource(new MediaStream([track]));
           const an = ac.createAnalyser(); an.fftSize = 256; src.connect(an);
-          slot.an = an; slot.src = src; slot.data = new Uint8Array(an.fftSize); slot.id = track.id;
+          slot.an = an; slot.src = src; slot.data = new Uint8Array(an.fftSize); slot.track = track;
         } catch (e) { return -1; }
       }
       try {
@@ -27041,7 +27043,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const STG_ZERO_MS = 2000;  // stage audio gets no grace: a stage copy with zero bytes this long after its claim, or after its wake, is dead
     const HOT_VOID_MS = 12000; // hot-and-VOID: a hot primary with ZERO bytes this long is a husk, not a slow pipe (frza5)
     const mosFb = new Map(); // rk -> { wakeAt, f0, prefSince, lastSwitch, dark, lastBytes, lastAdvanceAt, q, fp, fpDecayAt, flowSince, b0, d0, stdFdec, claimAt } (wake/failback/watchdog state)
-    const mkFb = () => ({ wakeAt: 0, f0: 0, prefSince: 0, lastSwitch: 0, dark: false, lastBytes: -1, lastAdvanceAt: 0, q: 0, fp: 0, fpDecayAt: 0, flowSince: 0, b0: -1, d0: -1, stdFdec: -1, stdB: -1, stdAdvAt: 0, claimAt: 0 });
+    const mkFb = () => ({ wakeAt: 0, f0: 0, prefSince: 0, lastSwitch: 0, dark: false, lastBytes: -1, lastAdvanceAt: 0, q: 0, fp: 0, fpDecayAt: 0, flowSince: 0, b0: -1, d0: -1, stdFdec: -1, stdB: -1, stdAdvAt: 0, claimAt: 0, hadPref: false, left: null });
     // The PREFERRED announcer of a redundant slot: the tree-direct path the
     // media plane names as the producer's own leg. Failback aims here; any
     // other live path is a legitimate carrier but only a stand-in.
@@ -27350,6 +27352,28 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const q = +rk.slice(6), head = occPid({ pc: 0, r: q, i: 0 });
         // L49: while that row's mix is level-dead, the carrier is the copy. Byte flow on the head's picture must not win it back.
         if (rowMixHold(q)) { const alt = cand.find((x) => x.live && head && x.from !== head); if (alt) return alt; }
+        // The head's own copy is the path while it is live and not dark (bytes flat on a pipe that flowed: a frozen head
+        // keeps its stream in `incoming` for the whole ICE timeout, and every copy of its product is the same stopped
+        // picture). Otherwise, L2.7: the heir's product reaches me through my row-mate on the heir's column, one carry
+        // (announced h 1, src the heir). That copy is the path. A copy relayed twice (x1 -> x2 -> sdrow, h 2) or a
+        // carried copy of the head's own product is a stand-in: claimed when nothing better is live, left for the path
+        // the moment it flows. Ties: the current primary, then the lowest pid (the stgRank rule, the same on every head).
+        const cur = mosIn.get(rk), fbq = mosFb.get(rk);
+        const headCopy = head ? cand.find((x) => x.live && x.from === head) : null;
+        const headDark = !!(fbq && fbq.dark && cur && cur.via === head);
+        if (headCopy && !headDark) return headCopy;
+        const hopOf = (x) => (x.ann && typeof x.ann.h === 'number') ? x.ann.h : 999;
+        const isCur = (x) => !!(cur && x.from === cur.via && x.sid === cur.streamId);
+        let best = null;
+        for (const x of cand) {
+          if (!x.live || !x.ann || !x.ann.src || x.ann.src === head || hopOf(x) > 1) continue;
+          if (!best || hopOf(x) < hopOf(best)) { best = x; continue; }
+          if (hopOf(x) > hopOf(best)) continue;
+          if (isCur(x) && !isCur(best)) best = x;
+          else if (!isCur(x) && !isCur(best) && String(x.from) < String(best.from)) best = x;
+        }
+        if (best) return best;
+        if (headDark) return null;
         co = { pc: 0, r: q, i: 0 };
       }
       const pid = rk === 'sdm' ? rowHeadPid(c) : (co ? occPid(co) : null);
@@ -27386,6 +27410,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           pri = mkEnt(pick); mosIn.set(rk, pri); repaintRedun(rk, pri.stream);
           if (DEBUG_ON && rk.indexOf('stg:') === 0) swapPicNote(rk, 'claim', 'first claim ' + (pref && pick === pref ? 'pref' : 'live'));
           fb.claimAt = now; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; fb.suspect = false; fb.stdTried = null; // fresh primary — the watchdog re-baselines
+          fb.hadPref = !!(pref && pick === pref); // a stand-in claimed while nothing was preferred is not a failback anchor
           if (std && std.via === pri.via && std.streamId === pri.streamId) { dropStandby(rk); std = null; }
         }
       }
@@ -27485,7 +27510,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // (pure failback) additionally waits out the settle window — hysteresis
         // (dark skips it: dark IS a failover, and MOS_SETTLE on lastSwitch
         // still bounds any stall/recover oscillation to one swap per window).
-        const settled = !priLive || fb.dark || mixDeaf || fb.picDead || u2Over || ((now - fb.prefSince >= MOS_SETTLE) && (now - fb.lastSwitch >= MOS_SETTLE));
+        // A primary installed while nothing was preferred is a stand-in. The first
+        // preferred copy is not a return to a path we left, so neither hold applies.
+        // Coming back to the copy just left, or leaving one preference for another,
+        // still waits. The timer itself is unchanged.
+        const firstPref = !!(stdIsPref && !priIsPref && !fb.hadPref && (!pref || fb.left !== pref.from));
+        const settled = !priLive || fb.dark || mixDeaf || fb.picDead || u2Over || firstPref || ((now - fb.prefSince >= MOS_SETTLE) && (now - fb.lastSwitch >= MOS_SETTLE));
         if (DEBUG_ON && !(flowing && settled) && rk.indexOf('stg:') === 0) swapPicNote(rk, 'hold', 'flowing=' + (flowing ? 1 : 0) + ' settled=' + (settled ? 1 : 0) + ' f0=' + fb.f0 + ' stdAdv=' + (stdAdvanced ? 1 : 0));
         if (flowing && settled) {
           const old = pri;
@@ -27498,6 +27528,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // A share on the new path: seats below me need a key frame to decode my new source, so ask now.
           if (rk.indexOf('stg:') === 0 && pri.stream && pri.stream.getVideoTracks().length) { try { kfNeed(rk); } catch (e) {} }
           pri.deadAt = 0; fb.lastSwitch = now; fb.wakeAt = 0; fb.prefSince = 0;
+          fb.left = old.via; fb.hadPref = !!stdIsPref; // the copy just installed is the anchor; the one left is not a fresh preference
           fb.picDead = false; fb.picStdOk = false; fb.picStd0 = null; fb.picRef = null;
           fb.dark = false; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; fb.fp = 0; fb.fpDecayAt = 0; fb.b0 = -1; fb.d0 = -1; fb.stdFdec = -1; fb.stdAdvAt = 0; fb.claimAt = now; fb.suspect = false; fb.stdTried = null; // fresh primary — the watchdog re-baselines and the penalty clears
           repaintRedun(rk, pri.stream);
@@ -28181,14 +28212,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // receiving head multi-subscribes (primary + hot standby, S3). Then
           // PACK into THE STADIUM, fan it down my down-link + keep my row
           // current.
+          // Every row copy names its packer (src) and its carries (h: 0 here, +1 per relay), so a head ranks copies by path.
           for (const hm of T.colMates(hc)) {
-            const jk0 = shipMos('sdrow:' + c.r, occPid(hm), prodPack.stream, Object.assign({ row: c.r }, prodMeta())); if (jk0) wanted.add(jk0);
+            const jk0 = shipMos('sdrow:' + c.r, occPid(hm), prodPack.stream, Object.assign({ row: c.r, h: 0, src: myId }, prodMeta())); if (jk0) wanted.add(jk0);
           }
           // L2.7 at Section 1: the heir has no pc to the other heads; its column-mates carry its product to their heads (x2 -> sdrow), as a mate carries its head's x1
-          if (actHead) for (const cm of T.colMates(c)) { const jx = shipMos('x2', occPid(cm), prodPack.stream, Object.assign({ row: c.r }, prodMeta())); if (jx) wanted.add(jx); }
+          if (actHead) for (const cm of T.colMates(c)) { const jx = shipMos('x2', occPid(cm), prodPack.stream, Object.assign({ row: c.r, h: 0, src: myId }, prodMeta())); if (jx) wanted.add(jx); }
           for (let j = 1; j < C; j++) {
             const mate = occPid({ pc: 0, r: c.r, i: j });
-            const jk = shipMos('x1', mate, prodPack.stream, Object.assign({ row: c.r }, prodMeta())); if (jk) wanted.add(jk);
+            const jk = shipMos('x1', mate, prodPack.stream, Object.assign({ row: c.r, h: 0, src: myId }, prodMeta())); if (jk) wanted.add(jk);
           }
         }
         // ---- ONE PACK DOWN THE TREE (docs/media-plane.md) ----------------------
@@ -28239,7 +28271,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // branch out), my row's voices, each child row's block, each L14 branch.
           const outA = new Map(), rowA = new Map(), subA = new Map(), l14A = new Map();
           if (c.pc === 0) {
-            for (let q = 0; q < C; q++) { if (q === c.r) continue; const f = mosIn.get('sdrow:' + q); if (f && f.stream) outA.set('q' + q, f.stream); }
+            // SOUND FIRST. A row copy the watchdog found dark (bytes flat 700 ms on a pipe that flowed) or whose sender is
+            // gone (deadAt, under the 5 s grace) is not summed: its picture may hold the last frame under the grace, its
+            // sound would be concealment. Dark clears itself when bytes advance, so a stall comes back on its own.
+            for (let q = 0; q < C; q++) { if (q === c.r) continue; const f = mosIn.get('sdrow:' + q), fq = mosFb.get('sdrow:' + q); if (f && f.stream && !f.deadAt && !(fq && fq.dark)) outA.set('q' + q, f.stream); }
             // L49: the pulled mic, until the carried copy of that row is the one playing and it is hot. Cap 2.
             let rapN = 0;
             for (const [mk, rf] of mosIn) {
@@ -28251,7 +28286,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               outA.set('rap' + q, rf.stream); rapN++;
             }
           }
-          else if (dn && dn.stream) outA.set('dn', dn.stream);
+          // Deeper: the pack from above, the same rule (its slot is 'sdn').
+          else if (dn && dn.stream && !dn.deadAt && !((mosFb.get('sdn') || {}).dark)) outA.set('dn', dn.stream);
           for (let j = 0; j < C; j++) {
             const fp0 = j === c.i ? myId : (actHead && j === 0 ? null : occPid({ pc: c.pc, r: c.r, i: j }));
             const fp = fp0 && stagers.includes(fp0) ? null : fp0;
@@ -28352,19 +28388,22 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const x1 = mosIn.get('x1');
         // Carry only my row's live product: an x1 that died with its head, or came from a seat no longer my row's head,
         // is a husk that other heads would claim as this row and play as silence.
-        if (x1 && c.pc === 0 && !x1.deadAt && (x1.via === occPid({ pc: 0, r: c.r, i: 0 }) || x1.via === headPid)) {
+        // ...nor a frozen head's: while my row judges its head's feed gone (rowHeadIsOut), headPid is the heir, and the
+        // head's own x1 is not carried. Every copy of it is the same stopped product; carrying it kept other heads holding
+        // a "live" standby that could never flow.
+        if (x1 && c.pc === 0 && !x1.deadAt && x1.via === headPid) {
           // As mate i of my row I carry my head's product to DEST row i (row 0
           // when i===r — my column's seat there covers the wrap), via my
           // COLUMN-mate sitting in that row, who hands it to its head. This is
           // the link-disjoint backup for the direct head-column ship above.
           const dest = (c.i === c.r) ? 0 : c.i; // never my own row: i===r ⇒ r≥1 here, dest 0
           const xPid = x2Target({ pc: 0, r: dest, i: c.i });
-          const jk = shipMos('x2', xPid, x1.stream, Object.assign({ row: x1.meta.row }, blockMeta(x1)), 'x1'); if (jk) wanted.add(jk);
+          const jk = shipMos('x2', xPid, x1.stream, Object.assign({ row: x1.meta.row, h: (x1.meta && typeof x1.meta.h === 'number' ? x1.meta.h : 0) + 1, src: x1.meta && x1.meta.src }, blockMeta(x1)), 'x1'); if (jk) wanted.add(jk);
         }
         if (c.pc === 0) for (const [mk, xf] of mosIn) {
           if (mk.indexOf('x2:') !== 0 || !xf.meta || xf.meta.row == null) continue;
           if (xf.meta.row === c.r) continue; // never hand my head its own row back (a pre-move claim outlives the move)
-          const jk = shipMos('sdrow:' + xf.meta.row, headPid, xf.stream, Object.assign({ row: xf.meta.row }, blockMeta(xf)), mk); if (jk) wanted.add(jk);
+          const jk = shipMos('sdrow:' + xf.meta.row, headPid, xf.stream, Object.assign({ row: xf.meta.row, h: (typeof xf.meta.h === 'number' ? xf.meta.h : 1) + 1, src: xf.meta.src }, blockMeta(xf)), mk); if (jk) wanted.add(jk);
         }
         // L49: relay a pulled mic up to my head, and ship my own while a consumer has asked.
         if (c.pc === 0) {
