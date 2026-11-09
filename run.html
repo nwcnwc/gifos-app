@@ -38505,31 +38505,53 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const host = stagefeedEl && stagefeedEl.querySelector('[data-row="sgs"]');
         const out = { view: stageViewNow, stagers: stageIds().slice(), screenSid: null, faces: [] };
         for (const id of out.stagers) if (sharingScreen(id)) { out.screenSid = out.screenSid ? 'many' : id; }
-        const box = host && host.querySelector('.stagefaces');
-        if (!box) return out;
-        for (const w of box.children) {
-          const v = w.querySelector('video');
-          if (!v) continue;
-          let luma = null;
+        // Same 24x24 mean the overlay uses. A pack tile is the raw track, so it is not cropped.
+        const lumaOf = (v, cell) => {
           try {
-            if (v.videoWidth) {
-              const cv = document.createElement('canvas'); cv.width = 24; cv.height = 24;
-              const x = cv.getContext('2d');
-              const k = v.videoWidth / (parseFloat(v.style.width) || STAGE_FACE_PX);
-              const sx = v.dataset.cell ? -(parseFloat(v.style.left) || 0) * k : 0, sy = v.dataset.cell ? -(parseFloat(v.style.top) || 0) * k : 0;
-              const sw = v.dataset.cell ? STAGE_FACE_PX * k : v.videoWidth, sh = v.dataset.cell ? STAGE_FACE_PX * k : v.videoHeight;
-              x.drawImage(v, sx, sy, sw, sh, 0, 0, 24, 24);
-              const d = x.getImageData(0, 0, 24, 24).data; let sum = 0;
-              for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2];
-              luma = +(sum / (d.length / 4) / 765).toFixed(4);
-            }
-          } catch (e) {}
-          // named=true: the box shows the name on dark, no picture (camera
-          // off, admin video-off, or a crop the current frame does not fit).
-          const nm = w.querySelector('.stagefacename');
-          out.faces.push({ id: w.dataset.face, cell: !!v.dataset.cell, live: v.videoWidth > 0, w: v.videoWidth, h: v.videoHeight,
-            named: !!(nm && nm.style.display !== 'none'), name: nm ? nm.textContent : '',
-            bl: v.classList.contains('blur2') ? 2 : v.classList.contains('blur1') ? 1 : 0, luma });
+            if (!v.videoWidth) return null;
+            const cv = document.createElement('canvas'); cv.width = 24; cv.height = 24;
+            const x = cv.getContext('2d');
+            const k = v.videoWidth / (parseFloat(v.style.width) || STAGE_FACE_PX);
+            const sx = cell ? -(parseFloat(v.style.left) || 0) * k : 0, sy = cell ? -(parseFloat(v.style.top) || 0) * k : 0;
+            const sw = cell ? STAGE_FACE_PX * k : v.videoWidth, sh = cell ? STAGE_FACE_PX * k : v.videoHeight;
+            x.drawImage(v, sx, sy, sw, sh, 0, 0, 24, 24);
+            const d = x.getImageData(0, 0, 24, 24).data; let sum = 0;
+            for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2];
+            return +(sum / (d.length / 4) / 765).toFixed(4);
+          } catch (e) { return null; }
+        };
+        const pushFace = (id, v, cell, named, name, pack) => {
+          const face = { id, cell: !!cell, live: v.videoWidth > 0, w: v.videoWidth, h: v.videoHeight,
+            named: !!named, name: name || '',
+            bl: v.classList.contains('blur2') ? 2 : v.classList.contains('blur1') ? 1 : 0, luma: lumaOf(v, !!cell) };
+          if (pack) face.pack = true;
+          out.faces.push(face);
+        };
+        const box = host && host.querySelector('.stagefaces');
+        if (box) {
+          for (const w of box.children) {
+            const v = w.querySelector('video');
+            if (!v) continue;
+            // named=true: the box shows the name on dark, no picture (camera
+            // off, admin video-off, or a crop the current frame does not fit).
+            const nm = w.querySelector('.stagefacename');
+            pushFace(w.dataset.face, v, v.dataset.cell, nm && nm.style.display !== 'none', nm ? nm.textContent : '', false);
+          }
+        }
+        // The per-person pack draws each co-presenter as its own tile and
+        // removes the overlay, so the face is not painted twice. It is still
+        // on screen: read that tile.
+        if (host && host.dataset.pack === '1') {
+          const seen = new Set(out.faces.map((f) => f.id));
+          const feed = document.getElementById('feed');
+          if (feed) for (const el of feed.querySelectorAll('[data-stageview]')) {
+            const id = el.dataset.stageview;
+            if (!id || seen.has(id)) continue;
+            const v = el.querySelector('video');
+            if (!v) continue;
+            seen.add(id);
+            pushFace(id, v, false, false, '', true);
+          }
         }
         return out;
       },
