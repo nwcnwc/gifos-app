@@ -13,7 +13,7 @@
   const topo = req('./topo.js', 'meshTopo');
   const { cellOk } = req('./shared.js', 'meshShared');
   const K = C_.consts;
-  const { ckey, ckPc, ckR, ckI, unckey, C } = topo;
+  const { ckey, ckPc, ckR, ckI, unckey, C, ownedLinks } = topo;
   const { LS_OPEN } = C_.enums || {};
 
   const eraseFirst = (m) => { const f = m.keys().next(); if (!f.done) m.delete(f.value); };
