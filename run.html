@@ -7948,9 +7948,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       dcSend(p, { k: 'vis', park: false });
       visParkSent.set(pid, false);
     }
-    // A phone browser opens a float only from a tap, never on its own when
-    // you switch apps. Someone who left with no float, while one was there to
-    // show, is told once where Float is when they come back.
+    // A phone grid does not float on its own. Full screen can: Android's
+    // fullscreen-video path, noted with the other entry paths above. Someone
+    // who left with no float, while one was there to show, is told once where
+    // Float is when they come back.
     let pipHintArmed = false, pipHintDone = false;
     const pipBtnShown = () => { const b = document.getElementById('pipbtn'); return !!b && b.style.display !== 'none'; };
     document.addEventListener('visibilitychange', () => {
@@ -8928,14 +8929,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     let fsOwnExit = false; // an exit closeFsView asked for is on its way
     let fsFull = false; // the view was the full-screen element at the last change
     let fsAskAt = 0; // when the view last asked the browser for full screen
+    let fsOverlay = false; // the filmstrip is painted inside a document that already holds the screen
     function openFsView(key) {
       fsSel = key || null;
       fsview.classList.add('on');
       document.body.classList.add('fsopen');
       fsRefresh();
       if (!fsTick) fsTick = setInterval(fsRefresh, 2000);
-      fsAskAt = Date.now();
-      if (fsview.requestFullscreen) fsview.requestFullscreen().catch(() => {});
+      // The document already holds the screen on a phone. Asking again would
+      // put this view in the top layer and bury every sheet.
+      const own = !document.fullscreenElement;
+      fsOverlay = !own;
+      if (own && fsview.requestFullscreen) {
+        fsAskAt = Date.now();
+        fsview.requestFullscreen().catch(() => {});
+      } else fsAskAt = 0;
       try { fsclose.focus(); } catch (e) {} // the keyboard goes where the picture is
       paintInPageFull();
     }
@@ -8958,7 +8966,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const back = document.getElementById('bartoggle');
         if (back && back.offsetParent !== null) try { back.focus(); } catch (e) {}
       };
+      const overlay = fsOverlay;
+      fsOverlay = false;
       if (document.fullscreenElement === fsview) { fsOwnExit = true; document.exitFullscreen().then(refocus, () => { fsOwnExit = false; refocus(); }); }
+      else if (overlay && document.fullscreenElement === document.documentElement) { fsOwnExit = true; document.exitFullscreen().then(refocus, () => { fsOwnExit = false; refocus(); }); }
       else refocus();
       paintInPageFull();
     }
@@ -8997,6 +9008,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         fsview.requestFullscreen().catch(() => {});
         return;
       }
+      // A phone meeting's document fullscreen shows one face, so leaving the
+      // app can pin that video. An app or a broadcast keeps its own picture.
+      if (el === document.documentElement && IS_MOBILE && !fsview.classList.contains('on') && !document.body.classList.contains('has-app') && !BROADCAST) {
+        openFsView('auto');
+        return;
+      }
+      if (!el && fsOverlay && fsview.classList.contains('on')) {
+        closeFsView();
+        return;
+      }
+      if (!el && fsOwnExit && !fsFull) { fsOwnExit = false; return; }
       if (el || !fsFull) return;
       fsFull = false;
       if (fsOwnExit) { fsOwnExit = false; return; }
