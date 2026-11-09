@@ -1211,8 +1211,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   .cmsg img.avchip, .trline img.avchip, .brow img.avchip { width: 1.25rem; height: 1.25rem; object-fit: cover;
     border-radius: .25rem; vertical-align: middle; margin-right: .35rem; }
   #bc-ident { display: none; }
-  /* On the stage, between the room bar and the dock (#feed's 132px foot). */
-  body.broadcast #bc-ident.on { display: flex; position: absolute; z-index: 6; left: 0; right: 0; top: 0; bottom: 132px;
+  /* On the stage, under the room bar. No band for the floating bar: it ends by --barclear only when the bar stands over its lower half (placeBarAvoiders). */
+  body.broadcast #bc-ident.on { display: flex; position: absolute; z-index: 6; left: 0; right: 0; top: 0; bottom: var(--barclear, 0px);
     flex-direction: column; align-items: center; justify-content: center; gap: .6rem; pointer-events: none; padding: 16px; box-sizing: border-box; }
   body.broadcast #bc-ident img, #bc-ident-init { width: 256px; width: min(256px, 70vw, 40vh); height: 256px; height: min(256px, 70vw, 40vh); object-fit: cover; border-radius: 1rem; background: #14141f; }
   body.broadcast #bc-ident:not(.pic) img, body.broadcast #bc-ident.pic #bc-ident-init { display: none; }
@@ -1498,11 +1498,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
      is exactly the old behaviour). */
   #chatpanel { position: fixed; right: 0; top: var(--barh, 0px); bottom: 0; width: min(340px, 100vw); z-index: 30;
                background: var(--bg, #101018); border-left: 1px solid var(--border, #2a2a3f); display: none; flex-direction: column;
-               /* The dock is a fixed bottom bar (104px + 14px, plus a gap). On a
-                  900px window it covers the attach button and the message field.
-                  The composer sits above that band. The short-dock size is in
-                  the max-width:700px block. */
-               padding-bottom: 128px; }
+               /* No band for the floating bar: the open panel pads by --barclear,
+                  set from the bar's current box (placeBarAvoiders). */
+               padding-bottom: 0; }
   #chatpanel.open { display: flex; }
   /* Beside the call, not over it: on a wide window the room bar, header and
      stage narrow by the panel's width (body.chatside follows the panel), as
@@ -1516,11 +1514,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     body.chatside .fitbtn { right: calc(14px + var(--sidew)); }
     body.chatside .topchip { max-width: calc(100% - 460px); }
     /* The panel runs the full height. The keyboard inset still applies.
-       The composer moves up by --dock-clear only: that is how far the floating
+       The composer moves up by --barclear only: that is how far the floating
        bar reaches into the panel's lower half when it stands there
-       (setDockClear). Anywhere else the value is 0. A keyboard covers the bar
-       too, so with the keyboard up the composer sits right on the keyboard. */
-    body.chatside #chatpanel { padding-bottom: max(12px, var(--dock-clear, 0px)); }
+       (placeBarAvoiders). Anywhere else the value is 0. A keyboard covers the
+       bar too, so with the keyboard up the composer sits right on the keyboard. */
+    body.chatside #chatpanel { padding-bottom: max(12px, var(--barclear, 0px)); }
     html.kb-up body.chatside #chatpanel { padding-bottom: 12px; }
     body.chatside #chatpanel.open { bottom: var(--kb, 0px); }
     /* The call beside the chat is 460-684px: the room bar's pills move to a
@@ -1672,12 +1670,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
                opacity: 0; transition: opacity .25s; }
   .tile .cap.show { opacity: 1; }
   /* On a phone the line is one caption above Live, not a clip on the face.
-     A long line starts at the top and the rest scrolls inside the caption. */
+     A long line starts at the top and the rest scrolls inside the caption.
+     No band for the bar: it rests on the safe area over the Record row, and
+     rises above the bar's current box only when it would meet it (--barlift,
+     placeBarAvoiders). */
   #livecap {
     display: none; position: fixed; z-index: 30;
     left: calc(8px + env(safe-area-inset-left, 0px));
     right: calc(8px + env(safe-area-inset-right, 0px));
-    bottom: calc(var(--dockh, 108px) + var(--stateh, 0px) + 8px);
+    bottom: calc(var(--inset-bottom, 0px) + var(--stateh, 0px) + 8px + var(--barlift, 0px));
     max-height: 4.6em; overflow-y: auto; -webkit-overflow-scrolling: touch;
     box-sizing: border-box; padding: 8px 12px; border-radius: 12px;
     background: rgba(10,10,15,.92); color: #fff;
@@ -2172,8 +2173,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   #avstate span::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: #ffb4b4; flex: none; }
   /* Run of show: the booth's list. Viewers never see it. While it is
      open the off-air card moves to the right so the two do not stack. */
-  #rundown { display: none; position: fixed; z-index: 24; left: 14px; bottom: 128px;
-    width: min(260px, calc(100vw - 28px)); max-height: calc(100vh - 200px);
+  #rundown { display: none; position: fixed; z-index: 24; left: 14px; bottom: calc(14px + var(--inset-bottom, 0px) + var(--barlift, 0px));
+    width: min(260px, calc(100vw - 28px)); max-height: calc(100vh - 86px - var(--inset-bottom, 0px) - var(--barlift, 0px));
     flex-direction: column; gap: 8px; padding: 16px 16px 14px; box-sizing: border-box;
     background: #fff; color: #1d1d1f; border-radius: 20px;
     box-shadow: 0 16px 40px rgba(0,0,0,.28); overflow: auto; }
@@ -2196,14 +2197,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
      Program is the line to read now. Preview is the next line, smaller,
      so a volunteer does not sing ahead. This computer only: nothing here
      is drawn onto the outgoing picture, and a viewer does not see it. */
-  #lyrics { display: none; position: fixed; z-index: 24; left: 290px; right: 14px; bottom: 128px;
+  #lyrics { display: none; position: fixed; z-index: 24; left: 290px; right: 14px; bottom: calc(14px + var(--inset-bottom, 0px) + var(--barlift, 0px));
     flex-direction: column; align-items: flex-start; gap: 4px; padding: 16px 18px 14px; box-sizing: border-box;
     background: #fff; color: #1d1d1f; border-radius: 20px;
     box-shadow: 0 16px 40px rgba(0,0,0,.28); }
-  /* Grow upward from the dock, but stop under Off air. Off air sits at 18vh
+  /* Grow upward from its bottom, but stop under Off air. Off air sits at 18vh
      and is about 200px tall; on a short window the lyric card used to climb
      over it. The program line stays 32px. The card scrolls instead. */
-  #lyrics.open { display: flex; overflow: auto; max-height: calc(100vh - 18vh - 128px - 220px); }
+  #lyrics.open { display: flex; overflow: auto; max-height: calc(100vh - 18vh - 14px - 220px - var(--inset-bottom, 0px) - var(--barlift, 0px)); }
   #lyrics .ly-k { margin: 0; font: 700 16px/1.2 system-ui, sans-serif; letter-spacing: .04em;
     text-transform: uppercase; color: #0064c8; }
   #lyrics .ly-k.preview { color: #5c6370; margin-top: 8px; }
@@ -2216,8 +2217,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
      on this computer. Song reads it; nothing extra is sent to the room. */
   #song-edit { min-height: 44px; border-radius: 12px; background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0;
     font: 700 16px/1 system-ui, sans-serif; cursor: pointer; }
-  #songedit { display: none; position: fixed; z-index: 25; left: 290px; right: 14px; bottom: 128px;
-    max-width: 640px; max-height: calc(100vh - 18vh - 128px - 220px); min-height: 0;
+  #songedit { display: none; position: fixed; z-index: 25; left: 290px; right: 14px; bottom: calc(14px + var(--inset-bottom, 0px) + var(--barlift, 0px));
+    max-width: 640px; max-height: calc(100vh - 18vh - 14px - 220px - var(--inset-bottom, 0px) - var(--barlift, 0px)); min-height: 0;
     flex-direction: column; gap: 8px; padding: 16px 18px 14px; box-sizing: border-box;
     background: #fff; color: #1d1d1f; border-radius: 20px; box-shadow: 0 16px 40px rgba(0,0,0,.28); }
   #songedit.open { display: flex; }
@@ -2317,16 +2318,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       transform: none;
     }
   }
-  /* Live and Record sit on the call, above the dock, so a producer does
-     not open More to see them. Captions is in More (Talk). Live is the only
-     red mark until recording starts. --cs-cap holds the row under the
-     header (Invite, Help, Full screen) whatever the dock measures
-     (paintCallState). */
+  /* Live and Record sit on the call, so a producer does not open More to see
+     them. Captions is in More (Talk). Live is the only red mark until
+     recording starts. No band for the bar: the row rests on the safe area and
+     rises above the bar's current box only when it would meet it (--barlift,
+     placeBarAvoiders). --cs-cap holds the row under the header (Invite, Help,
+     Full screen) (paintCallState). */
   #callstate {
     position: fixed; z-index: 31;
     left: calc(8px + env(safe-area-inset-left, 0px));
     right: calc(8px + env(safe-area-inset-right, 0px));
-    bottom: min(calc(var(--dockh, 108px) + 8px), var(--cs-cap, 100vh));
+    bottom: min(calc(8px + var(--inset-bottom, 0px) + var(--barlift, 0px)), var(--cs-cap, 100vh));
     display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
     /* The row is full width; sideways its empty part lies over the tiles'
        names. Only its buttons take taps. */
@@ -2414,7 +2416,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     position: fixed; z-index: 31;
     left: calc(8px + env(safe-area-inset-left, 0px));
     right: calc(8px + env(safe-area-inset-right, 0px));
-    bottom: calc(var(--dockh, 108px) + var(--stateh, 0px) + 16px);
+    bottom: calc(var(--inset-bottom, 0px) + var(--stateh, 0px) + 16px + var(--barlift, 0px));
     display: flex; align-items: stretch; gap: 8px;
   }
   #chatnote[hidden] { display: none !important; }
@@ -2723,13 +2725,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     pointer-events: none; opacity: 0; }
   .tile .reactburst.show { animation: reactpop 1.6s ease forwards; }
   #bc-react { display: none; }
-  body.broadcast #bc-react { display: block; position: absolute; left: 0; right: 0; top: 0; bottom: 132px; z-index: 6; pointer-events: none; }
+  body.broadcast #bc-react { display: block; position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: 6; pointer-events: none; }
   body.broadcast #bc-react .reactburst { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); z-index: 5;
     background: #fff; color: #1d1d1f; font-weight: 800; font-size: 64px; line-height: 1; padding: 14px 22px; border-radius: 999px;
     pointer-events: none; opacity: 0; }
   body.broadcast #bc-react .reactburst.show { animation: reactpop 1.6s ease forwards; }
   #bc-reacts { display: none; }
-  body.broadcast #bc-reacts:not([hidden]) { display: flex; position: absolute; left: 0; right: 0; bottom: 148px; z-index: 6;
+  body.broadcast #bc-reacts:not([hidden]) { display: flex; position: absolute; left: 0; right: 0; bottom: calc(16px + var(--barlift, 0px)); z-index: 6;
     justify-content: center; align-items: flex-end; gap: 8px; pointer-events: none; }
   body.broadcast #bc-reacts .bcslot { display: flex; flex-direction: column; align-items: center; gap: 6px; }
   body.broadcast #bc-reacts .bcwho { background: rgba(0,0,0,.72); color: #fff; font: 600 14px/1.2 system-ui, sans-serif;
@@ -2994,16 +2996,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     color: #3a3a3f; cursor: grab; touch-action: none; flex: 0 0 auto;
     display: inline-flex; align-items: center; justify-content: center; }
   .bar #bargrip svg { width: 24px; height: 24px; }
-  /* Waiting room: a host list above the dock. Admit is the only blue
+  /* Waiting room: a host list over the call. Admit is the only blue
      action. Not now stays white so the two choices are not the same button. */
   #waitbtn[aria-pressed="true"] { background: #0064c8; color: #fff; }
-  /* The waiting room is the host's switch. */
+  /* The waiting room is the host's switch. No band for the bar: it rests on
+     the safe area and rises above the bar's current box only when it would
+     meet it (--barlift, placeBarAvoiders). */
   #waitlist {
     position: fixed; z-index: 40;
     left: calc(12px + env(safe-area-inset-left, 0px));
     right: calc(12px + env(safe-area-inset-right, 0px));
-    bottom: calc(var(--dockh, 108px) + 8px);
-    max-height: calc(100vh - var(--dockh, 108px) - 80px - env(safe-area-inset-top, 0px)); max-height: calc(100dvh - var(--dockh, 108px) - 80px - env(safe-area-inset-top, 0px));
+    bottom: calc(8px + var(--inset-bottom, 0px) + var(--barlift, 0px));
+    max-height: calc(100vh - 88px - env(safe-area-inset-top, 0px) - var(--inset-bottom, 0px) - var(--barlift, 0px)); max-height: calc(100dvh - 88px - env(safe-area-inset-top, 0px) - var(--inset-bottom, 0px) - var(--barlift, 0px));
     overflow-y: auto; overscroll-behavior: contain;
     background: #fff; color: #1d1d1f; border-radius: 18px; padding: 12px;
     box-shadow: 0 16px 40px rgba(0,0,0,.32);
@@ -3078,14 +3082,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   }
   /* A phone's header, Fit and Unmute stay pinned over the call. A shared
      screen dropped the gallery's box and ran up under them (the slide's top
-     and Stop sharing), and its faces ran under Record and Captions. The
-     share and its faces sit between the header band and the dock. */
+     and Stop sharing). The share and its faces start under the header band
+     and run to the safe-area bottom. No band for the bar: the bar and Record
+     float over them (Nathan 2026-11-09). */
   @media (max-width: 700px), (max-height: 500px) {
     body.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
       position: fixed; z-index: 1; margin: 0; padding: 0;
       left: env(safe-area-inset-left, 0px); right: env(safe-area-inset-right, 0px);
       top: calc(110px + var(--gtop));
-      bottom: calc(var(--dockh, 108px) + var(--stateh, 0px) + 8px); }
+      bottom: var(--inset-bottom, 0px); }
   }
   /* Fit steers the gallery, and a share puts the faces in a strip, so Fit
      did nothing there and its row over the slide stood empty (an SE in
@@ -3237,8 +3242,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   @media (min-width: 701px) and (min-height: 501px) {
     .topchip button#status { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); }
   }
-  /* Above the Record/Captions row (31) and the dock (32), which painted over its foot. */
-  #roster { display: none; position: fixed; z-index: 33; top: 14px; right: 14px; bottom: 128px;
+  /* Above the Record/Captions row (31) and the bar (32). It runs to the safe-area bottom; no band for the bar. */
+  #roster { display: none; position: fixed; z-index: 33; top: 14px; right: 14px; bottom: calc(14px + var(--inset-bottom, 0px));
     width: min(320px, calc(100vw - 28px)); background: #fff; color: #1d1d1f; border-radius: 20px;
     box-shadow: 0 16px 40px rgba(0,0,0,.28); flex-direction: column; overflow: hidden; }
   #roster.open { display: flex; }
@@ -3284,25 +3289,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     overscroll-behavior: contain;
     pointer-events: auto;
   }
-  /* Chat used to run under the dock (z-index 30 vs 32), so the field could
-     not be tapped. End the panel at the dock, and again above the keyboard. */
-  /* The live row is also z-index 31 and shares this band. The open sheet
-     has to paint over it or Live steals the tap on the message field.
-     The keyboard covers the dock, so the inset is the larger of the two,
-     not the sum. A sum pushed the field off the top of a sideways phone. */
+  /* Chat runs the full height on a phone too (z 31, under the bar's 32). No
+     band is kept for the bar. The composer moves up by --barclear only when
+     the bar, with an open reaction tray, stands over the panel's lower half
+     (placeBarAvoiders). The keyboard covers the bar, so with the keyboard up
+     the panel ends at the keyboard and adds nothing for the bar. The live row
+     is also z-index 31. The open sheet has to paint over it or Live steals the
+     tap on the message field. */
   #chatpanel.open {
     top: 0; z-index: 31; overflow: clip; min-height: 0;
-    bottom: max(var(--dockh, 108px), var(--kb, 0px));
+    bottom: var(--kb, 0px);
+    padding-bottom: max(var(--inset-bottom, 0px), var(--barclear, 0px));
   }
-  /* The reaction tray hangs above the dock, in the same band as Send.
-     While it is open the composer steps up by the tray so Send stays a tap. */
-  @media (max-width: 700px) and (orientation: portrait) {
-    body:has(#reacttray:not([hidden])) #chatpanel.open {
-      bottom: calc(max(var(--dockh, 108px), var(--kb, 0px)) + 92px);
-    }
-  }
-  /* The desktop pads the panel for a floating dock; a phone stops above it instead. */
-  #chatpanel, #chatpanel.open { padding-bottom: 0; }
+  html.kb-up #chatpanel.open { padding-bottom: 0; }
+  #chatpanel { padding-bottom: 0; }
   /* The light theme paints the sheet with the same gray as someone else's
      bubble, so their line had no edge. A phone chat is a white page.
      The gray bubble and the blue one stay. */
@@ -3749,7 +3749,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   body.broadcast #bc-link.on.live input { flex: 1 1 auto; min-width: 0; }
   body.broadcast #bc-link.on.live button { width: auto; padding: 0 16px; }
   #bc-ended[hidden] { display: none !important; }
-  body.broadcast #bc-ended:not([hidden]), body.townhall #bc-ended:not([hidden]) { display: flex; flex-direction: column; gap: 16px; position: fixed; z-index: 4; left: 24px; right: 24px; top: calc(var(--banner-h) + 8px + 4.25rem + var(--inset-top, 0px)); bottom: calc(var(--dock-clear, 108px) + var(--inset-bottom, 0px)); align-items: center; justify-content: center; margin: 0; padding: 0; overflow: hidden; container-type: size; pointer-events: none; text-align: center; }
+  body.broadcast #bc-ended:not([hidden]), body.townhall #bc-ended:not([hidden]) { display: flex; flex-direction: column; gap: 16px; position: fixed; z-index: 4; left: 24px; right: 24px; top: calc(var(--banner-h) + 8px + 4.25rem + var(--inset-top, 0px)); bottom: calc(var(--inset-bottom, 0px) + var(--barclear, 0px)); align-items: center; justify-content: center; margin: 0; padding: 0; overflow: hidden; container-type: size; pointer-events: none; text-align: center; }
   body.townhall #bc-ended:not([hidden]) { top: calc(14px + 4.25rem + var(--inset-top, 0px)); }
   #bc-cal[hidden] { display: none !important; }
   #bc-cal { pointer-events: auto; display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 10px 22px; border-radius: 16px; border: 2px solid #f4f7fb; color: #f4f7fb; text-decoration: none; font: 700 1.05rem/1.1 system-ui, sans-serif; }
@@ -3758,7 +3758,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   #bc-pre { position: fixed; z-index: 5; margin: 0; left: calc(14px + var(--inset-left, 0px)); top: calc(var(--banner-h, 0px) + 8px + 2.75rem + var(--inset-top, 0px)); display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; box-sizing: border-box; border-radius: 999px; background: #4b3a8f; color: #fff; font: 700 min(1.05rem, 22px)/1.2 system-ui, sans-serif; letter-spacing: .02em; }
   body:not(.broadcast) #rbbtn, body:not(.bc-host) #rbbtn { display: none; }
   body.rb-on #bc-link { display: none !important; }
-  #rb-now { position: fixed; z-index: 8; left: calc(12px + var(--inset-left, 0px)); right: calc(12px + var(--inset-right, 0px)); bottom: calc(var(--dock-clear, 108px) + 4px); max-width: 520px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; box-sizing: border-box; border-radius: 16px; background: rgba(12,14,18,.9); color: #f4f7fb; box-shadow: 0 0 0 1.5px #4b3a8f; }
+  #rb-now { position: fixed; z-index: 8; left: calc(12px + var(--inset-left, 0px)); right: calc(12px + var(--inset-right, 0px)); bottom: calc(4px + var(--inset-bottom, 0px) + var(--barlift, 0px)); max-width: 520px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; box-sizing: border-box; border-radius: 16px; background: rgba(12,14,18,.9); color: #f4f7fb; box-shadow: 0 0 0 1.5px #4b3a8f; }
   #rb-now-txt { flex: 1 1 12rem; min-width: 0; margin: 0; font: 600 min(1rem, 22px)/1.3 system-ui, sans-serif; overflow-wrap: anywhere; }
   #rb-now button { flex: 0 0 auto; min-height: 44px; min-width: 44px; padding: 0 16px; border-radius: 12px; font: inherit; font-weight: 700; cursor: pointer; background: transparent; color: #f4f7fb; border: 1.5px solid #8d93a0; }
   #rb-now #rb-stop { background: #b61622; border-color: transparent; color: #fff; }
@@ -3773,12 +3773,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   #rb-file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
   #rec-replay-rebroadcast { background: transparent; color: #f4f7fb; border: 1.5px solid #8d93a0; }
   #rec-replay-rebroadcast[hidden] { display: none; }
-  #bc-visit { position: fixed; z-index: 5; right: calc(14px + var(--inset-right, 0px)); bottom: calc(var(--dock-clear, 108px) + 4px); display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: clamp(44px, 2.75rem, 56px); min-width: 44px; padding: 0.4rem clamp(14px, 1.1rem, 22px); box-sizing: border-box; border-radius: 999px; background: rgba(12,14,18,.82); color: #f4f7fb; text-decoration: none; font: 700 min(1.05rem, 22px)/1 system-ui, sans-serif; box-shadow: 0 0 0 1.5px rgba(244,247,251,.55); }
+  #bc-visit { position: fixed; z-index: 5; right: calc(14px + var(--inset-right, 0px)); bottom: calc(4px + var(--inset-bottom, 0px) + var(--barlift, 0px)); display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: clamp(44px, 2.75rem, 56px); min-width: 44px; padding: 0.4rem clamp(14px, 1.1rem, 22px); box-sizing: border-box; border-radius: 999px; background: rgba(12,14,18,.82); color: #f4f7fb; text-decoration: none; font: 700 min(1.05rem, 22px)/1 system-ui, sans-serif; box-shadow: 0 0 0 1.5px rgba(244,247,251,.55); }
   #bc-visit.left { right: auto; left: calc(14px + var(--inset-left, 0px)); }
   #bc-visit svg { width: clamp(22px, 1.375rem, 28px); height: clamp(22px, 1.375rem, 28px); flex: 0 0 auto; }
   #bc-ended #bc-visit { position: static; pointer-events: auto; min-height: 48px; padding: 10px 22px; background: transparent; box-shadow: none; border: 2px solid #f4f7fb; border-radius: 16px; }
   #bc-cap[hidden], body.bc-quiet #bc-cap { display: none !important; }
-  #bc-cap { position: fixed; z-index: 5; pointer-events: none; left: calc(14px + var(--inset-left, 0px)); right: calc(14px + var(--inset-right, 0px)); bottom: calc(var(--dock-clear, 108px) + 4px + clamp(44px, 2.75rem, 56px) + 8px); display: flex; align-items: flex-end; gap: 8px; }
+  #bc-cap { position: fixed; z-index: 5; pointer-events: none; left: calc(14px + var(--inset-left, 0px)); right: calc(14px + var(--inset-right, 0px)); bottom: calc(4px + var(--inset-bottom, 0px) + clamp(44px, 2.75rem, 56px) + 8px + var(--barlift, 0px)); display: flex; align-items: flex-end; gap: 8px; }
   #bc-cap-btn { pointer-events: auto; flex: 0 0 auto; min-width: 44px; min-height: 44px; padding: 0 10px; border: 0; border-radius: 10px; background: rgba(12,14,18,.82); color: #f4f7fb; font: 800 min(1rem, 20px)/1 system-ui, sans-serif; box-shadow: 0 0 0 1.5px rgba(244,247,251,.55); }
   #bc-cap-btn[aria-pressed="false"] { opacity: .7; text-decoration: line-through; }
   #bc-cap-txt { margin: 0; flex: 1 1 auto; min-width: 0; max-height: 4.2em; overflow: hidden; padding: 6px 10px; border-radius: 10px; background: rgba(0,0,0,.8); color: #fff; font: 600 clamp(18px, 1.125rem, 28px)/1.35 system-ui, sans-serif; }
@@ -3793,7 +3793,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   #bc-q-fit { clear: right; }
   body:not(.broadcast):not(.townhall):not(.chat-qa-on) #qabtn { display: none !important; }
   body.qa-chat-off #qabtn { display: none !important; }
-  #qa { position: fixed; right: var(--inset-right, 0px); top: var(--inset-top, 0px); bottom: var(--dock-clear, 108px); width: min(360px, calc(100vw - var(--inset-left, 0px) - var(--inset-right, 0px))); z-index: 31; display: flex; flex-direction: column; background: var(--bg, #101018); color: var(--text, #e0e0f0); border-left: 1px solid var(--border, #2a2a3f); border-radius: 0 0 0 14px; }
+  html.kb-up #qa { padding-bottom: 0; }
+  #qa { position: fixed; right: var(--inset-right, 0px); top: var(--inset-top, 0px); bottom: var(--kb, 0px); padding-bottom: max(var(--inset-bottom, 0px), var(--barclear, 0px)); box-sizing: border-box; width: min(360px, calc(100vw - var(--inset-left, 0px) - var(--inset-right, 0px))); z-index: 31; display: flex; flex-direction: column; background: var(--bg, #101018); color: var(--text, #e0e0f0); border-left: 1px solid var(--border, #2a2a3f); border-radius: 0 0 0 14px; }
   #qa[hidden] { display: none; }
   #qa-head { display: flex; align-items: center; flex-wrap: wrap; gap: .2rem .5rem; padding: .45rem .6rem; border-bottom: 1px solid var(--border, #2a2a3f); font-weight: 700; font-size: 1.1rem; }
   #qa-head small { order: 3; flex: 1 0 100%; font-size: .875rem; font-weight: 400; color: var(--muted, #c5c8dc); }
@@ -3816,7 +3817,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   #bc-ended p { margin: 0; max-width: 18rem; color: #f4f7fb; font: 700 clamp(1.15rem, 9cqh, 1.75rem)/1.25 system-ui, sans-serif; letter-spacing: -0.02em; }
   body.broadcast.bc-quiet #fitbtn, body.townhall.bc-quiet #fitbtn { display: none; }
   @media (max-height: 500px) {
-    body.broadcast #bc-ended:not([hidden]) { top: calc(var(--banner-h) + 8px + 2.75rem + var(--inset-top, 0px)); bottom: calc(72px + var(--inset-bottom, 0px)); }
+    body.broadcast #bc-ended:not([hidden]) { top: calc(var(--banner-h) + 8px + 2.75rem + var(--inset-top, 0px)); bottom: calc(var(--inset-bottom, 0px) + var(--barclear, 0px)); }
     #bc-ended p { font-size: 1.25rem; }
   }
   body.has-flip .bar #flipcam { display: inline-flex; }
@@ -30340,6 +30341,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         bar.querySelector('#rb-stop').onclick = () => rbStop();
       }
       paintRbNow();
+      if (window.__gifosBarAvoid) window.__gifosBarAvoid();
       try { paintLiveBadge(); } catch (e) {}
     }
     // The host's choice: the service that just ended, or a file.
@@ -34149,6 +34151,97 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
     }
 
+    // ---- no band for the floating bar (Nathan 2026-11-09) ----------------------
+    // The bar can stand anywhere, so nothing reserves a band for it on any
+    // screen. Whatever must not sit under the bar measures the bar's CURRENT box
+    // (a drag included), never its home band. Each rule keeps the bottom safe
+    // area (--inset-bottom) in its own CSS.
+    // Floaters rest at the bottom: their CSS bottom is their own gap, plus the
+    // safe area, plus var(--barlift). A floater whose resting box would meet the
+    // bar rises to 8px above the bar's top. One that would not stays down. A
+    // floater stacked on a base (the Record row, Visit) rises at least as far as
+    // its base, so it never lands on it. The Record row beside a sideways dock
+    // keeps its own place (placeCallState).
+    // Panels run to the bottom and pad or end by var(--barclear). When the bar,
+    // together with an open reaction tray, stands over a panel's lower half,
+    // the panel clears the bar's top plus 12px, capped at half the panel.
+    // Otherwise it clears nothing.
+    // A tucked or faded bar keeps the last values, so nothing jumps when it wakes.
+    function placeBarAvoiders() {
+      const FLOATERS = [['callstate', ''], ['chatnote', 'callstate'], ['livecap', 'callstate'], ['rundown', 'callstate'],
+        ['waitlist', ''], ['lyrics', ''], ['songedit', ''], ['rb-now', ''], ['bc-visit', ''], ['bc-cap', 'bc-visit'], ['bc-reacts', '']];
+      const PANELS = [['chatpanel', 'pad'], ['qa', 'pad'], ['bc-ended', 'bottom'], ['bc-ident', 'bottom']];
+      const bar = document.querySelector('.bar');
+      if (!bar || bar.classList.contains('tucked') || document.body.classList.contains('chrome-away')) return;
+      const shown = (el) => {
+        if (!el || el.hidden) return null;
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0 ? r : null;
+      };
+      const meet = (a, b) => a.right > b.left + 4 && a.left < b.right - 4 && a.bottom > b.top + 4 && a.top < b.bottom - 4;
+      const read = (el, name) => parseFloat(el.style.getPropertyValue(name)) || 0;
+      const write = (el, name, v) => {
+        const s = Math.max(0, Math.round(v)) + 'px';
+        if (el.style.getPropertyValue(name) !== s) el.style.setProperty(name, s);
+      };
+      const br = shown(bar);
+      let ob = br ? { left: br.left, right: br.right, top: br.top, bottom: br.bottom } : null;
+      const lifts = {};
+      for (const [id, baseId] of FLOATERS) {
+        const el = document.getElementById(id);
+        const r = shown(el);
+        if (!r) continue;
+        // Visit inside the ended card is static there; it is not a floater then.
+        if (el.parentElement && el.parentElement.id === 'bc-ended') continue;
+        const cur = read(el, '--barlift');
+        let lift = baseId && lifts[baseId] !== undefined ? lifts[baseId] : 0;
+        if (el.classList.contains('beside')) lift = 0;
+        else if (ob) {
+          const restBottom = r.bottom + cur;
+          const at = { left: r.left, right: r.right, top: r.top + cur - lift, bottom: restBottom - lift };
+          if (meet(ob, at)) lift = Math.max(lift, restBottom - ob.top + 8);
+        }
+        write(el, '--barlift', lift);
+        lifts[id] = lift;
+      }
+      const tray = shown(document.getElementById('reacttray'));
+      if (ob && tray) ob = { left: Math.min(ob.left, tray.left), right: Math.max(ob.right, tray.right), top: Math.min(ob.top, tray.top), bottom: Math.max(ob.bottom, tray.bottom) };
+      for (const [id, mode] of PANELS) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        const r = shown(el);
+        let clear = 0;
+        if (r && ob) {
+          const bottom = r.bottom + (mode === 'bottom' ? read(el, '--barclear') : 0);
+          const h = bottom - r.top;
+          const overX = ob.right > r.left + 4 && ob.left < r.right - 4;
+          if (overX && ob.bottom > r.top + h / 2) clear = Math.min(bottom - ob.top + 12, h / 2);
+        }
+        write(el, '--barclear', clear);
+      }
+    }
+    {
+      let avoidFrame = 0;
+      const later = () => {
+        if (avoidFrame) return;
+        avoidFrame = requestAnimationFrame(() => { avoidFrame = 0; try { placeBarAvoiders(); } catch (e) {} });
+      };
+      window.__gifosBarAvoid = later;
+      // Showing, hiding or opening one of them can newly put it under the bar.
+      const ids = ['callstate', 'chatnote', 'livecap', 'rundown', 'waitlist', 'lyrics', 'songedit', 'bc-visit', 'bc-cap', 'bc-reacts', 'chatpanel', 'qa', 'bc-ended', 'bc-ident', 'reacttray'];
+      if (window.MutationObserver) {
+        const mo = new MutationObserver(later);
+        for (const id of ids) { const el = document.getElementById(id); if (el) mo.observe(el, { attributes: true, attributeFilter: ['class', 'hidden'] }); }
+      }
+      // A caption or a chat line that grows a line can newly meet the bar.
+      if (window.ResizeObserver) {
+        const ro = new ResizeObserver(later);
+        for (const id of ['callstate', 'chatnote', 'livecap', 'bc-visit', 'bc-cap']) { const el = document.getElementById(id); if (el) ro.observe(el); }
+      }
+      window.addEventListener('resize', later);
+      window.addEventListener('orientationchange', later);
+    }
+
     // ---- controls: mic + camera. Blur is chosen when the camera turns on. -----
     const micBtn = document.getElementById('mic');
     const unmuteBtn = document.getElementById('unmute');
@@ -34242,9 +34335,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // sizes, no button moved into More, no re-centring on the call. The bar
       // keeps its size, its buttons and its spot, over the panel if that is
       // where it stands, and its owner can drag it (Nathan 2026-11-09). The
-      // panel's composer moves up by --dock-clear only where the bar really
-      // stands over it (setDockClear).
-      const chatPanelEl = document.getElementById('chatpanel');
+      // panel's composer moves up by its own --barclear only where the bar
+      // really stands over it (placeBarAvoiders).
       // Only the window's own width sends a button to More (fitWindow). When
       // the bar at home still runs past the window, these move one at a time.
       // More shows a stand-in that presses the real button.
@@ -34338,26 +34430,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!(gr.width > 0) || !(br.width > 0)) return 0;
         return gr.right - br.left;
       };
-      // --dock-clear is how far an open side panel's composer moves up for the
-      // bar. It is set only when the floating bar really stands over the
-      // panel's lower half, and is capped at half the panel. A bar beside the
-      // panel or dragged high clears nothing. A tucked or faded bar keeps the
-      // last value, so the composer does not jump when the bar wakes.
-      const setDockClear = () => {
-        try {
-          if (bar.classList.contains('tucked') || document.body.classList.contains('chrome-away')) return;
-          const vh = window.innerHeight;
-          const br = bar.getBoundingClientRect();
-          let clear = 0;
-          if (chatPanelEl && chatPanelEl.classList.contains('open') && br.width > 0) {
-            const pr = chatPanelEl.getBoundingClientRect();
-            const overX = pr.width > 0 && br.right > pr.left + 4 && br.left < pr.right - 4;
-            const low = br.bottom > pr.top + pr.height / 2;
-            if (overX && low) clear = Math.max(0, Math.min(Math.round(vh - br.top + 12), Math.round(pr.height / 2)));
-          }
-          document.documentElement.style.setProperty('--dock-clear', clear + 'px');
-        } catch (e) {}
-      };
       // Home is the window's centre. An open panel changes nothing here: the
       // spot is the owner's (dockx, docky), clamped only to the window and the tab.
       const placeDock = () => {
@@ -34384,7 +34456,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         else bar.style.transform = 'translateX(-50%) translate(' + dockx + 'px, ' + (-docky + extra) + 'px)';
         // The open sheet and tray follow the dock to wherever it now stands.
         placeDockPopovers();
-        setDockClear();
+        // What must not sit under the bar follows where it now stands.
+        try { placeBarAvoiders(); } catch (e) {}
       };
       const markTuck = (on) => {
         tucked = !!on;
@@ -34578,7 +34651,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             // Record hangs off the dock: its header cap follows the new height.
             try { paintCallState(); } catch (e2) {}
           }
-          setDockClear();
+          placeBarAvoiders();
         } catch (e) {}
       };
       // iOS keeps the layout viewport tall and overlays the keyboard.

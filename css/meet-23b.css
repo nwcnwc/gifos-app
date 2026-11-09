@@ -254,10 +254,10 @@ body.broadcast.dock-calm #lyrics, body.broadcast.chrome-away #lyrics {
    item on now and the one after it, sitting above Live / Record so neither
    covers the other. The whole list is the same card on a wider screen. */
 @media (max-width: 700px) {
-  /* On the call-state row: the dock's resting top (--dockh), 8px under Live
-     / Record, 8px over them. A fixed 118px left 20px there and ran the card
-     up under the link on an SE (broadcast-23b, 320x568). */
-  body.broadcast #rundown { bottom: calc(var(--dockh, 90px) + 16px + var(--stateh, 0px)); max-height: calc(100vh - 240px - var(--stateh, 0px)); gap: 6px; padding: 12px 14px; }
+  /* Over Live / Record, 8px above them, on the safe area. No band for the
+     floating bar: it rises with the Record row, and above the bar's current
+     box when it would meet it (--barlift, placeBarAvoiders). */
+  body.broadcast #rundown { bottom: calc(var(--inset-bottom, 0px) + var(--stateh, 0px) + 16px + var(--barlift, 0px)); max-height: calc(100vh - 150px - var(--stateh, 0px) - var(--inset-bottom, 0px) - var(--barlift, 0px)); gap: 6px; padding: 12px 14px; }
   body.broadcast #rundown li { display: none; }
   body.broadcast #rundown li.now, body.broadcast #rundown li.now + li { display: flex; }
   body.broadcast #rundown li.now .rdname { font-size: 22px; }
