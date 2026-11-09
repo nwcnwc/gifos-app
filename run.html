@@ -35307,6 +35307,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (camBtn) { try { camBtn.setAttribute('aria-expanded', 'false'); } catch (e) {} }
     }
     function dismissCamChooser() {
+      // Only when it is open: the bar nudge, reset, resize and drag call this, and refocusing #cam
+      // with no chooser open stole the keyboard from the bar grip.
+      if (typeof camChooserOpen === "function" && !camChooserOpen()) return;
       const back = (camChooserAnchor && camChooserAnchor.isConnected) ? camChooserAnchor : camBtn;
       closeCamChooser();
       if (back && back.focus) { try { back.focus(); } catch (e) {} }
