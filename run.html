@@ -31583,7 +31583,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         m.src = src === 'mix' || trGeneric(forId) ? 'mix' : 'ear';
         m.by = String(label || rosterNames[forId] || (peers.get(forId) || {}).name || '…').slice(0, 40);
       }
-      const send = how === 'lo' ? false : mine ? capSend() : trMode() === 'share';
+      const send = how === 'lo' ? false : mine ? capSend() : (trMode() === 'share' || (trKeeps() && capPaused(forId)));
       if (how === 'out') { if (send) sendAll({ k: 'tr', m }); return; }
       if (!send && !trKeeps() && !trEnOn) return;
       if (!takeTr(m)) return; // the same sentence is already held by a better line
@@ -32237,6 +32237,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // The browser engine's room ear writes only voices nobody captions, in
     // its own language (earLangOk). Capped at WSP_SCRIBE_MAX voices.
     function capCovered(pid) { const st = statusOf.get(pid); return !!(st && st.cap === 1); }
+    // A voice whose own engine says it cannot caption (ccst 'paused': an
+    // Android phone whose engine hears silence while Chrome holds the mic).
+    // A keep page's lines for it go to the room as in 'share'.
+    function capPaused(pid) { const st = statusOf.get(pid); return !!(st && st.ccst === 'paused' && st.cap !== 1); }
     function earLangOk(pid) { const st = statusOf.get(pid); const l = st && trLangOf(st.lang); return !l || l === trLang(); }
     function trWrites() { return trKeeps(); }
     // Translating everything to English, the page hears EVERY voice through
