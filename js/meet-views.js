@@ -926,6 +926,11 @@
       return apply(opts);
     }
     const usedSet = new Set(used);
+    // A Fit panel is only what this pass drew: drop the tag from any other element in the feed.
+    if (feed.querySelectorAll) {
+      const tagged = feed.querySelectorAll('[data-float]');
+      for (let i = 0; i < tagged.length; i++) if (!usedSet.has(tagged[i])) delete tagged[i].dataset.float;
+    }
     for (let i = 0; i < tiles.length; i++) {
       if (tiles[i].el && !usedSet.has(tiles[i].el)) {
         parkEl(tiles[i].el);
@@ -1301,7 +1306,14 @@
       if (r && r.width > 0 && r.height > 0) return { x: r.left, y: r.top, w: r.width, h: r.height };
       return { x: 0, y: 0, w: root.innerWidth || 0, h: root.innerHeight || 0 };
     }
-    function members(kind) { return doc.querySelectorAll ? doc.querySelectorAll('[data-float="' + kind + '"]') : []; }
+    // Only drawn members: a parked or stale tile has an empty rect at the
+    // origin, which would stretch the union and halve every saved drop.
+    function members(kind) {
+      const all = doc.querySelectorAll ? doc.querySelectorAll('[data-float="' + kind + '"]') : [];
+      const out = [];
+      for (let i = 0; i < all.length; i++) if (!all[i].getClientRects || all[i].getClientRects().length > 0) out.push(all[i]);
+      return out;
+    }
     function union(list) {
       let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
       for (let i = 0; i < list.length; i++) {
