@@ -1231,6 +1231,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   .tile .chips span { background: rgba(10,10,15,.78); border: 1px solid rgba(255,255,255,.14); border-radius: 999px;
                       padding: 1px 6px; font-size: 11px; line-height: 1.35; color: #eceef8; white-space: nowrap; }
   .tile .chips span.warn { border-color: #b0742a; color: #ffd23c; }
+  /* A held face that no repaint ever painted (a counted member carried by a friend, sweepRosterTiles) says so without
+     a second chips writer: updateTile's diff-guarded writer stays the only one. A painted held tile carries the span. */
+  .tile.rhold > .chips:empty::before { content: '⟳ Reconnecting…'; background: rgba(10,10,15,.78); border: 1px solid #b0742a;
+                      border-radius: 999px; padding: 1px 6px; font-size: 11px; line-height: 1.35; color: #ffd23c; white-space: nowrap; }
   .tile .chips span.ico { width: 22px; height: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
                           font-size: 0; line-height: 0; border-radius: 6px; flex: 0 0 auto; }
   .tile .chips span.ico svg { width: 14px; height: 14px; display: block; }
@@ -9918,6 +9922,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!p || p.headless || !p.tile) continue;
         if (p.tile.style.display !== 'none') shown[pid] = true;
       }
+      if (typeof rosterTiles === 'object' && rosterTiles) for (const [pid, t] of rosterTiles) if (t && t.parentNode) shown[pid] = true;   // a held face is on screen: not a stadium face too
       const out = [], seen = {};
       const push = (id) => {
         if (!id || seen[id] || shown[id]) return;
@@ -10038,7 +10043,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             speaker: !myStatus.bot && !!(speakingOf && speakingOf.get && speakingOf.get('me')), pz: 'peer:me' });
         }
         for (const [pid, p] of peers) {
-          if (!p || !p.tile || p.headless || p.held || p.tile.style.display === 'none') continue;
+          if (!p || !p.tile || p.headless || p.held || !p.tile.parentNode || p.tile.style.display === 'none') continue;   // a tile off the grid takes no slot
           const st = statusOf.get(pid) || {};
           const si = stg.indexOf(pid);
           const bot = !!st.bot;
@@ -10048,6 +10053,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             // A sharer's screen is the Stage (the sgs strip below); their face stays in the Row.
             shareFace: !bot && (() => { try { return !!sharingScreen(pid); } catch (e) { return false; } })(),
             speaker: !bot && !!(speakingOf && speakingOf.get && speakingOf.get(pid)), pz: 'peer:' + pid });
+        }
+        // A held face is on the grid too: it takes a slot of its own in the pack, or it keeps the box of the pass before
+        // and the next face is drawn over it (two names in one slot).
+        if (typeof rosterTiles === 'object' && rosterTiles) for (const [pid, el] of rosterTiles) {
+          if (!el || !el.parentNode || tiles.some((x) => x.id === pid)) continue;
+          tiles.push({ id: pid, el: el, tier: 'row', bot: false, shade: shadeKey(pid), hand: false, handOrd: 0, stage: false, stageOrd: 0, shareFace: false, speaker: false, pz: 'peer:' + pid });
         }
         for (const t of tiles) if (t.shareFace) t.stage = false;
         // Pin (the tile window) puts that person on my Stage only.
@@ -15108,6 +15119,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // friend still carries their picture. Only a person with no seat,
       // the one the line already named, comes off the wall.
       if (linkTo(p.id)) return;
+      if (Array.isArray(rosterIds) && rosterIds.includes(p.id)) return;   // a counted member (carried by a friend, no seat link) keeps their face; the noRoute chip says why
       doorOffGrid.add(p.id);
       if (p.tile && p.tile.parentNode) p.tile.remove();
     }
@@ -15119,6 +15131,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!p || !doorOffGrid.has(p.id)) return;
       doorOffGrid.delete(p.id);
       if (p.headless || !p.tile || p.tile.parentNode) return;
+      if (typeof dropRosterTile === 'function') dropRosterTile(p.id, 'own-tile');   // one tile per member: their own replaces the held one
       grid.appendChild(p.tile);
     }
     // Peer ids whose device was banned on this page. dropPeer alone loses to
@@ -15186,15 +15199,35 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // After every roster change: a held tile goes with its member's roster entry, when a new pair to them carries a
     // tile of its own, and when the seat places them outside my row (a stadium face, not a row tile).
     function sweepRosterTiles() {
-      if (!rosterTiles.size) return false;
       let changed = false;
       const s = typeof meshSeat === 'function' ? meshSeat() : null, c = typeof meshCoord === 'function' ? meshCoord() : null;
+      // The seat places this member outside my row: a stadium face (the composite), not a row tile.
+      const notRow = (pid) => {
+        if (!(s && s.occ && c)) return false;
+        try { for (const [k, v] of s.occ) if (v === pid) { const cc = net.topo.unck(k); return cc.pc !== c.pc || cc.r !== c.r; } } catch (e) {}
+        return false;
+      };
+      const ownTile = (pid) => { const q = peers.get(pid), t = q && !q.headless && q.tile; return !!(t && t.parentNode && !(t.style && t.style.display === 'none')); };
       for (const pid of Array.from(rosterTiles.keys())) {
-        let why = !(Array.isArray(rosterIds) && rosterIds.includes(pid)) ? 'unrostered' : peers.has(pid) ? 'new-pair' : null;
-        if (!why && s && s.occ && c) {
-          try { for (const [k, v] of s.occ) if (v === pid) { const cc = net.topo.unck(k); if (cc.pc !== c.pc || cc.r !== c.r) why = 'not-row'; break; } } catch (e) {}
-        }
+        const why = !(Array.isArray(rosterIds) && rosterIds.includes(pid)) ? 'unrostered' : ownTile(pid) ? 'new-pair' : notRow(pid) ? 'not-row' : null;
         if (why) { dropRosterTile(pid, why); changed = true; }
+      }
+      // EVERY COUNTED MEMBER HAS EXACTLY ONE TILE (Nathan 2026-11). A member the roster names, with no tile of their own on
+      // the grid and no seat outside my row (a member carried by a friend: no pc, no row seat), is held the same way.
+      if (!leaving && Array.isArray(rosterIds) && !(typeof iAmWaiting === 'function' && iAmWaiting())) {
+        for (const pid of rosterIds) {
+          if (!pid || pid === myId || rosterTiles.has(pid) || ownTile(pid) || notRow(pid)) continue;
+          if (typeof isEjected === 'function' && isEjected(pid) === true) continue;
+          if (typeof bannedSeat === 'object' && bannedSeat && bannedSeat.has(pid)) continue;
+          const q = peers.get(pid);
+          if (q && q.held) continue;   // the waiting room is no one's face here
+          let t = null;
+          try { t = makeTile(pid, (rosterNames && rosterNames[pid]) || (q && q.name) || null, false, false); } catch (e) { t = null; }
+          if (!t || !t.tile) continue;
+          try { if (!t.tile.parentNode) grid.appendChild(t.tile); } catch (e) {}
+          holdRosterTile(pid, { tile: t.tile, video: t.video });   // no chips writer here: the empty chips of a held tile read "Reconnecting…" (CSS .rhold)
+          changed = true;
+        }
       }
       if (changed) { try { layout(); } catch (e) {} }
       return changed;
