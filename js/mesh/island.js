@@ -62,8 +62,18 @@
 
     // C++: mesh_island.inc:Seat::islandFound
     islandFound() {
-      this.trace('ISLAND', this.id, null, 'asked=%zu since=%d rounds=%d', this.lastGreeters.length, this.islandAskAt, this.islandAskN + 1);
-      this.islandAskAt = -1; this.islandAskN = 0; this.islandAsked.clear(); this.islandLast = false; this.genKey = this.w.lv.URL_KEY; const e = []; this.take({ pc: 0, r: 0, i: 0 }, -1, e); this.islandFounder = true; this.lineAdopt(this.id, 'found'); this.lineFork = true;
+      this.trace('ISLAND', this.id, null, 'asked=%zu since=%d rounds=%d reach=%d', this.lastGreeters.length, this.islandAskAt, this.islandAskN + 1, typeof this.f.fabricReachSeated === 'function' ? this.f.fabricReachSeated(this.id) : -1);   // reach: the oracle's count (netmatrix bar), -1 without groups
+      this.islandAskAt = -1; this.islandAskN = 0; this.islandAsked.clear(); this.islandLast = false; this.genKey = this.w.lv.URL_KEY ? this.w.lv.URL_KEY : this.myKey; /* a founder with no link key mints its own (C++: islandFound) */ const e = []; this.take({ pc: 0, r: 0, i: 0 }, -1, e); this.islandFounder = true; this.lineAdopt(this.id, 'found'); this.lineFork = true;
+    },
+
+    // C++: mesh_island.inc:Seat::keyAsk
+    // L3.11.6: the door refused my registration and named its greeters: ask the lowest one seated in my home section for the door's key.
+    keyAsk(list) {
+      if (this.state !== 3 || !this.hasCoord || this.coord.pc !== 0 || this.TICK - this.rosterAskAt <= 40) return;
+      let to = -1;
+      for (const g of list) { if (g < 0 || g === this.id || (to >= 0 && g >= to)) continue; for (const [k, v] of this.occ) if (ckPc(k) === 0 && v === g) { to = g; break; } }
+      if (to < 0) return;
+      this.rosterAskAt = this.TICK; this.trace('L3.11.6-KEYASK', this.id, this.coord, 'to=%d', to); const w = newMsg('WHOHOME'); w.from = this.id; w.ttl = 60; this.emit(to, w);
     },
 
     // C++: mesh_island.inc:Seat::islandFork
@@ -113,10 +123,11 @@
 
     // C++: mesh_island.inc:Seat::islandNotMine
     islandNotMine() {
-      if (!roomTerm(this, 1) || !this.hasCoord || this.state !== 3) { if (this.noneSince.size) this.noneSince.clear(); return; }
-      const ol = ownedLinks(this.coord), n = ol.length; const cur = new Set();
+      if (!roomTerm(this, 1) || !this.hasCoord || this.state !== 3) { if (this.noneSince.size) this.noneSince.clear(); this.doorCarry = false; return; }
+      const ol = ownedLinks(this.coord), n = ol.length; const cur = new Set(); let dc = false;
       for (let q = 0; q < n; q++) {
         const k = ckey(ol[q]); const x = this.occGet(k); if (x < 0 || x === this.id) continue; cur.add(x);
+        { const ls = this.f.fabricLinkState(this.id, x); if (this.coord.pc !== 0 && (ls === LS_NONE || ls === LS_CLOSED) && this.f.fabricDialFails(this.id, x) > 0) dc = true; }   // L33.14: a mate I name, heard through friends, whose pc my dials never opened
         if (this.earShut()) { this.noneSince.delete(x); continue; }   // L8.48: a shut ear does not start the drop clock
         { const ls = this.f.fabricLinkState(this.id, x); if ((ls !== LS_NONE && ls !== LS_CLOSED) || (this.live.has(k) && this.TICK - this.live.get(k) <= K.CHAN_UP)) { this.noneSince.delete(x); continue; } }
         const it = this.noneSince.get(x); if (it === undefined) { this.noneSince.set(x, this.TICK); continue; }
@@ -126,6 +137,7 @@
         if (this.coord.pc !== 0 && this.coord.i === 0 && ol[q].pc === this.coord.pc && ol[q].r === this.coord.r && ol[q].i !== 0 && this.f.fabricLinkState(this.id, x) === LS_NONE && this.f.fabricDialFails(this.id, x) > 0) { this.l20Out.set(k, [x, this.TICK]); if (this.l20Out.size > C) eraseFirst(this.l20Out); }
         this.noneSince.delete(x); this.occDrop(k, 'not-my-link'); this.live.delete(k); this.s1seen.delete(k); this.noChan.add(x);
       }
+      this.doorCarry = dc;   // L33.14 (read by socketed(): the door socket stays while such a mate is named)
       for (const key of this.noneSince.keys()) { if (!cur.has(key)) this.noneSince.delete(key); }
       if (this.noneSince.size > 4 * MAXLINKS) this.noneSince.clear();
       if (this.earShut()) return;   // L8.48: a second-hand echo is not silence while my own ear is shut
@@ -186,6 +198,9 @@
     // C++: mesh_island.inc:Seat::l845Held
     l845Held() { return this.hasCoord && this.state === 3 && this.TICK - this.seatedAt >= K.L827_SETTLE; },
 
+    // C++: mesh_island.inc:Seat::ringAlone   (L8.5.2: my view holds no Section-1 seat but me)
+    ringAlone() { if (!this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return false; for (const [k, v] of this.occ) if (v >= 0 && v !== this.id && ckPc(k) === 0) return false; return true; },
+
     // C++: mesh_island.inc:Seat::islandC7
     islandC7(m) {
       if (!roomTerm(this, 1) || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return false;
@@ -201,7 +216,7 @@
         for (const [wk, wv] of v) { if (this.TICK - wv > K.RELAY_TTL) v.delete(wk); }
         let vGone = false; if (this.c7Vouch.size > 16) { vGone = (this.c7Vouch.keys().next().value === theirs); eraseFirst(this.c7Vouch); }
         if (gated) return false;
-        if (vGone || v.size < 2) return false;
+        if (vGone || (v.size < 2 && !m.c7One)) return false;   // L8.5.2: a settled founder that holds nobody else IS its ring: its one vouch is the whole ring's word
         {
           this.l842Join.clear(); const ls = new Set();
           for (const wk of v.keys()) { this.l842Join.add(wk); const l = this.lineOf(wk); if (l >= 0 && l !== this.line) ls.add(l); }

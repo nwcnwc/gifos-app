@@ -289,7 +289,7 @@
       return relayBase + '/s/' + opts.sid
         + '?role=mesh&pv=' + WIRE_VERSION + '&token=' + encodeURIComponent(opts.tok || '')
         + '&peer=' + encodeURIComponent(peer)
-        + '&gk=' + encodeURIComponent(gkStr())
+        + '&gk=' + encodeURIComponent(gkStr()) + (hadAtConnect() ? '&had=1' : '')
         + (rs ? '&rs=' + rs : '')
         + (/[&?]dev=/.test(extra) ? '' : '&dev=' + encodeURIComponent(devTag || net.randHex(8)))
         + (ipp && identity ? '&pk=' + encodeURIComponent(identity.pubB64) + '&ipp=' + encodeURIComponent(ipp) : '')
@@ -440,6 +440,9 @@
     // seat's one-door-at-a-time wave for a door that may be dark; it asks every old neighbour now, the way the wave's
     // own last round does. The seat decides as ever; it just hears its HOME sooner.
     let prevOld = (opts.prevTree && Array.isArray(opts.prevTree.ids) && opts.prevTree.ids.length) ? new Set(opts.prevTree.ids.map(String)) : null, treeAsk = null;
+    const hadRoomMem = !!prevOld;   // this page came back from a room it sat in (kept: prevOld is consumed at the first list)
+    let connects = 0;   // sockets this page has opened: a later one is a RE-open (the relay may have restarted)
+    const hadAtConnect = () => { const reopen = connects++ > 0; return (hadRoomMem || (everPopulated && reopen)) && !(seat && seat.state === 3); };   // the connect URL's had=1 (relay restart hold): only a page back from a reload, or a populated page whose socket re-opens, asks the door to wait for the room's greeters. A requeue on a live socket says nothing; no relay FRAME carries it (the frame law is unchanged)
     function treeMemAsk() {
       if (!treeAsk || !raw || raw.state !== 1) return;
       const list = treeAsk; treeAsk = null; let n = 0;
@@ -676,7 +679,7 @@
       sock.onopen = () => {
         // A reopened socket has NO pool entry (the entry was the old socket's attachment). The 8 s throttle
         // exists to stop a reply chain looping, not to cover a reopen: a greeter that registered 3 s ago and
-        // reconnected now sent nothing and was off the door until E3 (aws01 2026-11-09: the next knocker founded).
+        // reconnected now sent nothing and was off the door until E3 (seen live 2026-11-09: the next knocker founded).
         if (!stopped && iAmAGreeter()) { lastRegAt = 0; reregister('reconnect'); }
       };
       sock.onmessage = (ev) => {
@@ -938,7 +941,7 @@
         else action = 'deliver';
         // RELOAD TREE MEMORY: the doors this page sat with before its reload go first (treeMemAsk asks them all at once)
         if (prevOld && preState !== 3 && ids.length) { const old = ids.filter((p) => prevOld.has(p)); treeAsk = old.map((p) => layer.ids.nid(p)); ids.sort((a, b) => (prevOld.has(b) ? 1 : 0) - (prevOld.has(a) ? 1 : 0)); prevOld = null; }
-        penv.relayFrame({ t: 'greeters', list: ids }); // the seat's L16 knocker takes it from here
+        penv.relayFrame(m.admitted === false && !m.founded && preState === 3 && iAmAGreeter() ? { t: 'greeters', list: ids, tag: 1 } : { t: 'greeters', list: ids }); // the seat's L16 knocker takes it from here. L3.11.6: admitted:false to a seated Section-1 seat rides the list (tag 1): the seat asks a listed mate for the door's key and registers again
       }
       // `adm` is the relay's `admitted`: does my genesis key match the room's?
       // Nothing ACTS on it — but its absence from this trace is why the

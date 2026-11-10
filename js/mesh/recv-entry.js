@@ -45,6 +45,7 @@
       if ((this.state === 0 || this.state === 1) && this.joinStart >= 0 && TICK - this.joinStart > K.STRAND_TTL && (this.lastReach < 0 || TICK - this.lastReach > K.STRAND_TTL) && !this.l16Saw && !this.evilDoor) { this.stranded = true; this.strandedAt = TICK; return; }   // R6
       for (const g of m.list) this.dials.heard(g);   // L17
       this.lastGreeters = m.list.slice(); this.greetersAt = TICK;
+      if (m.tag === 1) this.keyAsk(m.list);   // L3.11.6: the door refused my registration (C++: onGreeters)
       if (this.state === 0 && this.entryTerm()) { this.islandAsk(m.list); return; }   // L8.2
       if (this.state === 0) {
         let g = m.list[Math.floor(this.rng() * m.list.length)];
@@ -107,8 +108,8 @@
       if (this.l13On() && this.state === 3 && m.knock && (m.byes.length >= 2 || m.mass)) { let n = 0; for (const v of this.byeIds.values()) if (TICK - v <= K.LEASE_T) n++; let d = 0; for (const t of this.l13DownAt) if (TICK - t <= K.LEASE_T) d++; if (n + d >= 1) this.l13MassHeard(); }   // L13
       if (this.state === 3 && TICK - this.rosterAskAt > 120) return;   // a SEATED seat hears HOME only as the answer to its own WHOHOME
       if (m.askGap >= 0) this.askGap = m.askGap | 0;   // the door's one clock, as of this answer
-      if (m.gkey) this.genKey = m.gkey;   // THIS meeting's genesis key
-      if (this.state === 1 && roomTerm(this, 1) && m.from >= 0 && this.c7Old.has(m.from) && TICK - this.c7At < K.RELAY_TTL) return;   // L8.5
+      if (m.gkey) { const rk = this.state === 3 && this.hasCoord && this.coord.pc === 0 && this.genKey !== m.gkey; this.genKey = m.gkey; if (rk) { this.trace('L3.11.6-REKEY', id, this.coord, 'from=%d', m.from); this.emitRelay(this.genKey); } }   // THIS meeting's genesis key. L3.11.6: a seated Section-1 seat whose key changed registers under it now (C++: onHome)
+      if (this.state === 1 && roomTerm(this, 1) && m.from >= 0 && this.c7Old.has(m.from) && TICK - this.c7At < K.RELAY_TTL && !(m.c7Min >= 0 && this.l834Y >= 0 && m.c7Min < this.l834Y)) return;   // L8.5; L8.5.3: unless its HOME names a ring below the one I left (it re-seated in the ring we move toward: the carrier)
       if (this.state === 1 && this.l851Moves(m)) return;   // L8.5.1
       if (this.state === 1 && m.l31 === 1 && this.l31TakeDoor(m)) return;   // L31.1
       if (this.l3113On() && this.state === 1 && this.oldCell && this.rcSentAt >= 0 && TICK - this.rcSentAt < K.RC_RESEND && m.roster.length) { this.roster = kvCopy(m.roster); this.haveRoster = true; this.lastReach = TICK; return; }   // L3.11.3: my RECLAIM round is in flight; a HOME now (the reload tree memory's burst) keeps its roster but starts no round and seats me nowhere: as a newcomer I would close the door its RECLAIMED comes back on
@@ -116,7 +117,7 @@
       if (this.state === 1 && this.oldCell && (this.rcPendAt >= 0 || this.rcRound2) && m.roster.length) { this.roster = kvCopy(m.roster); this.haveRoster = true; this.lastReach = TICK; return; }   // L3.10.6
       if (this.state === 1) {
         if (m.roster.length === 0) { this.retryAt = TICK - 10; return; }
-        if (this.entryTerm() && m.from >= 0) { this.gateway = m.from; this.islandAskAt = -1; this.islandAskN = 0; }
+        if (this.entryTerm() && m.from >= 0) { this.gateway = m.from; this.islandAskAt = -1; this.islandAskN = 0; this.islandAsked.clear(); this.islandLast = false; }
         if (m.line >= 0) { this.lineAdopt(m.line, 'home'); if (m.lineF) this.lineFork = true; }
         this.roster = kvCopy(m.roster); this.haveRoster = true; this.lastReach = TICK; this.seatTries = 0; this.resumeTries = 0;
         let t;
@@ -187,7 +188,7 @@
       if (this.l44Answer(m)) this.state = 2;   // L44.6: the answer to my own FIND, after an early re-ask sent me back to the door
       if (this.state === 2 && m.l31 === 7) return;   // L31.4: a withdrawal is no placement: the seeker has already moved on, and it names no neighbours
       if (this.state === 2 && this.l317Declined(m)) { this.trace('L31.7-DECLINED', id, m.coord, 'owner=%d at=%d', m.owner, m.ppAt); return; }   // L31.7: a placement I declined while seated is no answer to this search
-      if (this.state === 2 && roomTerm(this, 1) && this.TICK - this.c7At < K.RELAY_TTL && (this.c7Old.has(m.owner) || this.c7Old.has(m.from))) return;   // L8.5
+      if (this.state === 2 && roomTerm(this, 1) && this.TICK - this.c7At < K.RELAY_TTL && (this.c7Old.has(m.owner) || this.c7Old.has(m.from)) && !(m.c7Min >= 0 && this.l834Y >= 0 && m.c7Min < this.l834Y)) return;   // L8.5 (L8.5.3: a placer already seated in the ring we move toward names it below the ring I left)
       if (this.state === 2 && this.l851Moves(m)) return;   // L8.5.1
       if (this.state === 2 && this.l25BadPlacer.size && (this.l25Bad(m.owner) || this.l25Bad(m.from))) { this.trace('L25-BADPLACER', id, null, 'owner=%d', m.owner); if (m.nc === id) this.l711Reask('badplacer'); return; }
       if (this.state === 2 && m.nbrs.length === 0 && ckey(m.coord) !== 0) { lv.L25_TWICE++; this.l25Mark(m.owner, true); this.trace('L25-BARE-PLACE', id, m.coord, 'owner=%d', m.owner); if (m.nc === id) this.l711Reask('bare'); return; }   // L25

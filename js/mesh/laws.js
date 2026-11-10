@@ -36,6 +36,7 @@
     HEAD_HEIR_WAIT: 40,       // a row-mate past column 1 leaves a confirmed-dead head to its own healer this long (H2 backstop)
     HELD_BEATS: 24,           // three rook beats: the occupant is answering right now
     HELLO_BACK: 20,           // ticks between HELLOs answering one unheard greeter
+    ISLAND_ASKS: 2,           // L8.1.1: silent rounds at the door before a joiner founds an island: the first silent round knocks again (a member that re-seated or re-registered since the first list is named now); only the second silent round founds
     ISLAND_WAIT: 24,          // L8.1: ticks after a joiner asked every listed greeter with no HOME back before it founds an island
     KICK_AUD_EVERY: 2,        // L27.9: a seat that folds vote lists runs one spot audit per this many pulses (a hash draw), alternating an entry of a child's list and a seat of its scope
     KICK_AUD_GRACE: 120,      // L27.9: a voter's statement this old (signing time) should be in every list above it: an audit that finds it missing or contradicted counts against the child

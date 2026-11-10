@@ -591,8 +591,13 @@
       if (P.fhopActive() && me < P.FH.length) {
         const f = P.FH[me]; let h = false;
         for (const j of f.jobs) if (j.target === x || j.req === x) h = true;
-        for (const p of f.peer.values()) if (p.via === x) h = true;
-        if (h) { wm |= E.LW_FHOP; if (first) return wm; }
+        if (f.peer instanceof Map) { for (const [pk, p] of f.peer) { if (p.via === x) h = true; if (pk === x && p.opening >= 0) h = true; } }
+        else for (const p of f.peer) if (p.via === x) h = true;   // the page's roles: a list of vias, my own slot only
+        if (!h && x >= 0 && x < P.FH.length && P.FH[x]) {   // FHOP.7: the far end carries me, or is opening this pc to carry me (the page learns it from the cam-ask / relay-opening)
+          const g = P.FH[x]; for (const j of g.jobs) if (j.target === me || j.req === me) h = true;
+          const po = g.peer instanceof Map ? g.peer.get(me) : undefined; if (po !== undefined && po.opening >= 0) h = true;
+        }
+        if (h) { wm |= E.LW_FHOP; if (first) return wm; }   // a friend-hop route through, to, or over it
       }
       if (s.keepHeld(x)) { wm |= E.LW_KEEP; if (first) return wm; }
       if (l223Island(me, x, first)) { wm |= E.LW_ISLAND; if (first) return wm; }

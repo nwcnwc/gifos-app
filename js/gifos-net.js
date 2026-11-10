@@ -73,6 +73,11 @@
   // facade so callers wire handlers exactly once. makeUrl() is re-evaluated on
   // every (re)connect, so rotated credentials (a new password proof, an admin
   // key) ride the next attempt automatically.
+  // Reconnect backoff: 500 ms doubling, capped; each wait is scaled by a random factor in [JITTER_MIN, JITTER_MAX].
+  // The relay's restart hold is derived from RECONNECT_SLOW_CAP_MS and RECONNECT_JITTER_MAX (relay.js RESTART_HOLD_MS;
+  // the gifos check relay-unit/restart-hold-twin fails when they drift).
+  const RECONNECT_CAP_MS = 5000, RECONNECT_SLOW_CAP_MS = 15000, RECONNECT_HIDDEN_CAP_MS = 60000;
+  const RECONNECT_JITTER_MIN = 0.7, RECONNECT_JITTER_MAX = 1.3;
   function steadySocket(makeUrl, sockOpts) {
     const duty = sockOpts && typeof sockOpts.onDuty === 'function' ? sockOpts.onDuty : null;
     const s = { onmessage: null, onstate: null, onopen: null, state: 'connecting', downSince: Date.now(), rejected: 0, closes: [] };
@@ -173,8 +178,8 @@
       // is true. No onDuty keeps the hidden cap.
       let onDuty = false;
       try { onDuty = !!(duty && duty()); } catch (e) { onDuty = false; }
-      const cap = (hidden && !onDuty) ? 60000 : slow ? 15000 : 5000;
-      const delay = Math.min(cap, 500 * Math.pow(2, attempt++)) * (0.7 + Math.random() * 0.6);
+      const cap = (hidden && !onDuty) ? RECONNECT_HIDDEN_CAP_MS : slow ? RECONNECT_SLOW_CAP_MS : RECONNECT_CAP_MS;
+      const delay = Math.min(cap, 500 * Math.pow(2, attempt++)) * (RECONNECT_JITTER_MIN + Math.random() * (RECONNECT_JITTER_MAX - RECONNECT_JITTER_MIN));
       timer = setTimeout(() => { timer = null; connect(); }, delay);
     }
     const kick = (force) => {
@@ -879,7 +884,7 @@
     RELAY_TYPES, RELAY_PLAIN_BYTES, RELAY_IV_B64_LEN, RELAY_CT_B64_LEN, RELAY_MAX_FRAME_LEN, RELAY_SHAPES, relayFrameOk, relayVerbOk, fitsFixed, sansPad, sealFixed, relayNameFit, referralFrames, referralJoin,
     bootOf, bootOk, fpOk, sdpOfBoot, iceOf, candOfIce,
     ICE_SERVERS, hasP2P, holdSessionLock,
-    steadySocket,
+    steadySocket, RECONNECT_CAP_MS, RECONNECT_SLOW_CAP_MS, RECONNECT_HIDDEN_CAP_MS, RECONNECT_JITTER_MIN, RECONNECT_JITTER_MAX,
     FRAG_PART, FRAG_BUDGET, sendChunked, chunk, makeDefrag,
     shortCode, randHex, sha256hex, sha256hexOfBytes, keyId, keyVerifier,
     deriveMeet, deriveMeetKey, meetPwProof, mintGenesisKey,
