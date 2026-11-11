@@ -237,6 +237,7 @@
       if (!this.hasCoord || this.state !== 3) { this.l4ExecAt = -1; this.l4o = newL4Order(); return; }
       if (this.l4ExecAt >= 0) {
         if (this.l4Pinged < 0) { this.l4Pinged = this.TICK; const p = newMsg('SWAPRDY'); p.id = this.id; p.tag = 2; this.emit(this.l4Partner, p); }
+        if (this.l4Pinged === this.TICK) for (const e of this.l4Nb) { if (e.v < 0 || e.v === this.id || e.v === this.l4Partner) continue; const ls = this.f.fabricLinkState(this.id, e.v); if (ls === E.LS_CLOSED || ls === E.LS_NONE) { this.f.fabricDial(this.id, e.v); this.trace('SWAP-DIAL', this.id, this.coord, 'peer=%d cell=%s', e.v, coordStr(unckey(e.k))); } }   // L4.3.1: the links of the cell I am to enter are dialled ahead, so they are open when I sit
         if (!this.l4Acked && this.TICK >= this.l4ExecAt - 3) {
           const ok = this.l4PartnerPing >= 0 && this.lastChurn === this.l4GoChurn && this.TICK - this.healAt >= 2 && !this.moving && !this.l4Hold;
           const v = newMsg('SWAPRDY'); v.id = this.id; v.tag = ok ? 3 : 4; this.emit(this.l4Partner, v);
