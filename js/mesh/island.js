@@ -178,6 +178,9 @@
       this.childOf.delete(k); this.heirWait.delete(k); return true;
     },
 
+    // C++: mesh_island.inc:Seat::l853Stays   [true: this HOME or chair names a ring that stays, so a mover takes it even from a seat that left with it]
+    l853Stays(m) { return m.c7Min >= 0 && this.l851Up >= 0 && this.TICK - this.l851At < K.RELAY_TTL && m.c7Min < this.l851Up; },
+
     // C++: mesh_island.inc:Seat::ringMin
     ringMin() { let mine = this.id; for (const [k, v] of this.occ) if (v >= 0 && ckPc(k) === 0 && v < mine) mine = v; return mine; },
 
@@ -280,6 +283,7 @@
       for (let q = 0; q < n; q++) tell(this.occGet(ckey(ol[q])));
       tell(this.occGet(ckey(down(this.coord))));
       tell(this.ownerId());
+      if (roomTerm(this, 1)) for (const x of this.l842Join) tell(x);   // L8.5.6: the ring I join hears my goodbye too
       this.c7Old.clear(); for (const v of this.occ.values()) if (v >= 0 && v !== this.id && !this.l842Join.has(v)) this.c7Old.add(v); this.c7At = this.TICK;
       this.l851Note(toward >= 0 ? toward + 1 : rmin);   // L8.5.1
       if (roomTerm(this, 1)) this.l834Y = rmin;
