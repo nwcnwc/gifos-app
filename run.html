@@ -4313,13 +4313,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // leaving the room — a floating overlay keeps the meeting's best face on
     // screen, the way every native call app does. Video only: audio already
     // survives backgrounding (the live mic capture keeps the audio graph
-    // running). Three AUTO entry paths, best-effort each: Chrome fires the
-    // MediaSession 'enterpictureinpicture' action itself when the user leaves
-    // a tab that is capturing cam/mic (permission + site-engagement gated);
-    // iOS Safari honors autoPictureInPicture on the aimed candidate; and we
-    // try directly on visibilitychange for browsers that grant a
-    // recent-gesture grace. Plus one MANUAL path that works wherever the API
-    // exists: the #pipbtn Float button (a tap is a gesture — see below).
+    // running). Three AUTO entry paths, best-effort each: Chrome and Edge
+    // fire the MediaSession 'enterpictureinpicture' action when the user
+    // leaves a tab that is capturing cam/mic (permission + site-engagement
+    // gated), and that action opens the document window; iOS Safari honors
+    // autoPictureInPicture on the aimed candidate; anything else gets the
+    // video element's own float a moment after the hide. A hide never asks
+    // for the document window itself. That call can fail to return, and the
+    // tab would never finish going away. Plus one MANUAL path that works
+    // wherever the API exists: the #pipbtn Float button (a tap is a gesture).
     // On Android the only unconditional AUTO path is the native
     // fullscreen-video one, hence the button. Returning to the tab
     // dismisses the float. Side-benefit: a page with an open PiP window is
@@ -4367,6 +4369,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // "still visible" at that instant was the 1-in-3 on a tab switch.
     let pipByBrowser = 0;
     const pipBrowserAsked = () => !!pipByBrowser && Date.now() - pipByBrowser < 3000;
+    // A hide must not call requestWindow. On some builds that call never
+    // returns, so the visibility handler would never finish. Chrome and Edge
+    // open the document window themselves, from the enterpictureinpicture
+    // action below. This is only how long a hide waits for that action
+    // before the video element's own float. The handler arms the timer and
+    // returns; it does not wait.
+    const PIP_AUTO_FALLBACK_MS = 2000;
+    let pipAutoT = 0;
+    // Bumped when a float is cancelled. A document window that answers after
+    // that is closed instead of left over a tab the person is looking at.
+    let pipEpoch = 0;
     // mediaAskPending: a camera, mic or screen ask the browser is still
     // answering. Its permission prompt or picker takes the window's focus
     // while the tap's activation is live, and the blur rule below read that
@@ -4546,15 +4559,31 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!byBrowser && !document.hidden && !pipManual && !(pipAwayAt && !document.hasFocus())) exitPip('settle-visible');
       return true;
     }
+    function clearPipAuto() {
+      if (!pipAutoT) return;
+      clearTimeout(pipAutoT);
+      pipAutoT = 0;
+    }
+    // Hide and blur land here with neither flag. They must return without
+    // calling requestWindow: that call can sit forever inside the visibility
+    // handler. The document window is asked only from a tap or from the
+    // browser's own action, both of which grant it in this same turn.
     async function enterPip(manual, byBrowser) {
       if (byBrowser) pipByBrowser = Date.now();
+      if (manual || byBrowser) clearPipAuto();
       pipNote('enter', { manual: !!manual, browser: !!byBrowser, src: (() => { try { const v = pipSource(); return v ? (v === (meTile && meTile.video) ? 'me' : 'peer') : null; } catch (e) { return '?'; } })() });
       // A tile floated from that page only paints "Playing in
       // picture-in-picture" into the browser's float, and leaves the tile
       // black when you come back.
       if (!manual && IS_MOBILE && pageFull()) return;
-      const v = pipSource();
       if (docPip) { docPipAim(); return; }
+      // The action's grant is this turn only. Ask before any await.
+      if (byBrowser && docPipOk()) {
+        const opened = openDocPip();
+        Promise.resolve(opened).then(() => {}, () => {});
+        return;
+      }
+      const v = pipSource();
       if (v && document.pictureInPictureElement === v) return;
       if (!v) {
         // No live picture (every camera off): the document window where the
@@ -4573,23 +4602,45 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (manual) setStatus((BROADCAST) ? 'Nothing on the stage to float yet.' : 'Nothing to float yet.');
         return;
       }
+      if (!manual && !byBrowser) { armPipAuto(); return; }
       pipManual = !!manual;
-      // A desktop browser with a document float opens the small meeting
-      // window; the video element's own float is the fallback.
-      if (docPipOk() && await openDocPip()) {
-        if (!byBrowser && !document.hidden && !pipManual && !(pipAwayAt && !document.hasFocus())) exitPip('settle-visible');
+      if (manual && docPipOk() && await openDocPip()) {
+        if (!document.hidden && !pipManual && !(pipAwayAt && !document.hasFocus())) exitPip('settle-visible');
         return;
       }
+      const epoch = pipEpoch;
       try {
         if (v.requestPictureInPicture) await v.requestPictureInPicture();
         else if (v.webkitSupportsPresentationMode && v.webkitSupportsPresentationMode('picture-in-picture')) v.webkitSetPresentationMode('picture-in-picture');
-      } catch (e) { pipNote('el-refused', { err: e && e.name }); /* no gesture grace here — the browser's own auto paths still apply */ }
+      } catch (e) { pipNote('el-refused', { err: e && e.name }); /* no gesture grace here — the browser's own auto paths still apply */ return; }
       // The request is async: a quick flip away and back runs exitPip while it
       // is still pending, and the float then opens over a visible tab with
       // nothing left to close it. Settle against the tab as it is NOW. Not
       // for a float the browser asked for: that one is the browser's to
       // close, and the page may still read visible when it opens.
-      if (!byBrowser && !document.hidden && !pipManual && !(pipAwayAt && !document.hasFocus())) exitPip('settle-visible');
+      if (docPip) return;
+      if (epoch !== pipEpoch || (!byBrowser && !document.hidden && !pipManual && !(pipAwayAt && !document.hasFocus()))) exitPip('settle-visible');
+    }
+    function armPipAuto() {
+      if (pipAutoT || docPip || docPipReq || pipFloating()) return;
+      pipNote('auto-arm');
+      pipAutoT = setTimeout(() => { pipAutoT = 0; elementFloat(); }, PIP_AUTO_FALLBACK_MS);
+    }
+    async function elementFloat() {
+      if (docPip || docPipReq || pipFloating()) return;
+      const away = document.hidden || (!!pipAwayAt && !document.hasFocus());
+      if (!away) return;
+      const v = pipSource();
+      if (!v || document.pictureInPictureElement === v) return;
+      const epoch = pipEpoch;
+      pipNote('el-ask');
+      try {
+        if (v.requestPictureInPicture) await v.requestPictureInPicture();
+        else if (v.webkitSupportsPresentationMode && v.webkitSupportsPresentationMode('picture-in-picture')) v.webkitSetPresentationMode('picture-in-picture');
+        else return;
+      } catch (e) { pipNote('el-refused', { err: e && e.name }); return; }
+      if (docPip) return;
+      if (epoch !== pipEpoch || (!document.hidden && !pipManual && !(pipAwayAt && !document.hasFocus()))) exitPip('settle-visible');
     }
     const pipFloating = () => !!(docPip || document.pictureInPictureElement
       || Array.from(document.querySelectorAll('video')).some((v) => v.webkitPresentationMode === 'picture-in-picture'));
@@ -4632,23 +4683,31 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // Each call asks at once, inside the caller's task: the browser allows the
     // window only there (a tap, or its own auto-float action). A request the
-    // browser is still answering is shared with the next caller: on a tab
-    // switch the page's own hide-time ask (allowed when the switch key gave
-    // it an activation) and the browser's auto-float action land ~ms apart,
-    // and two asks open two windows in turn. A refused ask settles at once
-    // and is never shared. A newer window replaces an older.
+    // browser is still answering is shared with the next caller, so a tap and
+    // the action landing together do not open two windows. A refused ask
+    // settles at once and is never shared. A newer window replaces an older.
+    // A window that arrives after the person has come back is closed.
     let docPipReq = null;
     function openDocPip() {
       if (docPip) return Promise.resolve(true);
       if (docPipReq) return docPipReq;
+      const epoch = pipEpoch;
       let req;
       try { req = window.documentPictureInPicture.requestWindow({ width: 360, height: 250 }); } catch (e) { pipNote('doc-refused', { err: e && e.name }); return Promise.resolve(false); }
       pipNote('doc-ask');
-      docPipReq = Promise.resolve(req).then((win) => { docPipReq = null; pipNote('doc-open'); return docPipOpened(win); }, (e) => { docPipReq = null; pipNote('doc-refused', { err: e && e.name }); return false; });
+      docPipReq = Promise.resolve(req).then((win) => {
+        docPipReq = null;
+        if (epoch !== pipEpoch) { try { win.close(); } catch (e) {} pipNote('doc-late'); return false; }
+        pipNote('doc-open');
+        return docPipOpened(win);
+      }, (e) => { docPipReq = null; pipNote('doc-refused', { err: e && e.name }); return false; });
       return docPipReq;
     }
     function docPipOpened(win) {
       if (docPip && docPip.win !== win) { const w = docPip.win; docPip = null; try { w.close(); } catch (e) {} }
+      // The element float may have won the wait. One float, the document one.
+      const el = document.pictureInPictureElement;
+      if (el) { const pr = document.exitPictureInPicture(); if (pr && pr.catch) pr.catch(() => {}); }
       const d = win.document;
       const st = d.createElement('style');
       st.textContent = 'html,body{margin:0;height:100%;background:#0d0f14;color:#fff;font:14px system-ui,sans-serif;overflow:hidden}'
@@ -4705,6 +4764,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       pipNote('el-recover', { err: refused || '' });
     }
     async function exitPip(why) {
+      clearPipAuto();
+      pipEpoch++;
       pipNote('exit', { why: why || '' });
       pipCardRun(false); // coming back stops the card's painting
       if (docPip) { const w = docPip.win; docPip = null; try { w.close(); } catch (e) {} }
@@ -4880,9 +4941,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     document.addEventListener('enterpictureinpicture', () => {
       if (!document.hidden && !pipManual && pipAwayAt === 0 && !pipBrowserAsked()) exitPip('el-visible');
     }, true);
-    // Switching to another window (the tab stays visible) floats the meeting
-    // too, the way the tab switch does, as far as the browser allows; coming
-    // back closes it. Desktop only: a phone's app switch hides the page, and
+    // Switching to another window (the tab stays visible) uses the same
+    // auto path as a hide: the browser's own action where it sends one,
+    // otherwise the video element's float. Coming back closes it. Desktop
+    // only: a phone's app switch hides the page, and
     // its blur alone means a prompt, a picker or the float's own opening.
     // A float the person asked for, or the browser asked for, is never
     // closed by a blur or a focus: only a real return closes it, which is
