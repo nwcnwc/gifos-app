@@ -358,7 +358,7 @@
       for (let j = 1; j < this.coord.i; j++) { const k = ckey(cell(this.coord.pc, this.coord.r, j)); if (this.occGet(k) >= 0 || this.softSitting(k)) { return; } }
       const dk = ckey(down(hd));
       if (this.occGet(dk) >= 0) { return; }
-      const since = bye ? by : this.TICK;
+      let since = this.TICK; if (bye) since = by; else { const tl = this.translost.get(hk); if (tl !== undefined) since = tl; }   // L9.3: a head gone by a confirmed loss left when the loss was registered
       if (this.l1KidHeals(hd)) {
         const u = this.u2Rows.get(dk * 2); if (u !== undefined && u.heir >= 0 && u.at >= since) { return; }
         if (this.TICK - since < K.L9_KID_WAIT) { return; }
