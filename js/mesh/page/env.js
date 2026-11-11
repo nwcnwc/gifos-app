@@ -280,11 +280,18 @@
       o.send(p, m, dirFor(m));
       return true;
     }
+    // C++: mesh_fhop.inc:l849Greet
+    // L8.49: my own ring greeting, from Section 1, to the stranger this listing picked: I dial it myself (true: not sponsored).
+    function l849Greet(s, to, m) {
+      if (m.t !== 'HELLO' || m.id !== me) return false;
+      return s.hasCoord && s.state === 3 && s.coord.pc === 0 && s.l849Pick === to && s.doorNamed(to);
+    }
     // C++: mesh_fhop.inc:fhopSchedule  (true: consumed; false: the link step runs)
     function fhopSchedule(to, m) {
       const s = seat(); if (!s || to < 0 || to === me || m.fhTo >= 0) return false;
       if (m.gwc && farView(s, to).seat !== 1) return false;   // L16.3: an answer to a joiner outside rides my own door
       if (pcw.fhDcRaw(to)) return false;   // the frame rides the open channel
+      if (l849Greet(s, to, m)) return false;   // L8.49: the one ring greeting this listing picked is dialled, not sponsored
       const st0 = pcw.fhState(to);
       const names = !!(s.hasCoord && s.linkRole(to, E.LR_OWNED | E.LR_E2)), outside = farView(s, to).seat === -1;
       // a pc that is coming (none yet, or dialing) carries the frames that wait for it
