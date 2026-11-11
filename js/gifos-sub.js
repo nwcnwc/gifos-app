@@ -15,10 +15,19 @@
  * only good together with a fresh signature from that key, so a copied
  * license is useless to anyone else.
  *
- * The people limit: when someone WITHOUT a subscription tries to enter an
- * admin room that already holds 20 people, they are turned away with a
- * plain message. Anyone holding any plan is always let in, even past 20.
+ * The people limit belongs to the room's admin's plan. A room whose admin
+ * holds the $5 or $10 plan has no limit. In a room whose admin holds the $2
+ * plan (or whose plan cannot be shown), someone WITHOUT a subscription who
+ * tries to enter when the room already holds 20 people is turned away with
+ * a plain message. Anyone holding any plan is always let in, even past 20.
  * The room's count is the length of its door's list of greeters.
+ *
+ * How the room's plan is known: the admin puts their license in the room's
+ * signed admin orders, with a signature from their subscription key over
+ * the room's name (roomOrderProof). Everyone at the door checks it
+ * (roomTierOf); a missing, forged, expired or borrowed license reads as the
+ * 20-person line. A person at the door who has a plan shows it the same way,
+ * signing the door's fresh challenge (doorProof).
  *
  * Everything here is pure, with the clock and the signature check passed in,
  * so a page, the payment service and the meeting servers apply the same
@@ -166,6 +175,37 @@
     return { admit: true, why: 'room-has-space' };
   }
 
+  // ---- the room's plan, carried by the room ---------------------------------
+  // room is the admin room's full name ("<name>.<verifier>"): a proof made
+  // for one room is worth nothing in another.
+  const roomContext = (room) => 'room:' + String(room);
+  const doorContext = (room) => 'door:' + String(room);
+  // The admin's room order: {lic:{licenseJson,sig}, proof, at}. proof signs
+  // proofMessage(roomContext(room), 'at:' + at) with the license's key.
+  async function roomTierOf(order, room, verifyPay, verifyKey, nowS) {
+    if (!order || typeof order !== 'object' || order.on === false) return null;
+    if (!Number.isInteger(order.at)) return null;
+    const lic = await verifyLicense(order.lic, verifyPay, nowS);
+    if (!lic) return null;
+    const ok = await verifyProof(lic, roomContext(room), 'at:' + order.at, order.proof, verifyKey);
+    return ok ? lic.tier : null;
+  }
+  // doorVerdict: what a greeter does with a knocker it has no proof from.
+  // -> 'let-in' (no limit applies, or the room has space, or the count is not
+  // readable yet) | 'ask' (the room is at its line: the knocker must show a plan)
+  function doorVerdict(o) {
+    const v = admission({ adminRoom: o.adminRoom, roomTier: o.roomTier, listLength: o.count, hold: o.hold, entrant: { isAdmin: false, rights: FREE } });
+    return v.admit || v.wait ? 'let-in' : 'ask';
+  }
+  // The knocker's answer to the door's challenge: their license, and their
+  // key's signature over the door's nonce for this room.
+  async function doorProofOk(shown, room, nonce, verifyPay, verifyKey, nowS) {
+    if (!shown || typeof shown !== 'object') return null;
+    const lic = await verifyLicense(shown.lic, verifyPay, nowS);
+    if (!lic) return null;
+    return (await verifyProof(lic, doorContext(room), nonce, shown.proof, verifyKey)) ? lic : null;
+  }
+
   // ---- the page switch ------------------------------------------------------
   // Off unless #subs=1 / ?subs=1 rides the URL or localStorage['gifos-subs']
   // is '1'. #subs=0 turns it off again.
@@ -181,6 +221,6 @@
   GifOS.sub = {
     TIERS, TIER_IDS, FREE, TEXT, PEOPLE_LIMIT, LICENSE_KIND, SELLER, KEY_RE, SUB_ID_RE, ASK_WINDOW_S, FLAG_KEY,
     checkLicense, verifyLicense, rightsOf, proofMessage, verifyProof, askMessage, askFresh,
-    roomLimitFor, admission, enabled,
+    roomLimitFor, admission, enabled, roomContext, doorContext, roomTierOf, doorVerdict, doorProofOk,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

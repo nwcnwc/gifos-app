@@ -8,8 +8,11 @@
  *   - Settings gets a Subscription group: the three plans, sign-up through
  *     PayPal, the current plan and when it renews or ends, and Cancel.
  *   - Making an admin room needs a subscription (any plan).
- *   - Entering an admin room that already holds 20 people needs a
- *     subscription; without one the person is told plainly and not let in.
+ *   - The admin's plan travels with the room (a signed room order), so the
+ *     door knows the room's plan. In a room on the $2 plan (or one whose plan
+ *     cannot be shown) that already holds 20 people, the door asks a newcomer
+ *     to show a subscription; without one they are told plainly and not let
+ *     in. Rooms on the $5 and $10 plans have no limit.
  *
  * The subscriber's key is made in this browser and can never be read out of
  * it (WebCrypto, not extractable). The license the payment service signs
@@ -219,20 +222,35 @@
     openSettings();
     return false;
   }
-  // The knock answer at the door of an admin room. Returns the admission
-  // verdict; the page keeps going unless admit is false and wait is not set.
-  let lastRights = null;
-  async function entryCheck(frame, o) {
-    if (!on()) return { admit: true, why: 'off' };
-    if (!lastRights) lastRights = await rights();
-    return SUB.admission({
-      adminRoom: !!o.adminRoom,
-      roomTier: o.roomTier || null,
-      listLength: frame && Array.isArray(frame.list) ? frame.list.length : undefined,
-      hold: !!(frame && frame.hold),
-      entrant: { isAdmin: !!o.isAdmin, rights: lastRights },
-    });
+  // ---- the room's plan and the door's challenge ----------------------------
+  const verifyPay = async (sig, msg) => GifOS.ed.verify(await payKey(), sig, msg);
+  const verifyKey = (pubB64, sig, msg) => GifOS.ed.verify(fromB64(pubB64), sig, msg);
+  // The admin's order that carries their plan into the room, or null.
+  async function roomOrder(room) {
+    if (!on()) return null;
+    const st = readState();
+    const lic = await verifiedLicense(st);
+    if (!lic) return null;
+    const at = Date.now();
+    return { on: true, at, lic: { licenseJson: st.licenseJson, sig: st.sig }, proof: await signText(SUB.proofMessage(SUB.roomContext(room), 'at:' + at)) };
   }
+  // The room's plan from the order the room carries (null: none, forged, run out).
+  async function roomTier(order, room) {
+    try { return await SUB.roomTierOf(order, room, verifyPay, verifyKey, nowS()); } catch (e) { return null; }
+  }
+  // A knocker answering the door's challenge, or null without a plan.
+  async function proveAtDoor(room, nonce) {
+    if (!on()) return null;
+    const st = readState();
+    if (!(await verifiedLicense(st))) return null;
+    return { lic: { licenseJson: st.licenseJson, sig: st.sig }, proof: await signText(SUB.proofMessage(SUB.doorContext(room), nonce)) };
+  }
+  // The door checking a knocker's answer.
+  async function checkShown(shown, room, nonce) {
+    try { return !!(await SUB.doorProofOk(shown, room, nonce, verifyPay, verifyKey, nowS())); } catch (e) { return false; }
+  }
+  const newNonce = () => { const u = new Uint8Array(18); crypto.getRandomValues(u); return 'n' + b64(u).replace(/[+/=]/g, ''); };
+
   // Shown instead of the meeting when the room is full for this person.
   function showFull() {
     const m = document.getElementById('left-modal');
@@ -253,12 +271,11 @@
     if (!on()) return;
     const b = document.getElementById('setbtn');
     if (b) b.addEventListener('click', () => { paintSettings().catch(() => {}); });
-    rights().then((r) => { lastRights = r; }).catch(() => {});
-    keepFresh().then(() => rights()).then((r) => { lastRights = r; }).catch(() => {});
+    keepFresh().catch(() => {});
   }
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
   }
 
-  GifOS.meetSubs = { enabled: on, rights, refresh, subscribe, cancel, paintSettings, openSettings, mayCreateAdminRoom, entryCheck, showFull };
+  GifOS.meetSubs = { enabled: on, rights, refresh, subscribe, cancel, paintSettings, openSettings, mayCreateAdminRoom, showFull, roomOrder, roomTier, proveAtDoor, checkShown, newNonce };
 })(typeof window !== 'undefined' ? window : globalThis);

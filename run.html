@@ -8384,7 +8384,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // field (the admin's chat on/off switch). It rides the same signed
         // table as every per-target order, so it reaches late joiners on the
         // heartbeat and a forged copy dies in takeMod's admVerify.
-        for (const field of ['mute', 'blur', 'cam', 'app', 'share', 'chat', 'cc', 'wait', 'admit', 'dhold', 'dadm', 'rename', 'spot', 'pray', 'gfile', 'greact', 'qa', 'chist', 'slow', 'clink']) {
+        for (const field of ['mute', 'blur', 'cam', 'app', 'share', 'chat', 'cc', 'wait', 'admit', 'dhold', 'dadm', 'sublic', 'rename', 'spot', 'pray', 'gfile', 'greact', 'qa', 'chist', 'slow', 'clink']) {
           const inc = incoming[target][field];
           if (!inc || typeof inc !== 'object') continue;
           if (goneAt != null && (+inc.at || 0) <= goneAt) continue;
@@ -17724,6 +17724,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const k = await net.edKeysFromSeedHex(K).catch(() => null);
       if (!k || k.verifier !== av) return false;
       admKey = K; admKeys = k; amAdmin = true;
+      setTimeout(() => { subsPublishRoomPlan(); }, 1500);   // the admin's plan rides the room's signed orders (no-op while subscriptions are off)
       admins = adminsNow(); // canStage reads this view; do not wait for the sweep
       refreshModSig();
       try { tryBroadcastStage(); } catch (e) {}
@@ -18277,11 +18278,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         excluded: isEjected, // ejected forgers: their mesh frames never reach the seat
         urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
         holdDoor: () => pwWaitProof && !meshCoord(),
-        doorHeld: (id) => { try { const b = meetWait.blocks(id); if (b && id && amAdmin) meetWait.note(id, rosterNames[id] || 'Someone waiting'); if (b && id) sayHeld(id); return b; } catch (e) { return false; } },   // a withheld knock goes on the host's list: nothing else names a plain room's knocker
+        doorHeld: (id) => { try { const b = meetWait.blocks(id); if (b && id && amAdmin) meetWait.note(id, rosterNames[id] || 'Someone waiting'); if (b && id) sayHeld(id); return b || subsHolds(id); } catch (e) { return false; } },   // a withheld knock goes on the host's list: nothing else names a plain room's knocker
         onDoor: (kind, frame) => {
           if (kind === 'seated') {
             meetWait.waiting(false);
-            subsDoorCheck(frame);
+            subsDoorSeen(frame);
           }
         },
         sendDC: meshSendDC,
@@ -22771,6 +22772,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         dcSend(p, { k: 'wpong' }); // the wake probe (wakeProbe): the one answer it accepts
       } else if (m.k === 'held') {
         onHeldSaid(p, dc);
+      } else if (m.k === 'subask' && typeof m.n === 'string') {
+        subsAnswer(p, m.n);         // a door asks me to show a subscription
+      } else if (m.k === 'subshow' && m.s && typeof m.s === 'object') {
+        subsShown(p, m.s);          // a knocker shows one
+      } else if (m.k === 'subnone') {
+        subsRefuse(p);
+      } else if (m.k === 'subfull') {
+        subsFull();
       } else if (m.k === 'wpong') {
         p.wakePongAt = Date.now();
       } else if (m.k === 'bye') {
@@ -36626,24 +36635,79 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return out || fallback || 'room';
     }
 
-    // SUBSCRIPTIONS AT THE DOOR (off unless switched on; js/meet-subs.js): a
-    // person without a subscription does not enter an admin room that
-    // already holds 20. The count is the door's greeter list; a restart hold
-    // is waited out, never read as a count. Only a page still entering is
-    // checked: a seated member is never put out by it.
-    let subsTurnedAway = false;
-    function subsDoorCheck(frame) {
-      if (subsTurnedAway || !(window.GifOS && GifOS.meetSubs && GifOS.meetSubs.enabled())) return;
+    // SUBSCRIPTIONS AT THE DOOR (off unless switched on; js/meet-subs.js).
+    // The people limit is the room admin's plan: the admin's license rides
+    // the room's signed orders (sublic), and every door checks it. On the $2
+    // plan, or when no valid plan is shown, a door whose room already holds
+    // 20 (its greeter list, plus itself) holds a knocker and asks it to show
+    // a subscription against a fresh challenge; a good answer lets it in at
+    // once, none turns it away with a plain message. $5 and $10 rooms have no
+    // limit. A restart hold or an unread count lets people in, never out.
+    let subsTurnedAway = false, subsDoorLen = null, subsTierKey = '', subsTier = null;
+    const subsProven = new Set(), subsAsked = new Map();   // knocker -> {n, at}
+    const subsOn = () => !!(window.GifOS && GifOS.meetSubs && GifOS.sub && GifOS.meetSubs.enabled());
+    function subsDoorSeen(frame) { if (frame && Array.isArray(frame.list) && !frame.hold) subsDoorLen = frame.list.length; }
+    // The room's plan, verified once per order: undefined while it is being
+    // checked (the door lets people in meanwhile), null when none is valid.
+    function subsRoomTier() {
+      const o = (modTable['*'] || {}).sublic;
+      const k = o ? String(o.at) + '|' + String(o.proof || '') : '';
+      if (k !== subsTierKey) {
+        subsTierKey = k; subsTier = o ? undefined : null;
+        if (o) GifOS.meetSubs.roomTier(o, roomKey()).then((t) => { if (subsTierKey === k) subsTier = t || null; }, () => { if (subsTierKey === k) subsTier = null; });
+      }
+      return subsTier;
+    }
+    async function subsPublishRoomPlan() {
+      if (!subsOn() || !hasAdminRoom() || !amAdmin) return;
+      let o = null; try { o = await GifOS.meetSubs.roomOrder(roomKey()); } catch (e) { o = null; }
+      if (!o) return;
+      const r = modTable['*'] = modTable['*'] || {};
+      r.sublic = Object.assign(o, { by: myName(), byId: myId });
+      hostFlood();
+    }
+    setInterval(() => { if (amAdmin) subsPublishRoomPlan(); }, 6 * 3600 * 1000);   // a renewed license reaches the room
+    function subsHolds(id) {
+      if (!id || !subsOn() || !hasAdminRoom() || subsProven.has(id)) return false;
+      const tier = subsRoomTier();
+      if (tier === undefined) return false;
+      const count = subsDoorLen == null ? undefined : subsDoorLen + 1;
+      if (GifOS.sub.doorVerdict({ adminRoom: true, roomTier: tier, count }) === 'let-in') return false;
+      const q = peers.get(id), a = subsAsked.get(id);
+      if (q && q.dc && q.dc.readyState === 'open' && !(a && Date.now() - a.at < 2000)) {
+        const n = GifOS.meetSubs.newNonce();
+        subsAsked.set(id, { n, at: Date.now() }); if (subsAsked.size > 64) subsAsked.delete(subsAsked.keys().next().value);
+        try { dcSend(q, { k: 'subask', n }); } catch (e) {}
+      }
+      return true;
+    }
+    function subsAnswer(p, n) {
       const ms = meshSeat();
-      if (ms && ms.state === 3) return;
-      GifOS.meetSubs.entryCheck(frame, { adminRoom: hasAdminRoom(), isAdmin: !!(amAdmin || admKey) }).then((v) => {
-        if (!v || v.admit || v.wait || subsTurnedAway) return;
-        const now = meshSeat();
-        if (now && now.state === 3) return;
-        subsTurnedAway = true;
-        try { leaveMeeting(); } catch (e) {}
-        GifOS.meetSubs.showFull();
-      }).catch(() => {});
+      if ((ms && ms.state === 3) || n.length > 128) return;
+      const go = subsOn() ? GifOS.meetSubs.proveAtDoor(roomKey(), n) : Promise.resolve(null);
+      go.then((s) => { try { dcSend(p, s ? { k: 'subshow', s } : { k: 'subnone' }); } catch (e) {} }, () => { try { dcSend(p, { k: 'subnone' }); } catch (e) {} });
+    }
+    function subsShown(p, shown) {
+      const a = subsAsked.get(p.id);
+      if (!a || !subsOn()) return;
+      GifOS.meetSubs.checkShown(shown, roomKey(), a.n).then((ok) => {
+        subsAsked.delete(p.id);
+        if (!ok) { subsRefuse(p, a); return; }
+        subsProven.add(p.id); if (subsProven.size > 256) subsProven.delete(subsProven.values().next().value);
+        try { const st = meshSeat(); if (st && st.answerDoor) st.answerDoor([p.id]); } catch (e) {}
+      });
+    }
+    function subsRefuse(p, asked) {
+      if (!asked && !subsAsked.has(p.id)) return;   // only a knocker this door asked
+      subsAsked.delete(p.id);
+      try { dcSend(p, { k: 'subfull' }); } catch (e) {}
+    }
+    function subsFull() {
+      const ms = meshSeat();
+      if (subsTurnedAway || !subsOn() || (ms && ms.state === 3)) return;   // a seated member is never put out by it
+      subsTurnedAway = true;
+      try { leaveMeeting(); } catch (e) {}
+      GifOS.meetSubs.showFull();
     }
 
     async function createAdminRoom(chosen, pass, postToChat, guestPw) {
