@@ -799,7 +799,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <button data-ti="recbtnTip" id="recbtn" data-t="record" aria-keyshortcuts="Alt+R" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
         <button id="votebtn" data-t="vote" data-ti="voteTip" aria-keyshortcuts="Alt+U" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
         <button data-ti="stagebtnTip" id="stagebtn" data-t="stage" aria-keyshortcuts="Alt+G" title="Step onto the stage — the whole room sees and hears the stage first">Stage</button>
-        <button data-ti="appTip" id="appbtn" data-t="runApp" aria-keyshortcuts="Alt+Y" title="Run an app inside this meeting — everyone here shares and interacts with it live">Run app</button>
+        <button data-ti="appTip" id="appbtn" data-t="runApp" aria-keyshortcuts="Alt+Y" title="Run an app inside this meeting. Most stay in sync. One that turns multiplayer off stays on the host's screen.">Run app</button>
         <button data-ti="rbbtnTip" data-t="rbbtn" id="rbbtn" title="Play the last broadcast, or a video, into the broadcast. Viewers see Prerecorded.">Rebroadcast</button>
         <label data-ti="bcwhenrowTip" id="bcwhenrow" title="When the broadcast starts. The viewer link and the room say so."><span data-t="bcwhenLbl" id="bcwhen-lbl">Start time</span><input type="datetime-local" id="bcwhen"></label>
         <label data-ti="bcrdrowTip" id="bcrdrow" title="An optional order of events only you see. Off for a new broadcast."><span data-t="bcrdLbl">Run of show</span><select id="bcrd"><option value="" data-t="bcrdNone">None</option><option value="service" data-t="bcrdService">Worship service</option></select></label>
@@ -1065,7 +1065,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <div class="name-modal" role="dialog" aria-modal="true" id="app-modal" style="display:none">
     <div class="name-box" style="max-width:420px;text-align:left">
       <h3 data-t="appSheetTitle">Run an app in this meeting</h3>
-      <p data-t="appSheetBody">Pick one of your apps. It runs live for everyone here — same state, same moves — with the meeting's audio, video and recording around it. Anyone can interact.</p>
+      <p data-t="appSheetBody">Pick one of your apps. Most run live for everyone here — same state, same moves — with the meeting's audio, video and recording around it. An app that turns multiplayer off still opens on the host's screen, and everyone else watches.</p>
       <div id="app-list" style="max-height:38vh;overflow-y:auto;margin:.4rem 0 .8rem"></div>
       <div id="app-add" style="border-top:1px solid var(--border,#2a2a3f);padding-top:.7rem;margin-bottom:1rem">
         <p data-t="appSheetOr" style="margin:.1rem 0 .5rem;font-size:16px;color:var(--muted,#8888aa)">Or run a GIF app that isn’t on this computer:</p>
@@ -18171,6 +18171,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         });
     }
     let soloCtl = null; // the running solo app's runtime control — Invite (step 2) hosts from it
+    // null until this solo app's manifest is read. true only when
+    // capabilities.multiplayer is on (the default). false hides Invite.
+    let soloShare = null;
+    function applySoloShare(man) {
+      const rt = window.GifOS && GifOS.runtime;
+      soloShare = (rt && typeof rt.multiplayerOn === 'function') ? rt.multiplayerOn(man) : true;
+      try { paintInviteSlot(); } catch (e) {}
+    }
+    // Cheap read of the front of a v2 archive, before the bar is shown, so
+    // an opt-out app never flashes Invite. Null means "not answered cheaply"
+    // (a v1 archive): boot's manifest hook fills soloShare once it has decoded.
+    function noteSoloShare(bytes) {
+      const gif = window.GifOS && GifOS.gif;
+      if (!gif || typeof gif.readManifestFrom !== 'function') return Promise.resolve();
+      return Promise.resolve().then(() => gif.readManifestFrom(bytes)).then((man) => {
+        if (man) applySoloShare(man);
+      }).catch(() => {});
+    }
     // LOCAL facts about this copy for the Credits at the bottom of Help: when
     // it was installed here (store.js storeMeta.installedAt) and who signed
     // the bytes (GIFOSSIG). WHO MADE IT is never taken from here — the ctl's
@@ -18230,9 +18248,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         appInstall = installFactsOf(rec);
         const nm = (rec.name && rec.name.replace(/\.gif$/i, '')) || 'App';
         document.title = nm + ' — GifOS';
+        const raw = rec.bytes instanceof Uint8Array ? rec.bytes : new Uint8Array(rec.bytes || []);
+        const noted = noteSoloShare(raw);
         const mount = () => {
           showAppPane(nm, uiText('appWhoDevice', 'on this device'));
-          setAppGif(rec.bytes instanceof Uint8Array ? rec.bytes : new Uint8Array(rec.bytes), nm);
+          setAppGif(raw, nm);
           return GifOS.runtime.boot(appMountEl, ROOM.fileId, statusEl, ROOM.solo ? LAUNCH : null).then((ctl) => {
             soloCtl = ctl;
             // AFTER the app is up, never before: is there a newer version of a
@@ -18244,13 +18264,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         };
         // Passkey lock: GifOS sheet, then WebAuthn, then unwrap — all in OS
         // chrome, before makeIframe. Cancel does not mount the sandbox.
+        const start = () => Promise.resolve(noted).then(() => mount());
         if (GifOS.lock) {
           return GifOS.lock.gateOpen(ROOM.fileId, nm).then((ok) => {
             if (!ok) { setStatus(uiText('stCancelledThisAppIsPasskey', 'Cancelled — this app is passkey-locked.')); return; }
-            return mount();
+            return start();
           });
         }
-        return mount();
+        return start();
       }).catch((e) => {
         clearTimeout(slow);
         const why = String(e && e.message || e);
@@ -18364,6 +18385,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // owned rooms freeze when the owner leaves; resilient rooms heal.
     function inviteFromSolo() {
       if (!ROOM.solo) return; // an app inside a room never mints a room of its own
+      // capabilities.multiplayer false: no share from an app the user ran
+      // themselves. A hidden button still takes a click (Alt+I), so refuse here.
+      if (soloShare !== true) {
+        if (soloShare === false) setStatus(uiText('appNoInvite', 'This app does not invite people in.'));
+        return;
+      }
       GifOS.store.allItems().then((all) => {
         const it = GifOS.lock && GifOS.lock.itemOfFile(all, ROOM.fileId);
         if (it && GifOS.lock.isLockedItem(it)) {
@@ -18457,8 +18484,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }).catch((e) => setStatus('Could not share the app: ' + (e && e.message || e)));
     }
     // THE HEADER'S INVITE is the same slot in every app. Solo: mint the
-    // room. App room: only its owner has Invite (the stored <fileId>::room
-    // owner, which survives a reload), and it reopens that room's link.
+    // room, unless this app set capabilities.multiplayer to false: then
+    // the button stays hidden and inviteFromSolo refuses. App room: only
+    // its owner has Invite (the stored <fileId>::room owner, which survives
+    // a reload), and it reopens that room's link.
     // An app-room guest has no Invite. Meeting, including an app running
     // inside one: the meeting's link, for everyone here. An app inside a
     // meeting never mints a room.
@@ -18466,7 +18495,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const btn = document.getElementById('appinvite');
       if (!btn) return;
       let show = false;
-      if (ROOM.solo) show = true;
+      if (ROOM.solo) show = soloShare === true;
       else if (ROOM.kind === 'app' && ROOM.founder) show = true;
       else if (!document.body.classList.contains('app-room')) {
         const kind = (statusEl && statusEl.dataset && statusEl.dataset.kind) || '';
@@ -18517,6 +18546,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     window.__gifosHeaderFromManifest = (manifest) => {
       window.__gifosHeaderApp = GifOS.runtime.headerChoice(manifest);
       applyHeaderChoice(window.__gifosHeaderApp);
+      // A v1 archive has no cheap manifest read. Boot has decoded it by
+      // here, so a solo app learns the opt-out before Invite can flash on.
+      if (ROOM.solo && soloShare === null) applySoloShare(manifest);
     };
     applyPageHeader();
     paintInviteSlot();
@@ -34067,8 +34099,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
 
     // ================= App-in-meeting =================
     // Any app can run INSIDE the meeting: one participant hosts it through the
-    // app runtime and everyone else mounts it live (shared multiplayer state),
-    // with the meeting's audio/video/recording wrapped around it. The app's
+    // app runtime and, unless that app set capabilities.multiplayer to false,
+    // everyone else mounts it live (shared multiplayer state). An opted-out
+    // app stays on the host's screen; other people watch, and their copy
+    // does not sync or send actions. The meeting's audio/video/recording
+    // stays wrapped around it. The app's
     // join info rides the SAME status heartbeat that keeps the room converged,
     // so late joiners pick it up automatically. This is the second entry point
     // to the exact same place as an app tab's "Meeting" toggle.
@@ -34600,6 +34635,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       reconcileApp(); // now with my ad in play (or, on failure, the room's old one)
     }
     function mountClientApp(app) {
+      // capabilities.multiplayer false: the host's ad has mesh false, so this
+      // copy does not mount, does not subscribe, and does not send acts.
+      // The meeting stays up. People watch the host's screen.
+      if (!app || !app.mesh) {
+        appEv('watch', { s: app && app.s ? String(app.s).slice(0, 8) : '' });
+        appMode = 'watch';
+        appKey = app && app.s;
+        appInstall = null;
+        setStatus(uiText('appWatchOnly', 'This app stays on the host\u2019s screen. Your copy does not join it.'));
+        return;
+      }
       appEv('client-mount', { s: String(app.s).slice(0, 8), ts: app.ts || 0, by: app.byName || null });
       appMode = 'client'; appKey = app.s; appInstall = null;
       showAppPane(app.name, app.byName ? uiText('appWhoSharedBy', '· shared with the meeting by ') + app.byName : uiText('appWhoShared', '· shared with the meeting'));
@@ -34624,8 +34670,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             else { try { c.stop(); } catch (e) {} }
           }).catch(() => {});
         }
-        // (the relay-star bootClient fallback died with run.html — one-runtime step 6;
-        // every ad is mesh:true now, and non-mesh ads no longer exist)
+        // A mesh:false ad returned above, in watch mode, before this bus.
+        // (the relay-star bootClient fallback died with one-runtime step 6)
       }
       catch (e) { clearAppView('client-mount-error'); }
     }
@@ -34755,6 +34801,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         clearAppView('switch-to-' + String(want.s).slice(0, 8));
         mountClientApp(want);
         warnRecorderNewApp(); // someone shared an app — a tiles recording won't capture it
+      } else if (!want && appKey && appMode === 'watch') {
+        // Watch mode never covered the meeting, so there is no pane to clear.
+        appMode = null;
+        appKey = null;
       } else if (!want && appKey && appMode === 'client') {
         // ONE RUNTIME (docs/one-runtime.md): in an app-PINNED room the app
         // never unmounts — the room IS the app. The ad vanishing means the
@@ -34892,11 +34942,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       } else {
         btn.textContent = uiText('runApp', 'Run app');
         btn.title = canIRunApp()
-          ? uiText('appTip', 'Run an app inside this meeting — everyone here shares and interacts with it live')
+          ? uiText('appTip', 'Run an app inside this meeting. Most stay in sync. One that turns multiplayer off stays on the host\'s screen.')
           : uiText('appDeniedTip', 'Only this room\u2019s admins — or people they allow — can run an app here').replace(/^🛡\s*/, '');
       }
       const hideB = document.getElementById('apphide');
-      hideB.style.display = (appKey && !isMine) ? '' : 'none';
+      hideB.style.display = (appKey && appMode !== 'watch' && !isMine) ? '' : 'none';
       const stopB = document.getElementById('appstop');
       stopB.style.display = (isMine || !hasAdminRoom() || amAdmin) ? '' : 'none';
       stopB.textContent = isMine ? uiText('stopApp', 'Stop app') : uiText('stopAppAll', 'Stop for everyone');
