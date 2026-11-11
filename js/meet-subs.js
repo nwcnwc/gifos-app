@@ -28,7 +28,19 @@
   const POLL_FOR_MS = 15 * 60 * 1000;
   const REFRESH_BEFORE_S = 7 * 86400;   // fetch a fresh license this long before it runs out
 
-  const on = () => !!(SUB && SUB.enabled(root.location, safeStore()));
+  // The switch in the link is read from the address the page was opened
+  // with. Once the meeting page joins it rewrites its own address to the
+  // room's plain link, which no longer carries #subs=1; reading only the
+  // current address turned the switch off at that moment. A subs= word in
+  // the current address still wins.
+  const SWITCH_RE = /(?:^|[#&?])subs=[01](?:&|$)/;
+  const opened = (() => { try { return { hash: String(root.location.hash || ''), search: String(root.location.search || '') }; } catch (e) { return null; } })();
+  function switchFrom() {
+    const cur = root.location;
+    try { if (SWITCH_RE.test(String(cur.hash || '') + '&' + String(cur.search || ''))) return cur; } catch (e) {}
+    return opened || cur;
+  }
+  const on = () => !!(SUB && SUB.enabled(switchFrom(), safeStore()));
   function safeStore() { try { return root.localStorage; } catch (e) { return null; } }
   const payBase = () => String(root.GIFOS_PAY_URL || 'https://pay.gifos.app').replace(/\/$/, '');
   const nowS = () => Math.floor(Date.now() / 1000);
