@@ -10,6 +10,7 @@
   "update.bar.more": "Novedades",
   "update.bar.action": "Actualizar ahora",
   "update.bar.switchTo": "Cambiar a la v{latest}",
+  "update.bar.held": "Tu reunión sigue. Actualiza cuando te venga bien.",
   "update.bar.dismiss": "Descartar",
   "update.notes.new": "Novedades",
   "update.notes.fixed": "Correcciones",

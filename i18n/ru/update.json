@@ -10,6 +10,7 @@
   "update.bar.more": "Что нового",
   "update.bar.action": "Обновить сейчас",
   "update.bar.switchTo": "Перейти на v{latest}",
+  "update.bar.held": "Ваша встреча продолжается. Обновитесь, когда вам удобно.",
   "update.bar.dismiss": "Закрыть",
   "update.notes.new": "Новое",
   "update.notes.fixed": "Исправлено",

@@ -6098,12 +6098,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // AN UPDATE RELOAD KEEPS THE MEETING. When a new release reloads this tab
     // (the Update button, or an emergency release), updateReload() writes down
     // what a plain reload loses — the blur level, the Stage seat, a broadcast
-    // host's air, a host's waiting room — under gifos_update_resume in
+    // host's air (camera and mic as they were sending: a live broadcast
+    // survives the update), a host's waiting room — under gifos_update_resume in
     // sessionStorage (this tab only). It is read once, here, and removed at
     // once. Only that path writes it; Leave and any other way out of the page
     // (pagehide that is not an update) clear it, so a real leave and rejoin
     // still starts at Max blur. A screen share rides the same reload as a
-    // one-tap re-ask (stashRecoverMedia); mic and camera never ride any reload.
+    // one-tap re-ask (stashRecoverMedia); mic and camera ride no other reload.
     const UPDATE_RESUME_KEY = 'gifos_update_resume';
     const UPDATE_RESUME_TTL = 120000;
     const updateRoomKey = () => (params.get('v') || '') + '.' + String(params.get('av') || '').toLowerCase();
@@ -8152,6 +8153,42 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         || Array.from(document.querySelectorAll('video')).some((v) => v.webkitPresentationMode === 'picture-in-picture')) exitPip();
     }, true);
     window.addEventListener('pageshow', () => { awayFull(false); if (IS_MOBILE) exitPip(); });
+    // ANDROID: FULL SCREEN ON THE FIRST TAP. Android Chrome floats a page on
+    // Home or an app switch only when it is in full screen (the media-session
+    // action and autoPictureInPicture never fire there, and a float asked for
+    // without a tap is refused), and a browser takes full screen only on a
+    // tap. So on an Android phone the meeting's first tap also takes the
+    // screen, the same full screen as the Full screen button, and leaving the
+    // meeting for another app then floats it with no Float tap. The tap still
+    // does what it was for. Taps that open a camera, mic or screen prompt, a
+    // link, a text field, Float, or the Full screen button itself are left
+    // alone. Leaving full screen with the Full screen button is the person's
+    // choice: no tap takes the screen again in this tab until they tap Full
+    // screen once more. Any other exit (the back gesture, the browser coming
+    // back from a float) is undone by the next tap.
+    const IS_ANDROID = /Android/i.test(navigator.userAgent || '') || !!(navigator.userAgentData && /Android/i.test(navigator.userAgentData.platform || ''));
+    const AUTO_FS_OFF_KEY = 'gifos_autofs_off';
+    let autoFsOff = (() => { try { return sessionStorage.getItem(AUTO_FS_OFF_KEY) === '1'; } catch (e) { return false; } })();
+    function setAutoFsOff(on) {
+      autoFsOff = !!on;
+      try { if (on) sessionStorage.setItem(AUTO_FS_OFF_KEY, '1'); else sessionStorage.removeItem(AUTO_FS_OFF_KEY); } catch (e) {}
+    }
+    const AUTO_FS_SKIP = '#appfull, #pipbtn, [data-pip], #cam, #mic, [id^="campick"], #sharebtn, a[href], input, textarea, select, [contenteditable="true"]';
+    function autoFsWanted() {
+      if (!IS_ANDROID || !IS_MOBILE || autoFsOff || ROOM.solo || leaving || pageFull()) return false;
+      if (mediaAskPending > 0) return false;
+      const FS = window.GifOS && GifOS.fullscreen;
+      return !!(FS && FS.supported());
+    }
+    document.addEventListener('click', (e) => {
+      if (!IS_ANDROID || !IS_MOBILE) return;
+      const t = e.target;
+      if (t && t.closest && t.closest('#appfull')) { setAutoFsOff(pageFull()); return; }   // a tap that leaves full screen turns this off; one that enters turns it back on
+      if (!e.isTrusted || !autoFsWanted()) return;
+      if (t && t.closest && t.closest(AUTO_FS_SKIP)) return;
+      pipNote('autofs');
+      GifOS.fullscreen.enter(document.documentElement).then(() => pipNote('autofs-' + (pageFull() ? 'on' : 'refused')));
+    }, true);
     // The floated element can die mid-background (a stage strip teardown pulls
     // its tile). Element gone from the doc = not a user close — re-aim at the
     // next candidate. A float the USER dismissed stays dismissed.
@@ -8773,7 +8810,29 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // action moves the room to the live release. (A room born from a solo app
     // by Invite keeps the entry's answer: its address is still #id=.)
     const ENTRY_IS_ROOM = !ROOM.solo;
-    if (window.GifOS && GifOS.update) GifOS.update.watch({ delay: 1000, room: () => ENTRY_IS_ROOM, reload: (t) => updateReload(t) });
+    if (window.GifOS && GifOS.update) GifOS.update.watch({ delay: 1000, room: () => ENTRY_IS_ROOM, reload: (t) => updateReload(t), hold: () => updateHold() });
+    // A MEETING THAT MUST NOT BE INTERRUPTED: no release moves it by itself.
+    // That is a broadcast host on the air, or any meeting running on a paid
+    // plan (this page holds its subscription's meeting ticket, or the room
+    // carries a verified plan). An emergency release shows the important bar
+    // there instead, and moves the page on a later check once the hold is
+    // gone. Only a release that cannot meet the live one at all (version.json
+    // meetFloor) still moves it, because then the meeting is already lost.
+    function bcOnAir() {
+      try { return !!(BROADCAST && bcRole() === 'host' && bcSending()); } catch (e) { return false; }
+    }
+    function paidMeeting() {
+      try {
+        if (!subsOn()) return false;
+        const m = GifOS.meetSubs.meeting && GifOS.meetSubs.meeting();
+        if (m && m.held) return true;
+        return !!(hasAdminRoom() && subsRoomTier());
+      } catch (e) { return false; }
+    }
+    function updateHold() {
+      if (leaving || !(mediaJoined || onStageNow())) return false;
+      return bcOnAir() || paidMeeting();
+    }
     // THE UPDATE RELOAD. Same tab, same address, same room: the password and
     // admin key are in localStorage and the peer id in sessionStorage, so the
     // page comes back into the meeting with no prompt. Before it goes it
@@ -8786,15 +8845,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       target = target || {};
       updateLeaving = true;
       try {
-        let onAir = false;
-        try { onAir = !!(BROADCAST && bcRole() === 'host' && bcSending()); } catch (e) {}
+        const onAir = bcOnAir();
+        // A live broadcast survives an update reload: the host comes back on
+        // the air with the camera and mic exactly as they were sending.
+        const air = onAir ? { cam: !myStatus.camOff, mic: !myStatus.muted } : null;
         const wait = (holdDoor || waitAdmitted.size || waitDeclined.size || waitQueue.size)
           ? { hold: holdDoor, admitted: Array.from(waitAdmitted), declined: Array.from(waitDeclined), queue: Array.from(waitQueue.entries()) }
           : null;
         sessionStorage.setItem(UPDATE_RESUME_KEY, JSON.stringify({
           v: 1, at: Date.now(), room: updateRoomKey(), to: String(target.latest || ''),
           emergency: !!target.emergency, note: String(target.note || '').slice(0, 200),
-          blur: blurLevel(myStatus.blur), stg: +myStatus.stg || 0, onAir, wait,
+          blur: blurLevel(myStatus.blur), stg: +myStatus.stg || 0, onAir, air, wait,
           sharing: !!myStatus.scr, seed: myIdentitySeed || '',
           pwOk: !!roomPw && !pwProvisional, // this page holds the password as the room's (typed at the door, granted, or vouched by it)
         }));
@@ -21368,7 +21429,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             // The mic stays off. Blur stays on the video track; there is no avatar overlay.
             let goLiveLevel = null;
             try { goLiveLevel = goLiveStoredLevel(false); } catch (e) {}
-            if (!restored && BROADCAST && bcHostStored() && goLiveLevel != null) {
+            // A host who was on the air when an update reloaded this tab comes
+            // back on the air: the camera and mic as they were sending.
+            const air = typeof updateAir === 'function' ? updateAir() : null;
+            if (air) {
+              const cam = localStream.getVideoTracks()[0], mic = localStream.getAudioTracks()[0];
+              if (air.cam && cam && !(typeof forcedCamOff === 'function' && forcedCamOff('me'))) { cam.enabled = true; myStatus.camOff = false; }
+              if (air.mic && mic && !(typeof amGloballyMuted === 'function' && amGloballyMuted())) { mic.enabled = true; myStatus.muted = false; }
+              try { paintControls(); paintOnAir(); syncSpeech(); updateMediaSession(); updateStatus(); } catch (e) {}
+            }
+            if (!restored && !air && BROADCAST && bcHostStored() && goLiveLevel != null) {
               const cam = localStream.getVideoTracks()[0];
               if (cam && !(typeof forcedCamOff === 'function' && forcedCamOff('me'))) {
                 try { setPersonalBlur(goLiveLevel); } catch (e) {}
@@ -30001,7 +30071,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // Will this boot turn the camera on? Only a tap made moments ago on the
     // way in: the lobby's switch or a broadcast host's Go live tap, read here
     // without taking them. No reload note counts (privacy first: a reload of
-    // any kind, update or freeze or F5, comes back camera off and mic muted).
+    // any kind, update or freeze or F5, comes back camera off and mic muted),
+    // except one: a broadcast host whose camera was on the air when an update
+    // reloaded this tab (updateAir) comes back on the air.
     // A Go live tap stores b0, b1 or b2. An older page stored '1', which means
     // the tap happened, not Min blur: that boot still comes on at Max.
     function goLiveStoredLevel(peek) {
@@ -30018,8 +30090,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try {
         if (typeof joinAvChoice !== 'undefined' && joinAvChoice && joinAvChoice.cam && !BROADCAST) return true;
         if (BROADCAST && typeof bcHostStored === 'function' && bcHostStored() && goLiveStoredLevel(true) != null) return true;
-        return false;
+        const air = typeof updateAir === 'function' ? updateAir() : null;
+        return !!(air && air.cam);
       } catch (e) { return false; }
+    }
+    // The air an update reload carried for a broadcast host ({cam, mic}), or
+    // null. Only an update reload of this same tab writes it (updateReload),
+    // and only while that host was sending; F5, a freeze or a discard never do.
+    function updateAir() {
+      if (!BROADCAST || !updateResume || !updateResume.onAir || !updateResume.air) return null;
+      if (typeof bcHostStored !== 'function' || !bcHostStored()) return null;
+      return updateResume.air;
     }
     // peek: read the note without taking it.
     function takeRecoverMedia(peek) {

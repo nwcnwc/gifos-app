@@ -22,6 +22,15 @@
  *   chose their build, and they get the bar instead. ("emergencyNote", if
  *   present, is a short line the moved page shows once it lands.)
  *
+ *   A MEETING THAT MUST NOT BE INTERRUPTED is never moved by itself: a
+ *   broadcast that is on the air, or a meeting running on a subscriber's
+ *   paid plan (opts.hold() says so). It gets the important bar instead,
+ *   and its Update button carries the meeting through the reload. The one
+ *   exception is the MEET FLOOR — version.json "meetFloor": "x.y.z" (or
+ *   "latestMeetFloor") names the oldest release that can still meet with
+ *   the live one. A page under that floor cannot meet at all, so holding it
+ *   protects nothing: it moves at once, held or not.
+ *
  * Timing and data: the first check runs 1 s after load, then every minute.
  * version.json is a plain fetch the browser revalidates (ETag → 304), so a
  * quiet minute costs a few hundred bytes. changelog.json is fetched only when
@@ -75,7 +84,7 @@
     const pick = (fresh, legacy) => (fresh && (!legacy || cmpVer(fresh, legacy) >= 0) ? fresh : legacy);
     const latest = pick(ok(info.latest), ok(info.current));
     if (!latest) return null;
-    return { latest, emergency: pick(ok(info.latestEmergency), ok(info.emergency)) };
+    return { latest, emergency: pick(ok(info.latestEmergency), ok(info.emergency)), meetFloor: pick(ok(info.latestMeetFloor), ok(info.meetFloor)) };
   }
 
   // What THIS page is running. index.html and boot.html declare
@@ -131,11 +140,15 @@
   // told that, not merely what it is pinned to.
   // o.emergency: version.json's floor. d.emergency is true only for a page
   // that is not pinned and runs a release under it: that page moves now.
+  // o.meetFloor: the oldest release that can still meet with the live one.
+  // d.cannotMeet is true for an unpinned page under it; it is an emergency
+  // too, and the only one that moves a held meeting (see watch).
   function decide(o) {
     if (!o || o.edge || !o.latest || !VER.test(String(o.latest))) return null;
     if (cmpVer(o.latest, o.version) <= 0) return null;
     const critical = criticalSince(o.changelog, o.version, o.latest);
-    const urgent = underFloor(o.emergency, o.version, o.latest);
+    const cannotMeet = underFloor(o.meetFloor, o.version, o.latest);
+    const urgent = cannotMeet || underFloor(o.emergency, o.version, o.latest);
     const entry = notesOf(o.changelog, String(o.latest));
     const headline = entry && entry.headline ? String(entry.headline) : '';
     // Each sentence is its own message, so a language orders its own words.
@@ -152,7 +165,7 @@
           : tr('update.bar.available', 'A new version of GifOS v{latest} is available.', { latest: v });
     return {
       latest: String(o.latest), pinned: !!o.pinned, meeting: !!o.meeting, critical,
-      emergency: urgent && !o.pinned, notes: entry, text,
+      emergency: urgent && !o.pinned, cannotMeet: cannotMeet && !o.pinned, notes: entry, text,
     };
   }
 
@@ -324,6 +337,12 @@
   // opts.reload(target): the page's own way to move ({ latest, url,
   // emergency }); it must end in a navigation. Without it the page is moved
   // directly (go).
+  //
+  // opts.hold(): true while this page is a meeting that must not be
+  // interrupted (on the air, or on a paid plan). An emergency then shows the
+  // important bar instead of moving the page, and moves it on a later check
+  // once the hold is gone; a release under the meet floor moves it anyway.
+  // Only the person's own Update tap moves a held page otherwise.
   const MINUTE = 60 * 1000;
   function watch(opts) {
     opts = opts || {};
@@ -345,7 +364,7 @@
       if (r.pinned && !meeting) return null;
       return decide({
         version, edge, pinned: r.pinned, meeting,
-        latest: live.latest, changelog, emergency: live.emergency,
+        latest: live.latest, changelog, emergency: live.emergency, meetFloor: live.meetFloor,
       });
     };
     const move = (d) => {
@@ -365,7 +384,10 @@
         if (!got) return;
         const d = decideFor(got.info, got.changelog);
         if (!d) { const b = doc.getElementById('update-bar'); if (b) b.style.display = 'none'; return; }
-        if (d.emergency && !triedRecently(d.latest)) {
+        let held = false;
+        if (d.emergency && !d.cannotMeet && opts.hold) { try { held = !!opts.hold(); } catch (e) { held = false; } }
+        if (held) d.text += ' ' + tr('update.bar.held', 'Your meeting keeps going. Update when it suits you.');
+        if (d.emergency && !held && !triedRecently(d.latest)) {
           noteTried(d.latest);
           d.note = got.info.emergencyNote ? String(got.info.emergencyNote).slice(0, 200) : '';
           move(d);
