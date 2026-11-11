@@ -4733,7 +4733,7 @@
       "appId": "meeting-bot",
       "name": "Meeting Bot",
       "shortName": "Meet Bot",
-      "version": "0.9.23",
+      "version": "0.9.25",
       "tagline": "A meeting bot you drive from another device.",
       "author": {
         "name": "GifOS",
@@ -4758,15 +4758,15 @@
         255
       ],
       "cover": "/apps/meeting-bot/cover.jpg",
-      "bytes": 45302,
+      "bytes": 45828,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-19"
+        "ts": "2026-11-11"
       },
-      "sha256": "4475184afa938fb1032a785c3d9f0b51146b8085374d968fb09da237c4433f56"
+      "sha256": "74dcdb1ef63c613402a5a23dd1777fe6717e4a435ff4b97e8146b5e396c6e453"
     },
     {
       "slug": "memory",
@@ -7929,15 +7929,15 @@
         48
       ],
       "cover": "/apps/slots/cover.jpg",
-      "bytes": 194657,
+      "bytes": 194552,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-11"
       },
-      "sha256": "ce951444455feb2d7a9284924b946694d1ed5b8fbef48129a5485789e78ca4ca"
+      "sha256": "9481c7d8869caad86ea45ee5c291907c202b2f1d10e6e18db47d90fd1ac3a298"
     },
     {
       "slug": "smartcrop",
