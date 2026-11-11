@@ -45,6 +45,7 @@
     DARK_LEAVE: 60,   // C++: mesh.cpp:DARK_LEAVE  (LAW_DARK_LEAVE)
     CHAN_UP: 32,   // C++: mesh.cpp:CHAN_UP  (LAW_CHAN_UP)
     DIG_HOLD_LEVEL: 16,   // C++: mesh.cpp:DIG_HOLD_LEVEL  (LAW_DIG_HOLD_LEVEL)
+    DIG_NHOLD_MAX: 104,   // C++: mesh.cpp:DIG_NHOLD_MAX  (DIG_HOLD_LEVEL*13/2)
     GREET_PERIOD: 800,   // C++: mesh.cpp:GREET_PERIOD
     ISLAND_WAIT: 24,   // C++: mesh.cpp:ISLAND_WAIT  (LAW_ISLAND_WAIT)
     ISLAND_ASKS: 2,   // C++: mesh.cpp:ISLAND_ASKS  (LAW_ISLAND_ASKS)
@@ -97,6 +98,7 @@
     REDIAL_MAX: 64,   // C++: mesh.cpp:REDIAL_MAX  (LAW_REDIAL_MAX)
     GONE_DIAL: 40,   // C++: mesh.cpp:GONE_DIAL
     L45_LIST_WAIT: 4,   // C++: mesh.cpp:L45_LIST_WAIT
+    DOORCALL_HOLD: 108,   // C++: mesh.cpp:DOORCALL_HOLD  (LAW_DOORCALL_HOLD)
     FH_ICE_N: 3,   // C++: mesh.cpp:FH_ICE_N  (LAW_FH_ICE_N)
     FHOP_TTL: 12,   // C++: mesh.cpp:FHOP_TTL  (LAW_FHOP_TTL)
     FHOP_BEAT: 8,   // C++: mesh.cpp:FHOP_BEAT  (LAW_FHOP_BEAT)
@@ -105,6 +107,9 @@
     FHOP_REFUSE_HOLD: 60,   // C++: mesh.cpp:FHOP_REFUSE_HOLD  (LAW_FHOP_REFUSE_HOLD)
     FHOP_MAX_JOBS: 4,   // C++: mesh.cpp:FHOP_MAX_JOBS  (LAW_FHOP_MAX_JOBS)
     FHOP_CRUMB_TTL: 120,   // C++: mesh.cpp:FHOP_CRUMB_TTL  (LAW_FHOP_CRUMB_TTL)
+    FHOP_CARRY_MAX: 12,   // C++: mesh.cpp:FHOP_CARRY_MAX  (LAW_FHOP_CARRY_MAX)
+    FHOP_VIDEO_WIRED: 8,   // C++: mesh.cpp:FHOP_VIDEO_WIRED  (LAW_FHOP_VIDEO_WIRED)
+    FHOP_VIDEO_CELL: 2,   // C++: mesh.cpp:FHOP_VIDEO_CELL  (LAW_FHOP_VIDEO_CELL)
     HELD_BEATS: 24,   // C++: mesh.cpp:HELD_BEATS  (LAW_HELD_BEATS)
     CONFIRM_TTL: 16,   // C++: mesh.cpp:CONFIRM_TTL  (LAW_CONFIRM_TTL)
     LEASE_TTL: 40,   // C++: mesh.cpp:LEASE_TTL  (LAW_LEASE_TTL)
@@ -276,6 +281,7 @@
     FH_DISC: 14,   // C++: mesh_fhop.inc:FH_DISC
     FH_UNLINK: 30,   // C++: mesh_fhop.inc:FH_UNLINK
     FH_RENEG: 2,   // C++: mesh_fhop.inc:FH_RENEG
+    FH_FTAGS: 8,   // C++: mesh_fhop.inc:FH_FTAGS
     SIG_NOSOCK_T: 60,   // C++: mesh_dialsig_fab.inc:SIG_NOSOCK_T
     SIG_DEEP_GRACE: 20,   // C++: mesh_dialsig_fab.inc:SIG_DEEP_GRACE
     SIG_RETRY_DOOR: 8,   // C++: mesh_dialsig_fab.inc:SIG_RETRY_DOOR
@@ -673,10 +679,15 @@
     EV_SIGO: 9,   // C++: mesh_link.inc:EV_SIGO
     EV_SIGA: 10,   // C++: mesh_link.inc:EV_SIGA
     EV_SIGN: 11,   // C++: mesh_link.inc:EV_SIGN
+    EV_DCALL: 12,   // C++: mesh_link.inc:EV_DCALL
     PB_DOORS: 0,   // C++: mesh_link.inc:PB_DOORS
     PB_KNOCKS: 1,   // C++: mesh_link.inc:PB_KNOCKS
     PB_S1: 2,   // C++: mesh_link.inc:PB_S1
     PB_CLASS: 3,   // C++: mesh_link.inc:PB_CLASS
+    FC_UNKNOWN: 0,   // C++: mesh_fhop.inc:FC_UNKNOWN
+    FC_CELL: 1,   // C++: mesh_fhop.inc:FC_CELL
+    FC_WIFI: 2,   // C++: mesh_fhop.inc:FC_WIFI
+    FC_WIRED: 3,   // C++: mesh_fhop.inc:FC_WIRED
     H_COLLUDE: 2048,   // C++: mesh_hostile.inc:H_COLLUDE
     H_VOTE: 4096,   // C++: mesh_hostile.inc:H_VOTE
     H_RINGLIE: 8192,   // C++: mesh_hostile.inc:H_RINGLIE

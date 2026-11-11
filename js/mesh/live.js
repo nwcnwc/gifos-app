@@ -56,7 +56,10 @@
           const isHead = this.coord.i > 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r && m.coord.i === 0;
           // G4 grace on a CHANGED AGGREGATOR; G5: the remedy is to raise it and blur. It evicts NOTHING.
           if ((isOwner || isHead) && pid !== this.lastAgg) { this.lastAgg = pid; this.upSince = this.TICK; this.emptyEcho = 0; }
-          else if ((isOwner && this.upRefuted(m.dgPub, m.dgEcho, 1)) || (isHead && this.upRefuted(m.dgPub, m.dgEcho, 0))) {
+          // G4.1: a seat that has just changed cell publishes n=0 for itself until its retire has climbed its old chain
+          // (the handover hold, at most DIG_NHOLD_MAX: half a DIG_HOLD_LEVEL per level, 13 levels). For that long after my aggregator
+          // changed I check only that the owner's fold holds what I sent; after it, the owner's own 1 too.
+          else if ((isOwner && this.upRefuted(m.dgPub, m.dgEcho, (this.upSince >= 0 && this.TICK - this.upSince <= K.DIG_NHOLD_MAX) ? 0 : 1)) || (isHead && this.upRefuted(m.dgPub, m.dgEcho, 0))) {
             this.digMismatch++; this.w.lv.DIG_MISMATCH++;
           }
         }

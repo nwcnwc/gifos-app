@@ -762,7 +762,10 @@
       return out;
     },
     // C++: mesh.cpp:Seat::socketed
-    socketed() { return this.state !== 3 || (this.hasCoord && this.coord.pc === 0) || (!l13MergingOf(this) && this.TICK - this.l13KnockAt <= K.RELAY_TTL) || this.doorCarry; },
+    socketed() { return this.state !== 3 || (this.hasCoord && this.coord.pc === 0) || (!l13MergingOf(this) && this.TICK - this.l13KnockAt <= K.RELAY_TTL) || this.doorCarry || this.doorCallOn(); },   // FHOP.8: a friend called to the door holds a door socket while it stands there
+    // C++: mesh.cpp:Seat::doorCallOn
+    // FHOP.8: a friend called to the door (doorCall, island.js) answers there as a greeter until doorCallUntil.
+    doorCallOn() { return this.hasCoord && this.state === 3 && this.coord.pc !== 0 && this.TICK < this.doorCallUntil; },
     // C++: mesh.cpp:Seat::l13MassHeard
     l13MassHeard() { this.l13MassLast = this.TICK; this.l13MassTick = -1; },
     // C++: mesh.cpp:Seat::l13OwnerPending
