@@ -584,7 +584,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           <label class="lob-pwlab">🎟 <b data-t="lobGuestPassHead" id="lob-guest-pass-head">Guest password</b> — the one you share<small data-t="lobGuestPassNote" id="lob-guest-pass-note">Optional. It is not part of the link.</small></label>
           <input data-ph="invGuestPh" id="lob-guest-pass" type="password" maxlength="64" placeholder="Guest password (optional)" autocomplete="new-password">
         </div>
-        <div class="lob-row"><button data-t="shareCancel" id="lob-admin-cancel" class="lob-ghost">Cancel</button><button data-t="lobAdminGo" id="lob-admin-go">Start</button></div>
+        <!-- A broadcast asks two things and goes: who can watch, and now or later. -->
+        <div id="lob-bc" hidden>
+          <div class="lob-bc-who" role="radiogroup" aria-labelledby="lob-bc-who-h">
+            <b data-t="bcWhoHead" id="lob-bc-who-h">Who can watch</b>
+            <label class="lob-bc-opt"><input type="radio" name="lob-bc-who" id="lob-bc-who-link" value="link" checked><span><span data-t="bcWhoLink">Anyone with the link</span><small data-t="bcWhoLinkSub">They see you soft (blurred)</small></span></label>
+            <label class="lob-bc-opt"><input type="radio" name="lob-bc-who" id="lob-bc-who-pw" value="pw"><span><span data-t="bcWhoPw">People with the room password</span><small data-t="bcWhoPwSub">They see you clear</small></span></label>
+          </div>
+          <label id="lob-bc-when" class="lob-bc-when" hidden><span data-t="bcWhenStarts">Starts</span><input type="datetime-local" id="lob-bc-at"></label>
+        </div>
+        <div class="lob-row"><button data-t="shareCancel" id="lob-admin-cancel" class="lob-ghost">Cancel</button><button data-t="bcSchedule" type="button" id="lob-bc-sched" class="lob-ghost" hidden>Schedule</button><button data-t="lobAdminGo" id="lob-admin-go">Start</button></div>
         <div id="lob-admin-err" class="lob-err"></div>
       </div>
       <button data-t="lobJoinBtn" type="button" id="lob-join-btn" class="lob-link">Join a link</button>
@@ -17883,10 +17892,55 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         document.getElementById('lob-admin').style.display = 'none';
         document.getElementById('lobby').classList.remove('form-open');
       };
-      let goLiveBlurPick = null;
+      // Broadcast: Who can watch picks the room password field; Schedule
+      // shows the start time and turns Go live now into the plain choice.
+      let bcLater = false;
+      const bcWho = () => (document.getElementById('lob-bc-who-pw').checked ? 'pw' : 'link');
+      const paintBcWho = () => {
+        if (!BC_INTENT) return;
+        const pw = bcWho() === 'pw';
+        const extra = document.getElementById('lob-guest-extra');
+        extra.style.display = pw ? '' : 'none';
+        extra.hidden = !pw;
+        lob.classList.toggle('bc-pw', pw);
+      };
+      ['lob-bc-who-link', 'lob-bc-who-pw'].forEach((id) => {
+        document.getElementById(id).addEventListener('change', () => {
+          paintBcWho();
+          if (bcWho() === 'pw') document.getElementById('lob-guest-pass').focus();
+        });
+      });
+      const bcNextHour = () => {
+        const d = new Date(Date.now() + 3600000); d.setMinutes(0, 0, 0);
+        const z = (n) => String(n).padStart(2, '0');
+        return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + 'T' + z(d.getHours()) + ':' + z(d.getMinutes());
+      };
+      document.getElementById('lob-bc-sched').onclick = () => {
+        const go = document.getElementById('lob-admin-go');
+        const when = document.getElementById('lob-bc-when');
+        const at = document.getElementById('lob-bc-at');
+        if (!bcLater) {
+          // First tap: show the time, ready at the next full hour.
+          bcLater = true;
+          when.hidden = false;
+          if (!at.value) at.value = bcNextHour();
+          document.getElementById('lob-bc-sched').textContent = uiText('bcGoNowShort', 'Go live now');
+          go.textContent = uiText('bcSchedule', 'Schedule');
+          lob.classList.add('bc-later');
+          return;
+        }
+        bcLater = false;
+        when.hidden = true;
+        document.getElementById('lob-bc-sched').textContent = uiText('bcSchedule', 'Schedule');
+        go.textContent = uiText('bcGoNow', 'Go live now');
+        lob.classList.remove('bc-later');
+      };
       document.getElementById('lob-admin-go').onclick = async () => {
         const err = document.getElementById('lob-admin-err');
         let rawName = document.getElementById('lob-admin-name').value || '';
+        // A broadcast's name is optional: a blank one is "broadcast" (the
+        // host key makes the room its own). A call still needs a name.
+        if (BC_INTENT && !/[A-Za-z0-9]/.test(rawName)) rawName = 'broadcast';
         // slugRoom turns a blank into "room", so the empty check has to
         // happen on what was typed. A name with no letter or digit is blank.
         if (!/[A-Za-z0-9]/.test(rawName)) { err.textContent = uiText('needName', 'Give your room a name.'); return; }
@@ -17894,17 +17948,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const pass = (document.getElementById('lob-admin-pass').value || '').trim();
         if (!chosen) { err.textContent = uiText('needName', 'Give your room a name.'); return; }
         if (!pass) { err.textContent = uiText('needPass', 'Set a host password. It stays with you, not in the link.'); return; }
-        const go = document.getElementById('lob-admin-go');
-        if (BC_INTENT && goLiveBlurPick == null) {
-          if (typeof camChooserOpen === 'function' && camChooserOpen()) { dismissCamChooser(); return; }
-          openCamChooser(go, (level) => {
-            goLiveBlurPick = blurLevel(level);
-            go.click();
-          });
+        let atSecs = '';
+        if (BC_INTENT && bcWho() === 'pw' && !(document.getElementById('lob-guest-pass').value || '').trim()) {
+          err.textContent = uiText('bcNeedRoomPw', 'Set a room password, or pick Anyone with the link.');
+          document.getElementById('lob-guest-pass').focus();
           return;
         }
-        const picked = goLiveBlurPick;
-        goLiveBlurPick = null;
+        if (BC_INTENT && bcLater) {
+          const ms = new Date(document.getElementById('lob-bc-at').value || '').getTime();
+          if (!Number.isFinite(ms) || ms < Date.now()) { err.textContent = uiText('bcNeedTime', 'Pick a start time that is still ahead.'); return; }
+          atSecs = String(Math.floor(ms / 1000));
+        }
+        const go = document.getElementById('lob-admin-go');
+        // Go live: with a room password the host chose to be seen clear;
+        // without one the room keeps everyone soft anyway, so Max blur.
+        const picked = BC_INTENT ? (bcWho() === 'pw' ? 0 : 2) : null;
         if (!go.dataset.label) go.dataset.label = go.textContent;
         go.disabled = true; go.textContent = uiText('creating', 'Creating…');
         try {
@@ -17912,18 +17970,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const V = (await net.edKeysFromSeedHex(K)).verifier; // V commits to the PUBLIC key (§9)
           try { localStorage.setItem('gifos_vadm_' + chosen + '.' + V, K); } catch (e) {}
           mirrorRoomState({ admin: true }, chosen + '.' + V);
-          // The GUEST password (optional): pre-seed the room-password store —
+          // The ROOM password (optional): pre-seed the room-password store —
           // exactly what the Password button writes — and the admin's normal
           // §LOCK re-assert locks the door + seals the key the moment they
           // arrive. It rides the SESSION, never the link (the whole point of
           // the two separate fields: the admin password must never reach a
-          // guest, the guest password is the one you send them).
-          const guest = (document.getElementById('lob-guest-pass').value || '').trim();
+          // guest, the room password is the one you send them). A broadcast
+          // open to anyone with the link sets none.
+          const guest = (BC_INTENT && bcWho() !== 'pw') ? '' : (document.getElementById('lob-guest-pass').value || '').trim();
           if (guest) { try { localStorage.setItem('gifos_vpw_' + chosen + '.' + V, guest); localStorage.setItem('gifos_vpwat_' + chosen + '.' + V, String(Date.now())); } catch (e) {} } // stamp the store's clock (§LOCK expiry)
-          // Go live here is the deliberate tap: the stream boots with the
-          // camera on. Opening the host link later lands off air.
-          if (BC_INTENT) { try { sessionStorage.setItem('gifos_bc_golive_' + chosen + '.' + V, 'b' + blurLevel(picked == null ? 2 : picked)); } catch (e) {} }
-          enterMeeting('#v=' + chosen + '&av=' + V + (BC_INTENT ? '&bc=1' : ''));
+          // Go live now is the deliberate tap: the stream boots with the
+          // camera on. A scheduled one (and the host link opened later)
+          // lands off air, with the start time riding the link.
+          if (BC_INTENT && !atSecs) { try { sessionStorage.setItem('gifos_bc_golive_' + chosen + '.' + V, 'b' + blurLevel(picked)); } catch (e) {} }
+          if (atSecs) { try { localStorage.setItem('gifos_bcat_' + chosen + '.' + V, atSecs); } catch (e) {} }
+          enterMeeting('#v=' + chosen + '&av=' + V + (BC_INTENT ? '&bc=1' + (atSecs ? '&at=' + atSecs : '') : ''));
         } catch (e) { err.textContent = 'Could not create the room. Try again.'; go.disabled = false; go.textContent = go.dataset.label || 'Start'; }
       };
       document.getElementById('lob-join-btn').onclick = () => { toggle('lob-join'); document.getElementById('lob-admin').style.display = 'none'; const i = document.getElementById('lob-join-in'); if (document.getElementById('lob-join').style.display !== 'none') i.focus(); };
@@ -17996,48 +18057,31 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (legacy) legacy.textContent = me.name || '…';
     }
     function showLobby() {
-      const streamLobby = BC_INTENT && params.has('st');
-      document.title = (streamLobby ? 'Stream' : BC_INTENT ? 'Broadcast' : 'Meeting') + ' — GifOS';
+      document.title = (BC_INTENT ? 'Broadcast' : 'Meeting') + ' — GifOS';
       // The Broadcast app opens THIS page with #bc=1 and no room: same lobby,
       // reworded — no open rooms (a broadcast without a host is nothing), and
       // creating one mints the same admin room with &bc=1 riding the link.
+      // The host answers two things: who can watch, and now or later. The
+      // host password is minted and kept on this device; More shows it.
       if (BC_INTENT) {
-        document.querySelector('#lobby h1').textContent = 'Broadcast';
+        document.querySelector('#lobby h1').textContent = uiText('bcTitle', 'Broadcast');
         const quiet = document.querySelector('#lobby .lob-quiet');
-        if (quiet) quiet.textContent = 'You host. People watch with the link.';
+        if (quiet) quiet.textContent = uiText('bcLobbyQuiet', 'You host. People watch with the link.');
         document.getElementById('lob-open').style.display = 'none';
-        const start = document.getElementById('lob-admin-btn');
-        start.classList.remove('lob-action', 'lob-link');
-        start.classList.add('lob-primary');
-        start.innerHTML = 'Go live<small>A host password keeps you in charge</small>';
-        document.getElementById('lob-admin-go').textContent = 'Go live';
-        document.getElementById('lob-admin-pass-head').textContent = 'Host password';
-        document.getElementById('lob-admin-pass').placeholder = 'Host password';
-        document.getElementById('lob-admin-pass-note').textContent = 'Only you. People watching do not need it.';
-        document.getElementById('lob-guest-more').textContent = 'Add a password for viewers';
-        document.getElementById('lob-guest-pass-head').textContent = 'Viewer password';
-        document.getElementById('lob-guest-pass').placeholder = 'Viewer password (optional)';
-        document.getElementById('lob-guest-pass-note').textContent = 'Optional. It is not part of the link.';
+        document.getElementById('lob-admin-btn').style.display = 'none';
+        const nm = document.getElementById('lob-admin-name');
+        nm.placeholder = uiText('bcNamePh', 'Name (optional)');
+        document.getElementById('lob-admin-go').textContent = uiText('bcGoNow', 'Go live now');
+        document.getElementById('lob-bc').hidden = false;
+        document.getElementById('lob-bc-sched').hidden = false;
         const watch = document.getElementById('lob-join-btn');
-        watch.classList.remove('lob-link');
-        watch.classList.add('lob-action');
-        watch.innerHTML = 'Watch<small>Paste a link someone sent you</small>';
-        document.getElementById('lob-empty').textContent = 'Broadcasts you start or watch show up here.';
+        watch.textContent = uiText('bcWatchLink', 'Watch a link');
+        document.getElementById('lob-empty').textContent = uiText('bcLobbyEmpty', 'Broadcasts you start or watch show up here.');
         const watchNote = document.getElementById('lob-watch-note');
         if (watchNote) { watchNote.hidden = false; watchNote.textContent = BC_WATCH_COPY; }
-        // More on the picture opens Watch and the host key (Q49).
+        // More on the picture opens Watch and the host password (Q49).
         const deskMore = document.getElementById('lob-desk-more');
         if (deskMore) deskMore.hidden = false;
-        // A stream to friends: the same live fan-out, a friendlier name.
-        if (streamLobby) {
-          document.querySelector('#lobby h1').textContent = 'Stream';
-          if (quiet) quiet.textContent = 'Friends watch with the link.';
-          const nm = document.getElementById('lob-admin-name');
-          nm.placeholder = 'Friday night';
-          if (!nm.value) nm.value = 'Friday night';
-          document.getElementById('lob-empty').textContent = 'Streams you start or watch show up here.';
-          if (watchNote) watchNote.textContent = 'Watching a stream. You stay off camera unless the host brings you on.';
-        }
       }
       paintLobbyAppear();
       renderLobbyList();
