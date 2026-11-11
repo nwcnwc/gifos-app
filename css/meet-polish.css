@@ -38,3 +38,11 @@
   .tile > .tile-open, .rowtile > .tile-open { transition: opacity var(--t-fast) ease; }
   .tile:not(:hover):not(:focus-within) > .tile-open, .rowtile:not(:hover):not(:focus-within) > .tile-open { opacity: 0; }
 }
+
+/* ---- popups ----------------------------------------------------------------------------------------------------
+   Every dialog card (js/dialog.js shapes them all into head, scrolling body and actions) wears one shape: the same
+   corner, the same shadow, and action buttons with the same height and corner. A dialog's own size rules (a short
+   window's smaller buttons) still win, by being more specific. */
+.name-modal > .name-box, .modal-bg > .modal, .rb-sheet > .rb-card, .lock-modal > .lock-box, .perm-modal > .perm-box {
+  border-radius: var(--r-lg); box-shadow: 0 18px 48px rgba(0,0,0,.45); }
+.dlg-actions button { min-height: 44px; border-radius: var(--r-md); font-weight: 600; }
