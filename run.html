@@ -1439,6 +1439,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/meet-subs.js" defer></script>
   <script src="js/meet-leave.js" defer></script>
   <script src="js/meet-debuglog.js" defer></script>
+  <script src="js/meet-meters.js" defer></script>
   <script src="js/meet-zones.js" defer></script>
   <script src="js/meet-views.js" defer></script>
   <script src="js/mesh-pipe.js" defer></script>
@@ -27633,6 +27634,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           swapPic: swapPicRing, rowView: window.__rowViewLog || null, dog: window.__dogLog || null,
           bc: window.__bcTrace || null, mem: window.__memSamples || null,
           pip: window.__pipTrace || null,
+          meters: (typeof dbgMeterKit !== 'undefined' && dbgMeterKit) ? dbgMeterKit.ring() : null,
         }),
         snapshot: () => (window.__gifosVideo && window.__gifosVideo.debugDump ? window.__gifosVideo.debugDump() : null),
       });
@@ -35681,6 +35683,64 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         folds, comp, standby: sb,
       };
     }
+    // ---- DEBUG AUDIO METERS (js/meet-meters.js; debug mode only) -------------
+    // Who this page hears, read where each voice PLAYS: a person's tile
+    // (direct), a voice a friend carries (friend), a row tile (rowmix), the
+    // Stadium mix, the Stage strip and ear, and each mix this page sends on
+    // (send). Chromium and Firefox play a voice through the tile's companion
+    // <audio>, so its track is metered with the companion's volume; WebKit
+    // plays every voice through one ear, so the source's own gain node in that
+    // ear is metered (what plays, after its gain). The context is the page's
+    // own and is never made here: no meter before the page has sound.
+    var dbgMeterKit = null; // var: the debug log's ring reader (above) may ask for it before this line runs
+    let dbgMeterPanel = null;
+    const dbgMeterAsked = (() => { try { return /(?:^|[#&?])meters=(?:on|1)/i.test(String(location.hash || '') + String(location.search || '')) || localStorage.getItem('gifos_meters') === 'on'; } catch (e) { return false; } })();
+    function dbgMeterSources() {
+      const out = [];
+      const nm = (id) => (id ? (rosterNames[id] || String(id).slice(0, 8)) : null);
+      const live = (st) => { const ts = st && st.getAudioTracks ? st.getAudioTracks().filter((t) => t.readyState === 'live') : []; return ts.length ? ts[ts.length - 1] : null; };
+      const wk = (typeof wkEar !== 'undefined' && wkEar && wkEar.fold && wkEar.fold.gainOf) ? wkEar : null;
+      for (const v of document.querySelectorAll('video')) {
+        const t = v.closest && v.closest('[data-peer],[data-row]');
+        if (!t) continue;
+        const pid = t.dataset.peer || null;
+        let path = v.closest('#stadium') ? 'stadium' : v.closest('#stagefeed') ? 'stagefeed' : t.dataset.row != null && !pid ? 'rowmix' : 'direct';
+        if (path === 'direct' && (!pid || pid === myId)) continue;
+        const p = pid ? peers.get(pid) : null;
+        if (path === 'direct' && p && p.relayed) path = 'friend';
+        const who = pid ? String(pid).slice(0, 8) : (t.dataset.row != null ? 'row' + t.dataset.row : path);
+        if (wk && v._wkVoice && v._wkKey) { const g = wk.fold.gainOf(v._wkKey); if (g) out.push({ path, who, name: nm(pid), node: g, g: g.gain.value, post: true }); continue; }
+        const a = v._aud; const tr = a && a.srcObject ? live(a.srcObject) : null;
+        if (tr) out.push({ path, who, name: nm(pid), track: tr, g: (a.muted || a.paused) ? 0 : a.volume });
+      }
+      if (stageEar && stageEar.el) {
+        const g = wk && wk.fold.has(WK_STAGE_KEY) ? wk.fold.gainOf(WK_STAGE_KEY) : null;
+        if (g) out.push({ path: 'stage', who: 'stage', node: g, g: g.gain.value, post: true });
+        else { const tr = live(stageEar.el.srcObject); if (tr) out.push({ path: 'stage', who: 'stage', track: tr, g: (stageEar.el.muted || stageEar.el.paused) ? 0 : stageEar.el.volume }); }
+      }
+      for (const [k, f] of downFolds) { const tr = f && f.track ? f.track() : null; if (tr) out.push({ path: 'send', who: String(k), track: tr, g: 1 }); }
+      return out;
+    }
+    function dbgMeters() {
+      if (!DEBUG_ON || !GifOS.meetMeters) return null;
+      if (!dbgMeterKit) {
+        dbgMeterKit = GifOS.meetMeters.create({ ac: () => ac, sources: dbgMeterSources });
+        dbgMeterKit.start(500);
+        setInterval(() => { if (dbgMeterPanel) GifOS.meetMeters.paint(dbgMeterPanel, dbgMeterKit.read()); }, 1000);
+        if (dbgMeterAsked) dbgMeterShow(true);
+      }
+      return dbgMeterKit;
+    }
+    function dbgMeterShow(on) {
+      if (!on) { if (dbgMeterPanel) dbgMeterPanel.remove(); dbgMeterPanel = null; return false; }
+      if (!dbgMeterPanel) {
+        dbgMeterPanel = document.createElement('pre'); dbgMeterPanel.id = 'dbgmeters';
+        dbgMeterPanel.style.cssText = 'position:fixed;left:4px;top:40px;z-index:99999;margin:0;padding:4px 6px;font:11px/1.25 monospace;color:#9f9;background:rgba(0,0,0,.72);pointer-events:none;white-space:pre;max-height:60vh;overflow:hidden';
+        document.body.appendChild(dbgMeterPanel);
+      }
+      return true;
+    }
+    if (DEBUG_ON) setTimeout(function dbgMeterBoot() { if (!dbgMeters()) setTimeout(dbgMeterBoot, 2000); }, 1000);
     window.__gifosVideo = {
       seedGalleryForTest: (spec) => seedGalleryForTest(spec),
       // A seat whose device never sent a name (joined from a link, no name typed).
@@ -36245,6 +36305,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         try { el.srcObject = null; } catch (e) {}
         return out;
       },
+      // DEBUG AUDIO METERS: meters() = the last reading (rows by path, who, level, tones heard; hears = talker -> paths),
+      // meterTones({name: hz}) names the pitches to tell apart inside a mix, meterLog(sinceMs) the per-second ring, meterPanel(on) the on-screen list.
+      meters: () => { const k = dbgMeters(); return k ? k.read() : null; },
+      meterTones: (t) => { const k = dbgMeters(); return k ? k.setTones(t) : null; },
+      meterLog: (since) => { const k = dbgMeters(); return k ? k.log(since) : null; },
+      meterPanel: (on) => { const k = dbgMeters(); return k ? dbgMeterShow(on !== false) : null; },
       stageEarLevel: (ms) => {
         if (!stageEar || !stageEar.el.srcObject || !ac) return Promise.resolve(-1);
         if (ac.state !== 'running') { try { ac.resume(); } catch (e) {} }
@@ -36535,6 +36601,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           consent: (typeof allConsent === 'function' ? allConsent() : null), hbVia,
           mosaic: mos, roster: rosterIds.map(info),
           audio: (() => { try { return audioDump(); } catch (e) { return { err: String(e).slice(0, 80) }; } })(),
+          meters: (() => { try { return dbgMeterKit ? { hears: dbgMeterKit.hears(), tones: dbgMeterKit.tones() } : null; } catch (e) { return { err: String(e).slice(0, 80) }; } })(),
         };
       },
       mosaic: () => { const c = meshCoord(); const T = net.topo; const tgt = (co) => { if (!co) return null; const pid = occPid(co); const p = pid && peers.get(pid); return { pid: (pid||'').slice(0,6), has: !!p, conn: p && p.connected, dc: !!(p && p.dc && p.dc.readyState === 'open') }; };
