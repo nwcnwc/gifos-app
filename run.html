@@ -36654,7 +36654,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { const n = displayCount(); return Number.isFinite(n) && n > 0 ? n : undefined; } catch (e) { return undefined; }
     }
     // The room's plan, verified once per order: undefined while it is being
-    // checked (the door lets people in meanwhile), null when none is valid.
+    // checked, null when none is valid. It is checked ahead of any knock (the
+    // timer below), so a door does not meet its first knock with no answer.
     function subsRoomTier() {
       const o = (modTable['*'] || {}).sublic;
       const k = o ? String(o.at) + '|' + String(o.proof || '') : '';
@@ -36673,11 +36674,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       hostFlood();
     }
     setInterval(() => { if (amAdmin) subsPublishRoomPlan(); }, 6 * 3600 * 1000);   // a renewed license reaches the room
+    setInterval(() => { try { if (subsOn() && hasAdminRoom()) subsRoomTier(); } catch (e) {} }, 2000);
     function subsHolds(id) {
       if (!id || !subsOn() || !hasAdminRoom() || subsProven.has(id)) return false;
       const tier = subsRoomTier();
-      if (tier === undefined) return false;
       const count = subsRoomCount();
+      // While the room's plan is still being checked, a room below the 20 line
+      // lets the knocker in; a room at it holds the knock until the plan is
+      // known (the knocker asks again), and asks nothing yet.
+      if (tier === undefined) return GifOS.sub.doorVerdict({ adminRoom: true, roomTier: null, count }) !== 'let-in';
       if (GifOS.sub.doorVerdict({ adminRoom: true, roomTier: tier, count }) === 'let-in') return false;
       const q = peers.get(id), a = subsAsked.get(id);
       if (q && q.dc && q.dc.readyState === 'open' && !(a && Date.now() - a.at < 2000)) {
