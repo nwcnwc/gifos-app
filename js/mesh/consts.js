@@ -26,6 +26,7 @@
     TALK_ON: 4,   // C++: mesh.cpp:TALK_ON  (LAW_TALK_ON)
     TALK_HOLD: 10,   // C++: mesh.cpp:TALK_HOLD  (LAW_TALK_HOLD)
     get K_TALK() { return byC([2,3,4,5]); },   // C++: mesh.cpp:K_TALK  (STAGE_CAP)
+    GA_RT: 41,   // C++: mesh.cpp:GA_RT
     GA_TAG: 41,   // C++: mesh.cpp:GA_TAG
     L10_NEW_WAIT: 16,   // C++: mesh.cpp:L10_NEW_WAIT  (LAW_L10_NEW_WAIT)
     L10_EARLY_GAP: 2,   // C++: mesh.cpp:L10_EARLY_GAP  (LAW_L10_EARLY_GAP)
