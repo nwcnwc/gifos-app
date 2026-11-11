@@ -40,6 +40,7 @@
 (function (root) {
   'use strict';
   const GifOS = (root.GifOS = root.GifOS || {});
+  const TM = GifOS.timings || require('./timings.js');   // every wait and timeout: js/timings.js, loaded before this file (required where there is no page)
 
   // ---- WebRTC availability + ICE --------------------------------------------
   // No TURN server anywhere: P1 (a friend) is the only fallback for content.
@@ -76,8 +77,8 @@
   // Reconnect backoff: 500 ms doubling, capped; each wait is scaled by a random factor in [JITTER_MIN, JITTER_MAX].
   // The relay's restart hold is derived from RECONNECT_SLOW_CAP_MS and RECONNECT_JITTER_MAX (relay.js RESTART_HOLD_MS;
   // the gifos check relay-unit/restart-hold-twin fails when they drift).
-  const RECONNECT_CAP_MS = 5000, RECONNECT_SLOW_CAP_MS = 15000, RECONNECT_HIDDEN_CAP_MS = 60000;
-  const RECONNECT_JITTER_MIN = 0.7, RECONNECT_JITTER_MAX = 1.3;
+  const RECONNECT_CAP_MS = TM.RECONNECT_CAP_MS, RECONNECT_SLOW_CAP_MS = TM.RECONNECT_SLOW_CAP_MS, RECONNECT_HIDDEN_CAP_MS = TM.RECONNECT_HIDDEN_CAP_MS;
+  const RECONNECT_JITTER_MIN = TM.RECONNECT_JITTER_MIN, RECONNECT_JITTER_MAX = TM.RECONNECT_JITTER_MAX;
   function steadySocket(makeUrl, sockOpts) {
     const duty = sockOpts && typeof sockOpts.onDuty === 'function' ? sockOpts.onDuty : null;
     const s = { onmessage: null, onstate: null, onopen: null, state: 'connecting', downSince: Date.now(), rejected: 0, closes: [] };
@@ -88,7 +89,7 @@
     const onClose = sockOpts && typeof sockOpts.onClose === 'function' ? sockOpts.onClose : null;
     let ws = null, closed = false, attempt = 0, timer = null, slow = false, stableTimer = null, bornTimer = null, slowTimer = null;
     const queue = [];
-    const STABLE_MS = 5000; // how long a socket must stay open before the backoff resets
+    const STABLE_MS = TM.STABLE_MS; // how long a socket must stay open before the backoff resets
     // Close-code policy — the relay is BILLED for every wake, so reconnects are
     // never free. A POLICY rejection (bad token, wrong password, banned, voted
     // off, replaced by a newer socket, stale/owned host slot) can never succeed

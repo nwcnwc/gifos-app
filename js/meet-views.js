@@ -9,14 +9,15 @@
  */
 (function (root) {
   const GifOS = root.GifOS = root.GifOS || {};
+  const TM = GifOS.timings || require('./timings.js');   // every wait and timeout: js/timings.js, loaded before this file (required where there is no page)
 
   const GUTTER = 8;
   // A join storm keeps changing the composite's frame. The settle hold
   // waits for that frame, but never longer than this in a row. The one
   // stadium video stays up the whole time: there is no initials seat.
-  const HOLD_MAX_MS = 5000;
+  const HOLD_MAX_MS = TM.HOLD_MAX_MS;
   // One resize of the composite fires once, not once per pass.
-  const RZ_DEBOUNCE_MS = 120;
+  const RZ_DEBOUNCE_MS = TM.RZ_DEBOUNCE_MS;
   // An app in a meeting is laid out here like a shared screen (the page hands
   // it in as a Stage tile); only the app-only and broadcast pages are not.
   const BLOCK = ['broadcast', 'app-room', 'solo-app'];

@@ -68,6 +68,7 @@
  */
 (function (root) {
   const GifOS = root.GifOS = root.GifOS || {};
+  const TM = GifOS.timings || require('./timings.js');   // every wait and timeout: js/timings.js, loaded before this file (required where there is no page)
 
   const supported = () => typeof RTCRtpScriptTransform !== 'undefined'
     && typeof document !== 'undefined' && typeof Worker !== 'undefined';
@@ -602,7 +603,7 @@ onrtctransform = (e) => {
     c.width = SIDE; c.height = SIDE;
     const ctx = c.getContext('2d');
     let n = 0, kside = SIDE, flipAt = 0;
-    const KEY_FLIP_MS = 150; // longer than a capture takes on a busy page
+    const KEY_FLIP_MS = TM.KEY_FLIP_MS; // longer than a capture takes on a busy page
     const paint = () => { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, c.width, c.height); ctx.fillStyle = '#111'; ctx.fillRect(++n % 40, (n >> 3) % 40, 2, 2); };
     paint();
     const stream = c.captureStream(0);

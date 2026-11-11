@@ -30,16 +30,17 @@
  */
 (function (root) {
   'use strict';
+  const TM = (root.GifOS && root.GifOS.timings) || require('./timings.js');   // every wait and timeout: js/timings.js, loaded before this file (required where there is no page)
 
   const ICE_URL = 'https://turn.gifos.app/v1/ice';
   const DEFAULT_WORKER = 'https://turn.gifos.app';
   const WORKER_KEY = 'gifos_turn_worker'; // localStorage override: a self-hosted or local credential service
   const POOL = 'free';
-  const FETCH_TIMEOUT_MS = 3000;      // a credential answer slower than this is no answer
-  const RETRY_BASE_MS = 2000;         // first retry after about 2 s, doubling
-  const RETRY_MAX_MS = 5 * 60 * 1000; // never wait longer than 5 minutes between tries
-  const P0_MS = 12000;                // a direct path gets this long (ICE restart included)
-  const P1_MS = 30000;                // a friend gets until here, when one exists
+  const FETCH_TIMEOUT_MS = TM.TURN_FETCH_TIMEOUT_MS;      // a credential answer slower than this is no answer
+  const RETRY_BASE_MS = TM.TURN_RETRY_BASE_MS;         // first retry after about 2 s, doubling
+  const RETRY_MAX_MS = TM.TURN_RETRY_MAX_MS; // never wait longer than 5 minutes between tries
+  const P0_MS = TM.TURN_P0_MS;                // a direct path gets this long (ICE restart included)
+  const P1_MS = TM.TURN_P1_MS;                // a friend gets until here, when one exists
   const MAX_SERVED = 9;               // TURN clients one anchor carries at once
 
   const reachable = (verdict) => verdict === 'ok';
@@ -198,7 +199,7 @@
   // (carries: see carriesMix) is not silenced by its carrier's own mute: the
   // carrier's muted microphone is already silence in the mix it sends, and
   // the voices it carries are not muted.
-  const MUTE_TAIL_MS = 1000;
+  const MUTE_TAIL_MS = TM.MUTE_TAIL_MS;
   function mixGain(held, mutedFor, carries) {
     if (held) return 0;
     if (carries) return 1;

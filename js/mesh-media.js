@@ -10,6 +10,7 @@
  */
 (function (root) {
   const GifOS = root.GifOS = root.GifOS || {};
+  const TM = GifOS.timings || require('./timings.js');   // every wait and timeout: js/timings.js, loaded before this file (required where there is no page)
   const net = GifOS.net;
 
   // PACK-GOVERNOR
@@ -22,7 +23,7 @@
   // healthy). Now: the paint's own cost, then a rest of twice the AVERAGE
   // cost capped at PACK_REST_MAX_MS; a stall counts as the cap in the
   // average. Under ~500 ms of steady cost the schedule is the old one.
-  const PACK_REST_MAX_MS = 1000;
+  const PACK_REST_MAX_MS = TM.PACK_REST_MAX_MS;
   function packWait(cost, avg, minMs) { return Math.max(minMs, cost + Math.min(2 * avg, PACK_REST_MAX_MS)); }
   function packAvg(avg, cost, n) { const c = Math.min(cost, PACK_REST_MAX_MS); return n ? avg * 0.7 + c * 0.3 : c; }
   // END-PACK-GOVERNOR
@@ -174,7 +175,7 @@
   //   subscriber whose own period has run out. No Worker: the setIntervals
   //   alone, i.e. the old behaviour. `env` injects Worker/URL/Blob/document/
   //   timers/now for the Node test (test/unit/bg-clock.js).
-  const BG_BEAT_MS = 50; // the shared hidden-tab beat: 20 Hz covers the fastest packer (the Stage strip, 20 fps)
+  const BG_BEAT_MS = TM.BG_BEAT_MS; // the shared hidden-tab beat: 20 Hz covers the fastest packer (the Stage strip, 20 fps)
   function clockEnv(env) {
     env = env || {};
     const pick = (k) => (k in env ? env[k] : root[k]);
@@ -285,7 +286,7 @@
     // crosses a row boundary must not change the capture height (that opens
     // a keyframe on every hop). Shrink waits until one smaller step has held.
     let heldRows = 0, pendingRows = 0, pendingSince = 0;
-    const ROW_STEP = 4, ROW_HOLD_MS = 5000;
+    const ROW_STEP = TM.ROW_STEP, ROW_HOLD_MS = TM.ROW_HOLD_MS;
     function stadRows(natural, now) {
       // Small stadiums keep their own height (1, 2, then 4 rows): padding one
       // row of faces to a 4-row step painted three dark rows and encoded four
@@ -493,7 +494,7 @@
     // Sources that cannot report progress (a nested composite's <canvas>) are
     // treated as always-advancing, and a forced repaint every STILL_MAX_MS
     // guarantees no wedge can outlive a second.
-    const STILL_MAX_MS = 1000;
+    const STILL_MAX_MS = TM.STILL_MAX_MS;
     let lastSig = '', lastRealPaint = 0, still = 0;
     function frameSig() {
       let s = '';

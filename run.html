@@ -1367,6 +1367,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/gifos-install.js" defer></script>
   <script src="js/gifos-lock.js" defer></script>
   <script src="js/app-update.js" defer></script>
+  <script src="js/timings.js" defer></script>
   <script src="js/gifos-update.js" defer></script>
   <script src="js/gifos-net.js" defer></script>
   <!-- the mesh: the ported 0.9.25 seat (js/mesh/, dependency order), its page world and the page layer -->
@@ -2507,8 +2508,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     let myIdReadyResolve = null;
     const peers = new Map(); // peerId -> { pc, tile, video, name, connected, absentSince, lastKick }
     const avInboxes = new Map(); // peer id -> avatar chunk inbox (gifos-avatar.js)
-    const UNOWNED_PC_MS = 15000; // a pc nobody names and no transport: past a dial's time it is retired (the sweeper)
-    const ABSENT_GRACE = 12000; // BACKSTOP ONLY: roster-absent AND link-down this long → tile drops. Announced (D2) and probe-confirmed (D5) departures remove the tile event-driven, within a beat (see departSweep/confirmGone).
+    const UNOWNED_PC_MS = GifOS.timings.UNOWNED_PC_MS; // a pc nobody names and no transport: past a dial's time it is retired (the sweeper)
+    const ABSENT_GRACE = GifOS.timings.ABSENT_GRACE; // BACKSTOP ONLY: roster-absent AND link-down this long → tile drops. Announced (D2) and probe-confirmed (D5) departures remove the tile event-driven, within a beat (see departSweep/confirmGone).
 
     function applyChrome() {
       document.documentElement.lang = uiLang();
@@ -2779,7 +2780,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // still starts at Max blur. A screen share rides the same reload as a
     // one-tap re-ask (stashRecoverMedia); mic and camera ride no other reload.
     const UPDATE_RESUME_KEY = 'gifos_update_resume';
-    const UPDATE_RESUME_TTL = 120000;
+    const UPDATE_RESUME_TTL = GifOS.timings.UPDATE_RESUME_TTL;
     const updateRoomKey = () => (params.get('v') || '') + '.' + String(params.get('av') || '').toLowerCase();
     const updateResume = (() => {
       let raw = null;
@@ -2997,11 +2998,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // finally, and outside a pass every call derives afresh as before.
     let passMemo = null;
     const reactStats = { passes: 0, scheduled: 0, tiles: 0, layouts: 0, chipWrites: 0 }; // repaint counters (reactStatsForTest)
-    const REACT_COALESCE_MS = 250; // gossip repaints coalesce into one pass per window (scheduleRoomReact)
+    const REACT_COALESCE_MS = GifOS.timings.REACT_COALESCE_MS; // gossip repaints coalesce into one pass per window (scheduleRoomReact)
     let reactPending = false;
     const memoPass = (k, f) => { if (!passMemo) return f(); if (!(k in passMemo)) passMemo[k] = f(); return passMemo[k]; };
-    const stageHeldAt = new Map(), STAGE_FOLD_HOLD_MS = 25000;
-    const stageFeedAt = new Map(), STAGE_FEED_LOST_MS = 2500;
+    const stageHeldAt = new Map(), STAGE_FOLD_HOLD_MS = GifOS.timings.STAGE_FOLD_HOLD_MS;
+    const stageFeedAt = new Map(), STAGE_FEED_LOST_MS = GifOS.timings.STAGE_FEED_LOST_MS;
     // ONE STAGE LISTING. stageRead is the whole answer and writes no stage state: it says who is
     // on the stage now and what the hold maps should remember. stageSeats is that answer for a
     // reader that must not disturb anything (earState, tests). stageIds is what the page reads,
@@ -3283,7 +3284,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     try { (window.GifOS = window.GifOS || {}).meetWait = meetWait; } catch (e) {}
     // Peers the relay answered {t:'nosock'} for, and when: what "unreachable by relay" means. Everyone routes one way: try the relay, nosock says no, then the sponsor path.
     const relayNoSock = new Map();
-    const RELAY_NOSOCK_MS = 30000;
+    const RELAY_NOSOCK_MS = GifOS.timings.RELAY_NOSOCK_MS;
     const relayNoSockRecently = (id) => {
       const at = relayNoSock.get(id);
       if (at == null) return false;
@@ -3543,7 +3544,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // sits in takeStatus, the one door every status passes, whether it came
     // over the pair's channel, by section gossip or by the fold.
     let newPeerBeatT = null, newPeerBeatAt = 0;
-    const NEW_PEER_BEAT_MS = 400, NEW_PEER_BEAT_GAP_MS = 2000;
+    const NEW_PEER_BEAT_MS = GifOS.timings.NEW_PEER_BEAT_MS, NEW_PEER_BEAT_GAP_MS = GifOS.timings.NEW_PEER_BEAT_GAP_MS;
     function scheduleNewPeerBeat() {
       if (newPeerBeatT) return;
       const wait = Math.max(NEW_PEER_BEAT_MS, newPeerBeatAt + NEW_PEER_BEAT_GAP_MS - Date.now());
@@ -3794,7 +3795,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // that measures the gap, so "heard since the wake" read true on a channel
     // the peer had closed 20 s earlier (chaos seed 8: the probe skipped the
     // one pair it was for; 27 s to rejoin). A wpong can only follow our wping.
-    const WAKE_SUSPECT_MS = 12000, WAKE_PROBE_MS = 1500, WAKE_SETTLE_MS = 6000;
+    const WAKE_SUSPECT_MS = GifOS.timings.WAKE_SUSPECT_MS, WAKE_PROBE_MS = GifOS.timings.WAKE_PROBE_MS, WAKE_SETTLE_MS = GifOS.timings.WAKE_SETTLE_MS;
     // Checks against a pc the peer has already closed are sent and never
     // answered. A live peer answers even on a slow path. 'dead' is that
     // corpse, 'live' has an answer, 'soon' has not sent a check yet.
@@ -4379,7 +4380,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // action below. This is only how long a hide waits for that action
     // before the video element's own float. The handler arms the timer and
     // returns; it does not wait.
-    const PIP_AUTO_FALLBACK_MS = 2000;
+    const PIP_AUTO_FALLBACK_MS = GifOS.timings.PIP_AUTO_FALLBACK_MS;
     let pipAutoT = 0;
     // Bumped when a float is cancelled. A document window that answers after
     // that is closed instead of left over a tab the person is looking at.
@@ -4434,7 +4435,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // PIP_CARD_FPS, on the page's Worker clock (it ticks in a hidden tab), and
     // only while it floats. Kept ready (one frame, no clock) while there is no
     // picture, so a tap or the browser's own action can ask in the same turn.
-    const PIP_CARD_W = 480, PIP_CARD_H = 270, PIP_CARD_FPS = 2, PIP_CARD_ROWS = 4, PIP_CARD_READY_MS = 1500;
+    const PIP_CARD_W = 480, PIP_CARD_H = 270, PIP_CARD_FPS = GifOS.timings.PIP_CARD_FPS, PIP_CARD_ROWS = 4, PIP_CARD_READY_MS = GifOS.timings.PIP_CARD_READY_MS;
     let pipCard = null; // { canvas, ctx, stream, track, video, sig, stop }
     // What a float ask gets when there is or is not a picture (gate2 page-unit meet-float-card).
     function pipFallback(o) {
@@ -5010,7 +5011,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // departure — "a stale status must not haunt the room") so holdover can
     // never revive a confirmed departure. HOLDOVER_MS stays well under the
     // mesh E-timers: real death is still the mesh's call, not this one.
-    const HOLDOVER_MS = 60000;
+    const HOLDOVER_MS = GifOS.timings.HOLDOVER_MS;
     // Why each status past its first 15 s was held or dropped, last verdict per peer (debugDump heldWhy). Bounded.
     const heldWhy = new Map();
     function heldWhyNote(pid, why, age, debt) {
@@ -5095,7 +5096,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // slow device the room stayed clear seconds to minutes past a pocketed
     // phone's holdover. Only the block still draining can inflate the gap a
     // judgment sees, so the holdover clock pauses for that one alone.
-    const DRAIN_MS = 2000;
+    const DRAIN_MS = GifOS.timings.DRAIN_MS;
     const holdDebtSince = (t0) => {
       const now = Date.now();
       let d = 0;
@@ -5183,7 +5184,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // life) puts them back, field by field, unless a newer order replaced
     // them meanwhile. A parked entry nobody returns for is dropped after
     // MOD_PARK_MS, and the map is capped, so the table still holds the room.
-    const MOD_PARK_MS = 600000, MOD_PARK_MAX = 256;
+    const MOD_PARK_MS = GifOS.timings.MOD_PARK_MS, MOD_PARK_MAX = 256;
     const modParked = new Map(); // pid -> { m: their orders, at: the verdict's time }
     function parkMod(pid) {
       const m = modTable[pid];
@@ -5405,7 +5406,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // one refusal anywhere, a subtree nobody can hear (part), or no fresh fold
     // at all in a room that was past one section, and I stay blurred. It can
     // never release a blur my own section has not agreed to.
-    const FOLD_HOLD_MS = 120 * 500; // roomDig drops a fold older than 120 ticks, and a tick is 500 ms
+    const FOLD_HOLD_MS = GifOS.timings.FOLD_HOLD_MS; // roomDig drops a fold older than 120 ticks, and a tick is 500 ms
     let roomPastAt = 0;
     function roomConsentFromFold(d, pastAt, now) {
       // A missing fold keeps the blur. rosterIds is the heard set, not
@@ -5511,7 +5512,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // It's client-timed (the relay stores nothing), so a reload buys another
     // window — deliberately a janitor, not a lock: an admin-less room is
     // already blurred and unmoderated, so squatting one gains little.
-    const ADMIN_GRACE_MS = 10000, ADMIN_CLOSE_MS = 5 * 60 * 1000;
+    const ADMIN_GRACE_MS = GifOS.timings.ADMIN_GRACE_MS, ADMIN_CLOSE_MS = GifOS.timings.ADMIN_CLOSE_MS;
     let admGraceT = null, admTickT = null, admDeadline = 0;
     const fmtLeft = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
     function clearAdminClose() {
@@ -7177,7 +7178,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // ---- 0.9.23b: calm by default, tap a tile for its controls, viewer crop ----
     // Calm: tiles show only the name and the green speaking frame. Any touch,
     // scroll, mouse move or key wakes the info (body.meet-awake) for 3 s.
-    const AWAKE_MS = 3000;
+    const AWAKE_MS = GifOS.timings.AWAKE_MS;
     let awakeT = 0;
     function wakeMeet() {
       document.body.classList.add('meet-awake');
@@ -7997,7 +7998,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // capped at BLUR_REST_MAX_MS: however slow the box, the canvas gets a new
     // frame about once a second, well inside the 12 s freeze bound. For a
     // steady paint cost under 500 ms the schedule is the one it always was.
-    const BLUR_REST_MAX_MS = 1000;
+    const BLUR_REST_MAX_MS = GifOS.timings.BLUR_REST_MAX_MS;
     function blurPaintDue(gov, now, budget) {
       if (now - gov.start < budget) return false;
       return now - gov.end >= Math.min(2 * gov.avg, BLUR_REST_MAX_MS);
@@ -8794,7 +8795,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // with the faces on screen. The header counts every tile on the grid, a
     // silent peer's tile says it is reconnecting, and dropPeer removes the
     // tile and updates the header in one step.
-    const PEER_SILENT_MS = 30000; // the count's own freshness window (knownTotal)
+    const PEER_SILENT_MS = GifOS.timings.PEER_SILENT_MS; // the count's own freshness window (knownTotal)
     // When this peer itself last sent anything: any sealed frame, a mesh
     // frame, or a status (statuses come only from their author). Only real
     // frames move it, so silence is a steady verdict, not a gossip flap.
@@ -8976,7 +8977,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // holding this phone — release the wake lock (the pinned-on screen is
     // 1-2W, the single biggest burner of a parked phone's night) and floor
     // the send quality. Any touch, word, or return restores everything.
-    const IDLE_MS = 180000; // (lastActive/idleNow live beside wakeLock — keepAwake runs before this block)
+    const IDLE_MS = GifOS.timings.IDLE_MS; // (lastActive/idleNow live beside wakeLock — keepAwake runs before this block)
     const poke = () => {
       lastActive = Date.now();
       if (idleNow) { idleNow = false; adapt(); keepAwake(); }
@@ -9345,7 +9346,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // 2.25x the packer's pixels, and the still-frame skip means a slide that
     // is not moving pays none of it.
     const STAGE_CELL_SCREEN = 720;
-    const STAGE_FPS = 20;    // strip paint/capture rate — the live tier, not a tapestry
+    const STAGE_FPS = GifOS.timings.STAGE_FPS;    // strip paint/capture rate — the live tier, not a tapestry
     function stageCell() {
       const base = stageIds().some(sharingScreen) ? STAGE_CELL_SCREEN : STAGE_CELL;
       if (!IS_MOBILE) return base;
@@ -9406,7 +9407,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // is actually reading. A reader gets a stale answer once, then live data;
     // a normal user pays nothing.
     let powerReadAt = 0;
-    const POWER_READ_WINDOW = 60000;
+    const POWER_READ_WINDOW = GifOS.timings.POWER_READ_WINDOW;
     const notePowerRead = () => { powerReadAt = Date.now(); };
     setInterval(() => {
       if (Date.now() - powerReadAt > POWER_READ_WINDOW) return; // nobody is looking — don't pay
@@ -9521,7 +9522,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // has been down this long, so a socket that comes back on its first or
       // second retry never touches the line (the calm rule: nothing flickers).
       // The down time lives on the line itself; a timer repaints at the mark.
-      const STATUS_RECONNECT_QUIET_MS = 2000;
+      const STATUS_RECONNECT_QUIET_MS = GifOS.timings.STATUS_RECONNECT_QUIET_MS;
       const linkDown = !leftUp && !(relayUp() || (meshSeat() && meshSeat().state === 3 && meshCoord() && meshCoord().pc !== 0));
       if (!linkDown) statusEl._linkDownAt = 0;
       else if (!statusEl._linkDownAt) {
@@ -10497,7 +10498,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         Promise.resolve().then(() => pc.createOffer()).then((o) => pc.setLocalDescription(o)).catch(() => finish('unknown'));
       });
     }
-    const REACH_PROBE_MS = 8000;
+    const REACH_PROBE_MS = GifOS.timings.REACH_PROBE_MS;
     let directPath = 'pending'; // 'pending' | 'ok' | 'strict' | 'blocked' | 'unknown' — this network's verdict
     let directPathRun = 0;
     let directMeasured = true;   // false while 'blocked' only means no STUN word yet: the seat's NAT kind (L4.1) is measured, and a slow answer measures nothing
@@ -11205,7 +11206,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const now = Date.now();
       for (const h of rekeyHeld.splice(0)) if (now - h.at <= REKEY_HOLD_MS) h.take(true);
     }
-    const STALE_BYE_MS = 30000;   // a goodbye under the key I replaced is read this long after the change
+    const STALE_BYE_MS = GifOS.timings.STALE_BYE_MS;   // a goodbye under the key I replaced is read this long after the change
     function healStaleFrom(pid, envPiece, dc, pair) {
       if (!prevRoomE2E || !pid) return;
       return net.open(prevRoomE2E, envPiece).then((old) => {
@@ -11419,7 +11420,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         refreshAvatarSurfaces();
       }).catch(() => {});
     }
-    const STAGE_HEAR_MS = 20000;
+    const STAGE_HEAR_MS = GifOS.timings.STAGE_HEAR_MS;
     let platePaintT = 0;
     function paintStagePlate() {
       const el = document.getElementById('bc-stage');
@@ -11684,7 +11685,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // and a dead seat still leaves at ~96 s (it held 150-300 s before).
     // A radio dropout keeps the pc connected, so it never reaches this.
     // L30.2: a page in small mode times the pc out at 78 s (L30_DISC_DEAD 170 ticks from the cut; the pc reads disconnected at 12-16).
-    const DISCONNECTED_DEAD_MS = 90000, DISCONNECTED_DEAD_SMALL_MS = 78000;
+    const DISCONNECTED_DEAD_MS = GifOS.timings.DISCONNECTED_DEAD_MS, DISCONNECTED_DEAD_SMALL_MS = GifOS.timings.DISCONNECTED_DEAD_SMALL_MS;
     function pcDeadWhy(p, st, now) {
       if (!p || p.connected || !p.downSince) return null;
       if (st === 'failed' && now - p.downSince > 9000) return 'failed-persist';
@@ -12216,7 +12217,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // One shot per stored offer, only while the pair is STILL in
     // have-local-offer, and it drops the stored offer as soon as the pair moves
     // on by any other route, so a pair that healed normally is never disturbed.
-    const GLARE_YIELD_MS = 4000;
+    const GLARE_YIELD_MS = GifOS.timings.GLARE_YIELD_MS;
     // A pair with no live transport on its current pc (ICE not connected, no
     // open DataChannel): a glare there resolves on a fresh pc, never by
     // rolling an offer back (see onSignal's collision branch). Not dcRxAt:
@@ -12575,9 +12576,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // preIce holds at most PRE_ICE_PEERS senders, oldest dropped first.
     const iceBatch = new Map();
     const preIce = new Map();
-    const ICE_BATCH_MS = 50;
+    const ICE_BATCH_MS = GifOS.timings.ICE_BATCH_MS;
     const PRE_ICE_CAP = 16;
-    const PRE_ICE_MS = 15000;
+    const PRE_ICE_MS = GifOS.timings.PRE_ICE_MS;
     const PRE_ICE_PEERS = 64;
     function iceBatchOk(pid) { const p = peers.get(pid); return !!(p && p.iceBatchOk); }
     function iceIsHost(c) {
@@ -13015,7 +13016,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // for a pair it is already forming.
     // The ask gate sits just under the four-second door retry (armDoorRetry) and the sim's on-demand ask (LINK_ASK_GAP, 8 ticks):
     // at five seconds it swallowed every other retry, and a returner really asked every eight.
-    const DIAL_ASK_GAP_MS = 3500;
+    const DIAL_ASK_GAP_MS = GifOS.timings.DIAL_ASK_GAP_MS;
     function askDial(pid, p) {
       if (!p || iInitiate(pid) || p.connected || (p.dc && p.dc.readyState === 'open')) return;
       if (p.pc && p.pc.signalingState !== 'stable') return;   // an offer is in flight one way or the other
@@ -13046,13 +13047,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // that offer, the pair was left to "form", and the returner waited 8.5 s
     // for its own door redial (the mesh law: a page that sends on a pair it
     // holds no pc of asks for one, and the dialler offers back at once).
-    const LOST_OFFER_MS = 1000;
+    const LOST_OFFER_MS = GifOS.timings.LOST_OFFER_MS;
     // An answer has landed and ICE is checking, connected, or completed.
     // That handshake is still finishing, but only for ICE_FINISH_MS. The
     // initiator's 12 s cure is the hand-off: past this, lost candidates or a
     // stuck DTLS handshake are rebuilt by the door retry or a dial request.
     // A reload (back) is a new page; the old pc is not kept.
-    const ICE_FINISH_MS = 12000;
+    const ICE_FINISH_MS = GifOS.timings.ICE_FINISH_MS;
     function iceFinishing(p, now, back) {
       const pc = p && p.pc;
       if (!pc || !pc.remoteDescription || back) return false;
@@ -13099,8 +13100,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // greeter and no channel to it. Open one: the bootstrap over the relay.
     // Doors I knocked through and have closed, by greeter, for DOOR_SHUT_MS:
     // a greeter's dial-back that lands after is still mine to close (onSignal).
-    const doorsShut = new Map(), DOOR_SHUT_MS = 30000;
-    const DOOR_REDIAL_CAP = 40000; // the longest wait between redials of a door that never connected (bootDial)
+    const doorsShut = new Map(), DOOR_SHUT_MS = GifOS.timings.DOOR_SHUT_MS;
+    const DOOR_REDIAL_CAP = GifOS.timings.DOOR_REDIAL_CAP; // the longest wait between redials of a door that never connected (bootDial)
     function clearDoorRetry(p) {
       if (p && p.doorRetry) { clearTimeout(p.doorRetry); p.doorRetry = 0; }
     }
@@ -13268,7 +13269,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // outside it the same frame is first-hand proof of life and LIFTS the
     // tombstone. One constant, so the write path and the read path cannot
     // disagree about whether a peer is dead.
-    const TOMB_GRACE = 1500;
+    const TOMB_GRACE = GifOS.timings.TOMB_GRACE;
     const occVanish = new Map();  // pid -> Date.now() first seen freed ('left' one-beat confirm)
     const occFirstSeen = new Map(); // pid -> Date.now() first seen IN occ (knownTotal's join grace)
     let occPrevIds = new Map();   // pid -> ckey, my occ view one mesh tick ago
@@ -13655,7 +13656,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // we have actually HEARD something recently (lastHeard, any sealed
       // frame); real presence always has a heartbeat. 180s ≫ any legitimate
       // throttle gap (worker beats hold 12s hidden), ≪ the zombie hours.
-      const VOUCH_MS = 180000;
+      const VOUCH_MS = GifOS.timings.VOUCH_MS;
       const alive = (v) => {
         if (stHold(v)) return true; // 15s fresh + the G1 away/transport holdover (60s-bounded)
         const p = peers.get(v);
@@ -13913,7 +13914,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     //   pwHeld       — the remembered password parked during that probe.
     let pwFromStore = false, pwProbe = '', pwHeld = '';
     // An admin's R6 re-knocks (onLocked): how many in the last minute, and when.
-    const ADMIN_REKNOCKS = 4;
+    const ADMIN_REKNOCKS = GifOS.timings.ADMIN_REKNOCKS;
     let adminReknocks = 0, adminReknockAt = 0;
     // Derived relay identity + room key — "derive, don't send" (gifos-net.js):
     // the relay routes on sessId and equality-checks sessTok/pwProof, all
@@ -13940,7 +13941,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // holds the list, because the list is inside the statement it replays. `no` accumulates: a later change that
     // dropped Tom would let a neighbour heal him. The newest PW_NO_MAX ids stay; the oldest goes first, and it can
     // only matter to someone still holding the key just replaced, which a person banned that many changes ago is not.
-    const PW_NO_MAX = 32, PW_BYE_MS = 2000;   // PW_BYE_MS: the barred seat's pair stays this long, to carry the boot order and its goodbye
+    const PW_NO_MAX = 32, PW_BYE_MS = GifOS.timings.PW_BYE_MS;   // PW_BYE_MS: the barred seat's pair stays this long, to carry the boot order and its goodbye
     const pwByeSaid = new Set();   // barred ids whose goodbye my seat has heard
     const pwBarred = new Map();               // id -> when I heard the ban. Lifted by a frame from that id that opens under the current key: someone told them the password
     function pwNoOf(grant) {
@@ -14074,7 +14075,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // rule applies. The hold is armed only by typing at the door.
     let heldGrant = null;     // { p, m, admOk } waiting for the room's generation
     let grantHoldUntil = 0;   // the hold's deadline; 0 = no hold armed
-    const PW_GRANT_HOLD_MS = 6000;
+    const PW_GRANT_HOLD_MS = GifOS.timings.PW_GRANT_HOLD_MS;
     let rekeyAt = 0;          // when the current key took over (heal eligibility: peers from before it)
     // THE RE-KEY WINDOW (§LOCK). A member who adopts a new password derives
     // its key with the slow password stretch: about half a second, seconds on
@@ -14090,7 +14091,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // frames, each at most REKEY_HOLD_MS.
     let rekeysPending = 0;
     const rekeyHeld = [];
-    const REKEY_HOLD_MAX = 64, REKEY_HOLD_MS = 10000;
+    const REKEY_HOLD_MAX = 64, REKEY_HOLD_MS = GifOS.timings.REKEY_HOLD_MS;
     // THE MESH NODE (mesh.js + mesh-wire.js): the ported sim brain that owns
     // my SEAT — entry (knock/greeters/newcomer dance), healing, and the one
     // relay socket. There is no walk and no per-section session anymore: one
@@ -14798,11 +14799,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // more — it is written down here because it is the one part of this fix
     // that does not clear the deployed trap instantly.
     const pwAtKey = () => 'gifos_vpwat_' + roomKey();
-    const PW_TTL = 14 * 24 * 3600 * 1000;
+    const PW_TTL = GifOS.timings.PW_TTL;
     // The sweeper calls touchPw on every pass. setItem is synchronous and
     // wakes every other open tab, so the stamp moves at most once per
     // PW_TOUCH_MS. A room in use still stays inside PW_TTL.
-    const PW_TOUCH_MS = 10 * 60 * 1000;
+    const PW_TOUCH_MS = GifOS.timings.PW_TOUCH_MS;
     function touchPw() {
       if (!roomPw) return;
       try {
@@ -14903,7 +14904,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // loads next in it. A tab that holds a seat also holds a Web Lock named for
     // its key, so a duplicated tab (it copies sessionStorage) finds the key in
     // use and is a new person. Leave erases the memory.
-    const SEAT_MEM_MS = 110000;   // LEASE_T: past it no neighbour holds the cell
+    const SEAT_MEM_MS = GifOS.timings.SEAT_MEM_MS;   // LEASE_T: past it no neighbour holds the cell
     let seatMemNow = null;
     function seatMemKey() { return 'gifos_seat:' + String(room || ''); }
     function seatMemSave() {
@@ -14958,7 +14959,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // dial REQUEST (frag-ping) so whichever half's door probe fires first,
     // the same one side ends up dialing.
     let fragPingId = null, fragPingAt = 0, fragRetryT = 0;
-    let fragDialAt = 0; const FRAG_DIAL_WAIT_MS = 30000; // F8 multi-id: one dial round per 3 of these
+    let fragDialAt = 0; const FRAG_DIAL_WAIT_MS = GifOS.timings.FRAG_DIAL_WAIT_MS; // F8 multi-id: one dial round per 3 of these
     function fragRescue(id) {
       if (Date.now() - fragPingAt < 15000) return; // one outstanding rescue at a time
       fragPingId = id; fragPingAt = Date.now();
@@ -14981,7 +14982,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // the new seat (mesh.js prevTree): a HOME from that tree is taken at once
     // instead of waiting FORK_GRACE for the other doors, one of which may be
     // dark. Kept only 2 minutes: an older memory is no evidence of the room.
-    const TREE_MEM_MS = 120000;
+    const TREE_MEM_MS = GifOS.timings.TREE_MEM_MS;
     let treeMemAt = 0;
     function treeMemKey() { return 'gifos_tree:' + String(room || ''); }
     function saveTreeMem() {
@@ -15011,7 +15012,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // DEBUG-only lever (DEBUG=on and &DEBUGFAIL=identity-once | adminkey-once | identity-hang-once | adminkey-hang-once):
     // the first startMesh's identity or open-key step rejects (or never settles), so a test can make the boot fail on purpose.
-    let meshBootRetry = 0; const MESH_BOOT_WATCH_MS = 10000;
+    let meshBootRetry = 0; const MESH_BOOT_WATCH_MS = GifOS.timings.MESH_BOOT_WATCH_MS;
     let debugFailUsed = false;
     function debugFail(step, p) {
       if (!DEBUG_ON || debugFailUsed) return p;
@@ -15693,10 +15694,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // for STALL_MS while the tab is in view gets a plain line; a shared screen may rightly stand still. The banner adds why,
     // and only when both hold: this seat's picture stalled, and its own mass-leave sense names many people gone. Two goodbyes
     // arm that sense for the seat's healing; ordinary churn does that, so the banner wants MASS_MANY of them.
-    const STALL_MS = 4000, MASS_MANY = 3;
+    const STALL_MS = GifOS.timings.STALL_MS, MASS_MANY = GifOS.timings.MASS_MANY;
     const stallOf = new WeakMap();
     let massMany = false, massBannerEl = null, massBannerAt = 0;
-    const BANNER_HOLD = 5000;
+    const BANNER_HOLD = GifOS.timings.BANNER_HOLD;
     function stallSweep() {
       const now = Date.now(); let n = 0;
       for (const el of document.querySelectorAll('#stagefeed .rowtile, #stadium .rowtile')) {
@@ -18306,7 +18307,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // The store lookup is local and normally answers at once; past this, the
     // person is told it is still looking rather than left on a black page.
-    const SOLO_LOOKUP_SLOW_MS = 10000;
+    const SOLO_LOOKUP_SLOW_MS = GifOS.timings.SOLO_LOOKUP_SLOW_MS;
     function bootSoloApp() {
       document.body.classList.add('solo-app');
       // Off the camera FIRST: a solo entry is never a meeting, and the file may
@@ -18548,7 +18549,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             document.documentElement.classList.remove('solo-app');
             // startMesh() mints the S4 identity ASYNC — myId lands a beat after
             // bootAppRoom resolves, and runApp refuses without it (canIRunApp).
-            const ID_WAIT_MS = 10000;
+            const ID_WAIT_MS = GifOS.timings.ID_WAIT_MS;
             const waitMyId = () => {
               if (myId) return Promise.resolve();
               let timer = null;
@@ -18734,7 +18735,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     };
     // Room-wide chat options live in modTable['*'] (signed in admin rooms).
     // Open rooms have no switches — fixed policy only (STEERING 21:09).
-    const CHAT_SLOW_MS = 10000;
+    const CHAT_SLOW_MS = GifOS.timings.CHAT_SLOW_MS;
     let chatSlowLast = 0;
     const chatSlowSeen = new Map(); // byId -> receiver clock of their last kept line
     let chatOptOverride = null; // chatOptForTest
@@ -19215,7 +19216,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // its channel open (no close event at either end) while every frame of the dark span is lost; the open-time 'hi' never
     // runs again, so a chat line said in the dark never reached the returner (gate2 marathon 12c: Jo's tunnel, the pair kept).
     // Dark is past the starve horizon (12 s: a healthy pair carries a status at least that often). Once per pair per 10 s.
-    const DARK_RESUME_MS = 12000;
+    const DARK_RESUME_MS = GifOS.timings.DARK_RESUME_MS;
     function resumeHi(p, dc, darkMs) {
       if (!(darkMs > DARK_RESUME_MS) || !p || !p.id || !dc || dc.readyState !== 'open') return false;
       if (!linkTo(p.id) && !meshKnows(p.id)) return false;   // a door pair carries no room content
@@ -19964,7 +19965,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // A peer's lines are bounded two ways: per sender per window (a script
     // minting unique ids), and in total (the oldest fall off). Without this
     // the map grew without bound and every arrival re-painted all of it.
-    const CHAT_MAX = 500, CHAT_PER_10S = 20;
+    const CHAT_MAX = 500, CHAT_PER_10S = GifOS.timings.CHAT_PER_10S;
     const chatRate = new Map(); // byId -> [timestamps]
     function chatRateOk(byId, max) { // max: a caller's own window budget (default the per-author one)
       const now = Date.now(), k = String(byId || '?');
@@ -21157,8 +21158,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // Firefox ''. The UA test is the fallback for an engine that hides it.
     // localStorage gifos_wk_tile=off bypasses the WebKit tile path (a bisect switch for the harness).
     const WEBKIT_TILE = WEBKIT_ENGINE && (() => { try { return localStorage.getItem('gifos_wk_tile') !== 'off'; } catch (e) { return true; } })();
-    const WK_TILE_HOLD = 3000;    // ms the sender keeps the camera parked for a held re-seat
-    const WK_TILE_BIND_AT = 1200; // ms into the hold when the tile is bound (frames have stopped by then)
+    const WK_TILE_HOLD = GifOS.timings.WK_TILE_HOLD;    // ms the sender keeps the camera parked for a held re-seat
+    const WK_TILE_BIND_AT = GifOS.timings.WK_TILE_BIND_AT; // ms into the hold when the tile is bound (frames have stopped by then)
     function tileHolds(video, stream) {
       return !!video && !!stream && (video.srcObject === stream || (video._wrapOf === stream && !!video._pic && video.srcObject === video._pic));
     }
@@ -21399,7 +21400,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // says 'rwait' and gives the turn when it is stable. An older initiator
     // says nothing: after TURN_ASK_MS the polite side offers as it always did
     // (glare rules still apply), and stops asking that peer.
-    const TURN_ASK_MS = 2500, TURN_BUSY_MS = 8000, TURN_MS = 3000;
+    const TURN_ASK_MS = GifOS.timings.TURN_ASK_MS, TURN_BUSY_MS = GifOS.timings.TURN_BUSY_MS, TURN_MS = GifOS.timings.TURN_MS;
     function askTurn(p) {
       if (p.neg.turnAskT || !p.dc || p.dc.readyState !== 'open') return;
       dcSend(p, { k: 'rreq' });
@@ -21690,7 +21691,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // replaced. The downward folds are cleared and the next sweep rebuilds them on the fresh context. The row
     // product (and an L14 pack) folds inside its packer, and that product is the mix the rest of the room hears,
     // so those packers move onto the fresh context too. The meters, the stage ear and Whisper stay where they were.
-    const MIX_STALL_MS = 4000, MIX_REBUILD_GAP_MS = 10000;
+    const MIX_STALL_MS = GifOS.timings.MIX_STALL_MS, MIX_REBUILD_GAP_MS = GifOS.timings.MIX_REBUILD_GAP_MS;
     let mixAc = null; // the fresh context the folds moved to after a stall (null: they run in the meeting context)
     const mixClock = { ctx: null, t: -1, stuckSince: 0, rebuilds: 0, lastAt: 0, fails: 0 };
     function mixCtx() { if (mixAc && mixAc.state !== 'closed') return mixAc; ensureAc(); return ac; }
@@ -21816,7 +21817,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // shows whole: never a blank where someone else is). Painted locally, never
     // encoded. `sound` is the stream whose audio I hear with it.
     let sdViewSrc = null, sdViewSt = null;
-    const VIEW_FPS = 30;
+    const VIEW_FPS = GifOS.timings.VIEW_FPS;
     function paintRoomView(src, meta, sound, c, lagMs) {
       const el = src ? heldEl(src, lagMs) : (avHoldStop(), null);
       if (el && meta && meta.n) {
@@ -22252,7 +22253,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // track, where the demand flip starts a fresh GOP and the re-bind is a
     // no-op on the wire. debugDump().mosaic.restarts lists the decoders and
     // their counts.
-    const MOS_RESTART_HOLD = 2500;   // ms the feed stays parked: re-bind at 1 s, resume at 2.5 s
+    const MOS_RESTART_HOLD = GifOS.timings.MOS_RESTART_HOLD;   // ms the feed stays parked: re-bind at 1 s, resume at 2.5 s
     const mosHeld = (e) => !!(e && e.el && e.el._mosHold);
     // THE FEED'S SINKS. A mosaic feed plays in more than its 2x2 decoder: every
     // stadium face plays the composite stream, the Stage strip plays the
@@ -22394,7 +22395,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // per STARVED_KEY_MS per sender (a waiting receiver still gets a key well
     // inside the 12 s freeze bound), and kfNeed stops fanning a key out to
     // every sender of a starved key.
-    const STARVED_KEY_MS = 6000;
+    const STARVED_KEY_MS = GifOS.timings.STARVED_KEY_MS;
     const encHealth = new WeakMap();   // sender -> { starved, at } from the pulse timer
     const keyForcedAt = new WeakMap(); // sender -> ms of the last forced key (pulse or jiggle)
     function senderStarved(sd) {
@@ -23271,7 +23272,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // not trusted until this long has passed: the announce that carries the
     // order can reach a seat before the re-packed frame does, and a crop then
     // shows the cell of whoever sat there before.
-    const STAGE_FACE_SETTLE_MS = 2500;
+    const STAGE_FACE_SETTLE_MS = GifOS.timings.STAGE_FACE_SETTLE_MS;
     let stageStripSeen = { key: '', at: 0 };
     function stageStripOrder(meta, stagers) {
       if (!meta || !(meta.n > 0)) return null;
@@ -23384,7 +23385,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     let rowHeadOut = null, rowHoldUntil = 0, rowWasOut = false, rowActed = false; const rowOutSkip = new Map();
     // The head's view, read on its own clock: audio and video bytes together (a still camera in a quiet room sends little of
     // either). Apart from the watchdog's dark rail, whose 700 ms is for waking a parked copy, not for moving a duty.
-    const ROW_SILENT_MS = 1500; const rowFeed = { via: null, sid: null, bytes: -1, at: 0 }; let rowFeedBusy = false;
+    const ROW_SILENT_MS = GifOS.timings.ROW_SILENT_MS; const rowFeed = { via: null, sid: null, bytes: -1, at: 0 }; let rowFeedBusy = false;
     setInterval(async () => {
       if (rowFeedBusy) return; const c = meshCoord(), pri = c && c.i !== 0 ? mosIn.get('sdm') : null; if (!pri) { rowFeed.via = null; return; }
       const p = peers.get(pri.via); if (!p || !p.pc || !pri.stream) return;
@@ -23439,8 +23440,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // after it has been loud, and a seat in the row flags its own mic on a path that does not go through the row head.
     // The heir's x1 copy of the same product is born parked, so it has no samples to meter. 8 ticks: the listener asks
     // the talker to ship the mic, audio only. 16 ticks: the heir stands in. A quiet row never counts. Section 1 only.
-    const ROW_MIX_MS = 500, ROW_MIX_PULL = 8, ROW_MIX_ELECT = 16, ROW_MIX_TTL = 1000, ROW_MIX_LOUD = 5, ROW_MIX_QUIET = 2;
-    const ROW_MIX_TALK = 2000; // a breath inside one utterance, shorter than the pull window
+    const ROW_MIX_MS = GifOS.timings.ROW_MIX_MS, ROW_MIX_PULL = GifOS.timings.ROW_MIX_PULL, ROW_MIX_ELECT = GifOS.timings.ROW_MIX_ELECT, ROW_MIX_TTL = GifOS.timings.ROW_MIX_TTL, ROW_MIX_LOUD = 5, ROW_MIX_QUIET = 2;
+    const ROW_MIX_TALK = GifOS.timings.ROW_MIX_TALK; // a breath inside one utterance, shorter than the pull window
     const vtalkSeen = new Map();
     const rowSdLv = new Map(), rowSdDead = new Map(), rowSdHold = new Map();
     let rowMixDeadN = 0, rowMixPull = false, rowMixHeard = false, rowMixElected = false, rowMixShipUntil = 0, rowMixArmed = false, rowMixSent = 0;
@@ -24262,17 +24263,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return (ownStd && fresh(ownStd) ? ownStd : null) || best || ownStd || others[0];
     }
     // END-STAGE-DARK-HOLD
-    const MOS_GRACE = 5000;
-    const MOS_SETTLE = 5000; // failback hysteresis: preferred must be back this long
+    const MOS_GRACE = GifOS.timings.MOS_GRACE;
+    const MOS_SETTLE = GifOS.timings.MOS_SETTLE; // failback hysteresis: preferred must be back this long
     // Watchdog thresholds (see mosWatchdog above): video RTP at even 15fps
     // lands packets every ~70ms, so 700ms of a frozen bytesReceived on a
     // previously-flowing hot pipe is DARK beyond doubt — that is what turns
     // the 3-13s ICE-detection lottery into a sub-second wake.
-    const MOS_DARK_MS = 700;   // no byte advance on a previously-flowing hot pipe = dark
-    const MOS_FLOWED_RECENT = 10000; // "previously flowing" horizon — never fires on a pipe that never delivered
-    const MOS_QUALIFY = 8;     // consecutive advancing samples before a pipe earns the watchdog (~2.4s at the 300ms loop, 7.2s at the watchable 900ms cadence — see the 2026-08-08 note in mosWatchdog for why this stays a COUNT, not a clock)
-    const STG_ZERO_MS = 2000;  // stage audio gets no grace: a stage copy with zero bytes this long after its claim, or after its wake, is dead
-    const HOT_VOID_MS = 12000; // hot-and-VOID: a hot primary with ZERO bytes this long is a husk, not a slow pipe (frza5)
+    const MOS_DARK_MS = GifOS.timings.MOS_DARK_MS;   // no byte advance on a previously-flowing hot pipe = dark
+    const MOS_FLOWED_RECENT = GifOS.timings.MOS_FLOWED_RECENT; // "previously flowing" horizon — never fires on a pipe that never delivered
+    const MOS_QUALIFY = GifOS.timings.MOS_QUALIFY;     // consecutive advancing samples before a pipe earns the watchdog (~2.4s at the 300ms loop, 7.2s at the watchable 900ms cadence — see the 2026-08-08 note in mosWatchdog for why this stays a COUNT, not a clock)
+    const STG_ZERO_MS = GifOS.timings.STG_ZERO_MS;  // stage audio gets no grace: a stage copy with zero bytes this long after its claim, or after its wake, is dead
+    const HOT_VOID_MS = GifOS.timings.HOT_VOID_MS; // hot-and-VOID: a hot primary with ZERO bytes this long is a husk, not a slow pipe (frza5)
     const mosFb = new Map(); // rk -> { wakeAt, f0, prefSince, lastSwitch, dark, lastBytes, lastAdvanceAt, q, fp, fpDecayAt, flowSince, b0, d0, stdFdec, claimAt } (wake/failback/watchdog state)
     const mkFb = () => ({ wakeAt: 0, f0: 0, prefSince: 0, lastSwitch: 0, dark: false, lastBytes: -1, lastAdvanceAt: 0, q: 0, fp: 0, fpDecayAt: 0, flowSince: 0, b0: -1, d0: -1, stdFdec: -1, stdB: -1, stdAdvAt: 0, claimAt: 0, hadPref: false, left: null });
     // The PREFERRED announcer of a redundant slot: the tree-direct path the
@@ -24385,7 +24386,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // (the stager's clock, stgBeatT) is behind the newest verified one by more than the stale window
     // is dropped before the verify and never passed on. Only a verified beat moves that mark, so a
     // forged value cannot hold the real ones back.
-    const stgBeats = new Map(), STG_BEAT_MS = 1000, STG_BEAT_STALE_MS = 5000, STG_BEAT_SEEN = 16;
+    const stgBeats = new Map(), STG_BEAT_MS = GifOS.timings.STG_BEAT_MS, STG_BEAT_STALE_MS = GifOS.timings.STG_BEAT_STALE_MS, STG_BEAT_SEEN = GifOS.timings.STG_BEAT_SEEN;
     function stgBeatSeen(key, b) { const e = stgBeats.get(key); return !!e && e.seen.indexOf(b) >= 0; }
     const stgBeatT = (b) => (b >= STG_PIC_MIN_B ? Math.floor(b / STG_PIC_WORD) : b); // the stager's clock, from either form of the value (stgPicNote)
     // The mark holds only while the stager is heard (a beat accepted within the stale window). A stager whose clock
@@ -24407,7 +24408,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // THE PICTURE KEEPALIVE. A stage feed is judged on its voice, because a still share legitimately sends no frames: frozen picture and still picture read the same at a
     // receiver. So the stager's beat says how many frames it encoded: low 12 bits of the signed value (old pages treat b as opaque). Frames made at the source while my decoder
     // stands still is a dead picture on my path; no new frames at the source is a still picture, and no verdict.
-    const STG_PIC_WORD = 4096, STG_PIC_MIN_B = Math.pow(2, 44), STG_PIC_FRAMES = 5, STG_PIC_DEAD_MS = 4000, STG_PIC_RETRY_MS = 15000;
+    const STG_PIC_WORD = 4096, STG_PIC_MIN_B = Math.pow(2, 44), STG_PIC_FRAMES = GifOS.timings.STG_PIC_FRAMES, STG_PIC_DEAD_MS = GifOS.timings.STG_PIC_DEAD_MS, STG_PIC_RETRY_MS = GifOS.timings.STG_PIC_RETRY_MS;
     function stgPicNote(e, b) {
       if (b < STG_PIC_MIN_B) return;   // a beat with no count: a page that has no video job, or an older page
       const t = Math.floor(b / STG_PIC_WORD), n = b % STG_PIC_WORD;
@@ -26049,7 +26050,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // Bounded and short-lived — this is a wiring race lasting seconds, not a
     // store-and-forward queue, and stale mesh state is its own class of bug.
     const sgaPending = [];        // [{ m, at }]
-    const SGA_PEND_MAX = 32, SGA_PEND_TTL = 30000;
+    const SGA_PEND_MAX = 32, SGA_PEND_TTL = GifOS.timings.SGA_PEND_TTL;
     function sgaFan(m, fromPid) {
       let sent = 0;
       for (const pid of sgaTargets()) {
@@ -26300,7 +26301,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     //      waiting on me) is the only thing that ends a chase; after the fast
     //      window the cadence slows to one ask per 5 s, so a room that cannot
     //      serve costs a frame per open channel per 5 s and nothing more.
-    const SGA_WIDEN_AFTER = 3, SGA_FAST_TRIES = 30;
+    const SGA_WIDEN_AFTER = GifOS.timings.SGA_WIDEN_AFTER, SGA_FAST_TRIES = GifOS.timings.SGA_FAST_TRIES;
     const sgaReqTries = new Map(), sgaAppReqTries = new Map();
     // …AND THE WAITERS ARE FORGOTTEN (2026-10-03). "Wanted" counted every
     // neighbour that ever asked, and nothing but a served frame or the owner's
@@ -26312,7 +26313,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // asker refreshes it (it asks again every 2–5 s while interested), a
     // departed peer is forgotten at once, and a sid no live ad names is not
     // wanted at all — presence (the app ad) is what makes a chase worth it.
-    const SGA_WANT_TTL = 30000;
+    const SGA_WANT_TTL = GifOS.timings.SGA_WANT_TTL;
     function sgaWanters(map, sid) { // live waiters only; prunes in place
       const w = map.get(sid); if (!w) return 0;
       const cut = Date.now() - SGA_WANT_TTL;
@@ -26804,7 +26805,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     let shareRecoverMode = false;
     let recoverShareTimer = 0;
     const RECOVER_MEDIA_KEY = 'gifos_recover_media';
-    const RECOVER_MEDIA_TTL = 120000;
+    const RECOVER_MEDIA_TTL = GifOS.timings.RECOVER_MEDIA_TTL;
     // myStatus.stg is what I last claimed, and it outlives a revoked grant by two beats (reactStageLost).
     // A note needs the stage itself: the room's own list, or the wait for it after a reload (stageResumeUntil).
     function onStageNow() {
@@ -28585,7 +28586,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // Can this browser run Whisper at all: allowed on this device, and an
     // audio graph to cut the voices from.
     const whisperSupported = () => whisperAllowed() && !!(window.AudioContext || window.webkitAudioContext);
-    const WSP_PRE_MS = 400, WSP_GAP_MS = 700, WSP_MAX_S = 15, WSP_MIN_S = 0.4, WSP_BACKLOG = 3, WSP_SCRIBE_MAX = 8;
+    const WSP_PRE_MS = GifOS.timings.WSP_PRE_MS, WSP_GAP_MS = GifOS.timings.WSP_GAP_MS, WSP_MAX_S = GifOS.timings.WSP_MAX_S, WSP_MIN_S = GifOS.timings.WSP_MIN_S, WSP_BACKLOG = 3, WSP_SCRIBE_MAX = 8;
     const WHISPER_SEED_KEY = 'gifos_store_default_' + 'offline-stt-whisper'; // the same stamp the Home Screen's lazy seed writes (gifos-install.js)
     // One capture per VOICE: 'me' (my own echo-cancelled track) and, for a
     // keep/share page, each direct-link neighbour whose audio already feeds a meter.
@@ -29262,7 +29263,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return whisperInstalling;
     }
     let whisperRescan = null;
-    const WSP_RESCAN_MAX = 15; // a missing app is not a reason to scan the folder for the whole meeting
+    const WSP_RESCAN_MAX = GifOS.timings.WSP_RESCAN_MAX; // a missing app is not a reason to scan the folder for the whole meeting
     function armWhisperRescan() { // opening Settings arms another bounded look; the install button has its own promise
       if (whisperRescan) return;
       let attempts = 0;
@@ -29425,7 +29426,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // loading its model. It says the fact first, hides itself after
     // WSP_CHIP_MS, comes back only when the state changes to another bad one,
     // and once closed with ✕ stays closed for this meeting.
-    const WSP_CHIP_MS = 15000;
+    const WSP_CHIP_MS = GifOS.timings.WSP_CHIP_MS;
     const wspChip = { k: '', at: 0, gone: false };
     const wspChipRoom = () => { const m = /[#&]v=([^&]+)/.exec(location.hash || ''); return m ? m[1] : '-'; };
     function wspChipGone() {
@@ -29452,7 +29453,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // provider runs on this very thread. Two such stalls within 30 s while
     // Whisper is working, and it stands down for browser captions. The same
     // tick keeps the chip in step with the engine.
-    const WSP_TICK_MS = 250, WSP_STARVE_MS = 1000, WSP_STARVE_N = 2, WSP_STARVE_WIN = 30000;
+    const WSP_TICK_MS = GifOS.timings.WSP_TICK_MS, WSP_STARVE_MS = GifOS.timings.WSP_STARVE_MS, WSP_STARVE_N = GifOS.timings.WSP_STARVE_N, WSP_STARVE_WIN = GifOS.timings.WSP_STARVE_WIN;
     let wspTickAt = 0, wspStarved = [];
     setInterval(() => {
       paintWspChip();
@@ -29707,7 +29708,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // as several finals in a burst; a final with no talk of its own within
     // 2 s of the previous one continues that speaker. null: nobody talked
     // (noise, or a voice now gone).
-    const CC_BURST_MS = 2000;
+    const CC_BURST_MS = GifOS.timings.CC_BURST_MS;
     function ccMixSpeaker() {
       let best = null, ms = 0;
       for (const [id, t] of ccMix.talk) if (t > ms) { ms = t; best = id; }
@@ -30340,7 +30341,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return '';
     }
     function resumeReload() {
-      const REC_SAVE_MAX_MS = 20000;
+      const REC_SAVE_MAX_MS = GifOS.timings.REC_SAVE_MAX_MS;
       // Stash before the reload, then drop the share so peers are not left
       // on a dead tile. The fallback timer must still reload on this turn.
       function reloadNow() {
@@ -31653,7 +31654,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // controls. This one only tucks Live, Record, Captions, and the dock on
       // a phone, and a tap brings them back. More, chat, a tray, a waiting
       // list, or a dialog holds them up.
-      const CHROME_IDLE_MS = 3000; // 0.9.23b: calm after 3 s
+      const CHROME_IDLE_MS = GifOS.timings.CHROME_IDLE_MS; // 0.9.23b: calm after 3 s
       let chromeTimer = 0;
       let swallowClick = false;
       function phoneCall() {
@@ -31888,7 +31889,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // (the Stage roots). Never a room-wide flood: half of a huge room reacting
     // at once costs each seat only its own section's reactions. At most 6 in
     // 10 s count from one person, sent or taken.
-    const FACE_REACT_MS = 3000;
+    const FACE_REACT_MS = GifOS.timings.FACE_REACT_MS;
     const faceReacts = new Map(); // peer id -> { e, until }
     const faceReactRx = new Map(); // peer id -> reaction frames taken from them (reactRxForTest)
     // Is this person seated in my section?
@@ -32222,7 +32223,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // View-only must be an antechamber, not a sentence.
     let lateAsk = false;
     let lateGen = 0;
-    const LATE_ASK_MS = 15000; // a permission prompt may never settle; the buttons must not stay dead
+    const LATE_ASK_MS = GifOS.timings.LATE_ASK_MS; // a permission prompt may never settle; the buttons must not stay dead
     // FIRST GRANT WINS. After LATE_ASK_MS a tap may ask again (a dismissed
     // prompt can stay pending for ever, and only a new ask shows it again),
     // but the first ask is often still on screen: the person was reading it.
@@ -32724,7 +32725,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // whether a tile actually goes clear is the room rule's meeting — when your
     // No blur can't show yet, the status line says exactly why.
     // A note under the blur buttons that goes away on its own.
-    const BLUR_NOTE_MS = 7000;
+    const BLUR_NOTE_MS = GifOS.timings.BLUR_NOTE_MS;
     let blurNoteTimer = 0;
     function blurNote(text) {
       const el = document.getElementById('blurnote');
@@ -33449,7 +33450,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // heals inside the cap still delivers (the 'hi' a reopened channel sends
     // replays the chat Map, which holds the link — see onDc's 'hi' handler)
     // and this wait is what gives it the time to.
-    const FOLLOWME_WAIT_MS = 15000;
+    const FOLLOWME_WAIT_MS = GifOS.timings.FOLLOWME_WAIT_MS;
     let followWait = null; // { id, needed: Set<peerId>, acked: Set<peerId> }
     function sendChatAck(id, toId) {
       if (!id || !toId || toId === myId) return;
@@ -33929,7 +33930,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // came straight back was seated in a new row. The connections close once
     // the queued frames have been handed to their channels and every open
     // channel has drained or closed, or after a short cap.
-    const FAREWELL_DRAIN_MS = 1500;
+    const FAREWELL_DRAIN_MS = GifOS.timings.FAREWELL_DRAIN_MS;
     function afterFarewell(done) {
       let fired = false;
       const go = () => { if (fired) return; fired = true; try { done(); } catch (e) {} };
@@ -34955,7 +34956,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // transport blip (sweeper detect 12s + 30s kick throttle + renegotiation
     // + a status beat ≈ 45-50s), so it borrows the status plane's own
     // holdover horizon: the same 60s the room already grants a silent peer.
-    const SEAT_GONE_MS = 60000;
+    const SEAT_GONE_MS = GifOS.timings.SEAT_GONE_MS;
     const ownerSeatGone = () => {
       const pid = appOwnerPid;
       if (!pid || pid === String(myId)) return true;  // no known owner to defer to
@@ -34976,7 +34977,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // 60s, mesh E-timers) — a status path that can heal has healed well before
     // this; one that cannot leaves a permanently split room, and the app should
     // eventually survive that too.
-    const SUCC_CONTRADICTION_MS = 180000;
+    const SUCC_CONTRADICTION_MS = GifOS.timings.SUCC_CONTRADICTION_MS;
     let succBusy = false;
     function ownerAway() {
       if (!appFrozen) {
@@ -35309,7 +35310,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // The thought bubble on the bot's tile rides its status, so every
       // device draws it. The next spoken line ends it, and a driver that
       // never says it is done does not leave it up past BOT_THINK_MS.
-      const BOT_THINK_MS = 60000;
+      const BOT_THINK_MS = GifOS.timings.BOT_THINK_MS;
       let botThinkT = null;
       function endBotThinking() {
         clearTimeout(botThinkT);

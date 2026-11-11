@@ -29,13 +29,14 @@
 (function (root) {
   'use strict';
   const GifOS = (root.GifOS = root.GifOS || {});
+  const TM = GifOS.timings || require('./timings.js');   // every wait and timeout: js/timings.js, loaded before this file (required where there is no page)
   const SUB = GifOS.sub;
   const STATE_KEY = 'gifos-sub-state';     // the last license and what PayPal said
   const CRED_KEY = 'gifos-sub-cred';       // this browser's copy of the subscription file's contents
-  const POLL_MS = 3000;
-  const POLL_FOR_MS = 15 * 60 * 1000;
-  const RETRY_MS = 20000;                  // a renewal that could not reach the service tries again
-  const REFRESH_BEFORE_S = 7 * 86400;      // fetch a fresh license this long before it runs out
+  const POLL_MS = TM.SUBS_POLL_MS;
+  const POLL_FOR_MS = TM.SUBS_POLL_FOR_MS;
+  const RETRY_MS = TM.SUBS_RETRY_MS;                  // a renewal that could not reach the service tries again
+  const REFRESH_BEFORE_S = TM.REFRESH_BEFORE_S;      // fetch a fresh license this long before it runs out
 
   // The switch in the link is read from the address the page was opened
   // with. Once the meeting page joins it rewrites its own address to the
