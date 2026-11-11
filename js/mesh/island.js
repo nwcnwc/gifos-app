@@ -218,7 +218,10 @@
     islandC7(m) {
       if (!roomTerm(this, 1) || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return false;
       const fh = this.l842Stranger(m);
-      if (!fh) { for (const v of this.occ.values()) if (v === m.id) return false; }
+      if (!fh) {
+        const other = m.from === m.id && m.line >= 0 && this.line >= 0 && m.line !== this.line;   // L8.42.1: its own greeting names another founding
+        for (const [k, v] of this.occ) if (v === m.id && (!other || this.firstHandLive(k))) return false;   // a seat my view holds is of my ring, unless I hold it only second-hand and its own greeting names another founding
+      }
       const ss = this.strangeSeen.get(m.id), xr = this.xrOk.get(m.id);
       if (!fh && !((ss !== undefined && ss >= 2) || (xr !== undefined && this.TICK - xr <= 2 * K.RELAY_TTL))) return false;
       const mine = this.ringName(), theirs = m.c7Min; if (theirs < 0 || theirs === mine) return false;

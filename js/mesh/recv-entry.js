@@ -69,11 +69,14 @@
         const next = new Map();
         const need = full ? 8 : 2;
         if (this.f.fabricDoors()) {   // L8.49: of the strangers I greet below and have no path to, one is dialled: the one dialled longest ago, the next id above my own first
+          let l849Prev = this.l849Pick;   // L8.49.1: the stranger the last listing dialled
+          { let reach = false; for (const g of m.list) if (g >= 0 && g !== id && !known.has(g) && (this.f.fabricLinkCarries(id, g) || this.f.fhopFriendFor(id, g))) { reach = true; break; } if (!reach) l849Prev = -1; }   // ...and only where a connection or a friend of mine reaches some stranger
           this.l849Pick = -1; const kept = new Map(); let best = -1, bestAt = 0, bestK = 0;
           for (const g of m.list) if (g >= 0 && g !== id && !known.has(g)) {
             if ((this.strangeSeen.has(g) ? this.strangeSeen.get(g) : 0) + 1 < need) continue;
             const a = this.l849At.get(g); const at = a === undefined ? -1 : a; if (at >= 0) kept.set(g, at);
             if (this.f.fabricLinkCarries(id, g) || this.f.fhopFriendFor(id, g)) continue;
+            if (g === l849Prev) continue;   // L8.49.1: the stranger I dialled on the last listing and still have no path to takes its turn on a friend's channel (direct, then a friend, in turn)
             const k = g > id ? g - id : g - id + 2147483648;   // the turn starts at the next id above my own, so a ring's seats spread over the other ring's
             if (best < 0 || at < bestAt || (at === bestAt && k < bestK)) { best = g; bestAt = at; bestK = k; }
           }
