@@ -748,5 +748,12 @@
   "meet.wspRunBrowserShort": ", subtítulos del navegador activos",
   "meet.wspRunNoneShort": ", sin subtítulos tuyos",
   "meet.wspRetry": "Reintentar",
-  "meet.stBrowserCaptionsOnWhisperOff": "Los subtítulos del navegador están activos. Whisper está desactivado en este dispositivo."
+  "meet.stBrowserCaptionsOnWhisperOff": "Los subtítulos del navegador están activos. Whisper está desactivado en este dispositivo.",
+  "meet.viewPick": "Vista",
+  "meet.viewPickTip": "Cambiar la vista (Alt+F)",
+  "meet.viewScroll": "Desplazar",
+  "meet.viewFit": "Ajustar",
+  "meet.viewFloat": "Flotar",
+  "meet.viewFocus": "Enfoque",
+  "meet.viewFollow": "Seguir a quien habla"
 }
