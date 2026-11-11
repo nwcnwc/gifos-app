@@ -1636,72 +1636,6 @@
   #avstate span { display: inline-flex; align-items: center; gap: 8px; }
   #avstate span[hidden] { display: none !important; }
   #avstate span::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: #ffb4b4; flex: none; }
-  /* Run of show: the booth's list. Viewers never see it. While it is
-     open the off-air card moves to the right so the two do not stack. */
-  #rundown { display: none; position: fixed; z-index: 24; left: 14px; bottom: calc(14px + var(--inset-bottom, 0px) + var(--barlift, 0px));
-    width: min(260px, calc(100vw - 28px)); max-height: calc(100vh - 86px - var(--inset-bottom, 0px) - var(--barlift, 0px));
-    flex-direction: column; gap: 8px; padding: 16px 16px 14px; box-sizing: border-box;
-    background: var(--c-white); color: var(--c-ink); border-radius: 20px;
-    box-shadow: 0 16px 40px rgba(0,0,0,.28); overflow: auto; }
-  #rundown.open { display: flex; }
-  #rundown h3 { margin: 0; font: 700 16px/1.2 system-ui, sans-serif; color: var(--c-ink-2); }
-  #rundown ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
-  #rundown li { display: flex; align-items: baseline; gap: 8px; min-height: 28px; color: var(--c-ink); }
-  #rundown li .rdname { font: 600 18px/1.25 system-ui, sans-serif; min-width: 0; }
-  #rundown li.past { color: var(--c-gray); }
-  #rundown li.past .rdname { font-weight: 500; }
-  #rundown li.now .rdname { font: 700 26px/1.15 system-ui, sans-serif; }
-  #rundown .nowtag { flex: 0 0 auto; font: 700 13px/1 system-ui, sans-serif; letter-spacing: .04em;
-    text-transform: uppercase; color: var(--c-blue); }
-  #rundown-end { margin: 0; font: 700 26px/1.15 system-ui, sans-serif; }
-  #rundown-end:empty { display: none; }
-  #rundown-next { min-height: 44px; border: 0; border-radius: var(--r-md); background: var(--c-blue); color: var(--c-white);
-    font: 700 16px/1 system-ui, sans-serif; cursor: pointer; }
-  #rundown-next.secondary { background: var(--c-white); color: var(--c-ink); border: 1.5px solid var(--c-gray); }
-  /* Lyrics for the booth, only while the order of service is on Song.
-     Program is the line to read now. Preview is the next line, smaller,
-     so a volunteer does not sing ahead. This computer only: nothing here
-     is drawn onto the outgoing picture, and a viewer does not see it. */
-  #lyrics { display: none; position: fixed; z-index: 24; left: 290px; right: 14px; bottom: calc(14px + var(--inset-bottom, 0px) + var(--barlift, 0px));
-    flex-direction: column; align-items: flex-start; gap: 4px; padding: 16px 18px 14px; box-sizing: border-box;
-    background: var(--c-white); color: var(--c-ink); border-radius: 20px;
-    box-shadow: 0 16px 40px rgba(0,0,0,.28); }
-  /* Grow upward from its bottom, but stop under Off air. Off air sits at 18vh
-     and is about 200px tall; on a short window the lyric card used to climb
-     over it. The program line stays 32px. The card scrolls instead. */
-  #lyrics.open { display: flex; overflow: auto; max-height: calc(100vh - 18vh - 14px - 220px - var(--inset-bottom, 0px) - var(--barlift, 0px)); }
-  #lyrics .ly-k { margin: 0; font: 700 16px/1.2 system-ui, sans-serif; letter-spacing: .04em;
-    text-transform: uppercase; color: var(--c-blue); }
-  #lyrics .ly-k.preview { color: #5c6370; margin-top: 8px; }
-  #lyrics .ly-program { margin: 0; font: 700 32px/1.2 system-ui, sans-serif; max-width: 100%; }
-  #lyrics .ly-preview { margin: 0; min-height: 1.3em; font: 600 18px/1.3 system-ui, sans-serif; color: var(--c-ink-2); max-width: 100%; }
-  #lyrics-next { margin-top: 8px; min-height: 44px; border: 0; border-radius: var(--r-md); background: var(--c-blue); color: var(--c-white);
-    font: 700 16px/1 system-ui, sans-serif; cursor: pointer; padding: 0 16px; }
-  #lyrics-next.secondary { background: var(--c-white); color: var(--c-ink); border: 1.5px solid var(--c-gray); }
-  /* The booth's own song: typed here, one line per line, kept for this room
-     on this computer. Song reads it; nothing extra is sent to the room. */
-  #song-edit { min-height: 44px; border-radius: var(--r-md); background: var(--c-white); color: var(--c-ink); border: 1.5px solid var(--c-gray);
-    font: 700 16px/1 system-ui, sans-serif; cursor: pointer; }
-  #songedit { display: none; position: fixed; z-index: 25; left: 290px; right: 14px; bottom: calc(14px + var(--inset-bottom, 0px) + var(--barlift, 0px));
-    max-width: 640px; max-height: calc(100vh - 18vh - 14px - 220px - var(--inset-bottom, 0px) - var(--barlift, 0px)); min-height: 0;
-    flex-direction: column; gap: 8px; padding: 16px 18px 14px; box-sizing: border-box;
-    background: var(--c-white); color: var(--c-ink); border-radius: 20px; box-shadow: 0 16px 40px rgba(0,0,0,.28); }
-  #songedit.open { display: flex; }
-  body.songedit #lyrics.open { display: none; }
-  #songedit h3 { margin: 0; font: 700 16px/1.2 system-ui, sans-serif; color: var(--c-ink-2); }
-  #songedit p { margin: 0; font: 400 16px/1.35 system-ui, sans-serif; color: var(--c-ink-2); }
-  #song-text { flex: 1 1 auto; min-height: 88px; resize: vertical; box-sizing: border-box; width: 100%;
-    padding: 8px 10px; border: 1.5px solid var(--c-gray); border-radius: var(--r-sm); color: var(--c-ink); background: var(--c-white);
-    font: 500 16px/1.4 system-ui, sans-serif; }
-  #songedit .songedit-row { display: flex; gap: 8px; }
-  #songedit .songedit-row button { min-height: 44px; padding: 0 18px; border: 0; border-radius: var(--r-md);
-    background: var(--c-blue); color: var(--c-white); font: 700 16px/1 system-ui, sans-serif; cursor: pointer; }
-  #songedit .songedit-row button.secondary { background: var(--c-white); color: var(--c-ink); border: 1.5px solid var(--c-gray); }
-  @media (max-width: 1000px) {
-    body.broadcast.rundown #onair[data-state="off"] {
-      left: 290px; transform: none; width: min(400px, calc(100vw - 306px));
-    }
-  }
   .fitbtn { position: fixed; z-index: 6; top: 58px; right: 14px; min-width: 32px; min-height: 32px;
     border: 0; border-radius: var(--r-pill); padding: 6px 12px; cursor: pointer;
     background: var(--c-scrim); color: var(--c-paper); font: 700 16px/1.2 system-ui, sans-serif; }
@@ -2107,8 +2041,6 @@
       max-height: calc(100vh - 96px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
       max-height: calc(100dvh - 96px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     }
-    body:has(.bar:not(.collapsed)) #rundown.open,
-    body:has(.bar:not(.collapsed)) #lyrics.open { display: none !important; }
   }
   .bar:not(.collapsed) .barmore > * { pointer-events: auto; }
   /* One sheet on every width: the groups stack in the same order, each its
@@ -2941,18 +2873,13 @@
     .bar:not(.collapsed) #barmore .morerow > .iconbtn .docklab.dockword { white-space: normal; line-height: 1.25; }
     /* The dock's 26px icon left no room for a second line in a 64px tile. */
     .bar:not(.collapsed) #barmore .morerow > .iconbtn svg { flex: none; width: 20px; height: 20px; }
-    /* Start time and Visit are fields, not quarter-tiles. A 12rem input
-       was wider than the column, so it ran under Questions. They are a
-       service host's, so a small group does not show them. */
-    body.broadcast.bc-host .bar:not(.collapsed) #barmore #bcwhenrow,
-    body.broadcast.bc-host .bar:not(.collapsed) #barmore #bcrdrow,
-    body.broadcast.bc-host .bar:not(.collapsed) #barmore #bcvisitrow {
+    /* Start time is a field, not a quarter-tile. A 12rem input
+       was wider than the column, so it ran under Questions. */
+    body.broadcast.bc-host .bar:not(.collapsed) #barmore #bcwhenrow {
       grid-column: 1 / -1; display: flex; flex-direction: column; align-items: stretch;
       width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box;
     }
-    .bar:not(.collapsed) #barmore #bcwhenrow input,
-    .bar:not(.collapsed) #barmore #bcrdrow select,
-    .bar:not(.collapsed) #barmore #bcvisitrow input {
+    .bar:not(.collapsed) #barmore #bcwhenrow input {
       width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box;
     }
     .bar:not(.collapsed) #barmore #rbbtn { grid-column: 1 / -1; }
@@ -3221,7 +3148,7 @@
   .lob-keyrow { display: flex; align-items: stretch; gap: 8px; margin-bottom: .5rem; }
   .lob-keyrow input { flex: 1 1 auto; width: auto; min-width: 0; margin-bottom: 0; }
   @media (max-width: 700px) { .lob-keyrow { flex-direction: column; } #lob-keygen.lob-ghost { width: 100%; } }
-  /* Restored: broadcast stream link, ended card, Visit, captions, questions,
+  /* Restored: broadcast stream link, ended card, captions, questions,
      rebroadcast, flip camera and key button styles that a
      merge left out (the markup and code were kept, the styles were not). */
   .rec-replay { position: fixed; top: 0; right: 0; bottom: 0; left: 0; inset: 0; z-index: 70; background: var(--c-night); }
@@ -3250,7 +3177,6 @@
   body.broadcast #bc-ended:not([hidden]) { display: flex; flex-direction: column; gap: 16px; position: fixed; z-index: 4; left: 24px; right: 24px; top: calc(var(--banner-h) + 8px + 4.25rem + var(--inset-top, 0px)); bottom: calc(var(--inset-bottom, 0px) + var(--barclear, 0px)); align-items: center; justify-content: center; margin: 0; padding: 0; overflow: hidden; container-type: size; pointer-events: none; text-align: center; }
   #bc-cal[hidden] { display: none !important; }
   #bc-cal { pointer-events: auto; display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 10px 22px; border-radius: var(--r-lg); border: 2px solid var(--c-paper); color: var(--c-paper); text-decoration: none; font: 700 1.05rem/1.1 system-ui, sans-serif; }
-  #bc-visit[hidden] { display: none !important; }
   #bc-pre[hidden] { display: none !important; }
   #bc-pre { position: fixed; z-index: 5; margin: 0; left: calc(14px + var(--inset-left, 0px)); top: calc(var(--banner-h, 0px) + 8px + 2.75rem + var(--inset-top, 0px)); display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; box-sizing: border-box; border-radius: var(--r-pill); background: #4b3a8f; color: var(--c-white); font: 700 min(1.05rem, 22px)/1.2 system-ui, sans-serif; letter-spacing: .02em; }
   body:not(.broadcast) #rbbtn, body:not(.bc-host) #rbbtn { display: none; }
@@ -3270,10 +3196,6 @@
   #rb-file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
   #rec-replay-rebroadcast { background: transparent; color: var(--c-paper); border: 1.5px solid var(--c-gray); }
   #rec-replay-rebroadcast[hidden] { display: none; }
-  #bc-visit { position: fixed; z-index: 5; right: calc(14px + var(--inset-right, 0px)); bottom: calc(4px + var(--inset-bottom, 0px) + var(--barlift, 0px)); display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: clamp(44px, 2.75rem, 56px); min-width: 44px; padding: 0.4rem clamp(14px, 1.1rem, 22px); box-sizing: border-box; border-radius: var(--r-pill); background: rgba(12,14,18,.82); color: var(--c-paper); text-decoration: none; font: 700 min(1.05rem, 22px)/1 system-ui, sans-serif; box-shadow: 0 0 0 1.5px rgba(244,247,251,.55); }
-  #bc-visit.left { right: auto; left: calc(14px + var(--inset-left, 0px)); }
-  #bc-visit svg { width: clamp(22px, 1.375rem, 28px); height: clamp(22px, 1.375rem, 28px); flex: 0 0 auto; }
-  #bc-ended #bc-visit { position: static; pointer-events: auto; min-height: 48px; padding: 10px 22px; background: transparent; box-shadow: none; border: 2px solid var(--c-paper); border-radius: var(--r-lg); }
   #bc-cap[hidden], body.bc-quiet #bc-cap { display: none !important; }
   #bc-cap { position: fixed; z-index: 5; pointer-events: none; left: calc(14px + var(--inset-left, 0px)); right: calc(14px + var(--inset-right, 0px)); bottom: calc(4px + var(--inset-bottom, 0px) + clamp(44px, 2.75rem, 56px) + 8px + var(--barlift, 0px)); display: flex; align-items: flex-end; gap: 8px; }
   #bc-cap-btn { pointer-events: auto; flex: 0 0 auto; min-width: 44px; min-height: 44px; padding: 0 10px; border: 0; border-radius: var(--r-sm); background: rgba(12,14,18,.82); color: var(--c-paper); font: 800 min(1rem, 20px)/1 system-ui, sans-serif; box-shadow: 0 0 0 1.5px rgba(244,247,251,.55); }
@@ -3325,7 +3247,7 @@
   .topchip .status .statustext { display: block; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 
-  /* Restored: broadcast, start time, Visit, flip camera and
+  /* Restored: broadcast, start time, flip camera and
      dock Hand rules the same merge left out. */
   @media (max-width: 700px), (max-height: 500px) {
     body.broadcast #handq.on { display: block; position: fixed; z-index: 5; left: 8px; right: 8px; margin: 0; padding: 8px 12px; font-size: 1.0625rem; line-height: 1.2; color: var(--c-paper); background: var(--c-scrim); border-radius: var(--r-lg); pointer-events: auto; }
@@ -3336,13 +3258,6 @@
   #bcwhenrow { display: none; }
   body.broadcast.bc-host #bcwhenrow { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; flex-wrap: wrap; }
   #bcwhenrow input { min-height: 44px; font: inherit; border-radius: var(--r-sm); padding: 0 8px; }
-  #bcrdrow { display: none; }
-  body.broadcast.bc-host #bcrdrow { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; flex-wrap: wrap; }
-  #bcrdrow select { min-height: 44px; font: inherit; border-radius: var(--r-sm); padding: 0 8px; }
-  #bcvisitrow { display: none; }
-  body.broadcast.bc-host #bcvisitrow { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; flex-wrap: wrap; }
-  #bcvisitrow input { min-height: 44px; min-width: 12rem; font: inherit; border-radius: var(--r-sm); padding: 0 8px; }
-  #bcvisit-help { flex-basis: 100%; font-size: 0.85em; opacity: .8; }
   @media (min-height: 500px) {
     body.broadcast .fitbtn, body.broadcast .admcount { top: calc(var(--banner-h) + 8px + 4.25rem + var(--inset-top, 0px)); }
   }
