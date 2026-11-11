@@ -11742,6 +11742,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // neither the sweeper nor L22 closes it), NO video on an unvouched link, the room's link facts and subscribers'
     // vouches (room-wide gossip: tlink, tsub), and the paused-video note on the tiles a link holds back.
     let turnLinks = null, turnTimer = null, turnSubAt = 0;
+    // The relay says it carries TURN handshakes (`tv` frames, the tvouch verb) on its joined frame. An older relay closes a
+    // socket that sends an unlisted type, so without its word this page asks for no link and answers none.
+    let relayTv = false;
     const turnFacts = new Map();   // link id → { id, a, b, up, v, s, c, g, va, vb, at }
     const turnSubs = new Map();    // subscriber pid → { tier, exp, ticket, at }
     const turnLog = [];
@@ -11864,8 +11867,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function turnPaint() {
       const facts = turnLinks ? Array.from(turnFacts.values()) : [];
-      for (const p of peers.values()) {
-        if (!p.tile) continue;
+      // every person tile, a pair's or a carried one (a person whose media a friend brings has no pair here)
+      for (const tile of document.querySelectorAll('.tile[data-peer]')) {
+        const pid = tile.dataset.peer; if (!pid || pid === myId) continue;
+        const p = { id: pid, tile };
         const show = !!turnLinks && (GifOS.meetTurn.pausedBy(facts, myId, p.id) || (turnLinks.isLink(p.id) && !turnLinks.video(p.id)));
         let el = p.tile.querySelector(':scope > .tpause');
         if (show && !el) {
@@ -11884,7 +11889,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
     }
     function turnStep() {
-      if (!turnLinks) return;
+      if (!turnLinks || !relayTv) return;
       try { turnLinks.step(); } catch (e) { turnNote('turn-step-err ' + String(e && e.stack || e).slice(0, 160)); }
       for (const p of peers.values()) if (turnLinks.holds(p.id) || (p.pc && p.pc.__turnGuarded)) turnApplyVideo(p);
       const every = GifOS.sub && GifOS.sub.RENEW_EVERY_S ? GifOS.sub.RENEW_EVERY_S * 1000 / 2 : 0;   // half the ticket's renewal period
@@ -15551,6 +15556,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // App-level relay frames the wire does not consume. The roster here is the
     // GREETER POOL, never the room \u2014 it drives door moderation only.
     function onRelayFrame(m) {
+      if (m.t === 'joined') relayTv = m.tv === 1;   // this relay vouches for TURN links (see relayTv)
       if (m.t === 'tvouch') { try { if (turnLinks) turnLinks.onVouch(m); } catch (e) {} return; }   // the relay's seated vouch for one of my TURN links
       if (m.t === 'joined') {
         updateStatus(); broadcastStatus();
