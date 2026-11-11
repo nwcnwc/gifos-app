@@ -929,7 +929,11 @@
     if (appMetaCache.has(fileId)) return appMetaCache.get(fileId);
     const p = gif.decode(bytes).then((arc) => {
       const m = arc ? (gif.readManifest(arc) || {}) : {};
-      const prov = m.provides && Array.isArray(m.provides.ai) ? m.provides.ai.filter(Boolean) : [];
+      // AI roles as they are; a meeting role (the GifOS subscription file) as
+      // 'meet:<role>', so it follows the same place rule (Providers folder,
+      // red ✕ elsewhere) and is never offered as an AI model.
+      const prov = (m.provides && Array.isArray(m.provides.ai) ? m.provides.ai.filter(Boolean) : [])
+        .concat(m.provides && Array.isArray(m.provides.meet) ? m.provides.meet.filter((r) => typeof r === 'string' && r).map((r) => 'meet:' + r) : []);
       const caps = m.capabilities || {};
       const some = (v) => Array.isArray(v) ? v.length > 0 : !!v;
       return { shortName: (m.shortName || m.name || '').toString().trim(), version: (m.version || '').toString().trim(),

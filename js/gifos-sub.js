@@ -22,12 +22,17 @@
  * a plain message. Anyone holding any plan is always let in, even past 20.
  * The room's count is the length of its door's list of greeters.
  *
- * How the room's plan is known: the admin puts their license in the room's
- * signed admin orders, with a signature from their subscription key over
- * the room's name (roomOrderProof). Everyone at the door checks it
- * (roomTierOf); a missing, forged, expired or borrowed license reads as the
- * 20-person line. A person at the door who has a plan shows it the same way,
- * signing the door's fresh challenge (doorProof).
+ * One meeting at a time: a subscription powers one meeting (open or admin
+ * room) at a time. Joining a meeting gets a short meeting ticket from the
+ * payment service, renewed every couple of minutes while that meeting is the
+ * subscription's newest; joining another meeting moves it there.
+ *
+ * How the room's plan is known: the admin puts their meeting ticket in the
+ * room's signed admin orders, with a signature from their subscription key
+ * over the room's name. Everyone at the door checks it (roomTierOf); a
+ * missing, forged, run-out, other-room or borrowed ticket reads as the
+ * 20-person line. A person at the door who has a plan shows their own ticket
+ * for this meeting, signing the door's fresh challenge (doorProofOk).
  *
  * Everything here is pure, with the clock and the signature check passed in,
  * so a page, the payment service and the meeting servers apply the same
@@ -51,9 +56,9 @@
   // What each plan grants. storage is filled from the license (the payment
   // service's settings), never assumed here.
   const TIERS = {
-    room20: { id: 'room20', name: 'Admin rooms, up to 20 people', price: '$2', adminRooms: true, roomLimit: PEOPLE_LIMIT, turnVideo: true, storage: false },
-    unlimited: { id: 'unlimited', name: 'Admin rooms, unlimited people', price: '$5', adminRooms: true, roomLimit: null, turnVideo: true, storage: false },
-    streamer: { id: 'streamer', name: 'Streamer: unlimited admin rooms and storage', price: '$10', adminRooms: true, roomLimit: null, turnVideo: true, storage: true },
+    room20: { id: 'room20', name: 'Admin rooms, up to 20 people', price: '$2', priceYear: '$20', adminRooms: true, roomLimit: PEOPLE_LIMIT, turnVideo: true, storage: false },
+    unlimited: { id: 'unlimited', name: 'Admin rooms, unlimited people', price: '$5', priceYear: '$50', adminRooms: true, roomLimit: null, turnVideo: true, storage: false },
+    streamer: { id: 'streamer', name: 'Streamer: unlimited admin rooms and storage', price: '$10', priceYear: '$100', adminRooms: true, roomLimit: null, turnVideo: true, storage: true },
   };
   const TIER_IDS = Object.keys(TIERS);
   const FREE = Object.freeze({ tier: null, subscribed: false, adminRooms: false, openRooms: true, roomLimit: null, turnAudio: true, turnVideo: false, storage: null, bypassLimit: false });
@@ -191,13 +196,66 @@
   const doorContext = (room) => 'door:' + String(room);
   // The admin's room order: {lic:{licenseJson,sig}, proof, at}. proof signs
   // proofMessage(roomContext(room), 'at:' + at) with the license's key.
+  // ---- one meeting at a time: the meeting ticket -----------------------------
+  // A subscription powers ONE meeting at a time, admin room or open room.
+  // Joining a meeting asks the payment service for a ticket naming that
+  // meeting (meetingTag: the service never learns the room's name). The
+  // service keeps only the subscription's newest meeting: a ticket lasts
+  // TICKET_S and is renewed every RENEW_EVERY_S, and a renewal for any older
+  // meeting is refused, so an old meeting loses the subscription within
+  // TICKET_S. Payment is checked when the meeting is JOINED, never on a
+  // renewal: a meeting that started paid runs to its end.
+  const TICKET_KIND = 'gifos-sub-ticket';
+  const TICKET_S = 300;
+  const RENEW_EVERY_S = 120;
+  const MEETING_RE = /^[0-9a-f]{32}$/;
+  async function meetingTag(room) {
+    const d = new Uint8Array(await root.crypto.subtle.digest('SHA-256', utf8('gifos-sub-meeting:' + String(room))));
+    let h = ''; for (let i = 0; i < 16; i++) h += d[i].toString(16).padStart(2, '0');
+    return h;
+  }
+  function checkTicket(o, nowS, meeting) {
+    if (!o || typeof o !== 'object') return null;
+    if (o.v !== 1 || o.kind !== TICKET_KIND || o.payeeId !== SELLER) return null;
+    if (!Object.prototype.hasOwnProperty.call(TIERS, o.tier)) return null;
+    if (typeof o.buyerKey !== 'string' || !KEY_RE.test(o.buyerKey)) return null;
+    if (typeof o.subId !== 'string' || !SUB_ID_RE.test(o.subId)) return null;
+    if (typeof o.meeting !== 'string' || !MEETING_RE.test(o.meeting)) return null;
+    if (meeting != null && o.meeting !== meeting) return null;
+    if (!intS(o.gen) || o.gen < 1 || !intS(o.issued) || !intS(o.exp)) return null;
+    if (o.exp <= o.issued || o.exp - o.issued > TICKET_S + 60) return null;
+    if (!(nowS < o.exp) || o.issued > nowS + ASK_WINDOW_S) return null;
+    return o;
+  }
+  // verifyTicket({ticketJson, sig}, verify, nowS, meeting) -> the ticket or null.
+  async function verifyTicket(t, verify, nowS, meeting) {
+    if (!t || typeof t.ticketJson !== 'string' || typeof t.sig !== 'string' || t.ticketJson.length > 2048) return null;
+    let sigBytes; try { sigBytes = b64ToBytes(t.sig); } catch (e) { return null; }
+    if (sigBytes.length !== 64) return null;
+    let ok = false;
+    try { ok = !!(await verify(sigBytes, utf8(t.ticketJson))); } catch (e) { ok = false; }
+    if (!ok) return null;
+    let o; try { o = JSON.parse(t.ticketJson); } catch (e) { return null; }
+    return checkTicket(o, nowS, meeting);
+  }
+  // What a ticket grants in its meeting (same entitlements as the plan).
+  function ticketRights(t) {
+    if (!t || !TIERS[t.tier]) return Object.assign({}, FREE);
+    const x = TIERS[t.tier];
+    return { tier: x.id, subscribed: true, adminRooms: x.adminRooms, openRooms: true, roomLimit: x.roomLimit, turnAudio: true, turnVideo: x.turnVideo, storage: null, bypassLimit: true, until: t.exp };
+  }
+
+  // The admin's room order: {ticket:{ticketJson,sig}, proof, at}. The ticket
+  // must be current and for THIS room's meeting; proof signs
+  // proofMessage(roomContext(room), 'at:' + at) with the ticket's key.
+  // -> {tier, exp} or null.
   async function roomTierOf(order, room, verifyPay, verifyKey, nowS) {
     if (!order || typeof order !== 'object' || order.on === false) return null;
     if (!Number.isInteger(order.at)) return null;
-    const lic = await verifyLicense(order.lic, verifyPay, nowS);
-    if (!lic) return null;
-    const ok = await verifyProof(lic, roomContext(room), 'at:' + order.at, order.proof, verifyKey);
-    return ok ? lic.tier : null;
+    const t = await verifyTicket(order.ticket, verifyPay, nowS, await meetingTag(room));
+    if (!t) return null;
+    const ok = await verifyProof(t, roomContext(room), 'at:' + order.at, order.proof, verifyKey);
+    return ok ? { tier: t.tier, exp: t.exp } : null;
   }
   // doorVerdict: what a greeter does with a knocker it has no proof from.
   // -> 'let-in' (no limit applies, or the room has space, or the count is not
@@ -206,13 +264,56 @@
     const v = admission({ adminRoom: o.adminRoom, roomTier: o.roomTier, listLength: o.count, hold: o.hold, entrant: { isAdmin: false, rights: FREE } });
     return v.admit || v.wait ? 'let-in' : 'ask';
   }
-  // The knocker's answer to the door's challenge: their license, and their
-  // key's signature over the door's nonce for this room.
+  // The knocker's answer to the door's challenge: a current ticket for THIS
+  // room's meeting, and the ticket key's signature over the door's nonce.
   async function doorProofOk(shown, room, nonce, verifyPay, verifyKey, nowS) {
     if (!shown || typeof shown !== 'object') return null;
-    const lic = await verifyLicense(shown.lic, verifyPay, nowS);
-    if (!lic) return null;
-    return (await verifyProof(lic, doorContext(room), nonce, shown.proof, verifyKey)) ? lic : null;
+    const t = await verifyTicket(shown.ticket, verifyPay, nowS, await meetingTag(room));
+    if (!t) return null;
+    return (await verifyProof(t, doorContext(room), nonce, shown.proof, verifyKey)) ? t : null;
+  }
+
+  // ---- the subscription file (a provider GIF) ----------------------------------
+  // The subscription lives in a file the person keeps and can move: a GifOS
+  // GIF whose manifest says it provides the meeting subscription, holding the
+  // subscription id, its plan and the 32-byte seed of the subscriber's key.
+  // Anyone holding the file holds the subscription; the one-meeting-at-a-time
+  // rule is what stops a copy from being shared (each join moves it).
+  const CRED_KIND = 'gifos-sub-credential';
+  const SEED_RE = /^[A-Za-z0-9+/]{43}=$/;
+  function credentialOk(c) {
+    if (!c || typeof c !== 'object' || c.v !== 1 || c.kind !== CRED_KIND) return null;
+    if (typeof c.subId !== 'string' || !SUB_ID_RE.test(c.subId)) return null;
+    if (!Object.prototype.hasOwnProperty.call(TIERS, c.tier)) return null;
+    if (typeof c.seed !== 'string' || !SEED_RE.test(c.seed)) return null;
+    let raw; try { raw = b64ToBytes(c.seed); } catch (e) { return null; }
+    if (raw.length !== 32) return null;
+    return { v: 1, kind: CRED_KIND, subId: c.subId, tier: c.tier, period: c.period === 'yearly' ? 'yearly' : 'monthly', seed: c.seed, buyerKey: typeof c.buyerKey === 'string' && KEY_RE.test(c.buyerKey) ? c.buyerKey : undefined };
+  }
+  function credentialFiles(c) {
+    const ok = credentialOk(c);
+    if (!ok) throw new Error('not a subscription credential');
+    const t = TIERS[ok.tier];
+    return {
+      'manifest.json': JSON.stringify({
+        gifos: '1.0', appId: 'gifos-subscription', name: 'GifOS subscription', entry: 'index.html',
+        provides: { meet: ['subscription'] },     // a Provider: active only in the Providers folder
+        accent: [120, 200, 255],
+      }),
+      'subscription.json': JSON.stringify(ok),
+      'index.html': '<!doctype html><meta charset="utf-8"><title>GifOS subscription</title>' +
+        '<body style="font:15px/1.5 system-ui;padding:1.2rem"><h2>GifOS subscription</h2><p>' + t.name + '.</p>' +
+        '<p>Keep this file in the Providers folder on your Home Screen, or open it in a meeting\u2019s Settings on another browser. ' +
+        'It works in one meeting at a time: joining a meeting moves it there.</p><p>Anyone with this file can use your subscription. Keep it private.</p>',
+    };
+  }
+  function credentialFromFiles(files) {
+    if (!files) return null;
+    let m, c;
+    const text = (v) => (v instanceof Uint8Array ? new TextDecoder().decode(v) : String(v || ''));
+    try { m = JSON.parse(text(files['manifest.json'])); c = JSON.parse(text(files['subscription.json'])); } catch (e) { return null; }
+    if (!m || m.appId !== 'gifos-subscription' || !m.provides || !Array.isArray(m.provides.meet) || m.provides.meet.indexOf('subscription') < 0) return null;
+    return credentialOk(c);
   }
 
   // ---- the page switch ------------------------------------------------------
@@ -231,5 +332,7 @@
     TIERS, TIER_IDS, FREE, TEXT, PEOPLE_LIMIT, LICENSE_KIND, SELLER, KEY_RE, SUB_ID_RE, ASK_WINDOW_S, FLAG_KEY,
     checkLicense, verifyLicense, rightsOf, storageAfterLapse, proofMessage, verifyProof, askMessage, askFresh,
     roomLimitFor, admission, enabled, roomContext, doorContext, roomTierOf, doorVerdict, doorProofOk,
+    TICKET_KIND, TICKET_S, RENEW_EVERY_S, meetingTag, checkTicket, verifyTicket, ticketRights,
+    CRED_KIND, credentialOk, credentialFiles, credentialFromFiles,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -5,28 +5,37 @@
  * 'gifos-subs' = '1'). While off, nothing here touches the page.
  *
  * What it does when on:
- *   - Settings gets a Subscription group: the three plans, sign-up through
- *     PayPal, the current plan and when it renews or ends, and Cancel.
+ *   - Settings gets a Subscription group: the plans (monthly or yearly),
+ *     sign-up through PayPal, the current plan, Cancel, and the subscription
+ *     file: download it, or use one brought from another browser.
  *   - Making an admin room needs a subscription (any plan).
- *   - The admin's plan travels with the room (a signed room order), so the
+ *   - ONE MEETING AT A TIME: joining a meeting (open or admin room) asks the
+ *     payment service for a short ticket for that meeting. Joining another
+ *     meeting, here or in any browser holding the same file, moves the
+ *     subscription there; this meeting loses it within a few minutes.
+ *     Payment is checked when a meeting is joined; a meeting that started
+ *     paid keeps the subscription to its end.
+ *   - The admin's ticket travels with the room (a signed room order), so the
  *     door knows the room's plan. In a room on the $2 plan (or one whose plan
  *     cannot be shown) that already holds 20 people, the door asks a newcomer
- *     to show a subscription; without one they are told plainly and not let
- *     in. Rooms on the $5 and $10 plans have no limit.
+ *     to show a ticket for this meeting; without one they are told plainly
+ *     and not let in. Rooms on the $5 and $10 plans have no limit.
  *
- * The subscriber's key is made in this browser and can never be read out of
- * it (WebCrypto, not extractable). The license the payment service signs
- * names that key; it is checked here against /gifos-pay.key.
+ * The subscription is a FILE: a GifOS GIF that provides the meeting
+ * subscription (keep it in the Providers folder, or open it here in another
+ * browser). It holds the subscription id and the seed of the subscriber's
+ * key; whoever holds the file holds the subscription.
  */
 (function (root) {
   'use strict';
   const GifOS = (root.GifOS = root.GifOS || {});
   const SUB = GifOS.sub;
-  const STATE_KEY = 'gifos-sub-state';
-  const DB = 'gifos-sub';
+  const STATE_KEY = 'gifos-sub-state';     // the last license and what PayPal said
+  const CRED_KEY = 'gifos-sub-cred';       // this browser's copy of the subscription file's contents
   const POLL_MS = 3000;
   const POLL_FOR_MS = 15 * 60 * 1000;
-  const REFRESH_BEFORE_S = 7 * 86400;   // fetch a fresh license this long before it runs out
+  const RETRY_MS = 20000;                  // a renewal that could not reach the service tries again
+  const REFRESH_BEFORE_S = 7 * 86400;      // fetch a fresh license this long before it runs out
 
   // The switch in the link is read from the address the page was opened
   // with. Once the meeting page joins it rewrites its own address to the
@@ -47,37 +56,74 @@
   const b64 = (u8) => { let s = ''; for (const b of u8) s += String.fromCharCode(b); return btoa(s); };
   const fromB64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 
-  function readState() { try { return JSON.parse(safeStore().getItem(STATE_KEY) || 'null') || {}; } catch (e) { return {}; } }
-  function writeState(s) { try { safeStore().setItem(STATE_KEY, JSON.stringify(s || {})); } catch (e) {} }
+  function readJson(k) { try { return JSON.parse(safeStore().getItem(k) || 'null'); } catch (e) { return null; } }
+  function writeJson(k, v) { try { if (v == null) safeStore().removeItem(k); else safeStore().setItem(k, JSON.stringify(v)); } catch (e) {} }
+  const readState = () => readJson(STATE_KEY) || {};
+  const writeState = (s) => writeJson(STATE_KEY, s || {});
 
-  // ---- the subscriber's key (kept in IndexedDB, never readable) -------------
-  function idb() {
-    return new Promise((res, rej) => {
-      const r = indexedDB.open(DB, 1);
-      r.onupgradeneeded = () => r.result.createObjectStore('k');
-      r.onsuccess = () => res(r.result);
-      r.onerror = () => rej(r.error);
-    });
-  }
-  async function idbGet(k) { const d = await idb(); return new Promise((res, rej) => { const q = d.transaction('k').objectStore('k').get(k); q.onsuccess = () => res(q.result || null); q.onerror = () => rej(q.error); }); }
-  async function idbPut(k, v) { const d = await idb(); return new Promise((res, rej) => { const t = d.transaction('k', 'readwrite'); t.objectStore('k').put(v, k); t.oncomplete = () => res(); t.onerror = () => rej(t.error); }); }
-  let keyP = null;
-  function myKey() {
-    if (!keyP) keyP = (async () => {
-      let k = await idbGet('key');
-      if (!k) {
-        if (!GifOS.ed || !GifOS.ed.generateSealed) throw new Error('This browser cannot hold a subscription key.');
-        const g = await GifOS.ed.generateSealed();
-        k = { priv: g.priv, pub: b64(g.pubRaw) };
-        await idbPut('key', k);
+  // ---- the subscription file -------------------------------------------------
+  // This browser's credential, else one in the Providers folder of this
+  // browser's Home Screen (recognised there only, like every provider).
+  let provP = null;
+  function fromProviders() {
+    if (!provP) provP = (async () => {
+      const st = GifOS.store, gif = GifOS.gif;
+      if (!st || !st.allItems || !st.getFile || !gif) return null;
+      const items = await st.allItems();
+      for (const it of items || []) {
+        if (!it || (it.parent || null) !== 'sys_providers' || it.kind !== 'file' || !it.fileId) continue;
+        const f = await st.getFile(it.fileId).catch(() => null);
+        if (!f || f.kind !== 'gif' || !f.bytes) continue;
+        const bytes = f.bytes instanceof Uint8Array ? f.bytes : new Uint8Array(f.bytes);
+        const arc = await gif.decode(bytes).catch(() => null);
+        const c = arc && SUB.credentialFromFiles(arc.files);
+        if (c) return c;
       }
-      return k;
-    })().catch((e) => { keyP = null; throw e; });
-    return keyP;
+      return null;
+    })().catch(() => null);
+    return provP;
+  }
+  async function credential() {
+    const c = SUB.credentialOk(readJson(CRED_KEY));
+    return c || (await fromProviders());
+  }
+  let keyMemo = { seed: null, p: null };
+  async function myKey() {
+    const c = await credential();
+    if (!c) throw new Error('No subscription on this browser.');
+    if (keyMemo.seed !== c.seed) {
+      keyMemo = { seed: c.seed, p: GifOS.ed.keysFromSeed(fromB64(c.seed)).then((k) => ({ priv: k.priv, pub: b64(k.pubRaw) })) };
+    }
+    return keyMemo.p;
   }
   async function signText(text) {
     const k = await myKey();
     return b64(await GifOS.ed.sign(k.priv, new TextEncoder().encode(text)));
+  }
+  // Download: the file is built here from this browser's credential.
+  async function fileBytes() {
+    const c = await credential();
+    if (!c) throw new Error('No subscription on this browser.');
+    return GifOS.gif.encode(SUB.credentialFiles(c), { accent: [120, 200, 255] });
+  }
+  async function downloadFile() {
+    const bytes = await fileBytes();
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'image/gif' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = 'GifOS subscription.gif';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  }
+  // Use a file brought from another browser. Its key must be the key the
+  // subscription was made for (checked by the payment service on every ask).
+  async function useFile(bytes) {
+    const arc = await GifOS.gif.decode(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes));
+    const c = arc && SUB.credentialFromFiles(arc.files);
+    if (!c) throw new Error('That file is not a GifOS subscription.');
+    writeJson(CRED_KEY, c);
+    writeState({ subId: c.subId, tier: c.tier, status: null });
+    keyMemo = { seed: null, p: null };
+    return refresh();
   }
 
   // ---- the payment service's key and the license ------------------------------
@@ -91,11 +137,12 @@
     }).catch((e) => { payKeyP = null; throw e; });
     return payKeyP;
   }
+  const verifyPay = async (sig, msg) => GifOS.ed.verify(await payKey(), sig, msg);
+  const verifyKey = (pubB64, sig, msg) => GifOS.ed.verify(fromB64(pubB64), sig, msg);
   async function verifiedLicense(st) {
     st = st || readState();
     if (!st.licenseJson || !st.sig) return null;
-    let pub; try { pub = await payKey(); } catch (e) { return null; }
-    const lic = await SUB.verifyLicense({ licenseJson: st.licenseJson, sig: st.sig }, (sig, msg) => GifOS.ed.verify(pub, sig, msg), nowS());
+    const lic = await SUB.verifyLicense({ licenseJson: st.licenseJson, sig: st.sig }, verifyPay, nowS()).catch(() => null);
     if (!lic) return null;
     try { if (lic.buyerKey !== (await myKey()).pub) return null; } catch (e) { return null; }
     return lic;
@@ -108,36 +155,43 @@
   async function post(path, body) {
     const r = await fetch(payBase() + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     let j = null; try { j = await r.json(); } catch (e) {}
-    if (!r.ok) throw new Error((j && j.error) || ('The payment service answered ' + r.status + '.'));
-    return j;
+    if (!r.ok && !(j && (j.moved || j.ended))) throw new Error((j && j.error) || ('The payment service answered ' + r.status + '.'));
+    return j || {};
   }
-  async function signed(action, subId) {
+  async function subIdNow() { const c = await credential(); return c ? c.subId : readState().subId; }
+  async function signed(action, extra) {
+    const subId = await subIdNow();
     const at = nowS();
-    return { subId, buyerKey: (await myKey()).pub, at, sig: await signText(SUB.askMessage(action, subId, at)) };
+    return Object.assign({ subId, buyerKey: (await myKey()).pub, at, sig: await signText(SUB.askMessage(action, subId, at)) }, extra || {});
   }
   // Ask the payment service for a fresh license; keep what it says.
   async function refresh() {
+    if (!(await subIdNow())) return null;
+    const j = await post('/gifos/sub/license', await signed('license'));
     const st = readState();
-    if (!st.subId) return null;
-    const j = await post('/gifos/sub/license', await signed('license', st.subId));
-    const next = Object.assign({}, st, { status: j.status, tier: j.tier || st.tier, until: j.until || null, checkedAt: Date.now() });
+    const next = Object.assign({}, st, { subId: await subIdNow(), status: j.status, tier: j.tier || st.tier, until: j.until || null, checkedAt: Date.now() });
     if (j.active && j.licenseJson) { next.licenseJson = j.licenseJson; next.sig = j.sig; }
     else { delete next.licenseJson; delete next.sig; }
     writeState(next);
     return next;
   }
   async function keepFresh() {
+    if (!(await credential())) return;
     const lic = await verifiedLicense();
     const st = readState();
-    if (st.subId && (!lic || lic.exp - nowS() < REFRESH_BEFORE_S || st.status === 'APPROVAL_PENDING')) { try { await refresh(); } catch (e) {} }
+    if (!lic || lic.exp - nowS() < REFRESH_BEFORE_S || st.status === 'APPROVAL_PENDING') { try { await refresh(); } catch (e) {} }
   }
 
-  async function subscribe(tier, say) {
-    const k = await myKey();
+  async function subscribe(tier, period, say) {
+    const seed = new Uint8Array(32); crypto.getRandomValues(seed);
+    const k = await GifOS.ed.keysFromSeed(seed);
+    const buyerKey = b64(k.pubRaw);
     const popup = root.open('about:blank', 'gifos-sub', 'width=480,height=720');
     let j;
-    try { j = await post('/gifos/sub/create', { tier, buyerKey: k.pub }); }
+    try { j = await post('/gifos/sub/create', { tier, period, buyerKey }); }
     catch (e) { try { popup && popup.close(); } catch (x) {} throw e; }
+    writeJson(CRED_KEY, { v: 1, kind: SUB.CRED_KIND, subId: j.id, tier, period, seed: b64(seed), buyerKey });
+    keyMemo = { seed: null, p: null };
     writeState({ subId: j.id, tier, status: 'APPROVAL_PENDING' });
     if (popup) popup.location.href = j.approveUrl; else root.open(j.approveUrl, '_blank');
     say(SUB.TEXT.pending);
@@ -151,13 +205,95 @@
     return readState();
   }
   async function cancel() {
-    const st = readState();
-    if (!st.subId) return st;
-    const j = await post('/gifos/sub/cancel', await signed('cancel', st.subId));
-    writeState(Object.assign({}, st, { status: j.status, until: j.until }));
+    if (!(await subIdNow())) return readState();
+    const j = await post('/gifos/sub/cancel', await signed('cancel'));
+    writeState(Object.assign({}, readState(), { status: j.status, until: j.until }));
     try { await refresh(); } catch (e) {}
     return readState();
   }
+
+  // ---- one meeting at a time --------------------------------------------------
+  // meet: {room, tag, ticket:{ticketJson,sig}, exp, gen, joining, timer, moved}
+  let meet = null;
+  let hooks = {};
+  function stopTimer() { if (meet && meet.timer) { clearTimeout(meet.timer); meet.timer = null; } }
+  function schedule(ms) { stopTimer(); if (meet) meet.timer = setTimeout(renewNow, ms); }
+  function take(j) {
+    meet.ticket = { ticketJson: j.ticketJson, sig: j.sig }; meet.exp = j.exp; meet.gen = j.gen;
+    schedule((j.renewEvery || SUB.RENEW_EVERY_S) * 1000);
+    try { if (hooks.onTicket) hooks.onTicket(meet.ticket); } catch (e) {}
+  }
+  function lose(why) {
+    if (!meet) return;
+    stopTimer();
+    meet.ticket = null; meet.moved = why;
+    try { if (hooks.onLost) hooks.onLost(why); } catch (e) {}
+  }
+  async function renewNow() {
+    const m = meet;
+    if (!m || !m.ticket) return;
+    try {
+      const j = await post('/gifos/sub/renew', await signed('renew:' + m.tag + ':' + m.gen, { meeting: m.tag, gen: m.gen }));
+      if (meet !== m) return;
+      if (j.moved) return lose('moved');
+      if (j.ended || !j.active) return lose('ended');
+      take(j);
+    } catch (e) {
+      // Could not reach the service: keep the ticket while it lasts, ask again.
+      if (meet === m) { if (nowS() >= (m.exp || 0)) lose('unreachable'); else schedule(RETRY_MS); }
+    }
+  }
+  // joinMeeting(room, {onTicket, onLost}) — called as the page starts a meeting.
+  // Payment is checked here, once; renewals only keep this meeting the newest.
+  function joinMeeting(room, h) {
+    if (!on()) return Promise.resolve(null);
+    if (meet && meet.room === room) return meet.joining;
+    leaveMeeting();
+    hooks = h || {};
+    const m = meet = { room, tag: null, ticket: null, exp: 0, gen: 0, timer: null, moved: null, joining: null };
+    m.joining = (async () => {
+      if (!(await credential())) return null;
+      m.tag = await SUB.meetingTag(room);
+      const j = await post('/gifos/sub/join', await signed('join:' + m.tag, { meeting: m.tag }));
+      if (meet !== m) return null;
+      if (!j.active) { m.moved = 'inactive'; return null; }
+      take(j);
+      return m.ticket;
+    })().catch(() => null);
+    return m.joining;
+  }
+  function leaveMeeting() { stopTimer(); meet = null; hooks = {}; }
+  async function currentTicket(room) {
+    if (!meet || meet.room !== room) return null;
+    await meet.joining;
+    return meet && meet.ticket && nowS() < meet.exp ? meet.ticket : null;
+  }
+
+  // ---- the room's plan and the door's challenge ----------------------------
+  // The admin's order that carries their plan into the room, or null.
+  async function roomOrder(room) {
+    if (!on()) return null;
+    const ticket = await currentTicket(room);
+    if (!ticket) return null;
+    const at = Date.now();
+    return { on: true, at, ticket, proof: await signText(SUB.proofMessage(SUB.roomContext(room), 'at:' + at)) };
+  }
+  // The room's plan from the order the room carries: {tier, exp} or null.
+  async function roomTier(order, room) {
+    try { return await SUB.roomTierOf(order, room, verifyPay, verifyKey, nowS()); } catch (e) { return null; }
+  }
+  // A knocker answering the door's challenge, or null without a ticket here.
+  async function proveAtDoor(room, nonce) {
+    if (!on()) return null;
+    const ticket = await currentTicket(room);
+    if (!ticket) return null;
+    return { ticket, proof: await signText(SUB.proofMessage(SUB.doorContext(room), nonce)) };
+  }
+  // The door checking a knocker's answer.
+  async function checkShown(shown, room, nonce) {
+    try { return !!(await SUB.doorProofOk(shown, room, nonce, verifyPay, verifyKey, nowS())); } catch (e) { return false; }
+  }
+  const newNonce = () => { const u = new Uint8Array(18); crypto.getRandomValues(u); return 'n' + b64(u).replace(/[+/=]/g, ''); };
 
   // ---- Settings: the Subscription group ---------------------------------------
   const BTN = 'seg';
@@ -183,10 +319,14 @@
     await keepFresh();
     const lic = await verifiedLicense();
     const st = readState();
+    const cred = await credential();
     if (lic) {
       const t = SUB.TIERS[lic.tier];
-      row.appendChild(el('p', { class: 'set-help' }, 'Your plan: ' + t.name + ' (' + t.price + ' a month).'));
-      row.appendChild(el('p', { class: 'set-help' }, st.status === 'CANCELLED' ? SUB.TEXT.cancelled + ' Ends ' + dateOf(st.until || lic.exp) + '.' : 'Renews through PayPal. This device is covered until ' + dateOf(lic.exp) + '.'));
+      const yearly = cred && cred.period === 'yearly';
+      row.appendChild(el('p', { class: 'set-help' }, 'Your plan: ' + t.name + ' (' + (yearly ? t.priceYear + ' a year' : t.price + ' a month') + ').'));
+      row.appendChild(el('p', { class: 'set-help' }, st.status === 'CANCELLED' ? SUB.TEXT.cancelled + ' Ends ' + dateOf(st.until || lic.exp) + '.' : 'Renews through PayPal.'));
+      row.appendChild(el('p', { class: 'set-help' }, 'Your subscription works in one meeting at a time. Joining a meeting, here or in another browser with your subscription file, moves it there.'));
+      if (meet && meet.moved === 'moved') row.appendChild(el('p', { class: 'set-help' }, 'It is in use in another meeting now.'));
       if (st.status !== 'CANCELLED') {
         const c = el('button', { type: 'button', class: BTN, style: BTN_STYLE, id: 'sub-cancel' }, 'Cancel subscription');
         c.onclick = async () => {
@@ -198,24 +338,47 @@
     } else {
       if (st.subId && st.status && st.status !== 'APPROVAL_PENDING') row.appendChild(el('p', { class: 'set-help' }, SUB.TEXT.lapsed));
       row.appendChild(el('p', { class: 'set-help' }, 'Open rooms are free. A subscription adds rooms you run as admin, and video for people whose networks block direct connections.'));
-      for (const id of SUB.TIER_IDS) {
-        const t = SUB.TIERS[id];
-        const b = el('button', { type: 'button', class: BTN, style: BTN_STYLE, 'data-tier': id }, t.price + ' a month: ' + t.name);
-        b.onclick = async () => {
-          for (const x of row.querySelectorAll('button[data-tier]')) x.disabled = true;
-          say('Opening PayPal…');
-          try {
-            const r = await subscribe(id, say);
-            say(r && r.licenseJson ? 'You are subscribed. Thank you.' : r && r.status === 'APPROVAL_PENDING' ? SUB.TEXT.pending : 'PayPal did not confirm the subscription.');
-            paintSettings();
-          } catch (e) {
-            say(String(e.message || e));
-            for (const x of row.querySelectorAll('button[data-tier]')) x.disabled = false;
-          }
-        };
-        row.appendChild(b);
+      for (const period of ['monthly', 'yearly']) {
+        for (const id of SUB.TIER_IDS) {
+          const t = SUB.TIERS[id];
+          const label = (period === 'yearly' ? t.priceYear + ' a year' : t.price + ' a month') + ': ' + t.name;
+          const b = el('button', { type: 'button', class: BTN, style: BTN_STYLE, 'data-tier': id, 'data-period': period }, label);
+          b.onclick = async () => {
+            for (const x of row.querySelectorAll('button[data-tier]')) x.disabled = true;
+            say('Opening PayPal…');
+            try {
+              const r = await subscribe(id, period, say);
+              say(r && r.licenseJson ? 'You are subscribed. Thank you. Download your subscription file to keep it safe.' : r && r.status === 'APPROVAL_PENDING' ? SUB.TEXT.pending : 'PayPal did not confirm the subscription.');
+              paintSettings();
+            } catch (e) {
+              say(String(e.message || e));
+              for (const x of row.querySelectorAll('button[data-tier]')) x.disabled = false;
+            }
+          };
+          row.appendChild(b);
+        }
       }
     }
+    // The subscription file: download it, or use one from another browser.
+    if (cred) {
+      const d = el('button', { type: 'button', class: BTN, style: BTN_STYLE, id: 'sub-file-get' }, 'Download subscription file');
+      d.onclick = () => { downloadFile().then(() => say('Saved. Keep it private: anyone with the file can use your subscription.'), (e) => say(String(e.message || e))); };
+      row.appendChild(d);
+    }
+    const pick = el('input', { type: 'file', accept: 'image/gif,.gif', id: 'sub-file-use', 'aria-label': 'Use a subscription file' });
+    pick.onchange = async () => {
+      const f = pick.files && pick.files[0];
+      if (!f) return;
+      say('Reading the file…');
+      try {
+        const r = await useFile(new Uint8Array(await f.arrayBuffer()));
+        say(r && r.licenseJson ? 'This browser now uses your subscription. It works in one meeting at a time.' : 'The file was read, but the subscription is not active.');
+        paintSettings();
+      } catch (e) { say(String(e.message || e)); }
+    };
+    const lab = el('label', { class: 'set-help', style: 'display:block;margin-top:.4rem' }, 'Use a subscription file from another browser: ');
+    lab.appendChild(pick);
+    row.appendChild(lab);
     row.appendChild(msg);
   }
   function openSettings() {
@@ -224,7 +387,7 @@
     setTimeout(() => { const g = document.getElementById('set-g-sub'); if (g && g.scrollIntoView) g.scrollIntoView({ block: 'start' }); }, 50);
   }
 
-  // ---- admin rooms: making one, entering one ----------------------------------
+  // ---- admin rooms: making one -------------------------------------------------
   // mayCreateAdminRoom(say) -> true when the switch is off or any plan is held.
   async function mayCreateAdminRoom(say) {
     if (!on()) return true;
@@ -234,34 +397,6 @@
     openSettings();
     return false;
   }
-  // ---- the room's plan and the door's challenge ----------------------------
-  const verifyPay = async (sig, msg) => GifOS.ed.verify(await payKey(), sig, msg);
-  const verifyKey = (pubB64, sig, msg) => GifOS.ed.verify(fromB64(pubB64), sig, msg);
-  // The admin's order that carries their plan into the room, or null.
-  async function roomOrder(room) {
-    if (!on()) return null;
-    const st = readState();
-    const lic = await verifiedLicense(st);
-    if (!lic) return null;
-    const at = Date.now();
-    return { on: true, at, lic: { licenseJson: st.licenseJson, sig: st.sig }, proof: await signText(SUB.proofMessage(SUB.roomContext(room), 'at:' + at)) };
-  }
-  // The room's plan from the order the room carries (null: none, forged, run out).
-  async function roomTier(order, room) {
-    try { return await SUB.roomTierOf(order, room, verifyPay, verifyKey, nowS()); } catch (e) { return null; }
-  }
-  // A knocker answering the door's challenge, or null without a plan.
-  async function proveAtDoor(room, nonce) {
-    if (!on()) return null;
-    const st = readState();
-    if (!(await verifiedLicense(st))) return null;
-    return { lic: { licenseJson: st.licenseJson, sig: st.sig }, proof: await signText(SUB.proofMessage(SUB.doorContext(room), nonce)) };
-  }
-  // The door checking a knocker's answer.
-  async function checkShown(shown, room, nonce) {
-    try { return !!(await SUB.doorProofOk(shown, room, nonce, verifyPay, verifyKey, nowS())); } catch (e) { return false; }
-  }
-  const newNonce = () => { const u = new Uint8Array(18); crypto.getRandomValues(u); return 'n' + b64(u).replace(/[+/=]/g, ''); };
 
   // Shown instead of the meeting when the room is full for this person.
   function showFull() {
@@ -289,5 +424,10 @@
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
   }
 
-  GifOS.meetSubs = { enabled: on, rights, refresh, subscribe, cancel, paintSettings, openSettings, mayCreateAdminRoom, showFull, roomOrder, roomTier, proveAtDoor, checkShown, newNonce };
+  GifOS.meetSubs = {
+    enabled: on, rights, refresh, subscribe, cancel, paintSettings, openSettings, mayCreateAdminRoom, showFull,
+    roomOrder, roomTier, proveAtDoor, checkShown, newNonce,
+    joinMeeting, leaveMeeting, currentTicket, fileBytes, downloadFile, useFile,
+    meeting: () => (meet ? { room: meet.room, gen: meet.gen, exp: meet.exp, moved: meet.moved, held: !!meet.ticket } : null),
+  };
 })(typeof window !== 'undefined' ? window : globalThis);

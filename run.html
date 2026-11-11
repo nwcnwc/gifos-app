@@ -4767,7 +4767,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/meet-pack.js" defer></script>
   <script src="js/meet-layout.js" defer></script>
   <script src="js/meet-turn.js" defer></script>
-  <script src="js/meet-video-anywhere.js" defer></script>
   <script src="js/gifos-sub.js" defer></script>
   <script src="js/meet-subs.js" defer></script>
   <script src="js/meet-leave.js" defer></script>
@@ -18254,6 +18253,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (unitsGate()) return;
       const relay = relayUrl();
       if (!relay) { setStatus(uiText('stNoConnectionServiceIsSet', 'No connection service is set up, so nobody can be invited in.')); return; }
+      try { subsJoin(); } catch (e) {}   // a subscription joins this meeting (no-op while subscriptions are off, or already joined)
       if (meshNode) { try { meshNode.stop(); } catch (e) {} meshNode = null; }
       meshBootGen++;
       if (directPath === 'pending') startDirectPathProbe(); // this network's verdict, once per page (re-run when the network comes back)
@@ -36638,8 +36638,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
 
     // SUBSCRIPTIONS AT THE DOOR (off unless switched on; js/meet-subs.js).
-    // The people limit is the room admin's plan: the admin's license rides
-    // the room's signed orders (sublic), and every door checks it. On the $2
+    // The people limit is the room admin's plan: the admin's meeting ticket
+    // (a few minutes long, renewed while this is the subscription's newest
+    // meeting) rides the room's signed orders (sublic), and every door checks
+    // it; a ticket that stops renewing stops counting when it runs out. On the $2
     // plan, or when no valid plan is shown, a door whose room already holds
     // 20 (the seats this seated door knows are taken now) holds a knocker and asks it to show
     // a subscription against a fresh challenge; a good answer lets it in at
@@ -36647,7 +36649,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // limit. An unread count lets people in, never out. The count is never
     // the door's greeter list: a door gets that list only when it knocks
     // itself, so it holds the room as it was when that door came in.
-    let subsTurnedAway = false, subsTierKey = '', subsTier = null;
+    let subsTurnedAway = false, subsTierKey = '', subsTier = null, subsTierExp = 0;
     const subsProven = new Set(), subsAsked = new Map();   // knocker -> {n, at}
     const subsOn = () => !!(window.GifOS && GifOS.meetSubs && GifOS.sub && GifOS.meetSubs.enabled());
     // The people already seated: this door's seats (live, the count's own
@@ -36669,9 +36671,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const o = (modTable['*'] || {}).sublic;
       const k = o ? String(o.at) + '|' + String(o.proof || '') : '';
       if (k !== subsTierKey) {
-        subsTierKey = k; subsTier = o ? undefined : null;
-        if (o) GifOS.meetSubs.roomTier(o, roomKey()).then((t) => { if (subsTierKey === k) subsTier = t || null; }, () => { if (subsTierKey === k) subsTier = null; });
+        subsTierKey = k; subsTier = o ? undefined : null; subsTierExp = 0;
+        if (o) GifOS.meetSubs.roomTier(o, roomKey()).then((t) => { if (subsTierKey === k) { subsTier = t ? t.tier : null; subsTierExp = t ? t.exp : 0; } }, () => { if (subsTierKey === k) subsTier = null; });
       }
+      if (subsTier && Date.now() / 1000 >= subsTierExp) subsTier = null;   // the admin's ticket ran out: the room is back on the 20 line
       return subsTier;
     }
     async function subsPublishRoomPlan() {
@@ -36682,7 +36685,22 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       r.sublic = Object.assign(o, { by: myName(), byId: myId });
       hostFlood();
     }
-    setInterval(() => { if (amAdmin) subsPublishRoomPlan(); }, 6 * 3600 * 1000);   // a renewed license reaches the room
+    if (DEBUG_ON) window.__subsPublishNow = () => subsPublishRoomPlan();   // DEBUG=on only: a test republishes the room's plan now
+    // ONE MEETING AT A TIME: joining asks the payment service for this
+    // meeting's ticket (payment is checked then, once). Every renewal puts the
+    // admin's fresh ticket into the room; losing it (the subscription moved to
+    // a newer meeting) takes the room's plan back out.
+    function subsJoin() {
+      if (!subsOn()) return;
+      GifOS.meetSubs.joinMeeting(roomKey(), {
+        onTicket: () => { if (amAdmin && hasAdminRoom()) subsPublishRoomPlan(); },
+        onLost: (why) => {
+          if (why === 'moved') setStatus('Your subscription is now in use in another meeting.');
+          const r = modTable['*'];
+          if (amAdmin && hasAdminRoom() && r && r.sublic && r.sublic.on !== false) { r.sublic = { on: false, at: Date.now(), by: myName(), byId: myId }; hostFlood(); }
+        },
+      });
+    }
     setInterval(() => { try { if (subsOn() && hasAdminRoom()) subsRoomTier(); } catch (e) {} }, 2000);
     function subsHolds(id) {
       if (!id || !subsOn() || !hasAdminRoom() || subsProven.has(id)) return false;
@@ -37112,6 +37130,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { stageLeaving = true; sessionStorage.removeItem(STAGE_RELOAD_KEY); } catch (e) {} // and off the stage
       if (!bcSeeding && bcSeedOnLeave()) return endServiceKeepSeat();
       leftBehind = Math.max(0, headerCount() - 1);
+      try { if (window.GifOS && GifOS.meetSubs) GifOS.meetSubs.leaveMeeting(); } catch (e) {}   // this meeting stops renewing its subscription ticket
       const flushing = stopLocalCapture();
       sendMeshLeave();
       try { if (typeof stopRoomClocks === 'function') stopRoomClocks(); } catch (e) {}

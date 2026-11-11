@@ -1129,8 +1129,7 @@
     DEFAULT_MAX, WORKER_KEY, POLICY_KEY,
     // The permission sheet lists rails through this, so one switch rules both.
     USDC_ENABLED, offeredRails,
-    // GifOS's own products (Video Anywhere in a meeting) buy through the same
-    // service and check their receipts against the same key.
+    // The same payment service and key, for anything else that needs them.
     workerBase, verifyReceipt,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

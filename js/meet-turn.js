@@ -336,7 +336,7 @@
   //       clearTimer(handle), random(), onChange(kind),
   //       pool, extra(), halts(reason) }
   // pool    the pool asked for ('free' when absent).
-  // extra   () → more fields for every ask (the paid pool's receipt, room
+  // extra   () → more fields for every ask (the paid pool's meeting
   //         ticket and bridge; the free pool's TURN ticket, freeTicket), read
   //         at each ask so a re-signed ticket rides the next renewal; null
   //         means "nothing to ask with": no grant. May be a promise.
