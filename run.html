@@ -6992,7 +6992,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // room. (The deck aggregation machinery — leaf/branch sums, assertions
     // vs display — died with the deck model; a deep stadium's total becomes
     // a media-plane concern.)
-    function knownTotal() {
+    // seatedOnly: the seats alone (the subscription door's count), without the
+    // roster's names: a person still being brought in is not yet in the room.
+    function knownTotal(seatedOnly) {
       const s = meshSeat();
       if (!s) return rosterIds.length || 1;
       const ids = new Set([myId]);
@@ -7040,7 +7042,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const grace = now - (occFirstSeen.get(v) || 0) < 25000 && !(p && p.bornAt && !frameHeard(p));
         if ((st && now - stSeen(st) < 30000) || (p && p.connected && now - heardAt < 30000) || grace) ids.add(v);
       }
-      for (const id of rosterIds) ids.add(id);
+      if (!seatedOnly) for (const id of rosterIds) ids.add(id);
       return ids.size;
     }
     // The HEARTBEAT: re-announce my status + stream sid every few seconds. It
@@ -36639,7 +36641,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // The people limit is the room admin's plan: the admin's license rides
     // the room's signed orders (sublic), and every door checks it. On the $2
     // plan, or when no valid plan is shown, a door whose room already holds
-    // 20 (the room's count as this seated door shows it now) holds a knocker and asks it to show
+    // 20 (the seats this seated door knows are taken now) holds a knocker and asks it to show
     // a subscription against a fresh challenge; a good answer lets it in at
     // once, none turns it away with a plain message. $5 and $10 rooms have no
     // limit. An unread count lets people in, never out. The count is never
@@ -36648,10 +36650,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     let subsTurnedAway = false, subsTierKey = '', subsTier = null;
     const subsProven = new Set(), subsAsked = new Map();   // knocker -> {n, at}
     const subsOn = () => !!(window.GifOS && GifOS.meetSubs && GifOS.sub && GifOS.meetSubs.enabled());
+    // The people already seated: this door's seats (live, the count's own
+    // liveness rule), or past one section the room's fold. People still being
+    // brought in (a burst of knockers with open channels) are not counted.
     function subsRoomCount() {
       const ms = meshSeat();
       if (!ms || ms.state !== 3) return undefined;
-      try { const n = displayCount(); return Number.isFinite(n) && n > 0 ? n : undefined; } catch (e) { return undefined; }
+      try {
+        let n = knownTotal(true);
+        if (roomPastSection()) { const d = roomDig(); if (d && Number.isFinite(d.n)) n = Math.max(n, d.n); }
+        return Number.isFinite(n) && n > 0 ? n : undefined;
+      } catch (e) { return undefined; }
     }
     // The room's plan, verified once per order: undefined while it is being
     // checked, null when none is valid. It is checked ahead of any knock (the
