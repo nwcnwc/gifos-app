@@ -37,21 +37,32 @@
     // C++: mesh_lguard_seat.inc:Seat::lgLightSeat
     lgLightSeat(x) { if (x === this.id) return this.lgLight; const it = this.lgAsk.get(x); return it !== undefined && this.TICK - it[0] <= 3 * K.L29_BEAT; },
 
+    // C++: mesh_lguard_seat.inc:Seat::lgWord
+    // My word to my head: 2 "keep me light", 1 "move me" (any mate would carry my cell better than I do),
+    // 3 "move me, a desktop" (only a desktop would). With nobody who would, I hold the cell.
+    lgWord() {
+      if (!(this.lgLight && this.lgLvl >= 2)) return 2;
+      const fail = this.lgLd[2] > this.lgBud;
+      const better = (b) => (fail ? this.lgLd[2] <= b : this.lgLd[1] * 100 <= b * K.L29_SHED);
+      return better(K.L29_BUD_M) ? 1 : better(K.L29_BUD_D) ? 3 : 2;
+    },
+
     // C++: mesh_lguard_seat.inc:Seat::lgHeadPick
     lgHeadPick(col, tr, heir) {
-      let ask = -1;
+      let ask = -1, askW = 2;
       for (let j = 0; j < C && ask < 0; j++) {
         const x = col[j]; if (x < 0) continue;
-        const asking = (x === this.id) ? (this.lgLight && this.lgLvl >= 2) : (() => { const it = this.lgAsk.get(x); return it !== undefined && it[1] === 1 && this.TICK - it[0] <= 2 * K.L29_BEAT; })();
-        if (!asking) continue;
+        const w = (x === this.id) ? this.lgWord() : (() => { const it = this.lgAsk.get(x); return (it !== undefined && this.TICK - it[0] <= 2 * K.L29_BEAT) ? it[1] : 2; })();
+        if (w !== 1 && w !== 3) continue;
         const k = ckey({ pc: this.coord.pc, r: this.coord.r, i: j }); const kf = this.kidful.get(k); const kids = this.occGet(ckey(down(unckey(k)))) >= 0 || (this.kidful.has(k) && kf);
-        if (j === 0 || j === heir || kids) ask = j;
+        if (j === 0 || (this.coord.pc !== 0 && (j === heir || kids))) { ask = j; askW = w; }   // Section 1: only the head cell carries more than its mates
       }
       if (ask < 0) return null;
       let own = -1; { const oc = this.ownerCoord(); if (oc) own = this.occGet(ckey(oc)); }
       let pick = -1, pickT = 99;
       for (let j = 1; j < C; j++) {
         const x = col[j]; if (x < 0 || j === ask || (j === heir && this.coord.pc !== 0) || this.lgLightSeat(x)) continue;
+        if (askW === 3 && tr[j] !== E.TIER_DESKTOP) continue;   // only a desktop would carry the asker's cell better than the asker
         const k = ckey({ pc: this.coord.pc, r: this.coord.r, i: j }); if (this.coord.pc !== 0 && (this.occGet(ckey(down(unckey(k)))) >= 0 || (this.kidful.has(k) && this.kidful.get(k)))) continue;
         if (ask === 0 && own >= 0 && own !== x && !l4Meet(this.l4NatOf(x), this.l4NatOf(own))) continue;
         const t = tr[j] === E.TIER_DESKTOP ? 0 : 1; if (t < pickT) { pickT = t; pick = j; }
@@ -74,6 +85,7 @@
       if (m.t === 'LGASK') {
         if (this.coord.i !== 0 || !this.linkIs(m, m.id)) return;
         const c = unckey(m.ck); if (c.pc !== this.coord.pc || c.r !== this.coord.r || c.i === 0 || this.occGet(m.ck) !== m.id) return;
+        if (m.tag < 1 || m.tag > 3) return;
         this.lgAsk.set(m.id, [this.TICK, m.tag]); return;
       }
       if (m.t === 'LGCOMP') {
@@ -104,7 +116,7 @@
     lgTick() {
       if (!this.w.lv.LG_ON || !this.hasCoord || this.state !== 3) return;
       const bud = this.lgBud; const over = this.lgLvl >= 2;
-      if (this.lgLight && this.coord.i !== 0 && this.TICK - this.lgAskSent >= K.L29_BEAT) { const h = this.occGet(ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 })); if (h >= 0 && h !== this.id) { const a = newMsg('LGASK'); a.id = this.id; a.ck = ckey(this.coord); a.tag = over ? 1 : 2; this.emit(h, a); } this.lgAskSent = this.TICK; }
+      if (this.lgLight && this.coord.i !== 0 && this.TICK - this.lgAskSent >= K.L29_BEAT) { const h = this.occGet(ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 })); if (h >= 0 && h !== this.id) { const a = newMsg('LGASK'); a.id = this.id; a.ck = ckey(this.coord); a.tag = this.lgWord(); this.emit(h, a); } this.lgAskSent = this.TICK; }
       if (this.lgAsk.size && this.coord.i !== 0) this.lgAsk.clear();
       for (const [x, since] of this.lgStv) {
         const xk = this.lgIsWit(x);
