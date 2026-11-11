@@ -659,6 +659,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <span data-t="callLive" id="call-live" role="status">Live</span>
     <button data-t="record" type="button" id="call-rec" aria-pressed="false">Record</button>
   </div>
+  <!-- Alone in a meeting: one card, one action. -->
+  <div id="alonecard" role="status" aria-labelledby="alonecard-title" hidden>
+    <button type="button" id="alonecard-x" class="alonecard-x" aria-label="Close">✕</button>
+    <h3 id="alonecard-title" data-t="aloneTitle">You’re the only one here</h3>
+    <p data-t="aloneNote">Invite people with the meeting link. They join you right here.</p>
+    <button type="button" id="alonecard-go" data-t="aloneInvite">Invite people</button>
+  </div>
   <div id="chatnote" hidden>
     <button type="button" id="chatpreview"><b id="chatpreview-by"></b><span id="chatpreview-txt"></span></button>
     <button type="button" id="chatbadge" hidden aria-live="polite">0</button>
@@ -2426,6 +2433,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // pill briefly so the ambient counter (updateStatus) can't eat them the
     // moment any gossip arrives.
     let statusHoldUntil = 0;
+    // The alone card (paintAloneCard), once closed, stays shut for this tab.
+    let aloneCardShut = false;
+    try { aloneCardShut = sessionStorage.getItem('gifos_alone_card') === 'shut'; } catch (e) {}
     let statusDetail = '';
     // A broadcast viewer who has shared the room with someone, then finds it
     // empty, is watching an ending. A fresh visit is a service that has not
@@ -3211,7 +3221,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function showHeldScreen() {
       meetWait.waiting(true);
       const h = document.querySelector('#waitdoor h1'), p = document.querySelector('#waitdoor p');
-      if (h) h.textContent = uiText('waitingForTheHost', 'Waiting for the host');
+      if (h) h.textContent = statusWords('waitingHost') || uiText('waitingForTheHost', 'Waiting for the host');
       if (p) p.textContent = uiText('youLlJoinWhen', 'You\u2019ll join when the host lets you in. This meeting can\u2019t see or hear you yet.');
       sayState('waitingHost');
     }
@@ -9769,6 +9779,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (chip) document.documentElement.style.setProperty('--chip-bottom', Math.ceil(chip.getBoundingClientRect().bottom) + 'px');
       } catch (e2) {}
       try { paintInviteSlot(); } catch (e3) {}
+      try { paintAloneCard(); } catch (e4) {}
     }
     // The host's start time and Visit link can arrive by gossip after the
     // line was painted; the countdown moves on its own.
@@ -18651,6 +18662,30 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // An app-room guest has no Invite. Meeting, including an app running
     // inside one: the meeting's link, for everyone here. An app inside a
     // meeting never mints a room.
+    // ALONE IN A MEETING (the line's named state 'alone', seated): a card says
+    // so and offers one action, Invite people (the header's Invite sheet). It
+    // leaves the moment someone else is here. A broadcast, an app room and a
+    // solo app have their own first screens.
+    function paintAloneCard() {
+      const card = document.getElementById('alonecard');
+      if (!card) return;
+      const inv = document.getElementById('appinvite');
+      const seat = meshSeat();
+      const on = !aloneCardShut && !!(statusEl.dataset && statusEl.dataset.state === 'alone') && !!(seat && seat.state === 3)
+        && !BROADCAST && !ROOM.solo && ROOM.kind !== 'app' && !document.body.classList.contains('app-room')
+        && !!inv && inv.style.display !== 'none' && !leftDialogUp();
+      if (card.hidden === on) card.hidden = !on;
+    }
+    (function () {
+      const go = document.getElementById('alonecard-go');
+      const x = document.getElementById('alonecard-x');
+      if (go) go.onclick = () => { const inv = document.getElementById('appinvite'); if (inv) inv.click(); };
+      if (x) x.onclick = () => {
+        aloneCardShut = true;
+        try { sessionStorage.setItem('gifos_alone_card', 'shut'); } catch (e) {}
+        paintAloneCard();
+      };
+    })();
     function paintInviteSlot() {
       const btn = document.getElementById('appinvite');
       if (!btn) return;
