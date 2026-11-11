@@ -460,6 +460,7 @@
     GA_RB: 0,   // C++: mesh_gapa.inc:GA_RB
     GA_CONF_VOTE: 0,   // C++: mesh_gapa.inc:GA_CONF_VOTE
     GA_CONF_WIN: 0,   // C++: mesh_gapa.inc:GA_CONF_WIN
+    GA_LONE_N: 0,   // C++: mesh_gapa.inc:GA_LONE_N
     EMIT_NEIGHBOR: 0,   // C++: mesh.cpp:EMIT_NEIGHBOR
     EMIT_TELEPORT: 0,   // C++: mesh.cpp:EMIT_TELEPORT
     EMIT_BOOTSTRAP: 0,   // C++: mesh.cpp:EMIT_BOOTSTRAP
