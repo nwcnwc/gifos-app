@@ -1436,6 +1436,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/meet-pack.js" defer></script>
   <script src="js/meet-layout.js" defer></script>
   <script src="js/meet-turn.js" defer></script>
+  <script src="js/meet-status.js" defer></script>
   <script src="js/gifos-sub.js" defer></script>
   <script src="js/meet-subs.js" defer></script>
   <script src="js/meet-leave.js" defer></script>
@@ -2074,17 +2075,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           note.textContent = end ? 'Everyone watching sees a five-minute countdown after you leave, and then the room closes.' : '';
         }
         if (end) {
-          say('leave-ask-title', 'End the broadcast?');
-          say('left-title', 'You ended the broadcast');
-          say('left-note', 'Everyone watching sees a five-minute countdown, and then the room closes. Rejoin to keep it open.');
+          sayState('leave-ask-title', 'End the broadcast?');
+          sayState('left-title', 'You ended the broadcast');
+          sayState('left-note', 'Everyone watching sees a five-minute countdown, and then the room closes. Rejoin to keep it open.');
         } else if (mode === 'watch') {
-          say('leave-ask-title', 'Leave the broadcast?');
-          say('left-title', 'You left the broadcast');
-          say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
+          sayState('leave-ask-title', 'Leave the broadcast?');
+          sayState('left-title', 'You left the broadcast');
+          sayState('left-note', 'Your camera and microphone are off. Rejoin to come back.');
         } else {
-          say('leave-ask-title', 'Leave the meeting?');
-          say('left-title', 'You left the meeting');
-          say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
+          sayState('leave-ask-title', 'Leave the meeting?');
+          sayState('left-title', 'You left the meeting');
+          sayState('left-note', 'Your camera and microphone are off. Rejoin to come back.');
         }
       };
       if (!BROADCAST) {
@@ -2148,9 +2149,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         leaveSvc.title = 'Leave the broadcast. Your camera and microphone stop.';
         leaveSvc.setAttribute('aria-label', 'Leave the broadcast');
       }
-      say('leave-ask-title', 'Leave the broadcast?');
-      say('left-title', 'You left the broadcast');
-      say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
+      sayState('leave-ask-title', 'Leave the broadcast?');
+      sayState('left-title', 'You left the broadcast');
+      sayState('left-note', 'Your camera and microphone are off. Rejoin to come back.');
       say('chatprivacy', 'Private to this broadcast, gone when everyone leaves');
       const nameLead = document.getElementById('set-name-lead');
       if (nameLead) nameLead.textContent = 'What everyone sees on the stage:';
@@ -2433,8 +2434,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // colour. Ordinary notices keep the 4s beat. An explicit hold wins.
     // .bar .status is nowrap + ellipsis: the title carries the whole line
     // (a long refusal on a phone), written only when it changes.
-    const setStatus = (m, hold) => {
-      const blocking = /^(🛡|📷)/.test(String(m));
+    // tone (from a named state): 'stop' wears the alert colour and the long
+    // hold; any other tone the short beat. With no tone the old rule reads the
+    // leading symbol. state names the line (data-state) for tests and styles.
+    const setStatus = (m, hold, tone, state) => {
+      const blocking = tone ? tone === 'stop' : /^(🛡|📷)/.test(String(m));
       // One voice: the line is words only. A leading symbol (🛡 ⛔ 📷 🔒 🧩 ...)
       // gave every message its own voice; the alert colour and the hold are
       // what say "this stopped you", and they are decided above.
@@ -2449,12 +2453,25 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       else statusEl.textContent = m;
       if (statusEl.title !== String(m)) statusEl.title = String(m);
       // Why this line is on screen is state (data-why / data-link / data-back), not words: the live badge reads these, never the sentence.
-      if (statusEl.dataset) { statusEl.dataset.why = ''; statusEl.dataset.link = ''; statusEl.dataset.back = ''; }
+      if (statusEl.dataset) { statusEl.dataset.why = ''; statusEl.dataset.link = ''; statusEl.dataset.back = ''; statusEl.dataset.state = state || 'notice'; }
       statusEl.classList.toggle('alert', blocking || !!hold);
       statusHoldUntil = Date.now() + (hold || (blocking ? 12000 : 4000));
       // The OFF AIR / LIVE banner follows the line (and the camera) on every paint.
       if (typeof paintLiveBadge === 'function') paintLiveBadge();
       try { paintStatusSheet(); } catch (e) {}
+    };
+    // THE NAMED STATES (js/meet-status.js): one sentence and one tone per
+    // state, the same every time it is said. statusWords is the sentence for
+    // a state; sayState puts the state on the line.
+    const statusWords = (id, vars) => {
+      const M = window.GifOS && GifOS.meetStatus;
+      return M ? M.words(id, vars, uiText) : '';
+    };
+    const sayState = (id, vars, hold) => {
+      const M = window.GifOS && GifOS.meetStatus;
+      const st = M && M.state(id);
+      if (!st) return;
+      setStatus(M.words(id, vars, uiText), hold, st.tone, id);
     };
     // The chip is one line. The title holds the whole sentence (a refusal,
     // "No blur picked…", or "4 in the meeting · 180p …"). A tap opens it.
@@ -3194,7 +3211,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const h = document.querySelector('#waitdoor h1'), p = document.querySelector('#waitdoor p');
       if (h) h.textContent = uiText('waitingForTheHost', 'Waiting for the host');
       if (p) p.textContent = uiText('youLlJoinWhen', 'You\u2019ll join when the host lets you in. This meeting can\u2019t see or hear you yet.');
-      setStatus(uiText('waitingForTheHost', 'Waiting for the host'));
+      sayState('waitingHost');
     }
     function onHeldSaid(p, dc) {
       if (!dc || dc.__authBy !== p.id) return;                 // an authenticated channel only
@@ -3519,7 +3536,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // on and off on every status receipt.
         vupDismissedSig = myUpVoteSig();
         setStage(false);
-        setStatus(uiText('stTheRoomVotedYouOff', 'The room voted you off the stage.'));
+        sayState('stageVotedOff');
         return;
       }
       // Down is the standing verdict: while a down-majority holds, an up-
@@ -3528,7 +3545,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           && canStage(myId) && stageIds().length < SCALE.C
           && myUpVoteSig() !== vupDismissedSig) {
         setStage(true);
-        setStatus(uiText('stTheRoomVotedYouOnto', 'The room voted you onto the stage. Step down whenever you like.'));
+        sayState('stageVotedOn');
       }
     }
 
@@ -9705,6 +9722,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // of the reach states that replace the line. Tests and styling read
       // this, never the sentence.
       const statusKind = reachLine ? reachState : shown === 1 ? (atDoor ? 'door' : 'alone') : 'meeting';
+      // The named state of the resting line (js/meet-status.js), most urgent first.
+      const waitingHere = !refused && !atPwPrompt() && !reachLine && typeof iAmWaiting === 'function' && iAmWaiting();
+      const restState = refused ? 'refused' : atPwPrompt() ? 'passwordDoor' : reachLine ? reachState
+        : (link && !leftUp) ? 'reconnecting' : waitingHere ? 'waitingRoom' : shown === 1 ? (atDoor ? 'backIn' : 'alone') : 'meeting';
       const statusShown = statusText;
       const shownDetail = phoneDetail;
       if (statusEl.dataset) {
@@ -9715,6 +9736,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         statusEl.dataset.why = '';
         statusEl.dataset.link = (link && !refused && !atPwPrompt()) ? '1' : '';
         statusEl.dataset.back = gettingBack ? '1' : '';
+        if (statusEl.dataset.state !== restState) statusEl.dataset.state = restState;
         if (statusEl.dataset.unreached !== du) statusEl.dataset.unreached = du;
       }
       if (reachLine) statusEl.classList.add('alert');
@@ -14206,7 +14228,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // Left as a reload, not stopped: a stopped node sends no reload mark, so
       // the seat coming back waits out the crash path's reclaim wait (10 s).
       sendMeshLeave({ type: 'pagehide' });
-      setStatus(uiText('pwChangedStatus', '🔒 The admin changed the room password. Enter the new password to rejoin.'));
+      sayState('passwordChanged');
       location.reload();
     }
     // Was this page sent back to the door by a password change? The note is
@@ -16585,7 +16607,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (silent || shade === 2) showCamBack(true);
           if (++darkTicks >= 4 && revives < 3) {
             darkTicks = 0; revives++;
-            setStatus(uiText('camBlack', 'Your camera was sending black video — restarting it…'));
+            sayState('camRestart');
             regrabCamera('blackCamWatch:' + (silent ? 'track-muted' : 'dark-pixels'));
           }
         } else {
@@ -16741,7 +16763,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // Prefer option id (same-gkey clusters); fall back to gkey.
           const key = o.id || o.gkey;
           try { if (meshNode && meshNode.chooseFork) meshNode.chooseFork(key); } catch (e) {}
-          setStatus(uiText('stJoiningTheMeetingYouPicked', 'Joining the meeting you picked…'));
+          sayState('joining');
         };
         forkChoices.appendChild(btn);
       });
@@ -16856,7 +16878,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         pwHeldOnTyping();
         if (pwEpoch === 0) grantHoldUntil = Date.now() + PW_GRANT_HOLD_MS; // typed at the door: grants wait for the room's generation (heldGrant)
         pwModal.style.display = 'none';
-        setStatus(uiText('pwTrying', 'Trying the password…'));
+        sayState('passwordTrying');
         // The relay only ever sees the PROOF of this password, never the text —
         // and the key I read the room with now contains it (§8): a wrong
         // password doesn't just bounce at the courtesy gate, it can't decrypt.
@@ -17004,7 +17026,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const hint = document.getElementById('adm-hint');
       btn.disabled = true;
       btn.textContent = uiText('admChecking', 'Checking…');
-      setStatus(uiText('admCheckingStatus', '🛡 Checking the password… (takes a few seconds)'));
+      sayState('adminChecking');
       let K;
       try { K = await deriveAdminKey(room, v); }
       catch (err) {
@@ -17019,7 +17041,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         btn.disabled = false;
         btn.textContent = uiText('admEnable', 'Sign in as admin');
         hint.textContent = uiText('admWrong', 'Wrong admin password.');
-        setStatus(uiText('admWrongStatus', '🛡 Wrong admin password.'));
+        sayState('adminWrong');
         return;
       }
       btn.disabled = false;
@@ -17027,7 +17049,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { localStorage.setItem(admStoreKey(), admKey); } catch (e2) {}
       mirrorRoomState({ admin: true });
       admModal.style.display = 'none';
-      setStatus(uiText('admSignedIn', '🛡 You are signed in as admin.'));
+      sayState('adminSignedIn');
       applyAdminUi();
       broadcastStatus(); // the next signed heartbeat announces my adminship to every peer
     };
@@ -18118,7 +18140,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (BROADCAST) {
             const hint = document.querySelector('.share .hint');
             if (hint) hint.textContent = 'Share this link — anyone who opens it is watching:';
-            if (!bcHostStored()) { setStatus(uiText('bcStageLine', 'Joining the broadcast…')); try { statusEl.dataset.why = 'joining'; paintLiveBadge(); } catch (e) {} }
+            if (!bcHostStored()) { sayState('joiningBroadcast'); try { statusEl.dataset.why = 'joining'; paintLiveBadge(); } catch (e) {} }
             else {
               // The HOST auto-steps onto the Stage: a broadcast page's whole
               // point, and the Stage is where their camera reaches the room.
@@ -18131,7 +18153,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               setTimeout(() => {
                 if (!bcStageWant) return;
                 bcStageWant = false;
-                if (!myStatus.stg) setStatus(uiText('stCouldNotStepOntoThe', 'Could not step onto the stage — tap Step on.'));
+                if (!myStatus.stg) sayState('stageNoStep');
               }, 30000);
             }
           }
@@ -26637,7 +26659,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (stageIds().length >= SCALE.C) {
         if (handCallNoted !== at) {
           handCallNoted = at;
-          setStatus(uiText('stCalledToTheStageA', 'Called to the stage — a place will open when someone steps down.'));
+          sayState('stageCalled');
         }
         return;
       }
@@ -26731,8 +26753,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (myStatus.stg) setStage(false);
         return;
       }
-      if (!canStage(myId)) { setStatus(uiText('stOnlyRoomAdminsAndPeople', 'Only room admins — and people they allow — can take the stage here.')); return; }
-      if (stageIds().length >= SCALE.C) { setStatus('The stage is full (' + SCALE.C + ' people).'); return; }
+      if (!canStage(myId)) { sayState('stageNotAllowed'); return; }
+      if (stageIds().length >= SCALE.C) { sayState('stageFull', { n: SCALE.C }); return; }
       setStage(true);
     };
 
@@ -26962,7 +26984,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       shareRecoverMode = false;
       const back = document.getElementById('reshare-back');
       if (back && back.classList) back.classList.add('show');
-      setStatus(uiText('reshareNote', 'Your screen share stopped when you came back.'));
+      sayState('shareStopped');
     }
     function hideResharePrompt() {
       const back = document.getElementById('reshare-back');
@@ -26997,12 +27019,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // line is nearly unreachable anyway: paintShare hides the control where
       // the API is absent. A scripted call returns without a status line.
       if (!canScreenShare()) return;
-      if (forcedCamOff('me')) { setStatus(uiText('stAnAdminTurnedYourVideo', '📷 An admin turned your video off for the room — screen sharing is off too until they lift it.')); return; }
+      if (forcedCamOff('me')) { sayState('shareVideoOff'); return; }
       // Already being on stage does not waive this. The stage grant and the
       // screen grant are different orders.
-      if (!mayShareScreen(myId)) { setStatus(uiText('stOnlyThisRoomSAdmins', '🛡 Only this room’s admins — or people they allow — can share a screen here.')); return; }
-      if (!myStatus.stg && stageIds().length >= SCALE.C) { setStatus('The stage is full (' + SCALE.C + ' people) — someone has to step down first.'); return; }
-      setStatus(shareRecoverMode ? 'Bringing your screen share back…' : 'Choose what to share…');
+      if (!mayShareScreen(myId)) { sayState('shareNotAllowed'); return; }
+      if (!myStatus.stg && stageIds().length >= SCALE.C) { sayState('stageFull', { n: SCALE.C }); return; }
+      sayState(shareRecoverMode ? 'shareBack' : 'shareChoose');
       navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 15 }, audio: false })
         .then((s) => {
           const vt = s.getVideoTracks()[0];
@@ -27011,7 +27033,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (!mayShareScreen('me') || forcedCamOff('me')) {
             try { s.getTracks().forEach((t) => t.stop()); } catch (e) {}
             shareRecoverMode = false;
-            setStatus(uiText('stScreenSharingWasTurnedOff', '🛡 Screen sharing was turned off before it started.'));
+            sayState('shareTurnedOff');
             return;
           }
           // TELL THE ENCODER IT IS LOOKING AT TEXT. Without a contentHint a
@@ -27059,7 +27081,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             const word = toggle.querySelector('.dockword');
             if (word) word.textContent = uiText('more', 'More');
           }
-          setStatus(uiText('shareLive', '🖥 Sharing your screen with the meeting. Sound from the shared tab does not travel — talk over it.'));
+          sayState('sharing');
         })
         .catch((err) => {
           if (shareRecoverMode) {
@@ -27068,8 +27090,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             return;
           }
           const denied = err && (err.name === 'NotAllowedError' || err.name === 'AbortError');
-          setStatus(denied ? uiText('shareCancelled', 'Screen share cancelled — nothing was shared.')
-            : uiText('shareFailed', 'Couldn’t share the screen ({err}).').replace('{err}', (err && err.name) || 'error'));
+          if (denied) sayState('shareCancelled');
+          else setStatus(uiText('shareFailed', 'Couldn’t share the screen ({err}).').replace('{err}', (err && err.name) || 'error'));
         });
     }
     function stopScreenShare(why) {
@@ -27481,7 +27503,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       audioNoteQueued = false;
       document.removeEventListener('pointerdown', audioKick, true);
       document.removeEventListener('keydown', audioKick, true);
-      setStatus(uiText('stSoundIsBack', '🔊 Sound is back.'));
+      sayState('soundBack');
     }
     // Drop the companion. A removed tile used to leave el._aud playing the
     // stream with no picture. Safe to call before blockedAudio exists.
@@ -28212,7 +28234,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (roomSingOn()) { setStatus(singLeaderName() + ' is leading; wait for the song to end.'); return; }
       if (!stageIds().includes(myId)) {
         if (!canStage(myId)) { setStatus(uiText('stOnlyRoomAdminsAndPeople2', 'Only room admins — and people they allow — can lead a song here.')); return; }
-        if (stageIds().length >= SCALE.C) { setStatus('The stage is full (' + SCALE.C + ' people).'); return; }
+        if (stageIds().length >= SCALE.C) { sayState('stageFull', { n: SCALE.C }); return; }
         myStatus.sing = Date.now();
         singSteppedUp = true; // we stepped up FOR the song — step back down with it
         setStage(true);       // broadcasts
@@ -32141,8 +32163,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function amGloballyMuted() { const m = modOf('me').mute; return !!(m && m.on); }
     function micLockWords() {
       const m = modOf('me').mute || {};
-      if (m.wait) return uiText('waitMic', 'You are in the waiting room: your mic opens when the host lets you in.');
-      return 'You were muted for all' + (m.by ? ' by ' + m.by : '') + ' — another participant has to lift it.';
+      return statusWords(m.wait ? 'micWaitRoom' : 'mutedByHost', { by: m.by });
     }
 
     function focusOf(el) {
@@ -32350,7 +32371,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (myStatus.bot) { setStatus(uiText('stABotDoesNotUse', 'A bot does not use a camera or speak.')); return; }
       if (BROADCAST && !bcMayPublishAv()) { enforceBroadcastSeat(); return; }
       if (lateRefusal(kind)) { setStatus(lateRefusal(kind)); return; }
-      if (lateAsk) { if (lateWant) lateWant.add(kind); setStatus(uiText('stStillAskingForTheCamera', 'Still asking for the camera and microphone\u2026')); return; }
+      if (lateAsk) { if (lateWant) lateWant.add(kind); sayState('stillAsking'); return; }
       // THE BOOT ASK IS THE ONLY ASK (knock-first, 2026-08-05): the knock no
       // longer waits on getUserMedia, so "page live, localStream still null"
       // is a NORMAL window on every boot — and a cam/mic tap in that window
@@ -32361,7 +32382,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // failed (denied/hung), fall through to the fresh re-prompt below.
       if (bootGumPending) {
         const p = bootGumPending;
-        setStatus(uiText('stAskingForCameraMicrophone', 'Asking for camera & microphone…'));
+        sayState('askingMedia');
         p.then(() => {
           if (BROADCAST && !bcMayPublishAv()) { enforceBroadcastSeat(); return; }
           if (bcWatchingViewer()) return;
@@ -32372,7 +32393,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (kind === 'mic') myStatus.muted = false; else myStatus.camOff = false;
           paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateMediaSession();
           if (typeof syncSpeech === 'function') syncSpeech();
-          setStatus(kind === 'cam' ? (typeof camOnWords === 'function' ? camOnWords() : 'Camera on.') : 'Mic on.');
+          if (kind === 'cam') setStatus(typeof camOnWords === 'function' ? camOnWords() : statusWords('camOn')); else sayState('micOn');
         }, () => lateMedia(kind));
         return;
       }
@@ -32388,7 +32409,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // who was promised none, and a granted-but-disabled track is still a
       // camera we took.
       const appRoom = document.body.classList.contains('app-room');
-      setStatus(appRoom ? 'Asking for your microphone…' : 'Asking for camera & microphone…');
+      sayState(appRoom ? 'askingMic' : 'askingMedia');
       // A camera tap while the mic is already held asks for video alone: the
       // held mic is never re-taken, and a missing camera then fails on its own.
       const haveMic = !!(localStream && localStream.getAudioTracks()[0]);
@@ -32423,7 +32444,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             if (flipped) {
               paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateMediaSession();
               if (typeof syncSpeech === 'function') syncSpeech();
-              setStatus(kind === 'cam' ? (typeof camOnWords === 'function' ? camOnWords() : 'Camera on.') : 'Mic on.');
+              if (kind === 'cam') setStatus(typeof camOnWords === 'function' ? camOnWords() : statusWords('camOn')); else sayState('micOn');
             }
             return;
           }
@@ -32500,7 +32521,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (document.body.classList.contains('app-room') && !roomAudioOn()) { setStatus(uiText('stTalkIsOffOnlyThe', 'Talk is off — only the app host can turn it on.')); return; }
       if (!localStream) return lateMedia('mic');
       const track = localStream.getAudioTracks()[0]; if (!track) return lateMedia('mic');
-      if (!track.enabled && amGloballyMuted()) { setStatus(micLockWords()); return; }
+      if (!track.enabled && amGloballyMuted()) { sayState(modOf('me').mute && modOf('me').mute.wait ? 'micWaitRoom' : 'mutedByHost', { by: (modOf('me').mute || {}).by }); return; }
       track.enabled = !track.enabled;
       myStatus.muted = !track.enabled;
       paintControls();
@@ -32575,7 +32596,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const cam = localStream && localStream.getVideoTracks()[0];
       if (cam) cam.enabled = false;
       myStatus.camOff = true;
-      try { setStatus('Camera off.'); } catch (e) {}
+      try { sayState('camOff'); } catch (e) {}
       try { paintControls(); } catch (e) {}
       try { paintOnAir(); } catch (e) {}
       try { refreshOutbound(); } catch (e) {}
@@ -32585,7 +32606,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function turnCameraOn() {
       if (typeof forcedCamOff === 'function' && forcedCamOff('me')) {
-        setStatus(uiText('stAnAdminTurnedYourVideo2', '📷 An admin turned your video off for the room — only they can turn it back on.'));
+        sayState('videoOffByHost');
         return;
       }
       if (!localStream) return lateMedia('cam');
@@ -32593,7 +32614,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!track) return lateMedia('cam');
       track.enabled = true;
       myStatus.camOff = false;
-      try { setStatus(typeof camOnWords === 'function' ? camOnWords() : 'Camera on.'); } catch (e) {}
+      try { setStatus(typeof camOnWords === 'function' ? camOnWords() : statusWords('camOn'), 0, 'note', 'camOn'); } catch (e) {}
       try { paintControls(); } catch (e) {}
       try { paintOnAir(); } catch (e) {}
       try { refreshOutbound(); } catch (e) {}
@@ -32616,7 +32637,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!myStatus.camOff) { closeCamChooser(); turnCameraOff(); return; }
       if (camChooserOpen()) { dismissCamChooser(); return; }
       if (typeof forcedCamOff === 'function' && forcedCamOff('me')) {
-        setStatus(uiText('stAnAdminTurnedYourVideo2', '📷 An admin turned your video off for the room — only they can turn it back on.'));
+        sayState('videoOffByHost');
         return;
       }
       openCamChooser(camBtn);
@@ -32797,7 +32818,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function camOnWords() {
       const why = noBlurWhy();
-      return why ? 'Camera on. ' + why : 'Camera on.';
+      const on = statusWords('camOn') || 'Camera on.';
+      return why ? on + ' ' + why : on;
     }
     function setPersonalBlur(v) {
       if (BROADCAST && !bcMayPublishAv()) return;
