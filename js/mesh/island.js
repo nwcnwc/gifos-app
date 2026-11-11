@@ -69,7 +69,7 @@
     // C++: mesh_island.inc:Seat::l3117Stray
     // L3.11.7: the door refused my registration and lists a greeter my view does not hold. 0: none; 1: I stay; 2: yielded.
     l3117Stray(list) {
-      if (!this.w.lv.LINKMODEL || this.state !== 3 || !this.hasCoord || this.coord.pc !== 0) return 0;
+      if (!this.f.fabricDoors() || this.state !== 3 || !this.hasCoord || this.coord.pc !== 0) return 0;   // C++: fabricDoors() (the seat-side query)
       let n = 0, via = -1;
       for (const g of list) { if (g < 0 || g === this.id) continue; let held = false; for (const v of this.occ.values()) if (v === g) { held = true; break; } if (!held) n++;
         if (via < 0) { const h = this.l22Cell.get(g); if (this.f.fabricLinkCarries(this.id, g) || this.f.fhopFriendFor(this.id, g) || (h !== undefined && this.TICK - h[1] <= 60)) via = g; } }   // a path: any LISTED greeter (C++: l3117Stray)
