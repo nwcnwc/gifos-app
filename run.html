@@ -15278,7 +15278,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         setTimeout(() => { if (booted || bootGen !== meshBootGen || leaving || bannedOut || pwBlocked || meshNode) return; startMesh(); }, wait);
       };
       const bootWatch = setTimeout(() => { if (!booted && bootGen === meshBootGen) reArm('hung'); }, MESH_BOOT_WATCH_MS);
-      Promise.all([debugFail('identity', ensureIdentity()), debugFail('adminkey', adminOpenKeyNow())]).then(([identity, openKey]) => {
+      // THE MEETING KEY OF THE LINK (the sim's URL_KEY, with island found: test/sim/mesh.cpp, `netgroups`): a part of the
+      // meeting that reaches no seat founds its island under the key every page holds from its link, so the door lists
+      // its greeters beside the room's. Without it an island registers under a private key, the door refuses it, nobody
+      // learns it exists, and no TURN link can be asked or vouched for (docs/turn-0926.md TURN.1, section 5).
+      Promise.all([debugFail('identity', ensureIdentity()), debugFail('adminkey', adminOpenKeyNow()), sha256hex('gifos-meeting-key|' + room + '|' + (av || ''))]).then(([identity, openKey, urlKeyHex]) => {
       if (bootGen !== meshBootGen) return;   // superseded while the identity was minting
       booted = true; meshBootRetry = 0; clearTimeout(bootWatch);
       myId = identity.peerId; // S4: peer id = H(pubkey), unforgeable
@@ -15288,6 +15292,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       meshNode = GifOS.meshWire.createMeshNode({
         relayUrl: relay.replace(/\/$/, ''),
         sid: sessId, tok: sessTok, key: roomE2E, identity, tickMs: 500,
+        levers: { ISLAND_MODE: 1, URL_KEY: (parseInt(String(urlKeyHex).slice(0, 8), 16) | 1) >>> 0 },   // islands found under the meeting key (above)
         oldKeys: [prevRoomE2E, openKey].filter((k, i, all) => k && k !== roomE2E && all.indexOf(k) === i),   // a door blob one of these opens is behind me, not ahead (mesh-wire R6)
         excluded: isEjected, // ejected forgers: their mesh frames never reach the seat
         urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
@@ -33784,7 +33789,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function subsJoin() {
       if (!subsOn()) return;
       GifOS.meetSubs.joinMeeting(subsMeetId(), {
-        onTicket: () => { if (amAdmin && hasAdminRoom()) subsPublishRoomPlan(); },
+        onTicket: () => { if (amAdmin && hasAdminRoom()) subsPublishRoomPlan(); turnSubAt = 0; },   // a fresh ticket is a fresh TURN vouch: say it at the next step
         onLost: (why) => {
           if (why === 'moved') setStatus('Your subscription is now in use in another meeting.');
           const r = modTable['*'];

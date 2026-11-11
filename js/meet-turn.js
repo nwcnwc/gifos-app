@@ -376,13 +376,14 @@
     function onFrame(from, f) {
       if (!tvOk(f) || from === io.me()) return;
       let L = links.get(from);
+      if (L) L.heardAt = io.now();
       if (f.q === 'x') { if (L && L.l === f.l) close(L, 'far-closed', true); return; }
       if (f.q === 'a') {
         if (!L) {
           const s = io.seat();
           if (!s || !s.greeter) return;                       // only a seated greeter can be vouched for: say nothing
           if (s.view.indexOf(from) >= 0 && io.reach(from) === 'direct') return;   // reached already: no link
-          L = newLink(from, f.l, false);
+          L = newLink(from, f.l, false); L.heardAt = io.now();
         }
         if (L.l !== f.l) return;
         const first = !L.farDev;
@@ -448,7 +449,9 @@
     function step() {
       const now = io.now();
       for (const L of Array.from(links.values())) {
-        if (!io.alive(L.far)) { close(L, 'gone', true); continue; }                                     // TURN.8
+        // TURN.8: the far page is gone. A far end my seat does not know yet (a foreign greeter, its door entry stale here)
+        // is alive while it keeps answering this link's handshake.
+        if (!io.alive(L.far) && now - (L.heardAt || L.askAt) > DIAL_BUDGET_MS / 2) { close(L, 'gone', true); continue; }
         if (L.state === 'up' && io.reach(L.far) === 'friend') { close(L, 'healed'); continue; }          // TURN.7
         if (L.state !== 'up' && now - L.askAt > DIAL_BUDGET_MS) { if (L.opener) head.retryAt = now + RETRY_MS; close(L, 'dialfail'); continue; }
         if (L.state === 'up' && !io.pcUp(L.far)) { if (!L.downSince) L.downSince = now; if (now - L.downSince > DIAL_BUDGET_MS) { if (L.opener) head.retryAt = now + RETRY_MS; close(L, 'lost'); continue; } }

@@ -1159,6 +1159,7 @@
         },
         send: (to, m, dir) => sendFrameTo(to, m, dir, true),   // FHOP's sponsored frames: deliver -> opts.sendDC -> the page's rungs, never the relay
         fhop: opts.fhop || null,
+        levers: opts.levers || null,   // the page's levers (run.html: islands found under the meeting key of the link)
         measure: opts.measure || null,
         trace: opts.trace || null,
         onLinks: opts.onLinks || null,
