@@ -103,7 +103,9 @@
   //
   // opts.fill is a class name toggled on <body> while the target holds the
   // screen — the page's half of the pane-fills-the-glass picture, and the whole
-  // reason a pane no longer asks for fullscreen itself.
+  // reason a pane no longer asks for fullscreen itself. opts.on, when given,
+  // decides the label and the pressed state; the fill class still follows the
+  // browser.
   function attach(btn, target, opts) {
     if (!btn) return function () {};
     const o = opts || {};
@@ -115,10 +117,13 @@
     if (!supported()) { btn.style.display = 'none'; btn.dataset.fsUnsupported = '1'; return function () {}; }
     btn.style.display = '';
     function paint() {
-      const on = active() === (el(target) || doc.documentElement);
+      const full = active() === (el(target) || doc.documentElement);
       // Both halves, from the one source of truth, on every fullscreenchange —
       // so Esc and the browser's own affordance drop the fill class too.
-      if (o.fill && doc.body) doc.body.classList.toggle(o.fill, on);
+      if (o.fill && doc.body) doc.body.classList.toggle(o.fill, full);
+      // opts.on: a page whose full screen has a quiet first stage (a phone
+      // meeting) says what the next tap does.
+      const on = o.on ? !!o.on() : full;
       const word = on ? outLabel : inLabel;
       // A meeting header says the words. An app bar keeps the glyph: nine
       // buttons have no room for "Leave full screen".
