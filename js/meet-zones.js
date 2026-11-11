@@ -358,6 +358,20 @@
     return { rects: a.rects.concat([st]), contentH: box.h, side: picked.side, stadSide: Math.min(st.w, st.h), tooSmall: Math.min(st.w, st.h) < 28 };
   }
 
+  // One sideways row as tall as the band, the faces sharing its width with
+  // the phone row gap between them.
+  function wideRow(ids, box, gap) {
+    const n = ids.length;
+    const w = n ? (box.w - Math.max(0, n - 1) * gap) / n : 0;
+    const out = [];
+    let x = box.x;
+    for (let i = 0; i < n; i++) {
+      out.push({ id: ids[i], tier: 'row', x: x, y: box.y, w: w, h: box.h, fit: 'cover' });
+      x += w + gap;
+    }
+    return out;
+  }
+
   function people(row, stad, box, phone, gallery, gap, avoidLone, stadCount, forceStack) {
     // A Stage keeps the small stadium. One composite with no Stage does not.
     if (stad.length === 1 && !avoidLone) return compositePeople(row, stad, box, phone, gallery, gap, stadCount, forceStack);
@@ -589,6 +603,17 @@
     const shareItem = split.share;
     const onStage = split.people;
     if (!shareItem && !onStage.length) {
+      // A sideways phone with no share: one row that fits at the band's
+      // height takes the whole band, wide enough to meet both side edges
+      // (cover crops the video, so a face may be wider than it is tall).
+      // A crowd that cannot be that tall stays squares.
+      const nr = row.length;
+      if (phone && gallery === 'fit' && box.w > box.h && !stad.length && nr > 0 && box.h > 0 &&
+          nr * box.h + Math.max(0, nr - 1) * gap <= box.w + 0.01) {
+        const rects = wideRow(row, box, gap);
+        tagRows(rects);
+        return laid(rects, box.h, { stage: null, share: null, people: box }, { side: box.h, stadSide: 0, tooSmall: false }, gallery);
+      }
       // No share and no one on stage. Fit still stacks the stadium under the
       // row on a wide screen, and the row is the floating panel.
       const p = people(row, stad, box, phone, gallery, gap, false, opts.stadCount, gallery === 'fit');

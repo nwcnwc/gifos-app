@@ -3398,3 +3398,36 @@
     body.broadcast #livebadge { font-size: 1rem; line-height: 1; }
   }
 
+
+  /* ---- Round 3: empty states, the stage, reach on a phone --------------------------------------------------------- */
+  /* Alone in a meeting: one card under the header, one blue action. */
+  #alonecard[hidden] { display: none !important; }
+  #alonecard { position: fixed; z-index: 5; left: 24px; top: calc(var(--inset-top, 0px) + 72px); width: min(340px, calc(100vw - 32px));
+    padding: 16px; border-radius: var(--r-lg); background: var(--c-white); color: var(--c-ink);
+    box-shadow: 0 18px 48px rgba(0,0,0,.45); display: flex; flex-direction: column; gap: 8px; }
+  #alonecard h3 { margin: 0 44px 0 0; font-size: 1.05rem; line-height: 1.3; color: var(--c-ink); }
+  #alonecard p { margin: 0 0 4px; font-size: .9rem; line-height: 1.4; color: var(--c-ink-2); }
+  #alonecard-go { align-self: flex-start; min-height: 44px; padding: 0 16px; border: 0; border-radius: var(--r-md);
+    background: var(--c-blue); color: var(--c-white); font-size: 1rem; font-weight: 600; cursor: pointer; }
+  .alonecard-x { position: absolute; top: 6px; right: 6px; width: 44px; height: 44px; border: 0; border-radius: var(--r-pill);
+    background: transparent; color: var(--c-ink-2); font-size: 1rem; cursor: pointer; }
+  @media (max-width: 700px), (max-height: 500px) {
+    #alonecard { left: 16px; right: 16px; width: auto; top: calc(var(--inset-top, 0px) + 64px); }
+  }
+  /* The stage's Open sits in the caption row at the bottom of the slide, never in the top corner where a phone's
+     status chip floats over the stage. */
+  body:not(.broadcast) #stagefeed > .rowtile > .tile-open { top: auto; bottom: 6px; }
+  /* A phone reaches every control with a 44px target. A face's Open keeps its small light pill: a transparent
+     border grows the tap area around it. */
+  @media (max-width: 700px), (max-height: 500px) {
+    .tile > .tile-open, .rowtile > .tile-open { top: 0; right: 0; height: 44px; max-height: 44px; max-width: 94px;
+      border: 11px solid transparent; background-clip: padding-box; }
+    body:not(.broadcast) #stagefeed > .rowtile > .tile-open { top: auto; bottom: 0; }
+    body.comfy .tile.slim > .tile-open { width: 44px; max-width: 44px; }
+    #airrec, #airwho, body.broadcast #airsound:not([hidden]) { min-height: 44px; }
+    #chathead #trtab { min-height: 44px; }
+  }
+  @media (max-width: 700px) and (min-height: 501px) {
+    #tilewin .tw-close { width: 44px; height: 44px; }
+    #tilewin .tw-side button.tw-btn, #tilewin button.tw-btn, #tilewin .modbar button { min-height: 44px; height: auto; }
+  }

@@ -46,9 +46,10 @@
 
   const DEFAULT_WORKER = 'https://turn.gifos.app';
   const WORKER_KEY = 'gifos_turn_worker'; // localStorage override: a self-hosted or test credential service
-  const FETCH_TIMEOUT_MS = 3000;          // a credential answer slower than this is no answer (timings.json TURN_FETCH_TIMEOUT_MS)
-  const RETRY_BASE_MS = 2000;             // first retry after about 2 s, doubling (TURN_RETRY_BASE_MS)
-  const RETRY_MAX_MS = 5 * 60 * 1000;     // never longer than 5 minutes between tries (TURN_RETRY_MAX_MS)
+  const TM = (root.GifOS && root.GifOS.timings) || (isNode ? require('./timings.js') : {});   // every wait: js/timings.js, loaded before this file
+  const FETCH_TIMEOUT_MS = TM.TURN_FETCH_TIMEOUT_MS;   // a credential answer slower than this is no answer
+  const RETRY_BASE_MS = TM.TURN_RETRY_BASE_MS;         // first retry after about 2 s, doubling
+  const RETRY_MAX_MS = TM.TURN_RETRY_MAX_MS;           // never longer than 5 minutes between tries
   const SIDE_MAX = 48;                    // ids per side a link end publishes (a fact rides one gossip frame)
 
   // ---- the credential service ------------------------------------------------

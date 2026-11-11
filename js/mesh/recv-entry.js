@@ -97,7 +97,7 @@
       const TICK = this.TICK, id = this.id;
       if (!this.hasCoord) { const h = newMsg('HOME'); this.emit(m.from, h); return; }
       if (m.ttl <= 0) return;
-      if (this.coord.pc === 0) {
+      if (this.coord.pc === 0 || this.doorCallOn()) {   // FHOP.8: a friend called to the door answers there as a greeter
         const h = newMsg('HOME'); h.roster = this.s1Roster(); h.id = id; h.gkey = this.genKey;
         h.askGap = this.doorAskAt < 0 ? 1000000 : (TICK - this.doorAskAt) | 0; this.doorAskAt = TICK | 0;   // one clock for the whole door, read before this answer moves it
         if (m.knock) { h.knock = true; this.f.fabricDialJoin(id, m.from); h.mass = this.l13On() && this.l13Mass(); }   // L13.25

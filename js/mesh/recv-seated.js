@@ -381,7 +381,10 @@
     // C++: mesh_seat.inc:Seat::onChallenge
     onChallenge(m) {
       const id = this.id, TICK = this.TICK, LINKMODEL = this.w.lv.LINKMODEL;
-      if (m.tag === 25 && !LINKMODEL && m.via >= 0 && m.via !== id && m.asker >= 0 && m.asker !== id) { const f = msg.clone(m); f.from = id; this.emit(m.via, f); return; }   // L25 without the link model
+      if (m.tag === 25 && m.via >= 0 && m.via !== id && m.asker >= 0 && m.asker !== id) {   // the seat that named the rival passes the question on (L25.18: over its own open channel, and only one that came over the asker's own)
+        const f = msg.clone(m); f.from = id; if (!LINKMODEL) { this.emit(m.via, f); return; }
+        const own = this.linkIs(m, m.asker) && this.f.fabricLinkState(id, m.via) === E.LS_OPEN; this.trace('L25.18-PASS', id, this.hasCoord ? this.coord : null, 'asker=%d rival=%d ok=%d', m.asker, m.via, own ? 1 : 0); if (own) this.f.fabricCallFrame(id, m.via, f); return;
+      }   // L25 without the link model
       if (m.tag === 27) { this.l40Told(m); if (!this.l2512Heard(m)) this.l40Keep(m); return; }   // L25.12 (L40.1: a tell held while a question is open)
       if (m.tag === K.GA_TAG) { this.gaAnswer(m); return; }   // L41.2 (gapa.js)
       if (m.tag === 26) { this.l25WitAnswer(m); return; }   // L25.9
@@ -390,7 +393,8 @@
           this.l2513Asked(m); const c = newMsg('CONFIRM'); c.ck = m.ck; c.id = id; c.sig = true; c.sigAt = TICK;
           if (this.ppCk === ckey(this.coord)) { c.pp = this.pp; c.ppAt = this.ppAt; c.ppL = this.ppL; }
           if (this.mpK > 0 && this.mpCk === ckey(this.coord)) { c.mpK = this.mpK; c.mpBy = this.mpBy; c.mpAt = this.mpAt; c.mpL = this.mpL; c.mpOld = this.mpOld; }
-          if (LINKMODEL) this.f.fabricCallFrame(id, m.from, c); else if (m.asker >= 0 && m.from >= 0) { c.via = m.asker; this.emit(m.from, c); }
+          if (LINKMODEL && !(m.asker >= 0 && m.asker !== id && m.from >= 0 && m.from !== m.asker)) this.f.fabricCallFrame(id, m.from, c);
+          else if (m.asker >= 0 && m.from >= 0) { c.via = m.asker; if (LINKMODEL) { this.f.fabricCallFrame(id, m.from, c); this.trace('L25.18-BACK', id, this.coord, 'asker=%d by=%d', m.asker, m.from); } else this.emit(m.from, c); }   // L25.18: a question that was passed on is answered the way it came
         }
         return;
       }
@@ -402,7 +406,7 @@
     onConfirm(m) {
       const id = this.id, TICK = this.TICK;
       // the answer to MY CHALLENGE, from that very rival, for that cell, within 40 ticks
-      if (!this.w.lv.LINKMODEL && m.via >= 0 && m.via !== id && m.id !== id) { const f = msg.clone(m); f.via = -1; this.emit(m.via, f); return; }   // L25 without the link model
+      if (m.via >= 0 && m.via !== id && m.id !== id) { const f = msg.clone(m); f.via = -1; if (this.w.lv.LINKMODEL) this.f.fabricCallFrame(id, m.via, f); else this.emit(m.via, f); return; }   // L25 without the link model
       if (this.hasCoord && this.state === 3 && ckey(this.coord) === m.ck && this.l25Nc >= 0 && m.id === this.l25Nc && m.ck === this.l25Ck && TICK - this.l25At <= K.L25_WAIT && this.provenEv(m, m.id) && !this.moving && this.liveElsewhere(m.id, m.ck)) { this.l25Nc = -1; this.trace('L25-ELSEWHERE', id, this.coord, 'rival=%d', m.id); return; }   // L25
       if (this.hasCoord && this.state === 3 && ckey(this.coord) === m.ck && this.l25Nc >= 0 && m.id === this.l25Nc && m.ck === this.l25Ck && TICK - this.l25At <= K.L25_WAIT && this.provenEv(m, m.id) && !this.moving) {
         this.l25Nc = -1;

@@ -28,6 +28,8 @@
   const sm = req('./seat.js', 'meshSeat');
   const { cellOk, coordStr } = req('./shared.js', 'meshShared');
   const { Seat, FREE, roomTerm, signedBy, placeBefore, l165Earlier } = sm;
+  // the sim's #define L3_11_8_OFF (a build-time switch): MESH_L3_11_8_OFF=1 under node builds the parent, read once at load; a page always runs the law
+  const L3_11_8_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L3_11_8_OFF === '1') ? 1 : 0;
 
   const K = C_.consts, E = C_.enums;
   const { ckey, ckPc, ckR, ckI, unckey, ownedLinks, rowMates, colMates, down, up, cc } = topo;
@@ -56,7 +58,10 @@
           const isHead = this.coord.i > 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r && m.coord.i === 0;
           // G4 grace on a CHANGED AGGREGATOR; G5: the remedy is to raise it and blur. It evicts NOTHING.
           if ((isOwner || isHead) && pid !== this.lastAgg) { this.lastAgg = pid; this.upSince = this.TICK; this.emptyEcho = 0; }
-          else if ((isOwner && this.upRefuted(m.dgPub, m.dgEcho, 1)) || (isHead && this.upRefuted(m.dgPub, m.dgEcho, 0))) {
+          // G4.1: a seat that has just changed cell publishes n=0 for itself until its retire has climbed its old chain
+          // (the handover hold, at most DIG_NHOLD_MAX: half a DIG_HOLD_LEVEL per level, 13 levels). For that long after my aggregator
+          // changed I check only that the owner's fold holds what I sent; after it, the owner's own 1 too.
+          else if ((isOwner && this.upRefuted(m.dgPub, m.dgEcho, (this.upSince >= 0 && this.TICK - this.upSince <= K.DIG_NHOLD_MAX) ? 0 : 1)) || (isHead && this.upRefuted(m.dgPub, m.dgEcho, 0))) {
             this.digMismatch++; this.w.lv.DIG_MISMATCH++;
           }
         }
@@ -69,6 +74,7 @@
       const TICK = this.TICK, x = m.id; if (x < 0 || x === this.id) return;
       const mine = this.hasCoord && this.state === 3 && this.ownedLinkCell(ckey(m.coord)) && this.occGet(ckey(m.coord)) === x;
       if (this.linkIs(m, x)) {
+        if (!L3_11_8_OFF && mine) { const rm = this.relMark.get(x); if (rm !== undefined && TICK > rm) { this.relMark.delete(x); this.trace('RELOAD-BACK', this.id, this.coord, 'peer=%d cell=%s', x, coordStr(m.coord)); } }   // L3.11.8: the seat that said "reload" beats from its cell on its own channel: it is back and the reload is over, so a close after this is a loss like any other
         this.unp.delete(x); this.noChan.delete(x); this.unpSince.delete(x);   // a direct frame ends the unproven streak
         if (mine) {
           this.lkAnyAt = TICK; this.d6Mark = false; this.selfLeaseAt = -1; if (this.lkAt.size >= 64) eraseFirst(this.lkAt); this.lkAt.set(ckey(m.coord), TICK);
@@ -180,6 +186,9 @@
       if (m.kv.voter >= 0) { const wv = this.kVerify(m, sure); this.kLastWhy = wv; if (wv === 0) { this.kvKid.set(ckey(m.coord), [digM.cloneKStmt(m.kv), TICK]); const sv = ins(this.kSeen, m.kv.voter, () => 0); if (m.kv.ver > sv) this.kSeen.set(m.kv.voter, m.kv.ver); this.kTaken++; } else this.kRef[wv]++; }   // L27: checked before anything this frame does
       if (this.hasCoord && this.moving && !this.l4X && m.tock === this.oldCk && m.tock !== ckey(this.coord)) {   // T1 dual-hold: the OLD seat still answers while the claim is in flight
         const p = newMsg('PONG'); p.coord = cc(this.oldCoord); p.id = id; this.emit(m.id, p); return;
+      }
+      if (this.hasCoord && sure && this.l4MarkUntil >= TICK && m.tock === this.l4PartnerCk && m.tock !== ckey(this.coord)) {   // L4.3.3: a beat for the place I have just swapped out of: my greeting says who holds it now
+        const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = id; this.emit(m.id, h); this.trace('SWAP-MOVED', id, this.coord, 'to=%d cell=%s', m.id, coordStr(unckey(m.tock))); return;
       }
       if (this.hasCoord && this.leaseUntil >= 0 && TICK <= this.leaseUntil && m.tock === this.leaseCk && m.tock !== ckey(this.coord)) {   // T3: a call to my just-vacated cell: answer MOVED
         const r = newMsg('MOVED'); r.ck = this.leaseCk; r.mvd = ckey(this.coord); r.id = id; this.emit(m.id, r); return;

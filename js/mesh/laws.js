@@ -20,15 +20,19 @@
     DIG_HOLD_LEVEL: 16,          // G: handover hold, two pulse periods per tree level
     DIG_LOSS_H: 300,             // G3: the fail-closed blur horizon (spans RING_HOLD)
     DIG_TTL: 60,                 // G3: a digest report older than this is stale
+    DOORCALL_HOLD: 108,          // FHOP.8: a friend called to the door stays a greeter this long: the rounds a knocker still has before it founds, (ISLAND_ASKS + 1) x (ISLAND_WAIT + the door's ask wave of 12)
     E3_PERIOD: 200,              // Section-1 re-knock cadence; below RELAY_TTL so live seats stay listed
     EARLY_HOLD: 12,              // D5: settle window a transport-death probe gets before the death is confirmed
     FHOP_BEAT: 8,                // FHOP: the status beat that carries a seat's conns list (SCALE.HB 4 s)
+    FHOP_CARRY_MAX: 12,          // FHOP.9: carries one friend runs at once, video or voice only: every carry one full row can ask of one mate, (C-1) x (C-2)
     FHOP_CRUMB_TTL: 120,         // FHOP: a crumb (the channel a peer's frames came in on) and an envelope dedup entry live this long (60 s)
-    FHOP_MAX_JOBS: 4,            // FHOP: media relay jobs one friend runs at once (MAX_RELAY_JOBS)
+    FHOP_MAX_JOBS: 4,            // FHOP: carries with video one friend on Wi-Fi (or an unknown link) runs at once; past it a carry is voice only (FHOP.9)
     FHOP_REFUSE_HOLD: 60,        // FHOP: a friend that refused a relay is not asked again for this long (30 s)
     FHOP_RELAY_ASK: 20,          // FHOP: a peer's direct pair down this long (10 s) before a friend is asked, and the gap between asks
     FHOP_SWEEP: 4,               // FHOP: the page's 2 s sweep that asks a friend to forward a peer's media
     FHOP_TTL: 12,                // FHOP: a friend-hop envelope's hop budget (run.html sponsorSend ttl 12)
+    FHOP_VIDEO_CELL: 2,          // FHOP.9: carries with video a friend on a cellular link runs at once
+    FHOP_VIDEO_WIRED: 8,         // FHOP.9: carries with video a friend on a wired link runs at once
     FH_ICE_N: 3,                 // FHOP typing: a link is unreachable, not a blip, once this many of my dials to it went nowhere while both NAT kinds are known and cannot meet; until then friend-hop carries the pair and no law moves or drops a seat for it
     FIND_ACK_WAIT: 12,           // a seeker re-asks when its FIND has no FINDACK after this long
     FIND_TTL: 200,               // an honest seeker's FIND hop budget; every FIND is clamped to it

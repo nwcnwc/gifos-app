@@ -8,6 +8,15 @@
  * wallet to sign it. It initiates nothing on its own — every entry point is
  * called by the broker after the sheet was answered.
  *
+ * Which approval is used, decided for each payment:
+ *   EIP-5792 wallet_sendCalls — when wallet_getCapabilities says this chain
+ *     can atomic-batch (atomic.status "supported" or "ready", or
+ *     atomicBatch.supported). Both USDC transfer() calls go in one request,
+ *     one approval: 97% to the signed seller, 3% to the fee address.
+ *   EIP-3009 — otherwise, including a wallet that rejects
+ *     wallet_getCapabilities. One TransferWithAuthorization signature per
+ *     leg. The pay Worker settles those signatures. This is the fallback.
+ *
  * Wallet resolution, in order:
  *
  *   1. `window.__gifosTestProvider` — the gate's EIP-1193 fake, so tier 2
@@ -28,9 +37,10 @@
  *      the destination, because an extension keeps key custody in the
  *      extension rather than behind a passkey.
  *
- * TESTNET PINNED: the only chain this file will build for is Base Sepolia
- * (eip155:84532); a transfer naming any other network throws before any
- * wallet sees anything. Same doctrine as gifos-x402.js/gifos-charge.js.
+ * CHAIN: gifos-base-net.js picks the network. With that module absent, or
+ * with GIFOS_BASE_MAINNET off, the only chain this file will build for is
+ * Base Sepolia (eip155:84532). A transfer naming any other network throws
+ * before any wallet sees anything.
  *
  * Attaches to `GifOS.payWallet`.
  */
@@ -38,9 +48,16 @@
   const GifOS = (root.GifOS = root.GifOS || {});
   if (GifOS.payWallet) return;
 
-  const CHAIN_CAIP = 'eip155:84532';       // Base Sepolia — the ONLY chain
+  const CHAIN_CAIP = 'eip155:84532';       // Base Sepolia — the default chain
   const CHAIN_ID = 84532;
   const CHAIN_HEX = '0x14a34';
+  function chainNow() {
+    if (GifOS.baseNet && typeof GifOS.baseNet.active === 'function') {
+      const n = GifOS.baseNet.active();
+      return { caip: n.caip, chainId: n.chainId, hex: n.hex, name: n.name, rpc: n.rpc, explorer: n.explorer };
+    }
+    return { caip: CHAIN_CAIP, chainId: CHAIN_ID, hex: CHAIN_HEX, name: 'Base Sepolia', rpc: 'https://sepolia.base.org', explorer: 'https://sepolia.basescan.org' };
+  }
   // USDC's EIP-712 domain on Base Sepolia. The x402 spec carries these in the
   // requirement's `extra` because they vary per token deployment; these are
   // the defaults for the one asset this build allows.
@@ -55,7 +72,8 @@
   // plus a fresh random nonce and a short validity window.
   function buildAuthorization(transfer, from, nonceBytes, nowMs) {
     const t = transfer || {};
-    if (t.network !== CHAIN_CAIP) throw new Error('payWallet: refusing network "' + t.network + '" — this build signs for Base Sepolia only');
+    const chain = chainNow();
+    if (t.network !== chain.caip) throw new Error('payWallet: refusing network "' + t.network + '" — this build signs for ' + chain.name + ' only');
     if (!isAddress(t.to)) throw new Error('payWallet: transfer.to is not an address');
     if (!isAddress(from)) throw new Error('payWallet: payer is not an address');
     if (typeof t.amount !== 'string' || !/^[0-9]+$/.test(t.amount) || BigInt(t.amount) <= 0n) {
@@ -99,7 +117,7 @@
       domain: {
         name: (extra && extra.name) || DOMAIN_NAME,
         version: (extra && extra.version) || DOMAIN_VERSION,
-        chainId: CHAIN_ID,
+        chainId: chainNow().chainId,
         verifyingContract: asset,
       },
       message: authorization,
@@ -130,14 +148,16 @@
   }
 
   function provider() {
+    // The test provider is read every call so a suite can swap it. A real
+    // wallet connection stays cached.
+    if (root.__gifosTestProvider) return Promise.resolve({ p: root.__gifosTestProvider, kind: 'test' });
     if (providerP) return providerP;
     providerP = (async () => {
-      if (root.__gifosTestProvider) return { p: root.__gifosTestProvider, kind: 'test' };
       // Base Account first — it is the doctrine's wallet. The SDK opens
       // Coinbase's own popup; the passkey never touches this page.
       try {
         const base = await loadVendorSdk();
-        const sdk = base.createBaseAccountSDK({ appName: 'GifOS', appChainIds: [CHAIN_ID] });
+        const sdk = base.createBaseAccountSDK({ appName: 'GifOS', appChainIds: [chainNow().chainId] });
         return { p: sdk.getProvider(), kind: 'base-account' };
       } catch (e) { /* fall through to an injected wallet */ }
       if (root.ethereum) return { p: root.ethereum, kind: 'injected' };
@@ -148,22 +168,23 @@
   }
 
   async function ensureChain(p) {
+    const chain = chainNow();
     try {
       const id = await p.request({ method: 'eth_chainId' });
-      if (parseInt(id, 16) === CHAIN_ID) return;
+      if (parseInt(id, 16) === chain.chainId) return;
     } catch (e) { /* some providers only answer after connect; try the switch */ }
     try {
-      await p.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CHAIN_HEX }] });
+      await p.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chain.hex }] });
     } catch (e) {
-      // 4902: the wallet has never seen Base Sepolia — offer to add it.
+      // 4902: the wallet has never seen this chain — offer to add it.
       if (e && (e.code === 4902 || /unrecognized|not added/i.test(String(e.message)))) {
         await p.request({
           method: 'wallet_addEthereumChain',
           params: [{
-            chainId: CHAIN_HEX, chainName: 'Base Sepolia',
+            chainId: chain.hex, chainName: chain.name,
             nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-            rpcUrls: ['https://sepolia.base.org'],
-            blockExplorerUrls: ['https://sepolia.basescan.org'],
+            rpcUrls: [chain.rpc],
+            blockExplorerUrls: [chain.explorer],
           }],
         });
       } else throw e;
@@ -176,6 +197,16 @@
     if (!accounts || !isAddress(accounts[0])) throw new Error('the wallet returned no account');
     await ensureChain(p);
     return accounts[0];
+  }
+
+  // No prompt. Empty when the wallet has not been connected yet.
+  async function peekAddress() {
+    try {
+      const { p } = await provider();
+      const accounts = await p.request({ method: 'eth_accounts' });
+      if (accounts && isAddress(accounts[0])) return accounts[0];
+    } catch (e) {}
+    return null;
   }
 
   // ---- sign what the broker built -------------------------------------------
@@ -204,10 +235,73 @@
     return out;
   }
 
+  // USDC transfer(address,uint256). Selector is the well-known keccak
+  // prefix a9059cbb; the address is the 32-byte left-padded argument.
+  function encodeUsdcTransfer(to, amount) {
+    if (!isAddress(to)) throw new Error('payWallet: transfer to is not an address');
+    if (typeof amount !== 'string' || !/^[0-9]+$/.test(amount) || BigInt(amount) <= 0n) {
+      throw new Error('payWallet: amount must be a positive decimal integer string of base units');
+    }
+    const addr = to.slice(2).toLowerCase().padStart(64, '0');
+    const val = BigInt(amount).toString(16).padStart(64, '0');
+    return '0xa9059cbb' + addr + val;
+  }
+
+  function capabilitiesSupportBatch(caps, chainHex) {
+    if (!caps || typeof caps !== 'object') return false;
+    const hex = String(chainHex || '').toLowerCase();
+    let id = '';
+    try { id = String(parseInt(hex, 16)); } catch (e) { id = ''; }
+    const chain = caps[chainHex] || caps[hex] || (id && caps[id]) || (id && caps['eip155:' + id]);
+    if (!chain || typeof chain !== 'object') return false;
+    if (chain.atomicBatch && chain.atomicBatch.supported === true) return true;
+    const atomic = chain.atomic;
+    return !!(atomic && (atomic.status === 'supported' || atomic.status === 'ready'));
+  }
+
+  function sendCallsParams(transfers, from) {
+    const chain = chainNow();
+    if (!Array.isArray(transfers) || !transfers.length) throw new Error('payWallet: nothing to send');
+    if (!isAddress(from)) throw new Error('payWallet: payer is not an address');
+    let asset = null;
+    const calls = transfers.map((t) => {
+      if (!t || t.network !== chain.caip) throw new Error('payWallet: refusing network "' + (t && t.network) + '" — this build signs for ' + chain.name + ' only');
+      if (!isAddress(t.asset)) throw new Error('payWallet: asset is not an address');
+      if (asset && asset.toLowerCase() !== t.asset.toLowerCase()) throw new Error('payWallet: a split must pay one token');
+      asset = t.asset;
+      return { to: t.asset, data: encodeUsdcTransfer(t.to, t.amount), value: '0x0' };
+    });
+    return { version: '2.0.0', from, chainId: chain.hex, atomicRequired: true, calls };
+  }
+
+  // One approval when the wallet can batch; EIP-3009 signatures otherwise.
+  // A wallet that throws on wallet_getCapabilities is the fallback, not an error.
+  async function paySplit(transfers) {
+    if (!Array.isArray(transfers) || !transfers.length) throw new Error('payWallet: nothing to sign');
+    const { p } = await provider();
+    const from = await address();
+    let batch = false;
+    try {
+      const caps = await p.request({ method: 'wallet_getCapabilities', params: [from] });
+      batch = capabilitiesSupportBatch(caps, chainNow().hex);
+    } catch (e) { batch = false; }
+    if (!batch) {
+      const payloads = await signTransfers(transfers);
+      return { mode: 'eip3009', payloads, from };
+    }
+    const params = sendCallsParams(transfers, from);
+    const raw = await p.request({ method: 'wallet_sendCalls', params: [params] });
+    const batchId = (raw && typeof raw === 'object') ? (raw.id || raw.batchId) : raw;
+    if (typeof batchId !== 'string' || !batchId) throw new Error('the wallet returned no batch id');
+    let status = null;
+    try { status = await p.request({ method: 'wallet_getCallsStatus', params: [batchId] }); } catch (e) { status = null; }
+    return { mode: 'eip5792', batchId, status, from, calls: params.calls };
+  }
+
   GifOS.payWallet = {
     CHAIN_CAIP, CHAIN_ID,
-    available, address, signTransfers,
+    available, address, peekAddress, signTransfers, paySplit,
     // pure, for the unit tier
-    buildAuthorization, typedData,
+    buildAuthorization, typedData, encodeUsdcTransfer, sendCallsParams, capabilitiesSupportBatch,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

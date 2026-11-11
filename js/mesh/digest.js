@@ -152,6 +152,10 @@
       }
       mm.l12s = 1; mm.l12n = 0; return this.l12Step(mm);
     },
+    // L3.10.9: the cell is inside the returner's window.
+    // C++: mesh_seat.inc:Seat::l3109Wait
+    l3109Wait(k) { const TICK = this.TICK; return (this.l3109Ck === k + 1 && TICK - this.l3109At <= 2 * K.RC_WAIT) || (this.leaseCk === k && this.leaseUntil >= 0 && TICK <= this.leaseUntil && TICK - (this.leaseUntil - K.LEASE_TTL) <= 2 * K.RC_WAIT); },
+
     // C++: mesh_seat.inc:Seat::serveCompact
     serveCompact(mm) {
       const id = this.id, TICK = this.TICK, lv = this.w.lv;
@@ -178,7 +182,8 @@
             this.l43SelfEcho(k, mm);   // L43.3 (ijoin.js)
             if (this.occGet(k) >= 0 || this.sitting.has(k) || this.occGet(ckey(down(c))) >= 0 || (FREE.l1MoverCell(this, c) !== 0 && !this.l43MoverLate(c))) continue;
             { const ht = this.healTry.get(k); if (ht !== undefined && TICK - ht <= 45) continue; }
-            if ((this.l3109Ck === k + 1 && TICK - this.l3109At <= 2 * K.RC_WAIT) || (this.leaseCk === k && this.leaseUntil >= 0 && TICK <= this.leaseUntil && TICK - (this.leaseUntil - K.LEASE_TTL) <= 2 * K.RC_WAIT)) continue;   // L3.10.9
+            if (this.l3109Wait(k)) continue;   // L3.10.9
+            if (this.l921Vac(k)) { const p = this.l9PullCell.get(k); if (p !== undefined && TICK - p < K.L9_PULL + K.CONFIRM_TTL) continue; }   // L9.21: a pulled cell waits for its leaf
             this.l5At = TICK; this.w.ADMIT_SITE = 'l5-home'; this.admit(c, mm); return;
           }
           // A wholly empty home row has no head to seat anyone.

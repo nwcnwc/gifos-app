@@ -60,6 +60,18 @@
       this.islandFound(); return true;
     },
 
+    // C++: mesh_island.inc:Seat::doorCall
+    // FHOP.8 door-call, the seat's part. A greeter whose door to a knocker cannot open has called me to the door. For
+    // DOORCALL_HOLD I am a greeter of the meeting though I sit deep: I register at the door with the meeting key (so the
+    // knocker's next list names me), hold my door socket (socketed) and answer WHOHOME with HOME as a Section-1 seat does
+    // (onWhoHome). A second call while I stand there only moves the end.
+    doorCall(by, knocker) {
+      if (!this.hasCoord || this.state !== 3 || this.coord.pc === 0) return;
+      const was = this.doorCallOn(); this.doorCallUntil = (this.TICK | 0) + K.DOORCALL_HOLD;
+      if (was) return;
+      this.trace('DOOR-CALLED', this.id, this.coord, 'by=%d for=%d', by, knocker); this.emitRelay(this.genKey);
+    },
+
     // C++: mesh_island.inc:Seat::islandFound
     islandFound() {
       this.trace('ISLAND', this.id, null, 'asked=%zu since=%d rounds=%d reach=%d', this.lastGreeters.length, this.islandAskAt, this.islandAskN + 1, typeof this.f.fabricReachSeated === 'function' ? this.f.fabricReachSeated(this.id) : -1);   // reach: the oracle's count (netmatrix bar), -1 without groups

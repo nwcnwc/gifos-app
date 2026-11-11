@@ -55,9 +55,26 @@
   // it (platform_fees) — the client never computes fiat fees. On x402 the
   // split is built here, because the broker constructs the payment.
   const FEE_BPS = 300n;
-  // Where the x402 fee lands. A Base Sepolia TEST address — replace alongside
-  // the mainnet flag day, never before (docs/payments.md "What this does NOT do").
+  // Where the x402 fee lands. The same placeholder as gifos-base-net.js
+  // FEE_ADDRESS. Sepolia tests pay it; mainnet refuses to run while the
+  // module still calls this value unset (docs/payments.md "What this does NOT do").
   const TREASURY = '0x1111111111111111111111111111111111111111';
+  function treasuryAddress() {
+    const pinned = GifOS.baseNet && GifOS.baseNet.FEE_ADDRESS;
+    if (typeof pinned === 'string' && pinned.toLowerCase() !== TREASURY.toLowerCase()) {
+      throw new Error('payBroker: fee address mismatch between gifos-base-net and the broker');
+    }
+    return pinned || TREASURY;
+  }
+  function usdcLeg() {
+    if (GifOS.baseNet && typeof GifOS.baseNet.active === 'function') {
+      const n = GifOS.baseNet.active();
+      return { network: n.caip, asset: n.usdc.toLowerCase() };
+    }
+    const x = GifOS.x402;
+    const network = x.ALLOWED.networks[0];
+    return { network, asset: x.ALLOWED.assets[network][0] };
+  }
   // THE USDC SWITCH. While false, the sheet never offers the USDC rails
   // (x402 and wallet transfer), and the permission sheet does not list them,
   // for any app; nothing else about them is removed. Flip to true only when
@@ -66,8 +83,20 @@
   const USDC_ENABLED = false;
   const USDC_RAILS = ['x402', 'transfer'];
   const USDC_OFF = 'USDC payments are off until mainnet';
+  const PAYPAL_PENDING = 'PayPal payments open once PayPal approves GifOS as a platform partner';
+  // PayPal's platform-partner approval for GifOS, the same value as the pay
+  // Worker's PAYPAL_PARTNER. While it is pending, a third-party PayPal order
+  // would carry platform_fees, which PayPal refuses, so the Worker keeps that
+  // rail closed and this OS does not offer it: a third-party app is paid in
+  // USDC only. An app signed by gifos.app is paid in full and keeps PayPal.
+  const PAYPAL_PARTNER = 'pending';
+  const isGifosSigner = (s) => !!s && s.type === 'domain' && String(s.id || '').toLowerCase() === 'gifos.app';
+  const paypalFor = (signer) => PAYPAL_PARTNER === 'approved' || isGifosSigner(signer);
   // The rails this OS will offer out of a list (the author's, or the Worker's).
-  const offeredRails = (rails) => (rails || []).filter((r) => USDC_ENABLED || USDC_RAILS.indexOf(r) === -1);
+  // signer is the app's signing identity ({type, id}). With no signer, PayPal
+  // is not offered.
+  const offeredRails = (rails, signer) => (rails || []).filter((r) =>
+    (USDC_ENABLED || USDC_RAILS.indexOf(r) === -1) && (r !== 'paypal' || paypalFor(signer)));
 
   const ls = () => root.localStorage;
 
@@ -172,7 +201,7 @@
   // response. Only the exact string LIVE is live; a missing or other value
   // stays sandbox so an older worker is not labeled as real money.
   // Returns { accepted: {rail: true}, why: {rail: reason}, mode }.
-  async function railsNow(proof) {
+  async function railsNow(proof, signer) {
     let r;
     try {
       r = await fetch(workerBase() + '/rails', {
@@ -189,8 +218,9 @@
     }
     // A rail the switch above turns off is never accepted, whatever the
     // Worker says, and the human is told why.
-    for (const rail of Object.keys(accepted)) if (offeredRails([rail]).length === 0) delete accepted[rail];
+    for (const rail of Object.keys(accepted)) if (offeredRails([rail], signer).length === 0) delete accepted[rail];
     if (!USDC_ENABLED) for (const rail of USDC_RAILS) why[rail] = USDC_OFF;
+    if (!paypalFor(signer)) why.paypal = PAYPAL_PENDING;
     return { accepted, why, mode: body && body.mode === 'LIVE' ? 'LIVE' : 'test' };
   }
 
@@ -340,6 +370,7 @@
           '<div style="display:flex;justify-content:space-between;gap:.6rem;margin-top:.45rem"><span style="color:#9a9ab5">Paying</span><span><b>' + esc(sheetData.payingTo) + '</b> <span style="color:#7ddb91">✓ verified</span></span></div>' +
           (sheetData.unlocks ? '<div style="display:flex;justify-content:space-between;gap:.6rem;margin-top:.45rem"><span style="color:#9a9ab5">Unlocks</span><span>' + esc(sheetData.sku) + ' (on this computer)</span></div>' : '') +
           (sheetNote(sheetData) ? '<div style="color:#9a9ab5;font-size:.78rem;margin-top:.55rem">' + esc(sheetNote(sheetData)) + '</div>' : '') +
+          ((canX402 || sheetData.rails.transfer) && GifOS.onramp ? '<div id="gp-onramp" style="margin-top:.7rem;padding-top:.6rem;border-top:1px solid #23233a"><div style="display:flex;justify-content:space-between;gap:.6rem"><span style="color:#9a9ab5">USDC balance</span><b id="gp-usdc-bal">…</b></div><button id="gp-topup" type="button" style="margin-top:.45rem;padding:.4rem .8rem;border-radius:.4rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit">Add USDC</button></div>' : '') +
         '</div>' +
         '<div id="gp-buttons" style="display:flex;flex-direction:column;gap:.5rem">' +
           (canPaypal ? '<button id="gp-paypal" style="padding:.6rem 1rem;border-radius:.5rem;border:none;background:#ffc439;color:#111;cursor:pointer;font:inherit;font-weight:600">' + (sheetData.mode === 'LIVE' ? 'Pay with PayPal' : 'Pay with PayPal (sandbox)') + '</button>' : '') +
@@ -364,6 +395,18 @@
         return cents * CENT; // whole cents, exactly
       };
       const done = (result) => { bg.remove(); resolve(result); };
+      const topUp = box.querySelector('#gp-topup');
+      if (topUp && GifOS.onramp) {
+        topUp.onclick = () => { try { GifOS.onramp.showTopUp(); } catch (e) {} };
+        const bal = box.querySelector('#gp-usdc-bal');
+        const wallet = GifOS.payWallet;
+        if (bal && wallet && typeof wallet.peekAddress === 'function') {
+          wallet.peekAddress().then((addr) => {
+            if (!addr) { bal.textContent = 'connect a wallet'; return null; }
+            return GifOS.onramp.readUsdcBalance(addr).then((u) => { bal.textContent = GifOS.onramp.formatUsdc(u) + ' USDC'; });
+          }).catch(() => { bal.textContent = 'unavailable'; });
+        }
+      }
 
       box.querySelector('#gp-decline').onclick = () => done({ declined: true });
       const pp = box.querySelector('#gp-paypal');
@@ -642,21 +685,34 @@
     try {
       const fee = (amount * FEE_BPS) / 10000n;
       const toAuthor = amount - fee;
-      const x = GifOS.x402;
-      const network = x.ALLOWED.networks[0];
-      const asset = x.ALLOWED.assets[network][0];
+      const leg = usdcLeg();
+      const network = leg.network, asset = leg.asset;
+      // The seller address is the signed manifest's, re-read here. The sheet
+      // is checked against it and then discarded as a source of the payee.
+      const signed = GifOS.charge.assertSignedPayTo(manifest, sheetData && sheetData.address);
+      const railAddr = sheetData && sheetData.rails && sheetData.rails.x402 && sheetData.rails.x402.address;
+      GifOS.charge.assertSignedPayTo(manifest, railAddr);
       const transfers = [
-        { to: sheetData.rails.x402.address, amount: String(toAuthor), asset, network },
+        { to: signed.to, amount: String(toAuthor), asset, network },
       ];
-      if (fee > 0n) transfers.push({ to: TREASURY, amount: String(fee), asset, network });
-      // The human authenticates HERE — the Base Account passkey prompt (or the
-      // wallet's own confirm). One prompt per transfer of the split.
-      const payloads = await wallet.signTransfers(transfers);
+      if (fee > 0n) transfers.push({ to: treasuryAddress(), amount: String(fee), asset, network });
+      // The human authenticates HERE. paySplit uses one wallet_sendCalls
+      // approval when the Base Account can batch, and EIP-3009 signatures
+      // otherwise (gifos-paywallet.js).
+      const split = wallet.paySplit
+        ? await wallet.paySplit(transfers)
+        : { mode: 'eip3009', payloads: await wallet.signTransfers(transfers) };
       if (busyUi.cancelled()) throw new Error(GifOS.charge.DECLINED);
       busyUi.say('Settling on Base Sepolia…');
+      const tx = split.status && split.status.receipts && split.status.receipts[0]
+        ? (split.status.receipts[0].transactionHash || split.status.receipts[0].txHash || null)
+        : null;
+      const settleBody = split.mode === 'eip5792'
+        ? { proof, sku: sheetData.sku || null, amount: String(amount), transfers, mode: 'eip5792', batch: { id: split.batchId, tx } }
+        : { proof, sku: sheetData.sku || null, amount: String(amount), transfers, payloads: split.payloads };
       const r = await fetch(base + '/x402/settle', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ proof, sku: sheetData.sku || null, amount: String(amount), transfers, payloads }),
+        body: JSON.stringify(settleBody),
       });
       if (!r.ok) throw new Error('settlement failed (HTTP ' + r.status + '): ' + (await r.text()).slice(0, 200));
       const body = await r.json(); // { status, receiptJson, sig }
@@ -957,10 +1013,15 @@
       entitled: (sku) => p.entitled(scope, sku),
       prices: elig.prices,
     });
+    // A request may name an address. It cannot choose one. Anything other
+    // than the signed manifest address is a refusal, before a sheet, a
+    // wallet, or the Worker.
+    const claimedAddr = req && (req.payTo != null ? req.payTo : req.baseAddress != null ? req.baseAddress : req.address != null ? req.address : (req.to != null ? req.to : null));
+    if (claimedAddr != null) GifOS.charge.assertSignedPayTo(manifest, claimedAddr);
     // The proof is what the Worker verifies instead of consulting the store;
     // /rails narrows the author's allowed rails to what can be processed now.
     const proof = await proofFor(appBytes);
-    const now = await railsNow(proof);
+    const now = await railsNow(proof, elig.identity);
     const sheetData = GifOS.charge.sheet(elig, request, appName || manifest.name, now.accepted);
     sheetData.mode = now.mode;
     const r = sheetData.rails;
@@ -1128,7 +1189,7 @@
     purse, maxAmountFor, setMaxAmount, fmtUsd, entScope,
     DEFAULT_MAX, WORKER_KEY, POLICY_KEY,
     // The permission sheet lists rails through this, so one switch rules both.
-    USDC_ENABLED, offeredRails,
+    USDC_ENABLED, PAYPAL_PARTNER, offeredRails,
     // The same payment service and key, for anything else that needs them.
     workerBase, verifyReceipt,
   };

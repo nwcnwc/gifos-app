@@ -48,6 +48,7 @@
  */
 (function (root) {
   const GifOS = root.GifOS = root.GifOS || {};
+  const TM = GifOS.timings || require('./timings.js');   // every wait and timeout: js/timings.js, loaded before this file (required where there is no page)
   const net = GifOS.net;
 
   // SIGNATURES (K1b, page-adapter.md 1.6): the SEAT says which frames are claimed (`sig`, `fsig`, `fo`); this table says
@@ -72,8 +73,8 @@
     RECLAIM: { by: 'id', flag: 't' },   // L3.10: always claimed: the signature under m.id is the proof of identity (the seat's tok is the sim's stand-in, anyone can compute it)
   };
   const WIRE_VERSION = '0.9.25';   // sent as ?pv= on every relay socket (makeUrl): the relay's flag-day floor
-  const FILL_WINDOW_MS = 10 * 60 * 1000;   // mesh-identity.js: a signature's time must lie this close to mine
-  const REPLAY_MS = 30000;   // the seat's own goodbye window: 60 ticks (recv-seated.js)
+  const FILL_WINDOW_MS = TM.FILL_WINDOW_MS;   // mesh-identity.js: a signature's time must lie this close to mine
+  const REPLAY_MS = TM.REPLAY_MS;   // the seat's own goodbye window: 60 ticks (recv-seated.js)
   const BY_ID = { by: 'id' };   // a type no seat signs today: a claim on it still has to verify as m.id's whole frame
   // Per-hop fields, never signed: addressing, each holder's clock (recv.js CLOCKS moves vAt, born, e1At and the *L ticks),
   // the link's door bit, the route's own state and FARVIEW's first-emitter stamp.
@@ -113,8 +114,8 @@
   // without one, its ts must lie within 2 minutes of mine (round 2: a fixed
   // 30 s window refused every goodbye at a receiver whose clock ran more
   // than ~10 s ahead of the leaver's).
-  const PRELEAVE_MS = 10000;
-  const RELOAD_HOLD_MS = 15000;   // a closed tab's goodbye waits this long; with PRELEAVE_MS it must stay inside REPLAY_MS or its relay reads stale
+  const PRELEAVE_MS = TM.PRELEAVE_MS;
+  const RELOAD_HOLD_MS = TM.RELOAD_HOLD_MS;   // a closed tab's goodbye waits this long; with PRELEAVE_MS it must stay inside REPLAY_MS or its relay reads stale
   function goodbyeLive(nowMs, tsMs, off) {
     if (!Number.isFinite(tsMs) || tsMs <= 0) return false;
     if (off == null || !Number.isFinite(off)) return Math.abs(nowMs - tsMs) <= 120000;
@@ -506,7 +507,7 @@
     // A PAGE GONE, TAB CLOSED OR RELOADED (L3.11): no browser says which at unload, so the leaver sends both words. The reload
     // mark holds its cell; its plain goodbye (`rh`, outside the signature) waits here RELOAD_HOLD_MS for it to come back. Any
     // frame of its own after that means it did, and the goodbye is dropped; else the goodbye lands and it was a real leave.
-    const byeHeld = new Map(), byeArmed = new Map(), byeMark = new Map(), BYE_STRAY_MS = 800;   // leaver's peer id -> timer, when it started
+    const byeHeld = new Map(), byeArmed = new Map(), byeMark = new Map(), BYE_STRAY_MS = TM.BYE_STRAY_MS;   // leaver's peer id -> timer, when it started
     function byeTrace(e, k, d) { if (opts.trace) { try { opts.trace('{"t":' + (env.TICK | 0) + ',"s":' + layer.ids.nid(peer) + ',"e":"' + e + '","c":null,"d":"peer=' + String(k).slice(0, 8) + ' ' + d + '"}'); } catch (x) {} } }   // DEBUG
     function armBye(k, id, land) {
       clearTimeout(byeHeld.get(k)); byeArmed.set(k, Date.now()); byeTrace('BYE-HOLD', k, '');
@@ -1356,7 +1357,7 @@
   // for. A fire owes the whole ticks since then, at most TICK_CATCHUP (the rest carry to the next
   // fire); a post queued behind a catch-up owes nothing and runs no tick. A gap past TICK_FREEZE_MS
   // is a frozen tab: one tick, the gap an absence, the clock re-based on now.
-  const TICK_CATCHUP = 4, TICK_FREEZE_MS = 10000;
+  const TICK_CATCHUP = TM.TICK_CATCHUP, TICK_FREEZE_MS = TM.TICK_FREEZE_MS;
   function wallTicks(at, nowT, tickMs) {
     const gap = nowT - at;
     if (gap > TICK_FREEZE_MS) return { n: 1, at: nowT, absent: Math.floor(gap / tickMs) };

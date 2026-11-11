@@ -138,7 +138,7 @@
       if (!this.w.lv.TIERS_ACTIVE || !this.hasCoord || this.state !== 3 || m.id < 0) return;
       const hk = ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 });
       if (this.coord.i !== 0 && this.occGet(hk) !== m.id) return;
-      const r = newMsg('SWAPRDY'); r.id = this.id; r.swA = m.swA; r.swB = m.swB; r.swCa = m.swCa; r.swCb = m.swCb; r.tag = this.l4Ready(m) ? 1 : -1;
+      const r = newMsg('SWAPRDY'); r.id = this.id; r.swA = m.swA; r.swB = m.swB; r.swCa = m.swCa; r.swCb = m.swCb; r.tag = this.l4Ready(m) ? 1 : (this.l4MassNow() ? -2 : -1);   // -2: not ready, and many people are coming or going around me
       if (r.tag === 1) this.l4Links(r.nbrs);
       this.emit(m.id, r);
     },
@@ -164,6 +164,7 @@
       }
       if (!this.w.lv.TIERS_ACTIVE || this.l4o.at <= -1000 || m.swA !== this.l4o.a || m.swB !== this.l4o.b) return;
       if (m.id === this.l4o.a) { this.l4o.rdyA = (m.tag === 1) ? 1 : -1; this.l4o.nbA = cpKV(m.nbrs); } else if (m.id === this.l4o.b) { this.l4o.rdyB = (m.tag === 1) ? 1 : -1; this.l4o.nbB = cpKV(m.nbrs); } else return;
+      if (m.tag === -2 && this.w.lv.LG_ON && this.hasCoord && this.coord.i === 0) this.lgAsk.set(m.id, [this.TICK, 4]);   // L29.3.1: for a while this mate is passed over and the next-best one is asked
     },
 
     // C++: mesh_tier.inc:Seat::l4OnGo
@@ -180,7 +181,11 @@
     l4Back(moved) {
       this.l4Out = false; this.hasCoord = true; this.l4ExecAt = this.l4OutExec;
       if (moved) this.l4Exchange(); else { this.l4ExecAt = -1; this.f.fabricNoteSwap(this.id, 3); this.trace('SWAP-ABORT', this.id, this.coord, 'partner=%d stayed', this.l4Partner); }
-      const h = this.l4Held; this.l4Held = []; for (const x of h) this.recv(x);
+      const h = this.l4Held; this.l4Held = [];
+      for (const x of h) {
+        if (moved && this.hasCoord && x.id === this.l4Partner && x.sw < 0 && (((x.t === 'HELLO' || x.t === 'CLAIM') && x.ck === ckey(this.coord)) || (x.t === 'PHONE' && ckey(x.coord) === ckey(this.coord)))) { this.trace('SWAP-STALE', this.id, this.coord, 'from=%d', x.id); continue; }   // L4.3.4: what the other person said about their old place before we swapped is not a claim on it now
+        this.recv(x);
+      }
     },
 
     // C++: mesh_tier.inc:Seat::l4Exchange
@@ -209,7 +214,7 @@
         for (let q = 0; q < n2; q++) { const x = this.occGet(ckey(ol2[q])); if (x >= 0) told.add(x); }
         for (const e of oldLinks) { if (e.v === partner || told.has(e.v)) continue; told.add(e.v); this.trace('SWAP-TELL', this.id, this.coord, 'to=%d', e.v); const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = this.id; this.emit(e.v, h); }
       }
-      this.lastAck = this.TICK; this.lastPhone = this.TICK - 8 + 3;
+      this.lastAck = this.TICK; this.lastPhone = this.TICK - ((this.coord.pc === 0 && this.l30Small()) ? K.L30_BEAT : 8) + 3;   // the first beat waits for my greetings whatever the beat period is
     },
 
     // C++: mesh_tier.inc:Seat::l4SwapHello
@@ -237,6 +242,7 @@
       if (!this.hasCoord || this.state !== 3) { this.l4ExecAt = -1; this.l4o = newL4Order(); return; }
       if (this.l4ExecAt >= 0) {
         if (this.l4Pinged < 0) { this.l4Pinged = this.TICK; const p = newMsg('SWAPRDY'); p.id = this.id; p.tag = 2; this.emit(this.l4Partner, p); }
+        if (this.l4Pinged === this.TICK) for (const e of this.l4Nb) { if (e.v < 0 || e.v === this.id || e.v === this.l4Partner) continue; const ls = this.f.fabricLinkState(this.id, e.v); if (ls === E.LS_CLOSED || ls === E.LS_NONE) { this.f.fabricDial(this.id, e.v); this.trace('SWAP-DIAL', this.id, this.coord, 'peer=%d cell=%s', e.v, coordStr(unckey(e.k))); } }   // L4.3.1: the links of the cell I am to enter are dialled ahead, so they are open when I sit
         if (!this.l4Acked && this.TICK >= this.l4ExecAt - 3) {
           const ok = this.l4PartnerPing >= 0 && this.lastChurn === this.l4GoChurn && this.TICK - this.healAt >= 2 && !this.moving && !this.l4Hold;
           const v = newMsg('SWAPRDY'); v.id = this.id; v.tag = ok ? 3 : 4; this.emit(this.l4Partner, v);

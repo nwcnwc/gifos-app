@@ -762,7 +762,10 @@
       return out;
     },
     // C++: mesh.cpp:Seat::socketed
-    socketed() { return this.state !== 3 || (this.hasCoord && this.coord.pc === 0) || (!l13MergingOf(this) && this.TICK - this.l13KnockAt <= K.RELAY_TTL) || this.doorCarry; },
+    socketed() { return this.state !== 3 || (this.hasCoord && this.coord.pc === 0) || (!l13MergingOf(this) && this.TICK - this.l13KnockAt <= K.RELAY_TTL) || this.doorCarry || this.doorCallOn(); },   // FHOP.8: a friend called to the door holds a door socket while it stands there
+    // C++: mesh.cpp:Seat::doorCallOn
+    // FHOP.8: a friend called to the door (doorCall, island.js) answers there as a greeter until doorCallUntil.
+    doorCallOn() { return this.hasCoord && this.state === 3 && this.coord.pc !== 0 && this.TICK < this.doorCallUntil; },
     // C++: mesh.cpp:Seat::l13MassHeard
     l13MassHeard() { this.l13MassLast = this.TICK; this.l13MassTick = -1; },
     // C++: mesh.cpp:Seat::l13OwnerPending
@@ -782,8 +785,11 @@
       for (const v of this.l829Bye.values()) if (this.TICK - v <= K.RELAY_TTL) return true;
       return false;
     },
+    // C++: mesh.cpp:Seat::l4Ahead
+    // L4.3.1: a neighbour of the cell I am to enter, from the head's go to the exchange.
+    l4Ahead(x) { if (this.l4ExecAt < 0 && !this.l4Out) return false; for (const e of this.l4Nb) if (e.v === x) return true; return false; },
     // C++: mesh.cpp:Seat::l4Peer
-    l4Peer(x) { return this.l4MarkUntil >= this.TICK && this.l4Old.has(x); },
+    l4Peer(x) { return (this.l4MarkUntil >= this.TICK && this.l4Old.has(x)) || this.l4Ahead(x); },
     // C++: mesh.cpp:Seat::l13SplitHole
     l13SplitHole(k) { const it = this.l13SplitCell.get(k); return it !== undefined && this.TICK - it[1] <= K.RELAY_TTL; },
     // C++: mesh.cpp:Seat::l1612Keep

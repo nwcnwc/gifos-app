@@ -3896,7 +3896,10 @@
     } : null;
     if (root.__gifosPermissions) {
       try {
+        let sig = null; // the claimed signer, for the sheet's PayPal line; a bad block reads as none
+        try { sig = originalBytes && GifOS.sign && GifOS.sign.readSig ? GifOS.sign.readSig(originalBytes) : null; } catch (e) { sig = null; }
         root.__gifosPermissions(policy, manifest, launchReq, {
+          signer: sig && sig.type && sig.id ? { type: String(sig.type), id: String(sig.id) } : null,
           pullOptional: function (onStatus) {
             const A = GifOS.assets;
             if (!A) return Promise.reject(new Error('Downloads are not available on this computer.'));
