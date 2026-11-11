@@ -46,6 +46,8 @@
  *   fabricVerdict        A1     the seat's death verdicts (DEATH_WHY), drained by the page's departure intake
  *   fhopActive           A1     true where the page gave a friend-hop face (o.fhop), as the sim's LINKMODEL && FHOP_ON
  *   fhopFriendFor        A1     sponsorSend's friend rung would carry it (o.fhop.friendFor)
+ * Not seat calls, the fabric's own friend-hop parts on a page (C++ mesh_fhop.inc): fhDoorCall / fhDoorDue (FHOP.8, the door
+ * pcw's clock fires when a knocker's door never opened) and doorCallIn (a call that reached me over a dc, kinds 7 and 8).
  *   l164Of               A1     LINKMODEL && !islandStand(s, IS_L164)
  *   l18Deliv             A2     L18 count
  *   l18Hop               A2     L18 next hop
@@ -325,6 +327,45 @@
     }
     // C++: mesh_fhop.inc:fhopFriendFor
     function fhopFriendFor(a, x) { if (!fh || a !== me || x < 0) return false; const p = ID.pid(x); return !!p && !!fh.friendFor(p); }
+    // FHOP.8 door-call (C++: mesh_fhop.inc fhDoorCall, fhDoorDue; the law text: docs/healing-laws.md). The page face (o.fhop)
+    // gives what my own transport knows: my connected peers (myConns), each one's network tag and NAT kind (its status beat),
+    // the network tags its beat lists for its own connected peers, the carrier score of my pc to it (FHOP.9), and the dc send.
+    // Network tags are opaque strings (a keyed hash of a public address, run.html netTag); '' or null is unknown.
+    const dcAt = new Map();   // knocker -> the tick I last called (or passed a call) for it
+    // C++: mesh_fhop.inc:fhHome   (my view seats x in Section 1: the door lists it already)
+    function fhHome(s, x) { for (const [k, v] of s.occ) if (v === x) return ckPc(k) === 0; return false; }
+    // C++: mesh_fhop.inc:fhDoorCall
+    function fhDoorCall(j, fwdBy) {
+      const s = seat(); if (!fh || !fh.doorSend || !s || dead || !s.hasCoord || s.state !== 3 || j < 0 || j === me) return;
+      { const d = dcAt.get(j); if (d !== undefined && w.TICK - d < K.DOORCALL_HOLD) return; } dcAt.set(j, w.TICK);
+      if (dcAt.size > 256) for (const [k, v] of [...dcAt]) { if (w.TICK - v > K.DOORCALL_HOLD) dcAt.delete(k); }
+      const P = (x) => ID.pid(x), jp = P(j); if (!jp) return;
+      const tagOf = (x) => { const p = P(x); return p ? fh.tagOf(p) || '' : ''; };
+      const skip = fwdBy >= 0 ? tagOf(fwdBy) : (fh.myTag() || '');   // the network whose door could not open
+      const kj = fh.knockNat ? fh.knockNat(jp) : -1; const kNat = Number.isInteger(kj) ? kj : -1;   // the knocker's NAT kind, when its offer said it
+      const mc = []; for (const p of fh.conns()) { const x = learnPeer(p); if (x >= 0 && x !== me) mc.push(x); }
+      const sc = new Map(mc.map((x) => [x, fh.score(P(x))]));
+      mc.sort((a, b) => (sc.get(b) - sc.get(a)) || (a - b));   // FHOP.9: the best friend first, lowest id on a tie
+      for (const r of mc) {
+        if (r === j || r === fwdBy || fhHome(s, r)) continue; const tg = tagOf(r); if (!tg || tg === skip) continue;
+        const n = fh.natOf(P(r)); if (!fhopM.fhNatMeet(Number.isInteger(n) ? n : -1, kNat)) continue;
+        trace('FH-DCALL-SEND', me, s.coord, 'to=%d for=%d by=%d', r, j, fwdBy); fh.doorSend(P(r), 7, jp); return;
+      }
+      if (fwdBy >= 0) return;   // a passed call goes no further
+      for (const r of mc) {
+        if (r === j || fhHome(s, r)) continue; const ft = fh.ftags(P(r)) || []; if (!ft.some((t) => t && t !== skip)) continue;
+        trace('FH-DCALL-PASS', me, s.coord, 'to=%d for=%d', r, j); fh.doorSend(P(r), 8, jp); return;
+      }
+      trace('FH-DCALL-NONE', me, s.coord, 'for=%d conns=%d', j, mc.length);
+    }
+    // C++: mesh_fhop.inc:fhDoorDue   (the door's ICE time is up and it never opened: unless my view seats the knocker, call)
+    function fhDoorDue(j) { const s = seat(); if (!s || dead) return; for (const v of s.occ.values()) if (v === j) return; fhDoorCall(j, -1); }
+    // C++: mesh_fhop.inc:fhOnMsg kinds 7 and 8   (a door-call over a dc from a peer of mine)
+    function doorCallIn(fromPeer, kind, knockerPeer) {
+      const by = learnPeer(fromPeer), j = learnPeer(knockerPeer), s = seat(); if (by < 0 || j < 0 || !s || dead) return;
+      if (kind === 7) s.doorCall(by, j);   // I am called to the door
+      else if (kind === 8) fhDoorCall(j, by);   // the call passed to me: I call my friend on another network
+    }
     // what the pc laws read (linkWhy LW_FHOP): my relay roles, as ints
     function fhRoles() {
       const r = fh.roles(); const n = (p) => learnPeer(p);
@@ -379,7 +420,7 @@
       void presentedKey;   // the page's genesis key is mesh-wire's (the room key the relay hashes)
       const s = seat(); if (!s || !relay.knock) return;
       const isl = seatM.islandStand(s, E.IS_RELAY); const s1Only = isl || l164Of(s);
-      const blobOk = !!blob && (!s1Only || (s.state === 3 && s.hasCoord && s.coord.pc === 0));
+      const blobOk = !!blob && (!s1Only || (s.state === 3 && s.hasCoord && (s.coord.pc === 0 || s.doorCallOn())));   // FHOP.8: a friend called to the door registers there
       st.relay.knock++; relay.knock(null, blobOk);
     }
     // C++: mesh.cpp:relayUnlist
@@ -436,7 +477,7 @@
     // ---- the pc laws (A2) over my io ----------------------------------------------------------------------------
     const PW = pcWireM();
     if (!PW || !PW.create) throw new Error('mesh env: GifOS.meshPcWire (js/mesh/page/pclaws-wire.js) is not loaded');
-    const pcw = PW.create({ me, seat, w, trace, io, wireTx, l392Contest: o.l392Contest, fh: fh ? { friendFor: fhopFriendFor, roles: fhRoles } : null });
+    const pcw = PW.create({ me, seat, w, trace, io, wireTx, l392Contest: o.l392Contest, fh: fh ? { friendFor: fhopFriendFor, roles: fhRoles, doorDue: (x) => fhDoorDue(x) } : null });
     // a law that throws must not take the page down: trace it, count it, answer as "no"
     const guard = (n, fn) => (...a) => {
       try { return fn(...a); } catch (e) {
@@ -624,6 +665,7 @@
     const env = {
       me, world: w, traces: () => ring.slice(), ids: ID, f: F, pcw, tick, frame, transport, doorForgive: (peer) => { const x = learnPeer(peer); if (x >= 0 && pcw.doorForgive) pcw.doorForgive(x); }, dialHeld: (peer) => { const x = learnPeer(peer); return x >= 0 && !!pcw.dialHeld && pcw.dialHeld(x); }, relayFrame, absence, leave, stats, links,
       dirFor, learnDir, relayBusyList,
+      doorCallIn: (fromPeer, kind, knockerPeer) => guard('doorCallIn', doorCallIn)(fromPeer, kind, knockerPeer),   // FHOP.8 kinds 7 and 8 off a dc
       // the mark my answer to peer carries back to it (A2), for the pc layer's answer
       mark: (peer) => { const x = ID.pid(ID.nid(peer)) === String(peer) ? ID.nid(peer) : learnPeer(peer); return x >= 0 && pcw.mark ? pcw.mark(x) : null; }, farView: (to) => farView(seat(), to),
       // the seat's construction is the caller's (A3): new Seat(env.me, env.world)

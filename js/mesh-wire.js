@@ -167,7 +167,7 @@
     const dropDeep = opts.dropDeepSocket !== false;
     const ident = GifOS.meshIdentity || null;
     let stopped = false, lockedFired = false, doorFired = false, strandedFired = false, rejFired = false;
-    let sock = null, deepSince = -1, wasNetDark = false, netDarkAt = 0;   // netDarkAt: wall clock of the offline edge (the dark span is an absence — see tick())
+    let sock = null, deepSince = -1, dcWas = false, wasNetDark = false, netDarkAt = 0;   // dcWas: FHOP.8, I stood at the door last tick   // netDarkAt: wall clock of the offline edge (the dark span is an absence — see tick())
     let lastTickAt = 0, workerClock = false;   // wall clock of the last tick run; workerClock: the tick timer is a Worker (the wall-time clock applies: see tick())
     // Wire-level greeter registration health (production only — the sim has no
     // sockets, so none of this is mesh law). The relay's greeter pool is pure
@@ -758,7 +758,9 @@
       sock.send(obj);
     }
     const iAmInsideTheRoom = () => !!(seat && seat.hasCoord && seat.state === 3);
-    const iAmAGreeter = () => iAmInsideTheRoom() && seat.coord.pc === 0;
+    // FHOP.8: a deep seat called to the door (the seat's doorCallOn) is a greeter for DOORCALL_HOLD: it registers, keeps its socket, answers WHOHOME
+    const doorCalled = () => !!(raw && raw.doorCallOn && raw.doorCallOn());
+    const iAmAGreeter = () => iAmInsideTheRoom() && (seat.coord.pc === 0 || doorCalled());
     // Is this peer already IN the room? Occupancy is the membership roll, so a
     // peer holding no cell in it has not been seated: it is at the door.
 
@@ -779,7 +781,7 @@
       const k = gk || myKey;
       if (!iAmAGreeter()) { KNOCK_FOR_THE_GREETER_LIST(k); return; }
       net.sealFixed(roomKey, { p: peer, c: seat.coord, fa: 1 }) // a greeter's sealed address is one fixed-size sealed part, like every sealed thing on the relay
-        .then((b) => { const s = JSON.stringify(b); greeterTrace.push({ t: Date.now(), tick: env.TICK, state: seat.state, post: seat.state, listLen: -1, open: -1, founded: false, action: 'register-blob:' + blobFp(s) }); if (greeterTrace.length > GREETER_TRACE_CAP) greeterTrace.shift(); sendRaw({ t: 'knock', gk: k, gblob: s }); })
+        .then((b) => { const s = JSON.stringify(b); greeterTrace.push({ t: Date.now(), tick: env.TICK, state: seat.state, post: seat.state, listLen: -1, open: -1, founded: false, action: 'register-blob:' + blobFp(s) }); if (greeterTrace.length > GREETER_TRACE_CAP) greeterTrace.shift(); sendRaw(Object.assign({ t: 'knock', gk: k, gblob: s }, seat.coord.pc !== 0 ? { dc: '1' } : {})); })   /* dc: a door-call registration (FHOP.8), which the relay keeps only for the call */
         .catch(() => sendRaw({ t: 'knock', gk: k }));
     }
     // (2b) RE-REGISTER on a wire event — same door function as (2), fired when
@@ -1058,6 +1060,8 @@
         const needsRelay = !raw || raw.socketed();
         if (needsRelay) deepSince = -1;
         else if (deepSince < 0) deepSince = env.TICK;
+        // FHOP.8: the call to the door is over and I sit deep: off the door list now (the relay also ends a door-call entry on its own clock)
+        { const dcNow = doorCalled(); if (dcWas && !dcNow && !(raw && raw.hasCoord && raw.state === 3 && raw.coord.pc === 0)) { sendRaw({ t: 'unlist' }); if (opts.trace) { try { opts.trace('{"t":' + (env.TICK | 0) + ',"s":' + raw.id + ',"e":"DOOR-CALL-END","c":null,"d":"unlisted"}'); } catch (e) {} } } dcWas = dcNow; }
         if (dropDeep && !needsRelay && sock && deepSince >= 0 && env.TICK - deepSince > 20) { try { sock.close(); } catch (e) {} sock = null; }
         if (needsRelay && !sock) makeSock(); // re-arm reachability (a policy-REJECTED socket stays down — see sendRaw)
         // The door refused my socket for want of the room's password (4003):
