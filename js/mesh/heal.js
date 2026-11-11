@@ -626,7 +626,10 @@
         if (l1MoverCell(this, hole) !== ckey(this.coord) && !(colPack && 1 === 1 && l1RowEmpty(this, hole))) return;
         if (this.heldRightNow(ckey(hole))) return;
       }
+      const l415 = this.flCur >= 0 && this.flCur !== this.id && !this.moving && !this.l4Busy() && !this.earShut();   // a move on another seat's heal order asks the cell, from the seat it still holds
+      if (l415) this.gaRtAsk(hole, this.flCur);
       this.doMove(hole, -1, nbrs);
+      if (l415) this.gaRtArm(hole);
     },
     // T1 claim-before-vacate: take the new seat first while the old one is still held.
     // C++: mesh_heal.inc:Seat::doMove

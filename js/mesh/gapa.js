@@ -6,6 +6,7 @@
  * L41.2 the move confirms on a second word: the leaf asks the seats at the target cell's links (placer and itself aside)
  *   who they hear there; a "held" answer rolls the move back, all "free" confirms it, and at the window's end it
  *   confirms on at least one "free" and rolls back on none.
+ * L41.5 a heal order's move asks the cell it was ordered into, over the mover's own links, before it leaves its seat.
  * L41_OFF (a build-time switch in the sim, 0 in the release) is not ported: every law here is on.
  */
 (function (root) {
@@ -56,6 +57,7 @@
     // L41.2: may this new-neighbourhood frame confirm my move? Never the placer's; never any frame when I asked a second word.
     // C++: mesh_gapa.inc:Seat::gaConfirmOk
     gaConfirmOk(m) {
+      if (this.gaRtLive()) return false;   // the cell has not answered yet
       if (!this.gaLive()) return true;
       if (this.gaAsk.length) return false;
       const from = m.id >= 0 ? m.id : m.lk;
@@ -116,6 +118,32 @@
       this.gaCk = 0;
       if (this.gaFreeN > 0) { lv.GA_CONF_WIN++; this.confirmMove(); return true; }
       lv.GA_RB++; this.trace('L41.2-NOWORD', this.id, this.coord, 'placer=%d', this.gaPlacer); this.rbWhy = 'gapa-noword'; this.rollbackMove(); return true;
+    },
+
+    // L41.5: a heal order's move asks the cell. A heal order is one seat's word that a cell is empty, and the neighbours it
+    // names are that seat's choice too. Before it moves, from the seat it still holds, the leaf sends one question toward
+    // the cell over its own links. The holder answers with its id; a seat that has the cell on its own links and hears
+    // nobody there right now answers "nobody" at once. An answer naming a holder rolls the move back; until an answer
+    // comes, a new neighbour's frame does not confirm the move; with no answer the claim window ends as it always did.
+    // C++: mesh_gapa.inc:Seat::gaRtAsk
+    gaRtAsk(hole, signer) {
+      this.gaRtCk = 0; this.gaRtPn = -1; this.gaRtBy = signer;
+      if (!this.hasCoord || ckey(this.coord) === ckey(hole)) return;
+      const nh = this.nextHopToward(hole, -1); if (nh < 0) return;
+      this.gaRtPn = this.probeNote(ckey(hole)); this.gaRtAt = this.TICK;
+      const m = newMsg('ROUTE'); m.target = { pc: hole.pc, r: hole.r, i: hole.i }; m.asker = this.id; m.tag = K.GA_RT; m.ttl = K.L191_HOLD; m.via = this.id; m.pseq = ++this.w.lv.RSEQ; m.coord = { pc: this.coord.pc, r: this.coord.r, i: this.coord.i }; m.pn = this.gaRtPn; this.emit(nh, m);
+      this.trace('L41.5-ASK', this.id, hole, 'signer=%d hop=%d', signer, nh);
+    },
+    // C++: mesh_gapa.inc:Seat::gaRtArm
+    gaRtArm(hole) { if (this.gaRtPn >= 0 && this.moving && this.hasCoord && ckey(this.coord) === ckey(hole) && this.gaRtAt >= this.moveAt) this.gaRtCk = ckey(hole); else { this.gaRtCk = 0; this.gaRtPn = -1; } },
+    // C++: mesh_gapa.inc:Seat::gaRtLive
+    gaRtLive() { return this.moving && this.hasCoord && this.gaRtCk !== 0 && ckey(this.coord) === this.gaRtCk && this.gaRtPn >= 0 && this.gaRtAt >= this.moveAt; },
+    // C++: mesh_gapa.inc:Seat::gaRouted
+    gaRouted(m) {
+      const lv = this.w.lv;
+      if (!this.gaRtLive() || ckey(m.target) !== this.gaRtCk || m.pn !== this.gaRtPn) return;
+      if (m.id >= 0 && m.id !== this.id) { lv.GA_HELD++; lv.GA_RB++; this.trace('L41.5-HELD', this.id, this.coord, 'holder=%d signer=%d', m.id, this.gaRtBy); this.gaRtCk = 0; this.gaRtPn = -1; this.rbWhy = 'heal-held'; this.rollbackMove(); return; }
+      this.trace('L41.5-FREE', this.id, this.coord, 'signer=%d', this.gaRtBy); this.gaRtCk = 0; this.gaRtPn = -1;
     },
 
     // The lever `hostile densify asked`: a hostile deep row head serving a deeper leaf's compaction FIND seats it in a held
