@@ -46,10 +46,10 @@
       "tts"
     ]
   },
+  "sha256": "fd51555963a0ce14d8d4f162460c72c6d15c95af37f16e59c7ead8a6ad420e36",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
     "ts": "2026-10-26"
-  },
-  "sha256": "fd51555963a0ce14d8d4f162460c72c6d15c95af37f16e59c7ead8a6ad420e36"
+  }
 }
