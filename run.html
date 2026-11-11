@@ -555,7 +555,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <video id="lob-preview-vid" autoplay muted playsinline></video>
       <div class="lob-pv-off" id="lob-pv-off"><span class="lob-pv-face" id="lob-pv-face" aria-hidden="true"></span><span data-t="camOffChip" class="lob-pv-offtxt">Camera off</span></div>
       <span data-t="lobPreviewName" class="lob-pv-name" id="lob-preview-name">You</span>
-      <button data-al="lobDeskMoreAria" data-t="more" type="button" id="lob-desk-more" hidden aria-pressed="false" aria-label="Watch, or change the host key">More</button>
+      <button data-al="lobDeskMoreAria" data-t="more" type="button" id="lob-desk-more" hidden aria-pressed="false" aria-label="Watch a link, or see the host password">More</button>
       <span data-t="youJoinMutedWith" class="lob-pv-note" id="lob-pv-note">You join muted, with the camera off</span>
       <div class="lob-av" id="lob-av">
         <button type="button" id="lob-mic" class="lob-avbtn"><span class="lob-avico" aria-hidden="true">🎤</span><span data-t="lobMicOff" class="lob-avtxt">Mic off</span></button>
@@ -570,19 +570,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <button data-t="lobAdminBtn" type="button" id="lob-admin-btn" class="lob-link">Host this call</button>
       <div id="lob-admin" class="lob-expand" style="display:none">
         <input data-ph="lobAdminNamePh" id="lob-admin-name" maxlength="40" placeholder="Name this call" autocomplete="off">
-        <button data-t="lobKeyReveal" type="button" id="lob-key-reveal" class="lob-text" hidden>Change host key</button>
+        <button data-t="lobKeyReveal" type="button" id="lob-key-reveal" class="lob-text" hidden>Host password</button>
         <div id="lob-key-block">
-        <label class="lob-pwlab">🔑 <b data-t="invAdminPh" id="lob-admin-pass-head">Host password</b> — only you<small data-t="lobAdminPassNote" id="lob-admin-pass-note">Do not share it. Guests do not need it, and it is not part of the link.</small></label>
+        <label class="lob-pwlab">🔑 <b data-t="invAdminPh" id="lob-admin-pass-head">Host password</b> — only you<small data-t="lobAdminPassNote" id="lob-admin-pass-note">Only you. Do not share it. It is not part of the link.</small></label>
         <div class="lob-keyrow">
           <input data-ph="invAdminPh" id="lob-admin-pass" type="password" maxlength="64" placeholder="Host password" autocomplete="new-password">
           <button data-t="lobKeygen" type="button" id="lob-keygen" class="lob-ghost">Generate</button>
         </div>
         </div>
-        <button data-t="lobGuestReveal" type="button" id="lob-guest-reveal" class="lob-text" hidden>Add a guest password</button>
-        <button data-t="lobGuestMore" type="button" id="lob-guest-more" class="lob-link" aria-expanded="false">Add a password for guests</button>
+        <button data-t="lobGuestReveal" type="button" id="lob-guest-reveal" class="lob-text" hidden>Add a room password</button>
+        <button data-t="lobGuestMore" type="button" id="lob-guest-more" class="lob-link" aria-expanded="false">Add a room password</button>
         <div id="lob-guest-extra" style="display:none">
-          <label class="lob-pwlab">🎟 <b data-t="lobGuestPassHead" id="lob-guest-pass-head">Guest password</b> — the one you share<small data-t="lobGuestPassNote" id="lob-guest-pass-note">Optional. It is not part of the link.</small></label>
-          <input data-ph="invGuestPh" id="lob-guest-pass" type="password" maxlength="64" placeholder="Guest password (optional)" autocomplete="new-password">
+          <label class="lob-pwlab">🎟 <b data-t="lobGuestPassHead" id="lob-guest-pass-head">Room password</b> <small data-t="lobGuestPassNote" id="lob-guest-pass-note">The one you share. People need it to get in. It is not part of the link.</small></label>
+          <input data-ph="invGuestPh" id="lob-guest-pass" type="password" maxlength="64" placeholder="Room password (optional)" autocomplete="new-password">
         </div>
         <!-- A broadcast asks two things and goes: who can watch, and now or later. -->
         <div id="lob-bc" hidden>
@@ -1165,7 +1165,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <h3 data-t="admTitle">Room admin</h3>
       <p id="adm-hint"></p>
       <div id="adm-setup">
-        <input id="adm-pass" type="password" maxlength="64" data-ph="admPassPh" placeholder="Admin password" autocomplete="new-password">
+        <input id="adm-pass" type="password" maxlength="64" data-ph="admPassPh" placeholder="Host password" autocomplete="new-password">
         <button id="adm-enable" data-t="admEnable">Sign in as admin</button>
       </div>
       <div id="adm-panel" style="display:none;text-align:left">
@@ -2143,7 +2143,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const inv = document.querySelector('#inv-modal h3');
       if (inv) inv.textContent = 'Share this broadcast';
       const pw = document.getElementById('pwbtn');
-      if (pw) pw.title = 'Viewer password. Optional. It is not part of the link.';
+      if (pw) pw.title = 'Room password. Optional. It is not part of the link.';
       const files = document.querySelector('#cfiles h4');
       if (files) files.textContent = 'Files pinned to this broadcast';
       const pin = document.getElementById('cattach');
@@ -9524,7 +9524,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const bcLive = !!(BROADCAST && ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin')));
       let extra = '';
       if (n > 1 && !bcWatcher) {
-        if (!roomPw) extra = bcLive ? ' · blurred until you set a viewer password' : ' · ' + uiText('unlockClear', 'faces stay soft until a password');
+        if (!roomPw) extra = bcLive ? ' · blurred until you set a room password' : ' · ' + uiText('unlockClear', 'faces stay soft until a password');
         else if (hasAdminRoom() && admins.length === 0) extra = ' · no admin here — everyone stays blurred';
         else if (!adminPresent() && !allConsent()) {
           // Past one section the ready count is the fold's: everyone minus the
@@ -14460,7 +14460,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       ab.style.display = hasAdmin ? '' : 'none';
       ab.textContent = amAdmin ? uiText('admBtn', 'Admin') : uiText('admSignIn', 'Admin sign-in');
       ab.title = amAdmin ? uiText('admTipOn', 'Admin controls: room password, chat and waiting room')
-        : uiText('admTipOff', 'This room has an admin — enter the admin password to get admin controls');
+        : uiText('admTipOff', 'This room has a host — enter the host password to get the host controls');
       const pwb = document.getElementById('pwbtn');
       pwb.disabled = hasAdmin && !amAdmin;
       pwb.title = (hasAdmin && !amAdmin)
@@ -16494,15 +16494,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const pwModal = document.getElementById('pw-modal');
     function showPwModal(locked, why) {
       const service = BROADCAST;
-      document.getElementById('pw-title').textContent = service ? 'Viewer password' : (locked ? uiText('pwTitleLocked', 'This room is locked') : uiText('pwTitle', 'Room password'));
+      document.getElementById('pw-title').textContent = service ? uiText('pwTitle', 'Room password') : (locked ? uiText('pwTitleLocked', 'This room is locked') : uiText('pwTitle', 'Room password'));
       document.getElementById('pw-hint').textContent = service
         ? (locked
-          ? 'Enter the viewer password to see the stage clearly.'
+          ? 'Enter the room password to see the stage clearly.'
           : 'Optional. It is not part of the link. People can still watch, and the stage stays blurred until it is set.')
         : why === 'banned' ? uiText('pwHintBanned', 'They are out, and this is the room\'s new password. Everyone still here already has it. Anyone joining later needs it, so copy it and send it to them yourself. To let a banned person back in, tell them this password.')
         : (locked
           ? (why === 'changed'
-            ? uiText('pwHintChanged', 'The admin changed the room password. Enter the new password to rejoin the meeting.')
+            ? uiText('pwHintChanged', 'The host changed the room password. Enter the new password to rejoin the meeting.')
             : uiText('pwHintLocked', 'Enter the room password to join the meeting.'))
           : hasAdminRoom()
             ? uiText('pwHintAdmin', 'Only the admin can set or change it. When it is set or changed, everyone else here goes back to the door and must enter it to rejoin. Leave empty to remove the lock.')
@@ -16677,11 +16677,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (amAdmin) {
         setup.style.display = 'none'; panel.style.display = '';
         paintChatOptions();
-        document.getElementById('adm-hint').textContent = uiText('admHintOn', 'You are an admin of this room. Admins can lock the room with a password (the key to clear video), mute or blur someone for everyone, and ban people. Anyone who knows the admin password can open Admin and sign in too.');
+        document.getElementById('adm-hint').textContent = uiText('admHintOn', 'You are a host of this room. Hosts can lock the room with a room password (the key to clear video), mute or blur someone for everyone, and ban people. Anyone who knows the host password can open Admin and sign in too.');
       } else {
         setup.style.display = ''; panel.style.display = 'none';
         btn.textContent = uiText('admEnable', 'Sign in as admin');
-        document.getElementById('adm-hint').textContent = uiText('admHintOff', 'This room has an admin. If you know the admin password, enter it here to get the admin controls. Your password stays on this device.');
+        document.getElementById('adm-hint').textContent = uiText('admHintOff', 'This room has a host. If you know the host password, enter it here to get the host controls. Your password stays on this device.');
       }
       admModal.style.display = 'flex';
     }
@@ -16710,7 +16710,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!(await adoptAdmKey(K))) {
         btn.disabled = false;
         btn.textContent = uiText('admEnable', 'Sign in as admin');
-        hint.textContent = uiText('admWrong', 'Wrong admin password.');
+        hint.textContent = uiText('admWrong', 'Wrong host password.');
         sayState('adminWrong');
         return;
       }
@@ -16948,7 +16948,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           + '<h4>Watching</h4>'
           + '<ul class="help-list">'
           + '<li>The link is all you need. Your <b>camera and microphone are not used</b> — watching asks no permissions at all.</li>'
-          + '<li>The video stays <b>blurred</b> until the host sets a <b>viewer password</b>. If you’re asked for one, the host shares it separately — it’s the ticket, and it does not ride the link.</li>'
+          + '<li>The video stays <b>blurred</b> until the host sets a <b>room password</b>. If you’re asked for one, the host shares it separately — it’s the ticket, and it does not ride the link.</li>'
           + '<li><b>Chat</b> is live to everyone here, is not stored on any server, and is gone when the broadcast ends.</li>'
           + '<li><b>Sound on</b> on the room bar mutes the stage on this device. Everyone else still hears it.</li>'
           + '</ul>'
@@ -16961,7 +16961,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           + '<h4>For the host</h4>'
           + '<ul class="help-list">'
           + '<li>Your <b>host password</b> is yours alone — it IS your control of this broadcast. Do not send it to viewers.</li>'
-          + '<li>The <b>Password</b> button sets or changes the <b>viewer password</b>: without one the broadcast stays blurred; with one, whoever you give it to sees you clear.</li>'
+          + '<li>The <b>Password</b> button sets or changes the <b>room password</b>: without one the broadcast stays blurred; with one, whoever you give it to sees you clear.</li>'
           + '<li>The hand queue floats to the top — tap a name to call them up on Stage. Revoking their grant pulls them back down.</li>'
           + '<li>Chat has a <b>Turn chat off</b> switch (your messages still land) and per-message delete. Ban lives on each tile’s controls.</li>'
           + '<li>A broadcast lives while its host is present. <b>End</b> it, and everyone watching sees a five-minute countdown, then the room closes.</li>'
@@ -17528,7 +17528,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const open = lob.classList.toggle('desk-more');
         more.setAttribute('aria-pressed', open ? 'true' : 'false');
         more.textContent = open ? 'Done' : 'More';
-        more.setAttribute('aria-label', open ? 'Back to Go live' : 'Watch, or change the host key');
+        more.setAttribute('aria-label', open ? 'Back to Go live' : 'Watch a link, or see the host password');
         if (!open) {
           document.getElementById('lob-join').style.display = 'none';
           if (BC_INTENT) {
@@ -19554,7 +19554,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const purged = cleared ? purgeAllFiles(false) : 0; // password gone → shared files go with it
         renderFiles();
         if (grantMine) { /* nothing to say: they are about to sit */ }
-        else if (grantNo) setStatus(uiText('pwBanHeard', '🔒 The admin removed someone and changed the room password. You stay in the meeting.'));
+        else if (grantNo) setStatus(uiText('pwBanHeard', '🔒 The host removed someone and changed the room password. You stay in the meeting.'));
         else setStatus(m.pw ? '🔒 Room password ' + (m.by ? 'set by ' + m.by : 'updated')
           : '🔓 Password removed' + (m.by ? ' by ' + m.by : '') + ' — the room is blurred again' + (purged ? ' and shared files were cleared' : ''));
         reactRoomState(); // the password is the key to clear video
@@ -33075,8 +33075,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             '<input id="inv-adm-room" maxlength="40" placeholder="' + esc(uiText('invRoomPh', 'Name this room')) + '" autocomplete="off" value="' + esc(room) + '">' +
             '<label class="lob-pwlab"><b>Host password</b><small>Only you. People who join do not need it.</small></label>' +
             '<input id="inv-adm-pass" type="password" maxlength="64" placeholder="' + esc(uiText('invAdminPh', 'Host password')) + '" autocomplete="new-password">' +
-            '<label class="lob-pwlab"><b>Guest password</b><small>Optional. It is not part of the link.</small></label>' +
-            '<input id="inv-adm-guest" type="password" maxlength="64" placeholder="' + esc(uiText('invGuestPh', 'Guest password (optional)')) + '" autocomplete="new-password">' +
+            '<label class="lob-pwlab"><b>Room password</b><small>Optional. It is not part of the link.</small></label>' +
+            '<input id="inv-adm-guest" type="password" maxlength="64" placeholder="' + esc(uiText('invGuestPh', 'Room password (optional)')) + '" autocomplete="new-password">' +
             (others ? '<label class="inv-check"><input type="checkbox" id="inv-adm-post" checked><span>Drop the new link in chat so they can follow.</span></label>' : '') +
             '<div class="appear-actions"><button id="inv-adm-back" type="button" class="appear-secondary">' + esc(uiText('invBack', 'Back')) + '</button><button id="inv-adm-go" type="button" class="appear-primary">' + esc(uiText('invGo', 'Create and switch')) + '</button></div>' +
           '</div>';
