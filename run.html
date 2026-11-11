@@ -4854,9 +4854,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       dcSend(p, { k: 'vis', park: false });
       visParkSent.set(pid, false);
     }
-    // A phone browser opens a float only from a tap, never on its own when
-    // you switch apps. Someone who left with no float, while one was there to
-    // show, is told once where Float is when they come back.
+    // A phone grid does not float on its own. Full screen can: Android floats
+    // a page that holds the screen (FULL SCREEN ON THE FIRST TAP). Someone
+    // who left with no float, while one was there to show, is told once where
+    // Float is when they come back.
     let pipHintArmed = false, pipHintDone = false;
     const pipBtnShown = () => { const b = document.getElementById('pipbtn'); return !!b && b.style.display !== 'none'; };
     document.addEventListener('visibilitychange', () => {
@@ -4918,9 +4919,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     document.addEventListener('click', (e) => {
       if (!IS_ANDROID || !IS_MOBILE) return;
       const t = e.target;
-      if (t && t.closest && t.closest('#appfull')) { setAutoFsOff(pageFull()); return; }   // a tap that leaves full screen turns this off; one that enters turns it back on
+      if (t && t.closest && t.closest('#appfull')) {
+        // The quiet full screen the first tap took: this tap asks for the
+        // filmstrip, and the control's own toggle must not leave.
+        if (e.isTrusted && fsQuiet()) { e.preventDefault(); e.stopPropagation(); openFsView('auto'); return; }
+        fsStripAsk = !pageFull() && fsStripOk();   // a deliberate full screen brings the filmstrip with it
+        setAutoFsOff(pageFull()); return;   // a tap that leaves full screen turns this off; one that enters turns it back on
+      }
       if (!e.isTrusted || !autoFsWanted()) return;
       if (t && t.closest && t.closest(AUTO_FS_SKIP)) return;
+      fsStripAsk = false;   // the first tap takes the screen only; the filmstrip waits for a tap on Full screen
       pipNote('autofs');
       GifOS.fullscreen.enter(document.documentElement).then(() => pipNote('autofs-' + (pageFull() ? 'on' : 'refused')));
     }, true);
@@ -5895,14 +5903,33 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     let fsOwnExit = false; // an exit closeFsView asked for is on its way
     let fsFull = false; // the view was the full-screen element at the last change
     let fsAskAt = 0; // when the view last asked the browser for full screen
+    let fsOverlay = false; // the filmstrip is painted inside a document that already holds the screen
+    let fsStripAsk = false; // a tap on Full screen asked for the document; the filmstrip opens when it lands
+    // A phone meeting's full screen shows the filmstrip over the meeting, so
+    // leaving the app can float it. An app or a broadcast keeps its own
+    // picture.
+    function fsStripOk() {
+      return IS_MOBILE && !document.body.classList.contains('has-app') && !BROADCAST;
+    }
+    // Android's first tap takes the screen with no filmstrip. Full screen
+    // then offers the filmstrip, and the filmstrip's close leaves.
+    function fsQuiet() {
+      return IS_ANDROID && fsStripOk() && pageFull() && !fsview.classList.contains('on');
+    }
     function openFsView(key) {
       fsSel = key || null;
       fsview.classList.add('on');
       document.body.classList.add('fsopen');
       fsRefresh();
       if (!fsTick) fsTick = setInterval(fsRefresh, 2000);
-      fsAskAt = Date.now();
-      if (fsview.requestFullscreen) fsview.requestFullscreen().catch(() => {});
+      // The document already holds the screen on a phone. Asking again would
+      // put this view in the top layer and bury every sheet.
+      const own = !document.fullscreenElement;
+      fsOverlay = !own;
+      if (own && fsview.requestFullscreen) {
+        fsAskAt = Date.now();
+        fsview.requestFullscreen().catch(() => {});
+      } else fsAskAt = 0;
       try { fsclose.focus(); } catch (e) {} // the keyboard goes where the picture is
       paintInPageFull();
     }
@@ -5925,7 +5952,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const back = document.getElementById('bartoggle');
         if (back && back.offsetParent !== null) try { back.focus(); } catch (e) {}
       };
+      const overlay = fsOverlay;
+      fsOverlay = false;
       if (document.fullscreenElement === fsview) { fsOwnExit = true; document.exitFullscreen().then(refocus, () => { fsOwnExit = false; refocus(); }); }
+      else if (overlay && document.fullscreenElement === document.documentElement) {
+        if (IS_ANDROID) setAutoFsOff(true);   // leaving here is the person's choice, as with the Full screen button
+        fsOwnExit = true; document.exitFullscreen().then(refocus, () => { fsOwnExit = false; refocus(); });
+      }
       else refocus();
       paintInPageFull();
     }
@@ -5964,11 +5997,23 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         fsview.requestFullscreen().catch(() => {});
         return;
       }
+      if (el === document.documentElement && fsStripAsk) {
+        fsStripAsk = false;
+        if (!fsview.classList.contains('on')) openFsView('auto');
+        return;
+      }
+      if (!el) fsStripAsk = false;
+      if (!el && fsOverlay && fsview.classList.contains('on')) {
+        closeFsView();
+        return;
+      }
+      if (!el && fsOwnExit && !fsFull) { fsOwnExit = false; return; }
       if (el || !fsFull) return;
       fsFull = false;
       if (fsOwnExit) { fsOwnExit = false; return; }
       if (fsview.classList.contains('on')) closeFsView();
     });
+    document.addEventListener('fullscreenerror', () => { fsStripAsk = false; });
 
     // ---- tiles ---------------------------------------------------------------
     function nameInitial(name) {
@@ -34495,6 +34540,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (FS && FS.supported()) {
         const repaint = FS.attach(fb, document.documentElement, {
           fill: 'app-full', words: true,
+          on: () => FS.active() === document.documentElement && !fsQuiet(),   // the quiet full screen still offers Full screen (the filmstrip)
           enterLabel: uiText('fullScreen', 'Full screen'), exitLabel: uiText('leaveFullScreen', 'Leave full screen') });
         // An app bar is nine buttons: the glyph comes back while an app is up.
         if (repaint && window.MutationObserver && document.body) {
