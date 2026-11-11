@@ -18283,7 +18283,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         onDoor: (kind, frame) => {
           if (kind === 'seated') {
             meetWait.waiting(false);
-            subsDoorSeen(frame);
           }
         },
         sendDC: meshSendDC,
@@ -36640,14 +36639,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // The people limit is the room admin's plan: the admin's license rides
     // the room's signed orders (sublic), and every door checks it. On the $2
     // plan, or when no valid plan is shown, a door whose room already holds
-    // 20 (its greeter list, plus itself) holds a knocker and asks it to show
+    // 20 (the room's count as this seated door shows it now) holds a knocker and asks it to show
     // a subscription against a fresh challenge; a good answer lets it in at
     // once, none turns it away with a plain message. $5 and $10 rooms have no
-    // limit. A restart hold or an unread count lets people in, never out.
-    let subsTurnedAway = false, subsDoorLen = null, subsTierKey = '', subsTier = null;
+    // limit. An unread count lets people in, never out. The count is never
+    // the door's greeter list: a door gets that list only when it knocks
+    // itself, so it holds the room as it was when that door came in.
+    let subsTurnedAway = false, subsTierKey = '', subsTier = null;
     const subsProven = new Set(), subsAsked = new Map();   // knocker -> {n, at}
     const subsOn = () => !!(window.GifOS && GifOS.meetSubs && GifOS.sub && GifOS.meetSubs.enabled());
-    function subsDoorSeen(frame) { if (frame && Array.isArray(frame.list) && !frame.hold) subsDoorLen = frame.list.length; }
+    function subsRoomCount() {
+      const ms = meshSeat();
+      if (!ms || ms.state !== 3) return undefined;
+      try { const n = displayCount(); return Number.isFinite(n) && n > 0 ? n : undefined; } catch (e) { return undefined; }
+    }
     // The room's plan, verified once per order: undefined while it is being
     // checked (the door lets people in meanwhile), null when none is valid.
     function subsRoomTier() {
@@ -36672,7 +36677,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!id || !subsOn() || !hasAdminRoom() || subsProven.has(id)) return false;
       const tier = subsRoomTier();
       if (tier === undefined) return false;
-      const count = subsDoorLen == null ? undefined : subsDoorLen + 1;
+      const count = subsRoomCount();
       if (GifOS.sub.doorVerdict({ adminRoom: true, roomTier: tier, count }) === 'let-in') return false;
       const q = peers.get(id), a = subsAsked.get(id);
       if (q && q.dc && q.dc.readyState === 'open' && !(a && Date.now() - a.at < 2000)) {
