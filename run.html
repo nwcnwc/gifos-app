@@ -1318,7 +1318,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <li><kbd>Alt+F</kbd> <span data-t="keyView">Fit everyone or scroll</span></li>
         <li><kbd>F</kbd> <span data-t="keyFull">Open or close Full screen</span></li>
         <li><kbd>Alt+Q</kbd> <span data-t="keyLeave">Leave the meeting</span></li>
-        <li><kbd>Alt+W</kbd> <span data-t="keyWho">Who is here</span></li>
+        <li><kbd>Alt+W</kbd> <span data-t="keyWho">People</span></li>
         <li><kbd>Alt+I</kbd> <span data-t="keyInvite">Invite</span></li>
         <li><kbd>Alt+Y</kbd> <span data-t="keyApp">Run app</span></li>
         <li><kbd>Alt+U</kbd> <span data-t="keyVote">Vote</span></li>
@@ -2098,9 +2098,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (pill) { pill.hidden = true; pill.className = ''; }
         paintAirKind('group', 'Meeting');
         const whoMeet = document.getElementById('whobtn');
-        if (whoMeet) whoMeet.title = 'Who is here — names and internet addresses';
+        if (whoMeet) whoMeet.title = 'People — names and internet addresses';
         const whoMeetH = document.querySelector('#who-modal h3');
-        if (whoMeetH && !phoneLayout()) whoMeetH.textContent = 'Who is here';
+        if (whoMeetH) whoMeetH.textContent = 'People';
         if (bar) bar.setAttribute('aria-label', 'Meeting controls');
         const curTitle = document.getElementById('paneltitle');
         if (curTitle && curTitle.textContent !== 'Transcript') curTitle.textContent = 'Meeting chat';
@@ -2434,6 +2434,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // (a long refusal on a phone), written only when it changes.
     const setStatus = (m, hold) => {
       const blocking = /^(🛡|📷)/.test(String(m));
+      // One voice: the line is words only. A leading symbol (🛡 ⛔ 📷 🔒 🧩 ...)
+      // gave every message its own voice; the alert colour and the hold are
+      // what say "this stopped you", and they are decided above.
+      m = String(m).replace(/^(?:[\u2600-\u27BF]|[\uD83C-\uD83E][\uDC00-\uDFFF])\uFE0F?\s*/, '');
       const countEl = document.getElementById('statuscount');
       const restEl = document.getElementById('statusrest');
       // #status is the phone's line, #statusrest the wide window's. Write
@@ -9551,7 +9555,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // forgotten, and every guest without it is turned away at a door she
       // cannot see. Say it while she is alone — that is exactly when she is
       // waiting for the guest who is being refused.
-      const savedLock = (n === 1 && roomPw && pwFromStore) ? ' · 🔒 locked with a password you saved earlier — guests need it' : '';
+      const savedLock = (n === 1 && roomPw && pwFromStore) ? ' · locked with a password you saved earlier — guests need it' : '';
       // ALONE IS NOT THE SAME AS STILL AT THE DOOR: a page
       // that is asking to be let back in (mesh state 1 or 2: it has knocked
       // and is waiting for a member to answer) sees nobody yet, but the
@@ -10431,9 +10435,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // The wording claims only what the page knows; tests read the state id
     // on the test API (reachState), never the sentence.
     const REACH_MSG = {
-      'udp-blocked': '📡 Your network blocks the direct connections this meeting needs, so you cannot join from here.',
-      'cannot-reach-room': '📡 This meeting was started on a network your device cannot connect to directly. This page keeps trying and joins as soon as it can get through.',
-      'outsiders-cannot-reach-me': '📡 People outside your network cannot connect to this meeting.',
+      'udp-blocked': 'Your network blocks the direct connections this meeting needs, so you cannot join from here.',
+      'cannot-reach-room': 'This meeting was started on a network your device cannot connect to directly. This page keeps trying and joins as soon as it can get through.',
+      'outsiders-cannot-reach-me': 'People outside your network cannot connect to this meeting.',
     };
     // The count-line note for a partial meeting (state 'partial'): appended
     // to the ordinary "N in the meeting" line with the number of people this
