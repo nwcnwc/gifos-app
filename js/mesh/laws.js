@@ -130,6 +130,15 @@
     TALK_HOLD: 10,            // L6.2: a talker who stops keeps its place on the stage this long (a restart inside it is no flicker)
     TALK_ON: 4,               // L6.2: a seat talks this long before it enters the stage set
     TENURE: 40,               // S2: a seat heard at its cell this long is its incumbent
+    TURN_AUDIO_BYTES: 1500,   // TURN: bytes per tick and direction of the voice mix on a bridge (16 kbps Opus plus headers, about 24 kbps)
+    TURN_DIAL: 6,             // TURN: ticks from a bridge ask to media (credentials, the bootstrap over the relay, ICE through the server)
+    TURN_FREE_BRIDGES: 6,     // TURN.10: bridge credential names a free room has (and as many standby names); with one allocation per name this is the room's hard limit
+    TURN_FREE_CLAMP: 3000,    // TURN: bytes per tick and direction the free pool lets one allocation carry (the server limit, 6000 bytes/s); a voice mix fits, video does not
+    TURN_KEEP_BYTES: 50,      // TURN.9: bytes per tick and direction of an idle standby (keep-alives only)
+    TURN_PAID_BRIDGES: 19,    // TURN: bridges one paid room ticket may hold (Room 20: 19 bridges join 20 people at worst)
+    TURN_RETRY: 60,           // TURN.10: a refused or failed bridge ask is repeated after this long (30 s)
+    TURN_VIDEO_BYTES: 225000, // TURN: bytes per tick and direction of a paid bridge carrying video (about 3.6 Mbps)
+    TURN_WAIT: 60,            // TURN.4: a head asks for a bridge only after the direct probe and every friend have failed for this long in a row (30 s)
     UNPROVEN_HOLD: 60,        // H6: an unproven pairing past this age lives only on probe answers
   });
 })(typeof window !== 'undefined' ? window : globalThis);

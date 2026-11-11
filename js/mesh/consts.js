@@ -147,6 +147,9 @@
     L167_W: 2,   // C++: mesh.cpp:L167_W
     L167_WAIT: 4,   // C++: mesh.cpp:L167_WAIT
     CHILD_LEDGER_H: 300,   // C++: mesh.cpp:CHILD_LEDGER_H  (LAW_CHILD_LEDGER_H)
+    GREETER_SLOW_CAP_MS: 15000,   // C++: mesh.cpp:GREETER_SLOW_CAP_MS
+    GREETER_JITTER_MAX_PCT: 130,   // C++: mesh.cpp:GREETER_JITTER_MAX_PCT
+    RESTART_HOLD_TICKS: 41,   // C++: mesh.cpp:RESTART_HOLD_TICKS  (((GREETER_SLOW_CAP_MS*GREETER_JITTER_MAX_PCT+99)/100+1000+499)/500)
     CALL_HOLD: 16,   // C++: mesh.cpp:CALL_HOLD
     L26_LIST: 256,   // C++: mesh.cpp:L26_LIST
     L24_RATE: 8,   // C++: mesh.cpp:L24_RATE
@@ -203,6 +206,15 @@
     GA_REASK: 4,   // C++: mesh_gapa.inc:GA_REASK
     GA_FIND_WIN: 90,   // C++: mesh_gapa.inc:GA_FIND_WIN  ((int)LAW_COMPACT_PERIOD)
     SOCK_CLOSE_CRASH: 4,   // C++: mesh.cpp:SOCK_CLOSE_CRASH
+    TURN_AUDIO_BYTES: 1500,   // C++: mesh.cpp:TURN_AUDIO_BYTES  (LAW_TURN_AUDIO_BYTES)
+    TURN_DIAL: 6,   // C++: mesh.cpp:TURN_DIAL  (LAW_TURN_DIAL)
+    TURN_FREE_BRIDGES: 6,   // C++: mesh.cpp:TURN_FREE_BRIDGES  (LAW_TURN_FREE_BRIDGES)
+    TURN_FREE_CLAMP: 3000,   // C++: mesh.cpp:TURN_FREE_CLAMP  (LAW_TURN_FREE_CLAMP)
+    TURN_KEEP_BYTES: 50,   // C++: mesh.cpp:TURN_KEEP_BYTES  (LAW_TURN_KEEP_BYTES)
+    TURN_PAID_BRIDGES: 19,   // C++: mesh.cpp:TURN_PAID_BRIDGES  (LAW_TURN_PAID_BRIDGES)
+    TURN_RETRY: 60,   // C++: mesh.cpp:TURN_RETRY  (LAW_TURN_RETRY)
+    TURN_VIDEO_BYTES: 225000,   // C++: mesh.cpp:TURN_VIDEO_BYTES  (LAW_TURN_VIDEO_BYTES)
+    TURN_WAIT: 60,   // C++: mesh.cpp:TURN_WAIT  (LAW_TURN_WAIT)
     H_RINGLIE_BIT: 8192,   // C++: mesh.cpp:H_RINGLIE_BIT
     RINGLIE_LINE: 1048576,   // C++: mesh.cpp:RINGLIE_LINE  (1<<20)
     DESC_SNAP: 25,   // C++: mesh.cpp:DESC_SNAP
@@ -360,6 +372,7 @@
     LINKMODEL: false,   // C++: mesh.cpp:LINKMODEL
     LMOBILE: 0,   // C++: mesh.cpp:LMOBILE
     DOORDARK: -1,   // C++: mesh.cpp:DOORDARK
+    RELAYHOLD: -1,   // C++: mesh.cpp:RELAYHOLD
     VERDICTS: false,   // C++: mesh.cpp:VERDICTS
     VFALSE: 0,   // C++: mesh.cpp:VFALSE
     VFROZEN: 0,   // C++: mesh.cpp:VFROZEN
@@ -536,6 +549,11 @@
     FHM_PEAKAT: -1,   // C++: mesh_fhop.inc:FHM_PEAKAT
     FHM_PEAKSEAT: -1,   // C++: mesh_fhop.inc:FHM_PEAKSEAT
     FHM_PEAKRELAYERS: 0,   // C++: mesh_fhop.inc:FHM_PEAKRELAYERS
+    TURN_MODE: 0,   // C++: mesh_turn.inc:TURN_MODE
+    TURN_POOL: true,   // C++: mesh_turn.inc:TURN_POOL
+    TURN_LIMIT: -1,   // C++: mesh_turn.inc:TURN_LIMIT
+    TURN_GREEDY: false,   // C++: mesh_turn.inc:TURN_GREEDY
+    TURN_SERIAL: 0,   // C++: mesh_turn.inc:TURN_SERIAL
     SIG_RTSEQ: 0,   // C++: mesh_dialsig_fab.inc:SIG_RTSEQ
     HOSTILE_N: 0,   // C++: mesh_hostile.inc:HOSTILE_N
     HOST_OUT: 0,   // C++: mesh_hostile.inc:HOST_OUT
@@ -609,6 +627,9 @@
     GT_PUBLIC: 0,   // C++: mesh.cpp:GT_PUBLIC
     GT_BLOCKED: 1,   // C++: mesh.cpp:GT_BLOCKED
     GT_SYM: 2,   // C++: mesh.cpp:GT_SYM
+    GF_DUAL: 0,   // C++: mesh.cpp:GF_DUAL
+    GF_V4: 1,   // C++: mesh.cpp:GF_V4
+    GF_V6: 2,   // C++: mesh.cpp:GF_V6
     LS_NONE: 0,   // C++: mesh.cpp:LS_NONE
     LS_DIALING: 1,   // C++: mesh.cpp:LS_DIALING
     LS_OPEN: 2,   // C++: mesh.cpp:LS_OPEN
