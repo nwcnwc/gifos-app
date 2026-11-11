@@ -782,8 +782,11 @@
       for (const v of this.l829Bye.values()) if (this.TICK - v <= K.RELAY_TTL) return true;
       return false;
     },
+    // C++: mesh.cpp:Seat::l4Ahead
+    // L4.3.1: a neighbour of the cell I am to enter, from the head's go to the exchange.
+    l4Ahead(x) { if (this.l4ExecAt < 0 && !this.l4Out) return false; for (const e of this.l4Nb) if (e.v === x) return true; return false; },
     // C++: mesh.cpp:Seat::l4Peer
-    l4Peer(x) { return this.l4MarkUntil >= this.TICK && this.l4Old.has(x); },
+    l4Peer(x) { return (this.l4MarkUntil >= this.TICK && this.l4Old.has(x)) || this.l4Ahead(x); },
     // C++: mesh.cpp:Seat::l13SplitHole
     l13SplitHole(k) { const it = this.l13SplitCell.get(k); return it !== undefined && this.TICK - it[1] <= K.RELAY_TTL; },
     // C++: mesh.cpp:Seat::l1612Keep
