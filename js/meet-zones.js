@@ -719,11 +719,31 @@
       pb = { x: box.x, y: box.y + sh + gap, w: box.w, h: Math.max(1, ph) };
       sr = stageRects([shareItem], sb, gap, phone);
     }
+    // Fit never floats (Nathan 2026-11-11): the people on stage take the head
+    // of the people band, beside the share, not a panel over it. Only the
+    // Float view (opts.float) lays them over the share as a movable panel.
+    let stageIn = null;
+    if (onStage.length && opts.float !== true) {
+      const k = (row.length || stad.length) ? 0.45 : 1;
+      if (wide) {
+        const sh = k === 1 ? pb.h : Math.round(pb.h * k);
+        stageIn = { x: pb.x, y: pb.y, w: pb.w, h: sh };
+        pb = { x: pb.x, y: pb.y + sh + gap, w: pb.w, h: Math.max(1, pb.h - sh - gap) };
+      } else {
+        const sw = k === 1 ? pb.w : Math.round(pb.w * k);
+        stageIn = { x: pb.x, y: pb.y, w: sw, h: pb.h };
+        pb = { x: pb.x + sw + gap, y: pb.y, w: Math.max(1, pb.w - sw - gap), h: pb.h };
+      }
+    }
     const p = people(row, stad, pb, phone, 'fit', gap, true, opts.stadCount);
     if (wide) pinEnd(p.rects, pb);
     const rects = sr.concat(p.rects);
     let stageBox = null;
-    if (onStage.length) {
+    if (stageIn) {
+      const pk = stagePack(onStage, stageIn, gap, { maxH: stageIn.h, bandH: stageIn.h });
+      for (let i = 0; i < pk.rects.length; i++) rects.push(pk.rects[i]);
+      stageBox = { x: stageIn.x, y: stageIn.y, w: stageIn.w, h: pk.h };
+    } else if (onStage.length) {
       const short = Math.min(sb.w, sb.h);
       let panelW = Math.max(96, Math.round(short * 0.36));
       panelW = Math.min(panelW, Math.max(48, sb.w - 16));

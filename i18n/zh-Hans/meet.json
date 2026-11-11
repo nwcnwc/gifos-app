@@ -748,5 +748,12 @@
  "meet.wspRunBrowserShort": "，浏览器字幕已开",
  "meet.wspRunNoneShort": "，你这边没有字幕",
  "meet.wspRetry": "重试",
- "meet.stBrowserCaptionsOnWhisperOff": "浏览器字幕已开启。本设备上的 Whisper 已关闭。"
+ "meet.stBrowserCaptionsOnWhisperOff": "浏览器字幕已开启。本设备上的 Whisper 已关闭。",
+ "meet.viewPick": "视图",
+ "meet.viewPickTip": "切换视图 (Alt+F)",
+ "meet.viewScroll": "滚动",
+ "meet.viewFit": "适应",
+ "meet.viewFloat": "浮动",
+ "meet.viewFocus": "焦点",
+ "meet.viewFollow": "跟随发言人"
 }

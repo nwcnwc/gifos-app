@@ -653,7 +653,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <p class="ly-preview" id="lyrics-preview"></p>
     <button data-t="lyNext" type="button" id="lyrics-next">Next line</button>
   </aside>
-  <button data-ti="fitbtnTip" data-al="fitbtnAria" data-t="fitbtn" type="button" id="fitbtn" class="fitbtn" aria-pressed="true" aria-label="Gallery" aria-keyshortcuts="Alt+F" title="Fit everyone on one screen. Press to scroll the room instead. Alt+F switches.">▦ Fit</button>
+  <button type="button" id="fitbtn" class="fitbtn" aria-haspopup="dialog" aria-expanded="false" aria-controls="viewpick" aria-label="View: Fit" aria-keyshortcuts="Alt+F" title="Change the view (Alt+F)"><span class="vb-ic" aria-hidden="true"></span><span class="vb-word">Fit</span></button>
+  <div id="viewpick" class="viewpick" role="dialog" aria-label="View" hidden>
+    <div class="vp-modes" role="radiogroup" aria-label="View">
+      <button type="button" role="radio" class="vp-mode" data-view="scroll" aria-checked="false"><span class="vp-ic" aria-hidden="true"></span><span class="vp-word">Scroll</span></button>
+      <button type="button" role="radio" class="vp-mode" data-view="fit" aria-checked="true"><span class="vp-ic" aria-hidden="true"></span><span class="vp-word">Fit</span></button>
+      <button type="button" role="radio" class="vp-mode" data-view="float" aria-checked="false"><span class="vp-ic" aria-hidden="true"></span><span class="vp-word">Float</span></button>
+      <button type="button" role="radio" class="vp-mode" data-view="focus" aria-checked="false"><span class="vp-ic" aria-hidden="true"></span><span class="vp-word">Focus</span></button>
+    </div>
+    <button type="button" role="switch" id="vp-follow" class="vp-follow" aria-checked="true" hidden><span class="vp-word">Follow the speaker</span><span class="vp-knob" aria-hidden="true"></span></button>
+  </div>
   <div id="livecap"></div>
   <div id="callstate" hidden>
     <span data-t="callLive" id="call-live" role="status">Live</span>
@@ -1453,6 +1462,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/meet-meters.js" defer></script>
   <script src="js/meet-zones.js" defer></script>
   <script src="js/meet-views.js" defer></script>
+  <script src="js/meet-viewmode.js" defer></script>
   <script src="js/mesh-pipe.js" defer></script>
   <script src="js/relay-config.js" defer></script>
   <script src="js/runtime.js" defer></script>
@@ -5723,6 +5733,23 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     fsview.appendChild(fsmain); fsview.appendChild(fsname); fsview.appendChild(fsstrip); fsview.appendChild(fsclose);
     document.body.appendChild(fsview);
     let fsSel = null, fsTick = null, fsAutoPid = null;
+    // fsInline: the view is the meeting's Focus view, drawn in the page under
+    // the floating bar and the header, not a full screen of its own.
+    let fsInline = false;
+    let fsFollow = null, fsFollowT = 0; // Follow the speaker state (meet-viewmode.js followStep) and its wake timer
+    // The view trace (DEBUG record ring 'view'): every view change and every
+    // Follow the speaker move, with when and why.
+    const viewTrace = (window.__viewTrace = window.__viewTrace || []);
+    function viewNote(k, x) {
+      viewTrace.push(Object.assign({ t: Date.now(), k }, x || {}));
+      if (viewTrace.length > 200) viewTrace.shift();
+    }
+    // What the Focus view shows, for the debug dump and the room tests.
+    window.__meetFocusState = () => ({
+      view: window.__meetView || 'fit', on: fsview.classList.contains('on'), inline: fsInline,
+      follow: fsSel === 'auto', main: fsmain.dataset.key || '', auto: fsAutoPid || '',
+      strip: fsstrip.dataset.set || '',
+    });
     // The grid videos stay attached while #fsview is open; body.fsopen only
     // hides their paint. busVolume, the row head's packer, selfStageStream
     // and the recorder all read those elements, so detaching them would
@@ -5737,7 +5764,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // the view only when the holder has stopped. A dark peer is in src as
       // a name card, so a camera-off talker is picked the same way.
       const speakingKey = (key) => key.indexOf('peer:') === 0 && speakingOf.get(key.slice(5));
-      if (!(fsAutoPid && speakingKey('peer:' + fsAutoPid))) {
+      const VM = window.GifOS && GifOS.meetViewMode;
+      if (VM && VM.followStep) {
+        // The holds (FOLLOW_ON_MS, FOLLOW_HOLD_MS, FOLLOW_GAP_MS) come from the
+        // timings table: a new talker must hold the floor a moment before the
+        // view moves, and whoever took it keeps it a while.
+        if (!fsFollow) fsFollow = VM.followState();
+        const keys = src.filter((s) => s.key.indexOf('peer:') === 0).map((s) => s.key);
+        const step = VM.followStep(fsFollow, keys.filter(speakingKey), keys, Date.now());
+        fsAutoPid = step.key ? step.key.slice(5) : null;
+        if (step.changed) viewNote('follow', { to: fsAutoPid, talking: keys.filter(speakingKey).map((k) => k.slice(5)) });
+        if (fsFollowT) { clearTimeout(fsFollowT); fsFollowT = 0; }
+        if (step.wakeAt) fsFollowT = setTimeout(() => { fsFollowT = 0; if (fsSel === 'auto' && fsview.classList.contains('on')) fsRefresh(); }, Math.max(0, step.wakeAt - Date.now()));
+      } else if (!(fsAutoPid && speakingKey('peer:' + fsAutoPid))) {
         for (const s of src) if (speakingKey(s.key)) { fsAutoPid = s.key.slice(5); break; }
       }
       return (fsAutoPid && src.find((s) => s.key === 'peer:' + fsAutoPid))
@@ -5869,8 +5908,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!broadcastFs && !auto) {
         auto = document.createElement('div');
         auto.className = 'fsthumb fsauto'; auto.dataset.key = 'auto';
-        auto.innerHTML = '<span class="fsautoglyph">🗣</span><span class="fslbl">Follow speaker</span>';
-        asButton(auto, 'Follow speaker', () => { fsSel = 'auto'; fsAutoPid = null; fsRefresh(); });
+        auto.innerHTML = '<span class="fsautoglyph"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M17 6.5c1 .9 1.5 2 1.5 3.2s-.5 2.3-1.5 3.2M19.5 4c1.7 1.5 2.5 3.5 2.5 5.7s-.8 4.2-2.5 5.7"/></svg></span><span class="fslbl">' + uiText('viewFollow', 'Follow the speaker') + '</span>';
+        asButton(auto, uiText('viewFollow', 'Follow the speaker'), () => { fsSel = 'auto'; fsAutoPid = null; fsFollow = null; fsRefresh(); fsFollowChanged(); });
       }
       const keep = new Set(broadcastFs ? [] : ['auto']);
       const place = (th, pos) => { if (fsstrip.children[pos] !== th) fsstrip.insertBefore(th, fsstrip.children[pos] || null); };
@@ -5912,7 +5951,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           paintThumbCard(th);
         }
         const key = s.key;
-        asButton(th, s.label || 'Show this feed', () => { fsSel = key; fsRefresh(); });
+        asButton(th, s.label || 'Show this feed', () => { fsSel = key; fsRefresh(); fsFollowChanged(); });
         place(th, pos);
         pos++;
       }
@@ -5945,16 +5984,28 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function fsQuiet() {
       return IS_ANDROID && fsStripOk() && pageFull() && !fsview.classList.contains('on');
     }
-    function openFsView(key) {
+    // A tap on a thumb pins a person and the Follow chip follows again: the
+    // view picker's switch shows the same choice.
+    function fsFollowChanged() {
+      if (!fsInline) return;
+      const on = fsSel === 'auto';
+      try { if (window.GifOS && GifOS.meetViewMode) GifOS.meetViewMode.saveFollow(localStorage, on); } catch (e) {}
+      if (typeof window.__meetPaintView === 'function') window.__meetPaintView();
+    }
+    function openFsView(key, inline) {
       fsSel = key || null;
+      fsFollow = null;
+      fsInline = !!inline;
+      document.body.classList.toggle('view-focus', fsInline);
       fsview.classList.add('on');
       document.body.classList.add('fsopen');
       fsRefresh();
       if (!fsTick) fsTick = setInterval(fsRefresh, 2000);
       // The document already holds the screen on a phone. Asking again would
-      // put this view in the top layer and bury every sheet.
-      const own = !document.fullscreenElement;
-      fsOverlay = !own;
+      // put this view in the top layer and bury every sheet. The Focus view
+      // never asks: it is a view of the meeting, under its controls.
+      const own = !document.fullscreenElement && !fsInline;
+      fsOverlay = !own && !fsInline;
       if (own && fsview.requestFullscreen) {
         fsAskAt = Date.now();
         fsview.requestFullscreen().catch(() => {});
@@ -5962,8 +6013,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { fsclose.focus(); } catch (e) {} // the keyboard goes where the picture is
       paintInPageFull();
     }
-    function closeFsView() {
+    function closeFsView(fromPicker) {
       if (fsTick) { clearInterval(fsTick); fsTick = null; }
+      if (fsFollowT) { clearTimeout(fsFollowT); fsFollowT = 0; }
+      fsFollow = null;
+      const wasInline = fsInline;
+      fsInline = false;
+      document.body.classList.remove('view-focus');
+      // Something other than the view picker closed the Focus view (the
+      // in-page Full screen toggle): the meeting goes back to the last view.
+      if (wasInline && !fromPicker && typeof window.__meetLeaveFocus === 'function') { try { window.__meetLeaveFocus(); } catch (e) {} }
       fsview.classList.remove('on');
       document.body.classList.remove('fsopen');
       fsmain.srcObject = null;
@@ -7199,7 +7258,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           mode: window.__meetViewMode || 'gallery',
           swapSelf: !!(window.__meetSwapSelf || (window.__meetSelf && window.__meetSelf.onStage)),
           self: window.__meetSelf || 'tile',
-          gallery: window.__meetGallery || 'fit', now: Date.now(),
+          gallery: window.__meetGallery || 'fit', float: window.__meetView === 'float', now: Date.now(),
           onSettle: () => { try { layout(); } catch (e) {} },
         });
         const pane = document.getElementById('apppane');
@@ -7222,32 +7281,155 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         try { applyViewerCrops(); } catch (e) {}
       } finally { comfyBusy = false; }
     }
-    try {
-      window.__meetGallery = localStorage.getItem('meet.view.v1.gallery') === 'scroll' ? 'scroll' : 'fit';
-    } catch (e) { window.__meetGallery = 'fit'; }
+    // ---- the meeting's views: Scroll, Fit, Float, Focus (Nathan 2026-11-11) ----
+    // Scroll: the gallery you scroll. Fit: everyone on one screen, nothing
+    // floats. Float: Fit, and the stage and the row are panels you drag.
+    // Focus: one person big, the others in a strip (#fsview drawn in the page),
+    // with Follow the speaker. #fitbtn opens the picker; Alt+F is its key.
+    // window.__meetGallery stays the tile layout ('fit' | 'scroll') every
+    // layout reader already uses.
+    const VMODE = (window.GifOS && GifOS.meetViewMode) || null;
+    const VIEW_WORDS = { scroll: ['viewScroll', 'Scroll'], fit: ['viewFit', 'Fit'], float: ['viewFloat', 'Float'], focus: ['viewFocus', 'Focus'] };
+    // Outline glyphs, one stroke, currentColor: the same family as the bar's icons.
+    const VIEW_ICONS = {
+      scroll: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="6" rx="1.5"/><rect x="13" y="3" width="8" height="6" rx="1.5"/><rect x="3" y="11" width="8" height="6" rx="1.5"/><rect x="13" y="11" width="8" height="6" rx="1.5"/><path d="M9 20.5l3 1.5 3-1.5"/></svg>',
+      fit: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="8" height="7" rx="1.5"/><rect x="13" y="4" width="8" height="7" rx="1.5"/><rect x="3" y="13" width="8" height="7" rx="1.5"/><rect x="13" y="13" width="8" height="7" rx="1.5"/></svg>',
+      float: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="16" rx="2"/><rect x="12" y="11" width="7" height="6" rx="1.2"/></svg>',
+      focus: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="14" height="16" rx="2"/><rect x="18.5" y="4" width="3" height="4" rx="1"/><rect x="18.5" y="10" width="3" height="4" rx="1"/><rect x="18.5" y="16" width="3" height="4" rx="1"/></svg>',
+    };
+    let viewStore = null;
+    try { viewStore = localStorage; } catch (e) {}
+    window.__meetView = VMODE ? VMODE.load(viewStore) : 'fit';
+    window.__meetGallery = VMODE ? VMODE.gallery(window.__meetView) : 'fit';
+    let viewBefore = window.__meetView === 'focus' ? 'fit' : window.__meetView; // where Focus goes back to
     const fitbtn = document.getElementById('fitbtn');
+    const viewpick = document.getElementById('viewpick');
+    const vpFollow = document.getElementById('vp-follow');
+    function viewWord(m) { const w = VIEW_WORDS[m] || VIEW_WORDS.fit; return uiText(w[0], w[1]); }
     function paintFit() {
-      if (!fitbtn) return;
-      const scroll = window.__meetGallery === 'scroll';
-      fitbtn.textContent = scroll ? '▦ Scroll' : '▦ Fit';
-      fitbtn.setAttribute('aria-pressed', scroll ? 'false' : 'true');
-      fitbtn.title = scroll
-        ? 'Infinite scroll. Press to fit everyone on one screen.'
-        : 'Fit everyone on one screen. Press to scroll the room instead.';
+      const m = window.__meetView;
+      const scroll = m === 'scroll';
       document.body.classList.toggle('gallery-scroll', scroll);
+      for (const k of (VMODE ? VMODE.MODES : ['scroll', 'fit', 'float', 'focus'])) document.body.classList.toggle('view-' + k, m === k);
       if (!scroll) {
         const feed = document.getElementById('feed');
         if (feed) feed.scrollTop = 0;
       }
+      if (fitbtn) {
+        const ic = fitbtn.querySelector('.vb-ic'), wd = fitbtn.querySelector('.vb-word');
+        if (ic && ic.dataset.view !== m) { ic.innerHTML = VIEW_ICONS[m] || VIEW_ICONS.fit; ic.dataset.view = m; }
+        if (wd) wd.textContent = viewWord(m);
+        fitbtn.dataset.view = m;
+        fitbtn.setAttribute('aria-label', uiText('viewPick', 'View') + ': ' + viewWord(m));
+        fitbtn.title = uiText('viewPickTip', 'Change the view (Alt+F)');
+      }
+      if (viewpick) {
+        for (const b of viewpick.querySelectorAll('.vp-mode')) {
+          const k = b.dataset.view;
+          const ic = b.querySelector('.vp-ic'), wd = b.querySelector('.vp-word');
+          if (ic && !ic.firstChild) ic.innerHTML = VIEW_ICONS[k] || '';
+          if (wd) wd.textContent = viewWord(k);
+          b.setAttribute('aria-checked', k === m ? 'true' : 'false');
+          b.tabIndex = k === m ? 0 : -1;
+        }
+        viewpick.setAttribute('aria-label', uiText('viewPick', 'View'));
+      }
+      if (vpFollow) {
+        vpFollow.hidden = m !== 'focus';
+        const on = fsview.classList.contains('on') ? fsSel === 'auto' : (!VMODE || VMODE.loadFollow(viewStore));
+        vpFollow.setAttribute('aria-checked', on ? 'true' : 'false');
+        const wd = vpFollow.querySelector('.vp-word');
+        if (wd) wd.textContent = uiText('viewFollow', 'Follow the speaker');
+      }
     }
-    if (fitbtn) fitbtn.addEventListener('click', () => {
-      // Manual only. A crowded Fit grid never flips this on its own.
-      window.__meetGallery = window.__meetGallery === 'scroll' ? 'fit' : 'scroll';
-      try { localStorage.setItem('meet.view.v1.gallery', window.__meetGallery); } catch (e) {}
+    window.__meetPaintView = paintFit;
+    // Focus is #fsview in the page. It shows only where a meeting is up: a
+    // broadcast or an app keeps its own picture (fsStripOk's rule, without the phone test).
+    function focusAllowed() { return !BROADCAST && !document.body.classList.contains('has-app'); }
+    function syncFocus() {
+      const want = window.__meetView === 'focus' && focusAllowed();
+      const on = fsview.classList.contains('on');
+      if (want && !(on && fsInline)) {
+        if (on) closeFsView(true);
+        openFsView((!VMODE || VMODE.loadFollow(viewStore)) ? 'auto' : null, true);
+      } else if (!want && on && fsInline) closeFsView(true);
+    }
+    function setView(m, why) {
+      m = VMODE ? VMODE.normalize(m) : (m === 'scroll' ? 'scroll' : 'fit');
+      const was = window.__meetView;
+      if (m !== 'focus') viewBefore = m;
+      window.__meetView = m;
+      window.__meetGallery = VMODE ? VMODE.gallery(m) : m;
+      if (VMODE) VMODE.save(viewStore, m);
       paintFit();
+      try { syncFocus(); } catch (e) {}
       try { layout(); } catch (e) {}
+      if (was !== m) viewNote('view', { from: was, to: m, why: why || 'pick' });
+    }
+    window.__meetSetView = setView;
+    window.__meetLeaveFocus = () => { if (window.__meetView === 'focus') setView(viewBefore || 'fit', 'closed'); };
+    function closePick(refocus) {
+      if (!viewpick || viewpick.hidden) return;
+      viewpick.hidden = true;
+      if (fitbtn) fitbtn.setAttribute('aria-expanded', 'false');
+      if (refocus && fitbtn) try { fitbtn.focus(); } catch (e) {}
+    }
+    function openPick() {
+      if (!viewpick) return;
+      paintFit();
+      // Under the button, its right edge on the button's.
+      const r = fitbtn.getBoundingClientRect();
+      viewpick.style.top = Math.round(r.bottom + 8) + 'px';
+      viewpick.style.right = Math.round(Math.max(8, window.innerWidth - r.right)) + 'px';
+      viewpick.hidden = false;
+      fitbtn.setAttribute('aria-expanded', 'true');
+      const cur = viewpick.querySelector('.vp-mode[aria-checked="true"]');
+      if (cur) try { cur.focus(); } catch (e) {}
+    }
+    if (fitbtn) fitbtn.addEventListener('click', (e) => {
+      // Manual only. A crowded Fit grid never changes the view on its own.
+      if (viewpick && viewpick.hidden) openPick(); else closePick(false);
     });
+    if (viewpick) {
+      viewpick.addEventListener('click', (e) => {
+        const b = e.target && e.target.closest && e.target.closest('.vp-mode');
+        if (!b) return;
+        setView(b.dataset.view, 'pick');
+        // Focus keeps the picker up so Follow the speaker is one more tap.
+        if (b.dataset.view !== 'focus') closePick(true);
+      });
+      viewpick.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') { e.preventDefault(); closePick(true); return; }
+        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft' && e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+        const list = Array.from(viewpick.querySelectorAll('.vp-mode'));
+        const i = list.indexOf(document.activeElement);
+        if (i < 0) return;
+        e.preventDefault();
+        const n = list[(i + ((e.key === 'ArrowRight' || e.key === 'ArrowDown') ? 1 : list.length - 1)) % list.length];
+        try { n.focus(); } catch (err) {}
+      });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !viewpick.hidden) closePick(false); });
+      document.addEventListener('pointerdown', (e) => {
+        if (viewpick.hidden) return;
+        const t = e.target;
+        if (t && t.closest && (t.closest('#viewpick') || t.closest('#fitbtn'))) return;
+        closePick(false);
+      }, true);
+    }
+    if (vpFollow) vpFollow.addEventListener('click', () => {
+      const on = vpFollow.getAttribute('aria-checked') !== 'true';
+      if (VMODE) VMODE.saveFollow(viewStore, on);
+      if (fsview.classList.contains('on') && fsInline) {
+        if (on) { fsSel = 'auto'; fsAutoPid = null; fsFollow = null; }
+        else fsSel = fsmain.dataset.key || null; // pin whoever is on the big view now
+        fsRefresh();
+      }
+      paintFit();
+    });
+    // An app or a broadcast that starts or stops while Focus is chosen.
+    try { new MutationObserver(() => { try { syncFocus(); } catch (e) {} }).observe(document.body, { attributes: true, attributeFilter: ['class'] }); } catch (e) {}
     paintFit();
+    try { syncFocus(); } catch (e) {}
     window.__meetRelayout = () => { try { layout(); } catch (e) {} };
     // ---- 0.9.23b: calm by default, tap a tile for its controls, viewer crop ----
     // Calm: tiles show only the name and the green speaking frame. Any touch,
@@ -28039,7 +28221,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           trace: (window.__meshTraceRing && window.__meshTraceRing.ring) || null,
           swapPic: swapPicRing, rowView: window.__rowViewLog || null, dog: window.__dogLog || null,
           bc: window.__bcTrace || null, mem: window.__memSamples || null,
-          pip: window.__pipTrace || null,
+          pip: window.__pipTrace || null, view: window.__viewTrace || null,
           meters: (typeof dbgMeterKit !== 'undefined' && dbgMeterKit) ? dbgMeterKit.ring() : null,
         }),
         snapshot: () => (window.__gifosVideo && window.__gifosVideo.debugDump ? window.__gifosVideo.debugDump() : null),

@@ -3430,4 +3430,50 @@
   @media (max-width: 700px) and (min-height: 501px) {
     #tilewin .tw-close { width: 44px; height: 44px; }
     #tilewin .tw-side button.tw-btn, #tilewin button.tw-btn, #tilewin .modbar button { min-height: 44px; height: auto; }
+  /* ---- The meeting's views: Scroll, Fit, Float, Focus (Nathan 2026-11-11) ----
+     One quiet button (#fitbtn: the view's outline glyph and its word) opens a
+     small dark picker: four glyphs over one word each, the chosen one white
+     with a blue dot, the rest grey. No boxes, no borders. Follow the speaker is
+     one switch row, shown in Focus only. Tokens only. */
+  .fitbtn { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; font-size: 14px; color: var(--c-white); }
+  .fitbtn .vb-ic { display: inline-flex; }
+  .fitbtn .vb-ic svg { width: 20px; height: 20px; display: block; }
+  .viewpick { position: fixed; z-index: 34; display: flex; flex-direction: column; gap: 8px; padding: 8px;
+    background: var(--c-night); color: var(--c-white); border-radius: var(--r-lg); max-width: calc(100vw - 16px); }
+  .viewpick[hidden] { display: none; }
+  .vp-modes { display: flex; gap: 4px; }
+  .vp-mode { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    min-width: 64px; min-height: 64px; padding: 8px 6px 12px; border: 0; border-radius: var(--r-md);
+    background: none; color: var(--c-gray); font-size: 12px; font-weight: 500; cursor: pointer; }
+  .vp-mode .vp-ic svg { width: 24px; height: 24px; display: block; }
+  .vp-mode[aria-checked="true"] { color: var(--c-white); }
+  .vp-mode[aria-checked="true"]::after { content: ""; position: absolute; left: 50%; bottom: 4px; width: 4px; height: 4px;
+    margin-left: -2px; border-radius: var(--r-pill); background: var(--c-blue); }
+  @media (hover: hover) and (pointer: fine) { .vp-mode:hover { color: var(--c-white); } }
+  .vp-mode:focus-visible, .vp-follow:focus-visible { outline: 2px solid var(--c-blue); outline-offset: -2px; }
+  .vp-follow { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 0 8px;
+    border: 0; border-radius: var(--r-md); background: none; color: var(--c-white); font-size: 14px; font-weight: 500; cursor: pointer; }
+  .vp-follow[hidden] { display: none; }
+  .vp-knob { position: relative; flex: 0 0 auto; width: 36px; height: 20px; border-radius: var(--r-pill); background: var(--c-ink-2);
+    transition: background var(--t-fast) ease; }
+  .vp-knob::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: var(--r-pill);
+    background: var(--c-white); transition: transform var(--t-fast) ease; }
+  .vp-follow[aria-checked="true"] .vp-knob { background: var(--c-blue); }
+  .vp-follow[aria-checked="true"] .vp-knob::after { transform: translateX(16px); }
+  /* Focus: #fsview drawn in the page under the header, Fit's button and the
+     floating bar (the bar overlays, nothing is reserved). The strip runs down
+     the side when the screen is wide and across the bottom when it is tall;
+     the bottom strip ends above the bar the same way the panels do
+     (--barclear). Thumbs wear no frame; the one on the big view is outlined. */
+  body.view-focus #fsview { z-index: 5; }
+  body.view-focus #fsclose { display: none; }
+  body.view-focus #fsstrip { top: calc(72px + var(--gtop, 0px)); background: none; gap: 8px; padding: 8px; }
+  body.view-focus .fsthumb { border: 0; border-radius: var(--r-md); background: var(--c-night); }
+  body.view-focus .fsthumb.sel { box-shadow: none; outline: 2px solid var(--c-white); outline-offset: -2px; }
+  body.view-focus .fsthumb.fsauto { background: var(--c-night); color: var(--c-white); }
+  body.view-focus .fsthumb .fslbl { left: 6px; bottom: 6px; font-size: 12px; padding: 2px 8px; border-radius: var(--r-pill); background: var(--c-scrim); color: var(--c-white); }
+  @media (orientation: portrait) {
+    body.view-focus #fsstrip { top: auto; left: 0; right: 0; bottom: 0; flex-direction: row; overflow-x: auto; overflow-y: hidden;
+      padding-bottom: max(8px, var(--barclear, 0px)); }
+    body.view-focus .fsthumb { width: 112px; }
   }
