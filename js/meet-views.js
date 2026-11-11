@@ -800,7 +800,7 @@
       } else row.push(t.id);
     }
     const z = MZ.layout({ box: box, stage: stage, share: share, row: row, stad: stad, phone: !!opts.phone,
-      gallery: opts.gallery === 'scroll' ? 'scroll' : 'fit', gap: opts.phone ? 4 : MZ.GAP, floor: +opts.floor || 0,
+      gallery: opts.gallery === 'scroll' ? 'scroll' : 'fit', float: opts.float === true, gap: opts.phone ? 4 : MZ.GAP, floor: +opts.floor || 0,
       stadCount: opts.stadCount > 0 ? opts.stadCount : 0 });
     let band = null;
     if (z.tooSmall) band = { text: 'faces tiny \u00b7 Scroll is in \u25a6', x: box.x + 6, y: box.y + 6 };
@@ -907,7 +907,10 @@
     // A saved drag is a center fraction of the feed, the same area the drag
     // measured. Applied after the fit pass, so the default layout stays what
     // the geometry tests measure. The tiles are drawn inset by the gutter.
-    if (ML.placeFloat && lay && lay.rects && lay.gallery !== 'scroll') {
+    // Only the Float view moves panels (Nathan 2026-11-11: Fit no longer
+    // floats; Float is its own view). Fit and Scroll draw the layout as laid.
+    const floatOk = opts.float === true && lay && lay.gallery !== 'scroll';
+    if (ML.placeFloat && floatOk && lay.rects) {
       const pad = (opts.phone || lay.zones) ? 0 : GUTTER / 2;
       let store = opts.store || null;
       if (!store) { try { if (typeof localStorage !== 'undefined') store = localStorage; } catch (e) {} }
@@ -931,7 +934,7 @@
       placeEl(t.el, half ? { x: r.x + half, y: r.y + half, w: r.w - 2 * half, h: r.h - 2 * half } : r);
       if (half) t.el.dataset.gutter = '1'; else delete t.el.dataset.gutter;
       t.el.dataset.fit = r.fit || 'cover';
-      if (r.float) t.el.dataset.float = r.float;
+      if (r.float && floatOk) t.el.dataset.float = r.float;
       else delete t.el.dataset.float;
       used.push(t.el);
     }

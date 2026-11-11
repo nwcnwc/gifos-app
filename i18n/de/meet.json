@@ -748,5 +748,12 @@
   "meet.wspRunBrowserShort": ", Browser-Untertitel an",
   "meet.wspRunNoneShort": ", keine Untertitel von dir",
   "meet.wspRetry": "Erneut versuchen",
-  "meet.stBrowserCaptionsOnWhisperOff": "Browser-Untertitel sind an. Whisper ist auf diesem Gerät aus."
+  "meet.stBrowserCaptionsOnWhisperOff": "Browser-Untertitel sind an. Whisper ist auf diesem Gerät aus.",
+  "meet.viewPick": "Ansicht",
+  "meet.viewPickTip": "Ansicht wechseln (Alt+F)",
+  "meet.viewScroll": "Scrollen",
+  "meet.viewFit": "Alle",
+  "meet.viewFloat": "Frei",
+  "meet.viewFocus": "Fokus",
+  "meet.viewFollow": "Dem Sprecher folgen"
 }
