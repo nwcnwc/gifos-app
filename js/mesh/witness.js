@@ -39,7 +39,7 @@
     l25WitAnswer(m) {
       if (!this.hasCoord || this.state !== 3 || m.from < 0 || m.from === this.id || !this.linkIs(m, m.from) || !cellOk(m.ck) || !this.ownedLinkCell(m.ck)) return;
       const w = newMsg('WITNESS'); w.ck = m.ck; w.id = this.id; w.nc = this.l25WitHeard(m.ck); w.tag = (m.nc >= 0 && m.nc !== this.id && this.l25WitClaimed(m.nc, m.ck)) ? 1 : 0; w.sig = true; w.sigAt = this.TICK; w.born = this.seatedAt;
-      this.emit(m.from, w);
+      if (this.f.fabricDoors()) this.f.fabricCallFrame(this.id, m.from, w); else this.emit(m.from, w);   // L25.9.1: over the pc the question came on
     },
 
     // C++: mesh_witness.inc:Seat::l25WitClaimed
