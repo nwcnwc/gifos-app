@@ -11910,11 +11910,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       reactCamIdle();
       // Promoted to the Stage: open my window on the Stage frame, once per step-up.
+      // The frame is the camera's. A screen share also puts its sharer on the
+      // Stage, and that step-up opens nothing: the slide already carries Stop
+      // sharing, and a window over it hid what was being shared.
       const stagedNow = meOnStage();
-      if (stagedNow && !refreshOutbound.wasStaged && refreshOutbound.seatedAt && Date.now() - refreshOutbound.seatedAt > 3000 && meTile && meTile.tile && !myStatus.camOff) {
+      if (stagedNow && !refreshOutbound.wasStaged && refreshOutbound.seatedAt && Date.now() - refreshOutbound.seatedAt > 3000 && meTile && meTile.tile && !myStatus.camOff && !myStatus.scr) {
         setTimeout(() => {
           try {
-            if (!window.__tileWin || window.__tileWin.isOpen()) return;
+            if (!window.__tileWin || window.__tileWin.isOpen() || myStatus.scr || screenStream) return;
             const st = document.querySelector('#stagefeed [data-row="sgs"]');
             window.__tileWin.open(st && st.getClientRects().length ? st : meTile.tile);
           } catch (e) {}
