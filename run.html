@@ -4767,6 +4767,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/meet-layout.js" defer></script>
   <script src="js/meet-turn.js" defer></script>
   <script src="js/meet-video-anywhere.js" defer></script>
+  <script src="js/gifos-sub.js" defer></script>
+  <script src="js/meet-subs.js" defer></script>
   <script src="js/meet-leave.js" defer></script>
   <script src="js/meet-debuglog.js" defer></script>
   <script src="js/meet-zones.js" defer></script>
@@ -18279,6 +18281,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         onDoor: (kind, frame) => {
           if (kind === 'seated') {
             meetWait.waiting(false);
+            subsDoorCheck(frame);
           }
         },
         sendDC: meshSendDC,
@@ -36493,6 +36496,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!pass) { document.getElementById('inv-adm-pass').focus(); return; }
         const post = !!(document.getElementById('inv-adm-post') && document.getElementById('inv-adm-post').checked);
         const guest = (document.getElementById('inv-adm-guest').value || '').trim();
+        // Subscriptions (off unless switched on): an admin room needs a plan.
+        if (window.GifOS && GifOS.meetSubs && !(await GifOS.meetSubs.mayCreateAdminRoom(setStatus))) { invModal.style.display = 'none'; return; }
         go.disabled = true; go.textContent = 'Creating…';
         invModal.style.display = 'none';
         try {
@@ -36619,6 +36624,26 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function slugRoom(s, fallback) {
       const out = String(s || '').replace(/[^a-zA-Z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/, '');
       return out || fallback || 'room';
+    }
+
+    // SUBSCRIPTIONS AT THE DOOR (off unless switched on; js/meet-subs.js): a
+    // person without a subscription does not enter an admin room that
+    // already holds 20. The count is the door's greeter list; a restart hold
+    // is waited out, never read as a count. Only a page still entering is
+    // checked: a seated member is never put out by it.
+    let subsTurnedAway = false;
+    function subsDoorCheck(frame) {
+      if (subsTurnedAway || !(window.GifOS && GifOS.meetSubs && GifOS.meetSubs.enabled())) return;
+      const ms = meshSeat();
+      if (ms && ms.state === 3) return;
+      GifOS.meetSubs.entryCheck(frame, { adminRoom: hasAdminRoom(), isAdmin: !!(amAdmin || admKey) }).then((v) => {
+        if (!v || v.admit || v.wait || subsTurnedAway) return;
+        const now = meshSeat();
+        if (now && now.state === 3) return;
+        subsTurnedAway = true;
+        try { leaveMeeting(); } catch (e) {}
+        GifOS.meetSubs.showFull();
+      }).catch(() => {});
     }
 
     async function createAdminRoom(chosen, pass, postToChat, guestPw) {
