@@ -28,6 +28,8 @@
   const sm = req('./seat.js', 'meshSeat');
   const { cellOk, coordStr } = req('./shared.js', 'meshShared');
   const { Seat, FREE, roomTerm, signedBy, placeBefore, l165Earlier } = sm;
+  // the sim's #define L3_11_8_OFF (a build-time switch): MESH_L3_11_8_OFF=1 under node builds the parent, read once at load; a page always runs the law
+  const L3_11_8_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L3_11_8_OFF === '1') ? 1 : 0;
 
   const K = C_.consts, E = C_.enums;
   const { ckey, ckPc, ckR, ckI, unckey, ownedLinks, rowMates, colMates, down, up, cc } = topo;
@@ -72,6 +74,7 @@
       const TICK = this.TICK, x = m.id; if (x < 0 || x === this.id) return;
       const mine = this.hasCoord && this.state === 3 && this.ownedLinkCell(ckey(m.coord)) && this.occGet(ckey(m.coord)) === x;
       if (this.linkIs(m, x)) {
+        if (!L3_11_8_OFF && mine) { const rm = this.relMark.get(x); if (rm !== undefined && TICK > rm) { this.relMark.delete(x); this.trace('RELOAD-BACK', this.id, this.coord, 'peer=%d cell=%s', x, coordStr(m.coord)); } }   // L3.11.8: the seat that said "reload" beats from its cell on its own channel: it is back and the reload is over, so a close after this is a loss like any other
         this.unp.delete(x); this.noChan.delete(x); this.unpSince.delete(x);   // a direct frame ends the unproven streak
         if (mine) {
           this.lkAnyAt = TICK; this.d6Mark = false; this.selfLeaseAt = -1; if (this.lkAt.size >= 64) eraseFirst(this.lkAt); this.lkAt.set(ckey(m.coord), TICK);
