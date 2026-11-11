@@ -538,6 +538,20 @@
     }
   }
 
+  // Where one person sits in the whole composite, in the composite's own
+  // pixels: the packer paints cell k row-major in square cells of
+  // width / cols (mesh-media paint). ids is the pack's cell list; a dense
+  // pack names no cells, and then nobody's cell is known (null).
+  function wholeCell(ids, cols, id, frameW, frameH) {
+    if (!Array.isArray(ids) || !id || !(cols > 0) || !(frameW > 2) || !(frameH > 2)) return null;
+    const k = ids.indexOf(String(id));
+    if (k < 0) return null;
+    const c = frameW / cols;
+    const x = (k % cols) * c, y = Math.floor(k / cols) * c;
+    if (y + c > frameH + 0.5) return null;
+    return { x: x, y: y, w: c, h: c };
+  }
+
   // One stadium element. Repeat calls keep the same <video>, so a
   // status pass does not build a new decoder.
   function ensureWhole(feed) {
@@ -1398,6 +1412,7 @@
     paintShade: paintShade,
     avatarUrl: avatarUrl,
     paintAvatar: paintAvatar,
+    wholeCell: wholeCell,
     apply: apply,
     stadFrameSize: stadFrameSize,
     installBar: installBar,
