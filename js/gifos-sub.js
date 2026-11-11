@@ -115,7 +115,7 @@
     const t = TIERS[lic.tier];
     const st = t.storage && lic.storage && typeof lic.storage === 'object' ? {
       gb: Number(lic.storage.gb) || 0,
-      retentionDays: Number(lic.storage.retentionDays) || 0,
+      lapseKeepDays: lic.storage.lapseKeepDays == null ? 30 : Number(lic.storage.lapseKeepDays),
       atCap: String(lic.storage.atCap || 'refuse-new'),
       warnAtPercent: Number(lic.storage.warnAtPercent) || 80,
     } : null;
@@ -124,6 +124,14 @@
       roomLimit: t.roomLimit, turnAudio: true, turnVideo: t.turnVideo,
       storage: st, bypassLimit: true, until: lic.exp,
     };
+  }
+
+  // storageAfterLapse(untilS, nowS, keepDays) -> 'active' | 'kept' | 'delete-due'.
+  // No automatic retention while subscribed; after the plan ends the files are
+  // kept keepDays (30) and are then due for deletion. Pure: it deletes nothing.
+  function storageAfterLapse(untilS, nowS, keepDays) {
+    if (nowS <= untilS) return 'active';
+    return nowS <= untilS + (keepDays == null ? 30 : keepDays) * 86400 ? 'kept' : 'delete-due';
   }
 
   // ---- proving the license is yours -----------------------------------------
@@ -221,7 +229,7 @@
 
   GifOS.sub = {
     TIERS, TIER_IDS, FREE, TEXT, PEOPLE_LIMIT, LICENSE_KIND, SELLER, KEY_RE, SUB_ID_RE, ASK_WINDOW_S, FLAG_KEY,
-    checkLicense, verifyLicense, rightsOf, proofMessage, verifyProof, askMessage, askFresh,
+    checkLicense, verifyLicense, rightsOf, storageAfterLapse, proofMessage, verifyProof, askMessage, askFresh,
     roomLimitFor, admission, enabled, roomContext, doorContext, roomTierOf, doorVerdict, doorProofOk,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
