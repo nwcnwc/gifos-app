@@ -123,7 +123,9 @@
     writeJson(CRED_KEY, c);
     writeState({ subId: c.subId, tier: c.tier, status: null });
     keyMemo = { seed: null, p: null };
-    return refresh();
+    const st = await refresh();
+    rejoin();
+    return st;
   }
 
   // ---- the payment service's key and the license ------------------------------
@@ -199,7 +201,7 @@
     while (Date.now() < until) {
       await new Promise((r) => setTimeout(r, POLL_MS));
       let st = null; try { st = await refresh(); } catch (e) {}
-      if (st && st.licenseJson) return st;
+      if (st && st.licenseJson) { rejoin(); return st; }
       if (st && st.status && st.status !== 'APPROVAL_PENDING' && st.status !== 'APPROVED') return st;
     }
     return readState();
@@ -245,12 +247,17 @@
   }
   // joinMeeting(room, {onTicket, onLost}) — called as the page starts a meeting.
   // Payment is checked here, once; renewals only keep this meeting the newest.
+  // A join that got no answer from the service (no subscription on this
+  // browser yet, or no connection) is tried again on the next call: a page
+  // that starts its meeting first and gets the subscription after (signing
+  // up, or opening the subscription file) joins with it then.
   function joinMeeting(room, h) {
     if (!on()) return Promise.resolve(null);
-    if (meet && meet.room === room) return meet.joining;
+    if (meet && meet.room === room && (meet.ticket || meet.moved || meet.pending)) return meet.joining;
+    const keep = h || hooks;
     leaveMeeting();
-    hooks = h || {};
-    const m = meet = { room, tag: null, ticket: null, exp: 0, gen: 0, timer: null, moved: null, joining: null };
+    hooks = keep || {};
+    const m = meet = { room, tag: null, ticket: null, exp: 0, gen: 0, timer: null, moved: null, joining: null, pending: true };
     m.joining = (async () => {
       if (!(await credential())) return null;
       m.tag = await SUB.meetingTag(room);
@@ -259,10 +266,13 @@
       if (!j.active) { m.moved = 'inactive'; return null; }
       take(j);
       return m.ticket;
-    })().catch(() => null);
+    })().catch(() => null).then((t) => { m.pending = false; return t; });
     return m.joining;
   }
   function leaveMeeting() { stopTimer(); meet = null; hooks = {}; }
+  // The subscription on this browser changed (signed up, or a file opened):
+  // the meeting this page is in joins with it now.
+  function rejoin() { if (meet && !meet.ticket) { const room = meet.room; meet = null; joinMeeting(room); } }
   async function currentTicket(room) {
     if (!meet || meet.room !== room) return null;
     await meet.joining;
