@@ -180,7 +180,11 @@
     l4Back(moved) {
       this.l4Out = false; this.hasCoord = true; this.l4ExecAt = this.l4OutExec;
       if (moved) this.l4Exchange(); else { this.l4ExecAt = -1; this.f.fabricNoteSwap(this.id, 3); this.trace('SWAP-ABORT', this.id, this.coord, 'partner=%d stayed', this.l4Partner); }
-      const h = this.l4Held; this.l4Held = []; for (const x of h) this.recv(x);
+      const h = this.l4Held; this.l4Held = [];
+      for (const x of h) {
+        if (moved && this.hasCoord && x.id === this.l4Partner && x.sw < 0 && (((x.t === 'HELLO' || x.t === 'CLAIM') && x.ck === ckey(this.coord)) || (x.t === 'PHONE' && ckey(x.coord) === ckey(this.coord)))) { this.trace('SWAP-STALE', this.id, this.coord, 'from=%d', x.id); continue; }   // L4.3.4: what the other person said about their old place before we swapped is not a claim on it now
+        this.recv(x);
+      }
     },
 
     // C++: mesh_tier.inc:Seat::l4Exchange
