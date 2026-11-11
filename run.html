@@ -626,29 +626,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   </aside>
   <div id="waitself" aria-live="polite"><h3></h3><p></p></div>
   <button data-t="stillHere" type="button" id="still">Still in the call</button>
-  <aside data-al="orderOfService" id="rundown" aria-label="Run of show">
-    <h3 data-t="orderOfService" id="rundown-title">Run of show</h3>
-    <ol id="rundown-list"></ol>
-    <p id="rundown-end"></p>
-    <button data-t="rdNext" type="button" id="rundown-next">Next</button>
-    <button data-t="songWords" type="button" id="song-edit" class="secondary">Song words</button>
-  </aside>
-  <aside id="songedit" aria-labelledby="songedit-title">
-    <h3 data-t="songWords" id="songedit-title">Song words</h3>
-    <p data-t="songNote" id="songedit-note">One line per line. Song reads them in order.</p>
-    <textarea id="song-text" rows="8" spellcheck="false" aria-labelledby="songedit-title" aria-describedby="songedit-note"></textarea>
-    <div class="songedit-row">
-      <button data-t="barSave" type="button" id="song-save">Save</button>
-      <button data-t="shareCancel" type="button" id="song-cancel" class="secondary">Cancel</button>
-    </div>
-  </aside>
-  <aside data-al="lyricsAria" id="lyrics" aria-label="Lyrics">
-    <p data-t="lyProgram" class="ly-k" id="lyrics-program-k">Program</p>
-    <p class="ly-program" id="lyrics-program" aria-live="polite"></p>
-    <p data-t="lyPreview" class="ly-k preview" id="lyrics-preview-k">Preview</p>
-    <p class="ly-preview" id="lyrics-preview"></p>
-    <button data-t="lyNext" type="button" id="lyrics-next">Next line</button>
-  </aside>
   <button data-ti="fitbtnTip" data-al="fitbtnAria" data-t="fitbtn" type="button" id="fitbtn" class="fitbtn" aria-pressed="true" aria-label="Gallery" aria-keyshortcuts="Alt+F" title="Fit everyone on one screen. Press to scroll the room instead. Alt+F switches.">▦ Fit</button>
   <div id="livecap"></div>
   <div id="callstate" hidden>
@@ -798,8 +775,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <button data-ti="appTip" id="appbtn" data-t="runApp" aria-keyshortcuts="Alt+Y" title="Run an app inside this meeting. Most stay in sync. One that turns multiplayer off stays on the host's screen.">Run app</button>
         <button data-ti="rbbtnTip" data-t="rbbtn" id="rbbtn" title="Play the last broadcast, or a video, into the broadcast. Viewers see Prerecorded.">Rebroadcast</button>
         <label data-ti="bcwhenrowTip" id="bcwhenrow" title="When the broadcast starts. The viewer link and the room say so."><span data-t="bcwhenLbl" id="bcwhen-lbl">Start time</span><input type="datetime-local" id="bcwhen"></label>
-        <label data-ti="bcrdrowTip" id="bcrdrow" title="An optional order of events only you see. Off for a new broadcast."><span data-t="bcrdLbl">Run of show</span><select id="bcrd"><option value="" data-t="bcrdNone">None</option><option value="service" data-t="bcrdService">Worship service</option></select></label>
-        <label data-ti="bcvisitrowTip" id="bcvisitrow" title="Link for viewers (opens in a new window)"><span data-t="bcvisitLbl" id="bcvisit-lbl">Visit link</span><input type="url" id="bcvisit" inputmode="url" autocomplete="url" placeholder="https://" spellcheck="false"></label>
       </div>
     </section>
     <section class="moregroup" data-group="host">
@@ -884,7 +859,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <div id="feed">
     <p data-t="bcPre" id="bc-pre" hidden>Prerecorded</p>
     <div id="bc-ended" hidden><p id="bc-ended-txt"></p><a data-t="bcCal" id="bc-cal" hidden>Add to calendar</a></div>
-    <a id="bc-visit" hidden target="_blank" rel="noopener noreferrer"><svg data-icon="external-link" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><span data-t="visit">Visit</span></a>
     <div id="bc-q" hidden aria-live="polite"><i id="bc-q-pad"></i><i id="bc-q-fit"></i><b id="bc-q-by"></b><p id="bc-q-txt"></p></div>
     <div id="bc-cap" hidden><button data-ti="bcCapBtnTip" data-al="captions" type="button" id="bc-cap-btn" aria-pressed="true" aria-label="Captions" title="Show or hide the captions">CC</button><p id="bc-cap-txt" aria-live="polite"></p></div>
     <div id="stagefeed"></div>
@@ -2209,36 +2183,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { return !!localStorage.getItem('gifos_vadm_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase()); }
       catch (e) { return false; }
     };
-    // THE VISIT LINK rides the link as visit=<https url>, set by the host in
-    // More: the church's or streamer's own site. We can't vouch for where it
-    // goes, so it is only a link. Only an https page is offered, and the
-    // button names its site, because anyone can hand someone a link. Links
-    // shared before the rename carry give=; they still work.
-    if (params.get('give') && !params.get('visit')) params.set('visit', params.get('give'));
-    params.delete('give');
-    const BC_VISIT_KEY = 'gifos_bcvisit_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase();
-    if (BROADCAST && !params.get('visit') && bcHostStored()) {
-      try {
-        const s = localStorage.getItem(BC_VISIT_KEY) || localStorage.getItem(BC_VISIT_KEY.replace('_bcvisit_', '_bcgive_'));
-        if (s) params.set('visit', s);
-      } catch (e) {}
-    }
-    function bcVisitCheck(raw) {
-      raw = String(raw || '').trim();
-      if (!raw || raw.length > 512) return null;
-      try {
-        const u = new URL(raw);
-        if (u.protocol !== 'https:' || !u.hostname || u.username || u.password) return null;
-        return { href: u.href, site: u.hostname };
-      } catch (e) { return null; }
-    }
     // The host's own values also ride its status gossip (the existing
     // fan-out), so a viewer who opened a bare link still gets them.
     function bcHostGossip(field) {
       try { for (const st of statusOf.values()) if (st && st[field]) return st[field]; } catch (e) {}
       return null;
     }
-    function bcVisit() { return BROADCAST ? (bcVisitCheck(params.get('visit')) || bcVisitCheck(bcHostGossip('bcvisit'))) : null; }
     // THE START TIME rides the link as at=<unix seconds> (and the host's
     // status), set by the host in More. A church shares Sunday's link
     // midweek: an early viewer reads when it starts and a countdown, and
@@ -2729,7 +2679,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const barTop = bar ? bar.getBoundingClientRect().top : window.innerHeight;
       const limit = (barTop > top + 48 && barTop < window.innerHeight) ? barTop : window.innerHeight;
       // A phone keeps the link under the title on air too: the band above
-      // the dock is Live / Record and the Run of show there.
+      // the dock is Live / Record.
       const narrow = window.matchMedia && window.matchMedia('(max-width: 700px), (max-height: 500px)').matches;
       document.documentElement.style.setProperty('--bclinktop', top + 'px');
       if (onAir && !narrow) {
@@ -3567,9 +3517,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (pulseHalt && !answer) return; // the halt models a throttled clock; an answer to a newcomer is driven by its frame, not the clock
       myStatus.at = Date.now(); // timestamped: out-of-order gossip can't roll me back
       if (BROADCAST && typeof bcHostStored === 'function' && bcHostStored()) {
-        const at0 = Number(params.get('at')) || 0, vis0 = (bcVisitCheck(params.get('visit')) || {}).href || '';
+        const at0 = Number(params.get('at')) || 0;
         if (at0 > 0) myStatus.bcat = at0; else delete myStatus.bcat;
-        if (vis0) myStatus.bcvisit = vis0; else delete myStatus.bcvisit;
       }
       // My SEAT rides the heartbeat: coord is the tree fact everything else
       // (rows, links, Stage membership order) derives from. The old deck
@@ -8082,42 +8031,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       blurPipe = null;
     }
     function blurPipeTune(level) {
-      // Level 0 runs only to carry the song line on a clear camera.
+      // Level 0 runs only for a sender crop or stage frame on a clear camera.
       return { level: level, px: level === 2 ? 26 : 11, capW: level >= 2 ? 320 : level === 1 ? 480 : 640 };
-    }
-    // During Song the booth's current line rides on the picture the room
-    // sees: white on a dark band, clear of a face. The room is shown this
-    // camera as a centered square with the name strip over its bottom 17%
-    // (mesh-media.js), so the words wrap to fit that square and sit above
-    // the strip. Two lines at most; a longer line gets a smaller font.
-    function paintLyricOnAir(ctx, w, h) {
-      const line = lyricOnAir();
-      if (!line) return;
-      const side = Math.min(w, h);
-      const room = side * 0.9;
-      const wrap = (px) => {
-        ctx.font = '700 ' + px + 'px system-ui, sans-serif';
-        const out = [];
-        let cur = '';
-        for (const word of line.split(/\s+/)) {
-          const next = cur ? cur + ' ' + word : word;
-          if (cur && ctx.measureText(next).width > room) { out.push(cur); cur = word; } else cur = next;
-        }
-        if (cur) out.push(cur);
-        return out;
-      };
-      let px = Math.max(10, Math.round(side * 0.085));
-      let rows = wrap(px);
-      while (px > 8 && (rows.length > 2 || rows.some((r) => ctx.measureText(r).width > room))) rows = wrap(--px);
-      const lh = Math.round(px * 1.2), pad = Math.round(px * 0.35);
-      const band = rows.length * lh + pad * 2;
-      const bottom = Math.floor(h * 0.8);
-      ctx.fillStyle = 'rgba(0,0,0,0.66)';
-      ctx.fillRect(Math.round((w - side) / 2), bottom - band, side, band);
-      ctx.fillStyle = '#fff';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      rows.forEach((r, i) => ctx.fillText(r, w / 2, bottom - band + pad + lh * i + lh / 2));
     }
     function blurPipeCanReuse(pipe, camId) {
       return !!(pipe && pipe.camId === camId && pipe.track && pipe.track.readyState === 'live');
@@ -8241,7 +8156,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           else ctx.drawImage(src, ox, oy, dw, dh);
           drew = true;
         } catch (e) {}
-        if (drew) paintLyricOnAir(ctx, w, h);
         // painted counts a frame that was DRAWN. A throw used to increment
         // first, so blackCamWatch read a dead pipe as frames flowing.
         const why = noteBlurFrame(pipe, drew);
@@ -8638,7 +8552,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       stopAvatarPipe();
       const lvl = blurLevelFor('me');
       // A sender crop (0.9.23b) rides the same canvas: everyone gets the square I chose.
-      if ((lvl > 0 || lyricOnAir() || !!senderCrop() || !!stageFrame()) && !myStatus.camOff) return startBlurPipe(lvl) || cam;
+      if ((lvl > 0 || !!senderCrop() || !!stageFrame()) && !myStatus.camOff) return startBlurPipe(lvl) || cam;
       stopBlurPipe();
       return cam;
     }
@@ -9531,7 +9445,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (qt && on && qt.textContent !== bq.text) qt.textContent = bq.text;
       try { paintBcCalendar(on && bq.viewer && !!bq.sched && bq.sched.phase === 'future'); } catch (e) {}
       try { if (typeof paintStagePlate === 'function') paintStagePlate(); } catch (e) {}
-      try { paintBcVisit(bq.viewer, on); } catch (e) {}
     }
     function leftDialogUp() {
       const lm = document.getElementById('left-modal');
@@ -9754,7 +9667,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       } catch (e2) {}
       try { paintInviteSlot(); } catch (e3) {}
     }
-    // The host's start time and Visit link can arrive by gossip after the
+    // The host's start time can arrive by gossip after the
     // line was painted; the countdown moves on its own.
     if (BROADCAST && !(typeof bcHostStored === 'function' && bcHostStored())) setInterval(() => {
       try {
@@ -9823,257 +9736,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return (p && p.name) || rosterNames[id] || 'Guest';
     }
     // The lamp itself is painted by paintOnAir (confirmed design, above).
-    // The booth's order of service and an open roster repaint with it.
+    // An open roster repaints with it.
     function paintOnAirSide() {
       try { if (document.getElementById('roster').classList.contains('open')) paintRoster(); } catch (e) {}
-      try { paintRundown(); } catch (e2) {}
     }
-    // A church broadcast's order of service. Only the booth sees it. The
-    // place is remembered for this tab, and Next walks Welcome through Closing.
-    const RUNDOWN_STEPS = [
-      ['rdWelcome', 'Welcome'],
-      ['rdSong', 'Song'],
-      ['rdPrayer', 'Prayer'],
-      ['rdScripture', 'Scripture'],
-      ['rdMessage', 'Message'],
-      ['rdSong', 'Song'],
-      ['rdClosing', 'Closing'],
-    ];
-    // Which song a step is (0 for the first Song, 1 for the second), or -1.
-    function songSlotOf(i) {
-      if (!RUNDOWN_STEPS[i] || RUNDOWN_STEPS[i][0] !== 'rdSong') return -1;
-      let n = 0;
-      for (let j = 0; j < i; j++) if (RUNDOWN_STEPS[j][0] === 'rdSong') n++;
-      return n;
-    }
-    // The song on now, or the next one coming (after the end, the first).
-    function songSlotAhead() {
-      const at = rundownAt();
-      for (let i = at; i < RUNDOWN_STEPS.length; i++) if (songSlotOf(i) >= 0) return songSlotOf(i);
-      return 0;
-    }
-    // The run of show is an optional template the host picks in More (Run of
-    // show). A new broadcast has none: no agenda, no songs. A room that already
-    // used it (a stored place or song words) keeps it, unless the host chose None.
-    function rundownTplKey() { return 'gifos_rdtpl_' + (params.get('v') || ''); }
-    function rundownTpl() {
-      try {
-        const t = localStorage.getItem(rundownTplKey());
-        if (t === 'service') return 'service';
-        if (t === 'none') return '';
-        if (sessionStorage.getItem(rundownStoreKey()) !== null || localStorage.getItem(songStoreKey(0)) || localStorage.getItem(songStoreKey(1))) return 'service';
-      } catch (e) {}
-      return '';
-    }
-    function rundownStoreKey() { return 'gifos_rundown_' + (params.get('v') || ''); }
-    function rundownAt() {
-      let n = 0;
-      try { n = parseInt(sessionStorage.getItem(rundownStoreKey()) || '0', 10); } catch (e) {}
-      if (!isFinite(n) || n < 0) n = 0;
-      if (n > RUNDOWN_STEPS.length) n = RUNDOWN_STEPS.length;
-      return n;
-    }
-    function setRundownAt(n) {
-      try { sessionStorage.setItem(rundownStoreKey(), String(n)); } catch (e) {}
-    }
-    function paintRundown() {
-      const el = document.getElementById('rundown');
-      if (!el) {
-        try { paintLyrics(); } catch (e) {}
-        return;
-      }
-      const host = BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored())) && rundownTpl() === 'service';
-      el.classList.toggle('open', !!host);
-      document.body.classList.toggle('rundown', !!host);
-      try { paintLyrics(); } catch (e) {}
-      if (!host) {
-        const se = document.getElementById('songedit');
-        if (se) se.classList.remove('open');
-        document.body.classList.remove('songedit');
-        return;
-      }
-      try { paintSongWords(); } catch (e) {}
-      const at = rundownAt();
-      const ended = at >= RUNDOWN_STEPS.length;
-      const title = document.getElementById('rundown-title');
-      if (title) title.textContent = uiText('orderOfService', 'Run of show');
-      const list = document.getElementById('rundown-list');
-      if (list) {
-        list.textContent = '';
-        RUNDOWN_STEPS.forEach((step, i) => {
-          const li = document.createElement('li');
-          if (!ended && i === at) li.className = 'now';
-          else if (ended || i < at) li.className = 'past';
-          if (!ended && i === at) {
-            const tag = document.createElement('span');
-            tag.className = 'nowtag';
-            tag.textContent = uiText('rdNow', 'Now');
-            li.appendChild(tag);
-            li.setAttribute('aria-current', 'step');
-          }
-          const name = document.createElement('span');
-          name.className = 'rdname';
-          const slot = songSlotOf(i);
-          name.textContent = uiText(step[0], step[1]) + (slot >= 0 ? ' ' + (slot + 1) : '');
-          li.appendChild(name);
-          list.appendChild(li);
-        });
-      }
-      const end = document.getElementById('rundown-end');
-      if (end) end.textContent = ended ? uiText('rdEnded', 'Ended') : '';
-      const btn = document.getElementById('rundown-next');
-      if (btn) {
-        btn.classList.toggle('secondary', ended);
-        const label = ended ? uiText('rdAgain', 'Start over') : (at === RUNDOWN_STEPS.length - 1 ? uiText('rdDone', 'Done') : uiText('rdNext', 'Next'));
-        if (btn.textContent !== label) btn.textContent = label;
-      }
-      try { paintRoomTrust(); } catch (e) {}
-    }
-    const rundownNext = document.getElementById('rundown-next');
-    if (rundownNext) rundownNext.onclick = () => {
-      const at = rundownAt();
-      const next = at >= RUNDOWN_STEPS.length ? 0 : at + 1;
-      if (next === 0 || songSlotOf(next) >= 0) setLyricAt(0);
-      setRundownAt(next);
-      paintRundown();
-    };
-    // The hymn the booth reads during Song. The words stay as written.
-    // Only the Program / Preview labels follow the device language.
-    // The index lives in this tab. It is not sent to the room as data; the
-    // current line is painted onto the outgoing camera (paintLyricOnAir).
-    // Song 2 (after the Message) has its own built-in hymn.
-    const SONG_LINES = [[
-      'The first line of the song is the one to sing',
-      'The next line follows after it',
-      'Each line is one breath long',
-      'And the last line ends the song.',
-    ], [
-      'This is the second song to sing',
-      'It keeps its own words apart',
-      'Type your own before you start',
-      'They stay on this computer.',
-    ]];
-    // The booth's own song replaces the hymn: one line per line, blank lines
-    // dropped. Kept per room and per song on this computer, so it can be typed
-    // before the service. Empty goes back to the hymn.
-    function songStoreKey(slot) { return (slot ? 'gifos_song' + (slot + 1) + '_' : 'gifos_song_') + (params.get('v') || ''); }
-    function songLinesFrom(text) {
-      return String(text || '').split(/\r?\n/).map((l) => l.replace(/\s+/g, ' ').trim().slice(0, 120)).filter(Boolean).slice(0, 200);
-    }
-    function songLines(slot) {
-      if (slot === undefined) slot = songSlotAhead();
-      let own = [];
-      try { own = songLinesFrom(localStorage.getItem(songStoreKey(slot))); } catch (e) {}
-      return own.length ? own : (SONG_LINES[slot] || SONG_LINES[0]);
-    }
-    function lyricStoreKey() { return 'gifos_lyric_' + (params.get('v') || ''); }
-    function lyricAt() {
-      let n = 0;
-      try { n = parseInt(sessionStorage.getItem(lyricStoreKey()) || '0', 10); } catch (e) {}
-      if (!isFinite(n) || n < 0) n = 0;
-      const len = songLines().length;
-      if (n >= len) n = len - 1;
-      return n;
-    }
-    function setLyricAt(n) {
-      try { sessionStorage.setItem(lyricStoreKey(), String(n)); } catch (e) {}
-    }
-    function lyricSongOn() {
-      const host = BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored())) && rundownTpl() === 'service';
-      return !!(host && songSlotOf(rundownAt()) >= 0);
-    }
-    // The line the room sees on the booth's camera, or '' outside Song.
-    function lyricOnAir() {
-      try { return lyricSongOn() ? (songLines()[lyricAt()] || '') : ''; } catch (e) { return ''; }
-    }
-    let lyricAirWas = false;
-    function paintLyrics() {
-      const el = document.getElementById('lyrics');
-      if (!el) return;
-      const song = lyricSongOn();
-      // A clear camera has no canvas to paint on; switch the sent track.
-      if (song !== lyricAirWas) { lyricAirWas = song; try { refreshOutbound(); } catch (e) {} }
-      el.classList.toggle('open', song);
-      document.body.classList.toggle('lyrics', song);
-      if (!song) return;
-      const lines = songLines();
-      const at = lyricAt();
-      const last = at >= lines.length - 1;
-      const progK = document.getElementById('lyrics-program-k');
-      const prog = document.getElementById('lyrics-program');
-      const prevK = document.getElementById('lyrics-preview-k');
-      const prev = document.getElementById('lyrics-preview');
-      const btn = document.getElementById('lyrics-next');
-      if (progK) progK.textContent = uiText('lyProgram', 'Program');
-      if (prog && prog.textContent !== lines[at]) prog.textContent = lines[at];
-      if (prevK) prevK.textContent = uiText('lyPreview', 'Preview');
-      const nxt = last ? '' : (lines[at + 1] || '');
-      if (prev && prev.textContent !== nxt) prev.textContent = nxt;
-      if (btn) {
-        btn.classList.toggle('secondary', last);
-        const label = last ? uiText('rdAgain', 'Start over') : uiText('lyNext', 'Next line');
-        if (btn.textContent !== label) btn.textContent = label;
-      }
-    }
-    const lyricsNext = document.getElementById('lyrics-next');
-    if (lyricsNext) lyricsNext.onclick = () => {
-      const at = lyricAt();
-      setLyricAt(at >= songLines().length - 1 ? 0 : at + 1);
-      paintLyrics();
-    };
-    // The song the open Song words box edits, picked when it opens.
-    let songEditSlot = 0;
-    function paintSongWords() {
-      const b = document.getElementById('song-edit');
-      if (b) b.textContent = uiText('songWords', 'Song words');
-      const t = document.getElementById('songedit-title');
-      if (t) t.textContent = uiText('songWords', 'Song words') + ' · ' + uiText('rdSong', 'Song') + ' ' + (songEditSlot + 1);
-      const n = document.getElementById('songedit-note');
-      if (n) n.textContent = uiText('songNote', 'One line per line. Song reads them in order.');
-      const sv = document.getElementById('song-save');
-      if (sv) sv.textContent = uiText('songSave', 'Save');
-      const cn = document.getElementById('song-cancel');
-      if (cn) cn.textContent = uiText('songCancel', 'Cancel');
-    }
-    function openSongWords(open) {
-      const el = document.getElementById('songedit');
-      if (!el) return;
-      el.classList.toggle('open', open);
-      document.body.classList.toggle('songedit', open);
-      if (open) {
-        songEditSlot = songSlotAhead();
-        paintSongWords();
-        const t = document.getElementById('song-text');
-        if (t) { t.value = songLines(songEditSlot).join('\n'); try { t.focus(); } catch (e) {} }
-      } else {
-        const b = document.getElementById('song-edit');
-        if (b) { try { b.focus(); } catch (e) {} }
-      }
-    }
-    const songEdit = document.getElementById('song-edit');
-    if (songEdit) { paintSongWords(); songEdit.onclick = () => openSongWords(true); }
-    const songSave = document.getElementById('song-save');
-    if (songSave) songSave.onclick = () => {
-      const t = document.getElementById('song-text');
-      const lines = songLinesFrom(t ? t.value : '');
-      try {
-        if (lines.length) localStorage.setItem(songStoreKey(songEditSlot), lines.join('\n'));
-        else localStorage.removeItem(songStoreKey(songEditSlot));
-      } catch (e) {}
-      // Typing the next song must not move the song being sung now.
-      if (songSlotOf(rundownAt()) === songEditSlot || songSlotOf(rundownAt()) < 0) setLyricAt(0);
-      openSongWords(false);
-      paintLyrics();
-    };
-    const songCancel = document.getElementById('song-cancel');
-    if (songCancel) songCancel.onclick = () => openSongWords(false);
-    const songBox = document.getElementById('songedit');
-    if (songBox) songBox.addEventListener('keydown', (e) => {
-      if (e.key !== 'Escape') return;
-      e.preventDefault();
-      e.stopPropagation();
-      openSongWords(false);
-    });
     const pageArrived = Date.now();
     function mayHost() {
       return !(typeof hasAdminRoom === 'function' && hasAdminRoom() && !amAdmin);
@@ -17473,15 +17139,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const custom = relay && relay !== window.GIFOS_RELAY;
       const avPart = (av ? '&av=' + av : '') + (BROADCAST ? '&bc=1' : '');
       const atBit = BROADCAST && /^\d+$/.test(params.get('at') || '') ? params.get('at') : '';
-      const visitBit = BROADCAST && bcVisit() ? encodeURIComponent(bcVisit().href) : '';
-      const avPartAt = avPart + (atBit ? '&at=' + atBit : '') + (visitBit ? '&visit=' + visitBit : '');
+      const avPartAt = avPart + (atBit ? '&at=' + atBit : '');
       const pretty = /(^|\.)gifos\.app$/.test(location.hostname) && !custom;
       // A broadcast's pretty form is /cast/<room>/<V> — same 404-router
       // machinery as /meet, but the path itself carries the skin so the
       // shared link opens as a broadcast for every viewer.
       const prettyPath = (BROADCAST ? '/cast/' : '/meet/') + room + (av ? '/' + av : '');
       const prettyQs0 = atBit ? '?at=' + atBit : '';
-      const prettyQs = prettyQs0 + (visitBit ? (prettyQs0 ? '&' : '?') + 'visit=' + visitBit : '');
+      const prettyQs = prettyQs0;
       // A RELEASE/pinned computer runs from /versions/<x.y.z>/, but prettyPath is
       // rooted at the domain. Rewriting the address bar to it MOVED THE DOCUMENT
       // BASE off the snapshot — document.baseURI became /meet/<room>, so every
@@ -20896,7 +20561,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function placeQaBand() {
       const band = document.getElementById('bc-q');
       if (!band || band.hidden) return;
-      // Under the chip, above the dock, Visit and the captions, and around
+      // Under the chip, above the dock and the captions, and around
       // Fit (wherever it sits on this phone): the text wraps beside Fit, and
       // at large type on a small phone it steps down to 18px to fit.
       const rectOf = (sel) => {
@@ -20908,7 +20573,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       let top = 12;
       for (const sel of ['.topchip', '#livebadge', '#bc-link']) { const r = rectOf(sel); if (r && r.top < innerHeight / 2) top = Math.max(top, Math.ceil(r.bottom) + 8); }
       let floor = innerHeight; // the dock's own top, not --dock-clear: that lags a type-size change by a frame
-      for (const sel of ['.bar', '#bc-visit', '#bc-cap-txt', '#bc-cap-btn']) { const r = rectOf(sel); if (r && r.top > top) floor = Math.min(floor, r.top); }
+      for (const sel of ['.bar', '#bc-cap-txt', '#bc-cap-btn']) { const r = rectOf(sel); if (r && r.top > top) floor = Math.min(floor, r.top); }
       floor -= 8;
       const fit = rectOf('#fitbtn');
       const pad = document.getElementById('bc-q-pad'), gap = document.getElementById('bc-q-fit'), txt = document.getElementById('bc-q-txt');
@@ -31144,7 +30809,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // Floaters rest at the bottom: their CSS bottom is their own gap, plus the
     // safe area, plus var(--barlift). A floater whose resting box would meet the
     // bar rises to 8px above the bar's top. One that would not stays down. A
-    // floater stacked on a base (the Record row, Visit) rises at least as far as
+    // floater stacked on a base (the Record row) rises at least as far as
     // its base, so it never lands on it. The Record row beside a sideways dock
     // keeps its own place (placeCallState).
     // Panels run to the bottom and pad or end by var(--barclear). When the bar,
@@ -31153,8 +30818,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // Otherwise it clears nothing.
     // A tucked or faded bar keeps the last values, so nothing jumps when it wakes.
     function placeBarAvoiders() {
-      const FLOATERS = [['callstate', ''], ['chatnote', 'callstate'], ['livecap', 'callstate'], ['rundown', 'callstate'],
-        ['waitlist', ''], ['lyrics', ''], ['songedit', ''], ['rb-now', ''], ['bc-visit', ''], ['bc-cap', 'bc-visit'], ['bc-reacts', '']];
+      const FLOATERS = [['callstate', ''], ['chatnote', 'callstate'], ['livecap', 'callstate'], 
+        ['waitlist', ''], ['rb-now', ''], ['bc-cap', ''], ['bc-reacts', '']];
       const PANELS = [['chatpanel', 'pad'], ['qa', 'pad'], ['bc-ended', 'bottom'], ['bc-ident', 'bottom']];
       const bar = document.querySelector('.bar');
       if (!bar || bar.classList.contains('tucked') || document.body.classList.contains('chrome-away')) return;
@@ -31176,8 +30841,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const el = document.getElementById(id);
         const r = shown(el);
         if (!r) continue;
-        // Visit inside the ended card is static there; it is not a floater then.
-        if (el.parentElement && el.parentElement.id === 'bc-ended') continue;
         const cur = read(el, '--barlift');
         let lift = baseId && lifts[baseId] !== undefined ? lifts[baseId] : 0;
         if (el.classList.contains('beside')) lift = 0;
@@ -31213,7 +30876,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       };
       window.__gifosBarAvoid = later;
       // Showing, hiding or opening one of them can newly put it under the bar.
-      const ids = ['callstate', 'chatnote', 'livecap', 'rundown', 'waitlist', 'lyrics', 'songedit', 'bc-visit', 'bc-cap', 'bc-reacts', 'chatpanel', 'qa', 'bc-ended', 'bc-ident', 'reacttray'];
+      const ids = ['callstate', 'chatnote', 'livecap', 'waitlist', 'bc-cap', 'bc-reacts', 'chatpanel', 'qa', 'bc-ended', 'bc-ident', 'reacttray'];
       if (window.MutationObserver) {
         const mo = new MutationObserver(later);
         for (const id of ids) { const el = document.getElementById(id); if (el) mo.observe(el, { attributes: true, attributeFilter: ['class', 'hidden'] }); }
@@ -31221,7 +30884,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // A caption or a chat line that grows a line can newly meet the bar.
       if (window.ResizeObserver) {
         const ro = new ResizeObserver(later);
-        for (const id of ['callstate', 'chatnote', 'livecap', 'bc-visit', 'bc-cap']) { const el = document.getElementById(id); if (el) ro.observe(el); }
+        for (const id of ['callstate', 'chatnote', 'livecap', 'bc-cap']) { const el = document.getElementById(id); if (el) ro.observe(el); }
       }
       window.addEventListener('resize', later);
       window.addEventListener('orientationchange', later);
@@ -31264,12 +30927,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           bar.classList.remove('more-rows');
           const upright = window.matchMedia && matchMedia('(max-width: 700px) and (orientation: portrait)').matches;
           if (sheet && upright && sheet.scrollHeight > sheet.clientHeight + 2) bar.classList.add('more-rows');
-        }
-        // Opening More covers the Run of show / lyrics cards so every
-        // dock stand-in on the sheet is fully visible (Pixel 7 host dock).
-        if (!collapsed) {
-          try { const rd = document.getElementById('rundown'); if (rd) rd.classList.remove('open'); } catch (e) {}
-          try { const ly = document.getElementById('lyrics'); if (ly) ly.classList.remove('open'); } catch (e) {}
         }
         // The fold is what shows Live again. Measure it after the class
         // changes, not while More still hides the row.
@@ -31855,9 +31512,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (joinVeilEl) return true;
         const b = document.body.classList;
         // 0.9.23b: a shared screen and a broadcast are calm too.
-        // Song words being typed hold the call up; an open Run of show
-        // fades with the dock like the rest (it is back on any move).
-        for (const c of ['app-room', 'solo-app', 'songedit']) if (b.contains(c)) return true;
+        for (const c of ['app-room', 'solo-app']) if (b.contains(c)) return true;
         if (!bar.classList.contains('collapsed')) return true; // More is open
         // A clicked button keeps focus, so only keyboard focus holds the dock.
         if (bar.matches(':hover') || bar.querySelector(':focus-visible')) return true;
@@ -33716,15 +33371,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }
         raw = u.toString();
       } catch (e) {}
-      // The start time and the Visit link ride the viewer link.
+      // The start time rides the viewer link.
       try {
         const u = new URL(raw, location.origin);
         const at = BROADCAST ? String(params.get('at') || '') : '';
-        const visit = bcVisit() ? bcVisit().href : '';
         const h = new URLSearchParams(u.hash.replace(/^#/, ''));
         const put = (sp, k, val) => { if (val) sp.set(k, val); else sp.delete(k); };
-        if (h.has('v')) { put(h, 'at', at); put(h, 'visit', visit); u.hash = h.toString(); }
-        else { put(u.searchParams, 'at', at); put(u.searchParams, 'visit', visit); }
+        if (h.has('v')) { put(h, 'at', at); u.hash = h.toString(); }
+        else { put(u.searchParams, 'at', at); }
         raw = u.toString();
       } catch (e) {}
       const secrets = [];
@@ -33766,43 +33420,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       a.href = bcCalUrl;
       a.download = (name || noun).replace(/[^\w.-]+/g, '-') + '.ics';
     }
-    // A viewer gets Visit when the link carries the host's site: on the
-    // picture while the service is on, and under the sentence on the screen
-    // that says it has not started or has ended.
-    function paintBcVisit(viewer, quiet) {
-      const a = document.getElementById('bc-visit');
-      if (!a) return;
-      const g = viewer ? bcVisit() : null;
-      a.hidden = !g;
-      if (!g) return;
-      if (a.getAttribute('href') !== g.href) a.setAttribute('href', g.href);
-      const label = 'Visit ' + g.site + ' (opens in a new window)';
-      if (a.getAttribute('aria-label') !== label) { a.setAttribute('aria-label', label); a.title = label; }
-      const ended = document.getElementById('bc-ended');
-      const home = quiet && ended ? ended : document.getElementById('feed');
-      if (home && a.parentElement !== home) home.appendChild(a);
-      placeBcVisit();
-    }
-    function placeBcVisit() {
-      const a = document.getElementById('bc-visit');
-      const fit = document.getElementById('fitbtn');
-      if (!a || a.hidden) return;
-      let left = false;
-      if (!a.closest('#bc-ended') && fit && fit.getClientRects().length) { // Fit is fixed: no offsetParent
-        a.classList.remove('left');
-        const r = a.getBoundingClientRect(), f = fit.getBoundingClientRect();
-        left = r.left < f.right && f.left < r.right && r.top < f.bottom && f.top < r.bottom;
-      }
-      a.classList.toggle('left', left);
-    }
-    // A text size or a rotation moves Fit and Visit at once; place it again
-    // then, not on the next status beat.
-    if (window.ResizeObserver && BROADCAST) {
-      try {
-        const ro = new ResizeObserver(() => { try { placeBcVisit(); } catch (e) {} });
-        ['bc-visit', 'fitbtn'].forEach((id) => { const el = document.getElementById(id); if (el) ro.observe(el); });
-      } catch (e) {}
-    }
     // The host's start time. The phone's own picker gives local time; the
     // link carries it as unix seconds, so every viewer reads it in theirs.
     const bcWhenIn = document.getElementById('bcwhen');
@@ -33825,37 +33442,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         try { updateStatus(); } catch (e) {}
       };
       paintBcWhen();
-    }
-    // The host's Visit link. It stays on the host's phone for this room and
-    // rides every viewer link from Invite.
-    const bcRdIn = document.getElementById('bcrd');
-    if (bcRdIn && BROADCAST) {
-      bcRdIn.value = rundownTpl();
-      bcRdIn.onchange = () => {
-        try { localStorage.setItem(rundownTplKey(), bcRdIn.value === 'service' ? 'service' : 'none'); } catch (e) {}
-        if (bcRdIn.value === 'service') { setRundownAt(0); setLyricAt(0); }
-        paintRundown();
-      };
-    }
-    const bcVisitIn = document.getElementById('bcvisit');
-    function paintBcVisitField() {
-      const lbl = document.getElementById('bcvisit-lbl');
-      const g = bcVisit();
-      if (lbl) lbl.textContent = g ? 'Visit link · ' + g.site : (bcVisitIn && bcVisitIn.value.trim() ? 'Visit link must start with https://' : 'Visit link');
-      if (bcVisitIn && g && document.activeElement !== bcVisitIn && !bcVisitIn.value) bcVisitIn.value = g.href;
-    }
-    if (bcVisitIn && BROADCAST) {
-      bcVisitIn.onchange = () => {
-        const g = bcVisitCheck(bcVisitIn.value);
-        if (g) params.set('visit', g.href); else params.delete('visit');
-        try {
-          g ? localStorage.setItem(BC_VISIT_KEY, g.href) : localStorage.removeItem(BC_VISIT_KEY);
-          localStorage.removeItem(BC_VISIT_KEY.replace('_bcvisit_', '_bcgive_'));
-        } catch (e) {}
-        paintBcVisitField();
-        try { updateStatus(); } catch (e) {}
-      };
-      paintBcVisitField();
     }
     document.getElementById('copy').onclick = () => {
       shareUrl.select(); try { document.execCommand('copy'); } catch (e) {}
