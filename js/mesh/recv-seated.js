@@ -63,7 +63,8 @@
       if (this.hasCoord && this.state === 3 && m.ck === ckey(this.coord) && m.id !== id) {
         // a rival for MY cell: only Section 1 is settled by challenge (a deep cell by its one arbiter)
         {
-          if ((this.l25Stand(m.id) || prov) && this.rmRival(m.id, m.arr, 'hello')) return;   // L25 / L11
+          const f18 = this.byeFloor(m.id, m.ck); const bye18 = f18 >= 0 && !(m.pp >= 0 && m.ppL >= f18) && !(m.mpK > 0 && m.mpL >= f18); const arr18 = (bye18 && !(m.arr >= 0 && this.TICK - m.arr >= f18)) ? 0 : m.arr; if (bye18 && this.rmArrival()) this.trace('L25.18.1-BYE', id, this.coord, 'rival=%d bye=%lld arr=%d pp=%d ppL=%d', m.id, f18, m.arr, m.pp, m.ppL);   // L25.18.1: a rival that said goodbye from this cell after every proof it shows makes a new claim, born as it is heard
+          if ((this.l25Stand(m.id) || (prov && !bye18)) && this.rmRival(m.id, arr18, 'hello')) return;   // L25 / L11
           if (m.arr >= 0 && m.arr <= K.L11_ARRIVE) { const a = this.rmAnsTo.get(m.id); if (a === undefined || TICK - a >= 8) { if (a === undefined && this.rmAnsTo.size >= 32) eraseFirst(this.rmAnsTo); this.rmAnsTo.set(m.id, TICK); this.emit(m.id, hello(m.ck, id)); } }
         }
         if (sure && !(this.movedClaimId >= 0 && this.movedClaimId === m.id)) {
