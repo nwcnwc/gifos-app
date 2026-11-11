@@ -17628,7 +17628,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // Go live: with a room password the host chose to be seen clear;
         // without one the room keeps everyone soft anyway, so Max blur.
         const picked = BC_INTENT ? (bcWho() === 'pw' ? 0 : 2) : null;
-        if (!go.dataset.label) go.dataset.label = go.textContent;
+        go.dataset.label = go.textContent;
         go.disabled = true; go.textContent = uiText('creating', 'Creating…');
         try {
           const K = await deriveAdminKey(chosen, pass);
