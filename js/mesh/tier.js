@@ -209,7 +209,7 @@
         for (let q = 0; q < n2; q++) { const x = this.occGet(ckey(ol2[q])); if (x >= 0) told.add(x); }
         for (const e of oldLinks) { if (e.v === partner || told.has(e.v)) continue; told.add(e.v); this.trace('SWAP-TELL', this.id, this.coord, 'to=%d', e.v); const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = this.id; this.emit(e.v, h); }
       }
-      this.lastAck = this.TICK; this.lastPhone = this.TICK - 8 + 3;
+      this.lastAck = this.TICK; this.lastPhone = this.TICK - ((this.coord.pc === 0 && this.l30Small()) ? K.L30_BEAT : 8) + 3;   // the first beat waits for my greetings whatever the beat period is
     },
 
     // C++: mesh_tier.inc:Seat::l4SwapHello
