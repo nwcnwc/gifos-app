@@ -166,6 +166,7 @@
     STG_BEAT_STALE_MS: 5000,   // ms
     STG_PIC_DEAD_MS: 4000,   // ms
     STG_PIC_FRAMES: 5,   // count
+    STG_PIC_LIVE_MS: 2500,   // ms
     STG_PIC_RETRY_MS: 15000,   // ms
     STG_ZERO_MS: 2000,   // ms
     STILL_MAX_MS: 1000,   // ms

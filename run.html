@@ -24383,6 +24383,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (mosHeld(pri)) continue; // parked on purpose while its decoder restarts (mosDecoderSweep): this silence is not death
           if (rk.indexOf('stg:') === 0) await stgPicCheck(rk, pri, fb, now);
           const bytes = await pipeBytes(pri, rk.indexOf('stg:') === 0);
+          // THE PRIMARY'S PICTURE ON THE WIRE: when its video bytes last advanced (claimRedun reads it too). A stage slot is
+          // judged on its voice, and a stager can send no voice packets at all while it stays on stage (a microphone the
+          // device has paused, a page with no running audio source). The stager's OWN copy carries every packet of voice the
+          // stager sends; no relay can carry more (a relay sends silence frames of its own). So while the stager's own
+          // copy's picture still arrives and shows, its silent voice is no death: no dark, no wake, no failover off it.
+          if (rk.indexOf('stg:') === 0 && pri.stream && pri.stream.getVideoTracks().length) {
+            const pv = await pipeBytes(pri, false);
+            if (pv !== -1) { if (pv.b > 0 && pv.b > fb.pvB) fb.pvAt = Date.now(); fb.pvB = pv.b; }   // the first sample counts once bytes have come: the dark rail can fire inside the first second
+            const ownCopy = pri.via === rk.slice(4).split('^')[0] && String(pri.key || '').indexOf('^') < 0;
+            if (ownCopy && pri.el && pri.el.videoWidth > 0 && fb.pvAt && Date.now() - fb.pvAt < STG_PIC_LIVE_MS) {   // bytes alone are no picture: an element on the wrong track shows none
+              if (fb.dark) { fb.dark = false; fb.suspect = false; schedReconcile(); }   // the picture says it is alive: re-park the woken standby
+              if (bytes !== -1 && bytes.b > (fb.lastBytes || 0)) fb.lastAdvanceAt = now;
+              if (bytes !== -1) fb.lastBytes = bytes.b;
+              fb.q = 0; fb.flowSince = 0;   // the voice rails re-earn from zero once the picture stops
+              await sampleStandby(rk, fb);
+              continue;
+            }
+          } else if (fb.pvB !== -1) { fb.pvB = -1; fb.pvAt = 0; }
           // Forensics ring (frza17: a husk claim's standby was never woken and
           // no theory survived — record what each sample actually SAW). Widened
           // 2026-08-07 from stg/sgs to EVERY redundant key, and records the
@@ -24691,10 +24709,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const MOS_DARK_MS = GifOS.timings.MOS_DARK_MS;   // no byte advance on a previously-flowing hot pipe = dark
     const MOS_FLOWED_RECENT = GifOS.timings.MOS_FLOWED_RECENT; // "previously flowing" horizon — never fires on a pipe that never delivered
     const MOS_QUALIFY = GifOS.timings.MOS_QUALIFY;     // consecutive advancing samples before a pipe earns the watchdog (~2.4s at the 300ms loop, 7.2s at the watchable 900ms cadence — see the 2026-08-08 note in mosWatchdog for why this stays a COUNT, not a clock)
+    const STG_PIC_LIVE_MS = GifOS.timings.STG_PIC_LIVE_MS; // a stage primary's picture still arrives: its video bytes advanced this recently
     const STG_ZERO_MS = GifOS.timings.STG_ZERO_MS;  // stage audio gets no grace: a stage copy with zero bytes this long after its claim, or after its wake, is dead
     const HOT_VOID_MS = GifOS.timings.HOT_VOID_MS; // hot-and-VOID: a hot primary with ZERO bytes this long is a husk, not a slow pipe (frza5)
     const mosFb = new Map(); // rk -> { wakeAt, f0, prefSince, lastSwitch, dark, lastBytes, lastAdvanceAt, q, fp, fpDecayAt, flowSince, b0, d0, stdFdec, claimAt } (wake/failback/watchdog state)
-    const mkFb = () => ({ wakeAt: 0, f0: 0, prefSince: 0, lastSwitch: 0, dark: false, lastBytes: -1, lastAdvanceAt: 0, q: 0, fp: 0, fpDecayAt: 0, flowSince: 0, b0: -1, d0: -1, stdFdec: -1, stdB: -1, stdAdvAt: 0, claimAt: 0, hadPref: false, left: null });
+    const mkFb = () => ({ wakeAt: 0, f0: 0, prefSince: 0, lastSwitch: 0, dark: false, lastBytes: -1, lastAdvanceAt: 0, q: 0, fp: 0, fpDecayAt: 0, flowSince: 0, b0: -1, d0: -1, stdFdec: -1, stdB: -1, stdAdvAt: 0, claimAt: 0, hadPref: false, left: null, pvB: -1, pvAt: 0 });
     // The PREFERRED announcer of a redundant slot: the tree-direct path the
     // media plane names as the producer's own leg. Failback aims here; any
     // other live path is a legitimate carrier but only a stand-in.
@@ -25060,7 +25079,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (pick) {
           pri = mkEnt(pick); mosIn.set(rk, pri); repaintRedun(rk, pri.stream);
           if (DEBUG_ON && rk.indexOf('stg:') === 0) swapPicNote(rk, 'claim', 'first claim ' + (pref && pick === pref ? 'pref' : 'live'));
-          fb.claimAt = now; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; fb.suspect = false; fb.stdTried = null; // fresh primary — the watchdog re-baselines
+          fb.claimAt = now; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; fb.suspect = false; fb.stdTried = null; fb.pvB = -1; fb.pvAt = 0; // fresh primary — the watchdog re-baselines
           fb.hadPref = !!(pref && pick === pref); // a stand-in claimed while nothing was preferred is not a failback anchor
           if (std && std.via === pri.via && std.streamId === pri.streamId) { dropStandby(rk); std = null; }
         }
@@ -25150,12 +25169,25 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // no stale frame to lie with and the swap is the recovery.
         const stdAdvanced = fb.d0 >= 0 && fb.stdFdec > fb.d0;
         const stdRecent = stdAdvanced && fb.stdAdvAt && now - fb.stdAdvAt < 3000;
-        const flowing = (fb.picDead && priLive && !voiceOnly) ? !!fb.picStdOk   // the picture is the complaint, so its frames are the evidence
+        // A PICTURE IS NOT TRADED FOR A BLACK ONE. Make-before-break holds for the picture too: while the primary is
+        // announced, its picture is up and its video bytes still arrive, a copy that carries a video track takes the
+        // slot only once its own picture is up (a frame since the wake). Voice packets alone are no evidence here: a
+        // relay sends silence frames for a stager who sends no voice at all, and swapping on them put a black stage in
+        // front of the viewer while the stager's own copy still showed them. A primary that is gone, or whose picture
+        // stopped arriving, fails over on the gates below unchanged.
+        const priPicUp = !!(priLive && !fb.picDead && pri.el && pri.el.videoWidth > 0 && pri.stream && pri.stream.getVideoTracks().length
+          && fb.pvAt && now - fb.pvAt < STG_PIC_LIVE_MS);
+        const stdPicUp = !!(std.el && std.el.videoWidth > 0 && frames(std.el) > fb.f0);
+        const keepPic = priPicUp && !voiceOnly && !stdPicUp;
+        const flowing = keepPic ? false : (fb.picDead && priLive && !voiceOnly) ? !!fb.picStdOk   // the picture is the complaint, so its frames are the evidence
           // A stage slot is judged on its voice (pipeBytes): with the primary gone, the standby's audio packets since
           // the wake are the evidence, not its <video> (a stager without a camera has a video track that never draws;
           // tv-chain 1325: that gate held a dead copy for the 5 s grace).
+          // A primary that is gone, or shows no picture, is also replaced by a standby whose own picture has started since
+          // the wake: a stager who sends no voice still has a copy to show, and waiting on voice that never comes left the
+          // stage black (a received stream whose element never decodes stayed up 15 s until the dead-picture rail).
           : (voiceOnly || ((fb.dark || mixDeaf || u2Over) && priLive) || (!priLive && rk.indexOf('stg:') === 0))
-          ? stdAdvanced
+          ? (stdAdvanced || (!voiceOnly && stdPicUp && (!priLive || !(pri.el && pri.el.videoWidth > 0))))
           : ((frames(std.el) > fb.f0 || (std.el && std.el.videoWidth > 0 && now - fb.wakeAt > 1500)) && (!priLive || stdRecent));
         // A dead-or-dark primary swaps the moment the standby flows; a live one
         // (pure failback) additionally waits out the settle window — hysteresis
@@ -25167,7 +25199,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // still waits. The timer itself is unchanged.
         const firstPref = !!(stdIsPref && !priIsPref && !fb.hadPref && (!pref || fb.left !== pref.from));
         const settled = !priLive || fb.dark || mixDeaf || fb.picDead || u2Over || firstPref || ((now - fb.prefSince >= MOS_SETTLE) && (now - fb.lastSwitch >= MOS_SETTLE));
-        if (DEBUG_ON && !(flowing && settled) && rk.indexOf('stg:') === 0) swapPicNote(rk, 'hold', 'flowing=' + (flowing ? 1 : 0) + ' settled=' + (settled ? 1 : 0) + ' f0=' + fb.f0 + ' stdAdv=' + (stdAdvanced ? 1 : 0));
+        if (DEBUG_ON && !(flowing && settled) && rk.indexOf('stg:') === 0) swapPicNote(rk, 'hold', 'flowing=' + (flowing ? 1 : 0) + ' settled=' + (settled ? 1 : 0) + ' f0=' + fb.f0 + ' stdAdv=' + (stdAdvanced ? 1 : 0) + (keepPic ? ' keepPic=1' : ''));
         if (flowing && settled) {
           const old = pri;
           // The copy left because it failed (dark, picture dead) is not the next failback.
@@ -25178,7 +25210,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (rk.indexOf('stg:') === 0 && mosJobs.has(rk + '>' + pri.via)) unshipMos(rk + '>' + pri.via, true);
           // A share on the new path: seats below me need a key frame to decode my new source, so ask now.
           if (rk.indexOf('stg:') === 0 && pri.stream && pri.stream.getVideoTracks().length) { try { kfNeed(rk); } catch (e) {} }
-          pri.deadAt = 0; fb.lastSwitch = now; fb.wakeAt = 0; fb.prefSince = 0;
+          pri.deadAt = 0; fb.lastSwitch = now; fb.wakeAt = 0; fb.prefSince = 0; fb.pvB = -1; fb.pvAt = 0;
           fb.left = old.via; fb.hadPref = !!stdIsPref; // the copy just installed is the anchor; the one left is not a fresh preference
           fb.picDead = false; fb.picStdOk = false; fb.picStd0 = null; fb.picRef = null;
           fb.dark = false; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; fb.fp = 0; fb.fpDecayAt = 0; fb.b0 = -1; fb.d0 = -1; fb.stdFdec = -1; fb.stdAdvAt = 0; fb.claimAt = now; fb.suspect = false; fb.stdTried = null; // fresh primary — the watchdog re-baselines and the penalty clears
