@@ -102,12 +102,14 @@
     },
     // C++: mesh_seat.inc:Seat::routeToProbe
     // The D5 translost probe: it travels the mesh, not the dead link.
+    // No alternate hop => nothing is sent. Silence of a frame that never left is not a death; the lease horizon still stands. Returns whether a probe left.
     routeToProbe(target) {
       const id = this.id;
-      const tk = ckey(target); if (!this.hasCoord || ckey(this.coord) === tk) return;
-      { const h = this.tlHard.get(tk); if (h === 2 && this.coord.pc === 0 && target.pc === 0) { this.d5Fan(target); return; } }   // D5.1: a loss read from silence is probed on every rook path
+      const tk = ckey(target); if (!this.hasCoord || ckey(this.coord) === tk) return false;
+      { const h = this.tlHard.get(tk); if (h === 2 && this.coord.pc === 0 && target.pc === 0) return this.d5Fan(target); }   // D5.1: a loss read from silence is probed on every rook path
       const nh = this.probeHop(target, this.occGet(tk));
-      if (nh >= 0) { const pn = this.probeNote(tk); const m = newMsg('ROUTE'); m.target = cc(target); m.asker = id; m.tag = 2; m.ttl = 60; m.via = id; m.pseq = ++this.w.lv.RSEQ; m.coord = cc(this.coord); m.pn = pn; this.emit(nh, m); }
+      if (nh >= 0) { const pn = this.probeNote(tk); const m = newMsg('ROUTE'); m.target = cc(target); m.asker = id; m.tag = 2; m.ttl = 60; m.via = id; m.pseq = ++this.w.lv.RSEQ; m.coord = cc(this.coord); m.pn = pn; this.emit(nh, m); return true; }
+      return false;
     },
     // C++: mesh_seat.inc:Seat::probeHop
     // first hop for a probe (or its answer) that must NOT use the direct link to `target`
@@ -186,8 +188,10 @@
       const id = this.id;
       const tk = ckey(target); const tx = this.occGet(tk); const pn = this.probeNote(tk);
       const cm = colMates(this.coord), rm = rowMates(this.coord);
+      let sent = 0;
       for (let s = 0; s < 2; s++) for (let q = 0; q < C - 1; q++) { const c = s ? cm[q] : rm[q]; if (ckey(c) === tk) continue; const x = this.occGet(ckey(c)); if (x < 0 || x === id || x === tx) continue;
-        const m = newMsg('ROUTE'); m.target = cc(target); m.asker = id; m.tag = K.D51_PROBE; m.ttl = K.D51_TTL; m.via = id; m.pseq = ++this.w.lv.RSEQ; m.coord = cc(this.coord); m.pn = pn; this.emit(x, m); }
+        const m = newMsg('ROUTE'); m.target = cc(target); m.asker = id; m.tag = K.D51_PROBE; m.ttl = K.D51_TTL; m.via = id; m.pseq = ++this.w.lv.RSEQ; m.coord = cc(this.coord); m.pn = pn; this.emit(x, m); sent++; }
+      return sent > 0;
     },
     // C++: mesh_d5paths.inc:Seat::d5AnsFan
     // the probed seat's answer through each of its own rook mates (the asker's own copy goes as before)

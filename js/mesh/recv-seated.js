@@ -70,7 +70,7 @@
           for (const [ek, ev] of this.occ) {
             if (ev !== m.id || ek === m.ck || !this.firstHandLive(ek)) continue;
             const l = this.linkedBy.get(ek); if (l === undefined || l !== m.id) continue;
-            const k2 = ek; if (!this.translost.has(k2)) { this.translost.set(k2, TICK); this.tlProbeAt.set(k2, TICK); this.routeToProbe(unck(k2)); }
+            const k2 = ek; if (!this.translost.has(k2)) { this.translost.set(k2, TICK); this.tlProbeAt.set(k2, TICK); if (this.routeToProbe(unck(k2)) && !this.tlSent.has(k2)) this.tlSent.set(k2, TICK); }
             this.movedClaimId = m.id; this.movedClaimK = k2; this.movedClaimAt = TICK; this.movedClaimMsg = msg.clone(m); break;
           }
         }   // the rival's word is PROBED, not taken
@@ -508,7 +508,7 @@
         const oc2 = ownerCoordOf(m.coord);
         if (m.owner >= 0 && !byeHeld && oc2 && m.oCk === ckey(oc2) && this.occGet(m.oCk) !== m.owner && !this.liveElsewhere(m.owner, m.oCk)) { this.setOcc(m.oCk, m.owner); this.noteS1(m.oCk); if (ckPc(m.oCk) === 0) this.s1told.set(m.oCk, TICK); }   // OWNERELSE
       }
-      { let nr = 0; for (const e of m.row) { if (++nr > C) break; const c = unck(e.k); if (!cellOk(e.k) || c.pc !== m.coord.pc || c.r !== m.coord.r || e.v < 0) continue; if (e.k === ckey(this.coord) && e.v !== id) continue; if (this.occGet(e.k) !== e.v) { if (this.liveElsewhere(e.v, e.k)) continue; { const tm = this.memo.get(e.k); if (this.translost.has(e.k) && tm !== undefined && tm.id === e.v) continue; } this.setOcc(e.k, e.v); this.noteS1(e.k); } if (e.age >= 0) this.childOf.set(e.k, e.age); } }
+      { let nr = 0; for (const e of m.row) { if (++nr > C) break; const c = unck(e.k); if (!cellOk(e.k) || c.pc !== m.coord.pc || c.r !== m.coord.r || e.v < 0) continue; if (e.k === ckey(this.coord) && e.v !== id) continue; if (this.occGet(e.k) !== e.v) { if (this.liveElsewhere(e.v, e.k)) continue; { const tm = this.memo.get(e.k); if (this.translost.has(e.k) && tm !== undefined && tm.id === e.v) continue; } this.setOcc(e.k, e.v); this.noteS1(e.k); } else if (this.bareAt.size && e.v !== pid) this.bareAt.delete(e.k);   /* L25.16: another seat's listing names the seat I name: no longer its word alone */ if (e.age >= 0) this.childOf.set(e.k, e.age); } }
       { let nn = 0; for (const kv of m.nbrs) { if (++nn > 4 * C) break; if (!cellOk(kv.k) || kv.v < 0) continue; if (!this.cousins.has(kv.k) && this.cousins.size >= 4 * C) continue; this.cousins.set(kv.k, kv.v); } }   // cousins capped (W, 4C)
       // MY HEAD'S ROW IS THE ROW (deep rows).
       if (this.hasCoord && this.coord.pc !== 0 && this.coord.i !== 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r && m.coord.i === 0) {
