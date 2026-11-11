@@ -196,6 +196,14 @@
       { const sv = this.flCur, sva = this.flCurAt, svl = this.flCurL; this.flCur = m.fo >= 0 ? m.fo : m.from; this.flCurAt = m.fo >= 0 ? m.foAt : TICK; this.flCurL = m.fo >= 0 ? m.foL : TICK; this.findLeaf(m.hole, m.nbrs, m.ttl, m.tag, m.from); this.flCur = sv; this.flCurAt = sva; this.flCurL = svl; }   // L25.7
     },
 
+    // A newcomer that has flagged its own gateway (it sent a placement naming no neighbours) takes another door: from
+    // then on its searches ask to be answered directly, so an honest placement no longer arrives through the flagged seat.
+    // C++: mesh_seat.inc:Seat::l2520Door
+    l2520Door(bad) {
+      if (!this.f.fabricDoors() || this.hasCoord || this.state !== 2 || bad < 0 || bad !== this.gateway || this.l16GwClosed || !this.l25Bad(this.gateway)) return;
+      this.l16GwClosed = true; this.trace('L25.20-DOOR', this.id, null, 'gateway=%d', this.gateway);
+    },
+
     // C++: mesh_seat.inc:Seat::onPlace
     onPlace(m) {
       const id = this.id, lv = this.w.lv;
@@ -204,8 +212,8 @@
       if (this.state === 2 && this.l317Declined(m)) { this.trace('L31.7-DECLINED', id, m.coord, 'owner=%d at=%d', m.owner, m.ppAt); return; }   // L31.7: a placement I declined while seated is no answer to this search
       if (this.state === 2 && roomTerm(this, 1) && this.TICK - this.c7At < K.RELAY_TTL && (this.c7Old.has(m.owner) || this.c7Old.has(m.from)) && !this.l853Stays(m)) return;   // L8.5 (L8.5.3: a placer already seated in the ring we move toward names it below the ring I left)
       if (this.state === 2 && this.l851Moves(m)) return;   // L8.5.1
-      if (this.state === 2 && this.l25BadPlacer.size && (this.l25Bad(m.owner) || this.l25Bad(m.from))) { this.trace('L25-BADPLACER', id, null, 'owner=%d', m.owner); if (m.nc === id) this.l711Reask('badplacer'); return; }
-      if (this.state === 2 && m.nbrs.length === 0 && ckey(m.coord) !== 0) { lv.L25_TWICE++; this.l25Mark(m.owner, true); this.trace('L25-BARE-PLACE', id, m.coord, 'owner=%d', m.owner); if (m.nc === id) this.l711Reask('bare'); return; }   // L25
+      if (this.state === 2 && this.l25BadPlacer.size && (this.l25Bad(m.owner) || this.l25Bad(m.from))) { this.trace('L25-BADPLACER', id, null, 'owner=%d', m.owner); this.l2520Door(m.from); if (m.nc === id) this.l711Reask('badplacer'); return; }
+      if (this.state === 2 && m.nbrs.length === 0 && ckey(m.coord) !== 0) { lv.L25_TWICE++; this.l25Mark(m.owner, true); this.trace('L25-BARE-PLACE', id, m.coord, 'owner=%d', m.owner); this.l2520Door(m.owner); if (m.nc === id) this.l711Reask('bare'); return; }   // L25
       if (this.state === 2) { if (m.line >= 0) { this.lineAdopt(m.line, 'place'); if (m.lineF) this.lineFork = true; } this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, m.row, m.ppL); if (this.pp >= 0 && this.pp !== id) this.placer = this.pp; return; }   // placer: only this intake
       if (this.state === 3 && m.nc === id && m.owner >= 0 && m.owner !== id && m.l31 !== 5 && m.l31 !== 7 && m.tag !== 1 && this.hasCoord && !(m.owner === this.myPlacer && m.ppAt === this.ppAt)) this.l317Decline(m);   // L31.7
       if (this.state === 3 && (m.l31 === 5 || m.l31 === 7) && this.l31Replace(m)) return;   // L31.4
