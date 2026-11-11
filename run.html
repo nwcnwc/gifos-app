@@ -9517,7 +9517,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // You left on purpose. A dead pair after that is not a network the
       // device cannot reach, and that long line was cut off in the header.
       const leftUp = leftDialogUp();
-      const link = leftUp ? '' : ((relayUp() || (meshSeat() && meshSeat().state === 3 && meshCoord() && meshCoord().pc !== 0)) ? '' : ' · reconnecting to the room…');
+      // A blip is not news: the reconnecting note shows only once the room link
+      // has been down this long, so a socket that comes back on its first or
+      // second retry never touches the line (the calm rule: nothing flickers).
+      // The down time lives on the line itself; a timer repaints at the mark.
+      const STATUS_RECONNECT_QUIET_MS = 2000;
+      const linkDown = !leftUp && !(relayUp() || (meshSeat() && meshSeat().state === 3 && meshCoord() && meshCoord().pc !== 0));
+      if (!linkDown) statusEl._linkDownAt = 0;
+      else if (!statusEl._linkDownAt) {
+        statusEl._linkDownAt = Date.now();
+        setTimeout(() => { try { updateStatus(); } catch (e) {} }, STATUS_RECONNECT_QUIET_MS);
+      }
+      const link = (linkDown && Date.now() - statusEl._linkDownAt >= STATUS_RECONNECT_QUIET_MS) ? ' · reconnecting to the room…' : '';
       // A SERVICE VIEWER sends no video: the quality rung and the password
       // hint are the host's business, and the room bar counts who is watching.
       const bcWatcher = !!(BROADCAST && !(typeof bcHostStored === 'function' && bcHostStored())
