@@ -181,6 +181,9 @@
       if (this.hasCoord && this.moving && !this.l4X && m.tock === this.oldCk && m.tock !== ckey(this.coord)) {   // T1 dual-hold: the OLD seat still answers while the claim is in flight
         const p = newMsg('PONG'); p.coord = cc(this.oldCoord); p.id = id; this.emit(m.id, p); return;
       }
+      if (this.hasCoord && sure && this.l4MarkUntil >= TICK && m.tock === this.l4PartnerCk && m.tock !== ckey(this.coord)) {   // L4.3.3: a beat for the place I have just swapped out of: my greeting says who holds it now
+        const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = id; this.emit(m.id, h); this.trace('SWAP-MOVED', id, this.coord, 'to=%d cell=%s', m.id, coordStr(unckey(m.tock))); return;
+      }
       if (this.hasCoord && this.leaseUntil >= 0 && TICK <= this.leaseUntil && m.tock === this.leaseCk && m.tock !== ckey(this.coord)) {   // T3: a call to my just-vacated cell: answer MOVED
         const r = newMsg('MOVED'); r.ck = this.leaseCk; r.mvd = ckey(this.coord); r.id = id; this.emit(m.id, r); return;
       }
