@@ -283,8 +283,16 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
   body.broadcast #rundown h3, body.broadcast #rundown li.now + li { display: none; }
 }
 /* Sideways on a phone the link and the Order of service share one band
-   under the title, side by side, each one line: the item on now and Next. */
+   under the title, side by side, each one line: the item on now and Next.
+   The chip is one row there: the phone rule (meet.css) gives the sentence
+   its own row, and on air that second row pushed the link down onto the
+   Live / Record row (568x320). The sentence ellipsizes; the count stays. */
 @media (max-height: 500px) {
+  body.broadcast .topchip { flex-wrap: nowrap; align-items: center; width: max-content; max-width: calc(100dvw - 28px); }
+  body.broadcast .topchip .title { white-space: nowrap; flex: 0 0 auto; }
+  body.broadcast .topchip .status { order: 0; display: flex; align-items: center; flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; }
+  body.broadcast .topchip #statuscount { flex: 0 1 auto; min-width: 0; }
+  body.broadcast .topchip #statusrest { display: block; flex: 1 1 auto; min-width: 0; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   body.broadcast #bc-link.on { flex-direction: row; align-items: center; padding: 4px; gap: 6px;
     left: 14px; right: auto; width: calc(50% - 21px); margin: 0; }
   body.broadcast #bc-link.on p { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
