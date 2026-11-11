@@ -755,5 +755,6 @@
  "meet.viewFit": "Все",
  "meet.viewFloat": "Окна",
  "meet.viewFocus": "Фокус",
- "meet.viewFollow": "Следить за говорящим"
+ "meet.viewFollow": "Следить за говорящим",
+ "meet.viewPresent": "Показ"
 }

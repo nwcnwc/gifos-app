@@ -3477,3 +3477,19 @@
       padding-bottom: max(8px, var(--barclear, 0px)); }
     body.view-focus .fsthumb { width: 112px; }
   }
+  /* Present: one step to the presentation view (content full screen, the
+     speaker inset). Shown only while there is content, top centre, the same
+     quiet pill as the view button. */
+  .presentbtn { display: none; position: fixed; z-index: 6; top: calc(14px + var(--gtop, 0px)); left: 50%; transform: translateX(-50%);
+    align-items: center; gap: 6px; min-height: 44px; padding: 8px 14px; border: 0; border-radius: var(--r-pill); cursor: pointer;
+    background: var(--c-scrim); color: var(--c-white); font-size: 14px; font-weight: 500; }
+  .presentbtn .vb-ic { display: inline-flex; }
+  body.has-content:not(.broadcast):not(.has-app):not(.view-float) .presentbtn { display: inline-flex; }
+  body.dock-calm .presentbtn { opacity: 0; pointer-events: none; transition: opacity var(--t-slow) ease; }
+  /* Float: each person tile moves on its own and resizes from its corner. */
+  .fl-rz { display: none; }
+  body.view-float [data-float^="p:"] { cursor: grab; }
+  body.view-float [data-float^="p:"] > .fl-rz { display: block; position: absolute; z-index: 7; right: 0; bottom: 0; width: 28px; height: 28px;
+    cursor: nwse-resize; touch-action: none; }
+  body.view-float [data-float^="p:"] > .fl-rz::after { content: ""; position: absolute; right: 6px; bottom: 6px; width: 10px; height: 10px;
+    border-right: 2px solid var(--c-white); border-bottom: 2px solid var(--c-white); opacity: .7; }
