@@ -44,7 +44,7 @@
   function cloneDig(d) {
     return {
       n: d.n, refuse: d.refuse, freeC: d.freeC, at: d.at, by: d.by, dmin: d.dmin, ag: d.ag, rx: d.rx, part: d.part,
-      leased: d.leased, handN: d.handN, awayN: d.awayN,
+      leased: d.leased, held: d.held, handN: d.handN, awayN: d.awayN,
       hands: d.hands.map(cloneLE), stage: d.stage.map(cloneLE), apps: d.apps.map(cloneLE), votes: d.votes.map(cloneVE),
       talk: d.talk.map(cloneLE), kick: d.kick.map(cloneVE), kabs: d.kabs, kOwn: cloneKStmt(d.kOwn), kl: d.kl.map(cloneKStmt),
       rows: d.rows.map(cloneDRow),
@@ -123,6 +123,9 @@
   function voteAdd(acc, src) {   // untruncated within a level: digTrim cuts once
     for (const v of src) { let hit = false; for (const a of acc) if (a.tgt === v.tgt) { a.up += v.up; a.dn += v.dn; hit = true; break; } if (!hit) acc.push(cloneVE(v)); }
   }
+  // C++: mesh.cpp:digBarPop
+  // The seats the vote-off bar counts: the fold's seats and the movers whose own count is waiting out a move.
+  function digBarPop(d) { return Math.max(0, d.n) + Math.max(0, d.leased) + Math.max(0, d.held); }
   // C++: mesh.cpp:digSeats
   // L48: the seats a report speaks for, n + leased, never below 0 (a fold that dropped an older copy of a row can hold a
   // negative leased). Equal to the parent's clamp for leased >= 0.
@@ -136,7 +139,7 @@
     const z = { handN: 0, awayN: 0 };
     z.handN = Math.min(s.handN, digSeats(s)); z.awayN = Math.min(s.awayN, digSeats(s));
     const seats = digSeats(s);
-    dst.leased += seats; dst.handN += z.handN; dst.awayN += z.awayN;
+    dst.leased += seats; dst.handN += z.handN; dst.awayN += z.awayN; if (s.held > 0) dst.held += s.held;   // a held mover under a lease is still a member for the bar
     listMerge(dst.hands, s.hands, K_HAND, true); listMerge(dst.apps, s.apps, K_APP, false); talkMerge(dst.talk, s.talk);   // no Stage under the lease
     const cap = digSeats(s);
     for (const v of s.votes) {
@@ -149,7 +152,7 @@
   }
   // C++: mesh.cpp:digFold
   function digFold(dst, s) {
-    dst.n += s.n; dst.leased += digLeasedIn(s); dst.refuse += s.refuse; dst.freeC += s.freeC; if (s.dmin < dst.dmin) dst.dmin = s.dmin; if (s.part) dst.part = 1;
+    dst.n += s.n; dst.leased += digLeasedIn(s); if (s.held > 0) dst.held += s.held; dst.refuse += s.refuse; dst.freeC += s.freeC; if (s.dmin < dst.dmin) dst.dmin = s.dmin; if (s.part) dst.part = 1;
     // population-bounded claims, per input
     const cap = digSeats(s);
     dst.handN += Math.min(s.handN, cap); dst.awayN += Math.min(s.awayN, cap);
@@ -198,6 +201,7 @@
   function digSig(d) {
     let h = digListHash(d); const mix = (x) => { h = hmix64(h, x); };
     mix(d.n); mix(d.refuse); mix(d.freeC); mix(d.dmin); mix(d.part); mix(d.leased);
+    if (d.held) { mix(10); mix(d.held); }   // only while a mover is held
     return h;
   }
   // C++: mesh.cpp:listHolds
@@ -225,7 +229,7 @@
 
   const api = Object.freeze({
     K_HAND, K_STAGE, K_APP, K_VOTE, STAGE_CAP, TALK_ON, TALK_HOLD, K_TALK,
-    newDig, newKStmt, cloneLE, cloneVE, cloneKStmt, cloneDRow, cloneDig, cloneDigE, digSeats, digLeasedIn, leEq, veEq, byLess,
+    newDig, newKStmt, cloneLE, cloneVE, cloneKStmt, cloneDRow, cloneDig, cloneDigE, digBarPop, digSeats, digLeasedIn, leEq, veEq, byLess,
     leAsc, leDesc, talkCls, talkLess, talkMerge, veOrd, listMerge, kOrd, kickAdd, kSigOk, kListAdd, kListUnion,
     kDerive, voteAdd, digFoldHeld, digFold, digTrim, digListHash, digSig, listHolds, votesHold,
   });
