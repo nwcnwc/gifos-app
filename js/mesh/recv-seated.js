@@ -411,6 +411,7 @@
         this.l258Rep = false;   // L25.8.1: set only by the re-placement arm below
         if (!proof && m.pp >= 0 && m.pp === this.l25By && m.ppAt >= 0 && this.pp === m.pp && this.ppCk === ckey(this.coord) && m.ppAt > this.ppAt) { proof = true; this.l258Rep = true; this.trace('L25-REPLACED', id, this.coord, 'by=%d rival=%d at=%d mine=%d', this.l25By, m.id, m.ppAt, this.ppAt); }   // L25.8
         if (!proof && m.mpK > 0 && this.mpProven(m)) { const rt = m.mpL, mt = (this.pp >= 0 && this.ppCk === ckey(this.coord)) ? this.ppL : (this.mpK > 0 && this.mpCk === ckey(this.coord)) ? this.mpL : this.seatedAt; proof = rt < mt || (rt === mt && m.id < id); }   // L25.7
+        if (proof && !this.l258Rep) { const f = this.byeFloor(m.id, m.ck); if (f >= 0 && !(m.pp >= 0 && m.ppL >= f) && !(m.mpK > 0 && m.mpL >= f)) { proof = false; this.trace('L25.19-BYE', id, this.coord, 'rival=%d bye=%lld pp=%d ppL=%d', m.id, f, m.pp, m.ppL); } }   // L25.19: a goodbye ends the tenancy
         if (!proof) { this.trace('L25-UNPROVEN', id, this.coord, 'rival=%d pp=%d', m.id, m.pp); this.l25131Ask(m); if (this.l40Unproven(m)) return; if (this.l2513Order(m)) return; if (!this.l2512Rook(m.id)) this.l2512TellHeard(m.id); return; }   // L25.12
         if (m.pp >= 0 && this.l25131At.has(m.pp)) this.trace('L25.13.1-ADMIT', id, this.coord, 'placer=%d rival=%d', m.pp, m.id);   // L25.13.1: the placer I asked is admitted now
         this.trace('L25-CONFIRMED', id, this.coord, 'rival=%d', m.id);
