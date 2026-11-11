@@ -11942,7 +11942,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         try { for (const [k, v] of s.occ) if (v === pid) { const cc = net.topo.unck(k); return cc.pc !== c.pc || cc.r !== c.r; } } catch (e) {}
         return false;
       };
-      const ownTile = (pid) => { const q = peers.get(pid), t = q && !q.headless && q.tile; return !!(t && t.parentNode && !(t.style && t.style.display === 'none')); };
+      // Their own tile is on the grid even while reconcileGrid hides it: a row-mate on the Stage is shown on the strip,
+      // and a held face beside it would be a second tile and one person too many in the count.
+      const ownTile = (pid) => { const q = peers.get(pid), t = q && !q.headless && q.tile; return !!(t && t.parentNode); };
       for (const pid of Array.from(rosterTiles.keys())) {
         const why = !(Array.isArray(rosterIds) && rosterIds.includes(pid)) ? 'unrostered' : ownTile(pid) ? 'new-pair' : notRow(pid) ? 'not-row' : null;
         if (why) { dropRosterTile(pid, why); changed = true; }
