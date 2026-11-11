@@ -117,6 +117,7 @@
       gb: Number(lic.storage.gb) || 0,
       retentionDays: Number(lic.storage.retentionDays) || 0,
       atCap: String(lic.storage.atCap || 'refuse-new'),
+      warnAtPercent: Number(lic.storage.warnAtPercent) || 80,
     } : null;
     return {
       tier: t.id, subscribed: true, adminRooms: t.adminRooms, openRooms: true,
