@@ -1,0 +1,16 @@
+{
+  "title": "Timer und Stoppuhr",
+  "tab.stopwatch": "Stoppuhr",
+  "tab.timer": "Timer",
+  "preset.1m": "+1 Min.",
+  "preset.5m": "+5 Min.",
+  "preset.10m": "+10 Min.",
+  "preset.10s": "+10 s",
+  "lap": "Runde",
+  "lap.n": "Runde {n}",
+  "lap.now": "Runde {n}  {time}",
+  "reset": "Zurücksetzen",
+  "start": "Start",
+  "stop": "Stopp",
+  "pause": "Pause"
+}

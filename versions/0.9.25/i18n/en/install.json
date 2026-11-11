@@ -1,0 +1,17 @@
+{
+  "install.error.noApp": "No app named.",
+  "install.error.noListing": "The App Store has no listing for {slug} ({status}).",
+  "install.error.incomplete": "The listing for {slug} is incomplete.",
+  "install.error.needsNewer": "{name} needs a newer GifOS than this page is running.",
+  "install.error.status": "the download returned {status}",
+  "install.error.mismatch": "The download does not match the catalog. Nothing was installed.",
+  "install.error.signature": "This app is listed as signed by {signer}, but the signature did not verify. Nothing was installed.",
+  "install.error.notApp": "That file is not a GifOS app.",
+  "install.error.differentApp": "That file is a different app than the listing. Nothing was installed.",
+  "install.error.notProvider": "{name} is not a Provider app.",
+  "install.error.providerNetwork": "{name} declares network access, and a provider must be network-less. Refused.",
+  "install.signer.author": "its author",
+  "install.progress.start": "Downloading {name}…",
+  "install.progress.bytes": "Downloading {name}… {got} of {total} MB",
+  "install.progress.checking": "Checking {name}…"
+}

@@ -1,0 +1,21 @@
+{
+  "boot.title.booting": "GifOS — Booting image…",
+  "boot.title.named": "{name} — booted image",
+  "boot.image.defaultName": "computer image",
+  "boot.banner.msg": "Booted image: {name} — this computer runs in its own space; your real Home Screen is untouched.",
+  "boot.reboot.label": "Reboot fresh",
+  "boot.reboot.hint": "Wipe this booted computer's changes and re-hydrate it from the image bytes",
+  "boot.reboot.confirm": "Reboot fresh? Changes made inside this booted computer are discarded and it re-hydrates from the image.",
+  "boot.update.msg": "A new version of GifOS is available.",
+  "boot.update.more": "What’s new",
+  "boot.update.action": "Update now",
+  "boot.update.dismiss": "Dismiss",
+  "boot.arrange.msg": "Arranging icons",
+  "boot.arrange.hint": "— drag them anywhere",
+  "boot.arrange.done": "Done",
+  "boot.failed.name": "boot failed",
+  "boot.failed.noId": "No image id in URL.",
+  "boot.failed.notFound": "Image not found on the host Home Screen (was it deleted?).",
+  "boot.failed.notImage": "Not a GifOS desktop image.",
+  "boot.failed.error": "Boot failed: {message}"
+}

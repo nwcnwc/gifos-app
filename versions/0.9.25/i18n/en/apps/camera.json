@@ -1,0 +1,21 @@
+{
+  "empty.title": "No camera on this computer",
+  "empty.why": "Allow the camera in the browser, then turn it on in this app’s Abilities chip at the top of the tab.",
+  "stage.tap": "Tap the shutter",
+  "mm.title": "Open My Media",
+  "mm.label": "🖼️ My Media",
+  "shutter.aria": "Open camera",
+  "roll.title": "Recents",
+  "name.video": "Video · {when}",
+  "name.burst": "Burst · {when}",
+  "name.boomerang": "Boomerang · {when}",
+  "name.slowmo": "Slow-mo · {when}",
+  "name.timelapse": "Time-lapse · {when}",
+  "name.clip": "Clip · {when}",
+  "name.photo": "Photo · {when}",
+  "name.photoBare": "Photo",
+  "hint.inLibrary": "{name} — in My Media",
+  "hint.openToPlay": "Open My Media to play this clip.",
+  "hint.saved": "{n, plural, =1 {Saved to My Media} other {# captures saved to My Media}} — tap My Media below to see them",
+  "toast.saved": "Saved to My Media"
+}

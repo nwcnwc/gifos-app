@@ -1,0 +1,17 @@
+{
+  "title": "Notes",
+  "search.placeholder": "Search…",
+  "add.placeholder": "Write a note and press Add…",
+  "add": "Add",
+  "hint": "Tap a note to open it. Tick the box to check it off. Everything is saved in this icon.",
+  "back": "← List",
+  "body.placeholder": "Start writing…",
+  "nobody": "Pick a note, or add one. Invite shares the list.",
+  "untitled": "Untitled",
+  "you": "You",
+  "check": "Check off",
+  "delete": "Delete",
+  "empty.nomatch": "No notes match that search.",
+  "empty.none": "No notes yet. Your notes persist in this GIF icon.",
+  "saved": "Saved in this icon"
+}
