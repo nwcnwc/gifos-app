@@ -466,7 +466,7 @@
  "meet.trEmptyStatic": "这场会议已被记录。发言会按名字显示在这里。这里的任何人都可以查看或下载。",
  "meet.lobPreviewName": "你",
  "meet.youJoinMutedWith": "你将以静音、关闭摄像头的状态加入",
- "meet.lobAdminBtn": "主持此通话",
+ "meet.lobAdminBtn": "主持通话",
  "meet.lobKeyReveal": "主持人密码",
  "meet.lobAdminPassNote": "只有你知道。请勿分享。它不在链接中。",
  "meet.lobKeygen": "生成",
