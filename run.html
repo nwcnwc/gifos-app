@@ -6585,7 +6585,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // (busVolume): the <video> itself stays picture-only, so a hidden tab
         // never silences the meeting by pausing it.
         t.video._gmute = !!gMute;
-        if (t.video._aud) t.video._aud.muted = !!gMute;
+        if (t.video._aud) t.video._aud.muted = !!gMute || !(t.video._aud.volume > 0); // busVolume's one rule: a bus at 0 stays muted (a stager plays through the stage ear; iOS ignores volume)
         if (t.modbar) paintModbarButtons(t.modbar, id);
       } else if (gMute && localStream && !(typeof outgoingHeld !== 'undefined' && outgoingHeld)) {
         // the group muted ME: cut the source too, not just everyone's speakers
