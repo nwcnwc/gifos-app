@@ -111,9 +111,11 @@
     return true;
   }
   // C++: mesh_heal.inc:l1MoverCell
+  // C++: mesh_heal.inc:l1VacNote
+  function l1VacNote(s, k) { const v = s.l1Vacated.get(k); return v !== undefined && s.now() - v <= 3 * K.LEASE_T && s.occGet(k) < 0; }
   function l1MoverCell(s, hole) {
     if (hole.pc !== 0) return l1RightCell(s, hole);
-    { const v = s.l1Vacated.get(ckey(hole)); if (v !== undefined && s.now() - v <= 3 * K.LEASE_T && s.occGet(ckey(hole)) < 0) return 0; }
+    if (l1VacNote(s, ckey(hole))) return 0;
     if (!l9RoomAllHome(s) && !l9PullSmall(s)) {
       const p = s.l9PullCell.get(ckey(hole));
       if (p !== undefined && s.now() - p < K.L9_PULL && s.occGet(ckey(down(hole))) < 0 && !s.hasDownChild(hole)) return 0;
@@ -404,14 +406,23 @@
       if (who >= 0) { const m = newMsg('FINDLEAF'); m.hole = cc(hd); m.nbrs = kvs(nbrs); m.ttl = 0; this.emit(who, m); }
     },
 
+    // L9.21: a home cell a mover left is its row head's to pull a leaf into, once the returner's window has passed.
+    // C++: mesh_heal.inc:Seat::l921Vac
+    l921Vac(k) { return l1VacNote(this, k) && !this.l3109Wait(k); },
+
     // L9.12: a home hole pulls a deep leaf.
     // C++: mesh_heal.inc:Seat::homePull
     homePull() {
       if (!this.hasCoord || this.state !== 3 || this.coord.pc !== 0 || this.coord.i !== 0 || this.moving) return;
       const id = this.id;
       this.l920Note();
-      if (l9PullSmall(this)) return;
-      if (!this.l13('L13.7') && l9PullHold(this)) return;
+      const nhGone = (nk) => this.occGet(nk) < 0 || (this.TICK - this.seatedAt >= 2 * K.L9_PULL && !(this.live.has(nk) && this.TICK - this.live.get(nk) <= 2 * K.L9_PULL));
+      let l921 = false;   // L9.21: the small-room band and the hold stand, but for the cells a mover left
+      if (l9PullSmall(this) || (!this.l13('L13.7') && l9PullHold(this))) {
+        let any = false; for (let j = 1; j < C; j++) if (this.l921Vac(ckey(cell(0, this.coord.r, j)))) any = true; const nr = (this.coord.r + 1) % C; const nk0 = ckey(cell(0, nr, 0)); if (this.l921Vac(nk0)) any = true;
+        if (nhGone(nk0)) for (let j = 1; j < C; j++) if (this.l921Vac(ckey(cell(0, nr, j)))) any = true;
+        if (!any) return; l921 = true;
+      }
       if (this.TICK - this.l9PullAt < K.L9_PULL) return;
       const ks = []; if (this.hasChildren() && this.occGet(ckey(down(this.coord))) >= 0 && this.firstHandLive(ckey(down(this.coord)))) ks.push(id);
       for (let pass = 0; pass < 2; pass++) for (let q = 0; q < C * C; q++) {
@@ -422,11 +433,11 @@
       if (ks.length === 0) return;
       this.l9PullAt = this.TICK | 0; let cellIx = 0;
       const pull = (c) => {
-        const k = ckey(c); let echo = this.occGet(k) >= 0 && this.occGet(k) !== id && this.TICK - this.seatedAt >= 2 * K.L9_PULL && !(this.live.has(k) && this.TICK - this.live.get(k) <= 2 * K.L9_PULL);
+        const k = ckey(c); if (l921 && !this.l921Vac(k)) return; let echo = this.occGet(k) >= 0 && this.occGet(k) !== id && this.TICK - this.seatedAt >= 2 * K.L9_PULL && !(this.live.has(k) && this.TICK - this.live.get(k) <= 2 * K.L9_PULL);
         if (echo && !this.ownedLinkCell(k)) echo = false;
         if (echo && this.l920Deaf(k)) echo = false;
         if ((this.occGet(k) >= 0 && !echo) || this.softSitting(k) || this.sitting.has(k) || this.occGet(ckey(down(c))) >= 0 || (this.hasDownChild(c) && !l1HeirFailed(this, c))) return;
-        const p = this.l9PullCell.get(k); if (p !== undefined && this.TICK - p < ((roomTerm(this, 1)) ? K.L9_PULL + K.CONFIRM_TTL : K.L9_PULL)) return;
+        const p = this.l9PullCell.get(k); if (p !== undefined && this.TICK - p < ((roomTerm(this, 1) || l921) ? K.L9_PULL + K.CONFIRM_TTL : K.L9_PULL)) return;
         const pn = ins(this.l9PullN, k, () => 0); this.l9PullN.set(k, (pn + 1) >>> 0); const n = pn | 0; const x = ks[(cellIx++ + n) % ks.length];
         const nb = []; const ol = ownedLinks(c); const nl = ol.length; for (let q = 0; q < nl; q++) { const y = (ckey(ol[q]) === ckey(this.coord)) ? id : this.occGet(ckey(ol[q])); if (y >= 0) nb.push({ k: ckey(ol[q]), v: y }); }
         if (!this.rmName(c, -1, nb)) return;
@@ -435,7 +446,7 @@
       };
       for (let j = 1; j < C; j++) pull(cell(0, this.coord.r, j));
       const nh = cell(0, (this.coord.r + 1) % C, 0); const nk = ckey(nh);
-      const nhEmpty = this.occGet(nk) < 0 || (this.TICK - this.seatedAt >= 2 * K.L9_PULL && !(this.live.has(nk) && this.TICK - this.live.get(nk) <= 2 * K.L9_PULL));
+      const nhEmpty = nhGone(nk);
       pull(nh);
       if (nhEmpty) for (let j = 1; j < C; j++) pull(cell(0, nh.r, j));
     },

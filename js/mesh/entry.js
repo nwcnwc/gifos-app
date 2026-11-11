@@ -397,7 +397,7 @@
           if (ckey(this.coord) === ckey(adm)) {   // I am the designated (or devolved) admitter
             // V4 LEDGER GATE: as a vouched-in head I may not admit into MY OWN row before my assigner's SITXFER arrives.
             if (this.coord.i === 0 && cell.r === this.coord.r && !this.rowLedger && TICK - this.seatedAt <= 60) { continue; }
-            if (roomTerm(this, 1) && this.occGet(k) !== mm.nc) { const p = this.l9PullCell.get(k); if (p !== undefined && TICK - p < K.L9_PULL + K.CONFIRM_TTL) { continue; } }   // L8.44
+            if ((roomTerm(this, 1) || this.l921Vac(k)) && this.occGet(k) !== mm.nc) { const p = this.l9PullCell.get(k); if (p !== undefined && TICK - p < K.L9_PULL + K.CONFIRM_TTL) { continue; } }   // L8.44
             // ...and the cooling never holds a seeker out of ITS OWN cell (mesh.js twin).
             if (this.occGet(k) === mm.nc || TICK - (this.healTry.has(k) ? this.healTry.get(k) : -999) > 45 || (this.healOnly.has(k) && (this.oneRowRoom() || this.nothingBelow(k)))) {
               this.healOnly.delete(k); this.healTry.set(k, TICK);
