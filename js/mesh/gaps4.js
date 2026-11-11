@@ -50,7 +50,7 @@
       if (!this.w.lv.LINKMODEL || !this.hasCoord || this.state !== 3 || m.id < 0 || m.id === this.id) return false;
       if (!(m.pp < 0 && m.mpK === 0)) return false;   // a rival with a claim of some kind: L25.13 orders it
       if (this.l2512Q === m.id) this.l2512Q = -1;
-      this.l40Riv = m.id; this.l40Ck = m.ck; this.l40Arb = this.l25By >= 0 && this.l25By !== m.id;
+      this.l40Riv = m.id; this.l40Ck = m.ck; this.l40Arb = this.l40Arb || (this.l25By >= 0 && this.l25By !== m.id);   // L40.2.1: an arbiter's word for this rival stands for the whole contest
       if (this.l40ToldBy !== m.id || this.TICK - this.l40ToldAt > K.L25_WAIT) this.l40ToldK = false;
       const mine = (this.pp >= 0 && this.ppCk === ckey(this.coord)) || (this.mpK > 0 && this.mpCk === ckey(this.coord));
       if (mine) { this.trace('L40-MINE', this.id, this.coord, 'rival=%d', m.id); if (this.l40Arb || this.l25WitRival > 0) this.l40Tell(m.id, false); else this.l2512TellHeard(m.id); return true; }   // my claim carries a proof
