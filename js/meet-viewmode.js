@@ -119,7 +119,38 @@
     return { key: st.holder, changed: st.holder !== before, wakeAt: wakeAt };
   }
 
+  // The content region (Nathan 2026-11-11): shared screens, apps and, later,
+  // the content tabs (an agenda, a document) are a region of their own that
+  // every view places: Scroll lists every item, Fit keeps it large with the
+  // stage beside or below, Float gives it the screen with the people as
+  // insets, Focus can put one item on the big view. A feature that shows
+  // content registers a provider here; the page asks for the items.
+  //   add(fn) -> remove()   fn() returns [{ key, label, stream | v, aspect, kind }]
+  //   items()               every provider's items, each key prefixed 'content:'
+  const providers = [];
+  const content = {
+    add(fn) {
+      if (typeof fn !== 'function') return function () {};
+      providers.push(fn);
+      return function () { const i = providers.indexOf(fn); if (i >= 0) providers.splice(i, 1); };
+    },
+    items() {
+      const out = [];
+      for (let i = 0; i < providers.length; i++) {
+        let list = [];
+        try { list = providers[i]() || []; } catch (e) { list = []; }
+        for (let j = 0; j < list.length; j++) {
+          const it = list[j];
+          if (!it || !it.key) continue;
+          out.push(Object.assign({}, it, { key: String(it.key).indexOf('content:') === 0 ? it.key : 'content:' + it.key, fit: 'contain' }));
+        }
+      }
+      return out;
+    },
+  };
+
   const api = {
+    content: content,
     MODES: MODES, KEY: KEY, OLD_KEY: OLD_KEY, FOLLOW_KEY: FOLLOW_KEY,
     normalize: normalize, load: load, save: save, loadFollow: loadFollow, saveFollow: saveFollow,
     gallery: gallery, floats: floats, next: next, stripSide: stripSide,

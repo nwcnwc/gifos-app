@@ -832,8 +832,12 @@
     if (!ML || !ML.placeFloat || !lay || !lay.rects) return lay;
     const next = lay.rects.slice();
     let moved = false, area = null;
-    for (let kindi = 0; kindi < 2; kindi++) {
-      const kind = kindi ? 'row' : 'stage';
+    // Every float kind laid this pass: 'stage' and 'row' panels, and in the
+    // Float view one kind per tile ('p:<id>').
+    const kinds = [];
+    for (let i = 0; i < next.length; i++) if (next[i].float && kinds.indexOf(next[i].float) < 0) kinds.push(next[i].float);
+    for (let kindi = 0; kindi < kinds.length; kindi++) {
+      const kind = kinds[kindi];
       const saved = ML.loadFloat(store, kind, orient);
       if (!saved) continue;
       const group = [], idx = [];
@@ -934,8 +938,15 @@
       placeEl(t.el, half ? { x: r.x + half, y: r.y + half, w: r.w - 2 * half, h: r.h - 2 * half } : r);
       if (half) t.el.dataset.gutter = '1'; else delete t.el.dataset.gutter;
       t.el.dataset.fit = r.fit || 'cover';
-      if (r.float && floatOk) t.el.dataset.float = r.float;
-      else delete t.el.dataset.float;
+      if (r.float && floatOk) {
+        t.el.dataset.float = r.float;
+        // A tile of its own in the Float view can be resized from its corner.
+        if (r.float.indexOf('p:') === 0 && t.el.querySelector && !t.el.querySelector(':scope > .fl-rz') && t.el.ownerDocument) {
+          const rz = t.el.ownerDocument.createElement('span');
+          rz.className = 'fl-rz'; rz.setAttribute('aria-hidden', 'true');
+          t.el.appendChild(rz);
+        }
+      } else delete t.el.dataset.float;
       used.push(t.el);
     }
     if (!opts._lip && opts.phone && used.length && !tilesMeetChrome(feed.ownerDocument || document, used) && recordBeside(feed.ownerDocument || document, used)) {
@@ -1082,6 +1093,9 @@
       src: { w: srcW > 2 ? srcW : 0, h: srcH > 2 ? srcH : 0, from: (srcW > 2 && srcH > 2) ? 'pack' : 'none' },
       tier: lay.tier,
       scroll: { sh: sh, ch: ch },
+      // The content region (a shared screen or app; later the content tabs):
+      // its box this pass, or null. The page marks body.has-content from it.
+      content: lay.share || null,
     };
   }
 
@@ -1345,10 +1359,23 @@
       const fn = opts.relayout || root.__meetRelayout;
       if (typeof fn === 'function') { try { fn(); } catch (e) {} }
     }
+    // The corner handle of a Float-view tile resizes it (aspect kept). The
+    // new size is saved as a factor of the laid size, with the tile's spot.
+    const RZ_MIN = 64;
+    let rz = null;
     doc.addEventListener('pointerdown', function (e) {
       if (!e.target || !e.target.closest) return;
       const tile = e.target.closest('[data-float]');
       if (!tile) return;
+      if (e.target.closest('.fl-rz')) {
+        if (e.button != null && e.button !== 0) return;
+        const r = tile.getBoundingClientRect();
+        const prev = ML.loadFloat(store, tile.dataset.float, orient());
+        rz = { id: e.pointerId, el: tile, kind: tile.dataset.float, x: e.clientX, w: r.width, h: r.height, s: prev && prev.s > 0 ? prev.s : 1, area: area(), moved: false };
+        e.preventDefault();
+        try { e.target.setPointerCapture(e.pointerId); } catch (err) {}
+        return;
+      }
       if (e.target.closest('button, a, input, textarea, .modbar')) return;
       if (e.button != null && e.button !== 0) return;
       const kind = tile.dataset.float;
@@ -1362,6 +1389,14 @@
       try { tile.setPointerCapture(e.pointerId); } catch (err) {}
     });
     doc.addEventListener('pointermove', function (e) {
+      if (rz && e.pointerId === rz.id) {
+        const w = Math.max(RZ_MIN, Math.min(rz.area.w, rz.w + (e.clientX - rz.x)));
+        rz.moved = true;
+        rz.nw = w;
+        rz.el.style.width = w + 'px';
+        rz.el.style.height = (w * rz.h / rz.w) + 'px';
+        return;
+      }
       if (!drag || e.pointerId !== drag.id) return;
       const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
       if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
@@ -1374,13 +1409,26 @@
       }
     });
     function endDrag(e) {
+      if (rz && (!e || e.pointerId == null || e.pointerId === rz.id)) {
+        const done = rz;
+        rz = null;
+        if (!done.moved || !(done.nw > 0)) return;
+        const spot = ML.floatSpot(union([done.el]), done.area);
+        spot.s = done.s * done.nw / done.w;
+        ML.saveFloat(store, done.kind, orient(), spot);
+        relayout();
+        return;
+      }
       if (!drag || (e && e.pointerId != null && e.pointerId !== drag.id)) return;
       const moved = drag.moved;
       const kind = drag.kind;
       const box = drag.area;
       drag = null;
       if (!moved) return;
-      ML.saveFloat(store, kind, orient(), ML.floatSpot(union(members(kind)), box));
+      const spot = ML.floatSpot(union(members(kind)), box);
+      const prev = ML.loadFloat(store, kind, orient());
+      if (prev && prev.s > 0) spot.s = prev.s; // a move keeps a resized tile's size
+      ML.saveFloat(store, kind, orient(), spot);
       const stop = function (ev) {
         ev.preventDefault();
         ev.stopPropagation();
