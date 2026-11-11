@@ -32244,7 +32244,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (kind === 'mic') myStatus.muted = false; else myStatus.camOff = false;
           paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateMediaSession();
           if (typeof syncSpeech === 'function') syncSpeech();
-          setStatus(kind === 'cam' ? 'Camera on.' : 'Mic on.');
+          setStatus(kind === 'cam' ? (typeof camOnWords === 'function' ? camOnWords() : 'Camera on.') : 'Mic on.');
         }, () => lateMedia(kind));
         return;
       }
@@ -32295,7 +32295,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             if (flipped) {
               paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateMediaSession();
               if (typeof syncSpeech === 'function') syncSpeech();
-              setStatus(kind === 'cam' ? 'Camera on.' : 'Mic on.');
+              setStatus(kind === 'cam' ? (typeof camOnWords === 'function' ? camOnWords() : 'Camera on.') : 'Mic on.');
             }
             return;
           }
@@ -32347,7 +32347,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (typeof syncSpeech === 'function') syncSpeech();
           if (refused) setStatus(refused);
           else setStatus(kind === 'cam'
-            ? (gotCam ? 'Camera on.' : 'No camera on this device (' + ((camErr && camErr.name) || 'error') + '). Your microphone is ready — tap the mic button to talk.')
+            ? (gotCam ? (typeof camOnWords === 'function' ? camOnWords() : 'Camera on.') : 'No camera on this device (' + ((camErr && camErr.name) || 'error') + '). Your microphone is ready — tap the mic button to talk.')
             : 'Mic on.');
           if (typeof noteAudioDevices === 'function') noteAudioDevices();
         })
@@ -32465,7 +32465,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!track) return lateMedia('cam');
       track.enabled = true;
       myStatus.camOff = false;
-      try { setStatus('Camera on.'); } catch (e) {}
+      try { setStatus(typeof camOnWords === 'function' ? camOnWords() : 'Camera on.'); } catch (e) {}
       try { paintControls(); } catch (e) {}
       try { paintOnAir(); } catch (e) {}
       try { refreshOutbound(); } catch (e) {}
@@ -32651,6 +32651,25 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       el.textContent = text;
       el.hidden = !text;
       if (text) blurNoteTimer = setTimeout(() => { el.hidden = true; el.textContent = ''; }, BLUR_NOTE_MS);
+    }
+    // Why a No blur pick is not clear video yet, or '' when nothing holds it
+    // back. The camera-on line repeats it: turning the camera on is when the
+    // person looks for clear video, and a bare "Camera on." hid the reason.
+    function noBlurWhy() {
+      if (myStatus.blur !== 0) return '';
+      if (!roomPw) {
+        const who = hasAdminRoom()
+          ? (amAdmin ? 'Set one with the Password button.' : 'Only this room’s admin can set one.')
+          : 'Anyone here can set one with the Password button.';
+        return 'No blur saved — it applies the moment this room has a password. ' + who;
+      }
+      if (modOf('me').blur && modOf('me').blur.on) return uiText('stSomeoneInTheRoomHas', 'Someone in the room has blurred you for all — you stay blurred until that is lifted.');
+      if (hasAdminRoom() && !adminPresent()) return uiText('stNoAdminIsHereThe', 'No admin is here — the room stays blurred until an admin returns.');
+      return '';
+    }
+    function camOnWords() {
+      const why = noBlurWhy();
+      return why ? 'Camera on. ' + why : 'Camera on.';
     }
     function setPersonalBlur(v) {
       if (BROADCAST && !bcMayPublishAv()) return;
