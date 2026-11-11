@@ -594,10 +594,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <div class="lob-row"><button data-t="shareCancel" id="lob-join-cancel" class="lob-ghost">Cancel</button><button data-t="join" id="lob-join-go">Join</button></div>
         <div id="lob-join-err" class="lob-err"></div>
       </div>
-      <!-- Town hall and Stream to friends come after Join: Start, Host and Join
-           stay on the first screen even at the largest text. -->
-      <button data-t="lobThBtn" type="button" id="lob-th-btn" class="lob-link">Start a town hall</button>
-      <button data-t="lobStream" type="button" id="lob-stream" class="lob-link">Stream to friends</button>
       <div class="lob-sep"></div>
       <div class="lob-hist-h" data-t="lobRecent">Recent &amp; saved</div>
       <div id="lob-list"></div>
@@ -1654,11 +1650,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const BROADCAST = BC_INTENT && !!params.get('v') && /^[a-f0-9]{16,64}$/.test((params.get('av') || '').toLowerCase());
     const BC_WATCH_COPY = 'Watching the broadcast. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.';
     if (BROADCAST) document.body.classList.add('broadcast');
-    // A town hall is a skin on the same admin room, the way a broadcast is.
-    // th rides the link (?th=1 on a pretty /meet path, &th=1 in the hash).
-    // It does not change who can be a viewer, on stage, or the host.
-    const TOWNHALL = !BROADCAST && params.has('th');
-    if (TOWNHALL) document.body.classList.add('townhall');
     // The lobby is renamed when you arrive wanting a broadcast. The room used
     // to keep saying "meeting" on the chat, the leave dialog, and Help, and
     // nothing told a host they were on air. Paint that chrome once the host
@@ -1871,7 +1862,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (barKindAtLoad) return barKindAtLoad;
       let host = false;
       try { host = !!localStorage.getItem('gifos_vadm_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase()); } catch (e) { host = false; }
-      barKindAtLoad = BROADCAST ? (host ? 'bc-host' : 'bc-viewer') : ((TOWNHALL && !host) ? 'th-watch' : 'meeting');
+      barKindAtLoad = BROADCAST ? (host ? 'bc-host' : 'bc-viewer') : 'meeting';
       return barKindAtLoad;
     }
     function barPlan(s) {
@@ -1886,9 +1877,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return phone
           ? { dock: ['cam', 'mic', 'hand', 'stagebtn', 'reactbtn', 'ccdock'], use: ['chatbtn'].concat(tail), video: ['sharebtn'] }
           : { dock: ['cam', 'mic', 'hand', 'stagebtn', 'reactbtn', 'chatbtn', 'ccdock'], use: tail.slice(), video: ['sharebtn'] };
-      }
-      if (kind === 'th-watch' && phone) {
-        return { dock: ['cam', 'mic', 'hand', 'reactbtn', 'ccdock'], use: ['chatbtn', 'sharebtn'].concat(tail), video: [] };
       }
       return phone
         ? { dock: ['cam', 'mic', 'reactbtn', 'ccdock'], use: ['chatbtn', 'sharebtn', 'hand'].concat(tail), video: [] }
@@ -1941,10 +1929,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         let pub = barKind() === 'bc-host';
         try { pub = bcMayPublishAv(); } catch (e) {}
         watching = !pub;
-      } else watching = b.contains('th-watch') && !b.contains('stage-granted');
-      const why = watching
-        ? (BROADCAST ? 'You are watching. The host can invite you on stage.' : 'You are watching. A host can invite you to speak.')
-        : '';
+      }
+      const why = watching ? 'You are watching. The host can invite you on stage.' : '';
       idleDock(document.getElementById('cam'), why);
       idleDock(document.getElementById('mic'), why);
       idleDock(document.getElementById('reactbtn'), b.contains('app-room') ? 'Reactions are off while an app has the room.' : '');
@@ -2223,7 +2209,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { return !!localStorage.getItem('gifos_vadm_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase()); }
       catch (e) { return false; }
     };
-    if (TOWNHALL && !bcHostStored()) document.body.classList.add('th-watch');
     // THE VISIT LINK rides the link as visit=<https url>, set by the host in
     // More: the church's or streamer's own site. We can't vouch for where it
     // goes, so it is only a link. Only an https page is offered, and the
@@ -9501,14 +9486,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       Promise.all(jobs).then(() => { powerStats = { at: Date.now(), senders: out }; });
     }, 10000);
-    // A broadcast viewer or a town hall watcher with nothing on air: the
+    // A broadcast viewer with nothing on air: the
     // Stage says whether it has not started, when it starts (with a
     // countdown), or that it has ended. "Ended" is the host's one gossiped
     // flag, the schedule, or this tab having seen company and now alone.
     function bcQuietLine(shown, reachBlocked, atDoor) {
       const host0 = typeof bcHostStored === 'function' && bcHostStored();
       const viewer = !!(BROADCAST && !host0);
-      const watch = !!(typeof TOWNHALL !== 'undefined' && TOWNHALL && !host0);
       const seenKey = 'gifos_bc_seen_' + String(params.get('v') || '') + '.' + String(params.get('av') || '').toLowerCase();
       if (viewer && shown > 1) { try { sessionStorage.setItem(seenKey, '1'); } catch (e) {} }
       // On air means a picture on the Stage: a stager's camera, screen or a
@@ -9521,8 +9505,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         });
       } catch (e) {}
       const out = { text: '', sched: null, viewer: viewer };
-      if (!(viewer || watch) || reachBlocked || atDoor || onAir) return out;
-      const noun = watch ? 'town hall' : (params.has('st') ? 'stream' : 'broadcast');
+      if (!viewer || reachBlocked || atDoor || onAir) return out;
+      const noun = 'broadcast';
       let seen = false; try { seen = sessionStorage.getItem(seenKey) === '1'; } catch (e) {}
       const sched = viewer ? bcSchedule(Date.now()) : null;
       out.sched = sched;
@@ -17487,7 +17471,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (av && admKey) pwFromStore = false;
       const relay = relayUrl();
       const custom = relay && relay !== window.GIFOS_RELAY;
-      const avPart = (av ? '&av=' + av : '') + (BROADCAST ? '&bc=1' : '') + (TOWNHALL ? '&th=1' : '') + (BROADCAST && params.has('st') ? '&st=1' : '');
+      const avPart = (av ? '&av=' + av : '') + (BROADCAST ? '&bc=1' : '');
       const atBit = BROADCAST && /^\d+$/.test(params.get('at') || '') ? params.get('at') : '';
       const visitBit = BROADCAST && bcVisit() ? encodeURIComponent(bcVisit().href) : '';
       const avPartAt = avPart + (atBit ? '&at=' + atBit : '') + (visitBit ? '&visit=' + visitBit : '');
@@ -17496,8 +17480,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // machinery as /meet, but the path itself carries the skin so the
       // shared link opens as a broadcast for every viewer.
       const prettyPath = (BROADCAST ? '/cast/' : '/meet/') + room + (av ? '/' + av : '');
-      const prettyTown = TOWNHALL ? '?th=1' : (BROADCAST && params.has('st') ? '?st=1' : '');
-      const prettyQs0 = prettyTown + (atBit ? (prettyTown ? '&' : '?') + 'at=' + atBit : '');
+      const prettyQs0 = atBit ? '?at=' + atBit : '';
       const prettyQs = prettyQs0 + (visitBit ? (prettyQs0 ? '&' : '?') + 'visit=' + visitBit : '');
       // A RELEASE/pinned computer runs from /versions/<x.y.z>/, but prettyPath is
       // rooted at the domain. Rewriting the address bar to it MOVED THE DOCUMENT
@@ -17668,7 +17651,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function parseMeetInput(s) {
       s = (s || '').trim();
       if (!s) return null;
-      let room = '', av = '', relay = '', bc = false, th = false;
+      let room = '', av = '', relay = '', bc = false;
       if (/[:/#?]/.test(s)) {
         // about:srcdoc reports origin "null". An absolute link must still parse;
         // passing that string as the base makes the URL constructor throw.
@@ -17685,7 +17668,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (hp.get('av')) av = (hp.get('av') || '').toLowerCase();
           if (hp.get('relay')) relay = hp.get('relay');
           if (hp.get('bc')) bc = true;
-          if (u.searchParams.has('th') || hp.has('th')) th = true;
         }
       }
       if (!room) {
@@ -17705,7 +17687,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // different rooms depending on whether you opened the link or pasted it —
       // /meet/BibleReading and biblereading are different meetings, and the two
       // people never saw each other. Only `av` is case-folded: it is a hex digest.
-      return { room, av, relay, bc: bc && !!av, th: th && !!av && !bc }; // bc and th are skins on an admin room
+      return { room, av, relay, bc: bc && !!av }; // bc is a skin on an admin room
     }
     // THE LOBBY SHOWS THE JOIN (0.9.25). The lobby used to open the camera on
     // load and show it clear behind the menu, which read as "you will join on
@@ -17842,22 +17824,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       };
       const lobMic = document.getElementById('lob-mic');
       if (lobMic) lobMic.onclick = () => { joinAv.mic = !joinAv.mic; paintLobbyAv(); };
-      const streamBtn = document.getElementById('lob-stream');
-      if (streamBtn) streamBtn.onclick = () => { enterMeeting('#bc=1&st=1'); };
-      // Host this call mints an admin small group; Start a town hall mints
-      // the same admin room with th=1 (watchers stay off camera).
-      let lobTownHall = false;
-      const thBtn = document.getElementById('lob-th-btn');
-      if (thBtn) thBtn.onclick = () => {
-        const form = document.getElementById('lob-admin');
-        const wasTh = lobTownHall && form.style.display !== 'none';
-        lobTownHall = true;
-        if (wasTh) { form.style.display = 'none'; lob.classList.remove('form-open'); return; }
-        form.style.display = 'none';
-        document.getElementById('lob-admin-btn').onclick();
-      };
-      document.getElementById('lob-admin-btn').onclick = (ev) => {
-        if (ev) lobTownHall = false;
+      // Host a call mints an admin small group.
+      document.getElementById('lob-admin-btn').onclick = () => {
         toggle('lob-admin');
         document.getElementById('lob-join').style.display = 'none';
         const open = document.getElementById('lob-admin').style.display !== 'none';
@@ -17868,11 +17836,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (open && BC_INTENT) {
           document.getElementById('lob-key-block').hidden = true;
           document.getElementById('lob-key-reveal').hidden = false;
-        }
-        if (open && !BC_INTENT && lobTownHall) {
-          document.querySelector('#lobby h1').textContent = 'Town hall';
-          document.querySelector('#lobby .lob-quiet').textContent = 'You host. People with the link watch, and come on stage when you call them up.';
-          n.placeholder = 'Town hall';
         }
         if (open) n.focus();
       };
@@ -17960,7 +17923,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // Go live here is the deliberate tap: the stream boots with the
           // camera on. Opening the host link later lands off air.
           if (BC_INTENT) { try { sessionStorage.setItem('gifos_bc_golive_' + chosen + '.' + V, 'b' + blurLevel(picked == null ? 2 : picked)); } catch (e) {} }
-          enterMeeting('#v=' + chosen + '&av=' + V + (BC_INTENT ? '&bc=1' + (params.has('st') ? '&st=1' : '') : (lobTownHall ? '&th=1' : '')));
+          enterMeeting('#v=' + chosen + '&av=' + V + (BC_INTENT ? '&bc=1' : ''));
         } catch (e) { err.textContent = 'Could not create the room. Try again.'; go.disabled = false; go.textContent = go.dataset.label || 'Start'; }
       };
       document.getElementById('lob-join-btn').onclick = () => { toggle('lob-join'); document.getElementById('lob-admin').style.display = 'none'; const i = document.getElementById('lob-join-in'); if (document.getElementById('lob-join').style.display !== 'none') i.focus(); };
@@ -18062,7 +18025,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         document.getElementById('lob-empty').textContent = 'Broadcasts you start or watch show up here.';
         const watchNote = document.getElementById('lob-watch-note');
         if (watchNote) { watchNote.hidden = false; watchNote.textContent = BC_WATCH_COPY; }
-        ['lob-th-btn', 'lob-stream'].forEach((id) => { const b = document.getElementById(id); if (b) b.style.display = 'none'; });
         // More on the picture opens Watch and the host key (Q49).
         const deskMore = document.getElementById('lob-desk-more');
         if (deskMore) deskMore.hidden = false;
@@ -18147,7 +18109,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           updateTile('me');
           joinRoom();
           updateStatus();
-          document.title = (typeof TOWNHALL !== 'undefined' && TOWNHALL) ? 'Town hall — GifOS' : BROADCAST ? (params.has('st') ? 'Stream — GifOS' : 'Broadcast — GifOS') : 'Meeting — GifOS';
+          document.title = BROADCAST ? 'Broadcast — GifOS' : 'Meeting — GifOS';
           if (BROADCAST) {
             const hint = document.querySelector('.share .hint');
             if (hint) hint.textContent = 'Share this link — anyone who opens it is watching:';
@@ -18840,7 +18802,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function qaChatOn() {
       if (chatOptOverride && Object.prototype.hasOwnProperty.call(chatOptOverride, 'qa'))
         return !!chatOptOverride.qa;
-      const svc = (BROADCAST) || (typeof TOWNHALL !== 'undefined' && TOWNHALL);
+      const svc = BROADCAST;
       if (!hasAdminRoom()) return !!svc;
       const m = modTable['*'] && modTable['*'].qa;
       if (!m || typeof m.on !== 'boolean') return !!svc;
@@ -20503,8 +20465,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         attach.hidden = !hasAdminRoom();
         attach.disabled = locked;
       }
-      document.body.classList.toggle('chat-qa-on', qaChatOn() && hasAdminRoom() && !BROADCAST && !TOWNHALL);
-      document.body.classList.toggle('qa-chat-off', hasAdminRoom() && (BROADCAST || TOWNHALL) && !qaChatOn());
+      document.body.classList.toggle('chat-qa-on', qaChatOn() && hasAdminRoom() && !BROADCAST);
+      document.body.classList.toggle('qa-chat-off', hasAdminRoom() && BROADCAST && !qaChatOn());
       const b = document.getElementById('chatmod');
       b.style.display = (hasAdminRoom() && amAdmin) ? '' : 'none';
       b.textContent = off ? uiText('chatModOn', 'Turn chat on') : uiText('chatModOff', 'Turn chat off');
@@ -20979,7 +20941,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const band = document.getElementById('bc-q');
       if (!band) return;
       const qid = qaShownId(), m = qid && chat.get(qid);
-      if (!m || !m.q || !(BROADCAST || TOWNHALL)) { band.hidden = true; return; }
+      if (!m || !m.q || !BROADCAST) { band.hidden = true; return; }
       document.getElementById('bc-q-by').textContent = m.by + ' asks';
       document.getElementById('bc-q-txt').textContent = m.text;
       band.hidden = false;
@@ -26865,7 +26827,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!canScreenShare()) shareWhy = uiText('shareNoGdm', 'This browser cannot share a screen.');
       else if (document.body.classList.contains('app-room')) shareWhy = 'Screen share is off while an app has the room.';
       else if (shareRoleOff) shareWhy = 'Only the host shares to the stage.';
-      else if (TOWNHALL && document.body.classList.contains('th-watch') && !document.body.classList.contains('stage-granted')) shareWhy = 'You are watching. A host can invite you to speak.';
       else if (!on && !mayShareScreen(myId)) shareWhy = uiText('shareNotAllowed', 'The host has not allowed you to share yet.');
       else if (!on && screenSharers().some((id) => id !== myId && id !== 'me')) shareWhy = 'Someone else is sharing. Wait for them to stop.';
       shareBtn.style.display = (!shareDocked && (!canScreenShare() || shareRoleOff)) ? 'none' : '';
@@ -27180,7 +27141,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // re-ships down every relayer (see selfShipMemo). Pause holds the same
     // tracks; the picture just stops changing.
     const rbBtn = document.getElementById('rbbtn');
-    const rbNoun = () => (params.has('st') ? 'stream' : 'broadcast');
+    const rbNoun = () => 'broadcast';
     function rbFmt(sec) {
       const t = Math.max(0, Math.floor(sec || 0));
       const h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, x = t % 60;
@@ -30283,7 +30244,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       bg.innerHTML = '<p class="rec-replay-title">Replay</p>' +
         '<video id="rec-replay-vid" playsinline></video>' +
         '<div class="rec-replay-bar">' +
-        (saved && saved.seed ? '<p id="rec-replay-seed" class="rec-replay-seed">The ' + ((typeof params !== 'undefined' && params.has('st')) ? 'stream' : 'broadcast') + ' has ended.</p>' : '') +
+        (saved && saved.seed ? '<p id="rec-replay-seed" class="rec-replay-seed">The broadcast has ended.</p>' : '') +
         '<input id="rec-replay-scrub" type="range" min="0" max="1000" value="0" aria-label="Replay position">' +
         '<div class="rec-replay-actions">' +
         '<button type="button" id="rec-replay-share" hidden>Share</button>' +
@@ -30369,7 +30330,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function showServiceEnded(saved) {
       const old = document.getElementById('rb-sheet');
       if (old) old.remove();
-      const noun = (typeof params !== 'undefined' && params.has('st')) ? 'stream' : 'broadcast';
+      const noun = 'broadcast';
       const bg = document.createElement('div');
       bg.id = 'rb-sheet'; bg.className = 'rb-sheet';
       bg.setAttribute('role', 'dialog'); bg.setAttribute('aria-modal', 'true'); bg.setAttribute('aria-label', 'The ' + noun + ' has ended');
@@ -33335,7 +33296,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!url) return;
       const isApp = document.body.classList.contains('app-room');
       const payload = {
-        title: isApp ? 'Join me on GifOS' : BROADCAST ? 'Watch my GifOS broadcast' : (typeof TOWNHALL !== 'undefined' && TOWNHALL ? 'Watch my GifOS town hall' : 'Join my GifOS meeting'),
+        title: isApp ? 'Join me on GifOS' : BROADCAST ? 'Watch my GifOS broadcast' : 'Join my GifOS meeting',
         text: BROADCAST && bcStartAt() > Date.now()
           ? 'Live ' + bcWhenWords(bcStartAt(), Date.now()) + '. Tap this link to watch:'
           : 'Tap this link and you’re in:',
@@ -33740,7 +33701,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const named = (typeof room === 'string' && room) ? room : (params.get('v') || '');
       if (!raw && named) {
         const avBit = (params.get('av') || '').toLowerCase();
-        raw = location.origin + location.pathname + '#v=' + encodeURIComponent(named) + (avBit ? '&av=' + avBit : '') + (BROADCAST ? '&bc=1' : '') + (BROADCAST && params.has('st') ? '&st=1' : '');
+        raw = location.origin + location.pathname + '#v=' + encodeURIComponent(named) + (avBit ? '&av=' + avBit : '') + (BROADCAST ? '&bc=1' : '');
       }
       if (!raw) return '';
       const dropKeys = ['pw', 'password', 'guest', 'vpw', 'guestpw', 'pass'];
@@ -33791,7 +33752,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       bcCalFor = at + link;
       const stamp = (ms) => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
       const esc = (s) => String(s).replace(/([\\;,])/g, '\\$1').replace(/\n/g, '\\n');
-      const noun = params.has('st') ? 'stream' : 'broadcast';
+      const noun = 'broadcast';
       const name = String(params.get('v') || '').trim();
       const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//GifOS//Broadcast//EN', 'BEGIN:VEVENT',
         'UID:' + at + '-' + name.replace(/[^a-z0-9]/gi, '') + '@gifos.app', 'DTSTAMP:' + stamp(Date.now()),

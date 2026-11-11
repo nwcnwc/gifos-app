@@ -311,11 +311,6 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
      and stays in the status sheet. An alert keeps its row. */
   body.broadcast.bc-host:has(#bc-link.on:not(.live)) .topchip .status:not(.alert) { display: none; }
 }
-/* The lobby, one design at every size.
-   Town hall and Stream to friends are doors like Host this call: one
-   centred link per line, 44px to tap. */
-#lobby.show #lob-th-btn.lob-link, #lobby.show #lob-stream.lob-link { display: block; width: 100%; min-height: 44px; margin: 0 0 2px;
-  color: var(--c-blue); font-weight: 700; font-size: 1rem; text-align: center; text-decoration: underline; background: transparent; border: 0; }
 /* "This is how you'll appear" sits in the card, never over the camera
    preview's own words: the words above, your picture and name below. */
 #lobby.show .lob-appear { position: static !important; width: auto !important; margin: 12px 0 0 !important;
@@ -333,8 +328,6 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
   #lobby.form-open.service-ready.show { grid-template-rows: minmax(0, 1fr); }
   #lobby.form-open.service-ready .lobby-card { overflow: auto; }
 }
-/* An open form parks the other doors, town hall and stream included. */
-#lobby.form-open #lob-th-btn, #lobby.form-open #lob-stream { display: none !important; }
 
 /* LM-30: one compact icon-and-label grid. Every sheet fits at 100% zoom
    on a short desktop and on a phone. Overflow stays auto so a landscape

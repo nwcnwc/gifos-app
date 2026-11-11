@@ -2412,27 +2412,6 @@
     position: absolute !important; left: -16px !important; top: 0 !important;
     width: 4px !important; height: 4px !important; overflow: hidden !important;
     opacity: 0 !important; pointer-events: none !important; margin: 0 !important; padding: 0 !important; }
-  /* A speaker is the stage: the picture fills the phone. The chip and the
-     dock float on it. An empty stage stays hidden so the sentence can show. */
-  body.townhall #stagefeed:not(:empty) {
-    position: fixed !important; left: 0 !important; top: 0 !important; right: 0 !important; bottom: 0 !important;
-    width: auto !important; height: auto !important; margin: 0 !important; padding: 0 !important;
-    display: grid !important; grid-template-rows: minmax(120px, 1fr);
-    opacity: 1 !important; overflow: hidden !important; z-index: 2; pointer-events: none !important;
-  }
-  body.townhall #stagefeed .rowtile {
-    width: 100%; height: 100%; min-height: 120px; max-height: none;
-    aspect-ratio: auto !important; border: 0; border-radius: 0; box-shadow: none;
-    background: var(--c-night);
-  }
-  body.townhall #stagefeed .rowtile video {
-    width: 100%; height: 100%; object-fit: cover !important; object-position: 50% 35%;
-  }
-  body.townhall #stagefeed .rlabel {
-    left: 16px; right: auto; bottom: calc(80px + var(--inset-bottom, 0px));
-    width: auto; max-width: calc(100% - 32px); padding: 6px 12px; border-radius: var(--r-pill);
-    font: 700 0.875rem/1.2 system-ui, sans-serif; background: rgba(8,10,14,.78);
-  }
   /* The broadcast program is the phone. The picture fills the screen and the
      frame stays whole. An empty stage stays hidden so the sentence can show.
      The banner and the dock float on the picture. */
@@ -3076,7 +3055,6 @@
   #lobby.form-open .lob-quiet,
   #lobby.form-open #lob-admin-btn,
   #lobby.form-open #lob-open,
-  #lobby.form-open #lob-stream,
   #lobby.form-open #lob-join-btn,
   #lobby.form-open #lob-join,
   #lobby.form-open .lob-sep,
@@ -3259,7 +3237,6 @@
   #rec-replay-share[hidden] { display: none; }
   .rec-replay-actions.can-share #rec-replay-save { background: transparent; color: var(--c-paper); border: 1.5px solid var(--c-gray); }
   #rec-replay-close { background: transparent; color: var(--c-paper); border: 1.5px solid var(--c-gray); }
-  body.townhall.th-watch:not(.stage-granted) #flipcam, body.townhall.th-watch:not(.stage-granted) .blurctl, body.townhall.th-watch #appbtn, body.townhall.th-watch #barmore #sharebtn, body.townhall.th-watch #pwbtn, body.townhall.th-watch #recbtn { display: none !important; }
   #bc-link { display: none; }
   body.broadcast #bc-link.on { display: flex; position: fixed; z-index: 6; left: 16px; right: 16px; flex-direction: column; gap: 12px; overflow: auto; background: var(--c-white); color: var(--c-ink); border-radius: var(--r-lg); padding: 16px; box-shadow: 0 12px 32px rgba(0,0,0,.28); box-sizing: border-box; max-width: 420px; margin: 0 auto; }
   #bc-link p { margin: 0; text-align: center; font-size: 0.875rem; line-height: 1.35; color: var(--c-ink-2); }
@@ -3270,8 +3247,7 @@
   body.broadcast #bc-link.on.live input { flex: 1 1 auto; min-width: 0; }
   body.broadcast #bc-link.on.live button { width: auto; padding: 0 16px; }
   #bc-ended[hidden] { display: none !important; }
-  body.broadcast #bc-ended:not([hidden]), body.townhall #bc-ended:not([hidden]) { display: flex; flex-direction: column; gap: 16px; position: fixed; z-index: 4; left: 24px; right: 24px; top: calc(var(--banner-h) + 8px + 4.25rem + var(--inset-top, 0px)); bottom: calc(var(--inset-bottom, 0px) + var(--barclear, 0px)); align-items: center; justify-content: center; margin: 0; padding: 0; overflow: hidden; container-type: size; pointer-events: none; text-align: center; }
-  body.townhall #bc-ended:not([hidden]) { top: calc(14px + 4.25rem + var(--inset-top, 0px)); }
+  body.broadcast #bc-ended:not([hidden]) { display: flex; flex-direction: column; gap: 16px; position: fixed; z-index: 4; left: 24px; right: 24px; top: calc(var(--banner-h) + 8px + 4.25rem + var(--inset-top, 0px)); bottom: calc(var(--inset-bottom, 0px) + var(--barclear, 0px)); align-items: center; justify-content: center; margin: 0; padding: 0; overflow: hidden; container-type: size; pointer-events: none; text-align: center; }
   #bc-cal[hidden] { display: none !important; }
   #bc-cal { pointer-events: auto; display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 10px 22px; border-radius: var(--r-lg); border: 2px solid var(--c-paper); color: var(--c-paper); text-decoration: none; font: 700 1.05rem/1.1 system-ui, sans-serif; }
   #bc-visit[hidden] { display: none !important; }
@@ -3312,7 +3288,7 @@
   #bc-q.clip p { -webkit-mask-image: linear-gradient(#000 calc(100% - 1.2em), transparent); mask-image: linear-gradient(#000 calc(100% - 1.2em), transparent); }
   #bc-q-pad, #bc-q-fit { float: right; width: 0; height: 0; }
   #bc-q-fit { clear: right; }
-  body:not(.broadcast):not(.townhall):not(.chat-qa-on) #qabtn { display: none !important; }
+  body:not(.broadcast):not(.chat-qa-on) #qabtn { display: none !important; }
   body.qa-chat-off #qabtn { display: none !important; }
   html.kb-up #qa { padding-bottom: 0; }
   #qa { position: fixed; right: var(--inset-right, 0px); top: var(--inset-top, 0px); bottom: var(--kb, 0px); padding-bottom: max(var(--inset-bottom, 0px), var(--barclear, 0px)); box-sizing: border-box; width: min(360px, calc(100vw - var(--inset-left, 0px) - var(--inset-right, 0px))); z-index: 31; display: flex; flex-direction: column; background: var(--bg, #101018); color: var(--text, #e0e0f0); border-left: 1px solid var(--border, #2a2a3f); border-radius: 0 0 0 14px; }
@@ -3336,7 +3312,7 @@
   #qa-in { flex: 1; min-width: 0; min-height: 44px; padding: .4rem .6rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--bg, #0a0a0f); color: inherit; font: inherit; font-size: 1rem; }
   #qa-ask { min-width: 64px; min-height: 44px; border-radius: .4rem; border: 0; background: var(--c-blue); color: var(--c-white); font: 700 1rem/1 system-ui, sans-serif; }
   #bc-ended p { margin: 0; max-width: 18rem; color: var(--c-paper); font: 700 clamp(1.15rem, 9cqh, 1.75rem)/1.25 system-ui, sans-serif; letter-spacing: -0.02em; }
-  body.broadcast.bc-quiet #fitbtn, body.townhall.bc-quiet #fitbtn { display: none; }
+  body.broadcast.bc-quiet #fitbtn { display: none; }
   @media (max-height: 500px) {
     body.broadcast #bc-ended:not([hidden]) { top: calc(var(--banner-h) + 8px + 2.75rem + var(--inset-top, 0px)); bottom: calc(var(--inset-bottom, 0px) + var(--barclear, 0px)); }
     #bc-ended p { font-size: 1.25rem; }
@@ -3349,15 +3325,13 @@
   .topchip .status .statustext { display: block; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 
-  /* Restored: broadcast, town hall, start time, Visit, flip camera and
+  /* Restored: broadcast, start time, Visit, flip camera and
      dock Hand rules the same merge left out. */
   @media (max-width: 700px), (max-height: 500px) {
-    body.broadcast #handq.on, body.townhall #handq.on { display: block; position: fixed; z-index: 5; left: 8px; right: 8px; margin: 0; padding: 8px 12px; font-size: 1.0625rem; line-height: 1.2; color: var(--c-paper); background: var(--c-scrim); border-radius: var(--r-lg); pointer-events: auto; }
+    body.broadcast #handq.on { display: block; position: fixed; z-index: 5; left: 8px; right: 8px; margin: 0; padding: 8px 12px; font-size: 1.0625rem; line-height: 1.2; color: var(--c-paper); background: var(--c-scrim); border-radius: var(--r-lg); pointer-events: auto; }
     body.broadcast #handq.on { top: calc(var(--banner-h) + 8px + 4.25rem + 8px + var(--inset-top, 0px)); }
-    body.townhall #handq.on { top: calc(14px + 4.25rem + 8px + var(--inset-top, 0px)); }
-    body.broadcast #handq.on .hq, body.townhall #handq.on .hq { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; margin: 4px 2px; padding: 0 12px; border-radius: var(--r-pill); background: rgba(255,255,255,.14); vertical-align: middle; }
+    body.broadcast #handq.on .hq { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; margin: 4px 2px; padding: 0 12px; border-radius: var(--r-pill); background: rgba(255,255,255,.14); vertical-align: middle; }
   }
-  body.townhall #grid, body.townhall #stadium { display: none !important; }
   body.broadcast #bc-ident img { width: 256px; width: min(256px, 70vw); height: 256px; height: min(256px, 46vh); object-fit: cover; border-radius: 1rem; background: #14141f; }
   #bcwhenrow { display: none; }
   body.broadcast.bc-host #bcwhenrow { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; flex-wrap: wrap; }

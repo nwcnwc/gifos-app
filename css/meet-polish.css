@@ -48,13 +48,11 @@
 .dlg-actions button { min-height: 44px; border-radius: var(--r-md); font-weight: 600; }
 
 /* ---- the join screen -------------------------------------------------------------------------------------------
-   One primary action (Start a call, the blue button). The other doors (Host this call, Join a link, Start a town
-   hall, Stream to friends) are quiet secondary buttons, not underlined web links: same 44px reach, same corner as
+   One primary action (Start a call, the blue button). The other doors (Host a call, Join a link) are quiet secondary buttons, not underlined web links: same 44px reach, same corner as
    every other button, ink words on a light fill. */
-#lobby.show #lob-admin-btn.lob-link, #lobby.show #lob-join-btn.lob-link,
-#lobby.show #lob-th-btn.lob-link, #lobby.show #lob-stream.lob-link {
+#lobby.show #lob-admin-btn.lob-link, #lobby.show #lob-join-btn.lob-link {
   background: var(--c-paper); color: var(--c-ink); text-decoration: none; font-weight: 600;
   border-radius: var(--r-md); margin: 0 0 8px; }
 @media (hover: hover) {
-  #lobby.show :is(#lob-admin-btn, #lob-join-btn, #lob-th-btn, #lob-stream).lob-link:hover { background: var(--c-line); }
+  #lobby.show :is(#lob-admin-btn, #lob-join-btn).lob-link:hover { background: var(--c-line); }
 }
