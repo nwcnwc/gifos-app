@@ -6464,6 +6464,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!(typeof isVerified === 'function' && isVerified(id) === true)) {
           const e = whoLog.get(id), young = e && Date.now() - e.first < 15000;
           chips.push(txChip('warn long', '\ud83d\udd12', young ? 'verifying who they are\u2026 video and sound held' : 'not verified \u2014 video and sound held. They need to update GifOS.'));
+          // The words change with time alone: repaint when the 15 s are up, not
+          // whenever this person next beats (a slow or pocketed page beats late).
+          if (young && !e.agedT && typeof setTimeout === 'function') e.agedT = setTimeout(() => { e.agedT = null; if (peers.has(id)) updateTile(id); }, 15050 - (Date.now() - e.first));
         }
       }
       if (!isMe && t.relayed) chips.push(txChip('long', '📡', 'via ' + displayName(t.relayed)));
