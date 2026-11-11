@@ -1,10 +1,11 @@
 /*
  * meet-views.js — place comfy tiles, show the stadium whole, drag the bar.
- * Geometry comes from meet-layout.js. This file touches the DOM and nothing
+ * Geometry comes from meet-zones.js and meet-layout.js. This file touches the DOM and nothing
  * about peers: the page hands it elements and numbers.
  *
  * The row is the direct feeds the page passes in. The stadium is one
- * composite video in one box. Nothing is cut out of it.
+ * composite video in one box. A stage camera's cell is left out of this
+ * drawing only, when the page names that cell. Nothing is sent.
  */
 (function (root) {
   const GifOS = root.GifOS = root.GifOS || {};
@@ -117,17 +118,31 @@
   }
 
 
-  function dockControlsTop(doc) {
-    const bar = doc.querySelector('.bar');
-    if (!bar) return 0;
-    let top = 0;
-    const nodes = bar.querySelectorAll('#cam, #mic, #reactbtn, #bartoggle, #leavebtn');
-    for (let i = 0; i < nodes.length; i++) {
-      const t = restingTop(nodes[i]);
-      if (t > 0 && (top === 0 || t < top)) top = t;
+  // Where the dock and its buttons stand at home. Both drag owners are
+  // undone for the reading: placeDock's translate and installBar's
+  // left/top. Clearing a button's own transform never undid the bar's.
+  const DOCK_DRAG_PROPS = ['left', 'top', 'right', 'bottom', 'transform'];
+  function dockRest(doc) {
+    const out = { top: 0, btnTop: 0 };
+    const bar = doc && doc.querySelector ? doc.querySelector('.bar') : null;
+    if (!bar || !bar.style) return out;
+    const keep = {};
+    for (let i = 0; i < DOCK_DRAG_PROPS.length; i++) keep[DOCK_DRAG_PROPS[i]] = bar.style[DOCK_DRAG_PROPS[i]];
+    for (let i = 0; i < DOCK_DRAG_PROPS.length; i++) bar.style[DOCK_DRAG_PROPS[i]] = '';
+    try {
+      out.top = restingTop(bar);
+      const nodes = bar.querySelectorAll('#cam, #mic, #reactbtn, #bartoggle, #leavebtn');
+      for (let i = 0; i < nodes.length; i++) {
+        const t = restingTop(nodes[i]);
+        if (t > 0 && (out.btnTop === 0 || t < out.btnTop)) out.btnTop = t;
+      }
+    } finally {
+      for (let i = 0; i < DOCK_DRAG_PROPS.length; i++) bar.style[DOCK_DRAG_PROPS[i]] = keep[DOCK_DRAG_PROPS[i]];
     }
-    return top;
+    return out;
   }
+
+  function dockControlsTop(doc) { return dockRest(doc).btnTop; }
 
   // The dock and the shown Live/Record buttons, as screen boxes.
   function chromeMarks(doc) {
@@ -189,14 +204,36 @@
     return true;
   }
 
-  // Faces stop where the call's buttons start. A shared screen and an app
-  // stay full-bleed. Desktop has no call-state row (it is display:none).
+  // env(safe-area-inset-bottom) in px, read from run.html's #gifos-safe-b probe.
+  function safeAreaBottom(doc) {
+    let p = doc && doc.getElementById ? doc.getElementById('gifos-safe-b') : null;
+    if (!p && doc && doc.createElement && doc.body) {
+      p = doc.createElement('div');
+      p.id = 'gifos-safe-b';
+      p.style.cssText = 'position:fixed;left:0;bottom:0;width:0;height:env(safe-area-inset-bottom,0px);pointer-events:none;visibility:hidden';
+      doc.body.appendChild(p);
+    }
+    return p ? (p.offsetHeight || 0) : 0;
+  }
+
+  // The faces reach the safe-area bottom on every screen; the call's buttons
+  // float over them (2026-11-09). A shared screen and an app stay full-bleed.
   function reserveCallChrome(feed, opts, header, tiles) {
     if (!feed || !feed.style) return 0;
     const doc = feed.ownerDocument || document;
     const body = doc.body;
     const skip = !opts || (body && body.classList && (body.classList.contains('screen-on') || body.classList.contains('has-app')));
     if (skip) { feed.style.bottom = ''; return 0; }
+    // Every screen uses the whole height below the header (Nathan 2026-11-09):
+    // the dock, Record and the chat line float over the faces and reserve no
+    // band, on a phone, a tablet, a desktop, sideways or upright. Only the
+    // system gesture bar (safe-area bottom) stays clear. A drag cannot change this.
+    {
+      callChromeTop = 0; callChromeEdge0 = 0; callChromeLipEdge = 0; callChromeEdge = 0; callChromeMarks = null;
+      const safe = safeAreaBottom(doc);
+      feed.style.bottom = safe > 0 ? safe + 'px' : '';
+      return safe;
+    }
     // apply() found that stopping above Record cost a face its 96px: the
     // faces take the whole screen and the controls float over them.
     if (opts._float) { feed.style.bottom = ''; return 0; }
@@ -211,7 +248,8 @@
       const bar = doc.querySelector('.bar');
       const a = restingTop(note);
       const b = restingTop(state);
-      const d = restingTop(bar);
+      const rest = dockRest(doc);
+      const d = bar ? rest.top : 0;
       let top = 0;
       if (a > 0 && b > 0) top = Math.min(a, b);
       else top = a > 0 ? a : b;
@@ -222,7 +260,7 @@
       // Video and Mic are the line a face must not cross. On a sideways
       // phone the dock is taller than Record and sticks up into the feed.
       let edge = callChromeTop;
-      const btnTop = dockControlsTop(doc);
+      const btnTop = rest.btnTop;
       // Sideways, Video sticks up past Record. Stop there.
       if (btnTop > 0 && (edge === 0 || btnTop < edge)) edge = btnTop;
       // Upright, the faces stop at Record's row (see-everyone, chat-preview,
@@ -353,6 +391,7 @@
 
   function clearRoot(feed) {
     if (!feed || !feed.querySelectorAll) return;
+    stopStadClose();
     const placed = feed.querySelectorAll('[data-comfy], .comfy-off');
     for (let i = 0; i < placed.length; i++) clearEl(placed[i]);
     const whole = feed.querySelector('#stadwhole');
@@ -524,6 +563,7 @@
   // The composite fills its box. left/top stay 0 and the video is the
   // element's own size, so the frame shows whole. A cell crop would shift
   // it by a negative offset and a width larger than the box.
+  // A stage camera is copied out of that frame onto one canvas instead.
   function showWhole(video) {
     if (!video || !video.style) return;
     video.style.position = 'absolute';
@@ -537,6 +577,94 @@
     video.style.objectPosition = 'center center';
     video.style.visibility = '';
     video.style.opacity = '';
+  }
+
+  // One canvas over the stadium video. It redraws the cells this browser
+  // keeps and leaves a stage camera's cell out. The source <video> stays
+  // playing underneath: hiding it can stop the decoder. Nothing is sent.
+  let stadClose = null;
+  function stopStadClose() {
+    const c = stadClose;
+    stadClose = null;
+    if (!c) return;
+    if (c.vfc && c.video && typeof c.video.cancelVideoFrameCallback === 'function') {
+      try { c.video.cancelVideoFrameCallback(c.vfc); } catch (e) {}
+    }
+    if (c.rafId) cancelAnimationFrame(c.rafId);
+    if (c.canvas && c.canvas.remove) c.canvas.remove();
+  }
+  function stadCellsSquare(n, cols, sw, sh) {
+    const MM = GifOS.meshMedia;
+    if (!MM || typeof MM.faceSrcRect !== 'function' || typeof MM.packGrid !== 'function') return false;
+    if (!Number.isInteger(n) || !Number.isInteger(cols) || n < 1 || cols < 1) return false;
+    if (!(sw > 2) || !(sh > 2)) return false;
+    const s = MM.faceSrcRect(0, n, cols, sw, sh);
+    return !!(s && s.sw > 0 && Math.abs(s.sw - s.sh) <= 0.08 * s.sw);
+  }
+  function drawStadClose(c) {
+    const video = c.video;
+    const sw = (video && video.videoWidth) || 0;
+    const sh = (video && video.videoHeight) || 0;
+    if (!c.ctx || !stadCellsSquare(c.n, c.cols, sw, sh)) return false;
+    const MM = GifOS.meshMedia;
+    const keep = c.keep;
+    const g = MM.packGrid(keep.length, 'stad');
+    const cell = Math.max(1, Math.round(sw / c.cols));
+    const W = cell * g.cols, H = cell * g.rows;
+    if (c.canvas.width !== W) c.canvas.width = W;
+    if (c.canvas.height !== H) c.canvas.height = H;
+    c.ctx.fillStyle = '#101418';
+    c.ctx.fillRect(0, 0, W, H);
+    for (let i = 0; i < keep.length; i++) {
+      const s = MM.faceSrcRect(keep[i], c.n, c.cols, sw, sh);
+      const dx = (i % g.cols) * cell, dy = Math.floor(i / g.cols) * cell;
+      try { c.ctx.drawImage(video, s.sx, s.sy, s.sw, s.sh, dx, dy, cell, cell); } catch (e) {}
+    }
+    return true;
+  }
+  function armStadClose(el, video, spec) {
+    const n = spec.n | 0, cols = spec.cols | 0;
+    const skip = {};
+    const skips = spec.skips || [];
+    for (let i = 0; i < skips.length; i++) {
+      const j = skips[i] | 0;
+      if (j >= 0 && j < n) skip[j] = true;
+    }
+    const keep = [];
+    for (let j = 0; j < n; j++) if (!skip[j]) keep.push(j);
+    const sw = (video && video.videoWidth) || 0;
+    const sh = (video && video.videoHeight) || 0;
+    if (!keep.length || keep.length === n || !stadCellsSquare(n, cols, sw, sh)) { stopStadClose(); return; }
+    if (stadClose && (stadClose.el !== el || stadClose.video !== video)) stopStadClose();
+    if (!stadClose) {
+      const doc = el.ownerDocument || document;
+      const canvas = doc.createElement('canvas');
+      canvas.className = 'stad-close';
+      canvas.setAttribute('aria-hidden', 'true');
+      const st = canvas.style;
+      st.position = 'absolute';
+      st.left = '0'; st.top = '0'; st.width = '100%'; st.height = '100%';
+      st.objectFit = 'contain';
+      st.background = '#101418';
+      st.zIndex = '1';
+      st.pointerEvents = 'none';
+      const name = el.querySelector('.name');
+      if (name) el.insertBefore(canvas, name); else el.appendChild(canvas);
+      stadClose = { el: el, video: video, canvas: canvas, ctx: canvas.getContext('2d'), rafId: 0, vfc: 0 };
+      const tick = function () {
+        if (!stadClose || stadClose.canvas !== canvas) return;
+        drawStadClose(stadClose);
+        const v = stadClose.video;
+        if (v && typeof v.requestVideoFrameCallback === 'function') stadClose.vfc = v.requestVideoFrameCallback(tick);
+        else stadClose.rafId = requestAnimationFrame(tick);
+      };
+      if (video && typeof video.requestVideoFrameCallback === 'function') stadClose.vfc = video.requestVideoFrameCallback(tick);
+      else stadClose.rafId = requestAnimationFrame(tick);
+    }
+    stadClose.n = n;
+    stadClose.cols = cols;
+    stadClose.keep = keep;
+    drawStadClose(stadClose);
   }
 
   // One resize listener, on the stadium <video>. Debounced, so a burst
@@ -646,20 +774,23 @@
   // 0.9.23b: Stage (true aspect), Row and Stadium (squares). meet-zones.js
   // does the geometry; this keeps the shape the rest of apply() reads.
   function zonesLayout(MZ, tiles, box, opts) {
-    const stage = [], row = [], stad = [];
+    const stage = [], share = [], row = [], stad = [];
     for (let i = 0; i < tiles.length; i++) {
       const t = tiles[i];
       if (t.tier === 'stad') stad.push(t.id);
-      else if (t.stage || t.share) stage.push({ id: t.id, aspect: t.aspect > 0 ? t.aspect : 16 / 9, fill: !!t.fill });
-      else row.push(t.id);
+      else if (t.kind === 'screen' || t.kind === 'app' || t.fill) {
+        share.push({ id: t.id, aspect: t.aspect > 0 ? t.aspect : 16 / 9, fill: !!t.fill || t.kind === 'app', kind: t.kind || (t.fill ? 'app' : 'screen') });
+      } else if (t.stage || t.kind === 'strip' || t.kind === 'person') {
+        stage.push({ id: t.id, aspect: t.aspect > 0 ? t.aspect : 16 / 9, kind: t.kind || 'person' });
+      } else row.push(t.id);
     }
-    const z = MZ.layout({ box: box, stage: stage, row: row, stad: stad, phone: !!opts.phone,
+    const z = MZ.layout({ box: box, stage: stage, share: share, row: row, stad: stad, phone: !!opts.phone,
       gallery: opts.gallery === 'scroll' ? 'scroll' : 'fit', gap: opts.phone ? 4 : MZ.GAP, floor: +opts.floor || 0,
       stadCount: opts.stadCount > 0 ? opts.stadCount : 0 });
     let band = null;
     if (z.tooSmall) band = { text: 'faces tiny \u00b7 Scroll is in \u25a6', x: box.x + 6, y: box.y + 6 };
-    return { mode: stage.length ? 'stage' : 'gallery', gallery: z.gallery, rects: z.rects, crowd: false, band: band,
-      box: box, regions: z.regions, stage: z.regions.stage, contentH: z.contentH, tooSmall: !!z.tooSmall,
+    return { mode: (stage.length || share.length) ? 'stage' : 'gallery', gallery: z.gallery, rects: z.rects, crowd: false, band: band,
+      box: box, regions: z.regions, stage: z.regions.stage, share: z.regions.share, contentH: z.contentH, tooSmall: !!z.tooSmall,
       self: { arrangement: 'tile' }, zones: true, side: z.side, stadSide: z.stadSide };
   }
 
@@ -675,6 +806,32 @@
     }
     const w = video && video.videoWidth || 0, h = video && video.videoHeight || 0;
     return (w > 0 && h > 0) ? { w: w, h: h, from: 'source' } : { w: 0, h: 0, from: 'none' };
+  }
+
+  // Put each saved Fit panel back where it was dropped: 'stage' over a share,
+  // 'row' with none. view is the area the panels live in, in the tiles' own
+  // coordinates (the feed), or a function returning it (read only when a spot
+  // is saved). pad is the gutter inset of the drawn tiles.
+  function placeFloats(lay, view, store, orient, pad) {
+    const ML = GifOS.meetLayout;
+    if (!ML || !ML.placeFloat || !lay || !lay.rects) return lay;
+    const next = lay.rects.slice();
+    let moved = false, area = null;
+    for (let kindi = 0; kindi < 2; kindi++) {
+      const kind = kindi ? 'row' : 'stage';
+      const saved = ML.loadFloat(store, kind, orient);
+      if (!saved) continue;
+      const group = [], idx = [];
+      for (let i = 0; i < next.length; i++) if (next[i].float === kind) { group.push(next[i]); idx.push(i); }
+      if (!group.length) continue;
+      if (!area) area = typeof view === 'function' ? view() : view;
+      const placed = ML.placeFloat(group, saved, area, pad);
+      if (placed !== group) {
+        for (let k = 0; k < idx.length; k++) next[idx[k]] = placed[k];
+        moved = true;
+      }
+    }
+    return moved ? Object.assign({}, lay, { rects: next }) : lay;
   }
 
   // opts: { feed, tiles, faces, video, vw, vh, phone, now, onSettle }
@@ -695,6 +852,7 @@
       if (lb) lb.textContent = 'Stadium \u00b7 ' + allFaces.length;
       tiles.push({ id: 'stad:whole', tier: 'stad', el: stadEl, shade: 'stad' });
     } else {
+      stopStadClose();
       const old = feed.querySelector('#stadwhole');
       if (old) old.remove();
     }
@@ -721,25 +879,27 @@
     const MZ = GifOS.meetZones;
     const byId = {};
     for (let i = 0; i < tiles.length; i++) byId[tiles[i].id] = tiles[i];
-    let lay = MZ ? zonesLayout(MZ, tiles, box, Object.assign({}, opts, { stadCount: allFaces.length })) : ML.layoutFor({
-      mode: opts.mode || 'gallery',
-      tiles: tiles,
-      box: box,
-      phone: !!opts.phone,
-      swapSelf: !!opts.swapSelf,
-      self: opts.self != null ? opts.self : (opts.selfView || 'tile'),
-      gallery: opts.gallery === 'scroll' ? 'scroll' : 'fit',
-    });
+    // pictureCells: the frame still has more cells than the faces we show.
+    // The box follows the frame so a shorter count cannot slit it.
+    const picN = opts.pictureCells | 0;
+    const stadN = picN > allFaces.length ? picN : allFaces.length;
+    let lay = zonesLayout(MZ, tiles, box, Object.assign({}, opts, { stadCount: stadN }));
     // Stopping the faces above Record must not shrink a phone face under the
     // 96px Fit floor (a 320x460 SE made seven 76x108 slivers). Then the faces
     // fill the screen and the dock floats over them (Nathan 2026-10-19 16:42).
     // The held line decides it, so a tuck or a wake gives the same answer.
-    if (!opts._float && opts.phone && chrome > 0 && lay && lay.rects) {
-      for (let i = 0; i < lay.rects.length; i++) {
-        const r = lay.rects[i], t = byId[r.id];
-        if (!t || t.tier === 'stad' || t.stage || t.share) continue;
-        if (Math.min(r.w, r.h) < 96 - 0.5) { opts._float = true; return apply(opts); }
-      }
+    // (2026-11-09: a phone reserves no band, so there is no float pass.)
+    // A saved drag is a center fraction of the feed, the same area the drag
+    // measured. Applied after the fit pass, so the default layout stays what
+    // the geometry tests measure. The tiles are drawn inset by the gutter.
+    if (ML.placeFloat && lay && lay.rects && lay.gallery !== 'scroll') {
+      const pad = (opts.phone || lay.zones) ? 0 : GUTTER / 2;
+      let store = opts.store || null;
+      if (!store) { try { if (typeof localStorage !== 'undefined') store = localStorage; } catch (e) {} }
+      const orient = ML.floatOrient({ w: +opts.vw || box.w || 1, h: +opts.vh || box.h || 1 });
+      lay = placeFloats(lay, function () {
+        return { x: 0, y: 0, w: feed.clientWidth > 0 ? feed.clientWidth : box.w, h: feed.clientHeight > 0 ? feed.clientHeight : box.h };
+      }, store, orient, pad);
     }
     for (let i = 0; i < tiles.length; i++) {
       if (tiles[i].me || tiles[i].id === 'me') markSelf(tiles[i].el, lay.self);
@@ -756,6 +916,8 @@
       placeEl(t.el, half ? { x: r.x + half, y: r.y + half, w: r.w - 2 * half, h: r.h - 2 * half } : r);
       if (half) t.el.dataset.gutter = '1'; else delete t.el.dataset.gutter;
       t.el.dataset.fit = r.fit || 'cover';
+      if (r.float) t.el.dataset.float = r.float;
+      else delete t.el.dataset.float;
       used.push(t.el);
     }
     if (!opts._lip && opts.phone && used.length && !tilesMeetChrome(feed.ownerDocument || document, used) && recordBeside(feed.ownerDocument || document, used)) {
@@ -764,8 +926,16 @@
       return apply(opts);
     }
     const usedSet = new Set(used);
+    // A Fit panel is only what this pass drew: drop the tag from any other element in the feed.
+    if (feed.querySelectorAll) {
+      const tagged = feed.querySelectorAll('[data-float]');
+      for (let i = 0; i < tagged.length; i++) if (!usedSet.has(tagged[i])) delete tagged[i].dataset.float;
+    }
     for (let i = 0; i < tiles.length; i++) {
-      if (tiles[i].el && !usedSet.has(tiles[i].el)) parkEl(tiles[i].el);
+      if (tiles[i].el && !usedSet.has(tiles[i].el)) {
+        parkEl(tiles[i].el);
+        if (tiles[i].el.dataset) delete tiles[i].el.dataset.float;
+      }
     }
     // Absolute tiles do not grow scrollHeight. A 1px spacer does, so Scroll
     // can move through the stadium without a pager.
@@ -774,11 +944,11 @@
     const need = (lay.box ? lay.box.y : 0) + contentH;
     const overflows = !!(lay.box && contentH > lay.box.h + 1);
     const tail = overflows ? Math.max(0, (+opts.vh || 0) - lay.box.y - lay.box.h) : 0;
-    // A gallery that scrolls ends at the box, or below its first row when
-    // that row is taller than the band (it shows whole, over the empty part
-    // of the Record row, 3d2dd16). Rows that start past it are scrolled to, never
-    // painted under the call's buttons: a sideways SE with the buttons up
-    // has a 100px band for seven people.
+    // A gallery that scrolls folds at the box, or below its first row when
+    // that row is taller than the band (3d2dd16). clipY only places the
+    // "more below" hint: rows past it paint under the floating bar and the
+    // feed scrolls to them (Nathan 2026-11-09: Scroll and Fit both paint
+    // under the bar, which floats over them).
     let clipY = 0, past = 0;
     if (overflows) {
       clipY = lay.box.y + lay.box.h;
@@ -789,10 +959,8 @@
       // A face cut by the fold is below it too: the hint counts every face not whole.
       for (let i = 0; i < lay.rects.length; i++) if (lay.rects[i].y + lay.rects[i].h > clipY + 1) past++;
     }
-    // clipY is inside the feed. The feed starts `header` px down, so the
-    // bottom clip is measured from the viewport, not from the feed.
-    const viewClip = header + clipY;
-    if (feed.style && feed.style.setProperty) feed.style.setProperty('--comfy-clip', overflows ? Math.max(0, (+opts.vh || 0) - viewClip) + 'px' : '0px');
+    // No bottom clip: the feed runs to the bottom edge under the bar.
+    if (feed.style && feed.style.removeProperty) feed.style.removeProperty('--comfy-clip');
     if (feed.classList) { feed.classList.toggle('can-scroll', overflows); feed.classList.toggle('comfy-scroll', overflows); }
     let band = lay.band;
     // Short, in the bottom right corner, where a tile has no name or button.
@@ -858,6 +1026,10 @@
       const cv = stadEl.querySelector('video');
       if (stream) playStream(cv, stream);
       showWhole(cv);
+      const skips = Array.isArray(opts.skipCells) ? opts.skipCells : [];
+      if (skips.length && (opts.cellN | 0) > 0 && (opts.cols | 0) > 0) {
+        armStadClose(stadEl, cv, { n: opts.cellN | 0, cols: opts.cols | 0, skips: skips });
+      } else stopStadClose();
       if (stream) frameVid = cv;
     }
     watchFrame(frameVid, typeof opts.onSettle === 'function' ? opts.onSettle : null);
@@ -895,9 +1067,16 @@
     };
   }
 
-  function metrics(bar) {
+  function metrics(bar, grip) {
+    let tab = 0;
+    if (grip && bar && bar.getBoundingClientRect) {
+      const br = bar.getBoundingClientRect();
+      const gr = grip.getBoundingClientRect();
+      // Both rects share the bar's translate, so the span is the tab's place in the bar.
+      if (gr.width > 0 && br.width > 0) tab = gr.right - br.left;
+    }
     return {
-      bar: { w: bar.offsetWidth, h: bar.offsetHeight },
+      bar: { w: bar.offsetWidth, h: bar.offsetHeight, tab: tab },
       view: { w: root.innerWidth || 0, h: root.innerHeight || 0 },
     };
   }
@@ -921,7 +1100,7 @@
     const phoneNow = function () { return opts.phone ? !!opts.phone() : (root.innerWidth < 600); };
     let drag = null, lastTap = 0;
     function applyPos(pos, persist) {
-      const m = metrics(bar);
+      const m = metrics(bar, grip);
       const c = ML.clampBar(pos, m.bar, m.view);
       writeBar(bar, c);
       if (persist) ML.saveBar(store, phoneNow(), c);
@@ -933,7 +1112,7 @@
       return applyPos(saved, false);
     }
     function reset() {
-      const m = metrics(bar);
+      const m = metrics(bar, grip);
       return applyPos(ML.defaultBar(m.bar, m.view, phoneNow()), true);
     }
     grip.addEventListener('pointerdown', function (e) {
@@ -967,7 +1146,7 @@
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
       e.preventDefault();
       const r = bar.getBoundingClientRect();
-      const m = metrics(bar);
+      const m = metrics(bar, grip);
       applyPos(ML.nudgeBar({ x: r.left, y: r.top }, e.key, 16, m.bar, m.view), true);
     });
     grip.addEventListener('dblclick', function (e) {
@@ -1109,6 +1288,102 @@
     return { get: function () { return spec; }, set: publish };
   }
 
+  // Drag a Fit panel (every tile that shares data-float). A 3px move starts
+  // the drag, so a tap still opens the tile. The group may go partly off any
+  // edge; 32px of it stay on the feed so it can be grabbed back.
+  function installFloat(opts) {
+    opts = opts || {};
+    const ML = GifOS.meetLayout;
+    const doc = root.document;
+    if (!ML || typeof ML.loadFloat !== 'function' || !doc || !doc.addEventListener) return null;
+    const store = opts.store || root.localStorage;
+    let drag = null;
+    function orient() { return ML.floatOrient({ w: root.innerWidth || 0, h: root.innerHeight || 0 }); }
+    // The feed's box on screen: the area the panels are placed in and dragged in.
+    function area() {
+      const feed = doc.getElementById ? doc.getElementById('feed') : null;
+      const r = feed && feed.getBoundingClientRect ? feed.getBoundingClientRect() : null;
+      if (r && r.width > 0 && r.height > 0) return { x: r.left, y: r.top, w: r.width, h: r.height };
+      return { x: 0, y: 0, w: root.innerWidth || 0, h: root.innerHeight || 0 };
+    }
+    // Only drawn members: a parked or stale tile has an empty rect at the
+    // origin, which would stretch the union and halve every saved drop.
+    function members(kind) {
+      const all = doc.querySelectorAll ? doc.querySelectorAll('[data-float="' + kind + '"]') : [];
+      const out = [];
+      for (let i = 0; i < all.length; i++) if (!all[i].getClientRects || all[i].getClientRects().length > 0) out.push(all[i]);
+      return out;
+    }
+    function union(list) {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (let i = 0; i < list.length; i++) {
+        const r = list[i].getBoundingClientRect();
+        x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top);
+        x1 = Math.max(x1, r.right); y1 = Math.max(y1, r.bottom);
+      }
+      return { x: x0, y: y0, w: Math.max(0, x1 - x0), h: Math.max(0, y1 - y0) };
+    }
+    function relayout() {
+      const fn = opts.relayout || root.__meetRelayout;
+      if (typeof fn === 'function') { try { fn(); } catch (e) {} }
+    }
+    doc.addEventListener('pointerdown', function (e) {
+      if (!e.target || !e.target.closest) return;
+      const tile = e.target.closest('[data-float]');
+      if (!tile) return;
+      if (e.target.closest('button, a, input, textarea, .modbar')) return;
+      if (e.button != null && e.button !== 0) return;
+      const kind = tile.dataset.float;
+      const list = members(kind);
+      const origins = [];
+      for (let i = 0; i < list.length; i++) {
+        origins.push({ el: list[i], left: parseFloat(list[i].style.left) || 0, top: parseFloat(list[i].style.top) || 0 });
+      }
+      const g = union(list);
+      drag = { id: e.pointerId, x: e.clientX, y: e.clientY, kind: kind, origins: origins, gx: g.x, gy: g.y, gw: g.w, gh: g.h, area: area(), moved: false };
+      try { tile.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+    doc.addEventListener('pointermove', function (e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
+      if (!drag.moved) return;
+      const c = ML.clampFloat({ x: drag.gx + dx, y: drag.gy + dy, w: drag.gw, h: drag.gh }, drag.area);
+      const adx = c.x - drag.gx, ady = c.y - drag.gy;
+      for (let i = 0; i < drag.origins.length; i++) {
+        drag.origins[i].el.style.left = (drag.origins[i].left + adx) + 'px';
+        drag.origins[i].el.style.top = (drag.origins[i].top + ady) + 'px';
+      }
+    });
+    function endDrag(e) {
+      if (!drag || (e && e.pointerId != null && e.pointerId !== drag.id)) return;
+      const moved = drag.moved;
+      const kind = drag.kind;
+      const box = drag.area;
+      drag = null;
+      if (!moved) return;
+      ML.saveFloat(store, kind, orient(), ML.floatSpot(union(members(kind)), box));
+      const stop = function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        doc.removeEventListener('click', stop, true);
+      };
+      doc.addEventListener('click', stop, true);
+      relayout();
+    }
+    doc.addEventListener('pointerup', endDrag);
+    doc.addEventListener('pointercancel', endDrag);
+    doc.addEventListener('dblclick', function (e) {
+      if (!e.target || !e.target.closest) return;
+      const tile = e.target.closest('[data-float]');
+      if (!tile) return;
+      e.preventDefault();
+      ML.clearFloat(store, tile.dataset.float, orient());
+      relayout();
+    });
+    return { orient: orient };
+  }
+
   const api = {
     comfyAllowed: comfyAllowed,
     placeEl: placeEl,
@@ -1126,7 +1401,10 @@
     apply: apply,
     stadFrameSize: stadFrameSize,
     installBar: installBar,
+    dockRest: dockRest,
     installSelf: installSelf,
+    installFloat: installFloat,
+    placeFloats: placeFloats,
     applyCrop: applyCrop,
   };
   GifOS.meetViews = api;
@@ -1139,5 +1417,6 @@
       try { installBar({ bar: bar, grip: grip, store: root.localStorage }); } catch (e) {}
     }
     try { installSelf({ store: root.localStorage }); } catch (e) {}
+    try { installFloat({ store: root.localStorage }); } catch (e) {}
   }
 })(typeof window !== 'undefined' ? window : globalThis);

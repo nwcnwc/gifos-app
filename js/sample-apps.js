@@ -53,20 +53,32 @@
     #back{display:inline-block}
   }
 </style>
-<header><h1>Notes</h1><input id="q" placeholder="Search…" autocomplete="off"></header>
+<header><h1 data-i18n="title">Notes</h1><input id="q" placeholder="Search…" data-i18n-ph="search.placeholder" autocomplete="off"></header>
 <div id="wrap">
   <div id="listwrap">
-    <form id="f"><input id="t" placeholder="Write a note and press Add…" autocomplete="off"><button>Add</button></form>
-    <div class="hint">Tap a note to open it. Tick the box to check it off. Everything is saved in this icon.</div>
+    <form id="f"><input id="t" placeholder="Write a note and press Add…" data-i18n-ph="add.placeholder" autocomplete="off"><button data-i18n="add">Add</button></form>
+    <div class="hint" data-i18n="hint">Tap a note to open it. Tick the box to check it off. Everything is saved in this icon.</div>
     <ul id="list"></ul>
   </div>
   <div id="pane">
-    <div id="panebar"><button type="button" id="back">← List</button><div id="who"></div><div id="saved"></div></div>
-    <textarea id="body" placeholder="Start writing…" hidden></textarea>
-    <div id="nobody">Pick a note, or add one. Invite shares the list.</div>
+    <div id="panebar"><button type="button" id="back" data-i18n="back">← List</button><div id="who"></div><div id="saved"></div></div>
+    <textarea id="body" placeholder="Start writing…" data-i18n-ph="body.placeholder" hidden></textarea>
+    <div id="nobody" data-i18n="nobody">Pick a note, or add one. Invite shares the list.</div>
   </div>
 </div>
 <script>
+  const T = (k, p) => (window.gifos && gifos.i18n ? gifos.i18n.t(k, p) : k);
+  // Static markup keeps its English literal (shown until the catalog arrives, or on an older GifOS) and is
+  // tagged data-i18n / -ph / -title / -aria; applyI18n fills those from the catalog.
+  function applyI18n(){
+    if(!(window.gifos&&gifos.i18n)) return;
+    [['','textContent'],['-ph','placeholder'],['-title','title'],['-aria','aria-label']].forEach(function(a){
+      document.querySelectorAll('[data-i18n'+a[0]+']').forEach(function(e){
+        const v=T(e.getAttribute('data-i18n'+a[0]));
+        if(a[1]==='textContent') e.textContent=v; else e.setAttribute(a[1],v);
+      });
+    });
+  }
   const db = gifos.db('notes'), list = document.getElementById('list');
   let me = { name: 'You' };
   let notes = [];
@@ -76,12 +88,13 @@
   if (window.gifos) gifos.me().then(m => { me = { id: m.id, name: m.name || 'You' }; });
   const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
   const DEL = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
-  function titleOf(n){ const t=String(n.text||'').trim(); const line=t.split('\\n')[0]; return line || 'Untitled'; }
+  function titleOf(n){ const t=String(n.text||'').trim(); const line=t.split('\\n')[0]; return line || T('untitled'); }
   function when(n){
     const t=n.u||n.t; if(!t) return '';
     const d=new Date(t); if(!isFinite(d.getTime())) return '';
-    const mo=d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
-    const hm=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
+    const F=window.gifos&&gifos.i18n&&gifos.i18n.fmt; // the system locale (GifOS Settings)
+    const mo=F?F.date(d,{month:'short',day:'numeric'}):d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
+    const hm=F?F.clockTime(d):('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
     return mo+' '+hm;
   }
   function ordered(items){
@@ -94,12 +107,12 @@
     list.innerHTML = shown.length
       ? shown.map(function(n){
           return '<li class="'+(n.done?'done ':'')+(n.id===sel?'on':'')+'" data-id="'+esc(n.id)+'">'
-            +'<input class="chk" type="checkbox"'+(n.done?' checked':'')+' data-chk="'+esc(n.id)+'" title="Check off">'
+            +'<input class="chk" type="checkbox"'+(n.done?' checked':'')+' data-chk="'+esc(n.id)+'" title="'+esc(T('check'))+'">'
             +'<div class="body"><span class="ttl" data-t="'+esc(n.id)+'">'+esc(titleOf(n))+' <small>— '+esc(n.by||'?')+'</small></span>'
             +'<small>'+esc(when(n))+'</small></div>'
-            +'<button class="row-del" data-id="'+esc(n.id)+'" title="Delete">'+DEL+'</button></li>';
+            +'<button class="row-del" data-id="'+esc(n.id)+'" title="'+esc(T('delete'))+'">'+DEL+'</button></li>';
         }).join('')
-      : '<div class="empty">'+(notes.length?'No notes match that search.':'No notes yet. Your notes persist in this GIF icon.')+'</div>';
+      : '<div class="empty">'+esc(notes.length?T('empty.nomatch'):T('empty.none'))+'</div>';
     paintPane();
   }
   function paintPane(){
@@ -115,10 +128,9 @@
     document.body.classList.add('show');
     nobody.hidden=true; body.hidden=false;
     if(document.activeElement!==body) body.value = n.text||'';
-    who.textContent = (n.by||'You') + (when(n) ? ' · '+when(n) : '');
-    saved.textContent = 'Saved in this icon';
+    who.textContent = (n.by||T('you')) + (when(n) ? ' · '+when(n) : '');
+    saved.textContent = T('saved');
   }
-  db.subscribe(render);
   document.getElementById('f').onsubmit = async e => {
     e.preventDefault();
     const t = document.getElementById('t');
@@ -158,6 +170,13 @@
   };
   document.getElementById('q').oninput = function(){ filter=this.value; render(); };
   document.getElementById('back').onclick = function(){ sel=null; render(); };
+  // Nothing that calls T runs before the catalog has loaded (a key must never be painted).
+  function boot(){
+    applyI18n();
+    db.subscribe(render);
+    if (window.gifos && gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); render(); });
+  }
+  if (window.gifos && gifos.i18n && gifos.i18n.load) gifos.i18n.load().then(boot, boot); else boot();
 </script>`;
 
   const GUESTBOOK_HTML = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -181,15 +200,27 @@
   .empty{color:var(--muted,#8888aa);padding:28px 12px;text-align:center;line-height:1.5}
   .empty b{color:var(--accent,#ff5caa)}
 </style>
-<header><span class="ttl">Guestbook</span><span class="who" id="who">just you — Invite</span></header>
+<header><span class="ttl" data-i18n="title">Guestbook</span><span class="who" id="who">just you — Invite</span></header>
 <div class="hint" id="hint">Press <b>Invite</b> in the top bar and share the link — everyone signs with their screen name.</div>
 <form id="f">
-  <input id="msg" placeholder="Say something…" autocomplete="off">
-  <button>Sign</button>
+  <input id="msg" placeholder="Say something…" data-i18n-ph="msg.placeholder" autocomplete="off">
+  <button data-i18n="sign">Sign</button>
 </form>
 <div class="stamps" id="stamps"></div>
 <ul id="list"></ul>
 <script>
+  const T = (k, p) => (window.gifos && gifos.i18n ? gifos.i18n.t(k, p) : k);
+  // Static markup keeps its English literal (shown until the catalog arrives, or on an older GifOS) and is
+  // tagged data-i18n / -ph / -title / -aria; applyI18n fills those from the catalog.
+  function applyI18n(){
+    if(!(window.gifos&&gifos.i18n)) return;
+    [['','textContent'],['-ph','placeholder'],['-title','title'],['-aria','aria-label']].forEach(function(a){
+      document.querySelectorAll('[data-i18n'+a[0]+']').forEach(function(e){
+        const v=T(e.getAttribute('data-i18n'+a[0]));
+        if(a[1]==='textContent') e.textContent=v; else e.setAttribute(a[1],v);
+      });
+    });
+  }
   const db = gifos.db('entries'), pres = (window.gifos&&gifos.db)?gifos.db('presence'):null, list = document.getElementById('list');
   ['💜','✨','⭐','🌈','✍️','🐸'].forEach(function(s){
     const b=document.createElement('button'); b.type='button'; b.textContent=s;
@@ -199,36 +230,44 @@
   let me = { id:'local', name: 'You' }, others=0;
   const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
   function setWho(){
-    document.getElementById('who').textContent = others>0 ? ((others+1)+' here') : 'just you — Invite';
+    document.getElementById('who').textContent = others>0 ? T('who.here',{n:others+1}) : T('who.alone');
     var h=document.getElementById('hint');
-    h.innerHTML = 'Signing as <b>'+esc(me.name)+'</b>. '+(others>0
-      ? 'Friends in this room sign with their screen name — new lines appear here.'
-      : 'Press <b>Invite</b> in the top bar to sign with friends.');
+    h.innerHTML = T(others>0 ? 'hint.friends' : 'hint.alone',{name:esc(me.name)});
   }
-  if (window.gifos) gifos.me().then(function(m){ me = { id: m.id, name: m.name || 'You' }; setWho(); beat(); });
-  function ago(t){ if(!t) return ''; var d=Date.now()-t; if(d<45000) return 'just now'; if(d<3600000) return Math.max(1,Math.floor(d/60000))+'m ago'; if(d<86400000) return Math.floor(d/3600000)+'h ago'; var dt=new Date(t); return (dt.getMonth()+1)+'/'+dt.getDate(); }
+  function ago(t){ if(!t) return ''; var d=Date.now()-t; if(d<45000) return T('ago.now'); if(d<3600000) return T('ago.m',{n:Math.max(1,Math.floor(d/60000))}); if(d<86400000) return T('ago.h',{n:Math.floor(d/3600000)}); var dt=new Date(t); var F=window.gifos&&gifos.i18n&&gifos.i18n.fmt; return F?F.date(dt,{month:'numeric',day:'numeric'}):(dt.getMonth()+1)+'/'+dt.getDate(); }
+  let lastItems=[];
   function render(items){
-    items=items||[];
+    items=items||[]; lastItems=items;
     list.innerHTML = items.length
-      ? items.slice().reverse().map(function(e){ return '<li><b>'+esc(e.by||'anon')+'</b><span class="when">'+esc(ago(e.t))+'</span><div>'+esc(e.msg)+'</div></li>'; }).join('')
-      : '<div class="empty">No one has signed yet. You are the first.<br>Press <b>Invite</b> in the top bar and send the link.</div>';
+      ? items.slice().reverse().map(function(e){ return '<li><b>'+esc(e.by||T('anon'))+'</b><span class="when">'+esc(ago(e.t))+'</span><div>'+esc(e.msg)+'</div></li>'; }).join('')
+      : '<div class="empty">'+T('empty')+'</div>';
   }
-  db.subscribe(render);
   document.getElementById('f').onsubmit = async e => {
     e.preventDefault();
     const msg = document.getElementById('msg');
     if (msg.value.trim()) { await db.put({ by: me.name, uid: me.id, msg: msg.value.trim(), t: Date.now() }); msg.value=''; }
   };
   function beat(){ if(!pres||!me.id||me.id==='local') return; pres.put({id:'p:'+me.id,name:me.name,ts:Date.now()}); }
-  if(pres&&pres.subscribe){
-    pres.subscribe(function(rows){
-      var now=Date.now(); others=0;
-      (rows||[]).forEach(function(r){ if(r&&r.id&&r.id.indexOf('p:')===0&&r.id!=='p:'+me.id&&(now-(r.ts||0))<35000) others++; });
-      setWho();
-    });
-    setInterval(function(){ if(document.visibilityState!=='hidden') beat(); },15000);
+  function watchPresence(){
+    if(pres&&pres.subscribe){
+      pres.subscribe(function(rows){
+        var now=Date.now(); others=0;
+        (rows||[]).forEach(function(r){ if(r&&r.id&&r.id.indexOf('p:')===0&&r.id!=='p:'+me.id&&(now-(r.ts||0))<35000) others++; });
+        setWho();
+      });
+      setInterval(function(){ if(document.visibilityState!=='hidden') beat(); },15000);
+    }
   }
   document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible') beat(); });
+  // Nothing that calls T runs before the catalog has loaded (a key must never be painted).
+  function boot(){
+    applyI18n();
+    if (window.gifos) gifos.me().then(function(m){ me = { id: m.id, name: m.name || 'You' }; setWho(); beat(); });
+    db.subscribe(render);
+    watchPresence();
+    if (window.gifos && gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); setWho(); render(lastItems); });
+  }
+  if (window.gifos && gifos.i18n && gifos.i18n.load) gifos.i18n.load().then(boot, boot); else boot();
 </script>`;
 
   const TICTACTOE_HTML = `<!doctype html><meta charset="utf-8">
@@ -300,25 +339,38 @@
   }
 </style>
 <header>
-  <div class="brand"><span class="logo" aria-hidden="true"></span> Tic-Tac-Toe</div>
-  <div class="chip" id="chip">Alone</div>
+  <div class="brand" data-i18n-tail="title"><span class="logo" aria-hidden="true"></span> Tic-Tac-Toe</div>
+  <div class="chip" id="chip" data-i18n="chip.alone">Alone</div>
 </header>
 <main>
   <div class="seats" aria-live="polite">
-    <div class="seat x" id="seatX"><span class="mk" aria-hidden="true">X</span><span class="nm" id="nameX">X</span><span class="you" id="youX" hidden>You</span></div>
-    <div class="seat o" id="seatO"><span class="mk" aria-hidden="true">O</span><span class="nm" id="nameO">O</span><span class="you" id="youO" hidden>You</span></div>
+    <div class="seat x" id="seatX"><span class="mk" aria-hidden="true">X</span><span class="nm" id="nameX">X</span><span class="you" id="youX" hidden data-i18n="you">You</span></div>
+    <div class="seat o" id="seatO"><span class="mk" aria-hidden="true">O</span><span class="nm" id="nameO">O</span><span class="you" id="youO" hidden data-i18n="you">You</span></div>
   </div>
-  <div class="status" id="status">Loading…</div>
+  <div class="status" id="status" data-i18n="loading">Loading…</div>
   <div class="hint" id="hint"></div>
-  <div class="score" id="score"><div><b id="sx">0</b><span>X</span></div><div><b id="sd">0</b><span>draws</span></div><div><b id="so">0</b><span>O</span></div></div>
+  <div class="score" id="score"><div><b id="sx">0</b><span>X</span></div><div><b id="sd">0</b><span data-i18n="score.draws">draws</span></div><div><b id="so">0</b><span>O</span></div></div>
   <div class="boardwrap">
-    <div class="board" id="board" role="grid" aria-label="Tic-tac-toe board"></div>
+    <div class="board" id="board" role="grid" aria-label="Tic-tac-toe board" data-i18n-aria="board.aria"></div>
     <svg class="winline" id="win" viewBox="0 0 100 100" aria-hidden="true"><line id="seg" x1="0" y1="0" x2="0" y2="0"/></svg>
   </div>
-  <div class="controls"><button class="act" id="new" type="button">New game</button></div>
+  <div class="controls"><button class="act" id="new" type="button" data-i18n="new">New game</button></div>
   <div class="ask" id="ask"></div>
 </main>
 <script>
+  const T = (k, p) => (window.gifos && gifos.i18n ? gifos.i18n.t(k, p) : k);
+  // Static markup keeps its English literal (shown until the catalog arrives, or on an older GifOS) and is
+  // tagged data-i18n / -ph / -title / -aria; applyI18n fills those from the catalog.
+  function applyI18n(){
+    if(!(window.gifos&&gifos.i18n)) return;
+    document.querySelectorAll('[data-i18n-tail]').forEach(function(e){ const n=e.lastChild; if(n&&n.nodeType===3) n.nodeValue=' '+T(e.getAttribute('data-i18n-tail')); });
+    [['','textContent'],['-ph','placeholder'],['-title','title'],['-aria','aria-label']].forEach(function(a){
+      document.querySelectorAll('[data-i18n'+a[0]+']').forEach(function(e){
+        const v=T(e.getAttribute('data-i18n'+a[0]));
+        if(a[1]==='textContent') e.textContent=v; else e.setAttribute(a[1],v);
+      });
+    });
+  }
   const db = gifos.db('game');
   const WINS = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
   const PFX = 'p:';
@@ -328,7 +380,6 @@
   let askLocal = false;
   let me = { id:'local', name:'You' };
   let here = {};
-  if (window.gifos) gifos.me().then(function(m){ me = { id:m.id, name:m.name || 'You' }; beat(); render(); });
   const boardEl = document.getElementById('board');
   const statusEl = document.getElementById('status');
   const hintEl = document.getElementById('hint');
@@ -341,7 +392,7 @@
   function myMark(){ return current.players.X===me.id ? 'X' : current.players.O===me.id ? 'O' : null; }
   function liveIds(){ const t=now(), out=[]; for (const id in here){ if (here[id] && (t-(here[id].t||0))<LIVE) out.push(id); } return out; }
   function opponentLive(){ return liveIds().some(function(id){ return id!==me.id; }); }
-  function friendName(){ const ids=liveIds(); for (let i=0;i<ids.length;i++){ if(ids[i]!==me.id) return (here[ids[i]] && here[ids[i]].name) || 'a friend'; } return ''; }
+  function friendName(){ const ids=liveIds(); for (let i=0;i<ids.length;i++){ if(ids[i]!==me.id) return (here[ids[i]] && here[ids[i]].name) || ''; } return ''; }
   function label(s){ return (current.names && current.names[s]) ? current.names[s] : s; }
   function boardEmpty(){ return current.cells.every(function(v){ return !v; }); }
   function canPlayTurn(){
@@ -361,7 +412,7 @@
     for (let i=0;i<9;i++){
       const d=document.createElement('button');
       d.type='button'; d.className='cell'; d.setAttribute('data-i', String(i));
-      d.setAttribute('aria-label','empty');
+      d.setAttribute('aria-label',T('cell.empty'));
       d.onclick=function(){ play(i); };
       boardEl.appendChild(d);
     }
@@ -380,7 +431,7 @@
     const claimed = current.players && current.players[mark];
     const mine = claimed === me.id;
     const named = claimed && current.names && current.names[mark];
-    nameEl.textContent = named ? current.names[mark] : (opponentLive() && !claimed ? 'Open' : '');
+    nameEl.textContent = named ? current.names[mark] : (opponentLive() && !claimed ? T('seat.open') : '');
     youEl.hidden = !mine;
     el.classList.toggle('on', !!on);
     el.classList.toggle('win', !!win);
@@ -399,7 +450,7 @@
       const cls = 'cell'+(v?' '+v.toLowerCase():'')+(win?' win':'')+(last?' last':'')+((v&&!animate)?' settled':'');
       if (d.className !== cls) d.className = cls;
       d.disabled = !!(current.winner || v || !playable);
-      d.setAttribute('aria-label', v || 'empty');
+      d.setAttribute('aria-label', v || T('cell.empty'));
     });
     paintWin();
     const xOn = !current.winner && current.turn==='X';
@@ -413,24 +464,25 @@
     statusEl.className = 'status';
     hintEl.textContent = '';
     if (current.winner==='draw'){
-      statusEl.textContent = 'Draw.';
-      hintEl.textContent = 'New game keeps the series and swaps who starts.';
+      statusEl.textContent = T('draw');
+      hintEl.textContent = T('draw.hint');
     } else if (current.winner){
       const w = current.winner;
       const you = !!(live && mm===w);
-      statusEl.textContent = you ? 'You win.' : (label(w)+' wins.');
+      statusEl.textContent = you ? T('win.you') : T('win.other',{name:label(w)});
       statusEl.className = 'status '+(you?'good':(live && mm ? 'warn':''));
     } else if (playable){
-      if (live && !mm) statusEl.textContent = 'Tap a square to sit as '+current.turn+'.';
-      else if (live) statusEl.textContent = 'Your move.';
-      else statusEl.textContent = 'Your move — '+current.turn+'.';
+      if (live && !mm) statusEl.textContent = T('status.sit',{mark:current.turn});
+      else if (live) statusEl.textContent = T('status.yourMove');
+      else statusEl.textContent = T('status.yourMoveMark',{mark:current.turn});
     } else {
-      statusEl.textContent = 'Waiting for '+(label(current.turn) || current.turn)+'.';
+      statusEl.textContent = T('status.waiting',{name:label(current.turn) || current.turn});
     }
-    if (!current.winner && !live) hintEl.textContent = 'Alone: play both marks. Invite (top bar) to play a friend.';
-    else if (!current.winner && live && !mm) hintEl.textContent = 'First tap on a turn claims that seat. Then you only move on your turn.';
-    else if (!current.winner && live && mm) hintEl.textContent = 'You are '+mm+'.';
-    chipEl.textContent = live ? ('vs '+(friendName()||'a friend')) : 'Alone';
+    if (!current.winner && !live) hintEl.textContent = T('hint.alone');
+    else if (!current.winner && live && !mm) hintEl.textContent = T('hint.claim');
+    else if (!current.winner && live && mm) hintEl.textContent = T('hint.you',{mark:mm});
+    const fn = live ? friendName() : '';
+    chipEl.textContent = live ? (fn ? T('chip.vs',{name:fn}) : T('chip.vsFriend')) : T('chip.alone');
     renderConsent();
   }
   function play(i){
@@ -471,8 +523,8 @@
   function askButtons(askEl, text, onYes, onNo){
     const span = document.createElement('div'); span.textContent = text;
     const row = document.createElement('div'); row.className = 'row';
-    const yes = document.createElement('button'); yes.className='act'; yes.textContent='Start new game'; yes.onclick=onYes;
-    const no = document.createElement('button'); no.className='act ghost'; no.textContent='Keep playing'; no.onclick=onNo;
+    const yes = document.createElement('button'); yes.className='act'; yes.textContent=T('ask.yes'); yes.onclick=onYes;
+    const no = document.createElement('button'); no.className='act ghost'; no.textContent=T('ask.no'); no.onclick=onNo;
     row.appendChild(yes); row.appendChild(no);
     askEl.appendChild(span); askEl.appendChild(row);
   }
@@ -482,15 +534,15 @@
     const req = current.rematch;
     if (req && req.by !== me.id){
       btn.style.display = 'none';
-      askButtons(askEl, (req.name ? req.name : 'Your opponent')+' wants to start a new game.', startNew, clearRematch);
+      askButtons(askEl, req.name ? T('ask.rematch',{name:req.name}) : T('ask.rematchAnon'), startNew, clearRematch);
     } else if (req){
-      btn.textContent = 'Cancel request'; btn.style.display = ''; btn.className = 'act ghost';
-      askEl.textContent = 'Waiting for the other player to accept a new game…';
+      btn.textContent = T('ask.cancel'); btn.style.display = ''; btn.className = 'act ghost';
+      askEl.textContent = T('ask.waiting');
     } else if (askLocal){
       btn.style.display = 'none';
-      askButtons(askEl, 'Start a new game? The series score stays.', startNew, cancelLocal);
+      askButtons(askEl, T('ask.confirm'), startNew, cancelLocal);
     } else {
-      btn.textContent = 'New game'; btn.style.display = ''; btn.className = 'act';
+      btn.textContent = T('new'); btn.style.display = ''; btn.className = 'act';
     }
   }
   document.getElementById('new').onclick = function(){
@@ -507,7 +559,7 @@
     const k = e.key;
     if (k>='1' && k<='9') play(parseInt(k,10)-1);
   });
-  db.subscribe(function(items){
+  function onItems(items){
     const b = items.find(function(x){ return x.id==='board'; });
     if (b){
       current = b;
@@ -524,10 +576,18 @@
     });
     here = next;
     render();
-  });
-  setInterval(beat, 2000);
-  beat();
-  render();
+  }
+  // Nothing that calls T runs before the catalog has loaded (a key must never be painted).
+  function boot(){
+    applyI18n();
+    if (window.gifos) gifos.me().then(function(m){ me = { id:m.id, name:m.name || 'You' }; beat(); render(); });
+    db.subscribe(onItems);
+    setInterval(beat, 2000);
+    beat();
+    render();
+    if (window.gifos && gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); render(); });
+  }
+  if (window.gifos && gifos.i18n && gifos.i18n.load) gifos.i18n.load().then(boot, boot); else boot();
 </script>`;
 
   const CONNECT_FOUR_HTML = `<!doctype html><meta charset="utf-8">
@@ -601,29 +661,41 @@
   }
 </style>
 <header>
-  <div class="brand"><span class="logo" aria-hidden="true"></span> Connect Four</div>
-  <div class="chip" id="chip">Alone</div>
+  <div class="brand" data-i18n-tail="title"><span class="logo" aria-hidden="true"></span> Connect Four</div>
+  <div class="chip" id="chip" data-i18n="chip.alone">Alone</div>
 </header>
 <main>
   <div class="seats" aria-live="polite">
-    <div class="seat r" id="seatR"><i class="disc" aria-hidden="true"></i><span class="nm" id="nameR">Red</span><span class="you" id="youR" hidden>You</span></div>
-    <div class="seat y" id="seatY"><i class="disc" aria-hidden="true"></i><span class="nm" id="nameY">Yellow</span><span class="you" id="youY" hidden>You</span></div>
+    <div class="seat r" id="seatR"><i class="disc" aria-hidden="true"></i><span class="nm" id="nameR" data-i18n="color.red">Red</span><span class="you" id="youR" hidden data-i18n="you">You</span></div>
+    <div class="seat y" id="seatY"><i class="disc" aria-hidden="true"></i><span class="nm" id="nameY" data-i18n="color.yellow">Yellow</span><span class="you" id="youY" hidden data-i18n="you">You</span></div>
   </div>
-  <div class="status" id="status">Loading…</div>
+  <div class="status" id="status" data-i18n="loading">Loading…</div>
   <div class="hint" id="hint"></div>
-  <div class="score"><div><b id="sr">0</b><span>red</span></div><div><b id="sd">0</b><span>draws</span></div><div><b id="sy">0</b><span>yellow</span></div></div>
+  <div class="score"><div><b id="sr">0</b><span data-i18n="score.red">red</span></div><div><b id="sd">0</b><span data-i18n="score.draws">draws</span></div><div><b id="sy">0</b><span data-i18n="score.yellow">yellow</span></div></div>
   <div class="frame" id="frame">
     <div class="rail" id="rail" aria-hidden="true"></div>
-    <div class="cols" id="cols" role="grid" aria-label="Connect Four board"></div>
+    <div class="cols" id="cols" role="grid" aria-label="Connect Four board" data-i18n-aria="board.aria"></div>
   </div>
-  <div class="controls"><button class="act" id="new" type="button">New game</button></div>
+  <div class="controls"><button class="act" id="new" type="button" data-i18n="new">New game</button></div>
   <div class="ask" id="ask"></div>
 </main>
 <script>
+  const T = (k, p) => (window.gifos && gifos.i18n ? gifos.i18n.t(k, p) : k);
+  // Static markup keeps its English literal (shown until the catalog arrives, or on an older GifOS) and is
+  // tagged data-i18n / -ph / -title / -aria; applyI18n fills those from the catalog.
+  function applyI18n(){
+    if(!(window.gifos&&gifos.i18n)) return;
+    document.querySelectorAll('[data-i18n-tail]').forEach(function(e){ const n=e.lastChild; if(n&&n.nodeType===3) n.nodeValue=' '+T(e.getAttribute('data-i18n-tail')); });
+    [['','textContent'],['-ph','placeholder'],['-title','title'],['-aria','aria-label']].forEach(function(a){
+      document.querySelectorAll('[data-i18n'+a[0]+']').forEach(function(e){
+        const v=T(e.getAttribute('data-i18n'+a[0]));
+        if(a[1]==='textContent') e.textContent=v; else e.setAttribute(a[1],v);
+      });
+    });
+  }
   const db = gifos.db('game'), W=7, H=6, PFX='p:', LIVE=8000;
   const fresh = function(){ return { id:'board', cells:new Array(W*H).fill(null), turn:'R', starts:'R', winner:null, line:null, players:{}, names:{}, score:{R:0,Y:0,D:0} }; };
   let cur = fresh(), me = { id:'local', name:'You' }, askLocal = false, here = {}, hover = -1;
-  if (window.gifos) gifos.me().then(function(m){ me={id:m.id,name:m.name||'You'}; beat(); render(); });
   const colsEl = document.getElementById('cols');
   const railEl = document.getElementById('rail');
   const statusEl = document.getElementById('status');
@@ -634,10 +706,11 @@
   function now(){ return Date.now ? Date.now() : 0; }
   function liveIds(){ const t=now(), out=[]; for (const id in here){ if (here[id] && (t-(here[id].t||0))<LIVE) out.push(id); } return out; }
   function opp(){ return liveIds().some(function(id){ return id!==me.id; }); }
-  function friendName(){ const ids=liveIds(); for (let i=0;i<ids.length;i++){ if(ids[i]!==me.id) return (here[ids[i]] && here[ids[i]].name) || 'a friend'; } return ''; }
+  function friendName(){ const ids=liveIds(); for (let i=0;i<ids.length;i++){ if(ids[i]!==me.id) return (here[ids[i]] && here[ids[i]].name) || ''; } return ''; }
   function myMark(){ return cur.players.R===me.id?'R':cur.players.Y===me.id?'Y':null; }
   function canPlay(){ if(cur.winner) return false; if(!opp()) return true; const mm=myMark(); return mm?cur.turn===mm:!cur.players[cur.turn]; }
-  function label(s){ return cur.names&&cur.names[s]?cur.names[s]:(s==='R'?'Red':s==='Y'?'Yellow':s); }
+  function colorName(s){ return s==='R'?T('color.red'):s==='Y'?T('color.yellow'):s; }
+  function label(s){ return cur.names&&cur.names[s]?cur.names[s]:colorName(s); }
   function boardEmpty(){ return cur.cells.every(function(v){ return !v; }); }
   function colFull(c){ return !!cur.cells[c]; }
   function beat(){ if(!window.gifos || me.id==='local') return; db.put({id:PFX+me.id,name:me.name,t:now()}).catch(function(){}); }
@@ -659,7 +732,7 @@
     for(let c=0;c<W;c++){
       const peek=document.createElement('div'); peek.className='peek'; railEl.appendChild(peek); peekEls.push(peek);
       const col=document.createElement('button'); col.type='button'; col.className='col';
-      col.setAttribute('aria-label','Column '+(c+1));
+      col.setAttribute('aria-label',T('col.aria',{n:c+1}));
       col.addEventListener('click', function(){ drop(c); });
       col.addEventListener('pointerenter', function(){ setHover(c); });
       col.addEventListener('pointerleave', function(){ if(hover===c) setHover(-1); });
@@ -682,7 +755,7 @@
   function setSeat(el, youEl, nameEl, mark, on, isWin){
     const claimed = cur.players && cur.players[mark];
     const mine = claimed===me.id;
-    nameEl.textContent = claimed ? label(mark) : (opp() ? 'Open' : (mark==='R'?'Red':'Yellow'));
+    nameEl.textContent = claimed ? label(mark) : (opp() ? T('seat.open') : colorName(mark));
     youEl.hidden = !mine;
     el.classList.toggle('on', !!on);
     el.classList.toggle('win', !!isWin);
@@ -719,23 +792,26 @@
     statusEl.className='status';
     hintEl.textContent='';
     if (cur.winner==='draw'){
-      statusEl.textContent='Draw.';
-      hintEl.textContent='New game keeps the series and swaps who starts.';
+      statusEl.textContent=T('draw');
+      hintEl.textContent=T('draw.hint');
     } else if (cur.winner){
       const you = mm===cur.winner;
-      statusEl.textContent=(you?'You win.':label(cur.winner)+' wins.');
+      const wn=cur.names&&cur.names[cur.winner];
+      statusEl.textContent=(you?T('win.you'):wn?T('win.other',{name:wn}):T('win.color',{color:cur.winner}));
       statusEl.className='status '+(you?'good':(mm?'warn':''));
     } else if (playable){
-      if (live && !mm) statusEl.textContent='Tap a column to sit as '+(cur.turn==='R'?'Red':'Yellow')+'.';
-      else if (live) statusEl.textContent='Your move.';
-      else statusEl.textContent='Your move — '+(cur.turn==='R'?'Red':'Yellow')+'.';
+      if (live && !mm) statusEl.textContent=T('status.sit',{color:cur.turn});
+      else if (live) statusEl.textContent=T('status.yourMove');
+      else statusEl.textContent=T('status.yourMoveColor',{color:cur.turn});
     } else {
-      statusEl.textContent='Waiting for '+(label(cur.turn)||cur.turn)+'.';
+      const tn=cur.names&&cur.names[cur.turn];
+      statusEl.textContent=tn?T('status.waiting',{name:tn}):T('status.waitingColor',{color:cur.turn});
     }
-    if (!cur.winner && !live) hintEl.textContent='Alone: play both colours. Invite (top bar) to play a friend.';
-    else if (!cur.winner && live && !mm) hintEl.textContent='First drop on a turn claims that colour. Then you only move on your turn.';
-    else if (!cur.winner && live && mm) hintEl.textContent='You are '+(mm==='R'?'Red':'Yellow')+'. Tap a column to drop.';
-    chipEl.textContent = live ? ('vs '+(friendName()||'a friend')) : 'Alone';
+    if (!cur.winner && !live) hintEl.textContent=T('hint.alone');
+    else if (!cur.winner && live && !mm) hintEl.textContent=T('hint.claim');
+    else if (!cur.winner && live && mm) hintEl.textContent=T('hint.you',{color:mm});
+    const fn = live ? friendName() : '';
+    chipEl.textContent = live ? (fn ? T('chip.vs',{name:fn}) : T('chip.vsFriend')) : T('chip.alone');
     renderConsent();
   }
   function drop(col){
@@ -771,8 +847,8 @@
   function askButtons(askEl,text,onYes,onNo){
     const span=document.createElement('div'); span.textContent=text;
     const row=document.createElement('div'); row.className='row';
-    const yes=document.createElement('button'); yes.className='act'; yes.textContent='Start new game'; yes.onclick=onYes;
-    const no=document.createElement('button'); no.className='act ghost'; no.textContent='Keep playing'; no.onclick=onNo;
+    const yes=document.createElement('button'); yes.className='act'; yes.textContent=T('ask.yes'); yes.onclick=onYes;
+    const no=document.createElement('button'); no.className='act ghost'; no.textContent=T('ask.no'); no.onclick=onNo;
     row.appendChild(yes); row.appendChild(no);
     askEl.appendChild(span); askEl.appendChild(row);
   }
@@ -782,15 +858,15 @@
     const req=cur.rematch;
     if(req && req.by!==me.id){
       btn.style.display='none';
-      askButtons(askEl,(req.name?req.name:'Your opponent')+' wants to start a new game.',startNew,clearRematch);
+      askButtons(askEl,req.name?T('ask.rematch',{name:req.name}):T('ask.rematchAnon'),startNew,clearRematch);
     } else if(req){
-      btn.textContent='Cancel request'; btn.style.display=''; btn.className='act ghost';
-      askEl.textContent='Waiting for the other player to accept a new game…';
+      btn.textContent=T('ask.cancel'); btn.style.display=''; btn.className='act ghost';
+      askEl.textContent=T('ask.waiting');
     } else if(askLocal){
       btn.style.display='none';
-      askButtons(askEl,'Start a new game? The series score stays.',startNew,cancelLocal);
+      askButtons(askEl,T('ask.confirm'),startNew,cancelLocal);
     } else {
-      btn.textContent='New game'; btn.style.display=''; btn.className='act';
+      btn.textContent=T('new'); btn.style.display=''; btn.className='act';
     }
   }
   document.getElementById('new').onclick=function(){
@@ -807,7 +883,7 @@
     const k=e.key;
     if(k>='1' && k<='7') drop(parseInt(k,10)-1);
   });
-  db.subscribe(function(items){
+  function onItems(items){
     const b=items.find(function(x){return x.id==='board';});
     if(b){
       cur=b;
@@ -821,10 +897,18 @@
         next[x.id.slice(PFX.length)]=x;
     });
     here=next; render();
-  });
-  setInterval(beat, 2000);
-  beat();
-  render();
+  }
+  // Nothing that calls T runs before the catalog has loaded (a key must never be painted).
+  function boot(){
+    applyI18n();
+    if (window.gifos) gifos.me().then(function(m){ me={id:m.id,name:m.name||'You'}; beat(); render(); });
+    db.subscribe(onItems);
+    setInterval(beat, 2000);
+    beat();
+    render();
+    if (window.gifos && gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); render(); });
+  }
+  if (window.gifos && gifos.i18n && gifos.i18n.load) gifos.i18n.load().then(boot, boot); else boot();
 </script>`;
 
   const CHAT_HTML = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -855,11 +939,23 @@
   .quick{display:flex;gap:4px;padding:0 18px 8px}
   .quick button{background:var(--surface,#1c1c2b);font-size:18px;padding:6px 10px}
 </style>
-<header><span>Chat</span><span class="who" id="who">just you — Invite</span></header>
+<header><span data-i18n="title">Chat</span><span class="who" id="who">just you — Invite</span></header>
 <div id="log"></div>
 <div class="quick" id="quick"></div>
-<form id="f"><button type="button" id="att" title="Attach a photo or file">📎</button><input type="file" id="fi" hidden><input id="t" placeholder="Message…" autocomplete="off"><button type="button" id="ai" title="Draft a reply with YOUR AI — it fills the box for you to review and edit; it never sends">✨</button><button>Send</button></form>
+<form id="f"><button type="button" id="att" title="Attach a photo or file" data-i18n-title="att.title">📎</button><input type="file" id="fi" hidden><input id="t" placeholder="Message…" data-i18n-ph="placeholder" autocomplete="off"><button type="button" id="ai" title="Draft a reply with YOUR AI — it fills the box for you to review and edit; it never sends" data-i18n-title="ai.title">✨</button><button data-i18n="send">Send</button></form>
 <script>
+  const T = (k, p) => (window.gifos && gifos.i18n ? gifos.i18n.t(k, p) : k);
+  // Static markup keeps its English literal (shown until the catalog arrives, or on an older GifOS) and is
+  // tagged data-i18n / -ph / -title / -aria; applyI18n fills those from the catalog.
+  function applyI18n(){
+    if(!(window.gifos&&gifos.i18n)) return;
+    [['','textContent'],['-ph','placeholder'],['-title','title'],['-aria','aria-label']].forEach(function(a){
+      document.querySelectorAll('[data-i18n'+a[0]+']').forEach(function(e){
+        const v=T(e.getAttribute('data-i18n'+a[0]));
+        if(a[1]==='textContent') e.textContent=v; else e.setAttribute(a[1],v);
+      });
+    });
+  }
   const db=gifos.db('messages'), fdb=gifos.db('files'), pres=(window.gifos&&gifos.db)?gifos.db('presence'):null, log=document.getElementById('log');
   // Attachments ride gifos.db. The runtime fragments oversized messages, but
   // subscribers re-download a whole collection on every change — so file
@@ -871,12 +967,12 @@
   let me={id:'local',name:'You'}, last=[], others=0;
   function setWho(){
     var el=document.getElementById('who'); if(!el) return;
-    el.textContent = others>0 ? ((others+1)+' here') : 'just you — Invite';
+    el.textContent = others>0 ? T('who.here',{n:others+1}) : T('who.alone');
   }
-  if(window.gifos) gifos.me().then(function(m){ me={id:m.id,name:m.name||'You'}; beat(); });
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-  function hhmm(t){ if(!t) return ''; const d=new Date(t); return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); }
-  function fmt(n){ n=+n||0; return n>=1e6?(n/1e6).toFixed(1)+' MB':n>=1024?Math.round(n/1024)+' KB':n+' B'; }
+  const L10N=window.gifos&&gifos.i18n&&gifos.i18n.fmt; // the system locale (GifOS Settings)
+  function hhmm(t){ if(!t) return ''; const d=new Date(t); return L10N?L10N.clockTime(d):('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); }
+  function fmt(n){ n=+n||0; if(L10N) return n>=1e6?L10N.size(n/1e6,'MB',1):n>=1024?L10N.size(Math.round(n/1024),'KB',0):L10N.size(n,'B',0); return n>=1e6?(n/1e6).toFixed(1)+' MB':n>=1024?Math.round(n/1024)+' KB':n+' B'; }
   function b64(bytes){ let s=''; for(let i=0;i<bytes.length;i+=8192) s+=String.fromCharCode.apply(null,bytes.subarray(i,i+8192)); return btoa(s); }
   const atts={}; // att id -> data URL | 'loading' | 'gone'
   function fetchAtt(m){
@@ -897,8 +993,8 @@
   function body(m){
     if(m.kind!=='file') return esc(m.text);
     const a=atts[m.att];
-    if(!a||a==='loading') return '<span class="fsz">⏳ '+esc(m.name)+' ('+fmt(m.size)+')…</span>';
-    if(a==='gone') return '<span class="fsz">📎 '+esc(m.name)+' — attachment unavailable</span>';
+    if(!a||a==='loading') return '<span class="fsz">'+T('file.loading',{name:esc(m.name),size:fmt(m.size)})+'</span>';
+    if(a==='gone') return '<span class="fsz">'+T('file.gone',{name:esc(m.name)})+'</span>';
     if(String(m.mime).indexOf('image/')===0) return '<img src="'+a+'" alt="'+esc(m.name)+'">';
     return '<a class="file" download="'+esc(m.name)+'" href="'+a+'">📄 '+esc(m.name)+' <span class="fsz">'+fmt(m.size)+'</span></a>';
   }
@@ -909,25 +1005,22 @@
   let pend=[]; // own messages not yet confirmed in the shared db
   function mark(m){
     if(m.uid!==me.id||m.kind==='file') return '';
-    if(m.state==='sending') return '<span class="st" title="Sending…">🕓</span>';
-    if(m.state==='failed') return '<span class="st fail" title="Not delivered — tap to resend">⚠️ tap to resend</span>';
-    return '<span class="st ok" title="Received by the host">✓</span>';
+    if(m.state==='sending') return '<span class="st" title="'+esc(T('st.sending'))+'">🕓</span>';
+    if(m.state==='failed') return '<span class="st fail" title="'+esc(T('st.failedTitle'))+'">'+esc(T('st.failed'))+'</span>';
+    return '<span class="st ok" title="'+esc(T('st.ok'))+'">✓</span>';
   }
   function paint(){
     const seen={}; last.forEach(function(m){ if(m.id!=null) seen[m.id]=1; });
     pend=pend.filter(function(p){ return !seen[p.id]; });
     const items=last.concat(pend).sort(function(a,b){return (a.t||0)-(b.t||0);});
     if(!items.length){
-      log.innerHTML='<div class="empty">'+(others>0
-        ? 'No messages yet. Say hi — everyone in the room will see it.'
-        : 'No messages yet.<br>Press <b>Invite</b> in the top bar and send the link. Friends land in this same thread.')+'</div>';
+      log.innerHTML='<div class="empty">'+T(others>0 ? 'empty.friends' : 'empty.alone')+'</div>';
       return;
     }
-    log.innerHTML=items.map(function(m){ return '<div class="m'+(m.uid===me.id?' mine':'')+'"'+(m.state==='failed'?' data-retry="'+esc(m.id)+'"':'')+'><b>'+esc(m.by||'anon')+' <small>'+hhmm(m.t)+'</small>'+mark(m)+'</b>'+body(m)+'</div>'; }).join('');
+    log.innerHTML=items.map(function(m){ return '<div class="m'+(m.uid===me.id?' mine':'')+'"'+(m.state==='failed'?' data-retry="'+esc(m.id)+'"':'')+'><b>'+esc(m.by||T('anon'))+' <small>'+hhmm(m.t)+'</small>'+mark(m)+'</b>'+body(m)+'</div>'; }).join('');
     log.scrollTop=log.scrollHeight;
     items.forEach(function(m){ if(m.kind==='file'&&m.att&&!atts[m.att]) fetchAtt(m); });
   }
-  db.subscribe(function(items){ last=items; paint(); });
   function sendText(text){
     const rec={ id:'m'+Date.now().toString(36)+Math.floor(Math.random()*1e6).toString(36), by:me.name, uid:me.id, text:text, t:Date.now() };
     const p=Object.assign({state:'sending'},rec);
@@ -973,13 +1066,13 @@
         let model='cheapest';
         try{ const mm=await gifos.ai.models(); const av=(mm&&mm.available)||[];
           model = av.indexOf('cheapest')>=0?'cheapest':(av.indexOf('smartest')>=0?'smartest':'cheapest'); }catch(_){ }
-        t.value=''; t.setAttribute('placeholder','Drafting with your AI…');
-        const r=await gifos.ai.chat({model:model,messages:messages,maxTokens:160,temperature:0.7,hint:'Draft a chat reply',
+        t.value=''; t.setAttribute('placeholder',T('ai.drafting'));
+        const r=await gifos.ai.chat({model:model,messages:messages,maxTokens:160,temperature:0.7,hint:T('ai.hint'),
           onDelta:function(piece){ if(piece) t.value+=piece; }});
         const text=String((r&&r.text)||t.value||'').trim().replace(/^["']+|["']+$/g,'').trim();
         t.setAttribute('placeholder',PH);
         if(text){ t.value=text; t.focus(); try{ t.setSelectionRange(t.value.length,t.value.length); }catch(_){ } }
-        else { t.value=''; t.setAttribute('placeholder','The AI returned nothing — try again.'); setTimeout(function(){ t.setAttribute('placeholder',PH); },4000); }
+        else { t.value=''; t.setAttribute('placeholder',T('ai.empty')); setTimeout(function(){ t.setAttribute('placeholder',PH); },4000); }
       }catch(err){
         // A missing model pops the runtime's own Settings prompt (NOT_CONFIGURED);
         // anything else we surface briefly in the placeholder, then restore it.
@@ -987,20 +1080,22 @@
         if(!/NOT_CONFIGURED/.test(msg)){
           // A user opt-out (Abilities panel) comes back as a plain sentence — show it
           // as-is; anything else gets the generic prefix.
-          const friendly=/turned .*off|Abilities panel/i.test(msg)?msg:('AI draft failed: '+msg.slice(0,60));
+          const friendly=/turned .*off|Abilities panel/i.test(msg)?msg:T('ai.failed',{msg:msg.slice(0,60)});
           t.setAttribute('placeholder',friendly.slice(0,90)); setTimeout(function(){ t.setAttribute('placeholder',PH); },5000);
         }
       }finally{ aiBtn.disabled=false; aiBtn.textContent=glyph; }
     };
   }
   function beat(){ if(!pres||!me.id||me.id==='local') return; pres.put({id:'p:'+me.id,name:me.name,ts:Date.now()}); }
-  if(pres&&pres.subscribe){
-    pres.subscribe(function(rows){
-      var now=Date.now(); others=0;
-      (rows||[]).forEach(function(r){ if(r&&r.id&&r.id.indexOf('p:')===0&&r.id!=='p:'+me.id&&(now-(r.ts||0))<35000) others++; });
-      setWho(); if(!last.length&&!pend.length) paint();
-    });
-    setInterval(function(){ if(document.visibilityState!=='hidden') beat(); },15000);
+  function watchPresence(){
+    if(pres&&pres.subscribe){
+      pres.subscribe(function(rows){
+        var now=Date.now(); others=0;
+        (rows||[]).forEach(function(r){ if(r&&r.id&&r.id.indexOf('p:')===0&&r.id!=='p:'+me.id&&(now-(r.ts||0))<35000) others++; });
+        setWho(); if(!last.length&&!pend.length) paint();
+      });
+      setInterval(function(){ if(document.visibilityState!=='hidden') beat(); },15000);
+    }
   }
   document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible') beat(); });
   // ---- attachments ----
@@ -1033,9 +1128,9 @@
       let blob=f, mime=f.type||'application/octet-stream', name=f.name||'file';
       if(mime.indexOf('image/')===0 && f.size>MAX){
         try{ blob=await shrink(f); mime='image/jpeg'; const dot=name.lastIndexOf('.'); name=(dot>0?name.slice(0,dot):name)+'.jpg'; }
-        catch(e){ alert('That image could not be shrunk to fit — attachments are capped at '+fmt(MAX)+'.'); return; }
+        catch(e){ alert(T('att.shrinkFail',{max:fmt(MAX)})); return; }
       }
-      if(blob.size>MAX){ alert('Attachments here are capped at '+fmt(MAX)+' (images are shrunk automatically). For big files, share them in a Meeting instead — transfers there go direct, peer to peer.'); return; }
+      if(blob.size>MAX){ alert(T('att.tooBig',{max:fmt(MAX)})); return; }
       const B=b64(new Uint8Array(await blob.arrayBuffer()));
       const n=Math.max(1,Math.ceil(B.length/CS));
       const att='a'+Date.now().toString(36)+Math.floor(Math.random()*1e6).toString(36);
@@ -1043,6 +1138,15 @@
       await db.put({ by:me.name, uid:me.id, kind:'file', att:att, n:n, name:name, mime:mime, size:blob.size, t:Date.now() });
     } finally { attBtn.disabled=false; attBtn.textContent='📎'; fi.value=''; }
   }
+  // Nothing that calls T runs before the catalog has loaded (a key must never be painted).
+  function boot(){
+    applyI18n(); setWho();
+    if(window.gifos) gifos.me().then(function(m){ me={id:m.id,name:m.name||'You'}; beat(); });
+    db.subscribe(function(items){ last=items; paint(); });
+    watchPresence();
+    if(window.gifos && gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); setWho(); paint(); });
+  }
+  if(window.gifos && gifos.i18n && gifos.i18n.load) gifos.i18n.load().then(boot, boot); else boot();
 </script>`;
 
   const PAINT_HTML = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
@@ -1077,27 +1181,34 @@
   #ask #askyes{background:var(--accent2,#ff5caa);color:var(--onaccent,#fff);border-color:transparent}
 </style>
 <div class="bar">
-  <h1>Paint</h1>
+  <h1 data-i18n="title">Paint</h1>
   <div class="tools" id="tools">
-    <button id="tbrush" class="on" title="Brush (B)" aria-label="Brush"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 19l8.5-8.5 3 3L8 22H5v-3z"/><path d="M14 7l3 3 3.5-3.5a2.1 2.1 0 0 0 0-3L19 2a2.1 2.1 0 0 0-3 0L14 7z"/></svg></button>
-    <button id="terase" title="Eraser (E)" aria-label="Eraser"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 17l8-8 7 7-4 4H8z"/><path d="M14 9l-7 7"/></svg></button>
-    <button id="tfill" title="Fill (G)" aria-label="Fill"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13l7-8 7 8H4z"/><path d="M6 13v2a4 4 0 0 0 4 4"/><path d="M16 19c1.2 0 2.5 1 2.5 2.4 0 1.6-2.5 2.6-2.5 2.6"/></svg></button>
-    <button id="tpick" title="Eyedropper (I)" aria-label="Eyedropper"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 7l5 5"/><path d="M4 20l7-7 3 3-7 7H4v-3z"/><path d="M16 3l5 5-4 4-5-5z"/></svg></button>
+    <button id="tbrush" class="on" title="Brush (B)" aria-label="Brush" data-i18n-title="tool.brush.title" data-i18n-aria="tool.brush.aria"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 19l8.5-8.5 3 3L8 22H5v-3z"/><path d="M14 7l3 3 3.5-3.5a2.1 2.1 0 0 0 0-3L19 2a2.1 2.1 0 0 0-3 0L14 7z"/></svg></button>
+    <button id="terase" title="Eraser (E)" aria-label="Eraser" data-i18n-title="tool.erase.title" data-i18n-aria="tool.erase.aria"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 17l8-8 7 7-4 4H8z"/><path d="M14 9l-7 7"/></svg></button>
+    <button id="tfill" title="Fill (G)" aria-label="Fill" data-i18n-title="tool.fill.title" data-i18n-aria="tool.fill.aria"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13l7-8 7 8H4z"/><path d="M6 13v2a4 4 0 0 0 4 4"/><path d="M16 19c1.2 0 2.5 1 2.5 2.4 0 1.6-2.5 2.6-2.5 2.6"/></svg></button>
+    <button id="tpick" title="Eyedropper (I)" aria-label="Eyedropper" data-i18n-title="tool.pick.title" data-i18n-aria="tool.pick.aria"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 7l5 5"/><path d="M4 20l7-7 3 3-7 7H4v-3z"/><path d="M16 3l5 5-4 4-5-5z"/></svg></button>
   </div>
   <div class="pal" id="pal"></div>
-  <input id="custom" type="color" value="#ff5c5c" title="Custom colour">
-  <div class="sz"><input id="sz" type="range" min="1" max="64" value="8" title="Brush size"><span id="szv">8</span></div>
-  <button class="act" id="undo" title="Undo (Ctrl+Z)" aria-label="Undo" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 8H5V4"/><path d="M5 8a9 9 0 1 1 2.2 5.7"/></svg></button>
-  <button class="act" id="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 8h4V4"/><path d="M19 8a9 9 0 1 0-2.2 5.7"/></svg></button>
-  <button class="act danger" id="clear" title="Clear">Clear</button>
+  <input id="custom" type="color" value="#ff5c5c" title="Custom colour" data-i18n-title="custom.title">
+  <div class="sz"><input id="sz" type="range" min="1" max="64" value="8" title="Brush size" data-i18n-title="size.title"><span id="szv">8</span></div>
+  <button class="act" id="undo" title="Undo (Ctrl+Z)" aria-label="Undo" data-i18n-title="undo.title" data-i18n-aria="undo.aria" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 8H5V4"/><path d="M5 8a9 9 0 1 1 2.2 5.7"/></svg></button>
+  <button class="act" id="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo" data-i18n-title="redo.title" data-i18n-aria="redo.aria" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 8h4V4"/><path d="M19 8a9 9 0 1 0-2.2 5.7"/></svg></button>
+  <button class="act danger" id="clear" title="Clear" data-i18n-title="clear" data-i18n="clear">Clear</button>
 </div>
 <div id="stage">
   <canvas id="cv" width="1024" height="1024"></canvas>
-  <div class="hint" id="hint">Draw on the page. Undo is in the bar. The picture lives in this icon — Invite to draw together.</div>
-  <div id="ask"><div class="box"><p>Clear the picture? This cannot be undone.</p><div class="row"><button id="askno">Keep</button><button id="askyes">Clear</button></div></div></div>
+  <div class="hint" id="hint" data-i18n="hint">Draw on the page. Undo is in the bar. The picture lives in this icon — Invite to draw together.</div>
+  <div id="ask"><div class="box"><p data-i18n="ask.text">Clear the picture? This cannot be undone.</p><div class="row"><button id="askno" data-i18n="ask.keep">Keep</button><button id="askyes" data-i18n="clear">Clear</button></div></div></div>
 </div>
 <script>
 'use strict';
+var T=function(k,p){return window.gifos&&gifos.i18n?gifos.i18n.t(k,p):k;};
+function applyI18n(){
+  [].forEach.call(document.querySelectorAll('[data-i18n]'),function(e){e.textContent=T(e.getAttribute('data-i18n'));});
+  [['ph','placeholder'],['title','title'],['aria','aria-label']].forEach(function(a){
+    [].forEach.call(document.querySelectorAll('[data-i18n-'+a[0]+']'),function(e){e.setAttribute(a[1],T(e.getAttribute('data-i18n-'+a[0])));});
+  });
+}
 var db=gifos.db('canvas');
 var PAPER=1024, COLORS=['#14141f','#ff5c5c','#ff8f3c','#ffd23c','#5cff7b','#5cdcb4','#5cc8ff','#7b5cff','#ff5caa','#a06a4a','#8888aa','#ffffff'];
 var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
@@ -1293,6 +1404,14 @@ function syncDebug(){
   window.__paint={ tool:tool, color:color, size:size, n:strokes.length, cells:cells?cells.length:0, canUndo:!!undoStack.length, canRedo:!!redoStack.length };
 }
 syncDebug();
+// Words: the markup above keeps its English until the catalog arrives (or on a GifOS without i18n).
+function applyPal(){
+  [].forEach.call(document.getElementById('pal').querySelectorAll('.sw'),function(el,i){
+    el.title=i===0?T('swatch.dark'):''; el.setAttribute('aria-label',T('swatch.aria',{color:el.dataset.c}));
+  });
+}
+function localize(){ applyI18n(); applyPal(); }
+if(window.gifos&&gifos.i18n){ gifos.i18n.load().then(localize); if(gifos.onLocaleChange) gifos.onLocaleChange(localize); }
 </script>`;
 
   // The Calculator is a GRAPHING calculator in the Desmos idiom: an expression
@@ -1352,22 +1471,29 @@ syncDebug();
     body.mode-graph #wrap,body.mode-list #wrap{flex-direction:column}
   }
 </style>
-<header>Calculator <div id="tabs"><button type="button" id="tabG" class="on">Graph</button><button type="button" id="tabL">List</button></div></header>
+<header><span data-i18n="title">Calculator</span> <div id="tabs"><button type="button" id="tabG" class="on" data-i18n="tab.graph">Graph</button><button type="button" id="tabL" data-i18n="tab.list">List</button></div></header>
 <div id="wrap">
   <div id="side">
     <div id="rows"></div>
-    <button id="addrow">+ expression</button>
+    <button id="addrow" data-i18n="add">+ expression</button>
     <div id="keypad"></div>
   </div>
   <div id="gwrap">
     <canvas id="g"></canvas>
     <canvas id="ov"></canvas>
     <div id="readout"></div>
-    <div id="gbtns"><button id="zin">+</button><button id="zout">−</button><button id="zhome" title="Reset view">⌂</button></div>
+    <div id="gbtns"><button id="zin">+</button><button id="zout">−</button><button id="zhome" title="Reset view" data-i18n-title="view.reset">⌂</button></div>
   </div>
 </div>
 <script>
 'use strict';
+var T=function(k,p){return window.gifos&&gifos.i18n?gifos.i18n.t(k,p):k;};
+function applyI18n(){
+  [].forEach.call(document.querySelectorAll('[data-i18n]'),function(e){e.textContent=T(e.getAttribute('data-i18n'));});
+  [['ph','placeholder'],['title','title'],['aria','aria-label']].forEach(function(a){
+    [].forEach.call(document.querySelectorAll('[data-i18n-'+a[0]+']'),function(e){e.setAttribute(a[1],T(e.getAttribute('data-i18n-'+a[0])));});
+  });
+}
 // ---------- expression language ----------
 var FN1={sin:Math.sin,cos:Math.cos,tan:Math.tan,asin:Math.asin,acos:Math.acos,atan:Math.atan,
   sinh:Math.sinh,cosh:Math.cosh,tanh:Math.tanh,sqrt:Math.sqrt,abs:Math.abs,ln:Math.log,
@@ -1411,7 +1537,7 @@ function tokenize(src,names){
     }
     if(c==='<'||c==='>'){if(s[i+1]==='='){t.push({t:'op',v:c+'='});i+=2;}else{t.push({t:'op',v:c});i++;}continue;}
     if('+-*/^=(),!'.indexOf(c)>=0){t.push({t:'op',v:c});i++;continue;}
-    throw new Error('unexpected "'+c+'"');
+    throw new Error(T('err.unexpected',{what:c}));
   }
   return t;
 }
@@ -1419,11 +1545,11 @@ function parse(src,names){
   var toks=tokenize(src,names),p=0;
   function peek(){return toks[p];}
   function next(){return toks[p++];}
-  function expect(v){var tk=next();if(!tk||tk.t!=='op'||tk.v!==v)throw new Error('expected "'+v+'"');}
+  function expect(v){var tk=next();if(!tk||tk.t!=='op'||tk.v!==v)throw new Error(T('err.expected',{what:v}));}
   function atomStarts(tk){return tk&&(tk.t==='num'||tk.t==='id'||(tk.t==='op'&&tk.v==='('));}
   function parseAtom(){
     var tk=next();
-    if(!tk)throw new Error('unexpected end');
+    if(!tk)throw new Error(T('err.end'));
     if(tk.t==='num')return{t:'num',v:tk.v};
     if(tk.t==='id'){
       if(peek()&&peek().t==='op'&&peek().v==='('&&(FN1[tk.v]||FN2[tk.v]||names['fn:'+tk.v])){
@@ -1438,7 +1564,7 @@ function parse(src,names){
       if(peek()&&peek().t==='op'&&peek().v===','){next();var b=parseCmpFree();expect(')');return{t:'point',x:a,y:b};}
       expect(')');return{t:'paren',a:a};
     }
-    throw new Error('unexpected "'+(tk.v!==undefined?tk.v:tk.t)+'"');
+    throw new Error(T('err.unexpected',{what:(tk.v!==undefined?tk.v:tk.t)}));
   }
   function parsePost(){
     var a=parseAtom();
@@ -1483,7 +1609,7 @@ function parse(src,names){
     return a;
   }
   var ast=parseCmp();
-  if(p<toks.length)throw new Error('unexpected "'+toks[p].v+'"');
+  if(p<toks.length)throw new Error(T('err.unexpected',{what:toks[p].v}));
   return ast;
 }
 function fact(v){if(v<0||v!==Math.floor(v)||v>170)return NaN;var r=1;for(var i=2;i<=v;i++)r*=i;return r;}
@@ -1862,11 +1988,11 @@ function rebuild(){
     var cls=classify(r);
     var el=document.createElement('div');el.className='row';el.dataset.rid=r.id;
     var sw=document.createElement('div');sw.className='sw'+(r.hidden?' off':'');sw.style.background=color;
-    sw.title=r.hidden?'Show':'Hide';
+    sw.title=r.hidden?T('row.show'):T('row.hide');
     sw.onclick=function(){r.hidden=!r.hidden;save();rebuild();};
     var mid=document.createElement('div');mid.className='mid';
     var inp=document.createElement('input');inp.className='ex';inp.value=r.s;inp.spellcheck=false;
-    inp.placeholder=i===0?'y = x^2  or  2+2':'';
+    inp.placeholder=i===0?T('placeholder'):'';
     inp.autocapitalize='off';inp.autocomplete='off';
     inp.oninput=function(){r.s=inp.value;refresh();saveSoon();};
     inp.onfocus=function(){focused=inp;};
@@ -1880,7 +2006,7 @@ function rebuild(){
     mid.appendChild(inp);
     var meta=document.createElement('div');
     mid.appendChild(meta);
-    var del=document.createElement('button');del.className='row-del';del.title='Delete row';
+    var del=document.createElement('button');del.className='row-del';del.title=T('row.delete');
     del.innerHTML='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
     del.onclick=function(){rows=rows.filter(function(q){return q!==r;});save();rebuild();};
     el.appendChild(sw);el.appendChild(mid);el.appendChild(del);
@@ -1918,10 +2044,10 @@ function renderMeta(r,cls,color){
   if(cls.kind==='slider'){
     var s=sliders[cls.name];if(!s)return;
     var sl=document.createElement('div');sl.className='sl';
-    var lo=document.createElement('input');lo.type='number';lo.value=s.min;lo.title='Slider minimum';
+    var lo=document.createElement('input');lo.type='number';lo.value=s.min;lo.title=T('slider.min');
     var rg=document.createElement('input');rg.type='range';rg.min=s.min;rg.max=s.max;rg.step=s.step;rg.value=s.v;
-    var hi=document.createElement('input');hi.type='number';hi.value=s.max;hi.title='Slider maximum';
-    var play=document.createElement('button');play.className='play'+(s.anim?' on':'');play.textContent='▶';play.title='Animate';
+    var hi=document.createElement('input');hi.type='number';hi.value=s.max;hi.title=T('slider.max');
+    var play=document.createElement('button');play.className='play'+(s.anim?' on':'');play.textContent='▶';play.title=T('slider.play');
     rg.oninput=function(){
       s.v=parseFloat(rg.value);
       var inp=r._meta.parentElement.querySelector('.ex');
@@ -2069,7 +2195,9 @@ function save(){
 function saveSoon(){clearTimeout(saveT);saveT=setTimeout(save,500);}
 var prefT=null;
 function savePrefsSoon(){clearTimeout(prefT);prefT=setTimeout(function(){prefs.put({id:'view',cx:view.cx,cy:view.cy,ppu:view.ppu});},700);}
+var booted=false;   // nothing paints (and so nothing calls T) before the catalog has loaded
 db.subscribe(function(items){
+  if(!booted)return;
   var doc=items.find(function(d){return d.id==='state';});
   if(!doc||!doc.rows)return;
   var j=JSON.stringify(doc);
@@ -2087,6 +2215,7 @@ db.subscribe(function(items){
   }
 });
 (async function boot(){
+  if(window.gifos&&gifos.i18n){ try{ await gifos.i18n.load(); }catch(e){} applyI18n(); }
   try{
     var vs=await prefs.getAll();
     var v=vs.find(function(d){return d.id==='view';});
@@ -2101,8 +2230,10 @@ db.subscribe(function(items){
     }
   }catch(e){}
   if(!rows.length){rows=[newRow('y = a sin(x)'),newRow('a = 1')];save();}
+  booted=true;
   resize();
   rebuild();
+  if(window.gifos&&gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); rebuild(); });
 })();
 // test hook: the suites read classifications and probe curves numerically
 // instead of screenshot-diffing canvas pixels.
@@ -2147,12 +2278,12 @@ function syncDebug(){
   #laps li.slow{color:#ff5c5c}
   #laps li.cur{color:var(--muted,#8888aa)}
 </style>
-<header>Timer &amp; Stopwatch</header>
-<div class="tabs"><button id="tabS" class="on">Stopwatch</button><button id="tabT">Timer</button></div>
+<header data-i18n="title">Timer &amp; Stopwatch</header>
+<div class="tabs"><button id="tabS" class="on" data-i18n="tab.stopwatch">Stopwatch</button><button id="tabT" data-i18n="tab.timer">Timer</button></div>
 <div id="t">00:00.00</div>
 <div id="lapnow"></div>
 <div class="chips row" id="presets" style="display:none">
-  <button data-add="60">+1 min</button><button data-add="300">+5 min</button><button data-add="600">+10 min</button><button data-add="10">+10 s</button>
+  <button data-add="60" data-i18n="preset.1m">+1 min</button><button data-add="300" data-i18n="preset.5m">+5 min</button><button data-add="600" data-i18n="preset.10m">+10 min</button><button data-add="10" data-i18n="preset.10s">+10 s</button>
 </div>
 <div class="row">
   <button id="lap" disabled>Lap</button>
@@ -2160,6 +2291,14 @@ function syncDebug(){
 </div>
 <ol id="laps"></ol>
 <script>
+  var T=function(k,p){return window.gifos&&gifos.i18n?gifos.i18n.t(k,p):k;};
+  function applyI18n(){
+    [].forEach.call(document.querySelectorAll('[data-i18n]'),function(e){e.textContent=T(e.getAttribute('data-i18n'));});
+    [['ph','placeholder'],['title','title'],['aria','aria-label']].forEach(function(a){
+      [].forEach.call(document.querySelectorAll('[data-i18n-'+a[0]+']'),function(e){e.setAttribute(a[1],T(e.getAttribute('data-i18n-'+a[0])));});
+    });
+  }
+  function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
   function pad2(n){ n=Math.floor(Math.abs(+n||0)); return (n<10?'0':'')+n; }
   function fmtSw(ms){
     ms=Math.max(0, Math.floor(+ms||0));
@@ -2197,29 +2336,29 @@ function syncDebug(){
   function paintLaps(){
     if(mode!=='sw'){ lapsEl.innerHTML=''; lapNow.textContent=''; return; }
     var total=swMs(), split=Math.max(0,total-sumLaps());
-    lapNow.textContent = (sw.laps.length||sw.running||total) ? ('Lap '+(sw.laps.length+1)+'  '+fmtSw(split)) : '';
+    lapNow.textContent = (sw.laps.length||sw.running||total) ? T('lap.now',{n:sw.laps.length+1,time:fmtSw(split)}) : '';
     var n=sw.laps.length, fast=-1, slow=-1;
     if(n>=2){ fast=0; slow=0; for(var i=1;i<n;i++){ if(sw.laps[i]<sw.laps[fast]) fast=i; if(sw.laps[i]>sw.laps[slow]) slow=i; } }
     var html='';
-    if(sw.running||split>0) html+='<li class="cur"><span class="n">Lap '+(n+1)+'</span><span>'+fmtSw(split)+'</span></li>';
+    if(sw.running||split>0) html+='<li class="cur"><span class="n">'+escH(T('lap.n',{n:n+1}))+'</span><span>'+fmtSw(split)+'</span></li>';
     for(var i=n-1;i>=0;i--){
       var cls=(n>=2&&i===fast)?'fast':(n>=2&&i===slow)?'slow':'';
-      html+='<li class="'+cls+'"><span class="n">Lap '+(i+1)+'</span><span>'+fmtSw(sw.laps[i])+'</span></li>';
+      html+='<li class="'+cls+'"><span class="n">'+escH(T('lap.n',{n:i+1}))+'</span><span>'+fmtSw(sw.laps[i])+'</span></li>';
     }
     lapsEl.innerHTML=html;
   }
   function buttons(){
     if(mode==='sw'){
       var has=swMs()>0||sw.laps.length;
-      lapBtn.textContent=sw.running?'Lap':'Reset';
+      lapBtn.textContent=sw.running?T('lap'):T('reset');
       lapBtn.disabled=sw.running?false:!has;
       go.disabled=false;
-      go.textContent=sw.running?'Stop':'Start';
+      go.textContent=sw.running?T('stop'):T('start');
       go.className=sw.running?'stop':'go';
     } else {
-      lapBtn.textContent='Reset';
+      lapBtn.textContent=T('reset');
       lapBtn.disabled=!(tm.running||tm.left>0);
-      go.textContent=tm.running?'Pause':'Start';
+      go.textContent=tm.running?T('pause'):T('start');
       go.className=tm.running?'stop':'go';
       go.disabled=!tm.running&&tm.left<=0;
     }
@@ -2234,7 +2373,7 @@ function syncDebug(){
     paintLaps(); buttons();
   }
   function loop(){ draw(); if(sw.running||tm.running) raf=requestAnimationFrame(loop); else cancelAnimationFrame(raf); }
-  function kick(){ cancelAnimationFrame(raf); loop(); persist(); }
+  function kick(){ if(!ready) return; cancelAnimationFrame(raf); loop(); persist(); }
   go.onclick=function(){
     tEl.classList.remove('done');
     if(mode==='sw'){
@@ -2280,8 +2419,14 @@ function syncDebug(){
     }
     ready=true; setMode(mode);
   }
-  if(clockDb) clockDb.get('clock').then(boot, function(){ boot(null); });
-  else boot(null);
+  function start(){
+    if(clockDb) clockDb.get('clock').then(boot, function(){ boot(null); });
+    else boot(null);
+  }
+  // Nothing that calls T runs before the catalog has loaded.
+  if(window.gifos&&gifos.i18n){
+    gifos.i18n.load().then(function(){ applyI18n(); start(); if(gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); kick(); }); });
+  } else start();
 </script>`;
 
   const MINESWEEPER_HTML = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
@@ -2312,10 +2457,10 @@ function syncDebug(){
   .ask .no{background:var(--surface,#14141f);color:var(--text,#e0e0f0);border:1px solid var(--border,#2a2a3f)}
   .best{color:var(--muted,#8888aa);font-size:12px;margin:0 0 12px}
 </style>
-<header>Minesweeper</header>
+<header data-i18n="title">Minesweeper</header>
 <div class="hud">
   <div class="lcd" id="mines">015</div>
-  <button class="face" id="face" title="New game">🙂</button>
+  <button class="face" id="face" title="New game" data-i18n-title="new">🙂</button>
   <div class="lcd" id="time">0:00</div>
 </div>
 <div class="dens" id="dens"></div>
@@ -2323,20 +2468,32 @@ function syncDebug(){
 <div class="bar">
   <button id="mode">🚩 Flag mode: off</button>
 </div>
-<div class="status" id="status">Loading…</div>
+<div class="status" id="status" data-i18n="loading">Loading…</div>
 <div class="ask" id="ask"></div>
 <div class="best" id="best"></div>
 <script>
+  const T = (k, p) => (window.gifos && gifos.i18n ? gifos.i18n.t(k, p) : k);
+  // Static markup keeps its English literal (shown until the catalog arrives, or on an older GifOS) and is
+  // tagged data-i18n / -ph / -title / -aria; applyI18n fills those from the catalog.
+  function applyI18n(){
+    if(!(window.gifos&&gifos.i18n)) return;
+    [['','textContent'],['-ph','placeholder'],['-title','title'],['-aria','aria-label']].forEach(function(a){
+      document.querySelectorAll('[data-i18n'+a[0]+']').forEach(function(e){
+        const v=T(e.getAttribute('data-i18n'+a[0]));
+        if(a[1]==='textContent') e.textContent=v; else e.setAttribute(a[1],v);
+      });
+    });
+  }
   const db=gifos.db('mine');
   const DENS={
-    easy:{id:'easy',w:9,h:9,n:10,label:'Easy'},
-    medium:{id:'medium',w:10,h:10,n:15,label:'Medium'},
-    hard:{id:'hard',w:16,h:16,n:40,label:'Hard'},
-    expert:{id:'expert',w:30,h:16,n:99,label:'Expert'}
+    easy:{id:'easy',w:9,h:9,n:10,key:'dens.easy'},
+    medium:{id:'medium',w:10,h:10,n:15,key:'dens.medium'},
+    hard:{id:'hard',w:16,h:16,n:40,key:'dens.hard'},
+    expert:{id:'expert',w:30,h:16,n:99,key:'dens.expert'}
   };
+  function levelName(id){ return T(spec(id).key); }
   let dens='medium', flagMode=false, me={id:'local',name:'You'};
   let ask=null, skipClick=false, hold=null, faceHold=false;
-  if(window.gifos) gifos.me().then(function(m){ me={id:m.id,name:m.name||'You'}; });
   function spec(id){ return DENS[id]||DENS.medium; }
   function fresh(id){ const s=spec(id||dens); return { id:'game', dens:s.id, w:s.w, h:s.h, n:s.n, mines:null, rev:new Array(s.w*s.h).fill(false), flags:{}, over:false, win:false, t0:null, elapsed:0, hit:null }; }
   function adopt(b){
@@ -2439,15 +2596,15 @@ function syncDebug(){
     document.getElementById('face').textContent=faceGlyph();
     const densEl=document.getElementById('dens'); densEl.innerHTML='';
     ['easy','medium','hard','expert'].forEach(function(id){
-      const b=document.createElement('button'); b.textContent=DENS[id].label; if(dens===id) b.className='on';
+      const b=document.createElement('button'); b.textContent=levelName(id); if(dens===id) b.className='on';
       b.onclick=function(){ requestDens(id); }; densEl.appendChild(b);
     });
-    statusEl.textContent = g.over ? (g.win?'Cleared in '+fmt(g.elapsed)+'. Everyone wins.':'💥 Boom — the face starts a new board.')
-      : (g.mines? (flagMode?'Flag mode on — tap a square to plant or pull a flag.':'Tap to open · long-press / right-click to flag · tap a number to chord.')
-                : 'Tap any square. The first tap is safe. Invite a friend to share this board.');
+    statusEl.textContent = g.over ? (g.win?T('status.cleared',{time:fmt(g.elapsed)}):T('status.boom'))
+      : (g.mines? (flagMode?T('status.flagMode'):T('status.play'))
+                : T('status.start'));
     const bestEl=document.getElementById('best');
     const bt=stats.best&&stats.best[dens];
-    bestEl.textContent = (stats.games?('Boards: '+(stats.wins||0)+'/'+stats.games+' cleared. '):'')+(bt?('Best '+spec(dens).label+': '+fmt(bt*1000)+'.'):'');
+    bestEl.textContent = (stats.games?(T('best.boards',{wins:stats.wins||0,games:stats.games})+' '):'')+(bt?T('best.time',{level:levelName(dens),time:fmt(bt*1000)}):'');
     renderAsk();
     hook();
   }
@@ -2488,23 +2645,31 @@ function syncDebug(){
   function renderAsk(){
     const el=document.getElementById('ask'); el.textContent='';
     if(!ask) return;
-    const span=document.createElement('span'); span.textContent=ask.kind==='dens'?('Start a new '+spec(ask.id).label+' board? '):'Start a new game? ';
-    const yes=document.createElement('button'); yes.textContent='New game'; yes.onclick=function(){ doNew(ask.kind==='dens'?ask.id:dens); };
-    const no=document.createElement('button'); no.className='no'; no.textContent='Keep playing'; no.onclick=function(){ ask=null; renderAsk(); };
+    const span=document.createElement('span'); span.textContent=(ask.kind==='dens'?T('ask.dens',{level:levelName(ask.id)}):T('ask.new'))+' ';
+    const yes=document.createElement('button'); yes.textContent=T('new'); yes.onclick=function(){ doNew(ask.kind==='dens'?ask.id:dens); };
+    const no=document.createElement('button'); no.className='no'; no.textContent=T('keep'); no.onclick=function(){ ask=null; renderAsk(); };
     el.appendChild(span); el.appendChild(yes); el.appendChild(no);
   }
   document.getElementById('face').onclick=function(){ requestNew(); };
-  document.getElementById('mode').onclick=function(){ flagMode=!flagMode; this.textContent='🚩 Flag mode: '+(flagMode?'on':'off'); this.className=flagMode?'on':''; };
-  db.subscribe(function(items){
-    const b=items.find(function(x){ return x.id==='game'; });
-    const st=items.find(function(x){ return x.id==='stats'; });
-    if(st) stats=st;
-    if(b){ if(b.at&&g.at&&b.at<g.at) return; g=adopt(b); }
-    render();
-  });
+  function modeLabel(){ document.getElementById('mode').textContent=T(flagMode?'mode.on':'mode.off'); }
+  document.getElementById('mode').onclick=function(){ flagMode=!flagMode; modeLabel(); this.className=flagMode?'on':''; };
   setInterval(function(){ if(!g.over && g.t0) document.getElementById('time').textContent=fmt(elapsed()); }, 250);
   window.addEventListener('resize', function(){ const px=cellPx(); gridEl.style.setProperty('--cell', px+'px'); });
-  render();
+  // Nothing that calls T runs before the catalog has loaded (a key must never be painted).
+  function boot(){
+    applyI18n(); modeLabel();
+    if(window.gifos) gifos.me().then(function(m){ me={id:m.id,name:m.name||'You'}; });
+    db.subscribe(function(items){
+      const b=items.find(function(x){ return x.id==='game'; });
+      const st=items.find(function(x){ return x.id==='stats'; });
+      if(st) stats=st;
+      if(b){ if(b.at&&g.at&&b.at<g.at) return; g=adopt(b); }
+      render();
+    });
+    render();
+    if(window.gifos && gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); modeLabel(); render(); });
+  }
+  if(window.gifos && gifos.i18n && gifos.i18n.load) gifos.i18n.load().then(boot, boot); else boot();
 </script>`;
 
   const CHESS_HTML = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
@@ -2556,10 +2721,16 @@ function syncDebug(){
   .actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:6px}
   .files{display:flex;justify-content:center;gap:2px;color:var(--muted,#8888aa);font-size:11px;letter-spacing:6px;margin:0 0 4px}
 </style>
-<header>Chess Tournament</header>
-<div class="status" id="status">Loading…</div>
+<header data-i18n="title">Chess Tournament</header>
+<div class="status" id="status" data-i18n="loading">Loading…</div>
 <div id="view"></div>
 <script>
+  const tx=function(k,p){ return window.gifos&&gifos.i18n?gifos.i18n.t(k,p):k; };   // T is the tournament below
+  function applyI18n(){
+    [].forEach.call(document.querySelectorAll('[data-i18n]'),function(e){ e.textContent=tx(e.getAttribute('data-i18n')); });
+  }
+  // A computer player is stored as 'Computer' (shared with the other players); shown in the reader's language.
+  function nameOf(p){ return p&&p.cpu?tx('computer'):p.name; }
   const db=gifos.db('chess');
   let me={id:'local',name:'You'}, viewMatch=null, sel=null, promo=null;
   let hint=null, hinting=false, cpuBusy=false;
@@ -2567,8 +2738,8 @@ function syncDebug(){
   const GLYPH={p:'♟',r:'♜',n:'♞',b:'♝',q:'♛',k:'♚'};
   const view=document.getElementById('view'), statusEl=document.getElementById('status');
   let T={ id:'t', players:[], started:false, rounds:[], round:0, settings:{ clock:'5+0', shuffle:true, cpu:'medium', side:'w' } };
-  const CLOCKS=[['none','No clock'],['1+0','Bullet 1 min'],['3+0','Blitz 3 min'],['3+2','Blitz 3|2'],['5+0','Blitz 5 min'],['5+3','Blitz 5|3'],['10+0','Rapid 10 min']];
-  const CPUS=[['easy','Easy'],['medium','Medium'],['hard','Hard']];
+  const CLOCKS=[['none','clock.none'],['1+0','clock.bullet1'],['3+0','clock.blitz3'],['3+2','clock.blitz3_2'],['5+0','clock.blitz5'],['5+3','clock.blitz5_3'],['10+0','clock.rapid10']];
+  const CPUS=[['easy','cpu.easy'],['medium','cpu.medium'],['hard','cpu.hard']];
   function clockSpec(){ const c=(T.settings&&T.settings.clock)||'none'; if(c==='none') return null;
     const p=c.split('+'); return { base:parseInt(p[0],10)*60000, inc:(parseInt(p[1],10)||0)*1000 }; }
 
@@ -2843,9 +3014,9 @@ function syncDebug(){
   }
   function askHint(m){
     const seat=mySeat(m); if(!seat||seat!==m.turn||m.winner||m.draw||hinting) return;
-    if(!(window.gifos&&gifos.ai)){ hint={err:'Hints need the computer’s AI.'}; render(); return; }
+    if(!(window.gifos&&gifos.ai)){ hint={errKey:'hint.err.noai'}; render(); return; }
     const s=gameOf(m); const list=legalMoves(s);
-    if(!list.length){ hint={err:'No legal moves to suggest.'}; render(); return; }
+    if(!list.length){ hint={errKey:'hint.err.none'}; render(); return; }
     hinting=true; hint=null; render();
     const side=m.turn==='w'?'White':'Black';
     const sys='You are a strong chess coach. You are given a position as FEN plus the EXACT list of legal moves in coordinate (UCI) notation. Choose the single strongest move for '+side+'. Reply with ONLY compact JSON and nothing else: {"move":"<one move copied verbatim from the legal list>","why":"<one short plain-language sentence>"}.';
@@ -2856,12 +3027,12 @@ function syncDebug(){
         try{ const j=JSON.parse(txt.replace(/\`\`\`json|\`\`\`/g,'').trim()); uci=String(j.move||'').trim().toLowerCase(); why=j.why||''; }catch(e){}
         if(!uci){ const mm=txt.toLowerCase().match(/[a-h][1-8][a-h][1-8][qrbn]?/); if(mm) uci=mm[0]; }
         let pick=list.find(function(l){return l.uci===uci;}) || list.find(function(l){return l.uci.slice(0,4)===uci;});
-        if(!pick){ pick=list[0]; why=why||'A safe, legal option.'; }
+        if(!pick){ pick=list[0]; why=why||tx('hint.safe'); }
         const cur=findMatch(viewMatch);
         if(cur&&cur.id===m.id&&cur.turn===m.turn&&!cur.winner&&!cur.draw) hint={ from:pick.from, to:pick.to, why:why, uci:pick.uci };
       })
       .catch(function(e){ const msg=String((e&&e.message)||e);
-        hint={ err: /NOT_CONFIGURED/.test(msg) ? 'Set up your Smartest AI in Settings to get hints.' : 'Couldn’t get a hint right now.' };
+        hint={ errKey: /NOT_CONFIGURED/.test(msg) ? 'hint.err.setup' : 'hint.err.fail' };
       })
       .then(function(){ hinting=false; render(); });
   }
@@ -2875,77 +3046,77 @@ function syncDebug(){
   function renderLobby(){
     const inList=T.players.some(function(p){return p.id===me.id;});
     const d=document.createElement('div'); d.className='lobby';
-    const cpuBtn=document.createElement('button'); cpuBtn.className='playcpu'; cpuBtn.textContent='Play the computer'; cpuBtn.onclick=playComputer;
+    const cpuBtn=document.createElement('button'); cpuBtn.className='playcpu'; cpuBtn.textContent=tx('play.cpu'); cpuBtn.onclick=playComputer;
     d.appendChild(cpuBtn);
     const st=document.createElement('div'); st.className='settings';
-    st.innerHTML='<h3>Vs computer</h3><div class="hint">Works offline, in this GIF. Strength is a small onboard engine — not Stockfish.</div>';
+    st.innerHTML='<h3>'+esc(tx('vs.title'))+'</h3><div class="hint">'+esc(tx('vs.hint'))+'</div>';
     function addSel(label, key, opts, def){
       const row=document.createElement('label'); row.appendChild(document.createTextNode(label+' '));
       const selEl=document.createElement('select');
-      opts.forEach(function(c){ const o=document.createElement('option'); o.value=c[0]; o.textContent=c[1]; selEl.appendChild(o); });
+      opts.forEach(function(c){ const o=document.createElement('option'); o.value=c[0]; o.textContent=tx(c[1]); selEl.appendChild(o); });
       selEl.value=(T.settings&&T.settings[key])||def;
       selEl.onchange=function(){ T.settings=Object.assign({},settingsOf()); T.settings[key]=selEl.value; save(); };
       row.appendChild(selEl); st.appendChild(row);
     }
-    addSel('Strength', 'cpu', CPUS, 'medium');
-    addSel('I play', 'side', [['w','White'],['b','Black'],['random','Random']], 'w');
+    addSel(tx('vs.strength'), 'cpu', CPUS, 'medium');
+    addSel(tx('vs.side'), 'side', [['w','side.white'],['b','side.black'],['random','side.random']], 'w');
     d.appendChild(st);
-    const split=document.createElement('div'); split.className='split'; split.textContent='or a tournament'; d.appendChild(split);
-    const p=document.createElement('p'); p.textContent='Invite a friend (top bar), then start. Winners advance until one champion remains. An odd player gets a bye.'; d.appendChild(p);
+    const split=document.createElement('div'); split.className='split'; split.textContent=tx('tourney.or'); d.appendChild(split);
+    const p=document.createElement('p'); p.textContent=tx('tourney.intro'); d.appendChild(p);
     const ul=document.createElement('ul'); ul.className='players';
-    T.players.forEach(function(pl){ const li=document.createElement('li'); li.textContent=pl.name+(pl.id===me.id?' (you)':'')+(pl.cpu?' — computer':''); ul.appendChild(li); });
+    T.players.forEach(function(pl){ const li=document.createElement('li'); li.textContent=pl.cpu?tx('player.cpu',{name:nameOf(pl)}):pl.id===me.id?tx('player.you',{name:pl.name}):pl.name; ul.appendChild(li); });
     d.appendChild(ul);
     const ts=document.createElement('div'); ts.className='settings';
-    ts.innerHTML='<h3>Tournament settings</h3><div class="hint">Apply to every game. Locked once the bracket starts.</div>';
+    ts.innerHTML='<h3>'+esc(tx('settings.title'))+'</h3><div class="hint">'+esc(tx('settings.hint'))+'</div>';
     (function(){
-      const row=document.createElement('label'); row.appendChild(document.createTextNode('Time control '));
+      const row=document.createElement('label'); row.appendChild(document.createTextNode(tx('settings.clock')+' '));
       const selEl=document.createElement('select');
-      CLOCKS.forEach(function(c){ const o=document.createElement('option'); o.value=c[0]; o.textContent=c[1]; selEl.appendChild(o); });
+      CLOCKS.forEach(function(c){ const o=document.createElement('option'); o.value=c[0]; o.textContent=tx(c[1]); selEl.appendChild(o); });
       selEl.value=settingsOf().clock; selEl.onchange=function(){ T.settings=Object.assign({},settingsOf(),{clock:selEl.value}); save(); };
       row.appendChild(selEl); ts.appendChild(row);
     })();
     const shl=document.createElement('label'); const shc=document.createElement('input'); shc.type='checkbox';
     shc.checked=settingsOf().shuffle!==false;
     shc.onchange=function(){ T.settings=Object.assign({},settingsOf(),{shuffle:shc.checked}); save(); };
-    shl.appendChild(shc); shl.appendChild(document.createTextNode(' Shuffle the bracket seeding'));
+    shl.appendChild(shc); shl.appendChild(document.createTextNode(' '+tx('settings.shuffle')));
     ts.appendChild(shl); d.appendChild(ts);
-    const jb=document.createElement('button'); jb.textContent=inList?'You’re in ('+T.players.length+')':'Join lobby'; jb.onclick=joinLobby;
+    const jb=document.createElement('button'); jb.textContent=inList?tx('join.in',{n:T.players.length}):tx('join'); jb.onclick=joinLobby;
     d.appendChild(jb);
     if(!T.players.some(function(p){ return p.cpu; })){
-      const ac=document.createElement('button'); ac.className='ghost'; ac.textContent='Add a computer'; ac.onclick=addCpu; d.appendChild(ac);
+      const ac=document.createElement('button'); ac.className='ghost'; ac.textContent=tx('add.cpu'); ac.onclick=addCpu; d.appendChild(ac);
     }
-    if(T.players.length>=2){ const sb=document.createElement('button'); sb.textContent='Start tournament'; sb.onclick=startTournament; d.appendChild(sb); }
+    if(T.players.length>=2){ const sb=document.createElement('button'); sb.textContent=tx('start'); sb.onclick=startTournament; d.appendChild(sb); }
     view.appendChild(d);
-    statusEl.textContent='Lobby — '+T.players.length+' player(s). Press Invite and share the link, or play the computer.';
+    statusEl.textContent=tx('status.lobby',{n:T.players.length});
   }
   function renderBracket(){
     const wrap=document.createElement('div'); wrap.className='bracket';
     T.rounds.forEach(function(ms){ const rd=document.createElement('div'); rd.className='round';
       ms.forEach(function(m){ const el=document.createElement('div'); el.className='match'+(mySeat(m)?' mine':'');
-        const an=m.a?m.a.name:'—', bn=m.b?m.b.name:'(bye)';
-        el.innerHTML='<div class="'+(m.winner&&m.winner.id===(m.a&&m.a.id)?'w':'')+'">'+esc(an)+'</div><div class="'+(m.winner&&m.b&&m.winner.id===m.b.id?'w':'')+'">'+esc(bn)+(m.draw?' · draw':'')+'</div>';
+        const an=m.a?nameOf(m.a):'—', bn=m.b?nameOf(m.b):tx('bracket.bye');
+        el.innerHTML='<div class="'+(m.winner&&m.winner.id===(m.a&&m.a.id)?'w':'')+'">'+esc(an)+'</div><div class="'+(m.winner&&m.b&&m.winner.id===m.b.id?'w':'')+'">'+esc(bn)+(m.draw?tx('bracket.draw'):'')+'</div>';
         el.onclick=function(){ viewMatch=m.id; sel=null; hint=null; promo=null; render(); queueCpu(); };
         rd.appendChild(el); });
       wrap.appendChild(rd); });
     view.appendChild(wrap);
     const last=(T.rounds[T.rounds.length-1]||[]);
     const champ=last.length===1 && last[0].winner && !last[0].draw;
-    statusEl.textContent=champ?('🏆 Champion: '+esc(champ.name)):'Round '+(T.round+1)+' — tap a match to play or watch.';
+    statusEl.textContent=champ?tx('status.champion',{name:esc(nameOf(last[0].winner))}):tx('status.round',{n:T.round+1});
     const actions=document.createElement('div'); actions.className='actions';
-    const nt=document.createElement('button'); nt.className='ghost'; nt.textContent='New tournament'; nt.onclick=resetTournament; actions.appendChild(nt);
+    const nt=document.createElement('button'); nt.className='ghost'; nt.textContent=tx('new'); nt.onclick=resetTournament; actions.appendChild(nt);
     view.appendChild(actions);
   }
   function fmtClock(ms){ ms=Math.max(0,ms|0); const s=Math.ceil(ms/1000); return Math.floor(s/60)+':'+('0'+s%60).slice(-2); }
   function clockRow(m,side){
     const el=document.createElement('div'); el.className='clock'+(m.turn===side&&!m.winner&&!m.draw?' live':'');
     const who=side==='w'?m.a:m.b; const r=remaining(m,side);
-    el.textContent=(side==='w'?'⚪ ':'⚫ ')+(who?who.name:'?')+'  '+fmtClock(r);
+    el.textContent=(side==='w'?'⚪ ':'⚫ ')+(who?nameOf(who):'?')+'  '+fmtClock(r);
     if(r<30000) el.classList.add('low'); el.dataset.side=side; return el;
   }
   function sqSize(){ const w=Math.min(document.documentElement.clientWidth-24, 420); return Math.max(28, Math.min(48, Math.floor(w/8))); }
   function renderBoard(){
     const m=findMatch(viewMatch); if(!m){ viewMatch=null; return render(); }
-    const back=document.createElement('button'); back.className='back'; back.textContent='← Bracket'; back.onclick=function(){ viewMatch=null; sel=null; hint=null; promo=null; render(); }; view.appendChild(back);
+    const back=document.createElement('button'); back.className='back'; back.textContent=tx('back'); back.onclick=function(){ viewMatch=null; sel=null; hint=null; promo=null; render(); }; view.appendChild(back);
     const seat=mySeat(m); const s=gameOf(m); const bd=s.board;
     const flip=seat==='b';
     const files=document.createElement('div'); files.className='files';
@@ -2975,8 +3146,8 @@ function syncDebug(){
     }
     if(promo&&promo.m&&promo.m.id===m.id){
       const box=document.createElement('div'); box.className='promo';
-      [['q','Queen'],['r','Rook'],['b','Bishop'],['n','Knight']].forEach(function(pr){
-        const b=document.createElement('button'); b.textContent=GLYPH[pr[0]]; b.title=pr[1];
+      [['q','promo.queen'],['r','promo.rook'],['b','promo.bishop'],['n','promo.knight']].forEach(function(pr){
+        const b=document.createElement('button'); b.textContent=GLYPH[pr[0]]; b.title=tx(pr[1]);
         b.onclick=function(){ const P=promo; promo=null; doMove(P.m,P.from[0],P.from[1],P.to[0],P.to[1],pr[0]); };
         box.appendChild(b);
       });
@@ -2988,40 +3159,45 @@ function syncDebug(){
     if(seat&&seat===m.turn&&!m.winner&&!m.draw){
       const hb=document.createElement('div'); hb.className='hintbar';
       const hbtn=document.createElement('button'); hbtn.className='ghost';
-      hbtn.textContent=hinting?'Thinking…':'💡 Hint'; hbtn.disabled=hinting;
+      hbtn.textContent=hinting?tx('hint.thinking'):tx('hint.button'); hbtn.disabled=hinting;
       hbtn.onclick=function(){ askHint(m); };
       hb.appendChild(hbtn);
       const why=document.createElement('div'); why.className='why';
-      if(hinting) why.textContent='Reading the board and weighing your options…';
-      else if(hint&&hint.err) why.textContent=hint.err;
-      else if(hint&&hint.uci) why.textContent='Suggested: '+hint.uci.slice(0,2)+'→'+hint.uci.slice(2)+(hint.why?' — '+hint.why:'');
-      else why.textContent='Ask the computer’s AI for your strongest move.';
+      if(hinting) why.textContent=tx('hint.reading');
+      else if(hint&&hint.errKey) why.textContent=tx(hint.errKey);
+      else if(hint&&hint.uci){ const mv=hint.uci.slice(0,2)+'→'+hint.uci.slice(2); why.textContent=hint.why?tx('hint.suggestedWhy',{move:mv,why:hint.why}):tx('hint.suggested',{move:mv}); }
+      else why.textContent=tx('hint.ask');
       hb.appendChild(why); view.appendChild(hb);
     }
     const actions=document.createElement('div'); actions.className='actions';
-    if(seat&&!m.winner&&!m.draw){ const rs=document.createElement('button'); rs.className='ghost'; rs.textContent='Resign'; rs.onclick=function(){ resign(m); }; actions.appendChild(rs); }
-    if(m.draw && seat){ const rm=document.createElement('button'); rm.textContent='Rematch'; rm.onclick=function(){ rematch(m); }; actions.appendChild(rm); }
+    if(seat&&!m.winner&&!m.draw){ const rs=document.createElement('button'); rs.className='ghost'; rs.textContent=tx('resign'); rs.onclick=function(){ resign(m); }; actions.appendChild(rs); }
+    if(m.draw && seat){ const rm=document.createElement('button'); rm.textContent=tx('rematch'); rm.onclick=function(){ rematch(m); }; actions.appendChild(rm); }
     view.appendChild(actions);
-    statusEl.textContent = m.winner ? ('Winner: '+esc(m.winner.name))
-      : m.draw ? ('Draw — '+(m.draw==='stalemate'?'stalemate':'draw')+'. Rematch to advance.')
-      : (seat? (m.turn===seat?'Your move ('+(seat==='w'?'White':'Black')+(stNow==='check'?' — check':'')+')':((m.turn==='w'?m.a:m.b)&& (m.turn==='w'?m.a:m.b).cpu?'Computer is thinking…':'Waiting for opponent')) : 'Spectating')
-        + ' — '+esc(m.a?m.a.name:'?')+' vs '+esc(m.b?m.b.name:'?');
+    statusEl.textContent = m.winner ? tx('status.winner',{name:esc(nameOf(m.winner))})
+      : m.draw ? tx(m.draw==='stalemate'?'status.drawStalemate':'status.drawOther')
+      : tx('status.vs',{ state: seat? (m.turn===seat?tx(stNow==='check'?'status.yourMoveCheck':'status.yourMove',{side:tx(seat==='w'?'side.white':'side.black')}):((m.turn==='w'?m.a:m.b)&& (m.turn==='w'?m.a:m.b).cpu?tx('status.cpuThinking'):tx('status.waiting'))) : tx('status.spectating'),
+          a:esc(m.a?nameOf(m.a):'?'), b:esc(m.b?nameOf(m.b):'?') });
   }
   setInterval(function(){
     if(!viewMatch) return; const m=findMatch(viewMatch); if(!m||!m.clock||m.winner||m.draw) return;
     if(mySeat(m)&&flagFall(m)) return;
     view.querySelectorAll('.clock').forEach(function(el){
       const side=el.dataset.side, who=side==='w'?m.a:m.b, r=remaining(m,side);
-      el.textContent=(side==='w'?'⚪ ':'⚫ ')+(who?who.name:'?')+'  '+fmtClock(r);
+      el.textContent=(side==='w'?'⚪ ':'⚫ ')+(who?nameOf(who):'?')+'  '+fmtClock(r);
       el.classList.toggle('low',r<30000);
       el.classList.toggle('live',m.turn===side&&!m.winner&&!m.draw);
     });
   }, 500);
   function findMatch(id){ for(let ri=0;ri<T.rounds.length;ri++){ const r=T.rounds[ri]; for(let i=0;i<r.length;i++){ if(r[i].id===id) return r[i]; } } return null; }
   const esc=function(s){ return String(s).replace(/[&<>]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }); };
-  db.subscribe(function(items){ const t=items.find(function(x){return x.id==='t';}); if(t){ T=t; T.settings=settingsOf(); } render(); queueCpu(); });
-  if(window.gifos) gifos.me().then(function(mm){ me={id:mm.id,name:mm.name||'You'}; joinLobby(); });
-  render();
+  // Nothing that calls tx runs before the catalog has loaded.
+  function start(){
+    db.subscribe(function(items){ const t=items.find(function(x){return x.id==='t';}); if(t){ T=t; T.settings=settingsOf(); } render(); queueCpu(); });
+    if(window.gifos) gifos.me().then(function(mm){ me={id:mm.id,name:mm.name||'You'}; joinLobby(); });
+    render();
+    if(window.gifos&&gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); render(); });
+  }
+  if(window.gifos&&gifos.i18n) gifos.i18n.load().then(function(){ applyI18n(); start(); }); else start();
   window.__chess={
     legal:function(m){ return legal(gameOf(m||{board:START,turn:'w'})).map(moveUci); },
     status:function(m){ return statusOf(gameOf(m)); },
@@ -3031,14 +3207,44 @@ function syncDebug(){
 </script>`;
 
 
+  // i18n boot shared by the built-in apps from the fallbacks down to Reader
+  // (welcome, bible, speechcoach, askai, reader, meet, broadcast, appstore).
+  // Each app keeps its English in the markup (a paint before the catalog loads,
+  // or an older GifOS that has no gifos.i18n, still reads English) and tags the
+  // element: data-i18n (text), data-i18n-html (text with <b>/<code>/<small>),
+  // data-i18n-ph / -title / -aria (attributes). applyI18n() re-words the tagged
+  // elements from the app's catalog, i18n/<locale>/apps/<appId>.json. No
+  // backticks, ${ or backslashes in here: it is spliced into template literals.
+  const I18N_BOOT_C = [
+    "var T=function(k,p){return window.gifos&&gifos.i18n?gifos.i18n.t(k,p):k;};",
+    "function rich(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/&lt;([/]?)(b|code|small)&gt;/g,'<$1$2>');}",
+    "function applyI18n(){",
+    "  if(!(window.gifos&&gifos.i18n))return;",
+    "  try{var l=gifos.locale&&gifos.locale();if(l&&(l.ui||l.language))document.documentElement.setAttribute('lang',l.ui||l.language);}catch(e){}",
+    "  var each=function(a,f){Array.prototype.forEach.call(document.querySelectorAll('['+a+']'),f);};",
+    "  each('data-i18n',function(e){e.textContent=T(e.getAttribute('data-i18n'));});",
+    "  each('data-i18n-html',function(e){e.innerHTML=rich(T(e.getAttribute('data-i18n-html')));});",
+    "  each('data-i18n-ph',function(e){e.setAttribute('placeholder',T(e.getAttribute('data-i18n-ph')));});",
+    "  each('data-i18n-title',function(e){e.setAttribute('title',T(e.getAttribute('data-i18n-title')));});",
+    "  each('data-i18n-aria',function(e){e.setAttribute('aria-label',T(e.getAttribute('data-i18n-aria')));});",
+    "}",
+    "function i18nStart(boot,again){",
+    "  var go=function(){applyI18n();boot();};",
+    "  if(window.gifos&&gifos.i18n&&gifos.i18n.load)gifos.i18n.load().then(go,go);else go();",
+    "  if(window.gifos&&gifos.onLocaleChange)gifos.onLocaleChange(function(){applyI18n();if(again)again();});",
+    "}",
+  ].join('\n');
+
   const MEET_FALLBACK_HTML = `<!doctype html><meta charset="utf-8"><style>
   body{font:15px system-ui;background:#0a0a0f;color:#e0e0f0;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center}
   .card{max-width:420px;padding:2rem;border:1px solid #2a2a3f;border-radius:1rem;background:#14141f}
   h2{color:#5ca0ff;margin-top:0} p{color:#9a9ab5;line-height:1.5} code{color:#5ca0ff}
-</style><div class="card"><h2>Meeting</h2>
-<p>This one is built into GifOS. Ordinary apps are never allowed near your camera or
+</style><div class="card"><h2 data-i18n="title">Meeting</h2>
+<p data-i18n="why">This one is built into GifOS. Ordinary apps are never allowed near your camera or
 microphone, so this icon opens the built-in meeting page instead of running here.</p>
-<p>Open this GIF on your Home Screen at <code>gifos.app</code> to start a meeting.</p></div>`;
+<p data-i18n-html="open">Open this GIF on your Home Screen at <code>gifos.app</code> to start a meeting.</p></div>
+<script>${I18N_BOOT_C}
+i18nStart(function(){});</script>`;
 
   // Same idea for Broadcast: the Meet page wearing its broadcast skin — one
   // host live on the Stage, unlimited viewers, chat as the back-channel.
@@ -3046,10 +3252,12 @@ microphone, so this icon opens the built-in meeting page instead of running here
   body{font:15px system-ui;background:#0a0a0f;color:#e0e0f0;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center}
   .card{max-width:420px;padding:2rem;border:1px solid #2a2a3f;border-radius:1rem;background:#14141f}
   h2{color:#ff5c78;margin-top:0} p{color:#9a9ab5;line-height:1.5} code{color:#ff5c78}
-</style><div class="card"><h2>Broadcast</h2>
-<p>This one is built into GifOS. Ordinary apps are never allowed near your camera or
+</style><div class="card"><h2 data-i18n="title">Broadcast</h2>
+<p data-i18n="why">This one is built into GifOS. Ordinary apps are never allowed near your camera or
 microphone, so this icon opens the built-in broadcast page instead of running here.</p>
-<p>Open this GIF on your Home Screen at <code>gifos.app</code> to go live.</p></div>`;
+<p data-i18n-html="open">Open this GIF on your Home Screen at <code>gifos.app</code> to go live.</p></div>
+<script>${I18N_BOOT_C}
+i18nStart(function(){});</script>`;
 
   // Same idea for the App Store: the icon is a real GIF, but installing an app
   // means writing to this computer's Home Screen, which the app sandbox cannot
@@ -3058,10 +3266,12 @@ microphone, so this icon opens the built-in broadcast page instead of running he
   body{font:15px system-ui;background:#0a0a0f;color:#e0e0f0;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center}
   .card{max-width:420px;padding:2rem;border:1px solid #2a2a3f;border-radius:1rem;background:#14141f}
   h2{color:#7b5cff;margin-top:0} p{color:#9a9ab5;line-height:1.5} code{color:#7b5cff}
-</style><div class="card"><h2>App Store</h2>
-<p>This one is built into GifOS. Ordinary apps are never allowed to put things on your
+</style><div class="card"><h2 data-i18n="title">App Store</h2>
+<p data-i18n="why">This one is built into GifOS. Ordinary apps are never allowed to put things on your
 Home Screen, so this icon opens the built-in store page instead of running here.</p>
-<p>Open this GIF on your Home Screen at <code>gifos.app</code> to browse apps.</p></div>`;
+<p data-i18n-html="open">Open this GIF on your Home Screen at <code>gifos.app</code> to browse apps.</p></div>
+<script>${I18N_BOOT_C}
+i18nStart(function(){});</script>`;
 
   // A real app now: friendly onboarding for non-technical people, with a live
   // checklist that demonstrates the core magic (state lives inside the icon).
@@ -3086,46 +3296,48 @@ Home Screen, so this icon opens the built-in store page instead of running here.
   .magic{color:#5cc8ff;font-size:.85rem;margin-top:.6rem;display:none}
   .magic.show{display:block}
 </style></head><body><div class="wrap">
-  <h1>Welcome to GifOS</h1>
-  <p class="lead">Your own computer that lives in your browser. No account, no installs — and everything you make is a file <b>you</b> keep.</p>
+  <h1 data-i18n="title">Welcome to GifOS</h1>
+  <p class="lead" data-i18n-html="lead">Your own computer that lives in your browser. No account, no installs — and everything you make is a file <b>you</b> keep.</p>
 
-  <div class="card"><h2><span class="emoji">🖼️</span>Every app is a GIF</h2>
-  <p>Those animated icons on your Home Screen are real GIF images — with a whole app tucked inside. Double-click one and it runs. Send one to a friend and they get your app <b>with your stuff in it</b>.</p></div>
+  <div class="card"><h2><span class="emoji">🖼️</span><span data-i18n="card.gif.title">Every app is a GIF</span></h2>
+  <p data-i18n-html="card.gif.body">Those animated icons on your Home Screen are real GIF images — with a whole app tucked inside. Double-click one and it runs. Send one to a friend and they get your app <b>with your stuff in it</b>.</p></div>
 
-  <div class="card"><h2><span class="emoji">💾</span>Your stuff stays put</h2>
-  <p>Whatever you do in an app is saved with its icon automatically. Close the tab, come back tomorrow — you're right where you left off. Nothing is stored on anyone's servers.</p></div>
+  <div class="card"><h2><span class="emoji">💾</span><span data-i18n="card.stays.title">Your stuff stays put</span></h2>
+  <p data-i18n-html="card.stays.body">Whatever you do in an app is saved with its icon automatically. Close the tab, come back tomorrow — you're right where you left off. Nothing is stored on anyone's servers.</p></div>
 
-  <div class="card"><h2><span class="emoji">🔗</span>Play together with one link</h2>
-  <p>Open any app and press <b>Invite</b>. Send the link to friends and they join you live — same game, same notes, same room. Try <b>Meeting</b>, right on your Home Screen — you can even run an app inside it!</p></div>
+  <div class="card"><h2><span class="emoji">🔗</span><span data-i18n="card.together.title">Play together with one link</span></h2>
+  <p data-i18n-html="card.together.body">Open any app and press <b>Invite</b>. Send the link to friends and they join you live — same game, same notes, same room. Try <b>Meeting</b>, right on your Home Screen — you can even run an app inside it!</p></div>
 
-  <div class="card"><h2><span class="emoji"></span>Games for real-life hangouts</h2>
-  <p>The <b>IRL Games</b> folder is for game night: everyone keeps their own phone — open a game, press <b>Invite</b>, and secret roles, hidden votes, and sneaky lies get dealt to each player's screen while the laughing and accusing happens face to face. Only one phone in the room? The <b>Single Phone</b> subfolder has pass-around versions.</p></div>
+  <div class="card"><h2><span class="emoji"></span><span data-i18n="card.irl.title">Games for real-life hangouts</span></h2>
+  <p data-i18n-html="card.irl.body">The <b>IRL Games</b> folder is for game night: everyone keeps their own phone — open a game, press <b>Invite</b>, and secret roles, hidden votes, and sneaky lies get dealt to each player's screen while the laughing and accusing happens face to face. Only one phone in the room? The <b>Single Phone</b> subfolder has pass-around versions.</p></div>
 
-  <div class="card"><h2><span class="emoji">✨</span>Make your own apps</h2>
-  <p>Press <b>＋ Add</b> in the top bar, copy the magic prompt into any AI (like Claude), tell it what you want, and paste back what it gives you. You just made an app. It's yours to keep.</p></div>
+  <div class="card"><h2><span class="emoji">✨</span><span data-i18n="card.make.title">Make your own apps</span></h2>
+  <p data-i18n-html="card.make.body">Press <b>＋ Add</b> in the top bar, copy the magic prompt into any AI (like Claude), tell it what you want, and paste back what it gives you. You just made an app. It's yours to keep.</p></div>
 
-  <div class="card"><h2><span class="emoji">🔧</span>Change any app</h2>
-  <p>Every app is yours — free to keep, free to pass on, free to modify and improve. Hand the GIF to any AI and ask for a change. It unpacks what's inside, edits it, and packs it back. You don't need to know how to code.</p></div>
+  <div class="card"><h2><span class="emoji">🔧</span><span data-i18n="card.change.title">Change any app</span></h2>
+  <p data-i18n-html="card.change.body">Every app is yours — free to keep, free to pass on, free to modify and improve. Hand the GIF to any AI and ask for a change. It unpacks what's inside, edits it, and packs it back. You don't need to know how to code.</p></div>
 
-  <div class="card"><h2><span class="emoji"></span>Or just steal one</h2>
-  <p>See an app you like in a friend's session or a call? Press <b>Steal</b> and choose where the copy goes — your <b>Stolen Apps</b> chest or a downloaded GIF — and how much comes with it: <b>No data</b> for a fresh, empty copy, or the data <b>as it arrived</b> or <b>as it is now</b> to carry the game in progress or the shared notes. Anyone in the session can, since it's already synced to your browser. It's not rude here, it's the whole point: every app is a file, so taking one just copies the GIF. Then remix it with your AI and make it yours.</p></div>
+  <div class="card"><h2><span class="emoji"></span><span data-i18n="card.steal.title">Or just steal one</span></h2>
+  <p data-i18n-html="card.steal.body">See an app you like in a friend's session or a call? Press <b>Steal</b> and choose where the copy goes — your <b>Stolen Apps</b> chest or a downloaded GIF — and how much comes with it: <b>No data</b> for a fresh, empty copy, or the data <b>as it arrived</b> or <b>as it is now</b> to carry the game in progress or the shared notes. Anyone in the session can, since it's already synced to your browser. It's not rude here, it's the whole point: every app is a file, so taking one just copies the GIF. Then remix it with your AI and make it yours.</p></div>
 
-  <div class="card"><h2><span class="emoji">💿</span>Your whole computer is one file</h2>
-  <p>GifOS menu (top-left) → <b>Back up Home Screen</b> gives you a single GIF holding everything. Keep it safe, or double-click it anywhere to boot your computer — even inside another one.</p></div>
+  <div class="card"><h2><span class="emoji">💿</span><span data-i18n="card.backup.title">Your whole computer is one file</span></h2>
+  <p data-i18n-html="card.backup.body">GifOS menu (top-left) → <b>Back up Home Screen</b> gives you a single GIF holding everything. Keep it safe, or double-click it anywhere to boot your computer — even inside another one.</p></div>
 
-  <div class="try"><h2>See the magic for yourself</h2>
-  <p>Check something off, close this tab, then open Welcome again — it remembers. That's your data living inside the icon.</p>
-  <div id="list"></div><div class="magic" id="magic">Now close this tab and reopen Welcome from your desktop 😉</div></div>
+  <div class="try"><h2 data-i18n="try.title">See the magic for yourself</h2>
+  <p data-i18n="try.body">Check something off, close this tab, then open Welcome again — it remembers. That's your data living inside the icon.</p>
+  <div id="list"></div><div class="magic" id="magic" data-i18n="magic">Now close this tab and reopen Welcome from your desktop 😉</div></div>
 </div>
+<script>${I18N_BOOT_C}</script>
 <script>
-  var STEPS=[["look","Looked around my new Home Screen"],["run","Opened an app (this one counts!)"],["invite","Invited a friend with one link"],["make","Made my own app with ＋ Add"],["backup","Backed up my computer to one GIF"]];
+  var STEPS=["look","run","invite","make","backup"];  // data ids; the words are step.<id> in the catalog
   var db=window.gifos?gifos.db("welcome"):null,state={};
-  function render(){var el=document.getElementById("list");el.innerHTML="";STEPS.forEach(function(s){
-    var l=document.createElement("label");l.className="todo"+(state[s[0]]?" done":"");
-    var c=document.createElement("input");c.type="checkbox";c.checked=!!state[s[0]];
-    c.onchange=function(){state[s[0]]=c.checked;if(db)db.put({id:s[0],done:c.checked});document.getElementById("magic").classList.add("show");render();};
-    var t=document.createElement("span");t.textContent=s[1];l.appendChild(c);l.appendChild(t);el.appendChild(l);});}
-  if(db){db.subscribe(function(items){state={};items.forEach(function(i){state[i.id]=i.done;});render();});}else{render();}
+  function render(){var el=document.getElementById("list");el.innerHTML="";STEPS.forEach(function(id){
+    var l=document.createElement("label");l.className="todo"+(state[id]?" done":"");
+    var c=document.createElement("input");c.type="checkbox";c.checked=!!state[id];
+    c.onchange=function(){state[id]=c.checked;if(db)db.put({id:id,done:c.checked});document.getElementById("magic").classList.add("show");render();};
+    var t=document.createElement("span");t.textContent=T("step."+id);l.appendChild(c);l.appendChild(t);el.appendChild(l);});}
+  function boot(){if(db){db.subscribe(function(items){state={};items.forEach(function(i){state[i.id]=i.done;});render();});}else{render();}}
+  i18nStart(boot,render);
 </script></body></html>`;
 
   const WELCOME_README = [
@@ -3191,37 +3403,51 @@ Home Screen, so this icon opens the built-in store page instead of running here.
   .kept .k{background:var(--surface,#14141f);border:1px solid var(--border,#22222f);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--text,#c8c8dc);margin-bottom:6px}
   .foot{color:var(--muted,#6a6a86);font-size:.72rem;text-align:center;line-height:1.5}
 </style>
-<header>Fortune</header>
+<header data-i18n="title">Fortune</header>
 <main>
   <div class="cookie">🥠</div>
-  <div class="slip" id="slip">Crack open a cookie for a little wisdom…</div>
+  <div class="slip" id="slip" data-i18n="slip.initial">Crack open a cookie for a little wisdom…</div>
   <div class="src" id="src"></div>
   <div class="row">
-    <button class="go" id="crack">Crack a cookie</button>
-    <button id="keep" disabled>Keep it</button>
+    <button class="go" id="crack" data-i18n="crack">Crack a cookie</button>
+    <button id="keep" data-i18n="keep" disabled>Keep it</button>
   </div>
-  <div class="kept" id="keptWrap" style="display:none"><h4>Kept fortunes</h4><div id="kept"></div></div>
-  <p class="foot">Fortunes come from adviceslip.com over the internet — tap the “Internet” button up top to see or change that. This app never invents a line.</p>
+  <div class="kept" id="keptWrap" style="display:none"><h4 data-i18n="kept.title">Kept fortunes</h4><div id="kept"></div></div>
+  <p class="foot" data-i18n="foot">Fortunes come from adviceslip.com over the internet — tap the “Internet” button up top to see or change that. This app never invents a line.</p>
 </main>
 <script>
+  var T=function(k,p){return window.gifos&&gifos.i18n?gifos.i18n.t(k,p):k;};
+  function applyI18n(){
+    [].forEach.call(document.querySelectorAll('[data-i18n]'),function(e){e.textContent=T(e.getAttribute('data-i18n'));});
+    [['ph','placeholder'],['title','title'],['aria','aria-label']].forEach(function(a){
+      [].forEach.call(document.querySelectorAll('[data-i18n-'+a[0]+']'),function(e){e.setAttribute(a[1],T(e.getAttribute('data-i18n-'+a[0])));});
+    });
+  }
   var slip=document.getElementById('slip'),crack=document.getElementById('crack'),keepBtn=document.getElementById('keep');
   var srcEl=document.getElementById('src');
   var keptWrap=document.getElementById('keptWrap'),keptEl=document.getElementById('kept'),current=null,seq=0;
   var db=(window.gifos&&gifos.db)?gifos.db('fortunes'):null;
   function esc(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML;}
-  function showKept(items){items=(items||[]).slice().reverse();keptWrap.style.display=items.length?'':'none';
-    keptEl.innerHTML=items.map(function(x){return '<div class="k">“'+esc(x.text)+'”</div>';}).join('');}
+  var ready=false,lastKept=null,view={k:'init'};   // nothing calls T before the catalog has loaded
+  function showKept(items){lastKept=items;if(!ready)return;items=(items||[]).slice().reverse();keptWrap.style.display=items.length?'':'none';
+    keptEl.innerHTML=items.map(function(x){return '<div class="k">'+esc(T('quote',{text:x.text}))+'</div>';}).join('');}
   if(db)db.subscribe(showKept);
+  function paintSlip(){
+    if(view.k==='init'){slip.className='slip';slip.textContent=T('slip.initial');srcEl.textContent='';}
+    else if(view.k==='ask'){slip.className='slip';slip.textContent=T('asking');srcEl.textContent='';}
+    else if(view.k==='ok'){slip.className='slip';slip.textContent=T('quote',{text:current});srcEl.textContent=T('from');}
+    else {slip.className='slip err';slip.textContent=whyFail(view.err);srcEl.textContent='';}
+  }
   function whyFail(err){
     var msg=String(err&&err.message||err||'');
-    if(!window.gifos||!gifos.fetch) return 'Open this from GifOS to reach the internet. This app will not invent a fortune.';
-    if(/Network denied/i.test(msg)) return 'Internet is off for this app. Tap “Internet” in the top bar to allow adviceslip.com. This app will not invent a fortune.';
-    if(/timeout/i.test(msg)) return 'adviceslip.com took too long. Try again when you have a better connection.';
-    if(/HTTP\\s*\\d+/i.test(msg)) return 'adviceslip.com returned '+(msg.match(/HTTP\\s*\\d+/i)||['an error'])[0]+' — not a fortune.';
-    if(/empty|no advice/i.test(msg)) return 'That reply had no advice in it. Try another cookie.';
-    return 'Couldn’t reach adviceslip.com. You may be offline. This app will not make a fortune up.';
+    if(!window.gifos||!gifos.fetch) return T('err.nogifos');
+    if(/Network denied/i.test(msg)) return T('err.denied');
+    if(/timeout/i.test(msg)) return T('err.timeout');
+    if(/HTTP\\s*\\d+/i.test(msg)) return T('err.http',{code:(msg.match(/HTTP\\s*\\d+/i)||['HTTP'])[0]});
+    if(/empty|no advice/i.test(msg)) return T('err.empty');
+    return T('err.generic');
   }
-  function fail(err){current=null;slip.className='slip err';slip.textContent=whyFail(err);srcEl.textContent='';keepBtn.disabled=true;crack.disabled=false;}
+  function fail(err){current=null;view={k:'err',err:err};paintSlip();keepBtn.disabled=true;crack.disabled=false;}
   function fetchAdvice(){
     return new Promise(function(resolve,reject){
       var done=false;
@@ -3235,18 +3461,23 @@ Home Screen, so this icon opens the built-in store page instead of running here.
   }
   function crackOne(){
     var n=++seq;
-    slip.className='slip';slip.textContent='Asking adviceslip.com…';srcEl.textContent='';keepBtn.disabled=true;crack.disabled=true;current=null;
+    view={k:'ask'};paintSlip();keepBtn.disabled=true;crack.disabled=true;current=null;
     if(!window.gifos||!gifos.fetch){fail(new Error('no gifos'));return;}
     fetchAdvice().then(function(text){
       if(n!==seq) return;
-      current=text; slip.className='slip'; slip.textContent='“'+text+'”';
-      srcEl.textContent='from adviceslip.com'; keepBtn.disabled=!db; crack.disabled=false;
+      current=text; view={k:'ok'}; paintSlip();
+      keepBtn.disabled=!db; crack.disabled=false;
     }, function(err){ if(n!==seq) return; fail(err); });
   }
   crack.onclick=crackOne;
   keepBtn.onclick=function(){if(current&&db){db.put({text:current,t:Date.now()});keepBtn.disabled=true;}};
-  if(typeof navigator!=='undefined' && navigator.onLine===false) fail(new Error('offline'));
-  else crackOne();
+  function start(){
+    ready=true; applyI18n(); showKept(lastKept);
+    if(typeof navigator!=='undefined' && navigator.onLine===false) fail(new Error('offline'));
+    else crackOne();
+    if(window.gifos&&gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); showKept(lastKept); paintSlip(); });
+  }
+  if(window.gifos&&gifos.i18n) gifos.i18n.load().then(start); else start();
 </script>`;
 
   // Bible Browser — reads the Recovery Version straight from
@@ -3311,29 +3542,30 @@ Home Screen, so this icon opens the built-in store page instead of running here.
   nav button.jump.on{background:var(--rlink);color:var(--rbg);border-color:var(--rlink)}
   .foot{color:var(--rmuted);font-size:.72rem;text-align:center;padding:28px 20px 0;line-height:1.5;opacity:.85}
 </style>
-<header><span class="ttl">Bible Browser</span><span class="loc" id="loc"></span></header>
+<header><span class="ttl" data-i18n="title">Bible Browser</span><span class="loc" id="loc"></span></header>
 <nav>
-  <button id="back" title="Back">&lsaquo;</button>
-  <button id="fwd" title="Forward">&rsaquo;</button>
-  <button id="reload" title="Reload">&#8635;</button>
-  <button class="home" id="home">Home</button>
-  <button id="prevch" title="Previous chapter" disabled>&laquo;</button>
-  <button id="nextch" title="Next chapter" disabled>&raquo;</button>
-  <button id="jump" class="jump" title="Jump to a book or chapter">Go</button>
-  <button class="follow" id="follow" style="display:none" title="Follow the meeting">Follow</button>
+  <button id="back" title="Back" data-i18n-title="nav.back">&lsaquo;</button>
+  <button id="fwd" title="Forward" data-i18n-title="nav.forward">&rsaquo;</button>
+  <button id="reload" title="Reload" data-i18n-title="nav.reload">&#8635;</button>
+  <button class="home" id="home" data-i18n="nav.home">Home</button>
+  <button id="prevch" title="Previous chapter" data-i18n-title="nav.prev" disabled>&laquo;</button>
+  <button id="nextch" title="Next chapter" data-i18n-title="nav.next" disabled>&raquo;</button>
+  <button id="jump" class="jump" title="Jump to a book or chapter" data-i18n-title="nav.jump.title" data-i18n="nav.jump">Go</button>
+  <button class="follow" id="follow" style="display:none" title="Follow the meeting" data-i18n-title="follow.title" data-i18n="follow.off">Follow</button>
   <span class="sp"></span>
   <span class="grp">
-    <button id="smaller" class="chip" title="Smaller text">A&minus;</button>
-    <button id="bigger" class="chip" title="Bigger text">A&plus;</button>
-    <button id="theme" class="chip" title="Paper / night / black &amp; white">&#9728;</button>
+    <button id="smaller" class="chip" title="Smaller text" data-i18n-title="nav.smaller">A&minus;</button>
+    <button id="bigger" class="chip" title="Bigger text" data-i18n-title="nav.bigger">A&plus;</button>
+    <button id="theme" class="chip" title="Paper / night / black &amp; white" data-i18n-title="nav.theme">&#9728;</button>
   </span>
 </nav>
 <div id="jumper">
   <select id="jbook"></select>
-  <label>ch. <input id="jch" type="number" min="1" value="1"></label>
-  <button id="jgo">Open</button>
+  <label><span data-i18n="jumper.ch">ch.</span> <input id="jch" type="number" min="1" value="1"></label>
+  <button id="jgo" data-i18n="jumper.open">Open</button>
 </div>
-<main id="main"><div class="status">Fetching the Recovery Version through the GifOS CORS proxy&hellip;</div></main>
+<main id="main"><div class="status" data-i18n="status.first">Fetching the Recovery Version through the GifOS CORS proxy&hellip;</div></main>
+<script>${I18N_BOOT_C}</script>
 <script>
   var HOST='text.recoveryversion.bible', HOME='https://text.recoveryversion.bible/';
   var main=document.getElementById('main'), locEl=document.getElementById('loc');
@@ -3384,9 +3616,8 @@ Home Screen, so this icon opens the built-in store page instead of running here.
   function updateFollowUi(){ if(!followB) return;
     followB.style.display = shared ? '' : 'none';
     followB.classList.toggle('on', follow);
-    followB.textContent = follow ? 'Following' : 'Follow';
-    followB.title = follow ? 'Following the meeting — tap to browse on your own without moving anyone'
-                           : 'Browsing on your own — tap to follow the meeting again'; }
+    followB.textContent = T(follow ? 'follow.on' : 'follow.off');
+    followB.title = T(follow ? 'follow.on.title' : 'follow.off.title'); }
   // Shared-state (and whether the Follow toggle even shows) depends on BOTH
   // who's present and whether someone else is driving nav — recomputed on any
   // change to either collection.
@@ -3413,7 +3644,10 @@ Home Screen, so this icon opens the built-in store page instead of running here.
         setTimeout(function(){ applyingScroll=false; }, 90);
       }
     } }
-  function setStatus(msg,err){ main.innerHTML='<div class="status'+(err?' err':'')+'">'+msg+(err?'<p><button type="button" id="retry">Try again</button></p>':'')+'</div>'; }
+  // msg is HTML, or a function returning it (kept, so a locale change can re-word it)
+  var statusFn=null, statusErr=false;
+  function setStatus(msg,err){ statusFn=typeof msg==='function'?msg:null; statusErr=!!err;
+    main.innerHTML='<div class="status'+(err?' err':'')+'">'+(statusFn?statusFn():msg)+(err?'<p><button type="button" id="retry">'+rich(T('retry'))+'</button></p>':'')+'</div>'; }
   function buttons(){ backB.disabled=hi<=0; fwdB.disabled=hi>=hist.length-1; updateChapBtns(); }
   function shortLoc(u){ try{ var x=new URL(u); return (x.pathname+x.search)||'/'; }catch(e){ return u; } }
   function resolve(href, base){ try{ return new URL(href, base).toString(); }catch(e){ return null; } }
@@ -3444,13 +3678,13 @@ Home Screen, so this icon opens the built-in store page instead of running here.
   }
   function explainErr(e){
     var msg=String((e&&e.message)||e||'');
-    if(msg==='NO_GIFOS'||!window.gifos||!gifos.fetch) return 'Open this from GifOS to reach the internet.';
-    if(typeof navigator!=='undefined'&&navigator.onLine===false) return 'You are offline, and this page has not been saved on this device yet. Chapters you have already opened can be re-read without a connection.';
-    if(/Network denied/i.test(msg)) return 'This app&rsquo;s internet is switched off (the &ldquo;Internet&rdquo; button up top), or '+HOST+' is blocked.';
-    if(/HTTP 404/.test(msg)) return 'That address is not on the Recovery Version site.';
-    if(/HTTP 429/.test(msg)) return 'The CORS proxy asked us to slow down. Wait a moment and try again.';
-    if(/Failed to fetch|NetworkError|Load failed|TypeError/i.test(msg)) return 'Couldn&rsquo;t reach the GifOS CORS proxy or the Bible site. You may be offline.';
-    return 'Couldn&rsquo;t load that page.<br><br><small>'+esc(msg)+'</small>';
+    if(msg==='NO_GIFOS'||!window.gifos||!gifos.fetch) return rich(T('err.noGifos'));
+    if(typeof navigator!=='undefined'&&navigator.onLine===false) return rich(T('err.offline'));
+    if(/Network denied/i.test(msg)) return rich(T('err.denied',{host:HOST}));
+    if(/HTTP 404/.test(msg)) return rich(T('err.notFound'));
+    if(/HTTP 429/.test(msg)) return rich(T('err.slow'));
+    if(/Failed to fetch|NetworkError|Load failed|TypeError/i.test(msg)) return rich(T('err.network'));
+    return rich(T('err.generic'))+'<br><br><small>'+esc(msg)+'</small>';
   }
   // Base for resolving a page's relative links: honour <base href> if present,
   // else the page's own URL. (Old static Bible sites often set <base>, and
@@ -3530,15 +3764,16 @@ Home Screen, so this icon opens the built-in store page instead of running here.
         if(href && href.charAt(0)==='#'){ if(href.length>1) el.setAttribute('data-anchor', href.slice(1)); el.setAttribute('href','#'); return; }
         var host=''; try{ host=new URL(href).hostname; }catch(e){}
         if(href && host===HOST){ el.setAttribute('data-nav', href); el.setAttribute('href','#'); }
-        else { el.removeAttribute('href'); el.className=(el.className+' ext').trim(); el.title='External link — open it in your own browser'; }
+        else { el.removeAttribute('href'); el.className=(el.className+' ext').trim(); el.title=T('ext.title'); el.setAttribute('data-i18n-title','ext.title'); }
       }
     });
     return root.innerHTML;
   }
   function render(root){
     var html=sanitize(root);
-    var banner=fromCache?'<div class="banner">Showing a copy saved on this device &mdash; the live fetch through the CORS proxy did not land. Tap &#8635; to try again.</div>':'';
-    main.innerHTML='<div class="doc">'+banner+html+'<p class="foot">Text from text.recoveryversion.bible, read through the GifOS CORS proxy &mdash; tap the &ldquo;Internet&rdquo; button up top to see or change that. Chapters you open are saved on this device so you can re-read them offline.</p></div>';
+    statusFn=null;
+    var banner=fromCache?'<div class="banner" data-i18n="banner.cached">'+rich(T('banner.cached'))+'</div>':'';
+    main.innerHTML='<div class="doc">'+banner+html+'<p class="foot" data-i18n="foot">'+rich(T('foot'))+'</p></div>';
     // Land where the reader (or the meeting) last was on this page, not the top.
     // Re-apply on the next frame: right after innerHTML the new layout isn't
     // flushed yet, so a bare scrollTop set clamps against the old (short) height.
@@ -3555,15 +3790,13 @@ Home Screen, so this icon opens the built-in store page instead of running here.
     if(push){ hist=hist.slice(0,hi+1); hist.push(url); hi=hist.length-1; }
     buttons(); locEl.textContent=niceLoc(url);
     var offline=typeof navigator!=='undefined'&&navigator.onLine===false;
-    setStatus(offline
-      ? 'You are offline &mdash; looking for a saved copy of '+esc(niceLoc(url))+'&hellip;'
-      : 'Fetching '+esc(niceLoc(url))+' through the GifOS CORS proxy&hellip;');
-    if(!window.gifos||!gifos.fetch){ setStatus('Open this from GifOS to reach the internet.', true); return; }
+    setStatus(function(){ return rich(T(offline?'status.offline':'status.fetching',{loc:niceLoc(url)})); });
+    if(!window.gifos||!gifos.fetch){ setStatus(function(){ return rich(T('err.noGifos')); }, true); return; }
     var want=url, target=(frac==null?0:frac);
     loadPage(url).then(function(res){ if(curUrl!==want) return; curUrl=res.url||url;
         fromCache=!!res.cached; pendingFrac=target; render(res.root); lastFrac=target; saveLast();
         if(!fromSync && follow && !fromCache) pushNav(curUrl, target); })  // my own live move drives the group; a cached fallback does not
-      .catch(function(e){ if(curUrl!==want) return; setStatus(explainErr(e), true); });
+      .catch(function(e){ if(curUrl!==want) return; setStatus(function(){ return explainErr(e); }, true); });
   }
   main.addEventListener('click', function(e){
     if(e.target&&e.target.id==='retry'){ e.preventDefault(); go(curUrl, false); return; }
@@ -3635,6 +3868,7 @@ Home Screen, so this icon opens the built-in store page instead of running here.
   // Learn who I am, restore MY (private) prefs, then either JOIN whoever's
   // already reading or open my own last page — and from then on stay converged
   // via subscribe() on the two shared collections (nav + presence).
+  function bibleBoot(){
   (window.gifos&&gifos.me?gifos.me():Promise.resolve({id:'',name:''})).then(function(u){ me=u||{id:'',name:''}; })
     .then(function(){ return prefsDb?prefsDb.get('prefs'):null; })
     .then(function(p){ if(p){ if(p.theme) prefs.theme=p.theme; if(typeof p.fs==='number') prefs.fs=p.fs; } applyPrefs(); })
@@ -3648,6 +3882,9 @@ Home Screen, so this icon opens the built-in store page instead of running here.
       if(follow && navRec && navRec.by && navRec.by!==me.id && navRec.url){ go(navRec.url, true, true, navRec.scroll); return; }
       return firstPage().then(function(o){ go(o.url, true, false, o.scroll); }); })
     .catch(function(){ applyPrefs(); go(HOME, true); });
+  }
+  // A locale change re-words the chrome (applyI18n), the Follow button and whatever status is on screen.
+  i18nStart(bibleBoot, function(){ updateFollowUi(); if(statusFn) setStatus(statusFn, statusErr); });
 </script>`;
 
   // Speech Coach — showcases brokered capture + on-device DSP. Records a clip
@@ -3677,24 +3914,32 @@ Home Screen, so this icon opens the built-in store page instead of running here.
   .take .when{color:#8888aa;font-variant-numeric:tabular-nums}
   .wait{color:#8888aa}
 </style>
-<header>Speech Coach</header>
+<header data-i18n="title">Speech Coach</header>
 <main>
-  <p class="lead">Tap Record. GifOS shows its own mic indicator and records up to 12 seconds; this app receives the finished clip, never a live microphone. Analysis stays on this device — nothing is sent anywhere. Pace is estimated from bursts of sound, not from a transcript: this app does not listen for words.</p>
-  <button id="rec">● Record &amp; analyse</button>
+  <p class="lead" data-i18n="lead">Tap Record. GifOS shows its own mic indicator and records up to 12 seconds; this app receives the finished clip, never a live microphone. Analysis stays on this device — nothing is sent anywhere. Pace is estimated from bursts of sound, not from a transcript: this app does not listen for words.</p>
+  <button id="rec" data-i18n="rec">● Record &amp; analyse</button>
   <div id="out"></div>
-  <div class="card past" id="hist" style="display:none"><h3>Earlier takes (scores only — the clip is not kept)</h3><div id="hlist"></div></div>
+  <div class="card past" id="hist" style="display:none"><h3 data-i18n="past.title">Earlier takes (scores only — the clip is not kept)</h3><div id="hlist"></div></div>
 </main>
+<script>${I18N_BOOT_C}</script>
 <script>
 const recBtn=document.getElementById('rec'), out=document.getElementById('out');
 const histBox=document.getElementById('hist'), hlist=document.getElementById('hlist');
 const pad=n=>(n<10?'0':'')+n;
 function when(ts){ const d=new Date(ts); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes()); }
+// one decimal, in the system locale (3.2 -> "3,2" in Spanish); English stays toFixed(1)
+function num1(x){ const f=window.gifos&&gifos.i18n&&gifos.i18n.fmt; return f&&f.number?f.number(Number(x.toFixed(1)),{minimumFractionDigits:1,maximumFractionDigits:1}):x.toFixed(1); }
+// the stored pace is a data value (measured / quick / steady); only its label is worded
+function paceName(p){ return (p==='measured'||p==='quick'||p==='steady')?T('pace.'+p):String(p==null?'':p); }
+// what the result area shows, kept as a function so a locale change can redraw it
+let outFn=null, outAfter=null;
+function setOut(fn, after){ outFn=fn; outAfter=after||null; out.innerHTML=fn(); if(after) requestAnimationFrame(after); }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 let db=null, past=[];
 function drawHist(){
   if(!past.length){ histBox.style.display='none'; return; }
   histBox.style.display='';
-  hlist.innerHTML=past.slice().reverse().map(t=>'<div class="take"><span>'+esc(t.pace)+' · '+Math.round((t.talk||0)*100)+'% talking · '+t.pauses+' long pause'+(t.pauses===1?'':'s')+'</span><span class="when">'+when(t.ts)+' · '+(t.dur||0).toFixed(1)+'s</span></div>').join('');
+  hlist.innerHTML=past.slice().reverse().map(t=>'<div class="take"><span>'+esc(T('take.line',{pace:paceName(t.pace),talk:Math.round((t.talk||0)*100),pauses:t.pauses||0}))+'</span><span class="when">'+esc(T('take.when',{when:when(t.ts),secs:num1(t.dur||0)}))+'</span></div>').join('');
 }
 function paintWave(frames, voiced){
   const c=document.getElementById('wave'); if(!c||!frames.length) return;
@@ -3721,30 +3966,30 @@ function analyse(buf){
   let bursts=0,prev=false; for(const v of voiced){ if(v&&!prev)bursts++; prev=v; }
   const talkDur=voicedFrac*dur, wpm=talkDur>0.3?Math.round(bursts/talkDur*60):0;
   const bps=bursts/(dur||1), pace=bps<2.2?'measured':bps>4.2?'quick':'steady';
-  const tips=[];
-  if(dur<1.2) tips.push('That was very short — try a sentence or two so there is something to measure.');
-  if(voicedFrac<0.08) tips.push('Almost no voice landed on the clip. Speak closer to the mic, or check GifOS still has the microphone allowed for this app.');
-  else if(voicedFrac<0.45) tips.push('Lots of silence — fill it with confident delivery, or trim the dead air.');
-  if(pauses>=3) tips.push('Several long pauses — a few land, too many lose the room.');
-  if(cv>0.7) tips.push('Volume swings a lot — even it out so every word lands.');
-  if(pace==='quick') tips.push('You’re quick — slow down on key points to let them sink in.');
-  if(pace==='measured'&&voicedFrac>0.6) tips.push('Lovely measured pace — great for clarity.');
-  if(!tips.length) tips.push('Well balanced — clear pace, steady volume, natural pauses.');
+  const tips=[];   // catalog keys, worded when the card is drawn
+  if(dur<1.2) tips.push('tip.short');
+  if(voicedFrac<0.08) tips.push('tip.silent');
+  else if(voicedFrac<0.45) tips.push('tip.quiet');
+  if(pauses>=3) tips.push('tip.pauses');
+  if(cv>0.7) tips.push('tip.volume');
+  if(pace==='quick') tips.push('tip.quick');
+  if(pace==='measured'&&voicedFrac>0.6) tips.push('tip.measured');
+  if(!tips.length) tips.push('tip.good');
   return {dur,voicedFrac,pauses,pace,cv,wpm,bursts,frames,voiced,tips};
 }
 function card(a, url, vsLast){
   const vol=a.cv<0.4?'steady':a.cv<0.7?'ok':'uneven';
-  const wpmLine=a.wpm?('<div class="metric"><span>Estimated pace</span><b>~'+a.wpm+' bursts/min</b></div>'):'';
-  const delta=vsLast?('<div class="fine">Versus your last take: talking '+(a.voicedFrac>vsLast.talk?'up':'down')+' from '+Math.round(vsLast.talk*100)+'%, pace was '+esc(vsLast.pace)+'.</div>'):'';
-  return '<div class="card"><h3>Your delivery</h3>'+
-    '<div class="metric"><span>Length</span><b>'+a.dur.toFixed(1)+'s</b></div>'+
-    '<div class="metric"><span>Talking vs silence</span><b>'+Math.round(a.voicedFrac*100)+'% talking</b></div>'+
-    '<div class="metric"><span>Long pauses</span><b>'+a.pauses+'</b></div>'+
-    '<div class="metric"><span>Pace</span><b>'+a.pace+'</b></div>'+wpmLine+
-    '<div class="metric"><span>Volume</span><b>'+vol+'</b></div>'+
+  const wpmLine=a.wpm?('<div class="metric"><span>'+esc(T('metric.estPace'))+'</span><b>'+esc(T('metric.burstsValue',{wpm:a.wpm}))+'</b></div>'):'';
+  const delta=vsLast?('<div class="fine">'+esc(T(a.voicedFrac>vsLast.talk?'delta.up':'delta.down',{pct:Math.round(vsLast.talk*100),pace:paceName(vsLast.pace)}))+'</div>'):'';
+  return '<div class="card"><h3>'+esc(T('card.title'))+'</h3>'+
+    '<div class="metric"><span>'+esc(T('metric.length'))+'</span><b>'+esc(T('unit.secs',{n:num1(a.dur)}))+'</b></div>'+
+    '<div class="metric"><span>'+esc(T('metric.talkVsSilence'))+'</span><b>'+esc(T('talking',{n:Math.round(a.voicedFrac*100)}))+'</b></div>'+
+    '<div class="metric"><span>'+esc(T('metric.longPauses'))+'</span><b>'+a.pauses+'</b></div>'+
+    '<div class="metric"><span>'+esc(T('metric.pace'))+'</span><b>'+esc(paceName(a.pace))+'</b></div>'+wpmLine+
+    '<div class="metric"><span>'+esc(T('metric.volume'))+'</span><b>'+esc(T('vol.'+vol))+'</b></div>'+
     '<canvas class="wave" id="wave"></canvas>'+
-    '<div class="tip">'+a.tips.join(' ')+'</div>'+
-    '<div class="fine">Bursts/min is counted from loud-vs-quiet, not words. This app never transcribes you.</div>'+delta+
+    '<div class="tip">'+esc(a.tips.map(k=>T(k)).join(T('tips.sep')))+'</div>'+
+    '<div class="fine">'+esc(T('fine.bursts'))+'</div>'+delta+
     (url?'<audio controls src="'+url+'"></audio>':'')+'</div>';
 }
 async function keep(a){
@@ -3757,33 +4002,32 @@ async function keep(a){
   drawHist();
 }
 recBtn.onclick=async()=>{
-  if(!window.gifos||!gifos.recordAudio){ out.innerHTML='<div class="card">Open this inside GifOS to use the microphone. GifOS records behind its own indicator; this app never sees a live mic.</div>'; return; }
-  recBtn.disabled=true; out.innerHTML='<div class="card wait">GifOS is opening its recorder. Speak when the red indicator says it is capturing — tap <b>Stop &amp; use</b> there when you are done (it also stops at 12 seconds).</div>';
+  if(!window.gifos||!gifos.recordAudio){ setOut(()=>'<div class="card">'+esc(T('err.noGifos'))+'</div>'); return; }
+  recBtn.disabled=true; setOut(()=>'<div class="card wait">'+rich(T('wait.recorder'))+'</div>');
   try{
     const clip=await gifos.recordAudio({maxSeconds:12});
-    out.innerHTML='<div class="card wait">Analysing the clip on this device…</div>';
+    setOut(()=>'<div class="card wait">'+esc(T('wait.analysing'))+'</div>');
     const AC=window.AudioContext||window.webkitAudioContext; const ctx=new AC();
     const buf=await ctx.decodeAudioData(clip.bytes.slice(0));
     const a=analyse(buf);
     const url=URL.createObjectURL(new Blob([clip.bytes],{type:clip.mime||'audio/webm'}));
     const last=past[past.length-1]||null;
-    out.innerHTML=card(a,url,last);
-    requestAnimationFrame(function(){ paintWave(a.frames, a.voiced); });
+    setOut(()=>card(a,url,last), function(){ paintWave(a.frames, a.voiced); });
     await keep(a); ctx.close();
   }catch(e){
     const msg=String((e&&e.message)||e||'');
-    if(/cancel/i.test(msg)) out.innerHTML='<div class="card">Recording cancelled. Nothing was kept.</div>';
-    else if(/denied|Permission/i.test(msg)) out.innerHTML='<div class="card">The microphone was denied. Allow it when the browser asks, and leave it on in this app’s Abilities chip.</div>';
-    else if(/turned .*off|Abilities/i.test(msg)) out.innerHTML='<div class="card">'+esc(msg)+'</div>';
-    else out.innerHTML='<div class="card">Couldn’t record: '+esc(msg)+'</div>';
+    if(/cancel/i.test(msg)) setOut(()=>'<div class="card">'+esc(T('err.cancelled'))+'</div>');
+    else if(/denied|Permission/i.test(msg)) setOut(()=>'<div class="card">'+esc(T('err.denied'))+'</div>');
+    else if(/turned .*off|Abilities/i.test(msg)) setOut(()=>'<div class="card">'+esc(msg)+'</div>');
+    else setOut(()=>'<div class="card">'+esc(T('err.record',{msg:msg}))+'</div>');
   }
   recBtn.disabled=false;
 };
-(async()=>{
+i18nStart(async()=>{
   if(!window.gifos||!gifos.db) return;
   db=gifos.db('takes');
   try{ const rows=await db.getAll(); past=(rows||[]).filter(r=>r&&r.ts).sort((a,b)=>(a.ts||0)-(b.ts||0)).slice(-8); drawHist(); }catch(e){}
-})();
+}, function(){ drawHist(); if(outFn) setOut(outFn, outAfter); });
 </script>`;
 
   // Ask AI — showcases gifos.ai. Uses the models the user wired in Settings; the
@@ -3862,11 +4106,12 @@ recBtn.onclick=async()=>{
   .hconfirm button.yes{border-color:#ff5caa;color:#ff5caa}
   .hempty{color:#8888aa;padding:18px 8px;line-height:1.5}
 </style>
-<header>Ask AI<span class="sp"></span><button id="histbtn" title="Every chat you have had, searchable">🕘 History</button><button id="new" title="Start a new chat — this one is kept in History">＋ New chat</button></header>
+<header><span data-i18n="title">Ask AI</span><span class="sp"></span><button id="histbtn" title="Every chat you have had, searchable" data-i18n-title="history.title" data-i18n="history">🕘 History</button><button id="new" title="Start a new chat — this one is kept in History" data-i18n-title="new.title" data-i18n="new">＋ New chat</button></header>
 <div id="log"></div>
-<div class="pick"><button data-m="cheapest" class="on">Cheapest</button><button data-m="smartest">Smartest</button></div>
-<form id="f"><textarea id="t" placeholder="Ask anything… (Enter to send, Shift+Enter for a new line)" autocomplete="off" rows="1"></textarea><button id="send">Send</button></form>
-<div id="hist"><div class="hbar"><b>Your chats</b><input id="hq" placeholder="Search by keyword…" autocomplete="off"><button id="hclose">Close</button></div><div id="hlist"></div></div>
+<div class="pick"><button data-m="cheapest" class="on" data-i18n="model.cheapest">Cheapest</button><button data-m="smartest" data-i18n="model.smartest">Smartest</button></div>
+<form id="f"><textarea id="t" placeholder="Ask anything… (Enter to send, Shift+Enter for a new line)" data-i18n-ph="input.placeholder" autocomplete="off" rows="1"></textarea><button id="send" data-i18n="send">Send</button></form>
+<div id="hist"><div class="hbar"><b data-i18n="hist.title">Your chats</b><input id="hq" placeholder="Search by keyword…" data-i18n-ph="hist.search" autocomplete="off"><button id="hclose" data-i18n="close">Close</button></div><div id="hlist"></div></div>
+<script>${I18N_BOOT_C}</script>
 <script>
 const log=document.getElementById('log'), input=document.getElementById('t'), sendBtn=document.getElementById('send');
 const histBox=document.getElementById('hist'), hlist=document.getElementById('hlist'), hq=document.getElementById('hq');
@@ -3880,39 +4125,52 @@ const pad=n=>(n<10?'0':'')+n;
 function stamp(ts){ const d=new Date(ts);
   return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds()); }
 function stampMin(ts){ return stamp(ts).slice(0,16); }
-function secs(ms){ return ms<1000?(Math.round(ms)+'ms'):((ms/1000).toFixed(1)+'s'); }
+// one decimal, in the system locale; English stays toFixed(1)
+function num1(x){ const f=window.gifos&&gifos.i18n&&gifos.i18n.fmt; return f&&f.number?f.number(Number(x.toFixed(1)),{minimumFractionDigits:1,maximumFractionDigits:1}):x.toFixed(1); }
+function secs(ms){ return ms<1000?T('time.ms',{n:Math.round(ms)}):T('time.s',{n:num1(ms/1000)}); }
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function metaOf(r){
   const bits=[stamp(r.ts)];
   if(r.role==='assistant'){
     if(r.model) bits.push(r.model);
-    if(r.firstMs!=null) bits.push('first word '+secs(r.firstMs));
+    if(r.firstMs!=null) bits.push(T('meta.first',{t:secs(r.firstMs)}));
     // A finished answer that never sent a first word did not stream. Say so:
     // silence here is how "GifOS is broken" and "this model answers in one
     // piece" became the same thing to look at.
-    else if(r.ms!=null&&!r.error) bits.push('no streaming from this model');
-    if(r.ms!=null) bits.push(secs(r.ms)+' total');
+    else if(r.ms!=null&&!r.error) bits.push(T('meta.noStream'));
+    if(r.ms!=null) bits.push(T('meta.total',{t:secs(r.ms)}));
   }
   return bits.join(' · ');
 }
 function bottom(){ log.scrollTop=log.scrollHeight; }
 function copyBtn(text){
   const a=document.createElement('div'); a.className='acts';
-  const b=document.createElement('button'); b.type='button'; b.textContent='Copy';
-  b.onclick=async()=>{ try{ await navigator.clipboard.writeText(text); b.textContent='Copied'; setTimeout(()=>{ b.textContent='Copy'; },1200); }catch(e){ b.textContent='Couldn’t copy'; } };
+  const b=document.createElement('button'); b.type='button'; b.textContent=T('copy'); b.setAttribute('data-copy','1');
+  b.onclick=async()=>{ try{ await navigator.clipboard.writeText(text); b.textContent=T('copied'); setTimeout(()=>{ b.textContent=T('copy'); },1200); }catch(e){ b.textContent=T('copyFail'); } };
   a.appendChild(b); return a;
 }
 function draw(r){
   const row=document.createElement('div'); row.className='row '+(r.role==='user'?'you':'ai');
   const b=document.createElement('div'); b.className='m '+(r.role==='user'?'you':'ai'); if(r.error) b.classList.add('err');
   b.textContent=r.content||'';
-  const s=document.createElement('div'); s.className='stamp'; s.textContent=metaOf(r);
+  const s=document.createElement('div'); s.className='stamp'; s.textContent=metaOf(r); s._r=r;
   row.appendChild(b); row.appendChild(s);
   if(r.role==='assistant'&&r.content&&!r.error) row.appendChild(copyBtn(r.content));
   log.appendChild(row); bottom();
   return {bubble:b, stamp:s, row:row};
 }
-function note(html){ const d=document.createElement('div'); d.className='note'; d.innerHTML=html; log.appendChild(d); bottom(); return d; }
+// fn returns the note's HTML; it is kept so a locale change can re-word the note
+function note(fn){ const d=document.createElement('div'); d.className='note'; d._fn=fn; d.innerHTML=fn(); log.appendChild(d); bottom(); return d; }
+const nt=(k,p)=>()=>rich(T(k,p));
+// A locale change: the static chrome is done by applyI18n; the rest is redrawn here.
+function reword(){
+  document.querySelectorAll('.stamp').forEach(e=>{ if(e._r) e.textContent=metaOf(e._r); });
+  document.querySelectorAll('button[data-copy]').forEach(e=>{ e.textContent=T('copy'); });
+  document.querySelectorAll('.note').forEach(d=>{ if(!d._fn) return;
+    const keep=Array.prototype.filter.call(d.children,c=>c.hasAttribute('data-keep'));
+    d.innerHTML=d._fn(); keep.forEach(c=>d.appendChild(c)); });
+  if(histBox.classList.contains('on')) renderHistory();
+}
 function uid(p){ return (p||'m')+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 // One write path. all[] is the in-memory mirror of the collection, so the
 // history list and the search see a message the instant it is sent.
@@ -3945,7 +4203,7 @@ function conversations(){
 function titleOf(c){
   const first=c.msgs.filter(m=>m.role==='user'&&m.content)[0]||c.msgs[0];
   const t=String((first&&first.content)||'').replace(/\\s+/g,' ').trim();
-  return t?(t.length>72?t.slice(0,72)+'…':t):'Empty chat';
+  return t?(t.length>72?t.slice(0,72)+'…':t):T('chat.empty');
 }
 // Search reads the WHOLE chat, not just its title: you look for the answer you
 // half-remember as often as for the question you asked. Every word must appear.
@@ -3958,21 +4216,21 @@ function renderHistory(){
   const words=hq.value.trim().toLowerCase().split(/\\s+/).filter(Boolean);
   const list=conversations().filter(c=>matches(c,words));
   if(!list.length){
-    hlist.innerHTML='<div class="hempty">'+(words.length
-      ? 'No chat mentions “'+esc(hq.value.trim())+'”.'
-      : 'No chats yet. Everything you ask is kept here until you delete it.')+'</div>';
+    hlist.innerHTML='<div class="hempty">'+esc(words.length
+      ? T('hist.nomatch',{q:hq.value.trim()})
+      : T('hist.none'))+'</div>';
     return;
   }
   hlist.innerHTML=list.map(c=>{
-    const n=c.msgs.length+' message'+(c.msgs.length===1?'':'s');
+    const n=T('messages',{n:c.msgs.length});
     if(pendingDel===c.id) return '<div class="hrow" data-c="'+esc(c.id)+'"><div class="hconfirm">'+
-      '<span>Delete this chat and its '+n+'?</span>'+
-      '<button class="yes" data-del="'+esc(c.id)+'">Delete</button><button class="no">Keep it</button></div></div>';
+      '<span>'+esc(T('hist.confirm',{n:c.msgs.length}))+'</span>'+
+      '<button class="yes" data-del="'+esc(c.id)+'">'+esc(T('delete'))+'</button><button class="no">'+esc(T('keep'))+'</button></div></div>';
     return '<div class="hrow'+(c.id===conv?' cur':'')+'" data-c="'+esc(c.id)+'">'+
       '<button class="hopen" data-open="'+esc(c.id)+'">'+
         '<span class="htitle">'+esc(titleOf(c))+'</span>'+
-        '<span class="hmeta">'+stampMin(c.updated)+' · '+n+(c.id===conv?' · open now':'')+'</span></button>'+
-      '<button class="row-del" data-ask="'+esc(c.id)+'" title="Delete this chat">'+DEL+'</button></div>';
+        '<span class="hmeta">'+stampMin(c.updated)+' · '+esc(n)+(c.id===conv?' · '+esc(T('hist.openNow')):'')+'</span></button>'+
+      '<button class="row-del" data-ask="'+esc(c.id)+'" title="'+esc(T('hist.delete'))+'">'+DEL+'</button></div>';
   }).join('');
 }
 function openHistory(){ pendingDel=null; hq.value=''; renderHistory(); histBox.classList.add('on'); try{ hq.focus(); }catch(e){} }
@@ -3991,7 +4249,7 @@ function openConv(id){
   conv=id; hist=c.msgs.slice(); seq=0;
   for(const r of hist) seq=Math.max(seq,r.seq||0);
   log.innerHTML=''; hist.forEach(draw);
-  note('Reopened this chat from '+stampMin(c.started)+' — keep typing and it carries on.');
+  note(nt('note.reopened',{when:stampMin(c.started)}));
   remember();
 }
 // The ONLY thing in this app that erases anything, and it is one button click
@@ -4004,15 +4262,15 @@ async function deleteConv(id){
 }
 function startNew(quiet){
   conv=uid('c'); hist=[]; seq=0; log.innerHTML=''; remember();
-  if(!quiet) note('New chat. The one you were in is saved — press <b>🕘 History</b> to find it again.');
+  if(!quiet) note(nt('note.newChat'));
 }
 document.getElementById('new').onclick=()=>{
   if(busy) return;
-  if(!hist.length){ note('This chat is already empty — ask something.'); return; }
+  if(!hist.length){ note(nt('note.alreadyEmpty')); return; }
   startNew();
 };
-(async()=>{
-  if(!window.gifos||!gifos.ai){ note('Open this inside GifOS to use AI.'); return; }
+i18nStart(async()=>{
+  if(!window.gifos||!gifos.ai){ note(nt('note.noGifos')); return; }
   db=gifos.db('chat'); prefs=gifos.db('prefs');
   const p=await prefs.get('askai').catch(()=>null);
   if(p&&p.model) setModel(p.model);
@@ -4030,21 +4288,21 @@ document.getElementById('new').onclick=()=>{
     const pick=want?(convs.filter(c=>c.id===want)[0]||null):(convs[0]||null);
     conv=want||(pick?pick.id:uid('c'));
     if(pick){ hist=pick.msgs.slice(); for(const r of hist) seq=Math.max(seq,r.seq||0); hist.forEach(draw); }
-  }catch(e){ note('Couldn’t read your saved chats: '+((e&&e.message)||e)); }
+  }catch(e){ note(nt('err.read',{msg:String((e&&e.message)||e)})); }
   if(!conv) conv=uid('c');
   const others=convs.length-(hist.length?1:0);
-  if(hist.length) note('Picking up where you left off — '+hist.length+' message'+(hist.length===1?'':'s')+' from '+stampMin(hist[0].ts)+'.'+
-    (others>0?' '+others+' other chat'+(others===1?'':'s')+' in <b>🕘 History</b>.':''));
-  else if(others>0) note('New chat. Your '+others+' earlier chat'+(others===1?'':'s')+' '+(others===1?'is':'are')+' in <b>🕘 History</b>.');
+  if(hist.length){ const first=stampMin(hist[0].ts), nMsg=hist.length;
+    note(()=>rich(T('note.resume',{n:nMsg,when:first}))+(others>0?' '+rich(T('note.resumeOthers',{n:others})):'')); }
+  else if(others>0) note(nt('note.earlier',{n:others}));
   remember();
   const m=await gifos.ai.models().catch(()=>({available:[]}));
   if(!(m.available||[]).includes('cheapest')&&!(m.available||[]).includes('smartest')){
-    const n=note('No language model is set up on this computer yet. Send a question — GifOS will walk you through wiring one. The key stays in your browser; this app never sees it.');
-    const b=document.createElement('button'); b.textContent='Set up a model'; b.style.cssText='display:block;margin-top:10px;padding:6px 12px;border-radius:8px;border:1px solid #2a2a3f;background:#14141f;color:#e0e0f0;font:inherit;font-size:.82rem;cursor:pointer';
+    const n=note(nt('note.noModel'));
+    const b=document.createElement('button'); b.textContent=T('setup'); b.setAttribute('data-keep','1'); b.setAttribute('data-i18n','setup'); b.style.cssText='display:block;margin-top:10px;padding:6px 12px;border-radius:8px;border:1px solid #2a2a3f;background:#14141f;color:#e0e0f0;font:inherit;font-size:.82rem;cursor:pointer';
     b.onclick=()=>{ if(gifos.aiSetup) gifos.aiSetup(model); };
     n.appendChild(b);
   }
-})();
+}, reword);
 input.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); document.getElementById('f').requestSubmit(); }
 });
@@ -4061,7 +4319,7 @@ document.getElementById('f').onsubmit=async e=>{
       if(first===null){ first=Date.now()-t0; a.firstMs=first; el.bubble.textContent=''; }
       streamed+=piece; el.bubble.textContent=streamed; el.stamp.textContent=metaOf(a); bottom();
     }});
-    a.content=((r&&r.text)||streamed||'(no answer)');
+    a.content=((r&&r.text)||streamed||T('noAnswer'));
     a.ms=Date.now()-t0;
     if(r&&r.streamed===false&&first===null) a.firstMs=undefined;
     el.bubble.textContent=a.content;
@@ -4072,7 +4330,7 @@ document.getElementById('f').onsubmit=async e=>{
     // NOT_CONFIGURED bubble — that string is for machines, not people.
     if(/NOT_CONFIGURED/.test(msg)){
       el.row.remove(); seq--;
-      note('GifOS is asking you to set up a model. Come back and send again once it is wired.');
+      note(nt('note.setupAsked'));
       busy=false; sendBtn.disabled=false; input.focus(); return;
     }
     a.error=true; a.content='⚠ '+msg; a.ms=Date.now()-t0;
@@ -4111,39 +4369,45 @@ document.getElementById('f').onsubmit=async e=>{
   .hint{color:#8888aa;font-size:.78rem;padding:0 18px 10px;line-height:1.4}
   .note{color:#8888aa;font-size:.88rem;padding:0 18px 12px;line-height:1.5}
 </style>
-<header>📖 Reader<span class="sp"></span><span id="wc" style="color:#8888aa;font-weight:400;font-size:.78rem"></span></header>
-<textarea id="text" placeholder="Paste or type anything here, then press Read aloud."></textarea>
+<header><span data-i18n="title">📖 Reader</span><span class="sp"></span><span id="wc" style="color:#8888aa;font-weight:400;font-size:.78rem"></span></header>
+<textarea id="text" placeholder="Paste or type anything here, then press Read aloud." data-i18n-ph="text.placeholder"></textarea>
 <div id="script"></div>
 <div class="bar">
-  <select id="voice" title="A hint for the voice this computer uses. On-device voices have their own names and ignore this.">
-    <option value="">Default — this computer’s voice</option>
-    <option value="nova">Nova (if the provider knows it)</option>
-    <option value="shimmer">Shimmer (if the provider knows it)</option>
-    <option value="fable">Fable (if the provider knows it)</option>
-    <option value="echo">Echo (if the provider knows it)</option>
-    <option value="onyx">Onyx (if the provider knows it)</option>
-    <option value="alloy">Alloy (if the provider knows it)</option>
+  <select id="voice" title="A hint for the voice this computer uses. On-device voices have their own names and ignore this." data-i18n-title="voice.hint">
+    <option value="" data-i18n="voice.default">Default — this computer’s voice</option>
+    <option value="nova" data-voice="Nova">Nova (if the provider knows it)</option>
+    <option value="shimmer" data-voice="Shimmer">Shimmer (if the provider knows it)</option>
+    <option value="fable" data-voice="Fable">Fable (if the provider knows it)</option>
+    <option value="echo" data-voice="Echo">Echo (if the provider knows it)</option>
+    <option value="onyx" data-voice="Onyx">Onyx (if the provider knows it)</option>
+    <option value="alloy" data-voice="Alloy">Alloy (if the provider knows it)</option>
   </select>
-  <button id="read">🔊 Read aloud</button>
+  <button id="read" data-i18n="read">🔊 Read aloud</button>
   <button id="pause" class="ghost" style="display:none">⏸ Pause</button>
-  <button id="stop" class="ghost" style="display:none">■ Stop</button>
+  <button id="stop" class="ghost" style="display:none" data-i18n="stop">■ Stop</button>
 </div>
-<div class="hint">Named voices are a hint to a cloud TTS. An on-device voice uses its own names and ignores these.</div>
+<div class="hint" data-i18n="hint">Named voices are a hint to a cloud TTS. An on-device voice uses its own names and ignores these.</div>
 <div id="status"></div>
 <div class="note" id="note" style="display:none"></div>
+<script>${I18N_BOOT_C}</script>
 <script>
-const T=document.getElementById('text'), V=document.getElementById('voice');
+const TXT=document.getElementById('text'), V=document.getElementById('voice');
 const readBtn=document.getElementById('read'), stopBtn=document.getElementById('stop'), pauseBtn=document.getElementById('pause');
 const status=document.getElementById('status'), note=document.getElementById('note');
 const script=document.getElementById('script'), wc=document.getElementById('wc');
 let db=null, playing=false, session=0, paused=false;
-function say(m){ status.textContent=m||''; }
+// say(key, params) words a status line from the catalog (kept for a locale change); sayRaw(text) shows system text as is
+let sayArg=null;
+function say(k,p){ sayArg=k?[k,p]:null; status.textContent=k?T(k,p):''; }
+function sayRaw(m){ sayArg=null; status.textContent=m||''; }
+function pauseLbl(){ pauseBtn.textContent=T(paused?'resume':'pause'); }
+function voiceLbl(){ Array.prototype.forEach.call(V.options,function(o){ var n=o.getAttribute('data-voice'); if(n) o.textContent=T('voice.named',{name:n}); }); }
 function wordsOf(t){ return String(t||'').trim()?String(t).trim().split(/\\s+/).length:0; }
-function countWords(){ const n=wordsOf(T.value); wc.textContent=n?(n+' word'+(n===1?'':'s')):''; }
-T.addEventListener('input',()=>{ countWords(); remember(); });
+function countWords(){ const n=wordsOf(TXT.value); wc.textContent=n?T('words',{n:n}):''; }
+TXT.addEventListener('input',()=>{ countWords(); remember(); });
 V.addEventListener('change',remember);
-function remember(){ if(db) db.put({id:'current',text:T.value,voice:V.value}).catch(()=>{}); }
-function showScript(on){ script.style.display=on?'block':'none'; T.style.display=on?'none':'block'; }
+function remember(){ if(db) db.put({id:'current',text:TXT.value,voice:V.value}).catch(()=>{}); }
+function showScript(on){ script.style.display=on?'block':'none'; TXT.style.display=on?'none':'block'; }
 function fillScript(sents){
   script.innerHTML=sents.map((s,i)=>'<span class="sent" data-i="'+i+'">'+s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))+'</span>').join(' ');
 }
@@ -4157,15 +4421,15 @@ function markSent(from,to){
 // reads never hit a provider's per-request ceiling.
 function playBytes(r){ return new Promise((res,rej)=>{
   const url=URL.createObjectURL(new Blob([r.bytes],{type:r.mime||'audio/mpeg'}));
-  const a=new Audio(url); window.__cur=a; paused=false; pauseBtn.textContent='⏸ Pause';
+  const a=new Audio(url); window.__cur=a; paused=false; pauseLbl();
   a.onended=()=>{ URL.revokeObjectURL(url); if(window.__cur===a) window.__cur=null; res(); };
-  a.onerror=()=>{ URL.revokeObjectURL(url); if(window.__cur===a) window.__cur=null; rej(new Error('could not play the audio')); };
+  a.onerror=()=>{ URL.revokeObjectURL(url); if(window.__cur===a) window.__cur=null; rej(new Error(T('err.play'))); };
   a.play().catch(rej);
 }); }
 pauseBtn.onclick=()=>{
   const a=window.__cur; if(!a) return;
-  if(paused){ a.play().catch(()=>{}); paused=false; pauseBtn.textContent='⏸ Pause'; say('Reading…'); }
-  else { a.pause(); paused=true; pauseBtn.textContent='▶ Resume'; say('Paused.'); }
+  if(paused){ a.play().catch(()=>{}); paused=false; pauseLbl(); say('status.reading'); }
+  else { a.pause(); paused=true; pauseLbl(); say('status.paused'); }
 };
 // LEARN HOW FAST THIS VOICE IS, then size the passages to suit it. Reader
 // cannot know who serves Text -> speech — a cloud endpoint, a formant
@@ -4195,7 +4459,7 @@ function takeChunk(sents,i,first){
   return {text:cur,from:start,next:i};
 }
 async function readAloud(){
-  const text=T.value.trim(); if(!text){ say('Nothing to read yet.'); return; }
+  const text=TXT.value.trim(); if(!text){ say('status.nothing'); return; }
   const my=++session; playing=true; paused=false;
   readBtn.style.display='none'; stopBtn.style.display=''; pauseBtn.style.display='';
   remember();
@@ -4224,40 +4488,45 @@ async function readAloud(){
       const span={from:cut.from, next:cut.next}; cut=after; n++;
       if(!playing||my!==session) break;
       markSent(span.from, span.next);
-      say('Reading… sentence '+(span.from+1)+'–'+span.next+' of '+sents.length);
+      say('status.sentence',{from:span.from+1,to:span.next,total:sents.length});
       await playBytes(audio);
       if(!next) break;
     }
-    if(playing&&my===session) say('Done.');
+    if(playing&&my===session) say('status.done');
   }catch(err){
     const msg=String((err&&err.message)||err||'');
-    if(/NOT_CONFIGURED/.test(msg)) say('GifOS is asking you to set up Text → speech. Come back and press Read aloud once it is wired.');
-    else say('⚠ '+msg);
+    if(/NOT_CONFIGURED/.test(msg)) say('status.setupAsked');
+    else sayRaw('⚠ '+msg);
   }
   playing=false; paused=false; showScript(false);
   readBtn.style.display=''; stopBtn.style.display='none'; pauseBtn.style.display='none';
 }
 readBtn.onclick=readAloud;
-stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ try{ window.__cur.pause(); }catch(e){} window.__cur=null; } showScript(false); say('Stopped.'); readBtn.style.display=''; stopBtn.style.display='none'; pauseBtn.style.display='none'; };
-(async()=>{
-  if(!window.gifos||!gifos.ai){ note.style.display=''; note.innerHTML='Open this inside GifOS to use it.'; return; }
+stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ try{ window.__cur.pause(); }catch(e){} window.__cur=null; } showScript(false); say('status.stopped'); readBtn.style.display=''; stopBtn.style.display='none'; pauseBtn.style.display='none'; };
+// the note under the status line: noteFn words it (kept for a locale change); a button the app adds is data-keep
+let noteFn=null;
+function setNote(fn){ noteFn=fn; note.style.display=''; const keep=Array.prototype.filter.call(note.children,function(c){ return c.hasAttribute('data-keep'); }); note.innerHTML=fn(); keep.forEach(function(c){ note.appendChild(c); }); }
+i18nStart(async()=>{
+  voiceLbl(); pauseLbl();
+  if(!window.gifos||!gifos.ai){ setNote(()=>rich(T('note.noGifos'))); return; }
   db=gifos.db('texts');
-  db.get('current').then(d=>{ if(d&&d.text&&!T.value) T.value=d.text; if(d&&typeof d.voice==='string') V.value=d.voice; countWords(); }).catch(()=>{});
+  db.get('current').then(d=>{ if(d&&d.text&&!TXT.value) TXT.value=d.text; if(d&&typeof d.voice==='string') V.value=d.voice; countWords(); }).catch(()=>{});
   countWords();
   const m=await gifos.ai.models().catch(()=>({available:[]}));
   if(!(m.available||[]).includes('tts')){
-    note.style.display='';
-    note.innerHTML='No <b>Text → speech</b> is set up on this computer yet. Press <b>Read aloud</b> and GifOS will walk you through wiring a voice — a Provider app on this device, or an endpoint. This app never sees a key.';
-    const b=document.createElement('button'); b.textContent='Set up a voice'; b.style.cssText='display:block;margin-top:10px;padding:6px 12px;border-radius:8px;border:1px solid #2a2a3f;background:#14141f;color:#e0e0f0;font:inherit;font-size:.82rem;cursor:pointer';
+    setNote(()=>rich(T('note.noTts')));
+    const b=document.createElement('button'); b.textContent=T('setup'); b.setAttribute('data-keep','1'); b.setAttribute('data-i18n','setup'); b.style.cssText='display:block;margin-top:10px;padding:6px 12px;border-radius:8px;border:1px solid #2a2a3f;background:#14141f;color:#e0e0f0;font:inherit;font-size:.82rem;cursor:pointer';
     b.onclick=()=>{ if(gifos.aiSetup) gifos.aiSetup('tts'); };
     note.appendChild(b);
   }
-})();
+}, function(){ voiceLbl(); countWords(); pauseLbl(); if(sayArg) say(sayArg[0],sayArg[1]); if(noteFn) setNote(noteFn); });
 </script>`;
 
   function manifest(appId, name, accent, extra) {
     return JSON.stringify(Object.assign({
       gifos: '1.0', appId, name, version: '0.2.0', entry: 'index.html', accent,
+      // Built-in: its words live in GifOS's catalogs, i18n/<locale>/apps/<appId>.json.
+      i18n: 'gifos',
       capabilities: { db: true, multiplayer: true, network: [] },
     }, extra || {}));
   }
@@ -4412,37 +4681,37 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
 <header>
   <h1>My Media</h1>
   <span id="cap"></span>
-  <button class="btn" id="add">＋ Add</button>
+  <button class="btn" id="add" data-i18n="add">＋ Add</button>
 </header>
 <div id="bar">
   <span class="seg" id="types">
-    <button data-t="all" class="on">All</button>
+    <button data-t="all" class="on" data-i18n="filter.all">All</button>
     <button data-t="image">🖼</button>
     <button data-t="audio">🎵</button>
     <button data-t="video">🎬</button>
   </span>
-  <select id="cat"><option value="all">All categories</option></select>
+  <select id="cat"><option value="all" data-i18n="filter.allCats">All categories</option></select>
   <span id="count"></span>
 </div>
 <div id="selbar">
   <span id="seln">0 selected</span>
-  <button class="btn ghost" id="selall">Select all</button>
-  <button class="btn" id="selcat">Categorize</button>
-  <button class="danger" id="seldel">Delete</button>
-  <button class="btn ghost" id="selclear">Clear</button>
+  <button class="btn ghost" id="selall" data-i18n="sel.all">Select all</button>
+  <button class="btn" id="selcat" data-i18n="sel.categorize">Categorize</button>
+  <button class="danger" id="seldel" data-i18n="sel.delete">Delete</button>
+  <button class="btn ghost" id="selclear" data-i18n="sel.clear">Clear</button>
 </div>
 <div id="grid"></div>
 <div id="empty"><div class="big" id="empty-icon">🎞️</div><div><b id="empty-title">No media yet</b></div><div class="sub" id="empty-sub" style="margin-top:.4rem">Tap <b>＋ Add</b> to import photos, audio or video — or drop files anywhere.</div></div>
 <input type="file" id="fi" accept="image/*,audio/*,video/*" multiple hidden>
-<div id="drop">Drop to add to your library</div>
+<div id="drop" data-i18n="drop">Drop to add to your library</div>
 <div id="modal"><div class="box">
   <div class="stage" id="stage"></div>
   <div class="info" id="detail">
-    <input type="text" id="mname" placeholder="Name">
-    <div class="row"><span class="sub">Category</span><input type="text" id="mcat" list="cats" placeholder="Unsorted"><button class="btn ghost" id="msave">Save</button></div>
+    <input type="text" id="mname" placeholder="Name" data-i18n-ph="detail.name.ph">
+    <div class="row"><span class="sub" data-i18n="detail.category">Category</span><input type="text" id="mcat" list="cats" placeholder="Unsorted" data-i18n-ph="cat.unsorted"><button class="btn ghost" id="msave" data-i18n="detail.save">Save</button></div>
     <datalist id="cats"></datalist>
-    <div class="row" id="visrow" style="display:none"><label class="tgl"><input type="checkbox" id="mvis"><span class="tslide"></span></label><div class="visinfo"><div class="vt">Visible to invited guests</div><span class="sub" id="vishint">Private — only you can see it.</span></div></div>
-    <div class="row"><span class="sub" id="minfo"></span><span style="flex:1"></span><button class="btn ghost" id="mfliph">Flip ↔️</button><button class="btn ghost" id="mflipv">Flip ↕️</button><button class="btn ghost" id="mclip">Clip</button><button class="btn ghost" id="mrev">Reverse</button><button class="btn" id="mgif">Make GIF</button><button class="btn ghost" id="mdown">Download</button><button class="danger" id="mdel">Delete</button><button class="btn ghost" id="mclose">Close</button></div>
+    <div class="row" id="visrow" style="display:none"><label class="tgl"><input type="checkbox" id="mvis"><span class="tslide"></span></label><div class="visinfo"><div class="vt" data-i18n="detail.vis.title">Visible to invited guests</div><span class="sub" id="vishint" data-i18n="vis.hint.default">Private — only you can see it.</span></div></div>
+    <div class="row"><span class="sub" id="minfo"></span><span style="flex:1"></span><button class="btn ghost" id="mfliph" data-i18n="detail.flipH">Flip ↔️</button><button class="btn ghost" id="mflipv" data-i18n="detail.flipV">Flip ↕️</button><button class="btn ghost" id="mclip" data-i18n="detail.clip">Clip</button><button class="btn ghost" id="mrev" data-i18n="detail.reverse">Reverse</button><button class="btn" id="mgif" data-i18n="detail.makeGif">Make GIF</button><button class="btn ghost" id="mdown" data-i18n="detail.download">Download</button><button class="danger" id="mdel" data-i18n="detail.delete">Delete</button><button class="btn ghost" id="mclose" data-i18n="detail.close">Close</button></div>
   </div>
   <div class="info" id="gifpanel">
     <div id="filmstrip"></div>
@@ -4454,7 +4723,7 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
     </div>
     <div id="giftimes"><span id="gifta"></span><span id="giftd"></span><span id="giftb"></span></div>
     <div id="gifbudget"></div>
-    <div class="sub gifspeed-label">Speed</div>
+    <div class="sub gifspeed-label" data-i18n="gif.speed">Speed</div>
     <div class="seg" id="gifspeeds">
       <button data-s="0.25">0.25×</button>
       <button data-s="0.5">0.5×</button>
@@ -4463,23 +4732,33 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
       <button data-s="1.5">1.5×</button>
       <button data-s="2">2×</button>
     </div>
-    <div class="row"><button class="btn" id="gifgo">Make GIF</button><button class="btn ghost" id="gifstop" style="display:none">Stop</button><button class="btn ghost" id="gifback">Cancel</button></div>
+    <div class="row"><button class="btn" id="gifgo" data-i18n="gif.go">Make GIF</button><button class="btn ghost" id="gifstop" style="display:none" data-i18n="gif.stop">Stop</button><button class="btn ghost" id="gifback" data-i18n="gif.cancel">Cancel</button></div>
     <div id="gifprog" class="sub"></div>
   </div>
 </div></div>
 <div id="toast"></div>
 <div id="delwarn"><div class="box"><div class="info">
   <div id="delwarn-msg"></div>
-  <div class="row"><button class="danger" id="mdel-confirm">Delete forever</button><button class="btn ghost" id="mdel-cancel">Cancel</button></div>
+  <div class="row"><button class="danger" id="mdel-confirm" data-i18n="delwarn.confirm">Delete forever</button><button class="btn ghost" id="mdel-cancel" data-i18n="delwarn.cancel">Cancel</button></div>
 </div></div></div>
 <div id="catpick"><div class="box"><div class="info">
-  <div class="sub">Move to a category — or type a new one. From Deleted, this puts items back in the library.</div>
+  <div class="sub" data-i18n="catpick.hint">Move to a category — or type a new one. From Deleted, this puts items back in the library.</div>
   <div class="picks" id="catpick-list"></div>
-  <div class="row"><input type="text" id="catpick-new" placeholder="New category"><button class="btn" id="catpick-go">Apply</button></div>
-  <div class="row"><button class="btn ghost" id="catpick-cancel">Cancel</button></div>
+  <div class="row"><input type="text" id="catpick-new" placeholder="New category" data-i18n-ph="catpick.new.ph"><button class="btn" id="catpick-go" data-i18n="catpick.apply">Apply</button></div>
+  <div class="row"><button class="btn ghost" id="catpick-cancel" data-i18n="catpick.cancel">Cancel</button></div>
 </div></div></div>
 <script src="gifenc.js"></script>
 <script>
+  var T = (k, p) => (window.gifos && gifos.i18n ? gifos.i18n.t(k, p) : k);
+  // Static markup keeps its English text (a pre-load paint, an older GifOS); this fills it from the catalog.
+  function applyI18n(){
+    var q=function(a,fn){ Array.prototype.forEach.call(document.querySelectorAll('['+a+']'), function(el){ fn(el, T(el.getAttribute(a))); }); };
+    q('data-i18n', function(el,t){ el.textContent=t; });
+    q('data-i18n-html', function(el,t){ el.innerHTML=t; });
+    q('data-i18n-ph', function(el,t){ el.placeholder=t; });
+    q('data-i18n-title', function(el,t){ el.title=t; });
+    q('data-i18n-aria', function(el,t){ el.setAttribute('aria-label',t); });
+  }
   var media = gifos.db('media'), blobs = gifos.db('blobs');
   var MAX = 25 * 1024 * 1024;
   var items = [], fType = 'all', fCat = 'all', curUrl = null, cur = null, owner = false;
@@ -4494,7 +4773,8 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
   function esc(s){ var d=document.createElement('div'); d.textContent=s==null?'':s; return d.innerHTML; }
   var toastT; function toast(m, hold){ var t=document.getElementById('toast'); t.textContent=m; t.classList.add('on'); clearTimeout(toastT); if(!hold) toastT=setTimeout(function(){ t.classList.remove('on'); }, 2600); }
   var KIND={ image:'🖼', audio:'🎵', video:'🎬' };
-  function fmtSize(n){ n=+n||0; return n>=1e6?(n/1e6).toFixed(1)+' MB':n>=1024?Math.round(n/1024)+' KB':n+' B'; }
+  var L10N=window.gifos&&gifos.i18n&&gifos.i18n.fmt; // the system locale (GifOS Settings)
+  function fmtSize(n){ n=+n||0; if(L10N) return n>=1e6?L10N.size(n/1e6,'MB',1):n>=1024?L10N.size(Math.round(n/1024),'KB',0):L10N.size(n,'B',0); return n>=1e6?(n/1e6).toFixed(1)+' MB':n>=1024?Math.round(n/1024)+' KB':n+' B'; }
 
   // ---- thumbnails: a small jpeg baked at import so the grid never loads blobs ----
   function downscale(src, w, h){ if(!w||!h) return '';
@@ -4513,8 +4793,8 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
 
   function typeOf(mime){ mime=String(mime||''); return mime.indexOf('image/')===0?'image':mime.indexOf('audio/')===0?'audio':mime.indexOf('video/')===0?'video':''; }
   async function store(bytes, mime, name, category){
-    var type=typeOf(mime); if(!type){ toast('Only images, audio and video can be added.'); return; }
-    if(bytes.length>MAX){ toast((name||'That file')+' is too big (max 25 MB).'); return; }
+    var type=typeOf(mime); if(!type){ toast(T('toast.onlyMedia')); return; }
+    if(bytes.length>MAX){ toast(name ? T('toast.tooBigNamed',{name:name}) : T('toast.tooBigThat')); return; }
     var id='m'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
     var thumb=''; try{ thumb=await makeThumb(new Blob([bytes],{type:mime}), type); }catch(e){}
     await blobs.put({ id:id, bytes:bytes });
@@ -4522,16 +4802,20 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
     return id;
   }
   async function importFile(file){
-    try{ var buf=new Uint8Array(await file.arrayBuffer()); await store(buf, file.type||'', file.name||'file', 'Unsorted'); }
-    catch(e){ toast('Could not read ' + (file&&file.name||'file')); }
+    try{ var buf=new Uint8Array(await file.arrayBuffer()); await store(buf, file.type||'', file.name||T('name.file'), 'Unsorted'); }
+    catch(e){ toast(T('toast.readFailed',{name:(file&&file.name||T('name.file'))})); }
   }
 
   // ---- library ----
   function isDeleted(m){ return /^deleted$/i.test((m&&m.category)||''); }
+  // These four category names are stored data (peers compare them): only the label shown is translated.
+  var CATKEY={ Unsorted:'cat.unsorted', Deleted:'cat.deleted', Captured:'cat.captured', Camera:'cat.camera' };
+  function catName(c){ var k=CATKEY[c]; return k ? T(k) : c; }
   function canonCat(c){
     c=String(c==null?'':c).trim();
     if(!c) return 'Unsorted';
-    if(/^deleted$/i.test(c)) return 'Deleted';
+    if(/^deleted$/i.test(c) || c.toLowerCase()===T('cat.deleted').toLowerCase()) return 'Deleted';
+    for(var k in CATKEY) if(c===T(CATKEY[k])) return k;
     return c;
   }
   function categories(){
@@ -4540,14 +4824,14 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
     return Object.keys(s).sort();
   }
   function refreshCats(){
-    var sel=document.getElementById('cat'); sel.innerHTML='<option value="all">All categories</option>';
-    categories().forEach(function(c){ var o=document.createElement('option'); o.value=c; o.textContent=c; sel.appendChild(o); });
-    var del=document.createElement('option'); del.value='Deleted'; del.textContent='Deleted'; sel.appendChild(del);
+    var sel=document.getElementById('cat'); sel.innerHTML=''; var all=document.createElement('option'); all.value='all'; all.textContent=T('filter.allCats'); sel.appendChild(all);
+    categories().forEach(function(c){ var o=document.createElement('option'); o.value=c; o.textContent=catName(c); sel.appendChild(o); });
+    var del=document.createElement('option'); del.value='Deleted'; del.textContent=T('cat.deleted'); sel.appendChild(del);
     if(fCat!=='all' && fCat!=='Deleted' && categories().indexOf(fCat)<0) fCat='all';
     sel.value=fCat;
     var dl=document.getElementById('cats'); dl.innerHTML='';
-    categories().forEach(function(c){ var o=document.createElement('option'); o.value=c; dl.appendChild(o); });
-    var dlo=document.createElement('option'); dlo.value='Deleted'; dl.appendChild(dlo);
+    categories().forEach(function(c){ var o=document.createElement('option'); o.value=catName(c); dl.appendChild(o); });
+    var dlo=document.createElement('option'); dlo.value=T('cat.deleted'); dl.appendChild(dlo);
   }
   function render(){
     refreshCats();
@@ -4559,7 +4843,7 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
     var live=0, bin=0;
     items.forEach(function(m){ if(isDeleted(m)) bin++; else live++; });
     var tot=fCat==='Deleted'?bin:live;
-    document.getElementById('count').textContent = tot ? (list.length+' of '+tot) : '';
+    document.getElementById('count').textContent = tot ? T('list.count',{shown:String(list.length),total:String(tot)}) : '';
     if(list.length){
       gEmpty.style.display='none';
       grid.style.display='grid';
@@ -4571,20 +4855,20 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
       var su=document.getElementById('empty-sub');
       if(!items.length){
         ic.textContent='🎞️';
-        ti.textContent='No media yet';
-        su.innerHTML='Tap <b>＋ Add</b> to import photos, audio or video — or drop files anywhere.';
+        ti.textContent=T('empty.none.title');
+        su.innerHTML=T('empty.none.sub');
       }else if(fCat==='Deleted'){
         ic.textContent='🗑️';
-        ti.textContent='Nothing in Deleted';
-        su.textContent='Items you Delete land here. Delete again to remove them for good.';
+        ti.textContent=T('empty.bin.title');
+        su.textContent=T('empty.bin.sub');
       }else if(!live && bin){
         ic.textContent='🎞️';
-        ti.textContent='Nothing here — '+bin+' in Deleted';
-        su.textContent='Open Deleted from the category list to see them.';
+        ti.textContent=T('empty.binOnly.title',{n:String(bin)});
+        su.textContent=T('empty.binOnly.sub');
       }else{
         ic.textContent='🎞️';
-        ti.textContent='Nothing here';
-        su.textContent='Try a different type or category.';
+        ti.textContent=T('empty.filtered.title');
+        su.textContent=T('empty.filtered.sub');
       }
     }
     var keep={}; items.forEach(function(m){ keep[m.id]=1; });
@@ -4592,10 +4876,10 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
     grid.innerHTML = list.map(function(m){
       var bg = m.thumb ? 'style="background-image:url('+m.thumb+')"' : '';
       var face = m.thumb ? (m.type!=='image'?'<div class="play">▶</div>':'') : ('<span>'+(KIND[m.type]||'📄')+'</span>');
-      var shared = isVisible(m) ? '<span class="shared" title="Visible to invited guests">👁</span>' : '';
-      var catLabel = isDeleted(m) ? 'Deleted' : (m.category||'Unsorted');
+      var shared = isVisible(m) ? '<span class="shared" title="'+T('card.shared')+'">👁</span>' : '';
+      var catLabel = isDeleted(m) ? T('cat.deleted') : catName(m.category||'Unsorted');
       var on=!!selected[m.id];
-      return '<div class="card'+(on?' on':'')+'" data-id="'+m.id+'"><button type="button" class="sel" aria-label="Select"><input type="checkbox" class="pick"'+(on?' checked':'')+' tabindex="-1"></button>'+
+      return '<div class="card'+(on?' on':'')+'" data-id="'+m.id+'"><button type="button" class="sel" aria-label="'+T('card.select')+'"><input type="checkbox" class="pick"'+(on?' checked':'')+' tabindex="-1"></button>'+
         '<div class="thumb" '+bg+'><span class="kind">'+(KIND[m.type]||'')+'</span>'+shared+face+'</div>'+
         '<div class="meta"><div class="nm">'+esc(m.name)+'</div><span class="cat">'+esc(catLabel)+'</span></div></div>';
     }).join('');
@@ -4605,7 +4889,7 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
   function updateSelBar(){
     var n=0; for(var k in selected) if(selected[k]) n++;
     var bar=document.getElementById('selbar');
-    if(n){ bar.classList.add('on'); document.getElementById('seln').textContent=n+' selected'; }
+    if(n){ bar.classList.add('on'); document.getElementById('seln').textContent=T('sel.count',{n:String(n)}); }
     else bar.classList.remove('on');
   }
   function clearSelection(){
@@ -4616,7 +4900,7 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
     });
     updateSelBar();
   }
-  media.subscribe(function(rows){ items=(rows||[]).filter(function(r){ return r&&r.id&&r.type; }); render(); });
+  function subscribeMedia(){ media.subscribe(function(rows){ items=(rows||[]).filter(function(r){ return r&&r.id&&r.type; }); render(); }); }
 
   // ---- open one: fetch its blob, pick the right player ----
   grid.addEventListener('pointerdown', function(e){
@@ -4641,7 +4925,7 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
   async function openItem(id){
     var m=items.filter(function(x){ return x.id===id; })[0]; if(!m) return;
     var rec=await blobs.get(id);
-    if(!rec||!rec.bytes){ toast('The file for this item is missing.'); return; }
+    if(!rec||!rec.bytes){ toast(T('err.fileMissing')); return; }
     var bytes = rec.bytes instanceof Uint8Array ? rec.bytes : new Uint8Array(rec.bytes);
     if(curUrl){ URL.revokeObjectURL(curUrl); curUrl=null; }
     curUrl = URL.createObjectURL(new Blob([bytes], { type:m.mime||'' })); cur=m;
@@ -4650,7 +4934,7 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
       : m.type==='audio' ? '<audio src="'+curUrl+'" controls autoplay></audio>'
       : '<video src="'+curUrl+'" controls autoplay playsinline></video>';
     document.getElementById('mname').value = m.name||'';
-    document.getElementById('mcat').value = isDeleted(m) ? 'Deleted' : (m.category||'');
+    document.getElementById('mcat').value = isDeleted(m) ? T('cat.deleted') : (m.category ? catName(m.category) : '');
     document.getElementById('minfo').textContent = (KIND[m.type]||'')+' '+(m.mime||'')+' · '+fmtSize(m.size);
     syncVisRow();
     closeGifPanel();
@@ -4661,7 +4945,7 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
     document.getElementById('mclip').style.display = (m.type==='video'||m.type==='audio') ? 'inline-block' : 'none';
     document.getElementById('mrev').style.display = (m.type==='video'||m.type==='audio') ? 'inline-block' : 'none';
     document.getElementById('mgif').style.display = m.type==='video' ? 'inline-block' : 'none';
-    document.getElementById('mdel').textContent = isDeleted(m) ? 'Delete forever' : 'Delete';
+    document.getElementById('mdel').textContent = isDeleted(m) ? T('detail.deleteForever') : T('detail.delete');
     document.getElementById('modal').style.display='flex';
   }
   // The visibility control — owner only. Reflects the current item's state and
@@ -4674,8 +4958,8 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
     var vis=isVisible(cur);
     document.getElementById('mvis').checked = vis;
     document.getElementById('vishint').textContent = vis
-      ? 'Invited guests can see and steal this item.'
-      : 'Only you can see it. Flip on to share it.';
+      ? T('vis.hint.on')
+      : T('vis.hint.off');
   }
   document.getElementById('mvis').onchange=async function(){
     if(!cur||!owner) return;
@@ -4684,8 +4968,8 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
       await media.setVisibility(cur.id, level);
       try{ await blobs.setVisibility(cur.id, level); }catch(e){}
       cur._vis=level; syncVisRow(); render();
-      toast(makeVis?'Now visible to invited guests':'Now private');
-    }catch(e){ this.checked=!makeVis; toast('Could not change visibility'); }
+      toast(makeVis?T('toast.nowVisible'):T('toast.nowPrivate'));
+    }catch(e){ this.checked=!makeVis; toast(T('toast.visFailed')); }
   };
   function closeModal(){
     gifAbort=true;
@@ -4707,7 +4991,7 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
   }
   function downloadCur(){
     if(!cur) return;
-    if(!curUrl){ toast('The file for this item is missing.'); return; }
+    if(!curUrl){ toast(T('err.fileMissing')); return; }
     var a=document.createElement('a');
     a.href=curUrl; a.download=downloadName(cur);
     document.body.appendChild(a); a.click(); a.remove();
@@ -4722,15 +5006,15 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
     if(cat==='Deleted' && !isDeleted(cur)){
       try{
         await media.put(Object.assign({}, cur, { name:name, category:'Deleted' }));
-        toast('Moved to Deleted');
+        toast(T('toast.movedDeleted'));
         closeModal();
-      }catch(e){ toast('You can only remove your own items.'); }
+      }catch(e){ toast(T('toast.onlyRemoveOwn')); }
       return;
     }
     try{
       await media.put(Object.assign({}, cur, { name:name, category:cat }));
-      toast('Saved'); cur.name=name; cur.category=cat;
-    }catch(e){ toast('You can only recategorize your own items.'); }
+      toast(T('toast.saved')); cur.name=name; cur.category=cat;
+    }catch(e){ toast(T('toast.onlyRecatOwn')); }
   };
   function hideDelWarn(){
     pendingForever=null;
@@ -4740,10 +5024,10 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
     pendingForever=list||[];
     var msg;
     if(pendingForever.length===1){
-      var nm=pendingForever[0].name||'this item';
-      msg='This deletes "'+nm+'" for good. It cannot be undone.';
+      var nm=pendingForever[0].name;
+      msg=nm ? T('delwarn.one',{name:nm}) : T('delwarn.oneUnnamed');
     }else{
-      msg='This deletes '+pendingForever.length+' items for good. It cannot be undone.';
+      msg=T('delwarn.many',{n:pendingForever.length});
     }
     document.getElementById('delwarn-msg').textContent=msg;
     document.getElementById('delwarn').style.display='flex';
@@ -4754,8 +5038,8 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
         await media.delete(list[i].id);
         try{ await blobs.delete(list[i].id); }catch(e){}
       }
-      toast(list.length>1 ? ('Deleted '+list.length+' items') : 'Deleted for good');
-    }catch(e){ toast('You can only remove your own items.'); }
+      toast(list.length>1 ? T('toast.deletedMany',{n:list.length}) : T('toast.deletedOne'));
+    }catch(e){ toast(T('toast.onlyRemoveOwn')); }
   }
   document.getElementById('mdel').onclick=async function(){
     if(!cur) return;
@@ -4764,8 +5048,8 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
     closeModal();
     try{
       await media.put(Object.assign({}, m, { category:'Deleted' }));
-      toast('Moved to Deleted');
-    }catch(e){ toast('You can only remove your own items.'); }  // a guest can't delete the host's shared media
+      toast(T('toast.movedDeleted'));
+    }catch(e){ toast(T('toast.onlyRemoveOwn')); }  // a guest can't delete the host's shared media
   };
   document.getElementById('mdel-cancel').onclick=function(){ hideDelWarn(); };
   document.getElementById('mdel-confirm').onclick=async function(){
@@ -4793,16 +5077,16 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
         if(isDeleted(list[i])) continue;
         await media.put(Object.assign({}, list[i], { category:'Deleted' }));
       }
-      toast(list.length===1 ? 'Moved to Deleted' : 'Moved '+list.length+' to Deleted');
+      toast(list.length===1 ? T('toast.movedDeleted') : T('toast.movedN',{n:list.length}));
       clearSelection();
-    }catch(e){ toast('You can only remove your own items.'); }
+    }catch(e){ toast(T('toast.onlyRemoveOwn')); }
   };
   function hideCatPick(){ document.getElementById('catpick').style.display='none'; }
   function openCatPick(){
     var list=document.getElementById('catpick-list'); list.innerHTML='';
     function addBtn(name){
       var b=document.createElement('button');
-      b.type='button'; b.className='btn ghost'; b.textContent=name;
+      b.type='button'; b.className='btn ghost'; b.textContent=catName(name);
       b.onclick=function(){ applyCat(name); };
       list.appendChild(b);
     }
@@ -4821,16 +5105,16 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
       }
       hideCatPick();
       toast(name==='Deleted'
-        ? (list.length===1 ? 'Moved to Deleted' : 'Moved '+list.length+' to Deleted')
-        : 'Saved');
+        ? (list.length===1 ? T('toast.movedDeleted') : T('toast.movedN',{n:list.length}))
+        : T('toast.saved'));
       clearSelection();
-    }catch(e){ toast('You can only recategorize your own items.'); }
+    }catch(e){ toast(T('toast.onlyRecatOwn')); }
   }
   document.getElementById('selcat').onclick=openCatPick;
   document.getElementById('catpick-cancel').onclick=hideCatPick;
   document.getElementById('catpick-go').onclick=function(){
     var n=document.getElementById('catpick-new').value.trim();
-    if(!n){ toast('Type a category or pick one.'); return; }
+    if(!n){ toast(T('toast.typeCategory')); return; }
     applyCat(n);
   };
 
@@ -4845,21 +5129,24 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
 
   // ---- capture straight in (brokered camera/mic; honours the Abilities opt-out) ----
   var cap=document.getElementById('cap');
-  function capBtn(glyph, title, fn){ var b=document.createElement('button'); b.textContent=glyph; b.title=title; b.onclick=fn; cap.appendChild(b); }
+  function capBtn(glyph, key, fn){ var b=document.createElement('button'); b.textContent=glyph; b.setAttribute('data-k',key); b.title=T(key); b.onclick=fn; cap.appendChild(b); }
+  function retitleCap(){ Array.prototype.forEach.call(cap.children, function(b){ b.title=T(b.getAttribute('data-k')); }); }
   async function capture(kind){
     try{
       var clip = kind==='photo' ? await gifos.takePhoto() : kind==='audio' ? await gifos.recordAudio() : await gifos.recordVideo();
       if(!clip||!clip.bytes) return;
       var bytes=new Uint8Array(clip.bytes);
       var mime=clip.mime||(kind==='photo'?'image/jpeg':kind==='audio'?'audio/webm':'video/webm');
-      var label=(kind==='photo'?'Photo':kind==='audio'?'Recording':'Clip')+' · '+new Date().toLocaleString();
+      var label=T(kind==='photo'?'name.photo':kind==='audio'?'name.recording':'name.clip', { when:(L10N?L10N.dateTime(new Date()):new Date().toLocaleString()) });
       await store(bytes, mime, label, 'Captured');
     }catch(err){ var m=String(err&&err.message||err); if(!/cancel/i.test(m)) toast(m.slice(0,90)); }
   }
-  if(window.gifos && gifos.takePhoto){
-    capBtn('📷','Take a photo', function(){ capture('photo'); });
-    capBtn('🎙','Record audio', function(){ capture('audio'); });
-    capBtn('🎬','Record a video clip', function(){ capture('video'); });
+  function buildCap(){
+    if(window.gifos && gifos.takePhoto){
+      capBtn('📷','cap.photo', function(){ capture('photo'); });
+      capBtn('🎙','cap.audio', function(){ capture('audio'); });
+      capBtn('🎬','cap.video', function(){ capture('video'); });
+    }
   }
 
   // ---- video → GIF (plain GIF89a via packed gifenc.js) ----
@@ -4919,7 +5206,7 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
     var sel=gifEnd-gifStart, max=maxSrc();
     var maxTxt=(Math.abs(max-Math.round(max))<1e-6)?String(Math.round(max)):max.toFixed(1);
     var spdTxt=gifSpeed+'×';
-    var line=sel.toFixed(1)+'s selected · max '+maxTxt+'s at '+spdTxt;
+    var line=T('gif.budget',{sel:sel.toFixed(1),max:maxTxt,speed:spdTxt});
     var budget=document.getElementById('gifbudget');
     budget.textContent=line;
     var over=panelMode==='gif' && sel>max+0.05;
@@ -4938,7 +5225,7 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
     var box=document.querySelector('#modal .box'); if(box) box.classList.remove('gifing');
     var v=stageVideo();
     if(v){ v.controls=true; v.muted=false; }
-    var go=document.getElementById('gifgo'); if(go) go.textContent='Make GIF';
+    var go=document.getElementById('gifgo'); if(go) go.textContent=T('gif.go');
     panelMode='gif';
     var stop=document.getElementById('gifstop'); if(stop) stop.style.display='none';
     var prog=document.getElementById('gifprog'); if(prog) prog.textContent='';
@@ -4987,7 +5274,7 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
     p.classList.add('on');
     p.classList.toggle('clip', panelMode==='clip'||panelMode==='aclip');
     p.classList.toggle('aclip', panelMode==='aclip');
-    document.getElementById('gifgo').textContent = panelMode==='gif' ? 'Make GIF' : 'Clip';
+    document.getElementById('gifgo').textContent = panelMode==='gif' ? T('gif.go') : T('gif.goClip');
     var box=document.querySelector('#modal .box'); if(box) box.classList.add('gifing');
     function ready(){
       var d=rangeDur();
@@ -5110,16 +5397,16 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
     if(panelMode==='clip'){ await runVideoClip(); return; }
     if(panelMode==='aclip'){ await runAudioClip(); return; }
     var v=stageVideo();
-    if(!v){ toast('No video to convert.'); return; }
-    if(!window.GifEnc||!GifEnc.encode||!GifEnc.quantize){ toast('GIF encoder is missing.'); return; }
+    if(!v){ toast(T('toast.noVideoConvert')); return; }
+    if(!window.GifEnc||!GifEnc.encode||!GifEnc.quantize){ toast(T('toast.noEncoder')); return; }
     var srcDur=gifEnd-gifStart;
-    if(srcDur<=0){ toast('Pick a longer clip.'); return; }
-    if(srcDur>maxSrc()+0.05){ toast('That clip is too long at this speed.'); return; }
+    if(srcDur<=0){ toast(T('err.longerClip')); return; }
+    if(srcDur>maxSrc()+0.05){ toast(T('toast.tooLongSpeed')); return; }
     var nFrames=Math.round(srcDur/gifSpeed*GIF_FPS);
     if(nFrames<2) nFrames=2;
     if(nFrames>MAX_FRAMES) nFrames=MAX_FRAMES;
     var vw=v.videoWidth||0, vh=v.videoHeight||0;
-    if(!vw||!vh){ toast('The video has not decoded yet.'); return; }
+    if(!vw||!vh){ toast(T('err.notDecoded')); return; }
     var sc=Math.min(1, MAX_SIDE/Math.max(vw,vh));
     var tw=Math.max(1, Math.round(vw*sc)), th=Math.max(1, Math.round(vh*sc));
     gifBusy=true; gifAbort=false;
@@ -5134,25 +5421,25 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
       for(var i=0;i<nFrames;i++){
         if(gifAbort) throw new Error('cancel');
         var t=gifStart+(i+0.5)*(srcDur/nFrames);
-        prog.textContent='Sampling '+(i+1)+'/'+nFrames+'…';
+        prog.textContent=T('gif.sampling',{i:String(i+1),n:String(nFrames)});
         await seekTo(v, t);
         if(gifAbort) throw new Error('cancel');
         ctx.drawImage(v, 0, 0, tw, th);
         rgba.push(new Uint8Array(ctx.getImageData(0,0,tw,th).data));
         await new Promise(function(r){ setTimeout(r, 0); });
       }
-      prog.textContent='Encoding…';
+      prog.textContent=T('gif.encoding');
       await new Promise(function(r){ setTimeout(r, 0); });
       var q=GifEnc.quantize(rgba, tw, th);
       var bytes=GifEnc.encode({ width:tw, height:th, frames:q.frames, palette:q.palette, delayCs:10, loop:true });
-      if(!bytes||bytes.length<6) throw new Error('Could not encode the GIF.');
+      if(!bytes||bytes.length<6) throw new Error(T('err.encodeGif'));
       var hdr=String.fromCharCode(bytes[0],bytes[1],bytes[2],bytes[3],bytes[4],bytes[5]);
-      if(hdr!=='GIF89a') throw new Error('Could not encode the GIF.');
-      if(bytes.length>MAX){ toast('That GIF would be too big (max 25 MB).'); return; }
+      if(hdr!=='GIF89a') throw new Error(T('err.encodeGif'));
+      if(bytes.length>MAX){ toast(T('toast.gifTooBig')); return; }
       var name=gifNameFrom(cur);
       var cat=(cur&&cur.category)||'Unsorted';
       id=await store(bytes, 'image/gif', name, cat);
-      toast('Saved '+name);
+      toast(T('toast.savedName',{name:name}));
     }catch(err){
       var msg=String(err&&err.message||err);
       if(!/cancel/i.test(msg)) toast(msg.slice(0,90));
@@ -5182,12 +5469,12 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
   }
   function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   async function saveNew(bytes, mime, name){
-    if(!bytes||!bytes.length) throw new Error('Nothing to save.');
-    if(bytes.length>MAX){ toast('That file would be too big (max 25 MB).'); return null; }
+    if(!bytes||!bytes.length) throw new Error(T('err.nothingSave'));
+    if(bytes.length>MAX){ toast(T('toast.fileTooBig')); return null; }
     var cat=(cur&&cur.category)||'Unsorted';
     var id=await store(bytes, mime, name, cat);
     if(!id) return null;
-    toast('Saved '+name);
+    toast(T('toast.savedName',{name:name}));
     return id;
   }
   async function openNew(id){
@@ -5218,15 +5505,15 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
   async function recordEditedVideo(opts){
     opts=opts||{};
     var v=stageVideo();
-    if(!v) throw new Error('No video to edit.');
-    if(typeof MediaRecorder==='undefined') throw new Error('This browser cannot record video (no MediaRecorder).');
+    if(!v) throw new Error(T('err.noVideoEdit'));
+    if(typeof MediaRecorder==='undefined') throw new Error(T('err.noMediaRecorder'));
     var canvas=document.createElement('canvas');
-    if(!canvas.captureStream) throw new Error('This browser cannot record video (no captureStream).');
+    if(!canvas.captureStream) throw new Error(T('err.noCaptureStream'));
     var w=v.videoWidth||0, h=v.videoHeight||0;
-    if(!w||!h) throw new Error('The video has not decoded yet.');
+    if(!w||!h) throw new Error(T('err.notDecoded'));
     var start=+opts.start||0, end=opts.end, d=vidDur();
     if(!(end>start)) end=d;
-    if(!(end>start)) throw new Error('That clip is empty.');
+    if(!(end>start)) throw new Error(T('err.clipEmpty'));
     var sx=opts.sx==null?1:opts.sx, sy=opts.sy==null?1:opts.sy;
     var reverse=!!opts.reverse;
     var fps=15;
@@ -5243,7 +5530,7 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
     var chunks=[];
     rec.ondataavailable=function(e){ if(e.data&&e.data.size) chunks.push(e.data); };
     var stopped=new Promise(function(res, rej){
-      rec.onerror=function(ev){ rej((ev&&ev.error)||new Error('Recording failed.')); };
+      rec.onerror=function(ev){ rej((ev&&ev.error)||new Error(T('err.recordFailed'))); };
       rec.onstop=function(){ res(); };
     });
     function emit(){
@@ -5276,15 +5563,15 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
     }
     try{ stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){}
     var blob=new Blob(chunks, { type: rec.mimeType||mime||'video/webm' });
-    if(!blob.size) throw new Error('Recording produced an empty file.');
+    if(!blob.size) throw new Error(T('err.recordEmpty'));
     var buf=new Uint8Array(await blob.arrayBuffer());
     var outMime=(blob.type||'video/webm').split(';')[0]||'video/webm';
     return { bytes:buf, mime:outMime };
   }
   async function flipStill(h, v){
-    if(!cur) throw new Error('Nothing to flip.');
+    if(!cur) throw new Error(T('err.nothingFlip'));
     var rec=await blobs.get(cur.id);
-    if(!rec||!rec.bytes) throw new Error('The file for this item is missing.');
+    if(!rec||!rec.bytes) throw new Error(T('err.fileMissing'));
     var bytes=rec.bytes instanceof Uint8Array ? rec.bytes : new Uint8Array(rec.bytes);
     var blob=new Blob([bytes], { type: cur.mime||'image/png' });
     var url=URL.createObjectURL(blob);
@@ -5293,27 +5580,27 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
       img=await new Promise(function(res, rej){
         var i=new Image();
         i.onload=function(){ res(i); };
-        i.onerror=function(){ rej(new Error('Could not decode the image.')); };
+        i.onerror=function(){ rej(new Error(T('err.decodeImage'))); };
         i.src=url;
       });
     }finally{ URL.revokeObjectURL(url); }
     var w=img.naturalWidth, ht=img.naturalHeight;
-    if(!w||!ht) throw new Error('Could not decode the image.');
+    if(!w||!ht) throw new Error(T('err.decodeImage'));
     var c=document.createElement('canvas'); c.width=w; c.height=ht;
     var ctx=c.getContext('2d');
     ctx.drawImage(img, 0, 0);
     var before;
     try{ before=ctx.getImageData(0,0,w,ht).data.slice(); }
-    catch(e){ throw new Error('Could not read the image pixels.'); }
+    catch(e){ throw new Error(T('err.readPixels')); }
     paintFlipped(ctx, img, w, ht, h?-1:1, v?-1:1);
     var after;
     try{ after=ctx.getImageData(0,0,w,ht).data; }
-    catch(e){ throw new Error('Could not read the image pixels.'); }
+    catch(e){ throw new Error(T('err.readPixels')); }
     var changed=false, p;
     for(p=0;p<after.length;p+=4){
       if(after[p]!==before[p]||after[p+1]!==before[p+1]||after[p+2]!==before[p+2]){ changed=true; break; }
     }
-    if(!changed) throw new Error('That image looks the same flipped.');
+    if(!changed) throw new Error(T('err.flipSame'));
     var jm=(cur.mime||'').toLowerCase();
     var jpeg=jm==='image/jpeg'||jm==='image/jpg';
     var outMime=jpeg?'image/jpeg':'image/png';
@@ -5324,10 +5611,10 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
           var bin=atob(data.split(',')[1]||''), u=new Uint8Array(bin.length);
           for(var i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i);
           res(new Blob([u], { type: outMime }));
-        }catch(err){ rej(new Error('Could not encode the image.')); }
+        }catch(err){ rej(new Error(T('err.encodeImage'))); }
         return;
       }
-      c.toBlob(function(b){ if(!b) rej(new Error('Could not encode the image.')); else res(b); }, outMime, jpeg?0.92:undefined);
+      c.toBlob(function(b){ if(!b) rej(new Error(T('err.encodeImage'))); else res(b); }, outMime, jpeg?0.92:undefined);
     });
     return { bytes:new Uint8Array(await out.arrayBuffer()), mime:outMime, ext:jpeg?'jpg':'png' };
   }
@@ -5337,16 +5624,16 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
     try{
       if(cur.type==='image'){
         var still=await flipStill(h, v);
-        var sid=await saveNew(still.bytes, still.mime, suffixName(cur, 'flipped', still.ext));
+        var sid=await saveNew(still.bytes, still.mime, suffixName(cur, T('suffix.flipped'), still.ext));
         await openNew(sid);
       }else if(cur.type==='video'){
-        toast('Flipping…', true);
+        toast(T('toast.flipping'), true);
         var d=vidDur();
         var recd=await recordEditedVideo({
           sx:h?-1:1, sy:v?-1:1, start:0, end:d, reverse:false,
-          onProg:function(i,n){ toast('Flipping '+i+'/'+n+'…', true); }
+          onProg:function(i,n){ toast(T('toast.flippingN',{i:String(i),n:String(n)}), true); }
         });
-        var vidName=suffixName(cur, 'flipped', 'webm');
+        var vidName=suffixName(cur, T('suffix.flipped'), 'webm');
         var vid=await saveNew(recd.bytes, recd.mime, vidName);
         await openNew(vid);
       }
@@ -5384,9 +5671,9 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
     return new Uint8Array(buf);
   }
   async function decodeCurAudio(){
-    if(!cur) throw new Error('Nothing to edit.');
+    if(!cur) throw new Error(T('err.nothingEdit'));
     var rec=await blobs.get(cur.id);
-    if(!rec||!rec.bytes) throw new Error('The file for this item is missing.');
+    if(!rec||!rec.bytes) throw new Error(T('err.fileMissing'));
     var bytes=rec.bytes instanceof Uint8Array ? rec.bytes : new Uint8Array(rec.bytes);
     function copyAb(){ return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset+bytes.byteLength); }
     var sr=0;
@@ -5404,14 +5691,14 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
       }catch(e){}
     }
     var AC=window.AudioContext||window.webkitAudioContext;
-    if(!AC) throw new Error('This browser cannot decode audio.');
+    if(!AC) throw new Error(T('err.noAudioDecode'));
     var ctx=new AC();
     try{
       var live=await ctx.decodeAudioData(copyAb());
-      if(!live||!live.length) throw new Error('Could not decode the audio.');
+      if(!live||!live.length) throw new Error(T('err.decodeAudio'));
       return live;
     }catch(err){
-      throw new Error('Could not decode the audio.');
+      throw new Error(T('err.decodeAudio'));
     }finally{
       try{ ctx.close(); }catch(e){}
     }
@@ -5423,13 +5710,13 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
     go.disabled=true; stop.style.display='';
     var id=null;
     try{
-      prog.textContent='Clipping…';
+      prog.textContent=T('gif.clipping');
       var decoded=await decodeCurAudio();
       if(gifAbort) throw new Error('cancel');
       var sr=decoded.sampleRate||44100;
       var i0=Math.max(0, Math.floor(gifStart*sr));
       var i1=Math.min(decoded.length, Math.ceil(gifEnd*sr));
-      if(i1-i0<2) throw new Error('Pick a longer clip.');
+      if(i1-i0<2) throw new Error(T('err.longerClip'));
       var ch=[], c;
       for(c=0;c<decoded.numberOfChannels;c++){
         var dst=new Float32Array(i1-i0);
@@ -5438,7 +5725,7 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
         if(c%2===1) await sleep(0);
       }
       var wav=encodeWav16(ch, sr);
-      id=await saveNew(wav, 'audio/wav', suffixName(cur, 'clip', 'wav'));
+      id=await saveNew(wav, 'audio/wav', suffixName(cur, T('suffix.clip'), 'wav'));
     }catch(err){
       var msg=String(err&&err.message||err);
       if(!/cancel/i.test(msg)) toast(msg.slice(0,90));
@@ -5453,7 +5740,7 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
   async function runVideoClip(){
     if(gifBusy) return;
     var v=stageVideo();
-    if(!v){ toast('No video to clip.'); return; }
+    if(!v){ toast(T('toast.noVideoClip')); return; }
     gifBusy=true; gifAbort=false;
     var go=document.getElementById('gifgo'), stop=document.getElementById('gifstop'), prog=document.getElementById('gifprog');
     go.disabled=true; stop.style.display='';
@@ -5461,9 +5748,9 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
     try{
       var recd=await recordEditedVideo({
         sx:1, sy:1, start:gifStart, end:gifEnd, reverse:false,
-        onProg:function(i,n){ prog.textContent='Clipping '+i+'/'+n+'…'; }
+        onProg:function(i,n){ prog.textContent=T('gif.clippingN',{i:String(i),n:String(n)}); }
       });
-      id=await saveNew(recd.bytes, recd.mime, suffixName(cur, 'clip', 'webm'));
+      id=await saveNew(recd.bytes, recd.mime, suffixName(cur, T('suffix.clip'), 'webm'));
     }catch(err){
       var msg=String(err&&err.message||err);
       if(!/cancel/i.test(msg)) toast(msg.slice(0,90));
@@ -5483,7 +5770,7 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
     gifBusy=true; gifAbort=false;
     try{
       if(cur.type==='audio'){
-        toast('Reversing…', true);
+        toast(T('toast.reversing'), true);
         var decoded=await decodeCurAudio();
         if(gifAbort) throw new Error('cancel');
         var ch=[], i;
@@ -5494,15 +5781,15 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
           await sleep(0);
         }
         var wav=encodeWav16(ch, decoded.sampleRate||44100);
-        var aid=await saveNew(wav, 'audio/wav', suffixName(cur, 'reversed', 'wav'));
+        var aid=await saveNew(wav, 'audio/wav', suffixName(cur, T('suffix.reversed'), 'wav'));
         await openNew(aid);
       }else if(cur.type==='video'){
-        toast('Reversing…', true);
+        toast(T('toast.reversing'), true);
         var recd=await recordEditedVideo({
           sx:1, sy:1, start:0, end:vidDur(), reverse:true,
-          onProg:function(i,n){ toast('Reversing '+i+'/'+n+'…', true); }
+          onProg:function(i,n){ toast(T('toast.reversingN',{i:String(i),n:String(n)}), true); }
         });
-        var vid=await saveNew(recd.bytes, recd.mime, suffixName(cur, 'reversed', 'webm'));
+        var vid=await saveNew(recd.bytes, recd.mime, suffixName(cur, T('suffix.reversed'), 'webm'));
         await openNew(vid);
       }
     }catch(err){
@@ -5516,6 +5803,22 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
   document.getElementById('types').addEventListener('click', function(e){ var b=e.target.closest?e.target.closest('button[data-t]'):null; if(!b) return;
     fType=b.getAttribute('data-t'); Array.prototype.forEach.call(this.children, function(c){ c.classList.toggle('on', c===b); }); selected={}; render(); });
   document.getElementById('cat').onchange=function(){ fCat=this.value; selected={}; render(); };
+
+  // ---- language: nothing that calls T runs before the catalog loads ----
+  function relocalize(){
+    applyI18n(); retitleCap(); render(); syncVisRow();
+    if(cur){
+      document.getElementById('mdel').textContent = isDeleted(cur) ? T('detail.deleteForever') : T('detail.delete');
+      document.getElementById('mcat').value = isDeleted(cur) ? T('cat.deleted') : (cur.category ? catName(cur.category) : '');
+    }
+    var gp=document.getElementById('gifpanel');
+    if(gp && gp.classList.contains('on')){ document.getElementById('gifgo').textContent = panelMode==='gif' ? T('gif.go') : T('gif.goClip'); updateGifUI(); }
+  }
+  function boot(){
+    applyI18n(); buildCap(); subscribeMedia();
+    if(window.gifos && gifos.onLocaleChange) gifos.onLocaleChange(relocalize);
+  }
+  if(window.gifos && gifos.i18n && gifos.i18n.load) gifos.i18n.load().then(boot, boot); else boot();
 </script></body></html>`;
 
   // Packed into My Media as gifenc.js. Real GIF89a + variable-width LZW — not
@@ -5702,20 +6005,29 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
 </style></head><body>
 <div id="empty">
   <div class="ring"></div>
-  <h1>No camera on this computer</h1>
-  <p id="why">Allow the camera in the browser, then turn it on in this app’s Abilities chip at the top of the tab.</p>
+  <h1 data-i18n="empty.title">No camera on this computer</h1>
+  <p id="why" data-i18n="empty.why">Allow the camera in the browser, then turn it on in this app’s Abilities chip at the top of the tab.</p>
 </div>
 <div id="ui">
-  <div id="stage"><div class="ph"><div class="ring"></div><div>Tap the shutter</div></div><div id="hint"></div></div>
+  <div id="stage"><div class="ph"><div class="ring"></div><div data-i18n="stage.tap">Tap the shutter</div></div><div id="hint"></div></div>
   <div id="film"></div>
   <div id="bar">
-    <button class="ghost wide" id="mmbtn" title="Open My Media">🖼️ My Media</button>
-    <button id="shutter" aria-label="Open camera"><span></span></button>
-    <button class="ghost" id="rollbtn" title="Recents">🎞️</button>
+    <button class="ghost wide" id="mmbtn" title="Open My Media" data-i18n-title="mm.title" data-i18n="mm.label">🖼️ My Media</button>
+    <button id="shutter" aria-label="Open camera" data-i18n-aria="shutter.aria"><span></span></button>
+    <button class="ghost" id="rollbtn" title="Recents" data-i18n-title="roll.title">🎞️</button>
   </div>
 </div>
 <div id="toast"></div>
 <script>
+  var T = (k, p) => (window.gifos && gifos.i18n ? gifos.i18n.t(k, p) : k);
+  // Static markup keeps its English text (a pre-load paint, an older GifOS); this fills it from the catalog.
+  // #why is skipped once the camera reports its own reason.
+  function applyI18n(){
+    var q=function(a,fn){ Array.prototype.forEach.call(document.querySelectorAll('['+a+']'), function(el){ fn(el, T(el.getAttribute(a))); }); };
+    q('data-i18n', function(el,t){ if(el.id==='why' && el.getAttribute('data-own')) return; el.textContent=t; });
+    q('data-i18n-title', function(el,t){ el.title=t; });
+    q('data-i18n-aria', function(el,t){ el.setAttribute('aria-label',t); });
+  }
   var roll = gifos.db('roll');
   var items = [];
   var lastMode = 'photo';
@@ -5723,17 +6035,18 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
   function toast(m){ var t=document.getElementById('toast'); t.textContent=m; t.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(function(){ t.classList.remove('on'); }, 2800); }
   function typeOf(mime){ mime=String(mime||''); return mime.indexOf('image/')===0?'image':mime.indexOf('video/')===0?'video':mime.indexOf('audio/')===0?'audio':''; }
   function nameFor(shot){
-    var t=new Date().toLocaleString();
+    var F=window.gifos&&gifos.i18n&&gifos.i18n.fmt; // the system locale (GifOS Settings)
+    var t=F?F.dateTime(new Date()):new Date().toLocaleString();
     var m=shot.mode||'';
-    if(shot.kind==='video' || (shot.mime||'').indexOf('video/')===0) return 'Video · '+t;
+    if(shot.kind==='video' || (shot.mime||'').indexOf('video/')===0) return T('name.video',{when:t});
     if((shot.mime||'')==='image/gif'){
-      if(m==='burst') return 'Burst · '+t;
-      if(m==='boomerang') return 'Boomerang · '+t;
-      if(m==='slowmo') return 'Slow-mo · '+t;
-      if(m==='timelapse') return 'Time-lapse · '+t;
-      return 'Clip · '+t;
+      if(m==='burst') return T('name.burst',{when:t});
+      if(m==='boomerang') return T('name.boomerang',{when:t});
+      if(m==='slowmo') return T('name.slowmo',{when:t});
+      if(m==='timelapse') return T('name.timelapse',{when:t});
+      return T('name.clip',{when:t});
     }
-    return 'Photo · '+t;
+    return T('name.photo',{when:t});
   }
   function renderFilm(){
     var film=document.getElementById('film');
@@ -5753,15 +6066,15 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
     if(m.type==='video'){
       st.innerHTML='<video controls playsinline autoplay muted></video><div id="hint"></div>';
       hint=document.getElementById('hint');
-      hint.textContent = m.name+' — in My Media';
+      hint.textContent = T('hint.inLibrary',{name:m.name});
       if(m.bytes){ var u=URL.createObjectURL(new Blob([m.bytes],{type:m.mime||'video/webm'})); st.querySelector('video').src=u; }
-      else { st.querySelector('video').poster=m.thumb||''; hint.textContent='Open My Media to play this clip.'; }
+      else { st.querySelector('video').poster=m.thumb||''; hint.textContent=T('hint.openToPlay'); }
       return;
     }
     st.innerHTML='<img alt=""><div id="hint"></div>';
     hint=document.getElementById('hint');
     st.querySelector('img').src = m.thumb || '';
-    hint.textContent = (m.name||'Photo')+' — in My Media';
+    hint.textContent = T('hint.inLibrary',{name:(m.name||T('name.photoBare'))});
     if(m.bytes){ st.querySelector('img').src=URL.createObjectURL(new Blob([m.bytes],{type:m.mime||'image/jpeg'})); }
   }
   document.getElementById('film').onclick=function(e){
@@ -5777,7 +6090,7 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
     try{
       var r=await gifos.library.put({ bytes:shot.bytes, mime:mime, name:nameFor(shot), type:type, category:'Camera', thumb:shot.thumb||'' });
       if(r && r.missing) toast(r.missing);
-      else toast('Saved to My Media');
+      else toast(T('toast.saved'));
     }catch(e){ toast(String(e&&e.message||e).slice(0,90)); }
   }
   async function openStudio(){
@@ -5796,7 +6109,7 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
         var st=document.getElementById('stage');
         st.innerHTML='<img alt=""><div id="hint"></div>';
         st.querySelector('img').src=last.thumb;
-        document.getElementById('hint').textContent=(saved>1?saved+' captures saved to My Media':'Saved to My Media')+' — tap My Media below to see them';
+        document.getElementById('hint').textContent=T('hint.saved',{n:saved});
       }
     }catch(e){
       var m=String(e&&e.message||e);
@@ -5812,17 +6125,20 @@ stopBtn.onclick=()=>{ playing=false; session++; paused=false; if(window.__cur){ 
     if(latest) showItem(latest.id);
   };
 
-  (async function boot(){
+  async function boot(){
+    applyI18n();
+    if(window.gifos && gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); var cur=document.querySelector('#film .on'); if(cur) showItem(cur.getAttribute('data-id')); });
     var info=null;
     try{ info=await gifos.cameraInfo(); }catch(e){ info={ ok:false, reason:String(e&&e.message||e) }; }
     if(!info||!info.ok){
       document.getElementById('ui').classList.add('hide');
       document.getElementById('empty').classList.add('on');
-      if(info && info.reason) document.getElementById('why').textContent=info.reason;
+      if(info && info.reason){ var why=document.getElementById('why'); why.setAttribute('data-own','1'); why.textContent=info.reason; }
       return;
     }
     await openStudio();
-  })();
+  }
+  if(window.gifos && gifos.i18n && gifos.i18n.load) gifos.i18n.load().then(boot, boot); else boot();
 </script></body></html>`;
 
   function build() {

@@ -1,0 +1,5 @@
+{
+  "title": "Besprechung",
+  "why": "Diese App ist fest in GifOS eingebaut. Gewöhnliche Apps dürfen nicht auf Ihre Kamera oder\nIhr Mikrofon zugreifen; deshalb öffnet dieses Symbol die integrierte Besprechungsseite, statt hier zu laufen.",
+  "open": "Öffnen Sie dieses GIF auf Ihrem Startbildschirm unter <code>gifos.app</code>, um eine Besprechung zu starten."
+}

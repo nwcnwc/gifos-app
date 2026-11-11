@@ -1,0 +1,14 @@
+{
+  "common.size.B": "{n} Б",
+  "common.size.KB": "{n} КБ",
+  "common.size.MB": "{n} МБ",
+  "common.size.GB": "{n} ГБ",
+  "common.size.TB": "{n} ТБ",
+  "common.dur.s": "{s} с",
+  "common.dur.m": "{m} мин",
+  "common.dur.ms": "{m} мин {s} с",
+  "common.ago.now": "только что",
+  "common.ago.m": "{n} мин назад",
+  "common.ago.h": "{n} ч назад",
+  "common.ago.d": "{n} дн. назад"
+}

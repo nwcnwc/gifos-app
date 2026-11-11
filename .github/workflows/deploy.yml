@@ -6,7 +6,14 @@ name: Deploy
 on:
   # Manual-only CI (Nathan, 2026-10-14): no push/pull_request/schedule triggers.
   # Run with: gh workflow run deploy.yml
+  # models_only=true sets up and verifies the model files and deploys nothing
+  # else (run it first at cut time).
   workflow_dispatch:
+    inputs:
+      models_only:
+        description: Only set up and verify the model files on models.gifos.app; do not deploy the site
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -22,6 +29,7 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -32,7 +40,32 @@ jobs:
       - name: Install wrangler
         run: npm install --prefix "$RUNNER_TEMP/tools" --no-audit --no-fund wrangler@4.128.0
 
+      # The model files the pages fetch (models.gifos.app, R2) go live BEFORE
+      # the site: a failed verify stops the deploy here, so no page ever
+      # points at files that are not there. The token stays in the
+      # environment; the script never prints it or passes it as an argument.
+      - name: Model files (check)
+        env:
+          WRANGLER: ${{ runner.temp }}/tools/node_modules/.bin/wrangler
+        run: bash .github/scripts/r2-models.sh --check
+      - name: Model files (apply)
+        env:
+          WRANGLER: ${{ runner.temp }}/tools/node_modules/.bin/wrangler
+        run: bash .github/scripts/r2-models.sh --apply
+      - name: Model files are live (verify)
+        run: |
+          set -euo pipefail
+          # A new custom domain needs a few minutes for its certificate.
+          for attempt in $(seq 1 20); do
+            if bash .github/scripts/r2-models.sh --verify; then exit 0; fi
+            echo "verify attempt $attempt not green; waiting"
+            sleep 30
+          done
+          echo "::error::the model files are not live on models.gifos.app; the site was not deployed"
+          exit 1
+
       - name: Stage the site
+        if: ${{ !inputs.models_only }}
         run: |
           set -euo pipefail
           # The published build number must not move backward. 2560 is the
@@ -115,6 +148,7 @@ jobs:
           fi
 
       - name: Deploy Pages
+        if: ${{ !inputs.models_only }}
         run: |
           set -euo pipefail
           W="$RUNNER_TEMP/tools/node_modules/.bin/wrangler"
@@ -126,6 +160,7 @@ jobs:
       # One ListObjects returns every etag. A single PUT stores the MD5 as
       # that etag, so an unchanged GIF is not written again.
       - name: Upload changed GIFs
+        if: ${{ !inputs.models_only }}
         env:
           WRANGLER: ${{ runner.temp }}/tools/node_modules/.bin/wrangler
         run: |
@@ -225,6 +260,7 @@ jobs:
           PY
 
       - name: Preview serves this build
+        if: ${{ !inputs.models_only }}
         run: |
           set -euo pipefail
           ok=0
@@ -260,12 +296,14 @@ jobs:
           fi
 
       - name: Deploy the GIF worker
+        if: ${{ !inputs.models_only }}
         run: |
           set -euo pipefail
           W="$RUNNER_TEMP/tools/node_modules/.bin/wrangler"
           "$W" deploy --config worker/wrangler.toml
 
       - name: Confirm an install can fetch the app
+        if: ${{ !inputs.models_only }}
         run: |
           set -euo pipefail
           python3 - << 'PY'

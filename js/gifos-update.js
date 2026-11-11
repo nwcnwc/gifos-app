@@ -44,6 +44,15 @@
   'use strict';
   const GifOS = (root.GifOS = root.GifOS || {});
 
+  // The words of this module live in i18n/<locale>/update.json. The English given
+  // here is what shows before the catalog lands or on a page without the loader.
+  const tr = (key, en, p) => {
+    const I = GifOS.i18n;
+    if (I && I.has(key)) return I.t(key, p);
+    return String(en).replace(/\{(\w+)\}/g, (m, k) => (p && p[k] != null ? p[k] : m));
+  };
+  if (GifOS.i18n && GifOS.i18n.load) GifOS.i18n.load('update');
+
   // Compare dotted versions: >0 if a>b. A release may carry a 4th part
   // (0.9.24.1, a hotfix of 0.9.24); a missing part counts as 0, so
   // 0.9.23 < 0.9.24 < 0.9.24.1 < 0.9.25.
@@ -129,14 +138,18 @@
     const urgent = underFloor(o.emergency, o.version, o.latest);
     const entry = notesOf(o.changelog, String(o.latest));
     const headline = entry && entry.headline ? String(entry.headline) : '';
+    // Each sentence is its own message, so a language orders its own words.
+    const v = String(o.latest);
     const text = o.pinned
-      ? (o.pinned === 'edge' ? 'You are on the edge build. ' : 'You are pinned to v' + o.version + '. ') +
-        (o.meeting ? 'Meetings run on' : 'Latest is') + ' v' + o.latest + '.'
+      ? (o.pinned === 'edge' ? tr('update.bar.onEdge', 'You are on the edge build.') : tr('update.bar.pinned', 'You are pinned to v{version}.', { version: o.version })) + ' ' +
+        (o.meeting ? tr('update.bar.meetingsRun', 'Meetings run on v{latest}.', { latest: v }) : tr('update.bar.latestIs', 'Latest is v{latest}.', { latest: v }))
       : (critical.length || urgent)
-        ? '⚠ Important update: GifOS v' + o.latest + ' is available.' + (headline ? ' ' + headline + '.' : '')
+        ? (headline
+          ? tr('update.bar.importantHeadline', '⚠ Important update: GifOS v{latest} is available. {headline}.', { latest: v, headline })
+          : tr('update.bar.important', '⚠ Important update: GifOS v{latest} is available.', { latest: v }))
         : headline
-          ? 'What’s new in GifOS v' + o.latest + ': ' + headline + '.'
-          : 'A new version of GifOS v' + o.latest + ' is available.';
+          ? tr('update.bar.whatsNewHeadline', 'What’s new in GifOS v{latest}: {headline}.', { latest: v, headline })
+          : tr('update.bar.available', 'A new version of GifOS v{latest} is available.', { latest: v });
     return {
       latest: String(o.latest), pinned: !!o.pinned, meeting: !!o.meeting, critical,
       emergency: urgent && !o.pinned, notes: entry, text,
@@ -225,9 +238,11 @@
     bar.id = 'update-bar';
     bar.setAttribute('role', 'status');
     bar.style.display = 'none';
-    bar.innerHTML = '<span id="update-msg"></span><button id="update-more" class="more" type="button">What’s new</button>' +
+    const attr = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const dismiss = attr(tr('update.bar.dismiss', 'Dismiss'));
+    bar.innerHTML = '<span id="update-msg"></span><button id="update-more" class="more" type="button">' + attr(tr('update.bar.more', 'What’s new')) + '</button>' +
       '<button id="update-action" type="button"></button>' +
-      '<button class="dismiss" id="update-dismiss" type="button" title="Dismiss" aria-label="Dismiss">✕</button>';
+      '<button class="dismiss" id="update-dismiss" type="button" title="' + dismiss + '" aria-label="' + dismiss + '">✕</button>';
     d.body.appendChild(bar);
     return bar;
   }
@@ -238,7 +253,7 @@
     const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const list = (title, arr) => (Array.isArray(arr) && arr.length)
       ? '<b>' + title + '</b><ul>' + arr.map((n) => '<li>' + esc(n) + '</li>').join('') + '</ul>' : '';
-    return list('New', e.features) + list('Fixed', e.fixes) + list('Notes', e.notes);
+    return list(tr('update.notes.new', 'New'), e.features) + list(tr('update.notes.fixed', 'Fixed'), e.fixes) + list(tr('update.notes.notes', 'Notes'), e.notes);
   }
   function hasNotes(e) {
     return !!(e && ['features', 'fixes', 'notes'].some((k) => Array.isArray(e[k]) && e[k].length));
@@ -357,7 +372,7 @@
           return;
         }
         paint(mount(), d, {
-          label: d.pinned ? 'Switch to v' + d.latest : 'Update now',
+          label: d.pinned ? tr('update.bar.switchTo', 'Switch to v{latest}', { latest: d.latest }) : tr('update.bar.action', 'Update now'),
           run: () => move(d),
         });
       }).catch(() => {}).then(() => { busy = false; });

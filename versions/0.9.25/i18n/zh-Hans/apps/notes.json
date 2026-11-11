@@ -1,0 +1,17 @@
+{
+  "title": "便签",
+  "search.placeholder": "搜索…",
+  "add.placeholder": "写下便签，然后点按“添加”…",
+  "add": "添加",
+  "hint": "点按便签即可打开。勾选复选框可将其标记为已完成。所有内容都保存在此图标中。",
+  "back": "← 列表",
+  "body.placeholder": "开始书写…",
+  "nobody": "请选择一条便签，或新建一条。点按“邀请”即可共享此列表。",
+  "untitled": "无标题",
+  "you": "你",
+  "check": "标记为已完成",
+  "delete": "删除",
+  "empty.nomatch": "没有符合搜索条件的便签。",
+  "empty.none": "还没有便签。你的便签会保存在此 GIF 图标中。",
+  "saved": "已保存在此图标中"
+}

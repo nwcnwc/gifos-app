@@ -84,7 +84,7 @@
     const s = taps.get(srcId);
     if (!s) return;
     s.delete(pipeId);
-    if (!s.size) { taps.delete(srcId); tapTs.delete(srcId); skrLast.delete(srcId); }
+    if (!s.size) { taps.delete(srcId); skrLast.delete(srcId); } // tapTs stays: onrtctransform fires once per receiver, so the SKR handle lives as long as the tap's frame loop
   }
   // The worker cannot see the page's functions, so it carries its own copy of
   // the two helpers above, as plain source inside the literal (worker-source-
@@ -99,7 +99,7 @@ function releaseTap(taps, tapTs, skrLast, srcId, pipeId) {
   const s = taps.get(srcId);
   if (!s) return;
   s.delete(pipeId);
-  if (!s.size) { taps.delete(srcId); tapTs.delete(srcId); skrLast.delete(srcId); }
+  if (!s.size) { taps.delete(srcId); skrLast.delete(srcId); } // tapTs stays: onrtctransform fires once per receiver, so the SKR handle lives as long as the tap's frame loop
 }
 const taps = new Map();   // srcId -> Set(pipeId)
 const tapTs = new Map();  // srcId -> the tap's transformer (the SKR handle)
@@ -127,8 +127,37 @@ function seedKey(srcId, pipeId) {
   if (!p.mime) p.mime = k.mime;
   p.q.length = 0;
   p.q.push({ bytes: k.bytes.slice(0), ts: 0, type: 'key' });
-  postMessage({ op: 'want', pipeId, key: true, q: 1 });
+  want(pipeId, true, 1);
   return true;
+}
+// THE MINT, IN THE WORKER (no main-thread hop). A pipe whose carrier is a
+// MediaStreamTrackGenerator owns its writable here: each queued content frame
+// gets its template written at once, a tiny VideoFrame from this worker's own
+// OffscreenCanvas, so a forward never waits on the page's main thread or a
+// compositor tick (a canvas captureStream(0) delivers a requested frame only
+// at the next compositor frame, and the page's tasks sit in front of the
+// want). A key template is a 1px size change, as on the page's carrier.
+const KEY_FLIP_MS_W = 150;
+const nowMs = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+function mintIn(p, key) {
+  if (!p.cw) return false;
+  try {
+    const now = Date.now();
+    if (!p.ocv) { p.ocv = new OffscreenCanvas(48, 48); p.ocx = p.ocv.getContext('2d'); p.kside = 48; p.flipAt = 0; p.mn = 0; }
+    if (key && now - p.flipAt >= KEY_FLIP_MS_W) { p.flipAt = now; p.kside = p.kside === 48 ? 47 : 48; p.ocv.width = p.kside; p.ocv.height = p.kside; }
+    const s = p.kside; p.ocx.fillStyle = '#000'; p.ocx.fillRect(0, 0, s, s); p.ocx.fillStyle = '#111'; p.ocx.fillRect(++p.mn % 40, (p.mn >> 3) % 40, 2, 2);
+    let t = Math.round(nowMs() * 1000); if (t <= (p.mts || 0)) t = (p.mts || 0) + 1; p.mts = t;
+    const vf = new VideoFrame(p.ocv, { timestamp: t });
+    p.cw.write(vf).catch(() => { try { vf.close(); } catch (e) {} });
+    p.mints = (p.mints || 0) + 1;
+    return true;
+  } catch (e) { p.mintErr = (p.mintErr || 0) + 1; return false; }
+}
+function want(pipeId, key, q) {
+  const p = pipes.get(pipeId);
+  if (p) { p.askAt = nowMs(); p.askOpen = true; }   // the catch-up times the answer from here
+  if (p && p.cw && mintIn(p, key)) return;
+  postMessage({ op: 'want', pipeId, key, q });
 }
 function pipeFor(id) {
   let p = pipes.get(id);
@@ -203,14 +232,26 @@ setInterval(() => {
 // non-empty queue that has not been written for half a second asks again,
 // typed by its head; an extra delta template is dropped free at the idle
 // gate, an extra key template is one tiny resize.
+// The same holds for ANY lost template, not only the first: every queued frame
+// waits for a template, so one the encoder dropped leaves a frame behind for
+// good, and each later frame ships one content beat late (measured: a standing
+// q of 1 held every 8 fps Stadium forward at 205-218 ms). So an ask that no
+// template answered within its due time asks again, until the queue is empty.
+// Due = twice this pipe's own measured ask-to-template time, at least
+// CATCH_MIN_MS: a slow template is not taken for a lost one. Each re-ask that
+// goes unanswered doubles the wait, up to CATCH_MAX_MS (a carrier not yet
+// negotiated answers nothing, and is asked at the old half-second beat).
+const CATCH_MIN_MS = 30, CATCH_MAX_MS = 500;
 setInterval(() => {
-  const now = Date.now();
+  const now = nowMs();
   for (const [id, p] of pipes) {
-    if (p.paused || !p.q.length || now - (p.lastWriteAt || 0) < 500 || now - (p.reWantAt || 0) < 500) continue;
-    p.reWantAt = now; p.reWant = (p.reWant || 0) + 1;
-    postMessage({ op: 'want', pipeId: id, key: p.q[0].type === 'key', q: p.q.length });
+    if (p.paused || !p.q.length) continue;
+    const due = Math.min(CATCH_MAX_MS, Math.max(CATCH_MIN_MS, 2 * (p.tlEw || 0)) * Math.pow(2, p.reAskN || 0));
+    if (now - (p.askAt || 0) < due) continue;
+    p.reWant = (p.reWant || 0) + 1; p.reAskN = (p.reAskN || 0) + 1;
+    want(id, p.q[0].type === 'key', p.q.length);
   }
-}, 250);
+}, 10);
 onmessage = (e) => {
   const m = e.data;
   if (m.op === 'route') {
@@ -250,10 +291,12 @@ onmessage = (e) => {
     seedKey(m.srcId, m.pipeId);
     askKey(m.srcId, m.pipeId);
   }
+  else if (m.op === 'carrier') { const p = pipeFor(m.pipeId); try { p.cw = m.writable.getWriter(); } catch (e) { p.cw = null; } if (p.cw && p.q.length) mintIn(p, p.q[0].type === 'key'); }
   else if (m.op === 'unroute') { releaseTap(taps, tapTs, skrLast, m.srcId, m.pipeId); pipes.delete(m.pipeId); }
   else if (m.op === 'stats') {
     const out = {};
-    for (const [id, p] of pipes) out[id] = { q: p.q.length, wrote: p.wrote, seen: p.seen || 0, tmpl: p.tmpl || 0, primed: p.primed || 0, dropped: p.dropped, swapErr: p.swapErr, kfAsk: p.kfAsk, kdrop: p.kdrop || 0, nkDrop: p.nkDrop || 0, skr: p.skr || 0, seeded: p.seedN || 0, reWant: p.reWant || 0, paused: !!p.paused, needKey: !!p.needKey, lastWriteAt: p.lastWriteAt, mime: p.mime, tmplMime: p.tmplMime, detached: p.detached || 0, lastBytes: p.lastBytes || 0 };
+    for (const [id, p] of pipes) out[id] = { q: p.q.length, wrote: p.wrote, seen: p.seen || 0, tmpl: p.tmpl || 0, primed: p.primed || 0, dropped: p.dropped, swapErr: p.swapErr, kfAsk: p.kfAsk, kdrop: p.kdrop || 0, nkDrop: p.nkDrop || 0, skr: p.skr || 0, seeded: p.seedN || 0, reWant: p.reWant || 0, paused: !!p.paused, needKey: !!p.needKey, lastWriteAt: p.lastWriteAt, mime: p.mime, tmplMime: p.tmplMime, detached: p.detached || 0, lastBytes: p.lastBytes || 0, inWorker: !!p.cw, mints: p.mints || 0, mintErr: p.mintErr || 0, lat: p.latN ? Math.round(p.latEw) : null, latMax: p.latMax ? Math.round(p.latMax) : null, latN: p.latN || 0, tl: p.tlN ? Math.round(p.tlEw) : null };
+    if (m.wlog) for (const [id, p] of pipes) if (out[id]) out[id].wlog = (p.wlog || []).slice();
     postMessage({ op: 'stats', seq: m.seq, stats: out });
   }
 };
@@ -272,7 +315,7 @@ onrtctransform = (e) => {
   (async () => {
     for (;;) {
       const { value: frame, done } = await reader.read();
-      if (done) { if (o.role === 'tap') lastKey.delete(o.srcId); break; }
+      if (done) { if (o.role === 'tap') { lastKey.delete(o.srcId); if (tapTs.get(o.srcId) === t) tapTs.delete(o.srcId); } break; }
       if (o.role === 'tap') {
         const routed = taps.get(o.srcId);
         // COPY EARLY: the passthrough write below detaches frame.data. Every
@@ -316,7 +359,10 @@ onrtctransform = (e) => {
               // only a keyless queue pays the clear + ask.
               let ki = -1;
               for (let qi = p.q.length - 1; qi >= 0; qi--) if (p.q[qi].type === 'key') { ki = qi; break; }
-              if (ki >= 0) { p.q.splice(0, ki); p.dropped++; }
+              if (ki > 0) { p.q.splice(0, ki); p.dropped++; }
+              // The latest key already heads a full queue: nothing is draining, so splice has nothing to drop.
+              // Hold that key alone and wait for a fresh one (deltas after this gap would break its chain).
+              else if (ki === 0) { p.q.length = 1; p.needKey = true; p.nkDrop = 0; p.seeded = false; p.dropped++; askKey(o.srcId, pid); }
               else { p.q.length = 0; p.needKey = true; p.dropped++; askKey(o.srcId, pid); }
             }
             if (p.needKey && frame.type !== 'key') {
@@ -332,20 +378,23 @@ onrtctransform = (e) => {
             }
             else { if (frame.type === 'key') { p.needKey = false; p.nkDrop = 0; p.seeded = false; }
               const own = handedOut ? bytes.slice(0) : bytes; handedOut = true;
-              p.q.push({ bytes: own, ts, type: frame.type });
+              p.q.push({ bytes: own, ts, type: frame.type, at: nowMs() });
               // DEMAND-MINT: one template per queued frame, typed by the head.
               // q rides along so the page can CATCH UP: at healthy fps the
               // want->postMessage->main-thread->requestFrame round trip lags
               // content by a fraction of a frame, the backlog compounds, and
               // QMAX overflow re-keys the whole downstream every ~15s (frza10
               // — the steady-state freeze cycle; invisible at crawl fps).
-              postMessage({ op: 'want', pipeId: pid, key: p.q[0].type === 'key', q: p.q.length }); }
+              want(pid, p.q[0].type === 'key', p.q.length); }
           }
         }
         writer.write(frame); // local decode unaffected
       } else if (o.role === 'pipe') {
         const p = pipeFor(o.pipeId);
         p.tmpl = (p.tmpl || 0) + 1;
+        // ask-to-template time (the first template after an ask): what the catch-up's due time is made of
+        p.reAskN = 0;   // answered: the next loss is caught at the short wait again
+        if (p.askOpen) { p.askOpen = false; const tl = nowMs() - p.askAt; p.tlN = (p.tlN || 0) + 1; p.tlEw = p.tlN === 1 ? tl : p.tlEw * 0.9 + tl * 0.1; }
         p.writer = p.writer || writer;
         try { const md = frame.getMetadata(); p.tmplMime = md.mimeType || null; } catch (err) {}
         // Known codecs must match (p.mime !== p.tmplMime). A missing mimeType
@@ -375,7 +424,7 @@ onrtctransform = (e) => {
           // PAIRED REAL CONTENT KEY.
           if (frame.type === 'key') {
             p.kdrop = (p.kdrop || 0) + 1;
-            if (p.kdrop === 3 || p.kdrop % 30 === 0) askKey(o.srcId, o.pipeId);
+            if (p.kdrop === 3 || p.kdrop % 30 === 0) askKey(p.srcId || o.srcId, o.pipeId); // p.srcId: a reroute moved the source, o.srcId is the transform's first
           }
           continue;
         }
@@ -384,7 +433,7 @@ onrtctransform = (e) => {
           // key content, delta template — re-ask for a KEY mint; if this keeps
           // starving something is broken upstream of the mint, tell the page.
           p.kfAsk++;
-          postMessage({ op: 'want', pipeId: o.pipeId, key: true });
+          want(o.pipeId, true);
           if (p.kfAsk === 30 || p.kfAsk % 120 === 0) postMessage({ op: 'kf-need', pipeId: o.pipeId });
           continue;
         }
@@ -405,8 +454,8 @@ onrtctransform = (e) => {
           // keykick (seed the last key so a still share paints now, hold
           // deltas until a fresh key lands) and ask upstream.
           p.kdrop = (p.kdrop || 0) + 1;
-          if (p.kdrop === 3) { p.q.length = 0; p.needKey = true; p.nkDrop = 0; p.seeded = false; seedKey(o.srcId, o.pipeId); }
-          if (p.kdrop === 3 || p.kdrop % 30 === 0) askKey(o.srcId, o.pipeId);
+          if (p.kdrop === 3) { p.q.length = 0; p.needKey = true; p.nkDrop = 0; p.seeded = false; seedKey(p.srcId || o.srcId, o.pipeId); }
+          if (p.kdrop === 3 || p.kdrop % 30 === 0) askKey(p.srcId || o.srcId, o.pipeId); // p.srcId: a reroute moved the source, o.srcId is the transform's first
           continue;
         }
         p.q.shift(); p.kfAsk = 0;
@@ -420,6 +469,10 @@ onrtctransform = (e) => {
         // recurrence, and e2e-pipe LEG 1B fails on the first one.
         if (head.bytes.byteLength === 0) p.detached = (p.detached || 0) + 1;
         else p.lastBytes = head.bytes.byteLength;
+        // FORWARD LATENCY: content arrival at the tap to its write here (the hop's own delay before the pacer)
+        if (head.at) { const l = nowMs() - head.at; p.latN = (p.latN || 0) + 1; p.latEw = p.latN === 1 ? l : p.latEw * 0.9 + l * 0.1; if (l > (p.latMax || 0)) p.latMax = l; }
+        // WRITE LOG: the last 64 writes' wall time and size, read only by a stats ask with wlog (per-frame hop timing)
+        (p.wlog || (p.wlog = [])).push([Date.now(), head.bytes.byteLength]); if (p.wlog.length > 64) p.wlog.shift();
         try { frame.data = head.bytes; writer.write(frame).then(() => { p.wrote++; p.lastWriteAt = Date.now(); }, () => { p.swapErr++; }); }
         catch (err) { p.swapErr++; }
       } else writer.write(frame);
@@ -523,8 +576,18 @@ onrtctransform = (e) => {
   // resolution change forces the carrier encoder to open a new GOP (the only
   // JS-reachable keyframe trigger — transformer.generateKeyFrame is absent on
   // this Chromium, measured).
+  // A WORKER-MINTED CARRIER where the browser has a track generator whose
+  // writable can move to the worker (Chromium): the forward then never
+  // touches the main thread. Elsewhere, the canvas carrier below.
+  const genOk = () => { try { return typeof MediaStreamTrackGenerator === 'function' && typeof VideoFrame === 'function' && typeof OffscreenCanvas === 'function' && localStorage.getItem('gifos_pipe_gen') !== 'off'; } catch (e) { return false; } };
   function makeCarrier() {
     if (typeof document === 'undefined') return null;
+    if (genOk()) {
+      try {
+        const gen = new MediaStreamTrackGenerator({ kind: 'video' });
+        return { track: gen, gen: true, writable: gen.writable, mint() { this.mints = (this.mints || 0) + 1; }, stop() { try { gen.stop(); } catch (e) {} } };
+      } catch (e) {}
+    }
     const c = document.createElement('canvas');
     // CARRIER SIZE IS A BISECT LEVER (gifos_pipe_carrier=big). The carrier's
     // pixels are never seen, so 48px is the cheapest possible encode — but a
@@ -538,7 +601,8 @@ onrtctransform = (e) => {
     const SIDE = BIG ? 320 : 48;
     c.width = SIDE; c.height = SIDE;
     const ctx = c.getContext('2d');
-    let n = 0, kside = SIDE;
+    let n = 0, kside = SIDE, flipAt = 0;
+    const KEY_FLIP_MS = 150; // longer than a capture takes on a busy page
     const paint = () => { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, c.width, c.height); ctx.fillStyle = '#111'; ctx.fillRect(++n % 40, (n >> 3) % 40, 2, 2); };
     paint();
     const stream = c.captureStream(0);
@@ -547,7 +611,10 @@ onrtctransform = (e) => {
       track,
       mint(key) {
         this.mints = (this.mints || 0) + 1;
-        if (key) { kside = kside === SIDE ? SIDE - 1 : SIDE; c.width = kside; c.height = kside; }
+        // One size change per capture. The worker wants a key on every content frame and every delta template, so two
+        // wants between captures flipped the size there and back: the encoder saw no change and a relayed picture froze.
+        const nowMs = Date.now();
+        if (key && nowMs - flipAt >= KEY_FLIP_MS) { flipAt = nowMs; kside = kside === SIDE ? SIDE - 1 : SIDE; c.width = kside; c.height = kside; }
         paint();
         try { track.requestFrame ? track.requestFrame() : stream.requestFrame(); } catch (e) {}
       },
@@ -560,7 +627,8 @@ onrtctransform = (e) => {
     if (!supported() || !sender) return false;
     try {
       sender.transform = new RTCRtpScriptTransform(ensureWorker(), { role: 'pipe', pipeId, srcId });
-      if (carrier) { carriers.set(pipeId, carrier); startDrain(); }
+      if (carrier) { carriers.set(pipeId, carrier); if (!carrier.gen) startDrain(); }
+      if (carrier && carrier.gen && carrier.writable && !carrier.moved) { carrier.moved = true; ensureWorker().postMessage({ op: 'carrier', pipeId, writable: carrier.writable }, [carrier.writable]); }   // before the route: its first want mints here
       ensureWorker().postMessage({ op: 'route', srcId, pipeId });
       return true;
     } catch (e) { return false; }
@@ -588,12 +656,12 @@ onrtctransform = (e) => {
     stopDrain();
   }
   function chain(pipeId) { const cr = carriers.get(pipeId); return { wants: wantN.get(pipeId) || 0, mints: cr ? (cr.mints || 0) : -1 }; }
-  function stats() {
+  function stats(opts) {
     return new Promise((res) => {
       if (!worker) { res({}); return; }
       const seq = ++statsSeq;
       statsWaiters.set(seq, res);
-      worker.postMessage({ op: 'stats', seq });
+      worker.postMessage({ op: 'stats', seq, wlog: !!(opts && opts.wlog) });
       setTimeout(() => { if (statsWaiters.get(seq) === res) { statsWaiters.delete(seq); res({}); } }, 1000);
     });
   }

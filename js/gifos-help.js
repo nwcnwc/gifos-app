@@ -11,6 +11,15 @@
 (function (root) {
   const GifOS = (root.GifOS = root.GifOS || {});
 
+  // The words of Help live in i18n/<locale>/help.json. The English given here is
+  // what a page without the catalog loader (or before the catalog lands) shows.
+  const tr = (key, en, p) => {
+    const I = GifOS.i18n;
+    if (I && I.has(key)) return I.t(key, p);
+    return String(en).replace(/\{(\w+)\}/g, (m, k) => (p && p[k] != null ? p[k] : m));
+  };
+  if (GifOS.i18n && GifOS.i18n.load) GifOS.i18n.load('help');
+
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -150,20 +159,20 @@
 
   // Appended to EVERY Help screen — the bar above the app, plus a remix
   // plug. Apps write how THEY work; the OS writes how GifOS apps work.
-  const OS_FOOTER = [
-    '## Using a GifOS app',
+  const osFooter = () => [
+    tr('help.footer.title', '## Using a GifOS app'),
     '',
-    '- **Invite** — share this app live. Friends open one link and everyone uses the same app together.',
-    '- **Save** — download a snapshot GIF: the app plus whatever it has saved, yours to keep.',
-    '- **Steal** — if you joined someone else, copy the app onto your desktop (with their data, as they joined, or clean).',
-    '- The chip is **Abilities** — what this app may do on this device. Tap to review or turn things off.',
+    tr('help.footer.invite', '- **Invite** — share this app live. Friends open one link and everyone uses the same app together.'),
+    tr('help.footer.save', '- **Save** — download a snapshot GIF: the app plus whatever it has saved, yours to keep.'),
+    tr('help.footer.steal', '- **Steal** — if you joined someone else, copy the app onto your desktop (with their data, as they joined, or clean).'),
+    tr('help.footer.abilities', '- The chip is **Abilities** — what this app may do on this device. Tap to review or turn things off.'),
     '',
-    '## Make it yours',
+    tr('help.remix.title', '## Make it yours'),
     '',
-    'Every GifOS app is a GIF you can remix. **Save** that GIF, drop it into your favorite AI chat, and ask it to change the game — a dark mode, bigger buttons, a new rule, whatever you want. Add the GIF it gives you back to your Home Screen and play your remixed version. You do not need to know how to code. This is how GifOS apps get better: you make the next one.',
+    tr('help.remix.body', 'Every GifOS app is a GIF you can remix. **Save** that GIF, drop it into your favorite AI chat, and ask it to change the game — a dark mode, bigger buttons, a new rule, whatever you want. Add the GIF it gives you back to your Home Screen and play your remixed version. You do not need to know how to code. This is how GifOS apps get better: you make the next one.'),
   ].join('\n');
 
-  const EMPTY_INTRO = '# Help\n\nThis app did not ship its own Help page.';
+  const emptyIntro = () => tr('help.empty.title', '# Help') + '\n\n' + tr('help.empty.body', 'This app did not ship its own Help page.');
 
   // CREDITS — UNDER THE SEAL. Who made an app is read from credits.json
   // INSIDE the GIF (packed by scripts/sign-apps.mjs from the store listing,
@@ -211,39 +220,42 @@
   }
   function creditsMd(meta) {
     if (!meta || typeof meta !== 'object') return '';
-    const out = ['## Credits', ''];
+    const out = [tr('help.credits.title', '## Credits'), ''];
     const name = mdText(meta.name);
     const ver = mdText(meta.version);
     if (name) out.push('**' + name + (ver ? ' ' + ver : '') + '**');
     const author = person(meta.author);
-    if (author) out.push('- **By** ' + author);
+    if (author) out.push(tr('help.credits.by', '- **By** {name}', { name: author }));
     const porter = person(meta.porter);
-    if (porter) out.push('- **Brought to GifOS by** ' + porter);
+    if (porter) out.push(tr('help.credits.porter', '- **Brought to GifOS by** {name}', { name: porter }));
     const based = person(meta.basedOn);
-    if (based) out.push('- **Based on** ' + based);
+    if (based) out.push(tr('help.credits.basedOn', '- **Based on** {name}', { name: based }));
     const insp = meta.inspiredBy;
     if (insp && (insp.name || typeof insp === 'string')) {
       const by = insp && typeof insp === 'object' ? person(insp.by) : '';
-      out.push('- **Inspired by** ' + person(insp) + (by ? ' by ' + by : ''));
+      out.push(by ? tr('help.credits.inspiredByWho', '- **Inspired by** {name} by {by}', { name: person(insp), by })
+        : tr('help.credits.inspiredBy', '- **Inspired by** {name}', { name: person(insp) }));
     }
     const lic = mdText(meta.license);
     const copy = mdText(meta.copyright);
-    if (lic) out.push('- **License** ' + lic + (copy ? ' — ' + copy : ''));
-    else if (copy) out.push('- **Copyright** ' + copy);
+    if (lic) out.push(copy ? tr('help.credits.licenseCopyright', '- **License** {license} — {copyright}', { license: lic, copyright: copy }) : tr('help.credits.license', '- **License** {license}', { license: lic }));
+    else if (copy) out.push(tr('help.credits.copyright', '- **Copyright** {copyright}', { copyright: copy }));
     const home = typeof meta.homepage === 'string' && /^https:\/\/[^\s)]+$/.test(meta.homepage.trim()) ? meta.homepage.trim() : '';
-    if (home) out.push('- **Home** [' + home.replace(/^https:\/\//, '') + '](' + home + ')');
+    if (home) out.push(tr('help.credits.home', '- **Home** {link}', { link: '[' + home.replace(/^https:\/\//, '') + '](' + home + ')' }));
     const rel = mdText(meta.releaseDate);
-    if (rel) out.push('- **Released** ' + rel);
+    if (rel) out.push(tr('help.credits.released', '- **Released** {date}', { date: rel }));
     if (!name && !author && !porter && !based && out.length === 2) return '';
     const when = mdText(meta.installedAt);
     const signer = mdText(meta.signedBy);
-    const tail = [];
-    if (signer) tail.push('Sealed inside this GIF and signed by **' + signer + '**');
-    else if (meta.sealed) tail.push('Sealed inside this GIF');
-    else tail.push('From this GIF\u2019s own manifest');
-    if (when) tail.push('installed on this device on ' + when.slice(0, 10));
+    // One sentence per case, so each language orders its own words.
+    let origin;
+    if (signer) origin = tr('help.credits.sealedSigned', 'Sealed inside this GIF and signed by **{signer}**', { signer });
+    else if (meta.sealed) origin = tr('help.credits.sealed', 'Sealed inside this GIF');
+    else origin = tr('help.credits.manifest', 'From this GIF\u2019s own manifest');
     out.push('');
-    out.push(tail.join('; ') + '.');
+    out.push(when
+      ? tr('help.credits.originInstalled', '{origin}; installed on this device on {date}.', { origin, date: when.slice(0, 10) })
+      : tr('help.credits.origin', '{origin}.', { origin }));
     return out.join('\n');
   }
 
@@ -298,7 +310,9 @@
     return issues + '?title=' + enc(title) + '&body=' + enc(body);
   }
   function issueMd(ctx) {
-    return '## Something wrong?\n\n[Report a problem on GitHub](' + issueUrl(ctx) + ') — the issue form opens with this app, page and build already filled in; just say what happened.';
+    return tr('help.report.title', '## Something wrong?') + '\n\n'
+      + tr('help.report.body', '{link} — the issue form opens with this app, page and build already filled in; just say what happened.',
+        { link: '[' + tr('help.report.link', 'Report a problem on GitHub') + '](' + issueUrl(ctx) + ')' });
   }
 
   function withOsFooter(md, storeMeta, ctx) {
@@ -306,8 +320,8 @@
     const credits = creditsMd(storeMeta);
     // The sealed credits (name, version, slug) outrank the caller's guess.
     const report = issueMd(Object.assign({}, ctx || {}, storeMeta || {}));
-    const tail = OS_FOOTER + (credits ? '\n\n---\n\n' + credits : '') + '\n\n---\n\n' + report;
-    if (!body) return EMPTY_INTRO + '\n\n' + tail;
+    const tail = osFooter() + (credits ? '\n\n---\n\n' + credits : '') + '\n\n---\n\n' + report;
+    if (!body) return emptyIntro() + '\n\n' + tail;
     return body + '\n\n---\n\n' + tail;
   }
 

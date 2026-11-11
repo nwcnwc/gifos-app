@@ -1,0 +1,21 @@
+{
+  "title": "Minesweeper",
+  "new": "New game",
+  "keep": "Keep playing",
+  "loading": "Loading…",
+  "dens.easy": "Easy",
+  "dens.medium": "Medium",
+  "dens.hard": "Hard",
+  "dens.expert": "Expert",
+  "mode.off": "🚩 Flag mode: off",
+  "mode.on": "🚩 Flag mode: on",
+  "status.cleared": "Cleared in {time}. Everyone wins.",
+  "status.boom": "💥 Boom — the face starts a new board.",
+  "status.flagMode": "Flag mode on — tap a square to plant or pull a flag.",
+  "status.play": "Tap to open · long-press / right-click to flag · tap a number to chord.",
+  "status.start": "Tap any square. The first tap is safe. Invite a friend to share this board.",
+  "best.boards": "Boards: {wins}/{games} cleared.",
+  "best.time": "Best {level}: {time}.",
+  "ask.dens": "Start a new {level} board?",
+  "ask.new": "Start a new game?"
+}

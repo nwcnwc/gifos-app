@@ -51,10 +51,10 @@
   "optionalCount": 1,
   "optionalDownload": 15400601,
   "provides": null,
+  "sha256": "fa6196b6ac53a40ed2562579fb27ac3605496061162e48b020a6bb4df4f2f1c7",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
     "ts": "2026-10-26"
-  },
-  "sha256": "fa6196b6ac53a40ed2562579fb27ac3605496061162e48b020a6bb4df4f2f1c7"
+  }
 }

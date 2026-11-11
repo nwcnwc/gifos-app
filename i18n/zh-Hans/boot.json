@@ -1,0 +1,21 @@
+{
+  "boot.title.booting": "GifOS — 正在启动映像…",
+  "boot.title.named": "{name} — 已启动的映像",
+  "boot.image.defaultName": "电脑映像",
+  "boot.banner.msg": "已启动的映像：{name} — 这台电脑在自己的独立空间中运行；你真实的主屏幕不会受到影响。",
+  "boot.reboot.label": "全新重启",
+  "boot.reboot.hint": "清除这台已启动电脑中的更改，并根据映像数据重新还原",
+  "boot.reboot.confirm": "要全新重启吗？在这台已启动的电脑中所做的更改将被丢弃，并根据映像重新还原。",
+  "boot.update.msg": "GifOS 有新版本可用。",
+  "boot.update.more": "新功能",
+  "boot.update.action": "立即更新",
+  "boot.update.dismiss": "关闭",
+  "boot.arrange.msg": "正在整理图标",
+  "boot.arrange.hint": "— 可随意拖动",
+  "boot.arrange.done": "完成",
+  "boot.failed.name": "启动失败",
+  "boot.failed.noId": "网址中没有映像 ID。",
+  "boot.failed.notFound": "在宿主主屏幕上找不到该映像（是否已被删除？）。",
+  "boot.failed.notImage": "这不是 GifOS 桌面映像。",
+  "boot.failed.error": "启动失败：{message}"
+}

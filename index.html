@@ -31,6 +31,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GifOS">
 <script src="js/sw-register.js" defer></script>
+<script src="js/dialog.js" defer></script>
 <script src="js/build-badge.js" defer></script>
 <script>/* Global UI text size (Settings → Text size). Scales rem-based chrome everywhere; applied early to avoid a flash, and live across tabs via the storage event. */(function(){function ap(){try{var s=parseFloat(localStorage.getItem('gifos_ui_scale'))||1;s=Math.max(0.2,Math.min(3,s));document.documentElement.style.fontSize=(s===1?'':(16*s).toFixed(2)+'px');}catch(e){}}ap();try{window.addEventListener('storage',function(e){if(!e||e.key==='gifos_ui_scale')ap();});}catch(e){}})();</script>
 <title>GifOS — Your GIF-Powered Computer, in the Browser</title>
@@ -194,8 +195,8 @@ window.GIFOS_VERSION = 'edge';
     <button class="brand-btn" id="sys-menu-btn"><span class="brand">GifOS</span><span class="caret">▾</span></button>
     <span class="crumbs" id="crumbs">Home</span>
     <span class="spacer"></span>
-    <button id="history-btn" title="Invite links you've visited">Invites</button>
-    <button id="add-btn">＋ Add</button>
+    <button id="history-btn" title="Invite links you've visited" data-i18n-title="desktop.bar.invitesTip" data-i18n="desktop.bar.invites">Invites</button>
+    <button id="add-btn" data-i18n="desktop.bar.add">＋ Add</button>
     <button class="fs-btn" id="fs-btn" style="display:none" title="Full screen" aria-label="Full screen" aria-pressed="false"></button>
   </div>
   <!-- Icons are LOCKED by default (see setArrangeMode in desktop.js). This bar
@@ -203,10 +204,10 @@ window.GIFOS_VERSION = 'edge';
        desktop is in a mode you asked for — no silent jiggle. -->
   <div class="arrange-bar" id="arrange-bar" style="display:none">
     <span class="ab-glyph" aria-hidden="true">✥</span>
-    <span class="ab-msg">Arranging icons</span>
-    <span class="ab-hint">— drag them anywhere</span>
+    <span class="ab-msg" data-i18n="desktop.arrange.title">Arranging icons</span>
+    <span class="ab-hint" data-i18n="desktop.arrange.hint">— drag them anywhere</span>
     <span class="spacer"></span>
-    <button id="arrange-done">Done</button>
+    <button id="arrange-done" data-i18n="desktop.arrange.done">Done</button>
   </div>
   <div id="desktop"></div>
   <noscript>
@@ -220,6 +221,8 @@ window.GIFOS_VERSION = 'edge';
   </noscript>
   <input type="file" id="file-input" multiple style="display:none">
   <input type="file" id="restore-input" accept=".gif,image/gif" style="display:none">
+
+  <script src="js/gifos-i18n.js"></script>
 
   <script src="js/gifos-gif.js"></script>
   <script src="js/gifos-ed.js"></script>

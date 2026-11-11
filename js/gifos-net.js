@@ -17,11 +17,11 @@
  * PATHS. Every message class travels an ordered path list:
  *   P0 — a direct WebRTC DataChannel to the destination
  *   P1 — one hop THROUGH A FRIEND'S browser ({t:'fwd'} over two DataChannels)
- *   P2 — the relay WebSocket (bandwidth-capped control plane)
- * Which classes may use which paths is policy in the CALLER (join: db and the
- * app GIF go P0→P1→P2; meet: chat goes P0→P1→P2, media and file bodies go
- * P0→P1 and NEVER the relay). The fabric provides the rungs; the sessions
- * pick the ladder.
+ * Content (chat, app state, the app GIF, media, file bodies) goes P0→P1 and
+ * NEVER the relay. The relay WebSocket is signaling only: pair bootstrap
+ * (boot/fp/ice/name), the password frames and the door/admin verbs. The relay
+ * enforces that list itself (relay.js RELAY_TYPES + the verb shapes), so a
+ * content frame sent to it is refused, not carried.
  *
  * DERIVE, DON'T SEND. The invite link carries a secret the relay must never
  * learn. Everything the relay needs is a ONE-WAY DERIVATION of that secret:
@@ -29,8 +29,8 @@
  * outputs, and the end-to-end AES-GCM key is derived from the same secret and
  * sent NOWHERE. The relay can gate and route exactly as before while every
  * content frame it carries is ciphertext. Anyone holding the link derives the
- * key offline — late joiners and P2P-less peers need no key exchange at all,
- * which is exactly when the relay path (P2) matters. A friend forwarding P1
+ * key offline — late joiners need no key exchange at all. The bootstrap
+ * frames the relay carries are sealed under it, and a friend forwarding P1
  * frames carries ciphertext too.
  *
  * The derivation is versioned (DS tag). Changing it is a deliberate flag day:
@@ -42,8 +42,8 @@
   const GifOS = (root.GifOS = root.GifOS || {});
 
   // ---- WebRTC availability + ICE --------------------------------------------
-  // No TURN server anywhere: P1 (a friend) and P2 (the relay, for control
-  // classes only) are the fallbacks. Media gets a friend or nothing.
+  // No TURN server anywhere: P1 (a friend) is the only fallback for content.
+  // The relay carries signaling, never content. Media gets a friend or nothing.
   const ICE_SERVERS = [
     { urls: 'stun:stun.cloudflare.com:3478' },
     { urls: 'stun:stun.l.google.com:19302' },
@@ -73,6 +73,11 @@
   // facade so callers wire handlers exactly once. makeUrl() is re-evaluated on
   // every (re)connect, so rotated credentials (a new password proof, an admin
   // key) ride the next attempt automatically.
+  // Reconnect backoff: 500 ms doubling, capped; each wait is scaled by a random factor in [JITTER_MIN, JITTER_MAX].
+  // The relay's restart hold is derived from RECONNECT_SLOW_CAP_MS and RECONNECT_JITTER_MAX (relay.js RESTART_HOLD_MS;
+  // the gifos check relay-unit/restart-hold-twin fails when they drift).
+  const RECONNECT_CAP_MS = 5000, RECONNECT_SLOW_CAP_MS = 15000, RECONNECT_HIDDEN_CAP_MS = 60000;
+  const RECONNECT_JITTER_MIN = 0.7, RECONNECT_JITTER_MAX = 1.3;
   function steadySocket(makeUrl, sockOpts) {
     const duty = sockOpts && typeof sockOpts.onDuty === 'function' ? sockOpts.onDuty : null;
     const s = { onmessage: null, onstate: null, onopen: null, state: 'connecting', downSince: Date.now(), rejected: 0, closes: [] };
@@ -93,7 +98,7 @@
     // code, and only an explicit s.kick() (the app changed something: new
     // password, deliberate re-join) re-arms. CROWD codes (full / rate-limited /
     // no host yet) keep retrying on a longer leash.
-    const FATAL_CLOSES = [1008, 4000, 4001, 4003, 4004, 4007, 4008, 4009, 4010, 4011, 4012, 4013, 4014]; // 4013: no key proof; 4014: a frame outside the relay's message types — update GifOS
+    const FATAL_CLOSES = [1008, 4000, 4001, 4003, 4007, 4008, 4009, 4010, 4011, 4012, 4013, 4014]; // 4013: no key proof; 4014: a frame outside the relay's message types — update GifOS
     const SLOW_CLOSES = [1011, 1013];
     const setState = (st) => {
       if (s.state === st) return;
@@ -173,8 +178,8 @@
       // is true. No onDuty keeps the hidden cap.
       let onDuty = false;
       try { onDuty = !!(duty && duty()); } catch (e) { onDuty = false; }
-      const cap = (hidden && !onDuty) ? 60000 : slow ? 15000 : 5000;
-      const delay = Math.min(cap, 500 * Math.pow(2, attempt++)) * (0.7 + Math.random() * 0.6);
+      const cap = (hidden && !onDuty) ? RECONNECT_HIDDEN_CAP_MS : slow ? RECONNECT_SLOW_CAP_MS : RECONNECT_CAP_MS;
+      const delay = Math.min(cap, 500 * Math.pow(2, attempt++)) * (RECONNECT_JITTER_MIN + Math.random() * (RECONNECT_JITTER_MAX - RECONNECT_JITTER_MIN));
       timer = setTimeout(() => { timer = null; connect(); }, delay);
     }
     const kick = (force) => {
@@ -262,16 +267,6 @@
   // tail — reassembly then hangs forever (the app RPC has no timeout). Paced
   // sends honor the channel's backpressure so every fragment lands.
   const chunk = (msg) => { const a = []; sendChunked(msg, (o, s) => a.push({ o, s })); return a; };
-  const PUMP_HIGH = 4 * 1024 * 1024; // keep the channel's send buffer well under its ceiling
-  const pumpChannel = (chan, pieces, mk) => new Promise((resolve) => {
-    let i = 0;
-    (function pump() {
-      if (!chan || chan.readyState !== 'open') return resolve(); // channel died mid-flush; peer will re-request
-      try { while (i < pieces.length && chan.bufferedAmount < PUMP_HIGH) chan.send(mk(pieces[i++])); }
-      catch (e) { return resolve(); }
-      if (i < pieces.length) setTimeout(pump, 40); else resolve();
-    })();
-  });
   // Byte ceiling on what one receiver holds in partial messages, all senders
   // together: two full-size messages (two 25MB shared videos side by side).
   // The count bound alone (8 partials x 512 pieces) let a room member park
@@ -430,12 +425,12 @@
     return p;
   }
   function deriveMeetKey(roomCode, av, pw) {
-    const base = roomCode + '|' + (av || '');
+    const base = roomCode + '|' + (av || '') + cTag();
     if (!pw) return aesKey('meet-e2e', base);
     return stretchPw(roomCode, av, pw).then((s) => aesKey('meet-e2e-pw', base + '|' + s));
   }
   function deriveMeet(roomCode, av, pw) {
-    const base = roomCode + '|' + (av || '');
+    const base = roomCode + '|' + (av || '') + cTag();
     return Promise.all([dsHash('meet-sid', base), dsHash('meet-tok', base), deriveMeetKey(roomCode, av, pw || '')])
       .then(([sid, tok, key]) => ({ sid: sid.slice(0, 20) + (av ? '.' + av : ''), tok: tok.slice(0, 24), key }));
   }
@@ -509,7 +504,8 @@
   // One envelope for every content frame, over every path: AES-256-GCM under
   // the session key. On P0 this doubles DTLS — cheap, and it removes the whole
   // category of "plaintext accidentally took the wrong path" bugs; on P1 the
-  // forwarding friend carries ciphertext; on P2 the relay carries ciphertext.
+  // forwarding friend carries ciphertext; the sealed bootstrap frames the relay
+  // carries are ciphertext too.
   const b64ofBuf = (buf) => {
     const u = new Uint8Array(buf); let s = '';
     for (let i = 0; i < u.length; i += 8192) s += String.fromCharCode.apply(null, u.subarray(i, i + 8192));
@@ -580,6 +576,21 @@
     COMP_FPS: 8,  // composites are secondary tiles — 8fps halves the packer's CPU vs 12 with no perceptible loss (was 12)
     HB: 4000,         // status heartbeat ms — the gossip pulse everything idempotent rides
   }, root.GIFOS_SCALE || {});
+  // C is the room's shape: a real meeting is C=5. A different C (2..5) comes only from a DEBUG page
+  // (DEBUG=on in the URL, or the tab's sticky gifos_debug) that also set window.GIFOS_SCALE.C before
+  // load: never from the wire or a link alone. The mesh reads it once (GifOS.meshC, js/mesh/topo.js),
+  // and every page of a room must carry the same C: deriveMeet folds a C other than 5 into the room's
+  // session id, token and key, so pages that disagree land in different relay sessions and never meet.
+  {
+    let dbg = false;
+    try { dbg = /(?:^|[#&?])debug=(?:on|1|true)/i.test(root.location.hash + root.location.search); } catch (e) {}
+    try { if (!dbg) dbg = root.sessionStorage.getItem('gifos_debug') === '1'; } catch (e) {}
+    const c = SCALE.C;
+    SCALE.C = dbg && Number.isInteger(c) && c >= 2 && c <= 5 ? c : 5;
+    GifOS.meshC = SCALE.C;
+  }
+  // '' in a real room (C=5: the derivation is the one every client has always used); else the C tag.
+  const cTag = () => (SCALE.C === 5 ? '' : '|C' + SCALE.C);
 
   // ---- the mesh topology as arithmetic (port of test/sim/topo.h) ------------------
   // A coordinate is { pc, r, i }: pc the SECTION path encoded as an integer, r
@@ -627,18 +638,11 @@
     const up = (s) => (s.i !== 0 || s.pc === 0) ? null : { pc: parentPath(s.pc), r: s.r, i: lastDigit(s.pc) };
     // down: every seat has one — to a child head, whose up is exactly this edge.
     const down = (s) => ({ pc: childPath(s.pc, s.i), r: s.r, i: 0 });
-    // cross-link: column>0 only; transpose-pair (r,i)<->(i,r). null for a head.
-    const crossLink = (s) => {
-      if (s.i === 0) return null;
-      if (s.r === s.i) return { pc: s.pc, r: 0, i: s.i };
-      if (s.r === 0) return { pc: s.pc, r: s.i, i: s.i };
-      return { pc: s.pc, r: s.i, i: s.r };
-    };
     const rowMates = (s) => { const out = []; const C = Cn(); for (let j = 0; j < C; j++) if (j !== s.i) out.push({ pc: s.pc, r: s.r, i: j }); return out; };
     // W7: column-mates — every seat sharing my column across the OTHER rows
     // (heads included, no diagonal). This is the extra half of the Section-1
-    // rook's graph. Section 1 (pc==0) ONLY — deep sections keep the sparse
-    // transpose (crossLink), so colMates is EMPTY for pc!=0. (test/sim/topo.h colMates)
+    // rook's graph. Section 1 (pc==0) ONLY, so colMates is EMPTY for pc!=0.
+    // (test/sim/topo.h colMates)
     const colMates = (s) => { const out = []; if (s.pc !== 0) return out; const C = Cn(); for (let j = 0; j < C; j++) if (j !== s.r) out.push({ pc: s.pc, r: j, i: s.i }); return out; };
     // Max owned-link degree of any seat: Section 1 is the C×C ROOK'S GRAPH (W7):
     // C-1 row + C-1 column + 1 down = 2C-1 = 9. Deep sections keep the sparse
@@ -647,26 +651,16 @@
     // ownedLinks:
     //  Section 1 (pc==0): the C×C ROOK'S GRAPH — rowMates(C-1) + colMates(C-1) +
     //    down. Uniform degree 2C-1 = 9, 8-edge-connected, no up (nothing above
-    //    the home), no sparse cross-link. Heads are NOT special.
-    //  Deep (pc!=0): rowMates(C-1) + cross?(1) + up?(1) + down — sparse, C+1 bound.
+    //    the home). Heads are NOT special.
+    //  Deep (pc!=0): rowMates(C-1) + up?(1) + down — sparse, C+1 bound.
     const ownedLinks = (s) => {
       const out = rowMates(s);
       if (s.pc === 0) { for (const m of colMates(s)) out.push(m); out.push(down(s)); return out; }
-      const x = crossLink(s); if (x) out.push(x); const u = up(s); if (u) out.push(u); out.push(down(s)); return out;
+      const u = up(s); if (u) out.push(u); out.push(down(s)); return out;
     };
     const isHead = (s) => s.i === 0;
-    return { childPath, parentPath, lastDigit, pcDepth, isRoot, isHead, ckey, unck, eq, up, down, crossLink, rowMates, colMates, ownedLinks, MAXLINKS };
+    return { childPath, parentPath, lastDigit, pcDepth, isRoot, isHead, ckey, unck, eq, up, down, rowMates, colMates, ownedLinks, MAXLINKS };
   })();
-
-  // ---- P1: single-hop forwarding through a friend -----------------------------
-  // {t:'fwd', src, to, p} — p is ONE piece (a sealed envelope, or one {t:'frag'}
-  // fragment of one). The forwarder relays pieces verbatim and statelessly:
-  // it never defragments, never decrypts, and never forwards to another
-  // forwarder (single hop by construction — 'to' must be its DIRECT link).
-  // The receiver defragments with the ORIGINAL sender as the key, so pieces
-  // arriving via different friends still reassemble.
-  const fwdWrap = (src, to, piece) => ({ t: 'fwd', src, to, p: piece });
-  const isFwd = (m) => !!(m && m.t === 'fwd' && m.p && typeof m.src === 'string' && typeof m.to === 'string');
 
   // ---- THE RELAY LAW: a fixed list of message types, one fixed size ----------
   // A member-to-member relay frame is {t:'peer', to, ty, msg}: `ty` is the
@@ -695,7 +689,7 @@
   // media session (tracks, codecs, renegotiation, restarts) never touches
   // the relay: it is negotiated over the pair's own DataChannel once the
   // bootstrap has opened it (run.html sendSig).
-  const RELAY_TYPES = ['boot', 'fp', 'ice', 'name', 'password', 'pwsig', 'pwpub', 'pwby'];
+  const RELAY_TYPES = ['boot', 'fp', 'ice', 'name', 'password', 'pwsig', 'pwpub', 'pwby', 'busy'];
   const RELAY_PLAIN_BYTES = 128;
   const RELAY_IV_B64_LEN = 16;
   const RELAY_CT_B64_LEN = 4 * Math.ceil((RELAY_PLAIN_BYTES + 16) / 3);
@@ -727,17 +721,9 @@
   const RELAY_SHAPES = {
     peer: { to: { str: 64, re: RELAY_ID_RE }, ty: { one: RELAY_TYPES }, msg: { sealed: 1 } },
     knock: { gk: { str: 128, re: RELAY_GK_RE }, gblob: { sealedText: 1, opt: 1 } },
-    who: {},
+    unlist: {},                                            // a seat that left Section 1 drops its greeter registration at once
     setpw: { pw: { str: 64, re: RELAY_PROOF_RE }, w: { obj: RELAY_ORDER, opt: 1 } },
-    ban: { dev: { str: 16, re: RELAY_DEV_RE }, w: { obj: RELAY_ORDER } },
-    unban: { dev: { str: 16, re: RELAY_DEV_RE }, w: { obj: RELAY_ORDER } },
     votekick: { devs: { list: 24, item: { str: 16, re: RELAY_DEV_RE } }, abs: { list: 24, item: { str: 16, re: RELAY_ABS_RE }, opt: 1 } },
-    banlist: { devs: { list: 20, item: { obj: { d: { str: 16, re: RELAY_DEV_RE } } } }, w: { obj: RELAY_ORDER } },
-    // Waiting room (relay-admit.js). Admin-signed. `on` is '1' or '0'.
-    // `id` is the knocker the admin is admitting or turning away.
-    waitroom: { on: { str: 1, re: /^[01]$/ }, w: { obj: RELAY_ORDER } },
-    admit: { id: { str: 64, re: RELAY_ID_RE }, w: { obj: RELAY_ORDER } },
-    deny: { id: { str: 64, re: RELAY_ID_RE }, w: { obj: RELAY_ORDER } },
   };
   function sealedOk(m) {
     if (!m || typeof m !== 'object' || Array.isArray(m) || m.e !== 1 || typeof m.iv !== 'string' || typeof m.ct !== 'string') return false;
@@ -816,6 +802,34 @@
     while (n.length && !fitsFixed({ k: 'name', n })) n = n.slice(0, -1);
     return n;
   }
+  // ---- a referral list that does not fit one frame ----
+  // A declined uplink names up to C other peers to try (42 characters each);
+  // one frame holds one. The list goes as several 'busy' frames, each
+  // {k:'busy', i, n, ref:[ids]}: i of n, packed greedily so every frame fits.
+  // No new relay type or frame size is involved, and the receiver rebuilds
+  // the list only when all n pieces are in hand.
+  function referralFrames(ids) {
+    const list = (Array.isArray(ids) ? ids : []).filter((x) => typeof x === 'string' && RELAY_ID_RE.test(x));
+    const parts = [];
+    for (const id of list) {
+      const last = parts[parts.length - 1];
+      if (last && fitsFixed({ k: 'busy', i: 99, n: 99, ref: last.concat([id]) })) last.push(id);
+      else if (fitsFixed({ k: 'busy', i: 99, n: 99, ref: [id] })) parts.push([id]);
+    }
+    return parts.map((ref, i) => ({ k: 'busy', i, n: parts.length, ref }));
+  }
+  // The inverse: the ids from a set of pieces in any order, or null when a
+  // piece is missing, repeated, malformed, or from a different split.
+  function referralJoin(frames) {
+    if (!Array.isArray(frames) || !frames.length) return null;
+    const n = frames[0] && frames[0].n, got = new Array(n);
+    if (!Number.isInteger(n) || n < 1 || n > 16 || frames.length !== n) return null;
+    for (const f of frames) {
+      if (!f || f.k !== 'busy' || f.n !== n || !Number.isInteger(f.i) || f.i < 0 || f.i >= n || got[f.i] || !Array.isArray(f.ref) || !f.ref.every((x) => typeof x === 'string' && RELAY_ID_RE.test(x))) return null;
+      got[f.i] = f.ref;
+    }
+    return [].concat(...got);
+  }
   // ---- the bootstrap: a DataChannel-only session description, compacted ----
   const hexToB64 = (hex) => { let s = ''; for (const h of hex.split(':')) s += String.fromCharCode(parseInt(h, 16)); return btoa(s); };
   const b64ToHex = (b64) => { const s = atob(b64); const out = []; for (let i = 0; i < s.length; i++) out.push(s.charCodeAt(i).toString(16).toUpperCase().padStart(2, '0')); return out.join(':'); };
@@ -867,16 +881,15 @@
   }
 
   GifOS.net = {
-    RELAY_TYPES, RELAY_PLAIN_BYTES, RELAY_IV_B64_LEN, RELAY_CT_B64_LEN, RELAY_MAX_FRAME_LEN, RELAY_SHAPES, relayFrameOk, relayVerbOk, fitsFixed, sansPad, sealFixed, relayNameFit,
+    RELAY_TYPES, RELAY_PLAIN_BYTES, RELAY_IV_B64_LEN, RELAY_CT_B64_LEN, RELAY_MAX_FRAME_LEN, RELAY_SHAPES, relayFrameOk, relayVerbOk, fitsFixed, sansPad, sealFixed, relayNameFit, referralFrames, referralJoin,
     bootOf, bootOk, fpOk, sdpOfBoot, iceOf, candOfIce,
     ICE_SERVERS, hasP2P, holdSessionLock,
-    steadySocket,
-    FRAG_PART, FRAG_BUDGET, sendChunked, chunk, pumpChannel, makeDefrag,
+    steadySocket, RECONNECT_CAP_MS, RECONNECT_SLOW_CAP_MS, RECONNECT_HIDDEN_CAP_MS, RECONNECT_JITTER_MIN, RECONNECT_JITTER_MAX,
+    FRAG_PART, FRAG_BUDGET, sendChunked, chunk, makeDefrag,
     shortCode, randHex, sha256hex, sha256hexOfBytes, keyId, keyVerifier,
     deriveMeet, deriveMeetKey, meetPwProof, mintGenesisKey,
     edKeysFromSeedHex, edSign, edVerify, edProven,
     seal, open, isSealed, makeChain,
-    fwdWrap, isFwd,
     SCALE, topo,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

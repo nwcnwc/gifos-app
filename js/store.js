@@ -29,6 +29,18 @@
   const browseEl = $('browse'), detailEl = $('detail');
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+  // The store's own words (i18n/<locale>/store.json). rich() is for a sentence
+  // that holds a link or bold run: the translation is escaped as text, then each
+  // {name} placeholder is swapped for its (already safe) HTML.
+  const T = (k, p) => GifOS.i18n.t(k, p);
+  const rich = (k, p, h) => {
+    const tok = {};
+    for (const n of Object.keys(h)) tok[n] = '\u0000' + n + '\u0000';
+    let out = esc(T(k, Object.assign({}, p, tok)));
+    for (const n of Object.keys(h)) out = out.split('\u0000' + n + '\u0000').join(h[n]);
+    return out;
+  };
+
   // A booted computer image carries its namespace through every hop.
   const ns = (key) => (store.dbName === 'gifos' ? '' : key + encodeURIComponent(store.dbName));
   // Running inside a frozen release snapshot (/versions/<x.y.z>/store.html)?
@@ -40,24 +52,28 @@
   // "index.html" would resolve to the nonexistent /store/index.html.
   const BASE = FROZEN ? location.pathname.replace(/\/[^/]*$/, '/') : '/';
 
+  // Sizes and dates in the system locale (GifOS.i18n).
+  const L10N = GifOS.i18n;
   function human(bytes) {
     if (!(bytes > 0)) return '';
-    if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB';
-    return (bytes / 1048576).toFixed(bytes < 10485760 ? 1 : 0) + ' MB';
+    if (bytes < 1024 * 1024) return L10N ? L10N.fmt.size(Math.round(bytes / 1024), 'KB', 0) : Math.round(bytes / 1024) + ' KB';
+    const digits = bytes < 10485760 ? 1 : 0;
+    return L10N ? L10N.fmt.size(bytes / 1048576, 'MB', digits) : (bytes / 1048576).toFixed(digits) + ' MB';
   }
   function niceDate(iso) {
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
     if (!m) return iso || '';
+    if (L10N) return L10N.fmt.date(new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])), { year: 'numeric', month: 'long', day: 'numeric' });
     const MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     return MON[Number(m[2]) - 1] + ' ' + Number(m[3]) + ', ' + m[1];
   }
   // Which manifest capabilities to show, in plain words. An app's powers are
   // part of its listing: you should know before you install, not at first use.
   const CAP_WORDS = {
-    db: 'Saves data in the icon', multiplayer: 'Multiplayer', microphone: 'Microphone',
-    camera: 'Camera', wasm: 'Runs WebAssembly', gpu: 'Uses the GPU', ai: 'AI', api: 'Third-party API', network: 'Network',
-    links: 'Opens web links', assets: 'Downloads extra files',
-    meet: 'Joins meetings', remote: 'Remote control',
+    db: 'store.cap.db', multiplayer: 'store.cap.multiplayer', microphone: 'store.cap.microphone',
+    camera: 'store.cap.camera', wasm: 'store.cap.wasm', gpu: 'store.cap.gpu', ai: 'store.cap.ai', api: 'store.cap.api', network: 'store.cap.network',
+    links: 'store.cap.links', assets: 'store.cap.assets',
+    meet: 'store.cap.meet', remote: 'store.cap.remote',
   };
   function capList(caps) {
     const out = [];
@@ -66,8 +82,8 @@
       // Header chrome (auto-hide, larger) is a capability, not a device power.
       if (k === 'header') continue;
       if (v === false || (Array.isArray(v) && !v.length)) continue;
-      let label = CAP_WORDS[k] || k;
-      if (Array.isArray(v)) label += ' (' + v.join(', ') + ')';
+      let label = CAP_WORDS[k] ? T(CAP_WORDS[k]) : k;
+      if (Array.isArray(v)) label = T('store.cap.withList', { label, list: v.join(', ') });
       out.push(label);
     }
     return out;
@@ -168,7 +184,7 @@
       // A snapshot's build.js is stamped at the cut, so this IS that build.
       ownerBuild = Number(root.GIFOS_BUILD) || null;
       const v = (location.pathname.match(/\/versions\/([^/]+)\//) || [])[1] || '';
-      ownerName = v ? 'release ' + v : 'this build';
+      ownerName = v ? T('store.owner.release', { version: v }) : T('store.owner.thisBuild');
       await versionJson();
       return;
     }
@@ -197,12 +213,12 @@
       // 0 is a local checkout (build.js ships 0 and version.json's edgeBuild is
       // 0 until deploy). Unknown, not ancient — never gate on it.
       ownerBuild = Number(root.GIFOS_BUILD) || Number(v && v.edgeBuild) || null;
-      ownerName = 'the edge build' + (ownerBuild ? ' (build ' + ownerBuild + ')' : '');
+      ownerName = ownerBuild ? T('store.owner.edgeBuild', { build: String(ownerBuild) }) : T('store.owner.edge');
       return;
     }
     const v = await versionJson();
     ownerBuild = Number(v && v.builds && v.builds[rel]) || null;
-    ownerName = 'release ' + rel + (ownerBuild ? ' (build ' + ownerBuild + ')' : '');
+    ownerName = ownerBuild ? T('store.owner.releaseBuild', { version: rel, build: String(ownerBuild) }) : T('store.owner.release', { version: rel });
     let has = false;
     try {
       const r = await fetch('/versions/' + encodeURIComponent(rel) + '/store.html', { method: 'HEAD' });
@@ -222,11 +238,9 @@
     const msg = String((e && e.message) || e || '');
     const tooLarge = /too large|QuotaExceeded|quota/i.test(msg) || (e && (e.name === 'QuotaExceededError' || e.name === 'DataError'));
     if (tooLarge) {
-      return 'This browser tab can’t store a file this large' + (size ? ' (' + human(size) + ')' : '') + '. ' +
-        'A private or incognito tab keeps everything in memory and caps what it will hold — and it would forget the install when it closes. ' +
-        'Open gifos.app in a normal tab and install again. (' + msg + ')';
+      return size ? T('store.err.tooLargeSized', { size: human(size), msg }) : T('store.err.tooLarge', { msg });
     }
-    return 'Couldn’t save it to this computer — ' + msg;
+    return T('store.err.saveFailed', { msg });
   }
 
   // ---------- how a large file is written for THIS visitor ----------------
@@ -297,9 +311,8 @@
   };
 
   function legacyNotice() {
-    return '<p class="err">Your Home Screen is running release ' + esc(legacyDesktop) +
-      ', which was built before the App Store existed — it can’t receive an install yet. ' +
-      'Update from <b>GifOS ▾ → Settings → Advanced → Version</b>, then come back.</p>';
+    return '<p class="err">' + rich('store.legacy.notice', { release: legacyDesktop },
+      { path: '<b>' + esc(T('store.path.version')) + '</b>' }) + '</p>';
   }
 
   // Said in full on the listing, where the decision is made. Two genuinely
@@ -310,13 +323,12 @@
   function tooOldNotice(app) {
     const need = needsBuild(app);
     const rel = releaseWith(need);
-    return '<p class="err"><b>' + esc(app.name) + ' needs GifOS build ' + need + ' or newer.</b> ' +
-      'Your Home Screen runs ' + esc(ownerName) + ', so this app can’t run there yet — ' +
-      'installing it would leave you an icon that opens onto nothing. ' +
+    const path = '<b>' + esc(T('store.path.version')) + '</b>';
+    return '<p class="err"><b>' + esc(T('store.tooOld.title', { name: app.name, need: String(need) })) + '</b> ' +
+      esc(T('store.tooOld.body', { owner: ownerName })) + ' ' +
       (rel
-        ? 'Move to release ' + esc(rel) + ' or later in <b>GifOS ▾ → Settings → Advanced → Version</b>, then come back.'
-        : 'No release has it yet — it is only in the unreleased edge build. Pick <b>Edge build</b> in ' +
-          '<b>GifOS ▾ → Settings → Advanced → Version</b>, or wait for the next release.') +
+        ? rich('store.tooOld.move', { release: rel }, { path })
+        : rich('store.tooOld.edge', {}, { edge: '<b>' + esc(T('store.tooOld.edgeName')) + '</b>', path })) +
       '</p>';
   }
 
@@ -419,16 +431,16 @@
         '<p>' + esc(r.review) + '</p>' +
       '</div>').join('');
     return '<div class="reviews" id="reviews">' +
-      '<h2>Reviews</h2>' +
+      '<h2>' + esc(T('store.reviews.title')) + '</h2>' +
       (rv
         ? '<p class="revsum"><span class="revstars">' + starRow(rv.stars) + '</span> ' +
-          rv.stars + ' · ' + rv.count + (rv.count === 1 ? ' review' : ' reviews') + '</p>'
-        : '<p class="revsum">No reviews yet — be the first.</p>') +
+          rv.stars + ' · ' + esc(T('store.reviews.count', { n: rv.count })) + '</p>'
+        : '<p class="revsum">' + esc(T('store.reviews.none')) + '</p>') +
       items +
       '<div class="revactions">' +
-        '<a class="btn ghost" id="write-review" href="' + esc(reviewHref(app.slug)) + '" target="_blank" rel="noopener">Write a review</a>' +
-        '<span class="note">A review is a pull request: one small JSON file under your GitHub name, in the same repo the apps live in. ' +
-        'The button prefills it — or ask your AI to do it for you (<a href="' + esc(HOW_REVIEWS) + '" rel="noopener">how reviews work</a>).</span>' +
+        '<a class="btn ghost" id="write-review" href="' + esc(reviewHref(app.slug)) + '" target="_blank" rel="noopener">' + esc(T('store.reviews.write')) + '</a>' +
+        '<span class="note">' + rich('store.reviews.how', {},
+          { link: '<a href="' + esc(HOW_REVIEWS) + '" rel="noopener">' + esc(T('store.reviews.howLink')) + '</a>' }) + '</span>' +
       '</div>' +
     '</div>';
   }
@@ -439,7 +451,7 @@
     for (const a of catalog.apps) for (const c of a.categories || []) used.add(c);
     const cats = ['All'].concat((catalog.categories || []).filter((c) => used.has(c)));
     $('cats').innerHTML = cats.map((c) =>
-      '<button class="cat" data-cat="' + esc(c) + '" aria-pressed="' + (c === activeCat) + '">' + esc(c) + '</button>').join('');
+      '<button class="cat" data-cat="' + esc(c) + '" aria-pressed="' + (c === activeCat) + '">' + esc(c === 'All' ? T('store.browse.all') : c) + '</button>').join('');
   }
 
   // ONE action per card, labelled by the player's state with this app:
@@ -452,12 +464,12 @@
   function cardAct(a) {
     const installed = installedOf(a);
     return tooOld(a)
-      ? '<button class="btn ghost act" disabled>Needs a newer GifOS</button>'
+      ? '<button class="btn ghost act" disabled>' + esc(T('store.card.needsNewer')) + '</button>'
       : installed
         ? (outdated(a)
-            ? '<button class="btn act" data-act="update">Update</button>'
-            : '<a class="btn act" data-act="open" href="' + BASE + 'run.html#id=' + encodeURIComponent(installed.id) + ns('&db=') + '">Open</a>')
-        : '<button class="btn act" data-act="install">Install</button>';
+            ? '<button class="btn act" data-act="update">' + esc(T('store.card.update')) + '</button>'
+            : '<a class="btn act" data-act="open" href="' + BASE + 'run.html#id=' + encodeURIComponent(installed.id) + ns('&db=') + '">' + esc(T('store.card.open')) + '</a>')
+        : '<button class="btn act" data-act="install">' + esc(T('store.card.install')) + '</button>';
   }
   // The card says "needs a newer GifOS" INSTEAD of the size, because the size
   // is an invitation and this app is not yet installable here. Learning it on
@@ -466,9 +478,9 @@
   function cardState(a) {
     const installed = installedOf(a);
     return tooOld(a)
-      ? '<span class="needs">Needs a newer GifOS</span>'
+      ? '<span class="needs">' + esc(T('store.card.needsNewer')) + '</span>'
       : installed
-        ? (outdated(a) ? '<span class="installed">↑ Update available</span>' : '<span class="installed">✓ Installed</span>')
+        ? (outdated(a) ? '<span class="installed">' + esc(T('store.card.updateAvailable')) + '</span>' : '<span class="installed">' + esc(T('store.card.installed')) + '</span>')
         : '<span>' + esc(human(a.bytes)) + '</span>';
   }
   function renderGrid() {
@@ -489,8 +501,8 @@
           // of the tagline and pills instead of dangling under them.
           '<div class="cardhead"><h3>' + esc(a.name) + '</h3>' + act + '</div>' +
           '<div class="tag">' + esc(a.tagline) + '</div>' +
-          (a.basedOn ? '<div class="portof">port of ' + esc(a.basedOn.name) + '</div>' : '') +
-          (a.inspiredBy ? '<div class="portof">inspired by ' + esc(a.inspiredBy.name) + '</div>' : '') +
+          (a.basedOn ? '<div class="portof">' + esc(T('store.card.portOf', { name: a.basedOn.name })) + '</div>' : '') +
+          (a.inspiredBy ? '<div class="portof">' + esc(T('store.card.inspiredBy', { name: a.inspiredBy.name })) + '</div>' : '') +
           '<div class="meta">' +
             // The card says "needs a newer GifOS" INSTEAD of the size, because
             // the size is an invitation and this app is not yet installable
@@ -498,7 +510,7 @@
             // one press before Install, already sold on it.
             cardState(a) +
             (revOf(a.slug)
-              ? '<span class="stars" title="' + revOf(a.slug).count + ' review(s), by pull request">★ ' +
+              ? '<span class="stars" title="' + esc(T('store.card.reviewsTitle', { n: revOf(a.slug).count })) + '">★ ' +
                 revOf(a.slug).stars + ' (' + revOf(a.slug).count + ')</span>'
               : '') +
             (a.categories || []).map((c) => '<span class="pill">' + esc(c) + '</span>').join('') +
@@ -506,9 +518,9 @@
             // so nothing in this app ever reaches the internet (the runtime
             // enforces that; the pill just says it up front). Computed by the
             // catalog builder into the index as `offline`, never guessed here.
-            (a.offline ? '<span class="pill offline" title="Declares no network access — runs entirely on this device">Works offline</span>' : '') +
+            (a.offline ? '<span class="pill offline" title="' + esc(T('store.card.offlineTitle')) + '">' + esc(T('store.card.offline')) + '</span>' : '') +
             (a.optionalCount
-              ? '<span class="pill" title="Extra files download the first time you open them, not at install">Extra files later</span>'
+              ? '<span class="pill" title="' + esc(T('store.card.extraLaterTitle')) + '">' + esc(T('store.card.extraLater')) + '</span>'
               : '') +
           '</div>' +
           '<span class="cnote"></span>' +
@@ -570,10 +582,30 @@
     }
   }
 
+  // store.html's own words: the English stays in the markup (no flash, works
+  // without the catalog); this swaps in the reader's language once it is loaded.
+  function paintStatic() {
+    const set = (sel, text) => { const el = document.querySelector(sel); if (el) el.textContent = text; };
+    set('.topbar .title', T('store.title'));
+    set('.topbar .home', T('store.homeScreen'));
+    const h1 = document.querySelector('#browse h1');
+    if (h1) h1.innerHTML = rich('store.browse.titleLead', {}, { gifs: '<span class="brand">' + esc(T('store.browse.gifs')) + '</span>' });
+    set('#browse .lede', T('store.browse.lede'));
+    set('#paybar > p:first-child', T('store.pay.note'));
+    set('#tip', T('store.pay.tip'));
+    const q = $('q'); if (q) q.placeholder = T('store.browse.search');
+    set('#empty', T('store.browse.empty'));
+    set('#foot-intro', T('store.foot.intro') + ' ');
+    set('#foot-how', T('store.foot.how'));
+    set('#foot-build', T('store.foot.build'));
+    set('#foot-contact', T('store.foot.contact') + ' ');
+    if (!detailEl.style.display || detailEl.style.display === 'none') document.title = T('store.titleTab');
+  }
+
   function showBrowse(push) {
     detailEl.style.display = 'none';
     browseEl.style.display = '';
-    document.title = 'App Store — GifOS';
+    document.title = T('store.titleTab');
     if (push) history.pushState({}, '', browseUrl());
     paintPayBar();
     renderGrid();
@@ -608,47 +640,46 @@
     // own can become too old for your computer (it raised its floor, or you
     // moved to an older build), and "Install again", greyed out and silent, is
     // the same dead end as a silent "Install — free".
-    const why = (normal) => (tooOld(app) ? 'Needs a newer GifOS' : normal);
+    const why = (normal) => esc(tooOld(app) ? T('store.card.needsNewer') : normal);
     const feature = GifOS.cash ? GifOS.cash.featureHref(app.slug) : '';
     const donate = app.basedOn && app.basedOn.donate;
     detailEl.innerHTML =
-      '<button class="back" id="back">← All apps</button>' +
+      '<button class="back" id="back">' + esc(T('store.detail.back')) + '</button>' +
       '<div class="head"><div>' +
         '<h1>' + esc(app.name) + '</h1>' +
         '<div class="sub">' + esc(app.tagline) + '</div>' +
         (app.basedOn
           ? '<div class="port">' +
-              (app.basedOn.blessed ? '' : '<span class="pill">Unofficial port</span> ') +
-              'of ' + personLink({ name: app.basedOn.name, url: app.basedOn.url }) +
-              '. Bugs in this port go to <a href="' + esc(PORT_BUGS) + '" rel="noopener">GifOS</a>, not ' +
-              esc(app.basedOn.name) + '.' +
+              (app.basedOn.blessed ? '' : '<span class="pill">' + esc(T('store.detail.unofficial')) + '</span> ') +
+              rich('store.detail.portLine', { name: app.basedOn.name }, {
+                who: personLink({ name: app.basedOn.name, url: app.basedOn.url }),
+                gifos: '<a href="' + esc(PORT_BUGS) + '" rel="noopener">GifOS</a>',
+              }) +
             '</div>'
           : '') +
       '</div></div>' +
       // Again: cover.jpg. The GIF is not fetched until Install.
-      '<img class="hero" src="' + esc(app.cover) + '" alt="' + esc(app.name) + ' screenshot" decoding="async">' +
+      '<img class="hero" src="' + esc(app.cover) + '" alt="' + esc(T('store.detail.screenshot', { name: app.name })) + '" decoding="async">' +
       '<div class="actions">' +
         (installedId
-          ? (canUpdate ? '<button class="btn" id="update"' + stop + '>' + why('Update — keeps your data') + '</button>' : '') +
-            '<a class="btn' + (canUpdate ? ' ghost' : '') + '" href="' + BASE + 'run.html#id=' + encodeURIComponent(installedId) + ns('&db=') + '">Open</a>' +
-            '<button class="btn ghost" id="install"' + stop + '>' + why('Install again') + '</button>'
-          : '<button class="btn" id="install"' + stop + '>' + why('Install — free') + '</button>') +
+          ? (canUpdate ? '<button class="btn" id="update"' + stop + '>' + why(T('store.detail.updateKeeps')) + '</button>' : '') +
+            '<a class="btn' + (canUpdate ? ' ghost' : '') + '" href="' + BASE + 'run.html#id=' + encodeURIComponent(installedId) + ns('&db=') + '">' + esc(T('store.card.open')) + '</a>' +
+            '<button class="btn ghost" id="install"' + stop + '>' + why(T('store.detail.installAgain')) + '</button>'
+          : '<button class="btn" id="install"' + stop + '>' + why(T('store.detail.installFree')) + '</button>') +
         // Share is NEVER gated by the build floor. A listing this computer
         // cannot install from is still worth sending to someone whose computer
         // can — that is most of the point of having a link.
-        '<button class="btn ghost" id="share" data-url="' + esc(shareUrl(app.slug)) + '" data-run="' + esc(runUrl(app.slug)) + '">Share</button>' +
+        '<button class="btn ghost" id="share" data-url="' + esc(shareUrl(app.slug)) + '" data-run="' + esc(runUrl(app.slug)) + '">' + esc(T('store.detail.share')) + '</button>' +
         // Feature is optional cash, never a gate. A listing you cannot pay
         // for is the normal state; a listing you can still installs free.
         (feature
-          ? '<a class="btn ghost" id="feature" href="' + esc(feature) + '" target="_blank" rel="noopener">Feature this listing</a>' +
+          ? '<a class="btn ghost" id="feature" href="' + esc(feature) + '" target="_blank" rel="noopener">' + esc(T('store.detail.feature')) + '</a>' +
             (GifOS.charge && typeof GifOS.charge.paymentSupportHtml === 'function'
               ? '<p class="note" id="feature-support">' + GifOS.charge.paymentSupportHtml() + '</p>' : '')
           : '') +
-        '<span class="note" id="note">' + esc(human(app.bytes)) + ' download' +
-          // An app whose weights arrive separately is TWO downloads, and the
-          // second one dwarfs the first. Say so before the press, not after.
-          (app.download ? ' + ' + esc(human(app.download)) + ' model' : '') +
-          (app.optionalCount ? ' · extra files later' : '') + '</span>' +
+        '<span class="note" id="note">' + esc(T('store.detail.download', {
+          size: human(app.bytes), hasModel: app.download ? 'yes' : 'no', model: app.download ? human(app.download) : '',
+          extra: app.optionalCount ? 'yes' : 'no' })) + '</span>' +
         '<span class="prog" id="prog" style="display:none"><i></i></span>' +
       '</div>' +
       // The SECOND download, with its own bar. It used to have none: the app
@@ -667,12 +698,12 @@
       // in one tap. Sending the listing to someone who just wants to play is
       // four screens of clicks — so Share asks, with the direct link first.
       '<div class="sharepick" id="sharepick" style="display:none">' +
-        '<span class="note">Share which link?</span>' +
-        '<button class="btn" id="share-app">Open the app — one tap</button>' +
-        '<button class="btn ghost" id="share-store">Store listing</button>' +
+        '<span class="note">' + esc(T('store.detail.sharePick')) + '</span>' +
+        '<button class="btn" id="share-app">' + esc(T('store.detail.shareApp')) + '</button>' +
+        '<button class="btn ghost" id="share-store">' + esc(T('store.detail.shareStore')) + '</button>' +
       '</div>' +
       '<div class="sharebox" id="sharebox" style="display:none">' +
-        '<label class="note" for="shareurl">Send this link:</label>' +
+        '<label class="note" for="shareurl">' + esc(T('store.detail.sendLink')) + '</label>' +
         '<input id="shareurl" readonly value="' + esc(shareUrl(app.slug)) + '">' +
       '</div>' +
       (legacyDesktop ? legacyNotice() : '') +
@@ -680,51 +711,51 @@
       '<div class="err" id="err" style="display:none"></div>' +
       '<div class="desc">' + esc(app.description) + '</div>' +
       '<dl class="facts">' +
-        fact('Version', esc(app.version)) +
-        fact('Author', personLink(app.author)) +
-        (app.porter ? fact('Ported by', personLink(app.porter)) : '') +
+        fact(T('store.fact.version'), esc(app.version)) +
+        fact(T('store.fact.author'), personLink(app.author)) +
+        (app.porter ? fact(T('store.fact.portedBy'), personLink(app.porter)) : '') +
         (app.basedOn
-          ? fact('Based on', personLink({ name: app.basedOn.name, url: app.basedOn.url }) +
-              (app.basedOn.blessed ? '' : ' <span class="pill">Unofficial port</span>'))
+          ? fact(T('store.fact.basedOn'), personLink({ name: app.basedOn.name, url: app.basedOn.url }) +
+              (app.basedOn.blessed ? '' : ' <span class="pill">' + esc(T('store.detail.unofficial')) + '</span>'))
           : '') +
         (app.inspiredBy
-          ? fact('Inspired by', personLink({ name: app.inspiredBy.name, url: app.inspiredBy.url }) +
-              (app.inspiredBy.by ? ' by ' + esc(app.inspiredBy.by) : ''))
+          ? fact(T('store.fact.inspiredBy'), app.inspiredBy.by
+              ? rich('store.fact.inspiredByWho', { by: app.inspiredBy.by }, { name: personLink({ name: app.inspiredBy.name, url: app.inspiredBy.url }) })
+              : personLink({ name: app.inspiredBy.name, url: app.inspiredBy.url }))
           : '') +
-        fact('Released', esc(niceDate(app.releaseDate))) +
-        (app.updated && app.updated !== app.releaseDate ? fact('Updated', esc(niceDate(app.updated))) : '') +
-        fact('Category', (app.categories || []).map((c) => '<span class="pill">' + esc(c) + '</span>').join(' ')) +
-        fact('Size', esc(human(app.bytes))) +
+        fact(T('store.fact.released'), esc(niceDate(app.releaseDate))) +
+        (app.updated && app.updated !== app.releaseDate ? fact(T('store.fact.updated'), esc(niceDate(app.updated))) : '') +
+        fact(T('store.fact.category'), (app.categories || []).map((c) => '<span class="pill">' + esc(c) + '</span>').join(' ')) +
+        fact(T('store.fact.size'), esc(human(app.bytes))) +
         (app.download
-          ? fact('Downloads at install',
-              esc(human(app.download)) + ' more, fetched when you install — not inside the app file.')
+          ? fact(T('store.fact.atInstall'),
+              esc(T('store.fact.atInstallValue', { size: human(app.download) })))
           : '') +
         (app.optionalCount
-          ? fact('Downloads when you pick them',
-              (app.optionalCount === 1 ? '1 extra file' : app.optionalCount + ' extra files') +
-              (app.optionalDownload ? ', about ' + esc(human(app.optionalDownload)) + ' if you take every one' : '') +
-              '. None of them download at install. Each one arrives the first time you open it, then stays on this device.')
+          ? fact(T('store.fact.onPick'),
+              esc(T('store.fact.onPickValue', { n: app.optionalCount,
+                hasSize: app.optionalDownload ? 'yes' : 'no', size: app.optionalDownload ? human(app.optionalDownload) : '' })))
           : '') +
         // Stated on EVERY listing, not only the ones that fail here. What an
         // app requires is a fact about the app, the same as its size — a
         // reader on a new computer still deserves to know before they pass the
         // link to someone on an old one.
-        fact('Requires', needsBuild(app)
-          ? 'GifOS build ' + needsBuild(app) + ' or newer' +
+        fact(T('store.fact.requires'), needsBuild(app)
+          ? esc(T('store.fact.requiresBuild', { build: String(needsBuild(app)) })) +
             (releaseWith(needsBuild(app))
-              ? ' <span class="pill">release ' + esc(releaseWith(needsBuild(app))) + ' and up</span>'
-              : ' <span class="pill">no release yet — edge build</span>')
-          : 'not stated') +
-        fact('License', esc(app.license) + (app.copyright ? ' · ' + esc(app.copyright) : '')) +
-        fact('Signature', app.signature && app.signature.id
-          ? '✓ signed by ' + esc(app.signature.id) : 'not signed') +
-        (caps.length ? fact('Abilities', '<span class="caps">' + caps.map((c) => '<span class="pill">' + esc(c) + '</span>').join(' ') + '</span>') : '') +
-        (app.homepage ? fact(app.basedOn ? 'This port' : 'Source',
-          '<a href="' + esc(app.homepage) + '" rel="noopener">the code that built it</a>') : '') +
+              ? ' <span class="pill">' + esc(T('store.fact.requiresRelease', { release: releaseWith(needsBuild(app)) })) + '</span>'
+              : ' <span class="pill">' + esc(T('store.fact.requiresEdge')) + '</span>')
+          : esc(T('store.fact.notStated'))) +
+        fact(T('store.fact.license'), esc(app.license) + (app.copyright ? ' · ' + esc(app.copyright) : '')) +
+        fact(T('store.fact.signature'), app.signature && app.signature.id
+          ? esc(T('store.fact.signedBy', { id: app.signature.id })) : esc(T('store.fact.notSigned'))) +
+        (caps.length ? fact(T('store.fact.abilities'), '<span class="caps">' + caps.map((c) => '<span class="pill">' + esc(c) + '</span>').join(' ') + '</span>') : '') +
+        (app.homepage ? fact(app.basedOn ? T('store.fact.thisPort') : T('store.fact.source'),
+          '<a href="' + esc(app.homepage) + '" rel="noopener">' + esc(T('store.fact.sourceLink')) + '</a>') : '') +
         // Donate is THEIRS (basedOn.donate), a fact among the other outbound
         // links — not an Install-row button next to Feature this listing.
         (donate
-          ? fact('Donate', '<a id="donate" href="' + esc(donate) + '" rel="noopener">' +
+          ? fact(T('store.fact.donate'), '<a id="donate" href="' + esc(donate) + '" rel="noopener">' +
               esc(app.basedOn.name) + '</a>')
           : '') +
       '</dl>' +
@@ -764,7 +795,7 @@
     };
     const said = (msg) => {
       btn.textContent = msg;
-      setTimeout(() => { btn.textContent = 'Share'; }, 2400);
+      setTimeout(() => { btn.textContent = T('store.detail.share'); }, 2400);
     };
     // Share opens the question; picking an answer is what shares. Each pick
     // is its own click, so navigator.share still runs inside a user gesture.
@@ -790,18 +821,18 @@
       if (navigator.clipboard && navigator.clipboard.writeText) {
         try {
           await navigator.clipboard.writeText(url);
-          said('✓ Link copied');
+          said(T('store.detail.linkCopied'));
           reveal(false);
           return;
         } catch (e) { /* denied or no focus — the row below still works */ }
       }
       reveal(true);
-      said('Copy this link');
+      said(T('store.detail.copyLink'));
     };
-    $('share-app').onclick = share(btn.dataset.run, 'Open ' + app.name);
-    $('share-store').onclick = share(btn.dataset.url, app.name + ' on the GifOS App Store');
+    $('share-app').onclick = share(btn.dataset.run, T('store.detail.shareTextApp', { name: app.name }));
+    $('share-store').onclick = share(btn.dataset.url, T('store.detail.shareTextStore', { name: app.name }));
   }
-  const fact = (k, v) => '<div><dt>' + k + '</dt><dd>' + v + '</dd></div>';
+  const fact = (k, v) => '<div><dt>' + esc(k) + '</dt><dd>' + v + '</dd></div>';
 
   // ---------- install ----------
   // The ONE moment the App GIF crosses the wire. With `into` (the installed
@@ -843,7 +874,7 @@
     err.style.display = 'none';
     btn.disabled = true;
     prog.style.display = ''; prog.firstChild.style.width = '0';
-    note.textContent = 'Downloading…';
+    note.textContent = T('store.install.downloading');
 
     let bytes;
     try {
@@ -851,7 +882,7 @@
       // absolute https listing.gifUrl (the author's GitHub Release). Both are
       // pinned by app.sha256 below; a remote file that moved is a hash miss.
       const r = await fetch(app.gif, { cache: 'no-store', redirect: 'follow' });
-      if (!r.ok) throw new Error('the download returned ' + r.status);
+      if (!r.ok) throw new Error(T('store.err.httpStatus', { status: String(r.status) }));
       // Stream it so an 8 MB app shows real progress instead of a dead button.
       const total = Number(r.headers.get('content-length')) || app.bytes || 0;
       if (r.body && r.body.getReader) {
@@ -889,9 +920,9 @@
         bytes = new Uint8Array(await r.arrayBuffer());
         prog.firstChild.style.width = '100%';
       }
-    } catch (e) { return fail('Couldn’t download it — ' + (e.message || e)); }
+    } catch (e) { return fail(T('store.err.download', { msg: e.message || e })); }
 
-    note.textContent = 'Checking…';
+    note.textContent = T('store.install.checking');
 
     // The catalog says exactly which bytes this app is. If what arrived isn't
     // that, something is wrong between here and the file — don't install it.
@@ -899,7 +930,7 @@
       try {
         const d = new Uint8Array(await root.crypto.subtle.digest('SHA-256', bytes));
         let hex = ''; for (const b of d) hex += b.toString(16).padStart(2, '0');
-        if (hex !== app.sha256) return fail('That download doesn’t match the catalog. Nothing was installed.');
+        if (hex !== app.sha256) return fail(T('store.err.mismatch'));
       } catch (e) { /* no subtle crypto (insecure origin): fall through to the structural checks */ }
     }
 
@@ -921,8 +952,8 @@
       archive = await gif.decode(bytes).catch(() => null);
       m = archive ? (gif.readManifest(archive) || {}) : null;
     }
-    if (!m || !m.appId) return fail('That file isn’t a GifOS app.');
-    if (m.appId !== app.appId) return fail('That file is a different app than the listing. Nothing was installed.');
+    if (!m || !m.appId) return fail(T('store.err.notApp'));
+    if (m.appId !== app.appId) return fail(T('store.err.differentApp'));
 
     // A listing that CLAIMS a signature must actually carry one that verifies —
     // the catalog records the claim, the browser checks it against the bytes.
@@ -933,8 +964,7 @@
       try {
         const v = await GifOS.sign.verify(bytes);
         if (v && (v.status === 'tampered' || v.status === 'unsigned')) {
-          return fail('This app is listed as signed by ' + (app.signature.id || 'its author') +
-            ', but the signature didn’t verify. Nothing was installed.');
+          return fail(T('store.err.badSignature', { id: app.signature.id || T('store.err.itsAuthor') }));
         }
       } catch (e) { /* the hash above already pinned the bytes */ }
     }
@@ -958,12 +988,12 @@
         if (!A.list(m).some((a) => !a.optional)) return;
         const cache = A.assetCache(store, fid);
         if (!archive) archive = await gif.decode(bytes).catch(() => null);
-        if (!archive) throw new Error('couldn’t read the app’s files');
+        if (!archive) throw new Error(T('store.err.readFiles'));
         const need = await A.missing(archive.files, m, cache, { requiredOnly: true });
         if (!need.length) return;
         // The first line has finished its job; let it say so, so the moving
         // line below is unambiguously the one still working.
-        note.textContent = 'App file ✓';
+        note.textContent = T('store.install.appFileDone');
         if (dl2) dl2.style.display = '';
         bar2.firstChild.style.width = '0';
         await A.ensure(archive.files, m, (s, frac) => {
@@ -976,15 +1006,15 @@
         }, cache);
         bar2.classList.remove('busy');
         bar2.firstChild.style.width = '100%';
-        note2.textContent = 'Model ready ✓';
+        note2.textContent = T('store.install.modelReady');
       } catch (e) {
         if (bar2) bar2.classList.remove('busy');
         if (dl2) dl2.style.display = '';
-        if (note2) note2.textContent = '⚠ ' + (e.message || e) + ' — the app will retry when you open it.';
+        if (note2) note2.textContent = T('store.err.assetRetry', { msg: e.message || e });
       }
     };
 
-    note.textContent = into ? 'Updating…' : 'Installing…';
+    note.textContent = into ? T('store.install.updating') : T('store.install.installing');
     try {
       // The store remembers which fileId each appId lived at — because ALL of
       // an app's saved data (recent places, map cache, preferences) is keyed
@@ -1017,7 +1047,7 @@
         if (ui.after) { ui.after(); return; }
         await showDetail(app.slug, false);   // re-renders: Update button gone, sha now matches
         const n2 = $('note');
-        if (n2) n2.textContent = 'Updated ✓ — your saved data is untouched.';
+        if (n2) n2.textContent = T('store.install.updated');
         return;
       }
       // Resurrect the app's old identity if its file is gone: the orphaned
@@ -1055,6 +1085,9 @@
   }
 
   (async function boot() {
+    try { await GifOS.i18n.load('store'); } catch (e) { /* English reads from the built-in fallback chain */ }
+    paintStatic();
+    GifOS.i18n.onChange(() => { GifOS.i18n.load('store').then(() => { paintStatic(); if (catalog) { renderCats(); route(false); } }); });
     // Settle the build question before anything renders — every card and every
     // Install button is drawn against it.
     await resolveBuild();
@@ -1062,7 +1095,7 @@
       const r = await fetch('/apps/index.json', { cache: 'no-cache' });
       catalog = await r.json();
     } catch (e) {
-      $('grid').innerHTML = '<p class="err">The catalog didn’t load. Check your connection and reload.</p>';
+      $('grid').innerHTML = '<p class="err">' + esc(T('store.err.catalog')) + '</p>';
       return;
     }
     // Reviews are decoration on the catalog, never a dependency: a store that
@@ -1103,13 +1136,13 @@
     // this card. An UPDATE re-renders the grid so the button turns into Open.
     async function cardInstall(card, update) {
       const btn = card.querySelector('.act'), note = card.querySelector('.cnote'), prog = card.querySelector('.cprog');
-      btn.disabled = true; note.textContent = 'Loading…'; note.classList.remove('err');
+      btn.disabled = true; note.textContent = T('store.install.loading'); note.classList.remove('err');
       let app = null;
       try {
         const r = await fetch('/apps/' + encodeURIComponent(card.dataset.slug) + '/app.json', { cache: 'no-cache' });
-        if (!r.ok) throw new Error('listing returned ' + r.status);
+        if (!r.ok) throw new Error(T('store.err.listingStatus', { status: String(r.status) }));
         app = await r.json();
-      } catch (e) { note.classList.add('err'); note.textContent = 'Couldn’t load this listing — ' + (e.message || e); btn.disabled = false; return; }
+      } catch (e) { note.classList.add('err'); note.textContent = T('store.err.listing', { msg: e.message || e }); btn.disabled = false; return; }
       const live = installedOf(app);
       await install(app, update && live ? { id: live.id, name: live.name } : null, {
         btn, note, prog, err: note,

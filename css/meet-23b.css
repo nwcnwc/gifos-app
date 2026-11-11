@@ -17,6 +17,11 @@ body.comfy.show-stage #stagefeed > .rowtile[data-comfy="1"] {
   background: #000; border-radius: 12px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,.12); }
 body.comfy.show-stage #stagefeed > .rowtile[data-comfy="1"] video {
   width: 100%; height: 100%; object-fit: contain; background: #000; }
+/* A Fit panel floats over the picture: the stage over a share, or the row
+   when nothing is shared. Under the header chip and the Fit button (z 6)
+   and the dock (z 32), so a drag cannot cover a control for good. */
+body.comfy [data-float] { z-index: 5; }
+body.comfy:not(.gallery-scroll) [data-float] { touch-action: none; }
 /* Row and Stadium tiles are squares (meet-zones) with soft corners. */
 body.comfy:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile[data-comfy="1"],
 body.comfy.has-peers:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me[data-comfy="1"] { border-radius: 12px; overflow: hidden; }
@@ -116,7 +121,7 @@ body:not(.has-app):not(.solo-app):not(.app-room) #apppane { display: block; posi
    the same inset the meeting's own top row already takes. A phone keeps
    the panel over the call. */
 @media (min-width: 800px) {
-  body.chatside:not(.has-app):not(.solo-app):not(.app-room) #apppane { right: 340px; }
+  body.chatside:not(.has-app):not(.solo-app):not(.app-room) #apppane { right: var(--sidew, 340px); }
 }
 body:not(.has-app):not(.solo-app):not(.app-room) #appmount { display: none; }
 body:not(.has-app):not(.solo-app):not(.app-room) #appbar { justify-content: flex-end; background: transparent; border-bottom-color: transparent; }
@@ -176,8 +181,8 @@ body.head-calm .topchip > :not(#txmark), body.chrome-away .topchip > :not(#txmar
 /* A shared screen is laid out by the zones like any Stage: the feed fills
    the screen (the older phone share band pinned it 76-110px down). */
 body.comfy.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
-  top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; display: block !important; }
-body.comfy.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed.comfy-scroll { bottom: var(--comfy-clip, 0px) !important; }
+  top: 0 !important; left: 0 !important; right: 0 !important; bottom: env(safe-area-inset-bottom, 0px) !important; display: block !important; }
+/* A scrolling share feed runs to the bottom edge too; the bar floats over it (Nathan 2026-11-09). */
 /* LM-41 on a share: a desktop's header row (room chip, Fit, Invite, Help,
    Full screen) ends by 62px, and the top-right face's Open sat under Full
    screen. The share feed starts under that row like the plain feed does
@@ -231,9 +236,11 @@ body.desk-ptr #hdrhand.on { display: none !important; }
     flex: 0 1 auto; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
   }
 }
-/* The Stage frame: a free rectangle with a corner grip. */
-#tilewin .tw-rect { box-shadow: 0 0 0 9999px rgba(0,0,0,.5); left: 0; top: 0; width: 100%; height: 100%; }
-#tilewin .tw-grip { position: absolute; right: -9px; bottom: -9px; width: 18px; height: 18px; border-radius: 50%;
+/* The Stage frame: a free rectangle with a corner grip. The grip stays
+   inside the pad. Past the edge it sits in the rounded corner and the
+   pad clips it, so a drag there never reaches the frame. */
+#tilewin .tw-rect { box-sizing: border-box; box-shadow: 0 0 0 9999px rgba(0,0,0,.5); left: 0; top: 0; width: 100%; height: 100%; }
+#tilewin .tw-grip { position: absolute; right: 4px; bottom: 4px; width: 18px; height: 18px; border-radius: 50%;
   background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
 /* Broadcast calm, at every screen size: the host's panels (the stream link,
    Order of service, song words) fade with the dock so the Stage is the
@@ -247,10 +254,10 @@ body.broadcast.dock-calm #lyrics, body.broadcast.chrome-away #lyrics {
    item on now and the one after it, sitting above Live / Record so neither
    covers the other. The whole list is the same card on a wider screen. */
 @media (max-width: 700px) {
-  /* On the call-state row: the dock's resting top (--dockh), 8px under Live
-     / Record, 8px over them. A fixed 118px left 20px there and ran the card
-     up under the link on an SE (broadcast-23b, 320x568). */
-  body.broadcast #rundown { bottom: calc(var(--dockh, 90px) + 16px + var(--stateh, 0px)); max-height: calc(100vh - 240px - var(--stateh, 0px)); gap: 6px; padding: 12px 14px; }
+  /* Over Live / Record, 8px above them, on the safe area. No band for the
+     floating bar: it rises with the Record row, and above the bar's current
+     box when it would meet it (--barlift, placeBarAvoiders). */
+  body.broadcast #rundown { bottom: calc(var(--inset-bottom, 0px) + var(--stateh, 0px) + 16px + var(--barlift, 0px)); max-height: calc(100vh - 150px - var(--stateh, 0px) - var(--inset-bottom, 0px) - var(--barlift, 0px)); gap: 6px; padding: 12px 14px; }
   body.broadcast #rundown li { display: none; }
   body.broadcast #rundown li.now, body.broadcast #rundown li.now + li { display: flex; }
   body.broadcast #rundown li.now .rdname { font-size: 22px; }
@@ -342,17 +349,25 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
   mask: var(--mi) center / contain no-repeat;
 }
 .bar:not(.collapsed) #barmore .morerow > button { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle fill='black' cx='12' cy='12' r='5'/%3E%3C/svg%3E"); }
-#barmore #hand { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M8 11V6a1.4 1.4 0 0 1 2.8 0V11M11 10V5a1.4 1.4 0 0 1 2.8 0v6M14 10V6.5a1.4 1.4 0 0 1 2.8 0V14c0 2.8-1.8 5-4.8 5S7 16.8 7 14V8.2A1.4 1.4 0 0 1 9.8 8'/%3E%3C/svg%3E"); }
-#barmore #ccbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M3 6h18v12H3zM7 10h3v1.6H8.6V14H7zm6 0h3v1.6h-1.4V14H13z'/%3E%3C/svg%3E"); }
-#barmore #whobtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle fill='black' cx='9' cy='8' r='3'/%3E%3Ccircle fill='black' cx='16' cy='9' r='2.2'/%3E%3Cpath fill='black' d='M3.5 18c.4-3 2.6-4.5 5.5-4.5s5.1 1.5 5.5 4.5zm8-1.2c.4-1.6 1.6-2.6 3.4-2.6 2.2 0 3.8 1.2 4.2 3.8H11.5z'/%3E%3C/svg%3E"); }
-#barmore #qabtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 13.2a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4zM12 7c1.8 0 3 1 3 2.4 0 1.6-1.2 2.2-2.1 2.7-.5.3-.9.6-.9 1.2v.4h-1.6v-.6c0-1.2.7-1.8 1.6-2.3.6-.3 1.1-.6 1.1-1.3 0-.6-.5-1-1.2-1-.8 0-1.3.5-1.4 1.2H9.1C9.3 8 10.4 7 12 7z'/%3E%3C/svg%3E"); }
-#barmore #pwbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M8 10V8a4 4 0 0 1 8 0v2h1v10H7V10zm2 0h4V8a2 2 0 0 0-4 0z'/%3E%3C/svg%3E"); }
-#barmore #recbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle fill='black' cx='12' cy='12' r='5'/%3E%3C/svg%3E"); }
-#barmore #votebtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M5 12.5 9.2 17 19 7l-1.6-1.6L9.2 13.8 6.6 11z'/%3E%3C/svg%3E"); }
-#barmore #stagebtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle fill='black' cx='12' cy='7' r='2.6'/%3E%3Cpath fill='black' d='M7 19v-2.2C7 14.2 9 13 12 13s5 1.2 5 3.8V19z'/%3E%3C/svg%3E"); }
-#barmore #appbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M4 4h7v7H4zm9 0h7v7h-7zM4 13h7v7H4zm9 0h7v7h-7z'/%3E%3C/svg%3E"); }
-#barmore #setbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M4 7h10v2H4zm12 0h4v2h-4zM4 15h6v2H4zm8 0h8v2h-8zM10 5h2v6h-2zm6 8h2v6h-2z'/%3E%3C/svg%3E"); }
-#barmore #keysbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle fill='black' cx='8' cy='12' r='3.2'/%3E%3Cpath fill='black' d='M11 11h9v2h-2v2h-2v-2h-5z'/%3E%3C/svg%3E"); }
+/* Every item in More carries a line icon drawn like the bar's (2px stroke). */
+#barmore #hand { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8a8 8 0 0 0 8 8h0a6 6 0 0 0 6-6v-5a2 2 0 0 0-4 0'/%3E%3C/svg%3E"); }
+#barmore #ccbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='14' rx='2'/%3E%3Cpath d='M10 10a2 2 0 1 0 0 4M17 10a2 2 0 1 0 0 4'/%3E%3C/svg%3E"); }
+#barmore #whobtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='9' cy='8' r='3.5'/%3E%3Cpath d='M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5'/%3E%3Cpath d='M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.8c1.7.8 2.7 2.5 3 5.2'/%3E%3C/svg%3E"); }
+#barmore #qabtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M9.5 9.5a2.5 2.5 0 1 1 3.4 2.3c-.6.3-.9.8-.9 1.4V14'/%3E%3Cpath d='M12 17.2h.01'/%3E%3C/svg%3E"); }
+#barmore #pwbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='11' width='14' height='10' rx='2'/%3E%3Cpath d='M8 11V7a4 4 0 0 1 8 0v4'/%3E%3C/svg%3E"); }
+#barmore #waitbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 3h12M6 21h12M7 3c0 5 10 5 10 9s-10 4-10 9M17 3c0 5-10 5-10 9s10 4 10 9'/%3E%3C/svg%3E"); }
+#barmore #recbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Ccircle cx='12' cy='12' r='3.5'/%3E%3C/svg%3E"); }
+#barmore #votebtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='4' width='16' height='16' rx='3'/%3E%3Cpath d='M8 12.5l2.8 2.8L16 9.5'/%3E%3C/svg%3E"); }
+#barmore #stagebtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='7' r='3'/%3E%3Cpath d='M6 21v-1.5a6 6 0 0 1 12 0V21'/%3E%3Cpath d='M3 21h18'/%3E%3C/svg%3E"); }
+#barmore #appbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='4' width='7' height='7' rx='1.5'/%3E%3Crect x='13' y='4' width='7' height='7' rx='1.5'/%3E%3Crect x='4' y='13' width='7' height='7' rx='1.5'/%3E%3Crect x='13' y='13' width='7' height='7' rx='1.5'/%3E%3C/svg%3E"); }
+#barmore #rbbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 12a9 9 0 1 0 3-6.7L3 8'/%3E%3Cpath d='M3 3v5h5'/%3E%3Cpath d='M10 9l5 3-5 3z'/%3E%3C/svg%3E"); }
+#barmore #muteall { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='2' width='6' height='12' rx='3'/%3E%3Cpath d='M5 11a7 7 0 0 0 14 0M12 18v4'/%3E%3Cpath d='M3 3l18 18'/%3E%3C/svg%3E"); }
+#barmore #blurall { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z'/%3E%3C/svg%3E"); }
+#barmore #camall { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2' y='6' width='13' height='12' rx='2'/%3E%3Cpath d='M15 10.5L22 7v10l-7-3.5'/%3E%3Cpath d='M3 3l18 18'/%3E%3C/svg%3E"); }
+#barmore #shareall { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='12' rx='2'/%3E%3Cpath d='M8 20h8M12 16v4'/%3E%3C/svg%3E"); }
+#barmore #admbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l8 3v6c0 4.5-3.4 8.2-8 9-4.6-.8-8-4.5-8-9V6z'/%3E%3C/svg%3E"); }
+#barmore #setbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 7h9M17 7h3M4 17h3M11 17h9'/%3E%3Ccircle cx='15' cy='7' r='2'/%3E%3Ccircle cx='9' cy='17' r='2'/%3E%3C/svg%3E"); }
+#barmore #keysbtn { --mi: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2' y='6' width='20' height='12' rx='2'/%3E%3Cpath d='M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10'/%3E%3C/svg%3E"); }
 @media (min-width: 1100px) and (min-height: 680px) {
   .bar:not(.collapsed) #barmore .morerow > button svg,
   .bar:not(.collapsed) #barmore .morerow > button:not(:has(svg))::before { width: 18px; height: 18px; flex-basis: 18px; }
@@ -451,87 +466,69 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
   #tilewin .tw-side button.tw-btn { font-size: 16px; padding: 4px; }
 }
 
-/* Settings is one card. Desktop: video, stage and name on one row; captions
-   beside the mix. Phone: name beside the mix. Every control stays visible,
-   including both caption engines and the stadium fader. The card does not scroll. */
-#set-modal .name-box {
-  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px; align-items: start;
-  width: min(1000px, calc(100vw - 16px)); max-width: min(1000px, calc(100vw - 16px));
-  padding: 8px 10px; box-sizing: border-box;
+/* Settings is a normal settings screen: groups with headings, one setting a
+   row (label, then the control with its help under it), readable sizes and
+   44px controls. The body scrolls; the title and Close stay put (.dlg). */
+#set-modal .name-box.set-box {
+  width: min(720px, calc(100vw - 32px)); max-width: none; padding: 0; text-align: left;
+  color: var(--text, #1d1d1f);
 }
-#set-modal #set-title { grid-column: 1 / -1; grid-row: 1; margin: 0; font-size: 16px; }
-#set-modal #set-video { grid-column: 1; grid-row: 2; }
-#set-modal #set-stage-video { grid-column: 2; grid-row: 2; }
-#set-modal .set-sec:not([id]) { grid-column: 3; grid-row: 2; }
-/* The stage and name blocks share a wrapper. It is only a column on a phone. */
-#set-modal #set-col-a { display: contents; }
-#set-modal #set-captions { grid-column: 1 / span 2; grid-row: 3; }
-#set-modal #mixpanel { grid-column: 3; grid-row: 3; }
-#set-modal .name-box > div:last-child { grid-column: 1 / -1; grid-row: 4; margin-top: 0; }
-#set-modal .name-box p { margin: 0; }
-#set-modal .set-sec { margin: 0; gap: 4px; }
-#set-modal .set-help, #set-modal .rec-opt small { font-size: 11px; line-height: 1.25; }
-#set-modal .rec-opt { min-height: 0; padding: 2px 0; }
-#set-modal #ccengine-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px; }
-#set-modal #ccengine-row #ccsource { grid-column: 1 / -1; }
-#set-modal .seg { min-height: 28px; padding: 2px 6px; }
-#set-modal .name-box button { min-height: 32px; padding: 4px 8px; }
-#set-modal #mixpanel { gap: 4px; margin: 0; }
-#set-modal #mixpanel label { min-height: 0; }
-#set-modal #mixpanel input[type=range] { width: 88px; height: 18px; min-height: 0; margin: 0; }
-#set-modal #set-avatar-file { height: 28px; min-height: 0; font-size: 12px; padding: 0; }
-#set-modal #set-close { margin-top: 0; }
-@media (max-width: 700px), (max-height: 500px) {
-  #set-modal .name-box { grid-template-columns: 1fr 1fr; width: min(1000px, calc(100vw - 12px)); max-width: min(1000px, calc(100vw - 12px)); }
-  #set-modal #set-video { grid-column: 1 / -1; grid-row: 2; }
-  #set-modal #vqrow { flex-wrap: nowrap; }
-  #set-modal #vqrow .seg { flex: 1 1 0; min-width: 0; padding: 2px 1px; font-size: 11px; }
-  #set-modal #set-stage-video { grid-column: 1; grid-row: 3; }
-  #set-modal #mixpanel { grid-column: 2; grid-row: 3; }
-  #set-modal .set-sec:not([id]) { grid-column: 1 / -1; grid-row: 4; }
-  #set-modal #set-captions { grid-column: 1 / -1; grid-row: 5; }
-  #set-modal .name-box > div:last-child { grid-row: 6; }
-  #set-modal #ccengine-row { max-height: 72px; overflow-y: auto; }
+#set-modal .set-box > .dlg-head { padding: 16px 20px 12px; border-bottom: 1px solid var(--border, #d9dce3); }
+#set-modal .set-box > .dlg-head h3 { margin: 0; font-size: 1.25rem; line-height: 1.3; text-align: left; }
+#set-modal .set-box > .dlg-body { padding: 4px 20px 16px; }
+#set-modal .set-box > .dlg-actions { padding: 12px 20px; border-top: 1px solid var(--border, #d9dce3); justify-content: flex-end; }
+#set-modal .set-group { margin: 0; }
+#set-modal .set-group > h4 { margin: 24px 0 4px; padding-bottom: 6px; border-bottom: 2px solid var(--accent, #0064c8); font-size: 1.1rem; line-height: 1.3; font-weight: 700; color: var(--text, #1d1d1f); }
+#set-modal .set-group:first-child > h4 { margin-top: 12px; }
+#set-modal .set-row {
+  display: grid; grid-template-columns: 11rem minmax(0, 1fr); gap: 6px 16px; align-items: start;
+  margin: 0; padding: 12px 0; border-top: 1px solid var(--border, #e4e4ea); font-size: 1rem;
 }
-/* A 360-wide phone. The 72px cap above clipped the caption engines (194>72),
-   and the stadium fader pushed the card 5px past the viewport (711>706).
-   Tighter rhythm lets both engines show in full and the card still fits.
-   A short wide window keeps the cap: this block is width only. */
-@media (max-width: 700px) {
-  #set-modal .name-box { padding: 4px 6px; gap: 2px 6px; }
-  #set-modal .set-sec { gap: 2px; }
-  #set-modal .set-help, #set-modal .rec-opt small { font-size: 10px; line-height: 1.15; }
-  #set-modal #ccengine-row { max-height: none; overflow: visible; margin-top: 2px; gap: 4px; }
-  #set-modal #mixpanel { gap: 1px; }
-  #set-modal #mixpanel input[type=range] { height: 16px; }
-  #set-modal .name-box button, #set-modal .seg { min-height: 28px; }
-  #set-modal #set-avatar-file { height: 24px; min-height: 0; }
-  #set-modal .rec-opt input { min-height: 0; }
-  /* A phone that is offered a Meeting Bot's captions gets the Captions
-     source block, and the card ran 108px past a 773px screen. Two columns
-     hold the lower half: the name block sits under the stage block (one
-     column, so the two sides stack on their own), and the captions
-     language, its help and the language menu sit under the sound mix. The engine row spans the card, and the Captions source
-     block takes the empty column under Whisper, beside the phone's
-     Whisper warning. Close stays on screen without scrolling. */
-  #set-modal #set-captions { display: contents; }
-  #set-modal #set-col-a { display: flex; flex-direction: column; gap: 2px; grid-column: 1; grid-row: 3 / span 4; }
-  #set-modal #set-col-a > .set-sec { grid-column: auto; grid-row: auto; }
-  #set-modal #set-captions > b { grid-column: 2; grid-row: 4; }
-  #set-modal #set-captions > .set-help:not(#ccall-row) { grid-column: 2; grid-row: 5; }
-  #set-modal #cclang { grid-column: 2; grid-row: 6; }
-  #set-modal #ccengine-row { grid-column: 1 / -1; grid-row: 7; margin-top: 0 !important; }
-  #set-modal #ccall-row { grid-column: 1 / -1; grid-row: 8; }
-  #set-modal .name-box > div:last-child { grid-row: 9; }
-  #set-modal #ccengine-row #ccsource { grid-column: 2; grid-row: 2; margin-top: 0 !important; }
+#set-modal .set-group > h4 + .set-row, #set-modal #mixpanel > .set-row:first-child { border-top: 0; }
+#set-modal #mixpanel { display: block; }
+#set-modal .set-row > b { grid-column: 1; font-size: 1rem; line-height: 1.4; font-weight: 600; padding-top: 10px; }
+#set-modal .set-row > .set-ctl { grid-column: 2; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
+#set-modal .set-row.set-wide > * { grid-column: 1 / -1; }
+#set-modal .set-help, #set-modal .rec-opt small { font-size: .875rem; line-height: 1.45; margin: 0; color: var(--muted, #5a6070); }
+#set-modal p.set-help { margin: 0; }
+#set-modal #set-g-debug button:disabled { opacity: .45; cursor: default; }   /* Export and Clear with nothing stored */
+#set-modal .rec-opt { min-height: 44px; padding: 6px 0; gap: 12px; align-items: flex-start; font-size: 1rem; width: 100%; box-sizing: border-box; }
+#set-modal .rec-opt span b { font-weight: 600; }
+#set-modal .name-box .rec-opt input { width: 20px; min-width: 20px; height: 20px; margin: 2px 0 0; }
+#set-modal .name-box .rec-opt.inline input { margin: 0; }
+#set-modal .seg, #set-modal .name-box button { min-height: 44px; padding: 8px 14px; font-size: 1rem; }
+#set-modal #vqrow { display: flex; flex-wrap: wrap; max-width: 100%; }
+#set-modal #vqrow .seg { min-width: 44px; padding: 8px 10px; }
+#set-modal #cclang { min-height: 44px; width: 100%; font-size: 1rem; box-sizing: border-box; }
+#set-modal #ccwhisper, #set-modal #ccwhisper-weak { margin: 0 !important; align-self: stretch; }
+#set-modal #ccwords { font-size: 1rem !important; box-sizing: border-box; }
+#set-modal #set-avatar-file { width: 100%; min-height: 44px; margin: 0; font-size: 1rem; box-sizing: border-box; }
+#set-modal .set-mix { align-items: stretch; }
+#set-modal .set-mix label { display: grid; grid-template-columns: 7.5rem minmax(0, 18rem); align-items: center; gap: 12px; min-height: 44px; font-size: 1rem; }
+#set-modal .set-mix input[type=range] { width: 100%; min-height: 44px; margin: 0; padding: 0; border: 0; background: none; }
+#set-modal #timingrow { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+#set-modal #timingrow button { flex: 1 1 8rem; min-height: 44px; font-size: 1rem; padding: 8px 10px; }
+#set-modal #set-close { min-width: 112px; }
+/* A short window keeps the fixed title and Close slim, so the body has the room. */
+@media (max-height: 500px) {
+  #set-modal .set-box > .dlg-head { padding-top: 10px; padding-bottom: 8px; }
+  #set-modal .set-box > .dlg-actions { padding-top: 8px; padding-bottom: 8px; }
+}
+/* A narrow card puts each label over its control. */
+@media (max-width: 640px) {
+  #set-modal .name-box.set-box { width: calc(100vw - 16px); }
+  #set-modal .set-box > .dlg-head, #set-modal .set-box > .dlg-body, #set-modal .set-box > .dlg-actions { padding-left: 16px; padding-right: 16px; }
+  #set-modal .set-row { grid-template-columns: minmax(0, 1fr); }
+  #set-modal .set-row > b, #set-modal .set-row > .set-ctl { grid-column: 1; }
+  #set-modal .set-row > b { padding-top: 0; }
 }
 
 /* People is a column: the title, the lead and the buttons keep their height
    and the list takes what is left, so the card never grows past the window.
    Fifteen people at 1366x768 put the title above the top edge. */
-#who-modal .name-box { display: flex; flex-direction: column; }
-#who-modal .name-box > * { flex: 0 0 auto; }
-#who-modal .name-box > #who-list { flex: 0 1 auto; min-height: 0; }
+#who-modal .name-box > .dlg-body { display: flex; flex-direction: column; }
+#who-modal .name-box > .dlg-body > * { flex: 0 0 auto; }
+#who-modal .name-box > .dlg-body > #who-list { flex: 0 1 auto; min-height: 0; }
 /* Short cards: the list inside may scroll. The card may not. */
 @media (max-height: 640px) {
   #who-modal .name-box { padding: 10px 12px; }
@@ -551,19 +548,18 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
 #help-modal .name-box { padding: 10px 12px; }
 #help-modal h3 { margin: 0 0 6px; font-size: 1.15rem; }
 #help-modal .help-scroll { max-height: calc(100dvh - 250px); }
-/* The meeting help list shows its controls without scrolling. Two columns
-   keep that list inside the card on a short desktop and on a phone.
-   The people roster may still scroll; this list may not.
-   help-meet is the meeting story only. A broadcast story is longer, and
-   columns on it scroll sideways, so it keeps the vertical scroller. */
-#help-modal .help-scroll.help-meet { columns: 2; column-gap: 14px; }
-#help-modal .help-scroll.help-meet li,
-#help-modal .help-scroll.help-meet p,
-#help-modal .help-scroll.help-meet h4 { break-inside: avoid; }
+/* The meeting help list is one column that scrolls UP AND DOWN inside the
+   card (Close stays on screen). It was two CSS columns under a max-height;
+   columns under a height cap overflow into a third column to the SIDE as soon
+   as the text grows by a line (the Float line did), and a sideways scroll is
+   never acceptable on a sheet. */
 #help-modal .help-scroll.help-meet h4 { margin: .3rem 0 .1rem; font-size: .92rem; }
 #help-modal .help-meet .help-list { margin: 0 0 .25rem; }
 #help-modal .help-meet .help-list li { line-height: 1.25; padding: 0 0 1px .85rem; font-size: 13px; }
 #help-modal .help-meet p { margin-bottom: .25rem; font-size: 13px; line-height: 1.3; }
+@media (max-width: 700px) and (min-height: 600px) {
+  #help-modal .help-scroll.help-meet { max-height: calc(100dvh - 215px); }
+}
 #shortcutsheet .name-box { padding: 8px 12px; width: min(780px, calc(100vw - 16px)); max-width: min(780px, calc(100vw - 16px)); }
 #shortcutsheet h3 { font-size: 1.15rem; margin-bottom: 4px; }
 #shortcutsheet ul { columns: 2; column-gap: 16px; }
@@ -767,3 +763,41 @@ body.comfy.has-app #airbar.on #airrec { background: rgba(12,14,18,.92); color: #
   #chatpanel #chatform #pray .pray-ico { display: inline; }
   #chatpanel #chatform #pray .pray-word { display: none; }
 }
+
+/* The More sheet: one tidy menu at every size. A group's items share one
+   grid of equal columns and equal rows, so every item in it is one size.
+   run.html (layoutSheet) sets --mcols per group to the fewest lines that
+   fit, spread evenly, so no item is left alone on a line. An item is a 20px
+   line icon with its label beside it on a wide window and under it on a
+   phone. Every column is one width across the whole sheet (--mmax is how
+   many fit), so a group with fewer items keeps the same item size. The
+   floating bar keeps its own large buttons. */
+.bar:not(.collapsed) #barmore .moregroup > .morerow {
+  display: grid; grid-auto-rows: 1fr; gap: 6px;
+  grid-template-columns: repeat(var(--mcols, 4), calc((100% - (var(--mmax, 4) - 1) * 6px) / var(--mmax, 4)));
+}
+.bar:not(.collapsed) #barmore .moregroup > .morerow > label { grid-column: 1 / -1; }
+.bar:not(.collapsed) #barmore .moregroup > .morerow > button {
+  display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 10px;
+  width: 100%; height: auto; min-height: 44px; min-width: 0; max-width: none; margin: 0;
+  padding: 8px 12px; box-sizing: border-box; border: 0; border-radius: 10px;
+  font: 600 15px/1.2 system-ui, -apple-system, "Segoe UI", sans-serif; letter-spacing: normal;
+  text-align: left; white-space: normal; overflow-wrap: anywhere;
+}
+.bar:not(.collapsed) #barmore .moregroup > .morerow > button[hidden] { display: none; }
+.bar:not(.collapsed) #barmore .moregroup > .morerow > button > svg,
+.bar:not(.collapsed) #barmore .moregroup > .morerow > button:not(:has(svg))::before {
+  display: block; width: 20px; height: 20px; flex: 0 0 20px;
+}
+.bar:not(.collapsed) #barmore .moregroup > .morerow > button .docklab.dockword,
+.bar:not(.collapsed) #barmore .moregroup > .morerow > button .blab { display: inline; margin: 0; font: inherit; white-space: normal; }
+@media (min-width: 701px) and (min-height: 501px) {
+  .bar:not(.collapsed) #barmore { width: min(860px, calc(100vw - 24px)); }
+}
+@media (max-width: 700px), (max-height: 500px) {
+  .bar:not(.collapsed) #barmore .moregroup > .morerow > button {
+    flex-direction: column; justify-content: center; text-align: center; gap: 4px;
+    min-height: 56px; padding: 6px 4px; font-size: 12px;
+  }
+}
+html.ui-large .bar:not(.collapsed) #barmore .moregroup > .morerow > button { font-size: 1rem; }

@@ -2,6 +2,52 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.25",
+      "date": "2026-11-06",
+      "headline": "Meetings rebuilt to grow without limit",
+      "critical": false,
+      "features": [
+        "Meetings are rebuilt from the ground up: a meeting can grow to any size, and it repairs itself when people drop out, freeze or come back.",
+        "Small meetings stay tightly connected, and the stage always has room for five speakers.",
+        "GifOS follows your browser's language, with a choice in Settings. English, Spanish, Russian, Simplified Chinese and German are included for the desktop, the store, meetings and the built-in apps.",
+        "Dates and times in meetings show in your language's format.",
+        "Reloading the page keeps your seat in a meeting: you come back to the same place instead of queueing as a newcomer.",
+        "The waiting room is for admin rooms only. In an open room there is no waiting-room button and nobody is held at the door; in an admin room the admin's Admit opens every door.",
+        "A new broadcast starts with neutral wording; the run-of-show is an optional host template.",
+        "Stadium video is much faster, and sound is clearer in big rooms.",
+        "Reactions now reach the whole meeting, like a raised hand, and there is a new \u2764\ufe0f heart. In big rooms the Stadium shows who is talking (green), raised hands and reactions with colors, down to a single pixel per person.",
+        "Picture-in-picture: tap Float to keep the meeting in a small window, on Android and on desktop Chrome and Edge.",
+        "Joining is private: the screen before joining shows you with camera and mic off, and the camera does not turn on until you tap it. Turning the camera off really turns it off: the camera light goes out.",
+        "Captions are sent to the meeting by default, and you can turn that off in Settings. A new Transcript setting keeps a transcript for you or shares it with the room, with the language of each line. The \"Transcribing\" mark is now \"Sending captions\" and shows only when it is true. Whisper captions download their model once from gifos.app and your voice never leaves your device. A short notice tells you when captions are on in a meeting.",
+        "Settings in a meeting is a normal scrolling screen, popup buttons stay visible, the More menu is tidier, the bar never moves when the menu opens, and full screen fills a phone screen for camera faces.",
+        "Debug logging in Settings: turn it on, export the log, see its size and clear it."
+      ],
+      "fixes": [
+        "In a meeting with an admin password, setting or changing the password sends everyone who does not have the new one back to the door to type it, so people who slipped in early are asked too.",
+        "Disruptive or broken pages have a harder time keeping newcomers out or creating duplicate people. A large group of disruptive pages can still keep newcomers out.",
+        "Vote-offs are counted inside the meeting.",
+        "When the admin changes the password, pages that do not hold the new one return to the door right away.",
+        "Chat after a reload is no longer lost, and a line said while you reconnect still reaches you.",
+        "Transcript lines merge correctly across languages: a person who switches language is written in the new one, and overlapping lines no longer double up.",
+        "A speaker on stage who reloads the page is back on stage faster.",
+        "Sound recovers more quickly when someone drops out.",
+        "A person who is still connected is no longer shown as gone, and someone coming back after a stall reconnects on the first try.",
+        "The Meeting Bot no longer starts twice."
+      ],
+      "notes": [
+        "Update GifOS to the newest version: an older version still joins and talks, but until that page updates its Ban, Waiting room and vote-off buttons do nothing.",
+        "Spanish, Russian, Simplified Chinese and German strings are new. Please report any wording that reads wrong.",
+        "Known issue: right after someone leaves, the people count can read one too high for a moment before it settles.",
+        "Known issue: someone still on an older version can join and talk, but their Ban, Waiting room and vote-off buttons do nothing until their page updates.",
+        "Known issue: in very large rooms (about 1000 people) joining can be slow, and a large crowd of disruptive pages can still slow the room or keep newcomers out.",
+        "Known issue: when many people leave at once, the room can take a while to settle.",
+        "Known issue: in a Stadium, the picture of someone using Firefox is usually only slightly late, and occasionally up to about 0.3 seconds.",
+        "Known issue: memory use can grow slowly during a very long meeting; this is still being studied. A small computer running many meeting pages at once can run short of memory.",
+        "Known issue: a rare page crash in WebKit browsers, such as Safari, during a meeting is still being tracked down.",
+        "Known issue: automatic picture-in-picture on a computer when you switch tabs is not reliable yet. Tap Float before you switch."
+      ]
+    },
+    {
       "version": "0.9.24",
       "date": "2026-10-23",
       "headline": "Hotfix: no false \"Still in the call\", and a one-line app bar on phones",

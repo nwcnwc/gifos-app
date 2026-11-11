@@ -23,6 +23,17 @@
   const MAX_REASON = 140;
   const MAX_SKU = 64;
 
+  // The words a person reads (refusals, the receipt) live in i18n/<locale>/charge.json.
+  // The English given here is what shows before the catalog lands or on a page
+  // without the loader. Messages for the app's AUTHOR (manifest shape errors)
+  // stay English: they name manifest fields, not anything a buyer sees.
+  const tr = (key, en, p) => {
+    const I = GifOS.i18n;
+    if (I && I.has(key)) return I.t(key, p);
+    return String(en).replace(/\{(\w+)\}/g, (m, k) => (p && p[k] != null ? p[k] : m));
+  };
+  if (GifOS.i18n && GifOS.i18n.load) GifOS.i18n.load('charge');
+
   const isAddress = (a) => typeof a === 'string' && /^0x[0-9a-fA-F]{40}$/.test(a);
 
   // ---- WHICH RAILS THE AUTHOR ALLOWS, out of the SIGNED manifest --------------
@@ -89,14 +100,14 @@
   // The amount a sku must be charged at, or a refusal.
   function priceFor(prices, sku, amount) {
     const price = prices && Object.prototype.hasOwnProperty.call(prices, sku) ? prices[sku] : undefined;
-    if (price === undefined) throw new Error('this app\u2019s signed manifest sets no price for "' + sku + '" (manifest.pay.prices), so it cannot be sold');
-    if (String(amount) !== price) throw new Error('"' + sku + '" costs ' + price + ' in this app\u2019s signed manifest, not ' + String(amount));
+    if (price === undefined) throw new Error(tr('charge.error.noPrice', 'this app\u2019s signed manifest sets no price for "{sku}" (manifest.pay.prices), so it cannot be sold', { sku }));
+    if (String(amount) !== price) throw new Error(tr('charge.error.wrongPrice', '"{sku}" costs {price} in this app\u2019s signed manifest, not {amount}', { sku, price, amount: String(amount) }));
     return price;
   }
 
   function payeeOf(manifest) {
     const pay = manifest && manifest.pay;
-    if (!pay || typeof pay !== 'object') throw new Error('this app declares no payee (manifest.pay), so it cannot be paid');
+    if (!pay || typeof pay !== 'object') throw new Error(tr('charge.error.noPayee', 'this app declares no payee (manifest.pay), so it cannot be paid'));
     if (!isAddress(pay.to)) throw new Error('manifest.pay.to is not an address');
     if (pay.chain && pay.chain !== CHAIN) throw new Error('manifest.pay.chain "' + pay.chain + '" is refused — this build pays on ' + CHAIN_NAME + ' only');
     return { to: pay.to, chain: CHAIN };
@@ -126,19 +137,21 @@
   function eligibility(verdict, manifest) {
     const v = verdict || {};
     if (v.status === 'unsigned') {
-      return { allowed: false, reason: 'This app is not signed, so there is no verified author to pay. Unsigned apps cannot take payments.' };
+      return { allowed: false, reason: tr('charge.refuse.unsigned', 'This app is not signed, so there is no verified author to pay. Unsigned apps cannot take payments.') };
     }
     if (v.status === 'tampered') {
-      return { allowed: false, reason: 'This app has been changed since it was signed' + (v.detail ? ' (' + v.detail + ')' : '') + '. Its payee cannot be trusted, so it cannot take payments.' };
+      return { allowed: false, reason: v.detail
+        ? tr('charge.refuse.tamperedDetail', 'This app has been changed since it was signed ({detail}). Its payee cannot be trusted, so it cannot take payments.', { detail: v.detail })
+        : tr('charge.refuse.tampered', 'This app has been changed since it was signed. Its payee cannot be trusted, so it cannot take payments.') };
     }
     if (v.status !== 'valid') {
-      return { allowed: false, reason: 'This app’s signature could not be verified, so it cannot take payments.' };
+      return { allowed: false, reason: tr('charge.refuse.unverified', 'This app’s signature could not be verified, so it cannot take payments.') };
     }
     // The author's published key is not the one we pinned when we first saw
     // them. That is either an honest key rotation or an identity takeover, and
     // nothing here can tell which — so it is refused rather than guessed at.
     if (v.keyChanged) {
-      return { allowed: false, reason: 'The signing key published by ' + v.id + ' has changed since this computer last saw it. Payments are refused until that is resolved.' };
+      return { allowed: false, reason: tr('charge.refuse.keyChanged', 'The signing key published by {id} has changed since this computer last saw it. Payments are refused until that is resolved.', { id: v.id }) };
     }
     const identity = { id: v.id, type: v.type, verified: true, signedAt: v.ts || null };
     // The chain rail rides on manifest.pay, and the block is optional — but a
@@ -198,13 +211,13 @@
     // A sku is sold at the author's SIGNED price, or not at all.
     if (out.sku) priceFor(p.prices, out.sku, r.amount);
     const cap = BigInt(p.maxAmount || 0);
-    if (cap <= 0n) throw new Error('no spending ceiling is set for this app — nothing may be charged');
-    if (amount > cap) throw new Error('this app asked for ' + amount + ' but its ceiling is ' + cap);
+    if (cap <= 0n) throw new Error(tr('charge.error.noCeiling', 'no spending ceiling is set for this app — nothing may be charged'));
+    if (amount > cap) throw new Error(tr('charge.error.overCeiling', 'this app asked for {amount} but its ceiling is {ceiling}', { amount: String(amount), ceiling: String(cap) }));
     out.amount = amount;
 
     // Already bought? Say so instead of charging twice for the same thing.
     if (out.sku && typeof p.entitled === 'function' && p.entitled(out.sku)) {
-      throw new Error('already purchased on this computer (' + out.sku + ')');
+      throw new Error(tr('charge.error.alreadyBought', 'already purchased on this computer ({sku})', { sku: out.sku }));
     }
     return out;
   }
@@ -293,21 +306,24 @@
   // People write here. payments@<domain> is the PayPal payee and is not a contact address.
   // Static HTML repeats this same address; this constant is the one the payment UI uses.
   const SUPPORT_EMAIL = 'support@gifos.app';
-  function paymentSupportText() { return 'Questions about this payment? ' + SUPPORT_EMAIL; }
+  function paymentSupportText() { return tr('charge.support.text', 'Questions about this payment? {email}', { email: SUPPORT_EMAIL }); }
   function paymentSupportHtml() {
-    return 'Questions about this payment? <a href="mailto:' + escHtml(SUPPORT_EMAIL) + '">' + escHtml(SUPPORT_EMAIL) + '</a>';
+    const link = '\u0001';
+    return escHtml(tr('charge.support.text', 'Questions about this payment? {email}', { email: link }))
+      .replace(link, '<a href="mailto:' + escHtml(SUPPORT_EMAIL) + '">' + escHtml(SUPPORT_EMAIL) + '</a>');
   }
+  // Getters, so the words follow the language at the moment they are read.
   const PAID_BY = {
-    paypal: 'by PayPal',
-    x402: 'in USDC (Base Sepolia)',
-    transfer: 'in USDC (wallet transfer)',
-    fednow: 'by bank transfer (FedNow)',
-    mpp: 'by card, through an AI agent (Stripe Link)',
+    get paypal() { return tr('charge.paidBy.paypal', 'by PayPal'); },
+    get x402() { return tr('charge.paidBy.x402', 'in USDC (Base Sepolia)'); },
+    get transfer() { return tr('charge.paidBy.transfer', 'in USDC (wallet transfer)'); },
+    get fednow() { return tr('charge.paidBy.fednow', 'by bank transfer (FedNow)'); },
+    get mpp() { return tr('charge.paidBy.mpp', 'by card, through an AI agent (Stripe Link)'); },
   };
   function receiptViewerHtml(receipt, opts) {
     const row = (k, v) => '<div class="r"><span>' + escHtml(k) + '</span><b>' + escHtml(v) + '</b></div>';
     return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
-      '<title>GifOS Receipt</title><style>' +
+      '<title>' + escHtml(tr('charge.receipt.title', 'GifOS Receipt')) + '</title><style>' +
       'body{font:15px/1.55 system-ui,-apple-system,sans-serif;background:#14141f;color:#e8e8f4;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:1rem}' +
       'main{max-width:22rem;width:100%;background:#0e0e17;border:1px solid #23233a;border-radius:.8rem;padding:1.1rem 1.2rem}' +
       'h1{font-size:1.1rem;margin:0 0 .2rem}.sub{color:#9a9ab5;font-size:.82rem;margin:0 0 .9rem}' +
@@ -316,13 +332,15 @@
       '.foot{color:#9a9ab5;font-size:.78rem;margin-top:.9rem;border-top:1px solid #23233a;padding-top:.7rem}' +
       '</style></head><body><main>' +
       '<h1>🧾 ' + escHtml(opts.appName || receipt.appId || '') + '</h1>' +
-      '<p class="sub">' + (receipt.sku ? 'Purchase — unlocks <b>' + escHtml(receipt.sku) + '</b>' : 'Tip — thank you!') + '</p>' +
-      row('Amount', fmtUsdUnits(receipt.amount)) +
-      row('Paid', PAID_BY[receipt.rail] || String(receipt.rail || '')) +
-      (opts.payingTo ? row('To', opts.payingTo) : '') +
-      row('When', receipt.at ? new Date(receipt.at).toLocaleString() : '') +
-      row('Transaction', String(receipt.tx || '')) +
-      '<p class="foot">This file IS the proof: it carries a receipt signed by gifos.app, and opening it on any GifOS computer verifies the signature and registers the purchase there. Sharing it shares your license — the app treats whoever holds this receipt as the same buyer (same saves, same identity). Keep it with your backups.</p>' +
+      '<p class="sub">' + (receipt.sku
+        ? escHtml(tr('charge.receipt.purchase', 'Purchase — unlocks {sku}', { sku: '\u0001' })).replace('\u0001', '<b>' + escHtml(receipt.sku) + '</b>')
+        : escHtml(tr('charge.receipt.tip', 'Tip — thank you!'))) + '</p>' +
+      row(tr('charge.receipt.amount', 'Amount'), fmtUsdUnits(receipt.amount)) +
+      row(tr('charge.receipt.paid', 'Paid'), PAID_BY[receipt.rail] || String(receipt.rail || '')) +
+      (opts.payingTo ? row(tr('charge.receipt.to', 'To'), opts.payingTo) : '') +
+      row(tr('charge.receipt.when', 'When'), receipt.at ? ((root.GifOS && root.GifOS.i18n) ? root.GifOS.i18n.fmt.dateTime(receipt.at) : new Date(receipt.at).toLocaleString()) : '') +
+      row(tr('charge.receipt.transaction', 'Transaction'), String(receipt.tx || '')) +
+      '<p class="foot">' + escHtml(tr('charge.receipt.proof', 'This file IS the proof: it carries a receipt signed by gifos.app, and opening it on any GifOS computer verifies the signature and registers the purchase there. Sharing it shares your license — the app treats whoever holds this receipt as the same buyer (same saves, same identity). Keep it with your backups.')) + '</p>' +
       '<p class="foot" id="gifos-pay-support">' + paymentSupportHtml() + '</p>' +
       '</main></body></html>';
   }
@@ -330,7 +348,10 @@
   // which go in VERBATIM — verification is byte-exact, nothing may reformat them.
   function receiptFile(receipt, receiptJson, sig, opts) {
     const o = opts || {};
-    const label = 'Receipt — ' + (o.appName || receipt.appId) + (receipt.sku ? ' — ' + receipt.sku : ' — tip');
+    const who = o.appName || receipt.appId;
+    const label = receipt.sku
+      ? tr('charge.receipt.labelSku', 'Receipt — {app} — {sku}', { app: who, sku: receipt.sku })
+      : tr('charge.receipt.labelTip', 'Receipt — {app} — tip', { app: who });
     return {
       label,
       files: {

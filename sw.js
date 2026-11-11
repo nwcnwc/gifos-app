@@ -41,7 +41,7 @@
  */
 'use strict';
 
-var SHELL_VERSION = 'v16'; // v16: 0.9.24 hotfix, gifos-update.js reads a four-part `latest` (v15: gifos-charge.js joins the shell)
+var SHELL_VERSION = 'v20'; // v20: js/dialog.js joins the shell (the dialogs' scroll frame, parsed by every page) (v19: 0.9.25 cut (shell now holds every en catalog and the new version.json/changelog) (v18: every surface's en catalog joins the shell, plus meet.json and the built-in apps (v17: gifos-i18n.js and the en catalogs join the shell (v16: 0.9.24 hotfix, gifos-update.js reads a four-part `latest`; v15: gifos-charge.js joins the shell)
 var CACHE = 'gifos-shell-' + SHELL_VERSION;
 
 // ONE CACHE KEY PER FILE. pages.yml stamps `?v=<sha>` onto every local css/js
@@ -67,7 +67,11 @@ var CORE = [
   '/css/desktop.css',
   '/js/gifos-gif.js', '/js/gifos-help.js', '/js/gifos-charge.js', '/js/gifos-sign.js', '/js/gifos-ed.js', '/js/gifos-lock.js', '/js/gifos-zip.js', '/js/gifos-icons.js',
   '/js/gifos-themes.js', '/js/gifos-avatar.js', '/js/gifos-store.js', '/js/gifos-install.js', '/js/gifos-fullscreen.js', '/js/irl-apps.js', '/js/sample-apps.js', '/js/store.js', '/js/gifos-cash.js',
-  '/js/desktop.js', '/js/runtime.js', '/js/meet-host.js', '/js/camera-studio.js', '/js/relay-config.js', '/js/sw-register.js', '/js/build.js', '/js/build-badge.js', '/js/gifos-update.js',
+  '/js/dialog.js', '/js/desktop.js', '/js/runtime.js', '/js/meet-host.js', '/js/camera-studio.js', '/js/relay-config.js', '/js/sw-register.js', '/js/build.js', '/js/build-badge.js', '/js/gifos-update.js',
+  '/js/gifos-i18n.js', '/i18n/en/common.json', '/i18n/en/settings.json', '/i18n/en/desktop.json', '/i18n/en/store.json', '/i18n/en/runtime.json',
+  '/i18n/en/boot.json', '/i18n/en/sign.json', '/i18n/en/help.json', '/i18n/en/update.json', '/i18n/en/charge.json', '/i18n/en/install.json',
+  '/i18n/en/meet.json',
+  '/i18n/en/apps/appstore.json', '/i18n/en/apps/askai.json', '/i18n/en/apps/bible.json', '/i18n/en/apps/broadcast.json', '/i18n/en/apps/calc.json', '/i18n/en/apps/camera.json', '/i18n/en/apps/chat.json', '/i18n/en/apps/chess.json', '/i18n/en/apps/connect4.json', '/i18n/en/apps/dial.json', '/i18n/en/apps/fakefacts.json', '/i18n/en/apps/fortune.json', '/i18n/en/apps/guestbook.json', '/i18n/en/apps/imposter.json', '/i18n/en/apps/meet.json', '/i18n/en/apps/minesweeper.json', '/i18n/en/apps/mymedia.json', '/i18n/en/apps/notes.json', '/i18n/en/apps/oneclue.json', '/i18n/en/apps/paint.json', '/i18n/en/apps/reader.json', '/i18n/en/apps/roulette.json', '/i18n/en/apps/samebrain.json', '/i18n/en/apps/speechcoach.json', '/i18n/en/apps/spy.json', '/i18n/en/apps/tictactoe.json', '/i18n/en/apps/tilt.json', '/i18n/en/apps/timer.json', '/i18n/en/apps/welcome.json', '/i18n/en/apps/wolves.json',
   '/themes/theme.js', '/themes/icons.js', '/themes/eggs.js',
   '/gifos.key', '/version.json', '/changelog.json', '/og.png', '/manifest.webmanifest', '/icon.svg',
 ];
@@ -213,7 +217,7 @@ function raceNetwork(req, cache, ms, key) {
 // deleted file forever, and turning it into degrade()'s empty 200 (which used
 // to happen ONLINE, for any missing script or stylesheet) told a fetch() caller
 // "ok" with nothing in it. The cached copy is dropped at the same time. The
-// empty 200 remains what an offline, uncached parser-blocking load gets — that
+// empty 200 remains what an offline, uncached STYLESHEET gets (a script gets a network error) — that
 // is a stall averted, not a lie about the server.
 function revalidate(req, cache, ms, passRouted, key) {
   return new Promise(function (resolve) {
@@ -247,9 +251,10 @@ function notInstalled(v) {
 // (offline / stalled), so a request can NEVER hang the page:
 //  - a navigation → the app shell FOR THAT CHANNEL (its scripts boot from
 //    cache/IndexedDB);
-//  - a script/style (e.g. a theme-override the cascade document.writes) → an
-//    EMPTY 200 so the parser-blocking <script> resolves instead of stalling the
-//    tab; a missing override simply falls back to the base;
+//  - a script → a network error (the error event resolves a parser-blocking
+//    <script> at once, and the caller learns it is missing; an empty 200 hid
+//    that); a style → an EMPTY 200 so the sheet resolves; a missing override
+//    simply falls back to the base;
 //  - anything else → a clean error the caller can handle.
 //
 // A DEGRADE NEVER CROSSES THE CHANNEL BOUNDARY (bug ledger #3, 2026-08-06).
@@ -278,7 +283,10 @@ async function degrade(req, url, cache) {
     if (pin) return notInstalled(pin[1]);
   }
   if (req.destination === 'script' || /\.m?js(\?|$)/.test(url.pathname)) {
-    return new Response('', { status: 200, headers: { 'Content-Type': 'application/javascript' } });
+    // A network error, never an empty 200: an empty script "loads", runs nothing and fires no error event, so a unit
+    // silently never exists (mesh seat without rcfollow.js). An error fires the script's error event at once, so a
+    // parser-blocking tag still does not stall, and the page's load gate (run.html unitsGate) sees it and retries.
+    return Response.error();
   }
   if (req.destination === 'style' || /\.css(\?|$)/.test(url.pathname)) {
     return new Response('', { status: 200, headers: { 'Content-Type': 'text/css' } });
