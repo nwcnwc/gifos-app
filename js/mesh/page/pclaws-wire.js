@@ -430,6 +430,9 @@
       if (!o.fh || !o.fh.doorDue || !mySeated() || !L || !L.outside || L.outside === 3 || !(L.outside & (1 << theirs(x))) || FHDOOR.has(x)) return;
       FHDOOR.set(x, T()); trace('FH-DOOR-NOTE', me, null, 'peer=%d', x);
     }
+    // the page's own word that a knocker's offer reached my seated end over the relay (its boot carries dr: an unseated
+    // dialler): a door pc that never opens never reaches offer() here, since its mark rides the data channel
+    function fhDoorOuter(x) { if (!o.fh || !o.fh.doorDue || !mySeated() || x === me || x < 0 || FHDOOR.has(x)) return; const L = LINKS.get(x); if (L && L.state === LK_OPEN) return; FHDOOR.set(x, T()); trace('FH-DOOR-NOTE', me, null, 'peer=%d relay=1', x); }
     function fhDoorTick() {
       if (!FHDOOR.size) return;
       for (const [x, at] of [...FHDOOR]) {
@@ -581,7 +584,7 @@
     delete fns.fabricNoSock;   // A1: the relay's bounce
     return {
       fhDcRaw: (x) => { const L = LINKS.get(x); return !!L && L.view[mine(x)] === LK_OPEN; }, fhState: (x) => { const L = LINKS.get(x); return L ? L.state : LK_NONE; }, fhDialBehind,
-      fns, lv, send: (x, m) => linkSchedule(me, x, m), tick, mark, offer, answered, opened, frame, lost,
+      fns, lv, send: (x, m) => linkSchedule(me, x, m), tick, mark, offer, answered, opened, frame, lost, doorNote: fhDoorOuter,
       byeIn: (x, why) => byeIn(x, BYE.includes(why) ? why : 'call'), dialFailed, refused, leaveAll, pageClosed,
       busyFrom: (x) => refused(x, { busy: 1 }),
       link: (x) => LINKS.get(x) || null, dump: () => [...LINKS].map(([x, L]) => ({ x, state: L.state, view: L.view[mine(x)], outside: L.outside, gone: L.gone, q: L.q.length })),

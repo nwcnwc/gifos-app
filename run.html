@@ -11267,6 +11267,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!desc) return;
         const sig = { kind: desc.type, sdp: desc, ib: 1, boot: 1 };
         if (bootF && bootF.dr === 1) sig.dr = 1;
+        // FHOP.8: an unseated dialler's offer reached my seat: its door's ICE clock starts (a door that never opens calls a friend to the door)
+        if (sig.dr === 1 && desc.type === 'offer' && meshNode && meshNode.penv && meshNode.penv.doorNote) { try { meshNode.penv.doorNote(from); } catch (e) {} }
         onSignal(from, sig);
         return;
       }
