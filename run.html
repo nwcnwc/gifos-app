@@ -10579,7 +10579,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return f;
     }
 
-    const txStats = { relayStatus: 0, dcStatus: 0, relaySig: 0, dcSig: 0, fwdSig: 0, fwdMesh: 0, doorSig: 0, hopFwd: 0, hopRelay: 0, nosock: 0, relayBoot: 0, relayFp: 0, relayIce: 0, relayName: 0, relayPassword: 0, relayBusy: 0, relayUnfit: 0 }; // counters showing where heartbeats + signaling + sponsor hops actually travel; relay*: frames put on the relay by type (relayPassword counts every frame of a grant), relayUnfit: payloads that did not fit the relay's fixed size (never sent)
+    const txStats = { relayStatus: 0, dcStatus: 0, relaySig: 0, dcSig: 0, fwdSig: 0, fwdMesh: 0, doorSig: 0, hopFwd: 0, hopRelay: 0, nosock: 0, relayBoot: 0, relayFp: 0, relayIce: 0, relayName: 0, relayPassword: 0, relayBusy: 0, relayTv: 0, relayUnfit: 0 }; // counters showing where heartbeats + signaling + sponsor hops actually travel; relay*: frames put on the relay by type (relayPassword counts every frame of a grant), relayUnfit: payloads that did not fit the relay's fixed size (never sent)
     const rxStats = { offer: 0, answer: 0, ice: 0, status: 0, offerRejected: 0, answerNoPeer: 0, negFail: 0, answerStale: 0, relayAccepted: {}, relayDropped: {}, dcKinds: {} }; // reception mirror: what actually ARRIVED (and what was refused); relayAccepted/relayDropped: relay frames by type, dispatched vs refused (relayFrameAllowed); dcKinds: opened channel frames by k
     // THE RELAY LAW (gifos-net.js RELAY_TYPES; docs/meet-security.md §RELAY).
     // The relay carries a fixed list of message types between members, each
@@ -10607,7 +10607,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const RELAY_NAME_MAX = 40, RELAY_PW_MAX = 64;
     const epOk = (ep) => Number.isInteger(ep) && ep >= 0;
     // The exact field set of each payload (the padding field `_` beside it).
-    const RELAY_PAYLOAD_KEYS = { boot: 'k,t,u,w,s,v,dr', fp: 'k,v,fp', ice: 'k,c,end', name: 'k,n', password: 'k,pw,ep,pr', pwsig: 'k,sig', pwpub: 'k,ep,ts,pub', pwby: 'k,ep,by', busy: 'k,g,i,n,ref,cool' };
+    const RELAY_PAYLOAD_KEYS = { boot: 'k,t,u,w,s,v,dr', fp: 'k,v,fp', ice: 'k,c,end', name: 'k,n', password: 'k,pw,ep,pr', pwsig: 'k,sig', pwpub: 'k,ep,ts,pub', pwby: 'k,ep,by', busy: 'k,g,i,n,ref,cool', tv: 'k,q,l,d,b,e,n,m' };
     function relayFrameAllowed(ty, inner) {
       if (!RELAY_TYPES.has(ty) || !inner || typeof inner !== 'object' || Array.isArray(inner) || inner.k !== ty || !net.fitsFixed(inner)) return null;
       const keys = RELAY_PAYLOAD_KEYS[ty].split(',');
@@ -10621,6 +10621,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (ty === 'pwpub') return epOk(inner.ep) && Number.isInteger(inner.ts) && inner.ts > 0 && typeof inner.pub === 'string' && /^[A-Za-z0-9+/]{43}=$/.test(inner.pub) ? ty : null;
       if (ty === 'busy') return Number.isInteger(inner.g) ? ty : null;   // a door's refusal (L16 BUSY, L14 decline, L23): read by the seat's world only
       if (ty === 'pwby') return epOk(inner.ep) && typeof inner.by === 'string' && /^k_[0-9a-f]{40}$/.test(inner.by) ? ty : null;
+      if (ty === 'tv') return GifOS.meetTurn && GifOS.meetTurn.tvOk(inner) ? ty : null;   // a TURN link's handshake between its two ends (js/meet-turn.js)
       return null;
     }
     function relayFrameLabel(ty, inner) { // the name a refused frame is counted under
@@ -10630,7 +10631,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // relaySendSealed(to, ty, obj, key): seal obj padded to the law's size
     // and put it on the relay as a `ty` frame. A payload that does not fit is
     // counted (txStats.relayUnfit) and never sent. Resolves true when sent.
-    const relayTxCount = { boot: 'relayBoot', fp: 'relayFp', ice: 'relayIce', name: 'relayName', password: 'relayPassword', pwsig: 'relayPassword', pwpub: 'relayPassword', pwby: 'relayPassword', busy: 'relayBusy' };
+    const relayTxCount = { boot: 'relayBoot', fp: 'relayFp', ice: 'relayIce', name: 'relayName', password: 'relayPassword', pwsig: 'relayPassword', pwpub: 'relayPassword', pwby: 'relayPassword', busy: 'relayBusy', tv: 'relayTv' };
     // THE RELAY HOOKS UP A JOINER AND A GREETER, nothing else. Once a mesh connection exists nobody contacts it: a seat never sends a seat a frame through it.
     // I may use it while I am at the door (no seat, or a seated seat that knocked: the seat's socketed()) for a peer my view seats nowhere, or one that spoke to me over it just now: it is at the door, whatever my view still says of its old seat.
     const relayHeardAt = new Map();
@@ -11138,6 +11139,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // onRelayPeer(from, ty, f): a relay frame of the law's shape, opened and
     // checked (relayFrameAllowed). Dispatch by its type.
     function onRelayPeer(from, ty, f) {
+      if (ty === 'tv') { try { if (turnLinks) turnLinks.onFrame(from, f); } catch (e) {} return; }   // a TURN link's handshake (js/meet-turn.js)
       if (ty === 'busy') { try { if (meshNode && meshNode.relayBusyIn) meshNode.relayBusyIn(from, f); } catch (e) {} return; }
       if (ty === 'boot' || ty === 'fp') {
         const bootF = ty === 'boot' ? f : (bootParts.get(from) || {}).boot;
@@ -11734,6 +11736,201 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       return added;
     }
+    // ═══ TURN LINKS (0.9.26: js/meet-turn.js, gifos docs/turn-0926.md) ═══════════
+    // The page side of a TURN link: the head's ask, the vouch swap (`tv` frames over the relay, the relay's tvouch),
+    // the credential, the pc that rides the TURN server (its settings here; held by an L28 keep and by linkTo, so
+    // neither the sweeper nor L22 closes it), NO video on an unvouched link, the room's link facts and subscribers'
+    // vouches (room-wide gossip: tlink, tsub), and the paused-video note on the tiles a link holds back.
+    let turnLinks = null, turnTimer = null, turnSubAt = 0;
+    const turnFacts = new Map();   // link id → { id, a, b, up, v, s, c, g, va, vb, at }
+    const turnSubs = new Map();    // subscriber pid → { tier, exp, ticket, at }
+    const turnLog = [];
+    const turnHolds = (pid) => !!(turnLinks && turnLinks.holds(pid));
+    // The connection settings of a pair: TURN servers only for a link whose end here is a TURN client (never double TURN).
+    function turnPcConfig(p) {
+      const c = turnLinks && p ? turnLinks.config(p.id) : null;
+      if (!c) return { iceServers: ICE_SERVERS };
+      return { iceServers: ICE_SERVERS.concat(c.iceServers), iceTransportPolicy: c.iceTransportPolicy };
+    }
+    // NO VIDEO ON AN UNVOUCHED LINK. Every sender of a pc is gated here, whoever seats a track on it (the main senders,
+    // the stage, the mosaic forwards): a video track asked for while the link carries no video is held as the wish and
+    // the sender sends nothing; the wish is seated the moment the link is vouched.
+    const turnVideoBlocked = (p) => !!(p && turnLinks && turnLinks.videoBlocked(p.id));
+    function turnGuardSender(p, sd) {
+      if (!sd || sd.__turnOrig || typeof sd.replaceTrack !== 'function') return sd;
+      const orig = sd.replaceTrack.bind(sd);
+      sd.__turnOrig = orig; sd.__turnWant = sd.track || null;
+      sd.replaceTrack = (t) => { sd.__turnWant = t || null; return orig(t && t.kind === 'video' && turnVideoBlocked(p) ? null : t); };
+      if (sd.track && sd.track.kind === 'video' && turnVideoBlocked(p)) orig(null).catch(() => {});
+      return sd;
+    }
+    function turnGuardVideo(pc, p) {
+      const addTrack = pc.addTrack.bind(pc), addTransceiver = pc.addTransceiver.bind(pc);
+      pc.addTrack = (...a) => turnGuardSender(p, addTrack(...a));
+      pc.addTransceiver = (...a) => { const tr = addTransceiver(...a); try { turnGuardSender(p, tr.sender); } catch (e) {} return tr; };
+    }
+    function turnApplyVideo(p) {
+      if (!p || !p.pc) return;
+      let senders = []; try { senders = p.pc.getSenders(); } catch (e) { return; }
+      const blocked = turnVideoBlocked(p);
+      for (const sd of senders) {
+        turnGuardSender(p, sd);   // a sender the remote offer made (setRemoteDescription) is gated from its first look here
+        const want = sd.__turnWant;
+        if (!((want && want.kind === 'video') || (sd.track && sd.track.kind === 'video'))) continue;
+        const t = blocked ? null : want;
+        if (sd.track !== t) sd.__turnOrig(t).catch(() => {});
+      }
+    }
+    // A friend reaches pid without TURN (TURN.3, TURN.7): friend-hop's own test (meshNode's fhop.friendFor).
+    function turnFriend(pid) {
+      const c = myConns().filter((r) => r !== pid && !(turnLinks && turnLinks.isLink(r)) && (connsOf.get(r) || []).includes(pid)).sort();
+      const fp = c.length ? peers.get(c[0]) : null;
+      return !!(fp && fp.dc && fp.dc.readyState === 'open');
+    }
+    const turnRaw = () => { const r = meshNode && meshNode.raw; return typeof r === 'function' ? r() : (r || null); };
+    function turnIo() {
+      const K = GifOS.meshConsts.consts, T = GifOS.meshTopo;
+      return {
+        me: () => myId, dev: () => myDevHash, sid: () => sessId, now: () => Date.now(), tickMs: meshNode.tickMs(),
+        seat: () => {
+          const r = turnRaw(), v = meshSeat();
+          if (!r || !v || !r.hasCoord || r.state !== 3) return null;
+          const view = []; for (const x of v.occ.values()) if (x && x !== myId && view.indexOf(x) < 0) view.push(x);
+          const ck = T.ckey(r.coord);
+          return { head: ck === 0, greeter: r.coord.pc === 0, view, cell: ck };
+        },
+        greeters: () => {
+          const r = turnRaw(); if (!r || r.greetersAt < 0 || r.TICK - r.greetersAt > K.RELAY_TTL) return [];
+          const out = []; for (const g of r.lastGreeters || []) { const p = meshNode.pidOf(g); if (p) out.push(p); } return out;
+        },
+        nid: (pid) => meshNode.nidOf(pid),
+        reach: (pid) => { const p = peers.get(pid); if (p && p.connected && !(turnLinks && turnLinks.isLink(pid))) return 'direct'; return turnFriend(pid) ? 'friend' : null; },
+        blocked: () => directPath === 'blocked',
+        alive: (pid) => {
+          if (meshKnows(pid)) return true;
+          const r = turnRaw(); if (r && (r.lastGreeters || []).indexOf(meshNode.nidOf(pid)) >= 0) return true;
+          const p = peers.get(pid); return !!(p && p.connected);
+        },
+        pcUp: (pid) => { const p = peers.get(pid); return !!(p && p.connected); },
+        sendTv: (pid, f) => { const p = peers.get(pid); if (p && p.dc && p.dc.readyState === 'open') { try { dcSend(p, f); return; } catch (e) {} } relaySendSealed(pid, 'tv', f); },
+        askVouch: (dev, l) => relaySendObj({ t: 'tvouch', to: dev, l }),
+        ask: GifOS.meetTurn.askIce(window.fetch.bind(window)),
+        dial: (pid) => { seatAskAt.set(pid, Date.now()); seatMark.set(pid, cleanMark({ s: 1 })); seatDial(pid); },
+        reset: (pid) => { const p = peers.get(pid); if (p && p.pc && !p.connected) rebuildPc(p, 'turn-settings'); },
+        restart: (pid, l) => {
+          const p = peers.get(pid); if (!p || !p.pc) return;
+          try { p.pc.setConfiguration(turnPcConfig(p)); } catch (e) { turnNote('turn-setconf ' + String(e).slice(0, 60)); }
+          if (!p.connected) return;
+          if (iInitiate(pid)) sendOffer(pid, true); else if (l) relaySendSealedOrDc(p, { k: 'tv', q: 'i', l });
+        },
+        keep: (pid) => { const s = meshSeat(); if (!s || !s.keepAdd || !s.keepPeers) return; const ks = s.keepPeers(); if (ks.has(pid) || ks.size < K.KEEP_MAX) s.keepAdd(pid, K.TURN_DIAL); },
+        drop: (pid, why) => { const p = peers.get(pid); if (!p) return; if (!linkTo(pid)) pcBye(pid, 'turn-' + why); else if (p.pc) rebuildPc(p, 'turn-' + why); },
+        subs: () => { const now = Date.now(), out = []; for (const [pid, s] of turnSubs) if (s.exp * 1000 > now && (pid === myId || meshKnows(pid))) out.push({ key: pid, tier: s.tier }); return out; },
+        ticket: () => {
+          const ok = (pid) => { const s = turnSubs.get(pid); return !!s && s.exp * 1000 > Date.now() && (pid === myId || meshKnows(pid)); };
+          if (ok(myId)) return turnSubs.get(myId).ticket;
+          for (const pid of Array.from(turnSubs.keys()).sort()) if (ok(pid)) return turnSubs.get(pid).ticket;
+          return null;
+        },
+        publish: (f) => { turnFactIn(myId, f); try { if (meshNode) meshNode.gossip({ a: 1, msg: { k: 'tlink', f } }); } catch (e) {} },
+        facts: () => { const now = Date.now(), out = []; for (const [id, f] of turnFacts) { if (now - f.at > turnLinks.factStaleMs) { turnFacts.delete(id); continue; } out.push(f); } return out; },
+        setTimer: (fn, ms) => setTimeout(fn, ms), clearTimer: (h) => clearTimeout(h),
+        log: turnNote,
+        changed: (pid) => { const p = peers.get(pid); if (p) turnApplyVideo(p); turnPaint(); },
+      };
+    }
+    function relaySendSealedOrDc(p, f) { if (p.dc && p.dc.readyState === 'open') { try { dcSend(p, f); return; } catch (e) {} } relaySendSealed(p.id, 'tv', f); }
+    function turnNote(s) { if (typeof clog === 'function') clog(s); turnLog.push(Math.round(performance.now()) + ' ' + s); if (turnLog.length > 300) turnLog.splice(0, 100); }
+    // A link's fact, from one of its two ends only (the opener speaks for up, video, order; each end for its own side).
+    function turnFactIn(from, f) {
+      if (!f || typeof f !== 'object' || typeof f.id !== 'string' || f.id.length > 12 || typeof f.a !== 'string' || typeof f.b !== 'string') return;
+      if (from !== f.a && from !== f.b) return;
+      if (f.gone) { turnFacts.delete(f.id); turnPaint(); return; }
+      const ids = (x) => (Array.isArray(x) ? x.filter((y) => typeof y === 'string' && y.length <= 64).slice(0, GifOS.meetTurn.SIDE_MAX) : null);
+      const o = turnFacts.get(f.id) || { id: f.id, a: f.a, b: f.b, up: 0, v: 0, s: 0, c: 0, g: 0, va: [], vb: [] };
+      if (from === f.a) { o.up = f.up ? 1 : 0; o.v = f.v ? 1 : 0; o.s = +f.s || 0; o.c = +f.c || 0; o.g = f.g ? 1 : 0; if (ids(f.va)) o.va = ids(f.va); }
+      else { if (ids(f.vb)) o.vb = ids(f.vb); if (!o.s) { o.up = f.up ? 1 : 0; o.v = f.v ? 1 : 0; } }
+      o.at = Date.now(); turnFacts.set(f.id, o);
+      turnPaint();
+    }
+    // A subscriber's vouch: its meeting ticket for this meeting and its key's signature over the room (meet-subs roomOrder).
+    function turnSubIn(from, o) {
+      if (!o || typeof o !== 'object' || !GifOS.meetSubs) return;
+      GifOS.meetSubs.roomTier(o, subsMeetId()).then((t) => { if (t) turnSubs.set(from, { tier: t.tier, exp: t.exp, ticket: o.ticket, at: Date.now() }); }, () => {});
+    }
+    function turnSubOut() {
+      if (!meshNode || !subsOn()) return;
+      GifOS.meetSubs.roomOrder(subsMeetId()).then((o) => { if (!o) return; turnSubIn(myId, o); try { meshNode.gossip({ a: 1, msg: { k: 'tsub', o } }); } catch (e) {} }, () => {});
+    }
+    function turnPaint() {
+      const facts = turnLinks ? Array.from(turnFacts.values()) : [];
+      for (const p of peers.values()) {
+        if (!p.tile) continue;
+        const show = !!turnLinks && (GifOS.meetTurn.pausedBy(facts, myId, p.id) || (turnLinks.isLink(p.id) && !turnLinks.video(p.id)));
+        let el = p.tile.querySelector(':scope > .tpause');
+        if (show && !el) {
+          el = document.createElement('div'); el.className = 'tpause'; el.setAttribute('role', 'note');
+          const t = document.createElement('span');
+          t.textContent = uiText('turnPaused', 'Video is paused: this person connects through our relay. Subscribe to turn on video for this meeting.');
+          el.appendChild(t);
+          if (subsOn()) {
+            const b = document.createElement('button'); b.type = 'button'; b.className = 'tpause-sub';
+            b.textContent = uiText('turnSubscribe', 'Subscribe');
+            b.addEventListener('click', (e) => { e.stopPropagation(); try { GifOS.meetSubs.openSettings(); } catch (x) {} });
+            el.appendChild(b);
+          }
+          p.tile.appendChild(el);
+        } else if (!show && el) el.remove();
+      }
+    }
+    function turnStep() {
+      if (!turnLinks) return;
+      try { turnLinks.step(); } catch (e) { turnNote('turn-step-err ' + String(e && e.stack || e).slice(0, 160)); }
+      for (const p of peers.values()) if (turnLinks.holds(p.id) || (p.pc && p.pc.__turnGuarded)) turnApplyVideo(p);
+      const every = GifOS.sub && GifOS.sub.RENEW_EVERY_S ? GifOS.sub.RENEW_EVERY_S * 1000 / 2 : 0;   // half the ticket's renewal period
+      if (every && Date.now() - turnSubAt > every) { turnSubAt = Date.now(); turnSubOut(); }
+    }
+    // Called once a mesh node exists (startMesh): a new node is a new set of links.
+    function turnStart() {
+      if (turnLinks) { try { turnLinks.stopAll('restart'); } catch (e) {} turnLinks = null; }
+      if (!GifOS.meetTurn || !GifOS.meshTurn || !GifOS.meshTopo || !meshNode || !meshNode.pidOf || !meshNode.tickMs) return;
+      turnLinks = GifOS.meetTurn.createLinks(turnIo());
+      if (!turnTimer) turnTimer = setInterval(turnStep, meshNode.tickMs());
+    }
+    function turnDebug() {
+      let seat = null, door = null;
+      try { const io = turnLinks ? turnIo() : null; seat = io ? io.seat() : null; const r = turnRaw(); door = r ? { age: r.TICK - r.greetersAt, n: (r.lastGreeters || []).length, pids: io ? io.greeters().map((x) => String(x).slice(0, 8)) : null } : null; } catch (e) { door = { err: String(e).slice(0, 80) }; }
+      return { on: !!turnLinks, worker: GifOS.meetTurn ? GifOS.meetTurn.workerBase() : null, directPath, dev: myDevHash, sid: sessId, seat, door,
+        links: turnLinks ? turnLinks.dump() : null, facts: Array.from(turnFacts.values()),
+        subs: Array.from(turnSubs, ([k, v]) => ({ pid: k, tier: v.tier, exp: v.exp })), log: turnLog.slice(-80) };
+    }
+    // Per pair: the selected path's candidate types (relay = through a TURN server), the pc's ICE policy, and the bytes
+    // sent and received per kind. The proof suites read it.
+    async function turnPaths() {
+      const out = [];
+      for (const p of peers.values()) {
+        if (!p.pc) continue;
+        const r = { pid: p.id, name: p.name || rosterNames[p.id] || null, conn: p.pc.connectionState, link: !!(turnLinks && turnLinks.isLink(p.id)),
+          video: !!(turnLinks && turnLinks.video(p.id)), paused: !!(p.tile && p.tile.querySelector(':scope > .tpause')), policy: null, turn: false,
+          local: null, remote: null, vOut: 0, aOut: 0, vIn: 0, aIn: 0 };
+        try { const c = p.pc.getConfiguration(); r.policy = c.iceTransportPolicy; r.turn = GifOS.meetTurn.hasTurnServer(c.iceServers); } catch (e) {}
+        try {
+          const st = await p.pc.getStats(); const by = new Map(); st.forEach((x) => by.set(x.id, x));
+          let sel = null;
+          st.forEach((x) => { if (x.type === 'transport' && x.selectedCandidatePairId) sel = by.get(x.selectedCandidatePairId); });
+          if (!sel) st.forEach((x) => { if (!sel && x.type === 'candidate-pair' && x.nominated && x.state === 'succeeded') sel = x; });
+          if (sel) { const l = by.get(sel.localCandidateId), rm = by.get(sel.remoteCandidateId); r.local = l ? l.candidateType : null; r.remote = rm ? rm.candidateType : null; }
+          st.forEach((x) => {
+            if (x.type === 'outbound-rtp' && x.kind === 'video') r.vOut += x.bytesSent || 0;
+            if (x.type === 'outbound-rtp' && x.kind === 'audio') r.aOut += x.bytesSent || 0;
+            if (x.type === 'inbound-rtp' && x.kind === 'video') r.vIn += x.bytesReceived || 0;
+            if (x.type === 'inbound-rtp' && x.kind === 'audio') r.aIn += x.bytesReceived || 0;
+          });
+        } catch (e) {}
+        out.push(r);
+      }
+      return out;
+    }
     // When this pair's current pc was made.
     const pcBuiltAt = (p) => Math.max(p.rebuiltAt || 0, p.bornAt || 0);
     // ONE RECORD OF ONE PC'S NEGOTIATION, born with the pc and dropped with it, so no mark or timer can reach the next pc.
@@ -11793,7 +11990,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try {
         for (const [jk, job] of [...mosJobs]) if (job.to === p.id) unshipMos(jk, false);
       } catch (e) { if (typeof clog === 'function') clog('rebuildPc: mosaic job cleanup failed ' + String(e).slice(0, 60)); }
-      const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+      const pc = new RTCPeerConnection(turnPcConfig(p));   // a TURN link's settings when this end is its client (turnPcConfig)
+      turnGuardVideo(pc, p);   // no video over an unvouched TURN link
       // Whatever was armed against the OLD pc must never fire at the new one: a glare yield's rollback would target a
       // connection that never offered, a held renegotiation describes m-lines the fresh pc never had, and offer turns
       // belong to the old pc. An offer still minting belongs to it too: its chain never settles on a closed pc.
@@ -12883,6 +13081,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // needs no DataChannels; media links belong to a SEATED coord only. The
       // old "bootstrap = whole roster" relic full-meshed a stalled joiner (27
       // RTCPeerConnections, every tile black) — the last unbounded path, gone.
+      if (turnHolds(pid)) return true;   // a TURN link's pc: the link holds it (docs/turn-0926.md, with its L28 keep)
       if (seatAsked(pid)) return true;   // the seat dialled it (a door, a call, an audit): its own reason
       return seatLinks(pid);
     }
@@ -15341,11 +15540,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         onByeHold: (pid) => { try { confirmGone(pid, 'bye'); } catch (e) {} },   // a page gone: its tile leaves at once, a reload brings it back
       });
       updateStatus(); applyAdminUi();
+      turnStart();   // this node's TURN links (js/meet-turn.js)
       }).catch((err) => { clearTimeout(bootWatch); if (bootGen !== meshBootGen || meshNode) return; booted = false; reArm('rejected ' + String(err && err.message || err).slice(0, 60)); });   // a throw after the node stood must not tear it down
     }
     // App-level relay frames the wire does not consume. The roster here is the
     // GREETER POOL, never the room \u2014 it drives door moderation only.
     function onRelayFrame(m) {
+      if (m.t === 'tvouch') { try { if (turnLinks) turnLinks.onVouch(m); } catch (e) {} return; }   // the relay's seated vouch for one of my TURN links
       if (m.t === 'joined') {
         updateStatus(); broadcastStatus();
         // admins[] comes from VERIFIED signatures (adminsNow, \u00a79), never the relay
@@ -19254,6 +19455,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }
       }
       if (p.doorHeld && p.id && !doorOutsider(p.id)) { const held = Array.from(p.doorHeld.values()); p.doorHeld = null; doorDropKinds.replayed = (doorDropKinds.replayed || 0) + held.length; for (const h of held) { try { onDc(p, dc, h, admOk); } catch (e) {} } }
+      if (m.k === 'tv') { if (dc && turnLinks) { try { turnLinks.onFrame(p.id, m); } catch (e) {} } return; }   // a TURN link's handshake over its own channel
+      if (m.k === 'tlink') { if (!dc) turnFactIn(p.id, m.f); return; }   // a TURN link's fact, room-wide from one of its ends
+      if (m.k === 'tsub') { if (!dc) turnSubIn(p.id, m.o); return; }    // a subscriber's vouch, room-wide
       if (m.k === 'hi') {
         // Union-merge. The replay is BACKFILL (takeChat/takeTr's second
         // argument): the per-author limiter is for a live flood, and applied
@@ -33536,6 +33740,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     let subsTurnedAway = false, subsTierKey = '', subsTier = null, subsTierExp = 0;
     const subsProven = new Set(), subsAsked = new Map();   // knocker -> {n, at}
     const subsOn = () => !!(window.GifOS && GifOS.meetSubs && GifOS.sub && GifOS.meetSubs.enabled());
+    // The meeting a subscription ticket names: the room's relay session (a one-way hash of the room code), the same
+    // room the relay's TURN vouches name, so the TURN Worker can check a paid ask's ticket against its vouches.
+    const subsMeetId = () => sessId || roomKey();
     // The people already seated: this door's seats (live, the count's own
     // liveness rule), or past one section the room's fold. People still being
     // brought in (a burst of knockers with open channels) are not counted.
@@ -33556,14 +33763,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const k = o ? String(o.at) + '|' + String(o.proof || '') : '';
       if (k !== subsTierKey) {
         subsTierKey = k; subsTier = o ? undefined : null; subsTierExp = 0;
-        if (o) GifOS.meetSubs.roomTier(o, roomKey()).then((t) => { if (subsTierKey === k) { subsTier = t ? t.tier : null; subsTierExp = t ? t.exp : 0; } }, () => { if (subsTierKey === k) subsTier = null; });
+        if (o) GifOS.meetSubs.roomTier(o, subsMeetId()).then((t) => { if (subsTierKey === k) { subsTier = t ? t.tier : null; subsTierExp = t ? t.exp : 0; } }, () => { if (subsTierKey === k) subsTier = null; });
       }
       if (subsTier && Date.now() / 1000 >= subsTierExp) subsTier = null;   // the admin's ticket ran out: the room is back on the 20 line
       return subsTier;
     }
     async function subsPublishRoomPlan() {
       if (!subsOn() || !hasAdminRoom() || !amAdmin) return;
-      let o = null; try { o = await GifOS.meetSubs.roomOrder(roomKey()); } catch (e) { o = null; }
+      let o = null; try { o = await GifOS.meetSubs.roomOrder(subsMeetId()); } catch (e) { o = null; }
       if (!o) return;
       const r = modTable['*'] = modTable['*'] || {};
       r.sublic = Object.assign(o, { by: myName(), byId: myId });
@@ -33576,7 +33783,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // a newer meeting) takes the room's plan back out.
     function subsJoin() {
       if (!subsOn()) return;
-      GifOS.meetSubs.joinMeeting(roomKey(), {
+      GifOS.meetSubs.joinMeeting(subsMeetId(), {
         onTicket: () => { if (amAdmin && hasAdminRoom()) subsPublishRoomPlan(); },
         onLost: (why) => {
           if (why === 'moved') setStatus('Your subscription is now in use in another meeting.');
@@ -33606,13 +33813,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function subsAnswer(p, n) {
       const ms = meshSeat();
       if ((ms && ms.state === 3) || n.length > 128) return;
-      const go = subsOn() ? GifOS.meetSubs.proveAtDoor(roomKey(), n) : Promise.resolve(null);
+      const go = subsOn() ? GifOS.meetSubs.proveAtDoor(subsMeetId(), n) : Promise.resolve(null);
       go.then((s) => { try { dcSend(p, s ? { k: 'subshow', s } : { k: 'subnone' }); } catch (e) {} }, () => { try { dcSend(p, { k: 'subnone' }); } catch (e) {} });
     }
     function subsShown(p, shown) {
       const a = subsAsked.get(p.id);
       if (!a || !subsOn()) return;
-      GifOS.meetSubs.checkShown(shown, roomKey(), a.n).then((ok) => {
+      GifOS.meetSubs.checkShown(shown, subsMeetId(), a.n).then((ok) => {
         subsAsked.delete(p.id);
         if (!ok) { subsRefuse(p, a); return; }
         subsProven.add(p.id); if (subsProven.size > 256) subsProven.delete(subsProven.values().next().value);
@@ -36328,6 +36535,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       rebroadcastForTest: () => (rbNow ? { pos: rbNow.vid.currentTime, len: rbNow.vid.duration, paused: rbNow.vid.paused, title: rbNow.title, sending: !!rbNow.v, vId: rbNow.v ? rbNow.v.id : '' } : null),
       chatForTest: () => Array.from(chat.values()).map((m) => String(m.text || "")),
       stageAudioForTest: async () => { let b = 0; for (const [k, v] of mosIn) { if (!k.startsWith("stg:") || !v.stream) continue; const tr = v.stream.getAudioTracks(); const p = peers.get(v.via); if (!p || !p.pc) continue; for (const t of tr) { const st = await p.pc.getStats(t); st.forEach((x) => { if (x.type === "inbound-rtp" && x.kind === "audio") b += x.packetsReceived || 0; }); } } return b; },
+      turnState: () => turnDebug(), turnPathsForTest: () => turnPaths(),   // TURN links (js/meet-turn.js): state, and each pair's path and bytes
       uplinkForTest: () => { const r = meshNode && meshNode.raw; if (!r) return null; let conn = false, dc = false; for (const p of peers.values()) { if (parseInt(String(p.id).slice(2, 15), 16) === r.u2Id) { conn = !!p.connected; dc = !!(p.dc && p.dc.readyState === "open"); } } let stgStd = false, upStd = false; for (const k of mosIn.keys()) { if (mosStandby.has(k)) { if (k.startsWith("stg:") || k === "sgs") stgStd = true; else upStd = true; } } return { u2: r.u2Id, conn, dc, ackAge: r.u2AckAt >= 0 ? r.TICK - r.u2AckAt : -1, hot: r.u2Hot, stgStd, upStd }; },
       gcForTest: (pid) => { onRelayFrame({ t: "greeter-gone", peer: pid }); return true; },
       upForTest: () => { const r = meshNode && meshNode.raw; const f = []; for (const [k, v] of mosIn) { const d = mosStandby.get(k); f.push(k + ":" + String(v.via).slice(0, 8) + (d ? "|" + String(d.via).slice(0, 8) : "")); } return { e1dn: r ? r.e1Dn : null, hot: r ? r.u2Hot : null, u2: r ? r.u2Id : null, f }; },

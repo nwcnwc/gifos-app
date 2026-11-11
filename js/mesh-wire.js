@@ -1322,7 +1322,9 @@
       mark(pid) { if (stopped || !penv || !penv.mark) return null; try { return penv.mark(String(pid)); } catch (e) { return null; } },   // A2's mark my answer carries back
       // A sealed relay `busy` frame from a door (opened by the page): the seat's world turns it into BUSY.
       relayBusyIn(from, d) { if (stopped || !penv) return; try { penv.relayFrame({ t: 'peer', from: String(from), ty: 'busy', d }); } catch (e) {} },
-      nidOf(pid) { return layer ? layer.ids.nid(String(pid)) : -1; },   // DEBUG teleport: a peer id as the seat's number
+      nidOf(pid) { return layer ? layer.ids.nid(String(pid)) : -1; },
+      pidOf(n) { return layer ? layer.ids.pid(n) : null; },   // the peer id of a seat number (TURN: the door's list as peer ids)
+      tickMs() { return tickMs; },   // DEBUG teleport: a peer id as the seat's number
       setKicks(peers) { if (layer) layer.setKicks(peers); },   // L27: whom I vote off (peer ids)
       kickTally() { return layer ? layer.kickTally() : { tally: {}, need: {}, me: false }; },
       kickDevs(devOf) { return layer ? layer.kickDevs(devOf) : new Set(); },   // L27 across a rejoin (layer.js)

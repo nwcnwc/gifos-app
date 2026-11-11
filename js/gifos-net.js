@@ -42,15 +42,18 @@
   const GifOS = (root.GifOS = root.GifOS || {});
 
   // ---- WebRTC availability + ICE --------------------------------------------
-  // No TURN server anywhere: P1 (a friend) is the only fallback for content.
-  // The relay carries signaling, never content. Media gets a friend or nothing.
+  // THE PATH LADDER (0.9.26, gifos docs/turn-0926.md): direct first, then a
+  // friend carries (P1: a mutual friend's browser, relayVia / relay-req in
+  // run.html, {t:'fwd'} here), and a TURN server only LAST: when two parts of a
+  // meeting can reach each other neither directly nor through any friend, ONE
+  // TURN link joins them (js/meet-turn.js). These are the servers of every
+  // pair: STUN only. A TURN server is added to ONE pair's settings, and only at
+  // the end whose own network is blocked (run.html turnPcConfig), with a
+  // credential the TURN service gives only for two seated vouches of that pair.
+  // The relay carries signaling, never content; free TURN carries no video.
   const ICE_SERVERS = [
     { urls: 'stun:stun.cloudflare.com:3478' },
     { urls: 'stun:stun.l.google.com:19302' },
-    // NO TURN — EVER. GifOS media goes peer-to-peer, NEVER through a server
-    // (the meeting footer's promise). When a direct path fails, media relays
-    // through a MUTUAL FRIEND's browser (P1 friend-relay: relayVia / relay-req
-    // in run.html, {t:'fwd'} in gifos-net) — a peer, not a server.
   ];
   const hasP2P = () => typeof root.RTCPeerConnection === 'function';
 
@@ -678,6 +681,8 @@
   //   pwsig     the admin's signature over the grant (admin rooms)
   //   pwpub     the admin key's public half and the signature's timestamp
   //   pwby      the admin's peer id, named inside the signed statement
+  //   tv        a TURN link's handshake between its two ends (js/meet-turn.js):
+  //             the link name, a device tag, a seated vouch's parts, ready
   // Every sealed payload is padded to exactly RELAY_PLAIN_BYTES — 128 bytes,
   // what a screen name or a password needs — before it is sealed
   // (sealFixed), so every frame on the wire has the same length and the
@@ -689,7 +694,7 @@
   // media session (tracks, codecs, renegotiation, restarts) never touches
   // the relay: it is negotiated over the pair's own DataChannel once the
   // bootstrap has opened it (run.html sendSig).
-  const RELAY_TYPES = ['boot', 'fp', 'ice', 'name', 'password', 'pwsig', 'pwpub', 'pwby', 'busy'];
+  const RELAY_TYPES = ['boot', 'fp', 'ice', 'name', 'password', 'pwsig', 'pwpub', 'pwby', 'busy', 'tv'];
   const RELAY_PLAIN_BYTES = 128;
   const RELAY_IV_B64_LEN = 16;
   const RELAY_CT_B64_LEN = 4 * Math.ceil((RELAY_PLAIN_BYTES + 16) / 3);
@@ -724,6 +729,7 @@
     unlist: {},                                            // a seat that left Section 1 drops its greeter registration at once
     setpw: { pw: { str: 64, re: RELAY_PROOF_RE }, w: { obj: RELAY_ORDER, opt: 1 } },
     votekick: { devs: { list: 24, item: { str: 16, re: RELAY_DEV_RE } }, abs: { list: 24, item: { str: 16, re: RELAY_ABS_RE }, opt: 1 } },
+    tvouch: { to: { str: 16, re: RELAY_DEV_RE }, l: { str: 3, re: /^[ls][0-9]{1,2}$/ } },   // a seated greeter asks the relay to vouch for one TURN link (gifos shared/turn-ticket.js)
   };
   function sealedOk(m) {
     if (!m || typeof m !== 'object' || Array.isArray(m) || m.e !== 1 || typeof m.iv !== 'string' || typeof m.ct !== 'string') return false;
