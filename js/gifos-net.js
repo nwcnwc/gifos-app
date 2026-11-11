@@ -721,7 +721,7 @@
   const RELAY_ORDER = { sp: { str: 400 }, sig: { str: 88, re: RELAY_SIG_RE }, pub: { str: 44, re: RELAY_PUB_RE } }; // a signed admin order {sp, sig, pub}
   const RELAY_SHAPES = {
     peer: { to: { str: 64, re: RELAY_ID_RE }, ty: { one: RELAY_TYPES }, msg: { sealed: 1 } },
-    knock: { gk: { str: 128, re: RELAY_GK_RE }, gblob: { sealedText: 1, opt: 1 } },
+    knock: { gk: { str: 128, re: RELAY_GK_RE }, gblob: { sealedText: 1, opt: 1 }, dc: { one: ['1'], opt: 1 } },   // dc: a deep seat called to the door (FHOP.8) registers for the call only
     unlist: {},                                            // a seat that left Section 1 drops its greeter registration at once
     setpw: { pw: { str: 64, re: RELAY_PROOF_RE }, w: { obj: RELAY_ORDER, opt: 1 } },
     votekick: { devs: { list: 24, item: { str: 16, re: RELAY_DEV_RE } }, abs: { list: 24, item: { str: 16, re: RELAY_ABS_RE }, opt: 1 } },

@@ -3558,7 +3558,43 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // My network's kind for friend-hop's typing (a seat tells a blip from an unreachable pair), in the seat's GT_ words: open, blocked, or
     // strict (an endpoint-dependent mapping, which pairs badly with another strict seat). -1: not known yet.
     const natWord = () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' && directMeasured ? E.GT_BLOCKED : directPath === 'strict' ? E.GT_SYM : directPath === 'ok' ? E.GT_PUBLIC : -1; };
-    const statusPayload = () => ({ kind: 'status', s: myStatus, conns: myConns(), nat: natWord(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined });
+    // FHOP.8 / FHOP.9: what my beat says of my network, for a friend choosing a carrier or a friend to call to a door.
+    //   cls  my link class: 3 wired, 2 Wi-Fi, 1 cellular, 0 not known (navigator.connection, where the browser gives it).
+    //   nt   my network tag: HMAC-SHA-256 over my network (the address the relay saw me connect from, its own whoami: an
+    //        IPv4 address, or an IPv6 /64), under a key derived from the meeting key, cut to 32 bits. Members read "the same
+    //        network or not" from it and nothing more; it rides only the sealed beat on our channels, never the relay, and a
+    //        member who could test guesses against it already reads my address in my beat (ip) and in my ICE candidates.
+    //   ft   the tags of the peers I hold a pc to (at most FH_FTAGS): a greeter with no friend on another network passes a
+    //        door-call one hop, to a peer whose friends are.
+    const linkCls = () => { try { const c = navigator.connection, t = c && c.type; return t === 'ethernet' ? 3 : (t === 'wifi' || t === 'wimax') ? 2 : t === 'cellular' ? 1 : 0; } catch (e) { return 0; } };
+    let netTagNow = '', netTagIp = '', netTagKey = null, netTagBusy = false;
+    function netOfAddr(ip) {
+      const a = String(ip || '').trim().toLowerCase().replace(/^\[|\]$/g, '');
+      if (a.indexOf(':') < 0) return a;
+      const v4 = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(a); if (v4) return v4[1];
+      const [l, r] = a.split('::'); const L = l ? l.split(':') : [], R = r !== undefined && r ? r.split(':') : [];
+      const g = L.concat(new Array(Math.max(0, 8 - L.length - R.length)).fill('0'), R);
+      return g.slice(0, 4).map((x) => (parseInt(x, 16) || 0).toString(16)).join(':') + '::/64';
+    }
+    function refreshNetTag() {
+      const ip = myIp, k = roomE2E;
+      if (!ip || !k || netTagBusy || (ip === netTagIp && k === netTagKey) || !(window.crypto && crypto.subtle)) return;
+      netTagBusy = true; const te = new TextEncoder();
+      crypto.subtle.encrypt({ name: 'AES-GCM', iv: new Uint8Array(12), additionalData: te.encode('gifos-fhop-nettag') }, k, te.encode('network tag key'))
+        .then((kb) => crypto.subtle.importKey('raw', new Uint8Array(kb).slice(0, 32), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']))
+        .then((hk) => crypto.subtle.sign('HMAC', hk, te.encode(netOfAddr(ip))))
+        .then((h) => { netTagNow = Array.from(new Uint8Array(h).slice(0, 4), (b) => b.toString(16).padStart(2, '0')).join(''); netTagIp = ip; netTagKey = k; })
+        .catch(() => {}).finally(() => { netTagBusy = false; });
+    }
+    const netTagOf = new Map(), clsOf = new Map(), ftagsOf = new Map();   // pid -> its beat's nt, cls, ft
+    function myFtags() { const ft = []; for (const r of myConns()) { const t = netTagOf.get(r); if (t && ft.indexOf(t) < 0) { ft.push(t); if (ft.length >= GifOS.meshConsts.consts.FH_FTAGS) break; } } return ft.sort(); }
+    function takeNetWords(from, msg) {
+      if (Number.isInteger(msg.nat)) natOf.set(from, msg.nat);
+      if (typeof msg.nt === 'string' && /^[0-9a-f]{8}$/.test(msg.nt)) netTagOf.set(from, msg.nt);
+      if (Number.isInteger(msg.cls) && msg.cls >= 0 && msg.cls <= 3) clsOf.set(from, msg.cls);
+      if (Array.isArray(msg.ft)) ftagsOf.set(from, msg.ft.slice(0, GifOS.meshConsts.consts.FH_FTAGS).filter((t) => typeof t === 'string' && /^[0-9a-f]{8}$/.test(t)));
+    }
+    const statusPayload = () => { refreshNetTag(); const ft = myFtags(), c = linkCls(); return { kind: 'status', s: myStatus, conns: myConns(), nat: natWord(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined, nt: netTagNow || undefined, cls: c || undefined, ft: ft.length ? ft : undefined }; };
     function broadcastStatus(answer) {
       if (pulseHalt && !answer) return; // the halt models a throttled clock; an answer to a newcomer is driven by its frame, not the clock
       myStatus.at = Date.now(); // timestamped: out-of-order gossip can't roll me back
@@ -12605,7 +12641,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // plain rooms — the transport no longer matters, only the proof.
       takeMod(from, msg);
       if (msg.conns) setConns(from, msg.conns);
-      if (Number.isInteger(msg.nat)) natOf.set(from, msg.nat);
+      takeNetWords(from, msg);   // nat; FHOP.8/9 nt, cls, ft
       if ('sid' in msg && p && sidIsNews(p, msg.sid)) { p.ownSid = msg.sid; claimOwnStream(p); }
     }
 
@@ -12829,6 +12865,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       } else if (msg.kind === 'status') {
         const took = takeStatus(from, msg.s || {}); // null: the same pulse again (the DC copy and the section-gossip copy of one beat)
         if (msg.conns) setConns(from, msg.conns);
+        takeNetWords(from, msg);   // nat; FHOP.8/9 nt, cls, ft
         // heartbeat re-gossip: moderation + guest-blur re-converge every tick
         // (signature-verified in admin rooms — takeMod, §9)
         takeMod(from, msg);
@@ -12954,6 +12991,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // Peers the seat asked to dial (pc.ensure), for a while: the seat's dial is its reason.
     const seatAskAt = new Map();
+    // a page-side friend-hop line in the seat trace's own form (DEBUG only): the carrier a page asked and why
+    function fhTrace(e, d) { if (!DEBUG_ON) return; try { meshTraceSink('{"t":' + Math.floor(Date.now() / 500) + ',"s":-1,"e":"' + e + '","c":null,"d":"' + String(d).replace(/["\\]/g, '') + '"}'); } catch (x) {} }
     function meshTraceSink(line) { const G = window.__meshTraceRing || (window.__meshTraceRing = { ring: [], seq: 0 }); G.ring.push([++G.seq, line]); if (G.ring.length > 4000) G.ring.splice(0, 1000); }
     window.__meshPortPage = { pcbye: (pid, why) => { try { meshNode && meshNode.__pc && meshNode.__pc.bye(pid, why); } catch (e) {} }, dcOpen: (pid) => { const p = peers.get(pid); return !!(p && p.dc && p.dc.readyState === 'open'); } };
     function seatAsked(pid) { const at = seatAskAt.get(pid); return at != null && Date.now() - at < 60000; }
@@ -15151,6 +15190,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           friendFor: (pid) => { const c = myConns().filter((r) => r !== pid && (connsOf.get(r) || []).includes(pid)).sort(); const fp = c.length ? peers.get(c[0]) : null; return !!(fp && fp.dc && fp.dc.readyState === 'open'); },
           canSponsor: (pid) => { for (const [r, q] of peers) if (r !== pid && r !== myId && q.connected && q.dc && q.dc.readyState === 'open') return true; return false; },
           natMine: natWord, natOf: (pid) => natOf.get(pid),
+          // FHOP.8 door-call / FHOP.9 carrier score (env.js fhDoorCall): my connected peers, the words their beats carry, my pc's own readings
+          conns: () => myConns(), myTag: () => netTagNow, tagOf: (pid) => netTagOf.get(pid) || '', ftags: (pid) => ftagsOf.get(pid) || [],
+          score: (pid) => carrierScore(pid), knockNat: () => -1,
+          doorSend: (pid, kind, knocker) => { const q = peers.get(pid); if (q && q.dc && q.dc.readyState === 'open') dcSend(q, { k: 'dcall', n: kind, j: knocker }); },
           roles: () => ({ jobs: Array.from(relayJobs.values(), (j) => ({ target: j.target, req: j.requester })), vias: Array.from(relayVia.values(), (r) => r.via) }),
         },
         measure: {   // the device class and the network's verdict this page already keeps (L4)
@@ -16082,8 +16125,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // Our relayer for this peer vanished → fall back and re-elect.
         const rv = relayVia.get(pid);
         if (rv) { const viaP = peers.get(rv.via); if (!viaP || !viaP.connected) stopRelayFor(pid, false); }
-        // No direct route for a while → ask the smallest-id mutual friend to
+        // No direct route for a while → ask the best mutual friend to
         // forward their media to us (a volunteer TURN made of friends).
+        // FHOP.9: the best carrier score first (its link class, my pc's own
+        // loss and round trip to it), the smallest id on a tie.
         if (!p.connected && !p.absentSince && !relayVia.has(pid)
             && p.downSince && now - p.downSince > 10000 && now - (p.relayAskAt || 0) > 10000) {
           const refused = relayRefusal.get(pid) || {};
@@ -16092,8 +16137,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             && !(refused[r] && now - refused[r] < 30000)).sort();
           if (cands.length) {
             p.relayAskAt = now;
-            const rp = peers.get(cands[0]);
-            if (rp) dcSend(rp, { k: 'relay-req', target: pid });
+            fhRankCarriers(cands).then((ranked) => {
+              const rp = peers.get(ranked[0]);
+              if (!rp || relayVia.has(pid) || (p.connected && p.dc && p.dc.readyState === 'open')) return;
+              fhTrace('FH-CARRIER', 'target=' + String(pid).slice(0, 8) + ' via=' + String(ranked[0]).slice(0, 8) + ' ' + ranked.map((r) => String(r).slice(0, 8) + ':' + carrierScore(r) + ':c' + (clsOf.get(r) || 0)).join(','));
+              dcSend(rp, { k: 'relay-req', target: pid });
+            });
           }
         }
         // Be honest about a pair that can't form: present in the room but no
@@ -19526,6 +19575,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         });
       } else if (m.k === 'ck2') {
         clockSample(p.id, m.t0, m.t1, performance.now());
+      } else if (m.k === 'dcall') {
+        // FHOP.8: a peer of mine calls me to the door for a knocker its door could not reach (n 7), or passes the call (n 8)
+        if ((m.n === 7 || m.n === 8) && typeof m.j === 'string' && m.j.length <= 64 && m.j !== myId && meshNode && meshNode.penv && meshNode.penv.doorCallIn) meshNode.penv.doorCallIn(p.id, m.n, m.j);
       } else if (m.k === 'relay-req') {
         startRelayJob(p, String(m.target || ''));
       } else if (m.k === 'relay-no') {
@@ -21053,9 +21105,44 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function forgetConns(pid) {
       for (const t of (connsOf.get(pid) || [])) { const c = claimantsOf.get(t); if (c) { c.delete(pid); if (!c.size) claimantsOf.delete(t); } }
-      connsOf.delete(pid); natOf.delete(pid);
+      connsOf.delete(pid); natOf.delete(pid); netTagOf.delete(pid); clsOf.delete(pid); ftagsOf.delete(pid);
     }
-    const MAX_RELAY_JOBS = 4;       // a phone volunteers only so much upload
+    // FHOP.9: a friend carries up to FHOP_CARRY_MAX jobs (all one full row can ask of one mate); it forwards video for as many as
+    // its own link class allows (fhVideoBudget: cellular 2, Wi-Fi or unknown 4, wired 8) and the voice only for every job past
+    // that. When a video job ends, the oldest voice-only job gets its video.
+    const FH_K = () => GifOS.meshConsts.consts;
+    // FHOP.9: one carrier score (js/mesh/fhop.js fhCarrierScore) for every friend a page leans on: the friend's link class from
+    // its beat, and my pc's own packet loss (per mille) and round trip (ms) to it, read from that pc's stats when a choice is made.
+    function carrierScore(pid) { const q = peers.get(pid); return GifOS.meshFhop.fhCarrierScore(clsOf.get(pid) || 0, q && q.fhLossPm != null ? q.fhLossPm : 0, q && q.fhRttMs != null ? q.fhRttMs : 0); }
+    function readLinkStats(pid) {
+      const q = peers.get(pid); if (!q || !q.pc || !q.pc.getStats) return Promise.resolve();
+      return q.pc.getStats().then((rep) => {
+        let rtt = null, lost = null;
+        rep.forEach((r) => {
+          if (r.type === 'candidate-pair' && r.nominated && r.state === 'succeeded' && Number.isFinite(r.currentRoundTripTime)) rtt = Math.round(r.currentRoundTripTime * 1000);
+          if (r.type === 'remote-inbound-rtp' && Number.isFinite(r.fractionLost)) lost = Math.max(lost || 0, r.fractionLost);
+        });
+        if (rtt != null) q.fhRttMs = rtt; if (lost != null) q.fhLossPm = Math.round(lost * 1000);
+      }).catch(() => {});
+    }
+    function fhRankCarriers(pids) {
+      return Promise.all(pids.map(readLinkStats)).then(() => pids.slice().sort((a, b) => (carrierScore(b) - carrierScore(a)) || (a < b ? -1 : a > b ? 1 : 0)));
+    }
+    if (DEBUG_ON) window.__fhJobsForTest = () => Array.from(relayJobs.values(), (j) => ({ target: j.target, req: j.requester, video: !!j.video }));   // DEBUG: a carrier's own jobs, for the room checks
+    const relayVideoJobs = () => { let n = 0; for (const j of relayJobs.values()) if (j.video) n++; return n; };
+    const relayVideoBudget = () => GifOS.meshFhop.fhVideoBudget(linkCls() || GifOS.meshConsts.enums.FC_WIFI);
+    // a video job ended: the oldest voice-only job (Map order) gets its video
+    function relayPromote() {
+      if (relayVideoJobs() >= relayVideoBudget()) return;
+      for (const job of relayJobs.values()) {
+        if (job.video) continue;
+        const tp = peers.get(job.target), rp = peers.get(job.requester);
+        if (!tp || !tp.stream || !rp || !rp.pc) continue;
+        for (const tr of tp.stream.getVideoTracks()) { try { job.senders.push(addAux(rp.pc, tr, job.container)); } catch (e) {} }
+        job.video = true; fhTrace('FH-JOB-VIDEO', 'target=' + String(job.target).slice(0, 8) + ' req=' + String(job.requester).slice(0, 8));
+        renegotiate(rp); return;
+      }
+    }
     // Senders that carry OTHER people's media (relay jobs, composites, forwarded
     // folds) — refreshOutbound must never replaceTrack these with my camera.
     const auxSenders = new Set();
@@ -21604,7 +21691,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const tp = peers.get(target);
       const refuse = () => dcSend(reqP, { k: 'relay-no', target });
       if ((typeof isEjected === 'function' && isEjected(target) === true)) { refuse(); return; }
-      if (!tp || !tp.connected || !tp.stream || !reqP.connected || relayJobs.size >= MAX_RELAY_JOBS) { refuse(); return; }
+      if (!tp || !tp.connected || !tp.stream || !reqP.connected || relayJobs.size >= FH_K().FHOP_CARRY_MAX) { refuse(); return; }
       // A friend-relay re-sends the target's RECEIVED tracks: still refused on WebKit.
       // The mesh's own forwards (mosAttach) run there through wkFwdSrc;
       // a relay from a WebKit seat was not proven (2026-11-07: with this refusal
@@ -21613,9 +21700,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (typeof wkRemoteTrack === 'function' && tp.stream.getTracks().some((tr) => wkRemoteTrack(tr))) { refuse(); return; }
       const container = new MediaStream();
       const senders = [];
-      for (const tr of tp.stream.getTracks()) { try { senders.push(addAux(reqP.pc, tr, container)); } catch (e) {} }
+      const video = relayVideoJobs() < relayVideoBudget();   // FHOP.9: past my video budget a carry forwards the voice only
+      for (const tr of tp.stream.getTracks()) { if (!video && tr.kind === 'video') continue; try { senders.push(addAux(reqP.pc, tr, container)); } catch (e) {} }
       if (!senders.length) { refuse(); return; }
-      relayJobs.set(key, { senders, requester: reqP.id, target, container });
+      relayJobs.set(key, { senders, requester: reqP.id, target, container, video });
+      fhTrace('FH-JOB', 'target=' + String(target).slice(0, 8) + ' req=' + String(reqP.id).slice(0, 8) + ' video=' + (video ? 1 : 0) + ' cls=' + linkCls() + ' jobs=' + relayJobs.size);
       dcSend(reqP, { k: 'relay-stream', target, streamId: container.id });
       renegotiate(reqP);
     }
@@ -21625,6 +21714,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!job) return;
       relayJobs.delete(key);
       for (const sd of job.senders) auxSenders.delete(sd);
+      if (job.video) relayPromote();   // FHOP.9: a video job ended
       const rp = peers.get(requesterPid);
       if (!rp) return;
       for (const sd of job.senders) { try { rp.pc.removeTrack(sd); } catch (e) {} }
@@ -21638,6 +21728,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         else if (job.requester === pid) {
           relayJobs.delete(key);
           for (const sd of job.senders || []) auxSenders.delete(sd);
+          if (job.video) relayPromote();   // FHOP.9: a video job ended
         }
       }
       if (relayVia.has(pid)) stopRelayFor(pid, true);

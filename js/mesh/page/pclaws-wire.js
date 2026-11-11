@@ -421,6 +421,23 @@
       }
       S.DOOR_PEND = keep;
     }
+    // C++: mesh_fhop.inc:fhDoorNote / fhDoorOpened / fhDoorDue   [my end: the seated one]
+    // FHOP.8: a door to a knocker whose offer and answer crossed at my seated end starts its ICE clock. When the pc has had
+    // its whole ICE time (LINK_DIAL_FAIL) and never opened, the page calls a friend to the door (o.fh.doorDue: env.js).
+    // opened() ends the clock; the knocker's own end never runs one.
+    const FHDOOR = new Map();   // knocker -> the tick its door's signalling crossed
+    function fhDoorNote(x, L) {
+      if (!o.fh || !o.fh.doorDue || !mySeated() || !L || !L.outside || L.outside === 3 || !(L.outside & (1 << theirs(x))) || FHDOOR.has(x)) return;
+      FHDOOR.set(x, T()); trace('FH-DOOR-NOTE', me, null, 'peer=%d', x);
+    }
+    function fhDoorTick() {
+      if (!FHDOOR.size) return;
+      for (const [x, at] of [...FHDOOR]) {
+        if (T() - at < K.LINK_DIAL_FAIL) continue;
+        FHDOOR.delete(x); const L = LINKS.get(x); if (L && L.state === LK_OPEN) continue;
+        trace('FH-DOOR-DUE', me, null, 'peer=%d', x); o.fh.doorDue(x);
+      }
+    }
     // a dial that never opened within LINK_DIAL_FAIL
     function dialTimeouts() {
       for (const [x, L] of LINKS) if (L.state === LK_DIALING && T() - L.dialAt >= K.LINK_DIAL_FAIL) { dialFailed(x); io.close(x); }
@@ -429,7 +446,7 @@
     // ---- the page face -----------------------------------------------------------------------------------------
     function tick() {
       const s = mySeat(); if (!s || s.dead) return;
-      dialTimeouts();
+      dialTimeouts(); fhDoorTick();
       if (S.DOOR_PEND.length) pendMine();
       l15Mine(); l16Mine(); l22Mine();
       pc.S.L16CLOSING.length = 0; pc.S.LDOORS.clear();   // the fabric door sweeps' lists: my end recounts each tick
@@ -458,6 +475,7 @@
         freshState(L, x, me); doorInit(L, x, me, oo); if (!oo) l1611Mine(x, L);
       }
       L.view[mine(x)] = LK_DIALING; if (mk.up) L.uplink = true;
+      fhDoorNote(x, L);   // FHOP.8: my answer goes back to a knocker's offer: the door's ICE clock starts
       return true;
     }
     // the callee's answer mark reached my dial: its seated flag sets the far end's door bit (my view only guessed it)
@@ -467,11 +485,12 @@
       L.ans = true;   // L13.41: the far page is alive on the relay (its socket answered my offer)
       if (L.outside && L.dBorn >= 0) L.dProg = T();   // as offer
       const oo = (L.outside & (1 << mine(x))) | (sat ? 0 : (1 << theirs(x)));
-      if (oo === L.outside) return;
-      doorEndCount(L); L.dUncounted = false; L.dG = -1; doorInit(L, L.dialBy, L.dialBy === me ? x : me, oo); if (!oo) l1611Mine(x, L);
+      if (oo !== L.outside) { doorEndCount(L); L.dUncounted = false; L.dG = -1; doorInit(L, L.dialBy, L.dialBy === me ? x : me, oo); if (!oo) l1611Mine(x, L); }
+      if (L.state === LK_DIALING) fhDoorNote(x, L);   // FHOP.8: a knocker answered my dial: the door's ICE clock starts
     }
     // C++: mesh_link.inc:linkOpenNow   [my end]
     function opened(x) {
+      FHDOOR.delete(x);   // C++: mesh_fhop.inc:fhDoorOpened (FHOP.8: the door opened)
       const L = LINKS.get(x); if (!L || L.state === LK_OPEN) return;
       DECL.delete(x);
       L.state = LK_OPEN; L.openEp = L.epoch; L.half = 0; L.halfAt = -1; L.stuck = false; L.view[0] = L.view[1] = LK_OPEN; L.opened = true;
