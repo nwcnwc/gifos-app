@@ -13815,6 +13815,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // ever HIDE a peer I can positively classify as non-row-mate from its occ
     // coord; a peer whose coord I don't yet know stays visible (don't hide the
     // unclassifiable — a not-yet-synced row-mate must not blink out).
+    // Seated, a peer my seat links but names at no cell (isRowMate's backup-uplink case).
+    const linkOnly = (s, pid) => !!(s && s.hasCoord && s.state === 3 && typeof s.linkPeers === 'function' && s.linkPeers().has(pid));
     function reconcileGrid() {
       const s = meshSeat(), c = meshCoord();
       if (!s || !c) return; // pre-seat: show whatever linked (bootstrap)
@@ -13839,7 +13841,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           try {
             const comfy = !!(meTile && typeof GifOS !== 'undefined' && GifOS.meetViews && GifOS.meetViews.comfyAllowed(document.body));
             const k0 = coordOfPeer.get(pid);
-            let mate = !k0;
+            let mate = !k0 && !linkOnly(s, pid);
             if (k0) { const cc0 = net.topo.unck(k0); mate = cc0.pc === c.pc && cc0.r === c.r; }
             show = comfy && mate;
           } catch (e) { show = false; }
@@ -13847,9 +13849,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           continue;
         }
         const k = coordOfPeer.get(pid);
-        if (!k) { paintDisp(p.tile, ''); continue; } // unknown coord ⇒ show
-        const cc = net.topo.unck(k);
-        const rowMate = cc.pc === c.pc && cc.r === c.r; // same section + row (≠ me)
+        // A coord I don't know yet shows the tile, except for a peer my seat already holds by a link role: a row-mate
+        // that has not synced is never one of my links, so such a peer is the far end of an uplink or backup link in
+        // another row or section (isRowMate reads it the same way). It sends me no camera, so its tile would stay black
+        // for as long as its cell is unknown here.
+        if (!k && !linkOnly(s, pid)) { paintDisp(p.tile, ''); continue; } // unknown coord ⇒ show
+        const cc = k ? net.topo.unck(k) : null;
+        const rowMate = !!cc && cc.pc === c.pc && cc.r === c.r; // same section + row (≠ me)
         paintDisp(p.tile, rowMate ? '' : 'none');
         // On WebKit a hidden non-mate tile holds NO picture (WEBKIT_TILE): the
         // far side parks its camera toward a non-mate (camPeer), so the element
