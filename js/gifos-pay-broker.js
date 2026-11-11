@@ -83,8 +83,20 @@
   const USDC_ENABLED = false;
   const USDC_RAILS = ['x402', 'transfer'];
   const USDC_OFF = 'USDC payments are off until mainnet';
+  const PAYPAL_PENDING = 'PayPal payments open once PayPal approves GifOS as a platform partner';
+  // PayPal's platform-partner approval for GifOS, the same value as the pay
+  // Worker's PAYPAL_PARTNER. While it is pending, a third-party PayPal order
+  // would carry platform_fees, which PayPal refuses, so the Worker keeps that
+  // rail closed and this OS does not offer it: a third-party app is paid in
+  // USDC only. An app signed by gifos.app is paid in full and keeps PayPal.
+  const PAYPAL_PARTNER = 'pending';
+  const isGifosSigner = (s) => !!s && s.type === 'domain' && String(s.id || '').toLowerCase() === 'gifos.app';
+  const paypalFor = (signer) => PAYPAL_PARTNER === 'approved' || isGifosSigner(signer);
   // The rails this OS will offer out of a list (the author's, or the Worker's).
-  const offeredRails = (rails) => (rails || []).filter((r) => USDC_ENABLED || USDC_RAILS.indexOf(r) === -1);
+  // signer is the app's signing identity ({type, id}). With no signer, PayPal
+  // is not offered.
+  const offeredRails = (rails, signer) => (rails || []).filter((r) =>
+    (USDC_ENABLED || USDC_RAILS.indexOf(r) === -1) && (r !== 'paypal' || paypalFor(signer)));
 
   const ls = () => root.localStorage;
 
@@ -189,7 +201,7 @@
   // response. Only the exact string LIVE is live; a missing or other value
   // stays sandbox so an older worker is not labeled as real money.
   // Returns { accepted: {rail: true}, why: {rail: reason}, mode }.
-  async function railsNow(proof) {
+  async function railsNow(proof, signer) {
     let r;
     try {
       r = await fetch(workerBase() + '/rails', {
@@ -206,8 +218,9 @@
     }
     // A rail the switch above turns off is never accepted, whatever the
     // Worker says, and the human is told why.
-    for (const rail of Object.keys(accepted)) if (offeredRails([rail]).length === 0) delete accepted[rail];
+    for (const rail of Object.keys(accepted)) if (offeredRails([rail], signer).length === 0) delete accepted[rail];
     if (!USDC_ENABLED) for (const rail of USDC_RAILS) why[rail] = USDC_OFF;
+    if (!paypalFor(signer)) why.paypal = PAYPAL_PENDING;
     return { accepted, why, mode: body && body.mode === 'LIVE' ? 'LIVE' : 'test' };
   }
 
@@ -1008,7 +1021,7 @@
     // The proof is what the Worker verifies instead of consulting the store;
     // /rails narrows the author's allowed rails to what can be processed now.
     const proof = await proofFor(appBytes);
-    const now = await railsNow(proof);
+    const now = await railsNow(proof, elig.identity);
     const sheetData = GifOS.charge.sheet(elig, request, appName || manifest.name, now.accepted);
     sheetData.mode = now.mode;
     const r = sheetData.rails;
@@ -1176,7 +1189,7 @@
     purse, maxAmountFor, setMaxAmount, fmtUsd, entScope,
     DEFAULT_MAX, WORKER_KEY, POLICY_KEY,
     // The permission sheet lists rails through this, so one switch rules both.
-    USDC_ENABLED, offeredRails,
+    USDC_ENABLED, PAYPAL_PARTNER, offeredRails,
     // The same payment service and key, for anything else that needs them.
     workerBase, verifyReceipt,
   };
