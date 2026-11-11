@@ -145,6 +145,7 @@
     l25Ask(m, by) {
       const id = this.id;
       if (this.TICK - this.l25At <= K.L25_WAIT && this.l25Nc >= 0) return;
+      if (this.l25WitPend && this.TICK - this.l25WitAt >= K.L25_WAIT) { this.l25WitTick(); if (!this.hasCoord || this.state !== 3 || this.moving || ckey(this.coord) !== m.ck) return; }   // L25.9.1: a verdict that is due is given before a new question restarts the count
       this.l25Nc = m.nc; this.l25Ck = m.ck; this.l25By = by; this.l25At = this.TICK | 0;
       const c = newMsg('CHALLENGE'); c.ck = m.ck; c.from = id; c.tag = 25;
       if (this.w.lv.LINKMODEL) this.f.fabricCallFrame(id, m.nc, c); else if (by >= 0) { c.asker = id; c.via = m.nc; this.emit(by, c); }
