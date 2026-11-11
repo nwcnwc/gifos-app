@@ -3456,3 +3456,7 @@
     cursor: nwse-resize; touch-action: none; }
   body.view-float [data-float^="p:"] > .fl-rz::after { content: ""; position: absolute; right: 6px; bottom: 6px; width: 10px; height: 10px;
     border-right: 2px solid var(--c-white); border-bottom: 2px solid var(--c-white); opacity: .7; }
+  /* A phone's top centre belongs to the room name: Present sits under the view button there. */
+  @media (max-width: 700px), (max-height: 500px) {
+    .presentbtn { left: auto; transform: none; right: calc(14px + env(safe-area-inset-right, 0px)); top: calc(110px + var(--gtop, 0px)); }
+  }
