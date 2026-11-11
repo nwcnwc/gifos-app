@@ -138,7 +138,7 @@
       if (!this.w.lv.TIERS_ACTIVE || !this.hasCoord || this.state !== 3 || m.id < 0) return;
       const hk = ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 });
       if (this.coord.i !== 0 && this.occGet(hk) !== m.id) return;
-      const r = newMsg('SWAPRDY'); r.id = this.id; r.swA = m.swA; r.swB = m.swB; r.swCa = m.swCa; r.swCb = m.swCb; r.tag = this.l4Ready(m) ? 1 : -1;
+      const r = newMsg('SWAPRDY'); r.id = this.id; r.swA = m.swA; r.swB = m.swB; r.swCa = m.swCa; r.swCb = m.swCb; r.tag = this.l4Ready(m) ? 1 : (this.l4MassNow() ? -2 : -1);   // -2: not ready, and many people are coming or going around me
       if (r.tag === 1) this.l4Links(r.nbrs);
       this.emit(m.id, r);
     },
@@ -164,6 +164,7 @@
       }
       if (!this.w.lv.TIERS_ACTIVE || this.l4o.at <= -1000 || m.swA !== this.l4o.a || m.swB !== this.l4o.b) return;
       if (m.id === this.l4o.a) { this.l4o.rdyA = (m.tag === 1) ? 1 : -1; this.l4o.nbA = cpKV(m.nbrs); } else if (m.id === this.l4o.b) { this.l4o.rdyB = (m.tag === 1) ? 1 : -1; this.l4o.nbB = cpKV(m.nbrs); } else return;
+      if (m.tag === -2 && this.w.lv.LG_ON && this.hasCoord && this.coord.i === 0) this.lgAsk.set(m.id, [this.TICK, 4]);   // L29.3.1: for a while this mate is passed over and the next-best one is asked
     },
 
     // C++: mesh_tier.inc:Seat::l4OnGo
