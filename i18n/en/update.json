@@ -10,6 +10,7 @@
   "update.bar.more": "What’s new",
   "update.bar.action": "Update now",
   "update.bar.switchTo": "Switch to v{latest}",
+  "update.bar.held": "Your meeting keeps going. Update when it suits you.",
   "update.bar.dismiss": "Dismiss",
   "update.notes.new": "New",
   "update.notes.fixed": "Fixed",

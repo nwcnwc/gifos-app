@@ -10,6 +10,7 @@
   "update.bar.more": "新功能",
   "update.bar.action": "立即更新",
   "update.bar.switchTo": "切换到 v{latest}",
+  "update.bar.held": "你的会议会继续进行。方便时再更新。",
   "update.bar.dismiss": "关闭",
   "update.notes.new": "新增",
   "update.notes.fixed": "修复",

@@ -1,0 +1,48 @@
+@charset "UTF-8";
+/* Meeting polish: loaded last, after css/meet.css and css/meet-23b.css. It changes looks only (colour, surface,
+   shape), never size or place, so every layout rule above still decides where things go. Values come from the
+   tokens in css/meet.css's :root, plus the dock tokens here. */
+:root {
+  --dock-bg: rgba(32,33,36,.94);       /* the floating bar: a dark glass strip over the faces */
+  --dock-ring: rgba(255,255,255,.08);  /* its hairline edge */
+  --dock-btn: rgba(255,255,255,.10);   /* a neutral control on the bar */
+  --dock-btn-hover: rgba(255,255,255,.18);
+  --dock-fg: #f1f3f4;                  /* words and icons on the bar */
+  --dock-on: #8ab4f8;                  /* an "on" mark drawn without a fill (the short-window hand) */
+  --label-bg: rgba(0,0,0,.55);         /* a name on a face */
+}
+
+/* ---- the bar ---------------------------------------------------------------------------------------------------
+   One dark surface. Colour carries meaning only: green = your camera or mic is on, red = off or Leave, blue = a
+   panel or choice that is on. Every other control is the same quiet light-on-dark button. Buttons inside the More
+   sheet are not bar children and keep the sheet's own look. */
+.bar { background: var(--dock-bg); box-shadow: 0 8px 28px rgba(0,0,0,.45), inset 0 0 0 1px var(--dock-ring); }
+.bar > #reactbtn, .bar > #chatbtn, .bar > #ccdock, .bar > #bartoggle, .bar > #sharebtn, .bar > #stagebtn, .bar > #hand, .bar > #bargrip {
+  background: var(--dock-btn); color: var(--dock-fg); }
+@media (hover: hover) {
+  .bar > :is(#reactbtn, #chatbtn, #ccdock, #bartoggle, #sharebtn, #stagebtn, #hand, #bargrip):not(.on):not([aria-expanded="true"]):not(.idle):not([aria-disabled="true"]):hover {
+    background: var(--dock-btn-hover); }
+}
+/* A short window draws the hand as a bare icon (no fill): light on the dark bar, the "on" hand in light blue. */
+@media (max-height: 420px) {
+  .bar > #hand, .bar > #hand.on { background: transparent; color: var(--dock-fg); filter: none; }
+  .bar > #hand.on { color: var(--dock-on); }
+}
+
+/* ---- faces -----------------------------------------------------------------------------------------------------
+   A name sits on a soft dark label, the same on every face and every screen size. */
+.tile .name { background: var(--label-bg); color: var(--c-white); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+/* With a mouse, a face's Open button shows when you point at the face (or tab to it), so the gallery is faces,
+   not a row of buttons. A touch screen has no pointing, so there it stays. */
+@media (hover: hover) and (pointer: fine) {
+  .tile > .tile-open, .rowtile > .tile-open { transition: opacity var(--t-fast) ease; }
+  .tile:not(:hover):not(:focus-within) > .tile-open, .rowtile:not(:hover):not(:focus-within) > .tile-open { opacity: 0; }
+}
+
+/* ---- popups ----------------------------------------------------------------------------------------------------
+   Every dialog card (js/dialog.js shapes them all into head, scrolling body and actions) wears one shape: the same
+   corner, the same shadow, and action buttons with the same height and corner. A dialog's own size rules (a short
+   window's smaller buttons) still win, by being more specific. */
+.name-modal > .name-box, .modal-bg > .modal, .rb-sheet > .rb-card, .lock-modal > .lock-box, .perm-modal > .perm-box {
+  border-radius: var(--r-lg); box-shadow: 0 18px 48px rgba(0,0,0,.45); }
+.dlg-actions button { min-height: 44px; border-radius: var(--r-md); font-weight: 600; }

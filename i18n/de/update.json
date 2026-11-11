@@ -10,6 +10,7 @@
   "update.bar.more": "Neuigkeiten",
   "update.bar.action": "Jetzt aktualisieren",
   "update.bar.switchTo": "Zu v{latest} wechseln",
+  "update.bar.held": "Dein Meeting läuft weiter. Aktualisiere, wann es dir passt.",
   "update.bar.dismiss": "Schließen",
   "update.notes.new": "Neu",
   "update.notes.fixed": "Behoben",

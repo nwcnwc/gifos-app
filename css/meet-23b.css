@@ -14,9 +14,9 @@ body.comfy:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
 body.comfy.show-stage #stagefeed { display: contents !important; }
 body.comfy.show-stage #stagefeed > .rowtile[data-comfy="1"] {
   position: absolute; aspect-ratio: auto; max-height: none; min-height: 0; z-index: 2;
-  background: #000; border-radius: 12px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,.12); }
+  background: var(--c-black); border-radius: var(--r-md); overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,.12); }
 body.comfy.show-stage #stagefeed > .rowtile[data-comfy="1"] video {
-  width: 100%; height: 100%; object-fit: contain; background: #000; }
+  width: 100%; height: 100%; object-fit: contain; background: var(--c-black); }
 /* A Fit panel floats over the picture: the stage over a share, or the row
    when nothing is shared. Under the header chip and the Fit button (z 6)
    and the dock (z 32), so a drag cannot cover a control for good. */
@@ -24,10 +24,10 @@ body.comfy [data-float] { z-index: 5; }
 body.comfy:not(.gallery-scroll) [data-float] { touch-action: none; }
 /* Row and Stadium tiles are squares (meet-zones) with soft corners. */
 body.comfy:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile[data-comfy="1"],
-body.comfy.has-peers:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me[data-comfy="1"] { border-radius: 12px; overflow: hidden; }
+body.comfy.has-peers:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me[data-comfy="1"] { border-radius: var(--r-md); overflow: hidden; }
 @media (max-width: 700px), (max-height: 500px) {
   body.comfy:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile[data-comfy="1"],
-  body.comfy.has-peers:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me[data-comfy="1"] { border-radius: 10px; }
+  body.comfy.has-peers:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me[data-comfy="1"] { border-radius: var(--r-sm); }
 }
 /* The largest centered square of whatever arrives (viewer crop moves it). */
 body.comfy .tile[data-fit="cover"] > video { object-fit: cover; object-position: 50% 50%; }
@@ -65,25 +65,25 @@ body.comfy.show-stage #stagefeed > .rowtile[data-comfy="1"] { cursor: pointer; }
 #tilewin {
   position: fixed; z-index: 41; width: min(400px, calc(100vw - 24px));
   max-height: calc(100dvh - 24px); overflow: auto;
-  background: #f7f8fa; color: #1d1d1f; border-radius: 16px;
+  background: #f7f8fa; color: var(--c-ink); border-radius: var(--r-lg);
   box-shadow: 0 18px 48px rgba(0,0,0,.45); padding: 14px 14px 12px;
   font: 15px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif; }
 #tilewin .tw-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 #tilewin .tw-name { flex: 1 1 auto; min-width: 0; font-weight: 700; font-size: 17px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #tilewin .tw-close { flex: 0 0 auto; width: 36px; height: 36px; border-radius: 50%; border: 0;
-  background: #e6e8ec; color: #1d1d1f; font-size: 18px; cursor: pointer; }
+  background: #e6e8ec; color: var(--c-ink); font-size: 18px; cursor: pointer; }
 #tilewin .tw-info { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
-#tilewin .tw-info span { background: #e9ecf1; color: #2a2f38; border-radius: 999px; padding: 3px 10px; font-size: 13px; }
+#tilewin .tw-info span { background: #e9ecf1; color: #2a2f38; border-radius: var(--r-pill); padding: 3px 10px; font-size: 13px; }
 #tilewin .tw-sec { border-top: 1px solid #e3e5ea; padding-top: 10px; margin-top: 10px; }
 #tilewin .tw-sec > b { display: block; font-size: 12px; letter-spacing: .05em; text-transform: uppercase;
   color: #6a707c; margin-bottom: 6px; }
 #tilewin .tw-help { margin: 0 0 8px; font-size: 13px; color: #555b66; }
 #tilewin .tw-row { display: flex; flex-wrap: wrap; gap: 8px; }
 #tilewin button.tw-btn, #tilewin .modbar button {
-  flex: 1 1 calc(50% - 4px); min-height: 44px; padding: 8px 12px; border-radius: 12px; border: 0;
-  background: #e6e8ec; color: #1d1d1f; font: 600 16px/1.2 system-ui, sans-serif; cursor: pointer; text-align: center; }
-#tilewin button.tw-btn.on, #tilewin .modbar button.on { background: #1d1d1f; color: #fff; }
+  flex: 1 1 calc(50% - 4px); min-height: 44px; padding: 8px 12px; border-radius: var(--r-md); border: 0;
+  background: #e6e8ec; color: var(--c-ink); font: 600 16px/1.2 system-ui, sans-serif; cursor: pointer; text-align: center; }
+#tilewin button.tw-btn.on, #tilewin .modbar button.on { background: var(--c-ink); color: var(--c-white); }
 #tilewin .modbar button.banbtn, #tilewin button.tw-btn.danger { background: #fde8e8; color: #b3261e; }
 #tilewin .modbar { position: static !important; display: flex !important; flex-wrap: wrap; gap: 8px;
   opacity: 1 !important; pointer-events: auto !important; transform: none !important;
@@ -94,11 +94,11 @@ body.comfy.show-stage #stagefeed > .rowtile[data-comfy="1"] { cursor: pointer; }
    glued together (Firefox drew them overlapping by a fraction). */
 #tilewin .tw-row + .modbar { margin: 8px 0 0 !important; }
 #tilewin .tw-zoom { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-#tilewin .tw-zoom input[type=range] { flex: 1 1 auto; accent-color: #1d1d1f; }
-#tilewin .tw-pad { position: relative; width: 100%; margin: 0 auto; aspect-ratio: 16 / 9; background: #111; border-radius: 10px;
+#tilewin .tw-zoom input[type=range] { flex: 1 1 auto; accent-color: var(--c-ink); }
+#tilewin .tw-pad { position: relative; width: 100%; margin: 0 auto; aspect-ratio: 16 / 9; background: #111; border-radius: var(--r-sm);
   overflow: hidden; touch-action: none; cursor: grab; }
 #tilewin .tw-pad video { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
-#tilewin .tw-pad .tw-win { position: absolute; border: 2px solid #fff; border-radius: 4px;
+#tilewin .tw-pad .tw-win { position: absolute; border: 2px solid var(--c-white); border-radius: 4px;
   box-shadow: 0 0 0 9999px rgba(0,0,0,.5); pointer-events: none; }
 @media (max-width: 700px), (max-height: 500px) {
   #tilewin { left: 12px !important; right: 12px !important; width: auto; bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
@@ -106,7 +106,7 @@ body.comfy.show-stage #stagefeed > .rowtile[data-comfy="1"] { cursor: pointer; }
 }
 #tilewin .tw-face { display: flex; justify-content: center; margin: 4px 0 10px; }
 #tilewin .tw-face-av { width: 120px; height: 120px; border-radius: 50%; display: flex !important; align-items: center; justify-content: center;
-  background: #3b4d78; color: #fff; font: 700 48px/1 system-ui, sans-serif; overflow: hidden; }
+  background: #3b4d78; color: var(--c-white); font: 700 48px/1 system-ui, sans-serif; overflow: hidden; }
 #tilewin .tw-face-av img { width: 100%; height: 100%; object-fit: cover; }
 body.tw-open .fitbtn, body.tw-open .topchip { visibility: hidden; }
 /* ONE header, the OS runtime's (#appbar): Invite, Help and Full screen are
@@ -128,11 +128,13 @@ body:not(.has-app):not(.solo-app):not(.app-room) #appbar { justify-content: flex
 /* An unseen strut: the bar is as tall as a solo app's, so the buttons sit on the same pixels. */
 body:not(.has-app):not(.solo-app):not(.app-room) #appbar::before { content: '\200b'; display: inline-flex; padding: .2rem 0; border: 1px solid transparent; font-size: 16px; }
 #appbar #apphelp, #appbar #appfull, #appbar #appinvite { background: var(--surface, #14141f); color: var(--text, #e0e0f0); }
-#appbar #appinvite { min-height: 44px; min-width: 44px; padding: .45rem .85rem; box-sizing: border-box; font-size: 1rem; }
+/* Invite has no size of its own. It uses the app bar's shared padding and
+   the 16px type the other actions use. A meeting with no app sizes Help,
+   Invite and Full screen together further down. */
 body:not(.has-app):not(.solo-app):not(.app-room) #appbar > :not(#apphelp):not(#appfull):not(#appinvite) { display: none !important; }
 body:not(.has-app):not(.solo-app):not(.app-room) #appbar > * { pointer-events: auto; }
-#appbar[data-hide="auto"] { transition: opacity .2s ease; }
-body:not(.has-app):is(.dock-calm, .chrome-away) #appbar[data-hide="auto"] { opacity: 0; pointer-events: none; transition: opacity .8s ease; }
+#appbar[data-hide="auto"] { transition: opacity var(--t-fast) ease; }
+body:not(.has-app):is(.dock-calm, .chrome-away) #appbar[data-hide="auto"] { opacity: 0; pointer-events: none; transition: opacity var(--t-slow) ease; }
 body:not(.has-app):is(.dock-calm, .chrome-away) #appbar[data-hide="auto"] > * { pointer-events: none; }
 /* capabilities.header "larger": a taller bar. Meet does not declare it. */
 #appbar[data-header="larger"] { padding: .6rem 1rem; }
@@ -142,16 +144,16 @@ body:not(.has-app):is(.dock-calm, .chrome-away) #appbar[data-hide="auto"] > * { 
    lobby showed the full note before joining. */
 body.broadcast #bc-join-note { display: none !important; }
 /* Broadcast calm: the status bar fades with the dock; the on-air lamp stays. */
-#airbar { transition: opacity .8s ease; }
+#airbar { transition: opacity var(--t-slow) ease; }
 body.broadcast.dock-calm #airbar, body.broadcast.chrome-away #airbar { opacity: 0; pointer-events: none; }
 /* You are always in your own Row: the old Tile / Float / Strip / Hide
    choice and its size and edge rows are retired. */
 #selfctl, #selfsize, #selfedge, #selfcorner { display: none !important; }
 /* Pop-ups share one look with the tile window: rounded, soft shadow. */
-.name-modal .name-box { border-radius: 16px; box-shadow: 0 18px 48px rgba(0,0,0,.45); }
+.name-modal .name-box { border-radius: var(--r-lg); box-shadow: 0 18px 48px rgba(0,0,0,.45); }
 /* While you share, your tile shows your face over the outbound screen. */
 .tile.me > video.selfcam { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; width: 100%; height: 100%;
-  object-fit: cover; z-index: 1; pointer-events: none; background: #000; }
+  object-fit: cover; z-index: 1; pointer-events: none; background: var(--c-black); }
 /* No Blur box sits on a tile any more, so the chips use the full width and
    wrap whole on a small square instead of being cut. */
 body.comfy .tile > .chips { right: 6px !important; flex-wrap: wrap; align-content: flex-start; gap: 3px; }
@@ -169,7 +171,7 @@ body.comfy.show-stage .tile.me > .chips .stopshare { display: none; }
    "📝 Transcribing" mark in the header that stays when the call goes calm
    (the rest of the header fades around it). */
 #txmark { display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; white-space: nowrap;
-  padding: 3px 10px; border-radius: 999px; background: rgba(12,14,18,.92); color: #f4f7fb;
+  padding: 3px 10px; border-radius: var(--r-pill); background: var(--c-scrim); color: var(--c-paper);
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.28); font: 700 14px/1.2 system-ui, sans-serif; }
 body.head-calm .topchip, body.chrome-away .topchip { opacity: 1 !important; visibility: visible !important; background: transparent !important; box-shadow: none !important; }
 /* The room line (#status) stays on a phone's quiet (chrome-away): there it
@@ -177,7 +179,7 @@ body.head-calm .topchip, body.chrome-away .topchip { opacity: 1 !important; visi
    fading it left the chip's parent taking the tap. A desktop's calm
    (head-calm, pointer devices only) fades the line with the dock and keeps
    only the transcribing mark; any move brings it back. */
-body.head-calm .topchip > :not(#txmark), body.chrome-away .topchip > :not(#txmark):not(#status) { opacity: 0; pointer-events: none; transition: opacity .8s ease; }
+body.head-calm .topchip > :not(#txmark), body.chrome-away .topchip > :not(#txmark):not(#status) { opacity: 0; pointer-events: none; transition: opacity var(--t-slow) ease; }
 /* A shared screen is laid out by the zones like any Stage: the feed fills
    the screen (the older phone share band pinned it 76-110px down). */
 body.comfy.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
@@ -241,7 +243,7 @@ body.desk-ptr #hdrhand.on { display: none !important; }
    pad clips it, so a drag there never reaches the frame. */
 #tilewin .tw-rect { box-sizing: border-box; box-shadow: 0 0 0 9999px rgba(0,0,0,.5); left: 0; top: 0; width: 100%; height: 100%; }
 #tilewin .tw-grip { position: absolute; right: 4px; bottom: 4px; width: 18px; height: 18px; border-radius: 50%;
-  background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
+  background: var(--c-white); box-shadow: 0 1px 4px rgba(0,0,0,.5); }
 /* Broadcast calm, at every screen size: the host's panels (the stream link,
    Order of service, song words) fade with the dock so the Stage is the
    picture; any touch, scroll, mouse move or key brings them back. */
@@ -281,8 +283,16 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
   body.broadcast #rundown h3, body.broadcast #rundown li.now + li { display: none; }
 }
 /* Sideways on a phone the link and the Order of service share one band
-   under the title, side by side, each one line: the item on now and Next. */
+   under the title, side by side, each one line: the item on now and Next.
+   The chip is one row there: the phone rule (meet.css) gives the sentence
+   its own row, and on air that second row pushed the link down onto the
+   Live / Record row (568x320). The sentence ellipsizes; the count stays. */
 @media (max-height: 500px) {
+  body.broadcast .topchip { flex-wrap: nowrap; align-items: center; width: max-content; max-width: calc(100dvw - 28px); }
+  body.broadcast .topchip .title { white-space: nowrap; flex: 0 0 auto; }
+  body.broadcast .topchip .status { order: 0; display: flex; align-items: center; flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; }
+  body.broadcast .topchip #statuscount { flex: 0 1 auto; min-width: 0; }
+  body.broadcast .topchip #statusrest { display: block; flex: 1 1 auto; min-width: 0; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   body.broadcast #bc-link.on { flex-direction: row; align-items: center; padding: 4px; gap: 6px;
     left: 14px; right: auto; width: calc(50% - 21px); margin: 0; }
   body.broadcast #bc-link.on p { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -305,11 +315,11 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
    Town hall and Stream to friends are doors like Host this call: one
    centred link per line, 44px to tap. */
 #lobby.show #lob-th-btn.lob-link, #lobby.show #lob-stream.lob-link { display: block; width: 100%; min-height: 44px; margin: 0 0 2px;
-  color: #0064c8; font-weight: 700; font-size: 1rem; text-align: center; text-decoration: underline; background: transparent; border: 0; }
+  color: var(--c-blue); font-weight: 700; font-size: 1rem; text-align: center; text-decoration: underline; background: transparent; border: 0; }
 /* "This is how you'll appear" sits in the card, never over the camera
    preview's own words: the words above, your picture and name below. */
 #lobby.show .lob-appear { position: static !important; width: auto !important; margin: 12px 0 0 !important;
-  flex-direction: column; align-items: stretch; gap: 6px; box-shadow: none !important; background: #f4f7fb !important; }
+  flex-direction: column; align-items: stretch; gap: 6px; box-shadow: none !important; background: var(--c-paper) !important; }
 #lobby.show .lob-appear-k { margin: 0; }
 #lobby.show .lob-appear-row { min-width: 0; }
 #lobby.show .lob-appear .lob-face { width: 48px; height: 48px; font-size: 20px; }
@@ -332,11 +342,11 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
 .bar:not(.collapsed) #barmore .morerow > button {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 2px; width: 100%; height: auto; min-width: 0; box-sizing: border-box;
-  border-radius: 10px; line-height: 1.15; white-space: normal; overflow-wrap: anywhere;
+  border-radius: var(--r-sm); line-height: 1.15; white-space: normal; overflow-wrap: anywhere;
 }
 .bar:not(.collapsed) #barmore #chatbtn,
 .bar:not(.collapsed) #barmore #sharebtn {
-  width: 100%; height: auto; min-width: 0; max-width: none; border-radius: 10px;
+  width: 100%; height: auto; min-width: 0; max-width: none; border-radius: var(--r-sm);
   padding: 4px 6px; flex: 1 1 auto;
 }
 .bar:not(.collapsed) #barmore .morerow > button svg,
@@ -380,7 +390,7 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
   body.desk-ptr .bar:not(.collapsed) .barmore .moregroup h4 { font-size: 13px; }
   body.desk-ptr .bar:not(.collapsed) .barmore .moregroup + .moregroup { padding-top: 4px; }
   body.desk-ptr .bar:not(.collapsed) .barmore .moregroup .morerow { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
-  body.desk-ptr .bar:not(.collapsed) .barmore .moregroup .morerow > button { min-height: 34px; font-size: 13px; padding: 3px 4px; border-radius: 10px; }
+  body.desk-ptr .bar:not(.collapsed) .barmore .moregroup .morerow > button { min-height: 34px; font-size: 13px; padding: 3px 4px; border-radius: var(--r-sm); }
   body.desk-ptr .bar:not(.collapsed) #barmore .dockword,
   body.desk-ptr .bar:not(.collapsed) #barmore .blab { font-size: 13px; }
   body.desk-ptr .bar:not(.collapsed) .barmore .seg { min-height: 28px; min-width: 28px; font-size: 13px; padding: 2px 6px; }
@@ -400,7 +410,7 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
   .bar:not(.collapsed) #barmore .morerow > button,
   .bar:not(.collapsed) #barmore .dockmore {
     /* 64px, or taller when a label needs another line. 48px failed the host sheet. */
-    min-height: 64px; height: auto; font-size: 12px; padding: 4px; border-radius: 10px;
+    min-height: 64px; height: auto; font-size: 12px; padding: 4px; border-radius: var(--r-sm);
   }
   /* Settings text size scales the root. A fixed 12px stayed 12px at 200%. */
   html.ui-large .bar:not(.collapsed) #barmore .morerow > button,
@@ -453,7 +463,7 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
 #tilewin .tw-side .tw-zoom { margin-top: 0; min-width: 0; }
 #tilewin .tw-side .tw-zoom input[type=range] { width: 1px; min-width: 0; flex: 1 1 0; }
 #tilewin .tw-side .tw-row { margin-top: 0 !important; flex-direction: column; }
-#tilewin .tw-side button.tw-btn { flex: 0 0 auto; width: 100%; min-height: 32px; height: 32px; padding: 4px 6px; border-radius: 10px; font-size: 13px; }
+#tilewin .tw-side button.tw-btn { flex: 0 0 auto; width: 100%; min-height: 32px; height: 32px; padding: 4px 6px; border-radius: var(--r-sm); font-size: 13px; }
 #tilewin .tw-side .tw-info { margin: 0; width: auto; }
 #tilewin .tw-side .tw-info span { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #tilewin .tw-pad { max-height: none; margin: 0; }
@@ -471,14 +481,14 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
    44px controls. The body scrolls; the title and Close stay put (.dlg). */
 #set-modal .name-box.set-box {
   width: min(720px, calc(100vw - 32px)); max-width: none; padding: 0; text-align: left;
-  color: var(--text, #1d1d1f);
+  color: var(--text, var(--c-ink));
 }
 #set-modal .set-box > .dlg-head { padding: 16px 20px 12px; border-bottom: 1px solid var(--border, #d9dce3); }
 #set-modal .set-box > .dlg-head h3 { margin: 0; font-size: 1.25rem; line-height: 1.3; text-align: left; }
 #set-modal .set-box > .dlg-body { padding: 4px 20px 16px; }
 #set-modal .set-box > .dlg-actions { padding: 12px 20px; border-top: 1px solid var(--border, #d9dce3); justify-content: flex-end; }
 #set-modal .set-group { margin: 0; }
-#set-modal .set-group > h4 { margin: 24px 0 4px; padding-bottom: 6px; border-bottom: 2px solid var(--accent, #0064c8); font-size: 1.1rem; line-height: 1.3; font-weight: 700; color: var(--text, #1d1d1f); }
+#set-modal .set-group > h4 { margin: 24px 0 4px; padding-bottom: 6px; border-bottom: 2px solid var(--accent, var(--c-blue)); font-size: 1.1rem; line-height: 1.3; font-weight: 700; color: var(--text, var(--c-ink)); }
 #set-modal .set-group:first-child > h4 { margin-top: 12px; }
 #set-modal .set-row {
   display: grid; grid-template-columns: 11rem minmax(0, 1fr); gap: 6px 16px; align-items: start;
@@ -585,7 +595,7 @@ body:not(.canvote) .bar:not(.collapsed) #barmore #votebtn { display: none; }
 .tile > .tile-open, .rowtile > .tile-open {
   position: absolute; top: 6px; right: 6px; z-index: 6; box-sizing: border-box;
   height: 22px; max-height: 28px; width: auto; max-width: 72px; margin: 0; padding: 0 8px;
-  border: 0; border-radius: 999px; background: rgba(255,255,255,.28); color: #fff;
+  border: 0; border-radius: var(--r-pill); background: rgba(255,255,255,.28); color: var(--c-white);
   font: 600 12px/22px system-ui, sans-serif; letter-spacing: .01em; cursor: pointer;
   pointer-events: auto; text-shadow: 0 1px 2px rgba(0,0,0,.45);
 }
@@ -641,8 +651,8 @@ body:not(.has-app):not(.solo-app):not(.app-room) #appbar #appfull {
   box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;
   flex: 1 1 0; width: auto; min-width: 0; max-width: none; margin: 0; gap: 0;
   height: 44px; min-height: 0; padding: 2px 6px;
-  border: 1px solid rgba(255,255,255,.28); border-radius: 10px;
-  background: rgba(12,14,18,.92); color: #f4f7fb;
+  border: 1px solid rgba(255,255,255,.28); border-radius: var(--r-sm);
+  background: var(--c-scrim); color: var(--c-paper);
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   font-size: 13px; font-weight: 600; font-style: normal; line-height: 1.15; letter-spacing: 0;
   text-align: center; white-space: normal; overflow: hidden; cursor: pointer;
@@ -697,7 +707,7 @@ html.ui-large body:not(.has-app):not(.solo-app):not(.app-room) #appbar #appinvit
 body.screen-on:not(.broadcast) #airbar.on,
 body.comfy.has-app #airbar.on { top: calc(70px + var(--gtop, 0px)); right: auto; left: calc(12px + env(safe-area-inset-left, 0px)); }
 body.screen-on:not(.broadcast) #airbar.on #airrec,
-body.comfy.has-app #airbar.on #airrec { background: rgba(12,14,18,.92); color: #f4f7fb; }
+body.comfy.has-app #airbar.on #airrec { background: var(--c-scrim); color: var(--c-paper); }
 @media (max-width: 700px) and (orientation: portrait) {
   body.screen-on:not(.broadcast) #airbar.on,
   body.comfy.has-app #airbar.on { top: calc(110px + var(--gtop, 0px)); }
@@ -780,7 +790,7 @@ body.comfy.has-app #airbar.on #airrec { background: rgba(12,14,18,.92); color: #
 .bar:not(.collapsed) #barmore .moregroup > .morerow > button {
   display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 10px;
   width: 100%; height: auto; min-height: 44px; min-width: 0; max-width: none; margin: 0;
-  padding: 8px 12px; box-sizing: border-box; border: 0; border-radius: 10px;
+  padding: 8px 12px; box-sizing: border-box; border: 0; border-radius: var(--r-sm);
   font: 600 15px/1.2 system-ui, -apple-system, "Segoe UI", sans-serif; letter-spacing: normal;
   text-align: left; white-space: normal; overflow-wrap: anywhere;
 }
