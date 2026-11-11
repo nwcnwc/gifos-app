@@ -47,6 +47,14 @@
       return better(K.L29_BUD_M) ? 1 : better(K.L29_BUD_D) ? 3 : 2;
     },
 
+    // C++: mesh_lguard_seat.inc:Seat::lgRelief
+    // L29.4.1: could a row-mate take my head place and do better there than I do? With nobody who could, I stay.
+    lgRelief() {
+      const w = this.lgWord(); if (w === 2) return false;
+      for (let j = 1; j < C; j++) { const x = this.occGet(ckey({ pc: this.coord.pc, r: this.coord.r, i: j })); if (x < 0 || x === this.id || this.lgLightSeat(x)) continue; if (w === 3 && this.l4TierOf(x) !== E.TIER_DESKTOP) continue; return true; }
+      return false;
+    },
+
     // C++: mesh_lguard_seat.inc:Seat::lgHeadPick
     lgHeadPick(col, tr, heir) {
       let ask = -1, askW = 2;
@@ -131,7 +139,8 @@
         const need = Math.max(K.L29_QMIN, Math.trunc(w / 2) + 1);
         if (w >= 2 && agree >= need) {
           const fail = this.lgOwn > 0 && this.lgLd[this.lgLvl] > bud;
-          if (fail) { this.lgQuit = true; this.lgQuitAt = this.TICK; this.trace('LG-LEAVE', this.id, this.coord, 'reason=device-overload agree=%d of %d load=%d budget=%lld', agree, w, this.lgLd[this.lgLvl], bud); }
+          if (fail && this.coord.i === 0 && !this.lgRelief()) { this.trace('LG-HOLD', this.id, this.coord, 'reason=nobody-better agree=%d of %d load=%d budget=%lld', agree, w, this.lgLd[this.lgLvl], bud); this.lgComp.clear(); }   // L29.4.1
+          else if (fail) { this.lgQuit = true; this.lgQuitAt = this.TICK; this.trace('LG-LEAVE', this.id, this.coord, 'reason=device-overload agree=%d of %d load=%d budget=%lld', agree, w, this.lgLd[this.lgLvl], bud); }
           else { this.lgFalseQ++; this.trace('LG-REFUTE', this.id, this.coord, 'agree=%d of %d load=%d budget=%lld', agree, w, this.lgLd[this.lgLvl], bud); this.lgComp.clear(); }
         }
       }
