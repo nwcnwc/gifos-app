@@ -533,9 +533,22 @@
       const lb = this.liveBy.get(k); if (lb === undefined || lb !== x) return false;
       const it = this.live.get(k); return it !== undefined && this.TICK - it <= win;
     },
+    // C++: mesh.cpp:Seat::byeFloor
+    // L25.18: the tick I took seat x's own goodbye from cell k (a reload's is no goodbye: L3.11), or -1
+    byeFloor(x, k) {
+      if (x < 0) return -1;
+      const lb = this.l152Bye.get(x); if (lb === undefined || lb[0] !== k) return -1;
+      const r = this.relMark.get(x); if (r !== undefined && r >= lb[1]) return -1;
+      return lb[1];
+    },
     // C++: mesh.cpp:Seat::bornOf
-    // x's birth tick at k, or null
+    // x's birth tick at k, or null; L25.18: a birth older than x's own goodbye from k is born as I hear it
     bornOf(k, x) {
+      const b = this.bornOf0(k, x); if (b === null) return null;
+      const f = this.byeFloor(x, k); return f > b ? this.TICK : b;
+    },
+    // C++: mesh.cpp:Seat::bornOf0
+    bornOf0(k, x) {
       if (x < 0) return null;
       const it = this.rmBirthOf.get(k); if (it !== undefined && it[0] === x) return it[1];
       const st = this.sitting.get(k); if (st !== undefined && st.joiner === x && st.assigner === this.id) return st.at;
@@ -549,7 +562,7 @@
     // C++: mesh.cpp:Seat::l167Stand
     l167Stand(rival, rivalBorn) { if (!(this.f.fabricDoors()) || rival < 0 || rival === this.id || rivalBorn < 0 || this.rmBornAt < 0) return false; return placeBefore(this.id, this.rmBornAt, rival, rivalBorn); },
     // C++: mesh.cpp:Seat::claimBorn
-    claimBorn(m) { return m.born >= 0 ? m.born : (m.arr >= 0 ? this.TICK - m.arr : -1); },
+    claimBorn(m) { const b = m.born >= 0 ? m.born : (m.arr >= 0 ? this.TICK - m.arr : -1); const f = this.byeFloor(m.id, m.ck); return (b >= 0 && f > b) ? this.TICK : b; },   // L25.18
     // C++: mesh.cpp:Seat::holdsCell
     holdsCell(k, win) {
       const o = this.occ.get(k); if (o === undefined || o < 0 || this.translost.has(k)) return false;
