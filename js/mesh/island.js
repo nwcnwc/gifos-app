@@ -66,6 +66,19 @@
       this.islandAskAt = -1; this.islandAskN = 0; this.islandAsked.clear(); this.islandLast = false; this.genKey = this.w.lv.URL_KEY ? this.w.lv.URL_KEY : this.myKey; /* a founder with no link key mints its own (C++: islandFound) */ const e = []; this.take({ pc: 0, r: 0, i: 0 }, -1, e); this.islandFounder = true; this.lineAdopt(this.id, 'found'); this.lineFork = true;
     },
 
+    // C++: mesh_island.inc:Seat::l3117Stray
+    // L3.11.7: the door refused my registration and lists a greeter my view does not hold. 0: none; 1: I stay; 2: yielded.
+    l3117Stray(list) {
+      if (!this.w.lv.LINKMODEL || this.state !== 3 || !this.hasCoord || this.coord.pc !== 0) return 0;
+      let n = 0, via = -1;
+      for (const g of list) { if (g < 0 || g === this.id) continue; let held = false; for (const v of this.occ.values()) if (v === g) { held = true; break; } if (!held) n++;
+        if (via < 0) { const h = this.l22Cell.get(g); if (this.f.fabricLinkCarries(this.id, g) || this.f.fhopFriendFor(this.id, g) || (h !== undefined && this.TICK - h[1] <= 60)) via = g; } }   // a path: any LISTED greeter (C++: l3117Stray)
+      if (n === 0) return 0;
+      if (via < 0 || this.moving) { this.trace('L3.11.7-STAY', this.id, this.coord, 'strangers=%d', n); return 1; }
+      this.trace('L3.11.7-STRAY', this.id, this.coord, 'via=%d strangers=%d', via, n);
+      this.c7Yield(this.ringName(), 'L3.11.7-stray'); this.c7Old.clear(); this.l851Up = -1; return 2;
+    },
+
     // C++: mesh_island.inc:Seat::keyAsk
     // L3.11.6: the door refused my registration and named its greeters: ask the lowest one seated in my home section for the door's key.
     keyAsk(list) {

@@ -45,7 +45,7 @@
       if ((this.state === 0 || this.state === 1) && this.joinStart >= 0 && TICK - this.joinStart > K.STRAND_TTL && (this.lastReach < 0 || TICK - this.lastReach > K.STRAND_TTL) && !this.l16Saw && !this.evilDoor) { this.stranded = true; this.strandedAt = TICK; return; }   // R6
       for (const g of m.list) this.dials.heard(g);   // L17
       this.lastGreeters = m.list.slice(); this.greetersAt = TICK;
-      if (m.tag === 1) this.keyAsk(m.list);   // L3.11.6: the door refused my registration (C++: onGreeters)
+      if (m.tag === 1) { const st = this.l3117Stray(m.list); if (st === 2) return; if (st === 0) this.keyAsk(m.list); }   // L3.11.7 (C++: onGreeters)   // L3.11.6: the door refused my registration (C++: onGreeters)
       if (this.state === 0 && this.entryTerm()) { this.islandAsk(m.list); return; }   // L8.2
       if (this.state === 0) {
         let g = m.list[Math.floor(this.rng() * m.list.length)];
