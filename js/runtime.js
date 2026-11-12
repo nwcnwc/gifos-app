@@ -566,6 +566,14 @@
         assetHas: function(path){ return rpc({type:'asset-has', path:path}).then(function(r){ return !!(r && r.present); }); },
         info: function(){ return rpc({type:'info'}); },
         me: function(){ return rpc({type:'me'}); },
+        // capabilities.stage (docs/app-mesh.md "Apps that order the stage"): in a
+        // meeting, name up to two people (meeting ids from state().me) in stage
+        // order, first = on now, second = up next. Each person's own meeting page
+        // steps them up or down; nothing happens outside a meeting.
+        stage: {
+          state: function(){ return rpc({type:'stage', op:'state'}); },
+          want: function(ids){ return rpc({type:'stage', op:'want', ids: Array.isArray(ids) ? ids.slice(0, 2).map(String) : []}); }
+        },
         // The person's language and region: { tag, language, region, ui,
         // hourCycle, timeZone, ... } (BCP 47 tag; pass it to Intl). Sync.
         locale: function(){ return JSON.parse(JSON.stringify(loc)); },
@@ -1471,6 +1479,14 @@
   const capEsc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const CAP_FOR = { audio: 'microphone', video: 'camera', photo: 'camera' };
   const hasCap = (manifest, cap) => !!(manifest && manifest.capabilities && manifest.capabilities[cap]);
+  // capabilities.stage: only an app that declares it may ask the meeting page
+  // to move people on or off the stage, never while its person has switched it
+  // off in Abilities, and only inside a meeting (no hook outside one -> 'none').
+  function stageGate(manifest, disabled, inMeeting) {
+    if (!hasCap(manifest, 'stage')) return 'This app did not declare the "stage" capability.';
+    if (disabled) return 'Stage control is turned off for this app.';
+    return inMeeting ? 'ok' : 'none';
+  }
   // A capability the manifest declares can still be turned OFF by the user, per
   // app, from run.html's Abilities panel — stored as a list of vetoed cap names
   // under gifos_capoff_<appId>. The brokers below honour it, so unchecking "Use
@@ -3766,6 +3782,13 @@
       // change visibility (setVisibility). A guest view is not the owner.
       else if (d.type === 'info') reply({ ok: true, result: { appId: manifest.appId, name: manifest.name, version: manifest.version, owner: !!(db && db.owner) } });
       else if (d.type === 'me') reply({ ok: true, result: identity() });
+      else if (d.type === 'stage') {
+        const verdict = stageGate(manifest, capDisabled(manifest, 'stage'), typeof root.__gifosStage === 'function');
+        if (verdict !== 'ok' && verdict !== 'none') reply({ ok: false, error: verdict });
+        else if (verdict === 'none') reply({ ok: true, result: { on: false } });
+        else Promise.resolve().then(() => root.__gifosStage(d.op === 'want' ? 'want' : 'state', { ids: Array.isArray(d.ids) ? d.ids.slice(0, 2).map(String) : [] }))
+          .then((result) => reply({ ok: true, result }), (err) => reply({ ok: false, error: String(err && err.message || err) }));
+      }
       else if (d.type === 'i18n') appCatalogs(files, manifest).then((result) => reply({ ok: true, result }), () => reply({ ok: true, result: { order: ['en'], catalogs: {} } }));
       // The app asking what its link said. Answers once — and only once — the
       // person has confirmed; null if nothing was asked, or if they declined.

@@ -516,7 +516,7 @@
           if (this.coord.pc === 0) {
             const dk = ckey(down(this.coord)); const ch = this.occGet(dk);
             const a = this.l9Asg.get(ch); const spent = a !== undefined && this.TICK - a <= K.CONFIRM_TTL && ins(this.l9AsgN, ch, () => 0) >= C;
-            if (ch >= 0 && ch !== id && this.firstHandLive(dk) && !this.translost.has(dk) && !spent) {
+            if (ch >= 0 && ch !== id && this.firstHandLive(dk) && !this.translost.has(dk) && !spent && !this.f.fabricTurnAcross(id)) {   /* TURN.14.2: no leaf of my subtree goes home across my TURN link: the next home seat with a child row sends one */
               if (a === undefined || this.TICK - a > K.CONFIRM_TTL) this.l9AsgN.set(ch, 0);
               this.l9Asg.set(ch, this.TICK | 0); this.l9AsgN.set(ch, ins(this.l9AsgN, ch, () => 0) + 1);
               this.emit(ch, flMsg(hole, nbrs, 0, 12)); return;
@@ -628,12 +628,21 @@
       }
       this.doMove(hole, -1, nbrs);
     },
+    // L48.2 (DRAFT): the seats at my old cell's owned links, as my rollback snapshot holds them (the cell is mine until
+    // CONFIRM, and so are the pcs to them): D7.x's word to them rides those pcs, not a route from the new cell's view.
+    // C++: mesh_heal.inc:Seat::d7OldLink
+    d7OldLink(x) {
+      if (!this.moving || x < 0 || x === this.id) return false;
+      for (const c of ownedLinks(this.oldCoord)) { const v = this.holdOcc.get(ckey(c)); if (v !== undefined && v === x) return true; }
+      return false;
+    },
     // T1 claim-before-vacate: take the new seat first while the old one is still held.
     // C++: mesh_heal.inc:Seat::doMove
     doMove(hole, owner, nbrs, ppFrom = -1, ppTick = -1, ppTickL = -1) {
       const id = this.id;
       if (!this.hasCoord || ckey(this.coord) === ckey(hole) || this.moving || this.l4Busy()) { return; }
       if (this.earShut()) return;   // L8.48: a shut ear does not promote and does not declare itself alone
+      if (this.t14Stay(hole) || this.t14Fixed()) { this.trace('TURN14-HOLD', id, hole, 'owner=%d from=%s', owner, FREE.coordStr(this.coord)); return; }   /* TURN.14.5: my subtree hangs under a link end: no cell outside it */
       {
         let w = false; for (const kv of nbrs) if (kv.v >= 0 && kv.v !== id && this.rmWitCell(hole, kv.k)) { w = true; break; }
         if (!w) { const ww = this.rmWitness(hole, id); if (ww) { const all = ww.concat(nbrs); nbrs.length = 0; for (const e of all) nbrs.push(e); w = true; } }

@@ -13,6 +13,7 @@
   "charge.support.text": "对这笔付款有疑问？{email}",
   "charge.paidBy.paypal": "通过 PayPal",
   "charge.paidBy.x402": "以 USDC（Base Sepolia）",
+  "charge.paidBy.x402Mainnet": "以 USDC（Base）",
   "charge.paidBy.transfer": "以 USDC（钱包转账）",
   "charge.paidBy.fednow": "通过银行转账（FedNow）",
   "charge.paidBy.mpp": "通过 AI 代理刷卡（Stripe Link）",

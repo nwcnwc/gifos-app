@@ -96,6 +96,7 @@
     function freshState(L, a, b) {
       L.nnAt[0] = L.nnAt[1] = -1;
       L.ans = false;   // L13.41: the far page has not answered this dial yet
+      L.ansAt = -1;    // DIAL.ICE: when the offer and the answer had crossed at my end (-1: not yet)
       L.state = LK_DIALING; L.epoch = (L.epoch + 1) >>> 0; L.dialAt = T(); L.half = 0; L.halfAt = -1; L.stuck = false; L.backAt[0] = L.backAt[1] = -1;
       L.view[mine(other(a, b))] = LK_DIALING; L.dialBy = a; L.callClosed = false; L.gone = 0; L.uplink = false; L.dialT = -1; L.dialHow = 0;
       L.byeIn = L.byeOut = false; L.dUncounted = false; L.dG = -1; L.opened = false;
@@ -441,9 +442,10 @@
         trace('FH-DOOR-DUE', me, null, 'peer=%d', x); o.fh.doorDue(x);
       }
     }
-    // a dial that never opened within LINK_DIAL_FAIL
+    // C++: mesh_link.inc:dialOver   [no answer: LINK_DIAL_FAIL from the dial's start; answered: LINK_DIAL_ICE from the answer. The browser's own verdict comes at 15 s or never]
+    const dialOver = (L) => T() - L.dialAt >= K.LINK_DIAL_FAIL || (L.ansAt >= 0 && T() - L.ansAt >= K.LINK_DIAL_ICE);
     function dialTimeouts() {
-      for (const [x, L] of LINKS) if (L.state === LK_DIALING && T() - L.dialAt >= K.LINK_DIAL_FAIL) { dialFailed(x); io.close(x); }
+      for (const [x, L] of LINKS) if (L.state === LK_DIALING && dialOver(L)) { dialFailed(x); io.close(x); }
     }
 
     // ---- the page face -----------------------------------------------------------------------------------------
@@ -478,6 +480,7 @@
         freshState(L, x, me); doorInit(L, x, me, oo); if (!oo) l1611Mine(x, L);
       }
       L.view[mine(x)] = LK_DIALING; if (mk.up) L.uplink = true;
+      if (L.state === LK_DIALING && L.ansAt < 0) L.ansAt = T();   // DIAL.ICE: I hold its offer and answer now
       fhDoorNote(x, L);   // FHOP.8: my answer goes back to a knocker's offer: the door's ICE clock starts
       return true;
     }
@@ -486,6 +489,7 @@
       const L = LINKS.get(x); if (!L || !mk) return; const sat = mk.s ? 1 : 0; const f = far(x); f.seated = sat; if (mk.tier) f.tier = mk.tier;
       if (L.state !== LK_DIALING && L.state !== LK_OPEN) return;
       L.ans = true;   // L13.41: the far page is alive on the relay (its socket answered my offer)
+      if (L.state === LK_DIALING && L.ansAt < 0) L.ansAt = T();   // DIAL.ICE: both descriptions are here; only the path check is left
       if (L.outside && L.dBorn >= 0) L.dProg = T();   // as offer
       const oo = (L.outside & (1 << mine(x))) | (sat ? 0 : (1 << theirs(x)));
       if (oo !== L.outside) { doorEndCount(L); L.dUncounted = false; L.dG = -1; doorInit(L, L.dialBy, L.dialBy === me ? x : me, oo); if (!oo) l1611Mine(x, L); }

@@ -3,7 +3,8 @@
  *
  *   Scroll  the gallery you scroll; tiles keep a readable size.
  *   Fit     everyone on one screen; nothing floats.
- *   Float   the Fit layout, and the stage and the row are panels you can drag.
+ *   Drag    every person tile moves and resizes on its own (with content: the
+ *           presentation view). Named Drag, not Float: Float is picture-in-picture.
  *   Focus   one person big, the others in a strip (side when wide, bottom when tall).
  *
  * Follow the speaker (Focus only) moves the big view to whoever is talking, with
@@ -16,12 +17,13 @@
 (function (root) {
   const GifOS = root.GifOS = root.GifOS || {};
 
-  const MODES = ['scroll', 'fit', 'float', 'focus'];
+  const MODES = ['scroll', 'fit', 'drag', 'focus'];
   const KEY = 'meet.view.v1.mode';
   const OLD_KEY = 'meet.view.v1.gallery'; // 0.9.25 and before: 'fit' | 'scroll'
   const FOLLOW_KEY = 'meet.view.v1.follow';
 
-  function normalize(m) { return MODES.indexOf(m) >= 0 ? m : 'fit'; }
+  // 'float' is the Drag view's name before 2026-11-11 (Float is picture-in-picture): a saved 'float' reads as Drag.
+  function normalize(m) { if (m === 'float') return 'drag'; return MODES.indexOf(m) >= 0 ? m : 'fit'; }
   function load(store) {
     if (!store || typeof store.getItem !== 'function') return 'fit';
     try {
@@ -51,8 +53,8 @@
   }
   // The tile layout each view asks for: Scroll scrolls, the rest fit.
   function gallery(m) { return normalize(m) === 'scroll' ? 'scroll' : 'fit'; }
-  // Only Float lets the stage and the row panels move.
-  function floats(m) { return normalize(m) === 'float'; }
+  // Only the Drag view lets the tiles move.
+  function floats(m) { return normalize(m) === 'drag'; }
   function next(m) { const i = MODES.indexOf(normalize(m)); return MODES[(i + 1) % MODES.length]; }
   // Where the Focus strip goes: down the side when the screen is wide, across
   // the bottom when it is tall.
@@ -122,7 +124,7 @@
   // The content region (Nathan 2026-11-11): shared screens, apps and, later,
   // the content tabs (an agenda, a document) are a region of their own that
   // every view places: Scroll lists every item, Fit keeps it large with the
-  // stage beside or below, Float gives it the screen with the people as
+  // stage beside or below, Drag gives it the screen with the people as
   // insets, Focus can put one item on the big view. A feature that shows
   // content registers a provider here; the page asks for the items.
   //   add(fn) -> remove()   fn() returns [{ key, label, stream | v, aspect, kind }]

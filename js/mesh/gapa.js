@@ -6,6 +6,9 @@
  * L41.2 the move confirms on a second word: the leaf asks the seats at the target cell's links (placer and itself aside)
  *   who they hear there; a "held" answer rolls the move back, all "free" confirms it, and at the window's end it
  *   confirms on at least one "free" and rolls back on none.
+ * L41.6 a seat that is no witness says so: asked about a cell that is neither its own nor one of its links, a seated seat
+ *   (not mid-move) answers "no witness" (nc GA_NOTWIT); the leaf takes it out of the asked set without a "free" and drops
+ *   its name from the leaf's view at a link cell where the leaf does not hear it first-hand.
  * L41_OFF (a build-time switch in the sim, 0 in the release) is not ported: every law here is on.
  */
 (function (root) {
@@ -79,7 +82,14 @@
       let held = -1;
       if (ckey(this.coord) === m.ck) { if (!(this.moving && this.gaCk === m.ck)) held = this.id; }   // the cell is mine
       else {
-        if (!this.ownedLinkCell(m.ck)) return; const o = this.occGet(m.ck); if (o >= 0 && o !== m.from && this.heardAt(m.ck) === o) held = o;
+        if (!this.ownedLinkCell(m.ck)) {
+          if (!this.moving) {   // L41.6: I am no witness of that cell: say so, or the asker waits on me for good
+            this.trace('L41.6-NOTWIT', this.id, this.coord, 'asker=%d cell=%s', m.from, coordStr(unck(m.ck)));
+            const w = newMsg('WITNESS'); w.ck = m.ck; w.id = this.id; w.nc = K.GA_NOTWIT; w.tag = K.GA_TAG; w.sig = true; w.sigAt = this.TICK; w.born = this.seatedAt; if (LINKMODEL) this.f.fabricCallFrame(this.id, m.from, w); else this.emit(m.from, w);
+          }
+          return;
+        }
+        const o = this.occGet(m.ck); if (o >= 0 && o !== m.from && this.heardAt(m.ck) === o) held = o;
         if (held < 0 && o === m.from) { const ov = this.gaOver.get(m.ck); if (ov !== undefined && ov[0] !== m.from && this.TICK - ov[1] <= 2 * K.CONFIRM_TTL) held = ov[0]; }   // the claim I answer about displaced a seat I hear
         if (held < 0) { const lb = this.liveBy.get(m.ck); if (lb !== undefined && lb >= 0 && lb !== m.from && lb !== this.id && this.firstHandLive(m.ck) && this.f.fabricLinkState(this.id, lb) === E.LS_OPEN) held = lb; }   // the seat whose beats I still hear there
       }
@@ -94,6 +104,13 @@
       if (!this.gaLive() || m.ck !== this.gaCk || m.id < 0 || (this.f.fabricDoors() && !this.linkIs(m, m.id))) return;
       let asked = false; for (const y of this.gaAsk) if (y === m.id) asked = true; if (!asked) return;
       { let j = 0; for (const y of this.gaAsk) if (y !== m.id) this.gaAsk[j++] = y; this.gaAsk.length = j; }
+      if (m.nc === K.GA_NOTWIT) {   // L41.6: the seat my view named at a link of the cell sits at none of them: not asked any more, and not my neighbour
+        const ol = ownedLinks(this.coord), n = ol.length;
+        for (let k = 0; k < n; k++) { const lk = ckey(ol[k]); if (this.occGet(lk) === m.id && !this.firstHandLive(lk)) this.occDrop(lk, 'ga-notwit'); }
+        this.trace('L41.6-OUT', this.id, this.coord, 'by=%d left=%zu free=%d', m.id, this.gaAsk.length, this.gaFreeN);
+        if (!this.gaAsk.length && this.gaFreeN > 0) { lv.GA_CONF_VOTE++; this.trace('L41.2-FREE', this.id, this.coord, 'n=%d', this.gaFreeN); this.gaCk = 0; this.confirmMove(); }
+        return;
+      }
       if (m.nc >= 0 && m.nc !== this.id) { lv.GA_HELD++; lv.GA_RB++; this.trace('L41.2-HELD', this.id, this.coord, 'by=%d holder=%d placer=%d', m.id, m.nc, this.gaPlacer); this.gaCk = 0; this.rbWhy = 'gapa-held'; this.rollbackMove(); return; }
       lv.GA_FREE++; this.gaFreeN++;
       if (!this.gaAsk.length) { lv.GA_CONF_VOTE++; this.trace('L41.2-FREE', this.id, this.coord, 'n=%d', this.gaFreeN); this.gaCk = 0; this.confirmMove(); }
