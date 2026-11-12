@@ -11837,7 +11837,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // (§FWD). Returns true iff the frame was handed to SOME viable path.
     // TURN.14.4 / TURN.14.11 (js/mesh/page/env.js t14Env): a mesh frame in an envelope that may not cross my TURN pc to this
     // peer. 0: send it there; 1: not over this pc; 2: consumed (my seat took the ask back, or a third party's placement stops here).
-    const t14Env = (pid, envl) => (envl && envl.k === 'fmesh' && envl.m && meshNode && meshNode.penv && meshNode.penv.t14Env ? meshNode.penv.t14Env(pid, envl.m) : 0);
+    const t14Env = (pid, envl, onward) => (envl && envl.k === 'fmesh' && envl.m && meshNode && meshNode.penv && meshNode.penv.t14Env ? meshNode.penv.t14Env(pid, envl.m, onward) : 0);
     function sponsorSend(envl) {
       const to = envl.to;
       // L16.3.2: a reply starts back along the list its frame crossed. No such channel now: the rungs, the list dropped.
@@ -11953,7 +11953,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (kind === 'fsig') envl.p = crossed.concat(myId);
       const handoff = (p) => {
         if (!p || p.id === viaPid || p.id === m.from || crossed.includes(p.id) || !(p.connected && p.dc && p.dc.readyState === 'open')) return false;
-        const t = t14Env(p.id, envl); if (t === 2) { if (m.id) fwdSeenNote(fwdSeen, m.id); return true; } if (t === 1) return false;   // TURN.14.4 / 14.11
+        const t = t14Env(p.id, envl, true); if (t === 2) { if (m.id) fwdSeenNote(fwdSeen, m.id); return true; } if (t === 1) return false;   // TURN.14.4 / 14.11
         if (m.id) fwdSeenNote(fwdSeen, m.id);
         txStats.hopFwd++; dcSend(p, envl); return true;
       };

@@ -524,14 +524,16 @@
     }
     // TURN.14.4 / TURN.14.11 for friend-hop envelopes (C++: mesh_fhop.inc fhXmit, fhopOnward): run.html asks before it hands an
     // envelope to a peer. 0: send; 1: not over this pc (try the next way); 2: consumed (the seat took it back, or it is not carried).
-    function t14Env(peer, inner) {
+    // onward: I hand on someone else's envelope (fhopOnward: an entry ask is not carried); else I mint it for my own frame
+    // (fhXmit: only the placement test; my own asks ride my own pc, TURN.14.4).
+    function t14Env(peer, inner, onward) {
       const s = seat(); if (!s || dead || !turnOn()) return 0;
       const p = learnPeer(peer); if (p < 0 || !turnSet().has(p)) return 0;
       const f = inner && inner.t === 'MW2' ? inner.f : inner; if (!f || typeof f.t !== 'string') return 0;
       if (f.t !== 'FIND' && f.t !== 'PLACE' && f.t !== 'WHOHOME') return 0;
       let m; try { m = msg.readMsg(f); } catch (e) { return 0; }
       if ((m.t === 'FIND' || m.t === 'PLACE') && m.nc >= 0 && m.nc !== me && guard('t14Cross', () => s.t14Cross(p, m))()) { st.t14Env = (st.t14Env || 0) + 1; return 2; }
-      if (m.t === 'WHOHOME' || (m.t === 'FIND' && m.tag !== 1)) { st.t14Skip = (st.t14Skip || 0) + 1; return 1; }   // TURN.14.4: an entry ask is not carried across a TURN link
+      if (onward && (m.t === 'WHOHOME' || (m.t === 'FIND' && m.tag !== 1))) { st.t14Skip = (st.t14Skip || 0) + 1; return 1; }   // TURN.14.4: an entry ask is not carried across a TURN link
       return 0;
     }
 
@@ -743,7 +745,7 @@
       dirFor, learnDir, relayBusyList,
       doorNote: (peer) => { const x = learnPeer(peer); if (x >= 0 && x !== me && pcw.doorNote) guard('doorNote', pcw.doorNote)(x); },   // FHOP.8: a knocker's offer reached me over the relay (run.html onRelayPeer)
       doorCallIn: (fromPeer, kind, knockerPeer) => guard('doorCallIn', doorCallIn)(fromPeer, kind, knockerPeer),   // FHOP.8 kinds 7 and 8 off a dc
-      t14Env: (peer, inner) => guard('t14Env', t14Env)(peer, inner) | 0,   // TURN.14.4 / 14.11: may this friend-hop envelope cross my pc to peer
+      t14Env: (peer, inner, onward) => guard('t14Env', t14Env)(peer, inner, !!onward) | 0,   // TURN.14.4 / 14.11: may this friend-hop envelope cross my pc to peer
       turnAcross: () => !!guard('turnAcross', fabricTurnAcross)(me),   // TURN.14.8: my ring lies across my TURN link (the media plane feeds it)
       // the mark my answer to peer carries back to it (A2), for the pc layer's answer
       mark: (peer) => { const x = ID.pid(ID.nid(peer)) === String(peer) ? ID.nid(peer) : learnPeer(peer); return x >= 0 && pcw.mark ? pcw.mark(x) : null; }, farView: (to) => farView(seat(), to),
