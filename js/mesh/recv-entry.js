@@ -25,6 +25,10 @@
   const { eraseFirst } = req('./util.js', 'meshUtil');
 
   const K = C_.consts, E = C_.enums;
+  // the sim's #define L8_50_3_OFF in mesh.cpp (a build-time switch): MESH_L8_50_3_OFF=1 under node, read once at load; a page always runs the law
+  const L8_50_3_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L8_50_3_OFF === '1') ? 1 : 0;
+  // the sim's #define L8_52_OFF in mesh.cpp (a build-time switch): MESH_L8_52_OFF=1 under node, read once at load; a page always runs the law
+  const L8_52_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L8_52_OFF === '1') ? 1 : 0;
   const { ckey, ckPc, unckey, down, pcDepth, lastDigit, parentPath, rowMates } = topo;
   const C = topo.C;
   const newMsg = (t) => msg.newMsg(t);
@@ -37,24 +41,25 @@
       const TICK = this.TICK, id = this.id, lv = this.w.lv;
       if ((this.state === 0 || this.state === 1) && this.l45Stale(m.list)) { this.reJoin = true; this.f.wake(id); return; }   // L45
       if (m.list.length === 0) {
-        if (this.state === 0) { this.genKey = this.linkKey; this.take({ pc: 0, r: 0, i: 0 }, -1, [], -1, -1, [], -1); this.lineAdopt(id, 'genesis'); }
+        if (this.state === 0) { this.genKey = this.linkKey; if (!L8_52_OFF) this.lineAt = TICK; /* L8.52.3: before take(): my registration at the door carries my epoch */ this.take({ pc: 0, r: 0, i: 0 }, -1, [], -1, -1, [], -1); this.lineAdopt(id, TICK, 'genesis'); if (!L8_50_3_OFF) this.l850Seated = false; /* L8.50.3: the first page has admitted nobody yet */ }
         else if (this.state === 3) { this.lastGreeters = []; this.greetersAt = TICK; }
         return;
       }   // a seated seat records the empty list too; R3: empty list => I minted the genesis key & found the home
       if ((this.state === 0 || this.state === 1) && this.joinStart < 0) this.joinStart = TICK;
       if ((this.state === 0 || this.state === 1) && this.joinStart >= 0 && TICK - this.joinStart > K.STRAND_TTL && (this.lastReach < 0 || TICK - this.lastReach > K.STRAND_TTL) && !this.l16Saw && !this.evilDoor) { this.stranded = true; this.strandedAt = TICK; return; }   // R6
       for (const g of m.list) this.dials.heard(g);   // L17
-      this.lastGreeters = m.list.slice(); this.greetersAt = TICK;
+      this.lastGreeters = m.list.slice(); this.lastGreetersAt = m.listAt.slice(); this.greetersAt = TICK;
       if (m.tag === 1) { const st = this.l3117Stray(m.list); if (st === 2) return; if (st === 0) this.keyAsk(m.list); }   // L3.11.7 (C++: onGreeters)   // L3.11.6: the door refused my registration (C++: onGreeters)
       if (this.state === 0 && this.entryTerm()) { this.islandAsk(m.list); return; }   // L8.2
       if (this.state === 0) {
         let g = m.list[Math.floor(this.rng() * m.list.length)];
         { const via = this.w.L31_VIA; const dv = via ? via.get(id) : undefined; if (dv !== undefined && m.list.includes(dv)) g = dv; }
+        { const tp = this.f.fabricTurnPeerIn(id, m.list); if (tp >= 0) g = tp; }   /* TURN.16 (mesh_turn.inc): my TURN link's peer first */
         this.gateway = g; this.entNote(g); if (this.f.fabricDoors()) this.l16AskOne(g);
         const w = newMsg('WHOHOME'); w.from = id; w.ttl = 60; if (!this.oldCell && !islandStand(this, E.IS_L31)) w.l31 = 1; this.emit(g, w); this.state = 1; this.retryAt = TICK;
       }
       this.islandFork(m.list);   // L8.3
-      if (this.state === 3 && this.coord.pc === 0 && TICK - this.rookSeenAt > K.STRAND_TTL && !this.islandFounder) {   // L8.4
+      if (this.state === 3 && this.coord.pc === 0 && TICK - this.rookSeenAt > K.STRAND_TTL && !this.islandFounder && !(!L8_50_3_OFF && this.l850Lone())) {   /* L8.50.3: so is the first page while it has admitted nobody */   // L8.4
         let other = false; for (const g of m.list) if (g !== id && g >= 0) { other = true; break; }
         if (other) { this.requeue('rook-silent-split'); return; }
       }
@@ -132,7 +137,7 @@
       if (this.state === 1) {
         if (m.roster.length === 0) { this.retryAt = TICK - 10; return; }
         if (this.entryTerm() && m.from >= 0) { this.gateway = m.from; this.islandAskAt = -1; this.islandAskN = 0; this.islandAsked.clear(); this.islandLast = false; }
-        if (m.line >= 0) { this.lineAdopt(m.line, 'home'); if (m.lineF) this.lineFork = true; }
+        if (m.line >= 0) { this.lineAdopt(m.line, m.lineAt, 'home'); if (m.lineF) this.lineFork = true; }
         this.roster = kvCopy(m.roster); this.haveRoster = true; this.lastReach = TICK; this.seatTries = 0; this.resumeTries = 0;
         let t;
         if (this.f.fabricDoors() && m.from >= 0) { this.gateway = m.from; t = lv.L16PICK ? this.pickRoster() : m.from; this.l16Gateway(m.from, lv.L16PICK === 2 ? -1 : t); }   // L16
@@ -147,7 +152,7 @@
             if (chain[l].pc !== 0) continue; const ok = ckey(chain[l]); if (this.firstHandLive(ok) || this.translost.has(ok)) continue;
             for (const e of m.roster) {
               if (e.k !== ok) continue; const cur = this.occGet(ok);
-              if (e.v >= 0 && e.v !== id && cur !== e.v && !this.liveElsewhere(e.v, ok) && (cur < 0 || !this.heardAt(ok, cur))) { this.live.delete(ok); this.liveBy.delete(ok); this.setOcc(ok, e.v); this.noteS1(ok); this.f.fabricDialJoin(id, e.v); this.l13HomeNewsAt = TICK; this.trace('L13-HOMESEAT', id, chain[l], 'from=%d v=%d was=%d lvl=%d', m.id, e.v, cur, l); }
+              if (e.v >= 0 && e.v !== id && cur !== e.v && !this.liveElsewhere(e.v, ok) && (cur < 0 || !this.heardAt(ok, cur))) { this.live.delete(ok); this.liveBy.delete(ok); this.setOcc(ok, e.v); this.noteHand(ok, e.v); this.f.fabricDialJoin(id, e.v); this.l13HomeNewsAt = TICK; this.trace('L13-HOMESEAT', id, chain[l], 'from=%d v=%d was=%d lvl=%d', m.id, e.v, cur, l); }
               break;
             }
           }
@@ -161,7 +166,7 @@
               if (++nr > C * C) break;
               if (ckPc(e.k) !== 0 || !cellOk(e.k) || e.v < 0 || e.v === id || this.firstHandLive(e.k) || (this.translost.has(e.k) && !(lone && this.occGet(e.k) < 0)) || (lone && !this.ownedLinkCell(e.k))) continue;
               const cur = this.occGet(e.k);
-              if (cur !== e.v && !this.liveElsewhere(e.v, e.k) && (cur < 0 || (lone ? (this.rivalId >= 0 && cur === this.rivalId && !this.heardAt(e.k, cur)) : !this.heardAt(e.k, cur)))) { this.live.delete(e.k); this.liveBy.delete(e.k); this.setOcc(e.k, e.v); this.noteS1(e.k); put++; }
+              if (cur !== e.v && !this.liveElsewhere(e.v, e.k) && (cur < 0 || (lone ? (this.rivalId >= 0 && cur === this.rivalId && !this.heardAt(e.k, cur)) : !this.heardAt(e.k, cur)))) { this.live.delete(e.k); this.liveBy.delete(e.k); this.setOcc(e.k, e.v); this.noteHand(e.k, e.v); put++; }
             }
           }
           if (put) this.l13HomeNewsAt = TICK; if (put && lone) this.announce();
@@ -196,6 +201,14 @@
       { const sv = this.flCur, sva = this.flCurAt, svl = this.flCurL; this.flCur = m.fo >= 0 ? m.fo : m.from; this.flCurAt = m.fo >= 0 ? m.foAt : TICK; this.flCurL = m.fo >= 0 ? m.foL : TICK; this.findLeaf(m.hole, m.nbrs, m.ttl, m.tag, m.from); this.flCur = sv; this.flCurAt = sva; this.flCurL = svl; }   // L25.7
     },
 
+    // A newcomer that has flagged its own gateway (it sent a placement naming no neighbours) takes another door: from
+    // then on its searches ask to be answered directly, so an honest placement no longer arrives through the flagged seat.
+    // C++: mesh_seat.inc:Seat::l2520Door
+    l2520Door(bad) {
+      if (!this.f.fabricDoors() || this.hasCoord || this.state !== 2 || bad < 0 || bad !== this.gateway || this.l16GwClosed || !this.l25Bad(this.gateway)) return;
+      this.l16GwClosed = true; this.trace('L25.20-DOOR', this.id, null, 'gateway=%d', this.gateway);
+    },
+
     // C++: mesh_seat.inc:Seat::onPlace
     onPlace(m) {
       const id = this.id, lv = this.w.lv;
@@ -204,9 +217,9 @@
       if (this.state === 2 && this.l317Declined(m)) { this.trace('L31.7-DECLINED', id, m.coord, 'owner=%d at=%d', m.owner, m.ppAt); return; }   // L31.7: a placement I declined while seated is no answer to this search
       if (this.state === 2 && roomTerm(this, 1) && this.TICK - this.c7At < K.RELAY_TTL && (this.c7Old.has(m.owner) || this.c7Old.has(m.from)) && !this.l853Stays(m)) return;   // L8.5 (L8.5.3: a placer already seated in the ring we move toward names it below the ring I left)
       if (this.state === 2 && this.l851Moves(m)) return;   // L8.5.1
-      if (this.state === 2 && this.l25BadPlacer.size && (this.l25Bad(m.owner) || this.l25Bad(m.from))) { this.trace('L25-BADPLACER', id, null, 'owner=%d', m.owner); if (m.nc === id) this.l711Reask('badplacer'); return; }
-      if (this.state === 2 && m.nbrs.length === 0 && ckey(m.coord) !== 0) { lv.L25_TWICE++; this.l25Mark(m.owner, true); this.trace('L25-BARE-PLACE', id, m.coord, 'owner=%d', m.owner); if (m.nc === id) this.l711Reask('bare'); return; }   // L25
-      if (this.state === 2) { if (m.line >= 0) { this.lineAdopt(m.line, 'place'); if (m.lineF) this.lineFork = true; } this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, m.row, m.ppL); if (this.pp >= 0 && this.pp !== id) this.placer = this.pp; if (m.t14 >= 0) { if (m.t14 > 0) { this.t14Ck = m.t14; this.t14At = this.TICK | 0; } if (m.c7Min >= 0) { this.t14Ring = m.c7Min; this.t14RingAt = this.TICK | 0; } } return; }   // placer: only this intake   // TURN.14.5/6: the placer's word of the link end above the cell, and of its ring
+      if (this.state === 2 && this.l25BadPlacer.size && (this.l25Bad(m.owner) || this.l25Bad(m.from))) { this.trace('L25-BADPLACER', id, null, 'owner=%d', m.owner); this.l2520Door(m.from); if (m.nc === id) this.l711Reask('badplacer'); return; }
+      if (this.state === 2 && m.nbrs.length === 0 && ckey(m.coord) !== 0) { lv.L25_TWICE++; this.l25Mark(m.owner, true); this.trace('L25-BARE-PLACE', id, m.coord, 'owner=%d', m.owner); this.l2520Door(m.owner); if (m.nc === id) this.l711Reask('bare'); return; }   // L25
+      if (this.state === 2) { if (m.line >= 0) { this.lineAdopt(m.line, m.lineAt, 'place'); if (m.lineF) this.lineFork = true; } this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, m.row, m.ppL); if (this.pp >= 0 && this.pp !== id) this.placer = this.pp; if (m.t14 >= 0) { if (m.t14 > 0) { this.t14Ck = m.t14; this.t14At = this.TICK | 0; } if (m.c7Min >= 0) { this.t14Ring = m.c7Min; this.t14RingAt = this.TICK | 0; } } return; }   // placer: only this intake   // TURN.14.5/6: the placer's word of the link end above the cell, and of its ring
       if (this.state === 3 && m.nc === id && m.owner >= 0 && m.owner !== id && m.l31 !== 5 && m.l31 !== 7 && m.tag !== 1 && this.hasCoord && !(m.owner === this.myPlacer && m.ppAt === this.ppAt)) this.l317Decline(m);   // L31.7
       if (this.state === 3 && (m.l31 === 5 || m.l31 === 7) && this.l31Replace(m)) return;   // L31.4
       if (this.state === 3 && m.tag === 1 && m.nc === id) lv.COMPACT_PLACES++;

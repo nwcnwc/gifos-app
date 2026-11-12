@@ -16,6 +16,7 @@
   const GifOS = root.GifOS = root.GifOS || {};
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
+  const RCD = ((n) => ({ L35_4_OFF: n('L35_4_OFF'), L17_3_1_OFF: n('L17_3_1_OFF'), L17_4_OFF: n('L17_4_OFF'), L35_5_OFF: ((isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L35_5_OFF === '0') ? 0 : 1) }))((k) => ((isNode && typeof process !== 'undefined' && process.env && process.env['MESH_' + k] === '1') ? 1 : 0));   // the sim's build-time switches of the realcheck dead-dial laws (mesh.cpp L35_4_OFF ...): MESH_<name>=1 under node; a page runs the laws
   const seatM = req('./seat.js', 'meshSeat');
   const { cellOk, ownerCoordOf, coordStr, l4Pack, fabricToken } = req('./shared.js', 'meshShared');
   const { Seat, FREE, roomTerm } = seatM;
@@ -105,8 +106,9 @@
           // L8.8: a hint learned while I was unseated is not first-hand; the admitter's word replaces it.
           // L8.8.1: the admitter naming itself at its own cell is first-hand in any room, the room term on or off.
           {
-            const l88 = (roomTerm(this, 1) || kv.v === owner) && this.occ.has(kv.k) && this.occGet(kv.k) !== kv.v && !this.firstHandLive(kv.k);
-            if (!this.occ.has(kv.k) || l88) { if (l88 && kv.v === owner) this.noChan.delete(kv.v); this.setOcc(kv.k, kv.v); if (!l88 || this.occGet(kv.k) === kv.v) { this.noteS1(kv.k); if (kv.v !== owner && ckPc(kv.k) === 0) this.s1told.set(kv.k, TICK); } }
+            let l88 = (roomTerm(this, 1) || kv.v === owner) && this.occ.has(kv.k) && this.occGet(kv.k) !== kv.v && !this.firstHandLive(kv.k);
+            if (!RCD.L35_5_OFF && !l88 && this.occ.has(kv.k) && this.occGet(kv.k) !== kv.v && !FREE.l355On(this, kv.k, this.occGet(kv.k))) l88 = true;   // L35.5: my placer's word replaces a name I no longer hold fresh
+            if (!this.occ.has(kv.k) || l88) { if (l88 && kv.v === owner) this.noChan.delete(kv.v); this.setOcc(kv.k, kv.v); if (!l88 || this.occGet(kv.k) === kv.v) { this.noteS1(kv.k); if (kv.v !== owner && ckPc(kv.k) === 0) this.s1told.set(kv.k, TICK); if (!RCD.L35_5_OFF && kv.v !== owner) FREE.l35Hinted(this, kv.k, kv.v); } }   /* L35.5: a name my placer lists is its word, not mine */
             // The admitter's confirm of this seat is a hearing. Their own cell on this PLACE is the hearing the other way.
             // Section 1 has no owner coord, so that hearing is the linked cell they name themselves at. Anyone else's listing stays a listing.
             if (kv.v === owner && this.occGet(kv.k) === owner && ((hasO && kv.k === ckey(oc)) || (c.pc === 0 && ckPc(kv.k) === 0 && link))) this.liveMark(kv.k);
@@ -138,16 +140,17 @@
       if (owner >= 0) { const m = newMsg('CLAIM'); m.ck = ckey(c); m.id = id; this.emit(owner, m); }
       else { const adm = this.ppAdmitter(c); if (adm >= 0 && adm !== id) { this.ppAskAt = TICK; const m = newMsg('CLAIM'); m.ck = ckey(c); m.id = id; this.emit(adm, m); } }   // PP
       if (c.pc === 0) { this.s1CheckAt = TICK + K.E3_PERIOD + Math.floor(this.rng() * K.E3_PERIOD); this.emitRelay(this.genKey); }   // E3
-      this.announce(); this.f.wake(id);
+      this.announce(nbrs); this.f.wake(id);
       if (this.w.onTake) this.w.onTake(this, c);   // page adapter seam (the pre-signed goodbye), outside the proof
     },
 
     // C++: mesh_seat.inc:Seat::announce
-    announce() {
+    announce(nb) {
       const ol = ownedLinks(this.coord); const n = ol.length; const seen = new Set();
       for (let k = 0; k < n; k++) {
         const lk = ckey(ol[k]); let x = this.occGet(lk);
-        if (x < 0 && this.softSitting(lk)) x = this.sitting.get(lk).joiner;   // A: also greet soft-sit neighbours
+        let soft = false; if (x < 0 && this.softSitting(lk)) { x = this.sitting.get(lk).joiner; soft = true; }   // A: also greet soft-sit neighbours
+        if (x >= 0 && x !== this.id && !soft && !FREE.l355On(this, lk, x)) { let w = false; if (nb) for (const kv of nb) if (kv.k === lk && kv.v === x) w = true; if (!w) continue; }   // L35.5: a name I no longer hold fresh is not greeted (my namer's word for it is)
         if (x >= 0 && x !== this.id && !seen.has(x)) { seen.add(x); const m = newMsg('HELLO'); m.ck = ckey(this.coord); m.id = this.id; this.emit(x, m); }
       }
     },
@@ -197,6 +200,7 @@
       if (lv.TIERS_ACTIVE && nc >= 0 && nc !== id && f.tag !== 1) { if (this.tierSeen.size >= 96 && !this.tierSeen.has(nc)) eraseFirst(this.tierSeen); this.tierSeen.set(nc, l4Pack(f.tier, f.nat)); }   // L4.1
       this.f.fabricAdmitLog(k, id);   // V4 forensics
       this.trace('ADMIT', id, c, 'nc=%d site=%s tag=%d', nc, site, f.tag);
+      this.l850Seated = true;   // L8.50: a founder that admits a seat is no ring of one
       if (f.tag !== 1) this.l710Dial(c, nc);   // L7.10
       this.tlForget(k);   // the cell genuinely refills
       const nbrs = []; const ol = ownedLinks(c); const n = ol.length;
@@ -257,7 +261,7 @@
       const dkDeep = mm.dk;
       const t14x = this.coord.pc === 0 && mm.tag !== 1 && this.f.fabricTurnAcross(id);   /* TURN.14: the ring I sit in lies across my TURN link */
       const t14s = this.coord.pc === 0 && mm.tag !== 1 && mm.t14 > 0 && mm.from === id;   /* TURN.14.11: an ask of my side that I stopped at my TURN pc */
-      const t14 = t14s || (t14x && !this.f.fabricTurnPc(id, mm.nc) && (this.linkIs(mm, mm.nc) || this.f.fabricTurnMine(id, mm.nc)));   /* TURN.14.1: a seeker on my side of the link sits under me */
+      const t14 = t14s || (t14x && !this.f.fabricTurnPc(id, mm.nc) && (this.linkIs(mm, mm.nc) || this.f.fabricTurnMine(id, mm.nc)) && !this.f.fabricTurnBoth(id, mm.nc));   /* TURN.14.1: a seeker on my side of the link sits under me */
       if (t14) this.trace('TURN14-UNDER', id, this.coord, 'nc=%d', mm.nc);
       if (this.coord.pc === 0 && !dkDeep && !t14) {
         if (this.serveFindS1(mm, skip)) return;

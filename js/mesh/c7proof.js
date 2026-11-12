@@ -22,8 +22,8 @@
       const TICK = this.TICK;
       for (const [x, at] of this.l829Bye) { if (x === m.id || TICK - at > K.RELAY_TTL) continue; const r = this.l828Ring.get(x); if (r !== undefined && r[0] === m.c7Min) return true; }
       const mine = this.ringName();
-      for (const [x, e] of this.l828Ring) { if (x !== m.id && e[0] >= 0 && e[0] < mine && TICK - e[1] <= K.RELAY_TTL) return true; }
-      for (const [ring, v] of this.c7Vouch) { if (ring >= mine) continue; for (const [x, at] of v) if (x !== m.id && TICK - at <= K.RELAY_TTL) return true; }
+      for (const [x, e] of this.l828Ring) { if (x !== m.id && e[0] >= 0 && e[0] !== mine && this.ringOlder(e[0], this.lineAtOf(x), mine, this.lineAt) && TICK - e[1] <= K.RELAY_TTL) return true; }   // L8.52: lower = older
+      for (const [ring, v] of this.c7Vouch) { let ve = -1; { const z = this.c7VouchEp.get(ring); if (z !== undefined) ve = z[0]; } if (ring === mine || !this.ringOlder(ring, ve, mine, this.lineAt)) continue; for (const [x, at] of v) if (x !== m.id && TICK - at <= K.RELAY_TTL) return true; }
       this.trace('L42-HOLD', this.id, this.hasCoord ? this.coord : null, 'from=%d ring=%d', m.id, m.c7Min);
       return false;
     },

@@ -19,9 +19,10 @@
   const GifOS = root.GifOS = root.GifOS || {};
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
+  const RCD = ((n) => ({ L35_4_OFF: n('L35_4_OFF'), L17_3_1_OFF: n('L17_3_1_OFF'), L17_4_OFF: n('L17_4_OFF'), L35_5_OFF: ((isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L35_5_OFF === '0') ? 0 : 1) }))((k) => ((isNode && typeof process !== 'undefined' && process.env && process.env['MESH_' + k] === '1') ? 1 : 0));   // the sim's build-time switches of the realcheck dead-dial laws (mesh.cpp L35_4_OFF ...): MESH_<name>=1 under node; a page runs the laws
   const seatM = req('./seat.js', 'meshSeat');
   const { cellOk, ownerCoordOf, coordStr, u2RowKey } = req('./shared.js', 'meshShared');
-  const { Seat, roomTerm, islandStand, signedBy, l165Earlier } = seatM;
+  const { Seat, FREE, roomTerm, islandStand, signedBy, l165Earlier } = seatM;
   const C_ = req('./consts.js', 'meshConsts');
   const msg = req('./msg.js', 'meshMsg');
   const topo = req('./topo.js', 'meshTopo');
@@ -37,6 +38,8 @@
   const unck = unckey;
   const newMsg = (t) => msg.newMsg(t);
   const cc = (c) => ({ pc: c.pc, r: c.r, i: c.i });
+  // the sim's #define L8_52_OFF in mesh.cpp (a build-time switch): MESH_L8_52_OFF=1 under node, read once at load; a page always runs the law
+  const L8_52_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L8_52_OFF === '1') ? 1 : 0;
   const kvCopy = (a) => a.map((e) => ({ k: e.k, v: e.v }));
   const hello = (ck, id) => { const h = newMsg('HELLO'); h.ck = ck; h.id = id; return h; };
 
@@ -50,6 +53,7 @@
       if (m.id < 0 || !cellOk(m.ck)) return;
       if (this.f.fabricDoors()) { const lb = this.l152Bye.get(m.id); if (lb !== undefined && lb[0] === m.ck && TICK - lb[1] <= 2) return; }   // L15.2 for a HELLO
       if (m.sw >= 0 && this.l4SwapHello(m)) return;   // L4.3
+      if (this.l850(m)) return;   // L8.50: a founder of one and a room
       if (this.islandC7(m)) return;   // L8.5
       if (m.rmKids && this.hasCoord && this.state === 3 && this.rowLedgerAt < this.rmBornAt && TICK - this.rmBornAt <= K.LEASE_T) this.rmHistAt = TICK;
       if (m.arr >= 0 && m.id !== id && !(this.hasCoord && m.ck === ckey(this.coord)) && (this.occGet(m.ck) < 0 || this.occGet(m.ck) === m.id)) { const b = this.rmBirthOf.get(m.ck); if (b === undefined || b[0] !== m.id) { if (this.rmBirthOf.size >= 4 * C) eraseFirst(this.rmBirthOf); this.rmBirthOf.set(m.ck, [m.id, this.claimBorn(m)]); } }   // L11
@@ -94,7 +98,7 @@
         const la = this.lkAt.get(m.ck); const bi = this.byeId.get(m.ck);
         if (la !== undefined && TICK - la <= K.L25_BEAT && !(this.byeAt.has(m.ck) && bi !== undefined && bi === this.occGet(m.ck))) {
           lv.L25_TWICE++;
-          if (sure) { const yt = this.l25YieldTo.get(m.id); if (yt === undefined || TICK - yt >= 16) { if (this.l25YieldTo.size > 64) this.l25YieldTo.clear(); this.l25YieldTo.set(m.id, TICK); const y = newMsg('YIELD'); y.ck = m.ck; y.id = id; y.nc = this.occGet(m.ck); this.emit(m.id, y); } }
+          if (sure) { const yt = this.l25YieldTo.get(m.id); if (yt === undefined || TICK - yt >= 16) { if (this.l25YieldTo.size > 64) this.l25YieldTo.clear(); this.l25YieldTo.set(m.id, TICK); const y = newMsg('YIELD'); y.ck = m.ck; y.id = id; y.nc = this.occGet(m.ck); if (this.byeFloor(y.nc, m.ck) >= 0) this.l167Attach(y, m.ck, y.nc);   /* L25.19.1 */ this.emit(m.id, y); } }
           return;
         }
       }   // L25: a bare word does not take a cell from a seat whose beats reach me over its own channel
@@ -102,8 +106,12 @@
       let prev = this.occGet(m.ck);
       // E2: yield only between FIRST-HAND-LIVE claimants.
       if (prev >= 0 && prev !== m.id && m.pp === prev) { this.occDrop(m.ck, 'handed'); this.live.delete(m.ck); prev = -1; }   // L3.10.4
-      const prevFresh = prev >= 0 && prev !== m.id && (this.holdsCell(m.ck, 60) || this.heldRedial(m.ck, prev, 60));   // L16.7
+      let prevFresh = prev >= 0 && prev !== m.id && (this.holdsCell(m.ck, 60) || this.heldRedial(m.ck, prev, 60));   // L16.7
       let l165Dec = false, l165MWins = false;
+      if (this.f.fabricDoors() && ckPc(m.ck) === 0 && prev >= 0 && prev !== m.id && prevFresh) { const r51 = this.l51Rooms(m.id, prev);   // L8.51 (mesh_island.inc): a contest between two rooms is the merge's
+        if (r51 === 1) { const c = unck(m.ck); this.trace('L8.51-HOLD', id, c, 'mine=%d other=%d', prev, m.id); return; }
+        if (r51 === 2) { const c = unck(m.ck); this.trace('L8.51-HOLD', id, c, 'mine=%d other=%d', m.id, prev); this.occDrop(m.ck, 'L8.51'); this.live.delete(m.ck); prev = -1; prevFresh = false; }
+      }
       if (this.f.fabricDoors() && ckPc(m.ck) === 0 && prev >= 0 && prev !== m.id && prevFresh) {
         const h1 = this.l165Have(m.ck, m.id); const h2 = h1 ? this.l165Have(m.ck, prev) : null;
         if (h1 && h2) {
@@ -224,7 +232,7 @@
       if (!this.moving && this.l25OrderBy >= 0 && TICK - this.l25OrderAt <= 2 * K.L11_ARRIVE && this.l25OrderBy !== by && TICK - this.seatedAt < K.L11_ARRIVE) this.l25Mark(this.l25OrderBy);
       this.trace('YIELD-TAKEN', id, this.coord, 'by=%d site=%d nc=%d ypp=%d yppAt=%d mypp=%d myppAt=%d born=%lld moving=%d', by, m.tag, m.nc, m.pp, m.ppAt, this.pp, this.ppAt, this.rmBornAt, this.moving ? 1 : 0);
       if (this.moving) { this.rbWhy = 'yield'; this.rollbackMove(); } else this.l40Go(m.nc !== id ? m.nc : -1, 'T1-yield');   // T1 (L40.3: an arbiter's yield names the cell's holder too)
-      if (m.nc >= 0 && m.nc !== id && this.hasCoord && this.state === 3 && ckey(this.coord) !== m.ck && this.occGet(m.ck) !== m.nc && !this.liveElsewhere(m.nc, m.ck)) { this.setOcc(m.ck, m.nc); this.noteS1(m.ck); }   // L11
+      if (m.nc >= 0 && m.nc !== id && this.hasCoord && this.state === 3 && ckey(this.coord) !== m.ck && this.occGet(m.ck) !== m.nc && !this.liveElsewhere(m.nc, m.ck)) { this.setOcc(m.ck, m.nc); this.noteHand(m.ck, m.nc); }   // L11
     },
 
     // C++: mesh_seat.inc:Seat::onClaim
@@ -254,6 +262,8 @@
       { if (this.l152Bye.size >= 256) this.l152Bye.clear(); this.l152Bye.set(m.id, [m.ck, TICK]); }   // L15.2
       if (this.l4ExecAt >= 0 && m.id === this.l4Partner) { this.l4ExecAt = -1; this.f.fabricNoteSwap(id, 3); this.trace('SWAP-ABORT', id, this.coord, 'partner=%d left', m.id); }   // L4.3
       if (m.rel) { this.relMark.set(m.id, TICK); this.trace('RELOAD-BYE', id, this.hasCoord ? this.coord : null, 'from=%d cell=%s', m.id, coordStr(unck(m.ck))); return; }   // L3.11
+      // C++: mesh_seat.inc:Seat::onLeave
+      this.f.l23GreetRelease(id, m.id);   // the seat that greeted me has left: the greeting it had started here ends with it (a reload is not a goodbye)
       if (m.bye && !m.mvd) { this.noteBye(m.id); if (m.id !== id) this.dials.holdGone(m.id, TICK + K.GONE_DIAL); }
       if (m.mvd && m.ck < 65536) { this.l3109Ck = m.ck + 1; this.l3109At = this.TICK; }   // L3.10.9
       this.memo.delete(m.ck);   // L3.10a (the relay's greeter-gone is a death word, never a goodbye: it does not reach here, L3.1)
@@ -370,10 +380,11 @@
       const id = this.id, TICK = this.TICK;
       if (!this.hasCoord || this.state !== 3 || this.coord.pc === 0 || this.drainAt) return;
       {
-        const fromHead = this.f.l164Of(this) && m.tag === 1 && this.coord.i !== 0 && m.id >= 0 && this.occGet(ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 })) === m.id;   // L16.4
+        const fromHead = this.f.l164Of(this) && m.tag === 1 && this.coord.i !== 0 && m.id >= 0 && (this.occGet(ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 })) === m.id || (this.l1641From(m.id) && !this.l1361Carried()));   // L16.4
         if (!fromHead) { const oc = this.ownerCoord(); if (!oc || m.id < 0 || this.occGet(ckey(oc)) !== m.id) return; }   // E1: only my ANCHOR may dissolve my subtree
       }
-      if (m.roster.length === 0) return;
+      if (m.roster.length === 0 && !this.f.l164Of(this)) return;
+      if (m.tag === 1 && this.coord.i !== 0 && this.occGet(ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 })) !== m.id) this.trace('L16.4.1', this.id, this.coord, 'heir=%d', m.id);
       this.roster = kvCopy(m.roster); this.haveRoster = true; const rc = this.rosterCells();
       for (let c = 0; c < C; c++) { const x = this.occGet(ckey(rc[c])); if (x >= 0 && x !== id) { const d = newMsg('DRAIN'); d.roster = kvCopy(m.roster); d.id = id; this.emit(x, d); } }
       this.drainAt = TICK + 6 + Math.trunc(this.rng() * 12); this.f.wake(id);
@@ -416,6 +427,7 @@
         this.l258Rep = false;   // L25.8.1: set only by the re-placement arm below
         if (!proof && m.pp >= 0 && m.pp === this.l25By && m.ppAt >= 0 && this.pp === m.pp && this.ppCk === ckey(this.coord) && m.ppAt > this.ppAt) { proof = true; this.l258Rep = true; this.trace('L25-REPLACED', id, this.coord, 'by=%d rival=%d at=%d mine=%d', this.l25By, m.id, m.ppAt, this.ppAt); }   // L25.8
         if (!proof && m.mpK > 0 && this.mpProven(m)) { const rt = m.mpL, mt = (this.pp >= 0 && this.ppCk === ckey(this.coord)) ? this.ppL : (this.mpK > 0 && this.mpCk === ckey(this.coord)) ? this.mpL : this.seatedAt; proof = rt < mt || (rt === mt && m.id < id); }   // L25.7
+        if (proof && !this.l258Rep) { const f = this.byeFloor(m.id, m.ck); if (f >= 0 && !(m.pp >= 0 && m.ppL >= f) && !(m.mpK > 0 && m.mpL >= f)) { proof = false; this.trace('L25.19-BYE', id, this.coord, 'rival=%d bye=%lld pp=%d ppL=%d', m.id, f, m.pp, m.ppL); } }   // L25.19: a goodbye ends the tenancy
         if (!proof) { this.trace('L25-UNPROVEN', id, this.coord, 'rival=%d pp=%d', m.id, m.pp); this.l25131Ask(m); if (this.l40Unproven(m)) return; if (this.l2513Order(m)) return; if (!this.l2512Rook(m.id)) this.l2512TellHeard(m.id); return; }   // L25.12
         if (m.pp >= 0 && this.l25131At.has(m.pp)) this.trace('L25.13.1-ADMIT', id, this.coord, 'placer=%d rival=%d', m.pp, m.id);   // L25.13.1: the placer I asked is admitted now
         this.trace('L25-CONFIRMED', id, this.coord, 'rival=%d', m.id);
@@ -425,8 +437,12 @@
       if (!this.hasCoord || this.state !== 3 || ckey(this.coord) !== m.ck || m.id < 0 || m.id === id || !(m.id < id)) return;
       if (this.challToId !== m.id || this.challToCk !== m.ck || TICK - this.challToAt > 40 || !this.provenEv(m, m.id) || this.liveElsewhereSinceReturn(m.id, m.ck)) return;
       this.challToId = -1;
-      if (this.f.fabricDoors() && !this.moving && this.coord.pc === 0 && this.pp >= 0 && this.ppL >= 0 && this.ppCk === ckey(this.coord) && this.otherRing(m.id) && !(m.pp >= 0 && m.ppL >= 0 && l165Earlier(m.ppL, m.pp, m.id, this.ppL, this.pp, id))) { this.trace('L8.11.1-STAND', id, this.coord, 'rival=%d', m.id); return; }   // across foundings the earlier placement wins against a confirm too
-      if (roomTerm(this, 1) && m.c7Min >= 0 && m.c7Min < this.ringName()) return;   // L8.11
+      {
+        const oa = this.lineAtOf(m.id); const l852 = !L8_52_OFF && this.f.fabricDoors() && !this.moving && this.coord.pc === 0 && this.lineAt >= 0 && oa >= 0 && oa !== this.lineAt && this.lineOf(m.id) >= 0 && this.lineOf(m.id) !== this.line;   // L8.52.2 (mesh_ring.inc): between two foundings of different age the seat of the older room stands
+        if (l852 && this.lineAt < oa) { this.trace('L8.52-STAND', id, this.coord, 'rival=%d mine=%d theirs=%d', m.id, this.lineAt, oa); return; }
+        if (!l852 && this.f.fabricDoors() && !this.moving && this.coord.pc === 0 && this.pp >= 0 && this.ppL >= 0 && this.ppCk === ckey(this.coord) && this.otherRing(m.id) && !(m.pp >= 0 && m.ppL >= 0 && l165Earlier(m.ppL, m.pp, m.id, this.ppL, this.pp, id))) { this.trace('L8.11.1-STAND', id, this.coord, 'rival=%d', m.id); return; }   // across foundings the earlier placement wins against a confirm too
+      }
+      if (roomTerm(this, 1) && m.c7Min >= 0 && m.c7Min !== this.ringName() && this.ringOlder(m.c7Min, m.lineAt, this.ringName(), this.lineAt)) return;   // L8.11
       if (this.moving) { this.rbWhy = 'confirm-lower'; this.rollbackMove(); } else this.requeue('CONFIRM-lower-id');
     },
 
@@ -452,7 +468,7 @@
       if (this.hasCoord && this.coord.pc === 0 && this.coord.i === 0 && ckey(this.coord) === m.ck) {
         const inRow = (k, v) => { const c = unck(k); return cellOk(k) && c.pc === 0 && v >= 0 && (c.r === this.coord.r || (c.i === 0 && c.r === (((this.coord.r + 1) % C) & 0xff))); };
         for (const kv of m.nbrs) if (inRow(kv.k, kv.v) && !this.occ.has(kv.k) && !this.sitting.has(kv.k)) { const s = state.newStruct('SoftSit'); s.joiner = kv.v; s.assigner = id; s.at = TICK; this.sitting.set(kv.k, s); }
-        for (const e of m.row) if (inRow(e.k, e.v) && !this.occ.has(e.k)) { this.setOcc(e.k, e.v); this.noteS1(e.k); }
+        for (const e of m.row) if (inRow(e.k, e.v) && !this.occ.has(e.k)) { this.setOcc(e.k, e.v); this.noteHand(e.k, e.v); }
         this.rowLedger = true;
       }
     },
@@ -514,7 +530,7 @@
         const oc2 = ownerCoordOf(m.coord);
         if (m.owner >= 0 && !byeHeld && oc2 && m.oCk === ckey(oc2) && this.occGet(m.oCk) !== m.owner && !this.liveElsewhere(m.owner, m.oCk)) { this.setOcc(m.oCk, m.owner); this.noteS1(m.oCk); if (ckPc(m.oCk) === 0) this.s1told.set(m.oCk, TICK); }   // OWNERELSE
       }
-      { let nr = 0; for (const e of m.row) { if (++nr > C) break; const c = unck(e.k); if (!cellOk(e.k) || c.pc !== m.coord.pc || c.r !== m.coord.r || e.v < 0) continue; if (e.k === ckey(this.coord) && e.v !== id) continue; if (this.occGet(e.k) !== e.v) { if (this.liveElsewhere(e.v, e.k)) continue; { const tm = this.memo.get(e.k); if (this.translost.has(e.k) && tm !== undefined && tm.id === e.v) continue; } this.setOcc(e.k, e.v); this.noteS1(e.k); } else if (this.bareAt.size && e.v !== pid) this.bareAt.delete(e.k);   /* L25.16: another seat's listing names the seat I name: no longer its word alone */ if (e.age >= 0) this.childOf.set(e.k, e.age); } }
+      { let nr = 0; for (const e of m.row) { if (++nr > C) break; const c = unck(e.k); if (!cellOk(e.k) || c.pc !== m.coord.pc || c.r !== m.coord.r || e.v < 0) continue; if (e.k === ckey(this.coord) && e.v !== id) continue; if (!RCD.L17_3_1_OFF && this.occGet(e.k) === e.v) FREE.l1731Note(this, pk, e.k, e.v); if (this.occGet(e.k) !== e.v) { if (this.liveElsewhere(e.v, e.k)) continue; if (!RCD.L35_4_OFF && FREE.l354Echo(this, e.k, e.v)) continue; { const tm = this.memo.get(e.k); if (this.translost.has(e.k) && tm !== undefined && tm.id === e.v) continue; } this.setOcc(e.k, e.v); this.noteHand(e.k, e.v); } else if (this.bareAt.size && e.v !== pid) this.bareAt.delete(e.k);   /* L25.16: another seat's listing names the seat I name: no longer its word alone */ if (e.age >= 0) this.childOf.set(e.k, e.age); } }
       { let nn = 0; for (const kv of m.nbrs) { if (++nn > 4 * C) break; if (!cellOk(kv.k) || kv.v < 0) continue; if (!this.cousins.has(kv.k) && this.cousins.size >= 4 * C) continue; this.cousins.set(kv.k, kv.v); } }   // cousins capped (W, 4C)
       // MY HEAD'S ROW IS THE ROW (deep rows).
       if (this.hasCoord && this.coord.pc !== 0 && this.coord.i !== 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r && m.coord.i === 0) {
@@ -598,7 +614,7 @@
         }
         if (m.tag === 1 && m.asker >= 0 && m.asker !== id && m.ck && cellOk(m.ck) && m.ck !== ckey(this.coord) && this.ownedLinkCell(m.ck) && this.occGet(m.ck) < 0) { this.setOcc(m.ck, m.asker); this.emit(m.asker, hello(ckey(this.coord), id)); return; }   // L9.9
         const r = newMsg('ROUTED'); r.tag = m.tag === K.D51_PROBE ? 2 : m.tag; r.target = cc(m.target); r.id = id; r.pn = m.pn;
-        if (this.f.fabricLinkState(id, m.asker) !== E.LS_OPEN && m.tag === 1 && this.hasCoord && ckey(m.coord) !== ckey(this.coord)) { const nh4 = this.nextHopToward(m.coord, -1); if (nh4 >= 0) { const a = newMsg('ROUTE'); a.target = cc(m.coord); a.asker = id; a.tag = 4; a.ttl = 60; a.via = id; a.pseq = ++this.w.lv.RSEQ; a.ck = ckey(this.coord); a.pn = m.pn; this.emit(nh4, a); return; } }   // L3.4.1: no channel to the asker (a NAT pair, a closed pc): the answer walks back to its cell the way the probe came
+        if (this.f.fabricLinkState(id, m.asker) !== E.LS_OPEN && m.tag === 1 && this.hasCoord && ckey(m.coord) !== ckey(this.coord) && !(m.coord.pc === 0 && this.t17Carried(m.asker))) { const nh4 = this.nextHopToward(m.coord, -1); if (nh4 >= 0) { const a = newMsg('ROUTE'); a.target = cc(m.coord); a.asker = id; a.tag = 4; a.ttl = 60; a.via = id; a.pseq = ++this.w.lv.RSEQ; a.ck = ckey(this.coord); a.pn = m.pn; this.emit(nh4, a); return; } }   // L3.4.1: no channel to the asker (a NAT pair, a closed pc): the answer walks back to its cell the way the probe came
         this.emit(m.asker, r); return;
       }
       if (m.ttl <= 0) { const r = newMsg('ROUTED'); r.tag = m.tag; r.target = cc(m.target); r.id = -1; r.pn = m.pn; this.emit(m.asker, r); return; }

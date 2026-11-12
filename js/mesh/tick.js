@@ -21,6 +21,7 @@
   const GifOS = root.GifOS = root.GifOS || {};
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
+  const RCD = ((n) => ({ L35_4_OFF: n('L35_4_OFF'), L17_3_1_OFF: n('L17_3_1_OFF'), L17_4_OFF: n('L17_4_OFF'), L35_5_OFF: ((isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L35_5_OFF === '0') ? 0 : 1) }))((k) => ((isNode && typeof process !== 'undefined' && process.env && process.env['MESH_' + k] === '1') ? 1 : 0));   // the sim's build-time switches of the realcheck dead-dial laws (mesh.cpp L35_4_OFF ...): MESH_<name>=1 under node; a page runs the laws
   const C_ = req('./consts.js', 'meshConsts');
   const msg = req('./msg.js', 'meshMsg');
   const topo = req('./topo.js', 'meshTopo');
@@ -69,7 +70,7 @@
         if (ls === LS_DIALING) continue;
         let it = this.redial.get(x); if (it === undefined) { it = [TICK, K.REDIAL_GAP]; this.redial.set(x, it); }
         if (TICK < it[0]) continue;
-        { const g = this.dials.goneAt(x); if (g >= 0 && TICK - g >= K.LEASE_T) { this.dials.lapse(x); this.trace('L17.3-LAPSE', id, ol[q], 'peer=%d held=%lld', x, TICK - g); } }   // L17.3: a seat dead that long is off my view; one I still name lives, so the hold ends (its next failure starts a new one)
+        { const g = this.dials.goneAt(x); if (g >= 0 && TICK - g >= K.LEASE_T && (RCD.L17_3_1_OFF || FREE.l1731Word(this, x, g))) { this.dials.lapse(x); this.trace('L17.3-LAPSE', id, ol[q], 'peer=%d held=%lld', x, TICK - g); } }   // L17.3: a seat dead that long is off my view; one I still name lives, so the hold ends (its next failure starts a new one)
         this.trace('REDIAL', id, ol[q], 'peer=%d gap=%d', x, it[1]);
         this.f.fabricDial(id, x); it[0] = TICK + it[1]; it[1] = Math.min(it[1] * 2, K.REDIAL_MAX);
       }
@@ -462,6 +463,8 @@
       let l13Unreach = false;
       { let anc = null; if (this.coord.i !== 0) anc = cell(this.coord.pc, this.coord.r, 0); else anc = this.ownerCoord(); if (anc) { const ak = ckey(anc); const x = this.occGet(ak); if (x >= 0 && !this.firstHandLive(ak) && this.f.fabricDialFails(id, x) >= 2 && TICK - this.seatedAt > 64 && TICK - this.l13CrashAt > K.LEASE_T) l13Unreach = true; } }   /* L13.6 */
       let l13Hold = this.l13('L13.6') && this.l13Mass() && !l13Unreach && (TICK - this.l13CrashAt <= 64 || TICK - this.l13ProgressAt <= 64 || TICK - this.l13AnchorNewAt <= 24 || TICK - this.l13HomeNewsAt <= 64 || ((TICK - this.l13KnockAt <= 64 || TICK - this.rosterAskAt <= 64) && TICK - this.l13HomeNewsAt <= K.LEASE_T) || (this.l13DownAt.length > 0 && TICK - this.l13DownAt[this.l13DownAt.length - 1] <= 64) || TICK - this.l13AnswerAt <= 64);   /* L13.6 */
+      if (l13Hold || this.l14Up >= 0) { const car = this.l1361Carried() || this.l14Dialling(); if (car) this.l1361CarriedAt = TICK;
+        if (l13Hold && TICK - upAt > K.LEASE_T && !car && TICK - this.l1361CarriedAt > K.GONE_DIAL) { l13Hold = false; if (TICK - this.l1361Said > K.LEASE_T) { this.l1361Said = TICK; this.trace('L13.6.1', this.id, this.coord, 'upAge=%lld bare=%lld', TICK - upAt, TICK - this.l1361CarriedAt); } } }   /* the hold is for a heal in progress: a chain nobody healed within a lease of the break drains at the lease, unless a pc of mine carries me (I have my media) */
       if (this.l13('L13.20') && TICK - this.l13AnchorCrashAt <= 80) l13Hold = true;   // L13.20
       if (this.l13On() && this.l13('L13.6') && this.l14Up >= 0 && this.f.fabricLinkState(id, this.l14Up) === LS_OPEN && TICK - (this.l14UpFirst >= 0 ? this.l14UpFirst : this.l14UpAt) <= K.LEASE_T) l13Hold = true;   // L14
       if (!didHeal && TICK - upAt > 80 && (ancDead || TICK - upAt > 220) && !ringWait && !l13Hold && !l13Quiet) this.drainOrReenter();
@@ -475,6 +478,11 @@
       // E1 LAST RESORT, checked FIRST: owner-chain dead >220 ticks with no mesh route to Section 1 -> re-enter the front door.
       // L16.4: a HEAD at the E1 horizon drains its row (the DRAIN below) instead of leaving alone.
       const headRow = this.f.l164Of(this) && this.hasCoord && coord.i === 0 && this.haveRoster && this.roster.length > 0;
+      if (!this.drainAt && (TICK - this.lastAck > K.LEASE_T || (this.haveRoster && this.roster.length > 0)) && this.l1641Heir() && !this.l1361Carried()) {   /* the lowest live seat of a headless row takes the row with it, when no pc of its own carries it */
+        let told = 0; for (let c = coord.i + 1; c < C; c++) { const x = this.occGet(ckey(cell(coord.pc, coord.r, c))); if (x >= 0 && x !== id) { told++; const m = newMsg('DRAIN'); m.roster = kvs(this.roster); m.id = id; m.tag = 1; this.emit(x, m); } }
+        if (TICK - this.lastAck > K.LEASE_T) { const rc = this.rosterCells(); for (let c = 0; c < C; c++) { const x = this.occGet(ckey(rc[c])); if (x >= 0 && x !== id) { told++; const m = newMsg('DRAIN'); m.roster = kvs(this.roster); m.id = id; this.emit(x, m); } } }
+        this.trace('ROW-DRAIN', id, coord, 'heir ackAge=%lld told=%d', TICK - this.lastAck, told);
+      }
       if (TICK - this.lastAck > 220 && !headRow) { this.haveRoster = false; this.roster.length = 0; this.drainAt = 0; this.requeue('E1-stale-roster'); return; }
       if (this.haveRoster && this.roster.length) {
         if (!this.drainAt) {

@@ -54,6 +54,7 @@
  *   l18UxDeliv           meas   L18 measurement
  *   l222Note             A2     L22.2 far ask, my end
  *   l22Agree             A2     UNNEEDED tag 1 on the dc
+ *   l23GreetRelease      A2     a greeting slot ends with the seat that held it
  *   l22Close             A2     pcbye{unneeded} then close
  *   l22CloseAsk          A2     UNNEEDED tag 3 on the dc
  *   l22Need              A2     linkWhy, my end
@@ -469,7 +470,7 @@
       fabricAdmitLog: noop, fabricDupMint: noop, fabricNoteBackoff: noop, fabricNoteReseat: noop, fabricNoteRollback: noop,
       fabricNoteSwap: noop, fabricVerdict: deaths.verdict, l18UxDeliv: noop, descEnd: noop, descNote: noop, g4Joined: noop,   // g4Joined: the sim's L40 contest lever only (X1 55c97d1)
       fabricFreeCells, fabricLieFor: () => null, fabricUnreachable, fhopActive: () => !!fh, fhopFriendFor,
-      fabricTurnOn: () => false, fabricTurnPc: () => false, fabricTurnOpener: () => false, fabricTurnStray: () => false, fabricTurnLone: () => false, fabricTurnAcross: () => false, fabricTurnMine: () => false, fabricTurnCarried: () => false, fabricTurnFeeds: noop,   /* TURN.14: the page does not feed its relayed-link state to the seat yet, so the law stays off here */
+      fabricTurnOn: () => false, fabricTurnPc: () => false, fabricTurnOpener: () => false, fabricTurnStray: () => false, fabricTurnLone: () => false, fabricTurnAcross: () => false, fabricTurnMine: () => false, fabricTurnCarried: () => false, fabricTurnFeeds: noop, fabricTurnBoth: () => false, fabricTurnPeerIn: () => -1,   /* TURN.14: the page does not feed its relayed-link state to the seat yet, so the law stays off here */
       fabricMyTier: () => ((measure.tier ? measure.tier() : E.TIER_DESKTOP) | 0),
       fabricMyNat: () => ((measure.nat ? measure.nat() : E.NAT_OPEN) | 0),
       fabricLeft: () => leaveNow(false), fabricReloadBye: () => leaveNow(true),

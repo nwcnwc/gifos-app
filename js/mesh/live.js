@@ -18,6 +18,7 @@
   const GifOS = root.GifOS = root.GifOS || {};
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
+  const RCD = ((n) => ({ L35_4_OFF: n('L35_4_OFF'), L17_3_1_OFF: n('L17_3_1_OFF'), L17_4_OFF: n('L17_4_OFF'), L35_5_OFF: ((isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L35_5_OFF === '0') ? 0 : 1) }))((k) => ((isNode && typeof process !== 'undefined' && process.env && process.env['MESH_' + k] === '1') ? 1 : 0));   // the sim's build-time switches of the realcheck dead-dial laws (mesh.cpp L35_4_OFF ...): MESH_<name>=1 under node; a page runs the laws
   const C_ = req('./consts.js', 'meshConsts');
   const msg = req('./msg.js', 'meshMsg');
   const topo = req('./topo.js', 'meshTopo');
@@ -97,6 +98,9 @@
 
     // C++: mesh_seat.inc:Seat::d6cBeat
     d6cBeat() { return this.lkAnyAt >= this.seatedAt ? this.lkAnyAt : this.lkCarried; },
+    // A pc of mine carries me up: my uplink, my anchor's own link, or my E2 uplink.
+    // C++: mesh_seat.inc:Seat::l1361Carried
+    l1361Carried() { if (this.l14Up >= 0 && this.f.fabricLinkCarries(this.id, this.l14Up)) return true; const a = this.l13Anchor(); if (a) { const x = this.occGet(ckey(a)); if (x >= 0 && x !== this.id && this.f.fabricLinkCarries(this.id, x)) return true; } return this.l2E2Up(); },
     // C++: mesh_seat.inc:Seat::orphanSeat
     orphanSeat() {
       if (!this.hasCoord || this.moving || this.state !== 3 || this.d6cBeat() < 0) return false;
@@ -210,7 +214,8 @@
         // L8.36 A HOLDER LAST HEARD BEFORE THE CLAIMANT ARRIVED IS NO REASON TO YIELD IT.
         if (held && roomTerm(this, 1) && m.arr >= 0 && this.l836Merging()) { const lvv = this.live.get(k0); if (lvv === undefined || lvv < TICK - m.arr) held = false; }
         if (held && roomTerm(this, 1) && m.c7Min >= 0 && m.c7Min !== this.ringName()) { const xs = this.xrOk.get(m.id); if (xs !== undefined && TICK - xs <= 2 * K.RELAY_TTL) l810 = true; }   // L8.10
-        if (!l810 && held && this.f.fabricDoors() && ckPc(k0) === 0 && p0 >= 0 && p0 !== m.id) {
+        let r51 = 0; if (!l810 && held && this.f.fabricDoors() && ckPc(k0) === 0 && p0 >= 0 && p0 !== m.id) { r51 = this.l51Rooms(m.id, p0); if (r51 === 1) { const c9 = unck(k0); this.trace('L8.51-HOLD', id, c9, 'mine=%d other=%d phone', p0, m.id); return; } if (r51 === 2) { const c9 = unck(k0); this.trace('L8.51-HOLD', id, c9, 'mine=%d other=%d phone', m.id, p0); held = false; } }   // L8.51 (mesh_island.inc): a contest between two rooms is the merge's
+        if (!r51 && !l810 && held && this.f.fabricDoors() && ckPc(k0) === 0 && p0 >= 0 && p0 !== m.id) {
           const h1 = this.l165Have(k0, m.id), h2 = this.l165Have(k0, p0);
           if (h1 && h2) {
             const f1 = h1.from, a1 = h1.at, l1 = h1.loc, f2 = h2.from, a2 = h2.at, l2 = h2.loc;
@@ -254,7 +259,7 @@
           named.set(e.k, e.v); this.ledgerSeen.set(e.k, TICK);
           if (this.l13On()) { this.l13RowMemo.set(e.k, [e.v, TICK]); if (this.l13RowMemo.size > 4 * C) eraseFirst(this.l13RowMemo); }
           if ((e.tn & 0x8000) && lv.TIERS_ACTIVE && e.v !== id && !this.tierSeen.has(e.v)) this.tierSeen.set(e.v, e.tn & 0x7fff);   // L4: the head's word on its mate's tier and NAT kind
-          if (!this.occ.has(e.k)) { this.setOcc(e.k, e.v); this.noteS1(e.k); }
+          if (!this.occ.has(e.k)) { this.setOcc(e.k, e.v); this.noteHand(e.k, e.v); }
         }   // only the head itself, only cells 1..C-1 of ITS row
         // V7b GENERATION (H4): past the grace (generation >= 1) THE LEDGER IS THE ROW on every beat.
         if (m.rg >= 1) {
@@ -262,7 +267,7 @@
             const rk = ckey({ pc: m.coord.pc, r: m.coord.r, i: j }); if (!this.occ.has(rk) || this.firstHandLive(rk) || this.sitting.has(rk)) continue;
             const nv = named.get(rk);
             if (nv === undefined) { this.occDrop(rk, 'row-gen'); this.ledgerSeen.delete(rk); this.live.delete(rk); this.kidful.delete(rk); this.s1seen.delete(rk); this.childOf.delete(rk); this.tlForget(rk); this.healTry.delete(rk); }
-            else if (this.occGet(rk) !== nv) { this.setOcc(rk, nv); this.noteS1(rk); }
+            else if (this.occGet(rk) !== nv) { this.setOcc(rk, nv); this.noteHand(rk, nv); }
           }
         }
         {
@@ -282,26 +287,26 @@
       const row = [];
       if (this.coord.i === 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r) {
         row.push(ent(ckey(this.coord), id, this.occGet(ckey(down(this.coord)))));
-        for (let c = 1; c < C; c++) { const rc = { pc: this.coord.pc, r: this.coord.r, i: c }; const x = this.occGet(ckey(rc)); if (x >= 0 && x !== m.id) row.push(ent(ckey(rc), x, this.childOf.has(ckey(rc)) ? this.childOf.get(ckey(rc)) : -1)); }
+        for (let c = 1; c < C; c++) { const rc = { pc: this.coord.pc, r: this.coord.r, i: c }; const x = this.occGet(ckey(rc)); if (x >= 0 && x !== m.id && (RCD.L35_5_OFF || FREE.l355Heard(this, ckey(rc), x))) row.push(ent(ckey(rc), x, FREE.l355Heir(this, ckey(rc)))); }   // L35.5: my row as I hear it
       }
       const cous = [];
       if (ckey(m.coord) === ckey(down(this.coord))) {   // my DOWN-CHILD is phoning: teach it the heirs at its FUTURE owned-links
         const rm = rowMates(this.coord);
         for (let q = 0; q < C - 1; q++) {
-          if (this.coord.pc !== 0) { const x = this.occGet(ckey(rm[q])); if (x >= 0 && x !== m.id) { cous.push({ k: ckey(rm[q]), v: x }); continue; } }
-          const it = this.childOf.get(ckey(rm[q])); if (it !== undefined && it >= 0) cous.push({ k: ckey(rm[q]), v: it });
+          if (this.coord.pc !== 0) { const x = this.occGet(ckey(rm[q])); if (x >= 0 && x !== m.id && FREE.l355On(this, ckey(rm[q]), x)) { cous.push({ k: ckey(rm[q]), v: x }); continue; } }
+          const hx = FREE.l355Heir(this, ckey(rm[q])); if (hx >= 0) cous.push({ k: ckey(rm[q]), v: hx });
         }   // L2 (deep)
         if (this.l13('L13.1') && this.coord.pc !== 0) {
           const oc9 = this.ownerCoord();
           if (oc9) {
             const ring = FREE.l13Ring(oc9);
-            for (const [ck2, cv] of this.cousins) { if (cv < 0 || cv === m.id) continue; let inn = false; for (let q = 0; q < ring.length; q++) if (ckey(ring[q]) === ck2) inn = true; if (inn) cous.push({ k: ck2, v: cv }); }
-            const o = this.occGet(ckey(oc9)); if (o >= 0 && o !== m.id) cous.push({ k: ckey(oc9), v: o });
+            for (const [ck2, cv] of this.cousins) { if (cv < 0 || cv === m.id || !FREE.l355On(this, ck2, cv)) continue; let inn = false; for (let q = 0; q < ring.length; q++) if (ckey(ring[q]) === ck2) inn = true; if (inn) cous.push({ k: ck2, v: cv }); }
+            const o = this.occGet(ckey(oc9)); if (o >= 0 && o !== m.id && FREE.l355On(this, ckey(oc9), o)) cous.push({ k: ckey(oc9), v: o });
           }
         }   // L13.1
         if (this.coord.pc === 0) {   // W7: my future owned-links are my whole ROW + whole COLUMN (rook)
           const cm = colMates(this.coord);
-          for (let q = 0; q < C - 1; q++) { const it = this.childOf.get(ckey(cm[q])); if (it !== undefined && it >= 0) cous.push({ k: ckey(cm[q]), v: it }); }
+          for (let q = 0; q < C - 1; q++) { const hx = FREE.l355Heir(this, ckey(cm[q])); if (hx >= 0) cous.push({ k: ckey(cm[q]), v: hx }); }
           {
             const got = new Set(); for (const c of cous) got.add(c.k);
             const rk = []; for (let q = 0; q < C - 1; q++) { rk[q] = rm[q]; rk[C - 1 + q] = cm[q]; }
@@ -313,7 +318,7 @@
           }   // L13.1 / L1.1 (a)
         }
       } else if (this.coord.i === 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r) {   // a ROW-MATE phoned me (the head): share MY cousins
-        for (const [ck2, cv] of this.cousins) cous.push({ k: ck2, v: cv });
+        for (const [ck2, cv] of this.cousins) if (FREE.l355On(this, ck2, cv)) cous.push({ k: ck2, v: cv });
       }
       const p = newMsg('PONG'); p.owner = owner; p.oCk = oCk; p.row = row; p.nbrs = cous; p.coord = cc(this.coord); p.id = id;
       if (this.state === 3 && (ckey(m.coord) === ckey(down(this.coord)) || (this.coord.pc !== 0 && this.coord.i === 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r)) && this.f.fabricTurnOn()) p.t14 = this.t14Word();   /* TURN.14.5: to the head of my child row, and to my row as its head */
@@ -333,7 +338,7 @@
       }
       // § G DOWN-LEG (rides the PONG I already send)
       if (m.hard && m.t === 'PHONE' && this.coord.pc !== 0 && this.coord.i === 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r) { this.ownDeadAt = TICK; this.ownDeadCk = m.oCk; this.ownDeadId = m.owner; this.ownDeadSeen = this.occGet(m.oCk); }
-      if (m.e1dn && this.coord.pc !== 0 && this.coord.i === 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r) { this.ownVouchAt = this.l211Stamp(m); const oc3 = this.ownerCoord(); if (m.owner >= 0 && m.owner !== id && oc3 && m.oCk === ckey(oc3) && this.occGet(m.oCk) < 0 && !this.byeAt.has(m.oCk) && !this.translost.has(m.oCk)) { this.setOcc(m.oCk, m.owner); this.noteS1(m.oCk); } }   // my E2 source relays the backup owner's word: my owner lives
+      if (m.e1dn && this.coord.pc !== 0 && this.coord.i === 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r) { this.ownVouchAt = this.l211Stamp(m); const oc3 = this.ownerCoord(); if (m.owner >= 0 && m.owner !== id && oc3 && m.oCk === ckey(oc3) && this.occGet(m.oCk) < 0 && !this.byeAt.has(m.oCk) && !this.translost.has(m.oCk)) { this.setOcc(m.oCk, m.owner); this.noteHand(m.oCk, m.owner); } }   // my E2 source relays the backup owner's word: my owner lives
       if (m.tag === 5) { p.tag = 5; if (p.row.length === 0) for (let c = 0; c < C; c++) { const rc = { pc: this.coord.pc, r: this.coord.r, i: c }; let x = this.occGet(ckey(rc)); if (c === this.coord.i) x = id; if ((x >= 0 && x !== m.id && this.firstHandLive(ckey(rc))) || c === this.coord.i) p.row.push(ent(ckey(rc), x, -1)); } }   // L2.7: a stand-in's answer
       if (lv.DIGEST && this.state === 3 && m.tag !== 5) {
         p.dgRoot = this.wireDig(this.rootDig); p.dgRoot.kl.length = 0;   // L27.9: the list rides up only
@@ -403,7 +408,7 @@
       }
       if (early && standIn) return;
       if (!have) return; const tid = this.occGet(ckey(tc)); if (tid < 0) { if (!early) this.routeTo(tc, 1); return; }   // a vacant up-cell is probed every beat
-      const m = newMsg('PHONE'); m.coord = cc(this.coord); m.tock = ckey(tc); m.id = id; m.kids = this.hasChildren(); m.child = this.occGet(ckey(down(this.coord))); if (standIn) m.tag = 5; m.l10E = early; this.l711Beat(m, tid);   /* L7.11 */   // an early beat carries the digest alone (L10)
+      const m = newMsg('PHONE'); m.coord = cc(this.coord); m.tock = ckey(tc); m.id = id; m.kids = this.hasChildren(); m.child = FREE.l355Kid(this); if (standIn) m.tag = 5; m.l10E = early; this.l711Beat(m, tid);   /* L7.11 */   // an early beat carries the digest alone (L10)
       if (!early && this.coord.i !== 0 && TICK - this.ownVouchAt <= 8 + K.EARLY_HOLD && !this.l211Withdrawn()) { m.e1dn = true; m.owner = this.vouchOwner; m.oCk = this.vouchOCk; m.vAt = this.ownVouchAt; }
       else if (!early && this.coord.i !== 0 && TICK - this.ownDeadAt <= 8 + K.EARLY_HOLD) { m.hard = true; m.oCk = this.ownDeadCk; m.owner = this.ownDeadId; }   // L2.9 / L2.7
       // V7 THE DEEP-ROW LEDGER: a deep head phoning its OWNER carries its row's occupants (cells 1..C-1, first-hand at the head).
@@ -411,7 +416,7 @@
         let sig = '';
         for (let j = 1; j < C; j++) {
           const rk = ckey({ pc: this.coord.pc, r: this.coord.r, i: j }); const x = this.occGet(rk);
-          if (x >= 0 && x !== id) { m.row.push(ent(rk, x, -1)); if (lv.TIERS_ACTIVE) { const ts = this.tierSeen.get(x); if (ts !== undefined) m.row[m.row.length - 1].tn = (0x8000 | ts) & 0xffff; } sig += String(rk) + ':' + String(x) + ';'; }
+          if (x >= 0 && x !== id && (RCD.L35_5_OFF || FREE.l355Heard(this, rk, x))) { m.row.push(ent(rk, x, -1)); if (lv.TIERS_ACTIVE) { const ts = this.tierSeen.get(x); if (ts !== undefined) m.row[m.row.length - 1].tn = (0x8000 | ts) & 0xffff; } sig += String(rk) + ':' + String(x) + ';'; }
         }
         // V7b: the ledger's GENERATION
         if (TICK - this.seatedAt >= K.LEDGER_GRACE) { if (sig !== this.rowLedgerLast) this.rowGen++; if (this.rowGen < 1) this.rowGen = 1; }
@@ -448,7 +453,7 @@
         const tid = this.occGet(ckey(t));
         if (tid < 0 || tid === this.id) continue;
         if (!early) { const tk = ckey(t); const lvv = this.live.get(tk), po = this.probeOut.get(tk); if (!this.translost.has(tk) && !this.firstHandLive(tk) && (lvv === undefined || TICK - lvv > K.OWNER_SILENT) && (po === undefined || TICK - po.last > K.OWNER_SILENT)) this.routeToProbe(t); }   // a rook cell held by a seat I do not hear is probed once per silence window
-        const m = newMsg('PHONE'); m.coord = cc(this.coord); m.tock = ckey(t); m.id = this.id; m.kids = this.hasChildren(); m.child = this.occGet(ckey(down(this.coord)));
+        const m = newMsg('PHONE'); m.coord = cc(this.coord); m.tock = ckey(t); m.id = this.id; m.kids = this.hasChildren(); m.child = FREE.l355Kid(this);
         if (this.w.lv.DIGEST && this.state === 3) m.dgUp = this.pubDig(this.myDig);   // § G: rook peers exchange SECTION digests
         m.l10E = early; this.emit(tid, m);
       }
