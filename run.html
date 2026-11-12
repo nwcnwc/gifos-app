@@ -5619,7 +5619,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       admGraceT = null;
       admDeadline = Date.now() + ADMIN_CLOSE_MS;
       admTickT = setInterval(tickAdminClose, 1000);
-      try { subsRejudge(); } catch (e) {}   // the admin is known to be absent: a door waiting on the plan can judge now
       tickAdminClose();
     }
     // A newer GifOS release: the same check and bar as the Home Screen
@@ -35476,10 +35475,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // still have its admin. Reading that as "no plan" would hold a $5 room to
     // the free line and turn a newcomer away; a held knock only waits. So such
     // a door holds the knock, asks nothing, and judges it again when the orders
-    // arrive, when the room's plan check ends, or when the admin is known to be
-    // absent (the admin-close countdown runs, past its grace).
+    // arrive or when the room's plan check ends. Only the orders say so: who
+    // is admin is itself read from them, so a page that has not heard them sees
+    // "no admin" too, and its closing countdown is no evidence. Every member
+    // re-sends the admin's last signed orders, so a door seated after the admin
+    // left still hears them; a room whose admin never sent any closes anyway.
     const subsPlanWait = new Set();
-    const subsPlanKnown = () => amAdmin || !!modWSeen || !!admTickT;
+    const subsPlanKnown = () => amAdmin || !!modWSeen;
     function subsRejudge() {
       if (!subsPlanWait.size || !subsPlanKnown() || (hasAdminRoom() && subsRoomTier() === undefined)) return;
       const ids = Array.from(subsPlanWait); subsPlanWait.clear();
