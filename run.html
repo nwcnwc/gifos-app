@@ -27755,7 +27755,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // ONE hot pipe + a parked standby + dormant spares (ONE-PIPE
         // multi-subscribe), so the extra announces cost nothing until demanded.
         const s1peers = [...T.rowMates(c), ...T.colMates(c)].map((m) => occPid(m)).filter(Boolean);
-        for (const t of turnFeedPeers()) if (s1peers.indexOf(t) < 0) s1peers.push(t);   // TURN.14.8: the stage feeds cross the TURN link of an end whose ring lies across it, both ways
+        if (typeof turnFeedPeers === 'function') for (const t of turnFeedPeers()) if (s1peers.indexOf(t) < 0) s1peers.push(t);   // TURN.14.8: the stage feeds cross the TURN link of an end whose ring lies across it, both ways
         const flooded = new Set(); // PER-SWEEP dedup (one feed may resolve via two keys). The old
         // persistent stgSpread let the sweep-end reaper kill flood jobs after one sweep.
         // NEVER FLOOD A FEED BACK TO ITS OWNER. The owner already has the
@@ -28028,7 +28028,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const c = meshCoord(); if (!c) return [];
       const T = net.topo, out = new Set();
       const add = (co) => { const pid = co ? occPid(co) : null; if (pid && pid !== myId) out.add(pid); };
-      if (c.pc === 0) { for (const m of T.rowMates(c)) add(m); for (const m of T.colMates(c)) add(m); for (const t of turnFeedPeers()) out.add(t); }   // TURN.14.8
+      if (c.pc === 0) { for (const m of T.rowMates(c)) add(m); for (const m of T.colMates(c)) add(m); if (typeof turnFeedPeers === 'function') for (const t of turnFeedPeers()) out.add(t); }   // TURN.14.8
       else {
         add(c.i === 0 ? T.up(c) : { pc: c.pc, r: c.r, i: 0 });
         if (c.i === 0) for (const m of T.rowMates(c)) add(m);
