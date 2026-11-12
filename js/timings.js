@@ -17,6 +17,8 @@
     AGENT_KEEP_MS: 86400000,   // ms
     APP_STAGE_ASK_HOLD_MS: 8000,   // ms
     APP_STAGE_BEAT_MS: 1000,   // ms
+    APP_STAGE_GRANT_RENEW_MS: 20000,   // ms
+    APP_STAGE_GRANT_TTL_MS: 60000,   // ms
     APP_STAGE_NEXT_WAIT_MS: 2000,   // ms
     AWAKE_MS: 3000,   // ms
     BANNER_HOLD: 5000,   // ms
