@@ -10639,12 +10639,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // verdict. Under DEBUG a test may fix the verdict (window.__gifosDirectPath)
     // instead of asking the network, so a page under test on a machine with
     // no outside reach is not read as a blocked office.
-    // A blocked verdict that lands after the mesh node was made: the seat's world turns island-found on (the levers the
-    // node was made with, above); the meeting key is already there. Never turned back off: a seat that founded an island
-    // keeps the law it founded under.
-    function directPathVerdict() {
-      try { const lv = meshNode && meshNode.penv && meshNode.penv.world && meshNode.penv.world.lv; if (lv && directPath === 'blocked' && lv.ISLAND_MODE !== 1) { lv.ISLAND_MODE = 1; if (typeof clog === 'function') clog('island-found on (blocked verdict)'); } } catch (e) {}
-    }
     function startDirectPathProbe() {
       const gen = ++directPathRun; directMeasured = true;
       const forced = (typeof DEBUG_ON !== 'undefined' && DEBUG_ON && window.__gifosDirectPath) ? String(window.__gifosDirectPath) : '';
@@ -10653,10 +10647,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return probeDirectPath(() => new RTCPeerConnection({ iceServers: ICE_SERVERS }), REACH_PROBE_MS, (v) => {
         if (gen !== directPathRun) return;
         directMeasured = v !== null; if (v === null) return;
-        directPath = v; updateStatus(); if (meshNode && meshNode.remeasure) meshNode.remeasure(); directPathVerdict();
+        directPath = v; updateStatus(); if (meshNode && meshNode.remeasure) meshNode.remeasure();
       }).then((v) => {
         if (gen !== directPathRun) return v; // a newer probe owns the verdict
-        directPath = v; updateStatus(); if (meshNode && meshNode.remeasure) meshNode.remeasure(); directPathVerdict(); return v;
+        directPath = v; updateStatus(); if (meshNode && meshNode.remeasure) meshNode.remeasure(); return v;
       });
     }
     try { window.addEventListener('online', () => { if (meshNode) startDirectPathProbe(); }); } catch (e) {}
@@ -15487,11 +15481,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       meshNode = GifOS.meshWire.createMeshNode({
         relayUrl: relay.replace(/\/$/, ''),
         sid: sessId, tok: sessTok, key: roomE2E, identity, tickMs: 500,
-        // Islands found under the meeting key ONLY on a page whose own probe says its network is blocked (the TURN-client
-        // verdict): every other page runs the sim's ordinary-room config (ISLAND_MODE 0), so an ordinary room seats as the
-        // gates judge it. PAGE CONFIG PENDING SIM LEVER (a per-group island mode: docs/turn-0926.md 5a). A verdict that
-        // lands after the node exists turns it on in place (directPathVerdict below).
-        levers: { ISLAND_MODE: directPath === 'blocked' ? 1 : 0, URL_KEY: (parseInt(String(urlKeyHex).slice(0, 8), 16) | 1) >>> 0 },
+        levers: { ISLAND_MODE: 1, URL_KEY: (parseInt(String(urlKeyHex).slice(0, 8), 16) | 1) >>> 0 },   // islands found under the meeting key (above)
         oldKeys: [prevRoomE2E, openKey].filter((k, i, all) => k && k !== roomE2E && all.indexOf(k) === i),   // a door blob one of these opens is behind me, not ahead (mesh-wire R6)
         excluded: isEjected, // ejected forgers: their mesh frames never reach the seat
         urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
