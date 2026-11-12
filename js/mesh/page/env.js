@@ -569,7 +569,7 @@
     // ---- the pc laws (A2) over my io ----------------------------------------------------------------------------
     const PW = pcWireM();
     if (!PW || !PW.create) throw new Error('mesh env: GifOS.meshPcWire (js/mesh/page/pclaws-wire.js) is not loaded');
-    const pcw = PW.create({ me, seat, w, trace, io, wireTx, l392Contest: o.l392Contest, fh: fh ? { friendFor: fhopFriendFor, roles: fhRoles, doorDue: (x) => fhDoorDue(x) } : null });
+    const pcw = PW.create({ me, seat, w, trace, io, wireTx, l392Contest: o.l392Contest, fh: fh ? { friendFor: fhopFriendFor, roles: fhRoles, doorDue: (x) => fhDoorDue(x), turnHolds: (x) => { if (!fh.turnHolds) return false; const p = ID.pid(x); return !!p && !!fh.turnHolds(p); } } : null });
     // a law that throws must not take the page down: trace it, count it, answer as "no"
     const guard = (n, fn) => (...a) => {
       try { return fn(...a); } catch (e) {

@@ -14355,7 +14355,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (why && p.dc && p.dc.readyState === 'open') { try { dcSend(p, { k: 'pcbye', why }); } catch (e) {} }
       p.byeSent = Date.now(); p.envClosing = Date.now(); seatAskAt.delete(pid);
       if (typeof clog === 'function') clog('pcbye-out ' + String(pid).slice(0, 6) + ' ' + why);
-      setTimeout(() => pcCloseNow(pid, p), 300);
+      // The close belongs to the pc the goodbye was said on. A link that closes and is asked again within the 300 ms (a relayed
+      // link's dial failing and its next ask, 100 ms apart) had built a NEW pc for the pair by then, and this timer closed that one:
+      // the answer just sent died with it and every later ask met the same close.
+      const pcSaid = p.pc;
+      setTimeout(() => { if (p.pc !== pcSaid) return; pcCloseNow(pid, p); }, 300);
     }
     // L17: the seat holds its dials to this peer: no page clock dials it either.
     function seatHolds(pid) { return !!(meshNode && meshNode.dialHeld && meshNode.dialHeld(pid)); }
@@ -16644,6 +16648,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // TURN.14 (the twin's fabricTurnAcross): the peers whose pc runs through a TURN link of mine (js/meet-turn.js)
           turnPcs: () => (turnLinks ? turnLinks.turnPcs() : []),
           turnOn: () => !!turnLinks, turnOpened: (pid) => !!(turnLinks && turnLinks.opened(pid)), turnHeld: () => !!(turnLinks && turnLinks.anyHeld()),
+          turnHolds: (pid) => turnHolds(pid),   // a TURN link of mine, in any state, rides the pc to this peer: that pc is no door
           claims: (r, x) => (connsOf.get(r) || []).includes(x), relayed: (pid) => relayVia.has(pid),
         },
         measure: {   // the device class and the network's verdict this page already keeps (L4)
