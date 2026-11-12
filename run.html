@@ -845,6 +845,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   </div>
   <div data-al="waitRoom" id="waitlist" hidden role="region" aria-label="Waiting room"></div>
   <div id="waitdoor" hidden role="status">
+    <p class="pg-step" id="waitdoor-step" hidden></p>
     <h1 data-t="waitingForTheHost">Waiting for the host</h1>
     <p data-t="youLlJoinWhen">You'll join when the host lets you in. This meeting can't see or hear you yet.</p>
     <button data-t="leave" type="button" id="waitdoor-leave">Leave</button>
@@ -1169,6 +1170,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
 
   <div class="name-modal" role="dialog" aria-modal="true" id="pw-modal" style="display:none">
     <div class="name-box">
+      <p class="pg-step" id="pw-step" hidden></p>
       <h3 data-t="pwTitle" id="pw-title">Room password</h3>
       <p data-t="pwHint2" id="pw-hint">Anyone in the meeting can set or change it — it reaches everyone here instantly, and new joiners must enter it. Leave empty to remove the lock.</p>
       <div id="pw-cur-row" style="display:flex;gap:.5rem;margin-bottom:.8rem">
@@ -1440,6 +1442,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/meet-layout.js" defer></script>
   <script src="js/meet-turn.js" defer></script>
   <script src="js/meet-status.js" defer></script>
+  <script src="js/meet-progress.js" defer></script>
   <script src="js/gifos-sub.js" defer></script>
   <script src="js/meet-subs.js" defer></script>
   <script src="js/gifos-library.js" defer></script>
@@ -5654,7 +5657,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }));
       } catch (e) {}
       try { stashRecoverMedia(); } catch (e) {}
-      try { setStatus((target.emergency ? 'An important GifOS update is out. ' : '') + 'Updating to GifOS v' + target.latest + ' — you stay in this meeting.'); } catch (e) {}
+      // The update is a wait like any join: its steps carry across the reload (js/meet-progress.js flow 'update').
+      let upStep = '';
+      try { if (typeof progressStart === 'function' && progressStart('update')) { progressTick(); const w = progressWords(); if (w) upStep = w.head + ' '; } } catch (e) {}
+      try { setStatus(upStep + (target.emergency ? 'An important GifOS update is out. ' : '') + 'Updating to GifOS v' + target.latest + ' — you stay in this meeting.', 0, 'note', 'progress'); } catch (e) {}
       if (target.url) { try { history.replaceState(history.state, '', target.url); } catch (e) {} }
       resumeReload();
     }
@@ -10938,7 +10944,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         countText = shown + plus + ' ' + (BROADCAST ? 'in this broadcast' : uiText('inMeeting', 'in this meeting'));
         restText = ' · ' + q.label + tail;
       }
-      const bq = bcQuietLine(shown, reachLine, atDoor);
+      // A WAIT ON THE WAY IN (or back in) reads its true step (js/meet-progress.js):
+      // "Step 3 of 10: Finding your meeting… · 12 s". It replaces the resting
+      // line, the password and reach sentences included; a refusal still wins.
+      const prog = !refused && !leftUp && typeof progressWords === 'function' ? progressWords() : null;
+      if (prog) {
+        countText = '';
+        restText = prog.head + (prog.secs ? ' \u00b7 ' + prog.secs : '') + (prog.hint ? ' ' + prog.hint : '');
+      }
+      const bq = prog ? { text: '' } : bcQuietLine(shown, reachLine, atDoor);
       const bcQuiet = bq.text;
       if (bcQuiet) restText = bcQuiet + tail;
       const statusText = countText + restText;
@@ -10953,6 +10967,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         countText = head + (shown <= 1 ? (atDoor ? uiText('backIn', 'Getting you back in') : uiText('justYou', 'Just you')) : shown + plus + ' ' + uiText('inMeeting', 'in this meeting'));
         restText = '';
       }
+      if (prog) { phoneDetail = restText; countText = phoneLayout() ? prog.head : ''; if (phoneLayout()) restText = ''; }
       // The line's KIND is state, not wording: 'door' (asking to be let back
       // in), 'alone' (seated, nobody else), 'meeting' (others here), or one
       // of the reach states that replace the line. Tests and styling read
@@ -10960,7 +10975,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const statusKind = reachLine ? reachState : shown === 1 ? (atDoor ? 'door' : 'alone') : 'meeting';
       // The named state of the resting line (js/meet-status.js), most urgent first.
       const waitingHere = !refused && !atPwPrompt() && !reachLine && typeof iAmWaiting === 'function' && iAmWaiting();
-      const restState = refused ? 'refused' : atPwPrompt() ? 'passwordDoor' : reachLine ? reachState
+      const restState = prog ? 'progress' : refused ? 'refused' : atPwPrompt() ? 'passwordDoor' : reachLine ? reachState
         : (link && !leftUp) ? 'reconnecting' : waitingHere ? 'waitingRoom' : shown === 1 ? (atDoor ? 'backIn' : 'alone') : 'meeting';
       const statusShown = statusText;
       const shownDetail = phoneDetail;
@@ -10973,9 +10988,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         statusEl.dataset.link = (link && !refused && !atPwPrompt()) ? '1' : '';
         statusEl.dataset.back = gettingBack ? '1' : '';
         if (statusEl.dataset.state !== restState) statusEl.dataset.state = restState;
+        const pf = prog ? prog.flow : '', ps = prog ? prog.step : '', px = prog ? prog.x + '/' + prog.y : '';
+        if (statusEl.dataset.flow !== pf) statusEl.dataset.flow = pf;
+        if (statusEl.dataset.step !== ps) statusEl.dataset.step = ps;
+        if (statusEl.dataset.progress !== px) statusEl.dataset.progress = px;
         if (statusEl.dataset.unreached !== du) statusEl.dataset.unreached = du;
       }
-      if (reachLine) statusEl.classList.add('alert');
+      if (reachLine && !prog) statusEl.classList.add('alert');
       if (statusEl.title !== shownDetail) statusEl.title = shownDetail;
       const countEl = document.getElementById('statuscount');
       const restEl = document.getElementById('statusrest');
@@ -10988,7 +11007,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // status line from being written.
         try {
           const lead = q && q.label ? ' · ' + q.label : '';
-          fitStatusRest(restText, lead && restText.indexOf(lead) === 0 ? restText.slice(lead.length) : '');
+          // a wait's line that does not fit drops its reason first, then its seconds: the step and phase always stay
+          if (prog) fitStatusRest(restText, prog.head, prog.stepOnly + '…');
+          else fitStatusRest(restText, lead && restText.indexOf(lead) === 0 ? restText.slice(lead.length) : '');
         } catch (e) {}
       }
       paintBcQuiet(bq);
@@ -11019,9 +11040,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // the transcribing mark keeps only its icon, then the resolution drops,
     // and then the sentence leaves the row. The whole line stays the
     // header's title and a phone's status sheet.
-    let statusRestFull = '', statusRestShort = '';
-    function fitStatusRest(fullText, shortText) {
-      if (typeof fullText === 'string') { statusRestFull = fullText; statusRestShort = shortText || ''; }
+    let statusRestFull = '', statusRestShort = '', statusRestTiny = '';
+    // tinyText: the last form before the line leaves the row (a wait's bare "Step 5 of 10": the step is never cut off)
+    function fitStatusRest(fullText, shortText, tinyText) {
+      if (typeof fullText === 'string') { statusRestFull = fullText; statusRestShort = shortText || ''; statusRestTiny = tinyText || ''; }
       const restEl = document.getElementById('statusrest');
       if (!restEl) return;
       const b = document.body.classList;
@@ -11032,7 +11054,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       b.remove('status-small');
       restEl.classList.remove('rest-off');
       if (!full || (typeof phoneLayout === 'function' && phoneLayout()) || !restEl.getClientRects().length) return;
-      if (b.contains('hq-tight')) { restEl.classList.add('rest-off'); return; }
+      const tiny = statusRestTiny;
+      const tryTiny = () => { if (!tiny) return false; restEl.textContent = tiny; if (!over()) return true; restEl.textContent = full; return false; };
+      if (b.contains('hq-tight')) { if (tryTiny()) return; restEl.classList.add('rest-off'); return; }
       if (!over()) return;
       b.add('tx-tight');
       if (!over()) return;
@@ -11042,6 +11066,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!over()) return;
         restEl.textContent = full;
       }
+      if (tryTiny()) return;
       restEl.classList.add('rest-off');
       // The count is never cut off: if it and the tap still overflow the
       // line, the line steps down to 16px.
@@ -14952,44 +14977,149 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // as the likely problem. It never founds and never fakes — the wire keeps
     // re-knocking underneath, and the veil lifts the instant the seat lands.
     // (Sits UNDER the password modal: typing the password IS joining.)
+    // ---- TRUE PROGRESS (js/meet-progress.js) -----------------------------
+    // Every wait on the way in reads "Step X of Y: <what is happening>". Y is
+    // the most steps the flow could take, X goes up by one each time a step
+    // completes and never goes back. The steps are judged from the page's real
+    // state (progressFacts) by the pure judge in js/meet-progress.js; every
+    // change goes into window.__meetProgress and (DEBUG) the clog, facts and
+    // all, so a test can judge the same facts again and compare.
+    let progRun = null, progNAtRelay = 0, progListAt = -1, progEndedJoin = false, progBackSince = 0;
+    const progTrace = window.__meetProgress = [];
+    function progressFacts() {
+      const r = turnRaw(), s = meshSeat();
+      let doorUp = false, live = 0;
+      for (const p of peers.values()) {
+        if (!p || !p.connected || !p.dc || p.dc.readyState !== 'open') continue;
+        if (p.bootOut && !(typeof linkTo === 'function' && linkTo(p.id))) doorUp = true; else live++;
+      }
+      let greeters = 0, list = false;
+      if (r) {
+        const me = meshNode && meshNode.nidOf ? meshNode.nidOf(myId) : -1;
+        for (const g of r.lastGreeters || []) if (g >= 0 && g !== me) greeters++;
+        list = r.greetersAt >= 0 && r.greetersAt >= progListAt;
+      }
+      let turn = '';
+      try { for (const L of (turnLinks ? turnLinks.dump().links : [])) { if (L.state === 'up') { turn = 'up'; break; } if (L.state === 'ask' || L.state === 'dial') turn = L.state; } } catch (e) {}
+      const st = s ? s.state : 0, coord = !!(s && s.hasCoord);
+      const n = typeof headerCount === 'function' ? headerCount() : 1;
+      // the count before the link: taken while the link is asked for, or while the relay step waits (a link can come up between two beats)
+      if (turn && turn !== 'up' && !progNAtRelay) progNAtRelay = Math.max(1, n);
+      // the browser saying the network is gone (an offline event, or the page's own dark beat) outranks a socket
+      // that has not noticed yet: nothing reaches the server through a dark network
+      const offline = !!netDarkAt || navigator.onLine === false;
+      return { dp: directPath, relay: relayUp() && !offline, list, greeters, pw: atPwPrompt(),
+        wait: document.body.classList.contains('wait-door') || (typeof iAmWaiting === 'function' && iAmWaiting()),
+        doorUp, st, coord, turn, n, live, nAtRelay: progNAtRelay, offline,
+        saved: progRun && progRun.flow === 'update', reloaded: !!updateResume };
+    }
+    function progressStart(flow) {
+      const P = window.GifOS && GifOS.meetProgress;
+      if (!P) return null;
+      progRun = P.createRun(flow, Date.now()); progNAtRelay = 0;
+      const r = turnRaw(); progListAt = r && flow === 'reconnect' ? r.TICK : -1;
+      return progRun;
+    }
+    // progressTick(): judge the facts now; true when the words changed
+    function progressTick() {
+      if (!room || typeof meshSeat !== 'function' || !progRun) return false;
+      const f = progressFacts();
+      const ch = progRun.apply(f, Date.now());
+      if (progRun.cur() === 'relay' && !f.turn) progNAtRelay = Math.max(1, f.n);
+      if (ch) {
+        const P = GifOS.meetProgress, w = P.line(progRun, Date.now(), uiText);
+        const e = { t: Date.now(), flow: progRun.flow, x: progRun.x(), y: progRun.y, step: progRun.cur(), text: progRun.text(), hint: progRun.hint(),
+          done: progRun.done(), seen: progRun.seen(), end: progRun.ended(), shown: w.head, facts: f };
+        progTrace.push(e); if (progTrace.length > 400) progTrace.splice(0, 100);
+        if (typeof clog === 'function') clog('progress ' + e.flow + ' ' + e.x + '/' + e.y + ' ' + e.step + (e.end ? ' end' : '') + ' done=' + e.done.join(','));
+      }
+      if (progRun.ended()) { if (progRun.flow !== 'reconnect') progEndedJoin = true; progRun = null; }
+      return ch;
+    }
+    // The words for the line, or null when no wait is on.
+    function progressWords() {
+      if (!progRun) return null;
+      const P = window.GifOS && GifOS.meetProgress;
+      if (!P) return null;
+      const w = P.line(progRun, Date.now(), uiText);
+      w.stepOnly = P.stepOnly(progRun, uiText);
+      w.step = progRun.cur(); w.x = progRun.x(); w.y = progRun.y; w.flow = progRun.flow;
+      return w;
+    }
+    window.__gifosProgressWords = () => progressWords();
+    // progressBeat(seated, now): which wait is on, judged once a second. The way
+    // in once per page; back in after a drop the calm rule lets show (the same
+    // quiet time as the reconnecting note).
+    function progressBeat(seated, now) {
+      if (!progRun && !progEndedJoin) progressStart(updateResume ? 'update' : 'join');
+      else if (!progRun && progEndedJoin) {
+        const linkDown = !!(statusEl._linkDownAt && now - statusEl._linkDownAt >= GifOS.timings.STATUS_RECONNECT_QUIET_MS);
+        const lost = !seated && !leaving;
+        if (lost) { if (!progBackSince) progBackSince = now; } else progBackSince = 0;
+        const dark = !!(netDarkAt && now - netDarkAt >= GifOS.timings.STATUS_RECONNECT_QUIET_MS);
+        if ((linkDown || dark || (lost && now - progBackSince >= GifOS.timings.STATUS_RECONNECT_QUIET_MS)) && !leaving && !(typeof leftDialogUp === 'function' && leftDialogUp())) progressStart('reconnect');
+      }
+      const changed = progressTick();
+      const w = progressWords();
+      if ((changed || (w && w.secs)) && Date.now() >= statusHoldUntil) { try { updateStatus(); } catch (e) {} }
+      try { paintProgressSteps(w); } catch (e) {}
+      return w;
+    }
     let joinVeilEl = null, unseatedSince = 0, veilCeilLogged = false;
     setInterval(() => {
       if (!room || typeof meshSeat !== 'function') return;
       const s = meshSeat();
       const seated = !!(s && s.state === 3 && s.hasCoord);
-      if (seated) { unseatedSince = 0; veilCeilLogged = false; if (joinVeilEl) { joinVeilEl.remove(); joinVeilEl = null; } return; }
       const now = Date.now();
+      let w = null;
+      try { if (typeof progressBeat === 'function') w = progressBeat(seated, now); } catch (e) {}
+      if (seated) { unseatedSince = 0; veilCeilLogged = false; if (joinVeilEl) { joinVeilEl.remove(); joinVeilEl = null; } return; }
       if (!unseatedSince) { unseatedSince = now; return; }
       if (now - unseatedSince < 4000) return; // fast joins never see it
       if (!joinVeilEl) {
         joinVeilEl = document.createElement('div');
         joinVeilEl.id = 'joinveil';
-        joinVeilEl.innerHTML = '<div class="jv-box" role="status" aria-live="polite"><div class="jv-spin"></div><h3 id="jv-t">Reaching the meeting…</h3><p id="jv-p">Connecting you to the room.</p></div>';
+        joinVeilEl.innerHTML = '<div class="jv-box" role="status" aria-live="polite"><div class="jv-spin"></div><p class="pg-step" id="jv-s"></p><h3 id="jv-t"></h3><p id="jv-p"></p></div>';
         document.body.appendChild(joinVeilEl);
       }
       const waited = now - unseatedSince;
-      const veilSay = (title, body) => {
+      const veilSay = (step, title, body) => {
+        const hs = joinVeilEl.querySelector('#jv-s');
         const ht = joinVeilEl.querySelector('#jv-t');
         const hp = joinVeilEl.querySelector('#jv-p');
+        if (hs && hs.textContent !== step) hs.textContent = step;
         if (ht && ht.textContent !== title) ht.textContent = title;
         if (hp && hp.textContent !== body) hp.textContent = body;
       };
-      // Past 8 s with the relay up, the veil states elapsed seconds.
-      // console.debug notes the 210 s reap bound once. After that bound
-      // the veil says the wait has run long. With the relay down, the
-      // door line after 20 s is the message.
-      if (doorUnreachAt && now - doorUnreachAt < 60000 && waited > 8000) {
-        veilSay('Couldn\u2019t reach the meeting', 'Your device could not connect to the people in this meeting. A firewall, VPN or strict network may be blocking calls. We keep trying, and you will be in the moment a connection works.');
-      } else if (waited > 8000 && relayUp()) {
-        const left = Math.max(0, Math.ceil((210000 - waited) / 1000)); // reap bound, not a promise on screen
-        const secs = Math.max(1, Math.ceil(waited / 1000));
-        if (!veilCeilLogged) { veilCeilLogged = true; try { console.debug('seat ceiling 210s'); } catch (e) {} }
-        if (left > 0) veilSay('Joining the meeting\u2026', 'Still joining (' + secs + ' s).');
-        else veilSay('This is taking longer than it ever should.', 'Check your connection, or close this tab and reopen the link. A fresh start usually clears it.');
-      } else if (waited > 20000) {
-        veilSay('Still trying to reach the meeting\u2026', 'Nobody is answering the door of this meeting yet. It may be your internet connection. We keep knocking, and you will be in the moment it answers.');
+      // The step and what it waits for; the reason under it. Past the 210 s
+      // reap bound the reason says the wait has run long; a door that closed
+      // without ever connecting names the network as the likely cause.
+      if (w) {
+        joinVeilEl.dataset.flow = w.flow; joinVeilEl.dataset.step = w.step; joinVeilEl.dataset.x = String(w.x); joinVeilEl.dataset.y = String(w.y);
       }
+      if (waited > 8000 && !veilCeilLogged) { veilCeilLogged = true; try { console.debug('seat ceiling 210s'); } catch (e) {} }
+      let why = w ? w.hint : '';
+      if (doorUnreachAt && now - doorUnreachAt < 60000 && waited > 8000) why = uiText('pgHintUnreach', 'Your device could not connect to the people at the door. A firewall, VPN or strict network may be blocking calls. We keep trying.');
+      else if (waited > 210000) why = uiText('pgHintLong', 'This is taking longer than it should. Check your connection, or reopen the link.');
+      else if (!why && waited > 20000 && !relayUp()) why = uiText('pgHintNoServer', 'Your internet connection may be down. We keep trying.');
+      else if (!why && waited > 20000 && w && w.step === 'knock') why = uiText('pgHintNoAnswer', 'Nobody has answered the door yet. We keep knocking.');
+      // the time shown is time waited (on this step), never a countdown to a seat
+      if (w) veilSay(w.stepOnly + (w.secs ? ' · ' + w.secs : ''), w.what + '…', why);
+      else veilSay(Math.max(1, Math.ceil(waited / 1000)) + ' s', uiText('pgDoor', 'Finding your meeting') + '…', why);
     }, 1000);
+    // The step line in the places a wait shows that are not the status line:
+    // the password prompt and the waiting room screen.
+    function paintProgressSteps(w) {
+      const put = (id, show) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const t = show && w ? w.stepOnly + (w.secs ? ' · ' + w.secs : '') : '';
+        if (el.textContent !== t) el.textContent = t;
+        if (el.hidden !== !t) el.hidden = !t;
+      };
+      put('pw-step', !!(w && w.step === 'password'));
+      put('waitdoor-step', !!(w && w.step === 'admit'));
+    }
 
     // ---- THE EMPTY APP ROOM (#appwait) ---------------------------------------
     // A guest opening an app invite gets the app from WHOEVER IS IN THE ROOM
@@ -16591,8 +16721,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           (async () => {
             note('missing ' + g.failed.join(',') + (g.threw.length ? ' threw ' + g.threw.join(',') : ''));
             let todo = g.failed.slice();
+            // each try is a step of the 'load' flow (js/meet-progress.js): the line says which
+            const loadRun = window.GifOS && GifOS.meetProgress ? GifOS.meetProgress.createRun('load', Date.now()) : null;
+            const loadSay = () => {
+              if (!loadRun) return;
+              loadRun.apply({ tries: g.tries }, Date.now());
+              const lw = GifOS.meetProgress.line(loadRun, Date.now(), uiText);
+              note('progress load ' + loadRun.x() + '/' + loadRun.y + ' ' + loadRun.cur());
+              (window.__meetProgress || []).push({ t: Date.now(), flow: 'load', x: loadRun.x(), y: loadRun.y, step: loadRun.cur(), done: loadRun.done(), shown: lw.head, facts: { tries: g.tries } });
+              setStatus(lw.head, 0, 'note', 'progress');
+            };
             for (const w of UNITS_BACKOFF) {
               if (w) await new Promise((r) => setTimeout(r, w));
+              loadSay();
               g.tries++;
               const first = Math.min.apply(null, todo.map((k) => order.indexOf(k)).filter((i) => i >= 0));
               const redo = todo.concat(g.threw.filter((k) => order.indexOf(k) > first && todo.indexOf(k) < 0)).sort((x, y) => order.indexOf(x) - order.indexOf(y));
@@ -18408,7 +18549,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         pwHeldOnTyping();
         if (pwEpoch === 0) grantHoldUntil = Date.now() + PW_GRANT_HOLD_MS; // typed at the door: grants wait for the room's generation (heldGrant)
         pwModal.style.display = 'none';
-        sayState('passwordTrying');
+        // on the way in the progress line says what comes next (js/meet-progress.js); the note would cover it
+        if (!(typeof progressWords === 'function' && progressWords())) sayState('passwordTrying');
         // The relay only ever sees the PROOF of this password, never the text —
         // and the key I read the room with now contains it (§8): a wrong
         // password doesn't just bounce at the courtesy gate, it can't decrypt.
