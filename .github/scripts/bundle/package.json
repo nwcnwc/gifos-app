@@ -1,0 +1,10 @@
+{
+  "name": "gifos-page-bundle",
+  "private": true,
+  "description": "Builds the meeting page's script bundle at deploy and at a release snapshot. Exact versions, installed with npm ci from the lockfile.",
+  "type": "module",
+  "dependencies": {
+    "acorn": "8.18.0",
+    "esbuild": "0.28.2"
+  }
+}
