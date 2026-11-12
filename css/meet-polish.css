@@ -70,7 +70,7 @@
 .lob-bc-when input { flex: 1 1 auto; min-height: 44px; }
 #lobby.service-ready #lob-bc { order: 2; }
 #lobby.service-ready #lob-guest-more { display: none !important; }
-#lobby.service-ready.bc-pw:not(.desk-more) #lob-guest-extra { display: block !important; order: 2; }
+#lobby.service-ready.bc-pw:not(.desk-more) #lob-guest-extra { display: block !important; order: 3; }
 #lobby.service-ready #lob-bc-sched { flex: 0 0 auto; }
 @media (max-width: 700px) and (min-height: 421px) {
   #lobby.form-open.service-ready #lob-bc,
