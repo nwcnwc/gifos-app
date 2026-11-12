@@ -183,6 +183,7 @@
     let lastRegAt = 0;     // last time we sent a greeter registration
     let doorAheadN = 0;    // blobs in my latest door reply that no key of mine (current or replaced) opens (doorAhead)
     let regPendingAt = 0;  // a registration awaiting its greeters reply (zombie detector)
+    let recountOut = false; // a door count asked for (node.recountDoor) and not answered yet: one ask at a time
     // SHRANK-TO-SOLO (the 2-person fork fix, 2026-07-29): a room that WAS
     // populated and collapsed to one is a fragment SUSPECT the moment it
     // happens — a fresh founder is legitimately alone, but nobody legitimately
@@ -503,6 +504,11 @@
       if (held && who) { heldAsks.set(String(who), [f, via, dir, direct]); if (heldAsks.size > 64) heldAsks.delete(heldAsks.keys().next().value); }
       return held;
     }
+    // A held knock judged AGAIN now (the page learned something, e.g. a fresh door count): it goes through the
+    // waiting-room gate once more, and only a knock the page no longer holds reaches the seat. Never an admit.
+    function recheckHeld(list) {
+      for (const p of list || []) { const a = heldAsks.get(String(p)); if (!a || stopped || !raw) continue; if (doorBlocks(a[0], a[1], a[2], a[3])) continue; penv.frame(Object.assign({}, a[0]), String(a[1]), dirOf(a[2]), a[3]); }
+    }
     // The host's OK answers the held knock now, not at the knocker's next retry (run.html meetWait.admit).
     function answerHeld(list) {
       for (const p of list || []) { const a = heldAsks.get(String(p)); if (!a || stopped || !raw) continue; penv.frame(Object.assign({}, a[0]), String(a[1]), dirOf(a[2]), a[3]); }
@@ -691,6 +697,7 @@
         lastRelayRx = Date.now();
         let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
         if (m.t === 'greeters') {
+          recountOut = false;
           if (lockedFired && !(seat && seat.state === 3)) return;   // a bad password is the lock prompt: an empty list here would mint a founder
           onGreeters(m);
           if (opts.onDoor) { try { opts.onDoor('seated', m); } catch (e) {} }
@@ -1156,7 +1163,7 @@
         onGossip: opts.onGossip ? (src, m, ag, scoped, link) => (stopped ? undefined : opts.onGossip(src, m, (ag || 0) * tickMs, !!scoped, link)) : null,
         ckey: (c) => net.topo.ckey(c), ownedLinks: (c) => net.topo.ownedLinks(c),
       });
-      seat = layer.view; seat.answerDoor = answerHeld;
+      seat = layer.view; seat.answerDoor = answerHeld; seat.recheckDoor = recheckHeld;
       penv = GifOS.meshPageEnv.create({
         peer, ids: layer.ids, seat: () => raw, tickMs,
         pc: Object.assign({}, opts.pc || {}, { send: (to, m, dir) => ((typeof opts.dcOpen !== 'function' || opts.dcOpen(to)) ? sendFrameTo(to, m, dir) : false) }),
@@ -1225,6 +1232,14 @@
         return n;
       },
       _signGossipForTest(f) { return (identity && ident.signGossip) ? ident.signGossip(identity, f) : Promise.resolve(''); },   // TEST ONLY — my own signature on a frame I hold back
+      // THE DOOR'S COUNT (run.html subscriptions): a seated greeter asks the relay for the greeter list NOW, by
+      // registering again; the reply is the usual greeters frame (opts.onDoor). One ask at a time, and only a
+      // knocker arriving starts one, so it adds one relay frame per newcomer. false: not a greeter, no list to ask for.
+      recountDoor() {
+        if (stopped || !seat || !iAmAGreeter()) return false;
+        if (!recountOut) { recountOut = true; lastRegAt = regPendingAt = Date.now(); REGISTER_MYSELF_AS_A_GREETER(gkStr()); greeterTrace.push({ t: Date.now(), tick: env.TICK, state: seat.state, post: seat.state, listLen: -1, open: -1, founded: false, action: 're-register:door-count' }); if (greeterTrace.length > GREETER_TRACE_CAP) greeterTrace.shift(); }
+        return true;
+      },
       socketed() { return !raw || raw.socketed(); },   // the seat's own word: am I at the door (a joiner, a greeter, a seat that knocked)
       setRefuses(b) { if (layer) layer.setRefuses(b); },
       roomDigest() { return (layer && env.DIGEST !== false) ? layer.roomDigest() : null; },   // the display fold beside the seat (layer.js leaf)

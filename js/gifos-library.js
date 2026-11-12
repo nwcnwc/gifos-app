@@ -33,10 +33,15 @@
  *           subscription file cannot open them
  *   save(blob, {name, type, kind, of}, onProgress) -> file
  *   resumePending(onProgress), pending()
- *   openFile(file, onProgress) -> Blob (decrypted)   download(file)
+ *   stream(file, {download}) -> a same-origin URL that plays or saves the
+ *           file decrypted on the fly by the service worker (sw.js
+ *           libStream): any size, seeking works, memory stays flat
+ *   openFile(file, onProgress) -> Blob (whole file in memory: small files,
+ *           and browsers without a service worker)   download(file)
  *   rename(file, name)   remove(id)   abort(id)
  *   share(file) -> {share, url}   shareUrl(file, share)   unshare(shareId)
  *   openShare(hash, onProgress) -> {blob, name, type}  (no subscription needed)
+ *   streamShare(hash, {download}) -> URL, the same for a share link
  *   sizeText(bytes)
  * Errors are thrown as Error with .code ('full', 'lapsed', 'need-streamer',
  * 'wrong-key', 'share-gone', ...) and a sentence for people.
@@ -290,6 +295,60 @@
     // Only the path is taken from the answer: the bytes come from this page's own library address.
     return fetchOpen(base() + new URL(l.url).pathname, unb64u(d.k), d, onProgress);
   }
+  // ---- streaming through the service worker -------------------------------------
+  // Whole-file opening holds the file in memory; a phone cannot do that for a
+  // multi-GB recording. With the worker, the file key goes to it (same origin,
+  // never off this device) and the player or the download reads a decrypted
+  // stream that fetches one sealed part at a time.
+  async function worker() {
+    const sw = root.navigator && navigator.serviceWorker;
+    if (!sw) return null;
+    try { await sw.ready; } catch (e) { return null; }
+    if (!sw.controller) await new Promise((r) => sw.addEventListener('controllerchange', r, { once: true }));
+    // A worker from before streaming (an update not applied yet) does not
+    // answer the ping; the page then opens small files whole.
+    try {
+      const r = await fetch('/library-stream/ping', { cache: 'no-store' });
+      if (r.headers.get('X-Gifos-Library-Stream') !== '1') return null;
+    } catch (e) { return null; }
+    return sw.controller;
+  }
+  async function session(src, raw, d, exp) {
+    const w = await worker();
+    if (!w) throw fail('no-stream', 'This browser cannot stream from your library here.');
+    const sid = b64u(crypto.getRandomValues(new Uint8Array(18)));
+    const ch = new MessageChannel();
+    const ok = new Promise((res) => { ch.port1.onmessage = (ev) => res(ev.data || {}); });
+    w.postMessage({ type: 'gifos-library-stream', sid, src, key: raw, parts: d.p, size: d.s, mime: d.t, name: d.n, partBytes: PART_BYTES, plainPart: PLAIN_PART, exp }, [ch.port2]);
+    const a = await ok;
+    if (!a.ok) throw fail('no-stream', 'This browser cannot stream from your library here.');
+    return { sid, url: '/library-stream/' + sid + '/' + encodeURIComponent(d.n || 'recording') };
+  }
+  async function stream(f, opts) {
+    const d = await detailsOf(f);
+    const l = await request('POST', '/v1/files/' + encodeURIComponent(f.id) + '/link', {});
+    const s = await session(base() + new URL(l.url).pathname, unb64u(d.k), d, l.exp);
+    return Object.assign(s, { url: s.url + (opts && opts.download ? '?dl=1' : '') });
+  }
+  async function streamShare(hash, opts) {
+    const s = parseShare(hash);
+    if (!s || !s.k || !(s.p >= 1) || !(s.s >= 0)) throw fail('share-key', 'This link is missing its key. Ask for the whole link.');
+    let raw; try { raw = unb64u(s.k); } catch (e) { raw = null; }
+    if (!raw || raw.length !== 32) throw fail('share-key', 'This link is missing its key. Ask for the whole link.');
+    // Before streaming: the link is still on (a turned-off link answers 404)
+    // and its key opens the first part (a wrong key fails here, cleanly).
+    const first = await fetch(base() + '/s/' + s.token, { headers: { Range: 'bytes=0-' + (PART_BYTES - 1) } });
+    if (first.status === 404 || first.status === 410) throw fail('share-gone', 'This link is not there any more.');
+    if (!first.ok) throw fail('http-' + first.status, 'The library answered ' + first.status + '.');
+    await openPart(await fileKey(raw), 1, s.p, new Uint8Array(await first.arrayBuffer()));
+    const x = await session(base() + '/s/' + s.token, raw, { p: s.p, s: s.s, t: s.t, n: s.n }, 0);
+    return Object.assign(x, { url: x.url + (opts && opts.download ? '?dl=1' : '') });
+  }
+  function endStream(sid) {
+    const sw = root.navigator && navigator.serviceWorker;
+    if (sw && sw.controller && sid) sw.controller.postMessage({ type: 'gifos-library-stream-end', sid });
+  }
+
   async function download(f, onProgress) {
     const blob = await openFile(f, onProgress);
     const d = await detailsOf(f);
@@ -309,12 +368,12 @@
   }
 
   // ---- sharing -------------------------------------------------------------------
-  // The link: <site>/library#share=<token>&k=<file key>&t=<type>&n=<name>&p=<parts>.
+  // The link: <site>/library#share=<token>&k=<file key>&t=<type>&n=<name>&p=<parts>&s=<plain size>.
   // Everything after # stays in the browser that opens it.
   function linkFor(serverUrl, d) {
     const token = String(serverUrl).split('/s/')[1] || '';
     const site = (root.location && root.location.origin && /^https?:/.test(root.location.origin)) ? root.location.origin : 'https://gifos.app';
-    const q = new URLSearchParams({ share: token, k: d.k, t: d.t || '', n: d.n || '', p: String(d.p) });
+    const q = new URLSearchParams({ share: token, k: d.k, t: d.t || '', n: d.n || '', p: String(d.p), s: String(d.s) });
     return site + '/library#' + q.toString();
   }
   async function share(f) {
@@ -328,7 +387,7 @@
     const q = new URLSearchParams(String(hash || '').replace(/^#/, ''));
     const token = q.get('share');
     if (!token) return null;
-    return { token, k: q.get('k'), t: q.get('t') || '', n: q.get('n') || '', p: Number(q.get('p')) };
+    return { token, k: q.get('k'), t: q.get('t') || '', n: q.get('n') || '', p: Number(q.get('p')), s: q.has('s') ? Number(q.get('s')) : NaN };
   }
   async function openShare(hash, onProgress) {
     const s = parseShare(hash);
@@ -343,7 +402,7 @@
     enabled, status, base, sizeText, PART_BYTES, ENC_TYPE, OVERHEAD,
     list, save, resumePending,
     pending: () => readPending(),
-    openFile, download, rename, share, shareUrl, openShare, parseShare,
+    openFile, download, rename, share, shareUrl, openShare, parseShare, stream, streamShare, endStream,
     remove: (id) => request('DELETE', '/v1/files/' + encodeURIComponent(id)),
     unshare: (shareId) => request('DELETE', '/v1/shares/' + encodeURIComponent(shareId)),
     abort: async (id) => { const r = await request('DELETE', '/v1/uploads/' + encodeURIComponent(id)); await dropLocal(id); return r; },

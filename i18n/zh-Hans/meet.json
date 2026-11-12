@@ -809,5 +809,7 @@
  "meet.agAddItem": "添加项目",
  "meet.agWhoEdits": "还有谁可以编辑",
  "meet.agStop": "停止共享议程",
- "meet.shareStageFull": "舞台已满，需要先有人下台。"
+ "meet.shareStageFull": "舞台已满，需要先有人下台。",
+ "meet.sttVideoPausedRelay": "此连接上的视频已暂停。声音仍然正常。会议中的订阅者可以开启视频。",
+ "meet.turnSubscribe": "订阅"
 }

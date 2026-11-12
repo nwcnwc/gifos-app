@@ -40,5 +40,6 @@
   "library.sharedNote": "Shared with you from a GifOS library. It opens in this browser; the key in the link never reaches GifOS.",
   "library.wrongKey": "This file cannot be opened with this key.",
   "library.shareNoKey": "This link is missing its key. Ask for the whole link.",
-  "library.shareGone": "This share link has been turned off by its owner, or the file was deleted."
+  "library.shareGone": "This share link has been turned off by its owner, or the file was deleted.",
+  "library.noStream": "This browser cannot open large files here. Try a current Chrome, Firefox or Safari."
 }

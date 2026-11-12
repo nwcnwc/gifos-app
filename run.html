@@ -12113,10 +12113,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (msg.kind === 'offer' || msg.kind === 'answer') {
         const b = net.bootOf(msg.sdp, ++bootSeq);
         if (!b) { txStats.relayUnfit++; if (typeof clog === 'function') clog('relay: a description with media never leaves (' + msg.kind + ' to ' + String(to).slice(0, 6) + ')'); return; }
-        relaySendSealed(to, 'name', { k: 'name', n: net.relayNameFit(myName()) }); // the name beside every bootstrap: both sides can say who tried to reach them
+        // The name beside every bootstrap: both sides can say who tried to reach them. A name is also the dial request
+        // ("I am here, dial me"), so beside an ANSWER it goes last: read ahead of the answer it asked the dialler for a
+        // pair the answer was about to complete, and a dialler whose offer was over LOST_OFFER_MS old took the offer for
+        // lost, re-offered, and the answer landed on a pc that was gone. On a slow device every answer is that late, so
+        // the pair restarted on every round and never formed.
+        const nameF = { k: 'name', n: net.relayNameFit(myName()) };
+        if (msg.kind === 'offer') relaySendSealed(to, 'name', nameF);
         if (msg.kind === 'offer' && msg.dr === 1) b.boot.dr = 1;   // the door's gate reads it (onSignal): an unseated dialler is not a stale member
         relaySendSealed(to, 'boot', b.boot);
         relaySendSealed(to, 'fp', b.fp);
+        if (msg.kind === 'answer') relaySendSealed(to, 'name', nameF);
         return;
       }
       if (msg.kind === 'ice') {
@@ -12877,14 +12884,23 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         } else if (!busy && bel) bel.remove();
         let el = p.tile.querySelector(':scope > .tpause:not(.tpause-busy)');
         if (show && !el) {
+          // VIDEO IS PAUSED: the named state's sentence (meet-status videoPausedRelay) over the dark tile, and one
+          // tap to subscribe ($2 monthly, PayPal). A subscription's vouch turns this link's video on where it is:
+          // the next paint finds the link carrying video and takes the note away.
           el = document.createElement('div'); el.className = 'tpause'; el.setAttribute('role', 'note');
-          const t = document.createElement('span');
-          t.textContent = uiText('turnPaused', 'Video is paused: this person connects through our relay. Subscribe to turn on video for this meeting.');
-          el.appendChild(t);
+          const t = document.createElement('span'); t.className = 'tpause-say';
+          const said = statusWords('videoPausedRelay');
+          t.textContent = said; el.appendChild(t);
           if (subsOn()) {
             const b = document.createElement('button'); b.type = 'button'; b.className = 'tpause-sub';
             b.textContent = uiText('turnSubscribe', 'Subscribe');
-            b.addEventListener('click', (e) => { e.stopPropagation(); try { GifOS.meetSubs.openSettings(); } catch (x) {} });
+            b.addEventListener('click', async (e) => {
+              e.stopPropagation(); b.disabled = true;
+              try {
+                const r = await GifOS.meetSubs.subscribe('room20', 'monthly', (w) => { t.textContent = w; });
+                if (!(r && r.licenseJson)) { t.textContent = said; b.disabled = false; }
+              } catch (x) { t.textContent = said; b.disabled = false; }
+            });
             el.appendChild(b);
           }
           p.tile.appendChild(el);
@@ -12982,7 +12998,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // minting: the offer being made on this pc (createOffer to setLocalDescription), whichever path started it; the pc still
     // reads 'stable' meanwhile. kind says what the pc is for. What describes the peer (turnSeen, turnLegacy) stays on p.
     const newNeg = (why, kind) => ({ why: why || '', kind: kind || 'pair', at: Date.now(), minting: null, offerFp: '',
-      glareTimer: null, glareOffer: null, rofferYieldTimer: null, rofferYield: null, kickVideo: false,
+      glareTimer: null, glareOffer: null, answerIn: false, rofferYieldTimer: null, rofferYield: null, kickVideo: false,
       turnAskT: null, turnOkT: null, turnGivenT: null, turnOk: false, turnGiven: false, turnWanted: false, offeredPend: '' });
     function endNeg(n) {
       if (!n) return;
@@ -14010,9 +14026,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // A second copy of an answer we already applied is in 'stable'.
         // Setting it again throws and used to be swallowed as if it landed.
         if (!p.pc || p.pc.signalingState !== 'have-local-offer') { rxStats.answerStale++; return; }
+        const negA = p.neg; if (negA) negA.answerIn = true;   // this pc's offer has its answer in hand: no longer unanswered (onDialRequest), though the pc reads have-local-offer until it is set
         p.pc.setRemoteDescription(msg.sdp)
           .then(() => { for (const c of p.pendingIce.splice(0)) p.pc.addIceCandidate(c).catch(() => {}); })
-          .catch((e) => { noteNegFail('answer', from, e); if (/extension ID reassignment/i.test(String((e && e.message) || ''))) maybeRebuildNeg(peers.get(from), e); });
+          .catch((e) => { if (negA) negA.answerIn = false; noteNegFail('answer', from, e); if (/extension ID reassignment/i.test(String((e && e.message) || ''))) maybeRebuildNeg(peers.get(from), e); });
       } else if (msg.kind === 'ice') {
         const cands = iceCandsOf(msg);
         const p = peers.get(from);
@@ -14313,7 +14330,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function onDialRequest(p) {
       const pLive = p.connected && p.dc && p.dc.readyState === 'open';
-      const unanswered = !!(p.pc && p.pc.signalingState === 'have-local-offer');
+      const answering = !!(p.pc && p.neg && p.neg.answerIn && p.pc.signalingState === 'have-local-offer');   // the answer is being set: the name that rides behind it is no ask
+      const unanswered = !!(p.pc && p.pc.signalingState === 'have-local-offer') && !answering;
       const bounced = unanswered && p.offerSentPc === p.pc && (p.offerNoSockAt || 0) >= (p.offerSentAt || 0);   // the relay said nosock after this offer left
       // A peer whose reload goodbye the wire still holds has not been heard since its page left: this request is its new
       // page's first word, and an offer I made before that word was made for the page that left (the seat re-dials at the
@@ -14330,7 +14348,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // inside its finish window. Past that window a dial request rebuilds,
       // which is what a lost trickle used to wait out forever. A reload
       // (back) is a new page; the old pc is left to fail.
-      const forming = !pLive && p.pc && !darkOffer && !idle && (iceFinishing(p, Date.now(), back) || Date.now() - pcBuiltAt(p) < 5000) && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
+      const forming = !pLive && p.pc && !darkOffer && !idle && (answering || iceFinishing(p, Date.now(), back) || Date.now() - pcBuiltAt(p) < 5000) && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
       if (typeof clog === 'function') clog('dial-request from ' + String(p.id || '?').slice(0, 6) + ' solo=' + (participantCount() <= 1) + ' live=' + !!pLive
         + ' init=' + iInitiate(p.id) + ' forming=' + !!forming + ' dark=' + !!darkOffer + ' pc=' + (p.pc ? p.pc.connectionState + '/' + p.pc.signalingState : '-')
         + ' age=' + Math.round((Date.now() - pcBuiltAt(p)) / 100) / 10 + 's frag=' + Math.round((Date.now() - (p.fragDialAt || 0)) / 100) / 10 + 's');
@@ -15855,6 +15873,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function takeMod(from, msg) {
       if (!hasAdminRoom()) { if (msg.mod) mergeMod(msg.mod); return; }
       if (!msg.modw) return;
+      if (DEBUG_ON && window.__modDelayUntil && Date.now() < window.__modDelayUntil) return;   // DEBUG=on only: this page hears the admin's orders late (a test)
       const key = String(msg.modw.pub) + '|' + String(msg.modw.sig) + '|' + String(msg.modw.sp);
       const seen = modVer.get(key);
       if (seen) {
@@ -15882,6 +15901,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (o.by && notTomb(o.by)) admSeen.set(o.by, Date.now());
         if (o.ts > modWSeenTs) { modWSeen = msg.modw; modWSeenTs = o.ts; }
         mergeMod(o.mod);
+        try { subsRejudge(); } catch (e) {}   // the room's admin state arrived: a door waiting on the plan can judge now
         if (newlyAdmin) {
           admins = adminsNow();
           if (typeof reconcileApp === 'function') reconcileApp();
@@ -16352,10 +16372,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         excluded: isEjected, // ejected forgers: their mesh frames never reach the seat
         urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
         holdDoor: () => pwWaitProof && !meshCoord(),
-        doorHeld: (id) => { try { const b = meetWait.blocks(id); if (b && id && amAdmin) meetWait.note(id, rosterNames[id] || 'Someone waiting'); if (b && id) sayHeld(id); return b || subsHolds(id); } catch (e) { return false; } },   // a withheld knock goes on the host's list: nothing else names a plain room's knocker
+        doorHeld: (id) => { try { if (DEBUG_ON && window.__doorHoldAll) return true;   /* DEBUG=on only: this door answers no knock (a test picks the doors) */ const b = meetWait.blocks(id); if (b && id && amAdmin) meetWait.note(id, rosterNames[id] || 'Someone waiting'); if (b && id) sayHeld(id); return b || subsHolds(id); } catch (e) { return false; } },   // a withheld knock goes on the host's list: nothing else names a plain room's knocker
         onDoor: (kind, frame) => {
           if (kind === 'seated') {
             meetWait.waiting(false);
+            subsDoorSeen(frame);
           }
         },
         sendDC: meshSendDC,
@@ -35079,34 +35100,73 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // (a few minutes long, renewed while this is the subscription's newest
     // meeting) rides the room's signed orders (sublic), and every door checks
     // it; a ticket that stops renewing stops counting when it runs out. On the $2
-    // plan, or when no valid plan is shown, a door whose room already holds
-    // 20 (the seats this seated door knows are taken now) holds a knocker and asks it to show
+    // plan a door whose room already holds
+    // 20 (the count below) holds a knocker and asks it to show
     // a subscription against a fresh challenge; a good answer lets it in at
     // once, none turns it away with a plain message. $5 and $10 rooms have no
     // limit. A room on the FREE plan (its admin holds no paid plan; Nathan
     // 2026-11-11) has a 5-person line: the 6th person without a subscription
     // is told "This room is full on the free plan", and the host is offered
-    // a one-tap upgrade to 20. An unread count lets people in, never out. The count is never
-    // the door's greeter list: a door gets that list only when it knocks
-    // itself, so it holds the room as it was when that door came in.
+    // a one-tap upgrade to 20. An admin room whose plan cannot be shown (none,
+    // run out, the host gone, moved to another meeting) is on that free line
+    // too (Nathan 2026-11-11); the room closes soon after its last admin
+    // leaves anyway. The line is only at entry. An unread count lets people in, never out.
+    // THE COUNT IS THE DOOR'S GREETER LIST (Nathan 2026-11-11), read when a
+    // newcomer comes in: the relay's list of the room's registered seats (the
+    // door's own entry is left out of its replies, so the count is the list
+    // plus the door). A list from before this knocker came is the room as it
+    // was then, so the door asks the relay again and holds the knock until
+    // the fresh list answers; a list's length is what everyone at that door
+    // reads, not one seat's view of the room.
     let subsTurnedAway = false, subsTierKey = '', subsTier = null, subsTierExp = 0;
     const subsProven = new Set(), subsAsked = new Map();   // knocker -> {n, at}
     const subsOn = () => !!(window.GifOS && GifOS.meetSubs && GifOS.sub && GifOS.meetSubs.enabled());
     // The meeting a subscription ticket names: the room's relay session (a one-way hash of the room code), the same
     // room the relay's TURN vouches name, so the TURN Worker can check a paid ask's ticket against its vouches.
     const subsMeetId = () => sessId || roomKey();
-    // The people already seated: this door's seats (live, the count's own
-    // liveness rule), or past one section the room's fold. People still being
-    // brought in (a burst of knockers with open channels) are not counted.
-    function subsRoomCount() {
+    // The door's greeter list: its length and when it came (every greeters
+    // reply, a relay restart's empty hold excepted), and the knockers held for
+    // a fresh one (knocker -> when this door first counted for it).
+    let subsListLen = null, subsListAt = 0;
+    const subsWaitList = new Map();
+    function subsDoorSeen(frame) {
+      if (!frame || !Array.isArray(frame.list) || frame.hold) return;
+      subsListLen = frame.list.length; subsListAt = Date.now();
+      const st = meshSeat(), held = Array.from(subsWaitList.keys());
+      if (held.length && st && st.recheckDoor) { try { st.recheckDoor(held); } catch (e) {} }   // the held knocks are judged again on this list (never admitted by it)
+    }
+    // The count for knocker `id`: the greeter list plus this door, from a list
+    // that came after the knocker did. Otherwise the door asks for a fresh one
+    // and answers 'wait'. undefined when there is no list to read (not seated,
+    // not a greeter): an unread count lets people in.
+    function subsRoomCount(id) {
       const ms = meshSeat();
       if (!ms || ms.state !== 3) return undefined;
-      try {
-        let n = knownTotal(true);
-        if (roomPastSection()) { const d = roomDig(); if (d && Number.isFinite(d.n)) n = Math.max(n, d.n); }
-        return Number.isFinite(n) && n > 0 ? n : undefined;
-      } catch (e) { return undefined; }
+      if (!subsWaitList.has(id)) { subsWaitList.set(id, Date.now()); if (subsWaitList.size > 64) subsWaitList.delete(subsWaitList.keys().next().value); }
+      if (subsListLen != null && subsListAt >= subsWaitList.get(id)) return subsListLen + 1;
+      let asked = false; try { asked = !!(meshNode && meshNode.recountDoor && meshNode.recountDoor()); } catch (e) {}
+      if (asked) return 'wait';
+      subsWaitList.delete(id);
+      return subsListLen != null ? subsListLen + 1 : undefined;
     }
+    // THE PLAN IS UNKNOWN, not absent, to a door that has not yet heard the
+    // admin's signed orders (a door seated a moment ago) while the room may
+    // still have its admin. Reading that as "no plan" would hold a $5 room to
+    // the free line and turn a newcomer away; a held knock only waits. So such
+    // a door holds the knock, asks nothing, and judges it again when the orders
+    // arrive or when the room's plan check ends. Only the orders say so: who
+    // is admin is itself read from them, so a page that has not heard them sees
+    // "no admin" too, and its closing countdown is no evidence. Every member
+    // re-sends the admin's last signed orders, so a door seated after the admin
+    // left still hears them; a room whose admin never sent any closes anyway.
+    const subsPlanWait = new Set();
+    const subsPlanKnown = () => amAdmin || !!modWSeen;
+    function subsRejudge() {
+      if (!subsPlanWait.size || !subsPlanKnown() || (hasAdminRoom() && subsRoomTier() === undefined)) return;
+      const ids = Array.from(subsPlanWait); subsPlanWait.clear();
+      const st = meshSeat(); if (st && st.recheckDoor) { try { st.recheckDoor(ids); } catch (e) {} }   // judged again, never admitted
+    }
+    const subsWaitPlan = (id) => { subsPlanWait.add(id); if (subsPlanWait.size > 64) subsPlanWait.delete(subsPlanWait.values().next().value); return true; };
     // The room's plan, verified once per order: undefined while it is being
     // checked, null when none is valid. It is checked ahead of any knock (the
     // timer below), so a door does not meet its first knock with no answer.
@@ -35115,9 +35175,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const k = o ? String(o.at) + '|' + String(o.proof || '') : '';
       if (k !== subsTierKey) {
         subsTierKey = k; subsTier = o ? undefined : null; subsTierExp = 0;
-        if (o) GifOS.meetSubs.roomTier(o, subsMeetId()).then((t) => { if (subsTierKey === k) { subsTier = t ? t.tier : null; subsTierExp = t ? t.exp : 0; } }, () => { if (subsTierKey === k) subsTier = null; });
+        if (o) GifOS.meetSubs.roomTier(o, subsMeetId()).then((t) => { if (subsTierKey === k) { subsTier = t ? t.tier : null; subsTierExp = t ? t.exp : 0; try { subsRejudge(); } catch (e) {} } }, () => { if (subsTierKey === k) { subsTier = null; try { subsRejudge(); } catch (e) {} } });
       }
-      if (subsTier && Date.now() / 1000 >= subsTierExp) subsTier = null;   // the admin's ticket ran out: the room is back on the 20 line
+      if (subsTier && Date.now() / 1000 >= subsTierExp) subsTier = null;   // the admin's ticket ran out: no plan, the free line
       return subsTier;
     }
     async function subsPublishRoomPlan() {
@@ -35147,12 +35207,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     setInterval(() => { try { if (subsOn() && hasAdminRoom()) subsRoomTier(); } catch (e) {} }, 2000);
     function subsHolds(id) {
       if (!id || !subsOn() || !hasAdminRoom() || subsProven.has(id)) return false;
+      if (!subsPlanKnown()) return subsWaitPlan(id);   // the admin's orders have not reached this door yet: hold, ask nothing
       const tier = subsRoomTier();
-      const count = subsRoomCount();
-      // While the room's plan is still being checked, a room below the 20 line
+      if (tier && GifOS.sub.doorVerdict({ adminRoom: true, roomTier: tier, count: 1e9 }) === 'let-in') return false;   // a room with no line counts nobody
+      const count = subsRoomCount(id);
+      if (count === 'wait') return true;   // the fresh list answers this knock (subsDoorSeen)
+      subsWaitList.delete(id);
+      // While the room's plan is still being checked, a room below the free line
       // lets the knocker in; a room at it holds the knock until the plan is
       // known (the knocker asks again), and asks nothing yet.
-      if (tier === undefined) return GifOS.sub.doorVerdict({ adminRoom: true, roomTier: null, count }) !== 'let-in';
+      if (tier === undefined) return GifOS.sub.doorVerdict({ adminRoom: true, roomTier: null, count }) !== 'let-in' && subsWaitPlan(id);
       if (GifOS.sub.doorVerdict({ adminRoom: true, roomTier: tier, count }) === 'let-in') return false;
       const q = peers.get(id), a = subsAsked.get(id);
       if (q && q.dc && q.dc.readyState === 'open' && !(a && Date.now() - a.at < 2000)) {
@@ -35181,7 +35245,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function subsRefuse(p, asked) {
       if (!asked && !subsAsked.has(p.id)) return;   // only a knocker this door asked
       subsAsked.delete(p.id);
-      const free = subsTier === 'free';
+      const free = !(subsTier && GifOS.sub.isPaid(subsTier));   // the free line: the free plan or no plan
       try { dcSend(p, free ? { k: 'subfull', free: true } : { k: 'subfull' }); } catch (e) {}
       if (free) subsTellHost();
     }
@@ -35204,7 +35268,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function subsTurnedSaid(p, dc) {
       if (!dc || dc.__authBy !== p.id) return;   // an authenticated channel only
       const ms = meshSeat();
-      if (!subsOn() || !amAdmin || !hasAdminRoom() || !(ms && ms.state === 3) || subsRoomTier() !== 'free') return;
+      if (!subsOn() || !amAdmin || !hasAdminRoom() || !(ms && ms.state === 3) || (subsRoomTier() && subsRoomTier() !== 'free')) return;
       GifOS.meetSubs.showHostPrompt();
     }
     // The admin of an admin room without a paid plan gets the free plan's

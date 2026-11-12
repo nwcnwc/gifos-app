@@ -809,5 +809,7 @@
   "meet.agAddItem": "Punkt hinzufügen",
   "meet.agWhoEdits": "Wer noch bearbeiten darf",
   "meet.agStop": "Agenda nicht mehr teilen",
-  "meet.shareStageFull": "Die Bühne ist voll. Jemand muss zuerst heruntergehen."
+  "meet.shareStageFull": "Die Bühne ist voll. Jemand muss zuerst heruntergehen.",
+  "meet.sttVideoPausedRelay": "Das Video ist auf dieser Verbindung pausiert. Der Ton funktioniert weiter. Ein Abonnent im Meeting kann das Video einschalten.",
+  "meet.turnSubscribe": "Abonnieren"
 }

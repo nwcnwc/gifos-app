@@ -809,5 +809,7 @@
   "meet.agAddItem": "Add item",
   "meet.agWhoEdits": "Who else can edit",
   "meet.agStop": "Stop sharing the agenda",
-  "meet.shareStageFull": "The stage is full. Someone has to step down first."
+  "meet.shareStageFull": "The stage is full. Someone has to step down first.",
+  "meet.sttVideoPausedRelay": "Video is paused on this connection. Sound still works. A subscriber in the meeting can turn video on.",
+  "meet.turnSubscribe": "Subscribe"
 }
