@@ -108,7 +108,7 @@
           {
             let l88 = (roomTerm(this, 1) || kv.v === owner) && this.occ.has(kv.k) && this.occGet(kv.k) !== kv.v && !this.firstHandLive(kv.k);
             if (!RCD.L35_5_OFF && !l88 && this.occ.has(kv.k) && this.occGet(kv.k) !== kv.v && !FREE.l355On(this, kv.k, this.occGet(kv.k))) l88 = true;   // L35.5: my placer's word replaces a name I no longer hold fresh
-            if (!this.occ.has(kv.k) || l88) { if (l88 && kv.v === owner) this.noChan.delete(kv.v); this.setOcc(kv.k, kv.v); if (!l88 || this.occGet(kv.k) === kv.v) { this.noteS1(kv.k); if (kv.v !== owner && ckPc(kv.k) === 0) this.s1told.set(kv.k, TICK); } }
+            if (!this.occ.has(kv.k) || l88) { if (l88 && kv.v === owner) this.noChan.delete(kv.v); this.setOcc(kv.k, kv.v); if (!l88 || this.occGet(kv.k) === kv.v) { this.noteS1(kv.k); if (kv.v !== owner && ckPc(kv.k) === 0) this.s1told.set(kv.k, TICK); if (!RCD.L35_5_OFF && kv.v !== owner) FREE.l35Hinted(this, kv.k, kv.v); } }   /* L35.5: a name my placer lists is its word, not mine */
             // The admitter's confirm of this seat is a hearing. Their own cell on this PLACE is the hearing the other way.
             // Section 1 has no owner coord, so that hearing is the linked cell they name themselves at. Anyone else's listing stays a listing.
             if (kv.v === owner && this.occGet(kv.k) === owner && ((hasO && kv.k === ckey(oc)) || (c.pc === 0 && ckPc(kv.k) === 0 && link))) this.liveMark(kv.k);

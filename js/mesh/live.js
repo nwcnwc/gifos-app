@@ -319,7 +319,7 @@
       const p = newMsg('PONG'); p.owner = owner; p.oCk = oCk; p.row = row; p.nbrs = cous; p.coord = cc(this.coord); p.id = id;
       if (this.state === 3 && (ckey(m.coord) === ckey(down(this.coord)) || (this.coord.pc !== 0 && this.coord.i === 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r)) && this.f.fabricTurnOn()) p.t14 = this.t14Word();   /* TURN.14.5: to the head of my child row, and to my row as its head */
       {
-        const view = (c) => { const x = this.occGet(ckey(c)); return ckey(c) === ckey(this.coord) || (x >= 0 && FREE.l355On(this, ckey(c), x)); };   // L35.5: a backup end is a name I hold fresh
+        const view = (c) => ckey(c) === ckey(this.coord) || this.occGet(ckey(c)) >= 0;
         if (ckey(m.coord) === ckey(down(this.coord))) {
           const crow = { pc: m.coord.pc, r: m.coord.r, i: 0 };
           {
