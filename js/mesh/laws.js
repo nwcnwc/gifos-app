@@ -28,7 +28,7 @@
     FHOP_CRUMB_TTL: 120,         // FHOP: a crumb (the channel a peer's frames came in on) and an envelope dedup entry live this long (60 s)
     FHOP_MAX_JOBS: 4,            // FHOP: carries with video one friend on Wi-Fi (or an unknown link) runs at once; past it a carry is voice only (FHOP.9)
     FHOP_REFUSE_HOLD: 60,        // FHOP: a friend that refused a relay is not asked again for this long (30 s)
-    FHOP_RELAY_ASK: 20,          // FHOP: a peer's direct pair down this long (10 s) before a friend is asked, and the gap between asks
+    FHOP_RELAY_ASK: 13,          // FHOP: the direct verdict. A peer's direct pair down this long before a friend is asked, and the gap between asks. Depends on: the offer and answer over the relay, then the answered dial's clock (LINK_DIAL_ICE)
     FHOP_SWEEP: 4,               // FHOP: the page's 2 s sweep that asks a friend to forward a peer's media
     FHOP_TTL: 12,                // FHOP: a friend-hop envelope's hop budget (run.html sponsorSend ttl 12)
     FHOP_VIDEO_CELL: 2,          // FHOP.9: carries with video a friend on a cellular link runs at once
@@ -146,7 +146,7 @@
     TURN_VOUCH_ROOM20: 3,        // TURN.11: video TURN links one Room 20 subscriber present in the meeting vouches for
     TURN_VOUCH_STREAMER: 20,     // TURN.11: video TURN links one Streamer subscriber present in the meeting vouches for
     TURN_VOUCH_UNLIMITED: 6,     // TURN.11: video TURN links one Room unlimited subscriber present in the meeting vouches for
-    TURN_WAIT: 60,               // TURN.4: a head asks for a TURN link only after the direct probe and every friend have failed for this long in a row (30 s). Depends on: one door listing, one failed direct dial, one friend probe; its floor is their sum
+    TURN_WAIT: 17,               // TURN.4: a head asks for a TURN link only after its own probe and the friends it asked at once (TURN.3) have failed for this long in a row. Depends on: the direct verdict (FHOP_RELAY_ASK) or one friend probe (the ask, the offer and answer over the relay, LINK_DIAL_ICE), whichever is longer, plus one sweep; the two run side by side, so not their sum
     UNPROVEN_HOLD: 60,           // H6: an unproven pairing past this age lives only on probe answers
   });
 })(typeof window !== 'undefined' ? window : globalThis);

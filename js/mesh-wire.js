@@ -504,6 +504,11 @@
       if (held && who) { heldAsks.set(String(who), [f, via, dir, direct]); if (heldAsks.size > 64) heldAsks.delete(heldAsks.keys().next().value); }
       return held;
     }
+    // A held knock judged AGAIN now (the page learned something, e.g. a fresh door count): it goes through the
+    // waiting-room gate once more, and only a knock the page no longer holds reaches the seat. Never an admit.
+    function recheckHeld(list) {
+      for (const p of list || []) { const a = heldAsks.get(String(p)); if (!a || stopped || !raw) continue; if (doorBlocks(a[0], a[1], a[2], a[3])) continue; penv.frame(Object.assign({}, a[0]), String(a[1]), dirOf(a[2]), a[3]); }
+    }
     // The host's OK answers the held knock now, not at the knocker's next retry (run.html meetWait.admit).
     function answerHeld(list) {
       for (const p of list || []) { const a = heldAsks.get(String(p)); if (!a || stopped || !raw) continue; penv.frame(Object.assign({}, a[0]), String(a[1]), dirOf(a[2]), a[3]); }
@@ -1158,7 +1163,7 @@
         onGossip: opts.onGossip ? (src, m, ag, scoped, link) => (stopped ? undefined : opts.onGossip(src, m, (ag || 0) * tickMs, !!scoped, link)) : null,
         ckey: (c) => net.topo.ckey(c), ownedLinks: (c) => net.topo.ownedLinks(c),
       });
-      seat = layer.view; seat.answerDoor = answerHeld;
+      seat = layer.view; seat.answerDoor = answerHeld; seat.recheckDoor = recheckHeld;
       penv = GifOS.meshPageEnv.create({
         peer, ids: layer.ids, seat: () => raw, tickMs,
         pc: Object.assign({}, opts.pc || {}, { send: (to, m, dir) => ((typeof opts.dcOpen !== 'function' || opts.dcOpen(to)) ? sendFrameTo(to, m, dir) : false) }),

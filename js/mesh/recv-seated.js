@@ -64,7 +64,7 @@
       if (this.hasCoord && this.state === 3 && m.ck === ckey(this.coord) && m.id !== id) {
         // a rival for MY cell: only Section 1 is settled by challenge (a deep cell by its one arbiter)
         {
-          if ((this.l25Stand(m.id) || prov) && this.rmRival(m.id, m.arr, 'hello')) return;   // L25 / L11
+          if ((this.l25Stand(m.id) || prov) && !this.l858Ring(m) && this.rmRival(m.id, m.arr, 'hello')) return;   // L25 / L11
           if (m.arr >= 0 && m.arr <= K.L11_ARRIVE) { const a = this.rmAnsTo.get(m.id); if (a === undefined || TICK - a >= 8) { if (a === undefined && this.rmAnsTo.size >= 32) eraseFirst(this.rmAnsTo); this.rmAnsTo.set(m.id, TICK); this.emit(m.id, hello(m.ck, id)); } }
         }
         if (sure && !(this.movedClaimId >= 0 && this.movedClaimId === m.id)) {
