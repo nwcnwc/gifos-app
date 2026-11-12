@@ -18,6 +18,7 @@
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
   // the sim's #define L48_2_OFF in mesh.cpp (a build-time switch): MESH_L48_2_OFF=1 under node, read once at load; a page always runs the law
+  const TURN14_16_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_TURN14_16_OFF === '1') ? 1 : 0;   // the sim's -DTURN14_16_OFF=1 build
   const TURN14_15_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_TURN14_15_OFF === '1') ? 1 : 0;   // the sim's -DTURN14_15_OFF=1 build: MESH_TURN14_15_OFF=1 under node; a page always runs the law
   const L48_2_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L48_2_OFF === '1') ? 1 : 0;
   const msg = req('./msg.js', 'meshMsg');
@@ -220,7 +221,7 @@
     // C++: mesh_seat.inc:Seat::t14Cross
     t14Cross(to, m) {
       const id = this.id;
-      if (m.t === 'PLACE') { if (m.nc === to) return false; this.trace('TURN14-NOPLACE', id, this.hasCoord ? this.coord : null, 'nc=%d to=%d', m.nc, to); return true; }
+      if (m.t === 'PLACE') { if (m.nc === to) return false; if (!TURN14_16_OFF) { const f = this.t14From.get(m.nc); if (f !== undefined && f[0] === to && this.TICK - f[1] <= K.RELAY_TTL) { this.trace('TURN14-BACK', id, this.hasCoord ? this.coord : null, 'nc=%d to=%d', m.nc, to); return false; } }   /* TURN.14.16: the answer to an entry ask goes back over the TURN pc the ask came over */ this.trace('TURN14-NOPLACE', id, this.hasCoord ? this.coord : null, 'nc=%d to=%d', m.nc, to); return true; }
       if (m.tag === 1) return false;   // a compaction walk passes (the far end answers it, TURN.14.2/14.3)
       if (!this.f.fabricTurnMine(id, m.nc) || this.f.fabricTurnBoth(id, m.nc)) return false;   // a seeker I cannot tell is mine (TURN.14.14: or one that reaches the far end too): as before
       if (!this.hasCoord || this.state !== 3 || m.t14 > 0) { this.trace('TURN14-STOP', id, this.hasCoord ? this.coord : null, 'nc=%d to=%d drop', m.nc, to); return true; }   // between two cells I seat nobody: the seeker asks again
