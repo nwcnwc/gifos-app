@@ -12459,6 +12459,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           });
         }
         if (!stream) return;
+        dropEndedRemoteTracks(stream, ev.track);   // a copy that comes back lands in the stream it left: its old, ended track goes first
         p.incoming = p.incoming || [];
         if (!p.incoming.includes(stream)) {
           // CONTAINER IDENTITY: a sid is a per-job constant now, so a rebuilt
@@ -21694,7 +21695,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (job.video) continue;
         const tp = peers.get(job.target), rp = peers.get(job.requester);
         if (!tp || !tp.stream || !rp || !rp.pc) continue;
-        for (const tr of tp.stream.getVideoTracks()) { try { job.senders.push(addAux(rp.pc, tr, job.container)); } catch (e) {} }
+        for (const tr of shipTracks(tp.stream)) { if (tr.kind !== 'video') continue; try { job.senders.push(addAux(rp.pc, tr, job.container)); } catch (e) {} }   // one track per kind (shipTracks)
         job.video = true; fhTrace('FH-JOB-VIDEO', 'target=' + String(job.target).slice(0, 8) + ' req=' + String(job.requester).slice(0, 8));
         renegotiate(rp); return;
       }
@@ -21726,6 +21727,25 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // A far side's own description says Firefox as it arrives; the browser rewrites that line once applied.
     const geckoPcs = new WeakSet();
     function noteGecko(p, desc) { if (p && p.pc && desc && /^o=mozilla/m.test(String(desc.sdp || ''))) geckoPcs.add(p.pc); }
+    // REMOVING A PARKED SENDER. removeTrack does nothing to a sender that holds no track (the spec aborts when the
+    // sender's track is null), and a parked copy's sender holds none (replaceTrack(null)). Its m-line then stayed
+    // negotiated as sending, under the copy's stream id, and toward Firefox (whose lines are never stopped, stopAuxTx)
+    // every re-ship of that copy added one more video track to the receiver's stream: [old, new] after a stager stepped
+    // down and up again, [old, old, new] the time after. A <video> shows the first video track: black (Chromium) or a
+    // frozen frame (Firefox) while the new copy's bytes flowed. Two-page proof without GifOS: park, removeTrack, a new
+    // transceiver in the same stream. So the removal is made by hand: the line stops sending and leaves the stream.
+    function auxDrop(pc, sd) {
+      if (!pc || !sd) return;
+      try { pc.removeTrack(sd); } catch (e) {}
+      try {
+        const tx = pc.getTransceivers().find((t) => t.sender === sd);
+        if (tx && !tx.stopped) {
+          if (tx.direction === 'sendrecv') tx.direction = 'recvonly';
+          else if (tx.direction === 'sendonly') tx.direction = 'inactive';
+        }
+      } catch (e) {}
+      try { if (typeof sd.setStreams === 'function') sd.setStreams(); } catch (e) {}
+    }
     function stopAuxTx(pc, sd, key) {
       try {
         const tx = pc.getTransceivers().find((t) => t.sender === sd);
@@ -21848,6 +21868,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const WEBKIT_TILE = WEBKIT_ENGINE && (() => { try { return localStorage.getItem('gifos_wk_tile') !== 'off'; } catch (e) { return true; } })();
     const WK_TILE_HOLD = GifOS.timings.WK_TILE_HOLD;    // ms the sender keeps the camera parked for a held re-seat
     const WK_TILE_BIND_AT = GifOS.timings.WK_TILE_BIND_AT; // ms into the hold when the tile is bound (frames have stopped by then)
+    // A COPY THAT COMES BACK LANDS IN THE STREAM IT LEFT. A sender keeps one stream id per copy for the life of the page
+    // (the container law), and the browser hands a track whose stream id it already knows to the SAME remote MediaStream.
+    // When the copy's old m-line was stopped, WebKit (and Firefox) leave its ended track in that stream beside the new
+    // one (Chromium takes it out): the copy read [ended video, live video] (feedsInfo vTracks 2). An ended track carries
+    // nothing more, so it leaves the stream before anything binds or relays it. Never a live track.
+    function dropEndedRemoteTracks(stream, keep) {
+      if (!stream || !keep || typeof stream.getTracks !== 'function') return;
+      for (const t of stream.getTracks()) {
+        if (t !== keep && t.kind === keep.kind && t.readyState === 'ended') { try { stream.removeTrack(t); } catch (e) {} }
+      }
+    }
     function tileHolds(video, stream) {
       return !!video && !!stream && (video.srcObject === stream || (video._wrapOf === stream && !!video._pic && video.srcObject === video._pic));
     }
@@ -22257,7 +22288,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const container = new MediaStream();
       const senders = [];
       const video = relayVideoJobs() < relayVideoBudget();   // FHOP.9: past my video budget a carry forwards the voice only
-      for (const tr of tp.stream.getTracks()) { if (!video && tr.kind === 'video') continue; try { senders.push(addAux(reqP.pc, tr, container)); } catch (e) {} }
+      for (const tr of shipTracks(tp.stream)) { if (!video && tr.kind === 'video') continue; try { senders.push(addAux(reqP.pc, tr, container)); } catch (e) {} }   // one track per kind (shipTracks)
       if (!senders.length) { refuse(); return; }
       relayJobs.set(key, { senders, requester: reqP.id, target, container, video });
       fhTrace('FH-JOB', 'target=' + String(target).slice(0, 8) + ' req=' + String(reqP.id).slice(0, 8) + ' video=' + (video ? 1 : 0) + ' cls=' + linkCls() + ' jobs=' + relayJobs.size);
@@ -22273,7 +22304,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (job.video) relayPromote();   // FHOP.9: a video job ended
       const rp = peers.get(requesterPid);
       if (!rp) return;
-      for (const sd of job.senders) { try { rp.pc.removeTrack(sd); } catch (e) {} }
+      for (const sd of job.senders) auxDrop(rp.pc, sd);
       renegotiate(rp);
       if (notify) dcSend(rp, { k: 'relay-end', target });
     }
@@ -23411,6 +23442,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               job.attachErr = null;
               return sd;
             }
+            // the carrier's m-line must not stay in the container beside the transcode one below (a second video track at the receiver)
+            auxSenders.delete(sd); auxDrop(p.pc, sd); stopAuxTx(p.pc, sd, job.key);
             carrier.stop();
           }
         } catch (e) {}
@@ -23435,7 +23468,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const pj = pipeJobs.get(jk);
       if (pj && job.trackList[idx] === pj.carrier.track) { pipeJobs.delete(jk); try { MPipe.unpipe(pj.srcId, jk); } catch (e) {} }
       if (p && p.pc) {
-        try { p.pc.removeTrack(sd); } catch (e) {}
+        auxDrop(p.pc, sd);
         stopAuxTx(p.pc, sd, job.key);
       }
       job.senders.splice(idx, 1); job.trackList.splice(idx, 1); job.srcTracks.splice(idx, 1);
@@ -23521,6 +23554,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return now - (prevAt || 0) >= 5000;
     }
     // END-STAGE-ANN-DUE
+    // A COPY CARRIES ONE TRACK PER KIND. A received copy can hold two video tracks (its sender left a parked m-line in
+    // it: a page without auxDrop below). Shipping every track put a second video m-line into this copy's container too,
+    // the next hop did the same, and a viewer's <video> showed the first, dead, track (feedsInfo vTracks 2). Per kind,
+    // the copy takes the one track that carries media: unmuted first, the newest (last added) among equals.
+    function shipTracks(stream) {
+      const out = [];
+      for (const kind of ['audio', 'video']) {
+        const c = stream.getTracks().filter((t) => t.kind === kind && t.readyState !== 'ended');
+        if (!c.length) continue;
+        const live = c.filter((t) => !t.muted);
+        out.push((live.length ? live : c)[(live.length ? live : c).length - 1]);
+      }
+      return out;
+    }
     function shipMos(key, to, stream, meta, upKey) {
       if (!to || !stream) return null;
       const p = peers.get(to);
@@ -23541,7 +23588,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // nothing this job ships, and an upstream that mutates its container
       // in place (regrabCamera; every hop, now) changes the tracks while the
       // id stands still. Comparing sig alone got BOTH cases wrong.
-      const want = stream.getTracks().filter((t) => t.readyState !== 'ended');
+      const want = shipTracks(stream);
       const sameSet = !!(cur && cur.srcTracks && cur.srcTracks.length === want.length
         && want.every((t) => cur.srcTracks.indexOf(t) >= 0));
       // THE CARRY GUARANTEE AFTER 'w' (the second half of the FAILOVER-WAKE
@@ -23894,7 +23941,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (pj) { pipeJobs.delete(jk); try { MPipe.unpipe(pj.srcId, jk); } catch (e) {} } // unroutes the worker + stops the carrier mint
       if (p && p.pc) {
         for (const sd of job.senders) {
-          try { p.pc.removeTrack(sd); } catch (e) {}
+          auxDrop(p.pc, sd);
           // STOP the m-line outright: an unshipped aux transceiver is never
           // reused (addAux always opens a fresh one — see its comment), but a
           // merely-removeTrack'd m-line stays fully negotiated in every later
