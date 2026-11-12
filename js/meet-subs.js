@@ -627,7 +627,7 @@
     let el = document.getElementById('sub-now');
     if (!line) { if (el) el.hidden = true; return; }
     if (!el) {
-      el = document.createElement('button'); el.type = 'button'; el.id = 'sub-now'; el.className = 'statustext sub-now';
+      el = document.createElement('button'); el.type = 'button'; el.id = 'sub-now'; el.className = 'sub-now';
       el.addEventListener('click', () => openSettings());
       status.appendChild(el);
     }
