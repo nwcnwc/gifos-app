@@ -575,6 +575,12 @@
 
   // Scroll: one share band, full width, never taller than the screen.
   function shareScrollRect(it, x, y, w, maxH) {
+    // The content area in Scroll: every shared thing stacked, each band no
+    // taller than the screen, so the area is as tall as its stack.
+    if (typeof it.stackH === 'function') {
+      const h = Math.max(1, +it.stackH(w, maxH) || 1);
+      return { id: it.id, tier: 'stage', x: x, y: y, w: w, h: h, fit: 'cover' };
+    }
     if (it.fill || it.kind === 'app') {
       const h = Math.min(maxH, w * 9 / 16);
       return { id: it.id, tier: 'stage', x: x, y: y, w: w, h: h, fit: 'cover' };
@@ -696,7 +702,85 @@
   // Fit with a share: the share takes the left (wide) or the top (tall).
   // Row and stadium fit in the remaining band. Stage people float over the
   // share, shrunk to about a third of its short side.
+  // The content area full size (Nathan 2026-11-11): on a phone the faces are
+  // one strip along the bottom (upright) or the right (sideways) that the
+  // viewer can hide; in Float the faces float over the content as panels.
+  function faceStrip(ids, tierOf, strip, gap, vertical) {
+    const out = [];
+    const n = ids.length;
+    if (!n) return out;
+    const thick = vertical ? strip.w : strip.h;
+    const len = vertical ? strip.h : strip.w;
+    const side = Math.max(24, Math.min(thick, (len - gap * (n - 1)) / n));
+    const used = n * side + (n - 1) * gap;
+    let at = (vertical ? strip.y : strip.x) + Math.max(0, (len - used) / 2);
+    for (let i = 0; i < n; i++) {
+      const r = vertical
+        ? { x: strip.x + (thick - side) / 2, y: at, w: side, h: side }
+        : { x: at, y: strip.y + (thick - side) / 2, w: side, h: side };
+      out.push(Object.assign({ id: ids[i], tier: tierOf(ids[i]), fit: 'cover' }, r));
+      at += side + gap;
+    }
+    return out;
+  }
+  function layoutContentFull(opts, box, gap, phone, row, stad, shareItem, onStage) {
+    const c = opts.content || {};
+    const hide = !!c.hideFaces;
+    const people = onStage.map((it) => it.id).concat(row, stad);
+    const isStage = new Set(onStage.map((it) => it.id));
+    const isStad = new Set(stad);
+    const tierOf = (id) => (isStage.has(id) ? 'stage' : isStad.has(id) ? 'stad' : 'row');
+    if (c.float) {
+      // Float: the content takes the whole box; the stage and the row are the
+      // panels the Float view lets you move (placeFloats), resting in the
+      // top left (stage) and bottom right (row and stadium) corners.
+      const sb = { x: box.x, y: box.y, w: box.w, h: box.h };
+      const rects = [{ id: shareItem.id, tier: 'stage', x: sb.x, y: sb.y, w: sb.w, h: sb.h, fit: 'cover' }];
+      let stageBox = null, rowBox = null;
+      const short = Math.min(box.w, box.h);
+      const tile = Math.max(phone ? 64 : 88, Math.round(short * (phone ? 0.2 : 0.18)));
+      if (onStage.length) {
+        const ids = onStage.map((it) => it.id);
+        const vertical = box.h > box.w;
+        const len = Math.min(vertical ? box.w - 16 : box.h - 16, ids.length * (tile + gap));
+        // Under the content's tab bar (48 px), so no tab hides behind it.
+        const top = box.y + 56;
+        const lenV = Math.min(len, box.h - 64);
+        const strip = vertical ? { x: box.x + 8, y: top, w: len, h: tile } : { x: box.x + 8, y: top, w: tile, h: Math.max(tile, lenV) };
+        const sr = faceStrip(ids, tierOf, strip, gap, !vertical);
+        for (const r of sr) { r.float = 'stage'; rects.push(r); }
+        stageBox = strip;
+      }
+      const rest = row.concat(stad);
+      if (rest.length) {
+        const len = Math.min(box.w - 16, rest.length * (tile + gap));
+        const strip = { x: box.x + box.w - 8 - len, y: box.y + box.h - 8 - tile, w: len, h: tile };
+        const rr = faceStrip(rest, tierOf, strip, gap, false);
+        for (const r of rr) { r.float = 'row'; rects.push(r); }
+        rowBox = strip;
+      }
+      return laid(rects, box.h, { stage: stageBox, share: sb, people: rowBox }, { side: tile, stadSide: 0, tooSmall: false }, 'fit');
+    }
+    // Phone: the strip runs along the bottom when upright, down the right
+    // side when sideways; hidden, the content has the whole screen.
+    const vertical = box.w > box.h;
+    const thick = hide || !people.length ? 0 : Math.round(vertical ? Math.min(140, Math.max(80, box.w * 0.16)) : Math.min(120, Math.max(72, box.h * 0.14)));
+    const sb = vertical ? { x: box.x, y: box.y, w: Math.max(1, box.w - (thick ? thick + gap : 0)), h: box.h }
+      : { x: box.x, y: box.y, w: box.w, h: Math.max(1, box.h - (thick ? thick + gap : 0)) };
+    const rects = [{ id: shareItem.id, tier: 'stage', x: sb.x, y: sb.y, w: sb.w, h: sb.h, fit: 'cover' }];
+    let pb = null;
+    if (thick) {
+      pb = vertical ? { x: sb.x + sb.w + gap, y: box.y, w: thick, h: box.h } : { x: box.x, y: sb.y + sb.h + gap, w: box.w, h: thick };
+      const fr = faceStrip(people, tierOf, pb, gap, vertical);
+      for (const r of fr) rects.push(r);
+    }
+    return laid(rects, box.h, { stage: pb, share: sb, people: pb }, { side: thick, stadSide: 0, tooSmall: false }, 'fit');
+  }
+
   function layoutFitShare(opts, box, gap, phone, row, stad, shareItem, onStage) {
+    if (shareItem.content && opts.content && (opts.content.float || opts.content.phone)) {
+      return layoutContentFull(opts, box, gap, phone, row, stad, shareItem, onStage);
+    }
     const wide = box.w >= box.h * 1.15;
     let sb, pb, sr;
     if (wide) {
