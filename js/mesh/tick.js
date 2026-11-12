@@ -21,6 +21,7 @@
   const GifOS = root.GifOS = root.GifOS || {};
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
+  const TURN14_15_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_TURN14_15_OFF === '1') ? 1 : 0;   // the sim's -DTURN14_15_OFF=1 build
   const C_ = req('./consts.js', 'meshConsts');
   const msg = req('./msg.js', 'meshMsg');
   const topo = req('./topo.js', 'meshTopo');
@@ -274,6 +275,7 @@
       if (TICK >= this.xlinkAt) { this.xlinkAt = TICK + 150 + Math.trunc(this.rng() * 100); const cm = colMates(this.coord); for (let q = 0; q < C - 1; q++) if (this.occGet(ckey(cm[q])) < 0) this.routeTo(cm[q], 1); }   // W7: keep column links live
       if (this.s1CheckAt < 0) this.s1CheckAt = TICK + K.E3_PERIOD + Math.trunc(this.rng() * K.E3_PERIOD);
       if (this.coord.pc === 0 && (TICK + id) % K.TURN_RETRY === 0 && this.f.fabricTurnOn()) this.t14Call();   /* TURN.14.13 */
+      if (!TURN14_15_OFF && this.coord.pc === 0 && (TICK + id) % K.HELLO_BACK === 0 && this.f.fabricTurnOn()) this.t1415Beat();   /* TURN.14.15 */
       if (TICK >= this.s1CheckAt) { this.s1CheckAt = TICK + K.E3_PERIOD + Math.trunc(this.rng() * K.E3_PERIOD); this.emitRelay(this.genKey); }   // E3: re-knock each ~E3_PERIOD
       this.f.wake(id); return;
     },

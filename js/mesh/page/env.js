@@ -477,6 +477,7 @@
       if (a !== me || !turnOn() || !fh.turnOpened) return false;
       const s = seat(); if (!s || !s.hasCoord || s.state !== 3 || s.coord.pc !== 0) return false;
       const T = turnSet(); if (!T.size) return false;
+      for (const x of T) if (fh.turnOpened(ID.pid(x)) && s.t1415Far(x)) return true;   // TURN.14.15: by my link peer's own word, whatever my view holds
       let end = false;
       const seated = new Set(s.occ.values());
       for (const x of T) {
@@ -497,6 +498,10 @@
       }
       return false;
     }
+    // C++: mesh_turn.inc:fabricTurnPeerIn   (TURN.16: the listed greeter that is the far end of a TURN link of mine, or -1)
+    function fabricTurnPeerIn(a, list) { if (a !== me || !turnOn()) return -1; const T = turnSet(); for (const x of T) if (list.indexOf(x) >= 0) return x; return -1; }
+    // C++: mesh_turn.inc:fabricTurnSide   (TURN.14.15: the peers I hold a pc of my own to, no TURN pc, lowest id first)
+    function fabricTurnSide(a, out) { out.length = 0; if (a !== me || !turnOn()) return; const T = turnSet(); for (const x of Array.from(connSet()).sort((p, q) => p - q)) if (!T.has(x)) out.push(x); }
     // C++: mesh_turn.inc:fabricTurnPc   (my pc to x runs through TURN)
     const fabricTurnPc = (a, x) => a === me && x >= 0 && turnOn() && turnSet().has(x);
     // C++: mesh_turn.inc:fabricTurnOpener   (L8.5.9: I opened the up TURN link whose far end is x)
@@ -551,7 +556,7 @@
       fabricAdmitLog: noop, fabricDupMint: noop, fabricNoteBackoff: noop, fabricNoteReseat: noop, fabricNoteRollback: noop,
       fabricNoteSwap: noop, fabricVerdict: deaths.verdict, l18UxDeliv: noop, descEnd: noop, descNote: noop, g4Joined: noop,   // g4Joined: the sim's L40 contest lever only (X1 55c97d1)
       fabricFreeCells, fabricLieFor: () => null, fabricUnreachable, fhopActive: () => !!fh, fhopFriendFor,
-      fabricTurnOn: turnOn, fabricTurnPc, fabricTurnOpener, fabricTurnStray, fabricTurnLone, fabricTurnAcross, fabricTurnMine, fabricTurnCarried, fabricTurnFeeds: noop, fabricTurnBoth: () => false, fabricTurnPeerIn: () => -1,   /* TURN.14 from my pc table (above); the feeds are the media plane's (run.html turnFeedPeers) */
+      fabricTurnOn: turnOn, fabricTurnPc, fabricTurnOpener, fabricTurnStray, fabricTurnLone, fabricTurnAcross, fabricTurnMine, fabricTurnCarried, fabricTurnFeeds: noop, fabricTurnSide, fabricTurnBoth: () => false, fabricTurnPeerIn,   /* TURN.14 from my pc table (above); the feeds are the media plane's (run.html turnFeedPeers) */
       fabricMyTier: () => ((measure.tier ? measure.tier() : E.TIER_DESKTOP) | 0),
       fabricMyNat: () => ((measure.nat ? measure.nat() : E.NAT_OPEN) | 0),
       fabricLeft: () => leaveNow(false), fabricReloadBye: () => leaveNow(true),
