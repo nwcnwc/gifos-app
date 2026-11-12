@@ -8042,8 +8042,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const v = box.querySelector('video');
       const pid = on ? ctSpeakerPick(selIt) : null;
       const p = pid ? peers.get(pid) : null;
-      const st = p && p.video && p.video.srcObject;
-      const vt = st && st.getVideoTracks && st.getVideoTracks()[0];
+      // A person on stage sends their camera on the stage feed; their row
+      // picture is parked. Take the stage feed first, the tile second.
+      let vt = null;
+      if (pid) {
+        try {
+          const m = mosIn && mosIn.get('stg:' + pid);
+          const t = m && m.stream && m.stream.getVideoTracks && m.stream.getVideoTracks()[0];
+          if (t && t.readyState !== 'ended') vt = t;
+        } catch (e) {}
+      }
+      if (!vt) {
+        const st = p && p.video && p.video.srcObject;
+        vt = (st && st.getVideoTracks && st.getVideoTracks()[0]) || null;
+      }
       if (!on || !vt) { box.hidden = true; if (v.srcObject) { v.srcObject = null; v._vt = null; } return; }
       if (v._vt !== vt) { v._vt = vt; v.srcObject = new MediaStream([vt]); const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); }
       const nm = box.querySelector('.ct-inset-nm');
