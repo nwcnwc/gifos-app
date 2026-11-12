@@ -653,7 +653,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <p class="ly-preview" id="lyrics-preview"></p>
     <button data-t="lyNext" type="button" id="lyrics-next">Next line</button>
   </aside>
-  <button data-ti="fitbtnTip" data-al="fitbtnAria" data-t="fitbtn" type="button" id="fitbtn" class="fitbtn" aria-pressed="true" aria-label="Gallery" aria-keyshortcuts="Alt+F" title="Fit everyone on one screen. Press to scroll the room instead. Alt+F switches.">▦ Fit</button>
+  <button type="button" id="fitbtn" class="fitbtn" aria-haspopup="dialog" aria-expanded="false" aria-controls="viewpick" aria-label="View: Fit" aria-keyshortcuts="Alt+F" title="Change the view (Alt+F)"><span class="vb-ic" aria-hidden="true"></span><span class="vb-word">Fit</span></button>
+  <button type="button" id="presentbtn" class="presentbtn" aria-label="Present: the content full screen, the speaker inset" title="Present: the content full screen, the speaker inset"><span class="vb-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="13" rx="2"/><rect x="14.5" y="11" width="5" height="4" rx="1"/><path d="M8 21h8M12 17v4"/></svg></span><span class="vb-word">Present</span></button>
+  <div id="viewpick" class="viewpick" role="dialog" aria-label="View" hidden>
+    <div class="vp-modes" role="radiogroup" aria-label="View">
+      <button type="button" role="radio" class="vp-mode" data-view="scroll" aria-checked="false"><span class="vp-ic" aria-hidden="true"></span><span class="vp-word">Scroll</span></button>
+      <button type="button" role="radio" class="vp-mode" data-view="fit" aria-checked="true"><span class="vp-ic" aria-hidden="true"></span><span class="vp-word">Fit</span></button>
+      <button type="button" role="radio" class="vp-mode" data-view="drag" aria-checked="false"><span class="vp-ic" aria-hidden="true"></span><span class="vp-word">Drag</span></button>
+      <button type="button" role="radio" class="vp-mode" data-view="focus" aria-checked="false"><span class="vp-ic" aria-hidden="true"></span><span class="vp-word">Focus</span></button>
+    </div>
+    <button type="button" role="switch" id="vp-follow" class="vp-follow" aria-checked="true" hidden><span class="vp-word">Follow the speaker</span><span class="vp-knob" aria-hidden="true"></span></button>
+  </div>
   <div id="livecap"></div>
   <div id="callstate" hidden>
     <span data-t="callLive" id="call-live" role="status">Live</span>
@@ -743,6 +753,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <button type="button" id="whobtn" data-t="people" data-ti="whoTip" aria-keyshortcuts="Alt+W" title="Who is on this meeting — names and internet addresses">People</button>
         <button data-ti="trbtnTip" data-t="transcript" aria-keyshortcuts="Alt+T" title="The meeting's live transcript" id="trbtn"><svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>Transcript</button>
         <button data-ti="qabtnTip" data-t="qabtn" id="qabtn" type="button" title="Questions for the host: ask one, and vote up the ones you want answered">Questions</button>
+        <button data-ti="agendaTip" data-t="agendaBtn" id="agendabtn" type="button" title="Share an agenda: the items, how long each takes, and which one is on now">Agenda</button>
       </div>
     </section>
     <section class="moregroup" data-group="video">
@@ -1448,11 +1459,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/meet-status.js" defer></script>
   <script src="js/gifos-sub.js" defer></script>
   <script src="js/meet-subs.js" defer></script>
+  <script src="js/gifos-library.js" defer></script>
   <script src="js/meet-leave.js" defer></script>
   <script src="js/meet-debuglog.js" defer></script>
   <script src="js/meet-meters.js" defer></script>
   <script src="js/meet-zones.js" defer></script>
   <script src="js/meet-views.js" defer></script>
+  <script src="js/meet-viewmode.js" defer></script>
+  <script src="js/meet-content.js" defer></script>
+  <script src="js/meet-agenda.js" defer></script>
   <script src="js/mesh-pipe.js" defer></script>
   <script src="js/relay-config.js" defer></script>
   <script src="js/runtime.js" defer></script>
@@ -5634,8 +5649,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try {
         if (!subsOn()) return false;
         const m = GifOS.meetSubs.meeting && GifOS.meetSubs.meeting();
-        if (m && m.held) return true;
-        return !!(hasAdminRoom() && subsRoomTier());
+        if (m && m.paid) return true;   // the free plan's ticket holds nothing back
+        const t = hasAdminRoom() ? subsRoomTier() : null;
+        return !!(t && t !== 'free');
       } catch (e) { return false; }
     }
     function updateHold() {
@@ -5759,6 +5775,23 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     fsview.appendChild(fsmain); fsview.appendChild(fsname); fsview.appendChild(fsstrip); fsview.appendChild(fsclose);
     document.body.appendChild(fsview);
     let fsSel = null, fsTick = null, fsAutoPid = null;
+    // fsInline: the view is the meeting's Focus view, drawn in the page under
+    // the floating bar and the header, not a full screen of its own.
+    let fsInline = false;
+    let fsFollow = null, fsFollowT = 0; // Follow the speaker state (meet-viewmode.js followStep) and its wake timer
+    // The view trace (DEBUG record ring 'view'): every view change and every
+    // Follow the speaker move, with when and why.
+    const viewTrace = (window.__viewTrace = window.__viewTrace || []);
+    function viewNote(k, x) {
+      viewTrace.push(Object.assign({ t: Date.now(), k }, x || {}));
+      if (viewTrace.length > 200) viewTrace.shift();
+    }
+    // What the Focus view shows, for the debug dump and the room tests.
+    window.__meetFocusState = () => ({
+      view: window.__meetView || 'fit', on: fsview.classList.contains('on'), inline: fsInline,
+      follow: fsSel === 'auto', main: fsmain.dataset.key || '', auto: fsAutoPid || '',
+      strip: fsstrip.dataset.set || '',
+    });
     // The grid videos stay attached while #fsview is open; body.fsopen only
     // hides their paint. busVolume, the row head's packer, selfStageStream
     // and the recorder all read those elements, so detaching them would
@@ -5773,7 +5806,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // the view only when the holder has stopped. A dark peer is in src as
       // a name card, so a camera-off talker is picked the same way.
       const speakingKey = (key) => key.indexOf('peer:') === 0 && speakingOf.get(key.slice(5));
-      if (!(fsAutoPid && speakingKey('peer:' + fsAutoPid))) {
+      const VM = window.GifOS && GifOS.meetViewMode;
+      if (VM && VM.followStep) {
+        // The holds (FOLLOW_ON_MS, FOLLOW_HOLD_MS, FOLLOW_GAP_MS) come from the
+        // timings table: a new talker must hold the floor a moment before the
+        // view moves, and whoever took it keeps it a while.
+        if (!fsFollow) fsFollow = VM.followState();
+        const keys = src.filter((s) => s.key.indexOf('peer:') === 0).map((s) => s.key);
+        const step = VM.followStep(fsFollow, keys.filter(speakingKey), keys, Date.now());
+        fsAutoPid = step.key ? step.key.slice(5) : null;
+        if (step.changed) viewNote('follow', { to: fsAutoPid, talking: keys.filter(speakingKey).map((k) => k.slice(5)) });
+        if (fsFollowT) { clearTimeout(fsFollowT); fsFollowT = 0; }
+        if (step.wakeAt) fsFollowT = setTimeout(() => { fsFollowT = 0; if (fsSel === 'auto' && fsview.classList.contains('on')) fsRefresh(); }, Math.max(0, step.wakeAt - Date.now()));
+      } else if (!(fsAutoPid && speakingKey('peer:' + fsAutoPid))) {
         for (const s of src) if (speakingKey(s.key)) { fsAutoPid = s.key.slice(5); break; }
       }
       return (fsAutoPid && src.find((s) => s.key === 'peer:' + fsAutoPid))
@@ -5787,6 +5832,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // one face only while one person is on it and nobody shares.
     function fsSources() {
       const out = [];
+      // The content region first (content tabs, js/meet-viewmode.js content):
+      // in Focus the big view can be a content item as well as a person.
+      try {
+        const VMc = window.GifOS && GifOS.meetViewMode && GifOS.meetViewMode.content;
+        if (VMc && !BROADCAST) for (const it of VMc.items()) if (it.stream || it.v) out.push({ key: it.key, label: it.label || '', v: it.v || null, stream: it.stream || null, fit: 'contain', content: true });
+      } catch (e) {}
       let stageFit = null;
       for (const v of stagefeedEl.querySelectorAll('.rowtile video')) {
         if (v.classList.contains('stageface')) continue;
@@ -5818,7 +5869,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // Read the live stream every refresh, so a renegotiated feed follows.
       // One visible sink per feed: #fsmain or a thumb, never both. A dark
       // source has no stream, even if its grid <video> still holds frames.
-      for (const s of src) s.stream = (!s.dark && s.v) ? s.v.srcObject : null;
+      for (const s of src) s.stream = s.dark ? null : (s.content && s.stream ? s.stream : (s.v ? s.v.srcObject : null));
       const main = fsSel === 'auto' ? fsPickAuto(src) : (src.find((s) => s.key === fsSel) || src[0] || null);
       const showName = (on, label) => {
         const nameEl = (typeof document !== 'undefined' && typeof document.getElementById === 'function') ? document.getElementById('fsname') : null;
@@ -5854,7 +5905,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (main) {
         if (fsSel !== 'auto') fsSel = main.key; // a pin re-anchors; auto stays auto
         if (identOn) identCard();
-        else if (main.dark) {
+        else if (main.content) {
+          // The content area is drawn over the big view (contentPlace).
+          if (fsmain.srcObject) fsmain.srcObject = null;
+          fsmain._from = null;
+          fsmain.classList.remove('dark');
+          fsBlurClass(fsmain, 0);
+          showName(false);
+        } else if (main.dark) {
           if (fsmain.srcObject) fsmain.srcObject = null;
           fsmain.classList.add('dark');
           fsBlurClass(fsmain, 0);
@@ -5905,8 +5963,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!broadcastFs && !auto) {
         auto = document.createElement('div');
         auto.className = 'fsthumb fsauto'; auto.dataset.key = 'auto';
-        auto.innerHTML = '<span class="fsautoglyph">🗣</span><span class="fslbl">Follow speaker</span>';
-        asButton(auto, 'Follow speaker', () => { fsSel = 'auto'; fsAutoPid = null; fsRefresh(); });
+        auto.innerHTML = '<span class="fsautoglyph"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M17 6.5c1 .9 1.5 2 1.5 3.2s-.5 2.3-1.5 3.2M19.5 4c1.7 1.5 2.5 3.5 2.5 5.7s-.8 4.2-2.5 5.7"/></svg></span><span class="fslbl">' + uiText('viewFollow', 'Follow the speaker') + '</span>';
+        asButton(auto, uiText('viewFollow', 'Follow the speaker'), () => { fsSel = 'auto'; fsAutoPid = null; fsFollow = null; fsRefresh(); fsFollowChanged(); });
       }
       const keep = new Set(broadcastFs ? [] : ['auto']);
       const place = (th, pos) => { if (fsstrip.children[pos] !== th) fsstrip.insertBefore(th, fsstrip.children[pos] || null); };
@@ -5948,7 +6006,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           paintThumbCard(th);
         }
         const key = s.key;
-        asButton(th, s.label || 'Show this feed', () => { fsSel = key; fsRefresh(); });
+        asButton(th, s.label || 'Show this feed', () => { fsSel = key; fsRefresh(); fsFollowChanged(); });
         place(th, pos);
         pos++;
       }
@@ -5960,6 +6018,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       fsstrip.dataset.set = thumbs.map((s) => s.key).join('|');
       fsPaintSel();
+      try { ctFocusSync(); } catch (e) {}
     }
     function fsRefreshIfOpen() {
       if (fsview.classList.contains('on')) fsRefresh();
@@ -5981,16 +6040,28 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function fsQuiet() {
       return IS_ANDROID && fsStripOk() && pageFull() && !fsview.classList.contains('on');
     }
-    function openFsView(key) {
+    // A tap on a thumb pins a person and the Follow chip follows again: the
+    // view picker's switch shows the same choice.
+    function fsFollowChanged() {
+      if (!fsInline) return;
+      const on = fsSel === 'auto';
+      try { if (window.GifOS && GifOS.meetViewMode) GifOS.meetViewMode.saveFollow(localStorage, on); } catch (e) {}
+      if (typeof window.__meetPaintView === 'function') window.__meetPaintView();
+    }
+    function openFsView(key, inline) {
       fsSel = key || null;
+      fsFollow = null;
+      fsInline = !!inline;
+      document.body.classList.toggle('view-focus', fsInline);
       fsview.classList.add('on');
       document.body.classList.add('fsopen');
       fsRefresh();
       if (!fsTick) fsTick = setInterval(fsRefresh, 2000);
       // The document already holds the screen on a phone. Asking again would
-      // put this view in the top layer and bury every sheet.
-      const own = !document.fullscreenElement;
-      fsOverlay = !own;
+      // put this view in the top layer and bury every sheet. The Focus view
+      // never asks: it is a view of the meeting, under its controls.
+      const own = !document.fullscreenElement && !fsInline;
+      fsOverlay = !own && !fsInline;
       if (own && fsview.requestFullscreen) {
         fsAskAt = Date.now();
         fsview.requestFullscreen().catch(() => {});
@@ -5998,9 +6069,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { fsclose.focus(); } catch (e) {} // the keyboard goes where the picture is
       paintInPageFull();
     }
-    function closeFsView() {
+    function closeFsView(fromPicker) {
       if (fsTick) { clearInterval(fsTick); fsTick = null; }
+      if (fsFollowT) { clearTimeout(fsFollowT); fsFollowT = 0; }
+      fsFollow = null;
+      const wasInline = fsInline;
+      fsInline = false;
+      document.body.classList.remove('view-focus');
+      // Something other than the view picker closed the Focus view (the
+      // in-page Full screen toggle): the meeting goes back to the last view.
+      if (wasInline && !fromPicker && typeof window.__meetLeaveFocus === 'function') { try { window.__meetLeaveFocus(); } catch (e) {} }
       fsview.classList.remove('on');
+      try { ctFocusSync(); } catch (e) {}
       document.body.classList.remove('fsopen');
       fsmain.srcObject = null;
       fsmain.classList.remove('dark');
@@ -7051,10 +7131,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           for (let i = 0; i < views.length; i++) tiles.push(views[i]);
           for (let i = 0; i < row.length; i++) tiles.push(row[i]);
           dropStageViews(keepViews);
-          if (screenOn) {
-            placeStrip = true;
-            tiles.unshift({ id: 'stage:sgs', el: sgs, tier: 'row', stage: true, share: true, kind: 'screen', aspect: sgsAspect, pz: 'stage:sgs' });
-          }
+          // A shared screen is content (Nathan 2026-11-11): it shows in the
+          // content area's tab, from its own stage feed, not as this strip.
           if (sgs && sgs.dataset) sgs.dataset.pack = '1';
         } else if (sgsOn) {
           // The strip is this person's picture. Their row tile leaves the
@@ -7079,8 +7157,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           }
           tiles.length = 0;
           for (let i = 0; i < row.length; i++) tiles.push(row[i]);
-          placeStrip = true;
-          tiles.unshift({ id: 'stage:sgs', el: sgs, tier: 'row', stage: true, share: true, kind: screenOn ? 'screen' : 'strip', aspect: sgsAspect, pz: 'stage:sgs' });
+          // Screens are content (their tabs). The strip stays the stage
+          // picture only while it carries faces: people on stage whose own
+          // feeds are not here yet.
+          if (packIds.length || !screenOn) {
+            placeStrip = true;
+            tiles.unshift({ id: 'stage:sgs', el: sgs, tier: 'row', stage: true, share: true, kind: 'strip', aspect: sgsAspect, pz: 'stage:sgs' });
+          }
           dropStageViews(null);
           if (sgs && sgs.dataset) delete sgs.dataset.pack;
         } else {
@@ -7096,11 +7179,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // a stand-in holds the seat in the layout and the pane is pinned on it.
         const appSeat = document.getElementById('appseat');
         const appOn = !!appSeat && document.body.classList.contains('has-app');
-        if (appOn) tiles.unshift({ id: 'stage:app', el: appSeat, tier: 'row', stage: true, share: true, kind: 'app', fill: true, pz: 'stage:app' });
+        // Screens, the app and the agenda are one content area with tabs
+        // (contentTile, below): none of them takes a stage seat.
+        const ctOn = contentHas();
         // A share, or an app in that seat, fills the left side. Show me on
         // stage keeps your tile with the people until that share ends.
         // A people strip does not: those faces are the stage.
-        if (screenOn || appOn) {
+        if (screenOn || appOn || ctOn) {
           for (let i = 0; i < tiles.length; i++) if (tiles[i].me) tiles[i].stage = false;
         }
         document.body.classList.toggle('show-stage', placeStrip);
@@ -7227,6 +7312,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             topInset = Math.ceil(chipEl.getBoundingClientRect().bottom + 8);
           }
         }
+        const ctTile = contentTile(phone);
+        if (ctTile) tiles.unshift(ctTile);
         window.__comfyLast = MV.apply({
           feed: feed, tiles: tiles, faces: shownFaces, video: meta.video, srcW: meta.w, srcH: meta.h, cols: cols, cellN: cellOf ? meta.n : 0, cellOf: cellOf, skipCells: skipCells, pictureCells: pictureCells,
           holdMs: holdMs, floor: floor,
@@ -7235,9 +7322,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           mode: window.__meetViewMode || 'gallery',
           swapSelf: !!(window.__meetSwapSelf || (window.__meetSelf && window.__meetSelf.onStage)),
           self: window.__meetSelf || 'tile',
-          gallery: window.__meetGallery || 'fit', now: Date.now(),
+          gallery: window.__meetGallery || 'fit', float: window.__meetView === 'drag', now: Date.now(),
+          content: ctTile ? contentOpts(phone) : null,
           onSettle: () => { try { layout(); } catch (e) {} },
         });
+        // Content on screen (a shared screen now; the content tabs later):
+        // the one-step presentation button shows only then.
+        const hasContent = !!(window.__comfyLast && window.__comfyLast.content);
+        if (document.body.classList.contains('has-content') !== hasContent) document.body.classList.toggle('has-content', hasContent);
+        try { contentPlace(phone); } catch (e) { ctNote('place-err', { e: String(e && e.message || e).slice(0, 120) }); }
         const pane = document.getElementById('apppane');
         if (pane) {
           for (const [k, v] of [['--seat-x', 'left'], ['--seat-y', 'top'], ['--seat-w', 'width'], ['--seat-h', 'height']]) {
@@ -7258,33 +7351,1130 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         try { applyViewerCrops(); } catch (e) {}
       } finally { comfyBusy = false; }
     }
-    try {
-      window.__meetGallery = localStorage.getItem('meet.view.v1.gallery') === 'scroll' ? 'scroll' : 'fit';
-    } catch (e) { window.__meetGallery = 'fit'; }
+    // ---- the meeting's views: Scroll, Fit, Drag, Focus (Nathan 2026-11-11) ----
+    // Scroll: the gallery you scroll. Fit: everyone on one screen, nothing
+    // floats. Drag: every person tile moves and resizes (Float is picture-in-picture).
+    // Focus: one person big, the others in a strip (#fsview drawn in the page),
+    // with Follow the speaker. #fitbtn opens the picker; Alt+F is its key.
+    // window.__meetGallery stays the tile layout ('fit' | 'scroll') every
+    // layout reader already uses.
+    const VMODE = (window.GifOS && GifOS.meetViewMode) || null;
+    const VIEW_WORDS = { scroll: ['viewScroll', 'Scroll'], fit: ['viewFit', 'Fit'], drag: ['viewDrag', 'Drag'], focus: ['viewFocus', 'Focus'] };
+    // Outline glyphs, one stroke, currentColor: the same family as the bar's icons.
+    const VIEW_ICONS = {
+      scroll: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="6" rx="1.5"/><rect x="13" y="3" width="8" height="6" rx="1.5"/><rect x="3" y="11" width="8" height="6" rx="1.5"/><rect x="13" y="11" width="8" height="6" rx="1.5"/><path d="M9 20.5l3 1.5 3-1.5"/></svg>',
+      fit: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="8" height="7" rx="1.5"/><rect x="13" y="4" width="8" height="7" rx="1.5"/><rect x="3" y="13" width="8" height="7" rx="1.5"/><rect x="13" y="13" width="8" height="7" rx="1.5"/></svg>',
+      drag: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3" width="11" height="8" rx="1.5"/><path d="M11 21l-2.6-3.6a1.3 1.3 0 0 1 2-1.6l1.1 1.1V10.5a1.3 1.3 0 0 1 2.6 0v4.2l3.3.6a1.7 1.7 0 0 1 1.4 1.9L18.3 21"/></svg>',
+      focus: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="14" height="16" rx="2"/><rect x="18.5" y="4" width="3" height="4" rx="1"/><rect x="18.5" y="10" width="3" height="4" rx="1"/><rect x="18.5" y="16" width="3" height="4" rx="1"/></svg>',
+    };
+    let viewStore = null;
+    try { viewStore = localStorage; } catch (e) {}
+    window.__meetView = VMODE ? VMODE.load(viewStore) : 'fit';
+    window.__meetGallery = VMODE ? VMODE.gallery(window.__meetView) : 'fit';
+    let viewBefore = window.__meetView === 'focus' ? 'fit' : window.__meetView; // where Focus goes back to
     const fitbtn = document.getElementById('fitbtn');
+    const viewpick = document.getElementById('viewpick');
+    const vpFollow = document.getElementById('vp-follow');
+    function viewWord(m) { const w = VIEW_WORDS[m] || VIEW_WORDS.fit; return uiText(w[0], w[1]); }
     function paintFit() {
-      if (!fitbtn) return;
-      const scroll = window.__meetGallery === 'scroll';
-      fitbtn.textContent = scroll ? '▦ Scroll' : '▦ Fit';
-      fitbtn.setAttribute('aria-pressed', scroll ? 'false' : 'true');
-      fitbtn.title = scroll
-        ? 'Infinite scroll. Press to fit everyone on one screen.'
-        : 'Fit everyone on one screen. Press to scroll the room instead.';
+      const m = window.__meetView;
+      const scroll = m === 'scroll';
       document.body.classList.toggle('gallery-scroll', scroll);
+      for (const k of (VMODE ? VMODE.MODES : ['scroll', 'fit', 'drag', 'focus'])) document.body.classList.toggle('view-' + k, m === k);
       if (!scroll) {
         const feed = document.getElementById('feed');
         if (feed) feed.scrollTop = 0;
       }
+      if (fitbtn) {
+        const ic = fitbtn.querySelector('.vb-ic'), wd = fitbtn.querySelector('.vb-word');
+        if (ic && ic.dataset.view !== m) { ic.innerHTML = VIEW_ICONS[m] || VIEW_ICONS.fit; ic.dataset.view = m; }
+        if (wd) wd.textContent = viewWord(m);
+        fitbtn.dataset.view = m;
+        fitbtn.setAttribute('aria-label', uiText('viewPick', 'View') + ': ' + viewWord(m));
+        fitbtn.title = uiText('viewPickTip', 'Change the view (Alt+F)');
+      }
+      if (viewpick) {
+        for (const b of viewpick.querySelectorAll('.vp-mode')) {
+          const k = b.dataset.view;
+          const ic = b.querySelector('.vp-ic'), wd = b.querySelector('.vp-word');
+          if (ic && !ic.firstChild) ic.innerHTML = VIEW_ICONS[k] || '';
+          if (wd) wd.textContent = viewWord(k);
+          b.setAttribute('aria-checked', k === m ? 'true' : 'false');
+          b.tabIndex = k === m ? 0 : -1;
+        }
+        viewpick.setAttribute('aria-label', uiText('viewPick', 'View'));
+      }
+      if (vpFollow) {
+        vpFollow.hidden = m !== 'focus';
+        const on = fsview.classList.contains('on') ? fsSel === 'auto' : (!VMODE || VMODE.loadFollow(viewStore));
+        vpFollow.setAttribute('aria-checked', on ? 'true' : 'false');
+        const wd = vpFollow.querySelector('.vp-word');
+        if (wd) wd.textContent = uiText('viewFollow', 'Follow the speaker');
+      }
     }
-    if (fitbtn) fitbtn.addEventListener('click', () => {
-      // Manual only. A crowded Fit grid never flips this on its own.
-      window.__meetGallery = window.__meetGallery === 'scroll' ? 'fit' : 'scroll';
-      try { localStorage.setItem('meet.view.v1.gallery', window.__meetGallery); } catch (e) {}
+    window.__meetPaintView = paintFit;
+    // Focus is #fsview in the page. It shows only where a meeting is up: a
+    // broadcast or an app keeps its own picture (fsStripOk's rule, without the phone test).
+    // An app is a content tab now (Nathan 2026-11-11): Focus can show it.
+    function focusAllowed() { return !BROADCAST; }
+    function syncFocus() {
+      const want = window.__meetView === 'focus' && focusAllowed();
+      const on = fsview.classList.contains('on');
+      if (want && !(on && fsInline)) {
+        if (on) closeFsView(true);
+        openFsView((!VMODE || VMODE.loadFollow(viewStore)) ? 'auto' : null, true);
+      } else if (!want && on && fsInline) closeFsView(true);
+    }
+    function setView(m, why) {
+      m = VMODE ? VMODE.normalize(m) : (m === 'scroll' ? 'scroll' : 'fit');
+      const was = window.__meetView;
+      if (m !== 'focus') viewBefore = m;
+      window.__meetView = m;
+      window.__meetGallery = VMODE ? VMODE.gallery(m) : m;
+      if (VMODE) VMODE.save(viewStore, m);
       paintFit();
+      try { syncFocus(); } catch (e) {}
       try { layout(); } catch (e) {}
+      if (was !== m) viewNote('view', { from: was, to: m, why: why || 'pick' });
+    }
+    window.__meetSetView = setView;
+    window.__meetLeaveFocus = () => { if (window.__meetView === 'focus') setView(viewBefore || 'fit', 'closed'); };
+    function closePick(refocus) {
+      if (!viewpick || viewpick.hidden) return;
+      viewpick.hidden = true;
+      if (fitbtn) fitbtn.setAttribute('aria-expanded', 'false');
+      if (refocus && fitbtn) try { fitbtn.focus(); } catch (e) {}
+    }
+    function openPick() {
+      if (!viewpick) return;
+      paintFit();
+      // Under the button, its right edge on the button's.
+      const r = fitbtn.getBoundingClientRect();
+      viewpick.style.top = Math.round(r.bottom + 8) + 'px';
+      viewpick.style.right = Math.round(Math.max(8, window.innerWidth - r.right)) + 'px';
+      viewpick.hidden = false;
+      fitbtn.setAttribute('aria-expanded', 'true');
+      const cur = viewpick.querySelector('.vp-mode[aria-checked="true"]');
+      if (cur) try { cur.focus(); } catch (e) {}
+    }
+    if (fitbtn) fitbtn.addEventListener('click', (e) => {
+      // Manual only. A crowded Fit grid never changes the view on its own.
+      if (viewpick && viewpick.hidden) openPick(); else closePick(false);
     });
+    if (viewpick) {
+      viewpick.addEventListener('click', (e) => {
+        const b = e.target && e.target.closest && e.target.closest('.vp-mode');
+        if (!b) return;
+        setView(b.dataset.view, 'pick');
+        // Focus keeps the picker up so Follow the speaker is one more tap.
+        if (b.dataset.view !== 'focus') closePick(true);
+      });
+      viewpick.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') { e.preventDefault(); closePick(true); return; }
+        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft' && e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+        const list = Array.from(viewpick.querySelectorAll('.vp-mode'));
+        const i = list.indexOf(document.activeElement);
+        if (i < 0) return;
+        e.preventDefault();
+        const n = list[(i + ((e.key === 'ArrowRight' || e.key === 'ArrowDown') ? 1 : list.length - 1)) % list.length];
+        try { n.focus(); } catch (err) {}
+      });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !viewpick.hidden) closePick(false); });
+      document.addEventListener('pointerdown', (e) => {
+        if (viewpick.hidden) return;
+        const t = e.target;
+        if (t && t.closest && (t.closest('#viewpick') || t.closest('#fitbtn'))) return;
+        closePick(false);
+      }, true);
+    }
+    // ONE step to the presentation view on every screen (Nathan 2026-11-11):
+    // the content takes the screen in Drag with the speaker inset, the page
+    // goes full screen and a phone turns sideways where the browser lets it.
+    const presentbtn = document.getElementById('presentbtn');
+    if (presentbtn) {
+      const pw = presentbtn.querySelector('.vb-word');
+      if (pw) pw.textContent = uiText('viewPresent', 'Present');
+      presentbtn.addEventListener('click', () => {
+        setView('drag', 'present');
+        const de = document.documentElement;
+        const full = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        const turn = () => { try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch (e) {} };
+        if (!full && de.requestFullscreen) de.requestFullscreen().then(turn, () => {}); else turn();
+      });
+    }
+    if (vpFollow) vpFollow.addEventListener('click', () => {
+      const on = vpFollow.getAttribute('aria-checked') !== 'true';
+      if (VMODE) VMODE.saveFollow(viewStore, on);
+      if (fsview.classList.contains('on') && fsInline) {
+        if (on) { fsSel = 'auto'; fsAutoPid = null; fsFollow = null; }
+        else fsSel = fsmain.dataset.key || null; // pin whoever is on the big view now
+        fsRefresh();
+      }
+      paintFit();
+    });
+    // An app or a broadcast that starts or stops while Focus is chosen.
+    try { new MutationObserver(() => { try { syncFocus(); } catch (e) {} }).observe(document.body, { attributes: true, attributeFilter: ['class'] }); } catch (e) {}
     paintFit();
+    try { syncFocus(); } catch (e) {}
     window.__meetRelayout = () => { try { layout(); } catch (e) {} };
+    // ---- the content area: screens, the app and the agenda, one area with tabs (Nathan 2026-11-11) ----
+    // Only video takes a Stage seat. A screen share is still a stager (its
+    // feed is a stage feed), but the picture is CONTENT: it shows here, in a
+    // tab of its own, beside the app's tab and the agenda's. Each viewer
+    // picks a tab; a presenter can bring everyone to one; a tab that changed
+    // while you were elsewhere wears a dot. Scroll shows every item stacked
+    // (no tabs); Fit, Drag, Focus and a phone show tabs. Presentation view is
+    // one tap: the chosen item fills the screen, the speaker inset.
+    // The model is js/meet-content.js and js/meet-agenda.js (pure, unit
+    // tested); this block is the DOM, the wire and the timing.
+    // Declared with var and functions only: applyComfy calls in before this
+    // block has run on the first layout.
+    var CT = null;
+    function ctNote(k, x) {
+      const r = (window.__contentTrace = window.__contentTrace || []);
+      r.push(Object.assign({ t: Date.now(), k }, x || {}));
+      if (r.length > 300) r.shift();
+    }
+    const CT_ICONS = {
+      present: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4.5" width="19" height="13" rx="2"/><rect x="14" y="11" width="5.5" height="4.5" rx="1"/><path d="M8 21h8"/></svg>',
+      all: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="8.5" height="6" rx="1.2"/><rect x="13" y="5" width="8.5" height="6" rx="1.2"/><rect x="2.5" y="13" width="8.5" height="6" rx="1.2"/><rect x="13" y="13" width="8.5" height="6" rx="1.2"/></svg>',
+      tabs: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 8h7l1.5-3h10.5"/><rect x="2.5" y="8" width="19" height="11" rx="1.5"/></svg>',
+      bring: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="8" r="2.5"/><circle cx="17" cy="8" r="2.5"/><path d="M2.5 18c.6-2.6 2.4-4 4.5-4s3.9 1.4 4.5 4M12.5 18c.6-2.6 2.4-4 4.5-4s3.9 1.4 4.5 4"/></svg>',
+      faces: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="14" width="5.5" height="5.5" rx="1.2"/><rect x="9.25" y="14" width="5.5" height="5.5" rx="1.2"/><rect x="16" y="14" width="5.5" height="5.5" rx="1.2"/><path d="M4 10l8-5 8 5"/></svg>',
+      exit: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    };
+    function ctText(key, en, vars) {
+      let s = uiText(key, en);
+      if (vars) for (const k in vars) s = s.split('{' + k + '}').join(String(vars[k]));
+      return s;
+    }
+    function ctInit() {
+      if (CT) return CT;
+      const feed = document.getElementById('feed');
+      if (!feed || !window.GifOS || !GifOS.meetContent || !GifOS.meetAgenda) return null;
+      const el = document.createElement('div');
+      el.id = 'ctarea'; el.className = 'ctarea'; el.hidden = true;
+      const bar = document.createElement('div'); bar.className = 'ct-bar';
+      const tabs = document.createElement('div'); tabs.className = 'ct-tabs'; tabs.setAttribute('role', 'tablist');
+      const tools = document.createElement('div'); tools.className = 'ct-tools';
+      bar.appendChild(tabs); bar.appendChild(tools);
+      const body = document.createElement('div'); body.className = 'ct-body';
+      const inset = document.createElement('div'); inset.className = 'ct-inset'; inset.hidden = true;
+      inset.innerHTML = '<video muted autoplay playsinline></video><span class="ct-inset-nm"></span>';
+      const exit = document.createElement('button'); exit.type = 'button'; exit.className = 'ct-exit'; exit.hidden = true; exit.innerHTML = CT_ICONS.exit;
+      exit.addEventListener('click', () => ctPresent(false, 'exit'));
+      el.appendChild(bar); el.appendChild(body); el.appendChild(inset); el.appendChild(exit);
+      feed.appendChild(el);
+      CT = {
+        el, bar, tabs, tools, body, inset, exit,
+        panes: new Map(), st: GifOS.meetContent.state(), items: [], plan: null,
+        ag: null, agW: null, agStart: 0, agLocal: false, agEdit: false, agTick: 0,
+        present: false, presentFs: false, facesHidden: false, speaker: null, speakerAt: 0,
+        lastSig: '', phone: false, rect: null,
+      };
+      try { CT.facesHidden = localStorage.getItem('meet.content.v1.faces') === 'off'; } catch (e) {}
+      // Scroll moves the area with the page; the app pane is fixed and follows it.
+      feed.addEventListener('scroll', () => { if (CT && CT.items.length && window.__meetGallery === 'scroll') { try { contentPlace(CT.phone); ctPinApp(); } catch (e) {} } }, { passive: true });
+      document.addEventListener('keydown', (e) => {
+        if (!CT) return;
+        if (e.key === 'Escape' && CT.present) { e.preventDefault(); ctPresent(false, 'esc'); }
+      });
+      document.addEventListener('fullscreenchange', () => {
+        if (CT && CT.present && CT.presentFs && !document.fullscreenElement) ctPresent(false, 'fs-exit');
+      });
+      // Double-click (or double-tap) the content: presentation view, and back.
+      body.addEventListener('dblclick', (e) => {
+        if (e.target && e.target.closest && e.target.closest('input,button,textarea,select,.ag-list')) return;
+        ctPresent(!(CT.present || (document.getElementById('presentbtn') && window.__meetView === 'drag')), 'dblclick');
+      });
+      return CT;
+    }
+
+    // ---- what is shared now ----
+    function ctAppInfo() {
+      if (!document.body.classList.contains('has-app') || !appKey) return null;
+      const mine = !!(myStatus.app && appKey === myStatus.app.s);
+      let by = mine ? myId : null;
+      if (!by) for (const [pid, st] of statusOf) if (st && st.app && st.app.s === appKey) { by = pid; break; }
+      const nm = document.getElementById('appname');
+      return { on: true, name: (nm && nm.textContent) || '', by: by, mine: mine };
+    }
+    function ctScreens() {
+      let ids = [];
+      try { ids = screenSharers(); } catch (e) { ids = []; }
+      return ids.map((sid) => {
+        const st = sid === myId ? myStatus : (statusOf.get(sid) || {});
+        return { sid: sid, name: sid === myId ? '' : displayName(sid), at: +st.scr || 0, mine: sid === myId };
+      });
+    }
+    function ctAgendaOn() { return !!(CT && ((CT.ag && CT.ag.items.length) || CT.agLocal)); }
+    function ctAgCtx(who) { return { adminRoom: hasAdminRoom(), isAdmin: who === myId ? !!amAdmin : (Array.isArray(admins) && admins.indexOf(who) >= 0) }; }
+    function ctCanEditAgenda() { return !!(CT && myId && GifOS.meetAgenda.canEdit(CT.ag, myId, ctAgCtx(myId))); }
+    function ctRefresh() {
+      if (!ctInit()) return [];
+      const MC = GifOS.meetContent;
+      const list = MC.items({ screens: ctScreens(), app: ctAppInfo(), agenda: { on: ctAgendaOn(), title: '', mine: ctCanEditAgenda() } });
+      const before = CT.st.known.join('|');
+      MC.sync(CT.st, list);
+      CT.items = list;
+      if (before !== CT.st.known.join('|')) ctNote('items', { keys: CT.st.known.slice(), sel: CT.st.sel });
+      return list;
+    }
+    function contentHas() {
+      try { return ctRefresh().length > 0; } catch (e) { return false; }
+    }
+    function ctLabel(it) {
+      if (it.kind === 'screen') return it.mine ? ctText('ctYourScreen', 'Your screen') : ctText('ctScreenOf', '{name}’s screen', { name: it.name || '…' });
+      if (it.kind === 'app') return it.name || ctText('ctApp', 'App');
+      return ctText('ctAgenda', 'Agenda');
+    }
+    function ctView() {
+      if (CT && CT.present) return 'present';
+      return window.__meetView || 'fit';
+    }
+    function ctFocusOnContent() {
+      return !!(CT && window.__meetView === 'focus' && fsview.classList.contains('on') && fsInline && String(fsmain.dataset.key || '').indexOf('content:') === 0);
+    }
+
+    // ---- the tile the layout places (one share slot), and its options ----
+    function ctAspect(it, w) {
+      const pane = CT.panes.get(it.key);
+      if (it.kind === 'screen') {
+        const v = pane && pane.querySelector('video');
+        if (v && v.videoWidth > 0 && v.videoHeight > 0) return v.videoWidth / v.videoHeight;
+        return 16 / 9;
+      }
+      if (it.kind === 'agenda') {
+        // As tall as its list, at least a quarter of the width.
+        const n = (CT.ag && CT.ag.items.length) || 1;
+        const h = Math.max(220, 150 + n * 44 + (CT.agEdit ? 120 : 0));
+        return Math.max(0.6, (w || 800) / h);
+      }
+      return 0; // the app fills what it is given
+    }
+    function contentTile(phone) {
+      if (!CT || !CT.items.length) { if (CT) { CT.el.hidden = true; document.body.classList.remove('ct-on', 'ct-app-off', 'ct-present'); } return null; }
+      CT.phone = !!phone;
+      // Presentation view and Focus place the area themselves: it takes no
+      // share slot in the gallery under them.
+      if (CT.present || ctFocusOnContent()) return null;
+      const scroll = window.__meetGallery === 'scroll';
+      const t = { id: 'stage:content', el: CT.el, tier: 'row', stage: true, share: true, kind: 'app', fill: true, content: true, pz: 'stage:content' };
+      if (scroll) {
+        t.stackH = (w, maxH) => {
+          const asp = CT.items.map((it) => ctAspect(it, w) || 16 / 9);
+          return GifOS.meetContent.stack({ x: 0, y: 0, w: w, h: maxH }, asp, 8).h;
+        };
+      }
+      return t;
+    }
+    function contentOpts(phone) {
+      const v = window.__meetView || 'fit';
+      // Drag is the meeting's own layout (the content takes the screen, the
+      // people inset); a phone's Fit is the content full with a face strip.
+      return { phone: !!phone && v !== 'scroll' && v !== 'drag', hideFaces: !!(CT && CT.facesHidden && phone) };
+    }
+
+    // ---- panes ----
+    function ctPane(it) {
+      let p = CT.panes.get(it.key);
+      if (p) return p;
+      p = document.createElement('div');
+      p.className = 'ct-pane'; p.dataset.key = it.key; p.dataset.kind = it.kind;
+      p.setAttribute('role', 'tabpanel');
+      if (it.kind === 'screen') {
+        const v = document.createElement('video');
+        v.muted = true; v.autoplay = true; v.playsInline = true; v.setAttribute('playsinline', '');
+        v.addEventListener('loadedmetadata', () => { try { layout(); } catch (e) {} });
+        v.addEventListener('resize', () => { try { layout(); } catch (e) {} });
+        const cap = document.createElement('div'); cap.className = 'ct-cap';
+        p.appendChild(v); p.appendChild(cap);
+      } else if (it.kind === 'agenda') {
+        p.classList.add('ag');
+      } else {
+        // The app's own pane is pinned over this box (moving an iframe reloads it).
+        p.classList.add('ct-appbox');
+      }
+      CT.body.appendChild(p);
+      CT.panes.set(it.key, p);
+      return p;
+    }
+    // A screen's picture: my own capture, else the sharer's stage feed, else
+    // the stage strip (a seat that does not hold the feed paints the strip).
+    function ctScreenTrack(sid) {
+      if (sid === myId) {
+        const t = typeof screenStream !== 'undefined' && screenStream && screenStream.getVideoTracks()[0];
+        if (t && t.readyState !== 'ended') return { track: t, from: 'own' };
+      }
+      const f = stageFeedVideo(sid);
+      if (f && f.track) return { track: f.track, from: 'stg' };
+      // The sharer's own stage feed, held here but not yet painted by its
+      // hidden element (a browser that never decodes a hidden video): the
+      // track is live, so the tab plays it itself.
+      try {
+        const m = mosIn && mosIn.get('stg:' + sid);
+        const t = m && m.stream && m.stream.getVideoTracks && m.stream.getVideoTracks()[0];
+        if (t && t.readyState !== 'ended') return { track: t, from: 'stg' };
+      } catch (e) {}
+      const sgs = document.querySelector('#stagefeed [data-row="sgs"] video');
+      const st = sgs && sgs.srcObject;
+      const t = st && st.getVideoTracks && st.getVideoTracks()[0];
+      if (t && t.readyState !== 'ended') return { track: t, from: 'strip' };
+      return null;
+    }
+    function ctPaintScreen(p, it) {
+      const v = p.querySelector('video');
+      const src = ctScreenTrack(it.sid);
+      const tr = src ? src.track : null;
+      if (v && v._vt !== tr) {
+        v._vt = tr;
+        try { v.srcObject = tr ? new MediaStream([tr]) : null; } catch (e) { v.srcObject = null; }
+        if (tr) { const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); }
+        ctNote('screen-src', { sid: String(it.sid).slice(0, 8), from: src ? src.from : 'none' });
+      }
+      p.dataset.src = src ? src.from : 'none';
+      const cap = p.querySelector('.ct-cap');
+      if (cap) {
+        const want = ctLabel(it);
+        let lb = cap.querySelector('.ct-capnm');
+        if (!lb) { lb = document.createElement('span'); lb.className = 'ct-capnm'; cap.appendChild(lb); }
+        if (lb.textContent !== want) lb.textContent = want;
+        let stop = cap.querySelector('.ct-stop');
+        if (it.mine && !stop) {
+          stop = document.createElement('button'); stop.type = 'button'; stop.className = 'ct-stop';
+          stop.addEventListener('click', () => { try { stopScreenShare(ctText('ctStopShare', 'Stop sharing')); } catch (e) {} });
+          cap.appendChild(stop);
+        } else if (!it.mine && stop) stop.remove();
+        if (stop) stop.textContent = ctText('ctStopShare', 'Stop sharing');
+      }
+    }
+
+    // ---- the tab bar ----
+    function ctPaintBar(plan) {
+      const MC = GifOS.meetContent;
+      const st = CT.st;
+      const have = new Map();
+      for (const b of Array.from(CT.tabs.children)) have.set(b.dataset.key, b);
+      let pos = 0;
+      for (const it of CT.items) {
+        let b = have.get(it.key);
+        if (!b) {
+          b = document.createElement('button');
+          b.type = 'button'; b.className = 'ct-tab'; b.dataset.key = it.key; b.setAttribute('role', 'tab');
+          b.innerHTML = '<span class="ct-tabnm"></span><span class="ct-tabtime"></span><span class="ct-dot" aria-hidden="true"></span>';
+          const key = it.key;
+          b.addEventListener('click', () => ctSelect(key, 'tab'));
+          b.addEventListener('keydown', (e) => {
+            if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+            const list = Array.from(CT.tabs.children);
+            const i = list.indexOf(b);
+            const n = list[(i + (e.key === 'ArrowRight' ? 1 : list.length - 1)) % list.length];
+            if (n) { e.preventDefault(); n.focus(); ctSelect(n.dataset.key, 'key'); }
+          });
+        }
+        have.delete(it.key);
+        if (CT.tabs.children[pos] !== b) CT.tabs.insertBefore(b, CT.tabs.children[pos] || null);
+        pos++;
+        const label = ctLabel(it);
+        const nm = b.querySelector('.ct-tabnm');
+        if (nm.textContent !== label) nm.textContent = label;
+        const sel = plan.show.indexOf(it.key) >= 0 && (plan.show.length === 1 || st.all);
+        const on = st.all ? plan.show.indexOf(it.key) >= 0 : it.key === st.sel;
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+        b.tabIndex = it.key === st.sel ? 0 : -1;
+        const dot = MC.badged(st, it.key);
+        b.classList.toggle('changed', dot);
+        b.setAttribute('aria-label', dot ? ctText('ctChanged', '{tab}, changed', { tab: label }) : label);
+        b.dataset.sel = sel ? '1' : '0';
+        const tm = b.querySelector('.ct-tabtime');
+        const t = it.kind === 'agenda' ? ctAgendaShortTime() : '';
+        if (tm.textContent !== t) tm.textContent = t;
+        tm.classList.toggle('over', it.kind === 'agenda' && ctAgendaOver());
+      }
+      for (const b of have.values()) b.remove();
+      // Tools: bring everyone, see everything, faces (phone), presentation view.
+      const selIt = CT.items.find((i) => i.key === st.sel) || null;
+      const mayBring = !!(selIt && myId && MC.canBring(myId, selIt, { adminRoom: hasAdminRoom(), isAdmin: !!amAdmin, agendaEditor: ctCanEditAgenda() }));
+      ctTool('bring', mayBring && !st.all, CT_ICONS.bring, ctText('ctBring', 'Bring everyone here'), ctText('ctBringTip', 'Everyone in the meeting switches to this tab. They can switch back.'), () => ctBring(st.sel));
+      ctTool('all', CT.items.length > 1, st.all ? CT_ICONS.tabs : CT_ICONS.all, st.all ? ctText('ctTabs', 'One at a time') : ctText('ctSeeAll', 'See everything'), st.all ? ctText('ctTabsTip', 'Show one tab at a time') : ctText('ctSeeAllTip', 'Show every tab side by side'), () => { st.all = !st.all; ctNote('all', { on: st.all }); GifOS.meetContent.sync(st, CT.items); try { layout(); } catch (e) {} });
+      ctTool('faces', CT.phone && window.__meetView !== 'drag', CT_ICONS.faces, CT.facesHidden ? ctText('ctShowFaces', 'Show faces') : ctText('ctHideFaces', 'Hide faces'), '', () => {
+        CT.facesHidden = !CT.facesHidden;
+        try { localStorage.setItem('meet.content.v1.faces', CT.facesHidden ? 'off' : 'on'); } catch (e) {}
+        ctNote('faces', { hidden: CT.facesHidden });
+        try { layout(); } catch (e) {}
+      }, CT.facesHidden);
+      ctTool('present', true, CT_ICONS.present, ctText('ctPresent', 'Presentation view'), ctText('ctPresentTip', 'Fill the screen with this tab and the speaker in the corner (double-click works too)'), () => ctPresent(true, 'button'));
+    }
+    function ctTool(id, show, icon, word, tip, act, pressed) {
+      let b = CT.tools.querySelector('[data-tool="' + id + '"]');
+      if (!b) {
+        b = document.createElement('button'); b.type = 'button'; b.className = 'ct-tool'; b.dataset.tool = id;
+        b.innerHTML = '<span class="ct-ic"></span><span class="ct-word"></span>';
+        b.addEventListener('click', () => { if (b._act) b._act(); });
+        CT.tools.appendChild(b);
+      }
+      b._act = act;
+      b.hidden = !show;
+      const ic = b.querySelector('.ct-ic');
+      if (ic.dataset.icon !== icon) { ic.innerHTML = icon; ic.dataset.icon = icon; }
+      const wd = b.querySelector('.ct-word');
+      if (wd.textContent !== word) wd.textContent = word;
+      b.setAttribute('aria-label', word);
+      if (tip) b.title = tip; else b.removeAttribute('title');
+      if (pressed != null) b.setAttribute('aria-pressed', pressed ? 'true' : 'false');
+    }
+    function ctSelect(key, why) {
+      if (!CT) return;
+      if (GifOS.meetContent.select(CT.st, key)) {
+        CT.st.all = false;
+        ctNote('select', { key: key, why: why || '' });
+        try { layout(); } catch (e) {}
+      }
+    }
+
+    // ---- placing the area and its panes (after the layout placed the tile) ----
+    function ctPinApp() {
+      const pane = document.getElementById('apppane');
+      const seat = document.getElementById('appseat');
+      if (!pane || !seat) return;
+      for (const [k, v] of [['--seat-x', 'left'], ['--seat-y', 'top'], ['--seat-w', 'width'], ['--seat-h', 'height']]) {
+        if (seat.style[v]) pane.style.setProperty(k, seat.style[v]);
+      }
+    }
+    function contentPlace(phone) {
+      if (!CT) return;
+      const MC = GifOS.meetContent;
+      const el = CT.el;
+      const body = document.body;
+      if (!CT.items.length) {
+        el.hidden = true;
+        body.classList.remove('ct-on', 'ct-app-off', 'ct-present', 'ct-tabs');
+        for (const p of CT.panes.values()) { const v = p.querySelector('video'); if (v) { v.srcObject = null; v._vt = null; } p.remove(); }
+        CT.panes.clear();
+        ctInset(false);
+        return;
+      }
+      body.classList.add('ct-on');
+      // Panes for the items now; drop the ones whose item ended.
+      const keys = new Set(CT.items.map((i) => i.key));
+      for (const [k, p] of CT.panes) if (!keys.has(k)) { const v = p.querySelector('video'); if (v) { v.srcObject = null; v._vt = null; } p.remove(); CT.panes.delete(k); }
+      for (const it of CT.items) ctPane(it);
+      // The box: the tile the layout placed, the whole screen in
+      // presentation view, or the big view of Focus.
+      const feed = document.getElementById('feed');
+      const fr = feed ? feed.getBoundingClientRect() : { left: 0, top: 0 };
+      let box = null, fixed = false;
+      const focusC = ctFocusOnContent();
+      if (CT.present) {
+        box = { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight }; fixed = true;
+      } else if (focusC) {
+        const r = fsmain.getBoundingClientRect();
+        box = { x: r.left, y: r.top, w: r.width, h: r.height }; fixed = true;
+      } else if (!el.classList.contains('comfy-off') && el.style.width) {
+        box = { x: parseFloat(el.style.left) || 0, y: parseFloat(el.style.top) || 0, w: parseFloat(el.style.width) || 0, h: parseFloat(el.style.height) || 0 };
+      }
+      if (!box || !(box.w > 0) || !(box.h > 0)) {
+        el.hidden = true;
+        body.classList.add('ct-app-off');
+        ctInset(false);
+        return;
+      }
+      el.hidden = false;
+      el.classList.toggle('ct-fixed', fixed);
+      // Fixed (presentation view, Focus) the area lives on the body, above
+      // every layer of the meeting; in the gallery it lives in the feed.
+      const home = fixed ? document.body : feed;
+      if (home && el.parentNode !== home) home.appendChild(el);
+      body.classList.toggle('ct-present', !!CT.present);
+      if (fixed) {
+        el.style.position = 'fixed';
+        el.style.left = box.x + 'px'; el.style.top = box.y + 'px'; el.style.width = box.w + 'px'; el.style.height = box.h + 'px';
+        el.classList.remove('comfy-off');
+      }
+      const view = CT.present ? 'present' : (focusC ? 'focus' : (window.__meetGallery === 'scroll' ? 'scroll' : (window.__meetView || 'fit')));
+      let plan;
+      if (CT.present) plan = { tabs: false, show: [CT.st.sel || CT.items[0].key], stack: false };
+      else if (focusC) plan = { tabs: false, show: [String(fsmain.dataset.key).slice(8)], stack: false };
+      else plan = MC.plan({ view: view, keys: CT.items.map((i) => i.key), sel: CT.st.sel, all: CT.st.all });
+      CT.plan = plan;
+      body.classList.toggle('ct-tabs', !!plan.tabs);
+      CT.bar.hidden = !plan.tabs;
+      // The tab bar starts under the meeting's header chip when the area
+      // runs up under it (a phone: the feed starts at the top edge).
+      let barTop = 0;
+      if (plan.tabs && !fixed) {
+        const chip = document.querySelector('.topchip');
+        if (chip && chip.getClientRects().length && getComputedStyle(chip).display !== 'none') {
+          const cr = chip.getBoundingClientRect();
+          const top = fr.top + box.y - (feed ? feed.scrollTop : 0);
+          if (cr.bottom > top && cr.top < top + 60) barTop = Math.min(Math.round(box.h / 3), Math.ceil(cr.bottom - top + 4));
+        }
+      }
+      CT.bar.style.top = barTop + 'px';
+      const barH = plan.tabs ? barTop + (phone ? 44 : 48) : 0;
+      const inner = { x: 0, y: barH, w: box.w, h: Math.max(1, box.h - barH) };
+      const shown = plan.show.map((k) => CT.items.find((i) => i.key === k)).filter(Boolean);
+      const asp = shown.map((it) => ctAspect(it, inner.w));
+      let rects;
+      if (plan.stack) rects = MC.stack(inner, asp.map((a) => a || 16 / 9), 8).rects;
+      else if (shown.length > 1) rects = MC.grid(inner, asp, 8);
+      else rects = [inner];
+      // The app's box in screen terms (the pane is fixed).
+      const toScreen = (r) => fixed ? { x: box.x + r.x, y: box.y + r.y, w: r.w, h: r.h }
+        : { x: fr.left + box.x + r.x - (feed ? feed.scrollLeft : 0), y: fr.top + box.y + r.y - (feed ? feed.scrollTop : 0), w: r.w, h: r.h };
+      let appShown = false;
+      for (const it of CT.items) {
+        const p = CT.panes.get(it.key);
+        const i = shown.indexOf(it);
+        if (i < 0) { p.hidden = true; continue; }
+        const r = rects[i];
+        p.hidden = false;
+        p.style.left = r.x + 'px'; p.style.top = r.y + 'px'; p.style.width = r.w + 'px'; p.style.height = r.h + 'px';
+        // With no tab bar (Scroll, Focus) each item carries its own
+        // presentation view button: still one tap from anywhere.
+        let pv = p.querySelector(':scope > .ct-pview');
+        if (!plan.tabs && !CT.present) {
+          if (!pv) {
+            pv = document.createElement('button'); pv.type = 'button'; pv.className = 'ct-pview'; pv.innerHTML = CT_ICONS.present;
+            const key = it.key;
+            pv.addEventListener('click', () => { GifOS.meetContent.select(CT.st, key); ctPresent(true, 'pane'); });
+            p.appendChild(pv);
+          }
+          pv.setAttribute('aria-label', ctText('ctPresent', 'Presentation view')); pv.title = ctText('ctPresent', 'Presentation view');
+          pv.hidden = false;
+        } else if (pv) pv.hidden = true;
+        if (it.kind === 'screen') ctPaintScreen(p, it);
+        else if (it.kind === 'agenda') ctPaintAgenda(p);
+        else if (it.kind === 'app') {
+          appShown = true;
+          const seat = document.getElementById('appseat');
+          const s = toScreen(r);
+          if (seat) {
+            seat.style.position = 'absolute';
+            seat.style.left = s.x + 'px'; seat.style.top = s.y + 'px'; seat.style.width = s.w + 'px'; seat.style.height = s.h + 'px';
+          }
+        }
+      }
+      // Screens that are not shown let go of their picture (one sink less).
+      for (const it of CT.items) {
+        if (it.kind !== 'screen' || shown.indexOf(it) >= 0) continue;
+        const p = CT.panes.get(it.key); const v = p && p.querySelector('video');
+        if (v && v._vt) { v.srcObject = null; v._vt = null; }
+      }
+      body.classList.toggle('ct-app-off', !appShown);
+      if (appShown) ctPinApp();
+      if (plan.tabs) ctPaintBar(plan);
+      CT.exit.hidden = !CT.present;
+      if (CT.present) { CT.exit.setAttribute('aria-label', ctText('ctExitPresent', 'Exit presentation view')); CT.exit.title = ctText('ctExitPresent', 'Exit presentation view'); }
+      ctInset(!!CT.present, shown[0]);
+      const sig = view + '|' + plan.show.join(',') + '|' + Math.round(box.w) + 'x' + Math.round(box.h) + '|' + (CT.st.all ? 'all' : 'one');
+      if (sig !== CT.lastSig) { CT.lastSig = sig; ctNote('place', { view: view, show: plan.show.slice(), tabs: !!plan.tabs, box: [Math.round(box.x), Math.round(box.y), Math.round(box.w), Math.round(box.h)] }); }
+      ctAgendaTickArm();
+    }
+
+    // ---- Focus: the content tabs are in the picker strip ----
+    function ctFocusSources() {
+      if (!CT || !ctRefresh().length) return [];
+      if (!CT.fsStreams) CT.fsStreams = new Map();
+      const out = [];
+      for (const it of CT.items) {
+        // The content region's shape (GifOS.meetViewMode.content): a screen
+        // brings its stream; the app and the agenda have no picture of their
+        // own (the area is drawn over the big view when one is picked).
+        const e = { key: it.key, label: ctLabel(it), kind: it.kind };
+        if (it.kind === 'screen') {
+          const src = ctScreenTrack(it.sid);
+          let c = CT.fsStreams.get(it.key);
+          if (src && (!c || c.track !== src.track)) { c = { track: src.track, stream: new MediaStream([src.track]) }; CT.fsStreams.set(it.key, c); }
+          if (src && c) e.stream = c.stream;
+          else e.v = { srcObject: null };
+        } else e.v = { srcObject: null };
+        out.push(e);
+      }
+      return out;
+    }
+    // Focus moved on or off a content tab: the area goes back to the gallery,
+    // or onto the big view.
+    function ctFocusSync() {
+      if (!CT) return;
+      const on = ctFocusOnContent();
+      if (on) {
+        const k = String(fsmain.dataset.key).slice(8);
+        if (CT.st.sel !== k) GifOS.meetContent.select(CT.st, k);
+        if (!CT.focusC) { CT.focusC = true; ctNote('focus-content', { key: k }); try { layout(); } catch (e) {} }
+        else contentPlace(CT.phone);
+      } else if (CT.focusC) {
+        CT.focusC = false;
+        ctNote('focus-content', { key: null });
+        if (!CT.present) { CT.el.classList.remove('ct-fixed'); CT.el.style.position = ''; }
+        try { layout(); } catch (e) {}
+      }
+    }
+
+    // ---- presentation view: one tap, the item fills the screen, the speaker inset ----
+    function ctPresent(on, why) {
+      // The meeting's Present is the one presentation view (Drag: the content
+      // takes the screen, the people inset; full screen; sideways where the
+      // browser allows). The tab bar's button and a double-click take it.
+      const pb = document.getElementById('presentbtn');
+      if (pb) {
+        if (on) { ctNote('present', { on: true, why: why || '', key: CT && CT.st.sel }); pb.click(); }
+        else if (window.__meetView === 'drag' && typeof window.__meetSetView === 'function') {
+          try { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {}); } catch (e) {}
+          window.__meetSetView('fit', 'present-exit');
+        }
+        return;
+      }
+      if (!CT || !CT.items.length) on = false;
+      if (!CT || !!CT.present === !!on) return;
+      CT.present = !!on;
+      ctNote('present', { on: CT.present, why: why || '', key: CT.st.sel });
+      if (on) {
+        // The document holds the screen (never the area itself: the app's pane
+        // and the sheets live outside it). A phone turns sideways where the
+        // browser allows it.
+        const own = !document.fullscreenElement && document.documentElement.requestFullscreen;
+        CT.presentFs = false;
+        if (own) {
+          try {
+            document.documentElement.requestFullscreen().then(() => {
+              CT.presentFs = true;
+              try { if (screen.orientation && screen.orientation.lock && CT.phone) screen.orientation.lock('landscape').catch(() => {}); } catch (e) {}
+            }).catch(() => {});
+          } catch (e) {}
+        }
+      } else {
+        try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (e) {}
+        if (CT.presentFs && document.fullscreenElement && document.exitFullscreen) { try { document.exitFullscreen().catch(() => {}); } catch (e) {} }
+        CT.presentFs = false;
+        CT.el.classList.remove('ct-fixed');
+        CT.el.style.position = '';
+      }
+      document.body.classList.toggle('ct-present', CT.present);
+      try { layout(); } catch (e) {}
+      if (on) { try { CT.exit.focus(); } catch (e) {} }
+    }
+    // The speaker in the corner: whoever talks now (not the person whose
+    // screen fills the view: their picture is the screen), held a moment so a
+    // cough does not flip it, else the last talker, else someone on stage.
+    function ctSpeakerPick(selIt) {
+      const T = GifOS.timings || {};
+      const hold = +T.FOLLOW_HOLD_MS > 0 ? +T.FOLLOW_HOLD_MS : 0;
+      const skip = selIt && selIt.kind === 'screen' ? selIt.sid : null;
+      const live = (pid) => {
+        const p = peers.get(pid);
+        const v = p && p.video;
+        return !!(p && v && v.srcObject && !seatDark(statusOf.get(pid)) && pid !== skip);
+      };
+      const now = Date.now();
+      if (CT.speaker && !live(CT.speaker)) CT.speaker = null;
+      if (CT.speaker && speakingOf.get(CT.speaker)) return CT.speaker;
+      if (!CT.speaker || now - CT.speakerAt >= hold) {
+        for (const [pid, on] of speakingOf) if (on && pid !== 'me' && live(pid)) { CT.speaker = pid; CT.speakerAt = now; ctNote('inset', { to: String(pid).slice(0, 8) }); return pid; }
+      }
+      if (CT.speaker) return CT.speaker;
+      let stg = [];
+      try { stg = stageIds(); } catch (e) {}
+      for (const pid of stg) if (pid !== myId && live(pid)) { CT.speaker = pid; CT.speakerAt = now; return pid; }
+      return null;
+    }
+    function ctInset(on, selIt) {
+      const box = CT && CT.inset;
+      if (!box) return;
+      const v = box.querySelector('video');
+      const pid = on ? ctSpeakerPick(selIt) : null;
+      const p = pid ? peers.get(pid) : null;
+      // A person on stage sends their camera on the stage feed; their row
+      // picture is parked. Take the stage feed first, the tile second.
+      let vt = null;
+      if (pid) {
+        try {
+          const m = mosIn && mosIn.get('stg:' + pid);
+          const t = m && m.stream && m.stream.getVideoTracks && m.stream.getVideoTracks()[0];
+          if (t && t.readyState !== 'ended') vt = t;
+        } catch (e) {}
+      }
+      if (!vt) {
+        const st = p && p.video && p.video.srcObject;
+        vt = (st && st.getVideoTracks && st.getVideoTracks()[0]) || null;
+      }
+      if (!on || !vt) { box.hidden = true; if (v.srcObject) { v.srcObject = null; v._vt = null; } return; }
+      if (v._vt !== vt) { v._vt = vt; v.srcObject = new MediaStream([vt]); const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); }
+      const nm = box.querySelector('.ct-inset-nm');
+      const want = displayName(pid);
+      if (nm.textContent !== want) nm.textContent = want;
+      const r = GifOS.meetContent.presentRects(window.innerWidth, window.innerHeight, 16 / 9, true).inset;
+      box.style.left = r.x + 'px'; box.style.top = r.y + 'px'; box.style.width = r.w + 'px'; box.style.height = r.h + 'px';
+      box.hidden = false;
+      box.dataset.pid = pid;
+    }
+
+    // ---- bring everyone to a tab: a signed request, never an order ----
+    async function ctBring(key) {
+      if (!CT || !key || !myId || !myIdentity) return;
+      const it = CT.items.find((i) => i.key === key);
+      if (!it) return;
+      const at = Date.now();
+      const sp = JSON.stringify({ t: 'cbring', room: roomKey(), by: myId, key: key, at: at });
+      let sig;
+      try { sig = await net.edSign(myIdentity.priv, sp); } catch (e) { return; }
+      const m = { k: 'cbring', sp: sp, sig: sig, pub: myIdentity.pubB64 };
+      GifOS.meetContent.bring(CT.st, { key: key, at: at, by: myId });
+      sendAll(m);
+      ctNote('bring-out', { key: key });
+      setStatus(ctText('ctBroughtYou', 'Everyone was brought to {tab}.', { tab: ctLabel(it) }));
+      try { layout(); } catch (e) {}
+    }
+    async function ctBringIn(m) {
+      if (!ctInit() || !m || typeof m.sp !== 'string' || typeof m.sig !== 'string' || typeof m.pub !== 'string' || m.sp.length > 400) return;
+      let o; try { o = JSON.parse(m.sp); } catch (e) { return; }
+      if (!o || o.t !== 'cbring' || o.room !== roomKey() || typeof o.key !== 'string' || typeof o.by !== 'string' || !(+o.at > 0)) return;
+      if (o.by === myId) return;
+      try {
+        const pid = await GifOS.meshIdentity.peerIdOf(m.pub);
+        if (pid !== o.by) return;
+        if (!(await net.edVerify(m.pub, m.sig, m.sp))) return;
+      } catch (e) { return; }
+      ctRefresh();
+      const it = CT.items.find((i) => i.key === o.key);
+      const ctx = { adminRoom: hasAdminRoom(), isAdmin: Array.isArray(admins) && admins.indexOf(o.by) >= 0, agendaEditor: !!GifOS.meetAgenda.canEdit(CT.ag, o.by, ctAgCtx(o.by)) };
+      if (!it || !GifOS.meetContent.canBring(o.by, it, ctx)) { ctNote('bring-refused', { key: o.key, by: String(o.by).slice(0, 8) }); return; }
+      const moved = GifOS.meetContent.bring(CT.st, { key: o.key, at: +o.at, by: o.by });
+      ctNote('bring-in', { key: o.key, by: String(o.by).slice(0, 8), moved: moved });
+      if (moved) {
+        setStatus(ctText('ctBrought', '{name} brought everyone to {tab}.', { name: displayName(o.by), tab: ctLabel(it) }));
+        try { layout(); } catch (e) {}
+      }
+    }
+
+    // ---- the agenda: state, the wire, the editor ----
+    function ctAgendaWire() {
+      if (!CT || !CT.ag || !CT.agW || !(CT.ag.v > 0)) return undefined;
+      return { a: CT.ag, w: CT.agW, g: CT.agG || undefined, el: CT.ag.cur >= 0 && CT.agStart ? Math.max(0, Date.now() - CT.agStart) : 0 };
+    }
+    // proven: the signature checked out as the host's own (an admin room's
+    // agenda is honored only from a verified admin signature).
+    function ctAgendaTake(a, w, el, ageMs, why, proven, g) {
+      const MA = GifOS.meetAgenda;
+      const prev = CT.ag;
+      const ctx = hasAdminRoom() ? { adminRoom: true, isAdmin: !!proven } : { adminRoom: false, grantOk: !!g };
+      if (!MA.accept(prev, a, ctx)) { ctNote('agenda-refused', { v: a.v, by: String(a.by).slice(0, 8), why: why }); return false; }
+      const curId = (x) => (x && x.cur >= 0 && x.items[x.cur]) ? x.items[x.cur].id + '#' + x.cur : '';
+      CT.ag = a; CT.agW = w;
+      // The owner's grant travels with every version it still describes.
+      if (g) CT.agG = g;
+      else if (!prev || prev.owner !== a.owner || JSON.stringify(prev.ed) !== JSON.stringify(a.ed)) CT.agG = null;
+      if (!prev || curId(prev) !== curId(a) || !CT.agStart) CT.agStart = Date.now() - Math.max(0, +el || 0) - Math.max(0, +ageMs || 0);
+      if (a.items.length) CT.agLocal = false;
+      ctNote('agenda', { v: a.v, cur: a.cur, n: a.items.length, by: String(a.by).slice(0, 8), why: why });
+      const visibleAll = window.__meetGallery === 'scroll';
+      ctRefresh();
+      if (!prev || MA.body(prev) !== MA.body(a)) GifOS.meetContent.bump(CT.st, 'agenda', visibleAll);
+      try { layout(); } catch (e) {}
+      return true;
+    }
+    async function ctAgendaSign(a) {
+      const MA = GifOS.meetAgenda;
+      const h = MA.hash(a);
+      if (hasAdminRoom()) return admSigned('agenda', { h: h, v: a.v });
+      if (!myIdentity || !myId) return null;
+      const sp = JSON.stringify({ t: 'agenda', room: roomKey(), by: myId, v: a.v, h: h });
+      return { sp: sp, sig: await net.edSign(myIdentity.priv, sp), pub: myIdentity.pubB64 };
+    }
+    async function ctAgendaVerify(a, w) {
+      if (!w || typeof w.sp !== 'string' || typeof w.sig !== 'string' || typeof w.pub !== 'string' || w.sp.length > 600) return false;
+      const MA = GifOS.meetAgenda;
+      const h = MA.hash(a);
+      if (hasAdminRoom()) {
+        // Infinity: a latecomer re-proves the version the room holds. An old
+        // version replayed loses to the newer one by v.
+        const o = await admVerify(w, 'agenda', Infinity);
+        return !!(o && o.h === h && o.v === a.v && o.by === a.by);
+      }
+      let o; try { o = JSON.parse(w.sp); } catch (e) { return false; }
+      if (!o || o.t !== 'agenda' || o.room !== roomKey() || o.by !== a.by || o.v !== a.v || o.h !== h) return false;
+      try {
+        if ((await GifOS.meshIdentity.peerIdOf(w.pub)) !== a.by) return false;
+        return !!(await net.edVerify(w.pub, w.sig, w.sp));
+      } catch (e) { return false; }
+    }
+    async function ctAgendaIn(m, why) {
+      if (!ctInit() || !m) return;
+      const ageMs = gossipAgeMs; // read now: it is cleared when this frame's handler returns
+      const a = GifOS.meetAgenda.clean(m.a);
+      if (!a || !a.by) return;
+      if (CT.ag && (a.v < CT.ag.v || (a.v === CT.ag.v && GifOS.meetAgenda.hash(a) === GifOS.meetAgenda.hash(CT.ag)))) return;
+      if (!(await ctAgendaVerify(a, m.w))) { ctNote('agenda-bad-sig', { v: a.v, why: why }); return; }
+      const g = (!hasAdminRoom() && m.g && (await ctGrantVerify(a, m.g))) ? m.g : null;
+      ctAgendaTake(a, m.w, +m.el || 0, ageMs, why, true, g);
+    }
+    // Open rooms: the owner signs who may edit, so a latecomer can take an
+    // editor's version without having seen the hand-over.
+    async function ctGrantSign(a) {
+      if (!myIdentity || !myId) return null;
+      const sp = JSON.stringify({ t: 'agenda-ed', room: roomKey(), g: GifOS.meetAgenda.grantBody(a) });
+      return { sp: sp, sig: await net.edSign(myIdentity.priv, sp), pub: myIdentity.pubB64 };
+    }
+    async function ctGrantVerify(a, g) {
+      if (!g || typeof g.sp !== 'string' || typeof g.sig !== 'string' || typeof g.pub !== 'string' || g.sp.length > 2000) return false;
+      let o; try { o = JSON.parse(g.sp); } catch (e) { return false; }
+      if (!o || o.t !== 'agenda-ed' || o.room !== roomKey() || o.g !== GifOS.meetAgenda.grantBody(a)) return false;
+      try {
+        if ((await GifOS.meshIdentity.peerIdOf(g.pub)) !== a.owner) return false;
+        return !!(await net.edVerify(g.pub, g.sig, g.sp));
+      } catch (e) { return false; }
+    }
+    async function ctAgendaPublish(next, why) {
+      if (!next || !CT) return false;
+      const MA = GifOS.meetAgenda;
+      const a = MA.clean(next);
+      if (!a) return false;
+      if (!MA.canEdit(CT.ag, myId, ctAgCtx(myId))) { setStatus(ctAgendaWhoText()); return false; }
+      a.by = myId;
+      let w = null;
+      try { w = await ctAgendaSign(a); } catch (e) { w = null; }
+      if (!w) { ctNote('agenda-unsigned', { why: why }); return false; }
+      // The owner signs the list of editors whenever it changes; an editor
+      // passes the owner's grant on unchanged.
+      let g = null;
+      if (!hasAdminRoom()) {
+        const same = CT.ag && CT.agG && CT.ag.owner === a.owner && JSON.stringify(CT.ag.ed) === JSON.stringify(a.ed);
+        if (same) g = CT.agG;
+        else if (a.owner === myId) { try { g = await ctGrantSign(a); } catch (e) { g = null; } }
+      }
+      const curMoved = !CT.ag || CT.ag.cur !== a.cur || ((CT.ag.items[CT.ag.cur] || {}).id !== (a.items[a.cur] || {}).id);
+      const el = curMoved ? 0 : (CT.agStart ? Date.now() - CT.agStart : 0);
+      if (!ctAgendaTake(a, w, el, 0, 'local:' + (why || ''), !!amAdmin, g)) return false;
+      sendAll({ k: 'agenda', a: a, w: w, el: el, g: g || undefined });
+      return true;
+    }
+    function ctAgendaWhoText() {
+      if (hasAdminRoom()) return ctText('agOnlyHost', 'Only the host can change the agenda.');
+      const owner = CT && CT.ag && CT.ag.items.length ? CT.ag.owner : null;
+      if (!owner) return ctText('agAnyone', 'Anyone can share an agenda in this room.');
+      return ctText('agOnlyOwner', 'Only {name} and the people they choose can change the agenda.', { name: owner === myId ? ctText('ctYou', 'you') : displayName(owner) });
+    }
+    function ctAgendaClock() {
+      if (!CT || !CT.ag) return null;
+      return GifOS.meetAgenda.clock(CT.ag, CT.agStart, Date.now());
+    }
+    function ctAgendaShortTime() {
+      const c = ctAgendaClock();
+      if (!c || !c.timed) return '';
+      const MA = GifOS.meetAgenda;
+      return c.over > 0 ? '+' + MA.mmss(c.over) : MA.mmss(c.left);
+    }
+    function ctAgendaOver() { const c = ctAgendaClock(); return !!(c && c.timed && c.over > 0); }
+    // The clock text moves once a second while an item with a duration runs.
+    function ctAgendaTickArm() {
+      const T = GifOS.timings || {};
+      const every = +T.AGENDA_TICK_MS > 0 ? +T.AGENDA_TICK_MS : 0;
+      const run = !!(every && CT && CT.ag && CT.ag.cur >= 0 && CT.items.some((i) => i.kind === 'agenda'));
+      if (run && !CT.agTick) {
+        CT.agTick = setInterval(() => {
+          if (!CT || !CT.ag || CT.ag.cur < 0) { clearInterval(CT.agTick); CT.agTick = 0; return; }
+          try {
+            const p = CT.panes.get('agenda');
+            if (p && !p.hidden) ctPaintAgendaClock(p);
+            if (CT.plan && CT.plan.tabs) ctPaintBar(CT.plan);
+          } catch (e) {}
+        }, every);
+      } else if (!run && CT && CT.agTick) { clearInterval(CT.agTick); CT.agTick = 0; }
+    }
+    function ctPaintAgendaClock(p) {
+      const MA = GifOS.meetAgenda;
+      const c = ctAgendaClock();
+      const now = p.querySelector('.ag-now');
+      if (!now) return;
+      now.hidden = !c;
+      if (!c) return;
+      const t = now.querySelector('.ag-nowt');
+      if (t.textContent !== c.item.t) t.textContent = c.item.t;
+      const bar = now.querySelector('.ag-bar');
+      const fill = now.querySelector('.ag-fill');
+      const left = now.querySelector('.ag-left');
+      bar.hidden = !c.timed;
+      if (c.timed) {
+        fill.style.width = Math.round(c.frac * 100) + '%';
+        now.classList.toggle('over', c.over > 0);
+        left.textContent = c.over > 0 ? ctText('agOver', '{t} over', { t: MA.mmss(c.over) }) : ctText('agLeft', '{t} left', { t: MA.mmss(c.left) });
+      } else {
+        now.classList.remove('over');
+        left.textContent = MA.mmss(c.ms);
+      }
+    }
+    function ctAgBtn(cls, word, act, title) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = word;
+      if (title) b.title = title;
+      b.addEventListener('click', act);
+      return b;
+    }
+    // The agenda pane, painted again whenever its version, its rights or the
+    // edit switch change (a clock tick only touches the clock).
+    function ctPaintAgenda(p) {
+      const MA = GifOS.meetAgenda;
+      const a = CT.ag || MA.empty(myId);
+      const may = ctCanEditAgenda();
+      const isOwner = !!(CT.ag && CT.ag.owner === myId && CT.ag.items.length);
+      const mayHand = MA.canHand(CT.ag, myId, ctAgCtx(myId));
+      if (!may && CT.agEdit) CT.agEdit = false;
+      const sig = [MA.body(a), may ? 1 : 0, CT.agEdit ? 1 : 0, mayHand ? 1 : 0, uiLang(), mayHand ? rosterIds.join(',') : ''].join('|');
+      if (p._sig === sig) { ctPaintAgendaClock(p); return; }
+      p._sig = sig;
+      const keepPv = p.querySelector(':scope > .ct-pview');
+      p.textContent = '';
+      if (keepPv) p.appendChild(keepPv);
+      const head = document.createElement('div'); head.className = 'ag-head';
+      const h = document.createElement('h3'); h.className = 'ag-title'; h.textContent = ctText('ctAgenda', 'Agenda');
+      head.appendChild(h);
+      if (a.items.length) {
+        const pos = document.createElement('span'); pos.className = 'ag-pos';
+        const tot = MA.totalMin(a);
+        pos.textContent = (a.cur >= 0 ? ctText('agPos', '{i} of {n}', { i: a.cur + 1, n: a.items.length }) : ctText('agNotStarted', 'Not started')) + (tot ? ' · ' + ctText('agTotal', '{n} min in all', { n: tot }) : '');
+        head.appendChild(pos);
+      }
+      const tools = document.createElement('div'); tools.className = 'ag-tools';
+      if (may && a.items.length && !CT.agEdit) {
+        if (a.cur > 0) tools.appendChild(ctAgBtn('ag-btn ag-back', ctText('agBack', 'Back'), () => ctAgendaPublish(MA.prev(CT.ag, myId), 'back')));
+        const last = a.cur >= a.items.length - 1;
+        if (!last || a.cur < 0) tools.appendChild(ctAgBtn('ag-btn ag-next', a.cur < 0 ? ctText('agStart', 'Start') : ctText('agNext', 'Next'), () => ctAgendaPublish(MA.next(CT.ag, myId), 'next')));
+      }
+      if (may) tools.appendChild(ctAgBtn('ag-btn ag-edit', CT.agEdit ? ctText('agDone', 'Done') : ctText('agEdit', 'Edit'), () => {
+        CT.agEdit = !CT.agEdit;
+        if (!CT.agEdit && !(CT.ag && CT.ag.items.length)) CT.agLocal = false;
+        ctNote('agenda-edit', { on: CT.agEdit });
+        try { ctRefresh(); layout(); } catch (e) {}
+      }));
+      head.appendChild(tools);
+      p.appendChild(head);
+      // Now: the current item, its bar, time left or over.
+      const now = document.createElement('div'); now.className = 'ag-now'; now.hidden = true;
+      now.innerHTML = '<div class="ag-nowt"></div><div class="ag-bar"><div class="ag-fill"></div></div><div class="ag-left"></div>';
+      p.appendChild(now);
+      const list = document.createElement('ol'); list.className = 'ag-list';
+      a.items.forEach((it, i) => {
+        const li = document.createElement('li'); li.className = 'ag-item'; li.dataset.id = it.id;
+        if (i === a.cur) { li.classList.add('cur'); li.setAttribute('aria-current', 'step'); }
+        else if (a.cur >= 0 && i < a.cur) li.classList.add('done');
+        if (CT.agEdit) {
+          const t = document.createElement('input'); t.type = 'text'; t.className = 'ag-in-t'; t.value = it.t; t.maxLength = MA.MAX_T;
+          t.setAttribute('aria-label', ctText('agItemPh', 'What is this item?'));
+          const mn = document.createElement('input'); mn.type = 'number'; mn.className = 'ag-in-min'; mn.min = '0'; mn.max = String(MA.MAX_MIN); mn.value = it.min ? String(it.min) : '';
+          mn.placeholder = ctText('agMinPh', 'min'); mn.setAttribute('aria-label', ctText('agMinutes', 'Minutes'));
+          const commit = () => { if (t.value.trim() !== it.t || (+mn.value || 0) !== it.min) ctAgendaPublish(MA.edit(CT.ag, myId, it.id, t.value, +mn.value || 0), 'edit'); };
+          t.addEventListener('change', commit); mn.addEventListener('change', commit);
+          li.appendChild(t); li.appendChild(mn);
+          const up = ctAgBtn('ag-mini', '↑', () => ctAgendaPublish(MA.move(CT.ag, myId, it.id, -1), 'move'), ctText('agMoveUp', 'Move up'));
+          const dn = ctAgBtn('ag-mini', '↓', () => ctAgendaPublish(MA.move(CT.ag, myId, it.id, 1), 'move'), ctText('agMoveDown', 'Move down'));
+          const rm = ctAgBtn('ag-mini', '✕', () => ctAgendaPublish(MA.remove(CT.ag, myId, it.id), 'remove'), ctText('agRemove', 'Remove'));
+          for (const b of [up, dn, rm]) b.setAttribute('aria-label', b.title);
+          li.appendChild(up); li.appendChild(dn); li.appendChild(rm);
+        } else {
+          const t = document.createElement('span'); t.className = 'ag-t'; t.textContent = it.t;
+          li.appendChild(t);
+          if (it.min) { const mn = document.createElement('span'); mn.className = 'ag-min'; mn.textContent = ctText('agMin', '{n} min', { n: it.min }); li.appendChild(mn); }
+          if (may) {
+            li.tabIndex = 0;
+            li.title = ctText('agGoTip', 'Make this the current item');
+            const go = () => { if (i !== CT.ag.cur) ctAgendaPublish(MA.go(CT.ag, myId, i), 'go'); };
+            li.addEventListener('click', go);
+            li.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+          }
+        }
+        list.appendChild(li);
+      });
+      p.appendChild(list);
+      if (!a.items.length && !CT.agEdit) {
+        const e = document.createElement('p'); e.className = 'ag-empty'; e.textContent = ctText('agNoItems', 'No items yet.'); p.appendChild(e);
+      }
+      if (CT.agEdit) {
+        const add = document.createElement('form'); add.className = 'ag-add';
+        const t = document.createElement('input'); t.type = 'text'; t.className = 'ag-in-t'; t.maxLength = MA.MAX_T; t.placeholder = ctText('agItemPh', 'What is this item?');
+        t.setAttribute('aria-label', ctText('agItemPh', 'What is this item?'));
+        const mn = document.createElement('input'); mn.type = 'number'; mn.className = 'ag-in-min'; mn.min = '0'; mn.max = String(MA.MAX_MIN); mn.placeholder = ctText('agMinPh', 'min');
+        mn.setAttribute('aria-label', ctText('agMinutes', 'Minutes'));
+        const b = document.createElement('button'); b.type = 'submit'; b.className = 'ag-btn'; b.textContent = ctText('agAddItem', 'Add item');
+        add.appendChild(t); add.appendChild(mn); add.appendChild(b);
+        add.addEventListener('submit', (e) => {
+          e.preventDefault();
+          if (!t.value.trim()) return;
+          ctAgendaPublish(MA.add(CT.ag, myId, t.value, +mn.value || 0), 'add').then((ok) => {
+            if (!ok) return;
+            const f = CT.panes.get('agenda'); const nt = f && f.querySelector('.ag-add .ag-in-t'); if (nt) try { nt.focus(); } catch (err) {}
+          });
+        });
+        p.appendChild(add);
+        if (mayHand) {
+          const who = document.createElement('div'); who.className = 'ag-who';
+          const lb = document.createElement('div'); lb.className = 'ag-wholb'; lb.textContent = ctText('agWhoEdits', 'Who else can edit');
+          who.appendChild(lb);
+          const row = document.createElement('div'); row.className = 'ag-chips';
+          const ids = Array.from(new Set(rosterIds)).filter((x) => x && x !== myId).slice(0, 24);
+          for (const pid of ids) {
+            const on = CT.ag.ed.indexOf(pid) >= 0;
+            const c = ctAgBtn('ag-chip', displayName(pid), () => ctAgendaPublish(MA.hand(CT.ag, myId, pid, !on), on ? 'unhand' : 'hand'));
+            c.setAttribute('aria-pressed', on ? 'true' : 'false');
+            row.appendChild(c);
+          }
+          who.appendChild(row);
+          p.appendChild(who);
+        }
+        if (CT.ag && CT.ag.items.length && (isOwner || (hasAdminRoom() && amAdmin))) {
+          p.appendChild(ctAgBtn('ag-btn ag-stop', ctText('agStop', 'Stop sharing the agenda'), () => { CT.agEdit = false; ctAgendaPublish(MA.clear(CT.ag, myId), 'clear'); }));
+        }
+      }
+      if (!may) {
+        const n = document.createElement('p'); n.className = 'ag-note'; n.textContent = ctAgendaWhoText(); p.appendChild(n);
+      }
+      ctPaintAgendaClock(p);
+    }
+    // The More sheet's Agenda button: open the agenda (start one if you may).
+    function ctAgendaOpen() {
+      if (!ctInit()) return;
+      if (CT.ag && CT.ag.items.length) { ctRefresh(); ctSelect('agenda', 'button'); return; }
+      if (!ctCanEditAgenda()) { setStatus(hasAdminRoom() ? ctText('agHostOnlyTip', 'Only the host can share an agenda in this room.') : ctAgendaWhoText()); return; }
+      CT.agLocal = true; CT.agEdit = true;
+      ctRefresh();
+      ctSelect('agenda', 'start');
+      try { layout(); } catch (e) {}
+      requestAnimationFrame(() => { const p = CT.panes.get('agenda'); const t = p && p.querySelector('.ag-add .ag-in-t'); if (t) try { t.focus(); } catch (e) {} });
+    }
+    {
+      const ab = document.getElementById('agendabtn');
+      if (ab) ab.addEventListener('click', () => ctAgendaOpen());
+      // The content tabs are the meeting's content region: Focus lists them.
+      try { if (window.GifOS && GifOS.meetViewMode && GifOS.meetViewMode.content) GifOS.meetViewMode.content.add(() => (fsInline ? ctFocusSources() : [])); } catch (e) {}
+    }
+    // For the room tests and the debug dump: what the area shows.
+    window.__meetContent = () => {
+      if (!CT) return { on: false };
+      const MC = GifOS.meetContent;
+      const r = CT.el.getBoundingClientRect();
+      const panes = {};
+      for (const [k, p] of CT.panes) {
+        const pr = p.getBoundingClientRect();
+        const v = p.querySelector('video');
+        panes[k] = { shown: !p.hidden && pr.width > 0, box: [Math.round(pr.left), Math.round(pr.top), Math.round(pr.width), Math.round(pr.height)], src: p.dataset.src || '', vw: v ? v.videoWidth : 0, vh: v ? v.videoHeight : 0 };
+      }
+      const ap = document.getElementById('apppane');
+      const apr = ap ? ap.getBoundingClientRect() : null;
+      return {
+        on: CT.items.length > 0, keys: CT.items.map((i) => i.key), sel: CT.st.sel, all: CT.st.all, badges: MC.badges(CT.st),
+        tabs: !!(CT.plan && CT.plan.tabs), show: CT.plan ? CT.plan.show.slice() : [], view: window.__meetView || 'fit', present: !!CT.present,
+        facesHidden: !!CT.facesHidden, box: [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)], hidden: CT.el.hidden,
+        panes: panes, app: apr ? { box: [Math.round(apr.left), Math.round(apr.top), Math.round(apr.width), Math.round(apr.height)], off: document.body.classList.contains('ct-app-off'), vis: getComputedStyle(ap).visibility } : null,
+        inset: CT.inset.hidden ? null : { pid: CT.inset.dataset.pid || '', box: [CT.inset.offsetLeft, CT.inset.offsetTop, CT.inset.offsetWidth, CT.inset.offsetHeight], vw: (CT.inset.querySelector('video') || {}).videoWidth || 0 },
+        agenda: CT.ag ? { v: CT.ag.v, cur: CT.ag.cur, n: CT.ag.items.length, owner: CT.ag.owner, ed: CT.ag.ed.slice(), items: CT.ag.items.map((i) => i.t), clock: ctAgendaShortTime(), canEdit: ctCanEditAgenda() } : (CT.agLocal ? { local: true, canEdit: ctCanEditAgenda() } : null),
+      };
+    };
+    window.__meetContentDo = {
+      select: (k) => ctSelect(k, 'test'), all: (on) => { if (CT) { CT.st.all = !!on; try { layout(); } catch (e) {} } },
+      present: (on) => ctPresent(!!on, 'test'), bring: (k) => ctBring(k), agendaOpen: () => ctAgendaOpen(),
+      agendaAdd: (t, min) => ctAgendaPublish(GifOS.meetAgenda.add(CT && CT.ag, myId, t, min), 'test-add'),
+      agendaNext: () => ctAgendaPublish(GifOS.meetAgenda.next(CT && CT.ag, myId), 'test-next'),
+      agendaHand: (pid, on) => ctAgendaPublish(GifOS.meetAgenda.hand(CT && CT.ag, myId, pid, on !== false), 'test-hand'),
+      faces: (hidden) => { if (CT) { CT.facesHidden = !!hidden; try { layout(); } catch (e) {} } },
+    };
     // ---- 0.9.23b: calm by default, tap a tile for its controls, viewer crop ----
     // Calm: tiles show only the name and the green speaking frame. Any touch,
     // scroll, mouse move or key wakes the info (body.meet-awake) for 3 s.
@@ -9358,7 +10548,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // is still a phone, and tier 3 is the state where it has already
           // decided that frames and pixels are what it is spending.
           const isStageSd = stageSenders.has(sender), isAuxSd = auxSenders.has(sender);
-          const want = isStageSd ? (screenOnStage ? Math.max(stageBudget, screenBudget) : stageBudget)
+          let want = isStageSd ? (screenOnStage ? Math.max(stageBudget, screenBudget) : stageBudget)
             : isAuxSd ? auxBudget
             : (myScreen ? screenBudget : blurred ? Math.min(q.kbps, 250) * 1000 : q.kbps * 1000);
           // A BUDGET ALONE DOES NOT KEEP THE PIXELS. Under the platform default
@@ -9373,9 +10563,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const wantDeg = carriesScreen ? 'maintain-resolution' : 'balanced';
           const degNow = degOf.has(sender) ? degOf.get(sender) : (prm.degradationPreference || 'balanced');
           const lowOn = !(lowSenders.has(sender) && meshNode && meshNode.raw && meshNode.raw.lgLvl >= 2);   // L29.1: level 2 stops the low-priority forwards' pictures
-          if (prm.encodings[0].maxBitrate === want && degNow === wantDeg && prm.encodings[0].active !== false === lowOn) continue; // already set — and a no-op setParameters can still race a sender teardown into the renderer-killing CHECK above, so only touch what must change
+          // TURN.13: on a TURN link whose server throttles, video takes the step the link's measured capacity leaves
+          // (js/meet-turn.js throttlePlan): a lower cap, then a smaller picture, then fewer frames (the pause is the gate).
+          const tst = turnLinks ? turnLinks.videoStep(p.id) : null;
+          if (tst) want = Math.min(want, tst.maxBitrate);
+          const wantScale = tst ? tst.scale : (turnScaled.has(sender) ? 1 : null), wantFps = tst ? tst.fps : null;
+          const enc0 = prm.encodings[0];
+          const stepSame = wantScale == null || ((enc0.scaleResolutionDownBy || 1) === wantScale && (wantFps == null ? !turnScaled.has(sender) || enc0.maxFramerate == null : enc0.maxFramerate === wantFps));
+          if (enc0.maxBitrate === want && degNow === wantDeg && enc0.active !== false === lowOn && stepSame) continue; // already set — and a no-op setParameters can still race a sender teardown into the renderer-killing CHECK above, so only touch what must change
           prm.encodings[0].maxBitrate = want;
           prm.encodings[0].active = lowOn;
+          if (wantScale != null) {
+            enc0.scaleResolutionDownBy = wantScale;
+            if (wantFps != null) enc0.maxFramerate = wantFps; else delete enc0.maxFramerate;
+            if (tst) turnScaled.add(sender); else turnScaled.delete(sender);
+          }
           prm.degradationPreference = wantDeg;
           degOf.set(sender, wantDeg);
           sender.setParameters(prm).catch(() => {});
@@ -9391,6 +10593,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // value that always looks unset would re-write every sender every sweep —
     // the setParameters storm the skip-if-unchanged rule above exists to avoid.
     const degOf = new WeakMap();
+    const turnScaled = new WeakSet();   // senders a TURN.13 step resized: set back to full size once the step lifts
     function constraintDue(q, track, ckey, now) {
       if (!track) return false;
       const same = q.t === track && q.k === ckey;
@@ -11946,7 +13149,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const p = peers.get(pid); if (!p || !p.pc) return;
           try { p.pc.setConfiguration(turnPcConfig(p)); } catch (e) { turnNote('turn-setconf ' + String(e).slice(0, 60)); }
           if (!p.connected) return;
-          if (iInitiate(pid)) sendOffer(pid, true); else if (l) relaySendSealedOrDc(p, { k: 'tv', q: 'i', l });
+          const pathUp = p.pc.iceConnectionState === 'connected' || p.pc.iceConnectionState === 'completed';   // a dead path's channel still says open: ask over the relay
+          if (iInitiate(pid)) sendOffer(pid, true); else if (l) { if (pathUp) relaySendSealedOrDc(p, { k: 'tv', q: 'i', l }); else relaySendSealed(pid, 'tv', { k: 'tv', q: 'i', l }); }
         },
         keep: (pid) => { const s = meshSeat(); if (!s || !s.keepAdd || !s.keepPeers) return; const ks = s.keepPeers(); if (ks.has(pid) || ks.size < K.KEEP_MAX) s.keepAdd(pid, K.TURN_DIAL); },
         drop: (pid, why) => { const p = peers.get(pid); if (!p) return; if (!linkTo(pid)) pcBye(pid, 'turn-' + why); else if (p.pc) rebuildPc(p, 'turn-' + why); },
@@ -11994,16 +13198,33 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const pid = tile.dataset.peer; if (!pid || pid === myId) continue;
         const p = { id: pid, tile };
         const show = !!turnLinks && (GifOS.meetTurn.pausedBy(facts, myId, p.id) || (turnLinks.isLink(p.id) && !turnLinks.video(p.id)));
-        let el = p.tile.querySelector(':scope > .tpause');
+        // TURN.13: the far end paused its video because the server throttles (vouched: nothing to subscribe to)
+        const busy = !show && !!turnLinks && turnLinks.farBusy(p.id);
+        let bel = p.tile.querySelector(':scope > .tpause-busy');
+        if (busy && !bel) {
+          bel = document.createElement('div'); bel.className = 'tpause tpause-busy'; bel.setAttribute('role', 'note');
+          const t = document.createElement('span'); t.textContent = uiText('turnBusy', 'Video is paused: the connection is busy. It comes back by itself.'); bel.appendChild(t);
+          p.tile.appendChild(bel);
+        } else if (!busy && bel) bel.remove();
+        let el = p.tile.querySelector(':scope > .tpause:not(.tpause-busy)');
         if (show && !el) {
+          // VIDEO IS PAUSED: the named state's sentence (meet-status videoPausedRelay) over the dark tile, and one
+          // tap to subscribe ($2 monthly, PayPal). A subscription's vouch turns this link's video on where it is:
+          // the next paint finds the link carrying video and takes the note away.
           el = document.createElement('div'); el.className = 'tpause'; el.setAttribute('role', 'note');
-          const t = document.createElement('span');
-          t.textContent = uiText('turnPaused', 'Video is paused: this person connects through our relay. Subscribe to turn on video for this meeting.');
-          el.appendChild(t);
+          const t = document.createElement('span'); t.className = 'tpause-say';
+          const said = statusWords('videoPausedRelay');
+          t.textContent = said; el.appendChild(t);
           if (subsOn()) {
             const b = document.createElement('button'); b.type = 'button'; b.className = 'tpause-sub';
             b.textContent = uiText('turnSubscribe', 'Subscribe');
-            b.addEventListener('click', (e) => { e.stopPropagation(); try { GifOS.meetSubs.openSettings(); } catch (x) {} });
+            b.addEventListener('click', async (e) => {
+              e.stopPropagation(); b.disabled = true;
+              try {
+                const r = await GifOS.meetSubs.subscribe('room20', 'monthly', (w) => { t.textContent = w; });
+                if (!(r && r.licenseJson)) { t.textContent = said; b.disabled = false; }
+              } catch (x) { t.textContent = said; b.disabled = false; }
+            });
             el.appendChild(b);
           }
           p.tile.appendChild(el);
@@ -12014,8 +13235,43 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!turnLinks || !relayTv) return;
       try { turnLinks.step(); } catch (e) { turnNote('turn-step-err ' + String(e && e.stack || e).slice(0, 160)); }
       for (const p of peers.values()) if (turnLinks.holds(p.id) || (p.pc && p.pc.__turnGuarded)) turnApplyVideo(p);
+      turnWatch();
       const every = GifOS.sub && GifOS.sub.RENEW_EVERY_S ? GifOS.sub.RENEW_EVERY_S * 1000 / 2 : 0;   // half the ticket's renewal period
       if (every && Date.now() - turnSubAt > every) { turnSubAt = Date.now(); turnSubOut(); }
+    }
+    // TURN.9 and TURN.13 read each link pc: its path state every tick (a dead server is a silent cut of the selected
+    // pair: onPath moves the link onto its standby allocation), and its measured send capacity every lookMs while it
+    // carries video (onCapacity steps the video). A step that changed re-runs adapt(), which applies it per sender.
+    let turnLookAt = 0;
+    const turnSent = new Map();   // link far pid -> { b, t }: my video bytes on its pc at the last look
+    function turnWatch() {
+      const now = Date.now(), look = now - turnLookAt >= turnLinks.lookMs;
+      if (look) turnLookAt = now;
+      for (const pid of turnLinks.turnPcs()) {
+        const p = peers.get(pid); if (!p || !p.pc) continue;
+        try { turnLinks.onPath(pid, p.pc.iceConnectionState === 'completed' ? 'connected' : p.pc.iceConnectionState); } catch (e) {}
+        if (!look) continue;
+        const before = JSON.stringify(turnLinks.videoStep(pid)) + turnLinks.busy(pid);
+        p.pc.getStats().then((st) => {
+          let sel = null; const by = new Map(); st.forEach((x) => by.set(x.id, x));
+          st.forEach((x) => { if (x.type === 'transport' && x.selectedCandidatePairId) sel = by.get(x.selectedCandidatePairId); });
+          if (!sel) st.forEach((x) => { if (!sel && x.type === 'candidate-pair' && x.nominated && x.state === 'succeeded') sel = x; });
+          if (!turnLinks) return;
+          { const lc = sel && by.get(sel.localCandidateId); if (lc && lc.url) turnLinks.onServer(pid, String(lc.url).replace(/^turns?:/, '').split('?')[0]); }
+          const bps = sel && +sel.availableOutgoingBitrate;
+          if (!(bps > 0)) return;
+          // congestion: the loss the far end reports on my video (RTCP receiver reports), and the selected pair's round trip
+          let loss = 0, rtt = sel && +sel.currentRoundTripTime || 0;
+          // limited: the estimate is what the path gives, not what a pc that sends little reports: my video already sends
+          // at least most of the estimate (bytes since the last look), or the browser says bandwidth holds it back
+          let limited = false, vBytes = 0;
+          st.forEach((x) => { if (x.type === 'remote-inbound-rtp' && x.kind === 'video') { if (+x.fractionLost > loss) loss = +x.fractionLost; } if (x.type === 'outbound-rtp' && x.kind === 'video') { vBytes += +x.bytesSent || 0; if (x.qualityLimitationReason === 'bandwidth') limited = true; } });   // (the round trip: the selected pair's own, one clock)
+          const lastV = turnSent.get(pid), tNow = Date.now(); turnSent.set(pid, { b: vBytes, t: tNow });
+          if (lastV && tNow > lastV.t && vBytes >= lastV.b && (vBytes - lastV.b) * 8000 / (tNow - lastV.t) >= 0.7 * bps) limited = true;
+          if (turnLinks.video(pid)) turnLinks.onCapacity(pid, bps, loss, rtt, limited);
+          if (JSON.stringify(turnLinks.videoStep(pid)) + turnLinks.busy(pid) !== before) { try { adapt(); } catch (e) {} turnApplyVideo(p); turnPaint(); }
+        }, () => {});
+      }
     }
     // Called once a mesh node exists (startMesh): a new node is a new set of links.
     function turnStart() {
@@ -12038,7 +13294,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       for (const p of peers.values()) {
         if (!p.pc) continue;
         const r = { pid: p.id, name: p.name || rosterNames[p.id] || null, conn: p.pc.connectionState, link: !!(turnLinks && turnLinks.isLink(p.id)),
-          video: !!(turnLinks && turnLinks.video(p.id)), paused: !!(p.tile && p.tile.querySelector(':scope > .tpause')), policy: null, turn: false,
+          video: !!(turnLinks && turnLinks.video(p.id)), paused: !!(p.tile && p.tile.querySelector(':scope > .tpause:not(.tpause-busy)')), busyNote: !!(p.tile && p.tile.querySelector(':scope > .tpause-busy')), policy: null, turn: false,
           local: null, remote: null, vOut: 0, aOut: 0, vIn: 0, aIn: 0 };
         try { const c = p.pc.getConfiguration(); r.policy = c.iceTransportPolicy; r.turn = GifOS.meetTurn.hasTurnServer(c.iceServers); } catch (e) {}
         try {
@@ -12046,9 +13302,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           let sel = null;
           st.forEach((x) => { if (x.type === 'transport' && x.selectedCandidatePairId) sel = by.get(x.selectedCandidatePairId); });
           if (!sel) st.forEach((x) => { if (!sel && x.type === 'candidate-pair' && x.nominated && x.state === 'succeeded') sel = x; });
-          if (sel) { const l = by.get(sel.localCandidateId), rm = by.get(sel.remoteCandidateId); r.local = l ? l.candidateType : null; r.remote = rm ? rm.candidateType : null; }
+          if (sel) { const l = by.get(sel.localCandidateId), rm = by.get(sel.remoteCandidateId); r.local = l ? l.candidateType : null; r.remote = rm ? rm.candidateType : null; r.server = l && l.url ? String(l.url).replace(/^turns?:/, '').split('?')[0] : null; r.proto = l ? (l.relayProtocol || l.protocol || null) : null; r.cap = +sel.availableOutgoingBitrate || null; }
+          r.busy = !!(turnLinks && turnLinks.busy(p.id)); r.farBusy = !!(turnLinks && turnLinks.farBusy(p.id)); r.step = turnLinks && turnLinks.videoStep(p.id) ? turnLinks.videoStep(p.id).step : null;
           st.forEach((x) => {
-            if (x.type === 'outbound-rtp' && x.kind === 'video') r.vOut += x.bytesSent || 0;
+            if (x.type === 'outbound-rtp' && x.kind === 'video') { r.vOut += x.bytesSent || 0; (r.vo = r.vo || []).push({ mid: x.mid, b: x.bytesSent || 0, f: x.framesEncoded || 0, ql: x.qualityLimitationReason || null, act: x.active, w: x.frameWidth || 0 }); }
+            if (x.type === 'inbound-rtp' && x.kind === 'video') (r.vi = r.vi || []).push({ mid: x.mid, b: x.bytesReceived || 0, f: x.framesDecoded || 0 });
             if (x.type === 'outbound-rtp' && x.kind === 'audio') r.aOut += x.bytesSent || 0;
             if (x.type === 'inbound-rtp' && x.kind === 'video') r.vIn += x.bytesReceived || 0;
             if (x.type === 'inbound-rtp' && x.kind === 'audio') r.aIn += x.bytesReceived || 0;
@@ -12190,6 +13448,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           });
         }
         if (!stream) return;
+        dropEndedRemoteTracks(stream, ev.track);   // a copy that comes back lands in the stream it left: its old, ended track goes first
         p.incoming = p.incoming || [];
         if (!p.incoming.includes(stream)) {
           // CONTAINER IDENTITY: a sid is a per-job constant now, so a rebuilt
@@ -13179,7 +14438,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // the offer gate in onSignal.
     // A door outsider: I hold a seat, and this peer is neither a link of mine nor a seat my mesh knows (a knocker).
     // Its frames may do door work only; see the TROLL GATE in onDc.
-    const DOOR_DENY = new Set(['hi', 'fhi', 'chat', 'chatack', 'cdel', 'tr', 'react', 'creact', 'fdel', 'fmeta', 'pwinfo', 'pwreset', 'sga', 'scribe', 'av']);
+    const DOOR_DENY = new Set(['agenda', 'cbring', 'hi', 'fhi', 'chat', 'chatack', 'cdel', 'tr', 'react', 'creact', 'fdel', 'fmeta', 'pwinfo', 'pwreset', 'sga', 'scribe', 'av']);
     const DOOR_DENY_SIG = new Set(['status', 'mod', 'appstop']);
     let doorDropped = 0; const doorDropKinds = {};
     function doorOutsider(pid) {
@@ -13558,7 +14817,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         late.hiLate = setTimeout(() => {
           if (peers.get(pid) !== late || (late.dc && late.dc.readyState === 'open')) return;
           if (!lateHiSender(myId, targetLinkIds(pid))) return;
-          deliverLateHi(pid, { k: 'hi', chats: chatWire(Array.from(chat.values()).slice(-200)), trs: trKeeps() ? Array.from(trs.values()).filter((l) => !l.lo).slice(-100) : [], metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj(), reacts: myReactsObj() });
+          deliverLateHi(pid, { k: 'hi', chats: chatWire(Array.from(chat.values()).slice(-200)), trs: trKeeps() ? Array.from(trs.values()).filter((l) => !l.lo).slice(-100) : [], metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj(), reacts: myReactsObj(), ag: ctAgendaWire() });
         }, 20000);
       }
       p.absentSince = 0;
@@ -14873,7 +16132,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const k = await net.edKeysFromSeedHex(K).catch(() => null);
       if (!k || k.verifier !== av) return false;
       admKey = K; admKeys = k; amAdmin = true;
-      setTimeout(() => { subsPublishRoomPlan(); }, 1500);   // the admin's plan rides the room's signed orders (no-op while subscriptions are off)
+      setTimeout(() => { subsPublishRoomPlan(); if (typeof subsAdminFree === 'function') subsAdminFree(); }, 1500);   // the admin's plan rides the room's signed orders; without a paid plan, the free plan's (no-op while subscriptions are off)
       admins = adminsNow(); // canStage reads this view; do not wait for the sweep
       refreshModSig();
       try { tryBroadcastStage(); } catch (e) {}
@@ -15437,6 +16696,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         onDoor: (kind, frame) => {
           if (kind === 'seated') {
             meetWait.waiting(false);
+            subsDoorSeen(frame);
           }
         },
         sendDC: meshSendDC,
@@ -15450,6 +16710,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           score: (pid) => carrierScore(pid), knockNat: () => -1,
           doorSend: (pid, kind, knocker) => { const q = peers.get(pid); if (q && q.dc && q.dc.readyState === 'open') dcSend(q, { k: 'dcall', n: kind, j: knocker }); },
           roles: () => ({ jobs: Array.from(relayJobs.values(), (j) => ({ target: j.target, req: j.requester })), vias: Array.from(relayVia.values(), (r) => r.via) }),
+          // TURN.14 (the twin's fabricTurnAcross): the peers whose pc runs through a TURN link of mine (js/meet-turn.js)
+          turnPcs: () => (turnLinks ? turnLinks.turnPcs() : []),
         },
         measure: {   // the device class and the network's verdict this page already keeps (L4)
           tier: () => { const E = GifOS.meshConsts.enums, hc = navigator.hardwareConcurrency | 0; return IS_MOBILE || (hc > 0 && hc <= 2) ? E.TIER_MOBILE : E.TIER_DESKTOP; },   // a 2-core desktop carries like a phone
@@ -19586,7 +20848,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // there is the peer's to set.
     // The history frame a channel carries the moment it opens: chat, transcript, file metas, tombstones, reactions.
     function historyHi() {
-      return { k: 'hi', chats: chatWire(Array.from(chat.values()).slice(-500)), trs: trKeeps() ? Array.from(trs.values()).filter((l) => !l.lo).slice(-300) : [], metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj(), reacts: myReactsObj() };
+      return { k: 'hi', chats: chatWire(Array.from(chat.values()).slice(-500)), trs: trKeeps() ? Array.from(trs.values()).filter((l) => !l.lo).slice(-300) : [], metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj(), reacts: myReactsObj(), ag: ctAgendaWire() };
     }
     // A CHANNEL BACK FROM SILENCE CARRIES THE HISTORY AGAIN, as if it had just opened. A coverage dropout can leave the pc and
     // its channel open (no close event at either end) while every frame of the dark span is lost; the open-time 'hi' never
@@ -19679,10 +20941,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           }
         }
         (m.metas || []).forEach((meta) => takeMeta(meta, p));
+        // The meeting's agenda rides the history: a latecomer sees it at once.
+        if (m.ag && typeof m.ag === 'object') { try { ctAgendaIn(m.ag, 'hi'); } catch (e) {} }
         if (freshChats.length || reacted) renderChat();
         renderFiles();
       } else if (m.k === 'av') {
         takeAvatar(p, m);
+      } else if (m.k === 'agenda') {
+        // One flood from its editor, signed (the host's key in an admin room,
+        // the editor's own in an open one); never re-broadcast.
+        try { ctAgendaIn(m, 'live'); } catch (e) {}
+      } else if (m.k === 'cbring') {
+        try { ctBringIn(m); } catch (e) {}
       } else if (m.k === 'chat') {
         const took = takeChat(m.m);
         if (took && isQaLine(chat.get(m.m.id))) qaChanged(); // a question or a vote: the Questions sheet, never the chat badge
@@ -20017,7 +21287,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       } else if (m.k === 'subnone') {
         subsRefuse(p);
       } else if (m.k === 'subfull') {
-        subsFull();
+        subsFull(!!m.free);
+      } else if (m.k === 'subturned') {
+        subsTurnedSaid(p, dc);      // a door in my free-plan room turned someone away
       } else if (m.k === 'wpong') {
         p.wakePongAt = Date.now();
       } else if (m.k === 'bye') {
@@ -21421,7 +22693,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (job.video) continue;
         const tp = peers.get(job.target), rp = peers.get(job.requester);
         if (!tp || !tp.stream || !rp || !rp.pc) continue;
-        for (const tr of tp.stream.getVideoTracks()) { try { job.senders.push(addAux(rp.pc, tr, job.container)); } catch (e) {} }
+        for (const tr of shipTracks(tp.stream)) { if (tr.kind !== 'video') continue; try { job.senders.push(addAux(rp.pc, tr, job.container)); } catch (e) {} }   // one track per kind (shipTracks)
         job.video = true; fhTrace('FH-JOB-VIDEO', 'target=' + String(job.target).slice(0, 8) + ' req=' + String(job.requester).slice(0, 8));
         renegotiate(rp); return;
       }
@@ -21453,6 +22725,25 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // A far side's own description says Firefox as it arrives; the browser rewrites that line once applied.
     const geckoPcs = new WeakSet();
     function noteGecko(p, desc) { if (p && p.pc && desc && /^o=mozilla/m.test(String(desc.sdp || ''))) geckoPcs.add(p.pc); }
+    // REMOVING A PARKED SENDER. removeTrack does nothing to a sender that holds no track (the spec aborts when the
+    // sender's track is null), and a parked copy's sender holds none (replaceTrack(null)). Its m-line then stayed
+    // negotiated as sending, under the copy's stream id, and toward Firefox (whose lines are never stopped, stopAuxTx)
+    // every re-ship of that copy added one more video track to the receiver's stream: [old, new] after a stager stepped
+    // down and up again, [old, old, new] the time after. A <video> shows the first video track: black (Chromium) or a
+    // frozen frame (Firefox) while the new copy's bytes flowed. Two-page proof without GifOS: park, removeTrack, a new
+    // transceiver in the same stream. So the removal is made by hand: the line stops sending and leaves the stream.
+    function auxDrop(pc, sd) {
+      if (!pc || !sd) return;
+      try { pc.removeTrack(sd); } catch (e) {}
+      try {
+        const tx = pc.getTransceivers().find((t) => t.sender === sd);
+        if (tx && !tx.stopped) {
+          if (tx.direction === 'sendrecv') tx.direction = 'recvonly';
+          else if (tx.direction === 'sendonly') tx.direction = 'inactive';
+        }
+      } catch (e) {}
+      try { if (typeof sd.setStreams === 'function') sd.setStreams(); } catch (e) {}
+    }
     function stopAuxTx(pc, sd, key) {
       try {
         const tx = pc.getTransceivers().find((t) => t.sender === sd);
@@ -21575,6 +22866,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const WEBKIT_TILE = WEBKIT_ENGINE && (() => { try { return localStorage.getItem('gifos_wk_tile') !== 'off'; } catch (e) { return true; } })();
     const WK_TILE_HOLD = GifOS.timings.WK_TILE_HOLD;    // ms the sender keeps the camera parked for a held re-seat
     const WK_TILE_BIND_AT = GifOS.timings.WK_TILE_BIND_AT; // ms into the hold when the tile is bound (frames have stopped by then)
+    // A COPY THAT COMES BACK LANDS IN THE STREAM IT LEFT. A sender keeps one stream id per copy for the life of the page
+    // (the container law), and the browser hands a track whose stream id it already knows to the SAME remote MediaStream.
+    // When the copy's old m-line was stopped, WebKit (and Firefox) leave its ended track in that stream beside the new
+    // one (Chromium takes it out): the copy read [ended video, live video] (feedsInfo vTracks 2). An ended track carries
+    // nothing more, so it leaves the stream before anything binds or relays it. Never a live track.
+    function dropEndedRemoteTracks(stream, keep) {
+      if (!stream || !keep || typeof stream.getTracks !== 'function') return;
+      for (const t of stream.getTracks()) {
+        if (t !== keep && t.kind === keep.kind && t.readyState === 'ended') { try { stream.removeTrack(t); } catch (e) {} }
+      }
+    }
     function tileHolds(video, stream) {
       return !!video && !!stream && (video.srcObject === stream || (video._wrapOf === stream && !!video._pic && video.srcObject === video._pic));
     }
@@ -21984,7 +23286,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const container = new MediaStream();
       const senders = [];
       const video = relayVideoJobs() < relayVideoBudget();   // FHOP.9: past my video budget a carry forwards the voice only
-      for (const tr of tp.stream.getTracks()) { if (!video && tr.kind === 'video') continue; try { senders.push(addAux(reqP.pc, tr, container)); } catch (e) {} }
+      for (const tr of shipTracks(tp.stream)) { if (!video && tr.kind === 'video') continue; try { senders.push(addAux(reqP.pc, tr, container)); } catch (e) {} }   // one track per kind (shipTracks)
       if (!senders.length) { refuse(); return; }
       relayJobs.set(key, { senders, requester: reqP.id, target, container, video });
       fhTrace('FH-JOB', 'target=' + String(target).slice(0, 8) + ' req=' + String(reqP.id).slice(0, 8) + ' video=' + (video ? 1 : 0) + ' cls=' + linkCls() + ' jobs=' + relayJobs.size);
@@ -22000,7 +23302,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (job.video) relayPromote();   // FHOP.9: a video job ended
       const rp = peers.get(requesterPid);
       if (!rp) return;
-      for (const sd of job.senders) { try { rp.pc.removeTrack(sd); } catch (e) {} }
+      for (const sd of job.senders) auxDrop(rp.pc, sd);
       renegotiate(rp);
       if (notify) dcSend(rp, { k: 'relay-end', target });
     }
@@ -23138,6 +24440,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               job.attachErr = null;
               return sd;
             }
+            // the carrier's m-line must not stay in the container beside the transcode one below (a second video track at the receiver)
+            auxSenders.delete(sd); auxDrop(p.pc, sd); stopAuxTx(p.pc, sd, job.key);
             carrier.stop();
           }
         } catch (e) {}
@@ -23162,7 +24466,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const pj = pipeJobs.get(jk);
       if (pj && job.trackList[idx] === pj.carrier.track) { pipeJobs.delete(jk); try { MPipe.unpipe(pj.srcId, jk); } catch (e) {} }
       if (p && p.pc) {
-        try { p.pc.removeTrack(sd); } catch (e) {}
+        auxDrop(p.pc, sd);
         stopAuxTx(p.pc, sd, job.key);
       }
       job.senders.splice(idx, 1); job.trackList.splice(idx, 1); job.srcTracks.splice(idx, 1);
@@ -23248,6 +24552,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return now - (prevAt || 0) >= 5000;
     }
     // END-STAGE-ANN-DUE
+    // A COPY CARRIES ONE TRACK PER KIND. A received copy can hold two video tracks (its sender left a parked m-line in
+    // it: a page without auxDrop below). Shipping every track put a second video m-line into this copy's container too,
+    // the next hop did the same, and a viewer's <video> showed the first, dead, track (feedsInfo vTracks 2). Per kind,
+    // the copy takes the one track that carries media: unmuted first, the newest (last added) among equals.
+    function shipTracks(stream) {
+      const out = [];
+      for (const kind of ['audio', 'video']) {
+        const c = stream.getTracks().filter((t) => t.kind === kind && t.readyState !== 'ended');
+        if (!c.length) continue;
+        const live = c.filter((t) => !t.muted);
+        out.push((live.length ? live : c)[(live.length ? live : c).length - 1]);
+      }
+      return out;
+    }
     function shipMos(key, to, stream, meta, upKey) {
       if (!to || !stream) return null;
       const p = peers.get(to);
@@ -23268,7 +24586,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // nothing this job ships, and an upstream that mutates its container
       // in place (regrabCamera; every hop, now) changes the tracks while the
       // id stands still. Comparing sig alone got BOTH cases wrong.
-      const want = stream.getTracks().filter((t) => t.readyState !== 'ended');
+      const want = shipTracks(stream);
       const sameSet = !!(cur && cur.srcTracks && cur.srcTracks.length === want.length
         && want.every((t) => cur.srcTracks.indexOf(t) >= 0));
       // THE CARRY GUARANTEE AFTER 'w' (the second half of the FAILOVER-WAKE
@@ -23557,6 +24875,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // A slow relay, for tests: while held, this seat starts no NEW relay of a
     // stage feed (a copy it already ships keeps going). DEBUG only.
     const relayHeldForTest = (key, to) => DEBUG_ON && (window.__relayHoldUntil || 0) > Date.now() && !mosJobs.has(key + '>' + to);
+    // DEBUG (e2e-mute-leak MUTE_ONE_ROOT): my own stage feed enters Section 1 at ONE seat, the first of my row and column mates,
+    // as it does for a stager with a single mate, so the whole room hangs off that seat's claim.
+    const oneRootSkipForTest = (owner, t, list) => DEBUG_ON && owner === myId && !!window.__stgOneRootForTest && t !== list.filter(Boolean)[0];
     const jobPinned = (jk) => DEBUG_ON && window.__parkedJobs && (window.__parkedJobs.get(jk) || 0) > Date.now();
     // A seat that leased its own cell has lost every channel and is on its way out of that cell: it carries no media, in or
     // onward, until a channel proves back (the sim's mCarry). What it was shipping goes back on when the lease ends.
@@ -23618,7 +24939,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (pj) { pipeJobs.delete(jk); try { MPipe.unpipe(pj.srcId, jk); } catch (e) {} } // unroutes the worker + stops the carrier mint
       if (p && p.pc) {
         for (const sd of job.senders) {
-          try { p.pc.removeTrack(sd); } catch (e) {}
+          auxDrop(p.pc, sd);
           // STOP the m-line outright: an unshipped aux transceiver is never
           // reused (addAux always opens a fresh one — see its comment), but a
           // merely-removeTrack'd m-line stays fully negotiated in every later
@@ -24383,6 +25704,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (mosHeld(pri)) continue; // parked on purpose while its decoder restarts (mosDecoderSweep): this silence is not death
           if (rk.indexOf('stg:') === 0) await stgPicCheck(rk, pri, fb, now);
           const bytes = await pipeBytes(pri, rk.indexOf('stg:') === 0);
+          // THE PRIMARY'S PICTURE ON THE WIRE: when its video bytes last advanced (claimRedun reads it too). A stage slot is
+          // judged on its voice, and a stager can send no voice packets at all while it stays on stage (a microphone the
+          // device has paused, a page with no running audio source). The stager's OWN copy carries every packet of voice the
+          // stager sends; no relay can carry more (a relay sends silence frames of its own). So while the stager's own
+          // copy's picture still arrives and shows, its silent voice is no death: no dark, no wake, no failover off it.
+          if (rk.indexOf('stg:') === 0 && pri.stream && pri.stream.getVideoTracks().length) {
+            const pv = await pipeBytes(pri, false);
+            if (pv !== -1) { if (pv.b > 0 && pv.b > fb.pvB) fb.pvAt = Date.now(); fb.pvB = pv.b; }   // the first sample counts once bytes have come: the dark rail can fire inside the first second
+            const ownCopy = pri.via === rk.slice(4).split('^')[0] && String(pri.key || '').indexOf('^') < 0;
+            if (ownCopy && pri.el && pri.el.videoWidth > 0 && fb.pvAt && Date.now() - fb.pvAt < STG_PIC_LIVE_MS) {   // bytes alone are no picture: an element on the wrong track shows none
+              if (fb.dark) { fb.dark = false; fb.suspect = false; schedReconcile(); }   // the picture says it is alive: re-park the woken standby
+              if (bytes !== -1 && bytes.b > (fb.lastBytes || 0)) fb.lastAdvanceAt = now;
+              if (bytes !== -1) fb.lastBytes = bytes.b;
+              fb.q = 0; fb.flowSince = 0;   // the voice rails re-earn from zero once the picture stops
+              await sampleStandby(rk, fb);
+              continue;
+            }
+          } else if (fb.pvB !== -1) { fb.pvB = -1; fb.pvAt = 0; }
           // Forensics ring (frza17: a husk claim's standby was never woken and
           // no theory survived — record what each sample actually SAW). Widened
           // 2026-08-07 from stg/sgs to EVERY redundant key, and records the
@@ -24691,10 +26030,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const MOS_DARK_MS = GifOS.timings.MOS_DARK_MS;   // no byte advance on a previously-flowing hot pipe = dark
     const MOS_FLOWED_RECENT = GifOS.timings.MOS_FLOWED_RECENT; // "previously flowing" horizon — never fires on a pipe that never delivered
     const MOS_QUALIFY = GifOS.timings.MOS_QUALIFY;     // consecutive advancing samples before a pipe earns the watchdog (~2.4s at the 300ms loop, 7.2s at the watchable 900ms cadence — see the 2026-08-08 note in mosWatchdog for why this stays a COUNT, not a clock)
+    const STG_PIC_LIVE_MS = GifOS.timings.STG_PIC_LIVE_MS; // a stage primary's picture still arrives: its video bytes advanced this recently
     const STG_ZERO_MS = GifOS.timings.STG_ZERO_MS;  // stage audio gets no grace: a stage copy with zero bytes this long after its claim, or after its wake, is dead
     const HOT_VOID_MS = GifOS.timings.HOT_VOID_MS; // hot-and-VOID: a hot primary with ZERO bytes this long is a husk, not a slow pipe (frza5)
     const mosFb = new Map(); // rk -> { wakeAt, f0, prefSince, lastSwitch, dark, lastBytes, lastAdvanceAt, q, fp, fpDecayAt, flowSince, b0, d0, stdFdec, claimAt } (wake/failback/watchdog state)
-    const mkFb = () => ({ wakeAt: 0, f0: 0, prefSince: 0, lastSwitch: 0, dark: false, lastBytes: -1, lastAdvanceAt: 0, q: 0, fp: 0, fpDecayAt: 0, flowSince: 0, b0: -1, d0: -1, stdFdec: -1, stdB: -1, stdAdvAt: 0, claimAt: 0, hadPref: false, left: null });
+    const mkFb = () => ({ wakeAt: 0, f0: 0, prefSince: 0, lastSwitch: 0, dark: false, lastBytes: -1, lastAdvanceAt: 0, q: 0, fp: 0, fpDecayAt: 0, flowSince: 0, b0: -1, d0: -1, stdFdec: -1, stdB: -1, stdAdvAt: 0, claimAt: 0, hadPref: false, left: null, pvB: -1, pvAt: 0 });
     // The PREFERRED announcer of a redundant slot: the tree-direct path the
     // media plane names as the producer's own leg. Failback aims here; any
     // other live path is a legitimate carrier but only a stand-in.
@@ -24902,10 +26242,26 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // so the copies fed each other in a ring that outlived the stager by 40 s in a 40-page meeting, with pages
     // waking and swapping between copies of a stage that had ended. A relayed track keeps sending (silence), so no
     // media test can see the end: only the beat can.
+    // A STAGE FEED LIVES ONLY WHILE ITS OWNER IS ON THE STAGE. A stager who steps down and is called up again before
+    // the beat goes stale would otherwise find every seat still holding the old feed's copies, passed seat to seat with
+    // nobody fed by the stager, and the room hears the voice from before the step-down (muted on stage, yet audible)
+    // until those copies age out. So the stage list this page plays from ends the stage too: off the list, a seat holds
+    // no claim or standby of the feed, relays none and ends what it ships, and a call-up starts from the stager's own
+    // fresh flood. The list keeps its own holdover, so a flicker does not end a stage.
+    // AND A NEW STAGE TURN IS A NEW FEED. Ship containers keep their id across an unship (shipContainers), so a stager
+    // called up again re-shipped the old turn's stream ids, and a seat still holding that turn's claim, decoder or ear
+    // source took the new copy for the old one: bound to the old turn's ended track, the room heard nothing from the
+    // stager after a quick call-up (e2e-mute-leak ring, gap 1.5 s: deaf at four ears on alternate cycles). A copy of an
+    // ended stage drops its container with the job.
+    function stgOffStage(rk) {
+      if (typeof rk !== 'string' || rk.indexOf('stg:') !== 0) return false;
+      const owner = rk.slice(4).split('^')[0];
+      return !!owner && !stageIds().includes(owner);
+    }
     function stgEnded(rk) {
       if (typeof rk !== 'string' || rk.indexOf('stg:') !== 0) return false;
       const base = rk.split('^')[0];
-      return base === 'stg:' + myId ? !stageIds().includes(myId) : stgStale(base);
+      return base === 'stg:' + myId ? !stageIds().includes(myId) : (stgStale(base) || stgOffStage(base));
     }
     // On the worker clock: a stale beat stops relayed media and delists the stager, so a hidden stager's throttled page timer must not reach it.
     GifOS.meshMedia.workerClock(STG_BEAT_MS, () => {
@@ -25060,7 +26416,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (pick) {
           pri = mkEnt(pick); mosIn.set(rk, pri); repaintRedun(rk, pri.stream);
           if (DEBUG_ON && rk.indexOf('stg:') === 0) swapPicNote(rk, 'claim', 'first claim ' + (pref && pick === pref ? 'pref' : 'live'));
-          fb.claimAt = now; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; fb.suspect = false; fb.stdTried = null; // fresh primary — the watchdog re-baselines
+          fb.claimAt = now; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; fb.suspect = false; fb.stdTried = null; fb.pvB = -1; fb.pvAt = 0; // fresh primary — the watchdog re-baselines
           fb.hadPref = !!(pref && pick === pref); // a stand-in claimed while nothing was preferred is not a failback anchor
           if (std && std.via === pri.via && std.streamId === pri.streamId) { dropStandby(rk); std = null; }
         }
@@ -25150,12 +26506,25 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // no stale frame to lie with and the swap is the recovery.
         const stdAdvanced = fb.d0 >= 0 && fb.stdFdec > fb.d0;
         const stdRecent = stdAdvanced && fb.stdAdvAt && now - fb.stdAdvAt < 3000;
-        const flowing = (fb.picDead && priLive && !voiceOnly) ? !!fb.picStdOk   // the picture is the complaint, so its frames are the evidence
+        // A PICTURE IS NOT TRADED FOR A BLACK ONE. Make-before-break holds for the picture too: while the primary is
+        // announced, its picture is up and its video bytes still arrive, a copy that carries a video track takes the
+        // slot only once its own picture is up (a frame since the wake). Voice packets alone are no evidence here: a
+        // relay sends silence frames for a stager who sends no voice at all, and swapping on them put a black stage in
+        // front of the viewer while the stager's own copy still showed them. A primary that is gone, or whose picture
+        // stopped arriving, fails over on the gates below unchanged.
+        const priPicUp = !!(priLive && !fb.picDead && pri.el && pri.el.videoWidth > 0 && pri.stream && pri.stream.getVideoTracks().length
+          && fb.pvAt && now - fb.pvAt < STG_PIC_LIVE_MS);
+        const stdPicUp = !!(std.el && std.el.videoWidth > 0 && frames(std.el) > fb.f0);
+        const keepPic = priPicUp && !voiceOnly && !stdPicUp;
+        const flowing = keepPic ? false : (fb.picDead && priLive && !voiceOnly) ? !!fb.picStdOk   // the picture is the complaint, so its frames are the evidence
           // A stage slot is judged on its voice (pipeBytes): with the primary gone, the standby's audio packets since
           // the wake are the evidence, not its <video> (a stager without a camera has a video track that never draws;
           // tv-chain 1325: that gate held a dead copy for the 5 s grace).
+          // A primary that is gone, or shows no picture, is also replaced by a standby whose own picture has started since
+          // the wake: a stager who sends no voice still has a copy to show, and waiting on voice that never comes left the
+          // stage black (a received stream whose element never decodes stayed up 15 s until the dead-picture rail).
           : (voiceOnly || ((fb.dark || mixDeaf || u2Over) && priLive) || (!priLive && rk.indexOf('stg:') === 0))
-          ? stdAdvanced
+          ? (stdAdvanced || (!voiceOnly && stdPicUp && (!priLive || !(pri.el && pri.el.videoWidth > 0))))
           : ((frames(std.el) > fb.f0 || (std.el && std.el.videoWidth > 0 && now - fb.wakeAt > 1500)) && (!priLive || stdRecent));
         // A dead-or-dark primary swaps the moment the standby flows; a live one
         // (pure failback) additionally waits out the settle window — hysteresis
@@ -25167,7 +26536,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // still waits. The timer itself is unchanged.
         const firstPref = !!(stdIsPref && !priIsPref && !fb.hadPref && (!pref || fb.left !== pref.from));
         const settled = !priLive || fb.dark || mixDeaf || fb.picDead || u2Over || firstPref || ((now - fb.prefSince >= MOS_SETTLE) && (now - fb.lastSwitch >= MOS_SETTLE));
-        if (DEBUG_ON && !(flowing && settled) && rk.indexOf('stg:') === 0) swapPicNote(rk, 'hold', 'flowing=' + (flowing ? 1 : 0) + ' settled=' + (settled ? 1 : 0) + ' f0=' + fb.f0 + ' stdAdv=' + (stdAdvanced ? 1 : 0));
+        if (DEBUG_ON && !(flowing && settled) && rk.indexOf('stg:') === 0) swapPicNote(rk, 'hold', 'flowing=' + (flowing ? 1 : 0) + ' settled=' + (settled ? 1 : 0) + ' f0=' + fb.f0 + ' stdAdv=' + (stdAdvanced ? 1 : 0) + (keepPic ? ' keepPic=1' : ''));
         if (flowing && settled) {
           const old = pri;
           // The copy left because it failed (dark, picture dead) is not the next failback.
@@ -25178,7 +26547,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (rk.indexOf('stg:') === 0 && mosJobs.has(rk + '>' + pri.via)) unshipMos(rk + '>' + pri.via, true);
           // A share on the new path: seats below me need a key frame to decode my new source, so ask now.
           if (rk.indexOf('stg:') === 0 && pri.stream && pri.stream.getVideoTracks().length) { try { kfNeed(rk); } catch (e) {} }
-          pri.deadAt = 0; fb.lastSwitch = now; fb.wakeAt = 0; fb.prefSince = 0;
+          pri.deadAt = 0; fb.lastSwitch = now; fb.wakeAt = 0; fb.prefSince = 0; fb.pvB = -1; fb.pvAt = 0;
           fb.left = old.via; fb.hadPref = !!stdIsPref; // the copy just installed is the anchor; the one left is not a fresh preference
           fb.picDead = false; fb.picStdOk = false; fb.picStd0 = null; fb.picRef = null;
           fb.dark = false; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; fb.fp = 0; fb.fpDecayAt = 0; fb.b0 = -1; fb.d0 = -1; fb.stdFdec = -1; fb.stdAdvAt = 0; fb.claimAt = now; fb.suspect = false; fb.stdTried = null; // fresh primary — the watchdog re-baselines and the penalty clears
@@ -25353,7 +26722,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const keep = structuralSeen.has(rk) && mosLive(cur.via, cur.streamId);
         if (structuralClaimGrace(cur, keep, nowA, MOS_GRACE)) dropMosIn(rk);
       }
-      for (const [rk, arr] of redun) claimRedun(rk, arr);
+      for (const rk of [...mosIn.keys(), ...mosStandby.keys()]) if (stgOffStage(rk)) dropOffStageClaim(rk);
+      for (const [rk, arr] of redun) { if (stgOffStage(rk)) continue; claimRedun(rk, arr); }
+    }
+    // An off-stage owner's claim goes at once, primary, standby and failover state together, so nothing of the old
+    // feed is left to win the next call-up (stgOffStage).
+    function dropOffStageClaim(rk) {
+      const had = mosIn.has(rk);
+      dropMosIn(rk); dropStandby(rk); mosFb.delete(rk);
+      if (had) repaintRedun(rk, null);
     }
     // A packed mosaic's tile takes the SHAPE of its content: the packer sizes
     // its canvas to the gapless grid (k×1 bar, near-square frame), so the tile
@@ -26209,7 +27586,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const direct = owner === myId ? stgDirectSet(T.rowMates(c).map((m) => occPid(m)), T.colMates(c).map((m) => occPid(m)),
             (t) => { const q = peers.get(t); return !!(q && q.pc && q.connected); }) : null;
           const hmSb = { h, sb: 1 };
-          for (const t of s1peers) { if (owner !== myId && relayHeldForTest(key, t)) continue; const s = pick(t); if (!s) continue; const jk = shipMos(key, t, s.st, (direct && !direct.has(t)) ? hmSb : s.m, up); if (jk) wanted.add(jk); }
+          for (const t of s1peers) { if (owner !== myId && relayHeldForTest(key, t)) continue; if (oneRootSkipForTest(owner, t, s1peers)) continue; const s = pick(t); if (!s) continue; const jk = shipMos(key, t, s.st, (direct && !direct.has(t)) ? hmSb : s.m, up); if (jk) wanted.add(jk); }
           const dnP = occPid(T.down(c)); // and DOWN — Stage audio folds at every ear
           const sd = pick(dnP);
           if (sd) {
@@ -26351,7 +27728,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const ckU = c.pc + '/' + c.r + '.' + c.i;
       for (const [jk, job] of [...mosJobs]) {
         if (wanted.has(jk)) { job.unwantedAt = 0; job.wantCk = ckU; continue; }
-        if (!peers.has(job.to) || stgEnded(job.key)) { unshipMos(jk, true); continue; } // a copy of an ended stage has no flicker to wait out: the beat already waited
+        if (!peers.has(job.to) || stgEnded(job.key)) { unshipMos(jk, true); if (stgEnded(job.key)) shipContainers.delete(jk); continue; } // a copy of an ended stage has no flicker to wait out: the beat already waited
         if (job.wantCk && job.wantCk !== ckU && job.key.indexOf('stg:') !== 0 && job.key !== 'sgs') { unshipMos(jk, true); continue; }
         if (!job.unwantedAt) job.unwantedAt = nowU;
         else if (nowU - job.unwantedAt > MOS_GRACE) unshipMos(jk, true);
@@ -27208,7 +28585,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       else if (shareRoleOff) shareWhy = 'Only the host shares to the stage.';
       else if (TOWNHALL && document.body.classList.contains('th-watch') && !document.body.classList.contains('stage-granted')) shareWhy = 'You are watching. A host can invite you to speak.';
       else if (!on && !mayShareScreen(myId)) shareWhy = uiText('shareNotAllowed', 'The host has not allowed you to share yet.');
-      else if (!on && screenSharers().some((id) => id !== myId && id !== 'me')) shareWhy = 'Someone else is sharing. Wait for them to stop.';
+      // Several people may share at once (Nathan 2026-11-11): each screen is a
+      // tab of the content area. Only a full stage stops one more.
+      else if (!on && !myStatus.stg && stageIds().length >= SCALE.C) shareWhy = uiText('shareStageFull', 'The stage is full. Someone has to step down first.');
       shareBtn.style.display = (!shareDocked && (!canScreenShare() || shareRoleOff)) ? 'none' : '';
       if (typeof idleDock === 'function') idleDock(shareBtn, shareDocked ? shareWhy : '');
       // A screen on the Stage wants height. This does not rebuild the layout —
@@ -28130,7 +29509,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           trace: (window.__meshTraceRing && window.__meshTraceRing.ring) || null,
           swapPic: swapPicRing, rowView: window.__rowViewLog || null, dog: window.__dogLog || null,
           bc: window.__bcTrace || null, mem: window.__memSamples || null,
-          pip: window.__pipTrace || null,
+          pip: window.__pipTrace || null, view: window.__viewTrace || null, content: window.__contentTrace || null,
           meters: (typeof dbgMeterKit !== 'undefined' && dbgMeterKit) ? dbgMeterKit.ring() : null,
         }),
         snapshot: () => (window.__gifosVideo && window.__gifosVideo.debugDump ? window.__gifosVideo.debugDump() : null),
@@ -30441,13 +31820,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const dot = String(ext || 'txt').replace(/^\.+/, '').replace(/[^A-Za-z0-9]/g, '').toLowerCase() || 'txt';
       return day + (name ? '_' + name : '') + '_gifos_' + kind + '.' + dot;
     }
-    document.getElementById('trdl').onclick = () => {
+    // The transcript as a text file: {blob, name, lines} (lines 0 = empty).
+    function transcriptFile() {
       const blocks = trBlocks();
       const mine = trLang();
       const lines = blocks.map((l) => '[' + new Date(l.at).toLocaleTimeString() + '] ' + l.by + (l.lang && l.lang !== mine ? ' (' + l.lang + ')' : '') + ': ' + l.text);
+      return { blob: new Blob([lines.join('\n') + '\n'], { type: 'text/plain' }), name: meetDownloadName('Transcript', room, blocks.length ? blocks[0].at : 0, 'txt'), lines: lines.length };
+    }
+    document.getElementById('trdl').onclick = () => {
+      const f = transcriptFile();
       const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([lines.join('\n') + '\n'], { type: 'text/plain' }));
-      a.download = meetDownloadName('Transcript', room, blocks.length ? blocks[0].at : 0, 'txt');
+      a.href = URL.createObjectURL(f.blob);
+      a.download = f.name;
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     };
@@ -30466,6 +31850,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // along; "match my mix" scales each bus's audio by your own fader.
     let recRec = null, recTimer = null, recDraw = null, recStart = 0, recSrcs = new Map(), recDest = null, recSink = null;
     let recMode = null, recRestart = null, recMatchMix = true, recQuality = 'std', recType = 'video/webm'; // recType = the container MediaRecorder writes; recMode = scope; recRestart = opts after a stop
+    let recToLib = false;   // this recording goes to My library (Streamer) when it stops
     let recStarting = false, recReloadAfterStop = false, recIndWatch = null;
     const recBtn = document.getElementById('recbtn');
     const REC_QUALITY = { low: { w: 1280, h: 720, v: 1000000 }, std: { w: 1920, h: 1080, v: 3000000 }, high: { w: 1920, h: 1080, v: 6000000 } };
@@ -30731,6 +32116,88 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       };
       bg.querySelector('#se-leave').onclick = () => { bg.remove(); recRelease(saved); leaveSeededService(); };
     }
+    // ---- My library (Streamer): the finished recording is uploaded, with the
+    // transcript beside it. If the library refuses it (full, plan ended) or
+    // the upload cannot be kept to finish later, the file is saved on this
+    // device instead, so a recording is never lost.
+    let recLibLast = -1;
+    function recLibNote(text) { recLibLast = -1; setStatus(text); }
+    function recLibProgress(x) {
+      const pct = Math.floor(x * 100);
+      if (pct === recLibLast) return;
+      recLibLast = pct;
+      setStatus(uiText('stLibSaving', 'Saving to My library…') + ' ' + pct + '%');
+    }
+    function recToLibrary(saved) {
+      const name = saved.name || recFileName();
+      const tr = transcriptFile();
+      const L = window.GifOS && GifOS.library;
+      if (!L) return recDeliver(saved);
+      const onDevice = (blob, why) => {
+        const href = URL.createObjectURL(blob);
+        recDownload({ href, name });
+        recRelease({ href, drop: saved.drop });
+        recLibNote((why ? why + ' ' : '') + uiText('stLibDevice', 'Saved on this device instead.'));
+      };
+      (async () => {
+        let blob;
+        try { blob = await fetch(saved.href).then((r) => r.blob()); } catch (e) { recDeliver(saved); return; }
+        try { URL.revokeObjectURL(saved.href); } catch (e) {}
+        recLibProgress(0);
+        let file;
+        try {
+          file = await L.save(blob, { name, type: blob.type || recType, kind: 'recording' }, recLibProgress);
+        } catch (e) {
+          const kept = e && e.uploadId && L.pending().some((p) => p.id === e.uploadId);
+          if (kept) {
+            recLibNote(uiText('stLibPaused', 'The upload paused. It finishes the next time you open GifOS.'));
+            if (typeof saved.drop === 'function') { try { await saved.drop(); } catch (x) {} }
+          } else onDevice(blob, e && e.message);
+          return;
+        }
+        if (typeof saved.drop === 'function') { try { await saved.drop(); } catch (e) {} }
+        if (tr && tr.lines) { try { await L.save(tr.blob, { name: tr.name, type: 'text/plain', kind: 'transcript', of: file.id }); } catch (e) {} }
+        recLibNote(uiText('stLibSaved', 'Saved to My library.'));
+        if (typeof window.__gifosLibSaved === 'function') { try { window.__gifosLibSaved(file); } catch (e) {} }
+      })();
+      return 'library';
+    }
+    // The Record sheet's library choice: Streamer gets the box (on by
+    // default); other people see one quiet line while subscriptions are on.
+    async function recLibraryOption(bg) {
+      const slot = bg.querySelector('#rec-lib');
+      const L = window.GifOS && GifOS.library;
+      if (!slot || !L || !L.enabled() || BROADCAST) return;
+      let st = 'none';
+      try { st = await L.status(); } catch (e) {}
+      if (!slot.isConnected) return;
+      if (st !== 'streamer') {
+        const p = document.createElement('p');
+        p.className = 'rec-upsell';
+        p.style.cssText = 'margin:.4rem 0 0;font-size:13px;color:var(--c-gray)';
+        p.textContent = uiText('recLibUpsell', 'Streamer subscribers can save recordings to their GifOS library.');
+        slot.appendChild(p);
+        return;
+      }
+      const lab = document.createElement('label');
+      lab.className = 'rec-opt';
+      lab.innerHTML = '<input type="checkbox" id="rec-tolib" checked><span><b></b><small></small></span>';
+      lab.querySelector('b').textContent = uiText('recToLib', 'Save to my GifOS library');
+      lab.querySelector('small').textContent = uiText('recToLibHelp', 'Encrypted in this browser and uploaded to your library when the recording stops, with the transcript. Only you can open it, unless you share it.');
+      slot.appendChild(lab);
+      const note = bg.querySelector('.rec-note');
+      const devText = note ? note.textContent : '';
+      const box = lab.querySelector('input');
+      const paint = () => { if (note) note.textContent = box.checked ? uiText('recNoteLib', 'Saved to your GifOS library. Everyone here will see that this meeting is being recorded.') : devText; };
+      box.addEventListener('change', paint);
+      paint();
+    }
+    // An upload a reload interrupted finishes once the page has loaded.
+    window.addEventListener('load', () => {
+      const L = window.GifOS && GifOS.library;
+      if (!L || !L.enabled() || !L.pending().length) return;
+      L.resumePending().then((done) => { if (done && done.length) recLibNote(uiText('stLibSaved', 'Saved to My library.')); }).catch(() => {});
+    });
     function recDeliver(saved) {
       if (saved && saved.held) return 'held';
       // The host's kept service is what Rebroadcast > Last service plays.
@@ -31062,6 +32529,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (BROADCAST && scope !== 'app' && scope !== 'program') scope = 'stage';
         recMatchMix = opts.matchMix !== false;
         recQuality = REC_QUALITY[opts.quality] ? opts.quality : recDefaultQuality(IS_MOBILE);
+        recToLib = !!opts.toLibrary;
         const q = REC_QUALITY[recQuality];
         recMode = scope;
         recDest = ac.createMediaStreamDestination();
@@ -31087,7 +32555,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           }
           stopVideo = () => { for (const t of disp.getTracks()) { try { t.stop(); } catch (e) {} } };
         }
-        const opened = await recOpenSink(recFileName(), !!opts.keep);
+        const opened = await recOpenSink(recFileName(), !!opts.keep || recToLib);
         if (!opened || opened.kind === 'cancel') {
           if (opened && opened.abort) { try { opened.abort(); } catch (e) {} }
           recDest = null; recMode = null;
@@ -31166,7 +32634,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           let saved = null;
           try { if (sink) saved = await sink.finish(); } catch (e) { saved = null; }
           let how = '';
-          try { how = recDeliver(saved); } catch (e) { how = ''; }
+          const toLib = recToLib;
+          recToLib = false;
+          try { how = toLib && saved && saved.href && !saved.held && !bcSeeding ? recToLibrary(saved) : recDeliver(saved); } catch (e) { how = ''; }
           if (typeof window !== 'undefined' && typeof window.__gifosRecStopped === 'function') {
             const cb = window.__gifosRecStopped;
             window.__gifosRecStopped = null;
@@ -31267,12 +32737,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         (IS_MOBILE ? '<p>On a phone, 720p is the default. 1080p is drawn on the processor and fills memory fast.</p>' : '') +
         '</div>' +
         '<label class="rec-opt inline" style="margin-top:.3rem"><input type="checkbox" id="rec-matchmix" checked> Match my sound mix (record what I hear)</label>' +
+        '<div id="rec-lib"></div>' +
         '</div>' +
         '<p id="rec-err" hidden></p>' +
         '<div class="rec-actions">' +
         '<button id="ro-start" class="appear-primary" type="button">Start recording</button>' +
         '<button id="ro-cancel" class="appear-secondary" type="button">Cancel</button></div></div>';
       document.body.appendChild(bg);
+      recLibraryOption(bg);
       const paintScope = () => {
         const picked = bg.querySelector('input[name=rec-scope]:checked');
         const line = bg.querySelector('#rec-now');
@@ -31286,7 +32758,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const scope = bg.querySelector('input[name=rec-scope]:checked').value;
         const quality = bg.querySelector('input[name=rec-q]:checked').value;
         const matchMix = bg.querySelector('#rec-matchmix').checked;
-        const err = await startRec({ scope, quality, matchMix });
+        const lib = bg.querySelector('#rec-tolib');
+        const err = await startRec({ scope, quality, matchMix, toLibrary: !!(lib && lib.checked) });
         if (typeof err === 'string' && err) {
           const el = bg.querySelector('#rec-err');
           if (el) { el.hidden = false; el.textContent = err; }
@@ -31310,7 +32783,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const close = openModal(bg, () => { if (bg.parentNode) bg.remove(); });
       bg.querySelector('#rw-keep').onclick = () => close();
       bg.querySelector('#rw-restart').onclick = () => {
-        close(); recRestart = { scope: 'app', quality: recQuality, matchMix: recMatchMix };
+        close(); recRestart = { scope: 'app', quality: recQuality, matchMix: recMatchMix, toLibrary: recToLib };
         if (recRec && recRec.state !== 'inactive') { try { recRec.stop(); } catch (e) {} }
       };
     }
@@ -33950,26 +35423,47 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // 20 (the seats this seated door knows are taken now) holds a knocker and asks it to show
     // a subscription against a fresh challenge; a good answer lets it in at
     // once, none turns it away with a plain message. $5 and $10 rooms have no
-    // limit. An unread count lets people in, never out. The count is never
-    // the door's greeter list: a door gets that list only when it knocks
-    // itself, so it holds the room as it was when that door came in.
+    // limit. A room on the FREE plan (its admin holds no paid plan; Nathan
+    // 2026-11-11) has a 5-person line: the 6th person without a subscription
+    // is told "This room is full on the free plan", and the host is offered
+    // a one-tap upgrade to 20. An unread count lets people in, never out.
+    // THE COUNT IS THE DOOR'S GREETER LIST (Nathan 2026-11-11), read when a
+    // newcomer comes in: the relay's list of the room's registered seats (the
+    // door's own entry is left out of its replies, so the count is the list
+    // plus the door). A list from before this knocker came is the room as it
+    // was then, so the door asks the relay again and holds the knock until
+    // the fresh list answers; a list's length is what everyone at that door
+    // reads, not one seat's view of the room.
     let subsTurnedAway = false, subsTierKey = '', subsTier = null, subsTierExp = 0;
     const subsProven = new Set(), subsAsked = new Map();   // knocker -> {n, at}
     const subsOn = () => !!(window.GifOS && GifOS.meetSubs && GifOS.sub && GifOS.meetSubs.enabled());
     // The meeting a subscription ticket names: the room's relay session (a one-way hash of the room code), the same
     // room the relay's TURN vouches name, so the TURN Worker can check a paid ask's ticket against its vouches.
     const subsMeetId = () => sessId || roomKey();
-    // The people already seated: this door's seats (live, the count's own
-    // liveness rule), or past one section the room's fold. People still being
-    // brought in (a burst of knockers with open channels) are not counted.
-    function subsRoomCount() {
+    // The door's greeter list: its length and when it came (every greeters
+    // reply, a relay restart's empty hold excepted), and the knockers held for
+    // a fresh one (knocker -> when this door first counted for it).
+    let subsListLen = null, subsListAt = 0;
+    const subsWaitList = new Map();
+    function subsDoorSeen(frame) {
+      if (!frame || !Array.isArray(frame.list) || frame.hold) return;
+      subsListLen = frame.list.length; subsListAt = Date.now();
+      const st = meshSeat(), held = Array.from(subsWaitList.keys());
+      if (held.length && st && st.answerDoor) { try { st.answerDoor(held); } catch (e) {} }   // the held knocks are judged on this list now
+    }
+    // The count for knocker `id`: the greeter list plus this door, from a list
+    // that came after the knocker did. Otherwise the door asks for a fresh one
+    // and answers 'wait'. undefined when there is no list to read (not seated,
+    // not a greeter): an unread count lets people in.
+    function subsRoomCount(id) {
       const ms = meshSeat();
       if (!ms || ms.state !== 3) return undefined;
-      try {
-        let n = knownTotal(true);
-        if (roomPastSection()) { const d = roomDig(); if (d && Number.isFinite(d.n)) n = Math.max(n, d.n); }
-        return Number.isFinite(n) && n > 0 ? n : undefined;
-      } catch (e) { return undefined; }
+      if (!subsWaitList.has(id)) { subsWaitList.set(id, Date.now()); if (subsWaitList.size > 64) subsWaitList.delete(subsWaitList.keys().next().value); }
+      if (subsListLen != null && subsListAt >= subsWaitList.get(id)) return subsListLen + 1;
+      let asked = false; try { asked = !!(meshNode && meshNode.recountDoor && meshNode.recountDoor()); } catch (e) {}
+      if (asked) return 'wait';
+      subsWaitList.delete(id);
+      return subsListLen != null ? subsListLen + 1 : undefined;
     }
     // The room's plan, verified once per order: undefined while it is being
     // checked, null when none is valid. It is checked ahead of any knock (the
@@ -34012,7 +35506,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function subsHolds(id) {
       if (!id || !subsOn() || !hasAdminRoom() || subsProven.has(id)) return false;
       const tier = subsRoomTier();
-      const count = subsRoomCount();
+      if (tier && GifOS.sub.doorVerdict({ adminRoom: true, roomTier: tier, count: 1e9 }) === 'let-in') return false;   // a room with no line counts nobody
+      const count = subsRoomCount(id);
+      if (count === 'wait') return true;   // the fresh list answers this knock (subsDoorSeen)
+      subsWaitList.delete(id);
       // While the room's plan is still being checked, a room below the 20 line
       // lets the knocker in; a room at it holds the knock until the plan is
       // known (the knocker asks again), and asks nothing yet.
@@ -34045,14 +35542,37 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function subsRefuse(p, asked) {
       if (!asked && !subsAsked.has(p.id)) return;   // only a knocker this door asked
       subsAsked.delete(p.id);
-      try { dcSend(p, { k: 'subfull' }); } catch (e) {}
+      const free = subsTier === 'free';
+      try { dcSend(p, free ? { k: 'subfull', free: true } : { k: 'subfull' }); } catch (e) {}
+      if (free) subsTellHost();
     }
-    function subsFull() {
+    function subsFull(free) {
       const ms = meshSeat();
       if (subsTurnedAway || !subsOn() || (ms && ms.state === 3)) return;   // a seated member is never put out by it
       subsTurnedAway = true;
       try { leaveMeeting(); } catch (e) {}
-      GifOS.meetSubs.showFull();
+      GifOS.meetSubs.showFull(free);
+    }
+    // FREE PLAN: whoever's door turned someone away tells the room's admins
+    // (or is the admin), and the admin is offered the $2 plan in one tap.
+    function subsTellHost() {
+      if (amAdmin) { GifOS.meetSubs.showHostPrompt(); return; }
+      for (const id of adminsNow()) {
+        const q = peers.get(id);
+        if (q && q.dc && q.dc.readyState === 'open') { try { dcSend(q, { k: 'subturned' }); } catch (e) {} }
+      }
+    }
+    function subsTurnedSaid(p, dc) {
+      if (!dc || dc.__authBy !== p.id) return;   // an authenticated channel only
+      const ms = meshSeat();
+      if (!subsOn() || !amAdmin || !hasAdminRoom() || !(ms && ms.state === 3) || subsRoomTier() !== 'free') return;
+      GifOS.meetSubs.showHostPrompt();
+    }
+    // The admin of an admin room without a paid plan gets the free plan's
+    // license (no PayPal), so the room carries the free plan.
+    function subsAdminFree() {
+      if (!subsOn() || !hasAdminRoom() || !amAdmin || !GifOS.meetSubs.ensureFree) return;
+      GifOS.meetSubs.ensureFree().catch(() => {});
     }
 
     async function createAdminRoom(chosen, pass, postToChat, guestPw) {
@@ -36782,6 +38302,25 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       stgBeatAgesForTest: () => { const o = {}, n = Date.now(); for (const [k, e] of stgBeats) o[k.slice(4, 12)] = n - e.at; return o; },
       stageWhyForTest: (id) => { const st = statusOf.get(id), d = digLists(), e = d ? d.stage.find((x) => x.id === id) : null; let f = null; try { f = mosIn.get('stg:' + id); } catch (x) {} return { on: stageIds().includes(id), fold: !!e, foldAge: d ? d.age : null, stAge: st ? Date.now() - stSeen(st) : null, stStg: st ? st.stg || 0 : null, stHold: stHold(id), tomb: !notTomb(id), gone: meshGone.has(id), held: typeof stageHeldAt !== 'undefined' && stageHeldAt.has(id), claim: f ? { via: String(f.via).slice(0, 8), dead: f.deadAt ? Date.now() - f.deadAt : 0 } : null }; },
       stgPathForTest: () => { const six = (x) => String(x || '').slice(0, 8); const o = {}; for (const [k, f] of mosIn) { if (k.indexOf('stg:') !== 0) continue; const d = mosStandby.get(k); const m = (e) => (e ? { via: six(e.via), key: e.key || null, h: e.meta ? e.meta.h : null, ao: !!(e.meta && e.meta.ao), vp: (e.meta && e.meta.vp) || [] } : null); const hot = []; for (const j of mosJobs.values()) if (j.upKey === k && j.active) hot.push(six(j.to)); o[six(k.slice(4))] = { pri: m(f), std: m(d), dead: f.deadAt ? Date.now() - f.deadAt : 0, hot }; } const jobs = []; for (const [jk, j] of mosJobs) if (j.key.indexOf('stg:') === 0) jobs.push({ k: six(j.key.slice(4)), to: six(j.to), up: j.upKey ? six(j.upKey.slice(4)) : null, active: !!j.active, off: !!j.carryOff, src: (j.srcTracks || []).map((t) => t.kind[0] + (t.readyState === 'live' ? (t.muted ? 'm' : 'L') : 'E')).join(''), sending: j.senders.map((sd) => sd.track ? 1 : 0).join(''), tl: j.tracklessAt ? Date.now() - j.tracklessAt : 0 }); const ann = []; for (const [ak, a] of mosAnn) if (ak.indexOf('|stg:') > 0) ann.push({ from: six(ak.slice(0, ak.indexOf('|'))), k: six(ak.slice(ak.indexOf('|') + 5)), age: Date.now() - (a.at || 0), h: a.h }); return { me: six(myId), coord: meshCoord(), o, jobs, ann }; },
+      // MUTE-LEAK PROBE (DEBUG only, test-only): every stage copy this page holds or ships, with the audio level on each hop at
+      // this instant, so a voice heard after its stager muted names the copy and the hop that carries it. lvl: inbound audioLevel
+      // per remote track (8-char id); a job's src lists its source tracks and snd the tracks its senders carry now.
+      stgLeakForTest: async () => {
+        if (!DEBUG_ON) return null;
+        const six = (x) => String(x || '').slice(0, 6), tid = (t) => (t ? String(t.id).slice(0, 8) + (t.readyState === 'ended' ? ':E' : (t.muted ? ':m' : '')) : '-'), now = Date.now();
+        const lvl = {};
+        for (const [pid, q] of peers) {
+          if (!q || !q.pc || typeof q.pc.getStats !== 'function') continue;
+          try { const rep = await q.pc.getStats(); rep.forEach((r) => { if (r.type === 'inbound-rtp' && r.kind === 'audio' && r.trackIdentifier) lvl[String(r.trackIdentifier).slice(0, 8)] = { from: six(pid), a: typeof r.audioLevel === 'number' ? +r.audioLevel.toFixed(3) : null, pk: r.packetsReceived || 0 }; }); } catch (e) {}
+        }
+        const ent = (e) => (e ? { via: six(e.via), sid: six(e.streamId), tr: e.stream ? e.stream.getAudioTracks().map(tid) : [], vp: (e.meta && e.meta.vp) || [], h: e.meta ? e.meta.h : null, dead: e.deadAt ? now - e.deadAt : 0, el: !!(e.el && !e.el.muted && e.el.srcObject) } : null);
+        const o = {};
+        for (const [k, f] of mosIn) if (k.indexOf('stg:') === 0) o[k.slice(4, 10) + (k.indexOf('^') > 0 ? k.slice(k.indexOf('^')) : '')] = { pri: ent(f), std: ent(mosStandby.get(k)) };
+        const jobs = [];
+        for (const [jk, j] of mosJobs) if (j.key.indexOf('stg:') === 0) jobs.push({ k: j.key.slice(4, 10) + (j.key.indexOf('^') > 0 ? j.key.slice(j.key.indexOf('^')) : ''), to: six(j.to), c: six(j.streamId), act: !!j.active, off: !!j.carryOff, sig: six(j.sig), src: (j.srcTracks || []).filter((t) => t.kind === 'audio').map(tid), snd: j.senders.map((sd) => sd.track && sd.track.kind === 'audio' ? tid(sd.track) : '').filter(Boolean), vp: (j.meta && j.meta.vp) || [], h: j.meta ? j.meta.h : null, unw: j.unwantedAt ? now - j.unwantedAt : 0 });
+        const ear = stageEar && stageEar.bound ? [...stageEar.bound].map(([k2, st2]) => k2.slice(4, 10) + ':' + st2.getAudioTracks().map(tid).join(',')) : [];
+        return { t: now, me: six(myId), o, jobs, ear, lvl };
+      },
       stgHiccupForTest: (ms) => { const jobs = [...mosJobs.values()].filter((b) => b.key.indexOf("stg:") === 0 && b.active); for (const b of jobs) b.senders.forEach((sd, i) => { const t = b.trackList[i]; if (t && t.kind === "audio") { try { sd.replaceTrack(null); } catch (e) {} } }); setTimeout(() => { for (const b of jobs) b.senders.forEach((sd, i) => { const t = b.trackList[i]; if (t && t.kind === "audio") { try { sd.replaceTrack(t); } catch (e) {} } }); }, ms); return jobs.length; },
       // PRIVACY PROBE (test-only): what this page actually receives as VIDEO from one stager's stage feed, read off the track itself
       // (not the roster, not a status): { feed, track, state, w, luma }. luma is the mean brightness (0..1) of up to 4 decoded frames,

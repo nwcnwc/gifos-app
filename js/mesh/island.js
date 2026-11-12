@@ -162,6 +162,7 @@
         const it = this.noneSince.get(x); if (it === undefined) { this.noneSince.set(x, this.TICK); continue; }
         if (this.deafFloor >= 0 && it < this.deafFloor) { this.noneSince.set(x, this.TICK); continue; }   // L8.48: a none-stamp from before the ear reopened is not this window
         if (this.TICK - it < K.NOTMINE_WAIT) continue;
+        if (this.f.fabricTurnCarried(this.id, x)) { this.noneSince.set(x, this.TICK); continue; }   /* TURN.14.9 */
         this.trace('NOT-MINE', this.id, ol[q], 'peer=%d none=%d', x, this.TICK - it);
         if (this.coord.pc !== 0 && this.coord.i === 0 && ol[q].pc === this.coord.pc && ol[q].r === this.coord.r && ol[q].i !== 0 && this.f.fabricLinkState(this.id, x) === LS_NONE && this.f.fabricDialFails(this.id, x) > 0) { this.l20Out.set(k, [x, this.TICK]); if (this.l20Out.size > C) eraseFirst(this.l20Out); }
         this.noneSince.delete(x); this.occDrop(k, 'not-my-link'); this.live.delete(k); this.s1seen.delete(k); this.noChan.add(x);
@@ -198,7 +199,11 @@
     l853Stays(m) { return m.c7Min >= 0 && this.l851Up >= 0 && this.TICK - this.l851At < K.RELAY_TTL && m.c7Min < this.l851Up; },
 
     // C++: mesh_island.inc:Seat::ringMin
-    ringMin() { let mine = this.id; for (const [k, v] of this.occ) if (v >= 0 && ckPc(k) === 0 && v < mine) mine = v; return mine; },
+    ringMin() {
+      let mine = this.id; for (const [k, v] of this.occ) if (v >= 0 && ckPc(k) === 0 && v < mine) mine = v;
+      if (this.t14Ring >= 0 && this.t14Ring < mine && this.hasCoord && this.coord.pc !== 0 && this.TICK - this.t14RingAt < K.RELAY_TTL) mine = this.t14Ring;   /* TURN.14.6: a deep seat names the ring its placer named */
+      return mine;
+    },
 
     // C++: mesh_island.inc:Seat::l827Note
     l827Note() {

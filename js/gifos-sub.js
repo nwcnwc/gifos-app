@@ -6,8 +6,12 @@
  *   unlimited  $5   admin rooms with no people limit
  *   streamer   $10  unlimited admin rooms and a storage budget for
  *                   recordings and transcripts
- * Free: open rooms without limit, and voice (never video) across networks
- * that block direct connections.
+ * Free: open rooms without limit, voice (never video) across networks that
+ * block direct connections, and admin rooms of up to 5 people (Nathan,
+ * 2026-11-11). The free plan has a license too, signed without PayPal and
+ * bound to the person's own key (subscription id "F-" + a hash of that key),
+ * so a free admin room carries its plan exactly as a paid one does. A free
+ * license is NOT a subscription: it never lets its holder past a room's line.
  *
  * A subscription is shown with a LICENSE: a small JSON text the payment
  * service signs with its key (published at /gifos-pay.key). It names the
@@ -19,8 +23,10 @@
  * holds the $5 or $10 plan has no limit. In a room whose admin holds the $2
  * plan (or whose plan cannot be shown), someone WITHOUT a subscription who
  * tries to enter when the room already holds 20 people is turned away with
- * a plain message. Anyone holding any plan is always let in, even past 20.
- * The room's count is the length of its door's list of greeters.
+ * a plain message; in a room on the free plan the line is 5. Anyone holding
+ * any PAID plan is always let in, even past the line.
+ * The room's count is the door's greeter list (plus the door itself), read
+ * fresh when someone without a plan comes in (run.html subsRoomCount).
  *
  * One meeting at a time: a subscription powers one meeting (open or admin
  * room) at a time. Joining a meeting gets a short meeting ticket from the
@@ -48,23 +54,46 @@
   const ASK_TAG = 'gifos-sub-ask';
   const KEY_RE = /^[A-Za-z0-9+/]{43}=$/;          // an Ed25519 public key, 32 bytes base64
   const SUB_ID_RE = /^I-[A-Za-z0-9]{4,40}$/;       // a PayPal subscription id
+  const FREE_ID_RE = /^F-[0-9a-f]{24}$/;           // a free plan's id: F- + a hash of its key (freeIdFor)
   const NONCE_RE = /^[A-Za-z0-9+/=_.:-]{8,128}$/;
   const PEOPLE_LIMIT = 20;                         // the room20 plan's room size
+  const FREE_LIMIT = 5;                            // the free plan's admin room size
   const ASK_WINDOW_S = 300;                        // a signed request is good this long
   const FLAG_KEY = 'gifos-subs';                   // the page switch (default off)
 
-  // What each plan grants. storage is filled from the license (the payment
-  // service's settings), never assumed here.
+  // What each PAID plan grants. storage is filled from the license (the
+  // payment service's settings), never assumed here. vouches: the TURN video
+  // links one subscriber present vouches for per slot (turn/worker paid.js;
+  // Nathan 2026-11-11: 3 / 6 / 20).
   const TIERS = {
-    room20: { id: 'room20', name: 'Admin rooms, up to 20 people', price: '$2', priceYear: '$20', adminRooms: true, roomLimit: PEOPLE_LIMIT, turnVideo: true, storage: false },
-    unlimited: { id: 'unlimited', name: 'Admin rooms, unlimited people', price: '$5', priceYear: '$50', adminRooms: true, roomLimit: null, turnVideo: true, storage: false },
-    streamer: { id: 'streamer', name: 'Streamer: unlimited admin rooms and storage', price: '$10', priceYear: '$100', adminRooms: true, roomLimit: null, turnVideo: true, storage: true },
+    room20: { id: 'room20', name: 'Admin rooms, up to 20 people', price: '$2', priceYear: '$20', adminRooms: true, roomLimit: PEOPLE_LIMIT, turnVideo: true, storage: false, vouches: 3, paid: true },
+    unlimited: { id: 'unlimited', name: 'Admin rooms, unlimited people', price: '$5', priceYear: '$50', adminRooms: true, roomLimit: null, turnVideo: true, storage: false, vouches: 6, paid: true },
+    streamer: { id: 'streamer', name: 'Streamer: unlimited admin rooms and storage', price: '$10', priceYear: '$100', adminRooms: true, roomLimit: null, turnVideo: true, storage: true, vouches: 20, paid: true },
   };
-  const TIER_IDS = Object.keys(TIERS);
-  const FREE = Object.freeze({ tier: null, subscribed: false, adminRooms: false, openRooms: true, roomLimit: null, turnAudio: true, turnVideo: false, storage: null, bypassLimit: false });
+  const TIER_IDS = Object.keys(TIERS);              // the plans sold through PayPal
+  // The FREE plan (Nathan 2026-11-11): admin rooms of up to 5 people; no TURN
+  // video and so no vouches; no storage. It is never sold, never a TIER.
+  const FREE_PLAN = Object.freeze({ id: 'free', name: 'Free: admin rooms, up to 5 people', price: '$0', priceYear: '$0', adminRooms: true, roomLimit: FREE_LIMIT, turnVideo: false, storage: false, vouches: 0, paid: false });
+  const PLANS = Object.freeze(Object.assign({}, TIERS, { free: FREE_PLAN }));   // every plan a license or ticket may name
+  const PLAN_IDS = Object.keys(PLANS);
+  const isPlan = (t) => typeof t === 'string' && Object.prototype.hasOwnProperty.call(PLANS, t);
+  const isPaid = (t) => typeof t === 'string' && Object.prototype.hasOwnProperty.call(TIERS, t);
+  // A license or ticket names its subscription: a PayPal id for a paid plan,
+  // an F- id for the free plan.
+  const idFits = (tier, subId) => typeof subId === 'string' && (tier === 'free' ? FREE_ID_RE.test(subId) : SUB_ID_RE.test(subId));
+  // freeIdFor(buyerKey) -> 'F-' + 24 hex: the free plan's id is its key's own,
+  // so one key holds one free record and nobody can name another key's.
+  async function freeIdFor(buyerKey) {
+    const d = new Uint8Array(await root.crypto.subtle.digest('SHA-256', utf8('gifos-sub-free:' + String(buyerKey))));
+    let h = ''; for (let i = 0; i < 12; i++) h += d[i].toString(16).padStart(2, '0');
+    return 'F-' + h;
+  }
+  const FREE = Object.freeze({ tier: null, subscribed: false, adminRooms: false, openRooms: true, roomLimit: null, turnAudio: true, turnVideo: false, storage: null, bypassLimit: false, vouches: 0 });
 
   const TEXT = {
     full: 'This meeting is full for people without a subscription. Any GifOS subscription lets you join.',
+    fullFree: 'This room is full on the free plan',
+    fullFreeNote: 'Any GifOS subscription lets you join.',
     needForAdmin: 'Admin rooms come with a GifOS subscription. Open rooms stay free.',
     waiting: 'Checking whether this meeting has room for you…',
     lapsed: 'Your subscription has ended. Renew it in Settings to keep your admin rooms.',
@@ -80,9 +109,9 @@
   function checkLicense(o, nowS) {
     if (!o || typeof o !== 'object') return null;
     if (o.v !== 1 || o.kind !== LICENSE_KIND || o.payeeId !== SELLER) return null;
-    if (!Object.prototype.hasOwnProperty.call(TIERS, o.tier)) return null;
+    if (!isPlan(o.tier)) return null;
     if (typeof o.buyerKey !== 'string' || !KEY_RE.test(o.buyerKey)) return null;
-    if (typeof o.subId !== 'string' || !SUB_ID_RE.test(o.subId)) return null;
+    if (!idFits(o.tier, o.subId)) return null;
     if (!intS(o.issued) || !intS(o.exp) || o.exp <= o.issued) return null;
     if (!(nowS < o.exp)) return null;
     if (o.issued > nowS + ASK_WINDOW_S) return null;   // not from the future
@@ -109,14 +138,18 @@
     try { ok = !!(await verify(sigBytes, utf8(lic.licenseJson))); } catch (e) { ok = false; }
     if (!ok) return null;
     let o; try { o = JSON.parse(lic.licenseJson); } catch (e) { return null; }
-    return checkLicense(o, nowS);
+    o = checkLicense(o, nowS);
+    if (o && o.tier === 'free' && o.subId !== (await freeIdFor(o.buyerKey))) return null;   // a free id belongs to its own key
+    return o;
   }
 
   // rightsOf(license or null) -> what this person may do. A null, broken or
-  // run-out license is the free plan.
+  // run-out license is no plan (open rooms only). A free license gives admin
+  // rooms of up to 5 and is not a subscription: it lets nobody past a line.
   function rightsOf(o, nowS) {
     const lic = o && checkLicense(o, nowS);
     if (!lic) return Object.assign({}, FREE);
+    if (lic.tier === 'free') return freeRights(lic.exp);
     const t = TIERS[lic.tier];
     const st = t.storage && lic.storage && typeof lic.storage === 'object' ? {
       gb: Number(lic.storage.gb) || 0,
@@ -127,8 +160,11 @@
     return {
       tier: t.id, subscribed: true, adminRooms: t.adminRooms, openRooms: true,
       roomLimit: t.roomLimit, turnAudio: true, turnVideo: t.turnVideo,
-      storage: st, bypassLimit: true, until: lic.exp,
+      storage: st, bypassLimit: true, until: lic.exp, vouches: t.vouches,
     };
+  }
+  function freeRights(until) {
+    return { tier: 'free', subscribed: false, adminRooms: true, openRooms: true, roomLimit: FREE_LIMIT, turnAudio: true, turnVideo: false, storage: null, bypassLimit: false, until, vouches: 0 };
   }
 
   // storageAfterLapse(untilS, nowS, keepDays) -> 'active' | 'kept' | 'delete-due'.
@@ -170,7 +206,7 @@
   // unknown plan is held to the 20-person line (the strict reading).
   // -> {admit:true, why} | {admit:false, wait:true, why} | {admit:false, why, message}
   function roomLimitFor(roomTier) {
-    if (roomTier && Object.prototype.hasOwnProperty.call(TIERS, roomTier)) return TIERS[roomTier].roomLimit;
+    if (isPlan(roomTier)) return PLANS[roomTier].roomLimit;
     return PEOPLE_LIMIT;
   }
   function admission(o) {
@@ -185,7 +221,7 @@
     const n = Number(o.listLength);
     if (!Number.isFinite(n) || n < 0) return { admit: false, wait: true, why: 'no-count', message: TEXT.waiting };
     const limit = roomLimitFor(o.roomTier);
-    if (limit != null && n >= limit) return { admit: false, why: 'full', limit, message: TEXT.full };
+    if (limit != null && n >= limit) return o.roomTier === 'free' ? { admit: false, why: 'full', limit, free: true, message: TEXT.fullFree } : { admit: false, why: 'full', limit, message: TEXT.full };
     return { admit: true, why: 'room-has-space' };
   }
 
@@ -217,9 +253,9 @@
   function checkTicket(o, nowS, meeting) {
     if (!o || typeof o !== 'object') return null;
     if (o.v !== 1 || o.kind !== TICKET_KIND || o.payeeId !== SELLER) return null;
-    if (!Object.prototype.hasOwnProperty.call(TIERS, o.tier)) return null;
+    if (!isPlan(o.tier)) return null;
     if (typeof o.buyerKey !== 'string' || !KEY_RE.test(o.buyerKey)) return null;
-    if (typeof o.subId !== 'string' || !SUB_ID_RE.test(o.subId)) return null;
+    if (!idFits(o.tier, o.subId)) return null;
     if (typeof o.meeting !== 'string' || !MEETING_RE.test(o.meeting)) return null;
     if (meeting != null && o.meeting !== meeting) return null;
     if (!intS(o.gen) || o.gen < 1 || !intS(o.issued) || !intS(o.exp)) return null;
@@ -236,13 +272,16 @@
     try { ok = !!(await verify(sigBytes, utf8(t.ticketJson))); } catch (e) { ok = false; }
     if (!ok) return null;
     let o; try { o = JSON.parse(t.ticketJson); } catch (e) { return null; }
-    return checkTicket(o, nowS, meeting);
+    o = checkTicket(o, nowS, meeting);
+    if (o && o.tier === 'free' && o.subId !== (await freeIdFor(o.buyerKey))) return null;
+    return o;
   }
   // What a ticket grants in its meeting (same entitlements as the plan).
   function ticketRights(t) {
-    if (!t || !TIERS[t.tier]) return Object.assign({}, FREE);
+    if (!t || !isPlan(t.tier)) return Object.assign({}, FREE);
+    if (t.tier === 'free') return freeRights(t.exp);
     const x = TIERS[t.tier];
-    return { tier: x.id, subscribed: true, adminRooms: x.adminRooms, openRooms: true, roomLimit: x.roomLimit, turnAudio: true, turnVideo: x.turnVideo, storage: null, bypassLimit: true, until: t.exp };
+    return { tier: x.id, subscribed: true, adminRooms: x.adminRooms, openRooms: true, roomLimit: x.roomLimit, turnAudio: true, turnVideo: x.turnVideo, storage: null, bypassLimit: true, until: t.exp, vouches: x.vouches };
   }
 
   // The admin's room order: {ticket:{ticketJson,sig}, proof, at}. The ticket
@@ -265,11 +304,12 @@
     return v.admit || v.wait ? 'let-in' : 'ask';
   }
   // The knocker's answer to the door's challenge: a current ticket for THIS
-  // room's meeting, and the ticket key's signature over the door's nonce.
+  // room's meeting, on a PAID plan (a free ticket is no way past a line), and
+  // the ticket key's signature over the door's nonce.
   async function doorProofOk(shown, room, nonce, verifyPay, verifyKey, nowS) {
     if (!shown || typeof shown !== 'object') return null;
     const t = await verifyTicket(shown.ticket, verifyPay, nowS, await meetingTag(room));
-    if (!t) return null;
+    if (!t || !isPaid(t.tier)) return null;
     return (await verifyProof(t, doorContext(room), nonce, shown.proof, verifyKey)) ? t : null;
   }
 
@@ -283,8 +323,7 @@
   const SEED_RE = /^[A-Za-z0-9+/]{43}=$/;
   function credentialOk(c) {
     if (!c || typeof c !== 'object' || c.v !== 1 || c.kind !== CRED_KIND) return null;
-    if (typeof c.subId !== 'string' || !SUB_ID_RE.test(c.subId)) return null;
-    if (!Object.prototype.hasOwnProperty.call(TIERS, c.tier)) return null;
+    if (!isPlan(c.tier) || !idFits(c.tier, c.subId)) return null;
     if (typeof c.seed !== 'string' || !SEED_RE.test(c.seed)) return null;
     let raw; try { raw = b64ToBytes(c.seed); } catch (e) { return null; }
     if (raw.length !== 32) return null;
@@ -293,7 +332,7 @@
   function credentialFiles(c) {
     const ok = credentialOk(c);
     if (!ok) throw new Error('not a subscription credential');
-    const t = TIERS[ok.tier];
+    const t = PLANS[ok.tier];
     return {
       'manifest.json': JSON.stringify({
         gifos: '1.0', appId: 'gifos-subscription', name: 'GifOS subscription', entry: 'index.html',
@@ -330,6 +369,7 @@
 
   GifOS.sub = {
     TIERS, TIER_IDS, FREE, TEXT, PEOPLE_LIMIT, LICENSE_KIND, SELLER, KEY_RE, SUB_ID_RE, ASK_WINDOW_S, FLAG_KEY,
+    FREE_PLAN, FREE_LIMIT, FREE_ID_RE, PLANS, PLAN_IDS, isPlan, isPaid, freeIdFor, freeRights,
     checkLicense, verifyLicense, rightsOf, storageAfterLapse, proofMessage, verifyProof, askMessage, askFresh,
     roomLimitFor, admission, enabled, roomContext, doorContext, roomTierOf, doorVerdict, doorProofOk,
     TICKET_KIND, TICKET_S, RENEW_EVERY_S, meetingTag, checkTicket, verifyTicket, ticketRights,

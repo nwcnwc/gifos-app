@@ -45,6 +45,7 @@
     // C++: mesh_seat.inc:Seat::onHello
     onHello(m) {
       const id = this.id, TICK = this.TICK, lv = this.w.lv;
+      if (this.t14Come(m)) return;   /* TURN.14.13 */
       // A HELLO is FIRST-HAND: its sender (m.id) is speaking on a link it holds to me, claiming coord m.ck.
       if (m.id < 0 || !cellOk(m.ck)) return;
       if (this.f.fabricDoors()) { const lb = this.l152Bye.get(m.id); if (lb !== undefined && lb[0] === m.ck && TICK - lb[1] <= 2) return; }   // L15.2 for a HELLO
@@ -400,7 +401,7 @@
         return;
       }
       if (this.evil) { const c = newMsg('CONFIRM'); c.ck = m.ck; c.id = id; this.emit(m.from, c); return; }
-      if (this.hasCoord && this.state === 3 && ckey(this.coord) === m.ck) { const c = newMsg('CONFIRM'); c.ck = m.ck; c.id = id; this.emit(m.from, c); }
+      if (this.hasCoord && this.state === 3 && ckey(this.coord) === m.ck) { const c = newMsg('CONFIRM'); c.ck = m.ck; c.id = id; if (this.f.fabricDoors() && this.ppCk === ckey(this.coord) && this.otherRing(m.from)) { c.pp = this.pp; c.ppAt = this.ppAt; c.ppL = this.ppL; } /* my placement, to a seat of another founding */ this.emit(m.from, c); }
     },
 
     // C++: mesh_seat.inc:Seat::onConfirm
@@ -425,6 +426,7 @@
       if (!this.hasCoord || this.state !== 3 || ckey(this.coord) !== m.ck || m.id < 0 || m.id === id || !(m.id < id)) return;
       if (this.challToId !== m.id || this.challToCk !== m.ck || TICK - this.challToAt > 40 || !this.provenEv(m, m.id) || this.liveElsewhereSinceReturn(m.id, m.ck)) return;
       this.challToId = -1;
+      if (this.f.fabricDoors() && !this.moving && this.coord.pc === 0 && this.pp >= 0 && this.ppL >= 0 && this.ppCk === ckey(this.coord) && this.otherRing(m.id) && !(m.pp >= 0 && m.ppL >= 0 && l165Earlier(m.ppL, m.pp, m.id, this.ppL, this.pp, id))) { this.trace('L8.11.1-STAND', id, this.coord, 'rival=%d', m.id); return; }   // across foundings the earlier placement wins against a confirm too
       if (roomTerm(this, 1) && m.c7Min >= 0 && m.c7Min < this.ringName()) return;   // L8.11
       if (this.moving) { this.rbWhy = 'confirm-lower'; this.rollbackMove(); } else this.requeue('CONFIRM-lower-id');
     },
@@ -496,7 +498,7 @@
       this.lastAck = TICK; this.nbrHeard(); this.noteLinked(pk, pid, m.tn); this.pongBy.set(pk, [pid, TICK]);
       if (this.coord.pc !== 0) {
         const oc = this.ownerCoord(); const fromOwner = this.coord.i === 0 && !!oc && ckey(oc) === pk, fromHead = this.coord.i !== 0 && pk === ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 });   // L2
-        if (fromOwner || fromHead) { this.bkId = m.bkId; this.bkCk = m.bkCk; this.sbId = m.u3Id; this.sbCk = m.u3Ck; }
+        if (fromOwner || fromHead) { this.bkId = m.bkId; this.bkCk = m.bkCk; this.sbId = m.u3Id; this.sbCk = m.u3Ck; if (m.t14 >= 0) { if (m.t14 > 0) { if (this.t14Ck !== m.t14) this.trace('TURN14-WORD', id, this.coord, 'from=%d root=%s', pid, coordStr(unckey(m.t14 - 1))); this.t14Ck = m.t14; this.t14At = TICK | 0; } else { if (this.t14Ck > 0) this.trace('TURN14-WORD', id, this.coord, 'from=%d root=-', pid); this.t14Ck = 0; } } }   /* TURN.14.5: the link end my row hangs under */
         if (fromHead) { this.headAckAt = TICK; this.headEver = true; this.headE1Dn = m.e1dn; this.headE1At = m.e1At; if (this.w.lv.DIGEST && m.dgPub.at >= 0) { this.u2RowDig = dig.cloneDig(m.dgPub); if (!e2f.L48_OFF) this.u2RowDig.rx = this.LT() - this.u2RowDig.ag; } }   // L48: held with its age, so the copy over E2 ages on
       }
       if (m.coord.pc === 0) { this.setOcc(pk, pid); this.liveMark(pk); this.noteS1(pk); }   // FIRST-HAND

@@ -561,6 +561,10 @@
     for (let i = 0; i < rects.length; i++) if (rects[i].tier === 'row') rects[i].float = 'row';
   }
 
+  // The Float view's inset tiles: a share of the screen's short side, held
+  // between a readable floor and a size that leaves the content in view.
+  const FLOAT_INSET = { frac: 0.22, min: 72, max: 220, margin: 12 };
+
   function laid(rects, contentH, regions, extra, gallery) {
     return {
       rects: rects,
@@ -575,6 +579,12 @@
 
   // Scroll: one share band, full width, never taller than the screen.
   function shareScrollRect(it, x, y, w, maxH) {
+    // The content area in Scroll: every shared thing stacked, each band no
+    // taller than the screen, so the area is as tall as its stack.
+    if (typeof it.stackH === 'function') {
+      const h = Math.max(1, +it.stackH(w, maxH) || 1);
+      return { id: it.id, tier: 'stage', x: x, y: y, w: w, h: h, fit: 'cover' };
+    }
     if (it.fill || it.kind === 'app') {
       const h = Math.min(maxH, w * 9 / 16);
       return { id: it.id, tier: 'stage', x: x, y: y, w: w, h: h, fit: 'cover' };
@@ -592,7 +602,57 @@
   // Fit shares the screen about in half with the row.
   // floor: beside a share, the share may run down to this y (past box, under
   // the call's buttons, which then wake over it instead of moving it).
+  // The Drag view (Nathan 2026-11-11; opts.float): every person tile floats on its own
+  // (float 'p:<id>': moved and resized one by one; meet-views keeps the spot
+  // and size). With content shared, the content takes the whole screen and
+  // the people sit as small insets along the right edge (wide) or the bottom
+  // (tall), the stage first, in the corner: the presentation view. Without
+  // content the tiles start where Fit puts them. Scroll never floats.
   function layout(opts) {
+    opts = opts || {};
+    const gallery = opts.gallery === 'scroll' ? 'scroll' : 'fit';
+    if (opts.float !== true || gallery === 'scroll') return layoutBase(opts);
+    const split = classifyStage(opts.stage, opts.share);
+    const res = split.share ? layoutFloatShare(opts, split.share, split.people) : layoutBase(opts);
+    const shareId = split.share ? split.share.id : null;
+    for (let i = 0; i < res.rects.length; i++) {
+      const r = res.rects[i];
+      r.float = r.id === shareId ? undefined : 'p:' + r.id;
+      if (r.float === undefined) delete r.float;
+    }
+    return res;
+  }
+
+  function layoutFloatShare(opts, shareItem, onStage) {
+    const box = opts.box;
+    const phone = !!opts.phone;
+    const gap = opts.gap != null ? opts.gap : (phone ? 4 : GAP);
+    const rects = stageRects([shareItem], box, gap, false);
+    const people = [];
+    for (let i = 0; i < onStage.length; i++) people.push({ id: onStage[i].id, tier: 'stage', aspect: onStage[i].aspect > 0 ? onStage[i].aspect : 16 / 9, fit: 'cover' });
+    for (let i = 0; i < (opts.row || []).length; i++) people.push({ id: opts.row[i], tier: 'row', aspect: 4 / 3, fit: 'cover' });
+    for (let i = 0; i < (opts.stad || []).length; i++) people.push({ id: opts.stad[i], tier: 'stad', aspect: 16 / 9, fit: 'contain' });
+    const wide = box.w >= box.h;
+    const short = Math.min(box.w, box.h);
+    const side = Math.max(FLOAT_INSET.min, Math.min(FLOAT_INSET.max, short * FLOAT_INSET.frac));
+    const m = FLOAT_INSET.margin;
+    // From the bottom-right corner: up the right edge when wide (a full
+    // column wraps to the next one leftward), leftward along the bottom when
+    // tall (a full row wraps upward). Every inset starts on screen.
+    const x0 = box.x + box.w - m, y0 = box.y + box.h - m;
+    let x = x0, y = y0, lane = 0;
+    for (let i = 0; i < people.length; i++) {
+      const it = people[i];
+      const h = side, w = side * it.aspect;
+      if (wide && y - h < box.y + m && y !== y0) { x -= lane + gap; y = y0; lane = 0; }
+      if (!wide && x - w < box.x + m && x !== x0) { y -= lane + gap; x = x0; lane = 0; }
+      rects.push({ id: it.id, tier: it.tier, fit: it.fit, x: x - w, y: y - h, w: w, h: h });
+      if (wide) { y -= h + gap; lane = Math.max(lane, w); } else { x -= w + gap; lane = Math.max(lane, h); }
+    }
+    return laid(rects, box.h, { stage: null, share: rects[0] ? { x: rects[0].x, y: rects[0].y, w: rects[0].w, h: rects[0].h } : null, people: box }, { side: side }, 'fit');
+  }
+
+  function layoutBase(opts) {
     opts = opts || {};
     const box = opts.box;
     const gap = opts.gap != null ? opts.gap : (opts.phone ? 4 : GAP);
@@ -696,7 +756,54 @@
   // Fit with a share: the share takes the left (wide) or the top (tall).
   // Row and stadium fit in the remaining band. Stage people float over the
   // share, shrunk to about a third of its short side.
+  // The content area full size on a phone (Nathan 2026-11-11): the faces are
+  // one strip along the bottom (upright) or the right (sideways) that the
+  // viewer can hide. (Drag is layoutFloatShare: the people inset.)
+  function faceStrip(ids, tierOf, strip, gap, vertical) {
+    const out = [];
+    const n = ids.length;
+    if (!n) return out;
+    const thick = vertical ? strip.w : strip.h;
+    const len = vertical ? strip.h : strip.w;
+    const side = Math.max(24, Math.min(thick, (len - gap * (n - 1)) / n));
+    const used = n * side + (n - 1) * gap;
+    let at = (vertical ? strip.y : strip.x) + Math.max(0, (len - used) / 2);
+    for (let i = 0; i < n; i++) {
+      const r = vertical
+        ? { x: strip.x + (thick - side) / 2, y: at, w: side, h: side }
+        : { x: at, y: strip.y + (thick - side) / 2, w: side, h: side };
+      out.push(Object.assign({ id: ids[i], tier: tierOf(ids[i]), fit: 'cover' }, r));
+      at += side + gap;
+    }
+    return out;
+  }
+  function layoutContentFull(opts, box, gap, phone, row, stad, shareItem, onStage) {
+    const c = opts.content || {};
+    const hide = !!c.hideFaces;
+    const people = onStage.map((it) => it.id).concat(row, stad);
+    const isStage = new Set(onStage.map((it) => it.id));
+    const isStad = new Set(stad);
+    const tierOf = (id) => (isStage.has(id) ? 'stage' : isStad.has(id) ? 'stad' : 'row');
+    // Phone: the strip runs along the bottom when upright, down the right
+    // side when sideways; hidden, the content has the whole screen.
+    const vertical = box.w > box.h;
+    const thick = hide || !people.length ? 0 : Math.round(vertical ? Math.min(140, Math.max(80, box.w * 0.16)) : Math.min(120, Math.max(72, box.h * 0.14)));
+    const sb = vertical ? { x: box.x, y: box.y, w: Math.max(1, box.w - (thick ? thick + gap : 0)), h: box.h }
+      : { x: box.x, y: box.y, w: box.w, h: Math.max(1, box.h - (thick ? thick + gap : 0)) };
+    const rects = [{ id: shareItem.id, tier: 'stage', x: sb.x, y: sb.y, w: sb.w, h: sb.h, fit: 'cover' }];
+    let pb = null;
+    if (thick) {
+      pb = vertical ? { x: sb.x + sb.w + gap, y: box.y, w: thick, h: box.h } : { x: box.x, y: sb.y + sb.h + gap, w: box.w, h: thick };
+      const fr = faceStrip(people, tierOf, pb, gap, vertical);
+      for (const r of fr) rects.push(r);
+    }
+    return laid(rects, box.h, { stage: pb, share: sb, people: pb }, { side: thick, stadSide: 0, tooSmall: false }, 'fit');
+  }
+
   function layoutFitShare(opts, box, gap, phone, row, stad, shareItem, onStage) {
+    if (shareItem.content && opts.content && opts.content.phone) {
+      return layoutContentFull(opts, box, gap, phone, row, stad, shareItem, onStage);
+    }
     const wide = box.w >= box.h * 1.15;
     let sb, pb, sr;
     if (wide) {
@@ -719,22 +826,30 @@
       pb = { x: box.x, y: box.y + sh + gap, w: box.w, h: Math.max(1, ph) };
       sr = stageRects([shareItem], sb, gap, phone);
     }
+    // Fit never floats (Nathan 2026-11-11): the content stays large and the
+    // people on stage take the head of the people band beside or below it,
+    // never a panel over it. The Float view has its own layout (layoutFloatShare).
+    let stageIn = null;
+    if (onStage.length) {
+      const k = (row.length || stad.length) ? 0.45 : 1;
+      if (wide) {
+        const sh = k === 1 ? pb.h : Math.round(pb.h * k);
+        stageIn = { x: pb.x, y: pb.y, w: pb.w, h: sh };
+        pb = { x: pb.x, y: pb.y + sh + gap, w: pb.w, h: Math.max(1, pb.h - sh - gap) };
+      } else {
+        const sw = k === 1 ? pb.w : Math.round(pb.w * k);
+        stageIn = { x: pb.x, y: pb.y, w: sw, h: pb.h };
+        pb = { x: pb.x + sw + gap, y: pb.y, w: Math.max(1, pb.w - sw - gap), h: pb.h };
+      }
+    }
     const p = people(row, stad, pb, phone, 'fit', gap, true, opts.stadCount);
     if (wide) pinEnd(p.rects, pb);
     const rects = sr.concat(p.rects);
     let stageBox = null;
-    if (onStage.length) {
-      const short = Math.min(sb.w, sb.h);
-      let panelW = Math.max(96, Math.round(short * 0.36));
-      panelW = Math.min(panelW, Math.max(48, sb.w - 16));
-      const maxPH = Math.max(48, sb.h - 16);
-      const floatBox = { x: sb.x + 8, y: sb.y + 8, w: panelW, h: maxPH };
-      const pk = stagePack(onStage, floatBox, gap, { maxH: maxPH, bandH: maxPH });
-      for (let i = 0; i < pk.rects.length; i++) {
-        pk.rects[i].float = 'stage';
-        rects.push(pk.rects[i]);
-      }
-      stageBox = { x: floatBox.x, y: floatBox.y, w: panelW, h: pk.h };
+    if (stageIn) {
+      const pk = stagePack(onStage, stageIn, gap, { maxH: stageIn.h, bandH: stageIn.h });
+      for (let i = 0; i < pk.rects.length; i++) rects.push(pk.rects[i]);
+      stageBox = { x: stageIn.x, y: stageIn.y, w: stageIn.w, h: pk.h };
     }
     return laid(rects, box.h, { stage: stageBox, share: sb, people: pb }, p, 'fit');
   }
