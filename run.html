@@ -12062,8 +12062,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (!(bps > 0)) return;
           // congestion: the loss the far end reports on my video (RTCP receiver reports), and the selected pair's round trip
           let loss = 0, rtt = sel && +sel.currentRoundTripTime || 0;
-          st.forEach((x) => { if (x.type === 'remote-inbound-rtp' && x.kind === 'video') { if (+x.fractionLost > loss) loss = +x.fractionLost; } });   // (the round trip: the selected pair's own, one clock)
-          if (turnLinks.video(pid)) turnLinks.onCapacity(pid, bps, loss, rtt);
+          let limited = false;   // the browser holds my video back for bandwidth: its estimate is what the path gives
+          st.forEach((x) => { if (x.type === 'remote-inbound-rtp' && x.kind === 'video') { if (+x.fractionLost > loss) loss = +x.fractionLost; } if (x.type === 'outbound-rtp' && x.kind === 'video' && x.qualityLimitationReason === 'bandwidth') limited = true; });   // (the round trip: the selected pair's own, one clock)
+          if (turnLinks.video(pid)) turnLinks.onCapacity(pid, bps, loss, rtt, limited);
           if (JSON.stringify(turnLinks.videoStep(pid)) + turnLinks.busy(pid) !== before) { try { adapt(); } catch (e) {} turnApplyVideo(p); turnPaint(); }
         }, () => {});
       }

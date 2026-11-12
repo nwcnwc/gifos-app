@@ -307,29 +307,37 @@
     return { step: i, maxBitrate: Math.round(i === 0 ? full : Math.min(v, THROTTLE_STEPS[Math.max(0, i - 1)].need * min)), scale: st.scale, fps: st.fps };
   }
   // throttleNext(st, look, now, tickMs): one look of a vouched link end. st = { step, busy, okSince, bad, rttBase,
-  // pausedAt } (kept by the caller); look = { bps, loss, rtt } (loss: the far end's fraction lost, 0..1; rtt seconds).
-  // The browser's estimate cannot tell a throttled server from a pc that sends little (an app-limited estimate sits at
-  // what is sent: measured 150-300 kbit on links that reached 1.9-3.3 Mbit a minute later), so only CONGESTION steps
-  // down: loss of TURN_THROTTLE_LOSS or more, or a round trip past twice its floor. Then video drops at least one step,
-  // as far as throttlePlan says the estimate allows; on the lowest step two congested looks in a row pause it. With no
-  // congestion for THROTTLE_UP_MS it climbs one step; a pause tries the lowest step again after that long.
+  // pausedAt } (kept by the caller); look = { bps, loss, rtt, limited } (loss: the far end's fraction lost, 0..1; rtt
+  // seconds; limited: the browser says my video's quality is held back by bandwidth). The estimate alone cannot tell a
+  // throttled server from a pc that sends little (an app-limited estimate sits at what is sent: measured 150-300 kbit
+  // on links that reached 1.9-3.3 Mbit a minute later), so it counts only while the encoder is bandwidth-LIMITED (then
+  // the estimate is what the path gives). Congestion: loss of TURN_THROTTLE_LOSS or more (the round trip
+  // is not used: a pool move changes it on a calm link), or a limited encoder whose estimate leaves room only for
+  // a lower step. Two congested looks in a row (one with heavy loss) drop video at least one step, as far as
+  // throttlePlan says; on the lowest step two congested looks in a row pause it. With no congestion and no limit
+  // for THROTTLE_UP_MS it climbs one step; a pause tries the lowest step again after that long.
   const THROTTLE_LOSS = 0.05;
   function throttleNext(st, look, now, tickMs) {
     const last = THROTTLE_STEPS.length - 1;
     const rtt = +look.rtt > 0 ? +look.rtt : 0;
     if (rtt && (!st.rttBase || rtt < st.rttBase)) st.rttBase = rtt;
-    const congested = (+look.loss || 0) >= THROTTLE_LOSS || (rtt && st.rttBase && rtt > st.rttBase * 2 + 0.05);
+    const plan = throttlePlan(look.bps, tickMs);
+    const short = !!look.limited && (plan.step < 0 || plan.step > st.step);   // the path gives less than this step needs
+    // (the round trip is kept for the record only: a pool move or a renewal changes the relayed path's round trip
+    // under a link that is not congested, measured as false pauses right after the move)
+    const congested = (+look.loss || 0) >= THROTTLE_LOSS || short;
     if (congested) {
       st.okSince = 0; st.bad = (st.bad || 0) + 1;
       if (st.busy) return st;
       if (st.step >= last) { if (st.bad >= 2) { st.busy = true; st.pausedAt = now; } return st; }
-      const p = throttlePlan(look.bps, tickMs);
-      st.step = Math.max(st.step + 1, p.step < 0 ? last : Math.min(last, p.step));
+      if (st.bad < 2 && (+look.loss || 0) < 4 * THROTTLE_LOSS) return st;   // one congested look is a blip; heavy loss acts at once
+      st.step = Math.max(st.step + 1, plan.step < 0 ? last : Math.min(last, plan.step));
       st.bad = 0;   // the pause counts congested looks ON the lowest step only
       return st;
     }
     st.bad = 0;
     if (st.busy) { if (now - (st.pausedAt || 0) >= THROTTLE_UP_MS) { st.busy = false; st.step = last; st.okSince = now; } return st; }
+    if (look.limited) { st.okSince = 0; return st; }   // held back by bandwidth: no climb
     if (st.step > 0) { if (!st.okSince) st.okSince = now; else if (now - st.okSince >= THROTTLE_UP_MS) { st.step--; st.okSince = now; } }
     return st;
   }
@@ -475,12 +483,12 @@
     }
     // TURN.13: each look at the link pc (every THROTTLE_LOOK_MS while it carries video): the browser's send estimate,
     // the loss and round trip the far end reports. throttleNext decides the step (pure, below).
-    function onCapacity(pid, bps, loss, rtt) {
+    function onCapacity(pid, bps, loss, rtt, limited) {
       const L = links.get(pid); if (!L || L.state !== 'up' || !L.video) return;
       const now = io.now(); L.capAt = now; L.cap = bps;
       if (!L.ts) L.ts = { step: 0, busy: false };
       const was = L.ts.busy ? -1 : L.ts.step;
-      throttleNext(L.ts, { bps, loss, rtt }, now, tick);
+      throttleNext(L.ts, { bps, loss, rtt, limited: !!limited }, now, tick);
       const st = L.ts.busy ? -1 : L.ts.step;
       if (st !== was || !L.thr) setThrottle(L, st < 0 ? { step: -1 } : stepOf(st, bps, tick));
     }
