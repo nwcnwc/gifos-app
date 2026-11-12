@@ -54,6 +54,7 @@
  *   l18UxDeliv           meas   L18 measurement
  *   l222Note             A2     L22.2 far ask, my end
  *   l22Agree             A2     UNNEEDED tag 1 on the dc
+ *   l23GreetRelease      A2     a greeting slot ends with the seat that held it
  *   l22Close             A2     pcbye{unneeded} then close
  *   l22CloseAsk          A2     UNNEEDED tag 3 on the dc
  *   l22Need              A2     linkWhy, my end
