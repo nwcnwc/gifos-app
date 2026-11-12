@@ -76,7 +76,7 @@
       this.rs = rngM.seedFor(i);   // FNV-1a 32 of "p%08d" xor 0x9e3779b9
       const h = (this.rs ^ 0x9e3779b9) >>> 0;
       const z = hash.fmix32(hash.hmixId(hash.H_INIT, i + 1)); this.myKey = (z | 1) >>> 0;
-      this.linkKey = lv.ISLAND_MODE ? lv.URL_KEY : this.myKey;
+      this.linkKey = (lv.ISLAND_MODE || lv.LINKKEY_ALL || LINKKEY_ENV) ? lv.URL_KEY : this.myKey;   // C++: linkkeyOn()
       if (lv.NET_SKEW > 0) this.skew = (h >>> 3) % ((lv.NET_SKEW + 1) >>> 0);
       if (lv.CLK_OFF > 0) { const q = hash.fmix32((z ^ 0x636c6b) >>> 0); this.clkHeld = -(q % ((lv.CLK_OFF + 1) >>> 0)); }
     }
@@ -112,6 +112,10 @@
   const K = C_.consts, E = C_.enums;
   const { ckey, ckPc, ckR, ckI, unckey, ownedLinks, rowMates, colMates, down, up, childPath, pcDepth } = topo;
   const C = topo.C;
+  // MESH_LINKKEY=1 under node is the sim's linkkeyEnv(): every page holds the meeting key for a whole run
+  const LINKKEY_ENV = (isNode && typeof process !== 'undefined' && process.env && parseInt(process.env.MESH_LINKKEY, 10)) ? 1 : 0;
+  // the sim's #define L8_50_OFF in mesh.cpp (a build-time switch): MESH_L8_50_OFF=1 under node, read once at load; a page always runs the law
+  const L8_50_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L8_50_OFF === '1') ? 1 : 0;
   const { ins, eraseFirst } = req('./util.js', 'meshUtil');
   const dig = req('./dig.js', 'meshDig');
 
@@ -857,7 +861,7 @@
         }
       }
       if (roomTerm(this, 1) && m.t === 'PONG' && m.id === id && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); this.emit(to, mm); return; }   // L8.31
-      if (roomTerm(this, 1) && m.t === 'HELLO' && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); mm.c7Held = this.l845Held(); mm.c7One = this.ringAlone(); this.emit(to, mm); return; }   // L8.5 (L8.5.2: c7One says my ring holds nobody else)
+      if (roomTerm(this, 1) && m.t === 'HELLO' && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); mm.c7Held = this.l845Held(); mm.c7One = this.ringAlone() || (!L8_50_OFF && this.l850Lone()); /* L8.50: a founder that has seated nobody is its ring, whatever its view has absorbed from a room it has one pc into */ this.emit(to, mm); return; }   // L8.5 (L8.5.2: c7One says my ring holds nobody else)
       if (roomTerm(this, 1) && ((m.t === 'HOME' && m.id === id) || (m.t === 'PLACE' && m.pp === id)) && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); this.emit(to, mm); return; }   // L8.5.1
       if (roomTerm(this, 1) && m.t === 'PHONE' && m.id === id && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); this.emit(to, mm); return; }   // L8.10
       if (m.t === 'WHOHOME' && !this.hasCoord && m.from === id) this.noteDoorAsk(to);   // dark-greeter evidence

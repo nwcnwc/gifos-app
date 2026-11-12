@@ -18,6 +18,9 @@
   const K = C_.consts, E = C_.enums;
   const { ckey, ckPc, unckey, ownedLinks, up, down, C, MAXLINKS } = topo;
   const LS_NONE = E.LS_NONE, LS_CLOSED = E.LS_CLOSED;
+  // the sim's #define L8_50_OFF / L8_50_3_OFF in mesh.cpp (build-time switches): MESH_<name>=1 under node, read once at load; a page always runs the law
+  const envOn = (n) => (isNode && typeof process !== 'undefined' && process.env && process.env[n] === '1') ? 1 : 0;
+  const L8_50_OFF = envOn('MESH_L8_50_OFF'), L8_50_3_OFF = envOn('MESH_L8_50_3_OFF');
   const newMsg = (t) => msg.newMsg(t);
 
   Seat.unit('mesh_island.inc', {
@@ -75,6 +78,7 @@
     // C++: mesh_island.inc:Seat::islandFound
     islandFound() {
       this.trace('ISLAND', this.id, null, 'asked=%zu since=%d rounds=%d reach=%d', this.lastGreeters.length, this.islandAskAt, this.islandAskN + 1, typeof this.f.fabricReachSeated === 'function' ? this.f.fabricReachSeated(this.id) : -1);   // reach: the oracle's count (netmatrix bar), -1 without groups
+      this.l850Seated = false;
       this.islandAskAt = -1; this.islandAskN = 0; this.islandAsked.clear(); this.islandLast = false; this.genKey = this.w.lv.URL_KEY ? this.w.lv.URL_KEY : this.myKey; /* a founder with no link key mints its own (C++: islandFound) */ const e = []; this.take({ pc: 0, r: 0, i: 0 }, -1, e); this.islandFounder = true; this.lineAdopt(this.id, 'found'); this.lineFork = true;
     },
 
@@ -228,6 +232,27 @@
 
     // C++: mesh_island.inc:Seat::ringAlone   (L8.5.2: my view holds no Section-1 seat but me)
     ringAlone() { if (!this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return false; for (const [k, v] of this.occ) if (v >= 0 && v !== this.id && ckPc(k) === 0) return false; return true; },
+
+    // C++: mesh_island.inc:Seat::l850Lone
+    // L8.50.3: on the cell I founded (or the room's first page), and I have admitted nobody since
+    l850Lone() { return (this.islandFounder || !L8_50_3_OFF) && this.line === this.id && !this.l850Seated && this.hasCoord && this.state === 3 && ckey(this.coord) === 0 && !this.moving; },
+
+    // C++: mesh_island.inc:Seat::l850
+    // L8.50: a founder of one and a room (.1 the room's seat, .2 the founder)
+    l850(m) {
+      if (L8_50_OFF || !this.f.fabricDoors() || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return false;
+      if (m.from !== m.id || !this.linkIs(m, m.id) || m.line < 0 || this.line < 0 || m.line === this.line) return false;
+      if (m.c7One) {   // L8.50.1
+        if (this.l850Lone()) return false;   // two founders of one: T1
+        let mate = false; for (const [k, v] of this.occ) if (v >= 0 && v !== this.id && v !== m.id && ckPc(k) === 0 && this.firstHandLive(k)) { mate = true; break; }
+        if (!mate) return false;
+        this.trace('L8.50-ROOM', this.id, this.coord, 'to=%d line=%d', m.id, m.line); const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = this.id; h.c7Min = this.ringName(); h.c7Held = true; h.c7One = false; this.emit(m.id, h);   // one answer per HELLO received
+        return true;
+      }
+      if (m.c7Min < 0 || !this.l850Lone()) return false;   // L8.50.2
+      this.trace('L8.50-LONE', this.id, this.coord, 'via=%d ring=%d', m.id, m.c7Min);
+      this.c7Yield(this.ringName(), 'L8.50-lone'); this.c7Old.clear(); this.l851Up = -1; return true;
+    },
 
     // C++: mesh_island.inc:Seat::islandC7
     islandC7(m) {

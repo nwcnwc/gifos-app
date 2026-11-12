@@ -49,6 +49,7 @@
       if (m.id < 0 || !cellOk(m.ck)) return;
       if (this.f.fabricDoors()) { const lb = this.l152Bye.get(m.id); if (lb !== undefined && lb[0] === m.ck && TICK - lb[1] <= 2) return; }   // L15.2 for a HELLO
       if (m.sw >= 0 && this.l4SwapHello(m)) return;   // L4.3
+      if (this.l850(m)) return;   // L8.50: a founder of one and a room
       if (this.islandC7(m)) return;   // L8.5
       if (m.rmKids && this.hasCoord && this.state === 3 && this.rowLedgerAt < this.rmBornAt && TICK - this.rmBornAt <= K.LEASE_T) this.rmHistAt = TICK;
       if (m.arr >= 0 && m.id !== id && !(this.hasCoord && m.ck === ckey(this.coord)) && (this.occGet(m.ck) < 0 || this.occGet(m.ck) === m.id)) { const b = this.rmBirthOf.get(m.ck); if (b === undefined || b[0] !== m.id) { if (this.rmBirthOf.size >= 4 * C) eraseFirst(this.rmBirthOf); this.rmBirthOf.set(m.ck, [m.id, this.claimBorn(m)]); } }   // L11

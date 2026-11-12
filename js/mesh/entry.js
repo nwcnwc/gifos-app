@@ -196,6 +196,7 @@
       if (lv.TIERS_ACTIVE && nc >= 0 && nc !== id && f.tag !== 1) { if (this.tierSeen.size >= 96 && !this.tierSeen.has(nc)) eraseFirst(this.tierSeen); this.tierSeen.set(nc, l4Pack(f.tier, f.nat)); }   // L4.1
       this.f.fabricAdmitLog(k, id);   // V4 forensics
       this.trace('ADMIT', id, c, 'nc=%d site=%s tag=%d', nc, site, f.tag);
+      this.l850Seated = true;   // L8.50: a founder that admits a seat is no ring of one
       if (f.tag !== 1) this.l710Dial(c, nc);   // L7.10
       this.tlForget(k);   // the cell genuinely refills
       const nbrs = []; const ol = ownedLinks(c); const n = ol.length;

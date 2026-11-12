@@ -25,6 +25,8 @@
   const { eraseFirst } = req('./util.js', 'meshUtil');
 
   const K = C_.consts, E = C_.enums;
+  // the sim's #define L8_50_3_OFF in mesh.cpp (a build-time switch): MESH_L8_50_3_OFF=1 under node, read once at load; a page always runs the law
+  const L8_50_3_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L8_50_3_OFF === '1') ? 1 : 0;
   const { ckey, ckPc, unckey, down, pcDepth, lastDigit, parentPath, rowMates } = topo;
   const C = topo.C;
   const newMsg = (t) => msg.newMsg(t);
@@ -37,7 +39,7 @@
       const TICK = this.TICK, id = this.id, lv = this.w.lv;
       if ((this.state === 0 || this.state === 1) && this.l45Stale(m.list)) { this.reJoin = true; this.f.wake(id); return; }   // L45
       if (m.list.length === 0) {
-        if (this.state === 0) { this.genKey = this.linkKey; this.take({ pc: 0, r: 0, i: 0 }, -1, [], -1, -1, [], -1); this.lineAdopt(id, 'genesis'); }
+        if (this.state === 0) { this.genKey = this.linkKey; this.take({ pc: 0, r: 0, i: 0 }, -1, [], -1, -1, [], -1); this.lineAdopt(id, 'genesis'); if (!L8_50_3_OFF) this.l850Seated = false; /* L8.50.3: the first page has admitted nobody yet */ }
         else if (this.state === 3) { this.lastGreeters = []; this.greetersAt = TICK; }
         return;
       }   // a seated seat records the empty list too; R3: empty list => I minted the genesis key & found the home
@@ -54,7 +56,7 @@
         const w = newMsg('WHOHOME'); w.from = id; w.ttl = 60; if (!this.oldCell && !islandStand(this, E.IS_L31)) w.l31 = 1; this.emit(g, w); this.state = 1; this.retryAt = TICK;
       }
       this.islandFork(m.list);   // L8.3
-      if (this.state === 3 && this.coord.pc === 0 && TICK - this.rookSeenAt > K.STRAND_TTL && !this.islandFounder) {   // L8.4
+      if (this.state === 3 && this.coord.pc === 0 && TICK - this.rookSeenAt > K.STRAND_TTL && !this.islandFounder && !(!L8_50_3_OFF && this.l850Lone())) {   /* L8.50.3: so is the first page while it has admitted nobody */   // L8.4
         let other = false; for (const g of m.list) if (g !== id && g >= 0) { other = true; break; }
         if (other) { this.requeue('rook-silent-split'); return; }
       }
