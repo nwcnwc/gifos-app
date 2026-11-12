@@ -41,7 +41,7 @@
  */
 'use strict';
 
-var SHELL_VERSION = 'v24'; // v24: My library (the /library page and its client); (v23: js/timings.js joins the shell (the meeting page's waits and timeouts) (v22: css/meet-polish.css joins the shell (v21: css/meet.css joins the shell (the meeting styles moved out of run.html) (v20: js/dialog.js joins the shell (the dialogs' scroll frame, parsed by every page) (v19: 0.9.25 cut (shell now holds every en catalog and the new version.json/changelog) (v18: every surface's en catalog joins the shell, plus meet.json and the built-in apps (v17: gifos-i18n.js and the en catalogs join the shell (v16: 0.9.24 hotfix, gifos-update.js reads a four-part `latest`; v15: gifos-charge.js joins the shell)
+var SHELL_VERSION = 'v25'; // v25: My library streams sealed recordings through this worker; (v24: My library (the /library page and its client); (v23: js/timings.js joins the shell (the meeting page's waits and timeouts) (v22: css/meet-polish.css joins the shell (v21: css/meet.css joins the shell (the meeting styles moved out of run.html) (v20: js/dialog.js joins the shell (the dialogs' scroll frame, parsed by every page) (v19: 0.9.25 cut (shell now holds every en catalog and the new version.json/changelog) (v18: every surface's en catalog joins the shell, plus meet.json and the built-in apps (v17: gifos-i18n.js and the en catalogs join the shell (v16: 0.9.24 hotfix, gifos-update.js reads a four-part `latest`; v15: gifos-charge.js joins the shell)
 var CACHE = 'gifos-shell-' + SHELL_VERSION;
 
 // ONE CACHE KEY PER FILE. pages.yml stamps `?v=<sha>` onto every local css/js
@@ -316,6 +316,105 @@ self.addEventListener('activate', function (e) {
   })());
 });
 
+// ---- My library: decrypted streams --------------------------------------------
+// A library file is sealed part by part (js/gifos-library.js). To play or save
+// a recording of any size without holding it in memory, the page hands this
+// worker a STREAM SESSION (where the sealed bytes are, the file key, the part
+// layout) and points <video> or a download at /library-stream/<sid>/<name>.
+// Each request is answered by fetching only the sealed parts that cover the
+// asked byte range, opening them one at a time and passing the plain bytes on:
+// Range requests (seeking) work and memory stays at about one part.
+// Sessions live in memory and, so a paused video survives this worker being
+// stopped, in IndexedDB with the key as a non-extractable CryptoKey; a
+// session ends when the page says so or when its sealed-byte link runs out.
+var LIB_SESSIONS = new Map();
+var LIB_RE = /^\/library-stream\/([A-Za-z0-9_-]{16,64})(?:\/[^/]*)?$/;
+var LIB_DB = 'gifos-library-streams';
+function libDb() {
+  return new Promise(function (ok, no) {
+    var r = indexedDB.open(LIB_DB, 1);
+    r.onupgradeneeded = function () { r.result.createObjectStore('s'); };
+    r.onsuccess = function () { ok(r.result); };
+    r.onerror = function () { no(r.error); };
+  });
+}
+function libIdb(mode, fn) {
+  return libDb().then(function (db) {
+    return new Promise(function (ok, no) {
+      var t = db.transaction('s', mode), st = t.objectStore('s'), out = fn(st);
+      t.oncomplete = function () { db.close(); ok(out && out.result); };
+      t.onerror = function () { db.close(); no(t.error); };
+    });
+  });
+}
+async function libSession(sid) {
+  var s = LIB_SESSIONS.get(sid);
+  if (!s) { try { s = await libIdb('readonly', function (st) { return st.get(sid); }); } catch (err) { s = null; } if (s) LIB_SESSIONS.set(sid, s); }
+  if (s && s.exp && Date.now() / 1000 > s.exp) { libEnd(sid); return null; }
+  return s || null;
+}
+function libEnd(sid) {
+  LIB_SESSIONS.delete(sid);
+  return libIdb('readwrite', function (st) { return st.delete(sid); }).catch(function () {});
+}
+async function libStart(d) {
+  var key = await crypto.subtle.importKey('raw', d.key, { name: 'AES-GCM' }, false, ['decrypt']);
+  var s = { src: String(d.src), key: key, parts: d.parts, size: d.size, type: String(d.mime || 'application/octet-stream'), name: String(d.name || 'recording'), partBytes: d.partBytes, plainPart: d.plainPart, exp: d.exp || 0 };
+  LIB_SESSIONS.set(d.sid, s);
+  try { await libIdb('readwrite', function (st) { return st.put(s, d.sid); }); } catch (err) { /* memory only: a stopped worker ends the stream */ }
+  // Sessions past their link's end are dropped whenever a new one starts.
+  try {
+    var all = await libIdb('readonly', function (st) { return st.getAllKeys(); });
+    for (var i = 0; i < (all || []).length; i++) await libSession(all[i]);   // drops the ones past their end
+  } catch (err) { /* nothing to prune */ }
+}
+self.addEventListener('message', function (e) {
+  var d = e.data || {};
+  if (d.type === 'gifos-library-stream' && typeof d.sid === 'string') {
+    e.waitUntil(libStart(d).then(function () { if (e.ports[0]) e.ports[0].postMessage({ ok: true }); }, function (err) { if (e.ports[0]) e.ports[0].postMessage({ ok: false, error: String(err && err.message || err) }); }));
+  } else if (d.type === 'gifos-library-stream-end' && typeof d.sid === 'string') {
+    e.waitUntil(libEnd(d.sid));
+  }
+});
+function libPartAd(n, parts) { return new TextEncoder().encode('gifos-library-part-v1\x00' + n + '\x00' + parts); }
+async function libStream(req, sid, url) {
+  var s = await libSession(sid);
+  var text = { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' };
+  if (!s) return new Response('This file was closed. Open it again from My library.', { status: 410, headers: text });
+  var size = s.size, a = 0, b = size - 1, ranged = false;
+  var m = /^bytes=(\d*)-(\d*)$/.exec((req.headers.get('Range') || '').trim());
+  if (m && (m[1] !== '' || m[2] !== '')) {
+    ranged = true;
+    if (m[1] === '') a = Math.max(0, size - Number(m[2]));
+    else { a = Number(m[1]); if (m[2] !== '') b = Math.min(Number(m[2]), size - 1); }
+    if (!(a <= b) || a >= size) return new Response(null, { status: 416, headers: { 'Content-Range': 'bytes */' + size } });
+  }
+  var n = Math.floor(a / s.plainPart) + 1, last = Math.floor(b / s.plainPart) + 1;
+  var body = new ReadableStream({
+    // One sealed part is fetched and opened per pull: the stream holds about
+    // one part, and a cancelled request (a seek) stops fetching at once.
+    pull: async function (ctl) {
+      if (n > last) { ctl.close(); return; }
+      var from = (n - 1) * s.partBytes;
+      var r = await fetch(s.src, { headers: { Range: 'bytes=' + from + '-' + (from + s.partBytes - 1) }, cache: 'no-store' });
+      if (!r.ok) { ctl.error(new Error('the library answered ' + r.status)); return; }
+      var ct = new Uint8Array(await r.arrayBuffer());
+      var pt;
+      try { pt = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: ct.subarray(0, 12), additionalData: libPartAd(n, s.parts) }, s.key, ct.subarray(12))); }
+      catch (err) { ctl.error(new Error('this part did not open with its key')); return; }
+      var base = (n - 1) * s.plainPart;
+      ctl.enqueue(pt.subarray(Math.max(a, base) - base, Math.min(b, base + pt.length - 1) - base + 1));
+      n++;
+    },
+  }, { highWaterMark: 1 });
+  var h = {
+    'Content-Type': s.type, 'Content-Length': String(b - a + 1), 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-store',
+    'Content-Disposition': (url.searchParams.get('dl') === '1' ? 'attachment' : 'inline') + "; filename*=UTF-8''" + encodeURIComponent(s.name),
+  };
+  if (ranged) h['Content-Range'] = 'bytes ' + a + '-' + b + '/' + size;
+  return new Response(body, { status: ranged ? 206 : 200, headers: h });
+}
+
 self.addEventListener('fetch', function (e) {
   var req = e.request;
   if (req.method !== 'GET') return;
@@ -325,6 +424,10 @@ self.addEventListener('fetch', function (e) {
   // servers): never intercept. They behave exactly as before — working online,
   // failing offline with the app's own messaging.
   if (url.origin !== self.location.origin) return;
+  // My library: a decrypted stream of a sealed file (see libStream above).
+  if (url.pathname === '/library-stream/ping') { e.respondWith(new Response(null, { status: 204, headers: { 'X-Gifos-Library-Stream': '1', 'Cache-Control': 'no-store' } })); return; }
+  var lm = LIB_RE.exec(url.pathname);
+  if (lm) { e.respondWith(libStream(req, lm[1], url)); return; }
 
   // version.json + changelog.json drive the OPT-IN update flow: always try the
   // network so a reconnected device can SEE that a new release (and its notes)

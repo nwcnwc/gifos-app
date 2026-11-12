@@ -67,25 +67,63 @@
       Promise.resolve().then(fn).catch(say).then(function () { busy[f.id] = false; });
     };
   }
-  function play(f) {
-    return lib().link(f.id).then(function (l) {
-      if (/^video\/|^audio\//.test(f.type || '')) {
-        var v = el(/^audio\//.test(f.type) ? 'audio' : 'video');
-        v.controls = true; v.setAttribute('playsinline', ''); v.src = l.url;
-        var notice = el('p', 'quiet');
-        v.addEventListener('error', function () { notice.textContent = i18n.t('library.unsupported'); });
-        var box = el('div'); box.appendChild(v); box.appendChild(notice);
-        modal(f.name, box);
-      } else {
-        window.open(l.url, '_blank', 'noopener');
+  // Files are opened (decrypted) in this browser. Normally the service
+  // worker streams them (any size, seeking works, flat memory); a browser
+  // without one opens small files whole.
+  var WHOLE_MAX = 256 * 1000 * 1000;   // bytes a page may hold to open a file whole
+  var playUrl = null;
+  function player(title, type, src, sid) {
+    var box = el('div');
+    if (/^video\/|^audio\//.test(type || '')) {
+      var v = el(/^audio\//.test(type) ? 'audio' : 'video');
+      v.controls = true; v.setAttribute('playsinline', ''); v.preload = 'metadata'; v.src = src;
+      var notice = el('p', 'quiet');
+      v.addEventListener('error', function () { notice.textContent = i18n.t('library.unsupported'); });
+      box.appendChild(v); box.appendChild(notice);
+    } else {
+      var pre = el('pre', 'text');
+      fetch(src).then(function (r) { return r.text(); }).then(function (t) { pre.textContent = t; });
+      box.appendChild(pre);
+    }
+    var d = modal(title, box);
+    d.addEventListener('close', function () { if (sid) lib().endStream(sid); });
+    return d;
+  }
+  function showBlob(title, blob, type) {
+    if (playUrl) { URL.revokeObjectURL(playUrl); playUrl = null; }
+    playUrl = URL.createObjectURL(blob);
+    return player(title, type, playUrl, null);
+  }
+  function saveUrl(url, name) {
+    var a = el('a'); a.href = url; a.download = name || 'recording'; a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+  function opening(f) {
+    return function (x) { say({ message: i18n.t('library.opening', { pct: Math.round(x * 100) }) }); };
+  }
+  // Stream, or open whole when this browser cannot stream and the file is small.
+  function viaStream(start, whole, size) {
+    return start().catch(function (e) {
+      if (e && e.code === 'no-stream') {
+        if (size > WHOLE_MAX) throw { message: i18n.t('library.noStream') };
+        return whole();
       }
+      throw e;
     });
   }
+  function play(f) {
+    return viaStream(function () {
+      return lib().stream(f).then(function (s) { player(f.name, f.type, s.url, s.sid); });
+    }, function () {
+      return lib().openFile(f, opening(f)).then(function (blob) { say(null); showBlob(f.name, blob, f.type); });
+    }, f.plainSize);
+  }
   function download(f) {
-    return lib().link(f.id).then(function (l) {
-      var a = el('a'); a.href = l.url + '?dl=1'; a.download = f.name; a.rel = 'noopener';
-      document.body.appendChild(a); a.click(); a.remove();
-    });
+    return viaStream(function () {
+      return lib().stream(f, { download: true }).then(function (s) { saveUrl(s.url, f.name); });
+    }, function () {
+      return lib().download(f, opening(f)).then(function () { say(null); });
+    }, f.plainSize);
   }
   function startRename(f, nameEl) {
     var input = el('input', 'rename'); input.type = 'text'; input.value = f.name; input.maxLength = 200;
@@ -123,10 +161,10 @@
       })();
     }, 'primary');
     var no = btn(i18n.t('library.cancel'), function () { d.close(); });
-    d = modal(i18n.t('library.deleteTitle', { name: f.name }), body, [no, go]);
+    d = modal(i18n.t('library.deleteTitle', { name: f.name || i18n.t('library.locked') }), body, [no, go]);
   }
-  function shareDialog(f) {
-    return lib().share(f.id).then(function (r) {
+  function shareDialog(f, existing) {
+    return (existing ? lib().shareUrl(f, existing).then(function (u) { return { url: u }; }) : lib().share(f)).then(function (r) {
       var body = el('div');
       body.appendChild(el('p', 'quiet', i18n.t('library.shareNote')));
       var row = el('div', 'row');
@@ -150,9 +188,19 @@
   function row(f, kids) {
     var li = el('li', 'file');
     var main = el('div', 'main');
+    if (f.locked) {
+      // Sealed with another subscription file: it can only be deleted here.
+      main.appendChild(el('span', 'name', i18n.t('library.locked')));
+      main.appendChild(el('span', 'meta', dateText(f.created) + ' · ' + lib().sizeText(f.size)));
+      li.appendChild(main);
+      var la = el('div', 'acts');
+      la.appendChild(btn(i18n.t('library.delete'), function () { confirmDelete(f); }));
+      li.appendChild(la);
+      return li;
+    }
     var name = el('span', 'name', f.name);
     main.appendChild(name);
-    main.appendChild(el('span', 'meta', dateText(f.created) + ' · ' + lib().sizeText(f.size)));
+    main.appendChild(el('span', 'meta', dateText(f.created) + ' · ' + lib().sizeText(f.plainSize || f.size)));
     li.appendChild(main);
     var acts = el('div', 'acts');
     acts.appendChild(btn(i18n.t('library.play'), guard(f, function () { return play(f); })));
@@ -164,6 +212,7 @@
     (f.shares || []).forEach(function (s) {
       var r = el('div', 'share');
       r.appendChild(el('span', 'meta', i18n.t('library.shareExisting') + ' · ' + dateText(s.created)));
+      if (s.url) r.appendChild(btn(i18n.t('library.copyLink'), guard(f, function () { return shareDialog(f, s); })));
       r.appendChild(btn(i18n.t('library.shareTurnOff'), guard(f, function () { return turnOff(f, s); })));
       li.appendChild(r);
     });
@@ -251,9 +300,39 @@
     });
   }
 
+  // Someone opened a share link: the key is in the #fragment, which never
+  // leaves this browser. No subscription is needed to watch.
+  function startShared() {
+    $('shared').hidden = false;
+    var s = lib().parseShare(location.hash);
+    $('shared-name').textContent = (s && s.n) || i18n.t('library.sharedTitle');
+    var go = function (dl) {
+      return function () {
+        say(null);
+        var sh = lib().parseShare(location.hash) || {};
+        viaStream(function () {
+          return lib().streamShare(location.hash, { download: dl }).then(function (x) {
+            if (dl) saveUrl(x.url, sh.n); else player(sh.n || i18n.t('library.sharedTitle'), sh.t, x.url, x.sid);
+          });
+        }, function () {
+          return lib().openShare(location.hash, function (x) { say({ message: i18n.t('library.opening', { pct: Math.round(x * 100) }) }); }).then(function (r) {
+            say(null);
+            if (dl) saveUrl(URL.createObjectURL(r.blob), r.name);
+            else showBlob(r.name || i18n.t('library.sharedTitle'), r.blob, r.type);
+          });
+        }, sh.s).catch(function (e) {
+          say({ message: e.code === 'wrong-key' ? i18n.t('library.wrongKey') : e.code === 'share-key' ? i18n.t('library.shareNoKey') : e.code === 'share-gone' ? i18n.t('library.shareGone') : (e.message || i18n.t('library.failed')) });
+        });
+      };
+    };
+    var acts = $('shared-acts'); acts.textContent = '';
+    acts.appendChild(btn(i18n.t('library.play'), go(false)));
+    acts.appendChild(btn(i18n.t('library.download'), go(true)));
+  }
   function start() {
     document.title = i18n.t('library.titleTab');
     document.querySelectorAll('[data-t]').forEach(function (n) { n.textContent = i18n.t(n.getAttribute('data-t')); });
+    if (lib().parseShare(location.hash)) { startShared(); return; }
     $('loading').hidden = false;
     lib().status().then(function (st) {
       $('loading').hidden = true;

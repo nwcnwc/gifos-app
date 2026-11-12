@@ -794,13 +794,13 @@
       const t = tiles[i];
       if (t.tier === 'stad') stad.push(t.id);
       else if (t.kind === 'screen' || t.kind === 'app' || t.fill) {
-        share.push({ id: t.id, aspect: t.aspect > 0 ? t.aspect : 16 / 9, fill: !!t.fill || t.kind === 'app', kind: t.kind || (t.fill ? 'app' : 'screen') });
+        share.push({ id: t.id, aspect: t.aspect > 0 ? t.aspect : 16 / 9, fill: !!t.fill || t.kind === 'app', kind: t.kind || (t.fill ? 'app' : 'screen'), content: !!t.content, stackH: typeof t.stackH === 'function' ? t.stackH : undefined });
       } else if (t.stage || t.kind === 'strip' || t.kind === 'person') {
         stage.push({ id: t.id, aspect: t.aspect > 0 ? t.aspect : 16 / 9, kind: t.kind || 'person' });
       } else row.push(t.id);
     }
     const z = MZ.layout({ box: box, stage: stage, share: share, row: row, stad: stad, phone: !!opts.phone,
-      gallery: opts.gallery === 'scroll' ? 'scroll' : 'fit', float: opts.float === true, gap: opts.phone ? 4 : MZ.GAP, floor: +opts.floor || 0,
+      gallery: opts.gallery === 'scroll' ? 'scroll' : 'fit', float: opts.float === true, content: opts.content || null, gap: opts.phone ? 4 : MZ.GAP, floor: +opts.floor || 0,
       stadCount: opts.stadCount > 0 ? opts.stadCount : 0 });
     let band = null;
     if (z.tooSmall) band = { text: 'faces tiny \u00b7 Scroll is in \u25a6', x: box.x + 6, y: box.y + 6 };

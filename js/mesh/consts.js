@@ -208,6 +208,7 @@
     D52_FLIGHT: 4,   // C++: mesh_headword.inc:D52_FLIGHT
     D52_TTL: 40,   // C++: mesh_headword.inc:D52_TTL
     D52_KEEPMAX: 120,   // C++: mesh_headword.inc:D52_KEEPMAX
+    GA_NOTWIT: -2,   // C++: mesh_gapa.inc:GA_NOTWIT
     GA_REASK: 4,   // C++: mesh_gapa.inc:GA_REASK
     GA_FIND_WIN: 90,   // C++: mesh_gapa.inc:GA_FIND_WIN  ((int)LAW_COMPACT_PERIOD)
     SOCK_CLOSE_CRASH: 4,   // C++: mesh.cpp:SOCK_CLOSE_CRASH
@@ -315,6 +316,8 @@
     COMPACT_PLACES: 0,   // C++: mesh.cpp:COMPACT_PLACES
     COMPACT_ATS1: 0,   // C++: mesh.cpp:COMPACT_ATS1
     COMPACT_SWEEP: 0,   // C++: mesh.cpp:COMPACT_SWEEP
+    GA_WITLIE: 0,   // C++: mesh.cpp:GA_WITLIE
+    GA_WITLIE_FREE: 0,   // C++: mesh.cpp:GA_WITLIE_FREE
     GA_DENSE_ASK: 0,   // C++: mesh.cpp:GA_DENSE_ASK
     COMPACT_OFFERS: 0,   // C++: mesh.cpp:COMPACT_OFFERS
     COMPACT_OFFERFIRES: 0,   // C++: mesh.cpp:COMPACT_OFFERFIRES

@@ -20,10 +20,11 @@
  *     Payment is checked when a meeting is joined; a meeting that started
  *     paid keeps the subscription to its end.
  *   - The admin's ticket travels with the room (a signed room order), so the
- *     door knows the room's plan. In a room on the $2 plan (or one whose plan
- *     cannot be shown) that already holds 20 people, the door asks a newcomer
- *     to show a ticket for this meeting; without one they are told plainly
- *     and not let in. Rooms on the $5 and $10 plans have no limit.
+ *     door knows the room's plan. In a room on the $2 plan that already
+ *     holds 20 people (5 on the free plan, or when the room's plan cannot be
+ *     shown), the door asks a newcomer to show a ticket for this meeting;
+ *     without one they are told plainly and not let in. Rooms on the $5 and
+ *     $10 plans have no limit, and open rooms never have one.
  *
  * The subscription is a FILE: a GifOS GIF that provides the meeting
  * subscription (keep it in the Providers folder, or open it here in another
@@ -180,7 +181,20 @@
     let lic; try { lic = JSON.parse(licenseJson); } catch (e) { return null; }
     if (!lic || lic.subId !== c.subId) return null;
     try { if (lic.buyerKey !== (await myKey()).pub) return null; } catch (e) { return null; }
-    return { subId: c.subId, tier: lic.tier, exp: lic.exp, license: { licenseJson, sig }, sign: signText };
+    return { subId: c.subId, tier: lic.tier, exp: lic.exp, license: { licenseJson, sig }, sign: signText, libraryKey: await libraryKey(c) };
+  }
+  // The library key: derived here from the subscription file's seed, so the
+  // file (and its backup) is all it takes to open My library on any browser,
+  // and nothing else can. It never leaves this browser.
+  let libKeyMemo = { seed: null, p: null };
+  function libraryKey(c) {
+    if (libKeyMemo.seed !== c.seed) {
+      libKeyMemo = { seed: c.seed, p: (async () => {
+        const ikm = await crypto.subtle.importKey('raw', fromB64(c.seed), 'HKDF', false, ['deriveKey']);
+        return crypto.subtle.deriveKey({ name: 'HKDF', hash: 'SHA-256', salt: new TextEncoder().encode('gifos-library'), info: new TextEncoder().encode('gifos-library-v1\x00' + c.subId) }, ikm, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+      })() };
+    }
+    return libKeyMemo.p;
   }
   async function rights() {
     if (!on()) return Object.assign({}, SUB ? SUB.FREE : {});
@@ -425,6 +439,7 @@
       if (t.storage) {
         const a = el('a', { class: BTN, style: BTN_STYLE + ';display:inline-block;text-decoration:none', id: 'sub-library', href: '/library', target: '_blank', rel: 'noopener' }, 'My library');
         row.appendChild(a);
+        row.appendChild(el('p', { class: 'set-help', id: 'sub-library-key' }, 'Only you can open your library. If you lose your subscription file and its backup, nobody, not even GifOS, can recover it.'));
       }
       if (st.status !== 'CANCELLED') {
         const c = el('button', { type: 'button', class: BTN, style: BTN_STYLE, id: 'sub-cancel' }, 'Cancel subscription');
@@ -462,7 +477,7 @@
     // The subscription file: download it, or use one from another browser.
     if (cred) {
       const d = el('button', { type: 'button', class: BTN, style: BTN_STYLE, id: 'sub-file-get' }, 'Download subscription file');
-      d.onclick = () => { downloadFile().then(() => say('Saved. Keep it private: anyone with the file can use your subscription.'), (e) => say(String(e.message || e))); };
+      d.onclick = () => { downloadFile().then(() => say('Saved. Keep it private: anyone with the file can use your subscription' + (lic && SUB.TIERS[lic.tier].storage ? ' and open your library. Keep a backup: if you lose it, nobody, not even GifOS, can recover your library.' : '.')), (e) => say(String(e.message || e))); };
       row.appendChild(d);
     }
     const pick = el('input', { type: 'file', accept: 'image/gif,.gif', id: 'sub-file-use', 'aria-label': 'Use a subscription file' });
