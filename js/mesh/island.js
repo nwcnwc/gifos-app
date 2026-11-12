@@ -322,7 +322,7 @@
           for (const wk of v.keys()) { this.l842Join.add(wk); const l = this.lineOf(wk); if (l >= 0 && l !== this.line) ls.add(l); }
           for (const x of this.occ.values()) { if (x < 0 || x === this.id) continue; const l = this.lineOf(x); if ((l >= 0 && ls.has(l)) || this.l828RingOf(x) === theirs) this.l842Join.add(x); }
         }
-        this.trace('C7', this.id, this.coord, 'mine=%d theirs=%d', mine, theirs); this.c7TowardEp = tAt; this.c7Yield(mine, 'C7-merge', theirs); this.c7TowardEp = -1; this.l842Join.clear(); return true;
+        this.trace('C7', this.id, this.coord, 'mine=%d theirs=%d', mine, theirs); if (this.t1415Word(m)) this.t161Note(m.id);   /* TURN.16.1: moved by the word of my side's link end: it is my way in */ this.c7TowardEp = tAt; this.c7Yield(mine, 'C7-merge', theirs); this.c7TowardEp = -1; this.l842Join.clear(); return true;
       }
       if (gated) return false;
       const t = this.c7Told.get(m.id);

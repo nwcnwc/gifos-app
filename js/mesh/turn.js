@@ -19,6 +19,7 @@
   const C_ = isNode ? require('./consts.js') : GifOS.meshConsts;
   const K = C_.consts;
   const { GT_BLOCKED } = C_.enums;
+  const L8_52_6_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L8_52_6_OFF === '1') ? 1 : 0;   // the sim's -DL8_52_6_OFF=1 build
 
   // C++: mesh_turn.inc:turnPick   (the lowest unreachable greeter, and only if it is lower than every id of my own view; -1: none)
   function turnPick(foreign, myMin) { let g = -1; for (const x of foreign) if (x >= 0 && (g < 0 || x < g)) g = x; return (g >= 0 && g < myMin) ? g : -1; }
@@ -27,7 +28,8 @@
   // C++: mesh_turn.inc:turnPick52   (L8.52.3: the oldest unreachable part, and only if it is older than mine; epOf(g): the door's word for g, -1: none)
   function turnPick52(foreign, epOf, myMin, myAt) {
     let g = -1, ge = -1;
-    for (const x of foreign) { if (x < 0) continue; const xe = epOf(x); if (g < 0 || ringOlder(x, xe, g, ge)) { g = x; ge = xe; } }
+    // L8.52.6: a greeter the door gives no founding time for does not speak for its part's age: a dated one comes before an undated one
+    for (const x of foreign) { if (x < 0) continue; const xe = epOf(x); const better = g < 0 || ((!L8_52_6_OFF && (xe >= 0) !== (ge >= 0)) ? xe >= 0 : ringOlder(x, xe, g, ge)); if (better) { g = x; ge = xe; } }
     return (g >= 0 && ringOlder(g, ge, myMin, myAt)) ? g : -1;
   }
   // C++: mesh_turn.inc:turnClients   (1 the opener, 2 the target, 3 both: the blocked end is the client)
