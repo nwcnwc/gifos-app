@@ -7616,6 +7616,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       const f = stageFeedVideo(sid);
       if (f && f.track) return { track: f.track, from: 'stg' };
+      // The sharer's own stage feed, held here but not yet painted by its
+      // hidden element (a browser that never decodes a hidden video): the
+      // track is live, so the tab plays it itself.
+      try {
+        const m = mosIn && mosIn.get('stg:' + sid);
+        const t = m && m.stream && m.stream.getVideoTracks && m.stream.getVideoTracks()[0];
+        if (t && t.readyState !== 'ended') return { track: t, from: 'stg' };
+      } catch (e) {}
       const sgs = document.querySelector('#stagefeed [data-row="sgs"] video');
       const st = sgs && sgs.srcObject;
       const t = st && st.getVideoTracks && st.getVideoTracks()[0];
@@ -7781,6 +7789,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       el.hidden = false;
       el.classList.toggle('ct-fixed', fixed);
+      // Fixed (presentation view, Focus) the area lives on the body, above
+      // every layer of the meeting; in the gallery it lives in the feed.
+      const home = fixed ? document.body : feed;
+      if (home && el.parentNode !== home) home.appendChild(el);
       body.classList.toggle('ct-present', !!CT.present);
       if (fixed) {
         el.style.position = 'fixed';
