@@ -3562,7 +3562,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // gets the moment its channel opens (wireDc onopen).
     // My network's kind for friend-hop's typing (a seat tells a blip from an unreachable pair), in the seat's GT_ words: open, blocked, or
     // strict (an endpoint-dependent mapping, which pairs badly with another strict seat). -1: not known yet.
-    const natWord = () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' && directMeasured ? E.GT_BLOCKED : directPath === 'strict' ? E.GT_SYM : directPath === 'ok' ? E.GT_PUBLIC : -1; };
+    const natWord = () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' ? E.GT_BLOCKED : directPath === 'strict' ? E.GT_SYM : directPath === 'ok' ? E.GT_PUBLIC : -1; };
     // FHOP.8 / FHOP.9: what my beat says of my network, for a friend choosing a carrier or a friend to call to a door.
     //   cls  my link class: 3 wired, 2 Wi-Fi, 1 cellular, 0 not known (navigator.connection, where the browser gives it).
     //   nt   my network tag: HMAC-SHA-256 over my network (the address the relay saw me connect from, its own whoami: an
@@ -11503,7 +11503,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const REACH_PROBE_MS = GifOS.timings.REACH_PROBE_MS;
     let directPath = 'pending'; // 'pending' | 'ok' | 'strict' | 'blocked' | 'unknown' — this network's verdict
     let directPathRun = 0;
-    let directMeasured = true;   // false while 'blocked' only means no STUN word yet: the seat's NAT kind (L4.1) is measured, and a slow answer measures nothing
+    // L4.1.1: a firewall that blocks UDP drops it silently, so 'blocked' at the probe's limit (REACH_PROBE_MS) IS the verdict every
+    // law reads (the seat's kind, the blocked seeker's entry, the TURN client end); an answer that comes later corrects it (remeasure).
+    let directMeasured = true;   // kept for the status line and the test API only: false while 'blocked' means no STUN word yet (was: the seat's NAT kind (L4.1) is measured, and a slow answer measures nothing)
     // Run (or re-run) the probe. Called when the meeting starts and when the
     // browser reports the network came back, since a new network is a new
     // verdict. Under DEBUG a test may fix the verdict (window.__gifosDirectPath)
@@ -12833,6 +12835,37 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return !!(fp && fp.dc && fp.dc.readyState === 'open');
     }
     const turnRaw = () => { const r = meshNode && meshNode.raw; return typeof r === 'function' ? r() : (r || null); };
+    // THE JOIN'S PHASES: the one list a progress line ("step X of Y") reads. A page goes through them in this order
+    // and may skip any: an ordinary join is probing, knocking, asking, seated; a device on a blocked network whose
+    // office is first to arrive also goes through founding (it starts its part of the meeting alone), linking (its
+    // relayed link is being set up) and moving (it leaves its own part for the meeting's older part); its colleagues
+    // go through waiting (the one device they can reach said "no room yet": it is linking or moving).
+    //   probing   my network check has no verdict yet and I hold no list from the door
+    //   knocking  I am at the door with no list yet
+    //   asking    I asked the greeters the door listed and wait for the first answer
+    //   waiting   a greeter I can reach answered that it has no room yet (L8.47.2): I wait for it
+    //   founding  I sit alone on the cell I founded and no link of mine is being set up
+    //   linking   the relayed link I opened is dialling, or just came up (TURN.4.4)
+    //   moving    I had a seat and am on my way to another part of the meeting
+    //   seated    I sit in the meeting
+    // GifOS.meetJoin.phase() → { phase, index, of, probe }   (index: 0-based place in PHASES; probe: this network's verdict)
+    const JOIN_PHASES = Object.freeze(['probing', 'knocking', 'asking', 'waiting', 'founding', 'linking', 'moving', 'seated']);
+    let joinEverSat = false;
+    function joinPhase() {
+      const K = GifOS.meshConsts.consts, r = turnRaw();
+      let ph;
+      if (!r) ph = directPath === 'pending' ? 'probing' : 'knocking';
+      else if (r.hasCoord && r.state === 3) {
+        joinEverSat = true;
+        const lone = !!r.islandFounder && r.line === r.id && !r.l850Seated && GifOS.meshTopo.ckey(r.coord) === 0;
+        ph = !lone ? 'seated' : (turnLinks && turnLinks.holding && turnLinks.holding()) ? 'linking' : 'founding';
+      } else if (joinEverSat) ph = 'moving';
+      else if (Number.isInteger(r.ehAt) && r.ehAt >= 0 && r.TICK - r.ehAt < K.ISLAND_WAIT) ph = 'waiting';
+      else if (r.state === 1) ph = 'asking';
+      else ph = directPath === 'pending' && !(r.lastGreeters && r.lastGreeters.length) ? 'probing' : 'knocking';
+      return { phase: ph, index: JOIN_PHASES.indexOf(ph), of: JOIN_PHASES.length, probe: directPath };
+    }
+    try { window.GifOS.meetJoin = { PHASES: JOIN_PHASES, phase: joinPhase }; } catch (e) {}
     function turnIo() {
       const K = GifOS.meshConsts.consts, T = GifOS.meshTopo;
       return {
@@ -16595,7 +16628,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const relay = relayUrl();
       if (!relay) { setStatus(uiText('stNoConnectionServiceIsSet', 'No connection service is set up, so nobody can be invited in.')); return; }
       try { subsJoin(); } catch (e) {}   // a subscription joins this meeting (no-op while subscriptions are off, or already joined)
-      if (meshNode) { try { meshNode.stop(); } catch (e) {} meshNode = null; }
+      if (meshNode) { try { meshNode.stop(); } catch (e) {} meshNode = null; } joinEverSat = false;
       meshBootGen++;
       if (directPath === 'pending') startDirectPathProbe(); // this network's verdict, once per page (re-run when the network comes back)
       if (!myId && !myIdReadyResolve) myIdReady = new Promise((res) => { myIdReadyResolve = res; });   // a re-arm keeps the promise the waiters already hold
@@ -16653,7 +16686,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         },
         measure: {   // the device class and the network's verdict this page already keeps (L4)
           tier: () => { const E = GifOS.meshConsts.enums, hc = navigator.hardwareConcurrency | 0; return IS_MOBILE || (hc > 0 && hc <= 2) ? E.TIER_MOBILE : E.TIER_DESKTOP; },   // a 2-core desktop carries like a phone
-          nat: () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' && directMeasured ? E.NAT_BLOCKED : directPath === 'strict' ? E.NAT_STRICT : E.NAT_OPEN; },
+          nat: () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' ? E.NAT_BLOCKED : directPath === 'strict' ? E.NAT_STRICT : E.NAT_OPEN; },
           lgHealth: () => lgHealth(), lgCamOn: () => myStatus.camOff === false, lgWoke: () => lgWoken.size, lgStarve: () => lgStarvedNow(), lgLeave: () => lgLeave(),
         },
         // The seat's pcs (js/mesh/page/env.js calls these; it decides, the page carries out).
@@ -38193,6 +38226,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // 'partial' | null) with the live/dead pair counts, the people count
       // and this network's probe verdict behind it.
       reachState: () => reachInfo(),
+      joinPhase: () => joinPhase(),   // the join's phase (GifOS.meetJoin)
       // Every close code the relay socket saw in this node's life, newest
       // last ({code, at}) — a policy cut reads differently from a drop.
       relayCloses: () => { try { return meshNode ? meshNode.stats().closes : []; } catch (e) { return []; } },
