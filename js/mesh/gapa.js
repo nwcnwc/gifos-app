@@ -49,7 +49,7 @@
         const x = this.occGet(ckey(ol[k])); if (x < 0 || x === this.id || x === placer) continue; let dup = false; for (const y of this.gaAsk) if (y === x) dup = true; if (dup) continue;
         this.gaAsk.push(x); const c = newMsg('CHALLENGE'); c.ck = this.gaCk; c.from = this.id; c.tag = K.GA_TAG; c.nc = this.id; this.emit(x, c);
       }
-      this.w.lv.GA_ASKS += this.gaAsk.length;
+      this.w.lv.GA_ASKS += this.gaAsk.length; if (this.gaAsk.length === 0 && placer >= 0) this.w.lv.GA_LONE_N++;
       this.trace('L41.2-ASK', this.id, this.coord, 'placer=%d asked=%zu', placer, this.gaAsk.length);
     },
 

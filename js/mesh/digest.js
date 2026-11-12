@@ -457,7 +457,7 @@
       const svFind = this.findNc; this.findNc = -1;
       try {
         // --- (1) my SUBTREE = me + the child row I own -----------------------------
-        const d = msg.newDig(); d.n = (TICK < this.digNHoldUntil) ? 0 : 1; d.refuse = this.refuses ? 1 : 0; d.at = this.LT(); d.rx = d.at; d.by = id; d.part = 0; d.freeC = 0;
+        const d = msg.newDig(); d.n = (TICK < this.digNHoldUntil) ? 0 : 1; if (TICK < this.digNHoldUntil) d.held = 1;   /* my count waits; the bar still counts me */ d.refuse = this.refuses ? 1 : 0; d.at = this.LT(); d.rx = d.at; d.by = id; d.part = 0; d.freeC = 0;
         // G9 my own leaf facts. An away device sits out voting.
         if (this.handT) { d.handN = 1; d.hands.push({ id, k: this.handT, f: 0 }); }
         if (this.stageT) d.stage.push({ id, k: this.stageT, f: this.stageF });

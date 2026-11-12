@@ -183,7 +183,7 @@
   // The targets a complete, fresh fold carries over the bar.
   function kOver(R, now, self, on = []) {   // fills and returns `on` (FREE.kOver form)
     if (R.at < 0 || R.part || R.rx < 0 || now - R.rx > K.DIG_TTL) return on;   // a partial or stale fold says nothing
-    const pop = Math.max(0, R.n) + Math.max(0, R.leased);
+    const pop = dig.digBarPop(R);   // a mover whose count waits is still a member
     for (const e of R.kick) { const base = pop - R.kabs - e.dn; const need = Math.max(2, Math.trunc(base / 2) + 1); if (e.up >= need && e.tgt !== self) on.push(e.tgt); }
     return on;
   }

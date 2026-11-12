@@ -12762,10 +12762,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const turnLog = [];
     const turnHolds = (pid) => !!(turnLinks && turnLinks.holds(pid));
     // The connection settings of a pair: TURN servers only for a link whose end here is a TURN client (never double TURN).
+    // ONE TRANSPORT PER PAIR (bundlePolicy 'max-bundle'). Under the default 'balanced' policy Firefox gives each new
+    // m-line of an offer a provisional transport of its own until the answer bundles it, and while that transport
+    // gathers it reports the whole pc as connectionState 'connecting' and iceConnectionState 'checking' (even
+    // pc.sctp.transport reads 'new'), though the pair's channel and media keep flowing on the bundled transport. Every
+    // renegotiation then read as a lost pair: a slow answer turned the tile to "no route", the reach line to "cannot
+    // reach room" and asked a friend to relay a pair that was up. With max-bundle every m-line rides the one transport
+    // from the start, so the pc's states stay true through a renegotiation. Every engine GifOS runs on supports it.
     function turnPcConfig(p) {
       const c = turnLinks && p ? turnLinks.config(p.id) : null;
-      if (!c) return { iceServers: ICE_SERVERS };
-      return { iceServers: ICE_SERVERS.concat(c.iceServers), iceTransportPolicy: c.iceTransportPolicy };
+      if (!c) return { iceServers: ICE_SERVERS, bundlePolicy: 'max-bundle' };
+      return { iceServers: ICE_SERVERS.concat(c.iceServers), iceTransportPolicy: c.iceTransportPolicy, bundlePolicy: 'max-bundle' };
     }
     // NO VIDEO ON AN UNVOUCHED LINK. Every sender of a pc is gated here, whoever seats a track on it (the main senders,
     // the stage, the mosaic forwards): a video track asked for while the link carries no video is held as the wish and
@@ -21526,6 +21533,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         applyRoffer(m);
       } else if (m.k === 'ranswer') {
         if (!p.pc) return;
+        // DEBUG lever (renegAllForTest): a renegotiation answer is applied only after __ranswerHoldMs, as from a far end that answers late.
+        if (DEBUG_ON && +window.__ranswerHoldMs > 0 && m.oid != null && !m.__held) {
+          const held = Object.assign({}, m, { __held: true }); const hp = p;
+          if (typeof clog === 'function') clog('ranswer-hold ' + String(p.id).slice(0, 6) + ' ' + m.oid + ' ' + window.__ranswerHoldMs + 'ms');
+          setTimeout(() => { if (peers.get(hp.id) === hp) onDc(hp, hp.dc, held); }, +window.__ranswerHoldMs);
+          return;
+        }
         // An answer names its offer. One for an offer this pc does not hold now (already answered, rolled back in a glare, or
         // made on a pc since rebuilt) is stale: applying it threw the m-line mismatch that rebuilt live pcs.
         if (m.oid != null) {
@@ -38471,6 +38485,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (window.__parkedJobs) window.__parkedJobs.delete(jk);
         setJobActive(jk, true);
         return { ok: true, active: !!(mosJobs.get(jk) || {}).active };
+      },
+      // DEBUG lever: renegotiate EVERY pair at once, each offer with one new m-line (an inactive video
+      // transceiver, the shape a stage copy or a fold adds), and with holdMs hold each answer that long before it is applied
+      // (window.__ranswerHoldMs): every pc sits in have-local-offer while its channel and media keep flowing, as a far end
+      // that answers late leaves it. Returns the pairs it kicked.
+      renegAllForTest: (holdMs) => {
+        if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
+        window.__ranswerHoldMs = +holdMs || 0;
+        const out = [];
+        for (const p of peers.values()) {
+          if (!p.pc || !p.dc || p.dc.readyState !== 'open' || p.pc.signalingState !== 'stable') continue;
+          try { p.pc.addTransceiver('video', { direction: 'inactive' }); } catch (e) { continue; }
+          renegotiate(p); out.push(String(p.id).slice(0, 8));
+        }
+        return { ok: true, kicked: out, holdMs: window.__ranswerHoldMs };
       },
       severPair: (pid, ms) => {
         if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
