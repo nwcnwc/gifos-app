@@ -23,8 +23,7 @@
   const L8_50_OFF = envOn('MESH_L8_50_OFF'), L8_50_3_OFF = envOn('MESH_L8_50_3_OFF');
   const L8_42_2_OFF = envOn('MESH_L8_42_2_OFF');   // the sim's -DL8_42_2_OFF=1 build
   const L8_52_OFF = envOn('MESH_L8_52_OFF'), L8_51_OFF = envOn('MESH_L8_51_OFF');   // L8.52 (the older room stays), L8.51 (an arbiter does not settle a contest between two rooms)
-  const L8_47_3_OFF = envOn('MESH_L8_47_3_OFF'), L8_47_2_OFF = envOn('MESH_L8_47_2_OFF'), L8_1_3_OFF = envOn('MESH_L8_1_3_OFF');
-  const L8_47_4_OFF = envOn('MESH_L8_47_4_OFF');   // L8.47.4 (mesh_roomterm.inc)   // L8.47.3 / L8.47.2 / L8.1.3 (mesh_roomterm.inc)
+  const L8_47_3_OFF = envOn('MESH_L8_47_3_OFF'), L8_47_2_OFF = envOn('MESH_L8_47_2_OFF'), L8_1_3_OFF = envOn('MESH_L8_1_3_OFF');   // L8.47.3 / L8.47.2 / L8.1.3 (mesh_roomterm.inc)
   const L8_5_10_OFF = envOn('MESH_L8_5_10_OFF');   // L8.5.10: the sim's -DL8_5_10_OFF=1 build
   const newMsg = (t) => msg.newMsg(t);
 
@@ -60,7 +59,6 @@
         return false; }
       if (this.TICK - this.islandAskAt < iw || this.lastGreeters.length === 0) return false;
       if (this.f.fabricDoors() && this.islandAskAt >= 0 && (this.l16Next < this.l16List.length || this.TICK - this.l16FreshAt < iw)) return false;
-      if (!L8_47_4_OFF && this.l8471() && this.TICK - this.l16FreshAt < K.ISLAND_WAIT) { for (const g of this.l16Ask) if (this.f.fabricLinkState(this.id, g) === E.LS_DIALING) return false; }   // L8.47.4 (C++: mesh_roomterm.inc): a dial of mine is still on its way
       if (this.l16Saw) { this.l16Saw = false; this.l16Backoff('silent'); return true; }   // a BUSY is evidence for its own round (C++: islandTick)
       if (this.l8471() && !this.islandLast) this.trace('L8.47.1-ONE', this.id, null, 'asked=%zu since=%d wait=%d', this.islandAsked.size, this.islandAskAt, iw);
       if (!this.l8471() && this.islandAskN + 1 < K.ISLAND_ASKS) {   // L8.1.1: a silent round is the door's list of one moment, not the room: knock again (bounded) before founding
