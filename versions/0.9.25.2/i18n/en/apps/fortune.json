@@ -1,0 +1,17 @@
+{
+  "title": "Fortune",
+  "slip.initial": "Crack open a cookie for a little wisdom…",
+  "crack": "Crack a cookie",
+  "keep": "Keep it",
+  "kept.title": "Kept fortunes",
+  "foot": "Fortunes come from adviceslip.com over the internet — tap the “Internet” button up top to see or change that. This app never invents a line.",
+  "asking": "Asking adviceslip.com…",
+  "from": "from adviceslip.com",
+  "quote": "“{text}”",
+  "err.nogifos": "Open this from GifOS to reach the internet. This app will not invent a fortune.",
+  "err.denied": "Internet is off for this app. Tap “Internet” in the top bar to allow adviceslip.com. This app will not invent a fortune.",
+  "err.timeout": "adviceslip.com took too long. Try again when you have a better connection.",
+  "err.http": "adviceslip.com returned {code} — not a fortune.",
+  "err.empty": "That reply had no advice in it. Try another cookie.",
+  "err.generic": "Couldn’t reach adviceslip.com. You may be offline. This app will not make a fortune up."
+}

@@ -1,0 +1,23 @@
+{
+  "title": "画图",
+  "tool.brush.title": "画笔 (B)",
+  "tool.brush.aria": "画笔",
+  "tool.erase.title": "橡皮擦 (E)",
+  "tool.erase.aria": "橡皮擦",
+  "tool.fill.title": "填充 (G)",
+  "tool.fill.aria": "填充",
+  "tool.pick.title": "吸管 (I)",
+  "tool.pick.aria": "吸管",
+  "custom.title": "自定义颜色",
+  "size.title": "画笔大小",
+  "undo.title": "撤销 (Ctrl+Z)",
+  "undo.aria": "撤销",
+  "redo.title": "重做 (Ctrl+Shift+Z)",
+  "redo.aria": "重做",
+  "clear": "清除",
+  "hint": "在页面上作画。撤销按钮在工具栏中。图画保存在这个图标里——点击“邀请”即可一起画。",
+  "ask.text": "要清除图画吗？此操作无法撤销。",
+  "ask.keep": "保留",
+  "swatch.dark": "深色",
+  "swatch.aria": "颜色 {color}"
+}

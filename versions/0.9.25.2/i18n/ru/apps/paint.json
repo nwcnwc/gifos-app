@@ -1,0 +1,23 @@
+{
+  "title": "Рисование",
+  "tool.brush.title": "Кисть (B)",
+  "tool.brush.aria": "Кисть",
+  "tool.erase.title": "Ластик (E)",
+  "tool.erase.aria": "Ластик",
+  "tool.fill.title": "Заливка (G)",
+  "tool.fill.aria": "Заливка",
+  "tool.pick.title": "Пипетка (I)",
+  "tool.pick.aria": "Пипетка",
+  "custom.title": "Свой цвет",
+  "size.title": "Размер кисти",
+  "undo.title": "Отменить (Ctrl+Z)",
+  "undo.aria": "Отменить",
+  "redo.title": "Повторить (Ctrl+Shift+Z)",
+  "redo.aria": "Повторить",
+  "clear": "Очистить",
+  "hint": "Рисуйте на странице. Отмена — на панели. Картинка хранится в этом значке — нажмите «Пригласить», чтобы рисовать вместе.",
+  "ask.text": "Очистить рисунок? Это действие нельзя отменить.",
+  "ask.keep": "Оставить",
+  "swatch.dark": "Тёмный",
+  "swatch.aria": "Цвет {color}"
+}
