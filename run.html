@@ -9358,7 +9358,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // is still a phone, and tier 3 is the state where it has already
           // decided that frames and pixels are what it is spending.
           const isStageSd = stageSenders.has(sender), isAuxSd = auxSenders.has(sender);
-          const want = isStageSd ? (screenOnStage ? Math.max(stageBudget, screenBudget) : stageBudget)
+          let want = isStageSd ? (screenOnStage ? Math.max(stageBudget, screenBudget) : stageBudget)
             : isAuxSd ? auxBudget
             : (myScreen ? screenBudget : blurred ? Math.min(q.kbps, 250) * 1000 : q.kbps * 1000);
           // A BUDGET ALONE DOES NOT KEEP THE PIXELS. Under the platform default
@@ -9373,9 +9373,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const wantDeg = carriesScreen ? 'maintain-resolution' : 'balanced';
           const degNow = degOf.has(sender) ? degOf.get(sender) : (prm.degradationPreference || 'balanced');
           const lowOn = !(lowSenders.has(sender) && meshNode && meshNode.raw && meshNode.raw.lgLvl >= 2);   // L29.1: level 2 stops the low-priority forwards' pictures
-          if (prm.encodings[0].maxBitrate === want && degNow === wantDeg && prm.encodings[0].active !== false === lowOn) continue; // already set — and a no-op setParameters can still race a sender teardown into the renderer-killing CHECK above, so only touch what must change
+          // TURN.13: on a TURN link whose server throttles, video takes the step the link's measured capacity leaves
+          // (js/meet-turn.js throttlePlan): a lower cap, then a smaller picture, then fewer frames (the pause is the gate).
+          const tst = turnLinks ? turnLinks.videoStep(p.id) : null;
+          if (tst) want = Math.min(want, tst.maxBitrate);
+          const wantScale = tst ? tst.scale : (turnScaled.has(sender) ? 1 : null), wantFps = tst ? tst.fps : null;
+          const enc0 = prm.encodings[0];
+          const stepSame = wantScale == null || ((enc0.scaleResolutionDownBy || 1) === wantScale && (wantFps == null ? !turnScaled.has(sender) || enc0.maxFramerate == null : enc0.maxFramerate === wantFps));
+          if (enc0.maxBitrate === want && degNow === wantDeg && enc0.active !== false === lowOn && stepSame) continue; // already set — and a no-op setParameters can still race a sender teardown into the renderer-killing CHECK above, so only touch what must change
           prm.encodings[0].maxBitrate = want;
           prm.encodings[0].active = lowOn;
+          if (wantScale != null) {
+            enc0.scaleResolutionDownBy = wantScale;
+            if (wantFps != null) enc0.maxFramerate = wantFps; else delete enc0.maxFramerate;
+            if (tst) turnScaled.add(sender); else turnScaled.delete(sender);
+          }
           prm.degradationPreference = wantDeg;
           degOf.set(sender, wantDeg);
           sender.setParameters(prm).catch(() => {});
@@ -9391,6 +9403,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // value that always looks unset would re-write every sender every sweep —
     // the setParameters storm the skip-if-unchanged rule above exists to avoid.
     const degOf = new WeakMap();
+    const turnScaled = new WeakSet();   // senders a TURN.13 step resized: set back to full size once the step lifts
     function constraintDue(q, track, ckey, now) {
       if (!track) return false;
       const same = q.t === track && q.k === ckey;
@@ -10626,6 +10639,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // verdict. Under DEBUG a test may fix the verdict (window.__gifosDirectPath)
     // instead of asking the network, so a page under test on a machine with
     // no outside reach is not read as a blocked office.
+    // A blocked verdict that lands after the mesh node was made: the seat's world turns island-found on (the levers the
+    // node was made with, above); the meeting key is already there. Never turned back off: a seat that founded an island
+    // keeps the law it founded under.
+    function directPathVerdict() {
+      try { const lv = meshNode && meshNode.penv && meshNode.penv.world && meshNode.penv.world.lv; if (lv && directPath === 'blocked' && lv.ISLAND_MODE !== 1) { lv.ISLAND_MODE = 1; if (typeof clog === 'function') clog('island-found on (blocked verdict)'); } } catch (e) {}
+    }
     function startDirectPathProbe() {
       const gen = ++directPathRun; directMeasured = true;
       const forced = (typeof DEBUG_ON !== 'undefined' && DEBUG_ON && window.__gifosDirectPath) ? String(window.__gifosDirectPath) : '';
@@ -10634,10 +10653,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return probeDirectPath(() => new RTCPeerConnection({ iceServers: ICE_SERVERS }), REACH_PROBE_MS, (v) => {
         if (gen !== directPathRun) return;
         directMeasured = v !== null; if (v === null) return;
-        directPath = v; updateStatus(); if (meshNode && meshNode.remeasure) meshNode.remeasure();
+        directPath = v; updateStatus(); if (meshNode && meshNode.remeasure) meshNode.remeasure(); directPathVerdict();
       }).then((v) => {
         if (gen !== directPathRun) return v; // a newer probe owns the verdict
-        directPath = v; updateStatus(); if (meshNode && meshNode.remeasure) meshNode.remeasure(); return v;
+        directPath = v; updateStatus(); if (meshNode && meshNode.remeasure) meshNode.remeasure(); directPathVerdict(); return v;
       });
     }
     try { window.addEventListener('online', () => { if (meshNode) startDirectPathProbe(); }); } catch (e) {}
@@ -11946,7 +11965,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const p = peers.get(pid); if (!p || !p.pc) return;
           try { p.pc.setConfiguration(turnPcConfig(p)); } catch (e) { turnNote('turn-setconf ' + String(e).slice(0, 60)); }
           if (!p.connected) return;
-          if (iInitiate(pid)) sendOffer(pid, true); else if (l) relaySendSealedOrDc(p, { k: 'tv', q: 'i', l });
+          const pathUp = p.pc.iceConnectionState === 'connected' || p.pc.iceConnectionState === 'completed';   // a dead path's channel still says open: ask over the relay
+          if (iInitiate(pid)) sendOffer(pid, true); else if (l) { if (pathUp) relaySendSealedOrDc(p, { k: 'tv', q: 'i', l }); else relaySendSealed(pid, 'tv', { k: 'tv', q: 'i', l }); }
         },
         keep: (pid) => { const s = meshSeat(); if (!s || !s.keepAdd || !s.keepPeers) return; const ks = s.keepPeers(); if (ks.has(pid) || ks.size < K.KEEP_MAX) s.keepAdd(pid, K.TURN_DIAL); },
         drop: (pid, why) => { const p = peers.get(pid); if (!p) return; if (!linkTo(pid)) pcBye(pid, 'turn-' + why); else if (p.pc) rebuildPc(p, 'turn-' + why); },
@@ -11994,7 +12014,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const pid = tile.dataset.peer; if (!pid || pid === myId) continue;
         const p = { id: pid, tile };
         const show = !!turnLinks && (GifOS.meetTurn.pausedBy(facts, myId, p.id) || (turnLinks.isLink(p.id) && !turnLinks.video(p.id)));
-        let el = p.tile.querySelector(':scope > .tpause');
+        // TURN.13: the far end paused its video because the server throttles (vouched: nothing to subscribe to)
+        const busy = !show && !!turnLinks && turnLinks.farBusy(p.id);
+        let bel = p.tile.querySelector(':scope > .tpause-busy');
+        if (busy && !bel) {
+          bel = document.createElement('div'); bel.className = 'tpause tpause-busy'; bel.setAttribute('role', 'note');
+          const t = document.createElement('span'); t.textContent = uiText('turnBusy', 'Video is paused: the connection is busy. It comes back by itself.'); bel.appendChild(t);
+          p.tile.appendChild(bel);
+        } else if (!busy && bel) bel.remove();
+        let el = p.tile.querySelector(':scope > .tpause:not(.tpause-busy)');
         if (show && !el) {
           el = document.createElement('div'); el.className = 'tpause'; el.setAttribute('role', 'note');
           const t = document.createElement('span');
@@ -12014,8 +12042,37 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!turnLinks || !relayTv) return;
       try { turnLinks.step(); } catch (e) { turnNote('turn-step-err ' + String(e && e.stack || e).slice(0, 160)); }
       for (const p of peers.values()) if (turnLinks.holds(p.id) || (p.pc && p.pc.__turnGuarded)) turnApplyVideo(p);
+      turnWatch();
       const every = GifOS.sub && GifOS.sub.RENEW_EVERY_S ? GifOS.sub.RENEW_EVERY_S * 1000 / 2 : 0;   // half the ticket's renewal period
       if (every && Date.now() - turnSubAt > every) { turnSubAt = Date.now(); turnSubOut(); }
+    }
+    // TURN.9 and TURN.13 read each link pc: its path state every tick (a dead server is a silent cut of the selected
+    // pair: onPath moves the link onto its standby allocation), and its measured send capacity every lookMs while it
+    // carries video (onCapacity steps the video). A step that changed re-runs adapt(), which applies it per sender.
+    let turnLookAt = 0;
+    function turnWatch() {
+      const now = Date.now(), look = now - turnLookAt >= turnLinks.lookMs;
+      if (look) turnLookAt = now;
+      for (const pid of turnLinks.turnPcs()) {
+        const p = peers.get(pid); if (!p || !p.pc) continue;
+        try { turnLinks.onPath(pid, p.pc.iceConnectionState === 'completed' ? 'connected' : p.pc.iceConnectionState); } catch (e) {}
+        if (!look) continue;
+        const before = JSON.stringify(turnLinks.videoStep(pid)) + turnLinks.busy(pid);
+        p.pc.getStats().then((st) => {
+          let sel = null; const by = new Map(); st.forEach((x) => by.set(x.id, x));
+          st.forEach((x) => { if (x.type === 'transport' && x.selectedCandidatePairId) sel = by.get(x.selectedCandidatePairId); });
+          if (!sel) st.forEach((x) => { if (!sel && x.type === 'candidate-pair' && x.nominated && x.state === 'succeeded') sel = x; });
+          if (!turnLinks) return;
+          { const lc = sel && by.get(sel.localCandidateId); if (lc && lc.url) turnLinks.onServer(pid, String(lc.url).replace(/^turns?:/, '').split('?')[0]); }
+          const bps = sel && +sel.availableOutgoingBitrate;
+          if (!(bps > 0)) return;
+          // congestion: the loss the far end reports on my video (RTCP receiver reports), and the selected pair's round trip
+          let loss = 0, rtt = sel && +sel.currentRoundTripTime || 0;
+          st.forEach((x) => { if (x.type === 'remote-inbound-rtp' && x.kind === 'video') { if (+x.fractionLost > loss) loss = +x.fractionLost; } });   // (the round trip: the selected pair's own, one clock)
+          if (turnLinks.video(pid)) turnLinks.onCapacity(pid, bps, loss, rtt);
+          if (JSON.stringify(turnLinks.videoStep(pid)) + turnLinks.busy(pid) !== before) { try { adapt(); } catch (e) {} turnApplyVideo(p); turnPaint(); }
+        }, () => {});
+      }
     }
     // Called once a mesh node exists (startMesh): a new node is a new set of links.
     function turnStart() {
@@ -12038,7 +12095,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       for (const p of peers.values()) {
         if (!p.pc) continue;
         const r = { pid: p.id, name: p.name || rosterNames[p.id] || null, conn: p.pc.connectionState, link: !!(turnLinks && turnLinks.isLink(p.id)),
-          video: !!(turnLinks && turnLinks.video(p.id)), paused: !!(p.tile && p.tile.querySelector(':scope > .tpause')), policy: null, turn: false,
+          video: !!(turnLinks && turnLinks.video(p.id)), paused: !!(p.tile && p.tile.querySelector(':scope > .tpause:not(.tpause-busy)')), busyNote: !!(p.tile && p.tile.querySelector(':scope > .tpause-busy')), policy: null, turn: false,
           local: null, remote: null, vOut: 0, aOut: 0, vIn: 0, aIn: 0 };
         try { const c = p.pc.getConfiguration(); r.policy = c.iceTransportPolicy; r.turn = GifOS.meetTurn.hasTurnServer(c.iceServers); } catch (e) {}
         try {
@@ -12046,9 +12103,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           let sel = null;
           st.forEach((x) => { if (x.type === 'transport' && x.selectedCandidatePairId) sel = by.get(x.selectedCandidatePairId); });
           if (!sel) st.forEach((x) => { if (!sel && x.type === 'candidate-pair' && x.nominated && x.state === 'succeeded') sel = x; });
-          if (sel) { const l = by.get(sel.localCandidateId), rm = by.get(sel.remoteCandidateId); r.local = l ? l.candidateType : null; r.remote = rm ? rm.candidateType : null; }
+          if (sel) { const l = by.get(sel.localCandidateId), rm = by.get(sel.remoteCandidateId); r.local = l ? l.candidateType : null; r.remote = rm ? rm.candidateType : null; r.server = l && l.url ? String(l.url).replace(/^turns?:/, '').split('?')[0] : null; r.proto = l ? (l.relayProtocol || l.protocol || null) : null; r.cap = +sel.availableOutgoingBitrate || null; }
+          r.busy = !!(turnLinks && turnLinks.busy(p.id)); r.farBusy = !!(turnLinks && turnLinks.farBusy(p.id)); r.step = turnLinks && turnLinks.videoStep(p.id) ? turnLinks.videoStep(p.id).step : null;
           st.forEach((x) => {
-            if (x.type === 'outbound-rtp' && x.kind === 'video') r.vOut += x.bytesSent || 0;
+            if (x.type === 'outbound-rtp' && x.kind === 'video') { r.vOut += x.bytesSent || 0; (r.vo = r.vo || []).push({ mid: x.mid, b: x.bytesSent || 0, f: x.framesEncoded || 0, ql: x.qualityLimitationReason || null, act: x.active, w: x.frameWidth || 0 }); }
+            if (x.type === 'inbound-rtp' && x.kind === 'video') (r.vi = r.vi || []).push({ mid: x.mid, b: x.bytesReceived || 0, f: x.framesDecoded || 0 });
             if (x.type === 'outbound-rtp' && x.kind === 'audio') r.aOut += x.bytesSent || 0;
             if (x.type === 'inbound-rtp' && x.kind === 'video') r.vIn += x.bytesReceived || 0;
             if (x.type === 'inbound-rtp' && x.kind === 'audio') r.aIn += x.bytesReceived || 0;
@@ -15428,7 +15487,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       meshNode = GifOS.meshWire.createMeshNode({
         relayUrl: relay.replace(/\/$/, ''),
         sid: sessId, tok: sessTok, key: roomE2E, identity, tickMs: 500,
-        levers: { ISLAND_MODE: 1, URL_KEY: (parseInt(String(urlKeyHex).slice(0, 8), 16) | 1) >>> 0 },   // islands found under the meeting key (above)
+        // Islands found under the meeting key ONLY on a page whose own probe says its network is blocked (the TURN-client
+        // verdict): every other page runs the sim's ordinary-room config (ISLAND_MODE 0), so an ordinary room seats as the
+        // gates judge it. PAGE CONFIG PENDING SIM LEVER (a per-group island mode: docs/turn-0926.md 5a). A verdict that
+        // lands after the node exists turns it on in place (directPathVerdict below).
+        levers: { ISLAND_MODE: directPath === 'blocked' ? 1 : 0, URL_KEY: (parseInt(String(urlKeyHex).slice(0, 8), 16) | 1) >>> 0 },
         oldKeys: [prevRoomE2E, openKey].filter((k, i, all) => k && k !== roomE2E && all.indexOf(k) === i),   // a door blob one of these opens is behind me, not ahead (mesh-wire R6)
         excluded: isEjected, // ejected forgers: their mesh frames never reach the seat
         urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
@@ -15450,6 +15513,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           score: (pid) => carrierScore(pid), knockNat: () => -1,
           doorSend: (pid, kind, knocker) => { const q = peers.get(pid); if (q && q.dc && q.dc.readyState === 'open') dcSend(q, { k: 'dcall', n: kind, j: knocker }); },
           roles: () => ({ jobs: Array.from(relayJobs.values(), (j) => ({ target: j.target, req: j.requester })), vias: Array.from(relayVia.values(), (r) => r.via) }),
+          // TURN.14 (the twin's fabricTurnAcross): the peers whose pc runs through a TURN link of mine (js/meet-turn.js)
+          turnPcs: () => (turnLinks ? turnLinks.turnPcs() : []),
         },
         measure: {   // the device class and the network's verdict this page already keeps (L4)
           tier: () => { const E = GifOS.meshConsts.enums, hc = navigator.hardwareConcurrency | 0; return IS_MOBILE || (hc > 0 && hc <= 2) ? E.TIER_MOBILE : E.TIER_DESKTOP; },   // a 2-core desktop carries like a phone

@@ -51,6 +51,9 @@
   const RETRY_BASE_MS = TM.TURN_RETRY_BASE_MS;         // first retry after about 2 s, doubling
   const RETRY_MAX_MS = TM.TURN_RETRY_MAX_MS;           // never longer than 5 minutes between tries
   const SIDE_MAX = 48;                    // ids per side a link end publishes (a fact rides one gossip frame)
+  const STANDBY_SWITCH_MS = TM.TURN_STANDBY_SWITCH_MS;   // TURN.9: a dead server's link is on its standby within this
+  const THROTTLE_LOOK_MS = TM.TURN_THROTTLE_LOOK_MS;     // TURN.13: a link end reads its send capacity this often
+  const THROTTLE_UP_MS = TM.TURN_THROTTLE_UP_MS;         // TURN.13: capacity holds this long before video steps up again
 
   // ---- the credential service ------------------------------------------------
 
@@ -231,6 +234,7 @@
   //   {k:'tv', q:'p', l, b}       paid: my end is on the paid pool (b 1) or back on free (b 0)
   //   {k:'tv', q:'i', l}          move our pc onto new settings: the pair's offerer restarts ICE
   //   {k:'tv', q:'x', l}          the link is closed at my end
+  //   {k:'tv', q:'b', l, b}       busy: my end paused its video because the server throttles (b 1), or sends again (b 0)
   const TV_KEYS = 'k,q,l,d,b,e,n,m';
   const LINK_RE = /^[ls][0-9]{1,2}$/, DEV_RE = /^[A-Za-z0-9_.-]{1,16}$/, NONCE_RE = /^[0-9a-f]{18}$/, MAC_RE = /^[A-Za-z0-9_-]{43}$/, E36_RE = /^[0-9a-z]{1,11}$/;
   function tvOk(f) {
@@ -239,7 +243,7 @@
     if (f.q === 'a') return typeof f.d === 'string' && DEV_RE.test(f.d) && (f.b === 0 || f.b === 1);
     if (f.q === 'v') return typeof f.e === 'string' && E36_RE.test(f.e) && typeof f.n === 'string' && NONCE_RE.test(f.n) && typeof f.m === 'string' && MAC_RE.test(f.m);
     if (f.q === 'r' || f.q === 'x' || f.q === 'i') return true;
-    if (f.q === 'p') return f.b === 0 || f.b === 1;
+    if (f.q === 'p' || f.q === 'b') return f.b === 0 || f.b === 1;
     return false;
   }
 
@@ -269,6 +273,65 @@
       if ((meA && pB && !meB) || (meB && pA && !meA)) return true;
     }
     return false;
+  }
+
+  // ---- a throttled server (TURN.13) -------------------------------------------
+  // The steps video takes on a vouched link as the link's measured send capacity drops: resolution first, then frame
+  // rate; below the last step video pauses. Everything but video (TURN_BASE_BYTES a tick: voices, data, roster, chat)
+  // is served first, video takes what is left (the sim's turnVideoBytes, mesh_turn.inc), in bits a second here.
+  const THROTTLE_STEPS = [
+    { scale: 1, fps: 30, need: 8 }, { scale: 2, fps: 30, need: 4 }, { scale: 4, fps: 30, need: 2 },
+    { scale: 4, fps: 15, need: 1.5 }, { scale: 4, fps: 8, need: 1 },
+  ];   // need: the video bits a step needs, in units of TURN_VIDEO_MIN_BYTES a tick
+  // throttlePlan(capBps, tickMs) → { step, maxBitrate, scale, fps } or { step: -1 } (paused): the step a link with that
+  // send capacity takes. tickMs: the law's tick (500).
+  function throttlePlan(capBps, tickMs) {
+    const K = meshConsts().consts, perS = 1000 / (tickMs || 500);
+    const base = K.TURN_BASE_BYTES * perS * 8, full = K.TURN_VIDEO_BYTES * perS * 8, min = K.TURN_VIDEO_MIN_BYTES * perS * 8;
+    let v = Math.min(full, (+capBps || 0) - base);
+    if (!(v >= min)) return { step: -1 };
+    for (let i = 0; i < THROTTLE_STEPS.length; i++) {
+      const st = THROTTLE_STEPS[i];
+      if (v >= st.need * min || i === THROTTLE_STEPS.length - 1) return { step: i, maxBitrate: Math.round(v), scale: st.scale, fps: st.fps };
+    }
+    return { step: -1 };
+  }
+
+  // stepOf(i, capBps, tickMs) → the step i's settings: its picture and frame rate, and a bitrate cap of the video budget
+  // the capacity leaves (never below the step's own need, never above TURN_VIDEO_BYTES).
+  function stepOf(i, capBps, tickMs) {
+    const K = meshConsts().consts, perS = 1000 / (tickMs || 500);
+    const base = K.TURN_BASE_BYTES * perS * 8, full = K.TURN_VIDEO_BYTES * perS * 8, min = K.TURN_VIDEO_MIN_BYTES * perS * 8;
+    const st = THROTTLE_STEPS[Math.max(0, Math.min(THROTTLE_STEPS.length - 1, i))];
+    const v = Math.min(full, Math.max(st.need * min, (+capBps || 0) - base));
+    return { step: i, maxBitrate: Math.round(i === 0 ? full : Math.min(v, THROTTLE_STEPS[Math.max(0, i - 1)].need * min)), scale: st.scale, fps: st.fps };
+  }
+  // throttleNext(st, look, now, tickMs): one look of a vouched link end. st = { step, busy, okSince, bad, rttBase,
+  // pausedAt } (kept by the caller); look = { bps, loss, rtt } (loss: the far end's fraction lost, 0..1; rtt seconds).
+  // The browser's estimate cannot tell a throttled server from a pc that sends little (an app-limited estimate sits at
+  // what is sent: measured 150-300 kbit on links that reached 1.9-3.3 Mbit a minute later), so only CONGESTION steps
+  // down: loss of TURN_THROTTLE_LOSS or more, or a round trip past twice its floor. Then video drops at least one step,
+  // as far as throttlePlan says the estimate allows; on the lowest step two congested looks in a row pause it. With no
+  // congestion for THROTTLE_UP_MS it climbs one step; a pause tries the lowest step again after that long.
+  const THROTTLE_LOSS = 0.05;
+  function throttleNext(st, look, now, tickMs) {
+    const last = THROTTLE_STEPS.length - 1;
+    const rtt = +look.rtt > 0 ? +look.rtt : 0;
+    if (rtt && (!st.rttBase || rtt < st.rttBase)) st.rttBase = rtt;
+    const congested = (+look.loss || 0) >= THROTTLE_LOSS || (rtt && st.rttBase && rtt > st.rttBase * 2 + 0.05);
+    if (congested) {
+      st.okSince = 0; st.bad = (st.bad || 0) + 1;
+      if (st.busy) return st;
+      if (st.step >= last) { if (st.bad >= 2) { st.busy = true; st.pausedAt = now; } return st; }
+      const p = throttlePlan(look.bps, tickMs);
+      st.step = Math.max(st.step + 1, p.step < 0 ? last : Math.min(last, p.step));
+      st.bad = 0;   // the pause counts congested looks ON the lowest step only
+      return st;
+    }
+    st.bad = 0;
+    if (st.busy) { if (now - (st.pausedAt || 0) >= THROTTLE_UP_MS) { st.busy = false; st.step = last; st.okSince = now; } return st; }
+    if (st.step > 0) { if (!st.okSince) st.okSince = now; else if (now - st.okSince >= THROTTLE_UP_MS) { st.step--; st.okSince = now; } }
+    return st;
   }
 
   // vouchPlan(links, pool) → the ids that carry video now: links in turnVouchOrder, the first `pool` of them.
@@ -314,7 +377,8 @@
     function newLink(far, l, opener) {
       const L = { far, l, opener, id: linkId(io.me(), far), farDev: null, farBlocked: false, client: false, mine: null, peer: null,
         state: 'ask', askAt: io.now(), sentAt: 0, vAskAt: 0, readyMe: false, readyFar: false, dialAt: 0, upAt: -1, downSince: 0,
-        cred: null, paid: null, paidMe: false, paidFar: false, video: false, vouched: false, lostAt: -1, side: [] };
+        cred: null, paid: null, paidMe: false, paidFar: false, video: false, vouched: false, lostAt: -1, side: [],
+        thr: null, busy: false, farBusy: false, capAt: 0, upOkSince: 0, standbyAt: 0, standbyN: 0 };
       const s = io.seat(); if (s) L.side = s.view.filter((x) => x !== far).slice(0, SIDE_MAX);
       links.set(far, L);
       log('turn-link new ' + short(far) + ' ' + l + (opener ? ' opener' : ' target'));
@@ -403,8 +467,67 @@
         return;
       }
       if (f.q === 'r') { L.readyFar = true; maybeDial(L); return; }
-      if (f.q === 'p') { L.paidFar = f.b === 1; io.restart(L.far, L.l); io.changed(L.far); return; }
+      // the far end moved its pool: it moves the pc itself (its own restart, or 'i' to the offerer), so no restart here:
+      // a second one per move restarted the path again mid-move and the video's estimate with it (vouched one-way, 2026-11-12)
+      if (f.q === 'p') { L.paidFar = f.b === 1; io.changed(L.far); return; }
       if (f.q === 'i') { io.restart(L.far, L.l); return; }
+      if (f.q === 'b') { const was = L.farBusy; L.farBusy = f.b === 1; if (was !== L.farBusy) { log('turn-busy far ' + short(L.far) + ' ' + (L.farBusy ? 'on' : 'off')); io.changed(L.far); } return; }
+    }
+    // TURN.13: each look at the link pc (every THROTTLE_LOOK_MS while it carries video): the browser's send estimate,
+    // the loss and round trip the far end reports. throttleNext decides the step (pure, below).
+    function onCapacity(pid, bps, loss, rtt) {
+      const L = links.get(pid); if (!L || L.state !== 'up' || !L.video) return;
+      const now = io.now(); L.capAt = now; L.cap = bps;
+      if (!L.ts) L.ts = { step: 0, busy: false };
+      const was = L.ts.busy ? -1 : L.ts.step;
+      throttleNext(L.ts, { bps, loss, rtt }, now, tick);
+      const st = L.ts.busy ? -1 : L.ts.step;
+      if (st !== was || !L.thr) setThrottle(L, st < 0 ? { step: -1 } : stepOf(st, bps, tick));
+    }
+    // The pc must ride a server of its CURRENT settings: after a pool move (free -> paid, or back) the move is one ICE
+    // restart, and a restart lost to glare left the media on the old pool's allocation (measured 2026-11-12: a vouched
+    // link on the free server, its video clamped by the free pool's per-allocation limit). server: the selected local
+    // candidate's TURN server (host:port). Off its settings for a dial's time: restart again, once a dial's time.
+    function onServer(pid, server) {
+      const L = links.get(pid); if (!L || L.state !== 'up' || !L.client || !server) return;
+      const list = configOf(L).iceServers || [];
+      const on = list.some((x) => (Array.isArray(x.urls) ? x.urls : [x.urls]).some((u) => String(u).replace(/^turns?:/, '').split('?')[0] === server));
+      const now = io.now();
+      if (on) { L.offSince = 0; return; }
+      if (!L.offSince) { L.offSince = now; return; }
+      if (now - L.offSince >= RESEND_MS && now - (L.offFixAt || 0) >= RESEND_MS) { L.offFixAt = now; log('turn-pool off its settings ' + short(L.far) + ' (rides ' + server + '): restart'); io.restart(L.far, L.l); }
+    }
+    function configOf(L) {
+      const g = (L.paidMe && L.paid && L.paid.servers()) || (L.cred && L.cred.servers()) || [];
+      return { iceServers: g, iceTransportPolicy: 'relay' };
+    }
+    function setThrottle(L, next) {
+      const busy = !!(next && next.step < 0);
+      const changed = !L.thr || !next || L.thr.step !== next.step;
+      L.thr = next;
+      if (busy !== L.busy) {
+        L.busy = busy; if (busy) L.pausedAt = io.now();
+        log('turn-busy ' + short(L.far) + ' ' + (busy ? 'on' : 'off') + ' cap=' + Math.round((L.cap || 0) / 1000) + 'k');
+        io.sendTv(L.far, { k: 'tv', q: 'b', l: L.l, b: busy ? 1 : 0 });
+      }
+      if (changed) { log('turn-step ' + short(L.far) + ' ' + (next ? next.step : 'none') + ' cap=' + Math.round((L.cap || 0) / 1000) + 'k'); io.changed(L.far); }
+    }
+    // TURN.9: the warm standby. The answer names two servers at two providers, and the link pc is built on both
+    // (turnPcConfig), so the browser holds an allocation at each and keeps a checked candidate pair through the second
+    // one beside the selected pair: pre-dialled, idle (its consent checks only), no media. When the link's server dies
+    // the selected pair goes silent and the browser's ICE agent moves the media onto the standby pair by itself, with no
+    // signaling: none could cross, the pair's own channel rode the dead path, and a description never fits the relay.
+    // This only watches it: the time from the cut to the path carrying again, against STANDBY_SWITCH_MS. A path that
+    // stays down is the link's ordinary loss (step: 'lost' after the dial budget, and the head asks again).
+    function onPath(pid, st) {
+      const L = links.get(pid); if (!L || L.state !== 'up') return;
+      const now = io.now();
+      if (st === 'disconnected' || st === 'failed') {   // (checking is an ICE restart of ours: the paid move, a renewal)
+        if (!L.standbyAt) { L.standbyAt = now; L.standbyN++; log('turn-standby path down ' + short(L.far) + ' (' + st + ')'); }
+      } else if (st === 'connected' && L.standbyAt) {
+        L.lastSwitchMs = now - L.standbyAt; L.standbyAt = 0;
+        log('turn-standby carried ' + short(L.far) + ' after ' + L.lastSwitchMs + ' ms' + (L.lastSwitchMs > STANDBY_SWITCH_MS ? ' (PAST the bound ' + STANDBY_SWITCH_MS + ')' : ''));
+      }
     }
     // The relay's answer to my tvouch ask: {t:'tvouch', to, l, v, e} or {error}.
     function onVouch(m) {
@@ -438,7 +561,7 @@
         if (L.vouched && !L.client && !L.paidMe) { L.paidMe = true; io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 1 }); }
         if (!L.vouched && !L.client && L.paidMe) { L.paidMe = false; io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 0 }); }
         const v = L.vouched && L.paidMe && L.paidFar;
-        if (v !== L.video) { L.video = v; log('turn-video ' + short(L.far) + ' ' + (v ? 'on' : 'off')); io.changed(L.far); }
+        if (v !== L.video) { L.video = v; L.ts = null; log('turn-video ' + short(L.far) + ' ' + (v ? 'on' : 'off')); if (!v) setThrottle(L, null); io.changed(L.far); }
       }
     }
     function factOf(L) {
@@ -509,18 +632,24 @@
     }
 
     return {
-      step, onFrame, onVouch,
+      step, onFrame, onVouch, onCapacity, onPath, onServer,
       // The connection settings of this pair: null for a pair that is no TURN link, or whose end here is no client.
       config(pid) {
         const L = links.get(pid);
         if (!L || !L.client) return null;
-        const g = (L.paidMe && L.paid && L.paid.servers()) || (L.cred && L.cred.servers()) || [];
-        return { iceServers: g, iceTransportPolicy: 'relay' };
+        return configOf(L);
       },
       factStaleMs: FACT_STALE_MS,
       holds(pid) { const L = links.get(pid); return !!L && L.state !== 'closed'; },
       isLink(pid) { const L = links.get(pid); return !!L && (L.state === 'up' || L.state === 'dial'); },
-      videoBlocked(pid) { const L = links.get(pid); return !!L && !L.video; },
+      videoBlocked(pid) { const L = links.get(pid); return !!L && (!L.video || L.busy); },
+      // TURN.13: the step my video takes on this link ({ maxBitrate, scale, fps }), null when nothing limits it.
+      videoStep(pid) { const L = links.get(pid); return L && L.video && L.thr && L.thr.step >= 0 ? L.thr : null; },
+      busy(pid) { const L = links.get(pid); return !!L && L.busy; },
+      farBusy(pid) { const L = links.get(pid); return !!L && L.video && L.farBusy; },
+      // TURN.14 hooks for the twin (the pcs that run through TURN: fabricTurnAcross reads them).
+      turnPcs() { const out = []; for (const L of links.values()) if (L.state === 'up') out.push(L.far); return out; },
+      lookMs: THROTTLE_LOOK_MS,
       video(pid) { const L = links.get(pid); return !!L && L.video; },
       close(pid, why) { const L = links.get(pid); if (L) close(L, why || 'closed'); },
       stopAll(why) { for (const L of Array.from(links.values())) close(L, why || 'stop', true); },
@@ -529,14 +658,16 @@
         for (const L of links.values()) out.push({ far: L.far, l: L.l, opener: L.opener, state: L.state, client: L.client, farDev: L.farDev, farBlocked: L.farBlocked,
           mine: !!L.mine, peer: !!L.peer, readyMe: L.readyMe, readyFar: L.readyFar, cred: L.cred ? L.cred.state() : null, credRefusal: L.cred ? L.cred.refusal() : null,
           pool: L.paidMe ? 'paid' : 'free', paid: L.paid ? L.paid.state() : null, paidRefusal: L.paid ? L.paid.refusal() : null, paidFar: L.paidFar,
-          vouched: L.vouched, video: L.video, upAt: L.upAt, side: L.side.length });
+          vouched: L.vouched, video: L.video, upAt: L.upAt, side: L.side.length,
+          step: L.thr ? L.thr.step : null, cap: L.cap || null, busy: L.busy, farBusy: L.farBusy, standbyN: L.standbyN, lastSwitchMs: L.lastSwitchMs || null });
         return { links: out, head: Object.assign({}, head) };
       },
     };
   }
 
   const api = {
-    DEFAULT_WORKER, WORKER_KEY, FETCH_TIMEOUT_MS, RETRY_BASE_MS, RETRY_MAX_MS, SIDE_MAX,
+    DEFAULT_WORKER, WORKER_KEY, FETCH_TIMEOUT_MS, RETRY_BASE_MS, RETRY_MAX_MS, SIDE_MAX, STANDBY_SWITCH_MS, THROTTLE_LOOK_MS, THROTTLE_UP_MS,
+    THROTTLE_STEPS, throttlePlan, throttleNext, stepOf,
     retryDelayMs, parseIce, hasTurnServer, workerBase, askIce, createCredentials,
     vouchToken, vouchParts, tvOk, TV_KEYS, linkName, linkId, clientEnd, pausedBy, vouchPlan, createLinks,
   };
