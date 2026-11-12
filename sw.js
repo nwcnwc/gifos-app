@@ -41,7 +41,7 @@
  */
 'use strict';
 
-var SHELL_VERSION = 'v23'; // v23: js/timings.js joins the shell (the meeting page's waits and timeouts) (v22: css/meet-polish.css joins the shell (v21: css/meet.css joins the shell (the meeting styles moved out of run.html) (v20: js/dialog.js joins the shell (the dialogs' scroll frame, parsed by every page) (v19: 0.9.25 cut (shell now holds every en catalog and the new version.json/changelog) (v18: every surface's en catalog joins the shell, plus meet.json and the built-in apps (v17: gifos-i18n.js and the en catalogs join the shell (v16: 0.9.24 hotfix, gifos-update.js reads a four-part `latest`; v15: gifos-charge.js joins the shell)
+var SHELL_VERSION = 'v24'; // v24: My library (the /library page and its client); (v23: js/timings.js joins the shell (the meeting page's waits and timeouts) (v22: css/meet-polish.css joins the shell (v21: css/meet.css joins the shell (the meeting styles moved out of run.html) (v20: js/dialog.js joins the shell (the dialogs' scroll frame, parsed by every page) (v19: 0.9.25 cut (shell now holds every en catalog and the new version.json/changelog) (v18: every surface's en catalog joins the shell, plus meet.json and the built-in apps (v17: gifos-i18n.js and the en catalogs join the shell (v16: 0.9.24 hotfix, gifos-update.js reads a four-part `latest`; v15: gifos-charge.js joins the shell)
 var CACHE = 'gifos-shell-' + SHELL_VERSION;
 
 // ONE CACHE KEY PER FILE. pages.yml stamps `?v=<sha>` onto every local css/js
@@ -63,12 +63,12 @@ function keyOf(url) { return url.pathname; }
 // App GIFs are not — /apps/index.json, the covers and an 8 MB app are content
 // that must never be dragged into a precache on someone's phone.
 var CORE = [
-  '/', '/index.html', '/boot.html', '/run.html', '/sign.html', '/about.html', '/store.html',
+  '/', '/index.html', '/boot.html', '/run.html', '/sign.html', '/about.html', '/store.html', '/library.html',
   '/css/desktop.css', '/css/meet.css', '/css/meet-polish.css',
   '/js/gifos-gif.js', '/js/gifos-help.js', '/js/gifos-charge.js', '/js/gifos-sign.js', '/js/gifos-ed.js', '/js/gifos-lock.js', '/js/gifos-zip.js', '/js/gifos-icons.js',
   '/js/gifos-themes.js', '/js/gifos-avatar.js', '/js/gifos-store.js', '/js/gifos-install.js', '/js/gifos-fullscreen.js', '/js/irl-apps.js', '/js/sample-apps.js', '/js/store.js', '/js/gifos-cash.js',
   '/js/dialog.js', '/js/desktop.js', '/js/runtime.js', '/js/meet-host.js', '/js/camera-studio.js', '/js/relay-config.js', '/js/sw-register.js', '/js/build.js', '/js/build-badge.js', '/js/gifos-update.js', '/js/timings.js',
-  '/js/gifos-i18n.js', '/i18n/en/common.json', '/i18n/en/settings.json', '/i18n/en/desktop.json', '/i18n/en/store.json', '/i18n/en/runtime.json',
+  '/js/gifos-i18n.js', '/js/gifos-library.js', '/js/library.js', '/i18n/en/library.json', '/i18n/en/common.json', '/i18n/en/settings.json', '/i18n/en/desktop.json', '/i18n/en/store.json', '/i18n/en/runtime.json',
   '/i18n/en/boot.json', '/i18n/en/sign.json', '/i18n/en/help.json', '/i18n/en/update.json', '/i18n/en/charge.json', '/i18n/en/install.json',
   '/i18n/en/meet.json',
   '/i18n/en/apps/appstore.json', '/i18n/en/apps/askai.json', '/i18n/en/apps/bible.json', '/i18n/en/apps/broadcast.json', '/i18n/en/apps/calc.json', '/i18n/en/apps/camera.json', '/i18n/en/apps/chat.json', '/i18n/en/apps/chess.json', '/i18n/en/apps/connect4.json', '/i18n/en/apps/dial.json', '/i18n/en/apps/fakefacts.json', '/i18n/en/apps/fortune.json', '/i18n/en/apps/guestbook.json', '/i18n/en/apps/imposter.json', '/i18n/en/apps/meet.json', '/i18n/en/apps/minesweeper.json', '/i18n/en/apps/mymedia.json', '/i18n/en/apps/notes.json', '/i18n/en/apps/oneclue.json', '/i18n/en/apps/paint.json', '/i18n/en/apps/reader.json', '/i18n/en/apps/roulette.json', '/i18n/en/apps/samebrain.json', '/i18n/en/apps/speechcoach.json', '/i18n/en/apps/spy.json', '/i18n/en/apps/tictactoe.json', '/i18n/en/apps/tilt.json', '/i18n/en/apps/timer.json', '/i18n/en/apps/welcome.json', '/i18n/en/apps/wolves.json',

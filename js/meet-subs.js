@@ -150,6 +150,21 @@
     try { if (lic.buyerKey !== (await myKey()).pub) return null; } catch (e) { return null; }
     return lic;
   }
+  // My library (js/gifos-library.js) signs its requests with this: the
+  // current license (or the last one, after the plan ended) and the
+  // subscription key. null when this browser holds no subscription.
+  async function librarySigner() {
+    if (!on()) return null;
+    const c = await credential();
+    if (!c) return null;
+    const st = readState();
+    const licenseJson = st.licenseJson || st.lastLicenseJson, sig = st.licenseJson ? st.sig : st.lastSig;
+    if (!licenseJson || !sig) return null;
+    let lic; try { lic = JSON.parse(licenseJson); } catch (e) { return null; }
+    if (!lic || lic.subId !== c.subId) return null;
+    try { if (lic.buyerKey !== (await myKey()).pub) return null; } catch (e) { return null; }
+    return { subId: c.subId, tier: lic.tier, exp: lic.exp, license: { licenseJson, sig }, sign: signText };
+  }
   async function rights() {
     if (!on()) return Object.assign({}, SUB ? SUB.FREE : {});
     return SUB.rightsOf(await verifiedLicense(), nowS());
@@ -173,8 +188,13 @@
     const j = await post('/gifos/sub/license', await signed('license'));
     const st = readState();
     const next = Object.assign({}, st, { subId: await subIdNow(), status: j.status, tier: j.tier || st.tier, until: j.until || null, checkedAt: Date.now() });
-    if (j.active && j.licenseJson) { next.licenseJson = j.licenseJson; next.sig = j.sig; }
-    else { delete next.licenseJson; delete next.sig; }
+    if (j.active && j.licenseJson) { next.licenseJson = j.licenseJson; next.sig = j.sig; delete next.lastLicenseJson; delete next.lastSig; }
+    else {
+      // The last license is kept for My library: after a plan ends, its
+      // files stay readable for the keep window, shown with that license.
+      if (st.licenseJson) { next.lastLicenseJson = st.licenseJson; next.lastSig = st.sig; }
+      delete next.licenseJson; delete next.sig;
+    }
     writeState(next);
     return next;
   }
@@ -338,6 +358,10 @@
       row.appendChild(el('p', { class: 'set-help' }, st.status === 'CANCELLED' ? SUB.TEXT.cancelled + ' Ends ' + dateOf(st.until || lic.exp) + '.' : 'Renews through PayPal.'));
       row.appendChild(el('p', { class: 'set-help' }, 'Your subscription works in one meeting at a time. Joining a meeting, here or in another browser with your subscription file, moves it there.'));
       if (meet && meet.moved === 'moved') row.appendChild(el('p', { class: 'set-help' }, 'It is in use in another meeting now.'));
+      if (t.storage) {
+        const a = el('a', { class: BTN, style: BTN_STYLE + ';display:inline-block;text-decoration:none', id: 'sub-library', href: '/library', target: '_blank', rel: 'noopener' }, 'My library');
+        row.appendChild(a);
+      }
       if (st.status !== 'CANCELLED') {
         const c = el('button', { type: 'button', class: BTN, style: BTN_STYLE, id: 'sub-cancel' }, 'Cancel subscription');
         c.onclick = async () => {
@@ -438,7 +462,7 @@
   GifOS.meetSubs = {
     enabled: on, rights, refresh, subscribe, cancel, paintSettings, openSettings, mayCreateAdminRoom, showFull,
     roomOrder, roomTier, proveAtDoor, checkShown, newNonce,
-    joinMeeting, leaveMeeting, currentTicket, fileBytes, downloadFile, useFile,
+    joinMeeting, leaveMeeting, currentTicket, fileBytes, downloadFile, useFile, librarySigner,
     meeting: () => (meet ? { room: meet.room, gen: meet.gen, exp: meet.exp, moved: meet.moved, held: !!meet.ticket } : null),
   };
 })(typeof window !== 'undefined' ? window : globalThis);

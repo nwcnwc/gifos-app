@@ -1458,6 +1458,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/meet-status.js" defer></script>
   <script src="js/gifos-sub.js" defer></script>
   <script src="js/meet-subs.js" defer></script>
+  <script src="js/gifos-library.js" defer></script>
   <script src="js/meet-leave.js" defer></script>
   <script src="js/meet-debuglog.js" defer></script>
   <script src="js/meet-meters.js" defer></script>
@@ -9566,7 +9567,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // is still a phone, and tier 3 is the state where it has already
           // decided that frames and pixels are what it is spending.
           const isStageSd = stageSenders.has(sender), isAuxSd = auxSenders.has(sender);
-          const want = isStageSd ? (screenOnStage ? Math.max(stageBudget, screenBudget) : stageBudget)
+          let want = isStageSd ? (screenOnStage ? Math.max(stageBudget, screenBudget) : stageBudget)
             : isAuxSd ? auxBudget
             : (myScreen ? screenBudget : blurred ? Math.min(q.kbps, 250) * 1000 : q.kbps * 1000);
           // A BUDGET ALONE DOES NOT KEEP THE PIXELS. Under the platform default
@@ -9581,9 +9582,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const wantDeg = carriesScreen ? 'maintain-resolution' : 'balanced';
           const degNow = degOf.has(sender) ? degOf.get(sender) : (prm.degradationPreference || 'balanced');
           const lowOn = !(lowSenders.has(sender) && meshNode && meshNode.raw && meshNode.raw.lgLvl >= 2);   // L29.1: level 2 stops the low-priority forwards' pictures
-          if (prm.encodings[0].maxBitrate === want && degNow === wantDeg && prm.encodings[0].active !== false === lowOn) continue; // already set — and a no-op setParameters can still race a sender teardown into the renderer-killing CHECK above, so only touch what must change
+          // TURN.13: on a TURN link whose server throttles, video takes the step the link's measured capacity leaves
+          // (js/meet-turn.js throttlePlan): a lower cap, then a smaller picture, then fewer frames (the pause is the gate).
+          const tst = turnLinks ? turnLinks.videoStep(p.id) : null;
+          if (tst) want = Math.min(want, tst.maxBitrate);
+          const wantScale = tst ? tst.scale : (turnScaled.has(sender) ? 1 : null), wantFps = tst ? tst.fps : null;
+          const enc0 = prm.encodings[0];
+          const stepSame = wantScale == null || ((enc0.scaleResolutionDownBy || 1) === wantScale && (wantFps == null ? !turnScaled.has(sender) || enc0.maxFramerate == null : enc0.maxFramerate === wantFps));
+          if (enc0.maxBitrate === want && degNow === wantDeg && enc0.active !== false === lowOn && stepSame) continue; // already set — and a no-op setParameters can still race a sender teardown into the renderer-killing CHECK above, so only touch what must change
           prm.encodings[0].maxBitrate = want;
           prm.encodings[0].active = lowOn;
+          if (wantScale != null) {
+            enc0.scaleResolutionDownBy = wantScale;
+            if (wantFps != null) enc0.maxFramerate = wantFps; else delete enc0.maxFramerate;
+            if (tst) turnScaled.add(sender); else turnScaled.delete(sender);
+          }
           prm.degradationPreference = wantDeg;
           degOf.set(sender, wantDeg);
           sender.setParameters(prm).catch(() => {});
@@ -9599,6 +9612,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // value that always looks unset would re-write every sender every sweep —
     // the setParameters storm the skip-if-unchanged rule above exists to avoid.
     const degOf = new WeakMap();
+    const turnScaled = new WeakSet();   // senders a TURN.13 step resized: set back to full size once the step lifts
     function constraintDue(q, track, ckey, now) {
       if (!track) return false;
       const same = q.t === track && q.k === ckey;
@@ -12154,7 +12168,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const p = peers.get(pid); if (!p || !p.pc) return;
           try { p.pc.setConfiguration(turnPcConfig(p)); } catch (e) { turnNote('turn-setconf ' + String(e).slice(0, 60)); }
           if (!p.connected) return;
-          if (iInitiate(pid)) sendOffer(pid, true); else if (l) relaySendSealedOrDc(p, { k: 'tv', q: 'i', l });
+          const pathUp = p.pc.iceConnectionState === 'connected' || p.pc.iceConnectionState === 'completed';   // a dead path's channel still says open: ask over the relay
+          if (iInitiate(pid)) sendOffer(pid, true); else if (l) { if (pathUp) relaySendSealedOrDc(p, { k: 'tv', q: 'i', l }); else relaySendSealed(pid, 'tv', { k: 'tv', q: 'i', l }); }
         },
         keep: (pid) => { const s = meshSeat(); if (!s || !s.keepAdd || !s.keepPeers) return; const ks = s.keepPeers(); if (ks.has(pid) || ks.size < K.KEEP_MAX) s.keepAdd(pid, K.TURN_DIAL); },
         drop: (pid, why) => { const p = peers.get(pid); if (!p) return; if (!linkTo(pid)) pcBye(pid, 'turn-' + why); else if (p.pc) rebuildPc(p, 'turn-' + why); },
@@ -12202,7 +12217,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const pid = tile.dataset.peer; if (!pid || pid === myId) continue;
         const p = { id: pid, tile };
         const show = !!turnLinks && (GifOS.meetTurn.pausedBy(facts, myId, p.id) || (turnLinks.isLink(p.id) && !turnLinks.video(p.id)));
-        let el = p.tile.querySelector(':scope > .tpause');
+        // TURN.13: the far end paused its video because the server throttles (vouched: nothing to subscribe to)
+        const busy = !show && !!turnLinks && turnLinks.farBusy(p.id);
+        let bel = p.tile.querySelector(':scope > .tpause-busy');
+        if (busy && !bel) {
+          bel = document.createElement('div'); bel.className = 'tpause tpause-busy'; bel.setAttribute('role', 'note');
+          const t = document.createElement('span'); t.textContent = uiText('turnBusy', 'Video is paused: the connection is busy. It comes back by itself.'); bel.appendChild(t);
+          p.tile.appendChild(bel);
+        } else if (!busy && bel) bel.remove();
+        let el = p.tile.querySelector(':scope > .tpause:not(.tpause-busy)');
         if (show && !el) {
           el = document.createElement('div'); el.className = 'tpause'; el.setAttribute('role', 'note');
           const t = document.createElement('span');
@@ -12222,8 +12245,43 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!turnLinks || !relayTv) return;
       try { turnLinks.step(); } catch (e) { turnNote('turn-step-err ' + String(e && e.stack || e).slice(0, 160)); }
       for (const p of peers.values()) if (turnLinks.holds(p.id) || (p.pc && p.pc.__turnGuarded)) turnApplyVideo(p);
+      turnWatch();
       const every = GifOS.sub && GifOS.sub.RENEW_EVERY_S ? GifOS.sub.RENEW_EVERY_S * 1000 / 2 : 0;   // half the ticket's renewal period
       if (every && Date.now() - turnSubAt > every) { turnSubAt = Date.now(); turnSubOut(); }
+    }
+    // TURN.9 and TURN.13 read each link pc: its path state every tick (a dead server is a silent cut of the selected
+    // pair: onPath moves the link onto its standby allocation), and its measured send capacity every lookMs while it
+    // carries video (onCapacity steps the video). A step that changed re-runs adapt(), which applies it per sender.
+    let turnLookAt = 0;
+    const turnSent = new Map();   // link far pid -> { b, t }: my video bytes on its pc at the last look
+    function turnWatch() {
+      const now = Date.now(), look = now - turnLookAt >= turnLinks.lookMs;
+      if (look) turnLookAt = now;
+      for (const pid of turnLinks.turnPcs()) {
+        const p = peers.get(pid); if (!p || !p.pc) continue;
+        try { turnLinks.onPath(pid, p.pc.iceConnectionState === 'completed' ? 'connected' : p.pc.iceConnectionState); } catch (e) {}
+        if (!look) continue;
+        const before = JSON.stringify(turnLinks.videoStep(pid)) + turnLinks.busy(pid);
+        p.pc.getStats().then((st) => {
+          let sel = null; const by = new Map(); st.forEach((x) => by.set(x.id, x));
+          st.forEach((x) => { if (x.type === 'transport' && x.selectedCandidatePairId) sel = by.get(x.selectedCandidatePairId); });
+          if (!sel) st.forEach((x) => { if (!sel && x.type === 'candidate-pair' && x.nominated && x.state === 'succeeded') sel = x; });
+          if (!turnLinks) return;
+          { const lc = sel && by.get(sel.localCandidateId); if (lc && lc.url) turnLinks.onServer(pid, String(lc.url).replace(/^turns?:/, '').split('?')[0]); }
+          const bps = sel && +sel.availableOutgoingBitrate;
+          if (!(bps > 0)) return;
+          // congestion: the loss the far end reports on my video (RTCP receiver reports), and the selected pair's round trip
+          let loss = 0, rtt = sel && +sel.currentRoundTripTime || 0;
+          // limited: the estimate is what the path gives, not what a pc that sends little reports: my video already sends
+          // at least most of the estimate (bytes since the last look), or the browser says bandwidth holds it back
+          let limited = false, vBytes = 0;
+          st.forEach((x) => { if (x.type === 'remote-inbound-rtp' && x.kind === 'video') { if (+x.fractionLost > loss) loss = +x.fractionLost; } if (x.type === 'outbound-rtp' && x.kind === 'video') { vBytes += +x.bytesSent || 0; if (x.qualityLimitationReason === 'bandwidth') limited = true; } });   // (the round trip: the selected pair's own, one clock)
+          const lastV = turnSent.get(pid), tNow = Date.now(); turnSent.set(pid, { b: vBytes, t: tNow });
+          if (lastV && tNow > lastV.t && vBytes >= lastV.b && (vBytes - lastV.b) * 8000 / (tNow - lastV.t) >= 0.7 * bps) limited = true;
+          if (turnLinks.video(pid)) turnLinks.onCapacity(pid, bps, loss, rtt, limited);
+          if (JSON.stringify(turnLinks.videoStep(pid)) + turnLinks.busy(pid) !== before) { try { adapt(); } catch (e) {} turnApplyVideo(p); turnPaint(); }
+        }, () => {});
+      }
     }
     // Called once a mesh node exists (startMesh): a new node is a new set of links.
     function turnStart() {
@@ -12246,7 +12304,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       for (const p of peers.values()) {
         if (!p.pc) continue;
         const r = { pid: p.id, name: p.name || rosterNames[p.id] || null, conn: p.pc.connectionState, link: !!(turnLinks && turnLinks.isLink(p.id)),
-          video: !!(turnLinks && turnLinks.video(p.id)), paused: !!(p.tile && p.tile.querySelector(':scope > .tpause')), policy: null, turn: false,
+          video: !!(turnLinks && turnLinks.video(p.id)), paused: !!(p.tile && p.tile.querySelector(':scope > .tpause:not(.tpause-busy)')), busyNote: !!(p.tile && p.tile.querySelector(':scope > .tpause-busy')), policy: null, turn: false,
           local: null, remote: null, vOut: 0, aOut: 0, vIn: 0, aIn: 0 };
         try { const c = p.pc.getConfiguration(); r.policy = c.iceTransportPolicy; r.turn = GifOS.meetTurn.hasTurnServer(c.iceServers); } catch (e) {}
         try {
@@ -12254,9 +12312,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           let sel = null;
           st.forEach((x) => { if (x.type === 'transport' && x.selectedCandidatePairId) sel = by.get(x.selectedCandidatePairId); });
           if (!sel) st.forEach((x) => { if (!sel && x.type === 'candidate-pair' && x.nominated && x.state === 'succeeded') sel = x; });
-          if (sel) { const l = by.get(sel.localCandidateId), rm = by.get(sel.remoteCandidateId); r.local = l ? l.candidateType : null; r.remote = rm ? rm.candidateType : null; }
+          if (sel) { const l = by.get(sel.localCandidateId), rm = by.get(sel.remoteCandidateId); r.local = l ? l.candidateType : null; r.remote = rm ? rm.candidateType : null; r.server = l && l.url ? String(l.url).replace(/^turns?:/, '').split('?')[0] : null; r.proto = l ? (l.relayProtocol || l.protocol || null) : null; r.cap = +sel.availableOutgoingBitrate || null; }
+          r.busy = !!(turnLinks && turnLinks.busy(p.id)); r.farBusy = !!(turnLinks && turnLinks.farBusy(p.id)); r.step = turnLinks && turnLinks.videoStep(p.id) ? turnLinks.videoStep(p.id).step : null;
           st.forEach((x) => {
-            if (x.type === 'outbound-rtp' && x.kind === 'video') r.vOut += x.bytesSent || 0;
+            if (x.type === 'outbound-rtp' && x.kind === 'video') { r.vOut += x.bytesSent || 0; (r.vo = r.vo || []).push({ mid: x.mid, b: x.bytesSent || 0, f: x.framesEncoded || 0, ql: x.qualityLimitationReason || null, act: x.active, w: x.frameWidth || 0 }); }
+            if (x.type === 'inbound-rtp' && x.kind === 'video') (r.vi = r.vi || []).push({ mid: x.mid, b: x.bytesReceived || 0, f: x.framesDecoded || 0 });
             if (x.type === 'outbound-rtp' && x.kind === 'audio') r.aOut += x.bytesSent || 0;
             if (x.type === 'inbound-rtp' && x.kind === 'video') r.vIn += x.bytesReceived || 0;
             if (x.type === 'inbound-rtp' && x.kind === 'audio') r.aIn += x.bytesReceived || 0;
@@ -15658,6 +15718,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           score: (pid) => carrierScore(pid), knockNat: () => -1,
           doorSend: (pid, kind, knocker) => { const q = peers.get(pid); if (q && q.dc && q.dc.readyState === 'open') dcSend(q, { k: 'dcall', n: kind, j: knocker }); },
           roles: () => ({ jobs: Array.from(relayJobs.values(), (j) => ({ target: j.target, req: j.requester })), vias: Array.from(relayVia.values(), (r) => r.via) }),
+          // TURN.14 (the twin's fabricTurnAcross): the peers whose pc runs through a TURN link of mine (js/meet-turn.js)
+          turnPcs: () => (turnLinks ? turnLinks.turnPcs() : []),
         },
         measure: {   // the device class and the network's verdict this page already keeps (L4)
           tier: () => { const E = GifOS.meshConsts.enums, hc = navigator.hardwareConcurrency | 0; return IS_MOBILE || (hc > 0 && hc <= 2) ? E.TIER_MOBILE : E.TIER_DESKTOP; },   // a 2-core desktop carries like a phone
@@ -30681,13 +30743,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const dot = String(ext || 'txt').replace(/^\.+/, '').replace(/[^A-Za-z0-9]/g, '').toLowerCase() || 'txt';
       return day + (name ? '_' + name : '') + '_gifos_' + kind + '.' + dot;
     }
-    document.getElementById('trdl').onclick = () => {
+    // The transcript as a text file: {blob, name, lines} (lines 0 = empty).
+    function transcriptFile() {
       const blocks = trBlocks();
       const mine = trLang();
       const lines = blocks.map((l) => '[' + new Date(l.at).toLocaleTimeString() + '] ' + l.by + (l.lang && l.lang !== mine ? ' (' + l.lang + ')' : '') + ': ' + l.text);
+      return { blob: new Blob([lines.join('\n') + '\n'], { type: 'text/plain' }), name: meetDownloadName('Transcript', room, blocks.length ? blocks[0].at : 0, 'txt'), lines: lines.length };
+    }
+    document.getElementById('trdl').onclick = () => {
+      const f = transcriptFile();
       const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([lines.join('\n') + '\n'], { type: 'text/plain' }));
-      a.download = meetDownloadName('Transcript', room, blocks.length ? blocks[0].at : 0, 'txt');
+      a.href = URL.createObjectURL(f.blob);
+      a.download = f.name;
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     };
@@ -30706,6 +30773,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // along; "match my mix" scales each bus's audio by your own fader.
     let recRec = null, recTimer = null, recDraw = null, recStart = 0, recSrcs = new Map(), recDest = null, recSink = null;
     let recMode = null, recRestart = null, recMatchMix = true, recQuality = 'std', recType = 'video/webm'; // recType = the container MediaRecorder writes; recMode = scope; recRestart = opts after a stop
+    let recToLib = false;   // this recording goes to My library (Streamer) when it stops
     let recStarting = false, recReloadAfterStop = false, recIndWatch = null;
     const recBtn = document.getElementById('recbtn');
     const REC_QUALITY = { low: { w: 1280, h: 720, v: 1000000 }, std: { w: 1920, h: 1080, v: 3000000 }, high: { w: 1920, h: 1080, v: 6000000 } };
@@ -30971,6 +31039,88 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       };
       bg.querySelector('#se-leave').onclick = () => { bg.remove(); recRelease(saved); leaveSeededService(); };
     }
+    // ---- My library (Streamer): the finished recording is uploaded, with the
+    // transcript beside it. If the library refuses it (full, plan ended) or
+    // the upload cannot be kept to finish later, the file is saved on this
+    // device instead, so a recording is never lost.
+    let recLibLast = -1;
+    function recLibNote(text) { recLibLast = -1; setStatus(text); }
+    function recLibProgress(x) {
+      const pct = Math.floor(x * 100);
+      if (pct === recLibLast) return;
+      recLibLast = pct;
+      setStatus(uiText('stLibSaving', 'Saving to My library…') + ' ' + pct + '%');
+    }
+    function recToLibrary(saved) {
+      const name = saved.name || recFileName();
+      const tr = transcriptFile();
+      const L = window.GifOS && GifOS.library;
+      if (!L) return recDeliver(saved);
+      const onDevice = (blob, why) => {
+        const href = URL.createObjectURL(blob);
+        recDownload({ href, name });
+        recRelease({ href, drop: saved.drop });
+        recLibNote((why ? why + ' ' : '') + uiText('stLibDevice', 'Saved on this device instead.'));
+      };
+      (async () => {
+        let blob;
+        try { blob = await fetch(saved.href).then((r) => r.blob()); } catch (e) { recDeliver(saved); return; }
+        try { URL.revokeObjectURL(saved.href); } catch (e) {}
+        recLibProgress(0);
+        let file;
+        try {
+          file = await L.save(blob, { name, type: blob.type || recType, kind: 'recording' }, recLibProgress);
+        } catch (e) {
+          const kept = e && e.uploadId && L.pending().some((p) => p.id === e.uploadId);
+          if (kept) {
+            recLibNote(uiText('stLibPaused', 'The upload paused. It finishes the next time you open GifOS.'));
+            if (typeof saved.drop === 'function') { try { await saved.drop(); } catch (x) {} }
+          } else onDevice(blob, e && e.message);
+          return;
+        }
+        if (typeof saved.drop === 'function') { try { await saved.drop(); } catch (e) {} }
+        if (tr && tr.lines) { try { await L.save(tr.blob, { name: tr.name, type: 'text/plain', kind: 'transcript', of: file.id }); } catch (e) {} }
+        recLibNote(uiText('stLibSaved', 'Saved to My library.'));
+        if (typeof window.__gifosLibSaved === 'function') { try { window.__gifosLibSaved(file); } catch (e) {} }
+      })();
+      return 'library';
+    }
+    // The Record sheet's library choice: Streamer gets the box (on by
+    // default); other people see one quiet line while subscriptions are on.
+    async function recLibraryOption(bg) {
+      const slot = bg.querySelector('#rec-lib');
+      const L = window.GifOS && GifOS.library;
+      if (!slot || !L || !L.enabled() || BROADCAST) return;
+      let st = 'none';
+      try { st = await L.status(); } catch (e) {}
+      if (!slot.isConnected) return;
+      if (st !== 'streamer') {
+        const p = document.createElement('p');
+        p.className = 'rec-upsell';
+        p.style.cssText = 'margin:.4rem 0 0;font-size:13px;color:var(--c-gray)';
+        p.textContent = uiText('recLibUpsell', 'Streamer subscribers can save recordings to their GifOS library.');
+        slot.appendChild(p);
+        return;
+      }
+      const lab = document.createElement('label');
+      lab.className = 'rec-opt';
+      lab.innerHTML = '<input type="checkbox" id="rec-tolib" checked><span><b></b><small></small></span>';
+      lab.querySelector('b').textContent = uiText('recToLib', 'Save to my GifOS library');
+      lab.querySelector('small').textContent = uiText('recToLibHelp', 'Uploaded to your private library when the recording stops, with the transcript. Only you can see it until you share it.');
+      slot.appendChild(lab);
+      const note = bg.querySelector('.rec-note');
+      const devText = note ? note.textContent : '';
+      const box = lab.querySelector('input');
+      const paint = () => { if (note) note.textContent = box.checked ? uiText('recNoteLib', 'Saved to your GifOS library. Everyone here will see that this meeting is being recorded.') : devText; };
+      box.addEventListener('change', paint);
+      paint();
+    }
+    // An upload a reload interrupted finishes once the page has loaded.
+    window.addEventListener('load', () => {
+      const L = window.GifOS && GifOS.library;
+      if (!L || !L.enabled() || !L.pending().length) return;
+      L.resumePending().then((done) => { if (done && done.length) recLibNote(uiText('stLibSaved', 'Saved to My library.')); }).catch(() => {});
+    });
     function recDeliver(saved) {
       if (saved && saved.held) return 'held';
       // The host's kept service is what Rebroadcast > Last service plays.
@@ -31302,6 +31452,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (BROADCAST && scope !== 'app' && scope !== 'program') scope = 'stage';
         recMatchMix = opts.matchMix !== false;
         recQuality = REC_QUALITY[opts.quality] ? opts.quality : recDefaultQuality(IS_MOBILE);
+        recToLib = !!opts.toLibrary;
         const q = REC_QUALITY[recQuality];
         recMode = scope;
         recDest = ac.createMediaStreamDestination();
@@ -31327,7 +31478,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           }
           stopVideo = () => { for (const t of disp.getTracks()) { try { t.stop(); } catch (e) {} } };
         }
-        const opened = await recOpenSink(recFileName(), !!opts.keep);
+        const opened = await recOpenSink(recFileName(), !!opts.keep || recToLib);
         if (!opened || opened.kind === 'cancel') {
           if (opened && opened.abort) { try { opened.abort(); } catch (e) {} }
           recDest = null; recMode = null;
@@ -31406,7 +31557,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           let saved = null;
           try { if (sink) saved = await sink.finish(); } catch (e) { saved = null; }
           let how = '';
-          try { how = recDeliver(saved); } catch (e) { how = ''; }
+          const toLib = recToLib;
+          recToLib = false;
+          try { how = toLib && saved && saved.href && !saved.held && !bcSeeding ? recToLibrary(saved) : recDeliver(saved); } catch (e) { how = ''; }
           if (typeof window !== 'undefined' && typeof window.__gifosRecStopped === 'function') {
             const cb = window.__gifosRecStopped;
             window.__gifosRecStopped = null;
@@ -31507,12 +31660,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         (IS_MOBILE ? '<p>On a phone, 720p is the default. 1080p is drawn on the processor and fills memory fast.</p>' : '') +
         '</div>' +
         '<label class="rec-opt inline" style="margin-top:.3rem"><input type="checkbox" id="rec-matchmix" checked> Match my sound mix (record what I hear)</label>' +
+        '<div id="rec-lib"></div>' +
         '</div>' +
         '<p id="rec-err" hidden></p>' +
         '<div class="rec-actions">' +
         '<button id="ro-start" class="appear-primary" type="button">Start recording</button>' +
         '<button id="ro-cancel" class="appear-secondary" type="button">Cancel</button></div></div>';
       document.body.appendChild(bg);
+      recLibraryOption(bg);
       const paintScope = () => {
         const picked = bg.querySelector('input[name=rec-scope]:checked');
         const line = bg.querySelector('#rec-now');
@@ -31526,7 +31681,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const scope = bg.querySelector('input[name=rec-scope]:checked').value;
         const quality = bg.querySelector('input[name=rec-q]:checked').value;
         const matchMix = bg.querySelector('#rec-matchmix').checked;
-        const err = await startRec({ scope, quality, matchMix });
+        const lib = bg.querySelector('#rec-tolib');
+        const err = await startRec({ scope, quality, matchMix, toLibrary: !!(lib && lib.checked) });
         if (typeof err === 'string' && err) {
           const el = bg.querySelector('#rec-err');
           if (el) { el.hidden = false; el.textContent = err; }
@@ -31550,7 +31706,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const close = openModal(bg, () => { if (bg.parentNode) bg.remove(); });
       bg.querySelector('#rw-keep').onclick = () => close();
       bg.querySelector('#rw-restart').onclick = () => {
-        close(); recRestart = { scope: 'app', quality: recQuality, matchMix: recMatchMix };
+        close(); recRestart = { scope: 'app', quality: recQuality, matchMix: recMatchMix, toLibrary: recToLib };
         if (recRec && recRec.state !== 'inactive') { try { recRec.stop(); } catch (e) {} }
       };
     }

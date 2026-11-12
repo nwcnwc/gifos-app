@@ -756,5 +756,13 @@
   "meet.viewFloat": "Float",
   "meet.viewFocus": "Focus",
   "meet.viewFollow": "Follow the speaker",
-  "meet.viewPresent": "Present"
+  "meet.viewPresent": "Present",
+  "meet.recToLib": "Save to my GifOS library",
+  "meet.recToLibHelp": "Uploaded to your private library when the recording stops, with the transcript. Only you can see it until you share it.",
+  "meet.recNoteLib": "Saved to your GifOS library. Everyone here will see that this meeting is being recorded.",
+  "meet.recLibUpsell": "Streamer subscribers can save recordings to their GifOS library.",
+  "meet.stLibSaving": "Saving to My library…",
+  "meet.stLibSaved": "Saved to My library.",
+  "meet.stLibPaused": "The upload paused. It finishes the next time you open GifOS.",
+  "meet.stLibDevice": "Saved on this device instead."
 }
