@@ -52,6 +52,7 @@
       const lv = this.w.lv, id = this.id, TICK = this.TICK;
       if (c.i >= C || c.r >= C) return;   // sanity: never take a malformed coord
       this.l381N = 0;   // L38.1: a seated seat's next entry starts fresh
+      if (!this.hasCoord) { this.t14Ck = 0; this.t14Ring = -1; }   /* TURN.14.5: a word belongs to the seat it was said to */
       if (roomTerm(this, 1) && this.c7At > -1000000 && TICK - this.c7At < K.RELAY_TTL && !(lv.TIERS_ACTIVE && (this.cnat !== E.NAT_OPEN || this.l4NatSeen))) {
         const drop = []; for (const k of this.byeAt.keys()) if (ckPc(k) === 0) drop.push(k); for (const k of drop) this.byeAt.delete(k);   // L8.14
       }
@@ -254,18 +255,26 @@
       for (const [, e] of this.sitting) if (e.joiner === mm.nc && e.assigner === id && e.pl.t === 'PLACE' && this.TICK - e.at <= K.SIT_TTL) { this.emit(mm.nc, msg.clone(e.pl)); return; }   // FINDACK
       // D6b: a seeker that vacated by D6-dark knocks for a deep cell.
       const dkDeep = mm.dk;
-      if (this.coord.pc === 0 && !dkDeep) {
+      const t14x = this.coord.pc === 0 && mm.tag !== 1 && this.f.fabricTurnAcross(id);   /* TURN.14: the ring I sit in lies across my TURN link */
+      const t14s = this.coord.pc === 0 && mm.tag !== 1 && mm.t14 > 0 && mm.from === id;   /* TURN.14.11: an ask of my side that I stopped at my TURN pc */
+      const t14 = t14s || (t14x && !this.f.fabricTurnPc(id, mm.nc) && (this.linkIs(mm, mm.nc) || this.f.fabricTurnMine(id, mm.nc)));   /* TURN.14.1: a seeker on my side of the link sits under me */
+      if (t14) this.trace('TURN14-UNDER', id, this.coord, 'nc=%d', mm.nc);
+      if (this.coord.pc === 0 && !dkDeep && !t14) {
         if (this.serveFindS1(mm, skip)) return;
+      }
+      if (t14x && !t14) {   /* TURN.14.3: a seeker that did not come to my own door is not seated under me */
+        if (this.serveFindSpread(mm, skip.v)) return;
+        this.trace('NOROOM', id, this.coord, 'nc=%d why=turn14-across', mm.nc); const m = newMsg('NOROOM'); m.gwc = mm.gwc; m.id = id; m.nd = 0; this.emit(mm.nc, m); return;
       }
       const f = this.firstFreeInRoster();
       if (f) {
-        if (this.w.lv.TIERS_ACTIVE && this.l4Hop(mm, f)) return;   // L4.2
+        if (this.w.lv.TIERS_ACTIVE && !t14 && this.l4Hop(mm, f)) return;   // L4.2 (TURN.14.1: L4.2's hop goes to a row-mate, and mine sit across the link)
         // Phantom occ on the admitted cell: clear it first-hand.
         { const fk = ckey(f); if (this.occIsPhantom(fk)) { this.occDrop(fk, 'phantomclr-deep'); this.live.delete(fk); this.s1seen.delete(fk); this.kidful.delete(fk); this.tlForget(fk); } }
         this.w.ADMIT_SITE = 'deep-firstFree'; this.admit(f, mm); return;
       }
       if (this.holdFind(mm, true)) return;   // L7.5
-      if (this.serveFindSpread(mm, skip.v)) return;   // L7.5 SPREAD HOP
+      if (!t14 && this.serveFindSpread(mm, skip.v)) return;   // L7.5 SPREAD HOP (TURN.14.1: not to my rook neighbours across the link)
       this.serveFindDescend(mm);
     },
 

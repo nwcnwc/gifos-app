@@ -45,6 +45,7 @@
     // C++: mesh_seat.inc:Seat::onHello
     onHello(m) {
       const id = this.id, TICK = this.TICK, lv = this.w.lv;
+      if (this.t14Come(m)) return;   /* TURN.14.13 */
       // A HELLO is FIRST-HAND: its sender (m.id) is speaking on a link it holds to me, claiming coord m.ck.
       if (m.id < 0 || !cellOk(m.ck)) return;
       if (this.f.fabricDoors()) { const lb = this.l152Bye.get(m.id); if (lb !== undefined && lb[0] === m.ck && TICK - lb[1] <= 2) return; }   // L15.2 for a HELLO
@@ -496,7 +497,7 @@
       this.lastAck = TICK; this.nbrHeard(); this.noteLinked(pk, pid, m.tn); this.pongBy.set(pk, [pid, TICK]);
       if (this.coord.pc !== 0) {
         const oc = this.ownerCoord(); const fromOwner = this.coord.i === 0 && !!oc && ckey(oc) === pk, fromHead = this.coord.i !== 0 && pk === ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 });   // L2
-        if (fromOwner || fromHead) { this.bkId = m.bkId; this.bkCk = m.bkCk; this.sbId = m.u3Id; this.sbCk = m.u3Ck; }
+        if (fromOwner || fromHead) { this.bkId = m.bkId; this.bkCk = m.bkCk; this.sbId = m.u3Id; this.sbCk = m.u3Ck; if (m.t14 >= 0) { if (m.t14 > 0) { if (this.t14Ck !== m.t14) this.trace('TURN14-WORD', id, this.coord, 'from=%d root=%s', pid, coordStr(unckey(m.t14 - 1))); this.t14Ck = m.t14; this.t14At = TICK | 0; } else { if (this.t14Ck > 0) this.trace('TURN14-WORD', id, this.coord, 'from=%d root=-', pid); this.t14Ck = 0; } } }   /* TURN.14.5: the link end my row hangs under */
         if (fromHead) { this.headAckAt = TICK; this.headEver = true; this.headE1Dn = m.e1dn; this.headE1At = m.e1At; if (this.w.lv.DIGEST && m.dgPub.at >= 0) { this.u2RowDig = dig.cloneDig(m.dgPub); if (!e2f.L48_OFF) this.u2RowDig.rx = this.LT() - this.u2RowDig.ag; } }   // L48: held with its age, so the copy over E2 ages on
       }
       if (m.coord.pc === 0) { this.setOcc(pk, pid); this.liveMark(pk); this.noteS1(pk); }   // FIRST-HAND

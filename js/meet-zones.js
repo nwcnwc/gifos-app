@@ -579,6 +579,12 @@
 
   // Scroll: one share band, full width, never taller than the screen.
   function shareScrollRect(it, x, y, w, maxH) {
+    // The content area in Scroll: every shared thing stacked, each band no
+    // taller than the screen, so the area is as tall as its stack.
+    if (typeof it.stackH === 'function') {
+      const h = Math.max(1, +it.stackH(w, maxH) || 1);
+      return { id: it.id, tier: 'stage', x: x, y: y, w: w, h: h, fit: 'cover' };
+    }
     if (it.fill || it.kind === 'app') {
       const h = Math.min(maxH, w * 9 / 16);
       return { id: it.id, tier: 'stage', x: x, y: y, w: w, h: h, fit: 'cover' };
@@ -596,7 +602,7 @@
   // Fit shares the screen about in half with the row.
   // floor: beside a share, the share may run down to this y (past box, under
   // the call's buttons, which then wake over it instead of moving it).
-  // The Float view (Nathan 2026-11-11): every person tile floats on its own
+  // The Drag view (Nathan 2026-11-11; opts.float): every person tile floats on its own
   // (float 'p:<id>': moved and resized one by one; meet-views keeps the spot
   // and size). With content shared, the content takes the whole screen and
   // the people sit as small insets along the right edge (wide) or the bottom
@@ -750,7 +756,54 @@
   // Fit with a share: the share takes the left (wide) or the top (tall).
   // Row and stadium fit in the remaining band. Stage people float over the
   // share, shrunk to about a third of its short side.
+  // The content area full size on a phone (Nathan 2026-11-11): the faces are
+  // one strip along the bottom (upright) or the right (sideways) that the
+  // viewer can hide. (Drag is layoutFloatShare: the people inset.)
+  function faceStrip(ids, tierOf, strip, gap, vertical) {
+    const out = [];
+    const n = ids.length;
+    if (!n) return out;
+    const thick = vertical ? strip.w : strip.h;
+    const len = vertical ? strip.h : strip.w;
+    const side = Math.max(24, Math.min(thick, (len - gap * (n - 1)) / n));
+    const used = n * side + (n - 1) * gap;
+    let at = (vertical ? strip.y : strip.x) + Math.max(0, (len - used) / 2);
+    for (let i = 0; i < n; i++) {
+      const r = vertical
+        ? { x: strip.x + (thick - side) / 2, y: at, w: side, h: side }
+        : { x: at, y: strip.y + (thick - side) / 2, w: side, h: side };
+      out.push(Object.assign({ id: ids[i], tier: tierOf(ids[i]), fit: 'cover' }, r));
+      at += side + gap;
+    }
+    return out;
+  }
+  function layoutContentFull(opts, box, gap, phone, row, stad, shareItem, onStage) {
+    const c = opts.content || {};
+    const hide = !!c.hideFaces;
+    const people = onStage.map((it) => it.id).concat(row, stad);
+    const isStage = new Set(onStage.map((it) => it.id));
+    const isStad = new Set(stad);
+    const tierOf = (id) => (isStage.has(id) ? 'stage' : isStad.has(id) ? 'stad' : 'row');
+    // Phone: the strip runs along the bottom when upright, down the right
+    // side when sideways; hidden, the content has the whole screen.
+    const vertical = box.w > box.h;
+    const thick = hide || !people.length ? 0 : Math.round(vertical ? Math.min(140, Math.max(80, box.w * 0.16)) : Math.min(120, Math.max(72, box.h * 0.14)));
+    const sb = vertical ? { x: box.x, y: box.y, w: Math.max(1, box.w - (thick ? thick + gap : 0)), h: box.h }
+      : { x: box.x, y: box.y, w: box.w, h: Math.max(1, box.h - (thick ? thick + gap : 0)) };
+    const rects = [{ id: shareItem.id, tier: 'stage', x: sb.x, y: sb.y, w: sb.w, h: sb.h, fit: 'cover' }];
+    let pb = null;
+    if (thick) {
+      pb = vertical ? { x: sb.x + sb.w + gap, y: box.y, w: thick, h: box.h } : { x: box.x, y: sb.y + sb.h + gap, w: box.w, h: thick };
+      const fr = faceStrip(people, tierOf, pb, gap, vertical);
+      for (const r of fr) rects.push(r);
+    }
+    return laid(rects, box.h, { stage: pb, share: sb, people: pb }, { side: thick, stadSide: 0, tooSmall: false }, 'fit');
+  }
+
   function layoutFitShare(opts, box, gap, phone, row, stad, shareItem, onStage) {
+    if (shareItem.content && opts.content && opts.content.phone) {
+      return layoutContentFull(opts, box, gap, phone, row, stad, shareItem, onStage);
+    }
     const wide = box.w >= box.h * 1.15;
     let sb, pb, sr;
     if (wide) {
