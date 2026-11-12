@@ -37,6 +37,8 @@
   const unck = unckey;
   const newMsg = (t) => msg.newMsg(t);
   const cc = (c) => ({ pc: c.pc, r: c.r, i: c.i });
+  // the sim's #define L8_52_OFF in mesh.cpp (a build-time switch): MESH_L8_52_OFF=1 under node, read once at load; a page always runs the law
+  const L8_52_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L8_52_OFF === '1') ? 1 : 0;
   const kvCopy = (a) => a.map((e) => ({ k: e.k, v: e.v }));
   const hello = (ck, id) => { const h = newMsg('HELLO'); h.ck = ck; h.id = id; return h; };
 
@@ -103,8 +105,12 @@
       let prev = this.occGet(m.ck);
       // E2: yield only between FIRST-HAND-LIVE claimants.
       if (prev >= 0 && prev !== m.id && m.pp === prev) { this.occDrop(m.ck, 'handed'); this.live.delete(m.ck); prev = -1; }   // L3.10.4
-      const prevFresh = prev >= 0 && prev !== m.id && (this.holdsCell(m.ck, 60) || this.heldRedial(m.ck, prev, 60));   // L16.7
+      let prevFresh = prev >= 0 && prev !== m.id && (this.holdsCell(m.ck, 60) || this.heldRedial(m.ck, prev, 60));   // L16.7
       let l165Dec = false, l165MWins = false;
+      if (this.f.fabricDoors() && ckPc(m.ck) === 0 && prev >= 0 && prev !== m.id && prevFresh) { const r51 = this.l51Rooms(m.id, prev);   // L8.51 (mesh_island.inc): a contest between two rooms is the merge's
+        if (r51 === 1) { const c = unck(m.ck); this.trace('L8.51-HOLD', id, c, 'mine=%d other=%d', prev, m.id); return; }
+        if (r51 === 2) { const c = unck(m.ck); this.trace('L8.51-HOLD', id, c, 'mine=%d other=%d', m.id, prev); this.occDrop(m.ck, 'L8.51'); this.live.delete(m.ck); prev = -1; prevFresh = false; }
+      }
       if (this.f.fabricDoors() && ckPc(m.ck) === 0 && prev >= 0 && prev !== m.id && prevFresh) {
         const h1 = this.l165Have(m.ck, m.id); const h2 = h1 ? this.l165Have(m.ck, prev) : null;
         if (h1 && h2) {
@@ -426,8 +432,12 @@
       if (!this.hasCoord || this.state !== 3 || ckey(this.coord) !== m.ck || m.id < 0 || m.id === id || !(m.id < id)) return;
       if (this.challToId !== m.id || this.challToCk !== m.ck || TICK - this.challToAt > 40 || !this.provenEv(m, m.id) || this.liveElsewhereSinceReturn(m.id, m.ck)) return;
       this.challToId = -1;
-      if (this.f.fabricDoors() && !this.moving && this.coord.pc === 0 && this.pp >= 0 && this.ppL >= 0 && this.ppCk === ckey(this.coord) && this.otherRing(m.id) && !(m.pp >= 0 && m.ppL >= 0 && l165Earlier(m.ppL, m.pp, m.id, this.ppL, this.pp, id))) { this.trace('L8.11.1-STAND', id, this.coord, 'rival=%d', m.id); return; }   // across foundings the earlier placement wins against a confirm too
-      if (roomTerm(this, 1) && m.c7Min >= 0 && m.c7Min < this.ringName()) return;   // L8.11
+      {
+        const oa = this.lineAtOf(m.id); const l852 = !L8_52_OFF && this.f.fabricDoors() && !this.moving && this.coord.pc === 0 && this.lineAt >= 0 && oa >= 0 && oa !== this.lineAt && this.lineOf(m.id) >= 0 && this.lineOf(m.id) !== this.line;   // L8.52.2 (mesh_ring.inc): between two foundings of different age the seat of the older room stands
+        if (l852 && this.lineAt < oa) { this.trace('L8.52-STAND', id, this.coord, 'rival=%d mine=%d theirs=%d', m.id, this.lineAt, oa); return; }
+        if (!l852 && this.f.fabricDoors() && !this.moving && this.coord.pc === 0 && this.pp >= 0 && this.ppL >= 0 && this.ppCk === ckey(this.coord) && this.otherRing(m.id) && !(m.pp >= 0 && m.ppL >= 0 && l165Earlier(m.ppL, m.pp, m.id, this.ppL, this.pp, id))) { this.trace('L8.11.1-STAND', id, this.coord, 'rival=%d', m.id); return; }   // across foundings the earlier placement wins against a confirm too
+      }
+      if (roomTerm(this, 1) && m.c7Min >= 0 && m.c7Min !== this.ringName() && this.ringOlder(m.c7Min, m.lineAt, this.ringName(), this.lineAt)) return;   // L8.11
       if (this.moving) { this.rbWhy = 'confirm-lower'; this.rollbackMove(); } else this.requeue('CONFIRM-lower-id');
     },
 

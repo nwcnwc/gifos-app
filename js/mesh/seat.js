@@ -51,7 +51,7 @@
     'fabricSend', 'fabricUnreachable', 'fabricVerdict', 'fhopActive', 'fhopFriendFor', 'l164Of', 'l18Deliv',
     'l18Hop', 'l18UxDeliv', 'l222Note', 'l22Agree', 'l22Close', 'l22CloseAsk', 'l22Need', 'l22Quiet', 'l28Reply',
     'l915Note', 'relayKnock', 'relayUnlist', 'descEnd', 'descNote', 'wake', 'fabricAudit', 'fabricDoorHeard', 'g4Joined', 'fabricDropHalf', 'fabricLinkCarries',
-    'fabricTurnOn', 'fabricTurnPc', 'fabricTurnStray', 'fabricTurnLone', 'fabricTurnAcross', 'fabricTurnMine', 'fabricTurnCarried', 'fabricTurnFeeds',   /* TURN.14 (mesh_turn.inc) */
+    'fabricTurnOn', 'fabricTurnPc', 'fabricTurnStray', 'fabricTurnLone', 'fabricTurnAcross', 'fabricTurnMine', 'fabricTurnCarried', 'fabricTurnFeeds', 'fabricTurnBoth',   /* TURN.14 (mesh_turn.inc) */
   ]);
 
   // A fabric that refuses every call: the interface a harness or the page adapter fills in.
@@ -117,6 +117,8 @@
   const LINKKEY_ENV = (isNode && typeof process !== 'undefined' && process.env && parseInt(process.env.MESH_LINKKEY, 10)) ? 1 : 0;
   // the sim's #define L8_50_OFF in mesh.cpp (a build-time switch): MESH_L8_50_OFF=1 under node, read once at load; a page always runs the law
   const L8_50_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L8_50_OFF === '1') ? 1 : 0;
+  // the sim's #define L8_52_OFF in mesh.cpp (a build-time switch): MESH_L8_52_OFF=1 under node, read once at load; a page always runs the law
+  const L8_52_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L8_52_OFF === '1') ? 1 : 0;
   const { ins, eraseFirst } = req('./util.js', 'meshUtil');
   const dig = req('./dig.js', 'meshDig');
 
@@ -841,7 +843,7 @@
       const id = this.id, TICK = this.TICK, lv = this.w.lv;
       if (this.hostDenseLeaf >= 0 && m.t === 'YIELD') return;   // `hostile densify`: the page never evicts the seat it placed (harness gaps3-fab.js)
       if (m.line < 0 && this.line >= 0 && (((m.t === 'HELLO' || m.t === 'PHONE' || m.t === 'PONG' || m.t === 'CONFIRM' || m.t === 'LEAVE' || m.t === 'HOME') && m.id === id) || (m.t === 'WALK' && m.asker === id) || (m.t === 'PLACE' && m.pp === id))) {
-        const mm = msg.clone(m); mm.line = (this.hostile & K.H_RINGLIE_BIT) ? K.RINGLIE_LINE : this.line; mm.lineF = this.lineFork; mm.cutF = (this.cutAt >= 0 || this.cutHeardAt >= 0); this.emit(to, mm); return;   // L8.38
+        const mm = msg.clone(m); mm.line = (this.hostile & K.H_RINGLIE_BIT) ? K.RINGLIE_LINE : this.line; if (!L8_52_OFF) { mm.lineAt = this.lineAt; } mm.lineF = this.lineFork; mm.cutF = (this.cutAt >= 0 || this.cutHeardAt >= 0); this.emit(to, mm); return;   // L8.38
       }
       if (this.vban.size && !this.kIgnore && (this.kBanned(to) || ((m.t === 'PLACE' || m.t === 'FIND' || m.t === 'FINDACK' || m.t === 'NOROOM') && this.kBanned(m.nc)) || (m.routing && this.kBanned(m.rfinal)))) { this.kTx++; return; }   // L27
       if (m.t === 'YIELD' && m.id === id && !m.yp && to >= 0 && to !== id) { if (this.l24Yielded.size > 128) this.l24Yielded.clear(); this.l24Yielded.set(to, TICK); }   // L24
