@@ -753,6 +753,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <button type="button" id="whobtn" data-t="people" data-ti="whoTip" aria-keyshortcuts="Alt+W" title="Who is on this meeting — names and internet addresses">People</button>
         <button data-ti="trbtnTip" data-t="transcript" aria-keyshortcuts="Alt+T" title="The meeting's live transcript" id="trbtn"><svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>Transcript</button>
         <button data-ti="qabtnTip" data-t="qabtn" id="qabtn" type="button" title="Questions for the host: ask one, and vote up the ones you want answered">Questions</button>
+        <button data-ti="agendaTip" data-t="agendaBtn" id="agendabtn" type="button" title="Share an agenda: the items, how long each takes, and which one is on now">Agenda</button>
       </div>
     </section>
     <section class="moregroup" data-group="video">
@@ -1465,6 +1466,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/meet-zones.js" defer></script>
   <script src="js/meet-views.js" defer></script>
   <script src="js/meet-viewmode.js" defer></script>
+  <script src="js/meet-content.js" defer></script>
+  <script src="js/meet-agenda.js" defer></script>
   <script src="js/mesh-pipe.js" defer></script>
   <script src="js/relay-config.js" defer></script>
   <script src="js/runtime.js" defer></script>
@@ -5902,7 +5905,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (main) {
         if (fsSel !== 'auto') fsSel = main.key; // a pin re-anchors; auto stays auto
         if (identOn) identCard();
-        else if (main.dark) {
+        else if (main.content) {
+          // The content area is drawn over the big view (contentPlace).
+          if (fsmain.srcObject) fsmain.srcObject = null;
+          fsmain._from = null;
+          fsmain.classList.remove('dark');
+          fsBlurClass(fsmain, 0);
+          showName(false);
+        } else if (main.dark) {
           if (fsmain.srcObject) fsmain.srcObject = null;
           fsmain.classList.add('dark');
           fsBlurClass(fsmain, 0);
@@ -6008,6 +6018,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       fsstrip.dataset.set = thumbs.map((s) => s.key).join('|');
       fsPaintSel();
+      try { ctFocusSync(); } catch (e) {}
     }
     function fsRefreshIfOpen() {
       if (fsview.classList.contains('on')) fsRefresh();
@@ -6069,6 +6080,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // in-page Full screen toggle): the meeting goes back to the last view.
       if (wasInline && !fromPicker && typeof window.__meetLeaveFocus === 'function') { try { window.__meetLeaveFocus(); } catch (e) {} }
       fsview.classList.remove('on');
+      try { ctFocusSync(); } catch (e) {}
       document.body.classList.remove('fsopen');
       fsmain.srcObject = null;
       fsmain.classList.remove('dark');
@@ -7119,10 +7131,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           for (let i = 0; i < views.length; i++) tiles.push(views[i]);
           for (let i = 0; i < row.length; i++) tiles.push(row[i]);
           dropStageViews(keepViews);
-          if (screenOn) {
-            placeStrip = true;
-            tiles.unshift({ id: 'stage:sgs', el: sgs, tier: 'row', stage: true, share: true, kind: 'screen', aspect: sgsAspect, pz: 'stage:sgs' });
-          }
+          // A shared screen is content (Nathan 2026-11-11): it shows in the
+          // content area's tab, from its own stage feed, not as this strip.
           if (sgs && sgs.dataset) sgs.dataset.pack = '1';
         } else if (sgsOn) {
           // The strip is this person's picture. Their row tile leaves the
@@ -7147,8 +7157,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           }
           tiles.length = 0;
           for (let i = 0; i < row.length; i++) tiles.push(row[i]);
-          placeStrip = true;
-          tiles.unshift({ id: 'stage:sgs', el: sgs, tier: 'row', stage: true, share: true, kind: screenOn ? 'screen' : 'strip', aspect: sgsAspect, pz: 'stage:sgs' });
+          // Screens are content (their tabs). The strip stays the stage
+          // picture only while it carries faces: people on stage whose own
+          // feeds are not here yet.
+          if (packIds.length || !screenOn) {
+            placeStrip = true;
+            tiles.unshift({ id: 'stage:sgs', el: sgs, tier: 'row', stage: true, share: true, kind: 'strip', aspect: sgsAspect, pz: 'stage:sgs' });
+          }
           dropStageViews(null);
           if (sgs && sgs.dataset) delete sgs.dataset.pack;
         } else {
@@ -7164,11 +7179,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // a stand-in holds the seat in the layout and the pane is pinned on it.
         const appSeat = document.getElementById('appseat');
         const appOn = !!appSeat && document.body.classList.contains('has-app');
-        if (appOn) tiles.unshift({ id: 'stage:app', el: appSeat, tier: 'row', stage: true, share: true, kind: 'app', fill: true, pz: 'stage:app' });
+        // Screens, the app and the agenda are one content area with tabs
+        // (contentTile, below): none of them takes a stage seat.
+        const ctOn = contentHas();
         // A share, or an app in that seat, fills the left side. Show me on
         // stage keeps your tile with the people until that share ends.
         // A people strip does not: those faces are the stage.
-        if (screenOn || appOn) {
+        if (screenOn || appOn || ctOn) {
           for (let i = 0; i < tiles.length; i++) if (tiles[i].me) tiles[i].stage = false;
         }
         document.body.classList.toggle('show-stage', placeStrip);
@@ -7295,6 +7312,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             topInset = Math.ceil(chipEl.getBoundingClientRect().bottom + 8);
           }
         }
+        const ctTile = contentTile(phone);
+        if (ctTile) tiles.unshift(ctTile);
         window.__comfyLast = MV.apply({
           feed: feed, tiles: tiles, faces: shownFaces, video: meta.video, srcW: meta.w, srcH: meta.h, cols: cols, cellN: cellOf ? meta.n : 0, cellOf: cellOf, skipCells: skipCells, pictureCells: pictureCells,
           holdMs: holdMs, floor: floor,
@@ -7304,12 +7323,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           swapSelf: !!(window.__meetSwapSelf || (window.__meetSelf && window.__meetSelf.onStage)),
           self: window.__meetSelf || 'tile',
           gallery: window.__meetGallery || 'fit', float: window.__meetView === 'drag', now: Date.now(),
+          content: ctTile ? contentOpts(phone) : null,
           onSettle: () => { try { layout(); } catch (e) {} },
         });
         // Content on screen (a shared screen now; the content tabs later):
         // the one-step presentation button shows only then.
         const hasContent = !!(window.__comfyLast && window.__comfyLast.content);
         if (document.body.classList.contains('has-content') !== hasContent) document.body.classList.toggle('has-content', hasContent);
+        try { contentPlace(phone); } catch (e) { ctNote('place-err', { e: String(e && e.message || e).slice(0, 120) }); }
         const pane = document.getElementById('apppane');
         if (pane) {
           for (const [k, v] of [['--seat-x', 'left'], ['--seat-y', 'top'], ['--seat-w', 'width'], ['--seat-h', 'height']]) {
@@ -7394,7 +7415,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     window.__meetPaintView = paintFit;
     // Focus is #fsview in the page. It shows only where a meeting is up: a
     // broadcast or an app keeps its own picture (fsStripOk's rule, without the phone test).
-    function focusAllowed() { return !BROADCAST && !document.body.classList.contains('has-app'); }
+    // An app is a content tab now (Nathan 2026-11-11): Focus can show it.
+    function focusAllowed() { return !BROADCAST; }
     function syncFocus() {
       const want = window.__meetView === 'focus' && focusAllowed();
       const on = fsview.classList.contains('on');
@@ -7495,6 +7517,964 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     paintFit();
     try { syncFocus(); } catch (e) {}
     window.__meetRelayout = () => { try { layout(); } catch (e) {} };
+    // ---- the content area: screens, the app and the agenda, one area with tabs (Nathan 2026-11-11) ----
+    // Only video takes a Stage seat. A screen share is still a stager (its
+    // feed is a stage feed), but the picture is CONTENT: it shows here, in a
+    // tab of its own, beside the app's tab and the agenda's. Each viewer
+    // picks a tab; a presenter can bring everyone to one; a tab that changed
+    // while you were elsewhere wears a dot. Scroll shows every item stacked
+    // (no tabs); Fit, Drag, Focus and a phone show tabs. Presentation view is
+    // one tap: the chosen item fills the screen, the speaker inset.
+    // The model is js/meet-content.js and js/meet-agenda.js (pure, unit
+    // tested); this block is the DOM, the wire and the timing.
+    // Declared with var and functions only: applyComfy calls in before this
+    // block has run on the first layout.
+    var CT = null;
+    function ctNote(k, x) {
+      const r = (window.__contentTrace = window.__contentTrace || []);
+      r.push(Object.assign({ t: Date.now(), k }, x || {}));
+      if (r.length > 300) r.shift();
+    }
+    const CT_ICONS = {
+      present: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4.5" width="19" height="13" rx="2"/><rect x="14" y="11" width="5.5" height="4.5" rx="1"/><path d="M8 21h8"/></svg>',
+      all: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="8.5" height="6" rx="1.2"/><rect x="13" y="5" width="8.5" height="6" rx="1.2"/><rect x="2.5" y="13" width="8.5" height="6" rx="1.2"/><rect x="13" y="13" width="8.5" height="6" rx="1.2"/></svg>',
+      tabs: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 8h7l1.5-3h10.5"/><rect x="2.5" y="8" width="19" height="11" rx="1.5"/></svg>',
+      bring: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="8" r="2.5"/><circle cx="17" cy="8" r="2.5"/><path d="M2.5 18c.6-2.6 2.4-4 4.5-4s3.9 1.4 4.5 4M12.5 18c.6-2.6 2.4-4 4.5-4s3.9 1.4 4.5 4"/></svg>',
+      faces: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="14" width="5.5" height="5.5" rx="1.2"/><rect x="9.25" y="14" width="5.5" height="5.5" rx="1.2"/><rect x="16" y="14" width="5.5" height="5.5" rx="1.2"/><path d="M4 10l8-5 8 5"/></svg>',
+      exit: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+    };
+    function ctText(key, en, vars) {
+      let s = uiText(key, en);
+      if (vars) for (const k in vars) s = s.split('{' + k + '}').join(String(vars[k]));
+      return s;
+    }
+    function ctInit() {
+      if (CT) return CT;
+      const feed = document.getElementById('feed');
+      if (!feed || !window.GifOS || !GifOS.meetContent || !GifOS.meetAgenda) return null;
+      const el = document.createElement('div');
+      el.id = 'ctarea'; el.className = 'ctarea'; el.hidden = true;
+      const bar = document.createElement('div'); bar.className = 'ct-bar';
+      const tabs = document.createElement('div'); tabs.className = 'ct-tabs'; tabs.setAttribute('role', 'tablist');
+      const tools = document.createElement('div'); tools.className = 'ct-tools';
+      bar.appendChild(tabs); bar.appendChild(tools);
+      const body = document.createElement('div'); body.className = 'ct-body';
+      const inset = document.createElement('div'); inset.className = 'ct-inset'; inset.hidden = true;
+      inset.innerHTML = '<video muted autoplay playsinline></video><span class="ct-inset-nm"></span>';
+      const exit = document.createElement('button'); exit.type = 'button'; exit.className = 'ct-exit'; exit.hidden = true; exit.innerHTML = CT_ICONS.exit;
+      exit.addEventListener('click', () => ctPresent(false, 'exit'));
+      el.appendChild(bar); el.appendChild(body); el.appendChild(inset); el.appendChild(exit);
+      feed.appendChild(el);
+      CT = {
+        el, bar, tabs, tools, body, inset, exit,
+        panes: new Map(), st: GifOS.meetContent.state(), items: [], plan: null,
+        ag: null, agW: null, agStart: 0, agLocal: false, agEdit: false, agTick: 0,
+        present: false, presentFs: false, facesHidden: false, speaker: null, speakerAt: 0,
+        lastSig: '', phone: false, rect: null,
+      };
+      try { CT.facesHidden = localStorage.getItem('meet.content.v1.faces') === 'off'; } catch (e) {}
+      // Scroll moves the area with the page; the app pane is fixed and follows it.
+      feed.addEventListener('scroll', () => { if (CT && CT.items.length && window.__meetGallery === 'scroll') { try { contentPlace(CT.phone); ctPinApp(); } catch (e) {} } }, { passive: true });
+      document.addEventListener('keydown', (e) => {
+        if (!CT) return;
+        if (e.key === 'Escape' && CT.present) { e.preventDefault(); ctPresent(false, 'esc'); }
+      });
+      document.addEventListener('fullscreenchange', () => {
+        if (CT && CT.present && CT.presentFs && !document.fullscreenElement) ctPresent(false, 'fs-exit');
+      });
+      // Double-click (or double-tap) the content: presentation view, and back.
+      body.addEventListener('dblclick', (e) => {
+        if (e.target && e.target.closest && e.target.closest('input,button,textarea,select,.ag-list')) return;
+        ctPresent(!(CT.present || (document.getElementById('presentbtn') && window.__meetView === 'drag')), 'dblclick');
+      });
+      return CT;
+    }
+
+    // ---- what is shared now ----
+    function ctAppInfo() {
+      if (!document.body.classList.contains('has-app') || !appKey) return null;
+      const mine = !!(myStatus.app && appKey === myStatus.app.s);
+      let by = mine ? myId : null;
+      if (!by) for (const [pid, st] of statusOf) if (st && st.app && st.app.s === appKey) { by = pid; break; }
+      const nm = document.getElementById('appname');
+      return { on: true, name: (nm && nm.textContent) || '', by: by, mine: mine };
+    }
+    function ctScreens() {
+      let ids = [];
+      try { ids = screenSharers(); } catch (e) { ids = []; }
+      return ids.map((sid) => {
+        const st = sid === myId ? myStatus : (statusOf.get(sid) || {});
+        return { sid: sid, name: sid === myId ? '' : displayName(sid), at: +st.scr || 0, mine: sid === myId };
+      });
+    }
+    function ctAgendaOn() { return !!(CT && ((CT.ag && CT.ag.items.length) || CT.agLocal)); }
+    function ctAgCtx(who) { return { adminRoom: hasAdminRoom(), isAdmin: who === myId ? !!amAdmin : (Array.isArray(admins) && admins.indexOf(who) >= 0) }; }
+    function ctCanEditAgenda() { return !!(CT && myId && GifOS.meetAgenda.canEdit(CT.ag, myId, ctAgCtx(myId))); }
+    function ctRefresh() {
+      if (!ctInit()) return [];
+      const MC = GifOS.meetContent;
+      const list = MC.items({ screens: ctScreens(), app: ctAppInfo(), agenda: { on: ctAgendaOn(), title: '', mine: ctCanEditAgenda() } });
+      const before = CT.st.known.join('|');
+      MC.sync(CT.st, list);
+      CT.items = list;
+      if (before !== CT.st.known.join('|')) ctNote('items', { keys: CT.st.known.slice(), sel: CT.st.sel });
+      return list;
+    }
+    function contentHas() {
+      try { return ctRefresh().length > 0; } catch (e) { return false; }
+    }
+    function ctLabel(it) {
+      if (it.kind === 'screen') return it.mine ? ctText('ctYourScreen', 'Your screen') : ctText('ctScreenOf', '{name}’s screen', { name: it.name || '…' });
+      if (it.kind === 'app') return it.name || ctText('ctApp', 'App');
+      return ctText('ctAgenda', 'Agenda');
+    }
+    function ctView() {
+      if (CT && CT.present) return 'present';
+      return window.__meetView || 'fit';
+    }
+    function ctFocusOnContent() {
+      return !!(CT && window.__meetView === 'focus' && fsview.classList.contains('on') && fsInline && String(fsmain.dataset.key || '').indexOf('content:') === 0);
+    }
+
+    // ---- the tile the layout places (one share slot), and its options ----
+    function ctAspect(it, w) {
+      const pane = CT.panes.get(it.key);
+      if (it.kind === 'screen') {
+        const v = pane && pane.querySelector('video');
+        if (v && v.videoWidth > 0 && v.videoHeight > 0) return v.videoWidth / v.videoHeight;
+        return 16 / 9;
+      }
+      if (it.kind === 'agenda') {
+        // As tall as its list, at least a quarter of the width.
+        const n = (CT.ag && CT.ag.items.length) || 1;
+        const h = Math.max(220, 150 + n * 44 + (CT.agEdit ? 120 : 0));
+        return Math.max(0.6, (w || 800) / h);
+      }
+      return 0; // the app fills what it is given
+    }
+    function contentTile(phone) {
+      if (!CT || !CT.items.length) { if (CT) { CT.el.hidden = true; document.body.classList.remove('ct-on', 'ct-app-off', 'ct-present'); } return null; }
+      CT.phone = !!phone;
+      // Presentation view and Focus place the area themselves: it takes no
+      // share slot in the gallery under them.
+      if (CT.present || ctFocusOnContent()) return null;
+      const scroll = window.__meetGallery === 'scroll';
+      const t = { id: 'stage:content', el: CT.el, tier: 'row', stage: true, share: true, kind: 'app', fill: true, content: true, pz: 'stage:content' };
+      if (scroll) {
+        t.stackH = (w, maxH) => {
+          const asp = CT.items.map((it) => ctAspect(it, w) || 16 / 9);
+          return GifOS.meetContent.stack({ x: 0, y: 0, w: w, h: maxH }, asp, 8).h;
+        };
+      }
+      return t;
+    }
+    function contentOpts(phone) {
+      const v = window.__meetView || 'fit';
+      // Drag is the meeting's own layout (the content takes the screen, the
+      // people inset); a phone's Fit is the content full with a face strip.
+      return { phone: !!phone && v !== 'scroll' && v !== 'drag', hideFaces: !!(CT && CT.facesHidden && phone) };
+    }
+
+    // ---- panes ----
+    function ctPane(it) {
+      let p = CT.panes.get(it.key);
+      if (p) return p;
+      p = document.createElement('div');
+      p.className = 'ct-pane'; p.dataset.key = it.key; p.dataset.kind = it.kind;
+      p.setAttribute('role', 'tabpanel');
+      if (it.kind === 'screen') {
+        const v = document.createElement('video');
+        v.muted = true; v.autoplay = true; v.playsInline = true; v.setAttribute('playsinline', '');
+        v.addEventListener('loadedmetadata', () => { try { layout(); } catch (e) {} });
+        v.addEventListener('resize', () => { try { layout(); } catch (e) {} });
+        const cap = document.createElement('div'); cap.className = 'ct-cap';
+        p.appendChild(v); p.appendChild(cap);
+      } else if (it.kind === 'agenda') {
+        p.classList.add('ag');
+      } else {
+        // The app's own pane is pinned over this box (moving an iframe reloads it).
+        p.classList.add('ct-appbox');
+      }
+      CT.body.appendChild(p);
+      CT.panes.set(it.key, p);
+      return p;
+    }
+    // A screen's picture: my own capture, else the sharer's stage feed, else
+    // the stage strip (a seat that does not hold the feed paints the strip).
+    function ctScreenTrack(sid) {
+      if (sid === myId) {
+        const t = typeof screenStream !== 'undefined' && screenStream && screenStream.getVideoTracks()[0];
+        if (t && t.readyState !== 'ended') return { track: t, from: 'own' };
+      }
+      const f = stageFeedVideo(sid);
+      if (f && f.track) return { track: f.track, from: 'stg' };
+      // The sharer's own stage feed, held here but not yet painted by its
+      // hidden element (a browser that never decodes a hidden video): the
+      // track is live, so the tab plays it itself.
+      try {
+        const m = mosIn && mosIn.get('stg:' + sid);
+        const t = m && m.stream && m.stream.getVideoTracks && m.stream.getVideoTracks()[0];
+        if (t && t.readyState !== 'ended') return { track: t, from: 'stg' };
+      } catch (e) {}
+      const sgs = document.querySelector('#stagefeed [data-row="sgs"] video');
+      const st = sgs && sgs.srcObject;
+      const t = st && st.getVideoTracks && st.getVideoTracks()[0];
+      if (t && t.readyState !== 'ended') return { track: t, from: 'strip' };
+      return null;
+    }
+    function ctPaintScreen(p, it) {
+      const v = p.querySelector('video');
+      const src = ctScreenTrack(it.sid);
+      const tr = src ? src.track : null;
+      if (v && v._vt !== tr) {
+        v._vt = tr;
+        try { v.srcObject = tr ? new MediaStream([tr]) : null; } catch (e) { v.srcObject = null; }
+        if (tr) { const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); }
+        ctNote('screen-src', { sid: String(it.sid).slice(0, 8), from: src ? src.from : 'none' });
+      }
+      p.dataset.src = src ? src.from : 'none';
+      const cap = p.querySelector('.ct-cap');
+      if (cap) {
+        const want = ctLabel(it);
+        let lb = cap.querySelector('.ct-capnm');
+        if (!lb) { lb = document.createElement('span'); lb.className = 'ct-capnm'; cap.appendChild(lb); }
+        if (lb.textContent !== want) lb.textContent = want;
+        let stop = cap.querySelector('.ct-stop');
+        if (it.mine && !stop) {
+          stop = document.createElement('button'); stop.type = 'button'; stop.className = 'ct-stop';
+          stop.addEventListener('click', () => { try { stopScreenShare(ctText('ctStopShare', 'Stop sharing')); } catch (e) {} });
+          cap.appendChild(stop);
+        } else if (!it.mine && stop) stop.remove();
+        if (stop) stop.textContent = ctText('ctStopShare', 'Stop sharing');
+      }
+    }
+
+    // ---- the tab bar ----
+    function ctPaintBar(plan) {
+      const MC = GifOS.meetContent;
+      const st = CT.st;
+      const have = new Map();
+      for (const b of Array.from(CT.tabs.children)) have.set(b.dataset.key, b);
+      let pos = 0;
+      for (const it of CT.items) {
+        let b = have.get(it.key);
+        if (!b) {
+          b = document.createElement('button');
+          b.type = 'button'; b.className = 'ct-tab'; b.dataset.key = it.key; b.setAttribute('role', 'tab');
+          b.innerHTML = '<span class="ct-tabnm"></span><span class="ct-tabtime"></span><span class="ct-dot" aria-hidden="true"></span>';
+          const key = it.key;
+          b.addEventListener('click', () => ctSelect(key, 'tab'));
+          b.addEventListener('keydown', (e) => {
+            if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+            const list = Array.from(CT.tabs.children);
+            const i = list.indexOf(b);
+            const n = list[(i + (e.key === 'ArrowRight' ? 1 : list.length - 1)) % list.length];
+            if (n) { e.preventDefault(); n.focus(); ctSelect(n.dataset.key, 'key'); }
+          });
+        }
+        have.delete(it.key);
+        if (CT.tabs.children[pos] !== b) CT.tabs.insertBefore(b, CT.tabs.children[pos] || null);
+        pos++;
+        const label = ctLabel(it);
+        const nm = b.querySelector('.ct-tabnm');
+        if (nm.textContent !== label) nm.textContent = label;
+        const sel = plan.show.indexOf(it.key) >= 0 && (plan.show.length === 1 || st.all);
+        const on = st.all ? plan.show.indexOf(it.key) >= 0 : it.key === st.sel;
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+        b.tabIndex = it.key === st.sel ? 0 : -1;
+        const dot = MC.badged(st, it.key);
+        b.classList.toggle('changed', dot);
+        b.setAttribute('aria-label', dot ? ctText('ctChanged', '{tab}, changed', { tab: label }) : label);
+        b.dataset.sel = sel ? '1' : '0';
+        const tm = b.querySelector('.ct-tabtime');
+        const t = it.kind === 'agenda' ? ctAgendaShortTime() : '';
+        if (tm.textContent !== t) tm.textContent = t;
+        tm.classList.toggle('over', it.kind === 'agenda' && ctAgendaOver());
+      }
+      for (const b of have.values()) b.remove();
+      // Tools: bring everyone, see everything, faces (phone), presentation view.
+      const selIt = CT.items.find((i) => i.key === st.sel) || null;
+      const mayBring = !!(selIt && myId && MC.canBring(myId, selIt, { adminRoom: hasAdminRoom(), isAdmin: !!amAdmin, agendaEditor: ctCanEditAgenda() }));
+      ctTool('bring', mayBring && !st.all, CT_ICONS.bring, ctText('ctBring', 'Bring everyone here'), ctText('ctBringTip', 'Everyone in the meeting switches to this tab. They can switch back.'), () => ctBring(st.sel));
+      ctTool('all', CT.items.length > 1, st.all ? CT_ICONS.tabs : CT_ICONS.all, st.all ? ctText('ctTabs', 'One at a time') : ctText('ctSeeAll', 'See everything'), st.all ? ctText('ctTabsTip', 'Show one tab at a time') : ctText('ctSeeAllTip', 'Show every tab side by side'), () => { st.all = !st.all; ctNote('all', { on: st.all }); GifOS.meetContent.sync(st, CT.items); try { layout(); } catch (e) {} });
+      ctTool('faces', CT.phone && window.__meetView !== 'drag', CT_ICONS.faces, CT.facesHidden ? ctText('ctShowFaces', 'Show faces') : ctText('ctHideFaces', 'Hide faces'), '', () => {
+        CT.facesHidden = !CT.facesHidden;
+        try { localStorage.setItem('meet.content.v1.faces', CT.facesHidden ? 'off' : 'on'); } catch (e) {}
+        ctNote('faces', { hidden: CT.facesHidden });
+        try { layout(); } catch (e) {}
+      }, CT.facesHidden);
+      ctTool('present', true, CT_ICONS.present, ctText('ctPresent', 'Presentation view'), ctText('ctPresentTip', 'Fill the screen with this tab and the speaker in the corner (double-click works too)'), () => ctPresent(true, 'button'));
+    }
+    function ctTool(id, show, icon, word, tip, act, pressed) {
+      let b = CT.tools.querySelector('[data-tool="' + id + '"]');
+      if (!b) {
+        b = document.createElement('button'); b.type = 'button'; b.className = 'ct-tool'; b.dataset.tool = id;
+        b.innerHTML = '<span class="ct-ic"></span><span class="ct-word"></span>';
+        b.addEventListener('click', () => { if (b._act) b._act(); });
+        CT.tools.appendChild(b);
+      }
+      b._act = act;
+      b.hidden = !show;
+      const ic = b.querySelector('.ct-ic');
+      if (ic.dataset.icon !== icon) { ic.innerHTML = icon; ic.dataset.icon = icon; }
+      const wd = b.querySelector('.ct-word');
+      if (wd.textContent !== word) wd.textContent = word;
+      b.setAttribute('aria-label', word);
+      if (tip) b.title = tip; else b.removeAttribute('title');
+      if (pressed != null) b.setAttribute('aria-pressed', pressed ? 'true' : 'false');
+    }
+    function ctSelect(key, why) {
+      if (!CT) return;
+      if (GifOS.meetContent.select(CT.st, key)) {
+        CT.st.all = false;
+        ctNote('select', { key: key, why: why || '' });
+        try { layout(); } catch (e) {}
+      }
+    }
+
+    // ---- placing the area and its panes (after the layout placed the tile) ----
+    function ctPinApp() {
+      const pane = document.getElementById('apppane');
+      const seat = document.getElementById('appseat');
+      if (!pane || !seat) return;
+      for (const [k, v] of [['--seat-x', 'left'], ['--seat-y', 'top'], ['--seat-w', 'width'], ['--seat-h', 'height']]) {
+        if (seat.style[v]) pane.style.setProperty(k, seat.style[v]);
+      }
+    }
+    function contentPlace(phone) {
+      if (!CT) return;
+      const MC = GifOS.meetContent;
+      const el = CT.el;
+      const body = document.body;
+      if (!CT.items.length) {
+        el.hidden = true;
+        body.classList.remove('ct-on', 'ct-app-off', 'ct-present', 'ct-tabs');
+        for (const p of CT.panes.values()) { const v = p.querySelector('video'); if (v) { v.srcObject = null; v._vt = null; } p.remove(); }
+        CT.panes.clear();
+        ctInset(false);
+        return;
+      }
+      body.classList.add('ct-on');
+      // Panes for the items now; drop the ones whose item ended.
+      const keys = new Set(CT.items.map((i) => i.key));
+      for (const [k, p] of CT.panes) if (!keys.has(k)) { const v = p.querySelector('video'); if (v) { v.srcObject = null; v._vt = null; } p.remove(); CT.panes.delete(k); }
+      for (const it of CT.items) ctPane(it);
+      // The box: the tile the layout placed, the whole screen in
+      // presentation view, or the big view of Focus.
+      const feed = document.getElementById('feed');
+      const fr = feed ? feed.getBoundingClientRect() : { left: 0, top: 0 };
+      let box = null, fixed = false;
+      const focusC = ctFocusOnContent();
+      if (CT.present) {
+        box = { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight }; fixed = true;
+      } else if (focusC) {
+        const r = fsmain.getBoundingClientRect();
+        box = { x: r.left, y: r.top, w: r.width, h: r.height }; fixed = true;
+      } else if (!el.classList.contains('comfy-off') && el.style.width) {
+        box = { x: parseFloat(el.style.left) || 0, y: parseFloat(el.style.top) || 0, w: parseFloat(el.style.width) || 0, h: parseFloat(el.style.height) || 0 };
+      }
+      if (!box || !(box.w > 0) || !(box.h > 0)) {
+        el.hidden = true;
+        body.classList.add('ct-app-off');
+        ctInset(false);
+        return;
+      }
+      el.hidden = false;
+      el.classList.toggle('ct-fixed', fixed);
+      // Fixed (presentation view, Focus) the area lives on the body, above
+      // every layer of the meeting; in the gallery it lives in the feed.
+      const home = fixed ? document.body : feed;
+      if (home && el.parentNode !== home) home.appendChild(el);
+      body.classList.toggle('ct-present', !!CT.present);
+      if (fixed) {
+        el.style.position = 'fixed';
+        el.style.left = box.x + 'px'; el.style.top = box.y + 'px'; el.style.width = box.w + 'px'; el.style.height = box.h + 'px';
+        el.classList.remove('comfy-off');
+      }
+      const view = CT.present ? 'present' : (focusC ? 'focus' : (window.__meetGallery === 'scroll' ? 'scroll' : (window.__meetView || 'fit')));
+      let plan;
+      if (CT.present) plan = { tabs: false, show: [CT.st.sel || CT.items[0].key], stack: false };
+      else if (focusC) plan = { tabs: false, show: [String(fsmain.dataset.key).slice(8)], stack: false };
+      else plan = MC.plan({ view: view, keys: CT.items.map((i) => i.key), sel: CT.st.sel, all: CT.st.all });
+      CT.plan = plan;
+      body.classList.toggle('ct-tabs', !!plan.tabs);
+      CT.bar.hidden = !plan.tabs;
+      // The tab bar starts under the meeting's header chip when the area
+      // runs up under it (a phone: the feed starts at the top edge).
+      let barTop = 0;
+      if (plan.tabs && !fixed) {
+        const chip = document.querySelector('.topchip');
+        if (chip && chip.getClientRects().length && getComputedStyle(chip).display !== 'none') {
+          const cr = chip.getBoundingClientRect();
+          const top = fr.top + box.y - (feed ? feed.scrollTop : 0);
+          if (cr.bottom > top && cr.top < top + 60) barTop = Math.min(Math.round(box.h / 3), Math.ceil(cr.bottom - top + 4));
+        }
+      }
+      CT.bar.style.top = barTop + 'px';
+      const barH = plan.tabs ? barTop + (phone ? 44 : 48) : 0;
+      const inner = { x: 0, y: barH, w: box.w, h: Math.max(1, box.h - barH) };
+      const shown = plan.show.map((k) => CT.items.find((i) => i.key === k)).filter(Boolean);
+      const asp = shown.map((it) => ctAspect(it, inner.w));
+      let rects;
+      if (plan.stack) rects = MC.stack(inner, asp.map((a) => a || 16 / 9), 8).rects;
+      else if (shown.length > 1) rects = MC.grid(inner, asp, 8);
+      else rects = [inner];
+      // The app's box in screen terms (the pane is fixed).
+      const toScreen = (r) => fixed ? { x: box.x + r.x, y: box.y + r.y, w: r.w, h: r.h }
+        : { x: fr.left + box.x + r.x - (feed ? feed.scrollLeft : 0), y: fr.top + box.y + r.y - (feed ? feed.scrollTop : 0), w: r.w, h: r.h };
+      let appShown = false;
+      for (const it of CT.items) {
+        const p = CT.panes.get(it.key);
+        const i = shown.indexOf(it);
+        if (i < 0) { p.hidden = true; continue; }
+        const r = rects[i];
+        p.hidden = false;
+        p.style.left = r.x + 'px'; p.style.top = r.y + 'px'; p.style.width = r.w + 'px'; p.style.height = r.h + 'px';
+        // With no tab bar (Scroll, Focus) each item carries its own
+        // presentation view button: still one tap from anywhere.
+        let pv = p.querySelector(':scope > .ct-pview');
+        if (!plan.tabs && !CT.present) {
+          if (!pv) {
+            pv = document.createElement('button'); pv.type = 'button'; pv.className = 'ct-pview'; pv.innerHTML = CT_ICONS.present;
+            const key = it.key;
+            pv.addEventListener('click', () => { GifOS.meetContent.select(CT.st, key); ctPresent(true, 'pane'); });
+            p.appendChild(pv);
+          }
+          pv.setAttribute('aria-label', ctText('ctPresent', 'Presentation view')); pv.title = ctText('ctPresent', 'Presentation view');
+          pv.hidden = false;
+        } else if (pv) pv.hidden = true;
+        if (it.kind === 'screen') ctPaintScreen(p, it);
+        else if (it.kind === 'agenda') ctPaintAgenda(p);
+        else if (it.kind === 'app') {
+          appShown = true;
+          const seat = document.getElementById('appseat');
+          const s = toScreen(r);
+          if (seat) {
+            seat.style.position = 'absolute';
+            seat.style.left = s.x + 'px'; seat.style.top = s.y + 'px'; seat.style.width = s.w + 'px'; seat.style.height = s.h + 'px';
+          }
+        }
+      }
+      // Screens that are not shown let go of their picture (one sink less).
+      for (const it of CT.items) {
+        if (it.kind !== 'screen' || shown.indexOf(it) >= 0) continue;
+        const p = CT.panes.get(it.key); const v = p && p.querySelector('video');
+        if (v && v._vt) { v.srcObject = null; v._vt = null; }
+      }
+      body.classList.toggle('ct-app-off', !appShown);
+      if (appShown) ctPinApp();
+      if (plan.tabs) ctPaintBar(plan);
+      CT.exit.hidden = !CT.present;
+      if (CT.present) { CT.exit.setAttribute('aria-label', ctText('ctExitPresent', 'Exit presentation view')); CT.exit.title = ctText('ctExitPresent', 'Exit presentation view'); }
+      ctInset(!!CT.present, shown[0]);
+      const sig = view + '|' + plan.show.join(',') + '|' + Math.round(box.w) + 'x' + Math.round(box.h) + '|' + (CT.st.all ? 'all' : 'one');
+      if (sig !== CT.lastSig) { CT.lastSig = sig; ctNote('place', { view: view, show: plan.show.slice(), tabs: !!plan.tabs, box: [Math.round(box.x), Math.round(box.y), Math.round(box.w), Math.round(box.h)] }); }
+      ctAgendaTickArm();
+    }
+
+    // ---- Focus: the content tabs are in the picker strip ----
+    function ctFocusSources() {
+      if (!CT || !ctRefresh().length) return [];
+      if (!CT.fsStreams) CT.fsStreams = new Map();
+      const out = [];
+      for (const it of CT.items) {
+        // The content region's shape (GifOS.meetViewMode.content): a screen
+        // brings its stream; the app and the agenda have no picture of their
+        // own (the area is drawn over the big view when one is picked).
+        const e = { key: it.key, label: ctLabel(it), kind: it.kind };
+        if (it.kind === 'screen') {
+          const src = ctScreenTrack(it.sid);
+          let c = CT.fsStreams.get(it.key);
+          if (src && (!c || c.track !== src.track)) { c = { track: src.track, stream: new MediaStream([src.track]) }; CT.fsStreams.set(it.key, c); }
+          if (src && c) e.stream = c.stream;
+          else e.v = { srcObject: null };
+        } else e.v = { srcObject: null };
+        out.push(e);
+      }
+      return out;
+    }
+    // Focus moved on or off a content tab: the area goes back to the gallery,
+    // or onto the big view.
+    function ctFocusSync() {
+      if (!CT) return;
+      const on = ctFocusOnContent();
+      if (on) {
+        const k = String(fsmain.dataset.key).slice(8);
+        if (CT.st.sel !== k) GifOS.meetContent.select(CT.st, k);
+        if (!CT.focusC) { CT.focusC = true; ctNote('focus-content', { key: k }); try { layout(); } catch (e) {} }
+        else contentPlace(CT.phone);
+      } else if (CT.focusC) {
+        CT.focusC = false;
+        ctNote('focus-content', { key: null });
+        if (!CT.present) { CT.el.classList.remove('ct-fixed'); CT.el.style.position = ''; }
+        try { layout(); } catch (e) {}
+      }
+    }
+
+    // ---- presentation view: one tap, the item fills the screen, the speaker inset ----
+    function ctPresent(on, why) {
+      // The meeting's Present is the one presentation view (Drag: the content
+      // takes the screen, the people inset; full screen; sideways where the
+      // browser allows). The tab bar's button and a double-click take it.
+      const pb = document.getElementById('presentbtn');
+      if (pb) {
+        if (on) { ctNote('present', { on: true, why: why || '', key: CT && CT.st.sel }); pb.click(); }
+        else if (window.__meetView === 'drag' && typeof window.__meetSetView === 'function') {
+          try { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {}); } catch (e) {}
+          window.__meetSetView('fit', 'present-exit');
+        }
+        return;
+      }
+      if (!CT || !CT.items.length) on = false;
+      if (!CT || !!CT.present === !!on) return;
+      CT.present = !!on;
+      ctNote('present', { on: CT.present, why: why || '', key: CT.st.sel });
+      if (on) {
+        // The document holds the screen (never the area itself: the app's pane
+        // and the sheets live outside it). A phone turns sideways where the
+        // browser allows it.
+        const own = !document.fullscreenElement && document.documentElement.requestFullscreen;
+        CT.presentFs = false;
+        if (own) {
+          try {
+            document.documentElement.requestFullscreen().then(() => {
+              CT.presentFs = true;
+              try { if (screen.orientation && screen.orientation.lock && CT.phone) screen.orientation.lock('landscape').catch(() => {}); } catch (e) {}
+            }).catch(() => {});
+          } catch (e) {}
+        }
+      } else {
+        try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (e) {}
+        if (CT.presentFs && document.fullscreenElement && document.exitFullscreen) { try { document.exitFullscreen().catch(() => {}); } catch (e) {} }
+        CT.presentFs = false;
+        CT.el.classList.remove('ct-fixed');
+        CT.el.style.position = '';
+      }
+      document.body.classList.toggle('ct-present', CT.present);
+      try { layout(); } catch (e) {}
+      if (on) { try { CT.exit.focus(); } catch (e) {} }
+    }
+    // The speaker in the corner: whoever talks now (not the person whose
+    // screen fills the view: their picture is the screen), held a moment so a
+    // cough does not flip it, else the last talker, else someone on stage.
+    function ctSpeakerPick(selIt) {
+      const T = GifOS.timings || {};
+      const hold = +T.FOLLOW_HOLD_MS > 0 ? +T.FOLLOW_HOLD_MS : 0;
+      const skip = selIt && selIt.kind === 'screen' ? selIt.sid : null;
+      const live = (pid) => {
+        const p = peers.get(pid);
+        const v = p && p.video;
+        return !!(p && v && v.srcObject && !seatDark(statusOf.get(pid)) && pid !== skip);
+      };
+      const now = Date.now();
+      if (CT.speaker && !live(CT.speaker)) CT.speaker = null;
+      if (CT.speaker && speakingOf.get(CT.speaker)) return CT.speaker;
+      if (!CT.speaker || now - CT.speakerAt >= hold) {
+        for (const [pid, on] of speakingOf) if (on && pid !== 'me' && live(pid)) { CT.speaker = pid; CT.speakerAt = now; ctNote('inset', { to: String(pid).slice(0, 8) }); return pid; }
+      }
+      if (CT.speaker) return CT.speaker;
+      let stg = [];
+      try { stg = stageIds(); } catch (e) {}
+      for (const pid of stg) if (pid !== myId && live(pid)) { CT.speaker = pid; CT.speakerAt = now; return pid; }
+      return null;
+    }
+    function ctInset(on, selIt) {
+      const box = CT && CT.inset;
+      if (!box) return;
+      const v = box.querySelector('video');
+      const pid = on ? ctSpeakerPick(selIt) : null;
+      const p = pid ? peers.get(pid) : null;
+      // A person on stage sends their camera on the stage feed; their row
+      // picture is parked. Take the stage feed first, the tile second.
+      let vt = null;
+      if (pid) {
+        try {
+          const m = mosIn && mosIn.get('stg:' + pid);
+          const t = m && m.stream && m.stream.getVideoTracks && m.stream.getVideoTracks()[0];
+          if (t && t.readyState !== 'ended') vt = t;
+        } catch (e) {}
+      }
+      if (!vt) {
+        const st = p && p.video && p.video.srcObject;
+        vt = (st && st.getVideoTracks && st.getVideoTracks()[0]) || null;
+      }
+      if (!on || !vt) { box.hidden = true; if (v.srcObject) { v.srcObject = null; v._vt = null; } return; }
+      if (v._vt !== vt) { v._vt = vt; v.srcObject = new MediaStream([vt]); const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); }
+      const nm = box.querySelector('.ct-inset-nm');
+      const want = displayName(pid);
+      if (nm.textContent !== want) nm.textContent = want;
+      const r = GifOS.meetContent.presentRects(window.innerWidth, window.innerHeight, 16 / 9, true).inset;
+      box.style.left = r.x + 'px'; box.style.top = r.y + 'px'; box.style.width = r.w + 'px'; box.style.height = r.h + 'px';
+      box.hidden = false;
+      box.dataset.pid = pid;
+    }
+
+    // ---- bring everyone to a tab: a signed request, never an order ----
+    async function ctBring(key) {
+      if (!CT || !key || !myId || !myIdentity) return;
+      const it = CT.items.find((i) => i.key === key);
+      if (!it) return;
+      const at = Date.now();
+      const sp = JSON.stringify({ t: 'cbring', room: roomKey(), by: myId, key: key, at: at });
+      let sig;
+      try { sig = await net.edSign(myIdentity.priv, sp); } catch (e) { return; }
+      const m = { k: 'cbring', sp: sp, sig: sig, pub: myIdentity.pubB64 };
+      GifOS.meetContent.bring(CT.st, { key: key, at: at, by: myId });
+      sendAll(m);
+      ctNote('bring-out', { key: key });
+      setStatus(ctText('ctBroughtYou', 'Everyone was brought to {tab}.', { tab: ctLabel(it) }));
+      try { layout(); } catch (e) {}
+    }
+    async function ctBringIn(m) {
+      if (!ctInit() || !m || typeof m.sp !== 'string' || typeof m.sig !== 'string' || typeof m.pub !== 'string' || m.sp.length > 400) return;
+      let o; try { o = JSON.parse(m.sp); } catch (e) { return; }
+      if (!o || o.t !== 'cbring' || o.room !== roomKey() || typeof o.key !== 'string' || typeof o.by !== 'string' || !(+o.at > 0)) return;
+      if (o.by === myId) return;
+      try {
+        const pid = await GifOS.meshIdentity.peerIdOf(m.pub);
+        if (pid !== o.by) return;
+        if (!(await net.edVerify(m.pub, m.sig, m.sp))) return;
+      } catch (e) { return; }
+      ctRefresh();
+      const it = CT.items.find((i) => i.key === o.key);
+      const ctx = { adminRoom: hasAdminRoom(), isAdmin: Array.isArray(admins) && admins.indexOf(o.by) >= 0, agendaEditor: !!GifOS.meetAgenda.canEdit(CT.ag, o.by, ctAgCtx(o.by)) };
+      if (!it || !GifOS.meetContent.canBring(o.by, it, ctx)) { ctNote('bring-refused', { key: o.key, by: String(o.by).slice(0, 8) }); return; }
+      const moved = GifOS.meetContent.bring(CT.st, { key: o.key, at: +o.at, by: o.by });
+      ctNote('bring-in', { key: o.key, by: String(o.by).slice(0, 8), moved: moved });
+      if (moved) {
+        setStatus(ctText('ctBrought', '{name} brought everyone to {tab}.', { name: displayName(o.by), tab: ctLabel(it) }));
+        try { layout(); } catch (e) {}
+      }
+    }
+
+    // ---- the agenda: state, the wire, the editor ----
+    function ctAgendaWire() {
+      if (!CT || !CT.ag || !CT.agW || !(CT.ag.v > 0)) return undefined;
+      return { a: CT.ag, w: CT.agW, g: CT.agG || undefined, el: CT.ag.cur >= 0 && CT.agStart ? Math.max(0, Date.now() - CT.agStart) : 0 };
+    }
+    // proven: the signature checked out as the host's own (an admin room's
+    // agenda is honored only from a verified admin signature).
+    function ctAgendaTake(a, w, el, ageMs, why, proven, g) {
+      const MA = GifOS.meetAgenda;
+      const prev = CT.ag;
+      const ctx = hasAdminRoom() ? { adminRoom: true, isAdmin: !!proven } : { adminRoom: false, grantOk: !!g };
+      if (!MA.accept(prev, a, ctx)) { ctNote('agenda-refused', { v: a.v, by: String(a.by).slice(0, 8), why: why }); return false; }
+      const curId = (x) => (x && x.cur >= 0 && x.items[x.cur]) ? x.items[x.cur].id + '#' + x.cur : '';
+      CT.ag = a; CT.agW = w;
+      // The owner's grant travels with every version it still describes.
+      if (g) CT.agG = g;
+      else if (!prev || prev.owner !== a.owner || JSON.stringify(prev.ed) !== JSON.stringify(a.ed)) CT.agG = null;
+      if (!prev || curId(prev) !== curId(a) || !CT.agStart) CT.agStart = Date.now() - Math.max(0, +el || 0) - Math.max(0, +ageMs || 0);
+      if (a.items.length) CT.agLocal = false;
+      ctNote('agenda', { v: a.v, cur: a.cur, n: a.items.length, by: String(a.by).slice(0, 8), why: why });
+      const visibleAll = window.__meetGallery === 'scroll';
+      ctRefresh();
+      if (!prev || MA.body(prev) !== MA.body(a)) GifOS.meetContent.bump(CT.st, 'agenda', visibleAll);
+      try { layout(); } catch (e) {}
+      return true;
+    }
+    async function ctAgendaSign(a) {
+      const MA = GifOS.meetAgenda;
+      const h = MA.hash(a);
+      if (hasAdminRoom()) return admSigned('agenda', { h: h, v: a.v });
+      if (!myIdentity || !myId) return null;
+      const sp = JSON.stringify({ t: 'agenda', room: roomKey(), by: myId, v: a.v, h: h });
+      return { sp: sp, sig: await net.edSign(myIdentity.priv, sp), pub: myIdentity.pubB64 };
+    }
+    async function ctAgendaVerify(a, w) {
+      if (!w || typeof w.sp !== 'string' || typeof w.sig !== 'string' || typeof w.pub !== 'string' || w.sp.length > 600) return false;
+      const MA = GifOS.meetAgenda;
+      const h = MA.hash(a);
+      if (hasAdminRoom()) {
+        // Infinity: a latecomer re-proves the version the room holds. An old
+        // version replayed loses to the newer one by v.
+        const o = await admVerify(w, 'agenda', Infinity);
+        return !!(o && o.h === h && o.v === a.v && o.by === a.by);
+      }
+      let o; try { o = JSON.parse(w.sp); } catch (e) { return false; }
+      if (!o || o.t !== 'agenda' || o.room !== roomKey() || o.by !== a.by || o.v !== a.v || o.h !== h) return false;
+      try {
+        if ((await GifOS.meshIdentity.peerIdOf(w.pub)) !== a.by) return false;
+        return !!(await net.edVerify(w.pub, w.sig, w.sp));
+      } catch (e) { return false; }
+    }
+    async function ctAgendaIn(m, why) {
+      if (!ctInit() || !m) return;
+      const ageMs = gossipAgeMs; // read now: it is cleared when this frame's handler returns
+      const a = GifOS.meetAgenda.clean(m.a);
+      if (!a || !a.by) return;
+      if (CT.ag && (a.v < CT.ag.v || (a.v === CT.ag.v && GifOS.meetAgenda.hash(a) === GifOS.meetAgenda.hash(CT.ag)))) return;
+      if (!(await ctAgendaVerify(a, m.w))) { ctNote('agenda-bad-sig', { v: a.v, why: why }); return; }
+      const g = (!hasAdminRoom() && m.g && (await ctGrantVerify(a, m.g))) ? m.g : null;
+      ctAgendaTake(a, m.w, +m.el || 0, ageMs, why, true, g);
+    }
+    // Open rooms: the owner signs who may edit, so a latecomer can take an
+    // editor's version without having seen the hand-over.
+    async function ctGrantSign(a) {
+      if (!myIdentity || !myId) return null;
+      const sp = JSON.stringify({ t: 'agenda-ed', room: roomKey(), g: GifOS.meetAgenda.grantBody(a) });
+      return { sp: sp, sig: await net.edSign(myIdentity.priv, sp), pub: myIdentity.pubB64 };
+    }
+    async function ctGrantVerify(a, g) {
+      if (!g || typeof g.sp !== 'string' || typeof g.sig !== 'string' || typeof g.pub !== 'string' || g.sp.length > 2000) return false;
+      let o; try { o = JSON.parse(g.sp); } catch (e) { return false; }
+      if (!o || o.t !== 'agenda-ed' || o.room !== roomKey() || o.g !== GifOS.meetAgenda.grantBody(a)) return false;
+      try {
+        if ((await GifOS.meshIdentity.peerIdOf(g.pub)) !== a.owner) return false;
+        return !!(await net.edVerify(g.pub, g.sig, g.sp));
+      } catch (e) { return false; }
+    }
+    async function ctAgendaPublish(next, why) {
+      if (!next || !CT) return false;
+      const MA = GifOS.meetAgenda;
+      const a = MA.clean(next);
+      if (!a) return false;
+      if (!MA.canEdit(CT.ag, myId, ctAgCtx(myId))) { setStatus(ctAgendaWhoText()); return false; }
+      a.by = myId;
+      let w = null;
+      try { w = await ctAgendaSign(a); } catch (e) { w = null; }
+      if (!w) { ctNote('agenda-unsigned', { why: why }); return false; }
+      // The owner signs the list of editors whenever it changes; an editor
+      // passes the owner's grant on unchanged.
+      let g = null;
+      if (!hasAdminRoom()) {
+        const same = CT.ag && CT.agG && CT.ag.owner === a.owner && JSON.stringify(CT.ag.ed) === JSON.stringify(a.ed);
+        if (same) g = CT.agG;
+        else if (a.owner === myId) { try { g = await ctGrantSign(a); } catch (e) { g = null; } }
+      }
+      const curMoved = !CT.ag || CT.ag.cur !== a.cur || ((CT.ag.items[CT.ag.cur] || {}).id !== (a.items[a.cur] || {}).id);
+      const el = curMoved ? 0 : (CT.agStart ? Date.now() - CT.agStart : 0);
+      if (!ctAgendaTake(a, w, el, 0, 'local:' + (why || ''), !!amAdmin, g)) return false;
+      sendAll({ k: 'agenda', a: a, w: w, el: el, g: g || undefined });
+      return true;
+    }
+    function ctAgendaWhoText() {
+      if (hasAdminRoom()) return ctText('agOnlyHost', 'Only the host can change the agenda.');
+      const owner = CT && CT.ag && CT.ag.items.length ? CT.ag.owner : null;
+      if (!owner) return ctText('agAnyone', 'Anyone can share an agenda in this room.');
+      return ctText('agOnlyOwner', 'Only {name} and the people they choose can change the agenda.', { name: owner === myId ? ctText('ctYou', 'you') : displayName(owner) });
+    }
+    function ctAgendaClock() {
+      if (!CT || !CT.ag) return null;
+      return GifOS.meetAgenda.clock(CT.ag, CT.agStart, Date.now());
+    }
+    function ctAgendaShortTime() {
+      const c = ctAgendaClock();
+      if (!c || !c.timed) return '';
+      const MA = GifOS.meetAgenda;
+      return c.over > 0 ? '+' + MA.mmss(c.over) : MA.mmss(c.left);
+    }
+    function ctAgendaOver() { const c = ctAgendaClock(); return !!(c && c.timed && c.over > 0); }
+    // The clock text moves once a second while an item with a duration runs.
+    function ctAgendaTickArm() {
+      const T = GifOS.timings || {};
+      const every = +T.AGENDA_TICK_MS > 0 ? +T.AGENDA_TICK_MS : 0;
+      const run = !!(every && CT && CT.ag && CT.ag.cur >= 0 && CT.items.some((i) => i.kind === 'agenda'));
+      if (run && !CT.agTick) {
+        CT.agTick = setInterval(() => {
+          if (!CT || !CT.ag || CT.ag.cur < 0) { clearInterval(CT.agTick); CT.agTick = 0; return; }
+          try {
+            const p = CT.panes.get('agenda');
+            if (p && !p.hidden) ctPaintAgendaClock(p);
+            if (CT.plan && CT.plan.tabs) ctPaintBar(CT.plan);
+          } catch (e) {}
+        }, every);
+      } else if (!run && CT && CT.agTick) { clearInterval(CT.agTick); CT.agTick = 0; }
+    }
+    function ctPaintAgendaClock(p) {
+      const MA = GifOS.meetAgenda;
+      const c = ctAgendaClock();
+      const now = p.querySelector('.ag-now');
+      if (!now) return;
+      now.hidden = !c;
+      if (!c) return;
+      const t = now.querySelector('.ag-nowt');
+      if (t.textContent !== c.item.t) t.textContent = c.item.t;
+      const bar = now.querySelector('.ag-bar');
+      const fill = now.querySelector('.ag-fill');
+      const left = now.querySelector('.ag-left');
+      bar.hidden = !c.timed;
+      if (c.timed) {
+        fill.style.width = Math.round(c.frac * 100) + '%';
+        now.classList.toggle('over', c.over > 0);
+        left.textContent = c.over > 0 ? ctText('agOver', '{t} over', { t: MA.mmss(c.over) }) : ctText('agLeft', '{t} left', { t: MA.mmss(c.left) });
+      } else {
+        now.classList.remove('over');
+        left.textContent = MA.mmss(c.ms);
+      }
+    }
+    function ctAgBtn(cls, word, act, title) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = word;
+      if (title) b.title = title;
+      b.addEventListener('click', act);
+      return b;
+    }
+    // The agenda pane, painted again whenever its version, its rights or the
+    // edit switch change (a clock tick only touches the clock).
+    function ctPaintAgenda(p) {
+      const MA = GifOS.meetAgenda;
+      const a = CT.ag || MA.empty(myId);
+      const may = ctCanEditAgenda();
+      const isOwner = !!(CT.ag && CT.ag.owner === myId && CT.ag.items.length);
+      const mayHand = MA.canHand(CT.ag, myId, ctAgCtx(myId));
+      if (!may && CT.agEdit) CT.agEdit = false;
+      const sig = [MA.body(a), may ? 1 : 0, CT.agEdit ? 1 : 0, mayHand ? 1 : 0, uiLang(), mayHand ? rosterIds.join(',') : ''].join('|');
+      if (p._sig === sig) { ctPaintAgendaClock(p); return; }
+      p._sig = sig;
+      const keepPv = p.querySelector(':scope > .ct-pview');
+      p.textContent = '';
+      if (keepPv) p.appendChild(keepPv);
+      const head = document.createElement('div'); head.className = 'ag-head';
+      const h = document.createElement('h3'); h.className = 'ag-title'; h.textContent = ctText('ctAgenda', 'Agenda');
+      head.appendChild(h);
+      if (a.items.length) {
+        const pos = document.createElement('span'); pos.className = 'ag-pos';
+        const tot = MA.totalMin(a);
+        pos.textContent = (a.cur >= 0 ? ctText('agPos', '{i} of {n}', { i: a.cur + 1, n: a.items.length }) : ctText('agNotStarted', 'Not started')) + (tot ? ' · ' + ctText('agTotal', '{n} min in all', { n: tot }) : '');
+        head.appendChild(pos);
+      }
+      const tools = document.createElement('div'); tools.className = 'ag-tools';
+      if (may && a.items.length && !CT.agEdit) {
+        if (a.cur > 0) tools.appendChild(ctAgBtn('ag-btn ag-back', ctText('agBack', 'Back'), () => ctAgendaPublish(MA.prev(CT.ag, myId), 'back')));
+        const last = a.cur >= a.items.length - 1;
+        if (!last || a.cur < 0) tools.appendChild(ctAgBtn('ag-btn ag-next', a.cur < 0 ? ctText('agStart', 'Start') : ctText('agNext', 'Next'), () => ctAgendaPublish(MA.next(CT.ag, myId), 'next')));
+      }
+      if (may) tools.appendChild(ctAgBtn('ag-btn ag-edit', CT.agEdit ? ctText('agDone', 'Done') : ctText('agEdit', 'Edit'), () => {
+        CT.agEdit = !CT.agEdit;
+        if (!CT.agEdit && !(CT.ag && CT.ag.items.length)) CT.agLocal = false;
+        ctNote('agenda-edit', { on: CT.agEdit });
+        try { ctRefresh(); layout(); } catch (e) {}
+      }));
+      head.appendChild(tools);
+      p.appendChild(head);
+      // Now: the current item, its bar, time left or over.
+      const now = document.createElement('div'); now.className = 'ag-now'; now.hidden = true;
+      now.innerHTML = '<div class="ag-nowt"></div><div class="ag-bar"><div class="ag-fill"></div></div><div class="ag-left"></div>';
+      p.appendChild(now);
+      const list = document.createElement('ol'); list.className = 'ag-list';
+      a.items.forEach((it, i) => {
+        const li = document.createElement('li'); li.className = 'ag-item'; li.dataset.id = it.id;
+        if (i === a.cur) { li.classList.add('cur'); li.setAttribute('aria-current', 'step'); }
+        else if (a.cur >= 0 && i < a.cur) li.classList.add('done');
+        if (CT.agEdit) {
+          const t = document.createElement('input'); t.type = 'text'; t.className = 'ag-in-t'; t.value = it.t; t.maxLength = MA.MAX_T;
+          t.setAttribute('aria-label', ctText('agItemPh', 'What is this item?'));
+          const mn = document.createElement('input'); mn.type = 'number'; mn.className = 'ag-in-min'; mn.min = '0'; mn.max = String(MA.MAX_MIN); mn.value = it.min ? String(it.min) : '';
+          mn.placeholder = ctText('agMinPh', 'min'); mn.setAttribute('aria-label', ctText('agMinutes', 'Minutes'));
+          const commit = () => { if (t.value.trim() !== it.t || (+mn.value || 0) !== it.min) ctAgendaPublish(MA.edit(CT.ag, myId, it.id, t.value, +mn.value || 0), 'edit'); };
+          t.addEventListener('change', commit); mn.addEventListener('change', commit);
+          li.appendChild(t); li.appendChild(mn);
+          const up = ctAgBtn('ag-mini', '↑', () => ctAgendaPublish(MA.move(CT.ag, myId, it.id, -1), 'move'), ctText('agMoveUp', 'Move up'));
+          const dn = ctAgBtn('ag-mini', '↓', () => ctAgendaPublish(MA.move(CT.ag, myId, it.id, 1), 'move'), ctText('agMoveDown', 'Move down'));
+          const rm = ctAgBtn('ag-mini', '✕', () => ctAgendaPublish(MA.remove(CT.ag, myId, it.id), 'remove'), ctText('agRemove', 'Remove'));
+          for (const b of [up, dn, rm]) b.setAttribute('aria-label', b.title);
+          li.appendChild(up); li.appendChild(dn); li.appendChild(rm);
+        } else {
+          const t = document.createElement('span'); t.className = 'ag-t'; t.textContent = it.t;
+          li.appendChild(t);
+          if (it.min) { const mn = document.createElement('span'); mn.className = 'ag-min'; mn.textContent = ctText('agMin', '{n} min', { n: it.min }); li.appendChild(mn); }
+          if (may) {
+            li.tabIndex = 0;
+            li.title = ctText('agGoTip', 'Make this the current item');
+            const go = () => { if (i !== CT.ag.cur) ctAgendaPublish(MA.go(CT.ag, myId, i), 'go'); };
+            li.addEventListener('click', go);
+            li.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+          }
+        }
+        list.appendChild(li);
+      });
+      p.appendChild(list);
+      if (!a.items.length && !CT.agEdit) {
+        const e = document.createElement('p'); e.className = 'ag-empty'; e.textContent = ctText('agNoItems', 'No items yet.'); p.appendChild(e);
+      }
+      if (CT.agEdit) {
+        const add = document.createElement('form'); add.className = 'ag-add';
+        const t = document.createElement('input'); t.type = 'text'; t.className = 'ag-in-t'; t.maxLength = MA.MAX_T; t.placeholder = ctText('agItemPh', 'What is this item?');
+        t.setAttribute('aria-label', ctText('agItemPh', 'What is this item?'));
+        const mn = document.createElement('input'); mn.type = 'number'; mn.className = 'ag-in-min'; mn.min = '0'; mn.max = String(MA.MAX_MIN); mn.placeholder = ctText('agMinPh', 'min');
+        mn.setAttribute('aria-label', ctText('agMinutes', 'Minutes'));
+        const b = document.createElement('button'); b.type = 'submit'; b.className = 'ag-btn'; b.textContent = ctText('agAddItem', 'Add item');
+        add.appendChild(t); add.appendChild(mn); add.appendChild(b);
+        add.addEventListener('submit', (e) => {
+          e.preventDefault();
+          if (!t.value.trim()) return;
+          ctAgendaPublish(MA.add(CT.ag, myId, t.value, +mn.value || 0), 'add').then((ok) => {
+            if (!ok) return;
+            const f = CT.panes.get('agenda'); const nt = f && f.querySelector('.ag-add .ag-in-t'); if (nt) try { nt.focus(); } catch (err) {}
+          });
+        });
+        p.appendChild(add);
+        if (mayHand) {
+          const who = document.createElement('div'); who.className = 'ag-who';
+          const lb = document.createElement('div'); lb.className = 'ag-wholb'; lb.textContent = ctText('agWhoEdits', 'Who else can edit');
+          who.appendChild(lb);
+          const row = document.createElement('div'); row.className = 'ag-chips';
+          const ids = Array.from(new Set(rosterIds)).filter((x) => x && x !== myId).slice(0, 24);
+          for (const pid of ids) {
+            const on = CT.ag.ed.indexOf(pid) >= 0;
+            const c = ctAgBtn('ag-chip', displayName(pid), () => ctAgendaPublish(MA.hand(CT.ag, myId, pid, !on), on ? 'unhand' : 'hand'));
+            c.setAttribute('aria-pressed', on ? 'true' : 'false');
+            row.appendChild(c);
+          }
+          who.appendChild(row);
+          p.appendChild(who);
+        }
+        if (CT.ag && CT.ag.items.length && (isOwner || (hasAdminRoom() && amAdmin))) {
+          p.appendChild(ctAgBtn('ag-btn ag-stop', ctText('agStop', 'Stop sharing the agenda'), () => { CT.agEdit = false; ctAgendaPublish(MA.clear(CT.ag, myId), 'clear'); }));
+        }
+      }
+      if (!may) {
+        const n = document.createElement('p'); n.className = 'ag-note'; n.textContent = ctAgendaWhoText(); p.appendChild(n);
+      }
+      ctPaintAgendaClock(p);
+    }
+    // The More sheet's Agenda button: open the agenda (start one if you may).
+    function ctAgendaOpen() {
+      if (!ctInit()) return;
+      if (CT.ag && CT.ag.items.length) { ctRefresh(); ctSelect('agenda', 'button'); return; }
+      if (!ctCanEditAgenda()) { setStatus(hasAdminRoom() ? ctText('agHostOnlyTip', 'Only the host can share an agenda in this room.') : ctAgendaWhoText()); return; }
+      CT.agLocal = true; CT.agEdit = true;
+      ctRefresh();
+      ctSelect('agenda', 'start');
+      try { layout(); } catch (e) {}
+      requestAnimationFrame(() => { const p = CT.panes.get('agenda'); const t = p && p.querySelector('.ag-add .ag-in-t'); if (t) try { t.focus(); } catch (e) {} });
+    }
+    {
+      const ab = document.getElementById('agendabtn');
+      if (ab) ab.addEventListener('click', () => ctAgendaOpen());
+      // The content tabs are the meeting's content region: Focus lists them.
+      try { if (window.GifOS && GifOS.meetViewMode && GifOS.meetViewMode.content) GifOS.meetViewMode.content.add(() => (fsInline ? ctFocusSources() : [])); } catch (e) {}
+    }
+    // For the room tests and the debug dump: what the area shows.
+    window.__meetContent = () => {
+      if (!CT) return { on: false };
+      const MC = GifOS.meetContent;
+      const r = CT.el.getBoundingClientRect();
+      const panes = {};
+      for (const [k, p] of CT.panes) {
+        const pr = p.getBoundingClientRect();
+        const v = p.querySelector('video');
+        panes[k] = { shown: !p.hidden && pr.width > 0, box: [Math.round(pr.left), Math.round(pr.top), Math.round(pr.width), Math.round(pr.height)], src: p.dataset.src || '', vw: v ? v.videoWidth : 0, vh: v ? v.videoHeight : 0 };
+      }
+      const ap = document.getElementById('apppane');
+      const apr = ap ? ap.getBoundingClientRect() : null;
+      return {
+        on: CT.items.length > 0, keys: CT.items.map((i) => i.key), sel: CT.st.sel, all: CT.st.all, badges: MC.badges(CT.st),
+        tabs: !!(CT.plan && CT.plan.tabs), show: CT.plan ? CT.plan.show.slice() : [], view: window.__meetView || 'fit', present: !!CT.present,
+        facesHidden: !!CT.facesHidden, box: [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)], hidden: CT.el.hidden,
+        panes: panes, app: apr ? { box: [Math.round(apr.left), Math.round(apr.top), Math.round(apr.width), Math.round(apr.height)], off: document.body.classList.contains('ct-app-off'), vis: getComputedStyle(ap).visibility } : null,
+        inset: CT.inset.hidden ? null : { pid: CT.inset.dataset.pid || '', box: [CT.inset.offsetLeft, CT.inset.offsetTop, CT.inset.offsetWidth, CT.inset.offsetHeight], vw: (CT.inset.querySelector('video') || {}).videoWidth || 0 },
+        agenda: CT.ag ? { v: CT.ag.v, cur: CT.ag.cur, n: CT.ag.items.length, owner: CT.ag.owner, ed: CT.ag.ed.slice(), items: CT.ag.items.map((i) => i.t), clock: ctAgendaShortTime(), canEdit: ctCanEditAgenda() } : (CT.agLocal ? { local: true, canEdit: ctCanEditAgenda() } : null),
+      };
+    };
+    window.__meetContentDo = {
+      select: (k) => ctSelect(k, 'test'), all: (on) => { if (CT) { CT.st.all = !!on; try { layout(); } catch (e) {} } },
+      present: (on) => ctPresent(!!on, 'test'), bring: (k) => ctBring(k), agendaOpen: () => ctAgendaOpen(),
+      agendaAdd: (t, min) => ctAgendaPublish(GifOS.meetAgenda.add(CT && CT.ag, myId, t, min), 'test-add'),
+      agendaNext: () => ctAgendaPublish(GifOS.meetAgenda.next(CT && CT.ag, myId), 'test-next'),
+      agendaHand: (pid, on) => ctAgendaPublish(GifOS.meetAgenda.hand(CT && CT.ag, myId, pid, on !== false), 'test-hand'),
+      faces: (hidden) => { if (CT) { CT.facesHidden = !!hidden; try { layout(); } catch (e) {} } },
+    };
     // ---- 0.9.23b: calm by default, tap a tile for its controls, viewer crop ----
     // Calm: tiles show only the name and the green speaking frame. Any touch,
     // scroll, mouse move or key wakes the info (body.meet-awake) for 3 s.
@@ -12468,6 +13448,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           });
         }
         if (!stream) return;
+        dropEndedRemoteTracks(stream, ev.track);   // a copy that comes back lands in the stream it left: its old, ended track goes first
         p.incoming = p.incoming || [];
         if (!p.incoming.includes(stream)) {
           // CONTAINER IDENTITY: a sid is a per-job constant now, so a rebuilt
@@ -13457,7 +14438,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // the offer gate in onSignal.
     // A door outsider: I hold a seat, and this peer is neither a link of mine nor a seat my mesh knows (a knocker).
     // Its frames may do door work only; see the TROLL GATE in onDc.
-    const DOOR_DENY = new Set(['hi', 'fhi', 'chat', 'chatack', 'cdel', 'tr', 'react', 'creact', 'fdel', 'fmeta', 'pwinfo', 'pwreset', 'sga', 'scribe', 'av']);
+    const DOOR_DENY = new Set(['agenda', 'cbring', 'hi', 'fhi', 'chat', 'chatack', 'cdel', 'tr', 'react', 'creact', 'fdel', 'fmeta', 'pwinfo', 'pwreset', 'sga', 'scribe', 'av']);
     const DOOR_DENY_SIG = new Set(['status', 'mod', 'appstop']);
     let doorDropped = 0; const doorDropKinds = {};
     function doorOutsider(pid) {
@@ -13836,7 +14817,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         late.hiLate = setTimeout(() => {
           if (peers.get(pid) !== late || (late.dc && late.dc.readyState === 'open')) return;
           if (!lateHiSender(myId, targetLinkIds(pid))) return;
-          deliverLateHi(pid, { k: 'hi', chats: chatWire(Array.from(chat.values()).slice(-200)), trs: trKeeps() ? Array.from(trs.values()).filter((l) => !l.lo).slice(-100) : [], metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj(), reacts: myReactsObj() });
+          deliverLateHi(pid, { k: 'hi', chats: chatWire(Array.from(chat.values()).slice(-200)), trs: trKeeps() ? Array.from(trs.values()).filter((l) => !l.lo).slice(-100) : [], metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj(), reacts: myReactsObj(), ag: ctAgendaWire() });
         }, 20000);
       }
       p.absentSince = 0;
@@ -19867,7 +20848,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // there is the peer's to set.
     // The history frame a channel carries the moment it opens: chat, transcript, file metas, tombstones, reactions.
     function historyHi() {
-      return { k: 'hi', chats: chatWire(Array.from(chat.values()).slice(-500)), trs: trKeeps() ? Array.from(trs.values()).filter((l) => !l.lo).slice(-300) : [], metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj(), reacts: myReactsObj() };
+      return { k: 'hi', chats: chatWire(Array.from(chat.values()).slice(-500)), trs: trKeeps() ? Array.from(trs.values()).filter((l) => !l.lo).slice(-300) : [], metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj(), reacts: myReactsObj(), ag: ctAgendaWire() };
     }
     // A CHANNEL BACK FROM SILENCE CARRIES THE HISTORY AGAIN, as if it had just opened. A coverage dropout can leave the pc and
     // its channel open (no close event at either end) while every frame of the dark span is lost; the open-time 'hi' never
@@ -19960,10 +20941,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           }
         }
         (m.metas || []).forEach((meta) => takeMeta(meta, p));
+        // The meeting's agenda rides the history: a latecomer sees it at once.
+        if (m.ag && typeof m.ag === 'object') { try { ctAgendaIn(m.ag, 'hi'); } catch (e) {} }
         if (freshChats.length || reacted) renderChat();
         renderFiles();
       } else if (m.k === 'av') {
         takeAvatar(p, m);
+      } else if (m.k === 'agenda') {
+        // One flood from its editor, signed (the host's key in an admin room,
+        // the editor's own in an open one); never re-broadcast.
+        try { ctAgendaIn(m, 'live'); } catch (e) {}
+      } else if (m.k === 'cbring') {
+        try { ctBringIn(m); } catch (e) {}
       } else if (m.k === 'chat') {
         const took = takeChat(m.m);
         if (took && isQaLine(chat.get(m.m.id))) qaChanged(); // a question or a vote: the Questions sheet, never the chat badge
@@ -21704,7 +22693,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (job.video) continue;
         const tp = peers.get(job.target), rp = peers.get(job.requester);
         if (!tp || !tp.stream || !rp || !rp.pc) continue;
-        for (const tr of tp.stream.getVideoTracks()) { try { job.senders.push(addAux(rp.pc, tr, job.container)); } catch (e) {} }
+        for (const tr of shipTracks(tp.stream)) { if (tr.kind !== 'video') continue; try { job.senders.push(addAux(rp.pc, tr, job.container)); } catch (e) {} }   // one track per kind (shipTracks)
         job.video = true; fhTrace('FH-JOB-VIDEO', 'target=' + String(job.target).slice(0, 8) + ' req=' + String(job.requester).slice(0, 8));
         renegotiate(rp); return;
       }
@@ -21736,6 +22725,25 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // A far side's own description says Firefox as it arrives; the browser rewrites that line once applied.
     const geckoPcs = new WeakSet();
     function noteGecko(p, desc) { if (p && p.pc && desc && /^o=mozilla/m.test(String(desc.sdp || ''))) geckoPcs.add(p.pc); }
+    // REMOVING A PARKED SENDER. removeTrack does nothing to a sender that holds no track (the spec aborts when the
+    // sender's track is null), and a parked copy's sender holds none (replaceTrack(null)). Its m-line then stayed
+    // negotiated as sending, under the copy's stream id, and toward Firefox (whose lines are never stopped, stopAuxTx)
+    // every re-ship of that copy added one more video track to the receiver's stream: [old, new] after a stager stepped
+    // down and up again, [old, old, new] the time after. A <video> shows the first video track: black (Chromium) or a
+    // frozen frame (Firefox) while the new copy's bytes flowed. Two-page proof without GifOS: park, removeTrack, a new
+    // transceiver in the same stream. So the removal is made by hand: the line stops sending and leaves the stream.
+    function auxDrop(pc, sd) {
+      if (!pc || !sd) return;
+      try { pc.removeTrack(sd); } catch (e) {}
+      try {
+        const tx = pc.getTransceivers().find((t) => t.sender === sd);
+        if (tx && !tx.stopped) {
+          if (tx.direction === 'sendrecv') tx.direction = 'recvonly';
+          else if (tx.direction === 'sendonly') tx.direction = 'inactive';
+        }
+      } catch (e) {}
+      try { if (typeof sd.setStreams === 'function') sd.setStreams(); } catch (e) {}
+    }
     function stopAuxTx(pc, sd, key) {
       try {
         const tx = pc.getTransceivers().find((t) => t.sender === sd);
@@ -21858,6 +22866,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const WEBKIT_TILE = WEBKIT_ENGINE && (() => { try { return localStorage.getItem('gifos_wk_tile') !== 'off'; } catch (e) { return true; } })();
     const WK_TILE_HOLD = GifOS.timings.WK_TILE_HOLD;    // ms the sender keeps the camera parked for a held re-seat
     const WK_TILE_BIND_AT = GifOS.timings.WK_TILE_BIND_AT; // ms into the hold when the tile is bound (frames have stopped by then)
+    // A COPY THAT COMES BACK LANDS IN THE STREAM IT LEFT. A sender keeps one stream id per copy for the life of the page
+    // (the container law), and the browser hands a track whose stream id it already knows to the SAME remote MediaStream.
+    // When the copy's old m-line was stopped, WebKit (and Firefox) leave its ended track in that stream beside the new
+    // one (Chromium takes it out): the copy read [ended video, live video] (feedsInfo vTracks 2). An ended track carries
+    // nothing more, so it leaves the stream before anything binds or relays it. Never a live track.
+    function dropEndedRemoteTracks(stream, keep) {
+      if (!stream || !keep || typeof stream.getTracks !== 'function') return;
+      for (const t of stream.getTracks()) {
+        if (t !== keep && t.kind === keep.kind && t.readyState === 'ended') { try { stream.removeTrack(t); } catch (e) {} }
+      }
+    }
     function tileHolds(video, stream) {
       return !!video && !!stream && (video.srcObject === stream || (video._wrapOf === stream && !!video._pic && video.srcObject === video._pic));
     }
@@ -22267,7 +23286,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const container = new MediaStream();
       const senders = [];
       const video = relayVideoJobs() < relayVideoBudget();   // FHOP.9: past my video budget a carry forwards the voice only
-      for (const tr of tp.stream.getTracks()) { if (!video && tr.kind === 'video') continue; try { senders.push(addAux(reqP.pc, tr, container)); } catch (e) {} }
+      for (const tr of shipTracks(tp.stream)) { if (!video && tr.kind === 'video') continue; try { senders.push(addAux(reqP.pc, tr, container)); } catch (e) {} }   // one track per kind (shipTracks)
       if (!senders.length) { refuse(); return; }
       relayJobs.set(key, { senders, requester: reqP.id, target, container, video });
       fhTrace('FH-JOB', 'target=' + String(target).slice(0, 8) + ' req=' + String(reqP.id).slice(0, 8) + ' video=' + (video ? 1 : 0) + ' cls=' + linkCls() + ' jobs=' + relayJobs.size);
@@ -22283,7 +23302,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (job.video) relayPromote();   // FHOP.9: a video job ended
       const rp = peers.get(requesterPid);
       if (!rp) return;
-      for (const sd of job.senders) { try { rp.pc.removeTrack(sd); } catch (e) {} }
+      for (const sd of job.senders) auxDrop(rp.pc, sd);
       renegotiate(rp);
       if (notify) dcSend(rp, { k: 'relay-end', target });
     }
@@ -23421,6 +24440,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               job.attachErr = null;
               return sd;
             }
+            // the carrier's m-line must not stay in the container beside the transcode one below (a second video track at the receiver)
+            auxSenders.delete(sd); auxDrop(p.pc, sd); stopAuxTx(p.pc, sd, job.key);
             carrier.stop();
           }
         } catch (e) {}
@@ -23445,7 +24466,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const pj = pipeJobs.get(jk);
       if (pj && job.trackList[idx] === pj.carrier.track) { pipeJobs.delete(jk); try { MPipe.unpipe(pj.srcId, jk); } catch (e) {} }
       if (p && p.pc) {
-        try { p.pc.removeTrack(sd); } catch (e) {}
+        auxDrop(p.pc, sd);
         stopAuxTx(p.pc, sd, job.key);
       }
       job.senders.splice(idx, 1); job.trackList.splice(idx, 1); job.srcTracks.splice(idx, 1);
@@ -23531,6 +24552,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return now - (prevAt || 0) >= 5000;
     }
     // END-STAGE-ANN-DUE
+    // A COPY CARRIES ONE TRACK PER KIND. A received copy can hold two video tracks (its sender left a parked m-line in
+    // it: a page without auxDrop below). Shipping every track put a second video m-line into this copy's container too,
+    // the next hop did the same, and a viewer's <video> showed the first, dead, track (feedsInfo vTracks 2). Per kind,
+    // the copy takes the one track that carries media: unmuted first, the newest (last added) among equals.
+    function shipTracks(stream) {
+      const out = [];
+      for (const kind of ['audio', 'video']) {
+        const c = stream.getTracks().filter((t) => t.kind === kind && t.readyState !== 'ended');
+        if (!c.length) continue;
+        const live = c.filter((t) => !t.muted);
+        out.push((live.length ? live : c)[(live.length ? live : c).length - 1]);
+      }
+      return out;
+    }
     function shipMos(key, to, stream, meta, upKey) {
       if (!to || !stream) return null;
       const p = peers.get(to);
@@ -23551,7 +24586,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // nothing this job ships, and an upstream that mutates its container
       // in place (regrabCamera; every hop, now) changes the tracks while the
       // id stands still. Comparing sig alone got BOTH cases wrong.
-      const want = stream.getTracks().filter((t) => t.readyState !== 'ended');
+      const want = shipTracks(stream);
       const sameSet = !!(cur && cur.srcTracks && cur.srcTracks.length === want.length
         && want.every((t) => cur.srcTracks.indexOf(t) >= 0));
       // THE CARRY GUARANTEE AFTER 'w' (the second half of the FAILOVER-WAKE
@@ -23904,7 +24939,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (pj) { pipeJobs.delete(jk); try { MPipe.unpipe(pj.srcId, jk); } catch (e) {} } // unroutes the worker + stops the carrier mint
       if (p && p.pc) {
         for (const sd of job.senders) {
-          try { p.pc.removeTrack(sd); } catch (e) {}
+          auxDrop(p.pc, sd);
           // STOP the m-line outright: an unshipped aux transceiver is never
           // reused (addAux always opens a fresh one — see its comment), but a
           // merely-removeTrack'd m-line stays fully negotiated in every later
@@ -27550,7 +28585,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       else if (shareRoleOff) shareWhy = 'Only the host shares to the stage.';
       else if (TOWNHALL && document.body.classList.contains('th-watch') && !document.body.classList.contains('stage-granted')) shareWhy = 'You are watching. A host can invite you to speak.';
       else if (!on && !mayShareScreen(myId)) shareWhy = uiText('shareNotAllowed', 'The host has not allowed you to share yet.');
-      else if (!on && screenSharers().some((id) => id !== myId && id !== 'me')) shareWhy = 'Someone else is sharing. Wait for them to stop.';
+      // Several people may share at once (Nathan 2026-11-11): each screen is a
+      // tab of the content area. Only a full stage stops one more.
+      else if (!on && !myStatus.stg && stageIds().length >= SCALE.C) shareWhy = uiText('shareStageFull', 'The stage is full. Someone has to step down first.');
       shareBtn.style.display = (!shareDocked && (!canScreenShare() || shareRoleOff)) ? 'none' : '';
       if (typeof idleDock === 'function') idleDock(shareBtn, shareDocked ? shareWhy : '');
       // A screen on the Stage wants height. This does not rebuild the layout —
@@ -28472,7 +29509,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           trace: (window.__meshTraceRing && window.__meshTraceRing.ring) || null,
           swapPic: swapPicRing, rowView: window.__rowViewLog || null, dog: window.__dogLog || null,
           bc: window.__bcTrace || null, mem: window.__memSamples || null,
-          pip: window.__pipTrace || null, view: window.__viewTrace || null,
+          pip: window.__pipTrace || null, view: window.__viewTrace || null, content: window.__contentTrace || null,
           meters: (typeof dbgMeterKit !== 'undefined' && dbgMeterKit) ? dbgMeterKit.ring() : null,
         }),
         snapshot: () => (window.__gifosVideo && window.__gifosVideo.debugDump ? window.__gifosVideo.debugDump() : null),
