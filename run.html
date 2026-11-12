@@ -28388,7 +28388,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (feedOnly) return { el: null, stream: null };
         if (peerWaits(pid)) return { el: null, stream: null };
         const p = peers.get(pid);
-        return p ? { el: p.video, stream: p.video.srcObject } : { el: null, stream: null };
+        if (!p) return { el: null, stream: null };
+        // The picture is whatever the tile shows; the VOICE is the person's own
+        // stream (direct, or the one a friend carries), never the tile's
+        // element. A camera-off tile whose picture is not arriving shows a
+        // letter drawn here, and that element holds no sound: the row's
+        // Stadium mix would drop the person while every row-mate still hears
+        // them on the direct link.
+        const voice = p.relayed ? ((relayVia.get(pid) || {}).stream || null) : (p.stream || null);
+        return { el: p.video, stream: voice || p.video.srcObject };
       };
       // A SHARED SCREEN PAINTED THROUGH THE STRIP IS A SHARED SCREEN NOBODY CAN
       // READ. The strip's cells are SQUARE (mesh-media cellSize) and a screen is
