@@ -526,7 +526,7 @@
       if (dialHeld(me, x)) return;
       if (l18NoDial(me, x)) return;
       noteCall(me, x);
-      if (l23Refused(x, me, 'MEETACK')) return;   /* L23.5: a bare dial is a call */
+      if (l23Refused(x, me, 'MEETACK')) { trace('L23.5-REFUSED', x, null, 'from=%d', me); return; }   /* L23.5: a bare dial is a call */
       l23MakeRoom(me, x);
       const L = ph().linkGet(me, x); if (L.state === LK_NONE || L.state === LK_CLOSED) { ph().startDial(me, x, L); L.dialHow = 1; } else if (L.state === LK_DIALING && ph().sigAsked) ph().sigAsked(L, me, x);
     }
@@ -536,7 +536,7 @@
       if (l18NoDial(me, x)) return;
       if (dialHeld(me, x)) return;
       noteCall(me, x);
-      if (l23Refused(x, me, 'MEETACK')) return;   /* L23.5: a bare dial is a call */
+      if (l23Refused(x, me, 'MEETACK')) { trace('L23.5-REFUSED', x, null, 'from=%d', me); return; }   /* L23.5: a bare dial is a call */
       l23MakeRoom(me, x);
       const L = ph().linkGet(me, x); if (L.state === LK_NONE || L.state === LK_CLOSED) { ph().startDial(me, x, L); L.dialHow = 2; } else if (L.state === LK_DIALING) { L.view[lEnd(me, x)] = LK_DIALING; if (ph().sigAsked) ph().sigAsked(L, me, x); }
     }
