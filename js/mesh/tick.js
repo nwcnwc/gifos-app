@@ -145,6 +145,7 @@
       const TICK = this.TICK, id = this.id, wake = () => this.f.wake(id);
       if (this.evilDoor) { if (this.hostile && !(TICK % 2)) { this.state = 0; this.emitRelay(this.linkKey); } this.l16Evil(); wake(); return true; }   // L16 adversary
       if (this.state !== 3 && this.l16Wait()) { wake(); return true; }   // L16: backing off
+      if (this.state === 3 && this.hasCoord && this.whAsk.size !== 0 && !this.doorHeld()) this.l1616Answer();   // L16.16
       if (this.state !== 3) {
         if (this.stranded) { if (TICK - this.strandedAt > K.STRAND_TTL) { this.stranded = false; this.lastReach = -1; this.joinStart = -1; this.join(); } wake(); return true; }   // R6
         if (this.l16WaveTick()) { wake(); return true; }   // L16: a silent ask wave: everyone left

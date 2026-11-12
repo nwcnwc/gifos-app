@@ -29,6 +29,9 @@
   const L8_50_3_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L8_50_3_OFF === '1') ? 1 : 0;
   // the sim's #define L8_52_OFF in mesh.cpp (a build-time switch): MESH_L8_52_OFF=1 under node, read once at load; a page always runs the law
   const L8_52_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L8_52_OFF === '1') ? 1 : 0;
+  // the sim's #define L16_16_OFF / L8_47_2_OFF / L8_47_3_OFF in mesh.cpp: MESH_<name>=1 under node, read once at load; a page always runs the laws
+  const offOn = (n) => (isNode && typeof process !== 'undefined' && process.env && process.env[n] === '1') ? 1 : 0;
+  const L16_16_OFF = offOn('MESH_L16_16_OFF'), L8_47_2_OFF = offOn('MESH_L8_47_2_OFF'), L8_47_3_OFF = offOn('MESH_L8_47_3_OFF');
   const { ckey, ckPc, unckey, down, pcDepth, lastDigit, parentPath, rowMates } = topo;
   const C = topo.C;
   const newMsg = (t) => msg.newMsg(t);
@@ -40,6 +43,7 @@
     onGreeters(m) {
       const TICK = this.TICK, id = this.id, lv = this.w.lv;
       if ((this.state === 0 || this.state === 1) && this.l45Stale(m.list)) { this.reJoin = true; this.f.wake(id); return; }   // L45
+      if (this.foundKnock && this.state === 3 && m.list.length === 0) { this.foundKnock = false; this.islandAsked.clear(); this.entEp.clear(); }
       if (m.list.length === 0) {
         if (this.state === 0) { this.genKey = this.linkKey; if (!L8_52_OFF) this.lineAt = TICK; /* L8.52.3: before take(): my registration at the door carries my epoch */ this.take({ pc: 0, r: 0, i: 0 }, -1, [], -1, -1, [], -1); this.lineAdopt(id, TICK, 'genesis'); if (!L8_50_3_OFF) this.l850Seated = false; /* L8.50.3: the first page has admitted nobody yet */ }
         else if (this.state === 3) { this.lastGreeters = []; this.greetersAt = TICK; }
@@ -49,6 +53,7 @@
       if ((this.state === 0 || this.state === 1) && this.joinStart >= 0 && TICK - this.joinStart > K.STRAND_TTL && (this.lastReach < 0 || TICK - this.lastReach > K.STRAND_TTL) && !this.l16Saw && !this.evilDoor) { this.stranded = true; this.strandedAt = TICK; return; }   // R6
       for (const g of m.list) this.dials.heard(g);   // L17
       this.lastGreeters = m.list.slice(); this.lastGreetersAt = m.listAt.slice(); this.greetersAt = TICK;
+      if (this.foundKnock && this.state === 3) { this.foundKnock = false; const un = this.l813Unfound(m); this.islandAsked.clear(); this.entEp.clear(); if (un) return; }   // L8.1.3 (mesh_roomterm.inc)
       if (m.tag === 1) { const st = this.l3117Stray(m.list); if (st === 2) return; if (st === 0) this.keyAsk(m.list); }   // L3.11.7 (C++: onGreeters)   // L3.11.6: the door refused my registration (C++: onGreeters)
       if (this.state === 0 && this.entryTerm()) { this.islandAsk(m.list); return; }   // L8.2
       if (this.state === 0) {
@@ -100,7 +105,7 @@
     // C++: mesh_seat.inc:Seat::onWhoHome
     onWhoHome(m) {
       const TICK = this.TICK, id = this.id;
-      if (!this.hasCoord) { const h = newMsg('HOME'); this.emit(m.from, h); return; }
+      if (!this.hasCoord || this.doorHeld()) { if (!L16_16_OFF && m.from >= 0 && m.from !== id) { if (this.whAsk.size >= 8 && !this.whAsk.has(m.from)) this.whAsk.clear(); this.whAsk.set(m.from, TICK | 0); } /* L16.16 */ const h = newMsg('HOME'); this.emit(m.from, h); return; }
       if (m.ttl <= 0) return;
       if (this.coord.pc === 0 || this.doorCallOn()) {   // FHOP.8: a friend called to the door answers there as a greeter
         const h = newMsg('HOME'); h.roster = this.s1Roster(); h.id = id; h.gkey = this.genKey;
@@ -120,10 +125,22 @@
       }
     },
 
+    // C++: mesh_seat.inc:Seat::doorHeld   (TURN.4.4: a founder of one holds its door while its TURN link dials)
+    doorHeld() { return this.hasCoord && this.state === 3 && this.l850Lone() && this.f.fabricTurnHold(this.id); },
+
+    // C++: mesh_seat.inc:Seat::l1616Answer   (L16.16: a seat asked while it had no cell answers each asker in the tick after it takes a cell)
+    l1616Answer() {
+      const TICK = this.TICK, id = this.id;
+      const v = []; for (const [k, t] of this.whAsk) if ((TICK | 0) - t <= K.ISLAND_WAIT) v.push(k); this.whAsk.clear();
+      for (const x of v) { this.trace('L16.16-ANSWER', id, this.coord, 'to=%d', x); const w = newMsg('WHOHOME'); w.from = x; w.ttl = K.WHOHOME_HOPS; this.onWhoHome(w); }
+    },
+
     // C++: mesh_seat.inc:Seat::onHome
     onHome(m) {
       const TICK = this.TICK, id = this.id, lv = this.w.lv;
       if (m.id >= 0) this.doorAsk.delete(m.id);   // it answered: not dark
+      if (!L8_47_3_OFF && this.state === 3 && m.roster.length !== 0 && m.from >= 0 && this.lateAsk.has(m.from)) { this.lateAsk.clear(); if (this.islandFounder && this.l850Lone()) { this.trace('L8.47.3-LATE', id, this.coord, 'from=%d', m.from); this.c7Yield(this.ringName(), 'L8.47.3-late'); this.c7Old.clear(); this.l851Up = -1; this.c7At = K.C7AT_NEVER; this.f.relayUnlist(id); return; } }   // L8.47.3 (mesh_roomterm.inc)
+      if (!L8_47_2_OFF && this.state === 1 && m.roster.length === 0 && m.from >= 0 && m.from !== id && this.islandAsked.has(m.from)) { if (this.ehFrom.size >= 16) this.ehFrom.clear(); if (!this.ehFrom.has(m.from) && (this.ehFrom.add(m.from), true) && this.ehAskAt < 0) this.ehAskAt = TICK | 0; this.ehAt = TICK | 0; }   // L8.47.2 (mesh_roomterm.inc): the answer to an ask of mine this entry
       if (this.l13On() && this.state === 3 && m.knock && (m.byes.length >= 2 || m.mass)) { let n = 0; for (const v of this.byeIds.values()) if (TICK - v <= K.LEASE_T) n++; let d = 0; for (const t of this.l13DownAt) if (TICK - t <= K.LEASE_T) d++; if (n + d >= 1) this.l13MassHeard(); }   // L13
       if (this.state === 3 && TICK - this.rosterAskAt > 120) return;   // a SEATED seat hears HOME only as the answer to its own WHOHOME
       if (m.askGap >= 0) this.askGap = m.askGap | 0;   // the door's one clock, as of this answer

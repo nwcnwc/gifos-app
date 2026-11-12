@@ -23,14 +23,20 @@
   const L8_50_OFF = envOn('MESH_L8_50_OFF'), L8_50_3_OFF = envOn('MESH_L8_50_3_OFF');
   const L8_42_2_OFF = envOn('MESH_L8_42_2_OFF');   // the sim's -DL8_42_2_OFF=1 build
   const L8_52_OFF = envOn('MESH_L8_52_OFF'), L8_51_OFF = envOn('MESH_L8_51_OFF');   // L8.52 (the older room stays), L8.51 (an arbiter does not settle a contest between two rooms)
+  const L8_47_3_OFF = envOn('MESH_L8_47_3_OFF'), L8_47_2_OFF = envOn('MESH_L8_47_2_OFF'), L8_1_3_OFF = envOn('MESH_L8_1_3_OFF');   // L8.47.3 / L8.47.2 / L8.1.3 (mesh_roomterm.inc)
+  const L8_5_10_OFF = envOn('MESH_L8_5_10_OFF');   // L8.5.10: the sim's -DL8_5_10_OFF=1 build
   const newMsg = (t) => msg.newMsg(t);
 
   Seat.unit('mesh_island.inc', {
     // C++: mesh_island.inc:Seat::islandAsk
     islandAsk(list) {
       const lv = this.w.lv;
-      { let fresh = false; for (const g of list) { if (g < 0 || g === this.id) continue; if (!this.islandAsked.has(g)) { this.islandAsked.add(g); fresh = true; } }
-        if (this.islandLast) { this.islandLast = false; if (!fresh) { this.islandFound(); return; } } }   // L8.1.2 (C++: islandAsk)
+      if (!L8_47_3_OFF && this.l8471() && this.islandLast) for (const g of list) { if (g < 0 || g === this.id || !this.islandAsked.has(g)) continue; const e = this.epOf(g); if (e >= 0) { if (this.entEp.size >= 16) this.entEp.clear(); this.entEp.add(e); } }   // L8.47.3: every greeter I asked stayed silent (the verdict that sent this confirm knock): the rooms the door now says they sit in are rooms I cannot reach
+      { let fresh = false; const late = []; for (const g of list) { if (g < 0 || g === this.id) continue; if (this.islandAsked.has(g)) continue; this.islandAsked.add(g); const e = this.epOf(g); if (!L8_47_3_OFF && this.l8471() && this.islandLast && e >= 0 && this.entEp.has(e)) late.push(g); else fresh = true; }
+        if (this.islandLast) { this.islandLast = false; if (!fresh) {
+          if (late.length) { this.lateAsk.clear(); for (const g of late) { if (this.lateAsk.size >= 8) break; this.lateAsk.add(g); this.trace('L8.47.3-LATE-ASK', this.id, null, 'to=%d at=%d', g, this.epOf(g)); const w = newMsg('WHOHOME'); w.from = this.id; w.ttl = K.WHOHOME_HOPS; this.emit(g, w); } }   // L8.47.3: a new name of a room I already found silent is asked, and holds no founding
+          this.islandFound(); return; }
+          if (late.length) for (const g of late) this.islandAsked.delete(g); } }   /* a new round: they are asked with it */   // L8.1.2 (C++: islandAsk)
       if (this.f.fabricDoors()) {
         this.l16List.length = 0;
         for (const g of list) { if (g < 0 || g === this.id) continue; this.l16List.push(g); if (this.l16List.length >= 32) break; }
@@ -48,6 +54,9 @@
     islandTick() {
       if (!this.entryTerm() || !(this.state === 0 || this.state === 1) || this.islandAskAt < 0 || this.lastReach >= this.islandAskAt) return false;
       const iw = this.islandWait();   // L8.47.1
+      if (!L8_47_2_OFF && this.ehAt >= 0 && this.TICK - this.ehAt < K.ISLAND_WAIT) {   // L8.47.2: it said it has no room yet: I wait for it, and ask it again once per dial verdict while it says so
+        if (this.TICK - this.ehAskAt >= K.ISLAND_WAIT_BLOCKED) { this.ehAskAt = this.TICK | 0; for (const g of this.ehFrom) { const w = newMsg('WHOHOME'); w.from = this.id; w.ttl = K.WHOHOME_HOPS; this.emit(g, w); } }
+        return false; }
       if (this.TICK - this.islandAskAt < iw || this.lastGreeters.length === 0) return false;
       if (this.f.fabricDoors() && this.islandAskAt >= 0 && (this.l16Next < this.l16List.length || this.TICK - this.l16FreshAt < iw)) return false;
       if (this.l16Saw) { this.l16Saw = false; this.l16Backoff('silent'); return true; }   // a BUSY is evidence for its own round (C++: islandTick)
@@ -82,8 +91,8 @@
     // C++: mesh_island.inc:Seat::islandFound
     islandFound() {
       this.trace('ISLAND', this.id, null, 'asked=%zu since=%d rounds=%d reach=%d', this.lastGreeters.length, this.islandAskAt, this.islandAskN + 1, typeof this.f.fabricReachSeated === 'function' ? this.f.fabricReachSeated(this.id) : -1);   // reach: the oracle's count (netmatrix bar), -1 without groups
-      this.l850Seated = false;
-      this.islandAskAt = -1; this.islandAskN = 0; this.islandAsked.clear(); this.islandLast = false; this.genKey = this.w.lv.URL_KEY ? this.w.lv.URL_KEY : this.myKey; /* a founder with no link key mints its own (C++: islandFound) */ const e = []; if (!L8_52_OFF) this.lineAt = this.TICK; /* L8.52.3: before take(): my registration at the door carries my epoch */ this.take({ pc: 0, r: 0, i: 0 }, -1, e); this.islandFounder = true; this.lineAdopt(this.id, this.TICK, 'found'); this.lineFork = true;
+      this.l850Seated = false; this.ehAt = -1; this.ehAskAt = -1; this.ehFrom.clear(); this.foundKnock = !L8_1_3_OFF;
+      this.islandAskAt = -1; this.islandAskN = 0; if (L8_1_3_OFF) { this.islandAsked.clear(); this.entEp.clear(); } this.islandLast = false; this.genKey = this.w.lv.URL_KEY ? this.w.lv.URL_KEY : this.myKey; /* a founder with no link key mints its own (C++: islandFound) */ const e = []; if (!L8_52_OFF) this.lineAt = this.TICK; /* L8.52.3: before take(): my registration at the door carries my epoch */ this.take({ pc: 0, r: 0, i: 0 }, -1, e); this.islandFounder = true; this.lineAdopt(this.id, this.TICK, 'found'); this.lineFork = true;
     },
 
     // C++: mesh_island.inc:Seat::l3117Stray
@@ -296,6 +305,13 @@
       return true;
     },
 
+    // C++: mesh_island.inc:Seat::l8510Bye   (L8.5.10: the one-merge gate does not hold a mate's goodbye toward an older founding)
+    l8510Bye(m) {
+      if (L8_5_10_OFF || L8_52_OFF || m.line < 0 || m.line !== this.line || this.lineAt < 0 || m.id < 0 || this.c7Old.has(m.id) || this.greetersAt < 0 || this.TICK - this.greetersAt > K.RELAY_TTL) return false;
+      for (let k = 0; k < this.lastGreeters.length && k < this.lastGreetersAt.length; k++) { const g = this.lastGreeters[k], at = this.lastGreetersAt[k]; if (g >= 0 && g !== this.id && g !== m.id && at >= 0 && at < this.lineAt) return true; }
+      return false;
+    },
+
     // C++: mesh_island.inc:Seat::islandC7
     islandC7(m) {
       if (!roomTerm(this, 1) || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return false;
@@ -395,6 +411,7 @@
     l16WaveTick() {
       const lv = this.w.lv;
       if (!this.f.fabricDoors() || this.state !== 1 || this.l16WaveAt < 0 || this.l16Next >= this.l16List.length || this.islandAskAt < 0 || this.lastReach >= this.islandAskAt) return false;
+      if (this.l8471()) { this.l16Wave(this.l16List.length); return true; }   // L8.47.1 with L4.1.1: my probe's verdict landed while a wave was out: everyone left, now
       if (this.TICK - this.l16WaveAt < K.L16_WAVE) { if (lv.L16HEDGE > 0 && !this.l16Hedged && this.TICK - this.l16WaveAt >= lv.L16HEDGE && this.l16Busy.length === 0) { const at = this.l16WaveAt; this.l16Wave(1); this.l16WaveAt = at; this.l16Hedged = true; return true; } return false; }   // L16.14.1: a hedge that asks a never-asked greeter restarts the island's silence clock (l16Wave does it on a fresh name)
       this.l16Wave(this.l16List.length); return true;
     },

@@ -51,7 +51,7 @@
     'fabricSend', 'fabricUnreachable', 'fabricVerdict', 'fhopActive', 'fhopFriendFor', 'l164Of', 'l18Deliv',
     'l18Hop', 'l18UxDeliv', 'l222Note', 'l22Agree', 'l23GreetRelease', 'l22Close', 'l22CloseAsk', 'l22Need', 'l22Quiet', 'l28Reply',
     'l915Note', 'relayKnock', 'relayUnlist', 'descEnd', 'descNote', 'wake', 'fabricAudit', 'fabricDoorHeard', 'g4Joined', 'fabricDropHalf', 'fabricLinkCarries',
-    'fabricTurnOn', 'fabricTurnPc', 'fabricTurnOpener', 'fabricTurnStray', 'fabricTurnLone', 'fabricTurnAcross', 'fabricTurnMine', 'fabricTurnCarried', 'fabricTurnFeeds', 'fabricTurnBoth', 'fabricTurnPeerIn', 'fabricTurnSide',   /* TURN.14 (mesh_turn.inc) */
+    'fabricTurnOn', 'fabricTurnPc', 'fabricTurnOpener', 'fabricTurnHold', 'fabricTurnStray', 'fabricTurnLone', 'fabricTurnAcross', 'fabricTurnMine', 'fabricTurnCarried', 'fabricTurnFeeds', 'fabricTurnBoth', 'fabricTurnPeerIn', 'fabricTurnSide',   /* TURN.14 (mesh_turn.inc) */
   ]);
 
   // A fabric that refuses every call: the interface a harness or the page adapter fills in.

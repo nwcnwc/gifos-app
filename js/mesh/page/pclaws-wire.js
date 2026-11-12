@@ -89,7 +89,7 @@
     // a door's own fields (sim startDial), at either end: o = the outside bits, a = the dialler
     function doorInit(L, a, b, o) {
       L.outside = o; if (!o) return;
-      L.dBorn = L.dProg = T(); L.dAsked = L.dHomed = L.dGw = L.dSat = false; L.dHoAt = -1; L.dWait = -1; L.dOwed = false; L.dWaitAtFind = -1; L.dOwedAt = -1; L.dHeard = 0; L.dPlaced = 0; L.dIn = !(o & (1 << lEnd(a, b)));
+      L.dBorn = L.dProg = T(); L.dAsked = L.dHomed = L.dHomedE = L.dGw = L.dSat = false; L.dHoAt = -1; L.dWait = -1; L.dOwed = false; L.dWaitAtFind = -1; L.dOwedAt = -1; L.dHeard = 0; L.dPlaced = 0; L.dIn = !(o & (1 << lEnd(a, b)));
       if (o !== 3) { const g = (o & (1 << lEnd(a, b))) ? b : a; L.dG = g; doorCount(g, L.dIn, +1); }
     }
     // A TURN LINK'S PC IS NO DOOR. The sim's two blocked networks never hold a Link before their TURN link: a knock across the cut is
@@ -126,10 +126,10 @@
     }
 
     // door progress (sim linkDeliver), run by each end for the frames it sends and the frames it receives
-    function doorProg(L, t) {
+    function doorProg(L, t, m) {
       if (!(L.outside && L.dBorn >= 0)) return;
       if (t === 'WHOHOME') { if (!L.dAsked) { L.dAsked = true; L.dProg = T(); } }
-      else if (t === 'HOME') { if (!L.dHomed) { L.dHomed = true; L.dProg = T(); } }
+      else if (t === 'HOME') { const em = !!m && m.roster.length === 0; if (!L.dHomed) { L.dHomed = true; L.dHomedE = em; L.dProg = T(); } else if (L.dHomedE && !em) { L.dHomedE = false; L.dProg = T(); } }   // L16.16: the answer that follows an empty HOME is a step too
       else if (t === 'FIND' || t === 'FINDACK' || t === 'PLACE' || t === 'NOROOM' || t === 'HANDOFF' || t === 'TAKEOVER' || t === 'TAKEN') {
         L.dProg = T(); L.dGw = true; if (t === 'FIND') L.dWaitAtFind = L.dWait; if (t === 'FINDACK') L.dWait = T(); else if (t === 'PLACE' || t === 'NOROOM') { L.dWait = -1; L.dOwed = false; }
       }
@@ -138,7 +138,7 @@
     function linkDeliver(from, to, m, L) {
       L.carried = true; L.txAt[mine(to)] = T();
       if (L.outside) m.dsat = mySeated();
-      doorProg(L, m.t); if ((m.t === 'PLACE' || m.t === 'RECLAIMED') && L.outside && L.dBorn >= 0) L.dPlaced |= (1 << mine(to));   // L16.3.1: my end sent it
+      doorProg(L, m.t, m); if ((m.t === 'PLACE' || m.t === 'RECLAIMED') && L.outside && L.dBorn >= 0) L.dPlaced |= (1 << mine(to));   // L16.3.1: my end sent it
       m.to = to; m.from = from; m.lk = (m.rvia < 0) ? from : -1; m.lkEp = L.epoch;
       if (!io.send(to, m)) trace('PCW-SENDFAIL', me, null, 'peer=%d mt=%d', to, mtI(m.t));
     }
@@ -372,7 +372,8 @@
         if (kMe) { if (mySeated()) L.dSat = true; continue; }   // I am the outside end: the greeter's limits are its own
         if (farSeated(x)) L.dSat = true;
         const heard = pc.doorHeard(L, me, x); const named = pc.l15Names(me, x) || pc.l15NamedBy(me, x) || (!!mySeat() && (mySeat().l14Serve(x) || mySeat().l14Up === x));   // L14: my uplink, or one I took, is no door (in the sim both ends are seated); my view need not hold the head's cell
-        if (!heard && !named && L.dBorn >= 0) {
+        let owes = false; if (L.dHomedE && mySeat()) { const w = mySeat().whAsk.get(x); owes = (w !== undefined && T() - w <= K.ISLAND_WAIT); }   // L16.16: I answered this knocker with no room and keep its ask: the door waits for my seat
+        if (!heard && !named && L.dBorn >= 0 && !owes) {
           const idle = T() - L.dProg, age = T() - L.dBorn; let why = null;
           const placed = !!(L.dPlaced & (1 << mine(x)));   // L16.3.1: the placee closes it (L15.5), or the life limit from the PLACE
           if (!placed && L.dHoAt >= 0 && T() - L.dHoAt >= K.L16_HO_CLOSE && !(L.dOwed && L.dWait >= 0)) why = 'handed';
@@ -530,7 +531,7 @@
       if (!L) return false;
       // (A leaver's own goodbye is exempt: sent before its close, but the page's seal and signature checks can hand it over after the close is seen; the sim has no such gap.)
       if (!(m && m.t === 'LEAVE' && m.bye && m.id === x) && L.state !== LK_OPEN && L.wasOpen && (L.view[mine(x)] === LK_CLOSED || (L.gone & (1 << mine(x))))) { lv.CLOSEDROPS = (lv.CLOSEDROPS || 0) + 1; trace('CLOSEDROP', me, null, 'from=%d mt=%d', x, mtI(m.t)); return true; }
-      doorProg(L, m.t);
+      doorProg(L, m.t, m);
       if (m.dsat !== undefined && L.outside) far(x).seated = m.dsat ? 1 : 0;
       // first-hand only off the sender's proven dc, on my Link, not routed (sim linkDeliver; 0.9.24 ingest)
       if (direct && (m.rvia === undefined || m.rvia < 0)) { L.txAt[theirs(x)] = T(); m.lk = x; m.lkEp = L.epoch; }

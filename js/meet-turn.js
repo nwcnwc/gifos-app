@@ -392,6 +392,7 @@
     // TURN.4.5: one verdict per room: a greeter of a room (the door's founding epoch) that already has a verdict does
     // not hold the ask.
     function turnWaited(now, F) {
+      if (!io.blocked()) return now - head.since >= WAIT_MS;   // the per-greeter wait is a blocked head's: any other head keeps TURN.4's one clock
       const friends = io.friends ? !!io.friends() : true;
       const judged = !friends && !!io.askedAt && (io.judged ? !!io.judged() : true);
       for (const g of Array.from(head.seen.keys())) if (F.indexOf(g) < 0) head.seen.delete(g);
@@ -404,6 +405,7 @@
     }
     // TURN.4.4 (C++: mesh_turn.inc:fabricTurnHold): the link I opened is dialling, or came up inside FHOP_RELAY_ASK.
     function holding(now) {
+      if (!io.blocked()) return false;
       for (const L of links.values()) if (L.opener && (L.state !== 'up' || !(L.upAt > 0) || now - L.upAt < ASK_MS)) return true;
       return false;
     }

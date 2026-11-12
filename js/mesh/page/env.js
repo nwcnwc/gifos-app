@@ -557,7 +557,7 @@
       fabricAdmitLog: noop, fabricDupMint: noop, fabricNoteBackoff: noop, fabricNoteReseat: noop, fabricNoteRollback: noop,
       fabricNoteSwap: noop, fabricVerdict: deaths.verdict, l18UxDeliv: noop, descEnd: noop, descNote: noop, g4Joined: noop,   // g4Joined: the sim's L40 contest lever only (X1 55c97d1)
       fabricFreeCells, fabricLieFor: () => null, fabricUnreachable, fhopActive: () => !!fh, fhopFriendFor,
-      fabricTurnOn: turnOn, fabricTurnPc, fabricTurnOpener, fabricTurnStray, fabricTurnLone, fabricTurnAcross, fabricTurnMine, fabricTurnCarried, fabricTurnFeeds: noop, fabricTurnSide, fabricTurnBoth: () => false, fabricTurnPeerIn,   /* TURN.14 from my pc table (above); the feeds are the media plane's (run.html turnFeedPeers) */
+      fabricTurnOn: turnOn, fabricTurnPc, fabricTurnOpener, fabricTurnHold: () => false /* TODO page: meet-turn link state */, fabricTurnStray, fabricTurnLone, fabricTurnAcross, fabricTurnMine, fabricTurnCarried, fabricTurnFeeds: noop, fabricTurnSide, fabricTurnBoth: () => false, fabricTurnPeerIn,   /* TURN.14 from my pc table (above); the feeds are the media plane's (run.html turnFeedPeers) */
       fabricMyTier: () => ((measure.tier ? measure.tier() : E.TIER_DESKTOP) | 0),
       fabricMyNat: () => ((measure.nat ? measure.nat() : E.NAT_OPEN) | 0),
       fabricLeft: () => leaveNow(false), fabricReloadBye: () => leaveNow(true),
