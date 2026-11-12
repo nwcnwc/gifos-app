@@ -12,6 +12,7 @@
     ADMIN_CLOSE_MS: 300000,   // ms
     ADMIN_GRACE_MS: 10000,   // ms
     ADMIN_REKNOCKS: 4,   // count
+    AGENDA_TICK_MS: 1000,   // ms
     AGENT_GRACE_MS: 120000,   // ms
     AGENT_KEEP_MS: 86400000,   // ms
     AWAKE_MS: 3000,   // ms
@@ -47,6 +48,9 @@
     FIRST_MS: 40,   // ms
     FOLD_HOLD_MS: 60000,   // ms
     FOLLOWME_WAIT_MS: 15000,   // ms
+    FOLLOW_GAP_MS: 1000,   // ms
+    FOLLOW_HOLD_MS: 5000,   // ms
+    FOLLOW_ON_MS: 2000,   // ms
     FRAG_DIAL_WAIT_MS: 30000,   // ms
     GLARE_YIELD_MS: 4000,   // ms
     GMARK_BEHIND: 1024,   // count
@@ -74,6 +78,7 @@
     KEY_FLIP_MS: 150,   // ms
     KEY_FLIP_MS_W: 150,   // ms
     LATE_ASK_MS: 15000,   // ms
+    LIBRARY_RETRY_MS: 2000,   // ms
     LOST_OFFER_MS: 1000,   // ms
     MASS_MANY: 3,   // count
     MAX_OUT_SEC: 8,   // s
@@ -187,6 +192,9 @@
     TURN_P1_MS: 30000,   // ms
     TURN_RETRY_BASE_MS: 2000,   // ms
     TURN_RETRY_MAX_MS: 300000,   // ms
+    TURN_STANDBY_SWITCH_MS: 8000,   // ms
+    TURN_THROTTLE_LOOK_MS: 2000,   // ms
+    TURN_THROTTLE_UP_MS: 10000,   // ms
     UNOWNED_PC_MS: 15000,   // ms
     UPDATE_CHECK_MS: 60000,   // ms
     UPDATE_RESUME_TTL: 120000,   // ms
