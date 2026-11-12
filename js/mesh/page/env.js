@@ -478,7 +478,15 @@
       const s = seat(); if (!s || !s.hasCoord || s.state !== 3 || s.coord.pc !== 0) return false;
       const T = turnSet(); if (!T.size) return false;
       let end = false;
-      for (const x of T) { if (!fh.turnOpened(ID.pid(x))) continue; const rx = s.l828RingOf(x); if (rx >= 0 && rx !== s.ringName()) continue; end = true; break; }   // TURN.14.13: only the opener's side hangs
+      const seated = new Set(s.occ.values());
+      for (const x of T) {
+        if (!fh.turnOpened(ID.pid(x))) continue;
+        const rx = s.l828RingOf(x); if (rx >= 0 && rx !== s.ringName()) continue;   // TURN.14.13: only the opener's side hangs
+        // a page hears no frame from the far side but its TURN peer's, so an unknown ring is no proof: my TURN peer must sit in my
+        // own view (one room), else I am still in my old island and calling my side under me would pin me there (a dup cell)
+        if (!seated.has(x)) continue;
+        end = true; break;
+      }
       if (!end) return false;
       const own = connSet();
       for (const [k, x] of s.occ) {
