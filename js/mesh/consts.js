@@ -482,8 +482,8 @@
     nextId: 0,   // C++: mesh.cpp:nextId
     joinWindow: 0,   // C++: mesh.cpp:joinWindow
     MAXP: 0,   // C++: mesh.cpp:MAXP
-    IDPERM: false,   // C++: mesh_idperm.inc:IDPERM
-    IDPOOL_AT: 0,   // C++: mesh_idperm.inc:IDPOOL_AT
+    ARRIVAL_IDS: false,   // C++: mesh_realids.inc:ARRIVAL_IDS
+    IDPOOL_AT: 0,   // C++: mesh_realids.inc:IDPOOL_AT
     L18_SKIPDIRECT: 0,   // C++: mesh.cpp:L18_SKIPDIRECT
     L18_SKIPFRIEND: 0,   // C++: mesh.cpp:L18_SKIPFRIEND
     L18_SKIPMASS: 0,   // C++: mesh.cpp:L18_SKIPMASS
