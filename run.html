@@ -16139,12 +16139,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             && !(refused[r] && now - refused[r] < 30000)).sort();
           if (cands.length) {
             p.relayAskAt = now;
-            fhRankCarriers(cands).then((ranked) => {
-              const rp = peers.get(ranked[0]);
-              if (!rp || relayVia.has(pid) || (p.connected && p.dc && p.dc.readyState === 'open')) return;
-              fhTrace('FH-CARRIER', 'target=' + String(pid).slice(0, 8) + ' via=' + String(ranked[0]).slice(0, 8) + ' ' + ranked.map((r) => String(r).slice(0, 8) + ':' + carrierScore(r) + ':c' + (clsOf.get(r) || 0)).join(','));
-              dcSend(rp, { k: 'relay-req', target: pid });
-            });
+            // ranked on each pc's last stats reading (read again now for the next ask): the ask itself never waits
+            const ranked = fhRankNow(cands);
+            for (const r of cands) readLinkStats(r);
+            const rp = peers.get(ranked[0]);
+            fhTrace('FH-CARRIER', 'target=' + String(pid).slice(0, 8) + ' via=' + String(ranked[0]).slice(0, 8) + ' ' + ranked.map((r) => String(r).slice(0, 8) + ':' + carrierScore(r) + ':c' + (clsOf.get(r) || 0)).join(','));
+            if (rp) dcSend(rp, { k: 'relay-req', target: pid });
           }
         }
         // Be honest about a pair that can't form: present in the room but no
@@ -21127,9 +21127,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (rtt != null) q.fhRttMs = rtt; if (lost != null) q.fhLossPm = Math.round(lost * 1000);
       }).catch(() => {});
     }
-    function fhRankCarriers(pids) {
-      return Promise.all(pids.map(readLinkStats)).then(() => pids.slice().sort((a, b) => (carrierScore(b) - carrierScore(a)) || (a < b ? -1 : a > b ? 1 : 0)));
-    }
+    function fhRankNow(pids) { return pids.slice().sort((a, b) => (carrierScore(b) - carrierScore(a)) || (a < b ? -1 : a > b ? 1 : 0)); }
     if (DEBUG_ON) window.__fhJobsForTest = () => Array.from(relayJobs.values(), (j) => ({ target: j.target, req: j.requester, video: !!j.video }));   // DEBUG: a carrier's own jobs, for the room checks
     const relayVideoJobs = () => { let n = 0; for (const j of relayJobs.values()) if (j.video) n++; return n; };
     const relayVideoBudget = () => GifOS.meshFhop.fhVideoBudget(linkCls() || GifOS.meshConsts.enums.FC_WIFI);
