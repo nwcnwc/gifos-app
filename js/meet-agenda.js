@@ -94,7 +94,11 @@
   }
 
   // Should a page holding `cur` take `inc`, a version proven to be made by
-  // inc.by? ctx = { adminRoom, isAdmin: inc.by is a proven admin }.
+  // inc.by? ctx = { adminRoom, isAdmin: inc.by is a proven admin,
+  //   grantOk: the owner's own signed list of editors came with it and names
+  //   exactly inc.owner and inc.ed }.
+  // A page with no agenda yet (a latecomer) cannot see the history, so an
+  // editor's version is taken only with the owner's signed grant.
   // Returns true to take it.
   function accept(cur, inc, ctx) {
     ctx = ctx || {};
@@ -105,7 +109,9 @@
     } else {
       // The editor must have had the right in the version they changed. A
       // new agenda (none held) is owned by whoever made it.
-      if (!cur || !cur.owner || !cur.items.length) { if (n.owner !== n.by) return false; }
+      if (!cur || !cur.owner || !cur.items.length) {
+        if (n.owner !== n.by && !(ctx.grantOk && n.ed.indexOf(n.by) >= 0)) return false;
+      }
       else {
         if (!canEdit(cur, n.by, ctx)) return false;
         // Only the owner hands the agenda or the editing on.
@@ -205,7 +211,10 @@
   }
   function totalMin(a) { return ((a && a.items) || []).reduce((s, i) => s + (i.min || 0), 0); }
 
-  const api = { MAX_ITEMS, MAX_T, MAX_MIN, empty, clean, body, hash, canEdit, canHand, accept, add, edit, remove, move, go, next, prev, hand, clear, clock, mmss, totalMin };
+  // The owner's grant: the words the owner signs naming who may edit.
+  function grantBody(a) { const c = clean(a); return c ? JSON.stringify([c.owner, c.ed]) : ''; }
+
+  const api = { grantBody, MAX_ITEMS, MAX_T, MAX_MIN, empty, clean, body, hash, canEdit, canHand, accept, add, edit, remove, move, go, next, prev, hand, clear, clock, mmss, totalMin };
   GifOS.meetAgenda = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

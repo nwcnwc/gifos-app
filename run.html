@@ -8084,17 +8084,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // ---- the agenda: state, the wire, the editor ----
     function ctAgendaWire() {
       if (!CT || !CT.ag || !CT.agW || !(CT.ag.v > 0)) return undefined;
-      return { a: CT.ag, w: CT.agW, el: CT.ag.cur >= 0 && CT.agStart ? Math.max(0, Date.now() - CT.agStart) : 0 };
+      return { a: CT.ag, w: CT.agW, g: CT.agG || undefined, el: CT.ag.cur >= 0 && CT.agStart ? Math.max(0, Date.now() - CT.agStart) : 0 };
     }
     // proven: the signature checked out as the host's own (an admin room's
     // agenda is honored only from a verified admin signature).
-    function ctAgendaTake(a, w, el, ageMs, why, proven) {
+    function ctAgendaTake(a, w, el, ageMs, why, proven, g) {
       const MA = GifOS.meetAgenda;
       const prev = CT.ag;
-      const ctx = hasAdminRoom() ? { adminRoom: true, isAdmin: !!proven } : { adminRoom: false };
+      const ctx = hasAdminRoom() ? { adminRoom: true, isAdmin: !!proven } : { adminRoom: false, grantOk: !!g };
       if (!MA.accept(prev, a, ctx)) { ctNote('agenda-refused', { v: a.v, by: String(a.by).slice(0, 8), why: why }); return false; }
       const curId = (x) => (x && x.cur >= 0 && x.items[x.cur]) ? x.items[x.cur].id + '#' + x.cur : '';
       CT.ag = a; CT.agW = w;
+      // The owner's grant travels with every version it still describes.
+      if (g) CT.agG = g;
+      else if (!prev || prev.owner !== a.owner || JSON.stringify(prev.ed) !== JSON.stringify(a.ed)) CT.agG = null;
       if (!prev || curId(prev) !== curId(a) || !CT.agStart) CT.agStart = Date.now() - Math.max(0, +el || 0) - Math.max(0, +ageMs || 0);
       if (a.items.length) CT.agLocal = false;
       ctNote('agenda', { v: a.v, cur: a.cur, n: a.items.length, by: String(a.by).slice(0, 8), why: why });
@@ -8136,7 +8139,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!a || !a.by) return;
       if (CT.ag && (a.v < CT.ag.v || (a.v === CT.ag.v && GifOS.meetAgenda.hash(a) === GifOS.meetAgenda.hash(CT.ag)))) return;
       if (!(await ctAgendaVerify(a, m.w))) { ctNote('agenda-bad-sig', { v: a.v, why: why }); return; }
-      ctAgendaTake(a, m.w, +m.el || 0, ageMs, why, true);
+      const g = (!hasAdminRoom() && m.g && (await ctGrantVerify(a, m.g))) ? m.g : null;
+      ctAgendaTake(a, m.w, +m.el || 0, ageMs, why, true, g);
+    }
+    // Open rooms: the owner signs who may edit, so a latecomer can take an
+    // editor's version without having seen the hand-over.
+    async function ctGrantSign(a) {
+      if (!myIdentity || !myId) return null;
+      const sp = JSON.stringify({ t: 'agenda-ed', room: roomKey(), g: GifOS.meetAgenda.grantBody(a) });
+      return { sp: sp, sig: await net.edSign(myIdentity.priv, sp), pub: myIdentity.pubB64 };
+    }
+    async function ctGrantVerify(a, g) {
+      if (!g || typeof g.sp !== 'string' || typeof g.sig !== 'string' || typeof g.pub !== 'string' || g.sp.length > 2000) return false;
+      let o; try { o = JSON.parse(g.sp); } catch (e) { return false; }
+      if (!o || o.t !== 'agenda-ed' || o.room !== roomKey() || o.g !== GifOS.meetAgenda.grantBody(a)) return false;
+      try {
+        if ((await GifOS.meshIdentity.peerIdOf(g.pub)) !== a.owner) return false;
+        return !!(await net.edVerify(g.pub, g.sig, g.sp));
+      } catch (e) { return false; }
     }
     async function ctAgendaPublish(next, why) {
       if (!next || !CT) return false;
@@ -8148,10 +8168,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       let w = null;
       try { w = await ctAgendaSign(a); } catch (e) { w = null; }
       if (!w) { ctNote('agenda-unsigned', { why: why }); return false; }
+      // The owner signs the list of editors whenever it changes; an editor
+      // passes the owner's grant on unchanged.
+      let g = null;
+      if (!hasAdminRoom()) {
+        const same = CT.ag && CT.agG && CT.ag.owner === a.owner && JSON.stringify(CT.ag.ed) === JSON.stringify(a.ed);
+        if (same) g = CT.agG;
+        else if (a.owner === myId) { try { g = await ctGrantSign(a); } catch (e) { g = null; } }
+      }
       const curMoved = !CT.ag || CT.ag.cur !== a.cur || ((CT.ag.items[CT.ag.cur] || {}).id !== (a.items[a.cur] || {}).id);
       const el = curMoved ? 0 : (CT.agStart ? Date.now() - CT.agStart : 0);
-      if (!ctAgendaTake(a, w, el, 0, 'local:' + (why || ''), !!amAdmin)) return false;
-      sendAll({ k: 'agenda', a: a, w: w, el: el });
+      if (!ctAgendaTake(a, w, el, 0, 'local:' + (why || ''), !!amAdmin, g)) return false;
+      sendAll({ k: 'agenda', a: a, w: w, el: el, g: g || undefined });
       return true;
     }
     function ctAgendaWhoText() {
