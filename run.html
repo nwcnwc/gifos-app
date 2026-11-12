@@ -35419,14 +35419,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // (a few minutes long, renewed while this is the subscription's newest
     // meeting) rides the room's signed orders (sublic), and every door checks
     // it; a ticket that stops renewing stops counting when it runs out. On the $2
-    // plan, or when no valid plan is shown, a door whose room already holds
-    // 20 (the seats this seated door knows are taken now) holds a knocker and asks it to show
+    // plan a door whose room already holds
+    // 20 (the count below) holds a knocker and asks it to show
     // a subscription against a fresh challenge; a good answer lets it in at
     // once, none turns it away with a plain message. $5 and $10 rooms have no
     // limit. A room on the FREE plan (its admin holds no paid plan; Nathan
     // 2026-11-11) has a 5-person line: the 6th person without a subscription
     // is told "This room is full on the free plan", and the host is offered
-    // a one-tap upgrade to 20. An unread count lets people in, never out.
+    // a one-tap upgrade to 20. An admin room whose plan cannot be shown (none,
+    // run out, the host gone, moved to another meeting) is on that free line
+    // too (Nathan 2026-11-11); the room closes soon after its last admin
+    // leaves anyway. The line is only at entry. An unread count lets people in, never out.
     // THE COUNT IS THE DOOR'S GREETER LIST (Nathan 2026-11-11), read when a
     // newcomer comes in: the relay's list of the room's registered seats (the
     // door's own entry is left out of its replies, so the count is the list
@@ -35475,7 +35478,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         subsTierKey = k; subsTier = o ? undefined : null; subsTierExp = 0;
         if (o) GifOS.meetSubs.roomTier(o, subsMeetId()).then((t) => { if (subsTierKey === k) { subsTier = t ? t.tier : null; subsTierExp = t ? t.exp : 0; } }, () => { if (subsTierKey === k) subsTier = null; });
       }
-      if (subsTier && Date.now() / 1000 >= subsTierExp) subsTier = null;   // the admin's ticket ran out: the room is back on the 20 line
+      if (subsTier && Date.now() / 1000 >= subsTierExp) subsTier = null;   // the admin's ticket ran out: no plan, the free line
       return subsTier;
     }
     async function subsPublishRoomPlan() {
@@ -35510,7 +35513,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const count = subsRoomCount(id);
       if (count === 'wait') return true;   // the fresh list answers this knock (subsDoorSeen)
       subsWaitList.delete(id);
-      // While the room's plan is still being checked, a room below the 20 line
+      // While the room's plan is still being checked, a room below the free line
       // lets the knocker in; a room at it holds the knock until the plan is
       // known (the knocker asks again), and asks nothing yet.
       if (tier === undefined) return GifOS.sub.doorVerdict({ adminRoom: true, roomTier: null, count }) !== 'let-in';
@@ -35542,7 +35545,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function subsRefuse(p, asked) {
       if (!asked && !subsAsked.has(p.id)) return;   // only a knocker this door asked
       subsAsked.delete(p.id);
-      const free = subsTier === 'free';
+      const free = !(subsTier && GifOS.sub.isPaid(subsTier));   // the free line: the free plan or no plan
       try { dcSend(p, free ? { k: 'subfull', free: true } : { k: 'subfull' }); } catch (e) {}
       if (free) subsTellHost();
     }
@@ -35565,7 +35568,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function subsTurnedSaid(p, dc) {
       if (!dc || dc.__authBy !== p.id) return;   // an authenticated channel only
       const ms = meshSeat();
-      if (!subsOn() || !amAdmin || !hasAdminRoom() || !(ms && ms.state === 3) || subsRoomTier() !== 'free') return;
+      if (!subsOn() || !amAdmin || !hasAdminRoom() || !(ms && ms.state === 3) || (subsRoomTier() && subsRoomTier() !== 'free')) return;
       GifOS.meetSubs.showHostPrompt();
     }
     // The admin of an admin room without a paid plan gets the free plan's
