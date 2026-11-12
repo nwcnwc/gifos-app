@@ -748,5 +748,21 @@
  "meet.wspRunBrowserShort": "，浏览器字幕已开",
  "meet.wspRunNoneShort": "，你这边没有字幕",
  "meet.wspRetry": "重试",
- "meet.stBrowserCaptionsOnWhisperOff": "浏览器字幕已开启。本设备上的 Whisper 已关闭。"
+ "meet.stBrowserCaptionsOnWhisperOff": "浏览器字幕已开启。本设备上的 Whisper 已关闭。",
+ "meet.viewPick": "视图",
+ "meet.viewPickTip": "切换视图 (Alt+F)",
+ "meet.viewScroll": "滚动",
+ "meet.viewFit": "适应",
+ "meet.viewFloat": "浮动",
+ "meet.viewFocus": "焦点",
+ "meet.viewFollow": "跟随发言人",
+ "meet.viewPresent": "演示",
+ "meet.recToLib": "保存到我的 GifOS 资料库",
+ "meet.recToLibHelp": "录制结束后连同文字记录上传到你的私人资料库。在你分享之前，只有你能看到。",
+ "meet.recNoteLib": "保存到你的 GifOS 资料库。这里的每个人都会看到本次会议正在录制。",
+ "meet.recLibUpsell": "Streamer 订阅用户可以把录制保存到 GifOS 资料库。",
+ "meet.stLibSaving": "正在保存到我的资料库…",
+ "meet.stLibSaved": "已保存到我的资料库。",
+ "meet.stLibPaused": "上传已暂停。下次打开 GifOS 时会继续完成。",
+ "meet.stLibDevice": "已改为保存在此设备上。"
 }
