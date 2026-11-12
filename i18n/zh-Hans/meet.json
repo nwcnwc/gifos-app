@@ -770,5 +770,7 @@
  "meet.subHostTurned": "有人未能进入：此房间在免费方案下已满（5 人）。",
  "meet.subUp20": "订阅，最多 20 人",
  "meet.subUpClose": "关闭",
- "meet.subFreePlan": "你的方案：免费。管理员房间最多 5 人。"
+ "meet.subFreePlan": "你的方案：免费。管理员房间最多 5 人。",
+ "meet.sttVideoPausedRelay": "此连接上的视频已暂停。声音仍然正常。会议中的订阅者可以开启视频。",
+ "meet.turnSubscribe": "订阅"
 }

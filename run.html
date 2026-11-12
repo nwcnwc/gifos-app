@@ -12228,14 +12228,23 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         } else if (!busy && bel) bel.remove();
         let el = p.tile.querySelector(':scope > .tpause:not(.tpause-busy)');
         if (show && !el) {
+          // VIDEO IS PAUSED: the named state's sentence (meet-status videoPausedRelay) over the dark tile, and one
+          // tap to subscribe ($2 monthly, PayPal). A subscription's vouch turns this link's video on where it is:
+          // the next paint finds the link carrying video and takes the note away.
           el = document.createElement('div'); el.className = 'tpause'; el.setAttribute('role', 'note');
-          const t = document.createElement('span');
-          t.textContent = uiText('turnPaused', 'Video is paused: this person connects through our relay. Subscribe to turn on video for this meeting.');
-          el.appendChild(t);
+          const t = document.createElement('span'); t.className = 'tpause-say';
+          const said = statusWords('videoPausedRelay');
+          t.textContent = said; el.appendChild(t);
           if (subsOn()) {
             const b = document.createElement('button'); b.type = 'button'; b.className = 'tpause-sub';
             b.textContent = uiText('turnSubscribe', 'Subscribe');
-            b.addEventListener('click', (e) => { e.stopPropagation(); try { GifOS.meetSubs.openSettings(); } catch (x) {} });
+            b.addEventListener('click', async (e) => {
+              e.stopPropagation(); b.disabled = true;
+              try {
+                const r = await GifOS.meetSubs.subscribe('room20', 'monthly', (w) => { t.textContent = w; });
+                if (!(r && r.licenseJson)) { t.textContent = said; b.disabled = false; }
+              } catch (x) { t.textContent = said; b.disabled = false; }
+            });
             el.appendChild(b);
           }
           p.tile.appendChild(el);

@@ -770,5 +770,7 @@
   "meet.subHostTurned": "Someone was turned away: this room is full on the free plan (5 people).",
   "meet.subUp20": "Subscribe for up to 20",
   "meet.subUpClose": "Close",
-  "meet.subFreePlan": "Your plan: Free. Admin rooms of up to 5 people."
+  "meet.subFreePlan": "Your plan: Free. Admin rooms of up to 5 people.",
+  "meet.sttVideoPausedRelay": "Video is paused on this connection. Sound still works. A subscriber in the meeting can turn video on.",
+  "meet.turnSubscribe": "Subscribe"
 }

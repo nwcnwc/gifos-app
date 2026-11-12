@@ -770,5 +770,7 @@
   "meet.subHostTurned": "Jemand wurde abgewiesen: Dieser Raum ist im kostenlosen Tarif voll (5 Personen).",
   "meet.subUp20": "Abonnieren für bis zu 20",
   "meet.subUpClose": "Schließen",
-  "meet.subFreePlan": "Ihr Tarif: Kostenlos. Admin-Räume mit bis zu 5 Personen."
+  "meet.subFreePlan": "Ihr Tarif: Kostenlos. Admin-Räume mit bis zu 5 Personen.",
+  "meet.sttVideoPausedRelay": "Das Video ist auf dieser Verbindung pausiert. Der Ton funktioniert weiter. Ein Abonnent im Meeting kann das Video einschalten.",
+  "meet.turnSubscribe": "Abonnieren"
 }

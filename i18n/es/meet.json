@@ -770,5 +770,7 @@
   "meet.subHostTurned": "Alguien no pudo entrar: esta sala está llena en el plan gratuito (5 personas).",
   "meet.subUp20": "Suscríbete para hasta 20",
   "meet.subUpClose": "Cerrar",
-  "meet.subFreePlan": "Tu plan: Gratis. Salas de administrador de hasta 5 personas."
+  "meet.subFreePlan": "Tu plan: Gratis. Salas de administrador de hasta 5 personas.",
+  "meet.sttVideoPausedRelay": "El vídeo está en pausa en esta conexión. El sonido sigue funcionando. Un suscriptor de la reunión puede activar el vídeo.",
+  "meet.turnSubscribe": "Suscribirse"
 }
