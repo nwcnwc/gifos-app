@@ -575,7 +575,6 @@
     // ROUTED intake (L3.4.1: one body for the answer over a channel and the answer that walked back)
     onRouted(m) {
       const id = this.id, TICK = this.TICK;
-      if (m.tag === K.GA_RT) { this.gaRouted(m); return; }   // a heal move's question to its cell, answered
       if (m.tag === 1 || m.tag === 2) {
         const tk = ckey(m.target); const cur = this.occGet(tk);
         if (m.id >= 0 && this.hasCoord && tk !== ckey(this.coord) && this.probeAsked(tk, m.pn) && !(cur >= 0 && cur !== m.id && this.holdsCell(tk, 60))) {
@@ -605,7 +604,6 @@
         this.emit(m.asker, r); return;
       }
       if (m.ttl <= 0) { const r = newMsg('ROUTED'); r.tag = m.tag; r.target = cc(m.target); r.id = -1; r.pn = m.pn; this.emit(m.asker, r); return; }
-      if (m.tag === K.GA_RT && this.ownedLinkCell(ckey(m.target)) && !this.heldRightNow(ckey(m.target))) { const r = newMsg('ROUTED'); r.tag = m.tag; r.target = cc(m.target); r.id = -1; r.pn = m.pn; this.emit(m.asker, r); return; }   // the cell is a link of mine and nobody there is answering me right now: "nobody", at once
       // FORWARD WITH THE PROBE PAYLOAD
       if (m.tag === 1 && m.nc >= 0 && m.ck && m.asker >= 0 && m.asker !== id) {
         const tk = ckey(m.target); const ideal = this.nextHopCoord(m.target);
