@@ -1,0 +1,17 @@
+{
+  "install.error.noApp": "Приложение не указано.",
+  "install.error.noListing": "В App Store нет карточки для {slug} ({status}).",
+  "install.error.incomplete": "Карточка для {slug} заполнена не полностью.",
+  "install.error.needsNewer": "Для «{name}» нужна более новая версия GifOS, чем запущена на этой странице.",
+  "install.error.status": "загрузка вернула {status}",
+  "install.error.mismatch": "Загруженный файл не совпадает с каталогом. Ничего не установлено.",
+  "install.error.signature": "Это приложение числится подписанным {signer}, но подпись не подтвердилась. Ничего не установлено.",
+  "install.error.notApp": "Этот файл не является приложением GifOS.",
+  "install.error.differentApp": "Этот файл — другое приложение, не то, что в карточке. Ничего не установлено.",
+  "install.error.notProvider": "«{name}» не является приложением-провайдером.",
+  "install.error.providerNetwork": "«{name}» запрашивает доступ к сети, а провайдер должен работать без сети. Отклонено.",
+  "install.signer.author": "его автором",
+  "install.progress.start": "Загрузка «{name}»…",
+  "install.progress.bytes": "Загрузка «{name}»… {got} из {total} МБ",
+  "install.progress.checking": "Проверка «{name}»…"
+}
