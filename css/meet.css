@@ -2507,10 +2507,15 @@
   body.has-app:not(.comfy) #feed { margin-bottom: env(safe-area-inset-bottom, 0px); }
   body.broadcast #feed { padding-bottom: env(safe-area-inset-bottom, 0px); box-sizing: border-box; }
   #joinveil { background: transparent; pointer-events: none; align-items: flex-start; justify-content: center; padding-top: 72px; z-index: 18; }
-  #joinveil .jv-box { pointer-events: auto; background: var(--c-white); color: var(--c-ink); border-radius: var(--r-lg); padding: 1.1rem 1.3rem;
+  /* A wait is not an error: a quiet dark sheet (STYLE rule 1, sheets --c-night), the step in grey,
+     the phase in white, the reason in light grey. */
+  #joinveil .jv-box { pointer-events: auto; background: var(--c-night); color: var(--c-white); border-radius: var(--r-lg); padding: 1.1rem 1.3rem;
     box-shadow: 0 12px 32px rgba(0,0,0,.28); }
-  #joinveil h3 { color: var(--c-ink); }
-  #joinveil p { color: var(--c-ink-2); }
+  #joinveil h3 { color: var(--c-white); }
+  #joinveil p { color: var(--c-paper); }
+  #joinveil p:empty { display: none; }
+  .pg-step, #joinveil p.pg-step { color: var(--c-gray); font-size: 13px; font-weight: 500; margin: 0 0 4px; font-variant-numeric: tabular-nums; }
+  .pg-step[hidden] { display: none; }
   #lobby { background: var(--c-line); }
   #lobby.show { display: grid; padding: 0; overflow: hidden; align-items: stretch; justify-content: stretch; }
   .lob-preview { position: relative; min-height: 180px; background: #1a1d24; overflow: hidden; }

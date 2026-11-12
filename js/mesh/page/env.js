@@ -380,6 +380,7 @@
       // the sim's fabricSend has no dead gate: seat.leave marks itself dead (fabricLeft) and THEN emits its LEAVEs, so a
       // send while the leave's own close is pending (closeAt >= 0) goes out; dropping them left every leaver's cell held
       const s = seat(); if (!s || (dead && closeAt < 0)) return;
+      if (m.t === 'WHOHOME' && to >= 0 && m.from === from && (s.state === 0 || s.state === 1) && fh && fh.turnAsked) { const ap = ID.pid(to); if (ap) fh.turnAsked(ap); }   // C++: mesh_turn.inc:turnAskedNote (TURN.4.3: my door ask to a greeter went out)
       if (m.l10E || m.dgOnly) {
         let held = false; if (s.hasCoord && to >= 0 && to !== from) { for (const c of ownedLinks(s.coord)) if (s.occGet(ckey(c)) === to) { held = true; break; } }
         if (held) parSend(from, to, m); else drop('l10');
@@ -464,13 +465,100 @@
       st.relay.busyOut++; relay.busy(p, body);
     }
 
+    // ---- TURN.14 (C++: mesh_turn.inc fabricTurn*): the seat's TURN facts, from my own pc table ----------------------
+    // The page face (o.fhop): turnOn (this page runs TURN links at all), turnPcs (the peers whose pc runs through an up
+    // TURN link of mine), turnOpened (I opened the up link to that peer), turnHeld (I hold a TURN link in any state),
+    // conns (my connected peers), claims (a peer's beat lists another as its connected peer), relayed (a friend carries
+    // that peer's media to me). The sim reads the network's truth; a page reads only its own pcs and its peers' words.
+    const turnOn = () => !!(fh && fh.turnPcs && (!fh.turnOn || fh.turnOn()));
+    const nidSet = (ps) => { const out = new Set(); for (const p of ps || []) { const x = learnPeer(p); if (x >= 0 && x !== me) out.add(x); } return out; };
+    const turnSet = () => nidSet(fh.turnPcs());
+    const connSet = () => nidSet(fh.conns ? fh.conns() : []);
+    // C++: mesh_turn.inc:fabricTurnAcross   (I am the end that opened a TURN link and the ring I sit in lies across it)
+    function fabricTurnAcross(a) {
+      if (a !== me || !turnOn() || !fh.turnOpened) return false;
+      const s = seat(); if (!s || !s.hasCoord || s.state !== 3 || s.coord.pc !== 0) return false;
+      const T = turnSet(); if (!T.size) return false;
+      for (const x of T) if (fh.turnOpened(ID.pid(x)) && s.t1415Far(x)) return true;   // TURN.14.15: by my link peer's own word, whatever my view holds
+      let end = false;
+      const seated = new Set(s.occ.values());
+      for (const x of T) {
+        if (!fh.turnOpened(ID.pid(x))) continue;
+        const rx = s.l828RingOf(x); if (rx >= 0 && rx !== s.ringName()) continue;   // TURN.14.13: only the opener's side hangs
+        // a page hears no frame from the far side but its TURN peer's, so an unknown ring is no proof: my TURN peer must sit in my
+        // own view (one room), else I am still in my old island and calling my side under me would pin me there (a dup cell)
+        if (!seated.has(x)) continue;
+        end = true; break;
+      }
+      if (!end) return false;
+      const own = connSet();
+      for (const [k, x] of s.occ) {
+        if (x < 0 || x === me || ckPc(k) !== 0 || T.has(x)) continue;
+        { const rx = s.l828RingOf(x); if (rx >= 0 && rx !== s.ringName()) continue; }   // a seat of the old ring, still standing during the merge
+        if (own.has(x)) continue;   // TURN.14.13: a Section-1 seat I hold a pc of my own to is a stray of my side
+        return true;
+      }
+      return false;
+    }
+    // C++: mesh_turn.inc:fabricTurnPeerIn   (TURN.16: the listed greeter that is the far end of a TURN link of mine, or -1)
+    function fabricTurnPeerIn(a, list) { if (a !== me || !turnOn()) return -1; const T = turnSet(); for (const x of T) if (list.indexOf(x) >= 0) return x; return -1; }
+    // C++: mesh_turn.inc:fabricTurnSide   (TURN.14.15: the peers I hold a pc of my own to, no TURN pc, lowest id first)
+    function fabricTurnSide(a, out) { out.length = 0; if (a !== me || !turnOn()) return; const T = turnSet(); for (const x of Array.from(connSet()).sort((p, q) => p - q)) if (!T.has(x)) out.push(x); }
+    // C++: mesh_turn.inc:fabricTurnPc   (my pc to x runs through TURN)
+    const fabricTurnPc = (a, x) => a === me && x >= 0 && turnOn() && turnSet().has(x);
+    // C++: mesh_turn.inc:fabricTurnOpener   (L8.5.9: I opened the up TURN link whose far end is x)
+    const fabricTurnOpener = (a, x) => { if (a !== me || x < 0 || !turnOn() || !fh.turnOpened) return false; const p = ID.pid(x); return !!p && turnSet().has(x) && !!fh.turnOpened(p); };
+    // C++: mesh_turn.inc:fabricTurnMine   (x is on my side of the cut: a pc of my own reaches it, or a peer of my side claims it)
+    function fabricTurnMine(a, x) {
+      if (a !== me || x < 0 || x === me || !turnOn()) return false;
+      const T = turnSet(), own = connSet();
+      if (own.has(x) && !T.has(x)) return true;
+      const px = ID.pid(x); if (!px || !fh.claims) return false;
+      for (const r of own) if (r !== x && !T.has(r) && fh.claims(ID.pid(r), px)) return true;
+      return false;
+    }
+    // C++: mesh_turn.inc:fabricTurnCarried   (TURN.14.9: a friend carries the pair's media, or my ring lies across my link)
+    function fabricTurnCarried(a, x) {
+      if (a !== me || x < 0 || x === me || !turnOn()) return false;
+      if (fabricTurnAcross(me)) return true;
+      const px = ID.pid(x); if (!px) return false;
+      if (fh.relayed && fh.relayed(px)) return true;
+      const r = fh.roles ? fh.roles() : null;   // a job I run for the pair (either way)
+      return !!(r && r.jobs.some((j) => (j.target === px && j.req === ID.pid(me)) || (j.target === ID.pid(me) && j.req === px)));
+    }
+    // C++: mesh_turn.inc:fabricTurnStray   (x is no TURN peer of mine and my own pc reaches it)
+    const fabricTurnStray = (a, x) => a === me && x >= 0 && x !== me && turnOn() && !turnSet().has(x) && connSet().has(x);
+    // C++: mesh_turn.inc:fabricTurnLone   (I hold no TURN link, and no pc of my own to any Section-1 seat on my links but e)
+    function fabricTurnLone(a, e) {
+      if (a !== me || !turnOn()) return false;
+      if (fh.turnHeld && fh.turnHeld()) return false;
+      const s = seat(); if (!s || !s.hasCoord || s.state !== 3) return false;
+      const own = connSet();
+      for (const c of ownedLinks(s.coord)) { if (c.pc !== 0) continue; const x = s.occGet(ckey(c)); if (x < 0 || x === me || x === e) continue; if (own.has(x)) return false; }
+      return true;
+    }
+    // TURN.14.4 / TURN.14.11 for friend-hop envelopes (C++: mesh_fhop.inc fhXmit, fhopOnward): run.html asks before it hands an
+    // envelope to a peer. 0: send; 1: not over this pc (try the next way); 2: consumed (the seat took it back, or it is not carried).
+    // onward: I hand on someone else's envelope (fhopOnward: an entry ask is not carried); else I mint it for my own frame
+    // (fhXmit: only the placement test; my own asks ride my own pc, TURN.14.4).
+    function t14Env(peer, inner, onward) {
+      const s = seat(); if (!s || dead || !turnOn()) return 0;
+      const p = learnPeer(peer); if (p < 0 || !turnSet().has(p)) return 0;
+      const f = inner && inner.t === 'MW2' ? inner.f : inner; if (!f || typeof f.t !== 'string') return 0;
+      if (f.t !== 'FIND' && f.t !== 'PLACE' && f.t !== 'WHOHOME') return 0;
+      let m; try { m = msg.readMsg(f); } catch (e) { return 0; }
+      if ((m.t === 'FIND' || m.t === 'PLACE') && m.nc >= 0 && m.nc !== me && guard('t14Cross', () => s.t14Cross(p, m))()) { st.t14Env = (st.t14Env || 0) + 1; return 2; }
+      if (onward && (m.t === 'WHOHOME' || (m.t === 'FIND' && m.tag !== 1))) { st.t14Skip = (st.t14Skip || 0) + 1; return 1; }   // TURN.14.4: an entry ask is not carried across a TURN link
+      return 0;
+    }
+
     const noop = () => {};
     const deaths = deathLedger(me);   // fabricVerdict: the seat's death verdicts, drained by the page (drainDeaths)
     const OWN = {
       fabricAdmitLog: noop, fabricDupMint: noop, fabricNoteBackoff: noop, fabricNoteReseat: noop, fabricNoteRollback: noop,
       fabricNoteSwap: noop, fabricVerdict: deaths.verdict, l18UxDeliv: noop, descEnd: noop, descNote: noop, g4Joined: noop,   // g4Joined: the sim's L40 contest lever only (X1 55c97d1)
       fabricFreeCells, fabricLieFor: () => null, fabricUnreachable, fhopActive: () => !!fh, fhopFriendFor,
-      fabricTurnOn: () => false, fabricTurnPc: () => false, fabricTurnOpener: () => false, fabricTurnStray: () => false, fabricTurnLone: () => false, fabricTurnAcross: () => false, fabricTurnMine: () => false, fabricTurnCarried: () => false, fabricTurnFeeds: noop, fabricTurnBoth: () => false, fabricTurnPeerIn: () => -1,   /* TURN.14: the page does not feed its relayed-link state to the seat yet, so the law stays off here */
+      fabricTurnOn: turnOn, fabricTurnPc, fabricTurnOpener, fabricTurnHold: (a) => a === me && turnOn() && !!fh.turnHold && !!fh.turnHold(),   /* TURN.4.4: the link I opened is dialling, or just came up (js/meet-turn.js holding) */ fabricTurnStray, fabricTurnLone, fabricTurnAcross, fabricTurnMine, fabricTurnCarried, fabricTurnFeeds: noop, fabricTurnSide, fabricTurnBoth: () => false, fabricTurnPeerIn,   /* TURN.14 from my pc table (above); the feeds are the media plane's (run.html turnFeedPeers) */
       fabricMyTier: () => ((measure.tier ? measure.tier() : E.TIER_DESKTOP) | 0),
       fabricMyNat: () => ((measure.nat ? measure.nat() : E.NAT_OPEN) | 0),
       fabricLeft: () => leaveNow(false), fabricReloadBye: () => leaveNow(true),
@@ -482,7 +570,7 @@
     // ---- the pc laws (A2) over my io ----------------------------------------------------------------------------
     const PW = pcWireM();
     if (!PW || !PW.create) throw new Error('mesh env: GifOS.meshPcWire (js/mesh/page/pclaws-wire.js) is not loaded');
-    const pcw = PW.create({ me, seat, w, trace, io, wireTx, l392Contest: o.l392Contest, fh: fh ? { friendFor: fhopFriendFor, roles: fhRoles, doorDue: (x) => fhDoorDue(x) } : null });
+    const pcw = PW.create({ me, seat, w, trace, io, wireTx, l392Contest: o.l392Contest, fh: fh ? { friendFor: fhopFriendFor, roles: fhRoles, doorDue: (x) => fhDoorDue(x), turnHolds: (x) => { if (!fh.turnHolds) return false; const p = ID.pid(x); return !!p && !!fh.turnHolds(p); } } : null });
     // a law that throws must not take the page down: trace it, count it, answer as "no"
     const guard = (n, fn) => (...a) => {
       try { return fn(...a); } catch (e) {
@@ -508,6 +596,9 @@
       if (closeAt >= 0 && w.TICK >= closeAt) { closeAt = -1; if (pcw.leaveAll) pcw.leaveAll(); }
       while (dialFailLater.length) { const x = dialFailLater.shift(); if (pcw.dialFailed) pcw.dialFailed(x); }
       if (pcw.tick) guard('pcw.tick', pcw.tick)();
+      // C++: mesh_net.inc:netTick's probe loop (L4.1.1): my network verdict landed or changed since the join read it: the seat's kind is
+      // measured again, and a seeker at the door acts on it now (l411Verdict)
+      if (s && !dead && measure.nat) { const n0 = (measure.nat() | 0) & 0xff; if (n0 !== s.nat) { if (s.cnat === s.nat) s.cnat = n0; s.nat = n0; if (typeof s.l411Verdict === 'function') s.l411Verdict(); } }
       if (s && !dead) {
         const due = [];
         for (const t of [...bus.keys()].sort((a, b) => a - b)) { if (t > w.TICK) break; due.push(...bus.get(t)); bus.delete(t); }
@@ -620,10 +711,10 @@
       if (!m || dead) return;
       if (m.t === 'greeters') {
         st.relay.greeters++;
-        const out = [];
-        for (const p of m.list || []) { const x = learnPeer(p); if (x >= 0 && x !== me && !out.includes(x)) out.push(x); }
+        const out = [], at = new Map();   /* L8.52.3: the founding epoch each greeter registered with (C++: relayGreeterAt) */
+        (m.list || []).forEach((p, k) => { const x = learnPeer(p); if (x >= 0 && x !== me && !out.includes(x)) { out.push(x); const e = m.at ? m.at[k] : -1; at.set(x, Number.isInteger(e) && e >= 0 ? e : -1); } });
         for (let k = out.length - 1; k > 0; k--) { const j = Math.floor((o.rand ? o.rand() : Math.random()) * (k + 1)); const t = out[k]; out[k] = out[j]; out[j] = t; }   // the sim's relay shuffles
-        const g = msg.newMsg('GREETERS'); g.list = out; g.to = me; g.from = -1; if (m.tag === 1) g.tag = 1;   /* L3.11.6: the door said admitted:false (C++: relayKnock) */ busAt(w.TICK, g);
+        const g = msg.newMsg('GREETERS'); g.list = out; g.listAt = out.map((x) => at.get(x)); g.to = me; g.from = -1; if (m.tag === 1) g.tag = 1;   /* L3.11.6: the door said admitted:false (C++: relayKnock) */ busAt(w.TICK, g);
         return;
       }
       if (m.t === 'nosock') {
@@ -672,6 +763,8 @@
       dirFor, learnDir, relayBusyList,
       doorNote: (peer) => { const x = learnPeer(peer); if (x >= 0 && x !== me && pcw.doorNote) guard('doorNote', pcw.doorNote)(x); },   // FHOP.8: a knocker's offer reached me over the relay (run.html onRelayPeer)
       doorCallIn: (fromPeer, kind, knockerPeer) => guard('doorCallIn', doorCallIn)(fromPeer, kind, knockerPeer),   // FHOP.8 kinds 7 and 8 off a dc
+      t14Env: (peer, inner, onward) => guard('t14Env', t14Env)(peer, inner, !!onward) | 0,   // TURN.14.4 / 14.11: may this friend-hop envelope cross my pc to peer
+      turnAcross: () => !!guard('turnAcross', fabricTurnAcross)(me),   // TURN.14.8: my ring lies across my TURN link (the media plane feeds it)
       // the mark my answer to peer carries back to it (A2), for the pc layer's answer
       mark: (peer) => { const x = ID.pid(ID.nid(peer)) === String(peer) ? ID.nid(peer) : learnPeer(peer); return x >= 0 && pcw.mark ? pcw.mark(x) : null; }, farView: (to) => farView(seat(), to),
       // the seat's construction is the caller's (A3): new Seat(env.me, env.world)
