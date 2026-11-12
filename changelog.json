@@ -2,6 +2,15 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.25.1",
+      "date": "2026-11-12",
+      "headline": "Joining works again with tracker blockers on",
+      "critical": true,
+      "fixes": [
+        "Meetings: people whose browser blocks trackers (tracking protection, iOS Safari's default privacy protection, or an ad blocker) could be stuck at \"This page did not finish loading\" and never reach the room. A blocked third-party script no longer stops a join."
+      ]
+    },
+    {
       "version": "0.9.25",
       "date": "2026-11-06",
       "headline": "Meetings rebuilt to grow without limit",
