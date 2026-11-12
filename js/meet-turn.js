@@ -234,13 +234,16 @@
   //   {k:'tv', q:'p', l, b}       paid: my end is on the paid pool (b 1) or back on free (b 0)
   //   {k:'tv', q:'i', l}          move our pc onto new settings: the pair's offerer restarts ICE
   //   {k:'tv', q:'x', l}          the link is closed at my end
+  //   {k:'tv', q:'h', l, t}       TURN.5.1: I sit in this meeting through a link of my own: ask my link's far end t instead
+  //                               (an ask that carries f:1 is taken as it is: the asker could not use the answer)
   //   {k:'tv', q:'b', l, b}       busy: my end paused its video because the server throttles (b 1), or sends again (b 0)
-  const TV_KEYS = 'k,q,l,d,b,e,n,m';
+  const TV_KEYS = 'k,q,l,d,b,e,n,m,t,f';
   const LINK_RE = /^[ls][0-9]{1,2}$/, DEV_RE = /^[A-Za-z0-9_.-]{1,16}$/, NONCE_RE = /^[0-9a-f]{18}$/, MAC_RE = /^[A-Za-z0-9_-]{43}$/, E36_RE = /^[0-9a-z]{1,11}$/;
   function tvOk(f) {
     if (!f || typeof f !== 'object' || Array.isArray(f) || f.k !== 'tv' || typeof f.l !== 'string' || !LINK_RE.test(f.l)) return false;
     for (const k of Object.keys(f)) if (k !== '_' && TV_KEYS.split(',').indexOf(k) < 0) return false;
-    if (f.q === 'a') return typeof f.d === 'string' && DEV_RE.test(f.d) && (f.b === 0 || f.b === 1);
+    if (f.q === 'a') return typeof f.d === 'string' && DEV_RE.test(f.d) && (f.b === 0 || f.b === 1) && (f.f === undefined || f.f === 1);
+    if (f.q === 'h') return typeof f.t === 'string' && f.t.length > 0 && f.t.length <= 128;
     if (f.q === 'v') return typeof f.e === 'string' && E36_RE.test(f.e) && typeof f.n === 'string' && NONCE_RE.test(f.n) && typeof f.m === 'string' && MAC_RE.test(f.m);
     if (f.q === 'r' || f.q === 'x' || f.q === 'i') return true;
     if (f.q === 'p' || f.q === 'b') return f.b === 0 || f.b === 1;
@@ -363,6 +366,7 @@
   //   seat() → { head, greeter, view: [pid], cell } | null   (head: my seat is its part's home cell; greeter: Section 1)
   //   greeters() → [pid]   the door's list as my seat last read it (fresh only)
   //   nid(pid) → the seat's number for a peer id (the order turnPick compares)
+  //   epoch(pid) → when that greeter's part was founded, as the door's list says (-1: not said); myEpoch() → my part's (-1: unknown)
   //   reach(pid) → 'direct' | 'friend' | null   TURN.2 / TURN.3 as this page knows them
   //   blocked() → my network blocks direct connections (the page's own probe)
   //   alive(pid) → the far page is still in the meeting      pcUp(pid) → the pair's connection is up
@@ -375,6 +379,7 @@
     const K = meshConsts().consts, T = meshTurn();
     const tick = io.tickMs || 500;
     const WAIT_MS = K.TURN_WAIT * tick;                        // TURN.4
+    const ASK_MS = K.FHOP_RELAY_ASK * tick;                    // TURN.4.3: one dial's direct verdict; TURN.4.4: the hold after the link came up
     const MERGE_MS = K.RELAY_TTL * tick;                       // TURN.15.2: the span of one merge
     const RETRY_MS = K.TURN_RETRY * tick;                      // TURN.10
     const RESEND_MS = K.TURN_DIAL * tick;                      // a handshake frame the relay lost is sent again
@@ -383,7 +388,31 @@
     const FACT_EVERY_MS = K.TURN_DIAL * tick * 2;              // a link end restates its fact
     const FACT_STALE_MS = FACT_EVERY_MS * 4;
     const links = new Map();   // far pid → link
-    const head = { since: -1, retryAt: -1, skip: '' };
+    // TURN.4.3 (C++: mesh_turn.inc:turnWaited): the wait is kept per greeter. A foreign greeter I asked at my entry has
+    // its direct verdict FHOP_RELAY_ASK after that ask (my own dial to it stayed silent); one I never asked has it
+    // TURN_WAIT after I first held it as foreign. The entry's credit counts only with no connected peer of my own (a
+    // friend's probe starts when I first hold the greeter) and once the door has answered my seating knock.
+    // TURN.4.5: one verdict per room: a greeter of a room (the door's founding epoch) that already has a verdict does
+    // not hold the ask.
+    function turnWaited(now, F) {
+      if (!io.blocked()) return now - head.since >= WAIT_MS;   // the per-greeter wait is a blocked head's: any other head keeps TURN.4's one clock
+      const friends = io.friends ? !!io.friends() : true;
+      const judged = !friends && !!io.askedAt && (io.judged ? !!io.judged() : true);
+      for (const g of Array.from(head.seen.keys())) if (F.indexOf(g) < 0) head.seen.delete(g);
+      const due = (g) => { let d = head.seen.get(g) + WAIT_MS; if (judged) { const a = io.askedAt(g); if (a > 0 && now - a <= MERGE_MS) d = Math.min(d, a + ASK_MS); } return d; };
+      const epOf = (g) => { const e = io.epoch ? io.epoch(g) : -1; return Number.isInteger(e) ? e : -1; };
+      let ok = true; const ep = new Set();
+      for (const g of F) { if (!head.seen.has(g)) head.seen.set(g, now); if (now < due(g)) ok = false; else { const e = epOf(g); if (e >= 0) ep.add(e); } }
+      if (!ok) { ok = true; for (const g of F) { const e = epOf(g); if (e >= 0 && ep.has(e)) continue; if (now < due(g)) { ok = false; break; } } }
+      return ok;
+    }
+    // TURN.4.4 (C++: mesh_turn.inc:fabricTurnHold): the link I opened is dialling, or came up inside FHOP_RELAY_ASK.
+    function holding(now) {
+      if (!io.blocked()) return false;
+      for (const L of links.values()) if (L.opener && (L.state !== 'up' || !(L.upAt > 0) || now - L.upAt < ASK_MS)) return true;
+      return false;
+    }
+    const head = { since: -1, retryAt: -1, skip: '', seen: new Map() };   // seen: foreign greeter → when I first held it as foreign (TURN.4.3)
     let serialN = 0, lastFactAt = 0;
     const log = (s) => { try { if (io.log) io.log(s); } catch (e) {} };
     const short = (p) => String(p || '').slice(0, 8);
@@ -411,7 +440,7 @@
       try { io.changed(L.far); } catch (e) {}
     }
     const fresh = (L) => !!(L.mine && L.peer && L.mine.e - io.now() > 0 && L.peerE - io.now() > 0);
-    function sendAsk(L) { L.sentAt = io.now(); io.sendTv(L.far, { k: 'tv', q: 'a', l: L.l, d: io.dev(), b: io.blocked() ? 1 : 0 }); }
+    function sendAsk(L) { L.sentAt = io.now(); const a = { k: 'tv', q: 'a', l: L.l, d: io.dev(), b: io.blocked() ? 1 : 0 }; if (L.force) a.f = 1; io.sendTv(L.far, a); }
     function askMine(L) { if (!L.farDev) return; L.vAskAt = io.now(); io.askVouch(L.farDev, L.l); }
     function credFor(L, pool) {
       return createCredentials({ ask: io.ask, room: io.sid(), pool, now: io.now, setTimer: io.setTimer, clearTimer: io.clearTimer,
@@ -462,6 +491,10 @@
           const s = io.seat();
           if (!s || !s.greeter) return;                       // only a seated greeter can be vouched for: say nothing
           if (s.view.indexOf(from) >= 0 && io.reach(from) === 'direct') return;   // reached already: no link
+          // TURN.5.1 (C++: mesh_turn.inc:turnHomeEnd): a link is not hung on another link's end. I sit in the room of the far end of a
+          // link I opened: a newcomer linked to me would be two relayed hops from every other seat, and nobody carries a pair two
+          // hops apart. I answer with my link's far end and the asker asks that seat.
+          if (f.f !== 1) { let home = null; for (const M of links.values()) if (M.opener && M.state === 'up' && M.far !== from && s.view.indexOf(M.far) >= 0) { home = M.far; break; } if (home) { log('turn-link home-end ' + short(from) + ' -> ' + short(home)); io.sendTv(from, { k: 'tv', q: 'h', l: f.l, t: home }); return; } }
           L = newLink(from, f.l, false); L.heardAt = io.now();
         }
         if (L.l !== f.l) return;
@@ -473,6 +506,15 @@
         return;
       }
       if (!L || L.l !== f.l) return;
+      if (f.q === 'h') {   // TURN.5.1: the seat I asked sits in the meeting through a link of its own: its far end is the one to ask
+        if (!L.opener || L.state === 'up' || f.t === io.me()) return;
+        const hops = (L.hops | 0) + 1, known = (io.greeters() || []).indexOf(f.t) >= 0;
+        if (hops > 4 || !known || links.has(f.t)) { L.force = true; sendAsk(L); return; }   // an answer I cannot use (a seat the door does not list for me): the asked seat takes the link itself
+        log('turn-link home-end: asking ' + short(f.t) + ' instead of ' + short(L.far));
+        close(L, 'home-end', true);
+        const N = newLink(f.t, linkName(io.me(), f.t, K.TURN_FREE_LINKS), true); N.hops = hops; sendAsk(N);
+        return;
+      }
       if (f.q === 'v') {
         if (!L.farDev) return;
         const e = parseInt(f.e, 36);
@@ -626,8 +668,8 @@
           if (theirs.size) for (let i = F.length - 1; i >= 0; i--) if (theirs.has(F[i])) F.splice(i, 1);
         }
         head.F = F.map(short); head.n = (io.greeters() || []).length;
-        if (direct || fr) { head.skip = direct ? 'direct' : 'friend'; head.since = -1; }
-        else if (!F.length) head.since = -1;
+        if (direct || fr) { head.skip = direct ? 'direct' : 'friend'; head.since = -1; head.seen.clear(); }
+        else if (!F.length) { head.since = -1; head.seen.clear(); }
         else {
           head.skip = '';
           if (head.since < 0) head.since = now;
@@ -638,12 +680,15 @@
           let has = false;
           for (const L of links.values()) if ((L.opener || view.has(L.far)) && !inside(io.me(), L.far, L.state === 'up' ? L.upAt : -1)) { has = true; break; }
           for (const f of io.facts() || []) if (f && !f.gone && f.up && mine(f.a) && !inside(f.a, f.b, f.s || -1)) { has = true; break; }
-          if (!has && now - head.since >= WAIT_MS && now >= head.retryAt) {
+          if (!has && turnWaited(now, F) && now >= head.retryAt) {
             // TURN.15.1: which part is "the lower" must read the same from both sides, so a part's place in the order is
             // its lowest greeter on the door's list (the one thing both heads read), or me: never the lowest id of my view.
             let myMin = io.nid(io.me()); for (const g of io.greeters() || []) { if (!g || g === io.me() || !view.has(g)) continue; const n = io.nid(g); if (n >= 0 && n < myMin) myMin = n; }
             const byNid = new Map(); for (const g of F) byNid.set(io.nid(g), g);
-            const pick = T.turnPick(Array.from(byNid.keys()), myMin);
+            // The older part stays: I ask toward the oldest part I cannot reach, and only if it is older than mine. The
+            // door's list says when each greeter's part was founded; with no such word the lower id decides, as before.
+            const epOf = (n) => { const g = byNid.get(n), e = (g && io.epoch) ? io.epoch(g) : -1; return Number.isInteger(e) ? e : -1; };
+            const pick = T.turnPick52(Array.from(byNid.keys()), epOf, myMin, io.myEpoch ? io.myEpoch() : -1);
             if (pick >= 0) {
               const g = byNid.get(pick);
               const L = newLink(g, linkName(io.me(), g, K.TURN_FREE_LINKS), true);
@@ -670,6 +715,7 @@
       factStaleMs: FACT_STALE_MS,
       holds(pid) { const L = links.get(pid); return !!L && L.state !== 'closed'; },
       isLink(pid) { const L = links.get(pid); return !!L && (L.state === 'up' || L.state === 'dial'); },
+      holding() { return holding(io.now()); },   // TURN.4.4
       videoBlocked(pid) { const L = links.get(pid); return !!L && (!L.video || L.busy); },
       // TURN.13: the step my video takes on this link ({ maxBitrate, scale, fps }), null when nothing limits it.
       videoStep(pid) { const L = links.get(pid); return L && L.video && L.thr && L.thr.step >= 0 ? L.thr : null; },
@@ -677,6 +723,8 @@
       farBusy(pid) { const L = links.get(pid); return !!L && L.video && L.farBusy; },
       // TURN.14 hooks for the twin (the pcs that run through TURN: fabricTurnAcross reads them).
       turnPcs() { const out = []; for (const L of links.values()) if (L.state === 'up') out.push(L.far); return out; },
+      opened(pid) { const L = links.get(pid); return !!L && L.state === 'up' && !!L.opener; },   // TURN.14.13 / L8.5.9: I opened this up link
+      anyHeld() { for (const L of links.values()) if (L.state !== 'closed') return true; return false; },   // TURN.14.13: I hold a TURN link in any state
       lookMs: THROTTLE_LOOK_MS,
       video(pid) { const L = links.get(pid); return !!L && L.video; },
       close(pid, why) { const L = links.get(pid); if (L) close(L, why || 'closed'); },
@@ -688,7 +736,7 @@
           pool: L.paidMe ? 'paid' : 'free', paid: L.paid ? L.paid.state() : null, paidRefusal: L.paid ? L.paid.refusal() : null, paidFar: L.paidFar,
           vouched: L.vouched, video: L.video, upAt: L.upAt, side: L.side.length,
           step: L.thr ? L.thr.step : null, cap: L.cap || null, busy: L.busy, farBusy: L.farBusy, standbyN: L.standbyN, lastSwitchMs: L.lastSwitchMs || null });
-        return { links: out, head: Object.assign({}, head) };
+        return { links: out, head: Object.assign({}, head, { seen: Array.from(head.seen.entries()).map(([g, t]) => [short(g), t]) }) };
       },
     };
   }

@@ -21,6 +21,9 @@
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
   const RCD = ((n) => ({ L35_4_OFF: n('L35_4_OFF'), L17_3_1_OFF: n('L17_3_1_OFF'), L17_4_OFF: n('L17_4_OFF'), L35_5_OFF: ((isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L35_5_OFF === '0') ? 0 : 1) }))((k) => ((isNode && typeof process !== 'undefined' && process.env && process.env['MESH_' + k] === '1') ? 1 : 0));   // the sim's build-time switches of the realcheck dead-dial laws (mesh.cpp L35_4_OFF ...): MESH_<name>=1 under node; a page runs the laws
   const seatM = req('./seat.js', 'meshSeat');
+  // the sim's #define L25_21_OFF in mesh_seat.inc (a build-time switch): MESH_L25_21_OFF=1 under node, read once at load; a page always runs the law
+  const L25_21_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L25_21_OFF === '1') ? 1 : 0;
+  const L25_22_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L25_22_OFF === '1') ? 1 : 0;   // mesh_seat.inc L25_22_OFF
   const { cellOk, ownerCoordOf, coordStr, u2RowKey } = req('./shared.js', 'meshShared');
   const { Seat, FREE, roomTerm, islandStand, signedBy, l165Earlier } = seatM;
   const C_ = req('./consts.js', 'meshConsts');
@@ -45,6 +48,35 @@
 
 
   Seat.unit('mesh_seat.inc recv seated handlers', {
+    // C++: mesh_seat.inc:Seat::l2522Keep
+    // L25.22: a mover's claim refused for its old cell is read again at its goodbye from that cell (one slot; an arrival's claim only).
+    l2522Keep(m, from, sure) {
+      if (L25_22_OFF || !sure || m.arr < 0 || m.arr > K.L11_ARRIVE) return;
+      this.l2522Id = m.id; this.l2522At = this.TICK; this.l2522From = from; this.l2522Msg = msg.clone(m);
+    },
+    // C++: mesh_seat.inc:Seat::l2522Bye
+    l2522Bye(x, from, mv) {
+      if (this.l2522Id < 0 || x !== this.l2522Id || from !== this.l2522From) return;
+      const TICK = this.TICK;
+      const ok = mv && this.state === 3 && this.hasCoord && this.occGet(from) !== x && TICK - this.l2522At + this.l2522Msg.arr <= K.L11_ARRIVE;
+      const h = this.l2522Msg; h.arr += TICK - this.l2522At; this.l2522Id = -1; this.l2522At = -99999; this.l2522From = 0; this.l2522Msg = newMsg(msg.MT_NAMES[0]);
+      if (!ok) return;
+      this.trace('L25.22-CLAIM', this.id, unck(h.ck), 'from=%d left=%s held=%d', x, coordStr(unck(from)), h.arr);
+      this.onHello(h);
+    },
+    // C++: mesh_seat.inc:Seat::l2521First
+    // L25.21: two arrivals at one cell are ordered once, by L16.7. Inside L16.7's hearing window, between two arrivals, L25's holder word does
+    // not name the incumbent to the claimant L16.7 keeps (the two words named different seats and both left on a quorum).
+    l2521First(m, sure) {
+      const TICK = this.TICK;
+      if (L25_21_OFF || !this.f.fabricDoors() || !sure || m.arr < 0 || m.arr > K.L11_ARRIVE) return false;
+      const p = this.occGet(m.ck); const pb = this.bornOf(m.ck, p); if (pb === null) return false;
+      const cb = this.claimBorn(m); if (cb < 0 || TICK - pb > K.L11_ARRIVE) return false;
+      const d = pb - cb; if (d > K.L167_W || d < -K.L167_W || !seatM.placeBefore(m.id, cb, p, pb)) return false;
+      this.trace('L25.21-ORDER', this.id, unck(m.ck), 'first=%d incumbent=%d d=%lld', m.id, p, d);
+      return true;
+    },
+
     // C++: mesh_seat.inc:Seat::onHello
     onHello(m) {
       const id = this.id, TICK = this.TICK, lv = this.w.lv;
@@ -94,7 +126,7 @@
         }
         return;
       }
-      if (!this.l25Stand(m.id) && this.occGet(m.ck) >= 0 && this.occGet(m.ck) !== m.id && this.occGet(m.ck) !== id && !prov && !(ppn && m.pp === this.occGet(m.ck))) {
+      if (!this.l25Stand(m.id) && this.occGet(m.ck) >= 0 && this.occGet(m.ck) !== m.id && this.occGet(m.ck) !== id && !prov && !(ppn && m.pp === this.occGet(m.ck)) && !this.l2521First(m, sure)) {
         const la = this.lkAt.get(m.ck); const bi = this.byeId.get(m.ck);
         if (la !== undefined && TICK - la <= K.L25_BEAT && !(this.byeAt.has(m.ck) && bi !== undefined && bi === this.occGet(m.ck))) {
           lv.L25_TWICE++;
@@ -102,7 +134,7 @@
           return;
         }
       }   // L25: a bare word does not take a cell from a seat whose beats reach me over its own channel
-      if (!this.l25Stand(m.id) && this.occGet(m.ck) !== m.id && !prov) { for (const [ek, ev] of this.occ) if (ev === m.id && ek !== m.ck && this.holdsCell(ek, 60)) { lv.L25_TWICE++; return; } }   // L25: a seat is in one place
+      if (!this.l25Stand(m.id) && this.occGet(m.ck) !== m.id && !prov) { for (const [ek, ev] of this.occ) if (ev === m.id && ek !== m.ck && this.holdsCell(ek, 60)) { lv.L25_TWICE++; this.l2522Keep(m, ek, sure); return; } }   // L25: a seat is in one place
       let prev = this.occGet(m.ck);
       // E2: yield only between FIRST-HAND-LIVE claimants.
       if (prev >= 0 && prev !== m.id && m.pp === prev) { this.occDrop(m.ck, 'handed'); this.live.delete(m.ck); prev = -1; }   // L3.10.4
@@ -220,7 +252,7 @@
           if (this.occGet(ak) >= 0 && this.occGet(ak) !== by && !this.firstHandLive(ak)) { const lvv = this.live.get(ak); l327 = lvv === undefined || TICK - lvv >= 60; }   // L32.7
           if ((this.occGet(ak) < 0 || l327) && TICK - this.l13KnockAt >= 8) { this.l13KnockAt = TICK; const q = newMsg('MEET'); q.ck = ckey(this.coord); q.id = id; q.oCk = ak; q.owner = -1; this.emit(by, q); const ac = unck(ak); this.trace('L13-WHOYIELDS', id, ac, 'by=%d', by); }
         }   // L13.1
-        if (!ok && !this.l25Stand(m.nc >= 0 ? m.nc : by, true) && !this.moving && m.nc >= 0 && m.nc !== id && m.nc !== by && TICK - this.seatedAt < K.L11_ARRIVE) { this.l25Ask(m, by); return; }   // L25
+        if (!ok && !this.l25Stand(m.nc >= 0 ? m.nc : by, true) && !this.moving && m.nc >= 0 && m.nc !== id && m.nc !== by && TICK - this.seatedAt < K.L11_ARRIVE) { this.l25Ask(m, by, true); return; }   // L25
         if (!ok) this.l391Ask(m, by);   // L39.1: a yield from a seat of my rook over its own link puts L25's question (gaps3.js)
         if (!ok) { const ak = this.arbCellOf(by); const hasAk = ak !== null; if (!this.arbiterIs(by) || (hasAk && this.ppPendingSim(ak, by))) { this.pendYBy = by; this.pendYAt = TICK; this.pendYCk = m.ck; this.pendYNc = m.nc; this.pendYPp = m.pp; this.pendYPpAt = m.ppAt; this.pendYPpL = m.ppL; this.pendYBorn = m.born; } return; }
       }
@@ -251,8 +283,8 @@
       const id = this.id, TICK = this.TICK;
       this.l44Left(m.ck, m.id);   // L44.2 (burst.js)
       if (roomTerm(this, 1) && m.c7 && m.id >= 0 && this.provenEv(m, m.id)) { this.l829Bye.set(m.id, TICK); if (this.l829Bye.size > 128) this.l829Bye.clear(); }   // L8.29
-      if (roomTerm(this, 1) && !m.c7 && m.c7Min >= 0 && m.id >= 0 && this.hasCoord && this.state === 3 && TICK - this.c7At >= K.RELAY_TTL && this.ringName() === m.c7Min && this.occGet(m.ck) === m.id && this.provenEv(m, m.id) && this.l42Second(m)) { this.trace('L8.34-FOLLOW', id, this.coord, 'from=%d ring=%d', m.id, m.c7Min); this.c7Yield(m.c7Min); return; }   // L8.34
-      if (roomTerm(this, 1) && m.c7 && this.hasCoord && this.state === 3) { if (TICK - this.c7At >= K.RELAY_TTL) { let mate = false; for (const [, ev] of this.occ) if (ev === m.id) { mate = true; break; } if (mate && this.ringName() === m.c7Min && this.provenEv(m, m.id) && this.l42Second(m)) { this.c7Yield(m.c7Min); return; } } if (this.c7Follow(m)) return; }   // L8.5 / L8.6
+      if (roomTerm(this, 1) && !m.c7 && m.c7Min >= 0 && m.id >= 0 && this.hasCoord && this.state === 3 && (TICK - this.c7At >= K.RELAY_TTL || this.l8510Bye(m)) && this.ringName() === m.c7Min && this.occGet(m.ck) === m.id && this.provenEv(m, m.id) && this.l42Second(m)) { if (TICK - this.c7At < K.RELAY_TTL) this.trace('L8.5.10-PAST', id, this.coord, 'bye=%d mine=%d since=%d', m.id, this.lineAt, (TICK - this.c7At) | 0); this.trace('L8.34-FOLLOW', id, this.coord, 'from=%d ring=%d', m.id, m.c7Min); this.t161Note(m.id); this.c7Yield(m.c7Min); return; }   // L8.34
+      if (roomTerm(this, 1) && m.c7 && this.hasCoord && this.state === 3) { if (TICK - this.c7At >= K.RELAY_TTL || this.l8510Bye(m)) { let mate = false; for (const [, ev] of this.occ) if (ev === m.id) { mate = true; break; } if (mate && this.ringName() === m.c7Min && this.provenEv(m, m.id) && this.l42Second(m)) { if (TICK - this.c7At < K.RELAY_TTL) this.trace('L8.5.10-PAST', id, this.coord, 'bye=%d mine=%d since=%d', m.id, this.lineAt, (TICK - this.c7At) | 0); this.t161Note(m.id); this.c7Yield(m.c7Min); return; } } if (this.c7Follow(m)) return; }   // L8.5 / L8.6
       else if (roomTerm(this, 1) && !m.c7 && m.c7Min >= 0 && this.hasCoord && this.state === 3 && this.c7Follow(m)) return;   // L8.40
       // FRAME AUTHORITY: a goodbye frees the LEAVER'S OWN cell
       if (m.id < 0 || !cellOk(m.ck) || (m.mvd && !cellOk(m.mvd)) || !this.provenEv(m, m.id)) return;

@@ -39,6 +39,7 @@
   const STATE_KEY = 'gifos-sub-state';     // the last license and what PayPal said
   const CRED_KEY = 'gifos-sub-cred';       // this browser's copy of the subscription file's contents
   const FREE_KEY = 'gifos-sub-free';       // the free plan's license for this browser's key: {subId, licenseJson, sig}
+  const WALLET_KEY = 'gifos-pass-wallet';  // this browser's four-hour passes and their key (passes.json in the subscription file)
   // New words read the meeting's catalog (i18n/<lang>/meet.json); English stays beside the call.
   const tx = (key, en) => { try { const L = GifOS.i18n; if (L && L.ui() !== 'en' && L.has('meet.' + key)) return L.t('meet.' + key); } catch (e) {} return en; };
   const POLL_MS = TM.SUBS_POLL_MS;
@@ -74,10 +75,11 @@
   // This browser's credential, else one in the Providers folder of this
   // browser's Home Screen (recognised there only, like every provider).
   let provP = null;
-  function fromProviders() {
+  function fromProvidersAll() {
     if (!provP) provP = (async () => {
+      const out = { cred: null, wallet: null };
       const st = GifOS.store, gif = GifOS.gif;
-      if (!st || !st.allItems || !st.getFile || !gif) return null;
+      if (!st || !st.allItems || !st.getFile || !gif) return out;
       const items = await st.allItems();
       for (const it of items || []) {
         if (!it || (it.parent || null) !== 'sys_providers' || it.kind !== 'file' || !it.fileId) continue;
@@ -85,13 +87,16 @@
         if (!f || f.kind !== 'gif' || !f.bytes) continue;
         const bytes = f.bytes instanceof Uint8Array ? f.bytes : new Uint8Array(f.bytes);
         const arc = await gif.decode(bytes).catch(() => null);
-        const c = arc && SUB.credentialFromFiles(arc.files);
-        if (c) return c;
+        if (!arc) continue;
+        if (!out.cred) out.cred = SUB.credentialFromFiles(arc.files);
+        if (!out.wallet) out.wallet = SUB.walletFromFiles(arc.files);
+        if (out.cred && out.wallet) break;
       }
-      return null;
-    })().catch(() => null);
+      return out;
+    })().catch(() => ({ cred: null, wallet: null }));
     return provP;
   }
+  const fromProviders = async () => (await fromProvidersAll()).cred;
   async function credential() {
     const c = SUB.credentialOk(readJson(CRED_KEY));
     return c || (await fromProviders());
@@ -112,8 +117,9 @@
   // Download: the file is built here from this browser's credential.
   async function fileBytes() {
     const c = await credential();
-    if (!c) throw new Error('No subscription on this browser.');
-    return GifOS.gif.encode(SUB.credentialFiles(c), { accent: [120, 200, 255] });
+    const w = await wallet();
+    if (!c && !w) throw new Error('No subscription on this browser.');
+    return GifOS.gif.encode(SUB.credentialFiles(c, w), { accent: [120, 200, 255] });
   }
   async function downloadFile() {
     const bytes = await fileBytes();
@@ -128,6 +134,9 @@
   async function useFile(bytes) {
     const arc = await GifOS.gif.decode(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes));
     const c = arc && SUB.credentialFromFiles(arc.files);
+    const w = arc && SUB.walletFromFiles(arc.files);
+    if (w) { mergeWallet(w); passChanged(); }
+    if (!c && w) return readState();
     if (!c) throw new Error('That file is not a GifOS subscription.');
     writeJson(CRED_KEY, c);
     keyMemo = { seed: null, p: null };
@@ -196,10 +205,18 @@
     }
     return libKeyMemo.p;
   }
-  async function rights() {
+  // The subscription's rights alone (paid, else free).
+  async function planRights() {
     if (!on()) return Object.assign({}, SUB ? SUB.FREE : {});
     const lic = await verifiedLicense();
     return SUB.rightsOf(lic || (await verifiedFree()), nowS());
+  }
+  // What is in effect now: the best of the subscription and a live pass.
+  async function rights() {
+    const base = await planRights();
+    if (!on()) return base;
+    const lp = await livePass();
+    return lp ? SUB.bestRights([base, SUB.passRights(lp.o)]) : base;
   }
 
   async function post(path, body) {
@@ -221,7 +238,7 @@
     if (!(await subIdNow())) return null;
     const j = await post('/gifos/sub/license', await signed('license'));
     const st = readState();
-    const next = Object.assign({}, st, { subId: await subIdNow(), status: j.status, tier: j.tier || st.tier, until: j.until || null, checkedAt: Date.now() });
+    const next = Object.assign({}, st, { subId: await subIdNow(), status: j.status, tier: j.tier || st.tier, until: j.until || null, paidThrough: j.paidThrough || null, checkedAt: Date.now() });
     if (j.active && j.licenseJson) { next.licenseJson = j.licenseJson; next.sig = j.sig; delete next.lastLicenseJson; delete next.lastSig; }
     else {
       // The last license is kept for My library: after a plan ends, its
@@ -292,6 +309,128 @@
       })().catch(() => null).then((x) => { freeP = null; return x; });
     }
     return freeP;
+  }
+
+  // ---- the four-hour pass ------------------------------------------------------
+  // $1 through PayPal for the Unlimited plan's meeting rights for four hours
+  // (never capturing an open room). The passes and the seed of the key they
+  // are bound to live in WALLET_KEY and in the subscription file
+  // (passes.json). One key holds all of them, so a new pass stacks: the
+  // payment service starts it when the latest held pass ends.
+  let walletMemo = { seed: null, p: null };
+  async function wallet() {
+    const w = SUB.walletOk(readJson(WALLET_KEY));
+    if (w) return w;
+    const pw = (await fromProvidersAll()).wallet;
+    if (pw) { writeJson(WALLET_KEY, pw); return pw; }
+    return null;
+  }
+  async function walletKey(w) {
+    if (walletMemo.seed !== w.seed) walletMemo = { seed: w.seed, p: GifOS.ed.keysFromSeed(fromB64(w.seed)).then((k) => ({ priv: k.priv, pub: b64(k.pubRaw) })) };
+    return walletMemo.p;
+  }
+  async function ensureWallet() {
+    const w = await wallet();
+    if (w) return w;
+    const seed = new Uint8Array(32); crypto.getRandomValues(seed);
+    const k = await GifOS.ed.keysFromSeed(seed);
+    const nw = { v: 1, kind: SUB.WALLET_KIND, seed: b64(seed), buyerKey: b64(k.pubRaw), passes: [] };
+    writeJson(WALLET_KEY, nw);
+    return nw;
+  }
+  const passOf = (p) => { try { return JSON.parse(p.passJson); } catch (e) { return null; } };
+  // A file brought from another browser: with the same key its passes join
+  // these; with another key it replaces a wallet holding no pass still to use.
+  function mergeWallet(w) {
+    const cur = SUB.walletOk(readJson(WALLET_KEY));
+    const n = nowS();
+    if (cur && cur.seed !== w.seed && cur.passes.some((p) => { const o = passOf(p); return o && o.end > n; })) return false;
+    const seen = new Set();
+    const passes = (cur && cur.seed === w.seed ? cur.passes : []).concat(w.passes).filter((p) => !seen.has(p.passJson) && seen.add(p.passJson));
+    writeJson(WALLET_KEY, Object.assign({}, w, { passes, pending: (cur && cur.seed === w.seed && cur.pending) || w.pending }));
+    return true;
+  }
+  // Every well-signed pass of this browser's key, by start: [{o, raw}].
+  async function passes() {
+    const w = await wallet();
+    if (!w) return [];
+    const key = (await walletKey(w)).pub;
+    const out = [];
+    for (const p of w.passes) {
+      const o = await SUB.verifyPass(p, verifyPay).catch(() => null);
+      if (o && o.buyerKey === key) out.push({ o, raw: { passJson: p.passJson, sig: p.sig } });
+    }
+    return out.sort((a, b) => a.o.start - b.o.start);
+  }
+  async function livePass() {
+    const n = nowS();
+    const live = (await passes()).filter((x) => SUB.passLive(x.o, n));
+    return live.length ? live[live.length - 1] : null;
+  }
+  async function passSign(text) {
+    const k = await walletKey(await wallet());
+    return b64(await GifOS.ed.sign(k.priv, new TextEncoder().encode(text)));
+  }
+  // The pass that was live when last looked at; a change (bought, started,
+  // ended) is told to the meeting page (hooks.onPass), which re-presents
+  // the room's plan and its TURN vouch.
+  let passSeen = '';
+  function passChanged() { try { if (hooks.onPass) hooks.onPass(); } catch (e) {} }
+  async function passWatch() {
+    if (!on()) return;
+    const lp = await livePass().catch(() => null);
+    const k = lp ? lp.o.id + ':' + lp.o.end : '';
+    if (k !== passSeen) { passSeen = k; passChanged(); }
+  }
+  // Ask the payment service for the pass of one PayPal order. Shown: every
+  // pass held, so a new one starts where they end.
+  async function claimPass(order) {
+    const w = await wallet();
+    if (!w) return null;
+    const k = await walletKey(w);
+    const at = nowS();
+    const r = await fetch(payBase() + '/gifos/pass/claim', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+      order, buyerKey: k.pub, at, sig: b64(await GifOS.ed.sign(k.priv, new TextEncoder().encode(SUB.askMessage('pass', order, at)))), held: w.passes,
+    }) });
+    let j = null; try { j = await r.json(); } catch (e) {}
+    if (r.status === 202 || (j && j.pending)) return { pending: true, status: j && j.status };
+    if (!r.ok || !j || !j.passJson) return { refused: true, status: r.status, error: j && j.error };
+    const o = await SUB.verifyPass({ passJson: j.passJson, sig: j.sig }, verifyPay).catch(() => null);
+    if (!o || o.buyerKey !== k.pub) return { refused: true };
+    const cur = (await wallet()) || w;
+    const list = cur.passes.filter((p) => { const x = passOf(p); return x && x.order !== o.order; }).concat([{ passJson: j.passJson, sig: j.sig }]);
+    const next = Object.assign({}, cur, { passes: list }); delete next.pending;
+    writeJson(WALLET_KEY, next);
+    passWatch().catch(() => {});
+    return j;
+  }
+  // Buy: a PayPal order for $1, approved in PayPal's window, then claimed.
+  async function buyPass(say) {
+    say = say || (() => {});
+    const w = await ensureWallet();
+    const k = await walletKey(w);
+    const popup = root.open('about:blank', 'gifos-pass', 'width=480,height=720');
+    let j;
+    try { j = await post('/gifos/pass/create', { buyerKey: k.pub }); }
+    catch (e) { try { popup && popup.close(); } catch (x) {} throw e; }
+    writeJson(WALLET_KEY, Object.assign({}, (await wallet()) || w, { pending: j.id }));
+    if (popup) popup.location.href = j.approveUrl; else root.open(j.approveUrl, '_blank');
+    say(tx('passPending', 'Finish paying in the PayPal window. This updates as soon as PayPal confirms.'));
+    const until = Date.now() + POLL_FOR_MS;
+    while (Date.now() < until) {
+      await new Promise((r) => setTimeout(r, POLL_MS));
+      const r = await claimPass(j.id).catch(() => null);
+      if (r && r.passJson) return r;
+      if (r && r.refused) return null;
+    }
+    return null;
+  }
+  // A purchase whose page closed before PayPal confirmed is claimed on the next visit.
+  async function resumePending() {
+    const w = await wallet();
+    if (!w || !w.pending) return;
+    const r = await claimPass(w.pending).catch(() => null);
+    if (r && r.refused && (r.status === 403 || r.status === 404)) { const cur = await wallet(); if (cur) { delete cur.pending; writeJson(WALLET_KEY, cur); } }
   }
 
   async function cancel() {
@@ -380,9 +519,19 @@
 
   // ---- the room's plan and the door's challenge ----------------------------
   // The admin's order that carries their plan into the room, or null.
+  // A live four-hour pass rides instead of a ticket whose plan is below it
+  // (none, free, $2): the best right held is the one the room reads.
+  const beatsPass = (tier) => SUB.isPaid(tier) && !SUB.bestRights([SUB.ticketRights({ tier, exp: 1 }), SUB.passRights({ end: 1 })]).pass;
   async function roomOrder(room) {
     if (!on()) return null;
     const ticket = await currentTicket(room);
+    if (!(ticket && meet && beatsPass(meet.tier))) {
+      const lp = await livePass().catch(() => null);
+      if (lp) {
+        const at = Date.now();
+        return { on: true, at, ticket: lp.raw, proof: await passSign(SUB.proofMessage(SUB.roomContext(room), 'at:' + at)) };
+      }
+    }
     if (!ticket) return null;
     const at = Date.now();
     return { on: true, at, ticket, proof: await signText(SUB.proofMessage(SUB.roomContext(room), 'at:' + at)) };
@@ -395,8 +544,11 @@
   async function proveAtDoor(room, nonce) {
     if (!on()) return null;
     const ticket = await currentTicket(room);
-    if (!ticket || !(meet && SUB.isPaid(meet.tier))) return null;   // a free plan is no way past a room's line
-    return { ticket, proof: await signText(SUB.proofMessage(SUB.doorContext(room), nonce)) };
+    if (ticket && meet && SUB.isPaid(meet.tier)) return { ticket, proof: await signText(SUB.proofMessage(SUB.doorContext(room), nonce)) };
+    // A live four-hour pass is let in as a subscriber is; a free plan is no way past a room's line.
+    const lp = await livePass().catch(() => null);
+    if (lp) return { ticket: lp.raw, proof: await passSign(SUB.proofMessage(SUB.doorContext(room), nonce)) };
+    return null;
   }
   // The door checking a knocker's answer.
   async function checkShown(shown, room, nonce) {
@@ -422,6 +574,93 @@
   }
   async function captureKeys() { const k = await myKey(); return { priv: k.priv, pubB64: k.pub }; }
 
+  // ---- what this browser holds, and what is in effect now ---------------------
+  // Read from this browser's copy of the subscription file (or the one in the
+  // Providers folder): each subscription with its plan, period, standing and
+  // date; each pass not yet run out with its window; and the rights in effect
+  // now with the reason (the best of them wins).
+  const PLAN_SHORT = { room20: ['planRoom20', 'Room 20'], unlimited: ['planUnlimited', 'Unlimited'], streamer: ['planStreamer', 'Streamer'], free: ['planFree', 'Free'] };
+  const planShort = (tier) => { const x = PLAN_SHORT[tier]; return x ? tx(x[0], x[1]) : tx('planNone', 'No plan'); };
+  const clockOf = (s) => { try { return new Date(s * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; } };
+  function leftOf(sec) {
+    const m = Math.max(0, Math.ceil(sec / 60));
+    const h = Math.floor(m / 60), mm = m % 60;
+    return h ? tx('leftHM', '{h} h {m} m').replace('{h}', h).replace('{m}', mm) : tx('leftM', '{m} m').replace('{m}', mm);
+  }
+  const fill = (t, vars) => String(t).replace(/\{(\w+)\}/g, (x, k) => (vars[k] != null ? String(vars[k]) : x));
+  async function credentialsNow() {
+    const n = nowS();
+    const lic = await verifiedLicense();
+    const st = readState();
+    const cred = await credential();
+    const free = lic ? null : await verifiedFree();
+    let sub = null;
+    if (lic) {
+      const status = st.status === 'CANCELLED' ? 'cancelled' : st.paidThrough && st.paidThrough < n ? 'grace' : 'active';
+      sub = { tier: lic.tier, period: cred && cred.period === 'yearly' ? 'yearly' : 'monthly', status, until: st.until || lic.exp, renews: status === 'active' ? st.paidThrough || null : null };
+    }
+    const held = (await passes().catch(() => [])).filter((x) => x.o.end > n).map((x) => ({ id: x.o.id, start: x.o.start, end: x.o.end, live: SUB.passLive(x.o, n) }));
+    const base = SUB.rightsOf(lic || free, n);
+    const live = held.filter((x) => x.live);
+    const lp = live.length ? live[live.length - 1] : null;
+    // The passes run back to back: the window in effect ends with the last
+    // pass that follows on without a gap.
+    let passEnd = lp ? lp.end : 0;
+    for (const x of held) if (lp && x.start <= passEnd && x.end > passEnd) passEnd = x.end;
+    const best = lp ? SUB.bestRights([base, SUB.passRights({ end: passEnd })]) : base;
+    const now = best.pass ? { tier: best.tier, why: 'pass', until: passEnd } : base.tier ? { tier: base.tier, why: base.tier === 'free' ? 'free' : 'sub', until: base.until } : { tier: null, why: 'none' };
+    const then = best.pass && base.tier ? base.tier : null;
+    return { sub, free: !!free, passes: held, now, then };
+  }
+  // One line for the meeting's status: what is in effect, quietly.
+  function nowLine(c) {
+    if (c.now.why === 'pass') return fill(tx('nowPassLine', '{plan} until {until}, {left} left'), { plan: planShort(c.now.tier), until: clockOf(c.now.until), left: leftOf(c.now.until - nowS()) });
+    if (c.now.why === 'sub') return planShort(c.now.tier);
+    return '';
+  }
+  async function paintNow() {
+    if (!on() || typeof document === 'undefined') return;
+    const status = document.getElementById('status');
+    if (!status) return;
+    const c = await credentialsNow();
+    const line = nowLine(c);
+    let el = document.getElementById('sub-now');
+    if (!line) { if (el) el.hidden = true; return; }
+    if (!el) {
+      el = document.createElement('button'); el.type = 'button'; el.id = 'sub-now'; el.className = 'sub-now';
+      el.addEventListener('click', () => openSettings());
+      status.appendChild(el);
+    }
+    el.hidden = false;
+    el.dataset.plan = c.now.tier || ''; el.dataset.why = c.now.why;
+    if (el.textContent !== line) el.textContent = line;
+  }
+  // The credentials view: what is held and what is in effect, in Settings.
+  async function paintHeld(box) {
+    const c = await credentialsNow();
+    const n = nowS();
+    const p = (id, text) => { const e = el('p', { class: 'set-help', id }, text); box.appendChild(e); return e; };
+    let why;
+    if (c.now.why === 'pass') why = fill(tx('nowByPass', 'In effect now: {plan} until {until} ({left} left), from your four-hour pass.'), { plan: planShort(c.now.tier), until: clockOf(c.now.until), left: leftOf(c.now.until - n) });
+    else if (c.now.why === 'sub') why = fill(tx('nowBySub', 'In effect now: {plan}, from your subscription.'), { plan: planShort(c.now.tier) });
+    else if (c.now.why === 'free') why = tx('nowByFree', 'In effect now: Free. Admin rooms of up to 5 people.');
+    else why = tx('nowByNone', 'In effect now: no plan. Open rooms are free.');
+    p('held-now', why);
+    if (c.then) p('held-then', fill(tx('nowThen', 'When the pass ends: {plan}, from your subscription.'), { plan: planShort(c.then) }));
+    if (c.sub) {
+      const per = c.sub.period === 'yearly' ? tx('perYearly', 'yearly') : tx('perMonthly', 'monthly');
+      const stand = c.sub.status === 'cancelled' ? fill(tx('subCancelledUntil', 'cancelled, works until {date}'), { date: dateOf(c.sub.until) })
+        : c.sub.status === 'grace' ? fill(tx('subGrace', 'payment late, works until {date}'), { date: dateOf(c.sub.until) })
+          : c.sub.renews ? fill(tx('subRenews', 'active, renews {date}'), { date: dateOf(c.sub.renews) }) : tx('subActive', 'active');
+      p('held-sub', fill(tx('heldSub', 'Subscription: {plan}, {period}, {standing}.'), { plan: planShort(c.sub.tier), period: per, standing: stand }));
+    }
+    for (const x of c.passes) {
+      const e = x.live ? fill(tx('heldPassLive', 'Four-hour pass: Unlimited until {until}, {left} left.'), { until: clockOf(x.end), left: leftOf(x.end - n) })
+        : fill(tx('heldPassNext', 'Four-hour pass: Unlimited from {start} to {until}.'), { start: clockOf(x.start), until: clockOf(x.end) });
+      const q = p('', e); q.className = 'set-help held-pass'; q.dataset.pass = x.id;
+    }
+  }
+
   // ---- Settings: the Subscription group ---------------------------------------
   const BTN = 'seg';
   const BTN_STYLE = 'border:1px solid var(--border,#2a2a3f);border-radius:.4rem;margin:.2rem .4rem .2rem 0';
@@ -444,6 +683,19 @@
     const msg = el('p', { class: 'set-help', id: 'sub-msg', role: 'status', 'aria-live': 'polite' });
     const say = (t) => { msg.textContent = t || ''; };
     await keepFresh();
+    const held = el('div', { id: 'sub-held' });
+    row.appendChild(held);
+    await paintHeld(held).catch(() => {});
+    const passBtn = el('button', { type: 'button', class: BTN, style: BTN_STYLE, id: 'sub-pass-buy' }, tx('passBuy', '$1: Unlimited for the next 4 hours'));
+    passBtn.onclick = async () => {
+      passBtn.disabled = true; say(tx('passOpening', 'Opening PayPal…'));
+      try {
+        const r = await buyPass(say);
+        say(r && r.passJson ? tx('passThanks', 'Thank you. Your four-hour pass is on.') : tx('passNotConfirmed', 'PayPal did not confirm the payment.'));
+        paintSettings();
+      } catch (e) { passBtn.disabled = false; say(String(e.message || e)); }
+    };
+    row.appendChild(passBtn);
     const lic = await verifiedLicense();
     const st = readState();
     const cred = await credential();
@@ -493,7 +745,7 @@
       }
     }
     // The subscription file: download it, or use one from another browser.
-    if (cred) {
+    if (cred || (await wallet())) {
       const d = el('button', { type: 'button', class: BTN, style: BTN_STYLE, id: 'sub-file-get' }, 'Download subscription file');
       d.onclick = () => { downloadFile().then(() => say('Saved. Keep it private: anyone with the file can use your subscription' + (lic && SUB.TIERS[lic.tier].storage ? ' and open your library. Keep a backup: if you lose it, nobody, not even GifOS, can recover your library.' : '.')), (e) => say(String(e.message || e))); };
       row.appendChild(d);
@@ -526,7 +778,7 @@
   // a payment service that cannot be reached does not stop the room.
   async function mayCreateAdminRoom(say) {
     if (!on()) return true;
-    const r = await rights();
+    const r = await planRights();
     if (r.adminRooms) return true;
     await ensureFree();
     return true;
@@ -577,13 +829,16 @@
     const b = document.getElementById('setbtn');
     if (b) b.addEventListener('click', () => { paintSettings().catch(() => {}); });
     keepFresh().catch(() => {});
+    resumePending().catch(() => {});
+    passWatch().catch(() => {});
+    setInterval(() => { passWatch().catch(() => {}); paintNow().catch(() => {}); }, POLL_MS);   // a pass starting or ending re-presents the room's plan
   }
   if (typeof document !== 'undefined') {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
   }
 
   GifOS.meetSubs = {
-    enabled: on, rights, refresh, subscribe, cancel, paintSettings, openSettings, mayCreateAdminRoom, showFull, ensureFree, showHostPrompt,
+    enabled: on, rights, planRights, refresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, paintNow, paintSettings, openSettings, mayCreateAdminRoom, showFull, ensureFree, showHostPrompt,
     roomOrder, roomTier, proveAtDoor, checkShown, newNonce,
     joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureOrder, captureKeys, fileBytes, downloadFile, useFile, librarySigner,
     meeting: () => (meet ? { room: meet.room, gen: meet.gen, exp: meet.exp, moved: meet.moved, held: !!meet.ticket, tier: meet.tier, paid: !!(meet.ticket && SUB.isPaid(meet.tier)) } : null),

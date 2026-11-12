@@ -503,7 +503,18 @@
   // query, so #id= is the only form that survives a version redirect.
   var p=new URLSearchParams((location.hash||'').replace(/^#/,''));
   if(p.get('id'))document.documentElement.classList.add('solo-app');
+  // THE LOBBY ENTRY, decided by the same rule as the boot dispatch far below
+  // (no session frame, no app, no room): the page will show the lobby and
+  // nothing else. The meeting starts only after every deferred script has run
+  // (and, in a translated language, after its catalog), which on a phone link
+  // is seconds; the room's markup is visible by default, so without this the
+  // person stared at an empty call with its control bar until the lobby came.
+  // The lobby's own sheet goes up now instead, empty, in the lobby's colour,
+  // over the room (it already sits above every piece of it), and showLobby()
+  // fills it. Nothing else changes: .show restyles the same element.
+  else if(window.__gifosMb!=='1'&&p.get('mb')!=='1'&&!(p.get('s')&&p.get('k'))&&!p.get('j')&&!p.get('v')&&!p.get('app'))document.documentElement.classList.add('lobby-entry');
 }catch(e){}})();</script>
+<style id="lobby-entry">html.lobby-entry #lobby:not(.show){display:block}html.lobby-entry #lobby:not(.show)>*{visibility:hidden}</style>
 <script>(function(){var h=document.documentElement;h.className+=(h.className?' ':'')+'gifos-booting';var shown=0;
 function show(){if(shown)return;shown=1;h.classList.remove('gifos-booting');
 try{var bg=h.style.getPropertyValue('--bg');var m=document.querySelector('meta[name=theme-color]');if(bg&&m)m.setAttribute('content',bg.trim());}catch(e){}}
@@ -513,11 +524,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 <meta name="apple-mobile-web-app-title" content="GifOS">
 <script id="gifos-load-gate">/* Load completeness: record every <script src> that failed to load (error events do not bubble: capture on window), and every script that threw while a failed one was missing. startMesh() checks this before it seats anything (see unitsGate). */(function(){var g=window.__gifosLoadGate={failed:[],threw:[],tries:0,state:'ok',trace:[]};
 function key(u){try{var x=new URL(u,location.href);return x.pathname.replace(/^\//,'');}catch(e){return String(u);}}
+/* Only this site's own scripts are units of the page. A script from another origin (an analytics beacon a host adds, which tracker blockers stop) is never a unit: its failure must not hold anyone at the door. */
+function own(u){try{return new URL(u,location.href).origin===location.origin;}catch(e){return false;}}
 /* OPTIONAL: a theme OVERRIDE file (themes/<label>/theme.js, icons.js, eggs.js, wallpaper.js; js/gifos-themes.js asks for one per host label, any label works) may be absent: that is a clean fallback to the base theme, never a failed load. The base themes/*.js stay required. */
 function opt(k){return /^(?:versions\/[^\/]+\/)?themes\/[^\/]+\/(?:theme|icons|eggs|wallpaper)\.js$/i.test(k);}
 /* The offline layer (sw.js) answers an uncached script with an EMPTY 200 when the network fails: no error event, a unit that never ran. A script that arrives with no body counts as failed too. */
-try{new PerformanceObserver(function(l){l.getEntries().forEach(function(en){try{if(en.initiatorType==='script'&&en.decodedBodySize===0&&/\.js$/.test(new URL(en.name).pathname)){var k=key(en.name);if(!opt(k)&&g.failed.indexOf(k)<0)g.failed.push(k);}}catch(x){}});}).observe({type:'resource',buffered:true});}catch(e){}
-window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagName==='SCRIPT'&&t.src){var k=key(t.src);if(!opt(k)&&g.failed.indexOf(k)<0)g.failed.push(k);}else if(e&&e.filename&&g.failed.length){var f=key(e.filename);if(g.threw.indexOf(f)<0)g.threw.push(f);}}catch(x){}},true);})();</script>
+try{new PerformanceObserver(function(l){l.getEntries().forEach(function(en){try{if(en.initiatorType==='script'&&en.decodedBodySize===0&&own(en.name)&&/\.js$/.test(new URL(en.name).pathname)){var k=key(en.name);if(!opt(k)&&g.failed.indexOf(k)<0)g.failed.push(k);}}catch(x){}});}).observe({type:'resource',buffered:true});}catch(e){}
+window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagName==='SCRIPT'&&t.src){if(!own(t.src))return;var k=key(t.src);if(!opt(k)&&g.failed.indexOf(k)<0)g.failed.push(k);}else if(e&&e.filename&&g.failed.length&&own(e.filename)){var f=key(e.filename);if(g.threw.indexOf(f)<0)g.threw.push(f);}}catch(x){}},true);})();</script>
 <script src="js/sw-register.js" defer></script>
 <script src="js/dialog.js" defer></script>
 <script src="js/build.js" defer></script>
@@ -843,6 +856,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   </div>
   <div data-al="waitRoom" id="waitlist" hidden role="region" aria-label="Waiting room"></div>
   <div id="waitdoor" hidden role="status">
+    <p class="pg-step" id="waitdoor-step" hidden></p>
     <h1 data-t="waitingForTheHost">Waiting for the host</h1>
     <p data-t="youLlJoinWhen">You'll join when the host lets you in. This meeting can't see or hear you yet.</p>
     <button data-t="leave" type="button" id="waitdoor-leave">Leave</button>
@@ -1167,6 +1181,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
 
   <div class="name-modal" role="dialog" aria-modal="true" id="pw-modal" style="display:none">
     <div class="name-box">
+      <p class="pg-step" id="pw-step" hidden></p>
       <h3 data-t="pwTitle" id="pw-title">Room password</h3>
       <p data-t="pwHint2" id="pw-hint">Anyone in the meeting can set or change it — it reaches everyone here instantly, and new joiners must enter it. Leave empty to remove the lock.</p>
       <div id="pw-cur-row" style="display:flex;gap:.5rem;margin-bottom:.8rem">
@@ -1438,6 +1453,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/meet-layout.js" defer></script>
   <script src="js/meet-turn.js" defer></script>
   <script src="js/meet-status.js" defer></script>
+  <script src="js/meet-progress.js" defer></script>
   <script src="js/gifos-sub.js" defer></script>
   <script src="js/meet-subs.js" defer></script>
   <script src="js/gifos-library.js" defer></script>
@@ -2054,6 +2070,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const go = document.getElementById('leave-go');
         const note = document.getElementById('leave-ask-note');
         const end = mode === 'end';
+        // The "left" dialog on screen keeps its words: a door that turned this person away ("This room is full on
+        // the free plan") wrote them, and this paint runs again on every admin-state change.
+        const lm = document.getElementById('left-modal');
+        const leftShown = !!(lm && lm.style.display === 'flex');
+        const sayLeft = (id, text) => { if (!leftShown) say(id, text); };
         if (leave) {
           if (end) {
             leave.title = 'End the broadcast. Everyone watching sees it close after you leave.';
@@ -2075,16 +2096,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }
         if (end) {
           say('leave-ask-title', 'End the broadcast?');
-          say('left-title', 'You ended the broadcast');
-          say('left-note', 'Everyone watching sees a five-minute countdown, and then the room closes. Rejoin to keep it open.');
+          sayLeft('left-title', 'You ended the broadcast');
+          sayLeft('left-note', 'Everyone watching sees a five-minute countdown, and then the room closes. Rejoin to keep it open.');
         } else if (mode === 'watch') {
           say('leave-ask-title', 'Leave the broadcast?');
-          say('left-title', 'You left the broadcast');
-          say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
+          sayLeft('left-title', 'You left the broadcast');
+          sayLeft('left-note', 'Your camera and microphone are off. Rejoin to come back.');
         } else {
           say('leave-ask-title', 'Leave the meeting?');
-          say('left-title', 'You left the meeting');
-          say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
+          sayLeft('left-title', 'You left the meeting');
+          sayLeft('left-note', 'Your camera and microphone are off. Rejoin to come back.');
         }
       };
       if (!BROADCAST) {
@@ -3562,7 +3583,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // gets the moment its channel opens (wireDc onopen).
     // My network's kind for friend-hop's typing (a seat tells a blip from an unreachable pair), in the seat's GT_ words: open, blocked, or
     // strict (an endpoint-dependent mapping, which pairs badly with another strict seat). -1: not known yet.
-    const natWord = () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' && directMeasured ? E.GT_BLOCKED : directPath === 'strict' ? E.GT_SYM : directPath === 'ok' ? E.GT_PUBLIC : -1; };
+    const natWord = () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' ? E.GT_BLOCKED : directPath === 'strict' ? E.GT_SYM : directPath === 'ok' ? E.GT_PUBLIC : -1; };
     // FHOP.8 / FHOP.9: what my beat says of my network, for a friend choosing a carrier or a friend to call to a door.
     //   cls  my link class: 3 wired, 2 Wi-Fi, 1 cellular, 0 not known (navigator.connection, where the browser gives it).
     //   nt   my network tag: HMAC-SHA-256 over my network (the address the relay saw me connect from, its own whoami: an
@@ -5490,10 +5511,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // takes. It stands in for the face, so it is as soft as the face would be
     // with the camera on: soft in a soft room, clear in a clear one. The same
     // call paints the self tile and every remote tile, so you see what others see.
-    function blurLevelFor(id, asIfCamOn) {
+    function blurLevelFor(id, asIfCamOn, cameraOnly) {
       const isMe = id === 'me';
       let st = (isMe ? myStatus : statusOf.get(id)) || {};
       if (asIfCamOn && st.camOff) st = Object.assign({}, st, { camOff: false });
+      // cameraOnly: the camera of a person sharing from the Row keeps that person's own blur.
+      if (cameraOnly && st.scr) st = Object.assign({}, st, { scr: 0 });
       // A screen share or a rebroadcast is that seat's video with its own blur
       // at None (it is consent). Every other rule below still applies to it,
       // exactly as to a camera: no password, a room short of unanimity, a
@@ -5650,7 +5673,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }));
       } catch (e) {}
       try { stashRecoverMedia(); } catch (e) {}
-      try { setStatus((target.emergency ? 'An important GifOS update is out. ' : '') + 'Updating to GifOS v' + target.latest + ' — you stay in this meeting.'); } catch (e) {}
+      // The update is a wait like any join: its steps carry across the reload (js/meet-progress.js flow 'update').
+      let upStep = '';
+      try { if (typeof progressStart === 'function' && progressStart('update')) { progressTick(); const w = progressWords(); if (w) upStep = w.head + ' '; } } catch (e) {}
+      try { setStatus(upStep + (target.emergency ? 'An important GifOS update is out. ' : '') + 'Updating to GifOS v' + target.latest + ' — you stay in this meeting.', 0, 'note', 'progress'); } catch (e) {}
       if (target.url) { try { history.replaceState(history.state, '', target.url); } catch (e) {} }
       resumeReload();
     }
@@ -9294,7 +9320,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // Stop the pipe's PRIVATE clone only — never the shared camera track.
       if (blurPipe.cloned && blurPipe.srcTrack) { try { blurPipe.srcTrack.stop(); } catch (e) {} }
       try { blurPipe.track.stop(); } catch (e) {}
+      blurPipe.dead = true; // its paint loop and callbacks end with it (a pipe checks its own flag, never which slot is current)
       blurPipe = null;
+    }
+    // A SHARE FROM THE ROW KEEPS THE CAMERA, so the screen and the camera can
+    // both need the blur canvas at once. The screen gets a pipe of its own in
+    // this slot: startBlurPipe and stopBlurPipe run on it while it is swapped
+    // into blurPipe, and everything else that reads blurPipe keeps the camera's.
+    let scrPipe = null;
+    function withScrPipe(fn) {
+      const cam = blurPipe; blurPipe = scrPipe;
+      try { return fn(); } finally { scrPipe = blurPipe; blurPipe = cam; }
     }
     function blurPipeTune(level) {
       // Level 0 runs only for a sender crop or stage frame on a clear camera.
@@ -9433,13 +9469,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // correct, smooth path on iOS/Safari) — and ALSO on the worker metronome,
       // which keeps ticking when the tab is hidden and main-thread timers are
       // clamped (a backgrounded phone used to broadcast a near-frozen blur).
-      const onFrame = () => { if (blurPipe !== pipe) return; pipe.rvfcN = (pipe.rvfcN || 0) + 1; paint(); if (src.requestVideoFrameCallback) pipe.rvfc = src.requestVideoFrameCallback(onFrame); };
+      const onFrame = () => { if (pipe.dead) return; pipe.rvfcN = (pipe.rvfcN || 0) + 1; paint(); if (src.requestVideoFrameCallback) pipe.rvfc = src.requestVideoFrameCallback(onFrame); };
       // The source never stays paused. Chrome pauses every playing <video>
       // when it resumes a tab it froze in the background (a phone after an
       // app switch). A paused source brings no frame callbacks, and while the
       // tab is visible nothing else paints, so the room would get the last
       // frame for good while the camera runs.
-      const keepPlaying = () => { if (blurPipe === pipe && src.paused && src.srcObject) src.play().catch(() => {}); };
+      const keepPlaying = () => { if (!pipe.dead && src.paused && src.srcObject) src.play().catch(() => {}); };
       src.addEventListener('pause', keepPlaying);
       src.play().catch(() => {});
       const stream = canvas.captureStream(15);
@@ -9470,10 +9506,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // A still screen (a slide, a document) brings rVFC no new frames, so the
       // metronome keeps painting a shared screen whatever the tab state.
       const rvfcDrives = !!src.requestVideoFrameCallback && !pipe.screen;
-      const tick = () => { if (blurPipe === pipe) { pipe.metroN = (pipe.metroN || 0) + 1; paint(); } };
+      const tick = () => { if (!pipe.dead) { pipe.metroN = (pipe.metroN || 0) + 1; paint(); } };
       let metroOff = null;
       const syncMetro = () => {
-        if (blurPipe !== pipe) return;
+        if (pipe.dead) return;
         keepPlaying();
         if (!rvfcDrives || document.hidden) { if (!metroOff) metroOff = metroSub(tick); }
         else if (metroOff) { metroOff(); metroOff = null; }
@@ -9489,7 +9525,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // receives never ends (and a staged feed keeps its id). Until the new
       // camera paints, the canvas holds the last frame.
       pipe.swapSource = (cam2) => {
-        if (blurPipe !== pipe) return false;
+        if (pipe.dead) return false;
         let t2 = cam2, c2 = false;
         try { t2 = cam2.clone(); c2 = true; } catch (e) { t2 = cam2; }
         if (pipe.rvfc && src.cancelVideoFrameCallback) { try { src.cancelVideoFrameCallback(pipe.rvfc); } catch (e) {} }
@@ -9727,6 +9763,25 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function meOnStage() {
       try { return !!(myStatus && myStatus.stg) || (typeof stageIds === 'function' && !!myId && stageIds().includes(myId)); } catch (e) { return false; }
     }
+    // A SHARE FROM THE ROW IS NOT A STEP ONTO THE STAGE. The screen takes a
+    // Stage seat, and the person stays in the Row: the camera keeps riding the
+    // row links and the row's Stadium square, unchanged. The voice of anyone
+    // holding a Stage seat rides the Stage feed, as it always has, so pages of
+    // every release hear it once. Only a person who is on the Stage
+    // themselves leaves the Row (their seat is kept). `sso` in a status marks a Stage seat held by a share alone; the
+    // share must still be live, so a stale flag never keeps anyone in the Row.
+    function shareOnlyStage(pid) {
+      try {
+        const isMe = pid === 'me' || pid === myId;
+        const st = isMe ? myStatus : statusOf.get(pid);
+        if (!st || !st.sso) return false;
+        return isMe ? !!(myStatus.scr && screenStream) : !!sharingScreen(pid);
+      } catch (e) { return false; }
+    }
+    // On the Stage as a person: in the stage set, and not there for a share alone.
+    function personOnStage(pid, stg) {
+      return (stg || stageIds()).includes(pid) && !shareOnlyStage(pid);
+    }
     function senderCrop() {
       const MZ = typeof GifOS !== 'undefined' && GifOS.meetZones;
       if (!senderCropVal || !MZ || MZ.isDefault(senderCropVal)) return null;
@@ -9789,10 +9844,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return rbv;
       }
       const scr = screenStream && screenStream.getVideoTracks()[0];
+      // A share from the Row (shareOnlyStage) is not a source swap: this
+      // track stays the camera, and the screen leaves through the Stage feed
+      // alone (stageVideoTrack).
+      const rowShare = shareOnlyStage('me');
+      if (!rowShare) withScrPipe(stopBlurPipe);
       // THE GRANT IS THE GATE ON THE BYTES, not only on the button. Every
       // outbound video sender reads this function. A client that armed a
       // capture without permission publishes its camera (or nothing) instead.
-      if (scr && scr.readyState === 'live' && mayShareScreen('me')) {
+      if (!rowShare && scr && scr.readyState === 'live' && mayShareScreen('me')) {
         // A SHARED SCREEN OBEYS THE SAME BLUR RULES AS A CAMERA. Sharing is
         // the sharer's consent (their own blur reads
         // None, blurLevelFor), and nothing else is waived: a room with no
@@ -9813,14 +9873,28 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // Camera off: the avatar is the video. A disabled camera track is not
         // the picture, and it is not what leaves.
         stopBlurPipe();
-        return avatarOutboundTrack(myName(), blurLevelFor('me') | 0);
+        return avatarOutboundTrack(myName(), blurLevelFor('me', false, rowShare) | 0);
       }
       stopAvatarPipe();
-      const lvl = blurLevelFor('me');
+      // The camera keeps its own blur while a share from the Row waives the screen's.
+      const lvl = blurLevelFor('me', false, rowShare);
       // A sender crop (0.9.23b) rides the same canvas: everyone gets the square I chose.
       if ((lvl > 0 || !!senderCrop() || !!stageFrame()) && !myStatus.camOff) return startBlurPipe(lvl) || cam;
       stopBlurPipe();
       return cam;
+    }
+    // What my Stage feed shows. A share from the Row sends the screen there
+    // (blurred by the same rule as any share, through its own pipe) while
+    // sentVideoTrack keeps the camera on the Row; otherwise the two are one.
+    function stageVideoTrack() {
+      if (!shareOnlyStage('me')) return sentVideoTrack();
+      if (BROADCAST && !bcMayPublishAv()) return null;
+      const scr = screenStream && screenStream.getVideoTracks()[0];
+      if (!scr || scr.readyState !== 'live' || !mayShareScreen('me')) return null;
+      const lvl = blurLevelFor('me');
+      if (lvl > 0) return withScrPipe(() => startBlurPipe(lvl, scr)); // null if the pipe cannot run: never the raw screen
+      withScrPipe(stopBlurPipe);
+      return scr;
     }
     // CAMERA OFF STOPS THE CAMERA. A merely-disabled track keeps the sensor
     // open: the camera light stays on while the page says camera off (a
@@ -9907,7 +9981,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // stays the broadcast track, because the Stage composite reads it.
       if (meTile && meTile.tile) {
         let camT = null;
-        if (myStatus.scr && !myStatus.camOff && localStream) {
+        if (myStatus.scr && !myStatus.camOff && localStream && !shareOnlyStage('me')) {
           const c = localStream.getVideoTracks()[0];
           if (c && c.readyState === 'live' && c !== vt) camT = c;
         }
@@ -9941,7 +10015,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // aux feed alone, so the main encodes stop exactly when I take on the
       // Stage fan-up cost. Stepping down swaps the CURRENT tracks back in
       // (pure replaceTrack, no renegotiation — the m-lines never left).
-      const staged = stageIds().includes(myId);
+      // A share from the Row keeps the CAMERA on the row links (personOnStage);
+      // the voice of anyone holding a Stage seat goes out on the Stage feed only,
+      // exactly as before, so every page, old or new, hears it once.
+      const staged = personOnStage(myId), voiceStaged = stageIds().includes(myId);
       const at = mainAudioTrack();
       for (const p of peers.values()) {
         const cam = camPeer(p.id) && !staged; // structural link OR staged ⇒ no raw camera encode
@@ -9977,7 +10054,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           else if (p.mainV.track !== vt) p.mainV.replaceTrack(vt).catch(() => {});
         }
         if (p.mainA) {
-          if (staged || seatSelfLeased()) { if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
+          if (voiceStaged || seatSelfLeased()) { if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
           else if (at && p.mainA.track !== at) p.mainA.replaceTrack(at).catch(() => {});
         }
       }
@@ -10883,7 +10960,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         countText = shown + plus + ' ' + (BROADCAST ? 'in this broadcast' : uiText('inMeeting', 'in this meeting'));
         restText = ' · ' + q.label + tail;
       }
-      const bq = bcQuietLine(shown, reachLine, atDoor);
+      // A WAIT ON THE WAY IN (or back in) reads its true step (js/meet-progress.js):
+      // "Step 3 of 10: Finding your meeting… · 12 s". It replaces the resting
+      // line, the password and reach sentences included; a refusal still wins.
+      const prog = !refused && !leftUp && typeof progressWords === 'function' ? progressWords() : null;
+      if (prog) {
+        countText = '';
+        restText = prog.head + (prog.secs ? ' \u00b7 ' + prog.secs : '') + (prog.hint ? ' ' + prog.hint : '');
+      }
+      const bq = prog ? { text: '' } : bcQuietLine(shown, reachLine, atDoor);
       const bcQuiet = bq.text;
       if (bcQuiet) restText = bcQuiet + tail;
       const statusText = countText + restText;
@@ -10898,6 +10983,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         countText = head + (shown <= 1 ? (atDoor ? uiText('backIn', 'Getting you back in') : uiText('justYou', 'Just you')) : shown + plus + ' ' + uiText('inMeeting', 'in this meeting'));
         restText = '';
       }
+      if (prog) { phoneDetail = restText; countText = phoneLayout() ? prog.head : ''; if (phoneLayout()) restText = ''; }
       // The line's KIND is state, not wording: 'door' (asking to be let back
       // in), 'alone' (seated, nobody else), 'meeting' (others here), or one
       // of the reach states that replace the line. Tests and styling read
@@ -10905,7 +10991,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const statusKind = reachLine ? reachState : shown === 1 ? (atDoor ? 'door' : 'alone') : 'meeting';
       // The named state of the resting line (js/meet-status.js), most urgent first.
       const waitingHere = !refused && !atPwPrompt() && !reachLine && typeof iAmWaiting === 'function' && iAmWaiting();
-      const restState = refused ? 'refused' : atPwPrompt() ? 'passwordDoor' : reachLine ? reachState
+      const restState = prog ? 'progress' : refused ? 'refused' : atPwPrompt() ? 'passwordDoor' : reachLine ? reachState
         : (link && !leftUp) ? 'reconnecting' : waitingHere ? 'waitingRoom' : shown === 1 ? (atDoor ? 'backIn' : 'alone') : 'meeting';
       const statusShown = statusText;
       const shownDetail = phoneDetail;
@@ -10918,9 +11004,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         statusEl.dataset.link = (link && !refused && !atPwPrompt()) ? '1' : '';
         statusEl.dataset.back = gettingBack ? '1' : '';
         if (statusEl.dataset.state !== restState) statusEl.dataset.state = restState;
+        const pf = prog ? prog.flow : '', ps = prog ? prog.step : '', px = prog ? prog.x + '/' + prog.y : '';
+        if (statusEl.dataset.flow !== pf) statusEl.dataset.flow = pf;
+        if (statusEl.dataset.step !== ps) statusEl.dataset.step = ps;
+        if (statusEl.dataset.progress !== px) statusEl.dataset.progress = px;
         if (statusEl.dataset.unreached !== du) statusEl.dataset.unreached = du;
       }
-      if (reachLine) statusEl.classList.add('alert');
+      if (reachLine && !prog) statusEl.classList.add('alert');
       if (statusEl.title !== shownDetail) statusEl.title = shownDetail;
       const countEl = document.getElementById('statuscount');
       const restEl = document.getElementById('statusrest');
@@ -10933,7 +11023,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // status line from being written.
         try {
           const lead = q && q.label ? ' · ' + q.label : '';
-          fitStatusRest(restText, lead && restText.indexOf(lead) === 0 ? restText.slice(lead.length) : '');
+          // a wait's line that does not fit drops its reason first, then its seconds: the step and phase always stay
+          if (prog) fitStatusRest(restText, prog.head, prog.stepOnly + '…');
+          else fitStatusRest(restText, lead && restText.indexOf(lead) === 0 ? restText.slice(lead.length) : '');
         } catch (e) {}
       }
       paintBcQuiet(bq);
@@ -10964,9 +11056,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // the transcribing mark keeps only its icon, then the resolution drops,
     // and then the sentence leaves the row. The whole line stays the
     // header's title and a phone's status sheet.
-    let statusRestFull = '', statusRestShort = '';
-    function fitStatusRest(fullText, shortText) {
-      if (typeof fullText === 'string') { statusRestFull = fullText; statusRestShort = shortText || ''; }
+    let statusRestFull = '', statusRestShort = '', statusRestTiny = '';
+    // tinyText: the last form before the line leaves the row (a wait's bare "Step 5 of 10": the step is never cut off)
+    function fitStatusRest(fullText, shortText, tinyText) {
+      if (typeof fullText === 'string') { statusRestFull = fullText; statusRestShort = shortText || ''; statusRestTiny = tinyText || ''; }
       const restEl = document.getElementById('statusrest');
       if (!restEl) return;
       const b = document.body.classList;
@@ -10977,7 +11070,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       b.remove('status-small');
       restEl.classList.remove('rest-off');
       if (!full || (typeof phoneLayout === 'function' && phoneLayout()) || !restEl.getClientRects().length) return;
-      if (b.contains('hq-tight')) { restEl.classList.add('rest-off'); return; }
+      const tiny = statusRestTiny;
+      const tryTiny = () => { if (!tiny) return false; restEl.textContent = tiny; if (!over()) return true; restEl.textContent = full; return false; };
+      if (b.contains('hq-tight')) { if (tryTiny()) return; restEl.classList.add('rest-off'); return; }
       if (!over()) return;
       b.add('tx-tight');
       if (!over()) return;
@@ -10987,6 +11082,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!over()) return;
         restEl.textContent = full;
       }
+      if (tryTiny()) return;
       restEl.classList.add('rest-off');
       // The count is never cut off: if it and the tap still overflow the
       // line, the line steps down to 16px.
@@ -11503,7 +11599,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const REACH_PROBE_MS = GifOS.timings.REACH_PROBE_MS;
     let directPath = 'pending'; // 'pending' | 'ok' | 'strict' | 'blocked' | 'unknown' — this network's verdict
     let directPathRun = 0;
-    let directMeasured = true;   // false while 'blocked' only means no STUN word yet: the seat's NAT kind (L4.1) is measured, and a slow answer measures nothing
+    // L4.1.1: a firewall that blocks UDP drops it silently, so 'blocked' at the probe's limit (REACH_PROBE_MS) IS the verdict every
+    // law reads (the seat's kind, the blocked seeker's entry, the TURN client end); an answer that comes later corrects it (remeasure).
+    let directMeasured = true;   // kept for the status line and the test API only: false while 'blocked' means no STUN word yet (was: the seat's NAT kind (L4.1) is measured, and a slow answer measures nothing)
     // Run (or re-run) the probe. Called when the meeting starts and when the
     // browser reports the network came back, since a new network is a new
     // verdict. Under DEBUG a test may fix the verdict (window.__gifosDirectPath)
@@ -11839,21 +11937,29 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // sponsorSend: carry envelope envl toward envl.to when the relay cannot
     // (§FWD). Returns true iff the frame was handed to SOME viable path.
+    // TURN.14.4 / TURN.14.11 (js/mesh/page/env.js t14Env): a mesh frame in an envelope that may not cross my TURN pc to this
+    // peer. 0: send it there; 1: not over this pc; 2: consumed (my seat took the ask back, or a third party's placement stops here).
+    const t14Env = (pid, envl, onward) => (envl && envl.k === 'fmesh' && envl.m && meshNode && meshNode.penv && meshNode.penv.t14Env ? meshNode.penv.t14Env(pid, envl.m, onward) : 0);
     function sponsorSend(envl) {
       const to = envl.to;
       // L16.3.2: a reply starts back along the list its frame crossed. No such channel now: the rungs, the list dropped.
       if (Array.isArray(envl.rt)) {
         const back = envl.rt.length ? peers.get(envl.rt[envl.rt.length - 1]) : null;
-        if (back && back.connected && back.dc && back.dc.readyState === 'open') { envl.rt = envl.rt.slice(0, -1); dcSend(back, envl); return true; }
+        const tb = back ? t14Env(back.id, envl) : 0; if (tb === 2) return true;
+        if (back && !tb && back.connected && back.dc && back.dc.readyState === 'open') { envl.rt = envl.rt.slice(0, -1); dcSend(back, envl); return true; }
         delete envl.rt;
       }
       // 1) the classic mutual-DC friend (one hop, deterministic pick)
       const cands = myConns().filter((r) => r !== to && (connsOf.get(r) || []).includes(to)).sort();
-      const fp = cands.length ? peers.get(cands[0]) : null;
-      if (fp && fp.dc && fp.dc.readyState === 'open') { dcSend(fp, envl); return true; }
+      for (const r of cands) {   // the first friend whose pc this frame may cross (TURN.14.4: an entry ask stays on its side)
+        const fp = peers.get(r); if (!(fp && fp.dc && fp.dc.readyState === 'open')) break;
+        const t = t14Env(r, envl); if (t === 2) return true; if (t === 1) continue;
+        dcSend(fp, envl); return true;
+      }
       // 2) the mesh itself: my one open-DC step toward the target's seat
       const hp = nextHopDc(to, envl.tc);
-      if (hp) { dcSend(hp, envl); return true; }
+      const th = hp ? t14Env(hp.id, envl) : 0; if (th === 2) return true;
+      if (hp && !th) { dcSend(hp, envl); return true; }
       // 3) the DOOR (the friendless-newcomer bootstrap): sealed over the relay
       // to a socketed seat wired near the target, else a greeter, which
       // hop-forwards it onward over its own channels. Throttled per target —
@@ -11869,7 +11975,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // NOROOM / FINDACK / HOME reaches a knocker: back along the FIND's path
       // to the greeter that holds the knocker's bootstrap channel.
       const cp = crumbPeer(to);
-      if (cp) { dcSend(cp, envl); return true; }
+      const tc = cp ? t14Env(cp.id, envl) : 0; if (tc === 2) return true;
+      if (cp && !tc) { dcSend(cp, envl); return true; }
       // 4) one other live channel (lowest id): the frame enters the room's
       // connected component, which has another chance to land a real last
       // hop (fwdOnward's dedup and ttl bound the walk). Never the relay: an
@@ -11884,7 +11991,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const alts = [];
       for (const [pid, p] of peers) { if (pid !== to && pid !== myId && p.connected && p.dc && p.dc.readyState === 'open') alts.push(pid); }
       alts.sort();
-      if (alts.length) { txStats.doorSig++; dcSend(peers.get(alts[0]), envl); return true; }
+      for (const a of alts) { const t = t14Env(a, envl); if (t === 2) return true; if (t === 1) continue; txStats.doorSig++; dcSend(peers.get(a), envl); return true; }
       return false;
     }
     // fwdCrumb: pid -> { via, at }: the channel peer that last delivered a
@@ -11948,6 +12055,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (kind === 'fsig') envl.p = crossed.concat(myId);
       const handoff = (p) => {
         if (!p || p.id === viaPid || p.id === m.from || crossed.includes(p.id) || !(p.connected && p.dc && p.dc.readyState === 'open')) return false;
+        const t = t14Env(p.id, envl, true); if (t === 2) { if (m.id) fwdSeenNote(fwdSeen, m.id); return true; } if (t === 1) return false;   // TURN.14.4 / 14.11
         if (m.id) fwdSeenNote(fwdSeen, m.id);
         txStats.hopFwd++; dcSend(p, envl); return true;
       };
@@ -12628,7 +12736,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const cc = net.topo.unck(k);
       return cc.pc === c.pc && cc.r === c.r;
     }
-    const camPeer = (pid) => isRowMate(pid);
+    // A row-mate across a relayed link's cut is reached only through that link's carrier (mosCarrier): the carrier is the
+    // one seat that can hand my own camera and mic on to it, so it gets them as a row-mate does. Only my own row counts.
+    function rowCarrier(pid) {
+      const c = meshCoord(); if (!c || !turnLinks || typeof mosCarrier !== 'function') return false;
+      const q = peers.get(pid); if (!q || !q.connected) return false;
+      for (let j = 0; j < SCALE.C; j++) {
+        if (j === c.i) continue;
+        const m = occPid({ pc: c.pc, r: c.r, i: j }); if (!m || m === pid || m === myId) continue;
+        const mp = peers.get(m); if (mp && mp.connected) continue;
+        if (mosCarrier(m) === pid) return true;
+      }
+      return false;
+    }
+    const camPeer = (pid) => { if (isRowMate(pid)) return true; try { return rowCarrier(pid); } catch (e) { return false; } };
     // ---- mesh early-probe intake (healing-laws D5) --------------------------
     // Transport death is MY first-hand evidence: when my DataChannel to a peer
     // closes, or its pc lands in a hard state ('closed', or 'failed' persisting
@@ -12810,6 +12931,38 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return !!(fp && fp.dc && fp.dc.readyState === 'open');
     }
     const turnRaw = () => { const r = meshNode && meshNode.raw; return typeof r === 'function' ? r() : (r || null); };
+    // THE JOIN'S PHASES: the one list a progress line ("step X of Y") reads. A page goes through them in this order
+    // and may skip any: an ordinary join is probing, knocking, asking, seated; a device on a blocked network whose
+    // office is first to arrive also goes through founding (it starts its part of the meeting alone), linking (its
+    // relayed link is being set up) and moving (it leaves its own part for the meeting's older part); its colleagues
+    // go through waiting (the one device they can reach said "no room yet": it is linking or moving).
+    //   probing   my network check has no verdict yet and I hold no list from the door
+    //   knocking  I am at the door with no list yet
+    //   asking    I asked the greeters the door listed and wait for the first answer
+    //   waiting   a greeter I can reach answered that it has no room yet (L8.47.2): I wait for it
+    //   founding  I sit alone on the cell I founded and no link of mine is being set up
+    //   linking   the relayed link I opened is dialling, or just came up (TURN.4.4)
+    //   moving    I had a seat and am on my way to another part of the meeting
+    //   seated    I sit in the meeting
+    // GifOS.meetJoin.phase() → { phase, index, of, probe }   (index: 0-based place in PHASES; probe: this network's verdict)
+    const turnAskedAt = new Map();   // TURN.4.3: greeter pid → when my seat's entry ask to it went out (the page fabric's turnAskedNote)
+    const JOIN_PHASES = Object.freeze(['probing', 'knocking', 'asking', 'waiting', 'founding', 'linking', 'moving', 'seated']);
+    let joinEverSat = false;
+    function joinPhase() {
+      const K = GifOS.meshConsts.consts, r = turnRaw();
+      let ph;
+      if (!r) ph = directPath === 'pending' ? 'probing' : 'knocking';
+      else if (r.hasCoord && r.state === 3) {
+        joinEverSat = true;
+        const lone = !!r.islandFounder && r.line === r.id && !r.l850Seated && GifOS.meshTopo.ckey(r.coord) === 0;
+        ph = !lone ? 'seated' : (turnLinks && turnLinks.holding && turnLinks.holding()) ? 'linking' : 'founding';
+      } else if (joinEverSat) ph = 'moving';
+      else if (Number.isInteger(r.ehAt) && r.ehAt >= 0 && r.TICK - r.ehAt < K.ISLAND_WAIT) ph = 'waiting';
+      else if (r.state === 1) ph = 'asking';
+      else ph = directPath === 'pending' && !(r.lastGreeters && r.lastGreeters.length) ? 'probing' : 'knocking';
+      return { phase: ph, index: JOIN_PHASES.indexOf(ph), of: JOIN_PHASES.length, probe: directPath };
+    }
+    try { window.GifOS.meetJoin = { PHASES: JOIN_PHASES, phase: joinPhase }; } catch (e) {}
     function turnIo() {
       const K = GifOS.meshConsts.consts, T = GifOS.meshTopo;
       return {
@@ -12826,8 +12979,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const out = []; for (const g of r.lastGreeters || []) { const p = meshNode.pidOf(g); if (p) out.push(p); } return out;
         },
         nid: (pid) => meshNode.nidOf(pid),
+        epoch: (pid) => { const r = turnRaw(); if (!r) return -1; const k = (r.lastGreeters || []).indexOf(meshNode.nidOf(pid)); const e = k >= 0 && r.lastGreetersAt ? r.lastGreetersAt[k] : -1; return Number.isInteger(e) ? e : -1; },
+        myEpoch: () => { const r = turnRaw(); return r && Number.isInteger(r.lineAt) ? r.lineAt : -1; },
         reach: (pid) => { const p = peers.get(pid); if (p && p.connected && !(turnLinks && turnLinks.isLink(pid))) return 'direct'; return turnFriend(pid) ? 'friend' : null; },
         blocked: () => directPath === 'blocked',
+        askedAt: (pid) => turnAskedAt.get(pid) || 0,   // TURN.4.3: when my entry's door ask to that greeter went out
+        friends: () => { if (directPath === 'blocked') return false;   /* a blocked page's direct peers are on its own network by definition: none of them can probe a greeter it cannot reach (a colleague's door connected one tick after the founding read as a friend and the link waited TURN_WAIT: no hold, the office formed its own room) */ for (const p of peers.values()) if (p && p.connected && !(turnLinks && turnLinks.isLink(p.id))) return true; return false; },   // a connected peer of my own: its probe of the greeter needs TURN_WAIT
+        judged: () => { const r = turnRaw(); return !!r && r.greetersAt > r.seatedAt; },   // the door has answered my own seating knock (L8.1.3)
         alive: (pid) => {
           if (meshKnows(pid)) return true;
           const r = turnRaw(); if (r && (r.lastGreeters || []).indexOf(meshNode.nidOf(pid)) >= 0) return true;
@@ -12877,9 +13035,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       turnPaint();
     }
     // A subscriber's vouch: its meeting ticket for this meeting and its key's signature over the room (meet-subs roomOrder).
+    // A four-hour pass vouches the same way; the TURN Worker reads the pass with its holder's signature over the room
+    // (the whole order: pass, at, proof), so a pass copied without its key asks for nothing.
     function turnSubIn(from, o) {
       if (!o || typeof o !== 'object' || !GifOS.meetSubs) return;
-      GifOS.meetSubs.roomTier(o, subsMeetId()).then((t) => { if (t) turnSubs.set(from, { tier: t.tier, exp: t.exp, ticket: o.ticket, at: Date.now() }); }, () => {});
+      GifOS.meetSubs.roomTier(o, subsMeetId()).then((t) => { if (t) turnSubs.set(from, { tier: t.tier, exp: t.exp, ticket: t.pass ? Object.assign({}, o.ticket, { at: o.at, proof: o.proof }) : o.ticket, pass: !!t.pass, at: Date.now() }); }, () => {});
     }
     function turnSubOut() {
       if (!meshNode || !subsOn()) return;
@@ -12920,6 +13080,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               } catch (x) { t.textContent = said; b.disabled = false; }
             });
             el.appendChild(b);
+            // or the four-hour pass: $1 once through PayPal, Unlimited for the next 4 hours (never a subscription)
+            const b4 = document.createElement('button'); b4.type = 'button'; b4.className = 'tpause-pass';
+            b4.textContent = uiText('turnPass4h', 'or $1 for the next 4 hours');
+            b4.addEventListener('click', async (e) => {
+              e.stopPropagation(); b4.disabled = true; b.disabled = true;
+              try {
+                const r = await GifOS.meetSubs.buyPass((w) => { t.textContent = w; });
+                if (!(r && r.passJson)) { t.textContent = said; b4.disabled = false; b.disabled = false; }
+              } catch (x) { t.textContent = said; b4.disabled = false; b.disabled = false; }
+            });
+            el.appendChild(b4);
           }
           p.tile.appendChild(el);
         } else if (!show && el) el.remove();
@@ -13071,6 +13242,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try {
         for (const [jk, job] of [...mosJobs]) if (job.to === p.id) unshipMos(jk, false);
       } catch (e) { if (typeof clog === 'function') clog('rebuildPc: mosaic job cleanup failed ' + String(e).slice(0, 60)); }
+      // The friend carries that rode the old pc end with it, as relayer and as receiver (endPcRelayRoles). Direct, as above.
+      try { endPcRelayRoles(p.id, 'pc-new ' + (why || '?')); } catch (e) { if (typeof clog === 'function') clog('rebuildPc: carry cleanup failed ' + String(e).slice(0, 60)); }
       const pc = new RTCPeerConnection(turnPcConfig(p));   // a TURN link's settings when this end is its client (turnPcConfig)
       turnGuardVideo(pc, p);   // no video over an unvouched TURN link
       // Whatever was armed against the OLD pc must never fire at the new one: a glare yield's rollback would target a
@@ -14330,7 +14503,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (why && p.dc && p.dc.readyState === 'open') { try { dcSend(p, { k: 'pcbye', why }); } catch (e) {} }
       p.byeSent = Date.now(); p.envClosing = Date.now(); seatAskAt.delete(pid);
       if (typeof clog === 'function') clog('pcbye-out ' + String(pid).slice(0, 6) + ' ' + why);
-      setTimeout(() => pcCloseNow(pid, p), 300);
+      // The close belongs to the pc the goodbye was said on. A link that closes and is asked again within the 300 ms (a relayed
+      // link's dial failing and its next ask, 100 ms apart) had built a NEW pc for the pair by then, and this timer closed that one:
+      // the answer just sent died with it and every later ask met the same close.
+      const pcSaid = p.pc;
+      setTimeout(() => { if (p.pc !== pcSaid) return; pcCloseNow(pid, p); }, 300);
     }
     // L17: the seat holds its dials to this peer: no page clock dials it either.
     function seatHolds(pid) { return !!(meshNode && meshNode.dialHeld && meshNode.dialHeld(pid)); }
@@ -14897,44 +15074,149 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // as the likely problem. It never founds and never fakes — the wire keeps
     // re-knocking underneath, and the veil lifts the instant the seat lands.
     // (Sits UNDER the password modal: typing the password IS joining.)
+    // ---- TRUE PROGRESS (js/meet-progress.js) -----------------------------
+    // Every wait on the way in reads "Step X of Y: <what is happening>". Y is
+    // the most steps the flow could take, X goes up by one each time a step
+    // completes and never goes back. The steps are judged from the page's real
+    // state (progressFacts) by the pure judge in js/meet-progress.js; every
+    // change goes into window.__meetProgress and (DEBUG) the clog, facts and
+    // all, so a test can judge the same facts again and compare.
+    let progRun = null, progNAtRelay = 0, progListAt = -1, progEndedJoin = false, progBackSince = 0;
+    const progTrace = window.__meetProgress = [];
+    function progressFacts() {
+      const r = turnRaw(), s = meshSeat();
+      let doorUp = false, live = 0;
+      for (const p of peers.values()) {
+        if (!p || !p.connected || !p.dc || p.dc.readyState !== 'open') continue;
+        if (p.bootOut && !(typeof linkTo === 'function' && linkTo(p.id))) doorUp = true; else live++;
+      }
+      let greeters = 0, list = false;
+      if (r) {
+        const me = meshNode && meshNode.nidOf ? meshNode.nidOf(myId) : -1;
+        for (const g of r.lastGreeters || []) if (g >= 0 && g !== me) greeters++;
+        list = r.greetersAt >= 0 && r.greetersAt >= progListAt;
+      }
+      let turn = '';
+      try { for (const L of (turnLinks ? turnLinks.dump().links : [])) { if (L.state === 'up') { turn = 'up'; break; } if (L.state === 'ask' || L.state === 'dial') turn = L.state; } } catch (e) {}
+      const st = s ? s.state : 0, coord = !!(s && s.hasCoord);
+      const n = typeof headerCount === 'function' ? headerCount() : 1;
+      // the count before the link: taken while the link is asked for, or while the relay step waits (a link can come up between two beats)
+      if (turn && turn !== 'up' && !progNAtRelay) progNAtRelay = Math.max(1, n);
+      // the browser saying the network is gone (an offline event, or the page's own dark beat) outranks a socket
+      // that has not noticed yet: nothing reaches the server through a dark network
+      const offline = !!netDarkAt || navigator.onLine === false;
+      return { dp: directPath, relay: relayUp() && !offline, list, greeters, pw: atPwPrompt(),
+        wait: document.body.classList.contains('wait-door') || (typeof iAmWaiting === 'function' && iAmWaiting()),
+        doorUp, st, coord, turn, n, live, nAtRelay: progNAtRelay, offline,
+        saved: progRun && progRun.flow === 'update', reloaded: !!updateResume };
+    }
+    function progressStart(flow) {
+      const P = window.GifOS && GifOS.meetProgress;
+      if (!P) return null;
+      progRun = P.createRun(flow, Date.now()); progNAtRelay = 0;
+      const r = turnRaw(); progListAt = r && flow === 'reconnect' ? r.TICK : -1;
+      return progRun;
+    }
+    // progressTick(): judge the facts now; true when the words changed
+    function progressTick() {
+      if (!room || typeof meshSeat !== 'function' || !progRun) return false;
+      const f = progressFacts();
+      const ch = progRun.apply(f, Date.now());
+      if (progRun.cur() === 'relay' && !f.turn) progNAtRelay = Math.max(1, f.n);
+      if (ch) {
+        const P = GifOS.meetProgress, w = P.line(progRun, Date.now(), uiText);
+        const e = { t: Date.now(), flow: progRun.flow, x: progRun.x(), y: progRun.y, step: progRun.cur(), text: progRun.text(), hint: progRun.hint(),
+          done: progRun.done(), seen: progRun.seen(), end: progRun.ended(), shown: w.head, facts: f };
+        progTrace.push(e); if (progTrace.length > 400) progTrace.splice(0, 100);
+        if (typeof clog === 'function') clog('progress ' + e.flow + ' ' + e.x + '/' + e.y + ' ' + e.step + (e.end ? ' end' : '') + ' done=' + e.done.join(','));
+      }
+      if (progRun.ended()) { if (progRun.flow !== 'reconnect') progEndedJoin = true; progRun = null; }
+      return ch;
+    }
+    // The words for the line, or null when no wait is on.
+    function progressWords() {
+      if (!progRun) return null;
+      const P = window.GifOS && GifOS.meetProgress;
+      if (!P) return null;
+      const w = P.line(progRun, Date.now(), uiText);
+      w.stepOnly = P.stepOnly(progRun, uiText);
+      w.step = progRun.cur(); w.x = progRun.x(); w.y = progRun.y; w.flow = progRun.flow;
+      return w;
+    }
+    window.__gifosProgressWords = () => progressWords();
+    // progressBeat(seated, now): which wait is on, judged once a second. The way
+    // in once per page; back in after a drop the calm rule lets show (the same
+    // quiet time as the reconnecting note).
+    function progressBeat(seated, now) {
+      if (!progRun && !progEndedJoin) progressStart(updateResume ? 'update' : 'join');
+      else if (!progRun && progEndedJoin) {
+        const linkDown = !!(statusEl._linkDownAt && now - statusEl._linkDownAt >= GifOS.timings.STATUS_RECONNECT_QUIET_MS);
+        const lost = !seated && !leaving;
+        if (lost) { if (!progBackSince) progBackSince = now; } else progBackSince = 0;
+        const dark = !!(netDarkAt && now - netDarkAt >= GifOS.timings.STATUS_RECONNECT_QUIET_MS);
+        if ((linkDown || dark || (lost && now - progBackSince >= GifOS.timings.STATUS_RECONNECT_QUIET_MS)) && !leaving && !(typeof leftDialogUp === 'function' && leftDialogUp())) progressStart('reconnect');
+      }
+      const changed = progressTick();
+      const w = progressWords();
+      if ((changed || (w && w.secs)) && Date.now() >= statusHoldUntil) { try { updateStatus(); } catch (e) {} }
+      try { paintProgressSteps(w); } catch (e) {}
+      return w;
+    }
     let joinVeilEl = null, unseatedSince = 0, veilCeilLogged = false;
     setInterval(() => {
       if (!room || typeof meshSeat !== 'function') return;
       const s = meshSeat();
       const seated = !!(s && s.state === 3 && s.hasCoord);
-      if (seated) { unseatedSince = 0; veilCeilLogged = false; if (joinVeilEl) { joinVeilEl.remove(); joinVeilEl = null; } return; }
       const now = Date.now();
+      let w = null;
+      try { if (typeof progressBeat === 'function') w = progressBeat(seated, now); } catch (e) {}
+      if (seated) { unseatedSince = 0; veilCeilLogged = false; if (joinVeilEl) { joinVeilEl.remove(); joinVeilEl = null; } return; }
       if (!unseatedSince) { unseatedSince = now; return; }
       if (now - unseatedSince < 4000) return; // fast joins never see it
       if (!joinVeilEl) {
         joinVeilEl = document.createElement('div');
         joinVeilEl.id = 'joinveil';
-        joinVeilEl.innerHTML = '<div class="jv-box" role="status" aria-live="polite"><div class="jv-spin"></div><h3 id="jv-t">Reaching the meeting…</h3><p id="jv-p">Connecting you to the room.</p></div>';
+        joinVeilEl.innerHTML = '<div class="jv-box" role="status" aria-live="polite"><div class="jv-spin"></div><p class="pg-step" id="jv-s"></p><h3 id="jv-t"></h3><p id="jv-p"></p></div>';
         document.body.appendChild(joinVeilEl);
       }
       const waited = now - unseatedSince;
-      const veilSay = (title, body) => {
+      const veilSay = (step, title, body) => {
+        const hs = joinVeilEl.querySelector('#jv-s');
         const ht = joinVeilEl.querySelector('#jv-t');
         const hp = joinVeilEl.querySelector('#jv-p');
+        if (hs && hs.textContent !== step) hs.textContent = step;
         if (ht && ht.textContent !== title) ht.textContent = title;
         if (hp && hp.textContent !== body) hp.textContent = body;
       };
-      // Past 8 s with the relay up, the veil states elapsed seconds.
-      // console.debug notes the 210 s reap bound once. After that bound
-      // the veil says the wait has run long. With the relay down, the
-      // door line after 20 s is the message.
-      if (doorUnreachAt && now - doorUnreachAt < 60000 && waited > 8000) {
-        veilSay('Couldn\u2019t reach the meeting', 'Your device could not connect to the people in this meeting. A firewall, VPN or strict network may be blocking calls. We keep trying, and you will be in the moment a connection works.');
-      } else if (waited > 8000 && relayUp()) {
-        const left = Math.max(0, Math.ceil((210000 - waited) / 1000)); // reap bound, not a promise on screen
-        const secs = Math.max(1, Math.ceil(waited / 1000));
-        if (!veilCeilLogged) { veilCeilLogged = true; try { console.debug('seat ceiling 210s'); } catch (e) {} }
-        if (left > 0) veilSay('Joining the meeting\u2026', 'Still joining (' + secs + ' s).');
-        else veilSay('This is taking longer than it ever should.', 'Check your connection, or close this tab and reopen the link. A fresh start usually clears it.');
-      } else if (waited > 20000) {
-        veilSay('Still trying to reach the meeting\u2026', 'Nobody is answering the door of this meeting yet. It may be your internet connection. We keep knocking, and you will be in the moment it answers.');
+      // The step and what it waits for; the reason under it. Past the 210 s
+      // reap bound the reason says the wait has run long; a door that closed
+      // without ever connecting names the network as the likely cause.
+      if (w) {
+        joinVeilEl.dataset.flow = w.flow; joinVeilEl.dataset.step = w.step; joinVeilEl.dataset.x = String(w.x); joinVeilEl.dataset.y = String(w.y);
       }
+      if (waited > 8000 && !veilCeilLogged) { veilCeilLogged = true; try { console.debug('seat ceiling 210s'); } catch (e) {} }
+      let why = w ? w.hint : '';
+      if (doorUnreachAt && now - doorUnreachAt < 60000 && waited > 8000) why = uiText('pgHintUnreach', 'Your device could not connect to the people at the door. A firewall, VPN or strict network may be blocking calls. We keep trying.');
+      else if (waited > 210000) why = uiText('pgHintLong', 'This is taking longer than it should. Check your connection, or reopen the link.');
+      else if (!why && waited > 20000 && !relayUp()) why = uiText('pgHintNoServer', 'Your internet connection may be down. We keep trying.');
+      else if (!why && waited > 20000 && w && w.step === 'knock') why = uiText('pgHintNoAnswer', 'Nobody has answered the door yet. We keep knocking.');
+      // the time shown is time waited (on this step), never a countdown to a seat
+      if (w) veilSay(w.stepOnly + (w.secs ? ' · ' + w.secs : ''), w.what + '…', why);
+      else veilSay(Math.max(1, Math.ceil(waited / 1000)) + ' s', uiText('pgDoor', 'Finding your meeting') + '…', why);
     }, 1000);
+    // The step line in the places a wait shows that are not the status line:
+    // the password prompt and the waiting room screen.
+    function paintProgressSteps(w) {
+      const put = (id, show) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const t = show && w ? w.stepOnly + (w.secs ? ' · ' + w.secs : '') : '';
+        if (el.textContent !== t) el.textContent = t;
+        if (el.hidden !== !t) el.hidden = !t;
+      };
+      put('pw-step', !!(w && w.step === 'password'));
+      put('waitdoor-step', !!(w && w.step === 'admit'));
+    }
 
     // ---- THE EMPTY APP ROOM (#appwait) ---------------------------------------
     // A guest opening an app invite gets the app from WHOEVER IS IN THE ROOM
@@ -15158,7 +15440,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // A camera on the Stage is only on the strip. The row seat stays
         // (video off). It returns to a picture the moment they step down.
         // ("stagers live on the Stage ONLY", docs/media-plane.md).
-        if (stg.has(pid)) {
+        if (stg.has(pid) && !shareOnlyStage(pid)) {
           // A screen share keeps the face where comfy already put it. A camera
           // on the Stage holds its row seat (the strip is the only picture).
           // Another row holds that seat as a stadium face, so this tile stays off.
@@ -16536,8 +16818,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           (async () => {
             note('missing ' + g.failed.join(',') + (g.threw.length ? ' threw ' + g.threw.join(',') : ''));
             let todo = g.failed.slice();
+            // each try is a step of the 'load' flow (js/meet-progress.js): the line says which
+            const loadRun = window.GifOS && GifOS.meetProgress ? GifOS.meetProgress.createRun('load', Date.now()) : null;
+            const loadSay = () => {
+              if (!loadRun) return;
+              loadRun.apply({ tries: g.tries }, Date.now());
+              const lw = GifOS.meetProgress.line(loadRun, Date.now(), uiText);
+              note('progress load ' + loadRun.x() + '/' + loadRun.y + ' ' + loadRun.cur());
+              (window.__meetProgress || []).push({ t: Date.now(), flow: 'load', x: loadRun.x(), y: loadRun.y, step: loadRun.cur(), done: loadRun.done(), shown: lw.head, facts: { tries: g.tries } });
+              setStatus(lw.head, 0, 'note', 'progress');
+            };
             for (const w of UNITS_BACKOFF) {
               if (w) await new Promise((r) => setTimeout(r, w));
+              loadSay();
               g.tries++;
               const first = Math.min.apply(null, todo.map((k) => order.indexOf(k)).filter((i) => i >= 0));
               const redo = todo.concat(g.threw.filter((k) => order.indexOf(k) > first && todo.indexOf(k) < 0)).sort((x, y) => order.indexOf(x) - order.indexOf(y));
@@ -16566,7 +16859,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const relay = relayUrl();
       if (!relay) { setStatus(uiText('stNoConnectionServiceIsSet', 'No connection service is set up, so nobody can be invited in.')); return; }
       try { subsJoin(); } catch (e) {}   // a subscription joins this meeting (no-op while subscriptions are off, or already joined)
-      if (meshNode) { try { meshNode.stop(); } catch (e) {} meshNode = null; }
+      if (meshNode) { try { meshNode.stop(); } catch (e) {} meshNode = null; } joinEverSat = false;
       meshBootGen++;
       if (directPath === 'pending') startDirectPathProbe(); // this network's verdict, once per page (re-run when the network comes back)
       if (!myId && !myIdReadyResolve) myIdReady = new Promise((res) => { myIdReadyResolve = res; });   // a re-arm keeps the promise the waiters already hold
@@ -16618,10 +16911,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           roles: () => ({ jobs: Array.from(relayJobs.values(), (j) => ({ target: j.target, req: j.requester })), vias: Array.from(relayVia.values(), (r) => r.via) }),
           // TURN.14 (the twin's fabricTurnAcross): the peers whose pc runs through a TURN link of mine (js/meet-turn.js)
           turnPcs: () => (turnLinks ? turnLinks.turnPcs() : []),
+          turnHold: () => !!(turnLinks && turnLinks.holding && turnLinks.holding()), turnAsked: (pid) => { const at = turnAskedAt.get(pid), now = Date.now(); if (at == null || now - at > GifOS.meshConsts.consts.RELAY_TTL * meshNode.tickMs()) { if (turnAskedAt.size >= 64) turnAskedAt.clear(); turnAskedAt.set(pid, now); } },   // TURN.4.4, TURN.4.3
+          turnOn: () => !!turnLinks, turnOpened: (pid) => !!(turnLinks && turnLinks.opened(pid)), turnHeld: () => !!(turnLinks && turnLinks.anyHeld()),
+          turnHolds: (pid) => turnHolds(pid),   // a TURN link of mine, in any state, rides the pc to this peer: that pc is no door
+          claims: (r, x) => (connsOf.get(r) || []).includes(x), relayed: (pid) => relayVia.has(pid),
         },
         measure: {   // the device class and the network's verdict this page already keeps (L4)
           tier: () => { const E = GifOS.meshConsts.enums, hc = navigator.hardwareConcurrency | 0; return IS_MOBILE || (hc > 0 && hc <= 2) ? E.TIER_MOBILE : E.TIER_DESKTOP; },   // a 2-core desktop carries like a phone
-          nat: () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' && directMeasured ? E.NAT_BLOCKED : directPath === 'strict' ? E.NAT_STRICT : E.NAT_OPEN; },
+          nat: () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' ? E.NAT_BLOCKED : directPath === 'strict' ? E.NAT_STRICT : E.NAT_OPEN; },
           lgHealth: () => lgHealth(), lgCamOn: () => myStatus.camOff === false, lgWoke: () => lgWoken.size, lgStarve: () => lgStarvedNow(), lgLeave: () => lgLeave(),
         },
         // The seat's pcs (js/mesh/page/env.js calls these; it decides, the page carries out).
@@ -17030,7 +17327,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (meshCoord() && meshSeat() && !Array.from(meshSeat().occ.values()).includes(pid)) return 'mate';
       if (!fst || fst.camOff || fst.scr || forcedCamOff(pid)) return 'cam';
       if (peerAway(pid)) return 'away';
-      if (stageIds().includes(pid)) return 'staged';
+      if (personOnStage(pid)) return 'staged';
       return '';
     }
     // Its own 1s clock (the sweep's 2s beat would add up to 2s to every
@@ -17285,7 +17582,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!WEBKIT_TILE) return;
       const s = p.mainV, now = Date.now();
       if (!s || !s.track || s.track.readyState !== 'live' || !p.connected || p.relayed || p.remoteParkMain || (p.mainHoldUntil && p.mainHoldUntil > now)
-          || myStatus.camOff || stageIds().includes(myId) || !camPeer(pid) || !s.getStats) { p.txProbe = null; return; }
+          || myStatus.camOff || personOnStage(myId) || !camPeer(pid) || !s.getStats) { p.txProbe = null; return; }
       // The source must be producing: the self view plays the same camera. A
       // camera still starting (a clip, a slow device) encodes nothing yet.
       if (!(meTile && meTile.video && meTile.video.readyState >= 2 && meTile.video.videoWidth > 0)) { p.txProbe = null; return; }
@@ -17568,6 +17865,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         } else { p.sinkProbe = null; if (p.video && p.video.readyState > 0 && p.video.videoWidth > 0) p.wkSeats = 0; }
         // A WebKit tile whose bind waited for the channel (wkPlayTile): ask now.
         if (WEBKIT_TILE && p.video && p.stream && p.video._wkPending === p.stream && !p.relayed && p.connected && p.dc && p.dc.readyState === 'open' && mediaOk(pid) !== false) wkQuietBind(p.video, p.stream, p);
+        if (relayJobs.size && typeof relayFollow === 'function') relayFollow(pid);   // the carries I run for this person keep their current tracks
         // Direct route recovered → drop any friend-relay for this peer.
         if (p.connected && relayVia.has(pid)) stopRelayFor(pid, true);
         // Our relayer for this peer vanished → fall back and re-elect.
@@ -17580,9 +17878,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!p.connected && !p.absentSince && !relayVia.has(pid)
             && p.downSince && now - p.downSince > GifOS.timings.FHOP_RELAY_ASK_MS && now - (p.relayAskAt || 0) > GifOS.timings.FHOP_RELAY_ASK_MS) {   // the direct verdict, and the gap between two asks (FHOP_RELAY_ASK)
           const refused = relayRefusal.get(pid) || {};
+          const refusedNow = (r) => !!(refused[r] && now - refused[r] < 30000);
           const cands = myConns().filter((r) => r !== pid
             && (connsOf.get(r) || []).includes(pid)
-            && !(refused[r] && now - refused[r] < 30000)).sort();
+            && !refusedNow(r)).sort();
+          // TURN.14.12: no connected peer names the target: my TURN peer is the one seat that reaches my row-mates across the cut; it dials the target for the carry
+          if (!cands.length && turnLinks) for (const r of turnLinks.turnPcs()) { const q = peers.get(r); if (r !== pid && q && q.connected && !refusedNow(r)) cands.push(r); }
           if (cands.length) {
             p.relayAskAt = now;
             // ranked on each pc's last stats reading (read again now for the next ask): the ask itself never waits
@@ -18353,7 +18654,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         pwHeldOnTyping();
         if (pwEpoch === 0) grantHoldUntil = Date.now() + PW_GRANT_HOLD_MS; // typed at the door: grants wait for the room's generation (heldGrant)
         pwModal.style.display = 'none';
-        sayState('passwordTrying');
+        // on the way in the progress line says what comes next (js/meet-progress.js); the note would cover it
+        if (!(typeof progressWords === 'function' && progressWords())) sayState('passwordTrying');
         // The relay only ever sees the PROOF of this password, never the text —
         // and the key I read the room with now contains it (§8): a wrong
         // password doesn't just bounce at the courtesy gate, it can't decrypt.
@@ -21114,7 +21416,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // down, and a deeper seat would crop them with the old order.
         const stripReorder = m.key === 'sgs' && !!prevAnn && !annNew
           && ((prevAnn.ids || []).join(',') !== (annIds || []).join(',') || prevAnn.n !== m.n || prevAnn.cols !== m.cols);
-        mosAnn.set(ak, { streamId: m.streamId, col: m.col, row: m.row, src: (m.src ? String(m.src).slice(0, 64) : undefined), n: m.n, cols: m.cols, mt: m.mt, h: (typeof m.h === 'number' ? m.h : undefined), ao: (m.ao === 1 ? 1 : undefined), sb: (m.sb === 1 ? 1 : undefined), vp: mxPath(m.vp), ids: annIds, alag: (typeof m.alag === 'number' && isFinite(m.alag) ? Math.max(0, Math.min(2000, m.alag)) : undefined), at: Date.now() });
+        const org = typeof m.cf === 'string' && typeof mosCarrierOf === 'function' && mosCarrierOf(p.id, m.cf) ? m.cf : undefined;   // TURN.14.8: a ship carried across the cut, by the seat that sent it
+        mosAnn.set(ak, { org, streamId: m.streamId, col: m.col, row: m.row, src: (m.src ? String(m.src).slice(0, 64) : undefined), n: m.n, cols: m.cols, mt: m.mt, h: (typeof m.h === 'number' ? m.h : undefined), ao: (m.ao === 1 ? 1 : undefined), sb: (m.sb === 1 ? 1 : undefined), vp: mxPath(m.vp), ids: annIds, alag: (typeof m.alag === 'number' && isFinite(m.alag) ? Math.max(0, Math.min(2000, m.alag)) : undefined), at: Date.now() });
         if (annNew || stripReorder) schedReconcile(); else schedClaim();
       } else if (m.k === 'mx-beat') {
         stgBeatIn(p, m);
@@ -22669,6 +22972,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     if (DEBUG_ON) window.__fhJobsForTest = () => Array.from(relayJobs.values(), (j) => ({ target: j.target, req: j.requester, video: !!j.video }));   // DEBUG: a carrier's own jobs, for the room checks
     const relayVideoJobs = () => { let n = 0; for (const j of relayJobs.values()) if (j.video) n++; return n; };
     const relayVideoBudget = () => GifOS.meshFhop.fhVideoBudget(linkCls() || GifOS.meshConsts.enums.FC_WIFI);
+    // A carry follows the person it carries. Their own tracks on my pc can change under a running job: a voice that
+    // starts after the job began (my pc to them carried only their picture), or a track replaced on a renegotiation.
+    // Each job keeps sending their CURRENT track of each kind it carries; a kind it lacks is added once it exists.
+    function relayFollow(target) {
+      const tp = peers.get(target); if (!tp || !tp.stream) return;
+      for (const job of relayJobs.values()) {
+        if (job.target !== target) continue;
+        const rp = peers.get(job.requester); if (!rp || !rp.pc || !rp.connected) continue;
+        let added = false;
+        for (const tr of shipTracks(tp.stream)) {
+          if (tr.kind === 'video' && !job.video) continue;
+          const sd = job.senders.find((x) => x._auxKind === tr.kind);
+          if (sd) { if (sd.track !== tr) sd.replaceTrack(tr).catch(() => {}); continue; }
+          try { job.senders.push(addAux(rp.pc, tr, job.container)); added = true; } catch (e) {}
+        }
+        if (added) { fhTrace('FH-JOB-FOLLOW', 'target=' + String(target).slice(0, 8) + ' req=' + String(job.requester).slice(0, 8)); renegotiate(rp); }
+      }
+    }
     // a video job ended: the oldest voice-only job (Map order) gets its video
     function relayPromote() {
       if (relayVideoJobs() >= relayVideoBudget()) return;
@@ -22761,6 +23082,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (tr && tr.kind === 'audio') init.sendEncodings = [{ maxBitrate: AUX_AUDIO_BPS }];   // set at creation: valid before negotiation in every engine
       const t = pc.addTransceiver(tr, init);
       auxSenders.add(t.sender);
+      if (tr && tr.kind) t.sender._auxKind = tr.kind;
       return t.sender;
     };
 
@@ -23034,7 +23356,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function kickMainVideo(p) {
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (p && p.mainHoldUntil && p.mainHoldUntil > Date.now()) return; // a held re-seat owns this quiet window
-      if (!p || !p.mainV || p.remoteParkMain || myStatus.camOff || stageIds().includes(myId) || !camPeer(p.id)) return;
+      if (!p || !p.mainV || p.remoteParkMain || myStatus.camOff || personOnStage(myId) || !camPeer(p.id)) return;
       let vt = null; try { vt = sentVideoTrack(); } catch (e) {}
       if (!vt || vt.readyState !== 'live') return;
       const sender = p.mainV;
@@ -23056,7 +23378,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // were the audio device open behind every stream bind (wkPicOf).
     function holdMainVideo(p, ms) {
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
-      if (!p || !p.mainV || p.remoteParkMain || myStatus.camOff || stageIds().includes(myId) || !camPeer(p.id)) return;
+      if (!p || !p.mainV || p.remoteParkMain || myStatus.camOff || personOnStage(myId) || !camPeer(p.id)) return;
       const t = Date.now();
       p.mainHoldUntil = t + ms;
       // The ack rides the channel once the park has taken (replaceTrack or
@@ -23256,13 +23578,28 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         .catch((e) => { if (p.pc !== pc) return; if (typeof clog === 'function') clog('roffer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); p.renegAgain = true; maybeRebuildNeg(p, e); })
         .finally(() => { if (p.neg.minting === mark) p.neg.minting = null; if (p.neg.turnWanted) giveTurn(p); });
     }
+    const t14Dial = new Map();   // TURN.14.12: target -> when I dialled it for my TURN peer's carry
     function startRelayJob(reqP, target) {
       const key = target + '>' + reqP.id;
-      if (relayJobs.has(key)) return;
+      // A requester asks again only when it holds no claim on my carry (its claim was dropped while my job ran on):
+      // announce the same stream again, or it waits on a carry that never answers.
+      if (relayJobs.has(key)) { const j0 = relayJobs.get(key); if (reqP.connected && j0 && j0.container) dcSend(reqP, { k: 'relay-stream', target, streamId: j0.container.id }); return; }
       const tp = peers.get(target);
-      const refuse = () => dcSend(reqP, { k: 'relay-no', target });
+      const refuse = (why) => { fhTrace('FH-REFUSE', 'target=' + String(target).slice(0, 8) + ' req=' + String(reqP.id).slice(0, 8) + ' ' + (why || '')); dcSend(reqP, { k: 'relay-no', target }); };
       if ((typeof isEjected === 'function' && isEjected(target) === true)) { refuse(); return; }
-      if (!tp || !tp.connected || !tp.stream || !reqP.connected || relayJobs.size >= FH_K().FHOP_CARRY_MAX) { refuse(); return; }
+      // TURN.14.12: asked over my TURN pc for a seat I hold no pc to: no NAT-kind test, I dial it (on my network the dial opens and the
+      // requester's next ask finds the pc; a dial that cannot open is the refusal the next ask reads)
+      if ((!tp || !tp.connected) && reqP.connected && turnLinks && turnLinks.isLink(reqP.id) && target && target !== myId) {
+        const now = Date.now(), at = t14Dial.get(target);
+        if (at === undefined || now - at > GifOS.timings.FHOP_RELAY_ASK_MS * 6) {   // a fresh dial (again, after a long while)
+          t14Dial.set(target, now); if (t14Dial.size > 64) t14Dial.delete(t14Dial.keys().next().value);
+          seatAskAt.set(target, now); seatMark.set(target, cleanMark({ s: 1 })); seatDial(target);
+          fhTrace('FH-T14-DIAL', 'target=' + String(target).slice(0, 8) + ' req=' + String(reqP.id).slice(0, 8));
+          return;
+        }
+        if (now - at < GifOS.timings.FHOP_RELAY_ASK_MS * 3) return;   // the dial is still on its way
+      }
+      if (!tp || !tp.connected || !tp.stream || !reqP.connected || relayJobs.size >= FH_K().FHOP_CARRY_MAX) { refuse(!tp ? 'nopeer' : !tp.connected ? 'down' : !tp.stream ? 'nostream' : !reqP.connected ? 'reqdown' : 'full'); return; }
       // A friend-relay re-sends the target's RECEIVED tracks: still refused on WebKit.
       // The mesh's own forwards (mosAttach) run there through wkFwdSrc;
       // a relay from a WebKit seat was not proven (2026-11-07: with this refusal
@@ -23273,7 +23610,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const senders = [];
       const video = relayVideoJobs() < relayVideoBudget();   // FHOP.9: past my video budget a carry forwards the voice only
       for (const tr of shipTracks(tp.stream)) { if (!video && tr.kind === 'video') continue; try { senders.push(addAux(reqP.pc, tr, container)); } catch (e) {} }   // one track per kind (shipTracks)
-      if (!senders.length) { refuse(); return; }
+      if (!senders.length) { refuse('notracks v=' + (video ? 1 : 0) + ' ' + tp.stream.getTracks().map((t) => t.kind[0] + t.readyState[0] + (t.muted ? 'M' : '')).join(',') + ' sid=' + String(tp.stream.id).slice(0, 8) + ' in=' + (tp.incoming || []).length); return; }
       relayJobs.set(key, { senders, requester: reqP.id, target, container, video });
       fhTrace('FH-JOB', 'target=' + String(target).slice(0, 8) + ' req=' + String(reqP.id).slice(0, 8) + ' video=' + (video ? 1 : 0) + ' cls=' + linkCls() + ' jobs=' + relayJobs.size);
       dcSend(reqP, { k: 'relay-stream', target, streamId: container.id });
@@ -23292,18 +23629,31 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       renegotiate(rp);
       if (notify) dcSend(rp, { k: 'relay-end', target });
     }
-    function endRelayRolesFor(pid) { // pid left or its pc died — as relayer AND receiver
+    // A CARRY ENDS WITH THE PC IT RODE (the sim's fhEndRoles: "target or requester's pc closed at the relayer: the job ends";
+    // "relayer gone: the receiver drops it and asks again"). A carry rides my pc to the target (the tracks I forward), my pc to
+    // the requester (the senders), and, as receiver, my pc to the relayer (the stream I claimed). Every one of them belongs to
+    // that pc, so a pc that closes, a rebuilt one included, ends them. Kept across a rebuild, the relayer re-announced a
+    // container whose senders sat on the closed pc, and the receiver held a claimed stream whose tracks had ended: its relayer
+    // was connected again on the new pc before the next sweep looked, so it never asked again (offices: the end of a TURN link
+    // deaf and blind to its own row head across the cut for the whole meeting). A carry OF this peer through another friend
+    // (relayVia.has(pid)) rides no pc of this pair and stays: its dead direct pc is rebuilt every few seconds.
+    function endPcRelayRoles(pid, why) {
       for (const key of Array.from(relayJobs.keys())) {
         const job = relayJobs.get(key);
-        if (job.target === pid) stopRelayJob(job.target, job.requester, true);
+        if (!job) continue;
+        if (job.target === pid) { fhTrace('FH-PC-END', 'target=' + String(job.target).slice(0, 8) + ' req=' + String(job.requester).slice(0, 8) + ' ' + (why || '')); stopRelayJob(job.target, job.requester, true); }
         else if (job.requester === pid) {
+          fhTrace('FH-PC-END', 'target=' + String(job.target).slice(0, 8) + ' req=' + String(job.requester).slice(0, 8) + ' ' + (why || ''));
           relayJobs.delete(key);
           for (const sd of job.senders || []) auxSenders.delete(sd);
           if (job.video) relayPromote();   // FHOP.9: a video job ended
         }
       }
+      for (const [target, r] of Array.from(relayVia)) if (r.via === pid) { fhTrace('FH-PC-END', 'claim target=' + String(target).slice(0, 8) + ' via=' + String(pid).slice(0, 8) + ' ' + (why || '')); stopRelayFor(target, false); }
+    }
+    function endRelayRolesFor(pid) { // pid left or its pc died — as relayer AND receiver
+      endPcRelayRoles(pid, 'gone');
       if (relayVia.has(pid)) stopRelayFor(pid, true);
-      for (const [target, r] of Array.from(relayVia)) if (r.via === pid) stopRelayFor(target, false);
     }
 
     // ========== STADIUM MEDIA (docs/media-plane.md) ============================
@@ -23440,7 +23790,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!p) return out;
       const pushStream = (s) => { try { if (s && s.getAudioTracks) for (const t of s.getAudioTracks()) if (t) out.push(t); } catch (e) {} };
       try { if (p.pc && p.pc.getReceivers) for (const r of p.pc.getReceivers()) if (r.track && r.track.kind === 'audio') out.push(r.track); } catch (e) {}
-      if (p.video) pushStream(p.video.srcObject);
+      // The tile can show a stream a FRIEND carries for this person (claimRelayStreams): that stream rides the friend's connection,
+      // not this person's. A retry of the dead direct connection to them (every few seconds across a cut) retired the carried
+      // voice for good, and every fold refused it from then on: the row's product went out without that person's voice.
+      let carried = null; try { carried = relayVia.get(p.id) || null; } catch (e) {}
+      if (p.video && !(carried && carried.stream && carried.stream === p.video.srcObject)) pushStream(p.video.srcObject);
       for (const s of p.incoming || []) pushStream(s);
       return out;
     }
@@ -23640,8 +23994,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // HUNG at phase B dt=2), the same open 7f84dfa took out of every tile.
       const sink = (typeof WEBKIT_ENGINE !== 'undefined' && WEBKIT_ENGINE && typeof wkStageSink === 'function') ? wkStageSink(fold) : null;
       if (sink) { stageEar = { fold, el: sink, sids: new Map() }; return; }
-      const el = new Audio(); el.autoplay = true;
-      el.srcObject = fold.dest.stream;
+      // Heard through its parts (createFoldPlayer), not as the fold's WebAudio track in an element: Chromium
+      // resamples that track to catch up after a hiccup and the stage voices go up in pitch.
+      let el = null;
+      if (typeof MM.createFoldPlayer === 'function') { try { el = MM.createFoldPlayer(fold, { onBlocked: audioBlocked }); } catch (e) { el = null; } }
+      if (!el) { el = new Audio(); el.autoplay = true; el.srcObject = fold.dest.stream; }
       stageEar = { fold, el, sids: new Map() };
       const pr = el.play(); if (pr && pr.catch) pr.catch((e) => audioBlocked(el, e)); // the stage ear is the one element a sharer's voice rides
     }
@@ -23865,7 +24222,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     let selfShipMemo = null;
     const mySelfStream = () => {
       if (BROADCAST && !bcMayPublishAv()) return null;
-      const v = sentVideoTrack();
+      const v = stageVideoTrack();
       // A rebroadcast's sound comes from the same element as its picture. A
       // clip with no sound sends none, not the host's mic.
       const a = (rbNow && rbNow.v) ? (rbNow.a || null) : ((localStream && localStream.getAudioTracks()[0]) || null);
@@ -24552,9 +24909,32 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       return out;
     }
+    // TURN.14.8 / TURN.14.12, the mosaic's half: a ship to a seat across a TURN link's cut, where no pc of mine opens, rides the one
+    // seat that reaches both: the target's own TURN peer when I reach it (I sit on the far end's side), else my TURN peer when its
+    // beat lists the target (I am the end). The carrier re-ships it under the same key ('tc:<target>|<key>' on the way), so the target
+    // claims it as if it came straight. Only rooms that hold a TURN link carry anything: the carrier is read from the links' facts.
+    function mosCarrier(to) {
+      if (!turnLinks || !to || to === myId) return null;
+      const live = (r) => { const q = peers.get(r); return !!(q && q.connected && q.dc && q.dc.readyState === 'open'); };
+      for (const f of turnFacts.values()) {
+        if (!f.up || Date.now() - (f.at || 0) > turnLinks.factStaleMs) continue;
+        const x = f.a === to ? f.b : f.b === to ? f.a : null; if (x && x !== myId && live(x)) return x;
+      }
+      for (const r of turnLinks.turnPcs()) if (r !== to && live(r) && (connsOf.get(r) || []).includes(to)) return r;
+      return null;
+    }
+    // A carrier's word "this came from x" stands only for a pair the TURN facts join: the carrier is x's TURN peer, or mine.
+    function mosCarrierOf(carrier, x) {
+      if (!turnLinks || !carrier || !x || x === myId || x === carrier) return false;
+      const q = peers.get(x); if (q && q.connected) return false;   // a seat I reach myself sends its own
+      for (const f of turnFacts.values()) { if (!f.up || Date.now() - (f.at || 0) > turnLinks.factStaleMs) continue; if ((f.a === carrier && (f.b === x || f.b === myId)) || (f.b === carrier && (f.a === x || f.a === myId))) return true; }
+      return false;
+    }
+    const mosCarried = (k) => { if (typeof k !== 'string' || k.indexOf('tc:') !== 0) return null; const b = k.indexOf('|'); return b > 3 ? { to: k.slice(3, b), key: k.slice(b + 1) } : null; };
     function shipMos(key, to, stream, meta, upKey) {
       if (!to || !stream) return null;
       const p = peers.get(to);
+      if ((!p || !p.connected) && key.indexOf('tc:') !== 0) { const via = mosCarrier(to); if (via) return shipMos('tc:' + to + '|' + key, via, stream, meta, upKey); }
       const jk = key + '>' + to;
       const cur = mosJobs.get(jk);
       // ORPHANED BY A TRANSPORT SWAP? A job's senders belong to the pc they
@@ -25120,7 +25500,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         let b = 0, n = 0; for (const r of p.pc.getReceivers()) { if (!r.track || !pri.stream.getTracks().includes(r.track)) continue; n++; (await r.getStats()).forEach((x) => { if (x.type === 'inbound-rtp') b += x.bytesReceived || 0; }); }
         const now = Date.now();
         if (!n) { rowFeed.via = null; return; }   // no receiver carries this claim's tracks (a rebound container): nothing to judge, and no silence
-        if (rowFeed.via !== pri.via || rowFeed.sid !== pri.streamId || b !== rowFeed.bytes) { rowFeed.via = pri.via; rowFeed.sid = pri.streamId; rowFeed.bytes = b; rowFeed.at = now; }
+        if (rowFeed.via !== (pri.org || pri.via) || rowFeed.sid !== pri.streamId || b !== rowFeed.bytes) { rowFeed.via = pri.org || pri.via; rowFeed.sid = pri.streamId; rowFeed.bytes = b; rowFeed.at = now; }
         else if (now - rowFeed.at >= ROW_SILENT_MS) schedReconcile();
       } catch (e) {} finally { rowFeedBusy = false; }
     }, 400);
@@ -25139,16 +25519,25 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       } else rowHeadOut = null;
       if (!rowHeadOut && pid && !(rowOutSkip.get(pid) > now)) {
         const pri = mosIn.get('sdm'), fb = mosFb.get('sdm');
-        if (pri && pri.via === pid && (pri.deadAt || (rowFeed.via === pid && rowFeed.at && now - rowFeed.at >= ROW_SILENT_MS))) { rowHeadOut = { pid, tick: s.seatTick, pc: c.pc, r: c.r }; dbgRowHead(pri.deadAt ? 'out:gone' : 'out:silent'); if (fb) fb.dark = true; }
+        if (pri && (pri.org || pri.via) === pid && (pri.deadAt || (rowFeed.via === pid && rowFeed.at && now - rowFeed.at >= ROW_SILENT_MS))) { rowHeadOut = { pid, tick: s.seatTick, pc: c.pc, r: c.r }; dbgRowHead(pri.deadAt ? 'out:gone' : 'out:silent'); if (fb) fb.dark = true; }
       }
-      const out = !!rowHeadOut || s.headGoneView;
+      // A head across a relayed link's cut is reached through that link's carrier, never by a pc of mine: the seat reads
+      // that pair as closed, but the head is there. Its row keeps it; only its feed going silent (above) makes me stand in.
+      const out = !!rowHeadOut || (s.headGoneView && !(typeof headCarried === 'function' && headCarried(c)));
       if (rowWasOut && !out) rowHoldUntil = now + MOS_SETTLE + 2000;   // the heir's copy stays while the row fails back
       rowWasOut = out; return out;
+    }
+    // My row's head sits across a relayed link's cut: no pc of mine reaches it, and a carrier of the link does (mosCarrier).
+    function headCarried(c) {
+      if (!c || c.i === 0 || typeof mosCarrier !== 'function') return false;
+      const pid = occPid({ pc: c.pc, r: c.r, i: 0 }); if (!pid || pid === myId) return false;
+      const q = peers.get(pid); if (q && q.connected) return false;
+      return !!mosCarrier(pid);
     }
     // The head's view is back: my row-view claim is on that head, not dead, and its bytes advanced within the silence bound.
     function rowHeadFeedBack(pid, now) {
       const pri = mosIn.get('sdm');
-      return !!(pri && pri.via === pid && !pri.deadAt && rowFeed.via === pid && rowFeed.at && now - rowFeed.at < ROW_SILENT_MS);
+      return !!(pri && (pri.org || pri.via) === pid && !pri.deadAt && rowFeed.via === pid && rowFeed.at && now - rowFeed.at < ROW_SILENT_MS);
     }
     // A carrier whose target just moved up to its row's head cell keeps handing it the row's product (L28 at both ends), so the
     // new head's view does not go dark between the carried copy and the direct one.
@@ -25397,6 +25786,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function mosResolve(key, meta, from) {
       const c = meshCoord(); if (!c) return null;
+      if (key.indexOf('tc:') === 0) { const t = typeof mosCarried === 'function' ? mosCarried(key) : null; if (!t) return null; { const q = peers.get(t.to); return t.to !== myId && t.to !== from && q && q.connected && !mosCarried(t.key) ? key : null; } }   // TURN.14.8: a ship I carry across the cut
       const iAmHead = c.i === 0 || actingHead(); // L2.7: the heir stands in for a gone head
       if (key === 'sub') {
         if (meta && meta.l14) return 'subu:' + String(meta.via || from).slice(0, 64); // L14: a cut-off branch's product over its uplink (or relayed by my row-mate)
@@ -26668,7 +27058,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       for (const rk of new Set([...mosIn.keys(), ...mosStandby.keys()])) if (isRedun(rk)) redun.set(rk, []);
       for (const [ak, ann] of mosAnn) {
         const from = ak.slice(0, ak.indexOf('|')), key = ak.slice(ak.indexOf('|') + 1);
-        const rk = mosResolve(key, ann, from);
+        const rk = mosResolve(key, ann, ann.org || from);
         if (!rk) continue;
         if (isRedun(rk)) { let a = redun.get(rk); if (!a) { a = []; redun.set(rk, a); } a.push({ from, key, ann }); continue; }
         structuralSeen.add(rk);
@@ -26694,7 +27084,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const st = p.incoming.find((s) => s.id === ann.streamId && s.id !== p.ownSid);
         if (!st) continue;
         if (cur) dropMosIn(rk);
-        mosIn.set(rk, { via: from, streamId: ann.streamId, stream: st, el: mosNeedsVideo(rk) ? mosVideo(st) : null, meta: annMeta(ann) });
+        mosIn.set(rk, { via: from, org: ann.org, streamId: ann.streamId, stream: st, el: mosNeedsVideo(rk) ? mosVideo(st) : null, meta: annMeta(ann) });
       }
       // A structural slot (sub, x1, x2, sdxc) has no second announcer
       // and no claimRedun pass. Once its announce ages out, or the peer is
@@ -26774,7 +27164,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     let stageViewNow = null; // what the stage element shows: 'self' | 'screen' | 'strip' (stageFacesForTest)
     function selfStageStream() {
       const st = meTile && meTile.video && meTile.video.srcObject;
-      const vt = st && st.getVideoTracks()[0];
+      // A share from the Row: my Row tile is the camera, my Stage is the screen.
+      const vt = shareOnlyStage('me') ? stageVideoTrack() : (st && st.getVideoTracks()[0]);
       if (!vt || vt.readyState === 'ended') { selfStageSt = null; return null; }
       // CACHED BY TRACK IDENTITY: paintStageStrip re-assigns srcObject whenever
       // the stream differs and the mosaic sweep runs every 2s, so minting a
@@ -26985,7 +27376,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (feedOnly) return { el: null, stream: null };
         if (peerWaits(pid)) return { el: null, stream: null };
         const p = peers.get(pid);
-        return p ? { el: p.video, stream: p.video.srcObject } : { el: null, stream: null };
+        if (!p) return { el: null, stream: null };
+        // The picture is whatever the tile shows; the VOICE is the person's own
+        // stream (direct, or the one a friend carries), never the tile's
+        // element. A camera-off tile whose picture is not arriving shows a
+        // letter drawn here, and that element holds no sound: the row's
+        // Stadium mix would drop the person while every row-mate still hears
+        // them on the direct link.
+        const voice = p.relayed ? ((relayVia.get(pid) || {}).stream || null) : (p.stream || null);
+        return { el: p.video, stream: voice || p.video.srcObject };
       };
       // A SHARED SCREEN PAINTED THROUGH THE STRIP IS A SHARED SCREEN NOBODY CAN
       // READ. The strip's cells are SQUARE (mesh-media cellSize) and a screen is
@@ -27193,10 +27592,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             const ss = (statusOf.get(pid0) || {}).seat;
             if (ss && !(ss.pc === c.pc && ss.r === c.r && ss.i === j)) pid0 = null;
           }
-          const pid = pid0 && stagers.includes(pid0) ? null : pid0; // stagers live on the Stage ONLY (docs/media-plane.md)
+          const pid = pid0 && personOnStage(pid0, stagers) ? null : pid0; // stagers live on the Stage ONLY (docs/media-plane.md); a share from the Row keeps its face here
           const sc = pid ? srcFor(pid) : null;
           if (sc && sc.el) dbgRowFaces.push({ i: j, pid: String(pid).slice(0, 8) });
-          if (sc && sc.el) prodPack.setTile('r' + j, 'a' + j, sc.el, sc.stream, { n: 1, cols: 1, lbl: stadLbl(pid), fit: fitFor(pid), pid });
+          // A share from the Row keeps the face here; the voice rides the Stage feed, so it is not summed twice.
+          if (sc && sc.el) prodPack.setTile('r' + j, 'a' + j, sc.el, pid && stagers.includes(pid) ? null : sc.stream, { n: 1, cols: 1, lbl: stadLbl(pid), fit: fitFor(pid), pid });
           else prodPack.delTile('r' + j);
           const sub = mosIn.get('sub:' + j);
           if (sub) setBlock(prodPack, 's' + j, 'b' + j, sub); else prodPack.delTile('s' + j);
@@ -27405,7 +27805,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // ...nor a frozen head's: while my row judges its head's feed gone (rowHeadIsOut), headPid is the heir, and the
         // head's own x1 is not carried. Every copy of it is the same stopped product; carrying it kept other heads holding
         // a "live" standby that could never flow.
-        if (x1 && c.pc === 0 && !x1.deadAt && x1.via === headPid) {
+        if (x1 && c.pc === 0 && !x1.deadAt && (x1.org || x1.via) === headPid) {
           // As mate i of my row I carry my head's product to DEST row i (row 0
           // when i===r — my column's seat there covers the wrap), via my
           // COLUMN-mate sitting in that row, who hands it to its head. This is
@@ -27456,7 +27856,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const sdmH = mosIn.get('sdm');
         // Re-fan only the copy that came from my row's head (or the heir standing in): a copy a mate re-fanned to me, fanned on,
         // closes a ring of mates holding a dead head's view, which nothing breaks while the new head is not reachable.
-        if (sdmH && !sdmH.deadAt && sdmH.via === headPid) for (let j = 1; j < C; j++) {
+        if (sdmH && !sdmH.deadAt && (sdmH.org || sdmH.via) === headPid) for (let j = 1; j < C; j++) {
           if (j === c.i) continue;
           const mate = occPid({ pc: c.pc, r: c.r, i: j });
           if (!mate || mate === sdmH.via) continue;
@@ -27469,6 +27869,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const tr = mic && mic.getAudioTracks && mic.getAudioTracks()[0];
         if (via && tr && tr.readyState !== 'ended') { const jr = shipMos('ra', via, mic, { row: c.r, src: myId }); if (jr) { wanted.add(jr); rowMixSent++; } }
       }
+      // TURN.14.8: the ships I carry across a TURN link's cut go on to their seat under their own key
+      for (const [mk, f] of mosIn) { const t = mosCarried(mk); if (!t || !f.stream || f.deadAt) continue; const jk = shipMos(t.key, t.to, f.stream, Object.assign({}, f.meta || {}, { cf: f.via }), mk); if (jk) wanted.add(jk); }   // cf: the seat it came from (the target reads it as that seat's)
       // ---- STAGE lane: chosen <=C feeds -> S1 -> composited strip -> fan down --
       // Individual stager feeds ride UP to Section 1 (uncomposited passthrough,
       // per-stager key); at S1 they FLOOD the row+cross mesh (dedup by streamId,
@@ -27542,6 +27944,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // ONE hot pipe + a parked standby + dormant spares (ONE-PIPE
         // multi-subscribe), so the extra announces cost nothing until demanded.
         const s1peers = [...T.rowMates(c), ...T.colMates(c)].map((m) => occPid(m)).filter(Boolean);
+        for (const t of ((typeof turnFeedPeers === 'function' && turnFeedPeers()) || [])) if (s1peers.indexOf(t) < 0) s1peers.push(t);   // TURN.14.8: the stage feeds cross the TURN link of an end whose ring lies across it, both ways
         const flooded = new Set(); // PER-SWEEP dedup (one feed may resolve via two keys). The old
         // persistent stgSpread let the sweep-end reaper kill flood jobs after one sweep.
         // NEVER FLOOD A FEED BACK TO ITS OWNER. The owner already has the
@@ -27799,12 +28202,22 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // neighbourhood is empty — the shape of the late-joiner race, made
     // deterministic. With it set, only the widened pull can reach a holder.
     let sgaIsolated = false;
+    // TURN.14.8: the peers of my up TURN links that the stage and stadium feeds cross to: all of them while my ring lies across my
+    // link (I am the end that opened it, and my Section-1 mates are on the far side); as the far end, the end that opened it (its
+    // side may hang under it; a copy it does not need stays a parked announce, ONE-PIPE, and moves nothing).
+    function turnFeedPeers() {
+      if (!turnLinks) return [];
+      const across = !!(meshNode && meshNode.penv && meshNode.penv.turnAcross && meshNode.penv.turnAcross());
+      const out = [];
+      for (const r of turnLinks.turnPcs()) { const q = peers.get(r); if (r !== myId && q && q.connected && (across || !turnLinks.opened(r))) out.push(r); }
+      return out;
+    }
     function sgaTargets() {
       if (sgaIsolated) return [];
       const c = meshCoord(); if (!c) return [];
       const T = net.topo, out = new Set();
       const add = (co) => { const pid = co ? occPid(co) : null; if (pid && pid !== myId) out.add(pid); };
-      if (c.pc === 0) { for (const m of T.rowMates(c)) add(m); for (const m of T.colMates(c)) add(m); }
+      if (c.pc === 0) { for (const m of T.rowMates(c)) add(m); for (const m of T.colMates(c)) add(m); for (const t of ((typeof turnFeedPeers === 'function' && turnFeedPeers()) || [])) out.add(t); }   // TURN.14.8
       else {
         add(c.i === 0 ? T.up(c) : { pc: c.pc, r: c.r, i: 0 });
         if (c.i === 0) for (const m of T.rowMates(c)) add(m);
@@ -28445,6 +28858,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     let stgFlips = 0; // every step-up/down (test hook: a vote storm shows as a rising count)
     function setStage(on) {
       myStatus.stg = on ? Date.now() : 0;
+      if (!on) delete myStatus.sso; // a later step-up is the person's own
       const songEnded = !on && endSongOnStepDown();
       recSrcDirty = true;
       stgFlips++;
@@ -28777,7 +29191,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // there keeps their seat and simply changes what they broadcast.
           // scr is already set, so setStage's broadcast carries the share.
           // A second broadcast and a second tile pass painted the room twice.
-          if (!myStatus.stg) { screenSteppedUp = true; setStage(true); } else screenSteppedUp = false;
+          // A share from the Row marks its Stage seat sso: the person stays in the Row.
+          if (!myStatus.stg) { screenSteppedUp = true; myStatus.sso = 1; setStage(true); } else { screenSteppedUp = false; delete myStatus.sso; }
           paintShare(); paintControls();
           refreshOutbound();   // republish: self-view, row-mates, the stg: feed
           showLocalScreen();   // the slide, now — the mosaic sweep can be seconds later
@@ -28819,6 +29234,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // Step back down only if THIS share is what brought me up. Someone who
       // was already on stage stays on stage, now showing their camera again.
       const steppedDown = !!screenSteppedUp;
+      delete myStatus.sso;
+      withScrPipe(stopBlurPipe);
       if (screenSteppedUp) { screenSteppedUp = false; setStage(false); }
       paintShare(); paintControls();
       refreshOutbound();   // the camera (or nothing) becomes the source again
@@ -29371,7 +29788,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return;
       }
       if (!src) { if (el._aud) el._aud.srcObject = null; el.volume = vol; return; }
-      if (!el._aud) { el._aud = new Audio(); el._aud.autoplay = true; }
+      // A sound made here by a fold (a Section-1 head's Stadium ear) is heard through its parts, never as a WebAudio
+      // track in an element: Chromium resamples such a track to catch up after a hiccup and the voices go up in
+      // pitch (createFoldPlayer). A remote track keeps its plain companion.
+      const fd = foldOfStream(src);
+      if (el._aud && (fd ? el._aud.fold !== fd : !!el._aud.direct)) releaseAudio(el);
+      if (!el._aud) { if (fd) el._aud = fd.player(audioBlocked); else { el._aud = new Audio(); el._aud.autoplay = true; } }
       el.muted = true; // the <video> is picture-only, always — sound lives in the companion
       // Muting is what makes a late srcObject legal to play. The element is
       // often still paused from the unmuted autoplay attempt at claim time,
@@ -29394,6 +29816,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // played at full level there — ghost voices, doubled stagers. `muted`
       // is honoured everywhere; the fader range above 0 still rides volume.
       el._aud.muted = !!el._gmute || !(vol > 0); // group mute rides the same pipe as the faders
+    }
+    // The audio fold whose output this stream carries (it was made on this page), or null.
+    function foldOfStream(st) {
+      const MMx = typeof GifOS !== 'undefined' ? GifOS.meshMedia : null;
+      if (!st || !st.getAudioTracks || !MMx || typeof MMx.foldOfTrack !== 'function' || typeof MMx.createFoldPlayer !== 'function') return null;
+      const t = st.getAudioTracks()[0];
+      return t ? MMx.foldOfTrack(t) : null;
     }
     // Service mute is a local gate on the stage bus. The saved fader stays put.
     // The one writer of the stage ear's level: a viewer's sound off and the waiting room hold through every reconcile (iOS ignores volume; 0 must be `muted`).
@@ -32993,7 +33422,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function placeBarAvoiders() {
       const FLOATERS = [['callstate', ''], ['chatnote', 'callstate'], ['livecap', 'callstate'], 
         ['waitlist', ''], ['rb-now', ''], ['bc-cap', ''], ['bc-reacts', '']];
-      const PANELS = [['chatpanel', 'pad'], ['qa', 'pad'], ['bc-ended', 'bottom'], ['bc-ident', 'bottom']];
+      const PANELS = [['chatpanel', 'pad'], ['qa', 'pad'], ['bc-ended', 'bottom'], ['bc-ident', 'bottom'], ['fsstrip', 'strip']];
       const bar = document.querySelector('.bar');
       if (!bar || bar.classList.contains('tucked') || document.body.classList.contains('chrome-away')) return;
       const shown = (el) => {
@@ -33009,7 +33438,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       };
       const br = shown(bar);
       let ob = br ? { left: br.left, right: br.right, top: br.top, bottom: br.bottom } : null;
-      const lifts = {};
+      const lifts = {}, risen = [];
       for (const [id, baseId] of FLOATERS) {
         const el = document.getElementById(id);
         const r = shown(el);
@@ -33024,6 +33453,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }
         write(el, '--barlift', lift);
         lifts[id] = lift;
+        // a floater lifted onto the bar's top (Record, a caption) is part of what the Focus strip clears
+        if (lift > 0) risen.push({ left: r.left, right: r.right, top: r.top + cur - lift, bottom: r.bottom + cur - lift });
       }
       const tray = shown(document.getElementById('reacttray'));
       if (ob && tray) ob = { left: Math.min(ob.left, tray.left), right: Math.max(ob.right, tray.right), top: Math.min(ob.top, tray.top), bottom: Math.max(ob.bottom, tray.bottom) };
@@ -33032,7 +33463,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!el) continue;
         const r = shown(el);
         let clear = 0;
-        if (r && ob) {
+        if (r && ob && mode === 'strip') {
+          // The Focus strip's thumbs are controls: every one stays above the
+          // bar, so the strip pads by the bar's whole reach, not half its height.
+          const overX = ob.right > r.left + 4 && ob.left < r.right - 4;
+          if (overX && ob.bottom > r.top + 4 && ob.top < r.bottom) {
+            let top = ob.top;
+            for (const f of risen) if (f.right > r.left + 4 && f.left < r.right - 4 && f.bottom > top - 12) top = Math.min(top, f.top);
+            clear = r.bottom - top + 8;
+          }
+        } else if (r && ob) {
           const bottom = r.bottom + (mode === 'bottom' ? read(el, '--barclear') : 0);
           const h = bottom - r.top;
           const overX = ob.right > r.left + 4 && ob.left < r.right - 4;
@@ -33049,7 +33489,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       };
       window.__gifosBarAvoid = later;
       // Showing, hiding or opening one of them can newly put it under the bar.
-      const ids = ['callstate', 'chatnote', 'livecap', 'waitlist', 'bc-cap', 'bc-reacts', 'chatpanel', 'qa', 'bc-ended', 'bc-ident', 'reacttray'];
+      const ids = ['callstate', 'chatnote', 'livecap', 'waitlist', 'bc-cap', 'bc-reacts', 'chatpanel', 'qa', 'bc-ended', 'bc-ident', 'reacttray', 'fsview'];
       if (window.MutationObserver) {
         const mo = new MutationObserver(later);
         for (const id of ids) { const el = document.getElementById(id); if (el) mo.observe(el, { attributes: true, attributeFilter: ['class', 'hidden'] }); }
@@ -35491,6 +35931,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!subsOn()) return;
       GifOS.meetSubs.joinMeeting(subsMeetId(), {
         onTicket: () => { if (amAdmin && hasAdminRoom()) subsPublishRoomPlan(); turnSubAt = 0; capPublish(true); try { capPaint(); } catch (e) {} },   // a captor re-presents each renewed ticket   // a fresh ticket is a fresh TURN vouch: say it at the next step
+        onPass: () => { if (amAdmin && hasAdminRoom()) subsPublishRoomPlan(); turnSubAt = 0; },   // a four-hour pass bought, started or ended: the room's plan and the TURN vouch now
         onLost: (why) => {
           if (why === 'moved') setStatus('Your subscription is now in use in another meeting.');
           const r = modTable['*'];
@@ -35776,6 +36217,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (typeof screenStream !== 'undefined' && screenStream) { s = screenStream; screenStream = null; }
           myStatus.scr = 0;
           if (typeof screenSteppedUp !== 'undefined' && screenSteppedUp) { screenSteppedUp = false; myStatus.stg = 0; }
+          delete myStatus.sso;
           if (s) for (const t of s.getTracks()) { try { t.onended = null; t.stop(); } catch (e2) {} }
         }
       } catch (e) {}
@@ -35892,6 +36334,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { if (localStream) localStream.getTracks().forEach((t) => t.stop()); } catch (e) {}
       afterFarewell(() => { for (const pid of Array.from(peers.keys())) { try { dropPeer(pid); } catch (e) {} } if (typeof clearRosterTiles === 'function') clearRosterTiles(); });
       try { releaseAudioContext(); } catch (e) {}
+      try { if (typeof paintBroadcastChrome === 'function') paintBroadcastChrome(); } catch (e) {}   // the plain leave words, before the dialog shows (a door's refusal writes its own after)
       const lm = document.getElementById('left-modal'); if (lm) lm.style.display = 'flex';
       try { updateStatus(); } catch (e) {}
       return flushing;
@@ -37739,7 +38182,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         els, wkEar: (typeof wkEar !== 'undefined' && wkEar) ? { el: el(wkEar.el), fold: foldOf(wkEar.fold) } : null,
         stageEar: stageEar ? { el: el(stageEar.el), fold: foldOf(stageEar.fold) } : null,
         stadium: sdViewSt ? { a: trs(sdViewSt) } : null,
-        prod: prodPack && prodPack.stream ? { a: trs(prodPack.stream), pk: prodPack.peakNow ? prodPack.peakNow() : null } : null,
+        prod: prodPack && prodPack.stream ? { a: trs(prodPack.stream), pk: prodPack.peakNow ? prodPack.peakNow() : null, fold: prodPack.foldInfo ? prodPack.foldInfo() : null } : null,
+        relay: { via: [...relayVia].map(([t, r]) => ({ t: String(t).slice(0, 8), via: String(r.via).slice(0, 8), st: r.stream ? trs(r.stream) : null })), jobs: [...relayJobs.keys()].map((k) => k.split('>').map((x) => String(x).slice(0, 8)).join('>')) },
         folds, comp, standby: sb,
       };
     }
@@ -37779,6 +38223,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         else { const tr = live(stageEar.el.srcObject); if (tr) out.push({ path: 'stage', who: 'stage', track: tr, g: (stageEar.el.muted || stageEar.el.paused) ? 0 : stageEar.el.volume }); }
       }
       for (const [k, f] of downFolds) { const tr = f && f.track ? f.track() : null; if (tr) out.push({ path: 'send', who: String(k), track: tr, g: 1 }); }
+      { const tr = prodPack && prodPack.stream && prodPack.stream.getAudioTracks ? prodPack.stream.getAudioTracks()[0] : null; if (tr) out.push({ path: 'send', who: 'prod', track: tr, g: 1 }); }   // my row's product, as it leaves
       return out;
     }
     function dbgMeters() {
@@ -38070,6 +38515,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // 'partial' | null) with the live/dead pair counts, the people count
       // and this network's probe verdict behind it.
       reachState: () => reachInfo(),
+      joinPhase: () => joinPhase(),   // the join's phase (GifOS.meetJoin)
       // Every close code the relay socket saw in this node's life, newest
       // last ({code, at}) — a policy cut reads differently from a drop.
       relayCloses: () => { try { return meshNode ? meshNode.stats().closes : []; } catch (e) { return []; } },

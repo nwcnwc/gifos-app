@@ -38,6 +38,14 @@
       return false;
     },
 
+    // L40.5: a rook's majority over a reading with none, in every unproven contest (L25.12 / L25.13 as L40.2 (a)).
+    // C++: mesh_gaps4.inc:Seat::l405Kept   [my rook keeps me against this rival: L25.9's WITNESSED reading]
+    l405Kept(rival) { return !!this.w.lv.LINKMODEL && rival >= 0 && rival === this.l25WitRivalId && this.l25WitMe > this.l25WitRival && 2 * this.l25WitMe > this.l25WitAskedN && this.l25WitMe >= K.L25_WIT_MIN; },
+    // C++: mesh_gaps4.inc:Seat::l405Rooked   [the teller's rook keeps it, a witness of mine hears it, my rook does not keep me]
+    l405Rooked() { return !!this.w.lv.LINKMODEL && this.l40ToldK && this.l40ToldBy >= 0 && this.l40ToldBy === this.l25WitRivalId && this.l25WitRival > 0 && !this.l405Kept(this.l25WitRivalId); },
+    // C++: mesh_gaps4.inc:Seat::l405Back   [a told seat its rook keeps tells the teller, unless the teller said the same]
+    l405Back(x) { if (!this.l405Kept(x) || (this.l40ToldK && this.l40ToldBy === x)) return; this.l2512Tell(x); },
+
     // C++: mesh_gaps4.inc:Seat::l40Tell
     l40Tell(rival, kept) {
       if (!this.w.lv.LINKMODEL || rival < 0 || rival === this.id || !this.hasCoord || this.state !== 3 || this.TICK - this.l2512TellAt <= K.L25_WAIT) return;

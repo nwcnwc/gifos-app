@@ -1145,6 +1145,13 @@
   .tile .tpause .tpause-sub { pointer-events: auto; min-height: 36px; padding: 6px 16px; border: 0; border-radius: var(--r-pill);
                   background: rgba(255,255,255,.16); color: var(--c-white); font: inherit; font-weight: 500; cursor: pointer; }
   .tile .tpause .tpause-sub:disabled { opacity: .6; cursor: default; }
+  /* The second choice under Subscribe: the four-hour pass, a quiet line of text, no fill. */
+  .tile .tpause .tpause-pass { pointer-events: auto; min-height: 32px; padding: 4px 8px; border: 0; background: none;
+                  color: var(--c-white); opacity: .8; font: inherit; cursor: pointer; }
+  .tile .tpause .tpause-pass:disabled { opacity: .5; cursor: default; }
+  /* What is in effect (a pass's time left, or the plan), quiet beside the status line; a tap opens Settings. */
+  #sub-now { display: inline; border: 0; background: none; padding: 0 0 0 8px; color: var(--c-gray); font: inherit; font-size: .8125rem; cursor: pointer; white-space: nowrap; }
+  #sub-now[hidden] { display: none; }
   .tile .tpause.tpause-busy { justify-content: flex-start; padding-top: 12px; }
   /* On a phone the line is one caption above Live, not a clip on the face.
      A long line starts at the top and the rest scrolls inside the caption.
@@ -2507,10 +2514,15 @@
   body.has-app:not(.comfy) #feed { margin-bottom: env(safe-area-inset-bottom, 0px); }
   body.broadcast #feed { padding-bottom: env(safe-area-inset-bottom, 0px); box-sizing: border-box; }
   #joinveil { background: transparent; pointer-events: none; align-items: flex-start; justify-content: center; padding-top: 72px; z-index: 18; }
-  #joinveil .jv-box { pointer-events: auto; background: var(--c-white); color: var(--c-ink); border-radius: var(--r-lg); padding: 1.1rem 1.3rem;
+  /* A wait is not an error: a quiet dark sheet (STYLE rule 1, sheets --c-night), the step in grey,
+     the phase in white, the reason in light grey. */
+  #joinveil .jv-box { pointer-events: auto; background: var(--c-night); color: var(--c-white); border-radius: var(--r-lg); padding: 1.1rem 1.3rem;
     box-shadow: 0 12px 32px rgba(0,0,0,.28); }
-  #joinveil h3 { color: var(--c-ink); }
-  #joinveil p { color: var(--c-ink-2); }
+  #joinveil h3 { color: var(--c-white); }
+  #joinveil p { color: var(--c-paper); }
+  #joinveil p:empty { display: none; }
+  .pg-step, #joinveil p.pg-step { color: var(--c-gray); font-size: 13px; font-weight: 500; margin: 0 0 4px; font-variant-numeric: tabular-nums; }
+  .pg-step[hidden] { display: none; }
   #lobby { background: var(--c-line); }
   #lobby.show { display: grid; padding: 0; overflow: hidden; align-items: stretch; justify-content: stretch; }
   .lob-preview { position: relative; min-height: 180px; background: #1a1d24; overflow: hidden; }
@@ -3361,18 +3373,18 @@
   /* Focus: #fsview drawn in the page under the header, Fit's button and the
      floating bar (the bar overlays, nothing is reserved). The strip runs down
      the side when the screen is wide and across the bottom when it is tall;
-     the bottom strip ends above the bar the same way the panels do
-     (--barclear). Thumbs wear no frame; the one on the big view is outlined. */
+     either strip pads by --barclear so no thumb sits under the bar where it
+     stands (placeBarAvoiders). Thumbs wear no frame; the one on the big view is outlined. */
   body.view-focus #fsview { z-index: 5; }
   body.view-focus #fsclose { display: none; }
-  body.view-focus #fsstrip { top: calc(72px + var(--gtop, 0px)); background: none; gap: 8px; padding: 8px; }
+  body.view-focus #fsstrip { top: calc(72px + var(--gtop, 0px)); background: none; gap: 8px; padding: 8px;
+    padding-bottom: max(8px, var(--barclear, 0px)); }
   body.view-focus .fsthumb { border: 0; border-radius: var(--r-md); background: var(--c-night); }
   body.view-focus .fsthumb.sel { box-shadow: none; outline: 2px solid var(--c-white); outline-offset: -2px; }
   body.view-focus .fsthumb.fsauto { background: var(--c-night); color: var(--c-white); }
   body.view-focus .fsthumb .fslbl { left: 6px; bottom: 6px; font-size: 12px; padding: 2px 8px; border-radius: var(--r-pill); background: var(--c-scrim); color: var(--c-white); }
   @media (orientation: portrait) {
-    body.view-focus #fsstrip { top: auto; left: 0; right: 0; bottom: 0; flex-direction: row; overflow-x: auto; overflow-y: hidden;
-      padding-bottom: max(8px, var(--barclear, 0px)); }
+    body.view-focus #fsstrip { top: auto; left: 0; right: 0; bottom: 0; flex-direction: row; overflow-x: auto; overflow-y: hidden; }
     body.view-focus .fsthumb { width: 112px; }
   }
   /* Present: one step to the presentation view (content full screen, the

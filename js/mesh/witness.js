@@ -78,7 +78,7 @@
       const dl = this.TICK - this.l25WitAt >= K.L25_WIT_WAIT;
       const d = this.l2513Rev ? this.l2513Decide(dl) : this.l2512Rev ? this.l2512Decide(dl) : this.l25WitDecide(dl); if (d === 0) { this.f.wake(this.id); return; }
       if (this.l2513Rev) { this.l25WitPend = false; this.l2513Rev = false; if (d === 1) this.l40Go(this.l25WitRivalId, 'L25.13-yield'); return; }
-      this.l25WitPend = false; const rev = this.l2512Rev; this.l2512Rev = false; if (d === 1) this.l40Go(this.l25WitRivalId, rev ? 'L25.12-yield' : 'T1-yield'); else if (d === 2 && !rev) this.l2512Tell(this.l25WitRivalId);
+      this.l25WitPend = false; const rev = this.l2512Rev; this.l2512Rev = false; if (d === 1) this.l40Go(this.l25WitRivalId, rev ? 'L25.12-yield' : 'T1-yield'); else if (d === 2 && !rev) this.l2512Tell(this.l25WitRivalId); else if (d === 2) this.l405Back(this.l25WitRivalId);   /* L40.5 (gaps4.js) */
     },
   });
   GifOS.meshWitness = Object.freeze({});

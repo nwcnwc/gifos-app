@@ -19,6 +19,7 @@
   const GifOS = root.GifOS = root.GifOS || {};
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
+  const TURN14_16_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_TURN14_16_OFF === '1') ? 1 : 0;   // the sim's -DTURN14_16_OFF=1 build
   const seatM = req('./seat.js', 'meshSeat');
   const { fabricToken } = req('./shared.js', 'meshShared');
   const { Seat, FREE, roomTerm } = seatM;
@@ -80,6 +81,7 @@
       this.framesIn++;   // GAUGE only
       if (roomTerm(this, 1) && !(m.l10E || m.dgOnly) && m.c7Min >= 0 && m.id >= 0 && m.id !== id && (m.t === 'HELLO' || m.t === 'PHONE' || m.t === 'CONFIRM' || m.t === 'LEAVE' || m.t === 'PONG') && this.l42Own(m)) { this.l828Ring.set(m.id, [m.c7Min, TICK]); if (this.l828Ring.size > 256) this.l828Ring.clear(); }   // L8.28
       if (m.from >= 0 && m.from !== id) { if (this.state !== 3) this.entAnsAt = TICK; else if (this.entIsl || this.entAsk.size) { this.entIsl = false; this.entAsk.clear(); } }   // L8.47
+      if (!TURN14_16_OFF && m.t === 'FIND' && m.tag !== 1 && m.nc >= 0 && m.nc !== this.id && m.from >= 0 && m.from !== this.id && m.from !== m.nc && this.f.fabricTurnOn() && this.f.fabricTurnPc(this.id, m.from)) { if (!this.t14From.has(m.nc) && this.t14From.size >= 32) this.t14From.delete(this.t14From.keys().next().value); this.t14From.set(m.nc, [m.from, this.TICK]); }   // TURN.14.16: an entry ask for a third seat that reached me over a TURN pc
       const l846Early = (m.l10E || m.dgOnly);   // L8.46 + L10.6
       if (!l846Early) this.lineNote(m);   // L8.38
       if (m.routing && !this.routeStep(m)) return;   // Option A
@@ -128,7 +130,7 @@
         case 'HELLO': this.onHello(m); return;
         case 'YIELD': this.onYield(m); return;
         case 'CLAIM': this.onClaim(m); return;
-        case 'LEAVE': this.onLeave(m); return;
+        case 'LEAVE': { const lx = m.id, lck = m.ck, lmv = m.mv; this.onLeave(m); this.l2522Bye(lx, lck, lmv); return; }   // L25.22
         case 'LGSTARVE': case 'LGASK': case 'LGCOMP': this.lgRecv(m); return;   // L29
         case 'SWAPQ': this.l4OnQ(m); return;
         case 'SWAPRDY': this.l4OnRdy(m); return;

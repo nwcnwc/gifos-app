@@ -20,7 +20,7 @@
     l2512Tell(rival) {
       if (!this.w.lv.LINKMODEL || rival < 0 || rival === this.id || !this.hasCoord || this.state !== 3 || this.TICK - this.l2512TellAt <= K.L25_WAIT) return;
       this.l2512TellAt = this.TICK;
-      const c = newMsg('CHALLENGE'); c.ck = ckey(this.coord); c.from = this.id; c.tag = 27; this.f.fabricCallFrame(this.id, rival, c);
+      const c = newMsg('CHALLENGE'); c.ck = ckey(this.coord); c.from = this.id; c.tag = 27; if (this.l405Kept(rival)) { c.hold = 1; this.trace('L40.5-KEPT', this.id, this.coord, 'rival=%d me=%d heard=%d asked=%d', rival, this.l25WitMe, this.l25WitRival, this.l25WitAskedN); }   /* L40.5: the tell says my rook keeps me (gaps4.js) */ this.f.fabricCallFrame(this.id, rival, c);
       this.trace('L25.12-TELL', this.id, this.coord, 'rival=%d', rival);
     },
 
@@ -39,7 +39,7 @@
       if (this.l2512Q < 0 || this.l2512Q !== x) return false;
       this.l2512Q = -1; this.l2512Rev = true; const d = this.l2512Decide(false);
       if (d === 0) { this.l25WitPend = true; this.f.wake(this.id); return true; }
-      this.l2512Rev = false; if (d === 1) this.l40Go(x, 'L25.12-yield');
+      this.l2512Rev = false; if (d === 1) this.l40Go(x, 'L25.12-yield'); else this.l405Back(x);   // L40.5: a told seat its rook keeps says so (gaps4.js)
       return true;
     },
 
@@ -47,6 +47,7 @@
     l2512Decide(deadline) {
       if (this.l25WitAsk.length && !deadline && this.TICK - this.l25WitAt < K.L25_WIT_WAIT) return 0;
       if (this.l25WitRival > this.l25WitMe && 2 * this.l25WitRival > this.l25WitAskedN && this.l25WitRival + 1 >= K.L25_WIT_MIN) { this.trace('L25.12-OUTVOTED', this.id, this.coord, 'kept=%d me=%d asked=%d', this.l25WitRival, this.l25WitMe, this.l25WitAskedN); return 1; }
+      if (this.l405Rooked()) { this.trace('L40.5-ROOKED', this.id, this.coord, 'kept=%d me=%d asked=%d', this.l25WitRival, this.l25WitMe, this.l25WitAskedN); return 1; }   // L40.5: the teller's rook keeps it, a witness of mine hears it, and my rook does not keep me (gaps4.js)
       this.trace('L25.12-STAY', this.id, this.coord, 'kept=%d me=%d asked=%d', this.l25WitRival, this.l25WitMe, this.l25WitAskedN); return 2;
     },
 
