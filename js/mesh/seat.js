@@ -713,7 +713,7 @@
       const pool = []; for (const g of this.lastGreeters) if (g >= 0 && g !== this.id) pool.push(g);
       if (!pool.length) return false;
       this.resumeTries++;
-      const g = pool[Math.floor(this.rng() * pool.length)]; this.gateway = g; this.entNote(g); if (this.f.fabricDoors()) { this.l16AskOne(g); }
+      let g = pool[Math.floor(this.rng() * pool.length)]; { const fv = this.t161Pick(this.lastGreeters); if (fv >= 0) g = fv; }   /* TURN.16.1: the mate I followed, while its word lives */ this.gateway = g; this.entNote(g); if (this.f.fabricDoors()) { this.l16AskOne(g); }
       const w = newMsg('WHOHOME'); w.from = this.id; w.ttl = 60; if (!this.oldCell && !islandStand(this, E.IS_L31)) w.l31 = 1; this.emit(g, w); this.l3115Knock(g);   // L3.11.5
       this.state = 1; this.retryAt = this.TICK; this.f.wake(this.id); return true;
     },

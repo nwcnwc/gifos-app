@@ -128,6 +128,7 @@
       if (this.state === 3 && TICK - this.rosterAskAt > 120) return;   // a SEATED seat hears HOME only as the answer to its own WHOHOME
       if (m.askGap >= 0) this.askGap = m.askGap | 0;   // the door's one clock, as of this answer
       if (m.gkey) { const rk = this.state === 3 && this.hasCoord && this.coord.pc === 0 && this.genKey !== m.gkey; this.genKey = m.gkey; if (rk) { this.trace('L3.11.6-REKEY', id, this.coord, 'from=%d', m.from); this.emitRelay(this.genKey); } }   // THIS meeting's genesis key. L3.11.6: a seated Section-1 seat whose key changed registers under it now (C++: onHome)
+      if (this.state === 1 && m.roster.length === 0 && this.t161Mate(m.from)) { this.retryAt = TICK - 10; return; }   // TURN.16.1: the mate I followed has no seat yet: ask it again in ten ticks
       if (this.state === 1 && roomTerm(this, 1) && m.from >= 0 && this.c7Old.has(m.from) && TICK - this.c7At < K.RELAY_TTL && !this.l853Stays(m)) return;   // L8.5; L8.5.3: unless its HOME names a ring below the one I left (it re-seated in the ring we move toward: the carrier)
       if (this.state === 1 && this.l851Moves(m)) return;   // L8.5.1
       if (this.state === 1 && m.l31 === 1 && this.l31TakeDoor(m)) return;   // L31.1

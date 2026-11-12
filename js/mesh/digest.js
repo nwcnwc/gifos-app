@@ -184,9 +184,11 @@
     // TURN.14.15 (mesh_turn.inc): the end of a relayed link knows its ring lies across the link by its peer's word, whatever its view holds
     // C++: mesh_seat.inc:Seat::t161Note   (TURN.16.1: the mate whose goodbye I followed out of my part of the meeting, and when)
     t161Note(x) { if (TURN16_1_OFF || x < 0 || x === this.id || !this.f.fabricTurnOn()) return; this.t161Via = x; this.t161At = this.TICK; },
+    // C++: mesh_seat.inc:Seat::t161Mate   (TURN.16.1: x is the mate I followed and its word still lives)
+    t161Mate(x) { return !TURN16_1_OFF && x >= 0 && x === this.t161Via && this.TICK - this.t161At <= K.SIT_TTL && this.f.fabricTurnOn(); },
     // C++: mesh_seat.inc:Seat::t161Pick   (TURN.16.1: that mate is my gateway while the door lists it and it is on my side of the cut)
     t161Pick(list) {
-      if (TURN16_1_OFF || this.t161Via < 0 || this.TICK - this.t161At > K.RELAY_TTL || !this.f.fabricTurnOn()) return -1;
+      if (!this.t161Mate(this.t161Via)) return -1;
       if (list.indexOf(this.t161Via) < 0 || !this.f.fabricTurnMine(this.id, this.t161Via)) return -1;
       this.trace('TURN16.1-VIA', this.id, null, 'via=%d since=%d', this.t161Via, this.t161At); return this.t161Via;
     },
