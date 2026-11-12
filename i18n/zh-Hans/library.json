@@ -40,5 +40,6 @@
   "library.sharedNote": "来自某个 GifOS 资料库的共享。它在此浏览器中打开；链接中的密钥永远不会发送给 GifOS。",
   "library.wrongKey": "无法用此密钥打开这个文件。",
   "library.shareNoKey": "此链接缺少密钥。请索取完整链接。",
-  "library.shareGone": "此共享链接已被所有者关闭，或文件已被删除。"
+  "library.shareGone": "此共享链接已被所有者关闭，或文件已被删除。",
+  "library.noStream": "此浏览器无法在这里打开大文件。请使用最新版 Chrome、Firefox 或 Safari。"
 }

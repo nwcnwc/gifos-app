@@ -555,7 +555,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <video id="lob-preview-vid" autoplay muted playsinline></video>
       <div class="lob-pv-off" id="lob-pv-off"><span class="lob-pv-face" id="lob-pv-face" aria-hidden="true"></span><span data-t="camOffChip" class="lob-pv-offtxt">Camera off</span></div>
       <span data-t="lobPreviewName" class="lob-pv-name" id="lob-preview-name">You</span>
-      <button data-al="lobDeskMoreAria" data-t="more" type="button" id="lob-desk-more" hidden aria-pressed="false" aria-label="Watch, or change the host key">More</button>
+      <button data-al="lobDeskMoreAria" data-t="more" type="button" id="lob-desk-more" hidden aria-pressed="false" aria-label="Watch a link, or see the host password">More</button>
       <span data-t="youJoinMutedWith" class="lob-pv-note" id="lob-pv-note">You join muted, with the camera off</span>
       <div class="lob-av" id="lob-av">
         <button type="button" id="lob-mic" class="lob-avbtn"><span class="lob-avico" aria-hidden="true">🎤</span><span data-t="lobMicOff" class="lob-avtxt">Mic off</span></button>
@@ -567,24 +567,33 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <p class="lob-quiet" data-t="lobJoinOff" id="lob-quiet">You'll join with your camera and microphone off. Turn them on when you're ready.</p>
       <button id="lob-open" class="lob-primary"><span data-t="lobStart">Start a call</span><small data-t="lobStartSub">Anyone with the link can join</small></button>
       <p class="lob-capnote" data-t="captionsNotice" id="lob-capnote">Captions are on in this meeting. What you say may be written down by other people's devices.</p>
-      <button data-t="lobAdminBtn" type="button" id="lob-admin-btn" class="lob-link">Host this call</button>
+      <button data-t="lobAdminBtn" type="button" id="lob-admin-btn" class="lob-link">Host a call</button>
       <div id="lob-admin" class="lob-expand" style="display:none">
         <input data-ph="lobAdminNamePh" id="lob-admin-name" maxlength="40" placeholder="Name this call" autocomplete="off">
-        <button data-t="lobKeyReveal" type="button" id="lob-key-reveal" class="lob-text" hidden>Change host key</button>
+        <button data-t="lobKeyReveal" type="button" id="lob-key-reveal" class="lob-text" hidden>Host password</button>
         <div id="lob-key-block">
-        <label class="lob-pwlab">🔑 <b data-t="invAdminPh" id="lob-admin-pass-head">Host password</b> — only you<small data-t="lobAdminPassNote" id="lob-admin-pass-note">Do not share it. Guests do not need it, and it is not part of the link.</small></label>
+        <label class="lob-pwlab">🔑 <b data-t="invAdminPh" id="lob-admin-pass-head">Host password</b> — only you<small data-t="lobAdminPassNote" id="lob-admin-pass-note">Only you. Do not share it. It is not part of the link.</small></label>
         <div class="lob-keyrow">
           <input data-ph="invAdminPh" id="lob-admin-pass" type="password" maxlength="64" placeholder="Host password" autocomplete="new-password">
           <button data-t="lobKeygen" type="button" id="lob-keygen" class="lob-ghost">Generate</button>
         </div>
         </div>
-        <button data-t="lobGuestReveal" type="button" id="lob-guest-reveal" class="lob-text" hidden>Add a guest password</button>
-        <button data-t="lobGuestMore" type="button" id="lob-guest-more" class="lob-link" aria-expanded="false">Add a password for guests</button>
+        <button data-t="lobGuestReveal" type="button" id="lob-guest-reveal" class="lob-text" hidden>Add a room password</button>
+        <button data-t="lobGuestMore" type="button" id="lob-guest-more" class="lob-link" aria-expanded="false">Add a room password</button>
         <div id="lob-guest-extra" style="display:none">
-          <label class="lob-pwlab">🎟 <b data-t="lobGuestPassHead" id="lob-guest-pass-head">Guest password</b> — the one you share<small data-t="lobGuestPassNote" id="lob-guest-pass-note">Optional. It is not part of the link.</small></label>
-          <input data-ph="invGuestPh" id="lob-guest-pass" type="password" maxlength="64" placeholder="Guest password (optional)" autocomplete="new-password">
+          <label class="lob-pwlab">🎟 <b data-t="lobGuestPassHead" id="lob-guest-pass-head">Room password</b> <small data-t="lobGuestPassNote" id="lob-guest-pass-note">The one you share. People need it to get in. It is not part of the link.</small></label>
+          <input data-ph="invGuestPh" id="lob-guest-pass" type="password" maxlength="64" placeholder="Room password (optional)" autocomplete="new-password">
         </div>
-        <div class="lob-row"><button data-t="shareCancel" id="lob-admin-cancel" class="lob-ghost">Cancel</button><button data-t="lobAdminGo" id="lob-admin-go">Start</button></div>
+        <!-- A broadcast asks two things and goes: who can watch, and now or later. -->
+        <div id="lob-bc" hidden>
+          <div class="lob-bc-who" role="radiogroup" aria-labelledby="lob-bc-who-h">
+            <b data-t="bcWhoHead" id="lob-bc-who-h">Who can watch</b>
+            <label class="lob-bc-opt"><input type="radio" name="lob-bc-who" id="lob-bc-who-link" value="link" checked><span><span data-t="bcWhoLink">Anyone with the link</span><small data-t="bcWhoLinkSub">They see you soft (blurred)</small></span></label>
+            <label class="lob-bc-opt"><input type="radio" name="lob-bc-who" id="lob-bc-who-pw" value="pw"><span><span data-t="bcWhoPw">People with the room password</span><small data-t="bcWhoPwSub">They see you clear</small></span></label>
+          </div>
+          <label id="lob-bc-when" class="lob-bc-when" hidden><span data-t="bcWhenStarts">Starts</span><input type="datetime-local" id="lob-bc-at"></label>
+        </div>
+        <div class="lob-row"><button data-t="shareCancel" id="lob-admin-cancel" class="lob-ghost">Cancel</button><button data-t="bcSchedule" type="button" id="lob-bc-sched" class="lob-ghost" hidden>Schedule</button><button data-t="lobAdminGo" id="lob-admin-go">Start</button></div>
         <div id="lob-admin-err" class="lob-err"></div>
       </div>
       <button data-t="lobJoinBtn" type="button" id="lob-join-btn" class="lob-link">Join a link</button>
@@ -594,10 +603,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <div class="lob-row"><button data-t="shareCancel" id="lob-join-cancel" class="lob-ghost">Cancel</button><button data-t="join" id="lob-join-go">Join</button></div>
         <div id="lob-join-err" class="lob-err"></div>
       </div>
-      <!-- Town hall and Stream to friends come after Join: Start, Host and Join
-           stay on the first screen even at the largest text. -->
-      <button data-t="lobThBtn" type="button" id="lob-th-btn" class="lob-link">Start a town hall</button>
-      <button data-t="lobStream" type="button" id="lob-stream" class="lob-link">Stream to friends</button>
       <div class="lob-sep"></div>
       <div class="lob-hist-h" data-t="lobRecent">Recent &amp; saved</div>
       <div id="lob-list"></div>
@@ -630,29 +635,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   </aside>
   <div id="waitself" aria-live="polite"><h3></h3><p></p></div>
   <button data-t="stillHere" type="button" id="still">Still in the call</button>
-  <aside data-al="orderOfService" id="rundown" aria-label="Run of show">
-    <h3 data-t="orderOfService" id="rundown-title">Run of show</h3>
-    <ol id="rundown-list"></ol>
-    <p id="rundown-end"></p>
-    <button data-t="rdNext" type="button" id="rundown-next">Next</button>
-    <button data-t="songWords" type="button" id="song-edit" class="secondary">Song words</button>
-  </aside>
-  <aside id="songedit" aria-labelledby="songedit-title">
-    <h3 data-t="songWords" id="songedit-title">Song words</h3>
-    <p data-t="songNote" id="songedit-note">One line per line. Song reads them in order.</p>
-    <textarea id="song-text" rows="8" spellcheck="false" aria-labelledby="songedit-title" aria-describedby="songedit-note"></textarea>
-    <div class="songedit-row">
-      <button data-t="barSave" type="button" id="song-save">Save</button>
-      <button data-t="shareCancel" type="button" id="song-cancel" class="secondary">Cancel</button>
-    </div>
-  </aside>
-  <aside data-al="lyricsAria" id="lyrics" aria-label="Lyrics">
-    <p data-t="lyProgram" class="ly-k" id="lyrics-program-k">Program</p>
-    <p class="ly-program" id="lyrics-program" aria-live="polite"></p>
-    <p data-t="lyPreview" class="ly-k preview" id="lyrics-preview-k">Preview</p>
-    <p class="ly-preview" id="lyrics-preview"></p>
-    <button data-t="lyNext" type="button" id="lyrics-next">Next line</button>
-  </aside>
   <button type="button" id="fitbtn" class="fitbtn" aria-haspopup="dialog" aria-expanded="false" aria-controls="viewpick" aria-label="View: Fit" aria-keyshortcuts="Alt+F" title="Change the view (Alt+F)"><span class="vb-ic" aria-hidden="true"></span><span class="vb-word">Fit</span></button>
   <button type="button" id="presentbtn" class="presentbtn" aria-label="Present: the content full screen, the speaker inset" title="Present: the content full screen, the speaker inset"><span class="vb-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="13" rx="2"/><rect x="14.5" y="11" width="5" height="4" rx="1"/><path d="M8 21h8M12 17v4"/></svg></span><span class="vb-word">Present</span></button>
   <div id="viewpick" class="viewpick" role="dialog" aria-label="View" hidden>
@@ -820,8 +802,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <button data-ti="appTip" id="appbtn" data-t="runApp" aria-keyshortcuts="Alt+Y" title="Run an app inside this meeting. Most stay in sync. One that turns multiplayer off stays on the host's screen.">Run app</button>
         <button data-ti="rbbtnTip" data-t="rbbtn" id="rbbtn" title="Play the last broadcast, or a video, into the broadcast. Viewers see Prerecorded.">Rebroadcast</button>
         <label data-ti="bcwhenrowTip" id="bcwhenrow" title="When the broadcast starts. The viewer link and the room say so."><span data-t="bcwhenLbl" id="bcwhen-lbl">Start time</span><input type="datetime-local" id="bcwhen"></label>
-        <label data-ti="bcrdrowTip" id="bcrdrow" title="An optional order of events only you see. Off for a new broadcast."><span data-t="bcrdLbl">Run of show</span><select id="bcrd"><option value="" data-t="bcrdNone">None</option><option value="service" data-t="bcrdService">Worship service</option></select></label>
-        <label data-ti="bcvisitrowTip" id="bcvisitrow" title="Link for viewers (opens in a new window)"><span data-t="bcvisitLbl" id="bcvisit-lbl">Visit link</span><input type="url" id="bcvisit" inputmode="url" autocomplete="url" placeholder="https://" spellcheck="false"></label>
       </div>
     </section>
     <section class="moregroup" data-group="host">
@@ -906,7 +886,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <div id="feed">
     <p data-t="bcPre" id="bc-pre" hidden>Prerecorded</p>
     <div id="bc-ended" hidden><p id="bc-ended-txt"></p><a data-t="bcCal" id="bc-cal" hidden>Add to calendar</a></div>
-    <a id="bc-visit" hidden target="_blank" rel="noopener noreferrer"><svg data-icon="external-link" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><span data-t="visit">Visit</span></a>
     <div id="bc-q" hidden aria-live="polite"><i id="bc-q-pad"></i><i id="bc-q-fit"></i><b id="bc-q-by"></b><p id="bc-q-txt"></p></div>
     <div id="bc-cap" hidden><button data-ti="bcCapBtnTip" data-al="captions" type="button" id="bc-cap-btn" aria-pressed="true" aria-label="Captions" title="Show or hide the captions">CC</button><p id="bc-cap-txt" aria-live="polite"></p></div>
     <div id="stagefeed"></div>
@@ -1204,7 +1183,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <h3 data-t="admTitle">Room admin</h3>
       <p id="adm-hint"></p>
       <div id="adm-setup">
-        <input id="adm-pass" type="password" maxlength="64" data-ph="admPassPh" placeholder="Admin password" autocomplete="new-password">
+        <input id="adm-pass" type="password" maxlength="64" data-ph="admPassPh" placeholder="Host password" autocomplete="new-password">
         <button id="adm-enable" data-t="admEnable">Sign in as admin</button>
       </div>
       <div id="adm-panel" style="display:none;text-align:left">
@@ -1676,11 +1655,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const BROADCAST = BC_INTENT && !!params.get('v') && /^[a-f0-9]{16,64}$/.test((params.get('av') || '').toLowerCase());
     const BC_WATCH_COPY = 'Watching the broadcast. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.';
     if (BROADCAST) document.body.classList.add('broadcast');
-    // A town hall is a skin on the same admin room, the way a broadcast is.
-    // th rides the link (?th=1 on a pretty /meet path, &th=1 in the hash).
-    // It does not change who can be a viewer, on stage, or the host.
-    const TOWNHALL = !BROADCAST && params.has('th');
-    if (TOWNHALL) document.body.classList.add('townhall');
     // The lobby is renamed when you arrive wanting a broadcast. The room used
     // to keep saying "meeting" on the chat, the leave dialog, and Help, and
     // nothing told a host they were on air. Paint that chrome once the host
@@ -1809,6 +1783,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { host = (typeof bcHostStored === 'function' && !!bcHostStored()) || document.body.classList.contains('amadmin'); } catch (e) {}
       const service = BROADCAST;
       const ask = !mine && (!service || (onStage && !host));
+      // A broadcast keeps its own service recording from the host's Go live:
+      // the host who started it and a viewer who sends nothing read the bar's
+      // Recording chip, not a card to dismiss. Someone on the stage is asked.
+      if (service && !ask) { if (existing) existing.remove(); return; }
       const bg = document.createElement('div');
       bg.id = 'rec-notice';
       bg.className = 'name-modal';
@@ -1893,7 +1871,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (barKindAtLoad) return barKindAtLoad;
       let host = false;
       try { host = !!localStorage.getItem('gifos_vadm_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase()); } catch (e) { host = false; }
-      barKindAtLoad = BROADCAST ? (host ? 'bc-host' : 'bc-viewer') : ((TOWNHALL && !host) ? 'th-watch' : 'meeting');
+      barKindAtLoad = BROADCAST ? (host ? 'bc-host' : 'bc-viewer') : 'meeting';
       return barKindAtLoad;
     }
     function barPlan(s) {
@@ -1908,9 +1886,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return phone
           ? { dock: ['cam', 'mic', 'hand', 'stagebtn', 'reactbtn', 'ccdock'], use: ['chatbtn'].concat(tail), video: ['sharebtn'] }
           : { dock: ['cam', 'mic', 'hand', 'stagebtn', 'reactbtn', 'chatbtn', 'ccdock'], use: tail.slice(), video: ['sharebtn'] };
-      }
-      if (kind === 'th-watch' && phone) {
-        return { dock: ['cam', 'mic', 'hand', 'reactbtn', 'ccdock'], use: ['chatbtn', 'sharebtn'].concat(tail), video: [] };
       }
       return phone
         ? { dock: ['cam', 'mic', 'reactbtn', 'ccdock'], use: ['chatbtn', 'sharebtn', 'hand'].concat(tail), video: [] }
@@ -1963,10 +1938,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         let pub = barKind() === 'bc-host';
         try { pub = bcMayPublishAv(); } catch (e) {}
         watching = !pub;
-      } else watching = b.contains('th-watch') && !b.contains('stage-granted');
-      const why = watching
-        ? (BROADCAST ? 'You are watching. The host can invite you on stage.' : 'You are watching. A host can invite you to speak.')
-        : '';
+      }
+      const why = watching ? 'You are watching. The host can invite you on stage.' : '';
       idleDock(document.getElementById('cam'), why);
       idleDock(document.getElementById('mic'), why);
       idleDock(document.getElementById('reactbtn'), b.contains('app-room') ? 'Reactions are off while an app has the room.' : '');
@@ -2196,7 +2169,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const inv = document.querySelector('#inv-modal h3');
       if (inv) inv.textContent = 'Share this broadcast';
       const pw = document.getElementById('pwbtn');
-      if (pw) pw.title = 'Viewer password. Optional. It is not part of the link.';
+      if (pw) pw.title = 'Room password. Optional. It is not part of the link.';
       const files = document.querySelector('#cfiles h4');
       if (files) files.textContent = 'Files pinned to this broadcast';
       const pin = document.getElementById('cattach');
@@ -2245,37 +2218,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { return !!localStorage.getItem('gifos_vadm_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase()); }
       catch (e) { return false; }
     };
-    if (TOWNHALL && !bcHostStored()) document.body.classList.add('th-watch');
-    // THE VISIT LINK rides the link as visit=<https url>, set by the host in
-    // More: the church's or streamer's own site. We can't vouch for where it
-    // goes, so it is only a link. Only an https page is offered, and the
-    // button names its site, because anyone can hand someone a link. Links
-    // shared before the rename carry give=; they still work.
-    if (params.get('give') && !params.get('visit')) params.set('visit', params.get('give'));
-    params.delete('give');
-    const BC_VISIT_KEY = 'gifos_bcvisit_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase();
-    if (BROADCAST && !params.get('visit') && bcHostStored()) {
-      try {
-        const s = localStorage.getItem(BC_VISIT_KEY) || localStorage.getItem(BC_VISIT_KEY.replace('_bcvisit_', '_bcgive_'));
-        if (s) params.set('visit', s);
-      } catch (e) {}
-    }
-    function bcVisitCheck(raw) {
-      raw = String(raw || '').trim();
-      if (!raw || raw.length > 512) return null;
-      try {
-        const u = new URL(raw);
-        if (u.protocol !== 'https:' || !u.hostname || u.username || u.password) return null;
-        return { href: u.href, site: u.hostname };
-      } catch (e) { return null; }
-    }
     // The host's own values also ride its status gossip (the existing
     // fan-out), so a viewer who opened a bare link still gets them.
     function bcHostGossip(field) {
       try { for (const st of statusOf.values()) if (st && st[field]) return st[field]; } catch (e) {}
       return null;
     }
-    function bcVisit() { return BROADCAST ? (bcVisitCheck(params.get('visit')) || bcVisitCheck(bcHostGossip('bcvisit'))) : null; }
     // THE START TIME rides the link as at=<unix seconds> (and the host's
     // status), set by the host in More. A church shares Sunday's link
     // midweek: an early viewer reads when it starts and a countdown, and
@@ -2624,6 +2572,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { seen = sessionStorage.getItem('gifos_appear_ok') === '1' || sessionStorage.getItem('gifos_appeared') === '1'; } catch (e) {}
       const me0 = GifOS.store.identity();
       if (seen && me0.name) return Promise.resolve(me0);
+      // A broadcast host came through the Broadcast lobby, which showed how
+      // they appear: a blank name there is a guest name, not a second card.
+      if (seen && BROADCAST && !me0.name) {
+        GifOS.store.setName('Guest ' + (1000 + Math.floor(Math.random() * 9000)));
+        return Promise.resolve(GifOS.store.identity());
+      }
       let seed = me0.name;
       if (!seed) {
         seed = 'Guest ' + (1000 + Math.floor(Math.random() * 9000));
@@ -2769,7 +2723,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const barTop = bar ? bar.getBoundingClientRect().top : window.innerHeight;
       const limit = (barTop > top + 48 && barTop < window.innerHeight) ? barTop : window.innerHeight;
       // A phone keeps the link under the title on air too: the band above
-      // the dock is Live / Record and the Run of show there.
+      // the dock is Live / Record.
       const narrow = window.matchMedia && window.matchMedia('(max-width: 700px), (max-height: 500px)').matches;
       document.documentElement.style.setProperty('--bclinktop', top + 'px');
       if (onAir && !narrow) {
@@ -3643,9 +3597,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (pulseHalt && !answer) return; // the halt models a throttled clock; an answer to a newcomer is driven by its frame, not the clock
       myStatus.at = Date.now(); // timestamped: out-of-order gossip can't roll me back
       if (BROADCAST && typeof bcHostStored === 'function' && bcHostStored()) {
-        const at0 = Number(params.get('at')) || 0, vis0 = (bcVisitCheck(params.get('visit')) || {}).href || '';
+        const at0 = Number(params.get('at')) || 0;
         if (at0 > 0) myStatus.bcat = at0; else delete myStatus.bcat;
-        if (vis0) myStatus.bcvisit = vis0; else delete myStatus.bcvisit;
       }
       // My SEAT rides the heartbeat: coord is the tree fact everything else
       // (rows, links, Stage membership order) derives from. The old deck
@@ -9333,42 +9286,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       blurPipe = null;
     }
     function blurPipeTune(level) {
-      // Level 0 runs only to carry the song line on a clear camera.
+      // Level 0 runs only for a sender crop or stage frame on a clear camera.
       return { level: level, px: level === 2 ? 26 : 11, capW: level >= 2 ? 320 : level === 1 ? 480 : 640 };
-    }
-    // During Song the booth's current line rides on the picture the room
-    // sees: white on a dark band, clear of a face. The room is shown this
-    // camera as a centered square with the name strip over its bottom 17%
-    // (mesh-media.js), so the words wrap to fit that square and sit above
-    // the strip. Two lines at most; a longer line gets a smaller font.
-    function paintLyricOnAir(ctx, w, h) {
-      const line = lyricOnAir();
-      if (!line) return;
-      const side = Math.min(w, h);
-      const room = side * 0.9;
-      const wrap = (px) => {
-        ctx.font = '700 ' + px + 'px system-ui, sans-serif';
-        const out = [];
-        let cur = '';
-        for (const word of line.split(/\s+/)) {
-          const next = cur ? cur + ' ' + word : word;
-          if (cur && ctx.measureText(next).width > room) { out.push(cur); cur = word; } else cur = next;
-        }
-        if (cur) out.push(cur);
-        return out;
-      };
-      let px = Math.max(10, Math.round(side * 0.085));
-      let rows = wrap(px);
-      while (px > 8 && (rows.length > 2 || rows.some((r) => ctx.measureText(r).width > room))) rows = wrap(--px);
-      const lh = Math.round(px * 1.2), pad = Math.round(px * 0.35);
-      const band = rows.length * lh + pad * 2;
-      const bottom = Math.floor(h * 0.8);
-      ctx.fillStyle = 'rgba(0,0,0,0.66)';
-      ctx.fillRect(Math.round((w - side) / 2), bottom - band, side, band);
-      ctx.fillStyle = '#fff';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      rows.forEach((r, i) => ctx.fillText(r, w / 2, bottom - band + pad + lh * i + lh / 2));
     }
     function blurPipeCanReuse(pipe, camId) {
       return !!(pipe && pipe.camId === camId && pipe.track && pipe.track.readyState === 'live');
@@ -9492,7 +9411,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           else ctx.drawImage(src, ox, oy, dw, dh);
           drew = true;
         } catch (e) {}
-        if (drew) paintLyricOnAir(ctx, w, h);
         // painted counts a frame that was DRAWN. A throw used to increment
         // first, so blackCamWatch read a dead pipe as frames flowing.
         const why = noteBlurFrame(pipe, drew);
@@ -9889,7 +9807,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       stopAvatarPipe();
       const lvl = blurLevelFor('me');
       // A sender crop (0.9.23b) rides the same canvas: everyone gets the square I chose.
-      if ((lvl > 0 || lyricOnAir() || !!senderCrop() || !!stageFrame()) && !myStatus.camOff) return startBlurPipe(lvl) || cam;
+      if ((lvl > 0 || !!senderCrop() || !!stageFrame()) && !myStatus.camOff) return startBlurPipe(lvl) || cam;
       stopBlurPipe();
       return cam;
     }
@@ -10750,14 +10668,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       Promise.all(jobs).then(() => { powerStats = { at: Date.now(), senders: out }; });
     }, 10000);
-    // A broadcast viewer or a town hall watcher with nothing on air: the
+    // A broadcast viewer with nothing on air: the
     // Stage says whether it has not started, when it starts (with a
     // countdown), or that it has ended. "Ended" is the host's one gossiped
     // flag, the schedule, or this tab having seen company and now alone.
     function bcQuietLine(shown, reachBlocked, atDoor) {
       const host0 = typeof bcHostStored === 'function' && bcHostStored();
       const viewer = !!(BROADCAST && !host0);
-      const watch = !!(typeof TOWNHALL !== 'undefined' && TOWNHALL && !host0);
       const seenKey = 'gifos_bc_seen_' + String(params.get('v') || '') + '.' + String(params.get('av') || '').toLowerCase();
       if (viewer && shown > 1) { try { sessionStorage.setItem(seenKey, '1'); } catch (e) {} }
       // On air means a picture on the Stage: a stager's camera, screen or a
@@ -10770,8 +10687,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         });
       } catch (e) {}
       const out = { text: '', sched: null, viewer: viewer };
-      if (!(viewer || watch) || reachBlocked || atDoor || onAir) return out;
-      const noun = watch ? 'town hall' : (params.has('st') ? 'stream' : 'broadcast');
+      if (!viewer || reachBlocked || atDoor || onAir) return out;
+      const noun = 'broadcast';
       let seen = false; try { seen = sessionStorage.getItem(seenKey) === '1'; } catch (e) {}
       const sched = viewer ? bcSchedule(Date.now()) : null;
       out.sched = sched;
@@ -10796,7 +10713,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (qt && on && qt.textContent !== bq.text) qt.textContent = bq.text;
       try { paintBcCalendar(on && bq.viewer && !!bq.sched && bq.sched.phase === 'future'); } catch (e) {}
       try { if (typeof paintStagePlate === 'function') paintStagePlate(); } catch (e) {}
-      try { paintBcVisit(bq.viewer, on); } catch (e) {}
     }
     function leftDialogUp() {
       const lm = document.getElementById('left-modal');
@@ -10867,7 +10783,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const bcLive = !!(BROADCAST && ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin')));
       let extra = '';
       if (n > 1 && !bcWatcher) {
-        if (!roomPw) extra = bcLive ? ' · blurred until you set a viewer password' : ' · ' + uiText('unlockClear', 'faces stay soft until a password');
+        if (!roomPw) extra = bcLive ? ' · blurred until you set a room password' : ' · ' + uiText('unlockClear', 'faces stay soft until a password');
         else if (hasAdminRoom() && admins.length === 0) extra = ' · no admin here — everyone stays blurred';
         else if (!adminPresent() && !allConsent()) {
           // Past one section the ready count is the fold's: everyone minus the
@@ -11020,7 +10936,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { paintInviteSlot(); } catch (e3) {}
       try { paintAloneCard(); } catch (e4) {}
     }
-    // The host's start time and Visit link can arrive by gossip after the
+    // The host's start time can arrive by gossip after the
     // line was painted; the countdown moves on its own.
     if (BROADCAST && !(typeof bcHostStored === 'function' && bcHostStored())) setInterval(() => {
       try {
@@ -11089,257 +11005,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return (p && p.name) || rosterNames[id] || 'Guest';
     }
     // The lamp itself is painted by paintOnAir (confirmed design, above).
-    // The booth's order of service and an open roster repaint with it.
+    // An open roster repaints with it.
     function paintOnAirSide() {
       try { if (document.getElementById('roster').classList.contains('open')) paintRoster(); } catch (e) {}
-      try { paintRundown(); } catch (e2) {}
     }
-    // A church broadcast's order of service. Only the booth sees it. The
-    // place is remembered for this tab, and Next walks Welcome through Closing.
-    const RUNDOWN_STEPS = [
-      ['rdWelcome', 'Welcome'],
-      ['rdSong', 'Song'],
-      ['rdPrayer', 'Prayer'],
-      ['rdScripture', 'Scripture'],
-      ['rdMessage', 'Message'],
-      ['rdSong', 'Song'],
-      ['rdClosing', 'Closing'],
-    ];
-    // Which song a step is (0 for the first Song, 1 for the second), or -1.
-    function songSlotOf(i) {
-      if (!RUNDOWN_STEPS[i] || RUNDOWN_STEPS[i][0] !== 'rdSong') return -1;
-      let n = 0;
-      for (let j = 0; j < i; j++) if (RUNDOWN_STEPS[j][0] === 'rdSong') n++;
-      return n;
-    }
-    // The song on now, or the next one coming (after the end, the first).
-    function songSlotAhead() {
-      const at = rundownAt();
-      for (let i = at; i < RUNDOWN_STEPS.length; i++) if (songSlotOf(i) >= 0) return songSlotOf(i);
-      return 0;
-    }
-    // The run of show is an optional template the host picks in More (Run of
-    // show). A new broadcast has none: no agenda, no songs. A room that already
-    // used it (a stored place or song words) keeps it, unless the host chose None.
-    function rundownTplKey() { return 'gifos_rdtpl_' + (params.get('v') || ''); }
-    function rundownTpl() {
-      try {
-        const t = localStorage.getItem(rundownTplKey());
-        if (t === 'service') return 'service';
-        if (t === 'none') return '';
-        if (sessionStorage.getItem(rundownStoreKey()) !== null || localStorage.getItem(songStoreKey(0)) || localStorage.getItem(songStoreKey(1))) return 'service';
-      } catch (e) {}
-      return '';
-    }
-    function rundownStoreKey() { return 'gifos_rundown_' + (params.get('v') || ''); }
-    function rundownAt() {
-      let n = 0;
-      try { n = parseInt(sessionStorage.getItem(rundownStoreKey()) || '0', 10); } catch (e) {}
-      if (!isFinite(n) || n < 0) n = 0;
-      if (n > RUNDOWN_STEPS.length) n = RUNDOWN_STEPS.length;
-      return n;
-    }
-    function setRundownAt(n) {
-      try { sessionStorage.setItem(rundownStoreKey(), String(n)); } catch (e) {}
-    }
-    function paintRundown() {
-      const el = document.getElementById('rundown');
-      if (!el) {
-        try { paintLyrics(); } catch (e) {}
-        return;
-      }
-      const host = BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored())) && rundownTpl() === 'service';
-      el.classList.toggle('open', !!host);
-      document.body.classList.toggle('rundown', !!host);
-      try { paintLyrics(); } catch (e) {}
-      if (!host) {
-        const se = document.getElementById('songedit');
-        if (se) se.classList.remove('open');
-        document.body.classList.remove('songedit');
-        return;
-      }
-      try { paintSongWords(); } catch (e) {}
-      const at = rundownAt();
-      const ended = at >= RUNDOWN_STEPS.length;
-      const title = document.getElementById('rundown-title');
-      if (title) title.textContent = uiText('orderOfService', 'Run of show');
-      const list = document.getElementById('rundown-list');
-      if (list) {
-        list.textContent = '';
-        RUNDOWN_STEPS.forEach((step, i) => {
-          const li = document.createElement('li');
-          if (!ended && i === at) li.className = 'now';
-          else if (ended || i < at) li.className = 'past';
-          if (!ended && i === at) {
-            const tag = document.createElement('span');
-            tag.className = 'nowtag';
-            tag.textContent = uiText('rdNow', 'Now');
-            li.appendChild(tag);
-            li.setAttribute('aria-current', 'step');
-          }
-          const name = document.createElement('span');
-          name.className = 'rdname';
-          const slot = songSlotOf(i);
-          name.textContent = uiText(step[0], step[1]) + (slot >= 0 ? ' ' + (slot + 1) : '');
-          li.appendChild(name);
-          list.appendChild(li);
-        });
-      }
-      const end = document.getElementById('rundown-end');
-      if (end) end.textContent = ended ? uiText('rdEnded', 'Ended') : '';
-      const btn = document.getElementById('rundown-next');
-      if (btn) {
-        btn.classList.toggle('secondary', ended);
-        const label = ended ? uiText('rdAgain', 'Start over') : (at === RUNDOWN_STEPS.length - 1 ? uiText('rdDone', 'Done') : uiText('rdNext', 'Next'));
-        if (btn.textContent !== label) btn.textContent = label;
-      }
-      try { paintRoomTrust(); } catch (e) {}
-    }
-    const rundownNext = document.getElementById('rundown-next');
-    if (rundownNext) rundownNext.onclick = () => {
-      const at = rundownAt();
-      const next = at >= RUNDOWN_STEPS.length ? 0 : at + 1;
-      if (next === 0 || songSlotOf(next) >= 0) setLyricAt(0);
-      setRundownAt(next);
-      paintRundown();
-    };
-    // The hymn the booth reads during Song. The words stay as written.
-    // Only the Program / Preview labels follow the device language.
-    // The index lives in this tab. It is not sent to the room as data; the
-    // current line is painted onto the outgoing camera (paintLyricOnAir).
-    // Song 2 (after the Message) has its own built-in hymn.
-    const SONG_LINES = [[
-      'The first line of the song is the one to sing',
-      'The next line follows after it',
-      'Each line is one breath long',
-      'And the last line ends the song.',
-    ], [
-      'This is the second song to sing',
-      'It keeps its own words apart',
-      'Type your own before you start',
-      'They stay on this computer.',
-    ]];
-    // The booth's own song replaces the hymn: one line per line, blank lines
-    // dropped. Kept per room and per song on this computer, so it can be typed
-    // before the service. Empty goes back to the hymn.
-    function songStoreKey(slot) { return (slot ? 'gifos_song' + (slot + 1) + '_' : 'gifos_song_') + (params.get('v') || ''); }
-    function songLinesFrom(text) {
-      return String(text || '').split(/\r?\n/).map((l) => l.replace(/\s+/g, ' ').trim().slice(0, 120)).filter(Boolean).slice(0, 200);
-    }
-    function songLines(slot) {
-      if (slot === undefined) slot = songSlotAhead();
-      let own = [];
-      try { own = songLinesFrom(localStorage.getItem(songStoreKey(slot))); } catch (e) {}
-      return own.length ? own : (SONG_LINES[slot] || SONG_LINES[0]);
-    }
-    function lyricStoreKey() { return 'gifos_lyric_' + (params.get('v') || ''); }
-    function lyricAt() {
-      let n = 0;
-      try { n = parseInt(sessionStorage.getItem(lyricStoreKey()) || '0', 10); } catch (e) {}
-      if (!isFinite(n) || n < 0) n = 0;
-      const len = songLines().length;
-      if (n >= len) n = len - 1;
-      return n;
-    }
-    function setLyricAt(n) {
-      try { sessionStorage.setItem(lyricStoreKey(), String(n)); } catch (e) {}
-    }
-    function lyricSongOn() {
-      const host = BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored())) && rundownTpl() === 'service';
-      return !!(host && songSlotOf(rundownAt()) >= 0);
-    }
-    // The line the room sees on the booth's camera, or '' outside Song.
-    function lyricOnAir() {
-      try { return lyricSongOn() ? (songLines()[lyricAt()] || '') : ''; } catch (e) { return ''; }
-    }
-    let lyricAirWas = false;
-    function paintLyrics() {
-      const el = document.getElementById('lyrics');
-      if (!el) return;
-      const song = lyricSongOn();
-      // A clear camera has no canvas to paint on; switch the sent track.
-      if (song !== lyricAirWas) { lyricAirWas = song; try { refreshOutbound(); } catch (e) {} }
-      el.classList.toggle('open', song);
-      document.body.classList.toggle('lyrics', song);
-      if (!song) return;
-      const lines = songLines();
-      const at = lyricAt();
-      const last = at >= lines.length - 1;
-      const progK = document.getElementById('lyrics-program-k');
-      const prog = document.getElementById('lyrics-program');
-      const prevK = document.getElementById('lyrics-preview-k');
-      const prev = document.getElementById('lyrics-preview');
-      const btn = document.getElementById('lyrics-next');
-      if (progK) progK.textContent = uiText('lyProgram', 'Program');
-      if (prog && prog.textContent !== lines[at]) prog.textContent = lines[at];
-      if (prevK) prevK.textContent = uiText('lyPreview', 'Preview');
-      const nxt = last ? '' : (lines[at + 1] || '');
-      if (prev && prev.textContent !== nxt) prev.textContent = nxt;
-      if (btn) {
-        btn.classList.toggle('secondary', last);
-        const label = last ? uiText('rdAgain', 'Start over') : uiText('lyNext', 'Next line');
-        if (btn.textContent !== label) btn.textContent = label;
-      }
-    }
-    const lyricsNext = document.getElementById('lyrics-next');
-    if (lyricsNext) lyricsNext.onclick = () => {
-      const at = lyricAt();
-      setLyricAt(at >= songLines().length - 1 ? 0 : at + 1);
-      paintLyrics();
-    };
-    // The song the open Song words box edits, picked when it opens.
-    let songEditSlot = 0;
-    function paintSongWords() {
-      const b = document.getElementById('song-edit');
-      if (b) b.textContent = uiText('songWords', 'Song words');
-      const t = document.getElementById('songedit-title');
-      if (t) t.textContent = uiText('songWords', 'Song words') + ' · ' + uiText('rdSong', 'Song') + ' ' + (songEditSlot + 1);
-      const n = document.getElementById('songedit-note');
-      if (n) n.textContent = uiText('songNote', 'One line per line. Song reads them in order.');
-      const sv = document.getElementById('song-save');
-      if (sv) sv.textContent = uiText('songSave', 'Save');
-      const cn = document.getElementById('song-cancel');
-      if (cn) cn.textContent = uiText('songCancel', 'Cancel');
-    }
-    function openSongWords(open) {
-      const el = document.getElementById('songedit');
-      if (!el) return;
-      el.classList.toggle('open', open);
-      document.body.classList.toggle('songedit', open);
-      if (open) {
-        songEditSlot = songSlotAhead();
-        paintSongWords();
-        const t = document.getElementById('song-text');
-        if (t) { t.value = songLines(songEditSlot).join('\n'); try { t.focus(); } catch (e) {} }
-      } else {
-        const b = document.getElementById('song-edit');
-        if (b) { try { b.focus(); } catch (e) {} }
-      }
-    }
-    const songEdit = document.getElementById('song-edit');
-    if (songEdit) { paintSongWords(); songEdit.onclick = () => openSongWords(true); }
-    const songSave = document.getElementById('song-save');
-    if (songSave) songSave.onclick = () => {
-      const t = document.getElementById('song-text');
-      const lines = songLinesFrom(t ? t.value : '');
-      try {
-        if (lines.length) localStorage.setItem(songStoreKey(songEditSlot), lines.join('\n'));
-        else localStorage.removeItem(songStoreKey(songEditSlot));
-      } catch (e) {}
-      // Typing the next song must not move the song being sung now.
-      if (songSlotOf(rundownAt()) === songEditSlot || songSlotOf(rundownAt()) < 0) setLyricAt(0);
-      openSongWords(false);
-      paintLyrics();
-    };
-    const songCancel = document.getElementById('song-cancel');
-    if (songCancel) songCancel.onclick = () => openSongWords(false);
-    const songBox = document.getElementById('songedit');
-    if (songBox) songBox.addEventListener('keydown', (e) => {
-      if (e.key !== 'Escape') return;
-      e.preventDefault();
-      e.stopPropagation();
-      openSongWords(false);
-    });
     const pageArrived = Date.now();
     function mayHost() {
       return !(typeof hasAdminRoom === 'function' && hasAdminRoom() && !amAdmin);
@@ -12444,10 +12113,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (msg.kind === 'offer' || msg.kind === 'answer') {
         const b = net.bootOf(msg.sdp, ++bootSeq);
         if (!b) { txStats.relayUnfit++; if (typeof clog === 'function') clog('relay: a description with media never leaves (' + msg.kind + ' to ' + String(to).slice(0, 6) + ')'); return; }
-        relaySendSealed(to, 'name', { k: 'name', n: net.relayNameFit(myName()) }); // the name beside every bootstrap: both sides can say who tried to reach them
+        // The name beside every bootstrap: both sides can say who tried to reach them. A name is also the dial request
+        // ("I am here, dial me"), so beside an ANSWER it goes last: read ahead of the answer it asked the dialler for a
+        // pair the answer was about to complete, and a dialler whose offer was over LOST_OFFER_MS old took the offer for
+        // lost, re-offered, and the answer landed on a pc that was gone. On a slow device every answer is that late, so
+        // the pair restarted on every round and never formed.
+        const nameF = { k: 'name', n: net.relayNameFit(myName()) };
+        if (msg.kind === 'offer') relaySendSealed(to, 'name', nameF);
         if (msg.kind === 'offer' && msg.dr === 1) b.boot.dr = 1;   // the door's gate reads it (onSignal): an unseated dialler is not a stale member
         relaySendSealed(to, 'boot', b.boot);
         relaySendSealed(to, 'fp', b.fp);
+        if (msg.kind === 'answer') relaySendSealed(to, 'name', nameF);
         return;
       }
       if (msg.kind === 'ice') {
@@ -13322,7 +12998,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // minting: the offer being made on this pc (createOffer to setLocalDescription), whichever path started it; the pc still
     // reads 'stable' meanwhile. kind says what the pc is for. What describes the peer (turnSeen, turnLegacy) stays on p.
     const newNeg = (why, kind) => ({ why: why || '', kind: kind || 'pair', at: Date.now(), minting: null, offerFp: '',
-      glareTimer: null, glareOffer: null, rofferYieldTimer: null, rofferYield: null, kickVideo: false,
+      glareTimer: null, glareOffer: null, answerIn: false, rofferYieldTimer: null, rofferYield: null, kickVideo: false,
       turnAskT: null, turnOkT: null, turnGivenT: null, turnOk: false, turnGiven: false, turnWanted: false, offeredPend: '' });
     function endNeg(n) {
       if (!n) return;
@@ -14350,9 +14026,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // A second copy of an answer we already applied is in 'stable'.
         // Setting it again throws and used to be swallowed as if it landed.
         if (!p.pc || p.pc.signalingState !== 'have-local-offer') { rxStats.answerStale++; return; }
+        const negA = p.neg; if (negA) negA.answerIn = true;   // this pc's offer has its answer in hand: no longer unanswered (onDialRequest), though the pc reads have-local-offer until it is set
         p.pc.setRemoteDescription(msg.sdp)
           .then(() => { for (const c of p.pendingIce.splice(0)) p.pc.addIceCandidate(c).catch(() => {}); })
-          .catch((e) => { noteNegFail('answer', from, e); if (/extension ID reassignment/i.test(String((e && e.message) || ''))) maybeRebuildNeg(peers.get(from), e); });
+          .catch((e) => { if (negA) negA.answerIn = false; noteNegFail('answer', from, e); if (/extension ID reassignment/i.test(String((e && e.message) || ''))) maybeRebuildNeg(peers.get(from), e); });
       } else if (msg.kind === 'ice') {
         const cands = iceCandsOf(msg);
         const p = peers.get(from);
@@ -14653,7 +14330,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function onDialRequest(p) {
       const pLive = p.connected && p.dc && p.dc.readyState === 'open';
-      const unanswered = !!(p.pc && p.pc.signalingState === 'have-local-offer');
+      const answering = !!(p.pc && p.neg && p.neg.answerIn && p.pc.signalingState === 'have-local-offer');   // the answer is being set: the name that rides behind it is no ask
+      const unanswered = !!(p.pc && p.pc.signalingState === 'have-local-offer') && !answering;
       const bounced = unanswered && p.offerSentPc === p.pc && (p.offerNoSockAt || 0) >= (p.offerSentAt || 0);   // the relay said nosock after this offer left
       // A peer whose reload goodbye the wire still holds has not been heard since its page left: this request is its new
       // page's first word, and an offer I made before that word was made for the page that left (the seat re-dials at the
@@ -14670,7 +14348,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // inside its finish window. Past that window a dial request rebuilds,
       // which is what a lost trickle used to wait out forever. A reload
       // (back) is a new page; the old pc is left to fail.
-      const forming = !pLive && p.pc && !darkOffer && !idle && (iceFinishing(p, Date.now(), back) || Date.now() - pcBuiltAt(p) < 5000) && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
+      const forming = !pLive && p.pc && !darkOffer && !idle && (answering || iceFinishing(p, Date.now(), back) || Date.now() - pcBuiltAt(p) < 5000) && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
       if (typeof clog === 'function') clog('dial-request from ' + String(p.id || '?').slice(0, 6) + ' solo=' + (participantCount() <= 1) + ' live=' + !!pLive
         + ' init=' + iInitiate(p.id) + ' forming=' + !!forming + ' dark=' + !!darkOffer + ' pc=' + (p.pc ? p.pc.connectionState + '/' + p.pc.signalingState : '-')
         + ' age=' + Math.round((Date.now() - pcBuiltAt(p)) / 100) / 10 + 's frag=' + Math.round((Date.now() - (p.fragDialAt || 0)) / 100) / 10 + 's');
@@ -16195,6 +15873,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function takeMod(from, msg) {
       if (!hasAdminRoom()) { if (msg.mod) mergeMod(msg.mod); return; }
       if (!msg.modw) return;
+      if (DEBUG_ON && window.__modDelayUntil && Date.now() < window.__modDelayUntil) return;   // DEBUG=on only: this page hears the admin's orders late (a test)
       const key = String(msg.modw.pub) + '|' + String(msg.modw.sig) + '|' + String(msg.modw.sp);
       const seen = modVer.get(key);
       if (seen) {
@@ -16222,6 +15901,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (o.by && notTomb(o.by)) admSeen.set(o.by, Date.now());
         if (o.ts > modWSeenTs) { modWSeen = msg.modw; modWSeenTs = o.ts; }
         mergeMod(o.mod);
+        try { subsRejudge(); } catch (e) {}   // the room's admin state arrived: a door waiting on the plan can judge now
         if (newlyAdmin) {
           admins = adminsNow();
           if (typeof reconcileApp === 'function') reconcileApp();
@@ -16316,7 +15996,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       ab.style.display = hasAdmin ? '' : 'none';
       ab.textContent = amAdmin ? uiText('admBtn', 'Admin') : uiText('admSignIn', 'Admin sign-in');
       ab.title = amAdmin ? uiText('admTipOn', 'Admin controls: room password, chat and waiting room')
-        : uiText('admTipOff', 'This room has an admin — enter the admin password to get admin controls');
+        : uiText('admTipOff', 'This room has a host — enter the host password to get the host controls');
       const pwb = document.getElementById('pwbtn');
       pwb.disabled = hasAdmin && !amAdmin;
       pwb.title = (hasAdmin && !amAdmin)
@@ -16692,7 +16372,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         excluded: isEjected, // ejected forgers: their mesh frames never reach the seat
         urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
         holdDoor: () => pwWaitProof && !meshCoord(),
-        doorHeld: (id) => { try { const b = meetWait.blocks(id); if (b && id && amAdmin) meetWait.note(id, rosterNames[id] || 'Someone waiting'); if (b && id) sayHeld(id); return b || subsHolds(id); } catch (e) { return false; } },   // a withheld knock goes on the host's list: nothing else names a plain room's knocker
+        doorHeld: (id) => { try { if (DEBUG_ON && window.__doorHoldAll) return true;   /* DEBUG=on only: this door answers no knock (a test picks the doors) */ const b = meetWait.blocks(id); if (b && id && amAdmin) meetWait.note(id, rosterNames[id] || 'Someone waiting'); if (b && id) sayHeld(id); return b || subsHolds(id); } catch (e) { return false; } },   // a withheld knock goes on the host's list: nothing else names a plain room's knocker
         onDoor: (kind, frame) => {
           if (kind === 'seated') {
             meetWait.waiting(false);
@@ -18371,15 +18051,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const pwModal = document.getElementById('pw-modal');
     function showPwModal(locked, why) {
       const service = BROADCAST;
-      document.getElementById('pw-title').textContent = service ? 'Viewer password' : (locked ? uiText('pwTitleLocked', 'This room is locked') : uiText('pwTitle', 'Room password'));
+      document.getElementById('pw-title').textContent = service ? uiText('pwTitle', 'Room password') : (locked ? uiText('pwTitleLocked', 'This room is locked') : uiText('pwTitle', 'Room password'));
       document.getElementById('pw-hint').textContent = service
         ? (locked
-          ? 'Enter the viewer password to see the stage clearly.'
+          ? 'Enter the room password to see the stage clearly.'
           : 'Optional. It is not part of the link. People can still watch, and the stage stays blurred until it is set.')
         : why === 'banned' ? uiText('pwHintBanned', 'They are out, and this is the room\'s new password. Everyone still here already has it. Anyone joining later needs it, so copy it and send it to them yourself. To let a banned person back in, tell them this password.')
         : (locked
           ? (why === 'changed'
-            ? uiText('pwHintChanged', 'The admin changed the room password. Enter the new password to rejoin the meeting.')
+            ? uiText('pwHintChanged', 'The host changed the room password. Enter the new password to rejoin the meeting.')
             : uiText('pwHintLocked', 'Enter the room password to join the meeting.'))
           : hasAdminRoom()
             ? uiText('pwHintAdmin', 'Only the admin can set or change it. When it is set or changed, everyone else here goes back to the door and must enter it to rejoin. Leave empty to remove the lock.')
@@ -18554,11 +18234,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (amAdmin) {
         setup.style.display = 'none'; panel.style.display = '';
         paintChatOptions();
-        document.getElementById('adm-hint').textContent = uiText('admHintOn', 'You are an admin of this room. Admins can lock the room with a password (the key to clear video), mute or blur someone for everyone, and ban people. Anyone who knows the admin password can open Admin and sign in too.');
+        document.getElementById('adm-hint').textContent = uiText('admHintOn', 'You are a host of this room. Hosts can lock the room with a room password (the key to clear video), mute or blur someone for everyone, and ban people. Anyone who knows the host password can open Admin and sign in too.');
       } else {
         setup.style.display = ''; panel.style.display = 'none';
         btn.textContent = uiText('admEnable', 'Sign in as admin');
-        document.getElementById('adm-hint').textContent = uiText('admHintOff', 'This room has an admin. If you know the admin password, enter it here to get the admin controls. Your password stays on this device.');
+        document.getElementById('adm-hint').textContent = uiText('admHintOff', 'This room has a host. If you know the host password, enter it here to get the host controls. Your password stays on this device.');
       }
       admModal.style.display = 'flex';
     }
@@ -18587,7 +18267,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!(await adoptAdmKey(K))) {
         btn.disabled = false;
         btn.textContent = uiText('admEnable', 'Sign in as admin');
-        hint.textContent = uiText('admWrong', 'Wrong admin password.');
+        hint.textContent = uiText('admWrong', 'Wrong host password.');
         sayState('adminWrong');
         return;
       }
@@ -18825,7 +18505,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           + '<h4>Watching</h4>'
           + '<ul class="help-list">'
           + '<li>The link is all you need. Your <b>camera and microphone are not used</b> — watching asks no permissions at all.</li>'
-          + '<li>The video stays <b>blurred</b> until the host sets a <b>viewer password</b>. If you’re asked for one, the host shares it separately — it’s the ticket, and it does not ride the link.</li>'
+          + '<li>The video stays <b>blurred</b> until the host sets a <b>room password</b>. If you’re asked for one, the host shares it separately — it’s the ticket, and it does not ride the link.</li>'
           + '<li><b>Chat</b> is live to everyone here, is not stored on any server, and is gone when the broadcast ends.</li>'
           + '<li><b>Sound on</b> on the room bar mutes the stage on this device. Everyone else still hears it.</li>'
           + '</ul>'
@@ -18838,7 +18518,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           + '<h4>For the host</h4>'
           + '<ul class="help-list">'
           + '<li>Your <b>host password</b> is yours alone — it IS your control of this broadcast. Do not send it to viewers.</li>'
-          + '<li>The <b>Password</b> button sets or changes the <b>viewer password</b>: without one the broadcast stays blurred; with one, whoever you give it to sees you clear.</li>'
+          + '<li>The <b>Password</b> button sets or changes the <b>room password</b>: without one the broadcast stays blurred; with one, whoever you give it to sees you clear.</li>'
           + '<li>The hand queue floats to the top — tap a name to call them up on Stage. Revoking their grant pulls them back down.</li>'
           + '<li>Chat has a <b>Turn chat off</b> switch (your messages still land) and per-message delete. Ban lives on each tile’s controls.</li>'
           + '<li>A broadcast lives while its host is present. <b>End</b> it, and everyone watching sees a five-minute countdown, then the room closes.</li>'
@@ -19023,18 +18703,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (av && admKey) pwFromStore = false;
       const relay = relayUrl();
       const custom = relay && relay !== window.GIFOS_RELAY;
-      const avPart = (av ? '&av=' + av : '') + (BROADCAST ? '&bc=1' : '') + (TOWNHALL ? '&th=1' : '') + (BROADCAST && params.has('st') ? '&st=1' : '');
+      const avPart = (av ? '&av=' + av : '') + (BROADCAST ? '&bc=1' : '');
       const atBit = BROADCAST && /^\d+$/.test(params.get('at') || '') ? params.get('at') : '';
-      const visitBit = BROADCAST && bcVisit() ? encodeURIComponent(bcVisit().href) : '';
-      const avPartAt = avPart + (atBit ? '&at=' + atBit : '') + (visitBit ? '&visit=' + visitBit : '');
+      const avPartAt = avPart + (atBit ? '&at=' + atBit : '');
       const pretty = /(^|\.)gifos\.app$/.test(location.hostname) && !custom;
       // A broadcast's pretty form is /cast/<room>/<V> — same 404-router
       // machinery as /meet, but the path itself carries the skin so the
       // shared link opens as a broadcast for every viewer.
       const prettyPath = (BROADCAST ? '/cast/' : '/meet/') + room + (av ? '/' + av : '');
-      const prettyTown = TOWNHALL ? '?th=1' : (BROADCAST && params.has('st') ? '?st=1' : '');
-      const prettyQs0 = prettyTown + (atBit ? (prettyTown ? '&' : '?') + 'at=' + atBit : '');
-      const prettyQs = prettyQs0 + (visitBit ? (prettyQs0 ? '&' : '?') + 'visit=' + visitBit : '');
+      const prettyQs0 = atBit ? '?at=' + atBit : '';
+      const prettyQs = prettyQs0;
       // A RELEASE/pinned computer runs from /versions/<x.y.z>/, but prettyPath is
       // rooted at the domain. Rewriting the address bar to it MOVED THE DOCUMENT
       // BASE off the snapshot — document.baseURI became /meet/<room>, so every
@@ -19204,7 +18882,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function parseMeetInput(s) {
       s = (s || '').trim();
       if (!s) return null;
-      let room = '', av = '', relay = '', bc = false, th = false;
+      let room = '', av = '', relay = '', bc = false;
       if (/[:/#?]/.test(s)) {
         // about:srcdoc reports origin "null". An absolute link must still parse;
         // passing that string as the base makes the URL constructor throw.
@@ -19221,7 +18899,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (hp.get('av')) av = (hp.get('av') || '').toLowerCase();
           if (hp.get('relay')) relay = hp.get('relay');
           if (hp.get('bc')) bc = true;
-          if (u.searchParams.has('th') || hp.has('th')) th = true;
         }
       }
       if (!room) {
@@ -19241,7 +18918,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // different rooms depending on whether you opened the link or pasted it —
       // /meet/BibleReading and biblereading are different meetings, and the two
       // people never saw each other. Only `av` is case-folded: it is a hex digest.
-      return { room, av, relay, bc: bc && !!av, th: th && !!av && !bc }; // bc and th are skins on an admin room
+      return { room, av, relay, bc: bc && !!av }; // bc is a skin on an admin room
     }
     // THE LOBBY SHOWS THE JOIN (0.9.25). The lobby used to open the camera on
     // load and show it clear behind the menu, which read as "you will join on
@@ -19378,22 +19055,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       };
       const lobMic = document.getElementById('lob-mic');
       if (lobMic) lobMic.onclick = () => { joinAv.mic = !joinAv.mic; paintLobbyAv(); };
-      const streamBtn = document.getElementById('lob-stream');
-      if (streamBtn) streamBtn.onclick = () => { enterMeeting('#bc=1&st=1'); };
-      // Host this call mints an admin small group; Start a town hall mints
-      // the same admin room with th=1 (watchers stay off camera).
-      let lobTownHall = false;
-      const thBtn = document.getElementById('lob-th-btn');
-      if (thBtn) thBtn.onclick = () => {
-        const form = document.getElementById('lob-admin');
-        const wasTh = lobTownHall && form.style.display !== 'none';
-        lobTownHall = true;
-        if (wasTh) { form.style.display = 'none'; lob.classList.remove('form-open'); return; }
-        form.style.display = 'none';
-        document.getElementById('lob-admin-btn').onclick();
-      };
-      document.getElementById('lob-admin-btn').onclick = (ev) => {
-        if (ev) lobTownHall = false;
+      // Host a call mints an admin small group.
+      document.getElementById('lob-admin-btn').onclick = () => {
         toggle('lob-admin');
         document.getElementById('lob-join').style.display = 'none';
         const open = document.getElementById('lob-admin').style.display !== 'none';
@@ -19404,11 +19067,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (open && BC_INTENT) {
           document.getElementById('lob-key-block').hidden = true;
           document.getElementById('lob-key-reveal').hidden = false;
-        }
-        if (open && !BC_INTENT && lobTownHall) {
-          document.querySelector('#lobby h1').textContent = 'Town hall';
-          document.querySelector('#lobby .lob-quiet').textContent = 'You host. People with the link watch, and come on stage when you call them up.';
-          n.placeholder = 'Town hall';
         }
         if (open) n.focus();
       };
@@ -19427,7 +19085,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const open = lob.classList.toggle('desk-more');
         more.setAttribute('aria-pressed', open ? 'true' : 'false');
         more.textContent = open ? 'Done' : 'More';
-        more.setAttribute('aria-label', open ? 'Back to Go live' : 'Watch, or change the host key');
+        more.setAttribute('aria-label', open ? 'Back to Go live' : 'Watch a link, or see the host password');
         if (!open) {
           document.getElementById('lob-join').style.display = 'none';
           if (BC_INTENT) {
@@ -19456,10 +19114,55 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         document.getElementById('lob-admin').style.display = 'none';
         document.getElementById('lobby').classList.remove('form-open');
       };
-      let goLiveBlurPick = null;
+      // Broadcast: Who can watch picks the room password field; Schedule
+      // shows the start time and turns Go live now into the plain choice.
+      let bcLater = false;
+      const bcWho = () => (document.getElementById('lob-bc-who-pw').checked ? 'pw' : 'link');
+      const paintBcWho = () => {
+        if (!BC_INTENT) return;
+        const pw = bcWho() === 'pw';
+        const extra = document.getElementById('lob-guest-extra');
+        extra.style.display = pw ? '' : 'none';
+        extra.hidden = !pw;
+        lob.classList.toggle('bc-pw', pw);
+      };
+      ['lob-bc-who-link', 'lob-bc-who-pw'].forEach((id) => {
+        document.getElementById(id).addEventListener('change', () => {
+          paintBcWho();
+          if (bcWho() === 'pw') document.getElementById('lob-guest-pass').focus();
+        });
+      });
+      const bcNextHour = () => {
+        const d = new Date(Date.now() + 3600000); d.setMinutes(0, 0, 0);
+        const z = (n) => String(n).padStart(2, '0');
+        return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + 'T' + z(d.getHours()) + ':' + z(d.getMinutes());
+      };
+      document.getElementById('lob-bc-sched').onclick = () => {
+        const go = document.getElementById('lob-admin-go');
+        const when = document.getElementById('lob-bc-when');
+        const at = document.getElementById('lob-bc-at');
+        if (!bcLater) {
+          // First tap: show the time, ready at the next full hour.
+          bcLater = true;
+          when.hidden = false;
+          if (!at.value) at.value = bcNextHour();
+          document.getElementById('lob-bc-sched').textContent = uiText('bcGoNowShort', 'Go live now');
+          go.textContent = uiText('bcSchedule', 'Schedule');
+          lob.classList.add('bc-later');
+          return;
+        }
+        bcLater = false;
+        when.hidden = true;
+        document.getElementById('lob-bc-sched').textContent = uiText('bcSchedule', 'Schedule');
+        go.textContent = uiText('bcGoNow', 'Go live now');
+        lob.classList.remove('bc-later');
+      };
       document.getElementById('lob-admin-go').onclick = async () => {
         const err = document.getElementById('lob-admin-err');
         let rawName = document.getElementById('lob-admin-name').value || '';
+        // A broadcast's name is optional: a blank one is "broadcast" (the
+        // host key makes the room its own). A call still needs a name.
+        if (BC_INTENT && !/[A-Za-z0-9]/.test(rawName)) rawName = 'broadcast';
         // slugRoom turns a blank into "room", so the empty check has to
         // happen on what was typed. A name with no letter or digit is blank.
         if (!/[A-Za-z0-9]/.test(rawName)) { err.textContent = uiText('needName', 'Give your room a name.'); return; }
@@ -19467,36 +19170,43 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const pass = (document.getElementById('lob-admin-pass').value || '').trim();
         if (!chosen) { err.textContent = uiText('needName', 'Give your room a name.'); return; }
         if (!pass) { err.textContent = uiText('needPass', 'Set a host password. It stays with you, not in the link.'); return; }
-        const go = document.getElementById('lob-admin-go');
-        if (BC_INTENT && goLiveBlurPick == null) {
-          if (typeof camChooserOpen === 'function' && camChooserOpen()) { dismissCamChooser(); return; }
-          openCamChooser(go, (level) => {
-            goLiveBlurPick = blurLevel(level);
-            go.click();
-          });
+        let atSecs = '';
+        if (BC_INTENT && bcWho() === 'pw' && !(document.getElementById('lob-guest-pass').value || '').trim()) {
+          err.textContent = uiText('bcNeedRoomPw', 'Set a room password, or pick Anyone with the link.');
+          document.getElementById('lob-guest-pass').focus();
           return;
         }
-        const picked = goLiveBlurPick;
-        goLiveBlurPick = null;
-        if (!go.dataset.label) go.dataset.label = go.textContent;
+        if (BC_INTENT && bcLater) {
+          const ms = new Date(document.getElementById('lob-bc-at').value || '').getTime();
+          if (!Number.isFinite(ms) || ms < Date.now()) { err.textContent = uiText('bcNeedTime', 'Pick a start time that is still ahead.'); return; }
+          atSecs = String(Math.floor(ms / 1000));
+        }
+        const go = document.getElementById('lob-admin-go');
+        // Go live: with a room password the host chose to be seen clear;
+        // without one the room keeps everyone soft anyway, so Max blur.
+        const picked = BC_INTENT ? (bcWho() === 'pw' ? 0 : 2) : null;
+        go.dataset.label = go.textContent;
         go.disabled = true; go.textContent = uiText('creating', 'Creating…');
         try {
           const K = await deriveAdminKey(chosen, pass);
           const V = (await net.edKeysFromSeedHex(K)).verifier; // V commits to the PUBLIC key (§9)
           try { localStorage.setItem('gifos_vadm_' + chosen + '.' + V, K); } catch (e) {}
           mirrorRoomState({ admin: true }, chosen + '.' + V);
-          // The GUEST password (optional): pre-seed the room-password store —
+          // The ROOM password (optional): pre-seed the room-password store —
           // exactly what the Password button writes — and the admin's normal
           // §LOCK re-assert locks the door + seals the key the moment they
           // arrive. It rides the SESSION, never the link (the whole point of
           // the two separate fields: the admin password must never reach a
-          // guest, the guest password is the one you send them).
-          const guest = (document.getElementById('lob-guest-pass').value || '').trim();
+          // guest, the room password is the one you send them). A broadcast
+          // open to anyone with the link sets none.
+          const guest = (BC_INTENT && bcWho() !== 'pw') ? '' : (document.getElementById('lob-guest-pass').value || '').trim();
           if (guest) { try { localStorage.setItem('gifos_vpw_' + chosen + '.' + V, guest); localStorage.setItem('gifos_vpwat_' + chosen + '.' + V, String(Date.now())); } catch (e) {} } // stamp the store's clock (§LOCK expiry)
-          // Go live here is the deliberate tap: the stream boots with the
-          // camera on. Opening the host link later lands off air.
-          if (BC_INTENT) { try { sessionStorage.setItem('gifos_bc_golive_' + chosen + '.' + V, 'b' + blurLevel(picked == null ? 2 : picked)); } catch (e) {} }
-          enterMeeting('#v=' + chosen + '&av=' + V + (BC_INTENT ? '&bc=1' + (params.has('st') ? '&st=1' : '') : (lobTownHall ? '&th=1' : '')));
+          // Go live now is the deliberate tap: the stream boots with the
+          // camera on. A scheduled one (and the host link opened later)
+          // lands off air, with the start time riding the link.
+          if (BC_INTENT && !atSecs) { try { sessionStorage.setItem('gifos_bc_golive_' + chosen + '.' + V, 'b' + blurLevel(picked)); } catch (e) {} }
+          if (atSecs) { try { localStorage.setItem('gifos_bcat_' + chosen + '.' + V, atSecs); } catch (e) {} }
+          enterMeeting('#v=' + chosen + '&av=' + V + (BC_INTENT ? '&bc=1' + (atSecs ? '&at=' + atSecs : '') : ''));
         } catch (e) { err.textContent = 'Could not create the room. Try again.'; go.disabled = false; go.textContent = go.dataset.label || 'Start'; }
       };
       document.getElementById('lob-join-btn').onclick = () => { toggle('lob-join'); document.getElementById('lob-admin').style.display = 'none'; const i = document.getElementById('lob-join-in'); if (document.getElementById('lob-join').style.display !== 'none') i.focus(); };
@@ -19569,49 +19279,31 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (legacy) legacy.textContent = me.name || '…';
     }
     function showLobby() {
-      const streamLobby = BC_INTENT && params.has('st');
-      document.title = (streamLobby ? 'Stream' : BC_INTENT ? 'Broadcast' : 'Meeting') + ' — GifOS';
+      document.title = (BC_INTENT ? 'Broadcast' : 'Meeting') + ' — GifOS';
       // The Broadcast app opens THIS page with #bc=1 and no room: same lobby,
       // reworded — no open rooms (a broadcast without a host is nothing), and
       // creating one mints the same admin room with &bc=1 riding the link.
+      // The host answers two things: who can watch, and now or later. The
+      // host password is minted and kept on this device; More shows it.
       if (BC_INTENT) {
-        document.querySelector('#lobby h1').textContent = 'Broadcast';
+        document.querySelector('#lobby h1').textContent = uiText('bcTitle', 'Broadcast');
         const quiet = document.querySelector('#lobby .lob-quiet');
-        if (quiet) quiet.textContent = 'You host. People watch with the link.';
+        if (quiet) quiet.textContent = uiText('bcLobbyQuiet', 'You host. People watch with the link.');
         document.getElementById('lob-open').style.display = 'none';
-        const start = document.getElementById('lob-admin-btn');
-        start.classList.remove('lob-action', 'lob-link');
-        start.classList.add('lob-primary');
-        start.innerHTML = 'Go live<small>A host password keeps you in charge</small>';
-        document.getElementById('lob-admin-go').textContent = 'Go live';
-        document.getElementById('lob-admin-pass-head').textContent = 'Host password';
-        document.getElementById('lob-admin-pass').placeholder = 'Host password';
-        document.getElementById('lob-admin-pass-note').textContent = 'Only you. People watching do not need it.';
-        document.getElementById('lob-guest-more').textContent = 'Add a password for viewers';
-        document.getElementById('lob-guest-pass-head').textContent = 'Viewer password';
-        document.getElementById('lob-guest-pass').placeholder = 'Viewer password (optional)';
-        document.getElementById('lob-guest-pass-note').textContent = 'Optional. It is not part of the link.';
+        document.getElementById('lob-admin-btn').style.display = 'none';
+        const nm = document.getElementById('lob-admin-name');
+        nm.placeholder = uiText('bcNamePh', 'Name (optional)');
+        document.getElementById('lob-admin-go').textContent = uiText('bcGoNow', 'Go live now');
+        document.getElementById('lob-bc').hidden = false;
+        document.getElementById('lob-bc-sched').hidden = false;
         const watch = document.getElementById('lob-join-btn');
-        watch.classList.remove('lob-link');
-        watch.classList.add('lob-action');
-        watch.innerHTML = 'Watch<small>Paste a link someone sent you</small>';
-        document.getElementById('lob-empty').textContent = 'Broadcasts you start or watch show up here.';
+        watch.textContent = uiText('bcWatchLink', 'Watch a link');
+        document.getElementById('lob-empty').textContent = uiText('bcLobbyEmpty', 'Broadcasts you start or watch show up here.');
         const watchNote = document.getElementById('lob-watch-note');
         if (watchNote) { watchNote.hidden = false; watchNote.textContent = BC_WATCH_COPY; }
-        ['lob-th-btn', 'lob-stream'].forEach((id) => { const b = document.getElementById(id); if (b) b.style.display = 'none'; });
-        // More on the picture opens Watch and the host key (Q49).
+        // More on the picture opens Watch and the host password (Q49).
         const deskMore = document.getElementById('lob-desk-more');
         if (deskMore) deskMore.hidden = false;
-        // A stream to friends: the same live fan-out, a friendlier name.
-        if (streamLobby) {
-          document.querySelector('#lobby h1').textContent = 'Stream';
-          if (quiet) quiet.textContent = 'Friends watch with the link.';
-          const nm = document.getElementById('lob-admin-name');
-          nm.placeholder = 'Friday night';
-          if (!nm.value) nm.value = 'Friday night';
-          document.getElementById('lob-empty').textContent = 'Streams you start or watch show up here.';
-          if (watchNote) watchNote.textContent = 'Watching a stream. You stay off camera unless the host brings you on.';
-        }
       }
       paintLobbyAppear();
       renderLobbyList();
@@ -19683,7 +19375,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           updateTile('me');
           joinRoom();
           updateStatus();
-          document.title = (typeof TOWNHALL !== 'undefined' && TOWNHALL) ? 'Town hall — GifOS' : BROADCAST ? (params.has('st') ? 'Stream — GifOS' : 'Broadcast — GifOS') : 'Meeting — GifOS';
+          document.title = BROADCAST ? 'Broadcast — GifOS' : 'Meeting — GifOS';
           if (BROADCAST) {
             const hint = document.querySelector('.share .hint');
             if (hint) hint.textContent = 'Share this link — anyone who opens it is watching:';
@@ -20400,7 +20092,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function qaChatOn() {
       if (chatOptOverride && Object.prototype.hasOwnProperty.call(chatOptOverride, 'qa'))
         return !!chatOptOverride.qa;
-      const svc = (BROADCAST) || (typeof TOWNHALL !== 'undefined' && TOWNHALL);
+      const svc = BROADCAST;
       if (!hasAdminRoom()) return !!svc;
       const m = modTable['*'] && modTable['*'].qa;
       if (!m || typeof m.on !== 'boolean') return !!svc;
@@ -21459,7 +21151,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const purged = cleared ? purgeAllFiles(false) : 0; // password gone → shared files go with it
         renderFiles();
         if (grantMine) { /* nothing to say: they are about to sit */ }
-        else if (grantNo) setStatus(uiText('pwBanHeard', '🔒 The admin removed someone and changed the room password. You stay in the meeting.'));
+        else if (grantNo) setStatus(uiText('pwBanHeard', '🔒 The host removed someone and changed the room password. You stay in the meeting.'));
         else setStatus(m.pw ? '🔒 Room password ' + (m.by ? 'set by ' + m.by : 'updated')
           : '🔓 Password removed' + (m.by ? ' by ' + m.by : '') + ' — the room is blurred again' + (purged ? ' and shared files were cleared' : ''));
         reactRoomState(); // the password is the key to clear video
@@ -22079,8 +21771,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         attach.hidden = !hasAdminRoom();
         attach.disabled = locked;
       }
-      document.body.classList.toggle('chat-qa-on', qaChatOn() && hasAdminRoom() && !BROADCAST && !TOWNHALL);
-      document.body.classList.toggle('qa-chat-off', hasAdminRoom() && (BROADCAST || TOWNHALL) && !qaChatOn());
+      document.body.classList.toggle('chat-qa-on', qaChatOn() && hasAdminRoom() && !BROADCAST);
+      document.body.classList.toggle('qa-chat-off', hasAdminRoom() && BROADCAST && !qaChatOn());
       const b = document.getElementById('chatmod');
       b.style.display = (hasAdminRoom() && amAdmin) ? '' : 'none';
       b.textContent = off ? uiText('chatModOn', 'Turn chat on') : uiText('chatModOff', 'Turn chat off');
@@ -22510,7 +22202,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function placeQaBand() {
       const band = document.getElementById('bc-q');
       if (!band || band.hidden) return;
-      // Under the chip, above the dock, Visit and the captions, and around
+      // Under the chip, above the dock and the captions, and around
       // Fit (wherever it sits on this phone): the text wraps beside Fit, and
       // at large type on a small phone it steps down to 18px to fit.
       const rectOf = (sel) => {
@@ -22522,7 +22214,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       let top = 12;
       for (const sel of ['.topchip', '#livebadge', '#bc-link']) { const r = rectOf(sel); if (r && r.top < innerHeight / 2) top = Math.max(top, Math.ceil(r.bottom) + 8); }
       let floor = innerHeight; // the dock's own top, not --dock-clear: that lags a type-size change by a frame
-      for (const sel of ['.bar', '#bc-visit', '#bc-cap-txt', '#bc-cap-btn']) { const r = rectOf(sel); if (r && r.top > top) floor = Math.min(floor, r.top); }
+      for (const sel of ['.bar', '#bc-cap-txt', '#bc-cap-btn']) { const r = rectOf(sel); if (r && r.top > top) floor = Math.min(floor, r.top); }
       floor -= 8;
       const fit = rectOf('#fitbtn');
       const pad = document.getElementById('bc-q-pad'), gap = document.getElementById('bc-q-fit'), txt = document.getElementById('bc-q-txt');
@@ -22555,7 +22247,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const band = document.getElementById('bc-q');
       if (!band) return;
       const qid = qaShownId(), m = qid && chat.get(qid);
-      if (!m || !m.q || !(BROADCAST || TOWNHALL)) { band.hidden = true; return; }
+      if (!m || !m.q || !BROADCAST) { band.hidden = true; return; }
       document.getElementById('bc-q-by').textContent = m.by + ' asks';
       document.getElementById('bc-q-txt').textContent = m.text;
       band.hidden = false;
@@ -28583,7 +28275,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!canScreenShare()) shareWhy = uiText('shareNoGdm', 'This browser cannot share a screen.');
       else if (document.body.classList.contains('app-room')) shareWhy = 'Screen share is off while an app has the room.';
       else if (shareRoleOff) shareWhy = 'Only the host shares to the stage.';
-      else if (TOWNHALL && document.body.classList.contains('th-watch') && !document.body.classList.contains('stage-granted')) shareWhy = 'You are watching. A host can invite you to speak.';
       else if (!on && !mayShareScreen(myId)) shareWhy = uiText('shareNotAllowed', 'The host has not allowed you to share yet.');
       // Several people may share at once (Nathan 2026-11-11): each screen is a
       // tab of the content area. Only a full stage stops one more.
@@ -28900,7 +28591,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // re-ships down every relayer (see selfShipMemo). Pause holds the same
     // tracks; the picture just stops changing.
     const rbBtn = document.getElementById('rbbtn');
-    const rbNoun = () => (params.has('st') ? 'stream' : 'broadcast');
+    const rbNoun = () => 'broadcast';
     function rbFmt(sec) {
       const t = Math.max(0, Math.floor(sec || 0));
       const h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, x = t % 60;
@@ -32009,7 +31700,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       bg.innerHTML = '<p class="rec-replay-title">Replay</p>' +
         '<video id="rec-replay-vid" playsinline></video>' +
         '<div class="rec-replay-bar">' +
-        (saved && saved.seed ? '<p id="rec-replay-seed" class="rec-replay-seed">The ' + ((typeof params !== 'undefined' && params.has('st')) ? 'stream' : 'broadcast') + ' has ended.</p>' : '') +
+        (saved && saved.seed ? '<p id="rec-replay-seed" class="rec-replay-seed">The broadcast has ended.</p>' : '') +
         '<input id="rec-replay-scrub" type="range" min="0" max="1000" value="0" aria-label="Replay position">' +
         '<div class="rec-replay-actions">' +
         '<button type="button" id="rec-replay-share" hidden>Share</button>' +
@@ -32095,7 +31786,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function showServiceEnded(saved) {
       const old = document.getElementById('rb-sheet');
       if (old) old.remove();
-      const noun = (typeof params !== 'undefined' && params.has('st')) ? 'stream' : 'broadcast';
+      const noun = 'broadcast';
       const bg = document.createElement('div');
       bg.id = 'rb-sheet'; bg.className = 'rb-sheet';
       bg.setAttribute('role', 'dialog'); bg.setAttribute('aria-modal', 'true'); bg.setAttribute('aria-label', 'The ' + noun + ' has ended');
@@ -32997,7 +32688,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // Floaters rest at the bottom: their CSS bottom is their own gap, plus the
     // safe area, plus var(--barlift). A floater whose resting box would meet the
     // bar rises to 8px above the bar's top. One that would not stays down. A
-    // floater stacked on a base (the Record row, Visit) rises at least as far as
+    // floater stacked on a base (the Record row) rises at least as far as
     // its base, so it never lands on it. The Record row beside a sideways dock
     // keeps its own place (placeCallState).
     // Panels run to the bottom and pad or end by var(--barclear). When the bar,
@@ -33006,8 +32697,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // Otherwise it clears nothing.
     // A tucked or faded bar keeps the last values, so nothing jumps when it wakes.
     function placeBarAvoiders() {
-      const FLOATERS = [['callstate', ''], ['chatnote', 'callstate'], ['livecap', 'callstate'], ['rundown', 'callstate'],
-        ['waitlist', ''], ['lyrics', ''], ['songedit', ''], ['rb-now', ''], ['bc-visit', ''], ['bc-cap', 'bc-visit'], ['bc-reacts', '']];
+      const FLOATERS = [['callstate', ''], ['chatnote', 'callstate'], ['livecap', 'callstate'], 
+        ['waitlist', ''], ['rb-now', ''], ['bc-cap', ''], ['bc-reacts', '']];
       const PANELS = [['chatpanel', 'pad'], ['qa', 'pad'], ['bc-ended', 'bottom'], ['bc-ident', 'bottom']];
       const bar = document.querySelector('.bar');
       if (!bar || bar.classList.contains('tucked') || document.body.classList.contains('chrome-away')) return;
@@ -33029,8 +32720,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const el = document.getElementById(id);
         const r = shown(el);
         if (!r) continue;
-        // Visit inside the ended card is static there; it is not a floater then.
-        if (el.parentElement && el.parentElement.id === 'bc-ended') continue;
         const cur = read(el, '--barlift');
         let lift = baseId && lifts[baseId] !== undefined ? lifts[baseId] : 0;
         if (el.classList.contains('beside')) lift = 0;
@@ -33066,7 +32755,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       };
       window.__gifosBarAvoid = later;
       // Showing, hiding or opening one of them can newly put it under the bar.
-      const ids = ['callstate', 'chatnote', 'livecap', 'rundown', 'waitlist', 'lyrics', 'songedit', 'bc-visit', 'bc-cap', 'bc-reacts', 'chatpanel', 'qa', 'bc-ended', 'bc-ident', 'reacttray'];
+      const ids = ['callstate', 'chatnote', 'livecap', 'waitlist', 'bc-cap', 'bc-reacts', 'chatpanel', 'qa', 'bc-ended', 'bc-ident', 'reacttray'];
       if (window.MutationObserver) {
         const mo = new MutationObserver(later);
         for (const id of ids) { const el = document.getElementById(id); if (el) mo.observe(el, { attributes: true, attributeFilter: ['class', 'hidden'] }); }
@@ -33074,7 +32763,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // A caption or a chat line that grows a line can newly meet the bar.
       if (window.ResizeObserver) {
         const ro = new ResizeObserver(later);
-        for (const id of ['callstate', 'chatnote', 'livecap', 'bc-visit', 'bc-cap']) { const el = document.getElementById(id); if (el) ro.observe(el); }
+        for (const id of ['callstate', 'chatnote', 'livecap', 'bc-cap']) { const el = document.getElementById(id); if (el) ro.observe(el); }
       }
       window.addEventListener('resize', later);
       window.addEventListener('orientationchange', later);
@@ -33117,12 +32806,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           bar.classList.remove('more-rows');
           const upright = window.matchMedia && matchMedia('(max-width: 700px) and (orientation: portrait)').matches;
           if (sheet && upright && sheet.scrollHeight > sheet.clientHeight + 2) bar.classList.add('more-rows');
-        }
-        // Opening More covers the Run of show / lyrics cards so every
-        // dock stand-in on the sheet is fully visible (Pixel 7 host dock).
-        if (!collapsed) {
-          try { const rd = document.getElementById('rundown'); if (rd) rd.classList.remove('open'); } catch (e) {}
-          try { const ly = document.getElementById('lyrics'); if (ly) ly.classList.remove('open'); } catch (e) {}
         }
         // The fold is what shows Live again. Measure it after the class
         // changes, not while More still hides the row.
@@ -33708,9 +33391,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (joinVeilEl) return true;
         const b = document.body.classList;
         // 0.9.23b: a shared screen and a broadcast are calm too.
-        // Song words being typed hold the call up; an open Run of show
-        // fades with the dock like the rest (it is back on any move).
-        for (const c of ['app-room', 'solo-app', 'songedit']) if (b.contains(c)) return true;
+        for (const c of ['app-room', 'solo-app']) if (b.contains(c)) return true;
         if (!bar.classList.contains('collapsed')) return true; // More is open
         // A clicked button keeps focus, so only keyboard focus holds the dock.
         if (bar.matches(':hover') || bar.querySelector(':focus-visible')) return true;
@@ -35149,7 +34830,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!url) return;
       const isApp = document.body.classList.contains('app-room');
       const payload = {
-        title: isApp ? 'Join me on GifOS' : BROADCAST ? 'Watch my GifOS broadcast' : (typeof TOWNHALL !== 'undefined' && TOWNHALL ? 'Watch my GifOS town hall' : 'Join my GifOS meeting'),
+        title: isApp ? 'Join me on GifOS' : BROADCAST ? 'Watch my GifOS broadcast' : 'Join my GifOS meeting',
         text: BROADCAST && bcStartAt() > Date.now()
           ? 'Live ' + bcWhenWords(bcStartAt(), Date.now()) + '. Tap this link to watch:'
           : 'Tap this link and you’re in:',
@@ -35229,8 +34910,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             '<input id="inv-adm-room" maxlength="40" placeholder="' + esc(uiText('invRoomPh', 'Name this room')) + '" autocomplete="off" value="' + esc(room) + '">' +
             '<label class="lob-pwlab"><b>Host password</b><small>Only you. People who join do not need it.</small></label>' +
             '<input id="inv-adm-pass" type="password" maxlength="64" placeholder="' + esc(uiText('invAdminPh', 'Host password')) + '" autocomplete="new-password">' +
-            '<label class="lob-pwlab"><b>Guest password</b><small>Optional. It is not part of the link.</small></label>' +
-            '<input id="inv-adm-guest" type="password" maxlength="64" placeholder="' + esc(uiText('invGuestPh', 'Guest password (optional)')) + '" autocomplete="new-password">' +
+            '<label class="lob-pwlab"><b>Room password</b><small>Optional. It is not part of the link.</small></label>' +
+            '<input id="inv-adm-guest" type="password" maxlength="64" placeholder="' + esc(uiText('invGuestPh', 'Room password (optional)')) + '" autocomplete="new-password">' +
             (others ? '<label class="inv-check"><input type="checkbox" id="inv-adm-post" checked><span>Drop the new link in chat so they can follow.</span></label>' : '') +
             '<div class="appear-actions"><button id="inv-adm-back" type="button" class="appear-secondary">' + esc(uiText('invBack', 'Back')) + '</button><button id="inv-adm-go" type="button" class="appear-primary">' + esc(uiText('invGo', 'Create and switch')) + '</button></div>' +
           '</div>';
@@ -35419,14 +35100,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // (a few minutes long, renewed while this is the subscription's newest
     // meeting) rides the room's signed orders (sublic), and every door checks
     // it; a ticket that stops renewing stops counting when it runs out. On the $2
-    // plan, or when no valid plan is shown, a door whose room already holds
-    // 20 (the seats this seated door knows are taken now) holds a knocker and asks it to show
+    // plan a door whose room already holds
+    // 20 (the count below) holds a knocker and asks it to show
     // a subscription against a fresh challenge; a good answer lets it in at
     // once, none turns it away with a plain message. $5 and $10 rooms have no
     // limit. A room on the FREE plan (its admin holds no paid plan; Nathan
     // 2026-11-11) has a 5-person line: the 6th person without a subscription
     // is told "This room is full on the free plan", and the host is offered
-    // a one-tap upgrade to 20. An unread count lets people in, never out.
+    // a one-tap upgrade to 20. An admin room whose plan cannot be shown (none,
+    // run out, the host gone, moved to another meeting) is on that free line
+    // too (Nathan 2026-11-11); the room closes soon after its last admin
+    // leaves anyway. The line is only at entry. An unread count lets people in, never out.
     // THE COUNT IS THE DOOR'S GREETER LIST (Nathan 2026-11-11), read when a
     // newcomer comes in: the relay's list of the room's registered seats (the
     // door's own entry is left out of its replies, so the count is the list
@@ -35449,7 +35133,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!frame || !Array.isArray(frame.list) || frame.hold) return;
       subsListLen = frame.list.length; subsListAt = Date.now();
       const st = meshSeat(), held = Array.from(subsWaitList.keys());
-      if (held.length && st && st.answerDoor) { try { st.answerDoor(held); } catch (e) {} }   // the held knocks are judged on this list now
+      if (held.length && st && st.recheckDoor) { try { st.recheckDoor(held); } catch (e) {} }   // the held knocks are judged again on this list (never admitted by it)
     }
     // The count for knocker `id`: the greeter list plus this door, from a list
     // that came after the knocker did. Otherwise the door asks for a fresh one
@@ -35465,6 +35149,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       subsWaitList.delete(id);
       return subsListLen != null ? subsListLen + 1 : undefined;
     }
+    // THE PLAN IS UNKNOWN, not absent, to a door that has not yet heard the
+    // admin's signed orders (a door seated a moment ago) while the room may
+    // still have its admin. Reading that as "no plan" would hold a $5 room to
+    // the free line and turn a newcomer away; a held knock only waits. So such
+    // a door holds the knock, asks nothing, and judges it again when the orders
+    // arrive or when the room's plan check ends. Only the orders say so: who
+    // is admin is itself read from them, so a page that has not heard them sees
+    // "no admin" too, and its closing countdown is no evidence. Every member
+    // re-sends the admin's last signed orders, so a door seated after the admin
+    // left still hears them; a room whose admin never sent any closes anyway.
+    const subsPlanWait = new Set();
+    const subsPlanKnown = () => amAdmin || !!modWSeen;
+    function subsRejudge() {
+      if (!subsPlanWait.size || !subsPlanKnown() || (hasAdminRoom() && subsRoomTier() === undefined)) return;
+      const ids = Array.from(subsPlanWait); subsPlanWait.clear();
+      const st = meshSeat(); if (st && st.recheckDoor) { try { st.recheckDoor(ids); } catch (e) {} }   // judged again, never admitted
+    }
+    const subsWaitPlan = (id) => { subsPlanWait.add(id); if (subsPlanWait.size > 64) subsPlanWait.delete(subsPlanWait.values().next().value); return true; };
     // The room's plan, verified once per order: undefined while it is being
     // checked, null when none is valid. It is checked ahead of any knock (the
     // timer below), so a door does not meet its first knock with no answer.
@@ -35473,9 +35175,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const k = o ? String(o.at) + '|' + String(o.proof || '') : '';
       if (k !== subsTierKey) {
         subsTierKey = k; subsTier = o ? undefined : null; subsTierExp = 0;
-        if (o) GifOS.meetSubs.roomTier(o, subsMeetId()).then((t) => { if (subsTierKey === k) { subsTier = t ? t.tier : null; subsTierExp = t ? t.exp : 0; } }, () => { if (subsTierKey === k) subsTier = null; });
+        if (o) GifOS.meetSubs.roomTier(o, subsMeetId()).then((t) => { if (subsTierKey === k) { subsTier = t ? t.tier : null; subsTierExp = t ? t.exp : 0; try { subsRejudge(); } catch (e) {} } }, () => { if (subsTierKey === k) { subsTier = null; try { subsRejudge(); } catch (e) {} } });
       }
-      if (subsTier && Date.now() / 1000 >= subsTierExp) subsTier = null;   // the admin's ticket ran out: the room is back on the 20 line
+      if (subsTier && Date.now() / 1000 >= subsTierExp) subsTier = null;   // the admin's ticket ran out: no plan, the free line
       return subsTier;
     }
     async function subsPublishRoomPlan() {
@@ -35505,15 +35207,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     setInterval(() => { try { if (subsOn() && hasAdminRoom()) subsRoomTier(); } catch (e) {} }, 2000);
     function subsHolds(id) {
       if (!id || !subsOn() || !hasAdminRoom() || subsProven.has(id)) return false;
+      if (!subsPlanKnown()) return subsWaitPlan(id);   // the admin's orders have not reached this door yet: hold, ask nothing
       const tier = subsRoomTier();
       if (tier && GifOS.sub.doorVerdict({ adminRoom: true, roomTier: tier, count: 1e9 }) === 'let-in') return false;   // a room with no line counts nobody
       const count = subsRoomCount(id);
       if (count === 'wait') return true;   // the fresh list answers this knock (subsDoorSeen)
       subsWaitList.delete(id);
-      // While the room's plan is still being checked, a room below the 20 line
+      // While the room's plan is still being checked, a room below the free line
       // lets the knocker in; a room at it holds the knock until the plan is
       // known (the knocker asks again), and asks nothing yet.
-      if (tier === undefined) return GifOS.sub.doorVerdict({ adminRoom: true, roomTier: null, count }) !== 'let-in';
+      if (tier === undefined) return GifOS.sub.doorVerdict({ adminRoom: true, roomTier: null, count }) !== 'let-in' && subsWaitPlan(id);
       if (GifOS.sub.doorVerdict({ adminRoom: true, roomTier: tier, count }) === 'let-in') return false;
       const q = peers.get(id), a = subsAsked.get(id);
       if (q && q.dc && q.dc.readyState === 'open' && !(a && Date.now() - a.at < 2000)) {
@@ -35542,7 +35245,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function subsRefuse(p, asked) {
       if (!asked && !subsAsked.has(p.id)) return;   // only a knocker this door asked
       subsAsked.delete(p.id);
-      const free = subsTier === 'free';
+      const free = !(subsTier && GifOS.sub.isPaid(subsTier));   // the free line: the free plan or no plan
       try { dcSend(p, free ? { k: 'subfull', free: true } : { k: 'subfull' }); } catch (e) {}
       if (free) subsTellHost();
     }
@@ -35565,7 +35268,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function subsTurnedSaid(p, dc) {
       if (!dc || dc.__authBy !== p.id) return;   // an authenticated channel only
       const ms = meshSeat();
-      if (!subsOn() || !amAdmin || !hasAdminRoom() || !(ms && ms.state === 3) || subsRoomTier() !== 'free') return;
+      if (!subsOn() || !amAdmin || !hasAdminRoom() || !(ms && ms.state === 3) || (subsRoomTier() && subsRoomTier() !== 'free')) return;
       GifOS.meetSubs.showHostPrompt();
     }
     // The admin of an admin room without a paid plan gets the free plan's
@@ -35604,7 +35307,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const named = (typeof room === 'string' && room) ? room : (params.get('v') || '');
       if (!raw && named) {
         const avBit = (params.get('av') || '').toLowerCase();
-        raw = location.origin + location.pathname + '#v=' + encodeURIComponent(named) + (avBit ? '&av=' + avBit : '') + (BROADCAST ? '&bc=1' : '') + (BROADCAST && params.has('st') ? '&st=1' : '');
+        raw = location.origin + location.pathname + '#v=' + encodeURIComponent(named) + (avBit ? '&av=' + avBit : '') + (BROADCAST ? '&bc=1' : '');
       }
       if (!raw) return '';
       const dropKeys = ['pw', 'password', 'guest', 'vpw', 'guestpw', 'pass'];
@@ -35619,15 +35322,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }
         raw = u.toString();
       } catch (e) {}
-      // The start time and the Visit link ride the viewer link.
+      // The start time rides the viewer link.
       try {
         const u = new URL(raw, location.origin);
         const at = BROADCAST ? String(params.get('at') || '') : '';
-        const visit = bcVisit() ? bcVisit().href : '';
         const h = new URLSearchParams(u.hash.replace(/^#/, ''));
         const put = (sp, k, val) => { if (val) sp.set(k, val); else sp.delete(k); };
-        if (h.has('v')) { put(h, 'at', at); put(h, 'visit', visit); u.hash = h.toString(); }
-        else { put(u.searchParams, 'at', at); put(u.searchParams, 'visit', visit); }
+        if (h.has('v')) { put(h, 'at', at); u.hash = h.toString(); }
+        else { put(u.searchParams, 'at', at); }
         raw = u.toString();
       } catch (e) {}
       const secrets = [];
@@ -35655,7 +35357,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       bcCalFor = at + link;
       const stamp = (ms) => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
       const esc = (s) => String(s).replace(/([\\;,])/g, '\\$1').replace(/\n/g, '\\n');
-      const noun = params.has('st') ? 'stream' : 'broadcast';
+      const noun = 'broadcast';
       const name = String(params.get('v') || '').trim();
       const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//GifOS//Broadcast//EN', 'BEGIN:VEVENT',
         'UID:' + at + '-' + name.replace(/[^a-z0-9]/gi, '') + '@gifos.app', 'DTSTAMP:' + stamp(Date.now()),
@@ -35668,43 +35370,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       bcCalUrl = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
       a.href = bcCalUrl;
       a.download = (name || noun).replace(/[^\w.-]+/g, '-') + '.ics';
-    }
-    // A viewer gets Visit when the link carries the host's site: on the
-    // picture while the service is on, and under the sentence on the screen
-    // that says it has not started or has ended.
-    function paintBcVisit(viewer, quiet) {
-      const a = document.getElementById('bc-visit');
-      if (!a) return;
-      const g = viewer ? bcVisit() : null;
-      a.hidden = !g;
-      if (!g) return;
-      if (a.getAttribute('href') !== g.href) a.setAttribute('href', g.href);
-      const label = 'Visit ' + g.site + ' (opens in a new window)';
-      if (a.getAttribute('aria-label') !== label) { a.setAttribute('aria-label', label); a.title = label; }
-      const ended = document.getElementById('bc-ended');
-      const home = quiet && ended ? ended : document.getElementById('feed');
-      if (home && a.parentElement !== home) home.appendChild(a);
-      placeBcVisit();
-    }
-    function placeBcVisit() {
-      const a = document.getElementById('bc-visit');
-      const fit = document.getElementById('fitbtn');
-      if (!a || a.hidden) return;
-      let left = false;
-      if (!a.closest('#bc-ended') && fit && fit.getClientRects().length) { // Fit is fixed: no offsetParent
-        a.classList.remove('left');
-        const r = a.getBoundingClientRect(), f = fit.getBoundingClientRect();
-        left = r.left < f.right && f.left < r.right && r.top < f.bottom && f.top < r.bottom;
-      }
-      a.classList.toggle('left', left);
-    }
-    // A text size or a rotation moves Fit and Visit at once; place it again
-    // then, not on the next status beat.
-    if (window.ResizeObserver && BROADCAST) {
-      try {
-        const ro = new ResizeObserver(() => { try { placeBcVisit(); } catch (e) {} });
-        ['bc-visit', 'fitbtn'].forEach((id) => { const el = document.getElementById(id); if (el) ro.observe(el); });
-      } catch (e) {}
     }
     // The host's start time. The phone's own picker gives local time; the
     // link carries it as unix seconds, so every viewer reads it in theirs.
@@ -35728,37 +35393,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         try { updateStatus(); } catch (e) {}
       };
       paintBcWhen();
-    }
-    // The host's Visit link. It stays on the host's phone for this room and
-    // rides every viewer link from Invite.
-    const bcRdIn = document.getElementById('bcrd');
-    if (bcRdIn && BROADCAST) {
-      bcRdIn.value = rundownTpl();
-      bcRdIn.onchange = () => {
-        try { localStorage.setItem(rundownTplKey(), bcRdIn.value === 'service' ? 'service' : 'none'); } catch (e) {}
-        if (bcRdIn.value === 'service') { setRundownAt(0); setLyricAt(0); }
-        paintRundown();
-      };
-    }
-    const bcVisitIn = document.getElementById('bcvisit');
-    function paintBcVisitField() {
-      const lbl = document.getElementById('bcvisit-lbl');
-      const g = bcVisit();
-      if (lbl) lbl.textContent = g ? 'Visit link · ' + g.site : (bcVisitIn && bcVisitIn.value.trim() ? 'Visit link must start with https://' : 'Visit link');
-      if (bcVisitIn && g && document.activeElement !== bcVisitIn && !bcVisitIn.value) bcVisitIn.value = g.href;
-    }
-    if (bcVisitIn && BROADCAST) {
-      bcVisitIn.onchange = () => {
-        const g = bcVisitCheck(bcVisitIn.value);
-        if (g) params.set('visit', g.href); else params.delete('visit');
-        try {
-          g ? localStorage.setItem(BC_VISIT_KEY, g.href) : localStorage.removeItem(BC_VISIT_KEY);
-          localStorage.removeItem(BC_VISIT_KEY.replace('_bcvisit_', '_bcgive_'));
-        } catch (e) {}
-        paintBcVisitField();
-        try { updateStatus(); } catch (e) {}
-      };
-      paintBcVisitField();
     }
     document.getElementById('copy').onclick = () => {
       shareUrl.select(); try { document.execCommand('copy'); } catch (e) {}

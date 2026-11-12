@@ -48,16 +48,39 @@
 .dlg-actions button { min-height: 44px; border-radius: var(--r-md); font-weight: 600; }
 
 /* ---- the join screen -------------------------------------------------------------------------------------------
-   One primary action (Start a call, the blue button). The other doors (Host this call, Join a link, Start a town
-   hall, Stream to friends) are quiet secondary buttons, not underlined web links: same 44px reach, same corner as
+   One primary action (Start a call, the blue button). The other doors (Host a call, Join a link) are quiet secondary buttons, not underlined web links: same 44px reach, same corner as
    every other button, ink words on a light fill. */
-#lobby.show #lob-admin-btn.lob-link, #lobby.show #lob-join-btn.lob-link,
-#lobby.show #lob-th-btn.lob-link, #lobby.show #lob-stream.lob-link {
+#lobby.show #lob-admin-btn.lob-link, #lobby.show #lob-join-btn.lob-link {
   background: var(--c-paper); color: var(--c-ink); text-decoration: none; font-weight: 600;
   border-radius: var(--r-md); margin: 0 0 8px; }
 @media (hover: hover) {
-  #lobby.show :is(#lob-admin-btn, #lob-join-btn, #lob-th-btn, #lob-stream).lob-link:hover { background: var(--c-line); }
+  #lobby.show :is(#lob-admin-btn, #lob-join-btn).lob-link:hover { background: var(--c-line); }
 }
+/* ---- the Broadcast lobby -----------------------------------------------------------------------------------------
+   Two questions and go: who can watch (two plain choices) and now or later (Go live now, or Schedule with one time
+   field). The host password is minted on this device and sits behind More with Watch a link. */
+#lob-bc[hidden], #lob-bc-when[hidden], #lob-bc-sched[hidden] { display: none !important; }
+#lob-bc { display: flex; flex-direction: column; gap: 8px; margin: 8px 0 0; }
+.lob-bc-who { display: flex; flex-direction: column; gap: 4px; }
+.lob-bc-who > b { font-weight: 600; }
+.lob-bc-opt { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 4px 8px; border-radius: var(--r-md); cursor: pointer; }
+.lob-bc-opt input { width: 20px; height: 20px; margin: 0; flex: 0 0 auto; accent-color: var(--c-blue); }
+.lob-bc-opt small { display: block; color: var(--c-gray); }
+.lob-bc-when { display: flex; align-items: center; gap: 12px; }
+.lob-bc-when input { flex: 1 1 auto; min-height: 44px; }
+#lobby.service-ready #lob-bc { order: 2; }
+#lobby.service-ready #lob-guest-more { display: none !important; }
+#lobby.service-ready.bc-pw:not(.desk-more) #lob-guest-extra { display: block !important; order: 3; }
+#lobby.service-ready #lob-bc-sched { flex: 0 0 auto; }
+@media (max-width: 700px) and (min-height: 421px) {
+  #lobby.form-open.service-ready #lob-bc,
+  #lobby.form-open.service-ready.bc-pw:not(.desk-more) #lob-guest-extra {
+    pointer-events: auto; color: var(--c-white); background: var(--c-scrim); border-radius: var(--r-lg); padding: 8px 12px; margin: 0; }
+  #lobby.form-open.service-ready .lob-pwlab, #lobby.form-open.service-ready .lob-pwlab b { color: var(--c-white); }
+  #lobby.form-open.service-ready .lob-pwlab small { color: var(--c-gray); }
+}
+/* A broadcast is not a meeting: no votes, no apps, no waiting room. */
+body.broadcast #votebtn, body.broadcast #appbtn, body.broadcast #waitbtn { display: none !important; }
 
 /* ---- round 3: the clean read -----------------------------------------------------------------------------------
    Content is the biggest thing and chrome sits quietly on it. The bar is a row of equal slots: a white outline icon

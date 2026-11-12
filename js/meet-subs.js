@@ -20,10 +20,11 @@
  *     Payment is checked when a meeting is joined; a meeting that started
  *     paid keeps the subscription to its end.
  *   - The admin's ticket travels with the room (a signed room order), so the
- *     door knows the room's plan. In a room on the $2 plan (or one whose plan
- *     cannot be shown) that already holds 20 people, the door asks a newcomer
- *     to show a ticket for this meeting; without one they are told plainly
- *     and not let in. Rooms on the $5 and $10 plans have no limit.
+ *     door knows the room's plan. In a room on the $2 plan that already
+ *     holds 20 people (5 on the free plan, or when the room's plan cannot be
+ *     shown), the door asks a newcomer to show a ticket for this meeting;
+ *     without one they are told plainly and not let in. Rooms on the $5 and
+ *     $10 plans have no limit, and open rooms never have one.
  *
  * The subscription is a FILE: a GifOS GIF that provides the meeting
  * subscription (keep it in the Providers folder, or open it here in another
