@@ -325,6 +325,7 @@
     ["l25By", "i32"],   // int = -1  (line 1195)
     ["l25At", "i32"],   // int = -100000  (line 1195)
     ["l25Ck", "u64"],   // uint64_t = 0  (line 1195)
+    ["l25ByWord", "bool"],   // bool = false  (line 1195)
     ["l258Rep", "bool"],   // bool = false  (line 1195)
     ["l25ONc", "i32"],   // int = -1  (line 1195)
     ["l25OBy", "i32"],   // int = -1  (line 1195)
@@ -1044,6 +1045,7 @@
     l25By: -1,
     l25At: -100000,
     l25Ck: 0,
+    l25ByWord: false,
     l258Rep: false,
     l25ONc: -1,
     l25OBy: -1,

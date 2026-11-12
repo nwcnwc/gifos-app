@@ -25,7 +25,7 @@
       let rook = false; const ol = ownedLinks(this.coord); const n = ol.length; for (let k = 0; k < n && !rook; k++) if (this.occGet(ckey(ol[k])) === by) rook = true;
       if (!rook) return false;
       this.trace('L39.1-ASK', this.id, this.coord, 'by=%d rival=%d', by, m.nc);
-      this.l25Ask(m, by); return true;
+      this.l25Ask(m, by, true); return true;
     },
 
     // L39.4: a word I gave a healer holds the cell from my densify.
