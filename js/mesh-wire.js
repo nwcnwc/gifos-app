@@ -161,9 +161,12 @@
   function createMeshNode(opts) {
     const tickMs = opts.tickMs || 500;
     const myKey = net.mintGenesisKey();
-    // The relay's genesis key: the seat's genKey (u32) once it has one, else its own key. A founder mints
-    // genKey = myKey, so its knock and its later registrations present one string.
-    const gkStr = () => (raw ? 'g' + ((raw.genKey || raw.myKey) >>> 0).toString(16) : myKey);
+    // The relay's genesis key: the seat's genKey (u32) once it has one, else the key it knocks with, its linkKey, as the
+    // sim's emitRelay(linkKey) presents it (the meeting key under island mode, its own key otherwise). A founder takes
+    // genKey = linkKey (recv-entry genesis), so its knock and its later registrations present one string. Presenting
+    // myKey here while the founder registered under linkKey (= URL_KEY in island mode) made the relay refuse every
+    // registration of the room's first seat until its genesis lapsed: the second joiner heard no greeter for ~60 s.
+    const gkStr = () => (raw ? 'g' + ((raw.genKey || raw.linkKey || raw.myKey) >>> 0).toString(16) : myKey);
     const dropDeep = opts.dropDeepSocket !== false;
     const ident = GifOS.meshIdentity || null;
     let stopped = false, lockedFired = false, doorFired = false, strandedFired = false, rejFired = false;
