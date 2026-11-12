@@ -27324,7 +27324,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             roomPack.delTile('p');
             for (let j = 0; j < C; j++) {
               const fp0 = j === c.i ? myId : (actHead && j === 0 ? null : occPid({ pc: c.pc, r: c.r, i: j }));
-              const fp = fp0 && stagers.includes(fp0) ? null : fp0; // a stager's voice rides the Stage feed, a share from the Row included
+              const fp = fp0 && stagers.includes(fp0) ? null : fp0;
               const sc = fp ? srcFor(fp) : null;
               if (sc && sc.el) roomPack.setTile('f' + j, 'c' + c.r + 'a' + j, sc.el, null, { n: 1, cols: 1, lbl: stadLbl(fp), fit: fitFor(fp), pid: fp });
               else roomPack.delTile('f' + j);
@@ -27367,7 +27367,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           else if (dn && dn.stream && !dn.deadAt && !((mosFb.get('sdn') || {}).dark)) outA.set('dn', dn.stream);
           for (let j = 0; j < C; j++) {
             const fp0 = j === c.i ? myId : (actHead && j === 0 ? null : occPid({ pc: c.pc, r: c.r, i: j }));
-            const fp = fp0 && stagers.includes(fp0) ? null : fp0; // a stager's voice rides the Stage feed, a share from the Row included
+            const fp = fp0 && stagers.includes(fp0) ? null : fp0;
             const sc = fp ? srcFor(fp) : null;
             if (sc && sc.stream) rowA.set('f' + j, sc.stream);
             const sub = mosIn.get('sub:' + j); if (sub && sub.stream) subA.set('s' + j, sub.stream);
@@ -27457,7 +27457,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           for (const h of l14Heads) { const rel = mosIn.get('sdxu:' + h); if (!rel || !rel.stream) continue; relDirect.add(h); const jr = shipMos('sdn', h, rel.stream, blockMeta(rel), 'sdxu:' + h); if (jr) wanted.add(jr); }
           l14Down((pk, h) => {
             // no pack from my head for this branch yet: my row's faces, packed here
-            for (let j = 0; j < C; j++) { const fp0 = j === c.i ? myId : occPid({ pc: c.pc, r: c.r, i: j }); const fp = fp0 && stagers.includes(fp0) ? null : fp0; // a stager's voice rides the Stage feed, a share from the Row included const sc = fp ? srcFor(fp) : null; if (sc && sc.el) pk.setTile('f' + j, 10 + j, sc.el, sc.stream, { n: 1, cols: 1, lbl: stadLbl(fp), fit: fitFor(fp), pid: fp }); else pk.delTile('f' + j); }
+            for (let j = 0; j < C; j++) { const fp0 = j === c.i ? myId : occPid({ pc: c.pc, r: c.r, i: j }); const fp = fp0 && stagers.includes(fp0) ? null : fp0; const sc = fp ? srcFor(fp) : null; if (sc && sc.el) pk.setTile('f' + j, 10 + j, sc.el, sc.stream, { n: 1, cols: 1, lbl: stadLbl(fp), fit: fitFor(fp), pid: fp }); else pk.delTile('f' + j); }
           }, packMetaM, relDirect);
         } else l14Down(null);
         const subraw = mosIn.get('subraw');
