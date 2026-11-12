@@ -503,7 +503,18 @@
   // query, so #id= is the only form that survives a version redirect.
   var p=new URLSearchParams((location.hash||'').replace(/^#/,''));
   if(p.get('id'))document.documentElement.classList.add('solo-app');
+  // THE LOBBY ENTRY, decided by the same rule as the boot dispatch far below
+  // (no session frame, no app, no room): the page will show the lobby and
+  // nothing else. The meeting starts only after every deferred script has run
+  // (and, in a translated language, after its catalog), which on a phone link
+  // is seconds; the room's markup is visible by default, so without this the
+  // person stared at an empty call with its control bar until the lobby came.
+  // The lobby's own sheet goes up now instead, empty, in the lobby's colour,
+  // over the room (it already sits above every piece of it), and showLobby()
+  // fills it. Nothing else changes: .show restyles the same element.
+  else if(window.__gifosMb!=='1'&&p.get('mb')!=='1'&&!(p.get('s')&&p.get('k'))&&!p.get('j')&&!p.get('v')&&!p.get('app'))document.documentElement.classList.add('lobby-entry');
 }catch(e){}})();</script>
+<style id="lobby-entry">html.lobby-entry #lobby:not(.show){display:block}html.lobby-entry #lobby:not(.show)>*{visibility:hidden}</style>
 <script>(function(){var h=document.documentElement;h.className+=(h.className?' ':'')+'gifos-booting';var shown=0;
 function show(){if(shown)return;shown=1;h.classList.remove('gifos-booting');
 try{var bg=h.style.getPropertyValue('--bg');var m=document.querySelector('meta[name=theme-color]');if(bg&&m)m.setAttribute('content',bg.trim());}catch(e){}}
