@@ -712,11 +712,25 @@
       if (busyUi.cancelled()) throw new Error(GifOS.charge.DECLINED);
       busyUi.say('Settling on ' + chainName() + '…');
       const settleBody = { proof, sku: sheetData.sku || null, amount: String(amount), transfers, payloads };
-      const r = await fetch(base + '/x402/settle', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settleBody),
-      });
-      if (!r.ok) throw new Error('settlement failed (HTTP ' + r.status + '): ' + (await r.text()).slice(0, 200));
+      // A half-settled payment (the fee leg moved, the author leg did not) is
+      // finished by sending the SAME body again: the Worker resumes at the
+      // author leg once the chain shows this body's fee leg moved. Nothing
+      // is signed again and nothing can move twice (each nonce spends once).
+      const T = GifOS.timings || {};
+      let r = null, text = '';
+      for (let t = 0; ; t++) {
+        r = await fetch(base + '/x402/settle', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(settleBody),
+        });
+        if (r.ok) break;
+        text = await r.text();
+        let resume = false; try { resume = JSON.parse(text).resume === true; } catch (e) {}
+        if (!resume || t + 1 >= (T.X402_RESUME_TRIES || 3)) break;
+        busyUi.say('Finishing the payment on ' + chainName() + '…');
+        await new Promise((res) => setTimeout(res, T.X402_RESUME_MS || 6000));
+      }
+      if (!r.ok) throw new Error('settlement failed (HTTP ' + r.status + '): ' + text.slice(0, 200));
       const body = await r.json(); // { status, receiptJson, sig }
       if (body.status !== 'COMPLETED' || !body.receiptJson || !body.sig) throw new Error('settlement did not complete');
       const receipt = await verifyReceipt(body.receiptJson, body.sig);
