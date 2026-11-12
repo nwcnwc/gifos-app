@@ -13208,14 +13208,23 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         } else if (!busy && bel) bel.remove();
         let el = p.tile.querySelector(':scope > .tpause:not(.tpause-busy)');
         if (show && !el) {
+          // VIDEO IS PAUSED: the named state's sentence (meet-status videoPausedRelay) over the dark tile, and one
+          // tap to subscribe ($2 monthly, PayPal). A subscription's vouch turns this link's video on where it is:
+          // the next paint finds the link carrying video and takes the note away.
           el = document.createElement('div'); el.className = 'tpause'; el.setAttribute('role', 'note');
-          const t = document.createElement('span');
-          t.textContent = uiText('turnPaused', 'Video is paused: this person connects through our relay. Subscribe to turn on video for this meeting.');
-          el.appendChild(t);
+          const t = document.createElement('span'); t.className = 'tpause-say';
+          const said = statusWords('videoPausedRelay');
+          t.textContent = said; el.appendChild(t);
           if (subsOn()) {
             const b = document.createElement('button'); b.type = 'button'; b.className = 'tpause-sub';
             b.textContent = uiText('turnSubscribe', 'Subscribe');
-            b.addEventListener('click', (e) => { e.stopPropagation(); try { GifOS.meetSubs.openSettings(); } catch (x) {} });
+            b.addEventListener('click', async (e) => {
+              e.stopPropagation(); b.disabled = true;
+              try {
+                const r = await GifOS.meetSubs.subscribe('room20', 'monthly', (w) => { t.textContent = w; });
+                if (!(r && r.licenseJson)) { t.textContent = said; b.disabled = false; }
+              } catch (x) { t.textContent = said; b.disabled = false; }
+            });
             el.appendChild(b);
           }
           p.tile.appendChild(el);
@@ -16687,6 +16696,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         onDoor: (kind, frame) => {
           if (kind === 'seated') {
             meetWait.waiting(false);
+            subsDoorSeen(frame);
           }
         },
         sendDC: meshSendDC,
@@ -32173,7 +32183,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       lab.className = 'rec-opt';
       lab.innerHTML = '<input type="checkbox" id="rec-tolib" checked><span><b></b><small></small></span>';
       lab.querySelector('b').textContent = uiText('recToLib', 'Save to my GifOS library');
-      lab.querySelector('small').textContent = uiText('recToLibHelp', 'Uploaded to your private library when the recording stops, with the transcript. Only you can see it until you share it.');
+      lab.querySelector('small').textContent = uiText('recToLibHelp', 'Encrypted in this browser and uploaded to your library when the recording stops, with the transcript. Only you can open it, unless you share it.');
       slot.appendChild(lab);
       const note = bg.querySelector('.rec-note');
       const devText = note ? note.textContent : '';
@@ -35416,26 +35426,44 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // limit. A room on the FREE plan (its admin holds no paid plan; Nathan
     // 2026-11-11) has a 5-person line: the 6th person without a subscription
     // is told "This room is full on the free plan", and the host is offered
-    // a one-tap upgrade to 20. An unread count lets people in, never out. The count is never
-    // the door's greeter list: a door gets that list only when it knocks
-    // itself, so it holds the room as it was when that door came in.
+    // a one-tap upgrade to 20. An unread count lets people in, never out.
+    // THE COUNT IS THE DOOR'S GREETER LIST (Nathan 2026-11-11), read when a
+    // newcomer comes in: the relay's list of the room's registered seats (the
+    // door's own entry is left out of its replies, so the count is the list
+    // plus the door). A list from before this knocker came is the room as it
+    // was then, so the door asks the relay again and holds the knock until
+    // the fresh list answers; a list's length is what everyone at that door
+    // reads, not one seat's view of the room.
     let subsTurnedAway = false, subsTierKey = '', subsTier = null, subsTierExp = 0;
     const subsProven = new Set(), subsAsked = new Map();   // knocker -> {n, at}
     const subsOn = () => !!(window.GifOS && GifOS.meetSubs && GifOS.sub && GifOS.meetSubs.enabled());
     // The meeting a subscription ticket names: the room's relay session (a one-way hash of the room code), the same
     // room the relay's TURN vouches name, so the TURN Worker can check a paid ask's ticket against its vouches.
     const subsMeetId = () => sessId || roomKey();
-    // The people already seated: this door's seats (live, the count's own
-    // liveness rule), or past one section the room's fold. People still being
-    // brought in (a burst of knockers with open channels) are not counted.
-    function subsRoomCount() {
+    // The door's greeter list: its length and when it came (every greeters
+    // reply, a relay restart's empty hold excepted), and the knockers held for
+    // a fresh one (knocker -> when this door first counted for it).
+    let subsListLen = null, subsListAt = 0;
+    const subsWaitList = new Map();
+    function subsDoorSeen(frame) {
+      if (!frame || !Array.isArray(frame.list) || frame.hold) return;
+      subsListLen = frame.list.length; subsListAt = Date.now();
+      const st = meshSeat(), held = Array.from(subsWaitList.keys());
+      if (held.length && st && st.answerDoor) { try { st.answerDoor(held); } catch (e) {} }   // the held knocks are judged on this list now
+    }
+    // The count for knocker `id`: the greeter list plus this door, from a list
+    // that came after the knocker did. Otherwise the door asks for a fresh one
+    // and answers 'wait'. undefined when there is no list to read (not seated,
+    // not a greeter): an unread count lets people in.
+    function subsRoomCount(id) {
       const ms = meshSeat();
       if (!ms || ms.state !== 3) return undefined;
-      try {
-        let n = knownTotal(true);
-        if (roomPastSection()) { const d = roomDig(); if (d && Number.isFinite(d.n)) n = Math.max(n, d.n); }
-        return Number.isFinite(n) && n > 0 ? n : undefined;
-      } catch (e) { return undefined; }
+      if (!subsWaitList.has(id)) { subsWaitList.set(id, Date.now()); if (subsWaitList.size > 64) subsWaitList.delete(subsWaitList.keys().next().value); }
+      if (subsListLen != null && subsListAt >= subsWaitList.get(id)) return subsListLen + 1;
+      let asked = false; try { asked = !!(meshNode && meshNode.recountDoor && meshNode.recountDoor()); } catch (e) {}
+      if (asked) return 'wait';
+      subsWaitList.delete(id);
+      return subsListLen != null ? subsListLen + 1 : undefined;
     }
     // The room's plan, verified once per order: undefined while it is being
     // checked, null when none is valid. It is checked ahead of any knock (the
@@ -35478,7 +35506,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function subsHolds(id) {
       if (!id || !subsOn() || !hasAdminRoom() || subsProven.has(id)) return false;
       const tier = subsRoomTier();
-      const count = subsRoomCount();
+      if (tier && GifOS.sub.doorVerdict({ adminRoom: true, roomTier: tier, count: 1e9 }) === 'let-in') return false;   // a room with no line counts nobody
+      const count = subsRoomCount(id);
+      if (count === 'wait') return true;   // the fresh list answers this knock (subsDoorSeen)
+      subsWaitList.delete(id);
       // While the room's plan is still being checked, a room below the 20 line
       // lets the knocker in; a room at it holds the knock until the plan is
       // known (the knocker asks again), and asks nothing yet.

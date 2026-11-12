@@ -758,7 +758,7 @@
   "meet.viewFollow": "Dem Sprecher folgen",
   "meet.viewPresent": "Präsentieren",
   "meet.recToLib": "In meiner GifOS-Bibliothek speichern",
-  "meet.recToLibHelp": "Wird nach dem Ende der Aufnahme mit dem Transkript in deine private Bibliothek hochgeladen. Nur du siehst sie, bis du sie teilst.",
+  "meet.recToLibHelp": "Wird in diesem Browser verschlüsselt und nach dem Ende der Aufnahme mit dem Transkript in deine Bibliothek hochgeladen. Nur du kannst sie öffnen, außer du teilst sie.",
   "meet.recNoteLib": "Wird in deiner GifOS-Bibliothek gespeichert. Alle hier sehen, dass dieses Meeting aufgenommen wird.",
   "meet.recLibUpsell": "Mit Streamer-Abo kannst du Aufnahmen in deiner GifOS-Bibliothek speichern.",
   "meet.stLibSaving": "Wird in Meine Bibliothek gespeichert…",
@@ -820,5 +820,7 @@
   "meet.agAddItem": "Punkt hinzufügen",
   "meet.agWhoEdits": "Wer noch bearbeiten darf",
   "meet.agStop": "Agenda nicht mehr teilen",
-  "meet.shareStageFull": "Die Bühne ist voll. Jemand muss zuerst heruntergehen."
+  "meet.shareStageFull": "Die Bühne ist voll. Jemand muss zuerst heruntergehen.",
+  "meet.sttVideoPausedRelay": "Das Video ist auf dieser Verbindung pausiert. Der Ton funktioniert weiter. Ein Abonnent im Meeting kann das Video einschalten.",
+  "meet.turnSubscribe": "Abonnieren"
 }

@@ -183,6 +183,7 @@
     let lastRegAt = 0;     // last time we sent a greeter registration
     let doorAheadN = 0;    // blobs in my latest door reply that no key of mine (current or replaced) opens (doorAhead)
     let regPendingAt = 0;  // a registration awaiting its greeters reply (zombie detector)
+    let recountOut = false; // a door count asked for (node.recountDoor) and not answered yet: one ask at a time
     // SHRANK-TO-SOLO (the 2-person fork fix, 2026-07-29): a room that WAS
     // populated and collapsed to one is a fragment SUSPECT the moment it
     // happens — a fresh founder is legitimately alone, but nobody legitimately
@@ -691,6 +692,7 @@
         lastRelayRx = Date.now();
         let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
         if (m.t === 'greeters') {
+          recountOut = false;
           if (lockedFired && !(seat && seat.state === 3)) return;   // a bad password is the lock prompt: an empty list here would mint a founder
           onGreeters(m);
           if (opts.onDoor) { try { opts.onDoor('seated', m); } catch (e) {} }
@@ -1225,6 +1227,14 @@
         return n;
       },
       _signGossipForTest(f) { return (identity && ident.signGossip) ? ident.signGossip(identity, f) : Promise.resolve(''); },   // TEST ONLY — my own signature on a frame I hold back
+      // THE DOOR'S COUNT (run.html subscriptions): a seated greeter asks the relay for the greeter list NOW, by
+      // registering again; the reply is the usual greeters frame (opts.onDoor). One ask at a time, and only a
+      // knocker arriving starts one, so it adds one relay frame per newcomer. false: not a greeter, no list to ask for.
+      recountDoor() {
+        if (stopped || !seat || !iAmAGreeter()) return false;
+        if (!recountOut) { recountOut = true; lastRegAt = regPendingAt = Date.now(); REGISTER_MYSELF_AS_A_GREETER(gkStr()); greeterTrace.push({ t: Date.now(), tick: env.TICK, state: seat.state, post: seat.state, listLen: -1, open: -1, founded: false, action: 're-register:door-count' }); if (greeterTrace.length > GREETER_TRACE_CAP) greeterTrace.shift(); }
+        return true;
+      },
       socketed() { return !raw || raw.socketed(); },   // the seat's own word: am I at the door (a joiner, a greeter, a seat that knocked)
       setRefuses(b) { if (layer) layer.setRefuses(b); },
       roomDigest() { return (layer && env.DIGEST !== false) ? layer.roomDigest() : null; },   // the display fold beside the seat (layer.js leaf)
