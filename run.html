@@ -25305,7 +25305,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function mosResolve(key, meta, from) {
       const c = meshCoord(); if (!c) return null;
-      { const t = mosCarried(key); if (t) { const q = peers.get(t.to); return t.to !== myId && t.to !== from && q && q.connected && !mosCarried(t.key) ? key : null; } }   // TURN.14.8: a ship I carry across the cut
+      if (key.indexOf('tc:') === 0) { const t = typeof mosCarried === 'function' ? mosCarried(key) : null; if (!t) return null; { const q = peers.get(t.to); return t.to !== myId && t.to !== from && q && q.connected && !mosCarried(t.key) ? key : null; } }   // TURN.14.8: a ship I carry across the cut
       const iAmHead = c.i === 0 || actingHead(); // L2.7: the heir stands in for a gone head
       if (key === 'sub') {
         if (meta && meta.l14) return 'subu:' + String(meta.via || from).slice(0, 64); // L14: a cut-off branch's product over its uplink (or relayed by my row-mate)
