@@ -972,12 +972,18 @@
     ["cutHeardAt", "i32"],   // int = -1  (line 2044)
     ["cutNone", "{i32:i32}"],   // OMap<int,int>  (line 2044)
     ["cutWit", "{i32:i32}"],   // OMap<int,int>  (line 2044)
-    ["l1731Vouch", "{i32:i32}"],   // OMap<int,int>  (line 2047)
-    ["l152Bye", "{i32:(u64,i32)}"],   // OMap<int,pair<uint64_t,int>>  (line 2048)
-    ["vacOut", "{u64:(i32,i32)}"],   // OMap<uint64_t,pair<int,int>>  (line 2052)
-    ["vacIn", "{u64:(i32,i32)}"],   // OMap<uint64_t,pair<int,int>>  (line 2053)
-    ["fhdIn", "{u64:(i32,i32)}"],   // OMap<uint64_t,pair<int,int>>  (line 2054)
-    ["vacSeen", "{u64:(i32,i32)}"],   // OMap<uint64_t,pair<int,int>>  (line 2055)
+    ["l853From", "i32"],   // int = -1  (line 2045)
+    ["l853Ring", "i32"],   // int = -1  (line 2045)
+    ["l853Ep", "i32"],   // int = -1  (line 2045)
+    ["l853At", "i32"],   // int = -1  (line 2045)
+    ["l853KnockAt", "i32"],   // int = -1000000  (line 2045)
+    ["l853Via", "i32"],   // int = -1  (line 2045)
+    ["l1731Vouch", "{i32:i32}"],   // OMap<int,int>  (line 2048)
+    ["l152Bye", "{i32:(u64,i32)}"],   // OMap<int,pair<uint64_t,int>>  (line 2049)
+    ["vacOut", "{u64:(i32,i32)}"],   // OMap<uint64_t,pair<int,int>>  (line 2053)
+    ["vacIn", "{u64:(i32,i32)}"],   // OMap<uint64_t,pair<int,int>>  (line 2054)
+    ["fhdIn", "{u64:(i32,i32)}"],   // OMap<uint64_t,pair<int,int>>  (line 2055)
+    ["vacSeen", "{u64:(i32,i32)}"],   // OMap<uint64_t,pair<int,int>>  (line 2056)
   ];
 
   // Seat members with a default other than the type's zero.
@@ -1492,6 +1498,12 @@
     linkKey: 0,
     cutAt: -1,
     cutHeardAt: -1,
+    l853From: -1,
+    l853Ring: -1,
+    l853Ep: -1,
+    l853At: -1,
+    l853KnockAt: -1000000,
+    l853Via: -1,
   };
 
   // Static members (shared by every seat): C++ static const / constexpr inside struct Seat.

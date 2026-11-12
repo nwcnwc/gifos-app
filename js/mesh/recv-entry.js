@@ -54,12 +54,13 @@
       for (const g of m.list) this.dials.heard(g);   // L17
       this.lastGreeters = m.list.slice(); this.lastGreetersAt = m.listAt.slice(); this.greetersAt = TICK;
       if (this.foundKnock && this.state === 3) { this.foundKnock = false; const un = this.l813Unfound(m); this.islandAsked.clear(); this.entEp.clear(); if (un) return; }   // L8.1.3 (mesh_roomterm.inc)
+      if (this.state === 3) this.l853Door();   // L8.53.3 (mesh_island.inc): the door's second word for a vouch I hold
       if (m.tag === 1) { const st = this.l3117Stray(m.list); if (st === 2) return; if (st === 0) this.keyAsk(m.list); }   // L3.11.7 (C++: onGreeters)   // L3.11.6: the door refused my registration (C++: onGreeters)
       if (this.state === 0 && this.entryTerm()) { this.islandAsk(m.list); return; }   // L8.2
       if (this.state === 0) {
         let g = m.list[Math.floor(this.rng() * m.list.length)];
         { const via = this.w.L31_VIA; const dv = via ? via.get(id) : undefined; if (dv !== undefined && m.list.includes(dv)) g = dv; }
-        { const tp = this.f.fabricTurnPeerIn(id, m.list); if (tp >= 0) g = tp; else { const fv = this.t161Pick(m.list); if (fv >= 0) g = fv; } }   /* TURN.16 (mesh_turn.inc): my TURN link's peer first; TURN.16.1: else the mate I followed */
+        { const tp = this.f.fabricTurnPeerIn(id, m.list); if (tp >= 0) g = tp; else { const fv = this.t161Pick(m.list); if (fv >= 0) g = fv; else { const dv = this.l853Pick(m.list); if (dv >= 0) g = dv; } } }   /* L8.53.4 */   /* TURN.16 (mesh_turn.inc): my TURN link's peer first; TURN.16.1: else the mate I followed */
         this.gateway = g; this.entNote(g); if (this.f.fabricDoors()) this.l16AskOne(g);
         const w = newMsg('WHOHOME'); w.from = id; w.ttl = 60; if (!this.oldCell && !islandStand(this, E.IS_L31)) w.l31 = 1; this.emit(g, w); this.state = 1; this.retryAt = TICK;
       }
@@ -83,7 +84,7 @@
           { let reach = false; for (const g of m.list) if (g >= 0 && g !== id && !known.has(g) && (this.f.fabricLinkCarries(id, g) || this.f.fhopFriendFor(id, g))) { reach = true; break; } if (!reach) l849Prev = -1; }   // ...and only where a connection or a friend of mine reaches some stranger
           this.l849Pick = -1; const kept = new Map(); let best = -1, bestAt = 0, bestK = 0;
           for (const g of m.list) if (g >= 0 && g !== id && !known.has(g)) {
-            if ((this.strangeSeen.has(g) ? this.strangeSeen.get(g) : 0) + 1 < need) continue;
+            if ((this.strangeSeen.has(g) ? this.strangeSeen.get(g) : 0) + 1 < (this.l853Dated(g) ? 1 : need)) continue;   /* L8.53.1 */
             const a = this.l849At.get(g); const at = a === undefined ? -1 : a; if (at >= 0) kept.set(g, at);
             if (this.f.fabricLinkCarries(id, g) || this.f.fhopFriendFor(id, g)) continue;
             if (g === l849Prev) continue;   // L8.49.1: the stranger I dialled on the last listing and still have no path to takes its turn on a friend's channel (direct, then a friend, in turn)
@@ -95,7 +96,7 @@
         for (const g of m.list) if (g >= 0 && g !== id && !known.has(g)) {
           const seen = (this.strangeSeen.has(g) ? this.strangeSeen.get(g) : 0) + 1; next.set(g, seen);
           if (seen >= 2) { this.xrOk.set(g, TICK); if (this.xrOk.size > K.RELAY_CAP) { const old = []; for (const [k, v] of this.xrOk) if (TICK - v > 2 * K.RELAY_TTL) old.push(k); for (const o of old) this.xrOk.delete(o); } }
-          if (seen >= need) { const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = id; this.emit(g, h); next.set(g, need); }   // L8.5.4: greet a persistent stranger on every listing (a HELLO over a friend can die with the friend's dark spell)
+          if (seen >= need || this.l853Dated(g)) { const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = id; this.emit(g, h); next.set(g, Math.min(seen, need)); }   // L8.5.4: greet a persistent stranger on every listing (a HELLO over a friend can die with the friend's dark spell)
         }
         this.strangeSeen = next;   // ids no longer listed/known drop out
       }
