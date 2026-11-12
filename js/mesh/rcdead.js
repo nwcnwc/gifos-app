@@ -36,7 +36,7 @@
   // The sim's build-time law switches (-DL35_4_OFF=1 ...: the parent's laws, byte for byte) are environment variables
   // under node (MESH_L35_4_OFF=1 ...), read once at load; a page always runs the laws.
   const envOff = (n) => ((isNode && typeof process !== 'undefined' && process.env && process.env['MESH_' + n] === '1') ? 1 : 0);
-  const L35_4_OFF = envOff('L35_4_OFF'), L17_3_1_OFF = envOff('L17_3_1_OFF'), L17_4_OFF = envOff('L17_4_OFF'), L35_5_OFF = envOff('L35_5_OFF');
+  const L35_4_OFF = envOff('L35_4_OFF'), L17_3_1_OFF = envOff('L17_3_1_OFF'), L17_4_OFF = envOff('L17_4_OFF'), L35_5_OFF = ((isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L35_5_OFF === '0') ? 0 : 1);   // L35.5 is OFF by default (2026-11-12: its heal cost, docs/healing-laws.md); MESH_L35_5_OFF=0 runs it
   const topo = req('./topo.js', 'meshTopo'); const { ckey, down } = topo;
   // C++: mesh_rcdead.inc:l354Echo
   function l354Echo(s, k, v) {
