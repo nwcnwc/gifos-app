@@ -57,7 +57,7 @@
       epoch: 0, openEp: 0, dialAt: -1, halfAt: -1, askAt: -1000000, txAt: [-1, -1], nnAt: [-1, -1], nnAsk: [-1000000, -1000000],
       arrAt: [-1, -1], q: [], outside: 0, dialBy: -1, dialT: -3, dialHow: 0, callClosed: false, gone: 0,
       agreed: [false, false], hold: [[], []], closingAt: [-1, -1], farAsk: [-1000000, -1000000], uplink: false, dHeard: 0, dPlaced: 0,
-      backAt: [-1, -1], dBorn: -1, dProg: -1, dOpenAt: -1, dAsked: false, dHomed: false, dGw: false, dIn: false, dSat: false, dHoAt: -1, dWait: -1,
+      backAt: [-1, -1], dBorn: -1, dProg: -1, dOpenAt: -1, dAsked: false, dHomed: false, dHomedE: false, dGw: false, dIn: false, dSat: false, dHoAt: -1, dWait: -1,
       dOwed: false, dWaitAtFind: -1, dOwedAt: -1,
     };
   }
@@ -277,7 +277,8 @@
         if (alive[k] && seats[k].hasCoord && seats[k].state === 3) L.dSat = true;
         const heard = doorHeard(L, g, k);
         const named = l15Names(g, k) || l15NamedBy(g, k);
-        if (!heard && !named && alive[g] && L.dBorn >= 0) {
+        let owes = false; if (L.dHomedE && alive[g]) { const w = seats[g].whAsk.get(k); owes = (w !== undefined && T() - w <= K.ISLAND_WAIT); }   // L16.16: I answered this knocker with no room and keep its ask: the door is not idle, it waits for my seat
+        if (!heard && !named && alive[g] && L.dBorn >= 0 && !owes) {
           const idle = T() - L.dProg, age = T() - L.dBorn; let why = null;
           const placed = !!(L.dPlaced & (1 << lEnd(g, k)));   // L16.3.1: the placee closes it (L15.5), or the life limit from the PLACE
           if (!placed && L.dHoAt >= 0 && T() - L.dHoAt >= K.L16_HO_CLOSE && !(L.dOwed && L.dWait >= 0)) why = 'handed';

@@ -89,9 +89,19 @@
     // a door's own fields (sim startDial), at either end: o = the outside bits, a = the dialler
     function doorInit(L, a, b, o) {
       L.outside = o; if (!o) return;
-      L.dBorn = L.dProg = T(); L.dAsked = L.dHomed = L.dGw = L.dSat = false; L.dHoAt = -1; L.dWait = -1; L.dOwed = false; L.dWaitAtFind = -1; L.dOwedAt = -1; L.dHeard = 0; L.dPlaced = 0; L.dIn = !(o & (1 << lEnd(a, b)));
+      L.dBorn = L.dProg = T(); L.dAsked = L.dHomed = L.dHomedE = L.dGw = L.dSat = false; L.dHoAt = -1; L.dWait = -1; L.dOwed = false; L.dWaitAtFind = -1; L.dOwedAt = -1; L.dHeard = 0; L.dPlaced = 0; L.dIn = !(o & (1 << lEnd(a, b)));
       if (o !== 3) { const g = (o & (1 << lEnd(a, b))) ? b : a; L.dG = g; doorCount(g, L.dIn, +1); }
     }
+    // A TURN LINK'S PC IS NO DOOR. The sim's two blocked networks never hold a Link before their TURN link: a knock across the cut is
+    // refused before any dial (netRefuse). A page's knock at a greeter it cannot reach does leave a door Link (dialling, `outside`),
+    // and the TURN link later rides the pc of that same pair: the Link opened still marked as my door, and the door laws closed it
+    // the tick it opened (L15: "I sit and my seat does not name it") or 17 ticks later (L16 idle): the far end's first HELLO was the
+    // last frame, no ring was named, the two rooms never merged and the link was re-dialled for good (room `offices`, serial joins:
+    // DOOR-CLOSE in the tick of LINK-UP, no C7, 23 link asks in 11 minutes). While a TURN link of mine holds the pair's pc
+    // (any state: dialling or up), its Link is the link's, kept by the link (TURN.8, the L28 keep), and no door.
+    const turnLink = (x) => !!(o.fh && o.fh.turnHolds && o.fh.turnHolds(x));
+    function turnNoDoor(x, L) { if (!L || !L.outside || !turnLink(x)) return false; doorEndCount(L); L.outside = 0; FHDOOR.delete(x); trace('TURN-NODOOR', me, null, 'peer=%d', x); return true; }
+    function turnNoDoors() { if (!o.fh || !o.fh.turnHolds) return; for (const [x, L] of LINKS) if (L.outside) turnNoDoor(x, L); }
     function doorEndCount(L) { if (L.outside && L.outside !== 3 && L.dG === me && !L.dUncounted) { L.dUncounted = true; doorCount(me, L.dIn, -1); } }
     function freshState(L, a, b) {
       L.nnAt[0] = L.nnAt[1] = -1;
@@ -116,10 +126,10 @@
     }
 
     // door progress (sim linkDeliver), run by each end for the frames it sends and the frames it receives
-    function doorProg(L, t) {
+    function doorProg(L, t, m) {
       if (!(L.outside && L.dBorn >= 0)) return;
       if (t === 'WHOHOME') { if (!L.dAsked) { L.dAsked = true; L.dProg = T(); } }
-      else if (t === 'HOME') { if (!L.dHomed) { L.dHomed = true; L.dProg = T(); } }
+      else if (t === 'HOME') { const em = !!m && m.roster.length === 0; if (!L.dHomed) { L.dHomed = true; L.dHomedE = em; L.dProg = T(); } else if (L.dHomedE && !em) { L.dHomedE = false; L.dProg = T(); } }   // L16.16: the answer that follows an empty HOME is a step too
       else if (t === 'FIND' || t === 'FINDACK' || t === 'PLACE' || t === 'NOROOM' || t === 'HANDOFF' || t === 'TAKEOVER' || t === 'TAKEN') {
         L.dProg = T(); L.dGw = true; if (t === 'FIND') L.dWaitAtFind = L.dWait; if (t === 'FINDACK') L.dWait = T(); else if (t === 'PLACE' || t === 'NOROOM') { L.dWait = -1; L.dOwed = false; }
       }
@@ -128,7 +138,7 @@
     function linkDeliver(from, to, m, L) {
       L.carried = true; L.txAt[mine(to)] = T();
       if (L.outside) m.dsat = mySeated();
-      doorProg(L, m.t); if ((m.t === 'PLACE' || m.t === 'RECLAIMED') && L.outside && L.dBorn >= 0) L.dPlaced |= (1 << mine(to));   // L16.3.1: my end sent it
+      doorProg(L, m.t, m); if ((m.t === 'PLACE' || m.t === 'RECLAIMED') && L.outside && L.dBorn >= 0) L.dPlaced |= (1 << mine(to));   // L16.3.1: my end sent it
       m.to = to; m.from = from; m.lk = (m.rvia < 0) ? from : -1; m.lkEp = L.epoch;
       if (!io.send(to, m)) trace('PCW-SENDFAIL', me, null, 'peer=%d mt=%d', to, mtI(m.t));
     }
@@ -362,7 +372,8 @@
         if (kMe) { if (mySeated()) L.dSat = true; continue; }   // I am the outside end: the greeter's limits are its own
         if (farSeated(x)) L.dSat = true;
         const heard = pc.doorHeard(L, me, x); const named = pc.l15Names(me, x) || pc.l15NamedBy(me, x) || (!!mySeat() && (mySeat().l14Serve(x) || mySeat().l14Up === x));   // L14: my uplink, or one I took, is no door (in the sim both ends are seated); my view need not hold the head's cell
-        if (!heard && !named && L.dBorn >= 0) {
+        let owes = false; if (L.dHomedE && mySeat()) { const w = mySeat().whAsk.get(x); owes = (w !== undefined && T() - w <= K.ISLAND_WAIT); }   // L16.16: I answered this knocker with no room and keep its ask: the door waits for my seat
+        if (!heard && !named && L.dBorn >= 0 && !owes) {
           const idle = T() - L.dProg, age = T() - L.dBorn; let why = null;
           const placed = !!(L.dPlaced & (1 << mine(x)));   // L16.3.1: the placee closes it (L15.5), or the life limit from the PLACE
           if (!placed && L.dHoAt >= 0 && T() - L.dHoAt >= K.L16_HO_CLOSE && !(L.dOwed && L.dWait >= 0)) why = 'handed';
@@ -446,7 +457,7 @@
     // C++: mesh_link.inc:dialOver   [no answer: LINK_DIAL_FAIL from the dial's start; answered: LINK_DIAL_ICE from the answer. The browser's own verdict comes at 15 s or never]
     const dialOver = (L) => T() - L.dialAt >= K.LINK_DIAL_FAIL || (L.ansAt >= 0 && T() - L.ansAt >= K.LINK_DIAL_ICE);
     function dialTimeouts() {
-      for (const [x, L] of LINKS) if (L.state === LK_DIALING && dialOver(L)) { dialFailed(x); io.close(x); }
+      for (const [x, L] of LINKS) if (L.state === LK_DIALING && dialOver(L) && !turnLink(x)) { dialFailed(x); io.close(x); }   // a TURN link's dial has its own budget (the link manager closes it as dialfail)
     }
 
     // ---- the page face -----------------------------------------------------------------------------------------
@@ -454,7 +465,7 @@
       const s = mySeat(); if (!s || s.dead) return;
       dialTimeouts(); fhDoorTick();
       if (S.DOOR_PEND.length) pendMine();
-      l15Mine(); l16Mine(); l22Mine();
+      turnNoDoors(); l15Mine(); l16Mine(); l22Mine();
       pc.S.L16CLOSING.length = 0; pc.S.LDOORS.clear();   // the fabric door sweeps' lists: my end recounts each tick
     }
     // the callee's gate on an incoming offer: L23 (refused), L16 (busy over the relay); else my end starts DIALING
@@ -500,6 +511,7 @@
     function opened(x) {
       FHDOOR.delete(x);   // C++: mesh_fhop.inc:fhDoorOpened (FHOP.8: the door opened)
       const L = LINKS.get(x); if (!L || L.state === LK_OPEN) return;
+      turnNoDoor(x, L);
       DECL.delete(x);
       L.state = LK_OPEN; L.openEp = L.epoch; L.half = 0; L.halfAt = -1; L.stuck = false; L.view[0] = L.view[1] = LK_OPEN; L.opened = true;
       L.byeIn = L.byeOut = false; L.callClosed = false; L.gone = 0;   // a new pc: the last one's close says nothing about it
@@ -519,7 +531,7 @@
       if (!L) return false;
       // (A leaver's own goodbye is exempt: sent before its close, but the page's seal and signature checks can hand it over after the close is seen; the sim has no such gap.)
       if (!(m && m.t === 'LEAVE' && m.bye && m.id === x) && L.state !== LK_OPEN && L.wasOpen && (L.view[mine(x)] === LK_CLOSED || (L.gone & (1 << mine(x))))) { lv.CLOSEDROPS = (lv.CLOSEDROPS || 0) + 1; trace('CLOSEDROP', me, null, 'from=%d mt=%d', x, mtI(m.t)); return true; }
-      doorProg(L, m.t);
+      doorProg(L, m.t, m);
       if (m.dsat !== undefined && L.outside) far(x).seated = m.dsat ? 1 : 0;
       // first-hand only off the sender's proven dc, on my Link, not routed (sim linkDeliver; 0.9.24 ingest)
       if (direct && (m.rvia === undefined || m.rvia < 0)) { L.txAt[theirs(x)] = T(); m.lk = x; m.lkEp = L.epoch; }

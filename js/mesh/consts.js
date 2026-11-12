@@ -47,8 +47,12 @@
     DIG_HOLD_LEVEL: 16,   // C++: mesh.cpp:DIG_HOLD_LEVEL  (LAW_DIG_HOLD_LEVEL)
     DIG_NHOLD_MAX: 104,   // C++: mesh.cpp:DIG_NHOLD_MAX  (DIG_HOLD_LEVEL*13/2)
     GREET_PERIOD: 800,   // C++: mesh.cpp:GREET_PERIOD
+    REACH_PROBE: 5,   // C++: mesh.cpp:REACH_PROBE  (LAW_REACH_PROBE)
+    C7AT_NEVER: -1000000,   // C++: mesh.cpp:C7AT_NEVER
+    WHOHOME_HOPS: 60,   // C++: mesh.cpp:WHOHOME_HOPS
     ISLAND_WAIT: 24,   // C++: mesh.cpp:ISLAND_WAIT  (LAW_ISLAND_WAIT)
     ISLAND_ASKS: 2,   // C++: mesh.cpp:ISLAND_ASKS  (LAW_ISLAND_ASKS)
+    ISLAND_WAIT_BLOCKED: 13,   // C++: mesh.cpp:ISLAND_WAIT_BLOCKED  (LAW_ISLAND_WAIT_BLOCKED)
     L827_HOLD: 50,   // C++: mesh.cpp:L827_HOLD
     L827_SETTLE: 40,   // C++: mesh.cpp:L827_SETTLE
     L828_HOLD: 100,   // C++: mesh.cpp:L828_HOLD

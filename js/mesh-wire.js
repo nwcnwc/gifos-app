@@ -790,7 +790,8 @@
     function REGISTER_MYSELF_AS_A_GREETER(gk) {
       const k = gk || myKey;
       if (!iAmAGreeter()) { KNOCK_FOR_THE_GREETER_LIST(k); return; }
-      net.sealFixed(roomKey, { p: peer, c: seat.coord, fa: 1 }) // a greeter's sealed address is one fixed-size sealed part, like every sealed thing on the relay
+      net.sealFixed(roomKey, Object.assign({ p: peer, c: seat.coord, fa: 1 }, raw && raw.lineAt >= 0 ? { e: raw.lineAt } : {}))   /* e: when my room was founded, so two rooms that meet agree which is the older (the older one stays) */
+        // a greeter's sealed address is one fixed-size sealed part, like every sealed thing on the relay
         .then((b) => { const s = JSON.stringify(b); greeterTrace.push({ t: Date.now(), tick: env.TICK, state: seat.state, post: seat.state, listLen: -1, open: -1, founded: false, action: 'register-blob:' + blobFp(s) }); if (greeterTrace.length > GREETER_TRACE_CAP) greeterTrace.shift(); sendRaw(Object.assign({ t: 'knock', gk: k, gblob: s }, seat.coord.pc !== 0 ? { dc: '1' } : {})); })   /* dc: a door-call registration (FHOP.8), which the relay keeps only for the call */
         .catch(() => sendRaw({ t: 'knock', gk: k }));
     }
@@ -820,12 +821,13 @@
       if (opts.holdDoor && opts.holdDoor()) return;   // waiting on the admin with a lock I cannot read: a list I cannot open must not make me a founder
       const list = m.list || [];
       const ids = [], sealedFps = [], fa = [], behind = [];
+      const ep = new Map(), atOf = (l) => l.map((p) => (ep.has(p) ? ep.get(p) : -1));   // each greeter's word of when its room was founded (-1: not said)
       let olderSeen = 0;   // sealed blobs one of my replaced keys opens: their writers are behind me, not ahead
       let aheadN = 0;      // sealed blobs no key I hold or held opens: their writers are under a key I do not have
       for (const s of list) {
         try {
           const o = await net.open(roomKey, JSON.parse(s));
-          if (o && o.p && o.p !== peer) { ids.push(o.p); if (o.fa === 1) fa.push(o.p); }
+          if (o && o.p && o.p !== peer) { ids.push(o.p); if (o.fa === 1) fa.push(o.p); if (Number.isInteger(o.e) && o.e >= 0) ep.set(o.p, o.e); }
           else if (o && o.p === peer) sealedFps.push('SELF');
           else { /* net.open resolves NULL on wrong key — the sealed-under-a-different-key case */
             sealedFps.push('X' + blobFp(s));
@@ -937,7 +939,7 @@
         // stands down when a connection is already up, and a solo seat whose
         // channel to the other fragment is open still has to SAY something on
         // it — nothing else it does addresses a seat it does not hold.
-        penv.relayFrame({ t: 'greeters', list: ids });
+        penv.relayFrame({ t: 'greeters', list: ids, at: atOf(ids) });
         return;
       }
       if (list.length && !ids.length) {
@@ -954,7 +956,7 @@
         else action = 'deliver';
         // RELOAD TREE MEMORY: the doors this page sat with before its reload go first (treeMemAsk asks them all at once)
         if (prevOld && preState !== 3 && ids.length) { const old = ids.filter((p) => prevOld.has(p)); treeAsk = old.map((p) => layer.ids.nid(p)); ids.sort((a, b) => (prevOld.has(b) ? 1 : 0) - (prevOld.has(a) ? 1 : 0)); prevOld = null; }
-        penv.relayFrame(m.admitted === false && !m.founded && preState === 3 && iAmAGreeter() ? { t: 'greeters', list: ids, tag: 1 } : { t: 'greeters', list: ids }); // the seat's L16 knocker takes it from here. L3.11.6: admitted:false to a seated Section-1 seat rides the list (tag 1): the seat asks a listed mate for the door's key and registers again
+        penv.relayFrame(m.admitted === false && !m.founded && preState === 3 && iAmAGreeter() ? { t: 'greeters', list: ids, at: atOf(ids), tag: 1 } : { t: 'greeters', list: ids, at: atOf(ids) }); // the seat's L16 knocker takes it from here. L3.11.6: admitted:false to a seated Section-1 seat rides the list (tag 1): the seat asks a listed mate for the door's key and registers again
       }
       // `adm` is the relay's `admitted`: does my genesis key match the room's?
       // Nothing ACTS on it — but its absence from this trace is why the
@@ -1072,7 +1074,10 @@
         else if (deepSince < 0) deepSince = env.TICK;
         // FHOP.8: the call to the door is over and I sit deep: off the door list now (the relay also ends a door-call entry on its own clock)
         { const dcNow = doorCalled(); if (dcWas && !dcNow && !(raw && raw.hasCoord && raw.state === 3 && raw.coord.pc === 0)) { sendRaw({ t: 'unlist' }); if (opts.trace) { try { opts.trace('{"t":' + (env.TICK | 0) + ',"s":' + raw.id + ',"e":"DOOR-CALL-END","c":null,"d":"unlisted"}'); } catch (e) {} } } dcWas = dcNow; }
-        if (dropDeep && !needsRelay && sock && deepSince >= 0 && env.TICK - deepSince > 20) { try { sock.close(); } catch (e) {} sock = null; }
+        // Off the door's list before the socket goes. A seat that a room merge moved from Section 1 to a deep cell keeps its listing while it
+        // sees the merge (L16.4 stands down there, L16.12), and a listed socket that closes with no unlist is the relay's death word for a
+        // live seat: every greeter closed its connection to it as a lost one, and the seat left its cell as cut off (D6c) a lease later.
+        if (dropDeep && !needsRelay && sock && deepSince >= 0 && env.TICK - deepSince > 20) { try { sendRaw({ t: 'unlist' }); } catch (e) {} try { sock.close(); } catch (e) {} sock = null; }
         if (needsRelay && !sock) makeSock(); // re-arm reachability (a policy-REJECTED socket stays down — see sendRaw)
         // The door refused my socket for want of the room's password (4003):
         // a password changed while I was away, the same verdict as a sealed
@@ -1339,7 +1344,7 @@
       byesHeld() { return byeHeld.size; },   // pages gone whose cell is held: no face, no head in the count
       leave(reload) { if (reload && !sendHeldByes()) reload = false; try { if (raw) { if (penv && penv.leave) penv.leave(!!reload); else raw.leave(!!reload); } } catch (e) {} try { if (sock) sendRaw({ t: 'unlist' }); } catch (e) {} node.stop(); },   // goodbye to the peers, then off the greeter list, then the socket closes: no greeter-gone for a page leaving in order
       // Transport events from the page's pc/dc callbacks and watchdogs (env.js maps hard/quiet and debounces).
-      remeasure() { if (!raw || !opts.measure) return; const n0 = opts.measure.nat() & 0xff; if (raw.cnat === raw.nat) raw.cnat = n0; raw.nat = n0; },   // a network verdict that lands after the join (seat.join reads it once)
+      remeasure() { /* L4.1.1: the page env's tick reads the verdict itself (js/mesh/page/env.js tick: nat, cnat, l411Verdict), so a verdict that lands after the join is acted on at the next tick; nothing to do here */ },   // a network verdict that lands after the join (seat.join reads it once)
       doorForgive(pid) { if (penv && penv.doorForgive) penv.doorForgive(String(pid)); },
       transport(pid, ev, arg) { if (stopped || !penv) return undefined; try { return penv.transport(String(pid), ev, arg); } catch (e) { return undefined; } },
       dialHeld(pid) { if (stopped || !penv || !penv.dialHeld) return false; try { return penv.dialHeld(String(pid)); } catch (e) { return false; } },

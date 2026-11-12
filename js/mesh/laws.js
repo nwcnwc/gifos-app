@@ -42,6 +42,7 @@
     HELLO_BACK: 20,              // ticks between HELLOs answering one unheard greeter
     ISLAND_ASKS: 2,              // L8.1.1: silent rounds at the door before a joiner founds an island: the first silent round knocks again (a member that re-seated or re-registered since the first list is named now); only the second silent round founds
     ISLAND_WAIT: 24,             // L8.1: ticks after a joiner asked every listed greeter with no HOME back before it founds an island
+    ISLAND_WAIT_BLOCKED: 13,     // L8.47.1: the silence wait of a joiner whose own network verdict is blocked, in place of ISLAND_WAIT. Depends on: one answered dial's verdict (the offer and the answer over the relay, then LINK_DIAL_ICE)
     KICK_AUD_EVERY: 2,           // L27.9: a seat that folds vote lists runs one spot audit per this many pulses (a hash draw), alternating an entry of a child's list and a seat of its scope
     KICK_AUD_GRACE: 120,         // L27.9: a voter's statement this old (signing time) should be in every list above it: an audit that finds it missing or contradicted counts against the child
     KICK_AUD_WAIT: 24,           // L27.9: an audited voter that has not answered in this long counts as unanswered (weak evidence against the child that listed it)
@@ -117,6 +118,7 @@
     RC_RESEND: 4,                // L3.11.2: a returner whose routed RECLAIM drew no answer this long sends it again through another greeter (one routed hop and back is 2 to 4 ticks)
     RC_RESEND_N: 2,              // L3.11.2: at most this many resends of a routed RECLAIM per return (then the ordinary roster round and the newcomer path)
     RC_WAIT: 20,                 // L3.10.4: a returner holds a hand-back of its old cell this long (CONFIRM_TTL + 4) before taking it, in case the hole's mover answers that it healed the cell; the mover then offers the seat it left, once its own move confirms
+    REACH_PROBE: 5,              // L4.1.1: ticks after a page starts at which its network probe gives up waiting for a reflexive address and calls the network blocked (the page: REACH_PROBE_MS). Depends on: the STUN client's fourth send and one round trip
     REDIAL_GAP: 8,               // L3.8: at most one re-dial of an owned link per this many ticks, the first gap
     REDIAL_MAX: 64,              // L3.8: the re-dial gap doubles up to this
     RELAY_BUDGET: 3,             // door relay: hand-offs per seeker per RELAY_SEEN window

@@ -21,6 +21,7 @@
   const GifOS = root.GifOS = root.GifOS || {};
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
+  const TURN14_15_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_TURN14_15_OFF === '1') ? 1 : 0;   // the sim's -DTURN14_15_OFF=1 build
   const RCD = ((n) => ({ L35_4_OFF: n('L35_4_OFF'), L17_3_1_OFF: n('L17_3_1_OFF'), L17_4_OFF: n('L17_4_OFF'), L35_5_OFF: ((isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L35_5_OFF === '0') ? 0 : 1) }))((k) => ((isNode && typeof process !== 'undefined' && process.env && process.env['MESH_' + k] === '1') ? 1 : 0));   // the sim's build-time switches of the realcheck dead-dial laws (mesh.cpp L35_4_OFF ...): MESH_<name>=1 under node; a page runs the laws
   const C_ = req('./consts.js', 'meshConsts');
   const msg = req('./msg.js', 'meshMsg');
@@ -144,6 +145,7 @@
       const TICK = this.TICK, id = this.id, wake = () => this.f.wake(id);
       if (this.evilDoor) { if (this.hostile && !(TICK % 2)) { this.state = 0; this.emitRelay(this.linkKey); } this.l16Evil(); wake(); return true; }   // L16 adversary
       if (this.state !== 3 && this.l16Wait()) { wake(); return true; }   // L16: backing off
+      if (this.state === 3 && this.hasCoord && this.whAsk.size !== 0 && !this.doorHeld()) this.l1616Answer();   // L16.16
       if (this.state !== 3) {
         if (this.stranded) { if (TICK - this.strandedAt > K.STRAND_TTL) { this.stranded = false; this.lastReach = -1; this.joinStart = -1; this.join(); } wake(); return true; }   // R6
         if (this.l16WaveTick()) { wake(); return true; }   // L16: a silent ask wave: everyone left
@@ -276,6 +278,7 @@
       if (TICK >= this.xlinkAt) { this.xlinkAt = TICK + 150 + Math.trunc(this.rng() * 100); const cm = colMates(this.coord); for (let q = 0; q < C - 1; q++) if (this.occGet(ckey(cm[q])) < 0) this.routeTo(cm[q], 1); }   // W7: keep column links live
       if (this.s1CheckAt < 0) this.s1CheckAt = TICK + K.E3_PERIOD + Math.trunc(this.rng() * K.E3_PERIOD);
       if (this.coord.pc === 0 && (TICK + id) % K.TURN_RETRY === 0 && this.f.fabricTurnOn()) this.t14Call();   /* TURN.14.13 */
+      if (!TURN14_15_OFF && this.coord.pc === 0 && (TICK + id) % K.HELLO_BACK === 0 && this.f.fabricTurnOn()) this.t1415Beat();   /* TURN.14.15 */
       if (TICK >= this.s1CheckAt) { this.s1CheckAt = TICK + K.E3_PERIOD + Math.trunc(this.rng() * K.E3_PERIOD); this.emitRelay(this.genKey); }   // E3: re-knock each ~E3_PERIOD
       this.f.wake(id); return;
     },
