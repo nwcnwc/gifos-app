@@ -231,13 +231,27 @@
     // C++: mesh_island.inc:Seat::l845Held
     l845Held() { return this.hasCoord && this.state === 3 && this.TICK - this.seatedAt >= K.L827_SETTLE; },
 
+    // C++: mesh_island.inc:Seat::l857Alone   (L8.5.7: alone in my part of the meeting, I join on the word of one settled member I hear directly)
+    l857Alone(m) {
+      if (m.from !== m.id || !this.linkIs(m, m.id) || !m.c7Held || m.line < 0 || this.line < 0 || m.line === this.line || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return false;
+      for (const [k, v] of this.occ) if (v >= 0 && v !== this.id && v !== m.id && ckPc(k) === 0) return false;
+      return true;
+    },
+    // C++: mesh_island.inc:Seat::l859Link   (L8.5.9: the far end of a relayed connection I opened speaks for its part of the meeting)
+    l859Link(m) { return m.from === m.id && m.c7Held && this.f.fabricTurnPc(this.id, m.id) && this.f.fabricTurnOpener(this.id, m.id); },
+    // C++: mesh_island.inc:Seat::l858Ring   (L8.5.8: with mates beside me I do not give up my seat alone to someone from another founding of the meeting)
+    l858Ring(m) {
+      if (!roomTerm(this, 1) || m.from !== m.id || m.line < 0 || this.line < 0 || m.line === this.line || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return false;
+      for (const [k, v] of this.occ) if (v >= 0 && v !== this.id && v !== m.id && ckPc(k) === 0) return true;
+      return false;
+    },
     // C++: mesh_island.inc:Seat::ringAlone   (L8.5.2: my view holds no Section-1 seat but me)
     ringAlone() { if (!this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return false; for (const [k, v] of this.occ) if (v >= 0 && v !== this.id && ckPc(k) === 0) return false; return true; },
 
     // C++: mesh_island.inc:Seat::islandC7
     islandC7(m) {
       if (!roomTerm(this, 1) || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return false;
-      const fh = this.l842Stranger(m);
+      const fh = this.l842Stranger(m) || this.l857Alone(m);   // L8.5.7
       if (!fh) {
         const other = m.from === m.id && m.line >= 0 && this.line >= 0 && m.line !== this.line;   // L8.42.1: its own greeting names another founding
         for (const [k, v] of this.occ) if (v === m.id && (!other || this.firstHandLive(k))) return false;   // a seat my view holds is of my ring, unless I hold it only second-hand and its own greeting names another founding
@@ -252,7 +266,7 @@
         for (const [wk, wv] of v) { if (this.TICK - wv > K.RELAY_TTL) v.delete(wk); }
         let vGone = false; if (this.c7Vouch.size > 16) { vGone = (this.c7Vouch.keys().next().value === theirs); eraseFirst(this.c7Vouch); }
         if (gated) return false;
-        if (vGone || (v.size < 2 && !m.c7One)) return false;   // L8.5.2: a settled founder that holds nobody else IS its ring: its one vouch is the whole ring's word
+        if (vGone || (v.size < 2 && !m.c7One && !this.l857Alone(m) && !this.l859Link(m))) return false;   // L8.5.2: a settled founder that holds nobody else IS its ring: its one vouch is the whole ring's word
         {
           this.l842Join.clear(); const ls = new Set();
           for (const wk of v.keys()) { this.l842Join.add(wk); const l = this.lineOf(wk); if (l >= 0 && l !== this.line) ls.add(l); }
