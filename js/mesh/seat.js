@@ -146,7 +146,7 @@
   function l13MassOf(s) { return s.l13Mass(); }
   // Two gone cells on my own chain: the heal rules, not the holds.
   // C++: mesh.cpp:l1344Of
-  function l1344Of(s) { return s.l1344Chain(); }
+  function l1344Of(s) { return s.l1344Act(); }
   // C++: mesh.cpp:l25OrdKey
   function l25OrdKey(by, hole, at, to) { return hash.hmixId(hash.hmix(hash.hmixId(hash.hmix64(hash.H_INIT, hole), by), at >>> 0), to); }   // the order names the seat it was sent to
   // C++: mesh.cpp:Seat::ppSigOf
