@@ -6,6 +6,9 @@
  *   unlimited  $5   admin rooms with no people limit
  *   streamer   $10  unlimited admin rooms and a storage budget for
  *                   recordings and transcripts
+ * The four-hour pass: $1, one PayPal order (never a subscription), the
+ * Unlimited plan's meeting rights for four hours from purchase, except
+ * capturing an open room (see "the four-hour pass" below).
  * Free: open rooms without limit, voice (never video) across networks that
  * block direct connections, and admin rooms of up to 5 people (Nathan,
  * 2026-11-11). The free plan has a license too, signed without PayPal and
@@ -42,7 +45,8 @@
  * the free line of 5. A person at the door who has a plan shows their own ticket
  * for this meeting, signing the door's fresh challenge (doorProofOk).
  *
- * Everything here is pure, with the clock and the signature check passed in,
+ * Everything here is pure, with the clock and the signature check passed in
+ * (and the pass's length read from the timings table, GifOS.timings),
  * so a page, the payment service and the meeting servers apply the same
  * rules.
  */
@@ -293,14 +297,138 @@
   // must be current and for THIS room's meeting; proof signs
   // proofMessage(roomContext(room), 'at:' + at) with the ticket's key.
   // -> {tier, exp} or null.
+  // The ticket may be a live four-hour pass ({passJson, sig}): the room then
+  // reads Unlimited while the order is fresh (orderFresh) and the pass lasts.
   async function roomTierOf(order, room, verifyPay, verifyKey, nowS) {
     if (!order || typeof order !== 'object' || order.on === false) return null;
     if (!Number.isInteger(order.at)) return null;
-    const t = await verifyTicket(order.ticket, verifyPay, nowS, await meetingTag(room));
+    const isPass = !!(order.ticket && typeof order.ticket.passJson === 'string');
+    if (isPass && !orderFresh(order.at, nowS)) return null;
+    const t = await meetingRight(order.ticket, verifyPay, nowS, await meetingTag(room));
     if (!t) return null;
     const ok = await verifyProof(t, roomContext(room), 'at:' + order.at, order.proof, verifyKey);
-    return ok ? { tier: t.tier, exp: t.exp } : null;
+    if (!ok) return null;
+    return isPass ? { tier: t.tier, exp: Math.min(t.exp, Math.floor(order.at / 1000) + TICKET_S), pass: true } : { tier: t.tier, exp: t.exp };
   }
+  // ---- the four-hour pass ----------------------------------------------------
+  // $1, one PayPal order, never a subscription, and never anything but PayPal.
+  // For PASS_S from its start it grants the Unlimited plan's meeting rights
+  // (TURN video at that plan's vouch count, no people limit in the holder's
+  // admin rooms, past any room's line at the door) EXCEPT capturing an open
+  // room, which stays with the $5 and $10 subscriptions.
+  //
+  // The pass is a receipt the payment service signs once, when it captures
+  // the PayPal order: {v, kind:'pass4h', payeeId, via:'paypal-order', order,
+  // id, buyerKey, paid, start, end, plan}. paid is PayPal's capture time;
+  // start is paid, or the end of a pass the buyer already held (passes
+  // stack: passStart); end is start + PASS_S. Its signature is over
+  // passMessage(passJson): a domain no other receipt, license or ticket is
+  // signed in, so only the PayPal pass path can make one.
+  //
+  // It is honored with no call to anyone: the service's signature, the
+  // clock (start <= now < end), and a signature by the pass's own key over
+  // the room (room order, TURN) or the door's challenge. A copied pass is
+  // worth nothing without that key. Nothing records where it is used, so a
+  // pass is not limited to one meeting at a time.
+  const PASS_KIND = 'gifos-pass4h';
+  const PASS_TAG = 'gifos-pass4h-receipt';
+  // The pass's length: PASS_S in the timings table (js/timings.js, loaded
+  // before this file on a page and imported by every Worker that checks a
+  // pass). Without the table no pass checks out (fails closed).
+  const passSeconds = () => { const t = GifOS.timings; return t && Number.isInteger(t.PASS_S) && t.PASS_S > 0 ? t.PASS_S : NaN; };
+  const PASS_PLAN = 'unlimited';                   // the plan a pass reads as, minus capture
+  const PASS_PRICE = '$1';
+  const PASS_VALUE = '1.00';                       // the PayPal order amount, USD
+  const ORDER_ID_RE = /^[A-Z0-9]{10,40}$/;         // a PayPal order id
+  const PASS_ID_RE = /^P4-[A-Z0-9]{10,40}$/;
+  const passMessage = (passJson) => PASS_TAG + '\x00' + String(passJson);
+  // checkPass(o) -> o or null: the shape alone (no clock).
+  function checkPass(o) {
+    if (!o || typeof o !== 'object') return null;
+    if (o.v !== 1 || o.kind !== PASS_KIND || o.payeeId !== SELLER || o.via !== 'paypal-order') return null;
+    if (o.plan !== PASS_PLAN) return null;
+    if (typeof o.order !== 'string' || !ORDER_ID_RE.test(o.order) || o.id !== 'P4-' + o.order || !PASS_ID_RE.test(o.id)) return null;
+    if (typeof o.buyerKey !== 'string' || !KEY_RE.test(o.buyerKey)) return null;
+    if (!intS(o.paid) || !intS(o.start) || !intS(o.end)) return null;
+    if (o.start < o.paid || o.end - o.start !== passSeconds()) return null;
+    return o;
+  }
+  // passLive(o, nowS): the pass's window holds now (a start a little ahead
+  // of this clock, within ASK_WINDOW_S as for any signed time, counts).
+  const passLive = (o, nowS) => !!o && o.start <= nowS + ASK_WINDOW_S && nowS < o.end;
+  // verifyPass({passJson, sig}, verify, nowS?) -> the pass or null. With
+  // nowS it must also be live now; without, any well-signed pass (stacking
+  // and the credentials view read passes not started yet, or run out).
+  async function verifyPass(p, verify, nowS) {
+    if (!p || typeof p.passJson !== 'string' || typeof p.sig !== 'string' || p.passJson.length > 1024) return null;
+    let sigBytes; try { sigBytes = b64ToBytes(p.sig); } catch (e) { return null; }
+    if (sigBytes.length !== 64) return null;
+    let ok = false;
+    try { ok = !!(await verify(sigBytes, utf8(passMessage(p.passJson)))); } catch (e) { ok = false; }
+    if (!ok) return null;
+    let o; try { o = JSON.parse(p.passJson); } catch (e) { return null; }
+    o = checkPass(o);
+    if (!o) return null;
+    if (nowS != null && !passLive(o, nowS)) return null;
+    return o;
+  }
+  // PASSES STACK (Nathan 2026-11-12): a pass bought while others are held
+  // starts when the latest of them ends, so no time is lost. held: the
+  // buyer's own passes, already verified (same key), each paid BEFORE this
+  // one (a pass paid later can never move an earlier one, so asking again
+  // for one order never yields a second window). -> the new pass's start.
+  function passStart(paidS, held, buyerKey) {
+    let start = paidS;
+    for (const h of held || []) {
+      if (!h || h.buyerKey !== buyerKey || !(h.paid < paidS)) continue;
+      if (h.end > start) start = h.end;
+    }
+    return start;
+  }
+  // What a live pass grants, as a ticket would: the Unlimited plan, minus capture.
+  function passRights(o) {
+    const x = TIERS[PASS_PLAN];
+    return { tier: x.id, subscribed: true, adminRooms: true, openRooms: true, roomLimit: x.roomLimit, turnAudio: true, turnVideo: true, storage: null, bypassLimit: true, until: o.end, vouches: x.vouches, pass: true, capture: false };
+  }
+  // A pass as a meeting right: the shape the door, the room's plan and the
+  // TURN Worker read from a ticket. subId names the pass (it keys the TURN
+  // Worker's per-customer count).
+  const passAsTicket = (o) => ({ tier: PASS_PLAN, buyerKey: o.buyerKey, subId: o.id, exp: o.end, start: o.start, pass: true });
+  // A meeting right carried where a ticket rides (room order, door answer,
+  // TURN ask): a ticket for this meeting, or a live pass. -> ticket-shaped or null.
+  async function meetingRight(r, verify, nowS, meeting) {
+    if (r && typeof r.passJson === 'string') { const o = await verifyPass(r, verify, nowS); return o ? passAsTicket(o) : null; }
+    return verifyTicket(r, verify, nowS, meeting);
+  }
+  // A room order made with a pass names the time it was signed (at, ms); it
+  // counts for TICKET_S from then, as a ticket would, so a holder who left
+  // stops carrying the room within minutes.
+  const orderFresh = (at, nowS) => Number.isInteger(at) && at / 1000 <= nowS + ASK_WINDOW_S && nowS - at / 1000 <= TICKET_S;
+  // THE TURN WORKER'S CHECK of a pass vouch: {passJson, sig, at, proof} where
+  // proof is the pass key's signature over proofMessage(roomContext(room),
+  // 'at:' + at) — the same room order the holder sends the room. -> ticket-shaped or null.
+  async function turnPassOk(v, room, verifyPay, verifyKey, nowS) {
+    if (!v || typeof v !== 'object' || !orderFresh(v.at, nowS)) return null;
+    const o = await verifyPass(v, verifyPay, nowS);
+    if (!o) return null;
+    const ok = await verifyProof(o, roomContext(room), 'at:' + v.at, v.proof, verifyKey);
+    return ok ? Object.assign(passAsTicket(o), { exp: Math.min(o.end, Math.floor(v.at / 1000) + TICKET_S) }) : null;
+  }
+  // bestRights(list) -> the best of several rights held at once (a
+  // subscription's, a pass's): the larger room wins, then the larger vouch
+  // count, then capture. A $2 subscriber holding a pass reads Unlimited
+  // for the pass's window, then Room 20 again.
+  function rank(r) {
+    if (!r || !r.tier) return 0;
+    const room = r.roomLimit == null ? 1e6 : r.roomLimit;
+    return room * 1000 + (r.vouches || 0) * 2 + (r.pass ? 0 : 1);
+  }
+  function bestRights(list) {
+    let best = null;
+    for (const r of list || []) if (r && r.tier && (!best || rank(r) > rank(best))) best = r;
+    return best || Object.assign({}, FREE);
+  }
+
   // doorVerdict: what a greeter does with a knocker it has no proof from.
   // -> 'let-in' (no limit applies, or the room has space, or the count is not
   // readable yet) | 'ask' (the room is at its line: the knocker must show a plan)
@@ -311,9 +439,10 @@
   // The knocker's answer to the door's challenge: a current ticket for THIS
   // room's meeting, on a PAID plan (a free ticket is no way past a line), and
   // the ticket key's signature over the door's nonce.
+  // A live four-hour pass is let in as a subscriber is (Nathan 2026-11-12).
   async function doorProofOk(shown, room, nonce, verifyPay, verifyKey, nowS) {
     if (!shown || typeof shown !== 'object') return null;
-    const t = await verifyTicket(shown.ticket, verifyPay, nowS, await meetingTag(room));
+    const t = await meetingRight(shown.ticket, verifyPay, nowS, await meetingTag(room));
     if (!t || !isPaid(t.tier)) return null;
     return (await verifyProof(t, doorContext(room), nonce, shown.proof, verifyKey)) ? t : null;
   }
@@ -334,30 +463,61 @@
     if (raw.length !== 32) return null;
     return { v: 1, kind: CRED_KIND, subId: c.subId, tier: c.tier, period: c.period === 'yearly' ? 'yearly' : 'monthly', seed: c.seed, buyerKey: typeof c.buyerKey === 'string' && KEY_RE.test(c.buyerKey) ? c.buyerKey : undefined };
   }
-  function credentialFiles(c) {
-    const ok = credentialOk(c);
-    if (!ok) throw new Error('not a subscription credential');
-    const t = PLANS[ok.tier];
-    return {
+  // The four-hour passes live in the same file, beside any subscription
+  // (passes.json): the seed of the key they are bound to and the signed
+  // passes. One key holds every pass, so a new pass can stack on the others.
+  const WALLET_KIND = 'gifos-pass-wallet';
+  function walletOk(w) {
+    if (!w || typeof w !== 'object' || w.v !== 1 || w.kind !== WALLET_KIND) return null;
+    if (typeof w.seed !== 'string' || !SEED_RE.test(w.seed)) return null;
+    let raw; try { raw = b64ToBytes(w.seed); } catch (e) { return null; }
+    if (raw.length !== 32) return null;
+    const passes = (Array.isArray(w.passes) ? w.passes : []).filter((p) => p && typeof p.passJson === 'string' && typeof p.sig === 'string' && p.passJson.length <= 1024 && p.sig.length <= 100).slice(-64)
+      .map((p) => ({ passJson: p.passJson, sig: p.sig }));
+    const pending = typeof w.pending === 'string' && ORDER_ID_RE.test(w.pending) ? w.pending : undefined;
+    return { v: 1, kind: WALLET_KIND, seed: w.seed, buyerKey: typeof w.buyerKey === 'string' && KEY_RE.test(w.buyerKey) ? w.buyerKey : undefined, passes, pending };
+  }
+  // credentialFiles(c, wallet): either may be missing, not both.
+  function credentialFiles(c, wallet) {
+    const ok = c ? credentialOk(c) : null;
+    const w = wallet ? walletOk(wallet) : null;
+    if (!ok && !w) throw new Error('not a subscription credential');
+    if (c && !ok) throw new Error('not a subscription credential');
+    const t = ok ? PLANS[ok.tier] : null;
+    const files = {
       'manifest.json': JSON.stringify({
         gifos: '1.0', appId: 'gifos-subscription', name: 'GifOS subscription', entry: 'index.html',
-        provides: { meet: ['subscription'] },     // a Provider: active only in the Providers folder
+        provides: { meet: w ? ['subscription', 'pass4h'] : ['subscription'] },     // a Provider: active only in the Providers folder
         accent: [120, 200, 255],
       }),
-      'subscription.json': JSON.stringify(ok),
       'index.html': '<!doctype html><meta charset="utf-8"><title>GifOS subscription</title>' +
-        '<body style="font:15px/1.5 system-ui;padding:1.2rem"><h2>GifOS subscription</h2><p>' + t.name + '.</p>' +
+        '<body style="font:15px/1.5 system-ui;padding:1.2rem"><h2>GifOS subscription</h2><p>' + (t ? t.name + '.' : '') + (w ? ' Four-hour passes: ' + w.passes.length + '.' : '') + '</p>' +
         '<p>Keep this file in the Providers folder on your Home Screen, or open it in a meeting\u2019s Settings on another browser. ' +
-        'It works in one meeting at a time: joining a meeting moves it there.</p><p>Anyone with this file can use your subscription. Keep it private.</p>',
+        'A subscription works in one meeting at a time: joining a meeting moves it there.</p><p>Anyone with this file can use your subscription and passes. Keep it private.</p>',
     };
+    if (ok) files['subscription.json'] = JSON.stringify(ok);
+    if (w) files['passes.json'] = JSON.stringify(w);
+    return files;
+  }
+  function filesManifest(files) {
+    const text = (v) => (v instanceof Uint8Array ? new TextDecoder().decode(v) : String(v || ''));
+    let m; try { m = JSON.parse(text(files['manifest.json'])); } catch (e) { return null; }
+    if (!m || m.appId !== 'gifos-subscription' || !m.provides || !Array.isArray(m.provides.meet) || m.provides.meet.indexOf('subscription') < 0) return null;
+    return text;
   }
   function credentialFromFiles(files) {
     if (!files) return null;
-    let m, c;
-    const text = (v) => (v instanceof Uint8Array ? new TextDecoder().decode(v) : String(v || ''));
-    try { m = JSON.parse(text(files['manifest.json'])); c = JSON.parse(text(files['subscription.json'])); } catch (e) { return null; }
-    if (!m || m.appId !== 'gifos-subscription' || !m.provides || !Array.isArray(m.provides.meet) || m.provides.meet.indexOf('subscription') < 0) return null;
+    const text = filesManifest(files);
+    if (!text) return null;
+    let c; try { c = JSON.parse(text(files['subscription.json'])); } catch (e) { return null; }
     return credentialOk(c);
+  }
+  function walletFromFiles(files) {
+    if (!files) return null;
+    const text = filesManifest(files);
+    if (!text) return null;
+    let w; try { w = JSON.parse(text(files['passes.json'])); } catch (e) { return null; }
+    return walletOk(w);
   }
 
   // ---- the page switch ------------------------------------------------------
@@ -378,6 +538,9 @@
     checkLicense, verifyLicense, rightsOf, storageAfterLapse, proofMessage, verifyProof, askMessage, askFresh,
     roomLimitFor, admission, enabled, roomContext, doorContext, roomTierOf, doorVerdict, doorProofOk,
     TICKET_KIND, TICKET_S, RENEW_EVERY_S, meetingTag, checkTicket, verifyTicket, ticketRights,
-    CRED_KIND, credentialOk, credentialFiles, credentialFromFiles,
+    PASS_KIND, passSeconds, PASS_PLAN, PASS_PRICE, PASS_VALUE, ORDER_ID_RE, PASS_ID_RE, passMessage, checkPass, passLive, verifyPass,
+    passStart, passRights, meetingRight, turnPassOk, bestRights,
+    WALLET_KIND, walletOk,
+    CRED_KIND, credentialOk, credentialFiles, credentialFromFiles, walletFromFiles,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

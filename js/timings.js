@@ -103,6 +103,7 @@
     NEW_PEER_BEAT_MS: 400,   // ms
     NOSOCK_WIN: 40,   // tick
     PACK_REST_MAX_MS: 1000,   // ms
+    PASS_S: 14400,   // s
     PAYPAL_KEEP_MS: 21600000,   // ms
     PAYPAL_POLL_MS: 2000,   // ms
     PEER_SILENT_MS: 30000,   // ms

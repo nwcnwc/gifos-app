@@ -12932,9 +12932,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       turnPaint();
     }
     // A subscriber's vouch: its meeting ticket for this meeting and its key's signature over the room (meet-subs roomOrder).
+    // A four-hour pass vouches the same way; the TURN Worker reads the pass with its holder's signature over the room
+    // (the whole order: pass, at, proof), so a pass copied without its key asks for nothing.
     function turnSubIn(from, o) {
       if (!o || typeof o !== 'object' || !GifOS.meetSubs) return;
-      GifOS.meetSubs.roomTier(o, subsMeetId()).then((t) => { if (t) turnSubs.set(from, { tier: t.tier, exp: t.exp, ticket: o.ticket, at: Date.now() }); }, () => {});
+      GifOS.meetSubs.roomTier(o, subsMeetId()).then((t) => { if (t) turnSubs.set(from, { tier: t.tier, exp: t.exp, ticket: t.pass ? Object.assign({}, o.ticket, { at: o.at, proof: o.proof }) : o.ticket, pass: !!t.pass, at: Date.now() }); }, () => {});
     }
     function turnSubOut() {
       if (!meshNode || !subsOn()) return;
@@ -12975,6 +12977,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               } catch (x) { t.textContent = said; b.disabled = false; }
             });
             el.appendChild(b);
+            // or the four-hour pass: $1 once through PayPal, Unlimited for the next 4 hours (never a subscription)
+            const b4 = document.createElement('button'); b4.type = 'button'; b4.className = 'tpause-pass';
+            b4.textContent = uiText('turnPass4h', 'or $1 for the next 4 hours');
+            b4.addEventListener('click', async (e) => {
+              e.stopPropagation(); b4.disabled = true; b.disabled = true;
+              try {
+                const r = await GifOS.meetSubs.buyPass((w) => { t.textContent = w; });
+                if (!(r && r.passJson)) { t.textContent = said; b4.disabled = false; b.disabled = false; }
+              } catch (x) { t.textContent = said; b4.disabled = false; b.disabled = false; }
+            });
+            el.appendChild(b4);
           }
           p.tile.appendChild(el);
         } else if (!show && el) el.remove();
@@ -35560,6 +35573,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!subsOn()) return;
       GifOS.meetSubs.joinMeeting(subsMeetId(), {
         onTicket: () => { if (amAdmin && hasAdminRoom()) subsPublishRoomPlan(); turnSubAt = 0; capPublish(true); try { capPaint(); } catch (e) {} },   // a captor re-presents each renewed ticket   // a fresh ticket is a fresh TURN vouch: say it at the next step
+        onPass: () => { if (amAdmin && hasAdminRoom()) subsPublishRoomPlan(); turnSubAt = 0; },   // a four-hour pass bought, started or ended: the room's plan and the TURN vouch now
         onLost: (why) => {
           if (why === 'moved') setStatus('Your subscription is now in use in another meeting.');
           const r = modTable['*'];

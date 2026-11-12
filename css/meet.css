@@ -1145,6 +1145,13 @@
   .tile .tpause .tpause-sub { pointer-events: auto; min-height: 36px; padding: 6px 16px; border: 0; border-radius: var(--r-pill);
                   background: rgba(255,255,255,.16); color: var(--c-white); font: inherit; font-weight: 500; cursor: pointer; }
   .tile .tpause .tpause-sub:disabled { opacity: .6; cursor: default; }
+  /* The second choice under Subscribe: the four-hour pass, a quiet line of text, no fill. */
+  .tile .tpause .tpause-pass { pointer-events: auto; min-height: 32px; padding: 4px 8px; border: 0; background: none;
+                  color: var(--c-white); opacity: .8; font: inherit; cursor: pointer; }
+  .tile .tpause .tpause-pass:disabled { opacity: .5; cursor: default; }
+  /* What is in effect (a pass's time left, or the plan), quiet beside the status line; a tap opens Settings. */
+  #sub-now { border: 0; background: none; padding: 0 0 0 8px; color: var(--c-gray); font: inherit; font-size: .8125rem; cursor: pointer; white-space: nowrap; }
+  #sub-now[hidden] { display: none; }
   .tile .tpause.tpause-busy { justify-content: flex-start; padding-top: 12px; }
   /* On a phone the line is one caption above Live, not a clip on the face.
      A long line starts at the top and the rest scrolls inside the caption.
