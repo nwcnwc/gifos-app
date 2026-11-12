@@ -21000,7 +21000,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // down, and a deeper seat would crop them with the old order.
         const stripReorder = m.key === 'sgs' && !!prevAnn && !annNew
           && ((prevAnn.ids || []).join(',') !== (annIds || []).join(',') || prevAnn.n !== m.n || prevAnn.cols !== m.cols);
-        mosAnn.set(ak, { streamId: m.streamId, col: m.col, row: m.row, src: (m.src ? String(m.src).slice(0, 64) : undefined), n: m.n, cols: m.cols, mt: m.mt, h: (typeof m.h === 'number' ? m.h : undefined), ao: (m.ao === 1 ? 1 : undefined), sb: (m.sb === 1 ? 1 : undefined), vp: mxPath(m.vp), ids: annIds, alag: (typeof m.alag === 'number' && isFinite(m.alag) ? Math.max(0, Math.min(2000, m.alag)) : undefined), at: Date.now() });
+        const org = typeof m.cf === 'string' && typeof mosCarrierOf === 'function' && mosCarrierOf(p.id, m.cf) ? m.cf : undefined;   // TURN.14.8: a ship carried across the cut, by the seat that sent it
+        mosAnn.set(ak, { org, streamId: m.streamId, col: m.col, row: m.row, src: (m.src ? String(m.src).slice(0, 64) : undefined), n: m.n, cols: m.cols, mt: m.mt, h: (typeof m.h === 'number' ? m.h : undefined), ao: (m.ao === 1 ? 1 : undefined), sb: (m.sb === 1 ? 1 : undefined), vp: mxPath(m.vp), ids: annIds, alag: (typeof m.alag === 'number' && isFinite(m.alag) ? Math.max(0, Math.min(2000, m.alag)) : undefined), at: Date.now() });
         if (annNew || stripReorder) schedReconcile(); else schedClaim();
       } else if (m.k === 'mx-beat') {
         stgBeatIn(p, m);
@@ -24458,6 +24459,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       for (const r of turnLinks.turnPcs()) if (r !== to && live(r) && (connsOf.get(r) || []).includes(to)) return r;
       return null;
     }
+    // A carrier's word "this came from x" stands only for a pair the TURN facts join: the carrier is x's TURN peer, or mine.
+    function mosCarrierOf(carrier, x) {
+      if (!turnLinks || !carrier || !x || x === myId || x === carrier) return false;
+      const q = peers.get(x); if (q && q.connected) return false;   // a seat I reach myself sends its own
+      for (const f of turnFacts.values()) { if (!f.up || Date.now() - (f.at || 0) > turnLinks.factStaleMs) continue; if ((f.a === carrier && (f.b === x || f.b === myId)) || (f.b === carrier && (f.a === x || f.a === myId))) return true; }
+      return false;
+    }
     const mosCarried = (k) => { if (typeof k !== 'string' || k.indexOf('tc:') !== 0) return null; const b = k.indexOf('|'); return b > 3 ? { to: k.slice(3, b), key: k.slice(b + 1) } : null; };
     function shipMos(key, to, stream, meta, upKey) {
       if (!to || !stream) return null;
@@ -25028,7 +25036,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         let b = 0, n = 0; for (const r of p.pc.getReceivers()) { if (!r.track || !pri.stream.getTracks().includes(r.track)) continue; n++; (await r.getStats()).forEach((x) => { if (x.type === 'inbound-rtp') b += x.bytesReceived || 0; }); }
         const now = Date.now();
         if (!n) { rowFeed.via = null; return; }   // no receiver carries this claim's tracks (a rebound container): nothing to judge, and no silence
-        if (rowFeed.via !== pri.via || rowFeed.sid !== pri.streamId || b !== rowFeed.bytes) { rowFeed.via = pri.via; rowFeed.sid = pri.streamId; rowFeed.bytes = b; rowFeed.at = now; }
+        if (rowFeed.via !== (pri.org || pri.via) || rowFeed.sid !== pri.streamId || b !== rowFeed.bytes) { rowFeed.via = pri.org || pri.via; rowFeed.sid = pri.streamId; rowFeed.bytes = b; rowFeed.at = now; }
         else if (now - rowFeed.at >= ROW_SILENT_MS) schedReconcile();
       } catch (e) {} finally { rowFeedBusy = false; }
     }, 400);
@@ -25047,7 +25055,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       } else rowHeadOut = null;
       if (!rowHeadOut && pid && !(rowOutSkip.get(pid) > now)) {
         const pri = mosIn.get('sdm'), fb = mosFb.get('sdm');
-        if (pri && pri.via === pid && (pri.deadAt || (rowFeed.via === pid && rowFeed.at && now - rowFeed.at >= ROW_SILENT_MS))) { rowHeadOut = { pid, tick: s.seatTick, pc: c.pc, r: c.r }; dbgRowHead(pri.deadAt ? 'out:gone' : 'out:silent'); if (fb) fb.dark = true; }
+        if (pri && (pri.org || pri.via) === pid && (pri.deadAt || (rowFeed.via === pid && rowFeed.at && now - rowFeed.at >= ROW_SILENT_MS))) { rowHeadOut = { pid, tick: s.seatTick, pc: c.pc, r: c.r }; dbgRowHead(pri.deadAt ? 'out:gone' : 'out:silent'); if (fb) fb.dark = true; }
       }
       const out = !!rowHeadOut || s.headGoneView;
       if (rowWasOut && !out) rowHoldUntil = now + MOS_SETTLE + 2000;   // the heir's copy stays while the row fails back
@@ -25056,7 +25064,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // The head's view is back: my row-view claim is on that head, not dead, and its bytes advanced within the silence bound.
     function rowHeadFeedBack(pid, now) {
       const pri = mosIn.get('sdm');
-      return !!(pri && pri.via === pid && !pri.deadAt && rowFeed.via === pid && rowFeed.at && now - rowFeed.at < ROW_SILENT_MS);
+      return !!(pri && (pri.org || pri.via) === pid && !pri.deadAt && rowFeed.via === pid && rowFeed.at && now - rowFeed.at < ROW_SILENT_MS);
     }
     // A carrier whose target just moved up to its row's head cell keeps handing it the row's product (L28 at both ends), so the
     // new head's view does not go dark between the carried copy and the direct one.
@@ -26577,7 +26585,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       for (const rk of new Set([...mosIn.keys(), ...mosStandby.keys()])) if (isRedun(rk)) redun.set(rk, []);
       for (const [ak, ann] of mosAnn) {
         const from = ak.slice(0, ak.indexOf('|')), key = ak.slice(ak.indexOf('|') + 1);
-        const rk = mosResolve(key, ann, from);
+        const rk = mosResolve(key, ann, ann.org || from);
         if (!rk) continue;
         if (isRedun(rk)) { let a = redun.get(rk); if (!a) { a = []; redun.set(rk, a); } a.push({ from, key, ann }); continue; }
         structuralSeen.add(rk);
@@ -26603,7 +26611,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const st = p.incoming.find((s) => s.id === ann.streamId && s.id !== p.ownSid);
         if (!st) continue;
         if (cur) dropMosIn(rk);
-        mosIn.set(rk, { via: from, streamId: ann.streamId, stream: st, el: mosNeedsVideo(rk) ? mosVideo(st) : null, meta: annMeta(ann) });
+        mosIn.set(rk, { via: from, org: ann.org, streamId: ann.streamId, stream: st, el: mosNeedsVideo(rk) ? mosVideo(st) : null, meta: annMeta(ann) });
       }
       // A structural slot (sub, x1, x2, sdxc) has no second announcer
       // and no claimRedun pass. Once its announce ages out, or the peer is
@@ -27314,7 +27322,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // ...nor a frozen head's: while my row judges its head's feed gone (rowHeadIsOut), headPid is the heir, and the
         // head's own x1 is not carried. Every copy of it is the same stopped product; carrying it kept other heads holding
         // a "live" standby that could never flow.
-        if (x1 && c.pc === 0 && !x1.deadAt && x1.via === headPid) {
+        if (x1 && c.pc === 0 && !x1.deadAt && (x1.org || x1.via) === headPid) {
           // As mate i of my row I carry my head's product to DEST row i (row 0
           // when i===r — my column's seat there covers the wrap), via my
           // COLUMN-mate sitting in that row, who hands it to its head. This is
@@ -27365,7 +27373,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const sdmH = mosIn.get('sdm');
         // Re-fan only the copy that came from my row's head (or the heir standing in): a copy a mate re-fanned to me, fanned on,
         // closes a ring of mates holding a dead head's view, which nothing breaks while the new head is not reachable.
-        if (sdmH && !sdmH.deadAt && sdmH.via === headPid) for (let j = 1; j < C; j++) {
+        if (sdmH && !sdmH.deadAt && (sdmH.org || sdmH.via) === headPid) for (let j = 1; j < C; j++) {
           if (j === c.i) continue;
           const mate = occPid({ pc: c.pc, r: c.r, i: j });
           if (!mate || mate === sdmH.via) continue;
@@ -27379,7 +27387,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (via && tr && tr.readyState !== 'ended') { const jr = shipMos('ra', via, mic, { row: c.r, src: myId }); if (jr) { wanted.add(jr); rowMixSent++; } }
       }
       // TURN.14.8: the ships I carry across a TURN link's cut go on to their seat under their own key
-      for (const [mk, f] of mosIn) { const t = mosCarried(mk); if (!t || !f.stream || f.deadAt) continue; const jk = shipMos(t.key, t.to, f.stream, f.meta, mk); if (jk) wanted.add(jk); }
+      for (const [mk, f] of mosIn) { const t = mosCarried(mk); if (!t || !f.stream || f.deadAt) continue; const jk = shipMos(t.key, t.to, f.stream, Object.assign({}, f.meta || {}, { cf: f.via }), mk); if (jk) wanted.add(jk); }   // cf: the seat it came from (the target reads it as that seat's)
       // ---- STAGE lane: chosen <=C feeds -> S1 -> composited strip -> fan down --
       // Individual stager feeds ride UP to Section 1 (uncomposited passthrough,
       // per-stager key); at S1 they FLOOD the row+cross mesh (dedup by streamId,
