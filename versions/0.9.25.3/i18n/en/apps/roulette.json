@@ -1,0 +1,21 @@
+{
+  "player.you": "You",
+  "lobby.players": "Players here ({n})",
+  "lobby.invite": "📲 Everyone plays on their OWN phone: tap <b>Invite</b> in the top bar, send the link, and friends appear here as they open it.",
+  "lobby.start": "Start",
+  "lobby.startN": "{label} ({n} players)",
+  "lobby.min": "Needs at least {n} players",
+  "lobby.confirmRemove": "Remove {name} from the lobby?",
+  "name.placeholder": "Add a name, press Enter",
+  "players.none": "No players yet",
+  "orPhones": "Or everyone has a phone 📲",
+  "setup.dealAll": "Deal to every phone",
+  "setup.title": "The deck is the boss 🎲",
+  "setup.intro": "Add everyone's name, put the phone in the middle, tap for a card, do what it says. That's it. That's the game.",
+  "setup.in": "Who's in?",
+  "setup.go": "Shuffle up & deal",
+  "setup.lobbyText": "Tap <b>Invite</b>. The same card lands on every screen — no huddling around one phone.",
+  "card.n": "card {n}",
+  "card.next": "Next card →",
+  "card.players": "Players"
+}

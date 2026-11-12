@@ -1,0 +1,21 @@
+{
+  "player.you": "Sie",
+  "lobby.players": "Spieler hier ({n})",
+  "lobby.invite": "📲 Alle spielen auf ihrem EIGENEN Handy: Tippen Sie oben in der Leiste auf <b>Einladen</b>, schicken Sie den Link, und Freunde erscheinen hier, sobald sie ihn öffnen.",
+  "lobby.start": "Start",
+  "lobby.startN": "{label} ({n} Spieler)",
+  "lobby.min": "Mindestens {n} Spieler nötig",
+  "lobby.confirmRemove": "{name} aus der Lobby entfernen?",
+  "name.placeholder": "Namen eingeben, Eingabetaste drücken",
+  "players.none": "Noch keine Spieler",
+  "orPhones": "Oder alle haben ein Handy 📲",
+  "setup.dealAll": "An jedes Handy austeilen",
+  "setup.title": "Das Kartenspiel hat das Sagen 🎲",
+  "setup.intro": "Tragen Sie alle Namen ein, legen Sie das Handy in die Mitte, tippen Sie auf eine Karte und tun Sie, was sie sagt. Das ist alles. Das ist das Spiel.",
+  "setup.in": "Wer spielt mit?",
+  "setup.go": "Mischen und austeilen",
+  "setup.lobbyText": "Tippen Sie auf <b>Einladen</b>. Dieselbe Karte erscheint auf jedem Bildschirm – kein Gedrängel um ein einziges Handy.",
+  "card.n": "Karte {n}",
+  "card.next": "Nächste Karte →",
+  "card.players": "Spieler"
+}
