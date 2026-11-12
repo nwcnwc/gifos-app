@@ -33392,7 +33392,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function placeBarAvoiders() {
       const FLOATERS = [['callstate', ''], ['chatnote', 'callstate'], ['livecap', 'callstate'], 
         ['waitlist', ''], ['rb-now', ''], ['bc-cap', ''], ['bc-reacts', '']];
-      const PANELS = [['chatpanel', 'pad'], ['qa', 'pad'], ['bc-ended', 'bottom'], ['bc-ident', 'bottom']];
+      const PANELS = [['chatpanel', 'pad'], ['qa', 'pad'], ['bc-ended', 'bottom'], ['bc-ident', 'bottom'], ['fsstrip', 'strip']];
       const bar = document.querySelector('.bar');
       if (!bar || bar.classList.contains('tucked') || document.body.classList.contains('chrome-away')) return;
       const shown = (el) => {
@@ -33408,7 +33408,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       };
       const br = shown(bar);
       let ob = br ? { left: br.left, right: br.right, top: br.top, bottom: br.bottom } : null;
-      const lifts = {};
+      const lifts = {}, risen = [];
       for (const [id, baseId] of FLOATERS) {
         const el = document.getElementById(id);
         const r = shown(el);
@@ -33423,6 +33423,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }
         write(el, '--barlift', lift);
         lifts[id] = lift;
+        // a floater lifted onto the bar's top (Record, a caption) is part of what the Focus strip clears
+        if (lift > 0) risen.push({ left: r.left, right: r.right, top: r.top + cur - lift, bottom: r.bottom + cur - lift });
       }
       const tray = shown(document.getElementById('reacttray'));
       if (ob && tray) ob = { left: Math.min(ob.left, tray.left), right: Math.max(ob.right, tray.right), top: Math.min(ob.top, tray.top), bottom: Math.max(ob.bottom, tray.bottom) };
@@ -33431,7 +33433,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!el) continue;
         const r = shown(el);
         let clear = 0;
-        if (r && ob) {
+        if (r && ob && mode === 'strip') {
+          // The Focus strip's thumbs are controls: every one stays above the
+          // bar, so the strip pads by the bar's whole reach, not half its height.
+          const overX = ob.right > r.left + 4 && ob.left < r.right - 4;
+          if (overX && ob.bottom > r.top + 4 && ob.top < r.bottom) {
+            let top = ob.top;
+            for (const f of risen) if (f.right > r.left + 4 && f.left < r.right - 4 && f.bottom > top - 12) top = Math.min(top, f.top);
+            clear = r.bottom - top + 8;
+          }
+        } else if (r && ob) {
           const bottom = r.bottom + (mode === 'bottom' ? read(el, '--barclear') : 0);
           const h = bottom - r.top;
           const overX = ob.right > r.left + 4 && ob.left < r.right - 4;
@@ -33448,7 +33459,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       };
       window.__gifosBarAvoid = later;
       // Showing, hiding or opening one of them can newly put it under the bar.
-      const ids = ['callstate', 'chatnote', 'livecap', 'waitlist', 'bc-cap', 'bc-reacts', 'chatpanel', 'qa', 'bc-ended', 'bc-ident', 'reacttray'];
+      const ids = ['callstate', 'chatnote', 'livecap', 'waitlist', 'bc-cap', 'bc-reacts', 'chatpanel', 'qa', 'bc-ended', 'bc-ident', 'reacttray', 'fsview'];
       if (window.MutationObserver) {
         const mo = new MutationObserver(later);
         for (const id of ids) { const el = document.getElementById(id); if (el) mo.observe(el, { attributes: true, attributeFilter: ['class', 'hidden'] }); }
