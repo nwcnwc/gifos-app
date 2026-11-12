@@ -160,6 +160,7 @@
             this.l381Lost();   /* L38.1 */
             if (this.l32RosterStale() && this.resumeAsk()) { wake(); return true; }   /* L32.1 */
             if (this.f.fabricDoors() && this.lastAsked >= 0 && this.haveRoster && this.f.fabricLinkState(id, this.lastAsked) === LS_CLOSED) { for (let q = 0; q < this.roster.length;) { if (this.roster[q].v === this.lastAsked) this.roster.splice(q, 1); else q++; } this.trace('ROSTER-DROP', id, null, 'seat=%d why=dial-failed', this.lastAsked); }   // L16.4
+            if (this.l45LoneFind()) { this.seatTries = 0; this.join(); }   /* L45.4.2 */ else
             if (this.haveRoster && this.roster.length && ++this.seatTries <= 6) { const t = this.pickRoster(); if (t >= 0) this.askSeat(t); else if (!this.resumeAsk()) this.join(); } else { this.seatTries = 0; if (!this.resumeAsk()) this.join(); }
           }
         }

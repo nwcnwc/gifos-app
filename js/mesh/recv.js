@@ -128,7 +128,7 @@
         case 'HELLO': this.onHello(m); return;
         case 'YIELD': this.onYield(m); return;
         case 'CLAIM': this.onClaim(m); return;
-        case 'LEAVE': this.onLeave(m); return;
+        case 'LEAVE': { const lx = m.id, lck = m.ck, lmv = m.mv; this.onLeave(m); this.l2522Bye(lx, lck, lmv); return; }   // L25.22
         case 'LGSTARVE': case 'LGASK': case 'LGCOMP': this.lgRecv(m); return;   // L29
         case 'SWAPQ': this.l4OnQ(m); return;
         case 'SWAPRDY': this.l4OnRdy(m); return;
