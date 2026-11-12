@@ -748,5 +748,13 @@
  "meet.wspRunBrowserShort": ", субтитры браузера включены",
  "meet.wspRunNoneShort": ", от вас субтитров нет",
  "meet.wspRetry": "Повторить",
- "meet.stBrowserCaptionsOnWhisperOff": "Субтитры браузера включены. Whisper на этом устройстве выключен."
+ "meet.stBrowserCaptionsOnWhisperOff": "Субтитры браузера включены. Whisper на этом устройстве выключен.",
+ "meet.viewPick": "Вид",
+ "meet.viewPickTip": "Сменить вид (Alt+F)",
+ "meet.viewScroll": "Лента",
+ "meet.viewFit": "Все",
+ "meet.viewFloat": "Окна",
+ "meet.viewFocus": "Фокус",
+ "meet.viewFollow": "Следить за говорящим",
+ "meet.viewPresent": "Показ"
 }
