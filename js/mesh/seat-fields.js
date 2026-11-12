@@ -688,6 +688,9 @@
     ["l40Held", "Msg"],   // Msg  (line 1813)
     ["l40Hold", "bool"],   // bool = false  (line 1813)
     ["l381N", "u8"],   // uint8_t = 0  (line 1815)
+    ["l505N", "u8"],   // uint8_t = 0  (line 1815)
+    ["l507Last", "i32"],   // int = -1  (line 1815)
+    ["l508Busy", "<i32>"],   // OSet<int>  (line 1815)
     ["l383Due", "{u64:i32}"],   // OMap<uint64_t,int>  (line 1815)
     ["l920DeafAt", "i32"],   // int = -1  (line 1817)
     ["sigSeen", "<str>"],   // OSet<string>  (line 1825)
@@ -1263,6 +1266,8 @@
     l849Pick: -1,
     l40Hold: false,
     l381N: 0,
+    l505N: 0,
+    l507Last: -1,
     l920DeafAt: -1,
     dead: false,
     u2Id: -1,

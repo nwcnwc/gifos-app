@@ -48,10 +48,10 @@
       if (m.tag === 1) { const st = this.l3117Stray(m.list); if (st === 2) return; if (st === 0) this.keyAsk(m.list); }   // L3.11.7 (C++: onGreeters)   // L3.11.6: the door refused my registration (C++: onGreeters)
       if (this.state === 0 && this.entryTerm()) { this.islandAsk(m.list); return; }   // L8.2
       if (this.state === 0) {
-        let g = m.list[Math.floor(this.rng() * m.list.length)];
+        let g = this.l508Pick(m.list);   /* L50.8 (gaps2.js) */
         { const via = this.w.L31_VIA; const dv = via ? via.get(id) : undefined; if (dv !== undefined && m.list.includes(dv)) g = dv; }
         this.gateway = g; this.entNote(g); if (this.f.fabricDoors()) this.l16AskOne(g);
-        const w = newMsg('WHOHOME'); w.from = id; w.ttl = 60; if (!this.oldCell && !islandStand(this, E.IS_L31)) w.l31 = 1; this.emit(g, w); this.state = 1; this.retryAt = TICK;
+        const w = newMsg('WHOHOME'); w.from = id; w.ttl = 60; if (!this.oldCell && !islandStand(this, E.IS_L31)) w.l31 = 1; this.emit(g, w); this.l508Fan(m.list, g);   /* L50.8 */ this.state = 1; this.retryAt = TICK;
       }
       this.islandFork(m.list);   // L8.3
       if (this.state === 3 && this.coord.pc === 0 && TICK - this.rookSeenAt > K.STRAND_TTL && !this.islandFounder) {   // L8.4
@@ -201,8 +201,8 @@
       if (this.state === 2 && this.l317Declined(m)) { this.trace('L31.7-DECLINED', id, m.coord, 'owner=%d at=%d', m.owner, m.ppAt); return; }   // L31.7: a placement I declined while seated is no answer to this search
       if (this.state === 2 && roomTerm(this, 1) && this.TICK - this.c7At < K.RELAY_TTL && (this.c7Old.has(m.owner) || this.c7Old.has(m.from)) && !(m.c7Min >= 0 && this.l834Y >= 0 && m.c7Min < this.l834Y)) return;   // L8.5 (L8.5.3: a placer already seated in the ring we move toward names it below the ring I left)
       if (this.state === 2 && this.l851Moves(m)) return;   // L8.5.1
-      if (this.state === 2 && this.l25BadPlacer.size && (this.l25Bad(m.owner) || this.l25Bad(m.from))) { this.trace('L25-BADPLACER', id, null, 'owner=%d', m.owner); if (m.nc === id) this.l711Reask('badplacer'); return; }
-      if (this.state === 2 && m.nbrs.length === 0 && ckey(m.coord) !== 0) { lv.L25_TWICE++; this.l25Mark(m.owner, true); this.trace('L25-BARE-PLACE', id, m.coord, 'owner=%d', m.owner); if (m.nc === id) this.l711Reask('bare'); return; }   // L25
+      if (this.state === 2 && this.l25BadPlacer.size && (this.l25Bad(m.owner) || this.l25Bad(m.from))) { this.trace('L25-BADPLACER', id, null, 'owner=%d', m.owner); this.l501Marked(m.owner); this.l501Marked(m.from); this.l505Note();   /* L50.1, L50.5 (gaps2.js) */ if (m.nc === id) this.l711Reask('badplacer'); return; }
+      if (this.state === 2 && m.nbrs.length === 0 && (ckey(m.coord) !== 0 || this.l509Root())) { lv.L25_TWICE++; this.l25Mark(m.owner, true); this.trace('L25-BARE-PLACE', id, m.coord, 'owner=%d', m.owner); this.l501Marked(m.owner); this.l505Note();   /* L50.1, L50.5, L50.9 (gaps2.js) */ if (m.nc === id) this.l711Reask('bare'); return; }   // L25
       if (this.state === 2) { if (m.line >= 0) { this.lineAdopt(m.line, 'place'); if (m.lineF) this.lineFork = true; } this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, m.row, m.ppL); if (this.pp >= 0 && this.pp !== id) this.placer = this.pp; return; }   // placer: only this intake
       if (this.state === 3 && m.nc === id && m.owner >= 0 && m.owner !== id && m.l31 !== 5 && m.l31 !== 7 && m.tag !== 1 && this.hasCoord && !(m.owner === this.myPlacer && m.ppAt === this.ppAt)) this.l317Decline(m);   // L31.7
       if (this.state === 3 && (m.l31 === 5 || m.l31 === 7) && this.l31Replace(m)) return;   // L31.4
@@ -216,7 +216,7 @@
     // C++: mesh_seat.inc:Seat::onNoRoom
     onNoRoom(m) {
       const TICK = this.TICK, id = this.id;
-      if (m.tag === K.L711_TAG) { this.l711Reask('lost'); return; }   // L7.11
+      if (m.tag === K.L711_TAG) { this.l505Note();   /* L50.5 */ this.l711Reask('lost'); return; }   // L7.11
       if (this.state === 2) {
         if (m.nd >= this.w.lv.SPREAD_MINDEPTH) this.noroomSeen++; this.triedSilent.delete(m.id); if (this.lastAsked >= 0) this.triedSilent.delete(this.lastAsked); this.retryAt = TICK;
         if (this.f.fabricDoors() && m.split && this.l16Next < this.l16List.length) { this.trace('L16-SPLIT-FAN', id, null, 'from=%d rest=%d', m.id, this.l16List.length - this.l16Next); this.l16Wave(this.l16List.length); return; }   // L16

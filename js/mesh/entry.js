@@ -51,7 +51,7 @@
     take(c, owner, nbrs, ppFrom = -1, ppTick = -1, nbrsRow = [], ppTickL = -1) {
       const lv = this.w.lv, id = this.id, TICK = this.TICK;
       if (c.i >= C || c.r >= C) return;   // sanity: never take a malformed coord
-      this.l381N = 0;   // L38.1: a seated seat's next entry starts fresh
+      this.l381N = 0; this.l505N = 0; this.l507Last = -1; this.l508Busy.clear();   // L38.1, L50: a seated seat's next entry starts fresh
       if (roomTerm(this, 1) && this.c7At > -1000000 && TICK - this.c7At < K.RELAY_TTL && !(lv.TIERS_ACTIVE && (this.cnat !== E.NAT_OPEN || this.l4NatSeen))) {
         const drop = []; for (const k of this.byeAt.keys()) if (ckPc(k) === 0) drop.push(k); for (const k of drop) this.byeAt.delete(k);   // L8.14
       }
@@ -161,7 +161,7 @@
         if (s.assigner !== id) { if (TICK - s.at >= K.SIT_TTL) { del.push(ek); } continue; }   // L7.7
         // Confirmed seated by first-hand contact with the joiner at this cell.
         if (this.occGet(ek) === s.joiner && this.firstHandLive(ek)) { del.push(ek); continue; }
-        if (!s.replayed && s.pl.t === 'PLACE' && TICK - s.at >= K.PLACE_REPLAY && this.occGet(ek) !== s.joiner) { s.replayed = true; this.emit(s.joiner, msg.clone(s.pl)); }   // FINDACK: a lost PLACE, replayed once
+        if (!s.replayed && s.pl.t === 'PLACE' && TICK - s.at >= K.PLACE_REPLAY && this.occGet(ek) !== s.joiner) { s.replayed = true; this.emit(s.joiner, this.l503Replay(s.pl)); }   /* L50.3 (gaps2.js) */   // FINDACK: a lost PLACE, replayed once
         if (TICK - s.at < K.SIT_RECHECK) continue;
         // V4 PROBE-GATED CHECK-BACK: SITPING the admittee itself; a killed tab never answers, the chair frees.
         if (this.occGet(ek) !== s.joiner && !this.firstHandLive(ek)) {
@@ -251,7 +251,7 @@
       if (!this.hasCoord || mm.ttl <= 0) { if (descOn(this)) this.f.descEnd(4, 200 - mm.ttl); this.trace('NOROOM', id, this.hasCoord ? this.coord : null, 'nc=%d why=ttl-or-unseated', mm.nc); const m = newMsg('NOROOM'); m.gwc = mm.gwc; m.id = id; m.nd = (this.hasCoord ? pcDepth(this.coord.pc) : 0) & 0xff; this.emit(mm.nc, m); return; }
       this.courtNc = mm.nc; if (!this.courtIgnore) this.courtSkipped = false;   // L3.14
       if (this.l31Pend.length) { for (const p of this.l31Pend) if (p.nc === mm.nc) { this.findAck(mm); return; } }   // L31.4
-      for (const [, e] of this.sitting) if (e.joiner === mm.nc && e.assigner === id && e.pl.t === 'PLACE' && this.TICK - e.at <= K.SIT_TTL) { this.emit(mm.nc, msg.clone(e.pl)); return; }   // FINDACK
+      for (const [, e] of this.sitting) if (e.joiner === mm.nc && e.assigner === id && e.pl.t === 'PLACE' && this.TICK - e.at <= K.SIT_TTL) { this.emit(mm.nc, this.l503Replay(e.pl)); return; }   /* L50.3 (gaps2.js) */   // FINDACK
       // D6b: a seeker that vacated by D6-dark knocks for a deep cell.
       const dkDeep = mm.dk;
       if (this.coord.pc === 0 && !dkDeep) {

@@ -199,6 +199,7 @@
     KEEP_MAX: 4,   // C++: mesh_linkset.inc:KEEP_MAX
     L25_WIT_WAIT: 16,   // C++: mesh_witness.inc:L25_WIT_WAIT  (L25_WAIT)
     L25_WIT_MIN: 3,   // C++: mesh_witness.inc:L25_WIT_MIN
+    L505_FAN: 4,   // C++: mesh_gaps2.inc:L505_FAN
     L43_WAIT: 76,   // C++: mesh_ijoin.inc:L43_WAIT  (60+L5_SETTLE)
     D52_FLIGHT: 4,   // C++: mesh_headword.inc:D52_FLIGHT
     D52_TTL: 40,   // C++: mesh_headword.inc:D52_TTL

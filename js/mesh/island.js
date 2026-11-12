@@ -329,7 +329,7 @@
     l16Busied(m) {
       if (this.evilDoor || this.state === 3 || this.hasCoord) return;
       if (m.nosock) { this.l33NoSock(m.id); return; }
-      this.l16Saw = true; const g = m.id; this.doorAsk.delete(g);
+      this.l16Saw = true; const g = m.id; this.doorAsk.delete(g); this.l508Said(g);   /* L50.8 (gaps2.js) */
       if (this.state === 2) { if (g === this.lastAsked || (g === this.l16Ho && !this.l16Anch)) this.l16Backoff(g === this.l16Ho ? 'anchor-busy' : 'find-busy'); return; }
       if (this.state !== 1) return;
       let asked = false; for (const x of this.l16Ask) if (x === g) { asked = true; break; } if (!asked) return;

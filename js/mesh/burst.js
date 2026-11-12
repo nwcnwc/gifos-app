@@ -42,6 +42,7 @@
     // L44.4: the second ask waits 60 ticks when the greeter was asked under a second ago, and one tick past L7_HOLD otherwise. The list's length is not the test.
     // C++: mesh_burst.inc:Seat::l44AckWait
     l44AckWait() {
+      if (this.l506Short()) return K.L7_HOLD + 1;   /* L50.6 (gaps2.js) */
       if (this.askGap < K.ASK_GAP) return 60;
       return K.L7_HOLD + 1;
     },

@@ -702,7 +702,7 @@
       const pool = []; for (const g of this.lastGreeters) if (g >= 0 && g !== this.id) pool.push(g);
       if (!pool.length) return false;
       this.resumeTries++;
-      const g = pool[Math.floor(this.rng() * pool.length)]; this.gateway = g; this.entNote(g); if (this.f.fabricDoors()) { this.l16AskOne(g); }
+      const g = this.l508Pick(pool);   /* L50.8 */ this.gateway = g; this.entNote(g); if (this.f.fabricDoors()) { this.l16AskOne(g); }
       const w = newMsg('WHOHOME'); w.from = this.id; w.ttl = 60; if (!this.oldCell && !islandStand(this, E.IS_L31)) w.l31 = 1; this.emit(g, w); this.l3115Knock(g);   // L3.11.5
       this.state = 1; this.retryAt = this.TICK; this.f.wake(this.id); return true;
     },
@@ -722,7 +722,7 @@
       this.askTick = this.TICK; this.state = 2; this.retryAt = this.TICK; this.findAckAt = -1; this.triedSilent.add(target); this.lastAsked = target;
       const m = newMsg('FIND'); m.nc = this.id; m.gwc = gwc || (this.l16GwClosed && this.f.fabricDoors()); m.ttl = 200; m.spread = (this.w.lv.SPREAD && this.noroomSeen >= 1); m.dark = this.darkGreeters(target); this.l381Stamp(m); /* L38.1 */ if (this.d6Mark) m.dk = true;
       if (roomTerm(this, 1) && this.searchAt >= 0 && this.TICK - this.searchAt >= K.RELAY_TTL) m.late = true;
-      this.emit(target, m); this.f.wake(this.id);
+      this.emit(target, m); this.l505Fan(target, m);   /* L50.5 */ this.f.wake(this.id);
     },
     // C++: mesh.cpp:Seat::l32RosterStale
     l32RosterStale() {
@@ -733,7 +733,7 @@
     // C++: mesh.cpp:Seat::pickRoster
     pickRoster() {
       const live_ = [], fresh_ = [], door_ = [];
-      for (const e of this.roster) if (e.v !== this.id) { live_.push(e.v); if (!this.triedSilent.has(e.v)) { fresh_.push(e.v); for (const g of this.lastGreeters) if (g === e.v) { door_.push(e.v); break; } } }
+      for (const e of this.roster) if (e.v !== this.id) { live_.push(e.v); if (!this.triedSilent.has(e.v) && !this.l502Skip(e.v)) { fresh_.push(e.v); for (const g of this.lastGreeters) if (g === e.v) { door_.push(e.v); break; } } }
       const pool = !door_.length ? (!fresh_.length ? live_ : fresh_) : door_;
       if (!pool.length) return -1; return pool[Math.floor(this.rng() * pool.length)];
     },
