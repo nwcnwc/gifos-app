@@ -53,6 +53,7 @@
     FILL_WINDOW_MS: 600000,   // ms
     FIRST_MS: 40,   // ms
     FOLD_HOLD_MS: 60000,   // ms
+    FOLD_LIMITER_RELEASE_MS: 1000,   // ms
     FOLLOWME_WAIT_MS: 15000,   // ms
     FOLLOW_GAP_MS: 1000,   // ms
     FOLLOW_HOLD_MS: 5000,   // ms

@@ -23979,8 +23979,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // HUNG at phase B dt=2), the same open 7f84dfa took out of every tile.
       const sink = (typeof WEBKIT_ENGINE !== 'undefined' && WEBKIT_ENGINE && typeof wkStageSink === 'function') ? wkStageSink(fold) : null;
       if (sink) { stageEar = { fold, el: sink, sids: new Map() }; return; }
-      const el = new Audio(); el.autoplay = true;
-      el.srcObject = fold.dest.stream;
+      // Heard through its parts (createFoldPlayer), not as the fold's WebAudio track in an element: Chromium
+      // resamples that track to catch up after a hiccup and the stage voices go up in pitch.
+      let el = null;
+      if (typeof MM.createFoldPlayer === 'function') { try { el = MM.createFoldPlayer(fold, { onBlocked: audioBlocked }); } catch (e) { el = null; } }
+      if (!el) { el = new Audio(); el.autoplay = true; el.srcObject = fold.dest.stream; }
       stageEar = { fold, el, sids: new Map() };
       const pr = el.play(); if (pr && pr.catch) pr.catch((e) => audioBlocked(el, e)); // the stage ear is the one element a sharer's voice rides
     }
@@ -29770,7 +29773,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return;
       }
       if (!src) { if (el._aud) el._aud.srcObject = null; el.volume = vol; return; }
-      if (!el._aud) { el._aud = new Audio(); el._aud.autoplay = true; }
+      // A sound made here by a fold (a Section-1 head's Stadium ear) is heard through its parts, never as a WebAudio
+      // track in an element: Chromium resamples such a track to catch up after a hiccup and the voices go up in
+      // pitch (createFoldPlayer). A remote track keeps its plain companion.
+      const fd = foldOfStream(src);
+      if (el._aud && (fd ? el._aud.fold !== fd : !!el._aud.direct)) releaseAudio(el);
+      if (!el._aud) { if (fd) el._aud = fd.player(audioBlocked); else { el._aud = new Audio(); el._aud.autoplay = true; } }
       el.muted = true; // the <video> is picture-only, always — sound lives in the companion
       // Muting is what makes a late srcObject legal to play. The element is
       // often still paused from the unmuted autoplay attempt at claim time,
@@ -29793,6 +29801,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // played at full level there — ghost voices, doubled stagers. `muted`
       // is honoured everywhere; the fader range above 0 still rides volume.
       el._aud.muted = !!el._gmute || !(vol > 0); // group mute rides the same pipe as the faders
+    }
+    // The audio fold whose output this stream carries (it was made on this page), or null.
+    function foldOfStream(st) {
+      const MMx = typeof GifOS !== 'undefined' ? GifOS.meshMedia : null;
+      if (!st || !st.getAudioTracks || !MMx || typeof MMx.foldOfTrack !== 'function' || typeof MMx.createFoldPlayer !== 'function') return null;
+      const t = st.getAudioTracks()[0];
+      return t ? MMx.foldOfTrack(t) : null;
     }
     // Service mute is a local gate on the stage bus. The saved fader stays put.
     // The one writer of the stage ear's level: a viewer's sound off and the waiting room hold through every reconcile (iOS ignores volume; 0 must be `muted`).
@@ -33392,7 +33407,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function placeBarAvoiders() {
       const FLOATERS = [['callstate', ''], ['chatnote', 'callstate'], ['livecap', 'callstate'], 
         ['waitlist', ''], ['rb-now', ''], ['bc-cap', ''], ['bc-reacts', '']];
-      const PANELS = [['chatpanel', 'pad'], ['qa', 'pad'], ['bc-ended', 'bottom'], ['bc-ident', 'bottom']];
+      const PANELS = [['chatpanel', 'pad'], ['qa', 'pad'], ['bc-ended', 'bottom'], ['bc-ident', 'bottom'], ['fsstrip', 'strip']];
       const bar = document.querySelector('.bar');
       if (!bar || bar.classList.contains('tucked') || document.body.classList.contains('chrome-away')) return;
       const shown = (el) => {
@@ -33408,7 +33423,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       };
       const br = shown(bar);
       let ob = br ? { left: br.left, right: br.right, top: br.top, bottom: br.bottom } : null;
-      const lifts = {};
+      const lifts = {}, risen = [];
       for (const [id, baseId] of FLOATERS) {
         const el = document.getElementById(id);
         const r = shown(el);
@@ -33423,6 +33438,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }
         write(el, '--barlift', lift);
         lifts[id] = lift;
+        // a floater lifted onto the bar's top (Record, a caption) is part of what the Focus strip clears
+        if (lift > 0) risen.push({ left: r.left, right: r.right, top: r.top + cur - lift, bottom: r.bottom + cur - lift });
       }
       const tray = shown(document.getElementById('reacttray'));
       if (ob && tray) ob = { left: Math.min(ob.left, tray.left), right: Math.max(ob.right, tray.right), top: Math.min(ob.top, tray.top), bottom: Math.max(ob.bottom, tray.bottom) };
@@ -33431,7 +33448,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!el) continue;
         const r = shown(el);
         let clear = 0;
-        if (r && ob) {
+        if (r && ob && mode === 'strip') {
+          // The Focus strip's thumbs are controls: every one stays above the
+          // bar, so the strip pads by the bar's whole reach, not half its height.
+          const overX = ob.right > r.left + 4 && ob.left < r.right - 4;
+          if (overX && ob.bottom > r.top + 4 && ob.top < r.bottom) {
+            let top = ob.top;
+            for (const f of risen) if (f.right > r.left + 4 && f.left < r.right - 4 && f.bottom > top - 12) top = Math.min(top, f.top);
+            clear = r.bottom - top + 8;
+          }
+        } else if (r && ob) {
           const bottom = r.bottom + (mode === 'bottom' ? read(el, '--barclear') : 0);
           const h = bottom - r.top;
           const overX = ob.right > r.left + 4 && ob.left < r.right - 4;
@@ -33448,7 +33474,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       };
       window.__gifosBarAvoid = later;
       // Showing, hiding or opening one of them can newly put it under the bar.
-      const ids = ['callstate', 'chatnote', 'livecap', 'waitlist', 'bc-cap', 'bc-reacts', 'chatpanel', 'qa', 'bc-ended', 'bc-ident', 'reacttray'];
+      const ids = ['callstate', 'chatnote', 'livecap', 'waitlist', 'bc-cap', 'bc-reacts', 'chatpanel', 'qa', 'bc-ended', 'bc-ident', 'reacttray', 'fsview'];
       if (window.MutationObserver) {
         const mo = new MutationObserver(later);
         for (const id of ids) { const el = document.getElementById(id); if (el) mo.observe(el, { attributes: true, attributeFilter: ['class', 'hidden'] }); }
