@@ -596,7 +596,7 @@
   // Fit shares the screen about in half with the row.
   // floor: beside a share, the share may run down to this y (past box, under
   // the call's buttons, which then wake over it instead of moving it).
-  // The Float view (Nathan 2026-11-11): every person tile floats on its own
+  // The Drag view (Nathan 2026-11-11; opts.float): every person tile floats on its own
   // (float 'p:<id>': moved and resized one by one; meet-views keeps the spot
   // and size). With content shared, the content takes the whole screen and
   // the people sit as small insets along the right edge (wide) or the bottom

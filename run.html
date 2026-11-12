@@ -659,7 +659,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     <div class="vp-modes" role="radiogroup" aria-label="View">
       <button type="button" role="radio" class="vp-mode" data-view="scroll" aria-checked="false"><span class="vp-ic" aria-hidden="true"></span><span class="vp-word">Scroll</span></button>
       <button type="button" role="radio" class="vp-mode" data-view="fit" aria-checked="true"><span class="vp-ic" aria-hidden="true"></span><span class="vp-word">Fit</span></button>
-      <button type="button" role="radio" class="vp-mode" data-view="float" aria-checked="false"><span class="vp-ic" aria-hidden="true"></span><span class="vp-word">Float</span></button>
+      <button type="button" role="radio" class="vp-mode" data-view="drag" aria-checked="false"><span class="vp-ic" aria-hidden="true"></span><span class="vp-word">Drag</span></button>
       <button type="button" role="radio" class="vp-mode" data-view="focus" aria-checked="false"><span class="vp-ic" aria-hidden="true"></span><span class="vp-word">Focus</span></button>
     </div>
     <button type="button" role="switch" id="vp-follow" class="vp-follow" aria-checked="true" hidden><span class="vp-word">Follow the speaker</span><span class="vp-knob" aria-hidden="true"></span></button>
@@ -7302,7 +7302,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           mode: window.__meetViewMode || 'gallery',
           swapSelf: !!(window.__meetSwapSelf || (window.__meetSelf && window.__meetSelf.onStage)),
           self: window.__meetSelf || 'tile',
-          gallery: window.__meetGallery || 'fit', float: window.__meetView === 'float', now: Date.now(),
+          gallery: window.__meetGallery || 'fit', float: window.__meetView === 'drag', now: Date.now(),
           onSettle: () => { try { layout(); } catch (e) {} },
         });
         // Content on screen (a shared screen now; the content tabs later):
@@ -7329,20 +7329,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         try { applyViewerCrops(); } catch (e) {}
       } finally { comfyBusy = false; }
     }
-    // ---- the meeting's views: Scroll, Fit, Float, Focus (Nathan 2026-11-11) ----
+    // ---- the meeting's views: Scroll, Fit, Drag, Focus (Nathan 2026-11-11) ----
     // Scroll: the gallery you scroll. Fit: everyone on one screen, nothing
-    // floats. Float: Fit, and the stage and the row are panels you drag.
+    // floats. Drag: every person tile moves and resizes (Float is picture-in-picture).
     // Focus: one person big, the others in a strip (#fsview drawn in the page),
     // with Follow the speaker. #fitbtn opens the picker; Alt+F is its key.
     // window.__meetGallery stays the tile layout ('fit' | 'scroll') every
     // layout reader already uses.
     const VMODE = (window.GifOS && GifOS.meetViewMode) || null;
-    const VIEW_WORDS = { scroll: ['viewScroll', 'Scroll'], fit: ['viewFit', 'Fit'], float: ['viewFloat', 'Float'], focus: ['viewFocus', 'Focus'] };
+    const VIEW_WORDS = { scroll: ['viewScroll', 'Scroll'], fit: ['viewFit', 'Fit'], drag: ['viewDrag', 'Drag'], focus: ['viewFocus', 'Focus'] };
     // Outline glyphs, one stroke, currentColor: the same family as the bar's icons.
     const VIEW_ICONS = {
       scroll: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="6" rx="1.5"/><rect x="13" y="3" width="8" height="6" rx="1.5"/><rect x="3" y="11" width="8" height="6" rx="1.5"/><rect x="13" y="11" width="8" height="6" rx="1.5"/><path d="M9 20.5l3 1.5 3-1.5"/></svg>',
       fit: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="8" height="7" rx="1.5"/><rect x="13" y="4" width="8" height="7" rx="1.5"/><rect x="3" y="13" width="8" height="7" rx="1.5"/><rect x="13" y="13" width="8" height="7" rx="1.5"/></svg>',
-      float: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="16" rx="2"/><rect x="12" y="11" width="7" height="6" rx="1.2"/></svg>',
+      drag: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3" width="11" height="8" rx="1.5"/><path d="M11 21l-2.6-3.6a1.3 1.3 0 0 1 2-1.6l1.1 1.1V10.5a1.3 1.3 0 0 1 2.6 0v4.2l3.3.6a1.7 1.7 0 0 1 1.4 1.9L18.3 21"/></svg>',
       focus: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="14" height="16" rx="2"/><rect x="18.5" y="4" width="3" height="4" rx="1"/><rect x="18.5" y="10" width="3" height="4" rx="1"/><rect x="18.5" y="16" width="3" height="4" rx="1"/></svg>',
     };
     let viewStore = null;
@@ -7358,7 +7358,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const m = window.__meetView;
       const scroll = m === 'scroll';
       document.body.classList.toggle('gallery-scroll', scroll);
-      for (const k of (VMODE ? VMODE.MODES : ['scroll', 'fit', 'float', 'focus'])) document.body.classList.toggle('view-' + k, m === k);
+      for (const k of (VMODE ? VMODE.MODES : ['scroll', 'fit', 'drag', 'focus'])) document.body.classList.toggle('view-' + k, m === k);
       if (!scroll) {
         const feed = document.getElementById('feed');
         if (feed) feed.scrollTop = 0;
@@ -7465,14 +7465,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }, true);
     }
     // ONE step to the presentation view on every screen (Nathan 2026-11-11):
-    // the content takes the screen in Float with the speaker inset, the page
+    // the content takes the screen in Drag with the speaker inset, the page
     // goes full screen and a phone turns sideways where the browser lets it.
     const presentbtn = document.getElementById('presentbtn');
     if (presentbtn) {
       const pw = presentbtn.querySelector('.vb-word');
       if (pw) pw.textContent = uiText('viewPresent', 'Present');
       presentbtn.addEventListener('click', () => {
-        setView('float', 'present');
+        setView('drag', 'present');
         const de = document.documentElement;
         const full = !!(document.fullscreenElement || document.webkitFullscreenElement);
         const turn = () => { try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch (e) {} };
