@@ -96,14 +96,14 @@
     LONE_GREET_AFTER: 16,   // C++: mesh.cpp:LONE_GREET_AFTER  (LAW_LONE_GREET_AFTER)
     REDIAL_GAP: 8,   // C++: mesh.cpp:REDIAL_GAP  (LAW_REDIAL_GAP)
     REDIAL_MAX: 64,   // C++: mesh.cpp:REDIAL_MAX  (LAW_REDIAL_MAX)
-    GONE_DIAL: 40,   // C++: mesh.cpp:GONE_DIAL
+    GONE_DIAL: 33,   // C++: mesh.cpp:GONE_DIAL
     L45_LIST_WAIT: 4,   // C++: mesh.cpp:L45_LIST_WAIT
     DOORCALL_HOLD: 108,   // C++: mesh.cpp:DOORCALL_HOLD  (LAW_DOORCALL_HOLD)
     FH_ICE_N: 3,   // C++: mesh.cpp:FH_ICE_N  (LAW_FH_ICE_N)
     FHOP_TTL: 12,   // C++: mesh.cpp:FHOP_TTL  (LAW_FHOP_TTL)
     FHOP_BEAT: 8,   // C++: mesh.cpp:FHOP_BEAT  (LAW_FHOP_BEAT)
     FHOP_SWEEP: 4,   // C++: mesh.cpp:FHOP_SWEEP  (LAW_FHOP_SWEEP)
-    FHOP_RELAY_ASK: 20,   // C++: mesh.cpp:FHOP_RELAY_ASK  (LAW_FHOP_RELAY_ASK)
+    FHOP_RELAY_ASK: 13,   // C++: mesh.cpp:FHOP_RELAY_ASK  (LAW_FHOP_RELAY_ASK)
     FHOP_REFUSE_HOLD: 60,   // C++: mesh.cpp:FHOP_REFUSE_HOLD  (LAW_FHOP_REFUSE_HOLD)
     FHOP_MAX_JOBS: 4,   // C++: mesh.cpp:FHOP_MAX_JOBS  (LAW_FHOP_MAX_JOBS)
     FHOP_CRUMB_TTL: 120,   // C++: mesh.cpp:FHOP_CRUMB_TTL  (LAW_FHOP_CRUMB_TTL)
@@ -223,7 +223,7 @@
     TURN_VOUCH_ROOM20: 3,   // C++: mesh.cpp:TURN_VOUCH_ROOM20  (LAW_TURN_VOUCH_ROOM20)
     TURN_VOUCH_STREAMER: 20,   // C++: mesh.cpp:TURN_VOUCH_STREAMER  (LAW_TURN_VOUCH_STREAMER)
     TURN_VOUCH_UNLIMITED: 6,   // C++: mesh.cpp:TURN_VOUCH_UNLIMITED  (LAW_TURN_VOUCH_UNLIMITED)
-    TURN_WAIT: 60,   // C++: mesh.cpp:TURN_WAIT  (LAW_TURN_WAIT)
+    TURN_WAIT: 17,   // C++: mesh.cpp:TURN_WAIT  (LAW_TURN_WAIT)
     H_RINGLIE_BIT: 8192,   // C++: mesh.cpp:H_RINGLIE_BIT
     RINGLIE_LINE: 1048576,   // C++: mesh.cpp:RINGLIE_LINE  (1<<20)
     DESC_SNAP: 25,   // C++: mesh.cpp:DESC_SNAP
@@ -232,7 +232,8 @@
     LINK_DIAL_DESK_MAX: 6,   // C++: mesh_link.inc:LINK_DIAL_DESK_MAX
     LINK_DIAL_MOB_MIN: 4,   // C++: mesh_link.inc:LINK_DIAL_MOB_MIN
     LINK_DIAL_MOB_MAX: 10,   // C++: mesh_link.inc:LINK_DIAL_MOB_MAX
-    LINK_DIAL_FAIL: 40,   // C++: mesh_link.inc:LINK_DIAL_FAIL
+    LINK_DIAL_FAIL: 33,   // C++: mesh_link.inc:LINK_DIAL_FAIL
+    LINK_DIAL_ICE: 11,   // C++: mesh_link.inc:LINK_DIAL_ICE
     LINK_DC_MIN: 0,   // C++: mesh_link.inc:LINK_DC_MIN
     LINK_DC_MAX: 1,   // C++: mesh_link.inc:LINK_DC_MAX
     LINK_FAILED_PERSIST: 18,   // C++: mesh_link.inc:LINK_FAILED_PERSIST
@@ -286,16 +287,17 @@
     SIG_DEEP_GRACE: 20,   // C++: mesh_dialsig_fab.inc:SIG_DEEP_GRACE
     SIG_RETRY_DOOR: 8,   // C++: mesh_dialsig_fab.inc:SIG_RETRY_DOOR
     SIG_RETRY_UP: 16,   // C++: mesh_dialsig_fab.inc:SIG_RETRY_UP
-    SIG_RETRY_CURE: 24,   // C++: mesh_dialsig_fab.inc:SIG_RETRY_CURE
+    SIG_RETRY_CURE: 17,   // C++: mesh_dialsig_fab.inc:SIG_RETRY_CURE
     SIG_RETRY_POLITE: 10,   // C++: mesh_dialsig_fab.inc:SIG_RETRY_POLITE
     SIG_RETRY_QUIET: 60,   // C++: mesh_dialsig_fab.inc:SIG_RETRY_QUIET
+    SIG_RETRY_KICK_MAX: 4,   // C++: mesh_dialsig_fab.inc:SIG_RETRY_KICK_MAX
     L49_TTL: 2,   // C++: mesh_rowmix.inc:L49_TTL
     L49_PULL: 8,   // C++: mesh_rowmix.inc:L49_PULL
     L49_ELECT: 16,   // C++: mesh_rowmix.inc:L49_ELECT
     RC_W1: 2,   // C++: mesh_realcheck.inc:RC_W1
     RC_W10: 20,   // C++: mesh_realcheck.inc:RC_W10
     RC_HIST: 33,   // C++: mesh_realcheck.inc:RC_HIST
-    RC_LOSS_H: 236,   // C++: mesh_realcheck.inc:RC_LOSS_H  (LINK_DISC_DEAD+LINK_DIAL_FAIL)
+    RC_LOSS_H: 229,   // C++: mesh_realcheck.inc:RC_LOSS_H  (LINK_DISC_DEAD+LINK_DIAL_FAIL)
     RC_GRACE: 8,   // C++: mesh_realcheck.inc:RC_GRACE
   });
 

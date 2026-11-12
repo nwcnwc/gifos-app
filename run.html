@@ -16522,7 +16522,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const stuckQuiet = p.neverUp === true && (st === 'new' || st === 'connecting');
         // A pair the far seat hung up on purpose (pcbye) is redialled by a seat's word only (seatDial), as the sim's laws do: the page's own clocks leave it.
         if (!p.absentSince && iInitiate(pid) && !p.connected && !p.hungUp && (st === 'connecting' || st === 'new') && !seatHolds(pid)
-            && p.downSince && now - p.downSince > 12000 && now - (p.cureAt || 0) > (stuckQuiet ? 30000 : 8000)) {
+            && p.downSince && now - p.downSince > GifOS.timings.SIG_RETRY_CURE_MS && now - (p.cureAt || 0) > (stuckQuiet ? 30000 : 8000)) {
           p.cureAt = now;
           p.lastKick = now + Math.random() * 1500;
           p.altPath = !p.altPath; // §FWD transport rotation — see sendSig
@@ -16659,7 +16659,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // FHOP.9: the best carrier score first (its link class, my pc's own
         // loss and round trip to it), the smallest id on a tie.
         if (!p.connected && !p.absentSince && !relayVia.has(pid)
-            && p.downSince && now - p.downSince > 10000 && now - (p.relayAskAt || 0) > 10000) {
+            && p.downSince && now - p.downSince > GifOS.timings.FHOP_RELAY_ASK_MS && now - (p.relayAskAt || 0) > GifOS.timings.FHOP_RELAY_ASK_MS) {   // the direct verdict, and the gap between two asks (FHOP_RELAY_ASK)
           const refused = relayRefusal.get(pid) || {};
           const cands = myConns().filter((r) => r !== pid
             && (connsOf.get(r) || []).includes(pid)

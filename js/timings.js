@@ -43,6 +43,7 @@
     DRAIN_MS: 2000,   // ms
     FACE_REACT_MS: 3000,   // ms
     FAREWELL_DRAIN_MS: 1500,   // ms
+    FHOP_RELAY_ASK_MS: 6500,   // ms (FHOP_RELAY_ASK)
     FILL_WINDOW_MS: 600000,   // ms
     FIRST_MS: 40,   // ms
     FOLD_HOLD_MS: 60000,   // ms
@@ -152,6 +153,7 @@
     SGA_PEND_TTL: 30000,   // ms
     SGA_WANT_TTL: 30000,   // ms
     SGA_WIDEN_AFTER: 3,   // count
+    SIG_RETRY_CURE_MS: 8500,   // ms (SIG_RETRY_CURE)
     SNAP_MIN_MS: 3000,   // ms
     SNAP_MS: 1200,   // ms
     SOLO_LOOKUP_SLOW_MS: 10000,   // ms
@@ -187,8 +189,6 @@
     TURN_BUSY_MS: 8000,   // ms
     TURN_FETCH_TIMEOUT_MS: 3000,   // ms
     TURN_MS: 3000,   // ms
-    TURN_P0_MS: 12000,   // ms
-    TURN_P1_MS: 30000,   // ms
     TURN_RETRY_BASE_MS: 2000,   // ms
     TURN_RETRY_MAX_MS: 300000,   // ms
     TURN_STANDBY_SWITCH_MS: 8000,   // ms
