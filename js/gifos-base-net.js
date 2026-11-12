@@ -5,9 +5,12 @@
  *   Base Sepolia (84532) — the default. USDC 0x036CbD53842c5426634e7929541eC2318f3dCF7e.
  *   Base mainnet (8453)  — USDC 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913.
  *
- * Mainnet needs THREE things together: BASE_NETWORK below set to 'mainnet',
- * GIFOS_BASE_MAINNET ("1" or "true") in the process environment, and a real
- * fee address. A fee address alone never turns it on. A manifest, a query
+ * Mainnet needs BASE_NETWORK below set to 'mainnet' and a real fee address.
+ * In a Node process (tests, tools) it also needs GIFOS_BASE_MAINNET ("1" or
+ * "true") in the environment, so a test that loads this file never pays on
+ * mainnet by accident. A browser page has no process environment: there the
+ * constant is the switch, flipped at the cut deploy (docs/payments.md "The
+ * mainnet switch"). A fee address alone never turns it on. A manifest, a query
  * string, localStorage, or an app message cannot select it: active() takes
  * no network argument, and extra arguments are ignored.
  *
@@ -39,6 +42,8 @@
     hex: '0x14a34',
     name: 'Base Sepolia',
     usdc: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
+    // USDC's EIP-712 domain name on this chain (name() of the contract).
+    usdcName: 'USDC',
     rpc: 'https://sepolia.base.org',
     explorer: 'https://sepolia.basescan.org',
   });
@@ -49,6 +54,9 @@
     hex: '0x2105',
     name: 'Base',
     usdc: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+    // Not 'USDC': mainnet's contract is named "USD Coin", and an EIP-3009
+    // signature over the wrong domain name is refused by the contract.
+    usdcName: 'USD Coin',
     rpc: 'https://mainnet.base.org',
     explorer: 'https://basescan.org',
   });
@@ -65,17 +73,19 @@
     return true;
   }
 
-  // The only switch. Apps cannot reach process.env, and the browser build
-  // has no process, so the flag stays off on the page.
+  // The environment half of the switch. In Node it is GIFOS_BASE_MAINNET.
+  // A page has no process environment, and apps cannot reach one: there the
+  // flag is on and BASE_NETWORK alone decides (it ships 'sepolia').
   function mainnetFlag() {
     try {
-      const env = typeof process !== 'undefined' && process.env ? process.env.GIFOS_BASE_MAINNET : '';
+      if (typeof process === 'undefined' || !process.env) return true;
+      const env = process.env.GIFOS_BASE_MAINNET;
       return env === '1' || env === 'true';
     } catch (e) { return false; }
   }
 
   // Pure: flag + fee (+ the BASE_NETWORK switch) in, network out. A manifest
-  // is not an input. Mainnet needs the env flag AND BASE_NETWORK === 'mainnet'
+  // is not an input. Mainnet needs the flag AND BASE_NETWORK === 'mainnet'
   // AND a real fee address; the address alone never selects it.
   function resolve(flagOn, fee, network) {
     if (network === undefined) network = BASE_NETWORK;

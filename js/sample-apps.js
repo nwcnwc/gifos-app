@@ -6142,6 +6142,458 @@ i18nStart(async()=>{
   if(window.gifos && gifos.i18n && gifos.i18n.load) gifos.i18n.load().then(boot, boot); else boot();
 </script></body></html>`;
 
+  // Take Turns (Tools): whose turn it is, for the people connected to the app —
+  // a meeting's people, or an app room's after Invite. Optional per-turn plan
+  // (a reading plan generated from KJV verse counts, or a pasted list) and a
+  // gentle timer. In a meeting it asks for now + next on the Stage
+  // (capabilities.stage, docs/app-mesh.md).
+  const TAKETURNS_HTML = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{font:17px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;margin:0;background:var(--bg,#0a0a0f);color:var(--text,#e8e8f4);display:flex;flex-direction:column}
+  header{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--surface,#14141f);border-bottom:1px solid var(--border,#2a2a3f)}
+  header h1{font-size:18px;margin:0;flex:1;color:var(--accent,#5cc8a8)}
+  .chip{font-size:13px;color:var(--muted,#9a9ab8);background:var(--bg,#0a0a0f);border:1px solid var(--border,#2a2a3f);border-radius:999px;padding:4px 10px;white-space:nowrap;max-width:60vw;overflow:hidden;text-overflow:ellipsis}
+  main{flex:1;overflow-y:auto;padding:16px 16px 28px;display:flex;flex-direction:column;align-items:center;gap:16px}
+  .wrap{width:100%;max-width:560px;display:flex;flex-direction:column;gap:16px}
+  .now{background:var(--surface,#14141f);border:1px solid var(--border,#2a2a3f);border-radius:18px;padding:18px 18px 16px;text-align:center}
+  .lbl{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted,#9a9ab8);font-weight:700}
+  #who{font-size:clamp(36px,11vw,64px);font-weight:800;line-height:1.1;margin:6px 0 2px;word-break:break-word}
+  #you{display:inline-block;font-size:14px;font-weight:700;color:var(--onaccent,#04231b);background:var(--accent,#5cc8a8);border-radius:999px;padding:2px 10px;vertical-align:middle}
+  #item{font-size:clamp(22px,6.5vw,34px);font-weight:700;margin-top:8px;word-break:break-word}
+  #turnno{font-size:14px;color:var(--muted,#9a9ab8);margin-top:6px}
+  .bar{height:8px;border-radius:999px;background:var(--bg,#0a0a0f);border:1px solid var(--border,#2a2a3f);overflow:hidden;margin-top:12px}
+  .bar i{display:block;height:100%;width:0;background:var(--accent,#5cc8a8);transition:width .9s linear,background .6s}
+  .bar.over i{background:#e0a84a}
+  #timeleft{font-size:13px;color:var(--muted,#9a9ab8);margin-top:4px;font-variant-numeric:tabular-nums;min-height:1.2em}
+  .upnext{font-size:18px;text-align:center;color:var(--muted,#9a9ab8)}
+  .upnext b{color:var(--text,#e8e8f4)}
+  .ctl{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  button{font:inherit;font-weight:700;min-height:48px;padding:10px 20px;border-radius:999px;border:1px solid var(--border,#2a2a3f);background:var(--surface,#14141f);color:var(--text,#e8e8f4);cursor:pointer}
+  button:disabled{opacity:.4;cursor:default}
+  button.go{background:var(--accent,#5cc8a8);color:var(--onaccent,#04231b);border-color:transparent;min-width:150px;font-size:20px}
+  button.sm{min-height:40px;padding:6px 14px;font-size:15px}
+  .note{font-size:14px;color:var(--muted,#9a9ab8);text-align:center;min-height:1.2em}
+  section{background:var(--surface,#14141f);border:1px solid var(--border,#2a2a3f);border-radius:14px;padding:12px 14px}
+  section h2{font-size:15px;margin:0 0 8px;display:flex;align-items:center;gap:8px}
+  section h2 span{flex:1}
+  ol{list-style:none;margin:0;padding:0}
+  ol li{display:flex;align-items:center;gap:8px;padding:6px 2px;border-bottom:1px solid var(--border,#2a2a3f);min-height:48px;background:var(--surface,#14141f)}
+  ol li:last-child{border-bottom:0}
+  ol li.cur{font-weight:800}
+  ol li.cur .n{background:var(--accent,#5cc8a8);color:var(--onaccent,#04231b)}
+  ol li.drag{opacity:.75;outline:2px dashed var(--accent,#5cc8a8)}
+  .n{width:28px;height:28px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:14px;background:var(--bg,#0a0a0f);flex:0 0 auto}
+  .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .grip{touch-action:none;cursor:grab;color:var(--muted,#9a9ab8);padding:10px 6px;font-size:18px;user-select:none;-webkit-user-select:none}
+  .mv{min-height:40px;min-width:40px;padding:0;font-size:15px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .seg button{min-height:40px;padding:6px 12px;font-size:15px}
+  .seg button.on{background:var(--accent,#5cc8a8);color:var(--onaccent,#04231b);border-color:transparent}
+  #plansum{font-size:15px;color:var(--muted,#9a9ab8);flex:1;min-width:140px}
+  .sheet{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:flex-end;justify-content:center;z-index:5}
+  .sheet.open{display:flex}
+  .card{background:var(--bg,#0a0a0f);color:var(--text,#e8e8f4);width:100%;max-width:560px;max-height:92vh;display:flex;flex-direction:column;border-radius:18px 18px 0 0;border:1px solid var(--border,#2a2a3f)}
+  @media(min-width:640px){.sheet{align-items:center}.card{border-radius:18px}}
+  .card .hd,.card .ft{display:flex;gap:8px;align-items:center;padding:12px 14px;background:var(--surface,#14141f)}
+  .card .hd{border-bottom:1px solid var(--border,#2a2a3f);border-radius:18px 18px 0 0}
+  .card .hd b{flex:1;font-size:17px}
+  .card .ft{border-top:1px solid var(--border,#2a2a3f);justify-content:flex-end}
+  .card .bd{overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px}
+  label{font-size:14px;color:var(--muted,#9a9ab8);display:flex;flex-direction:column;gap:4px}
+  input,select,textarea{font:inherit;font-size:17px;color:var(--text,#e8e8f4);background:var(--surface,#14141f);border:1px solid var(--border,#2a2a3f);border-radius:10px;padding:9px 10px;min-height:44px;width:100%}
+  textarea{min-height:180px;resize:vertical}
+  .two{display:grid;grid-template-columns:2fr 1fr;gap:8px}
+  #preview{font-size:15px;color:var(--muted,#9a9ab8);white-space:pre-line}
+  .alone{font-size:15px;color:var(--muted,#9a9ab8);text-align:center}
+</style>
+<header><h1 data-i18n="title">Take Turns</h1><span class="chip" id="chip"></span></header>
+<main><div class="wrap">
+  <div class="now" id="nowcard">
+    <div class="lbl" data-i18n="now">Now</div>
+    <div id="who">…</div>
+    <div><span id="you" hidden data-i18n="yourturn">Your turn</span></div>
+    <div id="item" hidden></div>
+    <div id="turnno"></div>
+    <div class="bar" id="bar" hidden><i id="barfill"></i></div>
+    <div id="timeleft"></div>
+  </div>
+  <div class="upnext" id="upnext"></div>
+  <div class="ctl">
+    <button id="back" type="button" data-i18n="back">Back</button>
+    <button id="next" class="go" type="button" data-i18n="next">Next</button>
+    <button id="pass" type="button" data-i18n="pass" hidden>Pass</button>
+  </div>
+  <div class="note" id="note"></div>
+  <div class="note" id="stagenote"></div>
+  <div class="alone" id="alone" hidden data-i18n="alone">Just you so far. Press Invite to take turns with other people.</div>
+  <section>
+    <h2><span data-i18n="order">Turn order</span></h2>
+    <ol id="order"></ol>
+    <div class="row" style="margin-top:10px">
+      <button class="sm" id="shuffle" type="button" data-i18n="shuffle">Shuffle</button>
+      <button class="sm" id="joinorder" type="button" data-i18n="joinorder">Join order</button>
+      <button class="sm" id="restart" type="button" data-i18n="restart">Start over</button>
+    </div>
+  </section>
+  <section>
+    <h2><span data-i18n="covers">What each turn covers</span></h2>
+    <div class="row"><span id="plansum"></span><button class="sm" id="editplan" type="button" data-i18n="plan.edit">Set up</button></div>
+  </section>
+  <section>
+    <h2><span data-i18n="timer">Time per turn</span></h2>
+    <div class="row seg" id="timers">
+      <button type="button" data-t="0" data-i18n="timer.off">Off</button>
+      <button type="button" data-t="60">1 min</button>
+      <button type="button" data-t="120">2 min</button>
+      <button type="button" data-t="180">3 min</button>
+      <button type="button" data-t="300">5 min</button>
+      <button type="button" data-t="600">10 min</button>
+    </div>
+  </section>
+</div></main>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheettitle">
+  <div class="card">
+    <div class="hd"><b id="sheettitle" data-i18n="covers">What each turn covers</b><button class="sm" id="pclose" type="button" data-i18n="cancel">Cancel</button></div>
+    <div class="bd">
+      <div class="row seg" id="ptabs">
+        <button type="button" data-k="gen" class="on" data-i18n="plan.make">Reading plan</button>
+        <button type="button" data-k="list" data-i18n="plan.paste">Paste a list</button>
+      </div>
+      <div id="pgen">
+        <datalist id="books"></datalist>
+        <div class="two"><label><span data-i18n="plan.from">From book</span><input id="gb1" list="books" autocomplete="off" value="Genesis"></label><label><span data-i18n="plan.chapter">Chapter</span><input id="gc1" type="number" min="1" inputmode="numeric" value="1"></label></div>
+        <div class="two" style="margin-top:8px"><label><span data-i18n="plan.to">To book</span><input id="gb2" list="books" autocomplete="off" value="Genesis"></label><label><span data-i18n="plan.chapter">Chapter</span><input id="gc2" type="number" min="1" inputmode="numeric" value="3"></label></div>
+        <div class="two" style="margin-top:8px"><label><span data-i18n="plan.each">Each turn reads</span><input id="gper" type="number" min="1" inputmode="numeric" value="5"></label><label><span>&nbsp;</span><select id="gunit"><option value="v" data-i18n="plan.verses">verses</option><option value="c" data-i18n="plan.chapters">chapters</option></select></label></div>
+      </div>
+      <div id="plist" hidden>
+        <label><span data-i18n="plan.pastehint">One item per line, in order.</span><textarea id="ptext" placeholder="Genesis 1:1-5&#10;Genesis 1:6-13&#10;…"></textarea></label>
+      </div>
+      <div id="preview"></div>
+    </div>
+    <div class="ft"><button class="sm" id="pclear" type="button" data-i18n="plan.clear">No plan</button><button class="sm go" id="psave" type="button" data-i18n="plan.save">Use this plan</button></div>
+  </div>
+</div>
+<script>
+  var T=function(k,p){return window.gifos&&gifos.i18n?gifos.i18n.t(k,p):k;};
+  function applyI18n(){
+    [].forEach.call(document.querySelectorAll('[data-i18n]'),function(e){var v=T(e.getAttribute('data-i18n')); if(v!==e.getAttribute('data-i18n')) e.textContent=v;});
+  }
+  // ---- turn logic (pure; test/gate2/node/sections/desktop/take-turns.js runs these) ----
+  // KJV versification, 66 books: "Name:v1,v2,…" per chapter, books split by "|".
+  var VERSES='Genesis:31,25,24,26,32,22,24,22,29,32,32,20,18,24,21,16,27,33,38,18,34,24,20,67,34,35,46,22,35,43,55,32,20,31,29,43,36,30,23,23,57,38,34,34,28,34,31,22,33,26|Exodus:22,25,22,31,23,30,25,32,35,29,10,51,22,31,27,36,16,27,25,26,36,31,33,18,40,37,21,43,46,38,18,35,23,35,35,38,29,31,43,38|Leviticus:17,16,17,35,19,30,38,36,24,20,47,8,59,57,33,34,16,30,37,27,24,33,44,23,55,46,34|Numbers:54,34,51,49,31,27,89,26,23,36,35,16,33,45,41,50,13,32,22,29,35,41,30,25,18,65,23,31,40,16,54,42,56,29,34,13|Deuteronomy:46,37,29,49,33,25,26,20,29,22,32,32,18,29,23,22,20,22,21,20,23,30,25,22,19,19,26,68,29,20,30,52,29,12|Joshua:18,24,17,24,15,27,26,35,27,43,23,24,33,15,63,10,18,28,51,9,45,34,16,33|Judges:36,23,31,24,31,40,25,35,57,18,40,15,25,20,20,31,13,31,30,48,25|Ruth:22,23,18,22|1 Samuel:28,36,21,22,12,21,17,22,27,27,15,25,23,52,35,23,58,30,24,42,15,23,29,22,44,25,12,25,11,31,13|2 Samuel:27,32,39,12,25,23,29,18,13,19,27,31,39,33,37,23,29,33,43,26,22,51,39,25|1 Kings:53,46,28,34,18,38,51,66,28,29,43,33,34,31,34,34,24,46,21,43,29,53|2 Kings:18,25,27,44,27,33,20,29,37,36,21,21,25,29,38,20,41,37,37,21,26,20,37,20,30|1 Chronicles:54,55,24,43,26,81,40,40,44,14,47,40,14,17,29,43,27,17,19,8,30,19,32,31,31,32,34,21,30|2 Chronicles:17,18,17,22,14,42,22,18,31,19,23,16,22,15,19,14,19,34,11,37,20,12,21,27,28,23,9,27,36,27,21,33,25,33,27,23|Ezra:11,70,13,24,17,22,28,36,15,44|Nehemiah:11,20,32,23,19,19,73,18,38,39,36,47,31|Esther:22,23,15,17,14,14,10,17,32,3|Job:22,13,26,21,27,30,21,22,35,22,20,25,28,22,35,22,16,21,29,29,34,30,17,25,6,14,23,28,25,31,40,22,33,37,16,33,24,41,30,24,34,17|Psalms:6,12,8,8,12,10,17,9,20,18,7,8,6,7,5,11,15,50,14,9,13,31,6,10,22,12,14,9,11,12,24,11,22,22,28,12,40,22,13,17,13,11,5,26,17,11,9,14,20,23,19,9,6,7,23,13,11,11,17,12,8,12,11,10,13,20,7,35,36,5,24,20,28,23,10,12,20,72,13,19,16,8,18,12,13,17,7,18,52,17,16,15,5,23,11,13,12,9,9,5,8,28,22,35,45,48,43,13,31,7,10,10,9,8,18,19,2,29,176,7,8,9,4,8,5,6,5,6,8,8,3,18,3,3,21,26,9,8,24,13,10,7,12,15,21,10,20,14,9,6|Proverbs:33,22,35,27,23,35,27,36,18,32,31,28,25,35,33,33,28,24,29,30,31,29,35,34,28,28,27,28,27,33,31|Ecclesiastes:18,26,22,16,20,12,29,17,18,20,10,14|Song of Solomon:17,17,11,16,16,13,13,14|Isaiah:31,22,26,6,30,13,25,22,21,34,16,6,22,32,9,14,14,7,25,6,17,25,18,23,12,21,13,29,24,33,9,20,24,17,10,22,38,22,8,31,29,25,28,28,25,13,15,22,26,11,23,15,12,17,13,12,21,14,21,22,11,12,19,12,25,24|Jeremiah:19,37,25,31,31,30,34,22,26,25,23,17,27,22,21,21,27,23,15,18,14,30,40,10,38,24,22,17,32,24,40,44,26,22,19,32,21,28,18,16,18,22,13,30,5,28,7,47,39,46,64,34|Lamentations:22,22,66,22,22|Ezekiel:28,10,27,17,17,14,27,18,11,22,25,28,23,23,8,63,24,32,14,49,32,31,49,27,17,21,36,26,21,26,18,32,33,31,15,38,28,23,29,49,26,20,27,31,25,24,23,35|Daniel:21,49,30,37,31,28,28,27,27,21,45,13|Hosea:11,23,5,19,15,11,16,14,17,15,12,14,16,9|Joel:20,32,21|Amos:15,16,15,13,27,14,17,14,15|Obadiah:21|Jonah:17,10,10,11|Micah:16,13,12,13,15,16,20|Nahum:15,13,19|Habakkuk:17,20,19|Zephaniah:18,15,20|Haggai:15,23|Zechariah:21,13,10,14,11,15,14,23,17,12,17,14,9,21|Malachi:14,17,18,6|Matthew:25,23,17,25,48,34,29,34,38,42,30,50,58,36,39,28,27,35,30,34,46,46,39,51,46,75,66,20|Mark:45,28,35,41,43,56,37,38,50,52,33,44,37,72,47,20|Luke:80,52,38,44,39,49,50,56,62,42,54,59,35,35,32,31,37,43,48,47,38,71,56,53|John:51,25,36,54,47,71,53,59,41,42,57,50,38,31,27,33,26,40,42,31,25|Acts:26,47,26,37,42,15,60,40,43,48,30,25,52,28,41,40,34,28,41,38,40,30,35,27,27,32,44,31|Romans:32,29,31,25,21,23,25,39,33,21,36,21,14,23,33,27|1 Corinthians:31,16,23,21,13,20,40,13,27,33,34,31,13,40,58,24|2 Corinthians:24,17,18,18,21,18,16,24,15,18,33,21,14|Galatians:24,21,29,31,26,18|Ephesians:23,22,21,32,33,24|Philippians:30,30,21,23|Colossians:29,23,25,18|1 Thessalonians:10,20,13,18,28|2 Thessalonians:12,17,18|1 Timothy:20,15,16,16,25,21|2 Timothy:18,26,17,22|Titus:16,15,15|Philemon:25|Hebrews:14,18,19,16,14,20,28,13,28,39,40,29,25|James:27,26,18,17,20|1 Peter:25,25,22,19,14|2 Peter:21,22,18|1 John:10,29,24,21,21|2 John:13|3 John:14|Jude:25|Revelation:20,29,22,11,14,17,17,13,21,11,19,17,18,20,8,21,18,24,21,15,27,21';
+  var BOOKS=VERSES.split('|').map(function(b){ var i=b.indexOf(':'); return { n:b.slice(0,i), v:b.slice(i+1).split(',').map(Number) }; });
+  // The order everyone sees: the stored order, minus people not here, plus
+  // newcomers at the end in the order they arrived. Whose turn: the stored
+  // one if they are here, else the next person after them who is.
+  function ttView(s, people){
+    s=s||{};
+    var ord=Array.isArray(s.order)?s.order:[], byId={}, order=[], i, k;
+    for(i=0;i<people.length;i++) byId[people[i].id]=people[i];
+    for(i=0;i<ord.length;i++) if(byId[ord[i]] && order.indexOf(ord[i])<0) order.push(ord[i]);
+    var fresh=people.filter(function(p){ return order.indexOf(p.id)<0; });
+    fresh.sort(function(a,b){ return ((a.since||0)-(b.since||0)) || (a.id<b.id?-1:a.id>b.id?1:0); });
+    for(i=0;i<fresh.length;i++) order.push(fresh[i].id);
+    var cur=null;
+    if(s.cur && byId[s.cur]) cur=s.cur;
+    else if(order.length){
+      var at=ord.indexOf(s.cur);
+      if(at>=0) for(k=1;k<=ord.length;k++){ var c=ord[(at+k)%ord.length]; if(byId[c]){ cur=c; break; } }
+      if(!cur) cur=order[0];
+    }
+    var n=order.length, ci=order.indexOf(cur);
+    return { order:order, cur:cur, idx:ci, next:n?order[(ci+1)%n]:null, step:Math.max(0,s.step|0) };
+  }
+  // One action -> the new shared record. hist lets Back undo Next and Pass.
+  function ttAct(s, v, act, arg, now){
+    s=s||{};
+    var o={ id:'state', order:v.order.slice(), cur:v.cur, step:v.step, hist:(Array.isArray(s.hist)?s.hist:[]).slice(-49),
+      timer:Math.max(0,s.timer|0), turnAt:s.turnAt||now, v:(s.v|0)+1 };
+    var n=o.order.length;
+    if(act==='next'||act==='pass'){
+      if(!v.cur) return o;
+      o.hist.push([v.cur,v.step]); o.cur=v.next; if(act==='next') o.step=v.step+1; o.turnAt=now;
+    } else if(act==='back'){
+      var h=null;
+      while(o.hist.length){ var e=o.hist.pop(); if(o.order.indexOf(e[0])>=0){ h=e; break; } }
+      if(h){ o.cur=h[0]; o.step=Math.max(0,h[1]|0); }
+      else if(n){ o.cur=o.order[(Math.max(0,v.idx)-1+n)%n]; o.step=Math.max(0,v.step-1); }
+      o.turnAt=now;
+    } else if(act==='order'){
+      var want=(arg||[]).filter(function(id){ return o.order.indexOf(id)>=0; });
+      o.order.forEach(function(id){ if(want.indexOf(id)<0) want.push(id); });
+      o.order=want;
+    } else if(act==='move'){
+      var from=o.order.indexOf(arg.id);
+      if(from>=0){ o.order.splice(from,1); o.order.splice(Math.max(0,Math.min(o.order.length,arg.to|0)),0,arg.id); }
+    } else if(act==='restart'){
+      o.cur=o.order[0]||null; o.step=0; o.hist=[]; o.turnAt=now;
+    } else if(act==='timer'){
+      o.timer=Math.max(0,arg|0); o.turnAt=now;
+    }
+    return o;
+  }
+  function ttShuffle(ids, rnd){
+    var a=ids.slice(); for(var i=a.length-1;i>0;i--){ var j=Math.floor(rnd()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; } return a;
+  }
+  function ttBook(name){
+    var q=String(name||'').trim().toLowerCase().replace(/\\s+/g,' ');
+    if(!q) return -1;
+    for(var i=0;i<BOOKS.length;i++) if(BOOKS[i].n.toLowerCase()===q) return i;
+    for(i=0;i<BOOKS.length;i++) if(BOOKS[i].n.toLowerCase().indexOf(q)===0) return i;
+    return -1;
+  }
+  // A generated plan is stored as its recipe, not its items: a whole-Bible
+  // plan is thousands of lines and would ride every update.
+  function ttItems(plan){
+    if(!plan) return [];
+    if(plan.kind==='list') return Array.isArray(plan.items)?plan.items.map(String):[];
+    if(plan.kind!=='gen') return [];
+    var out=[], b1=plan.b1|0, b2=plan.b2|0, per=Math.max(1,plan.per|0), unit=plan.unit==='c'?'c':'v';
+    if(b1<0||b2<0||b1>=BOOKS.length||b2>=BOOKS.length) return [];
+    for(var b=b1;b<=b2;b++){
+      var bk=BOOKS[b], nc=bk.v.length;
+      var c0=b===b1?Math.max(1,plan.c1|0):1, c1=b===b2?Math.min(nc,plan.c2|0):nc;
+      if(c0>nc) continue;
+      if(unit==='c'){
+        for(var c=c0;c<=c1;c+=per){ var e=Math.min(c1,c+per-1); out.push(bk.n+' '+c+(e>c?'-'+e:'')); }
+      } else {
+        for(c=c0;c<=c1;c++){ var nv=bk.v[c-1];
+          for(var v=1;v<=nv;v+=per){ var ve=Math.min(nv,v+per-1); out.push(bk.n+' '+c+':'+v+(ve>v?'-'+ve:'')); } }
+      }
+      if(out.length>40000) break;
+    }
+    return out;
+  }
+  function ttPaste(text){
+    return String(text||'').split(/\\r?\\n/).map(function(l){ return l.trim().slice(0,160); }).filter(Boolean).slice(0,5000);
+  }
+  // ---- presence: who is connected to this app (the meeting's or the app room's people) ----
+  var BEAT=3000, LIVE=10000, TICK=1000, STEADY=4000, NOTE=5000, STALE=21600000;
+  var stDb=null, planDb=null, presDb=null;
+  if(window.gifos&&gifos.db){ stDb=gifos.db('turns'); planDb=gifos.db('plan'); presDb=gifos.db('presence'); }
+  var me={ id:'local', name:'' }, since=Date.now();
+  var state=null, plan=null, items=[], rows={}, seen={}, lastTs={};
+  var view={ order:[], cur:null, idx:-1, next:null, step:0 };
+  var turnKey='', turnLocal=0, refused=false, noteT=null, normAt=0;
+  // Liveness by when THIS page saw a heartbeat move, so two machines whose
+  // clocks disagree still agree on who is here.
+  function people(){
+    var now=Date.now(), out=[];
+    for(var id in rows){ var r=rows[id];
+      if(lastTs[id]!==r.ts){ seen[id]=(id in lastTs)?now:Math.min(now,+r.ts||0); lastTs[id]=r.ts; }
+      if(now-(seen[id]||0)<LIVE) out.push({ id:id, name:r.name||'', since:+r.since||0 });
+    }
+    if(!rows[me.id]) out.push({ id:me.id, name:me.name, since:since });
+    return out;
+  }
+  function nameOf(id){ if(id===me.id) return me.name||T('you'); var r=rows[id]; return (r&&r.name)||T('someone'); }
+  function beat(){ if(presDb&&me.id!=='local') presDb.put({ id:'p:'+me.id, name:me.name, since:since, mid:stage.me||'', ts:Date.now() }).catch(function(){}); }
+  // ---- in a meeting: now and next on the Stage (capabilities.stage) ----
+  // Every copy of the app asks for the same two people; each person's own
+  // meeting page steps them up or down. Outside a meeting nothing happens.
+  var stage={ on:false, me:'' }, stageKey='', stageAt=0;
+  function stageWant(){
+    if(!(window.gifos&&gifos.stage)||!stage.on) return [];
+    var mid=function(id){ if(id===me.id) return stage.me||''; var r=rows[id]; return (r&&r.mid)||''; };
+    var ids=[mid(view.cur)];
+    if(view.order.length>1&&view.next&&view.next!==view.cur) ids.push(mid(view.next));
+    return ids[0]?ids.filter(Boolean):[];
+  }
+  function stageTick(){
+    if(!(window.gifos&&gifos.stage)||!stage.on) return;
+    var ids=stageWant(), key=ids.join(','), now=Date.now();
+    if(key===stageKey&&now-stageAt<BEAT) return;
+    stageKey=key; stageAt=now;
+    gifos.stage.want(ids).then(function(r){ if(r){ var was=stage.me; stage=r; if(r.me!==was) beat(); paintStage(); } }, function(){ stage={ on:false, me:'' }; paintStage(); });
+  }
+  function paintStage(){
+    var el=document.getElementById('stagenote');
+    el.textContent=!stage.on?'':stage.full?T('stage.full'):(stage.waiting&&stage.rank>=0&&stage.adminRoom)?T('stage.wait'):'';
+  }
+  function onPres(list){
+    var r={}; (list||[]).forEach(function(x){ if(x&&x.id&&x.id.slice(0,2)==='p:') r[x.id.slice(2)]=x; }); rows=r; render();
+  }
+  function say(msg){ var el=document.getElementById('note'); el.textContent=msg||''; clearTimeout(noteT); if(msg) noteT=setTimeout(function(){ el.textContent=''; },NOTE); }
+  function write(act, arg){
+    var s=ttAct(state, view, act, arg, Date.now());
+    state=s; render();
+    if(!stDb) return;
+    stDb.put(s).then(function(){ refused=false; }, function(){
+      // A meeting host who leads the app keeps the controls; tell the person why nothing moved.
+      refused=true; say(T('led')); stDb.get('state').then(function(x){ state=x||null; render(); }, function(){});
+    });
+  }
+  function fmtLeft(ms){ var s=Math.max(0,Math.round(ms/1000)); return Math.floor(s/60)+':'+('0'+(s%60)).slice(-2); }
+  function paintTimer(){
+    var bar=document.getElementById('bar'), fill=document.getElementById('barfill'), tl=document.getElementById('timeleft');
+    var secs=(state&&state.timer)|0;
+    if(!secs||!view.cur){ bar.hidden=true; tl.textContent=''; return; }
+    bar.hidden=false;
+    var used=Date.now()-turnLocal, f=Math.min(1,used/(secs*1000));
+    fill.style.width=(f*100).toFixed(1)+'%';
+    bar.classList.toggle('over', f>=1);
+    tl.textContent=f>=1?T('timeup'):T('left',{ time:fmtLeft(secs*1000-used) });
+  }
+  function render(){
+    var ps=people();
+    view=ttView(state, ps);
+    var n=view.order.length, mine=view.cur===me.id;
+    var key=(view.cur||'')+'|'+view.step+'|'+((state&&state.v)|0);
+    if(key!==turnKey){ turnKey=key; var at=(state&&+state.turnAt)||Date.now(); turnLocal=Math.min(Date.now(), at); if(Date.now()-at>STALE) turnLocal=Date.now(); }
+    document.getElementById('who').textContent=view.cur?nameOf(view.cur):'…';
+    document.getElementById('you').hidden=!mine;
+    var item=items.length?(view.step<items.length?items[view.step]:T('plan.done')):'';
+    var it=document.getElementById('item'); it.hidden=!item; it.textContent=item;
+    document.getElementById('turnno').textContent=items.length?T('turn.of',{ n:Math.min(view.step+1,items.length), total:items.length }):T('turn.n',{ n:view.step+1 });
+    var up=document.getElementById('upnext');
+    if(n>1||items.length){
+      var nx=n>1?nameOf(view.next):nameOf(view.cur), ni=items.length&&view.step+1<items.length?items[view.step+1]:'';
+      up.innerHTML=''; up.appendChild(document.createTextNode(T('upnext')+' '));
+      var b=document.createElement('b'); b.textContent=nx; up.appendChild(b);
+      if(ni) up.appendChild(document.createTextNode(' · '+ni));
+    } else up.textContent='';
+    document.getElementById('pass').hidden=!(mine&&n>1);
+    document.getElementById('back').disabled=!view.cur||(!(state&&state.hist&&state.hist.length)&&view.step===0&&n<2);
+    document.getElementById('alone').hidden=n>1;
+    document.getElementById('chip').textContent=n>1?T('here',{ n:n }):T('justyou');
+    var ol=document.getElementById('order');
+    if(!dragging){
+      ol.innerHTML='';
+      view.order.forEach(function(id,i){
+        var li=document.createElement('li'); li.dataset.id=id; if(id===view.cur) li.className='cur';
+        li.innerHTML='<span class="grip" aria-hidden="true">&#8942;&#8942;</span><span class="n"></span><span class="nm"></span><button class="mv" type="button" data-up="1"></button><button class="mv" type="button" data-dn="1"></button>';
+        li.querySelector('.n').textContent=String(i+1);
+        li.querySelector('.nm').textContent=nameOf(id)+(id===me.id&&me.name?' ('+T('you')+')':'');
+        var u=li.querySelector('[data-up]'), d=li.querySelector('[data-dn]');
+        u.textContent='▲'; d.textContent='▼'; u.title=T('moveup'); d.title=T('movedown');
+        u.setAttribute('aria-label',T('moveup')); d.setAttribute('aria-label',T('movedown'));
+        u.disabled=i===0; d.disabled=i===n-1;
+        ol.appendChild(li);
+      });
+    }
+    ['shuffle','joinorder'].forEach(function(id){ document.getElementById(id).disabled=n<2; });
+    [].forEach.call(document.querySelectorAll('#timers button'),function(b){ b.classList.toggle('on', (+b.dataset.t)===((state&&state.timer)|0)); });
+    document.getElementById('plansum').textContent=items.length?T('plan.sum',{ first:items[0], last:items[items.length-1], n:items.length }):T('plan.none');
+    paintTimer();
+    steward();
+    stageTick();
+  }
+  // The earliest person here writes the cleaned order back once the room has
+  // been steady a moment, so a person who left keeps out and a returning one
+  // rejoins at the end. Everyone already SEES the same cleaned order.
+  function steward(){
+    if(!stDb||refused||me.id==='local'||!view.order.length) return;
+    var ps=people().slice().sort(function(a,b){ return ((a.since||0)-(b.since||0))||(a.id<b.id?-1:1); });
+    if(!ps.length||ps[0].id!==me.id) return;
+    var so=(state&&state.order)||[];
+    var same=so.length===view.order.length&&so.every(function(id,i){ return view.order[i]===id; })&&state.cur===view.cur;
+    if(same){ normAt=0; return; }
+    if(!normAt){ normAt=Date.now(); return; }
+    if(Date.now()-normAt<STEADY) return;
+    normAt=0;
+    var s=ttAct(state, view, 'norm', null, Date.now()); s.v=(state&&state.v)|0; s.turnAt=(state&&state.turnAt)||s.turnAt;
+    state=s; stDb.put(s).catch(function(){ refused=true; });
+  }
+  // ---- drag to reorder (grip), ▲▼ for one step ----
+  var dragging=null;
+  var ol=document.getElementById('order');
+  ol.addEventListener('click',function(e){
+    var b=e.target.closest&&e.target.closest('button'); if(!b) return;
+    var li=b.closest('li'), id=li.dataset.id, i=view.order.indexOf(id);
+    write('move',{ id:id, to:b.dataset.up?i-1:i+1 });
+  });
+  ol.addEventListener('pointerdown',function(e){
+    var g=e.target.closest&&e.target.closest('.grip'); if(!g) return;
+    e.preventDefault();
+    var li=g.closest('li'); dragging={ li:li, id:li.dataset.id, pid:e.pointerId };
+    li.classList.add('drag'); try{ g.setPointerCapture(e.pointerId); }catch(err){}
+  });
+  ol.addEventListener('pointermove',function(e){
+    if(!dragging||e.pointerId!==dragging.pid) return;
+    var lis=[].slice.call(ol.children);
+    for(var i=0;i<lis.length;i++){ var r=lis[i].getBoundingClientRect();
+      if(lis[i]!==dragging.li&&e.clientY>r.top&&e.clientY<r.bottom){
+        if(e.clientY<r.top+r.height/2) ol.insertBefore(dragging.li,lis[i]); else ol.insertBefore(dragging.li,lis[i].nextSibling);
+        break; } }
+  });
+  function endDrag(e){
+    if(!dragging||(e&&e.pointerId!==dragging.pid)) return;
+    var ids=[].map.call(ol.children,function(li){ return li.dataset.id; });
+    dragging.li.classList.remove('drag'); dragging=null;
+    write('order', ids);
+  }
+  ol.addEventListener('pointerup',endDrag); ol.addEventListener('pointercancel',endDrag);
+  document.getElementById('next').onclick=function(){ write('next'); };
+  document.getElementById('pass').onclick=function(){ write('pass'); };
+  document.getElementById('back').onclick=function(){ write('back'); };
+  document.getElementById('restart').onclick=function(){ write('restart'); };
+  document.getElementById('shuffle').onclick=function(){ write('order', ttShuffle(view.order, Math.random)); };
+  document.getElementById('joinorder').onclick=function(){
+    var ps=people().sort(function(a,b){ return ((a.since||0)-(b.since||0))||(a.id<b.id?-1:1); });
+    write('order', ps.map(function(p){ return p.id; }));
+  };
+  document.getElementById('timers').onclick=function(e){ var b=e.target.closest&&e.target.closest('button'); if(b) write('timer', +b.dataset.t); };
+  // ---- the plan sheet ----
+  var sheet=document.getElementById('sheet'), ptab='gen';
+  var dl=document.getElementById('books'); BOOKS.forEach(function(b){ var o=document.createElement('option'); o.value=b.n; dl.appendChild(o); });
+  function draft(){
+    if(ptab==='list') return { id:'plan', kind:'list', items:ttPaste(document.getElementById('ptext').value) };
+    var b1=ttBook(document.getElementById('gb1').value), b2=ttBook(document.getElementById('gb2').value);
+    return { id:'plan', kind:'gen', b1:b1, c1:+document.getElementById('gc1').value||1, b2:b2, c2:+document.getElementById('gc2').value||1,
+      per:+document.getElementById('gper').value||1, unit:document.getElementById('gunit').value };
+  }
+  function preview(){
+    var d=draft(), its=ttItems(d), pv=document.getElementById('preview');
+    if(d.kind==='gen'&&(d.b1<0||d.b2<0)){ pv.textContent=T('plan.nobook'); document.getElementById('psave').disabled=true; return; }
+    document.getElementById('psave').disabled=!its.length;
+    pv.textContent=its.length?T('plan.count',{ n:its.length })+'\\n'+its.slice(0,3).join('\\n')+(its.length>3?'\\n…':''):T('plan.empty');
+  }
+  function setTab(k){ ptab=k; [].forEach.call(document.querySelectorAll('#ptabs button'),function(b){ b.classList.toggle('on',b.dataset.k===k); });
+    document.getElementById('pgen').hidden=k!=='gen'; document.getElementById('plist').hidden=k!=='list'; preview(); }
+  document.getElementById('ptabs').onclick=function(e){ var b=e.target.closest&&e.target.closest('button'); if(b) setTab(b.dataset.k); };
+  ['gb1','gc1','gb2','gc2','gper','gunit','ptext'].forEach(function(id){ document.getElementById(id).addEventListener('input',preview); });
+  document.getElementById('editplan').onclick=function(){
+    if(plan&&plan.kind==='list'){ document.getElementById('ptext').value=(plan.items||[]).join('\\n'); setTab('list'); }
+    else {
+      if(plan&&plan.kind==='gen'&&BOOKS[plan.b1]&&BOOKS[plan.b2]){ document.getElementById('gb1').value=BOOKS[plan.b1].n; document.getElementById('gc1').value=plan.c1; document.getElementById('gb2').value=BOOKS[plan.b2].n; document.getElementById('gc2').value=plan.c2; document.getElementById('gper').value=plan.per; document.getElementById('gunit').value=plan.unit==='c'?'c':'v'; }
+      setTab('gen');
+    }
+    sheet.classList.add('open');
+  };
+  function closeSheet(){ sheet.classList.remove('open'); }
+  document.getElementById('pclose').onclick=closeSheet;
+  sheet.addEventListener('click',function(e){ if(e.target===sheet) closeSheet(); });
+  function savePlan(p){
+    plan=p; items=ttItems(plan); closeSheet(); render();
+    if(planDb) planDb.put(p).catch(function(){ say(T('led')); planDb.get('plan').then(onPlanRec,function(){}); });
+    write('restart');
+  }
+  document.getElementById('psave').onclick=function(){ savePlan(draft()); };
+  document.getElementById('pclear').onclick=function(){ savePlan({ id:'plan', kind:'none' }); };
+  function onPlanRec(p){ plan=p||null; items=ttItems(plan); render(); }
+  function onState(list){ var s=null; (list||[]).forEach(function(x){ if(x&&x.id==='state') s=x; }); state=s; render(); }
+  function boot(){
+    applyI18n();
+    if(stDb){
+      stDb.subscribe(onState);
+      planDb.subscribe(function(list){ var p=null; (list||[]).forEach(function(x){ if(x&&x.id==='plan') p=x; }); onPlanRec(p); });
+      presDb.subscribe(onPres);
+    }
+    var hello=function(m){ me={ id:(m&&m.id)||'local', name:(m&&m.name)||'' }; beat(); render(); };
+    if(window.gifos&&gifos.me) gifos.me().then(hello,function(){ hello(null); }); else hello(null);
+    if(window.gifos&&gifos.onIdentity) gifos.onIdentity(function(m){ if(m&&m.id){ me={ id:m.id, name:m.name||'' }; beat(); render(); } });
+    if(window.gifos&&gifos.stage) gifos.stage.state().then(function(r){ if(r&&r.on){ stage=r; beat(); render(); } }, function(){});
+    setInterval(beat, BEAT);
+    setInterval(render, TICK);
+    window.addEventListener('pagehide',function(){ if(presDb&&me.id!=='local') presDb.delete('p:'+me.id).catch(function(){}); });
+    if(window.gifos&&gifos.onLocaleChange) gifos.onLocaleChange(function(){ applyI18n(); render(); });
+    render();
+  }
+  if(window.gifos&&gifos.i18n&&gifos.i18n.load) gifos.i18n.load().then(boot,boot); else boot();
+</script>`;
+
   function build() {
     const gif = GifOS.gif;
     // Apps that hand-author their theming with CSS variables take 'vars' —
@@ -6150,7 +6602,7 @@ i18nStart(async()=>{
     // contrast choices) and the tools whose own hue (calc blue, chat teal,
     // timer red, fortune gold) must become the computer's accent. Everything
     // else is a plain chrome app that takes the full remap.
-    const VAR_APPS = { tictactoe: 1, connect4: 1, minesweeper: 1, chess: 1, calc: 1, chat: 1, timer: 1, fortune: 1, bible: 1, paint: 1, notes: 1, guestbook: 1 };
+    const VAR_APPS = { taketurns: 1, tictactoe: 1, connect4: 1, minesweeper: 1, chess: 1, calc: 1, chat: 1, timer: 1, fortune: 1, bible: 1, paint: 1, notes: 1, guestbook: 1 };
     // OS Help markdown packed into each seeded GIF. Filled per appId; a
     // missing entry still shows Help (the OS fallback for Invite/Save/Steal).
     const SAMPLE_HELP = {
@@ -6622,6 +7074,30 @@ Allow them when the browser asks if you are the one on stage. Viewers do not nee
 
 A broadcast is live, not a file in this icon. Your Home Screen is unchanged when you leave.
 `,
+      taketurns: `# Take Turns
+
+Helps a group take turns doing something: reading through a book, sharing in a circle, playing a round.
+
+## Who takes turns
+
+The people connected to this app. Run it in a meeting and the meeting's people are the turn order. On its own, press **Invite** and everyone who joins is in. Someone who leaves drops out; someone new joins at the end.
+
+## Turns
+
+The big name is whose turn it is now; **Up next** is the person after them. **Next** moves on, **Back** undoes, and the person whose turn it is can **Pass** to the next person without using up the reading. Reorder with **Shuffle**, **Join order**, the arrows, or by dragging the handle.
+
+## What each turn covers
+
+**Set up** a reading plan — pick a book and chapters, and how many verses or chapters each turn reads — or paste your own list, one item per line. Each turn gets the next item.
+
+## In a meeting
+
+The person whose turn it is and the person up next go on the Stage, so the next reader is ready. Your camera stays as you set it; if you are muted, the meeting asks whether to unmute. In an admin room the host can lead the app so only they move the turns.
+
+## Saved
+
+The order, the plan and where you are live in this icon, and work offline.
+`,
       appstore: `# App Store
 
 Tap this icon to open the built-in **App Store** — more apps to install onto this Home Screen.
@@ -6798,10 +7274,39 @@ The Store itself does not keep a shopping cart in this icon.
       const frames = []; for (let f = 0; f < N; f++) frames.push(painter(f));
       return GifOS.icons.rasterize(frames, S, 10);
     }
+    // Take Turns: four seats around a table and a glow that moves to the next
+    // seat, so the tile shows whose turn it is going round. Drawn straight to
+    // canvas, independent of the icon pack, like the Bible and Camera tiles.
+    function turnsIcon(accent) {
+      const N = 16, S = 72;
+      const ac = 'rgb(' + accent.map((v) => Math.max(0, Math.min(255, v | 0))).join(',') + ')';
+      const painter = (f) => (ctx, s) => {
+        ctx.clearRect(0, 0, s, s);
+        const cx = s * 0.5, cy = s * 0.5, R = s * 0.3, step = f / N * 4, at = Math.floor(step), t = step - at;
+        ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.arc(cx, cy + s * 0.03, s * 0.17, 0, 7); ctx.fill();
+        ctx.fillStyle = '#f4f1ea'; ctx.beginPath(); ctx.arc(cx, cy, s * 0.17, 0, 7); ctx.fill();
+        const ease = t < 0.7 ? 0 : (t - 0.7) / 0.3;
+        const ga = -Math.PI / 2 + (at + ease) * Math.PI / 2;
+        ctx.strokeStyle = ac; ctx.lineWidth = s * 0.05; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.arc(cx, cy, s * 0.1, ga - 0.5, ga + 0.5); ctx.stroke();
+        for (let i = 0; i < 4; i++) {
+          const a = -Math.PI / 2 + i * Math.PI / 2, x = cx + R * Math.cos(a), y = cy + R * Math.sin(a);
+          const on = i === at % 4, nx = i === (at + 1) % 4;
+          const r = s * (on ? 0.11 - 0.02 * ease : nx ? 0.09 + 0.02 * ease : 0.085);
+          ctx.fillStyle = on || nx ? ac : '#c9c4ba';
+          ctx.globalAlpha = on ? 1 - 0.4 * ease : nx ? 0.6 + 0.4 * ease : 0.9;
+          ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      };
+      const frames = []; for (let f = 0; f < N; f++) frames.push(painter(f));
+      return GifOS.icons.rasterize(frames, S, 12);
+    }
     // Each app gets its own hand-designed animated artwork (gifos-icons.js),
     // rasterized into the GIF. Fall back to the plain animated tile if the
     // icons module isn't present (e.g. non-browser).
     const iconFor = (a) => a.appId === 'bible' && GifOS.icons ? bibleIcon()
+      : a.appId === 'taketurns' && GifOS.icons ? turnsIcon(a.accent)
       : a.appId === 'mymedia' && GifOS.icons ? mediaIcon(a.accent)
       : a.appId === 'camera' && GifOS.icons ? cameraIcon(a.accent)
       : (GifOS.icons ? GifOS.icons.renderApp(a.appId, a.accent) : null);
@@ -6840,6 +7345,11 @@ The Store itself does not keep a shopping cart in this icon.
         // classroom room graphs together), the viewport stays per-person.
         app('Calculator', 'calc', [92, 200, 255], CALCULATOR_HTML, { data: { calc: RW, prefs: PRIV } }),
         app('Stopwatch', 'timer', [255, 120, 120], TIMER_HTML, { capabilities: { db: true }, data: { clock: PRIV } }),
+        // Take Turns: the turn order is the people connected to the app. The
+        // shared turn and plan are leadable (an admin room's host leads by
+        // default); stage asks for now + next on a meeting's Stage.
+        app('Take Turns', 'taketurns', [92, 200, 168], TAKETURNS_HTML, { capabilities: { db: true, multiplayer: true, network: [], stage: true },
+          data: { turns: RW, plan: RW, presence: RW }, lead: [{ collection: 'turns', id: 'state' }, { collection: 'plan', id: 'plan' }] }),
         // The one app that reaches out: it declares exactly the site it needs,
         // so opening it demonstrates the network acknowledgement on a real app.
         app('Fortune', 'fortune', [255, 206, 107], FORTUNE_HTML, { capabilities: { db: true, network: ['api.adviceslip.com'] }, data: { fortunes: RW } }),

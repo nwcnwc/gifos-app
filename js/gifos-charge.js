@@ -368,7 +368,7 @@
   // Getters, so the words follow the language at the moment they are read.
   const PAID_BY = {
     get paypal() { return tr('charge.paidBy.paypal', 'by PayPal'); },
-    get x402() { return tr('charge.paidBy.x402', 'in USDC (Base Sepolia)'); },
+    get x402() { return chainNow().caip === 'eip155:8453' ? tr('charge.paidBy.x402Mainnet', 'in USDC (Base)') : tr('charge.paidBy.x402', 'in USDC (Base Sepolia)'); },
     get transfer() { return tr('charge.paidBy.transfer', 'in USDC (wallet transfer)'); },
     get fednow() { return tr('charge.paidBy.fednow', 'by bank transfer (FedNow)'); },
     get mpp() { return tr('charge.paidBy.mpp', 'by card, through an AI agent (Stripe Link)'); },

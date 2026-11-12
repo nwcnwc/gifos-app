@@ -588,8 +588,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <div id="lob-bc" hidden>
           <div class="lob-bc-who" role="radiogroup" aria-labelledby="lob-bc-who-h">
             <b data-t="bcWhoHead" id="lob-bc-who-h">Who can watch</b>
-            <label class="lob-bc-opt"><input type="radio" name="lob-bc-who" id="lob-bc-who-link" value="link" checked><span><span data-t="bcWhoLink">Anyone with the link</span><small data-t="bcWhoLinkSub">They see you soft (blurred)</small></span></label>
-            <label class="lob-bc-opt"><input type="radio" name="lob-bc-who" id="lob-bc-who-pw" value="pw"><span><span data-t="bcWhoPw">People with the room password</span><small data-t="bcWhoPwSub">They see you clear</small></span></label>
+            <label class="lob-bc-opt"><input type="radio" name="lob-bc-who" id="lob-bc-who-link" value="link" checked><span><span data-t="bcWhoLink">Anyone with the link</span><small data-t="bcWhoLinkSub">Your picture stays blurred for them</small></span></label>
+            <label class="lob-bc-opt"><input type="radio" name="lob-bc-who" id="lob-bc-who-pw" value="pw"><span><span data-t="bcWhoPw">People with the room password</span><small data-t="bcWhoPwSub">Only people you give it to can watch</small></span></label>
           </div>
           <label id="lob-bc-when" class="lob-bc-when" hidden><span data-t="bcWhenStarts">Starts</span><input type="datetime-local" id="lob-bc-at"></label>
         </div>
@@ -795,6 +795,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <h4 data-t="room">Room</h4>
       <div class="morerow">
         <button id="pwbtn" data-t="password" data-ti="pwTip" aria-keyshortcuts="Alt+L" title="Lock this room with a password">Password</button>
+        <button data-ti="capbtnTip" data-t="capBtn" id="capbtn" type="button" title="Take charge of this open room: you set its password and can remove people" style="display:none">Make me admin</button>
+        <span id="capnote" class="capnote" role="status" style="display:none">This room has an admin</span>
         <button data-ti="waitbtnTip" data-t="waitRoom" id="waitbtn" type="button" aria-pressed="false" title="Hold people at the door until you admit them" style="display:none">Waiting room</button>
         <button data-ti="recbtnTip" id="recbtn" data-t="record" aria-keyshortcuts="Alt+R" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
         <button id="votebtn" data-t="vote" data-ti="voteTip" aria-keyshortcuts="Alt+U" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
@@ -2939,7 +2941,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // admin revoking it pulls the person off stage everywhere by arithmetic).
     // A DOM hacker can set their own flag, but every RECEIVER runs this
     // filter — the open/admin room principle, unchanged.
-    const canStage = (id) => !hasAdminRoom() || admins.includes(id) || !!(modOf(id).app && modOf(id).app.on);
+    // stg: the STAGE-ONLY grant an admin's page hands out for an app with the
+    // stage capability (appStageApply below). It lets a person stand on the
+    // stage and nothing else (not run apps, not share), and it lapses unless the
+    // granting page renews it: an admin who leaves abruptly leaves no grant behind.
+    const stageGrantLive = (id) => { const g = modOf(id).stg; return !!(g && g.on && Date.now() - (+g.at || 0) < GifOS.timings.APP_STAGE_GRANT_TTL_MS); };
+    const canStage = (id) => !hasAdminRoom() || admins.includes(id) || !!(modOf(id).app && modOf(id).app.on) || stageGrantLive(id);
     // SCREEN SHARE IS ITS OWN GRANT, NOT THE STAGE GRANT. In an admin room a
     // guest cannot share until an admin allows it, and allowing apps or the
     // stage does not allow the screen. Two signed orders, both off until an
@@ -4875,7 +4882,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       for (const [pid, p] of peers) {
         const park = hidden && pid !== floatPid;
         if (visParkSent.get(pid) === park) continue;
-        if (p.dc && p.dc.readyState === 'open') { dcSend(p, { k: 'vis', park }); visParkSent.set(pid, park); }
+        if (p.dc && p.dc.readyState === 'open') { const was = visParkSent.get(pid); dcSend(p, { k: 'vis', park }); visParkSent.set(pid, park); p.liftWait = park ? null : (was === true ? { fd: -1 } : p.liftWait); }
         else visParkSent.delete(pid); // never mark unsent state as delivered
       }
     }
@@ -5200,7 +5207,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // field (the admin's chat on/off switch). It rides the same signed
         // table as every per-target order, so it reaches late joiners on the
         // heartbeat and a forged copy dies in takeMod's admVerify.
-        for (const field of ['mute', 'blur', 'cam', 'app', 'share', 'chat', 'cc', 'wait', 'admit', 'dhold', 'dadm', 'sublic', 'rename', 'spot', 'pray', 'gfile', 'greact', 'qa', 'chist', 'slow', 'clink']) {
+        for (const field of ['mute', 'blur', 'cam', 'app', 'stg', 'share', 'chat', 'cc', 'wait', 'admit', 'dhold', 'dadm', 'sublic', 'capt', 'rename', 'spot', 'pray', 'gfile', 'greact', 'qa', 'chist', 'slow', 'clink']) {
           const inc = incoming[target][field];
           if (!inc || typeof inc !== 'object') continue;
           if (goneAt != null && (+inc.at || 0) <= goneAt) continue;
@@ -5256,7 +5263,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (target === myId) return; // you moderate others, never yourself
       // The 'app' right only exists in admin rooms (open rooms let everyone
       // run apps already), and only admins hand it out.
-      if ((field === 'app' || field === 'share') && (!hasAdminRoom() || !amAdmin)) return;
+      if ((field === 'app' || field === 'stg' || field === 'share') && (!hasAdminRoom() || !amAdmin)) return;
       // The room-wide chat switch is the admin's alone, and only means
       // anything where there IS an admin to sign it.
       if ((field === 'chat' || field === 'cc' || field === 'pray' || field === 'gfile' || field === 'greact' || field === 'qa' || field === 'chist' || field === 'slow' || field === 'clink') && (!hasAdminRoom() || !amAdmin)) return;
@@ -11709,14 +11716,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // An admin room's change order: the signature frames with no
         // password before them. The signature decides what it is; a grant
         // whose password frame was lost fails it and is dropped.
-        if (!hasAdminRoom() || ty !== 'pwby' || s.sig == null || s.pub == null || s.ts == null || s.by == null) return null;
+        if (!sigRoom() || ty !== 'pwby' || s.sig == null || s.pub == null || s.ts == null || s.by == null) return null;
         pwParts.delete(from);
         return { k: 'pwreset', by: rosterNames[s.by] || '', ep: s.ep, w: { sp: JSON.stringify({ act: 'pwreset', ts: s.ts, room: roomKey(), by: s.by, ep: s.ep }), sig: s.sig, pub: s.pub } };
       }
-      if (!hasAdminRoom()) { pwParts.delete(from); return { k: 'pwinfo', pw: s.pw, by: rosterNames[from] || '', ep: s.ep }; }
+      if (!sigRoom()) { pwParts.delete(from); return { k: 'pwinfo', pw: s.pw, by: rosterNames[from] || '', ep: s.ep }; }
       if (s.sig == null || s.pub == null || s.ts == null || s.by == null) return null;
       pwParts.delete(from);
-      const named = s.pw ? { to: myId } : {};   // an admin room's password over the relay is only ever signed for one id (pwAdmitGrant)
+      const named = s.pw && hasAdminRoom() ? { to: myId } : {};   // a captured room's grant names nobody   // an admin room's password over the relay is only ever signed for one id (pwAdmitGrant)
       return { k: 'pwinfo', pw: s.pw, by: rosterNames[s.by] || '', ep: s.ep, w: { sp: JSON.stringify(Object.assign({ act: 'pwinfo', ts: s.ts, room: roomKey(), by: s.by, pw: s.pw, ep: s.ep }, named)), sig: s.sig, pub: s.pub } };
     }
     // The bootstrap's halves (boot + fp), gathered by sender and session
@@ -13209,6 +13216,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (p.headless || !p.tile || p.tile.parentNode) return;
       if (typeof dropRosterTile === 'function') dropRosterTile(p.id, 'own-tile');   // one tile per member: their own replaces the held one
       grid.appendChild(p.tile);
+      // The returning tile replaces the held one in the grid, so lay the grid out now: until a pass places it, the tile
+      // has no slot and no tier of its own (a bot showed its badge on a plain row square until the next beat).
+      try { layout(); } catch (e) {}
     }
     // Peer ids whose device was banned on this page. dropPeer alone loses to
     // the next occ tick: the mesh still names the seat until ring-confirmed
@@ -15295,7 +15305,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return out.slice(-PW_NO_MAX);
     }
     const pwNoSeen = new Set();   // ids on my stored list heard under the current key since this page loaded
-    const pwNoAny = () => hasAdminRoom() && (pwBarred.size > 0 || amAdmin);
+    const pwNoAny = () => sigRoom() && (pwBarred.size > 0 || amAdm());
     function pwHeardNow(id) { if (!id) return; pwBarLift(id); if (pwBooted.has(id) && !rekeysPending && rekeyAt >= pwBooted.get(id)) { pwBooted.delete(id); pwByeSaid.delete(id); } if (amAdmin) { pwNoSeen.add(id); if (pwNoSeen.size > 1024) pwNoSeen.clear(); } }
     const pwWaitKey = new Map();   // admin: a person waiting through a ban -> the key they still read
     let pwWaitProof = false;       // this page waits on a proof the admin sent: the lock it cannot read yet is not a prompt
@@ -15312,7 +15322,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function pwToOf(grant) { try { return JSON.parse(grant.w.sp).to || ''; } catch (e) { return ''; } }
     let pwBanChain = Promise.resolve();
     function pwBan(id) {
-      if (!amAdmin || !hasAdminRoom() || !id || id === myId) return pwBanChain;
+      if (!amAdm() || !sigRoom() || !id || id === myId) return pwBanChain;
       pwBanChain = pwBanChain.then(() => pwBanNow(id)).catch((err) => pwChainFailed(err, false));
       return pwBanChain;
     }
@@ -15816,6 +15826,95 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { tryBroadcastStage(); } catch (e) {}
       return true;
     }
+    // AN OPEN ROOM'S ADMIN BY SUBSCRIPTION (capture). In an open room the first person on the $5 or $10 plan may
+    // take the room: the meeting server checks their meeting ticket and an order signed by the ticket's key, and
+    // the first one wins. While it lasts, that key signs the room's password and bans like an admin's (setpw is
+    // refused unsigned; a password set is handed to everyone inside except the banned). The room keeps no door
+    // limit. The captor's page re-presents each renewed ticket; when the ticket runs out (they left, or the
+    // subscription moved to another meeting) the room is open again, without a password, for anyone to take.
+    // Every page checks the ticket itself (pay key, this meeting, the plan): the server's word only picks
+    // between two valid tickets. The ticket also rides the room table ('capt') to pages with no server socket.
+    let capKey = null, capExp = 0, capTk = null, amCaptor = false, capSaidKey = null, capBusy = false;
+    const capOn = () => !av && !!capKey && Date.now() < capExp;
+    const sigRoom = () => hasAdminRoom() || capOn();            // orders must be signed: an admin room, or a captured one
+    const amAdm = () => amAdmin || (amCaptor && capOn());
+    async function capTake(c, viaServer) {
+      if (av || !c || !c.tk) return;
+      if (viaServer && c.ck) capSaidKey = c.ck;
+      const t = await GifOS.meetSubs.captureTicket(c.tk, subsMeetId());
+      if (!t || (c.ck && t.buyerKey !== c.ck)) return;
+      if (capKey && capKey !== t.buyerKey && capOn() && !(viaServer || t.buyerKey === capSaidKey)) return;   // two valid claims: the server's pick wins, else the one held
+      const fresh = capKey !== t.buyerKey;
+      if (!fresh && t.exp * 1000 <= capExp) return;
+      capKey = t.buyerKey; capExp = t.exp * 1000; capTk = c.tk;
+      let mine = false; try { mine = (await GifOS.meetSubs.captureKeys()).pubB64 === capKey; } catch (e) { mine = false; }
+      if (mine && !amCaptor) { amCaptor = true; try { admKeys = await GifOS.meetSubs.captureKeys(); } catch (e) {} }
+      if (!mine && amCaptor) { amCaptor = false; admKeys = null; }
+      if (fresh) { if (typeof clog === 'function') clog('capture on key=' + capKey.slice(0, 8) + ' mine=' + mine + ' exp=' + capExp); pwLog('capture-on mine=' + mine); setStatus(mine ? uiText('capYou', 'You are this room\u2019s admin') : uiText('capOther', 'This room has an admin now')); }
+      capPaint();
+    }
+    // The capture ended: the room is open again and its password is cleared on every page at once.
+    function capClear(why) {
+      if (!capKey) return;
+      if (typeof clog === 'function') clog('capture off (' + why + ')');
+      pwLog('capture-off ' + why);
+      const hadPw = !!roomPw;
+      capKey = null; capExp = 0; capTk = null; capSaidKey = null;
+      if (amCaptor) { amCaptor = false; admKeys = null; }
+      if (hadPw) {
+        // Every page clears at the same moment (the ticket's expiry, or the server's word), so nobody hands it on.
+        storePwEpoch(pwEpoch + 1); retainedGrant = null; storePw('');
+        rekeyRoom(false);
+        net.meetPwProof(room, av, '').then((pr) => { pwProof = pr; if (meshNode && meshNode.setKey) meshNode.setKey(roomE2E); }).catch(() => {});
+        try { purgeAllFiles(false); renderFiles(); reactRoomState(); } catch (e) {}
+      }
+      setStatus(uiText('capOpen', 'This room is open again'));
+      capPaint();
+    }
+    function capCheck() {
+      if (av) return;
+      if (capKey && Date.now() >= capExp) capClear('ran out');
+      const o = (modTable['*'] || {}).capt;
+      if (o && o.tk && (!capTk || o.tk.sig !== capTk.sig)) capTake({ tk: o.tk }, false);
+    }
+    // The captor's page: say the ticket to the room table and, renewed, to the server.
+    function capPublish(renew) {
+      if (!amCaptor || !capOn()) return;
+      GifOS.meetSubs.currentTicket(subsMeetId()).then((tk) => {
+        if (!tk || !amCaptor) return;
+        if (renew) relaySendObj({ t: 'capren', tk });
+        const r = modTable['*'] = modTable['*'] || {};
+        r.capt = { tk, at: Date.now(), by: myName(), byId: myId };
+        hostFlood();
+        capTake({ tk, ck: capKey }, false);
+      }, () => {});
+    }
+    async function capTry() {
+      if (capBusy || av || capOn()) return;
+      capBusy = true;
+      try {
+        const o = await GifOS.meetSubs.captureOrder(subsMeetId());
+        if (!o) { setStatus(uiText('capNeedPlan', 'Making yourself admin of an open room takes the $5 or $10 plan')); return; }
+        pwLog('capture-sent');
+        relaySendObj({ t: 'capture', tk: o.tk, w: o.w });
+      } finally { capBusy = false; capPaint(); }   // the server's answer (onCapFrame) says the rest
+    }
+    function onCapFrame(m) {
+      if (av) return;
+      if (m.on === 1) { capTake(m, true).then(() => { if (amCaptor) capPublish(false); }); return; }
+      if (m.on === 0) { capClear('server'); return; }
+      if (m.ok === 0) { pwLog('capture-refused ' + m.why); if (m.why === 'taken') setStatus(uiText('capTaken', 'Someone else is this room\u2019s admin')); else if (m.why === 'ended' && amCaptor) capClear('server ended'); else if (m.why !== 'ended') setStatus(uiText('capFailed', 'Could not make you admin of this room')); }
+    }
+    function capPaint() {
+      const b = document.getElementById('capbtn'), n = document.getElementById('capnote');
+      const show = !av && !capOn() && subsOn() && GifOS.meetSubs.canCapture(subsMeetId());
+      if (b) { b.style.display = show ? '' : 'none'; b.disabled = capBusy; }
+      if (n) { n.style.display = capOn() ? '' : 'none'; n.textContent = amCaptor ? uiText('capYou', 'You are this room\u2019s admin') : uiText('capNote', 'This room has an admin'); }
+      try { applyAdminUi(); } catch (e) {}
+    }
+    { const b = document.getElementById('capbtn'); if (b) b.onclick = () => capTry(); }
+    if (DEBUG_ON) window.__capTry = () => capTry();   // DEBUG=on only: a test taps "Make me admin"
+    if (DEBUG_ON) window.__capState = () => ({ on: capOn(), key: capKey, exp: capExp, mine: amCaptor, pw: !!roomPw, ep: pwEpoch });
     async function admSigned(act, extra) {
       if (!admKeys) return null;
       // `by` is signed: the admin claims their own peer id inside the proof,
@@ -15825,8 +15924,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     async function admVerify(w, act, maxAge) { // -> parsed signed payload, or null
       try {
-        if (!w || !hasAdminRoom()) return null;
-        if (!(await net.edProven(av, w.pub, w.sig, w.sp))) return null;
+        if (!w || !sigRoom()) return null;
+        if (!(av ? await net.edProven(av, w.pub, w.sig, w.sp) : (w.pub === capKey && await net.edVerify(w.pub, w.sig, w.sp)))) return null;   // a captured open room: the captor's key
         const o = JSON.parse(w.sp);
         if (o.act !== act || o.room !== roomKey()) return null;
         // Stale order — replay window. An act whose replay is HARMLESS (a
@@ -15998,8 +16097,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       ab.title = amAdmin ? uiText('admTipOn', 'Admin controls: room password, chat and waiting room')
         : uiText('admTipOff', 'This room has a host — enter the host password to get the host controls');
       const pwb = document.getElementById('pwbtn');
-      pwb.disabled = hasAdmin && !amAdmin;
-      pwb.title = (hasAdmin && !amAdmin)
+      const pwLocked = (hasAdmin && !amAdmin) || (typeof capOn === 'function' && capOn() && !amCaptor);   // a captured open room: its admin's
+      pwb.disabled = pwLocked;
+      pwb.title = pwLocked
         ? uiText('pwTipAdmin', 'This room\'s password is managed by its admin')
         : uiText('pwTip', 'Lock this room with a password');
       // Vote-off only exists where there is no admin to ban bad actors.
@@ -16634,6 +16734,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // GREETER POOL, never the room \u2014 it drives door moderation only.
     function onRelayFrame(m) {
       if (m.t === 'joined') relayTv = m.tv === 1;   // this relay vouches for TURN links (see relayTv)
+      if (m.t === 'joined' && m.cap && !av) capTake(m.cap, true);   // a captured open room: the captor's ticket, checked here
+      if (m.t === 'cap') { onCapFrame(m); return; }
       if (m.t === 'tvouch') { try { if (turnLinks) turnLinks.onVouch(m); } catch (e) {} return; }   // the relay's seated vouch for one of my TURN links
       if (m.t === 'joined') {
         updateStatus(); broadcastStatus();
@@ -16843,6 +16945,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             // reports nothing for it.
             if (fd < 0) fd = 0;
             if (p.pc !== pc0) return;
+            // A LIFT IS SAID UNTIL IT IS HEARD. A channel that is still waking (a phone back from the background) drops a
+            // lift without a close event, and the mate's main stays parked. Until the mate acks the lift ({k:'vis-ack'}),
+            // say it again on every watched tick: one small frame, idempotent at the far side, so the picture comes back
+            // within a tick of the channel waking. A mate on an older page never acks: its picture moving 3 frames past the
+            // lift ends the wait the same way.
+            if (p.liftWait) { if (p.liftWait.fd < 0) p.liftWait.fd = fd; else if (fd < p.liftWait.fd || fd - p.liftWait.fd >= 3) p.liftWait = null; if (p.liftWait && !frozenTileSkip(pid, p)) reassertVisLift(pid); }
             // L29's inbound watch: a watched mate's feed with no new frame. A rebuild starts its count again, and that is no frame.
             { const sk = frozenTileSkip(pid, p); if (!sk) { if (fd > (p.lgFd || 0) || !p.lgFdAt) p.lgFdAt = Date.now(); p.lgFd = fd; } else if (!lgWatchHolds(sk)) p.lgFdAt = 0; }
             const t = Date.now(), fz = p.freezeProbe, judged = !frozenTileSkip(pid, p);
@@ -17193,7 +17301,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const stuckQuiet = p.neverUp === true && (st === 'new' || st === 'connecting');
         // A pair the far seat hung up on purpose (pcbye) is redialled by a seat's word only (seatDial), as the sim's laws do: the page's own clocks leave it.
         if (!p.absentSince && iInitiate(pid) && !p.connected && !p.hungUp && (st === 'connecting' || st === 'new') && !seatHolds(pid)
-            && p.downSince && now - p.downSince > 12000 && now - (p.cureAt || 0) > (stuckQuiet ? 30000 : 8000)) {
+            && p.downSince && now - p.downSince > GifOS.timings.SIG_RETRY_CURE_MS && now - (p.cureAt || 0) > (stuckQuiet ? 30000 : 8000)) {
           p.cureAt = now;
           p.lastKick = now + Math.random() * 1500;
           p.altPath = !p.altPath; // §FWD transport rotation — see sendSig
@@ -17262,9 +17370,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             if (p.staleOfferSdp !== lsd.sdp) { p.staleOfferSdp = lsd.sdp; p.staleOfferAt = now; }
             else if (now - p.staleOfferAt > 2 * GLARE_YIELD_MS + 2000) {
               p.staleOfferSdp = null;
+              // A SLOW PAGE IS NOT A LOST OFFER (2026-11-12, r26-slowdev). A page on ~0.25 of a core answers 10-20 s late. Taking the
+              // offer back then left the two ends on different m-line lists: the far end had applied it, so its late answer and our
+              // next offer both threw "the order of m-lines doesn't match", the pc was rebuilt, and on a slow page the rebuild never
+              // finished: its seat was lost. The same offer, sent again under its id, is answered once (the far end answers a copy
+              // it already answered with the same answer) and still reaches a far end that lost the first copy.
+              const so = p.neg.sentOffer;
+              if (so && so.pc === p.pc && so.sdp === lsd.sdp) {
+                if (typeof clog === 'function') clog('offer-stale ' + String(pid).slice(0, 6) + ' ' + Math.round((now - p.staleOfferAt) / 1000) + 's: send again ' + so.oid);
+                dcSend(p, { k: 'roffer', sdp: lsd, oid: so.oid });
+              } else {
               if (typeof clog === 'function') clog('offer-stale ' + String(pid).slice(0, 6) + ' ' + Math.round((now - p.staleOfferAt) / 1000) + 's: re-offer');
               p.neg.kickVideo = true; // a rollback stops the video encoder; reseat once the new answer lands
               Promise.resolve(p.pc.setLocalDescription({ type: 'rollback' })).then(() => renegotiate(p)).catch(() => {});
+              }
             }
           } else p.staleOfferSdp = null;
         }
@@ -17330,7 +17449,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // FHOP.9: the best carrier score first (its link class, my pc's own
         // loss and round trip to it), the smallest id on a tie.
         if (!p.connected && !p.absentSince && !relayVia.has(pid)
-            && p.downSince && now - p.downSince > 10000 && now - (p.relayAskAt || 0) > 10000) {
+            && p.downSince && now - p.downSince > GifOS.timings.FHOP_RELAY_ASK_MS && now - (p.relayAskAt || 0) > GifOS.timings.FHOP_RELAY_ASK_MS) {   // the direct verdict, and the gap between two asks (FHOP_RELAY_ASK)
           const refused = relayRefusal.get(pid) || {};
           const cands = myConns().filter((r) => r !== pid
             && (connsOf.get(r) || []).includes(pid)
@@ -18132,7 +18251,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // (Reachable only past the disabled button — the e2e admin suite
         // does exactly that to prove the relay refuses — but a client must
         // never eject itself on an order it knows it cannot issue.)
-        if (hasAdminRoom() && !amAdmin) {
+        if ((hasAdminRoom() && !amAdmin) || (capOn() && !amCaptor)) {
           setStatus(PW_ADMIN_ONLY); // the same sentence the door's refusal shows — one message for one rule
           pwModal.style.display = 'none';
           return;
@@ -18154,7 +18273,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // their own proof for reconnects. In an admin room both orders are
           // SIGNED (§9): the relay verifies the setpw, peers verify the pwinfo.
           const ep = pwEpoch + 1; // the signed epoch: replaying an older grant can never roll anyone backwards
-          const wRelay = hasAdminRoom() ? await admSigned('setpw', { pw: pr }) : undefined;
+          const wRelay = sigRoom() ? await admSigned('setpw', { pw: pr }) : undefined;   // a captured room: signed by the captor (admKeys)
           if (hasAdminRoom() && v) {
             // ADMIN ROOM, A PASSWORD SET OR CHANGED: the door locks with the
             // new proof, and the room gets the signed ORDER, never the
@@ -18182,7 +18301,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             }
             return;
           }
-          const wPeers = hasAdminRoom() ? await admSigned('pwinfo', { pw: v, ep }) : undefined;
+          const wPeers = sigRoom() ? await admSigned('pwinfo', { pw: v, ep }) : undefined;   // a captured room hands the password to everyone inside, signed
           relaySendObj({ t: 'setpw', pw: pr, w: wRelay });
           const grant = { k: 'pwinfo', pw: v, by: myName(), w: wPeers, ep };
           sendAll(grant);
@@ -19157,6 +19276,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         go.textContent = uiText('bcGoNow', 'Go live now');
         lob.classList.remove('bc-later');
       };
+      let goLiveBlurPick = null;
       document.getElementById('lob-admin-go').onclick = async () => {
         const err = document.getElementById('lob-admin-err');
         let rawName = document.getElementById('lob-admin-name').value || '';
@@ -19182,9 +19302,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           atSecs = String(Math.floor(ms / 1000));
         }
         const go = document.getElementById('lob-admin-go');
-        // Go live: with a room password the host chose to be seen clear;
-        // without one the room keeps everyone soft anyway, so Max blur.
-        const picked = BC_INTENT ? (bcWho() === 'pw' ? 0 : 2) : null;
+        // Go live is turning the camera on: the same blur choices as the
+        // camera button, and that pick is the consent (Nathan 2026-11-08 A,
+        // kept 2026-11-11). Who can watch sets only the audience.
+        if (BC_INTENT && !atSecs && goLiveBlurPick == null) {
+          if (typeof camChooserOpen === 'function' && camChooserOpen()) { dismissCamChooser(); return; }
+          openCamChooser(go, (level) => {
+            goLiveBlurPick = blurLevel(level);
+            go.click();
+          });
+          return;
+        }
+        const picked = goLiveBlurPick;
+        goLiveBlurPick = null;
         go.dataset.label = go.textContent;
         go.disabled = true; go.textContent = uiText('creating', 'Creating…');
         try {
@@ -20927,6 +21057,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (p.remoteParkMain && !m.park) p.visLiftAt = Date.now();
         p.remoteParkMain = !!m.park;
         refreshOutbound();
+        // A lift is acked, so the viewer stops repeating it (it repeats while a waking channel may have dropped it).
+        if (!m.park) dcSend(p, { k: 'vis-ack' });
+      } else if (m.k === 'vis-ack') {
+        p.liftWait = null;
       } else if (m.k === 'vkick') {
         // The far side sees my main video frozen on its tile (its frozen-tile
         // check). Re-seat the camera on that sender: a fresh encoder start
@@ -21046,7 +21180,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // the new generation and carries no password. A page that does not
         // already hold that generation leaves the meeting for the door's
         // password prompt; the admin's own page (which minted it) stays.
-        if (!hasAdminRoom()) return;
+        // A captured room sends it only with a ban, to the banned.
+        if (!sigRoom()) return;
         if (admOk !== true) {
           admVerify(m.w, 'pwreset').then((o) => { if (o && pwEpInt(o.ep) && o.ep === m.ep) onDc(p, null, m, true); });
           return;
@@ -21074,7 +21209,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // re-derive our proof so reconnects keep working. In an ADMIN room
         // only a SIGNED order re-keys the room (§9) — verify, then re-enter
         // this handler with the proof already checked.
-        if (hasAdminRoom() && admOk !== true) {
+        if (sigRoom() && admOk !== true) {
           admVerify(m.w, 'pwinfo').then((o) => { if (o && String(o.pw || '') === String(m.pw || '') && (o.ep == null || o.ep === m.ep)) onDc(p, null, m, true); });
           return;
         }
@@ -21082,9 +21217,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // they type it at the door (see 'pwreset'). Only the admin's order
         // to REMOVE the lock still travels this way — it gives away nothing.
         // The one exception is a ban: the admin's statement names who must not hear it.
-        const grantNo = hasAdminRoom() && String(m.pw || '') !== '' ? pwNoOf(m) : null;
+        const grantNo = sigRoom() && String(m.pw || '') !== '' ? pwNoOf(m) : null;
         const grantMine = !!grantNo && pwToOf(m) === myId;   // admitted from the waiting room
-        if (grantNo && !grantNo.length && !grantMine) { pwLog('pwinfo-refused (admin room: a password is typed, never granted) ep=' + m.ep); return; }
+        if (grantNo && !grantNo.length && !grantMine && hasAdminRoom()) { pwLog('pwinfo-refused (admin room: a password is typed, never granted) ep=' + m.ep); return; }
         // EPOCH GUARD (§LOCK healing): a grant at or below my own generation
         // is a replay — dead on arrival. Nobody can roll a member backwards;
         // an ep-less grant is a legacy client's, treated as next-generation.
@@ -21157,6 +21292,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         reactRoomState(); // the password is the key to clear video
       } else if (m.k === 'roffer') {
         if (!p.pc) return; // relay-only pseudo-peer — media relay needs a channel pair
+        // A copy of an offer this pc already took (offer-stale sends a slow pair's offer again): answer it with the same answer,
+        // or, while that answer is still being made, wait for it. Applying it twice would answer an offer the far end has settled.
+        const seen = p.neg.lastRoffer;
+        if (m.oid != null && seen && seen.oid === m.oid && seen.pc === p.pc) {
+          if (seen.answer) dcSend(p, { k: 'ranswer', sdp: seen.answer, oid: m.oid });
+          if (typeof clog === 'function') clog('roffer-copy ' + String(p.id).slice(0, 6) + ' ' + m.oid + (seen.answer ? ': answer again' : ': answering'));
+          return;
+        }
         noteGecko(p, m.sdp);
         turnBack(p);
         // Glare: if I have my own offer in flight and I'm the IMPOLITE side
@@ -21166,16 +21309,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // and MUST re-offer afterwards, or its rolled-back m-lines are
         // orphaned forever (the browser's negotiationneeded would refire
         // here; our hand-rolled offers need the explicit flag).
-        const applyRoffer = (msg) => { const pc = p.pc; return answerOffer(pc, p, msg, false, (sdp) => {
+        const applyRoffer = (msg) => { const pc = p.pc; const took = msg.oid != null ? { oid: msg.oid, pc, answer: null } : null; if (took) p.neg.lastRoffer = took;
+          return answerOffer(pc, p, msg, false, (sdp) => {
+            if (took) took.answer = sdp;
             // DEBUG lever __answerHoldTo/__answerHoldMs (a peer id prefix, once): hold this answer, and everything after it to that peer, as a slow page would
             const ahTo = DEBUG_ON ? window.__answerHoldTo : null;
             const ah = ahTo && String(p.id).indexOf(String(ahTo)) === 0 ? +window.__answerHoldMs || 0 : 0;
             if (ah > 0 && !p.wireHold) { p.wireHold = new Promise((r) => setTimeout(() => { p.wireHold = null; r(); }, ah)); window.__answerHoldTo = null; window.__answerHeldAt = Date.now(); }
-            dcSend(p, { k: 'ranswer', sdp });
+            dcSend(p, msg.oid != null ? { k: 'ranswer', sdp, oid: msg.oid } : { k: 'ranswer', sdp });
             if (typeof clog === 'function') clog('ranswer→' + String(p.id).slice(0, 6));
             afterNeg(p, true);
           })
-          .catch((e) => { if (p.pc !== pc) return; if (typeof clog === 'function') clog('roffer-APPLY-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name) + ' ' + String((e && e.message) || '').slice(0, 140)); maybeRebuildNeg(p, e); }); };
+          .catch((e) => { if (took && p.neg.lastRoffer === took) p.neg.lastRoffer = null; if (p.pc !== pc) return; if (typeof clog === 'function') clog('roffer-APPLY-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name) + ' ' + String((e && e.message) || '').slice(0, 140)); maybeRebuildNeg(p, e); }); };
         // Firefox offers carry o=mozilla. Applying one while our own offer is
         // still local throws and does not roll back, and the answer to our
         // offer then dies on the poisoned pc. Hold that offer. Every other
@@ -21259,6 +21404,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         applyRoffer(m);
       } else if (m.k === 'ranswer') {
         if (!p.pc) return;
+        // An answer names its offer. One for an offer this pc does not hold now (already answered, rolled back in a glare, or
+        // made on a pc since rebuilt) is stale: applying it threw the m-line mismatch that rebuilt live pcs.
+        if (m.oid != null) {
+          const so = p.neg.sentOffer;
+          if (!so || so.oid !== m.oid || so.pc !== p.pc || p.pc.signalingState !== 'have-local-offer') {
+            rxStats.answerStale++;
+            if (typeof clog === 'function') clog('ranswer-stale ' + String(p.id).slice(0, 6) + ' ' + m.oid + ' ' + p.pc.signalingState);
+            return;
+          }
+        }
         noteGecko(p, m.sdp);
         const carried = p.connected || (p.dc && p.dc.readyState === 'open');
         const srd = () => p.pc.setRemoteDescription(m.sdp);
@@ -22945,7 +23100,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         .then((o) => { if (pc.signalingState !== 'stable') { const e = new Error('raced'); e.name = 'GlareRace'; throw e; } return pc.setLocalDescription(o); })
         .then(() => {
           endTurn(p); // this offer is the turn's one offer
-          const send = () => { dcSend(p, { k: 'roffer', sdp: pc.localDescription }); if (typeof clog === 'function') clog('roffer→' + String(p.id).slice(0, 6)); };
+          // Each offer carries an id (oid). The answer echoes it, so a late answer to an offer this pc no longer holds is dropped by
+          // name, and a stale offer is sent AGAIN under the same id instead of being taken back (see offer-stale).
+          const oid = Math.random().toString(36).slice(2, 10);
+          const send = () => { p.neg.sentOffer = { oid, pc, sdp: pc.localDescription && pc.localDescription.sdp }; dcSend(p, { k: 'roffer', sdp: pc.localDescription, oid }); if (typeof clog === 'function') clog('roffer→' + String(p.id).slice(0, 6)); };
           // DEBUG lever (e2e-glare-first-offer): hold the wire to this peer
           // (this offer and everything after it, in order). When both ends
           // offer within the hold of each other, as they do the moment a
@@ -28104,7 +28262,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // it. A seat change only colours it, re-labels it for a screen reader,
       // and grays it when it cannot be used (Nathan 2026-11-09).
       const dockedNow = stageBtn.parentElement && stageBtn.parentElement.classList.contains('bar');
-      const mayStage = !!(!hasAdminRoom() || amAdmin || hostHere || (modOf(myId).app && modOf(myId).app.on) || myStatus.stg);
+      const mayStage = !!(!hasAdminRoom() || amAdmin || hostHere || (modOf(myId).app && modOf(myId).app.on) || stageGrantLive(myId) || myStatus.stg);
       if (dockedNow) {
         stageBtn.setAttribute('aria-label', on ? 'Step off the stage' : 'Step on the stage');
         stageBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
@@ -35196,7 +35354,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function subsJoin() {
       if (!subsOn()) return;
       GifOS.meetSubs.joinMeeting(subsMeetId(), {
-        onTicket: () => { if (amAdmin && hasAdminRoom()) subsPublishRoomPlan(); turnSubAt = 0; },   // a fresh ticket is a fresh TURN vouch: say it at the next step
+        onTicket: () => { if (amAdmin && hasAdminRoom()) subsPublishRoomPlan(); turnSubAt = 0; capPublish(true); try { capPaint(); } catch (e) {} },   // a captor re-presents each renewed ticket   // a fresh ticket is a fresh TURN vouch: say it at the next step
         onLost: (why) => {
           if (why === 'moved') setStatus('Your subscription is now in use in another meeting.');
           const r = modTable['*'];
@@ -35204,7 +35362,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         },
       });
     }
-    setInterval(() => { try { if (subsOn() && hasAdminRoom()) subsRoomTier(); } catch (e) {} }, 2000);
+    setInterval(() => { try { if (subsOn() && hasAdminRoom()) subsRoomTier(); } catch (e) {} try { capCheck(); capPaint(); } catch (e) {} }, 2000);   // the room's plan, and an open room's capture (capCheck)
     function subsHolds(id) {
       if (!id || !subsOn() || !hasAdminRoom() || subsProven.has(id)) return false;
       if (!subsPlanKnown()) return subsWaitPlan(id);   // the admin's orders have not reached this door yet: hold, ask nothing
@@ -35805,7 +35963,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // a meeting gets the SAME acknowledgement + per-app opt-out panel it gets in
     // its own tab — including when you JOIN a meeting where someone shares an app.
     // Closing a REQUIRED-setup gate here stops the shared app rather than the tab.
-    if (window.GifOS && GifOS.perms) GifOS.perms.attach(document.getElementById('appperms'), { onLeave: function () { stopApp(); } });
+    if (window.GifOS && GifOS.perms) GifOS.perms.attach(document.getElementById('appperms'), { onLeave: function () { stopApp(); }, skipCaps: function () { return appMode === 'client' ? ['stage'] : []; } });
     let appMode = null;      // 'host' | 'client' | null
     let appKey = null;       // sid of the app session currently mounted here
 
@@ -36673,6 +36831,117 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         : uiText('barCommunalStatus', '🧩 Communal control — anyone here can drive the shared app.'));
     };
     document.getElementById('app-cancel').onclick = () => { document.getElementById('app-modal').style.display = 'none'; };
+    // ---- THE "stage" APP CAPABILITY (docs/app-mesh.md "Apps that order the stage") ----
+    // An app that declares capabilities.stage, running in THIS meeting, names
+    // up to two people in stage order (first = on now, second = up next). Each
+    // page acts only for its own person, the way the Stage button does: it
+    // steps itself up when listed and down when no longer listed, but only if
+    // the app put it there (a presenter who was already up stays up), and only
+    // after its person said OK (the starter of the app answered the Abilities
+    // sheet; everyone else answers one line here). In an admin room the person
+    // also needs a stage grant: an admin's page hands the listed people the
+    // STAGE-ONLY grant (mod field 'stg', stageGrantLive), renews it while they
+    // stay listed, and takes back only the grants it gave; an unrenewed grant
+    // lapses on every page. The cap (SCALE.C) and every receiver's stageIds()
+    // filter still decide who is on. The camera is never touched; a person put
+    // on as "now" while muted is asked to unmute, never unmuted.
+    function appStagePlan(c) {
+      const want = (Array.isArray(c.want) ? c.want : [])
+        .filter((id, i, a) => typeof id === 'string' && id && a.indexOf(id) === i && c.inRoom(id)).slice(0, 2);
+      const out = { want, self: null, grant: [], revoke: [], full: false, rank: want.indexOf(c.me) };
+      const mineOn = c.onStage.includes(c.me);
+      if (c.optOut) { if (c.appStaged && mineOn) out.self = 'down'; }
+      else if (out.rank >= 0) {
+        if (!mineOn && !c.declined) {
+          if (!c.canStage(c.me)) out.self = 'wait';
+          else if (c.onStage.length >= c.cap) out.full = true;
+          // "Next" steps up after "now", so the strip reads now, then next.
+          else if (out.rank === 1 && !c.onStage.includes(want[0]) && c.canStage(want[0]) && c.waitedMs < c.nextWait) out.self = 'wait';
+          else out.self = 'up';
+        }
+      } else if (c.appStaged && mineOn) out.self = 'down';
+      if (c.adminRoom && c.admin) {
+        for (const id of want) if (id !== c.me && !c.canStage(id) && !c.granted.includes(id)) out.grant.push(id);
+        for (const id of c.granted) if (!want.includes(id)) out.revoke.push(id);
+        // A grant lapses unless renewed: this page renews the ones it gave while they stay listed.
+        out.renew = c.granted.filter((id) => want.includes(id) && c.renewDue);
+      }
+      return out;
+    }
+    let appStageWant = [], appStageAt = 0, appStaged = false, appStageGranted = [], appStageTimer = 0;
+    let appStageDeclined = 0, appStageAsked = 0, appStageLast = null, appStageRenewAt = 0;
+    // Consent: the person who STARTS the app saw the Abilities sheet; everyone
+    // else answers one plain line the first time the app asks. Until they say
+    // OK the app never stages them; "Not me" keeps them in the app's turn order
+    // and off the stage for as long as this app runs here.
+    let appStageConsent = null, appStageFor = null;
+    function appStageAskClose() { const el = document.getElementById('appstage-ask'); if (el) el.remove(); }
+    function appStageAsk() {
+      if (appStageConsent !== null || document.getElementById('appstage-ask')) return;
+      const el = document.createElement('div');
+      el.id = 'appstage-ask'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-live', 'polite');
+      el.style.cssText = 'position:fixed;left:50%;bottom:calc(88px + var(--inset-bottom,0px));transform:translateX(-50%);z-index:40;width:max-content;max-width:min(92vw,520px);background:var(--c-scrim);color:var(--c-paper);border:1px solid var(--c-gray);border-radius:var(--r-lg);padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;font:15px/1.35 system-ui,sans-serif';
+      const name = ((typeof findSharedApp === 'function' && findSharedApp()) || {}).name || uiText('appStageThisApp', 'This app');
+      const t = document.createElement('span'); t.style.cssText = 'flex:1 1 220px';
+      t.textContent = uiText('appStageAsk', '{app} may put you on stage when it’s your turn.').split('{app}').join(name);
+      const btn = (label, primary) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.style.cssText = 'min-height:44px;padding:8px 16px;border-radius:var(--r-pill);border:1px solid var(--c-gray);font:inherit;font-weight:700;cursor:pointer;' + (primary ? 'background:var(--c-white);color:var(--c-ink)' : 'background:transparent;color:var(--c-paper)'); return b; };
+      const ok = btn(uiText('appStageOk', 'OK'), true), no = btn(uiText('appStageNo', 'Not me'), false);
+      ok.id = 'appstage-ok'; no.id = 'appstage-no';
+      ok.onclick = () => { appStageConsent = 'ok'; appStageAskClose(); appStageApply(); };
+      no.onclick = () => { appStageConsent = 'no'; appStageAskClose(); appStageApply(); };
+      el.append(t, ok, no);
+      document.body.appendChild(el);
+    }
+    const appStageOn = () => !!appKey && !!myId && !BROADCAST && !document.body.classList.contains('app-room');
+    function appStageState() {
+      const p = appStageLast;
+      return { on: appStageOn(), me: appStageOn() ? myId : '', adminRoom: hasAdminRoom(), admin: !!amAdmin, cap: SCALE.C,
+        staged: appStageOn() ? stageIds().slice() : [], rank: p ? p.rank : -1, full: !!(p && p.full), waiting: !!(p && p.self === 'wait'), optedOut: appStageConsent === 'no' };
+    }
+    function appStageApply() {
+      if (!appStageOn()) {
+        // The app stopped, was hidden, or this is no meeting: undo only what it did.
+        if (appStaged && myStatus.stg) setStage(false);
+        appStaged = false;
+        if (amAdmin) for (const id of appStageGranted) setMod(id, 'stg', false);
+        appStageGranted = []; appStageWant = []; appStageLast = null; appStageConsent = null; appStageFor = null; appStageAskClose();
+        if (appStageTimer) { clearInterval(appStageTimer); appStageTimer = 0; }
+        return;
+      }
+      if (appStageFor !== appKey) { appStageFor = appKey; appStageConsent = appMode === 'host' ? 'ok' : null; appStageAskClose(); }
+      if (appStageConsent === null) appStageAsk();
+      // Stepped down by hand (or pulled off) while still listed: stay down until the list changes.
+      if (appStaged && !myStatus.stg) { appStaged = false; if (appStageWant.includes(myId)) appStageDeclined = appStageAt; }
+      const p = appStagePlan({ want: appStageWant, me: myId, inRoom: (id) => id === myId || statusOf.has(id), onStage: stageIds(),
+        canStage, admin: !!amAdmin, adminRoom: hasAdminRoom(), cap: SCALE.C, appStaged, granted: appStageGranted,
+        declined: appStageDeclined === appStageAt, waitedMs: Date.now() - appStageAt, nextWait: GifOS.timings.APP_STAGE_NEXT_WAIT_MS,
+        optOut: appStageConsent !== 'ok', renewDue: Date.now() - appStageRenewAt >= GifOS.timings.APP_STAGE_GRANT_RENEW_MS });
+      for (const id of p.grant) { setMod(id, 'stg', true); appStageGranted.push(id); }
+      for (const id of p.revoke) { setMod(id, 'stg', false); appStageGranted = appStageGranted.filter((x) => x !== id); }
+      if (p.renew && p.renew.length) { appStageRenewAt = Date.now(); for (const id of p.renew) setMod(id, 'stg', true); }
+      else if (p.grant.length) appStageRenewAt = Date.now();
+      if (p.self === 'up') { setStage(true); appStaged = true; }
+      else if (p.self === 'down') { setStage(false); appStaged = false; }
+      if (p.full && appStageAsked !== -appStageAt) { appStageAsked = -appStageAt; sayState('stageFull', { n: SCALE.C }); }
+      if (p.rank === 0 && myStatus.muted && appStageAsked !== appStageAt && (p.self === 'up' || stageIds().includes(myId))) {
+        appStageAsked = appStageAt; sayState('turnUnmute', null, GifOS.timings.APP_STAGE_ASK_HOLD_MS);
+      }
+      appStageLast = p;
+    }
+    // Called by the runtime (js/runtime.js, d.type 'stage') only for an app
+    // whose manifest declares the capability and whose person has not turned
+    // it off in Abilities.
+    window.__gifosStage = (op, args) => {
+      if (op === 'want') {
+        if (!appStageOn()) return appStageState();
+        const w = (Array.isArray(args && args.ids) ? args.ids : []).map(String).slice(0, 2);
+        if (w.join('\n') !== appStageWant.join('\n')) { appStageWant = w; appStageAt = Date.now(); }
+        if (!appStageTimer) appStageTimer = setInterval(appStageApply, GifOS.timings.APP_STAGE_BEAT_MS);
+        appStageApply();
+      }
+      return appStageState();
+    };
+    window.appStagePlanForTest = appStagePlan;
     // ---- run a GIF app that isn't on this computer (file or link) ----
     function showAddErr(msg) { const el = document.getElementById('app-add-err'); if (!el) return; el.textContent = msg || ''; el.style.display = msg ? '' : 'none'; }
     async function importAndRunGif(bytes, rawName) {

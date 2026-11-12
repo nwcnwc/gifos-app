@@ -629,6 +629,14 @@
       }
       this.doMove(hole, -1, nbrs);
     },
+    // L48.2 (DRAFT): the seats at my old cell's owned links, as my rollback snapshot holds them (the cell is mine until
+    // CONFIRM, and so are the pcs to them): D7.x's word to them rides those pcs, not a route from the new cell's view.
+    // C++: mesh_heal.inc:Seat::d7OldLink
+    d7OldLink(x) {
+      if (!this.moving || x < 0 || x === this.id) return false;
+      for (const c of ownedLinks(this.oldCoord)) { const v = this.holdOcc.get(ckey(c)); if (v !== undefined && v === x) return true; }
+      return false;
+    },
     // T1 claim-before-vacate: take the new seat first while the old one is still held.
     // C++: mesh_heal.inc:Seat::doMove
     doMove(hole, owner, nbrs, ppFrom = -1, ppTick = -1, ppTickL = -1) {
