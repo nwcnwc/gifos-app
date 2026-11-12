@@ -234,13 +234,16 @@
   //   {k:'tv', q:'p', l, b}       paid: my end is on the paid pool (b 1) or back on free (b 0)
   //   {k:'tv', q:'i', l}          move our pc onto new settings: the pair's offerer restarts ICE
   //   {k:'tv', q:'x', l}          the link is closed at my end
+  //   {k:'tv', q:'h', l, t}       TURN.5.1: I sit in this meeting through a link of my own: ask my link's far end t instead
+  //                               (an ask that carries f:1 is taken as it is: the asker could not use the answer)
   //   {k:'tv', q:'b', l, b}       busy: my end paused its video because the server throttles (b 1), or sends again (b 0)
-  const TV_KEYS = 'k,q,l,d,b,e,n,m';
+  const TV_KEYS = 'k,q,l,d,b,e,n,m,t,f';
   const LINK_RE = /^[ls][0-9]{1,2}$/, DEV_RE = /^[A-Za-z0-9_.-]{1,16}$/, NONCE_RE = /^[0-9a-f]{18}$/, MAC_RE = /^[A-Za-z0-9_-]{43}$/, E36_RE = /^[0-9a-z]{1,11}$/;
   function tvOk(f) {
     if (!f || typeof f !== 'object' || Array.isArray(f) || f.k !== 'tv' || typeof f.l !== 'string' || !LINK_RE.test(f.l)) return false;
     for (const k of Object.keys(f)) if (k !== '_' && TV_KEYS.split(',').indexOf(k) < 0) return false;
-    if (f.q === 'a') return typeof f.d === 'string' && DEV_RE.test(f.d) && (f.b === 0 || f.b === 1);
+    if (f.q === 'a') return typeof f.d === 'string' && DEV_RE.test(f.d) && (f.b === 0 || f.b === 1) && (f.f === undefined || f.f === 1);
+    if (f.q === 'h') return typeof f.t === 'string' && f.t.length > 0 && f.t.length <= 128;
     if (f.q === 'v') return typeof f.e === 'string' && E36_RE.test(f.e) && typeof f.n === 'string' && NONCE_RE.test(f.n) && typeof f.m === 'string' && MAC_RE.test(f.m);
     if (f.q === 'r' || f.q === 'x' || f.q === 'i') return true;
     if (f.q === 'p' || f.q === 'b') return f.b === 0 || f.b === 1;
@@ -437,7 +440,7 @@
       try { io.changed(L.far); } catch (e) {}
     }
     const fresh = (L) => !!(L.mine && L.peer && L.mine.e - io.now() > 0 && L.peerE - io.now() > 0);
-    function sendAsk(L) { L.sentAt = io.now(); io.sendTv(L.far, { k: 'tv', q: 'a', l: L.l, d: io.dev(), b: io.blocked() ? 1 : 0 }); }
+    function sendAsk(L) { L.sentAt = io.now(); const a = { k: 'tv', q: 'a', l: L.l, d: io.dev(), b: io.blocked() ? 1 : 0 }; if (L.force) a.f = 1; io.sendTv(L.far, a); }
     function askMine(L) { if (!L.farDev) return; L.vAskAt = io.now(); io.askVouch(L.farDev, L.l); }
     function credFor(L, pool) {
       return createCredentials({ ask: io.ask, room: io.sid(), pool, now: io.now, setTimer: io.setTimer, clearTimer: io.clearTimer,
@@ -488,6 +491,10 @@
           const s = io.seat();
           if (!s || !s.greeter) return;                       // only a seated greeter can be vouched for: say nothing
           if (s.view.indexOf(from) >= 0 && io.reach(from) === 'direct') return;   // reached already: no link
+          // TURN.5.1 (C++: mesh_turn.inc:turnHomeEnd): a link is not hung on another link's end. I sit in the room of the far end of a
+          // link I opened: a newcomer linked to me would be two relayed hops from every other seat, and nobody carries a pair two
+          // hops apart. I answer with my link's far end and the asker asks that seat.
+          if (f.f !== 1) { let home = null; for (const M of links.values()) if (M.opener && M.state === 'up' && M.far !== from && s.view.indexOf(M.far) >= 0) { home = M.far; break; } if (home) { log('turn-link home-end ' + short(from) + ' -> ' + short(home)); io.sendTv(from, { k: 'tv', q: 'h', l: f.l, t: home }); return; } }
           L = newLink(from, f.l, false); L.heardAt = io.now();
         }
         if (L.l !== f.l) return;
@@ -499,6 +506,15 @@
         return;
       }
       if (!L || L.l !== f.l) return;
+      if (f.q === 'h') {   // TURN.5.1: the seat I asked sits in the meeting through a link of its own: its far end is the one to ask
+        if (!L.opener || L.state === 'up' || f.t === io.me()) return;
+        const hops = (L.hops | 0) + 1, known = (io.greeters() || []).indexOf(f.t) >= 0;
+        if (hops > 4 || !known || links.has(f.t)) { L.force = true; sendAsk(L); return; }   // an answer I cannot use (a seat the door does not list for me): the asked seat takes the link itself
+        log('turn-link home-end: asking ' + short(f.t) + ' instead of ' + short(L.far));
+        close(L, 'home-end', true);
+        const N = newLink(f.t, linkName(io.me(), f.t, K.TURN_FREE_LINKS), true); N.hops = hops; sendAsk(N);
+        return;
+      }
       if (f.q === 'v') {
         if (!L.farDev) return;
         const e = parseInt(f.e, 36);
