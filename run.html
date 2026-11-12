@@ -23827,6 +23827,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // A slow relay, for tests: while held, this seat starts no NEW relay of a
     // stage feed (a copy it already ships keeps going). DEBUG only.
     const relayHeldForTest = (key, to) => DEBUG_ON && (window.__relayHoldUntil || 0) > Date.now() && !mosJobs.has(key + '>' + to);
+    // DEBUG (e2e-mute-leak MUTE_ONE_ROOT): my own stage feed enters Section 1 at ONE seat, the first of my row and column mates,
+    // as it does for a stager with a single mate, so the whole room hangs off that seat's claim.
+    const oneRootSkipForTest = (owner, t, list) => DEBUG_ON && owner === myId && !!window.__stgOneRootForTest && t !== list.filter(Boolean)[0];
     const jobPinned = (jk) => DEBUG_ON && window.__parkedJobs && (window.__parkedJobs.get(jk) || 0) > Date.now();
     // A seat that leased its own cell has lost every channel and is on its way out of that cell: it carries no media, in or
     // onward, until a channel proves back (the sim's mCarry). What it was shipping goes back on when the lease ends.
@@ -25191,10 +25194,26 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // so the copies fed each other in a ring that outlived the stager by 40 s in a 40-page meeting, with pages
     // waking and swapping between copies of a stage that had ended. A relayed track keeps sending (silence), so no
     // media test can see the end: only the beat can.
+    // A STAGE FEED LIVES ONLY WHILE ITS OWNER IS ON THE STAGE. A stager who steps down and is called up again before
+    // the beat goes stale would otherwise find every seat still holding the old feed's copies, passed seat to seat with
+    // nobody fed by the stager, and the room hears the voice from before the step-down (muted on stage, yet audible)
+    // until those copies age out. So the stage list this page plays from ends the stage too: off the list, a seat holds
+    // no claim or standby of the feed, relays none and ends what it ships, and a call-up starts from the stager's own
+    // fresh flood. The list keeps its own holdover, so a flicker does not end a stage.
+    // AND A NEW STAGE TURN IS A NEW FEED. Ship containers keep their id across an unship (shipContainers), so a stager
+    // called up again re-shipped the old turn's stream ids, and a seat still holding that turn's claim, decoder or ear
+    // source took the new copy for the old one: bound to the old turn's ended track, the room heard nothing from the
+    // stager after a quick call-up (e2e-mute-leak ring, gap 1.5 s: deaf at four ears on alternate cycles). A copy of an
+    // ended stage drops its container with the job.
+    function stgOffStage(rk) {
+      if (typeof rk !== 'string' || rk.indexOf('stg:') !== 0) return false;
+      const owner = rk.slice(4).split('^')[0];
+      return !!owner && !stageIds().includes(owner);
+    }
     function stgEnded(rk) {
       if (typeof rk !== 'string' || rk.indexOf('stg:') !== 0) return false;
       const base = rk.split('^')[0];
-      return base === 'stg:' + myId ? !stageIds().includes(myId) : stgStale(base);
+      return base === 'stg:' + myId ? !stageIds().includes(myId) : (stgStale(base) || stgOffStage(base));
     }
     // On the worker clock: a stale beat stops relayed media and delists the stager, so a hidden stager's throttled page timer must not reach it.
     GifOS.meshMedia.workerClock(STG_BEAT_MS, () => {
@@ -25655,7 +25674,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const keep = structuralSeen.has(rk) && mosLive(cur.via, cur.streamId);
         if (structuralClaimGrace(cur, keep, nowA, MOS_GRACE)) dropMosIn(rk);
       }
-      for (const [rk, arr] of redun) claimRedun(rk, arr);
+      for (const rk of [...mosIn.keys(), ...mosStandby.keys()]) if (stgOffStage(rk)) dropOffStageClaim(rk);
+      for (const [rk, arr] of redun) { if (stgOffStage(rk)) continue; claimRedun(rk, arr); }
+    }
+    // An off-stage owner's claim goes at once, primary, standby and failover state together, so nothing of the old
+    // feed is left to win the next call-up (stgOffStage).
+    function dropOffStageClaim(rk) {
+      const had = mosIn.has(rk);
+      dropMosIn(rk); dropStandby(rk); mosFb.delete(rk);
+      if (had) repaintRedun(rk, null);
     }
     // A packed mosaic's tile takes the SHAPE of its content: the packer sizes
     // its canvas to the gapless grid (k×1 bar, near-square frame), so the tile
@@ -26511,7 +26538,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const direct = owner === myId ? stgDirectSet(T.rowMates(c).map((m) => occPid(m)), T.colMates(c).map((m) => occPid(m)),
             (t) => { const q = peers.get(t); return !!(q && q.pc && q.connected); }) : null;
           const hmSb = { h, sb: 1 };
-          for (const t of s1peers) { if (owner !== myId && relayHeldForTest(key, t)) continue; const s = pick(t); if (!s) continue; const jk = shipMos(key, t, s.st, (direct && !direct.has(t)) ? hmSb : s.m, up); if (jk) wanted.add(jk); }
+          for (const t of s1peers) { if (owner !== myId && relayHeldForTest(key, t)) continue; if (oneRootSkipForTest(owner, t, s1peers)) continue; const s = pick(t); if (!s) continue; const jk = shipMos(key, t, s.st, (direct && !direct.has(t)) ? hmSb : s.m, up); if (jk) wanted.add(jk); }
           const dnP = occPid(T.down(c)); // and DOWN — Stage audio folds at every ear
           const sd = pick(dnP);
           if (sd) {
@@ -26653,7 +26680,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const ckU = c.pc + '/' + c.r + '.' + c.i;
       for (const [jk, job] of [...mosJobs]) {
         if (wanted.has(jk)) { job.unwantedAt = 0; job.wantCk = ckU; continue; }
-        if (!peers.has(job.to) || stgEnded(job.key)) { unshipMos(jk, true); continue; } // a copy of an ended stage has no flicker to wait out: the beat already waited
+        if (!peers.has(job.to) || stgEnded(job.key)) { unshipMos(jk, true); if (stgEnded(job.key)) shipContainers.delete(jk); continue; } // a copy of an ended stage has no flicker to wait out: the beat already waited
         if (job.wantCk && job.wantCk !== ckU && job.key.indexOf('stg:') !== 0 && job.key !== 'sgs') { unshipMos(jk, true); continue; }
         if (!job.unwantedAt) job.unwantedAt = nowU;
         else if (nowU - job.unwantedAt > MOS_GRACE) unshipMos(jk, true);
@@ -37178,6 +37205,25 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       stgBeatAgesForTest: () => { const o = {}, n = Date.now(); for (const [k, e] of stgBeats) o[k.slice(4, 12)] = n - e.at; return o; },
       stageWhyForTest: (id) => { const st = statusOf.get(id), d = digLists(), e = d ? d.stage.find((x) => x.id === id) : null; let f = null; try { f = mosIn.get('stg:' + id); } catch (x) {} return { on: stageIds().includes(id), fold: !!e, foldAge: d ? d.age : null, stAge: st ? Date.now() - stSeen(st) : null, stStg: st ? st.stg || 0 : null, stHold: stHold(id), tomb: !notTomb(id), gone: meshGone.has(id), held: typeof stageHeldAt !== 'undefined' && stageHeldAt.has(id), claim: f ? { via: String(f.via).slice(0, 8), dead: f.deadAt ? Date.now() - f.deadAt : 0 } : null }; },
       stgPathForTest: () => { const six = (x) => String(x || '').slice(0, 8); const o = {}; for (const [k, f] of mosIn) { if (k.indexOf('stg:') !== 0) continue; const d = mosStandby.get(k); const m = (e) => (e ? { via: six(e.via), key: e.key || null, h: e.meta ? e.meta.h : null, ao: !!(e.meta && e.meta.ao), vp: (e.meta && e.meta.vp) || [] } : null); const hot = []; for (const j of mosJobs.values()) if (j.upKey === k && j.active) hot.push(six(j.to)); o[six(k.slice(4))] = { pri: m(f), std: m(d), dead: f.deadAt ? Date.now() - f.deadAt : 0, hot }; } const jobs = []; for (const [jk, j] of mosJobs) if (j.key.indexOf('stg:') === 0) jobs.push({ k: six(j.key.slice(4)), to: six(j.to), up: j.upKey ? six(j.upKey.slice(4)) : null, active: !!j.active, off: !!j.carryOff, src: (j.srcTracks || []).map((t) => t.kind[0] + (t.readyState === 'live' ? (t.muted ? 'm' : 'L') : 'E')).join(''), sending: j.senders.map((sd) => sd.track ? 1 : 0).join(''), tl: j.tracklessAt ? Date.now() - j.tracklessAt : 0 }); const ann = []; for (const [ak, a] of mosAnn) if (ak.indexOf('|stg:') > 0) ann.push({ from: six(ak.slice(0, ak.indexOf('|'))), k: six(ak.slice(ak.indexOf('|') + 5)), age: Date.now() - (a.at || 0), h: a.h }); return { me: six(myId), coord: meshCoord(), o, jobs, ann }; },
+      // MUTE-LEAK PROBE (DEBUG only, test-only): every stage copy this page holds or ships, with the audio level on each hop at
+      // this instant, so a voice heard after its stager muted names the copy and the hop that carries it. lvl: inbound audioLevel
+      // per remote track (8-char id); a job's src lists its source tracks and snd the tracks its senders carry now.
+      stgLeakForTest: async () => {
+        if (!DEBUG_ON) return null;
+        const six = (x) => String(x || '').slice(0, 6), tid = (t) => (t ? String(t.id).slice(0, 8) + (t.readyState === 'ended' ? ':E' : (t.muted ? ':m' : '')) : '-'), now = Date.now();
+        const lvl = {};
+        for (const [pid, q] of peers) {
+          if (!q || !q.pc || typeof q.pc.getStats !== 'function') continue;
+          try { const rep = await q.pc.getStats(); rep.forEach((r) => { if (r.type === 'inbound-rtp' && r.kind === 'audio' && r.trackIdentifier) lvl[String(r.trackIdentifier).slice(0, 8)] = { from: six(pid), a: typeof r.audioLevel === 'number' ? +r.audioLevel.toFixed(3) : null, pk: r.packetsReceived || 0 }; }); } catch (e) {}
+        }
+        const ent = (e) => (e ? { via: six(e.via), sid: six(e.streamId), tr: e.stream ? e.stream.getAudioTracks().map(tid) : [], vp: (e.meta && e.meta.vp) || [], h: e.meta ? e.meta.h : null, dead: e.deadAt ? now - e.deadAt : 0, el: !!(e.el && !e.el.muted && e.el.srcObject) } : null);
+        const o = {};
+        for (const [k, f] of mosIn) if (k.indexOf('stg:') === 0) o[k.slice(4, 10) + (k.indexOf('^') > 0 ? k.slice(k.indexOf('^')) : '')] = { pri: ent(f), std: ent(mosStandby.get(k)) };
+        const jobs = [];
+        for (const [jk, j] of mosJobs) if (j.key.indexOf('stg:') === 0) jobs.push({ k: j.key.slice(4, 10) + (j.key.indexOf('^') > 0 ? j.key.slice(j.key.indexOf('^')) : ''), to: six(j.to), c: six(j.streamId), act: !!j.active, off: !!j.carryOff, sig: six(j.sig), src: (j.srcTracks || []).filter((t) => t.kind === 'audio').map(tid), snd: j.senders.map((sd) => sd.track && sd.track.kind === 'audio' ? tid(sd.track) : '').filter(Boolean), vp: (j.meta && j.meta.vp) || [], h: j.meta ? j.meta.h : null, unw: j.unwantedAt ? now - j.unwantedAt : 0 });
+        const ear = stageEar && stageEar.bound ? [...stageEar.bound].map(([k2, st2]) => k2.slice(4, 10) + ':' + st2.getAudioTracks().map(tid).join(',')) : [];
+        return { t: now, me: six(myId), o, jobs, ear, lvl };
+      },
       stgHiccupForTest: (ms) => { const jobs = [...mosJobs.values()].filter((b) => b.key.indexOf("stg:") === 0 && b.active); for (const b of jobs) b.senders.forEach((sd, i) => { const t = b.trackList[i]; if (t && t.kind === "audio") { try { sd.replaceTrack(null); } catch (e) {} } }); setTimeout(() => { for (const b of jobs) b.senders.forEach((sd, i) => { const t = b.trackList[i]; if (t && t.kind === "audio") { try { sd.replaceTrack(t); } catch (e) {} } }); }, ms); return jobs.length; },
       // PRIVACY PROBE (test-only): what this page actually receives as VIDEO from one stager's stage feed, read off the track itself
       // (not the roster, not a status): { feed, track, state, w, luma }. luma is the mean brightness (0..1) of up to 4 decoded frames,
