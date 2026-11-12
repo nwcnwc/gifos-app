@@ -40,5 +40,6 @@
   "library.sharedNote": "Compartida contigo desde una biblioteca de GifOS. Se abre en este navegador; la clave del enlace nunca llega a GifOS.",
   "library.wrongKey": "Este archivo no se puede abrir con esta clave.",
   "library.shareNoKey": "A este enlace le falta su clave. Pide el enlace completo.",
-  "library.shareGone": "Su propietario ha desactivado este enlace, o el archivo se ha eliminado."
+  "library.shareGone": "Su propietario ha desactivado este enlace, o el archivo se ha eliminado.",
+  "library.noStream": "Este navegador no puede abrir archivos grandes aquí. Prueba con Chrome, Firefox o Safari actualizados."
 }

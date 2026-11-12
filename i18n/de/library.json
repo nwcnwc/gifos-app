@@ -40,5 +40,6 @@
   "library.sharedNote": "Aus einer GifOS-Bibliothek mit dir geteilt. Sie wird in diesem Browser geöffnet; der Schlüssel im Link erreicht GifOS nie.",
   "library.wrongKey": "Diese Datei lässt sich mit diesem Schlüssel nicht öffnen.",
   "library.shareNoKey": "Diesem Link fehlt sein Schlüssel. Bitte um den vollständigen Link.",
-  "library.shareGone": "Dieser Freigabelink wurde vom Besitzer ausgeschaltet oder die Datei wurde gelöscht."
+  "library.shareGone": "Dieser Freigabelink wurde vom Besitzer ausgeschaltet oder die Datei wurde gelöscht.",
+  "library.noStream": "Dieser Browser kann große Dateien hier nicht öffnen. Versuche ein aktuelles Chrome, Firefox oder Safari."
 }
