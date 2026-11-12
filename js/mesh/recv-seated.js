@@ -379,10 +379,10 @@
       const id = this.id, TICK = this.TICK;
       if (!this.hasCoord || this.state !== 3 || this.coord.pc === 0 || this.drainAt) return;
       {
-        const fromHead = this.f.l164Of(this) && m.tag === 1 && this.coord.i !== 0 && m.id >= 0 && this.occGet(ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 })) === m.id;   // L16.4
+        const fromHead = this.f.l164Of(this) && m.tag === 1 && this.coord.i !== 0 && m.id >= 0 && (this.occGet(ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 })) === m.id || this.l1641From(m.id));   // L16.4
         if (!fromHead) { const oc = this.ownerCoord(); if (!oc || m.id < 0 || this.occGet(ckey(oc)) !== m.id) return; }   // E1: only my ANCHOR may dissolve my subtree
       }
-      if (m.roster.length === 0) return;
+      if (m.roster.length === 0 && !this.f.l164Of(this)) return;
       this.roster = kvCopy(m.roster); this.haveRoster = true; const rc = this.rosterCells();
       for (let c = 0; c < C; c++) { const x = this.occGet(ckey(rc[c])); if (x >= 0 && x !== id) { const d = newMsg('DRAIN'); d.roster = kvCopy(m.roster); d.id = id; this.emit(x, d); } }
       this.drainAt = TICK + 6 + Math.trunc(this.rng() * 12); this.f.wake(id);
