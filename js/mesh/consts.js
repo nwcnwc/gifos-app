@@ -343,6 +343,7 @@
     ISLAND_MODE: 0,   // C++: mesh.cpp:ISLAND_MODE
     ISLAND_PICK: 1,   // C++: mesh.cpp:ISLAND_PICK
     URL_KEY: 0,   // C++: mesh.cpp:URL_KEY
+    LINKKEY_ALL: false,   // C++: mesh.cpp:LINKKEY_ALL
     relayGenesisKey: 0,   // C++: mesh.cpp:relayGenesisKey
     L44_STAY: 0,   // C++: mesh.cpp:L44_STAY
     L44_LIVEW: 0,   // C++: mesh.cpp:L44_LIVEW
