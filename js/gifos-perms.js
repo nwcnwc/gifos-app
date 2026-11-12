@@ -173,7 +173,12 @@
       if (!chipEl) { denyLaunch(); return; }
       hostApi = hostApi || {};
       var pulling = false;
+      // A page may ask for a capability to be asked about elsewhere: a meeting
+      // shows its own one-line question about 'stage' to everyone but the
+      // person who started the app (run.html appStageAsk).
+      var skip = (opts.skipCaps && opts.skipCaps()) || [];
       var caps = Object.keys(CAP_LABELS).filter(function (k) {
+        if (skip.indexOf(k) >= 0) return false;
         if (k === 'api') return apiNames(manifest).length;
         if (k === 'pool') return poolHosts(manifest).length;
         if (k === 'assets') {
