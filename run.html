@@ -35519,6 +35519,85 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         : uiText('barCommunalStatus', '🧩 Communal control — anyone here can drive the shared app.'));
     };
     document.getElementById('app-cancel').onclick = () => { document.getElementById('app-modal').style.display = 'none'; };
+    // ---- THE "stage" APP CAPABILITY (docs/app-mesh.md "Apps that order the stage") ----
+    // An app that declares capabilities.stage, running in THIS meeting, names
+    // up to two people in stage order (first = on now, second = up next). Each
+    // page acts only for its own person, the way the Stage button does: it
+    // steps itself up when listed and down when no longer listed, but only if
+    // the app put it there (a presenter who was already up stays up). In an
+    // admin room the person also needs the stage grant: an admin's page hands
+    // that grant (the moderation 'app' right, the existing stage grant) to the
+    // listed people, and takes back only the grants it handed out. The cap
+    // (SCALE.C) and every receiver's stageIds() filter still decide who is on.
+    // The camera is never touched; a person put on as "now" while muted is
+    // asked to unmute, never unmuted.
+    function appStagePlan(c) {
+      const want = (Array.isArray(c.want) ? c.want : [])
+        .filter((id, i, a) => typeof id === 'string' && id && a.indexOf(id) === i && c.inRoom(id)).slice(0, 2);
+      const out = { want, self: null, grant: [], revoke: [], full: false, rank: want.indexOf(c.me) };
+      const mineOn = c.onStage.includes(c.me);
+      if (out.rank >= 0) {
+        if (!mineOn && !c.declined) {
+          if (!c.canStage(c.me)) out.self = 'wait';
+          else if (c.onStage.length >= c.cap) out.full = true;
+          // "Next" steps up after "now", so the strip reads now, then next.
+          else if (out.rank === 1 && !c.onStage.includes(want[0]) && c.canStage(want[0]) && c.waitedMs < c.nextWait) out.self = 'wait';
+          else out.self = 'up';
+        }
+      } else if (c.appStaged && mineOn) out.self = 'down';
+      if (c.adminRoom && c.admin) {
+        for (const id of want) if (id !== c.me && !c.canStage(id) && !c.granted.includes(id)) out.grant.push(id);
+        for (const id of c.granted) if (!want.includes(id)) out.revoke.push(id);
+      }
+      return out;
+    }
+    let appStageWant = [], appStageAt = 0, appStaged = false, appStageGranted = [], appStageTimer = 0;
+    let appStageDeclined = 0, appStageAsked = 0, appStageLast = null;
+    const appStageOn = () => !!appKey && !!myId && !BROADCAST && !document.body.classList.contains('app-room');
+    function appStageState() {
+      const p = appStageLast;
+      return { on: appStageOn(), me: appStageOn() ? myId : '', adminRoom: hasAdminRoom(), admin: !!amAdmin, cap: SCALE.C,
+        staged: appStageOn() ? stageIds().slice() : [], rank: p ? p.rank : -1, full: !!(p && p.full), waiting: !!(p && p.self === 'wait') };
+    }
+    function appStageApply() {
+      if (!appStageOn()) {
+        // The app stopped, was hidden, or this is no meeting: undo only what it did.
+        if (appStaged && myStatus.stg) setStage(false);
+        appStaged = false;
+        if (amAdmin) for (const id of appStageGranted) setMod(id, 'app', false);
+        appStageGranted = []; appStageWant = []; appStageLast = null;
+        if (appStageTimer) { clearInterval(appStageTimer); appStageTimer = 0; }
+        return;
+      }
+      // Stepped down by hand (or pulled off) while still listed: stay down until the list changes.
+      if (appStaged && !myStatus.stg) { appStaged = false; if (appStageWant.includes(myId)) appStageDeclined = appStageAt; }
+      const p = appStagePlan({ want: appStageWant, me: myId, inRoom: (id) => id === myId || statusOf.has(id), onStage: stageIds(),
+        canStage, admin: !!amAdmin, adminRoom: hasAdminRoom(), cap: SCALE.C, appStaged, granted: appStageGranted,
+        declined: appStageDeclined === appStageAt, waitedMs: Date.now() - appStageAt, nextWait: GifOS.timings.APP_STAGE_NEXT_WAIT_MS });
+      for (const id of p.grant) { setMod(id, 'app', true); appStageGranted.push(id); }
+      for (const id of p.revoke) { setMod(id, 'app', false); appStageGranted = appStageGranted.filter((x) => x !== id); }
+      if (p.self === 'up') { setStage(true); appStaged = true; }
+      else if (p.self === 'down') { setStage(false); appStaged = false; }
+      if (p.full && appStageAsked !== -appStageAt) { appStageAsked = -appStageAt; sayState('stageFull', { n: SCALE.C }); }
+      if (p.rank === 0 && myStatus.muted && appStageAsked !== appStageAt && (p.self === 'up' || stageIds().includes(myId))) {
+        appStageAsked = appStageAt; sayState('turnUnmute', null, GifOS.timings.APP_STAGE_ASK_HOLD_MS);
+      }
+      appStageLast = p;
+    }
+    // Called by the runtime (js/runtime.js, d.type 'stage') only for an app
+    // whose manifest declares the capability and whose person has not turned
+    // it off in Abilities.
+    window.__gifosStage = (op, args) => {
+      if (op === 'want') {
+        if (!appStageOn()) return appStageState();
+        const w = (Array.isArray(args && args.ids) ? args.ids : []).map(String).slice(0, 2);
+        if (w.join('\n') !== appStageWant.join('\n')) { appStageWant = w; appStageAt = Date.now(); }
+        if (!appStageTimer) appStageTimer = setInterval(appStageApply, GifOS.timings.APP_STAGE_BEAT_MS);
+        appStageApply();
+      }
+      return appStageState();
+    };
+    window.appStagePlanForTest = appStagePlan;
     // ---- run a GIF app that isn't on this computer (file or link) ----
     function showAddErr(msg) { const el = document.getElementById('app-add-err'); if (!el) return; el.textContent = msg || ''; el.style.display = msg ? '' : 'none'; }
     async function importAndRunGif(bytes, rawName) {
