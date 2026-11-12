@@ -67,25 +67,33 @@
       Promise.resolve().then(fn).catch(say).then(function () { busy[f.id] = false; });
     };
   }
+  // Files are opened (decrypted) in this browser; the player gets the result.
+  var playUrl = null;
+  function showBlob(title, blob, type) {
+    if (playUrl) { URL.revokeObjectURL(playUrl); playUrl = null; }
+    playUrl = URL.createObjectURL(blob);
+    var box = el('div');
+    if (/^video\/|^audio\//.test(type || '')) {
+      var v = el(/^audio\//.test(type) ? 'audio' : 'video');
+      v.controls = true; v.setAttribute('playsinline', ''); v.src = playUrl;
+      var notice = el('p', 'quiet');
+      v.addEventListener('error', function () { notice.textContent = i18n.t('library.unsupported'); });
+      box.appendChild(v); box.appendChild(notice);
+    } else {
+      var pre = el('pre', 'text');
+      blob.text().then(function (t) { pre.textContent = t; });
+      box.appendChild(pre);
+    }
+    return modal(title, box);
+  }
+  function opening(f) {
+    return function (x) { say({ message: i18n.t('library.opening', { pct: Math.round(x * 100) }) }); };
+  }
   function play(f) {
-    return lib().link(f.id).then(function (l) {
-      if (/^video\/|^audio\//.test(f.type || '')) {
-        var v = el(/^audio\//.test(f.type) ? 'audio' : 'video');
-        v.controls = true; v.setAttribute('playsinline', ''); v.src = l.url;
-        var notice = el('p', 'quiet');
-        v.addEventListener('error', function () { notice.textContent = i18n.t('library.unsupported'); });
-        var box = el('div'); box.appendChild(v); box.appendChild(notice);
-        modal(f.name, box);
-      } else {
-        window.open(l.url, '_blank', 'noopener');
-      }
-    });
+    return lib().openFile(f, opening(f)).then(function (blob) { say(null); showBlob(f.name, blob, f.type); });
   }
   function download(f) {
-    return lib().link(f.id).then(function (l) {
-      var a = el('a'); a.href = l.url + '?dl=1'; a.download = f.name; a.rel = 'noopener';
-      document.body.appendChild(a); a.click(); a.remove();
-    });
+    return lib().download(f, opening(f)).then(function () { say(null); });
   }
   function startRename(f, nameEl) {
     var input = el('input', 'rename'); input.type = 'text'; input.value = f.name; input.maxLength = 200;
@@ -123,10 +131,10 @@
       })();
     }, 'primary');
     var no = btn(i18n.t('library.cancel'), function () { d.close(); });
-    d = modal(i18n.t('library.deleteTitle', { name: f.name }), body, [no, go]);
+    d = modal(i18n.t('library.deleteTitle', { name: f.name || i18n.t('library.locked') }), body, [no, go]);
   }
-  function shareDialog(f) {
-    return lib().share(f.id).then(function (r) {
+  function shareDialog(f, existing) {
+    return (existing ? lib().shareUrl(f, existing).then(function (u) { return { url: u }; }) : lib().share(f)).then(function (r) {
       var body = el('div');
       body.appendChild(el('p', 'quiet', i18n.t('library.shareNote')));
       var row = el('div', 'row');
@@ -150,9 +158,19 @@
   function row(f, kids) {
     var li = el('li', 'file');
     var main = el('div', 'main');
+    if (f.locked) {
+      // Sealed with another subscription file: it can only be deleted here.
+      main.appendChild(el('span', 'name', i18n.t('library.locked')));
+      main.appendChild(el('span', 'meta', dateText(f.created) + ' · ' + lib().sizeText(f.size)));
+      li.appendChild(main);
+      var la = el('div', 'acts');
+      la.appendChild(btn(i18n.t('library.delete'), function () { confirmDelete(f); }));
+      li.appendChild(la);
+      return li;
+    }
     var name = el('span', 'name', f.name);
     main.appendChild(name);
-    main.appendChild(el('span', 'meta', dateText(f.created) + ' · ' + lib().sizeText(f.size)));
+    main.appendChild(el('span', 'meta', dateText(f.created) + ' · ' + lib().sizeText(f.plainSize || f.size)));
     li.appendChild(main);
     var acts = el('div', 'acts');
     acts.appendChild(btn(i18n.t('library.play'), guard(f, function () { return play(f); })));
@@ -164,6 +182,7 @@
     (f.shares || []).forEach(function (s) {
       var r = el('div', 'share');
       r.appendChild(el('span', 'meta', i18n.t('library.shareExisting') + ' · ' + dateText(s.created)));
+      if (s.url) r.appendChild(btn(i18n.t('library.copyLink'), guard(f, function () { return shareDialog(f, s); })));
       r.appendChild(btn(i18n.t('library.shareTurnOff'), guard(f, function () { return turnOff(f, s); })));
       li.appendChild(r);
     });
@@ -251,9 +270,32 @@
     });
   }
 
+  // Someone opened a share link: the key is in the #fragment, which never
+  // leaves this browser. No subscription is needed to watch.
+  function startShared() {
+    $('shared').hidden = false;
+    var s = lib().parseShare(location.hash);
+    $('shared-name').textContent = (s && s.n) || i18n.t('library.sharedTitle');
+    var go = function (dl) {
+      return function () {
+        say(null);
+        lib().openShare(location.hash, function (x) { say({ message: i18n.t('library.opening', { pct: Math.round(x * 100) }) }); }).then(function (r) {
+          say(null);
+          if (dl) { var a = el('a'); a.href = URL.createObjectURL(r.blob); a.download = r.name || 'recording'; document.body.appendChild(a); a.click(); a.remove(); }
+          else showBlob(r.name || i18n.t('library.sharedTitle'), r.blob, r.type);
+        }).catch(function (e) {
+          say({ message: e.code === 'wrong-key' ? i18n.t('library.wrongKey') : e.code === 'share-key' ? i18n.t('library.shareNoKey') : e.code === 'share-gone' ? i18n.t('library.shareGone') : (e.message || i18n.t('library.failed')) });
+        });
+      };
+    };
+    var acts = $('shared-acts'); acts.textContent = '';
+    acts.appendChild(btn(i18n.t('library.play'), go(false)));
+    acts.appendChild(btn(i18n.t('library.download'), go(true)));
+  }
   function start() {
     document.title = i18n.t('library.titleTab');
     document.querySelectorAll('[data-t]').forEach(function (n) { n.textContent = i18n.t(n.getAttribute('data-t')); });
+    if (lib().parseShare(location.hash)) { startShared(); return; }
     $('loading').hidden = false;
     lib().status().then(function (st) {
       $('loading').hidden = true;

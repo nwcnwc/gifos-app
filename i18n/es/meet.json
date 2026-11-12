@@ -758,7 +758,7 @@
   "meet.viewFollow": "Seguir a quien habla",
   "meet.viewPresent": "Presentar",
   "meet.recToLib": "Guardar en mi biblioteca de GifOS",
-  "meet.recToLibHelp": "Se sube a tu biblioteca privada al terminar la grabación, junto con la transcripción. Solo tú puedes verla hasta que la compartas.",
+  "meet.recToLibHelp": "Se cifra en este navegador y se sube a tu biblioteca al terminar la grabación, junto con la transcripción. Solo tú puedes abrirla, salvo que la compartas.",
   "meet.recNoteLib": "Se guarda en tu biblioteca de GifOS. Todos aquí verán que esta reunión se está grabando.",
   "meet.recLibUpsell": "Con la suscripción Streamer puedes guardar grabaciones en tu biblioteca de GifOS.",
   "meet.stLibSaving": "Guardando en Mi biblioteca…",

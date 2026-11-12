@@ -19,7 +19,7 @@
   "library.copy": "复制",
   "library.copied": "已复制",
   "library.shareTitle": "分享 {name}",
-  "library.shareNote": "任何拥有此链接的人都可以观看，直到你将其关闭。",
+  "library.shareNote": "拥有完整链接的任何人都可以观看，直到你关闭它。密钥是 # 之后的部分，永远不会发送给 GifOS。",
   "library.shareTurnOff": "关闭链接",
   "library.shareExisting": "已开启的链接",
   "library.deleteTitle": "删除 {name}？",
@@ -31,5 +31,14 @@
   "library.uploadCancel": "取消上传",
   "library.loadFailed": "无法加载你的资料库。请稍后再试。",
   "library.failed": "出了点问题。请重试。",
-  "library.unsupported": "此浏览器无法在此播放该文件。请改为下载。"
+  "library.unsupported": "此浏览器无法在此播放该文件。请改为下载。",
+  "library.opening": "正在打开… {pct}%",
+  "library.copyLink": "复制链接",
+  "library.locked": "已用另一个订阅文件加密",
+  "library.keyNote": "只有你能打开这些文件。如果你丢失了订阅文件及其备份，没有人（包括 GifOS）能够恢复它们。",
+  "library.sharedTitle": "共享的录制",
+  "library.sharedNote": "来自某个 GifOS 资料库的共享。它在此浏览器中打开；链接中的密钥永远不会发送给 GifOS。",
+  "library.wrongKey": "无法用此密钥打开这个文件。",
+  "library.shareNoKey": "此链接缺少密钥。请索取完整链接。",
+  "library.shareGone": "此共享链接已被所有者关闭，或文件已被删除。"
 }

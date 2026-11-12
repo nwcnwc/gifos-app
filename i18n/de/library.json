@@ -19,7 +19,7 @@
   "library.copy": "Kopieren",
   "library.copied": "Kopiert",
   "library.shareTitle": "{name} teilen",
-  "library.shareNote": "Jeder mit diesem Link kann es ansehen, bis du ihn ausschaltest.",
+  "library.shareNote": "Jeder mit dem vollständigen Link kann sie ansehen, bis du ihn ausschaltest. Der Schlüssel ist der Teil nach #; er erreicht GifOS nie.",
   "library.shareTurnOff": "Ausschalten",
   "library.shareExisting": "Aktive Links",
   "library.deleteTitle": "{name} löschen?",
@@ -31,5 +31,14 @@
   "library.uploadCancel": "Upload abbrechen",
   "library.loadFailed": "Deine Bibliothek konnte nicht geladen werden. Versuche es gleich noch einmal.",
   "library.failed": "Etwas ist schiefgelaufen. Versuche es noch einmal.",
-  "library.unsupported": "Dieser Browser kann die Datei hier nicht abspielen. Lade sie stattdessen herunter."
+  "library.unsupported": "Dieser Browser kann die Datei hier nicht abspielen. Lade sie stattdessen herunter.",
+  "library.opening": "Wird geöffnet… {pct} %",
+  "library.copyLink": "Link kopieren",
+  "library.locked": "Mit einer anderen Abo-Datei versiegelt",
+  "library.keyNote": "Nur du kannst diese Dateien öffnen. Wenn du deine Abo-Datei und ihre Sicherung verlierst, kann sie niemand wiederherstellen – auch GifOS nicht.",
+  "library.sharedTitle": "Eine geteilte Aufnahme",
+  "library.sharedNote": "Aus einer GifOS-Bibliothek mit dir geteilt. Sie wird in diesem Browser geöffnet; der Schlüssel im Link erreicht GifOS nie.",
+  "library.wrongKey": "Diese Datei lässt sich mit diesem Schlüssel nicht öffnen.",
+  "library.shareNoKey": "Diesem Link fehlt sein Schlüssel. Bitte um den vollständigen Link.",
+  "library.shareGone": "Dieser Freigabelink wurde vom Besitzer ausgeschaltet oder die Datei wurde gelöscht."
 }

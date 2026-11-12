@@ -758,7 +758,7 @@
  "meet.viewFollow": "跟随发言人",
  "meet.viewPresent": "演示",
  "meet.recToLib": "保存到我的 GifOS 资料库",
- "meet.recToLibHelp": "录制结束后连同文字记录上传到你的私人资料库。在你分享之前，只有你能看到。",
+ "meet.recToLibHelp": "在此浏览器中加密，录制结束后连同文字记录上传到你的资料库。除非你分享，否则只有你能打开它。",
  "meet.recNoteLib": "保存到你的 GifOS 资料库。这里的每个人都会看到本次会议正在录制。",
  "meet.recLibUpsell": "Streamer 订阅用户可以把录制保存到 GifOS 资料库。",
  "meet.stLibSaving": "正在保存到我的资料库…",
