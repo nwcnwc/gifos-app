@@ -67,33 +67,63 @@
       Promise.resolve().then(fn).catch(say).then(function () { busy[f.id] = false; });
     };
   }
-  // Files are opened (decrypted) in this browser; the player gets the result.
+  // Files are opened (decrypted) in this browser. Normally the service
+  // worker streams them (any size, seeking works, flat memory); a browser
+  // without one opens small files whole.
+  var WHOLE_MAX = 256 * 1000 * 1000;   // bytes a page may hold to open a file whole
   var playUrl = null;
-  function showBlob(title, blob, type) {
-    if (playUrl) { URL.revokeObjectURL(playUrl); playUrl = null; }
-    playUrl = URL.createObjectURL(blob);
+  function player(title, type, src, sid) {
     var box = el('div');
     if (/^video\/|^audio\//.test(type || '')) {
       var v = el(/^audio\//.test(type) ? 'audio' : 'video');
-      v.controls = true; v.setAttribute('playsinline', ''); v.src = playUrl;
+      v.controls = true; v.setAttribute('playsinline', ''); v.preload = 'metadata'; v.src = src;
       var notice = el('p', 'quiet');
       v.addEventListener('error', function () { notice.textContent = i18n.t('library.unsupported'); });
       box.appendChild(v); box.appendChild(notice);
     } else {
       var pre = el('pre', 'text');
-      blob.text().then(function (t) { pre.textContent = t; });
+      fetch(src).then(function (r) { return r.text(); }).then(function (t) { pre.textContent = t; });
       box.appendChild(pre);
     }
-    return modal(title, box);
+    var d = modal(title, box);
+    d.addEventListener('close', function () { if (sid) lib().endStream(sid); });
+    return d;
+  }
+  function showBlob(title, blob, type) {
+    if (playUrl) { URL.revokeObjectURL(playUrl); playUrl = null; }
+    playUrl = URL.createObjectURL(blob);
+    return player(title, type, playUrl, null);
+  }
+  function saveUrl(url, name) {
+    var a = el('a'); a.href = url; a.download = name || 'recording'; a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); a.remove();
   }
   function opening(f) {
     return function (x) { say({ message: i18n.t('library.opening', { pct: Math.round(x * 100) }) }); };
   }
+  // Stream, or open whole when this browser cannot stream and the file is small.
+  function viaStream(start, whole, size) {
+    return start().catch(function (e) {
+      if (e && e.code === 'no-stream') {
+        if (size > WHOLE_MAX) throw { message: i18n.t('library.noStream') };
+        return whole();
+      }
+      throw e;
+    });
+  }
   function play(f) {
-    return lib().openFile(f, opening(f)).then(function (blob) { say(null); showBlob(f.name, blob, f.type); });
+    return viaStream(function () {
+      return lib().stream(f).then(function (s) { player(f.name, f.type, s.url, s.sid); });
+    }, function () {
+      return lib().openFile(f, opening(f)).then(function (blob) { say(null); showBlob(f.name, blob, f.type); });
+    }, f.plainSize);
   }
   function download(f) {
-    return lib().download(f, opening(f)).then(function () { say(null); });
+    return viaStream(function () {
+      return lib().stream(f, { download: true }).then(function (s) { saveUrl(s.url, f.name); });
+    }, function () {
+      return lib().download(f, opening(f)).then(function () { say(null); });
+    }, f.plainSize);
   }
   function startRename(f, nameEl) {
     var input = el('input', 'rename'); input.type = 'text'; input.value = f.name; input.maxLength = 200;
@@ -279,11 +309,18 @@
     var go = function (dl) {
       return function () {
         say(null);
-        lib().openShare(location.hash, function (x) { say({ message: i18n.t('library.opening', { pct: Math.round(x * 100) }) }); }).then(function (r) {
-          say(null);
-          if (dl) { var a = el('a'); a.href = URL.createObjectURL(r.blob); a.download = r.name || 'recording'; document.body.appendChild(a); a.click(); a.remove(); }
-          else showBlob(r.name || i18n.t('library.sharedTitle'), r.blob, r.type);
-        }).catch(function (e) {
+        var sh = lib().parseShare(location.hash) || {};
+        viaStream(function () {
+          return lib().streamShare(location.hash, { download: dl }).then(function (x) {
+            if (dl) saveUrl(x.url, sh.n); else player(sh.n || i18n.t('library.sharedTitle'), sh.t, x.url, x.sid);
+          });
+        }, function () {
+          return lib().openShare(location.hash, function (x) { say({ message: i18n.t('library.opening', { pct: Math.round(x * 100) }) }); }).then(function (r) {
+            say(null);
+            if (dl) saveUrl(URL.createObjectURL(r.blob), r.name);
+            else showBlob(r.name || i18n.t('library.sharedTitle'), r.blob, r.type);
+          });
+        }, sh.s).catch(function (e) {
           say({ message: e.code === 'wrong-key' ? i18n.t('library.wrongKey') : e.code === 'share-key' ? i18n.t('library.shareNoKey') : e.code === 'share-gone' ? i18n.t('library.shareGone') : (e.message || i18n.t('library.failed')) });
         });
       };
