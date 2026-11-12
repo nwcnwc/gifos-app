@@ -250,6 +250,7 @@
       if (m.from !== m.id || !this.linkIs(m, m.id) || m.line < 0 || this.line < 0 || m.line === this.line) return false;
       if (m.c7One) {   // L8.50.1
         if (this.l850Lone()) return false;   // two founders of one: T1
+        if (!L8_52_OFF && m.line !== m.id && this.lineAt >= 0 && m.lineAt >= 0 && m.lineAt < this.lineAt) return false;   // L8.52.5 (mesh_ring.inc): "alone" from a seat that did not found the older lineage it stamps is a link end speaking for its room
         let mate = false; for (const [k, v] of this.occ) if (v >= 0 && v !== this.id && v !== m.id && ckPc(k) === 0 && this.firstHandLive(k)) { mate = true; break; }
         if (!mate) return false;
         this.trace('L8.50-ROOM', this.id, this.coord, 'to=%d line=%d', m.id, m.line); const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = this.id; h.c7Min = this.ringName(); h.c7Held = true; h.c7One = false; this.emit(m.id, h);   // one answer per HELLO received

@@ -81,7 +81,9 @@
       if (!corr) { this.trace('L40-ALONE', this.id, this.coord, 'rival=%d kept=%d me=%d asked=%d', this.l40Riv, R, M, A); return 2; }
       if (this.l40ToldK && this.l40ToldBy === this.l40Riv) { this.trace('L40-ROOKED', this.id, this.coord, 'rival=%d kept=%d me=%d asked=%d', this.l40Riv, R, M, A); return 1; }
       const ck = ckey(this.coord), ra = l40Rank(ck, this.id), rb = l40Rank(ck, this.l40Riv);
-      const first = ra < rb || (ra === rb && this.id < this.l40Riv);
+      let first = ra < rb || (ra === rb && this.id < this.l40Riv);
+      { let ea = this.lineAtOf(this.l40Riv), el = this.lineOf(this.l40Riv); if ((ea < 0 || el < 0) && this.l25By >= 0 && this.l25By !== this.id) { ea = this.lineAtOf(this.l25By); el = this.lineOf(this.l25By); }
+        if (!L8_52_OFF && this.coord.pc === 0 && this.lineAt >= 0 && ea >= 0 && ea !== this.lineAt && el >= 0 && el !== this.line && this.lineAt > ea) first = false; }   // L8.52.2: the seat of the younger room is never the first by the rank's coin
       this.trace('L40-ORDER', this.id, this.coord, 'rival=%d %s kept=%d me=%d asked=%d arb=%d', this.l40Riv, first ? 'first' : 'later', R, M, A, this.l40Arb ? 1 : 0);
       return first ? 2 : 1;
     },
