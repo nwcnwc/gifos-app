@@ -803,5 +803,6 @@
   "meet.agNoItems": "No items yet.",
   "meet.agAddItem": "Add item",
   "meet.agWhoEdits": "Who else can edit",
-  "meet.agStop": "Stop sharing the agenda"
+  "meet.agStop": "Stop sharing the agenda",
+  "meet.shareStageFull": "The stage is full. Someone has to step down first."
 }

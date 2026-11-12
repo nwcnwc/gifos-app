@@ -803,5 +803,6 @@
  "meet.agNoItems": "还没有任何项目。",
  "meet.agAddItem": "添加项目",
  "meet.agWhoEdits": "还有谁可以编辑",
- "meet.agStop": "停止共享议程"
+ "meet.agStop": "停止共享议程",
+ "meet.shareStageFull": "舞台已满，需要先有人下台。"
 }

@@ -803,5 +803,6 @@
   "meet.agNoItems": "Todavía no hay puntos.",
   "meet.agAddItem": "Añadir punto",
   "meet.agWhoEdits": "Quién más puede editar",
-  "meet.agStop": "Dejar de compartir la agenda"
+  "meet.agStop": "Dejar de compartir la agenda",
+  "meet.shareStageFull": "El escenario está lleno. Alguien tiene que bajar primero."
 }
