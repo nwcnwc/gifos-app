@@ -977,6 +977,7 @@
     ["l853Ep", "i32"],   // int = -1  (line 2045)
     ["l853At", "i32"],   // int = -1  (line 2045)
     ["l853KnockAt", "i32"],   // int = -1000000  (line 2045)
+    ["l853AskAt", "i32"],   // int = -1000000  (line 2045)
     ["l853Via", "i32"],   // int = -1  (line 2045)
     ["l1731Vouch", "{i32:i32}"],   // OMap<int,int>  (line 2048)
     ["l152Bye", "{i32:(u64,i32)}"],   // OMap<int,pair<uint64_t,int>>  (line 2049)
@@ -1503,6 +1504,7 @@
     l853Ep: -1,
     l853At: -1,
     l853KnockAt: -1000000,
+    l853AskAt: -1000000,
     l853Via: -1,
   };
 
