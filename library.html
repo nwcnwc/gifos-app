@@ -68,6 +68,8 @@
   .modal-head h2 { overflow-wrap: anywhere; }
   .modal-foot { justify-content: flex-end; }
   .modal-body { padding: var(--s-2) var(--s-3) var(--s-3); overflow: auto; flex: 1 1 auto; }
+  #keynote { font-size: var(--fs-label); margin-bottom: var(--s-3); }
+  pre.text { white-space: pre-wrap; font: var(--fs-label)/1.5 ui-monospace, monospace; color: var(--c-label); }
   .modal-body video, .modal-body audio { width: 100%; max-height: 70vh; background: var(--c-black); border-radius: var(--r-sm); }
 </style>
 </head>
@@ -85,7 +87,14 @@
     <p id="noplan-hint" class="quiet" hidden data-t="library.noPlanHint">Subscriptions are in a meeting's Settings.</p>
   </div>
 
+  <div id="shared" hidden>
+    <p id="shared-name" class="name"></p>
+    <p class="quiet" data-t="library.sharedNote">Shared with you from a GifOS library. It opens in this browser; the key in the link never reaches GifOS.</p>
+    <div id="shared-acts" class="acts"></div>
+  </div>
+
   <div id="library" hidden>
+    <p id="keynote" class="quiet" data-t="library.keyNote">Only you can open these. If you lose your subscription file and its backup, nobody — not even GifOS — can recover them.</p>
     <div class="usage">
       <p id="usage-text" class="quiet"></p>
       <div id="bar" class="track" role="progressbar" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0" aria-labelledby="usage-text"><div class="fill"></div></div>
