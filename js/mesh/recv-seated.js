@@ -45,6 +45,7 @@
     // C++: mesh_seat.inc:Seat::onHello
     onHello(m) {
       const id = this.id, TICK = this.TICK, lv = this.w.lv;
+      if (this.t14Come(m)) return;   /* TURN.14.13 */
       // A HELLO is FIRST-HAND: its sender (m.id) is speaking on a link it holds to me, claiming coord m.ck.
       if (m.id < 0 || !cellOk(m.ck)) return;
       if (this.f.fabricDoors()) { const lb = this.l152Bye.get(m.id); if (lb !== undefined && lb[0] === m.ck && TICK - lb[1] <= 2) return; }   // L15.2 for a HELLO

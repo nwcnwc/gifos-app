@@ -29,7 +29,7 @@
   const { Seat, FREE, signedBy } = req('./seat.js', 'meshSeat');
 
   const K = C_.consts, E = C_.enums;
-  const { ckey, unckey, ownedLinks, down, pcDepth, parentPath, lastDigit } = topo;
+  const { ckey, ckPc, unckey, ownedLinks, down, pcDepth, parentPath, lastDigit } = topo;
   const C = topo.C;
   const { H_INIT, hmix, hmix64 } = hash;
   const { K_HAND, K_STAGE, K_APP } = dig;
@@ -165,6 +165,22 @@
     // TURN.14.7 THE END KEEPS ITS CELL WHILE ITS SIDE HANGS UNDER IT: the end with a child row makes no move and no exchange.
     // TURN.14.11 NO THIRD PARTY'S PLACEMENT ASK, AND NO PLACEMENT, CROSSES A TURN LINK: an entry ask for a seeker on my side stops at me and I seat
     // it under me (the ask comes back to me on my own bus); a placement for a seat that is neither end is not carried.
+    // TURN.14.13 A STRAY OF THE END'S SIDE IN SECTION 1 IS CALLED UNDER THE END: every TURN_RETRY ticks an end whose ring lies across its link
+    // sends its word (HELLO.t14, the key of its cell + 1) to each Section-1 seat of its view that its own probe reaches and that is no TURN peer;
+    // a Section-1 seat that hears it over the sender's own channel, holds no TURN link and no pc of its own to any other Section-1 neighbour, leaves its cell.
+    // C++: mesh_seat.inc:Seat::t14Call
+    t14Call() {
+      const id = this.id;
+      if (!this.hasCoord || this.state !== 3 || this.coord.pc !== 0 || !this.f.fabricTurnAcross(id)) return;
+      let xs = []; for (const [k, x] of this.occ) { if (x < 0 || x === id || ckPc(k) !== 0) continue; if (this.f.fabricTurnStray(id, x)) xs.push(x); }
+      xs.sort((a, b) => a - b); xs = xs.filter((x, i) => i === 0 || x !== xs[i - 1]);
+      for (const x of xs) { this.trace('TURN14-CALL', id, this.coord, 'to=%d', x); const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = id; h.t14 = ckey(this.coord) + 1; this.emit(x, h); }
+    },
+    // C++: mesh_seat.inc:Seat::t14Come
+    t14Come(m) {
+      if (m.t14 <= 0 || m.from !== m.id || !this.linkIs(m, m.id) || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0 || this.moving || m.ck + 1 !== m.t14 || !this.f.fabricTurnLone(this.id, m.id)) return false;
+      this.trace('TURN14-COME', this.id, this.coord, 'by=%d', m.id); this.requeue('TURN14-come'); return true;
+    },
     // C++: mesh_seat.inc:Seat::t14Cross
     t14Cross(to, m) {
       const id = this.id;
