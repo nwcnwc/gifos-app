@@ -650,6 +650,7 @@
  "meet.stSlowModeWaitAFew": "慢速模式：请等几秒再发消息。",
  "meet.stFilesAreNotAllowedHere": "这里不允许发送文件。",
  "meet.stCalledToTheStageA": "已被请上舞台——有人下台后会空出位置。",
+ "meet.stTurnUnmute": "轮到你了。要取消静音发言吗？",
  "meet.stOnlyRoomAdminsAndPeople": "只有房间管理员——以及获得他们允许的人——才能在这里上舞台。",
  "meet.stAnAdminTurnedYourVideo": "📷 管理员已为房间关闭了你的视频——在他们解除之前，屏幕共享也会关闭。",
  "meet.stOnlyThisRoomSAdmins": "🛡 只有本房间的管理员——或获得他们允许的人——才能在这里共享屏幕。",

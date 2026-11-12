@@ -650,6 +650,7 @@
   "meet.stSlowModeWaitAFew": "Langsammodus: Warten Sie ein paar Sekunden, bevor Sie erneut schreiben.",
   "meet.stFilesAreNotAllowedHere": "Dateien sind hier nicht erlaubt.",
   "meet.stCalledToTheStageA": "Auf die Bühne gerufen – ein Platz wird frei, sobald jemand hinuntergeht.",
+  "meet.stTurnUnmute": "Du bist dran. Stummschaltung aufheben, um zu sprechen?",
   "meet.stOnlyRoomAdminsAndPeople": "Nur Raum-Admins – und von ihnen zugelassene Personen – können hier die Bühne betreten.",
   "meet.stAnAdminTurnedYourVideo": "📷 Ein Admin hat Ihr Video für den Raum ausgeschaltet – auch das Teilen des Bildschirms ist aus, bis er es aufhebt.",
   "meet.stOnlyThisRoomSAdmins": "🛡 Nur die Admins dieses Raums – oder von ihnen zugelassene Personen – können hier einen Bildschirm teilen.",

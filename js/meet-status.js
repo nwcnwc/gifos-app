@@ -58,6 +58,7 @@
     stageCalled:    { tone: 'note', key: 'stCalledToTheStageA', en: 'You were called to the stage. A place opens when someone steps down.' },
     stageFull:      { tone: 'stop', key: 'sttStageFull', en: 'The stage is full ({n} people). Someone has to step down first.' },
     stageNoStep:    { tone: 'stop', key: 'stCouldNotStepOntoThe', en: 'Could not step onto the stage. Tap Step on to try again.' },
+    turnUnmute:     { tone: 'note', key: 'stTurnUnmute', en: 'It’s your turn. Unmute to speak?' },
     stageNotAllowed: { tone: 'stop', key: 'stOnlyRoomAdminsAndPeople', en: 'Only room admins, and people they allow, can take the stage here.' },
 
     // ---- sharing your screen ---------------------------------------------
