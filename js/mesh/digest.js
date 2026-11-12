@@ -17,6 +17,8 @@
   const GifOS = root.GifOS = root.GifOS || {};
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
+  // the sim's #define L48_2_OFF in mesh.cpp (a build-time switch): MESH_L48_2_OFF=1 under node, read once at load; a page always runs the law
+  const L48_2_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L48_2_OFF === '1') ? 1 : 0;
   const msg = req('./msg.js', 'meshMsg');
   const topo = req('./topo.js', 'meshTopo');
   const hash = req('./hash.js', 'meshHash');
@@ -389,6 +391,7 @@
       const old = [];
       for (const [k, e] of this.rowKids) if (k !== nk && e.by === who) old.push(k);
       for (const [k, e] of this.s1tab) if (k !== nk && e.by === who) old.push(k);
+      if (!L48_2_OFF && this.hasCoord && this.downDig.at >= 0 && this.downDig.by === who && ckey(down(this.coord)) !== nk) old.push(ckey(down(this.coord)));   // L48.2: my child head's word about another cell retires its report too
       for (const k of old) { if (this.hasCoord && k === ckey(this.coord)) continue; this.digForget1(k); this.l10Mark(); }
     },
     // C++: mesh_seat.inc:Seat::digForget1
