@@ -4882,7 +4882,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       for (const [pid, p] of peers) {
         const park = hidden && pid !== floatPid;
         if (visParkSent.get(pid) === park) continue;
-        if (p.dc && p.dc.readyState === 'open') { dcSend(p, { k: 'vis', park }); visParkSent.set(pid, park); }
+        if (p.dc && p.dc.readyState === 'open') { dcSend(p, { k: 'vis', park }); visParkSent.set(pid, park); p.liftWait = park ? null : { fd: -1 }; }
         else visParkSent.delete(pid); // never mark unsent state as delivered
       }
     }
@@ -16945,6 +16945,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             // reports nothing for it.
             if (fd < 0) fd = 0;
             if (p.pc !== pc0) return;
+            // A LIFT IS SAID UNTIL IT IS HEARD. The lift is unacked, and a channel that is still waking (a phone back from the
+            // background) drops it without a close event, so the mate's main stays parked. Until that mate's picture moves
+            // again, say it once more on every watched tick: one small frame, idempotent at the far side, and the picture
+            // comes back within a tick of the channel waking instead of at the frozen-tile check's next ask.
+            if (p.liftWait) { if (p.liftWait.fd < 0) p.liftWait.fd = fd; else if (fd !== p.liftWait.fd) p.liftWait = null; if (p.liftWait && !frozenTileSkip(pid, p)) reassertVisLift(pid); }
             // L29's inbound watch: a watched mate's feed with no new frame. A rebuild starts its count again, and that is no frame.
             { const sk = frozenTileSkip(pid, p); if (!sk) { if (fd > (p.lgFd || 0) || !p.lgFdAt) p.lgFdAt = Date.now(); p.lgFd = fd; } else if (!lgWatchHolds(sk)) p.lgFdAt = 0; }
             const t = Date.now(), fz = p.freezeProbe, judged = !frozenTileSkip(pid, p);
