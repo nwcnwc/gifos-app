@@ -187,7 +187,7 @@
     TURN_P1_MS: 30000,   // ms
     TURN_RETRY_BASE_MS: 2000,   // ms
     TURN_RETRY_MAX_MS: 300000,   // ms
-    TURN_STANDBY_SWITCH_MS: 11000,   // ms
+    TURN_STANDBY_SWITCH_MS: 8000,   // ms
     TURN_THROTTLE_LOOK_MS: 2000,   // ms
     TURN_THROTTLE_UP_MS: 10000,   // ms
     UNOWNED_PC_MS: 15000,   // ms
