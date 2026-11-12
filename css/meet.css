@@ -1139,7 +1139,7 @@
      no panel, no border, no accent colour; the name pill keeps its corner. */
   .tile .tpause { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
                   gap: 12px; padding: 16px 16px 44px; text-align: center; pointer-events: none; z-index: 3;
-                  font-size: .875rem; line-height: 1.35; color: #dfe0e4; }
+                  font-size: .875rem; line-height: 1.35; color: var(--c-white); }
   .tile .tpause > span { max-width: 22rem; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
   .tile .tpause .tpause-sub { pointer-events: auto; min-height: 36px; padding: 6px 16px; border: 0; border-radius: var(--r-pill);
                   background: rgba(255,255,255,.16); color: var(--c-white); font: inherit; font-weight: 500; cursor: pointer; }
