@@ -24,7 +24,7 @@
       if (this.l25WitPend && this.TICK - this.l25WitAt < K.L25_WIT_WAIT) return;
       this.l25WitAsk.length = 0; this.l25WitMe = 0; this.l25WitRival = 0; this.l25WitAt = this.TICK; this.l25WitPend = false; this.l25WitRivalId = this.l25Nc; this.l25WitAskedN = 0;
       if (!this.hasCoord || this.state !== 3) return;
-      if (this.l25Nc !== this.l25WitSinceNc || this.l25Ck !== this.l25WitSinceCk || this.TICK - this.l25WitLast > K.L25_ORD_AGE) { this.l25WitSince = this.TICK; this.l25WitSinceNc = this.l25Nc; this.l25WitSinceCk = this.l25Ck; }
+      if (this.l25Nc !== this.l25WitSinceNc || this.l25Ck !== this.l25WitSinceCk || this.TICK - this.l25WitLast > K.L25_ORD_AGE) { this.l25WitSince = this.TICK; this.l25WitSinceNc = this.l25Nc; this.l25WitSinceCk = this.l25Ck; this.l40Arb = false; }   // L40.2.1: a new contest has no arbiter's word yet
       this.l25WitLast = this.TICK;
       const ol = ownedLinks(this.coord), n = ol.length;
       let rook = 0;
