@@ -32173,7 +32173,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       lab.className = 'rec-opt';
       lab.innerHTML = '<input type="checkbox" id="rec-tolib" checked><span><b></b><small></small></span>';
       lab.querySelector('b').textContent = uiText('recToLib', 'Save to my GifOS library');
-      lab.querySelector('small').textContent = uiText('recToLibHelp', 'Uploaded to your private library when the recording stops, with the transcript. Only you can see it until you share it.');
+      lab.querySelector('small').textContent = uiText('recToLibHelp', 'Encrypted in this browser and uploaded to your library when the recording stops, with the transcript. Only you can open it, unless you share it.');
       slot.appendChild(lab);
       const note = bg.querySelector('.rec-note');
       const devText = note ? note.textContent : '';

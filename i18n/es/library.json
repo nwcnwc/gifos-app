@@ -19,7 +19,7 @@
   "library.copy": "Copiar",
   "library.copied": "Copiado",
   "library.shareTitle": "Compartir {name}",
-  "library.shareNote": "Cualquiera con este enlace puede verlo hasta que lo desactives.",
+  "library.shareNote": "Cualquiera con el enlace completo puede verla hasta que lo desactives. La clave es la parte después de #; nunca llega a GifOS.",
   "library.shareTurnOff": "Desactivar",
   "library.shareExisting": "Enlaces activos",
   "library.deleteTitle": "¿Eliminar {name}?",
@@ -31,5 +31,14 @@
   "library.uploadCancel": "Cancelar subida",
   "library.loadFailed": "No se pudo cargar tu biblioteca. Inténtalo de nuevo en un momento.",
   "library.failed": "Algo salió mal. Inténtalo de nuevo.",
-  "library.unsupported": "Este navegador no puede reproducir este archivo aquí. Descárgalo en su lugar."
+  "library.unsupported": "Este navegador no puede reproducir este archivo aquí. Descárgalo en su lugar.",
+  "library.opening": "Abriendo… {pct} %",
+  "library.copyLink": "Copiar enlace",
+  "library.locked": "Sellado con otro archivo de suscripción",
+  "library.keyNote": "Solo tú puedes abrirlos. Si pierdes tu archivo de suscripción y su copia de seguridad, nadie —ni siquiera GifOS— podrá recuperarlos.",
+  "library.sharedTitle": "Una grabación compartida",
+  "library.sharedNote": "Compartida contigo desde una biblioteca de GifOS. Se abre en este navegador; la clave del enlace nunca llega a GifOS.",
+  "library.wrongKey": "Este archivo no se puede abrir con esta clave.",
+  "library.shareNoKey": "A este enlace le falta su clave. Pide el enlace completo.",
+  "library.shareGone": "Su propietario ha desactivado este enlace, o el archivo se ha eliminado."
 }
