@@ -296,7 +296,7 @@
     RC_W10: 20,   // C++: mesh_realcheck.inc:RC_W10
     RC_HIST: 33,   // C++: mesh_realcheck.inc:RC_HIST
     RC_LOSS_H: 236,   // C++: mesh_realcheck.inc:RC_LOSS_H  (LINK_DISC_DEAD+LINK_DIAL_FAIL)
-    RC_GRACE: 8,   // C++: mesh_realcheck.inc:RC_GRACE
+    RC_GRACE: 10,   // C++: mesh_realcheck.inc:RC_GRACE
   });
 
   // Mutable: the harness writes these before (or during) a run.

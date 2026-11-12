@@ -19,9 +19,10 @@
   const GifOS = root.GifOS = root.GifOS || {};
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
+  const RCD = ((n) => ({ L35_4_OFF: n('L35_4_OFF'), L17_3_1_OFF: n('L17_3_1_OFF'), L17_4_OFF: n('L17_4_OFF'), L35_5_OFF: n('L35_5_OFF') }))((k) => ((isNode && typeof process !== 'undefined' && process.env && process.env['MESH_' + k] === '1') ? 1 : 0));   // the sim's build-time switches of the realcheck dead-dial laws (mesh.cpp L35_4_OFF ...): MESH_<name>=1 under node; a page runs the laws
   const seatM = req('./seat.js', 'meshSeat');
   const { cellOk, ownerCoordOf, coordStr, u2RowKey } = req('./shared.js', 'meshShared');
-  const { Seat, roomTerm, islandStand, signedBy, l165Earlier } = seatM;
+  const { Seat, FREE, roomTerm, islandStand, signedBy, l165Earlier } = seatM;
   const C_ = req('./consts.js', 'meshConsts');
   const msg = req('./msg.js', 'meshMsg');
   const topo = req('./topo.js', 'meshTopo');
@@ -224,7 +225,7 @@
       if (!this.moving && this.l25OrderBy >= 0 && TICK - this.l25OrderAt <= 2 * K.L11_ARRIVE && this.l25OrderBy !== by && TICK - this.seatedAt < K.L11_ARRIVE) this.l25Mark(this.l25OrderBy);
       this.trace('YIELD-TAKEN', id, this.coord, 'by=%d site=%d nc=%d ypp=%d yppAt=%d mypp=%d myppAt=%d born=%lld moving=%d', by, m.tag, m.nc, m.pp, m.ppAt, this.pp, this.ppAt, this.rmBornAt, this.moving ? 1 : 0);
       if (this.moving) { this.rbWhy = 'yield'; this.rollbackMove(); } else this.l40Go(m.nc !== id ? m.nc : -1, 'T1-yield');   // T1 (L40.3: an arbiter's yield names the cell's holder too)
-      if (m.nc >= 0 && m.nc !== id && this.hasCoord && this.state === 3 && ckey(this.coord) !== m.ck && this.occGet(m.ck) !== m.nc && !this.liveElsewhere(m.nc, m.ck)) { this.setOcc(m.ck, m.nc); this.noteS1(m.ck); }   // L11
+      if (m.nc >= 0 && m.nc !== id && this.hasCoord && this.state === 3 && ckey(this.coord) !== m.ck && this.occGet(m.ck) !== m.nc && !this.liveElsewhere(m.nc, m.ck)) { this.setOcc(m.ck, m.nc); this.noteHand(m.ck, m.nc); }   // L11
     },
 
     // C++: mesh_seat.inc:Seat::onClaim
@@ -452,7 +453,7 @@
       if (this.hasCoord && this.coord.pc === 0 && this.coord.i === 0 && ckey(this.coord) === m.ck) {
         const inRow = (k, v) => { const c = unck(k); return cellOk(k) && c.pc === 0 && v >= 0 && (c.r === this.coord.r || (c.i === 0 && c.r === (((this.coord.r + 1) % C) & 0xff))); };
         for (const kv of m.nbrs) if (inRow(kv.k, kv.v) && !this.occ.has(kv.k) && !this.sitting.has(kv.k)) { const s = state.newStruct('SoftSit'); s.joiner = kv.v; s.assigner = id; s.at = TICK; this.sitting.set(kv.k, s); }
-        for (const e of m.row) if (inRow(e.k, e.v) && !this.occ.has(e.k)) { this.setOcc(e.k, e.v); this.noteS1(e.k); }
+        for (const e of m.row) if (inRow(e.k, e.v) && !this.occ.has(e.k)) { this.setOcc(e.k, e.v); this.noteHand(e.k, e.v); }
         this.rowLedger = true;
       }
     },
@@ -514,7 +515,7 @@
         const oc2 = ownerCoordOf(m.coord);
         if (m.owner >= 0 && !byeHeld && oc2 && m.oCk === ckey(oc2) && this.occGet(m.oCk) !== m.owner && !this.liveElsewhere(m.owner, m.oCk)) { this.setOcc(m.oCk, m.owner); this.noteS1(m.oCk); if (ckPc(m.oCk) === 0) this.s1told.set(m.oCk, TICK); }   // OWNERELSE
       }
-      { let nr = 0; for (const e of m.row) { if (++nr > C) break; const c = unck(e.k); if (!cellOk(e.k) || c.pc !== m.coord.pc || c.r !== m.coord.r || e.v < 0) continue; if (e.k === ckey(this.coord) && e.v !== id) continue; if (this.occGet(e.k) !== e.v) { if (this.liveElsewhere(e.v, e.k)) continue; { const tm = this.memo.get(e.k); if (this.translost.has(e.k) && tm !== undefined && tm.id === e.v) continue; } this.setOcc(e.k, e.v); this.noteS1(e.k); } else if (this.bareAt.size && e.v !== pid) this.bareAt.delete(e.k);   /* L25.16: another seat's listing names the seat I name: no longer its word alone */ if (e.age >= 0) this.childOf.set(e.k, e.age); } }
+      { let nr = 0; for (const e of m.row) { if (++nr > C) break; const c = unck(e.k); if (!cellOk(e.k) || c.pc !== m.coord.pc || c.r !== m.coord.r || e.v < 0) continue; if (e.k === ckey(this.coord) && e.v !== id) continue; if (!RCD.L17_3_1_OFF && this.occGet(e.k) === e.v) FREE.l1731Note(this, pk, e.k, e.v); if (this.occGet(e.k) !== e.v) { if (this.liveElsewhere(e.v, e.k)) continue; if (!RCD.L35_4_OFF && FREE.l354Echo(this, e.k, e.v)) continue; { const tm = this.memo.get(e.k); if (this.translost.has(e.k) && tm !== undefined && tm.id === e.v) continue; } this.setOcc(e.k, e.v); this.noteHand(e.k, e.v); } else if (this.bareAt.size && e.v !== pid) this.bareAt.delete(e.k);   /* L25.16: another seat's listing names the seat I name: no longer its word alone */ if (e.age >= 0) this.childOf.set(e.k, e.age); } }
       { let nn = 0; for (const kv of m.nbrs) { if (++nn > 4 * C) break; if (!cellOk(kv.k) || kv.v < 0) continue; if (!this.cousins.has(kv.k) && this.cousins.size >= 4 * C) continue; this.cousins.set(kv.k, kv.v); } }   // cousins capped (W, 4C)
       // MY HEAD'S ROW IS THE ROW (deep rows).
       if (this.hasCoord && this.coord.pc !== 0 && this.coord.i !== 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r && m.coord.i === 0) {

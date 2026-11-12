@@ -160,6 +160,7 @@
     function fhDialBehind(to, m, names, outside) {
       if (mySeated()) { lv.L16_DEFER = false; const r = pc.l16Refuse(me, to, m.t); lv.L16_DEFER = false; if (r) return; }
       const L = linkGet(me, to);
+      if (pc.dialHeld(me, to)) return;   // L17.4 (C++ mesh_fhop.inc:fhopSchedule): the sponsor's dial is a dial: none to a seat L17 holds (the frame still rides the friend)
       if (L.state === LK_NONE && (names || outside)) startDial(me, to, L);
       else if (L.state === LK_CLOSED && L.view[mine(to)] === LK_CLOSED && !names && T() - L.askAt >= K.LINK_ASK_GAP) { L.askAt = T(); startDial(me, to, L); }
     }
