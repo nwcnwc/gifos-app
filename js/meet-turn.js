@@ -376,6 +376,7 @@
     const K = meshConsts().consts, T = meshTurn();
     const tick = io.tickMs || 500;
     const WAIT_MS = K.TURN_WAIT * tick;                        // TURN.4
+    const ASK_MS = K.FHOP_RELAY_ASK * tick;                    // TURN.4.3: one dial's direct verdict; TURN.4.4: the hold after the link came up
     const MERGE_MS = K.RELAY_TTL * tick;                       // TURN.15.2: the span of one merge
     const RETRY_MS = K.TURN_RETRY * tick;                      // TURN.10
     const RESEND_MS = K.TURN_DIAL * tick;                      // a handshake frame the relay lost is sent again
@@ -384,7 +385,29 @@
     const FACT_EVERY_MS = K.TURN_DIAL * tick * 2;              // a link end restates its fact
     const FACT_STALE_MS = FACT_EVERY_MS * 4;
     const links = new Map();   // far pid → link
-    const head = { since: -1, retryAt: -1, skip: '' };
+    // TURN.4.3 (C++: mesh_turn.inc:turnWaited): the wait is kept per greeter. A foreign greeter I asked at my entry has
+    // its direct verdict FHOP_RELAY_ASK after that ask (my own dial to it stayed silent); one I never asked has it
+    // TURN_WAIT after I first held it as foreign. The entry's credit counts only with no connected peer of my own (a
+    // friend's probe starts when I first hold the greeter) and once the door has answered my seating knock.
+    // TURN.4.5: one verdict per room: a greeter of a room (the door's founding epoch) that already has a verdict does
+    // not hold the ask.
+    function turnWaited(now, F) {
+      const friends = io.friends ? !!io.friends() : true;
+      const judged = !friends && !!io.askedAt && (io.judged ? !!io.judged() : true);
+      for (const g of Array.from(head.seen.keys())) if (F.indexOf(g) < 0) head.seen.delete(g);
+      const due = (g) => { let d = head.seen.get(g) + WAIT_MS; if (judged) { const a = io.askedAt(g); if (a > 0 && now - a <= MERGE_MS) d = Math.min(d, a + ASK_MS); } return d; };
+      const epOf = (g) => { const e = io.epoch ? io.epoch(g) : -1; return Number.isInteger(e) ? e : -1; };
+      let ok = true; const ep = new Set();
+      for (const g of F) { if (!head.seen.has(g)) head.seen.set(g, now); if (now < due(g)) ok = false; else { const e = epOf(g); if (e >= 0) ep.add(e); } }
+      if (!ok) { ok = true; for (const g of F) { const e = epOf(g); if (e >= 0 && ep.has(e)) continue; if (now < due(g)) { ok = false; break; } } }
+      return ok;
+    }
+    // TURN.4.4 (C++: mesh_turn.inc:fabricTurnHold): the link I opened is dialling, or came up inside FHOP_RELAY_ASK.
+    function holding(now) {
+      for (const L of links.values()) if (L.opener && (L.state !== 'up' || !(L.upAt > 0) || now - L.upAt < ASK_MS)) return true;
+      return false;
+    }
+    const head = { since: -1, retryAt: -1, skip: '', seen: new Map() };   // seen: foreign greeter → when I first held it as foreign (TURN.4.3)
     let serialN = 0, lastFactAt = 0;
     const log = (s) => { try { if (io.log) io.log(s); } catch (e) {} };
     const short = (p) => String(p || '').slice(0, 8);
@@ -627,8 +650,8 @@
           if (theirs.size) for (let i = F.length - 1; i >= 0; i--) if (theirs.has(F[i])) F.splice(i, 1);
         }
         head.F = F.map(short); head.n = (io.greeters() || []).length;
-        if (direct || fr) { head.skip = direct ? 'direct' : 'friend'; head.since = -1; }
-        else if (!F.length) head.since = -1;
+        if (direct || fr) { head.skip = direct ? 'direct' : 'friend'; head.since = -1; head.seen.clear(); }
+        else if (!F.length) { head.since = -1; head.seen.clear(); }
         else {
           head.skip = '';
           if (head.since < 0) head.since = now;
@@ -639,7 +662,7 @@
           let has = false;
           for (const L of links.values()) if ((L.opener || view.has(L.far)) && !inside(io.me(), L.far, L.state === 'up' ? L.upAt : -1)) { has = true; break; }
           for (const f of io.facts() || []) if (f && !f.gone && f.up && mine(f.a) && !inside(f.a, f.b, f.s || -1)) { has = true; break; }
-          if (!has && now - head.since >= WAIT_MS && now >= head.retryAt) {
+          if (!has && turnWaited(now, F) && now >= head.retryAt) {
             // TURN.15.1: which part is "the lower" must read the same from both sides, so a part's place in the order is
             // its lowest greeter on the door's list (the one thing both heads read), or me: never the lowest id of my view.
             let myMin = io.nid(io.me()); for (const g of io.greeters() || []) { if (!g || g === io.me() || !view.has(g)) continue; const n = io.nid(g); if (n >= 0 && n < myMin) myMin = n; }
@@ -674,6 +697,7 @@
       factStaleMs: FACT_STALE_MS,
       holds(pid) { const L = links.get(pid); return !!L && L.state !== 'closed'; },
       isLink(pid) { const L = links.get(pid); return !!L && (L.state === 'up' || L.state === 'dial'); },
+      holding() { return holding(io.now()); },   // TURN.4.4
       videoBlocked(pid) { const L = links.get(pid); return !!L && (!L.video || L.busy); },
       // TURN.13: the step my video takes on this link ({ maxBitrate, scale, fps }), null when nothing limits it.
       videoStep(pid) { const L = links.get(pid); return L && L.video && L.thr && L.thr.step >= 0 ? L.thr : null; },
@@ -694,7 +718,7 @@
           pool: L.paidMe ? 'paid' : 'free', paid: L.paid ? L.paid.state() : null, paidRefusal: L.paid ? L.paid.refusal() : null, paidFar: L.paidFar,
           vouched: L.vouched, video: L.video, upAt: L.upAt, side: L.side.length,
           step: L.thr ? L.thr.step : null, cap: L.cap || null, busy: L.busy, farBusy: L.farBusy, standbyN: L.standbyN, lastSwitchMs: L.lastSwitchMs || null });
-        return { links: out, head: Object.assign({}, head) };
+        return { links: out, head: Object.assign({}, head, { seen: Array.from(head.seen.entries()).map(([g, t]) => [short(g), t]) }) };
       },
     };
   }
