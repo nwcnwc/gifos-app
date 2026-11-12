@@ -9740,10 +9740,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { return !!(myStatus && myStatus.stg) || (typeof stageIds === 'function' && !!myId && stageIds().includes(myId)); } catch (e) { return false; }
     }
     // A SHARE FROM THE ROW IS NOT A STEP ONTO THE STAGE. The screen takes a
-    // Stage seat, and the person stays in the Row: the camera and the voice
-    // keep riding the row links and the row's Stadium square, unchanged. Only
-    // a person who is on the Stage themselves leaves the Row (their seat is
-    // kept). `sso` in a status marks a Stage seat held by a share alone; the
+    // Stage seat, and the person stays in the Row: the camera keeps riding the
+    // row links and the row's Stadium square, unchanged. The voice of anyone
+    // holding a Stage seat rides the Stage feed, as it always has, so pages of
+    // every release hear it once. Only a person who is on the Stage
+    // themselves leaves the Row (their seat is kept). `sso` in a status marks a Stage seat held by a share alone; the
     // share must still be live, so a stale flag never keeps anyone in the Row.
     function shareOnlyStage(pid) {
       try {
@@ -9990,8 +9991,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // aux feed alone, so the main encodes stop exactly when I take on the
       // Stage fan-up cost. Stepping down swaps the CURRENT tracks back in
       // (pure replaceTrack, no renegotiation — the m-lines never left).
-      // A share from the Row is not "on stage": the camera and mic stay on the row links.
-      const staged = personOnStage(myId);
+      // A share from the Row keeps the CAMERA on the row links (personOnStage);
+      // the voice of anyone holding a Stage seat goes out on the Stage feed only,
+      // exactly as before, so every page, old or new, hears it once.
+      const staged = personOnStage(myId), voiceStaged = stageIds().includes(myId);
       const at = mainAudioTrack();
       for (const p of peers.values()) {
         const cam = camPeer(p.id) && !staged; // structural link OR staged ⇒ no raw camera encode
@@ -10027,7 +10030,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           else if (p.mainV.track !== vt) p.mainV.replaceTrack(vt).catch(() => {});
         }
         if (p.mainA) {
-          if (staged || seatSelfLeased()) { if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
+          if (voiceStaged || seatSelfLeased()) { if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
           else if (at && p.mainA.track !== at) p.mainA.replaceTrack(at).catch(() => {});
         }
       }
@@ -23127,7 +23130,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // and stays parked; mute is the track's enabled flag, so it carries over.
     function kickMainAudio(p) {
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
-      if (!p || !p.mainA || personOnStage(myId)) return;
+      if (!p || !p.mainA || stageIds().includes(myId)) return;
       const at = mainAudioTrack();
       if (!at || at.readyState !== 'live') return;
       const sender = p.mainA;
@@ -23917,10 +23920,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (BROADCAST && !bcMayPublishAv()) return null;
       const v = stageVideoTrack();
       // A rebroadcast's sound comes from the same element as its picture. A
-      // clip with no sound sends none, not the host's mic. A share from the
-      // Row carries no voice: the voice stays on the row links and in the
-      // Stadium mix, so nobody hears it twice.
-      const a = shareOnlyStage('me') ? null : (rbNow && rbNow.v) ? (rbNow.a || null) : ((localStream && localStream.getAudioTracks()[0]) || null);
+      // clip with no sound sends none, not the host's mic.
+      const a = (rbNow && rbNow.v) ? (rbNow.a || null) : ((localStream && localStream.getAudioTracks()[0]) || null);
       if (!v && !a) return null;   // nothing to broadcast — no feed to ship
       if (!selfShipMemo || selfShipMemo.v !== v || selfShipMemo.a !== a) {
         // WHICH track moved? Rebuilding this memo mints a new MediaStream id,
@@ -27257,7 +27258,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const pid = pid0 && personOnStage(pid0, stagers) ? null : pid0; // stagers live on the Stage ONLY (docs/media-plane.md); a share from the Row keeps its face here
           const sc = pid ? srcFor(pid) : null;
           if (sc && sc.el) dbgRowFaces.push({ i: j, pid: String(pid).slice(0, 8) });
-          if (sc && sc.el) prodPack.setTile('r' + j, 'a' + j, sc.el, sc.stream, { n: 1, cols: 1, lbl: stadLbl(pid), fit: fitFor(pid), pid });
+          // A share from the Row keeps the face here; the voice rides the Stage feed, so it is not summed twice.
+          if (sc && sc.el) prodPack.setTile('r' + j, 'a' + j, sc.el, pid && stagers.includes(pid) ? null : sc.stream, { n: 1, cols: 1, lbl: stadLbl(pid), fit: fitFor(pid), pid });
           else prodPack.delTile('r' + j);
           const sub = mosIn.get('sub:' + j);
           if (sub) setBlock(prodPack, 's' + j, 'b' + j, sub); else prodPack.delTile('s' + j);
@@ -27322,7 +27324,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             roomPack.delTile('p');
             for (let j = 0; j < C; j++) {
               const fp0 = j === c.i ? myId : (actHead && j === 0 ? null : occPid({ pc: c.pc, r: c.r, i: j }));
-              const fp = fp0 && personOnStage(fp0, stagers) ? null : fp0;
+              const fp = fp0 && stagers.includes(fp0) ? null : fp0; // a stager's voice rides the Stage feed, a share from the Row included
               const sc = fp ? srcFor(fp) : null;
               if (sc && sc.el) roomPack.setTile('f' + j, 'c' + c.r + 'a' + j, sc.el, null, { n: 1, cols: 1, lbl: stadLbl(fp), fit: fitFor(fp), pid: fp });
               else roomPack.delTile('f' + j);
@@ -27365,7 +27367,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           else if (dn && dn.stream && !dn.deadAt && !((mosFb.get('sdn') || {}).dark)) outA.set('dn', dn.stream);
           for (let j = 0; j < C; j++) {
             const fp0 = j === c.i ? myId : (actHead && j === 0 ? null : occPid({ pc: c.pc, r: c.r, i: j }));
-            const fp = fp0 && personOnStage(fp0, stagers) ? null : fp0;
+            const fp = fp0 && stagers.includes(fp0) ? null : fp0; // a stager's voice rides the Stage feed, a share from the Row included
             const sc = fp ? srcFor(fp) : null;
             if (sc && sc.stream) rowA.set('f' + j, sc.stream);
             const sub = mosIn.get('sub:' + j); if (sub && sub.stream) subA.set('s' + j, sub.stream);
@@ -27455,7 +27457,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           for (const h of l14Heads) { const rel = mosIn.get('sdxu:' + h); if (!rel || !rel.stream) continue; relDirect.add(h); const jr = shipMos('sdn', h, rel.stream, blockMeta(rel), 'sdxu:' + h); if (jr) wanted.add(jr); }
           l14Down((pk, h) => {
             // no pack from my head for this branch yet: my row's faces, packed here
-            for (let j = 0; j < C; j++) { const fp0 = j === c.i ? myId : occPid({ pc: c.pc, r: c.r, i: j }); const fp = fp0 && personOnStage(fp0, stagers) ? null : fp0; const sc = fp ? srcFor(fp) : null; if (sc && sc.el) pk.setTile('f' + j, 10 + j, sc.el, sc.stream, { n: 1, cols: 1, lbl: stadLbl(fp), fit: fitFor(fp), pid: fp }); else pk.delTile('f' + j); }
+            for (let j = 0; j < C; j++) { const fp0 = j === c.i ? myId : occPid({ pc: c.pc, r: c.r, i: j }); const fp = fp0 && stagers.includes(fp0) ? null : fp0; // a stager's voice rides the Stage feed, a share from the Row included const sc = fp ? srcFor(fp) : null; if (sc && sc.el) pk.setTile('f' + j, 10 + j, sc.el, sc.stream, { n: 1, cols: 1, lbl: stadLbl(fp), fit: fitFor(fp), pid: fp }); else pk.delTile('f' + j); }
           }, packMetaM, relDirect);
         } else l14Down(null);
         const subraw = mosIn.get('subraw');
@@ -29491,8 +29493,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // composite carried them too).
         // Stagers' direct tracks are muted too: their voice arrives via the
         // per-stager feeds folded at the ear — the direct link would double it.
-        // A person sharing from the Row is still a row-mate: their voice plays here.
-        const bus = (stg.has(pid) && !shareOnlyStage(pid)) ? null : mates.has(pid) ? 'row' : null;
+        const bus = stg.has(pid) ? null : mates.has(pid) ? 'row' : null;
         // The voice is the person's own stream: the direct one, or the one a
         // friend carries (relayVia). The tile's element can hold a painted
         // picture instead (camera off), which has no sound.
@@ -29907,7 +29908,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const prevGrid = new Map(gridApplied);
       gridApplied.clear();
       for (const [pid, p] of peers) {
-        const bus = (stg.has(pid) && !shareOnlyStage(pid)) ? 'stage' : mates.has(pid) ? 'row' : 'stadium';
+        const bus = stg.has(pid) ? 'stage' : mates.has(pid) ? 'row' : 'stadium';
         const D = sing ? (bus === 'stage' ? GRID.SONG_STAGE : bus === 'row' ? GRID.SONG_ROW : GRID.SONG_FAR)
           : (bus === 'stage' || bus === 'row') ? nearD : 0; // far units play natural — they're a murmur, not a conversation
         const jbt = D > 0 ? Math.max(0, Math.round(D - rttOf(pid) / 2 - GRID.JB_BASE)) : 0;
