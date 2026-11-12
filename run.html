@@ -5619,6 +5619,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       admGraceT = null;
       admDeadline = Date.now() + ADMIN_CLOSE_MS;
       admTickT = setInterval(tickAdminClose, 1000);
+      try { subsRejudge(); } catch (e) {}   // the admin is known to be absent: a door waiting on the plan can judge now
       tickAdminClose();
     }
     // A newer GifOS release: the same check and bar as the Home Screen
@@ -16195,6 +16196,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function takeMod(from, msg) {
       if (!hasAdminRoom()) { if (msg.mod) mergeMod(msg.mod); return; }
       if (!msg.modw) return;
+      if (DEBUG_ON && window.__modDelayUntil && Date.now() < window.__modDelayUntil) return;   // DEBUG=on only: this page hears the admin's orders late (a test)
       const key = String(msg.modw.pub) + '|' + String(msg.modw.sig) + '|' + String(msg.modw.sp);
       const seen = modVer.get(key);
       if (seen) {
@@ -16222,6 +16224,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (o.by && notTomb(o.by)) admSeen.set(o.by, Date.now());
         if (o.ts > modWSeenTs) { modWSeen = msg.modw; modWSeenTs = o.ts; }
         mergeMod(o.mod);
+        try { subsRejudge(); } catch (e) {}   // the room's admin state arrived: a door waiting on the plan can judge now
         if (newlyAdmin) {
           admins = adminsNow();
           if (typeof reconcileApp === 'function') reconcileApp();
@@ -16692,7 +16695,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         excluded: isEjected, // ejected forgers: their mesh frames never reach the seat
         urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
         holdDoor: () => pwWaitProof && !meshCoord(),
-        doorHeld: (id) => { try { const b = meetWait.blocks(id); if (b && id && amAdmin) meetWait.note(id, rosterNames[id] || 'Someone waiting'); if (b && id) sayHeld(id); return b || subsHolds(id); } catch (e) { return false; } },   // a withheld knock goes on the host's list: nothing else names a plain room's knocker
+        doorHeld: (id) => { try { if (DEBUG_ON && window.__doorHoldAll) return true;   /* DEBUG=on only: this door answers no knock (a test picks the doors) */ const b = meetWait.blocks(id); if (b && id && amAdmin) meetWait.note(id, rosterNames[id] || 'Someone waiting'); if (b && id) sayHeld(id); return b || subsHolds(id); } catch (e) { return false; } },   // a withheld knock goes on the host's list: nothing else names a plain room's knocker
         onDoor: (kind, frame) => {
           if (kind === 'seated') {
             meetWait.waiting(false);
@@ -35468,6 +35471,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       subsWaitList.delete(id);
       return subsListLen != null ? subsListLen + 1 : undefined;
     }
+    // THE PLAN IS UNKNOWN, not absent, to a door that has not yet heard the
+    // admin's signed orders (a door seated a moment ago) while the room may
+    // still have its admin. Reading that as "no plan" would hold a $5 room to
+    // the free line and turn a newcomer away; a held knock only waits. So such
+    // a door holds the knock, asks nothing, and judges it again when the orders
+    // arrive, when the room's plan check ends, or when the admin is known to be
+    // absent (the admin-close countdown runs, past its grace).
+    const subsPlanWait = new Set();
+    const subsPlanKnown = () => amAdmin || !!modWSeen || !!admTickT;
+    function subsRejudge() {
+      if (!subsPlanWait.size || !subsPlanKnown() || (hasAdminRoom() && subsRoomTier() === undefined)) return;
+      const ids = Array.from(subsPlanWait); subsPlanWait.clear();
+      const st = meshSeat(); if (st && st.recheckDoor) { try { st.recheckDoor(ids); } catch (e) {} }   // judged again, never admitted
+    }
+    const subsWaitPlan = (id) => { subsPlanWait.add(id); if (subsPlanWait.size > 64) subsPlanWait.delete(subsPlanWait.values().next().value); return true; };
     // The room's plan, verified once per order: undefined while it is being
     // checked, null when none is valid. It is checked ahead of any knock (the
     // timer below), so a door does not meet its first knock with no answer.
@@ -35476,7 +35494,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const k = o ? String(o.at) + '|' + String(o.proof || '') : '';
       if (k !== subsTierKey) {
         subsTierKey = k; subsTier = o ? undefined : null; subsTierExp = 0;
-        if (o) GifOS.meetSubs.roomTier(o, subsMeetId()).then((t) => { if (subsTierKey === k) { subsTier = t ? t.tier : null; subsTierExp = t ? t.exp : 0; } }, () => { if (subsTierKey === k) subsTier = null; });
+        if (o) GifOS.meetSubs.roomTier(o, subsMeetId()).then((t) => { if (subsTierKey === k) { subsTier = t ? t.tier : null; subsTierExp = t ? t.exp : 0; try { subsRejudge(); } catch (e) {} } }, () => { if (subsTierKey === k) { subsTier = null; try { subsRejudge(); } catch (e) {} } });
       }
       if (subsTier && Date.now() / 1000 >= subsTierExp) subsTier = null;   // the admin's ticket ran out: no plan, the free line
       return subsTier;
@@ -35508,6 +35526,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     setInterval(() => { try { if (subsOn() && hasAdminRoom()) subsRoomTier(); } catch (e) {} }, 2000);
     function subsHolds(id) {
       if (!id || !subsOn() || !hasAdminRoom() || subsProven.has(id)) return false;
+      if (!subsPlanKnown()) return subsWaitPlan(id);   // the admin's orders have not reached this door yet: hold, ask nothing
       const tier = subsRoomTier();
       if (tier && GifOS.sub.doorVerdict({ adminRoom: true, roomTier: tier, count: 1e9 }) === 'let-in') return false;   // a room with no line counts nobody
       const count = subsRoomCount(id);
@@ -35516,7 +35535,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // While the room's plan is still being checked, a room below the free line
       // lets the knocker in; a room at it holds the knock until the plan is
       // known (the knocker asks again), and asks nothing yet.
-      if (tier === undefined) return GifOS.sub.doorVerdict({ adminRoom: true, roomTier: null, count }) !== 'let-in';
+      if (tier === undefined) return GifOS.sub.doorVerdict({ adminRoom: true, roomTier: null, count }) !== 'let-in' && subsWaitPlan(id);
       if (GifOS.sub.doorVerdict({ adminRoom: true, roomTier: tier, count }) === 'let-in') return false;
       const q = peers.get(id), a = subsAsked.get(id);
       if (q && q.dc && q.dc.readyState === 'open' && !(a && Date.now() - a.at < 2000)) {
