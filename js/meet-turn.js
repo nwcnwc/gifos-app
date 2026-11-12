@@ -307,13 +307,15 @@
     return { step: i, maxBitrate: Math.round(i === 0 ? full : Math.min(v, THROTTLE_STEPS[Math.max(0, i - 1)].need * min)), scale: st.scale, fps: st.fps };
   }
   // throttleNext(st, look, now, tickMs): one look of a vouched link end. st = { step, busy, okSince, bad, rttBase,
-  // pausedAt } (kept by the caller); look = { bps, loss, rtt, limited } (loss: the far end's fraction lost, 0..1; rtt
-  // seconds; limited: the browser says my video's quality is held back by bandwidth). The estimate alone cannot tell a
-  // throttled server from a pc that sends little (an app-limited estimate sits at what is sent: measured 150-300 kbit
-  // on links that reached 1.9-3.3 Mbit a minute later), so it counts only while the encoder is bandwidth-LIMITED (then
-  // the estimate is what the path gives). Congestion: loss of TURN_THROTTLE_LOSS or more (the round trip
-  // is not used: a pool move changes it on a calm link), or a limited encoder whose estimate leaves room only for
-  // a lower step. Two congested looks in a row (one with heavy loss) drop video at least one step, as far as
+  // pausedAt } (kept by the caller); look = { bps, loss, rtt, limited, cap } (loss: the far end's fraction lost, 0..1;
+  // rtt seconds; limited: my video already sends most of the estimate; cap: the bitrate cap the current step put on my
+  // video, bits a second). The estimate alone cannot tell a throttled server from a pc that sends little (an
+  // app-limited estimate sits at what is sent: measured 150-300 kbit on links that reached 1.9-3.3 Mbit a minute
+  // later), so it counts only while the video fills it AND the estimate is below the step's own cap: a video that fills
+  // its cap with the estimate above it is held by the step, not by the path, and climbs (measured 2026-11-12: an end
+  // sat at the lowest step for 100+ s on a 2 Mbit path, its encoder held back by that step's own cap). Congestion: loss
+  // of TURN_THROTTLE_LOSS or more (the round trip is not used: a pool move changes it on a calm link), or a video held
+  // by the path whose estimate leaves room only for a lower step. Two congested looks in a row (one with heavy loss) drop video at least one step, as far as
   // throttlePlan says; on the lowest step two congested looks in a row pause it. With no congestion and no limit
   // for THROTTLE_UP_MS it climbs one step; a pause tries the lowest step again after that long.
   const THROTTLE_LOSS = 0.05;
@@ -322,7 +324,10 @@
     const rtt = +look.rtt > 0 ? +look.rtt : 0;
     if (rtt && (!st.rttBase || rtt < st.rttBase)) st.rttBase = rtt;
     const plan = throttlePlan(look.bps, tickMs);
-    const short = !!look.limited && (plan.step < 0 || plan.step > st.step);   // the path gives less than this step needs
+    const K = meshConsts().consts, base = K.TURN_BASE_BYTES * (1000 / (tickMs || 500)) * 8;
+    const capHeld = +look.cap > 0 && (+look.bps || 0) - base >= +look.cap;   // the estimate leaves video its whole cap
+    const held = !!look.limited && !capHeld;   // the path, not the step's own cap, holds my video back
+    const short = held && (plan.step < 0 || plan.step > st.step);   // the path gives less than this step needs
     // (the round trip is kept for the record only: a pool move or a renewal changes the relayed path's round trip
     // under a link that is not congested, measured as false pauses right after the move)
     const congested = (+look.loss || 0) >= THROTTLE_LOSS || short;
@@ -337,7 +342,7 @@
     }
     st.bad = 0;
     if (st.busy) { if (now - (st.pausedAt || 0) >= THROTTLE_UP_MS) { st.busy = false; st.step = last; st.okSince = now; } return st; }
-    if (look.limited) { st.okSince = 0; return st; }   // held back by bandwidth: no climb
+    if (held) { st.okSince = 0; return st; }   // held back by the path: no climb
     if (st.step > 0) { if (!st.okSince) st.okSince = now; else if (now - st.okSince >= THROTTLE_UP_MS) { st.step--; st.okSince = now; } }
     return st;
   }
@@ -489,7 +494,7 @@
       const now = io.now(); L.capAt = now; L.cap = bps;
       if (!L.ts) L.ts = { step: 0, busy: false };
       const was = L.ts.busy ? -1 : L.ts.step;
-      throttleNext(L.ts, { bps, loss, rtt, limited: !!limited }, now, tick);
+      throttleNext(L.ts, { bps, loss, rtt, limited: !!limited, cap: L.thr && L.thr.step >= 0 ? L.thr.maxBitrate : 0 }, now, tick);
       const st = L.ts.busy ? -1 : L.ts.step;
       if (st !== was || !L.thr) setThrottle(L, st < 0 ? { step: -1 } : stepOf(st, bps, tick));
     }

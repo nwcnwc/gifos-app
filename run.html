@@ -12946,9 +12946,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // congestion: the loss the far end reports on my video (RTCP receiver reports), and the selected pair's round trip
           let loss = 0, rtt = sel && +sel.currentRoundTripTime || 0;
           // limited: the estimate is what the path gives, not what a pc that sends little reports: my video already sends
-          // at least most of the estimate (bytes since the last look), or the browser says bandwidth holds it back
+          // at least most of the estimate (bytes since the last look). Not the browser's qualityLimitationReason: a step's
+          // own maxBitrate cap makes it say 'bandwidth' on a fast path (measured 2026-11-12: 'bandwidth' for 100+ s while
+          // 50 kbit went out against a 2 Mbit estimate), and that held video at the lowest step for good
           let limited = false, vBytes = 0;
-          st.forEach((x) => { if (x.type === 'remote-inbound-rtp' && x.kind === 'video') { if (+x.fractionLost > loss) loss = +x.fractionLost; } if (x.type === 'outbound-rtp' && x.kind === 'video') { vBytes += +x.bytesSent || 0; if (x.qualityLimitationReason === 'bandwidth') limited = true; } });   // (the round trip: the selected pair's own, one clock)
+          st.forEach((x) => { if (x.type === 'remote-inbound-rtp' && x.kind === 'video') { if (+x.fractionLost > loss) loss = +x.fractionLost; } if (x.type === 'outbound-rtp' && x.kind === 'video') vBytes += +x.bytesSent || 0; });   // (the round trip: the selected pair's own, one clock)
           const lastV = turnSent.get(pid), tNow = Date.now(); turnSent.set(pid, { b: vBytes, t: tNow });
           if (lastV && tNow > lastV.t && vBytes >= lastV.b && (vBytes - lastV.b) * 8000 / (tNow - lastV.t) >= 0.7 * bps) limited = true;
           if (turnLinks.video(pid)) turnLinks.onCapacity(pid, bps, loss, rtt, limited);
