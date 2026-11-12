@@ -55,10 +55,10 @@
   // it (platform_fees) — the client never computes fiat fees. On x402 the
   // split is built here, because the broker constructs the payment.
   const FEE_BPS = 300n;
-  // Where the x402 fee lands. The same placeholder as gifos-base-net.js
-  // FEE_ADDRESS. Sepolia tests pay it; mainnet refuses to run while the
-  // module still calls this value unset (docs/payments.md "What this does NOT do").
-  const TREASURY = '0x1111111111111111111111111111111111111111';
+  // Where the x402 fee lands: GifOS's treasury, the same value as
+  // gifos-base-net.js FEE_ADDRESS (EIP-55 form). Mainnet stays off until
+  // BASE_NETWORK is set to 'mainnet' there (docs/payments.md).
+  const TREASURY = '0xBB6Ee87BBFF5F7AB6E8Fb4f38Fe6fE69B500b2d0';
   function treasuryAddress() {
     const pinned = GifOS.baseNet && GifOS.baseNet.FEE_ADDRESS;
     if (typeof pinned === 'string' && pinned.toLowerCase() !== TREASURY.toLowerCase()) {
