@@ -49,6 +49,7 @@
     GREET_PERIOD: 800,   // C++: mesh.cpp:GREET_PERIOD
     ISLAND_WAIT: 24,   // C++: mesh.cpp:ISLAND_WAIT  (LAW_ISLAND_WAIT)
     ISLAND_ASKS: 2,   // C++: mesh.cpp:ISLAND_ASKS  (LAW_ISLAND_ASKS)
+    ISLAND_WAIT_BLOCKED: 13,   // C++: mesh.cpp:ISLAND_WAIT_BLOCKED  (LAW_ISLAND_WAIT_BLOCKED)
     L827_HOLD: 50,   // C++: mesh.cpp:L827_HOLD
     L827_SETTLE: 40,   // C++: mesh.cpp:L827_SETTLE
     L828_HOLD: 100,   // C++: mesh.cpp:L828_HOLD
@@ -225,6 +226,7 @@
     TURN_VOUCH_STREAMER: 20,   // C++: mesh.cpp:TURN_VOUCH_STREAMER  (LAW_TURN_VOUCH_STREAMER)
     TURN_VOUCH_UNLIMITED: 6,   // C++: mesh.cpp:TURN_VOUCH_UNLIMITED  (LAW_TURN_VOUCH_UNLIMITED)
     TURN_WAIT: 17,   // C++: mesh.cpp:TURN_WAIT  (LAW_TURN_WAIT)
+    TURN_WAIT_BLOCKED: 4,   // C++: mesh.cpp:TURN_WAIT_BLOCKED  (LAW_TURN_WAIT_BLOCKED)
     H_RINGLIE_BIT: 8192,   // C++: mesh.cpp:H_RINGLIE_BIT
     RINGLIE_LINE: 1048576,   // C++: mesh.cpp:RINGLIE_LINE  (1<<20)
     DESC_SNAP: 25,   // C++: mesh.cpp:DESC_SNAP

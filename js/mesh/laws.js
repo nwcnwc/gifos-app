@@ -42,6 +42,7 @@
     HELLO_BACK: 20,              // ticks between HELLOs answering one unheard greeter
     ISLAND_ASKS: 2,              // L8.1.1: silent rounds at the door before a joiner founds an island: the first silent round knocks again (a member that re-seated or re-registered since the first list is named now); only the second silent round founds
     ISLAND_WAIT: 24,             // L8.1: ticks after a joiner asked every listed greeter with no HOME back before it founds an island
+    ISLAND_WAIT_BLOCKED: 13,     // L8.47.1: the silence wait of a joiner whose own network verdict is blocked, in place of ISLAND_WAIT. Depends on: one answered dial's verdict (the offer and the answer over the relay, then LINK_DIAL_ICE)
     KICK_AUD_EVERY: 2,           // L27.9: a seat that folds vote lists runs one spot audit per this many pulses (a hash draw), alternating an entry of a child's list and a seat of its scope
     KICK_AUD_GRACE: 120,         // L27.9: a voter's statement this old (signing time) should be in every list above it: an audit that finds it missing or contradicted counts against the child
     KICK_AUD_WAIT: 24,           // L27.9: an audited voter that has not answered in this long counts as unanswered (weak evidence against the child that listed it)
@@ -147,6 +148,7 @@
     TURN_VOUCH_STREAMER: 20,     // TURN.11: video TURN links one Streamer subscriber present in the meeting vouches for
     TURN_VOUCH_UNLIMITED: 6,     // TURN.11: video TURN links one Room unlimited subscriber present in the meeting vouches for
     TURN_WAIT: 17,               // TURN.4: a head asks for a TURN link only after its own probe and the friends it asked at once (TURN.3) have failed for this long in a row. Depends on: the direct verdict (FHOP_RELAY_ASK) or one friend probe (the ask, the offer and answer over the relay, LINK_DIAL_ICE), whichever is longer, plus one sweep; the two run side by side, so not their sum
+    TURN_WAIT_BLOCKED: 4,        // TURN.4.2: TURN_WAIT for a head whose own network verdict is blocked and that holds no peer on another network: no friend exists to fail, so the wait is the one sweep on which it reads its own verdict (FHOP_SWEEP)
     UNPROVEN_HOLD: 60,           // H6: an unproven pairing past this age lives only on probe answers
   });
 })(typeof window !== 'undefined' ? window : globalThis);
