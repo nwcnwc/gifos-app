@@ -299,6 +299,7 @@
     const K = meshConsts().consts, T = meshTurn();
     const tick = io.tickMs || 500;
     const WAIT_MS = K.TURN_WAIT * tick;                        // TURN.4
+    const MERGE_MS = K.RELAY_TTL * tick;                       // TURN.15.2: the span of one merge
     const RETRY_MS = K.TURN_RETRY * tick;                      // TURN.10
     const RESEND_MS = K.TURN_DIAL * tick;                      // a handshake frame the relay lost is sent again
     const DIAL_BUDGET_MS = (K.TURN_DIAL + K.TURN_RETRY) * tick; // an ask that never came up is closed (TURN.8 dialfail)
@@ -480,17 +481,31 @@
           if (r === 'friend') { fr = true; continue; }
           F.push(g);
         }
+        // TURN.15.4: no second link between two parts. A link whose far end is me or sits in my view already joins
+        // its opener's part to mine: I never ask its opener, nor anyone its opener reaches directly (its side).
+        if (F.length) {
+          const theirs = new Set();
+          for (const L of links.values()) if (!L.opener) theirs.add(L.far);
+          for (const f of io.facts() || []) if (f && !f.gone && (f.b === io.me() || view.has(f.b))) { theirs.add(f.a); for (const x of f.va || []) theirs.add(x); }
+          if (theirs.size) for (let i = F.length - 1; i >= 0; i--) if (theirs.has(F[i])) F.splice(i, 1);
+        }
         head.F = F.map(short); head.n = (io.greeters() || []).length;
         if (direct || fr) { head.skip = direct ? 'direct' : 'friend'; head.since = -1; }
         else if (!F.length) head.since = -1;
         else {
           head.skip = '';
           if (head.since < 0) head.since = now;
+          // TURN.15.2: a link up for the span of one merge whose two ends both sit in my part joins nothing new: it is
+          // not this part's link out, and a third part of the meeting may still need one.
+          const mine = (x) => x === io.me() || view.has(x);
+          const inside = (a, b, upAt) => upAt > 0 && now - upAt >= MERGE_MS && mine(a) && mine(b);
           let has = false;
-          for (const L of links.values()) if (L.opener || view.has(L.far)) { has = true; break; }
-          for (const f of io.facts() || []) if (f && !f.gone && f.up && (view.has(f.a) || f.a === io.me())) { has = true; break; }
+          for (const L of links.values()) if ((L.opener || view.has(L.far)) && !inside(io.me(), L.far, L.state === 'up' ? L.upAt : -1)) { has = true; break; }
+          for (const f of io.facts() || []) if (f && !f.gone && f.up && mine(f.a) && !inside(f.a, f.b, f.s || -1)) { has = true; break; }
           if (!has && now - head.since >= WAIT_MS && now >= head.retryAt) {
-            let myMin = io.nid(io.me()); for (const x of s.view) { const n = io.nid(x); if (n >= 0 && n < myMin) myMin = n; }
+            // TURN.15.1: which part is "the lower" must read the same from both sides, so a part's place in the order is
+            // its lowest greeter on the door's list (the one thing both heads read), or me: never the lowest id of my view.
+            let myMin = io.nid(io.me()); for (const g of io.greeters() || []) { if (!g || g === io.me() || !view.has(g)) continue; const n = io.nid(g); if (n >= 0 && n < myMin) myMin = n; }
             const byNid = new Map(); for (const g of F) byNid.set(io.nid(g), g);
             const pick = T.turnPick(Array.from(byNid.keys()), myMin);
             if (pick >= 0) {
