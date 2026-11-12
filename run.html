@@ -13216,6 +13216,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (p.headless || !p.tile || p.tile.parentNode) return;
       if (typeof dropRosterTile === 'function') dropRosterTile(p.id, 'own-tile');   // one tile per member: their own replaces the held one
       grid.appendChild(p.tile);
+      // The returning tile replaces the held one in the grid, so lay the grid out now: until a pass places it, the tile
+      // has no slot and no tier of its own (a bot showed its badge on a plain row square until the next beat).
+      try { layout(); } catch (e) {}
     }
     // Peer ids whose device was banned on this page. dropPeer alone loses to
     // the next occ tick: the mesh still names the seat until ring-confirmed
