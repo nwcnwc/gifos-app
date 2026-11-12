@@ -12,6 +12,7 @@
     ADMIN_CLOSE_MS: 300000,   // ms
     ADMIN_GRACE_MS: 10000,   // ms
     ADMIN_REKNOCKS: 4,   // count
+    AGENDA_TICK_MS: 1000,   // ms
     AGENT_GRACE_MS: 120000,   // ms
     AGENT_KEEP_MS: 86400000,   // ms
     AWAKE_MS: 3000,   // ms
