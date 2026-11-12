@@ -20,8 +20,6 @@
   const GifOS = root.GifOS = root.GifOS || {};
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
-  /* the sim's #define L4_3_5_OFF in mesh_heal.inc (a build-time switch): MESH_L4_3_5_OFF=1 under node, read once at load; a page always runs the law */
-  const L4_3_5_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L4_3_5_OFF === '1') ? 1 : 0;
   /* the sim's #define L16_4_2_OFF in mesh_heal.inc (a build-time switch): MESH_L16_4_2_OFF=1 under node, read once at load; a page always runs the law */
   const L16_4_2_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L16_4_2_OFF === '1') ? 1 : 0;
   const RCD = ((n) => ({ L35_4_OFF: n('L35_4_OFF'), L17_3_1_OFF: n('L17_3_1_OFF'), L17_4_OFF: n('L17_4_OFF'), L35_5_OFF: ((isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L35_5_OFF === '0') ? 0 : 1) }))((k) => ((isNode && typeof process !== 'undefined' && process.env && process.env['MESH_' + k] === '1') ? 1 : 0));   // the sim's build-time switches of the realcheck dead-dial laws (mesh.cpp L35_4_OFF ...): MESH_<name>=1 under node; a page runs the laws
@@ -695,7 +693,7 @@
     // C++: mesh_heal.inc:Seat::confirmMove
     confirmMove() {
       if (!this.moving) return; this.moving = false;
-      if (this.l4X) { this.l4X = false; this.oldNbrIds.length = 0; this.holdOcc.clear(); this.holdSeen.clear(); this.holdCous.clear(); this.oldPp = -1; this.oldPlacer = -1; this.trace('SWAP-CONFIRM', this.id, this.coord, 'from=%s', FREE.coordStr(unck(this.oldCk))); if (!L4_3_5_OFF) this.l4SwapAt = this.TICK;   /* L4.3.5 (tier.js): my own exchange starts my period */ return; }
+      if (this.l4X) { this.l4X = false; this.oldNbrIds.length = 0; this.holdOcc.clear(); this.holdSeen.clear(); this.holdCous.clear(); this.oldPp = -1; this.oldPlacer = -1; this.trace('SWAP-CONFIRM', this.id, this.coord, 'from=%s', FREE.coordStr(unck(this.oldCk))); return; }
       this.trace('CONFIRM', this.id, this.coord, 'from=%s', FREE.coordStr(unck(this.oldCk)));
       let handTo = -1; { const it = this.rcHanded.get(ckey(this.coord)); if (it !== undefined) handTo = it[0]; }
       for (const x of this.oldNbrIds) { const m = newMsg('LEAVE'); m.ck = this.oldCk; m.id = this.id; m.mvd = ckey(this.coord); m.mv = true; m.nc = handTo; this.emit(x, m); }

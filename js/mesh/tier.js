@@ -9,8 +9,6 @@
   const GifOS = root.GifOS = root.GifOS || {};
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
-  /* the sim's #define L4_3_5_OFF in mesh_heal.inc (a build-time switch): MESH_L4_3_5_OFF=1 under node, read once at load; a page always runs the law */
-  const L4_3_5_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L4_3_5_OFF === '1') ? 1 : 0;
   const seatM = req('./seat.js', 'meshSeat');
   const { coordStr, l4Pack, l4Meet } = req('./shared.js', 'meshShared');
   const C_ = req('./consts.js', 'meshConsts');
@@ -131,7 +129,6 @@
       const mine = ckey(this.coord);
       if (!((q.swA === this.id && q.swCa === mine) || (q.swB === this.id && q.swCb === mine))) return false;
       if (this.l4Hold) return false;
-      if (!L4_3_5_OFF && this.TICK - this.l4SwapAt < this.w.lv.L4_QUIET + this.w.lv.L4_PERIOD) { this.trace('L4.3.5', this.id, this.coord, 'exchanged=%d ago', (this.TICK - this.l4SwapAt) | 0); return false; }   /* L4.3.5: I exchanged cells a moment ago */
       if (this.l4MassNow()) return false;
       if (this.TICK - this.lastChurn < this.w.lv.L4_QUIET || this.TICK - this.healAt < this.w.lv.L4_QUIET || this.TICK - this.seatedAt < this.w.lv.L4_QUIET) return false;
       return true;
@@ -284,7 +281,6 @@
       if (this.l4MassNow()) return;   // L4.6
       const pk = this.l4HeadPick(); if (!pk) return;
       const a = pk.a, b = pk.b;
-      if (!L4_3_5_OFF && (a === this.id || b === this.id) && this.TICK - this.l4SwapAt < this.w.lv.L4_QUIET + this.w.lv.L4_PERIOD) return;   /* L4.3.5: I am a party and I exchanged cells a moment ago */
       let ca = a === this.id ? ckey(this.coord) : 0, cb = b === this.id ? ckey(this.coord) : 0;
       for (let j = 0; j < C; j++) { const k = ckey({ pc: this.coord.pc, r: this.coord.r, i: j }); const x = (j === 0) ? this.id : this.occGet(k); if (x === a) ca = k; if (x === b) cb = k; }
       this.l4o = newL4Order(); this.l4o.a = a; this.l4o.b = b; this.l4o.ca = ca; this.l4o.cb = cb; this.l4o.at = this.TICK; this.l4SwapAt = this.TICK;
