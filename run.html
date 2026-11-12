@@ -24528,10 +24528,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // so the copies fed each other in a ring that outlived the stager by 40 s in a 40-page meeting, with pages
     // waking and swapping between copies of a stage that had ended. A relayed track keeps sending (silence), so no
     // media test can see the end: only the beat can.
+    // A STAGE FEED LIVES ONLY WHILE ITS OWNER IS ON THE STAGE. A stager who steps down and is called up again before
+    // the beat goes stale would otherwise find every seat still holding the old feed's copies, passed seat to seat with
+    // nobody fed by the stager, and the room hears the voice from before the step-down (muted on stage, yet audible)
+    // until those copies age out. So the stage list this page plays from ends the stage too: off the list, a seat holds
+    // no claim or standby of the feed, relays none and ends what it ships, and a call-up starts from the stager's own
+    // fresh flood. The list keeps its own holdover, so a flicker does not end a stage.
+    function stgOffStage(rk) {
+      if (typeof rk !== 'string' || rk.indexOf('stg:') !== 0) return false;
+      const owner = rk.slice(4).split('^')[0];
+      return !!owner && !stageIds().includes(owner);
+    }
     function stgEnded(rk) {
       if (typeof rk !== 'string' || rk.indexOf('stg:') !== 0) return false;
       const base = rk.split('^')[0];
-      return base === 'stg:' + myId ? !stageIds().includes(myId) : stgStale(base);
+      return base === 'stg:' + myId ? !stageIds().includes(myId) : (stgStale(base) || stgOffStage(base));
     }
     // On the worker clock: a stale beat stops relayed media and delists the stager, so a hidden stager's throttled page timer must not reach it.
     GifOS.meshMedia.workerClock(STG_BEAT_MS, () => {
@@ -24979,7 +24990,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const keep = structuralSeen.has(rk) && mosLive(cur.via, cur.streamId);
         if (structuralClaimGrace(cur, keep, nowA, MOS_GRACE)) dropMosIn(rk);
       }
-      for (const [rk, arr] of redun) claimRedun(rk, arr);
+      for (const rk of [...mosIn.keys(), ...mosStandby.keys()]) if (stgOffStage(rk)) dropOffStageClaim(rk);
+      for (const [rk, arr] of redun) { if (stgOffStage(rk)) continue; claimRedun(rk, arr); }
+    }
+    // An off-stage owner's claim goes at once, primary, standby and failover state together, so nothing of the old
+    // feed is left to win the next call-up (stgOffStage).
+    function dropOffStageClaim(rk) {
+      const had = mosIn.has(rk);
+      dropMosIn(rk); dropStandby(rk); mosFb.delete(rk);
+      if (had) repaintRedun(rk, null);
     }
     // A packed mosaic's tile takes the SHAPE of its content: the packer sizes
     // its canvas to the gapless grid (k×1 bar, near-square frame), so the tile
