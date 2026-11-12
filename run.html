@@ -8354,7 +8354,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         tabs: !!(CT.plan && CT.plan.tabs), show: CT.plan ? CT.plan.show.slice() : [], view: window.__meetView || 'fit', present: !!CT.present,
         facesHidden: !!CT.facesHidden, box: [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)], hidden: CT.el.hidden,
         panes: panes, app: apr ? { box: [Math.round(apr.left), Math.round(apr.top), Math.round(apr.width), Math.round(apr.height)], off: document.body.classList.contains('ct-app-off'), vis: getComputedStyle(ap).visibility } : null,
-        inset: CT.inset.hidden ? null : { pid: CT.inset.dataset.pid || '', box: [CT.inset.offsetLeft, CT.inset.offsetTop, CT.inset.offsetWidth, CT.inset.offsetHeight] },
+        inset: CT.inset.hidden ? null : { pid: CT.inset.dataset.pid || '', box: [CT.inset.offsetLeft, CT.inset.offsetTop, CT.inset.offsetWidth, CT.inset.offsetHeight], vw: (CT.inset.querySelector('video') || {}).videoWidth || 0 },
         agenda: CT.ag ? { v: CT.ag.v, cur: CT.ag.cur, n: CT.ag.items.length, owner: CT.ag.owner, ed: CT.ag.ed.slice(), items: CT.ag.items.map((i) => i.t), clock: ctAgendaShortTime(), canEdit: ctCanEditAgenda() } : (CT.agLocal ? { local: true, canEdit: ctCanEditAgenda() } : null),
       };
     };
