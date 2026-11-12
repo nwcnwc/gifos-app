@@ -380,6 +380,7 @@
       // the sim's fabricSend has no dead gate: seat.leave marks itself dead (fabricLeft) and THEN emits its LEAVEs, so a
       // send while the leave's own close is pending (closeAt >= 0) goes out; dropping them left every leaver's cell held
       const s = seat(); if (!s || (dead && closeAt < 0)) return;
+      if (m.t === 'WHOHOME' && to >= 0 && m.from === from && (s.state === 0 || s.state === 1) && fh && fh.turnAsked) { const ap = ID.pid(to); if (ap) fh.turnAsked(ap); }   // C++: mesh_turn.inc:turnAskedNote (TURN.4.3: my door ask to a greeter went out)
       if (m.l10E || m.dgOnly) {
         let held = false; if (s.hasCoord && to >= 0 && to !== from) { for (const c of ownedLinks(s.coord)) if (s.occGet(ckey(c)) === to) { held = true; break; } }
         if (held) parSend(from, to, m); else drop('l10');
@@ -557,7 +558,7 @@
       fabricAdmitLog: noop, fabricDupMint: noop, fabricNoteBackoff: noop, fabricNoteReseat: noop, fabricNoteRollback: noop,
       fabricNoteSwap: noop, fabricVerdict: deaths.verdict, l18UxDeliv: noop, descEnd: noop, descNote: noop, g4Joined: noop,   // g4Joined: the sim's L40 contest lever only (X1 55c97d1)
       fabricFreeCells, fabricLieFor: () => null, fabricUnreachable, fhopActive: () => !!fh, fhopFriendFor,
-      fabricTurnOn: turnOn, fabricTurnPc, fabricTurnOpener, fabricTurnHold: () => false /* TODO page: meet-turn link state */, fabricTurnStray, fabricTurnLone, fabricTurnAcross, fabricTurnMine, fabricTurnCarried, fabricTurnFeeds: noop, fabricTurnSide, fabricTurnBoth: () => false, fabricTurnPeerIn,   /* TURN.14 from my pc table (above); the feeds are the media plane's (run.html turnFeedPeers) */
+      fabricTurnOn: turnOn, fabricTurnPc, fabricTurnOpener, fabricTurnHold: (a) => a === me && turnOn() && !!fh.turnHold && !!fh.turnHold(),   /* TURN.4.4: the link I opened is dialling, or just came up (js/meet-turn.js holding) */ fabricTurnStray, fabricTurnLone, fabricTurnAcross, fabricTurnMine, fabricTurnCarried, fabricTurnFeeds: noop, fabricTurnSide, fabricTurnBoth: () => false, fabricTurnPeerIn,   /* TURN.14 from my pc table (above); the feeds are the media plane's (run.html turnFeedPeers) */
       fabricMyTier: () => ((measure.tier ? measure.tier() : E.TIER_DESKTOP) | 0),
       fabricMyNat: () => ((measure.nat ? measure.nat() : E.NAT_OPEN) | 0),
       fabricLeft: () => leaveNow(false), fabricReloadBye: () => leaveNow(true),
@@ -595,6 +596,9 @@
       if (closeAt >= 0 && w.TICK >= closeAt) { closeAt = -1; if (pcw.leaveAll) pcw.leaveAll(); }
       while (dialFailLater.length) { const x = dialFailLater.shift(); if (pcw.dialFailed) pcw.dialFailed(x); }
       if (pcw.tick) guard('pcw.tick', pcw.tick)();
+      // C++: mesh_net.inc:netTick's probe loop (L4.1.1): my network verdict landed or changed since the join read it: the seat's kind is
+      // measured again, and a seeker at the door acts on it now (l411Verdict)
+      if (s && !dead && measure.nat) { const n0 = (measure.nat() | 0) & 0xff; if (n0 !== s.nat) { if (s.cnat === s.nat) s.cnat = n0; s.nat = n0; if (typeof s.l411Verdict === 'function') s.l411Verdict(); } }
       if (s && !dead) {
         const due = [];
         for (const t of [...bus.keys()].sort((a, b) => a - b)) { if (t > w.TICK) break; due.push(...bus.get(t)); bus.delete(t); }

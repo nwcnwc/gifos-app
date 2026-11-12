@@ -1344,7 +1344,7 @@
       byesHeld() { return byeHeld.size; },   // pages gone whose cell is held: no face, no head in the count
       leave(reload) { if (reload && !sendHeldByes()) reload = false; try { if (raw) { if (penv && penv.leave) penv.leave(!!reload); else raw.leave(!!reload); } } catch (e) {} try { if (sock) sendRaw({ t: 'unlist' }); } catch (e) {} node.stop(); },   // goodbye to the peers, then off the greeter list, then the socket closes: no greeter-gone for a page leaving in order
       // Transport events from the page's pc/dc callbacks and watchdogs (env.js maps hard/quiet and debounces).
-      remeasure() { if (!raw || !opts.measure) return; const n0 = opts.measure.nat() & 0xff; if (raw.cnat === raw.nat) raw.cnat = n0; raw.nat = n0; },   // a network verdict that lands after the join (seat.join reads it once)
+      remeasure() { /* L4.1.1: the page env's tick reads the verdict itself (js/mesh/page/env.js tick: nat, cnat, l411Verdict), so a verdict that lands after the join is acted on at the next tick; nothing to do here */ },   // a network verdict that lands after the join (seat.join reads it once)
       doorForgive(pid) { if (penv && penv.doorForgive) penv.doorForgive(String(pid)); },
       transport(pid, ev, arg) { if (stopped || !penv) return undefined; try { return penv.transport(String(pid), ev, arg); } catch (e) { return undefined; } },
       dialHeld(pid) { if (stopped || !penv || !penv.dialHeld) return false; try { return penv.dialHeld(String(pid)); } catch (e) { return false; } },
