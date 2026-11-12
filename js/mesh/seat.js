@@ -144,6 +144,9 @@
   function l13MergingOf(s) { return islandStand(s, E.IS_L13); }
   // C++: mesh.cpp:l13MassOf
   function l13MassOf(s) { return s.l13Mass(); }
+  // Two gone cells on my own chain: the heal rules, not the holds.
+  // C++: mesh.cpp:l1344Of
+  function l1344Of(s) { return s.l1344Act(); }
   // C++: mesh.cpp:l25OrdKey
   function l25OrdKey(by, hole, at, to) { return hash.hmixId(hash.hmix(hash.hmixId(hash.hmix64(hash.H_INIT, hole), by), at >>> 0), to); }   // the order names the seat it was sent to
   // C++: mesh.cpp:Seat::ppSigOf
@@ -161,7 +164,7 @@
   // A C++ function that returns bool and fills out-parameters returns the out value here (null for false).
   Seat.unit('mesh.cpp struct Seat', {
     // C++: mesh.cpp:l13
-    l13(sub) { const cur = this.w.L13CUR; return !l13MergingOf(cur) && (!cur || sub === 'L13.12' || sub === 'L13.6' || sub === 'L13.20' || l13MassOf(cur)); },
+    l13(sub) { const cur = this.w.L13CUR; return !l13MergingOf(cur) && (!cur || sub === 'L13.12' || sub === 'L13.6' || sub === 'L13.20' || l13MassOf(cur) || l1344Of(cur)); },
     // C++: mesh.cpp:l13On
     l13On() { return !l13MergingOf(this.w.L13CUR); },
     // C++: mesh.cpp:Seat::oneRowRoom
