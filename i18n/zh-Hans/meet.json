@@ -811,5 +811,14 @@
  "meet.agStop": "停止共享议程",
  "meet.shareStageFull": "舞台已满，需要先有人下台。",
  "meet.sttVideoPausedRelay": "此连接上的视频已暂停。声音仍然正常。会议中的订阅者可以开启视频。",
- "meet.turnSubscribe": "订阅"
+ "meet.turnSubscribe": "订阅",
+ "meet.capBtn": "设我为管理员",
+ "meet.capbtnTip": "接管这个开放房间：由你设置密码，并可移除他人",
+ "meet.capNote": "此房间已有管理员",
+ "meet.capYou": "你是此房间的管理员",
+ "meet.capOther": "此房间现在有管理员了",
+ "meet.capOpen": "此房间已重新开放",
+ "meet.capNeedPlan": "成为开放房间的管理员需要 5 美元或 10 美元套餐",
+ "meet.capTaken": "此房间的管理员是其他人",
+ "meet.capFailed": "无法将你设为此房间的管理员"
 }

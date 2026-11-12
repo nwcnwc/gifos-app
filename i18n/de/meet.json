@@ -811,5 +811,14 @@
   "meet.agStop": "Agenda nicht mehr teilen",
   "meet.shareStageFull": "Die Bühne ist voll. Jemand muss zuerst heruntergehen.",
   "meet.sttVideoPausedRelay": "Das Video ist auf dieser Verbindung pausiert. Der Ton funktioniert weiter. Ein Abonnent im Meeting kann das Video einschalten.",
-  "meet.turnSubscribe": "Abonnieren"
+  "meet.turnSubscribe": "Abonnieren",
+  "meet.capBtn": "Mich zur Leitung machen",
+  "meet.capbtnTip": "Diesen offenen Raum übernehmen: Du setzt sein Passwort und kannst Leute entfernen",
+  "meet.capNote": "Dieser Raum hat eine Leitung",
+  "meet.capYou": "Du leitest diesen Raum",
+  "meet.capOther": "Dieser Raum hat jetzt eine Leitung",
+  "meet.capOpen": "Dieser Raum ist wieder offen",
+  "meet.capNeedPlan": "Um einen offenen Raum zu leiten, brauchst du den Tarif für 5 $ oder 10 $",
+  "meet.capTaken": "Jemand anderes leitet diesen Raum",
+  "meet.capFailed": "Du konntest nicht zur Leitung dieses Raums werden"
 }

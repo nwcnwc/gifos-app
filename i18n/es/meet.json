@@ -811,5 +811,14 @@
   "meet.agStop": "Dejar de compartir la agenda",
   "meet.shareStageFull": "El escenario está lleno. Alguien tiene que bajar primero.",
   "meet.sttVideoPausedRelay": "El vídeo está en pausa en esta conexión. El sonido sigue funcionando. Un suscriptor de la reunión puede activar el vídeo.",
-  "meet.turnSubscribe": "Suscribirse"
+  "meet.turnSubscribe": "Suscribirse",
+  "meet.capBtn": "Hacerme anfitrión",
+  "meet.capbtnTip": "Toma el control de esta sala abierta: pones su contraseña y puedes sacar a gente",
+  "meet.capNote": "Esta sala tiene anfitrión",
+  "meet.capYou": "Eres el anfitrión de esta sala",
+  "meet.capOther": "Esta sala ya tiene anfitrión",
+  "meet.capOpen": "Esta sala vuelve a estar abierta",
+  "meet.capNeedPlan": "Para ser anfitrión de una sala abierta necesitas el plan de 5 $ o de 10 $",
+  "meet.capTaken": "Otra persona es el anfitrión de esta sala",
+  "meet.capFailed": "No se pudo hacerte anfitrión de esta sala"
 }

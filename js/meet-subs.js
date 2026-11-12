@@ -404,6 +404,24 @@
   }
   const newNonce = () => { const u = new Uint8Array(18); crypto.getRandomValues(u); return 'n' + b64(u).replace(/[+/=]/g, ''); };
 
+  // ---- an open room's admin by subscription (capture) -------------------------
+  // Only the $5 and $10 plans capture an open room: such a room keeps no door
+  // limit. canCapture: this browser's ticket for the meeting is on such a plan.
+  const capturePlan = (tier) => SUB.isPaid(tier) && SUB.TIERS[tier].roomLimit == null;
+  function canCapture(room) { return !!(meet && meet.room === room && meet.ticket && nowS() < meet.exp && capturePlan(meet.tier)); }
+  // A captor's ticket checked by anyone in the room: the ticket or null.
+  async function captureTicket(tk, room) {
+    try { const t = await SUB.verifyTicket(tk, verifyPay, nowS(), await SUB.meetingTag(room)); return t && capturePlan(t.tier) ? t : null; } catch (e) { return null; }
+  }
+  // {tk, w}: the ticket and an order signed by the ticket's key, for the meeting server.
+  async function captureOrder(room) {
+    if (!canCapture(room)) return null;
+    const tk = await currentTicket(room); if (!tk) return null;
+    const k = await myKey(), sp = JSON.stringify({ act: 'capture', ts: Date.now(), room });
+    return { tk, w: { sp, sig: await signText(sp), pub: k.pub } };
+  }
+  async function captureKeys() { const k = await myKey(); return { priv: k.priv, pubB64: k.pub }; }
+
   // ---- Settings: the Subscription group ---------------------------------------
   const BTN = 'seg';
   const BTN_STYLE = 'border:1px solid var(--border,#2a2a3f);border-radius:.4rem;margin:.2rem .4rem .2rem 0';
@@ -567,7 +585,7 @@
   GifOS.meetSubs = {
     enabled: on, rights, refresh, subscribe, cancel, paintSettings, openSettings, mayCreateAdminRoom, showFull, ensureFree, showHostPrompt,
     roomOrder, roomTier, proveAtDoor, checkShown, newNonce,
-    joinMeeting, leaveMeeting, currentTicket, fileBytes, downloadFile, useFile, librarySigner,
+    joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureOrder, captureKeys, fileBytes, downloadFile, useFile, librarySigner,
     meeting: () => (meet ? { room: meet.room, gen: meet.gen, exp: meet.exp, moved: meet.moved, held: !!meet.ticket, tier: meet.tier, paid: !!(meet.ticket && SUB.isPaid(meet.tier)) } : null),
   };
 })(typeof window !== 'undefined' ? window : globalThis);

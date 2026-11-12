@@ -811,5 +811,14 @@
   "meet.agStop": "Stop sharing the agenda",
   "meet.shareStageFull": "The stage is full. Someone has to step down first.",
   "meet.sttVideoPausedRelay": "Video is paused on this connection. Sound still works. A subscriber in the meeting can turn video on.",
-  "meet.turnSubscribe": "Subscribe"
+  "meet.turnSubscribe": "Subscribe",
+  "meet.capBtn": "Make me admin",
+  "meet.capbtnTip": "Take charge of this open room: you set its password and can remove people",
+  "meet.capNote": "This room has an admin",
+  "meet.capYou": "You are this room’s admin",
+  "meet.capOther": "This room has an admin now",
+  "meet.capOpen": "This room is open again",
+  "meet.capNeedPlan": "Making yourself admin of an open room takes the $5 or $10 plan",
+  "meet.capTaken": "Someone else is this room’s admin",
+  "meet.capFailed": "Could not make you admin of this room"
 }

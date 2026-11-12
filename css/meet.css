@@ -256,6 +256,7 @@
   /* Settings rows (layout in css/meet-23b.css). */
   .set-sec { display: flex; flex-direction: column; gap: .45rem; }
   .set-help { color: var(--muted, #8888aa); font-size: .76rem; line-height: 1.35; margin: 0; }
+  .capnote { color: var(--muted, #8888aa); font-size: .8rem; align-self: center; padding: 0 .4rem; }   /* an open room's admin by subscription: one quiet line */
   #timingrow button { border-radius: .45rem; cursor: pointer;
     background: none; border: 1px solid var(--border, #2a2a3f); color: var(--muted, #8a8aa8); }
   #timingrow button.on { border-color: var(--accent, #7b5cff); color: var(--text, #e0e0f0); background: rgba(123,92,255,.14); }

@@ -795,6 +795,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       <h4 data-t="room">Room</h4>
       <div class="morerow">
         <button id="pwbtn" data-t="password" data-ti="pwTip" aria-keyshortcuts="Alt+L" title="Lock this room with a password">Password</button>
+        <button data-ti="capbtnTip" data-t="capBtn" id="capbtn" type="button" title="Take charge of this open room: you set its password and can remove people" style="display:none">Make me admin</button>
+        <span id="capnote" class="capnote" role="status" style="display:none">This room has an admin</span>
         <button data-ti="waitbtnTip" data-t="waitRoom" id="waitbtn" type="button" aria-pressed="false" title="Hold people at the door until you admit them" style="display:none">Waiting room</button>
         <button data-ti="recbtnTip" id="recbtn" data-t="record" aria-keyshortcuts="Alt+R" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
         <button id="votebtn" data-t="vote" data-ti="voteTip" aria-keyshortcuts="Alt+U" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
@@ -5200,7 +5202,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // field (the admin's chat on/off switch). It rides the same signed
         // table as every per-target order, so it reaches late joiners on the
         // heartbeat and a forged copy dies in takeMod's admVerify.
-        for (const field of ['mute', 'blur', 'cam', 'app', 'share', 'chat', 'cc', 'wait', 'admit', 'dhold', 'dadm', 'sublic', 'rename', 'spot', 'pray', 'gfile', 'greact', 'qa', 'chist', 'slow', 'clink']) {
+        for (const field of ['mute', 'blur', 'cam', 'app', 'share', 'chat', 'cc', 'wait', 'admit', 'dhold', 'dadm', 'sublic', 'capt', 'rename', 'spot', 'pray', 'gfile', 'greact', 'qa', 'chist', 'slow', 'clink']) {
           const inc = incoming[target][field];
           if (!inc || typeof inc !== 'object') continue;
           if (goneAt != null && (+inc.at || 0) <= goneAt) continue;
@@ -11709,14 +11711,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // An admin room's change order: the signature frames with no
         // password before them. The signature decides what it is; a grant
         // whose password frame was lost fails it and is dropped.
-        if (!hasAdminRoom() || ty !== 'pwby' || s.sig == null || s.pub == null || s.ts == null || s.by == null) return null;
+        if (!sigRoom() || ty !== 'pwby' || s.sig == null || s.pub == null || s.ts == null || s.by == null) return null;
         pwParts.delete(from);
         return { k: 'pwreset', by: rosterNames[s.by] || '', ep: s.ep, w: { sp: JSON.stringify({ act: 'pwreset', ts: s.ts, room: roomKey(), by: s.by, ep: s.ep }), sig: s.sig, pub: s.pub } };
       }
-      if (!hasAdminRoom()) { pwParts.delete(from); return { k: 'pwinfo', pw: s.pw, by: rosterNames[from] || '', ep: s.ep }; }
+      if (!sigRoom()) { pwParts.delete(from); return { k: 'pwinfo', pw: s.pw, by: rosterNames[from] || '', ep: s.ep }; }
       if (s.sig == null || s.pub == null || s.ts == null || s.by == null) return null;
       pwParts.delete(from);
-      const named = s.pw ? { to: myId } : {};   // an admin room's password over the relay is only ever signed for one id (pwAdmitGrant)
+      const named = s.pw && hasAdminRoom() ? { to: myId } : {};   // a captured room's grant names nobody   // an admin room's password over the relay is only ever signed for one id (pwAdmitGrant)
       return { k: 'pwinfo', pw: s.pw, by: rosterNames[s.by] || '', ep: s.ep, w: { sp: JSON.stringify(Object.assign({ act: 'pwinfo', ts: s.ts, room: roomKey(), by: s.by, pw: s.pw, ep: s.ep }, named)), sig: s.sig, pub: s.pub } };
     }
     // The bootstrap's halves (boot + fp), gathered by sender and session
@@ -15295,7 +15297,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return out.slice(-PW_NO_MAX);
     }
     const pwNoSeen = new Set();   // ids on my stored list heard under the current key since this page loaded
-    const pwNoAny = () => hasAdminRoom() && (pwBarred.size > 0 || amAdmin);
+    const pwNoAny = () => sigRoom() && (pwBarred.size > 0 || amAdm());
     function pwHeardNow(id) { if (!id) return; pwBarLift(id); if (pwBooted.has(id) && !rekeysPending && rekeyAt >= pwBooted.get(id)) { pwBooted.delete(id); pwByeSaid.delete(id); } if (amAdmin) { pwNoSeen.add(id); if (pwNoSeen.size > 1024) pwNoSeen.clear(); } }
     const pwWaitKey = new Map();   // admin: a person waiting through a ban -> the key they still read
     let pwWaitProof = false;       // this page waits on a proof the admin sent: the lock it cannot read yet is not a prompt
@@ -15312,7 +15314,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function pwToOf(grant) { try { return JSON.parse(grant.w.sp).to || ''; } catch (e) { return ''; } }
     let pwBanChain = Promise.resolve();
     function pwBan(id) {
-      if (!amAdmin || !hasAdminRoom() || !id || id === myId) return pwBanChain;
+      if (!amAdm() || !sigRoom() || !id || id === myId) return pwBanChain;
       pwBanChain = pwBanChain.then(() => pwBanNow(id)).catch((err) => pwChainFailed(err, false));
       return pwBanChain;
     }
@@ -15816,6 +15818,95 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { tryBroadcastStage(); } catch (e) {}
       return true;
     }
+    // AN OPEN ROOM'S ADMIN BY SUBSCRIPTION (capture). In an open room the first person on the $5 or $10 plan may
+    // take the room: the meeting server checks their meeting ticket and an order signed by the ticket's key, and
+    // the first one wins. While it lasts, that key signs the room's password and bans like an admin's (setpw is
+    // refused unsigned; a password set is handed to everyone inside except the banned). The room keeps no door
+    // limit. The captor's page re-presents each renewed ticket; when the ticket runs out (they left, or the
+    // subscription moved to another meeting) the room is open again, without a password, for anyone to take.
+    // Every page checks the ticket itself (pay key, this meeting, the plan): the server's word only picks
+    // between two valid tickets. The ticket also rides the room table ('capt') to pages with no server socket.
+    let capKey = null, capExp = 0, capTk = null, amCaptor = false, capSaidKey = null, capBusy = false;
+    const capOn = () => !av && !!capKey && Date.now() < capExp;
+    const sigRoom = () => hasAdminRoom() || capOn();            // orders must be signed: an admin room, or a captured one
+    const amAdm = () => amAdmin || (amCaptor && capOn());
+    async function capTake(c, viaServer) {
+      if (av || !c || !c.tk) return;
+      if (viaServer && c.ck) capSaidKey = c.ck;
+      const t = await GifOS.meetSubs.captureTicket(c.tk, subsMeetId());
+      if (!t || (c.ck && t.buyerKey !== c.ck)) return;
+      if (capKey && capKey !== t.buyerKey && capOn() && !(viaServer || t.buyerKey === capSaidKey)) return;   // two valid claims: the server's pick wins, else the one held
+      const fresh = capKey !== t.buyerKey;
+      if (!fresh && t.exp * 1000 <= capExp) return;
+      capKey = t.buyerKey; capExp = t.exp * 1000; capTk = c.tk;
+      let mine = false; try { mine = (await GifOS.meetSubs.captureKeys()).pubB64 === capKey; } catch (e) { mine = false; }
+      if (mine && !amCaptor) { amCaptor = true; try { admKeys = await GifOS.meetSubs.captureKeys(); } catch (e) {} }
+      if (!mine && amCaptor) { amCaptor = false; admKeys = null; }
+      if (fresh) { if (typeof clog === 'function') clog('capture on key=' + capKey.slice(0, 8) + ' mine=' + mine + ' exp=' + capExp); pwLog('capture-on mine=' + mine); setStatus(mine ? uiText('capYou', 'You are this room\u2019s admin') : uiText('capOther', 'This room has an admin now')); }
+      capPaint();
+    }
+    // The capture ended: the room is open again and its password is cleared on every page at once.
+    function capClear(why) {
+      if (!capKey) return;
+      if (typeof clog === 'function') clog('capture off (' + why + ')');
+      pwLog('capture-off ' + why);
+      const hadPw = !!roomPw;
+      capKey = null; capExp = 0; capTk = null; capSaidKey = null;
+      if (amCaptor) { amCaptor = false; admKeys = null; }
+      if (hadPw) {
+        // Every page clears at the same moment (the ticket's expiry, or the server's word), so nobody hands it on.
+        storePwEpoch(pwEpoch + 1); retainedGrant = null; storePw('');
+        rekeyRoom(false);
+        net.meetPwProof(room, av, '').then((pr) => { pwProof = pr; if (meshNode && meshNode.setKey) meshNode.setKey(roomE2E); }).catch(() => {});
+        try { purgeAllFiles(false); renderFiles(); reactRoomState(); } catch (e) {}
+      }
+      setStatus(uiText('capOpen', 'This room is open again'));
+      capPaint();
+    }
+    function capCheck() {
+      if (av) return;
+      if (capKey && Date.now() >= capExp) capClear('ran out');
+      const o = (modTable['*'] || {}).capt;
+      if (o && o.tk && (!capTk || o.tk.sig !== capTk.sig)) capTake({ tk: o.tk }, false);
+    }
+    // The captor's page: say the ticket to the room table and, renewed, to the server.
+    function capPublish(renew) {
+      if (!amCaptor || !capOn()) return;
+      GifOS.meetSubs.currentTicket(subsMeetId()).then((tk) => {
+        if (!tk || !amCaptor) return;
+        if (renew) relaySendObj({ t: 'capren', tk });
+        const r = modTable['*'] = modTable['*'] || {};
+        r.capt = { tk, at: Date.now(), by: myName(), byId: myId };
+        hostFlood();
+        capTake({ tk, ck: capKey }, false);
+      }, () => {});
+    }
+    async function capTry() {
+      if (capBusy || av || capOn()) return;
+      capBusy = true;
+      try {
+        const o = await GifOS.meetSubs.captureOrder(subsMeetId());
+        if (!o) { setStatus(uiText('capNeedPlan', 'Making yourself admin of an open room takes the $5 or $10 plan')); return; }
+        pwLog('capture-sent');
+        relaySendObj({ t: 'capture', tk: o.tk, w: o.w });
+      } finally { capBusy = false; capPaint(); }   // the server's answer (onCapFrame) says the rest
+    }
+    function onCapFrame(m) {
+      if (av) return;
+      if (m.on === 1) { capTake(m, true).then(() => { if (amCaptor) capPublish(false); }); return; }
+      if (m.on === 0) { capClear('server'); return; }
+      if (m.ok === 0) { pwLog('capture-refused ' + m.why); if (m.why === 'taken') setStatus(uiText('capTaken', 'Someone else is this room\u2019s admin')); else if (m.why === 'ended' && amCaptor) capClear('server ended'); else if (m.why !== 'ended') setStatus(uiText('capFailed', 'Could not make you admin of this room')); }
+    }
+    function capPaint() {
+      const b = document.getElementById('capbtn'), n = document.getElementById('capnote');
+      const show = !av && !capOn() && subsOn() && GifOS.meetSubs.canCapture(subsMeetId());
+      if (b) { b.style.display = show ? '' : 'none'; b.disabled = capBusy; }
+      if (n) { n.style.display = capOn() ? '' : 'none'; n.textContent = amCaptor ? uiText('capYou', 'You are this room\u2019s admin') : uiText('capNote', 'This room has an admin'); }
+      try { applyAdminUi(); } catch (e) {}
+    }
+    { const b = document.getElementById('capbtn'); if (b) b.onclick = () => capTry(); }
+    if (DEBUG_ON) window.__capTry = () => capTry();   // DEBUG=on only: a test taps "Make me admin"
+    if (DEBUG_ON) window.__capState = () => ({ on: capOn(), key: capKey, exp: capExp, mine: amCaptor, pw: !!roomPw, ep: pwEpoch });
     async function admSigned(act, extra) {
       if (!admKeys) return null;
       // `by` is signed: the admin claims their own peer id inside the proof,
@@ -15825,8 +15916,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     async function admVerify(w, act, maxAge) { // -> parsed signed payload, or null
       try {
-        if (!w || !hasAdminRoom()) return null;
-        if (!(await net.edProven(av, w.pub, w.sig, w.sp))) return null;
+        if (!w || !sigRoom()) return null;
+        if (!(av ? await net.edProven(av, w.pub, w.sig, w.sp) : (w.pub === capKey && await net.edVerify(w.pub, w.sig, w.sp)))) return null;   // a captured open room: the captor's key
         const o = JSON.parse(w.sp);
         if (o.act !== act || o.room !== roomKey()) return null;
         // Stale order — replay window. An act whose replay is HARMLESS (a
@@ -15998,8 +16089,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       ab.title = amAdmin ? uiText('admTipOn', 'Admin controls: room password, chat and waiting room')
         : uiText('admTipOff', 'This room has a host — enter the host password to get the host controls');
       const pwb = document.getElementById('pwbtn');
-      pwb.disabled = hasAdmin && !amAdmin;
-      pwb.title = (hasAdmin && !amAdmin)
+      const pwLocked = (hasAdmin && !amAdmin) || (typeof capOn === 'function' && capOn() && !amCaptor);   // a captured open room: its admin's
+      pwb.disabled = pwLocked;
+      pwb.title = pwLocked
         ? uiText('pwTipAdmin', 'This room\'s password is managed by its admin')
         : uiText('pwTip', 'Lock this room with a password');
       // Vote-off only exists where there is no admin to ban bad actors.
@@ -16634,6 +16726,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // GREETER POOL, never the room \u2014 it drives door moderation only.
     function onRelayFrame(m) {
       if (m.t === 'joined') relayTv = m.tv === 1;   // this relay vouches for TURN links (see relayTv)
+      if (m.t === 'joined' && m.cap && !av) capTake(m.cap, true);   // a captured open room: the captor's ticket, checked here
+      if (m.t === 'cap') { onCapFrame(m); return; }
       if (m.t === 'tvouch') { try { if (turnLinks) turnLinks.onVouch(m); } catch (e) {} return; }   // the relay's seated vouch for one of my TURN links
       if (m.t === 'joined') {
         updateStatus(); broadcastStatus();
@@ -18132,7 +18226,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // (Reachable only past the disabled button — the e2e admin suite
         // does exactly that to prove the relay refuses — but a client must
         // never eject itself on an order it knows it cannot issue.)
-        if (hasAdminRoom() && !amAdmin) {
+        if ((hasAdminRoom() && !amAdmin) || (capOn() && !amCaptor)) {
           setStatus(PW_ADMIN_ONLY); // the same sentence the door's refusal shows — one message for one rule
           pwModal.style.display = 'none';
           return;
@@ -18154,7 +18248,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // their own proof for reconnects. In an admin room both orders are
           // SIGNED (§9): the relay verifies the setpw, peers verify the pwinfo.
           const ep = pwEpoch + 1; // the signed epoch: replaying an older grant can never roll anyone backwards
-          const wRelay = hasAdminRoom() ? await admSigned('setpw', { pw: pr }) : undefined;
+          const wRelay = sigRoom() ? await admSigned('setpw', { pw: pr }) : undefined;   // a captured room: signed by the captor (admKeys)
           if (hasAdminRoom() && v) {
             // ADMIN ROOM, A PASSWORD SET OR CHANGED: the door locks with the
             // new proof, and the room gets the signed ORDER, never the
@@ -18182,7 +18276,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             }
             return;
           }
-          const wPeers = hasAdminRoom() ? await admSigned('pwinfo', { pw: v, ep }) : undefined;
+          const wPeers = sigRoom() ? await admSigned('pwinfo', { pw: v, ep }) : undefined;   // a captured room hands the password to everyone inside, signed
           relaySendObj({ t: 'setpw', pw: pr, w: wRelay });
           const grant = { k: 'pwinfo', pw: v, by: myName(), w: wPeers, ep };
           sendAll(grant);
@@ -21046,7 +21140,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // the new generation and carries no password. A page that does not
         // already hold that generation leaves the meeting for the door's
         // password prompt; the admin's own page (which minted it) stays.
-        if (!hasAdminRoom()) return;
+        // A captured room sends it only with a ban, to the banned.
+        if (!sigRoom()) return;
         if (admOk !== true) {
           admVerify(m.w, 'pwreset').then((o) => { if (o && pwEpInt(o.ep) && o.ep === m.ep) onDc(p, null, m, true); });
           return;
@@ -21074,7 +21169,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // re-derive our proof so reconnects keep working. In an ADMIN room
         // only a SIGNED order re-keys the room (§9) — verify, then re-enter
         // this handler with the proof already checked.
-        if (hasAdminRoom() && admOk !== true) {
+        if (sigRoom() && admOk !== true) {
           admVerify(m.w, 'pwinfo').then((o) => { if (o && String(o.pw || '') === String(m.pw || '') && (o.ep == null || o.ep === m.ep)) onDc(p, null, m, true); });
           return;
         }
@@ -21082,9 +21177,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // they type it at the door (see 'pwreset'). Only the admin's order
         // to REMOVE the lock still travels this way — it gives away nothing.
         // The one exception is a ban: the admin's statement names who must not hear it.
-        const grantNo = hasAdminRoom() && String(m.pw || '') !== '' ? pwNoOf(m) : null;
+        const grantNo = sigRoom() && String(m.pw || '') !== '' ? pwNoOf(m) : null;
         const grantMine = !!grantNo && pwToOf(m) === myId;   // admitted from the waiting room
-        if (grantNo && !grantNo.length && !grantMine) { pwLog('pwinfo-refused (admin room: a password is typed, never granted) ep=' + m.ep); return; }
+        if (grantNo && !grantNo.length && !grantMine && hasAdminRoom()) { pwLog('pwinfo-refused (admin room: a password is typed, never granted) ep=' + m.ep); return; }
         // EPOCH GUARD (§LOCK healing): a grant at or below my own generation
         // is a replay — dead on arrival. Nobody can roll a member backwards;
         // an ep-less grant is a legacy client's, treated as next-generation.
@@ -35196,7 +35291,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function subsJoin() {
       if (!subsOn()) return;
       GifOS.meetSubs.joinMeeting(subsMeetId(), {
-        onTicket: () => { if (amAdmin && hasAdminRoom()) subsPublishRoomPlan(); turnSubAt = 0; },   // a fresh ticket is a fresh TURN vouch: say it at the next step
+        onTicket: () => { if (amAdmin && hasAdminRoom()) subsPublishRoomPlan(); turnSubAt = 0; capPublish(true); try { capPaint(); } catch (e) {} },   // a captor re-presents each renewed ticket   // a fresh ticket is a fresh TURN vouch: say it at the next step
         onLost: (why) => {
           if (why === 'moved') setStatus('Your subscription is now in use in another meeting.');
           const r = modTable['*'];
@@ -35204,7 +35299,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         },
       });
     }
-    setInterval(() => { try { if (subsOn() && hasAdminRoom()) subsRoomTier(); } catch (e) {} }, 2000);
+    setInterval(() => { try { if (subsOn() && hasAdminRoom()) subsRoomTier(); } catch (e) {} try { capCheck(); capPaint(); } catch (e) {} }, 2000);   // the room's plan, and an open room's capture (capCheck)
     function subsHolds(id) {
       if (!id || !subsOn() || !hasAdminRoom() || subsProven.has(id)) return false;
       if (!subsPlanKnown()) return subsWaitPlan(id);   // the admin's orders have not reached this door yet: hold, ask nothing
