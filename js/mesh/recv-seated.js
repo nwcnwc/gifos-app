@@ -399,7 +399,7 @@
         return;
       }
       if (this.evil) { const c = newMsg('CONFIRM'); c.ck = m.ck; c.id = id; this.emit(m.from, c); return; }
-      if (this.hasCoord && this.state === 3 && ckey(this.coord) === m.ck) { const c = newMsg('CONFIRM'); c.ck = m.ck; c.id = id; this.emit(m.from, c); }
+      if (this.hasCoord && this.state === 3 && ckey(this.coord) === m.ck) { const c = newMsg('CONFIRM'); c.ck = m.ck; c.id = id; if (this.f.fabricDoors() && this.ppCk === ckey(this.coord) && this.otherRing(m.from)) { c.pp = this.pp; c.ppAt = this.ppAt; c.ppL = this.ppL; } /* my placement, to a seat of another founding */ this.emit(m.from, c); }
     },
 
     // C++: mesh_seat.inc:Seat::onConfirm
@@ -424,6 +424,7 @@
       if (!this.hasCoord || this.state !== 3 || ckey(this.coord) !== m.ck || m.id < 0 || m.id === id || !(m.id < id)) return;
       if (this.challToId !== m.id || this.challToCk !== m.ck || TICK - this.challToAt > 40 || !this.provenEv(m, m.id) || this.liveElsewhereSinceReturn(m.id, m.ck)) return;
       this.challToId = -1;
+      if (this.f.fabricDoors() && !this.moving && this.coord.pc === 0 && this.pp >= 0 && this.ppL >= 0 && this.ppCk === ckey(this.coord) && this.otherRing(m.id) && !(m.pp >= 0 && m.ppL >= 0 && l165Earlier(m.ppL, m.pp, m.id, this.ppL, this.pp, id))) { this.trace('L8.11.1-STAND', id, this.coord, 'rival=%d', m.id); return; }   // across foundings the earlier placement wins against a confirm too
       if (roomTerm(this, 1) && m.c7Min >= 0 && m.c7Min < this.ringName()) return;   // L8.11
       if (this.moving) { this.rbWhy = 'confirm-lower'; this.rollbackMove(); } else this.requeue('CONFIRM-lower-id');
     },
