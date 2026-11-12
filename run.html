@@ -7814,6 +7814,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const r = rects[i];
         p.hidden = false;
         p.style.left = r.x + 'px'; p.style.top = r.y + 'px'; p.style.width = r.w + 'px'; p.style.height = r.h + 'px';
+        // With no tab bar (Scroll, Focus) each item carries its own
+        // presentation view button: still one tap from anywhere.
+        let pv = p.querySelector(':scope > .ct-pview');
+        if (!plan.tabs && !CT.present) {
+          if (!pv) {
+            pv = document.createElement('button'); pv.type = 'button'; pv.className = 'ct-pview'; pv.innerHTML = CT_ICONS.present;
+            const key = it.key;
+            pv.addEventListener('click', () => { GifOS.meetContent.select(CT.st, key); ctPresent(true, 'pane'); });
+            p.appendChild(pv);
+          }
+          pv.setAttribute('aria-label', ctText('ctPresent', 'Presentation view')); pv.title = ctText('ctPresent', 'Presentation view');
+          pv.hidden = false;
+        } else if (pv) pv.hidden = true;
         if (it.kind === 'screen') ctPaintScreen(p, it);
         else if (it.kind === 'agenda') ctPaintAgenda(p);
         else if (it.kind === 'app') {
@@ -8134,7 +8147,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const sig = [MA.body(a), may ? 1 : 0, CT.agEdit ? 1 : 0, mayHand ? 1 : 0, uiLang(), mayHand ? rosterIds.join(',') : ''].join('|');
       if (p._sig === sig) { ctPaintAgendaClock(p); return; }
       p._sig = sig;
+      const keepPv = p.querySelector(':scope > .ct-pview');
       p.textContent = '';
+      if (keepPv) p.appendChild(keepPv);
       const head = document.createElement('div'); head.className = 'ag-head';
       const h = document.createElement('h3'); h.className = 'ag-title'; h.textContent = ctText('ctAgenda', 'Agenda');
       head.appendChild(h);
