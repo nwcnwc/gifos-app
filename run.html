@@ -23506,7 +23506,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!p) return out;
       const pushStream = (s) => { try { if (s && s.getAudioTracks) for (const t of s.getAudioTracks()) if (t) out.push(t); } catch (e) {} };
       try { if (p.pc && p.pc.getReceivers) for (const r of p.pc.getReceivers()) if (r.track && r.track.kind === 'audio') out.push(r.track); } catch (e) {}
-      if (p.video) pushStream(p.video.srcObject);
+      // The tile can show a stream a FRIEND carries for this person (claimRelayStreams): that stream rides the friend's connection,
+      // not this person's. A retry of the dead direct connection to them (every few seconds across a cut) retired the carried
+      // voice for good, and every fold refused it from then on: the row's product went out without that person's voice.
+      let carried = null; try { carried = relayVia.get(p.id) || null; } catch (e) {}
+      if (p.video && !(carried && carried.stream && carried.stream === p.video.srcObject)) pushStream(p.video.srcObject);
       for (const s of p.incoming || []) pushStream(s);
       return out;
     }
