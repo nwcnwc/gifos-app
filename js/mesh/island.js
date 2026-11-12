@@ -18,6 +18,10 @@
   const K = C_.consts, E = C_.enums;
   const { ckey, ckPc, unckey, ownedLinks, up, down, C, MAXLINKS } = topo;
   const LS_NONE = E.LS_NONE, LS_CLOSED = E.LS_CLOSED;
+  // the sim's #define L8_50_OFF / L8_50_3_OFF in mesh.cpp (build-time switches): MESH_<name>=1 under node, read once at load; a page always runs the law
+  const envOn = (n) => (isNode && typeof process !== 'undefined' && process.env && process.env[n] === '1') ? 1 : 0;
+  const L8_50_OFF = envOn('MESH_L8_50_OFF'), L8_50_3_OFF = envOn('MESH_L8_50_3_OFF');
+  const L8_52_OFF = envOn('MESH_L8_52_OFF'), L8_51_OFF = envOn('MESH_L8_51_OFF');   // L8.52 (the older room stays), L8.51 (an arbiter does not settle a contest between two rooms)
   const newMsg = (t) => msg.newMsg(t);
 
   Seat.unit('mesh_island.inc', {
@@ -75,7 +79,8 @@
     // C++: mesh_island.inc:Seat::islandFound
     islandFound() {
       this.trace('ISLAND', this.id, null, 'asked=%zu since=%d rounds=%d reach=%d', this.lastGreeters.length, this.islandAskAt, this.islandAskN + 1, typeof this.f.fabricReachSeated === 'function' ? this.f.fabricReachSeated(this.id) : -1);   // reach: the oracle's count (netmatrix bar), -1 without groups
-      this.islandAskAt = -1; this.islandAskN = 0; this.islandAsked.clear(); this.islandLast = false; this.genKey = this.w.lv.URL_KEY ? this.w.lv.URL_KEY : this.myKey; /* a founder with no link key mints its own (C++: islandFound) */ const e = []; this.take({ pc: 0, r: 0, i: 0 }, -1, e); this.islandFounder = true; this.lineAdopt(this.id, 'found'); this.lineFork = true;
+      this.l850Seated = false;
+      this.islandAskAt = -1; this.islandAskN = 0; this.islandAsked.clear(); this.islandLast = false; this.genKey = this.w.lv.URL_KEY ? this.w.lv.URL_KEY : this.myKey; /* a founder with no link key mints its own (C++: islandFound) */ const e = []; if (!L8_52_OFF) this.lineAt = this.TICK; /* L8.52.3: before take(): my registration at the door carries my epoch */ this.take({ pc: 0, r: 0, i: 0 }, -1, e); this.islandFounder = true; this.lineAdopt(this.id, this.TICK, 'found'); this.lineFork = true;
     },
 
     // C++: mesh_island.inc:Seat::l3117Stray
@@ -192,12 +197,12 @@
     },
 
     // C++: mesh_island.inc:Seat::l853Stays   [true: this HOME or chair names a ring that stays, so a mover takes it even from a seat that left with it]
-    l853Stays(m) { return m.c7Min >= 0 && this.l851Up >= 0 && this.TICK - this.l851At < K.RELAY_TTL && m.c7Min < this.l851Up; },
+    l853Stays(m) { return m.c7Min >= 0 && this.l851Up >= 0 && this.TICK - this.l851At < K.RELAY_TTL && this.ringOlder(m.c7Min, m.lineAt, this.l851Up, this.l851Ep); },
 
     // C++: mesh_island.inc:Seat::ringMin
     ringMin() {
       let mine = this.id; for (const [k, v] of this.occ) if (v >= 0 && ckPc(k) === 0 && v < mine) mine = v;
-      if (this.t14Ring >= 0 && this.t14Ring < mine && this.hasCoord && this.coord.pc !== 0 && this.TICK - this.t14RingAt < K.RELAY_TTL) mine = this.t14Ring;   /* TURN.14.6: a deep seat names the ring its placer named */
+      if (this.t14Ring >= 0 && (this.t14Ring < mine || !L8_52_OFF) && this.hasCoord && this.coord.pc !== 0 && this.TICK - this.t14RingAt < K.RELAY_TTL) mine = this.t14Ring;   /* TURN.14.6: a deep seat names the ring its placer named */
       return mine;
     },
 
@@ -248,6 +253,39 @@
     // C++: mesh_island.inc:Seat::ringAlone   (L8.5.2: my view holds no Section-1 seat but me)
     ringAlone() { if (!this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return false; for (const [k, v] of this.occ) if (v >= 0 && v !== this.id && ckPc(k) === 0) return false; return true; },
 
+    // C++: mesh_island.inc:Seat::l850Lone
+    // L8.50.3: on the cell I founded (or the room's first page), and I have admitted nobody since
+    l850Lone() { return (this.islandFounder || !L8_50_3_OFF) && this.line === this.id && !this.l850Seated && this.hasCoord && this.state === 3 && ckey(this.coord) === 0 && !this.moving; },
+
+    // C++: mesh_island.inc:Seat::l850
+    // L8.50: a founder of one and a room (.1 the room's seat, .2 the founder)
+    l850(m) {
+      if (L8_50_OFF || !this.f.fabricDoors() || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return false;
+      if (m.from !== m.id || !this.linkIs(m, m.id) || m.line < 0 || this.line < 0 || m.line === this.line) return false;
+      if (m.c7One) {   // L8.50.1
+        if (this.l850Lone()) return false;   // two founders of one: T1
+        if (!L8_52_OFF && (m.c7Link || (m.line !== m.id && this.lineAt >= 0 && m.lineAt >= 0 && m.lineAt < this.lineAt))) return false;   // L8.52.5 (mesh_ring.inc): "alone" said by the end of a TURN link for its side is no founder of one
+        let mate = false; for (const [k, v] of this.occ) if (v >= 0 && v !== this.id && v !== m.id && ckPc(k) === 0 && this.firstHandLive(k)) { mate = true; break; }
+        if (!mate) return false;
+        this.trace('L8.50-ROOM', this.id, this.coord, 'to=%d line=%d', m.id, m.line); const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = this.id; h.c7Min = this.ringName(); h.c7Held = true; h.c7One = false; this.emit(m.id, h);   // one answer per HELLO received
+        return true;
+      }
+      const lone = this.l850Lone(), left = !L8_52_OFF && !lone && this.ringAlone() && !this.moving && this.lineAt >= 0 && m.lineAt >= 0 && m.lineAt < this.lineAt;   // L8.52.4 (mesh_ring.inc): the last seat of the younger room, alone on its ring, follows on the older room's one word
+      if (m.c7Min < 0 || !(lone || left)) return false;   // L8.50.2
+      this.trace(lone ? 'L8.50-LONE' : 'L8.52-LEFT', this.id, this.coord, 'via=%d ring=%d', m.id, m.c7Min);
+      this.c7Yield(this.ringName(), 'L8.50-lone'); this.c7Old.clear(); this.l851Up = -1; return true;
+    },
+
+    // C++: mesh_island.inc:Seat::l51Rooms
+    // L8.51: a contest between two rooms is the merge's (0: not one; 1: the claimant is of the other room; 2: the holder is)
+    l51Rooms(claimant, holder) {
+      if (L8_51_OFF || this.line < 0 || claimant < 0 || holder < 0) return 0;
+      const lc = this.lineOf(claimant), lh = this.lineOf(holder); if (lc < 0 || lh < 0 || lc === lh) return 0;
+      const other = (lh === this.line && lc !== this.line) ? claimant : (lc === this.line && lh !== this.line) ? holder : -1; if (other < 0) return 0;
+      if (this.hasCoord && this.state === 3 && this.l828RingOf(other) === this.ringName()) return 0;
+      return other === claimant ? 1 : 2;
+    },
+
     // C++: mesh_island.inc:Seat::islandC7
     islandC7(m) {
       if (!roomTerm(this, 1) || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return false;
@@ -260,7 +298,9 @@
       if (!fh && !((ss !== undefined && ss >= 2) || (xr !== undefined && this.TICK - xr <= 2 * K.RELAY_TTL))) return false;
       const mine = this.ringName(), theirs = m.c7Min; if (theirs < 0 || theirs === mine) return false;
       const gated = this.TICK - this.c7At < K.RELAY_TTL;
-      if (mine > theirs) {
+      let tAt = m.lineAt; if (!L8_52_OFF) { const ve = this.c7VouchEp.get(theirs); if (ve !== undefined && this.TICK - ve[1] <= K.RELAY_TTL) tAt = (tAt < 0 || ve[0] < 0) ? -1 : Math.max(tAt, ve[0]); }   // L8.52.1: of two vouchers' epochs for one name the YOUNGER counts
+      if (this.ringOlder(theirs, tAt, mine, this.lineAt)) {
+        if (!L8_52_OFF) { this.c7VouchEp.set(theirs, [tAt, this.TICK]); if (this.c7VouchEp.size > 16) eraseFirst(this.c7VouchEp); }
         if (!m.c7Held) { this.trace('L8.45-DROP', this.id, this.coord, 'from=%d theirs=%d', m.id, theirs); return false; }
         const v = ins(this.c7Vouch, theirs, () => new Map()); v.set(m.id, this.TICK);
         for (const [wk, wv] of v) { if (this.TICK - wv > K.RELAY_TTL) v.delete(wk); }
@@ -272,7 +312,7 @@
           for (const wk of v.keys()) { this.l842Join.add(wk); const l = this.lineOf(wk); if (l >= 0 && l !== this.line) ls.add(l); }
           for (const x of this.occ.values()) { if (x < 0 || x === this.id) continue; const l = this.lineOf(x); if ((l >= 0 && ls.has(l)) || this.l828RingOf(x) === theirs) this.l842Join.add(x); }
         }
-        this.trace('C7', this.id, this.coord, 'mine=%d theirs=%d', mine, theirs); this.c7Yield(mine, 'C7-merge', theirs); this.l842Join.clear(); return true;
+        this.trace('C7', this.id, this.coord, 'mine=%d theirs=%d', mine, theirs); this.c7TowardEp = tAt; this.c7Yield(mine, 'C7-merge', theirs); this.c7TowardEp = -1; this.l842Join.clear(); return true;
       }
       if (gated) return false;
       const t = this.c7Told.get(m.id);
@@ -281,16 +321,16 @@
     },
 
     // C++: mesh_island.inc:Seat::l851Note   [L8.5.1: a seat that left its cell to a lower ring enters a ring that stays]
-    l851Note(up) {
+    l851Note(up, ep) {
       if (!roomTerm(this, 1) || up < 0) return;
-      for (const [name, at] of this.l828Ring.values()) if (name >= 0 && name + 1 < up && this.TICK - at <= K.RELAY_TTL) up = name + 1;
-      for (const [r, v] of this.c7Vouch) { if (r < 0 || r + 1 >= up) continue; for (const at of v.values()) if (this.TICK - at <= K.RELAY_TTL) { up = r + 1; break; } }
-      this.l851Up = up; this.l851At = this.TICK;
+      for (const [x, [name, at]] of this.l828Ring) if (name >= 0 && this.ringOlder(name + 1, this.lineAtOf(x), up, ep) && this.TICK - at <= K.RELAY_TTL) { up = name + 1; ep = this.lineAtOf(x); }   // L8.52: lower = older
+      for (const [r, v] of this.c7Vouch) { if (r < 0) continue; let ve = -1; { const x = this.c7VouchEp.get(r); if (x !== undefined) ve = x[0]; } if (!this.ringOlder(r + 1, ve, up, ep)) continue; for (const at of v.values()) if (this.TICK - at <= K.RELAY_TTL) { up = r + 1; ep = ve; break; } }
+      this.l851Up = up; this.l851Ep = ep; this.l851At = this.TICK;
     },
 
     // C++: mesh_island.inc:Seat::l851Moves   [true: this HOME or chair is from a ring that moves too]
     l851Moves(m) {
-      if (!roomTerm(this, 1) || this.l851Up < 0 || this.TICK - this.l851At >= K.RELAY_TTL || m.c7Min < 0 || m.c7Min < this.l851Up) return false;
+      if (!roomTerm(this, 1) || this.l851Up < 0 || this.TICK - this.l851At >= K.RELAY_TTL || m.c7Min < 0 || this.ringOlder(m.c7Min, m.lineAt, this.l851Up, this.l851Ep)) return false;
       this.trace('L8.5.1-REFUSE', this.id, null, 'from=%d owner=%d ring=%d up=%d', m.from, m.owner, m.c7Min, this.l851Up); return true;
     },
 
@@ -316,7 +356,7 @@
       tell(this.ownerId());
       if (roomTerm(this, 1)) for (const x of this.l842Join) tell(x);   // L8.5.6: the ring I join hears my goodbye too
       this.c7Old.clear(); for (const v of this.occ.values()) if (v >= 0 && v !== this.id && !this.l842Join.has(v)) this.c7Old.add(v); this.c7At = this.TICK;
-      this.l851Note(toward >= 0 ? toward + 1 : rmin);   // L8.5.1
+      if (toward >= 0) this.l851Note(toward + 1, this.c7TowardEp); else this.l851Note(rmin, this.lineAt);   // L8.5.1
       if (roomTerm(this, 1)) this.l834Y = rmin;
       this.requeue(why); this.l834Y = -1;
     },

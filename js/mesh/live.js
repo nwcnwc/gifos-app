@@ -98,6 +98,9 @@
 
     // C++: mesh_seat.inc:Seat::d6cBeat
     d6cBeat() { return this.lkAnyAt >= this.seatedAt ? this.lkAnyAt : this.lkCarried; },
+    // A pc of mine carries me up: my uplink, my anchor's own link, or my E2 uplink.
+    // C++: mesh_seat.inc:Seat::l1361Carried
+    l1361Carried() { if (this.l14Up >= 0 && this.f.fabricLinkCarries(this.id, this.l14Up)) return true; const a = this.l13Anchor(); if (a) { const x = this.occGet(ckey(a)); if (x >= 0 && x !== this.id && this.f.fabricLinkCarries(this.id, x)) return true; } return this.l2E2Up(); },
     // C++: mesh_seat.inc:Seat::orphanSeat
     orphanSeat() {
       if (!this.hasCoord || this.moving || this.state !== 3 || this.d6cBeat() < 0) return false;
@@ -211,7 +214,8 @@
         // L8.36 A HOLDER LAST HEARD BEFORE THE CLAIMANT ARRIVED IS NO REASON TO YIELD IT.
         if (held && roomTerm(this, 1) && m.arr >= 0 && this.l836Merging()) { const lvv = this.live.get(k0); if (lvv === undefined || lvv < TICK - m.arr) held = false; }
         if (held && roomTerm(this, 1) && m.c7Min >= 0 && m.c7Min !== this.ringName()) { const xs = this.xrOk.get(m.id); if (xs !== undefined && TICK - xs <= 2 * K.RELAY_TTL) l810 = true; }   // L8.10
-        if (!l810 && held && this.f.fabricDoors() && ckPc(k0) === 0 && p0 >= 0 && p0 !== m.id) {
+        let r51 = 0; if (!l810 && held && this.f.fabricDoors() && ckPc(k0) === 0 && p0 >= 0 && p0 !== m.id) { r51 = this.l51Rooms(m.id, p0); if (r51 === 1) { const c9 = unck(k0); this.trace('L8.51-HOLD', id, c9, 'mine=%d other=%d phone', p0, m.id); return; } if (r51 === 2) { const c9 = unck(k0); this.trace('L8.51-HOLD', id, c9, 'mine=%d other=%d phone', m.id, p0); held = false; } }   // L8.51 (mesh_island.inc): a contest between two rooms is the merge's
+        if (!r51 && !l810 && held && this.f.fabricDoors() && ckPc(k0) === 0 && p0 >= 0 && p0 !== m.id) {
           const h1 = this.l165Have(k0, m.id), h2 = this.l165Have(k0, p0);
           if (h1 && h2) {
             const f1 = h1.from, a1 = h1.at, l1 = h1.loc, f2 = h2.from, a2 = h2.at, l2 = h2.loc;

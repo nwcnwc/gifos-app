@@ -348,6 +348,7 @@
     ISLAND_MODE: 0,   // C++: mesh.cpp:ISLAND_MODE
     ISLAND_PICK: 1,   // C++: mesh.cpp:ISLAND_PICK
     URL_KEY: 0,   // C++: mesh.cpp:URL_KEY
+    LINKKEY_ALL: false,   // C++: mesh.cpp:LINKKEY_ALL
     relayGenesisKey: 0,   // C++: mesh.cpp:relayGenesisKey
     L44_STAY: 0,   // C++: mesh.cpp:L44_STAY
     L44_LIVEW: 0,   // C++: mesh.cpp:L44_LIVEW
@@ -464,6 +465,7 @@
     GA_RB: 0,   // C++: mesh_gapa.inc:GA_RB
     GA_CONF_VOTE: 0,   // C++: mesh_gapa.inc:GA_CONF_VOTE
     GA_CONF_WIN: 0,   // C++: mesh_gapa.inc:GA_CONF_WIN
+    GA_LONE_N: 0,   // C++: mesh_gapa.inc:GA_LONE_N
     EMIT_NEIGHBOR: 0,   // C++: mesh.cpp:EMIT_NEIGHBOR
     EMIT_TELEPORT: 0,   // C++: mesh.cpp:EMIT_TELEPORT
     EMIT_BOOTSTRAP: 0,   // C++: mesh.cpp:EMIT_BOOTSTRAP
@@ -480,6 +482,8 @@
     nextId: 0,   // C++: mesh.cpp:nextId
     joinWindow: 0,   // C++: mesh.cpp:joinWindow
     MAXP: 0,   // C++: mesh.cpp:MAXP
+    IDPERM: false,   // C++: mesh_idperm.inc:IDPERM
+    IDPOOL_AT: 0,   // C++: mesh_idperm.inc:IDPOOL_AT
     L18_SKIPDIRECT: 0,   // C++: mesh.cpp:L18_SKIPDIRECT
     L18_SKIPFRIEND: 0,   // C++: mesh.cpp:L18_SKIPFRIEND
     L18_SKIPMASS: 0,   // C++: mesh.cpp:L18_SKIPMASS

@@ -735,6 +735,34 @@
     // My anchor cell: my owner cell when I am a head, my head cell when I am a mate; the Coord or null.
     // C++: mesh_heal.inc:Seat::l13Anchor
     l13Anchor() { if (!this.hasCoord || this.coord.pc === 0) return null; if (this.coord.i === 0) return this.ownerCoord(); return cell(this.coord.pc, this.coord.r, 0); },
+    // Two gone cells on my own chain (my anchor and the cell above it): I run the heal rules of a mass leave.
+    // C++: mesh_heal.inc:Seat::l1344Chain
+    l1344Chain() {
+      if (!this.hasCoord || this.state !== 3) return false;
+      const H = this.l13Anchor(); if (!H) return false; const w = l13Witness(H); if (!w) return false;
+      const gone = (k) => { if (this.firstHandLive(k)) return false; const b = this.byeAt.get(k); if (b !== undefined && this.TICK - b <= K.LEASE_T) return true; return this.ownDeadCk === k && this.TICK - this.ownDeadAt <= K.LEASE_T && this.ownVouchAt < this.ownDeadAt; };
+      return gone(ckey(H)) && gone(ckey(w));
+    },
+    // ...while a pc of my own carries me up: a seat nothing carries keeps the plain drain, the short way back to its media.
+    // C++: mesh_heal.inc:Seat::l1344Act
+    l1344Act() {
+      const ch = this.l1344Chain(); const v = ch && this.l1361Carried();
+      if (v !== this.l1344Said) { this.l1344Said = v; if (v) { const H = this.l13Anchor(); this.trace('L13.44', this.id, this.coord, 'anchor=%s up=%d', FREE.coordStr(H), this.l14Up); } else this.trace('L13.44-END', this.id, this.hasCoord ? this.coord : null, 'chain=%d', ch ? 1 : 0); }
+      return v;
+    },
+    // The lowest live seat of a row whose head is gone leads its drain, and its mates follow it.
+    // C++: mesh_heal.inc:Seat::l1641Heir
+    l1641Heir() {
+      if (!this.f.l164Of(this) || !this.hasCoord || this.state !== 3 || this.coord.pc === 0 || this.coord.i === 0) return false;
+      for (let j = 0; j < this.coord.i; j++) { const k = ckey(cell(this.coord.pc, this.coord.r, j)); if (this.occGet(k) >= 0 || this.softSitting(k)) return false; }
+      return true;
+    },
+    // C++: mesh_heal.inc:Seat::l1641From
+    l1641From(x) {
+      if (!this.f.l164Of(this) || !this.hasCoord || this.state !== 3 || this.coord.pc === 0 || this.coord.i === 0 || x < 0 || x === this.id) return false;
+      for (let j = 0; j < this.coord.i; j++) { const k = ckey(cell(this.coord.pc, this.coord.r, j)); const y = this.occGet(k); if (y === x) return j > 0; if (y >= 0 || this.softSitting(k)) return false; }
+      return false;
+    },
     // C++: mesh_heal.inc:Seat::l13Meet
     l13Meet(force = false) {
       if (!this.hasCoord || this.state !== 3 || this.moving || this.coord.pc === 0) return;
@@ -852,7 +880,8 @@
         else if (this.l13('L13.12') && this.coord.pc !== 0 && TICK - this.seatedAt >= 16 && this.byeAt.has(k) && !this.sitting.has(k) && !this.softSitting(k) && !this.firstHandLive(k)) { const p = this.l9PullCell.get(k); if (p === undefined || TICK - p >= K.CONFIRM_TTL) a.byes.push(k); }
       }
       if (this.coord.pc === 0) for (let r = 0; r < C; r++) { const k = ckey(cell(0, r, this.coord.i)); if (k === ok || r === this.coord.r) continue; const x = this.occGet(k); if (x >= 0 && !FREE.l35HandOn(this, k, x)) continue; if (x >= 0) a.nbrs.push({ k, v: x }); else if (byeOf(k)) a.byes.push(k); }
-      { const o = this.coord.pc !== 0 ? this.ownerCoord() : null; if (o) { const k = ckey(o); const x = this.occGet(k); if (x >= 0 && x !== id) a.nbrs.push({ k, v: x }); else if (byeOf(k)) a.byes.push(k); } }
+      { const o = this.coord.pc !== 0 ? this.ownerCoord() : null; if (o) { const k = ckey(o); const x = this.occGet(k); const rep = this.ownDeadCk === k && TICK - this.ownDeadAt <= K.LEASE_T && this.ownVouchAt < this.ownDeadAt && !this.firstHandLive(k) && (x < 0 || x === this.ownDeadId);   /* my row's owner is gone by my backup owner's report: tell the caller */
+          if (rep) a.byes.push(k); else if (x >= 0 && x !== id) a.nbrs.push({ k, v: x }); else if (byeOf(k)) a.byes.push(k); } }
       {
         const d = down(this.coord); const o = FREE.ownerCoordOf(H);
         if ((o && ckey(o) === ckey(this.coord)) || ok === ckey(d)) {
@@ -889,7 +918,7 @@
       const ak = m.oCk; this.callBook.answered(m.id);
       this.noChan.delete(m.id);
       const massHeard = m.mass;
-      const act = this.l13Mass();
+      const act = this.l13Mass() || this.l1344Act();
       {
         const ac = unck(m.oCk); let wc; let witAns = (ac.pc === 0 && this.rmWitCell(ac, m.ck)) || (ac.pc !== 0 && (wc = l13Witness(ac)) !== null && ckey(wc) === m.ck) || (lvl + 1 < nc && ckey(chain[lvl + 1]) === m.ck);
         if (witAns && m.owner >= 0 && m.owner !== id && !this.firstHandLive(m.oCk) && lvl === 0) witAns = false;
@@ -914,7 +943,7 @@
             }
           }
         }
-        if (this.l13Mass()) this.l13Meet(true); return;
+        if (this.l13Mass() || this.l1344Act()) this.l13Meet(true); return;
       }
       if (m.ck === ak) { if (m.owner !== m.id) return; const cur = this.occGet(ak); if (cur >= 0 && cur !== m.id && this.firstHandLive(ak)) return; this.setOcc(ak, m.id); this.liveMark(ak); this.noteS1(ak); news(); if (ak === ok) { this.f.fabricDial(id, m.id); this.l13AnchorNewAt = TICK | 0; } const ac = unck(ak); this.trace('L13-SITS', id, ac, 'who=%d', m.id); return; }
       { const ring = l13Ring(unck(m.oCk)); let inn = false; for (const r of ring) if (ckey(r) === m.ck) inn = true; if (!inn) return; }
@@ -1055,12 +1084,23 @@
       const open = this.f.fabricLinkState(this.id, x) === LS_OPEN;
       if (x !== this.l14PcPeer) { this.l14PcPeer = x; this.l14PcOpen = open; this.l14PcDown = -1; } else if (open) { this.l14PcOpen = true; this.l14PcDown = -1; } else if (this.l14PcOpen) { this.l14PcOpen = false; this.l14PcDown = this.TICK; }
     },
+    // An uplink is a seat above me: one I now name in my own row, or in the tree under my row, is let go.
+    // C++: mesh_heal.inc:Seat::l14Dialling
+    l14Dialling() { return this.l14Up >= 0 && this.f.fabricLinkState(this.id, this.l14Up) === LS_DIALING && this.TICK - this.l14UpAt < 48; },
+    // C++: mesh_heal.inc:Seat::l1412Below
+    l1412Below(x) {
+      if (x < 0 || !this.hasCoord || this.coord.pc === 0) return false;
+      let k = 0; for (const [ek, ev] of this.occ) if (ev === x) { k = ek; break; } if (!k) return false;
+      let c = unck(k); for (let g = 0; g < 32 && c.pc !== 0; g++) { if (c.pc === this.coord.pc && c.r === this.coord.r) return true; const o = FREE.ownerCoordOf(c); if (!o) break; c = o; }
+      return false;
+    },
     l14Uplink() {
       this.l14PcWatch();
+      if (this.l14Up >= 0 && this.l1412Below(this.l14Up)) { this.trace('L14.12', this.id, this.coord, 'was=%d', this.l14Up); const was = this.l14Up; this.l14Up = -1; if (this.f.fabricLinkState(this.id, was) === LS_OPEN) { const u = newMsg('UNNEEDED'); u.id = this.id; u.tag = 5; this.emit(was, u); } }
       const id = this.id; const TICK = this.TICK;
       const anc = this.l14Branch(); const cut = anc !== null;
       if (!cut) { this.l14UpFirst = -1; if (this.l14Up >= 0 && (TICK - this.l14UpAt >= K.LEASE_T || this.f.fabricLinkState(id, this.l14Up) === LS_CLOSED)) { this.trace('L14-DOWN', id, this.coord, 'was=%d', this.l14Up); const was = this.l14Up; this.l14Up = -1; this.l14Failed.clear(); this.l14Refused.clear(); if (this.f.fabricLinkState(id, was) === LS_OPEN) { const u = newMsg('UNNEEDED'); u.id = id; u.tag = 5; this.emit(was, u); } } return; }   // L14.9: the uplink I let go is asked closed on the spot, marked as a released uplink (tag 5): the head served it on my word alone and would otherwise hold the pc through L22's settle and ask, ten ticks past the lease
-      if (this.l14Up >= 0) { const ls = this.f.fabricLinkState(id, this.l14Up); if (ls === LS_OPEN) return; if (ls === LS_DIALING && TICK - this.l14UpAt < 48) return; this.l14Failed.set(this.l14Up, TICK | 0); this.l14Refused.delete(this.l14Up); this.trace('L14-FAIL', id, anc, 'to=%d ls=%d', this.l14Up, ls); this.l14Up = -1; }
+      if (this.l14Up >= 0) { const ls = this.f.fabricLinkState(id, this.l14Up); if (ls === LS_OPEN) return; if (this.l14Dialling()) return; this.l14Failed.set(this.l14Up, TICK | 0); this.l14Refused.delete(this.l14Up); this.trace('L14-FAIL', id, anc, 'to=%d ls=%d', this.l14Up, ls); this.l14Up = -1; }
       let any = this.l13Mass(); if (!any) { for (const b of this.byeIds.values()) if (TICK - b <= K.LEASE_T) { any = true; break; } for (const t of this.l13DownAt) if (TICK - t <= K.LEASE_T) { any = true; break; } if (TICK - this.lastAck >= 40 || this.l14PcCut()) any = true; }
       let ancBye = -1; { const ab = this.byeAt.get(ckey(anc)); if (ab !== undefined && TICK - ab <= K.LEASE_T && this.occGet(ckey(anc)) < 0) { any = true; ancBye = ab; } }
       if (!any || TICK - this.l14UpAt < (this.l14Up < 0 && this.l14Refused.size > 0 ? 2 : 8)) return;

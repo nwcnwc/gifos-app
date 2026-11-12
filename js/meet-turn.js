@@ -307,13 +307,15 @@
     return { step: i, maxBitrate: Math.round(i === 0 ? full : Math.min(v, THROTTLE_STEPS[Math.max(0, i - 1)].need * min)), scale: st.scale, fps: st.fps };
   }
   // throttleNext(st, look, now, tickMs): one look of a vouched link end. st = { step, busy, okSince, bad, rttBase,
-  // pausedAt } (kept by the caller); look = { bps, loss, rtt, limited } (loss: the far end's fraction lost, 0..1; rtt
-  // seconds; limited: the browser says my video's quality is held back by bandwidth). The estimate alone cannot tell a
-  // throttled server from a pc that sends little (an app-limited estimate sits at what is sent: measured 150-300 kbit
-  // on links that reached 1.9-3.3 Mbit a minute later), so it counts only while the encoder is bandwidth-LIMITED (then
-  // the estimate is what the path gives). Congestion: loss of TURN_THROTTLE_LOSS or more (the round trip
-  // is not used: a pool move changes it on a calm link), or a limited encoder whose estimate leaves room only for
-  // a lower step. Two congested looks in a row (one with heavy loss) drop video at least one step, as far as
+  // pausedAt } (kept by the caller); look = { bps, loss, rtt, limited, cap } (loss: the far end's fraction lost, 0..1;
+  // rtt seconds; limited: my video already sends most of the estimate; cap: the bitrate cap the current step put on my
+  // video, bits a second). The estimate alone cannot tell a throttled server from a pc that sends little (an
+  // app-limited estimate sits at what is sent: measured 150-300 kbit on links that reached 1.9-3.3 Mbit a minute
+  // later), so it counts only while the video fills it AND the estimate is below the step's own cap: a video that fills
+  // its cap with the estimate above it is held by the step, not by the path, and climbs (measured 2026-11-12: an end
+  // sat at the lowest step for 100+ s on a 2 Mbit path, its encoder held back by that step's own cap). Congestion: loss
+  // of TURN_THROTTLE_LOSS or more (the round trip is not used: a pool move changes it on a calm link), or a video held
+  // by the path whose estimate leaves room only for a lower step. Two congested looks in a row (one with heavy loss) drop video at least one step, as far as
   // throttlePlan says; on the lowest step two congested looks in a row pause it. With no congestion and no limit
   // for THROTTLE_UP_MS it climbs one step; a pause tries the lowest step again after that long.
   const THROTTLE_LOSS = 0.05;
@@ -322,7 +324,10 @@
     const rtt = +look.rtt > 0 ? +look.rtt : 0;
     if (rtt && (!st.rttBase || rtt < st.rttBase)) st.rttBase = rtt;
     const plan = throttlePlan(look.bps, tickMs);
-    const short = !!look.limited && (plan.step < 0 || plan.step > st.step);   // the path gives less than this step needs
+    const K = meshConsts().consts, base = K.TURN_BASE_BYTES * (1000 / (tickMs || 500)) * 8;
+    const capHeld = +look.cap > 0 && (+look.bps || 0) - base >= +look.cap;   // the estimate leaves video its whole cap
+    const held = !!look.limited && !capHeld;   // the path, not the step's own cap, holds my video back
+    const short = held && (plan.step < 0 || plan.step > st.step);   // the path gives less than this step needs
     // (the round trip is kept for the record only: a pool move or a renewal changes the relayed path's round trip
     // under a link that is not congested, measured as false pauses right after the move)
     const congested = (+look.loss || 0) >= THROTTLE_LOSS || short;
@@ -337,7 +342,7 @@
     }
     st.bad = 0;
     if (st.busy) { if (now - (st.pausedAt || 0) >= THROTTLE_UP_MS) { st.busy = false; st.step = last; st.okSince = now; } return st; }
-    if (look.limited) { st.okSince = 0; return st; }   // held back by bandwidth: no climb
+    if (held) { st.okSince = 0; return st; }   // held back by the path: no climb
     if (st.step > 0) { if (!st.okSince) st.okSince = now; else if (now - st.okSince >= THROTTLE_UP_MS) { st.step--; st.okSince = now; } }
     return st;
   }
@@ -370,6 +375,7 @@
     const K = meshConsts().consts, T = meshTurn();
     const tick = io.tickMs || 500;
     const WAIT_MS = K.TURN_WAIT * tick;                        // TURN.4
+    const MERGE_MS = K.RELAY_TTL * tick;                       // TURN.15.2: the span of one merge
     const RETRY_MS = K.TURN_RETRY * tick;                      // TURN.10
     const RESEND_MS = K.TURN_DIAL * tick;                      // a handshake frame the relay lost is sent again
     const DIAL_BUDGET_MS = (K.TURN_DIAL + K.TURN_RETRY) * tick; // an ask that never came up is closed (TURN.8 dialfail)
@@ -488,7 +494,7 @@
       const now = io.now(); L.capAt = now; L.cap = bps;
       if (!L.ts) L.ts = { step: 0, busy: false };
       const was = L.ts.busy ? -1 : L.ts.step;
-      throttleNext(L.ts, { bps, loss, rtt, limited: !!limited }, now, tick);
+      throttleNext(L.ts, { bps, loss, rtt, limited: !!limited, cap: L.thr && L.thr.step >= 0 ? L.thr.maxBitrate : 0 }, now, tick);
       const st = L.ts.busy ? -1 : L.ts.step;
       if (st !== was || !L.thr) setThrottle(L, st < 0 ? { step: -1 } : stepOf(st, bps, tick));
     }
@@ -611,17 +617,31 @@
           if (r === 'friend') { fr = true; continue; }
           F.push(g);
         }
+        // TURN.15.4: no second link between two parts. A link whose far end is me or sits in my view already joins
+        // its opener's part to mine: I never ask its opener, nor anyone its opener reaches directly (its side).
+        if (F.length) {
+          const theirs = new Set();
+          for (const L of links.values()) if (!L.opener) theirs.add(L.far);
+          for (const f of io.facts() || []) if (f && !f.gone && (f.b === io.me() || view.has(f.b))) { theirs.add(f.a); for (const x of f.va || []) theirs.add(x); }
+          if (theirs.size) for (let i = F.length - 1; i >= 0; i--) if (theirs.has(F[i])) F.splice(i, 1);
+        }
         head.F = F.map(short); head.n = (io.greeters() || []).length;
         if (direct || fr) { head.skip = direct ? 'direct' : 'friend'; head.since = -1; }
         else if (!F.length) head.since = -1;
         else {
           head.skip = '';
           if (head.since < 0) head.since = now;
+          // TURN.15.2: a link up for the span of one merge whose two ends both sit in my part joins nothing new: it is
+          // not this part's link out, and a third part of the meeting may still need one.
+          const mine = (x) => x === io.me() || view.has(x);
+          const inside = (a, b, upAt) => upAt > 0 && now - upAt >= MERGE_MS && mine(a) && mine(b);
           let has = false;
-          for (const L of links.values()) if (L.opener || view.has(L.far)) { has = true; break; }
-          for (const f of io.facts() || []) if (f && !f.gone && f.up && (view.has(f.a) || f.a === io.me())) { has = true; break; }
+          for (const L of links.values()) if ((L.opener || view.has(L.far)) && !inside(io.me(), L.far, L.state === 'up' ? L.upAt : -1)) { has = true; break; }
+          for (const f of io.facts() || []) if (f && !f.gone && f.up && mine(f.a) && !inside(f.a, f.b, f.s || -1)) { has = true; break; }
           if (!has && now - head.since >= WAIT_MS && now >= head.retryAt) {
-            let myMin = io.nid(io.me()); for (const x of s.view) { const n = io.nid(x); if (n >= 0 && n < myMin) myMin = n; }
+            // TURN.15.1: which part is "the lower" must read the same from both sides, so a part's place in the order is
+            // its lowest greeter on the door's list (the one thing both heads read), or me: never the lowest id of my view.
+            let myMin = io.nid(io.me()); for (const g of io.greeters() || []) { if (!g || g === io.me() || !view.has(g)) continue; const n = io.nid(g); if (n >= 0 && n < myMin) myMin = n; }
             const byNid = new Map(); for (const g of F) byNid.set(io.nid(g), g);
             const pick = T.turnPick(Array.from(byNid.keys()), myMin);
             if (pick >= 0) {
