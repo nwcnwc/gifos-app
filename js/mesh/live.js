@@ -97,6 +97,9 @@
 
     // C++: mesh_seat.inc:Seat::d6cBeat
     d6cBeat() { return this.lkAnyAt >= this.seatedAt ? this.lkAnyAt : this.lkCarried; },
+    // A pc of mine carries me up: my uplink, my anchor's own link, or my E2 uplink.
+    // C++: mesh_seat.inc:Seat::l1361Carried
+    l1361Carried() { if (this.l14Up >= 0 && this.f.fabricLinkCarries(this.id, this.l14Up)) return true; const a = this.l13Anchor(); if (a) { const x = this.occGet(ckey(a)); if (x >= 0 && x !== this.id && this.f.fabricLinkCarries(this.id, x)) return true; } return this.l2E2Up(); },
     // C++: mesh_seat.inc:Seat::orphanSeat
     orphanSeat() {
       if (!this.hasCoord || this.moving || this.state !== 3 || this.d6cBeat() < 0) return false;
