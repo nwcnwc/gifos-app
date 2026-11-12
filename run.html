@@ -2056,6 +2056,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const go = document.getElementById('leave-go');
         const note = document.getElementById('leave-ask-note');
         const end = mode === 'end';
+        // The "left" dialog on screen keeps its words: a door that turned this person away ("This room is full on
+        // the free plan") wrote them, and this paint runs again on every admin-state change.
+        const lm = document.getElementById('left-modal');
+        const leftShown = !!(lm && lm.style.display === 'flex');
+        const sayLeft = (id, text) => { if (!leftShown) say(id, text); };
         if (leave) {
           if (end) {
             leave.title = 'End the broadcast. Everyone watching sees it close after you leave.';
@@ -2077,16 +2082,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }
         if (end) {
           say('leave-ask-title', 'End the broadcast?');
-          say('left-title', 'You ended the broadcast');
-          say('left-note', 'Everyone watching sees a five-minute countdown, and then the room closes. Rejoin to keep it open.');
+          sayLeft('left-title', 'You ended the broadcast');
+          sayLeft('left-note', 'Everyone watching sees a five-minute countdown, and then the room closes. Rejoin to keep it open.');
         } else if (mode === 'watch') {
           say('leave-ask-title', 'Leave the broadcast?');
-          say('left-title', 'You left the broadcast');
-          say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
+          sayLeft('left-title', 'You left the broadcast');
+          sayLeft('left-note', 'Your camera and microphone are off. Rejoin to come back.');
         } else {
           say('leave-ask-title', 'Leave the meeting?');
-          say('left-title', 'You left the meeting');
-          say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
+          sayLeft('left-title', 'You left the meeting');
+          sayLeft('left-note', 'Your camera and microphone are off. Rejoin to come back.');
         }
       };
       if (!BROADCAST) {
@@ -35976,6 +35981,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { if (localStream) localStream.getTracks().forEach((t) => t.stop()); } catch (e) {}
       afterFarewell(() => { for (const pid of Array.from(peers.keys())) { try { dropPeer(pid); } catch (e) {} } if (typeof clearRosterTiles === 'function') clearRosterTiles(); });
       try { releaseAudioContext(); } catch (e) {}
+      try { if (typeof paintBroadcastChrome === 'function') paintBroadcastChrome(); } catch (e) {}   // the plain leave words, before the dialog shows (a door's refusal writes its own after)
       const lm = document.getElementById('left-modal'); if (lm) lm.style.display = 'flex';
       try { updateStatus(); } catch (e) {}
       return flushing;
