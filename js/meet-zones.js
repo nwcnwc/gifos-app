@@ -743,7 +743,10 @@
         const ids = onStage.map((it) => it.id);
         const vertical = box.h > box.w;
         const len = Math.min(vertical ? box.w - 16 : box.h - 16, ids.length * (tile + gap));
-        const strip = vertical ? { x: box.x + 8, y: box.y + 8, w: len, h: tile } : { x: box.x + 8, y: box.y + 8, w: tile, h: len };
+        // Under the content's tab bar (48 px), so no tab hides behind it.
+        const top = box.y + 56;
+        const lenV = Math.min(len, box.h - 64);
+        const strip = vertical ? { x: box.x + 8, y: top, w: len, h: tile } : { x: box.x + 8, y: top, w: tile, h: Math.max(tile, lenV) };
         const sr = faceStrip(ids, tierOf, strip, gap, !vertical);
         for (const r of sr) { r.float = 'stage'; rects.push(r); }
         stageBox = strip;

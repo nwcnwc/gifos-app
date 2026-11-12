@@ -3486,7 +3486,7 @@
      grey and the time over in red. Tokens only. */
   .ctarea { position: absolute; background: var(--c-black); color: var(--c-white); border-radius: var(--r-lg); overflow: hidden; }
   .ctarea[hidden] { display: none; }
-  .ctarea.ct-fixed { z-index: 31; border-radius: 0; }
+  .ctarea.ct-fixed { z-index: 33; border-radius: 0; }
   body.view-focus .ctarea.ct-fixed { z-index: 6; border-radius: var(--r-md); }
   .ct-bar { position: absolute; left: 0; right: 0; top: 0; height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 8px; }
   .ct-bar[hidden] { display: none; }
@@ -3523,14 +3523,14 @@
   /* The app's own pane stays where it is (moving an iframe reloads it): it
      hides while another tab is shown, and keeps running. */
   body.comfy.has-app.ct-app-off:not(.app-full) #apppane { visibility: hidden; pointer-events: none; }
-  body.ct-present.has-app:not(.ct-app-off):not(.app-full) #apppane { z-index: 32; }
+  body.ct-present.has-app:not(.ct-app-off):not(.app-full) #apppane { z-index: 34; }
   /* Presentation view: the area holds the whole screen; the meeting's chrome waits under it. */
   body.ct-present .ctarea { border-radius: 0; }
-  .ct-inset { position: fixed; z-index: 33; overflow: hidden; border-radius: var(--r-md); background: var(--c-night); }
+  .ct-inset { position: fixed; z-index: 35; overflow: hidden; border-radius: var(--r-md); background: var(--c-night); }
   .ct-inset[hidden] { display: none; }
   .ct-inset video { width: 100%; height: 100%; object-fit: cover; display: block; }
   .ct-inset-nm { position: absolute; left: 6px; bottom: 6px; max-width: calc(100% - 12px); padding: 2px 8px; border-radius: var(--r-pill); background: var(--c-scrim); color: var(--c-white); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .ct-exit { position: fixed; z-index: 34; top: 12px; right: 12px; width: 44px; height: 44px; border: 0; border-radius: var(--r-pill); background: var(--c-scrim); color: var(--c-white);
+  .ct-exit { position: fixed; z-index: 36; top: 12px; right: 12px; width: 44px; height: 44px; border: 0; border-radius: var(--r-pill); background: var(--c-scrim); color: var(--c-white);
     display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
   .ct-exit[hidden] { display: none; }
   /* The agenda */
