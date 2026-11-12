@@ -3416,18 +3416,19 @@
   }
   /* The stage's Open sits in the caption row at the bottom of the slide, never in the top corner where a phone's
      status chip floats over the stage. */
-  body:not(.broadcast) #stagefeed > .rowtile > .tile-open { top: auto; bottom: 6px; }
-  /* A phone reaches every control with a 44px target. A face's Open keeps its small light pill: a transparent
+  html body:not(.broadcast) #stagefeed > .rowtile > .tile-open { top: auto; bottom: 6px; }
+  /* A phone reaches every control with a 44px target (html body: css/meet-23b.css loads after this file and sizes
+     the same controls). A face's Open keeps its small light pill: a transparent
      border grows the tap area around it. */
   @media (max-width: 700px), (max-height: 500px) {
-    .tile > .tile-open, .rowtile > .tile-open { top: 0; right: 0; height: 44px; max-height: 44px; max-width: 94px;
+    html body .tile > .tile-open, html body .rowtile > .tile-open { top: 0; right: 0; height: 44px; max-height: 44px; max-width: 94px;
       border: 11px solid transparent; background-clip: padding-box; }
-    body:not(.broadcast) #stagefeed > .rowtile > .tile-open { top: auto; bottom: 0; }
-    body.comfy .tile.slim > .tile-open { width: 44px; max-width: 44px; }
+    html body:not(.broadcast) #stagefeed > .rowtile > .tile-open { top: auto; bottom: 0; }
+    html body.comfy .tile.slim > .tile-open { width: 44px; max-width: 44px; }
     #airrec, #airwho, body.broadcast #airsound:not([hidden]) { min-height: 44px; }
     #chathead #trtab { min-height: 44px; }
   }
   @media (max-width: 700px) and (min-height: 501px) {
-    #tilewin .tw-close { width: 44px; height: 44px; }
-    #tilewin .tw-side button.tw-btn, #tilewin button.tw-btn, #tilewin .modbar button { min-height: 44px; height: auto; }
+    html body #tilewin .tw-close { width: 44px; height: 44px; }
+    html body #tilewin .tw-side button.tw-btn, html body #tilewin button.tw-btn, html body #tilewin .modbar button { min-height: 44px; height: auto; }
   }
