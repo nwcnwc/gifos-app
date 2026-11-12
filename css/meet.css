@@ -3430,6 +3430,7 @@
   @media (max-width: 700px) and (min-height: 501px) {
     #tilewin .tw-close { width: 44px; height: 44px; }
     #tilewin .tw-side button.tw-btn, #tilewin button.tw-btn, #tilewin .modbar button { min-height: 44px; height: auto; }
+  }
   /* ---- The meeting's views: Scroll, Fit, Float, Focus (Nathan 2026-11-11) ----
      One quiet button (#fitbtn: the view's outline glyph and its word) opens a
      small dark picker: four glyphs over one word each, the chosen one white
