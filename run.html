@@ -12044,6 +12044,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // pair: onPath moves the link onto its standby allocation), and its measured send capacity every lookMs while it
     // carries video (onCapacity steps the video). A step that changed re-runs adapt(), which applies it per sender.
     let turnLookAt = 0;
+    const turnSent = new Map();   // link far pid -> { b, t }: my video bytes on its pc at the last look
     function turnWatch() {
       const now = Date.now(), look = now - turnLookAt >= turnLinks.lookMs;
       if (look) turnLookAt = now;
@@ -12062,8 +12063,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (!(bps > 0)) return;
           // congestion: the loss the far end reports on my video (RTCP receiver reports), and the selected pair's round trip
           let loss = 0, rtt = sel && +sel.currentRoundTripTime || 0;
-          let limited = false;   // the browser holds my video back for bandwidth: its estimate is what the path gives
-          st.forEach((x) => { if (x.type === 'remote-inbound-rtp' && x.kind === 'video') { if (+x.fractionLost > loss) loss = +x.fractionLost; } if (x.type === 'outbound-rtp' && x.kind === 'video' && x.qualityLimitationReason === 'bandwidth') limited = true; });   // (the round trip: the selected pair's own, one clock)
+          // limited: the estimate is what the path gives, not what a pc that sends little reports: my video already sends
+          // at least most of the estimate (bytes since the last look), or the browser says bandwidth holds it back
+          let limited = false, vBytes = 0;
+          st.forEach((x) => { if (x.type === 'remote-inbound-rtp' && x.kind === 'video') { if (+x.fractionLost > loss) loss = +x.fractionLost; } if (x.type === 'outbound-rtp' && x.kind === 'video') { vBytes += +x.bytesSent || 0; if (x.qualityLimitationReason === 'bandwidth') limited = true; } });   // (the round trip: the selected pair's own, one clock)
+          const lastV = turnSent.get(pid), tNow = Date.now(); turnSent.set(pid, { b: vBytes, t: tNow });
+          if (lastV && tNow > lastV.t && vBytes >= lastV.b && (vBytes - lastV.b) * 8000 / (tNow - lastV.t) >= 0.7 * bps) limited = true;
           if (turnLinks.video(pid)) turnLinks.onCapacity(pid, bps, loss, rtt, limited);
           if (JSON.stringify(turnLinks.videoStep(pid)) + turnLinks.busy(pid) !== before) { try { adapt(); } catch (e) {} turnApplyVideo(p); turnPaint(); }
         }, () => {});
