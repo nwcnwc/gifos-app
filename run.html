@@ -13242,6 +13242,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try {
         for (const [jk, job] of [...mosJobs]) if (job.to === p.id) unshipMos(jk, false);
       } catch (e) { if (typeof clog === 'function') clog('rebuildPc: mosaic job cleanup failed ' + String(e).slice(0, 60)); }
+      // The friend carries that rode the old pc end with it, as relayer and as receiver (endPcRelayRoles). Direct, as above.
+      try { endPcRelayRoles(p.id, 'pc-new ' + (why || '?')); } catch (e) { if (typeof clog === 'function') clog('rebuildPc: carry cleanup failed ' + String(e).slice(0, 60)); }
       const pc = new RTCPeerConnection(turnPcConfig(p));   // a TURN link's settings when this end is its client (turnPcConfig)
       turnGuardVideo(pc, p);   // no video over an unvouched TURN link
       // Whatever was armed against the OLD pc must never fire at the new one: a glare yield's rollback would target a
@@ -23627,18 +23629,31 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       renegotiate(rp);
       if (notify) dcSend(rp, { k: 'relay-end', target });
     }
-    function endRelayRolesFor(pid) { // pid left or its pc died — as relayer AND receiver
+    // A CARRY ENDS WITH THE PC IT RODE (the sim's fhEndRoles: "target or requester's pc closed at the relayer: the job ends";
+    // "relayer gone: the receiver drops it and asks again"). A carry rides my pc to the target (the tracks I forward), my pc to
+    // the requester (the senders), and, as receiver, my pc to the relayer (the stream I claimed). Every one of them belongs to
+    // that pc, so a pc that closes, a rebuilt one included, ends them. Kept across a rebuild, the relayer re-announced a
+    // container whose senders sat on the closed pc, and the receiver held a claimed stream whose tracks had ended: its relayer
+    // was connected again on the new pc before the next sweep looked, so it never asked again (offices: the end of a TURN link
+    // deaf and blind to its own row head across the cut for the whole meeting). A carry OF this peer through another friend
+    // (relayVia.has(pid)) rides no pc of this pair and stays: its dead direct pc is rebuilt every few seconds.
+    function endPcRelayRoles(pid, why) {
       for (const key of Array.from(relayJobs.keys())) {
         const job = relayJobs.get(key);
-        if (job.target === pid) stopRelayJob(job.target, job.requester, true);
+        if (!job) continue;
+        if (job.target === pid) { fhTrace('FH-PC-END', 'target=' + String(job.target).slice(0, 8) + ' req=' + String(job.requester).slice(0, 8) + ' ' + (why || '')); stopRelayJob(job.target, job.requester, true); }
         else if (job.requester === pid) {
+          fhTrace('FH-PC-END', 'target=' + String(job.target).slice(0, 8) + ' req=' + String(job.requester).slice(0, 8) + ' ' + (why || ''));
           relayJobs.delete(key);
           for (const sd of job.senders || []) auxSenders.delete(sd);
           if (job.video) relayPromote();   // FHOP.9: a video job ended
         }
       }
+      for (const [target, r] of Array.from(relayVia)) if (r.via === pid) { fhTrace('FH-PC-END', 'claim target=' + String(target).slice(0, 8) + ' via=' + String(pid).slice(0, 8) + ' ' + (why || '')); stopRelayFor(target, false); }
+    }
+    function endRelayRolesFor(pid) { // pid left or its pc died — as relayer AND receiver
+      endPcRelayRoles(pid, 'gone');
       if (relayVia.has(pid)) stopRelayFor(pid, true);
-      for (const [target, r] of Array.from(relayVia)) if (r.via === pid) stopRelayFor(target, false);
     }
 
     // ========== STADIUM MEDIA (docs/media-plane.md) ============================
