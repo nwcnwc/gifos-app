@@ -25059,9 +25059,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const pri = mosIn.get('sdm'), fb = mosFb.get('sdm');
         if (pri && (pri.org || pri.via) === pid && (pri.deadAt || (rowFeed.via === pid && rowFeed.at && now - rowFeed.at >= ROW_SILENT_MS))) { rowHeadOut = { pid, tick: s.seatTick, pc: c.pc, r: c.r }; dbgRowHead(pri.deadAt ? 'out:gone' : 'out:silent'); if (fb) fb.dark = true; }
       }
-      const out = !!rowHeadOut || s.headGoneView;
+      // A head across a relayed link's cut is reached through that link's carrier, never by a pc of mine: the seat reads
+      // that pair as closed, but the head is there. Its row keeps it; only its feed going silent (above) makes me stand in.
+      const out = !!rowHeadOut || (s.headGoneView && !(typeof headCarried === 'function' && headCarried(c)));
       if (rowWasOut && !out) rowHoldUntil = now + MOS_SETTLE + 2000;   // the heir's copy stays while the row fails back
       rowWasOut = out; return out;
+    }
+    // My row's head sits across a relayed link's cut: no pc of mine reaches it, and a carrier of the link does (mosCarrier).
+    function headCarried(c) {
+      if (!c || c.i === 0 || typeof mosCarrier !== 'function') return false;
+      const pid = occPid({ pc: c.pc, r: c.r, i: 0 }); if (!pid || pid === myId) return false;
+      const q = peers.get(pid); if (q && q.connected) return false;
+      return !!mosCarrier(pid);
     }
     // The head's view is back: my row-view claim is on that head, not dead, and its bytes advanced within the silence bound.
     function rowHeadFeedBack(pid, now) {
