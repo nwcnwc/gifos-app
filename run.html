@@ -12825,6 +12825,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const out = []; for (const g of r.lastGreeters || []) { const p = meshNode.pidOf(g); if (p) out.push(p); } return out;
         },
         nid: (pid) => meshNode.nidOf(pid),
+        epoch: (pid) => { const r = turnRaw(); if (!r) return -1; const k = (r.lastGreeters || []).indexOf(meshNode.nidOf(pid)); const e = k >= 0 && r.lastGreetersAt ? r.lastGreetersAt[k] : -1; return Number.isInteger(e) ? e : -1; },
+        myEpoch: () => { const r = turnRaw(); return r && Number.isInteger(r.lineAt) ? r.lineAt : -1; },
         reach: (pid) => { const p = peers.get(pid); if (p && p.connected && !(turnLinks && turnLinks.isLink(pid))) return 'direct'; return turnFriend(pid) ? 'friend' : null; },
         blocked: () => directPath === 'blocked',
         alive: (pid) => {

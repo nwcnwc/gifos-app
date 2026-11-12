@@ -358,6 +358,7 @@
   //   seat() → { head, greeter, view: [pid], cell } | null   (head: my seat is its part's home cell; greeter: Section 1)
   //   greeters() → [pid]   the door's list as my seat last read it (fresh only)
   //   nid(pid) → the seat's number for a peer id (the order turnPick compares)
+  //   epoch(pid) → when that greeter's part was founded, as the door's list says (-1: not said); myEpoch() → my part's (-1: unknown)
   //   reach(pid) → 'direct' | 'friend' | null   TURN.2 / TURN.3 as this page knows them
   //   blocked() → my network blocks direct connections (the page's own probe)
   //   alive(pid) → the far page is still in the meeting      pcUp(pid) → the pair's connection is up
@@ -638,7 +639,10 @@
             // its lowest greeter on the door's list (the one thing both heads read), or me: never the lowest id of my view.
             let myMin = io.nid(io.me()); for (const g of io.greeters() || []) { if (!g || g === io.me() || !view.has(g)) continue; const n = io.nid(g); if (n >= 0 && n < myMin) myMin = n; }
             const byNid = new Map(); for (const g of F) byNid.set(io.nid(g), g);
-            const pick = T.turnPick(Array.from(byNid.keys()), myMin);
+            // The older part stays: I ask toward the oldest part I cannot reach, and only if it is older than mine. The
+            // door's list says when each greeter's part was founded; with no such word the lower id decides, as before.
+            const epOf = (n) => { const g = byNid.get(n), e = (g && io.epoch) ? io.epoch(g) : -1; return Number.isInteger(e) ? e : -1; };
+            const pick = T.turnPick52(Array.from(byNid.keys()), epOf, myMin, io.myEpoch ? io.myEpoch() : -1);
             if (pick >= 0) {
               const g = byNid.get(pick);
               const L = newLink(g, linkName(io.me(), g, K.TURN_FREE_LINKS), true);

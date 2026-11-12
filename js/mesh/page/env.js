@@ -701,10 +701,10 @@
       if (!m || dead) return;
       if (m.t === 'greeters') {
         st.relay.greeters++;
-        const out = [];
-        for (const p of m.list || []) { const x = learnPeer(p); if (x >= 0 && x !== me && !out.includes(x)) out.push(x); }
+        const out = [], at = new Map();   /* L8.52.3: the founding epoch each greeter registered with (C++: relayGreeterAt) */
+        (m.list || []).forEach((p, k) => { const x = learnPeer(p); if (x >= 0 && x !== me && !out.includes(x)) { out.push(x); const e = m.at ? m.at[k] : -1; at.set(x, Number.isInteger(e) && e >= 0 ? e : -1); } });
         for (let k = out.length - 1; k > 0; k--) { const j = Math.floor((o.rand ? o.rand() : Math.random()) * (k + 1)); const t = out[k]; out[k] = out[j]; out[j] = t; }   // the sim's relay shuffles
-        const g = msg.newMsg('GREETERS'); g.list = out; g.to = me; g.from = -1; if (m.tag === 1) g.tag = 1;   /* L3.11.6: the door said admitted:false (C++: relayKnock) */ busAt(w.TICK, g);
+        const g = msg.newMsg('GREETERS'); g.list = out; g.listAt = out.map((x) => at.get(x)); g.to = me; g.from = -1; if (m.tag === 1) g.tag = 1;   /* L3.11.6: the door said admitted:false (C++: relayKnock) */ busAt(w.TICK, g);
         return;
       }
       if (m.t === 'nosock') {

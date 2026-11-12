@@ -790,7 +790,8 @@
     function REGISTER_MYSELF_AS_A_GREETER(gk) {
       const k = gk || myKey;
       if (!iAmAGreeter()) { KNOCK_FOR_THE_GREETER_LIST(k); return; }
-      net.sealFixed(roomKey, { p: peer, c: seat.coord, fa: 1 }) // a greeter's sealed address is one fixed-size sealed part, like every sealed thing on the relay
+      net.sealFixed(roomKey, Object.assign({ p: peer, c: seat.coord, fa: 1 }, raw && raw.lineAt >= 0 ? { e: raw.lineAt } : {}))   /* e: when my room was founded, so two rooms that meet agree which is the older (the older one stays) */
+        // a greeter's sealed address is one fixed-size sealed part, like every sealed thing on the relay
         .then((b) => { const s = JSON.stringify(b); greeterTrace.push({ t: Date.now(), tick: env.TICK, state: seat.state, post: seat.state, listLen: -1, open: -1, founded: false, action: 'register-blob:' + blobFp(s) }); if (greeterTrace.length > GREETER_TRACE_CAP) greeterTrace.shift(); sendRaw(Object.assign({ t: 'knock', gk: k, gblob: s }, seat.coord.pc !== 0 ? { dc: '1' } : {})); })   /* dc: a door-call registration (FHOP.8), which the relay keeps only for the call */
         .catch(() => sendRaw({ t: 'knock', gk: k }));
     }
@@ -820,12 +821,13 @@
       if (opts.holdDoor && opts.holdDoor()) return;   // waiting on the admin with a lock I cannot read: a list I cannot open must not make me a founder
       const list = m.list || [];
       const ids = [], sealedFps = [], fa = [], behind = [];
+      const ep = new Map(), atOf = (l) => l.map((p) => (ep.has(p) ? ep.get(p) : -1));   // each greeter's word of when its room was founded (-1: not said)
       let olderSeen = 0;   // sealed blobs one of my replaced keys opens: their writers are behind me, not ahead
       let aheadN = 0;      // sealed blobs no key I hold or held opens: their writers are under a key I do not have
       for (const s of list) {
         try {
           const o = await net.open(roomKey, JSON.parse(s));
-          if (o && o.p && o.p !== peer) { ids.push(o.p); if (o.fa === 1) fa.push(o.p); }
+          if (o && o.p && o.p !== peer) { ids.push(o.p); if (o.fa === 1) fa.push(o.p); if (Number.isInteger(o.e) && o.e >= 0) ep.set(o.p, o.e); }
           else if (o && o.p === peer) sealedFps.push('SELF');
           else { /* net.open resolves NULL on wrong key — the sealed-under-a-different-key case */
             sealedFps.push('X' + blobFp(s));
@@ -937,7 +939,7 @@
         // stands down when a connection is already up, and a solo seat whose
         // channel to the other fragment is open still has to SAY something on
         // it — nothing else it does addresses a seat it does not hold.
-        penv.relayFrame({ t: 'greeters', list: ids });
+        penv.relayFrame({ t: 'greeters', list: ids, at: atOf(ids) });
         return;
       }
       if (list.length && !ids.length) {
@@ -954,7 +956,7 @@
         else action = 'deliver';
         // RELOAD TREE MEMORY: the doors this page sat with before its reload go first (treeMemAsk asks them all at once)
         if (prevOld && preState !== 3 && ids.length) { const old = ids.filter((p) => prevOld.has(p)); treeAsk = old.map((p) => layer.ids.nid(p)); ids.sort((a, b) => (prevOld.has(b) ? 1 : 0) - (prevOld.has(a) ? 1 : 0)); prevOld = null; }
-        penv.relayFrame(m.admitted === false && !m.founded && preState === 3 && iAmAGreeter() ? { t: 'greeters', list: ids, tag: 1 } : { t: 'greeters', list: ids }); // the seat's L16 knocker takes it from here. L3.11.6: admitted:false to a seated Section-1 seat rides the list (tag 1): the seat asks a listed mate for the door's key and registers again
+        penv.relayFrame(m.admitted === false && !m.founded && preState === 3 && iAmAGreeter() ? { t: 'greeters', list: ids, at: atOf(ids), tag: 1 } : { t: 'greeters', list: ids, at: atOf(ids) }); // the seat's L16 knocker takes it from here. L3.11.6: admitted:false to a seated Section-1 seat rides the list (tag 1): the seat asks a listed mate for the door's key and registers again
       }
       // `adm` is the relay's `admitted`: does my genesis key match the room's?
       // Nothing ACTS on it — but its absence from this trace is why the
