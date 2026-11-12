@@ -6465,7 +6465,7 @@ i18nStart(async()=>{
         var li=document.createElement('li'); li.dataset.id=id; if(id===view.cur) li.className='cur';
         li.innerHTML='<span class="grip" aria-hidden="true">&#8942;&#8942;</span><span class="n"></span><span class="nm"></span><button class="mv" type="button" data-up="1"></button><button class="mv" type="button" data-dn="1"></button>';
         li.querySelector('.n').textContent=String(i+1);
-        li.querySelector('.nm').textContent=nameOf(id)+(id===me.id?' ('+T('you')+')':'');
+        li.querySelector('.nm').textContent=nameOf(id)+(id===me.id&&me.name?' ('+T('you')+')':'');
         var u=li.querySelector('[data-up]'), d=li.querySelector('[data-dn]');
         u.textContent='▲'; d.textContent='▼'; u.title=T('moveup'); d.title=T('movedown');
         u.setAttribute('aria-label',T('moveup')); d.setAttribute('aria-label',T('movedown'));
