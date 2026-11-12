@@ -17466,6 +17466,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         } else { p.sinkProbe = null; if (p.video && p.video.readyState > 0 && p.video.videoWidth > 0) p.wkSeats = 0; }
         // A WebKit tile whose bind waited for the channel (wkPlayTile): ask now.
         if (WEBKIT_TILE && p.video && p.stream && p.video._wkPending === p.stream && !p.relayed && p.connected && p.dc && p.dc.readyState === 'open' && mediaOk(pid) !== false) wkQuietBind(p.video, p.stream, p);
+        if (relayJobs.size && typeof relayFollow === 'function') relayFollow(pid);   // the carries I run for this person keep their current tracks
         // Direct route recovered → drop any friend-relay for this peer.
         if (p.connected && relayVia.has(pid)) stopRelayFor(pid, true);
         // Our relayer for this peer vanished → fall back and re-elect.
@@ -22564,6 +22565,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     if (DEBUG_ON) window.__fhJobsForTest = () => Array.from(relayJobs.values(), (j) => ({ target: j.target, req: j.requester, video: !!j.video }));   // DEBUG: a carrier's own jobs, for the room checks
     const relayVideoJobs = () => { let n = 0; for (const j of relayJobs.values()) if (j.video) n++; return n; };
     const relayVideoBudget = () => GifOS.meshFhop.fhVideoBudget(linkCls() || GifOS.meshConsts.enums.FC_WIFI);
+    // A carry follows the person it carries. Their own tracks on my pc can change under a running job: a voice that
+    // starts after the job began (my pc to them carried only their picture), or a track replaced on a renegotiation.
+    // Each job keeps sending their CURRENT track of each kind it carries; a kind it lacks is added once it exists.
+    function relayFollow(target) {
+      const tp = peers.get(target); if (!tp || !tp.stream) return;
+      for (const job of relayJobs.values()) {
+        if (job.target !== target) continue;
+        const rp = peers.get(job.requester); if (!rp || !rp.pc || !rp.connected) continue;
+        let added = false;
+        for (const tr of shipTracks(tp.stream)) {
+          if (tr.kind === 'video' && !job.video) continue;
+          const sd = job.senders.find((x) => x._auxKind === tr.kind);
+          if (sd) { if (sd.track !== tr) sd.replaceTrack(tr).catch(() => {}); continue; }
+          try { job.senders.push(addAux(rp.pc, tr, job.container)); added = true; } catch (e) {}
+        }
+        if (added) { fhTrace('FH-JOB-FOLLOW', 'target=' + String(target).slice(0, 8) + ' req=' + String(job.requester).slice(0, 8)); renegotiate(rp); }
+      }
+    }
     // a video job ended: the oldest voice-only job (Map order) gets its video
     function relayPromote() {
       if (relayVideoJobs() >= relayVideoBudget()) return;
@@ -22656,6 +22675,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (tr && tr.kind === 'audio') init.sendEncodings = [{ maxBitrate: AUX_AUDIO_BPS }];   // set at creation: valid before negotiation in every engine
       const t = pc.addTransceiver(tr, init);
       auxSenders.add(t.sender);
+      if (tr && tr.kind) t.sender._auxKind = tr.kind;
       return t.sender;
     };
 
