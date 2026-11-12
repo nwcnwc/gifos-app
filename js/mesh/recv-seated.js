@@ -94,7 +94,7 @@
         const la = this.lkAt.get(m.ck); const bi = this.byeId.get(m.ck);
         if (la !== undefined && TICK - la <= K.L25_BEAT && !(this.byeAt.has(m.ck) && bi !== undefined && bi === this.occGet(m.ck))) {
           lv.L25_TWICE++;
-          if (sure) { const yt = this.l25YieldTo.get(m.id); if (yt === undefined || TICK - yt >= 16) { if (this.l25YieldTo.size > 64) this.l25YieldTo.clear(); this.l25YieldTo.set(m.id, TICK); const y = newMsg('YIELD'); y.ck = m.ck; y.id = id; y.nc = this.occGet(m.ck); this.emit(m.id, y); } }
+          if (sure) { const yt = this.l25YieldTo.get(m.id); if (yt === undefined || TICK - yt >= 16) { if (this.l25YieldTo.size > 64) this.l25YieldTo.clear(); this.l25YieldTo.set(m.id, TICK); const y = newMsg('YIELD'); y.ck = m.ck; y.id = id; y.nc = this.occGet(m.ck); if (this.byeFloor(y.nc, m.ck) >= 0) this.l167Attach(y, m.ck, y.nc);   /* L25.19.1 */ this.emit(m.id, y); } }
           return;
         }
       }   // L25: a bare word does not take a cell from a seat whose beats reach me over its own channel
