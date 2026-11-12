@@ -8313,7 +8313,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       ctRefresh();
       ctSelect('agenda', 'start');
       try { layout(); } catch (e) {}
-      setTimeout(() => { const p = CT.panes.get('agenda'); const t = p && p.querySelector('.ag-add .ag-in-t'); if (t) try { t.focus(); } catch (e) {} }, 0);
+      requestAnimationFrame(() => { const p = CT.panes.get('agenda'); const t = p && p.querySelector('.ag-add .ag-in-t'); if (t) try { t.focus(); } catch (e) {} });
     }
     {
       const ab = document.getElementById('agendabtn');
