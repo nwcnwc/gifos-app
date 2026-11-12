@@ -11835,21 +11835,29 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // sponsorSend: carry envelope envl toward envl.to when the relay cannot
     // (§FWD). Returns true iff the frame was handed to SOME viable path.
+    // TURN.14.4 / TURN.14.11 (js/mesh/page/env.js t14Env): a mesh frame in an envelope that may not cross my TURN pc to this
+    // peer. 0: send it there; 1: not over this pc; 2: consumed (my seat took the ask back, or a third party's placement stops here).
+    const t14Env = (pid, envl) => (envl && envl.k === 'fmesh' && envl.m && meshNode && meshNode.penv && meshNode.penv.t14Env ? meshNode.penv.t14Env(pid, envl.m) : 0);
     function sponsorSend(envl) {
       const to = envl.to;
       // L16.3.2: a reply starts back along the list its frame crossed. No such channel now: the rungs, the list dropped.
       if (Array.isArray(envl.rt)) {
         const back = envl.rt.length ? peers.get(envl.rt[envl.rt.length - 1]) : null;
-        if (back && back.connected && back.dc && back.dc.readyState === 'open') { envl.rt = envl.rt.slice(0, -1); dcSend(back, envl); return true; }
+        const tb = back ? t14Env(back.id, envl) : 0; if (tb === 2) return true;
+        if (back && !tb && back.connected && back.dc && back.dc.readyState === 'open') { envl.rt = envl.rt.slice(0, -1); dcSend(back, envl); return true; }
         delete envl.rt;
       }
       // 1) the classic mutual-DC friend (one hop, deterministic pick)
       const cands = myConns().filter((r) => r !== to && (connsOf.get(r) || []).includes(to)).sort();
-      const fp = cands.length ? peers.get(cands[0]) : null;
-      if (fp && fp.dc && fp.dc.readyState === 'open') { dcSend(fp, envl); return true; }
+      for (const r of cands) {   // the first friend whose pc this frame may cross (TURN.14.4: an entry ask stays on its side)
+        const fp = peers.get(r); if (!(fp && fp.dc && fp.dc.readyState === 'open')) break;
+        const t = t14Env(r, envl); if (t === 2) return true; if (t === 1) continue;
+        dcSend(fp, envl); return true;
+      }
       // 2) the mesh itself: my one open-DC step toward the target's seat
       const hp = nextHopDc(to, envl.tc);
-      if (hp) { dcSend(hp, envl); return true; }
+      const th = hp ? t14Env(hp.id, envl) : 0; if (th === 2) return true;
+      if (hp && !th) { dcSend(hp, envl); return true; }
       // 3) the DOOR (the friendless-newcomer bootstrap): sealed over the relay
       // to a socketed seat wired near the target, else a greeter, which
       // hop-forwards it onward over its own channels. Throttled per target —
@@ -11865,7 +11873,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // NOROOM / FINDACK / HOME reaches a knocker: back along the FIND's path
       // to the greeter that holds the knocker's bootstrap channel.
       const cp = crumbPeer(to);
-      if (cp) { dcSend(cp, envl); return true; }
+      const tc = cp ? t14Env(cp.id, envl) : 0; if (tc === 2) return true;
+      if (cp && !tc) { dcSend(cp, envl); return true; }
       // 4) one other live channel (lowest id): the frame enters the room's
       // connected component, which has another chance to land a real last
       // hop (fwdOnward's dedup and ttl bound the walk). Never the relay: an
@@ -11880,7 +11889,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const alts = [];
       for (const [pid, p] of peers) { if (pid !== to && pid !== myId && p.connected && p.dc && p.dc.readyState === 'open') alts.push(pid); }
       alts.sort();
-      if (alts.length) { txStats.doorSig++; dcSend(peers.get(alts[0]), envl); return true; }
+      for (const a of alts) { const t = t14Env(a, envl); if (t === 2) return true; if (t === 1) continue; txStats.doorSig++; dcSend(peers.get(a), envl); return true; }
       return false;
     }
     // fwdCrumb: pid -> { via, at }: the channel peer that last delivered a
@@ -11944,6 +11953,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (kind === 'fsig') envl.p = crossed.concat(myId);
       const handoff = (p) => {
         if (!p || p.id === viaPid || p.id === m.from || crossed.includes(p.id) || !(p.connected && p.dc && p.dc.readyState === 'open')) return false;
+        const t = t14Env(p.id, envl); if (t === 2) { if (m.id) fwdSeenNote(fwdSeen, m.id); return true; } if (t === 1) return false;   // TURN.14.4 / 14.11
         if (m.id) fwdSeenNote(fwdSeen, m.id);
         txStats.hopFwd++; dcSend(p, envl); return true;
       };
@@ -16492,6 +16502,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           roles: () => ({ jobs: Array.from(relayJobs.values(), (j) => ({ target: j.target, req: j.requester })), vias: Array.from(relayVia.values(), (r) => r.via) }),
           // TURN.14 (the twin's fabricTurnAcross): the peers whose pc runs through a TURN link of mine (js/meet-turn.js)
           turnPcs: () => (turnLinks ? turnLinks.turnPcs() : []),
+          turnOn: () => !!turnLinks, turnOpened: (pid) => !!(turnLinks && turnLinks.opened(pid)), turnHeld: () => !!(turnLinks && turnLinks.anyHeld()),
+          claims: (r, x) => (connsOf.get(r) || []).includes(x), relayed: (pid) => relayVia.has(pid),
         },
         measure: {   // the device class and the network's verdict this page already keeps (L4)
           tier: () => { const E = GifOS.meshConsts.enums, hc = navigator.hardwareConcurrency | 0; return IS_MOBILE || (hc > 0 && hc <= 2) ? E.TIER_MOBILE : E.TIER_DESKTOP; },   // a 2-core desktop carries like a phone
@@ -17451,9 +17463,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!p.connected && !p.absentSince && !relayVia.has(pid)
             && p.downSince && now - p.downSince > GifOS.timings.FHOP_RELAY_ASK_MS && now - (p.relayAskAt || 0) > GifOS.timings.FHOP_RELAY_ASK_MS) {   // the direct verdict, and the gap between two asks (FHOP_RELAY_ASK)
           const refused = relayRefusal.get(pid) || {};
+          const refusedNow = (r) => !!(refused[r] && now - refused[r] < 30000);
           const cands = myConns().filter((r) => r !== pid
             && (connsOf.get(r) || []).includes(pid)
-            && !(refused[r] && now - refused[r] < 30000)).sort();
+            && !refusedNow(r)).sort();
+          // TURN.14.12: no connected peer names the target: my TURN peer is the one seat that reaches my row-mates across the cut; it dials the target for the carry
+          if (!cands.length && turnLinks) for (const r of turnLinks.turnPcs()) { const q = peers.get(r); if (r !== pid && q && q.connected && !refusedNow(r)) cands.push(r); }
           if (cands.length) {
             p.relayAskAt = now;
             // ranked on each pc's last stats reading (read again now for the next ask): the ask itself never waits
@@ -23120,12 +23135,25 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         .catch((e) => { if (p.pc !== pc) return; if (typeof clog === 'function') clog('roffer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); p.renegAgain = true; maybeRebuildNeg(p, e); })
         .finally(() => { if (p.neg.minting === mark) p.neg.minting = null; if (p.neg.turnWanted) giveTurn(p); });
     }
+    const t14Dial = new Map();   // TURN.14.12: target -> when I dialled it for my TURN peer's carry
     function startRelayJob(reqP, target) {
       const key = target + '>' + reqP.id;
       if (relayJobs.has(key)) return;
       const tp = peers.get(target);
       const refuse = () => dcSend(reqP, { k: 'relay-no', target });
       if ((typeof isEjected === 'function' && isEjected(target) === true)) { refuse(); return; }
+      // TURN.14.12: asked over my TURN pc for a seat I hold no pc to: no NAT-kind test, I dial it (on my network the dial opens and the
+      // requester's next ask finds the pc; a dial that cannot open is the refusal the next ask reads)
+      if ((!tp || !tp.connected) && reqP.connected && turnLinks && turnLinks.isLink(reqP.id) && target && target !== myId) {
+        const now = Date.now(), at = t14Dial.get(target);
+        if (at === undefined || now - at > GifOS.timings.FHOP_RELAY_ASK_MS * 6) {   // a fresh dial (again, after a long while)
+          t14Dial.set(target, now); if (t14Dial.size > 64) t14Dial.delete(t14Dial.keys().next().value);
+          seatAskAt.set(target, now); seatMark.set(target, cleanMark({ s: 1 })); seatDial(target);
+          fhTrace('FH-T14-DIAL', 'target=' + String(target).slice(0, 8) + ' req=' + String(reqP.id).slice(0, 8));
+          return;
+        }
+        if (now - at < GifOS.timings.FHOP_RELAY_ASK_MS * 3) return;   // the dial is still on its way
+      }
       if (!tp || !tp.connected || !tp.stream || !reqP.connected || relayJobs.size >= FH_K().FHOP_CARRY_MAX) { refuse(); return; }
       // A friend-relay re-sends the target's RECEIVED tracks: still refused on WebKit.
       // The mesh's own forwards (mosAttach) run there through wkFwdSrc;
@@ -27406,6 +27434,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // ONE hot pipe + a parked standby + dormant spares (ONE-PIPE
         // multi-subscribe), so the extra announces cost nothing until demanded.
         const s1peers = [...T.rowMates(c), ...T.colMates(c)].map((m) => occPid(m)).filter(Boolean);
+        for (const t of turnFeedPeers()) if (s1peers.indexOf(t) < 0) s1peers.push(t);   // TURN.14.8: the stage feeds cross the TURN link of an end whose ring lies across it, both ways
         const flooded = new Set(); // PER-SWEEP dedup (one feed may resolve via two keys). The old
         // persistent stgSpread let the sweep-end reaper kill flood jobs after one sweep.
         // NEVER FLOOD A FEED BACK TO ITS OWNER. The owner already has the
@@ -27663,12 +27692,22 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // neighbourhood is empty — the shape of the late-joiner race, made
     // deterministic. With it set, only the widened pull can reach a holder.
     let sgaIsolated = false;
+    // TURN.14.8: the peers of my up TURN links that the stage and stadium feeds cross to: all of them while my ring lies across my
+    // link (I am the end that opened it, and my Section-1 mates are on the far side); as the far end, the end that opened it (its
+    // side may hang under it; a copy it does not need stays a parked announce, ONE-PIPE, and moves nothing).
+    function turnFeedPeers() {
+      if (!turnLinks) return [];
+      const across = !!(meshNode && meshNode.penv && meshNode.penv.turnAcross && meshNode.penv.turnAcross());
+      const out = [];
+      for (const r of turnLinks.turnPcs()) { const q = peers.get(r); if (r !== myId && q && q.connected && (across || !turnLinks.opened(r))) out.push(r); }
+      return out;
+    }
     function sgaTargets() {
       if (sgaIsolated) return [];
       const c = meshCoord(); if (!c) return [];
       const T = net.topo, out = new Set();
       const add = (co) => { const pid = co ? occPid(co) : null; if (pid && pid !== myId) out.add(pid); };
-      if (c.pc === 0) { for (const m of T.rowMates(c)) add(m); for (const m of T.colMates(c)) add(m); }
+      if (c.pc === 0) { for (const m of T.rowMates(c)) add(m); for (const m of T.colMates(c)) add(m); for (const t of turnFeedPeers()) out.add(t); }   // TURN.14.8
       else {
         add(c.i === 0 ? T.up(c) : { pc: c.pc, r: c.r, i: 0 });
         if (c.i === 0) for (const m of T.rowMates(c)) add(m);
