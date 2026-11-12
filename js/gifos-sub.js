@@ -25,8 +25,8 @@
  * tries to enter when the room already holds 20 people is turned away with
  * a plain message; in a room on the free plan the line is 5. Anyone holding
  * any PAID plan is always let in, even past the line.
- * The room's count is the people the door knows are seated (run.html
- * subsRoomCount).
+ * The room's count is the door's greeter list (plus the door itself), read
+ * fresh when someone without a plan comes in (run.html subsRoomCount).
  *
  * One meeting at a time: a subscription powers one meeting (open or admin
  * room) at a time. Joining a meeting gets a short meeting ticket from the
