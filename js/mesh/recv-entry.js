@@ -54,6 +54,7 @@
       if (this.state === 0) {
         let g = m.list[Math.floor(this.rng() * m.list.length)];
         { const via = this.w.L31_VIA; const dv = via ? via.get(id) : undefined; if (dv !== undefined && m.list.includes(dv)) g = dv; }
+        { const tp = this.f.fabricTurnPeerIn(id, m.list); if (tp >= 0) g = tp; }   /* TURN.16 (mesh_turn.inc): my TURN link's peer first */
         this.gateway = g; this.entNote(g); if (this.f.fabricDoors()) this.l16AskOne(g);
         const w = newMsg('WHOHOME'); w.from = id; w.ttl = 60; if (!this.oldCell && !islandStand(this, E.IS_L31)) w.l31 = 1; this.emit(g, w); this.state = 1; this.retryAt = TICK;
       }
