@@ -153,7 +153,7 @@
             if (chain[l].pc !== 0) continue; const ok = ckey(chain[l]); if (this.firstHandLive(ok) || this.translost.has(ok)) continue;
             for (const e of m.roster) {
               if (e.k !== ok) continue; const cur = this.occGet(ok);
-              if (e.v >= 0 && e.v !== id && cur !== e.v && !this.liveElsewhere(e.v, ok) && (cur < 0 || !this.heardAt(ok, cur))) { this.live.delete(ok); this.liveBy.delete(ok); this.setOcc(ok, e.v); this.noteS1(ok); this.f.fabricDialJoin(id, e.v); this.l13HomeNewsAt = TICK; this.trace('L13-HOMESEAT', id, chain[l], 'from=%d v=%d was=%d lvl=%d', m.id, e.v, cur, l); }
+              if (e.v >= 0 && e.v !== id && cur !== e.v && !this.liveElsewhere(e.v, ok) && (cur < 0 || !this.heardAt(ok, cur))) { this.live.delete(ok); this.liveBy.delete(ok); this.setOcc(ok, e.v); this.noteHand(ok, e.v); this.f.fabricDialJoin(id, e.v); this.l13HomeNewsAt = TICK; this.trace('L13-HOMESEAT', id, chain[l], 'from=%d v=%d was=%d lvl=%d', m.id, e.v, cur, l); }
               break;
             }
           }
@@ -167,7 +167,7 @@
               if (++nr > C * C) break;
               if (ckPc(e.k) !== 0 || !cellOk(e.k) || e.v < 0 || e.v === id || this.firstHandLive(e.k) || (this.translost.has(e.k) && !(lone && this.occGet(e.k) < 0)) || (lone && !this.ownedLinkCell(e.k))) continue;
               const cur = this.occGet(e.k);
-              if (cur !== e.v && !this.liveElsewhere(e.v, e.k) && (cur < 0 || (lone ? (this.rivalId >= 0 && cur === this.rivalId && !this.heardAt(e.k, cur)) : !this.heardAt(e.k, cur)))) { this.live.delete(e.k); this.liveBy.delete(e.k); this.setOcc(e.k, e.v); this.noteS1(e.k); put++; }
+              if (cur !== e.v && !this.liveElsewhere(e.v, e.k) && (cur < 0 || (lone ? (this.rivalId >= 0 && cur === this.rivalId && !this.heardAt(e.k, cur)) : !this.heardAt(e.k, cur)))) { this.live.delete(e.k); this.liveBy.delete(e.k); this.setOcc(e.k, e.v); this.noteHand(e.k, e.v); put++; }
             }
           }
           if (put) this.l13HomeNewsAt = TICK; if (put && lone) this.announce();

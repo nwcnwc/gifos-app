@@ -22,6 +22,7 @@
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
   const TURN14_15_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_TURN14_15_OFF === '1') ? 1 : 0;   // the sim's -DTURN14_15_OFF=1 build
+  const RCD = ((n) => ({ L35_4_OFF: n('L35_4_OFF'), L17_3_1_OFF: n('L17_3_1_OFF'), L17_4_OFF: n('L17_4_OFF'), L35_5_OFF: ((isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L35_5_OFF === '0') ? 0 : 1) }))((k) => ((isNode && typeof process !== 'undefined' && process.env && process.env['MESH_' + k] === '1') ? 1 : 0));   // the sim's build-time switches of the realcheck dead-dial laws (mesh.cpp L35_4_OFF ...): MESH_<name>=1 under node; a page runs the laws
   const C_ = req('./consts.js', 'meshConsts');
   const msg = req('./msg.js', 'meshMsg');
   const topo = req('./topo.js', 'meshTopo');
@@ -70,7 +71,7 @@
         if (ls === LS_DIALING) continue;
         let it = this.redial.get(x); if (it === undefined) { it = [TICK, K.REDIAL_GAP]; this.redial.set(x, it); }
         if (TICK < it[0]) continue;
-        { const g = this.dials.goneAt(x); if (g >= 0 && TICK - g >= K.LEASE_T) { this.dials.lapse(x); this.trace('L17.3-LAPSE', id, ol[q], 'peer=%d held=%lld', x, TICK - g); } }   // L17.3: a seat dead that long is off my view; one I still name lives, so the hold ends (its next failure starts a new one)
+        { const g = this.dials.goneAt(x); if (g >= 0 && TICK - g >= K.LEASE_T && (RCD.L17_3_1_OFF || FREE.l1731Word(this, x, g))) { this.dials.lapse(x); this.trace('L17.3-LAPSE', id, ol[q], 'peer=%d held=%lld', x, TICK - g); } }   // L17.3: a seat dead that long is off my view; one I still name lives, so the hold ends (its next failure starts a new one)
         this.trace('REDIAL', id, ol[q], 'peer=%d gap=%d', x, it[1]);
         this.f.fabricDial(id, x); it[0] = TICK + it[1]; it[1] = Math.min(it[1] * 2, K.REDIAL_MAX);
       }
