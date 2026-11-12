@@ -807,6 +807,8 @@
         return true;
       },
       peakNow() { return fold && fold.peakNow ? fold.peakNow() : 0; },
+      // Forensics (debug audio dump): the fold's sources, and which tile holds which stream.
+      foldInfo() { return { src: fold && fold.info ? fold.info() : null, tiles: [...tiles].map(([id, t]) => ({ id, sid: t.streamId ? String(t.streamId).slice(0, 8) : null, ids: t.ids ? t.ids.map((x) => String(x).slice(0, 8)) : null })) }; },
       stop() {
         if (timer) { timer(); timer = null; }
         if (fold) fold.clear();

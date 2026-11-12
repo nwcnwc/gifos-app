@@ -23143,7 +23143,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const key = target + '>' + reqP.id;
       if (relayJobs.has(key)) return;
       const tp = peers.get(target);
-      const refuse = () => dcSend(reqP, { k: 'relay-no', target });
+      const refuse = (why) => { fhTrace('FH-REFUSE', 'target=' + String(target).slice(0, 8) + ' req=' + String(reqP.id).slice(0, 8) + ' ' + (why || '')); dcSend(reqP, { k: 'relay-no', target }); };
       if ((typeof isEjected === 'function' && isEjected(target) === true)) { refuse(); return; }
       // TURN.14.12: asked over my TURN pc for a seat I hold no pc to: no NAT-kind test, I dial it (on my network the dial opens and the
       // requester's next ask finds the pc; a dial that cannot open is the refusal the next ask reads)
@@ -23157,7 +23157,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }
         if (now - at < GifOS.timings.FHOP_RELAY_ASK_MS * 3) return;   // the dial is still on its way
       }
-      if (!tp || !tp.connected || !tp.stream || !reqP.connected || relayJobs.size >= FH_K().FHOP_CARRY_MAX) { refuse(); return; }
+      if (!tp || !tp.connected || !tp.stream || !reqP.connected || relayJobs.size >= FH_K().FHOP_CARRY_MAX) { refuse(!tp ? 'nopeer' : !tp.connected ? 'down' : !tp.stream ? 'nostream' : !reqP.connected ? 'reqdown' : 'full'); return; }
       // A friend-relay re-sends the target's RECEIVED tracks: still refused on WebKit.
       // The mesh's own forwards (mosAttach) run there through wkFwdSrc;
       // a relay from a WebKit seat was not proven (2026-11-07: with this refusal
@@ -23168,7 +23168,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const senders = [];
       const video = relayVideoJobs() < relayVideoBudget();   // FHOP.9: past my video budget a carry forwards the voice only
       for (const tr of shipTracks(tp.stream)) { if (!video && tr.kind === 'video') continue; try { senders.push(addAux(reqP.pc, tr, container)); } catch (e) {} }   // one track per kind (shipTracks)
-      if (!senders.length) { refuse(); return; }
+      if (!senders.length) { refuse('notracks v=' + (video ? 1 : 0) + ' ' + tp.stream.getTracks().map((t) => t.kind[0] + t.readyState[0] + (t.muted ? 'M' : '')).join(',') + ' sid=' + String(tp.stream.id).slice(0, 8) + ' in=' + (tp.incoming || []).length); return; }
       relayJobs.set(key, { senders, requester: reqP.id, target, container, video });
       fhTrace('FH-JOB', 'target=' + String(target).slice(0, 8) + ' req=' + String(reqP.id).slice(0, 8) + ' video=' + (video ? 1 : 0) + ' cls=' + linkCls() + ' jobs=' + relayJobs.size);
       dcSend(reqP, { k: 'relay-stream', target, streamId: container.id });
@@ -37671,7 +37671,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         els, wkEar: (typeof wkEar !== 'undefined' && wkEar) ? { el: el(wkEar.el), fold: foldOf(wkEar.fold) } : null,
         stageEar: stageEar ? { el: el(stageEar.el), fold: foldOf(stageEar.fold) } : null,
         stadium: sdViewSt ? { a: trs(sdViewSt) } : null,
-        prod: prodPack && prodPack.stream ? { a: trs(prodPack.stream), pk: prodPack.peakNow ? prodPack.peakNow() : null } : null,
+        prod: prodPack && prodPack.stream ? { a: trs(prodPack.stream), pk: prodPack.peakNow ? prodPack.peakNow() : null, fold: prodPack.foldInfo ? prodPack.foldInfo() : null } : null,
+        relay: { via: [...relayVia].map(([t, r]) => ({ t: String(t).slice(0, 8), via: String(r.via).slice(0, 8), st: r.stream ? trs(r.stream) : null })), jobs: [...relayJobs.keys()].map((k) => k.split('>').map((x) => String(x).slice(0, 8)).join('>')) },
         folds, comp, standby: sb,
       };
     }
@@ -37711,6 +37712,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         else { const tr = live(stageEar.el.srcObject); if (tr) out.push({ path: 'stage', who: 'stage', track: tr, g: (stageEar.el.muted || stageEar.el.paused) ? 0 : stageEar.el.volume }); }
       }
       for (const [k, f] of downFolds) { const tr = f && f.track ? f.track() : null; if (tr) out.push({ path: 'send', who: String(k), track: tr, g: 1 }); }
+      { const tr = prodPack && prodPack.stream && prodPack.stream.getAudioTracks ? prodPack.stream.getAudioTracks()[0] : null; if (tr) out.push({ path: 'send', who: 'prod', track: tr, g: 1 }); }   // my row's product, as it leaves
       return out;
     }
     function dbgMeters() {
