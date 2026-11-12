@@ -12444,10 +12444,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (msg.kind === 'offer' || msg.kind === 'answer') {
         const b = net.bootOf(msg.sdp, ++bootSeq);
         if (!b) { txStats.relayUnfit++; if (typeof clog === 'function') clog('relay: a description with media never leaves (' + msg.kind + ' to ' + String(to).slice(0, 6) + ')'); return; }
-        relaySendSealed(to, 'name', { k: 'name', n: net.relayNameFit(myName()) }); // the name beside every bootstrap: both sides can say who tried to reach them
+        // The name beside every bootstrap: both sides can say who tried to reach them. A name is also the dial request
+        // ("I am here, dial me"), so beside an ANSWER it goes last: read ahead of the answer it asked the dialler for a
+        // pair the answer was about to complete, and a dialler whose offer was over LOST_OFFER_MS old took the offer for
+        // lost, re-offered, and the answer landed on a pc that was gone. On a slow device every answer is that late, so
+        // the pair restarted on every round and never formed.
+        const nameF = { k: 'name', n: net.relayNameFit(myName()) };
+        if (msg.kind === 'offer') relaySendSealed(to, 'name', nameF);
         if (msg.kind === 'offer' && msg.dr === 1) b.boot.dr = 1;   // the door's gate reads it (onSignal): an unseated dialler is not a stale member
         relaySendSealed(to, 'boot', b.boot);
         relaySendSealed(to, 'fp', b.fp);
+        if (msg.kind === 'answer') relaySendSealed(to, 'name', nameF);
         return;
       }
       if (msg.kind === 'ice') {
@@ -13322,7 +13329,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // minting: the offer being made on this pc (createOffer to setLocalDescription), whichever path started it; the pc still
     // reads 'stable' meanwhile. kind says what the pc is for. What describes the peer (turnSeen, turnLegacy) stays on p.
     const newNeg = (why, kind) => ({ why: why || '', kind: kind || 'pair', at: Date.now(), minting: null, offerFp: '',
-      glareTimer: null, glareOffer: null, rofferYieldTimer: null, rofferYield: null, kickVideo: false,
+      glareTimer: null, glareOffer: null, answerIn: false, rofferYieldTimer: null, rofferYield: null, kickVideo: false,
       turnAskT: null, turnOkT: null, turnGivenT: null, turnOk: false, turnGiven: false, turnWanted: false, offeredPend: '' });
     function endNeg(n) {
       if (!n) return;
@@ -14350,9 +14357,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // A second copy of an answer we already applied is in 'stable'.
         // Setting it again throws and used to be swallowed as if it landed.
         if (!p.pc || p.pc.signalingState !== 'have-local-offer') { rxStats.answerStale++; return; }
+        const negA = p.neg; if (negA) negA.answerIn = true;   // this pc's offer has its answer in hand: no longer unanswered (onDialRequest), though the pc reads have-local-offer until it is set
         p.pc.setRemoteDescription(msg.sdp)
           .then(() => { for (const c of p.pendingIce.splice(0)) p.pc.addIceCandidate(c).catch(() => {}); })
-          .catch((e) => { noteNegFail('answer', from, e); if (/extension ID reassignment/i.test(String((e && e.message) || ''))) maybeRebuildNeg(peers.get(from), e); });
+          .catch((e) => { if (negA) negA.answerIn = false; noteNegFail('answer', from, e); if (/extension ID reassignment/i.test(String((e && e.message) || ''))) maybeRebuildNeg(peers.get(from), e); });
       } else if (msg.kind === 'ice') {
         const cands = iceCandsOf(msg);
         const p = peers.get(from);
@@ -14653,7 +14661,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function onDialRequest(p) {
       const pLive = p.connected && p.dc && p.dc.readyState === 'open';
-      const unanswered = !!(p.pc && p.pc.signalingState === 'have-local-offer');
+      const answering = !!(p.pc && p.neg && p.neg.answerIn && p.pc.signalingState === 'have-local-offer');   // the answer is being set: the name that rides behind it is no ask
+      const unanswered = !!(p.pc && p.pc.signalingState === 'have-local-offer') && !answering;
       const bounced = unanswered && p.offerSentPc === p.pc && (p.offerNoSockAt || 0) >= (p.offerSentAt || 0);   // the relay said nosock after this offer left
       // A peer whose reload goodbye the wire still holds has not been heard since its page left: this request is its new
       // page's first word, and an offer I made before that word was made for the page that left (the seat re-dials at the
@@ -14670,7 +14679,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // inside its finish window. Past that window a dial request rebuilds,
       // which is what a lost trickle used to wait out forever. A reload
       // (back) is a new page; the old pc is left to fail.
-      const forming = !pLive && p.pc && !darkOffer && !idle && (iceFinishing(p, Date.now(), back) || Date.now() - pcBuiltAt(p) < 5000) && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
+      const forming = !pLive && p.pc && !darkOffer && !idle && (answering || iceFinishing(p, Date.now(), back) || Date.now() - pcBuiltAt(p) < 5000) && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
       if (typeof clog === 'function') clog('dial-request from ' + String(p.id || '?').slice(0, 6) + ' solo=' + (participantCount() <= 1) + ' live=' + !!pLive
         + ' init=' + iInitiate(p.id) + ' forming=' + !!forming + ' dark=' + !!darkOffer + ' pc=' + (p.pc ? p.pc.connectionState + '/' + p.pc.signalingState : '-')
         + ' age=' + Math.round((Date.now() - pcBuiltAt(p)) / 100) / 10 + 's frag=' + Math.round((Date.now() - (p.fragDialAt || 0)) / 100) / 10 + 's');
