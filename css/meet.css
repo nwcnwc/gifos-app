@@ -3570,3 +3570,7 @@
   .ag-chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .ag-chip { min-height: 40px; padding: 0 14px; border: 0; border-radius: var(--r-pill); background: var(--c-ink); color: var(--c-gray); font: inherit; font-size: 14px; cursor: pointer; }
   .ag-chip[aria-pressed="true"] { background: var(--c-white); color: var(--c-black); }
+  .ct-pview { position: absolute; z-index: 1; top: 8px; right: 8px; width: 44px; height: 44px; border: 0; border-radius: var(--r-pill); background: var(--c-scrim); color: var(--c-white);
+    display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+  .ct-pview[hidden] { display: none; }
+  .ct-pane.ag > .ct-pview { position: sticky; float: right; top: 0; margin: -8px -8px 0 8px; }
