@@ -35452,7 +35452,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!frame || !Array.isArray(frame.list) || frame.hold) return;
       subsListLen = frame.list.length; subsListAt = Date.now();
       const st = meshSeat(), held = Array.from(subsWaitList.keys());
-      if (held.length && st && st.answerDoor) { try { st.answerDoor(held); } catch (e) {} }   // the held knocks are judged on this list now
+      if (held.length && st && st.recheckDoor) { try { st.recheckDoor(held); } catch (e) {} }   // the held knocks are judged again on this list (never admitted by it)
     }
     // The count for knocker `id`: the greeter list plus this door, from a list
     // that came after the knocker did. Otherwise the door asks for a fresh one
