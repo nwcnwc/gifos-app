@@ -803,5 +803,6 @@
   "meet.agNoItems": "Noch keine Punkte.",
   "meet.agAddItem": "Punkt hinzufügen",
   "meet.agWhoEdits": "Wer noch bearbeiten darf",
-  "meet.agStop": "Agenda nicht mehr teilen"
+  "meet.agStop": "Agenda nicht mehr teilen",
+  "meet.shareStageFull": "Die Bühne ist voll. Jemand muss zuerst heruntergehen."
 }

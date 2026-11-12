@@ -27964,7 +27964,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       else if (shareRoleOff) shareWhy = 'Only the host shares to the stage.';
       else if (TOWNHALL && document.body.classList.contains('th-watch') && !document.body.classList.contains('stage-granted')) shareWhy = 'You are watching. A host can invite you to speak.';
       else if (!on && !mayShareScreen(myId)) shareWhy = uiText('shareNotAllowed', 'The host has not allowed you to share yet.');
-      else if (!on && screenSharers().some((id) => id !== myId && id !== 'me')) shareWhy = 'Someone else is sharing. Wait for them to stop.';
+      // Several people may share at once (Nathan 2026-11-11): each screen is a
+      // tab of the content area. Only a full stage stops one more.
+      else if (!on && !myStatus.stg && stageIds().length >= SCALE.C) shareWhy = uiText('shareStageFull', 'The stage is full. Someone has to step down first.');
       shareBtn.style.display = (!shareDocked && (!canScreenShare() || shareRoleOff)) ? 'none' : '';
       if (typeof idleDock === 'function') idleDock(shareBtn, shareDocked ? shareWhy : '');
       // A screen on the Stage wants height. This does not rebuild the layout —
