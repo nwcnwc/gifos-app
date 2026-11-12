@@ -12634,7 +12634,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const cc = net.topo.unck(k);
       return cc.pc === c.pc && cc.r === c.r;
     }
-    const camPeer = (pid) => isRowMate(pid);
+    // A row-mate across a relayed link's cut is reached only through that link's carrier (mosCarrier): the carrier is the
+    // one seat that can hand my own camera and mic on to it, so it gets them as a row-mate does. Only my own row counts.
+    function rowCarrier(pid) {
+      const c = meshCoord(); if (!c || !turnLinks || typeof mosCarrier !== 'function') return false;
+      const q = peers.get(pid); if (!q || !q.connected) return false;
+      for (let j = 0; j < SCALE.C; j++) {
+        if (j === c.i) continue;
+        const m = occPid({ pc: c.pc, r: c.r, i: j }); if (!m || m === pid || m === myId) continue;
+        const mp = peers.get(m); if (mp && mp.connected) continue;
+        if (mosCarrier(m) === pid) return true;
+      }
+      return false;
+    }
+    const camPeer = (pid) => { if (isRowMate(pid)) return true; try { return rowCarrier(pid); } catch (e) { return false; } };
     // ---- mesh early-probe intake (healing-laws D5) --------------------------
     // Transport death is MY first-hand evidence: when my DataChannel to a peer
     // closes, or its pc lands in a hard state ('closed', or 'failed' persisting
