@@ -1768,6 +1768,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { host = (typeof bcHostStored === 'function' && !!bcHostStored()) || document.body.classList.contains('amadmin'); } catch (e) {}
       const service = BROADCAST;
       const ask = !mine && (!service || (onStage && !host));
+      // A broadcast keeps its own service recording from the host's Go live:
+      // the host who started it and a viewer who sends nothing read the bar's
+      // Recording chip, not a card to dismiss. Someone on the stage is asked.
+      if (service && !ask) { if (existing) existing.remove(); return; }
       const bg = document.createElement('div');
       bg.id = 'rec-notice';
       bg.className = 'name-modal';
@@ -2553,6 +2557,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { seen = sessionStorage.getItem('gifos_appear_ok') === '1' || sessionStorage.getItem('gifos_appeared') === '1'; } catch (e) {}
       const me0 = GifOS.store.identity();
       if (seen && me0.name) return Promise.resolve(me0);
+      // A broadcast host came through the Broadcast lobby, which showed how
+      // they appear: a blank name there is a guest name, not a second card.
+      if (seen && BROADCAST && !me0.name) {
+        GifOS.store.setName('Guest ' + (1000 + Math.floor(Math.random() * 9000)));
+        return Promise.resolve(GifOS.store.identity());
+      }
       let seed = me0.name;
       if (!seed) {
         seed = 'Guest ' + (1000 + Math.floor(Math.random() * 9000));
