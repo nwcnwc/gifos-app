@@ -13,6 +13,8 @@
   const GifOS = root.GifOS = root.GifOS || {};
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
+  // the sim's #define L25_23_OFF in mesh_seat.inc (a build-time switch): MESH_L25_23_OFF=1 under node, read once at load; a page always runs the law
+  const L25_23_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L25_23_OFF === '1') ? 1 : 0;
   const C_ = req('./consts.js', 'meshConsts');
   const msg = req('./msg.js', 'meshMsg');
   const topo = req('./topo.js', 'meshTopo');
@@ -133,20 +135,22 @@
       if (this.l25Stand(m.nc >= 0 && m.nc !== id ? m.nc : by, true) || !this.hasCoord || this.state !== 3) return false;
       const answer = () => { if (this.TICK - this.challAt > 20) { this.challAt = this.TICK | 0; const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = id; this.emit(by, h); } };
       if (m.nc < 0 || m.nc === id || m.nc === by) { this.trace('L25-REFUSED', id, this.coord, 'by=%d nc=%d', by, m.nc); answer(); return true; }
-      if (this.l25Nc === m.nc && this.l25Ck === m.ck && this.TICK - this.l25At <= K.L25_WAIT) { if (this.l25By !== by) { this.trace('L25-QUORUM', id, this.coord, 'by=%d and %d rival=%d', by, this.l25By, m.nc); this.l25Nc = -1; return false; } return true; }
+      if (this.l25Nc === m.nc && this.l25Ck === m.ck && this.TICK - this.l25At <= K.L25_WAIT) {
+        if (!L25_23_OFF && !this.l25ByWord) { if (this.l25By !== by) this.trace('L25.23-FIRST', id, this.coord, 'by=%d asked-through=%d rival=%d', by, this.l25By, m.nc); this.l25By = by; this.l25ByWord = true; return true; }   /* L25.23: the open question is one I put myself (L25.12's tell, L25.13.1's placer, L25.13.2's next arbiter): this yield is the first arbiter's word about the rival, not the second */
+        if (this.l25By !== by) { this.trace('L25-QUORUM', id, this.coord, 'by=%d and %d rival=%d', by, this.l25By, m.nc); this.l25Nc = -1; return false; } return true; }
       if (this.TICK - this.l25At <= K.L25_WAIT && this.l25Nc >= 0) {   // one question at a time...
         if (this.l25ONc === m.nc && this.l25OCk === m.ck && this.l25OBy !== by && this.TICK - this.l25OAt <= K.L25_WAIT) { this.trace('L25-QUORUM', id, this.coord, 'by=%d and %d rival=%d asked=%d', by, this.l25OBy, m.nc, this.l25Nc); this.l25Nc = -1; this.l25ONc = -1; return false; }   // L25.17: ...but it hides no quorum: two arbiters naming the same other rival move me as two naming the asked one do
         this.l25ONc = m.nc; this.l25OCk = m.ck; this.l25OBy = by; this.l25OAt = this.TICK | 0; return true;
       }
-      this.l25Ask(m, by); answer(); return true;
+      this.l25Ask(m, by, true); answer(); return true;
     },
 
-    // C++: mesh_seat.inc:Seat::l25Ask
-    l25Ask(m, by) {
+    // C++: mesh_seat.inc:Seat::l25Ask   [word: an arbiter's yield began this question (L25.23)]
+    l25Ask(m, by, word) {
       const id = this.id;
       if (this.TICK - this.l25At <= K.L25_WAIT && this.l25Nc >= 0) return;
       if (this.l25WitPend && this.TICK - this.l25WitAt >= K.L25_WAIT) { this.l25WitTick(); if (!this.hasCoord || this.state !== 3 || this.moving || ckey(this.coord) !== m.ck) return; }   // L25.9.1: a verdict that is due is given before a new question restarts the count
-      this.l25Nc = m.nc; this.l25Ck = m.ck; this.l25By = by; this.l25At = this.TICK | 0;
+      this.l25Nc = m.nc; this.l25Ck = m.ck; this.l25By = by; this.l25ByWord = !!word; this.l25At = this.TICK | 0;
       const c = newMsg('CHALLENGE'); c.ck = m.ck; c.from = id; c.tag = 25;
       if (this.w.lv.LINKMODEL) {   // L25.18: while I hold no open channel to the rival the question also crosses the seat that named it, over our channels
         const r = msg.clone(c); this.f.fabricCallFrame(id, m.nc, c);
