@@ -23979,8 +23979,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // HUNG at phase B dt=2), the same open 7f84dfa took out of every tile.
       const sink = (typeof WEBKIT_ENGINE !== 'undefined' && WEBKIT_ENGINE && typeof wkStageSink === 'function') ? wkStageSink(fold) : null;
       if (sink) { stageEar = { fold, el: sink, sids: new Map() }; return; }
-      const el = new Audio(); el.autoplay = true;
-      el.srcObject = fold.dest.stream;
+      // Heard through its parts (createFoldPlayer), not as the fold's WebAudio track in an element: Chromium
+      // resamples that track to catch up after a hiccup and the stage voices go up in pitch.
+      let el = null;
+      if (typeof MM.createFoldPlayer === 'function') { try { el = MM.createFoldPlayer(fold, { onBlocked: audioBlocked }); } catch (e) { el = null; } }
+      if (!el) { el = new Audio(); el.autoplay = true; el.srcObject = fold.dest.stream; }
       stageEar = { fold, el, sids: new Map() };
       const pr = el.play(); if (pr && pr.catch) pr.catch((e) => audioBlocked(el, e)); // the stage ear is the one element a sharer's voice rides
     }
@@ -29770,7 +29773,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return;
       }
       if (!src) { if (el._aud) el._aud.srcObject = null; el.volume = vol; return; }
-      if (!el._aud) { el._aud = new Audio(); el._aud.autoplay = true; }
+      // A sound made here by a fold (a Section-1 head's Stadium ear) is heard through its parts, never as a WebAudio
+      // track in an element: Chromium resamples such a track to catch up after a hiccup and the voices go up in
+      // pitch (createFoldPlayer). A remote track keeps its plain companion.
+      const fd = foldOfStream(src);
+      if (el._aud && (fd ? el._aud.fold !== fd : !!el._aud.direct)) releaseAudio(el);
+      if (!el._aud) { if (fd) el._aud = fd.player(audioBlocked); else { el._aud = new Audio(); el._aud.autoplay = true; } }
       el.muted = true; // the <video> is picture-only, always — sound lives in the companion
       // Muting is what makes a late srcObject legal to play. The element is
       // often still paused from the unmuted autoplay attempt at claim time,
@@ -29793,6 +29801,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // played at full level there — ghost voices, doubled stagers. `muted`
       // is honoured everywhere; the fader range above 0 still rides volume.
       el._aud.muted = !!el._gmute || !(vol > 0); // group mute rides the same pipe as the faders
+    }
+    // The audio fold whose output this stream carries (it was made on this page), or null.
+    function foldOfStream(st) {
+      const MMx = typeof GifOS !== 'undefined' ? GifOS.meshMedia : null;
+      if (!st || !st.getAudioTracks || !MMx || typeof MMx.foldOfTrack !== 'function' || typeof MMx.createFoldPlayer !== 'function') return null;
+      const t = st.getAudioTracks()[0];
+      return t ? MMx.foldOfTrack(t) : null;
     }
     // Service mute is a local gate on the stage bus. The saved fader stays put.
     // The one writer of the stage ear's level: a viewer's sound off and the waiting room hold through every reconcile (iOS ignores volume; 0 must be `muted`).
