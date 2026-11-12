@@ -12943,7 +12943,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         reach: (pid) => { const p = peers.get(pid); if (p && p.connected && !(turnLinks && turnLinks.isLink(pid))) return 'direct'; return turnFriend(pid) ? 'friend' : null; },
         blocked: () => directPath === 'blocked',
         askedAt: (pid) => turnAskedAt.get(pid) || 0,   // TURN.4.3: when my entry's door ask to that greeter went out
-        friends: () => { for (const p of peers.values()) if (p && p.connected && !(turnLinks && turnLinks.isLink(p.id))) return true; return false; },   // a connected peer of my own: its probe of the greeter needs TURN_WAIT
+        friends: () => { if (directPath === 'blocked') return false;   /* a blocked page's direct peers are on its own network by definition: none of them can probe a greeter it cannot reach (a colleague's door connected one tick after the founding read as a friend and the link waited TURN_WAIT: no hold, the office formed its own room) */ for (const p of peers.values()) if (p && p.connected && !(turnLinks && turnLinks.isLink(p.id))) return true; return false; },   // a connected peer of my own: its probe of the greeter needs TURN_WAIT
         judged: () => { const r = turnRaw(); return !!r && r.greetersAt > r.seatedAt; },   // the door has answered my own seating knock (L8.1.3)
         alive: (pid) => {
           if (meshKnows(pid)) return true;
