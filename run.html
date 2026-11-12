@@ -24444,9 +24444,25 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       return out;
     }
+    // TURN.14.8 / TURN.14.12, the mosaic's half: a ship to a seat across a TURN link's cut, where no pc of mine opens, rides the one
+    // seat that reaches both: the target's own TURN peer when I reach it (I sit on the far end's side), else my TURN peer when its
+    // beat lists the target (I am the end). The carrier re-ships it under the same key ('tc:<target>|<key>' on the way), so the target
+    // claims it as if it came straight. Only rooms that hold a TURN link carry anything: the carrier is read from the links' facts.
+    function mosCarrier(to) {
+      if (!turnLinks || !to || to === myId) return null;
+      const live = (r) => { const q = peers.get(r); return !!(q && q.connected && q.dc && q.dc.readyState === 'open'); };
+      for (const f of turnFacts.values()) {
+        if (!f.up || Date.now() - (f.at || 0) > turnLinks.factStaleMs) continue;
+        const x = f.a === to ? f.b : f.b === to ? f.a : null; if (x && x !== myId && live(x)) return x;
+      }
+      for (const r of turnLinks.turnPcs()) if (r !== to && live(r) && (connsOf.get(r) || []).includes(to)) return r;
+      return null;
+    }
+    const mosCarried = (k) => { if (typeof k !== 'string' || k.indexOf('tc:') !== 0) return null; const b = k.indexOf('|'); return b > 3 ? { to: k.slice(3, b), key: k.slice(b + 1) } : null; };
     function shipMos(key, to, stream, meta, upKey) {
       if (!to || !stream) return null;
       const p = peers.get(to);
+      if ((!p || !p.connected) && key.indexOf('tc:') !== 0) { const via = mosCarrier(to); if (via) return shipMos('tc:' + to + '|' + key, via, stream, meta, upKey); }
       const jk = key + '>' + to;
       const cur = mosJobs.get(jk);
       // ORPHANED BY A TRANSPORT SWAP? A job's senders belong to the pc they
@@ -25289,6 +25305,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function mosResolve(key, meta, from) {
       const c = meshCoord(); if (!c) return null;
+      { const t = mosCarried(key); if (t) { const q = peers.get(t.to); return t.to !== myId && t.to !== from && q && q.connected && !mosCarried(t.key) ? key : null; } }   // TURN.14.8: a ship I carry across the cut
       const iAmHead = c.i === 0 || actingHead(); // L2.7: the heir stands in for a gone head
       if (key === 'sub') {
         if (meta && meta.l14) return 'subu:' + String(meta.via || from).slice(0, 64); // L14: a cut-off branch's product over its uplink (or relayed by my row-mate)
@@ -27361,6 +27378,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const tr = mic && mic.getAudioTracks && mic.getAudioTracks()[0];
         if (via && tr && tr.readyState !== 'ended') { const jr = shipMos('ra', via, mic, { row: c.r, src: myId }); if (jr) { wanted.add(jr); rowMixSent++; } }
       }
+      // TURN.14.8: the ships I carry across a TURN link's cut go on to their seat under their own key
+      for (const [mk, f] of mosIn) { const t = mosCarried(mk); if (!t || !f.stream || f.deadAt) continue; const jk = shipMos(t.key, t.to, f.stream, f.meta, mk); if (jk) wanted.add(jk); }
       // ---- STAGE lane: chosen <=C feeds -> S1 -> composited strip -> fan down --
       // Individual stager feeds ride UP to Section 1 (uncomposited passthrough,
       // per-stager key); at S1 they FLOOD the row+cross mesh (dedup by streamId,
