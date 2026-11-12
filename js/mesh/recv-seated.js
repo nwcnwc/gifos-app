@@ -253,6 +253,8 @@
       { if (this.l152Bye.size >= 256) this.l152Bye.clear(); this.l152Bye.set(m.id, [m.ck, TICK]); }   // L15.2
       if (this.l4ExecAt >= 0 && m.id === this.l4Partner) { this.l4ExecAt = -1; this.f.fabricNoteSwap(id, 3); this.trace('SWAP-ABORT', id, this.coord, 'partner=%d left', m.id); }   // L4.3
       if (m.rel) { this.relMark.set(m.id, TICK); this.trace('RELOAD-BYE', id, this.hasCoord ? this.coord : null, 'from=%d cell=%s', m.id, coordStr(unck(m.ck))); return; }   // L3.11
+      // C++: mesh_seat.inc:Seat::onLeave
+      this.f.l23GreetRelease(id, m.id);   // the seat that greeted me has left: the greeting it had started here ends with it (a reload is not a goodbye)
       if (m.bye && !m.mvd) { this.noteBye(m.id); if (m.id !== id) this.dials.holdGone(m.id, TICK + K.GONE_DIAL); }
       if (m.mvd && m.ck < 65536) { this.l3109Ck = m.ck + 1; this.l3109At = this.TICK; }   // L3.10.9
       this.memo.delete(m.ck);   // L3.10a (the relay's greeter-gone is a death word, never a goodbye: it does not reach here, L3.1)
