@@ -2084,17 +2084,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           note.textContent = end ? 'Everyone watching sees a five-minute countdown after you leave, and then the room closes.' : '';
         }
         if (end) {
-          sayState('leave-ask-title', 'End the broadcast?');
-          sayState('left-title', 'You ended the broadcast');
-          sayState('left-note', 'Everyone watching sees a five-minute countdown, and then the room closes. Rejoin to keep it open.');
+          say('leave-ask-title', 'End the broadcast?');
+          say('left-title', 'You ended the broadcast');
+          say('left-note', 'Everyone watching sees a five-minute countdown, and then the room closes. Rejoin to keep it open.');
         } else if (mode === 'watch') {
-          sayState('leave-ask-title', 'Leave the broadcast?');
-          sayState('left-title', 'You left the broadcast');
-          sayState('left-note', 'Your camera and microphone are off. Rejoin to come back.');
+          say('leave-ask-title', 'Leave the broadcast?');
+          say('left-title', 'You left the broadcast');
+          say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
         } else {
-          sayState('leave-ask-title', 'Leave the meeting?');
-          sayState('left-title', 'You left the meeting');
-          sayState('left-note', 'Your camera and microphone are off. Rejoin to come back.');
+          say('leave-ask-title', 'Leave the meeting?');
+          say('left-title', 'You left the meeting');
+          say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
         }
       };
       if (!BROADCAST) {
@@ -2158,9 +2158,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         leaveSvc.title = 'Leave the broadcast. Your camera and microphone stop.';
         leaveSvc.setAttribute('aria-label', 'Leave the broadcast');
       }
-      sayState('leave-ask-title', 'Leave the broadcast?');
-      sayState('left-title', 'You left the broadcast');
-      sayState('left-note', 'Your camera and microphone are off. Rejoin to come back.');
+      say('leave-ask-title', 'Leave the broadcast?');
+      say('left-title', 'You left the broadcast');
+      say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
       say('chatprivacy', 'Private to this broadcast, gone when everyone leaves');
       const nameLead = document.getElementById('set-name-lead');
       if (nameLead) nameLead.textContent = 'What everyone sees on the stage:';
