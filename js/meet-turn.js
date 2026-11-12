@@ -366,7 +366,6 @@
   //   epoch(pid) → when that greeter's part was founded, as the door's list says (-1: not said); myEpoch() → my part's (-1: unknown)
   //   reach(pid) → 'direct' | 'friend' | null   TURN.2 / TURN.3 as this page knows them
   //   blocked() → my network blocks direct connections (the page's own probe)
-  //   blockedSure() → the same, and measured: the probe ended with that verdict, it is not a slow answer (optional)
   //   alive(pid) → the far page is still in the meeting      pcUp(pid) → the pair's connection is up
   //   sendTv(pid, frame); askVouch(farDev, l); ask(body) → Promise<json>
   //   dial(pid); reset(pid) (a fresh pc on the new settings, no dial); restart(pid, l) (move a live pc onto new settings)
@@ -377,10 +376,6 @@
     const K = meshConsts().consts, T = meshTurn();
     const tick = io.tickMs || 500;
     const WAIT_MS = K.TURN_WAIT * tick;                        // TURN.4
-    // TURN.4.2: a head whose own measured network verdict is blocked knows at once that direct fails, and it has no friend
-    // to ask (a blocked page holds a peer on another network only over a link of its own): its wait is one sweep.
-    const WAIT_BLOCKED_MS = K.TURN_WAIT_BLOCKED * tick;
-    const waitMs = () => (io.blockedSure && io.blockedSure() && links.size === 0) ? WAIT_BLOCKED_MS : WAIT_MS;
     const MERGE_MS = K.RELAY_TTL * tick;                       // TURN.15.2: the span of one merge
     const RETRY_MS = K.TURN_RETRY * tick;                      // TURN.10
     const RESEND_MS = K.TURN_DIAL * tick;                      // a handshake frame the relay lost is sent again
@@ -644,7 +639,7 @@
           let has = false;
           for (const L of links.values()) if ((L.opener || view.has(L.far)) && !inside(io.me(), L.far, L.state === 'up' ? L.upAt : -1)) { has = true; break; }
           for (const f of io.facts() || []) if (f && !f.gone && f.up && mine(f.a) && !inside(f.a, f.b, f.s || -1)) { has = true; break; }
-          if (!has && now - head.since >= waitMs() && now >= head.retryAt) {
+          if (!has && now - head.since >= WAIT_MS && now >= head.retryAt) {
             // TURN.15.1: which part is "the lower" must read the same from both sides, so a part's place in the order is
             // its lowest greeter on the door's list (the one thing both heads read), or me: never the lowest id of my view.
             let myMin = io.nid(io.me()); for (const g of io.greeters() || []) { if (!g || g === io.me() || !view.has(g)) continue; const n = io.nid(g); if (n >= 0 && n < myMin) myMin = n; }
