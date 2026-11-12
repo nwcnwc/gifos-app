@@ -7795,7 +7795,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       CT.plan = plan;
       body.classList.toggle('ct-tabs', !!plan.tabs);
       CT.bar.hidden = !plan.tabs;
-      const barH = plan.tabs ? (phone ? 44 : 48) : 0;
+      // The tab bar starts under the meeting's header chip when the area
+      // runs up under it (a phone: the feed starts at the top edge).
+      let barTop = 0;
+      if (plan.tabs && !fixed) {
+        const chip = document.querySelector('.topchip');
+        if (chip && chip.getClientRects().length && getComputedStyle(chip).display !== 'none') {
+          const cr = chip.getBoundingClientRect();
+          const top = fr.top + box.y - (feed ? feed.scrollTop : 0);
+          if (cr.bottom > top && cr.top < top + 60) barTop = Math.min(Math.round(box.h / 3), Math.ceil(cr.bottom - top + 4));
+        }
+      }
+      CT.bar.style.top = barTop + 'px';
+      const barH = plan.tabs ? barTop + (phone ? 44 : 48) : 0;
       const inner = { x: 0, y: barH, w: box.w, h: Math.max(1, box.h - barH) };
       const shown = plan.show.map((k) => CT.items.find((i) => i.key === k)).filter(Boolean);
       const asp = shown.map((it) => ctAspect(it, inner.w));
