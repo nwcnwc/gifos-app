@@ -672,6 +672,8 @@
       farBusy(pid) { const L = links.get(pid); return !!L && L.video && L.farBusy; },
       // TURN.14 hooks for the twin (the pcs that run through TURN: fabricTurnAcross reads them).
       turnPcs() { const out = []; for (const L of links.values()) if (L.state === 'up') out.push(L.far); return out; },
+      opened(pid) { const L = links.get(pid); return !!L && L.state === 'up' && !!L.opener; },   // TURN.14.13 / L8.5.9: I opened this up link
+      anyHeld() { for (const L of links.values()) if (L.state !== 'closed') return true; return false; },   // TURN.14.13: I hold a TURN link in any state
       lookMs: THROTTLE_LOOK_MS,
       video(pid) { const L = links.get(pid); return !!L && L.video; },
       close(pid, why) { const L = links.get(pid); if (L) close(L, why || 'closed'); },
