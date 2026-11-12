@@ -23141,7 +23141,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const t14Dial = new Map();   // TURN.14.12: target -> when I dialled it for my TURN peer's carry
     function startRelayJob(reqP, target) {
       const key = target + '>' + reqP.id;
-      if (relayJobs.has(key)) return;
+      // A requester asks again only when it holds no claim on my carry (its claim was dropped while my job ran on):
+      // announce the same stream again, or it waits on a carry that never answers.
+      if (relayJobs.has(key)) { const j0 = relayJobs.get(key); if (reqP.connected && j0 && j0.container) dcSend(reqP, { k: 'relay-stream', target, streamId: j0.container.id }); return; }
       const tp = peers.get(target);
       const refuse = (why) => { fhTrace('FH-REFUSE', 'target=' + String(target).slice(0, 8) + ' req=' + String(reqP.id).slice(0, 8) + ' ' + (why || '')); dcSend(reqP, { k: 'relay-no', target }); };
       if ((typeof isEjected === 'function' && isEjected(target) === true)) { refuse(); return; }
