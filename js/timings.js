@@ -47,6 +47,9 @@
     FIRST_MS: 40,   // ms
     FOLD_HOLD_MS: 60000,   // ms
     FOLLOWME_WAIT_MS: 15000,   // ms
+    FOLLOW_GAP_MS: 1000,   // ms
+    FOLLOW_HOLD_MS: 5000,   // ms
+    FOLLOW_ON_MS: 2000,   // ms
     FRAG_DIAL_WAIT_MS: 30000,   // ms
     GLARE_YIELD_MS: 4000,   // ms
     GMARK_BEHIND: 1024,   // count
@@ -166,6 +169,7 @@
     STG_BEAT_STALE_MS: 5000,   // ms
     STG_PIC_DEAD_MS: 4000,   // ms
     STG_PIC_FRAMES: 5,   // count
+    STG_PIC_LIVE_MS: 2500,   // ms
     STG_PIC_RETRY_MS: 15000,   // ms
     STG_ZERO_MS: 2000,   // ms
     STILL_MAX_MS: 1000,   // ms

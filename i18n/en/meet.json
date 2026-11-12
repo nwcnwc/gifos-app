@@ -737,5 +737,13 @@
   "meet.wspRunBrowserShort": ", browser captions on",
   "meet.wspRunNoneShort": ", no captions from you",
   "meet.wspRetry": "Retry",
-  "meet.stBrowserCaptionsOnWhisperOff": "Browser captions are on. Whisper is off on this device."
+  "meet.stBrowserCaptionsOnWhisperOff": "Browser captions are on. Whisper is off on this device.",
+  "meet.viewPick": "View",
+  "meet.viewPickTip": "Change the view (Alt+F)",
+  "meet.viewScroll": "Scroll",
+  "meet.viewFit": "Fit",
+  "meet.viewFloat": "Float",
+  "meet.viewFocus": "Focus",
+  "meet.viewFollow": "Follow the speaker",
+  "meet.viewPresent": "Present"
 }

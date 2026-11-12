@@ -1134,6 +1134,11 @@
                padding: .35rem .7rem; font-size: 1.25rem; line-height: 1.35; color: var(--c-white); z-index: 3; pointer-events: none;
                opacity: 0; transition: opacity .25s; }
   .tile .cap.show { opacity: 1; }
+  /* A tile whose video a free TURN link holds back (run.html turnPaint): the reason, and Subscribe. */
+  .tile .tpause { position: absolute; left: 8px; right: 8px; top: 8px; background: var(--c-scrim); border-radius: var(--r-md);
+                  padding: 6px 8px; font-size: .85rem; line-height: 1.3; color: var(--c-white); z-index: 3; }
+  .tile .tpause .tpause-sub { display: block; margin-top: 6px; min-height: 36px; padding: .25rem .7rem; border: 0; border-radius: var(--r-md);
+                  background: var(--c-blue); color: var(--c-white); cursor: pointer; }
   /* On a phone the line is one caption above Live, not a clip on the face.
      A long line starts at the top and the rest scrolls inside the caption.
      No band for the bar: it rests on the safe area over the Record row, and
@@ -3300,18 +3305,86 @@
   }
   /* The stage's Open sits in the caption row at the bottom of the slide, never in the top corner where a phone's
      status chip floats over the stage. */
-  body:not(.broadcast) #stagefeed > .rowtile > .tile-open { top: auto; bottom: 6px; }
-  /* A phone reaches every control with a 44px target. A face's Open keeps its small light pill: a transparent
+  html body:not(.broadcast) #stagefeed > .rowtile > .tile-open { top: auto; bottom: 6px; }
+  /* A phone reaches every control with a 44px target (html body: css/meet-23b.css loads after this file and sizes
+     the same controls). A face's Open keeps its small light pill: a transparent
      border grows the tap area around it. */
   @media (max-width: 700px), (max-height: 500px) {
-    .tile > .tile-open, .rowtile > .tile-open { top: 0; right: 0; height: 44px; max-height: 44px; max-width: 94px;
+    html body .tile > .tile-open, html body .rowtile > .tile-open { top: 0; right: 0; height: 44px; max-height: 44px; max-width: 94px;
       border: 11px solid transparent; background-clip: padding-box; }
-    body:not(.broadcast) #stagefeed > .rowtile > .tile-open { top: auto; bottom: 0; }
-    body.comfy .tile.slim > .tile-open { width: 44px; max-width: 44px; }
+    html body:not(.broadcast) #stagefeed > .rowtile > .tile-open { top: auto; bottom: 0; }
+    html body.comfy .tile.slim > .tile-open { width: 44px; max-width: 44px; }
     #airrec, #airwho, body.broadcast #airsound:not([hidden]) { min-height: 44px; }
     #chathead #trtab { min-height: 44px; }
   }
   @media (max-width: 700px) and (min-height: 501px) {
-    #tilewin .tw-close { width: 44px; height: 44px; }
-    #tilewin .tw-side button.tw-btn, #tilewin button.tw-btn, #tilewin .modbar button { min-height: 44px; height: auto; }
+    html body #tilewin .tw-close { width: 44px; height: 44px; }
+    html body #tilewin .tw-side button.tw-btn, html body #tilewin button.tw-btn, html body #tilewin .modbar button { min-height: 44px; height: auto; }
+  }
+  /* ---- The meeting's views: Scroll, Fit, Float, Focus (Nathan 2026-11-11) ----
+     One quiet button (#fitbtn: the view's outline glyph and its word) opens a
+     small dark picker: four glyphs over one word each, the chosen one white
+     with a blue dot, the rest grey. No boxes, no borders. Follow the speaker is
+     one switch row, shown in Focus only. Tokens only. */
+  .fitbtn { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; font-size: 14px; color: var(--c-white); }
+  .fitbtn .vb-ic { display: inline-flex; }
+  .fitbtn .vb-ic svg { width: 20px; height: 20px; display: block; }
+  .viewpick { position: fixed; z-index: 34; display: flex; flex-direction: column; gap: 8px; padding: 8px;
+    background: var(--c-night); color: var(--c-white); border-radius: var(--r-lg); max-width: calc(100vw - 16px); }
+  .viewpick[hidden] { display: none; }
+  .vp-modes { display: flex; gap: 4px; }
+  .vp-mode { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    min-width: 64px; min-height: 64px; padding: 8px 6px 12px; border: 0; border-radius: var(--r-md);
+    background: none; color: var(--c-gray); font-size: 12px; font-weight: 500; cursor: pointer; }
+  .vp-mode .vp-ic svg { width: 24px; height: 24px; display: block; }
+  .vp-mode[aria-checked="true"] { color: var(--c-white); }
+  .vp-mode[aria-checked="true"]::after { content: ""; position: absolute; left: 50%; bottom: 4px; width: 4px; height: 4px;
+    margin-left: -2px; border-radius: var(--r-pill); background: var(--c-blue); }
+  @media (hover: hover) and (pointer: fine) { .vp-mode:hover { color: var(--c-white); } }
+  .vp-mode:focus-visible, .vp-follow:focus-visible { outline: 2px solid var(--c-blue); outline-offset: -2px; }
+  .vp-follow { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 0 8px;
+    border: 0; border-radius: var(--r-md); background: none; color: var(--c-white); font-size: 14px; font-weight: 500; cursor: pointer; }
+  .vp-follow[hidden] { display: none; }
+  .vp-knob { position: relative; flex: 0 0 auto; width: 36px; height: 20px; border-radius: var(--r-pill); background: var(--c-ink-2);
+    transition: background var(--t-fast) ease; }
+  .vp-knob::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: var(--r-pill);
+    background: var(--c-white); transition: transform var(--t-fast) ease; }
+  .vp-follow[aria-checked="true"] .vp-knob { background: var(--c-blue); }
+  .vp-follow[aria-checked="true"] .vp-knob::after { transform: translateX(16px); }
+  /* Focus: #fsview drawn in the page under the header, Fit's button and the
+     floating bar (the bar overlays, nothing is reserved). The strip runs down
+     the side when the screen is wide and across the bottom when it is tall;
+     the bottom strip ends above the bar the same way the panels do
+     (--barclear). Thumbs wear no frame; the one on the big view is outlined. */
+  body.view-focus #fsview { z-index: 5; }
+  body.view-focus #fsclose { display: none; }
+  body.view-focus #fsstrip { top: calc(72px + var(--gtop, 0px)); background: none; gap: 8px; padding: 8px; }
+  body.view-focus .fsthumb { border: 0; border-radius: var(--r-md); background: var(--c-night); }
+  body.view-focus .fsthumb.sel { box-shadow: none; outline: 2px solid var(--c-white); outline-offset: -2px; }
+  body.view-focus .fsthumb.fsauto { background: var(--c-night); color: var(--c-white); }
+  body.view-focus .fsthumb .fslbl { left: 6px; bottom: 6px; font-size: 12px; padding: 2px 8px; border-radius: var(--r-pill); background: var(--c-scrim); color: var(--c-white); }
+  @media (orientation: portrait) {
+    body.view-focus #fsstrip { top: auto; left: 0; right: 0; bottom: 0; flex-direction: row; overflow-x: auto; overflow-y: hidden;
+      padding-bottom: max(8px, var(--barclear, 0px)); }
+    body.view-focus .fsthumb { width: 112px; }
+  }
+  /* Present: one step to the presentation view (content full screen, the
+     speaker inset). Shown only while there is content, top centre, the same
+     quiet pill as the view button. */
+  .presentbtn { display: none; position: fixed; z-index: 6; top: calc(14px + var(--gtop, 0px)); left: 50%; transform: translateX(-50%);
+    align-items: center; gap: 6px; min-height: 44px; padding: 8px 14px; border: 0; border-radius: var(--r-pill); cursor: pointer;
+    background: var(--c-scrim); color: var(--c-white); font-size: 14px; font-weight: 500; }
+  .presentbtn .vb-ic { display: inline-flex; }
+  body.has-content:not(.broadcast):not(.has-app):not(.view-float) .presentbtn { display: inline-flex; }
+  body.dock-calm .presentbtn { opacity: 0; pointer-events: none; transition: opacity var(--t-slow) ease; }
+  /* Float: each person tile moves on its own and resizes from its corner. */
+  .fl-rz { display: none; }
+  body.view-float [data-float^="p:"] { cursor: grab; }
+  body.view-float [data-float^="p:"] > .fl-rz { display: block; position: absolute; z-index: 7; right: 0; bottom: 0; width: 28px; height: 28px;
+    cursor: nwse-resize; touch-action: none; }
+  body.view-float [data-float^="p:"] > .fl-rz::after { content: ""; position: absolute; right: 6px; bottom: 6px; width: 10px; height: 10px;
+    border-right: 2px solid var(--c-white); border-bottom: 2px solid var(--c-white); opacity: .7; }
+  /* A phone's top centre belongs to the room name: Present sits under the view button there. */
+  @media (max-width: 700px), (max-height: 500px) {
+    .presentbtn { left: auto; transform: none; right: calc(14px + env(safe-area-inset-right, 0px)); top: calc(110px + var(--gtop, 0px)); }
   }

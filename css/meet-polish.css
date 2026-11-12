@@ -81,3 +81,24 @@
 }
 /* A broadcast is not a meeting: no votes, no apps, no waiting room. */
 body.broadcast #votebtn, body.broadcast #appbtn, body.broadcast #waitbtn { display: none !important; }
+
+/* ---- round 3: the clean read -----------------------------------------------------------------------------------
+   Content is the biggest thing and chrome sits quietly on it. The bar is a row of equal slots: a white outline icon
+   over one short word, no boxes, no fills, no borders. State is drawn on the icon: off is the red slash through the
+   white glyph (the word changes too), and Leave is the one red word. Red is the only accent outside the video, a light red that reads on the dark bar. */
+.bar { box-shadow: none; }
+html body .bar > :is(#cam, #mic, #reactbtn, #chatbtn, #ccdock, #sharebtn, #stagebtn, #hand, #bartoggle, #bargrip, #leavebtn),
+html body .bar > :is(#mic, #cam).iconbtn.off,
+html body .bar > :is(#mic, #cam).iconbtn:not(.off),
+html body .bar > #cam.iconbtn.cam-max:not(.off),
+html body .bar > #cam.iconbtn.cam-min:not(.off) {
+  background: transparent; border-color: transparent; box-shadow: none; color: var(--dock-fg); }
+html body .bar > :is(#mic, #cam).iconbtn.off .slash { stroke: #ff5c5c; }
+html body .bar > #leavebtn { color: #ff5c5c; }
+html body .bar > #leavebtn .docklab { color: #ff5c5c; }
+@media (hover: hover) and (pointer: fine) {
+  html body .bar > :is(#cam, #mic, #reactbtn, #chatbtn, #ccdock, #sharebtn, #stagebtn, #hand, #bartoggle, #leavebtn):hover { background: var(--dock-btn); }
+}
+/* A face: a rounded rectangle with no border, no ring and no shadow; its name is one white line on a dark pill. */
+.tile { border-color: transparent; box-shadow: none; }
+.tile .name { border-radius: var(--r-pill); }

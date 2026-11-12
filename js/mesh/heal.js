@@ -33,6 +33,8 @@
   const C = topo.C;
   const { LS_OPEN, LS_DIALING, LS_CLOSED } = E;
   const unck = unckey;
+  // the sim's #define L48_1_OFF in mesh.cpp (a build-time switch): MESH_L48_1_OFF=1 under node, read once at load; a page always runs the law
+  const L48_1_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L48_1_OFF === '1') ? 1 : 0;
   const newMsg = (t) => msg.newMsg(t);
   const kvs = (a) => a.map((e) => ({ k: e.k, v: e.v }));   // a vector<KV> copy
   const cell = (pc, r, i) => ({ pc, r, i });
@@ -700,6 +702,8 @@
       this.coord = cc(this.oldCoord); this.tn = this.oldTn; this.estAt = this.oldEstAt; this.nbrAt = this.TICK | 0; this.pp = this.oldPp; this.ppAt = this.oldPpAt; this.ppL = this.oldPpL; this.ppCk = this.oldPpCk; this.oldPp = -1; this.placer = this.oldPlacer; this.oldPlacer = -1;
       this.occ = new Map(this.holdOcc); this.s1seen = new Map(this.holdSeen); this.cousins = new Map(this.holdCous);
       this.occ.set(this.oldCk, this.id);
+      // L48.1 (DRAFT): what I filed at the cell I give back (child report, row-mates', stand-ins') goes with it, and so do the folds made of it, as take() starts every cell from empty
+      if (!L48_1_OFF) { this.downDig = msg.newDig(); this.downUsed = msg.newDig(); this.myDig = msg.newDig(); this.rowDig = msg.newDig(); this.rowKids.clear(); this.rowUsed.clear(); this.siKids.clear(); }
       this.l919Rollback();
       { const lb = this.liveBy.get(newCk); const oc = this.occ.get(newCk); if (this.live.has(newCk) && (lb === undefined ? -1 : lb) !== (oc === undefined ? -1 : oc)) { this.live.delete(newCk); this.liveBy.delete(newCk); this.heardSince.delete(newCk); } }
       this.oldNbrIds.length = 0; this.holdOcc.clear(); this.holdSeen.clear(); this.holdCous.clear();

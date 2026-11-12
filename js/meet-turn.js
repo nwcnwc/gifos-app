@@ -1,299 +1,62 @@
 /*
- * meet-turn.js — when a meeting may use a GifOS TURN server, and how little.
+ * meet-turn.js — the page side of a TURN link (0.9.26; gifos docs/turn-0926.md).
  *
- * Most meetings never touch a server: media goes browser to browser (a direct
- * path), and a pair that cannot connect directly is carried by a third person
- * who reaches both (a friend). Only when BOTH have failed for a pair may the
- * page use the free audio pool, and then on the smallest pipe:
+ * A TURN link is an ordinary mesh link whose path runs through a TURN server.
+ * When two parts of one meeting cannot reach each other (no direct path and
+ * no friend who reaches both), the head of the part with the higher ids asks
+ * for ONE link to the lowest listed greeter it cannot reach (TURN.1-5). Once
+ * that pair's connection is up the mesh's own laws merge the two parts and
+ * friend-hop carries everyone else through the link's two ends. The page
+ * follows the sim (test/sim/mesh_turn.inc); the pure choices are
+ * js/mesh/turn.js.
  *
- *   - Last resort. A pair tries the direct path, then a friend, before TURN.
- *   - One end only. The page that cannot be reached directly is the TURN
- *     client; a page that can be reached never puts a TURN server in that
- *     pair's connection settings. Both ends use TURN only when neither can be
- *     reached.
- *   - Audio only. A free-pool pair carries no video.
- *   - One anchor. A TURN client sends its voice once, to one anchor, and
- *     receives one stream back: everything the anchor hears, minus the
- *     client's own voice.
- *   - One bridge per blocked network (networkBridge). People on one network
- *     reach each other directly; only one of them uses the pool for the
- *     whole network and sends its anchor the network's voices, and the
- *     others hear the room through it. A room of S networks that cannot
- *     reach each other holds at most S-1 TURN links.
- *   - Off the join path. Credentials are asked for after joining, and only
- *     once a pair has failed its direct path (poolNeeded); an error, a
- *     timeout or an "unavailable" answer all mean "no TURN", and the meeting
- *     runs as it does without it.
+ *   - Last resort. Only after the direct dial and every friend have failed for
+ *     TURN_WAIT (the law's ticks), and never while a foreign greeter is reached.
+ *   - Never double TURN (TURN.6). The end whose own network blocks direct
+ *     connections is the TURN client; if neither is blocked the opener is the
+ *     only client. A page that is not a client never puts a TURN server in
+ *     that pair's connection settings.
+ *   - Both ends, or nothing. A credential is for ONE end of ONE link and only
+ *     for two fresh seated vouches from the relay, one per end, naming each
+ *     other and the link. The ends swap them over the room's sealed signaling
+ *     (relay frames of type `tv`) and each posts both to the credential
+ *     service. Renewal needs fresh vouches again, so they are re-made while
+ *     the link lives.
+ *   - No video unvouched (TURN.11). Free TURN carries everything except
+ *     video: the page sends no video track over an unvouched link. Every
+ *     subscriber present vouches for X video links (room20 3, unlimited 6,
+ *     streamer 20); the links take the pool in the deterministic order of
+ *     js/mesh/turn.js turnVouchOrder, and a link that loses its vouch keeps
+ *     video for TURN_VOUCH_GRACE. A vouched link moves to the paid pool.
+ *   - Heal away (TURN.7). When a friend reaches the far end without TURN the
+ *     link closes and friend-hop carries the pair.
+ *   - Off the join path (TURN.10). Credentials are asked for only by seated
+ *     pages, after joining. An error, a refusal (free-off, room-limit) or no
+ *     answer means no link: the parts wait as before and ask again later.
  *
- * Everything here is a pure decision or a small state machine with its clock
- * and network passed in, so it runs the same in a page and in Node.
+ * Everything here runs with its clock, network and page passed in (io), so
+ * the same code runs in a page and in Node.
  */
 (function (root) {
   'use strict';
-  const TM = (root.GifOS && root.GifOS.timings) || require('./timings.js');   // every wait and timeout: js/timings.js, loaded before this file (required where there is no page)
+  const GifOS = (root.GifOS = root.GifOS || {});
+  const isNode = typeof module === 'object' && !!module.exports && typeof require === 'function';
+  const meshTurn = () => GifOS.meshTurn || (isNode ? require('./mesh/turn.js') : null);
+  const meshConsts = () => GifOS.meshConsts || (isNode ? require('./mesh/consts.js') : null);
 
-  const ICE_URL = 'https://turn.gifos.app/v1/ice';
   const DEFAULT_WORKER = 'https://turn.gifos.app';
-  const WORKER_KEY = 'gifos_turn_worker'; // localStorage override: a self-hosted or local credential service
-  const POOL = 'free';
-  const FETCH_TIMEOUT_MS = TM.TURN_FETCH_TIMEOUT_MS;      // a credential answer slower than this is no answer
+  const WORKER_KEY = 'gifos_turn_worker'; // localStorage override: a self-hosted or test credential service
+  const TM = (root.GifOS && root.GifOS.timings) || (isNode ? require('./timings.js') : {});   // every wait: js/timings.js, loaded before this file
+  const FETCH_TIMEOUT_MS = TM.TURN_FETCH_TIMEOUT_MS;   // a credential answer slower than this is no answer
   const RETRY_BASE_MS = TM.TURN_RETRY_BASE_MS;         // first retry after about 2 s, doubling
-  const RETRY_MAX_MS = TM.TURN_RETRY_MAX_MS; // never wait longer than 5 minutes between tries
-  const P0_MS = TM.TURN_P0_MS;                // a direct path gets this long (ICE restart included)
-  const P1_MS = TM.TURN_P1_MS;                // a friend gets until here, when one exists
-  const MAX_SERVED = 9;               // TURN clients one anchor carries at once
+  const RETRY_MAX_MS = TM.TURN_RETRY_MAX_MS;           // never longer than 5 minutes between tries
+  const SIDE_MAX = 48;                    // ids per side a link end publishes (a fact rides one gossip frame)
 
-  const reachable = (verdict) => verdict === 'ok';
+  // ---- the credential service ------------------------------------------------
 
-  // pairStage(f) → 'up' | 'direct' | 'friend' | 'turn'
-  // f = { connected, relayed, downMs, friendPath }
-  //   up      the pair works, directly or through a friend
-  //   direct  still inside the direct path's time
-  //   friend  a friend could carry it and still has time
-  //   turn    both have failed: TURN is allowed for this pair
-  function pairStage(f) {
-    if (!f) return 'direct';
-    if (f.connected || f.relayed) return 'up';
-    const down = Number(f.downMs) || 0;
-    if (down < P0_MS) return 'direct';
-    if (f.friendPath && down < P1_MS) return 'friend';
-    return 'turn';
-  }
-
-  // poolNeeded(stages, invited) → may a blocked page ask the pool now?
-  // stages: pairStage of each pair it links to; invited: a peer dialled it
-  // through TURN. Only once a pair has failed its direct path (stage
-  // 'friend' or 'turn'): people on one blocked network reach each other
-  // directly, so a meeting held inside it (S = 1, an all-hands of 1,000 in
-  // one company) asks for no credential at all.
-  function poolNeeded(stages, invited) {
-    if (invited) return true;
-    for (const s of stages || []) if (s === 'friend' || s === 'turn') return true;
-    return false;
-  }
-
-  // pairUsesTurn(f) → true when this page may put TURN servers in this
-  // pair's connection settings. f = { mine, anchor, invited, haveServers }
-  //   mine     this page's own reachability verdict ('ok' | 'blocked' | …)
-  //   anchor   this pair is the anchor this page chose
-  //   invited  the far end dialled this pair through TURN
-  // A reachable page answers false whatever else is true: it keeps every
-  // pair free of TURN, so a pair is never relayed at both ends when one end
-  // could be reached.
-  function pairUsesTurn(f) {
-    if (!f || !f.haveServers) return false;
-    if (f.mine !== 'blocked') return false; // 'ok' is reachable; 'pending' and 'unknown' have no verdict to act on
-    return !!(f.anchor || f.invited);
-  }
-
-  // iceServersFor(base, turnServers, useTurn) → the list a connection is
-  // built with: the direct-path servers always, the TURN servers only when
-  // pairUsesTurn said so.
-  function iceServersFor(base, turnServers, useTurn) {
-    const out = (base || []).slice();
-    if (useTurn && Array.isArray(turnServers)) for (const s of turnServers) out.push(s);
-    return out;
-  }
-
-  // hasTurnServer(list) → does a connection setting name any TURN server?
-  function hasTurnServer(list) {
-    for (const s of list || []) {
-      const urls = Array.isArray(s && s.urls) ? s.urls : [s && s.urls];
-      for (const u of urls) if (/^turns?:/i.test(String(u || ''))) return true;
-    }
-    return false;
-  }
-
-  // chooseAnchor(cands, current, now) → peer id or null.
-  // cands: [{ id, stage, reachable, links, deadUntil }]
-  //   stage      pairStage of this pair
-  //   reachable  the far page's own verdict: true, false, or null (unknown)
-  //   links      its count of live direct links, or null when unknown
-  //   deadUntil  an anchor that failed is not chosen again before this time
-  // The current anchor stays while it is still a candidate (a stable anchor
-  // keeps one session). Otherwise: a reachable page first, then an unknown
-  // one, then a blocked one; more live direct links first; then the
-  // smaller id, so every page that applies the rule picks the same seat.
-  function chooseAnchor(cands, current, now) {
-    const t = now || 0;
-    const list = (cands || []).filter((c) => c && c.id != null && !(c.deadUntil && c.deadUntil > t));
-    if (current != null && list.some((c) => c.id === current)) return current;
-    const pool = list.filter((c) => c.stage === 'turn');
-    if (!pool.length) return null;
-    const rank = (c) => (c.reachable === true ? 0 : c.reachable == null ? 1 : 2);
-    pool.sort((a, b) => rank(a) - rank(b)
-      || ((b.links || 0) - (a.links || 0))
-      || (String(a.id) < String(b.id) ? -1 : String(a.id) > String(b.id) ? 1 : 0));
-    return pool[0].id;
-  }
-
-  // networkBridge(f) → { bridge, bridges } for a page whose own network
-  // blocks direct connections: bridge is the one page on my network (the
-  // blocked pages I reach directly, through each other) that may use the
-  // free pool for it; bridges holds the bridge of every blocked network this
-  // page knows of. f = { me, ids, blocked(id), conns(id), turn(id), holds(id) }
-  //   ids      every page this page knows (me included)
-  //   blocked  that page's own network blocks direct connections
-  //   conns    the pages it is connected to (gossiped; TURN pairs included)
-  //   turn     the pages it holds a TURN pair with (gossiped), whose link is
-  //            not a direct one and so does not join two networks
-  //   holds    that page bridges its network now (gossiped)
-  // The bridge is the lowest id among the network's pages that bridge it
-  // now, else its lowest id: a page joining later never takes the role from
-  // a working bridge, and when the bridge leaves the next one takes over on
-  // its own, with no message.
-  // bridgeOf maps every blocked page this view knows to that page's bridge,
-  // so one pass answers every page that shares the view.
-  function bridgeComponents(f) {
-    const ids = (f && f.ids) || [];
-    const blocked = (id) => !!(f.blocked && f.blocked(id));
-    const list = (fn, id) => { const v = fn ? fn(id) : null; return Array.isArray(v) ? v : []; };
-    const known = new Set(ids.filter(blocked));
-    const turnOf = new Map(); for (const id of known) turnOf.set(id, new Set(list(f.turn, id)));
-    const nbrs = new Map(); for (const id of known) nbrs.set(id, new Set());
-    for (const a of known) for (const b of list(f.conns, a)) {
-      if (b === a || !known.has(b)) continue;
-      if (turnOf.get(a).has(b) || turnOf.get(b).has(a)) continue; // a TURN pair joins no networks
-      nbrs.get(a).add(b); nbrs.get(b).add(a);
-    }
-    const lower = (a, b) => (String(a) < String(b) ? a : b);
-    const seen = new Set(), bridges = new Set(), bridgeOf = new Map();
-    let bridge = null;
-    for (const start of known) {
-      if (seen.has(start)) continue;
-      const group = [start]; seen.add(start);
-      for (let i = 0; i < group.length; i++) for (const nb of nbrs.get(group[i])) if (!seen.has(nb)) { seen.add(nb); group.push(nb); }
-      let low = null, lowLinked = null;
-      for (const id of group) { low = low == null ? id : lower(low, id); if (f.holds && f.holds(id)) lowLinked = lowLinked == null ? id : lower(lowLinked, id); }
-      const b = lowLinked != null ? lowLinked : low;
-      bridges.add(b);
-      for (const id of group) bridgeOf.set(id, b);
-      if (bridge == null && group.includes(f.me)) bridge = b;
-    }
-    return { bridge, bridges, bridgeOf };
-  }
-
-  function networkBridge(f) {
-    const all = bridgeComponents(f);
-    return { bridge: all.bridge, bridges: all.bridges };
-  }
-
-  // mixMinus(sources, clientId, direct) → the sources an anchor mixes for one
-  // TURN client: everything it hears, minus that client's own voice, and
-  // minus anyone the client already hears over a direct path of its own
-  // (direct: their ids), so nobody reaches the client twice.
-  // sources: [{ key, owner }] (owner is whose voice it is; null for a mix
-  // of several people that never contains the client).
-  function mixMinus(sources, clientId, direct) {
-    const skip = new Set(direct || []);
-    return (sources || []).filter((s) => s && s.owner !== clientId && !(s.owner != null && skip.has(s.owner)));
-  }
-
-  // mixGain(held, mutedFor, carries) → a source's gain in a mix the page
-  // sends: 0 for a voice held for everyone, and 0 for a person whose own
-  // status says muted once MUTE_TAIL_MS has passed (their last words still
-  // play out). A muted microphone can still carry a floor of noise one step
-  // above zero; mixed in, that floor keeps the encoder from ever seeing
-  // silence, so DTX never starts. mutedFor is how long (ms) the person has
-  // been muted, or null. A source that carries other people's voices
-  // (carries: see carriesMix) is not silenced by its carrier's own mute: the
-  // carrier's muted microphone is already silence in the mix it sends, and
-  // the voices it carries are not muted.
-  const MUTE_TAIL_MS = TM.MUTE_TAIL_MS;
-  function mixGain(held, mutedFor, carries) {
-    if (held) return 0;
-    if (carries) return 1;
-    return mutedFor != null && mutedFor >= MUTE_TAIL_MS ? 0 : 1;
-  }
-
-  // carriesMix(me, o) → does the one audio stream a person sends me carry
-  // other people's voices, not only their microphone? It does when they are
-  // my anchor (my mix-minus), my client with anyone else on its network (its
-  // network's uplink), or hold a TURN link to anyone but me (a bridge end's
-  // feed of the far network to its row). o: { myAnchor, myClient, conns
-  // (their direct pairs), tl (their TURN links, from their status) }.
-  function carriesMix(me, o) {
-    if (!o) return false;
-    if (o.myAnchor) return true;
-    if ((o.tl || []).some((x) => x !== me)) return true;
-    return !!o.myClient && (o.conns || []).some((x) => x !== me);
-  }
-
-  // mayServe(servedCount, alreadyServing) → may this page become one more
-  // TURN client's anchor? One session per person served, at most MAX_SERVED.
-  function mayServe(servedCount, alreadyServing) {
-    return !!alreadyServing || (servedCount || 0) < MAX_SERVED;
-  }
-
-  // ---- the smallest pipe: codec settings for a free-pool voice stream -----
-  // Opus, mono, 16 kbps target, DTX (silence suppression) on, 60 ms packets
-  // where the browser allows it (else its 20 ms): fewer packets, less header
-  // overhead. Free-pool pairs only: never a direct pair, never a paid Video
-  // Anywhere pair (the page decides which).
-  const T_AUDIO = { bitrate: 16000, ptime: 60 };
-
-  // turnAudioSdp(sdp) → the description with every Opus line in an audio
-  // section set to the free-pool settings. The fmtp a browser receives sets its
-  // own encoder: stereo=0 (mono), usedtx=1 (DTX), maxaveragebitrate (the
-  // target); a=ptime asks for 60 ms packets. Other codecs, other sections and
-  // the description's line ending are kept. Applying it twice changes nothing.
-  function turnAudioSdp(sdp) {
-    if (typeof sdp !== 'string' || !sdp) return sdp;
-    const eol = sdp.indexOf('\r\n') >= 0 ? '\r\n' : '\n';
-    const parts = sdp.split(eol === '\r\n' ? /(?=\r\nm=)/ : /(?=\nm=)/);
-    return parts.map((sec) => {
-      if (!/^(\r?\n)?m=audio /.test(sec)) return sec;
-      const lines = sec.split(eol);
-      const pts = [];
-      for (const l of lines) { const m = /^a=rtpmap:(\d+) opus\/48000/i.exec(l); if (m) pts.push(m[1]); }
-      if (!pts.length) return sec;
-      const want = { stereo: '0', 'sprop-stereo': '0', usedtx: '1', maxaveragebitrate: String(T_AUDIO.bitrate) };
-      const out = [];
-      for (const l of lines) {
-        if (/^a=(max)?ptime:/.test(l)) continue;
-        const f = /^a=fmtp:(\d+) (.*)$/.exec(l);
-        if (f && pts.includes(f[1])) {
-          const kv = []; const seen = new Set();
-          for (const it of f[2].split(';')) {
-            const t = it.trim(); if (!t) continue;
-            const i = t.indexOf('='); const k = (i < 0 ? t : t.slice(0, i)).trim();
-            if (Object.prototype.hasOwnProperty.call(want, k)) { kv.push(k + '=' + want[k]); seen.add(k); } else kv.push(t);
-          }
-          for (const k of Object.keys(want)) if (!seen.has(k)) kv.push(k + '=' + want[k]);
-          out.push('a=fmtp:' + f[1] + ' ' + kv.join(';'));
-          continue;
-        }
-        out.push(l);
-        const r = /^a=rtpmap:(\d+) opus\/48000/i.exec(l);
-        if (r && !lines.some((x) => x.indexOf('a=fmtp:' + r[1] + ' ') === 0)) out.push('a=fmtp:' + r[1] + ' ' + Object.keys(want).map((k) => k + '=' + want[k]).join(';'));
-      }
-      // a=ptime goes last in the section's attributes (before a trailing empty line)
-      let end = out.length; while (end > 0 && out[end - 1] === '') end--;
-      out.splice(end, 0, 'a=ptime:' + T_AUDIO.ptime);
-      return out.join(eol);
-    }).join('');
-  }
-
-  // turnVoiceParams(prm, on) → the sender parameters to set on a pair's voice
-  // sender, or null when nothing must change: on a free-pool pair the one
-  // encoding is capped at the target; off it, a cap this rule set is lifted.
-  // A sender with no negotiated encoding is left alone (setting one then
-  // crashes Chromium's renderer; the next pass catches it).
-  function turnVoiceParams(prm, on) {
-    if (!prm || !prm.encodings || !prm.encodings.length) return null;
-    const e0 = prm.encodings[0];
-    if (on) { if (e0.maxBitrate === T_AUDIO.bitrate) return null; e0.maxBitrate = T_AUDIO.bitrate; return prm; }
-    if (e0.maxBitrate !== T_AUDIO.bitrate) return null;
-    delete e0.maxBitrate;
-    return prm;
-  }
-
-  // ---- credentials ---------------------------------------------------------
-
-  // retryDelayMs(attempt, rand) → wait before try number `attempt + 1`
-  // (attempt counts failures so far, from 1). Doubles from about 2 s, with
-  // jitter (rand in [0,1) scales it by 0.5 to 1.5) so a room that lost the
-  // service together does not ask again together; never above 5 minutes.
+  // retryDelayMs(attempt, rand) → wait before try number attempt + 1 (attempt
+  // counts failures, from 1): doubling from about 2 s with jitter (rand in
+  // [0,1) scales it by 0.5 to 1.5), never above 5 minutes.
   function retryDelayMs(attempt, rand) {
     const n = Math.max(1, Math.floor(attempt || 1));
     const base = Math.min(RETRY_MAX_MS, RETRY_BASE_MS * Math.pow(2, Math.min(n - 1, 20)));
@@ -301,10 +64,10 @@
     return Math.min(RETRY_MAX_MS, Math.round(base * (0.5 + r)));
   }
 
-  // parseIce(body) → { iceServers, ttl, renewAfter } or null. Anything that is
-  // not a well-formed grant (an "unavailable" answer included) is null.
+  // parseIce(body) → { iceServers, ttl, renewAfter, pool, link } or null. Anything that is not a
+  // well-formed grant (a refusal { unavailable }, a pending answer) is null.
   function parseIce(body) {
-    if (!body || typeof body !== 'object' || body.unavailable) return null;
+    if (!body || typeof body !== 'object' || body.unavailable || body.pending) return null;
     const list = body.iceServers;
     if (!Array.isArray(list) || !list.length || list.length > 4) return null;
     const servers = [];
@@ -317,8 +80,17 @@
     const ttl = Number(body.ttl);
     if (!(ttl > 0)) return null;
     let renewAfter = Number(body.renewAfter);
-    if (!(renewAfter > 0 && renewAfter < ttl)) renewAfter = Math.floor(ttl * 0.9);
-    return { iceServers: servers, ttl, renewAfter };
+    if (!(renewAfter >= 0 && renewAfter < ttl)) renewAfter = Math.floor(ttl * 0.9);
+    return { iceServers: servers, ttl, renewAfter, pool: body.pool || null, link: body.link || null };
+  }
+
+  // hasTurnServer(list) → does a connection setting name any TURN server?
+  function hasTurnServer(list) {
+    for (const s of list || []) {
+      const urls = Array.isArray(s && s.urls) ? s.urls : [s && s.urls];
+      for (const u of urls) if (/^turns?:/i.test(String(u || ''))) return true;
+    }
+    return false;
   }
 
   // workerBase(store) → the credential service's base URL: the override in
@@ -332,25 +104,24 @@
     return DEFAULT_WORKER;
   }
 
-  // createCredentials(o) → the credential client.
-  // o = { ask(body) → Promise<json>, room, now(), setTimer(fn, ms) → handle,
-  //       clearTimer(handle), random(), onChange(kind),
-  //       pool, extra(), halts(reason) }
-  // pool    the pool asked for ('free' when absent).
-  // extra   () → more fields for every ask (the paid pool's meeting
-  //         ticket and bridge; the free pool's TURN ticket, freeTicket), read
-  //         at each ask so a re-signed ticket rides the next renewal; null
-  //         means "nothing to ask with": no grant. May be a promise.
-  // granted (fields) → called on each grant with the extra fields its ask
-  //         carried (freeTicket counts a ticket's slots with it).
-  // halts   (reason) → true when an "unavailable" answer with that reason
-  //         means asking again cannot help. The client then stops asking;
-  //         a grant in hand still runs to its expiry.
+  // askIce(fetchFn, url) → ask(body): the page's network call. JSON sent as
+  // plain text is a simple cross-origin request (no preflight); no cookie.
+  function askIce(fetchFn, url) {
+    return (body) => fetchFn(url || workerBase() + '/v1/ice', {
+      method: 'POST', headers: { 'content-type': 'text/plain;charset=UTF-8' }, body: JSON.stringify(body),
+      credentials: 'omit', cache: 'no-store', mode: 'cors',
+    }).then((r) => r.json()).catch(() => null);
+  }
+
+  // createCredentials(o) → the credential client of one link end.
+  // o = { ask(body) → Promise<json>, room, pool, now(), setTimer(fn, ms), clearTimer(h), random(),
+  //       extra() → the fields of each ask ({vouch, peerVouch}, the paid pool's ticket), or null when
+  //                 there is nothing to ask with yet (no fresh vouch from both ends): no ask, a retry;
+  //                 may be a promise,
+  //       onChange(kind) }
   // onChange kinds: 'ok' (first grant, or a grant after losing one), 'renewed'
-  // (a fresh grant replaced a live one: restart the TURN pairs on it),
-  // 'expired' (the grant ran out with no renewal: TURN pairs fall back).
-  // state(): 'idle' (not started), 'pending' (asking, never answered yet),
-  // 'ok', 'down' (never got a grant), 'lost' (had one, it expired).
+  // (a fresh grant replaced a live one: move the link onto it), 'expired' (it
+  // ran out with no renewal). state(): idle | pending | ok | down | lost.
   function createCredentials(o) {
     const now = o.now || (() => Date.now());
     const setTimer = o.setTimer || ((fn, ms) => setTimeout(fn, ms));
@@ -358,18 +129,17 @@
     const random = o.random || Math.random;
     const onChange = o.onChange || (() => {});
     let started = false, stopped = false, inFlight = false;
-    let grant = null;          // { iceServers, issuedAt, renewAt, expiresAt }
-    let everHad = false, failures = 0, answered = false;
-    let halted = false, refusal = null;
-    const pool = o.pool || POOL;
+    let grant = null;          // { iceServers, issuedAt, renewAt, expiresAt, pool }
+    let everHad = false, failures = 0, answered = false, refusal = null;
+    const pool = o.pool || 'free';
     let tNext = null, tExpire = null;
     function clearNext() { if (tNext != null) { clearTimer(tNext); tNext = null; } }
     function schedule(ms) { clearNext(); tNext = setTimer(() => { tNext = null; ask(); }, Math.max(0, ms)); }
     function ask() {
-      if (stopped || inFlight || halted) return;
+      if (stopped || inFlight) return;
       inFlight = true;
       const renew = !!grant;
-      let settled = false, tOut = null, asked = null;
+      let settled = false, tOut = null;
       const done = (body) => {
         if (settled) return;
         settled = true; inFlight = false;
@@ -378,25 +148,23 @@
         answered = true;
         const g = parseIce(body);
         if (!g) {
-          refusal = body && typeof body === 'object' && body.unavailable ? String(body.unavailable).slice(0, 40) : null;
+          refusal = body && typeof body === 'object' && body.unavailable ? String(body.unavailable).slice(0, 40) : (body && body.pending ? 'pending' : null);
           failures++;
-          if (refusal && o.halts && o.halts(refusal)) { halted = true; clearNext(); return; }
           schedule(retryDelayMs(failures, random()));
           return;
         }
         failures = 0; refusal = null;
         const t = now();
         const had = !!grant;
-        grant = { iceServers: g.iceServers, issuedAt: t, renewAt: t + g.renewAfter * 1000, expiresAt: t + g.ttl * 1000 };
+        grant = { iceServers: g.iceServers, issuedAt: t, renewAt: t + g.renewAfter * 1000, expiresAt: t + g.ttl * 1000, pool: g.pool || pool };
         everHad = true;
-        if (o.granted) { try { o.granted(asked); } catch (e) {} }
         schedule(grant.renewAt - t);
         if (tExpire != null) clearTimer(tExpire);
         const mine = grant;
         tExpire = setTimer(() => {
           tExpire = null;
           if (grant !== mine) return;
-          grant = null; // running sessions end here; the retries below keep asking
+          grant = null; // the retries keep asking
           onChange('expired');
         }, mine.expiresAt - t);
         onChange(had ? 'renewed' : 'ok');
@@ -406,11 +174,9 @@
       try {
         const go = (more) => {
           if (more == null || stopped || settled) return null;
-          asked = more;
           return o.ask(Object.assign({ room: String(o.room), pool }, renew ? { renew: true } : {}, more));
         };
         const more = o.extra ? o.extra() : {};
-        // A plain answer asks at once; a promise (a ticket being fetched) first.
         p = more && typeof more.then === 'function' ? Promise.resolve(more).then(go) : Promise.resolve(go(more));
       } catch (e) { p = Promise.resolve(null); }
       p.then((b) => done(b), () => done(null));
@@ -426,68 +192,354 @@
         return answered ? 'down' : 'pending';
       },
       grant() { return grant ? Object.assign({}, grant) : null; },
-      refusal() { return refusal; },  // the last "unavailable" reason, cleared by a grant
-      halted() { return halted; },    // stopped asking after a refusal that asking again cannot help
+      refusal() { return refusal; },
+      pool,
     };
   }
 
-  // THE FREE POOL'S TICKET (workers turnstile; gifos docs/relay-lockdown.md
-  // "Free TURN tickets"). The credential service hands free credentials only
-  // to a ticket from the relay's person check: the tt the relay's /t mint
-  // returned beside the join token, or, once the room handed a rejoin token,
-  // a fresh one from the relay's GET /tt (a reload, a renewal). A ticket has
-  // TICKET_CREDS slots and each slot names ONE credential (asking a slot
-  // again returns the same one), so the page spends them one grant at a
-  // time: slot 0 first, the next slot after each grant on that ticket, and
-  // no ask once they are spent (a /tt ticket keeps its slots for an hour).
-  // freeTicket(getTicket) → { extra, granted } for createCredentials;
-  // getTicket() → the ticket (or a promise of it), '' when the relay has
-  // none: then the ask goes without one, as before tickets.
-  const TICKET_CREDS = 3;
-  function ticketNonce(tt) {
+  // ---- the seated vouch, carried in parts ------------------------------------
+  // The relay signs tv1.<base64url JSON {k:'v', s, d, p, l, e, n}>.<base64url HMAC> (gifos shared/turn-ticket.js
+  // signVouch). A relay frame holds 128 bytes, too few for the whole token, so an end sends only what the other
+  // cannot know: e (base 36), n and the MAC. s is the room's relay session, d the sender's device tag (from its
+  // ask), p the receiver's own: the receiver rebuilds the exact token. JSON.stringify keeps that key order.
+  const enc = typeof TextEncoder === 'function' ? new TextEncoder() : null;
+  function b64urlText(s) {
+    let bin = '';
+    for (const b of enc.encode(s)) bin += String.fromCharCode(b);
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  function vouchToken(s, d, p, l, e, n, m) {
+    return 'tv1.' + b64urlText(JSON.stringify({ k: 'v', s, d, p, l, e, n })) + '.' + m;
+  }
+  // vouchParts(tv) → { s, d, p, l, e, n, m } of a token, or null.
+  function vouchParts(tv) {
     try {
-      const p = String(tt).split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-      return String(JSON.parse(atob(p + '='.repeat((4 - (p.length % 4)) % 4))).n || '');
-    } catch (e) { return ''; }
-  }
-  function freeTicket(getTicket) {
-    const used = new Map(); // ticket nonce → slots granted on it
-    return {
-      extra() {
-        return Promise.resolve().then(() => (getTicket ? getTicket() : '')).catch(() => '').then((tt) => {
-          if (!tt || typeof tt !== 'string') return {};
-          const slot = used.get(ticketNonce(tt)) || 0;
-          return slot >= TICKET_CREDS ? null : { tt, slot };
-        });
-      },
-      granted(more) {
-        if (!more || !more.tt) return;
-        const n = ticketNonce(more.tt), had = used.get(n) || 0;
-        used.delete(n); // re-insert: the newest nonce is last, the oldest goes first
-        used.set(n, Math.max(had, (more.slot | 0) + 1));
-        while (used.size > 8) used.delete(used.keys().next().value);
-      },
-    };
+      const x = String(tv).split('.');
+      if (x.length !== 3 || x[0] !== 'tv1') return null;
+      const t = x[1].replace(/-/g, '+').replace(/_/g, '/');
+      const bin = atob(t + '='.repeat((4 - (t.length % 4)) % 4));
+      const o = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))));
+      if (!o || o.k !== 'v') return null;
+      return { s: o.s, d: o.d, p: o.p, l: o.l, e: o.e, n: o.n, m: x[2] };
+    } catch (e) { return null; }
   }
 
-  // askIce(fetchFn, url) → ask(body): the page's network call. The Origin
-  // header is the browser's own; no credential or cookie rides it. The body
-  // is JSON sent as plain text, which makes it a simple cross-origin request:
-  // no preflight, so one round trip instead of two.
-  function askIce(fetchFn, url) {
-    return (body) => fetchFn(url || workerBase() + '/v1/ice', {
-      method: 'POST', headers: { 'content-type': 'text/plain;charset=UTF-8' }, body: JSON.stringify(body),
-      credentials: 'omit', cache: 'no-store', mode: 'cors',
-    }).then((r) => r.json()).catch(() => null);
+  // The `tv` relay frame (gifos-net.js RELAY_TYPES): one link's handshake between its two ends.
+  //   {k:'tv', q:'a', l, d, b}   ask / answer: the link name, my device tag, my network blocks direct paths (b 1)
+  //   {k:'tv', q:'v', l, e, n, m} my seated vouch for this link (its expiry in base 36, nonce, MAC)
+  //   {k:'tv', q:'r', l}          ready: I hold what my end needs (a credential, or none: not a client)
+  //   {k:'tv', q:'p', l, b}       paid: my end is on the paid pool (b 1) or back on free (b 0)
+  //   {k:'tv', q:'i', l}          move our pc onto new settings: the pair's offerer restarts ICE
+  //   {k:'tv', q:'x', l}          the link is closed at my end
+  const TV_KEYS = 'k,q,l,d,b,e,n,m';
+  const LINK_RE = /^[ls][0-9]{1,2}$/, DEV_RE = /^[A-Za-z0-9_.-]{1,16}$/, NONCE_RE = /^[0-9a-f]{18}$/, MAC_RE = /^[A-Za-z0-9_-]{43}$/, E36_RE = /^[0-9a-z]{1,11}$/;
+  function tvOk(f) {
+    if (!f || typeof f !== 'object' || Array.isArray(f) || f.k !== 'tv' || typeof f.l !== 'string' || !LINK_RE.test(f.l)) return false;
+    for (const k of Object.keys(f)) if (k !== '_' && TV_KEYS.split(',').indexOf(k) < 0) return false;
+    if (f.q === 'a') return typeof f.d === 'string' && DEV_RE.test(f.d) && (f.b === 0 || f.b === 1);
+    if (f.q === 'v') return typeof f.e === 'string' && E36_RE.test(f.e) && typeof f.n === 'string' && NONCE_RE.test(f.n) && typeof f.m === 'string' && MAC_RE.test(f.m);
+    if (f.q === 'r' || f.q === 'x' || f.q === 'i') return true;
+    if (f.q === 'p') return f.b === 0 || f.b === 1;
+    return false;
+  }
+
+  // linkName(a, b, n) → 'l<k>': the free pool's link name of the pair (k < n, the room's TURN_FREE_LINKS). Both ends
+  // compute the same one; two links of a room may share a name (they then share its allocation quota).
+  function fnv(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; }
+  function linkName(a, b, n) { const x = String(a) < String(b) ? a + '|' + b : b + '|' + a; return 'l' + (fnv(x) % Math.max(1, n | 0)); }
+  // linkId(a, b) → the room-wide name of a link in the gossiped facts.
+  function linkId(a, b) { const x = String(a) < String(b) ? a + '|' + b : b + '|' + a; return fnv(x).toString(36); }
+
+  // clientEnd(myBlocked, farBlocked, opener) → is this end a TURN client (TURN.6, js/mesh/turn.js turnClients)?
+  function clientEnd(myBlocked, farBlocked, opener) {
+    const E = meshConsts().enums, T = meshTurn();
+    const mine = myBlocked ? E.GT_BLOCKED : -1, far = farBlocked ? E.GT_BLOCKED : -1;
+    const c = opener ? T.turnClients(mine, far) : T.turnClients(far, mine);   // 1 the opener, 2 the target, 3 both
+    return c === 3 || (opener ? c === 1 : c === 2);
+  }
+
+  // pausedBy(facts, me, pid) → is pid's video to me held at an unvouched TURN link? facts: the gossiped link facts
+  // ({ up, v, a, b, va, vb }); me and pid on different sides of an up link with no video.
+  function pausedBy(facts, me, pid) {
+    for (const f of facts || []) {
+      if (!f || !f.up || f.v) continue;
+      const sa = f.va || [], sb = f.vb || [];
+      const meA = me === f.a || sa.indexOf(me) >= 0, meB = me === f.b || sb.indexOf(me) >= 0;
+      const pA = pid === f.a || sa.indexOf(pid) >= 0, pB = pid === f.b || sb.indexOf(pid) >= 0;
+      if ((meA && pB && !meB) || (meB && pA && !meA)) return true;
+    }
+    return false;
+  }
+
+  // vouchPlan(links, pool) → the ids that carry video now: links in turnVouchOrder, the first `pool` of them.
+  // links: [{ id, stage, cell, serial }]; pool: the sum of the tiers' video links over the subscribers present.
+  function vouchPlan(links, pool) {
+    const T = meshTurn();
+    const ix = (links || []).slice();
+    const before = (x, y) => T.turnVouchOrder(!!x.stage, x.cell, x.serial, !!y.stage, y.cell, y.serial);
+    ix.sort((x, y) => (before(x, y) ? -1 : before(y, x) ? 1 : 0));
+    return new Set(ix.slice(0, Math.max(0, pool | 0)).map((x) => x.id));
+  }
+
+  // ---- the links of this page --------------------------------------------------
+  // createLinks(io) → the manager run.html drives once a tick. io (all functions):
+  //   me() my peer id; dev() my device tag; sid() the room's relay session; now(); tickMs
+  //   seat() → { head, greeter, view: [pid], cell } | null   (head: my seat is its part's home cell; greeter: Section 1)
+  //   greeters() → [pid]   the door's list as my seat last read it (fresh only)
+  //   nid(pid) → the seat's number for a peer id (the order turnPick compares)
+  //   reach(pid) → 'direct' | 'friend' | null   TURN.2 / TURN.3 as this page knows them
+  //   blocked() → my network blocks direct connections (the page's own probe)
+  //   alive(pid) → the far page is still in the meeting      pcUp(pid) → the pair's connection is up
+  //   sendTv(pid, frame); askVouch(farDev, l); ask(body) → Promise<json>
+  //   dial(pid); reset(pid) (a fresh pc on the new settings, no dial); restart(pid, l) (move a live pc onto new settings)
+  //   keep(pid) (the seat holds this pc: an L28 keep); drop(pid, why) (the TURN pc ends)
+  //   subs() → [{ key, tier }] verified subscribers present; ticket() → a meeting ticket for a paid ask, or null
+  //   publish(fact); facts() → [fact] (every link fact heard, mine included); log(line); changed(pid)
+  function createLinks(io) {
+    const K = meshConsts().consts, T = meshTurn();
+    const tick = io.tickMs || 500;
+    const WAIT_MS = K.TURN_WAIT * tick;                        // TURN.4
+    const RETRY_MS = K.TURN_RETRY * tick;                      // TURN.10
+    const RESEND_MS = K.TURN_DIAL * tick;                      // a handshake frame the relay lost is sent again
+    const DIAL_BUDGET_MS = (K.TURN_DIAL + K.TURN_RETRY) * tick; // an ask that never came up is closed (TURN.8 dialfail)
+    const GRACE_MS = K.TURN_VOUCH_GRACE * tick;                // TURN.12
+    const FACT_EVERY_MS = K.TURN_DIAL * tick * 2;              // a link end restates its fact
+    const FACT_STALE_MS = FACT_EVERY_MS * 4;
+    const links = new Map();   // far pid → link
+    const head = { since: -1, retryAt: -1, skip: '' };
+    let serialN = 0, lastFactAt = 0;
+    const log = (s) => { try { if (io.log) io.log(s); } catch (e) {} };
+    const short = (p) => String(p || '').slice(0, 8);
+
+    function newLink(far, l, opener) {
+      const L = { far, l, opener, id: linkId(io.me(), far), farDev: null, farBlocked: false, client: false, mine: null, peer: null,
+        state: 'ask', askAt: io.now(), sentAt: 0, vAskAt: 0, readyMe: false, readyFar: false, dialAt: 0, upAt: -1, downSince: 0,
+        cred: null, paid: null, paidMe: false, paidFar: false, video: false, vouched: false, lostAt: -1, side: [] };
+      const s = io.seat(); if (s) L.side = s.view.filter((x) => x !== far).slice(0, SIDE_MAX);
+      links.set(far, L);
+      log('turn-link new ' + short(far) + ' ' + l + (opener ? ' opener' : ' target'));
+      return L;
+    }
+    function close(L, why, quiet) {
+      if (L.state === 'closed') return;
+      L.state = 'closed';
+      try { if (L.cred) L.cred.stop(); } catch (e) {}
+      try { if (L.paid) L.paid.stop(); } catch (e) {}
+      links.delete(L.far);
+      if (!quiet) { try { io.sendTv(L.far, { k: 'tv', q: 'x', l: L.l }); } catch (e) {} }
+      log('turn-link closed ' + short(L.far) + ' ' + why);
+      try { io.drop(L.far, why); } catch (e) {}
+      try { io.publish({ id: L.id, a: L.opener ? io.me() : L.far, b: L.opener ? L.far : io.me(), up: 0, v: 0, gone: 1 }); } catch (e) {}
+      try { io.changed(L.far); } catch (e) {}
+    }
+    const fresh = (L) => !!(L.mine && L.peer && L.mine.e - io.now() > 0 && L.peerE - io.now() > 0);
+    function sendAsk(L) { L.sentAt = io.now(); io.sendTv(L.far, { k: 'tv', q: 'a', l: L.l, d: io.dev(), b: io.blocked() ? 1 : 0 }); }
+    function askMine(L) { if (!L.farDev) return; L.vAskAt = io.now(); io.askVouch(L.farDev, L.l); }
+    function credFor(L, pool) {
+      return createCredentials({ ask: io.ask, room: io.sid(), pool, now: io.now, setTimer: io.setTimer, clearTimer: io.clearTimer,
+        extra: () => {
+          if (!fresh(L)) { askMine(L); return null; }
+          const b = { vouch: L.mine.v, peerVouch: L.peer };
+          if (pool === 'paid') { const t = io.ticket(); if (!t) return null; b.ticket = t; }
+          return b;
+        },
+        onChange: (k) => onCred(L, pool, k) });
+    }
+    function onCred(L, pool, k) {
+      log('turn-cred ' + short(L.far) + ' ' + pool + ' ' + k);
+      if (L.state === 'closed') return;
+      if (pool === 'free') {
+        if (k === 'ok' && !L.readyMe) { L.readyMe = true; io.reset(L.far); io.sendTv(L.far, { k: 'tv', q: 'r', l: L.l }); maybeDial(L); }
+        else if (k === 'renewed' && !L.paidMe) io.restart(L.far, L.l);
+        else if (k === 'expired' && !L.paidMe) close(L, 'expired');
+      } else {
+        if (k === 'ok' || k === 'renewed') { const was = L.paidMe; L.paidMe = true; io.restart(L.far, L.l); if (!was) io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 1 }); }
+        else if (k === 'expired') { L.paidMe = false; io.restart(L.far, L.l); io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 0 }); }
+      }
+      io.changed(L.far);
+    }
+    // Both vouches in hand: a client asks for its credential; an end that is no client is ready at once.
+    function haveBoth(L) {
+      if (L.readyMe || L.state === 'closed') return;
+      L.client = clientEnd(io.blocked(), L.farBlocked, L.opener);
+      if (L.client) { if (!L.cred) { L.cred = credFor(L, 'free'); L.cred.start(); } }
+      else { L.readyMe = true; io.sendTv(L.far, { k: 'tv', q: 'r', l: L.l }); maybeDial(L); }
+      if (L.state === 'ask') L.state = 'swap';
+    }
+    function maybeDial(L) {
+      if (!L.opener || !L.readyMe || !L.readyFar || L.dialAt) return;
+      L.dialAt = io.now(); L.state = 'dial';
+      log('turn-dial ' + short(L.far) + ' client=' + (L.client ? 1 : 0));
+      io.dial(L.far);
+    }
+
+    // A `tv` frame from the far end (relay, or the pair's own channel once open).
+    function onFrame(from, f) {
+      if (!tvOk(f) || from === io.me()) return;
+      let L = links.get(from);
+      if (L) L.heardAt = io.now();
+      if (f.q === 'x') { if (L && L.l === f.l) close(L, 'far-closed', true); return; }
+      if (f.q === 'a') {
+        if (!L) {
+          const s = io.seat();
+          if (!s || !s.greeter) return;                       // only a seated greeter can be vouched for: say nothing
+          if (s.view.indexOf(from) >= 0 && io.reach(from) === 'direct') return;   // reached already: no link
+          L = newLink(from, f.l, false); L.heardAt = io.now();
+        }
+        if (L.l !== f.l) return;
+        const first = !L.farDev;
+        L.farDev = f.d; L.farBlocked = f.b === 1;
+        if (!L.opener && (first || io.now() - L.sentAt > RESEND_MS)) sendAsk(L);   // the target answers with its own device and network
+        if (!L.mine || L.mine.e - io.now() < 0) askMine(L);
+        else io.sendTv(L.far, { k: 'tv', q: 'v', l: L.l, e: L.mine.e.toString(36), n: L.mine.n, m: L.mine.m });
+        return;
+      }
+      if (!L || L.l !== f.l) return;
+      if (f.q === 'v') {
+        if (!L.farDev) return;
+        const e = parseInt(f.e, 36);
+        L.peer = vouchToken(io.sid(), L.farDev, io.dev(), L.l, e, f.n, f.m); L.peerE = e;
+        if (L.mine) haveBoth(L);
+        return;
+      }
+      if (f.q === 'r') { L.readyFar = true; maybeDial(L); return; }
+      if (f.q === 'p') { L.paidFar = f.b === 1; io.restart(L.far, L.l); io.changed(L.far); return; }
+      if (f.q === 'i') { io.restart(L.far, L.l); return; }
+    }
+    // The relay's answer to my tvouch ask: {t:'tvouch', to, l, v, e} or {error}.
+    function onVouch(m) {
+      if (!m) return;
+      let L = null;
+      for (const x of links.values()) if (x.farDev === m.to && x.l === m.l) { L = x; break; }
+      if (!L) return;
+      if (!m.v) { log('turn-vouch refused ' + short(L.far) + ' ' + m.error); return; }
+      const p = vouchParts(m.v); if (!p) return;
+      L.mine = { v: m.v, e: p.e, n: p.n, m: p.m, at: io.now() };
+      log('turn-vouch ' + short(L.far) + ' ' + L.l);
+      io.sendTv(L.far, { k: 'tv', q: 'v', l: L.l, e: p.e.toString(36), n: p.n, m: p.m });
+      if (L.peer) haveBoth(L);
+    }
+
+    // The video plan (TURN.11/12) for my own links, from the room's facts and the subscribers present.
+    function planVideo(now) {
+      let pool = 0;
+      for (const s of io.subs() || []) pool += T.turnTierLinks(s.tier);
+      const ups = [];
+      for (const f of io.facts() || []) if (f && f.up && !f.gone) ups.push({ id: f.id, stage: !!f.g, cell: f.c, serial: f.s });
+      const want = vouchPlan(ups, pool);
+      for (const L of links.values()) {
+        if (L.state !== 'up') continue;
+        const yes = want.has(L.id);
+        if (yes) { L.vouched = true; L.lostAt = -1; }
+        else if (L.vouched) { if (L.lostAt < 0) L.lostAt = now; if (now - L.lostAt >= GRACE_MS) { L.vouched = false; L.lostAt = -1; } }
+        // A vouched client end moves to the paid pool; an end back on free leaves it.
+        if (L.vouched && L.client && !L.paid) { L.paid = credFor(L, 'paid'); L.paid.start(); }
+        if (!L.vouched && L.paid) { try { L.paid.stop(); } catch (e) {} L.paid = null; if (L.paidMe) { L.paidMe = false; io.restart(L.far, L.l); io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 0 }); } }
+        if (L.vouched && !L.client && !L.paidMe) { L.paidMe = true; io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 1 }); }
+        if (!L.vouched && !L.client && L.paidMe) { L.paidMe = false; io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 0 }); }
+        const v = L.vouched && L.paidMe && L.paidFar;
+        if (v !== L.video) { L.video = v; log('turn-video ' + short(L.far) + ' ' + (v ? 'on' : 'off')); io.changed(L.far); }
+      }
+    }
+    function factOf(L) {
+      const s = io.seat();
+      return { id: L.id, a: L.opener ? io.me() : L.far, b: L.opener ? L.far : io.me(), up: L.state === 'up' ? 1 : 0, v: L.video ? 1 : 0,
+        s: L.serial || 0, c: s ? s.cell : 0, g: 0, [L.opener ? 'va' : 'vb']: L.side.slice(0, SIDE_MAX) };
+    }
+
+    function step() {
+      const now = io.now();
+      for (const L of Array.from(links.values())) {
+        // TURN.8: the far page is gone. A far end my seat does not know yet (a foreign greeter, its door entry stale here)
+        // is alive while it keeps answering this link's handshake.
+        if (!io.alive(L.far) && now - (L.heardAt || L.askAt) > DIAL_BUDGET_MS / 2) { close(L, 'gone', true); continue; }
+        if (L.state === 'up' && io.reach(L.far) === 'friend') { close(L, 'healed'); continue; }          // TURN.7
+        if (L.state !== 'up' && now - L.askAt > DIAL_BUDGET_MS) { if (L.opener) head.retryAt = now + RETRY_MS; close(L, 'dialfail'); continue; }
+        if (L.state === 'up' && !io.pcUp(L.far)) { if (!L.downSince) L.downSince = now; if (now - L.downSince > DIAL_BUDGET_MS) { if (L.opener) head.retryAt = now + RETRY_MS; close(L, 'lost'); continue; } }
+        else L.downSince = 0;
+        if ((L.state === 'ask' || (L.state === 'swap' && !L.peer)) && now - L.sentAt > RESEND_MS && (L.opener || L.farDev)) sendAsk(L);
+        // my vouch is re-made once half its life is gone (the far end does the same), so a renewal always has fresh ones
+        if (L.farDev && now - L.vAskAt > RESEND_MS && (!L.mine || now - L.mine.at > (L.mine.e - L.mine.at) / 2)) askMine(L);
+        if (L.state !== 'up' && L.readyMe && L.readyFar && io.pcUp(L.far)) { L.state = 'up'; L.upAt = now; L.serial = now; log('turn-link up ' + short(L.far)); io.changed(L.far); }
+        if (L.state === 'up' || L.state === 'dial') io.keep(L.far);
+        if (L.state === 'up') {   // my side grows with the people I reach directly
+          const s = io.seat();
+          if (s) for (const x of s.view) if (x !== L.far && L.side.indexOf(x) < 0 && L.side.length < SIDE_MAX && io.reach(x) === 'direct') L.side.push(x);
+        }
+      }
+      planVideo(now);
+      // THE HEAD (TURN.1-5): one link per part, toward the lower part, after TURN_WAIT.
+      const s = io.seat();
+      if (s && s.head) {
+        const view = new Set(s.view);
+        const F = []; let direct = false, fr = false;
+        for (const g of io.greeters() || []) {
+          if (!g || g === io.me() || view.has(g)) continue;
+          const r = io.reach(g);
+          if (r === 'direct') { direct = true; continue; }
+          if (r === 'friend') { fr = true; continue; }
+          F.push(g);
+        }
+        head.F = F.map(short); head.n = (io.greeters() || []).length;
+        if (direct || fr) { head.skip = direct ? 'direct' : 'friend'; head.since = -1; }
+        else if (!F.length) head.since = -1;
+        else {
+          head.skip = '';
+          if (head.since < 0) head.since = now;
+          let has = false;
+          for (const L of links.values()) if (L.opener || view.has(L.far)) { has = true; break; }
+          for (const f of io.facts() || []) if (f && !f.gone && f.up && (view.has(f.a) || f.a === io.me())) { has = true; break; }
+          if (!has && now - head.since >= WAIT_MS && now >= head.retryAt) {
+            let myMin = io.nid(io.me()); for (const x of s.view) { const n = io.nid(x); if (n >= 0 && n < myMin) myMin = n; }
+            const byNid = new Map(); for (const g of F) byNid.set(io.nid(g), g);
+            const pick = T.turnPick(Array.from(byNid.keys()), myMin);
+            if (pick >= 0) {
+              const g = byNid.get(pick);
+              const L = newLink(g, linkName(io.me(), g, K.TURN_FREE_LINKS), true);
+              head.retryAt = now + RETRY_MS;
+              sendAsk(L);
+            }
+          }
+        }
+      }
+      if (now - lastFactAt >= FACT_EVERY_MS) {
+        lastFactAt = now;
+        for (const L of links.values()) if (L.state === 'up') io.publish(factOf(L));
+      }
+    }
+
+    return {
+      step, onFrame, onVouch,
+      // The connection settings of this pair: null for a pair that is no TURN link, or whose end here is no client.
+      config(pid) {
+        const L = links.get(pid);
+        if (!L || !L.client) return null;
+        const g = (L.paidMe && L.paid && L.paid.servers()) || (L.cred && L.cred.servers()) || [];
+        return { iceServers: g, iceTransportPolicy: 'relay' };
+      },
+      factStaleMs: FACT_STALE_MS,
+      holds(pid) { const L = links.get(pid); return !!L && L.state !== 'closed'; },
+      isLink(pid) { const L = links.get(pid); return !!L && (L.state === 'up' || L.state === 'dial'); },
+      videoBlocked(pid) { const L = links.get(pid); return !!L && !L.video; },
+      video(pid) { const L = links.get(pid); return !!L && L.video; },
+      close(pid, why) { const L = links.get(pid); if (L) close(L, why || 'closed'); },
+      stopAll(why) { for (const L of Array.from(links.values())) close(L, why || 'stop', true); },
+      dump() {
+        const out = [];
+        for (const L of links.values()) out.push({ far: L.far, l: L.l, opener: L.opener, state: L.state, client: L.client, farDev: L.farDev, farBlocked: L.farBlocked,
+          mine: !!L.mine, peer: !!L.peer, readyMe: L.readyMe, readyFar: L.readyFar, cred: L.cred ? L.cred.state() : null, credRefusal: L.cred ? L.cred.refusal() : null,
+          pool: L.paidMe ? 'paid' : 'free', paid: L.paid ? L.paid.state() : null, paidRefusal: L.paid ? L.paid.refusal() : null, paidFar: L.paidFar,
+          vouched: L.vouched, video: L.video, upAt: L.upAt, side: L.side.length });
+        return { links: out, head: Object.assign({}, head) };
+      },
+    };
   }
 
   const api = {
-    ICE_URL, DEFAULT_WORKER, WORKER_KEY, workerBase, POOL, FETCH_TIMEOUT_MS, RETRY_MAX_MS, P0_MS, P1_MS, MAX_SERVED,
-    T_AUDIO, turnAudioSdp, turnVoiceParams,
-    reachable, pairStage, poolNeeded, pairUsesTurn, iceServersFor, hasTurnServer, chooseAnchor, mixMinus, MUTE_TAIL_MS, mixGain, carriesMix, mayServe, networkBridge, bridgeComponents,
-    retryDelayMs, parseIce, createCredentials, askIce, freeTicket, TICKET_CREDS,
+    DEFAULT_WORKER, WORKER_KEY, FETCH_TIMEOUT_MS, RETRY_BASE_MS, RETRY_MAX_MS, SIDE_MAX,
+    retryDelayMs, parseIce, hasTurnServer, workerBase, askIce, createCredentials,
+    vouchToken, vouchParts, tvOk, TV_KEYS, linkName, linkId, clientEnd, pausedBy, vouchPlan, createLinks,
   };
-  const GifOS = (root.GifOS = root.GifOS || {});
   GifOS.meetTurn = api;
-  if (typeof module === 'object' && module.exports) module.exports = api;
+  if (isNode) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
