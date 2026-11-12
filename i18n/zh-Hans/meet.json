@@ -764,5 +764,11 @@
  "meet.stLibSaving": "正在保存到我的资料库…",
  "meet.stLibSaved": "已保存到我的资料库。",
  "meet.stLibPaused": "上传已暂停。下次打开 GifOS 时会继续完成。",
- "meet.stLibDevice": "已改为保存在此设备上。"
+ "meet.stLibDevice": "已改为保存在此设备上。",
+ "meet.subFullFree": "此房间在免费方案下已满",
+ "meet.subFullFreeNote": "任何 GifOS 订阅都可以让你加入。",
+ "meet.subHostTurned": "有人未能进入：此房间在免费方案下已满（5 人）。",
+ "meet.subUp20": "订阅，最多 20 人",
+ "meet.subUpClose": "关闭",
+ "meet.subFreePlan": "你的方案：免费。管理员房间最多 5 人。"
 }

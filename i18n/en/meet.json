@@ -764,5 +764,11 @@
   "meet.stLibSaving": "Saving to My library…",
   "meet.stLibSaved": "Saved to My library.",
   "meet.stLibPaused": "The upload paused. It finishes the next time you open GifOS.",
-  "meet.stLibDevice": "Saved on this device instead."
+  "meet.stLibDevice": "Saved on this device instead.",
+  "meet.subFullFree": "This room is full on the free plan",
+  "meet.subFullFreeNote": "Any GifOS subscription lets you join.",
+  "meet.subHostTurned": "Someone was turned away: this room is full on the free plan (5 people).",
+  "meet.subUp20": "Subscribe for up to 20",
+  "meet.subUpClose": "Close",
+  "meet.subFreePlan": "Your plan: Free. Admin rooms of up to 5 people."
 }

@@ -764,5 +764,11 @@
   "meet.stLibSaving": "Wird in Meine Bibliothek gespeichert…",
   "meet.stLibSaved": "In Meine Bibliothek gespeichert.",
   "meet.stLibPaused": "Der Upload wurde angehalten. Er wird beim nächsten Öffnen von GifOS fertig.",
-  "meet.stLibDevice": "Stattdessen auf diesem Gerät gespeichert."
+  "meet.stLibDevice": "Stattdessen auf diesem Gerät gespeichert.",
+  "meet.subFullFree": "Dieser Raum ist im kostenlosen Tarif voll",
+  "meet.subFullFreeNote": "Mit jedem GifOS-Abo können Sie beitreten.",
+  "meet.subHostTurned": "Jemand wurde abgewiesen: Dieser Raum ist im kostenlosen Tarif voll (5 Personen).",
+  "meet.subUp20": "Abonnieren für bis zu 20",
+  "meet.subUpClose": "Schließen",
+  "meet.subFreePlan": "Ihr Tarif: Kostenlos. Admin-Räume mit bis zu 5 Personen."
 }

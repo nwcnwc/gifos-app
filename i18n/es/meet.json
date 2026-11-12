@@ -764,5 +764,11 @@
   "meet.stLibSaving": "Guardando en Mi biblioteca…",
   "meet.stLibSaved": "Guardado en Mi biblioteca.",
   "meet.stLibPaused": "La subida se ha pausado. Terminará la próxima vez que abras GifOS.",
-  "meet.stLibDevice": "Guardado en este dispositivo en su lugar."
+  "meet.stLibDevice": "Guardado en este dispositivo en su lugar.",
+  "meet.subFullFree": "Esta sala está llena en el plan gratuito",
+  "meet.subFullFreeNote": "Cualquier suscripción de GifOS te permite entrar.",
+  "meet.subHostTurned": "Alguien no pudo entrar: esta sala está llena en el plan gratuito (5 personas).",
+  "meet.subUp20": "Suscríbete para hasta 20",
+  "meet.subUpClose": "Cerrar",
+  "meet.subFreePlan": "Tu plan: Gratis. Salas de administrador de hasta 5 personas."
 }

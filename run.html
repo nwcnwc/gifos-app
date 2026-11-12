@@ -5646,8 +5646,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try {
         if (!subsOn()) return false;
         const m = GifOS.meetSubs.meeting && GifOS.meetSubs.meeting();
-        if (m && m.held) return true;
-        return !!(hasAdminRoom() && subsRoomTier());
+        if (m && m.paid) return true;   // the free plan's ticket holds nothing back
+        const t = hasAdminRoom() ? subsRoomTier() : null;
+        return !!(t && t !== 'free');
       } catch (e) { return false; }
     }
     function updateHold() {
@@ -15141,7 +15142,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const k = await net.edKeysFromSeedHex(K).catch(() => null);
       if (!k || k.verifier !== av) return false;
       admKey = K; admKeys = k; amAdmin = true;
-      setTimeout(() => { subsPublishRoomPlan(); }, 1500);   // the admin's plan rides the room's signed orders (no-op while subscriptions are off)
+      setTimeout(() => { subsPublishRoomPlan(); if (typeof subsAdminFree === 'function') subsAdminFree(); }, 1500);   // the admin's plan rides the room's signed orders; without a paid plan, the free plan's (no-op while subscriptions are off)
       admins = adminsNow(); // canStage reads this view; do not wait for the sweep
       refreshModSig();
       try { tryBroadcastStage(); } catch (e) {}
@@ -20287,7 +20288,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       } else if (m.k === 'subnone') {
         subsRefuse(p);
       } else if (m.k === 'subfull') {
-        subsFull();
+        subsFull(!!m.free);
+      } else if (m.k === 'subturned') {
+        subsTurnedSaid(p, dc);      // a door in my free-plan room turned someone away
       } else if (m.k === 'wpong') {
         p.wakePongAt = Date.now();
       } else if (m.k === 'bye') {
@@ -34373,7 +34376,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // 20 (the seats this seated door knows are taken now) holds a knocker and asks it to show
     // a subscription against a fresh challenge; a good answer lets it in at
     // once, none turns it away with a plain message. $5 and $10 rooms have no
-    // limit. An unread count lets people in, never out. The count is never
+    // limit. A room on the FREE plan (its admin holds no paid plan; Nathan
+    // 2026-11-11) has a 5-person line: the 6th person without a subscription
+    // is told "This room is full on the free plan", and the host is offered
+    // a one-tap upgrade to 20. An unread count lets people in, never out. The count is never
     // the door's greeter list: a door gets that list only when it knocks
     // itself, so it holds the room as it was when that door came in.
     let subsTurnedAway = false, subsTierKey = '', subsTier = null, subsTierExp = 0;
@@ -34468,14 +34474,37 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function subsRefuse(p, asked) {
       if (!asked && !subsAsked.has(p.id)) return;   // only a knocker this door asked
       subsAsked.delete(p.id);
-      try { dcSend(p, { k: 'subfull' }); } catch (e) {}
+      const free = subsTier === 'free';
+      try { dcSend(p, free ? { k: 'subfull', free: true } : { k: 'subfull' }); } catch (e) {}
+      if (free) subsTellHost();
     }
-    function subsFull() {
+    function subsFull(free) {
       const ms = meshSeat();
       if (subsTurnedAway || !subsOn() || (ms && ms.state === 3)) return;   // a seated member is never put out by it
       subsTurnedAway = true;
       try { leaveMeeting(); } catch (e) {}
-      GifOS.meetSubs.showFull();
+      GifOS.meetSubs.showFull(free);
+    }
+    // FREE PLAN: whoever's door turned someone away tells the room's admins
+    // (or is the admin), and the admin is offered the $2 plan in one tap.
+    function subsTellHost() {
+      if (amAdmin) { GifOS.meetSubs.showHostPrompt(); return; }
+      for (const id of adminsNow()) {
+        const q = peers.get(id);
+        if (q && q.dc && q.dc.readyState === 'open') { try { dcSend(q, { k: 'subturned' }); } catch (e) {} }
+      }
+    }
+    function subsTurnedSaid(p, dc) {
+      if (!dc || dc.__authBy !== p.id) return;   // an authenticated channel only
+      const ms = meshSeat();
+      if (!subsOn() || !amAdmin || !hasAdminRoom() || !(ms && ms.state === 3) || subsRoomTier() !== 'free') return;
+      GifOS.meetSubs.showHostPrompt();
+    }
+    // The admin of an admin room without a paid plan gets the free plan's
+    // license (no PayPal), so the room carries the free plan.
+    function subsAdminFree() {
+      if (!subsOn() || !hasAdminRoom() || !amAdmin || !GifOS.meetSubs.ensureFree) return;
+      GifOS.meetSubs.ensureFree().catch(() => {});
     }
 
     async function createAdminRoom(chosen, pass, postToChat, guestPw) {

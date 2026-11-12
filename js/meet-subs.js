@@ -8,7 +8,11 @@
  *   - Settings gets a Subscription group: the plans (monthly or yearly),
  *     sign-up through PayPal, the current plan, Cancel, and the subscription
  *     file: download it, or use one brought from another browser.
- *   - Making an admin room needs a subscription (any plan).
+ *   - Making an admin room: anyone may (Nathan 2026-11-11). Without a paid
+ *     plan the page gets a FREE license from the payment service (no PayPal;
+ *     bound to this browser's own key) and the room carries the free plan:
+ *     up to 5 people. When the door turns someone away for that, the host
+ *     sees a one-tap "Subscribe for up to 20".
  *   - ONE MEETING AT A TIME: joining a meeting (open or admin room) asks the
  *     payment service for a short ticket for that meeting. Joining another
  *     meeting, here or in any browser holding the same file, moves the
@@ -33,6 +37,9 @@
   const SUB = GifOS.sub;
   const STATE_KEY = 'gifos-sub-state';     // the last license and what PayPal said
   const CRED_KEY = 'gifos-sub-cred';       // this browser's copy of the subscription file's contents
+  const FREE_KEY = 'gifos-sub-free';       // the free plan's license for this browser's key: {subId, licenseJson, sig}
+  // New words read the meeting's catalog (i18n/<lang>/meet.json); English stays beside the call.
+  const tx = (key, en) => { try { const L = GifOS.i18n; if (L && L.ui() !== 'en' && L.has('meet.' + key)) return L.t('meet.' + key); } catch (e) {} return en; };
   const POLL_MS = TM.SUBS_POLL_MS;
   const POLL_FOR_MS = TM.SUBS_POLL_FOR_MS;
   const RETRY_MS = TM.SUBS_RETRY_MS;                  // a renewal that could not reach the service tries again
@@ -122,10 +129,11 @@
     const c = arc && SUB.credentialFromFiles(arc.files);
     if (!c) throw new Error('That file is not a GifOS subscription.');
     writeJson(CRED_KEY, c);
-    writeState({ subId: c.subId, tier: c.tier, status: null });
     keyMemo = { seed: null, p: null };
+    if (c.tier === 'free') { writeJson(FREE_KEY, null); await ensureFree(); return readState(); }
+    writeState({ subId: c.subId, tier: c.tier, status: null });
     const st = await refresh();
-    rejoin();
+    rejoin(true);
     return st;
   }
 
@@ -146,7 +154,16 @@
     st = st || readState();
     if (!st.licenseJson || !st.sig) return null;
     const lic = await SUB.verifyLicense({ licenseJson: st.licenseJson, sig: st.sig }, verifyPay, nowS()).catch(() => null);
-    if (!lic) return null;
+    if (!lic || !SUB.isPaid(lic.tier)) return null;
+    try { if (lic.buyerKey !== (await myKey()).pub) return null; } catch (e) { return null; }
+    return lic;
+  }
+  // The free plan's license, when it is this browser's key's.
+  async function verifiedFree() {
+    const f = readJson(FREE_KEY);
+    if (!f || !f.licenseJson || !f.sig) return null;
+    const lic = await SUB.verifyLicense({ licenseJson: f.licenseJson, sig: f.sig }, verifyPay, nowS()).catch(() => null);
+    if (!lic || lic.tier !== 'free') return null;
     try { if (lic.buyerKey !== (await myKey()).pub) return null; } catch (e) { return null; }
     return lic;
   }
@@ -167,7 +184,8 @@
   }
   async function rights() {
     if (!on()) return Object.assign({}, SUB ? SUB.FREE : {});
-    return SUB.rightsOf(await verifiedLicense(), nowS());
+    const lic = await verifiedLicense();
+    return SUB.rightsOf(lic || (await verifiedFree()), nowS());
   }
 
   async function post(path, body) {
@@ -177,13 +195,15 @@
     return j || {};
   }
   async function subIdNow() { const c = await credential(); return c ? c.subId : readState().subId; }
-  async function signed(action, extra) {
-    const subId = await subIdNow();
+  async function signed(action, extra, asId) {
+    const subId = asId || (await subIdNow());
     const at = nowS();
     return Object.assign({ subId, buyerKey: (await myKey()).pub, at, sig: await signText(SUB.askMessage(action, subId, at)) }, extra || {});
   }
   // Ask the payment service for a fresh license; keep what it says.
   async function refresh() {
+    const c0 = await credential();
+    if (c0 && c0.tier === 'free') return null;   // the free plan's license is ensureFree's
     if (!(await subIdNow())) return null;
     const j = await post('/gifos/sub/license', await signed('license'));
     const st = readState();
@@ -199,7 +219,10 @@
     return next;
   }
   async function keepFresh() {
-    if (!(await credential())) return;
+    const c = await credential();
+    if (!c) return;
+    if (readJson(FREE_KEY)) { const f = await verifiedFree(); if (!f || f.exp - nowS() < REFRESH_BEFORE_S) await ensureFree(); }
+    if (c.tier === 'free') return;
     const lic = await verifiedLicense();
     const st = readState();
     if (!lic || lic.exp - nowS() < REFRESH_BEFORE_S || st.status === 'APPROVAL_PENDING') { try { await refresh(); } catch (e) {} }
@@ -222,12 +245,44 @@
     while (Date.now() < until) {
       await new Promise((r) => setTimeout(r, POLL_MS));
       let st = null; try { st = await refresh(); } catch (e) {}
-      if (st && st.licenseJson) { rejoin(); return st; }
+      if (st && st.licenseJson) { rejoin(true); return st; }
       if (st && st.status && st.status !== 'APPROVAL_PENDING' && st.status !== 'APPROVED') return st;
     }
     return readState();
   }
+  // ---- the free plan -----------------------------------------------------------
+  // ensureFree() -> the free license (admin rooms of up to 5 people), asked
+  // for when this browser has no paid plan. A browser with no key yet gets
+  // one now, kept like a subscription file (tier 'free'). Never PayPal.
+  let freeP = null;
+  function ensureFree() {
+    if (!on()) return Promise.resolve(null);
+    if (!freeP) {
+      freeP = (async () => {
+        if (await verifiedLicense()) return null;   // a paid plan already makes admin rooms
+        let lic = await verifiedFree();
+        if (lic && lic.exp - nowS() > REFRESH_BEFORE_S) return lic;
+        if (!(await credential())) {
+          const seed = new Uint8Array(32); crypto.getRandomValues(seed);
+          const k = await GifOS.ed.keysFromSeed(seed);
+          const buyerKey = b64(k.pubRaw);
+          writeJson(CRED_KEY, { v: 1, kind: SUB.CRED_KIND, subId: await SUB.freeIdFor(buyerKey), tier: 'free', period: 'monthly', seed: b64(seed), buyerKey });
+          keyMemo = { seed: null, p: null };
+        }
+        const subId = await SUB.freeIdFor((await myKey()).pub);
+        const j = await post('/gifos/sub/license', await signed('license', null, subId));
+        if (j.active && j.licenseJson) writeJson(FREE_KEY, { subId, licenseJson: j.licenseJson, sig: j.sig, checkedAt: Date.now() });
+        lic = await verifiedFree();
+        if (lic) rejoin();
+        return lic;
+      })().catch(() => null).then((x) => { freeP = null; return x; });
+    }
+    return freeP;
+  }
+
   async function cancel() {
+    const c0 = await credential();
+    if (c0 && c0.tier === 'free') return readState();   // nothing to cancel on the free plan
     if (!(await subIdNow())) return readState();
     const j = await post('/gifos/sub/cancel', await signed('cancel'));
     writeState(Object.assign({}, readState(), { status: j.status, until: j.until }));
@@ -236,13 +291,13 @@
   }
 
   // ---- one meeting at a time --------------------------------------------------
-  // meet: {room, tag, ticket:{ticketJson,sig}, exp, gen, joining, timer, moved}
+  // meet: {room, tag, subId, tier, ticket:{ticketJson,sig}, exp, gen, joining, timer, moved}
   let meet = null;
   let hooks = {};
   function stopTimer() { if (meet && meet.timer) { clearTimeout(meet.timer); meet.timer = null; } }
   function schedule(ms) { stopTimer(); if (meet) meet.timer = setTimeout(renewNow, ms); }
   function take(j) {
-    meet.ticket = { ticketJson: j.ticketJson, sig: j.sig }; meet.exp = j.exp; meet.gen = j.gen;
+    meet.ticket = { ticketJson: j.ticketJson, sig: j.sig }; meet.exp = j.exp; meet.gen = j.gen; meet.tier = j.tier || meet.tier;
     schedule((j.renewEvery || SUB.RENEW_EVERY_S) * 1000);
     try { if (hooks.onTicket) hooks.onTicket(meet.ticket); } catch (e) {}
   }
@@ -256,7 +311,7 @@
     const m = meet;
     if (!m || !m.ticket) return;
     try {
-      const j = await post('/gifos/sub/renew', await signed('renew:' + m.tag + ':' + m.gen, { meeting: m.tag, gen: m.gen }));
+      const j = await post('/gifos/sub/renew', await signed('renew:' + m.tag + ':' + m.gen, { meeting: m.tag, gen: m.gen }, m.subId));
       if (meet !== m) return;
       if (j.moved) return lose('moved');
       if (j.ended || !j.active) return lose('ended');
@@ -278,11 +333,18 @@
     const keep = h || hooks;
     leaveMeeting();
     hooks = keep || {};
-    const m = meet = { room, tag: null, ticket: null, exp: 0, gen: 0, timer: null, moved: null, joining: null, pending: true };
+    const m = meet = { room, tag: null, subId: null, tier: null, ticket: null, exp: 0, gen: 0, timer: null, moved: null, joining: null, pending: true };
     m.joining = (async () => {
-      if (!(await credential())) return null;
+      const c = await credential();
+      if (!c) return null;
+      // A paid plan when this browser holds one (or has just bought one: the
+      // service checks payment at the join), else the free plan's license.
+      const paidLic = await verifiedLicense();
+      const freeLic = paidLic ? null : await verifiedFree();
+      m.subId = paidLic ? paidLic.subId : freeLic ? freeLic.subId : (c.tier !== 'free' ? c.subId : null);
+      if (!m.subId) return null;
       m.tag = await SUB.meetingTag(room);
-      const j = await post('/gifos/sub/join', await signed('join:' + m.tag, { meeting: m.tag }));
+      const j = await post('/gifos/sub/join', await signed('join:' + m.tag, { meeting: m.tag }, m.subId));
       if (meet !== m) return null;
       if (!j.active) { m.moved = 'inactive'; return null; }
       take(j);
@@ -293,7 +355,9 @@
   function leaveMeeting() { stopTimer(); meet = null; hooks = {}; }
   // The subscription on this browser changed (signed up, or a file opened):
   // the meeting this page is in joins with it now.
-  function rejoin() { if (meet && !meet.ticket) { const room = meet.room; meet = null; joinMeeting(room); } }
+  // upgrade: a paid plan just arrived, so a meeting held on the free plan
+  // joins again with it (the room then carries the paid plan).
+  function rejoin(upgrade) { if (meet && (!meet.ticket || (upgrade && !SUB.isPaid(meet.tier)))) { const room = meet.room; stopTimer(); meet = null; joinMeeting(room); } }
   async function currentTicket(room) {
     if (!meet || meet.room !== room) return null;
     await meet.joining;
@@ -317,7 +381,7 @@
   async function proveAtDoor(room, nonce) {
     if (!on()) return null;
     const ticket = await currentTicket(room);
-    if (!ticket) return null;
+    if (!ticket || !(meet && SUB.isPaid(meet.tier))) return null;   // a free plan is no way past a room's line
     return { ticket, proof: await signText(SUB.proofMessage(SUB.doorContext(room), nonce)) };
   }
   // The door checking a knocker's answer.
@@ -372,6 +436,7 @@
       }
     } else {
       if (st.subId && st.status && st.status !== 'APPROVAL_PENDING') row.appendChild(el('p', { class: 'set-help' }, SUB.TEXT.lapsed));
+      if (await verifiedFree()) row.appendChild(el('p', { class: 'set-help', id: 'sub-free-plan' }, tx('subFreePlan', 'Your plan: Free. Admin rooms of up to 5 people.')));
       row.appendChild(el('p', { class: 'set-help' }, 'Open rooms are free. A subscription adds rooms you run as admin, and video for people whose networks block direct connections.'));
       for (const period of ['monthly', 'yearly']) {
         for (const id of SUB.TIER_IDS) {
@@ -423,23 +488,25 @@
   }
 
   // ---- admin rooms: making one -------------------------------------------------
-  // mayCreateAdminRoom(say) -> true when the switch is off or any plan is held.
+  // mayCreateAdminRoom(say) -> true: anyone may make an admin room. Without
+  // a paid plan the free plan's license is fetched first (up to 5 people);
+  // a payment service that cannot be reached does not stop the room.
   async function mayCreateAdminRoom(say) {
     if (!on()) return true;
     const r = await rights();
     if (r.adminRooms) return true;
-    if (say) say(SUB.TEXT.needForAdmin);
-    openSettings();
-    return false;
+    await ensureFree();
+    return true;
   }
 
   // Shown instead of the meeting when the room is full for this person.
-  function showFull() {
+  // free: the room is on the free plan (5 people).
+  function showFull(free) {
     const m = document.getElementById('left-modal');
     const t = document.getElementById('left-title');
     const n = document.getElementById('left-note');
-    if (t) t.textContent = 'This meeting is full';
-    if (n) n.textContent = SUB.TEXT.full;
+    if (t) t.textContent = free ? tx('subFullFree', SUB.TEXT.fullFree) : 'This meeting is full';
+    if (n) n.textContent = free ? tx('subFullFreeNote', SUB.TEXT.fullFreeNote) : SUB.TEXT.full;
     if (m && !document.getElementById('sub-full-go')) {
       const b = el('button', { type: 'button', id: 'sub-full-go' }, 'Subscribe');
       b.onclick = () => { m.style.display = 'none'; openSettings(); };
@@ -447,6 +514,29 @@
       if (box) box.insertBefore(b, box.querySelector('#left-rejoin'));
     }
     if (m) m.style.display = 'flex';
+  }
+
+  // The host of a room on the free plan, when the door turned someone away:
+  // a one-tap upgrade to the $2 plan (20 people) over the meeting.
+  function showHostPrompt() {
+    if (!on() || typeof document === 'undefined' || !document.body) return false;
+    let bar = document.getElementById('sub-host-up');
+    if (bar) { bar.hidden = false; return true; }
+    bar = el('div', { id: 'sub-host-up', role: 'status', 'aria-live': 'polite', style: 'position:fixed;left:50%;bottom:5.5rem;transform:translateX(-50%);z-index:41;max-width:min(92vw,28rem);background:var(--panel,#1d1d2b);color:var(--text,#e8e8f4);border:1px solid var(--border,#2a2a3f);border-radius:.6rem;padding:.6rem .8rem;box-shadow:0 12px 32px rgba(0,0,0,.5);font:14px/1.4 system-ui,sans-serif;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap' });
+    const msg = el('span', { id: 'sub-host-up-msg', style: 'flex:1 1 12rem' }, tx('subHostTurned', 'Someone was turned away: this room is full on the free plan (5 people).'));
+    const go = el('button', { type: 'button', id: 'sub-host-up-go', class: BTN, style: BTN_STYLE }, tx('subUp20', 'Subscribe for up to 20'));
+    const x = el('button', { type: 'button', id: 'sub-host-up-x', class: BTN, style: BTN_STYLE, 'aria-label': tx('subUpClose', 'Close') }, '\u00d7');
+    go.onclick = async () => {
+      go.disabled = true;
+      try {
+        const r = await subscribe('room20', 'monthly', (t) => { msg.textContent = t; });
+        if (r && r.licenseJson) bar.remove(); else { msg.textContent = r && r.status === 'APPROVAL_PENDING' ? SUB.TEXT.pending : 'PayPal did not confirm the subscription.'; go.disabled = false; }
+      } catch (e) { msg.textContent = String(e.message || e); go.disabled = false; }
+    };
+    x.onclick = () => { bar.remove(); };
+    bar.appendChild(msg); bar.appendChild(go); bar.appendChild(x);
+    document.body.appendChild(bar);
+    return true;
   }
 
   function boot() {
@@ -460,9 +550,9 @@
   }
 
   GifOS.meetSubs = {
-    enabled: on, rights, refresh, subscribe, cancel, paintSettings, openSettings, mayCreateAdminRoom, showFull,
+    enabled: on, rights, refresh, subscribe, cancel, paintSettings, openSettings, mayCreateAdminRoom, showFull, ensureFree, showHostPrompt,
     roomOrder, roomTier, proveAtDoor, checkShown, newNonce,
     joinMeeting, leaveMeeting, currentTicket, fileBytes, downloadFile, useFile, librarySigner,
-    meeting: () => (meet ? { room: meet.room, gen: meet.gen, exp: meet.exp, moved: meet.moved, held: !!meet.ticket } : null),
+    meeting: () => (meet ? { room: meet.room, gen: meet.gen, exp: meet.exp, moved: meet.moved, held: !!meet.ticket, tier: meet.tier, paid: !!(meet.ticket && SUB.isPaid(meet.tier)) } : null),
   };
 })(typeof window !== 'undefined' ? window : globalThis);
