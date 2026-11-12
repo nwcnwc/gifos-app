@@ -118,6 +118,7 @@
     RC_RESEND: 4,                // L3.11.2: a returner whose routed RECLAIM drew no answer this long sends it again through another greeter (one routed hop and back is 2 to 4 ticks)
     RC_RESEND_N: 2,              // L3.11.2: at most this many resends of a routed RECLAIM per return (then the ordinary roster round and the newcomer path)
     RC_WAIT: 20,                 // L3.10.4: a returner holds a hand-back of its old cell this long (CONFIRM_TTL + 4) before taking it, in case the hole's mover answers that it healed the cell; the mover then offers the seat it left, once its own move confirms
+    REACH_PROBE: 5,              // L4.1.1: ticks after a page starts at which its network probe gives up waiting for a reflexive address and calls the network blocked (the page: REACH_PROBE_MS). Depends on: the STUN client's fourth send and one round trip
     REDIAL_GAP: 8,               // L3.8: at most one re-dial of an owned link per this many ticks, the first gap
     REDIAL_MAX: 64,              // L3.8: the re-dial gap doubles up to this
     RELAY_BUDGET: 3,             // door relay: hand-offs per seeker per RELAY_SEEN window
