@@ -297,18 +297,16 @@
   // must be current and for THIS room's meeting; proof signs
   // proofMessage(roomContext(room), 'at:' + at) with the ticket's key.
   // -> {tier, exp} or null.
-  // The ticket may be a live four-hour pass ({passJson, sig}): the room then
-  // reads Unlimited while the order is fresh (orderFresh) and the pass lasts.
+  // The ticket may be a four-hour pass's meeting ticket (passTicket): the
+  // room then reads Unlimited while that ticket lasts.
   async function roomTierOf(order, room, verifyPay, verifyKey, nowS) {
     if (!order || typeof order !== 'object' || order.on === false) return null;
     if (!Number.isInteger(order.at)) return null;
-    const isPass = !!(order.ticket && typeof order.ticket.passJson === 'string');
-    if (isPass && !orderFresh(order.at, nowS)) return null;
     const t = await meetingRight(order.ticket, verifyPay, nowS, await meetingTag(room));
     if (!t) return null;
     const ok = await verifyProof(t, roomContext(room), 'at:' + order.at, order.proof, verifyKey);
     if (!ok) return null;
-    return isPass ? { tier: t.tier, exp: Math.min(t.exp, Math.floor(order.at / 1000) + TICKET_S), pass: true } : { tier: t.tier, exp: t.exp };
+    return t.pass ? { tier: t.tier, exp: t.exp, pass: true } : { tier: t.tier, exp: t.exp };
   }
   // ---- the four-hour pass ----------------------------------------------------
   // $1, one PayPal order, never a subscription, and never anything but PayPal.
@@ -325,11 +323,18 @@
   // passMessage(passJson): a domain no other receipt, license or ticket is
   // signed in, so only the PayPal pass path can make one.
   //
-  // It is honored with no call to anyone: the service's signature, the
-  // clock (start <= now < end), and a signature by the pass's own key over
-  // the room (room order, TURN) or the door's challenge. A copied pass is
-  // worth nothing without that key. Nothing records where it is used, so a
-  // pass is not limited to one meeting at a time.
+  // ONE MEETING AT A TIME, as a subscription (Nathan 2026-11-12: "otherwise
+  // we've just created a very costly attack path"). The pass's key and its
+  // passes ride in the provider GIF, so a copy of that file is the whole
+  // credential. The pass itself is therefore never a meeting right: joining
+  // a meeting shows the held passes to the payment service, which keeps the
+  // pass key's newest meeting (one record per pass key, passRecId) and signs
+  // a PASS MEETING TICKET for it (passTicket below), renewed like a
+  // subscription's; joining another meeting moves it there and the older
+  // meeting's ticket stops renewing, so that meeting loses the pass within
+  // TICKET_S. Rooms, the door and the TURN Worker read only that ticket.
+  // Passes of one key stack into one window (passChain), so a buyer's
+  // stacked passes carry one meeting straight through.
   const PASS_KIND = 'gifos-pass4h';
   const PASS_TAG = 'gifos-pass4h-receipt';
   // The pass's length: PASS_S in the timings table (js/timings.js, loaded
@@ -390,29 +395,71 @@
     const x = TIERS[PASS_PLAN];
     return { tier: x.id, subscribed: true, adminRooms: true, openRooms: true, roomLimit: x.roomLimit, turnAudio: true, turnVideo: true, storage: null, bypassLimit: true, until: o.end, vouches: x.vouches, pass: true, capture: false };
   }
-  // A pass as a meeting right: the shape the door, the room's plan and the
-  // TURN Worker read from a ticket. subId names the pass (it keys the TURN
-  // Worker's per-customer count).
-  const passAsTicket = (o) => ({ tier: PASS_PLAN, buyerKey: o.buyerKey, subId: o.id, exp: o.end, start: o.start, pass: true });
-  // A meeting right carried where a ticket rides (room order, door answer,
-  // TURN ask): a ticket for this meeting, or a live pass. -> ticket-shaped or null.
-  async function meetingRight(r, verify, nowS, meeting) {
-    if (r && typeof r.passJson === 'string') { const o = await verifyPass(r, verify, nowS); return o ? passAsTicket(o) : null; }
-    return verifyTicket(r, verify, nowS, meeting);
+  // ---- the pass's meeting ticket ------------------------------------------------
+  // passRecId(buyerKey) -> 'K-' + 24 hex: the payment service's one record
+  // for a pass key (its newest meeting). Every pass of that key, stacked or
+  // copied, shares it.
+  const PASS_TICKET_KIND = 'gifos-pass-ticket';
+  const PASS_TICKET_TAG = 'gifos-pass-ticket';
+  const PASS_REC_RE = /^K-[0-9a-f]{24}$/;
+  async function passRecId(buyerKey) {
+    const d = new Uint8Array(await root.crypto.subtle.digest('SHA-256', utf8('gifos-pass-key:' + String(buyerKey))));
+    let h = ''; for (let i = 0; i < 12; i++) h += d[i].toString(16).padStart(2, '0');
+    return 'K-' + h;
   }
-  // A room order made with a pass names the time it was signed (at, ms); it
-  // counts for TICKET_S from then, as a ticket would, so a holder who left
-  // stops carrying the room within minutes.
-  const orderFresh = (at, nowS) => Number.isInteger(at) && at / 1000 <= nowS + ASK_WINDOW_S && nowS - at / 1000 <= TICKET_S;
-  // THE TURN WORKER'S CHECK of a pass vouch: {passJson, sig, at, proof} where
-  // proof is the pass key's signature over proofMessage(roomContext(room),
-  // 'at:' + at) — the same room order the holder sends the room. -> ticket-shaped or null.
-  async function turnPassOk(v, room, verifyPay, verifyKey, nowS) {
-    if (!v || typeof v !== 'object' || !orderFresh(v.at, nowS)) return null;
-    const o = await verifyPass(v, verifyPay, nowS);
-    if (!o) return null;
-    const ok = await verifyProof(o, roomContext(room), 'at:' + v.at, v.proof, verifyKey);
-    return ok ? Object.assign(passAsTicket(o), { exp: Math.min(o.end, Math.floor(v.at / 1000) + TICKET_S) }) : null;
+  // Signed over its own domain (never the bare JSON a receipt, license or
+  // subscription ticket is signed over), so nothing else verifies as one.
+  const passTicketMessage = (ticketJson) => PASS_TICKET_TAG + '\x00' + String(ticketJson);
+  // passChain(passes, nowS) -> {live, until} or null. passes: verified
+  // passes of ONE key. The live one, and the window it opens: every pass
+  // that starts by the time the window ends carries it on (stacking).
+  function passChain(passes, nowS) {
+    const list = (passes || []).filter(Boolean).slice().sort((a, b) => a.start - b.start);
+    const live = list.filter((o) => passLive(o, nowS)).sort((a, b) => b.end - a.end)[0];
+    if (!live) return null;
+    let until = live.end;
+    for (const o of list) if (o.buyerKey === live.buyerKey && o.start <= until && o.end > until) until = o.end;
+    return { live, until };
+  }
+  // checkPassTicket(o, nowS, meeting) -> o or null: {v, kind, payeeId, plan,
+  // buyerKey (the pass key), subId (passRecId of it), meeting, gen, issued, exp}.
+  function checkPassTicket(o, nowS, meeting) {
+    if (!o || typeof o !== 'object') return null;
+    if (o.v !== 1 || o.kind !== PASS_TICKET_KIND || o.payeeId !== SELLER || o.plan !== PASS_PLAN) return null;
+    if (typeof o.buyerKey !== 'string' || !KEY_RE.test(o.buyerKey)) return null;
+    if (typeof o.subId !== 'string' || !PASS_REC_RE.test(o.subId)) return null;
+    if (typeof o.meeting !== 'string' || !MEETING_RE.test(o.meeting)) return null;
+    if (meeting != null && o.meeting !== meeting) return null;
+    if (!intS(o.gen) || o.gen < 1 || !intS(o.issued) || !intS(o.exp)) return null;
+    if (o.exp <= o.issued || o.exp - o.issued > TICKET_S + 60) return null;
+    if (!(nowS < o.exp) || o.issued > nowS + ASK_WINDOW_S) return null;
+    return o;
+  }
+  // verifyPassTicket({ticketJson, sig}, verify, nowS, meeting) -> the ticket or null.
+  async function verifyPassTicket(t, verify, nowS, meeting) {
+    if (!t || typeof t.ticketJson !== 'string' || typeof t.sig !== 'string' || t.ticketJson.length > 2048) return null;
+    let sigBytes; try { sigBytes = b64ToBytes(t.sig); } catch (e) { return null; }
+    if (sigBytes.length !== 64) return null;
+    let ok = false;
+    try { ok = !!(await verify(sigBytes, utf8(passTicketMessage(t.ticketJson)))); } catch (e) { ok = false; }
+    if (!ok) return null;
+    let o; try { o = JSON.parse(t.ticketJson); } catch (e) { return null; }
+    o = checkPassTicket(o, nowS, meeting);
+    if (o && o.subId !== (await passRecId(o.buyerKey))) return null;
+    return o;
+  }
+  // A pass ticket as a meeting right: the shape the door, the room's plan and
+  // the TURN Worker read from a ticket. subId (the pass key's record) keys
+  // the TURN Worker's per-customer count: stacked passes count as one.
+  const passTicketAsTicket = (o) => ({ tier: PASS_PLAN, buyerKey: o.buyerKey, subId: o.subId, meeting: o.meeting, gen: o.gen, exp: o.exp, pass: true });
+  const isPassTicket = (r) => { if (!r || typeof r.ticketJson !== 'string') return false; try { return JSON.parse(r.ticketJson).kind === PASS_TICKET_KIND; } catch (e) { return false; } };
+  // A meeting right carried where a ticket rides (room order, door answer,
+  // TURN ask): a ticket for this meeting, or a pass's meeting ticket for it.
+  // A bare pass is NOT one: it names no meeting. -> ticket-shaped or null.
+  async function meetingRight(r, verify, nowS, meeting) {
+    if (!r || typeof r !== 'object' || typeof r.passJson === 'string') return null;
+    if (isPassTicket(r)) { const o = await verifyPassTicket(r, verify, nowS, meeting); return o ? passTicketAsTicket(o) : null; }
+    return verifyTicket(r, verify, nowS, meeting);
   }
   // bestRights(list) -> the best of several rights held at once (a
   // subscription's, a pass's): the larger room wins, then the larger vouch
@@ -539,7 +586,8 @@
     roomLimitFor, admission, enabled, roomContext, doorContext, roomTierOf, doorVerdict, doorProofOk,
     TICKET_KIND, TICKET_S, RENEW_EVERY_S, meetingTag, checkTicket, verifyTicket, ticketRights,
     PASS_KIND, passSeconds, PASS_PLAN, PASS_PRICE, PASS_VALUE, ORDER_ID_RE, PASS_ID_RE, passMessage, checkPass, passLive, verifyPass,
-    passStart, passRights, meetingRight, turnPassOk, bestRights,
+    passStart, passRights, meetingRight, bestRights,
+    PASS_TICKET_KIND, PASS_REC_RE, passRecId, passTicketMessage, passChain, checkPassTicket, verifyPassTicket, isPassTicket,
     WALLET_KIND, walletOk,
     CRED_KIND, credentialOk, credentialFiles, credentialFromFiles, walletFromFiles,
   };

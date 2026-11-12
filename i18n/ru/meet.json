@@ -883,5 +883,6 @@
  "meet.subActive": "активна",
  "meet.heldSub": "Подписка: {plan}, {period}, {standing}.",
  "meet.heldPassLive": "Пропуск на четыре часа: Безлимит до {until}, осталось {left}.",
- "meet.heldPassNext": "Пропуск на четыре часа: Безлимит с {start} до {until}."
+ "meet.heldPassNext": "Пропуск на четыре часа: Безлимит с {start} до {until}.",
+ "meet.passMoved": "Ваш пропуск на четыре часа сейчас используется в другой встрече: он действует только в одной встрече за раз."
 }

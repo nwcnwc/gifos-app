@@ -883,5 +883,6 @@
  "meet.subActive": "有效",
  "meet.heldSub": "订阅：{plan}，{period}，{standing}。",
  "meet.heldPassLive": "4 小时通行证：不限人数，至 {until}，剩余 {left}。",
- "meet.heldPassNext": "4 小时通行证：不限人数，{start} 至 {until}。"
+ "meet.heldPassNext": "4 小时通行证：不限人数，{start} 至 {until}。",
+ "meet.passMoved": "你的 4 小时通行证正在另一场会议中使用：它一次只能用于一场会议。"
 }

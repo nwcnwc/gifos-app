@@ -13035,11 +13035,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       turnPaint();
     }
     // A subscriber's vouch: its meeting ticket for this meeting and its key's signature over the room (meet-subs roomOrder).
-    // A four-hour pass vouches the same way; the TURN Worker reads the pass with its holder's signature over the room
-    // (the whole order: pass, at, proof), so a pass copied without its key asks for nothing.
+    // A four-hour pass vouches the same way with its pass meeting ticket (one meeting at a time, like a subscription).
     function turnSubIn(from, o) {
       if (!o || typeof o !== 'object' || !GifOS.meetSubs) return;
-      GifOS.meetSubs.roomTier(o, subsMeetId()).then((t) => { if (t) turnSubs.set(from, { tier: t.tier, exp: t.exp, ticket: t.pass ? Object.assign({}, o.ticket, { at: o.at, proof: o.proof }) : o.ticket, pass: !!t.pass, at: Date.now() }); }, () => {});
+      GifOS.meetSubs.roomTier(o, subsMeetId()).then((t) => { if (t) turnSubs.set(from, { tier: t.tier, exp: t.exp, ticket: o.ticket, pass: !!t.pass, at: Date.now() }); }, () => {});
     }
     function turnSubOut() {
       if (!meshNode || !subsOn()) return;
@@ -35934,6 +35933,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         onPass: () => { if (amAdmin && hasAdminRoom()) subsPublishRoomPlan(); turnSubAt = 0; },   // a four-hour pass bought, started or ended: the room's plan and the TURN vouch now
         onLost: (why) => {
           if (why === 'moved') setStatus('Your subscription is now in use in another meeting.');
+          if (why === 'pass-moved') setStatus(uiText('passMoved', 'Your four-hour pass is in use in another meeting now: it works in one meeting at a time.'));
           const r = modTable['*'];
           if (amAdmin && hasAdminRoom() && r && r.sublic && r.sublic.on !== false) { r.sublic = { on: false, at: Date.now(), by: myName(), byId: myId }; hostFlood(); }
         },
