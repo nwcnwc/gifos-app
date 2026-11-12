@@ -12853,6 +12853,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         myEpoch: () => { const r = turnRaw(); return r && Number.isInteger(r.lineAt) ? r.lineAt : -1; },
         reach: (pid) => { const p = peers.get(pid); if (p && p.connected && !(turnLinks && turnLinks.isLink(pid))) return 'direct'; return turnFriend(pid) ? 'friend' : null; },
         blocked: () => directPath === 'blocked',
+        blockedSure: () => directPath === 'blocked' && directMeasured,
         alive: (pid) => {
           if (meshKnows(pid)) return true;
           const r = turnRaw(); if (r && (r.lastGreeters || []).indexOf(meshNode.nidOf(pid)) >= 0) return true;

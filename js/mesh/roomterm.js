@@ -10,6 +10,8 @@
   const C_ = req('./consts.js', 'meshConsts');
   const topo = req('./topo.js', 'meshTopo');
   const K = C_.consts, E = C_.enums;
+  // the sim's -DL8_47_1_OFF=1 build: MESH_L8_47_1_OFF=1 under node, read once at load; a page always runs the law
+  const L8_47_1_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L8_47_1_OFF === '1') ? 1 : 0;
   const { ckey, ownedLinks } = topo;
   const LS_NONE = E.LS_NONE;
 
@@ -35,15 +37,24 @@
       this.cutNone = cur;
     },
 
+    // L8.47.1 A BLOCKED SEEKER'S ENTRY: a joiner whose own measured network verdict is blocked is in the ask-all from its
+    // first list, asks the whole list in one wave, waits ISLAND_WAIT_BLOCKED (one answered dial's verdict) and is not asked
+    // a second silent round; the confirm knock stands.
+    // C++: mesh_roomterm.inc:Seat::l8471
+    l8471() { return !L8_47_1_OFF && !!this.w.lv.ISLAND_MODE && this.nat === E.NAT_BLOCKED; },
+
+    // C++: mesh_roomterm.inc:Seat::islandWait
+    islandWait() { return this.l8471() ? K.ISLAND_WAIT_BLOCKED : K.ISLAND_WAIT; },
+
     // C++: mesh_roomterm.inc:Seat::entryTerm
-    entryTerm() { return this.entIsl; },
+    entryTerm() { return this.entIsl || this.l8471(); },
 
     // C++: mesh_roomterm.inc:Seat::entNote
     entNote(g) { if (g < 0 || g === this.id || this.entAsk.has(g)) return; if (this.entAsk.size > 32) this.entAsk.clear(); this.entAsk.set(g, this.TICK); },
 
     // C++: mesh_roomterm.inc:Seat::entCheck
     entCheck() {
-      if (this.entIsl || !(this.state === 0 || this.state === 1) || this.lastGreeters.length === 0 || this.greetersAt < 0 || this.TICK - this.greetersAt > K.RELAY_TTL) return false;
+      if (this.entIsl || this.l8471() || !(this.state === 0 || this.state === 1) || this.lastGreeters.length === 0 || this.greetersAt < 0 || this.TICK - this.greetersAt > K.RELAY_TTL) return false;
       let n = 0, first = -1;
       for (const g of this.lastGreeters) { const it = this.entAsk.get(g); if (it === undefined || this.TICK - it < K.ISLAND_WAIT || this.entAnsAt >= it) continue; n++; if (first < 0 || it < first) first = it; }
       if (n < 2) {
