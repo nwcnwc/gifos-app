@@ -758,7 +758,7 @@
   "meet.viewFollow": "Follow the speaker",
   "meet.viewPresent": "Present",
   "meet.recToLib": "Save to my GifOS library",
-  "meet.recToLibHelp": "Uploaded to your private library when the recording stops, with the transcript. Only you can see it until you share it.",
+  "meet.recToLibHelp": "Encrypted in this browser and uploaded to your library when the recording stops, with the transcript. Only you can open it, unless you share it.",
   "meet.recNoteLib": "Saved to your GifOS library. Everyone here will see that this meeting is being recorded.",
   "meet.recLibUpsell": "Streamer subscribers can save recordings to their GifOS library.",
   "meet.stLibSaving": "Saving to My library…",
@@ -820,5 +820,7 @@
   "meet.agAddItem": "Add item",
   "meet.agWhoEdits": "Who else can edit",
   "meet.agStop": "Stop sharing the agenda",
-  "meet.shareStageFull": "The stage is full. Someone has to step down first."
+  "meet.shareStageFull": "The stage is full. Someone has to step down first.",
+  "meet.sttVideoPausedRelay": "Video is paused on this connection. Sound still works. A subscriber in the meeting can turn video on.",
+  "meet.turnSubscribe": "Subscribe"
 }
