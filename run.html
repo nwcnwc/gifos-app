@@ -1458,6 +1458,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/meet-status.js" defer></script>
   <script src="js/gifos-sub.js" defer></script>
   <script src="js/meet-subs.js" defer></script>
+  <script src="js/gifos-library.js" defer></script>
   <script src="js/meet-leave.js" defer></script>
   <script src="js/meet-debuglog.js" defer></script>
   <script src="js/meet-meters.js" defer></script>
@@ -30742,13 +30743,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const dot = String(ext || 'txt').replace(/^\.+/, '').replace(/[^A-Za-z0-9]/g, '').toLowerCase() || 'txt';
       return day + (name ? '_' + name : '') + '_gifos_' + kind + '.' + dot;
     }
-    document.getElementById('trdl').onclick = () => {
+    // The transcript as a text file: {blob, name, lines} (lines 0 = empty).
+    function transcriptFile() {
       const blocks = trBlocks();
       const mine = trLang();
       const lines = blocks.map((l) => '[' + new Date(l.at).toLocaleTimeString() + '] ' + l.by + (l.lang && l.lang !== mine ? ' (' + l.lang + ')' : '') + ': ' + l.text);
+      return { blob: new Blob([lines.join('\n') + '\n'], { type: 'text/plain' }), name: meetDownloadName('Transcript', room, blocks.length ? blocks[0].at : 0, 'txt'), lines: lines.length };
+    }
+    document.getElementById('trdl').onclick = () => {
+      const f = transcriptFile();
       const a = document.createElement('a');
-      a.href = URL.createObjectURL(new Blob([lines.join('\n') + '\n'], { type: 'text/plain' }));
-      a.download = meetDownloadName('Transcript', room, blocks.length ? blocks[0].at : 0, 'txt');
+      a.href = URL.createObjectURL(f.blob);
+      a.download = f.name;
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     };
@@ -30767,6 +30773,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // along; "match my mix" scales each bus's audio by your own fader.
     let recRec = null, recTimer = null, recDraw = null, recStart = 0, recSrcs = new Map(), recDest = null, recSink = null;
     let recMode = null, recRestart = null, recMatchMix = true, recQuality = 'std', recType = 'video/webm'; // recType = the container MediaRecorder writes; recMode = scope; recRestart = opts after a stop
+    let recToLib = false;   // this recording goes to My library (Streamer) when it stops
     let recStarting = false, recReloadAfterStop = false, recIndWatch = null;
     const recBtn = document.getElementById('recbtn');
     const REC_QUALITY = { low: { w: 1280, h: 720, v: 1000000 }, std: { w: 1920, h: 1080, v: 3000000 }, high: { w: 1920, h: 1080, v: 6000000 } };
@@ -31032,6 +31039,88 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       };
       bg.querySelector('#se-leave').onclick = () => { bg.remove(); recRelease(saved); leaveSeededService(); };
     }
+    // ---- My library (Streamer): the finished recording is uploaded, with the
+    // transcript beside it. If the library refuses it (full, plan ended) or
+    // the upload cannot be kept to finish later, the file is saved on this
+    // device instead, so a recording is never lost.
+    let recLibLast = -1;
+    function recLibNote(text) { recLibLast = -1; setStatus(text); }
+    function recLibProgress(x) {
+      const pct = Math.floor(x * 100);
+      if (pct === recLibLast) return;
+      recLibLast = pct;
+      setStatus(uiText('stLibSaving', 'Saving to My library…') + ' ' + pct + '%');
+    }
+    function recToLibrary(saved) {
+      const name = saved.name || recFileName();
+      const tr = transcriptFile();
+      const L = window.GifOS && GifOS.library;
+      if (!L) return recDeliver(saved);
+      const onDevice = (blob, why) => {
+        const href = URL.createObjectURL(blob);
+        recDownload({ href, name });
+        recRelease({ href, drop: saved.drop });
+        recLibNote((why ? why + ' ' : '') + uiText('stLibDevice', 'Saved on this device instead.'));
+      };
+      (async () => {
+        let blob;
+        try { blob = await fetch(saved.href).then((r) => r.blob()); } catch (e) { recDeliver(saved); return; }
+        try { URL.revokeObjectURL(saved.href); } catch (e) {}
+        recLibProgress(0);
+        let file;
+        try {
+          file = await L.save(blob, { name, type: blob.type || recType, kind: 'recording' }, recLibProgress);
+        } catch (e) {
+          const kept = e && e.uploadId && L.pending().some((p) => p.id === e.uploadId);
+          if (kept) {
+            recLibNote(uiText('stLibPaused', 'The upload paused. It finishes the next time you open GifOS.'));
+            if (typeof saved.drop === 'function') { try { await saved.drop(); } catch (x) {} }
+          } else onDevice(blob, e && e.message);
+          return;
+        }
+        if (typeof saved.drop === 'function') { try { await saved.drop(); } catch (e) {} }
+        if (tr && tr.lines) { try { await L.save(tr.blob, { name: tr.name, type: 'text/plain', kind: 'transcript', of: file.id }); } catch (e) {} }
+        recLibNote(uiText('stLibSaved', 'Saved to My library.'));
+        if (typeof window.__gifosLibSaved === 'function') { try { window.__gifosLibSaved(file); } catch (e) {} }
+      })();
+      return 'library';
+    }
+    // The Record sheet's library choice: Streamer gets the box (on by
+    // default); other people see one quiet line while subscriptions are on.
+    async function recLibraryOption(bg) {
+      const slot = bg.querySelector('#rec-lib');
+      const L = window.GifOS && GifOS.library;
+      if (!slot || !L || !L.enabled() || BROADCAST) return;
+      let st = 'none';
+      try { st = await L.status(); } catch (e) {}
+      if (!slot.isConnected) return;
+      if (st !== 'streamer') {
+        const p = document.createElement('p');
+        p.className = 'rec-upsell';
+        p.style.cssText = 'margin:.4rem 0 0;font-size:13px;color:var(--c-gray)';
+        p.textContent = uiText('recLibUpsell', 'Streamer subscribers can save recordings to their GifOS library.');
+        slot.appendChild(p);
+        return;
+      }
+      const lab = document.createElement('label');
+      lab.className = 'rec-opt';
+      lab.innerHTML = '<input type="checkbox" id="rec-tolib" checked><span><b></b><small></small></span>';
+      lab.querySelector('b').textContent = uiText('recToLib', 'Save to my GifOS library');
+      lab.querySelector('small').textContent = uiText('recToLibHelp', 'Uploaded to your private library when the recording stops, with the transcript. Only you can see it until you share it.');
+      slot.appendChild(lab);
+      const note = bg.querySelector('.rec-note');
+      const devText = note ? note.textContent : '';
+      const box = lab.querySelector('input');
+      const paint = () => { if (note) note.textContent = box.checked ? uiText('recNoteLib', 'Saved to your GifOS library. Everyone here will see that this meeting is being recorded.') : devText; };
+      box.addEventListener('change', paint);
+      paint();
+    }
+    // An upload a reload interrupted finishes once the page has loaded.
+    window.addEventListener('load', () => {
+      const L = window.GifOS && GifOS.library;
+      if (!L || !L.enabled() || !L.pending().length) return;
+      L.resumePending().then((done) => { if (done && done.length) recLibNote(uiText('stLibSaved', 'Saved to My library.')); }).catch(() => {});
+    });
     function recDeliver(saved) {
       if (saved && saved.held) return 'held';
       // The host's kept service is what Rebroadcast > Last service plays.
@@ -31363,6 +31452,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (BROADCAST && scope !== 'app' && scope !== 'program') scope = 'stage';
         recMatchMix = opts.matchMix !== false;
         recQuality = REC_QUALITY[opts.quality] ? opts.quality : recDefaultQuality(IS_MOBILE);
+        recToLib = !!opts.toLibrary;
         const q = REC_QUALITY[recQuality];
         recMode = scope;
         recDest = ac.createMediaStreamDestination();
@@ -31388,7 +31478,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           }
           stopVideo = () => { for (const t of disp.getTracks()) { try { t.stop(); } catch (e) {} } };
         }
-        const opened = await recOpenSink(recFileName(), !!opts.keep);
+        const opened = await recOpenSink(recFileName(), !!opts.keep || recToLib);
         if (!opened || opened.kind === 'cancel') {
           if (opened && opened.abort) { try { opened.abort(); } catch (e) {} }
           recDest = null; recMode = null;
@@ -31467,7 +31557,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           let saved = null;
           try { if (sink) saved = await sink.finish(); } catch (e) { saved = null; }
           let how = '';
-          try { how = recDeliver(saved); } catch (e) { how = ''; }
+          const toLib = recToLib;
+          recToLib = false;
+          try { how = toLib && saved && saved.href && !saved.held && !bcSeeding ? recToLibrary(saved) : recDeliver(saved); } catch (e) { how = ''; }
           if (typeof window !== 'undefined' && typeof window.__gifosRecStopped === 'function') {
             const cb = window.__gifosRecStopped;
             window.__gifosRecStopped = null;
@@ -31568,12 +31660,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         (IS_MOBILE ? '<p>On a phone, 720p is the default. 1080p is drawn on the processor and fills memory fast.</p>' : '') +
         '</div>' +
         '<label class="rec-opt inline" style="margin-top:.3rem"><input type="checkbox" id="rec-matchmix" checked> Match my sound mix (record what I hear)</label>' +
+        '<div id="rec-lib"></div>' +
         '</div>' +
         '<p id="rec-err" hidden></p>' +
         '<div class="rec-actions">' +
         '<button id="ro-start" class="appear-primary" type="button">Start recording</button>' +
         '<button id="ro-cancel" class="appear-secondary" type="button">Cancel</button></div></div>';
       document.body.appendChild(bg);
+      recLibraryOption(bg);
       const paintScope = () => {
         const picked = bg.querySelector('input[name=rec-scope]:checked');
         const line = bg.querySelector('#rec-now');
@@ -31587,7 +31681,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const scope = bg.querySelector('input[name=rec-scope]:checked').value;
         const quality = bg.querySelector('input[name=rec-q]:checked').value;
         const matchMix = bg.querySelector('#rec-matchmix').checked;
-        const err = await startRec({ scope, quality, matchMix });
+        const lib = bg.querySelector('#rec-tolib');
+        const err = await startRec({ scope, quality, matchMix, toLibrary: !!(lib && lib.checked) });
         if (typeof err === 'string' && err) {
           const el = bg.querySelector('#rec-err');
           if (el) { el.hidden = false; el.textContent = err; }
@@ -31611,7 +31706,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const close = openModal(bg, () => { if (bg.parentNode) bg.remove(); });
       bg.querySelector('#rw-keep').onclick = () => close();
       bg.querySelector('#rw-restart').onclick = () => {
-        close(); recRestart = { scope: 'app', quality: recQuality, matchMix: recMatchMix };
+        close(); recRestart = { scope: 'app', quality: recQuality, matchMix: recMatchMix, toLibrary: recToLib };
         if (recRec && recRec.state !== 'inactive') { try { recRec.stop(); } catch (e) {} }
       };
     }

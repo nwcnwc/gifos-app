@@ -77,6 +77,7 @@
     KEY_FLIP_MS: 150,   // ms
     KEY_FLIP_MS_W: 150,   // ms
     LATE_ASK_MS: 15000,   // ms
+    LIBRARY_RETRY_MS: 2000,   // ms
     LOST_OFFER_MS: 1000,   // ms
     MASS_MANY: 3,   // count
     MAX_OUT_SEC: 8,   // s
