@@ -21,10 +21,12 @@
  *
  * The people limit belongs to the room's admin's plan. A room whose admin
  * holds the $5 or $10 plan has no limit. In a room whose admin holds the $2
- * plan (or whose plan cannot be shown), someone WITHOUT a subscription who
- * tries to enter when the room already holds 20 people is turned away with
- * a plain message; in a room on the free plan the line is 5. Anyone holding
- * any PAID plan is always let in, even past the line.
+ * plan, someone WITHOUT a subscription who tries to enter when the room
+ * already holds 20 people is turned away with a plain message. An admin room
+ * on the free plan, or whose plan cannot be shown for any reason (none shown,
+ * forged, run out, the host left, the subscription moved to another meeting),
+ * has the free line of 5. Anyone holding any PAID plan is always let in, even
+ * past the line. The line applies only at entry: nobody inside is removed.
  * The room's count is the door's greeter list (plus the door itself), read
  * fresh when someone without a plan comes in (run.html subsRoomCount).
  *
@@ -36,8 +38,8 @@
  * How the room's plan is known: the admin puts their meeting ticket in the
  * room's signed admin orders, with a signature from their subscription key
  * over the room's name. Everyone at the door checks it (roomTierOf); a
- * missing, forged, run-out, other-room or borrowed ticket reads as the
- * 20-person line. A person at the door who has a plan shows their own ticket
+ * missing, forged, run-out, other-room or borrowed ticket reads as no plan:
+ * the free line of 5. A person at the door who has a plan shows their own ticket
  * for this meeting, signing the door's fresh challenge (doorProofOk).
  *
  * Everything here is pure, with the clock and the signature check passed in,
@@ -202,8 +204,10 @@
 
   // ---- who may enter an admin room ------------------------------------------
   // admission({adminRoom, roomTier, listLength, hold, entrant}) where entrant
-  // is {isAdmin, rights}. roomTier is the room admin's plan when known; an
-  // unknown plan is held to the 20-person line (the strict reading).
+  // is {isAdmin, rights}. roomTier is the room admin's plan when known. An
+  // admin room with no valid plan is on the FREE line (Nathan 2026-11-11):
+  // whatever the reason, the plan the door can check is the plan it applies.
+  // roomLimitFor(null) stays 20, the line of the $2 plan.
   // -> {admit:true, why} | {admit:false, wait:true, why} | {admit:false, why, message}
   function roomLimitFor(roomTier) {
     if (isPlan(roomTier)) return PLANS[roomTier].roomLimit;
@@ -220,8 +224,9 @@
     if (o.hold) return { admit: false, wait: true, why: 'restart-hold', message: TEXT.waiting };
     const n = Number(o.listLength);
     if (!Number.isFinite(n) || n < 0) return { admit: false, wait: true, why: 'no-count', message: TEXT.waiting };
-    const limit = roomLimitFor(o.roomTier);
-    if (limit != null && n >= limit) return o.roomTier === 'free' ? { admit: false, why: 'full', limit, free: true, message: TEXT.fullFree } : { admit: false, why: 'full', limit, message: TEXT.full };
+    const tier = isPlan(o.roomTier) ? o.roomTier : 'free';
+    const limit = roomLimitFor(tier);
+    if (limit != null && n >= limit) return tier === 'free' ? { admit: false, why: 'full', limit, free: true, message: TEXT.fullFree } : { admit: false, why: 'full', limit, message: TEXT.full };
     return { admit: true, why: 'room-has-space' };
   }
 

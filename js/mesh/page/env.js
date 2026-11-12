@@ -83,6 +83,8 @@
   const GifOS = root.GifOS = root.GifOS || {};
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
+  // the sim's #define L48_2_OFF in mesh.cpp (a build-time switch): MESH_L48_2_OFF=1 under node, read once at load; a page always runs the law
+  const L48_2_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L48_2_OFF === '1') ? 1 : 0;
   const C_ = req('../consts.js', 'meshConsts');
   const msg = req('../msg.js', 'meshMsg');
   const topo = req('../topo.js', 'meshTopo');
@@ -387,6 +389,7 @@
       }
       if (lv.ROUTE_ENFORCE && !m.routing && to >= 0 && to !== from) {
         let directLink = !!s.linkRole(to, E.LR_OWNED | E.LR_E2 | E.LR_L4);
+        if (!L48_2_OFF && lv.LINKMODEL && !directLink && m.t === 'HELLO' && m.mv && m.id === from && s.d7OldLink(to) && F.fabricLinkState(from, to) === LS_OPEN) directLink = true;   // L48.2: a mover's D7.x word to a seat at an owned link of the cell it still holds rides the pc they hold
         if (!directLink && ((l9AskFrame(m) && l915Ch(from, to)) || (s.l13On() && seatM.l13Frame(m))) && lv.LINKMODEL) { const ls = F.fabricLinkState(from, to); if (ls === LS_OPEN || ls === LS_DIALING) directLink = true; }
         const fv = directLink ? { seat: 0, c: { pc: 0, r: 0, i: 0 }, gw: -1, gc: { pc: 0, r: 0, i: 0 }, gcOk: false } : farView(s, to);
         const vIn = fv.seat === 1, mineCell = vIn && s.hasCoord && ckey(fv.c) === ckey(s.coord);
@@ -466,7 +469,7 @@
       fabricAdmitLog: noop, fabricDupMint: noop, fabricNoteBackoff: noop, fabricNoteReseat: noop, fabricNoteRollback: noop,
       fabricNoteSwap: noop, fabricVerdict: deaths.verdict, l18UxDeliv: noop, descEnd: noop, descNote: noop, g4Joined: noop,   // g4Joined: the sim's L40 contest lever only (X1 55c97d1)
       fabricFreeCells, fabricLieFor: () => null, fabricUnreachable, fhopActive: () => !!fh, fhopFriendFor,
-      fabricTurnOn: () => false, fabricTurnPc: () => false, fabricTurnStray: () => false, fabricTurnLone: () => false, fabricTurnAcross: () => false, fabricTurnMine: () => false, fabricTurnCarried: () => false, fabricTurnFeeds: noop, fabricTurnBoth: () => false, fabricTurnPeerIn: () => -1,   /* TURN.14: the page does not feed its relayed-link state to the seat yet, so the law stays off here */
+      fabricTurnOn: () => false, fabricTurnPc: () => false, fabricTurnOpener: () => false, fabricTurnStray: () => false, fabricTurnLone: () => false, fabricTurnAcross: () => false, fabricTurnMine: () => false, fabricTurnCarried: () => false, fabricTurnFeeds: noop, fabricTurnBoth: () => false, fabricTurnPeerIn: () => -1,   /* TURN.14: the page does not feed its relayed-link state to the seat yet, so the law stays off here */
       fabricMyTier: () => ((measure.tier ? measure.tier() : E.TIER_DESKTOP) | 0),
       fabricMyNat: () => ((measure.nat ? measure.nat() : E.NAT_OPEN) | 0),
       fabricLeft: () => leaveNow(false), fabricReloadBye: () => leaveNow(true),

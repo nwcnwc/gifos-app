@@ -13,6 +13,7 @@
   "charge.support.text": "Вопросы по этому платежу? {email}",
   "charge.paidBy.paypal": "через PayPal",
   "charge.paidBy.x402": "в USDC (Base Sepolia)",
+  "charge.paidBy.x402Mainnet": "в USDC (Base)",
   "charge.paidBy.transfer": "в USDC (перевод с кошелька)",
   "charge.paidBy.fednow": "банковским переводом (FedNow)",
   "charge.paidBy.mpp": "картой через ИИ-агента (Stripe Link)",
