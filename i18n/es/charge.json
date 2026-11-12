@@ -13,6 +13,7 @@
   "charge.support.text": "¿Preguntas sobre este pago? {email}",
   "charge.paidBy.paypal": "con PayPal",
   "charge.paidBy.x402": "en USDC (Base Sepolia)",
+  "charge.paidBy.x402Mainnet": "en USDC (Base)",
   "charge.paidBy.transfer": "en USDC (transferencia desde monedero)",
   "charge.paidBy.fednow": "por transferencia bancaria (FedNow)",
   "charge.paidBy.mpp": "con tarjeta, a través de un agente de IA (Stripe Link)",

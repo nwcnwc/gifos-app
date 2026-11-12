@@ -15,6 +15,11 @@
     AGENDA_TICK_MS: 1000,   // ms
     AGENT_GRACE_MS: 120000,   // ms
     AGENT_KEEP_MS: 86400000,   // ms
+    APP_STAGE_ASK_HOLD_MS: 8000,   // ms
+    APP_STAGE_BEAT_MS: 1000,   // ms
+    APP_STAGE_GRANT_RENEW_MS: 20000,   // ms
+    APP_STAGE_GRANT_TTL_MS: 60000,   // ms
+    APP_STAGE_NEXT_WAIT_MS: 2000,   // ms
     AWAKE_MS: 3000,   // ms
     BANNER_HOLD: 5000,   // ms
     BG_BEAT_MS: 50,   // ms
@@ -216,6 +221,8 @@
     WSP_STARVE_N: 2,   // count
     WSP_STARVE_WIN: 30000,   // ms
     WSP_TICK_MS: 250,   // ms
+    X402_RESUME_MS: 6000,   // ms
+    X402_RESUME_TRIES: 3,   // count
     holdMs: 2500,   // ms
     tickMs: 500,   // ms
   });

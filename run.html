@@ -2939,7 +2939,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // admin revoking it pulls the person off stage everywhere by arithmetic).
     // A DOM hacker can set their own flag, but every RECEIVER runs this
     // filter — the open/admin room principle, unchanged.
-    const canStage = (id) => !hasAdminRoom() || admins.includes(id) || !!(modOf(id).app && modOf(id).app.on);
+    // stg: the STAGE-ONLY grant an admin's page hands out for an app with the
+    // stage capability (appStageApply below). It lets a person stand on the
+    // stage and nothing else (not run apps, not share), and it lapses unless the
+    // granting page renews it: an admin who leaves abruptly leaves no grant behind.
+    const stageGrantLive = (id) => { const g = modOf(id).stg; return !!(g && g.on && Date.now() - (+g.at || 0) < GifOS.timings.APP_STAGE_GRANT_TTL_MS); };
+    const canStage = (id) => !hasAdminRoom() || admins.includes(id) || !!(modOf(id).app && modOf(id).app.on) || stageGrantLive(id);
     // SCREEN SHARE IS ITS OWN GRANT, NOT THE STAGE GRANT. In an admin room a
     // guest cannot share until an admin allows it, and allowing apps or the
     // stage does not allow the screen. Two signed orders, both off until an
@@ -5200,7 +5205,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // field (the admin's chat on/off switch). It rides the same signed
         // table as every per-target order, so it reaches late joiners on the
         // heartbeat and a forged copy dies in takeMod's admVerify.
-        for (const field of ['mute', 'blur', 'cam', 'app', 'share', 'chat', 'cc', 'wait', 'admit', 'dhold', 'dadm', 'sublic', 'rename', 'spot', 'pray', 'gfile', 'greact', 'qa', 'chist', 'slow', 'clink']) {
+        for (const field of ['mute', 'blur', 'cam', 'app', 'stg', 'share', 'chat', 'cc', 'wait', 'admit', 'dhold', 'dadm', 'sublic', 'rename', 'spot', 'pray', 'gfile', 'greact', 'qa', 'chist', 'slow', 'clink']) {
           const inc = incoming[target][field];
           if (!inc || typeof inc !== 'object') continue;
           if (goneAt != null && (+inc.at || 0) <= goneAt) continue;
@@ -5256,7 +5261,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (target === myId) return; // you moderate others, never yourself
       // The 'app' right only exists in admin rooms (open rooms let everyone
       // run apps already), and only admins hand it out.
-      if ((field === 'app' || field === 'share') && (!hasAdminRoom() || !amAdmin)) return;
+      if ((field === 'app' || field === 'stg' || field === 'share') && (!hasAdminRoom() || !amAdmin)) return;
       // The room-wide chat switch is the admin's alone, and only means
       // anything where there IS an admin to sign it.
       if ((field === 'chat' || field === 'cc' || field === 'pray' || field === 'gfile' || field === 'greact' || field === 'qa' || field === 'chist' || field === 'slow' || field === 'clink') && (!hasAdminRoom() || !amAdmin)) return;
@@ -28115,7 +28120,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // it. A seat change only colours it, re-labels it for a screen reader,
       // and grays it when it cannot be used (Nathan 2026-11-09).
       const dockedNow = stageBtn.parentElement && stageBtn.parentElement.classList.contains('bar');
-      const mayStage = !!(!hasAdminRoom() || amAdmin || hostHere || (modOf(myId).app && modOf(myId).app.on) || myStatus.stg);
+      const mayStage = !!(!hasAdminRoom() || amAdmin || hostHere || (modOf(myId).app && modOf(myId).app.on) || stageGrantLive(myId) || myStatus.stg);
       if (dockedNow) {
         stageBtn.setAttribute('aria-label', on ? 'Step off the stage' : 'Step on the stage');
         stageBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
@@ -35816,7 +35821,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // a meeting gets the SAME acknowledgement + per-app opt-out panel it gets in
     // its own tab — including when you JOIN a meeting where someone shares an app.
     // Closing a REQUIRED-setup gate here stops the shared app rather than the tab.
-    if (window.GifOS && GifOS.perms) GifOS.perms.attach(document.getElementById('appperms'), { onLeave: function () { stopApp(); } });
+    if (window.GifOS && GifOS.perms) GifOS.perms.attach(document.getElementById('appperms'), { onLeave: function () { stopApp(); }, skipCaps: function () { return appMode === 'client' ? ['stage'] : []; } });
     let appMode = null;      // 'host' | 'client' | null
     let appKey = null;       // sid of the app session currently mounted here
 
@@ -36684,6 +36689,117 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         : uiText('barCommunalStatus', '🧩 Communal control — anyone here can drive the shared app.'));
     };
     document.getElementById('app-cancel').onclick = () => { document.getElementById('app-modal').style.display = 'none'; };
+    // ---- THE "stage" APP CAPABILITY (docs/app-mesh.md "Apps that order the stage") ----
+    // An app that declares capabilities.stage, running in THIS meeting, names
+    // up to two people in stage order (first = on now, second = up next). Each
+    // page acts only for its own person, the way the Stage button does: it
+    // steps itself up when listed and down when no longer listed, but only if
+    // the app put it there (a presenter who was already up stays up), and only
+    // after its person said OK (the starter of the app answered the Abilities
+    // sheet; everyone else answers one line here). In an admin room the person
+    // also needs a stage grant: an admin's page hands the listed people the
+    // STAGE-ONLY grant (mod field 'stg', stageGrantLive), renews it while they
+    // stay listed, and takes back only the grants it gave; an unrenewed grant
+    // lapses on every page. The cap (SCALE.C) and every receiver's stageIds()
+    // filter still decide who is on. The camera is never touched; a person put
+    // on as "now" while muted is asked to unmute, never unmuted.
+    function appStagePlan(c) {
+      const want = (Array.isArray(c.want) ? c.want : [])
+        .filter((id, i, a) => typeof id === 'string' && id && a.indexOf(id) === i && c.inRoom(id)).slice(0, 2);
+      const out = { want, self: null, grant: [], revoke: [], full: false, rank: want.indexOf(c.me) };
+      const mineOn = c.onStage.includes(c.me);
+      if (c.optOut) { if (c.appStaged && mineOn) out.self = 'down'; }
+      else if (out.rank >= 0) {
+        if (!mineOn && !c.declined) {
+          if (!c.canStage(c.me)) out.self = 'wait';
+          else if (c.onStage.length >= c.cap) out.full = true;
+          // "Next" steps up after "now", so the strip reads now, then next.
+          else if (out.rank === 1 && !c.onStage.includes(want[0]) && c.canStage(want[0]) && c.waitedMs < c.nextWait) out.self = 'wait';
+          else out.self = 'up';
+        }
+      } else if (c.appStaged && mineOn) out.self = 'down';
+      if (c.adminRoom && c.admin) {
+        for (const id of want) if (id !== c.me && !c.canStage(id) && !c.granted.includes(id)) out.grant.push(id);
+        for (const id of c.granted) if (!want.includes(id)) out.revoke.push(id);
+        // A grant lapses unless renewed: this page renews the ones it gave while they stay listed.
+        out.renew = c.granted.filter((id) => want.includes(id) && c.renewDue);
+      }
+      return out;
+    }
+    let appStageWant = [], appStageAt = 0, appStaged = false, appStageGranted = [], appStageTimer = 0;
+    let appStageDeclined = 0, appStageAsked = 0, appStageLast = null, appStageRenewAt = 0;
+    // Consent: the person who STARTS the app saw the Abilities sheet; everyone
+    // else answers one plain line the first time the app asks. Until they say
+    // OK the app never stages them; "Not me" keeps them in the app's turn order
+    // and off the stage for as long as this app runs here.
+    let appStageConsent = null, appStageFor = null;
+    function appStageAskClose() { const el = document.getElementById('appstage-ask'); if (el) el.remove(); }
+    function appStageAsk() {
+      if (appStageConsent !== null || document.getElementById('appstage-ask')) return;
+      const el = document.createElement('div');
+      el.id = 'appstage-ask'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-live', 'polite');
+      el.style.cssText = 'position:fixed;left:50%;bottom:calc(88px + var(--inset-bottom,0px));transform:translateX(-50%);z-index:40;width:max-content;max-width:min(92vw,520px);background:var(--c-scrim);color:var(--c-paper);border:1px solid var(--c-gray);border-radius:var(--r-lg);padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;font:15px/1.35 system-ui,sans-serif';
+      const name = ((typeof findSharedApp === 'function' && findSharedApp()) || {}).name || uiText('appStageThisApp', 'This app');
+      const t = document.createElement('span'); t.style.cssText = 'flex:1 1 220px';
+      t.textContent = uiText('appStageAsk', '{app} may put you on stage when it’s your turn.').split('{app}').join(name);
+      const btn = (label, primary) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.style.cssText = 'min-height:44px;padding:8px 16px;border-radius:var(--r-pill);border:1px solid var(--c-gray);font:inherit;font-weight:700;cursor:pointer;' + (primary ? 'background:var(--c-white);color:var(--c-ink)' : 'background:transparent;color:var(--c-paper)'); return b; };
+      const ok = btn(uiText('appStageOk', 'OK'), true), no = btn(uiText('appStageNo', 'Not me'), false);
+      ok.id = 'appstage-ok'; no.id = 'appstage-no';
+      ok.onclick = () => { appStageConsent = 'ok'; appStageAskClose(); appStageApply(); };
+      no.onclick = () => { appStageConsent = 'no'; appStageAskClose(); appStageApply(); };
+      el.append(t, ok, no);
+      document.body.appendChild(el);
+    }
+    const appStageOn = () => !!appKey && !!myId && !BROADCAST && !document.body.classList.contains('app-room');
+    function appStageState() {
+      const p = appStageLast;
+      return { on: appStageOn(), me: appStageOn() ? myId : '', adminRoom: hasAdminRoom(), admin: !!amAdmin, cap: SCALE.C,
+        staged: appStageOn() ? stageIds().slice() : [], rank: p ? p.rank : -1, full: !!(p && p.full), waiting: !!(p && p.self === 'wait'), optedOut: appStageConsent === 'no' };
+    }
+    function appStageApply() {
+      if (!appStageOn()) {
+        // The app stopped, was hidden, or this is no meeting: undo only what it did.
+        if (appStaged && myStatus.stg) setStage(false);
+        appStaged = false;
+        if (amAdmin) for (const id of appStageGranted) setMod(id, 'stg', false);
+        appStageGranted = []; appStageWant = []; appStageLast = null; appStageConsent = null; appStageFor = null; appStageAskClose();
+        if (appStageTimer) { clearInterval(appStageTimer); appStageTimer = 0; }
+        return;
+      }
+      if (appStageFor !== appKey) { appStageFor = appKey; appStageConsent = appMode === 'host' ? 'ok' : null; appStageAskClose(); }
+      if (appStageConsent === null) appStageAsk();
+      // Stepped down by hand (or pulled off) while still listed: stay down until the list changes.
+      if (appStaged && !myStatus.stg) { appStaged = false; if (appStageWant.includes(myId)) appStageDeclined = appStageAt; }
+      const p = appStagePlan({ want: appStageWant, me: myId, inRoom: (id) => id === myId || statusOf.has(id), onStage: stageIds(),
+        canStage, admin: !!amAdmin, adminRoom: hasAdminRoom(), cap: SCALE.C, appStaged, granted: appStageGranted,
+        declined: appStageDeclined === appStageAt, waitedMs: Date.now() - appStageAt, nextWait: GifOS.timings.APP_STAGE_NEXT_WAIT_MS,
+        optOut: appStageConsent !== 'ok', renewDue: Date.now() - appStageRenewAt >= GifOS.timings.APP_STAGE_GRANT_RENEW_MS });
+      for (const id of p.grant) { setMod(id, 'stg', true); appStageGranted.push(id); }
+      for (const id of p.revoke) { setMod(id, 'stg', false); appStageGranted = appStageGranted.filter((x) => x !== id); }
+      if (p.renew && p.renew.length) { appStageRenewAt = Date.now(); for (const id of p.renew) setMod(id, 'stg', true); }
+      else if (p.grant.length) appStageRenewAt = Date.now();
+      if (p.self === 'up') { setStage(true); appStaged = true; }
+      else if (p.self === 'down') { setStage(false); appStaged = false; }
+      if (p.full && appStageAsked !== -appStageAt) { appStageAsked = -appStageAt; sayState('stageFull', { n: SCALE.C }); }
+      if (p.rank === 0 && myStatus.muted && appStageAsked !== appStageAt && (p.self === 'up' || stageIds().includes(myId))) {
+        appStageAsked = appStageAt; sayState('turnUnmute', null, GifOS.timings.APP_STAGE_ASK_HOLD_MS);
+      }
+      appStageLast = p;
+    }
+    // Called by the runtime (js/runtime.js, d.type 'stage') only for an app
+    // whose manifest declares the capability and whose person has not turned
+    // it off in Abilities.
+    window.__gifosStage = (op, args) => {
+      if (op === 'want') {
+        if (!appStageOn()) return appStageState();
+        const w = (Array.isArray(args && args.ids) ? args.ids : []).map(String).slice(0, 2);
+        if (w.join('\n') !== appStageWant.join('\n')) { appStageWant = w; appStageAt = Date.now(); }
+        if (!appStageTimer) appStageTimer = setInterval(appStageApply, GifOS.timings.APP_STAGE_BEAT_MS);
+        appStageApply();
+      }
+      return appStageState();
+    };
+    window.appStagePlanForTest = appStagePlan;
     // ---- run a GIF app that isn't on this computer (file or link) ----
     function showAddErr(msg) { const el = document.getElementById('app-add-err'); if (!el) return; el.textContent = msg || ''; el.style.display = msg ? '' : 'none'; }
     async function importAndRunGif(bytes, rawName) {
