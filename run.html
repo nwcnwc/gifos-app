@@ -588,8 +588,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         <div id="lob-bc" hidden>
           <div class="lob-bc-who" role="radiogroup" aria-labelledby="lob-bc-who-h">
             <b data-t="bcWhoHead" id="lob-bc-who-h">Who can watch</b>
-            <label class="lob-bc-opt"><input type="radio" name="lob-bc-who" id="lob-bc-who-link" value="link" checked><span><span data-t="bcWhoLink">Anyone with the link</span><small data-t="bcWhoLinkSub">They see you soft (blurred)</small></span></label>
-            <label class="lob-bc-opt"><input type="radio" name="lob-bc-who" id="lob-bc-who-pw" value="pw"><span><span data-t="bcWhoPw">People with the room password</span><small data-t="bcWhoPwSub">They see you clear</small></span></label>
+            <label class="lob-bc-opt"><input type="radio" name="lob-bc-who" id="lob-bc-who-link" value="link" checked><span><span data-t="bcWhoLink">Anyone with the link</span><small data-t="bcWhoLinkSub">Your picture stays blurred for them</small></span></label>
+            <label class="lob-bc-opt"><input type="radio" name="lob-bc-who" id="lob-bc-who-pw" value="pw"><span><span data-t="bcWhoPw">People with the room password</span><small data-t="bcWhoPwSub">Only people you give it to can watch</small></span></label>
           </div>
           <label id="lob-bc-when" class="lob-bc-when" hidden><span data-t="bcWhenStarts">Starts</span><input type="datetime-local" id="lob-bc-at"></label>
         </div>
@@ -19157,6 +19157,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         go.textContent = uiText('bcGoNow', 'Go live now');
         lob.classList.remove('bc-later');
       };
+      let goLiveBlurPick = null;
       document.getElementById('lob-admin-go').onclick = async () => {
         const err = document.getElementById('lob-admin-err');
         let rawName = document.getElementById('lob-admin-name').value || '';
@@ -19182,9 +19183,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           atSecs = String(Math.floor(ms / 1000));
         }
         const go = document.getElementById('lob-admin-go');
-        // Go live: with a room password the host chose to be seen clear;
-        // without one the room keeps everyone soft anyway, so Max blur.
-        const picked = BC_INTENT ? (bcWho() === 'pw' ? 0 : 2) : null;
+        // Go live is turning the camera on: the same blur choices as the
+        // camera button, and that pick is the consent (Nathan 2026-11-08 A,
+        // kept 2026-11-11). Who can watch sets only the audience.
+        if (BC_INTENT && !atSecs && goLiveBlurPick == null) {
+          if (typeof camChooserOpen === 'function' && camChooserOpen()) { dismissCamChooser(); return; }
+          openCamChooser(go, (level) => {
+            goLiveBlurPick = blurLevel(level);
+            go.click();
+          });
+          return;
+        }
+        const picked = goLiveBlurPick;
+        goLiveBlurPick = null;
         go.dataset.label = go.textContent;
         go.disabled = true; go.textContent = uiText('creating', 'Creating…');
         try {
