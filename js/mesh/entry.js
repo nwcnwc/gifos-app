@@ -16,6 +16,8 @@
   const GifOS = root.GifOS = root.GifOS || {};
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
+  /* the sim's #define L7_5_1_OFF in mesh_seat.inc (a build-time switch): MESH_L7_5_1_OFF=1 under node, read once at load; a page always runs the law */
+  const L7_5_1_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L7_5_1_OFF === '1') ? 1 : 0;
   const RCD = ((n) => ({ L35_4_OFF: n('L35_4_OFF'), L17_3_1_OFF: n('L17_3_1_OFF'), L17_4_OFF: n('L17_4_OFF'), L35_5_OFF: ((isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L35_5_OFF === '0') ? 0 : 1) }))((k) => ((isNode && typeof process !== 'undefined' && process.env && process.env['MESH_' + k] === '1') ? 1 : 0));   // the sim's build-time switches of the realcheck dead-dial laws (mesh.cpp L35_4_OFF ...): MESH_<name>=1 under node; a page runs the laws
   const seatM = req('./seat.js', 'meshSeat');
   const { cellOk, ownerCoordOf, coordStr, l4Pack, fabricToken } = req('./shared.js', 'meshShared');
@@ -542,6 +544,7 @@
       let filling = false;
       if (!deep && this.coord.pc === 0) { if (this.coord.i === 0 && !this.rowLedger) filling = true; else for (const ek of this.sitting.keys()) if (ckPc(ek) === 0) { filling = true; break; } }
       if (deep && this.TICK - this.childHeadAt <= K.L7_HOLD && this.rowLedgerAt < this.childHeadAt) filling = true;
+      if (deep && !filling && this.l751Linking()) filling = true;   // L7.5.1: the head sat and its link to me is coming up
       if (!filling) return false;
       if (this.reserving) { this.heldAgain = true; return true; }
       if (this.held.length >= 64) return false;
@@ -552,12 +555,20 @@
       this.findAck(mm); this.f.wake(this.id); return true;   // L16.3
     },
 
+    // C++: mesh_seat.inc:Seat::l751Linking
+    // L7.5.1: a deep hold lasts while the child head it waits for is seated and its link to me is coming up (one dial past the hold).
+    l751Linking() {
+      if (L7_5_1_OFF || !this.hasCoord || this.state !== 3 || this.l33ChildNc < 0 || this.rowLedgerAt >= this.childHeadAt) return false;
+      return this.occGet(ckey(down(this.coord))) === this.l33ChildNc && this.TICK - this.childHeadAt <= K.L7_HOLD + K.GONE_DIAL;
+    },
+
     // C++: mesh_seat.inc:Seat::serveHeld
     serveHeld() {
       if (!this.held.length || !this.hasCoord || this.state !== 3) return;
       const v = this.held; this.held = [];
       for (const h of v) {
-        if (this.TICK - h.at > K.L7_HOLD) { this.trace('NOROOM', this.id, this.coord, 'nc=%d why=held-out', h.m.nc); const m = newMsg('NOROOM'); m.gwc = h.m.gwc; m.id = this.id; m.nd = pcDepth(this.coord.pc) & 0xff; this.emit(h.m.nc, m); continue; }
+        if (this.TICK - h.at === K.L7_HOLD + 1 && h.deep && this.l751Linking()) this.trace('L7.5.1-WAIT', this.id, this.coord, 'nc=%d head=%d vouched=%d', h.m.nc, this.l33ChildNc, this.TICK - this.childHeadAt);
+        if (this.TICK - h.at > K.L7_HOLD && !(h.deep && this.l751Linking())) { this.trace('NOROOM', this.id, this.coord, 'nc=%d why=held-out', h.m.nc); const m = newMsg('NOROOM'); m.gwc = h.m.gwc; m.id = this.id; m.nd = pcDepth(this.coord.pc) & 0xff; this.emit(h.m.nc, m); continue; }
         this.reserving = true; this.heldAgain = false; this.findNc = h.m.nc; const m = msg.clone(h.m); this.serveFind(m); this.findNc = -1; this.reserving = false;
         if (this.heldAgain) this.held.push(h);
       }

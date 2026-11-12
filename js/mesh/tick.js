@@ -21,6 +21,8 @@
   const GifOS = root.GifOS = root.GifOS || {};
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
+  /* the sim's #define L47_3_OFF in mesh_seat.inc (a build-time switch): MESH_L47_3_OFF=1 under node, read once at load; a page always runs the law */
+  const L47_3_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L47_3_OFF === '1') ? 1 : 0;
   const RCD = ((n) => ({ L35_4_OFF: n('L35_4_OFF'), L17_3_1_OFF: n('L17_3_1_OFF'), L17_4_OFF: n('L17_4_OFF'), L35_5_OFF: ((isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L35_5_OFF === '0') ? 0 : 1) }))((k) => ((isNode && typeof process !== 'undefined' && process.env && process.env['MESH_' + k] === '1') ? 1 : 0));   // the sim's build-time switches of the realcheck dead-dial laws (mesh.cpp L35_4_OFF ...): MESH_<name>=1 under node; a page runs the laws
   const C_ = req('./consts.js', 'meshConsts');
   const msg = req('./msg.js', 'meshMsg');
@@ -355,8 +357,9 @@
         let ownEarly = haveOc && this.translostConfirmed(ok);
         if (ownEarly && this.l2OwnerHold(ok)) ownEarly = false;
         // L47: never blind on a D5 verdict. A head with no live link but the dead one (or that knows no Section-1 seat but its owner) probed over no path: its verdict says the pair died, not the owner. Healed anyway, a live owner's cell gets a tenant that reaches nobody and stays (a second home ring, a stage feed shipped into it). Knock again, as D6 does.
-        if (ownEarly && oc.pc === 0 && !this.ownPathUp(ok)) { this.requeue('L47-blind'); this.f.wake(id); return false; }
-        if (!ownEarly && haveOc && this.ownDeadCk === ok && (this.ownDeadId >= 0 || (this.occGet(ok) < 0)) && (this.occGet(ok) < 0 || this.occGet(ok) === this.ownDeadId) && TICK - this.ownDeadAt <= 2 * 8 + K.EARLY_HOLD && TICK - this.ownVouchAt > 2 * 8 + K.EARLY_HOLD) {   /* L1.4 */
+        const e2Death = haveOc && this.ownDeadCk === ok && (this.ownDeadId >= 0 || (this.occGet(ok) < 0)) && (this.occGet(ok) < 0 || this.occGet(ok) === this.ownDeadId) && TICK - this.ownDeadAt <= 2 * 8 + K.EARLY_HOLD && TICK - this.ownVouchAt > 2 * 8 + K.EARLY_HOLD;   /* L2.9's proof: the backup owner's report of my owner's hard death */
+        if (ownEarly && oc.pc === 0 && !this.ownPathUp(ok)) { if (L47_3_OFF || !e2Death) { this.requeue('L47-blind'); this.f.wake(id); return false; } this.trace('L47.3', id, oc, 'e2 report age=%d', (TICK - this.ownDeadAt) | 0); }   /* L47.3: a death the backup owner confirmed is not a blind verdict */
+        if (!ownEarly && e2Death) {   /* L1.4 */
           ownEarly = true; if (this.l2DeathTr !== this.ownDeadAt) { this.l2DeathTr = this.ownDeadAt; this.trace('L2-DEATH', id, oc, 'via=e2'); }
         }   // L2.9
         if (haveOc && !ownEarly && this.occGet(ok) < 0) { const by = this.byeAt.get(ok); if (by !== undefined && TICK - by <= K.LEASE_T) ownEarly = true; }   // L1.1 (a)
