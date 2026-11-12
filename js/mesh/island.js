@@ -21,6 +21,7 @@
   // the sim's #define L8_50_OFF / L8_50_3_OFF in mesh.cpp (build-time switches): MESH_<name>=1 under node, read once at load; a page always runs the law
   const envOn = (n) => (isNode && typeof process !== 'undefined' && process.env && process.env[n] === '1') ? 1 : 0;
   const L8_50_OFF = envOn('MESH_L8_50_OFF'), L8_50_3_OFF = envOn('MESH_L8_50_3_OFF');
+  const L8_42_2_OFF = envOn('MESH_L8_42_2_OFF');   // the sim's -DL8_42_2_OFF=1 build
   const L8_52_OFF = envOn('MESH_L8_52_OFF'), L8_51_OFF = envOn('MESH_L8_51_OFF');   // L8.52 (the older room stays), L8.51 (an arbiter does not settle a contest between two rooms)
   const newMsg = (t) => msg.newMsg(t);
 
@@ -286,16 +287,25 @@
       return other === claimant ? 1 : 2;
     },
 
+    // C++: mesh_island.inc:Seat::l8422Link   (L8.42.2: the far end of my relayed connection, naming another founding, is of another part whatever my view holds)
+    l8422Link(m, other) {
+      if (L8_42_2_OFF || !other || !this.f.fabricTurnOn() || !this.f.fabricTurnPc(this.id, m.id)) return false;
+      for (const [, v] of this.occ) if (v === m.id) { this.trace('L8.42.2-LINK', this.id, this.coord, 'peer=%d line=%d ring=%d', m.id, m.line, m.c7Min); break; }
+      return true;
+    },
+
     // C++: mesh_island.inc:Seat::islandC7
     islandC7(m) {
       if (!roomTerm(this, 1) || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return false;
       const fh = this.l842Stranger(m) || this.l857Alone(m) || this.t1415Word(m);   // TURN.14.15 (mesh_turn.inc): the word of a link's end for its side   // L8.5.7
+      let tl = false;   // L8.42.2
       if (!fh) {
         const other = m.from === m.id && m.line >= 0 && this.line >= 0 && m.line !== this.line;   // L8.42.1: its own greeting names another founding
-        for (const [k, v] of this.occ) if (v === m.id && (!other || this.firstHandLive(k))) return false;   // a seat my view holds is of my ring, unless I hold it only second-hand and its own greeting names another founding
+        tl = this.l8422Link(m, other);
+        for (const [k, v] of this.occ) if (v === m.id && !tl && (!other || this.firstHandLive(k))) return false;   // a seat my view holds is of my ring, unless I hold it only second-hand and its own greeting names another founding
       }
       const ss = this.strangeSeen.get(m.id), xr = this.xrOk.get(m.id);
-      if (!fh && !((ss !== undefined && ss >= 2) || (xr !== undefined && this.TICK - xr <= 2 * K.RELAY_TTL))) return false;
+      if (!fh && !tl && !((ss !== undefined && ss >= 2) || (xr !== undefined && this.TICK - xr <= 2 * K.RELAY_TTL))) return false;
       const mine = this.ringName(), theirs = m.c7Min; if (theirs < 0 || theirs === mine) return false;
       const gated = this.TICK - this.c7At < K.RELAY_TTL;
       let tAt = m.lineAt; if (!L8_52_OFF) { const ve = this.c7VouchEp.get(theirs); if (ve !== undefined && this.TICK - ve[1] <= K.RELAY_TTL) tAt = (tAt < 0 || ve[0] < 0) ? -1 : Math.max(tAt, ve[0]); }   // L8.52.1: of two vouchers' epochs for one name the YOUNGER counts
@@ -342,7 +352,7 @@
       const fromHead = this.coord.i !== 0 && m.ck === ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 });
       if (!(fromOwner || fromHead) || !this.provenEv(m, m.id)) return false;
       this.trace('C7-FOLLOW', this.id, this.coord, 'by=%d theirs=%d', m.id, m.c7Min);
-      this.c7Yield(m.c7Min, 'C7-subtree'); return true;
+      this.t161Note(m.id); this.c7Yield(m.c7Min, 'C7-subtree'); return true;
     },
 
     // C++: mesh_island.inc:Seat::c7Yield

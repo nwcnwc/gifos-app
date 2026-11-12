@@ -626,6 +626,8 @@
     ["l13Wit", "[i32]"],   // vector<int>  (line 1717)
     ["lateY", "{i32:(i32,u64)}"],   // OMap<int,pair<int,uint64_t>>  (line 1719)
     ["lateYCk", "u64"],   // uint64_t = 0  (line 1719)
+    ["t161Via", "i32"],   // int = -1  (line 1833)
+    ["t161At", "i32"],   // int = -1  (line 1833)
     ["t14From", "{i32:(i32,i32)}"],   // OMap<int,pair<int,int>>  (line 1833)
     ["t1415", "{i32:(i32,(i32,i32))}"],   // OMap<int,pair<int,pair<int,int>>>  (line 1833)
     ["kidMemo", "{u64:i32}"],   // OMap<uint64_t,int>  (line 1862)
@@ -1230,6 +1232,8 @@
     l1361Said: -100000,
     l1361CarriedAt: -100000,
     lateYCk: 0,
+    t161Via: -1,
+    t161At: -1,
     l3WaitAt: -100000,
     l3WaitCk: 0,
     cutAskAt: -100000,

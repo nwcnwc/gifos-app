@@ -19,6 +19,7 @@
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
   // the sim's #define L48_2_OFF in mesh.cpp (a build-time switch): MESH_L48_2_OFF=1 under node, read once at load; a page always runs the law
   const TURN14_16_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_TURN14_16_OFF === '1') ? 1 : 0;   // the sim's -DTURN14_16_OFF=1 build
+  const TURN16_1_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_TURN16_1_OFF === '1') ? 1 : 0;   // the sim's -DTURN16_1_OFF=1 build
   const TURN14_15_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_TURN14_15_OFF === '1') ? 1 : 0;   // the sim's -DTURN14_15_OFF=1 build: MESH_TURN14_15_OFF=1 under node; a page always runs the law
   const L48_2_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L48_2_OFF === '1') ? 1 : 0;
   const msg = req('./msg.js', 'meshMsg');
@@ -181,6 +182,14 @@
       for (const x of xs) { this.trace('TURN14-CALL', id, this.coord, 'to=%d', x); const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = id; h.t14 = ckey(this.coord) + 1; this.emit(x, h); }
     },
     // TURN.14.15 (mesh_turn.inc): the end of a relayed link knows its ring lies across the link by its peer's word, whatever its view holds
+    // C++: mesh_seat.inc:Seat::t161Note   (TURN.16.1: the mate whose goodbye I followed out of my part of the meeting, and when)
+    t161Note(x) { if (TURN16_1_OFF || x < 0 || x === this.id || !this.f.fabricTurnOn()) return; this.t161Via = x; this.t161At = this.TICK; },
+    // C++: mesh_seat.inc:Seat::t161Pick   (TURN.16.1: that mate is my gateway while the door lists it and it is on my side of the cut)
+    t161Pick(list) {
+      if (TURN16_1_OFF || this.t161Via < 0 || this.TICK - this.t161At > K.RELAY_TTL || !this.f.fabricTurnOn()) return -1;
+      if (list.indexOf(this.t161Via) < 0 || !this.f.fabricTurnMine(this.id, this.t161Via)) return -1;
+      this.trace('TURN16.1-VIA', this.id, null, 'via=%d since=%d', this.t161Via, this.t161At); return this.t161Via;
+    },
     // C++: mesh_seat.inc:Seat::t1415Home
     t1415Home() {
       if (!this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return false; const sd = []; this.f.fabricTurnSide(this.id, sd); const rn = this.ringName();

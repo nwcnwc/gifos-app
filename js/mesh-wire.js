@@ -1074,7 +1074,10 @@
         else if (deepSince < 0) deepSince = env.TICK;
         // FHOP.8: the call to the door is over and I sit deep: off the door list now (the relay also ends a door-call entry on its own clock)
         { const dcNow = doorCalled(); if (dcWas && !dcNow && !(raw && raw.hasCoord && raw.state === 3 && raw.coord.pc === 0)) { sendRaw({ t: 'unlist' }); if (opts.trace) { try { opts.trace('{"t":' + (env.TICK | 0) + ',"s":' + raw.id + ',"e":"DOOR-CALL-END","c":null,"d":"unlisted"}'); } catch (e) {} } } dcWas = dcNow; }
-        if (dropDeep && !needsRelay && sock && deepSince >= 0 && env.TICK - deepSince > 20) { try { sock.close(); } catch (e) {} sock = null; }
+        // Off the door's list before the socket goes. A seat that a room merge moved from Section 1 to a deep cell keeps its listing while it
+        // sees the merge (L16.4 stands down there, L16.12), and a listed socket that closes with no unlist is the relay's death word for a
+        // live seat: every greeter closed its connection to it as a lost one, and the seat left its cell as cut off (D6c) a lease later.
+        if (dropDeep && !needsRelay && sock && deepSince >= 0 && env.TICK - deepSince > 20) { try { sendRaw({ t: 'unlist' }); } catch (e) {} try { sock.close(); } catch (e) {} sock = null; }
         if (needsRelay && !sock) makeSock(); // re-arm reachability (a policy-REJECTED socket stays down — see sendRaw)
         // The door refused my socket for want of the room's password (4003):
         // a password changed while I was away, the same verdict as a sealed
