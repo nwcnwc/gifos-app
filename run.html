@@ -8009,10 +8009,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!CT || !CT.ag || !CT.agW || !(CT.ag.v > 0)) return undefined;
       return { a: CT.ag, w: CT.agW, el: CT.ag.cur >= 0 && CT.agStart ? Math.max(0, Date.now() - CT.agStart) : 0 };
     }
-    function ctAgendaTake(a, w, el, ageMs, why) {
+    // proven: the signature checked out as the host's own (an admin room's
+    // agenda is honored only from a verified admin signature).
+    function ctAgendaTake(a, w, el, ageMs, why, proven) {
       const MA = GifOS.meetAgenda;
       const prev = CT.ag;
-      if (!MA.accept(prev, a, ctAgCtx(a.by))) { ctNote('agenda-refused', { v: a.v, by: String(a.by).slice(0, 8), why: why }); return false; }
+      const ctx = hasAdminRoom() ? { adminRoom: true, isAdmin: !!proven } : { adminRoom: false };
+      if (!MA.accept(prev, a, ctx)) { ctNote('agenda-refused', { v: a.v, by: String(a.by).slice(0, 8), why: why }); return false; }
       const curId = (x) => (x && x.cur >= 0 && x.items[x.cur]) ? x.items[x.cur].id + '#' + x.cur : '';
       CT.ag = a; CT.agW = w;
       if (!prev || curId(prev) !== curId(a) || !CT.agStart) CT.agStart = Date.now() - Math.max(0, +el || 0) - Math.max(0, +ageMs || 0);
@@ -8056,7 +8059,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!a || !a.by) return;
       if (CT.ag && (a.v < CT.ag.v || (a.v === CT.ag.v && GifOS.meetAgenda.hash(a) === GifOS.meetAgenda.hash(CT.ag)))) return;
       if (!(await ctAgendaVerify(a, m.w))) { ctNote('agenda-bad-sig', { v: a.v, why: why }); return; }
-      ctAgendaTake(a, m.w, +m.el || 0, ageMs, why);
+      ctAgendaTake(a, m.w, +m.el || 0, ageMs, why, true);
     }
     async function ctAgendaPublish(next, why) {
       if (!next || !CT) return false;
@@ -8070,7 +8073,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!w) { ctNote('agenda-unsigned', { why: why }); return false; }
       const curMoved = !CT.ag || CT.ag.cur !== a.cur || ((CT.ag.items[CT.ag.cur] || {}).id !== (a.items[a.cur] || {}).id);
       const el = curMoved ? 0 : (CT.agStart ? Date.now() - CT.agStart : 0);
-      if (!ctAgendaTake(a, w, el, 0, 'local:' + (why || ''))) return false;
+      if (!ctAgendaTake(a, w, el, 0, 'local:' + (why || ''), !!amAdmin)) return false;
       sendAll({ k: 'agenda', a: a, w: w, el: el });
       return true;
     }
