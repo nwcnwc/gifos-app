@@ -206,12 +206,16 @@
     const alt = o[floatSlot(kind, orient === 'port' ? 'land' : 'port')];
     const p = (hit && Number.isFinite(+hit.cx) && Number.isFinite(+hit.cy)) ? hit : alt;
     if (!p || !Number.isFinite(+p.cx) || !Number.isFinite(+p.cy)) return null;
-    return { cx: +p.cx, cy: +p.cy };
+    const out = { cx: +p.cx, cy: +p.cy };
+    if (Number.isFinite(+p.s) && +p.s > 0) out.s = +p.s; // a resized Float tile: its size against the laid size
+    return out;
   }
   function saveFloat(store, kind, orient, frac) {
     if (!store || typeof store.setItem !== 'function' || !frac) return;
     const o = readFloats(store);
-    o[floatSlot(kind, orient)] = { cx: +frac.cx, cy: +frac.cy };
+    const rec = { cx: +frac.cx, cy: +frac.cy };
+    if (Number.isFinite(+frac.s) && +frac.s > 0) rec.s = +frac.s;
+    o[floatSlot(kind, orient)] = rec;
     try { store.setItem(FLOAT_KEY, JSON.stringify(o)); } catch (e) {}
   }
   function clearFloat(store, kind, orient) {
@@ -258,6 +262,19 @@
   // inset from their cells (the gutter). No saved spot returns the rects.
   function placeFloat(rects, saved, view, pad) {
     if (!rects || !rects.length || !saved) return rects;
+    // A saved size (s, one tile resized in the Float view) scales the group
+    // about its own centre before it is placed.
+    const k = saved.s > 0 ? saved.s : 1;
+    if (k !== 1) {
+      const g0 = groupBox(rects);
+      const cx0 = g0.x + g0.w / 2, cy0 = g0.y + g0.h / 2;
+      const scaled = [];
+      for (let i = 0; i < rects.length; i++) {
+        const r = rects[i];
+        scaled.push(Object.assign({}, r, { x: cx0 + (r.x - cx0) * k, y: cy0 + (r.y - cy0) * k, w: r.w * k, h: r.h * k }));
+      }
+      rects = scaled;
+    }
     const g = groupBox(rects);
     const p = pad > 0 ? pad : 0;
     const vx = view && view.x || 0, vy = view && view.y || 0;
@@ -266,7 +283,7 @@
     const ny = vy + saved.cy * vh - g.h / 2;
     const c = clampFloat({ x: nx + p, y: ny + p, w: Math.max(0, g.w - 2 * p), h: Math.max(0, g.h - 2 * p) }, { x: vx, y: vy, w: vw, h: vh });
     const dx = c.x - p - g.x, dy = c.y - p - g.y;
-    if (dx === 0 && dy === 0) return rects;
+    if (dx === 0 && dy === 0) return rects; // (already scaled when a size was saved)
     const out = [];
     for (let i = 0; i < rects.length; i++) out.push(Object.assign({}, rects[i], { x: rects[i].x + dx, y: rects[i].y + dy }));
     return out;

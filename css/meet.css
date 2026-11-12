@@ -3416,18 +3416,183 @@
   }
   /* The stage's Open sits in the caption row at the bottom of the slide, never in the top corner where a phone's
      status chip floats over the stage. */
-  body:not(.broadcast) #stagefeed > .rowtile > .tile-open { top: auto; bottom: 6px; }
-  /* A phone reaches every control with a 44px target. A face's Open keeps its small light pill: a transparent
+  html body:not(.broadcast) #stagefeed > .rowtile > .tile-open { top: auto; bottom: 6px; }
+  /* A phone reaches every control with a 44px target (html body: css/meet-23b.css loads after this file and sizes
+     the same controls). A face's Open keeps its small light pill: a transparent
      border grows the tap area around it. */
   @media (max-width: 700px), (max-height: 500px) {
-    .tile > .tile-open, .rowtile > .tile-open { top: 0; right: 0; height: 44px; max-height: 44px; max-width: 94px;
+    html body .tile > .tile-open, html body .rowtile > .tile-open { top: 0; right: 0; height: 44px; max-height: 44px; max-width: 94px;
       border: 11px solid transparent; background-clip: padding-box; }
-    body:not(.broadcast) #stagefeed > .rowtile > .tile-open { top: auto; bottom: 0; }
-    body.comfy .tile.slim > .tile-open { width: 44px; max-width: 44px; }
+    html body:not(.broadcast) #stagefeed > .rowtile > .tile-open { top: auto; bottom: 0; }
+    html body.comfy .tile.slim > .tile-open { width: 44px; max-width: 44px; }
     #airrec, #airwho, body.broadcast #airsound:not([hidden]) { min-height: 44px; }
     #chathead #trtab { min-height: 44px; }
   }
   @media (max-width: 700px) and (min-height: 501px) {
-    #tilewin .tw-close { width: 44px; height: 44px; }
-    #tilewin .tw-side button.tw-btn, #tilewin button.tw-btn, #tilewin .modbar button { min-height: 44px; height: auto; }
+    html body #tilewin .tw-close { width: 44px; height: 44px; }
+    html body #tilewin .tw-side button.tw-btn, html body #tilewin button.tw-btn, html body #tilewin .modbar button { min-height: 44px; height: auto; }
   }
+  /* ---- The meeting's views: Scroll, Fit, Drag, Focus (Nathan 2026-11-11) ----
+     One quiet button (#fitbtn: the view's outline glyph and its word) opens a
+     small dark picker: four glyphs over one word each, the chosen one white
+     with a blue dot, the rest grey. No boxes, no borders. Follow the speaker is
+     one switch row, shown in Focus only. Tokens only. */
+  .fitbtn { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; font-size: 14px; color: var(--c-white); }
+  .fitbtn .vb-ic { display: inline-flex; }
+  .fitbtn .vb-ic svg { width: 20px; height: 20px; display: block; }
+  .viewpick { position: fixed; z-index: 34; display: flex; flex-direction: column; gap: 8px; padding: 8px;
+    background: var(--c-night); color: var(--c-white); border-radius: var(--r-lg); max-width: calc(100vw - 16px); }
+  .viewpick[hidden] { display: none; }
+  .vp-modes { display: flex; gap: 4px; }
+  .vp-mode { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    min-width: 64px; min-height: 64px; padding: 8px 6px 12px; border: 0; border-radius: var(--r-md);
+    background: none; color: var(--c-gray); font-size: 12px; font-weight: 500; cursor: pointer; }
+  .vp-mode .vp-ic svg { width: 24px; height: 24px; display: block; }
+  .vp-mode[aria-checked="true"] { color: var(--c-white); }
+  .vp-mode[aria-checked="true"]::after { content: ""; position: absolute; left: 50%; bottom: 4px; width: 4px; height: 4px;
+    margin-left: -2px; border-radius: var(--r-pill); background: var(--c-blue); }
+  @media (hover: hover) and (pointer: fine) { .vp-mode:hover { color: var(--c-white); } }
+  .vp-mode:focus-visible, .vp-follow:focus-visible { outline: 2px solid var(--c-blue); outline-offset: -2px; }
+  .vp-follow { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 0 8px;
+    border: 0; border-radius: var(--r-md); background: none; color: var(--c-white); font-size: 14px; font-weight: 500; cursor: pointer; }
+  .vp-follow[hidden] { display: none; }
+  .vp-knob { position: relative; flex: 0 0 auto; width: 36px; height: 20px; border-radius: var(--r-pill); background: var(--c-ink-2);
+    transition: background var(--t-fast) ease; }
+  .vp-knob::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: var(--r-pill);
+    background: var(--c-white); transition: transform var(--t-fast) ease; }
+  .vp-follow[aria-checked="true"] .vp-knob { background: var(--c-blue); }
+  .vp-follow[aria-checked="true"] .vp-knob::after { transform: translateX(16px); }
+  /* Focus: #fsview drawn in the page under the header, Fit's button and the
+     floating bar (the bar overlays, nothing is reserved). The strip runs down
+     the side when the screen is wide and across the bottom when it is tall;
+     the bottom strip ends above the bar the same way the panels do
+     (--barclear). Thumbs wear no frame; the one on the big view is outlined. */
+  body.view-focus #fsview { z-index: 5; }
+  body.view-focus #fsclose { display: none; }
+  body.view-focus #fsstrip { top: calc(72px + var(--gtop, 0px)); background: none; gap: 8px; padding: 8px; }
+  body.view-focus .fsthumb { border: 0; border-radius: var(--r-md); background: var(--c-night); }
+  body.view-focus .fsthumb.sel { box-shadow: none; outline: 2px solid var(--c-white); outline-offset: -2px; }
+  body.view-focus .fsthumb.fsauto { background: var(--c-night); color: var(--c-white); }
+  body.view-focus .fsthumb .fslbl { left: 6px; bottom: 6px; font-size: 12px; padding: 2px 8px; border-radius: var(--r-pill); background: var(--c-scrim); color: var(--c-white); }
+  @media (orientation: portrait) {
+    body.view-focus #fsstrip { top: auto; left: 0; right: 0; bottom: 0; flex-direction: row; overflow-x: auto; overflow-y: hidden;
+      padding-bottom: max(8px, var(--barclear, 0px)); }
+    body.view-focus .fsthumb { width: 112px; }
+  }
+  /* Present: one step to the presentation view (content full screen, the
+     speaker inset). Shown only while there is content, top centre, the same
+     quiet pill as the view button. */
+  .presentbtn { display: none; position: fixed; z-index: 6; top: calc(14px + var(--gtop, 0px)); left: 50%; transform: translateX(-50%);
+    align-items: center; gap: 6px; min-height: 44px; padding: 8px 14px; border: 0; border-radius: var(--r-pill); cursor: pointer;
+    background: var(--c-scrim); color: var(--c-white); font-size: 14px; font-weight: 500; }
+  .presentbtn .vb-ic { display: inline-flex; }
+  body.has-content:not(.broadcast):not(.has-app):not(.view-drag) .presentbtn { display: inline-flex; }
+  body.dock-calm .presentbtn { opacity: 0; pointer-events: none; transition: opacity var(--t-slow) ease; }
+  /* Drag: each person tile moves on its own and resizes from its corner. */
+  .fl-rz { display: none; }
+  body.view-drag [data-float^="p:"] { cursor: grab; }
+  body.view-drag [data-float^="p:"] > .fl-rz { display: block; position: absolute; z-index: 7; right: 0; bottom: 0; width: 28px; height: 28px;
+    cursor: nwse-resize; touch-action: none; }
+  body.view-drag [data-float^="p:"] > .fl-rz::after { content: ""; position: absolute; right: 6px; bottom: 6px; width: 10px; height: 10px;
+    border-right: 2px solid var(--c-white); border-bottom: 2px solid var(--c-white); opacity: .7; }
+  /* A phone's top centre belongs to the room name: Present sits under the view button there. */
+  @media (max-width: 700px), (max-height: 500px) {
+    .presentbtn { left: auto; transform: none; right: calc(14px + env(safe-area-inset-right, 0px)); top: calc(110px + var(--gtop, 0px)); }
+  }
+
+  /* ---- The content area: screens, the app and the agenda in one area with tabs (Nathan 2026-11-11) ----
+     Black like the meeting; the tab bar is words on black (the chosen one
+     white with a white underline, the rest grey), a small white dot marks a
+     tab that changed. Tools are icon-over-word with no boxes. The agenda is
+     plain text: the current item white, done items grey, the time left in
+     grey and the time over in red. Tokens only. */
+  .ctarea { position: absolute; background: var(--c-black); color: var(--c-white); border-radius: var(--r-lg); overflow: hidden; }
+  .ctarea[hidden] { display: none; }
+  .ctarea.ct-fixed { z-index: 33; border-radius: 0; }
+  body.view-focus .ctarea.ct-fixed { z-index: 6; border-radius: var(--r-md); }
+  .ct-bar { position: absolute; left: 0; right: 0; top: 0; height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 8px; }
+  .ct-bar[hidden] { display: none; }
+  .ct-tabs { display: flex; align-items: stretch; gap: 4px; min-width: 0; flex: 1 1 auto; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; height: 100%; }
+  .ct-tabs::-webkit-scrollbar { display: none; }
+  .ct-tab { position: relative; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; max-width: 240px; min-height: 44px; padding: 0 12px;
+    border: 0; background: none; color: var(--c-gray); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
+  .ct-tab .ct-tabnm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ct-tab .ct-tabtime { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--c-gray); }
+  .ct-tab .ct-tabtime:empty { display: none; }
+  .ct-tab .ct-tabtime.over { color: var(--c-red); }
+  .ct-tab[aria-selected="true"] { color: var(--c-white); }
+  .ct-tab[aria-selected="true"]::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: 4px; height: 2px; border-radius: var(--r-pill); background: var(--c-white); }
+  .ct-tab .ct-dot { display: none; width: 6px; height: 6px; border-radius: var(--r-pill); background: var(--c-white); align-self: flex-start; margin-top: 12px; }
+  .ct-tab.changed .ct-dot { display: block; }
+  @media (hover: hover) and (pointer: fine) { .ct-tab:hover, .ct-tool:hover { color: var(--c-white); } }
+  .ct-tab:focus-visible, .ct-tool:focus-visible, .ct-exit:focus-visible, .ag-btn:focus-visible, .ag-item:focus-visible, .ag-chip:focus-visible, .ag-mini:focus-visible { outline: 2px solid var(--c-blue); outline-offset: -2px; }
+  .ct-tools { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+  .ct-tool { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 44px; min-height: 44px; padding: 2px 6px;
+    border: 0; background: none; color: var(--c-gray); font: inherit; font-size: 11px; font-weight: 500; cursor: pointer; }
+  .ct-tool[hidden] { display: none; }
+  .ct-tool .ct-ic { display: inline-flex; }
+  .ct-tool[aria-pressed="true"] { color: var(--c-white); }
+  @media (max-width: 700px) { .ct-tool .ct-word { display: none; } }
+  .ct-body { position: absolute; left: 0; right: 0; top: 0; bottom: 0; }
+  body.ct-tabs .ctarea:not(.ct-fixed) .ct-body { top: 0; }
+  .ct-pane { position: absolute; overflow: hidden; border-radius: var(--r-md); background: var(--c-black); }
+  .ct-pane[hidden] { display: none; }
+  .ct-pane > video { width: 100%; height: 100%; object-fit: contain; display: block; background: var(--c-black); }
+  .ct-cap { position: absolute; left: 8px; bottom: 8px; display: flex; align-items: center; gap: 8px; max-width: calc(100% - 16px); }
+  .ct-capnm { padding: 4px 10px; border-radius: var(--r-pill); background: var(--c-scrim); color: var(--c-white); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ct-stop { min-height: 44px; padding: 0 14px; border: 0; border-radius: var(--r-pill); background: var(--c-scrim); color: var(--c-white); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
+  .ct-appbox { background: none; pointer-events: none; }
+  /* The app's own pane stays where it is (moving an iframe reloads it): it
+     hides while another tab is shown, and keeps running. */
+  body.comfy.has-app.ct-app-off:not(.app-full) #apppane { visibility: hidden; pointer-events: none; }
+  body.ct-present.has-app:not(.ct-app-off):not(.app-full) #apppane { z-index: 34; }
+  /* Presentation view: the area holds the whole screen; the meeting's chrome waits under it. */
+  body.ct-present .ctarea { border-radius: 0; }
+  .ct-inset { position: fixed; z-index: 35; overflow: hidden; border-radius: var(--r-md); background: var(--c-night); }
+  .ct-inset[hidden] { display: none; }
+  .ct-inset video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .ct-inset-nm { position: absolute; left: 6px; bottom: 6px; max-width: calc(100% - 12px); padding: 2px 8px; border-radius: var(--r-pill); background: var(--c-scrim); color: var(--c-white); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ct-exit { position: fixed; z-index: 36; top: 12px; right: 12px; width: 44px; height: 44px; border: 0; border-radius: var(--r-pill); background: var(--c-scrim); color: var(--c-white);
+    display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+  .ct-exit[hidden] { display: none; }
+  /* The agenda */
+  .ct-pane.ag { overflow-y: auto; padding: 16px; background: var(--c-night); color: var(--c-white); }
+  .ag-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; }
+  .ag-title { margin: 0; font-size: 17px; font-weight: 600; }
+  .ag-pos { color: var(--c-gray); font-size: 13px; }
+  .ag-tools { display: flex; gap: 8px; margin-left: auto; }
+  .ag-btn { min-height: 44px; padding: 0 16px; border: 0; border-radius: var(--r-pill); background: var(--c-ink-2); color: var(--c-white); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
+  .ag-btn.ag-next { background: var(--c-white); color: var(--c-black); }
+  .ag-btn.ag-stop { margin-top: 16px; background: none; color: var(--c-gray); padding: 0; }
+  .ag-now { margin: 16px 0 8px; }
+  .ag-now[hidden] { display: none; }
+  .ag-nowt { font-size: 22px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+  .ag-bar { position: relative; height: 4px; margin: 12px 0 6px; border-radius: var(--r-pill); background: var(--c-ink-2); overflow: hidden; }
+  .ag-bar[hidden] { display: none; }
+  .ag-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: var(--r-pill); background: var(--c-white); transition: width var(--t-slow) linear; }
+  .ag-now.over .ag-fill { background: var(--c-red); }
+  .ag-left { color: var(--c-gray); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .ag-now.over .ag-left { color: var(--c-red); }
+  .ag-list { list-style: none; margin: 8px 0 0; padding: 0; counter-reset: ag; }
+  .ag-item { counter-increment: ag; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 4px 8px; border-radius: var(--r-md); color: var(--c-white); font-size: 15px; }
+  .ag-item::before { content: counter(ag); flex: 0 0 24px; color: var(--c-gray); font-size: 13px; font-variant-numeric: tabular-nums; }
+  .ag-item.done { color: var(--c-gray); }
+  .ag-item.cur { background: var(--c-ink); font-weight: 600; }
+  .ag-item[tabindex] { cursor: pointer; }
+  .ag-t { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+  .ag-min { flex: 0 0 auto; color: var(--c-gray); font-size: 13px; font-weight: 400; }
+  .ag-in-t, .ag-in-min { min-height: 40px; padding: 0 10px; border: 0; border-radius: var(--r-sm); background: var(--c-ink); color: var(--c-white); font: inherit; font-size: 15px; }
+  .ag-in-t { flex: 1 1 auto; min-width: 0; }
+  .ag-in-min { flex: 0 0 72px; width: 72px; }
+  .ag-mini { flex: 0 0 auto; min-width: 40px; min-height: 40px; border: 0; border-radius: var(--r-pill); background: none; color: var(--c-gray); font: inherit; font-size: 16px; cursor: pointer; }
+  .ag-add { display: flex; gap: 8px; margin-top: 12px; }
+  .ag-empty, .ag-note { color: var(--c-gray); font-size: 13px; margin: 12px 0 0; }
+  .ag-who { margin-top: 16px; }
+  .ag-wholb { color: var(--c-gray); font-size: 13px; margin-bottom: 8px; }
+  .ag-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .ag-chip { min-height: 40px; padding: 0 14px; border: 0; border-radius: var(--r-pill); background: var(--c-ink); color: var(--c-gray); font: inherit; font-size: 14px; cursor: pointer; }
+  .ag-chip[aria-pressed="true"] { background: var(--c-white); color: var(--c-black); }
+  .ct-pview { position: absolute; z-index: 1; top: 8px; right: 8px; width: 44px; height: 44px; border: 0; border-radius: var(--r-pill); background: var(--c-scrim); color: var(--c-white);
+    display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+  .ct-pview[hidden] { display: none; }
+  .ct-pane.ag > .ct-pview { position: sticky; float: right; top: 0; margin: -8px -8px 0 8px; }
