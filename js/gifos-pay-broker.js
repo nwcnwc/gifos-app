@@ -17,9 +17,11 @@
  *           an approval URL. The human finishes in PayPal's own window. Proof
  *           is an Ed25519-signed receipt from the Worker, verified here
  *           against /gifos-pay.key — the purse never takes the browser's word.
- *   X402    testnet USDC on Base Sepolia. The broker builds the 97/3 split
- *           itself — TWO transfers from ONE approval, no splitter contract —
- *           and hands them to the wallet adapter (GifOS.payWallet) to sign.
+ *   X402    USDC on Base (Sepolia until the mainnet switch, gifos-base-net.js).
+ *           The broker builds the 97/3 split itself — two EIP-3009 transfers,
+ *           no splitter contract; one when the signed payee is GifOS's own
+ *           fee address — and hands them to the wallet adapter
+ *           (GifOS.payWallet) to sign. The pay Worker settles them.
  *           Until the Base Account connection lands, no adapter is present in
  *           production and the rail says so instead of pretending.
  *
@@ -27,7 +29,7 @@
  * while building the sheet. GET /health reports the same string; an app
  * does not fetch it. mode "LIVE" is the only value labeled as real money.
  * Anything else, including a worker that omits mode, is shown as sandbox.
- * The chain rail stays Base Sepolia, pinned in gifos-charge.js.
+ * The chain rail's network is gifos-base-net.js's (Sepolia as shipped).
  *
  * A PayPal order is remembered (pay.paypal:<id>, never exported) before the
  * approval window is opened. Closing that window or hiding the wait is not
@@ -65,6 +67,12 @@
       throw new Error('payBroker: fee address mismatch between gifos-base-net and the broker');
     }
     return pinned || TREASURY;
+  }
+  function onMainnet() {
+    try { return !!(GifOS.baseNet && GifOS.baseNet.active().id === 'mainnet'); } catch (e) { return false; }
+  }
+  function chainName() {
+    try { return GifOS.baseNet ? GifOS.baseNet.active().name : 'Base Sepolia'; } catch (e) { return 'Base Sepolia'; }
   }
   function usdcLeg() {
     if (GifOS.baseNet && typeof GifOS.baseNet.active === 'function') {
@@ -339,7 +347,7 @@
     } else if (rails.paypal) {
       parts.push('PayPal is in sandbox. A PayPal payment here does not move real money.');
     }
-    if (rails.x402 || rails.transfer) parts.push('USDC on this sheet is on ' + (sheetData.chain || 'a test network') + ', a test network.');
+    if ((rails.x402 || rails.transfer) && !onMainnet()) parts.push('USDC on this sheet is on ' + (sheetData.chain || 'a test network') + ', a test network.');
     return parts.join(' ');
   }
 
@@ -374,7 +382,7 @@
         '</div>' +
         '<div id="gp-buttons" style="display:flex;flex-direction:column;gap:.5rem">' +
           (canPaypal ? '<button id="gp-paypal" style="padding:.6rem 1rem;border-radius:.5rem;border:none;background:#ffc439;color:#111;cursor:pointer;font:inherit;font-weight:600">' + (sheetData.mode === 'LIVE' ? 'Pay with PayPal' : 'Pay with PayPal (sandbox)') + '</button>' : '') +
-          (canX402 ? '<button id="gp-x402" ' + (walletReady ? '' : 'disabled ') + 'style="padding:.6rem 1rem;border-radius:.5rem;border:1px solid #2a2a3f;background:' + (walletReady ? '#1652f0' : '#20203255') + ';color:' + (walletReady ? '#fff' : '#9a9ab5') + ';cursor:' + (walletReady ? 'pointer' : 'default') + ';font:inherit">Pay with USDC — connected wallet' + (walletReady ? '' : ' (none yet)') + '</button>' : '') +
+          (canX402 ? '<button id="gp-x402" ' + (walletReady ? '' : 'disabled ') + 'style="padding:.6rem 1rem;border-radius:.5rem;border:1px solid #2a2a3f;background:' + (walletReady ? '#1652f0' : '#20203255') + ';color:' + (walletReady ? '#fff' : '#9a9ab5') + ';cursor:' + (walletReady ? 'pointer' : 'default') + ';font:inherit">Pay with USDC on Base' + (walletReady ? '' : ' (no wallet yet)') + '</button>' : '') +
           (sheetData.rails.transfer ? '<button id="gp-transfer" style="padding:.6rem 1rem;border-radius:.5rem;border:1px solid #2a2a3f;background:#1d1d2c;color:#e8e8f4;cursor:pointer;font:inherit">Send USDC from any wallet (RockWallet, …)</button>' : '') +
           (sheetData.rails.fednow ? '<button id="gp-fednow" style="padding:.6rem 1rem;border-radius:.5rem;border:1px solid #2a2a3f;background:#1d1d2c;color:#e8e8f4;cursor:pointer;font:inherit">Pay from your bank (FedNow)</button>' : '') +
           (canMpp ? '<button id="gp-mpp" style="padding:.6rem 1rem;border-radius:.5rem;border:1px solid #2a2a3f;background:#1d1d2c;color:#e8e8f4;cursor:pointer;font:inherit">Pay with your AI agent (Stripe Link)</button>' : '') +
@@ -674,17 +682,15 @@
   }
 
   // ---- the x402 rail ---------------------------------------------------------
-  // TWO transfers from ONE approval — the 97/3 split needs no contract because
-  // this broker constructs the payment (docs/payments.md). The wallet adapter
-  // signs; the Worker's facilitator endpoint settles. Testnet only.
+  // The 97/3 split needs no contract because this broker constructs the
+  // payment (docs/payments.md). The wallet adapter signs one EIP-3009
+  // authorization per leg; the Worker settles them through the facilitator.
   async function payWithX402(manifest, sheetData, amount, proof) {
     const wallet = GifOS.payWallet;
     if (!wallet || !wallet.available()) throw new Error('no wallet is available on this computer');
     const base = workerBase();
     const busyUi = showBusy('Asking your wallet to sign…');
     try {
-      const fee = (amount * FEE_BPS) / 10000n;
-      const toAuthor = amount - fee;
       const leg = usdcLeg();
       const network = leg.network, asset = leg.asset;
       // The seller address is the signed manifest's, re-read here. The sheet
@@ -692,24 +698,20 @@
       const signed = GifOS.charge.assertSignedPayTo(manifest, sheetData && sheetData.address);
       const railAddr = sheetData && sheetData.rails && sheetData.rails.x402 && sheetData.rails.x402.address;
       GifOS.charge.assertSignedPayTo(manifest, railAddr);
+      // A payee that IS the fee address (GifOS's own tip jar) is paid in one
+      // leg: a 3% leg from GifOS to GifOS would only ask for a second
+      // signature. The pay Worker applies the same rule (x402Legs).
+      const treasury = treasuryAddress();
+      const fee = signed.to.toLowerCase() === treasury.toLowerCase() ? 0n : (amount * FEE_BPS) / 10000n;
       const transfers = [
-        { to: signed.to, amount: String(toAuthor), asset, network },
+        { to: signed.to, amount: String(amount - fee), asset, network },
       ];
-      if (fee > 0n) transfers.push({ to: treasuryAddress(), amount: String(fee), asset, network });
-      // The human authenticates HERE. paySplit uses one wallet_sendCalls
-      // approval when the Base Account can batch, and EIP-3009 signatures
-      // otherwise (gifos-paywallet.js).
-      const split = wallet.paySplit
-        ? await wallet.paySplit(transfers)
-        : { mode: 'eip3009', payloads: await wallet.signTransfers(transfers) };
+      if (fee > 0n) transfers.push({ to: treasury, amount: String(fee), asset, network });
+      // The human authenticates HERE: one EIP-3009 signature per leg.
+      const payloads = await wallet.signTransfers(transfers);
       if (busyUi.cancelled()) throw new Error(GifOS.charge.DECLINED);
-      busyUi.say('Settling on Base Sepolia…');
-      const tx = split.status && split.status.receipts && split.status.receipts[0]
-        ? (split.status.receipts[0].transactionHash || split.status.receipts[0].txHash || null)
-        : null;
-      const settleBody = split.mode === 'eip5792'
-        ? { proof, sku: sheetData.sku || null, amount: String(amount), transfers, mode: 'eip5792', batch: { id: split.batchId, tx } }
-        : { proof, sku: sheetData.sku || null, amount: String(amount), transfers, payloads: split.payloads };
+      busyUi.say('Settling on ' + chainName() + '…');
+      const settleBody = { proof, sku: sheetData.sku || null, amount: String(amount), transfers, payloads };
       const r = await fetch(base + '/x402/settle', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settleBody),
@@ -739,7 +741,7 @@
     const exact = fmtUsdcExact(inv.expected);
     box.innerHTML =
       '<h3 style="margin:0 0 .35rem;font-size:1.05rem">Send from your wallet</h3>' +
-      '<p style="margin:0 0 .8rem;color:#b6b6cf;font-size:.86rem">Open RockWallet — or any wallet that holds USDC on <b>Base Sepolia</b> — and send <b>exactly</b> this amount to this address. The extra fraction of a cent is how this payment is recognised as yours.</p>' +
+      '<p style="margin:0 0 .8rem;color:#b6b6cf;font-size:.86rem">Open RockWallet — or any wallet that holds USDC on <b>' + esc(chainName()) + '</b> — and send <b>exactly</b> this amount to this address. The extra fraction of a cent is how this payment is recognised as yours.</p>' +
       '<div style="background:#0e0e17;border:1px solid #23233a;border-radius:.6rem;padding:.8rem .9rem;margin-bottom:.9rem">' +
         '<div style="color:#9a9ab5;font-size:.78rem">Amount (USDC)</div>' +
         '<div style="display:flex;gap:.5rem;align-items:center"><b id="gpt-amt" style="font-size:1.05rem">' + esc(exact) + '</b><button data-copy="' + esc(exact) + '" class="gpt-copy" style="padding:.2rem .6rem;border-radius:.4rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit;font-size:.78rem">Copy</button></div>' +

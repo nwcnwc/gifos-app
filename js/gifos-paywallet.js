@@ -8,14 +8,16 @@
  * wallet to sign it. It initiates nothing on its own — every entry point is
  * called by the broker after the sheet was answered.
  *
- * Which approval is used, decided for each payment:
- *   EIP-5792 wallet_sendCalls — when wallet_getCapabilities says this chain
- *     can atomic-batch (atomic.status "supported" or "ready", or
- *     atomicBatch.supported). Both USDC transfer() calls go in one request,
- *     one approval: 97% to the signed seller, 3% to the fee address.
- *   EIP-3009 — otherwise, including a wallet that rejects
- *     wallet_getCapabilities. One TransferWithAuthorization signature per
- *     leg. The pay Worker settles those signatures. This is the fallback.
+ * ONE SHAPE: EIP-3009 TransferWithAuthorization, one signature per leg (97%
+ * to the signed seller, 3% to the fee address; one leg when the seller IS
+ * the fee address). The pay Worker settles those signatures through the x402
+ * facilitator, so the buyer needs USDC and no ETH for gas, and the Worker
+ * mints a receipt only for money it moved itself: the USDC contract spends
+ * each nonce once, so a replayed payment moves nothing and unlocks nothing.
+ * An EIP-5792 wallet_sendCalls batch is NOT used: the wallet would move the
+ * money outside the Worker, and a stateless Worker cannot tell which
+ * purchase a public transaction paid for, or that it was not already
+ * receipted (docs/payments.md "One shape on the chain rail").
  *
  * Wallet resolution, in order:
  *
@@ -58,11 +60,13 @@
     }
     return { caip: CHAIN_CAIP, chainId: CHAIN_ID, hex: CHAIN_HEX, name: 'Base Sepolia', rpc: 'https://sepolia.base.org', explorer: 'https://sepolia.basescan.org' };
   }
-  // USDC's EIP-712 domain on Base Sepolia. The x402 spec carries these in the
-  // requirement's `extra` because they vary per token deployment; these are
-  // the defaults for the one asset this build allows.
-  const DOMAIN_NAME = 'USDC';
+  // USDC's EIP-712 domain. The name differs per chain ("USDC" on Base
+  // Sepolia, "USD Coin" on Base mainnet), so it comes from gifos-base-net.js.
   const DOMAIN_VERSION = '2';
+  function domainName() {
+    const n = GifOS.baseNet && typeof GifOS.baseNet.active === 'function' ? GifOS.baseNet.active() : null;
+    return (n && n.usdcName) || 'USDC';
+  }
 
   const isAddress = (a) => typeof a === 'string' && /^0x[0-9a-fA-F]{40}$/.test(a);
 
@@ -94,7 +98,9 @@
     };
   }
 
-  function typedData(authorization, asset, extra) {
+  // The domain is this build's, never the caller's: a transfer cannot carry
+  // its own `extra` name and have the wallet sign over it.
+  function typedData(authorization, asset) {
     if (!isAddress(asset)) throw new Error('payWallet: asset is not an address');
     return {
       types: {
@@ -115,8 +121,8 @@
       },
       primaryType: 'TransferWithAuthorization',
       domain: {
-        name: (extra && extra.name) || DOMAIN_NAME,
-        version: (extra && extra.version) || DOMAIN_VERSION,
+        name: domainName(),
+        version: DOMAIN_VERSION,
         chainId: chainNow().chainId,
         verifyingContract: asset,
       },
@@ -222,7 +228,7 @@
       const nonce = new Uint8Array(32);
       (root.crypto || require('crypto').webcrypto).getRandomValues(nonce);
       const authorization = buildAuthorization(t, from, nonce, Date.now());
-      const td = typedData(authorization, t.asset, t.extra);
+      const td = typedData(authorization, t.asset);
       const signature = await p.request({
         method: 'eth_signTypedData_v4',
         params: [from, JSON.stringify(td)],
@@ -235,73 +241,16 @@
     return out;
   }
 
-  // USDC transfer(address,uint256). Selector is the well-known keccak
-  // prefix a9059cbb; the address is the 32-byte left-padded argument.
-  function encodeUsdcTransfer(to, amount) {
-    if (!isAddress(to)) throw new Error('payWallet: transfer to is not an address');
-    if (typeof amount !== 'string' || !/^[0-9]+$/.test(amount) || BigInt(amount) <= 0n) {
-      throw new Error('payWallet: amount must be a positive decimal integer string of base units');
-    }
-    const addr = to.slice(2).toLowerCase().padStart(64, '0');
-    const val = BigInt(amount).toString(16).padStart(64, '0');
-    return '0xa9059cbb' + addr + val;
-  }
-
-  function capabilitiesSupportBatch(caps, chainHex) {
-    if (!caps || typeof caps !== 'object') return false;
-    const hex = String(chainHex || '').toLowerCase();
-    let id = '';
-    try { id = String(parseInt(hex, 16)); } catch (e) { id = ''; }
-    const chain = caps[chainHex] || caps[hex] || (id && caps[id]) || (id && caps['eip155:' + id]);
-    if (!chain || typeof chain !== 'object') return false;
-    if (chain.atomicBatch && chain.atomicBatch.supported === true) return true;
-    const atomic = chain.atomic;
-    return !!(atomic && (atomic.status === 'supported' || atomic.status === 'ready'));
-  }
-
-  function sendCallsParams(transfers, from) {
-    const chain = chainNow();
-    if (!Array.isArray(transfers) || !transfers.length) throw new Error('payWallet: nothing to send');
-    if (!isAddress(from)) throw new Error('payWallet: payer is not an address');
-    let asset = null;
-    const calls = transfers.map((t) => {
-      if (!t || t.network !== chain.caip) throw new Error('payWallet: refusing network "' + (t && t.network) + '" — this build signs for ' + chain.name + ' only');
-      if (!isAddress(t.asset)) throw new Error('payWallet: asset is not an address');
-      if (asset && asset.toLowerCase() !== t.asset.toLowerCase()) throw new Error('payWallet: a split must pay one token');
-      asset = t.asset;
-      return { to: t.asset, data: encodeUsdcTransfer(t.to, t.amount), value: '0x0' };
-    });
-    return { version: '2.0.0', from, chainId: chain.hex, atomicRequired: true, calls };
-  }
-
-  // One approval when the wallet can batch; EIP-3009 signatures otherwise.
-  // A wallet that throws on wallet_getCapabilities is the fallback, not an error.
+  // The broker's one entry point. Always EIP-3009 (see the header).
   async function paySplit(transfers) {
-    if (!Array.isArray(transfers) || !transfers.length) throw new Error('payWallet: nothing to sign');
-    const { p } = await provider();
-    const from = await address();
-    let batch = false;
-    try {
-      const caps = await p.request({ method: 'wallet_getCapabilities', params: [from] });
-      batch = capabilitiesSupportBatch(caps, chainNow().hex);
-    } catch (e) { batch = false; }
-    if (!batch) {
-      const payloads = await signTransfers(transfers);
-      return { mode: 'eip3009', payloads, from };
-    }
-    const params = sendCallsParams(transfers, from);
-    const raw = await p.request({ method: 'wallet_sendCalls', params: [params] });
-    const batchId = (raw && typeof raw === 'object') ? (raw.id || raw.batchId) : raw;
-    if (typeof batchId !== 'string' || !batchId) throw new Error('the wallet returned no batch id');
-    let status = null;
-    try { status = await p.request({ method: 'wallet_getCallsStatus', params: [batchId] }); } catch (e) { status = null; }
-    return { mode: 'eip5792', batchId, status, from, calls: params.calls };
+    const payloads = await signTransfers(transfers);
+    return { mode: 'eip3009', payloads, from: payloads[0].authorization.from };
   }
 
   GifOS.payWallet = {
     CHAIN_CAIP, CHAIN_ID,
     available, address, peekAddress, signTransfers, paySplit,
     // pure, for the unit tier
-    buildAuthorization, typedData, encodeUsdcTransfer, sendCallsParams, capabilitiesSupportBatch,
+    buildAuthorization, typedData,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
