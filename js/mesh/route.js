@@ -96,10 +96,14 @@
         return -1;
       }
     },
+    // C++: mesh_seat.inc:Seat::t17Carried   (TURN.17: a Section-1 mate I hold no open connection to, carried by a friend)
+    t17Carried(x) { const id = this.id; return x >= 0 && x !== id && this.hasCoord && this.coord.pc === 0 && this.f.fabricTurnOn() && this.f.fabricLinkState(id, x) !== E.LS_OPEN && this.f.fabricTurnCarried(id, x); },
+    // C++: mesh_seat.inc:Seat::t17Hop   (TURN.17: the probe of such a mate goes to the mate itself: the sponsored frame takes the friend)
+    t17Hop(target) { if (target.pc !== 0) return -1; const x = this.occGet(ckey(target)); if (!this.t17Carried(x)) return -1; this.trace('TURN17-PROBE', this.id, target, 'to=%d', x); return x; },
     // C++: mesh_seat.inc:Seat::routeTo
     routeTo(target, tag) {
       const id = this.id;
-      const nh = this.nextHopToward(target, -1); if (ckey(this.coord) === ckey(target)) return;
+      let nh = this.nextHopToward(target, -1); if (ckey(this.coord) === ckey(target)) return; { const t17 = this.t17Hop(target); if (t17 >= 0) nh = t17; }   /* TURN.17 */
       if (nh >= 0) { const pn = this.probeNote(ckey(target)); const m = newMsg('ROUTE'); m.target = cc(target); m.asker = id; m.tag = tag; m.ttl = 60; m.via = id; m.pseq = ++this.w.lv.RSEQ; m.pn = pn; m.coord = cc(this.coord); this.emit(nh, m); }   // L3.4.1: my cell rides along: the answer comes back by route when the answerer has no channel to me
     },
     // C++: mesh_seat.inc:Seat::routeToProbe
@@ -108,8 +112,9 @@
     routeToProbe(target) {
       const id = this.id;
       const tk = ckey(target); if (!this.hasCoord || ckey(this.coord) === tk) return false;
-      { const h = this.tlHard.get(tk); if (h === 2 && this.coord.pc === 0 && target.pc === 0) return this.d5Fan(target); }   // D5.1: a loss read from silence is probed on every rook path
-      const nh = this.probeHop(target, this.occGet(tk));
+      const t17 = this.t17Hop(target);   // TURN.17: the friend that carries the pair is the path around the connection that never opens
+      if (t17 < 0) { const h = this.tlHard.get(tk); if (h === 2 && this.coord.pc === 0 && target.pc === 0) return this.d5Fan(target); }   // D5.1: a loss read from silence is probed on every rook path
+      const nh = t17 >= 0 ? t17 : this.probeHop(target, this.occGet(tk));
       if (nh >= 0) { const pn = this.probeNote(tk); const m = newMsg('ROUTE'); m.target = cc(target); m.asker = id; m.tag = 2; m.ttl = 60; m.via = id; m.pseq = ++this.w.lv.RSEQ; m.coord = cc(this.coord); m.pn = pn; this.emit(nh, m); return true; }
       return false;
     },
@@ -178,7 +183,7 @@
   // The targets a complete, fresh fold carries over the bar.
   function kOver(R, now, self, on = []) {   // fills and returns `on` (FREE.kOver form)
     if (R.at < 0 || R.part || R.rx < 0 || now - R.rx > K.DIG_TTL) return on;   // a partial or stale fold says nothing
-    const pop = Math.max(0, R.n) + Math.max(0, R.leased);
+    const pop = dig.digBarPop(R);   // a mover whose count waits is still a member
     for (const e of R.kick) { const base = pop - R.kabs - e.dn; const need = Math.max(2, Math.trunc(base / 2) + 1); if (e.up >= need && e.tgt !== self) on.push(e.tgt); }
     return on;
   }

@@ -49,7 +49,7 @@
     'fabricLinkState', 'fabricMyDoors', 'fabricMyKnocks', 'fabricMyNat', 'fabricMyTier', 'fabricNoSock',
     'fabricNoteBackoff', 'fabricNoteReseat', 'fabricNoteRollback', 'fabricNoteSwap', 'fabricReloadBye',
     'fabricSend', 'fabricUnreachable', 'fabricVerdict', 'fhopActive', 'fhopFriendFor', 'l164Of', 'l18Deliv',
-    'l18Hop', 'l18UxDeliv', 'l222Note', 'l22Agree', 'l22Close', 'l22CloseAsk', 'l22Need', 'l22Quiet', 'l28Reply',
+    'l18Hop', 'l18UxDeliv', 'l222Note', 'l22Agree', 'l23GreetRelease', 'l22Close', 'l22CloseAsk', 'l22Need', 'l22Quiet', 'l28Reply',
     'l915Note', 'relayKnock', 'relayUnlist', 'descEnd', 'descNote', 'wake', 'fabricAudit', 'fabricDoorHeard', 'g4Joined', 'fabricDropHalf', 'fabricLinkCarries',
     'fabricTurnOn', 'fabricTurnPc', 'fabricTurnOpener', 'fabricTurnStray', 'fabricTurnLone', 'fabricTurnAcross', 'fabricTurnMine', 'fabricTurnCarried', 'fabricTurnFeeds', 'fabricTurnBoth', 'fabricTurnPeerIn', 'fabricTurnSide',   /* TURN.14 (mesh_turn.inc) */
   ]);
@@ -145,6 +145,9 @@
   function l13MergingOf(s) { return islandStand(s, E.IS_L13); }
   // C++: mesh.cpp:l13MassOf
   function l13MassOf(s) { return s.l13Mass(); }
+  // Two gone cells on my own chain: the heal rules, not the holds.
+  // C++: mesh.cpp:l1344Of
+  function l1344Of(s) { return s.l1344Act(); }
   // C++: mesh.cpp:l25OrdKey
   function l25OrdKey(by, hole, at, to) { return hash.hmixId(hash.hmix(hash.hmixId(hash.hmix64(hash.H_INIT, hole), by), at >>> 0), to); }   // the order names the seat it was sent to
   // C++: mesh.cpp:Seat::ppSigOf
@@ -162,7 +165,7 @@
   // A C++ function that returns bool and fills out-parameters returns the out value here (null for false).
   Seat.unit('mesh.cpp struct Seat', {
     // C++: mesh.cpp:l13
-    l13(sub) { const cur = this.w.L13CUR; return !l13MergingOf(cur) && (!cur || sub === 'L13.12' || sub === 'L13.6' || sub === 'L13.20' || l13MassOf(cur)); },
+    l13(sub) { const cur = this.w.L13CUR; return !l13MergingOf(cur) && (!cur || sub === 'L13.12' || sub === 'L13.6' || sub === 'L13.20' || l13MassOf(cur) || l1344Of(cur)); },
     // C++: mesh.cpp:l13On
     l13On() { return !l13MergingOf(this.w.L13CUR); },
     // C++: mesh.cpp:Seat::oneRowRoom
@@ -541,9 +544,22 @@
       const lb = this.liveBy.get(k); if (lb === undefined || lb !== x) return false;
       const it = this.live.get(k); return it !== undefined && this.TICK - it <= win;
     },
+    // C++: mesh.cpp:Seat::byeFloor
+    // L25.19: the tick I took seat x's own goodbye from cell k (a reload's is no goodbye: L3.11), or -1
+    byeFloor(x, k) {
+      if (x < 0) return -1;
+      const lb = this.l152Bye.get(x); if (lb === undefined || lb[0] !== k) return -1;
+      const r = this.relMark.get(x); if (r !== undefined && r >= lb[1]) return -1;
+      return lb[1];
+    },
     // C++: mesh.cpp:Seat::bornOf
-    // x's birth tick at k, or null
+    // x's birth tick at k, or null; L25.19: a birth older than x's own goodbye from k is born as I hear it
     bornOf(k, x) {
+      const b = this.bornOf0(k, x); if (b === null) return null;
+      const f = this.byeFloor(x, k); return (f >= 0 && f > b) ? this.TICK : b;
+    },
+    // C++: mesh.cpp:Seat::bornOf0
+    bornOf0(k, x) {
       if (x < 0) return null;
       const it = this.rmBirthOf.get(k); if (it !== undefined && it[0] === x) return it[1];
       const st = this.sitting.get(k); if (st !== undefined && st.joiner === x && st.assigner === this.id) return st.at;
@@ -557,7 +573,7 @@
     // C++: mesh.cpp:Seat::l167Stand
     l167Stand(rival, rivalBorn) { if (!(this.f.fabricDoors()) || rival < 0 || rival === this.id || rivalBorn < 0 || this.rmBornAt < 0) return false; return placeBefore(this.id, this.rmBornAt, rival, rivalBorn); },
     // C++: mesh.cpp:Seat::claimBorn
-    claimBorn(m) { return m.born >= 0 ? m.born : (m.arr >= 0 ? this.TICK - m.arr : -1); },
+    claimBorn(m) { const b = m.born >= 0 ? m.born : (m.arr >= 0 ? this.TICK - m.arr : -1); const f = this.byeFloor(m.id, m.ck); return (b >= 0 && f > b) ? this.TICK : b; },   // L25.19
     // C++: mesh.cpp:Seat::holdsCell
     holdsCell(k, win) {
       const o = this.occ.get(k); if (o === undefined || o < 0 || this.translost.has(k)) return false;

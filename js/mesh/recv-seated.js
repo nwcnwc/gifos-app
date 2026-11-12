@@ -97,7 +97,7 @@
         const la = this.lkAt.get(m.ck); const bi = this.byeId.get(m.ck);
         if (la !== undefined && TICK - la <= K.L25_BEAT && !(this.byeAt.has(m.ck) && bi !== undefined && bi === this.occGet(m.ck))) {
           lv.L25_TWICE++;
-          if (sure) { const yt = this.l25YieldTo.get(m.id); if (yt === undefined || TICK - yt >= 16) { if (this.l25YieldTo.size > 64) this.l25YieldTo.clear(); this.l25YieldTo.set(m.id, TICK); const y = newMsg('YIELD'); y.ck = m.ck; y.id = id; y.nc = this.occGet(m.ck); this.emit(m.id, y); } }
+          if (sure) { const yt = this.l25YieldTo.get(m.id); if (yt === undefined || TICK - yt >= 16) { if (this.l25YieldTo.size > 64) this.l25YieldTo.clear(); this.l25YieldTo.set(m.id, TICK); const y = newMsg('YIELD'); y.ck = m.ck; y.id = id; y.nc = this.occGet(m.ck); if (this.byeFloor(y.nc, m.ck) >= 0) this.l167Attach(y, m.ck, y.nc);   /* L25.19.1 */ this.emit(m.id, y); } }
           return;
         }
       }   // L25: a bare word does not take a cell from a seat whose beats reach me over its own channel
@@ -261,6 +261,8 @@
       { if (this.l152Bye.size >= 256) this.l152Bye.clear(); this.l152Bye.set(m.id, [m.ck, TICK]); }   // L15.2
       if (this.l4ExecAt >= 0 && m.id === this.l4Partner) { this.l4ExecAt = -1; this.f.fabricNoteSwap(id, 3); this.trace('SWAP-ABORT', id, this.coord, 'partner=%d left', m.id); }   // L4.3
       if (m.rel) { this.relMark.set(m.id, TICK); this.trace('RELOAD-BYE', id, this.hasCoord ? this.coord : null, 'from=%d cell=%s', m.id, coordStr(unck(m.ck))); return; }   // L3.11
+      // C++: mesh_seat.inc:Seat::onLeave
+      this.f.l23GreetRelease(id, m.id);   // the seat that greeted me has left: the greeting it had started here ends with it (a reload is not a goodbye)
       if (m.bye && !m.mvd) { this.noteBye(m.id); if (m.id !== id) this.dials.holdGone(m.id, TICK + K.GONE_DIAL); }
       if (m.mvd && m.ck < 65536) { this.l3109Ck = m.ck + 1; this.l3109At = this.TICK; }   // L3.10.9
       this.memo.delete(m.ck);   // L3.10a (the relay's greeter-gone is a death word, never a goodbye: it does not reach here, L3.1)
@@ -377,10 +379,11 @@
       const id = this.id, TICK = this.TICK;
       if (!this.hasCoord || this.state !== 3 || this.coord.pc === 0 || this.drainAt) return;
       {
-        const fromHead = this.f.l164Of(this) && m.tag === 1 && this.coord.i !== 0 && m.id >= 0 && this.occGet(ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 })) === m.id;   // L16.4
+        const fromHead = this.f.l164Of(this) && m.tag === 1 && this.coord.i !== 0 && m.id >= 0 && (this.occGet(ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 })) === m.id || (this.l1641From(m.id) && !this.l1361Carried()));   // L16.4
         if (!fromHead) { const oc = this.ownerCoord(); if (!oc || m.id < 0 || this.occGet(ckey(oc)) !== m.id) return; }   // E1: only my ANCHOR may dissolve my subtree
       }
-      if (m.roster.length === 0) return;
+      if (m.roster.length === 0 && !this.f.l164Of(this)) return;
+      if (m.tag === 1 && this.coord.i !== 0 && this.occGet(ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 })) !== m.id) this.trace('L16.4.1', this.id, this.coord, 'heir=%d', m.id);
       this.roster = kvCopy(m.roster); this.haveRoster = true; const rc = this.rosterCells();
       for (let c = 0; c < C; c++) { const x = this.occGet(ckey(rc[c])); if (x >= 0 && x !== id) { const d = newMsg('DRAIN'); d.roster = kvCopy(m.roster); d.id = id; this.emit(x, d); } }
       this.drainAt = TICK + 6 + Math.trunc(this.rng() * 12); this.f.wake(id);
@@ -423,6 +426,7 @@
         this.l258Rep = false;   // L25.8.1: set only by the re-placement arm below
         if (!proof && m.pp >= 0 && m.pp === this.l25By && m.ppAt >= 0 && this.pp === m.pp && this.ppCk === ckey(this.coord) && m.ppAt > this.ppAt) { proof = true; this.l258Rep = true; this.trace('L25-REPLACED', id, this.coord, 'by=%d rival=%d at=%d mine=%d', this.l25By, m.id, m.ppAt, this.ppAt); }   // L25.8
         if (!proof && m.mpK > 0 && this.mpProven(m)) { const rt = m.mpL, mt = (this.pp >= 0 && this.ppCk === ckey(this.coord)) ? this.ppL : (this.mpK > 0 && this.mpCk === ckey(this.coord)) ? this.mpL : this.seatedAt; proof = rt < mt || (rt === mt && m.id < id); }   // L25.7
+        if (proof && !this.l258Rep) { const f = this.byeFloor(m.id, m.ck); if (f >= 0 && !(m.pp >= 0 && m.ppL >= f) && !(m.mpK > 0 && m.mpL >= f)) { proof = false; this.trace('L25.19-BYE', id, this.coord, 'rival=%d bye=%lld pp=%d ppL=%d', m.id, f, m.pp, m.ppL); } }   // L25.19: a goodbye ends the tenancy
         if (!proof) { this.trace('L25-UNPROVEN', id, this.coord, 'rival=%d pp=%d', m.id, m.pp); this.l25131Ask(m); if (this.l40Unproven(m)) return; if (this.l2513Order(m)) return; if (!this.l2512Rook(m.id)) this.l2512TellHeard(m.id); return; }   // L25.12
         if (m.pp >= 0 && this.l25131At.has(m.pp)) this.trace('L25.13.1-ADMIT', id, this.coord, 'placer=%d rival=%d', m.pp, m.id);   // L25.13.1: the placer I asked is admitted now
         this.trace('L25-CONFIRMED', id, this.coord, 'rival=%d', m.id);
@@ -609,7 +613,7 @@
         }
         if (m.tag === 1 && m.asker >= 0 && m.asker !== id && m.ck && cellOk(m.ck) && m.ck !== ckey(this.coord) && this.ownedLinkCell(m.ck) && this.occGet(m.ck) < 0) { this.setOcc(m.ck, m.asker); this.emit(m.asker, hello(ckey(this.coord), id)); return; }   // L9.9
         const r = newMsg('ROUTED'); r.tag = m.tag === K.D51_PROBE ? 2 : m.tag; r.target = cc(m.target); r.id = id; r.pn = m.pn;
-        if (this.f.fabricLinkState(id, m.asker) !== E.LS_OPEN && m.tag === 1 && this.hasCoord && ckey(m.coord) !== ckey(this.coord)) { const nh4 = this.nextHopToward(m.coord, -1); if (nh4 >= 0) { const a = newMsg('ROUTE'); a.target = cc(m.coord); a.asker = id; a.tag = 4; a.ttl = 60; a.via = id; a.pseq = ++this.w.lv.RSEQ; a.ck = ckey(this.coord); a.pn = m.pn; this.emit(nh4, a); return; } }   // L3.4.1: no channel to the asker (a NAT pair, a closed pc): the answer walks back to its cell the way the probe came
+        if (this.f.fabricLinkState(id, m.asker) !== E.LS_OPEN && m.tag === 1 && this.hasCoord && ckey(m.coord) !== ckey(this.coord) && !(m.coord.pc === 0 && this.t17Carried(m.asker))) { const nh4 = this.nextHopToward(m.coord, -1); if (nh4 >= 0) { const a = newMsg('ROUTE'); a.target = cc(m.coord); a.asker = id; a.tag = 4; a.ttl = 60; a.via = id; a.pseq = ++this.w.lv.RSEQ; a.ck = ckey(this.coord); a.pn = m.pn; this.emit(nh4, a); return; } }   // L3.4.1: no channel to the asker (a NAT pair, a closed pc): the answer walks back to its cell the way the probe came
         this.emit(m.asker, r); return;
       }
       if (m.ttl <= 0) { const r = newMsg('ROUTED'); r.tag = m.tag; r.target = cc(m.target); r.id = -1; r.pn = m.pn; this.emit(m.asker, r); return; }

@@ -4238,6 +4238,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (dcOpen && !carried) { why('starve'); tlFiredPid.add(pid); onTransportDead(pid, 'starve-dead'); continue; }
           if (seatHolds(pid)) { why('held'); continue; }   // L17
           if (p.hungUp) { why('hungup'); continue; }   // the far seat hung up on purpose (pcbye): only a seat's dial brings this pair back (seatDial)
+          // The initiator's dial is on this pc, or on its way: the polite side asks it again, never offers over it (politeWaits).
+          if (typeof politeWaits === 'function' && politeWaits(pid, p)) { why('polite-wait'); askDial(pid, p); continue; }
+          // My offer on this pair still unanswered: the far end may be slow to answer it (offerAgain), not gone. Send it again.
+          if (typeof offerAgain === 'function' && offerAgain(pid, p, 'mesh-starve')) continue;
           if (typeof clog === 'function') clog('mesh-starve rebuild ' + String(pid).slice(0, 6));
           rebuildPc(p, 'mesh-starve');
           sendOffer(pid, false);
@@ -12781,10 +12785,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const turnLog = [];
     const turnHolds = (pid) => !!(turnLinks && turnLinks.holds(pid));
     // The connection settings of a pair: TURN servers only for a link whose end here is a TURN client (never double TURN).
+    // ONE TRANSPORT PER PAIR (bundlePolicy 'max-bundle'). Under the default 'balanced' policy Firefox gives each new
+    // m-line of an offer a provisional transport of its own until the answer bundles it, and while that transport
+    // gathers it reports the whole pc as connectionState 'connecting' and iceConnectionState 'checking' (even
+    // pc.sctp.transport reads 'new'), though the pair's channel and media keep flowing on the bundled transport. Every
+    // renegotiation then read as a lost pair: a slow answer turned the tile to "no route", the reach line to "cannot
+    // reach room" and asked a friend to relay a pair that was up. With max-bundle every m-line rides the one transport
+    // from the start, so the pc's states stay true through a renegotiation. Every engine GifOS runs on supports it.
     function turnPcConfig(p) {
       const c = turnLinks && p ? turnLinks.config(p.id) : null;
-      if (!c) return { iceServers: ICE_SERVERS };
-      return { iceServers: ICE_SERVERS.concat(c.iceServers), iceTransportPolicy: c.iceTransportPolicy };
+      if (!c) return { iceServers: ICE_SERVERS, bundlePolicy: 'max-bundle' };
+      return { iceServers: ICE_SERVERS.concat(c.iceServers), iceTransportPolicy: c.iceTransportPolicy, bundlePolicy: 'max-bundle' };
     }
     // NO VIDEO ON AN UNVOUCHED LINK. Every sender of a pc is gated here, whoever seats a track on it (the main senders,
     // the stage, the mosaic forwards): a video track asked for while the link carries no video is held as the wish and
@@ -12971,9 +12982,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // congestion: the loss the far end reports on my video (RTCP receiver reports), and the selected pair's round trip
           let loss = 0, rtt = sel && +sel.currentRoundTripTime || 0;
           // limited: the estimate is what the path gives, not what a pc that sends little reports: my video already sends
-          // at least most of the estimate (bytes since the last look), or the browser says bandwidth holds it back
+          // at least most of the estimate (bytes since the last look). Not the browser's qualityLimitationReason: a step's
+          // own maxBitrate cap makes it say 'bandwidth' on a fast path (measured 2026-11-12: 'bandwidth' for 100+ s while
+          // 50 kbit went out against a 2 Mbit estimate), and that held video at the lowest step for good
           let limited = false, vBytes = 0;
-          st.forEach((x) => { if (x.type === 'remote-inbound-rtp' && x.kind === 'video') { if (+x.fractionLost > loss) loss = +x.fractionLost; } if (x.type === 'outbound-rtp' && x.kind === 'video') { vBytes += +x.bytesSent || 0; if (x.qualityLimitationReason === 'bandwidth') limited = true; } });   // (the round trip: the selected pair's own, one clock)
+          st.forEach((x) => { if (x.type === 'remote-inbound-rtp' && x.kind === 'video') { if (+x.fractionLost > loss) loss = +x.fractionLost; } if (x.type === 'outbound-rtp' && x.kind === 'video') vBytes += +x.bytesSent || 0; });   // (the round trip: the selected pair's own, one clock)
           const lastV = turnSent.get(pid), tNow = Date.now(); turnSent.set(pid, { b: vBytes, t: tNow });
           if (lastV && tNow > lastV.t && vBytes >= lastV.b && (vBytes - lastV.b) * 8000 / (tNow - lastV.t) >= 0.7 * bps) limited = true;
           if (turnLinks.video(pid)) turnLinks.onCapacity(pid, bps, loss, rtt, limited);
@@ -13695,10 +13708,78 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         .then(() => {
           settled();
           if (p.pc !== pc) return; // rebuilt while minting: this offer belongs to a closed pc
-          p.offerSentAt = Date.now(); p.offerSentPc = pc;
+          p.offerSentAt = Date.now(); p.offerSentPc = pc; p.offerSentKey = typeof offerKeyOf === 'function' ? offerKeyOf(pc.localDescription) : '';   // offerAgain sends only this offer again
           sendSig(peerId, Object.assign({ kind: 'offer', sdp: pc.localDescription, ib: 1, dr: (() => { const ms = meshSeat(); return ms && ms.hasCoord && ms.state === 3 && ms.seatTick - ms.seatedAt > 40 ? 0 : 1; })() }, sigMeta()));
         })
         .catch((e) => { settled(); if (p.pc === pc) noteNegFail('offer', peerId, e); });
+    }
+    // A SLOW PAGE IS NOT A LOST OFFER (2026-11-12, r26-redial). A page on a fifth of a core takes seconds to set an offer
+    // and answer it, and its "dial me" requests made before it got there keep coming. Each request rebuilt the pc and sent
+    // a new offer: a new pc means a new certificate, the far end threw its half-made answer away (offer-new-pc) and began
+    // again, and the pair restarted about once a second and never formed. An unanswered offer is sent AGAIN instead, the
+    // same description on the same pc, with the candidates it has gathered (the relay's bootstrap carries none). A far end
+    // still answering it ignores the copy, one that answered sends its answer again, and one that lost it takes it now:
+    // every case moves forward and none starts over. Returns false when there is no such offer to send.
+    function candsOfDesc(desc) {
+      const out = []; let mi = -1, mid = null;
+      for (const l of String((desc && desc.sdp) || '').split(/\r?\n/)) {
+        if (l.startsWith('m=')) { mi++; mid = null; } else if (l.startsWith('a=mid:')) mid = l.slice(6);
+        else if (l.startsWith('a=candidate:') && mi >= 0) out.push({ candidate: l.slice(2), sdpMid: mid == null ? String(mi) : mid, sdpMLineIndex: mi });
+      }
+      return out;
+    }
+    // THE POLITE SIDE NEVER OFFERS OVER THE INITIATOR'S DIAL (2026-11-12, r26-redial2). The polite side's own offer is
+    // the deadlock breaker for an initiator that was never asked and never dialled. One that has been asked, or has
+    // dialled, is waited for and asked again (askDial, which reaches it by the same ways an offer would): on a pc that
+    // has not yet connected, its offer is on this pc (taken, its answer being made or sent), or its name came since
+    // this pc was built (the name rides ahead of the offer), or my ask for its dial left since this pc was built.
+    // A slow page that offered anyway crossed the dial it had asked for: the initiator yielded to it on a fresh pc,
+    // and that answer could not apply on the polite pc, which had taken the first offer (Firefox: "Remote description
+    // indicates ICE restart"); with a slow initiator, both sides yielded to each other and the pair was lost.
+    // The initiator's own clocks (cure, door retry, dial requests) still re-dial a pair that does not form.
+    function politeWaits(pid, p) {
+      const pc = p && p.pc;
+      if (!pc || iInitiate(pid)) return false;
+      const cs = pc.connectionState;
+      if (cs !== 'new' && cs !== 'connecting') return false;   // a failed or broken transport is restarted as before
+      const took = p.neg && p.neg.tookOffer;
+      if (took && took.pc === pc) return true;
+      const built = pcBuiltAt(p);
+      return (!!p.initHeardAt && p.initHeardAt >= built) || (!!p.dialReqAt && p.dialReqAt >= built);
+    }
+    // An answer that cannot apply because the far end answered on another pc (its ICE credentials changed while my offer
+    // asked for no restart) leaves my pc in have-local-offer for good. Both ends start the pair over on fresh pcs: the
+    // initiator dials, the polite side asks for that dial.
+    function answerMismatch(p, from, e) {
+      if (!p || !p.pc || leaving) return;
+      if (typeof clog === 'function') clog('answer-mismatch ' + String(from).slice(0, 6) + ': fresh pc, ' + (iInitiate(from) ? 'dial' : 'ask'));
+      rebuildPc(p, 'answer-mismatch');
+      if (iInitiate(from)) sendOffer(from, false); else { p.dialReqAt = 0; askDial(from, p); }
+    }
+    function offerAgain(peerId, p, why) {
+      const pc = p && p.pc;
+      // Only the dial itself, still pending: a renegotiation pending on the same pc has its own way (offer-stale) and its own answer.
+      if (!pc || p.offerSentPc !== pc || pc.signalingState !== 'have-local-offer' || !pc.localDescription || offerKeyOf(pc.localDescription) !== p.offerSentKey || p.neg.minting) return false;
+      if (pc.connectionState === 'failed' || pc.connectionState === 'closed') return false;
+      // A description that carries media never rides the relay, and with no friend's channel it has no way at all (sendSig
+      // drops it): only a rebuild, media-free, can dial. Sending such a copy again held a door unanswered until a friend came.
+      if (!(net.bootOf && net.bootOf(pc.localDescription, 0)) && !(typeof friendDcOpen === 'function' && friendDcOpen(peerId))) return false;
+      sendSig(peerId, Object.assign({ kind: 'offer', sdp: pc.localDescription, ib: 1, dr: (() => { const ms = meshSeat(); return ms && ms.hasCoord && ms.state === 3 && ms.seatTick - ms.seatedAt > 40 ? 0 : 1; })() }, sigMeta()));
+      const cands = candsOfDesc(pc.localDescription);
+      if (cands.length) { if (iceBatchOk(peerId)) sendSig(peerId, { kind: 'ice', candidates: cands }); else for (const c of cands) sendSig(peerId, { kind: 'ice', candidate: c }); }
+      if (typeof clog === 'function') clog('offer-again ' + String(peerId).slice(0, 6) + ' ' + why + ' ' + Math.round((Date.now() - (p.offerSentAt || 0)) / 100) / 10 + 's');
+      return true;
+    }
+    // The key of an offer: its certificate, its ICE credentials and its m-lines (kind, mid, direction). A copy has the same
+    // key, whichever way it travelled (the relay's bootstrap rewrites the o= line, and candidates gathered later change the
+    // address lines); a renegotiation, an ICE restart or a rebuild does not.
+    function offerKeyOf(sdp) {
+      const k = [];
+      for (const l of String(sdp && sdp.sdp || sdp || '').split(/\r?\n/)) {
+        if (/^a=(fingerprint|ice-ufrag|ice-pwd|mid):/.test(l) || /^a=(sendrecv|sendonly|recvonly|inactive)$/.test(l)) k.push(l);
+        else if (l.startsWith('m=')) k.push(l.split(' ')[0]);
+      }
+      return k.join('|');
     }
 
     // ============================ STATUS GOSSIP ==============================
@@ -13983,6 +14064,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           else if (Date.now() - (doorsShut.get(from) || 0) < DOOR_SHUT_MS) p.bootOut = true;
           if (typeof clog === 'function') clog('door-in ' + String(from).slice(0, 6) + ' out=' + !!p.bootOut + ' new=' + !p.pc + ' age=' + Math.round((Date.now() - (p.bornAt || 0)) / 1000));
         }
+        // A COPY OF THE OFFER THIS PC TOOK (offerAgain: the dialler sent it again while I was slow to answer, or my answer
+        // was lost). Still answering: the answer is on its way. Answered: the same answer goes again. Set twice it would
+        // throw on a pc that has moved on, and a rebuild would start the pair over.
+        const offerKey = typeof offerKeyOf === 'function' ? offerKeyOf(msg.sdp) : '', took0 = offerKey && p.neg && p.neg.tookOffer;
+        if (p.pc && took0 && took0.pc === p.pc && took0.key === offerKey && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed') {
+          if (took0.answer) {
+            sendSig(from, Object.assign({ kind: 'answer', sdp: took0.answer, ib: 1 }, sigMeta()));
+            const cands = typeof candsOfDesc === 'function' ? candsOfDesc(p.pc.localDescription) : [];
+            if (cands.length) sendSig(from, { kind: 'ice', candidates: cands });
+          }
+          if (typeof clog === 'function') clog('offer-copy ' + String(from).slice(0, 6) + (took0.answer ? ': answer again' : ': answering'));
+          return;
+        }
         { const fresh = offerNeedsFreshPc(p, msg); if (fresh) rebuildPc(p, fresh); }
         { const fp = offerFpOf(msg.sdp); if (fp) p.neg.offerFp = fp; }
         drainPreIce(from, p); // after any rebuild, which clears pendingIce
@@ -13998,8 +14092,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // side recovers from a never-arriving remote offer (see sweeper). The
         // polite peer (lower id) rolls back its local offer and accepts; the
         // impolite peer ignores the remote offer and keeps its own.
-        const accept = () => { const pc = p.pc; return answerOffer(pc, p, msg, true, (sdp) => sendSig(from, Object.assign({ kind: 'answer', sdp, ib: 1 }, sigMeta())))
-          .catch((e) => { if (p.pc !== pc) return; noteNegFail('accept', from, e); if (/extension ID reassignment/i.test(String((e && e.message) || ''))) maybeRebuildNeg(p, e); }); };
+        const accept = () => { const pc = p.pc; const took = offerKey ? { key: offerKey, pc, answer: null } : null; if (took) p.neg.tookOffer = took;
+          return answerOffer(pc, p, msg, true, (sdp) => { if (took) took.answer = sdp; sendSig(from, Object.assign({ kind: 'answer', sdp, ib: 1 }, sigMeta())); })
+          .catch((e) => { if (took && p.neg.tookOffer === took) p.neg.tookOffer = null; if (p.pc !== pc) return; noteNegFail('accept', from, e); if (/extension ID reassignment/i.test(String((e && e.message) || ''))) maybeRebuildNeg(p, e); }); };
         // A COLLISION is my own offer applied (have-local-offer) or, on a pair
         // with no live transport, still being minted (p.neg.minting — see
         // sendOffer; the pc reads 'stable' until it lands).
@@ -14061,10 +14156,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // A second copy of an answer we already applied is in 'stable'.
         // Setting it again throws and used to be swallowed as if it landed.
         if (!p.pc || p.pc.signalingState !== 'have-local-offer') { rxStats.answerStale++; return; }
+        // AN ANSWER IS FOR THE DIAL IT ANSWERS (r26-redial2). This path answers sendOffer's dial; a renegotiation is
+        // answered on the channel (ranswer). A copy of the dial's answer (the far end sends it again for each copy of
+        // the dial, offerAgain) that lands after the pair went up and began a renegotiation is for an offer this pc no
+        // longer holds: set on the renegotiation it failed ("different number of m-lines") and wrecked the pair.
+        if (p.offerSentPc === p.pc && p.offerSentKey && typeof offerKeyOf === 'function' && offerKeyOf(p.pc.localDescription) !== p.offerSentKey) {
+          rxStats.answerStale++;
+          if (typeof clog === 'function') clog('answer-stale ' + String(from).slice(0, 6) + ': not for the offer this pc holds');
+          return;
+        }
         const negA = p.neg; if (negA) negA.answerIn = true;   // this pc's offer has its answer in hand: no longer unanswered (onDialRequest), though the pc reads have-local-offer until it is set
-        p.pc.setRemoteDescription(msg.sdp)
+        const pcA = p.pc;
+        pcA.setRemoteDescription(msg.sdp)
           .then(() => { for (const c of p.pendingIce.splice(0)) p.pc.addIceCandidate(c).catch(() => {}); })
-          .catch((e) => { if (negA) negA.answerIn = false; noteNegFail('answer', from, e); if (/extension ID reassignment/i.test(String((e && e.message) || ''))) maybeRebuildNeg(peers.get(from), e); });
+          .catch((e) => { if (negA) negA.answerIn = false; noteNegFail('answer', from, e);
+            const em = String((e && e.message) || ''), q = peers.get(from);
+            if (/extension ID reassignment/i.test(em)) maybeRebuildNeg(q, e);
+            else if (q && q.pc === pcA && pcA.signalingState === 'have-local-offer' && /ICE restart|ice-ufrag|ice-pwd/i.test(em)) answerMismatch(q, from, e);
+          });
       } else if (msg.kind === 'ice') {
         const cands = iceCandsOf(msg);
         const p = peers.get(from);
@@ -14364,6 +14473,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return now - p.checkingSince < ICE_FINISH_MS;
     }
     function onDialRequest(p) {
+      // From the pair's initiator a name is never an ask: it rides ahead of its offer (relayBootSend). That dial is on its way (politeWaits).
+      if (p && p.id && !iInitiate(p.id)) p.initHeardAt = Date.now();
       const pLive = p.connected && p.dc && p.dc.readyState === 'open';
       const answering = !!(p.pc && p.neg && p.neg.answerIn && p.pc.signalingState === 'have-local-offer');   // the answer is being set: the name that rides behind it is no ask
       const unanswered = !!(p.pc && p.pc.signalingState === 'have-local-offer') && !answering;
@@ -14392,6 +14503,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // pair's return (066ba4-room-six: 12.6 s). A dark offer is re-made after 2 s.
       if ((participantCount() <= 1 || !pLive) && !forming && iInitiate(p.id) && Date.now() - (p.fragDialAt || 0) > (darkOffer ? 2000 : 5000)) {
         p.fragDialAt = Date.now();
+        // My offer not answered yet goes again on the same pc (offerAgain): a new pc would throw away the far end's half-made answer.
+        if (darkOffer && !pLive && typeof offerAgain === 'function' && offerAgain(p.id, p, 'dial-request')) return;
         if (!pLive && p.pc) rebuildPc(p, 'frag-dial');
         makePeer(p.id, null); sendOffer(p.id, false);
       }
@@ -14461,6 +14574,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // A stale transport — an offer never answered, a pair dead since a
       // dark spell — is rebuilt: the door needs a fresh bootstrap, not a
       // renegotiation of a corpse.
+      // ...but my offer still unanswered is not a corpse: a slow far end may be answering it. It goes again on the same pc.
+      // ...and a polite knocker still answering the greeter's offer on this pc (a slow page making its answer) keeps it:
+      // a rebuild threw that offer away mid-answer, and the greeter's next one met the same fate (door-redial every 4 s).
+      const tookD = p && p.neg && p.neg.tookOffer;
+      if (p && p.pc && !iInitiate(pid) && tookD && tookD.pc === p.pc && !tookD.answer && cs !== 'failed' && cs !== 'closed') {
+        if (typeof clog === 'function') clog('door-wait ' + String(pid).slice(0, 6) + ' answering');
+        if (!manyDoors) armDoorRetry(pid, p);
+        return;
+      }
+      if (p && p.pc && iInitiate(pid) && typeof offerAgain === 'function' && offerAgain(pid, p, 'door')) {
+        const q1 = peers.get(pid); if (q1) { q1.boot = true; q1.bootOut = true; if (!manyDoors) armDoorRetry(pid, q1); else if (q1.neverUp === true) q1.dialWait = Math.min(DOOR_REDIAL_CAP, (q1.dialWait || 5000) * 2); }
+        return;
+      }
       if (p && p.pc) { rebuildPc(p, 'door-redial'); if (p.neverUp === true && manyDoors) p.dialWait = Math.min(DOOR_REDIAL_CAP, (p.dialWait || 5000) * 2); }
       // THE INITIATOR DIALS THE DOOR. A knocker's offer is also a name, and
       // that name is a dial request: the id-order initiator offers back
@@ -17341,7 +17467,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // tear it down before it can gather.
           const iceCure = p.pc.iceConnectionState;
           const dtlsStuck = (iceCure === 'connected' || iceCure === 'completed') && st === 'connecting';
-          if (now - p.downSince > 25000 || dtlsStuck) { rebuildPc(p, dtlsStuck ? 'dtls-stuck' : 'down-25s'); sendOffer(pid); }
+          if (!dtlsStuck && typeof offerAgain === 'function' && offerAgain(pid, p, 'cure')) { /* my offer still unanswered: sent again, not rebuilt */ }
+          else if (now - p.downSince > 25000 || dtlsStuck) { rebuildPc(p, dtlsStuck ? 'dtls-stuck' : 'down-25s'); sendOffer(pid); }
           else { p.checkingSince = now; sendOffer(pid, true); }
         }
         // D5 (mesh early-probe): a pc sitting in 'failed' PAST the ICE-restart
@@ -17381,7 +17508,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             && (iInitiate(pid) || (p.downSince && now - p.downSince > 4000))) {
           p.lastKick = now + Math.random() * 1500;
           p.altPath = !p.altPath; // §FWD transport rotation — a rotting relay path must not eat every retry
-          sendOffer(pid, st !== 'new' && st !== 'connecting');
+          // ...but not over the initiator's dial: the polite side whose initiator has dialled asks it again instead (politeWaits).
+          if (politeWaits(pid, p)) askDial(pid, p);
+          else sendOffer(pid, st !== 'new' && st !== 'connecting');
         }
         // A RENEGOTIATION LOST IN THE DARK. roffer/ranswer ride the channel
         // once, unacked: one sent while the far radio is out is simply gone,
@@ -21436,6 +21565,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         applyRoffer(m);
       } else if (m.k === 'ranswer') {
         if (!p.pc) return;
+        // DEBUG lever (renegAllForTest): a renegotiation answer is applied only after __ranswerHoldMs, as from a far end that answers late.
+        if (DEBUG_ON && +window.__ranswerHoldMs > 0 && m.oid != null && !m.__held) {
+          const held = Object.assign({}, m, { __held: true }); const hp = p;
+          if (typeof clog === 'function') clog('ranswer-hold ' + String(p.id).slice(0, 6) + ' ' + m.oid + ' ' + window.__ranswerHoldMs + 'ms');
+          setTimeout(() => { if (peers.get(hp.id) === hp) onDc(hp, hp.dc, held); }, +window.__ranswerHoldMs);
+          return;
+        }
         // An answer names its offer. One for an offer this pc does not hold now (already answered, rolled back in a glare, or
         // made on a pc since rebuilt) is stale: applying it threw the m-line mismatch that rebuilt live pcs.
         if (m.oid != null) {
@@ -38463,6 +38599,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (window.__parkedJobs) window.__parkedJobs.delete(jk);
         setJobActive(jk, true);
         return { ok: true, active: !!(mosJobs.get(jk) || {}).active };
+      },
+      // DEBUG lever: renegotiate EVERY pair at once, each offer with one new m-line (an inactive video
+      // transceiver, the shape a stage copy or a fold adds), and with holdMs hold each answer that long before it is applied
+      // (window.__ranswerHoldMs): every pc sits in have-local-offer while its channel and media keep flowing, as a far end
+      // that answers late leaves it. Returns the pairs it kicked.
+      renegAllForTest: (holdMs) => {
+        if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
+        window.__ranswerHoldMs = +holdMs || 0;
+        const out = [];
+        for (const p of peers.values()) {
+          if (!p.pc || !p.dc || p.dc.readyState !== 'open' || p.pc.signalingState !== 'stable') continue;
+          try { p.pc.addTransceiver('video', { direction: 'inactive' }); } catch (e) { continue; }
+          renegotiate(p); out.push(String(p.id).slice(0, 8));
+        }
+        return { ok: true, kicked: out, holdMs: window.__ranswerHoldMs };
       },
       severPair: (pid, ms) => {
         if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
