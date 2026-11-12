@@ -361,7 +361,12 @@
         if (ownEarly && this.l2OwnerHold(ok)) ownEarly = false;
         // L47: never blind on a D5 verdict. A head with no live link but the dead one (or that knows no Section-1 seat but its owner) probed over no path: its verdict says the pair died, not the owner. Healed anyway, a live owner's cell gets a tenant that reaches nobody and stays (a second home ring, a stage feed shipped into it). Knock again, as D6 does.
         const e2Death = haveOc && this.ownDeadCk === ok && (this.ownDeadId >= 0 || (this.occGet(ok) < 0)) && (this.occGet(ok) < 0 || this.occGet(ok) === this.ownDeadId) && TICK - this.ownDeadAt <= 2 * 8 + K.EARLY_HOLD && TICK - this.ownVouchAt > 2 * 8 + K.EARLY_HOLD;   /* L2.9's proof: the backup owner's report of my owner's hard death */
-        if (ownEarly && oc.pc === 0 && !this.ownPathUp(ok)) { if (L47_3_OFF || !e2Death) { this.requeue('L47-blind'); this.f.wake(id); return false; } this.trace('L47.3', id, oc, 'e2 report age=%d', (TICK - this.ownDeadAt) | 0); }   /* L47.3: a death the backup owner confirmed is not a blind verdict */
+        if (ownEarly && oc.pc === 0 && !this.ownPathUp(ok)) {   /* L47.3: a blind verdict waits for the backup owner's word */
+          const rep = !L47_3_OFF && haveOc && this.ownDeadCk === ok && TICK - this.ownDeadAt <= 2 * 8 + K.EARLY_HOLD;
+          if (!rep) { this.requeue('L47-blind'); this.f.wake(id); return false; }
+          if (!e2Death) { this.trace('L47.3-WAIT', id, oc, 'report age=%d vouch age=%d', (TICK - this.ownDeadAt) | 0, (TICK - this.ownVouchAt) | 0); this.f.wake(id); return false; }
+          this.trace('L47.3', id, oc, 'e2 report age=%d', (TICK - this.ownDeadAt) | 0);
+        }
         if (!ownEarly && e2Death) {   /* L1.4 */
           ownEarly = true; if (this.l2DeathTr !== this.ownDeadAt) { this.l2DeathTr = this.ownDeadAt; this.trace('L2-DEATH', id, oc, 'via=e2'); }
         }   // L2.9
