@@ -197,6 +197,7 @@
       if (lv.TIERS_ACTIVE && nc >= 0 && nc !== id && f.tag !== 1) { if (this.tierSeen.size >= 96 && !this.tierSeen.has(nc)) eraseFirst(this.tierSeen); this.tierSeen.set(nc, l4Pack(f.tier, f.nat)); }   // L4.1
       this.f.fabricAdmitLog(k, id);   // V4 forensics
       this.trace('ADMIT', id, c, 'nc=%d site=%s tag=%d', nc, site, f.tag);
+      this.l850Seated = true;   // L8.50: a founder that admits a seat is no ring of one
       if (f.tag !== 1) this.l710Dial(c, nc);   // L7.10
       this.tlForget(k);   // the cell genuinely refills
       const nbrs = []; const ol = ownedLinks(c); const n = ol.length;
@@ -257,7 +258,7 @@
       const dkDeep = mm.dk;
       const t14x = this.coord.pc === 0 && mm.tag !== 1 && this.f.fabricTurnAcross(id);   /* TURN.14: the ring I sit in lies across my TURN link */
       const t14s = this.coord.pc === 0 && mm.tag !== 1 && mm.t14 > 0 && mm.from === id;   /* TURN.14.11: an ask of my side that I stopped at my TURN pc */
-      const t14 = t14s || (t14x && !this.f.fabricTurnPc(id, mm.nc) && (this.linkIs(mm, mm.nc) || this.f.fabricTurnMine(id, mm.nc)));   /* TURN.14.1: a seeker on my side of the link sits under me */
+      const t14 = t14s || (t14x && !this.f.fabricTurnPc(id, mm.nc) && (this.linkIs(mm, mm.nc) || this.f.fabricTurnMine(id, mm.nc)) && !this.f.fabricTurnBoth(id, mm.nc));   /* TURN.14.1: a seeker on my side of the link sits under me */
       if (t14) this.trace('TURN14-UNDER', id, this.coord, 'nc=%d', mm.nc);
       if (this.coord.pc === 0 && !dkDeep && !t14) {
         if (this.serveFindS1(mm, skip)) return;

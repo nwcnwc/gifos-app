@@ -36,6 +36,8 @@
   const LS_CLOSED = E.LS_CLOSED, LS_OPEN = E.LS_OPEN;
 
   const mtInt = (t) => msg.MT_NAMES.indexOf(t);   // (int)m.t: the sim's MT enum is in MT_NAMES order
+  // the sim's #define L16_15_OFF in mesh_seat.inc (a build-time switch): MESH_L16_15_OFF=1 under node, read once at load; a page always runs the law
+  const L16_15_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L16_15_OFF === '1') ? 1 : 0;
   const answerType = (t) => t === 'NOROOM' || t === 'PLACE' || t === 'FIND' || t === 'FINDACK';
 
   // ---- routing ---------------------------------------------------------------------------------------------
@@ -161,6 +163,8 @@
         const h = msg.clone(m); h.routing = false;
         h.direct = true; this.emit(m.rfinal, h); return false;   // direct hand-off over the link
       }
+      // L16.15: an entry ask that reaches the gateway it names is answered there
+      if (!L16_15_OFF && m.t === 'WHOHOME' && m.sgw === id && this.hasCoord && this.state === 3) { this.trace('L16.15-GATEWAY', id, this.coord, 'from=%d dst=%s', m.from, coordStr(m.rdst)); m.routing = false; return true; }
       if (m.rttl <= 0) { if (m.rfinal >= 0 && answerType(m.t)) this.trace('ROUTE-DROP', id, this.hasCoord ? this.coord : null, 'mt=%d final=%d dst=%s why=ttl', mtInt(m.t), m.rfinal, coordStr(m.rdst)); return false; }   // give up: sender retries
       const nh = m.l18 ? this.f.l18Hop(id, cc(m.rdst), m.rvia) : this.strictNextHop(m.rdst);   // L18: round a hole on my own links
       if (!m.adoor && this.answerDoor(nh, m.rfinal, m)) { const d = msg.clone(m); d.routing = false; d.rfinal = -1; d.gwc = true; d.adoor = true; this.emit(m.rfinal, d); return false; }   // L16.3

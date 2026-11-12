@@ -188,7 +188,7 @@
       const id = this.id;
       if (m.t === 'PLACE') { if (m.nc === to) return false; this.trace('TURN14-NOPLACE', id, this.hasCoord ? this.coord : null, 'nc=%d to=%d', m.nc, to); return true; }
       if (m.tag === 1) return false;   // a compaction walk passes (the far end answers it, TURN.14.2/14.3)
-      if (!this.f.fabricTurnMine(id, m.nc)) return false;   // a seeker I cannot tell is mine: as before
+      if (!this.f.fabricTurnMine(id, m.nc) || this.f.fabricTurnBoth(id, m.nc)) return false;   // a seeker I cannot tell is mine (TURN.14.14: or one that reaches the far end too): as before
       if (!this.hasCoord || this.state !== 3 || m.t14 > 0) { this.trace('TURN14-STOP', id, this.hasCoord ? this.coord : null, 'nc=%d to=%d drop', m.nc, to); return true; }   // between two cells I seat nobody: the seeker asks again
       this.trace('TURN14-STOP', id, this.coord, 'nc=%d to=%d', m.nc, to);
       const mm = msg.clone(m); mm.routing = false; mm.rfinal = -1; mm.direct = false; mm.l18 = false; mm.fhTo = -1; mm.fhOrig = -1; mm.fhTtl = 0; mm.fhId = 0; mm.fhTc = 0; mm.t14 = 1; this.emit(id, mm); return true;

@@ -51,7 +51,7 @@
     'fabricSend', 'fabricUnreachable', 'fabricVerdict', 'fhopActive', 'fhopFriendFor', 'l164Of', 'l18Deliv',
     'l18Hop', 'l18UxDeliv', 'l222Note', 'l22Agree', 'l23GreetRelease', 'l22Close', 'l22CloseAsk', 'l22Need', 'l22Quiet', 'l28Reply',
     'l915Note', 'relayKnock', 'relayUnlist', 'descEnd', 'descNote', 'wake', 'fabricAudit', 'fabricDoorHeard', 'g4Joined', 'fabricDropHalf', 'fabricLinkCarries',
-    'fabricTurnOn', 'fabricTurnPc', 'fabricTurnOpener', 'fabricTurnStray', 'fabricTurnLone', 'fabricTurnAcross', 'fabricTurnMine', 'fabricTurnCarried', 'fabricTurnFeeds',   /* TURN.14 (mesh_turn.inc) */
+    'fabricTurnOn', 'fabricTurnPc', 'fabricTurnOpener', 'fabricTurnStray', 'fabricTurnLone', 'fabricTurnAcross', 'fabricTurnMine', 'fabricTurnCarried', 'fabricTurnFeeds', 'fabricTurnBoth', 'fabricTurnPeerIn',   /* TURN.14 (mesh_turn.inc) */
   ]);
 
   // A fabric that refuses every call: the interface a harness or the page adapter fills in.
@@ -77,7 +77,7 @@
       this.rs = rngM.seedFor(i);   // FNV-1a 32 of "p%08d" xor 0x9e3779b9
       const h = (this.rs ^ 0x9e3779b9) >>> 0;
       const z = hash.fmix32(hash.hmixId(hash.H_INIT, i + 1)); this.myKey = (z | 1) >>> 0;
-      this.linkKey = lv.ISLAND_MODE ? lv.URL_KEY : this.myKey;
+      this.linkKey = (lv.ISLAND_MODE || lv.LINKKEY_ALL || LINKKEY_ENV) ? lv.URL_KEY : this.myKey;   // C++: linkkeyOn()
       if (lv.NET_SKEW > 0) this.skew = (h >>> 3) % ((lv.NET_SKEW + 1) >>> 0);
       if (lv.CLK_OFF > 0) { const q = hash.fmix32((z ^ 0x636c6b) >>> 0); this.clkHeld = -(q % ((lv.CLK_OFF + 1) >>> 0)); }
     }
@@ -113,6 +113,12 @@
   const K = C_.consts, E = C_.enums;
   const { ckey, ckPc, ckR, ckI, unckey, ownedLinks, rowMates, colMates, down, up, childPath, pcDepth } = topo;
   const C = topo.C;
+  // MESH_LINKKEY=1 under node is the sim's linkkeyEnv(): every page holds the meeting key for a whole run
+  const LINKKEY_ENV = (isNode && typeof process !== 'undefined' && process.env && parseInt(process.env.MESH_LINKKEY, 10)) ? 1 : 0;
+  // the sim's #define L8_50_OFF in mesh.cpp (a build-time switch): MESH_L8_50_OFF=1 under node, read once at load; a page always runs the law
+  const L8_50_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L8_50_OFF === '1') ? 1 : 0;
+  // the sim's #define L8_52_OFF in mesh.cpp (a build-time switch): MESH_L8_52_OFF=1 under node, read once at load; a page always runs the law
+  const L8_52_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L8_52_OFF === '1') ? 1 : 0;
   const { ins, eraseFirst } = req('./util.js', 'meshUtil');
   const dig = req('./dig.js', 'meshDig');
 
@@ -850,7 +856,7 @@
       const id = this.id, TICK = this.TICK, lv = this.w.lv;
       if (this.hostDenseLeaf >= 0 && m.t === 'YIELD') return;   // `hostile densify`: the page never evicts the seat it placed (harness gaps3-fab.js)
       if (m.line < 0 && this.line >= 0 && (((m.t === 'HELLO' || m.t === 'PHONE' || m.t === 'PONG' || m.t === 'CONFIRM' || m.t === 'LEAVE' || m.t === 'HOME') && m.id === id) || (m.t === 'WALK' && m.asker === id) || (m.t === 'PLACE' && m.pp === id))) {
-        const mm = msg.clone(m); mm.line = (this.hostile & K.H_RINGLIE_BIT) ? K.RINGLIE_LINE : this.line; mm.lineF = this.lineFork; mm.cutF = (this.cutAt >= 0 || this.cutHeardAt >= 0); this.emit(to, mm); return;   // L8.38
+        const mm = msg.clone(m); mm.line = (this.hostile & K.H_RINGLIE_BIT) ? K.RINGLIE_LINE : this.line; if (!L8_52_OFF) { mm.lineAt = this.lineAt; } mm.lineF = this.lineFork; mm.cutF = (this.cutAt >= 0 || this.cutHeardAt >= 0); this.emit(to, mm); return;   // L8.38
       }
       if (this.vban.size && !this.kIgnore && (this.kBanned(to) || ((m.t === 'PLACE' || m.t === 'FIND' || m.t === 'FINDACK' || m.t === 'NOROOM') && this.kBanned(m.nc)) || (m.routing && this.kBanned(m.rfinal)))) { this.kTx++; return; }   // L27
       if (m.t === 'YIELD' && m.id === id && !m.yp && to >= 0 && to !== id) { if (this.l24Yielded.size > 128) this.l24Yielded.clear(); this.l24Yielded.set(to, TICK); }   // L24
@@ -871,7 +877,7 @@
         }
       }
       if (roomTerm(this, 1) && m.t === 'PONG' && m.id === id && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); this.emit(to, mm); return; }   // L8.31
-      if (roomTerm(this, 1) && m.t === 'HELLO' && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); mm.c7Held = this.l845Held(); mm.c7One = this.ringAlone() || this.f.fabricTurnAcross(id) /* TURN.14.10: the end of a TURN link whose ring lies across it is the one seat of that ring its own side can hear: its vouch is the ring's word there */; this.emit(to, mm); return; }   // L8.5 (L8.5.2: c7One says my ring holds nobody else)
+      if (roomTerm(this, 1) && m.t === 'HELLO' && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); mm.c7Held = this.l845Held(); { const own = this.ringAlone() || (!L8_50_OFF && this.l850Lone()); mm.c7One = own || this.f.fabricTurnAcross(id); if (!L8_52_OFF) mm.c7Link = mm.c7One && !own; }   /* L8.52.5: c7Link, the 'alone' of a TURN link end */ /* L8.50: a founder that has seated nobody is its ring, whatever its view has absorbed from a room it has one pc into */ /* TURN.14.10: the end of a TURN link whose ring lies across it is the one seat of that ring its own side can hear: its vouch is the ring's word there */ this.emit(to, mm); return; }   // L8.5 (L8.5.2: c7One says my ring holds nobody else)
       if (roomTerm(this, 1) && ((m.t === 'HOME' && m.id === id) || (m.t === 'PLACE' && m.pp === id)) && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); this.emit(to, mm); return; }   // L8.5.1
       if (m.nc >= 0 && m.nc !== id && to !== id && to >= 0 && (m.t === 'FIND' || m.t === 'PLACE') && this.f.fabricTurnPc(id, to) && this.t14Cross(to, m)) return;   /* TURN.14.11 */
       if (m.t === 'PLACE' && m.pp === id && m.t14 < 0 && this.hasCoord && this.state === 3 && this.f.fabricTurnOn()) { const mm = msg.clone(m); const w = this.t14Word(); mm.t14 = (w > 0 && FREE.t14Under(m.coord, w)) ? w : 0; this.emit(to, mm); return; }   /* TURN.14.5: my placement says whether the cell hangs under a link end */
