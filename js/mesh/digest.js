@@ -51,6 +51,8 @@
     }
     return true;
   }
+  // C++: mesh_seat.inc:t14Under   (cell c is the cell the word w names, or lies in its subtree)
+  function t14Under(c, w) { if (w <= 0) return false; const R = unckey(w - 1); if (c.pc === 0) return c.r === R.r && c.i === R.i; const [r0, col] = l12Origin(c); return r0 === R.r && col === R.i; }
   // C++: mesh_seat.inc:l12Origin
   // returns [r0, col]
   function l12Origin(seeker) {
@@ -83,6 +85,7 @@
     }
     return null;
   }
+  Seat.free({ t14Under });
   Seat.unit('mesh_seat.inc compaction', {
     // C++: mesh_seat.inc:Seat::l12SectionLone
     l12SectionLone() {
@@ -105,7 +108,7 @@
         const rr = cand[0], cc2 = cand[1];
         if (rr === this.coord.r && cc2 === this.coord.i) {
           const ch = down(this.coord);
-          if (pcDepth(ch.pc) < sd) {
+          if (pcDepth(ch.pc) < sd && !this.f.fabricTurnAcross(id)) {   /* TURN.14.3: my child row is my side of the link */
             const dk = ckey(ch), x = this.occGet(dk);
             if (x >= 0 && x !== id && this.firstHandLive(dk)) { const m = msg.clone(mm); m.ttl--; m.l12s = 2; this.emit(x, m); return true; }
           }
@@ -152,6 +155,16 @@
       }
       mm.l12s = 1; mm.l12n = 0; return this.l12Step(mm);
     },
+    // TURN.14.5 THE SUBTREE UNDER A LINK'S END KNOWS IT, AND STAYS. The end's word is its Section-1 cell (key + 1); a seat that
+    // holds the word moves to no cell outside that subtree (doMove). It clears itself: the end says "none" on the first beat
+    // after its link closes, and a word not heard for a lease is void.
+    // C++: mesh_seat.inc:Seat::t14Word
+    t14Word() { if (!this.hasCoord || this.state !== 3) return 0; if (this.coord.pc === 0) return this.f.fabricTurnAcross(this.id) ? ckey(this.coord) + 1 : 0; return (this.t14Ck > 0 && this.TICK - this.t14At <= K.LEASE_T && t14Under(this.coord, this.t14Ck)) ? this.t14Ck : 0; },
+    // C++: mesh_seat.inc:Seat::t14Stay
+    t14Stay(c) { if (!this.hasCoord || this.state !== 3 || this.coord.pc === 0 || this.t14Ck <= 0 || this.TICK - this.t14At > K.LEASE_T || !t14Under(this.coord, this.t14Ck)) return false; return !t14Under(c, this.t14Ck); },
+    // TURN.14.7 THE END KEEPS ITS CELL WHILE ITS SIDE HANGS UNDER IT: the end with a child row makes no move and no exchange.
+    // C++: mesh_seat.inc:Seat::t14Fixed
+    t14Fixed() { return this.hasCoord && this.state === 3 && this.coord.pc === 0 && this.occGet(ckey(down(this.coord))) >= 0 && this.f.fabricTurnAcross(this.id); },
     // L3.10.9: the cell is inside the returner's window.
     // C++: mesh_seat.inc:Seat::l3109Wait
     l3109Wait(k) { const TICK = this.TICK; return (this.l3109Ck === k + 1 && TICK - this.l3109At <= 2 * K.RC_WAIT) || (this.leaseCk === k && this.leaseUntil >= 0 && TICK <= this.leaseUntil && TICK - (this.leaseUntil - K.LEASE_TTL) <= 2 * K.RC_WAIT); },
@@ -160,6 +173,7 @@
     serveCompact(mm) {
       const id = this.id, TICK = this.TICK, lv = this.w.lv;
       if (!this.hasCoord || this.state !== 3 || mm.ttl <= 0) return;
+      if (this.coord.pc === 0 && mm.coord.pc !== 0) { const [r0, col] = l12Origin(mm.coord); if (r0 === this.coord.r && col === this.coord.i && this.f.fabricTurnAcross(id)) { this.trace('TURN14-STAY', id, this.coord, 'nc=%d', mm.nc); return; } }   /* TURN.14.2: a seat of my subtree does not come home across my TURN link: the climb ends at me */
       // L12.3: a held densify probe whose wait ended this tick is served before a probe that arrives in the same tick.
       if (!this.dBypass && this.dHoldCol >= 0 && TICK >= this.dHoldDue) { const hm = msg.clone(this.dHoldMsg); this.dHoldCol = -1; this.dBypass = true; this.serveCompact(hm); this.dBypass = false; }
       if (mm.l12 && mm.l12s === 2) { this.l12AdmitOnly(mm); return; }

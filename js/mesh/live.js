@@ -316,6 +316,7 @@
         for (const [ck2, cv] of this.cousins) cous.push({ k: ck2, v: cv });
       }
       const p = newMsg('PONG'); p.owner = owner; p.oCk = oCk; p.row = row; p.nbrs = cous; p.coord = cc(this.coord); p.id = id;
+      if (this.state === 3 && (ckey(m.coord) === ckey(down(this.coord)) || (this.coord.pc !== 0 && this.coord.i === 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r)) && this.f.fabricTurnOn()) p.t14 = this.t14Word();   /* TURN.14.5: to the head of my child row, and to my row as its head */
       {
         const view = (c) => ckey(c) === ckey(this.coord) || this.occGet(ckey(c)) >= 0;
         if (ckey(m.coord) === ckey(down(this.coord))) {
