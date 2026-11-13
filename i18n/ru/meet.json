@@ -859,6 +859,8 @@
  "meet.turnPass4h": "или 1 $ на следующие 4 часа",
  "meet.passPending": "Завершите оплату в окне PayPal. Здесь всё обновится, как только PayPal подтвердит.",
  "meet.passBuy": "1 $: Безлимит на следующие 4 часа",
+ "meet.passHow": "Оплата картой или через PayPal.",
+ "meet.subHow": "Подписка через PayPal (картой или с баланса PayPal).",
  "meet.passOpening": "Открываем PayPal…",
  "meet.passThanks": "Спасибо. Ваш пропуск на четыре часа включён.",
  "meet.passNotConfirmed": "PayPal не подтвердил оплату.",

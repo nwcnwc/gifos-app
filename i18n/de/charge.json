@@ -12,6 +12,8 @@
   "charge.error.alreadyBought": "auf diesem Computer bereits gekauft ({sku})",
   "charge.support.text": "Fragen zu dieser Zahlung? {email}",
   "charge.paidBy.paypal": "per PayPal",
+  "charge.pay.paypal": "Mit Karte oder PayPal bezahlen",
+  "charge.pay.paypalSandbox": "Mit Karte oder PayPal bezahlen (Sandbox)",
   "charge.paidBy.x402": "in USDC (Base Sepolia)",
   "charge.paidBy.x402Mainnet": "in USDC (Base)",
   "charge.paidBy.transfer": "in USDC (Wallet-Überweisung)",

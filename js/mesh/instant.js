@@ -20,6 +20,8 @@
   const K = C_.consts;
   const { ckey, ckPc, unckey, ownedLinks, down, C } = topo;
   const newMsg = (t) => msg.newMsg(t);
+  const envOn = (n) => (isNode && typeof process !== 'undefined' && process.env && process.env[n] === '1') ? 1 : 0;
+  const L31_8_OFF = envOn('MESH_L31_8_OFF');   // the sim's -DL31_8_OFF=1 build (read once at load; a page always runs the law)
   const cpKV = (a) => a.map((e) => ({ k: e.k, v: e.v }));
   // the cell's designated admitter (C3): the head of its row, or of the row before it for a head cell
   const admCell = (c) => (c.i > 0 ? { pc: 0, r: c.r, i: 0 } : { pc: 0, r: (c.r + C - 1) % C, i: 0 });
@@ -141,6 +143,7 @@
     l31TakeDoor(m) {
       if (this.hasCoord || m.nc !== this.id || m.owner < 0 || m.owner !== m.from || m.roster.length === 0) return false;
       this.roster = cpKV(m.roster); this.haveRoster = true; this.lastReach = this.TICK; this.seatTries = 0; this.resumeTries = 0;
+      if (!L31_8_OFF && m.line >= 0) { this.lineAdopt(m.line, m.lineAt, 'door'); if (m.lineF) this.lineFork = true; }   // L31.8: the seat the door seats adopts its room's lineage and founding epoch, as at the other two intakes
       this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, m.row, m.ppL); if (this.pp >= 0 && this.pp !== this.id) this.placer = this.pp;
       this.l31Bridge = m.from; this.l31BridgeCk = ckey(m.coord);
       return true;
