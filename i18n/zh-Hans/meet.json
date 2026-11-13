@@ -106,6 +106,7 @@
  "meet.appSheetFile": "＋ 选择 GIF 文件…",
  "meet.appSheetLink": "粘贴 GIF 应用链接",
  "meet.appSheetRun": "运行",
+ "meet.appMakeOwn": "制作你自己的会议应用",
  "meet.chatTitle": "会议聊天",
  "meet.chatPrivate": "仅限内部可见。所有人离开后消息即消失。",
  "meet.chatModOff": "关闭聊天",
@@ -909,11 +910,9 @@
   "meet.store.pending": "商店尚未确认此次购买。确认后将立即显示在这里。",
   "meet.store.notConfirmed": "商店尚未确认此次购买。确认后将立即显示在这里。",
   "meet.store.noProduct": "应用中无法使用此项。",
-  "meet.store.otherPayee": "在此应用中，付款只会支付给 GifOS。",
-  "meet.store.wholeDollars": "小费必须是整数美元。",
+  "meet.store.appPay": "抱歉，此应用无法在这里收款。在 GifOS Meet 中，只通过 {store} 出售 GifOS 自己的套餐和通行证。",
+  "meet.store.sorryTitle": "抱歉",
+  "meet.store.ok": "好",
   "meet.store.busy": "另一笔购买仍未完成。",
-  "meet.store.failed": "购买未成功。您没有被扣款。",
-  "meet.store.tipFit": "此处无法使用 ${asked} 的小费。改为 ${fit} 吗？",
-  "meet.store.tipFitYes": "打赏 ${fit}",
-  "meet.store.cancel": "取消"
+  "meet.store.failed": "购买未成功。您没有被扣款。"
 }

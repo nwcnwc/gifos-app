@@ -106,6 +106,7 @@
   "meet.appSheetFile": "＋ Eine GIF-Datei wählen…",
   "meet.appSheetLink": "Link zu einer GIF-App einfügen",
   "meet.appSheetRun": "Starten",
+  "meet.appMakeOwn": "Eigene App für Meetings bauen",
   "meet.chatTitle": "Meeting-Chat",
   "meet.chatPrivate": "Nur hier. Weg, wenn alle gehen.",
   "meet.chatModOff": "Chat ausschalten",
@@ -909,11 +910,9 @@
   "meet.store.pending": "Der Store hat diesen Kauf noch nicht bestätigt. Er erscheint hier, sobald er bestätigt ist.",
   "meet.store.notConfirmed": "Der Store hat diesen Kauf noch nicht bestätigt. Er erscheint hier, sobald er bestätigt ist.",
   "meet.store.noProduct": "Das ist in der App nicht verfügbar.",
-  "meet.store.otherPayee": "In dieser App gehen Zahlungen nur an GifOS.",
-  "meet.store.wholeDollars": "Ein Trinkgeld ist ein ganzer Dollarbetrag.",
+  "meet.store.appPay": "Leider kann diese App hier keine Zahlungen annehmen. In GifOS Meet werden nur die eigenen Tarife und Pässe von GifOS verkauft, über {store}.",
+  "meet.store.sorryTitle": "Leider nicht",
+  "meet.store.ok": "OK",
   "meet.store.busy": "Ein anderer Kauf ist noch offen.",
-  "meet.store.failed": "Der Kauf ist nicht zustande gekommen. Es wurde nichts abgebucht.",
-  "meet.store.tipFit": "Ein Trinkgeld von ${asked} ist hier nicht verfügbar. Stattdessen ${fit} geben?",
-  "meet.store.tipFitYes": "${fit} geben",
-  "meet.store.cancel": "Abbrechen"
+  "meet.store.failed": "Der Kauf ist nicht zustande gekommen. Es wurde nichts abgebucht."
 }

@@ -106,6 +106,7 @@
  "meet.appSheetFile": "＋ Выбрать GIF-файл…",
  "meet.appSheetLink": "Вставить ссылку на GIF-приложение",
  "meet.appSheetRun": "Запустить",
+ "meet.appMakeOwn": "Создайте своё приложение для встреч",
  "meet.chatTitle": "Чат встречи",
  "meet.chatPrivate": "Личный. Исчезает, когда все выйдут.",
  "meet.chatModOff": "Выключить чат",
@@ -909,11 +910,9 @@
   "meet.store.pending": "Магазин ещё не подтвердил эту покупку. Она появится здесь, как только он это сделает.",
   "meet.store.notConfirmed": "Магазин ещё не подтвердил эту покупку. Она появится здесь, как только он это сделает.",
   "meet.store.noProduct": "Это недоступно в приложении.",
-  "meet.store.otherPayee": "В этом приложении платежи идут только в GifOS.",
-  "meet.store.wholeDollars": "Чаевые - это целое число долларов.",
+  "meet.store.appPay": "К сожалению, это приложение не может принимать платежи здесь. В GifOS Meet продаются только собственные тарифы и пропуска GifOS, через {store}.",
+  "meet.store.sorryTitle": "Извините",
+  "meet.store.ok": "ОК",
   "meet.store.busy": "Другая покупка ещё не завершена.",
-  "meet.store.failed": "Покупка не прошла. Деньги не списаны.",
-  "meet.store.tipFit": "Чаевые ${asked} здесь недоступны. Отправить ${fit}?",
-  "meet.store.tipFitYes": "Отправить ${fit}",
-  "meet.store.cancel": "Отмена"
+  "meet.store.failed": "Покупка не прошла. Деньги не списаны."
 }

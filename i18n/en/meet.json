@@ -106,6 +106,7 @@
   "meet.appSheetFile": "＋ Choose a GIF file…",
   "meet.appSheetLink": "Paste a GIF app link",
   "meet.appSheetRun": "Run",
+  "meet.appMakeOwn": "Make your own app for meetings",
   "meet.chatTitle": "Meeting chat",
   "meet.chatPrivate": "Private. Gone when everyone leaves.",
   "meet.chatModOff": "Turn chat off",
@@ -909,11 +910,9 @@
   "meet.store.pending": "The store has not confirmed this purchase yet. It will appear here as soon as it does.",
   "meet.store.notConfirmed": "The store has not confirmed this purchase yet. It will appear here as soon as it does.",
   "meet.store.noProduct": "This is not available in the app.",
-  "meet.store.otherPayee": "In this app, payments go to GifOS only.",
-  "meet.store.wholeDollars": "A tip is a whole number of dollars.",
+  "meet.store.appPay": "Sorry, this app can’t take payments here. In GifOS Meet, only GifOS’s own plans and passes are sold, through {store}.",
+  "meet.store.sorryTitle": "Sorry",
+  "meet.store.ok": "OK",
   "meet.store.busy": "Another purchase is still open.",
-  "meet.store.failed": "The purchase did not go through. You were not charged.",
-  "meet.store.tipFit": "A tip of ${asked} is not available here. Tip ${fit} instead?",
-  "meet.store.tipFitYes": "Tip ${fit}",
-  "meet.store.cancel": "Cancel"
+  "meet.store.failed": "The purchase did not go through. You were not charged."
 }

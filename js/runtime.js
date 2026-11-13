@@ -3630,12 +3630,14 @@
 
   let setupShownAt = 0; // the last time an app raised an apiSetup/aiSetup modal
   function mountApp(iframe, files, manifest, db, originalBytes, policy, mountFileId, launch) {
-    // The GifOS Meet apps run only the in-meeting apps they ship. Their shell
-    // sets the list (GIFOS_NATIVE_APPS_ALLOWLIST: app ids); with it set, no
-    // other app is ever mounted, whoever shares it and however it arrives.
-    // In a browser the list is not set and nothing changes.
-    const onlyApps = root.GIFOS_NATIVE_APPS_ALLOWLIST;
-    if (Array.isArray(onlyApps) && !(manifest && typeof manifest.appId === 'string' && onlyApps.indexOf(manifest.appId) >= 0)) {
+    // The GifOS Meet apps run the in-meeting apps they ship and any app GIF a
+    // person brings to the meeting (Load a GIF, Nathan 2026-11-13), but never
+    // a GifOS system app: the Home Screen's launchers (App Store, Meeting,
+    // Broadcast) or GifOS's own payment apps. Their shell sets that list
+    // (GIFOS_NATIVE_APPS_DENY: app ids); an app on it is never mounted, whoever
+    // shares it and however it arrives. In a browser the list is not set.
+    const denyApps = root.GIFOS_NATIVE_APPS_DENY;
+    if (Array.isArray(denyApps) && manifest && typeof manifest.appId === 'string' && denyApps.indexOf(manifest.appId) >= 0) {
       throw new Error('This app is not part of GifOS Meet.');
     }
     policy = policy || makeNetPolicy(null, manifest); // client-run: session-only
