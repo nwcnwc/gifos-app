@@ -53,6 +53,7 @@
     FILL_WINDOW_MS: 600000,   // ms
     FIRST_MS: 40,   // ms
     FOLD_HOLD_MS: 60000,   // ms
+    FOLD_LIMITER_RELEASE_MS: 1000,   // ms
     FOLLOWME_WAIT_MS: 15000,   // ms
     FOLLOW_GAP_MS: 1000,   // ms
     FOLLOW_HOLD_MS: 5000,   // ms
@@ -103,6 +104,7 @@
     NEW_PEER_BEAT_MS: 400,   // ms
     NOSOCK_WIN: 40,   // tick
     PACK_REST_MAX_MS: 1000,   // ms
+    PASS_S: 14400,   // s
     PAYPAL_KEEP_MS: 21600000,   // ms
     PAYPAL_POLL_MS: 2000,   // ms
     PEER_SILENT_MS: 30000,   // ms

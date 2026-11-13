@@ -851,13 +851,16 @@
     // full scale, and the encoder's int16 input clips: everyone downstream hears the distortion. Every source joins
     // one bus, and the bus reaches the destination through a limiter that only acts on the loudest moments (above
     // -3 dBFS); below that the mix passes unchanged. The tap reads the bus, so peak() is the summed level itself.
+    // The release holds the gain reduction for FOLD_LIMITER_RELEASE_MS: several voices summed past the threshold beat
+    // against each other many times a second, and a gain that follows those beats spreads noise across the whole band.
+    // Held steady, the loud stretch is only quieter, and each voice stays as clean as it arrived.
     const bus = ac.createGain();
     let limiter = null;
     if (typeof ac.createDynamicsCompressor === 'function') {
       try {
         limiter = ac.createDynamicsCompressor();
         limiter.threshold.value = -3; limiter.knee.value = 0; limiter.ratio.value = 20;
-        limiter.attack.value = 0.002; limiter.release.value = 0.1;
+        limiter.attack.value = 0.002; limiter.release.value = TM.FOLD_LIMITER_RELEASE_MS / 1000;
       } catch (e) { limiter = null; }
     }
     if (limiter) { bus.connect(limiter); limiter.connect(dest); } else bus.connect(dest);
@@ -911,7 +914,7 @@
         return true;
       } catch (e) { return false; }
     }
-    return {
+    const api = {
       dest, track: () => dest.stream.getAudioTracks()[0] || null,
       has: (key) => srcs.has(key),
       // Peak sample level of the folded sound over ms milliseconds (0..1), read from the one tap.
@@ -1035,8 +1038,76 @@
       // Forensics (debugDump audio): the bus's peak in the tap's current window, and each source's track and gain.
       peakNow() { let pk = 0; try { tap.getFloatTimeDomainData(tapBuf); for (let i = 0; i < tapBuf.length; i++) { const a = Math.abs(tapBuf[i]); if (a > pk) pk = a; } } catch (e) {} return +pk.toFixed(3); },
       info() { const o = []; for (const [k, r] of srcs) o.push({ k, g: +r.gain.gain.value.toFixed(2), tr: r.track ? r.track.readyState + (r.track.muted ? '/muted' : '') + (r.track.enabled ? '' : '/off') : null, tid: r.track && r.track.id ? String(r.track.id).slice(0, 12) : null, seat: r.seat || null }); for (const k of waiting.keys()) o.push({ k, wait: true }); return o; },
+      // What the fold sums right now, for a player that plays the same voices without the fold (createFoldPlayer).
+      parts() { const o = []; for (const [k, r] of srcs) if (r.track && !trackDead(r.track)) o.push({ k, track: r.track, gain: +r.gain.gain.value }); return o; },
     };
+    // A pitch-safe way to HEAR this fold (createFoldPlayer): its parts in elements, never its WebAudio output.
+    api.player = (onBlocked) => createFoldPlayer(api, { onBlocked });
+    const outT = api.track();
+    if (outT) foldByTrack.set(outT, api);
+    return api;
+  }
+  // The fold that made this track (its destination's output), or null.
+  const foldByTrack = new WeakMap();
+  function foldOfTrack(t) { return (t && foldByTrack.get(t)) || null; }
+
+  // ---- hearing a fold (pitch-safe) -------------------------------------------
+  // A fold's output is a track made by WebAudio. Played in an <audio>, Chromium renders such a track through a
+  // clock bridge (TrackAudioRenderer's AudioShifter) that RESAMPLES to absorb any gap between the context's clock
+  // and the speaker's: after one render hiccup on a busy phone it plays the backlog up to 10% fast (the clamp) for
+  // ~20 s, so every voice in it comes out a semitone and a half high and drifts back (on an Android phone a
+  // 1000 Hz tone played at 1100 Hz for 12 s after one 500 ms render stall). The fold still sums for the wire, the
+  // meters and the level reads; what a person HEARS
+  // plays its parts instead: each remote track in its own element, so WebRTC's jitter buffer (NetEq, which keeps
+  // pitch when it catches up) is the only buffer and the sum happens in the output mixer. Same mix, same
+  // mix-minus, same gains. The object wears the element surface the callers drive (volume, muted, srcObject,
+  // paused, play, pause), like wkStageSink; srcObject still reads the fold's stream for the analysers.
+  function createFoldPlayer(fold, opts) {
+    const o = opts || {};
+    const mkEl = o.makeEl || (() => { const a = new Audio(); a.autoplay = true; return a; });
+    const kids = new Map(); // track -> { el, gain }
+    let vol = 1, muted = false, paused = false, stopped = false, timer = null;
+    let bound = (fold.dest && fold.dest.stream) || null; // what srcObject reads: the fold's stream, or the container a caller bound (its sound is this fold)
+    // A part that is itself a fold's output plays as that fold's parts (never a WebAudio track in an element).
+    function flat(f, g, out, depth) {
+      for (const p of f.parts()) {
+        const inner = depth < 4 ? foldOfTrack(p.track) : null;
+        if (inner) flat(inner, g * p.gain, out, depth + 1);
+        else out.set(p.track, Math.max(out.get(p.track) || 0, g * p.gain));
+      }
+      return out;
+    }
+    function level(k) { const v = Math.max(0, Math.min(1, vol * k.gain)); try { k.el.volume = v; } catch (e) {} k.el.muted = muted || !(v > 0); }
+    function playKid(k) { if (paused || stopped) return null; let pr = null; try { pr = k.el.play(); } catch (e) { if (o.onBlocked) o.onBlocked(k.el, e); } if (pr && pr.catch) pr.catch((e) => { if (o.onBlocked) o.onBlocked(k.el, e); }); return pr; }
+    function sync() {
+      if (stopped) return;
+      let want; try { want = flat(fold, 1, new Map(), 0); } catch (e) { return; }
+      for (const [t, k] of [...kids]) if (!want.has(t)) { try { k.el.pause(); k.el.srcObject = null; } catch (e) {} kids.delete(t); }
+      for (const [t, g] of want) {
+        let k = kids.get(t);
+        if (!k) { k = { el: mkEl(), gain: g }; k.el.srcObject = new MediaStream([t]); kids.set(t, k); level(k); playKid(k); }
+        else if (k.gain !== g) { k.gain = g; level(k); }
+      }
+    }
+    function stop() { stopped = true; if (timer) { clearInterval(timer); timer = null; } for (const k of kids.values()) { try { k.el.pause(); k.el.srcObject = null; } catch (e) {} } kids.clear(); }
+    const pl = {
+      direct: true,
+      get srcObject() { return stopped ? null : bound; },
+      set srcObject(v) { if (v == null) stop(); else bound = v; },
+      get volume() { return vol; }, set volume(v) { vol = +v; for (const k of kids.values()) level(k); },
+      get muted() { return muted; }, set muted(v) { muted = !!v; for (const k of kids.values()) level(k); },
+      get paused() { return paused || stopped; },
+      get readyState() { return stopped ? 0 : 4; },
+      play() { if (stopped) return Promise.resolve(); paused = false; sync(); return Promise.all([...kids.values()].map((k) => k.el.play())).then(() => undefined); },
+      pause() { paused = true; for (const k of kids.values()) { try { k.el.pause(); } catch (e) {} } },
+      sync, stop, fold,
+      kids: () => [...kids].map(([t, k]) => ({ tid: String(t.id).slice(0, 12), g: +k.gain.toFixed(2), p: !!k.el.paused, m: !!k.el.muted, v: +(+k.el.volume || 0).toFixed(2) })),
+    };
+    sync();
+    // The fold's membership changes at its owner's sweeps; follow it (a few elements, cheap).
+    timer = setInterval(sync, o.syncMs || 400);
+    return pl;
   }
 
-  GifOS.meshMedia = { workerClock, createBgClock, coverBox, fitBox, createAudioFold, packGrid, stadiumGrid, stadiumTiny, cellSize, faceSrcRect, cellCrop, createPacker, retireAudioTracks };
+  GifOS.meshMedia = { workerClock, createBgClock, coverBox, fitBox, createAudioFold, packGrid, stadiumGrid, stadiumTiny, cellSize, faceSrcRect, cellCrop, createPacker, retireAudioTracks, foldOfTrack, createFoldPlayer };
 })(typeof window !== 'undefined' ? window : globalThis);

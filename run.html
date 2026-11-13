@@ -2070,6 +2070,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const go = document.getElementById('leave-go');
         const note = document.getElementById('leave-ask-note');
         const end = mode === 'end';
+        // The "left" dialog on screen keeps its words: a door that turned this person away ("This room is full on
+        // the free plan") wrote them, and this paint runs again on every admin-state change.
+        const lm = document.getElementById('left-modal');
+        const leftShown = !!(lm && lm.style.display === 'flex');
+        const sayLeft = (id, text) => { if (!leftShown) say(id, text); };
         if (leave) {
           if (end) {
             leave.title = 'End the broadcast. Everyone watching sees it close after you leave.';
@@ -2091,16 +2096,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }
         if (end) {
           say('leave-ask-title', 'End the broadcast?');
-          say('left-title', 'You ended the broadcast');
-          say('left-note', 'Everyone watching sees a five-minute countdown, and then the room closes. Rejoin to keep it open.');
+          sayLeft('left-title', 'You ended the broadcast');
+          sayLeft('left-note', 'Everyone watching sees a five-minute countdown, and then the room closes. Rejoin to keep it open.');
         } else if (mode === 'watch') {
           say('leave-ask-title', 'Leave the broadcast?');
-          say('left-title', 'You left the broadcast');
-          say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
+          sayLeft('left-title', 'You left the broadcast');
+          sayLeft('left-note', 'Your camera and microphone are off. Rejoin to come back.');
         } else {
           say('leave-ask-title', 'Leave the meeting?');
-          say('left-title', 'You left the meeting');
-          say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
+          sayLeft('left-title', 'You left the meeting');
+          sayLeft('left-note', 'Your camera and microphone are off. Rejoin to come back.');
         }
       };
       if (!BROADCAST) {
@@ -3357,7 +3362,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // A BROADCAST reads the fold at any size: a viewer's beat reaches only its
     // own links (bcViewerBeat), so the section is not first-hand there (Q79).
     const bcViewerBeat = () => BROADCAST && !amAdmin && !stageIds().includes(myId);
-    const foldIsRoom = () => roomPastSection() || (BROADCAST && !!roomDig());
+    // ...and wherever my section is not the room: I am deep, or a seat sits below Section 1 (deepInView). A deep
+    // seat's status never reaches the far side of a TURN cut first-hand, at any size (a 4 + 4 room at C=3 is under C²).
+    const foldIsRoom = () => roomPastSection() || (BROADCAST && !!roomDig()) || (!!roomDig() && deepInView());
     const digLists = () => (foldIsRoom() ? roomDig() : null);
     const stSeen = (st) => (st ? (st.rx || st.at || 0) : 0); // when a status was said, on MY clock (takeStatus)
     let gossipAgeMs = 0; // set while a relayed gossip message is being handled
@@ -10145,11 +10152,23 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // than the faces on the grid (me + shownPeerCount). A partial fold is a
     // shortfall, not the room size (healing-laws: a shortfall is not the room):
     // its n is what was heard. The line then says the count is incomplete.
-    // Am I deep, or does my occ name a cell below Section 1? (displayCount)
+    // Am I deep, does my occ name a cell below Section 1, or does the fold? (displayCount, foldIsRoom)
     function deepInView() {
       const s = meshSeat(); if (!s || !s.hasCoord) return false;
       if (s.coord.pc !== 0) return true;
       for (const k of s.occ.keys()) if (k.slice(0, 2) !== '0_') return true;
+      return foldNamesDeep();
+    }
+    // A Section-1 report in my fold that counts more than its own seat: someone sits below that cell. My view
+    // cannot name such a seat when no pc of mine reaches its row (a blocked office seated under the end of its
+    // TURN link: 4 + 4 at C=3 is 8 people, under C², and my Section-1 occ held 5 while the fold counted 8).
+    function foldNamesDeep() {
+      try {
+        const r0 = meshNode && meshNode.raw, r = typeof r0 === 'function' ? r0() : r0;
+        if (!r || !r.s1tab || !r.hasCoord || r.coord.pc !== 0 || !r.rootDig || r.rootDig.at < 0) return false;
+        const K = GifOS.meshConsts && GifOS.meshConsts.consts, ttl = K && K.DIG_TTL, lt = r.LT();
+        for (const d of r.s1tab.values()) if (d && d.at >= 0 && (!ttl || lt - d.rx <= ttl) && d.n + (d.leased || 0) > 1) return true;
+      } catch (e) {}
       return false;
     }
     function displayCount() {
@@ -13030,9 +13049,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       turnPaint();
     }
     // A subscriber's vouch: its meeting ticket for this meeting and its key's signature over the room (meet-subs roomOrder).
+    // A four-hour pass vouches the same way; the TURN Worker reads the pass with its holder's signature over the room
+    // (the whole order: pass, at, proof), so a pass copied without its key asks for nothing.
     function turnSubIn(from, o) {
       if (!o || typeof o !== 'object' || !GifOS.meetSubs) return;
-      GifOS.meetSubs.roomTier(o, subsMeetId()).then((t) => { if (t) turnSubs.set(from, { tier: t.tier, exp: t.exp, ticket: o.ticket, at: Date.now() }); }, () => {});
+      GifOS.meetSubs.roomTier(o, subsMeetId()).then((t) => { if (t) turnSubs.set(from, { tier: t.tier, exp: t.exp, ticket: t.pass ? Object.assign({}, o.ticket, { at: o.at, proof: o.proof }) : o.ticket, pass: !!t.pass, at: Date.now() }); }, () => {});
     }
     function turnSubOut() {
       if (!meshNode || !subsOn()) return;
@@ -13073,6 +13094,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               } catch (x) { t.textContent = said; b.disabled = false; }
             });
             el.appendChild(b);
+            // or the four-hour pass: $1 once through PayPal, Unlimited for the next 4 hours (never a subscription)
+            const b4 = document.createElement('button'); b4.type = 'button'; b4.className = 'tpause-pass';
+            b4.textContent = uiText('turnPass4h', 'or $1 for the next 4 hours');
+            b4.addEventListener('click', async (e) => {
+              e.stopPropagation(); b4.disabled = true; b.disabled = true;
+              try {
+                const r = await GifOS.meetSubs.buyPass((w) => { t.textContent = w; });
+                if (!(r && r.passJson)) { t.textContent = said; b4.disabled = false; b.disabled = false; }
+              } catch (x) { t.textContent = said; b4.disabled = false; b.disabled = false; }
+            });
+            el.appendChild(b4);
           }
           p.tile.appendChild(el);
         } else if (!show && el) el.remove();
@@ -13224,6 +13256,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try {
         for (const [jk, job] of [...mosJobs]) if (job.to === p.id) unshipMos(jk, false);
       } catch (e) { if (typeof clog === 'function') clog('rebuildPc: mosaic job cleanup failed ' + String(e).slice(0, 60)); }
+      // The friend carries that rode the old pc end with it, as relayer and as receiver (endPcRelayRoles). Direct, as above.
+      try { endPcRelayRoles(p.id, 'pc-new ' + (why || '?')); } catch (e) { if (typeof clog === 'function') clog('rebuildPc: carry cleanup failed ' + String(e).slice(0, 60)); }
       const pc = new RTCPeerConnection(turnPcConfig(p));   // a TURN link's settings when this end is its client (turnPcConfig)
       turnGuardVideo(pc, p);   // no video over an unvouched TURN link
       // Whatever was armed against the OLD pc must never fire at the new one: a glare yield's rollback would target a
@@ -23609,18 +23643,31 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       renegotiate(rp);
       if (notify) dcSend(rp, { k: 'relay-end', target });
     }
-    function endRelayRolesFor(pid) { // pid left or its pc died — as relayer AND receiver
+    // A CARRY ENDS WITH THE PC IT RODE (the sim's fhEndRoles: "target or requester's pc closed at the relayer: the job ends";
+    // "relayer gone: the receiver drops it and asks again"). A carry rides my pc to the target (the tracks I forward), my pc to
+    // the requester (the senders), and, as receiver, my pc to the relayer (the stream I claimed). Every one of them belongs to
+    // that pc, so a pc that closes, a rebuilt one included, ends them. Kept across a rebuild, the relayer re-announced a
+    // container whose senders sat on the closed pc, and the receiver held a claimed stream whose tracks had ended: its relayer
+    // was connected again on the new pc before the next sweep looked, so it never asked again (offices: the end of a TURN link
+    // deaf and blind to its own row head across the cut for the whole meeting). A carry OF this peer through another friend
+    // (relayVia.has(pid)) rides no pc of this pair and stays: its dead direct pc is rebuilt every few seconds.
+    function endPcRelayRoles(pid, why) {
       for (const key of Array.from(relayJobs.keys())) {
         const job = relayJobs.get(key);
-        if (job.target === pid) stopRelayJob(job.target, job.requester, true);
+        if (!job) continue;
+        if (job.target === pid) { fhTrace('FH-PC-END', 'target=' + String(job.target).slice(0, 8) + ' req=' + String(job.requester).slice(0, 8) + ' ' + (why || '')); stopRelayJob(job.target, job.requester, true); }
         else if (job.requester === pid) {
+          fhTrace('FH-PC-END', 'target=' + String(job.target).slice(0, 8) + ' req=' + String(job.requester).slice(0, 8) + ' ' + (why || ''));
           relayJobs.delete(key);
           for (const sd of job.senders || []) auxSenders.delete(sd);
           if (job.video) relayPromote();   // FHOP.9: a video job ended
         }
       }
+      for (const [target, r] of Array.from(relayVia)) if (r.via === pid) { fhTrace('FH-PC-END', 'claim target=' + String(target).slice(0, 8) + ' via=' + String(pid).slice(0, 8) + ' ' + (why || '')); stopRelayFor(target, false); }
+    }
+    function endRelayRolesFor(pid) { // pid left or its pc died — as relayer AND receiver
+      endPcRelayRoles(pid, 'gone');
       if (relayVia.has(pid)) stopRelayFor(pid, true);
-      for (const [target, r] of Array.from(relayVia)) if (r.via === pid) stopRelayFor(target, false);
     }
 
     // ========== STADIUM MEDIA (docs/media-plane.md) ============================
@@ -23961,8 +24008,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // HUNG at phase B dt=2), the same open 7f84dfa took out of every tile.
       const sink = (typeof WEBKIT_ENGINE !== 'undefined' && WEBKIT_ENGINE && typeof wkStageSink === 'function') ? wkStageSink(fold) : null;
       if (sink) { stageEar = { fold, el: sink, sids: new Map() }; return; }
-      const el = new Audio(); el.autoplay = true;
-      el.srcObject = fold.dest.stream;
+      // Heard through its parts (createFoldPlayer), not as the fold's WebAudio track in an element: Chromium
+      // resamples that track to catch up after a hiccup and the stage voices go up in pitch.
+      let el = null;
+      if (typeof MM.createFoldPlayer === 'function') { try { el = MM.createFoldPlayer(fold, { onBlocked: audioBlocked }); } catch (e) { el = null; } }
+      if (!el) { el = new Audio(); el.autoplay = true; el.srcObject = fold.dest.stream; }
       stageEar = { fold, el, sids: new Map() };
       const pr = el.play(); if (pr && pr.catch) pr.catch((e) => audioBlocked(el, e)); // the stage ear is the one element a sharer's voice rides
     }
@@ -29752,7 +29802,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return;
       }
       if (!src) { if (el._aud) el._aud.srcObject = null; el.volume = vol; return; }
-      if (!el._aud) { el._aud = new Audio(); el._aud.autoplay = true; }
+      // A sound made here by a fold (a Section-1 head's Stadium ear) is heard through its parts, never as a WebAudio
+      // track in an element: Chromium resamples such a track to catch up after a hiccup and the voices go up in
+      // pitch (createFoldPlayer). A remote track keeps its plain companion.
+      const fd = foldOfStream(src);
+      if (el._aud && (fd ? el._aud.fold !== fd : !!el._aud.direct)) releaseAudio(el);
+      if (!el._aud) { if (fd) el._aud = fd.player(audioBlocked); else { el._aud = new Audio(); el._aud.autoplay = true; } }
       el.muted = true; // the <video> is picture-only, always — sound lives in the companion
       // Muting is what makes a late srcObject legal to play. The element is
       // often still paused from the unmuted autoplay attempt at claim time,
@@ -29775,6 +29830,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // played at full level there — ghost voices, doubled stagers. `muted`
       // is honoured everywhere; the fader range above 0 still rides volume.
       el._aud.muted = !!el._gmute || !(vol > 0); // group mute rides the same pipe as the faders
+    }
+    // The audio fold whose output this stream carries (it was made on this page), or null.
+    function foldOfStream(st) {
+      const MMx = typeof GifOS !== 'undefined' ? GifOS.meshMedia : null;
+      if (!st || !st.getAudioTracks || !MMx || typeof MMx.foldOfTrack !== 'function' || typeof MMx.createFoldPlayer !== 'function') return null;
+      const t = st.getAudioTracks()[0];
+      return t ? MMx.foldOfTrack(t) : null;
     }
     // Service mute is a local gate on the stage bus. The saved fader stays put.
     // The one writer of the stage ear's level: a viewer's sound off and the waiting room hold through every reconcile (iOS ignores volume; 0 must be `muted`).
@@ -33374,7 +33436,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function placeBarAvoiders() {
       const FLOATERS = [['callstate', ''], ['chatnote', 'callstate'], ['livecap', 'callstate'], 
         ['waitlist', ''], ['rb-now', ''], ['bc-cap', ''], ['bc-reacts', '']];
-      const PANELS = [['chatpanel', 'pad'], ['qa', 'pad'], ['bc-ended', 'bottom'], ['bc-ident', 'bottom']];
+      const PANELS = [['chatpanel', 'pad'], ['qa', 'pad'], ['bc-ended', 'bottom'], ['bc-ident', 'bottom'], ['fsstrip', 'strip']];
       const bar = document.querySelector('.bar');
       if (!bar || bar.classList.contains('tucked') || document.body.classList.contains('chrome-away')) return;
       const shown = (el) => {
@@ -33390,7 +33452,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       };
       const br = shown(bar);
       let ob = br ? { left: br.left, right: br.right, top: br.top, bottom: br.bottom } : null;
-      const lifts = {};
+      const lifts = {}, risen = [];
       for (const [id, baseId] of FLOATERS) {
         const el = document.getElementById(id);
         const r = shown(el);
@@ -33405,6 +33467,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }
         write(el, '--barlift', lift);
         lifts[id] = lift;
+        // a floater lifted onto the bar's top (Record, a caption) is part of what the Focus strip clears
+        if (lift > 0) risen.push({ left: r.left, right: r.right, top: r.top + cur - lift, bottom: r.bottom + cur - lift });
       }
       const tray = shown(document.getElementById('reacttray'));
       if (ob && tray) ob = { left: Math.min(ob.left, tray.left), right: Math.max(ob.right, tray.right), top: Math.min(ob.top, tray.top), bottom: Math.max(ob.bottom, tray.bottom) };
@@ -33413,7 +33477,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!el) continue;
         const r = shown(el);
         let clear = 0;
-        if (r && ob) {
+        if (r && ob && mode === 'strip') {
+          // The Focus strip's thumbs are controls: every one stays above the
+          // bar, so the strip pads by the bar's whole reach, not half its height.
+          const overX = ob.right > r.left + 4 && ob.left < r.right - 4;
+          if (overX && ob.bottom > r.top + 4 && ob.top < r.bottom) {
+            let top = ob.top;
+            for (const f of risen) if (f.right > r.left + 4 && f.left < r.right - 4 && f.bottom > top - 12) top = Math.min(top, f.top);
+            clear = r.bottom - top + 8;
+          }
+        } else if (r && ob) {
           const bottom = r.bottom + (mode === 'bottom' ? read(el, '--barclear') : 0);
           const h = bottom - r.top;
           const overX = ob.right > r.left + 4 && ob.left < r.right - 4;
@@ -33430,7 +33503,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       };
       window.__gifosBarAvoid = later;
       // Showing, hiding or opening one of them can newly put it under the bar.
-      const ids = ['callstate', 'chatnote', 'livecap', 'waitlist', 'bc-cap', 'bc-reacts', 'chatpanel', 'qa', 'bc-ended', 'bc-ident', 'reacttray'];
+      const ids = ['callstate', 'chatnote', 'livecap', 'waitlist', 'bc-cap', 'bc-reacts', 'chatpanel', 'qa', 'bc-ended', 'bc-ident', 'reacttray', 'fsview'];
       if (window.MutationObserver) {
         const mo = new MutationObserver(later);
         for (const id of ids) { const el = document.getElementById(id); if (el) mo.observe(el, { attributes: true, attributeFilter: ['class', 'hidden'] }); }
@@ -35872,6 +35945,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!subsOn()) return;
       GifOS.meetSubs.joinMeeting(subsMeetId(), {
         onTicket: () => { if (amAdmin && hasAdminRoom()) subsPublishRoomPlan(); turnSubAt = 0; capPublish(true); try { capPaint(); } catch (e) {} },   // a captor re-presents each renewed ticket   // a fresh ticket is a fresh TURN vouch: say it at the next step
+        onPass: () => { if (amAdmin && hasAdminRoom()) subsPublishRoomPlan(); turnSubAt = 0; },   // a four-hour pass bought, started or ended: the room's plan and the TURN vouch now
         onLost: (why) => {
           if (why === 'moved') setStatus('Your subscription is now in use in another meeting.');
           const r = modTable['*'];
@@ -36274,6 +36348,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { if (localStream) localStream.getTracks().forEach((t) => t.stop()); } catch (e) {}
       afterFarewell(() => { for (const pid of Array.from(peers.keys())) { try { dropPeer(pid); } catch (e) {} } if (typeof clearRosterTiles === 'function') clearRosterTiles(); });
       try { releaseAudioContext(); } catch (e) {}
+      try { if (typeof paintBroadcastChrome === 'function') paintBroadcastChrome(); } catch (e) {}   // the plain leave words, before the dialog shows (a door's refusal writes its own after)
       const lm = document.getElementById('left-modal'); if (lm) lm.style.display = 'flex';
       try { updateStatus(); } catch (e) {}
       return flushing;
