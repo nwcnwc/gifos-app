@@ -2106,8 +2106,8 @@
       "appId": "drawphone",
       "name": "Drawphone",
       "shortName": "Drawphone",
-      "version": "1.0",
-      "tagline": "Telephone with pictures: draw, pass, guess. One link deals everyone in.",
+      "version": "1.1",
+      "tagline": "Draw & guess for meetings: one draws, everyone guesses, points on every screen. Plus Telephone.",
       "author": {
         "name": "tannerkrewson",
         "url": "https://github.com/tannerkrewson/drawphone"
@@ -2122,17 +2122,18 @@
       },
       "minBuild": 947,
       "offline": true,
-      "releaseDate": "2026-08-23",
-      "updated": "2026-08-23",
+      "releaseDate": "2026-11-13",
+      "updated": "2026-11-13",
       "categories": [
         "Games"
       ],
       "tags": [
-        "telephone",
         "drawing",
+        "guessing",
         "party",
+        "meeting",
         "multiplayer",
-        "pictionary"
+        "telephone"
       ],
       "accent": [
         232,
@@ -2140,15 +2141,15 @@
         64
       ],
       "cover": "/apps/drawphone/cover.jpg",
-      "bytes": 204759,
+      "bytes": 228581,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-13"
       },
-      "sha256": "093e006beb9f31002fe2b68097d4a04eb8fbd6dd46fd456e875bffaa3a0cae78"
+      "sha256": "4f8c59af47668ec7f1aced7a1996158bf9905682f7a3d068163f9ce6c09e283d"
     },
     {
       "slug": "duck-hunt",
@@ -4427,55 +4428,6 @@
         "ts": "2026-10-08"
       },
       "sha256": "f9d0b9570a172752a3f8fe01eccec63edfc19903bbe105434728529d0b61d822"
-    },
-    {
-      "slug": "longwave",
-      "appId": "longwave",
-      "name": "Longwave",
-      "shortName": "Longwave",
-      "version": "1.1",
-      "tagline": "One of you is the psychic. Read their clue, find the mark on the dial.",
-      "author": {
-        "name": "cynicaloptimist",
-        "url": "https://github.com/cynicaloptimist/longwave"
-      },
-      "porter": {
-        "name": "GifOS",
-        "url": "https://gifos.app"
-      },
-      "basedOn": {
-        "name": "Longwave",
-        "blessed": false
-      },
-      "minBuild": 947,
-      "offline": true,
-      "releaseDate": "2026-08-23",
-      "updated": "2026-08-23",
-      "categories": [
-        "Games"
-      ],
-      "tags": [
-        "spectrum",
-        "party",
-        "clue",
-        "needle",
-        "multiplayer"
-      ],
-      "accent": [
-        118,
-        86,
-        214
-      ],
-      "cover": "/apps/longwave/cover.jpg",
-      "bytes": 202960,
-      "download": 0,
-      "provides": null,
-      "signature": {
-        "type": "domain",
-        "id": "gifos.app",
-        "ts": "2026-10-08"
-      },
-      "sha256": "5a25177bfc1ef0816423f417ddd599b20e5e3f347833b0ae8569c8e8b85a6bc7"
     },
     {
       "slug": "lost-in-cyberspace",
@@ -8280,55 +8232,6 @@
         "ts": "2026-10-08"
       },
       "sha256": "c3c08d8b1af8dcc6a6657e9cae5102001b3b484ec6f87d68311f82209ee7de8c"
-    },
-    {
-      "slug": "spyfall",
-      "appId": "spyfall",
-      "name": "Spyfall",
-      "shortName": "Spyfall",
-      "version": "1.0",
-      "tagline": "One link deals everyone a role. One of you is the spy.",
-      "author": {
-        "name": "tannerkrewson",
-        "url": "https://github.com/tannerkrewson/spyfall"
-      },
-      "porter": {
-        "name": "GifOS",
-        "url": "https://gifos.app"
-      },
-      "basedOn": {
-        "name": "Spyfall",
-        "blessed": false
-      },
-      "minBuild": 947,
-      "offline": true,
-      "releaseDate": "2026-08-23",
-      "updated": "2026-08-23",
-      "categories": [
-        "Games"
-      ],
-      "tags": [
-        "spyfall",
-        "party",
-        "spy",
-        "multiplayer",
-        "offline"
-      ],
-      "accent": [
-        196,
-        40,
-        48
-      ],
-      "cover": "/apps/spyfall/cover.jpg",
-      "bytes": 198518,
-      "download": 0,
-      "provides": null,
-      "signature": {
-        "type": "domain",
-        "id": "gifos.app",
-        "ts": "2026-10-08"
-      },
-      "sha256": "a5befd230ee862df8fb489f724fac497040cacedf7a4c822b766c82fa9c95c86"
     },
     {
       "slug": "sql-playground",
