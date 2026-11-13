@@ -12259,6 +12259,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function doorPaceOk(to) {
       const now = Date.now(), p = peers.get(to);
       if (p && (p.connected || (p.dc && p.dc.readyState === 'open'))) { doorPace.delete(to); return true; }
+      // The far end of a TURN link I hold is no unanswered door: it has answered the link's handshake over the relay and
+      // waits for this dial, on a new way with the link's settings. My entry knock at the same greeter a second before
+      // stood in this memory, and with four doors unanswered (every greeter of the other office) the link's first offer
+      // was dropped unsent: the pc sat in have-local-offer until the link's dial budget ran out (34 s) and the next try
+      // came a TURN_RETRY later. A link's dials are bounded by its own budget and retry clock (js/meet-turn.js).
+      if (turnLinks && turnLinks.holds(to)) { doorPace.delete(to); return true; }
       const e = doorPace.get(to);
       if (!e) { doorPace.set(to, { wait: 5000, at: now }); return true; }
       let waiting = 0;
@@ -12269,7 +12275,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return true;
     }
     function relayBootSend(to, msg) {
-      if (msg.kind === 'offer' && !doorPaceOk(to)) return;
+      if (msg.kind === 'offer' && !doorPaceOk(to)) { if (typeof clog === 'function') clog('relay: offer to ' + String(to).slice(0, 6) + ' held back (door pace)'); return; }
       if (msg.kind === 'offer' || msg.kind === 'answer') {
         const b = net.bootOf(msg.sdp, ++bootSeq);
         if (!b) { txStats.relayUnfit++; if (typeof clog === 'function') clog('relay: a description with media never leaves (' + msg.kind + ' to ' + String(to).slice(0, 6) + ')'); return; }
@@ -12294,7 +12300,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // relayName(pid): my name to a socketed member — the dial request ("I am
     // here, dial me": onRelayPeer dials back when it is the initiator and no
     // pair is live), and the name the locked-out line shows them.
-    function relayName(pid) { if (!doorPaceOk(pid)) return; return relaySendSealed(pid, 'name', { k: 'name', n: net.relayNameFit(myName()) }); }
+    function relayName(pid) { if (!doorPaceOk(pid)) { if (typeof clog === 'function') clog('relay: name to ' + String(pid).slice(0, 6) + ' held back (door pace)'); return; } return relaySendSealed(pid, 'name', { k: 'name', n: net.relayNameFit(myName()) }); }
     // onRelayPeer(from, ty, f): a relay frame of the law's shape, opened and
     // checked (relayFrameAllowed). Dispatch by its type.
     function onRelayPeer(from, ty, f) {
