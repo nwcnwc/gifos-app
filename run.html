@@ -531,32 +531,10 @@ function opt(k){return /^(?:versions\/[^\/]+\/)?themes\/[^\/]+\/(?:theme|icons|e
 /* The offline layer (sw.js) answers an uncached script with an EMPTY 200 when the network fails: no error event, a unit that never ran. A script that arrives with no body counts as failed too. */
 try{new PerformanceObserver(function(l){l.getEntries().forEach(function(en){try{if(en.initiatorType==='script'&&en.decodedBodySize===0&&own(en.name)&&/\.js$/.test(new URL(en.name).pathname)){var k=key(en.name);if(!opt(k)&&g.failed.indexOf(k)<0)g.failed.push(k);}}catch(x){}});}).observe({type:'resource',buffered:true});}catch(e){}
 window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagName==='SCRIPT'&&t.src){if(!own(t.src))return;var k=key(t.src);if(!opt(k)&&g.failed.indexOf(k)<0)g.failed.push(k);}else if(e&&e.filename&&g.failed.length&&own(e.filename)){var f=key(e.filename);if(g.threw.indexOf(f)<0)g.threw.push(f);}}catch(x){}},true);})();</script>
-<!-- The lobby's scripts come first: everything the meeting reads until the lobby is on screen. A published
-     copy (.github/scripts/bundle/bundle.mjs) loads the scripts above the end mark as one bundle with the page
-     and the ones below it as a second bundle, right after the lobby starts. Keep that order here. -->
 <script src="js/sw-register.js" defer></script>
 <script src="js/dialog.js" defer></script>
 <script src="js/build.js" defer></script>
 <script src="js/build-badge.js" defer></script>
-<script src="js/gifos-i18n.js" defer></script>
-<script src="js/gifos-gif.js" defer></script>
-<script src="js/gifos-help.js" defer></script>
-<script src="js/gifos-fullscreen.js" defer></script>
-<script src="js/gifos-store.js" defer></script>
-<script src="js/timings.js" defer></script>
-<script src="js/gifos-update.js" defer></script>
-<script src="js/gifos-net.js" defer></script>
-<script src="js/mesh-media.js" defer></script>
-<script src="js/meet-layout.js" defer></script>
-<script src="js/meet-debuglog.js" defer></script>
-<script src="js/meet-views.js" defer></script>
-<script src="js/meet-viewmode.js" defer></script>
-<script src="js/mesh-pipe.js" defer></script>
-<script src="js/relay-config.js" defer></script>
-<script src="js/runtime.js" defer></script>
-<script src="js/meet-host.js" defer></script>
-<script src="js/gifos-perms.js" defer></script>
-<!-- the lobby's scripts end here -->
 <script>/* Global UI text size (Settings → Text size). Scales the meeting chrome; applied early, live across tabs. */(function(){function ap(){try{var s=parseFloat(localStorage.getItem('gifos_ui_scale'))||1;s=Math.max(0.2,Math.min(3,s));document.documentElement.style.fontSize=(s===1?'':(16*s).toFixed(2)+'px');document.documentElement.classList.toggle('ui-large',s>=1.5);}catch(e){}}ap();try{window.addEventListener('storage',function(e){if(!e||e.key==='gifos_ui_scale')ap();});}catch(e){}})();</script>
 <title>Meeting — GifOS</title>
 <!-- Link-preview card for texted / posted invites. og:url is deliberately OMITTED
@@ -1386,6 +1364,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (db && /^gifos_vm_[\w-]+$/.test(db)) window.GIFOS_DB_NAME = db;
     })();
   </script>
+  <script src="js/gifos-i18n.js" defer></script>
+  <script src="js/gifos-gif.js" defer></script>
+  <script src="js/gifos-help.js" defer></script>
+  <script src="js/gifos-fullscreen.js" defer></script>
   <script src="js/gifos-ed.js" defer></script>
   <script src="js/gifos-sign.js" defer></script>
   <script src="js/gifos-base-net.js" defer></script>
@@ -1397,9 +1379,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/gifos-pay-broker.js" defer></script>
   <script src="js/gifos-assets.js" defer></script>
   <script src="js/gifos-avatar.js" defer></script>
+  <script src="js/gifos-store.js" defer></script>
   <script src="js/gifos-install.js" defer></script>
   <script src="js/gifos-lock.js" defer></script>
   <script src="js/app-update.js" defer></script>
+  <script src="js/timings.js" defer></script>
+  <script src="js/gifos-update.js" defer></script>
+  <script src="js/gifos-net.js" defer></script>
   <!-- the mesh: the ported 0.9.25 seat (js/mesh/, dependency order), its page world and the page layer -->
   <script src="js/mesh/laws.js" defer></script>
   <script src="js/mesh/consts.js" defer></script>
@@ -1462,7 +1448,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/mesh/page/layer.js" defer></script>
   <script src="js/mesh-identity.js" defer></script>
   <script src="js/mesh-wire.js" defer></script>
+  <script src="js/mesh-media.js" defer></script>
   <script src="js/meet-pack.js" defer></script>
+  <script src="js/meet-layout.js" defer></script>
   <script src="js/meet-turn.js" defer></script>
   <script src="js/meet-status.js" defer></script>
   <script src="js/meet-progress.js" defer></script>
@@ -1470,11 +1458,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/meet-subs.js" defer></script>
   <script src="js/gifos-library.js" defer></script>
   <script src="js/meet-leave.js" defer></script>
+  <script src="js/meet-debuglog.js" defer></script>
   <script src="js/meet-meters.js" defer></script>
   <script src="js/meet-zones.js" defer></script>
+  <script src="js/meet-views.js" defer></script>
+  <script src="js/meet-viewmode.js" defer></script>
   <script src="js/meet-content.js" defer></script>
   <script src="js/meet-agenda.js" defer></script>
+  <script src="js/mesh-pipe.js" defer></script>
+  <script src="js/relay-config.js" defer></script>
+  <script src="js/runtime.js" defer></script>
+  <script src="js/meet-host.js" defer></script>
   <script src="js/camera-studio.js" defer></script>
+  <script src="js/gifos-perms.js" defer></script>
   <script>
   // THE ENGINE, read before anything else runs (a var, so early callers never
   // hit a TDZ). WebKit — Safari, and the Playwright WebKit shell under any UA
