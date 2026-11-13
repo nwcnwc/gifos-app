@@ -5,7 +5,10 @@
  *   room20     $2   admin rooms of up to 20 people
  *   unlimited  $5   admin rooms with no people limit
  *   streamer   $10  unlimited admin rooms and a storage budget for
- *                   recordings and transcripts
+ *                   recordings and transcripts. Sold and managed ONLY in
+ *                   the Broadcast app (Nathan 2026-11-13); the Meet app
+ *                   never sells it or shows its files, but honors it with
+ *                   everything Unlimited gives (APP_TIERS below).
  * The four-hour pass: $1, one PayPal order (never a subscription), the
  * Unlimited plan's meeting rights for four hours from purchase, except
  * capturing an open room (see "the four-hour pass" below).
@@ -81,6 +84,12 @@
     streamer: { id: 'streamer', name: 'Streamer: unlimited admin rooms and storage', price: '$10', priceYear: '$100', adminRooms: true, roomLimit: null, turnVideo: true, storage: true, vouches: 20, paid: true },
   };
   const TIER_IDS = Object.keys(TIERS);              // the plans sold through PayPal
+  // Which app sells which plan (Nathan 2026-11-13): Meet sells Room 20 and
+  // Unlimited only; the Broadcast app (the /cast skin of the meeting page)
+  // sells every plan, Streamer and its storage included. Every plan is
+  // HONORED everywhere: this is only what each app offers.
+  const APP_TIERS = Object.freeze({ meet: Object.freeze(TIER_IDS.filter((t) => !TIERS[t].storage)), broadcast: Object.freeze(TIER_IDS.slice()) });
+  const tiersSoldIn = (app) => APP_TIERS[app === 'broadcast' ? 'broadcast' : 'meet'];
   // The FREE plan (Nathan 2026-11-11): admin rooms of up to 5 people; no TURN
   // video and so no vouches; no storage. It is never sold, never a TIER.
   const FREE_PLAN = Object.freeze({ id: 'free', name: 'Free: admin rooms, up to 5 people', price: '$0', priceYear: '$0', adminRooms: true, roomLimit: FREE_LIMIT, turnVideo: false, storage: false, vouches: 0, paid: false });
@@ -693,7 +702,7 @@
   }
 
   GifOS.sub = {
-    TIERS, TIER_IDS, FREE, TEXT, PEOPLE_LIMIT, LICENSE_KIND, SELLER, KEY_RE, SUB_ID_RE, ASK_WINDOW_S, FLAG_KEY,
+    TIERS, TIER_IDS, APP_TIERS, tiersSoldIn, FREE, TEXT, PEOPLE_LIMIT, LICENSE_KIND, SELLER, KEY_RE, SUB_ID_RE, ASK_WINDOW_S, FLAG_KEY,
     FREE_PLAN, FREE_LIMIT, FREE_ID_RE, PLANS, PLAN_IDS, isPlan, isPaid, freeIdFor, freeRights,
     checkLicense, verifyLicense, rightsOf, storageAfterLapse, proofMessage, verifyProof, askMessage, askFresh,
     roomLimitFor, admission, enabled, roomContext, doorContext, roomTierOf, doorVerdict, doorProofOk,
