@@ -443,8 +443,9 @@
       if (!o.fh || !o.fh.doorDue || !mySeated() || !L || !L.outside || L.outside === 3 || !(L.outside & (1 << theirs(x))) || FHDOOR.has(x)) return;
       FHDOOR.set(x, T()); trace('FH-DOOR-NOTE', me, null, 'peer=%d', x);
     }
-    // the page's own word that a knocker's offer reached my seated end over the relay (its boot carries dr: an unseated
-    // dialler): a door pc that never opens never reaches offer() here, since its mark rides the data channel
+    // the page's own word that a description from a page at the door reached my seated end over the relay (its boot
+    // carries dr): its offer, or its answer to my own offer, whichever end dialled. A door pc that never opens never
+    // reaches offer() or answered() here, since its mark rides the data channel
     function fhDoorOuter(x) { if (!o.fh || !o.fh.doorDue || !mySeated() || x === me || x < 0 || FHDOOR.has(x)) return; const L = LINKS.get(x); if (L && L.state === LK_OPEN) return; FHDOOR.set(x, T()); trace('FH-DOOR-NOTE', me, null, 'peer=%d relay=1', x); }
     function fhDoorTick() {
       if (!FHDOOR.size) return;
