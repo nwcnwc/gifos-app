@@ -407,7 +407,7 @@
       }
       if (early && standIn) return;
       if (!have) return; const tid = this.occGet(ckey(tc)); if (tid < 0) { if (!early) this.routeTo(tc, 1); return; }   // a vacant up-cell is probed every beat
-      const m = newMsg('PHONE'); m.coord = cc(this.coord); m.tock = ckey(tc); m.id = id; m.kids = this.hasChildren(); m.child = this.occGet(ckey(down(this.coord))); if (standIn) m.tag = 5; m.l10E = early; this.l711Beat(m, tid);   /* L7.11 */   // an early beat carries the digest alone (L10)
+      const m = newMsg('PHONE'); m.coord = cc(this.coord); m.tock = ckey(tc); m.id = id; m.kids = this.hasChildren(); m.child = this.occGet(ckey(down(this.coord))); if (standIn) m.tag = 5; m.l10E = early; if (early && this.l1010Wait(tid)) { m.pp = this.pp; m.ppAt = this.ppAt; m.ppL = this.ppL; }   /* L10.10 */ this.l711Beat(m, tid);   /* L7.11 */   // an early beat carries the digest alone (L10)
       if (!early && this.coord.i !== 0 && TICK - this.ownVouchAt <= 8 + K.EARLY_HOLD && !this.l211Withdrawn()) { m.e1dn = true; m.owner = this.vouchOwner; m.oCk = this.vouchOCk; m.vAt = this.ownVouchAt; }
       else if (!early && this.coord.i !== 0 && TICK - this.ownDeadAt <= 8 + K.EARLY_HOLD) { m.hard = true; m.oCk = this.ownDeadCk; m.owner = this.ownDeadId; }   // L2.9 / L2.7
       // V7 THE DEEP-ROW LEDGER: a deep head phoning its OWNER carries its row's occupants (cells 1..C-1, first-hand at the head).

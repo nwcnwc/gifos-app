@@ -650,9 +650,29 @@
       if (m.t === 'S1SYNC') { if (m.digs.length <= C * C && this.coord.pc === 0) this.s1SyncDigs(m); return; }
       if (m.id < 0) return;
       const sure = this.linkIs(m, m.id), dsig = !sure && signedBy(m, m.id); if (!(sure || dsig)) return;
-      const pk = ckey(m.coord); if (!this.ownedLinkCell(pk) || this.occGet(pk) !== m.id) return;
+      const pk = ckey(m.coord); if (!this.ownedLinkCell(pk) || (this.occGet(pk) !== m.id && !this.l1010New(m, pk))) return;   /* L10.10 */
       if (m.t === 'PHONE') { if (m.tock !== ckey(this.coord) || m.dgUp.at < 0 || m.tag === 5) return; this.takeUp(m); }
       else if (m.t === 'PONG' && m.dgOnly) { this.pongDig(m, m.id); }
+    },
+    // L10.10 A NEW SEAT'S FIRST COUNT DOES NOT WAIT FOR ITS PC. A seat placed into a deep row by a seat that is not its
+    // head holds one open channel when it sits: the door it came in by. Its first beat waits for the pc being dialled
+    // to its head. (1) A seat whose first beat from a new cell went into a pc that is not open sends its digest early
+    // as well, with its placement proof; L10.8 takes it over the path it has. (2) A row head takes that digest for a
+    // cell of its row it holds free when the frame is the seat's own signed word and its proof names a seat the
+    // head's view admits as an admitter of that cell. The digest alone (L10.6); one report per cell.
+    // C++: mesh_seat.inc:Seat::l1010Wait
+    l1010Wait(tid) { return this.hasCoord && this.state === 3 && this.coord.pc !== 0 && this.TICK - this.seatedAt < K.L10_NEW_WAIT && this.pp >= 0 && this.ppCk === ckey(this.coord) && tid >= 0 && this.f.fabricLinkState(this.id, tid) !== E.LS_OPEN; },
+    // C++: mesh_seat.inc:Seat::l1010First
+    l1010First() {
+      if (!this.w.lv.DIGEST || !this.hasCoord || this.state !== 3 || this.coord.pc === 0 || this.TICK - this.seatedAt >= K.L10_NEW_WAIT) return;
+      let tc; if (this.coord.i !== 0) tc = { pc: this.coord.pc, r: this.coord.r, i: 0 }; else { tc = this.ownerCoord(); if (!tc) return; }
+      if (this.l1010Wait(this.occGet(ckey(tc)))) { this.l10Mark(); this.l10Force = true; this.l10Early(); }   // the same tick: the beat has just folded
+    },
+    // C++: mesh_seat.inc:Seat::l1010New
+    l1010New(m, pk) {
+      if (m.t !== 'PHONE' || !m.l10E || !signedBy(m, m.id) || this.occGet(pk) >= 0 || this.sitting.has(pk)) return false;
+      if (!(this.coord.pc !== 0 && this.coord.i === 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r && m.coord.i !== 0)) return false;
+      return this.ppValid(m) && this.ppAdm(pk, m.pp, m.id) && !this.liveElsewhere(m.id, pk);
     },
     // C++: mesh_seat.inc:Seat::l10Early
     l10Early() {

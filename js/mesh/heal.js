@@ -719,6 +719,9 @@
       { const lb = this.liveBy.get(newCk); const oc = this.occ.get(newCk); if (this.live.has(newCk) && (lb === undefined ? -1 : lb) !== (oc === undefined ? -1 : oc)) { this.live.delete(newCk); this.liveBy.delete(newCk); this.heardSince.delete(newCk); } }
       this.oldNbrIds.length = 0; this.holdOcc.clear(); this.holdSeen.clear(); this.holdCous.clear();
       this.healOnly.delete(newCk); this.healTry.set(newCk, this.TICK | 0); this.healAt = this.TICK | 0;
+      // D7.x.3: a rollback is a change of cell too: if my last fold counted me at the cell I give back, my own count waits here as after a take
+      { const TICK = this.TICK; const hold = K.CONFIRM_TTL + (this.lastPubDepth + 3) * K.DIG_HOLD_LEVEL; const s1Only = (this.lastPubDepth === 0 && this.coord.pc === 0);
+        if (!s1Only && this.lastPubAt >= 0 && this.lastPubAt >= this.digNHoldUntil && TICK - this.lastPubAt < hold) { this.digHoldUntil = TICK + hold; this.digNHoldUntil = TICK + Math.max(K.L10_NEW_WAIT, Math.trunc((this.lastPubDepth + 1) * K.DIG_HOLD_LEVEL / 2)); } }
       this.lastAck = this.TICK | 0; this.lastPhone = (this.TICK | 0) - 100;
       this.announce(); this.f.wake(this.id);
     },

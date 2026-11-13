@@ -289,7 +289,7 @@
       this.l4Tick();    // L4.3: a tier swap of my row
       this.up2Tick();   // L2: judge E1, hold E2
       this.l10Early();
-      if (TICK - this.lastPhone >= 8) { this.lastPhone = TICK; this.rollup(); this.phoneHome(); { this.l10UpSig = this.l10UpNow(); this.l10Spend(); this.l10Carried(); } }   // § G
+      if (TICK - this.lastPhone >= 8) { this.lastPhone = TICK; this.rollup(); this.phoneHome(); { this.l10UpSig = this.l10UpNow(); this.l10Spend(); this.l10Carried(); } this.l1010First(); }   // § G
       this.tlSweep();   // D5
       this.authTick();
       if (this.coord.i === 0 && (TICK % 12) === 0) this.rowSweep();
