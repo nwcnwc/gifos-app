@@ -837,13 +837,17 @@
     // full scale, and the encoder's int16 input clips: everyone downstream hears the distortion. Every source joins
     // one bus, and the bus reaches the destination through a limiter that only acts on the loudest moments (above
     // -3 dBFS); below that the mix passes unchanged. The tap reads the bus, so peak() is the summed level itself.
+    // The release holds the gain reduction for one second (0.9.26: FOLD_LIMITER_RELEASE_MS): several voices summed past
+    // the threshold beat against each other many times a second, and a gain that follows those beats spreads noise
+    // across the whole band. Held steady, the loud stretch is only quieter, and each voice stays as clean as it arrived.
+    // Local to this page's own mix: no peer reads it.
     const bus = ac.createGain();
     let limiter = null;
     if (typeof ac.createDynamicsCompressor === 'function') {
       try {
         limiter = ac.createDynamicsCompressor();
         limiter.threshold.value = -3; limiter.knee.value = 0; limiter.ratio.value = 20;
-        limiter.attack.value = 0.002; limiter.release.value = 0.1;
+        limiter.attack.value = 0.002; limiter.release.value = 1;
       } catch (e) { limiter = null; }
     }
     if (limiter) { bus.connect(limiter); limiter.connect(dest); } else bus.connect(dest);
