@@ -25721,7 +25721,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         else if (now - rowFeed.at >= ROW_SILENT_MS) schedReconcile();
       } catch (e) {} finally { rowFeedBusy = false; }
     }, 400);
-    let rowMixDeaf = false; // L49: mix level ~0. A live head still sends bytes, so heard:feed must not clear this out.
+    let rowMixDeaf = false; // L49: the mix's sound is not arriving. A live head still sends picture bytes, so heard:feed must not clear this out.
     function rowHeadIsOut(c) {
       const s = meshSeat(); if (!c || !s || c.i === 0 || !s.rowHeir) { rowHeadOut = null; return false; }
       const pid = occPid({ pc: c.pc, r: c.r, i: 0 }), now = Date.now();
@@ -25768,16 +25768,50 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return rowX2To.pid;
     }
     const dbgRowHead = (e) => { const l = (window.__rowViewLog = window.__rowViewLog || []); l.push({ t: Date.now(), e }); if (l.length > 100) l.shift(); };
-    // L49. One sim tick is 500 ms. The seat that PLAYS a row mix (a Section-1 head) counts while that mix is near 0
-    // after it has been loud, and a seat in the row flags its own mic on a path that does not go through the row head.
-    // The heir's x1 copy of the same product is born parked, so it has no samples to meter. 8 ticks: the listener asks
-    // the talker to ship the mic, audio only. 16 ticks: the heir stands in. A quiet row never counts. Section 1 only.
-    const ROW_MIX_MS = GifOS.timings.ROW_MIX_MS, ROW_MIX_PULL = GifOS.timings.ROW_MIX_PULL, ROW_MIX_ELECT = GifOS.timings.ROW_MIX_ELECT, ROW_MIX_TTL = GifOS.timings.ROW_MIX_TTL, ROW_MIX_LOUD = 5, ROW_MIX_QUIET = 2;
+    // L49. One sim tick is 500 ms. The seat that PLAYS a row mix (a Section-1 head) counts while that mix's SOUND IS NOT
+    // ARRIVING though its picture is (rowMixArrives: packets, never a level), after it has arrived, and a seat in the row
+    // flags its own mic on a path that does not go through the row head. A quiet mix arrives all the same (a live mixer
+    // sends 50 packets a second of silence), so a quiet row, a pause or a short word is never a dead head. The heir's x1
+    // copy of the same product is born parked: no picture, so nothing to judge. 8 ticks: the listener asks the talker to
+    // ship the mic, audio only. 16 ticks: the heir stands in. Section 1 only.
+    const ROW_MIX_MS = GifOS.timings.ROW_MIX_MS, ROW_MIX_PULL = GifOS.timings.ROW_MIX_PULL, ROW_MIX_ELECT = GifOS.timings.ROW_MIX_ELECT, ROW_MIX_TTL = GifOS.timings.ROW_MIX_TTL;
     const ROW_MIX_TALK = GifOS.timings.ROW_MIX_TALK; // a breath inside one utterance, shorter than the pull window
     const vtalkSeen = new Map();
     const rowSdLv = new Map(), rowSdDead = new Map(), rowSdHold = new Map();
     let rowMixDeadN = 0, rowMixPull = false, rowMixHeard = false, rowMixElected = false, rowMixShipUntil = 0, rowMixArmed = false, rowMixSent = 0;
     let rowMixAn = null, rowMixWhy = '';
+    // Is this row mix's sound ARRIVING? Read from the receivers' own counters: 1 = sound packets came inside the last two
+    // ticks; 0 = none did while the picture beside it kept coming (the head runs, its mixer does not: a stopped
+    // AudioContext sends nothing, a silent one sends silence); -1 = nothing to judge (no track, no counter yet, a parked
+    // copy, a stopped picture: other rails own those). Never a level: people are quiet most of the time, and a meter
+    // sample between two words read a live head as deaf (2026-11-13: a stand-in, a second pack, faces missing).
+    const ROW_MIX_STALL = 2 * ROW_MIX_MS + ROW_MIX_MS / 2;
+    function rowMixArrives(slot, ent) {
+      const now = Date.now(), p = ent ? peers.get(ent.via) : null, st = ent ? ent.stream : null;
+      if (!p || !p.pc || !st || !st.getAudioTracks) return -1;
+      const liveOf = (l) => { const a = l.filter((t) => t.readyState === 'live'); return a[a.length - 1] || null; };   // WebKit keeps the ended track of a renegotiated pair first
+      const at = liveOf(st.getAudioTracks()), vt = liveOf(st.getVideoTracks());
+      if (!at) return -1;
+      if (slot.at !== at || slot.pcOf !== p.pc) { slot.at = at; slot.pcOf = p.pc; slot.ap = -1; slot.vb = -1; slot.aAt = 0; slot.vAt = 0; slot.t0 = now; }
+      if (!slot.busy) {
+        slot.busy = true;
+        (async () => {
+          try {
+            const rs = p.pc.getReceivers(), ar = rs.find((r) => r.track === at), vr = vt ? rs.find((r) => r.track === vt) : null;
+            let ap = -1, vb = -1;
+            if (ar) (await ar.getStats()).forEach((x) => { if (x.type === 'inbound-rtp' && x.kind === 'audio') ap = x.packetsReceived || 0; });
+            if (vr) (await vr.getStats()).forEach((x) => { if (x.type === 'inbound-rtp' && x.kind === 'video') vb = x.bytesReceived || 0; });
+            if (slot.at !== at || slot.pcOf !== p.pc) return;
+            const t = Date.now();
+            if (ap >= 0) { if (slot.ap >= 0 && ap > slot.ap) slot.aAt = t; slot.ap = ap; }
+            if (vb >= 0) { if (slot.vb >= 0 && vb > slot.vb) slot.vAt = t; slot.vb = vb; }
+          } catch (e) {} finally { slot.busy = false; }
+        })();
+      }
+      if (slot.aAt && now - slot.aAt <= ROW_MIX_STALL) return 1;
+      if (slot.ap >= 0 && slot.vAt && now - slot.vAt <= ROW_MIX_STALL && now - Math.max(slot.aAt, slot.t0) > ROW_MIX_STALL) return 0;
+      return -1;
+    }
     function rowMixRms(slot, stream) {
       const track = stream && stream.getAudioTracks ? stream.getAudioTracks()[0] : null;
       if (!track || track.readyState === 'ended' || !ensureAc()) return -1;
@@ -25816,7 +25850,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const f = mosIn.get('sdrow:' + q);
           if (f && f.via) vias[q] = String(f.via).slice(0, 8);
           const slot = rowSdLv.get(q);
-          if (slot && typeof slot.rms === 'number') rms[q] = Math.round(slot.rms * 10) / 10;
+          if (slot && typeof slot.rx === 'number') rms[q] = slot.rx;
         }
         for (const [mk, rf] of mosIn) {
           if (String(mk).indexOf('rap:') !== 0 || !rf || !rf.stream) continue;
@@ -25864,42 +25898,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       for (const [id, q] of peers) { if (id === head || id === src || id === p.id) continue; dcSend(q, msg); }
     }
     window.__rowMixOn = rowMixOnVtalk;
-    function rowMixHeadLevel(q) {
+    function rowMixHeadArrives(q) {
       const head = occPid({ pc: 0, r: q, i: 0 });
       const pri = mosIn.get('sdrow:' + q), std = mosStandby.get('sdrow:' + q);
       const src = pri && pri.via === head ? pri : (std && std.via === head ? std : null);
       if (!src || !src.stream) return -1;
       const slot = rowSdLv.get('h' + q) || {}; rowSdLv.set('h' + q, slot);
-      return rowMixRms(slot, src.stream);
+      return rowMixArrives(slot, src);
     }
-    // Video bytes of the played row mix. They keep climbing when only the mix gain is silent,
-    // and they stop when the head's renderer is stopped. The pull is the first one, not the second.
-    const rowMixFlowAt = new Map();
-    let rowMixFlowBusy = false;
-    function rowMixFlowing(q) {
-      const s = rowMixFlowAt.get(q);
-      return !!(s && s.at && Date.now() - s.at <= 2000);
-    }
-    setInterval(async () => {
-      if (rowMixFlowBusy) return;
-      const c = meshCoord();
-      if (!c || c.i !== 0 || c.pc !== 0) return;
-      rowMixFlowBusy = true;
-      try {
-        const now = Date.now(), nC = SCALE.C;
-        for (let q = 0; q < nC; q++) {
-          if (q === c.r) continue;
-          const f = mosIn.get('sdrow:' + q);
-          const head = occPid({ pc: 0, r: q, i: 0 });
-          if (!f || !f.stream || !head || f.via !== head) { rowMixFlowAt.delete(q); continue; }
-          const bytes = await pipeBytes(f, false);
-          if (!bytes || bytes < 0) continue;
-          const prev = rowMixFlowAt.get(q);
-          if (!prev || bytes.b < prev.b) rowMixFlowAt.set(q, { b: bytes.b, at: prev ? prev.at : 0 });
-          else if (bytes.b > prev.b) rowMixFlowAt.set(q, { b: bytes.b, at: now });
-        }
-      } catch (e) {} finally { rowMixFlowBusy = false; }
-    }, 400);
     function rowMixTick() {
       const now = Date.now();
       for (const [src, v] of vtalkSeen) if (now - v.at > ROW_MIX_TTL) vtalkSeen.delete(src);
@@ -25915,12 +25921,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (c && s && c.i !== 0 && c.pc === 0 && s.rowHeir && s.rowHeir() === myId) {
         const head = occPid({ pc: c.pc, r: c.r, i: 0 });
         const x1 = mosIn.get('x1');
-        const level = (x1 && !x1.deadAt && x1.via === head && x1.stream) ? rowMixRms(rowMixAn || (rowMixAn = {}), x1.stream) : -1;
+        const level = (x1 && !x1.deadAt && x1.via === head && x1.stream) ? rowMixArrives(rowMixAn || (rowMixAn = {}), x1) : -1;   // 1 arrives, 0 the picture comes and the sound does not, -1 nothing to judge
         const flagged = rowMixFresh(c.r, c.pc);
-        rowMixWhy = (x1 ? (x1.deadAt ? 'xdead' : (x1.via === head ? 'xhead' : 'xvia')) : 'nox1') + ' lv=' + (typeof level === 'number' ? Math.round(level * 10) / 10 : level) + (rowMixArmed ? ' arm' : ' warm') + (flagged ? ' flag' : ' noflag');
-        if (level >= ROW_MIX_LOUD) rowMixArmed = true; // a mix we have heard: later silence is this fault, not "not connected yet"
-        if (level >= ROW_MIX_QUIET) { rowMixDeaf = false; rowMixDeadN = 0; }
-        else if (rowMixArmed && level >= 0 && level < ROW_MIX_QUIET && flagged) { rowMixDeadN++; rowMixDeaf = true; }
+        rowMixWhy = (x1 ? (x1.deadAt ? 'xdead' : (x1.via === head ? 'xhead' : 'xvia')) : 'nox1') + ' rx=' + level + (rowMixArmed ? ' arm' : ' warm') + (flagged ? ' flag' : ' noflag');
+        if (level === 1) rowMixArmed = true; // a mix that has arrived: its sound stopping later is this fault, not "not connected yet"
+        if (level === 1) { rowMixDeaf = false; rowMixDeadN = 0; }
+        else if (rowMixArmed && level === 0 && flagged) { rowMixDeadN++; rowMixDeaf = true; }
         else rowMixDeadN = 0;
         if (rowMixDeadN >= ROW_MIX_PULL && !rowMixPull) {
           const via = rowMixVia();
@@ -25935,7 +25941,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             else { const p = peers.get(src); if (p) dcSend(p, { k: 'vtalk', pull: 1, src, row: c.r, pc: c.pc }); }
           }
         }
-        if (rowMixDeadN >= ROW_MIX_ELECT && rowMixHeard && !rowMixElected && rowMixPull && rowMixVia() && flagged && level >= 0 && level < ROW_MIX_QUIET) {
+        if (rowMixDeadN >= ROW_MIX_ELECT && rowMixHeard && !rowMixElected && rowMixPull && rowMixVia() && flagged && level === 0) {
           rowMixElected = true; rowMixShipUntil = 0;
           rowHeadOut = { pid: head, tick: s.seatTick, pc: c.pc, r: c.r, deaf: true };
           dbgRowHead('out:deaf'); schedReconcile();
@@ -25948,23 +25954,23 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (q === c.r) continue;
           const f = mosIn.get('sdrow:' + q);
           const slot = rowSdLv.get(q) || {}; rowSdLv.set(q, slot);
-          const level = (f && f.stream) ? rowMixRms(slot, f.stream) : -1;
-          slot.rms = level;
+          const level = (f && f.stream) ? rowMixArrives(slot, f) : -1;
+          slot.rx = level;
           const head = occPid({ pc: 0, r: q, i: 0 });
-          const headLv = rowMixHeadLevel(q);
-          if (headLv >= ROW_MIX_LOUD) {
+          const headLv = rowMixHeadArrives(q);
+          if (headLv === 1) {
             if (rowSdHold.get(q) === 1 || rowSdLv.get('el' + q)) { for (const [id, p] of peers) { if (id === head) continue; dcSend(p, { k: 'vtalk', elect: 0, row: q, pc: 0, hop: 0 }); } }
             rowSdHold.delete(q); rowSdDead.set('e' + q, 0); rowSdLv.delete('el' + q); rowSdLv.set('arm' + q, 1);
-          } else if (level >= ROW_MIX_LOUD) rowSdLv.set('arm' + q, 1);
+          } else if (level === 1) rowSdLv.set('arm' + q, 1);
           const armed = rowSdLv.get('arm' + q) === 1;
-          // Picture bytes still advancing: the head's renderer is running. A freeze stops them, and that is not this pull.
-          const quiet = armed && level >= 0 && level < ROW_MIX_QUIET && rowMixFresh(q, 0) && f && f.via === head && rowMixFlowing(q);
+          // level 0 holds the picture still arriving: the head's renderer is running. A freeze stops it, and that is not this pull.
+          const quiet = armed && level === 0 && rowMixFresh(q, 0) && f && f.via === head;
           const n = quiet ? (rowSdDead.get(q) || 0) + 1 : 0;
           rowSdDead.set(q, n);
           if (n >= ROW_MIX_PULL && !rowSdHold.get(q)) { rowSdHold.set(q, 1); dbgRowHead('sdrow-hold:' + q); schedReconcile(); }
           // x1 at the heir is born parked, so the listener is who hears the mix die. Ask the talker for the mic now,
           // and the heir to stand in if the playing copy stays quiet.
-          if (rowSdHold.get(q) === 1 && !(level >= ROW_MIX_LOUD)) {
+          if (rowSdHold.get(q) === 1 && level !== 1) {
             let pn = 0;
             for (const [src, v] of vtalkSeen) {
               if (v.pc !== 0 || v.row !== q || now - v.at > ROW_MIX_TTL) continue;
@@ -26036,7 +26042,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (key === 'sdx' || key === 'sdx^x') return !iAmHead && meta && meta.col === c.i ? 'sdx' : null;
       if (key === 'sdxc') return !iAmHead && meta && meta.col != null && meta.col !== c.i ? 'sdxc:' + meta.col : null;
       if (key === 'sdn') return iAmHead ? 'sdn' : null;  // my branch's outside-world ingredient (from above)
-      // L49: a talker's mic pulled past a level-dead row head. Audio only. The head claims rap:<row>; a mate relays ra:<row>.
+      // L49: a talker's mic pulled past a row head whose mix does not arrive. Audio only. The head claims rap:<row>; a mate relays ra:<row>.
       if (key === 'ra') {
         if (c.pc !== 0 || !meta || meta.row == null) return null;
         if (c.i === 0) return meta.row !== c.r ? 'rap:' + meta.row : null;
@@ -26950,7 +26956,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       else if (rk === 'sgs') co = c.i === 0 ? net.topo.up(c) : { pc: c.pc, r: c.r, i: 0 };      // the tree hop (my head, or a head's parent)
       else if (rk.indexOf('sdrow:') === 0) {
         const q = +rk.slice(6), head = occPid({ pc: 0, r: q, i: 0 });
-        // L49: while that row's mix is level-dead, the carrier is the copy. Byte flow on the head's picture must not win it back.
+        // L49: while that row's mix does not arrive, the carrier is the copy. Byte flow on the head's picture must not win it back.
         if (rowMixHold(q)) { const alt = cand.find((x) => x.live && head && x.from !== head); if (alt) return alt; }
         // The head's own copy is the path while it is live and not dark (bytes flat on a pipe that flowed: a frozen head
         // keeps its stream in `incoming` for the whole ICE timeout, and every copy of its product is the same stopped
@@ -27057,7 +27063,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // A failback or picture wake never goes to a copy whose last such wake failed, or that was just left for failing,
       // until the window lapses (fbTried); a failover (primary gone or dark) is not held by it.
       const stdFbOk = !!std && !stdTried(fb, std.via + '|' + std.streamId, now, 'fbTried');
-      // L49: the playing sdrow is the row head and its mix level is ~0. Not fb.dark — picture bytes are still moving, and the watchdog would clear that.
+      // L49: the playing sdrow is the row head and its sound does not arrive. Not fb.dark — picture bytes are still moving, and the watchdog would clear that.
       const mixDeaf = !!(pri && rk.indexOf('sdrow:') === 0 && rowMixHold(+rk.slice(6)) && pri.via === occPid({ pc: 0, r: +rk.slice(6), i: 0 }));
       const wantSwap = !!(pri && std && (!priLive || fb.dark || mixDeaf || u2Over || (stdFbOk && (fb.picDead || (stdIsPref && !priIsPref)))));
       if (wantSwap) {
@@ -27918,7 +27924,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               if (mk.indexOf('rap:') !== 0 || !rf || !rf.stream) continue;
               const q = +mk.slice(4), slot = rowSdLv.get(q), head = occPid({ pc: 0, r: q, i: 0 });
               const played = mosIn.get('sdrow:' + q);
-              if (played && played.via !== head && slot && slot.rms >= ROW_MIX_LOUD) continue;
+              if (played && played.via !== head && slot && slot.rx === 1) continue;
               if (rapN >= 2) continue;
               outA.set('rap' + q, rf.stream); rapN++;
             }
