@@ -1138,7 +1138,7 @@
   /* A tile whose video a free TURN link holds back (run.html turnPaint): the
      sentence and Subscribe, quiet over the dark tile. Chrome on the content:
      no panel, no border, no accent colour; the name pill keeps its corner. */
-  .tile .tpause { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  .tile .tpause { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
                   gap: 12px; padding: 16px 16px 44px; text-align: center; pointer-events: none; z-index: 3;
                   font-size: .875rem; line-height: 1.35; color: var(--c-white); }
   .tile .tpause > span { max-width: 22rem; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
