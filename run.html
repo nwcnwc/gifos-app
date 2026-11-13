@@ -25776,6 +25776,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // ship the mic, audio only. 16 ticks: the heir stands in. Section 1 only.
     const ROW_MIX_MS = GifOS.timings.ROW_MIX_MS, ROW_MIX_PULL = GifOS.timings.ROW_MIX_PULL, ROW_MIX_ELECT = GifOS.timings.ROW_MIX_ELECT, ROW_MIX_TTL = GifOS.timings.ROW_MIX_TTL;
     const ROW_MIX_TALK = GifOS.timings.ROW_MIX_TALK; // a breath inside one utterance, shorter than the pull window
+    const ROW_MIX_LOUD = 5; // a carried copy at this level holds a voice (rowMixTick, the listener: never used to judge a head)
     const vtalkSeen = new Map();
     const rowSdLv = new Map(), rowSdDead = new Map(), rowSdHold = new Map();
     let rowMixDeadN = 0, rowMixPull = false, rowMixHeard = false, rowMixElected = false, rowMixShipUntil = 0, rowMixArmed = false, rowMixSent = 0;
@@ -25843,7 +25844,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return x2Target({ pc: 0, r: dest, i: c.i });
     }
     function rowMixNote() {
-      const c = meshCoord(), vias = {}, rms = {}, nC = SCALE.C;
+      const c = meshCoord(), vias = {}, rms = {}, hot = [], nC = SCALE.C;
       let rap = 0, rapRms = -1;
       if (c && c.i === 0) {
         for (let q = 0; q < nC; q++) {
@@ -25851,6 +25852,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (f && f.via) vias[q] = String(f.via).slice(0, 8);
           const slot = rowSdLv.get(q);
           if (slot && typeof slot.rx === 'number') rms[q] = slot.rx;
+          if (slot && slot.hot) hot.push(q);
         }
         for (const [mk, rf] of mosIn) {
           if (String(mk).indexOf('rap:') !== 0 || !rf || !rf.stream) continue;
@@ -25861,7 +25863,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }
       }
       const sv = rowMixVia();
-      window.__rowMix = { dead: rowMixDeadN, pulls: rowMixPull ? 1 : 0, heard: rowMixHeard ? 1 : 0, elected: rowMixElected ? 1 : 0, deaf: rowMixDeaf ? 1 : 0, ship: rowMixShipUntil > Date.now() ? 1 : 0, hold: [...rowSdHold.keys()], vias, arm: rowMixArmed ? 1 : 0, spk: speakingOf.get('me') ? 1 : 0, why: rowMixWhy, rap, rapRms, rms, sent: rowMixSent, shipVia: sv ? String(sv).slice(0, 8) : '' };
+      window.__rowMix = { dead: rowMixDeadN, pulls: rowMixPull ? 1 : 0, heard: rowMixHeard ? 1 : 0, elected: rowMixElected ? 1 : 0, deaf: rowMixDeaf ? 1 : 0, ship: rowMixShipUntil > Date.now() ? 1 : 0, hold: [...rowSdHold.keys()], vias, arm: rowMixArmed ? 1 : 0, spk: speakingOf.get('me') ? 1 : 0, why: rowMixWhy, rap, rapRms, rms, hot, sent: rowMixSent, shipVia: sv ? String(sv).slice(0, 8) : '' };
     }
     function rowMixOnVtalk(p, m) {
       if (!p || !m || m.row == null) return;
@@ -25957,6 +25959,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const level = (f && f.stream) ? rowMixArrives(slot, f) : -1;
           slot.rx = level;
           const head = occPid({ pc: 0, r: q, i: 0 });
+          // A CARRIED COPY'S PACKETS ARE NOT ITS SOUND. Arrival is evidence on the mixer's own pipe only: a seat that
+          // carries a copy encodes what it received, silence included, so the copy of a stopped mix arrives at 50
+          // packets a second with nothing in it. Read as "arrives", it ended the pull, dropped the pulled mic and
+          // never asked the heir, and the row was silent to this seat until it failed back. Whether a carried copy
+          // holds the row's voice is its level, kept for one breath. That is asked only under a hold (the head's own
+          // pipe proved its sound gone) while a talker flags, so a quiet row is still never a dead head.
+          const carried = !!(f && f.stream && (!head || f.via !== head));   // no head known: whatever plays is not the head's own pipe
+          const cs = rowSdLv.get('c' + q) || {}; rowSdLv.set('c' + q, cs);
+          if (carried) {
+            const lv = rowMixRms(cs, f.stream);
+            if (cs.hotOf !== cs.track) { cs.hotOf = cs.track; cs.hotAt = 0; }
+            if (lv >= ROW_MIX_LOUD) cs.hotAt = now;
+          }
+          const hot = level === 1 && (!carried || (!!cs.hotAt && now - cs.hotAt <= ROW_MIX_TALK));
+          slot.hot = hot;
           const headLv = rowMixHeadArrives(q);
           if (headLv === 1) {
             if (rowSdHold.get(q) === 1 || rowSdLv.get('el' + q)) { for (const [id, p] of peers) { if (id === head) continue; dcSend(p, { k: 'vtalk', elect: 0, row: q, pc: 0, hop: 0 }); } }
@@ -25970,7 +25987,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (n >= ROW_MIX_PULL && !rowSdHold.get(q)) { rowSdHold.set(q, 1); dbgRowHead('sdrow-hold:' + q); schedReconcile(); }
           // x1 at the heir is born parked, so the listener is who hears the mix die. Ask the talker for the mic now,
           // and the heir to stand in if the playing copy stays quiet.
-          if (rowSdHold.get(q) === 1 && level !== 1) {
+          if (rowSdHold.get(q) === 1 && !hot) {
             let pn = 0;
             for (const [src, v] of vtalkSeen) {
               if (v.pc !== 0 || v.row !== q || now - v.at > ROW_MIX_TTL) continue;
@@ -27065,7 +27082,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const stdFbOk = !!std && !stdTried(fb, std.via + '|' + std.streamId, now, 'fbTried');
       // L49: the playing sdrow is the row head and its sound does not arrive. Not fb.dark — picture bytes are still moving, and the watchdog would clear that.
       const mixDeaf = !!(pri && rk.indexOf('sdrow:') === 0 && rowMixHold(+rk.slice(6)) && pri.via === occPid({ pc: 0, r: +rk.slice(6), i: 0 }));
-      const wantSwap = !!(pri && std && (!priLive || fb.dark || mixDeaf || u2Over || (stdFbOk && (fb.picDead || (stdIsPref && !priIsPref)))));
+      // L49, the way back. The hold moved this row off its head's pipe onto a carried copy. The hold ends on the head's
+      // own evidence (its sound arrives again, rowMixHeadArrives), and the carried copy is then only a stand-in: its
+      // chain may hold nothing (a parked copy, a heir that stood down). So the row goes back to the head at once: not
+      // after the settle window, and not held by an older failed wake of that pipe (fbTried), which says nothing about
+      // the sound that now arrives. One try per hold: a wake of the head that fails after the row left it is remembered
+      // as any other.
+      const sdQ = rk.indexOf('sdrow:') === 0 ? +rk.slice(6) : -1, sdHead = sdQ >= 0 ? occPid({ pc: 0, r: sdQ, i: 0 }) : null;
+      const mixBack = !!(pri && std && sdHead && fb.mixLeftAt && !rowMixHold(sdQ) && std.via === sdHead && pri.via !== sdHead && rowMixHeadArrives(sdQ) === 1
+        && !(((fb.fbTried && fb.fbTried.get(std.via + '|' + std.streamId)) || 0) > fb.mixLeftAt));
+      const wantSwap = !!(pri && std && (!priLive || fb.dark || mixDeaf || mixBack || u2Over || (stdFbOk && (fb.picDead || (stdIsPref && !priIsPref)))));
       if (wantSwap) {
         if (std && !std.el && std.stream) std.el = mosVideo(std.stream); // mint the decoder on wake, not while parked
         if (!fb.wakeAt) { fb.wakeAt = now; fb.f0 = frames(std.el); if (DEBUG_ON && rk.indexOf('stg:') === 0) swapPicNote(rk, 'wake', 'wantSwap priLive=' + (priLive ? 1 : 0) + ' dark=' + (fb.dark ? 1 : 0) + ' picDead=' + (fb.picDead ? 1 : 0)); }
@@ -27134,7 +27160,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // Coming back to the copy just left, or leaving one preference for another,
         // still waits. The timer itself is unchanged.
         const firstPref = !!(stdIsPref && !priIsPref && !fb.hadPref && (!pref || fb.left !== pref.from));
-        const settled = !priLive || fb.dark || mixDeaf || fb.picDead || u2Over || firstPref || ((now - fb.prefSince >= MOS_SETTLE) && (now - fb.lastSwitch >= MOS_SETTLE));
+        const settled = !priLive || fb.dark || mixDeaf || mixBack || fb.picDead || u2Over || firstPref || ((now - fb.prefSince >= MOS_SETTLE) && (now - fb.lastSwitch >= MOS_SETTLE));
         if (DEBUG_ON && !(flowing && settled) && rk.indexOf('stg:') === 0) swapPicNote(rk, 'hold', 'flowing=' + (flowing ? 1 : 0) + ' settled=' + (settled ? 1 : 0) + ' f0=' + fb.f0 + ' stdAdv=' + (stdAdvanced ? 1 : 0) + (keepPic ? ' keepPic=1' : ''));
         if (flowing && settled) {
           const old = pri;
@@ -27147,6 +27173,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // A share on the new path: seats below me need a key frame to decode my new source, so ask now.
           if (rk.indexOf('stg:') === 0 && pri.stream && pri.stream.getVideoTracks().length) { try { kfNeed(rk); } catch (e) {} }
           pri.deadAt = 0; fb.lastSwitch = now; fb.wakeAt = 0; fb.prefSince = 0; fb.pvB = -1; fb.pvAt = 0;
+          fb.mixLeftAt = mixDeaf ? now : 0; // L49: this row left its head's pipe for a silent mix (mixBack)
           fb.left = old.via; fb.hadPref = !!stdIsPref; // the copy just installed is the anchor; the one left is not a fresh preference
           fb.picDead = false; fb.picStdOk = false; fb.picStd0 = null; fb.picRef = null;
           fb.dark = false; fb.lastBytes = -1; fb.lastAdvanceAt = 0; fb.q = 0; fb.flowSince = 0; fb.fp = 0; fb.fpDecayAt = 0; fb.b0 = -1; fb.d0 = -1; fb.stdFdec = -1; fb.stdAdvAt = 0; fb.claimAt = now; fb.suspect = false; fb.stdTried = null; // fresh primary — the watchdog re-baselines and the penalty clears
@@ -27924,7 +27951,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
               if (mk.indexOf('rap:') !== 0 || !rf || !rf.stream) continue;
               const q = +mk.slice(4), slot = rowSdLv.get(q), head = occPid({ pc: 0, r: q, i: 0 });
               const played = mosIn.get('sdrow:' + q);
-              if (played && played.via !== head && slot && slot.rx === 1) continue;
+              if (played && played.via !== head && slot && slot.hot) continue;
               if (rapN >= 2) continue;
               outA.set('rap' + q, rf.stream); rapN++;
             }
