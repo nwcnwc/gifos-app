@@ -35922,6 +35922,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       hostFlood();
     }
     if (DEBUG_ON) window.__subsPublishNow = () => subsPublishRoomPlan();   // DEBUG=on only: a test republishes the room's plan now
+    if (DEBUG_ON) window.__turnSubsForTest = () => Array.from(turnSubs.entries()).map(([pid, s]) => ({ pid: String(pid), tier: s.tier, exp: s.exp, pass: !!s.pass, ticket: s.ticket }));   // DEBUG=on only: the vouches this page holds
     // ONE MEETING AT A TIME: joining asks the payment service for this
     // meeting's ticket (payment is checked then, once). Every renewal puts the
     // admin's fresh ticket into the room; losing it (the subscription moved to
