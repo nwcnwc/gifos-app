@@ -9929,6 +9929,60 @@
       "sha256": "1ff4952cc47edf31d7be5ea2ad41cc412c0b67e91be5c601d6217634fb9605a4"
     },
     {
+      "slug": "whiteboard",
+      "appId": "whiteboard",
+      "name": "Whiteboard",
+      "shortName": "Whiteboard",
+      "version": "1.0",
+      "tagline": "A shared whiteboard for workshops. Everyone in the meeting draws on it together.",
+      "author": {
+        "name": "Excalidraw",
+        "url": "https://github.com/excalidraw/excalidraw"
+      },
+      "porter": {
+        "name": "GifOS",
+        "url": "https://gifos.app"
+      },
+      "basedOn": {
+        "name": "Excalidraw",
+        "blessed": false
+      },
+      "minBuild": 947,
+      "offline": true,
+      "releaseDate": "2026-11-13",
+      "updated": "2026-11-13",
+      "categories": [
+        "Productivity"
+      ],
+      "tags": [
+        "whiteboard",
+        "workshop",
+        "sticky-notes",
+        "brainstorm",
+        "retrospective",
+        "diagram",
+        "drawing",
+        "powerpoint",
+        "multiplayer",
+        "offline"
+      ],
+      "accent": [
+        105,
+        101,
+        219
+      ],
+      "cover": "/apps/whiteboard/cover.jpg",
+      "bytes": 4662385,
+      "download": 0,
+      "provides": null,
+      "signature": {
+        "type": "domain",
+        "id": "gifos.app",
+        "ts": "2026-11-13"
+      },
+      "sha256": "c66a86f37b601c1ac143729decdfb9a0326ddb4560621663a7cd42fd884419b0"
+    },
+    {
       "slug": "wifi-card",
       "appId": "wifi-card",
       "name": "WiFi Card",
