@@ -23112,6 +23112,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         applyRoffer(m);
       } else if (m.k === 'ranswer') {
         if (!p.pc) return;
+        // DEBUG lever (renegAllForTest): a renegotiation answer is applied only after __ranswerHoldMs, as from a far end that answers late.
+        if (DEBUG_ON && +window.__ranswerHoldMs > 0 && !m.__held) {
+          const held = Object.assign({}, m, { __held: true }); const hp = p;
+          if (typeof clog === 'function') clog('ranswer-hold ' + String(p.id).slice(0, 6) + ' ' + window.__ranswerHoldMs + 'ms');
+          setTimeout(() => { if (peers.get(hp.id) === hp) onDc(hp, hp.dc, held); }, +window.__ranswerHoldMs);
+          return;
+        }
         noteGecko(p, m.sdp);
         const carried = p.connected || (p.dc && p.dc.readyState === 'open');
         const srd = () => p.pc.setRemoteDescription(m.sdp);
@@ -39463,6 +39470,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (window.__parkedJobs) window.__parkedJobs.delete(jk);
         setJobActive(jk, true);
         return { ok: true, active: !!(mosJobs.get(jk) || {}).active };
+      },
+      // DEBUG lever: renegotiate EVERY pair at once, each offer with one new m-line (an inactive video
+      // transceiver, the shape a stage copy or a fold adds), and with holdMs hold each answer that long before it is applied
+      // (window.__ranswerHoldMs): every pc sits in have-local-offer while its channel and media keep flowing, as a far end
+      // that answers late leaves it. Returns the pairs it kicked.
+      renegAllForTest: (holdMs) => {
+        if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
+        window.__ranswerHoldMs = +holdMs || 0;
+        const out = [];
+        for (const p of peers.values()) {
+          if (!p.pc || !p.dc || p.dc.readyState !== 'open' || p.pc.signalingState !== 'stable') continue;
+          try { p.pc.addTransceiver('video', { direction: 'inactive' }); } catch (e) { continue; }
+          renegotiate(p); out.push(String(p.id).slice(0, 8));
+        }
+        return { ok: true, kicked: out, holdMs: window.__ranswerHoldMs };
       },
       severPair: (pid, ms) => {
         if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
