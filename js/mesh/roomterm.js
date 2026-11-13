@@ -14,7 +14,7 @@
   const L8_47_1_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L8_47_1_OFF === '1') ? 1 : 0;
   // the sim's -DL8_47_2_OFF=1 / -DL8_47_3_OFF=1 / -DL8_1_3_OFF=1 builds: MESH_<name>=1 under node, read once at load; a page always runs the laws
   const offOn = (n) => (isNode && typeof process !== 'undefined' && process.env && process.env[n] === '1') ? 1 : 0;
-  const L8_47_3_OFF = offOn('MESH_L8_47_3_OFF'), L8_1_3_OFF = offOn('MESH_L8_1_3_OFF'), L8_54_OFF = offOn('MESH_L8_54_OFF');
+  const L8_47_3_OFF = offOn('MESH_L8_47_3_OFF'), L8_1_3_OFF = offOn('MESH_L8_1_3_OFF'), L8_54_OFF = offOn('MESH_L8_54_OFF'), L8_54_5_OFF = offOn('MESH_L8_54_5_OFF');
   const { ckey, ownedLinks } = topo;
   const LS_NONE = E.LS_NONE;
 
@@ -83,6 +83,7 @@
       const a0 = (this.state === 1) ? this.retryAt : -1; const was = this.l16Ask.slice();
       this.trace('L4.1.1-VERDICT', this.id, null, 'asked=%zu since=%d', was.length, a0);
       this.islandAsk(this.lastGreeters);
+      if (!L8_54_5_OFF && !L8_54_OFF && this.w.lv.ISLAND_MODE) for (const g of this.lastGreeters) if (g >= 0 && g !== this.id && this.f.fabricDoorNet(this.id, g) === 3) { this.trace('L8.54.5-REKNOCK', this.id, null, 'greeter=%d', g); this.greetersAt = -1; this.emitRelay(this.linkKey); break; }   // L8.54.5: a word given before its own probe's verdict: the door's fresh list carries the measured one
       if (a0 >= 0 && this.state === 1) { let all = true; for (const g of this.l16List) if (!was.includes(g)) { all = false; break; } if (all) { this.l16FreshAt = a0; this.islandAskAt = a0; } }
     },
 
