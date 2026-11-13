@@ -15046,7 +15046,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try {
         for (const [jk, job] of [...mosJobs]) if (job.to === p.id) unshipMos(jk, false);
       } catch (e) { if (typeof clog === 'function') clog('rebuildPc: mosaic job cleanup failed ' + String(e).slice(0, 60)); }
-      const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+      // ONE TRANSPORT PER PAIR (bundlePolicy 'max-bundle'). Under the default 'balanced' policy Firefox gives each new
+      // m-line of an offer a provisional transport of its own until the answer bundles it, and while that transport
+      // gathers it reports the whole pc as connectionState 'connecting' and iceConnectionState 'checking' (even
+      // pc.sctp.transport reads 'new'), though the pair's channel and media keep flowing on the bundled transport. Every
+      // renegotiation then read as a lost pair: a slow answer turned the tile to "no route", the reach line to "cannot
+      // reach room" and asked a friend to relay a pair that was up. With max-bundle every m-line rides the one transport
+      // from the start, so the pc's states stay true through a renegotiation. Every engine GifOS runs on supports it.
+      const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS, bundlePolicy: 'max-bundle' });
       // Whatever was armed against the OLD pc must never fire at the new one: a glare yield's rollback would target a
       // connection that never offered, a held renegotiation describes m-lines the fresh pc never had, and offer turns
       // belong to the old pc. An offer still minting belongs to it too: its chain never settles on a closed pc.
