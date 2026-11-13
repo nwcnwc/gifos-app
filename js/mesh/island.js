@@ -264,6 +264,13 @@
     l850Lone() { return this.line === this.id && !this.l850Seated && this.hasCoord && this.state === 3 && ckey(this.coord) === 0 && !this.moving; },
 
     // C++: mesh_island.inc:Seat::l850
+    // TURN.19.1/19.4 at the far end. C++: mesh_island.inc:Seat::t19Find
+    t19Find(m) {
+      if (!this.f.fabricDoors() || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0 || m.nc < 0 || m.nc === this.id || m.from !== m.nc || !this.f.fabricTurnPc(this.id, m.nc) || this.l850Lone()) return false;
+      let mate = false; for (const [k, v] of this.occ) if (v >= 0 && v !== this.id && v !== m.nc && ckPc(k) === 0 && this.firstHandLive(k)) { mate = true; break; }
+      if (!mate) return false;
+      this.trace('TURN19-CARRY', this.id, this.coord, 'nc=%d', m.nc); m.sgw = this.id; m.sgwCk = ckey(this.coord) + 1; this.farLearn(m); return true;
+    },
     // L8.50: a founder of one and a room (.1 the room's seat, .2 the founder)
     l850(m) {
       if (!this.f.fabricDoors() || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return false;
@@ -274,8 +281,7 @@
         let mate = false; for (const [k, v] of this.occ) if (v >= 0 && v !== this.id && v !== m.id && ckPc(k) === 0 && this.firstHandLive(k)) { mate = true; break; }
         if (!mate) return false;
         this.trace('L8.50-ROOM', this.id, this.coord, 'to=%d line=%d', m.id, m.line); const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = this.id; h.c7Min = this.ringName(); h.c7Held = true; h.c7One = false; this.emit(m.id, h);   // one answer per HELLO received
-        if (this.f.fabricTurnPc(this.id, m.id)) { this.trace('TURN19-CARRY', this.id, this.coord, 'nc=%d', m.id); const f = newMsg('FIND'); f.nc = m.id; f.from = m.id; f.ttl = K.FIND_TTL; f.sgw = this.id; f.sgwCk = ckey(this.coord) + 1; this.farLearn(f); this.onFind(f); }   // TURN.19.1 (C++ mesh_island.inc)
-        return true;
+        return true;   // (TURN.19.1: the founder's own FIND, sent beside this HELLO, is served by t19Find)
       }
       const lone = this.l850Lone(), left = !lone && this.ringAlone() && !this.moving && this.lineAt >= 0 && m.lineAt >= 0 && m.lineAt < this.lineAt;   // L8.52.4 (mesh_ring.inc): the last seat of the younger room, alone on its ring, follows on the older room's one word
       if (m.c7Min < 0 || !(lone || left)) return false;   // L8.50.2
