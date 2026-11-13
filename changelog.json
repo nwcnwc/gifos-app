@@ -2,6 +2,17 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.25.4",
+      "date": "2026-11-12",
+      "headline": "Clearer Stadium sound, a cleaner start, and steadier Firefox calls",
+      "fixes": [
+        "Meetings: when several people talk loudly at once, the Stadium sound stays clear instead of turning hissy.",
+        "Meetings: opening the meeting page shows the lobby from the first moment, never an empty call with its control bar.",
+        "Meetings: Firefox no longer flashes \"cannot reach room\" for a few seconds while the call is still connected.",
+        "Meetings: sharing your screen no longer opens the Stage window over the screen you are sharing."
+      ]
+    },
+    {
       "version": "0.9.25.3",
       "date": "2026-11-12",
       "headline": "Voices in the Stadium and on the Stage keep their true pitch",
