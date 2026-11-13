@@ -254,7 +254,7 @@
         }   // L13.1
         if (!ok && !this.l25Stand(m.nc >= 0 ? m.nc : by, true) && !this.moving && m.nc >= 0 && m.nc !== id && m.nc !== by && TICK - this.seatedAt < K.L11_ARRIVE) { this.l25Ask(m, by, true); return; }   // L25
         if (!ok) this.l391Ask(m, by);   // L39.1: a yield from a seat of my rook over its own link puts L25's question (gaps3.js)
-        if (!ok) { const ak = this.arbCellOf(by); const hasAk = ak !== null; if (!this.arbiterIs(by) || (hasAk && this.ppPendingSim(ak, by))) { this.pendYBy = by; this.pendYAt = TICK; this.pendYCk = m.ck; this.pendYNc = m.nc; this.pendYPp = m.pp; this.pendYPpAt = m.ppAt; this.pendYPpL = m.ppL; this.pendYBorn = m.born; } return; }
+        if (!ok) { const ak = this.arbCellOf(by); const hasAk = ak !== null; if (this.l8511Drop(by)) return;   /* L8.51.1 (mesh_island.inc) */ if (!this.arbiterIs(by) || (hasAk && this.ppPendingSim(ak, by))) { this.pendYBy = by; this.pendYAt = TICK; this.pendYCk = m.ck; this.pendYNc = m.nc; this.pendYPp = m.pp; this.pendYPpAt = m.ppAt; this.pendYPpL = m.ppL; this.pendYBorn = m.born; } return; }
       }
       if (roomTerm(this, 1) && m.nc >= 0 && m.nc !== id) { const cb = this.l829Bye.get(m.nc); if (cb !== undefined && TICK - cb <= K.RELAY_TTL) { this.trace('L8.29-ANSWER', id, this.coord, 'by=%d named=%d', by, m.nc); this.emit(by, hello(ckey(this.coord), id)); return; } }   // L8.29
       if (this.f.fabricDoors() && !this.moving && this.coord.pc === 0 && m.pp >= 0 && m.ppL >= 0 && this.pp >= 0 && this.ppL >= 0 && this.ppCk === ckey(this.coord) && m.nc >= 0 && m.nc !== id && l165Earlier(this.ppL, this.pp, id, m.ppL, m.pp, m.nc)) { this.emit(by, hello(ckey(this.coord), id)); this.trace('L16.5-STAND', id, this.coord, 'by=%d rival=%d', by, m.nc); return; }

@@ -61,6 +61,9 @@
   // gifos-base-net.js FEE_ADDRESS (EIP-55 form). Mainnet stays off until
   // BASE_NETWORK is set to 'mainnet' there (docs/payments.md).
   const TREASURY = '0xBB6Ee87BBFF5F7AB6E8Fb4f38Fe6fE69B500b2d0';
+  // The PayPal button's words, from i18n/<locale>/charge.json (gifos-charge.js
+  // loads that catalog). PayPal's page opens on its card form, so no account is needed.
+  const trPay = (key, en) => { try { const I = GifOS.i18n; if (I && I.has(key)) return I.t(key); } catch (e) {} return en; };
   function treasuryAddress() {
     const pinned = GifOS.baseNet && GifOS.baseNet.FEE_ADDRESS;
     if (typeof pinned === 'string' && pinned.toLowerCase() !== TREASURY.toLowerCase()) {
@@ -381,7 +384,7 @@
           ((canX402 || sheetData.rails.transfer) && GifOS.onramp ? '<div id="gp-onramp" style="margin-top:.7rem;padding-top:.6rem;border-top:1px solid #23233a"><div style="display:flex;justify-content:space-between;gap:.6rem"><span style="color:#9a9ab5">USDC balance</span><b id="gp-usdc-bal">…</b></div><button id="gp-topup" type="button" style="margin-top:.45rem;padding:.4rem .8rem;border-radius:.4rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit">Add USDC</button></div>' : '') +
         '</div>' +
         '<div id="gp-buttons" style="display:flex;flex-direction:column;gap:.5rem">' +
-          (canPaypal ? '<button id="gp-paypal" style="padding:.6rem 1rem;border-radius:.5rem;border:none;background:#ffc439;color:#111;cursor:pointer;font:inherit;font-weight:600">' + (sheetData.mode === 'LIVE' ? 'Pay with PayPal' : 'Pay with PayPal (sandbox)') + '</button>' : '') +
+          (canPaypal ? '<button id="gp-paypal" style="padding:.6rem 1rem;border-radius:.5rem;border:none;background:#ffc439;color:#111;cursor:pointer;font:inherit;font-weight:600">' + esc(sheetData.mode === 'LIVE' ? trPay('charge.pay.paypal', 'Pay by card or PayPal') : trPay('charge.pay.paypalSandbox', 'Pay by card or PayPal (sandbox)')) + '</button>' : '') +
           (canX402 ? '<button id="gp-x402" ' + (walletReady ? '' : 'disabled ') + 'style="padding:.6rem 1rem;border-radius:.5rem;border:1px solid #2a2a3f;background:' + (walletReady ? '#1652f0' : '#20203255') + ';color:' + (walletReady ? '#fff' : '#9a9ab5') + ';cursor:' + (walletReady ? 'pointer' : 'default') + ';font:inherit">Pay with USDC on Base' + (walletReady ? '' : ' (no wallet yet)') + '</button>' : '') +
           (sheetData.rails.transfer ? '<button id="gp-transfer" style="padding:.6rem 1rem;border-radius:.5rem;border:1px solid #2a2a3f;background:#1d1d2c;color:#e8e8f4;cursor:pointer;font:inherit">Send USDC from any wallet (RockWallet, …)</button>' : '') +
           (sheetData.rails.fednow ? '<button id="gp-fednow" style="padding:.6rem 1rem;border-radius:.5rem;border:1px solid #2a2a3f;background:#1d1d2c;color:#e8e8f4;cursor:pointer;font:inherit">Pay from your bank (FedNow)</button>' : '') +
