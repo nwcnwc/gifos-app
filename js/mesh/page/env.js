@@ -357,7 +357,7 @@
       }
       if (fwdBy >= 0) return;   // a passed call goes no further
       for (const r of mc) {
-        if (r === j || fhHome(s, r)) continue; const ft = fh.ftags(P(r)) || []; if (!ft.some((t) => t && t !== skip)) continue;
+        if (r === j) continue; const ft = fh.ftags(P(r)) || []; if (!ft.some((t) => t && t !== skip)) continue;   // the pass may go to a front-row mate: the newcomer asks its greeters one at a time, and the one that holds a friend may be asked last
         trace('FH-DCALL-PASS', me, s.coord, 'to=%d for=%d', r, j); fh.doorSend(P(r), 8, jp); return;
       }
       trace('FH-DCALL-NONE', me, s.coord, 'for=%d conns=%d', j, mc.length);

@@ -436,7 +436,7 @@
     }
     // C++: mesh_fhop.inc:fhDoorNote / fhDoorOpened / fhDoorDue   [my end: the seated one]
     // FHOP.8: a door to a knocker whose offer and answer crossed at my seated end starts its ICE clock. When the pc has had
-    // its whole ICE time (LINK_DIAL_FAIL) and never opened, the page calls a friend to the door (o.fh.doorDue: env.js).
+    // an answered dial's ICE time (LINK_DIAL_ICE) and never opened, the page calls a friend to the door (o.fh.doorDue: env.js).
     // opened() ends the clock; the knocker's own end never runs one.
     const FHDOOR = new Map();   // knocker -> the tick its door's signalling crossed
     function fhDoorNote(x, L) {
@@ -450,7 +450,7 @@
     function fhDoorTick() {
       if (!FHDOOR.size) return;
       for (const [x, at] of [...FHDOOR]) {
-        if (T() - at < K.LINK_DIAL_FAIL) continue;
+        if (T() - at < K.LINK_DIAL_ICE) continue;   // the crossing is an answered dial: its verdict is LINK_DIAL_ICE
         FHDOOR.delete(x); const L = LINKS.get(x); if (L && L.state === LK_OPEN) continue;
         trace('FH-DOOR-DUE', me, null, 'peer=%d', x); o.fh.doorDue(x);
       }
