@@ -2534,6 +2534,46 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const DEL_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
 
     let myId = null, localStream = null, meTile = null, leaving = false;
+    // EVERY CAMERA AND MICROPHONE THIS PAGE OPENS IS KNOWN, AND A MEETING
+    // THAT ENDS CLOSES THEM ALL. A track the meeting holds in localStream is
+    // not the only one that keeps a device open: the blur pipe paints from
+    // its own clone of the camera, and a clone keeps the camera running
+    // after the original stops. Leaving stopped localStream and left that
+    // clone live, so the page said "camera off" while the camera stayed on.
+    // So every capture track (each getUserMedia / getDisplayMedia track, and
+    // every clone of one made through capClone) is listed here, and
+    // releaseAllCapture() stops each of them. Once the meeting has ended
+    // (capClosed), an ask that was still open when it ended is closed the
+    // moment it lands and refused: nothing opens a device after Leave.
+    const capTracks = new Set();
+    let capClosed = false;
+    function capNote(t) { if (t && t.kind && t.readyState !== 'ended') capTracks.add(t); return t; }
+    function capClone(t) {
+      const c = t.clone();
+      if (capTracks.has(t)) { if (capClosed) { try { c.stop(); } catch (e) {} } else capNote(c); }
+      return c;
+    }
+    (function wrapCaptureAsks() {
+      const md = navigator.mediaDevices;
+      if (!md) return;
+      for (const fn of ['getUserMedia', 'getDisplayMedia']) {
+        const ask = md[fn];
+        if (typeof ask !== 'function') continue;
+        const wrapped = function () {
+          return Promise.resolve(ask.apply(md, arguments)).then((s) => {
+            const ts = s && typeof s.getTracks === 'function' ? s.getTracks() : [];
+            if (capClosed) {
+              for (const t of ts) { try { t.stop(); } catch (e) {} }
+              const err = new Error('The meeting has ended.'); err.name = 'AbortError';
+              throw err;
+            }
+            for (const t of ts) capNote(t);
+            return s;
+          });
+        };
+        try { Object.defineProperty(md, fn, { configurable: true, writable: true, value: wrapped }); } catch (e) { try { md[fn] = wrapped; } catch (e2) {} }
+      }
+    })();
     // Set while "Leave the meeting?" is up. Repair loops must not put a
     // track back on a sender until Cancel (DESIGN §11).
     let outgoingHeld = false, leaveSnap = null, leavingForAsk = false;
@@ -5749,7 +5789,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { stopLocalCapture(); } catch (e) {}
       try { sendMeshLeave(); } catch (e) {}
       try { meshNode && meshNode.stop(); } catch (e) {}
-      try { if (localStream) localStream.getTracks().forEach((t) => t.stop()); } catch (e) {}
+      try { releaseAllCapture(true); } catch (e) {}
       try { stopRoomClocks(); } catch (e) {}
       for (const pid of Array.from(peers.keys())) { try { dropPeer(pid); } catch (e) {} } if (typeof clearRosterTiles === 'function') clearRosterTiles();
       try { releaseAudioContext(); } catch (e) {}
@@ -9382,7 +9422,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // one of the two go black. A clone is an independent sink of the same
       // camera.
       let srcTrack = cam, cloned = false;
-      try { srcTrack = cam.clone(); cloned = true; } catch (e) { srcTrack = cam; }
+      try { srcTrack = capClone(cam); cloned = true; } catch (e) { srcTrack = cam; }
       const src = document.createElement('video');
       src.muted = true; src.defaultMuted = true; src.autoplay = true;
       src.setAttribute('muted', ''); src.setAttribute('playsinline', ''); src.setAttribute('autoplay', '');
@@ -9551,7 +9591,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       pipe.swapSource = (cam2) => {
         if (pipe.dead) return false;
         let t2 = cam2, c2 = false;
-        try { t2 = cam2.clone(); c2 = true; } catch (e) { t2 = cam2; }
+        try { t2 = capClone(cam2); c2 = true; } catch (e) { t2 = cam2; }
         if (pipe.rvfc && src.cancelVideoFrameCallback) { try { src.cancelVideoFrameCallback(pipe.rvfc); } catch (e) {} }
         if (pipe.cloned && pipe.srcTrack) { try { pipe.srcTrack.stop(); } catch (e) {} }
         pipe.srcTrack = t2; pipe.cloned = c2; pipe.camId = cam2.id; pipe.failed = 0;
@@ -17156,6 +17196,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (code !== 4007) return;
           bannedOut = true;
           quietAtDoor();
+          try { releaseAllCapture(true); paintControls(); } catch (e) {}   // voted off: the camera and microphone close with the meeting
           for (const pid of Array.from(peers.keys())) dropPeer(pid); if (typeof clearRosterTiles === 'function') clearRosterTiles();
           try { meshNode && meshNode.stop(); } catch (e) {}
           setStatus('⛔ The people on this meeting voted you off.');
@@ -36347,6 +36388,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       } catch (e) {}
       return flushing;
     }
+    // THE MEETING IS OVER FOR THIS PAGE: every camera and microphone closes,
+    // whatever holds it. localStream's own tracks, the blur pipes' clones
+    // (camera and screen), a screen share, the lobby preview, and any other
+    // capture track the page made (capTracks). localStream is dropped too:
+    // its stopped tracks would read as a camera that died, and the tab's
+    // return would grab the camera again to revive it. end=true is a real
+    // end (Leave, removed, room closed): from then on a late answer to an
+    // ask is closed on arrival. The page's camera words follow the devices.
+    function releaseAllCapture(end) {
+      if (end) capClosed = true;
+      try { if (typeof stopBlurPipe === 'function') { stopBlurPipe(); withScrPipe(stopBlurPipe); } } catch (e) {}
+      try { if (typeof stopLobbyPreview === 'function') stopLobbyPreview(); } catch (e) {}
+      try { if (screenStream) { const s = screenStream; screenStream = null; for (const t of s.getTracks()) { try { t.onended = null; t.stop(); } catch (e2) {} } } } catch (e) {}
+      try { if (localStream) { const s = localStream; localStream = null; for (const t of s.getTracks()) { try { t.stop(); } catch (e2) {} } } } catch (e) {}
+      for (const t of Array.from(capTracks)) { try { t.stop(); } catch (e) {} }
+      capTracks.clear();
+      myStatus.camOff = true; myStatus.muted = true;
+    }
     function releaseAudioContext() {
       try {
         if (ac && typeof ac.close === 'function') { const c = ac; ac = null; c.close(); }
@@ -36416,7 +36475,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       bcSeeding = true;
       const flushing = stopLocalCapture();
       try { if (myStatus.stg) setStage(false); } catch (e) {}
-      try { if (localStream) localStream.getTracks().forEach((t) => t.stop()); } catch (e) {}
+      try { releaseAllCapture(false); } catch (e) {}
       myStatus.muted = true; myStatus.camOff = true;
       myStatus.bcend = Date.now();
       // The outgoing hold from the confirm stays, so nothing is sent. The
@@ -36449,7 +36508,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const flushing = stopLocalCapture();
       sendMeshLeave();
       try { if (typeof stopRoomClocks === 'function') stopRoomClocks(); } catch (e) {}
-      try { if (localStream) localStream.getTracks().forEach((t) => t.stop()); } catch (e) {}
+      try { releaseAllCapture(true); } catch (e) {}
       afterFarewell(() => { for (const pid of Array.from(peers.keys())) { try { dropPeer(pid); } catch (e) {} } if (typeof clearRosterTiles === 'function') clearRosterTiles(); });
       try { releaseAudioContext(); } catch (e) {}
       try { if (typeof paintBroadcastChrome === 'function') paintBroadcastChrome(); } catch (e) {}   // the plain leave words, before the dialog shows (a door's refusal writes its own after)
@@ -37908,6 +37967,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             myStatus.blur = 0;
           } else params.delete('bot');
           if (msg && msg.name) window.__gifosMeetName = String(msg.name).slice(0, 40);
+          capClosed = false;   // a new meeting may open devices again
           return new Promise((resolve, reject) => {
             preflighted(() => {
               let p;
