@@ -256,7 +256,7 @@
   //   {k:'tv', q:'x', l}          the link is closed at my end
   //   {k:'tv', q:'h', l, t}       TURN.5.1: I sit in this meeting through a link of my own: ask my link's far end t instead
   //                               (an ask that carries f:1 is taken as it is: the asker could not use the answer)
-  //   {k:'tv', q:'w', l, t}       TURN.18: this link runs over the web path; t (the opener's word) names its host
+  //   {k:'tv', q:'w', l, m}       TURN.18: this link runs over the web path; m (the opener's word) names its host
   //   {k:'tv', q:'b', l, b}       busy: my end paused its video because the server throttles (b 1), or sends again (b 0)
   const TV_KEYS = 'k,q,l,d,b,e,n,m,t,f';
   const LINK_RE = /^[ls][0-9]{1,2}$/, DEV_RE = /^[A-Za-z0-9_.-]{1,16}$/, NONCE_RE = /^[0-9a-f]{18}$/, MAC_RE = /^[A-Za-z0-9_-]{43}$/, E36_RE = /^[0-9a-z]{1,11}$/;
@@ -265,7 +265,7 @@
     for (const k of Object.keys(f)) if (k !== '_' && TV_KEYS.split(',').indexOf(k) < 0) return false;
     if (f.q === 'a') return typeof f.d === 'string' && DEV_RE.test(f.d) && (f.b === 0 || f.b === 1) && (f.f === undefined || f.f === 1);
     if (f.q === 'h') return typeof f.t === 'string' && f.t.length > 0 && f.t.length <= 128;
-    if (f.q === 'w') return f.t === undefined || (typeof f.t === 'string' && WEB_HOST_RE.test(f.t));
+    if (f.q === 'w') return f.m === undefined || (typeof f.m === 'string' && WEB_HOST_RE.test(f.m));
     if (f.q === 'v') return typeof f.e === 'string' && E36_RE.test(f.e) && typeof f.n === 'string' && NONCE_RE.test(f.n) && typeof f.m === 'string' && MAC_RE.test(f.m);
     if (f.q === 'r' || f.q === 'x' || f.q === 'i') return true;
     if (f.q === 'p' || f.q === 'b') return f.b === 0 || f.b === 1;
@@ -531,7 +531,7 @@
       if (host && !L.opener && L.webHost !== host) { L.webHost = host; if (L.webOpen) { L.webOpen = false; try { io.webClose(L.far); } catch (e) {} } }
       webGo(L);
     }
-    function webSay(L) { L.webSaidAt = io.now(); const f = { k: 'tv', q: 'w', l: L.l }; if (L.opener && L.webHost) f.t = L.webHost; io.sendTv(L.far, f); }
+    function webSay(L) { L.webSaidAt = io.now(); const f = { k: 'tv', q: 'w', l: L.l }; if (L.opener && L.webHost) f.m = L.webHost; io.sendTv(L.far, f); }
     function webCred(L) { const g = L.cred && L.cred.servers(); return g && g[0] ? { u: g[0].username, c: g[0].credential } : null; }
     function webAuth(L, pool) {
       if (!L.webOpen) return;
@@ -604,7 +604,7 @@
         return;
       }
       if (f.q === 'r') { L.readyFar = true; maybeDial(L); return; }
-      if (f.q === 'w') { webStart(L, false, f.t); if (L.opener && io.now() - L.webSaidAt > RESEND_MS / 2) webSay(L); return; }
+      if (f.q === 'w') { webStart(L, false, f.m); if (L.opener && io.now() - L.webSaidAt > RESEND_MS / 2) webSay(L); return; }
       // the far end moved its pool: it moves the pc itself (its own restart, or 'i' to the offerer), so no restart here:
       // a second one per move restarted the path again mid-move and the video's estimate with it (vouched one-way, 2026-11-12)
       if (f.q === 'p') { L.paidFar = f.b === 1; io.changed(L.far); return; }
