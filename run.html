@@ -12262,6 +12262,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function onRelayPeer(from, ty, f) {
       if (ty === 'tv') { try { if (turnLinks) turnLinks.onFrame(from, f); } catch (e) {} return; }   // a TURN link's handshake (js/meet-turn.js)
       if (ty === 'busy') { try { if (meshNode && meshNode.relayBusyIn) meshNode.relayBusyIn(from, f); } catch (e) {} return; }
+      if ((ty === 'boot' || ty === 'fp' || ty === 'ice') && turnWeb.has(from)) return;   // a pair on the web path is made with its end in this page: a late frame of the earlier relay dial is not its signal
       if (ty === 'boot' || ty === 'fp') {
         const bootF = ty === 'boot' ? f : (bootParts.get(from) || {}).boot;
         const desc = takeBootPart(from, ty, f);
@@ -13192,6 +13193,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           video: !!(turnLinks && turnLinks.video(p.id)), paused: !!(p.tile && p.tile.querySelector(':scope > .tpause:not(.tpause-busy)')), busyNote: !!(p.tile && p.tile.querySelector(':scope > .tpause-busy')), policy: null, turn: false,
           local: null, remote: null, vOut: 0, aOut: 0, vIn: 0, aIn: 0 };
         try { const c = p.pc.getConfiguration(); r.policy = c.iceTransportPolicy; r.turn = GifOS.meetTurn.hasTurnServer(c.iceServers); } catch (e) {}
+        { const w = turnWeb.get(p.id); r.web = !!(turnLinks && turnLinks.web(p.id)); r.webUp = !!(w && w.up()); if (w) { try { r.webStats = await w.stats(); } catch (e) {} } }   // the web path of this link, if it runs on one
         try {
           const st = await p.pc.getStats(); const by = new Map(); st.forEach((x) => by.set(x.id, x));
           let sel = null;
@@ -15126,7 +15128,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         list = r.greetersAt >= 0 && r.greetersAt >= progListAt;
       }
       let turn = '';
-      try { for (const L of (turnLinks ? turnLinks.dump().links : [])) { if (L.state === 'up') { turn = 'up'; break; } if (L.state === 'ask' || L.state === 'dial') turn = L.state; } } catch (e) {}
+      let turnWebUp = false;
+      try { for (const L of (turnLinks ? turnLinks.dump().links : [])) { if (L.state === 'up') { turn = 'up'; turnWebUp = !!L.web; break; } if (L.web) turn = 'web'; else if (turn !== 'web' && (L.state === 'ask' || L.state === 'dial')) turn = L.state; } } catch (e) {}
       const st = s ? s.state : 0, coord = !!(s && s.hasCoord);
       const n = typeof headerCount === 'function' ? headerCount() : 1;
       // the count before the link: taken while the link is asked for, or while the relay step waits (a link can come up between two beats)
@@ -15136,7 +15139,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const offline = !!netDarkAt || navigator.onLine === false;
       return { dp: directPath, relay: relayUp() && !offline, list, greeters, pw: atPwPrompt(),
         wait: document.body.classList.contains('wait-door') || (typeof iAmWaiting === 'function' && iAmWaiting()),
-        doorUp, st, coord, turn, n, live, nAtRelay: progNAtRelay, offline,
+        doorUp, st, coord, turn, web: turnWebUp, n, live, nAtRelay: progNAtRelay, offline,
         saved: progRun && progRun.flow === 'update', reloaded: !!updateResume };
     }
     function progressStart(flow) {

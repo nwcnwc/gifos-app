@@ -218,6 +218,7 @@
     SOCK_CLOSE_CRASH: 4,   // C++: mesh.cpp:SOCK_CLOSE_CRASH
     TURN_BASE_BYTES: 3000,   // C++: mesh.cpp:TURN_BASE_BYTES  (LAW_TURN_BASE_BYTES)
     TURN_DIAL: 6,   // C++: mesh.cpp:TURN_DIAL  (LAW_TURN_DIAL)
+    TURN_WEB_WAIT: 6,   // C++: mesh.cpp:TURN_WEB_WAIT  (LAW_TURN_WEB_WAIT)
     TURN_FREE_CLAMP: 6000,   // C++: mesh.cpp:TURN_FREE_CLAMP  (LAW_TURN_FREE_CLAMP)
     TURN_FREE_LINKS: 6,   // C++: mesh.cpp:TURN_FREE_LINKS  (LAW_TURN_FREE_LINKS)
     TURN_KEEP_BYTES: 50,   // C++: mesh.cpp:TURN_KEEP_BYTES  (LAW_TURN_KEEP_BYTES)
@@ -574,6 +575,7 @@
     FHM_PEAKRELAYERS: 0,   // C++: mesh_fhop.inc:FHM_PEAKRELAYERS
     TURN_MODE: 0,   // C++: mesh_turn.inc:TURN_MODE
     TURN_POOL: true,   // C++: mesh_turn.inc:TURN_POOL
+    TURN_WEB: true,   // C++: mesh_turn.inc:TURN_WEB
     TURN_LIMIT: -1,   // C++: mesh_turn.inc:TURN_LIMIT
     TURN_THROTTLE: 100,   // C++: mesh_turn.inc:TURN_THROTTLE
     TURN_GREEDY: false,   // C++: mesh_turn.inc:TURN_GREEDY
