@@ -859,6 +859,8 @@
   "meet.turnPass4h": "or $1 for the next 4 hours",
   "meet.passPending": "Finish paying in the PayPal window. This updates as soon as PayPal confirms.",
   "meet.passBuy": "$1: Unlimited for the next 4 hours",
+  "meet.passHow": "Pay by card or PayPal.",
+  "meet.subHow": "Subscribe with PayPal (card or PayPal balance).",
   "meet.passOpening": "Opening PayPal…",
   "meet.passThanks": "Thank you. Your four-hour pass is on.",
   "meet.passNotConfirmed": "PayPal did not confirm the payment.",

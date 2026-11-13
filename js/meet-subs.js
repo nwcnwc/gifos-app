@@ -778,6 +778,7 @@
       } catch (e) { passBtn.disabled = false; say(String(e.message || e)); }
     };
     row.appendChild(passBtn);
+    row.appendChild(el('p', { class: 'set-help', id: 'sub-pass-how' }, tx('passHow', 'Pay by card or PayPal.')));
     const lic = await verifiedLicense();
     const st = readState();
     const cred = await credential();
@@ -805,6 +806,7 @@
       if (st.subId && st.status && st.status !== 'APPROVAL_PENDING') row.appendChild(el('p', { class: 'set-help' }, SUB.TEXT.lapsed));
       if (await verifiedFree()) row.appendChild(el('p', { class: 'set-help', id: 'sub-free-plan' }, tx('subFreePlan', 'Your plan: Free. Admin rooms of up to 5 people.')));
       row.appendChild(el('p', { class: 'set-help' }, 'Open rooms are free. A subscription adds rooms you run as admin, and video for people whose networks block direct connections.'));
+      row.appendChild(el('p', { class: 'set-help', id: 'sub-how' }, tx('subHow', 'Subscribe with PayPal (card or PayPal balance).')));
       for (const period of ['monthly', 'yearly']) {
         for (const id of SUB.TIER_IDS) {
           const t = SUB.TIERS[id];
