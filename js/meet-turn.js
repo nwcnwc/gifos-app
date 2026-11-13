@@ -532,7 +532,9 @@
       webGo(L);
     }
     function webSay(L) { L.webSaidAt = io.now(); const f = { k: 'tv', q: 'w', l: L.l }; if (L.opener && L.webHost) f.m = L.webHost; io.sendTv(L.far, f); }
-    function webCred(L) { const g = L.cred && L.cred.servers(); return g && g[0] ? { u: g[0].username, c: g[0].credential } : null; }
+    // p: the link's id (both ends derive it from their two ids): two links of a room may share a link name, and the
+    // server pairs the two ends of THIS one by it
+    function webCred(L) { const g = L.cred && L.cred.servers(); return g && g[0] ? { u: g[0].username, c: g[0].credential, p: L.id } : null; }
     function webAuth(L, pool) {
       if (!L.webOpen) return;
       if (pool === 'paid') { const g = L.paid && L.paid.servers(); if (g && g[0]) io.webAuth(L.far, { pool: 'paid', u: g[0].username, c: g[0].credential }); return; }
