@@ -59,7 +59,11 @@
   const PROOF_TAG = 'gifos-sub-proof';
   const ASK_TAG = 'gifos-sub-ask';
   const KEY_RE = /^[A-Za-z0-9+/]{43}=$/;          // an Ed25519 public key, 32 bytes base64
-  const SUB_ID_RE = /^I-[A-Za-z0-9]{4,40}$/;       // a PayPal subscription id
+  // A paid subscription's id: PayPal's own (I-…), or the payment service's
+  // id for one bought in the GifOS Meet app: G-… (Google Play, a hash of the
+  // purchase token: storeSubId) or A-… (App Store, the original transaction
+  // id). One license, ticket and one-meeting rule for all three.
+  const SUB_ID_RE = /^(?:I-[A-Za-z0-9]{4,40}|G-[0-9a-f]{24}|A-[0-9]{6,24})$/;
   const FREE_ID_RE = /^F-[0-9a-f]{24}$/;           // a free plan's id: F- + a hash of its key (freeIdFor)
   const NONCE_RE = /^[A-Za-z0-9+/=_.:-]{8,128}$/;
   const PEOPLE_LIMIT = 20;                         // the room20 plan's room size
@@ -344,13 +348,16 @@
   const PASS_PLAN = 'unlimited';                   // the plan a pass reads as, minus capture
   const PASS_PRICE = '$1';
   const PASS_VALUE = '1.00';                       // the PayPal order amount, USD
-  const ORDER_ID_RE = /^[A-Z0-9]{10,40}$/;         // a PayPal order id
+  const ORDER_ID_RE = /^[A-Z0-9]{10,40}$/;         // a PayPal order id, or a store order in the same shape (storeOrderId)
+  // Where a pass was paid: PayPal on the web, the store's own purchase sheet
+  // in the GifOS Meet apps. The pass is the same receipt either way.
+  const PASS_VIAS = ['paypal-order', 'play', 'appstore'];
   const PASS_ID_RE = /^P4-[A-Z0-9]{10,40}$/;
   const passMessage = (passJson) => PASS_TAG + '\x00' + String(passJson);
   // checkPass(o) -> o or null: the shape alone (no clock).
   function checkPass(o) {
     if (!o || typeof o !== 'object') return null;
-    if (o.v !== 1 || o.kind !== PASS_KIND || o.payeeId !== SELLER || o.via !== 'paypal-order') return null;
+    if (o.v !== 1 || o.kind !== PASS_KIND || o.payeeId !== SELLER || PASS_VIAS.indexOf(o.via) < 0) return null;
     if (o.plan !== PASS_PLAN) return null;
     if (typeof o.order !== 'string' || !ORDER_ID_RE.test(o.order) || o.id !== 'P4-' + o.order || !PASS_ID_RE.test(o.id)) return null;
     if (typeof o.buyerKey !== 'string' || !KEY_RE.test(o.buyerKey)) return null;
@@ -567,6 +574,112 @@
     return walletOk(w);
   }
 
+  // ---- bought in the GifOS Meet apps (Google Play, App Store) --------------------
+  // The same plans and the same pass, sold through the store's own purchase
+  // sheet; the payment service checks each purchase with the store and then
+  // signs exactly what it signs for PayPal. The products are DATA
+  // (gifos-store-skus.js, loaded before this file where store purchases are
+  // read); without the table no store product checks out.
+  const STORE_IDS = ['play', 'appstore'];
+  const skus = (store) => { const t = GifOS.storeSkus; return t && STORE_IDS.indexOf(store) >= 0 && t[store] ? t[store] : null; };
+  // storeProduct(store, productId, basePlanId?) -> {what:'sub', tier, period} |
+  // {what:'pass'} | {what:'tip', cents} | null: what a store product IS. A
+  // product that is none of ours reads as null and is never honored.
+  function storeProduct(store, productId, basePlanId) {
+    const k = skus(store);
+    productId = String(productId || '');
+    if (!k || !productId) return null;
+    if (productId === k.pass) return { what: 'pass' };
+    for (const c of Object.keys(k.tips || {})) if (k.tips[c] === productId) return { what: 'tip', cents: Number(c) };
+    for (const t of TIER_IDS) {
+      const row = (k.subs || {})[t];
+      if (!row) continue;
+      if (store === 'play') { if (row.product === productId) return (basePlanId === 'monthly' || basePlanId === 'yearly') && row[basePlanId] === basePlanId ? { what: 'sub', tier: t, period: basePlanId } : null; }
+      else for (const per of ['monthly', 'yearly']) if (row[per] === productId) return { what: 'sub', tier: t, period: per };
+    }
+    return null;
+  }
+  // storeSku(store, {what, tier, period, cents}) -> {product, basePlan?} | null: the reverse.
+  function storeSku(store, want) {
+    const k = skus(store);
+    if (!k || !want) return null;
+    if (want.what === 'pass') return k.pass ? { product: k.pass } : null;
+    if (want.what === 'tip') { const p = (k.tips || {})[String(want.cents)]; return p ? { product: p } : null; }
+    if (want.what === 'sub') {
+      const row = (k.subs || {})[want.tier]; const per = want.period === 'yearly' ? 'yearly' : 'monthly';
+      if (!row || !isPaid(want.tier) || !row[per]) return null;
+      return store === 'play' ? { product: row.product, basePlan: row[per] } : { product: row[per] };
+    }
+    return null;
+  }
+  // A TIP is whole dollars, at most tipMaxCents, made of the tip products:
+  // tipPlan(store, cents) -> {ok, cents, purchases:[{product, cents, quantity}], why?}.
+  // Greedy from the largest price point; one purchase holds one product, up
+  // to tipMaxQuantity of it. More than one purchase is more than one store
+  // sheet, so tipOneSheet(store, cents) gives the largest tip not above cents
+  // that ONE sheet covers: what the apps offer.
+  function tipPlan(store, cents) {
+    const k = skus(store); const max = GifOS.storeSkus && GifOS.storeSkus.tipMaxCents;
+    if (!k || !k.tips) return { ok: false, why: 'no-table', cents: 0, purchases: [] };
+    if (!intS(cents) || cents <= 0 || cents % 100 !== 0) return { ok: false, why: 'whole-dollars', cents: 0, purchases: [] };
+    if (!intS(max) || cents > max) return { ok: false, why: 'over-max', cents: 0, purchases: [], max: max };
+    const q = intS(k.tipMaxQuantity) && k.tipMaxQuantity > 0 ? k.tipMaxQuantity : 1;
+    const points = Object.keys(k.tips).map(Number).filter((c) => intS(c) && c > 0).sort((a, b) => b - a);
+    const purchases = []; let left = cents;
+    for (const c of points) {
+      let n = Math.floor(left / c);
+      while (n > 0) { const take = Math.min(n, q); purchases.push({ product: k.tips[String(c)], cents: c, quantity: take }); n -= take; left -= take * c; }
+    }
+    if (left !== 0) return { ok: false, why: 'no-products', cents: 0, purchases: [] };
+    return { ok: true, cents, purchases };
+  }
+  // tipSingle(store, cents) -> {product, cents, quantity} | null: the tip as
+  // ONE purchase (one product, a quantity within the cap), the largest price
+  // point first. $25 where the cap is 10 is 5 x $5 even though the greedy
+  // plan would be $20 + $5.
+  function tipSingle(store, cents) {
+    const k = skus(store); const max = GifOS.storeSkus && GifOS.storeSkus.tipMaxCents;
+    if (!k || !k.tips || !intS(cents) || cents <= 0 || cents % 100 !== 0 || !intS(max) || cents > max) return null;
+    const q = intS(k.tipMaxQuantity) && k.tipMaxQuantity > 0 ? k.tipMaxQuantity : 1;
+    const points = Object.keys(k.tips).map(Number).filter((c) => intS(c) && c > 0).sort((a, b) => b - a);
+    for (const c of points) if (cents % c === 0 && cents / c <= q) return { product: k.tips[String(c)], cents: c, quantity: cents / c };
+    return null;
+  }
+  function tipOneSheet(store, cents) {
+    const max = GifOS.storeSkus && GifOS.storeSkus.tipMaxCents;
+    if (!intS(cents) || !intS(max)) return 0;
+    for (let c = Math.min(cents - (cents % 100), max); c > 0; c -= 100) if (tipSingle(store, c)) return c;
+    return 0;
+  }
+  const hexOf = async (text, n) => {
+    const d = new Uint8Array(await root.crypto.subtle.digest('SHA-256', utf8(text)));
+    let h = ''; for (let i = 0; i < n; i++) h += d[i].toString(16).padStart(2, '0');
+    return h;
+  };
+  // storeSubId('play', purchaseToken) -> 'G-' + 24 hex; storeSubId('appstore',
+  // originalTransactionId) -> 'A-' + that id. The id a license and ticket name.
+  async function storeSubId(store, ref) {
+    if (store === 'play') return typeof ref === 'string' && ref.length >= 16 && ref.length <= 2048 ? 'G-' + (await hexOf('gifos-play-sub:' + ref, 12)) : null;
+    if (store === 'appstore') return /^[0-9]{6,24}$/.test(String(ref)) ? 'A-' + String(ref) : null;
+    return null;
+  }
+  // storeOrderId(store, ref) -> a pass's `order` in PayPal's shape: Google's
+  // order id (GPA.1234-…) with its punctuation dropped, or 'APPLE' + the
+  // transaction id. One purchase, one order, one pass.
+  function storeOrderId(store, ref) {
+    const s = String(ref || '');
+    const o = store === 'play' ? s.toUpperCase().replace(/[^A-Z0-9]/g, '') : store === 'appstore' && /^[0-9]{1,30}$/.test(s) ? 'APPLE' + s.padStart(8, '0') : '';
+    return (store === 'play' ? /^GPA[0-9]{7,37}$/.test(o) : true) && ORDER_ID_RE.test(o) ? o : null;
+  }
+  // The App Store ties a purchase to its buyer with a UUID (appAccountToken);
+  // Google takes the key itself. accountUuid(buyerKey) is that UUID: the
+  // first 16 bytes of a hash of the key, so the payment service can check
+  // that the transaction was bought for the key that asks.
+  async function accountUuid(buyerKey) {
+    const h = await hexOf('gifos-store-account:' + String(buyerKey), 16);
+    return (h.slice(0, 8) + '-' + h.slice(8, 12) + '-4' + h.slice(13, 16) + '-8' + h.slice(17, 20) + '-' + h.slice(20, 32)).toLowerCase();
+  }
+
   // ---- the page switch ------------------------------------------------------
   // Off unless #subs=1 / ?subs=1 rides the URL or localStorage['gifos-subs']
   // is '1'. #subs=0 turns it off again.
@@ -590,5 +703,6 @@
     PASS_TICKET_KIND, PASS_REC_RE, passRecId, passTicketMessage, passChain, checkPassTicket, verifyPassTicket, isPassTicket,
     WALLET_KIND, walletOk,
     CRED_KIND, credentialOk, credentialFiles, credentialFromFiles, walletFromFiles,
+    PASS_VIAS, STORE_IDS, storeProduct, storeSku, tipPlan, tipSingle, tipOneSheet, storeSubId, storeOrderId, accountUuid,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

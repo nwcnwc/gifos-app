@@ -1192,8 +1192,41 @@
     if (!GifOS.charge || msg.indexOf(GifOS.charge.SUPPORT_EMAIL) !== -1) return e;
     return new Error(msg + ' ' + GifOS.charge.paymentSupportText());
   }
+  // In the GifOS Meet apps the store rail (gifos-store-rail.js) is the ONLY
+  // rail: every charge an app asks for goes to the store's own purchase
+  // sheet, and no other rail, sheet or wallet is ever built. The app must
+  // still have declared `pay` and be signed; the payee must be GifOS; the
+  // amount must be one the store sells (whole dollars, a tip).
+  async function chargeInApp(manifest, appBytes, req, appName) {
+    const rail = GifOS.storeRail;
+    if (!manifest || !manifest.capabilities || !manifest.capabilities.pay) throw new Error('This app did not declare the "pay" capability.');
+    if (!usableAppId(manifest.appId)) throw new Error('this app has no usable appId, so it cannot take payments');
+    const verdict = await verdictFor(manifest, appBytes);
+    const elig = GifOS.charge.eligibility(verdict, manifest);
+    if (!elig.allowed) throw new Error(elig.reason);
+    if (req && req.sku != null) throw new Error(rail.TEXT.noProduct);   // the stores sell fixed products: a plan, the pass, a tip
+    // The ceiling here is the store rail's own: the largest tip the table allows.
+    const maxCents = (GifOS.storeSkus && GifOS.storeSkus.tipMaxCents) || 0;
+    let asked = null; try { asked = BigInt(String(req && req.amount)); } catch (e) { asked = null; }
+    if (asked != null && asked > BigInt(maxCents) * 10000n) throw new Error(rail.TEXT.overMax(Math.floor(maxCents / 100)));
+    const request = GifOS.charge.validateRequest(req, { maxAmount: String(BigInt(maxCents) * 10000n), entitled: () => false, prices: elig.prices });
+    const cents = Number(BigInt(String(request.amount)) / 10000n);
+    if (BigInt(cents) * 10000n !== BigInt(String(request.amount)) || cents % 100 !== 0) throw new Error(rail.TEXT.wholeDollars);
+    const fit = rail.tipChoice(cents);
+    if (!fit) throw new Error(rail.TEXT.noProduct);
+    if (fit !== cents && !(await rail.confirmAmount(cents, fit))) throw new Error('DECLINED_BY_USER');
+    const seed = new Uint8Array(32); root.crypto.getRandomValues(seed);
+    const k = await GifOS.ed.keysFromSeed(seed);
+    const pub = (() => { let t = ''; for (const b of k.pubRaw) t += String.fromCharCode(b); return btoa(t); })();
+    const sign = async (text) => { const g = await GifOS.ed.sign(k.priv, new TextEncoder().encode(text)); let t = ''; for (const b of g) t += String.fromCharCode(b); return btoa(t); };
+    const r = await rail.pay({ what: 'tip', cents: fit, payee: elig.identity.id, buyerKey: pub, sign });
+    if (r.state === 'cancelled') throw new Error('DECLINED_BY_USER');
+    if (r.state !== 'done' || !r.thanks) throw new Error(rail.TEXT.notConfirmed);
+    return { ok: true, amount: String(BigInt(r.cents) * 10000n), rail: 'store', tx: (r.orders && r.orders[0]) || null, at: Date.now(), reason: request.reason };
+  }
   async function charge(manifest, appBytes, req, appName) {
     try {
+      if (GifOS.storeRail && GifOS.storeRail.present()) return await chargeInApp(manifest, appBytes, req, appName);
       return await chargeImpl(manifest, appBytes, req, appName);
     } catch (e) {
       throw annotatePayError(e);

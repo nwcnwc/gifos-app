@@ -59,7 +59,11 @@
     try { if (SWITCH_RE.test(String(cur.hash || '') + '&' + String(cur.search || ''))) return cur; } catch (e) {}
     return opened || cur;
   }
-  const on = () => !!(SUB && SUB.enabled(switchFrom(), safeStore()));
+  // In the GifOS Meet apps everything is paid for through the store's own
+  // purchase sheet (gifos-store-rail.js): the one rail there. RAIL() is null
+  // in a browser.
+  const RAIL = () => (GifOS.storeRail && GifOS.storeRail.present() ? GifOS.storeRail : null);
+  const on = () => !!(SUB && (RAIL() || SUB.enabled(switchFrom(), safeStore())));
   function safeStore() { try { return root.localStorage; } catch (e) { return null; } }
   const payBase = () => String(root.GIFOS_PAY_URL || 'https://pay.gifos.app').replace(/\/$/, '');
   const nowS = () => Math.floor(Date.now() / 1000);
@@ -259,7 +263,91 @@
     if (!lic || lic.exp - nowS() < REFRESH_BEFORE_S || st.status === 'APPROVAL_PENDING') { try { await refresh(); } catch (e) {} }
   }
 
+  // ---- bought in the app: the store's purchase sheet ---------------------------
+  // The key a store subscription is (or will be) held by: the paid credential
+  // this app already has (a plan change keeps its key), else a purchase
+  // started earlier and not yet confirmed, else a new one.
+  const STORE_PENDING = 'gifos-store-pending';
+  async function storeKey(fresh) {
+    const cur = SUB.credentialOk(readJson(CRED_KEY));
+    const held = readJson(STORE_PENDING);
+    let seedB64 = !fresh && cur && cur.tier !== 'free' ? cur.seed : held && typeof held.seed === 'string' ? held.seed : null;
+    if (!seedB64) { const seed = new Uint8Array(32); crypto.getRandomValues(seed); seedB64 = b64(seed); writeJson(STORE_PENDING, { seed: seedB64 }); }
+    const k = await GifOS.ed.keysFromSeed(fromB64(seedB64));
+    return { seed: seedB64, buyerKey: b64(k.pubRaw), sign: async (text) => b64(await GifOS.ed.sign(k.priv, new TextEncoder().encode(text))) };
+  }
+  async function keepStoreSub(k, r) {
+    writeJson(CRED_KEY, { v: 1, kind: SUB.CRED_KIND, subId: r.subId, tier: r.tier, period: r.period, seed: k.seed, buyerKey: k.buyerKey });
+    writeJson(STORE_PENDING, null);
+    keyMemo = { seed: null, p: null };
+    writeState({ subId: r.subId, tier: r.tier, status: null });
+    const st = await refresh();
+    rejoin(true);
+    return st;
+  }
+  async function subscribeInApp(tier, period, say) {
+    const rail = RAIL();
+    const cur = SUB.credentialOk(readJson(CRED_KEY));
+    const k = await storeKey(false);
+    // A change of plan replaces the running store subscription (the store prorates an upgrade and defers a downgrade).
+    let replace;
+    if (cur && SUB.isPaid(cur.tier) && cur.tier !== tier) {
+      const mine = await rail.owned().catch(() => []);
+      const old = mine.find((p) => p.what === 'sub' && p.token);
+      if (old) replace = { token: old.token, mode: (SUB.TIERS[tier].vouches || 0) >= (SUB.TIERS[cur.tier].vouches || 0) ? 'upgrade' : 'downgrade' };
+    }
+    const r = await rail.pay({ what: 'sub', tier, period, buyerKey: k.buyerKey, sign: k.sign, replace });
+    if (r.state === 'done' && r.subId) return keepStoreSub(k, r);
+    if (r.state === 'pending') { say(tx('store.pending', rail.TEXT.notConfirmed)); return { status: 'APPROVAL_PENDING' }; }
+    return readState();
+  }
+  function keepPass(j, o) {
+    return (async () => {
+      const cur = (await wallet()) || (await ensureWallet());
+      const list = cur.passes.filter((p) => { const x = passOf(p); return x && x.order !== o.order; }).concat([{ passJson: j.passJson, sig: j.sig }]);
+      const next = Object.assign({}, cur, { passes: list }); delete next.pending;
+      writeJson(WALLET_KEY, next);
+      passWatch().catch(() => {});
+      if (meet) passJoin(meet.room, true);
+      return j;
+    })();
+  }
+  async function passRequest() {
+    const w = await ensureWallet();
+    const k = await walletKey(w);
+    return { what: 'pass', buyerKey: k.pub, held: w.passes, sign: async (text) => b64(await GifOS.ed.sign(k.priv, new TextEncoder().encode(text))) };
+  }
+  async function buyPassInApp(say) {
+    const rail = RAIL();
+    const req = await passRequest();
+    const r = await rail.pay(req);
+    if (r.state === 'pending') { say(tx('store.pending', rail.TEXT.notConfirmed)); return null; }
+    if (r.state !== 'done' || !r.passJson) return null;
+    const o = await SUB.verifyPass({ passJson: r.passJson, sig: r.sig }, verifyPay).catch(() => null);
+    if (!o || o.buyerKey !== req.buyerKey) return null;
+    return keepPass(r, o);
+  }
+  // Restore: what the store already holds for this person (a plan bought on
+  // another phone or before a reinstall, a purchase confirmed after the app
+  // closed). A plan moves to this app's key; it still works in one meeting
+  // at a time.
+  async function restoreInApp() {
+    const rail = RAIL();
+    if (!rail) return [];
+    let subKey = null;
+    const got = await rail.restore({
+      sub: async () => { subKey = await storeKey(false); return { buyerKey: subKey.buyerKey, sign: subKey.sign }; },
+      pass: async () => passRequest(),
+    });
+    for (const r of got) {
+      if (r.state === 'done' && r.subId && subKey) await keepStoreSub(subKey, r).catch(() => {});
+      if (r.state === 'done' && r.passJson) { const o = await SUB.verifyPass({ passJson: r.passJson, sig: r.sig }, verifyPay).catch(() => null); if (o) await keepPass(r, o); }
+    }
+    return got;
+  }
+
   async function subscribe(tier, period, say) {
+    if (RAIL()) return subscribeInApp(tier, period, say || (() => {}));
     const seed = new Uint8Array(32); crypto.getRandomValues(seed);
     const k = await GifOS.ed.keysFromSeed(seed);
     const buyerKey = b64(k.pubRaw);
@@ -415,6 +503,7 @@
   // Buy: a PayPal order for $1, approved in PayPal's window, then claimed.
   async function buyPass(say) {
     say = say || (() => {});
+    if (RAIL()) return buyPassInApp(say);
     const w = await ensureWallet();
     const k = await walletKey(w);
     const popup = root.open('about:blank', 'gifos-pass', 'width=480,height=720');
@@ -768,17 +857,22 @@
     const held = el('div', { id: 'sub-held' });
     row.appendChild(held);
     await paintHeld(held).catch(() => {});
-    const passBtn = el('button', { type: 'button', class: BTN, style: BTN_STYLE, id: 'sub-pass-buy' }, tx('passBuy', '$1: Unlimited for the next 4 hours'));
+    // In the app the prices shown are the store's own.
+    const inApp = !!RAIL();
+    const price = inApp ? await RAIL().prices().catch(() => ({})) : {};
+    const skuOf = (want) => { const k = inApp && SUB.storeSku(RAIL().store(), want); return k ? price[k.basePlan ? k.product + ':' + k.basePlan : k.product] || null : null; };
+    const passPrice = skuOf({ what: 'pass' });
+    const passBtn = el('button', { type: 'button', class: BTN, style: BTN_STYLE, id: 'sub-pass-buy' }, passPrice ? tx('passBuyAt', '{price}: Unlimited for the next 4 hours').replace('{price}', passPrice) : tx('passBuy', '$1: Unlimited for the next 4 hours'));
     passBtn.onclick = async () => {
-      passBtn.disabled = true; say(tx('passOpening', 'Opening PayPal…'));
+      passBtn.disabled = true; say(inApp ? '' : tx('passOpening', 'Opening PayPal…'));
       try {
         const r = await buyPass(say);
-        say(r && r.passJson ? tx('passThanks', 'Thank you. Your four-hour pass is on.') : tx('passNotConfirmed', 'PayPal did not confirm the payment.'));
+        say(r && r.passJson ? tx('passThanks', 'Thank you. Your four-hour pass is on.') : inApp ? msg.textContent : tx('passNotConfirmed', 'PayPal did not confirm the payment.'));
         paintSettings();
       } catch (e) { passBtn.disabled = false; say(String(e.message || e)); }
     };
     row.appendChild(passBtn);
-    row.appendChild(el('p', { class: 'set-help', id: 'sub-pass-how' }, tx('passHow', 'Pay by card or PayPal.')));
+    if (!inApp) row.appendChild(el('p', { class: 'set-help', id: 'sub-pass-how' }, tx('passHow', 'Pay by card or PayPal.')));
     const lic = await verifiedLicense();
     const st = readState();
     const cred = await credential();
@@ -786,15 +880,26 @@
       const t = SUB.TIERS[lic.tier];
       const yearly = cred && cred.period === 'yearly';
       row.appendChild(el('p', { class: 'set-help' }, 'Your plan: ' + t.name + ' (' + (yearly ? t.priceYear + ' a year' : t.price + ' a month') + ').'));
-      row.appendChild(el('p', { class: 'set-help' }, st.status === 'CANCELLED' ? SUB.TEXT.cancelled + ' Ends ' + dateOf(st.until || lic.exp) + '.' : 'Renews through PayPal.'));
+      const viaStore = /^[GA]-/.test(String(lic.subId || ''));
+      row.appendChild(el('p', { class: 'set-help' }, st.status === 'CANCELLED' ? SUB.TEXT.cancelled + ' Ends ' + dateOf(st.until || lic.exp) + '.' : inApp || viaStore ? tx('subRenewsAuto', 'Renews automatically.') : 'Renews through PayPal.'));
       row.appendChild(el('p', { class: 'set-help' }, 'Your subscription works in one meeting at a time. Joining a meeting, here or in another browser with your subscription file, moves it there.'));
       if (meet && meet.moved === 'moved') row.appendChild(el('p', { class: 'set-help' }, 'It is in use in another meeting now.'));
-      if (t.storage) {
+      if (t.storage && !inApp) {
         const a = el('a', { class: BTN, style: BTN_STYLE + ';display:inline-block;text-decoration:none', id: 'sub-library', href: '/library', target: '_blank', rel: 'noopener' }, 'My library');
         row.appendChild(a);
         row.appendChild(el('p', { class: 'set-help', id: 'sub-library-key' }, 'Only you can open your library. If you lose your subscription file and its backup, nobody, not even GifOS, can recover it.'));
       }
-      if (st.status !== 'CANCELLED') {
+      if (inApp) {
+        // A plan bought in the app is managed in the store's own subscription screen.
+        // One bought elsewhere shows no purchase control here at all.
+        if (viaStore) {
+          const m = el('button', { type: 'button', class: BTN, style: BTN_STYLE, id: 'sub-manage' }, tx('subManage', 'Manage subscription'));
+          m.onclick = () => { RAIL().manage().catch(() => {}); };
+          row.appendChild(m);
+        }
+      } else if (viaStore) {
+        row.appendChild(el('p', { class: 'set-help', id: 'sub-store-managed' }, tx('subStoreManaged', 'This subscription is managed in the GifOS Meet app.')));
+      } else if (st.status !== 'CANCELLED') {
         const c = el('button', { type: 'button', class: BTN, style: BTN_STYLE, id: 'sub-cancel' }, 'Cancel subscription');
         c.onclick = async () => {
           c.disabled = true; say('Cancelling…');
@@ -806,18 +911,21 @@
       if (st.subId && st.status && st.status !== 'APPROVAL_PENDING') row.appendChild(el('p', { class: 'set-help' }, SUB.TEXT.lapsed));
       if (await verifiedFree()) row.appendChild(el('p', { class: 'set-help', id: 'sub-free-plan' }, tx('subFreePlan', 'Your plan: Free. Admin rooms of up to 5 people.')));
       row.appendChild(el('p', { class: 'set-help' }, 'Open rooms are free. A subscription adds rooms you run as admin, and video for people whose networks block direct connections.'));
-      row.appendChild(el('p', { class: 'set-help', id: 'sub-how' }, tx('subHow', 'Subscribe with PayPal (card or PayPal balance).')));
+      if (!inApp) row.appendChild(el('p', { class: 'set-help', id: 'sub-how' }, tx('subHow', 'Subscribe with PayPal (card or PayPal balance).')));
       for (const period of ['monthly', 'yearly']) {
         for (const id of SUB.TIER_IDS) {
           const t = SUB.TIERS[id];
-          const label = (period === 'yearly' ? t.priceYear + ' a year' : t.price + ' a month') + ': ' + t.name;
+          if (inApp && !SUB.storeSku(RAIL().store(), { what: 'sub', tier: id, period })) continue;   // not sold in this store: not offered
+          const sp = skuOf({ what: 'sub', tier: id, period });
+          const label = (period === 'yearly' ? (sp || t.priceYear) + ' a year' : (sp || t.price) + ' a month') + ': ' + t.name;
           const b = el('button', { type: 'button', class: BTN, style: BTN_STYLE, 'data-tier': id, 'data-period': period }, label);
           b.onclick = async () => {
             for (const x of row.querySelectorAll('button[data-tier]')) x.disabled = true;
-            say('Opening PayPal…');
+            say(inApp ? '' : 'Opening PayPal…');
             try {
               const r = await subscribe(id, period, say);
-              say(r && r.licenseJson ? 'You are subscribed. Thank you. Download your subscription file to keep it safe.' : r && r.status === 'APPROVAL_PENDING' ? SUB.TEXT.pending : 'PayPal did not confirm the subscription.');
+              if (inApp) say(r && r.licenseJson ? tx('subThanksApp', 'You are subscribed. Thank you.') : msg.textContent);
+              else say(r && r.licenseJson ? 'You are subscribed. Thank you. Download your subscription file to keep it safe.' : r && r.status === 'APPROVAL_PENDING' ? SUB.TEXT.pending : 'PayPal did not confirm the subscription.');
               paintSettings();
             } catch (e) {
               say(String(e.message || e));
@@ -827,6 +935,45 @@
           row.appendChild(b);
         }
       }
+    }
+    if (inApp) {
+      // In the app: restore, and the credentials file through the system's own
+      // share sheet and file picker. The words say what the file is for and
+      // nothing about where anything is sold.
+      const rs = el('button', { type: 'button', class: BTN, style: BTN_STYLE, id: 'sub-restore' }, tx('storeRestore', 'Restore purchases'));
+      rs.onclick = async () => {
+        rs.disabled = true;
+        try { const got = await restoreInApp(); say(got.some((r) => r.state === 'done') ? tx('storeRestored', 'Your purchases are restored.') : tx('storeNothing', 'No purchases to restore.')); paintSettings(); }
+        catch (e) { rs.disabled = false; say(String(e.message || e)); }
+      };
+      row.appendChild(rs);
+      const N = root.GifosNative;
+      if (cred || (await wallet())) {
+        const d = el('button', { type: 'button', class: BTN, style: BTN_STYLE, id: 'sub-file-get' }, tx('credsSave', 'Save my GifOS Meet credentials'));
+        d.onclick = async () => {
+          try {
+            const r = await N.request('file.save', { name: 'GifOS Meet credentials.gif', mime: 'image/gif', b64: b64(await fileBytes()) });
+            if (r && r.ok !== false && r.state !== 'cancelled') say(tx('credsSaved', 'Saved. Keep the file private: anyone with it can use your credentials.'));
+          } catch (e) { say(String(e.message || e)); }
+        };
+        row.appendChild(d);
+        row.appendChild(el('p', { class: 'set-help', id: 'sub-file-help' }, tx('credsSaveHelp', 'Back up your credentials, or use them on your other devices.')));
+      }
+      if (N.info().credentialImport === true) {
+        const u = el('button', { type: 'button', class: BTN, style: BTN_STYLE, id: 'sub-file-load' }, tx('credsLoad', 'Load my GifOS Meet credentials'));
+        u.onclick = async () => {
+          try {
+            const r = await N.request('file.pick', { mime: 'image/gif' });
+            if (!r || r.ok === false || r.state !== 'picked') return;
+            const st2 = await useFile(fromB64(r.b64));
+            say(st2 && st2.licenseJson ? tx('credsLoadedSub', 'Your credentials are loaded. A subscription works in one meeting at a time.') : tx('credsLoaded', 'Your credentials are loaded.'));
+            paintSettings();
+          } catch (e) { say(/not a GifOS/.test(String(e && e.message)) ? tx('credsNot', 'That file does not hold GifOS Meet credentials.') : String(e.message || e)); }
+        };
+        row.appendChild(u);
+      }
+      row.appendChild(msg);
+      return;
     }
     // The subscription file: download it, or use one from another browser.
     if (cred || (await wallet())) {
@@ -899,7 +1046,7 @@
       go.disabled = true;
       try {
         const r = await subscribe('room20', 'monthly', (t) => { msg.textContent = t; });
-        if (r && r.licenseJson) bar.remove(); else { msg.textContent = r && r.status === 'APPROVAL_PENDING' ? SUB.TEXT.pending : 'PayPal did not confirm the subscription.'; go.disabled = false; }
+        if (r && r.licenseJson) bar.remove(); else { if (!RAIL()) msg.textContent = r && r.status === 'APPROVAL_PENDING' ? SUB.TEXT.pending : 'PayPal did not confirm the subscription.'; go.disabled = false; }
       } catch (e) { msg.textContent = String(e.message || e); go.disabled = false; }
     };
     x.onclick = () => { bar.remove(); };
@@ -914,6 +1061,11 @@
     if (b) b.addEventListener('click', () => { paintSettings().catch(() => {}); });
     keepFresh().catch(() => {});
     resumePending().catch(() => {});
+    if (RAIL()) {
+      // The store may hold a purchase this app has not been handed yet.
+      restoreInApp().catch(() => {});
+      root.addEventListener('gifosnative', (ev) => { const d = ev && ev.detail; if (d && d.type === 'store' && d.event === 'purchases-updated') restoreInApp().then(() => paintNow()).catch(() => {}); });
+    }
     passWatch().catch(() => {});
     setInterval(() => { passWatch().catch(() => {}); paintNow().catch(() => {}); }, POLL_MS);   // a pass starting or ending re-presents the room's plan
   }
@@ -924,7 +1076,7 @@
   GifOS.meetSubs = {
     enabled: on, rights, planRights, refresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, paintNow, paintSettings, openSettings, mayCreateAdminRoom, showFull, ensureFree, showHostPrompt,
     roomOrder, roomTier, proveAtDoor, checkShown, newNonce,
-    joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureOrder, captureKeys, fileBytes, downloadFile, useFile, librarySigner,
+    joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureOrder, captureKeys, fileBytes, downloadFile, useFile, librarySigner, restoreInApp,
     passMeeting: () => (pmeet ? { room: pmeet.room, gen: pmeet.gen, exp: pmeet.exp, until: pmeet.until, moved: pmeet.moved, held: !!pmeet.ticket } : null),
     currentPassTicket,
     meeting: () => (meet ? { room: meet.room, gen: meet.gen, exp: meet.exp, moved: meet.moved, held: !!meet.ticket, tier: meet.tier, paid: !!(meet.ticket && SUB.isPaid(meet.tier)) } : null),
