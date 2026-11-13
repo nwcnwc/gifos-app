@@ -20,6 +20,7 @@
   const LS_NONE = E.LS_NONE, LS_CLOSED = E.LS_CLOSED;
   // the sim's #define L8_50_OFF / L8_50_3_OFF in mesh.cpp (build-time switches): MESH_<name>=1 under node, read once at load; a page always runs the law
   const envOn = (n) => (isNode && typeof process !== 'undefined' && process.env && process.env[n] === '1') ? 1 : 0;
+  const TURN19_OFF = envOn('MESH_TURN19_OFF'), L8_54_5_OFF = envOn('MESH_L8_54_5_OFF');   // the sim's -DTURN19_OFF=1 (TURN.19, mesh_island.inc)
   const L8_50_OFF = envOn('MESH_L8_50_OFF'), L8_50_3_OFF = envOn('MESH_L8_50_3_OFF');
   const L8_42_2_OFF = envOn('MESH_L8_42_2_OFF');   // the sim's -DL8_42_2_OFF=1 build
   const L8_52_OFF = envOn('MESH_L8_52_OFF'), L8_51_OFF = envOn('MESH_L8_51_OFF');   // L8.52 (the older room stays), L8.51 (an arbiter does not settle a contest between two rooms)
@@ -58,7 +59,7 @@
       if (!L8_47_2_OFF && this.ehAt >= 0 && this.TICK - this.ehAt < K.ISLAND_WAIT) {   // L8.47.2: it said it has no room yet: I wait for it, and ask it again once per dial verdict while it says so
         if (this.TICK - this.ehAskAt >= K.ISLAND_WAIT_BLOCKED) { this.ehAskAt = this.TICK | 0; for (const g of this.ehFrom) { const w = newMsg('WHOHOME'); w.from = this.id; w.ttl = K.WHOHOME_HOPS; this.emit(g, w); } }
         return false; }
-      if (o54 && !this.islandLast && !this.l16Saw) { this.trace('L8.54-OTHER', this.id, null, 'asked=%zu', this.lastGreeters.length); for (const x of this.l16Ask) this.f.fabricDoorDrop(this.id, x); this.l16Anch = false; this.l16Ho = -1; this.l16Ask.length = 0; this.l16Busy.length = 0; this.l16Last = -1; this.l16List.length = 0; this.l16Next = 0; this.l16WaveAt = -1; this.l16FreshAt = -1; this.islandFound(); return true; }   // L8.54.1: no silence to wait for and no second knock: my seating knock reads the door's fresh list (L8.1.3)
+      if (o54 && !this.islandLast && !this.l16Saw && (L8_54_5_OFF || this.greetersAt >= 0)) { this.trace('L8.54-OTHER', this.id, null, 'asked=%zu', this.lastGreeters.length); for (const x of this.l16Ask) this.f.fabricDoorDrop(this.id, x); this.l16Anch = false; this.l16Ho = -1; this.l16Ask.length = 0; this.l16Busy.length = 0; this.l16Last = -1; this.l16List.length = 0; this.l16Next = 0; this.l16WaveAt = -1; this.l16FreshAt = -1; this.islandFound(); return true; }   // L8.54.1: no silence to wait for and no second knock: my seating knock reads the door's fresh list (L8.1.3)
       if (this.TICK - this.islandAskAt < iw || this.lastGreeters.length === 0) return false;
       if (this.f.fabricDoors() && this.islandAskAt >= 0 && (this.l16Next < this.l16List.length || this.TICK - this.l16FreshAt < iw)) return false;
       if (this.l16Saw) { this.l16Saw = false; this.l16Backoff('silent'); return true; }   // a BUSY is evidence for its own round (C++: islandTick)
@@ -282,12 +283,14 @@
         let mate = false; for (const [k, v] of this.occ) if (v >= 0 && v !== this.id && v !== m.id && ckPc(k) === 0 && this.firstHandLive(k)) { mate = true; break; }
         if (!mate) return false;
         this.trace('L8.50-ROOM', this.id, this.coord, 'to=%d line=%d', m.id, m.line); const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = this.id; h.c7Min = this.ringName(); h.c7Held = true; h.c7One = false; this.emit(m.id, h);   // one answer per HELLO received
+        if (!TURN19_OFF && this.f.fabricTurnPc(this.id, m.id)) { this.trace('TURN19-CARRY', this.id, this.coord, 'nc=%d', m.id); const f = newMsg('FIND'); f.nc = m.id; f.from = m.id; f.ttl = K.FIND_TTL; f.sgw = this.id; f.sgwCk = ckey(this.coord) + 1; this.farLearn(f); this.onFind(f); }   // TURN.19.1 (C++ mesh_island.inc)
         return true;
       }
       const lone = this.l850Lone(), left = !L8_52_OFF && !lone && this.ringAlone() && !this.moving && this.lineAt >= 0 && m.lineAt >= 0 && m.lineAt < this.lineAt;   // L8.52.4 (mesh_ring.inc): the last seat of the younger room, alone on its ring, follows on the older room's one word
       if (m.c7Min < 0 || !(lone || left)) return false;   // L8.50.2
       this.trace(lone ? 'L8.50-LONE' : 'L8.52-LEFT', this.id, this.coord, 'via=%d ring=%d', m.id, m.c7Min);
-      this.c7Yield(this.ringName(), 'L8.50-lone'); this.c7Old.clear(); this.l851Up = -1; return true;
+      const t19 = !TURN19_OFF && lone && this.f.fabricTurnPc(this.id, m.id);   // TURN.19.2
+      this.c7Yield(this.ringName(), 'L8.50-lone'); this.c7Old.clear(); this.l851Up = -1; if (t19) { this.lastAsked = m.id; this.trace('TURN19-HELD', this.id, null, 'via=%d', m.id); } return true;
     },
 
     // C++: mesh_island.inc:Seat::l51Rooms

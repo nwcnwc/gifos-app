@@ -21,6 +21,7 @@
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
   const RCD = ((n) => ({ L35_4_OFF: n('L35_4_OFF'), L17_3_1_OFF: n('L17_3_1_OFF'), L17_4_OFF: n('L17_4_OFF'), L35_5_OFF: ((isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L35_5_OFF === '0') ? 0 : 1) }))((k) => ((isNode && typeof process !== 'undefined' && process.env && process.env['MESH_' + k] === '1') ? 1 : 0));   // the sim's build-time switches of the realcheck dead-dial laws (mesh.cpp L35_4_OFF ...): MESH_<name>=1 under node; a page runs the laws
+  const TURN19_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_TURN19_OFF === '1') ? 1 : 0;   // the sim's -DTURN19_OFF=1 (TURN.19, mesh_island.inc)
   const C_ = req('./consts.js', 'meshConsts');
   const msg = req('./msg.js', 'meshMsg');
   const topo = req('./topo.js', 'meshTopo');
@@ -280,7 +281,9 @@
       const mine = this.TICK - this.rmBornAt; const lose = rivalArr < 0 || rivalArr > K.L11_ARRIVE || rivalArr > mine || (rivalArr === mine && rival < this.id);
       if (!lose) return false;
       this.trace('L11-YIELD', this.id, this.coord, 'rival=%d arr=%d mine=%lld why=%s', rival, rivalArr, mine, why);
+      const t19 = !TURN19_OFF && !this.moving && this.l850Lone() && this.f.fabricTurnPc(this.id, rival);   // TURN.19.2 (mesh_island.inc): the far end of my TURN pc carries my FIND
       if (this.moving) { this.rbWhy = 'rival'; this.rollbackMove(); } else this.requeue('L11-yield');
+      if (t19) { this.lastAsked = rival; this.trace('TURN19-HELD', this.id, null, 'via=%d', rival); }
       return true;
     },
 
