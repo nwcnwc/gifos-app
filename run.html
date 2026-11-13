@@ -38621,7 +38621,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const row = []; if (c) for (let j = 0; j < SCALE.C; j++) { const pid = j === c.i ? myId : occPid({ pc: c.pc, r: c.r, i: j }); if (pid) row.push(String(pid)); }
         return { coord: c, me: String(myId || ''), n: m.n, ids: m.ids, live: !!(v && v.videoWidth > 0), w: v ? v.videoWidth : 0, h: v ? v.videoHeight : 0, row, stagers: stageIds().map(String), hold: (typeof avHold !== 'undefined' && avHold) ? avHold.ms : 0 };
       },
-      // WIP ONLY (latency probe; removed before landing): the media objects a latency recorder stamps.
+      // Debug: the Stadium's packers and received blocks, for a recorder that stamps when a picture or a sound reaches each of them.
       latTapsForTest: () => (DEBUG_ON ? { prodPack, roomPack, sdView, l14Packs, mosIn, downStreams, packLoop, coord: meshCoord(), me: String(myId || '') } : null),
       pipeStats: () => (MPipe ? MPipe.stats() : Promise.resolve({})),
       // Per-DESTINATION carrier state. A sender forwards one feed to several
