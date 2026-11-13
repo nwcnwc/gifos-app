@@ -559,7 +559,7 @@
       if (x < 0) return null;
       const it = this.rmBirthOf.get(k); if (it !== undefined && it[0] === x) return it[1];
       const st = this.sitting.get(k); if (st !== undefined && st.joiner === x && st.assigner === this.id) return st.at;
-      { const h = this.l165Have(k, x); if (h) return h.loc; }
+      { const h = this.l165Note(k, x); if (h) return h.loc; }
       return null;
     },
     // C++: mesh.cpp:Seat::l167Attach
@@ -635,12 +635,19 @@
       if (vv.length >= 4) vv.shift();
       vv.push({ x, from, sig, at: this.TICK, loc });
     },
-    // C++: mesh.cpp:Seat::l165Have
-    // {from, at, loc} when x's placement proof at k is whole, else null
-    l165Have(k, x) {
+    // C++: mesh.cpp:Seat::l165Note
+    // {from, at, loc} when the proof note x presented for k is whole, else null (bornOf0 reads it; L25.19 re-dates the birth)
+    l165Note(k, x) {
       const it = this.ppNotes.get(k); if (it === undefined) return null;
       for (const n of it) if (n.x === x) { const from = n.from, at = hash.pairB(n.sig) | 0, loc = n.loc; return (from >= 0 && at >= 0 && loc >= 0) ? { from, at, loc } : null; }
       return null;
+    },
+    // C++: mesh.cpp:Seat::l165Have
+    // x's placement proof at k, or null. L25.19.2: a placement older than x's own goodbye from k orders nothing:
+    // the tenancy it proved ended (a seat placed there again carries a later proof)
+    l165Have(k, x) {
+      const h = this.l165Note(k, x); if (!h) return null;
+      const bf = this.byeFloor(x, k); return (bf >= 0 && h.loc < bf) ? null : h;
     },
     // C++: mesh.cpp:Seat::l165Attach
     l165Attach(y, k, keep) {
