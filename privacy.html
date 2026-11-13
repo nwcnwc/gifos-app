@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!-- FRAME GUARD. GitHub Pages sends no X-Frame-Options and a <meta> cannot
+     carry frame-ancestors, so this is the only thing that keeps a third-party
+     page from framing GifOS at opacity 0 and steering a click onto Allow,
+     Install or Approve. Same-origin framing (booted images, app mounts) is
+     allowed; anything else sees a link to open the page itself. Parser-
+     blocking and ES5 on purpose: it runs before any chrome paints.
+     Guarded by test/unit/frame-guard.js. -->
+<script id="gifos-frame-guard">(function(){try{if(window.top===window.self)return;var ok=false;try{ok=window.top.location.origin===window.location.origin}catch(e){}if(ok)return;var h=document.documentElement;h.style.visibility='hidden';function show(){var b=document.body;if(!b)return;while(b.firstChild)b.removeChild(b.firstChild);var p=document.createElement('p');p.style.cssText='font:16px system-ui,sans-serif;padding:24px;color:#eee;background:#111;margin:0';p.appendChild(document.createTextNode('GifOS does not run inside another site\'s page. '));var a=document.createElement('a');a.href=location.href;a.target='_blank';a.rel='noopener';a.textContent='Open it in its own tab';a.style.color='#9db4ff';p.appendChild(a);b.appendChild(p);h.style.visibility='';}if(document.body)show();else document.addEventListener('DOMContentLoaded',show);}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0a0a0f">
+<!-- Theming gate: hide chrome behind the theme-color backdrop until the theme
+     cascade (js/gifos-themes.js) applies real vars, so the fallback purple never
+     paints first. Reveals the instant --accent is set; a failsafe timeout
+     guarantees we never stay hidden if a theme file 404s or hangs. -->
+<style id="theme-gate">html.gifos-booting body{visibility:hidden}html.gifos-booting{background:var(--bg,#0a0a0f)}</style>
+<script>(function(){var h=document.documentElement;h.className+=(h.className?' ':'')+'gifos-booting';var shown=0;
+function show(){if(shown)return;shown=1;h.classList.remove('gifos-booting');
+try{var bg=h.style.getPropertyValue('--bg');var m=document.querySelector('meta[name=theme-color]');if(bg&&m)m.setAttribute('content',bg.trim());}catch(e){}}
+function chk(){if(shown)return;if(h.style.getPropertyValue('--accent'))show();else requestAnimationFrame(chk);}
+requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="GifOS">
+<script src="js/sw-register.js" defer></script>
+<script src="js/build.js" defer></script>
+<script src="js/build-badge.js" defer></script>
+<title>GifOS privacy policy</title>
+<meta name="description" content="What GifOS and the GifOS Meet apps collect, what they do not, and who can see what in a meeting.">
+<link rel="canonical" href="https://gifos.app/privacy">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="GifOS">
+<meta property="og:title" content="GifOS privacy policy">
+<meta property="og:description" content="What GifOS and the GifOS Meet apps collect, and what they do not.">
+<meta property="og:url" content="https://gifos.app/privacy">
+<meta property="og:image" content="https://gifos.app/og.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%A6%3C/text%3E%3C/svg%3E">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font: 17px/1.6 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+         background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); }
+  .wrap { max-width: 680px; margin: 0 auto; padding: 2rem 1.2rem 4rem; }
+  h1 { font-size: 2rem; margin: 1rem 0 .4rem; }
+  h1 .brand, .topbar .brand { font-weight: 800; background: linear-gradient(135deg, var(--accent, #7b5cff), var(--accent2, #ff5caa));
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  h2 { font-size: 1.25rem; margin: 2rem 0 .5rem; color: var(--text, #cfcfe8); }
+  p, li { color: var(--muted, #a9a9c5); }
+  b { color: var(--text, #e0e0f0); }
+  a { color: var(--accent, #7b5cff); }
+  .cta { display: inline-block; margin: 1.2rem 0; padding: .8rem 1.6rem; border-radius: .7rem;
+         background: var(--accent, #7b5cff); color: var(--onaccent, #fff); text-decoration: none; font-weight: 700; }
+  ul { padding-left: 1.2rem; }
+  li { margin-bottom: .45rem; }
+  .topbar { display: flex; align-items: center; gap: .5rem; padding: .8rem 1.2rem;
+            border-bottom: 1px solid var(--border, #2a2a3f); background: var(--surface, #14141f); }
+  .topbar a { text-decoration: none; font-size: 1.05rem; }
+  .foot { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border, #2a2a3f); font-size: .85rem; color: var(--muted, #667); }
+</style>
+<script src="js/gifos-themes.js"></script>
+</head>
+<body>
+  <div class="topbar"><a href="/"><span class="brand">GifOS</span></a></div>
+  <div class="wrap">
+    <h1><span class="brand">GifOS</span> privacy policy</h1>
+    <p>Effective: 13 November 2026.</p>
+    <p>GifOS (gifos.app) and the GifOS Meet apps are built so that we hold as little about you as possible. There are
+    no accounts. This page covers GifOS Meet meetings, in the app and on the web, and the plans you can buy for them.</p>
+
+    <h2>What we never ask for</h2>
+    <p>No sign-up, no email address, no phone number, no contacts, no location, and no advertising identifier. GifOS
+    Meet has no ads and no third-party analytics or tracking.</p>
+
+    <h2>Meetings</h2>
+    <ul>
+      <li><b>Audio, video, chat and files</b> go between the people in the meeting. WebRTC encrypts them in transit.
+      Our servers do not record or store them. The meeting server never carries audio or video.</li>
+      <li><b>The meeting server (relay)</b> introduces people in a room to each other. It passes along the connection
+      messages between them and sees temporary room and participant identifiers derived from the meeting link, and your
+      IP address, which every internet connection reveals. It keeps nothing: a room exists only while people are in it,
+      and the relay writes no request log and stores no address. The meeting's Who panel shows each participant's network
+      address to the other participants, because a direct connection reveals it to the person on the other end.</li>
+      <li><b>The fallback relay (TURN)</b> is used only when a direct connection is impossible. It passes encrypted media
+      between two participants without being able to decrypt it, and sees the IP addresses of both ends while it does
+      so. It writes no log of clients and keeps no address on disk. Its only record is a count of tickets issued and
+      refused, which holds no address and no room name.</li>
+      <li><b>Connectivity checks (STUN).</b> To find a direct path, your device asks public STUN servers for its public
+      IP address. Those requests carry no meeting content.</li>
+      <li><b>Your display name</b> is stored on your device and sent only to the other people in the meeting.</li>
+      <li><b>Camera and microphone.</b> In the app, Android asks for permission the first time you turn them on. You
+      join every meeting muted with the camera off. The camera turns on only when you switch it on.</li>
+      <li><b>Captions.</b> The captions engine runs on your device, and only the text you choose to share goes to the
+      meeting. The speech model is downloaded once from gifos.app.</li>
+      <li><b>Recordings</b> are saved on your device. If you hold a Streamer plan and choose to save a recording or
+      transcript to your private library (files.gifos.app), it is sealed with a key made on your device before it is
+      uploaded, so GifOS stores only data it cannot read. It stays until you delete it, and for 30 days after the plan
+      ends.</li>
+      <li><b>Debug logs</b> stay on your device unless you export and send one yourself.</li>
+    </ul>
+
+    <h2>Plans and payments</h2>
+    <p>The free plan, paid plans, the four-hour pass and tips are handled by our payment service (pay.gifos.app).
+    On the web, PayPal handles the payment and its privacy policy applies; in the Android app, Google Play handles the
+    payment under Google's privacy policy. We never receive your card details, name or email address.</p>
+    <p>For each plan the payment service keeps one record: the subscription or purchase identifier (for a Google Play
+    purchase, Google's purchase token), the plan and its period, the status and paid-through date, your public
+    subscription key (made on your device, not your name), and the tag of the one meeting your plan was last used in.
+    A free plan has the same record without any payment identifier. To limit abuse, the service counts how many free
+    plans are made from one network address in a day; it keeps only the times of those requests under a name derived
+    from the address.</p>
+    <p>The service also writes one log line for each payment event (started, captured, refused, refunded), carrying the
+    payment provider's reference. Cloudflare keeps these log lines for a few days (3 on its free plan, 7 on its paid
+    plan). The payment providers keep their own records under their own policies.</p>
+
+    <h2>Who hosts this</h2>
+    <p>gifos.app and its services run on Cloudflare. Like any host, Cloudflare handles the network traffic to reach us,
+    under its own privacy policy.</p>
+
+    <h2>Data on your device</h2>
+    <p>Settings, your display name and meeting preferences are stored in the app's own storage on your device.
+    Uninstalling the app or clearing its storage deletes them.</p>
+
+    <h2>Children</h2>
+    <p>GifOS Meet is not directed at children under 13.</p>
+
+    <h2>Changes and contact</h2>
+    <p>We will post any change on this page with a new effective date. Questions: <a href="mailto:support@gifos.app">support@gifos.app</a>.</p>
+
+    <p class="foot"><a href="/">GifOS</a> · <a href="/about.html">what GifOS is</a> ·
+    <a href="https://github.com/nwcnwc/gifos-app">source on GitHub</a></p>
+  </div>
+</body>
+</html>
