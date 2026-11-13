@@ -20,6 +20,8 @@
   const GifOS = root.GifOS = root.GifOS || {};
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
+  /* the sim's #define L16_4_2_OFF in mesh_heal.inc (a build-time switch): MESH_L16_4_2_OFF=1 under node, read once at load; a page always runs the law */
+  const L16_4_2_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L16_4_2_OFF === '1') ? 1 : 0;
   const RCD = ((n) => ({ L35_4_OFF: n('L35_4_OFF'), L17_3_1_OFF: n('L17_3_1_OFF'), L17_4_OFF: n('L17_4_OFF'), L35_5_OFF: ((isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L35_5_OFF === '0') ? 0 : 1) }))((k) => ((isNode && typeof process !== 'undefined' && process.env && process.env['MESH_' + k] === '1') ? 1 : 0));   // the sim's build-time switches of the realcheck dead-dial laws (mesh.cpp L35_4_OFF ...): MESH_<name>=1 under node; a page runs the laws
   const C_ = req('./consts.js', 'meshConsts');
   const msg = req('./msg.js', 'meshMsg');
@@ -642,6 +644,7 @@
     doMove(hole, owner, nbrs, ppFrom = -1, ppTick = -1, ppTickL = -1) {
       const id = this.id;
       if (!this.hasCoord || ckey(this.coord) === ckey(hole) || this.moving || this.l4Busy()) { return; }
+      if (!L16_4_2_OFF && this.drainAt) { this.trace('L16.4.2-STAY', id, hole, 'from=%s leaves=%d', FREE.coordStr(this.coord), (this.drainAt - this.TICK) | 0); return; }   // L16.4.2: I was told to drain: I leave through the door within ticks, and I take no cell meanwhile
       if (this.earShut()) return;   // L8.48: a shut ear does not promote and does not declare itself alone
       if (this.t14Stay(hole) || this.t14Fixed()) { this.trace('TURN14-HOLD', id, hole, 'owner=%d from=%s', owner, FREE.coordStr(this.coord)); return; }   /* TURN.14.5: my subtree hangs under a link end: no cell outside it */
       {
