@@ -441,6 +441,11 @@
     function holding(now) {
       if (!io.blocked()) return false;
       for (const L of links.values()) if (L.opener && (L.state !== 'up' || !(L.upAt > 0) || now - L.upAt < ASK_MS)) return true;
+      // TURN.4.6 (C++: mesh_turn.inc:fabricTurnHold): from my founding until the head has looked at the door's answer to my
+      // seating knock (the look that asks for the link), with a greeter listed that my network cannot meet and no link yet.
+      if (!links.size && io.doorNet && io.probed && io.probed() && io.judged && io.sat) {
+        if (!io.judged() || head.lookedSat !== io.sat()) for (const g of io.greeters() || []) if (g && g !== io.me() && io.doorNet(g) === 0) return true;
+      }
       return false;
     }
     const head = { since: -1, retryAt: -1, skip: '', seen: new Map() };   // seen: foreign greeter → when I first held it as foreign (TURN.4.3)
@@ -784,6 +789,7 @@
       const s = io.seat();
       if (s && s.head) {
         const view = new Set(s.view);
+        if (io.judged && io.sat && io.judged()) head.lookedSat = io.sat();   // TURN.4.6: this look reads the door's answer to my seating knock
         const F = []; let direct = false, fr = false;
         for (const g of io.greeters() || []) {
           if (!g || g === io.me() || view.has(g)) continue;

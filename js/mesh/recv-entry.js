@@ -192,6 +192,7 @@
     // C++: mesh_seat.inc:Seat::onFind
     onFind(m) {
       const TICK = this.TICK;
+      if (m.f19 && !this.t19Find(m)) return;   // TURN.19.4 (C++ mesh_island.inc)
       if (m.ttl > K.FIND_TTL) m.ttl = K.FIND_TTL; if (m.tag !== 1) this.l711Took(m);   // L7.11; FIND hop budget clamp
       if (this.f.fabricDoors() && m.tag !== 1 && m.nc >= 0 && m.nc !== this.id) this.dials.heard(m.nc);   // L16.3 + L17
       if (m.tag === 1) this.serveCompact(m);
