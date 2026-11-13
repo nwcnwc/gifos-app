@@ -663,7 +663,7 @@
         for (let k = 0; k < n; k++) { const x = this.occGet(ckey(ol[k])); if (x >= 0 && x !== id && !seen.has(x)) { seen.add(x); const m = newMsg('LEAVE'); m.ck = ckey(this.coord); m.id = id; m.child = this.l1DeepKid(); this.emit(x, m); } }
         const o = this.ownerCoord(); if (o) { const oid = this.occGet(ckey(o)); if (oid >= 0 && oid !== id && !seen.has(oid)) { const m = newMsg('LEAVE'); m.ck = ckey(this.coord); m.id = id; m.child = this.l1DeepKid(); this.emit(oid, m); } }
       }   // V7b (H4): the owner too (mesh.js leaveOwner twin)
-      if (this.hasCoord) { this.live.delete(ckey(this.coord)); this.leftCk = ckey(this.coord); this.leftAt = this.TICK; }   // (mesh.js twin, see requeue)
+      if (this.hasCoord) { this.live.delete(ckey(this.coord)); this.leftCk = ckey(this.coord); this.leftAt = this.TICK; this.leftTo = -1; }   // (mesh.js twin, see requeue)
       this.f.relayUnlist(id);   // L16.4
       this.hasCoord = false; this.occ.clear(); this.ledgerSeen.clear(); this.s1seen.clear(); this.holeSince.clear(); this.byeAt.clear(); this.tlClear(); this.authClear(); this.drainAt = 0; this.seatTries = 0;
       // L16.4: the door lists the seated Section-1 seats now; under L16.4 a re-entry knocks.

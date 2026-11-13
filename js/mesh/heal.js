@@ -278,13 +278,14 @@
       return false;
     },
     // C++: mesh_heal.inc:Seat::rmRival
-    rmRival(rival, rivalArr, why) {
+    rmRival(rival, rivalArr, why, rivalPp = -1) {
       if (!this.rmArrival() || rival < 0 || rival === this.id) return false;
-      const mine = this.TICK - this.rmBornAt; const lose = rivalArr < 0 || rivalArr > K.L11_ARRIVE || rivalArr > mine || (rivalArr === mine && rival < this.id);
+      const mine = this.TICK - this.rmBornAt; let lose = rivalArr < 0 || rivalArr > K.L11_ARRIVE || rivalArr > mine || (rivalArr === mine && rival < this.id);
+      if (this.f.fabricDoors() && !this.moving && this.coord.pc === 0 && rivalArr >= 0 && rivalArr <= K.L11_ARRIVE && rivalPp >= 0 && this.pp >= 0 && this.ppCk === ckey(this.coord)) lose = rivalPp !== this.pp ? rivalPp < this.pp : rival < this.id;   // LAW L16.5.3: two placed arrivals at one Section-1 cell read L16.5's concurrent order
       if (!lose) return false;
       this.trace('L11-YIELD', this.id, this.coord, 'rival=%d arr=%d mine=%lld why=%s', rival, rivalArr, mine, why);
       const t19 = !TURN19_OFF && !this.moving && this.l850Lone() && this.f.fabricTurnPc(this.id, rival);   // TURN.19.2 (mesh_island.inc): the far end of my TURN pc carries my FIND
-      if (this.moving) { this.rbWhy = 'rival'; this.rollbackMove(); } else this.requeue('L11-yield');
+      if (this.moving) { this.rbWhy = 'rival'; this.rollbackMove(); } else this.l40Go(rival, 'L11-yield');   // LAW L40.3.4
       if (t19) { this.lastAsked = rival; this.trace('TURN19-HELD', this.id, null, 'via=%d', rival); }
       return true;
     },

@@ -157,7 +157,7 @@
   // a 32-bit hash of (cell, seat)
   function ppKey(k, x) { return hash.hmix64(hash.hmixId(hash.H_INIT, x), k); }
   // C++: mesh.cpp:Seat::l165Earlier
-  function l165Earlier(at1, from1, id1, at2, from2, id2) { if (at1 - at2 > K.PLACE_W || at2 - at1 > K.PLACE_W) return at1 < at2; if (from1 !== from2) return from1 < from2; return id1 < id2; }
+  function l165Earlier(at1, from1, id1, at2, from2, id2) { if (at1 - at2 > K.L165_W || at2 - at1 > K.L165_W) return at1 < at2; if (from1 !== from2) return from1 < from2; return id1 < id2; }
   const coordOf = (k) => unckey(k);
   const newMsg = (t) => msg.newMsg(t);
   const LS_NONE = E.LS_NONE, LS_DIALING = E.LS_DIALING, LS_OPEN = E.LS_OPEN;
@@ -913,6 +913,7 @@
       if ((m.t === 'HELLO' || m.t === 'CLAIM') && m.id === id && m.mpK === 0 && this.mpK > 0 && this.hasCoord && m.ck === this.mpCk && m.ck === ckey(this.coord)) { const mm = msg.clone(m); mm.mpK = this.mpK; mm.mpBy = this.mpBy; mm.mpAt = this.mpAt; mm.mpL = this.mpL; mm.mpOld = this.mpOld; this.emit(to, mm); return; }   // L25.7
       // PP: my HELLO and CLAIM about the cell I was placed at carry my admitter's proof
       if ((m.t === 'HELLO' || m.t === 'CLAIM') && m.id === id && m.pp < 0 && this.pp >= 0 && m.ck === this.ppCk) { const mm = msg.clone(m); mm.pp = this.pp; mm.ppAt = this.ppAt; mm.ppL = this.ppL; this.emit(to, mm); return; }
+      if (m.t === 'PHONE' && m.id === id && m.pp < 0 && this.pp >= 0 && ckey(m.coord) === this.ppCk) { const mm = msg.clone(m); mm.pp = this.pp; mm.ppAt = this.ppAt; mm.ppL = this.ppL; this.emit(to, mm); return; }   // LAW L16.5.1: my claim's PHONE carries my placement proof, as my HELLO does
       if (m.t === 'PONG' && m.tag === 7 && m.id === id && m.pp < 0 && this.pp >= 0 && ckey(m.coord) === this.ppCk) { const mm = msg.clone(m); mm.pp = this.pp; mm.ppAt = this.ppAt; mm.ppL = this.ppL; this.emit(to, mm); return; }
       if (this.farStampNeed(m)) { const mm = msg.clone(m); this.farStamp(mm); this.emit(to, mm); return; }   // FARVIEW
       if (lv.TIERS_ACTIVE) {   // L4.1
