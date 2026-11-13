@@ -16339,7 +16339,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (o && o.tk && (!capTk || o.tk.sig !== capTk.sig)) capTake({ tk: o.tk }, false);
     }
     // The captor's page: say the ticket to the room table and, renewed, to the server.
-    function capPublish(renew) {
+    function capTicketPublish(renew) {
       if (!amCaptor || !capOn()) return;
       GifOS.meetSubs.currentTicket(subsMeetId()).then((tk) => {
         if (!tk || !amCaptor) return;
@@ -16362,7 +16362,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function onCapFrame(m) {
       if (av) return;
-      if (m.on === 1) { capTake(m, true).then(() => { if (amCaptor) capPublish(false); }); return; }
+      if (m.on === 1) { capTake(m, true).then(() => { if (amCaptor) capTicketPublish(false); }); return; }
       if (m.on === 0) { capClear('server'); return; }
       if (m.ok === 0) { pwLog('capture-refused ' + m.why); if (m.why === 'taken') setStatus(uiText('capTaken', 'Someone else is this room\u2019s admin')); else if (m.why === 'ended' && amCaptor) capClear('server ended'); else if (m.why !== 'ended') setStatus(uiText('capFailed', 'Could not make you admin of this room')); }
     }
@@ -35990,7 +35990,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function subsJoin() {
       if (!subsOn()) return;
       GifOS.meetSubs.joinMeeting(subsMeetId(), {
-        onTicket: () => { if (amAdmin && hasAdminRoom()) subsPublishRoomPlan(); turnSubAt = 0; capPublish(true); try { capPaint(); } catch (e) {} },   // a captor re-presents each renewed ticket   // a fresh ticket is a fresh TURN vouch: say it at the next step
+        onTicket: () => { if (amAdmin && hasAdminRoom()) subsPublishRoomPlan(); turnSubAt = 0; capTicketPublish(true); try { capPaint(); } catch (e) {} },   // a captor re-presents each renewed ticket   // a fresh ticket is a fresh TURN vouch: say it at the next step
         onPass: () => { if (amAdmin && hasAdminRoom()) subsPublishRoomPlan(); turnSubAt = 0; },   // a four-hour pass bought, started or ended: the room's plan and the TURN vouch now
         onLost: (why) => {
           if (why === 'moved') setStatus('Your subscription is now in use in another meeting.');
