@@ -21636,7 +21636,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         clockSample(p.id, m.t0, m.t1, performance.now());
       } else if (m.k === 'dcall') {
         // FHOP.8: a peer of mine calls me to the door for a knocker its door could not reach (n 7), or passes the call (n 8)
-        if ((m.n === 7 || m.n === 8 || m.n === 9) && typeof m.j === 'string' && m.j.length <= 64 && m.j !== myId && meshNode && meshNode.penv && meshNode.penv.doorCallIn) meshNode.penv.doorCallIn(p.id, m.n, m.j);
+        if ((m.n === 7 || m.n === 8) && typeof m.j === 'string' && m.j.length <= 64 && m.j !== myId && meshNode && meshNode.penv && meshNode.penv.doorCallIn) meshNode.penv.doorCallIn(p.id, m.n, m.j);
       } else if (m.k === 'relay-req') {
         startRelayJob(p, String(m.target || ''));
       } else if (m.k === 'relay-no') {

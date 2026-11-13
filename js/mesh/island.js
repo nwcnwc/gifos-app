@@ -498,6 +498,19 @@
       this.l16Wave(this.l16List.length); return true;
     },
 
+    // C++: mesh_island.inc:Seat::l16PlainHedge
+    // FHOP.8.3 THE HEDGE AT A PLAIN DOOR. My one ask has been quiet L16_HEDGE ticks: one more greeter beside it, once
+    // per knock; the first HOME is my entry and the other door closes.
+    l16PlainHedge() {
+      if (!this.f.fabricDoors() || this.state !== 1 || this.w.lv.L16HEDGE <= 0 || this.l16Hedged || this.entryTerm() || this.oldCell || this.l16List.length !== 0 || this.l16Ask.length !== 1 || this.l16Busy.length !== 0) return false;
+      if (this.TICK - this.retryAt < this.w.lv.L16HEDGE || this.lastReach >= this.retryAt) return false;
+      this.l16Hedged = true;
+      const pool = []; for (const g of this.lastGreeters) if (g >= 0 && g !== this.id && !this.entAsk.has(g) && !this.l16Ask.includes(g)) pool.push(g);
+      if (pool.length === 0) return false;
+      const g = pool[Math.floor(this.rng() * pool.length)]; this.trace('FHOP.8.3-HEDGE', this.id, null, 'to=%d beside=%d', g, this.l16Ask[0]);
+      this.entNote(g); this.l16Ask.push(g); const w = newMsg('WHOHOME'); w.from = this.id; w.ttl = K.WHOHOME_HOPS; this.emit(g, w); return true;
+    },
+
     // C++: mesh_island.inc:Seat::l16Gateway
     l16Gateway(g, t) {
       this.l16GwClosed = false;
