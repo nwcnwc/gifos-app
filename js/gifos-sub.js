@@ -413,7 +413,7 @@
     pass4h: Object.freeze({ perms: Object.freeze({ plan: 'unlimited', capture: false, oneMeeting: true, pastFull: true }), seconds: passSeconds, price: '$1', value: '1.00', sold: true }),
     // Ours, minted with the pay key for our own bots (scripts/mint-staff-pass.mjs):
     // Unlimited, captures an open room, never ends; one meeting at a time
-    // (each bot holds its own pass, so sibling bots share a room freely).
+    // (several sessions of one pass in the SAME meeting all renew: sibling bots may share one pass).
     staff: Object.freeze({ perms: Object.freeze({ plan: 'unlimited', capture: true, oneMeeting: true, pastFull: true }), seconds: () => null, sold: false }),
   });
   // presetPass(name, start) -> {plan, perms, end} for a new pass of that preset.
