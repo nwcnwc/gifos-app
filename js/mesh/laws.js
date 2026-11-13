@@ -129,7 +129,6 @@
     SIT_PING_WAIT: 15,           // V4: a silent vouch is freed only after a SITPING went unanswered this long
     SIT_RECHECK: 25,             // admitter re-check cadence for a sitting-down mark
     SIT_TTL: 90,                 // soft sitting-down mark backstop
-    SPREAD: true,                // T7: spread after an explicit NOROOM
     SPREAD_MINDEPTH: 4,          // T7: a NOROOM counts as spread evidence only from depth >= this
     STAGE_CAP_PER_C: 1,          // L6.2: the stage holds at most this many seats (one row's width): the pinned first, then the talkers
     STRAND_TTL: 500,             // R6: a newcomer that reaches no greeter this long re-checks (take over an empty room, else stranded)

@@ -727,7 +727,7 @@
     askSeat(target, gwc = false) {
       if (this.askTick === this.TICK) { if (!this.hasCoord) { this.state = 2; this.retryAt = this.TICK; } this.reAsk = true; this.f.wake(this.id); return; }
       this.askTick = this.TICK; this.state = 2; this.retryAt = this.TICK; this.findAckAt = -1; this.triedSilent.add(target); this.lastAsked = target;
-      const m = newMsg('FIND'); m.nc = this.id; m.gwc = gwc || (this.l16GwClosed && this.f.fabricDoors()); m.ttl = 200; m.spread = (this.w.lv.SPREAD && this.noroomSeen >= 1); m.dark = this.darkGreeters(target); this.l381Stamp(m); /* L38.1 */ if (this.d6Mark) m.dk = true;
+      const m = newMsg('FIND'); m.nc = this.id; m.gwc = gwc || (this.l16GwClosed && this.f.fabricDoors()); m.ttl = 200; m.spread = (this.noroomSeen >= 1); m.dark = this.darkGreeters(target); this.l381Stamp(m); /* L38.1 */ if (this.d6Mark) m.dk = true;
       if (roomTerm(this, 1) && this.searchAt >= 0 && this.TICK - this.searchAt >= K.RELAY_TTL) m.late = true;
       this.emit(target, m); this.f.wake(this.id);
     },

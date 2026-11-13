@@ -64,7 +64,6 @@
     recvBody(m, id, w, lv) {
       const TICK = this.TICK;
       if (this.hostile && this.hostileRecv(m)) return;
-      if (lv.SIG_DEDUPE && m.t === 'LEAVE' && m.sig) { const sk = (m.rl ? 'r|' : 'd|') + m.ck + '|' + m.id + '|' + m.tn + '|' + m.mvd + '|' + m.sigAt; if (this.sigSeen.has(sk)) return; this.sigSeen.add(sk); }
       if (m.from >= 0 && m.from !== id && m.t !== 'UNNEEDED' && !m.dgOnly && !m.l10E) this.callBook.touchOut(m.from, TICK);   // CALL
       { if (m.from >= 0 && m.from !== id) this.dials.heard(m.from); if (m.sig && m.id >= 0 && m.id !== id && m.t !== 'LEAVE' && m.t !== 'TRANSLOST') this.dials.heard(m.id); }   // L17
       if ((m.t === 'HELLO' || m.t === 'YIELD') && !m.l10E && !m.dgOnly) this.l25131Note(m);   // L25.13.1: a placer I asked answers with its own cell, taken where the frame lands
@@ -102,7 +101,7 @@
         return;
       }
       if (m.t === 'AUDITA') { if (m.tag === 27) this.kTakeConf(m); else if (m.tag === 28) this.kHolderAns(m); else this.kAuditAns(m); return; }   // L27
-      if (lv.L10_BUCKET && !this.l10Take(m)) { this.stDrop++; return; }   // L10
+      if (!this.l10Take(m)) { this.stDrop++; return; }   // L10
       if (m.l10E || m.dgOnly) { this.l10Digest(m); return; }   // L10
       if (lv.TIERS_ACTIVE && (m.t === 'HELLO' || m.t === 'CLAIM' || m.t === 'PHONE' || m.t === 'PONG')) this.l4Learn(m);   // L4.1
       if (m.t === 'PHONE' || m.t === 'PONG') this.noteUnp(m);   // G10 / D6

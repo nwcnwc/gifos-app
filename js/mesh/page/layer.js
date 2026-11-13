@@ -91,7 +91,6 @@
    *                    (link: the peer whose own proven channel carried it, if any)
    *   o.ckey(c)        the page's string cell key (net.topo.ckey)
    *   o.ownedLinks(c)  topo owned links of a coord (for the section scope)
-   *   o.GSP_GUARD      false turns the flood guard off: harness controls only (0.9.24 env.GSP_GUARD; no wire passes it)
    */
   function create(o) {
     const ids = makeIds();
@@ -210,7 +209,6 @@
     function frameOf(e) { const f = { t: e.sc !== undefined ? 'GSPS' : 'GSP', gid: e.gid, src: e.src, m: e.m }; if (e.sc !== undefined) f.sc = e.sc; if (e.eph) f.eph = 1; if (e.s4) f.s4 = e.s4; const ag = (e.ag0 || 0) + (e.at != null ? Math.max(0, T() - e.at) : 0); if (ag > 0) f.ag = ag; return f; }
     function remember(gid, src, m, sc, ag0, s4, tx) { const e = { gid, src, m, at: T(), tx: tx || new Map() }; if (sc !== undefined) e.sc = sc; if (ag0) e.ag0 = ag0; if (s4) e.s4 = s4; grecent.push(e); if (grecent.length > 64) grecent.shift(); }
     function budget(link, src) {
-      if (o.GSP_GUARD === false) return true;
       const t = T();
       const take = (k, rate, burst, peek) => { let b = bkt.get(k); if (!b) { if (bkt.size > 4096) bkt.clear(); bkt.set(k, b = { n: burst, at: t }); } if (t > b.at) { b.n = Math.min(burst, b.n + (t - b.at) * rate); b.at = t; } if (b.n < 1) return false; if (!peek) b.n -= 1; return true; };
       const lk = 'L|' + (link == null ? '?' : link), sk = lk + '|' + src;

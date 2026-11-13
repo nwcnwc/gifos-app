@@ -324,7 +324,6 @@
     // C++: mesh_seat.inc:Seat::compactEligible
     compactEligible() {
       const TICK = this.TICK;
-      if (!this.w.lv.COMPACTION) return false;
       if (!this.hasCoord || this.state !== 3 || this.coord.pc === 0 || this.moving || this.l4Busy()) return false;   // S1 is the top; a mover finishes first
       const l9small = this.l9Small();   // L9.11
       if (!l9small && !this.l43Home()) {
@@ -339,7 +338,6 @@
     // C++: mesh_seat.inc:Seat::tryCompact
     tryCompact() {
       const id = this.id, TICK = this.TICK, lv = this.w.lv;
-      if (!lv.PROBEON) return;                                   // offers-only arm
       const l9small = this.l9Small() || this.l43Home();   // L9.11, L43.1
       if (l9small && this.rootDec.n !== this.l9ProbeN) { this.l9ProbeN = this.rootDec.n; this.l9ProbeGap = K.L5_PERIOD; }
       if (l9small ? (TICK - this.lastProbeTick < this.l9ProbeGap) : (TICK < this.compactAt)) return;   // rate limit / hysteresis

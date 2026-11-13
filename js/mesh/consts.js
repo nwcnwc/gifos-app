@@ -330,12 +330,8 @@
     COMPACT_OFFERS: 0,   // C++: mesh.cpp:COMPACT_OFFERS
     COMPACT_OFFERFIRES: 0,   // C++: mesh.cpp:COMPACT_OFFERFIRES
     HEALING: true,   // C++: mesh.cpp:HEALING
-    COMPACTION: true,   // C++: mesh.cpp:COMPACTION
     PROBLVL: 3,   // C++: mesh.cpp:PROBLVL
-    PROBEON: true,   // C++: mesh.cpp:PROBEON
-    SPREAD: true,   // C++: mesh.cpp:SPREAD
     SPREAD_MINDEPTH: 4,   // C++: mesh.cpp:SPREAD_MINDEPTH
-    L10_BUCKET: true,   // C++: mesh.cpp:L10_BUCKET
     L10_SPAM: -1,   // C++: mesh.cpp:L10_SPAM
     NET_SKEW: 0,   // C++: mesh.cpp:NET_SKEW
     CLK_OFF: 0,   // C++: mesh.cpp:CLK_OFF
@@ -349,7 +345,6 @@
     SEED0: 20260714,   // C++: mesh.cpp:SEED0
     PARTITIONED: false,   // C++: mesh.cpp:PARTITIONED
     SEQ: 0,   // C++: mesh.cpp:SEQ
-    SIG_DEDUPE: false,   // C++: mesh.cpp:SIG_DEDUPE
     ISLAND_MODE: 0,   // C++: mesh.cpp:ISLAND_MODE
     ISLAND_PICK: 1,   // C++: mesh.cpp:ISLAND_PICK
     URL_KEY: 0,   // C++: mesh.cpp:URL_KEY
