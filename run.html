@@ -36234,7 +36234,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return subsTier;
     }
     async function subsPublishRoomPlan() {
-      if (!subsOn() || !!!av || !amAdmin) return;
+      if (!subsOn() || !av || !amAdmin) return;
       let o = null; try { o = await GifOS.meetSubs.roomOrder(subsMeetId()); } catch (e) { o = null; }
       if (!o) return;
       const r = modTable['*'] = modTable['*'] || {};
@@ -36262,7 +36262,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     setInterval(() => { try { if (subsOn() && !!av) subsRoomTier(); } catch (e) {} try { capCheck(); capPaint(); } catch (e) {} }, 2000);   // the room's plan, and an open room's capture (capCheck)
     function subsHolds(id) {
-      if (!id || !subsOn() || !!!av || subsProven.has(id)) return false;
+      if (!id || !subsOn() || !av || subsProven.has(id)) return false;
       if (!subsPlanKnown()) return subsWaitPlan(id);   // the admin's orders have not reached this door yet: hold, ask nothing
       const tier = subsRoomTier();
       if (tier && GifOS.sub.doorVerdict({ adminRoom: true, roomTier: tier, count: 1e9 }) === 'let-in') return false;   // a room with no line counts nobody
@@ -36324,13 +36324,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function subsTurnedSaid(p, dc) {
       if (!dc || dc.__authBy !== p.id) return;   // an authenticated channel only
       const ms = meshSeat();
-      if (!subsOn() || !amAdmin || !!!av || !(ms && ms.state === 3) || (subsRoomTier() && subsRoomTier() !== 'free')) return;
+      if (!subsOn() || !amAdmin || !av || !(ms && ms.state === 3) || (subsRoomTier() && subsRoomTier() !== 'free')) return;
       GifOS.meetSubs.showHostPrompt();
     }
     // The admin of an admin room without a paid plan gets the free plan's
     // license (no PayPal), so the room carries the free plan.
     function subsAdminFree() {
-      if (!subsOn() || !!!av || !amAdmin || !GifOS.meetSubs.ensureFree) return;
+      if (!subsOn() || !av || !amAdmin || !GifOS.meetSubs.ensureFree) return;
       GifOS.meetSubs.ensureFree().catch(() => {});
     }
 
