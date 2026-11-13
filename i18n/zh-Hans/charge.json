@@ -12,6 +12,8 @@
   "charge.error.alreadyBought": "已在这台电脑上购买（{sku}）",
   "charge.support.text": "对这笔付款有疑问？{email}",
   "charge.paidBy.paypal": "通过 PayPal",
+  "charge.pay.paypal": "用银行卡或 PayPal 支付",
+  "charge.pay.paypalSandbox": "用银行卡或 PayPal 支付（沙盒）",
   "charge.paidBy.x402": "以 USDC（Base Sepolia）",
   "charge.paidBy.x402Mainnet": "以 USDC（Base）",
   "charge.paidBy.transfer": "以 USDC（钱包转账）",
