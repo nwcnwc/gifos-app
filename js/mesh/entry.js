@@ -16,7 +16,6 @@
   const GifOS = root.GifOS = root.GifOS || {};
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
-  const RCD = ((n) => ({ L35_4_OFF: n('L35_4_OFF'), L17_3_1_OFF: n('L17_3_1_OFF'), L17_4_OFF: n('L17_4_OFF'), L35_5_OFF: ((isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L35_5_OFF === '0') ? 0 : 1) }))((k) => ((isNode && typeof process !== 'undefined' && process.env && process.env['MESH_' + k] === '1') ? 1 : 0));   // the sim's build-time switches of the realcheck dead-dial laws (mesh.cpp L35_4_OFF ...): MESH_<name>=1 under node; a page runs the laws
   const seatM = req('./seat.js', 'meshSeat');
   const { cellOk, ownerCoordOf, coordStr, l4Pack, fabricToken } = req('./shared.js', 'meshShared');
   const { Seat, FREE, roomTerm } = seatM;
@@ -32,13 +31,6 @@
   const { ckey, ckPc, ckR, ckI, unckey, ownedLinks, down, up, pcDepth, lastDigit, parentPath } = topo;
   const C = topo.C;
   const newMsg = (t) => msg.newMsg(t);
-  // the sim's #define L3_11_2_OFF in mesh.cpp (a build-time switch): MESH_L3_11_2_OFF=1 under node, read once at load; a page always runs the law
-  const L10_9_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L10_9_OFF === '1') ? 1 : 0;   // the sim's -DL10_9_OFF=1 build (a seat's first beat from a new cell goes on the next tick)
-  const L3_11_2_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L3_11_2_OFF === '1') ? 1 : 0;
-  // the sim's #define L3_11_3_OFF (same reading): MESH_L3_11_3_OFF=1 under node builds the parent
-  const L3_11_3_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L3_11_3_OFF === '1') ? 1 : 0;
-  // the sim's #define L3_11_5_OFF (same reading): MESH_L3_11_5_OFF=1 under node builds the parent
-  const L3_11_5_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L3_11_5_OFF === '1') ? 1 : 0;
 
   // ---- free helpers the entry functions call (private copies of small statics) ---------------------------
   // C++: mesh.cpp:descOn (the MESH_DESC switch; a measurement, never read by protocol code)
@@ -108,8 +100,7 @@
           // L8.8.1: the admitter naming itself at its own cell is first-hand in any room, the room term on or off.
           {
             let l88 = (roomTerm(this, 1) || kv.v === owner) && this.occ.has(kv.k) && this.occGet(kv.k) !== kv.v && !this.firstHandLive(kv.k);
-            if (!RCD.L35_5_OFF && !l88 && this.occ.has(kv.k) && this.occGet(kv.k) !== kv.v && !FREE.l355On(this, kv.k, this.occGet(kv.k))) l88 = true;   // L35.5: my placer's word replaces a name I no longer hold fresh
-            if (!this.occ.has(kv.k) || l88) { if (l88 && kv.v === owner) this.noChan.delete(kv.v); this.setOcc(kv.k, kv.v); if (!l88 || this.occGet(kv.k) === kv.v) { this.noteS1(kv.k); if (kv.v !== owner && ckPc(kv.k) === 0) this.s1told.set(kv.k, TICK); if (!RCD.L35_5_OFF && kv.v !== owner) FREE.l35Hinted(this, kv.k, kv.v); } }   /* L35.5: a name my placer lists is its word, not mine */
+            if (!this.occ.has(kv.k) || l88) { if (l88 && kv.v === owner) this.noChan.delete(kv.v); this.setOcc(kv.k, kv.v); if (!l88 || this.occGet(kv.k) === kv.v) { this.noteS1(kv.k); if (kv.v !== owner && ckPc(kv.k) === 0) this.s1told.set(kv.k, TICK); } }
             // The admitter's confirm of this seat is a hearing. Their own cell on this PLACE is the hearing the other way.
             // Section 1 has no owner coord, so that hearing is the linked cell they name themselves at. Anyone else's listing stays a listing.
             if (kv.v === owner && this.occGet(kv.k) === owner && ((hasO && kv.k === ckey(oc)) || (c.pc === 0 && ckPc(kv.k) === 0 && link))) this.liveMark(kv.k);
@@ -137,7 +128,7 @@
       { const hold = K.CONFIRM_TTL + (this.lastPubDepth + 3) * K.DIG_HOLD_LEVEL; const s1Only = (this.lastPubDepth === 0 && c.pc === 0);
         if (!s1Only && this.lastPubAt >= 0 && TICK - this.lastPubAt < hold) { this.digHoldUntil = TICK + hold; this.digNHoldUntil = TICK + Math.max(K.L10_NEW_WAIT, Math.trunc((this.lastPubDepth + 1) * K.DIG_HOLD_LEVEL / 2)); } }   // D7.x
       this.rowKids.clear(); this.rowUsed.clear(); if (c.pc !== 0) this.s1tab.clear(); this.siKids.clear();
-      this.lastAck = TICK; this.lastPhone = ((owner >= 0 && c.pc !== 0 && c.i === 0) || !L10_9_OFF) ? TICK - 8 : TICK;   // L7.6 (I10); L10.9: every seat's first beat from a new cell goes on the next tick
+      this.lastAck = TICK; this.lastPhone = TICK - 8;   // L7.6 (I10); L10.9: every seat's first beat from a new cell goes on the next tick
       if (owner >= 0) { const m = newMsg('CLAIM'); m.ck = ckey(c); m.id = id; this.emit(owner, m); }
       else { const adm = this.ppAdmitter(c); if (adm >= 0 && adm !== id) { this.ppAskAt = TICK; const m = newMsg('CLAIM'); m.ck = ckey(c); m.id = id; this.emit(adm, m); } }   // PP
       if (c.pc === 0) { this.s1CheckAt = TICK + K.E3_PERIOD + Math.floor(this.rng() * K.E3_PERIOD); this.emitRelay(this.genKey); }   // E3
@@ -151,7 +142,6 @@
       for (let k = 0; k < n; k++) {
         const lk = ckey(ol[k]); let x = this.occGet(lk);
         let soft = false; if (x < 0 && this.softSitting(lk)) { x = this.sitting.get(lk).joiner; soft = true; }   // A: also greet soft-sit neighbours
-        if (x >= 0 && x !== this.id && !soft && !FREE.l355On(this, lk, x)) { let w = false; if (nb) for (const kv of nb) if (kv.k === lk && kv.v === x) w = true; if (!w) continue; }   // L35.5: a name I no longer hold fresh is not greeted (my namer's word for it is)
         if (x >= 0 && x !== this.id && !seen.has(x)) { seen.add(x); const m = newMsg('HELLO'); m.ck = ckey(this.coord); m.id = this.id; this.emit(x, m); }
       }
     },
@@ -568,7 +558,7 @@
     // C++: mesh_seat.inc:Seat::serveReclaim
     serveReclaim(m) {
       const TICK = this.TICK, id = this.id;
-      if (m.knock && (L3_11_5_OFF || m.oCk)) return;   // L3.11.5: a proof that rode a knock is answered only as below
+      if (m.knock && m.oCk) return;   // L3.11.5: a proof that rode a knock is answered only as below
       if (this.hasCoord && this.state === 3 && m.id >= 0 && m.id !== id && m.ck === ckey(this.coord)) {   // L3.10.4: I am the hole's mover and already sit in the returner's old cell: healing wins
         if (m.knock) return;   // L3.11.5: no hand-off from a knock: the round does that
         const p = this.pinned.get(m.id); const c = unckey(m.ck);
@@ -618,25 +608,21 @@
           if (ol[i].pc === 0) continue; let inRoster = false; for (const e of ro) if (e.k === ckey(ol[i]) && e.v >= 0) { inRoster = true; break; } if (inRoster) continue;
           const m = newMsg('RECLAIM'); m.ck = this.oldCell - 1; m.id = id; m.tok = fabricToken(lv, id); m.oCk = gck; m.routing = true; m.rdst = co(ol[i]); m.rfinal = -1; m.rttl = 64; m.rvia = id; this.emit(greeter, m); routed++;
         }
-        if (routed) { this.trace('RECLAIM-ROUTED', id, oc, 'via=%d cells=%d', greeter, routed); sent += routed; if (!L3_11_2_OFF) this.rcRtAt = this.TICK; }   // L3.11.2: the answer is awaited (tickHeld resends it through another greeter)
+        if (routed) { this.trace('RECLAIM-ROUTED', id, oc, 'via=%d cells=%d', greeter, routed); sent += routed; this.rcRtAt = this.TICK; }   // L3.11.2: the answer is awaited (tickHeld resends it through another greeter)
       }
       if (sent) this.trace('RECLAIM', id, oc, 'to=%d neighbours', sent);
-      if (sent && !L3_11_3_OFF) this.rcSentAt = this.TICK;   // L3.11.3: this round's answer is awaited
+      if (sent) this.rcSentAt = this.TICK;   // L3.11.3: this round's answer is awaited
       return sent > 0;
     },
 
     // C++: mesh_seat.inc:Seat::l3115Knock
     // L3.11.5: the proof rides the knock: a greeter that holds my reload lease on one of its links hands the cell back at once.
     l3115Knock(g) {
-      if (L3_11_5_OFF || !this.oldCell || this.hasCoord || g < 0 || g === this.id) return;
+      if (!this.oldCell || this.hasCoord || g < 0 || g === this.id) return;
       const m = newMsg('RECLAIM'); m.ck = this.oldCell - 1; m.id = this.id; m.tok = fabricToken(this.w.lv, this.id); m.knock = true; this.emit(g, m);
       this.trace('RECLAIM-KNOCK', this.id, null, 'to=%d', g);
     },
 
-    // L3.11.2 (C++: the L3_11_2_OFF call sites in onHome, onReclaimed, onReclaimNo, tickHeld): the law's switch, read by the recv and tick units
-    l3112On() { return !L3_11_2_OFF; },
-    // L3.11.3 (C++: the L3_11_3_OFF call sites in tryReclaim and onHome): the law's switch
-    l3113On() { return !L3_11_3_OFF; },
 
     // C++: mesh_seat.inc:Seat::l3112Resend
     // L3.11.2: a routed RECLAIM unanswered for RC_RESEND goes again through another Section-1 seat of my roster, at most RC_RESEND_N times per return.

@@ -1,6 +1,5 @@
 /*
  * headword.js: D5.2 a row-mate believes its head's vacancy word unless it holds counter-evidence, seat side (C++: mesh_headword.inc).
- * D52_OFF (a build-time switch in the sim, 0 in the release) is not ported: the law is on.
  * lv: the measurement counters D52_DROP, D52_KEEP, D52_FLAG, D52_RESTORE.
  */
 (function (root) {

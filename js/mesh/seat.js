@@ -115,12 +115,6 @@
   const C = topo.C;
   // MESH_LINKKEY=1 under node is the sim's linkkeyEnv(): every page holds the meeting key for a whole run
   const LINKKEY_ENV = (isNode && typeof process !== 'undefined' && process.env && parseInt(process.env.MESH_LINKKEY, 10)) ? 1 : 0;
-  // the sim's #define L8_50_OFF in mesh.cpp (a build-time switch): MESH_L8_50_OFF=1 under node, read once at load; a page always runs the law
-  const L8_50_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L8_50_OFF === '1') ? 1 : 0;
-  // the sim's #define L8_52_OFF in mesh.cpp (a build-time switch): MESH_L8_52_OFF=1 under node, read once at load; a page always runs the law
-  const L8_52_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L8_52_OFF === '1') ? 1 : 0;
-  const TURN14_15_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_TURN14_15_OFF === '1') ? 1 : 0;   // the sim's -DTURN14_15_OFF=1 build
-  const L10_7_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L10_7_OFF === '1') ? 1 : 0;   // the sim's -DL10_7_OFF=1 build
   const { ins, eraseFirst } = req('./util.js', 'meshUtil');
   const dig = req('./dig.js', 'meshDig');
 
@@ -268,8 +262,8 @@
     // C++: mesh.cpp:Seat::l10Spend
     l10Spend() { this.l10Refill(); this.l10Own.tok = this.l10Own.tok >= 1 ? this.l10Own.tok - 1 : 0; },
     // C++: mesh.cpp:Seat::l10Dirty
-    // L10.7: a first report that counts someone is news at once (a mover counts nobody while its old cell drains, D7.x); the sim's -DL10_7_OFF=1 build: MESH_L10_7_OFF=1 under node
-    l10Dirty(was, now) { if (!was) { if (!L10_7_OFF && now.n > 0) this.l10Mark(); else if (!this.l10NewAt) this.l10NewAt = this.TICK + 1; } else if (dig.digSig(was) !== dig.digSig(now)) this.l10Mark(); },
+    // L10.7: a first report that counts someone is news at once (a mover counts nobody while its old cell drains, D7.x)
+    l10Dirty(was, now) { if (!was) { if (now.n > 0) this.l10Mark(); else if (!this.l10NewAt) this.l10NewAt = this.TICK + 1; } else if (dig.digSig(was) !== dig.digSig(now)) this.l10Mark(); },
     // C++: mesh.cpp:Seat::LT
     LT() { return this.TICK + this.skew; },
     // C++: mesh.cpp:Seat::wireDig
@@ -862,7 +856,7 @@
       const id = this.id, TICK = this.TICK, lv = this.w.lv;
       if (this.hostDenseLeaf >= 0 && m.t === 'YIELD') return;   // `hostile densify`: the page never evicts the seat it placed (harness gaps3-fab.js)
       if (m.line < 0 && this.line >= 0 && (((m.t === 'HELLO' || m.t === 'PHONE' || m.t === 'PONG' || m.t === 'CONFIRM' || m.t === 'LEAVE' || m.t === 'HOME') && m.id === id) || (m.t === 'WALK' && m.asker === id) || (m.t === 'PLACE' && m.pp === id))) {
-        const mm = msg.clone(m); mm.line = (this.hostile & K.H_RINGLIE_BIT) ? K.RINGLIE_LINE : this.line; if (!L8_52_OFF) { mm.lineAt = this.lineAt; } mm.lineF = this.lineFork; mm.cutF = (this.cutAt >= 0 || this.cutHeardAt >= 0); this.emit(to, mm); return;   // L8.38
+        const mm = msg.clone(m); mm.line = (this.hostile & K.H_RINGLIE_BIT) ? K.RINGLIE_LINE : this.line; { mm.lineAt = this.lineAt; } mm.lineF = this.lineFork; mm.cutF = (this.cutAt >= 0 || this.cutHeardAt >= 0); this.emit(to, mm); return;   // L8.38
       }
       if (this.vban.size && !this.kIgnore && (this.kBanned(to) || ((m.t === 'PLACE' || m.t === 'FIND' || m.t === 'FINDACK' || m.t === 'NOROOM') && this.kBanned(m.nc)) || (m.routing && this.kBanned(m.rfinal)))) { this.kTx++; return; }   // L27
       if (m.t === 'YIELD' && m.id === id && !m.yp && to >= 0 && to !== id) { if (this.l24Yielded.size > 128) this.l24Yielded.clear(); this.l24Yielded.set(to, TICK); }   // L24
@@ -883,8 +877,8 @@
         }
       }
       if (roomTerm(this, 1) && m.t === 'PONG' && m.id === id && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); this.emit(to, mm); return; }   // L8.31
-      if (!TURN14_15_OFF && m.t === 'HELLO' && !m.c7Home && m.id === id && to >= 0 && to !== id && this.hasCoord && this.state === 3 && this.f.fabricTurnOn() && this.f.fabricTurnPc(id, to) && this.t1415Home()) { const mm = msg.clone(m); mm.c7Home = true; this.emit(to, mm); return; }   // TURN.14.15: over a TURN pc my HELLO says that my network sits at home in my ring
-      if (roomTerm(this, 1) && m.t === 'HELLO' && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); mm.c7Held = this.l845Held(); { const own = this.ringAlone() || (!L8_50_OFF && this.l850Lone()); mm.c7One = own || this.f.fabricTurnAcross(id); if (!L8_52_OFF) mm.c7Link = mm.c7One && !own; } if (!TURN14_15_OFF && this.f.fabricTurnOn() && this.t1415Across()) { const w = this.t1415Ring(); if (w >= 0) mm.c7Min = w; mm.c7Held = true; }   /* TURN.14.15: the end names its ring by its TURN peer's word */   /* L8.52.5: c7Link, the 'alone' of a TURN link end */ /* L8.50: a founder that has seated nobody is its ring, whatever its view has absorbed from a room it has one pc into */ /* TURN.14.10: the end of a TURN link whose ring lies across it is the one seat of that ring its own side can hear: its vouch is the ring's word there */ this.emit(to, mm); return; }   // L8.5 (L8.5.2: c7One says my ring holds nobody else)
+      if (m.t === 'HELLO' && !m.c7Home && m.id === id && to >= 0 && to !== id && this.hasCoord && this.state === 3 && this.f.fabricTurnOn() && this.f.fabricTurnPc(id, to) && this.t1415Home()) { const mm = msg.clone(m); mm.c7Home = true; this.emit(to, mm); return; }   // TURN.14.15: over a TURN pc my HELLO says that my network sits at home in my ring
+      if (roomTerm(this, 1) && m.t === 'HELLO' && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); mm.c7Held = this.l845Held(); { const own = this.ringAlone() || (this.l850Lone()); mm.c7One = own || this.f.fabricTurnAcross(id); mm.c7Link = mm.c7One && !own; } if (this.f.fabricTurnOn() && this.t1415Across()) { const w = this.t1415Ring(); if (w >= 0) mm.c7Min = w; mm.c7Held = true; }   /* TURN.14.15: the end names its ring by its TURN peer's word */   /* L8.52.5: c7Link, the 'alone' of a TURN link end */ /* L8.50: a founder that has seated nobody is its ring, whatever its view has absorbed from a room it has one pc into */ /* TURN.14.10: the end of a TURN link whose ring lies across it is the one seat of that ring its own side can hear: its vouch is the ring's word there */ this.emit(to, mm); return; }   // L8.5 (L8.5.2: c7One says my ring holds nobody else)
       if (roomTerm(this, 1) && ((m.t === 'HOME' && m.id === id) || (m.t === 'PLACE' && m.pp === id)) && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); this.emit(to, mm); return; }   // L8.5.1
       if (m.nc >= 0 && m.nc !== id && to !== id && to >= 0 && (m.t === 'FIND' || m.t === 'PLACE') && this.f.fabricTurnPc(id, to) && this.t14Cross(to, m)) return;   /* TURN.14.11 */
       if (m.t === 'PLACE' && m.pp === id && m.t14 < 0 && this.hasCoord && this.state === 3 && this.f.fabricTurnOn()) { const mm = msg.clone(m); const w = this.t14Word(); mm.t14 = (w > 0 && FREE.t14Under(m.coord, w)) ? w : 0; this.emit(to, mm); return; }   /* TURN.14.5: my placement says whether the cell hangs under a link end */

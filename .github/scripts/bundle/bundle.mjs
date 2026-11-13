@@ -31,7 +31,8 @@
 //    is loaded again (a script that already ran is never run twice); on a bare visit the gate holds any join until
 //    the bundle has run (__gifosLoadGate.pending).
 //
-// Debugging: ?unbundled=1 (or #unbundled=1) loads every script file on its own instead, and the bundles do nothing.
+// There is one published page path: the bundles (no unbundled switch since 2026-11-13; the loader's comment lists the bundled
+// files, in page order, for the gate's page checks: gifos test/gate2/node/lib/page-scripts.js).
 // --sw also lists both bundles in sw.js's offline shell.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -91,7 +92,7 @@ function minify(src, sourcefile) {
 }
 
 function build(name, list) {
-  let out = 'if(!self.__gifosUnbundled){var G=self.__gifosRan=self.__gifosRan||{};\n';
+  let out = 'var G=self.__gifosRan=self.__gifosRan||{};\n';
   let line = 1;
   const sections = [];
   for (const f of list) {
@@ -106,7 +107,7 @@ function build(name, list) {
     out += code + '\n}catch(e){self.reportError?reportError(e):setTimeout(function(){throw e})}}\n';
     line += code.split('\n').length + 1;
   }
-  out += '}\n//# sourceMappingURL=' + name + '.map\n';
+  out += '//# sourceMappingURL=' + name + '.map\n';
   fs.writeFileSync(path.join(SITE, 'js', name), out);
   fs.writeFileSync(path.join(SITE, 'js', name + '.map'), JSON.stringify({ version: 3, file: name, sections }));
   // the address carries the content's hash, so a changed bundle is never answered from an old cache entry
@@ -133,9 +134,8 @@ if (!args.includes('--keep-inline')) {
 
 // The page: the first deferred tag becomes the loader, which writes the bundle tags for this visit; the other tags go.
 // (Tag text inside the loader is split so nothing that scans the page for script tags mistakes it for one.)
-const loader = '<script>/* gifos bundles: ?unbundled=1 loads every file on its own instead (debugging) */(function(){try{' +
+const loader = '<script>/* gifos bundles: ' + JSON.stringify(files) + ' */(function(){try{' +
   'function w(s){document.write(\'<scr\'+\'ipt src="\'+s+\'" defer></scr\'+\'ipt>\');}' +
-  'if(/[?&#]unbundled=1(&|$)/.test(location.href)){self.__gifosUnbundled=1;var l=' + JSON.stringify(files) + ';for(var i=0;i<l.length;i++)w(l[i]);return;}' +
   'var B=' + JSON.stringify(bundleUrl) + ';if(location.hash.length>1){w(B);return;}w(' + JSON.stringify(lobbyUrl) + ');' +
   'var g=self.__gifosLoadGate,done;var p=new Promise(function(r){done=r;});if(g)g.pending=p;' +
   'document.addEventListener("DOMContentLoaded",function(){var s=document.createElement("script");s.src=B;s.async=false;' +

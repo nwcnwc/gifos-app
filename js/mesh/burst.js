@@ -1,6 +1,5 @@
 /*
  * burst.js: L44 a burst's refused placement does not unseat a seated seeker, seat side (C++: mesh_burst.inc).
- * L44_OFF (a build-time switch in the sim, 0 in the release) is not ported: every law here is on.
  * lv: the measurement counters, levers of the shared world.
  */
 (function (root) {
@@ -14,8 +13,6 @@
   const K = C_.consts;
   const { ckey, C } = topo;
   const { LS_CLOSED } = C_.enums || {};
-  // the sim's #define L45_4_OFF in mesh_burst.inc (a build-time switch): MESH_L45_4_OFF=1 under node, read once at load; a page always runs the law
-  const L45_4_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L45_4_OFF === '1') ? 1 : 0;
 
   Seat.unit('mesh_burst.inc', {
     // L44.1: an admitter I hear first-hand is not silent: its refusal is judged on my own HELLO, and my placer's word alone does not move me.
@@ -85,12 +82,12 @@
 
     // L45.3: my one door has not answered through a retry: I knock, the relay knows its socket.
     // C++: mesh_burst.inc:Seat::l45Lone
-    l45Lone() { return this.state === 1 && this.lastGreeters.length === 1 && (this.lastReach < 0 || (!L45_4_OFF && this.lastReach < this.retryAt)); },
+    l45Lone() { return this.state === 1 && this.lastGreeters.length === 1 && (this.lastReach < 0 || this.lastReach < this.retryAt); },
     // C++: mesh_burst.inc:Seat::l45LoneFind
     // L45.4: L45.3's "no answer" is no answer to THIS ask. .1 (l45Lone): a HOME older than my last ask is no answer to it. .2: the one seat on
     // my roster is the lone listed door and my FIND to it went a whole wait with no FINDACK and no PLACE: the question is the relay's.
     l45LoneFind() {
-      if (L45_4_OFF || this.state !== 2 || this.findAckAt >= 0 || this.lastAsked < 0 || this.lastGreeters.length !== 1 || this.lastGreeters[0] !== this.lastAsked) return false;
+      if (this.state !== 2 || this.findAckAt >= 0 || this.lastAsked < 0 || this.lastGreeters.length !== 1 || this.lastGreeters[0] !== this.lastAsked) return false;
       for (const e of this.roster) if (e.v !== this.id && e.v !== this.lastAsked) return false;
       this.trace('L45.4-KNOCK', this.id, null, 'door=%d silent=%d', this.lastAsked, this.TICK - this.retryAt);
       return true;

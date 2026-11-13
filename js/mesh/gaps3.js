@@ -1,6 +1,5 @@
 /*
  * gaps3.js: L39 third release gaps fix pass, seat side (C++: mesh_gaps3.inc). Methods only, added to the Seat; callees other units define are called by name on the Seat.
- * L39_OFF (a build-time switch in the sim, 0 in the release) is not ported: every law here is on.
  */
 (function (root) {
   'use strict';

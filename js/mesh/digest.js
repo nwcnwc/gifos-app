@@ -17,11 +17,6 @@
   const GifOS = root.GifOS = root.GifOS || {};
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
-  // the sim's #define L48_2_OFF in mesh.cpp (a build-time switch): MESH_L48_2_OFF=1 under node, read once at load; a page always runs the law
-  const TURN14_16_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_TURN14_16_OFF === '1') ? 1 : 0;   // the sim's -DTURN14_16_OFF=1 build
-  const TURN16_1_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_TURN16_1_OFF === '1') ? 1 : 0;   // the sim's -DTURN16_1_OFF=1 build
-  const TURN14_15_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_TURN14_15_OFF === '1') ? 1 : 0;   // the sim's -DTURN14_15_OFF=1 build: MESH_TURN14_15_OFF=1 under node; a page always runs the law
-  const L48_2_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L48_2_OFF === '1') ? 1 : 0;
   const msg = req('./msg.js', 'meshMsg');
   const topo = req('./topo.js', 'meshTopo');
   const hash = req('./hash.js', 'meshHash');
@@ -183,9 +178,9 @@
     },
     // TURN.14.15 (mesh_turn.inc): the end of a relayed link knows its ring lies across the link by its peer's word, whatever its view holds
     // C++: mesh_seat.inc:Seat::t161Note   (TURN.16.1: the mate whose goodbye I followed out of my part of the meeting, and when)
-    t161Note(x) { if (TURN16_1_OFF || x < 0 || x === this.id || !this.f.fabricTurnOn()) return; this.t161Via = x; this.t161At = this.TICK; },
+    t161Note(x) { if (x < 0 || x === this.id || !this.f.fabricTurnOn()) return; this.t161Via = x; this.t161At = this.TICK; },
     // C++: mesh_seat.inc:Seat::t161Mate   (TURN.16.1: x is the mate I followed and its word still lives)
-    t161Mate(x) { return !TURN16_1_OFF && x >= 0 && x === this.t161Via && this.TICK - this.t161At <= K.SIT_TTL && this.f.fabricTurnOn(); },
+    t161Mate(x) { return x >= 0 && x === this.t161Via && this.TICK - this.t161At <= K.SIT_TTL && this.f.fabricTurnOn(); },
     // C++: mesh_seat.inc:Seat::t161Pick   (TURN.16.1: that mate is my gateway while the door lists it and it is on my side of the cut)
     t161Pick(list) {
       if (!this.t161Mate(this.t161Via)) return -1;
@@ -206,7 +201,7 @@
     t1415Ring() { for (const [x, r] of this.t1415) if (r[1][1] >= 0 && this.t1415Far(x)) return r[1][1]; return -1; },
     // C++: mesh_seat.inc:Seat::t1415Note
     t1415Note(m) {
-      if (TURN14_15_OFF || m.t !== 'HELLO' || m.from !== m.id || m.id < 0 || m.id === this.id || !this.f.fabricTurnOn() || !this.f.fabricTurnPc(this.id, m.id)) return;
+      if (m.t !== 'HELLO' || m.from !== m.id || m.id < 0 || m.id === this.id || !this.f.fabricTurnOn() || !this.f.fabricTurnPc(this.id, m.id)) return;
       const v = m.c7Home ? m.line : -1; const it = this.t1415.get(m.id);
       if (it === undefined || it[0] !== v) this.trace('TURN14-HOME', this.id, this.hasCoord ? this.coord : null, 'from=%d home=%d line=%d ring=%d', m.id, m.c7Home ? 1 : 0, m.line, m.c7Min);
       if (it === undefined && this.t1415.size >= 16) this.t1415.delete(this.t1415.keys().next().value);
@@ -223,7 +218,7 @@
       for (const x of sd) { const l = this.lineOf(x); if (l < 0 || l === this.line) continue; this.trace('TURN14-SAY', id, this.coord, 'to=%d line=%d', x, l); const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = id; this.emit(x, h); }
     },
     // C++: mesh_seat.inc:Seat::t1415Word
-    t1415Word(m) { return !TURN14_15_OFF && m.c7Link && m.c7One && m.from === m.id && this.linkIs(m, m.id) && m.line >= 0 && this.line >= 0 && m.line !== this.line && this.f.fabricTurnOn(); },
+    t1415Word(m) { return m.c7Link && m.c7One && m.from === m.id && this.linkIs(m, m.id) && m.line >= 0 && this.line >= 0 && m.line !== this.line && this.f.fabricTurnOn(); },
     // C++: mesh_seat.inc:Seat::t14Come
     t14Come(m) {
       if (m.t14 <= 0 || m.from !== m.id || !this.linkIs(m, m.id) || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0 || this.moving || m.ck + 1 !== m.t14 || !this.f.fabricTurnLone(this.id, m.id)) return false;
@@ -232,7 +227,7 @@
     // C++: mesh_seat.inc:Seat::t14Cross
     t14Cross(to, m) {
       const id = this.id;
-      if (m.t === 'PLACE') { if (m.nc === to) return false; if (!TURN14_16_OFF) { const f = this.t14From.get(m.nc); if (f !== undefined && f[0] === to && this.TICK - f[1] <= K.RELAY_TTL) { this.trace('TURN14-BACK', id, this.hasCoord ? this.coord : null, 'nc=%d to=%d', m.nc, to); return false; } }   /* TURN.14.16: the answer to an entry ask goes back over the TURN pc the ask came over */ this.trace('TURN14-NOPLACE', id, this.hasCoord ? this.coord : null, 'nc=%d to=%d', m.nc, to); return true; }
+      if (m.t === 'PLACE') { if (m.nc === to) return false; { const f = this.t14From.get(m.nc); if (f !== undefined && f[0] === to && this.TICK - f[1] <= K.RELAY_TTL) { this.trace('TURN14-BACK', id, this.hasCoord ? this.coord : null, 'nc=%d to=%d', m.nc, to); return false; } }   /* TURN.14.16: the answer to an entry ask goes back over the TURN pc the ask came over */ this.trace('TURN14-NOPLACE', id, this.hasCoord ? this.coord : null, 'nc=%d to=%d', m.nc, to); return true; }
       if (m.tag === 1) return false;   // a compaction walk passes (the far end answers it, TURN.14.2/14.3)
       if (!this.f.fabricTurnMine(id, m.nc) || this.f.fabricTurnBoth(id, m.nc)) return false;   // a seeker I cannot tell is mine (TURN.14.14: or one that reaches the far end too): as before
       if (!this.hasCoord || this.state !== 3 || m.t14 > 0) { this.trace('TURN14-STOP', id, this.hasCoord ? this.coord : null, 'nc=%d to=%d drop', m.nc, to); return true; }   // between two cells I seat nobody: the seeker asks again
@@ -479,7 +474,7 @@
       const old = [];
       for (const [k, e] of this.rowKids) if (k !== nk && e.by === who) old.push(k);
       for (const [k, e] of this.s1tab) if (k !== nk && e.by === who) old.push(k);
-      if (!L48_2_OFF && this.hasCoord && this.downDig.at >= 0 && this.downDig.by === who && ckey(down(this.coord)) !== nk) old.push(ckey(down(this.coord)));   // L48.2: my child head's word about another cell retires its report too
+      if (this.hasCoord && this.downDig.at >= 0 && this.downDig.by === who && ckey(down(this.coord)) !== nk) old.push(ckey(down(this.coord)));   // L48.2: my child head's word about another cell retires its report too
       for (const k of old) { if (this.hasCoord && k === ckey(this.coord)) continue; this.digForget1(k); this.l10Mark(); }
     },
     // C++: mesh_seat.inc:Seat::digForget1
@@ -536,7 +531,7 @@
           const r = dig.cloneDig(this.myDig); r.at = this.LT(); r.rx = r.at; r.by = id; this.rowUsed.clear();
           // L48: the owner and the backup owner of a row below are row-mates, so the two copies of that row meet here: keep the newest
           const kc = new Array(C).fill(null); let l48any = false, l48lone = true;
-          if (!e2f.L48_OFF) {
+          {
             for (const x of this.myDig.rows) if (x.e2 === 1) l48any = true;
             for (let j = 1; j < C; j++) {
               const rk = ckey({ pc: this.coord.pc, r: this.coord.r, i: j }); const it = this.rowKids.get(rk); if (it === undefined) continue;
@@ -579,7 +574,7 @@
         for (const e of this.s1tab.values()) if (e.by >= 0 && this.LT() - e.rx <= K.DIG_TTL) { const nb = newest.get(e.by); if (nb === undefined || nb < e.at) newest.set(e.by, e.at); }
         // L48: an owner row in Section 1 and its backup owner are both here: of the two copies of the row below, keep the newest
         const l48c = new Map();
-        if (!e2f.L48_OFF) {
+        {
           let any = false; const ks = [];
           for (let r0 = 0; r0 < C; r0++) for (let i0 = 0; i0 < C; i0++) {
             const k = ckey({ pc: 0, r: r0, i: i0 }); let x = null;

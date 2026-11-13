@@ -84,10 +84,6 @@
   const GifOS = root.GifOS = root.GifOS || {};
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
-  // the sim's #define L48_2_OFF in mesh.cpp (a build-time switch): MESH_L48_2_OFF=1 under node, read once at load; a page always runs the law
-  const L48_2_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L48_2_OFF === '1') ? 1 : 0;
-  // the sim's -DL10_8_OFF=1 build: MESH_L10_8_OFF=1 under node; a page always runs the law (an early state frame with no open pc rides the friend that carries its beat)
-  const L10_8_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L10_8_OFF === '1') ? 1 : 0;
   const C_ = req('../consts.js', 'meshConsts');
   const msg = req('../msg.js', 'meshMsg');
   const topo = req('../topo.js', 'meshTopo');
@@ -273,7 +269,7 @@
       const m = msg.clone(m0);
       if (to < 0 || to === me) { drop('self'); return; }
       if (m.l10E || m.dgOnly) {
-        if (!L10_8_OFF && fh && m.t !== 'UNNEEDED' && !pcw.fhDcRaw(to) && fhopSponsor(to, m)) return;   // C++: mesh_fhop.inc:fhopEarly (L10.8: no open channel: the friend that carries my regular beat)
+        if (fh && m.t !== 'UNNEEDED' && !pcw.fhDcRaw(to) && fhopSponsor(to, m)) return;   // C++: mesh_fhop.inc:fhopEarly (L10.8: no open channel: the friend that carries my regular beat)
         if (F.fabricLinkState(me, to) !== LS_OPEN) { drop('l10'); return; } pcw.send(to, m); return;
       }
       if (fh && fhopSchedule(to, m)) return;   // C++: mesh.cpp:schedule  (no open channel at my end: the page sponsors the frame)
@@ -396,7 +392,7 @@
       }
       if (lv.ROUTE_ENFORCE && !m.routing && to >= 0 && to !== from) {
         let directLink = !!s.linkRole(to, E.LR_OWNED | E.LR_E2 | E.LR_L4);
-        if (!L48_2_OFF && lv.LINKMODEL && !directLink && m.t === 'HELLO' && m.mv && m.id === from && s.d7OldLink(to) && F.fabricLinkState(from, to) === LS_OPEN) directLink = true;   // L48.2: a mover's D7.x word to a seat at an owned link of the cell it still holds rides the pc they hold
+        if (lv.LINKMODEL && !directLink && m.t === 'HELLO' && m.mv && m.id === from && s.d7OldLink(to) && F.fabricLinkState(from, to) === LS_OPEN) directLink = true;   // L48.2: a mover's D7.x word to a seat at an owned link of the cell it still holds rides the pc they hold
         if (!directLink && ((l9AskFrame(m) && l915Ch(from, to)) || (s.l13On() && seatM.l13Frame(m))) && lv.LINKMODEL) { const ls = F.fabricLinkState(from, to); if (ls === LS_OPEN || ls === LS_DIALING) directLink = true; }
         const fv = directLink ? { seat: 0, c: { pc: 0, r: 0, i: 0 }, gw: -1, gc: { pc: 0, r: 0, i: 0 }, gcOk: false } : farView(s, to);
         const vIn = fv.seat === 1, mineCell = vIn && s.hasCoord && ckey(fv.c) === ckey(s.coord);
@@ -515,17 +511,16 @@
     // kind), as the door's last list gave it, read against mine: 1 my network; 0 another network, and our two kinds hold no
     // connection (one of us blocked, or both strict); 2 another network mine can meet; -1 no tag (an older page, or my
     // own tag not known yet). A greeter that said no kind is read as open.
-    const L8_54_4_OFF = (typeof process !== 'undefined' && process.env && process.env.MESH_L8_54_4_OFF === '1') ? 1 : 0;   // the sim's -DL8_54_4_OFF=1 build
     const doorNt = new Map();
     const fabricDoorNet = (a, g) => {
       if (a !== me || !fh || !fh.myTag) return -1; const mine = fh.myTag(); if (!mine) return -1;
       const w = doorNt.get(g); if (!w) return -1; if (w.slice(0, 8) === mine) return 1;
-      if (!L8_54_4_OFF && measure.probed && !measure.probed()) return -1;   // L8.54.4: my own kind is not known before my probe's verdict
+      if (measure.probed && !measure.probed()) return -1;   // L8.54.4: my own kind is not known before my probe's verdict
       const k = w.length > 9 ? +w.slice(9) : E.NAT_OPEN, n = (measure.nat ? measure.nat() : E.NAT_OPEN) | 0;
       if (n !== E.NAT_BLOCKED && k !== E.NAT_BLOCKED && !(n === E.NAT_STRICT && k === E.NAT_STRICT)) return 2;
       // L8.54.4 (C++: mesh_net.inc:l854Never): cannot meet only when one end is blocked and the other is not open; a blocked end
       // beside an open one may meet it over TCP, two strict ends are left to their dials: 3, another network not known either way
-      return (L8_54_4_OFF || (n === E.NAT_BLOCKED && k !== E.NAT_OPEN) || (k === E.NAT_BLOCKED && n !== E.NAT_OPEN)) ? 0 : 3;
+      return ((n === E.NAT_BLOCKED && k !== E.NAT_OPEN) || (k === E.NAT_BLOCKED && n !== E.NAT_OPEN)) ? 0 : 3;
     };
     // C++: mesh_turn.inc:fabricTurnOpener   (L8.5.9: I opened the up TURN link whose far end is x)
     const fabricTurnOpener = (a, x) => { if (a !== me || x < 0 || !turnOn() || !fh.turnOpened) return false; const p = ID.pid(x); return !!p && turnSet().has(x) && !!fh.turnOpened(p); };

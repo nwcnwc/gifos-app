@@ -10,11 +10,6 @@
   const C_ = req('./consts.js', 'meshConsts');
   const topo = req('./topo.js', 'meshTopo');
   const K = C_.consts, E = C_.enums;
-  // the sim's -DL8_47_1_OFF=1 build: MESH_L8_47_1_OFF=1 under node, read once at load; a page always runs the law
-  const L8_47_1_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L8_47_1_OFF === '1') ? 1 : 0;
-  // the sim's -DL8_47_2_OFF=1 / -DL8_47_3_OFF=1 / -DL8_1_3_OFF=1 builds: MESH_<name>=1 under node, read once at load; a page always runs the laws
-  const offOn = (n) => (isNode && typeof process !== 'undefined' && process.env && process.env[n] === '1') ? 1 : 0;
-  const L8_47_3_OFF = offOn('MESH_L8_47_3_OFF'), L8_1_3_OFF = offOn('MESH_L8_1_3_OFF'), L8_54_OFF = offOn('MESH_L8_54_OFF'), L8_54_5_OFF = offOn('MESH_L8_54_5_OFF');
   const { ckey, ownedLinks } = topo;
   const LS_NONE = E.LS_NONE;
 
@@ -48,16 +43,16 @@
     // strict) as silent at once: the two kinds are that dial's verdict.
     // A greeter at the far end of a TURN pc of mine answers me over it: no silence there.
     // C++: mesh_roomterm.inc:Seat::l854Other
-    l854Other(g) { return !L8_54_OFF && !!this.w.lv.ISLAND_MODE && g >= 0 && g !== this.id && this.f.fabricDoorNet(this.id, g) === 0 && !this.f.fabricTurnPc(this.id, g); },
+    l854Other(g) { return !!this.w.lv.ISLAND_MODE && g >= 0 && g !== this.id && this.f.fabricDoorNet(this.id, g) === 0 && !this.f.fabricTurnPc(this.id, g); },
     // C++: mesh_roomterm.inc:Seat::l854All
-    l854All(list) { if (L8_54_OFF || !this.w.lv.ISLAND_MODE) return false; let n = 0; for (const g of list) { if (g < 0 || g === this.id) continue; if (this.f.fabricDoorNet(this.id, g) !== 0 || this.f.fabricTurnPc(this.id, g)) return false; n++; } return n > 0; },
+    l854All(list) { if (!this.w.lv.ISLAND_MODE) return false; let n = 0; for (const g of list) { if (g < 0 || g === this.id) continue; if (this.f.fabricDoorNet(this.id, g) !== 0 || this.f.fabricTurnPc(this.id, g)) return false; n++; } return n > 0; },
 
     // C++: mesh_roomterm.inc:Seat::l813Unfound   (L8.1.3: a founder still alone on its cell that reads, on the list its seating knock got, a greeter it never asked this entry, of a room it has not found silent, goes back to the door)
     l813Unfound(m) {
-      if (L8_1_3_OFF || !this.f.fabricDoors() || !this.islandFounder || !this.l850Lone() || !(this.l8471() || !L8_54_OFF)) return false;   // a blocked founder (and, L8.54.3, any founder for a greeter the door says its network can meet)
+      if (!this.f.fabricDoors() || !this.islandFounder || !this.l850Lone()) return false;   // a blocked founder (and, L8.54.3, any founder for a greeter the door says its network can meet)
       for (let k = 0; k < m.list.length; k++) {
         const g = m.list[k]; if (g < 0 || g === this.id || this.islandAsked.has(g)) continue;
-        const at = k < m.listAt.length ? m.listAt[k] : -1; if (!L8_47_3_OFF && at >= 0 && this.entEp.has(at)) continue; if (this.l854Other(g)) continue;   /* L8.54.2 */ if (!this.l8471() && this.f.fabricDoorNet(this.id, g) !== 2) continue;   /* L8.54.3 */
+        const at = k < m.listAt.length ? m.listAt[k] : -1; if (at >= 0 && this.entEp.has(at)) continue; if (this.l854Other(g)) continue;   /* L8.54.2 */ if (!this.l8471() && this.f.fabricDoorNet(this.id, g) !== 2) continue;   /* L8.54.3 */
         this.trace('L8.1.3-UNFOUND', this.id, this.coord, 'greeter=%d at=%d mine=%d', g, at, this.lineAt);
         this.c7Yield(this.ringName(), 'L8.1.3-unfound'); this.c7Old.clear(); this.l851Up = -1; this.c7At = K.C7AT_NEVER; this.f.relayUnlist(this.id); /* it was never a room: no merge to be gated (L8.5), no door entry to outlive it (L16.12) */ return true;
       }
@@ -68,7 +63,7 @@
     // first list, asks the whole list in one wave, waits ISLAND_WAIT_BLOCKED (one answered dial's verdict) and is not asked
     // a second silent round; the confirm knock stands.
     // C++: mesh_roomterm.inc:Seat::l8471
-    l8471() { return !L8_47_1_OFF && !!this.w.lv.ISLAND_MODE && this.nat === E.NAT_BLOCKED; },
+    l8471() { return !!this.w.lv.ISLAND_MODE && this.nat === E.NAT_BLOCKED; },
 
     // C++: mesh_roomterm.inc:Seat::islandWait
     islandWait() { return this.l8471() ? K.ISLAND_WAIT_BLOCKED : K.ISLAND_WAIT; },
@@ -83,7 +78,7 @@
       const a0 = (this.state === 1) ? this.retryAt : -1; const was = this.l16Ask.slice();
       this.trace('L4.1.1-VERDICT', this.id, null, 'asked=%zu since=%d', was.length, a0);
       this.islandAsk(this.lastGreeters);
-      if (!L8_54_5_OFF && !L8_54_OFF && this.w.lv.ISLAND_MODE) for (const g of this.lastGreeters) if (g >= 0 && g !== this.id && this.f.fabricDoorNet(this.id, g) === 3) { this.trace('L8.54.5-REKNOCK', this.id, null, 'greeter=%d', g); this.greetersAt = -1; this.emitRelay(this.linkKey); break; }   // L8.54.5: a word given before its own probe's verdict: the door's fresh list carries the measured one
+      if (this.w.lv.ISLAND_MODE) for (const g of this.lastGreeters) if (g >= 0 && g !== this.id && this.f.fabricDoorNet(this.id, g) === 3) { this.trace('L8.54.5-REKNOCK', this.id, null, 'greeter=%d', g); this.greetersAt = -1; this.emitRelay(this.linkKey); break; }   // L8.54.5: a word given before its own probe's verdict: the door's fresh list carries the measured one
       if (a0 >= 0 && this.state === 1) { let all = true; for (const g of this.l16List) if (!was.includes(g)) { all = false; break; } if (all) { this.l16FreshAt = a0; this.islandAskAt = a0; } }
     },
 

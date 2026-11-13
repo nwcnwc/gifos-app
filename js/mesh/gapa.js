@@ -9,7 +9,6 @@
  * L41.6 a seat that is no witness says so: asked about a cell that is neither its own nor one of its links, a seated seat
  *   (not mid-move) answers "no witness" (nc GA_NOTWIT); the leaf takes it out of the asked set without a "free" and drops
  *   its name from the leaf's view at a link cell where the leaf does not hear it first-hand.
- * L41_OFF (a build-time switch in the sim, 0 in the release) is not ported: every law here is on.
  */
 (function (root) {
   'use strict';
