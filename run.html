@@ -16473,6 +16473,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // Every page checks the ticket itself (pay key, this meeting, the plan): the server's word only picks
     // between two valid tickets. The ticket also rides the room table ('capt') to pages with no server socket.
     let capKey = null, capExp = 0, capTk = null, amCaptor = false, capSaidKey = null, capBusy = false;
+    // The key whose capture the meeting server ENDED (it ran out, or its pass was revoked): a ticket of that key read from the
+    // room table is not taken back on this page until the server says that key holds the room again (a revoked pass's last
+    // ticket is still signed and current for up to TICKET_S; the server's word wins).
+    let capEndedKey = null;
     const capOn = () => !av && !!capKey && Date.now() < capExp;
     const sigRoom = () => hasAdminRoom() || capOn();            // orders must be signed: an admin room, or a captured one
     const amAdm = () => amAdmin || (amCaptor && capOn());
@@ -16481,6 +16485,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (viaServer && c.ck) capSaidKey = c.ck;
       const t = await GifOS.meetSubs.captureTicket(c.tk, subsMeetId());
       if (!t || (c.ck && t.buyerKey !== c.ck)) return;
+      if (viaServer) { if (t.buyerKey === capEndedKey) capEndedKey = null; }
+      else if (t.buyerKey === capEndedKey) return;
       if (capKey && capKey !== t.buyerKey && capOn() && !(viaServer || t.buyerKey === capSaidKey)) return;   // two valid claims: the server's pick wins, else the one held
       const fresh = capKey !== t.buyerKey;
       if (!fresh && t.exp * 1000 <= capExp) return;
@@ -16540,7 +16546,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function onCapFrame(m) {
       if (av) return;
       if (m.on === 1) { capTake(m, true).then(() => { if (amCaptor) capTicketPublish(false); }); return; }
-      if (m.on === 0) { capClear('server'); return; }
+      if (m.on === 0) { if (capKey) capEndedKey = capKey; capClear('server'); return; }
       if (m.ok === 0) { pwLog('capture-refused ' + m.why); if (m.why === 'taken') setStatus(uiText('capTaken', 'Someone else is this room\u2019s admin')); else if (m.why === 'ended' && amCaptor) capClear('server ended'); else if (m.why !== 'ended') setStatus(uiText('capFailed', 'Could not make you admin of this room')); }
     }
     function capPaint() {
