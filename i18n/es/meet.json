@@ -885,5 +885,6 @@
   "meet.subActive": "activa",
   "meet.heldSub": "Suscripción: {plan}, {period}, {standing}.",
   "meet.heldPassLive": "Pase de cuatro horas: Ilimitado hasta las {until}, quedan {left}.",
-  "meet.heldPassNext": "Pase de cuatro horas: Ilimitado de {start} a {until}."
+  "meet.heldPassNext": "Pase de cuatro horas: Ilimitado de {start} a {until}.",
+  "meet.passMoved": "Tu pase de cuatro horas se está usando ahora en otra reunión: funciona en una sola reunión a la vez."
 }

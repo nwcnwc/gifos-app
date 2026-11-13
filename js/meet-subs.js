@@ -380,7 +380,14 @@
     if (!on()) return;
     const lp = await livePass().catch(() => null);
     const k = lp ? lp.o.id + ':' + lp.o.end : '';
-    if (k !== passSeen) { passSeen = k; passChanged(); }
+    if (k !== passSeen) {
+      passSeen = k;
+      // A pass that started here (a file opened, a window begun) joins this
+      // meeting; one that moved to another meeting is never taken back by a
+      // watch (only a join the person makes takes it: a page start or a purchase).
+      if (lp && meet && !(pmeet && pmeet.room === meet.room && (pmeet.ticket || pmeet.pending || pmeet.moved === 'moved'))) passJoin(meet.room, true);
+      passChanged();
+    }
   }
   // Ask the payment service for the pass of one PayPal order. Shown: every
   // pass held, so a new one starts where they end.
@@ -402,6 +409,7 @@
     const next = Object.assign({}, cur, { passes: list }); delete next.pending;
     writeJson(WALLET_KEY, next);
     passWatch().catch(() => {});
+    if (meet) passJoin(meet.room, true);   // a new pass (or one stacked on the window): the meeting this page is in takes it now
     return j;
   }
   // Buy: a PayPal order for $1, approved in PayPal's window, then claimed.
@@ -484,9 +492,10 @@
     if (!on()) return Promise.resolve(null);
     if (meet && meet.room === room && (meet.ticket || meet.moved || meet.pending)) return meet.joining;
     const keep = h || hooks;
-    leaveMeeting();
+    leaveMeeting(!!(pmeet && pmeet.room === room));
     hooks = keep || {};
     const m = meet = { room, tag: null, subId: null, tier: null, ticket: null, exp: 0, gen: 0, timer: null, moved: null, joining: null, pending: true };
+    passJoin(room);   // a four-hour pass held here joins this meeting too, one meeting at a time
     m.joining = (async () => {
       const c = await credential();
       if (!c) return null;
@@ -505,7 +514,7 @@
     })().catch(() => null).then((t) => { m.pending = false; return t; });
     return m.joining;
   }
-  function leaveMeeting() { stopTimer(); meet = null; hooks = {}; }
+  function leaveMeeting(keepPass) { stopTimer(); meet = null; hooks = {}; if (!keepPass) { passStop(); pmeet = null; } }
   // The subscription on this browser changed (signed up, or a file opened):
   // the meeting this page is in joins with it now.
   // upgrade: a paid plan just arrived, so a meeting held on the free plan
@@ -517,6 +526,78 @@
     return meet && meet.ticket && nowS() < meet.exp ? meet.ticket : null;
   }
 
+  // ---- a four-hour pass: one meeting at a time --------------------------------
+  // The pass's key and passes ride in the provider GIF, so a copy is the whole
+  // credential: the pass is never shown to a room, a door or the TURN Worker
+  // itself. Joining a meeting shows the held passes to the payment service,
+  // which keeps the pass key's newest meeting and signs a pass meeting ticket
+  // for it, renewed every RENEW_EVERY_S; a join anywhere else moves it there
+  // and this meeting's renewal is refused (moved), exactly as a subscription.
+  // pmeet: {room, tag, ticket:{ticketJson,sig}, exp, gen, until, timer, moved, joining, pending}
+  let pmeet = null;
+  function passStop() { if (pmeet && pmeet.timer) { clearTimeout(pmeet.timer); pmeet.timer = null; } }
+  function passSchedule(m, ms) { if (m.timer) clearTimeout(m.timer); m.timer = setTimeout(() => passRenewNow(m), ms); }
+  async function passSigned(action, extra) {
+    const k = await walletKey(await wallet());
+    const at = nowS();
+    return Object.assign({ buyerKey: k.pub, at, sig: b64(await GifOS.ed.sign(k.priv, new TextEncoder().encode(SUB.askMessage(action, k.pub, at)))) }, extra || {});
+  }
+  function passTake(m, j) {
+    m.ticket = { ticketJson: j.ticketJson, sig: j.sig }; m.exp = j.exp; m.gen = j.gen; m.until = j.until || m.until; m.moved = null;
+    passSchedule(m, (j.renewEvery || SUB.RENEW_EVERY_S) * 1000);
+    passChanged();
+  }
+  function passLose(m, why) {
+    if (m.timer) { clearTimeout(m.timer); m.timer = null; }
+    m.ticket = null; m.moved = why;
+    if (pmeet !== m) return;
+    // The room's plan and the TURN vouch fall back to the subscription, or out.
+    if (meet && meet.ticket) passChanged();
+    else { try { if (hooks.onLost) hooks.onLost(why === 'moved' ? 'pass-moved' : 'pass-' + why); } catch (e) {} }
+  }
+  async function passRenewNow(m) {
+    if (pmeet !== m || !m.ticket) return;
+    try {
+      const j = await post('/gifos/pass/renew', await passSigned('pass-renew:' + m.tag + ':' + m.gen, { meeting: m.tag, gen: m.gen }));
+      if (pmeet !== m) return;
+      if (j.moved) return passLose(m, 'moved');
+      if (j.ended || !j.active) {
+        // The window ran out; a pass bought since may carry on (a new join).
+        if (await livePass().catch(() => null)) { passJoin(m.room, true); return; }
+        return passLose(m, 'ended');
+      }
+      passTake(m, j);
+    } catch (e) {
+      if (pmeet === m) { if (nowS() >= (m.exp || 0)) passLose(m, 'unreachable'); else passSchedule(m, RETRY_MS); }
+    }
+  }
+  function passJoin(room, force) {
+    if (!on()) return Promise.resolve(null);
+    if (!force && pmeet && pmeet.room === room && (pmeet.ticket || pmeet.moved || pmeet.pending)) return pmeet.joining;
+    passStop();
+    const m = pmeet = { room, tag: null, ticket: null, exp: 0, gen: 0, until: 0, timer: null, moved: null, joining: null, pending: true };
+    m.joining = (async () => {
+      if (!(await livePass())) return null;
+      const w = await wallet();
+      m.tag = await SUB.meetingTag(room);
+      const j = await post('/gifos/pass/join', await passSigned('pass-join:' + m.tag, { meeting: m.tag, passes: w.passes }));
+      if (pmeet !== m) return null;
+      if (!j.active) { m.moved = 'inactive'; return null; }
+      passTake(m, j);
+      return m.ticket;
+    })().catch(() => null).then((t) => { m.pending = false; return t; });
+    return m.joining;
+  }
+  // This meeting's pass ticket, or null. A page that knocks before its
+  // meeting started (no join yet) joins with the pass now.
+  async function currentPassTicket(room) {
+    if (!on()) return null;
+    if (!pmeet || pmeet.room !== room) { if (!(await livePass().catch(() => null))) return null; passJoin(room, true); }
+    const m = pmeet;
+    await m.joining;
+    return m.ticket && nowS() < m.exp ? m.ticket : null;
+  }
+
   // ---- the room's plan and the door's challenge ----------------------------
   // The admin's order that carries their plan into the room, or null.
   // A live four-hour pass rides instead of a ticket whose plan is below it
@@ -526,10 +607,10 @@
     if (!on()) return null;
     const ticket = await currentTicket(room);
     if (!(ticket && meet && beatsPass(meet.tier))) {
-      const lp = await livePass().catch(() => null);
-      if (lp) {
+      const pt = await currentPassTicket(room);
+      if (pt) {
         const at = Date.now();
-        return { on: true, at, ticket: lp.raw, proof: await passSign(SUB.proofMessage(SUB.roomContext(room), 'at:' + at)) };
+        return { on: true, at, ticket: pt, proof: await passSign(SUB.proofMessage(SUB.roomContext(room), 'at:' + at)) };
       }
     }
     if (!ticket) return null;
@@ -545,9 +626,9 @@
     if (!on()) return null;
     const ticket = await currentTicket(room);
     if (ticket && meet && SUB.isPaid(meet.tier)) return { ticket, proof: await signText(SUB.proofMessage(SUB.doorContext(room), nonce)) };
-    // A live four-hour pass is let in as a subscriber is; a free plan is no way past a room's line.
-    const lp = await livePass().catch(() => null);
-    if (lp) return { ticket: lp.raw, proof: await passSign(SUB.proofMessage(SUB.doorContext(room), nonce)) };
+    // A four-hour pass in this meeting is let in as a subscriber is; a free plan is no way past a room's line.
+    const pt = await currentPassTicket(room);
+    if (pt) return { ticket: pt, proof: await passSign(SUB.proofMessage(SUB.doorContext(room), nonce)) };
     return null;
   }
   // The door checking a knocker's answer.
@@ -659,6 +740,7 @@
         : fill(tx('heldPassNext', 'Four-hour pass: Unlimited from {start} to {until}.'), { start: clockOf(x.start), until: clockOf(x.end) });
       const q = p('', e); q.className = 'set-help held-pass'; q.dataset.pass = x.id;
     }
+    if (c.passes.length && pmeet && pmeet.moved === 'moved') p('held-pass-moved', tx('passMoved', 'Your four-hour pass is in use in another meeting now: it works in one meeting at a time.'));
   }
 
   // ---- Settings: the Subscription group ---------------------------------------
@@ -843,6 +925,8 @@
     enabled: on, rights, planRights, refresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, paintNow, paintSettings, openSettings, mayCreateAdminRoom, showFull, ensureFree, showHostPrompt,
     roomOrder, roomTier, proveAtDoor, checkShown, newNonce,
     joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureOrder, captureKeys, fileBytes, downloadFile, useFile, librarySigner,
+    passMeeting: () => (pmeet ? { room: pmeet.room, gen: pmeet.gen, exp: pmeet.exp, until: pmeet.until, moved: pmeet.moved, held: !!pmeet.ticket } : null),
+    currentPassTicket,
     meeting: () => (meet ? { room: meet.room, gen: meet.gen, exp: meet.exp, moved: meet.moved, held: !!meet.ticket, tier: meet.tier, paid: !!(meet.ticket && SUB.isPaid(meet.tier)) } : null),
   };
 })(typeof window !== 'undefined' ? window : globalThis);
