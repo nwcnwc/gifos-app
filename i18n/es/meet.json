@@ -106,6 +106,7 @@
   "meet.appSheetFile": "＋ Elegir un archivo GIF…",
   "meet.appSheetLink": "Pega un enlace de app GIF",
   "meet.appSheetRun": "Abrir",
+  "meet.appMakeOwn": "Crea tu propia app para reuniones",
   "meet.chatTitle": "Chat de la reunión",
   "meet.chatPrivate": "Solo aquí. Se borra cuando salen.",
   "meet.chatModOff": "Apagar el chat",
@@ -909,11 +910,9 @@
   "meet.store.pending": "La tienda aún no ha confirmado esta compra. Aparecerá aquí en cuanto lo haga.",
   "meet.store.notConfirmed": "La tienda aún no ha confirmado esta compra. Aparecerá aquí en cuanto lo haga.",
   "meet.store.noProduct": "Esto no está disponible en la app.",
-  "meet.store.otherPayee": "En esta app, los pagos van solo a GifOS.",
-  "meet.store.wholeDollars": "Una propina es un número entero de dólares.",
+  "meet.store.appPay": "Lo sentimos, esta app no puede cobrar aquí. En GifOS Meet solo se venden los planes y pases propios de GifOS, a través de {store}.",
+  "meet.store.sorryTitle": "Lo sentimos",
+  "meet.store.ok": "Aceptar",
   "meet.store.busy": "Otra compra sigue abierta.",
-  "meet.store.failed": "La compra no se completó. No se te cobró nada.",
-  "meet.store.tipFit": "Una propina de ${asked} no está disponible aquí. ¿Dar ${fit} en su lugar?",
-  "meet.store.tipFitYes": "Dar ${fit}",
-  "meet.store.cancel": "Cancelar"
+  "meet.store.failed": "La compra no se completó. No se te cobró nada."
 }
