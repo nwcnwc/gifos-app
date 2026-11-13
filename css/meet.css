@@ -2829,6 +2829,9 @@
       border-radius: 14px;
     }
     html body .bar > #mic { width: 64px; min-width: 64px; }
+    /* The camera too (56px holds its word): at width auto WebKit sized it 44px when the page drew
+       the bar and 56px once the More sheet had opened and closed, and the whole bar moved. */
+    html body .bar > #cam { width: 56px; min-width: 56px; }
     html body .bar > #leavebtn {
       box-sizing: border-box;
       width: auto; min-width: 44px; max-width: 64px;
