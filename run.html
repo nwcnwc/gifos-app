@@ -5892,6 +5892,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // fills the screen; 'contain' is a shared screen, a service program or a
     // packed picture of several people, which must show whole. The stage is
     // one face only while one person is on it and nobody shares.
+    function fsFeedLive(v) {
+      const st = v && v.srcObject;
+      const t = st && typeof st.getVideoTracks === 'function' ? st.getVideoTracks()[0] : null;
+      return !!(t && t.readyState === 'live' && !t.muted);
+    }
     function fsSources() {
       const out = [];
       // The content region first (content tabs, js/meet-viewmode.js content):
@@ -5903,7 +5908,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       let stageFit = null;
       for (const v of stagefeedEl.querySelectorAll('.rowtile video')) {
         if (v.classList.contains('stageface')) continue;
-        if (!pipReady(v)) continue;
+        // The Stage strip is a hidden element now that shares show in the
+        // content area, and WebKit never starts a hidden video: a live,
+        // unmuted feed counts, and the view's own big video plays it.
+        if (!pipReady(v) && !fsFeedLive(v)) continue;
         if (!stageFit) stageFit = (BROADCAST || screenSharers().length || stageIds().length !== 1) ? 'contain' : 'cover';
         out.push({ key: 'stage:' + ((v.closest('.rowtile') || {}).dataset || {}).row, label: 'On stage', v, fit: stageFit });
       }
@@ -5985,8 +5993,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // The view borrows the tile's stream. A <video> that never started
           // on its bind (WebKit leaves one on a canvas stream now and then)
           // is bound again with a fresh wrapper of the same tracks, once its
-          // tile shows frames and it has had a moment, at most every refresh.
-          const unstarted = !!(st && fsmain._from === st && fsmain.srcObject && !fsmain.videoWidth && main.v && main.v.videoWidth > 0
+          // tile shows frames (or its feed is live: a hidden Stage strip never
+          // starts in WebKit) and it has had a moment, at most every refresh.
+          const unstarted = !!(st && fsmain._from === st && fsmain.srcObject && !fsmain.videoWidth && main.v && (main.v.videoWidth > 0 || fsFeedLive(main.v))
             && Date.now() - (fsmain._boundAt || 0) >= 1500 && typeof st.getVideoTracks === 'function');
           if (fsmain._from !== st || !fsmain.srcObject || unstarted) {
             fsmain._from = st; fsmain._boundAt = Date.now();
