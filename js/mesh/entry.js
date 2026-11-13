@@ -33,6 +33,7 @@
   const C = topo.C;
   const newMsg = (t) => msg.newMsg(t);
   // the sim's #define L3_11_2_OFF in mesh.cpp (a build-time switch): MESH_L3_11_2_OFF=1 under node, read once at load; a page always runs the law
+  const L10_9_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L10_9_OFF === '1') ? 1 : 0;   // the sim's -DL10_9_OFF=1 build (a seat's first beat from a new cell goes on the next tick)
   const L3_11_2_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L3_11_2_OFF === '1') ? 1 : 0;
   // the sim's #define L3_11_3_OFF (same reading): MESH_L3_11_3_OFF=1 under node builds the parent
   const L3_11_3_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L3_11_3_OFF === '1') ? 1 : 0;
@@ -136,7 +137,7 @@
       { const hold = K.CONFIRM_TTL + (this.lastPubDepth + 3) * K.DIG_HOLD_LEVEL; const s1Only = (this.lastPubDepth === 0 && c.pc === 0);
         if (!s1Only && this.lastPubAt >= 0 && TICK - this.lastPubAt < hold) { this.digHoldUntil = TICK + hold; this.digNHoldUntil = TICK + Math.max(K.L10_NEW_WAIT, Math.trunc((this.lastPubDepth + 1) * K.DIG_HOLD_LEVEL / 2)); } }   // D7.x
       this.rowKids.clear(); this.rowUsed.clear(); if (c.pc !== 0) this.s1tab.clear(); this.siKids.clear();
-      this.lastAck = TICK; this.lastPhone = (owner >= 0 && c.pc !== 0 && c.i === 0) ? TICK - 8 : TICK;   // L7.6 (I10)
+      this.lastAck = TICK; this.lastPhone = ((owner >= 0 && c.pc !== 0 && c.i === 0) || !L10_9_OFF) ? TICK - 8 : TICK;   // L7.6 (I10); L10.9: every seat's first beat from a new cell goes on the next tick
       if (owner >= 0) { const m = newMsg('CLAIM'); m.ck = ckey(c); m.id = id; this.emit(owner, m); }
       else { const adm = this.ppAdmitter(c); if (adm >= 0 && adm !== id) { this.ppAskAt = TICK; const m = newMsg('CLAIM'); m.ck = ckey(c); m.id = id; this.emit(adm, m); } }   // PP
       if (c.pc === 0) { this.s1CheckAt = TICK + K.E3_PERIOD + Math.floor(this.rng() * K.E3_PERIOD); this.emitRelay(this.genKey); }   // E3

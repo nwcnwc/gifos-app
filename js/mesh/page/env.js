@@ -86,6 +86,8 @@
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
   // the sim's #define L48_2_OFF in mesh.cpp (a build-time switch): MESH_L48_2_OFF=1 under node, read once at load; a page always runs the law
   const L48_2_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L48_2_OFF === '1') ? 1 : 0;
+  // the sim's -DL10_8_OFF=1 build: MESH_L10_8_OFF=1 under node; a page always runs the law (an early state frame with no open pc rides the friend that carries its beat)
+  const L10_8_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L10_8_OFF === '1') ? 1 : 0;
   const C_ = req('../consts.js', 'meshConsts');
   const msg = req('../msg.js', 'meshMsg');
   const topo = req('../topo.js', 'meshTopo');
@@ -270,7 +272,10 @@
     function parSend(from, to, m0) {
       const m = msg.clone(m0);
       if (to < 0 || to === me) { drop('self'); return; }
-      if (m.l10E || m.dgOnly) { if (F.fabricLinkState(me, to) !== LS_OPEN) { drop('l10'); return; } pcw.send(to, m); return; }
+      if (m.l10E || m.dgOnly) {
+        if (!L10_8_OFF && fh && m.t !== 'UNNEEDED' && !pcw.fhDcRaw(to) && fhopSponsor(to, m)) return;   // C++: mesh_fhop.inc:fhopEarly (L10.8: no open channel: the friend that carries my regular beat)
+        if (F.fabricLinkState(me, to) !== LS_OPEN) { drop('l10'); return; } pcw.send(to, m); return;
+      }
       if (fh && fhopSchedule(to, m)) return;   // C++: mesh.cpp:schedule  (no open channel at my end: the page sponsors the frame)
       pcw.send(to, m);
     }
