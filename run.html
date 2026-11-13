@@ -9956,6 +9956,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // bot's tile never lit.
     var botVoiceTrack = null; // var: refreshOutbound is hoisted and may run before this line
     function mainAudioTrack() {
+      { const fs = typeof thinFatStream === 'function' ? thinFatStream() : null, ft = fs ? fs.getAudioTracks()[0] : null; if (ft && ft.readyState === 'live') return ft; }   // TURN.21: my voice carries what my unvouched connection brings
       if (botVoiceTrack && botVoiceTrack.readyState === 'live') return botVoiceTrack;
       return (localStream && localStream.getAudioTracks()[0]) || null;
     }
@@ -10078,7 +10079,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           else if (p.mainV.track !== vt) p.mainV.replaceTrack(vt).catch(() => {});
         }
         if (p.mainA) {
-          if (voiceStaged || seatSelfLeased()) { if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
+          const tx = thinTxTrack(p.id);   // TURN.21: the one stream of an unvouched connection, whatever my own voice does
+          thinCap(p.mainA, !!tx);
+          if (tx) { if (p.mainA.track !== tx) p.mainA.replaceTrack(tx).catch(() => {}); }
+          else if (thinLink(p.id)) { const raw = (localStream && localStream.getAudioTracks()[0]) || null; if (p.mainA.track !== raw) p.mainA.replaceTrack(raw).catch(() => {}); }   // no mix yet: the mic alone, never my own-side voice (it holds what this connection brought)
+          else if (voiceStaged || seatSelfLeased()) { if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
           else if (at && p.mainA.track !== at) p.mainA.replaceTrack(at).catch(() => {});
         }
       }
@@ -12474,6 +12479,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (p && p.wireHold) return p.wireHold.then(() => dcSend(p, msg)); // DEBUG lever, see renegotiate
       if (p && p.testTx) { p.testTx.push(msg); return Promise.resolve(); } // openLinkForTest: a channel that only records
       if (!p || !p.dc || p.dc.readyState !== 'open') return Promise.resolve();
+      if (turnLinks && msg && (msg.k === 'fsig' || msg.k === 'fmesh') && thinSigHeld(p, msg)) return Promise.resolve();   // TURN.21.2
       if (turnWeb.size && (msg.k === 'roffer' || msg.k === 'ranswer' || msg.k === 'sig')) { const w = turnWeb.get(p.id); if (w && w.channel(msg)) return Promise.resolve(); }   // the web path negotiates with its end in this page
       const dc = p.dc;
       if (typeof clog === 'function') dcTally(msg); // DEBUG: what the channel bytes are
@@ -12485,9 +12491,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const txKindBytes = {}, txKindLink = {};   // txKindLink: the same, for each relayed link's channel alone (turnPathsForTest: what a link's byte limit is spent on)
     function txKindAdd(msg, n, p) {
       const m = msg.m, inner = msg.msg;
-      const k = String(msg.k) + (msg.k === 'mesh' && m ? ':' + m.t + (m.m && m.m.msg && m.m.msg.kind ? ':' + m.m.msg.kind : '') : '') + (msg.k === 'sig' && inner ? ':' + inner.kind : '');
+      const k = String(msg.k) + ((msg.k === 'mesh' || msg.k === 'fmesh') && m ? ':' + m.t + (m.m && m.m.msg && m.m.msg.kind ? ':' + m.m.msg.kind : '') : '') + (msg.k === 'sig' && inner ? ':' + inner.kind : '');
       txKindBytes[k] = (txKindBytes[k] || 0) + n;
-      try { if (p && p.id && typeof txKindLink !== 'undefined' && turnLinks && turnLinks.isLink(p.id)) { const o = txKindLink[p.id] || (txKindLink[p.id] = {}); o[k] = (o[k] || 0) + n; } } catch (e) {}
+      try { if (p && p.id && typeof txKindLink !== 'undefined' && turnLinks && turnLinks.isLink(p.id)) { const o = txKindLink[p.id] || (txKindLink[p.id] = {}); o[k] = (o[k] || 0) + n; o['#' + k] = (o['#' + k] || 0) + 1; } } catch (e) {}
     }
     // The picture goes to each open channel once per hash, in pieces whose JSON
     // is <=16KB, paced, and only on this channel. A newer hash bumps _avGen so
@@ -12797,7 +12803,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       return false;
     }
-    const camPeer = (pid) => { if (isRowMate(pid)) return true; try { return rowCarrier(pid); } catch (e) { return false; } };
+    const camPeer = (pid) => { if (isRowMate(pid) || thinLink(pid)) return true; try { return rowCarrier(pid); } catch (e) { return false; } };
     // ---- mesh early-probe intake (healing-laws D5) --------------------------
     // Transport death is MY first-hand evidence: when my DataChannel to a peer
     // closes, or its pc lands in a hard state ('closed', or 'failed' persisting
@@ -12899,7 +12905,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const pc = p.pc, carryCam = camPeer(p.id) && !p.headless;
       let added = false;
       if (localStream && carryCam) {
-        const at = mainAudioTrack();
+        const at = thinLink(p.id) ? (thinTxTrack(p.id) || localStream.getAudioTracks()[0] || null) : mainAudioTrack();   // TURN.21: never my own-side voice (it holds what this connection brought)
         if (at) { p.mainA = typeof addMainTrack === 'function' ? addMainTrack(pc, at, localStream) : pc.addTrack(at, localStream); added = true; }
         // Send the blur-canvas track when any blur applies — never the raw camera.
         const vt = sentVideoTrack();
@@ -12931,6 +12937,108 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const turnSubs = new Map();    // subscriber pid → { tier, exp, ticket, at }
     const turnLog = [];
     const turnHolds = (pid) => !!(turnLinks && turnLinks.holds(pid));
+    // ═══ THE THIN FREE LINK (TURN.21, gifos docs/turn-0926.md 6d) ═══════════════════
+    // A relayed connection nobody vouches for rides the free pool, which passes a small fixed number of bytes a second
+    // each way and drops the rest. Stream by stream (each row-mate's voice, the row view, a mix per branch) and with a new
+    // description for every stream, what the meeting sent did not fit, and voices fell out. So over such a connection:
+    //  - sound crosses as ONE stream each way, on the connection's own first audio line, never renegotiated: my voice and
+    //    every voice my own side brings me (my row-mates there, the sound of my Stadium, the Stage), less what came over
+    //    the connection;
+    //  - what arrives is handed to my own side as part of MY voice: every path that carries my voice (my row, my head's
+    //    mixes, my branch, the Stage) carries the far side with it, once. The far end's stream is no source of any mix
+    //    here, and nobody carries it onward as that person's voice;
+    //  - no other media rides it (no packs, no carries), and a dial of other seats is handed over it at most once per
+    //    FHOP_RELAY_ASK (the one that can heal the connection away).
+    // The mixes are made in this page, by a seat of the room: no server ever holds a voice. The pool's own limit is the
+    // enforcement: a changed page that sends more has its own side's sound dropped there.
+    const thinLink = (pid) => !!(turnLinks && pid && turnLinks.isLink(pid) && !turnLinks.video(pid));
+    const thinPids = () => { const out = []; if (turnLinks) for (const p of peers.values()) if (p.pc && thinLink(p.id)) out.push(p.id); return out.sort(); };
+    // the far end of an unvouched connection whose near end is r (the room's link facts): its voice reaches me inside r's
+    const thinFar = (r, x) => { for (const f of turnFacts.values()) { if (!f.up || f.v || Date.now() - (f.at || 0) > (turnLinks ? turnLinks.factStaleMs : 0)) continue; if ((f.a === r && f.b === x) || (f.b === r && f.a === x)) return true; } return false; };
+    const thin = { ctx: null, tx: new Map(), txSt: new Map(), fat: null, fatSt: null, micSt: null, sig: '', room: null, hold: new Map(), held: 0, passed: 0 };
+    // The mix is speech for the far side at the free pool's price: 16 kbit/s of sound (the framing of its packets costs as much again).
+    const THIN_AUDIO_BPS = 16000;
+    function thinCap(sd, on) {
+      try {
+        if (!sd || (!on && !sd.__thinCap)) return;
+        const pr = sd.getParameters(); if (!pr || !pr.encodings || !pr.encodings.length) return;
+        if (on) { if (pr.encodings[0].maxBitrate === THIN_AUDIO_BPS) { sd.__thinCap = true; return; } pr.encodings[0].maxBitrate = THIN_AUDIO_BPS; } else delete pr.encodings[0].maxBitrate;
+        const pm = sd.setParameters(pr); sd.__thinCap = !!on; if (pm && pm.catch) pm.catch(() => { sd.__thinCap = !on; });
+      } catch (e) {}
+    }
+    function thinClear() {
+      for (const f of thin.tx.values()) { try { f.clear(); } catch (e) {} }
+      thin.tx.clear(); thin.txSt.clear();
+      if (thin.fat) { try { thin.fat.clear(); } catch (e) {} }
+      thin.fat = null; thin.fatSt = null; thin.ctx = null;
+    }
+    function thinMic() {
+      const at = (botVoiceTrack && botVoiceTrack.readyState === 'live') ? botVoiceTrack : ((localStream && localStream.getAudioTracks()[0]) || null);
+      if (!at || at.readyState === 'ended') { thin.micSt = null; return null; }
+      if (!thin.micSt || thin.micSt.getAudioTracks()[0] !== at) thin.micSt = new MediaStream([at]);
+      return thin.micSt;
+    }
+    function thinFold(make) {
+      const mc = typeof mixCtx === 'function' ? mixCtx() : null; if (!mc || !MM || !MM.createAudioFold) return null;
+      if (thin.ctx !== mc) { thinClear(); thin.ctx = mc; }
+      return make ? MM.createAudioFold(mc) : null;
+    }
+    // the one stream I send over the unvouched connection to pid
+    function thinTxTrack(pid) {
+      if (!thinLink(pid)) return null;
+      let f = thin.tx.get(pid);
+      if (!f || thin.ctx !== (typeof mixCtx === 'function' ? mixCtx() : null)) { f = thinFold(true); if (!f) return null; thin.tx.set(pid, f); thin.txSt.delete(pid); }
+      const t = f.track(); if (!t) return null;
+      let st = thin.txSt.get(pid); if (!st || st.getAudioTracks()[0] !== t) { st = new MediaStream([t]); thin.txSt.set(pid, st); }
+      return t;
+    }
+    // my voice as my own side hears it: the mic and everything that came over my unvouched connections (null: the mic alone)
+    function thinFatStream() { return thin.fat && thin.fatSt ? thin.fatSt : null; }
+    function thinVoiceOf(p) { return p ? (p.relayed ? ((relayVia.get(p.id) || {}).stream || null) : (p.stream || null)) : null; }
+    function thinSync() {
+      const pids = thinPids();
+      if (!pids.length) { if (thin.tx.size || thin.fat) { thinClear(); thin.sig = ''; if (typeof clog === 'function') clog('thin-off'); try { refreshOutbound(); } catch (e) {} schedReconcile(); } return; }
+      if (!thinFold(false) && !thin.ctx) return;
+      const mic = thinMic(), stg = new Set(stageIds());
+      // my own side, as I hear it: row-mates I hold myself (not on the Stage: those come through the Stage's ear), my Stadium's sound, the Stage
+      const own = new Map();
+      for (const id of rowMates()) { if (thinLink(id) || stg.has(id)) continue; const q = peers.get(id); if (!q) continue; const v = thinVoiceOf(q); if (v && !(q.relayed && thinLink((relayVia.get(id) || {}).via))) own.set('r' + id, v); }
+      if (thin.room && thin.room.getAudioTracks && thin.room.getAudioTracks().length) own.set('sd', thin.room);
+      try { if (typeof stageEar !== 'undefined' && stageEar && stageEar.bound) for (const [k, st] of stageEar.bound) { const f = mosIn.get(k); if (st && !(f && thinLink(f.via))) own.set('g' + k, st); } } catch (e) {}
+      const ins = new Map();
+      for (const pid of pids) { const q = peers.get(pid); if (q && q.stream && q.stream.getAudioTracks().length) ins.set('in' + pid, q.stream); }
+      for (const pid of pids) {
+        if (!thinTxTrack(pid)) continue;
+        const parts = new Map(own); if (mic) parts.set('me', mic);
+        for (const [k, st] of ins) if (k !== 'in' + pid) parts.set(k, st);   // a seat that ends two connections joins them
+        foldSync(thin.tx.get(pid), parts);
+      }
+      for (const pid of [...thin.tx.keys()]) if (!pids.includes(pid)) { try { thin.tx.get(pid).clear(); } catch (e) {} thin.tx.delete(pid); thin.txSt.delete(pid); }
+      if (!thin.fat) { thin.fat = thinFold(true); thin.fatSt = null; }
+      if (thin.fat) { const parts = new Map(ins); if (mic) parts.set('me', mic); foldSync(thin.fat, parts); const t = thin.fat.track(); if (t && (!thin.fatSt || thin.fatSt.getAudioTracks()[0] !== t)) thin.fatSt = new MediaStream([t]); }
+      // carries that would ride or feed the connection end: the far side is heard through the mix
+      for (const [k, j] of [...relayJobs]) if (thinLink(j.requester) || thinLink(j.target)) { try { stopRelayJob(j.target, j.requester, true); } catch (e) {} }
+      for (const [t, rv] of [...relayVia]) if (rv && (thinLink(rv.via) || thinFar(rv.via, t))) { try { stopRelayFor(t, true); } catch (e) {} }
+      for (const pid of pids) { const q = peers.get(pid); if (q && q.mainA && (q.mainA.track !== thinTxTrack(pid) || !q.mainA.__thinCap)) { try { refreshOutbound(); } catch (e) {} break; } }
+      const sig = pids.join(',') + '|' + (thin.fatSt ? thin.fatSt.id : '-');
+      if (sig !== thin.sig) { thin.sig = sig; if (typeof clog === 'function') clog('thin-on', pids.map((x) => String(x).slice(0, 8)).join(','), 'own=' + [...own.keys()].map((k) => k.slice(0, 9)).join(','), 'in=' + ins.size); try { refreshOutbound(); } catch (e) {} try { applyBuses(); } catch (e) {} schedReconcile(); }
+    }
+    // my ring lies across my unvouched connection (TURN.14): no row view reaches me from my row's head, so I make my branch's
+    const thinHang = () => { try { return !!(turnLinks && meshNode && meshNode.penv && meshNode.penv.turnAcross && thinPids().length && meshNode.penv.turnAcross()); } catch (e) { return false; } };
+    // TURN.21.2: a dial of other seats crosses my unvouched connection one pair at a time, a pair per FHOP_RELAY_ASK
+    // ... and a flood (room gossip, the section's status) crosses it once, from end to end: each end floods to the other over the
+    // connection itself and the far side floods on. A copy another seat addressed across the cut in an envelope is the same word
+    // again at a kilobyte and more each (measured: three of them a second each way, a third of everything the connection carried).
+    function thinSigHeld(p, msg) {
+      if (!msg || !thinLink(p.id)) return false;
+      if (msg.k === 'fmesh') { const t = msg.m && msg.m.t; if (t === 'GSP' || t === 'GSPS') { thin.flood = (thin.flood || 0) + 1; return true; } return false; }
+      if (msg.k !== 'fsig') return false;
+      if (msg.from === myId && msg.to === p.id) return false;
+      const now = Date.now(), pair = String(msg.from) < String(msg.to) ? msg.from + '|' + msg.to : msg.to + '|' + msg.from, h = thin.hold.get(p.id);
+      if (h && now < h.until && h.pair !== pair) { thin.held++; return true; }
+      if (!h || now >= h.until) thin.hold.set(p.id, { pair, until: now + GifOS.timings.FHOP_RELAY_ASK_MS });
+      thin.passed++; return false;
+    }
     // The connection settings of a pair: TURN servers only for a link whose end here is a TURN client (never double TURN).
     // ONE TRANSPORT PER PAIR (bundlePolicy 'max-bundle'). Under the default 'balanced' policy Firefox gives each new
     // m-line of an offer a provisional transport of its own until the answer bundles it, and while that transport
@@ -13183,6 +13291,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!turnLinks || !relayTv) return;
       try { turnLinks.step(); } catch (e) { turnNote('turn-step-err ' + String(e && e.stack || e).slice(0, 160)); }
       for (const p of peers.values()) if (turnLinks.holds(p.id) || (p.pc && p.pc.__turnGuarded)) turnApplyVideo(p);
+      try { thinSync(); } catch (e) { turnNote('thin-err ' + String(e && e.stack || e).slice(0, 160)); }
       turnWatch();
       const every = GifOS.sub && GifOS.sub.RENEW_EVERY_S ? GifOS.sub.RENEW_EVERY_S * 1000 / 2 : 0;   // half the ticket's renewal period
       if (every && Date.now() - turnSubAt > every) { turnSubAt = Date.now(); turnSubOut(); }
@@ -17978,9 +18087,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const refusedNow = (r) => !!(refused[r] && now - refused[r] < 30000);
           const cands = myConns().filter((r) => r !== pid
             && (connsOf.get(r) || []).includes(pid)
+            && !thinLink(r) && !thinFar(r, pid)   // TURN.21: a seat across an unvouched connection is heard inside its near end's voice
             && !refusedNow(r)).sort();
           // TURN.14.12: no connected peer names the target: my TURN peer is the one seat that reaches my row-mates across the cut; it dials the target for the carry
-          if (!cands.length && turnLinks) for (const r of turnLinks.turnPcs()) { const q = peers.get(r); if (r !== pid && q && q.connected && !refusedNow(r)) cands.push(r); }
+          if (!cands.length && turnLinks) for (const r of turnLinks.turnPcs()) { const q = peers.get(r); if (r !== pid && !thinLink(r) && q && q.connected && !refusedNow(r)) cands.push(r); }
           if (cands.length) {
             p.relayAskAt = now;
             // ranked on each pc's last stats reading (read again now for the next ask): the ask itself never waits
@@ -23692,6 +23802,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const tp = peers.get(target);
       const refuse = (why) => { fhTrace('FH-REFUSE', 'target=' + String(target).slice(0, 8) + ' req=' + String(reqP.id).slice(0, 8) + ' ' + (why || '')); dcSend(reqP, { k: 'relay-no', target }); };
       if ((typeof isEjected === 'function' && isEjected(target) === true)) { refuse(); return; }
+      if (thinLink(reqP.id) || thinLink(target)) { refuse('thin'); return; }   // TURN.21: no carry rides or feeds an unvouched connection: its mix holds every voice
       // TURN.14.12: asked over my TURN pc for a seat I hold no pc to: no NAT-kind test, I dial it (on my network the dial opens and the
       // requester's next ask finds the pc; a dial that cannot open is the refusal the next ask reads)
       if ((!tp || !tp.connected) && reqP.connected && turnLinks && turnLinks.isLink(reqP.id) && target && target !== myId) {
@@ -23833,6 +23944,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // sweep.
     let selfFoldSt = null;
     function selfFoldStream() {
+      { const fs = typeof thinFatStream === 'function' ? thinFatStream() : null; if (fs) return fs; }   // TURN.21
       const at = (localStream && localStream.getAudioTracks()[0]) || null;
       const vs = meTile && meTile.video ? meTile.video.srcObject : null;
       if (!at || at.readyState === 'ended') { selfFoldSt = null; return vs || localStream; }
@@ -23985,6 +24097,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     let sdViewSrc = null, sdViewSt = null;
     const VIEW_FPS = GifOS.timings.VIEW_FPS;
     function paintRoomView(src, meta, sound, c, lagMs) {
+      thin.room = sound || null;   // TURN.21: the sound of my Stadium is my side's, for the mix I send
       const el = src ? heldEl(src, lagMs) : (avHoldStop(), null);
       if (el && meta && meta.n) {
         // Own-row hiding stops at section size (Nathan): a Stadium of more than C×C people shows everyone and hides nothing.
@@ -24330,7 +24443,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const v = stageVideoTrack();
       // A rebroadcast's sound comes from the same element as its picture. A
       // clip with no sound sends none, not the host's mic.
-      const a = (rbNow && rbNow.v) ? (rbNow.a || null) : ((localStream && localStream.getAudioTracks()[0]) || null);
+      const a = (rbNow && rbNow.v) ? (rbNow.a || null) : (((typeof thinFatStream === 'function' && thinFatStream()) ? thinFatStream().getAudioTracks()[0] : null) || (localStream && localStream.getAudioTracks()[0]) || null);
       if (!v && !a) return null;   // nothing to broadcast — no feed to ship
       if (!selfShipMemo || selfShipMemo.v !== v || selfShipMemo.a !== a) {
         // WHICH track moved? Rebuilding this memo mints a new MediaStream id,
@@ -25022,10 +25135,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!turnLinks || !to || to === myId) return null;
       const live = (r) => { const q = peers.get(r); return !!(q && q.connected && q.dc && q.dc.readyState === 'open'); };
       for (const f of turnFacts.values()) {
-        if (!f.up || Date.now() - (f.at || 0) > turnLinks.factStaleMs) continue;
+        if (!f.up || !f.v || Date.now() - (f.at || 0) > turnLinks.factStaleMs) continue;   // TURN.21: only a vouched connection carries a pack
         const x = f.a === to ? f.b : f.b === to ? f.a : null; if (x && x !== myId && live(x)) return x;
       }
-      for (const r of turnLinks.turnPcs()) if (r !== to && live(r) && (connsOf.get(r) || []).includes(to)) return r;
+      for (const r of turnLinks.turnPcs()) if (r !== to && !thinLink(r) && live(r) && (connsOf.get(r) || []).includes(to)) return r;
       return null;
     }
     // A carrier's word "this came from x" stands only for a pair the TURN facts join: the carrier is x's TURN peer, or mine.
@@ -25038,6 +25151,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const mosCarried = (k) => { if (typeof k !== 'string' || k.indexOf('tc:') !== 0) return null; const b = k.indexOf('|'); return b > 3 ? { to: k.slice(3, b), key: k.slice(b + 1) } : null; };
     function shipMos(key, to, stream, meta, upKey) {
       if (!to || !stream) return null;
+      if (thinLink(to)) return null;   // TURN.21: an unvouched connection carries its one mix, no pack
       const p = peers.get(to);
       if ((!p || !p.connected) && key.indexOf('tc:') !== 0) { const via = mosCarrier(to); if (via) return shipMos('tc:' + to + '|' + key, via, stream, meta, upKey); }
       const jk = key + '>' + to;
@@ -25887,6 +26001,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function actingHead() {
       const c = meshCoord(), s = meshSeat(); if (!c || !s || c.i === 0 || !s.rowHeir) return false;
+      if (thinHang()) return true;   // TURN.21: my row's head is across my unvouched connection: I pack and mix for my branch
       return (rowHeadIsOut(c) || rowHoldUntil > Date.now()) && s.rowHeir() === myId;
     }
     function mosResolve(key, meta, from) {
@@ -27488,6 +27603,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (peerWaits(pid)) return { el: null, stream: null };
         const p = peers.get(pid);
         if (!p) return { el: null, stream: null };
+        if (thinLink(pid)) return { el: p.video, stream: null };   // TURN.21: its stream is the far side's mix, which my own voice carries
         // The picture is whatever the tile shows; the VOICE is the person's own
         // stream (direct, or the one a friend carries), never the tile's
         // element. A camera-off tile whose picture is not arriving shows a
@@ -29971,7 +30087,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // composite carried them too).
         // Stagers' direct tracks are muted too: their voice arrives via the
         // per-stager feeds folded at the ear — the direct link would double it.
-        const bus = stg.has(pid) ? null : mates.has(pid) ? 'row' : null;
+        const bus = thinLink(pid) ? 'row' : stg.has(pid) ? null : mates.has(pid) ? 'row' : null;   // TURN.21: the far side's mix plays here whatever seat its end holds
         // The voice is the person's own stream: the direct one, or the one a
         // friend carries (relayVia). The tile's element can hold a painted
         // picture instead (camera off), which has no sound.
@@ -38886,6 +39002,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       stageIdleForTest: async () => { const std = []; for (const [k, v] of mosStandby) { if (!k.startsWith("stg:") || !v.stream) continue; const p = peers.get(v.via); if (!p || !p.pc) continue; let bytes = 0, pk = 0; for (const t of v.stream.getTracks()) { const st = await p.pc.getStats(t); st.forEach((x) => { if (x.type === "inbound-rtp") { bytes += x.bytesReceived || 0; pk += x.packetsReceived || 0; } }); } std.push({ k: k.slice(4, 12), via: String(v.via).slice(0, 8), key: v.key, kinds: v.stream.getTracks().map((t) => t.kind).join(), bytes, pk }); } const park = []; let parked = 0, hot = 0; for (const [jk, j] of mosJobs) { if (j.key.indexOf("stg:") !== 0) continue; if (j.active) { hot++; continue; } parked++; let bytes = 0, pk = 0; for (const sd of j.senders) { try { const st = await sd.getStats(); st.forEach((x) => { if (x.type === "outbound-rtp") { bytes += x.bytesSent || 0; pk += x.packetsSent || 0; } }); } catch (e) {} } park.push({ jk: jk.slice(0, 24), bytes, pk }); } let txAll = 0, rxAll = 0; for (const p of peers.values()) { if (!p.pc) continue; const st = await p.pc.getStats(); st.forEach((x) => { if (x.type === "transport") { txAll += x.bytesSent || 0; rxAll += x.bytesReceived || 0; } }); } return { std, park, parked, hot, txAll, rxAll, pcs: [...peers.values()].filter((q) => q.pc).length }; },
       stageFoForTest: () => (window.__stgFoLog || []).slice(),
       rowViewForTest: () => (window.__rowViewLog || []).slice(),
+      thinForTest: () => ({ pids: thinPids(), hang: thinHang(), fat: !!thinFatStream(), sig: thin.sig, held: thin.held, passed: thin.passed, flood: thin.flood || 0,
+        tx: [...thin.tx].map(([pid, f]) => ({ pid, cap: (() => { try { const q = peers.get(pid), sd = q && q.mainA; return sd ? { on: !!sd.__thinCap, mine: sd.track === f.track(), enc: (sd.getParameters().encodings || []).map((e) => e.maxBitrate || 0) } : null; } catch (e) { return String(e); } })(), parts: f._sid ? [...f._sid.keys()] : [], peak: f.peakNow ? f.peakNow() : null })), fatParts: thin.fat && thin.fat._sid ? [...thin.fat._sid.keys()] : [] }),
       stgJobsForTest: () => [...mosJobs.entries()].filter(([, j]) => j.key.indexOf('stg:') === 0).map(([jk, j]) => { const p = peers.get(j.to); return { to: String(j.to).slice(0, 8), key: j.key.slice(0, 12), active: !!j.active, sid: String(j.streamId).slice(0, 8), sb: !!(j.meta && j.meta.sb), ao: !!(j.meta && j.meta.ao), kinds: j.trackList.map((t) => t ? t.kind + ':' + t.readyState + (t.enabled ? '' : ':off') : 'null').join(), sending: j.senders.map((sd) => sd.track ? sd.track.kind : 'null').join(), held: typeof outgoingHeld !== 'undefined' && !!outgoingHeld, pc: p && p.pc ? p.pc.connectionState : 'none' }; }),
       stageEarStreamForTest: () => (stageEar && stageEar.el.srcObject ? { stream: stageEar.el.srcObject, muted: !!stageEar.el.muted, paused: !!stageEar.el.paused } : null),
       stageRouteForTest: () => { const o = {}; for (const [k, v] of mosIn) { if (k.indexOf("stg:") !== 0 && k !== "sgs") continue; const d = mosStandby.get(k); o[k.slice(0, 8)] = String(v.via).slice(2, 8) + (d ? "|" + String(d.via).slice(2, 8) : ""); } return o; },
