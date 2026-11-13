@@ -516,6 +516,85 @@
           return false;
         };
       })();
+      // ---- files out: gifos.file.save and the a[download] links apps already use ----
+      function toSaveBytes(d){
+        if (d instanceof ArrayBuffer) return Promise.resolve(d);
+        if (ArrayBuffer.isView(d)) return Promise.resolve(d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength));
+        if (typeof Blob !== 'undefined' && d instanceof Blob) return d.arrayBuffer();
+        if (typeof d === 'string') return Promise.resolve(new TextEncoder().encode(d).buffer);
+        return Promise.reject(new Error('gifos.file.save: data must be an ArrayBuffer, typed array, Blob or text.'));
+      }
+      // A sandboxed frame's own download is unreliable (some browsers drop it,
+      // and a WebView in the GifOS Meet app has nowhere to put it), so a click
+      // on an a[download] whose link is a blob: or data: URL is turned into
+      // gifos.file.save, and the OS saves it the platform's way. Apps need no
+      // change. Covered: a click on a link in the page (real or synthetic, as
+      // long as nothing called preventDefault), a.click() and a dispatched
+      // click on a link that is not in the page (FileSaver.js does that). The
+      // Blob behind a blob: URL is remembered from createObjectURL, so the
+      // common "click, then revoke at once" still has its bytes.
+      (function saveLinks(){
+        var made = new Map();
+        var mk = URL.createObjectURL, rv = URL.revokeObjectURL;
+        URL.createObjectURL = function(o){
+          var u = mk.apply(URL, arguments);
+          try { if (typeof Blob !== 'undefined' && o instanceof Blob) made.set(u, o); } catch(e){}
+          return u;
+        };
+        // A revoked URL's Blob is kept for the last few revokes only (the click that
+        // revoked it at once still finds it); older ones are let go.
+        var gone = [];
+        URL.revokeObjectURL = function(u){
+          if (made.has(u) && gone.indexOf(u) < 0) { gone.push(u); if (gone.length > 8) made.delete(gone.shift()); }
+          return rv.apply(URL, arguments);
+        };
+        function dataBlob(href){
+          var c = href.indexOf(','); if (c < 0) return null;
+          var head = href.slice(5, c), body = href.slice(c + 1);
+          var parts = head.split(';'), mime = parts[0] || 'text/plain';
+          if (parts.indexOf('base64') >= 0) {
+            var bin = atob(decodeURIComponent(body)), u = new Uint8Array(bin.length);
+            for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+            return new Blob([u], { type: mime });
+          }
+          return new Blob([decodeURIComponent(body)], { type: mime });
+        }
+        function take(a){
+          if (!a || !a.hasAttribute || !a.hasAttribute('download')) return false;
+          var href = String(a.href || '');
+          var isData = /^data:/i.test(href), isBlob = /^blob:/i.test(href);
+          if (!isData && !isBlob) return false;
+          var name = a.getAttribute('download') || '';
+          var got = isData ? Promise.resolve().then(function(){ return dataBlob(href); })
+            : made.has(href) ? Promise.resolve(made.get(href))
+            : fetch(href).then(function(r){ return r.blob(); });
+          got.then(function(b){
+            if (!b) throw new Error('unreadable link');
+            return window.gifos.file.save(name || 'download', b.type || 'application/octet-stream', b);
+          }).catch(function(e){ try { console.warn('download not saved: ' + (e && e.message || e)); } catch(x){} });
+          return true;
+        }
+        var Anchor = window.HTMLAnchorElement && HTMLAnchorElement.prototype;
+        if (!Anchor) return;
+        // A link in the page: let the click run through the app's own listeners,
+        // and take it last (bubbling on window), only if nobody cancelled it.
+        window.addEventListener('click', function(e){
+          if (e.defaultPrevented) return;
+          var a = e.target && e.target.closest ? e.target.closest('a[download]') : null;
+          if (a && take(a)) e.preventDefault();
+        });
+        // A link not in the page: its click event never reaches window.
+        var click0 = Anchor.click;
+        Anchor.click = function(){
+          if (!this.isConnected && take(this)) return;
+          return click0.apply(this, arguments);
+        };
+        var disp0 = EventTarget.prototype.dispatchEvent;
+        EventTarget.prototype.dispatchEvent = function(ev){
+          if (ev && ev.type === 'click' && this instanceof HTMLAnchorElement && !this.isConnected && take(this)) return false;
+          return disp0.apply(this, arguments);
+        };
+      })();
       window.gifos = {
         db: function(collection){ return {
           put:    function(item){ return rpc({type:'db',op:'put',collection:collection,value:item}); },
@@ -557,6 +636,22 @@
             });
         },
         save: function(){ return rpc({type:'save'}); },
+        // Hand the person a file (an export, a picture, a document):
+        //   gifos.file.save(name, mime, data[, { share:true }])
+        // data: ArrayBuffer, typed array, Blob or text. The OS does what the
+        // platform wants: a browser download on the web, the system save sheet
+        // (Android) or share sheet with Save to Files (iOS) in the GifOS Meet
+        // app. Resolves { state:'downloaded'|'saved'|'shared'|'cancelled', name }.
+        // Needs a tap or click since the page opened. A plain a[download] click
+        // on a blob: or data: link takes the same road (see saveLinks below).
+        file: {
+          save: function(name, mime, data, opts){
+            return toSaveBytes(data).then(function(buf){
+              var t = (data && data.type && typeof data.type === 'string') ? data.type : '';
+              return rpc({ type:'fileSave', name: name == null ? '' : String(name), mime: String(mime || t || ''), bytes: buf, share: !!(opts && opts.share) });
+            });
+          }
+        },
         // Hash-pinned assets (gifos-assets.js): bytes the OS downloaded FOR
         // this app (required pins at install/boot, optional pins when this
         // call names them). Returns an ArrayBuffer. A miss after the OS has
@@ -1133,10 +1228,58 @@
       : gif.encode(out, { accent: manifest.accent }); // Promise<Uint8Array>
   }
   function downloadBytes(bytes, name) {
-    const url = URL.createObjectURL(new Blob([bytes], { type: 'image/gif' }));
-    const a = document.createElement('a'); a.href = url; a.download = name; a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    saveFileOut(name, 'image/gif', bytes).catch((e) => { try { console.warn('save: ' + (e && e.message || e)); } catch (x) {} });
     return name;
+  }
+  // THE ONE WAY A FILE LEAVES FOR THE PERSON'S DISK (gifos.file.save, an app's
+  // <a download>, a snapshot). Apps never learn the platform; this decides:
+  //   - in the GifOS Meet app (GifosNative, the Android/iOS shell): the shell's
+  //     file.save, i.e. the system save sheet (Android) or share sheet with
+  //     "Save to Files" (iOS); a WebView has no download manager of its own.
+  //   - on the web: a download started from THIS trusted page. A sandboxed
+  //     frame's own download is refused or dropped by some browsers.
+  // Resolves { state: 'saved'|'shared'|'downloaded'|'cancelled', name }.
+  const SAVE_NATIVE_MAX = 64 * 1024 * 1024; // the shell bridge carries base64 in one message
+  function cleanSaveName(n) {
+    let s = String(n == null ? '' : n).split(/[\\/]/).pop().replace(/[\u0000-\u001f\u007f<>:"|?*]/g, '_').replace(/^[.\s]+/, '').trim();
+    if (s.length > 120) { const dot = s.lastIndexOf('.'); const ext = dot > 0 && s.length - dot <= 12 ? s.slice(dot) : ''; s = s.slice(0, 120 - ext.length) + ext; }
+    return s || 'download';
+  }
+  function cleanSaveMime(m) {
+    const s = String(m == null ? '' : m).trim().toLowerCase();
+    return /^[a-z0-9][a-z0-9.+-]*\/[a-z0-9][a-z0-9.+-]*$/.test(s) && s.length <= 120 ? s : 'application/octet-stream';
+  }
+  function saveBytesOf(b) {
+    if (b instanceof ArrayBuffer) return new Uint8Array(b);
+    if (ArrayBuffer.isView(b)) return new Uint8Array(b.buffer, b.byteOffset, b.byteLength);
+    if (typeof b === 'string') return new TextEncoder().encode(b);
+    return null;
+  }
+  function b64Of(u8) {
+    let s = '';
+    for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+    return btoa(s);
+  }
+  function saveFileOut(name, mime, bytes, opts) {
+    const u8 = saveBytesOf(bytes);
+    if (!u8) return Promise.reject(new Error('Nothing to save: pass bytes (ArrayBuffer, typed array, Blob or text).'));
+    const nm = cleanSaveName(name), mt = cleanSaveMime(mime);
+    const N = root.GifosNative;
+    if (N && typeof N.request === 'function') {
+      if (u8.length > SAVE_NATIVE_MAX) return Promise.reject(new Error('That file is too large to save from the app (' + Math.round(u8.length / 1048576) + ' MB).'));
+      const how = opts && opts.share ? 'share' : 'save';
+      return Promise.resolve(N.request('file.save', { name: nm, mime: mt, b64: b64Of(u8), how: how, kind: 'app' })).then((r) => {
+        if (!r || r.ok === false) throw new Error('The file was not saved' + (r && r.error ? ' (' + r.error + ')' : '') + '.');
+        return { state: r.state || 'saved', name: nm };
+      });
+    }
+    const doc = root.document;
+    const url = URL.createObjectURL(new Blob([u8], { type: mt }));
+    const a = doc.createElement('a'); a.href = url; a.download = nm; a.rel = 'noopener'; a.style.display = 'none';
+    (doc.body || doc.documentElement).appendChild(a);
+    a.click();
+    setTimeout(() => { try { a.remove(); } catch (e) {} URL.revokeObjectURL(url); }, 30000);
+    return Promise.resolve({ state: 'downloaded', name: nm });
   }
   function downloadSnapshot(originalBytes, files, manifest, db) {
     return Promise.resolve(db.getFullState())
@@ -3739,6 +3882,13 @@
       else if (d.type === 'save') {
         if (!gestured()) reply({ ok: false, error: 'Saving needs a tap or click first.' });
         else downloadSnapshot(originalBytes, files, manifest, db).then((name) => reply({ ok: true, result: name })).catch((err) => reply({ ok: false, error: String(err.message || err) }));
+      }
+      // gifos.file.save and the app's a[download] links: same sticky-gesture
+      // gate as 'save'; saveFileOut picks the platform's way.
+      else if (d.type === 'fileSave') {
+        if (!gestured()) reply({ ok: false, error: 'Saving needs a tap or click first.' });
+        else Promise.resolve().then(() => saveFileOut(d.name, d.mime, d.bytes, { share: !!d.share }))
+          .then((r) => reply({ ok: true, result: r })).catch((err) => reply({ ok: false, error: String(err && err.message || err) }));
       }
       else if (d.type === 'capture') {
         // Studio sessions stream every capture back as a 'shot' part so the

@@ -291,6 +291,15 @@ FILES & STATE
    await gifos.save()       -> downloads a snapshot GIF: the app + all its
                                current data baked in. Anyone who opens that
                                file resumes exactly there.
+   await gifos.file.save(name, mime, data[, { share: true }])
+                            -> hands the person a file (an export, a
+                               picture). data: ArrayBuffer, typed array,
+                               Blob or text. The OS saves it the platform's
+                               way: a download on the web, the system save
+                               or share sheet in the GifOS Meet app. Needs a
+                               tap or click first. Resolves { state, name }.
+                               A plain a[download] click on a blob:/data:
+                               link takes the same road.
    await gifos.assets(path) -> ArrayBuffer of a manifest-pinned asset (see
                                "Big files"). A miss names the fix.
                                Optional pins (`optional: true`) download
