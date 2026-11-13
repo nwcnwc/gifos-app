@@ -13422,10 +13422,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // A replaced pc lives on for 300 ms so its goodbye can leave. What it still reports is not this pair's truth:
       // its channel must not take p.dc from the new pc (the next offer would then skip the data m-line), nor its candidates or tracks.
       pc.ondatachannel = (ev) => { if (p.pc !== pc) return; try { ev.channel.__pc = pc; } catch (e) {} wireDc(p, ev.channel); };
+      // every description this pair is handed passes soloSdp first (a Stadium picture does not wait for its sound)
+      if (typeof soloSdp === 'function') { const srd0 = pc.setRemoteDescription.bind(pc); pc.setRemoteDescription = (d) => srd0(soloSdp(pc, d)); }
       pc.ontrack = (ev) => {
         if (p.pc !== pc) return;
         if ((typeof isEjected === 'function' && isEjected(p.id) === true)) { try { ev.track.stop(); } catch (e) {} return; } // no media from a forger
-        const stream = ev.streams[0];
+        let stream = ev.streams[0];
+        if (stream && ev.track && ev.track.kind === 'audio' && typeof soloJoin === 'function' && stream.id.slice(-2) === '~a') stream = soloJoin(p, stream, ev.track);   // a block's sound, named apart: back into its container
         if (typeof clog === 'function') clog('trk ' + String(p.id).slice(0, 6) + ' ' + (stream ? String(stream.id).slice(0, 8) : 'NOSTREAM') + ' mid=' + (ev.transceiver && ev.transceiver.mid));
         // ENCODED-PASSTHROUGH TAP, ATTACHED HERE OR NEVER (§9a). A receiver
         // transform set after RTP has begun delivers NO frames on this Chromium
@@ -13464,6 +13467,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             p.incoming.splice(dup, 1);
           }
           p.incoming.push(stream);
+          if (typeof soloFill === 'function') soloFill(p, stream);
         }
         // Cap dead renegotiation leftovers — but a busy mosaic link legitimately
         // carries MANY live aux streams (sdm + sdx + sdxc + sgs + stg:* + the
@@ -13901,6 +13905,59 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (msg.boot && p.mediaOn && !(p.dc && p.dc.readyState === 'open')) return 'offer-boot';
       return '';
     }
+    // A STADIUM PICTURE DOES NOT WAIT FOR ITS SOUND. A browser plays a picture and a sound that arrive in one stream
+    // in step, by holding the picture back to the sound's own buffer (20 to 70 ms here, more on a phone's speaker
+    // path). A Stadium block's sound is a mix made again at every head, and its picture is forwarded as it comes
+    // ("nothing gates the forward"), so that hold bought nothing and was paid at every head on the way up and down.
+    // A sender marks such a sound by naming a second stream on it (addAux); a receiver that sees the mark names the
+    // sound's stream apart (soloSdp) before the browser reads the description, so the two are never paired, and
+    // puts the track back into its block's container itself (soloJoin). A page without this reads the first stream
+    // name as before, and nothing changes for it. A person's own camera and microphone, a carried person and a
+    // Stage feed are never marked: a face and its voice stay in step.
+    const SOLO_TAG = '~a';
+    function soloSdp(pc, d) {
+      try {
+        const sdp = d && d.sdp; if (!sdp || sdp.indexOf('m=audio') < 0) return d;
+        const memo = pc.__solo || (pc.__solo = new Map());   // mid -> named apart or not, decided when the line is first seen
+        const secs = sdp.split(/\r\n(?=m=)/), vids = new Set();
+        for (const sec of secs) if (sec.indexOf('m=video') === 0) for (const l of sec.split('\r\n')) if (l.indexOf('a=msid:') === 0) vids.add(l.slice(7).split(' ')[0]);
+        let changed = false;
+        const out = secs.map((sec) => {
+          if (sec.indexOf('m=audio') !== 0) return sec;
+          const lines = sec.split('\r\n'), ms = lines.filter((l) => l.indexOf('a=msid:') === 0);
+          const midL = lines.find((l) => l.indexOf('a=mid:') === 0); if (!midL || !ms.length) return sec;
+          const mid = midL.slice(6), first = ms[0].slice(7).split(' ');
+          let on = memo.get(mid);
+          if (on === undefined) { on = ms.length >= 2 && vids.has(first[0]); memo.set(mid, on); }
+          if (!on || ms.length < 2) return sec;
+          const sid = first[0], keep = 'a=msid:' + sid + SOLO_TAG + ' ' + (first[1] || '');
+          let done = false; const res = [];
+          for (const l of lines) {
+            if (l.indexOf('a=msid:') === 0) { if (!done) { res.push(keep.trim()); done = true; } continue; }
+            res.push(l.indexOf('a=ssrc:') === 0 && l.indexOf(' msid:' + sid + ' ') > 0 ? l.replace(' msid:' + sid + ' ', ' msid:' + sid + SOLO_TAG + ' ') : l);
+          }
+          changed = true; return res.join('\r\n');
+        });
+        return changed ? { type: d.type, sdp: out.join('\r\n') } : d;
+      } catch (e) { return d; }
+    }
+    // The sound named apart goes into its block's container: now if the container is here, else when it arrives.
+    function soloAdd(base, tr) {
+      try { if (tr.readyState === 'ended' || base.getTracks().includes(tr)) return; base.addTrack(tr); base.dispatchEvent(new window.MediaStreamTrackEvent('addtrack', { track: tr })); } catch (e) {}
+    }
+    function soloJoin(p, solo, tr) {
+      const id = solo.id.slice(0, -SOLO_TAG.length);
+      const held = p.soloTracks || (p.soloTracks = new Map());
+      let set = held.get(id); if (!set) { set = new Set(); held.set(id, set); }
+      for (const t of [...set]) if (t.readyState === 'ended') set.delete(t);
+      set.add(tr);
+      const drop = () => { set.delete(tr); for (const b of p.incoming || []) if (b.id === id && b.getTracks().includes(tr)) { try { b.removeTrack(tr); b.dispatchEvent(new window.MediaStreamTrackEvent('removetrack', { track: tr })); } catch (e) {} } };
+      try { solo.addEventListener('removetrack', (ev) => { if (ev.track === tr) drop(); }); tr.addEventListener('ended', drop); } catch (e) {}
+      const base = (p.incoming || []).filter((b) => b.id === id).pop() || null;
+      if (base) soloAdd(base, tr);
+      return base;
+    }
+    function soloFill(p, base) { const set = p.soloTracks && p.soloTracks.get(base.id); if (set) for (const t of set) soloAdd(base, t); }
     // ONE ANSWER, start to end, on the pc it began on: an offer is set, the ICE that waited for it goes in
     // (signaling only: a renegotiation's channel carries none), and the answer goes out through `send`. A pc replaced
     // meanwhile ends the chain with PcReplaced: that offer described a pc now closed, and the answer must not leave.
@@ -23228,8 +23285,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // (seven talkers measured over four chained hops: tone-to-floor 30-35 dB at the source, 19-24 dB after three or four
     // generations; at 128 kbps 26-29 dB; 64 kbps chosen: about 25 dB through four re-mix hops at half the data). Every forwarded audio sender (mix-minus, relay, stage feed) is allowed 64 kbps.
     const AUX_AUDIO_BPS = 64000;
+    let soloMark = null;   // the second stream name that marks a block's sound (see soloSdp)
     const addAux = (pc, tr, container) => {
       const init = { streams: [container] };
+      if (container && container.__solo && tr && tr.kind === 'audio') { try { soloMark = soloMark || new MediaStream(); init.streams.push(soloMark); } catch (e) {} }
       if (tr && tr.kind === 'audio') init.sendEncodings = [{ maxBitrate: AUX_AUDIO_BPS }];   // set at creation: valid before negotiation in every engine
       const t = pc.addTransceiver(tr, init);
       auxSenders.add(t.sender);
@@ -24942,6 +25001,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       try {
         const st = wkFwdSrc(tr, job.key);   // WebKit: a fixed-size copy of a received picture
+        if (tr.kind === 'audio' && !isStageJob(job.key)) { try { job.container.__solo = true; } catch (e) {} }   // a block's sound: its picture does not wait for it (soloSdp)
         const sd = addAux(p.pc, st, job.container);
         job.senders.push(sd); job.trackList.push(st); job.srcTracks.push(tr);
         if (isStageJob(job.key)) stageSenders.add(sd); else lowSenders.add(sd);
