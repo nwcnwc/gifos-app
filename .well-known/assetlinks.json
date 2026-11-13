@@ -1,0 +1,4 @@
+[{"relation":["delegate_permission/common.handle_all_urls"],
+  "target":{"namespace":"android_app","package_name":"app.gifos.meet",
+            "sha256_cert_fingerprints":["93:C4:38:84:C5:61:CA:E0:B6:9A:3E:EC:E0:C2:66:D6:F1:FF:EE:97:9B:CB:BF:4D:74:94:C9:B6:53:57:3C:FE",
+                                        "B8:C6:EF:4A:CA:0E:89:8E:1B:A7:A8:BE:C3:9B:4D:9D:8F:48:09:3B:F1:00:CE:1E:99:98:8E:B4:55:42:F1:5A"]}}]
