@@ -139,9 +139,10 @@ jobs:
           fi
           printf '/* baked at deploy */\nwindow.GIFOS_BUILD = %s;\n' "$BUILD" > dist/js/build.js
           node -e "const f='dist/version.json',j=JSON.parse(require('fs').readFileSync(f));j.edgeBuild=$BUILD;require('fs').writeFileSync(f,JSON.stringify(j,null,2)+'\n')"
-          # The meeting page loads its deferred scripts as one minified bundle with a source map
-          # (.github/scripts/bundle/bundle.mjs). Built after build.js is baked, so the bundle carries
-          # the build number, and before the ?v= stamp below, which then covers the bundle too.
+          # The meeting page is published bundled and minified, with source maps: its scripts as a
+          # lobby bundle and a rest bundle, its inline scripts minified (.github/scripts/bundle/bundle.mjs).
+          # Built after build.js is baked, so the bundles carry the build number, and before the ?v=
+          # stamp below, which then covers the lobby bundle's tag too.
           npm ci --prefix .github/scripts/bundle --no-audit --no-fund
           node .github/scripts/bundle/bundle.mjs dist --sw
           SHA="${GITHUB_SHA::8}"

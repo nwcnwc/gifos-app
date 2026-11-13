@@ -3622,6 +3622,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     const statusPayload = () => { refreshNetTag(); const ft = myFtags(), c = linkCls(); return { kind: 'status', s: myStatus, conns: myConns(), nat: natWord(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined, nt: netTagNow || undefined, cls: c || undefined, ft: ft.length ? ft : undefined }; };
     function broadcastStatus(answer) {
+      if (!GifOS.meshConsts) return;   // a published lobby whose meeting scripts are still arriving: nobody to tell yet
       if (pulseHalt && !answer) return; // the halt models a throttled clock; an answer to a newcomer is driven by its frame, not the clock
       myStatus.at = Date.now(); // timestamped: out-of-order gossip can't roll me back
       if (BROADCAST && typeof bcHostStored === 'function' && bcHostStored()) {
@@ -16807,6 +16808,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const UNITS_BACKOFF = [0, 400, 1200, 2400];
     function unitsGate() {
       const g = window.__gifosLoadGate;
+      // A published page opened on the lobby runs its meeting scripts in two parts and the second is still on its
+      // way (g.pending, set by the page's loader): the join starts again the moment it has run.
+      if (g && g.pending) { if (!g.held) { g.held = true; g.pending.then(() => { g.held = false; startMesh(); }); } return true; }
       if (!g || g.state === 'ok' && !g.failed.length) return false;   // the normal page: nothing failed, no wait
       if (g.state === 'ok' || g.state === 'retry') {
         g.state = 'retry';
