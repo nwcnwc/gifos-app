@@ -1,0 +1,21 @@
+{
+  "boot.title.booting": "GifOS — Iniciando imagen…",
+  "boot.title.named": "{name} — imagen iniciada",
+  "boot.image.defaultName": "imagen de computadora",
+  "boot.banner.msg": "Imagen iniciada: {name} — esta computadora funciona en su propio espacio; tu pantalla de inicio real no se toca.",
+  "boot.reboot.label": "Reiniciar desde cero",
+  "boot.reboot.hint": "Borra los cambios de esta computadora iniciada y la vuelve a crear a partir de los bytes de la imagen",
+  "boot.reboot.confirm": "¿Reiniciar desde cero? Se descartan los cambios hechos dentro de esta computadora iniciada y se vuelve a crear a partir de la imagen.",
+  "boot.update.msg": "Hay una nueva versión de GifOS disponible.",
+  "boot.update.more": "Novedades",
+  "boot.update.action": "Actualizar ahora",
+  "boot.update.dismiss": "Descartar",
+  "boot.arrange.msg": "Organizando iconos",
+  "boot.arrange.hint": "— arrástralos a donde quieras",
+  "boot.arrange.done": "Listo",
+  "boot.failed.name": "error de inicio",
+  "boot.failed.noId": "No hay ningún id de imagen en la URL.",
+  "boot.failed.notFound": "No se encontró la imagen en la pantalla de inicio anfitriona (¿se eliminó?).",
+  "boot.failed.notImage": "No es una imagen de escritorio de GifOS.",
+  "boot.failed.error": "Error de inicio: {message}"
+}

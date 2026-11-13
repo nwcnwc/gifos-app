@@ -1,0 +1,21 @@
+{
+  "empty.title": "На этом компьютере нет камеры",
+  "empty.why": "Разрешите доступ к камере в браузере, затем включите её в чипе «Возможности» этого приложения в верхней части вкладки.",
+  "stage.tap": "Нажмите на затвор",
+  "mm.title": "Открыть My Media",
+  "mm.label": "🖼️ My Media",
+  "shutter.aria": "Открыть камеру",
+  "roll.title": "Недавние",
+  "name.video": "Видео · {when}",
+  "name.burst": "Серия · {when}",
+  "name.boomerang": "Бумеранг · {when}",
+  "name.slowmo": "Замедленное · {when}",
+  "name.timelapse": "Таймлапс · {when}",
+  "name.clip": "Клип · {when}",
+  "name.photo": "Фото · {when}",
+  "name.photoBare": "Фото",
+  "hint.inLibrary": "{name} — в My Media",
+  "hint.openToPlay": "Откройте My Media, чтобы воспроизвести этот клип.",
+  "hint.saved": "{n, plural, =1 {Сохранено в My Media} one {Сохранён # снимок в My Media} few {Сохранено # снимка в My Media} many {Сохранено # снимков в My Media} other {Сохранено # снимка в My Media}} — нажмите My Media внизу, чтобы посмотреть",
+  "toast.saved": "Сохранено в My Media"
+}

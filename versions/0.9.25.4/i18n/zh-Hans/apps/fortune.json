@@ -1,0 +1,17 @@
+{
+  "title": "幸运签",
+  "slip.initial": "打开一块幸运饼干，领取一点智慧……",
+  "crack": "打开饼干",
+  "keep": "收藏",
+  "kept.title": "已收藏的签语",
+  "foot": "签语来自 adviceslip.com，需要联网获取——点击顶部的“互联网”按钮即可查看或更改。本应用不会自己编造任何一句话。",
+  "asking": "正在向 adviceslip.com 请求……",
+  "from": "来自 adviceslip.com",
+  "quote": "“{text}”",
+  "err.nogifos": "请在 GifOS 中打开本应用以访问互联网。本应用不会自己编造签语。",
+  "err.denied": "本应用的联网功能已关闭。请点击顶部栏的“互联网”以允许访问 adviceslip.com。本应用不会自己编造签语。",
+  "err.timeout": "adviceslip.com 响应超时。请在网络状况好转后重试。",
+  "err.http": "adviceslip.com 返回了 {code}——不是签语。",
+  "err.empty": "这次的回复里没有内容。换一块饼干试试。",
+  "err.generic": "无法连接 adviceslip.com，你可能处于离线状态。本应用不会自己编造签语。"
+}

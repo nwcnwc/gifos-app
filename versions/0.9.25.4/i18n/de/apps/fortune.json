@@ -1,0 +1,17 @@
+{
+  "title": "Glückskeks",
+  "slip.initial": "Knacken Sie einen Keks für ein Stück Weisheit …",
+  "crack": "Keks knacken",
+  "keep": "Behalten",
+  "kept.title": "Behaltene Sprüche",
+  "foot": "Die Sprüche kommen über das Internet von adviceslip.com — tippen Sie oben auf „Internet“, um das einzusehen oder zu ändern. Diese App erfindet nie einen Satz.",
+  "asking": "adviceslip.com wird gefragt …",
+  "from": "von adviceslip.com",
+  "quote": "„{text}“",
+  "err.nogifos": "Öffnen Sie dies in GifOS, um ins Internet zu kommen. Diese App erfindet keinen Spruch.",
+  "err.denied": "Das Internet ist für diese App aus. Tippen Sie oben in der Leiste auf „Internet“, um adviceslip.com zu erlauben. Diese App erfindet keinen Spruch.",
+  "err.timeout": "adviceslip.com hat zu lange gebraucht. Versuchen Sie es mit einer besseren Verbindung erneut.",
+  "err.http": "adviceslip.com hat {code} geliefert — kein Spruch.",
+  "err.empty": "Diese Antwort enthielt keinen Rat. Versuchen Sie einen anderen Keks.",
+  "err.generic": "adviceslip.com war nicht erreichbar. Möglicherweise sind Sie offline. Diese App denkt sich keinen Spruch aus."
+}
