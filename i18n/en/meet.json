@@ -74,6 +74,8 @@
   "meet.setCcHelp": "What <b>your own device</b> listens for. The browser engine cannot guess: it uses this device's language unless you pick one here. Whisper finds the language by itself.",
   "meet.setCcBrowser": "Browser captions",
   "meet.setCcBrowserHelp": "Instant. One fixed language, picked above; two-word lines without punctuation on some devices. Your browser may send your voice to its maker's speech service (Chrome: Google).",
+  "meet.setCcPhone": "On this phone",
+  "meet.setCcPhoneHelp": "Your phone writes down what you say by itself: your voice never leaves the phone, and only the caption text goes to the meeting. A language used for the first time may ask to download its speech pack once.",
   "meet.setCcWhisper": "Whisper on this device",
   "meet.setCcWhisperHelp": "Any language, found by itself. Real sentences with punctuation. Your own names and words. Can translate everything to English. A sentence appears a few seconds after it is said; on a phone it is slower and uses battery. Your voice stays on this device; only the written words can go to the meeting.",
   "meet.setCcEnglish": "Translate everything to English",

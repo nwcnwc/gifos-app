@@ -31026,7 +31026,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     const WSP_WEAK = whisperWeakWhy(navigator);
     const whisperAllowed = () => !WSP_WEAK || lsGet(CC_WHISPER_ANYWAY_KEY) === '1';
-    const ccEngine = () => (lsGet(CC_ENGINE_KEY) === 'whisper' && whisperAllowed() ? 'whisper' : 'browser');
+    const ccEngine = () => (lsGet(CC_ENGINE_KEY) === 'whisper' && whisperAllowed() && !phoneCaptions() ? 'whisper' : 'browser');
     const WHISPER_APP_ID = 'offline-stt-whisper';
     const whisperReady = () => !!(window.GifOS && GifOS.providers && GifOS.providers.assigned('stt'));
     // Can this browser run Whisper at all: allowed on this device, and an
@@ -31725,7 +31725,22 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }).catch(() => {});
       }, 4000);
     }
+    // The GifOS Meet phone app runs captions on the phone itself (its own speech engine stands in for the
+    // browser's): that is the only engine, it sends no voice anywhere, and Whisper is not offered.
+    function phoneCaptions() {
+      try { return !!(window.GifosNative && GifosNative.info && GifosNative.info().captions === 'device'); } catch (e) { return false; }
+    }
+    function paintPhoneCaptions() {
+      const row = document.querySelector('input[name="ccengine"][value="browser"]');
+      const lab = row && row.closest('label'); if (!lab) return;
+      const b = lab.querySelector('b'), sm = lab.querySelector('small');
+      if (b) { b.removeAttribute('data-t'); b.textContent = uiText('setCcPhone', 'On this phone'); }
+      if (sm) { sm.removeAttribute('data-t'); sm.textContent = uiText('setCcPhoneHelp', 'Your phone writes down what you say by itself: your voice never leaves the phone, and only the caption text goes to the meeting. A language used for the first time may ask to download its speech pack once.'); }
+      for (const id of ['ccwhisper-st', 'ccwhisper-weak', 'ccwhisper', 'cctranslate-row', 'cctranslate-no', 'cctranslate-need']) { const e = document.getElementById(id); if (e) e.style.display = 'none'; }
+      const w = document.querySelector('input[name="ccengine"][value="whisper"]'), wl = w && w.closest('label'); if (wl) wl.style.display = 'none';
+    }
     function paintCcState() {
+      if (phoneCaptions()) { const r = document.querySelector('input[name="ccengine"][value="browser"]'); if (r) r.checked = true; paintPhoneCaptions(); return; }
       const radios = Array.from(document.querySelectorAll('input[name="ccengine"]')); if (!radios.length) return;
       const box = document.getElementById('ccwhisper'), state = document.getElementById('ccwhisper-state');
       const on = ccEngine() === 'whisper';
