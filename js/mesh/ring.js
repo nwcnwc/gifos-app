@@ -96,7 +96,7 @@
       if (!L8_52_OFF) { this.lineAtSeen.set(who, m.lineAt); if (this.lineAtSeen.size > 256) this.lineAtSeen.clear(); }
       // L8.46.4 THE DOOR IS THE SECOND WITNESS: one persistent stranger whose own HELLO stamps a lineage not mine is a merge seen for RELAY_TTL
       if (!L8_46_4_OFF && m.t === 'HELLO' && this.line >= 0 && m.line !== this.line && this.hasCoord && this.state === 3 && this.coord.pc === 0) {
-        if (this.lineStranger(who)) {
+        if (this.lineStranger(who) || this.l853Dated(who)) {   // L8.53.1 (mesh_island.inc)
           const was = this.mergeCalc(); this.lineStrAt = this.TICK; this.mergeTick = -1;
           if (!was) { this.trace('L8.46.4-DOOR', this.id, this.coord, 'stranger=%d line=%d', who, m.line); if (m.c7Min >= 0 && this.l42Own(m)) { this.l828Ring.set(who, [m.c7Min, this.TICK]); if (this.l828Ring.size > 256) this.l828Ring.clear(); } }
         }
