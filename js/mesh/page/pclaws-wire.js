@@ -476,9 +476,11 @@
       const sat = mk.s ? 1 : 0;
       const f = far(x); f.seated = sat; if (mk.tier) f.tier = mk.tier;
       const mt = mk.mt || null, ck = mk.ck || 0;
-      // A mark that names no frame is gated as a call, the widest honest dial: no word, or silence, skips nothing.
-      let l23r; offering = x; try { l23r = pc.l23Refused(me, x, mt || 'MEETACK', ck); } finally { offering = -1; }
-      if (l23r) { trace('PC-REFUSE', me, null, 'peer=%d why=l23', x); io.refuse(x, { busy: 0 }); return false; }
+      // A mark that names no frame is a bare dial, judged as the sim judges fabricDial: L23 reads no type (it used to be gated
+      // as a call here, which the sim never did: a healer's bare dial past the class budget was refused on the page only);
+      // L16.10.1 then holds a greeter's pc budget against every seated dialler it has no reason for, named frame or not.
+      let l23r, l1610r = false; offering = x; try { l23r = pc.l23Refused(me, x, mt, ck); if (!l23r && sat) l1610r = pc.l16101Refuse(me, x); } finally { offering = -1; }
+      if (l23r || l1610r) { trace('PC-REFUSE', me, null, 'peer=%d why=%s', x, l23r ? 'l23' : 'l1610'); io.refuse(x, { busy: 0 }); return false; }
       if (!(sat && seatedWord(x))) {   // L16: an outside knocker at my door (a seated dialler's own door count gated it at its end)
         refusing = x; refusedBusy = false; lv.L16_DEFER = false; let r;
         try { r = pc.l16Refuse(x, me, mt); } finally { refusing = -1; }

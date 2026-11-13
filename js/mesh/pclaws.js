@@ -146,6 +146,14 @@
       const h = l1610Held(x);
       return h.n - h.topo + Math.max(h.topo, 2 * C - 1) + 1 > pcBudget(x, E.PB_S1);
     }
+    // C++: mesh_link.inc:l16101Refuse   [end: the callee's own decision]
+    // L16.10.1: a greeter at its L16.10 pc budget takes no new pc from a seated seat it has no reason for.
+    function l16101Refuse(me, from) {
+      if (me < 0 || me >= lv.nextId || from < 0 || from >= lv.nextId || !alive[me]) return false;
+      if (!(seats[from].hasCoord && seats[from].state === 3)) return false;
+      if (!l1610Full(me) || l22Need(me, from)) return false;
+      trace('L16.10.1-REFUSED', me, null, 'from=%d', from); return true;
+    }
     // C++: mesh_link.inc:l16Refuse   [end: the greeter's own count; the sender's side reads only its own seat]
     // mt is the frame's type name (the C++ int MT).
     function l16Refuse(from, to, mt) {
@@ -528,6 +536,7 @@
       if (l18NoDial(me, x)) return;
       noteCall(me, x);
       if (l23Refused(x, me)) return;
+      if (l16101Refuse(x, me)) return;   /* L16.10.1 */
       l23MakeRoom(me, x);
       const L = ph().linkGet(me, x); if (L.state === LK_NONE || L.state === LK_CLOSED) { ph().startDial(me, x, L); L.dialHow = 1; } else if (L.state === LK_DIALING && ph().sigAsked) ph().sigAsked(L, me, x);
     }
@@ -538,6 +547,7 @@
       if (dialHeld(me, x)) return;
       noteCall(me, x);
       if (l23Refused(x, me)) return;
+      if (l16101Refuse(x, me)) return;   /* L16.10.1 */
       l23MakeRoom(me, x);
       const L = ph().linkGet(me, x); if (L.state === LK_NONE || L.state === LK_CLOSED) { ph().startDial(me, x, L); L.dialHow = 2; } else if (L.state === LK_DIALING) { L.view[lEnd(me, x)] = LK_DIALING; if (ph().sigAsked) ph().sigAsked(L, me, x); }
     }
@@ -738,7 +748,7 @@
       // the fabric halves, called by the tick (linkTick)
       l15Doors, l16Doors, l22Tick, l1611Guard,
       // the pieces the physics and the checks reach
-      pcBudget, l14Budget, l16Refuse, l23Refused, l23GreetSlot, l23GreetRelease, l23Full, l23Stretch, l1610Full, l1610Held, noteCall, dialHeld, doorEnd, doorHeard, l15Seated, l15Names, l15NamedBy,
+      pcBudget, l14Budget, l16Refuse, l16101Refuse, l23Refused, l23GreetSlot, l23GreetRelease, l23Full, l23Stretch, l1610Full, l1610Held, noteCall, dialHeld, doorEnd, doorHeard, l15Seated, l15Names, l15NamedBy,
       l16Mobile, l16MobBudget, l16Close, l22Release, l23CloseAlone, l23MakeRoom, l23Suspect, l23RealRole, l23Word, l23WordPeek, linkWhy, l22Beside, l18Role, l18Dist, l18NoDial,
       fabricDoorFrom, linkHeld, l221Sent,
     };
