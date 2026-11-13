@@ -103,6 +103,8 @@
     NEW_PEER_BEAT_GAP_MS: 2000,   // ms
     NEW_PEER_BEAT_MS: 400,   // ms
     NOSOCK_WIN: 40,   // tick
+    PACK_CLOCK_YIELD_PCT: 150,   // count
+    PACK_GAP_PCT: 50,   // count
     PACK_REST_MAX_MS: 1000,   // ms
     PASS_S: 14400,   // s
     PAYPAL_KEEP_MS: 21600000,   // ms

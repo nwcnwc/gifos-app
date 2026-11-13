@@ -561,11 +561,49 @@
     }
     // the paint clock's callback: paint, and capture a frame when the paint drew one (see start())
     let reqFrame = null;
-    function tick() { const d0 = drawn; paint(); if (reqFrame && drawn !== d0) reqFrame(); }
-    function paint() {
+    function tick(minMs) { const d0 = drawn; paint(minMs); if (reqFrame && drawn !== d0) reqFrame(); }
+    // A BLOCK IS PAINTED WHEN IT ARRIVES. A received block (another head's pack) moves at that head's paint rate, and a
+    // clock of the same rate that runs on its own reads it up to a whole period late (half a period on average), again
+    // at every head on the way up. So a block's new frame asks for a paint at once (requestVideoFrameCallback); the
+    // clock stays as the paint for faces, for hidden tabs and for engines without the callback. An arrival may paint
+    // no sooner than PACK_GAP_PCT of a period after the last paint, so several blocks out of step cannot run the
+    // paint (and the encoder behind it) past twice the packer's rate; the cost governor still rules.
+    const PACK_GAP_PCT = TM.PACK_GAP_PCT, PACK_CLOCK_YIELD_PCT = TM.PACK_CLOCK_YIELD_PCT;
+    const arriveOn = new WeakSet();
+    function arriveArm(el) {
+      if (!el || typeof el.requestVideoFrameCallback !== 'function' || arriveOn.has(el)) return;
+      arriveOn.add(el);
+      const cb = () => {
+        let held = false;
+        for (const t of tiles.values()) if (t.el === el && !(t.n === 1 && t.cols === 1)) { held = true; break; }
+        if (!held || !timer) { arriveOn.delete(el); return; }
+        try { el.requestVideoFrameCallback(cb); } catch (e) { arriveOn.delete(el); }
+        arrive();
+      };
+      try { el.requestVideoFrameCallback(cb); } catch (e) { arriveOn.delete(el); }
+    }
+    // An arrival inside the gap is painted when the gap ends, never dropped: a block that always lands just after
+    // the clock's paint would otherwise wait for the next clock paint every time. While arrivals paint, the clock
+    // yields (it paints only when no arrival has painted for PACK_CLOCK_YIELD_PCT of a period: a still block, a
+    // stalled feed), so a packer fed by one block paints once per block frame, in step with it.
+    let arriveAt = 0, arriveT = null;
+    function arrive() {
+      if (!timer || arriveT) return;
+      const gap = PACK_GAP_PCT * 10 / fps;
+      const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      const due = Math.max(last + packWait(cost, costAvg, gap) - now, 0);
+      const go = () => { arriveT = null; if (!timer) return; const d0 = drawn, s0 = still; tick(gap); if (drawn !== d0 || still !== s0) arriveAt = (typeof performance !== 'undefined' ? performance.now() : Date.now()); };
+      if (due <= 1) go(); else arriveT = setTimeout(go, due);
+    }
+    function paint(minMs) {
       if (!ctx || active === false) return;                                    // demand-gated: a composite nobody ships or shows isn't painted (static canvas ⇒ ~0 encode too)
       const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-      if (now - last < packWait(cost, costAvg, 1000 / fps)) { dropped++; return; } // GOVERNOR: drop, never queue
+      // THE CLOCK'S OWN TICK ALWAYS PAINTS. The clock fires once a period, and a tick that lands a hair early (the last
+      // paint started a few ms after its tick) must not be dropped: it was, about every third tick, so an 8 fps pack
+      // went out at 5 to 6 fps and every face in it was up to a quarter second old. A tick or an arrival paints once PACK_GAP_PCT
+      // of a period has passed since the last paint; the measured cost still stretches the wait on a slow device.
+      if (!(minMs > 0) && arriveAt && now - arriveAt < PACK_CLOCK_YIELD_PCT * 10 / fps) return;   // arrivals are painting: the clock yields
+      if (now - last < packWait(cost, costAvg, minMs > 0 ? minMs : PACK_GAP_PCT * 10 / fps)) { dropped++; return; } // GOVERNOR: drop, never queue
       const T = total();
       if (T === 0) {
         // EMPTY-PACKER LINGER: tiles flap transiently (a claim mid-failover, a
@@ -717,6 +755,7 @@
         if (ids && meta && Array.isArray(meta.hide) && meta.hide.length) { const h = new Set(meta.hide.map(String)); for (let j = 0; j < n; j++) if (ids[j] != null && h.has(String(ids[j]))) (hid || (hid = new Set())).add(j); }
         tiles.set(id, { ord, el, stream, streamId: sid, n, cols, lbl: (meta && meta.lbl) || null, fit: (meta && meta.fit) || null,
           dark: !!(meta && meta.dark), blur: Math.max(0, Math.min(2, (meta && meta.blur) | 0)), ids, hid });
+        if (!(n === 1 && cols === 1)) arriveArm(el);
       },
       // Update just the overlay (name/hand/talking) without touching the source
       // — called every tick from status/audio so the frame tracks speech live.
@@ -753,6 +792,8 @@
         if (timer) { timer(); timer = (opts.clock || bgClock())(tick, Math.max(20, 1000 / fps)); }
       },
       clearTiles() { for (const id of [...tiles.keys()]) pk.delTile(id); },
+      // Debug: each tile's source element and cells (a delay recorder watches the element a face is read from).
+      tilesForTest: () => [...tiles].map(([id, t]) => ({ id, ord: t.ord, el: t.el, n: t.n, cols: t.cols, ids: t.ids, hid: t.hid ? [...t.hid] : null })),
       ids: () => [...tiles.keys()],
       // STADIUM-FACES: the person in each cell 0..count()-1, in paint order
       // (tiles by ord, a block's faces in its own order; null = unknown).
@@ -783,6 +824,7 @@
         pk.stream = new MediaStream(aTrack ? [vTrack, aTrack] : [vTrack]);
         pk.track = vTrack;
         timer = (opts.clock || bgClock())(tick, Math.max(20, 1000 / fps)); // a Worker-backed tick while hidden: a relay seat's branch must not freeze when its tab does
+        for (const t of tiles.values()) if (!(t.n === 1 && t.cols === 1)) arriveArm(t.el);
         tick();
         return pk;
       },
@@ -811,6 +853,7 @@
       foldInfo() { return { src: fold && fold.info ? fold.info() : null, tiles: [...tiles].map(([id, t]) => ({ id, sid: t.streamId ? String(t.streamId).slice(0, 8) : null, at: (t.stream && t.stream.getAudioTracks) ? t.stream.getAudioTracks().map((x) => String(x.id).slice(0, 12) + ':' + x.readyState + (x.muted ? '/muted' : '')) : null, ids: t.ids ? t.ids.map((x) => String(x).slice(0, 8)) : null })) }; },
       stop() {
         if (timer) { timer(); timer = null; }
+        if (arriveT) { clearTimeout(arriveT); arriveT = null; }
         if (fold) fold.clear();
         tiles.clear();
         if (pk.track) { try { pk.track.stop(); } catch (e) {} }
