@@ -1452,6 +1452,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/meet-pack.js" defer></script>
   <script src="js/meet-layout.js" defer></script>
   <script src="js/meet-turn.js" defer></script>
+  <script src="js/meet-tunnel.js" defer></script>
   <script src="js/meet-status.js" defer></script>
   <script src="js/meet-progress.js" defer></script>
   <script src="js/gifos-sub.js" defer></script>
@@ -12127,6 +12128,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const isSevered = (pid) => (typeof isEjected === 'function' && isEjected(pid) === true) || (DEBUG_ON && window.__severed && (window.__severed.get(pid) || 0) > Date.now());
     const sendSig = (to, msg) => {
       if (isSevered(to)) return;
+      // A relayed link on the web path: the pair's connection is made with the tunnel end in this page, never with the far page.
+      if (turnWeb.size && (msg.kind === 'offer' || msg.kind === 'answer' || msg.kind === 'ice')) { const w = turnWeb.get(to); if (w) { w.signal(msg); return; } }
       // STATUS gossip — the every-few-seconds pulse that is nearly all of a
       // quiet meeting's traffic — prefers the pair's own DataChannel: the relay
       // is a hibernated Durable Object that is WOKEN AND BILLED for every frame
@@ -12428,6 +12431,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (p && p.wireHold) return p.wireHold.then(() => dcSend(p, msg)); // DEBUG lever, see renegotiate
       if (p && p.testTx) { p.testTx.push(msg); return Promise.resolve(); } // openLinkForTest: a channel that only records
       if (!p || !p.dc || p.dc.readyState !== 'open') return Promise.resolve();
+      if (turnWeb.size && (msg.k === 'roffer' || msg.k === 'ranswer' || msg.k === 'sig')) { const w = turnWeb.get(p.id); if (w && w.channel(msg)) return Promise.resolve(); }   // the web path negotiates with its end in this page
       const dc = p.dc;
       if (typeof clog === 'function') dcTally(msg); // DEBUG: what the channel bytes are
       return txm(() => net.seal(roomE2E, msg).then((env) =>
@@ -12875,6 +12879,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // neither the sweeper nor L22 closes it), NO video on an unvouched link, the room's link facts and subscribers'
     // vouches (room-wide gossip: tlink, tsub), and the paused-video note on the tiles a link holds back.
     let turnLinks = null, turnTimer = null, turnSubAt = 0;
+    const turnWeb = new Map();   // far peer id -> the web path end of that link (js/meet-tunnel.js)
     // The relay says it carries TURN handshakes (`tv` frames, the tvouch verb) on its joined frame. An older relay closes a
     // socket that sends an unlisted type, so without its word this page asks for no link and answers none.
     let relayTv = false;
@@ -12893,6 +12898,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function turnPcConfig(p) {
       const c = turnLinks && p ? turnLinks.config(p.id) : null;
       if (!c) return { iceServers: ICE_SERVERS, bundlePolicy: 'max-bundle' };
+      if (c.web) return { iceServers: [], bundlePolicy: 'max-bundle' };   // the web path: this pair's connection ends inside this page (js/meet-tunnel.js)
       return { iceServers: ICE_SERVERS.concat(c.iceServers), iceTransportPolicy: c.iceTransportPolicy, bundlePolicy: 'max-bundle' };
     }
     // NO VIDEO ON AN UNVOUCHED LINK. Every sender of a pc is gated here, whoever seats a track on it (the main senders,
@@ -13016,9 +13022,31 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         publish: (f) => { turnFactIn(myId, f); try { if (meshNode) meshNode.gossip({ a: 1, msg: { k: 'tlink', f } }); } catch (e) {} },
         facts: () => { const now = Date.now(), out = []; for (const [id, f] of turnFacts) { if (now - f.at > turnLinks.factStaleMs) { turnFacts.delete(id); continue; } out.push(f); } return out; },
         setTimer: (fn, ms) => setTimeout(fn, ms), clearTimer: (h) => clearTimeout(h),
+        // The web path (js/meet-tunnel.js): a link whose relay protocol finds no way out of this network runs over a WebSocket.
+        web: () => !!(GifOS.meetTunnel && GifOS.meetTunnel.supported()),
+        turnPath: (pid) => { const p = peers.get(pid), pc = p && p.pc; if (!pc) return { at: 0, relay: false }; let relayOnly = false; try { relayOnly = pc.getConfiguration().iceTransportPolicy === 'relay'; } catch (e) {} return { at: relayOnly ? (pc.__gatherAt || 0) : 0, relay: !!pc.__relayCand || !!p.connected }; },
+        webOpen: (pid, o) => turnWebOpen(pid, o),
+        webAuth: (pid, auth) => { const w = turnWeb.get(pid); if (w) w.auth(auth); },
+        webUp: (pid) => { const w = turnWeb.get(pid); return !!w && w.up(); },
+        webClose: (pid) => { const w = turnWeb.get(pid); if (w) { turnWeb.delete(pid); try { w.close('link closed'); } catch (e) {} } },
         log: turnNote,
         changed: (pid) => { const p = peers.get(pid); if (p) turnApplyVideo(p); turnPaint(); },
       };
+    }
+    // The web path's end for one link (js/meet-tunnel.js). It stands in for the far page in every negotiation of the
+    // pair's connection: first contact arrives as a signal, later offers and answers as channel messages.
+    function turnWebOpen(pid, o) {
+      const old = turnWeb.get(pid); if (old) { turnWeb.delete(pid); try { old.close('reopened'); } catch (e) {} }
+      const fresh = () => { const p = peers.get(pid); if (p && p.pc && !(p.dc && p.dc.readyState === 'open')) rebuildPc(p, 'turn-web'); };
+      const end = GifOS.meetTunnel.createEnd({
+        url: o.url, auth: o.auth, initiator: iInitiate(pid), log: turnNote,
+        audioContext: () => { try { return ensureAc(); } catch (e) { return null; } },
+        dial: () => { if (turnWeb.get(pid) !== end) return; fresh(); seatAskAt.set(pid, Date.now()); seatMark.set(pid, cleanMark({ s: 1 })); sendOffer(pid, false); },
+        toSignal: (sig) => { if (turnWeb.get(pid) !== end) return; if (sig.kind === 'offer') { fresh(); sig.ib = 1; sig.boot = 1; } onSignal(pid, sig); },
+        toChannel: (m) => { if (turnWeb.get(pid) !== end) return; const p = peers.get(pid); if (p && p.dc) onDc(p, p.dc, m); },
+        onState: () => { try { turnPaint(); } catch (e) {} },
+      });
+      turnWeb.set(pid, end);
     }
     function relaySendSealedOrDc(p, f) { if (p.dc && p.dc.readyState === 'open') { try { dcSend(p, f); return; } catch (e) {} } relaySendSealed(p.id, 'tv', f); }
     function turnNote(s) { if (typeof clog === 'function') clog(s); turnLog.push(Math.round(performance.now()) + ' ' + s); if (turnLog.length > 300) turnLog.splice(0, 100); }
@@ -13347,7 +13375,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         fsRefreshIfOpen();
         if (p.video && fsview.classList.contains('on')) p.video.addEventListener('resize', () => fsRefreshIfOpen(), { once: true });
       };
-      pc.onicecandidate = (ev) => { if (p.pc !== pc) return; noteIce(p.id, ev.candidate || null); };
+      pc.onicecandidate = (ev) => { if (p.pc !== pc) return; if (ev.candidate && / typ relay/.test(ev.candidate.candidate || '')) pc.__relayCand = true; noteIce(p.id, ev.candidate || null); };
+      pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'gathering' && !pc.__gatherAt) pc.__gatherAt = Date.now(); });   // when this connection began looking for its paths (the web path's clock)
       pc.oniceconnectionstatechange = () => {
         if (p.pc !== pc) return;
         const ice = pc.iceConnectionState;

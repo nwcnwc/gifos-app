@@ -30,6 +30,10 @@
  *     video for TURN_VOUCH_GRACE. A vouched link moves to the paid pool.
  *   - Heal away (TURN.7). When a friend reaches the far end without TURN the
  *     link closes and friend-hop carries the pair.
+ *   - The web path (TURN.18). A network that inspects web traffic lets no relay protocol out, only web-shaped
+ *     traffic. A client end whose connection finds no path to its relay server within TURN_WEB_WAIT says so, and the
+ *     link runs over a WebSocket to the same server instead (js/meet-tunnel.js), on the same credentials and under
+ *     the same rules (no video unvouched, the pool's rate). Tried only after the relay protocol itself has failed.
  *   - Off the join path (TURN.10). Credentials are asked for only by seated
  *     pages, after joining. An error, a refusal (free-off, room-limit) or no
  *     answer means no link: the parts wait as before and ask again later.
@@ -84,7 +88,22 @@
     if (!(ttl > 0)) return null;
     let renewAfter = Number(body.renewAfter);
     if (!(renewAfter >= 0 && renewAfter < ttl)) renewAfter = Math.floor(ttl * 0.9);
-    return { iceServers: servers, ttl, renewAfter, pool: body.pool || null, link: body.link || null };
+    // web: the hosts that carry this link over a WebSocket (TURN.18), when the service runs any. Optional.
+    const web = [];
+    if (Array.isArray(body.web)) for (const h of body.web.slice(0, 4)) if (typeof h === 'string' && WEB_HOST_RE.test(h)) web.push(h);
+    return { iceServers: servers, ttl, renewAfter, pool: body.pool || null, link: body.link || null, web };
+  }
+
+  // A web path host: a host name or address, with an optional port. Never a path, a scheme or a user part.
+  const WEB_HOST_RE = /^[A-Za-z0-9]([A-Za-z0-9.-]{0,62}[A-Za-z0-9])?(:[0-9]{1,5})?$/;
+  // webHostOk(h, mine) → may I connect to the web host the far end named? Only one my own grant lists, or a sibling of
+  // one (the same service domain: its last three labels). My credential is shown to that host, so nothing else passes.
+  function webHostOk(h, mine) {
+    if (typeof h !== 'string' || !WEB_HOST_RE.test(h) || !Array.isArray(mine) || !mine.length) return false;
+    if (mine.indexOf(h) >= 0) return true;
+    const dom = (x) => { const n = x.split(':')[0]; if (/^[0-9.]+$/.test(n)) return null; const p = n.split('.'); return p.length >= 4 ? p.slice(-3).join('.').toLowerCase() : null; };
+    const d = dom(h);
+    return !!d && mine.some((m) => dom(m) === d);
   }
 
   // hasTurnServer(list) → does a connection setting name any TURN server?
@@ -159,7 +178,7 @@
         failures = 0; refusal = null;
         const t = now();
         const had = !!grant;
-        grant = { iceServers: g.iceServers, issuedAt: t, renewAt: t + g.renewAfter * 1000, expiresAt: t + g.ttl * 1000, pool: g.pool || pool };
+        grant = { iceServers: g.iceServers, issuedAt: t, renewAt: t + g.renewAfter * 1000, expiresAt: t + g.ttl * 1000, pool: g.pool || pool, web: g.web || [] };
         everHad = true;
         schedule(grant.renewAt - t);
         if (tExpire != null) clearTimer(tExpire);
@@ -188,6 +207,7 @@
       start() { if (started || stopped) return; started = true; ask(); },
       stop() { stopped = true; clearNext(); if (tExpire != null) { clearTimer(tExpire); tExpire = null; } grant = null; },
       servers() { return grant && now() < grant.expiresAt ? grant.iceServers : null; },
+      web() { return grant && now() < grant.expiresAt ? grant.web : []; },
       state() {
         if (!started) return 'idle';
         if (grant && now() < grant.expiresAt) return 'ok';
@@ -236,6 +256,7 @@
   //   {k:'tv', q:'x', l}          the link is closed at my end
   //   {k:'tv', q:'h', l, t}       TURN.5.1: I sit in this meeting through a link of my own: ask my link's far end t instead
   //                               (an ask that carries f:1 is taken as it is: the asker could not use the answer)
+  //   {k:'tv', q:'w', l, t}       TURN.18: this link runs over the web path; t (the opener's word) names its host
   //   {k:'tv', q:'b', l, b}       busy: my end paused its video because the server throttles (b 1), or sends again (b 0)
   const TV_KEYS = 'k,q,l,d,b,e,n,m,t,f';
   const LINK_RE = /^[ls][0-9]{1,2}$/, DEV_RE = /^[A-Za-z0-9_.-]{1,16}$/, NONCE_RE = /^[0-9a-f]{18}$/, MAC_RE = /^[A-Za-z0-9_-]{43}$/, E36_RE = /^[0-9a-z]{1,11}$/;
@@ -244,6 +265,7 @@
     for (const k of Object.keys(f)) if (k !== '_' && TV_KEYS.split(',').indexOf(k) < 0) return false;
     if (f.q === 'a') return typeof f.d === 'string' && DEV_RE.test(f.d) && (f.b === 0 || f.b === 1) && (f.f === undefined || f.f === 1);
     if (f.q === 'h') return typeof f.t === 'string' && f.t.length > 0 && f.t.length <= 128;
+    if (f.q === 'w') return f.t === undefined || (typeof f.t === 'string' && WEB_HOST_RE.test(f.t));
     if (f.q === 'v') return typeof f.e === 'string' && E36_RE.test(f.e) && typeof f.n === 'string' && NONCE_RE.test(f.n) && typeof f.m === 'string' && MAC_RE.test(f.m);
     if (f.q === 'r' || f.q === 'x' || f.q === 'i') return true;
     if (f.q === 'p' || f.q === 'b') return f.b === 0 || f.b === 1;
@@ -374,6 +396,9 @@
   //   dial(pid); reset(pid) (a fresh pc on the new settings, no dial); restart(pid, l) (move a live pc onto new settings)
   //   keep(pid) (the seat holds this pc: an L28 keep); drop(pid, why) (the TURN pc ends)
   //   subs() → [{ key, tier }] verified subscribers present; ticket() → a meeting ticket for a paid ask, or null
+  //   web() → this browser can run the web path; turnPath(pid) → { at, relay }: when my connection of that pair began
+  //   looking for its relay path (0: not yet) and whether it found one; webOpen(pid, { url, auth }); webAuth(pid, auth);
+  //   webUp(pid) → the web path carries end to end; webClose(pid)                                    (TURN.18)
   //   publish(fact); facts() → [fact] (every link fact heard, mine included); log(line); changed(pid)
   function createLinks(io) {
     const K = meshConsts().consts, T = meshTurn();
@@ -385,6 +410,7 @@
     const RESEND_MS = K.TURN_DIAL * tick;                      // a handshake frame the relay lost is sent again
     const DIAL_BUDGET_MS = (K.TURN_DIAL + K.TURN_RETRY) * tick; // an ask that never came up is closed (TURN.8 dialfail)
     const GRACE_MS = K.TURN_VOUCH_GRACE * tick;                // TURN.12
+    const WEB_WAIT_MS = K.TURN_WEB_WAIT * tick;                // TURN.18: a client's connection that found no relay path this long takes the web path
     const FACT_EVERY_MS = K.TURN_DIAL * tick * 2;              // a link end restates its fact
     const FACT_STALE_MS = FACT_EVERY_MS * 4;
     const links = new Map();   // far pid → link
@@ -421,7 +447,8 @@
       const L = { far, l, opener, id: linkId(io.me(), far), farDev: null, farBlocked: false, client: false, mine: null, peer: null,
         state: 'ask', askAt: io.now(), sentAt: 0, vAskAt: 0, readyMe: false, readyFar: false, dialAt: 0, upAt: -1, downSince: 0,
         cred: null, paid: null, paidMe: false, paidFar: false, video: false, vouched: false, lostAt: -1, side: [],
-        thr: null, busy: false, farBusy: false, capAt: 0, upOkSince: 0, standbyAt: 0, standbyN: 0 };
+        thr: null, busy: false, farBusy: false, capAt: 0, upOkSince: 0, standbyAt: 0, standbyN: 0,
+        web: false, webHost: '', webOpen: false, webSaidAt: 0 };
       const s = io.seat(); if (s) L.side = s.view.filter((x) => x !== far).slice(0, SIDE_MAX);
       links.set(far, L);
       log('turn-link new ' + short(far) + ' ' + l + (opener ? ' opener' : ' target'));
@@ -432,6 +459,7 @@
       L.state = 'closed';
       try { if (L.cred) L.cred.stop(); } catch (e) {}
       try { if (L.paid) L.paid.stop(); } catch (e) {}
+      if (L.web) { try { io.webClose(L.far); } catch (e) {} }
       links.delete(L.far);
       if (!quiet) { try { io.sendTv(L.far, { k: 'tv', q: 'x', l: L.l }); } catch (e) {} }
       log('turn-link closed ' + short(L.far) + ' ' + why);
@@ -455,6 +483,19 @@
     function onCred(L, pool, k) {
       log('turn-cred ' + short(L.far) + ' ' + pool + ' ' + k);
       if (L.state === 'closed') return;
+      if (L.web) {   // TURN.18: the web path shows each fresh credential on its open socket; the connection itself never moves
+        if (pool === 'free') {
+          if (k === 'expired') { close(L, 'expired'); return; }
+          if (!L.readyMe) { L.readyMe = true; io.sendTv(L.far, { k: 'tv', q: 'r', l: L.l }); }
+          webGo(L);
+        } else {
+          const was = L.paidMe; L.paidMe = k !== 'expired';
+          if (L.paidMe) webAuth(L, 'paid');
+          if (was !== L.paidMe) io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: L.paidMe ? 1 : 0 });
+        }
+        io.changed(L.far);
+        return;
+      }
       if (pool === 'free') {
         if (k === 'ok' && !L.readyMe) { L.readyMe = true; io.reset(L.far); io.sendTv(L.far, { k: 'tv', q: 'r', l: L.l }); maybeDial(L); }
         else if (k === 'renewed' && !L.paidMe) io.restart(L.far, L.l);
@@ -473,7 +514,47 @@
       else { L.readyMe = true; io.sendTv(L.far, { k: 'tv', q: 'r', l: L.l }); maybeDial(L); }
       if (L.state === 'ask') L.state = 'swap';
     }
+    // ---- TURN.18: the web path -------------------------------------------------------------------------------------
+    // webStart: this link leaves the relay protocol for the web path. `mine`: my own connection found no relay path
+    // (the far end is told); else the far end said so. Both ends hold a credential on the web path (each shows its own
+    // to the server), so an end that was no client asks for one now. The opener names the host; the link's dial
+    // budget starts again, since the first one was spent learning that the relay protocol does not pass.
+    function webStart(L, mine, host) {
+      if (L.state === 'closed' || L.state === 'up') return;
+      if (!io.web || !io.web()) { if (!L.webNo) { L.webNo = true; log('turn-web ' + short(L.far) + ' not in this browser'); } return; }
+      if (!L.web) {
+        L.web = true; L.askAt = io.now();
+        log('turn-web ' + short(L.far) + (mine ? ' no relay path from here' : ' the far end has no relay path'));
+        if (!L.cred && L.mine && L.peer) { L.cred = credFor(L, 'free'); L.cred.start(); }
+        io.changed(L.far);
+      }
+      if (host && !L.opener && L.webHost !== host) { L.webHost = host; if (L.webOpen) { L.webOpen = false; try { io.webClose(L.far); } catch (e) {} } }
+      webGo(L);
+    }
+    function webSay(L) { L.webSaidAt = io.now(); const f = { k: 'tv', q: 'w', l: L.l }; if (L.opener && L.webHost) f.t = L.webHost; io.sendTv(L.far, f); }
+    function webCred(L) { const g = L.cred && L.cred.servers(); return g && g[0] ? { u: g[0].username, c: g[0].credential } : null; }
+    function webAuth(L, pool) {
+      if (!L.webOpen) return;
+      if (pool === 'paid') { const g = L.paid && L.paid.servers(); if (g && g[0]) io.webAuth(L.far, { pool: 'paid', u: g[0].username, c: g[0].credential }); return; }
+      const a = webCred(L); if (a) io.webAuth(L.far, a);
+    }
+    // webGo: open my end once I hold a credential and the host is known; a live end is shown each fresh credential.
+    function webGo(L) {
+      if (!L.web || L.state === 'closed') return;
+      const mine = (L.cred && L.cred.web()) || [];
+      if (L.opener && !L.webHost && mine.length) L.webHost = mine[0];
+      if (!L.webSaidAt || (L.opener && L.webHost && !L.webSaidHost)) { if (L.opener && L.webHost) L.webSaidHost = true; webSay(L); }
+      const a = webCred(L);
+      if (!a || !L.webHost) return;
+      if (L.webOpen) { webAuth(L, 'free'); if (L.paidMe) webAuth(L, 'paid'); return; }
+      if (!webHostOk(L.webHost, mine)) { if (L.webBad !== L.webHost) { L.webBad = L.webHost; log('turn-web ' + short(L.far) + ' host not of my service: ' + L.webHost); } return; }
+      L.webOpen = true; L.readyMe = true; L.state = 'dial'; if (!L.dialAt) L.dialAt = io.now();
+      log('turn-web open ' + short(L.far) + ' ' + L.webHost);
+      io.webOpen(L.far, { url: (io.webScheme ? io.webScheme() : 'wss://') + L.webHost + '/', auth: a });
+      if (L.paidMe) webAuth(L, 'paid');
+    }
     function maybeDial(L) {
+      if (L.web) return;
       if (!L.opener || !L.readyMe || !L.readyFar || L.dialAt) return;
       L.dialAt = io.now(); L.state = 'dial';
       log('turn-dial ' + short(L.far) + ' client=' + (L.client ? 1 : 0));
@@ -523,6 +604,7 @@
         return;
       }
       if (f.q === 'r') { L.readyFar = true; maybeDial(L); return; }
+      if (f.q === 'w') { webStart(L, false, f.t); if (L.opener && io.now() - L.webSaidAt > RESEND_MS / 2) webSay(L); return; }
       // the far end moved its pool: it moves the pc itself (its own restart, or 'i' to the offerer), so no restart here:
       // a second one per move restarted the path again mid-move and the video's estimate with it (vouched one-way, 2026-11-12)
       if (f.q === 'p') { L.paidFar = f.b === 1; io.changed(L.far); return; }
@@ -554,6 +636,7 @@
       if (now - L.offSince >= RESEND_MS && now - (L.offFixAt || 0) >= RESEND_MS) { L.offFixAt = now; log('turn-pool off its settings ' + short(L.far) + ' (rides ' + server + '): restart'); io.restart(L.far, L.l); }
     }
     function configOf(L) {
+      if (L.web) return { web: true };   // TURN.18: the pair's connection ends inside this page; nothing of it leaves the network
       const g = (L.paidMe && L.paid && L.paid.servers()) || (L.cred && L.cred.servers()) || [];
       return { iceServers: g, iceTransportPolicy: 'relay' };
     }
@@ -612,10 +695,11 @@
         if (yes) { L.vouched = true; L.lostAt = -1; }
         else if (L.vouched) { if (L.lostAt < 0) L.lostAt = now; if (now - L.lostAt >= GRACE_MS) { L.vouched = false; L.lostAt = -1; } }
         // A vouched client end moves to the paid pool; an end back on free leaves it.
-        if (L.vouched && L.client && !L.paid) { L.paid = credFor(L, 'paid'); L.paid.start(); }
-        if (!L.vouched && L.paid) { try { L.paid.stop(); } catch (e) {} L.paid = null; if (L.paidMe) { L.paidMe = false; io.restart(L.far, L.l); io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 0 }); } }
-        if (L.vouched && !L.client && !L.paidMe) { L.paidMe = true; io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 1 }); }
-        if (!L.vouched && !L.client && L.paidMe) { L.paidMe = false; io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 0 }); }
+        const cl = L.client || L.web;   // on the web path each end holds its own credential (TURN.18)
+        if (L.vouched && cl && !L.paid) { L.paid = credFor(L, 'paid'); L.paid.start(); }
+        if (!L.vouched && L.paid) { try { L.paid.stop(); } catch (e) {} L.paid = null; if (L.paidMe) { L.paidMe = false; if (!L.web) io.restart(L.far, L.l); io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 0 }); } }
+        if (L.vouched && !cl && !L.paidMe) { L.paidMe = true; io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 1 }); }
+        if (!L.vouched && !cl && L.paidMe) { L.paidMe = false; io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 0 }); }
         const v = L.vouched && L.paidMe && L.paidFar;
         if (v !== L.video) { L.video = v; L.ts = null; log('turn-video ' + short(L.far) + ' ' + (v ? 'on' : 'off')); if (!v) setThrottle(L, null); io.changed(L.far); }
       }
@@ -639,7 +723,10 @@
         if ((L.state === 'ask' || (L.state === 'swap' && !L.peer)) && now - L.sentAt > RESEND_MS && (L.opener || L.farDev)) sendAsk(L);
         // my vouch is re-made once half its life is gone (the far end does the same), so a renewal always has fresh ones
         if (L.farDev && now - L.vAskAt > RESEND_MS && (!L.mine || now - L.mine.at > (L.mine.e - L.mine.at) / 2)) askMine(L);
-        if (L.state !== 'up' && L.readyMe && L.readyFar && io.pcUp(L.far)) { L.state = 'up'; L.upAt = now; L.serial = now; log('turn-link up ' + short(L.far)); io.changed(L.far); }
+        // TURN.18: a client end's connection has looked for its relay path for TURN_WEB_WAIT and found none
+        if (L.state !== 'up' && !L.web && L.client && L.cred && io.turnPath) { const tp = io.turnPath(L.far); if (tp && tp.at > 0 && !tp.relay && now - tp.at >= WEB_WAIT_MS && L.cred.web().length) webStart(L, true); }
+        if (L.web && L.state !== 'up') { if (now - L.webSaidAt > RESEND_MS) webSay(L); webGo(L); }
+        if (L.state !== 'up' && L.readyMe && (L.readyFar || L.web) && io.pcUp(L.far) && (!L.web || io.webUp(L.far))) { L.state = 'up'; L.upAt = now; L.serial = now; log('turn-link up ' + short(L.far)); io.changed(L.far); }
         if (L.state === 'up' || L.state === 'dial') io.keep(L.far);
         if (L.state === 'up') {   // my side grows with the people I reach directly
           const s = io.seat();
@@ -709,9 +796,10 @@
       // The connection settings of this pair: null for a pair that is no TURN link, or whose end here is no client.
       config(pid) {
         const L = links.get(pid);
-        if (!L || !L.client) return null;
+        if (!L || (!L.client && !L.web)) return null;
         return configOf(L);
       },
+      web(pid) { const L = links.get(pid); return !!L && L.web; },   // TURN.18: this link runs over the web path
       factStaleMs: FACT_STALE_MS,
       holds(pid) { const L = links.get(pid); return !!L && L.state !== 'closed'; },
       isLink(pid) { const L = links.get(pid); return !!L && (L.state === 'up' || L.state === 'dial'); },
@@ -734,7 +822,7 @@
         for (const L of links.values()) out.push({ far: L.far, l: L.l, opener: L.opener, state: L.state, client: L.client, farDev: L.farDev, farBlocked: L.farBlocked,
           mine: !!L.mine, peer: !!L.peer, readyMe: L.readyMe, readyFar: L.readyFar, cred: L.cred ? L.cred.state() : null, credRefusal: L.cred ? L.cred.refusal() : null,
           pool: L.paidMe ? 'paid' : 'free', paid: L.paid ? L.paid.state() : null, paidRefusal: L.paid ? L.paid.refusal() : null, paidFar: L.paidFar,
-          vouched: L.vouched, video: L.video, upAt: L.upAt, side: L.side.length,
+          vouched: L.vouched, video: L.video, upAt: L.upAt, side: L.side.length, web: L.web, webHost: L.webHost || null,
           step: L.thr ? L.thr.step : null, cap: L.cap || null, busy: L.busy, farBusy: L.farBusy, standbyN: L.standbyN, lastSwitchMs: L.lastSwitchMs || null });
         return { links: out, head: Object.assign({}, head, { seen: Array.from(head.seen.entries()).map(([g, t]) => [short(g), t]) }) };
       },
@@ -744,7 +832,7 @@
   const api = {
     DEFAULT_WORKER, WORKER_KEY, FETCH_TIMEOUT_MS, RETRY_BASE_MS, RETRY_MAX_MS, SIDE_MAX, STANDBY_SWITCH_MS, THROTTLE_LOOK_MS, THROTTLE_UP_MS,
     THROTTLE_STEPS, throttlePlan, throttleNext, stepOf,
-    retryDelayMs, parseIce, hasTurnServer, workerBase, askIce, createCredentials,
+    retryDelayMs, parseIce, hasTurnServer, webHostOk, workerBase, askIce, createCredentials,
     vouchToken, vouchParts, tvOk, TV_KEYS, linkName, linkId, clientEnd, pausedBy, vouchPlan, createLinks,
   };
   GifOS.meetTurn = api;
