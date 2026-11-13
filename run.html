@@ -16464,8 +16464,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { tryBroadcastStage(); } catch (e) {}
       return true;
     }
-    // AN OPEN ROOM'S ADMIN BY SUBSCRIPTION (capture). In an open room the first person on the $5 or $10 plan may
-    // take the room: the meeting server checks their meeting ticket and an order signed by the ticket's key, and
+    // AN OPEN ROOM'S ADMIN BY SUBSCRIPTION (capture). In an open room the first person whose meeting right says capture
+    // (the $5 or $10 plan, or a pass signed with capture: GifOS.sub PERMISSIONS) may take the room: the meeting server checks their meeting ticket and an order signed by the ticket's key, and
     // the first one wins. While it lasts, that key signs the room's password and bans like an admin's (setpw is
     // refused unsigned; a password set is handed to everyone inside except the banned). The room keeps no door
     // limit. The captor's page re-presents each renewed ticket; when the ticket runs out (they left, or the
@@ -16485,8 +16485,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const fresh = capKey !== t.buyerKey;
       if (!fresh && t.exp * 1000 <= capExp) return;
       capKey = t.buyerKey; capExp = t.exp * 1000; capTk = c.tk;
-      let mine = false; try { mine = (await GifOS.meetSubs.captureKeys()).pubB64 === capKey; } catch (e) { mine = false; }
-      if (mine && !amCaptor) { amCaptor = true; try { admKeys = await GifOS.meetSubs.captureKeys(); } catch (e) {} }
+      let mine = false; try { mine = (await GifOS.meetSubs.captureKeys(capKey)).pubB64 === capKey; } catch (e) { mine = false; }
+      if (mine && !amCaptor) { amCaptor = true; try { admKeys = await GifOS.meetSubs.captureKeys(capKey); } catch (e) {} }
       if (!mine && amCaptor) { amCaptor = false; admKeys = null; }
       if (fresh) { if (typeof clog === 'function') clog('capture on key=' + capKey.slice(0, 8) + ' mine=' + mine + ' exp=' + capExp); pwLog('capture-on mine=' + mine); setStatus(mine ? uiText('capYou', 'You are this room\u2019s admin') : uiText('capOther', 'This room has an admin now')); }
       capPaint();
@@ -16518,7 +16518,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // The captor's page: say the ticket to the room table and, renewed, to the server.
     function capTicketPublish(renew) {
       if (!amCaptor || !capOn()) return;
-      GifOS.meetSubs.currentTicket(subsMeetId()).then((tk) => {
+      GifOS.meetSubs.captureCurrent(subsMeetId()).then((tk) => {
         if (!tk || !amCaptor) return;
         if (renew) relaySendObj({ t: 'capren', tk });
         const r = modTable['*'] = modTable['*'] || {};
@@ -36236,7 +36236,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!subsOn()) return;
       GifOS.meetSubs.joinMeeting(subsMeetId(), {
         onTicket: () => { if (amAdmin && hasAdminRoom()) subsPublishRoomPlan(); turnSubAt = 0; capTicketPublish(true); try { capPaint(); } catch (e) {} },   // a captor re-presents each renewed ticket   // a fresh ticket is a fresh TURN vouch: say it at the next step
-        onPass: () => { if (amAdmin && hasAdminRoom()) subsPublishRoomPlan(); turnSubAt = 0; },   // a four-hour pass bought, started or ended: the room's plan and the TURN vouch now
+        onPass: () => { if (amAdmin && hasAdminRoom()) subsPublishRoomPlan(); turnSubAt = 0; capTicketPublish(true); try { capPaint(); } catch (e) {} },   // a pass bought, started, renewed or ended: the room's plan, the TURN vouch and a pass captor's ticket now
         onLost: (why) => {
           if (why === 'moved') setStatus('Your subscription is now in use in another meeting.');
           if (why === 'pass-moved') setStatus(uiText('passMoved', 'Your four-hour pass is in use in another meeting now: it works in one meeting at a time.'));

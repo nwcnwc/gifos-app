@@ -9,9 +9,12 @@
  *                   the Broadcast app (Nathan 2026-11-13); the Meet app
  *                   never sells it or shows its files, but honors it with
  *                   everything Unlimited gives (APP_TIERS below).
- * The four-hour pass: $1, one PayPal order (never a subscription), the
- * Unlimited plan's meeting rights for four hours from purchase, except
- * capturing an open room (see "the four-hour pass" below).
+ * Passes: what a pass grants is SIGNED INTO IT as permissions (PASS_PERMS
+ * below: a plan, capture, one meeting at a time, past a full door) and a
+ * window that may never end. Every check reads those permissions, never the
+ * kind of pass; what is sold or minted is a preset of them (PASS_PRESETS):
+ * the $1 four-hour pass (the Unlimited plan's meeting rights for four hours,
+ * without capturing an open room) and the staff pass (no end, captures).
  * Free: open rooms without limit, voice (never video) across networks that
  * block direct connections, and admin rooms of up to 5 people (Nathan,
  * 2026-11-11). The free plan has a license too, signed without PayPal and
@@ -107,7 +110,45 @@
     let h = ''; for (let i = 0; i < 12; i++) h += d[i].toString(16).padStart(2, '0');
     return 'F-' + h;
   }
-  const FREE = Object.freeze({ tier: null, subscribed: false, adminRooms: false, openRooms: true, roomLimit: null, turnAudio: true, turnVideo: false, storage: null, bypassLimit: false, vouches: 0 });
+  const FREE = Object.freeze({ tier: null, subscribed: false, adminRooms: false, openRooms: true, roomLimit: null, turnAudio: true, turnVideo: false, storage: null, bypassLimit: false, vouches: 0, capture: false });
+
+  // ---- PERMISSIONS: what a meeting right grants (Nathan 2026-11-13) ------------
+  // A pass carries its permissions signed inside it (perms), and a pass's
+  // meeting ticket carries them on. A subscription's ticket reads as the
+  // permissions of its plan (permsOfTier). Every check reads these words and
+  // nothing else: the door (pastFull), the room's plan and the TURN vouch
+  // (plan), open-room capture on the relay and on every page (capture), the
+  // pay Worker's meeting record (oneMeeting). The vocabulary:
+  //   plan        a paid plan id (TIERS): the size of the holder's admin
+  //               rooms, TURN video and its vouch count
+  //   capture     may take an open room as its admin (OPEN-ROOM CAPTURE)
+  //   oneMeeting  true: one meeting at a time (the pay Worker keeps only the
+  //               key's newest meeting); false: any number of meetings at once
+  //   pastFull    let past any admin room's people line at the door
+  // A word outside this list makes the whole set unreadable (refused): a
+  // checker never guesses what an unknown permission grants.
+  const PERM_WORDS = Object.freeze(['plan', 'capture', 'oneMeeting', 'pastFull']);
+  const PERM_FLAGS = Object.freeze(['capture', 'oneMeeting', 'pastFull']);
+  // permsOk(p) -> a clean copy of p, or null.
+  function permsOk(p) {
+    if (!p || typeof p !== 'object' || Array.isArray(p)) return null;
+    for (const k of Object.keys(p)) if (PERM_WORDS.indexOf(k) < 0) return null;
+    if (!isPaid(p.plan)) return null;
+    for (const k of PERM_FLAGS) if (typeof p[k] !== 'boolean') return null;
+    return { plan: p.plan, capture: p.capture, oneMeeting: p.oneMeeting, pastFull: p.pastFull };
+  }
+  // A paid subscription's permissions: its plan; capture with no room limit
+  // ($5, $10; never $2: a captured room keeps no door line); one meeting at a
+  // time; past any full door. The free plan has none (null).
+  function permsOfTier(tier) {
+    if (!isPaid(tier)) return null;
+    return { plan: tier, capture: TIERS[tier].roomLimit == null, oneMeeting: true, pastFull: true };
+  }
+  // What a set of permissions grants, in the rights shape (rightsOf).
+  function permsRights(p, until) {
+    const x = TIERS[p.plan];
+    return { tier: x.id, subscribed: p.pastFull, adminRooms: x.adminRooms, openRooms: true, roomLimit: x.roomLimit, turnAudio: true, turnVideo: x.turnVideo, storage: null, bypassLimit: p.pastFull, until, vouches: x.vouches, capture: p.capture, oneMeeting: p.oneMeeting };
+  }
 
   const TEXT = {
     full: 'This meeting is full for people without a subscription. Any GifOS subscription lets you join.',
@@ -179,11 +220,11 @@
     return {
       tier: t.id, subscribed: true, adminRooms: t.adminRooms, openRooms: true,
       roomLimit: t.roomLimit, turnAudio: true, turnVideo: t.turnVideo,
-      storage: st, bypassLimit: true, until: lic.exp, vouches: t.vouches,
+      storage: st, bypassLimit: true, until: lic.exp, vouches: t.vouches, capture: permsOfTier(t.id).capture,
     };
   }
   function freeRights(until) {
-    return { tier: 'free', subscribed: false, adminRooms: true, openRooms: true, roomLimit: FREE_LIMIT, turnAudio: true, turnVideo: false, storage: null, bypassLimit: false, until, vouches: 0 };
+    return { tier: 'free', subscribed: false, adminRooms: true, openRooms: true, roomLimit: FREE_LIMIT, turnAudio: true, turnVideo: false, storage: null, bypassLimit: false, until, vouches: 0, capture: false };
   }
 
   // storageAfterLapse(untilS, nowS, keepDays) -> 'active' | 'kept' | 'delete-due'.
@@ -302,16 +343,15 @@
   function ticketRights(t) {
     if (!t || !isPlan(t.tier)) return Object.assign({}, FREE);
     if (t.tier === 'free') return freeRights(t.exp);
-    const x = TIERS[t.tier];
-    return { tier: x.id, subscribed: true, adminRooms: x.adminRooms, openRooms: true, roomLimit: x.roomLimit, turnAudio: true, turnVideo: x.turnVideo, storage: null, bypassLimit: true, until: t.exp, vouches: x.vouches };
+    return permsRights(t.perms ? t.perms : permsOfTier(t.tier), t.exp);
   }
 
   // The admin's room order: {ticket:{ticketJson,sig}, proof, at}. The ticket
   // must be current and for THIS room's meeting; proof signs
   // proofMessage(roomContext(room), 'at:' + at) with the ticket's key.
   // -> {tier, exp} or null.
-  // The ticket may be a four-hour pass's meeting ticket (passTicket): the
-  // room then reads Unlimited while that ticket lasts.
+  // The ticket may be a pass's meeting ticket (passTicket): the room then
+  // reads the pass's plan (perms.plan) while that ticket lasts.
   async function roomTierOf(order, room, verifyPay, verifyKey, nowS) {
     if (!order || typeof order !== 'object' || order.on === false) return null;
     if (!Number.isInteger(order.at)) return null;
@@ -321,63 +361,102 @@
     if (!ok) return null;
     return t.pass ? { tier: t.tier, exp: t.exp, pass: true } : { tier: t.tier, exp: t.exp };
   }
-  // ---- the four-hour pass ----------------------------------------------------
-  // $1, one PayPal order, never a subscription, and never anything but PayPal.
-  // For PASS_S from its start it grants the Unlimited plan's meeting rights
-  // (TURN video at that plan's vouch count, no people limit in the holder's
-  // admin rooms, past any room's line at the door) EXCEPT capturing an open
-  // room, which stays with the $5 and $10 subscriptions.
-  //
-  // The pass is a receipt the payment service signs once, when it captures
-  // the PayPal order: {v, kind:'pass4h', payeeId, via:'paypal-order', order,
-  // id, buyerKey, paid, start, end, plan}. paid is PayPal's capture time;
-  // start is paid, or the end of a pass the buyer already held (passes
-  // stack: passStart); end is start + PASS_S. Its signature is over
+  // ---- passes ----------------------------------------------------------------
+  // A PASS is a receipt the payment service signs once: {v, kind, payeeId,
+  // via, order, id, buyerKey, paid, start, end, plan, perms}. perms is what it
+  // grants (PERMISSIONS above), end its last second, or null: it never ends.
+  // paid is when it was paid (or minted); start is paid, or the end of a pass
+  // the buyer already held (passes stack: passStart). plan repeats perms.plan
+  // for readers older than permissions. Its signature is over
   // passMessage(passJson): a domain no other receipt, license or ticket is
-  // signed in, so only the PayPal pass path can make one.
+  // signed in, so only the pass paths of the payment service (and the staff
+  // minting script, with the same key) can make one.
   //
-  // ONE MEETING AT A TIME, as a subscription (Nathan 2026-11-12: "otherwise
-  // we've just created a very costly attack path"). The pass's key and its
-  // passes ride in the provider GIF, so a copy of that file is the whole
-  // credential. The pass itself is therefore never a meeting right: joining
-  // a meeting shows the held passes to the payment service, which keeps the
-  // pass key's newest meeting (one record per pass key, passRecId) and signs
-  // a PASS MEETING TICKET for it (passTicket below), renewed like a
+  // What we sell or mint is a PRESET of permissions and a length
+  // (PASS_PRESETS). A new product is a new row there and a price: no check
+  // anywhere changes. A pass signed before permissions existed (no perms)
+  // is the $1 four-hour pass, exactly as it was sold (legacyPerms).
+  //
+  // ONE MEETING AT A TIME, when perms.oneMeeting (Nathan 2026-11-12:
+  // "otherwise we've just created a very costly attack path"). The pass's
+  // key and its passes ride in the provider GIF, so a copy of that file is the
+  // whole credential. The pass itself is therefore never a meeting right:
+  // joining a meeting shows the held passes to the payment service, which
+  // keeps the pass key's newest meeting (one record per pass key, passRecId)
+  // and signs a PASS MEETING TICKET for it (passTicket below), renewed like a
   // subscription's; joining another meeting moves it there and the older
   // meeting's ticket stops renewing, so that meeting loses the pass within
-  // TICKET_S. Rooms, the door and the TURN Worker read only that ticket.
-  // Passes of one key stack into one window (passChain), so a buyer's
-  // stacked passes carry one meeting straight through.
-  const PASS_KIND = 'gifos-pass4h';
+  // TICKET_S. Rooms, the door and the TURN Worker read only that ticket, and
+  // the permissions it carries. Passes of one key and the same permissions
+  // stack into one window (passChain).
+  //
+  // REVOCATION. A pass that never ends must be stoppable: every pass has its
+  // own id, and the pay Worker, the relay and the TURN Worker each hold the
+  // list of revoked pass ids (the secret GIFOS_PASS_REVOKED: ids split by
+  // commas or spaces; a secret, so no deploy of the toml ever un-revokes).
+  // The pay Worker then signs no ticket for it (join and renew), the TURN
+  // Worker takes none, and the relay drops a capture held by it at the
+  // room's next event. Pages honor the relay's word at once and a ticket's
+  // own end within TICKET_S. docs/meet-security.md §PASS-PERMS.
+  const PASS_KIND = 'gifos-pass4h';                // every pass's kind (named for the first one sold)
   const PASS_TAG = 'gifos-pass4h-receipt';
-  // The pass's length: PASS_S in the timings table (js/timings.js, loaded
-  // before this file on a page and imported by every Worker that checks a
-  // pass). Without the table no pass checks out (fails closed).
+  // The four-hour pass's length: PASS_S in the timings table (js/timings.js,
+  // loaded before this file on a page and imported by every Worker that
+  // checks a pass). Without the table no four-hour pass checks out (fails closed).
   const passSeconds = () => { const t = GifOS.timings; return t && Number.isInteger(t.PASS_S) && t.PASS_S > 0 ? t.PASS_S : NaN; };
-  const PASS_PLAN = 'unlimited';                   // the plan a pass reads as, minus capture
-  const PASS_PRICE = '$1';
-  const PASS_VALUE = '1.00';                       // the PayPal order amount, USD
+  // THE PRESETS: every pass we sell or mint. seconds: its length (a function
+  // of the timings table), or null: it never ends. sold: offered to buyers.
+  const PASS_PRESETS = Object.freeze({
+    // $1, one PayPal order (or a store purchase): Unlimited for four hours,
+    // one meeting at a time, past any full door, but never capturing an open
+    // room (that stays with the $5 and $10 subscriptions).
+    pass4h: Object.freeze({ perms: Object.freeze({ plan: 'unlimited', capture: false, oneMeeting: true, pastFull: true }), seconds: passSeconds, price: '$1', value: '1.00', sold: true }),
+    // Ours, minted with the pay key for our own bots (scripts/mint-staff-pass.mjs):
+    // Unlimited, captures an open room, never ends; one meeting at a time
+    // (each bot holds its own pass, so sibling bots share a room freely).
+    staff: Object.freeze({ perms: Object.freeze({ plan: 'unlimited', capture: true, oneMeeting: true, pastFull: true }), seconds: () => null, sold: false }),
+  });
+  // presetPass(name, start) -> {plan, perms, end} for a new pass of that preset.
+  function presetPass(name, start) {
+    const pr = Object.prototype.hasOwnProperty.call(PASS_PRESETS, name) ? PASS_PRESETS[name] : null;
+    if (!pr) return null;
+    const len = pr.seconds();
+    if (len !== null && !(Number.isInteger(len) && len > 0)) return null;
+    const perms = Object.assign({}, pr.perms);
+    return { plan: perms.plan, perms, end: len === null ? null : start + len };
+  }
+  const legacyPerms = () => Object.assign({}, PASS_PRESETS.pass4h.perms);
+  const PASS_PLAN = PASS_PRESETS.pass4h.perms.plan;   // the four-hour pass's plan (sold as "Unlimited")
+  const PASS_PRICE = PASS_PRESETS.pass4h.price;
+  const PASS_VALUE = PASS_PRESETS.pass4h.value;     // the PayPal order amount, USD
   const ORDER_ID_RE = /^[A-Z0-9]{10,40}$/;         // a PayPal order id, or a store order in the same shape (storeOrderId)
-  // Where a pass was paid: PayPal on the web, the store's own purchase sheet
-  // in the GifOS Meet apps. The pass is the same receipt either way.
-  const PASS_VIAS = ['paypal-order', 'play', 'appstore'];
+  // Where a pass came from: PayPal on the web, the store's own purchase sheet
+  // in the GifOS Meet apps, or minted by us (mint). The pass is the same
+  // receipt either way.
+  const PASS_VIAS = ['paypal-order', 'play', 'appstore', 'mint'];
   const PASS_ID_RE = /^P4-[A-Z0-9]{10,40}$/;
   const passMessage = (passJson) => PASS_TAG + '\x00' + String(passJson);
-  // checkPass(o) -> o or null: the shape alone (no clock).
+  // passEnd(o): the pass's last second as a number (Infinity: never ends).
+  const passEnd = (o) => (o && o.end === null ? Infinity : o ? o.end : 0);
+  // checkPass(o) -> a clean copy of o, its perms read, or null: the shape alone (no clock).
+  // The copy's end is a number: Infinity for a pass that never ends.
   function checkPass(o) {
     if (!o || typeof o !== 'object') return null;
     if (o.v !== 1 || o.kind !== PASS_KIND || o.payeeId !== SELLER || PASS_VIAS.indexOf(o.via) < 0) return null;
-    if (o.plan !== PASS_PLAN) return null;
     if (typeof o.order !== 'string' || !ORDER_ID_RE.test(o.order) || o.id !== 'P4-' + o.order || !PASS_ID_RE.test(o.id)) return null;
     if (typeof o.buyerKey !== 'string' || !KEY_RE.test(o.buyerKey)) return null;
-    if (!intS(o.paid) || !intS(o.start) || !intS(o.end)) return null;
-    if (o.start < o.paid || o.end - o.start !== passSeconds()) return null;
-    return o;
+    if (!intS(o.paid) || !intS(o.start) || o.start < o.paid) return null;
+    const legacy = o.perms === undefined;
+    const perms = legacy ? legacyPerms() : permsOk(o.perms);
+    if (!perms || o.plan !== perms.plan) return null;
+    if (o.end === null) { if (legacy) return null; }
+    else if (!intS(o.end) || o.end <= o.start || (legacy && o.end - o.start !== passSeconds())) return null;
+    return Object.assign({}, o, { perms, end: passEnd(o) });
   }
   // passLive(o, nowS): the pass's window holds now (a start a little ahead
   // of this clock, within ASK_WINDOW_S as for any signed time, counts).
-  const passLive = (o, nowS) => !!o && o.start <= nowS + ASK_WINDOW_S && nowS < o.end;
-  // verifyPass({passJson, sig}, verify, nowS?) -> the pass or null. With
+  const passLive = (o, nowS) => !!o && o.start <= nowS + ASK_WINDOW_S && nowS < passEnd(o);
+  // verifyPass({passJson, sig}, verify, nowS?) -> the pass (checkPass's copy) or null. With
   // nowS it must also be live now; without, any well-signed pass (stacking
   // and the credentials view read passes not started yet, or run out).
   async function verifyPass(p, verify, nowS) {
@@ -397,19 +476,19 @@
   // starts when the latest of them ends, so no time is lost. held: the
   // buyer's own passes, already verified (same key), each paid BEFORE this
   // one (a pass paid later can never move an earlier one, so asking again
-  // for one order never yields a second window). -> the new pass's start.
+  // for one order never yields a second window). A pass that never ends is
+  // nothing to queue behind. -> the new pass's start.
   function passStart(paidS, held, buyerKey) {
     let start = paidS;
     for (const h of held || []) {
-      if (!h || h.buyerKey !== buyerKey || !(h.paid < paidS)) continue;
+      if (!h || h.buyerKey !== buyerKey || !(h.paid < paidS) || !Number.isFinite(passEnd(h))) continue;
       if (h.end > start) start = h.end;
     }
     return start;
   }
-  // What a live pass grants, as a ticket would: the Unlimited plan, minus capture.
+  // What a live pass grants, as a ticket would: its permissions.
   function passRights(o) {
-    const x = TIERS[PASS_PLAN];
-    return { tier: x.id, subscribed: true, adminRooms: true, openRooms: true, roomLimit: x.roomLimit, turnAudio: true, turnVideo: true, storage: null, bypassLimit: true, until: o.end, vouches: x.vouches, pass: true, capture: false };
+    return Object.assign(permsRights(permsOk(o && o.perms) || legacyPerms(), passEnd(o)), { pass: true });
   }
   // ---- the pass's meeting ticket ------------------------------------------------
   // passRecId(buyerKey) -> 'K-' + 24 hex: the payment service's one record
@@ -426,22 +505,33 @@
   // Signed over its own domain (never the bare JSON a receipt, license or
   // subscription ticket is signed over), so nothing else verifies as one.
   const passTicketMessage = (ticketJson) => PASS_TICKET_TAG + '\x00' + String(ticketJson);
+  const permsKey = (p) => PERM_WORDS.map((k) => String(p[k])).join('|');
   // passChain(passes, nowS) -> {live, until} or null. passes: verified
-  // passes of ONE key. The live one, and the window it opens: every pass
-  // that starts by the time the window ends carries it on (stacking).
+  // passes of ONE key. The live one (the most it grants, then the latest
+  // end), and the window it opens: every pass of the same permissions that
+  // starts by the time the window ends carries it on (stacking). A pass
+  // granting something else takes over at a new join. until: Infinity when
+  // the window never ends.
   function passChain(passes, nowS) {
     const list = (passes || []).filter(Boolean).slice().sort((a, b) => a.start - b.start);
-    const live = list.filter((o) => passLive(o, nowS)).sort((a, b) => b.end - a.end)[0];
+    const better = (a, b) => (rank(passRights(b)) - rank(passRights(a))) || (passEnd(b) > passEnd(a) ? 1 : passEnd(b) < passEnd(a) ? -1 : 0);
+    const live = list.filter((o) => passLive(o, nowS)).sort(better)[0];
     if (!live) return null;
-    let until = live.end;
-    for (const o of list) if (o.buyerKey === live.buyerKey && o.start <= until && o.end > until) until = o.end;
+    const k = permsKey(live.perms);
+    let until = passEnd(live);
+    for (const o of list) if (o.buyerKey === live.buyerKey && permsKey(o.perms) === k && o.start <= until && passEnd(o) > until) until = passEnd(o);
     return { live, until };
   }
   // checkPassTicket(o, nowS, meeting) -> o or null: {v, kind, payeeId, plan,
-  // buyerKey (the pass key), subId (passRecId of it), meeting, gen, issued, exp}.
+  // perms, pid (the pass's id), buyerKey (the pass key), subId (passRecId of
+  // it), meeting, gen, issued, exp}. A ticket signed before permissions (no
+  // perms) is the four-hour pass's.
   function checkPassTicket(o, nowS, meeting) {
     if (!o || typeof o !== 'object') return null;
-    if (o.v !== 1 || o.kind !== PASS_TICKET_KIND || o.payeeId !== SELLER || o.plan !== PASS_PLAN) return null;
+    if (o.v !== 1 || o.kind !== PASS_TICKET_KIND || o.payeeId !== SELLER) return null;
+    const perms = o.perms === undefined ? legacyPerms() : permsOk(o.perms);
+    if (!perms || o.plan !== perms.plan) return null;
+    if (o.pid !== undefined && (typeof o.pid !== 'string' || !PASS_ID_RE.test(o.pid))) return null;
     if (typeof o.buyerKey !== 'string' || !KEY_RE.test(o.buyerKey)) return null;
     if (typeof o.subId !== 'string' || !PASS_REC_RE.test(o.subId)) return null;
     if (typeof o.meeting !== 'string' || !MEETING_RE.test(o.meeting)) return null;
@@ -449,7 +539,7 @@
     if (!intS(o.gen) || o.gen < 1 || !intS(o.issued) || !intS(o.exp)) return null;
     if (o.exp <= o.issued || o.exp - o.issued > TICKET_S + 60) return null;
     if (!(nowS < o.exp) || o.issued > nowS + ASK_WINDOW_S) return null;
-    return o;
+    return Object.assign({}, o, { perms });
   }
   // verifyPassTicket({ticketJson, sig}, verify, nowS, meeting) -> the ticket or null.
   async function verifyPassTicket(t, verify, nowS, meeting) {
@@ -464,18 +554,45 @@
     if (o && o.subId !== (await passRecId(o.buyerKey))) return null;
     return o;
   }
+  // The permissions a pass ticket says it carries, unchecked (a page reading
+  // its OWN ticket, fresh from the payment service), or null.
+  function passTicketPerms(ticketJson) {
+    let o; try { o = JSON.parse(String(ticketJson)); } catch (e) { return null; }
+    if (!o || o.kind !== PASS_TICKET_KIND) return null;
+    return o.perms === undefined ? legacyPerms() : permsOk(o.perms);
+  }
   // A pass ticket as a meeting right: the shape the door, the room's plan and
   // the TURN Worker read from a ticket. subId (the pass key's record) keys
   // the TURN Worker's per-customer count: stacked passes count as one.
-  const passTicketAsTicket = (o) => ({ tier: PASS_PLAN, buyerKey: o.buyerKey, subId: o.subId, meeting: o.meeting, gen: o.gen, exp: o.exp, pass: true });
+  const passTicketAsTicket = (o) => ({ tier: o.perms.plan, buyerKey: o.buyerKey, subId: o.subId, meeting: o.meeting, gen: o.gen, exp: o.exp, pass: true, pid: o.pid || null, perms: o.perms });
   const isPassTicket = (r) => { if (!r || typeof r.ticketJson !== 'string') return false; try { return JSON.parse(r.ticketJson).kind === PASS_TICKET_KIND; } catch (e) { return false; } };
   // A meeting right carried where a ticket rides (room order, door answer,
-  // TURN ask): a ticket for this meeting, or a pass's meeting ticket for it.
-  // A bare pass is NOT one: it names no meeting. -> ticket-shaped or null.
+  // TURN ask, capture): a subscription's ticket for this meeting, or a pass's
+  // meeting ticket for it, each with the permissions it grants (perms; null
+  // for the free plan). A bare pass is NOT one: it names no meeting.
+  // -> ticket-shaped or null.
   async function meetingRight(r, verify, nowS, meeting) {
     if (!r || typeof r !== 'object' || typeof r.passJson === 'string') return null;
     if (isPassTicket(r)) { const o = await verifyPassTicket(r, verify, nowS, meeting); return o ? passTicketAsTicket(o) : null; }
-    return verifyTicket(r, verify, nowS, meeting);
+    const t = await verifyTicket(r, verify, nowS, meeting);
+    return t ? Object.assign({}, t, { perms: permsOfTier(t.tier) }) : null;
+  }
+  // REVOKED PASSES: revokedSet(text) -> a Set of pass ids from the secret's
+  // text (commas or spaces between ids; anything else is ignored).
+  function revokedSet(text) {
+    const out = new Set();
+    for (const w of String(text || '').split(/[\s,]+/)) if (PASS_ID_RE.test(w)) out.add(w);
+    return out;
+  }
+  // A meeting right that a revoked pass stands behind (only passes are revoked here).
+  const rightRevoked = (t, revoked) => !!(t && t.pid && revoked && revoked.has(t.pid));
+  // captureRight(tk, verify, nowS, meeting, revoked?) -> the meeting right that
+  // may take this open room, or null: a current right for THIS meeting whose
+  // permissions say capture, from no revoked pass. The relay and every page
+  // read it the same way.
+  async function captureRight(tk, verify, nowS, meeting, revoked) {
+    const t = await meetingRight(tk, verify, nowS, meeting);
+    return t && t.perms && t.perms.capture && !rightRevoked(t, revoked) ? t : null;
   }
   // bestRights(list) -> the best of several rights held at once (a
   // subscription's, a pass's): the larger room wins, then the larger vouch
@@ -484,7 +601,7 @@
   function rank(r) {
     if (!r || !r.tier) return 0;
     const room = r.roomLimit == null ? 1e6 : r.roomLimit;
-    return room * 1000 + (r.vouches || 0) * 2 + (r.pass ? 0 : 1);
+    return room * 1000 + (r.vouches || 0) * 2 + (r.capture ? 1 : 0);
   }
   function bestRights(list) {
     let best = null;
@@ -499,14 +616,14 @@
     const v = admission({ adminRoom: o.adminRoom, roomTier: o.roomTier, listLength: o.count, hold: o.hold, entrant: { isAdmin: false, rights: FREE } });
     return v.admit || v.wait ? 'let-in' : 'ask';
   }
-  // The knocker's answer to the door's challenge: a current ticket for THIS
-  // room's meeting, on a PAID plan (a free ticket is no way past a line), and
-  // the ticket key's signature over the door's nonce.
-  // A live four-hour pass is let in as a subscriber is (Nathan 2026-11-12).
+  // The knocker's answer to the door's challenge: a current meeting right for
+  // THIS room's meeting whose permissions say pastFull (every paid plan; a
+  // free ticket is no way past a line; a pass as its perms say), and the
+  // ticket key's signature over the door's nonce.
   async function doorProofOk(shown, room, nonce, verifyPay, verifyKey, nowS) {
     if (!shown || typeof shown !== 'object') return null;
     const t = await meetingRight(shown.ticket, verifyPay, nowS, await meetingTag(room));
-    if (!t || !isPaid(t.tier)) return null;
+    if (!t || !t.perms || !t.perms.pastFull) return null;
     return (await verifyProof(t, doorContext(room), nonce, shown.proof, verifyKey)) ? t : null;
   }
 
@@ -707,9 +824,10 @@
     checkLicense, verifyLicense, rightsOf, storageAfterLapse, proofMessage, verifyProof, askMessage, askFresh,
     roomLimitFor, admission, enabled, roomContext, doorContext, roomTierOf, doorVerdict, doorProofOk,
     TICKET_KIND, TICKET_S, RENEW_EVERY_S, meetingTag, checkTicket, verifyTicket, ticketRights,
-    PASS_KIND, passSeconds, PASS_PLAN, PASS_PRICE, PASS_VALUE, ORDER_ID_RE, PASS_ID_RE, passMessage, checkPass, passLive, verifyPass,
+    PASS_KIND, passSeconds, PASS_PLAN, PASS_PRICE, PASS_VALUE, ORDER_ID_RE, PASS_ID_RE, passMessage, checkPass, passLive, passEnd, verifyPass,
     passStart, passRights, meetingRight, bestRights,
-    PASS_TICKET_KIND, PASS_REC_RE, passRecId, passTicketMessage, passChain, checkPassTicket, verifyPassTicket, isPassTicket,
+    PERM_WORDS, permsOk, permsOfTier, permsRights, PASS_PRESETS, presetPass, revokedSet, rightRevoked, captureRight,
+    PASS_TICKET_KIND, PASS_REC_RE, passRecId, passTicketMessage, passChain, checkPassTicket, verifyPassTicket, isPassTicket, passTicketPerms,
     WALLET_KIND, walletOk,
     CRED_KIND, credentialOk, credentialFiles, credentialFromFiles, walletFromFiles,
     PASS_VIAS, STORE_IDS, storeProduct, storeSku, tipPlan, tipSingle, tipOneSheet, storeSubId, storeOrderId, accountUuid,
