@@ -12257,6 +12257,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function doorPaceOk(to) {
       const now = Date.now(), p = peers.get(to);
       if (p && (p.connected || (p.dc && p.dc.readyState === 'open'))) { doorPace.delete(to); return true; }
+      // The far end of a TURN link I hold is no unanswered door: it has answered the link's handshake over the relay and
+      // waits for this dial, on a new way with the link's settings. My entry knock at the same greeter a second before
+      // stood in this memory, and with four doors unanswered (every greeter of the other office) the link's first offer
+      // was dropped unsent: the pc sat in have-local-offer until the link's dial budget ran out (34 s) and the next try
+      // came a TURN_RETRY later. A link's dials are bounded by its own budget and retry clock (js/meet-turn.js).
+      if (turnLinks && turnLinks.holds(to)) { doorPace.delete(to); return true; }
       const e = doorPace.get(to);
       if (!e) { doorPace.set(to, { wait: 5000, at: now }); return true; }
       let waiting = 0;
@@ -13041,13 +13047,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         sendTv: (pid, f) => { const p = peers.get(pid); if (p && p.dc && p.dc.readyState === 'open') { try { dcSend(p, f); return; } catch (e) {} } relaySendSealed(pid, 'tv', f); },
         askVouch: (dev, l) => relaySendObj({ t: 'tvouch', to: dev, l }),
         ask: GifOS.meetTurn.askIce(window.fetch.bind(window)),
-        // A link's dial is no door redial: the far end has just answered the link's handshake over the relay and waits for
-        // this offer (or this ask), on a new way with the link's settings. The door pace (doorPaceOk) remembers my entry
-        // knock at the same greeter a second before, and with four doors unanswered (every greeter of the other office)
-        // it dropped the link's first offer unsent: the pc sat in have-local-offer until the link's dial budget ran out
-        // (34 s) and the next try came a TURN_RETRY later. Both ends forget the pace when their end is ready.
-        dial: (pid) => { doorPace.delete(pid); seatAskAt.set(pid, Date.now()); seatMark.set(pid, cleanMark({ s: 1 })); seatDial(pid); },
-        reset: (pid) => { doorPace.delete(pid); const p = peers.get(pid); if (p && p.pc && !p.connected) rebuildPc(p, 'turn-settings'); },
+        dial: (pid) => { seatAskAt.set(pid, Date.now()); seatMark.set(pid, cleanMark({ s: 1 })); seatDial(pid); },
+        reset: (pid) => { const p = peers.get(pid); if (p && p.pc && !p.connected) rebuildPc(p, 'turn-settings'); },
         // my end of the pair's pc takes its current settings now (no restart): the next move's candidates come from them
         settings: (pid) => { const p = peers.get(pid); if (!p || !p.pc) return; try { p.pc.setConfiguration(turnPcConfig(p)); } catch (e) { turnNote('turn-setconf ' + String(e).slice(0, 60)); } },
         // no offer of this pc is being made or waiting for its answer
