@@ -1,0 +1,66 @@
+{
+  "about": "On-device captions: the speech engines and models a phone runs in its own browser. Every file is pinned by SHA-256; the page fetches it from the GifOS model host at <base>/<key> and checks every byte. src/member name the published upstream file the copy was taken from.",
+  "version": 1,
+  "base": "https://models.gifos.app",
+  "runtimes": {
+    "online": {
+      "about": "sherpa-onnx 1.12.36 WebAssembly, SIMD, single thread: streaming transducer and CTC models",
+      "js": "sherpa-onnx-wasm-main-asr.js",
+      "upstreamJs": { "sha256": "aea1d28be4beeab40e2a99fa3f5f520280f0923fa3c24221e032c7bce3d3354b", "member": "sherpa-onnx-wasm-simd-v1.12.36-en-asr-zipformer/sherpa-onnx-wasm-main-asr.js" },
+      "wasm": { "name": "sherpa-onnx-wasm-main-asr.wasm", "key": "sherpa-onnx-1.12.36/55059484b84bc2f50579c981a1d3b6bf9d4a15b179a5ba79f40a38d72c10790b/sherpa-onnx-wasm-main-asr.wasm", "sha256": "55059484b84bc2f50579c981a1d3b6bf9d4a15b179a5ba79f40a38d72c10790b", "bytes": 11186321, "contentType": "application/wasm",
+        "src": "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.37/sherpa-onnx-wasm-simd-v1.12.36-en-asr-zipformer.tar.bz2", "member": "sherpa-onnx-wasm-simd-v1.12.36-en-asr-zipformer/sherpa-onnx-wasm-main-asr.wasm" }
+    },
+    "offline": {
+      "about": "sherpa-onnx 1.12.36 WebAssembly, SIMD, single thread: whole-clip models (Moonshine)",
+      "js": "sherpa-onnx-wasm-main-vad-asr.js",
+      "upstreamJs": { "sha256": "555c28c28d1ebb603048ce6e51662a52bdfc0a1d35cfec72b20c6ce830cdcf51", "member": "sherpa-onnx-wasm-simd-1.12.36-vad-asr-moonshine-v2-tiny-en/sherpa-onnx-wasm-main-vad-asr.js" },
+      "wasm": { "name": "sherpa-onnx-wasm-main-vad-asr.wasm", "key": "sherpa-onnx-1.12.36/907845245be65897580efd03d2a1fe7dfea495c617d18fc08a1f605bd5956d31/sherpa-onnx-wasm-main-vad-asr.wasm", "sha256": "907845245be65897580efd03d2a1fe7dfea495c617d18fc08a1f605bd5956d31", "bytes": 11501458, "contentType": "application/wasm",
+        "src": "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.12.37/sherpa-onnx-wasm-simd-1.12.36-vad-asr-moonshine-v2-tiny-en.tar.bz2", "member": "sherpa-onnx-wasm-simd-1.12.36-vad-asr-moonshine-v2-tiny-en/sherpa-onnx-wasm-main-vad-asr.wasm" }
+    }
+  },
+  "api": { "js": "sherpa-onnx-asr.js", "sha256": "d51ae8e8b756ee5e53423ffada0c9702973f154f561aca7984fe0b12f4060178" },
+  "models": {
+    "moonshine-tiny-en": {
+      "about": "Moonshine v2 tiny, English, int8 (MIT)",
+      "runtime": "offline", "type": "moonshine2", "langs": ["en"], "case": "keep", "maxSeconds": 8,
+      "src": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-moonshine-tiny-en-quantized-2026-02-27.tar.bz2",
+      "files": [
+        { "as": "encoder.ort", "name": "encoder_model.ort", "member": "sherpa-onnx-moonshine-tiny-en-quantized-2026-02-27/encoder_model.ort", "sha256": "94e90a4654fc45cdfedb77c4c08e1739f48862998e58fada384b25118134f221", "bytes": 13281600 },
+        { "as": "decoder.ort", "name": "decoder_model_merged.ort", "member": "sherpa-onnx-moonshine-tiny-en-quantized-2026-02-27/decoder_model_merged.ort", "sha256": "cf524c4862d36e9e5ab032eddc73637efd822d70e868ac575cf1a46e1e4708a0", "bytes": 30412256 },
+        { "as": "tokens.txt", "name": "tokens.txt", "member": "sherpa-onnx-moonshine-tiny-en-quantized-2026-02-27/tokens.txt", "sha256": "2870d843e14c1e187bf1913a521562a63b53933814bd7f2145120468f494a049", "bytes": 549350 }
+      ]
+    },
+    "zipformer-en-20m": {
+      "about": "Streaming Zipformer transducer, English, 20M, int8 (Apache-2.0)",
+      "runtime": "online", "type": "transducer", "langs": ["en"], "case": "sentence",
+      "src": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17.tar.bz2",
+      "files": [
+        { "as": "encoder.onnx", "name": "encoder-epoch-99-avg-1.int8.onnx", "member": "sherpa-onnx-streaming-zipformer-en-20M-2023-02-17/encoder-epoch-99-avg-1.int8.onnx", "sha256": "3810755ce7c3ab26b42a8bcf39d191308fa27fb0f53358823ba46141d03b7eb3", "bytes": 42845182 },
+        { "as": "decoder.onnx", "name": "decoder-epoch-99-avg-1.onnx", "member": "sherpa-onnx-streaming-zipformer-en-20M-2023-02-17/decoder-epoch-99-avg-1.onnx", "sha256": "45a7f940ecfb53d89fa270ad11b88b961e53a317203eb24b1c8e95ed208b0f30", "bytes": 2092272 },
+        { "as": "joiner.onnx", "name": "joiner-epoch-99-avg-1.int8.onnx", "member": "sherpa-onnx-streaming-zipformer-en-20M-2023-02-17/joiner-epoch-99-avg-1.int8.onnx", "sha256": "e085d73b593cf9b0707f370dbd656d58327d3fe36d80d849202ef81df02cb01e", "bytes": 259572 },
+        { "as": "tokens.txt", "name": "tokens.txt", "member": "sherpa-onnx-streaming-zipformer-en-20M-2023-02-17/tokens.txt", "sha256": "49e3c2646595fd907228b3c6787069658f67b17377c60aeb8619c4551b2316fb", "bytes": 5048 }
+      ]
+    },
+    "zipformer-small-ru": {
+      "about": "Streaming Zipformer transducer, Russian, small, int8 (Apache-2.0)",
+      "runtime": "online", "type": "transducer", "langs": ["ru"], "case": "sentence",
+      "src": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-small-ru-vosk-int8-2025-08-16.tar.bz2",
+      "files": [
+        { "as": "encoder.onnx", "name": "encoder.int8.onnx", "member": "sherpa-onnx-streaming-zipformer-small-ru-vosk-int8-2025-08-16/encoder.int8.onnx", "sha256": "e0db705e94ec35d803b1df4f40cda23d064e1142977c80ab288430b109777a9d", "bytes": 26214060 },
+        { "as": "decoder.onnx", "name": "decoder.onnx", "member": "sherpa-onnx-streaming-zipformer-small-ru-vosk-int8-2025-08-16/decoder.onnx", "sha256": "89b3088a9e20e1ef7f2e85ce1a3478afe6a9c4ac57369cabcc4beb8e95328ea0", "bytes": 2093080 },
+        { "as": "joiner.onnx", "name": "joiner.int8.onnx", "member": "sherpa-onnx-streaming-zipformer-small-ru-vosk-int8-2025-08-16/joiner.int8.onnx", "sha256": "b55784b071ab7512eab4c7c44e4f5478284ef33c83562cc6a249b972515a31e5", "bytes": 259417 },
+        { "as": "tokens.txt", "name": "tokens.txt", "member": "sherpa-onnx-streaming-zipformer-small-ru-vosk-int8-2025-08-16/tokens.txt", "sha256": "93bbbc0bae6b78c0bbb743d4aa9fded3bb5ff3aac5f0200e3a769a5a05e0fdf6", "bytes": 6388 }
+      ]
+    },
+    "zipformer-small-ctc-zh": {
+      "about": "Streaming Zipformer CTC, Chinese, small, int8 (Apache-2.0)",
+      "runtime": "online", "type": "ctc", "langs": ["zh"], "case": "keep",
+      "src": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-small-ctc-zh-int8-2025-04-01.tar.bz2",
+      "files": [
+        { "as": "model.onnx", "name": "model.int8.onnx", "member": "sherpa-onnx-streaming-zipformer-small-ctc-zh-int8-2025-04-01/model.int8.onnx", "sha256": "68c9c943840f7d9cf3e8a4970ba50f404feb5277f611fa82b7e72267786fa84a", "bytes": 26342340 },
+        { "as": "tokens.txt", "name": "tokens.txt", "member": "sherpa-onnx-streaming-zipformer-small-ctc-zh-int8-2025-04-01/tokens.txt", "sha256": "6fed8c6c248516f38e7faa19404b57413e8ce259f1cbc1fa4aebc86eac32fdfd", "bytes": 13366 }
+      ]
+    }
+  },
+  "langs": { "en": "moonshine-tiny-en", "ru": "zipformer-small-ru", "zh": "zipformer-small-ctc-zh" }
+}

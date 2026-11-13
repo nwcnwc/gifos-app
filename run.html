@@ -1044,6 +1044,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             <p class="set-help" data-t="setCcHelp">What <b>your own device</b> listens for. The browser engine cannot guess: it uses this device's language unless you pick one here. Whisper finds the language by itself.</p>
           </div>
         </div>
+        <div id="cclocal-row" class="set-row" style="display:none">
+          <b data-t="setCcLocal">Captions on this phone</b>
+          <div class="set-ctl">
+            <p class="set-help" data-t="setCcLocalHelp">A speech model in your browser writes your captions. Your voice never leaves the phone; only the text goes to the meeting.</p>
+            <div id="cclocal-st" class="set-help" role="status"></div>
+          </div>
+        </div>
         <div id="ccengine-row" class="set-row">
           <b data-t="setCcEngine">Captions engine</b>
           <div class="set-ctl">
@@ -1494,6 +1501,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/meet-content.js" defer></script>
   <script src="js/meet-agenda.js" defer></script>
   <script src="js/camera-studio.js" defer></script>
+  <script src="js/gifos-ondevice.js" defer></script>
   <script>
   // THE ENGINE, read before anything else runs (a var, so early callers never
   // hit a TDZ). WebKit — Safari, and the Playwright WebKit shell under any UA
@@ -30990,6 +30998,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         try { if (sel.value) localStorage.setItem(CC_LANG_KEY, sel.value); else localStorage.removeItem(CC_LANG_KEY); } catch (e) {}
         trLangLearned = ''; trHeardLang = ''; trHeardN = 0;
         if (speechRunning()) { stopSpeech(); syncSpeech(); }
+        if (ccEngine() === 'local') syncSpeech(); // the next clip opens this language's model
         capPublish();
         setStatus('Captions now listen for ' + ccLangLabel() + '.');
       };
@@ -31026,7 +31035,117 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     const WSP_WEAK = whisperWeakWhy(navigator);
     const whisperAllowed = () => !WSP_WEAK || lsGet(CC_WHISPER_ANYWAY_KEY) === '1';
-    const ccEngine = () => (lsGet(CC_ENGINE_KEY) === 'whisper' && whisperAllowed() ? 'whisper' : 'browser');
+    // ON-DEVICE CAPTIONS ON A PHONE. A phone writes its own captions with a
+    // speech model that runs in this browser (GifOS.ondevice, a Web Worker):
+    // the voice never leaves the phone. It is the only engine on a phone: the
+    // browser's speech service, which sends the voice to its maker, is never
+    // started there, and Whisper is not offered. A phone that cannot run the
+    // model, or a language with no model yet, gets no captions from this page
+    // and is told so. Clips are cut and queued exactly as for Whisper, and the
+    // lines go to the room the same way.
+    const CC_ON_PHONE = mobileDevice(navigator);
+    const ccEngine = () => (CC_ON_PHONE ? 'local' : (lsGet(CC_ENGINE_KEY) === 'whisper' && whisperAllowed() ? 'whisper' : 'browser'));
+    const ccLocal = { eng: null, opening: null, lang: '', state: '', loaded: 0, total: 0, cached: false, err: '', step: -1, said: '' };
+    let ccLocalWhyV = null;
+    // '' when this phone can run the model, else why not (the module's answer,
+    // or 'missing' while its script is not there).
+    function ccLocalWhy() {
+      if (ccLocalWhyV !== null) return ccLocalWhyV;
+      if (!(window.GifOS && GifOS.ondevice)) return 'missing';
+      ccLocalWhyV = GifOS.ondevice.unsupported(navigator);
+      return ccLocalWhyV;
+    }
+    function ccLocalLang() { const v = lsGet(CC_LANG_KEY); return (v && v !== 'auto') ? v : (navigator.language || 'en-US'); }
+    const ccLocalShort = (l) => String(l || '').toLowerCase().split(/[-_]/)[0];
+    const ccMB = (n) => Math.max(1, Math.round((n || 0) / 1e6));
+    // The first download says how far it has got, in steps of a tenth, and
+    // once more when the model is ready. A cached model says nothing.
+    function ccLocalSay(done) {
+      if (ccLocal.cached) return;
+      if (done) { setStatus(uiText('stCcLocalReady', 'Captions are ready. They run on this phone.'), 6000); paintCcLocal(); return; }
+      const step = ccLocal.total ? Math.floor(10 * ccLocal.loaded / ccLocal.total) : 0;
+      if (step === ccLocal.step) return;
+      ccLocal.step = step;
+      setStatus(uiText('stCcLocalLoading', 'Getting captions ready on this phone: {pct}% of {mb} MB, once.').replace('{pct}', String(step * 10)).replace('{mb}', String(ccMB(ccLocal.total))), 8000);
+      paintCcLocal();
+    }
+    function ccLocalClose() {
+      const e = ccLocal.eng;
+      ccLocal.eng = null; ccLocal.opening = null;
+      if (ccLocal.state === 'ready' || ccLocal.state === 'loading') ccLocal.state = '';
+      if (e) { try { e.close(); } catch (x) {} }
+    }
+    // The engine for the language captions listen for: the one already open,
+    // the one being opened, or a new one (the first time: a download).
+    function ccLocalOpen() {
+      const lang = ccLocalLang(), short = ccLocalShort(lang);
+      if (ccLocal.eng && ccLocal.lang === short) return Promise.resolve(ccLocal.eng);
+      if (ccLocal.opening && ccLocal.lang === short) return ccLocal.opening;
+      ccLocalClose();
+      Object.assign(ccLocal, { lang: short, state: 'loading', err: '', loaded: 0, total: 0, cached: false, step: -1 });
+      const p = GifOS.ondevice.open(lang, { onProgress: (x) => { if (ccLocal.opening !== p) return; ccLocal.loaded = x.loaded; ccLocal.total = x.total; ccLocal.cached = !!x.cached; ccLocalSay(false); } });
+      ccLocal.opening = p;
+      p.then((eng) => {
+        if (ccLocal.opening !== p) { try { eng.close(); } catch (x) {} return; }
+        ccLocal.opening = null; ccLocal.eng = eng; ccLocal.state = 'ready'; ccLocal.cached = !!eng.cached;
+        if (clog) clog('cc local ready', eng.model, eng.loadMs, eng.cached);
+        ccLocalSay(true);
+      }, (e) => {
+        if (ccLocal.opening !== p) return;
+        const m = String((e && e.message) || e);
+        ccLocal.opening = null;
+        ccLocal.state = /no on-device model/.test(m) ? 'nolang' : 'failed';
+        ccLocal.err = m;
+        if (clog) clog('cc local failed', m.slice(0, 160));
+        try { syncSpeech(); } catch (x) {}
+      });
+      return p;
+    }
+    // Why this phone writes no captions right now ('' when it can).
+    function ccLocalBlocked() {
+      if (ccLocalWhy()) return uiText('stCcLocalNoDevice', 'Captions aren’t available on this phone: its browser can’t run the speech model.');
+      if (ccLocal.state === 'nolang') return uiText('stCcLocalNoLang', 'Captions aren’t available in {lang} on this phone yet.').replace('{lang}', ccLangLabel());
+      if (ccLocal.state === 'failed') return uiText('stCcLocalFailed', 'Captions couldn’t load their speech model. They try again the next time your microphone turns on.');
+      return '';
+    }
+    // syncSpeech on a phone: my own voice through the on-device engine, or a
+    // plain "not available" and nothing else.
+    function ccLocalSync(mine) {
+      if (speechRunning()) stopSpeech();
+      ccMixStop();
+      if (!mine && ccLocal.state === 'failed') ccLocal.state = ''; // the next time the mic turns on tries again
+      if (ccLocal.state === 'nolang' && ccLocal.lang !== ccLocalShort(ccLocalLang())) ccLocal.state = ''; // a new language is worth a try
+      const blocked = mine ? ccLocalBlocked() : '';
+      if (mine && !blocked && !wspPaused) {
+        if (!ccLocal.eng && !ccLocal.opening) ccLocalOpen().catch(() => {});
+        if (!wspCaps.has('me')) startWhisper();
+        if (myStatus && myStatus.ccst === 'paused') delete myStatus.ccst;
+      } else {
+        wspStop('me');
+        if (blocked) {
+          if (myStatus && myStatus.ccst !== 'paused') {
+            myStatus.ccst = 'paused';
+            try { if (typeof updateTile === 'function') updateTile('me'); } catch (e) {}
+            try { if (typeof broadcastStatus === 'function') broadcastStatus(); } catch (e) {}
+          }
+          if (ccLocal.said !== blocked) { ccLocal.said = blocked; setStatus(blocked, 12000); }
+        }
+      }
+      wspSync();
+      capPublish();
+      paintTxMark();
+      paintCcLocal();
+    }
+    function paintCcLocal() {
+      const el = document.getElementById('cclocal-st'); if (!el) return;
+      const blocked = ccLocalBlocked();
+      let t;
+      if (blocked) t = '⚠ ' + blocked;
+      else if (ccLocal.state === 'ready') t = '✅ ' + uiText('setCcLocalReady', 'Ready. The speech model is on this phone.');
+      else if (ccLocal.state === 'loading') t = ccLocal.cached ? uiText('setCcLocalStarting', 'Starting the speech model…') : uiText('setCcLocalLoading', 'Downloading the speech model: {pct}% of {mb} MB, once.').replace('{pct}', String(ccLocal.total ? Math.floor(100 * ccLocal.loaded / ccLocal.total) : 0)).replace('{mb}', String(ccMB(ccLocal.total)));
+      else t = uiText('setCcLocalIdle', 'The speech model downloads once from gifos.app the first time your microphone is on, and stays on this phone.');
+      if (el.textContent !== t) el.textContent = t;
+    }
     const WHISPER_APP_ID = 'offline-stt-whisper';
     const whisperReady = () => !!(window.GifOS && GifOS.providers && GifOS.providers.assigned('stt'));
     // Can this browser run Whisper at all: allowed on this device, and an
@@ -31203,7 +31322,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function wspStart(id) {
       if (wspCaps.has(id)) return true;
-      if (!whisperReady()) { if (id === 'me') setStatus(uiText('stWhisperCaptionsNeedTheOffline', 'Whisper captions need the Offline Captions app — open Settings → Captions to install it. Browser captions are on meanwhile.'), 10000); return false; }
+      if (ccEngine() !== 'local' && !whisperReady()) { if (id === 'me') setStatus(uiText('stWhisperCaptionsNeedTheOffline', 'Whisper captions need the Offline Captions app — open Settings → Captions to install it. Browser captions are on meanwhile.'), 10000); return false; }
       if (!ensureAc()) return false;
       let src = null, own = false, stageSid = null;
       const stg = wspStageStream(id);
@@ -31390,6 +31509,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // GifOS is in scope on the page and in the queue lift; window.GifOS is the
     // same object when this runs in the browser.
     function wspRelease() {
+      if (ccEngine() === 'local') ccLocalClose();
       try {
         const g = (typeof GifOS !== 'undefined' && GifOS && GifOS.providers) ? GifOS
           : (typeof window === 'object' && window && window.GifOS && window.GifOS.providers ? window.GifOS : null);
@@ -31430,7 +31550,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const cap0 = wspCaps.get(job.id);
       const cont = (!told && cap0 && cap0.lastLang && cap0.lastEnd && job.at - cap0.lastEnd < 1500) ? cap0.lastLang : '';
       const contFound = told ? !!job.found : !!(cont && cap0.lastFound); // the inherited language was found by Whisper on the previous cut
-      const lang = told || cont || (job.id === 'me' ? (lsGet(CC_LANG_KEY) || 'auto') : 'auto');
+      const local = ccEngine() === 'local';
+      const lang = local ? ccLocalShort(ccLocalLang()) : (told || cont || (job.id === 'me' ? (lsGet(CC_LANG_KEY) || 'auto') : 'auto'));
       // Translating, my own voice is transcribed first while I send my captions
       // (the room's line goes out as soon as it would without translating),
       // and every other voice is translated.
@@ -31455,7 +31576,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (hardTimer) clearTimeout(hardTimer);
         // A device that runs Whisper only by override rests as long as the clip
         // took before the next one, so inference holds at most half its processor.
-        const rest = (typeof WSP_WEAK !== 'undefined' && WSP_WEAK) ? Math.min(10000, Date.now() - t0) : 0;
+        const rest = (typeof WSP_WEAK !== 'undefined' && WSP_WEAK && !local) ? Math.min(10000, Date.now() - t0) : 0;
         const go = () => {
           wspQ.busy = false;
           if (!wspQ.items.length && !wspPaused) {
@@ -31479,9 +31600,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // another machine. Any other address is ignored and the app answers.
       let url = '';
       try { url = wspLocalUrl(lsGet('gifos_cc_stt_url')); } catch (e) {}
-      const remote = !!url && typeof fetch === 'function';
+      const remote = !!url && typeof fetch === 'function' && !local;
       let pending;
-      if (remote) {
+      if (local) {
+        // On a phone: the on-device engine in this browser (opened, and the
+        // first time downloaded, on demand).
+        pending = ccLocalOpen().then((eng) => eng.transcribe(pcm)).then((r) => ({ text: r.text, language: lang }));
+      } else if (remote) {
         const ctrl = (typeof AbortController === 'function') ? new AbortController() : null;
         pending = fetch(url, {
           method: 'POST',
@@ -31576,6 +31701,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (done || abandoned) return;
         const msg = (e && e.message) || String(e);
         if (/PROVIDER_STOPPED|AbortError/.test(msg)) return; // unloaded on purpose
+        if (local) {
+          // The engine could not open (no model for the language, a failed
+          // download) or stopped: syncSpeech says why and stops the capture.
+          // There is nothing else to fall back to on a phone.
+          if (clog) clog('cc local clip failed', msg.slice(0, 160));
+          if (ccLocal.state !== 'nolang') { ccLocalClose(); ccLocal.state = 'failed'; ccLocal.err = msg; }
+          try { syncSpeech(); } catch (x) {}
+          return;
+        }
         if (/NOT_CONFIGURED|PROVIDER_MISSING|PROVIDER_NOT_IN_FOLDER/.test(msg)) { wspProviderGone(); return; }
         // The model could not be downloaded (its host is down, or this device
         // is offline): browser captions take over for this meeting. The choice
@@ -31624,7 +31758,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function wspSync() {
       const want = new Set();
       const en = trEnOn;
-      const me = (capSend() || en) && ccEngine() === 'whisper' && whisperReady() && !myStatus.muted;
+      const me = (capSend() || en) && ((ccEngine() === 'whisper' && whisperReady()) || (ccEngine() === 'local' && !ccLocalBlocked())) && !myStatus.muted;
       if (!wspPaused && me) want.add('me');
       if (!wspPaused && (trWrites() || en) && ccEngine() === 'whisper' && whisperReady()) {
         const stagers = (typeof stageIds === 'function') ? stageIds() : [];
@@ -31670,6 +31804,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // The room ear follows the voices: it stops when the mix empties and
     // starts when a voice appears (syncSpeech decides on the mix's size).
     function earTick() {
+      if (ccEngine() === 'local') return;
       if (ccMix.dest) { ccMixSync(); if (!ccMix.ins.size) syncSpeech(); return; }
       if (trWrites() && !(ccEngine() === 'whisper' && whisperReady()) && !(speech && speech.input) && ccTrackInput() && ccMixVoices().size) syncSpeech();
     }
@@ -31726,6 +31861,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }, 4000);
     }
     function paintCcState() {
+      const lrow = document.getElementById('cclocal-row'), erow = document.getElementById('ccengine-row');
+      if (lrow) lrow.style.display = CC_ON_PHONE ? '' : 'none';
+      if (erow) erow.style.display = CC_ON_PHONE ? 'none' : '';
+      if (CC_ON_PHONE) { paintCcLocal(); return; }
       const radios = Array.from(document.querySelectorAll('input[name="ccengine"]')); if (!radios.length) return;
       const box = document.getElementById('ccwhisper'), state = document.getElementById('ccwhisper-state');
       const on = ccEngine() === 'whisper';
@@ -31882,6 +32021,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function paintWspChip() {
       const chip = document.getElementById('ccwsp-off'); if (!chip) return;
+      if (CC_ON_PHONE) { if (chip.style.display !== 'none') chip.style.display = 'none'; return; }
       if (!wspPaintSafe()) return;
       let show = false;
       if (myId && whisperChosen() && (capSend() || trWrites()) && !wspChipGone()) {
@@ -31906,7 +32046,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const now = Date.now();
       const late = wspTickAt ? now - wspTickAt - WSP_TICK_MS : 0;
       // A hidden tab's timers are throttled on purpose; that is not a stall.
-      if (document.visibilityState !== 'visible' || !(wspCaps.size || wspQ.busy)) { wspTickAt = document.visibilityState === 'visible' ? now : 0; wspStarved.length = 0; return; }
+      if (document.visibilityState !== 'visible' || !(wspCaps.size || wspQ.busy) || ccEngine() === 'local') { wspTickAt = document.visibilityState === 'visible' ? now : 0; wspStarved.length = 0; return; }
       wspTickAt = now;
       if (late < WSP_STARVE_MS) return;
       wspStarved = wspStarved.filter((t) => now - t < WSP_STARVE_WIN);
@@ -32040,7 +32180,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       for (const r of document.querySelectorAll('input[name="trmode"]')) r.checked = (r.value || '') === (mode || 'off') || (r.value === 'off' && !mode);
       const can = document.getElementById('ccsend-can');
       if (can) {
-        const ok = !(typeof browserCaptionsMissing === 'function' && browserCaptionsMissing()) || (ccEngine() === 'whisper' && whisperReady());
+        const ok = ccEngine() === 'local' ? !ccLocalBlocked() : (!(typeof browserCaptionsMissing === 'function' && browserCaptionsMissing()) || (ccEngine() === 'whisper' && whisperReady()));
         can.style.display = ok ? 'none' : '';
       }
     }
@@ -32204,6 +32344,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return v === 'auto' ? (navigator.language || 'en-US') : v;
     }
     function startSpeech(input) { // input: the room-ear mix; none = the raw microphone
+      if (ccEngine() === 'local') return false;
       if (speechGaveUp) return false;
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) { setStatus(uiText('stThisBrowserCannotWriteDown', 'This browser cannot write down what people say.')); return false; }
@@ -32316,6 +32457,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       paintWspChip(); // the way back shows the moment Whisper is chosen; the 250 ms tick keeps it in step
       const mine = capSend() && !myStatus.muted;
       const hearRoom = trWrites();
+      if (ccEngine() === 'local') { ccLocalSync(mine); return; }
       if ((mine || hearRoom) && ccEngine() === 'whisper' && !wspPaused && whisperReady()) {
         if (!mine || wspCaps.has('me') || startWhisper()) {
           if (speechRunning()) stopSpeech();
@@ -39922,7 +40064,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           headerCam: !!document.getElementById('showcam'),
         };
       },
-      whisperForTest: () => ({ engine: ccEngine(), live: !!wsp, ready: whisperReady(), queue: wspQ.items.length, sent: wspQ.sent, dropped: wspQ.dropped, rate: wsp ? wsp.rate : 0, captures: Array.from(wspCaps.keys()), writes: trWrites(), inFlight: !!wspQ.busy, behind: !!wspQ.behind, paused: !!wspPaused, lastLatencyMs: wspQ.lastLatencyMs || 0, model: wspModel() }),
+      whisperForTest: () => ({ local: { state: ccLocal.state, lang: ccLocal.lang, loaded: ccLocal.loaded, total: ccLocal.total, cached: !!ccLocal.cached, why: ccLocalWhy(), blocked: ccLocalBlocked(), model: ccLocal.eng ? ccLocal.eng.model : '', err: ccLocal.err }, engine: ccEngine(), live: !!wsp, ready: whisperReady(), queue: wspQ.items.length, sent: wspQ.sent, dropped: wspQ.dropped, rate: wsp ? wsp.rate : 0, captures: Array.from(wspCaps.keys()), writes: trWrites(), inFlight: !!wspQ.busy, behind: !!wspQ.behind, paused: !!wspPaused, lastLatencyMs: wspQ.lastLatencyMs || 0, model: wspModel() }),
       whisperFeedForTest: (f32, rate, forId) => { const w = wspCaps.get(forId || 'me'); if (!w) return false; wspEnqueue(w, [Float32Array.from(f32)], Date.now(), rate || 16000, true); return true; },
       ccViewOn: () => !!ccShow,
       ownVoice: () => ({ wanted: capSend() && !myStatus.muted, send: capSend(), muted: !!myStatus.muted }),

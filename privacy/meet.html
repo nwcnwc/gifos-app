@@ -93,11 +93,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       join every meeting muted with the camera off. The camera turns on only when you switch it on.</li>
       <li><b>Captions.</b> While your microphone is on, the meeting writes what you say down as captions, and only the
       caption text goes to the meeting (Settings → Captions turns sending off). A speech engine on your device makes the
-      text, chosen in Settings → Captions. <b>Browser captions</b>, the default and the only engine in the Android app,
+      text. <b>On a phone</b>, the meeting in your browser writes captions on the phone itself: a speech model runs inside
+      the browser and your voice never leaves the phone. The model is downloaded once from gifos.app and kept on the
+      phone. If the phone cannot run it, or there is no model for your language yet, the meeting says captions are not
+      available; it never sends your voice to a speech service instead. <b>On a computer</b> you choose the engine in
+      Settings → Captions. <b>Browser captions</b>, the default on computers and the only engine in the Android app,
       use your browser's or phone's own speech service, which may send your voice to its maker to turn it into text
       (Chrome and Android phones: Google; Safari and iPhone: Apple) under that company's privacy policy. GifOS never
       receives the audio. <b>Whisper</b> runs on your computer and sends your voice nowhere; its speech model is
-      downloaded once from gifos.app. It is not offered on phones.</li>
+      downloaded once from gifos.app.</li>
       <li><b>Recordings</b> are saved on your device. GifOS Meet does not upload them anywhere.</li>
       <li><b>Debug logs</b> stay on your device unless you export and send one yourself.</li>
     </ul>
