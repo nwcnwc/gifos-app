@@ -146,12 +146,19 @@
       const h = l1610Held(x);
       return h.n - h.topo + Math.max(h.topo, 2 * C - 1) + 1 > pcBudget(x, E.PB_S1);
     }
+    // C++: mesh_link.inc:l16101Full   [end]
+    function l16101Full(x) {
+      const v = seats[x]; if (!(v.hasCoord && v.state === 3)) return false;
+      if (v.coord.pc === 0) return l1610Full(x);
+      return l1610Held(x).n >= pcBudget(x, E.PB_CLASS) + pcBudget(x, E.PB_DOORS);
+    }
     // C++: mesh_link.inc:l16101Refuse   [end: the callee's own decision]
-    // L16.10.1: a greeter at its L16.10 pc budget takes no new pc from a seated seat it has no reason for.
+    // L16.10.1: a seat at its pc bound (a greeter: L16.10; any other seat: class budget + door cap) takes no new pc from a
+    // seated seat it has no reason for. The receiver enforces it whatever the offer names (meet-security §BEST).
     function l16101Refuse(me, from) {
       if (me < 0 || me >= lv.nextId || from < 0 || from >= lv.nextId || !alive[me]) return false;
       if (!(seats[from].hasCoord && seats[from].state === 3)) return false;
-      if (!l1610Full(me) || l22Need(me, from)) return false;
+      if (!l16101Full(me) || l22Need(me, from)) return false;
       trace('L16.10.1-REFUSED', me, null, 'from=%d', from); return true;
     }
     // C++: mesh_link.inc:l16Refuse   [end: the greeter's own count; the sender's side reads only its own seat]
