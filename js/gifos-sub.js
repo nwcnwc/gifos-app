@@ -397,7 +397,7 @@
   // The pay Worker then signs no ticket for it (join and renew), the TURN
   // Worker takes none, and the relay drops a capture held by it at the
   // room's next event. Pages honor the relay's word at once and a ticket's
-  // own end within TICKET_S. docs/meet-security.md §PASS-PERMS.
+  // own end within TICKET_S.
   const PASS_KIND = 'gifos-pass4h';                // every pass's kind (named for the first one sold)
   const PASS_TAG = 'gifos-pass4h-receipt';
   // The four-hour pass's length: PASS_S in the timings table (js/timings.js,
@@ -411,7 +411,7 @@
     // one meeting at a time, past any full door, but never capturing an open
     // room (that stays with the $5 and $10 subscriptions).
     pass4h: Object.freeze({ perms: Object.freeze({ plan: 'unlimited', capture: false, oneMeeting: true, pastFull: true }), seconds: passSeconds, price: '$1', value: '1.00', sold: true }),
-    // Ours, minted with the pay key for our own bots (scripts/mint-staff-pass.mjs):
+    // Ours, minted with the pay key for our own bots, never sold:
     // Unlimited, captures an open room, never ends; one meeting at a time
     // (several sessions of one pass in the SAME meeting all renew: sibling bots may share one pass).
     staff: Object.freeze({ perms: Object.freeze({ plan: 'unlimited', capture: true, oneMeeting: true, pastFull: true }), seconds: () => null, sold: false }),
