@@ -753,6 +753,8 @@
         if (timer) { timer(); timer = (opts.clock || bgClock())(tick, Math.max(20, 1000 / fps)); }
       },
       clearTiles() { for (const id of [...tiles.keys()]) pk.delTile(id); },
+      // WIP ONLY (latency probe; removed before landing)
+      tilesForTest: () => [...tiles].map(([id, t]) => ({ id, ord: t.ord, el: t.el, n: t.n, cols: t.cols, ids: t.ids, hid: t.hid ? [...t.hid] : null })),
       ids: () => [...tiles.keys()],
       // STADIUM-FACES: the person in each cell 0..count()-1, in paint order
       // (tiles by ord, a block's faces in its own order; null = unknown).
