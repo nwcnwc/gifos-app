@@ -12247,7 +12247,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return true;
     }
     function relayBootSend(to, msg) {
-      if (msg.kind === 'offer' && !doorPaceOk(to)) return;
+      if (msg.kind === 'offer' && !doorPaceOk(to)) { if (typeof clog === 'function') clog('relay: offer to ' + String(to).slice(0, 6) + ' held back (door pace)'); return; }
       if (msg.kind === 'offer' || msg.kind === 'answer') {
         const b = net.bootOf(msg.sdp, ++bootSeq);
         if (!b) { txStats.relayUnfit++; if (typeof clog === 'function') clog('relay: a description with media never leaves (' + msg.kind + ' to ' + String(to).slice(0, 6) + ')'); return; }
@@ -12272,7 +12272,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // relayName(pid): my name to a socketed member — the dial request ("I am
     // here, dial me": onRelayPeer dials back when it is the initiator and no
     // pair is live), and the name the locked-out line shows them.
-    function relayName(pid) { if (!doorPaceOk(pid)) return; return relaySendSealed(pid, 'name', { k: 'name', n: net.relayNameFit(myName()) }); }
+    function relayName(pid) { if (!doorPaceOk(pid)) { if (typeof clog === 'function') clog('relay: name to ' + String(pid).slice(0, 6) + ' held back (door pace)'); return; } return relaySendSealed(pid, 'name', { k: 'name', n: net.relayNameFit(myName()) }); }
     // onRelayPeer(from, ty, f): a relay frame of the law's shape, opened and
     // checked (relayFrameAllowed). Dispatch by its type.
     function onRelayPeer(from, ty, f) {
@@ -13020,8 +13020,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         sendTv: (pid, f) => { const p = peers.get(pid); if (p && p.dc && p.dc.readyState === 'open') { try { dcSend(p, f); return; } catch (e) {} } relaySendSealed(pid, 'tv', f); },
         askVouch: (dev, l) => relaySendObj({ t: 'tvouch', to: dev, l }),
         ask: GifOS.meetTurn.askIce(window.fetch.bind(window)),
-        dial: (pid) => { seatAskAt.set(pid, Date.now()); seatMark.set(pid, cleanMark({ s: 1 })); seatDial(pid); },
-        reset: (pid) => { const p = peers.get(pid); if (p && p.pc && !p.connected) rebuildPc(p, 'turn-settings'); },
+        // A link's dial is no door redial: the far end has just answered the link's handshake over the relay and waits for
+        // this offer (or this ask), on a new way with the link's settings. The door pace (doorPaceOk) remembers my entry
+        // knock at the same greeter a second before, and with four doors unanswered (every greeter of the other office)
+        // it dropped the link's first offer unsent: the pc sat in have-local-offer until the link's dial budget ran out
+        // (34 s) and the next try came a TURN_RETRY later. Both ends forget the pace when their end is ready.
+        dial: (pid) => { doorPace.delete(pid); seatAskAt.set(pid, Date.now()); seatMark.set(pid, cleanMark({ s: 1 })); seatDial(pid); },
+        reset: (pid) => { doorPace.delete(pid); const p = peers.get(pid); if (p && p.pc && !p.connected) rebuildPc(p, 'turn-settings'); },
         // my end of the pair's pc takes its current settings now (no restart): the next move's candidates come from them
         settings: (pid) => { const p = peers.get(pid); if (!p || !p.pc) return; try { p.pc.setConfiguration(turnPcConfig(p)); } catch (e) { turnNote('turn-setconf ' + String(e).slice(0, 60)); } },
         // no offer of this pc is being made or waiting for its answer
