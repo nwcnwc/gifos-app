@@ -23,6 +23,7 @@
       ["l13KnockAt", "i32"],   // int = -1000  (line 752)
       ["ctier", "u8"],   // uint8_t = 0  (line 752)
       ["merge", "bool"],   // bool = false  (line 752)
+      ["l1617At", "i32"],   // int = -1000  (line 752)
     ],
     DialBook: [   // C++: mesh.cpp:DialBook
       ["recs", "{i32:Rec}"],   // OMap<int,Rec>  (line 1109)
@@ -189,7 +190,7 @@
   };
   // Defaults that differ from the type's zero, per struct field.
   const STRUCT_DEF = {
-    XPub: { "state": 0, "hasCoord": false, "coord": {"pc":0,"r":0,"i":0}, "gateway": -1, "l13KnockAt": -1000, "ctier": 0, "merge": false },
+    XPub: { "state": 0, "hasCoord": false, "coord": {"pc":0,"r":0,"i":0}, "gateway": -1, "l13KnockAt": -1000, "ctier": 0, "merge": false, "l1617At": -1000 },
     Rec: { "fails": 0, "lastFailAt": -1, "goneAt": -1 },
     Bucket: { "tok": 0, "at": 0 },
     SoftSit: { "pingAt": -1, "replayed": false },
@@ -766,6 +767,7 @@
     ["l9SyncAt", "i32"],   // int = -1000  (line 1981)
     ["l9SyncTo", "{i32:i32}"],   // OMap<int,int>  (line 1982)
     ["l9LoneAt", "i32"],   // int = -1000  (line 1983)
+    ["l1617At", "i32"],   // int = -1000  (line 1983)
     ["mvWhy", "str"],   // const char* = "?"  (line 1984)
     ["l13Asked", "<i32>"],   // OSet<int>  (line 1985)
     ["l13AskedKnock", "i32"],   // int = -1000  (line 1985)
@@ -1355,6 +1357,7 @@
     l9GrowAt: -1000,
     l9SyncAt: -1000,
     l9LoneAt: -1000,
+    l1617At: -1000,
     mvWhy: "?",
     l13AskedKnock: -1000,
     l13HealK: 0,

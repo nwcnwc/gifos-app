@@ -126,6 +126,7 @@
     COMPACT_PERIOD: 90,   // C++: mesh.cpp:COMPACT_PERIOD  (LAW_COMPACT_PERIOD)
     COMPACT_SETTLE: 300,   // C++: mesh.cpp:COMPACT_SETTLE  (LAW_COMPACT_SETTLE)
     COMPACT_TTL: 30,   // C++: mesh.cpp:COMPACT_TTL  (LAW_COMPACT_TTL)
+    L16_17_DOOR: 10,   // C++: mesh.cpp:L16_17_DOOR  (LAW_L16_17_DOOR)
     L7_HOLD: 24,   // C++: mesh.cpp:L7_HOLD  (LAW_L7_HOLD)
     ASK_GAP: 2,   // C++: mesh.cpp:ASK_GAP  (LAW_ASK_GAP)
     L5_SETTLE: 16,   // C++: mesh.cpp:L5_SETTLE  (LAW_L5_SETTLE)

@@ -202,6 +202,7 @@
       this.f.fabricAdmitLog(k, id);   // V4 forensics
       this.trace('ADMIT', id, c, 'nc=%d site=%s tag=%d', nc, site, f.tag);
       this.l850Seated = true;   // L8.50: a founder that admits a seat is no ring of one
+      if (f.tag !== 1 && nc >= 0 && nc !== id && this.coord.pc !== 0) { this.l1617At = TICK; this.trace('L16.17-DOOR', id, c, 'nc=%d', nc); }   // L16.17: I stand at the door for the seat I place: its pc to me is signalled on the relay
       if (f.tag !== 1) this.l710Dial(c, nc);   // L7.10
       this.tlForget(k);   // the cell genuinely refills
       const nbrs = []; const ol = ownedLinks(c); const n = ol.length;
