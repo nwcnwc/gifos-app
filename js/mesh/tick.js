@@ -21,10 +21,6 @@
   const GifOS = root.GifOS = root.GifOS || {};
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
-  /* the sim's #define L47_3_OFF in mesh_seat.inc (a build-time switch): MESH_L47_3_OFF=1 under node, read once at load; a page always runs the law */
-  const L47_3_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L47_3_OFF === '1') ? 1 : 0;
-  const TURN14_15_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_TURN14_15_OFF === '1') ? 1 : 0;   // the sim's -DTURN14_15_OFF=1 build
-  const RCD = ((n) => ({ L35_4_OFF: n('L35_4_OFF'), L17_3_1_OFF: n('L17_3_1_OFF'), L17_4_OFF: n('L17_4_OFF'), L35_5_OFF: ((isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L35_5_OFF === '0') ? 0 : 1) }))((k) => ((isNode && typeof process !== 'undefined' && process.env && process.env['MESH_' + k] === '1') ? 1 : 0));   // the sim's build-time switches of the realcheck dead-dial laws (mesh.cpp L35_4_OFF ...): MESH_<name>=1 under node; a page runs the laws
   const C_ = req('./consts.js', 'meshConsts');
   const msg = req('./msg.js', 'meshMsg');
   const topo = req('./topo.js', 'meshTopo');
@@ -73,7 +69,7 @@
         if (ls === LS_DIALING) continue;
         let it = this.redial.get(x); if (it === undefined) { it = [TICK, K.REDIAL_GAP]; this.redial.set(x, it); }
         if (TICK < it[0]) continue;
-        { const g = this.dials.goneAt(x); if (g >= 0 && TICK - g >= K.LEASE_T && (RCD.L17_3_1_OFF || FREE.l1731Word(this, x, g))) { this.dials.lapse(x); this.trace('L17.3-LAPSE', id, ol[q], 'peer=%d held=%lld', x, TICK - g); } }   // L17.3: a seat dead that long is off my view; one I still name lives, so the hold ends (its next failure starts a new one)
+        { const g = this.dials.goneAt(x); if (g >= 0 && TICK - g >= K.LEASE_T && FREE.l1731Word(this, x, g)) { this.dials.lapse(x); this.trace('L17.3-LAPSE', id, ol[q], 'peer=%d held=%lld', x, TICK - g); } }   // L17.3: a seat dead that long is off my view; one I still name lives, so the hold ends (its next failure starts a new one)
         this.trace('REDIAL', id, ol[q], 'peer=%d gap=%d', x, it[1]);
         this.f.fabricDial(id, x); it[0] = TICK + it[1]; it[1] = Math.min(it[1] * 2, K.REDIAL_MAX);
       }
@@ -136,7 +132,7 @@
         const m = msg.clone(this.rcPend); this.rcPendAt = -1; this.oldCell = 0; this.trace('RECLAIM-TAKE', id, m.coord, 'from=%d', m.owner); this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, [], m.ppL); if (this.pp >= 0 && this.pp !== id) this.placer = this.pp; this.f.wake(id); return true;   // L3.10: my old cell, handed back with its neighbours; no new seat, no requeue
       }
       if (this.rcPendAt >= 0 && (!this.oldCell || this.state === 3)) this.rcPendAt = -1; else if (this.state !== 3 && this.rcPendAt >= 0) this.f.wake(id);
-      if (this.l3112On() && this.rcRtAt >= 0) this.l3112Resend();   // L3.11.2
+      if (this.rcRtAt >= 0) this.l3112Resend();   // L3.11.2
       if (this.state !== 3 && this.rcRound2 && this.oldCell && this.rcPendAt < 0 && TICK - this.rcRound2At > 2 * K.RC_WAIT) { this.rcRound2 = false; this.movedOnFrom = this.oldCell; this.oldCell = 0; this.rcTries = 9; this.retryAt = TICK - 21; this.f.wake(id); }   // L3.10.6: the second round brought no seat: a newcomer from here
       return false;
     },
@@ -280,7 +276,7 @@
       if (TICK >= this.xlinkAt) { this.xlinkAt = TICK + 150 + Math.trunc(this.rng() * 100); const cm = colMates(this.coord); for (let q = 0; q < C - 1; q++) if (this.occGet(ckey(cm[q])) < 0) this.routeTo(cm[q], 1); }   // W7: keep column links live
       if (this.s1CheckAt < 0) this.s1CheckAt = TICK + K.E3_PERIOD + Math.trunc(this.rng() * K.E3_PERIOD);
       if (this.coord.pc === 0 && (TICK + id) % K.TURN_RETRY === 0 && this.f.fabricTurnOn()) this.t14Call();   /* TURN.14.13 */
-      if (!TURN14_15_OFF && this.coord.pc === 0 && (TICK + id) % K.HELLO_BACK === 0 && this.f.fabricTurnOn()) this.t1415Beat();   /* TURN.14.15 */
+      if (this.coord.pc === 0 && (TICK + id) % K.HELLO_BACK === 0 && this.f.fabricTurnOn()) this.t1415Beat();   /* TURN.14.15 */
       if (TICK >= this.s1CheckAt) { this.s1CheckAt = TICK + K.E3_PERIOD + Math.trunc(this.rng() * K.E3_PERIOD); this.emitRelay(this.genKey); }   // E3: re-knock each ~E3_PERIOD
       this.f.wake(id); return;
     },
@@ -363,7 +359,7 @@
         const rw = 2 * 8 + K.EARLY_HOLD;   /* how long a report of the backup owner stands */
         const e2Death = haveOc && this.ownDeadCk === ok && (this.ownDeadId >= 0 || (this.occGet(ok) < 0)) && (this.occGet(ok) < 0 || this.occGet(ok) === this.ownDeadId) && TICK - this.ownDeadAt <= rw && TICK - this.ownVouchAt > rw;   /* L2.9's proof: the backup owner's report of my owner's hard death */
         if (ownEarly && oc.pc === 0 && !this.ownPathUp(ok)) {   /* L47.3: a blind verdict waits for the backup owner's word */
-          const rep = !L47_3_OFF && haveOc && this.ownDeadCk === ok && TICK - this.ownDeadAt <= rw;
+          const rep = haveOc && this.ownDeadCk === ok && TICK - this.ownDeadAt <= rw;
           if (!rep) { this.requeue('L47-blind'); this.f.wake(id); return false; }
           if (!e2Death) { this.trace('L47.3-WAIT', id, oc, 'report age=%d vouch age=%d', (TICK - this.ownDeadAt) | 0, (TICK - this.ownVouchAt) | 0); this.f.wake(id); return false; }
           this.trace('L47.3', id, oc, 'e2 report age=%d', (TICK - this.ownDeadAt) | 0);
@@ -644,7 +640,7 @@
       if (this.u2Id >= 0 && this.u2Id !== id && TICK - this.u2BeatAt >= 8) {
         this.u2BeatAt = TICK;
         const ls = this.f.fabricLinkState(id, this.u2Id); if (ls === LS_CLOSED || ls === LS_NONE) this.f.fabricDial(id, this.u2Id);
-        const m = newMsg('U2BEAT'); m.id = id; m.coord = cc(this.coord); m.e1dn = this.u2Hot; if (this.u2Hot && lv.DIGEST) m.dgUp = (this.coord.i === 0) ? this.pubDig(this.rowDig) : (e2f.L48_OFF ? this.u2RowDig : (this.u2RowDig.at >= 0 && this.occGet(ckey(cell(this.coord.pc, this.coord.r, 0))) === this.u2RowDig.by ? this.wireDig(this.u2RowDig) : ((this.occGet(ckey(cell(this.coord.pc, this.coord.r, 0))) < 0 || this.headGone()) ? this.l48SiFold() : msg.newDig()))); this.emit(this.u2Id, m);
+        const m = newMsg('U2BEAT'); m.id = id; m.coord = cc(this.coord); m.e1dn = this.u2Hot; if (this.u2Hot && lv.DIGEST) m.dgUp = (this.coord.i === 0) ? this.pubDig(this.rowDig) : (this.u2RowDig.at >= 0 && this.occGet(ckey(cell(this.coord.pc, this.coord.r, 0))) === this.u2RowDig.by ? this.wireDig(this.u2RowDig) : ((this.occGet(ckey(cell(this.coord.pc, this.coord.r, 0))) < 0 || this.headGone()) ? this.l48SiFold() : msg.newDig())); this.emit(this.u2Id, m);
       }
       const e2dn = this.u2AckAt >= 0 && (TICK - this.u2AckAt > 8 + K.EARLY_HOLD || this.f.fabricLinkState(id, this.u2Id) === LS_CLOSED);   // E2 once carried and has stopped
       if (this.u3Id >= 0 && this.u3Id !== id && (this.u2Hot || e2dn) && TICK - this.u3BeatAt >= 8) {

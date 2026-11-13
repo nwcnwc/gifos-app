@@ -19,11 +19,7 @@
   const GifOS = root.GifOS = root.GifOS || {};
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
-  const RCD = ((n) => ({ L35_4_OFF: n('L35_4_OFF'), L17_3_1_OFF: n('L17_3_1_OFF'), L17_4_OFF: n('L17_4_OFF'), L35_5_OFF: ((isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L35_5_OFF === '0') ? 0 : 1) }))((k) => ((isNode && typeof process !== 'undefined' && process.env && process.env['MESH_' + k] === '1') ? 1 : 0));   // the sim's build-time switches of the realcheck dead-dial laws (mesh.cpp L35_4_OFF ...): MESH_<name>=1 under node; a page runs the laws
   const seatM = req('./seat.js', 'meshSeat');
-  // the sim's #define L25_21_OFF in mesh_seat.inc (a build-time switch): MESH_L25_21_OFF=1 under node, read once at load; a page always runs the law
-  const L25_21_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L25_21_OFF === '1') ? 1 : 0;
-  const L25_22_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L25_22_OFF === '1') ? 1 : 0;   // mesh_seat.inc L25_22_OFF
   const { cellOk, ownerCoordOf, coordStr, u2RowKey } = req('./shared.js', 'meshShared');
   const { Seat, FREE, roomTerm, islandStand, signedBy, l165Earlier } = seatM;
   const C_ = req('./consts.js', 'meshConsts');
@@ -41,8 +37,6 @@
   const unck = unckey;
   const newMsg = (t) => msg.newMsg(t);
   const cc = (c) => ({ pc: c.pc, r: c.r, i: c.i });
-  // the sim's #define L8_52_OFF in mesh.cpp (a build-time switch): MESH_L8_52_OFF=1 under node, read once at load; a page always runs the law
-  const L8_52_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L8_52_OFF === '1') ? 1 : 0;
   const kvCopy = (a) => a.map((e) => ({ k: e.k, v: e.v }));
   const hello = (ck, id) => { const h = newMsg('HELLO'); h.ck = ck; h.id = id; return h; };
 
@@ -51,7 +45,7 @@
     // C++: mesh_seat.inc:Seat::l2522Keep
     // L25.22: a mover's claim refused for its old cell is read again at its goodbye from that cell (one slot; an arrival's claim only).
     l2522Keep(m, from, sure) {
-      if (L25_22_OFF || !sure || m.arr < 0 || m.arr > K.L11_ARRIVE) return;
+      if (!sure || m.arr < 0 || m.arr > K.L11_ARRIVE) return;
       this.l2522Id = m.id; this.l2522At = this.TICK; this.l2522From = from; this.l2522Msg = msg.clone(m);
     },
     // C++: mesh_seat.inc:Seat::l2522Bye
@@ -69,7 +63,7 @@
     // not name the incumbent to the claimant L16.7 keeps (the two words named different seats and both left on a quorum).
     l2521First(m, sure) {
       const TICK = this.TICK;
-      if (L25_21_OFF || !this.f.fabricDoors() || !sure || m.arr < 0 || m.arr > K.L11_ARRIVE) return false;
+      if (!this.f.fabricDoors() || !sure || m.arr < 0 || m.arr > K.L11_ARRIVE) return false;
       const p = this.occGet(m.ck); const pb = this.bornOf(m.ck, p); if (pb === null) return false;
       const cb = this.claimBorn(m); if (cb < 0 || TICK - pb > K.L11_ARRIVE) return false;
       const d = pb - cb; if (d > K.L167_W || d < -K.L167_W || !seatM.placeBefore(m.id, cb, p, pb)) return false;
@@ -264,7 +258,7 @@
       if (!this.moving && this.l25OrderBy >= 0 && TICK - this.l25OrderAt <= 2 * K.L11_ARRIVE && this.l25OrderBy !== by && TICK - this.seatedAt < K.L11_ARRIVE) this.l25Mark(this.l25OrderBy);
       this.trace('YIELD-TAKEN', id, this.coord, 'by=%d site=%d nc=%d ypp=%d yppAt=%d mypp=%d myppAt=%d born=%lld moving=%d', by, m.tag, m.nc, m.pp, m.ppAt, this.pp, this.ppAt, this.rmBornAt, this.moving ? 1 : 0);
       if (this.moving) { this.rbWhy = 'yield'; this.rollbackMove(); } else this.l40Go(m.nc !== id ? m.nc : -1, 'T1-yield');   // T1 (L40.3: an arbiter's yield names the cell's holder too)
-      if (m.nc >= 0 && m.nc !== id && this.hasCoord && this.state === 3 && ckey(this.coord) !== m.ck && this.occGet(m.ck) !== m.nc && !this.liveElsewhere(m.nc, m.ck)) { this.setOcc(m.ck, m.nc); this.noteHand(m.ck, m.nc); }   // L11
+      if (m.nc >= 0 && m.nc !== id && this.hasCoord && this.state === 3 && ckey(this.coord) !== m.ck && this.occGet(m.ck) !== m.nc && !this.liveElsewhere(m.nc, m.ck)) { this.setOcc(m.ck, m.nc); this.noteS1(m.ck); }   // L11
     },
 
     // C++: mesh_seat.inc:Seat::onClaim
@@ -470,7 +464,7 @@
       if (this.challToId !== m.id || this.challToCk !== m.ck || TICK - this.challToAt > 40 || !this.provenEv(m, m.id) || this.liveElsewhereSinceReturn(m.id, m.ck)) return;
       this.challToId = -1;
       {
-        const oa = this.lineAtOf(m.id); const l852 = !L8_52_OFF && this.f.fabricDoors() && !this.moving && this.coord.pc === 0 && this.lineAt >= 0 && oa >= 0 && oa !== this.lineAt && this.lineOf(m.id) >= 0 && this.lineOf(m.id) !== this.line;   // L8.52.2 (mesh_ring.inc): between two foundings of different age the seat of the older room stands
+        const oa = this.lineAtOf(m.id); const l852 = this.f.fabricDoors() && !this.moving && this.coord.pc === 0 && this.lineAt >= 0 && oa >= 0 && oa !== this.lineAt && this.lineOf(m.id) >= 0 && this.lineOf(m.id) !== this.line;   // L8.52.2 (mesh_ring.inc): between two foundings of different age the seat of the older room stands
         if (l852 && this.lineAt < oa) { this.trace('L8.52-STAND', id, this.coord, 'rival=%d mine=%d theirs=%d', m.id, this.lineAt, oa); return; }
         if (!l852 && this.f.fabricDoors() && !this.moving && this.coord.pc === 0 && this.pp >= 0 && this.ppL >= 0 && this.ppCk === ckey(this.coord) && this.otherRing(m.id) && !(m.pp >= 0 && m.ppL >= 0 && l165Earlier(m.ppL, m.pp, m.id, this.ppL, this.pp, id))) { this.trace('L8.11.1-STAND', id, this.coord, 'rival=%d', m.id); return; }   // across foundings the earlier placement wins against a confirm too
       }
@@ -500,7 +494,7 @@
       if (this.hasCoord && this.coord.pc === 0 && this.coord.i === 0 && ckey(this.coord) === m.ck) {
         const inRow = (k, v) => { const c = unck(k); return cellOk(k) && c.pc === 0 && v >= 0 && (c.r === this.coord.r || (c.i === 0 && c.r === (((this.coord.r + 1) % C) & 0xff))); };
         for (const kv of m.nbrs) if (inRow(kv.k, kv.v) && !this.occ.has(kv.k) && !this.sitting.has(kv.k)) { const s = state.newStruct('SoftSit'); s.joiner = kv.v; s.assigner = id; s.at = TICK; this.sitting.set(kv.k, s); }
-        for (const e of m.row) if (inRow(e.k, e.v) && !this.occ.has(e.k)) { this.setOcc(e.k, e.v); this.noteHand(e.k, e.v); }
+        for (const e of m.row) if (inRow(e.k, e.v) && !this.occ.has(e.k)) { this.setOcc(e.k, e.v); this.noteS1(e.k); }
         this.rowLedger = true;
       }
     },
@@ -546,7 +540,7 @@
       if (this.coord.pc !== 0) {
         const oc = this.ownerCoord(); const fromOwner = this.coord.i === 0 && !!oc && ckey(oc) === pk, fromHead = this.coord.i !== 0 && pk === ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 });   // L2
         if (fromOwner || fromHead) { this.bkId = m.bkId; this.bkCk = m.bkCk; this.sbId = m.u3Id; this.sbCk = m.u3Ck; if (m.t14 >= 0) { if (m.t14 > 0) { if (this.t14Ck !== m.t14) this.trace('TURN14-WORD', id, this.coord, 'from=%d root=%s', pid, coordStr(unckey(m.t14 - 1))); this.t14Ck = m.t14; this.t14At = TICK | 0; } else { if (this.t14Ck > 0) this.trace('TURN14-WORD', id, this.coord, 'from=%d root=-', pid); this.t14Ck = 0; } } }   /* TURN.14.5: the link end my row hangs under */
-        if (fromHead) { this.headAckAt = TICK; this.headEver = true; this.headE1Dn = m.e1dn; this.headE1At = m.e1At; if (this.w.lv.DIGEST && m.dgPub.at >= 0) { this.u2RowDig = dig.cloneDig(m.dgPub); if (!e2f.L48_OFF) this.u2RowDig.rx = this.LT() - this.u2RowDig.ag; } }   // L48: held with its age, so the copy over E2 ages on
+        if (fromHead) { this.headAckAt = TICK; this.headEver = true; this.headE1Dn = m.e1dn; this.headE1At = m.e1At; if (this.w.lv.DIGEST && m.dgPub.at >= 0) { this.u2RowDig = dig.cloneDig(m.dgPub); this.u2RowDig.rx = this.LT() - this.u2RowDig.ag; } }   // L48: held with its age, so the copy over E2 ages on
       }
       if (m.coord.pc === 0) { this.setOcc(pk, pid); this.liveMark(pk); this.noteS1(pk); }   // FIRST-HAND
       if (this.pendYBy === pid && TICK - this.pendYAt <= 8 && this.hasCoord && this.state === 3 && this.pendYCk === ckey(this.coord) && this.arbOk(pid)) {
@@ -562,7 +556,7 @@
         const oc2 = ownerCoordOf(m.coord);
         if (m.owner >= 0 && !byeHeld && oc2 && m.oCk === ckey(oc2) && this.occGet(m.oCk) !== m.owner && !this.liveElsewhere(m.owner, m.oCk)) { this.setOcc(m.oCk, m.owner); this.noteS1(m.oCk); if (ckPc(m.oCk) === 0) this.s1told.set(m.oCk, TICK); }   // OWNERELSE
       }
-      { let nr = 0; for (const e of m.row) { if (++nr > C) break; const c = unck(e.k); if (!cellOk(e.k) || c.pc !== m.coord.pc || c.r !== m.coord.r || e.v < 0) continue; if (e.k === ckey(this.coord) && e.v !== id) continue; if (!RCD.L17_3_1_OFF && this.occGet(e.k) === e.v) FREE.l1731Note(this, pk, e.k, e.v); if (this.occGet(e.k) !== e.v) { if (this.liveElsewhere(e.v, e.k)) continue; if (!RCD.L35_4_OFF && FREE.l354Echo(this, e.k, e.v)) continue; { const tm = this.memo.get(e.k); if (this.translost.has(e.k) && tm !== undefined && tm.id === e.v) continue; } this.setOcc(e.k, e.v); this.noteHand(e.k, e.v); } else if (this.bareAt.size && e.v !== pid) this.bareAt.delete(e.k);   /* L25.16: another seat's listing names the seat I name: no longer its word alone */ if (e.age >= 0) this.childOf.set(e.k, e.age); } }
+      { let nr = 0; for (const e of m.row) { if (++nr > C) break; const c = unck(e.k); if (!cellOk(e.k) || c.pc !== m.coord.pc || c.r !== m.coord.r || e.v < 0) continue; if (e.k === ckey(this.coord) && e.v !== id) continue; if (this.occGet(e.k) === e.v) FREE.l1731Note(this, pk, e.k, e.v); if (this.occGet(e.k) !== e.v) { if (this.liveElsewhere(e.v, e.k)) continue; if (FREE.l354Echo(this, e.k, e.v)) continue; { const tm = this.memo.get(e.k); if (this.translost.has(e.k) && tm !== undefined && tm.id === e.v) continue; } this.setOcc(e.k, e.v); this.noteS1(e.k); } else if (this.bareAt.size && e.v !== pid) this.bareAt.delete(e.k);   /* L25.16: another seat's listing names the seat I name: no longer its word alone */ if (e.age >= 0) this.childOf.set(e.k, e.age); } }
       { let nn = 0; for (const kv of m.nbrs) { if (++nn > 4 * C) break; if (!cellOk(kv.k) || kv.v < 0) continue; if (!this.cousins.has(kv.k) && this.cousins.size >= 4 * C) continue; this.cousins.set(kv.k, kv.v); } }   // cousins capped (W, 4C)
       // MY HEAD'S ROW IS THE ROW (deep rows).
       if (this.hasCoord && this.coord.pc !== 0 && this.coord.i !== 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r && m.coord.i === 0) {
@@ -599,7 +593,7 @@
       const ukey = u2RowKey(ckey(row), m.tag === 3);   // key = ckey*2 + variant flag
       const u = ins(this.u2Rows, ukey, () => state.newStruct('U2Row'));
       if (m.e1dn && !u.hot) this.trace('UP2-SERVE', id, this.coord, 'row=%s heir=%d%s', coordStr(row), m.id, m.tag === 3 ? ' standby' : '');
-      u.heir = m.id; u.at = TICK; u.hot = m.e1dn; if (m.e1dn && m.dgUp.at >= 0 && (e2f.L48_OFF || m.coord.i !== 0 || m.dgUp.by === m.id)) { u.dig = dig.cloneDig(m.dgUp); if (!e2f.L48_OFF) u.dig.rx = this.LT() - u.dig.ag; } else if (!e2f.L48_OFF) u.dig = msg.newDig();   // L48: a parked beat, or a hot one with no fold, ends the copy   // the row's fold, held while I serve it
+      u.heir = m.id; u.at = TICK; u.hot = m.e1dn; if (m.e1dn && m.dgUp.at >= 0 && (m.coord.i !== 0 || m.dgUp.by === m.id)) { u.dig = dig.cloneDig(m.dgUp); u.dig.rx = this.LT() - u.dig.ag; } else u.dig = msg.newDig();   // L48: a parked beat, or a hot one with no fold, ends the copy   // the row's fold, held while I serve it
       const a = newMsg('U2ACK'); a.id = id; a.coord = cc(this.coord);
       {
         const oc2 = roles.ownerOf(row);

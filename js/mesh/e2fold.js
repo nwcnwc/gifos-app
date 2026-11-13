@@ -6,9 +6,6 @@
  * Free functions (l48Row, l48AddE2, l48Drop, l48Sub, l48Newer, l48Resolve, l48Echo) are exported; the two seat methods
  * (l48SiFold, l48Up) are added to the Seat. The hooks live where the sim has them (digest.js rollup / rootFold /
  * upRefuted / digForget1, live.js PHONE, recv-seated.js onPong / onU2, tick.js up2Tick, entry.js take).
- *
- * L48_OFF (the sim's build-time switch, -DL48_OFF=1: the parent's laws, byte for byte) is the environment variable
- * MESH_L48_OFF=1 under node, read once at load; a page always runs the law.
  */
 (function (root) {
   'use strict';
@@ -27,9 +24,6 @@
   const { ckey, unckey } = topo;
   const C = topo.C;
   const { K_HAND, K_STAGE, K_APP, digSeats, digLeasedIn, listMerge, talkMerge, leEq } = dig;
-
-  // the sim's #define L48_OFF in mesh_e2fold.inc (a build-time switch)
-  const L48_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L48_OFF === '1') ? 1 : 0;
 
   // C++: mesh_e2fold.inc:l48Row
   function l48Row(s, k, asLeased, ag, e2) {
@@ -81,7 +75,6 @@
   // in: [{ d, age0, ck }] (C++ L48In: an input of a fold, its age on the folder's clock, the cell it came from). Resolve the
   // rows of one fold's inputs; runs only when an E2 copy an entitled carrier brought is among them. occ: the folder's view.
   function l48Resolve(inp, won, occ) {
-    if (L48_OFF) return;
     let any = false; for (const x of inp) { for (const r of x.d.rows) if (r.e2 === 1 && l48MayCarry(x.ck, r.k, r.e2, occ)) { any = true; break; } if (any) break; }
     if (!any) return;
     const g = new Map();
@@ -98,7 +91,7 @@
   // C++: mesh_e2fold.inc:l48Echo
   // G4 with L48: an author's copy of a row the fold replaced by a newer one is not its contribution any more.
   function l48Echo(pub, echo) {
-    if (L48_OFF || !echo.rows.length || !pub.rows.length) return echo;
+    if (!echo.rows.length || !pub.rows.length) return echo;
     let any = false; const tmp = dig.cloneDig(echo);
     for (const x of echo.rows) { if (x.e2 === 2) continue; for (const w of pub.rows) if (w.e2 === 2 && w.k === x.k && !(w.by === x.by && w.at === x.at)) { l48Sub(tmp, x); any = true; break; } }
     return any ? tmp : echo;
@@ -123,7 +116,6 @@
     // C++: mesh_e2fold.inc:Seat::l48Up
     // My own report's rows (the child row I fold, a lone child row's carried rows, the rows I serve over E2).
     l48Up(d, dk, how) {
-      if (L48_OFF) return;
       if (how) {
         const ag = this.LT() - this.downDig.rx; d.rows.push(l48Row(this.downDig, dk, how === 2, ag, 0));
         for (const r of this.downDig.rows) if (r.e2 !== 2) { const c = dig.cloneDRow(r); c.ag += (ag < 0 ? 0 : ag); d.rows.push(c); }
@@ -140,7 +132,7 @@
     },
   });
 
-  const api = Object.freeze({ L48_OFF, l48Row, l48AddE2, l48Drop, l48Sub, l48MayCarry, l48Newer, l48Resolve, l48Echo });
+  const api = Object.freeze({ l48Row, l48AddE2, l48Drop, l48Sub, l48MayCarry, l48Newer, l48Resolve, l48Echo });
   GifOS.meshE2fold = api;
   if (isNode) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

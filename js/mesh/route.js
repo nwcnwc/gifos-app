@@ -28,8 +28,6 @@
   const { cellOk, coordStr } = req('./shared.js', 'meshShared');
 
   const K = C_.consts, E = C_.enums;
-  const TURN14_16_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_TURN14_16_OFF === '1') ? 1 : 0;   // the sim's -DTURN14_16_OFF=1 build
-  const TURN14_17_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_TURN14_17_OFF === '1') ? 1 : 0;   // the sim's -DTURN14_17_OFF=1 build
   const { ckey, unckey, ownedLinks, rowMates, colMates, up, down, pcDepth, parentPath, lastDigit } = topo;
   const C = topo.C;
   const { H_INIT, hmix, hmix64, fmix32 } = hash;
@@ -38,8 +36,6 @@
   const LS_CLOSED = E.LS_CLOSED, LS_OPEN = E.LS_OPEN;
 
   const mtInt = (t) => msg.MT_NAMES.indexOf(t);   // (int)m.t: the sim's MT enum is in MT_NAMES order
-  // the sim's #define L16_15_OFF in mesh_seat.inc (a build-time switch): MESH_L16_15_OFF=1 under node, read once at load; a page always runs the law
-  const L16_15_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L16_15_OFF === '1') ? 1 : 0;
   const answerType = (t) => t === 'NOROOM' || t === 'PLACE' || t === 'FIND' || t === 'FINDACK';
 
   // ---- routing ---------------------------------------------------------------------------------------------
@@ -141,11 +137,9 @@
       for (let k = 0; k < ol.length; k++) if (ckey(ol[k]) === ik) { const x = this.occGet(ik); return (x >= 0 && x !== id) ? x : -1; }
       return -1;                                               // ideal isn't a direct link: drop
     },
-    // C++: mesh_seat.inc:Seat::t1417On   (TURN.14.17; the sim's -DTURN14_17_OFF=1 build: MESH_TURN14_17_OFF=1; the TURN14_OFF switch has no twin: the twin is always the law on)
-    t1417On() { return !TURN14_16_OFF && !TURN14_17_OFF; },
     // C++: mesh_seat.inc:Seat::t1417Back   (an answer to an ask that came over my TURN pc goes back over it before any door)
     t1417Back(nh, rfinal, m) {
-      if (!this.t1417On() || m.adoor || rfinal < 0 || rfinal === this.id || !this.hasCoord || this.state !== 3 || !(m.t === 'NOROOM' || m.t === 'PLACE' || m.t === 'FINDACK')) return -1;
+      if (m.adoor || rfinal < 0 || rfinal === this.id || !this.hasCoord || this.state !== 3 || !(m.t === 'NOROOM' || m.t === 'PLACE' || m.t === 'FINDACK')) return -1;
       if (nh >= 0 && this.f.fabricLinkState(this.id, nh) === E.LS_OPEN) return -1;
       const f = this.t14From.get(rfinal); if (f === undefined || this.TICK - f[1] > K.RELAY_TTL) return -1;
       const p = f[0]; if (p < 0 || p === this.id || p === rfinal || p === m.rvia || !this.f.fabricTurnOn() || !this.f.fabricTurnPc(this.id, p) || this.f.fabricLinkState(this.id, p) !== E.LS_OPEN) return -1;
@@ -184,7 +178,7 @@
         h.direct = true; this.emit(m.rfinal, h); return false;   // direct hand-off over the link
       }
       // L16.15: an entry ask that reaches the gateway it names is answered there
-      if (!L16_15_OFF && m.t === 'WHOHOME' && m.sgw === id && this.hasCoord && this.state === 3) { this.trace('L16.15-GATEWAY', id, this.coord, 'from=%d dst=%s', m.from, coordStr(m.rdst)); m.routing = false; return true; }
+      if (m.t === 'WHOHOME' && m.sgw === id && this.hasCoord && this.state === 3) { this.trace('L16.15-GATEWAY', id, this.coord, 'from=%d dst=%s', m.from, coordStr(m.rdst)); m.routing = false; return true; }
       if (m.rttl <= 0) { if (m.rfinal >= 0 && answerType(m.t)) this.trace('ROUTE-DROP', id, this.hasCoord ? this.coord : null, 'mt=%d final=%d dst=%s why=ttl', mtInt(m.t), m.rfinal, coordStr(m.rdst)); return false; }   // give up: sender retries
       const nh = m.l18 ? this.f.l18Hop(id, cc(m.rdst), m.rvia) : this.strictNextHop(m.rdst);   // L18: round a hole on my own links
       { const bk = this.t1417Back(nh, m.rfinal, m); if (bk >= 0) { const d = msg.clone(m); this.emit(bk, d); return false; } }   // TURN.14.17

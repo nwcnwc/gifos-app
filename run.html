@@ -531,10 +531,32 @@ function opt(k){return /^(?:versions\/[^\/]+\/)?themes\/[^\/]+\/(?:theme|icons|e
 /* The offline layer (sw.js) answers an uncached script with an EMPTY 200 when the network fails: no error event, a unit that never ran. A script that arrives with no body counts as failed too. */
 try{new PerformanceObserver(function(l){l.getEntries().forEach(function(en){try{if(en.initiatorType==='script'&&en.decodedBodySize===0&&own(en.name)&&/\.js$/.test(new URL(en.name).pathname)){var k=key(en.name);if(!opt(k)&&g.failed.indexOf(k)<0)g.failed.push(k);}}catch(x){}});}).observe({type:'resource',buffered:true});}catch(e){}
 window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagName==='SCRIPT'&&t.src){if(!own(t.src))return;var k=key(t.src);if(!opt(k)&&g.failed.indexOf(k)<0)g.failed.push(k);}else if(e&&e.filename&&g.failed.length&&own(e.filename)){var f=key(e.filename);if(g.threw.indexOf(f)<0)g.threw.push(f);}}catch(x){}},true);})();</script>
+<!-- The lobby's scripts come first: everything the meeting reads until the lobby is on screen. A published
+     copy (.github/scripts/bundle/bundle.mjs) loads the scripts above the end mark as one bundle with the page
+     and the ones below it as a second bundle, right after the lobby starts. Keep that order here. -->
 <script src="js/sw-register.js" defer></script>
 <script src="js/dialog.js" defer></script>
 <script src="js/build.js" defer></script>
 <script src="js/build-badge.js" defer></script>
+<script src="js/gifos-i18n.js" defer></script>
+<script src="js/gifos-gif.js" defer></script>
+<script src="js/gifos-help.js" defer></script>
+<script src="js/gifos-fullscreen.js" defer></script>
+<script src="js/gifos-store.js" defer></script>
+<script src="js/timings.js" defer></script>
+<script src="js/gifos-update.js" defer></script>
+<script src="js/gifos-net.js" defer></script>
+<script src="js/mesh-media.js" defer></script>
+<script src="js/meet-layout.js" defer></script>
+<script src="js/meet-debuglog.js" defer></script>
+<script src="js/meet-views.js" defer></script>
+<script src="js/meet-viewmode.js" defer></script>
+<script src="js/mesh-pipe.js" defer></script>
+<script src="js/relay-config.js" defer></script>
+<script src="js/runtime.js" defer></script>
+<script src="js/meet-host.js" defer></script>
+<script src="js/gifos-perms.js" defer></script>
+<!-- the lobby's scripts end here -->
 <script>/* Global UI text size (Settings → Text size). Scales the meeting chrome; applied early, live across tabs. */(function(){function ap(){try{var s=parseFloat(localStorage.getItem('gifos_ui_scale'))||1;s=Math.max(0.2,Math.min(3,s));document.documentElement.style.fontSize=(s===1?'':(16*s).toFixed(2)+'px');document.documentElement.classList.toggle('ui-large',s>=1.5);}catch(e){}}ap();try{window.addEventListener('storage',function(e){if(!e||e.key==='gifos_ui_scale')ap();});}catch(e){}})();</script>
 <title>Meeting — GifOS</title>
 <!-- Link-preview card for texted / posted invites. og:url is deliberately OMITTED
@@ -1364,10 +1386,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (db && /^gifos_vm_[\w-]+$/.test(db)) window.GIFOS_DB_NAME = db;
     })();
   </script>
-  <script src="js/gifos-i18n.js" defer></script>
-  <script src="js/gifos-gif.js" defer></script>
-  <script src="js/gifos-help.js" defer></script>
-  <script src="js/gifos-fullscreen.js" defer></script>
   <script src="js/gifos-ed.js" defer></script>
   <script src="js/gifos-sign.js" defer></script>
   <script src="js/gifos-base-net.js" defer></script>
@@ -1379,13 +1397,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/gifos-pay-broker.js" defer></script>
   <script src="js/gifos-assets.js" defer></script>
   <script src="js/gifos-avatar.js" defer></script>
-  <script src="js/gifos-store.js" defer></script>
   <script src="js/gifos-install.js" defer></script>
   <script src="js/gifos-lock.js" defer></script>
   <script src="js/app-update.js" defer></script>
-  <script src="js/timings.js" defer></script>
-  <script src="js/gifos-update.js" defer></script>
-  <script src="js/gifos-net.js" defer></script>
   <!-- the mesh: the ported 0.9.25 seat (js/mesh/, dependency order), its page world and the page layer -->
   <script src="js/mesh/laws.js" defer></script>
   <script src="js/mesh/consts.js" defer></script>
@@ -1448,9 +1462,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/mesh/page/layer.js" defer></script>
   <script src="js/mesh-identity.js" defer></script>
   <script src="js/mesh-wire.js" defer></script>
-  <script src="js/mesh-media.js" defer></script>
   <script src="js/meet-pack.js" defer></script>
-  <script src="js/meet-layout.js" defer></script>
   <script src="js/meet-turn.js" defer></script>
   <script src="js/meet-tunnel.js" defer></script>
   <script src="js/meet-status.js" defer></script>
@@ -1459,19 +1471,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <script src="js/meet-subs.js" defer></script>
   <script src="js/gifos-library.js" defer></script>
   <script src="js/meet-leave.js" defer></script>
-  <script src="js/meet-debuglog.js" defer></script>
   <script src="js/meet-meters.js" defer></script>
   <script src="js/meet-zones.js" defer></script>
-  <script src="js/meet-views.js" defer></script>
-  <script src="js/meet-viewmode.js" defer></script>
   <script src="js/meet-content.js" defer></script>
   <script src="js/meet-agenda.js" defer></script>
-  <script src="js/mesh-pipe.js" defer></script>
-  <script src="js/relay-config.js" defer></script>
-  <script src="js/runtime.js" defer></script>
-  <script src="js/meet-host.js" defer></script>
   <script src="js/camera-studio.js" defer></script>
-  <script src="js/gifos-perms.js" defer></script>
   <script>
   // THE ENGINE, read before anything else runs (a var, so early callers never
   // hit a TDZ). WebKit — Safari, and the Playwright WebKit shell under any UA
@@ -12452,15 +12456,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const dc = p.dc;
       if (typeof clog === 'function') dcTally(msg); // DEBUG: what the channel bytes are
       return txm(() => net.seal(roomE2E, msg).then((env) =>
-        net.sendChunked(env, (piece, str) => { txKindAdd(msg, str.length); try { dc.send(str); } catch (e) {} })));
+        net.sendChunked(env, (piece, str) => { txKindAdd(msg, str.length, p); try { dc.send(str); } catch (e) {} })));
     };
     // Channel bytes I sent, by kind (mesh frames by type, beats by status kind):
     // what a test reads to say which traffic grows with the room.
-    const txKindBytes = {};
-    function txKindAdd(msg, n) {
+    const txKindBytes = {}, txKindLink = {};   // txKindLink: the same, for each relayed link's channel alone (turnPathsForTest: what a link's byte limit is spent on)
+    function txKindAdd(msg, n, p) {
       const m = msg.m, inner = msg.msg;
       const k = String(msg.k) + (msg.k === 'mesh' && m ? ':' + m.t + (m.m && m.m.msg && m.m.msg.kind ? ':' + m.m.msg.kind : '') : '') + (msg.k === 'sig' && inner ? ':' + inner.kind : '');
       txKindBytes[k] = (txKindBytes[k] || 0) + n;
+      try { if (p && p.id && typeof txKindLink !== 'undefined' && turnLinks && turnLinks.isLink(p.id)) { const o = txKindLink[p.id] || (txKindLink[p.id] = {}); o[k] = (o[k] || 0) + n; } } catch (e) {}
     }
     // The picture goes to each open channel once per hash, in pieces whose JSON
     // is <=16KB, paced, and only on this channel. A newer hash bumps _avGen so
@@ -13063,6 +13068,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const fresh = () => { const p = peers.get(pid); if (p && p.pc && !(p.dc && p.dc.readyState === 'open')) rebuildPc(p, 'turn-web'); };
       const end = GifOS.meetTunnel.createEnd({
         url: o.url, auth: o.auth, initiator: iInitiate(pid), log: turnNote,
+        // The two ends seal all they pass each other (docs/meet-security.md §E2E): keyed by the two seats' identity keys under the room key.
+        me: myId, peer: pid,
+        seal: (obj) => net.seal(roomE2E, obj),
+        open: (env) => net.open(roomE2E, env).then((m) => m || (prevRoomE2E ? net.open(prevRoomE2E, env) : null)),
+        sign: (text) => net.edSign(myIdentity.priv, text).then((sig) => ({ sig, pub: myIdentity.pubB64 })),
+        verify: (id, pub, sig, text) => GifOS.meshIdentity.peerIdOf(pub).then((got) => (got === id ? net.edVerify(pub, sig, text) : false)),
         audioContext: () => { try { return ensureAc(); } catch (e) { return null; } },
         dial: () => { if (turnWeb.get(pid) !== end) return; fresh(); seatAskAt.set(pid, Date.now()); seatMark.set(pid, cleanMark({ s: 1 })); sendOffer(pid, false); },
         toSignal: (sig) => { if (turnWeb.get(pid) !== end) return; if (sig.kind === 'offer') { fresh(); sig.ib = 1; sig.boot = 1; } onSignal(pid, sig); },
@@ -13214,18 +13225,23 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           video: !!(turnLinks && turnLinks.video(p.id)), paused: !!(p.tile && p.tile.querySelector(':scope > .tpause:not(.tpause-busy)')), busyNote: !!(p.tile && p.tile.querySelector(':scope > .tpause-busy')), policy: null, turn: false,
           local: null, remote: null, vOut: 0, aOut: 0, vIn: 0, aIn: 0 };
         try { const c = p.pc.getConfiguration(); r.policy = c.iceTransportPolicy; r.turn = GifOS.meetTurn.hasTurnServer(c.iceServers); } catch (e) {}
+        r.proven = !!(p.dc && p.dc.__authBy === p.id);   // the channel proved who is at its far end
         { const w = turnWeb.get(p.id); r.web = !!(turnLinks && turnLinks.web(p.id)); r.webUp = !!(w && w.up()); if (w) { try { r.webStats = await w.stats(); } catch (e) {} } }   // the web path of this link, if it runs on one
         try {
           const st = await p.pc.getStats(); const by = new Map(); st.forEach((x) => by.set(x.id, x));
           let sel = null;
           st.forEach((x) => { if (x.type === 'transport' && x.selectedCandidatePairId) sel = by.get(x.selectedCandidatePairId); });
           if (!sel) st.forEach((x) => { if (!sel && x.type === 'candidate-pair' && x.nominated && x.state === 'succeeded') sel = x; });
+          if (typeof txKindLink !== 'undefined' && txKindLink[p.id]) r.dk = Object.assign({}, txKindLink[p.id]);   // this link's channel bytes by message kind
+          r.shown = !!(p.tile && p.tile.isConnected && p.tile.style.display !== 'none');   // the person's tile is on screen (a pair still dialling a seat outside my row has none)
+          if (sel) { r.wOut = sel.bytesSent || 0; r.wIn = sel.bytesReceived || 0; r.pkOut = sel.packetsSent || 0; r.pkIn = sel.packetsReceived || 0; }   // the pair's own wire: every byte and packet of the pc, media, messages and all
           if (sel) { const l = by.get(sel.localCandidateId), rm = by.get(sel.remoteCandidateId); r.local = l ? l.candidateType : null; r.remote = rm ? rm.candidateType : null; r.server = l && l.url ? String(l.url).replace(/^turns?:/, '').split('?')[0] : null; r.proto = l ? (l.relayProtocol || l.protocol || null) : null; r.cap = +sel.availableOutgoingBitrate || null; }
           r.busy = !!(turnLinks && turnLinks.busy(p.id)); r.farBusy = !!(turnLinks && turnLinks.farBusy(p.id)); r.step = turnLinks && turnLinks.videoStep(p.id) ? turnLinks.videoStep(p.id).step : null;
           st.forEach((x) => {
             if (x.type === 'outbound-rtp' && x.kind === 'video') { r.vOut += x.bytesSent || 0; (r.vo = r.vo || []).push({ mid: x.mid, b: x.bytesSent || 0, f: x.framesEncoded || 0, ql: x.qualityLimitationReason || null, act: x.active, w: x.frameWidth || 0 }); }
             if (x.type === 'inbound-rtp' && x.kind === 'video') (r.vi = r.vi || []).push({ mid: x.mid, b: x.bytesReceived || 0, f: x.framesDecoded || 0 });
-            if (x.type === 'outbound-rtp' && x.kind === 'audio') r.aOut += x.bytesSent || 0;
+            if (x.type === 'outbound-rtp' && x.kind === 'audio') { r.aOut += x.bytesSent || 0; (r.ao = r.ao || []).push({ mid: x.mid, b: x.bytesSent || 0, pk: x.packetsSent || 0, tb: x.targetBitrate || 0 }); }
+            if (x.type === 'data-channel') { r.dOut = (r.dOut || 0) + (x.bytesSent || 0); r.dIn = (r.dIn || 0) + (x.bytesReceived || 0); }
             if (x.type === 'inbound-rtp' && x.kind === 'video') r.vIn += x.bytesReceived || 0;
             if (x.type === 'inbound-rtp' && x.kind === 'audio') r.aIn += x.bytesReceived || 0;
           });
@@ -16339,7 +16355,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (o && o.tk && (!capTk || o.tk.sig !== capTk.sig)) capTake({ tk: o.tk }, false);
     }
     // The captor's page: say the ticket to the room table and, renewed, to the server.
-    function capPublish(renew) {
+    function capTicketPublish(renew) {
       if (!amCaptor || !capOn()) return;
       GifOS.meetSubs.currentTicket(subsMeetId()).then((tk) => {
         if (!tk || !amCaptor) return;
@@ -16362,7 +16378,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function onCapFrame(m) {
       if (av) return;
-      if (m.on === 1) { capTake(m, true).then(() => { if (amCaptor) capPublish(false); }); return; }
+      if (m.on === 1) { capTake(m, true).then(() => { if (amCaptor) capTicketPublish(false); }); return; }
       if (m.on === 0) { capClear('server'); return; }
       if (m.ok === 0) { pwLog('capture-refused ' + m.why); if (m.why === 'taken') setStatus(uiText('capTaken', 'Someone else is this room\u2019s admin')); else if (m.why === 'ended' && amCaptor) capClear('server ended'); else if (m.why !== 'ended') setStatus(uiText('capFailed', 'Could not make you admin of this room')); }
     }
@@ -21048,9 +21064,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // it, they count as unproven (sponsor / relay grade). One signature and
     // one verify per channel, never per frame.
     function sdpFp(desc) { const m = desc && typeof desc.sdp === 'string' && /a=fingerprint:(\S+) ([0-9A-Fa-f:]+)/.exec(desc.sdp); return m ? m[1].toLowerCase() + ' ' + m[2].toUpperCase() : null; }
+    // On the web path the pair's connection ends inside this page, so its certificates prove nothing about the far
+    // page. What does is the link's own key agreement (js/meet-tunnel.js): each end's signed key statement stands
+    // where its certificate would. null: not a web link (or not keyed yet: no statement is sent or taken).
+    function dcAuthFps(p, pc) {
+      const w = (typeof turnWeb !== 'undefined' && turnWeb.size) ? turnWeb.get(p.id) : null;
+      if (w) { const b = w.binding ? w.binding() : null; return b ? { fp: b.l, rfp: b.r } : { fp: null, rfp: null }; }
+      return { fp: pc && sdpFp(pc.localDescription), rfp: pc && sdpFp(pc.remoteDescription) };
+    }
     function dcAuthSend(p, dc) {
       const pc = dc.__pc || p.pc;
-      const fp = pc && sdpFp(pc.localDescription), rfp = pc && sdpFp(pc.remoteDescription);
+      const { fp, rfp } = dcAuthFps(p, pc);
       if (!fp || !myIdentity || !myId || !p.id) return;
       const sp = JSON.stringify({ v: 1, t: 'dcauth', from: myId, to: p.id, fp, rfp, ts: Date.now() });
       net.edSign(myIdentity.priv, sp).then((sig) => {
@@ -21062,7 +21086,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       let sp; try { sp = JSON.parse(m.sp); } catch (e) { return; }
       if (!sp || sp.t !== 'dcauth' || sp.from !== p.id || sp.to !== myId) return;
       const pc = dc.__pc || p.pc;
-      const rfp = pc && sdpFp(pc.remoteDescription), lfp = pc && sdpFp(pc.localDescription);
+      const { fp: lfp, rfp } = dcAuthFps(p, pc);
       if (!rfp || sp.fp !== rfp || (sp.rfp != null && sp.rfp !== lfp)) return;   // the signer's cert is the one this channel's DTLS checked
       GifOS.meshIdentity.peerIdOf(m.pub)
         .then((pid) => (pid === p.id ? net.edVerify(m.pub, m.sig, m.sp) : false))
@@ -27377,6 +27401,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const beyondRowRaw = (() => {
         if (!s || !c || BROADCAST) return false;
         for (const [k, v] of s.occ) { if (v === myId) continue; const cc = net.topo.unck(k); if (cc.pc !== c.pc || cc.r !== c.r) return true; }
+        // A ROW THAT HANGS UNDER MY ROW IS A SECOND ROW (TURN.14: the cut-off side sits under its end of the link while Section 1
+        // holds one row). occ names Section 1 and my own links only, so a head never saw a mate's child row there: the room read
+        // as one row, nothing below was packed, claimed or mixed, and the seats under the end heard nobody and were heard by
+        // nobody. Every beat's PONG names the child of each cell of my row (childOf), the same word the down ships already use.
+        const kids = s.childOf;
+        if (kids && kids.size) for (let j = 0; j < SCALE.C; j++) { const v = kids.get(net.topo.ckey({ pc: c.pc, r: c.r, i: j })); if (v && v !== myId) return true; }
         return false;
       })();
       // HYSTERESIS: beyondRow reads occ, and occ flickers during heals/gossip
@@ -27918,7 +27948,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (sdmH && !sdmH.deadAt && (sdmH.org || sdmH.via) === headPid) for (let j = 1; j < C; j++) {
           if (j === c.i) continue;
           const mate = occPid({ pc: c.pc, r: c.r, i: j });
-          if (!mate || mate === sdmH.via) continue;
+          if (!mate || mate === sdmH.via || mate === sdmH.org) continue;
+          // A second pipe never rides a relayed link's carrier (TURN.14.8: the link carries each duty once). A mate no pc of mine
+          // reaches gets the head's own copy through the carrier; and where I am that carrier, the copy I hand on for the head
+          // ('tc:<mate>|sdm') is that mate's row view: my re-fan beside it took the same job ('sdm>' + mate) every other sweep, the
+          // stream under the job changed each time, and the mate's view went silent long enough for the row to call its head out.
+          { const mq = peers.get(mate); if (!mq || !mq.connected || mosIn.has('tc:' + mate + '|sdm')) continue; }
           const jr = shipMos('sdm', mate, sdmH.stream, blockMeta(sdmH)); if (jr) wanted.add(jr);
         }
       }
@@ -35990,7 +36025,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function subsJoin() {
       if (!subsOn()) return;
       GifOS.meetSubs.joinMeeting(subsMeetId(), {
-        onTicket: () => { if (amAdmin && hasAdminRoom()) subsPublishRoomPlan(); turnSubAt = 0; capPublish(true); try { capPaint(); } catch (e) {} },   // a captor re-presents each renewed ticket   // a fresh ticket is a fresh TURN vouch: say it at the next step
+        onTicket: () => { if (amAdmin && hasAdminRoom()) subsPublishRoomPlan(); turnSubAt = 0; capTicketPublish(true); try { capPaint(); } catch (e) {} },   // a captor re-presents each renewed ticket   // a fresh ticket is a fresh TURN vouch: say it at the next step
         onPass: () => { if (amAdmin && hasAdminRoom()) subsPublishRoomPlan(); turnSubAt = 0; },   // a four-hour pass bought, started or ended: the room's plan and the TURN vouch now
         onLost: (why) => {
           if (why === 'moved') setStatus('Your subscription is now in use in another meeting.');
@@ -39219,6 +39254,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         prodStream: !!(prodPack && prodPack.stream), sdStream: !!(sdView && sdView.stream), roomStream: !!(roomPack && roomPack.stream), loop: !!(packLoop && packLoop.rx),
         restarts: [...mosIn.entries(), ...mosStandby.entries()].filter(([, e]) => e && e.el).map(([rk, e]) => ({ key: rk, sid: e.el.srcObject ? String(e.el.srcObject.id).slice(0, 8) : null, vw: e.el.videoWidth, rs: e.el.readyState, n: e.el._mosRestarts || 0, held: !!e.el._mosHold })), // decoders restarted (parked, re-bound, resumed) because they showed no picture while the feed flowed (WebKit)
         jobs: [...mosJobs.keys()], claims: [...mosIn.keys()], ann: [...mosAnn.keys()],
+        claimMeta: [...mosIn.entries()].map(([rk, e]) => rk.slice(-12) + ' n' + (e.meta ? e.meta.n : '-') + ' ids' + (e.meta && e.meta.ids ? e.meta.ids.map((x) => String(x).slice(2, 6)).join(',') : '-') + ' el' + (e.el ? (e.el.videoWidth || 0) : 'x') + ' a' + (e.stream ? e.stream.getAudioTracks().map((t) => t.readyState[0] + (t.muted ? 'M' : '')).join('') : '-')),   // what each claim says it holds: cells, named ids, picture width, sound tracks
+        view: { hasView: !!sdView, n: sdView ? sdView.count() : null, sound: (typeof sdViewSt !== 'undefined' && sdViewSt) ? sdViewSt.getAudioTracks().length : null },   // my own Stadium view: its faces after hiding my row, and whether it holds a sound track
         // An announcer is only a CANDIDATE if its announced streamId resolves
         // to one of that peer's incoming streams (claimRedun's `live`). The
         // keys alone cannot show a MISMATCH — an announce whose stream never

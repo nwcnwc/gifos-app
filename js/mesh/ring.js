@@ -15,9 +15,6 @@
   const K = C_.consts, E = C_.enums;
 
   const hooks = { netgSize: () => 0 };
-  // the sim's #define L8_52_OFF / L8_46_4_OFF in mesh.cpp (build-time switches): MESH_<name>=1 under node, read once at load; a page always runs the law
-  const envOn = (n) => (isNode && typeof process !== 'undefined' && process.env && process.env[n] === '1') ? 1 : 0;
-  const L8_52_OFF = envOn('MESH_L8_52_OFF'), L8_46_4_OFF = envOn('MESH_L8_46_4_OFF'), L8_46_5_OFF = envOn('MESH_L8_46_5_OFF'), L8_46_6_OFF = envOn('MESH_L8_46_6_OFF');
 
   // C++: mesh.cpp:leverRoom
   function leverRoom(LV, v) { return v < 0 ? LV.ISLAND_MODE !== 0 : LV.ISLAND_MODE === v; }
@@ -52,7 +49,7 @@
     mergeCalc() {
       if (this.line < 0) return false;
       if (this.TICK - this.lineC7At <= K.RELAY_TTL) return true;
-      if ((!L8_46_4_OFF || !L8_46_5_OFF || !L8_46_6_OFF) && this.TICK - this.lineStrAt <= K.RELAY_TTL) return true;   // L8.46.4: the door and a stranger's own stamp (lineNote)
+      if (this.TICK - this.lineStrAt <= K.RELAY_TTL) return true;   // L8.46.4: the door and a stranger's own stamp (lineNote)
       { let n = 0; for (const t of this.lineC7.values()) if (this.TICK - t <= K.RELAY_TTL && ++n >= 2) return true; }
       let a = -1, an = 0, b = -1, bn = 0;
       for (const e of this.lineSeen.values()) {
@@ -67,11 +64,11 @@
     lineAdopt(l, at, why) {
       if (l < 0 || l === this.line) return;
       this.trace('LINEAGE', this.id, this.hasCoord ? this.coord : null, 'from=%d to=%d why=%s', this.line, l, why); this.line = l; this.mergeTick = -1;
-      if (!L8_52_OFF) { this.lineAt = at; }
+      { this.lineAt = at; }
     },
 
     // C++: mesh_ring.inc:Seat::ringOlder   (L8.52: is ring an (epoch aAt) older than ring bn (epoch bAt)?)
-    ringOlder(an, aAt, bn, bAt) { if (!L8_52_OFF && aAt >= 0 && bAt >= 0 && aAt !== bAt) return aAt < bAt; return an < bn; },
+    ringOlder(an, aAt, bn, bAt) { if (aAt >= 0 && bAt >= 0 && aAt !== bAt) return aAt < bAt; return an < bn; },
 
     // C++: mesh_ring.inc:Seat::lineAtOf
     lineAtOf(x) { const it = this.lineAtSeen.get(x); return it === undefined ? -1 : it; },
@@ -93,22 +90,22 @@
       if (m.line < 0) return;
       this.t1415Note(m);   // TURN.14.15 (mesh_seat.inc)
       this.lineSeen.set(who, [m.line, this.TICK]); this.mergeTick = -1;
-      if (!L8_52_OFF) { this.lineAtSeen.set(who, m.lineAt); if (this.lineAtSeen.size > 256) this.lineAtSeen.clear(); }
+      { this.lineAtSeen.set(who, m.lineAt); if (this.lineAtSeen.size > 256) this.lineAtSeen.clear(); }
       // L8.46.4 THE DOOR IS THE SECOND WITNESS: one persistent stranger whose own HELLO stamps a lineage not mine is a merge seen for RELAY_TTL
-      if (!L8_46_4_OFF && m.t === 'HELLO' && this.line >= 0 && m.line !== this.line && this.hasCoord && this.state === 3 && this.coord.pc === 0) {
+      if (m.t === 'HELLO' && this.line >= 0 && m.line !== this.line && this.hasCoord && this.state === 3 && this.coord.pc === 0) {
         if (this.lineStranger(who) || this.l853Dated(who)) {   // L8.53.1 (mesh_island.inc)
           const was = this.mergeCalc(); this.lineStrAt = this.TICK; this.mergeTick = -1;
           if (!was) { this.trace('L8.46.4-DOOR', this.id, this.coord, 'stranger=%d line=%d', who, m.line); if (m.c7Min >= 0 && this.l42Own(m)) { this.l828Ring.set(who, [m.c7Min, this.TICK]); if (this.l828Ring.size > 256) this.l828Ring.clear(); } }
         }
       }
       // L8.46.5 A RELAYED LINK IS THE SECOND WITNESS: the seat whose own HELLO over my relayed pc stamps a lineage not mine is a merge seen for RELAY_TTL
-      if (!L8_46_5_OFF && m.t === 'HELLO' && this.line >= 0 && m.line !== this.line && m.from === who && this.hasCoord && this.state === 3 && this.coord.pc === 0 && this.f.fabricTurnOn() && this.f.fabricTurnPc(this.id, who)) {
+      if (m.t === 'HELLO' && this.line >= 0 && m.line !== this.line && m.from === who && this.hasCoord && this.state === 3 && this.coord.pc === 0 && this.f.fabricTurnOn() && this.f.fabricTurnPc(this.id, who)) {
         const was = this.mergeCalc(); this.lineStrAt = this.TICK; this.mergeTick = -1;
         if (!was) { this.trace('L8.46.5-LINK', this.id, this.coord, 'peer=%d line=%d', who, m.line); if (m.c7Min >= 0 && this.l42Own(m)) { this.l828Ring.set(who, [m.c7Min, this.TICK]); if (this.l828Ring.size > 256) this.l828Ring.clear(); } }
       }
       // L8.46.6 THE DOOR AND A LINK END'S OWN WORD ARE A MERGE SEEN: the door's fresh list names a greeter of a part older than mine, and a seat says
       // first-hand, over a connection of our own, that it sits in another founding as the end of a relayed link
-      if (!L8_46_6_OFF && !L8_52_OFF && m.t === 'HELLO' && m.c7Link && m.c7One && this.line >= 0 && m.line >= 0 && m.line !== this.line && m.from === who && this.hasCoord && this.state === 3 && this.coord.pc === 0 && this.f.fabricTurnOn() && !this.f.fabricTurnPc(this.id, who) && this.lineAt >= 0 && this.greetersAt >= 0 && this.TICK - this.greetersAt <= K.RELAY_TTL) {
+      if (m.t === 'HELLO' && m.c7Link && m.c7One && this.line >= 0 && m.line >= 0 && m.line !== this.line && m.from === who && this.hasCoord && this.state === 3 && this.coord.pc === 0 && this.f.fabricTurnOn() && !this.f.fabricTurnPc(this.id, who) && this.lineAt >= 0 && this.greetersAt >= 0 && this.TICK - this.greetersAt <= K.RELAY_TTL) {
         let older = false; for (let k = 0; k < this.lastGreeters.length && k < this.lastGreetersAt.length; k++) { const g = this.lastGreeters[k], at = this.lastGreetersAt[k]; if (g < 0 || g === this.id || at < 0 || at >= this.lineAt) continue; older = true; break; }
         if (older) {
           const was = this.mergeCalc(); this.lineStrAt = this.TICK; this.mergeTick = -1;

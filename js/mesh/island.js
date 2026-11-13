@@ -18,23 +18,14 @@
   const K = C_.consts, E = C_.enums;
   const { ckey, ckPc, unckey, ownedLinks, up, down, C, MAXLINKS } = topo;
   const LS_NONE = E.LS_NONE, LS_CLOSED = E.LS_CLOSED;
-  // the sim's #define L8_50_OFF / L8_50_3_OFF in mesh.cpp (build-time switches): MESH_<name>=1 under node, read once at load; a page always runs the law
-  const envOn = (n) => (isNode && typeof process !== 'undefined' && process.env && process.env[n] === '1') ? 1 : 0;
-  const TURN19_OFF = envOn('MESH_TURN19_OFF'), L8_54_5_OFF = envOn('MESH_L8_54_5_OFF');   // the sim's -DTURN19_OFF=1 (TURN.19, mesh_island.inc)
-  const L8_50_OFF = envOn('MESH_L8_50_OFF'), L8_50_3_OFF = envOn('MESH_L8_50_3_OFF');
-  const L8_42_2_OFF = envOn('MESH_L8_42_2_OFF');   // the sim's -DL8_42_2_OFF=1 build
-  const L8_52_OFF = envOn('MESH_L8_52_OFF'), L8_51_OFF = envOn('MESH_L8_51_OFF');   // L8.52 (the older room stays), L8.51 (an arbiter does not settle a contest between two rooms)
-  const L8_47_3_OFF = envOn('MESH_L8_47_3_OFF'), L8_47_2_OFF = envOn('MESH_L8_47_2_OFF'), L8_1_3_OFF = envOn('MESH_L8_1_3_OFF');   // L8.47.3 / L8.47.2 / L8.1.3 (mesh_roomterm.inc)
-  const L8_5_10_OFF = envOn('MESH_L8_5_10_OFF');   // L8.5.10: the sim's -DL8_5_10_OFF=1 build
-  const L8_53_OFF = envOn('MESH_L8_53_OFF'), L8_51_1_OFF = envOn('MESH_L8_51_1_OFF');   // L8.53 (the door dates the rooms), L8.51.1 (a yield from a seat of another room is not kept)
   const newMsg = (t) => msg.newMsg(t);
 
   Seat.unit('mesh_island.inc', {
     // C++: mesh_island.inc:Seat::islandAsk
     islandAsk(list) {
       const lv = this.w.lv;
-      if (!L8_47_3_OFF && this.l8471() && this.islandLast) for (const g of list) { if (g < 0 || g === this.id || !this.islandAsked.has(g)) continue; const e = this.epOf(g); if (e >= 0) { if (this.entEp.size >= 16) this.entEp.clear(); this.entEp.add(e); } }   // L8.47.3: every greeter I asked stayed silent (the verdict that sent this confirm knock): the rooms the door now says they sit in are rooms I cannot reach
-      { let fresh = false; const late = []; for (const g of list) { if (g < 0 || g === this.id) continue; if (this.islandAsked.has(g)) continue; this.islandAsked.add(g); const e = this.epOf(g); if ((!L8_47_3_OFF && this.l8471() && this.islandLast && e >= 0 && this.entEp.has(e)) || (this.islandLast && this.l854Other(g))) late.push(g); else fresh = true; }   /* L8.54.1 */
+      if (this.l8471() && this.islandLast) for (const g of list) { if (g < 0 || g === this.id || !this.islandAsked.has(g)) continue; const e = this.epOf(g); if (e >= 0) { if (this.entEp.size >= 16) this.entEp.clear(); this.entEp.add(e); } }   // L8.47.3: every greeter I asked stayed silent (the verdict that sent this confirm knock): the rooms the door now says they sit in are rooms I cannot reach
+      { let fresh = false; const late = []; for (const g of list) { if (g < 0 || g === this.id) continue; if (this.islandAsked.has(g)) continue; this.islandAsked.add(g); const e = this.epOf(g); if ((this.l8471() && this.islandLast && e >= 0 && this.entEp.has(e)) || (this.islandLast && this.l854Other(g))) late.push(g); else fresh = true; }   /* L8.54.1 */
         if (this.islandLast) { this.islandLast = false; if (!fresh) {
           if (late.length) { this.lateAsk.clear(); for (const g of late) { if (this.lateAsk.size >= 8) break; this.lateAsk.add(g); this.trace('L8.47.3-LATE-ASK', this.id, null, 'to=%d at=%d', g, this.epOf(g)); const w = newMsg('WHOHOME'); w.from = this.id; w.ttl = K.WHOHOME_HOPS; this.emit(g, w); } }   // L8.47.3: a new name of a room I already found silent is asked, and holds no founding
           this.islandFound(); return; }
@@ -56,10 +47,10 @@
     islandTick() {
       if (!this.entryTerm() || !(this.state === 0 || this.state === 1) || this.islandAskAt < 0 || this.lastReach >= this.islandAskAt) return false;
       const o54 = this.l854All(this.lastGreeters); const iw = o54 ? 0 : this.islandWait();   // L8.47.1, L8.54.1
-      if (!L8_47_2_OFF && this.ehAt >= 0 && this.TICK - this.ehAt < K.ISLAND_WAIT) {   // L8.47.2: it said it has no room yet: I wait for it, and ask it again once per dial verdict while it says so
+      if (this.ehAt >= 0 && this.TICK - this.ehAt < K.ISLAND_WAIT) {   // L8.47.2: it said it has no room yet: I wait for it, and ask it again once per dial verdict while it says so
         if (this.TICK - this.ehAskAt >= K.ISLAND_WAIT_BLOCKED) { this.ehAskAt = this.TICK | 0; for (const g of this.ehFrom) { const w = newMsg('WHOHOME'); w.from = this.id; w.ttl = K.WHOHOME_HOPS; this.emit(g, w); } }
         return false; }
-      if (o54 && !this.islandLast && !this.l16Saw && (L8_54_5_OFF || this.greetersAt >= 0)) { this.trace('L8.54-OTHER', this.id, null, 'asked=%zu', this.lastGreeters.length); for (const x of this.l16Ask) this.f.fabricDoorDrop(this.id, x); this.l16Anch = false; this.l16Ho = -1; this.l16Ask.length = 0; this.l16Busy.length = 0; this.l16Last = -1; this.l16List.length = 0; this.l16Next = 0; this.l16WaveAt = -1; this.l16FreshAt = -1; this.islandFound(); return true; }   // L8.54.1: no silence to wait for and no second knock: my seating knock reads the door's fresh list (L8.1.3)
+      if (o54 && !this.islandLast && !this.l16Saw && (this.greetersAt >= 0)) { this.trace('L8.54-OTHER', this.id, null, 'asked=%zu', this.lastGreeters.length); for (const x of this.l16Ask) this.f.fabricDoorDrop(this.id, x); this.l16Anch = false; this.l16Ho = -1; this.l16Ask.length = 0; this.l16Busy.length = 0; this.l16Last = -1; this.l16List.length = 0; this.l16Next = 0; this.l16WaveAt = -1; this.l16FreshAt = -1; this.islandFound(); return true; }   // L8.54.1: no silence to wait for and no second knock: my seating knock reads the door's fresh list (L8.1.3)
       if (this.TICK - this.islandAskAt < iw || this.lastGreeters.length === 0) return false;
       if (this.f.fabricDoors() && this.islandAskAt >= 0 && (this.l16Next < this.l16List.length || this.TICK - this.l16FreshAt < iw)) return false;
       if (this.l16Saw) { this.l16Saw = false; this.l16Backoff('silent'); return true; }   // a BUSY is evidence for its own round (C++: islandTick)
@@ -94,8 +85,8 @@
     // C++: mesh_island.inc:Seat::islandFound
     islandFound() {
       this.trace('ISLAND', this.id, null, 'asked=%zu since=%d rounds=%d reach=%d', this.lastGreeters.length, this.islandAskAt, this.islandAskN + 1, typeof this.f.fabricReachSeated === 'function' ? this.f.fabricReachSeated(this.id) : -1);   // reach: the oracle's count (netmatrix bar), -1 without groups
-      this.l850Seated = false; this.ehAt = -1; this.ehAskAt = -1; this.ehFrom.clear(); this.foundKnock = !L8_1_3_OFF;
-      this.islandAskAt = -1; this.islandAskN = 0; if (L8_1_3_OFF) { this.islandAsked.clear(); this.entEp.clear(); } this.islandLast = false; this.genKey = this.w.lv.URL_KEY ? this.w.lv.URL_KEY : this.myKey; /* a founder with no link key mints its own (C++: islandFound) */ const e = []; if (!L8_52_OFF) this.lineAt = this.TICK; /* L8.52.3: before take(): my registration at the door carries my epoch */ this.take({ pc: 0, r: 0, i: 0 }, -1, e); this.islandFounder = true; this.lineAdopt(this.id, this.TICK, 'found'); this.lineFork = true;
+      this.l850Seated = false; this.ehAt = -1; this.ehAskAt = -1; this.ehFrom.clear(); this.foundKnock = true;
+      this.islandAskAt = -1; this.islandAskN = 0; this.islandLast = false; this.genKey = this.w.lv.URL_KEY ? this.w.lv.URL_KEY : this.myKey; /* a founder with no link key mints its own (C++: islandFound) */ const e = []; this.lineAt = this.TICK; /* L8.52.3: before take(): my registration at the door carries my epoch */ this.take({ pc: 0, r: 0, i: 0 }, -1, e); this.islandFounder = true; this.lineAdopt(this.id, this.TICK, 'found'); this.lineFork = true;
     },
 
     // C++: mesh_island.inc:Seat::l3117Stray
@@ -217,7 +208,7 @@
     // C++: mesh_island.inc:Seat::ringMin
     ringMin() {
       let mine = this.id; for (const [k, v] of this.occ) if (v >= 0 && ckPc(k) === 0 && v < mine) mine = v;
-      if (this.t14Ring >= 0 && (this.t14Ring < mine || !L8_52_OFF) && this.hasCoord && this.coord.pc !== 0 && this.TICK - this.t14RingAt < K.RELAY_TTL) mine = this.t14Ring;   /* TURN.14.6: a deep seat names the ring its placer named */
+      if (this.t14Ring >= 0 && this.hasCoord && this.coord.pc !== 0 && this.TICK - this.t14RingAt < K.RELAY_TTL) mine = this.t14Ring;   /* TURN.14.6: a deep seat names the ring its placer named */
       return mine;
     },
 
@@ -270,33 +261,33 @@
 
     // C++: mesh_island.inc:Seat::l850Lone
     // L8.50.3: on the cell I founded (or the room's first page), and I have admitted nobody since
-    l850Lone() { return (this.islandFounder || !L8_50_3_OFF) && this.line === this.id && !this.l850Seated && this.hasCoord && this.state === 3 && ckey(this.coord) === 0 && !this.moving; },
+    l850Lone() { return this.line === this.id && !this.l850Seated && this.hasCoord && this.state === 3 && ckey(this.coord) === 0 && !this.moving; },
 
     // C++: mesh_island.inc:Seat::l850
     // L8.50: a founder of one and a room (.1 the room's seat, .2 the founder)
     l850(m) {
-      if (L8_50_OFF || !this.f.fabricDoors() || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return false;
+      if (!this.f.fabricDoors() || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return false;
       if (m.from !== m.id || !this.linkIs(m, m.id) || m.line < 0 || this.line < 0 || m.line === this.line) return false;
       if (m.c7One) {   // L8.50.1
         if (this.l850Lone()) return false;   // two founders of one: T1
-        if (!L8_52_OFF && (m.c7Link || (m.line !== m.id && this.lineAt >= 0 && m.lineAt >= 0 && m.lineAt < this.lineAt))) return false;   // L8.52.5 (mesh_ring.inc): "alone" said by the end of a TURN link for its side is no founder of one
+        if ((m.c7Link || (m.line !== m.id && this.lineAt >= 0 && m.lineAt >= 0 && m.lineAt < this.lineAt))) return false;   // L8.52.5 (mesh_ring.inc): "alone" said by the end of a TURN link for its side is no founder of one
         let mate = false; for (const [k, v] of this.occ) if (v >= 0 && v !== this.id && v !== m.id && ckPc(k) === 0 && this.firstHandLive(k)) { mate = true; break; }
         if (!mate) return false;
         this.trace('L8.50-ROOM', this.id, this.coord, 'to=%d line=%d', m.id, m.line); const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = this.id; h.c7Min = this.ringName(); h.c7Held = true; h.c7One = false; this.emit(m.id, h);   // one answer per HELLO received
-        if (!TURN19_OFF && this.f.fabricTurnPc(this.id, m.id)) { this.trace('TURN19-CARRY', this.id, this.coord, 'nc=%d', m.id); const f = newMsg('FIND'); f.nc = m.id; f.from = m.id; f.ttl = K.FIND_TTL; f.sgw = this.id; f.sgwCk = ckey(this.coord) + 1; this.farLearn(f); this.onFind(f); }   // TURN.19.1 (C++ mesh_island.inc)
+        if (this.f.fabricTurnPc(this.id, m.id)) { this.trace('TURN19-CARRY', this.id, this.coord, 'nc=%d', m.id); const f = newMsg('FIND'); f.nc = m.id; f.from = m.id; f.ttl = K.FIND_TTL; f.sgw = this.id; f.sgwCk = ckey(this.coord) + 1; this.farLearn(f); this.onFind(f); }   // TURN.19.1 (C++ mesh_island.inc)
         return true;
       }
-      const lone = this.l850Lone(), left = !L8_52_OFF && !lone && this.ringAlone() && !this.moving && this.lineAt >= 0 && m.lineAt >= 0 && m.lineAt < this.lineAt;   // L8.52.4 (mesh_ring.inc): the last seat of the younger room, alone on its ring, follows on the older room's one word
+      const lone = this.l850Lone(), left = !lone && this.ringAlone() && !this.moving && this.lineAt >= 0 && m.lineAt >= 0 && m.lineAt < this.lineAt;   // L8.52.4 (mesh_ring.inc): the last seat of the younger room, alone on its ring, follows on the older room's one word
       if (m.c7Min < 0 || !(lone || left)) return false;   // L8.50.2
       this.trace(lone ? 'L8.50-LONE' : 'L8.52-LEFT', this.id, this.coord, 'via=%d ring=%d', m.id, m.c7Min);
-      const t19 = !TURN19_OFF && lone && this.f.fabricTurnPc(this.id, m.id);   // TURN.19.2
+      const t19 = lone && this.f.fabricTurnPc(this.id, m.id);   // TURN.19.2
       this.c7Yield(this.ringName(), 'L8.50-lone'); this.c7Old.clear(); this.l851Up = -1; if (t19) { this.lastAsked = m.id; this.trace('TURN19-HELD', this.id, null, 'via=%d', m.id); } return true;
     },
 
     // C++: mesh_island.inc:Seat::l51Rooms
     // L8.51: a contest between two rooms is the merge's (0: not one; 1: the claimant is of the other room; 2: the holder is)
     l51Rooms(claimant, holder) {
-      if (L8_51_OFF || this.line < 0 || claimant < 0 || holder < 0) return 0;
+      if (this.line < 0 || claimant < 0 || holder < 0) return 0;
       const lc = this.lineOf(claimant), lh = this.lineOf(holder); if (lc < 0 || lh < 0 || lc === lh) return 0;
       const other = (lh === this.line && lc !== this.line) ? claimant : (lc === this.line && lh !== this.line) ? holder : -1; if (other < 0) return 0;
       if (this.hasCoord && this.state === 3 && this.l828RingOf(other) === this.ringName()) return 0;
@@ -305,21 +296,21 @@
 
     // C++: mesh_island.inc:Seat::l8422Link   (L8.42.2: the far end of my relayed connection, naming another founding, is of another part whatever my view holds)
     l8422Link(m, other) {
-      if (L8_42_2_OFF || !other || !this.f.fabricTurnOn() || !this.f.fabricTurnPc(this.id, m.id)) return false;
+      if (!other || !this.f.fabricTurnOn() || !this.f.fabricTurnPc(this.id, m.id)) return false;
       for (const [, v] of this.occ) if (v === m.id) { this.trace('L8.42.2-LINK', this.id, this.coord, 'peer=%d line=%d ring=%d', m.id, m.line, m.c7Min); break; }
       return true;
     },
 
     // C++: mesh_island.inc:Seat::l8510Bye   (L8.5.10: the one-merge gate does not hold a mate's goodbye toward an older founding)
     l8510Bye(m) {
-      if (L8_5_10_OFF || L8_52_OFF || m.line < 0 || m.line !== this.line || this.lineAt < 0 || m.id < 0 || this.c7Old.has(m.id) || this.greetersAt < 0 || this.TICK - this.greetersAt > K.RELAY_TTL) return false;
+      if (m.line < 0 || m.line !== this.line || this.lineAt < 0 || m.id < 0 || this.c7Old.has(m.id) || this.greetersAt < 0 || this.TICK - this.greetersAt > K.RELAY_TTL) return false;
       for (let k = 0; k < this.lastGreeters.length && k < this.lastGreetersAt.length; k++) { const g = this.lastGreeters[k], at = this.lastGreetersAt[k]; if (g >= 0 && g !== this.id && g !== m.id && at >= 0 && at < this.lineAt) return true; }
       return false;
     },
 
     // C++: mesh_island.inc:Seat::l8511Drop   (L8.51.1: a yield from a seat whose own frames name another founding is not kept)
     l8511Drop(by) {
-      if (L8_51_1_OFF || this.line < 0 || by < 0) return false; const l = this.lineOf(by); if (l < 0 || l === this.line) return false;
+      if (this.line < 0 || by < 0) return false; const l = this.lineOf(by); if (l < 0 || l === this.line) return false;
       { let mate = false; for (const [k, x] of this.occ) if (x >= 0 && x !== this.id && ckPc(k) === 0 && this.firstHandLive(k) && this.lineOf(x) === this.line) { mate = true; break; } if (!mate) return false; }   // no Section-1 mate of my own lineage heard first-hand: no room stands behind my cell
       this.trace('L8.51.1-DROP', this.id, this.hasCoord ? this.coord : null, 'by=%d line=%d', by, l); return true;
     },
@@ -327,7 +318,7 @@
     // L8.53 THE DOOR DATES THE ROOMS (law text: gifos test/sim/mesh_island.inc, docs/healing-laws.md).
     // C++: mesh_island.inc:Seat::l853Dated   (L8.53.1: a greeter the door dates to another founding is a stranger at its first listing)
     l853Dated(x) {
-      if (L8_53_OFF || L8_52_OFF || x < 0 || x === this.id || this.lineAt < 0 || this.greetersAt < 0 || this.TICK - this.greetersAt > K.RELAY_TTL) return false;
+      if (x < 0 || x === this.id || this.lineAt < 0 || this.greetersAt < 0 || this.TICK - this.greetersAt > K.RELAY_TTL) return false;
       const at = this.epOf(x); if (at < 0 || at === this.lineAt) return false;
       for (const [k, v] of this.occ) if (v === x && this.firstHandLive(k)) return false;   // a seat I hear first-hand at its cell is of my ring, whatever it registered
       return true;
@@ -354,7 +345,7 @@
 
     // C++: mesh_island.inc:Seat::l853Second   (L8.53.2 / L8.53.3: one voucher short: ask the second through the first, or the door first)
     l853Second(m, theirs, tAt) {
-      if (L8_53_OFF || L8_52_OFF || m.from !== m.id || !this.linkIs(m, m.id) || this.lineAt < 0 || m.lineAt < 0 || tAt !== m.lineAt || m.lineAt >= this.lineAt) return false;
+      if (m.from !== m.id || !this.linkIs(m, m.id) || this.lineAt < 0 || m.lineAt < 0 || tAt !== m.lineAt || m.lineAt >= this.lineAt) return false;
       this.l853From = m.id; this.l853Ring = theirs; this.l853Ep = m.lineAt; this.l853At = this.TICK;
       if (!this.l853Ask() && this.TICK - this.l853KnockAt >= K.E3_PERIOD) { this.l853KnockAt = this.TICK; this.trace('L8.53-KNOCK', this.id, this.coord, 'from=%d ring=%d at=%d', m.id, theirs, m.lineAt); this.emitRelay(this.genKey); }
       return false;
@@ -362,7 +353,7 @@
 
     // C++: mesh_island.inc:Seat::l853Door
     l853Door() {
-      if (L8_53_OFF || L8_52_OFF || this.l853From < 0) return;
+      if (this.l853From < 0) return;
       if (this.TICK - this.l853At > K.RELAY_TTL || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0 || this.lineAt < 0 || this.l853Ep >= this.lineAt || this.l853Ring === this.ringName()) { this.l853From = -1; return; }
       if (!roomTerm(this, 1) || this.TICK - this.c7At < K.RELAY_TTL) return;
       this.l853Ask();
@@ -370,7 +361,7 @@
 
     // C++: mesh_island.inc:Seat::l853Pick   (L8.53.4: the voucher is my way in)
     l853Pick(list) {
-      if (L8_53_OFF || this.l853Via < 0 || this.c7At < 0 || this.TICK - this.c7At > K.SIT_TTL || list.indexOf(this.l853Via) < 0) return -1;
+      if (this.l853Via < 0 || this.c7At < 0 || this.TICK - this.c7At > K.SIT_TTL || list.indexOf(this.l853Via) < 0) return -1;
       this.trace('L8.53-VIA', this.id, null, 'via=%d since=%d', this.l853Via, this.c7At); return this.l853Via;
     },
 
@@ -380,7 +371,7 @@
       const fh = this.l842Stranger(m) || this.l857Alone(m) || this.t1415Word(m);   // TURN.14.15 (mesh_turn.inc): the word of a link's end for its side   // L8.5.7
       let tl = false;   // L8.42.2
       if (!fh) {
-        const other = (m.from === m.id || (!L8_53_OFF && m.sig && this.l853Dated(m.id))) && m.line >= 0 && this.line >= 0 && m.line !== this.line;   // L8.53.2: or its signed greeting, carried, when the door dates it to another founding   // L8.42.1: its own greeting names another founding
+        const other = (m.from === m.id || (m.sig && this.l853Dated(m.id))) && m.line >= 0 && this.line >= 0 && m.line !== this.line;   // L8.53.2: or its signed greeting, carried, when the door dates it to another founding   // L8.42.1: its own greeting names another founding
         tl = this.l8422Link(m, other);
         for (const [k, v] of this.occ) if (v === m.id && !tl && (!other || this.firstHandLive(k))) return false;   // a seat my view holds is of my ring, unless I hold it only second-hand and its own greeting names another founding
       }
@@ -388,9 +379,9 @@
       if (!fh && !tl && !((ss !== undefined && ss >= 2) || (xr !== undefined && this.TICK - xr <= 2 * K.RELAY_TTL) || this.l853Dated(m.id))) return false;
       const mine = this.ringName(), theirs = m.c7Min; if (theirs < 0 || theirs === mine) return false;
       const gated = this.TICK - this.c7At < K.RELAY_TTL;
-      let tAt = m.lineAt; if (!L8_52_OFF) { const ve = this.c7VouchEp.get(theirs); if (ve !== undefined && this.TICK - ve[1] <= K.RELAY_TTL) tAt = (tAt < 0 || ve[0] < 0) ? -1 : Math.max(tAt, ve[0]); }   // L8.52.1: of two vouchers' epochs for one name the YOUNGER counts
+      let tAt = m.lineAt; { const ve = this.c7VouchEp.get(theirs); if (ve !== undefined && this.TICK - ve[1] <= K.RELAY_TTL) tAt = (tAt < 0 || ve[0] < 0) ? -1 : Math.max(tAt, ve[0]); }   // L8.52.1: of two vouchers' epochs for one name the YOUNGER counts
       if (this.ringOlder(theirs, tAt, mine, this.lineAt)) {
-        if (!L8_52_OFF) { this.c7VouchEp.set(theirs, [tAt, this.TICK]); if (this.c7VouchEp.size > 16) eraseFirst(this.c7VouchEp); }
+        { this.c7VouchEp.set(theirs, [tAt, this.TICK]); if (this.c7VouchEp.size > 16) eraseFirst(this.c7VouchEp); }
         if (!m.c7Held) { this.trace('L8.45-DROP', this.id, this.coord, 'from=%d theirs=%d', m.id, theirs); return false; }
         const v = ins(this.c7Vouch, theirs, () => new Map()); v.set(m.id, this.TICK);
         for (const [wk, wv] of v) { if (this.TICK - wv > K.RELAY_TTL) v.delete(wk); }
@@ -402,7 +393,7 @@
           for (const wk of v.keys()) { this.l842Join.add(wk); const l = this.lineOf(wk); if (l >= 0 && l !== this.line) ls.add(l); }
           for (const x of this.occ.values()) { if (x < 0 || x === this.id) continue; const l = this.lineOf(x); if ((l >= 0 && ls.has(l)) || this.l828RingOf(x) === theirs) this.l842Join.add(x); }
         }
-        this.trace('C7', this.id, this.coord, 'mine=%d theirs=%d', mine, theirs); if (!L8_53_OFF && this.l853From >= 0 && v.has(this.l853From)) { this.l853Via = this.l853From; this.l853From = -1; }   /* L8.53.4 */ if (this.t1415Word(m)) this.t161Note(m.id);   /* TURN.16.1: moved by the word of my side's link end: it is my way in */ this.c7TowardEp = tAt; this.c7Yield(mine, 'C7-merge', theirs); this.c7TowardEp = -1; this.l842Join.clear(); return true;
+        this.trace('C7', this.id, this.coord, 'mine=%d theirs=%d', mine, theirs); if (this.l853From >= 0 && v.has(this.l853From)) { this.l853Via = this.l853From; this.l853From = -1; }   /* L8.53.4 */ if (this.t1415Word(m)) this.t161Note(m.id);   /* TURN.16.1: moved by the word of my side's link end: it is my way in */ this.c7TowardEp = tAt; this.c7Yield(mine, 'C7-merge', theirs); this.c7TowardEp = -1; this.l842Join.clear(); return true;
       }
       if (gated) return false;
       const t = this.c7Told.get(m.id);

@@ -51,8 +51,6 @@
   const DEFAULT_WORKER = 'https://turn.gifos.app';
   const WORKER_KEY = 'gifos_turn_worker'; // localStorage override: a self-hosted or test credential service
   const TM = (root.GifOS && root.GifOS.timings) || (isNode ? require('./timings.js') : {});   // every wait: js/timings.js, loaded before this file
-  const offOn = (n) => (isNode && typeof process !== 'undefined' && process.env && process.env[n] === '1') ? 1 : 0;
-  const TURN18_OFF = offOn('MESH_TURN18_OFF'), ONEMOVE_OFF = offOn('MESH_TURN_ONEMOVE_OFF');   // the sim's -DTURN18_OFF=1 build; the page-only one-move rule (every cause restarts at once, video at the credential)
   const FETCH_TIMEOUT_MS = TM.TURN_FETCH_TIMEOUT_MS;   // a credential answer slower than this is no answer
   const RETRY_BASE_MS = TM.TURN_RETRY_BASE_MS;         // first retry after about 2 s, doubling
   const RETRY_MAX_MS = TM.TURN_RETRY_MAX_MS;           // never longer than 5 minutes between tries
@@ -427,12 +425,12 @@
     // not hold the ask.
     function turnWaited(now, F) {
       // TURN.18 (C++: mesh_turn.inc:turn18All): every foreign greeter is one the door's list says my network cannot meet
-      if (!TURN18_OFF && F.length && io.doorNet && io.probed && io.probed() && !(io.friends ? io.friends() : true) && (io.judged ? io.judged() : false) && F.every((g) => io.doorNet(g) === 0)) return true;
+      if (F.length && io.doorNet && io.probed && io.probed() && !(io.friends ? io.friends() : true) && (io.judged ? io.judged() : false) && F.every((g) => io.doorNet(g) === 0)) return true;
       if (!io.blocked()) return now - head.since >= WAIT_MS;   // the per-greeter wait is a blocked head's: any other head keeps TURN.4's one clock
       const friends = io.friends ? !!io.friends() : true;
       const judged = !friends && !!io.askedAt && (io.judged ? !!io.judged() : true);
       for (const g of Array.from(head.seen.keys())) if (F.indexOf(g) < 0) head.seen.delete(g);
-      const due = (g) => { let d = head.seen.get(g) + WAIT_MS; if (judged) { const a = io.askedAt(g); if (a > 0 && now - a <= MERGE_MS) d = Math.min(d, a + ASK_MS); if (!TURN18_OFF && io.doorNet && io.doorNet(g) === 0) d = head.seen.get(g); } return d; };
+      const due = (g) => { let d = head.seen.get(g) + WAIT_MS; if (judged) { const a = io.askedAt(g); if (a > 0 && now - a <= MERGE_MS) d = Math.min(d, a + ASK_MS); if (io.doorNet && io.doorNet(g) === 0) d = head.seen.get(g); } return d; };
       const epOf = (g) => { const e = io.epoch ? io.epoch(g) : -1; return Number.isInteger(e) ? e : -1; };
       let ok = true; const ep = new Set();
       for (const g of F) { if (!head.seen.has(g)) head.seen.set(g, now); if (now < due(g)) ok = false; else { const e = epOf(g); if (e >= 0) ep.add(e); } }
@@ -657,7 +655,6 @@
     // The page applies its own settings at once (io.settings), so one move usually carries both ends' new servers.
     function move(L, why) {
       if (L.state === 'closed' || L.web) return;   // the web path's connection never moves (TURN.18)
-      if (ONEMOVE_OFF) { io.restart(L.far, L.l); if (L.paidMe && L.paid && !L.paidSaid) paidSay(L, 'off'); return; }
       if (io.settings) io.settings(L.far);
       L.mvWant = true; L.mvWhy = why;
       pump(L);

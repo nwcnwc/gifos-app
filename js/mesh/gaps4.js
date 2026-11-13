@@ -1,7 +1,6 @@
 /*
  * gaps4.js: L40 (gaps4), a same-cell contest of two unproven claims ends with one seat, seat side (C++: mesh_gaps4.inc).
  * Methods only, added to the Seat; callees other units define are called by name on the Seat.
- * L40_OFF (a build-time switch in the sim, 0 in the release) is not ported: every law here is on.
  */
 (function (root) {
   'use strict';
@@ -18,8 +17,6 @@
   const { ckey, unckey: unck } = topo;
   const newMsg = (t) => msg.newMsg(t);
   const TWO32 = 4294967296;
-  // the sim's #define L8_52_OFF in mesh.cpp (a build-time switch): MESH_L8_52_OFF=1 under node, read once at load; a page always runs the law
-  const L8_52_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L8_52_OFF === '1') ? 1 : 0;
 
   // C++: mesh_gaps4.inc:l40Rank   [hmix64 of ck ^ 0x4c3430: the xor touches the low word only]
   function l40Rank(ck, x) { return hash.hmix64(hash.hmixId(hash.H_INIT, x), hash.hi32(ck) * TWO32 + ((hash.lo32(ck) ^ 0x4c3430) >>> 0)); }
@@ -82,7 +79,7 @@
       if (this.l25WitAsk.length && !deadline && this.TICK - this.l25WitAt < K.L25_WIT_WAIT) return 0;
       const R = this.l25WitRival, M = this.l25WitMe, A = this.l25WitAskedN; this.l40Kept = false;
       { let ra = this.lineAtOf(this.l40Riv), rl = this.lineOf(this.l40Riv); if ((ra < 0 || rl < 0) && this.l25By >= 0 && this.l25By !== this.id) { ra = this.lineAtOf(this.l25By); rl = this.lineOf(this.l25By); }   /* the rival has not spoken to me: the arbiter that names it stamps its room */   // L8.52.2 (mesh_ring.inc): between two foundings of different age the seat of the older room is the first
-        if (!L8_52_OFF && this.coord.pc === 0 && this.lineAt >= 0 && ra >= 0 && ra !== this.lineAt && rl >= 0 && rl !== this.line && this.lineAt < ra) { this.l40Kept = true; this.trace('L8.52-ORDER', this.id, this.coord, 'rival=%d mine=%d theirs=%d', this.l40Riv, this.lineAt, ra); return 2; } }
+        if (this.coord.pc === 0 && this.lineAt >= 0 && ra >= 0 && ra !== this.lineAt && rl >= 0 && rl !== this.line && this.lineAt < ra) { this.l40Kept = true; this.trace('L8.52-ORDER', this.id, this.coord, 'rival=%d mine=%d theirs=%d', this.l40Riv, this.lineAt, ra); return 2; } }
       if (R > M && 2 * R > A && R + 1 >= K.L25_WIT_MIN) { this.trace('L40-OUTVOTED', this.id, this.coord, 'rival=%d kept=%d me=%d asked=%d', this.l40Riv, R, M, A); return 1; }
       if (M > R && 2 * M > A && M >= K.L25_WIT_MIN) { this.l40Kept = true; this.trace('L40-WITNESSED', this.id, this.coord, 'rival=%d kept=%d me=%d asked=%d', this.l40Riv, R, M, A); return 2; }
       const corr = this.l40Arb || R > 0;
@@ -91,7 +88,7 @@
       const ck = ckey(this.coord), ra = l40Rank(ck, this.id), rb = l40Rank(ck, this.l40Riv);
       let first = ra < rb || (ra === rb && this.id < this.l40Riv);
       { let ea = this.lineAtOf(this.l40Riv), el = this.lineOf(this.l40Riv); if ((ea < 0 || el < 0) && this.l25By >= 0 && this.l25By !== this.id) { ea = this.lineAtOf(this.l25By); el = this.lineOf(this.l25By); }
-        if (!L8_52_OFF && this.coord.pc === 0 && this.lineAt >= 0 && ea >= 0 && ea !== this.lineAt && el >= 0 && el !== this.line && this.lineAt > ea) first = false; }   // L8.52.2: the seat of the younger room is never the first by the rank's coin
+        if (this.coord.pc === 0 && this.lineAt >= 0 && ea >= 0 && ea !== this.lineAt && el >= 0 && el !== this.line && this.lineAt > ea) first = false; }   // L8.52.2: the seat of the younger room is never the first by the rank's coin
       this.trace('L40-ORDER', this.id, this.coord, 'rival=%d %s kept=%d me=%d asked=%d arb=%d', this.l40Riv, first ? 'first' : 'later', R, M, A, this.l40Arb ? 1 : 0);
       return first ? 2 : 1;
     },
