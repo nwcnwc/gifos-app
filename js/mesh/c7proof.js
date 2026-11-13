@@ -23,12 +23,7 @@
       const mine = this.ringName();
       for (const [x, e] of this.l828Ring) { if (x !== m.id && e[0] >= 0 && e[0] !== mine && this.ringOlder(e[0], this.lineAtOf(x), mine, this.lineAt) && TICK - e[1] <= K.RELAY_TTL) return true; }   // L8.52: lower = older
       for (const [ring, v] of this.c7Vouch) { let ve = -1; { const z = this.c7VouchEp.get(ring); if (z !== undefined) ve = z[0]; } if (ring === mine || !this.ringOlder(ring, ve, mine, this.lineAt)) continue; for (const [x, at] of v) if (x !== m.id && TICK - at <= K.RELAY_TTL) return true; }
-      // L42.3 THE DOOR IS THE SECOND WORD: a door list inside RELAY_TTL that names a greeter of a room older than mine, with my mate's proven goodbye
-      if (this.lineAt >= 0 && this.greetersAt >= 0 && TICK - this.greetersAt <= K.RELAY_TTL)
-        for (let k = 0; k < this.lastGreeters.length && k < this.lastGreetersAt.length; k++) {
-          const g = this.lastGreeters[k], at = this.lastGreetersAt[k]; if (g < 0 || g === this.id || g === m.id || at < 0 || at >= this.lineAt) continue;
-          this.trace('L42.3-DOOR', this.id, this.hasCoord ? this.coord : null, 'from=%d greeter=%d at=%d mine=%d', m.id, g, at, this.lineAt); return true;
-        }
+      // (the door's listing of an older room is not a second word: a second word is a seat's own)
       this.trace('L42-HOLD', this.id, this.hasCoord ? this.coord : null, 'from=%d ring=%d', m.id, m.c7Min);
       return false;
     },
