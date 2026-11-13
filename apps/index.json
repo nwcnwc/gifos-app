@@ -2106,8 +2106,8 @@
       "appId": "drawphone",
       "name": "Drawphone",
       "shortName": "Drawphone",
-      "version": "1.0",
-      "tagline": "Telephone with pictures: draw, pass, guess. One link deals everyone in.",
+      "version": "1.1",
+      "tagline": "Draw & guess for meetings: one draws, everyone guesses, points on every screen. Plus Telephone.",
       "author": {
         "name": "tannerkrewson",
         "url": "https://github.com/tannerkrewson/drawphone"
@@ -2122,17 +2122,18 @@
       },
       "minBuild": 947,
       "offline": true,
-      "releaseDate": "2026-08-23",
-      "updated": "2026-08-23",
+      "releaseDate": "2026-11-13",
+      "updated": "2026-11-13",
       "categories": [
         "Games"
       ],
       "tags": [
-        "telephone",
         "drawing",
+        "guessing",
         "party",
+        "meeting",
         "multiplayer",
-        "pictionary"
+        "telephone"
       ],
       "accent": [
         232,
@@ -2140,15 +2141,15 @@
         64
       ],
       "cover": "/apps/drawphone/cover.jpg",
-      "bytes": 204759,
+      "bytes": 228581,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-11-13"
       },
-      "sha256": "093e006beb9f31002fe2b68097d4a04eb8fbd6dd46fd456e875bffaa3a0cae78"
+      "sha256": "4f8c59af47668ec7f1aced7a1996158bf9905682f7a3d068163f9ce6c09e283d"
     },
     {
       "slug": "duck-hunt",
