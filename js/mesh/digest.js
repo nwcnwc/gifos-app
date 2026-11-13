@@ -493,7 +493,7 @@
     // C++: mesh_seat.inc:Seat::rollup
     rollup() {
       const id = this.id, TICK = this.TICK;
-      if (!this.w.lv.DIGEST || !this.hasCoord || this.state !== 3) return;
+      if (!this.hasCoord || this.state !== 3) return;
       // occIsPhantom's knock-is-evidence rule is scoped to the FIND scan in progress: a display fold is not that scan.
       const svFind = this.findNc; this.findNc = -1;
       try {
@@ -566,7 +566,7 @@
     // § G (3) as its own step: the Section-1 seat's room fold.
     rootFold(extra = false) {
       const id = this.id;
-      if (!this.w.lv.DIGEST || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return;
+      if (!this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return;
       const svFind = this.findNc; this.findNc = -1;
       try {
         const R = msg.newDig(); R.at = this.LT(); R.rx = R.at; R.by = id;
@@ -646,7 +646,7 @@
     // C++: mesh_seat.inc:Seat::l10Digest
     // An early state frame, taken digest-only.
     l10Digest(m) {
-      if (!this.w.lv.DIGEST || !this.hasCoord || this.state !== 3) return;
+      if (!this.hasCoord || this.state !== 3) return;
       if (m.t === 'S1SYNC') { if (m.digs.length <= C * C && this.coord.pc === 0) this.s1SyncDigs(m); return; }
       if (m.id < 0) return;
       const sure = this.linkIs(m, m.id), dsig = !sure && signedBy(m, m.id); if (!(sure || dsig)) return;
@@ -657,8 +657,8 @@
     // C++: mesh_seat.inc:Seat::l10Early
     l10Early() {
       const id = this.id, TICK = this.TICK;
-      if (this.spam && this.w.lv.DIGEST && this.state === 3 && this.hasCoord) { if (this.coord.pc === 0) { this.s1Heartbeat(); this.s1Sync(); } else this.phoneHome(); }   // the bad-actor lever: a state message every tick
-      if (!this.w.lv.DIGEST || this.state !== 3 || !this.hasCoord || this.moving) return;
+      if (this.spam && this.state === 3 && this.hasCoord) { if (this.coord.pc === 0) { this.s1Heartbeat(); this.s1Sync(); } else this.phoneHome(); }   // the bad-actor lever: a state message every tick
+      if (this.state !== 3 || !this.hasCoord || this.moving) return;
       if (this.l10NewAt && TICK >= this.l10NewAt - 1 + K.L10_NEW_WAIT) { this.l10NewAt = 0; this.l10Mark(); }   // a seat new in my fold has been there long enough
       const o = this.l10OwnNow(); if (o !== this.l10OwnSig) { if (this.l10OwnSig) this.l10Mark(); this.l10OwnSig = o; }   // the first look at my own facts is no change
       if (this.rootDig.at >= 0) { const r = dig.digSig(this.rootDig); if (r !== this.l10RootSig) { if (this.l10RootSig) this.l10DirtyDn = true; this.l10RootSig = r; } }

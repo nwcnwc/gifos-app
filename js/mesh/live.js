@@ -45,7 +45,7 @@
     // C++: mesh_seat.inc:Seat::pongDig
     pongDig(m, pid) {
       // § G DOWN-LEG + the AUTHOR'S REFUTATION
-      if (this.w.lv.DIGEST && this.state === 3 && this.hasCoord && this.coord.pc !== 0) {
+      if (this.state === 3 && this.hasCoord && this.coord.pc !== 0) {
         if (m.dgRoot.at >= 0) {
           const rt = digM.cloneDig(m.dgRoot); this.rxDig(rt);
           if (this.rootDig.at < 0 || rt.rx > this.rootDig.rx) this.rootDig = rt;   // the room fold, shown: a regular beat or an L10.3 early push (dgOnly), fresher ON MY CLOCK wins (G0b)
@@ -181,7 +181,7 @@
     onPhone(m) {
       const id = this.id, TICK = this.TICK, lv = this.w.lv;
       if (m.id < 0) return;
-      const sure = this.linkIs(m, m.id); if (sure && m.dgRoot.at >= 0 && lv.DIGEST && this.state === 3 && this.hasCoord && this.coord.pc !== 0 && this.coord.i === 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r && this.occGet(ckey(m.coord)) === m.id) { const rt = digM.cloneDig(m.dgRoot); this.rxDig(rt); if (this.rootDig.at < 0 || rt.rx > this.rootDig.rx) this.rootDig = rt; }   // L2.4.1
+      const sure = this.linkIs(m, m.id); if (sure && m.dgRoot.at >= 0 && this.state === 3 && this.hasCoord && this.coord.pc !== 0 && this.coord.i === 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r && this.occGet(ckey(m.coord)) === m.id) { const rt = digM.cloneDig(m.dgRoot); this.rxDig(rt); if (this.rootDig.at < 0 || rt.rx > this.rootDig.rx) this.rootDig = rt; }   // L2.4.1
       if (sure) this.l711Phone(m);   // L7.11   // FRAME AUTHORITY: a PHONE is unsigned
       const dsig = !sure && signedBy(m, m.id);   // its own signed word, for the digest only
       if (m.kv.voter >= 0) { const wv = this.kVerify(m, sure); this.kLastWhy = wv; if (wv === 0) { this.kvKid.set(ckey(m.coord), [digM.cloneKStmt(m.kv), TICK]); const sv = ins(this.kSeen, m.kv.voter, () => 0); if (m.kv.ver > sv) this.kSeen.set(m.kv.voter, m.kv.ver); this.kTaken++; } else this.kRef[wv]++; }   // L27: checked before anything this frame does
@@ -204,7 +204,7 @@
       // Every honest PHONE comes from one of MY owned links; an UNPROVEN one may only refresh a pairing I already hold.
       if (!this.ownedLinkCell(ckey(m.coord))) return;
       if (!sure && this.occGet(ckey(m.coord)) !== m.id) return;
-      if (m.tag === 5 && lv.DIGEST && this.state === 3 && m.dgSi.at >= 0 && this.coord.pc !== 0 && this.coord.i !== 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r && m.coord.i !== 0) { const u = digM.cloneDig(m.dgSi); this.rxDig(u); u.rows.length = 0; if (this.siKids.size >= C) this.siKids.clear(); this.siKids.set(ckey(m.coord), u); }   // L48: a row-mate's own report while I stand in for our head
+      if (m.tag === 5 && this.state === 3 && m.dgSi.at >= 0 && this.coord.pc !== 0 && this.coord.i !== 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r && m.coord.i !== 0) { const u = digM.cloneDig(m.dgSi); this.rxDig(u); u.rows.length = 0; if (this.siKids.size >= C) this.siKids.clear(); this.siKids.set(ckey(m.coord), u); }   // L48: a row-mate's own report while I stand in for our head
       if (this.ppValid(m)) this.ppNote(ckey(m.coord), m.id, sm.ppSigOf(m.pp, m.ppAt), m.pp, m.ppL);   // LAW L16.5.1: a claim's PHONE presents its placement proof (a note, as a HELLO's)
       let l810 = false;   // L8.10: this phone is the other ring.
       { // E2 at the ARBITER
@@ -243,7 +243,7 @@
         if (sure) this.nbrHeard();
       }
       // § G UP-LEG: the phoner's digest arrives as PAYLOAD on the beat it already sends.
-      if ((sure || dsig) && lv.DIGEST && this.state === 3 && m.dgUp.at >= 0 && m.tag !== 5) this.takeUp(m);
+      if ((sure || dsig) && this.state === 3 && m.dgUp.at >= 0 && m.tag !== 5) this.takeUp(m);
       const ck = ckey(m.coord), prev = this.occGet(ck);
       // an unproven PHONE keeps a pairing alive only while no link has ever proven it
       if (sure && !l810) { this.setOcc(ck, m.id); this.liveMark(ck); this.noteS1(ck); this.noteLinked(ck, m.id, m.tn); }   // L8.10
@@ -339,7 +339,7 @@
       if (m.hard && m.t === 'PHONE' && this.coord.pc !== 0 && this.coord.i === 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r) { this.ownDeadAt = TICK; this.ownDeadCk = m.oCk; this.ownDeadId = m.owner; this.ownDeadSeen = this.occGet(m.oCk); }
       if (m.e1dn && this.coord.pc !== 0 && this.coord.i === 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r) { this.ownVouchAt = this.l211Stamp(m); const oc3 = this.ownerCoord(); if (m.owner >= 0 && m.owner !== id && oc3 && m.oCk === ckey(oc3) && this.occGet(m.oCk) < 0 && !this.byeAt.has(m.oCk) && !this.translost.has(m.oCk)) { this.setOcc(m.oCk, m.owner); this.noteS1(m.oCk); } }   // my E2 source relays the backup owner's word: my owner lives
       if (m.tag === 5) { p.tag = 5; if (p.row.length === 0) for (let c = 0; c < C; c++) { const rc = { pc: this.coord.pc, r: this.coord.r, i: c }; let x = this.occGet(ckey(rc)); if (c === this.coord.i) x = id; if ((x >= 0 && x !== m.id && this.firstHandLive(ckey(rc))) || c === this.coord.i) p.row.push(ent(ckey(rc), x, -1)); } }   // L2.7: a stand-in's answer
-      if (lv.DIGEST && this.state === 3 && m.tag !== 5) {
+      if (this.state === 3 && m.tag !== 5) {
         p.dgRoot = this.wireDig(this.rootDig); p.dgRoot.kl.length = 0;   // L27.9: the list rides up only
         if (this.kFakeT >= 0) { p.dgRoot.part = 0; p.dgRoot.kick.push({ tgt: this.kFakeT, up: Math.max(0, p.dgRoot.n) + Math.max(0, p.dgRoot.leased), dn: 0 }); }   // L27 `kfake`
         { this.l10DgTo.set(m.id, TICK); this.l10DgN.set(m.id, digM.digSig(this.rootDig) | 0); }   // L10.3: the fold this beat carried, by signature (a list change is news too)
@@ -423,9 +423,9 @@
         { for (const [lk, lvv] of Array.from(this.l20Out)) { if (this.occGet(lk) >= 0 || TICK - lvv[1] > K.LEASE_T) this.l20Out.delete(lk); else m.l20.push({ k: lk, v: lvv[0] }); } }   // L20
       }
       // § G UP-LEG (payload on the beat, G0)
-      if (lv.DIGEST && this.state === 3 && !standIn) { m.dgUp = this.pubDig((this.coord.pc !== 0 && this.coord.i === 0) ? this.rowDig : this.myDig); this.noteUp(m.dgUp); }
-      else if (lv.DIGEST && this.state === 3 && this.myDig.at >= 0) { m.dgSi = this.wireDig(this.myDig); m.dgSi.rows.length = 0; }   // L48: my own report, for the heir's stand-in fold
-      if (!early && !standIn && this.u2Hot && lv.DIGEST && this.state === 3 && this.coord.pc !== 0 && this.coord.i !== 0 && this.rootDig.at >= 0) { m.dgRoot = this.wireDig(this.rootDig); m.dgRoot.kl.length = 0; }   // L2.4.1
+      if (this.state === 3 && !standIn) { m.dgUp = this.pubDig((this.coord.pc !== 0 && this.coord.i === 0) ? this.rowDig : this.myDig); this.noteUp(m.dgUp); }
+      else if (this.state === 3 && this.myDig.at >= 0) { m.dgSi = this.wireDig(this.myDig); m.dgSi.rows.length = 0; }   // L48: my own report, for the heir's stand-in fold
+      if (!early && !standIn && this.u2Hot && this.state === 3 && this.coord.pc !== 0 && this.coord.i !== 0 && this.rootDig.at >= 0) { m.dgRoot = this.wireDig(this.rootDig); m.dgRoot.kl.length = 0; }   // L2.4.1
       this.emit(tid, m); this.l10Sent = true;
       if (early) return;
       // A GHOST PHONE TARGET MUST BE FALSIFIABLE (2026-08-05, churn-combos leg C): see the sim for the long form.
@@ -453,7 +453,7 @@
         if (tid < 0 || tid === this.id) continue;
         if (!early) { const tk = ckey(t); const lvv = this.live.get(tk), po = this.probeOut.get(tk); if (!this.translost.has(tk) && !this.firstHandLive(tk) && (lvv === undefined || TICK - lvv > K.OWNER_SILENT) && (po === undefined || TICK - po.last > K.OWNER_SILENT)) this.routeToProbe(t); }   // a rook cell held by a seat I do not hear is probed once per silence window
         const m = newMsg('PHONE'); m.coord = cc(this.coord); m.tock = ckey(t); m.id = this.id; m.kids = this.hasChildren(); m.child = this.occGet(ckey(down(this.coord)));
-        if (this.w.lv.DIGEST && this.state === 3) m.dgUp = this.pubDig(this.myDig);   // § G: rook peers exchange SECTION digests
+        if (this.state === 3) m.dgUp = this.pubDig(this.myDig);   // § G: rook peers exchange SECTION digests
         m.l10E = early; this.emit(tid, m);
       }
     },
@@ -462,7 +462,7 @@
     // the section table a Section-1 beat carries, from the active digest state
     l10Digs() {
       const TICK = this.TICK, digs = [];
-      if (this.w.lv.DIGEST && this.state === 3) {
+      if (this.state === 3) {
         digs.push({ k: ckey(this.coord), d: this.pubDig(this.myDig) });
         for (const [ek, ed] of this.s1tab) if (ek !== ckey(this.coord) && this.LT() - ed.rx <= K.DIG_TTL) digs.push({ k: ek, d: this.wireDig(ed) });
         for (const [fk, fv] of Array.from(this.digForgot)) {   // a vacate (a mover left the cell): told on for a while, so a Section-1 seat that never heard it first-hand drops the old cell's report too

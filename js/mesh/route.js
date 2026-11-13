@@ -333,7 +333,7 @@
     // C++: mesh_seat.inc:Seat::kickEval
     kickEval() {
       const TICK = this.TICK;
-      if (this.kIgnore || !this.w.lv.DIGEST || !this.hasCoord || this.state !== 3) return;
+      if (this.kIgnore || !this.hasCoord || this.state !== 3) return;
       const R = this.rootDec;
       if (R.at < 0 || R.part || R.rx < 0 || this.LT() - R.rx > K.DIG_TTL) return;   // a partial or stale fold changes nothing: neither a new verdict nor a lift
       const on = []; kOver(R, this.LT(), this.id, on);

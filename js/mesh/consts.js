@@ -335,7 +335,6 @@
     PROBEON: true,   // C++: mesh.cpp:PROBEON
     SPREAD: true,   // C++: mesh.cpp:SPREAD
     SPREAD_MINDEPTH: 4,   // C++: mesh.cpp:SPREAD_MINDEPTH
-    DIGEST: true,   // C++: mesh.cpp:DIGEST
     L10_BUCKET: true,   // C++: mesh.cpp:L10_BUCKET
     L10_SPAM: -1,   // C++: mesh.cpp:L10_SPAM
     NET_SKEW: 0,   // C++: mesh.cpp:NET_SKEW
