@@ -34126,6 +34126,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // a phone, and a tap brings them back. More, chat, a tray, a waiting
       // list, or a dialog holds them up.
       const CHROME_IDLE_MS = GifOS.timings.CHROME_IDLE_MS; // 0.9.23b: calm after 3 s
+      // Dialogs and sheets that sit over the call (dialog.js shapes the same set).
+      const CHROME_DIALOGS = '.name-modal, .modal-bg, .rb-sheet, .lock-modal, .perm-modal, .rec-replay';
       let chromeTimer = 0;
       let swallowClick = false;
       function phoneCall() {
@@ -34206,7 +34208,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const t = e.target;
         // #appbar never tucks while an app is up, so its tap is a press, not
         // a wake: swallowing it left Help and Abilities dead on a solo app.
-        if (t && t.closest && t.closest('.fitbtn, .topchip, #unmute, #showcam, #chatnote, #chatpanel, #chatbadge, #chatpreview, .name-modal, #waitlist, #tilewin, .tile-open, #appbar')) {
+        // A dialog (an app's abilities card, a sheet) is a press too: its
+        // buttons were dead to every tap that came after a quiet spell.
+        if (t && t.closest && t.closest('.fitbtn, .topchip, #unmute, #showcam, #chatnote, #chatpanel, #chatbadge, #chatpreview, .name-modal, #waitlist, #tilewin, .tile-open, #appbar, ' + CHROME_DIALOGS)) {
           wakeOnClick = true;
           return;
         }
@@ -34227,7 +34231,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!IS_MOBILE || !callOpen() || !phoneCall()) return;
         if (document.body.classList.contains('chrome-away') || chromeHeld()) return;
         const t = e.target;
-        if (t && t.closest && t.closest('button, a, input, select, textarea, label, .bar, #appbar, .fitbtn, .topchip, .tile-open, .name-modal, #tilewin, #tilewin-veil, #waitlist, #chatpanel, #chatnote, #unmute, #showcam, #callstate')) return;
+        if (t && t.closest && t.closest('button, a, input, select, textarea, label, .bar, #appbar, .fitbtn, .topchip, .tile-open, .name-modal, #tilewin, #tilewin-veil, #waitlist, #chatpanel, #chatnote, #unmute, #showcam, #callstate, ' + CHROME_DIALOGS)) return;
         hideChrome();
       }, true);
       document.addEventListener('click', () => { try { syncChrome(); } catch (e) {} });
