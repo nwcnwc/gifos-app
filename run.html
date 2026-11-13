@@ -522,15 +522,31 @@ function chk(){if(shown)return;if(h.style.getPropertyValue('--accent'))show();el
 requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GifOS">
-<script id="gifos-load-gate">/* Load completeness: record every <script src> that failed to load (error events do not bubble: capture on window), and every script that threw while a failed one was missing. startMesh() checks this before it seats anything (see unitsGate). */(function(){var g=window.__gifosLoadGate={failed:[],threw:[],tries:0,state:'ok',trace:[]};
+<script id="gifos-load-gate">/* Load completeness: record every <script src> that failed to load (error events do not bubble: capture on window), and every script that threw while a failed one was missing. startMesh() checks this before it seats anything (see unitsGate). */(function(){var g=window.__gifosLoadGate={failed:[],threw:[],tries:0,state:'ok',trace:[],src:{}};
 function key(u){try{var x=new URL(u,location.href);return x.pathname.replace(/^\//,'');}catch(e){return String(u);}}
 /* Only this site's own scripts are units of the page. A script from another origin (an analytics beacon a host adds, which tracker blockers stop) is never a unit: its failure must not hold anyone at the door. */
 function own(u){try{return new URL(u,location.href).origin===location.origin;}catch(e){return false;}}
 /* OPTIONAL: a theme OVERRIDE file (themes/<label>/theme.js, icons.js, eggs.js, wallpaper.js; js/gifos-themes.js asks for one per host label, any label works) may be absent: that is a clean fallback to the base theme, never a failed load. The base themes/*.js stay required. */
 function opt(k){return /^(?:versions\/[^\/]+\/)?themes\/[^\/]+\/(?:theme|icons|eggs|wallpaper)\.js$/i.test(k);}
 /* The offline layer (sw.js) answers an uncached script with an EMPTY 200 when the network fails: no error event, a unit that never ran. A script that arrives with no body counts as failed too. */
-try{new PerformanceObserver(function(l){l.getEntries().forEach(function(en){try{if(en.initiatorType==='script'&&en.decodedBodySize===0&&own(en.name)&&/\.js$/.test(new URL(en.name).pathname)){var k=key(en.name);if(!opt(k)&&g.failed.indexOf(k)<0)g.failed.push(k);}}catch(x){}});}).observe({type:'resource',buffered:true});}catch(e){}
-window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagName==='SCRIPT'&&t.src){if(!own(t.src))return;var k=key(t.src);if(!opt(k)&&g.failed.indexOf(k)<0)g.failed.push(k);}else if(e&&e.filename&&g.failed.length&&own(e.filename)){var f=key(e.filename);if(g.threw.indexOf(f)<0)g.threw.push(f);}}catch(x){}},true);})();</script>
+try{new PerformanceObserver(function(l){l.getEntries().forEach(function(en){try{if(en.initiatorType==='script'&&en.decodedBodySize===0&&own(en.name)&&/\.js$/.test(new URL(en.name).pathname)){var k=key(en.name);if(!opt(k)&&g.failed.indexOf(k)<0){g.failed.push(k);g.src[k]=en.name;}}}catch(x){}});}).observe({type:'resource',buffered:true});}catch(e){}
+/* A script missing BEFORE the meeting starts (on the published page that is the bundle: nearly all of the page's code) leaves nothing that could draw the lobby or reach the join's own gate (unitsGate). The starter at the end of the page then calls this first: it loads the failed scripts again at the address they were asked at (in page order, with the join gate's backoff, and the scripts after them that threw), and resolves true when every one has run. When one stays missing it refuses: the trace says so and a banner says so on screen. */
+g.reload=function(){var BACK=[0,400,1200,2400],todo=g.failed.slice();
+function note(m){g.trace.push(m);try{console.log('[load-gate] '+m);}catch(x){}}
+function order(){var o=[],l=document.querySelectorAll('script[src]');for(var i=0;i<l.length;i++)o.push(key(l[i].src));return o;}
+function one(k){return new Promise(function(res){var el=document.createElement('script'),u;try{u=new URL(g.src[k]||k,location.href);u.searchParams.set('lc',String(g.tries));u=u.href;}catch(x){u=k+'?lc='+g.tries;}el.async=false;el.src=u;el.onload=function(){var en=performance.getEntriesByName(el.src).pop();if(en&&en.decodedBodySize===0){el.remove();res(false);}else res(true);};el.onerror=function(){el.remove();res(false);};document.head.appendChild(el);});}
+function seq(list,bad){return list.reduce(function(p,k){return p.then(function(){return one(k).then(function(ok){if(!ok)bad.push(k);});});},Promise.resolve());}
+g.state='retry';note('missing '+g.failed.join(',')+(g.threw.length?' threw '+g.threw.join(','):'')+' before start');
+function step(i){var o=order(),first=Math.min.apply(null,todo.map(function(k){return o.indexOf(k);}).filter(function(n){return n>=0;}));
+var redo=todo.concat(g.threw.filter(function(k){return o.indexOf(k)>first&&todo.indexOf(k)<0;})).sort(function(x,y){return o.indexOf(x)-o.indexOf(y);}),bad=[];g.tries++;
+return seq(redo,bad).then(function(){note('try '+g.tries+' reloaded '+redo.length+' still-missing '+bad.length);todo=bad.filter(function(k){return g.failed.indexOf(k)>=0||todo.indexOf(k)>=0;});
+if(!bad.length||i+1>=BACK.length)return;return new Promise(function(r){setTimeout(r,BACK[i+1]);}).then(function(){return step(i+1);});});}
+return step(0).then(function(){if(!todo.length){g.failed.length=0;g.threw.length=0;g.state='ok';note('recovered');return true;}
+g.state='refused';g.missing=todo;note('refuse '+todo.join(','));
+var I=window.GifOS&&GifOS.i18n,msg='This page did not finish loading, so it cannot join safely. Reload the page to try again.';try{if(I&&I.ui()!=='en'&&I.has('meet.stLoadIncomplete'))msg=I.t('meet.stLoadIncomplete');}catch(x){}
+try{var d=document.createElement('div');d.id='load-gate-msg';d.setAttribute('role','alert');d.style.cssText='position:fixed;left:0;right:0;top:0;z-index:2147483647;padding:14px 16px;background:#b00020;color:#fff;font:16px system-ui,sans-serif;text-align:center';d.textContent=msg;document.body.appendChild(d);}catch(x){}
+return false;});};
+window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagName==='SCRIPT'&&t.src){if(!own(t.src))return;var k=key(t.src);if(!opt(k)&&g.failed.indexOf(k)<0){g.failed.push(k);g.src[k]=t.src;}}else if(e&&e.filename&&g.failed.length&&own(e.filename)){var f=key(e.filename);if(g.threw.indexOf(f)<0)g.threw.push(f);}}catch(x){}},true);})();</script>
 <!-- The lobby's scripts come first: everything the meeting reads until the lobby is on screen. A published
      copy (.github/scripts/bundle/bundle.mjs) loads the scripts above the end mark as one bundle with the page
      and the ones below it as a second bundle, right after the lobby starts. Keep that order here. -->
@@ -40285,7 +40301,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
 // words are in before anything is drawn, so nothing flashes English. A catalog
 // that has not landed after 8 s lets the meeting start in English, and the
 // words are repainted the moment the catalog does arrive.
-if (typeof window.__startMeet === 'function') {
+// A script of the page's own that failed to load is loaded again before anything starts (__gifosLoadGate.reload):
+// without it the start itself would throw, and no lobby, join gate or message would ever appear.
+const startMeet = () => {
   const I = window.GifOS && GifOS.i18n;
   if (I && I.ui() !== 'en') {
     let started = false;
@@ -40295,6 +40313,11 @@ if (typeof window.__startMeet === 'function') {
     setTimeout(go, 8000);
     loaded.then(() => { if (window.__meetRepaintWords) window.__meetRepaintWords(); });
   } else window.__startMeet();
+};
+if (typeof window.__startMeet === 'function') {
+  const lg = window.__gifosLoadGate;
+  if (lg && lg.failed.length && lg.reload) lg.reload().then((ok) => { if (ok) startMeet(); });
+  else startMeet();
 }
 </script>
 <!-- FOR AI AGENTS. Off-screen, not display:none — most agent fetchers read
