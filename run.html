@@ -12454,6 +12454,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (p && p.testTx) { p.testTx.push(msg); return Promise.resolve(); } // openLinkForTest: a channel that only records
       if (!p || !p.dc || p.dc.readyState !== 'open') return Promise.resolve();
       if (turnLinks && msg && (msg.k === 'fsig' || msg.k === 'fmesh') && thinSigHeld(p, msg)) return Promise.resolve();   // TURN.21.2
+      if (turnLinks && msg && (msg.k === 'roffer' || msg.k === 'ranswer') && msg.sdp && thinLink(p.id)) msg = thinDesc(msg);   // TURN.21: the far end packs its mix in longer packets
       if (turnWeb.size && (msg.k === 'roffer' || msg.k === 'ranswer' || msg.k === 'sig')) { const w = turnWeb.get(p.id); if (w && w.channel(msg)) return Promise.resolve(); }   // the web path negotiates with its end in this page
       const dc = p.dc;
       if (typeof clog === 'function') dcTally(msg); // DEBUG: what the channel bytes are
@@ -12929,6 +12930,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const thinPids = () => { const out = []; if (turnLinks) for (const p of peers.values()) if (p.pc && thinLink(p.id)) out.push(p.id); return out.sort(); };
     // the far end of an unvouched connection whose near end is r (the room's link facts): its voice reaches me inside r's
     const thinFar = (r, x) => { for (const f of turnFacts.values()) { if (!f.up || f.v || Date.now() - (f.at || 0) > (turnLinks ? turnLinks.factStaleMs : 0)) continue; if ((f.a === r && f.b === x) || (f.b === r && f.a === x)) return true; } return false; };
+    // x sits across an unvouched connection from a seat I hold: I hear it inside that seat's voice (or, as the end, inside the mix)
+    const thinHeard = (x) => { if (!turnLinks || !x || x === myId) return false; for (const r of myConns()) { if (r === x) continue; if (thinFar(r, x)) return true; if (thinLink(r) && (connsOf.get(r) || []).includes(x)) return true; } return false; };
     const thin = { ctx: null, tx: new Map(), txSt: new Map(), fat: null, fatSt: null, micSt: null, sig: '', room: null, hold: new Map(), held: 0, passed: 0 };
     // The mix is speech for the far side at the free pool's price: 16 kbit/s of sound (the framing of its packets costs as much again).
     const THIN_AUDIO_BPS = 16000;
@@ -12939,6 +12942,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (on) { if (pr.encodings[0].maxBitrate === THIN_AUDIO_BPS) { sd.__thinCap = true; return; } pr.encodings[0].maxBitrate = THIN_AUDIO_BPS; } else delete pr.encodings[0].maxBitrate;
         const pm = sd.setParameters(pr); sd.__thinCap = !!on; if (pm && pm.catch) pm.catch(() => { sd.__thinCap = !on; });
       } catch (e) {}
+    }
+    // Half of what one sound stream costs the free pool is the framing of its packets (50 a second, 60 to 80 bytes each around
+    // some 40 of sound). The description I send over an unvouched connection asks the far end for 40 ms packets on its sound
+    // lines: half the packets, the same sound. Only the copy that crosses is changed; my own connection keeps what it made.
+    const THIN_PTIME_MS = 40;
+    function thinDesc(msg) {
+      try {
+        const d = msg.sdp, sdp = d && typeof d.sdp === 'string' ? d.sdp : null; if (!sdp || sdp.indexOf('a=ptime:') >= 0) return msg;
+        const out = sdp.replace(/(m=audio [^\r\n]*\r?\n(?:[^m][^\r\n]*\r?\n)*?)(a=rtpmap:)/g, (all, head, rm) => head + 'a=ptime:' + THIN_PTIME_MS + (sdp.indexOf('\r\n') >= 0 ? '\r\n' : '\n') + rm);
+        if (out === sdp) return msg;
+        return Object.assign({}, msg, { sdp: { type: d.type, sdp: out } });
+      } catch (e) { return msg; }
     }
     function thinClear() {
       for (const f of thin.tx.values()) { try { f.clear(); } catch (e) {} }
@@ -17086,7 +17101,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           turnHold: () => !!(turnLinks && turnLinks.holding && turnLinks.holding()), turnAsked: (pid) => { const at = turnAskedAt.get(pid), now = Date.now(); if (at == null || now - at > GifOS.meshConsts.consts.RELAY_TTL * meshNode.tickMs()) { if (turnAskedAt.size >= 64) turnAskedAt.clear(); turnAskedAt.set(pid, now); } },   // TURN.4.4, TURN.4.3
           turnOn: () => !!turnLinks, turnOpened: (pid) => !!(turnLinks && turnLinks.opened(pid)), turnHeld: () => !!(turnLinks && turnLinks.anyHeld()),
           turnHolds: (pid) => turnHolds(pid),   // a TURN link of mine, in any state, rides the pc to this peer: that pc is no door
-          claims: (r, x) => (connsOf.get(r) || []).includes(x), relayed: (pid) => relayVia.has(pid),
+          claims: (r, x) => (connsOf.get(r) || []).includes(x), relayed: (pid) => relayVia.has(pid) || thinHeard(pid),   /* TURN.21: heard inside a mix is carried (TURN.14.9 keeps the pair) */
         },
         measure: {   // the device class and the network's verdict this page already keeps (L4)
           tier: () => { const E = GifOS.meshConsts.enums, hc = navigator.hardwareConcurrency | 0; return IS_MOBILE || (hc > 0 && hc <= 2) ? E.TIER_MOBILE : E.TIER_DESKTOP; },   // a 2-core desktop carries like a phone
