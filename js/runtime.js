@@ -522,6 +522,9 @@
           get:    function(id){   return rpc({type:'db',op:'get',collection:collection,key:id}); },
           getAll: function(){     return rpc({type:'db',op:'getAll',collection:collection}); },
           delete: function(id){   return rpc({type:'db',op:'delete',collection:collection,key:id}); },
+          // settled(id): did the host's own state take my write to this record? Resolves true (or null when
+          // there is nothing to wait for) once it did, false when the retries ran out. put() resolves at once.
+          settled: function(id){  return rpc({type:'db',op:'settled',collection:collection,key:id}); },
           // Set one record's visibility: 'private' | 'read-only' | 'read-write'.
           // Owner-only — the host runs it; on a guest it is refused. Use it to
           // "make visible" (opt a private item in) or to flip who may write.
@@ -4839,14 +4842,19 @@
         if (p.d.op === 'delete' ? now === undefined : now === p.want) return true;
         return now !== p.base;
       };
-      const reconcilePending = () => { for (const [k, p] of pendingActs) if (echoSatisfied(p)) pendingActs.delete(k); };
+      // settled(collection, id) answers an app that wants to SHOW a write's fate (the chat's clock, check and
+      // retry mark): true when the owner's word holds it (or moved past it), false when the retries ran out.
+      // put() itself still resolves at the optimistic apply, so no app waits on the owner to boot.
+      const settleWait = new Map(); // col\x00id -> [resolve]
+      const settle = (k, ok) => { const w = settleWait.get(k); if (w) { settleWait.delete(k); for (const f of w) f(ok); } };
+      const reconcilePending = () => { for (const [k, p] of pendingActs) if (echoSatisfied(p)) { pendingActs.delete(k); settle(k, true); } };
       const actSweep = setInterval(() => {
         if (frozen) return;
         const now = Date.now();
         for (const [k, p] of pendingActs) {
-          if (echoSatisfied(p)) { pendingActs.delete(k); continue; }
+          if (echoSatisfied(p)) { pendingActs.delete(k); settle(k, true); continue; }
           if (now - p.at < 3000) continue;
-          if (ownerHeard && ++p.tries > ACT_TRIES) { pendingActs.delete(k); continue; }
+          if (ownerHeard && ++p.tries > ACT_TRIES) { pendingActs.delete(k); settle(k, false); continue; }
           p.at = now;
           try { send('act', p.d); } catch (e) {}
         }
@@ -4914,6 +4922,11 @@
             return Promise.resolve(true);
           }
           if (op === 'setVisibility') return Promise.reject(new Error('the app owner controls visibility'));
+          if (op === 'settled') {
+            const k = actKey(collection, key);
+            if (!pendingActs.has(k)) return Promise.resolve(true);
+            return new Promise((res) => { (settleWait.get(k) || settleWait.set(k, []).get(k)).push(res); });
+          }
           return Promise.resolve(null);
         },
       };
@@ -5017,7 +5030,7 @@
 
       setStatus(T('runtime.status.connected'));
       return {
-        stop: () => { try { unsub && unsub(); } catch (e) {} clearInterval(actSweep); pendingActs.clear(); poolDetach(); },
+        stop: () => { try { unsub && unsub(); } catch (e) {} clearInterval(actSweep); for (const k of [...pendingActs.keys()]) settle(k, false); pendingActs.clear(); poolDetach(); },
         // ONE RUNTIME (docs/one-runtime.md): the client's mirror is the room's
         // survival story. snapshot() packs app bytes + the owner-verified
         // mirror into a snapshot GIF — the successor adopts it (resilient
