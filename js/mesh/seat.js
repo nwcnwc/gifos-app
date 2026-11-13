@@ -51,7 +51,7 @@
     'fabricSend', 'fabricUnreachable', 'fabricVerdict', 'fhopActive', 'fhopFriendFor', 'l164Of', 'l18Deliv',
     'l18Hop', 'l18UxDeliv', 'l222Note', 'l22Agree', 'l23GreetRelease', 'l22Close', 'l22CloseAsk', 'l22Need', 'l22Quiet', 'l28Reply',
     'l915Note', 'relayKnock', 'relayUnlist', 'descEnd', 'descNote', 'wake', 'fabricAudit', 'fabricDoorHeard', 'g4Joined', 'fabricDropHalf', 'fabricLinkCarries',
-    'fabricTurnOn', 'fabricTurnPc', 'fabricTurnOpener', 'fabricTurnHold', 'fabricTurnStray', 'fabricTurnLone', 'fabricTurnAcross', 'fabricTurnMine', 'fabricTurnCarried', 'fabricTurnFeeds', 'fabricTurnBoth', 'fabricTurnPeerIn', 'fabricTurnSide',   /* TURN.14 (mesh_turn.inc) */
+    'fabricTurnOn', 'fabricTurnPc', 'fabricTurnOpener', 'fabricTurnHold', 'fabricDoorNet', 'fabricTurnStray', 'fabricTurnLone', 'fabricTurnAcross', 'fabricTurnMine', 'fabricTurnCarried', 'fabricTurnFeeds', 'fabricTurnBoth', 'fabricTurnPeerIn', 'fabricTurnSide',   /* TURN.14 (mesh_turn.inc) */
   ]);
 
   // A fabric that refuses every call: the interface a harness or the page adapter fills in.
@@ -120,6 +120,7 @@
   // the sim's #define L8_52_OFF in mesh.cpp (a build-time switch): MESH_L8_52_OFF=1 under node, read once at load; a page always runs the law
   const L8_52_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L8_52_OFF === '1') ? 1 : 0;
   const TURN14_15_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_TURN14_15_OFF === '1') ? 1 : 0;   // the sim's -DTURN14_15_OFF=1 build
+  const L10_7_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L10_7_OFF === '1') ? 1 : 0;   // the sim's -DL10_7_OFF=1 build
   const { ins, eraseFirst } = req('./util.js', 'meshUtil');
   const dig = req('./dig.js', 'meshDig');
 
@@ -267,7 +268,8 @@
     // C++: mesh.cpp:Seat::l10Spend
     l10Spend() { this.l10Refill(); this.l10Own.tok = this.l10Own.tok >= 1 ? this.l10Own.tok - 1 : 0; },
     // C++: mesh.cpp:Seat::l10Dirty
-    l10Dirty(was, now) { if (!was) { if (!this.l10NewAt) this.l10NewAt = this.TICK + 1; } else if (dig.digSig(was) !== dig.digSig(now)) this.l10Mark(); },
+    // L10.7: a first report that counts someone is news at once (a mover counts nobody while its old cell drains, D7.x); the sim's -DL10_7_OFF=1 build: MESH_L10_7_OFF=1 under node
+    l10Dirty(was, now) { if (!was) { if (!L10_7_OFF && now.n > 0) this.l10Mark(); else if (!this.l10NewAt) this.l10NewAt = this.TICK + 1; } else if (dig.digSig(was) !== dig.digSig(now)) this.l10Mark(); },
     // C++: mesh.cpp:Seat::LT
     LT() { return this.TICK + this.skew; },
     // C++: mesh.cpp:Seat::wireDig

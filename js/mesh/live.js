@@ -18,6 +18,7 @@
   const GifOS = root.GifOS = root.GifOS || {};
   const isNode = typeof require === 'function' && typeof module !== 'undefined' && module.exports;
   const req = (f, g) => (isNode ? require(f) : GifOS[g]);
+  const D7X2_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_D7X2_OFF === '1') ? 1 : 0, L8_50_3_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L8_50_3_OFF === '1') ? 1 : 0;   // the sim's -DD7X2_OFF=1 / -DL8_50_3_OFF=1 builds
   const RCD = ((n) => ({ L35_4_OFF: n('L35_4_OFF'), L17_3_1_OFF: n('L17_3_1_OFF'), L17_4_OFF: n('L17_4_OFF'), L35_5_OFF: ((isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L35_5_OFF === '0') ? 0 : 1) }))((k) => ((isNode && typeof process !== 'undefined' && process.env && process.env['MESH_' + k] === '1') ? 1 : 0));   // the sim's build-time switches of the realcheck dead-dial laws (mesh.cpp L35_4_OFF ...): MESH_<name>=1 under node; a page runs the laws
   const C_ = req('./consts.js', 'meshConsts');
   const msg = req('./msg.js', 'meshMsg');
@@ -637,6 +638,7 @@
     // C++: mesh_seat.inc:Seat::requeue
     requeue(why = '') {
       const TICK = this.TICK, lv = this.w.lv, id = this.id;
+      if (!D7X2_OFF && (this.islandFounder || !L8_50_3_OFF) && this.line === this.id && !this.l850Seated && this.hasCoord && ckey(this.coord) === 0) this.lastPubAt = -1;   // D7.x.2: a founder of one that leaves its cell has no old report to drain
       this.lkAnyAt = -1; this.lkCarried = -1;   // D6c.2
       this.l13ReqN++;
       if (this.l815N > 0) { for (let i = 0; i < this.l815N; i++) { const y = newMsg('YIELD'); y.ck = this.l815Ck[i]; y.id = id; y.nc = this.l815Prev[i]; this.emit(this.l815To[i], y); } this.l815N = 0; }

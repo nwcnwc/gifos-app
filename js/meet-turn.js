@@ -47,6 +47,8 @@
   const DEFAULT_WORKER = 'https://turn.gifos.app';
   const WORKER_KEY = 'gifos_turn_worker'; // localStorage override: a self-hosted or test credential service
   const TM = (root.GifOS && root.GifOS.timings) || (isNode ? require('./timings.js') : {});   // every wait: js/timings.js, loaded before this file
+  const offOn = (n) => (isNode && typeof process !== 'undefined' && process.env && process.env[n] === '1') ? 1 : 0;
+  const TURN18_OFF = offOn('MESH_TURN18_OFF'), ONEMOVE_OFF = offOn('MESH_TURN_ONEMOVE_OFF');   // the sim's -DTURN18_OFF=1 build; the page-only one-move rule (every cause restarts at once, video at the credential)
   const FETCH_TIMEOUT_MS = TM.TURN_FETCH_TIMEOUT_MS;   // a credential answer slower than this is no answer
   const RETRY_BASE_MS = TM.TURN_RETRY_BASE_MS;         // first retry after about 2 s, doubling
   const RETRY_MAX_MS = TM.TURN_RETRY_MAX_MS;           // never longer than 5 minutes between tries
@@ -385,6 +387,7 @@
     const RESEND_MS = K.TURN_DIAL * tick;                      // a handshake frame the relay lost is sent again
     const DIAL_BUDGET_MS = (K.TURN_DIAL + K.TURN_RETRY) * tick; // an ask that never came up is closed (TURN.8 dialfail)
     const GRACE_MS = K.TURN_VOUCH_GRACE * tick;                // TURN.12
+    const MOVE_MS = (K.TURN_DIAL + K.LINK_DIAL_ICE) * tick;     // one move of a link's pc onto new settings: its offer and answer over the pair's channel, then the path check through the server
     const FACT_EVERY_MS = K.TURN_DIAL * tick * 2;              // a link end restates its fact
     const FACT_STALE_MS = FACT_EVERY_MS * 4;
     const links = new Map();   // far pid → link
@@ -392,14 +395,18 @@
     // its direct verdict FHOP_RELAY_ASK after that ask (my own dial to it stayed silent); one I never asked has it
     // TURN_WAIT after I first held it as foreign. The entry's credit counts only with no connected peer of my own (a
     // friend's probe starts when I first hold the greeter) and once the door has answered my seating knock.
+    // TURN.18: a greeter the door's list tags with another network cannot be dialled from a blocked network: that
+    // verdict is in the moment the door has answered my own seating knock, with no wait.
     // TURN.4.5: one verdict per room: a greeter of a room (the door's founding epoch) that already has a verdict does
     // not hold the ask.
     function turnWaited(now, F) {
+      // TURN.18 (C++: mesh_turn.inc:turn18All): every foreign greeter is one the door's list says my network cannot meet
+      if (!TURN18_OFF && F.length && io.doorNet && io.probed && io.probed() && !(io.friends ? io.friends() : true) && (io.judged ? io.judged() : false) && F.every((g) => io.doorNet(g) === 0)) return true;
       if (!io.blocked()) return now - head.since >= WAIT_MS;   // the per-greeter wait is a blocked head's: any other head keeps TURN.4's one clock
       const friends = io.friends ? !!io.friends() : true;
       const judged = !friends && !!io.askedAt && (io.judged ? !!io.judged() : true);
       for (const g of Array.from(head.seen.keys())) if (F.indexOf(g) < 0) head.seen.delete(g);
-      const due = (g) => { let d = head.seen.get(g) + WAIT_MS; if (judged) { const a = io.askedAt(g); if (a > 0 && now - a <= MERGE_MS) d = Math.min(d, a + ASK_MS); } return d; };
+      const due = (g) => { let d = head.seen.get(g) + WAIT_MS; if (judged) { const a = io.askedAt(g); if (a > 0 && now - a <= MERGE_MS) d = Math.min(d, a + ASK_MS); if (!TURN18_OFF && io.doorNet && io.doorNet(g) === 0) d = head.seen.get(g); } return d; };
       const epOf = (g) => { const e = io.epoch ? io.epoch(g) : -1; return Number.isInteger(e) ? e : -1; };
       let ok = true; const ep = new Set();
       for (const g of F) { if (!head.seen.has(g)) head.seen.set(g, now); if (now < due(g)) ok = false; else { const e = epOf(g); if (e >= 0) ep.add(e); } }
@@ -420,7 +427,7 @@
     function newLink(far, l, opener) {
       const L = { far, l, opener, id: linkId(io.me(), far), farDev: null, farBlocked: false, client: false, mine: null, peer: null,
         state: 'ask', askAt: io.now(), sentAt: 0, vAskAt: 0, readyMe: false, readyFar: false, dialAt: 0, upAt: -1, downSince: 0,
-        cred: null, paid: null, paidMe: false, paidFar: false, video: false, vouched: false, lostAt: -1, side: [],
+        cred: null, paid: null, paidMe: false, paidFar: false, paidSaid: false, paidAt: 0, mvWant: false, mvAt: 0, mvHeldAt: 0, mvN: 0, mvWhy: '', video: false, vouched: false, lostAt: -1, side: [],
         thr: null, busy: false, farBusy: false, capAt: 0, upOkSince: 0, standbyAt: 0, standbyN: 0 };
       const s = io.seat(); if (s) L.side = s.view.filter((x) => x !== far).slice(0, SIDE_MAX);
       links.set(far, L);
@@ -457,11 +464,12 @@
       if (L.state === 'closed') return;
       if (pool === 'free') {
         if (k === 'ok' && !L.readyMe) { L.readyMe = true; io.reset(L.far); io.sendTv(L.far, { k: 'tv', q: 'r', l: L.l }); maybeDial(L); }
-        else if (k === 'renewed' && !L.paidMe) io.restart(L.far, L.l);
+        else if (k === 'renewed' && !L.paidMe) move(L, 'renewed');
         else if (k === 'expired' && !L.paidMe) close(L, 'expired');
       } else {
-        if (k === 'ok' || k === 'renewed') { const was = L.paidMe; L.paidMe = true; io.restart(L.far, L.l); if (!was) io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 1 }); }
-        else if (k === 'expired') { L.paidMe = false; io.restart(L.far, L.l); io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 0 }); }
+        // 'p' (b 1) waits for the move itself: my pc rides a paid server (onServer), or one move's time has passed (paidSay)
+        if (k === 'ok' || k === 'renewed') { const was = L.paidMe; L.paidMe = true; if (!was) { L.paidAt = io.now(); L.paidSaid = false; } move(L, k === 'ok' ? 'paid' : 'paid-renewed'); }
+        else if (k === 'expired') { L.paidMe = false; L.paidSaid = false; move(L, 'paid-expired'); io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 0 }); }
       }
       io.changed(L.far);
     }
@@ -526,7 +534,7 @@
       // the far end moved its pool: it moves the pc itself (its own restart, or 'i' to the offerer), so no restart here:
       // a second one per move restarted the path again mid-move and the video's estimate with it (vouched one-way, 2026-11-12)
       if (f.q === 'p') { L.paidFar = f.b === 1; io.changed(L.far); return; }
-      if (f.q === 'i') { io.restart(L.far, L.l); return; }
+      if (f.q === 'i') { move(L, 'far'); return; }
       if (f.q === 'b') { const was = L.farBusy; L.farBusy = f.b === 1; if (was !== L.farBusy) { log('turn-busy far ' + short(L.far) + ' ' + (L.farBusy ? 'on' : 'off')); io.changed(L.far); } return; }
     }
     // TURN.13: each look at the link pc (every THROTTLE_LOOK_MS while it carries video): the browser's send estimate,
@@ -549,9 +557,45 @@
       const list = configOf(L).iceServers || [];
       const on = list.some((x) => (Array.isArray(x.urls) ? x.urls : [x.urls]).some((u) => String(u).replace(/^turns?:/, '').split('?')[0] === server));
       const now = io.now();
-      if (on) { L.offSince = 0; return; }
+      if (on) { L.offSince = 0; if (L.paidMe && L.paid && !L.paidSaid) paidSay(L, 'moved'); return; }
+      if (L.mvWant || (L.mvAt && now - L.mvAt < MOVE_MS)) { L.offSince = 0; return; }   // a move is waiting or on its way: the old server is where the pc should still be
       if (!L.offSince) { L.offSince = now; return; }
-      if (now - L.offSince >= RESEND_MS && now - (L.offFixAt || 0) >= RESEND_MS) { L.offFixAt = now; log('turn-pool off its settings ' + short(L.far) + ' (rides ' + server + '): restart'); io.restart(L.far, L.l); }
+      if (now - L.offSince >= RESEND_MS && now - (L.offFixAt || 0) >= MOVE_MS) { L.offFixAt = now; log('turn-pool off its settings ' + short(L.far) + ' (rides ' + server + '): move again'); move(L, 'off-settings'); }
+    }
+    // ONE MOVE AT A TIME. A link's pc moves onto new settings (a pool change, a renewed credential) by one ICE restart from
+    // its offerer; the other end asks for it ('i'). Every cause used to restart at once: with both ends on blocked networks
+    // each end is a client with its own credential, so a pool move was two restarts a moment apart, the off-settings check
+    // added a third one dial's time later, and the video the vouch turned on negotiated across all of them. An offer made
+    // while the last one was still unanswered met its answer: the media lines of the two ends parted, the pc was rebuilt,
+    // and the only path between the two networks carried nothing for 30 to 60 s (two offices of four, joined at once).
+    // Rule: a cause only marks the link (mvWant). The move starts when no offer of this pc is still crossing (io.settled)
+    // and the last move is MOVE_MS old or has landed; causes that arrive meanwhile are one more move, not one each.
+    // The page applies its own settings at once (io.settings), so one move usually carries both ends' new servers.
+    function move(L, why) {
+      if (L.state === 'closed') return;
+      if (ONEMOVE_OFF) { io.restart(L.far, L.l); if (L.paidMe && L.paid && !L.paidSaid) paidSay(L, 'off'); return; }
+      if (io.settings) io.settings(L.far);
+      L.mvWant = true; L.mvWhy = why;
+      pump(L);
+    }
+    function pump(L) {
+      if (!L.mvWant || L.state === 'closed') return;
+      const now = io.now(), settled = io.settled ? !!io.settled(L.far) : true;
+      if (L.mvAt && now - L.mvAt < MOVE_MS && !(settled && now - L.mvAt >= RESEND_MS)) return;   // the last move is still on its way
+      if (!settled) { if (!L.mvHeldAt) L.mvHeldAt = now; if (now - L.mvHeldAt < MOVE_MS) return; }   // an offer of this pc (a move, the video's) is crossing: never a second one on top
+      L.mvHeldAt = 0; L.mvWant = false; L.mvAt = now; L.mvN++;
+      log('turn-move ' + short(L.far) + ' ' + L.mvWhy + ' #' + L.mvN);
+      io.restart(L.far, L.l);
+    }
+    // VIDEO WAITS FOR THE MOVE. A client end's pc rides the free pool until the move that follows its paid credential
+    // lands. Video turned on at the credential, before the move, rode the free allocation's limit and choked the pair's
+    // channel, the move's own offer and answer with it. The far end turns video on when I say 'p' (b 1), and so do I:
+    // once my pc rides a paid server, or, where the browser names no server, one move's time after the credential.
+    function paidSay(L, why) {
+      L.paidSaid = true;
+      log('turn-pool paid ' + short(L.far) + ' ' + why);
+      io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 1 });
+      io.changed(L.far);
     }
     function configOf(L) {
       const g = (L.paidMe && L.paid && L.paid.servers()) || (L.cred && L.cred.servers()) || [];
@@ -613,10 +657,11 @@
         else if (L.vouched) { if (L.lostAt < 0) L.lostAt = now; if (now - L.lostAt >= GRACE_MS) { L.vouched = false; L.lostAt = -1; } }
         // A vouched client end moves to the paid pool; an end back on free leaves it.
         if (L.vouched && L.client && !L.paid) { L.paid = credFor(L, 'paid'); L.paid.start(); }
-        if (!L.vouched && L.paid) { try { L.paid.stop(); } catch (e) {} L.paid = null; if (L.paidMe) { L.paidMe = false; io.restart(L.far, L.l); io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 0 }); } }
+        if (!L.vouched && L.paid) { try { L.paid.stop(); } catch (e) {} L.paid = null; if (L.paidMe) { L.paidMe = false; L.paidSaid = false; move(L, 'unvouched'); io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 0 }); } }
+        if (L.client && L.paidMe && !L.paidSaid && now - L.paidAt >= MOVE_MS) paidSay(L, 'unseen');
         if (L.vouched && !L.client && !L.paidMe) { L.paidMe = true; io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 1 }); }
         if (!L.vouched && !L.client && L.paidMe) { L.paidMe = false; io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 0 }); }
-        const v = L.vouched && L.paidMe && L.paidFar;
+        const v = L.vouched && L.paidMe && L.paidFar && (!L.client || L.paidSaid);
         if (v !== L.video) { L.video = v; L.ts = null; log('turn-video ' + short(L.far) + ' ' + (v ? 'on' : 'off')); if (!v) setThrottle(L, null); io.changed(L.far); }
       }
     }
@@ -641,6 +686,7 @@
         if (L.farDev && now - L.vAskAt > RESEND_MS && (!L.mine || now - L.mine.at > (L.mine.e - L.mine.at) / 2)) askMine(L);
         if (L.state !== 'up' && L.readyMe && L.readyFar && io.pcUp(L.far)) { L.state = 'up'; L.upAt = now; L.serial = now; log('turn-link up ' + short(L.far)); io.changed(L.far); }
         if (L.state === 'up' || L.state === 'dial') io.keep(L.far);
+        pump(L);
         if (L.state === 'up') {   // my side grows with the people I reach directly
           const s = io.seat();
           if (s) for (const x of s.view) if (x !== L.far && L.side.indexOf(x) < 0 && L.side.length < SIDE_MAX && io.reach(x) === 'direct') L.side.push(x);

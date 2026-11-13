@@ -14,7 +14,7 @@
   const L8_47_1_OFF = (isNode && typeof process !== 'undefined' && process.env && process.env.MESH_L8_47_1_OFF === '1') ? 1 : 0;
   // the sim's -DL8_47_2_OFF=1 / -DL8_47_3_OFF=1 / -DL8_1_3_OFF=1 builds: MESH_<name>=1 under node, read once at load; a page always runs the laws
   const offOn = (n) => (isNode && typeof process !== 'undefined' && process.env && process.env[n] === '1') ? 1 : 0;
-  const L8_47_3_OFF = offOn('MESH_L8_47_3_OFF'), L8_1_3_OFF = offOn('MESH_L8_1_3_OFF');
+  const L8_47_3_OFF = offOn('MESH_L8_47_3_OFF'), L8_1_3_OFF = offOn('MESH_L8_1_3_OFF'), L8_54_OFF = offOn('MESH_L8_54_OFF');
   const { ckey, ownedLinks } = topo;
   const LS_NONE = E.LS_NONE;
 
@@ -43,12 +43,21 @@
     // C++: mesh_roomterm.inc:Seat::epOf   (L8.52.3: the founding epoch the door listed greeter g with on my last list; -1: not said)
     epOf(g) { for (let k = 0; k < this.lastGreeters.length && k < this.lastGreetersAt.length; k++) if (this.lastGreeters[k] === g) return this.lastGreetersAt[k]; return -1; },
 
+    // L8.54 THE DOOR'S LIST SAYS WHICH GREETERS ARE ON MY NETWORK: a greeter's registration carries its network tag and its
+    // measured kind, and a seeker reads a greeter of another network that its own cannot meet (one blocked, or both
+    // strict) as silent at once: the two kinds are that dial's verdict.
+    // A greeter at the far end of a TURN pc of mine answers me over it: no silence there.
+    // C++: mesh_roomterm.inc:Seat::l854Other
+    l854Other(g) { return !L8_54_OFF && !!this.w.lv.ISLAND_MODE && g >= 0 && g !== this.id && this.f.fabricDoorNet(this.id, g) === 0 && !this.f.fabricTurnPc(this.id, g); },
+    // C++: mesh_roomterm.inc:Seat::l854All
+    l854All(list) { if (L8_54_OFF || !this.w.lv.ISLAND_MODE) return false; let n = 0; for (const g of list) { if (g < 0 || g === this.id) continue; if (this.f.fabricDoorNet(this.id, g) !== 0 || this.f.fabricTurnPc(this.id, g)) return false; n++; } return n > 0; },
+
     // C++: mesh_roomterm.inc:Seat::l813Unfound   (L8.1.3: a founder still alone on its cell that reads, on the list its seating knock got, a greeter it never asked this entry, of a room it has not found silent, goes back to the door)
     l813Unfound(m) {
-      if (L8_1_3_OFF || !this.f.fabricDoors() || !this.islandFounder || !this.l850Lone() || !this.l8471()) return false;   // a blocked founder only
+      if (L8_1_3_OFF || !this.f.fabricDoors() || !this.islandFounder || !this.l850Lone() || !(this.l8471() || !L8_54_OFF)) return false;   // a blocked founder (and, L8.54.3, any founder for a greeter the door says its network can meet)
       for (let k = 0; k < m.list.length; k++) {
         const g = m.list[k]; if (g < 0 || g === this.id || this.islandAsked.has(g)) continue;
-        const at = k < m.listAt.length ? m.listAt[k] : -1; if (!L8_47_3_OFF && at >= 0 && this.entEp.has(at)) continue;
+        const at = k < m.listAt.length ? m.listAt[k] : -1; if (!L8_47_3_OFF && at >= 0 && this.entEp.has(at)) continue; if (this.l854Other(g)) continue;   /* L8.54.2 */ if (!this.l8471() && this.f.fabricDoorNet(this.id, g) !== 2) continue;   /* L8.54.3 */
         this.trace('L8.1.3-UNFOUND', this.id, this.coord, 'greeter=%d at=%d mine=%d', g, at, this.lineAt);
         this.c7Yield(this.ringName(), 'L8.1.3-unfound'); this.c7Old.clear(); this.l851Up = -1; this.c7At = K.C7AT_NEVER; this.f.relayUnlist(this.id); /* it was never a room: no merge to be gated (L8.5), no door entry to outlive it (L16.12) */ return true;
       }
@@ -65,7 +74,7 @@
     islandWait() { return this.l8471() ? K.ISLAND_WAIT_BLOCKED : K.ISLAND_WAIT; },
 
     // C++: mesh_roomterm.inc:Seat::entryTerm
-    entryTerm() { return this.entIsl || this.l8471(); },
+    entryTerm() { return this.entIsl || this.l8471() || this.l854All(this.lastGreeters); },   // L8.54.3: every listed greeter is one my network cannot meet
 
     // C++: mesh_roomterm.inc:Seat::l411Verdict   (L4.1.1: my probe's verdict landed while I stand at the door)
     l411Verdict() {

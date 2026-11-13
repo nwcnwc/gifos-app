@@ -3611,7 +3611,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       crypto.subtle.encrypt({ name: 'AES-GCM', iv: new Uint8Array(12), additionalData: te.encode('gifos-fhop-nettag') }, k, te.encode('network tag key'))
         .then((kb) => crypto.subtle.importKey('raw', new Uint8Array(kb).slice(0, 32), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']))
         .then((hk) => crypto.subtle.sign('HMAC', hk, te.encode(netOfAddr(ip))))
-        .then((h) => { netTagNow = Array.from(new Uint8Array(h).slice(0, 4), (b) => b.toString(16).padStart(2, '0')).join(''); netTagIp = ip; netTagKey = k; })
+        .then((h) => { netTagNow = Array.from(new Uint8Array(h).slice(0, 4), (b) => b.toString(16).padStart(2, '0')).join(''); netTagIp = ip; netTagKey = k; try { if (meshNode && meshNode.remeasure) meshNode.remeasure(); } catch (e) {} })
         .catch(() => {}).finally(() => { netTagBusy = false; });
     }
     const netTagOf = new Map(), clsOf = new Map(), ftagsOf = new Map();   // pid -> its beat's nt, cls, ft
@@ -11722,10 +11722,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const RELAY_NAME_MAX = 40, RELAY_PW_MAX = 64;
     const epOk = (ep) => Number.isInteger(ep) && ep >= 0;
     // The exact field set of each payload (the padding field `_` beside it).
-    const RELAY_PAYLOAD_KEYS = { boot: 'k,t,u,w,s,v,dr', fp: 'k,v,fp', ice: 'k,c,end', name: 'k,n', password: 'k,pw,ep,pr', pwsig: 'k,sig', pwpub: 'k,ep,ts,pub', pwby: 'k,ep,by', busy: 'k,g,i,n,ref,cool', tv: 'k,q,l,d,b,e,n,m' };
+    const RELAY_PAYLOAD_KEYS = { boot: 'k,t,u,w,s,v,dr', fp: 'k,v,fp', ice: 'k,c,end', name: 'k,n', password: 'k,pw,ep,pr', pwsig: 'k,sig', pwpub: 'k,ep,ts,pub', pwby: 'k,ep,by', busy: 'k,g,i,n,ref,cool', tv: 'k,q,l,d,b,e,n,m,t,f' };   // tv: the fields of js/meet-turn.js TV_KEYS (relayKeysOf reads that list itself once the module is there). Its redirect to another end (t) and a forced ask (f) were missing here: both were dropped on arrival, and the asker asked the same end for good
+    const relayKeysOf = (ty) => (ty === 'tv' && GifOS.meetTurn && GifOS.meetTurn.TV_KEYS) || RELAY_PAYLOAD_KEYS[ty];   // one list for the link handshake: the module's
     function relayFrameAllowed(ty, inner) {
       if (!RELAY_TYPES.has(ty) || !inner || typeof inner !== 'object' || Array.isArray(inner) || inner.k !== ty || !net.fitsFixed(inner)) return null;
-      const keys = RELAY_PAYLOAD_KEYS[ty].split(',');
+      const keys = relayKeysOf(ty).split(',');
       for (const k of Object.keys(inner)) if (k !== '_' && keys.indexOf(k) < 0) return null;
       if (ty === 'boot') return net.bootOk(inner) && (inner.dr === undefined || inner.dr === 1) ? ty : null;   // dr: an unseated dialler at the door (sendOffer)
       if (ty === 'fp') return net.fpOk(inner) ? ty : null;
@@ -12997,6 +12998,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         myEpoch: () => { const r = turnRaw(); return r && Number.isInteger(r.lineAt) ? r.lineAt : -1; },
         reach: (pid) => { const p = peers.get(pid); if (p && p.connected && !(turnLinks && turnLinks.isLink(pid))) return 'direct'; return turnFriend(pid) ? 'friend' : null; },
         blocked: () => directPath === 'blocked',
+        doorNet: (pid) => (meshNode && meshNode.doorNet ? meshNode.doorNet(pid) : -1),   // TURN.18: 0 = the door's list says this greeter sits on another network that mine cannot meet
+        probed: () => directPath === 'ok' || directPath === 'strict' || directPath === 'blocked',   // my own network's verdict is in
         askedAt: (pid) => turnAskedAt.get(pid) || 0,   // TURN.4.3: when my entry's door ask to that greeter went out
         friends: () => { if (directPath === 'blocked') return false;   /* a blocked page's direct peers are on its own network by definition: none of them can probe a greeter it cannot reach (a colleague's door connected one tick after the founding read as a friend and the link waited TURN_WAIT: no hold, the office formed its own room) */ for (const p of peers.values()) if (p && p.connected && !(turnLinks && turnLinks.isLink(p.id))) return true; return false; },   // a connected peer of my own: its probe of the greeter needs TURN_WAIT
         judged: () => { const r = turnRaw(); return !!r && r.greetersAt > r.seatedAt; },   // the door has answered my own seating knock (L8.1.3)
@@ -13011,6 +13014,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         ask: GifOS.meetTurn.askIce(window.fetch.bind(window)),
         dial: (pid) => { seatAskAt.set(pid, Date.now()); seatMark.set(pid, cleanMark({ s: 1 })); seatDial(pid); },
         reset: (pid) => { const p = peers.get(pid); if (p && p.pc && !p.connected) rebuildPc(p, 'turn-settings'); },
+        // my end of the pair's pc takes its current settings now (no restart): the next move's candidates come from them
+        settings: (pid) => { const p = peers.get(pid); if (!p || !p.pc) return; try { p.pc.setConfiguration(turnPcConfig(p)); } catch (e) { turnNote('turn-setconf ' + String(e).slice(0, 60)); } },
+        // no offer of this pc is being made or waiting for its answer
+        settled: (pid) => { const p = peers.get(pid); return !!(p && p.pc && p.pc.signalingState === 'stable' && !(p.neg && p.neg.minting)); },
         restart: (pid, l) => {
           const p = peers.get(pid); if (!p || !p.pc) return;
           try { p.pc.setConfiguration(turnPcConfig(p)); } catch (e) { turnNote('turn-setconf ' + String(e).slice(0, 60)); }
@@ -16905,6 +16912,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         excluded: isEjected, // ejected forgers: their mesh frames never reach the seat
         urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
         holdDoor: () => pwWaitProof && !meshCoord(),
+        netTag: () => netTagNow,   // my registration at the door says which network I am on (the tag my beat carries)
+        netKind: () => (directPath === 'blocked' ? 2 : directPath === 'strict' ? 1 : directPath === 'ok' ? 0 : -1),   // and what it measured as (the seat's NAT kinds)
         doorHeld: (id) => { try { if (DEBUG_ON && window.__doorHoldAll) return true;   /* DEBUG=on only: this door answers no knock (a test picks the doors) */ const b = meetWait.blocks(id); if (b && id && amAdmin) meetWait.note(id, rosterNames[id] || 'Someone waiting'); if (b && id) sayHeld(id); return b || subsHolds(id); } catch (e) { return false; } },   // a withheld knock goes on the host's list: nothing else names a plain room's knocker
         onDoor: (kind, frame) => {
           if (kind === 'seated') {
