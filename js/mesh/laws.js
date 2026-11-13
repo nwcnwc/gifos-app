@@ -149,6 +149,7 @@
     TURN_VOUCH_STREAMER: 20,     // TURN.11: video TURN links one Streamer subscriber present in the meeting vouches for
     TURN_VOUCH_UNLIMITED: 6,     // TURN.11: video TURN links one Room unlimited subscriber present in the meeting vouches for
     TURN_WAIT: 17,               // TURN.4: a head asks for a TURN link only after its own probe and the friends it asked at once (TURN.3) have failed for this long in a row. Depends on: the direct verdict (FHOP_RELAY_ASK) or one friend probe (the ask, the offer and answer over the relay, LINK_DIAL_ICE), whichever is longer, plus one sweep; the two run side by side, so not their sum
+    TURN_WEB_WAIT: 6,            // TURN.18: ticks a TURN client end's connection looks for a path to its relay server before the link takes the web path (a WebSocket to the same server). Depends on: a TURN allocation over TCP or TLS on a slow link; shorter, a slow but open network would be sent to the web path
     UNPROVEN_HOLD: 60,           // H6: an unproven pairing past this age lives only on probe answers
   });
 })(typeof window !== 'undefined' ? window : globalThis);

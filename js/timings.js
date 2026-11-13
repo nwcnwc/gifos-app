@@ -193,6 +193,15 @@
     TICK_FREEZE_MS: 10000,   // ms
     TOMB_GRACE: 1500,   // ms
     TREE_MEM_MS: 120000,   // ms
+    TUNNEL_KEY_ASK_MS: 250,   // ms
+    TUNNEL_MINT_LOOK_MS: 20,   // ms
+    TUNNEL_MINT_RETRY_MS: 60,   // ms
+    TUNNEL_OFFER_RESEND_MS: 2000,   // ms
+    TUNNEL_OFFER_SETTLE_MS: 30,   // ms
+    TUNNEL_RETRY_BASE_MS: 500,   // ms
+    TUNNEL_RETRY_MAX_MS: 8000,   // ms
+    TUNNEL_STATS_WAIT_MS: 1000,   // ms
+    TUNNEL_TAP_KEY_MS: 500,   // ms
     TURN_ASK_MS: 2500,   // ms
     TURN_BUSY_MS: 8000,   // ms
     TURN_FETCH_TIMEOUT_MS: 3000,   // ms
