@@ -3320,7 +3320,9 @@
   .alonecard-x { position: absolute; top: 6px; right: 6px; width: 44px; height: 44px; border: 0; border-radius: var(--r-pill);
     background: transparent; color: var(--c-ink-2); font-size: 1rem; cursor: pointer; }
   @media (max-width: 700px), (max-height: 500px) {
-    #alonecard { left: 16px; right: 16px; width: auto; top: calc(var(--inset-top, 0px) + 64px); }
+    /* Below the header's button row (Fit and the row beside it: top 14px + 2.75rem, 44px tall), never under it
+       (0.9.26 Android audit: the row covered the card's title and its close button). */
+    #alonecard { left: 16px; right: 16px; width: auto; top: calc(var(--inset-top, 0px) + 14px + 2.75rem + 44px + 8px); }
   }
   /* The stage's Open sits in the caption row at the bottom of the slide, never in the top corner where a phone's
      status chip floats over the stage. */
