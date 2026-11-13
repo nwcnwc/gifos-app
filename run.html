@@ -13470,12 +13470,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // make every find-by-id below resolve the CORPSE first — replace,
           // never accumulate.
           const dup = p.incoming.findIndex((s) => s.id === stream.id);
-          if (dup >= 0) {
-            try { retireMixTracks(p.incoming[dup].getAudioTracks()); } catch (e) {}
-            p.incoming.splice(dup, 1);
-          }
-          p.incoming.push(stream);
-          if (typeof soloFill === 'function') soloFill(p, stream);
+          if (dup >= 0) incomingReborn(p, dup, stream);
+          else { p.incoming.push(stream); if (typeof soloFill === 'function') soloFill(p, stream); }
         }
         // Cap dead renegotiation leftovers — but a busy mosaic link legitimately
         // carries MANY live aux streams (sdm + sdx + sdxc + sgs + stg:* + the
@@ -13964,6 +13960,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const base = (p.incoming || []).filter((b) => b.id === id).pop() || null;
       if (base) soloAdd(base, tr);
       return base;
+    }
+    // A CONTAINER THAT COMES BACK AS A NEW OBJECT KEEPS THE SOUND THAT IS STILL ARRIVING. The same id in a new stream
+    // object replaces the old one in p.incoming (never two). The old object's sound is retired so no fold sums a
+    // session that ended, but only the sound that ended with it. A sound named apart rides its own line: when only
+    // the picture's line is replaced (a carried block whose sender changed what it forwards), the browser hands over
+    // a new container for the new picture while that sound's line, and its track, run on untouched. soloFill puts
+    // that same track into the new container; retiring it here made every fold refuse it for good, so the block
+    // played as silence while its packets arrived (a row heard nothing from the row whose head had stopped until
+    // the room re-seated it). What is retired is the old container's sound that did not come along.
+    function incomingReborn(p, dup, stream) {
+      const old = p.incoming[dup];
+      p.incoming.splice(dup, 1);
+      p.incoming.push(stream);
+      if (typeof soloFill === 'function') soloFill(p, stream);
+      try {
+        const kept = stream.getAudioTracks();
+        retireMixTracks(old.getAudioTracks().filter((t) => kept.indexOf(t) < 0));
+      } catch (e) {}
     }
     function soloFill(p, base) { const set = p.soloTracks && p.soloTracks.get(base.id); if (set) for (const t of set) soloAdd(base, t); }
     // ONE ANSWER, start to end, on the pc it began on: an offer is set, the ICE that waited for it goes in
