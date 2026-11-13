@@ -5993,8 +5993,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // The view borrows the tile's stream. A <video> that never started
           // on its bind (WebKit leaves one on a canvas stream now and then)
           // is bound again with a fresh wrapper of the same tracks, once its
-          // tile shows frames and it has had a moment, at most every refresh.
-          const unstarted = !!(st && fsmain._from === st && fsmain.srcObject && !fsmain.videoWidth && main.v && main.v.videoWidth > 0
+          // tile shows frames (or its feed is live: a hidden Stage strip never
+          // starts in WebKit) and it has had a moment, at most every refresh.
+          const unstarted = !!(st && fsmain._from === st && fsmain.srcObject && !fsmain.videoWidth && main.v && (main.v.videoWidth > 0 || fsFeedLive(main.v))
             && Date.now() - (fsmain._boundAt || 0) >= 1500 && typeof st.getVideoTracks === 'function');
           if (fsmain._from !== st || !fsmain.srcObject || unstarted) {
             fsmain._from = st; fsmain._boundAt = Date.now();
