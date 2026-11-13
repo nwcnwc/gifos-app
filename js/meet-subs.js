@@ -25,6 +25,12 @@
  *     shown), the door asks a newcomer to show a ticket for this meeting;
  *     without one they are told plainly and not let in. Rooms on the $5 and
  *     $10 plans have no limit, and open rooms never have one.
+ *   - WHICH APP (Nathan 2026-11-13): the Meet app offers Room 20, Unlimited,
+ *     the four-hour pass and tips. The $10 Streamer plan and its library
+ *     (My library, files.gifos.app) are offered and managed only in the
+ *     Broadcast app: the same page opened at /cast (#bc in the link). Meet
+ *     honors a Streamer subscription with everything Unlimited gives, but
+ *     never sells it and never shows its files (appNow, SUB.tiersSoldIn).
  *
  * The subscription is a FILE: a GifOS GIF that provides the meeting
  * subscription (keep it in the Providers folder, or open it here in another
@@ -62,6 +68,19 @@
   // In the GifOS Meet apps everything is paid for through the store's own
   // purchase sheet (gifos-store-rail.js): the one rail there. RAIL() is null
   // in a browser.
+  // The Broadcast app is this page opened with #bc (route.html /cast);
+  // everything else is the Meet app. Read from the address the page was
+  // opened with as well as the current one, like the subs switch.
+  const BC_RE = /(?:^|[#&?])bc(?:=[^&]*)?(?:&|$)/;
+  function appNow() {
+    try { if (root.document && root.document.body && root.document.body.classList.contains('broadcast')) return 'broadcast'; } catch (e) {}
+    try {
+      const cur = root.location;
+      if (BC_RE.test(String(cur.hash || '') + '&' + String(cur.search || ''))) return 'broadcast';
+      if (opened && BC_RE.test(opened.hash + '&' + opened.search)) return 'broadcast';
+    } catch (e) {}
+    return 'meet';
+  }
   const RAIL = () => (GifOS.storeRail && GifOS.storeRail.present() ? GifOS.storeRail : null);
   const on = () => !!(SUB && (RAIL() || SUB.enabled(switchFrom(), safeStore())));
   function safeStore() { try { return root.localStorage; } catch (e) { return null; } }
@@ -876,37 +895,48 @@
     const lic = await verifiedLicense();
     const st = readState();
     const cred = await credential();
+    const app = appNow();
     if (lic) {
       const t = SUB.TIERS[lic.tier];
       const yearly = cred && cred.period === 'yearly';
-      row.appendChild(el('p', { class: 'set-help' }, 'Your plan: ' + t.name + ' (' + (yearly ? t.priceYear + ' a year' : t.price + ' a month') + ').'));
+      // A plan this app does not sell (Streamer, in Meet) is honored, named,
+      // and managed in the app that sells it: no price, no files, no cancel here.
+      const elsewhere = SUB.tiersSoldIn(app).indexOf(lic.tier) < 0;
       const viaStore = /^[GA]-/.test(String(lic.subId || ''));
-      row.appendChild(el('p', { class: 'set-help' }, st.status === 'CANCELLED' ? SUB.TEXT.cancelled + ' Ends ' + dateOf(st.until || lic.exp) + '.' : inApp || viaStore ? tx('subRenewsAuto', 'Renews automatically.') : 'Renews through PayPal.'));
-      row.appendChild(el('p', { class: 'set-help' }, 'Your subscription works in one meeting at a time. Joining a meeting, here or in another browser with your subscription file, moves it there.'));
-      if (meet && meet.moved === 'moved') row.appendChild(el('p', { class: 'set-help' }, 'It is in use in another meeting now.'));
-      // The library is a web page; the apps are the meeting only.
-      if (t.storage) if (!inApp) {
-        const a = el('a', { class: BTN, style: BTN_STYLE + ';display:inline-block;text-decoration:none', id: 'sub-library', href: '/library', target: '_blank', rel: 'noopener' }, 'My library');
-        row.appendChild(a);
-        row.appendChild(el('p', { class: 'set-help', id: 'sub-library-key' }, 'Only you can open your library. If you lose your subscription file and its backup, nobody, not even GifOS, can recover it.'));
-      }
-      if (inApp) {
-        // A plan bought in the app is managed in the store's own subscription screen.
-        // One bought elsewhere shows no purchase control here at all.
-        if (viaStore) {
-          const m = el('button', { type: 'button', class: BTN, style: BTN_STYLE, id: 'sub-manage' }, tx('subManage', 'Manage subscription'));
-          m.onclick = () => { RAIL().manage().catch(() => {}); };
-          row.appendChild(m);
+      if (elsewhere) {
+        row.appendChild(el('p', { class: 'set-help', id: 'sub-plan-elsewhere' }, tx('subFromBroadcast', 'Your plan: {plan}, from the Broadcast app. In meetings it gives everything Unlimited gives.').replace('{plan}', planShort(lic.tier))));
+        row.appendChild(el('p', { class: 'set-help' }, 'Your subscription works in one meeting at a time. Joining a meeting, here or in another browser with your subscription file, moves it there.'));
+        if (!inApp) row.appendChild(el('a', { class: BTN, style: BTN_STYLE + ';display:inline-block;text-decoration:none', id: 'sub-manage-broadcast', href: '/cast', target: '_blank', rel: 'noopener' }, tx('subManageBroadcast', 'Manage it in the Broadcast app')));
+      } else {
+        row.appendChild(el('p', { class: 'set-help' }, 'Your plan: ' + t.name + ' (' + (yearly ? t.priceYear + ' a year' : t.price + ' a month') + ').'));
+        row.appendChild(el('p', { class: 'set-help' }, st.status === 'CANCELLED' ? SUB.TEXT.cancelled + ' Ends ' + dateOf(st.until || lic.exp) + '.' : inApp || viaStore ? tx('subRenewsAuto', 'Renews automatically.') : 'Renews through PayPal.'));
+        row.appendChild(el('p', { class: 'set-help' }, 'Your subscription works in one meeting at a time. Joining a meeting, here or in another browser with your subscription file, moves it there.'));
+        if (meet && meet.moved === 'moved') row.appendChild(el('p', { class: 'set-help' }, 'It is in use in another meeting now.'));
+        // The library is a web page, offered only in the Broadcast app; the
+        // native apps are the meeting only.
+        if (t.storage && app === 'broadcast' && !inApp) {
+          const a = el('a', { class: BTN, style: BTN_STYLE + ';display:inline-block;text-decoration:none', id: 'sub-library', href: '/library', target: '_blank', rel: 'noopener' }, 'My library');
+          row.appendChild(a);
+          row.appendChild(el('p', { class: 'set-help', id: 'sub-library-key' }, 'Only you can open your library. If you lose your subscription file and its backup, nobody, not even GifOS, can recover it.'));
         }
-      } else if (viaStore) {
-        row.appendChild(el('p', { class: 'set-help', id: 'sub-store-managed' }, tx('subStoreManaged', 'This subscription is managed in the GifOS Meet app.')));
-      } else if (st.status !== 'CANCELLED') {
-        const c = el('button', { type: 'button', class: BTN, style: BTN_STYLE, id: 'sub-cancel' }, 'Cancel subscription');
-        c.onclick = async () => {
-          c.disabled = true; say('Cancelling…');
-          try { await cancel(); say(SUB.TEXT.cancelled); paintSettings(); } catch (e) { c.disabled = false; say(String(e.message || e)); }
-        };
-        row.appendChild(c);
+        if (inApp) {
+          // A plan bought in the app is managed in the store's own subscription screen.
+          // One bought elsewhere shows no purchase control here at all.
+          if (viaStore) {
+            const m = el('button', { type: 'button', class: BTN, style: BTN_STYLE, id: 'sub-manage' }, tx('subManage', 'Manage subscription'));
+            m.onclick = () => { RAIL().manage().catch(() => {}); };
+            row.appendChild(m);
+          }
+        } else if (viaStore) {
+          row.appendChild(el('p', { class: 'set-help', id: 'sub-store-managed' }, tx('subStoreManaged', 'This subscription is managed in the GifOS Meet app.')));
+        } else if (st.status !== 'CANCELLED') {
+          const c = el('button', { type: 'button', class: BTN, style: BTN_STYLE, id: 'sub-cancel' }, 'Cancel subscription');
+          c.onclick = async () => {
+            c.disabled = true; say('Cancelling…');
+            try { await cancel(); say(SUB.TEXT.cancelled); paintSettings(); } catch (e) { c.disabled = false; say(String(e.message || e)); }
+          };
+          row.appendChild(c);
+        }
       }
     } else {
       if (st.subId && st.status && st.status !== 'APPROVAL_PENDING') row.appendChild(el('p', { class: 'set-help' }, SUB.TEXT.lapsed));
@@ -914,7 +944,7 @@
       row.appendChild(el('p', { class: 'set-help' }, 'Open rooms are free. A subscription adds rooms you run as admin, and video for people whose networks block direct connections.'));
       if (!inApp) row.appendChild(el('p', { class: 'set-help', id: 'sub-how' }, tx('subHow', 'Subscribe with PayPal (card or PayPal balance).')));
       for (const period of ['monthly', 'yearly']) {
-        for (const id of SUB.TIER_IDS) {
+        for (const id of SUB.tiersSoldIn(app)) {
           const t = SUB.TIERS[id];
           if (inApp && !SUB.storeSku(RAIL().store(), { what: 'sub', tier: id, period })) continue;   // not sold in this store: not offered
           const sp = skuOf({ what: 'sub', tier: id, period });
@@ -979,7 +1009,7 @@
     // The subscription file: download it, or use one from another browser.
     if (cred || (await wallet())) {
       const d = el('button', { type: 'button', class: BTN, style: BTN_STYLE, id: 'sub-file-get' }, 'Download subscription file');
-      d.onclick = () => { downloadFile().then(() => say('Saved. Keep it private: anyone with the file can use your subscription' + (lic && SUB.TIERS[lic.tier].storage ? ' and open your library. Keep a backup: if you lose it, nobody, not even GifOS, can recover your library.' : '.')), (e) => say(String(e.message || e))); };
+      d.onclick = () => { downloadFile().then(() => say('Saved. Keep it private: anyone with the file can use your subscription' + (lic && SUB.TIERS[lic.tier].storage && app === 'broadcast' ? ' and open your library. Keep a backup: if you lose it, nobody, not even GifOS, can recover your library.' : '.')), (e) => say(String(e.message || e))); };
       row.appendChild(d);
     }
     const pick = el('input', { type: 'file', accept: 'image/gif,.gif', id: 'sub-file-use', 'aria-label': 'Use a subscription file' });
@@ -1077,7 +1107,7 @@
   GifOS.meetSubs = {
     enabled: on, rights, planRights, refresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, paintNow, paintSettings, openSettings, mayCreateAdminRoom, showFull, ensureFree, showHostPrompt,
     roomOrder, roomTier, proveAtDoor, checkShown, newNonce,
-    joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureOrder, captureKeys, fileBytes, downloadFile, useFile, librarySigner, restoreInApp,
+    appNow, joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureOrder, captureKeys, fileBytes, downloadFile, useFile, librarySigner, restoreInApp,
     passMeeting: () => (pmeet ? { room: pmeet.room, gen: pmeet.gen, exp: pmeet.exp, until: pmeet.until, moved: pmeet.moved, held: !!pmeet.ticket } : null),
     currentPassTicket,
     meeting: () => (meet ? { room: meet.room, gen: meet.gen, exp: meet.exp, moved: meet.moved, held: !!meet.ticket, tier: meet.tier, paid: !!(meet.ticket && SUB.isPaid(meet.tier)) } : null),

@@ -16494,7 +16494,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       capBusy = true;
       try {
         const o = await GifOS.meetSubs.captureOrder(subsMeetId());
-        if (!o) { setStatus(uiText('capNeedPlan', 'Making yourself admin of an open room takes the $5 or $10 plan')); return; }
+        if (!o) { setStatus(uiText('capNeedPlan', 'Making yourself admin of an open room takes the $5 plan')); return; }
         pwLog('capture-sent');
         relaySendObj({ t: 'capture', tk: o.tk, w: o.w });
       } finally { capBusy = false; capPaint(); }   // the server's answer (onCapFrame) says the rest
@@ -32778,6 +32778,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       (async () => {
         let blob;
         try { blob = await fetch(saved.href).then((r) => r.blob()); } catch (e) { recDeliver(saved); return; }
+        // A broadcast host's recording stays what Rebroadcast > Last service plays, as recDeliver keeps it.
+        try { if (BROADCAST && bcHostStored()) bcLastService = { blob: Promise.resolve(blob), name: saved.name || '' }; } catch (e) {}
         try { URL.revokeObjectURL(saved.href); } catch (e) {}
         recLibProgress(0);
         let file;
@@ -32800,10 +32802,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // The Record sheet's library choice: Streamer gets the box (on by
     // default); other people see one quiet line while subscriptions are on.
+    // BROADCAST APP ONLY (Nathan 2026-11-13): the Meet app has no file
+    // management and never offers the Streamer library; the native apps
+    // never reach it either.
     async function recLibraryOption(bg) {
       const slot = bg.querySelector('#rec-lib');
       const L = window.GifOS && GifOS.library;
-      if (!slot || !L || !L.enabled() || BROADCAST) return;
+      if (!slot || !L || !L.enabled() || !BC_INTENT || (window.GifOS && GifOS.storeRail && GifOS.storeRail.present())) return;
       let st = 'none';
       try { st = await L.status(); } catch (e) {}
       if (!slot.isConnected) return;
@@ -32829,9 +32834,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       paint();
     }
     // An upload a reload interrupted finishes once the page has loaded.
+    // Broadcast app only, like the choice that starts one.
     window.addEventListener('load', () => {
       const L = window.GifOS && GifOS.library;
-      if (!L || !L.enabled() || !L.pending().length) return;
+      if (!BC_INTENT || !L || !L.enabled() || !L.pending().length) return;
       L.resumePending().then((done) => { if (done && done.length) recLibNote(uiText('stLibSaved', 'Saved to My library.')); }).catch(() => {});
     });
     function recDeliver(saved) {
