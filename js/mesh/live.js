@@ -194,6 +194,7 @@
       if (this.hasCoord && this.leaseUntil >= 0 && TICK <= this.leaseUntil && m.tock === this.leaseCk && m.tock !== ckey(this.coord)) {   // T3: a call to my just-vacated cell: answer MOVED
         const r = newMsg('MOVED'); r.ck = this.leaseCk; r.mvd = ckey(this.coord); r.id = id; this.emit(m.id, r); return;
       }
+      if (this.leftTo >= 0 && this.leftTo !== m.id && this.leftCk && m.tock === this.leftCk && (!this.hasCoord || m.tock !== ckey(this.coord)) && TICK - this.leftAt <= K.LEASE_T && sure && this.f.fabricDoors()) { const gone = this.leftCk; const l = newMsg('LEAVE'); l.ck = gone; l.id = id; l.nc = this.leftTo; l.tag = 40; this.emit(m.id, l); this.trace('GONE-ANSWER', id, null, 'to=%d cell=%s holder=%d', m.id, coordStr(unck(gone)), this.leftTo); return; }   // LAW L40.3.3: a call for the cell I handed to its holder hears that goodbye again, wherever I am now
       if (this.hasCoord && sure && m.tock !== ckey(this.coord)) { const p = newMsg('PONG'); p.coord = cc(this.coord); p.id = id; p.from = -1; const oc = this.ownerCoord(); if (oc) { p.oCk = ckey(oc); p.owner = this.occGet(p.oCk); } else { p.owner = -1; } this.emit(m.id, p); return; }   // NOT ME
       // L15.2 A BEAT SENT BEFORE A GOODBYE NEVER LANDS AFTER IT.
       { const lb = this.l152Bye.get(m.id); if (lb !== undefined && lb[0] === ckey(m.coord) && TICK - lb[1] <= 2) return; }
@@ -204,6 +205,7 @@
       if (!this.ownedLinkCell(ckey(m.coord))) return;
       if (!sure && this.occGet(ckey(m.coord)) !== m.id) return;
       if (m.tag === 5 && this.state === 3 && m.dgSi.at >= 0 && this.coord.pc !== 0 && this.coord.i !== 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r && m.coord.i !== 0) { const u = digM.cloneDig(m.dgSi); this.rxDig(u); u.rows.length = 0; if (this.siKids.size >= C) this.siKids.clear(); this.siKids.set(ckey(m.coord), u); }   // L48: a row-mate's own report while I stand in for our head
+      if (this.ppValid(m)) this.ppNote(ckey(m.coord), m.id, sm.ppSigOf(m.pp, m.ppAt), m.pp, m.ppL);   // LAW L16.5.1: a claim's PHONE presents its placement proof (a note, as a HELLO's)
       let l810 = false;   // L8.10: this phone is the other ring.
       { // E2 at the ARBITER
         const k0 = ckey(m.coord), p0 = this.occGet(k0);
@@ -647,7 +649,9 @@
         const ol = ownedLinks(this.coord); const seen = new Set();
         for (let k = 0; k < ol.length; k++) { const x = this.occGet(ckey(ol[k])); if (x >= 0 && x !== id && !seen.has(x)) { seen.add(x); const m = newMsg('LEAVE'); m.ck = ckey(this.coord); m.id = id; m.child = this.l1DeepKid(); if (this.l834Y >= 0) m.c7Min = this.l834Y; if (this.l40To >= 0) { m.nc = this.l40To; m.tag = 40; m.child = -1; } this.emit(x, m); } }
         const o = this.ownerCoord(); if (o) { const oid = this.occGet(ckey(o)); if (oid >= 0 && oid !== id && !seen.has(oid)) { const m = newMsg('LEAVE'); m.ck = ckey(this.coord); m.id = id; m.child = this.l1DeepKid(); if (this.l834Y >= 0) m.c7Min = this.l834Y; if (this.l40To >= 0) { m.nc = this.l40To; m.tag = 40; m.child = -1; } this.emit(oid, m); } }
+        if (this.f.fabricDoors()) for (const [, s] of this.sitting) { if (s.assigner !== id || s.joiner < 0 || s.joiner === id || seen.has(s.joiner) || TICK - s.at > K.SIT_TTL || s.pl.t !== 'PLACE') continue; let names = false; for (const nb of s.pl.nbrs) if (nb.k === ckey(this.coord) && nb.v === id) names = true; if (!names) continue; seen.add(s.joiner); const m = newMsg('LEAVE'); m.ck = ckey(this.coord); m.id = id; m.child = this.l1DeepKid(); if (this.l834Y >= 0) m.c7Min = this.l834Y; if (this.l40To >= 0) { m.nc = this.l40To; m.tag = 40; m.child = -1; } this.emit(s.joiner, m); this.trace('L40.3.2-PLACED', id, this.coord, 'to=%d holder=%d', s.joiner, this.l40To); }   // LAW L40.3.2
       }   // V7b (H4): the owner reserves my cell in its ledger: it gets my goodbye too
+      if (this.hasCoord && this.l40To >= 0 && this.f.fabricDoors()) { this.leftCk = ckey(this.coord); this.leftAt = TICK; this.leftTo = this.l40To; }   // LAW L40.3.3: the cell I hand to its holder is remembered, so a call for it hears that goodbye again
       if (this.hasCoord) this.live.delete(ckey(this.coord));   // my own cell's stamp: never refreshed while I sat there
       this.f.relayUnlist(id);   // L16.4
       this.hasCoord = false; this.occ.clear(); this.ledgerSeen.clear(); this.s1seen.clear(); this.holeSince.clear(); this.byeAt.clear(); this.tlClear(); this.authClear(); this.drainAt = 0; this.join();

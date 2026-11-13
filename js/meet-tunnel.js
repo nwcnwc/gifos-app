@@ -10,10 +10,9 @@
  * keeps an ordinary connection for the pair, exactly as on any other link,
  * but its far end is a second connection INSIDE THIS PAGE (the near end of
  * the tunnel). The two tunnel ends, one in each browser, pass each other
- *   - the pair's data channel messages, untouched and in order (they are
- *     sealed with the room key before they get here),
+ *   - the pair's data channel messages, in order,
  *   - the compressed audio and video frames of every track either side
- *     sends, untouched (no decode, no re-encode on the way),
+ *     sends (no decode, no re-encode on the way),
  *   - the list of tracks each side sends, so each end can offer its own
  *     side the same tracks under the same stream ids.
  * Each side's connection negotiates only with its own tunnel end, inside the
@@ -21,6 +20,36 @@
  *
  * The WebSocket server pipes exactly two sockets of one link and asks each
  * for the link's relay credential first; this file only presents it.
+ *
+ * END TO END. On every other path a pair's media is encrypted between the two
+ * browsers by the connection itself. Here that encryption ends inside each
+ * page, so the two tunnel ends seal EVERYTHING they pass each other themselves,
+ * with keys neither the WebSocket server nor a gateway that opens the
+ * WebSocket's TLS can know:
+ *   - Each time the server pairs the two sockets, each end makes a fresh
+ *     P-256 key pair and sends its public half in a statement signed with its
+ *     seat's identity key (the key its peer id is the hash of), itself sealed
+ *     with the room key. An end accepts only a statement from the peer id it
+ *     opened the link to, addressed to itself. So only the seat the meeting
+ *     means can be at the far end, and only a holder of the room key (in a
+ *     locked room: of the password) can take part at all.
+ *   - Both ends derive four AES-256-GCM keys from the shared secret and both
+ *     statements (HKDF-SHA-256): one per direction for media, one per
+ *     direction for everything that must arrive (channel messages, track
+ *     lists, key frame asks). The keys live for that one pairing only.
+ *   - Every frame is  [class][32-bit counter][ciphertext + 16-byte tag].
+ *     The counter is the nonce (never reused: a session's keys end with it,
+ *     and the link is re-keyed before a counter could wrap); class and
+ *     counter are authenticated with the frame. A media frame must carry a
+ *     higher counter than the last one accepted (the server may drop media;
+ *     it cannot replay or reorder it). A must-arrive frame must carry exactly
+ *     the next counter: a missing one ends the session and the link is keyed
+ *     afresh. A frame that does not open is dropped and counted. A frame that
+ *     is not sealed is never accepted, and none is ever sent.
+ * What the server and a gateway can still see: the link's relay credential and
+ * pair tag (the server needs them), that two sockets are paired, each frame's
+ * class, counter, size and time. Not the kind of a media frame, its track, a
+ * stream or track id, a name, or any content.
  *
  * Video frames are forwarded by putting their bytes into the frames of a
  * tiny template encoder (the technique of mesh-pipe.js): a browser will not
@@ -31,9 +60,82 @@
   const GifOS = (root.GifOS = root.GifOS || {});
   const TM = GifOS.timings || (typeof require === 'function' ? require('./timings.js') : {});   // every wait: js/timings.js, loaded before this file
 
+  // The seal of one pairing's frames. Self-contained: the worker runs this function's own text.
+  function sealCore() {
+    const MAXN = 4294967295;
+    function b64(u) { let s = ''; for (let i = 0; i < u.length; i += 8192) s += String.fromCharCode.apply(null, u.subarray(i, i + 8192)); return btoa(s); }
+    function unb64(s) { let b; try { b = atob(s); } catch (e) { return null; } const u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+    function ivOf(cls, n) { const iv = new Uint8Array(12); iv[0] = cls; iv[8] = n >>> 24; iv[9] = (n >>> 16) & 255; iv[10] = (n >>> 8) & 255; iv[11] = n & 255; return iv; }
+    // session(keys) → { seal, open }. Class 1 is media (may be lost on the way), class 2 must arrive, each in order.
+    // The calls of one direction must not overlap: the caller runs them one after another.
+    function session(keys) {
+      const tx = { 1: { key: keys.txM, n: 0 }, 2: { key: keys.txC, n: 0 } };
+      const rx = { 1: { key: keys.rxM, last: 0 }, 2: { key: keys.rxC, last: 0 } };
+      async function seal(cls, plain) {
+        const k = tx[cls];
+        if (!k || k.n >= MAXN) return null;      // never a counter twice: the caller ends the session
+        const n = ++k.n, out = new Uint8Array(5 + plain.length + 16);
+        out[0] = cls; out[1] = n >>> 24; out[2] = (n >>> 16) & 255; out[3] = (n >>> 8) & 255; out[4] = n & 255;
+        const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: ivOf(cls, n), additionalData: out.slice(0, 5), tagLength: 128 }, k.key, plain);
+        out.set(new Uint8Array(ct), 5);
+        return out;
+      }
+      async function open(cls, u) {
+        const k = rx[cls];
+        if (!k || u.length < 21 || u[0] !== cls) return { err: 'shape' };
+        const n = ((u[1] << 24) | (u[2] << 16) | (u[3] << 8) | u[4]) >>> 0;
+        if (n <= k.last) return { err: 'replay' };
+        let pt;
+        try { pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: ivOf(cls, n), additionalData: u.slice(0, 5), tagLength: 128 }, k.key, u.subarray(5)); } catch (e) { return { err: 'bad' }; }
+        if (cls === 2 && n !== k.last + 1) return { err: 'gap' };   // a true frame, and one before it never came
+        k.last = n;
+        return { pt: new Uint8Array(pt), n };
+      }
+      return { seal, open };
+    }
+    return { session, b64, unb64 };
+  }
+
+  // The key agreement of one pairing (see END TO END above). sign(text) → { sig, pub } with my seat's identity key;
+  // verify(peerId, pub, sig, text) → true when pub is the key peerId is the hash of and sig is its signature of text.
+  const HS = 'gifos-web-tunnel-1';
+  const SC = () => root.crypto.subtle;
+  const utf8 = (s) => new TextEncoder().encode(s);
+  const b64of = (buf) => { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i++) s += String.fromCharCode(u[i]); return btoa(s); };
+  const ofB64 = (s) => { const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; };
+  async function hsHello(me, peer, sign) {
+    const kp = await SC().generateKey({ name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveBits']);
+    const n = new Uint8Array(16); root.crypto.getRandomValues(n);
+    const sp = JSON.stringify({ v: 1, t: 'twh', from: me, to: peer, e: b64of(await SC().exportKey('raw', kp.publicKey)), n: b64of(n) });
+    const s = await sign(sp);
+    return { priv: kp.privateKey, sp, msg: { k: 'twh', sp, sig: s.sig, pub: s.pub } };
+  }
+  async function hsAccept(me, peer, msg, verify) {
+    if (!msg || msg.k !== 'twh' || typeof msg.sp !== 'string' || msg.sp.length > 800 || typeof msg.sig !== 'string' || typeof msg.pub !== 'string') return null;
+    let sp = null; try { sp = JSON.parse(msg.sp); } catch (e) {}
+    if (!sp || sp.v !== 1 || sp.t !== 'twh' || sp.from !== peer || sp.to !== me || typeof sp.e !== 'string' || sp.e.length > 120 || typeof sp.n !== 'string') return null;
+    if (!(await verify(peer, msg.pub, msg.sig, msg.sp))) return null;
+    return { sp: msg.sp, e: sp.e };
+  }
+  async function hsKeys(me, peer, mine, far) {
+    if (me === peer || mine.sp === far.sp) return null;
+    const farPub = await SC().importKey('raw', ofB64(far.e), { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+    const ikm = await SC().importKey('raw', await SC().deriveBits({ name: 'ECDH', public: farPub }, mine.priv, 256), 'HKDF', false, ['deriveKey']);
+    const lo = me < peer;
+    const salt = await SC().digest('SHA-256', utf8(HS + '|' + (lo ? mine.sp : far.sp) + '|' + (lo ? far.sp : mine.sp)));
+    const key = (label, use) => SC().deriveKey({ name: 'HKDF', hash: 'SHA-256', salt, info: utf8(HS + ' ' + label) }, ikm, { name: 'AES-GCM', length: 256 }, false, [use]);
+    const out = lo ? 'lo' : 'hi', inn = lo ? 'hi' : 'lo';
+    const [txM, txC, rxM, rxC] = await Promise.all([key(out + ' media', 'encrypt'), key(out + ' must', 'encrypt'), key(inn + ' media', 'decrypt'), key(inn + ' must', 'decrypt')]);
+    const mark = async (t) => 'webtunnel ' + b64of(await SC().digest('SHA-256', utf8(t)));
+    return { keys: { txM, txC, rxM, rxC }, bind: { l: await mark(mine.sp), r: await mark(far.sp) } };
+  }
+
   // The worker owns the socket and every frame: nothing of the media path runs on the page's thread.
   const WORKER_SRC = `
 'use strict';
+const SEAL = (${sealCore.toString()})();
+const TE = new TextEncoder(), TD = new TextDecoder();
+const PRE_MAX = 256;        // frames held while this end still derives a pairing's keys
 const ends = new Map();     // end id -> { ws, taps: Map(g -> {t, kind, needKey}), pipes: Map(g -> pipe), st }
 const HIGH_VIDEO = 262144;  // socket backlog above which video waits for a key frame
 const HIGH_AUDIO = 49152;   // socket backlog above which audio frames are skipped
@@ -43,11 +145,63 @@ const KEY_FLIP_MS = ${TM.KEY_FLIP_MS}, KEY_ASK_MS = ${TM.TUNNEL_KEY_ASK_MS}, TAP
 const nowMs = () => performance.now();
 function endOf(id) {
   let e = ends.get(id);
-  if (!e) { e = { ws: null, taps: new Map(), pipes: new Map(), st: { txA: 0, txV: 0, txDrop: 0, rxA: 0, rxV: 0, outA: 0, outV: 0, rxDrop: 0, keyAsk: 0, txBytes: 0, rxBytes: 0 } }; ends.set(id, e); }
+  if (!e) { e = { id, ws: null, taps: new Map(), pipes: new Map(), sec: null, round: 0, keying: false, pre: [], txq: Promise.resolve(), rxq: Promise.resolve(), txPend: 0,
+    st: { txA: 0, txV: 0, txDrop: 0, rxA: 0, rxV: 0, outA: 0, outV: 0, rxDrop: 0, keyAsk: 0, txBytes: 0, rxBytes: 0, rxBad: 0, rxReplay: 0, rxPlain: 0, broke: 0, sealN: 0, sealMs: 0, sealBytes: 0, openN: 0, openMs: 0 } }; ends.set(id, e); }
   return e;
 }
-function sendText(e, s) { try { if (e.ws && e.ws.readyState === 1) { e.ws.send(s); return true; } } catch (err) {} return false; }
-function ctl(e, m) { return sendText(e, 'c' + JSON.stringify(m)); }
+function sendText(e, s) { try { if (e.ws && e.ws.readyState === 1) { e.ws.send(s); return true; } } catch (err) {} return false; }   // only for the server's own frames and the key agreement
+function unkey(e, keying) { e.sec = null; e.pre = []; e.keying = !!keying; }
+// The session cannot go on (a must-arrive frame is missing, or a counter ran out): the socket goes, and the next pairing is keyed afresh.
+function broken(e, why) {
+  e.st.broke++; unkey(e, false);
+  const ws = e.ws; if (!ws) return;
+  try { ws.onclose = ws.onmessage = null; ws.close(); } catch (err) {}
+  e.ws = null;
+  postMessage({ op: 'sock', end: e.id, ev: 'close', code: 4498, why });
+}
+// Everything this end sends the far end goes through here, one frame after another. cls 1: media (binary), 2: must arrive (text).
+function sealOut(e, cls, plain) {
+  const s = e.sec;
+  if (!s) return false;
+  e.txPend += plain.length;
+  e.txq = e.txq.then(async () => {
+    e.txPend -= plain.length;
+    const ws = e.ws;
+    if (e.sec !== s || !ws || ws.readyState !== 1) return;
+    const t0 = nowMs();
+    const out = await s.ses.seal(cls, plain);
+    e.st.sealMs += nowMs() - t0; e.st.sealN++; e.st.sealBytes += plain.length;
+    if (e.sec !== s || e.ws !== ws || ws.readyState !== 1) return;
+    if (!out) { broken(e, 'counter'); return; }
+    if (cls === 1) { ws.send(out); e.st.txBytes += out.length; } else { const t = 'x' + SEAL.b64(out); ws.send(t); e.st.txBytes += t.length; }
+  }).catch(() => {});
+  return true;
+}
+function openIn(e, cls, u) {
+  const s = e.sec;
+  if (!s) { if (e.keying && e.pre.length < PRE_MAX) e.pre.push([cls, u]); else e.st.rxPlain++; return; }
+  e.rxq = e.rxq.then(async () => {
+    if (e.sec !== s) return;
+    const t0 = nowMs();
+    const r = await s.ses.open(cls, u);
+    e.st.openMs += nowMs() - t0; e.st.openN++;
+    if (e.sec !== s) return;
+    if (r.err) { if (r.err === 'replay') e.st.rxReplay++; else e.st.rxBad++; if (r.err === 'gap') broken(e, 'gap'); return; }
+    if (!s.ok) { s.ok = true; postMessage({ op: 'secured', end: e.id, round: s.round }); }   // the far end holds the same keys
+    if (cls === 1) onMedia(e, r.pt); else onMust(e, r.pt);
+  }).catch(() => {});
+}
+function ctl(e, m) { return sealOut(e, 2, TE.encode('c' + JSON.stringify(m))); }
+function keyFrameOf(tap) { if (tap && tap.t.sendKeyFrameRequest) { try { const r = tap.t.sendKeyFrameRequest(); if (r && r.catch) r.catch(() => {}); } catch (err) {} } }
+function onMust(e, pt) {
+  const s = TD.decode(pt), c0 = s.charCodeAt(0);
+  if (c0 === 100 /* d */) { postMessage({ op: 'dc', end: e.id, data: s.slice(1) }); return; }
+  if (c0 !== 99 /* c */) return;
+  let c = null; try { c = JSON.parse(s.slice(1)); } catch (err) {}
+  if (!c || c.t === 'kc') return;
+  if (c.t === 'key') { keyFrameOf(e.taps.get(c.g)); return; }
+  postMessage({ op: 'ctl', end: e.id, m: c });
+}
 function pipeFor(e, g, kind) {
   let p = e.pipes.get(g);
   if (!p) { p = { kind, q: [], needKey: kind === 'video', cw: null, writer: null, wrote: 0, kdrop: 0, askAt: 0, mintAt: 0, flipAt: 0, side: 48, mn: 0, mts: 0 }; e.pipes.set(g, p); }
@@ -77,14 +231,12 @@ setInterval(() => {   // a template that never came back is asked for again
   const t = nowMs();
   for (const e of ends.values()) for (const p of e.pipes.values()) if (p.kind === 'video' && p.q.length && t - p.mintAt > MINT_RETRY_MS) mint(p, p.q[0].key);
 }, MINT_LOOK_MS);
-function onBinary(e, buf) {
-  const u = new Uint8Array(buf);
+function onMedia(e, u) {   // an opened media frame: [kind][key][track, 2 bytes][the encoded frame]
   if (u.length < 4) return;
   const kind = u[0] === 1 ? 'video' : 'audio', key = (u[1] & 1) === 1, g = (u[2] << 8) | u[3];
   const p = e.pipes.get(g);
-  e.st.rxBytes += u.length;
   if (!p) { e.st.rxDrop++; return; }
-  const bytes = buf.slice(4);
+  const bytes = u.buffer.slice(u.byteOffset + 4, u.byteOffset + u.length);
   if (kind === 'audio') {
     e.st.rxA++;
     p.q.push(bytes);
@@ -121,9 +273,9 @@ function onPipeFrame(e, g, p, frame, writer) {
 }
 function onTapFrame(e, g, tap, frame, writer) {
   const ws = e.ws;
-  if (ws && ws.readyState === 1 && tap.on) {
+  if (ws && ws.readyState === 1 && tap.on && e.sec) {
     const key = tap.kind === 'video' && frame.type === 'key';
-    const backlog = ws.bufferedAmount;
+    const backlog = ws.bufferedAmount + e.txPend;
     let send = true;
     if (tap.kind === 'audio') { if (backlog > HIGH_AUDIO) send = false; }
     else {
@@ -133,7 +285,7 @@ function onTapFrame(e, g, tap, frame, writer) {
     if (send) {
       const d = new Uint8Array(frame.data), out = new Uint8Array(d.length + 4);
       out[0] = tap.kind === 'video' ? 1 : 2; out[1] = key ? 1 : 0; out[2] = (g >> 8) & 255; out[3] = g & 255; out.set(d, 4);
-      try { ws.send(out); e.st.txBytes += out.length; if (tap.kind === 'video') e.st.txV++; else e.st.txA++; } catch (err) {}
+      if (sealOut(e, 1, out)) { if (tap.kind === 'video') e.st.txV++; else e.st.txA++; } else e.st.txDrop++;
     } else e.st.txDrop++;
   }
   return writer.write(frame);   // on to this end's own decoder, which otherwise asks for key frames without end
@@ -161,38 +313,58 @@ onmessage = (ev) => {
   const m = ev.data, e = endOf(m.end);
   if (m.op === 'open') {
     try { if (e.ws) { e.ws.onclose = e.ws.onmessage = null; e.ws.close(); } } catch (err) {}
+    unkey(e, false);
     let ws;
     try { ws = new WebSocket(m.url); } catch (err) { postMessage({ op: 'sock', end: m.end, ev: 'close', code: 0 }); return; }
     ws.binaryType = 'arraybuffer'; e.ws = ws;
     ws.onopen = () => { if (e.ws !== ws) return; ws.send('s' + JSON.stringify(Object.assign({ t: 'auth' }, m.auth))); postMessage({ op: 'sock', end: m.end, ev: 'open' }); };
-    ws.onclose = (c) => { if (e.ws !== ws) return; e.ws = null; postMessage({ op: 'sock', end: m.end, ev: 'close', code: c.code }); };
+    ws.onclose = (c) => { if (e.ws !== ws) return; e.ws = null; unkey(e, false); postMessage({ op: 'sock', end: m.end, ev: 'close', code: c.code }); };
     ws.onmessage = (x) => {
       if (e.ws !== ws) return;
-      if (typeof x.data !== 'string') { onBinary(e, x.data); return; }
+      if (typeof x.data !== 'string') {   // media: sealed, or not taken
+        const u = new Uint8Array(x.data);
+        e.st.rxBytes += u.length;
+        if (u[0] === 1) openIn(e, 1, u); else e.st.rxPlain++;
+        return;
+      }
+      e.st.rxBytes += x.data.length;
       const c0 = x.data.charCodeAt(0);
-      if (c0 === 100 /* d */) postMessage({ op: 'dc', end: m.end, data: x.data.slice(1) });
-      else if (c0 === 99 /* c */) {
+      if (c0 === 120 /* x: a sealed must-arrive frame */) { const u = SEAL.unb64(x.data.slice(1)); if (u) openIn(e, 2, u); else e.st.rxBad++; }
+      else if (c0 === 107 /* k: the far end's half of the key agreement */) postMessage({ op: 'hs', end: m.end, round: e.round, data: x.data.slice(1) });
+      else if (c0 === 115 /* s: the server's own word */) {
         let c = null; try { c = JSON.parse(x.data.slice(1)); } catch (err) {}
         if (!c) return;
-        if (c.t === 'key') { const tap = e.taps.get(c.g); if (tap && tap.t.sendKeyFrameRequest) { try { const r = tap.t.sendKeyFrameRequest(); if (r && r.catch) r.catch(() => {}); } catch (err) {} } return; }
-        postMessage({ op: 'ctl', end: m.end, m: c });
+        if (c.t === 'paired') { e.round++; unkey(e, true); }   // a pairing: its frames are held until this end has its keys
+        else if (c.t === 'alone') unkey(e, false);
+        postMessage({ op: 'sock', end: m.end, ev: 'server', m: c, round: e.round });
       }
-      else if (c0 === 115 /* s */) { let c = null; try { c = JSON.parse(x.data.slice(1)); } catch (err) {} if (c) postMessage({ op: 'sock', end: m.end, ev: 'server', m: c }); }
+      else e.st.rxPlain++;   // nothing unsealed is taken from the far end
     };
   }
   else if (m.op === 'auth') sendText(e, 's' + JSON.stringify(Object.assign({ t: 'auth' }, m.auth)));
+  else if (m.op === 'hs') { if (m.round === e.round && e.keying) sendText(e, 'k' + m.data); }
+  else if (m.op === 'keys') {   // this pairing's keys: say so under them, then take what was held
+    if (m.round !== e.round || !e.keying || e.sec) return;
+    e.sec = { ses: SEAL.session(m.keys), ok: false, round: m.round };
+    const pre = e.pre; e.pre = [];
+    ctl(e, { t: 'kc' });
+    for (const f of pre) openIn(e, f[0], f[1]);
+  }
   else if (m.op === 'ctl') ctl(e, m.m);
-  else if (m.op === 'dc') sendText(e, 'd' + m.data);
+  else if (m.op === 'dc') sealOut(e, 2, TE.encode('d' + m.data));
   else if (m.op === 'carrier') { const p = pipeFor(e, m.g, 'video'); try { p.cw = m.writable.getWriter(); } catch (err) { p.cw = null; } p.needKey = true; p.q.length = 0; }
   else if (m.op === 'unpipe') { e.pipes.delete(m.g); }
   else if (m.op === 'fresh') { e.taps.clear(); e.pipes.clear(); }   // this end's connection was rebuilt: its tracks are numbered anew
-  else if (m.op === 'close') { try { if (e.ws) { e.ws.onclose = e.ws.onmessage = null; e.ws.close(); } } catch (err) {} ends.delete(m.end); }
-  else if (m.op === 'stats') { const out = Object.assign({ backlog: e.ws ? e.ws.bufferedAmount : -1, taps: e.taps.size, pipes: e.pipes.size }, e.st); postMessage({ op: 'stats', end: m.end, id: m.id, st: out }); }
+  else if (m.op === 'close') {   // after what is still being sealed (the last word to the far end)
+    const ws = e.ws, fin = () => { try { if (ws) { ws.onclose = ws.onmessage = null; ws.close(); } } catch (err) {} unkey(e, false); };
+    ends.delete(m.end); e.txq.then(fin, fin);
+  }
+  else if (m.op === 'stats') { const out = Object.assign({ backlog: e.ws ? e.ws.bufferedAmount : -1, taps: e.taps.size, pipes: e.pipes.size, sealed: e.sec && e.sec.ok ? 1 : 0, round: e.round }, e.st); postMessage({ op: 'stats', end: m.end, id: m.id, st: out }); }
 };
 `;
 
   const supported = () => typeof RTCRtpScriptTransform !== 'undefined' && typeof Worker !== 'undefined'
-    && typeof WebSocket !== 'undefined' && typeof RTCPeerConnection !== 'undefined';
+    && typeof WebSocket !== 'undefined' && typeof RTCPeerConnection !== 'undefined' && !!(root.crypto && root.crypto.subtle);
   const videoOk = () => typeof MediaStreamTrackGenerator !== 'undefined' && typeof OffscreenCanvas !== 'undefined' && typeof VideoFrame !== 'undefined';
 
   let worker = null, endSeq = 0;
@@ -233,6 +405,9 @@ onmessage = (ev) => {
 
   // createEnd(o) → this page's end of one link's tunnel.
   // o = { url, auth: { u, c },          the WebSocket and the link's credential
+  //       me, peer,                     my peer id and the far page's
+  //       seal(obj), open(env),         the room key's seal: only a page of this room (in a locked room, with the password) can key the link
+  //       sign(text), verify(peer, pub, sig, text),   the seats' identity keys (see hsHello above)
   //       initiator,                    my side of the pair is the one that offers first
   //       toSignal(msg),                a first-contact signal for my side: { kind: 'offer' | 'answer' | 'ice', ... }
   //       toChannel(msg),               a negotiation message for my side, as it would arrive on the pair's channel
@@ -257,6 +432,8 @@ onmessage = (ev) => {
     let offerT = null, resendT = null, retryT = null, retryN = 0, statsSeq = 0;
     const statsWait = new Map();
     let audioSrc = null;
+    let hs = null;                     // this pairing's key agreement: { round, mine, far, done }
+    const canSeal = !!(o.me && o.peer && o.me !== o.peer && o.seal && o.open && o.sign && o.verify && root.crypto && root.crypto.subtle);
 
     const setState = (s) => { if (E.state === s) return; E.state = s; log('tunnel ' + s); try { if (o.onState) o.onState(s); } catch (e) {} };
     const post = (m, tr) => { m.end = id; try { tr ? w.postMessage(m, tr) : w.postMessage(m); } catch (e) {} };
@@ -447,6 +624,40 @@ onmessage = (ev) => {
       if (S !== pc) return;
       o.toSignal({ kind: 'offer', sdp: { type: 'offer', sdp: pc.localDescription.sdp } });
     }
+    // The server paired the two sockets: agree this pairing's keys. Nothing else crosses before both ends hold them.
+    function keyUp(round) {
+      E.paired = false; E.farOpen = false; E.bind = null; farSends = [];
+      dropShadow('keying');
+      const h = hs = { round, mine: null, far: null, done: false };
+      setState('keying');
+      hsHello(o.me, o.peer, o.sign).then((mine) => {
+        if (hs !== h || E.closed) return null;
+        h.mine = mine;
+        return Promise.resolve(o.seal(mine.msg)).then((env) => { if (hs === h && !E.closed) { post({ op: 'hs', round, data: JSON.stringify(env) }); keyDone(h); } });
+      }).catch((e) => { log('tunnel key agreement failed: ' + (e && e.name)); });
+    }
+    function keyIn(m) {
+      const h = hs;
+      if (!h || h.round !== m.round || h.far || h.gotFar) return;   // one statement a pairing: a second one is not the far end's
+      let env = null; try { env = JSON.parse(m.data); } catch (e) {}
+      if (!env) return;
+      h.gotFar = true;
+      Promise.resolve(o.open(env)).then((msg) => hsAccept(o.me, o.peer, msg, o.verify)).then((far) => {
+        if (hs !== h || E.closed) return;
+        if (!far) { h.gotFar = false; log('tunnel: a key statement that is not the far seat\'s was refused'); return; }
+        h.far = far; keyDone(h);
+      }).catch(() => { h.gotFar = false; });
+    }
+    function keyDone(h) {
+      if (hs !== h || h.done || !h.mine || !h.far) return;
+      h.done = true;
+      hsKeys(o.me, o.peer, h.mine, h.far).then((k) => {
+        if (hs !== h || E.closed) return;
+        if (!k) { log('tunnel key agreement refused'); return; }
+        h.bind = k.bind;
+        post({ op: 'keys', round: h.round, keys: k.keys });
+      }).catch((e) => { log('tunnel key agreement failed: ' + (e && e.name)); });
+    }
     function hookup() {
       if (E.closed || !E.paired) return;
       setState('paired');
@@ -500,6 +711,8 @@ onmessage = (ev) => {
     };
     E.auth = (auth) => { o.auth = auth.pool === 'paid' ? o.auth : auth; if (auth.pool === 'paid') E._paid = auth; post({ op: 'auth', auth }); };
     E.up = () => E.state === 'up';
+    // What stands for this link's far end where a connection's certificate would: { l: mine, r: the far end's }, null until the link is keyed.
+    E.binding = () => (E.paired && E.bind ? { l: E.bind.l, r: E.bind.r } : null);
     E.stats = () => new Promise((res) => { const n = ++statsSeq; statsWait.set(n, res); post({ op: 'stats', id: n }); setTimeout(() => { if (statsWait.delete(n)) res(null); }, TM.TUNNEL_STATS_WAIT_MS); });
     E.close = (why) => {
       if (E.closed) return;
@@ -519,13 +732,14 @@ onmessage = (ev) => {
       if (m.op === 'stats') { const r = statsWait.get(m.id); if (r) { statsWait.delete(m.id); r(m.st); } return; }
       if (m.op === 'sock') {
         if (m.ev === 'server') {
-          if (m.m.t === 'paired') { retryN = 0; E.paired = true; if (E._paid) post({ op: 'auth', auth: E._paid }); hookup(); }
-          else if (m.m.t === 'alone') { E.paired = false; E.farOpen = false; farSends = []; dropShadow('far end left'); setState('waiting'); }
-          else if (m.m.t === 'ok') { if (!E.paired) setState('waiting'); }
+          if (m.m.t === 'paired') { retryN = 0; if (E._paid) post({ op: 'auth', auth: E._paid }); keyUp(m.round); }
+          else if (m.m.t === 'alone') { hs = null; E.paired = false; E.bind = null; E.farOpen = false; farSends = []; dropShadow('far end left'); setState('waiting'); }
+          else if (m.m.t === 'ok') { if (!E.paired && !hs) setState('waiting'); }
           return;
         }
         if (m.ev === 'close') {
-          E.paired = false; E.farOpen = false; farSends = [];
+          hs = null; E.paired = false; E.bind = null; E.farOpen = false; farSends = [];
+          if (m.code === 4498) log('tunnel: the sealed session broke (' + m.why + '), keying afresh');
           dropShadow('socket closed ' + m.code);
           if (m.code === 4401 || m.code === 4403) { setState('refused'); return; }
           setState('connecting');
@@ -534,6 +748,8 @@ onmessage = (ev) => {
         }
         return;
       }
+      if (m.op === 'hs') { keyIn(m); return; }
+      if (m.op === 'secured') { if (hs && hs.round === m.round && hs.bind && !E.paired) { E.paired = true; E.bind = hs.bind; log('tunnel sealed'); hookup(); } return; }
       if (m.op === 'dc') { if (sdc && sdc.readyState === 'open' && !farQueue.length) { try { sdc.send(m.data); } catch (e) {} } else { farQueue.push(m.data); if (farQueue.length > 4000) farQueue.shift(); } return; }
       if (m.op === 'ctl') {
         const c = m.m;
@@ -548,11 +764,12 @@ onmessage = (ev) => {
     };
 
     live.set(id, E);
+    if (!canSeal) { log('tunnel refused: no keys to seal it with'); setState('refused'); return E; }   // never an unsealed link
     post({ op: 'open', url: o.url, auth: o.auth });
     return E;
   }
 
-  const api = { supported, videoOk, createEnd, sections, renameStreams };
+  const api = { supported, videoOk, createEnd, sections, renameStreams, sealCore, hsHello, hsAccept, hsKeys };
   GifOS.meetTunnel = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
