@@ -93,11 +93,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       join every meeting muted with the camera off. The camera turns on only when you switch it on.</li>
       <li><b>Captions.</b> While your microphone is on, the meeting writes what you say down as captions, and only the
       caption text goes to the meeting (Settings → Captions turns sending off). A speech engine on your device makes the
-      text, chosen in Settings → Captions. <b>Browser captions</b>, the default and the only engine in the Android app,
-      use your browser's or phone's own speech service, which may send your voice to its maker to turn it into text
-      (Chrome and Android phones: Google; Safari and iPhone: Apple) under that company's privacy policy. GifOS never
-      receives the audio. <b>Whisper</b> runs on your computer and sends your voice nowhere; its speech model is
-      downloaded once from gifos.app. It is not offered on phones.</li>
+      text. <b>In the Android app, captions stay on the phone:</b> the app uses only the phone's own on-device speech
+      recognition, which turns your voice into text on the phone and sends it nowhere. The app has no other engine and
+      never falls back to an online one; if the phone cannot caption a language on the device, captions pause. The first
+      time you use a language, Android may ask to download its speech pack once (from Google; the pack is a speech model
+      and carries none of your voice). <b>On the web and in the iPhone app</b>, the default <b>Browser captions</b> use
+      your browser's or phone's own speech service, which may send your voice to its maker to turn it into text (Chrome:
+      Google; Safari and iPhone: Apple) under that company's privacy policy. GifOS never receives the audio.
+      <b>Whisper</b> runs on your computer and sends your voice nowhere; its speech model is downloaded once from
+      gifos.app. It is not offered on phones.</li>
       <li><b>Recordings</b> are saved on your device. GifOS Meet does not upload them anywhere.</li>
       <li><b>Debug logs</b> stay on your device unless you export and send one yourself.</li>
     </ul>

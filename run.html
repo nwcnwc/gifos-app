@@ -31728,7 +31728,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // The GifOS Meet phone app runs captions on the phone itself (its own speech engine stands in for the
     // browser's): that is the only engine, it sends no voice anywhere, and Whisper is not offered.
     function phoneCaptions() {
-      try { return !!(window.GifosNative && GifosNative.info && GifosNative.info().captions === 'device'); } catch (e) { return false; }
+      try { const N = window.GifosNative; return !!(N && N.info && N.info().captions === 'device'); } catch (e) { return false; }
     }
     function paintPhoneCaptions() {
       const row = document.querySelector('input[name="ccengine"][value="browser"]');
