@@ -5895,10 +5895,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function fsSources() {
       const out = [];
       // The content region first (content tabs, js/meet-viewmode.js content):
-      // in Focus the big view can be a content item as well as a person.
+      // in Focus the big view can be a content item as well as a person. Full
+      // screen lists the shared screens too, as pictures of their own: a share
+      // shows in the content area, and its Stage tile can be a hidden element
+      // that WebKit never starts, so without them full screen had no share.
       try {
         const VMc = window.GifOS && GifOS.meetViewMode && GifOS.meetViewMode.content;
-        if (VMc && !BROADCAST) for (const it of VMc.items()) if (it.stream || it.v) out.push({ key: it.key, label: it.label || '', v: it.v || null, stream: it.stream || null, fit: 'contain', content: true });
+        if (VMc && !BROADCAST) for (const it of VMc.items()) {
+          if (fsInline) { if (it.stream || it.v) out.push({ key: it.key, label: it.label || '', v: it.v || null, stream: it.stream || null, fit: 'contain', content: true }); }
+          else if (it.kind === 'screen' && it.stream) out.push({ key: it.key, label: it.label || '', v: { srcObject: it.stream }, fit: 'contain' });
+        }
       } catch (e) {}
       let stageFit = null;
       for (const v of stagefeedEl.querySelectorAll('.rowtile video')) {
@@ -6134,6 +6140,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function closeFsView(fromPicker) {
       if (fsTick) { clearInterval(fsTick); fsTick = null; }
+      try { ctFsDrop(null); } catch (e) {} // the view's screen clones end with it
       if (fsFollowT) { clearTimeout(fsFollowT); fsFollowT = 0; }
       fsFollow = null;
       const wasInline = fsInline;
@@ -8036,10 +8043,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
 
     // ---- Focus: the content tabs are in the picker strip ----
+    // The full-screen view's clones of the content screens (ctFocusSources).
+    function ctFsStop(c) { try { if (c && c.own) c.own.stop(); } catch (e) {} }
+    function ctFsDrop(keep) {
+      if (!CT || !CT.fsStreams) return;
+      for (const [k, c] of CT.fsStreams) if (!keep || !keep.has(k)) { ctFsStop(c); CT.fsStreams.delete(k); }
+    }
     function ctFocusSources() {
-      if (!CT || !ctRefresh().length) return [];
+      if (!CT || !ctRefresh().length) { ctFsDrop(null); return []; }
       if (!CT.fsStreams) CT.fsStreams = new Map();
-      const out = [];
+      const out = [], seen = new Set();
       for (const it of CT.items) {
         // The content region's shape (GifOS.meetViewMode.content): a screen
         // brings its stream; the app and the agenda have no picture of their
@@ -8048,12 +8061,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (it.kind === 'screen') {
           const src = ctScreenTrack(it.sid);
           let c = CT.fsStreams.get(it.key);
-          if (src && (!c || c.track !== src.track)) { c = { track: src.track, stream: new MediaStream([src.track]) }; CT.fsStreams.set(it.key, c); }
-          if (src && c) e.stream = c.stream;
+          // Its own clone: WebKit paints one track in one <video> only, and the
+          // content pane already shows the original. ctFsDrop stops each clone.
+          if (src && (!c || c.track !== src.track)) {
+            if (c) ctFsStop(c);
+            let tr = src.track;
+            try { tr = src.track.clone(); } catch (e) { tr = src.track; }
+            c = { track: src.track, own: tr !== src.track ? tr : null, stream: new MediaStream([tr]) };
+            CT.fsStreams.set(it.key, c);
+          }
+          if (src && c) { e.stream = c.stream; seen.add(it.key); }
           else e.v = { srcObject: null };
         } else e.v = { srcObject: null };
         out.push(e);
       }
+      ctFsDrop(seen);
       return out;
     }
     // Focus moved on or off a content tab: the area goes back to the gallery,
@@ -8506,7 +8528,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const ab = document.getElementById('agendabtn');
       if (ab) ab.addEventListener('click', () => ctAgendaOpen());
       // The content tabs are the meeting's content region: Focus lists them.
-      try { if (window.GifOS && GifOS.meetViewMode && GifOS.meetViewMode.content) GifOS.meetViewMode.content.add(() => (fsInline ? ctFocusSources() : [])); } catch (e) {}
+      try { if (window.GifOS && GifOS.meetViewMode && GifOS.meetViewMode.content) GifOS.meetViewMode.content.add(() => (fsview.classList.contains('on') ? ctFocusSources() : [])); } catch (e) {}
     }
     // For the room tests and the debug dump: what the area shows.
     window.__meetContent = () => {
