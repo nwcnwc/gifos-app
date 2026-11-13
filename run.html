@@ -31725,7 +31725,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }).catch(() => {});
       }, 4000);
     }
-    // The GifOS Meet phone app runs captions on the phone itself (its own speech engine stands in for the
+    // The GifOS Meet apps (Android, iPhone) run captions on the phone itself (its own speech engine stands in for the
     // browser's): that is the only engine, it sends no voice anywhere, and Whisper is not offered.
     function phoneCaptions() {
       try { const N = window.GifosNative; return !!(N && N.info && N.info().captions === 'device'); } catch (e) { return false; }
@@ -31735,7 +31735,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const lab = row && row.closest('label'); if (!lab) return;
       const b = lab.querySelector('b'), sm = lab.querySelector('small');
       if (b) { b.removeAttribute('data-t'); b.textContent = uiText('setCcPhone', 'On this phone'); }
-      if (sm) { sm.removeAttribute('data-t'); sm.textContent = uiText('setCcPhoneHelp', 'Your phone writes down what you say by itself: your voice never leaves the phone, and only the caption text goes to the meeting. A language used for the first time may ask to download its speech pack once.'); }
+      if (sm) { sm.removeAttribute('data-t'); sm.textContent = uiText('setCcPhoneHelp', 'Captions are made on this phone. No voice is ever sent to any server: only the caption text goes to the meeting. The first time a language is used, the phone may download its speech model once.'); }
       for (const id of ['ccwhisper-st', 'ccwhisper-weak', 'ccwhisper', 'cctranslate-row', 'cctranslate-no', 'cctranslate-need']) { const e = document.getElementById(id); if (e) e.style.display = 'none'; }
       const w = document.querySelector('input[name="ccengine"][value="whisper"]'), wl = w && w.closest('label'); if (wl) wl.style.display = 'none';
     }

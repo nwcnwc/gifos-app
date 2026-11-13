@@ -75,7 +75,7 @@
   "meet.setCcBrowser": "Subtítulos del navegador",
   "meet.setCcBrowserHelp": "Al instante. Un idioma fijo, el de arriba. En algunos dispositivos son dos palabras sin puntuación. El navegador puede enviar tu voz al servicio de su fabricante (Chrome: Google).",
   "meet.setCcPhone": "En este teléfono",
-  "meet.setCcPhoneHelp": "Tu teléfono escribe lo que dices por sí mismo: tu voz nunca sale del teléfono y solo el texto de los subtítulos llega a la reunión. Un idioma usado por primera vez puede pedir descargar su paquete de voz una vez.",
+  "meet.setCcPhoneHelp": "Los subtítulos se crean en este teléfono. Nunca se envía ninguna voz a ningún servidor: solo el texto de los subtítulos llega a la reunión. La primera vez que se usa un idioma, el teléfono puede descargar una vez su modelo de voz.",
   "meet.setCcWhisper": "Whisper en este dispositivo",
   "meet.setCcWhisperHelp": "Cualquier idioma, lo detecta solo. Frases de verdad, con puntuación. Tus nombres y palabras. Puede traducir todo al inglés. Una frase aparece unos segundos después. En el teléfono va más lento y gasta batería. Tu voz se queda en este dispositivo; solo las palabras escritas pueden ir a la reunión.",
   "meet.setCcEnglish": "Traducir todo al inglés",
