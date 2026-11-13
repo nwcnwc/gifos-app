@@ -510,12 +510,16 @@
     // kind), as the door's last list gave it, read against mine: 1 my network; 0 another network, and our two kinds hold no
     // connection (one of us blocked, or both strict); 2 another network mine can meet; -1 no tag (an older page, or my
     // own tag not known yet). A greeter that said no kind is read as open.
+    const L8_54_4_OFF = (typeof process !== 'undefined' && process.env && process.env.MESH_L8_54_4_OFF === '1') ? 1 : 0;   // the sim's -DL8_54_4_OFF=1 build
     const doorNt = new Map();
     const fabricDoorNet = (a, g) => {
       if (a !== me || !fh || !fh.myTag) return -1; const mine = fh.myTag(); if (!mine) return -1;
       const w = doorNt.get(g); if (!w) return -1; if (w.slice(0, 8) === mine) return 1;
       const k = w.length > 9 ? +w.slice(9) : E.NAT_OPEN, n = (measure.nat ? measure.nat() : E.NAT_OPEN) | 0;
-      return (n !== E.NAT_BLOCKED && k !== E.NAT_BLOCKED && !(n === E.NAT_STRICT && k === E.NAT_STRICT)) ? 2 : 0;
+      if (n !== E.NAT_BLOCKED && k !== E.NAT_BLOCKED && !(n === E.NAT_STRICT && k === E.NAT_STRICT)) return 2;
+      // L8.54.4 (C++: mesh_net.inc:l854Never): cannot meet only when one end is blocked and the other is not open; a blocked end
+      // beside an open one may meet it over TCP, two strict ends are left to their dials: 3, another network not known either way
+      return (L8_54_4_OFF || (n === E.NAT_BLOCKED && k !== E.NAT_OPEN) || (k === E.NAT_BLOCKED && n !== E.NAT_OPEN)) ? 0 : 3;
     };
     // C++: mesh_turn.inc:fabricTurnOpener   (L8.5.9: I opened the up TURN link whose far end is x)
     const fabricTurnOpener = (a, x) => { if (a !== me || x < 0 || !turnOn() || !fh.turnOpened) return false; const p = ID.pid(x); return !!p && turnSet().has(x) && !!fh.turnOpened(p); };
