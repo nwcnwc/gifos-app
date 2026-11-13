@@ -6,7 +6,7 @@
 // phone on a slow link the lobby waited on all of it. A published copy of the site therefore ships:
 //  - js/run.bundle.js: every deferred script, joined and minified, in page order. A visit with a room in its address
 //    (a meeting link, an app) loads just this, with the page.
-//  - js/run.lobby.js: the scripts the lobby needs (LOBBY below), joined and minified, in page order. A bare visit
+//  - js/run.lobby.js: the scripts the lobby needs (run.html lists them first), joined and minified. A bare visit
 //    (/meet: run.html with no room in its address) loads this with the page, and run.bundle.js right after the
 //    lobby has started; the bundle then skips the scripts the lobby bundle already ran. "Start a call" opens the
 //    meeting's address, which finds run.bundle.js already in the cache.
@@ -16,8 +16,7 @@
 //
 // The bundles keep what the separate files had:
 //  - the same order. All of them are deferred, so they ran in page order after parsing; the bundle runs them in
-//    page order, all in one go: a meeting link or an app runs exactly what the repo page runs. Only a bare lobby
-//    visit runs the lobby's scripts ahead of the rest (each still in page order within its part).
+//    page order, all in one go. The lobby's scripts come first in run.html, so lobby bundle + bundle is page order too.
 //  - the same globals. Each file is minified on its own (no names are shared or renamed across files), and every
 //    file is checked to declare nothing at its top level (each is a closure that writes its globals explicitly).
 //    Inline scripts keep their top-level names (a classic script's top level is never renamed).
@@ -45,26 +44,22 @@ const args = process.argv.slice(2);
 const SITE = path.resolve(args.find((a) => !a.startsWith('--')) || '.');
 const PAGE = 'run.html';
 const TAG = /<script src="(js\/[A-Za-z0-9_\-/.]+\.js)" defer><\/script>/g;
-// The lobby's scripts: everything the meeting reads from the moment it starts until the lobby is on screen (measured
-// by recording every module the page reads before the lobby shows), the scripts those read while they load, and the
-// small ones that only set page-wide values. The split is made HERE, on the published copy only: run.html keeps its
-// own tag order (an app opened on the repo page with the lobby's tags moved to the front lost players, so the page's
-// order is not this tool's to change). A script outside the list is only late for the lobby, never missing: a join
-// waits for the rest bundle.
-const LOBBY_SET = ['js/sw-register.js', 'js/dialog.js', 'js/build.js', 'js/build-badge.js', 'js/gifos-i18n.js', 'js/gifos-gif.js',
-  'js/gifos-help.js', 'js/gifos-fullscreen.js', 'js/gifos-store.js', 'js/timings.js', 'js/gifos-update.js', 'js/gifos-net.js',
-  'js/mesh-media.js', 'js/meet-layout.js', 'js/meet-debuglog.js', 'js/meet-views.js', 'js/meet-viewmode.js', 'js/mesh-pipe.js',
-  'js/relay-config.js', 'js/runtime.js', 'js/meet-host.js', 'js/gifos-perms.js'];
+// run.html lists the lobby's scripts first and marks where they end: everything the meeting reads from the moment it
+// starts until the lobby is on screen (measured by recording every module the page reads before the lobby shows),
+// the scripts those read while they load, and the small ones that only set page-wide values. A script below the
+// mark is only late for the lobby, never missing: a join waits for the rest bundle. The order is the page's own,
+// so the bundles run the scripts in exactly the order the repo page does.
+const MARK = "<!-- the lobby's scripts end here -->";
 
 const pagePath = path.join(SITE, PAGE);
 const html = fs.readFileSync(pagePath, 'utf8');
 if (html.includes('js/run.lobby.js')) throw new Error(PAGE + ' is already bundled');
 const files = [...html.matchAll(TAG)].map((m) => m[1]);
 if (files.length < 2) throw new Error('no deferred scripts found in ' + PAGE);
-if (new Set(files).size !== files.length) throw new Error(PAGE + ' loads a deferred script twice');
-const gone = LOBBY_SET.filter((f) => !files.includes(f));
-if (gone.length) throw new Error(PAGE + ' no longer loads a lobby script: ' + gone.join(', '));
-const LOBBY = files.filter((f) => LOBBY_SET.includes(f));   // page order
+const markAt = html.indexOf(MARK);
+if (markAt < 0 || html.indexOf(MARK, markAt + 1) >= 0) throw new Error(PAGE + ' needs exactly one mark: ' + MARK);
+const LOBBY = [...html.slice(0, markAt).matchAll(TAG)].map((m) => m[1]);
+if (LOBBY.length < 1 || files.slice(0, LOBBY.length).join() !== LOBBY.join()) throw new Error(PAGE + ': the lobby scripts must be the first deferred scripts');
 
 // A file may be joined only if it declares nothing at its top level and is not a strict-mode file: inside the
 // bundle a top-level let/const/class/function would change scope and a 'use strict' prologue would stop being one.
