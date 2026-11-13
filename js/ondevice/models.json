@@ -30,17 +30,6 @@
         { "as": "tokens.txt", "name": "tokens.txt", "member": "sherpa-onnx-moonshine-tiny-en-quantized-2026-02-27/tokens.txt", "sha256": "2870d843e14c1e187bf1913a521562a63b53933814bd7f2145120468f494a049", "bytes": 549350 }
       ]
     },
-    "zipformer-en-20m": {
-      "about": "Streaming Zipformer transducer, English, 20M, int8 (Apache-2.0)",
-      "runtime": "online", "type": "transducer", "langs": ["en"], "case": "sentence",
-      "src": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17.tar.bz2",
-      "files": [
-        { "as": "encoder.onnx", "name": "encoder-epoch-99-avg-1.int8.onnx", "member": "sherpa-onnx-streaming-zipformer-en-20M-2023-02-17/encoder-epoch-99-avg-1.int8.onnx", "sha256": "3810755ce7c3ab26b42a8bcf39d191308fa27fb0f53358823ba46141d03b7eb3", "bytes": 42845182 },
-        { "as": "decoder.onnx", "name": "decoder-epoch-99-avg-1.onnx", "member": "sherpa-onnx-streaming-zipformer-en-20M-2023-02-17/decoder-epoch-99-avg-1.onnx", "sha256": "45a7f940ecfb53d89fa270ad11b88b961e53a317203eb24b1c8e95ed208b0f30", "bytes": 2092272 },
-        { "as": "joiner.onnx", "name": "joiner-epoch-99-avg-1.int8.onnx", "member": "sherpa-onnx-streaming-zipformer-en-20M-2023-02-17/joiner-epoch-99-avg-1.int8.onnx", "sha256": "e085d73b593cf9b0707f370dbd656d58327d3fe36d80d849202ef81df02cb01e", "bytes": 259572 },
-        { "as": "tokens.txt", "name": "tokens.txt", "member": "sherpa-onnx-streaming-zipformer-en-20M-2023-02-17/tokens.txt", "sha256": "49e3c2646595fd907228b3c6787069658f67b17377c60aeb8619c4551b2316fb", "bytes": 5048 }
-      ]
-    },
     "zipformer-small-ru": {
       "about": "Streaming Zipformer transducer, Russian, small, int8 (Apache-2.0)",
       "runtime": "online", "type": "transducer", "langs": ["ru"], "case": "sentence",
