@@ -11799,7 +11799,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!RELAY_TYPES.has(ty) || !inner || typeof inner !== 'object' || Array.isArray(inner) || inner.k !== ty || !net.fitsFixed(inner)) return null;
       const keys = relayKeysOf(ty).split(',');
       for (const k of Object.keys(inner)) if (k !== '_' && keys.indexOf(k) < 0) return null;
-      if (ty === 'boot') return net.bootOk(inner) && (inner.dr === undefined || inner.dr === 1) ? ty : null;   // dr: an unseated dialler at the door (sendOffer)
+      if (ty === 'boot') return net.bootOk(inner) && (inner.dr === undefined || inner.dr === 1) ? ty : null;   // dr: the sender stands at the door (doorWord)
       if (ty === 'fp') return net.fpOk(inner) ? ty : null;
       if (ty === 'ice') return (inner.end === 1 && !('c' in inner)) || (!('end' in inner) && !!net.candOfIce(inner)) ? ty : null;
       if (ty === 'name') return typeof inner.n === 'string' && inner.n.length <= RELAY_NAME_MAX ? ty : null;
@@ -12335,7 +12335,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // the pair restarted on every round and never formed.
         const nameF = { k: 'name', n: net.relayNameFit(myName()) };
         if (msg.kind === 'offer') relaySendSealed(to, 'name', nameF);
-        if (msg.kind === 'offer' && msg.dr === 1) b.boot.dr = 1;   // the door's gate reads it (onSignal): an unseated dialler is not a stale member
+        if (msg.dr === 1) b.boot.dr = 1;   // the sender stands at the door (doorWord): the door's gate reads it on an offer (onSignal), the door's clock on either description (onRelayPeer)
         relaySendSealed(to, 'boot', b.boot);
         relaySendSealed(to, 'fp', b.fp);
         if (msg.kind === 'answer') relaySendSealed(to, 'name', nameF);
@@ -12362,8 +12362,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!desc) return;
         const sig = { kind: desc.type, sdp: desc, ib: 1, boot: 1 };
         if (bootF && bootF.dr === 1) sig.dr = 1;
-        // FHOP.8: an unseated dialler's offer reached my seat: its door's ICE clock starts (a door that never opens calls a friend to the door)
-        if (sig.dr === 1 && desc.type === 'offer' && meshNode && meshNode.penv && meshNode.penv.doorNote) { try { meshNode.penv.doorNote(from); } catch (e) {} }
+        // FHOP.8: a description from a page at the door reached my seat, its offer or its answer to mine: the offer and the
+        // answer are crossing on the relay, so the door's ICE clock starts (a door that never opens calls a friend to the door).
+        // Whichever end dialled, the seated end keeps the clock: a door my own page dialled is as much a door.
+        if (sig.dr === 1 && meshNode && meshNode.penv && meshNode.penv.doorNote) { try { meshNode.penv.doorNote(from); } catch (e) {} }
         onSignal(from, sig);
         return;
       }
@@ -13849,7 +13851,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (fresh) rebuildPc(p, 'glare-yield', { keepIce: true });
         const pc = p.pc;
         Promise.resolve(fresh ? null : pc.setLocalDescription({ type: 'rollback' }))
-          .then(() => answerOffer(pc, p, m, true, (sdp) => sendSig(from, Object.assign({ kind: 'answer', sdp, ib: 1 }, sigMeta()))))
+          .then(() => answerOffer(pc, p, m, true, (sdp) => sendSig(from, Object.assign({ kind: 'answer', sdp, ib: 1, dr: doorWord() }, sigMeta()))))
           .catch((e) => {
             if (p.pc !== pc) return; // whoever replaced the pc owns the pair now
             // Rollback failed. Rebuild and dial from this side too. Dialling
@@ -13860,6 +13862,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
 
     // What every offer and answer tells about me, after its own fields.
+    // dr, the door word: 1 while I stand at the door (not seated, or my seat under 20 s old), on every description I send.
+    // Between two pages the one with the greater id makes the offer and the other only asks, so the person at the door
+    // makes the offer at some doors and the answer at the others. On an offer the far end's gate reads the word (an
+    // unseated dialler is not a stale member); on either, a seated far end starts that door's clock (onRelayPeer).
+    const doorWord = () => { const ms = meshSeat(); return ms && ms.hasCoord && ms.state === 3 && ms.seatTick - ms.seatedAt > 40 ? 0 : 1; };
     const sigMeta = () => ({ name: myName(), ip: myIp, st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), sid: mySid() });
     // THE RULES THAT REBUILD BEFORE AN OFFER LANDS, first match wins. After a rebuild none of the later ones can
     // hold: a fresh pc has no death, no remote description, no connection and no media.
@@ -14070,7 +14077,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           settled();
           if (p.pc !== pc) return; // rebuilt while minting: this offer belongs to a closed pc
           p.offerSentAt = Date.now(); p.offerSentPc = pc; p.offerSentKey = typeof offerKeyOf === 'function' ? offerKeyOf(pc.localDescription) : '';   // offerAgain sends only this offer again
-          sendSig(peerId, Object.assign({ kind: 'offer', sdp: pc.localDescription, ib: 1, dr: (() => { const ms = meshSeat(); return ms && ms.hasCoord && ms.state === 3 && ms.seatTick - ms.seatedAt > 40 ? 0 : 1; })() }, sigMeta()));
+          sendSig(peerId, Object.assign({ kind: 'offer', sdp: pc.localDescription, ib: 1, dr: doorWord() }, sigMeta()));
         })
         .catch((e) => { settled(); if (p.pc === pc) noteNegFail('offer', peerId, e); });
     }
@@ -14125,7 +14132,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // A description that carries media never rides the relay, and with no friend's channel it has no way at all (sendSig
       // drops it): only a rebuild, media-free, can dial. Sending such a copy again held a door unanswered until a friend came.
       if (!(net.bootOf && net.bootOf(pc.localDescription, 0)) && !(typeof friendDcOpen === 'function' && friendDcOpen(peerId))) return false;
-      sendSig(peerId, Object.assign({ kind: 'offer', sdp: pc.localDescription, ib: 1, dr: (() => { const ms = meshSeat(); return ms && ms.hasCoord && ms.state === 3 && ms.seatTick - ms.seatedAt > 40 ? 0 : 1; })() }, sigMeta()));
+      sendSig(peerId, Object.assign({ kind: 'offer', sdp: pc.localDescription, ib: 1, dr: doorWord() }, sigMeta()));
       const cands = candsOfDesc(pc.localDescription);
       if (cands.length) { if (iceBatchOk(peerId)) sendSig(peerId, { kind: 'ice', candidates: cands }); else for (const c of cands) sendSig(peerId, { kind: 'ice', candidate: c }); }
       if (typeof clog === 'function') clog('offer-again ' + String(peerId).slice(0, 6) + ' ' + why + ' ' + Math.round((Date.now() - (p.offerSentAt || 0)) / 100) / 10 + 's');
@@ -14431,7 +14438,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const offerKey = typeof offerKeyOf === 'function' ? offerKeyOf(msg.sdp) : '', took0 = offerKey && p.neg && p.neg.tookOffer;
         if (p.pc && took0 && took0.pc === p.pc && took0.key === offerKey && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed') {
           if (took0.answer) {
-            sendSig(from, Object.assign({ kind: 'answer', sdp: took0.answer, ib: 1 }, sigMeta()));
+            sendSig(from, Object.assign({ kind: 'answer', sdp: took0.answer, ib: 1, dr: doorWord() }, sigMeta()));
             const cands = typeof candsOfDesc === 'function' ? candsOfDesc(p.pc.localDescription) : [];
             if (cands.length) sendSig(from, { kind: 'ice', candidates: cands });
           }
@@ -14454,7 +14461,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // polite peer (lower id) rolls back its local offer and accepts; the
         // impolite peer ignores the remote offer and keeps its own.
         const accept = () => { const pc = p.pc; const took = offerKey ? { key: offerKey, pc, answer: null } : null; if (took) p.neg.tookOffer = took;
-          return answerOffer(pc, p, msg, true, (sdp) => { if (took) took.answer = sdp; sendSig(from, Object.assign({ kind: 'answer', sdp, ib: 1 }, sigMeta())); })
+          return answerOffer(pc, p, msg, true, (sdp) => { if (took) took.answer = sdp; sendSig(from, Object.assign({ kind: 'answer', sdp, ib: 1, dr: doorWord() }, sigMeta())); })
           .catch((e) => { if (took && p.neg.tookOffer === took) p.neg.tookOffer = null; if (p.pc !== pc) return; noteNegFail('accept', from, e); if (/extension ID reassignment/i.test(String((e && e.message) || ''))) maybeRebuildNeg(p, e); }); };
         // A COLLISION is my own offer applied (have-local-offer) or, on a pair
         // with no live transport, still being minted (p.neg.minting — see

@@ -778,7 +778,7 @@
     const env = {
       me, world: w, traces: () => ring.slice(), ids: ID, f: F, pcw, tick, frame, transport, doorNet: (x) => fabricDoorNet(me, x), doorForgive: (peer) => { const x = learnPeer(peer); if (x >= 0 && pcw.doorForgive) pcw.doorForgive(x); }, dialHeld: (peer) => { const x = learnPeer(peer); return x >= 0 && !!pcw.dialHeld && pcw.dialHeld(x); }, relayFrame, absence, leave, stats, links,
       dirFor, learnDir, relayBusyList,
-      doorNote: (peer) => { const x = learnPeer(peer); if (x >= 0 && x !== me && pcw.doorNote) guard('doorNote', pcw.doorNote)(x); },   // FHOP.8: a knocker's offer reached me over the relay (run.html onRelayPeer)
+      doorNote: (peer) => { const x = learnPeer(peer); if (x >= 0 && x !== me && pcw.doorNote) guard('doorNote', pcw.doorNote)(x); },   // FHOP.8: a door page's offer, or its answer to my offer, reached me over the relay (run.html onRelayPeer)
       doorCallIn: (fromPeer, kind, knockerPeer) => guard('doorCallIn', doorCallIn)(fromPeer, kind, knockerPeer),   // FHOP.8 kinds 7 and 8 off a dc
       t14Env: (peer, inner, onward) => guard('t14Env', t14Env)(peer, inner, !!onward) | 0,   // TURN.14.4 / 14.11: may this friend-hop envelope cross my pc to peer
       turnAcross: () => !!guard('turnAcross', fabricTurnAcross)(me),   // TURN.14.8: my ring lies across my TURN link (the media plane feeds it)
