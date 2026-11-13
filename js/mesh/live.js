@@ -311,10 +311,10 @@
             const rk = []; for (let q = 0; q < C - 1; q++) { rk[q] = rm[q]; rk[C - 1 + q] = cm[q]; }
             for (let q = 0; q < 2 * (C - 1); q++) { const k = ckey(rk[q]); const x = this.occGet(k); if (!got.has(k) && x >= 0 && x !== m.id && this.firstHandLive(k)) cous.push({ k, v: x }); }
           }
-          if (this.l13('L13.1')) {
+          {
             const rk = []; for (let q = 0; q < C - 1; q++) { rk[q] = rm[q]; rk[C - 1 + q] = cm[q]; }
             for (let q = 0; q < 2 * (C - 1); q++) { const k = ckey(rk[q]); const x = this.occGet(k); if (x >= 0 && x !== m.id && this.firstHandLive(k)) { let has = false; for (const c of cous) if (c.k === k && c.v === x) has = true; if (!has) cous.push({ k, v: x }); } }
-          }   // L13.1 / L1.1 (a)
+          }   // L1.1.1 (was L13.1, a mass leave only): in every room the rook seats themselves, after the heirs / L1.1 (a)
         }
       } else if (this.coord.i === 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r) {   // a ROW-MATE phoned me (the head): share MY cousins
         for (const [ck2, cv] of this.cousins) cous.push({ k: ck2, v: cv });
