@@ -2434,6 +2434,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     };
     const share = document.getElementById('share');
     const shareUrl = document.getElementById('share-url');
+    // The address of the meeting this page joined (set at the knock). Rejoin goes back to it, whatever the address
+    // bar says by then: a history Back inside the meeting (Android app 0.9.26 audit) left the bar on /run.html,
+    // and a plain reload there opened the lobby instead of the meeting.
+    let rejoinHref = '';
     // ONE rule, ONE sentence: the password button's own guard and the door's
     // refusal of the same act say exactly this, so a person never sees the same
     // rule twice in two voices (nor the door's machine wording).
@@ -19437,6 +19441,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         : MEET_PATH + '#v=' + room + avPartAt + (custom ? '&relay=' + encodeURIComponent(relay) : '');
       // A srcdoc session cannot always retarget its address. The mesh does
       // not depend on that; a thrown replaceState must not skip the knock.
+      rejoinHref = canonical;
       try { if (location.pathname + location.search + location.hash !== canonical) history.replaceState(null, '', canonical); } catch (e) {}
       shareUrl.value = pretty ? pageOrigin() + prettyPath + prettyQs
         : pageOrigin() + MEET_PATH + '#v=' + room + avPartAt + (relay ? '&relay=' + encodeURIComponent(relay) : '');
@@ -36699,7 +36704,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { broadcastStatus(); } catch (e) {}
       try { refreshOutbound(); } catch (e) {}
     }
-    const leftRejoin = document.getElementById('left-rejoin'); if (leftRejoin) leftRejoin.onclick = () => location.reload();
+    const leftRejoin = document.getElementById('left-rejoin');
+    if (leftRejoin) leftRejoin.onclick = () => {
+      let to = null;
+      try { to = rejoinHref ? new URL(rejoinHref, location.href) : null; } catch (e) {}
+      const here = location.pathname + location.search + location.hash;
+      if (!to || to.origin !== location.origin || to.pathname + to.search + to.hash === here) { location.reload(); return; }
+      // A hash-only change is not a load: reload after it (enterMeeting's rule).
+      const samePage = to.pathname === location.pathname && to.search === location.search;
+      location.replace(to.href);
+      if (samePage) location.reload();
+    };
     const leftClose = document.getElementById('left-close'); if (leftClose) leftClose.onclick = () => { location.href = homeHref(); };
 
     // ================= App-in-meeting =================
