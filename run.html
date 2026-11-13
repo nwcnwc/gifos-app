@@ -16942,6 +16942,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         measure: {   // the device class and the network's verdict this page already keeps (L4)
           tier: () => { const E = GifOS.meshConsts.enums, hc = navigator.hardwareConcurrency | 0; return IS_MOBILE || (hc > 0 && hc <= 2) ? E.TIER_MOBILE : E.TIER_DESKTOP; },   // a 2-core desktop carries like a phone
           nat: () => { const E = GifOS.meshConsts.enums; return directPath === 'blocked' ? E.NAT_BLOCKED : directPath === 'strict' ? E.NAT_STRICT : E.NAT_OPEN; },
+          probed: () => directPath === 'ok' || directPath === 'strict' || directPath === 'blocked',   // L8.54.4: my own network's verdict is in
           lgHealth: () => lgHealth(), lgCamOn: () => myStatus.camOff === false, lgWoke: () => lgWoken.size, lgStarve: () => lgStarvedNow(), lgLeave: () => lgLeave(),
         },
         // The seat's pcs (js/mesh/page/env.js calls these; it decides, the page carries out).
