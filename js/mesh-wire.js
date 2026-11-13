@@ -1259,7 +1259,7 @@
       },
       socketed() { return !raw || raw.socketed(); },   // the seat's own word: am I at the door (a joiner, a greeter, a seat that knocked)
       setRefuses(b) { if (layer) layer.setRefuses(b); },
-      roomDigest() { return (layer && env.DIGEST !== false) ? layer.roomDigest() : null; },   // the display fold beside the seat (layer.js leaf)
+      roomDigest() { return layer ? layer.roomDigest() : null; },   // the display fold beside the seat (layer.js leaf)
       // App access to the wire's relay socket (the ONE socket): signaling
       // fallback ({t:'peer'}), moderation verbs (setpw/ban/votekick), etc.
       // Recreates the socket on demand, same as the mesh's own sends.

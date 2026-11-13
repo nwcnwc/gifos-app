@@ -44,7 +44,7 @@
  *   fabricSend           A1     the sim's path choice from the sender's view (FARVIEW); link step -> A2.send
  *   fabricUnreachable    A1     the sim's typing: FH_ICE_N of my dials failed and both NAT kinds (mine, its status beat's) cannot meet
  *   fabricVerdict        A1     the seat's death verdicts (DEATH_WHY), drained by the page's departure intake
- *   fhopActive           A1     true where the page gave a friend-hop face (o.fhop), as the sim's LINKMODEL && FHOP_ON
+ *   fhopActive           A1     true where the page gave a friend-hop face (o.fhop), as the sim's LINKMODEL (friend-hop has no off switch)
  *   fhopFriendFor        A1     sponsorSend's friend rung would carry it (o.fhop.friendFor)
  * Not seat calls, the fabric's own friend-hop parts on a page (C++ mesh_fhop.inc): fhDoorCall / fhDoorDue (FHOP.8, the door
  * pcw's clock fires when a knocker's door never opened) and doorCallIn (a call that reached me over a dc, kinds 7 and 8).

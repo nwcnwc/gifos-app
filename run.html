@@ -3319,8 +3319,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       relayNoSock.delete(id); return false;
     };
     // ============================ THE STATUS PLANE ============================
-    // docs/status-plane-migration.md; healing-laws § G and G9. With the rollup
-    // digest on (the default; window.GIFOS_DIGEST = false opts out), a heartbeat reaches only its sender's
+    // docs/status-plane-migration.md; healing-laws § G and G9. The rollup
+    // digest is always on (it has no off switch), so a heartbeat reaches only its sender's
     // SECTION — the C×C seats sharing its pc, which is the whole room below C²
     // people (G8) — and the four room-global facts the room-wide flood used to
     // carry (hands, the Stage roster, the room-app ad, stage-vote tallies)
@@ -3331,7 +3331,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // Everything the digest feeds is DISPLAY or a self-owned act (G1): nothing
     // here may evict, seat, or release a camera's blur. An admin's status is
     // its section's too; its signed presence rides a slower room-wide beat.
-    const digestMode = () => !(typeof window !== 'undefined' && window.GIFOS_DIGEST === false) && !!meshNode && typeof meshNode.roomDigest === 'function'; // ON by default; GIFOS_DIGEST=false is the pre-plane room flood
+    const digestMode = () => !!meshNode && typeof meshNode.roomDigest === 'function'; // no off switch: false only while this page has no mesh node (nothing to scope or fold then)
     let roomDigBox = null;
     // DEBUG forensics (hand.seen): when handQueue last read and what the fold gave it; when the fold was last refused as too old.
     const dbgHand = { qAt: 0, qN: 0, qIds: [], digAt: 0, digN: -1, nullAt: 0, nullAge: null, nullWhy: '' };
@@ -3676,7 +3676,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // The mod table's authority is its SIGNATURE now (§9) — an admin's
       // heartbeat rides the same free DC path as everyone else's; receivers
       // verify the proof, not the transport.
-      const scoped = digestMode();
+      const scoped = digestMode();   // this page has a mesh node (the viewer beat and the admin beat below need one)
       // THE HEARTBEAT'S DIRECT LEG IS BOUNDED TO MY OWN LINKS. A boot/door pair
       // (a greeter's or knocker's bootstrap channel) gets this page's status
       // once, on dc.onopen — enough to show a name at once — but ongoing
@@ -3697,7 +3697,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (scoped && bcViewerBeat()) {
         const s = meshSeat();
         if (s && s.hasCoord) for (const pid of s.linkPeers()) { const p = peers.get(pid); if (p && p.dc && p.dc.readyState === 'open') { txStats.dcStatus++; dcSend(p, { k: 'sig', msg: payload }); } }
-      } else fanOut(payload, (p) => { if (!linkTo(p.id)) return; txStats.dcStatus++; dcSend(p, { k: 'sig', msg: payload }); }, scoped ? { scope: 'section', ephemeral: true } : undefined);
+      } else fanOut(payload, (p) => { if (!linkTo(p.id)) return; txStats.dcStatus++; dcSend(p, { k: 'sig', msg: payload }); }, { scope: 'section', ephemeral: true });   // the pre-plane room flood is gone: a status is never gossiped room-wide
       // AN ADMIN IS PRESENT FOR THE WHOLE ROOM. Its status is its section's like
       // anyone's; what the room needs is the SIGNED proof that an admin is here
       // (takeMod credits presence from the signature, whoever carries it). That
@@ -17036,7 +17036,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // this seat (the mesh forwards nothing the app refused), so a client
           // that re-floods heartbeats room-wide — stale or hostile — is cut
           // off by its first honest neighbours.
-          if (g.msg.kind === 'status' && !scoped && digestMode()) { rxStats.statusRefused = (rxStats.statusRefused || 0) + 1; return false; }
+          // Whatever this page's own state: an old page or a modified one that floods its status room-wide is refused here.
+          if (g.msg.kind === 'status' && !scoped) { rxStats.statusRefused = (rxStats.statusRefused || 0) + 1; return false; }
           // DEBUG-TREE (inert unless DEBUG=on rides the URL).
           if (g.msg.__probe) { if (DEBUG_ON && meshNode) meshNode.gossip({ a: 1, msg: { __ack: g.msg.__probe, r: meshSelfReport() } }); return; }
           if (g.msg.__ack) { if (DEBUG_ON) { const M = (window.__meshCensus = window.__meshCensus || {}); if (g.msg.r && g.msg.r.from) M[g.msg.r.from] = g.msg.r; } return; }
@@ -36235,9 +36236,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // plus what the digest folds, so the bye goes where a tile of mine is
     // drawn: every open channel directly, my links by the mesh LEAVE, my
     // section by gossip. A stager is drawn room-wide, so its bye still floods.
-    // Without the digest (GIFOS_DIGEST=false) every seat holds every status,
-    // so the farewell floods as before.
-    function byeScope() { return digestMode() && !stageIds().includes(myId) ? { scope: 'section' } : undefined; }
+    function byeScope() { return !stageIds().includes(myId) ? { scope: 'section' } : undefined; }
     // unloadEvent: the page is unloading on its own. No browser says whether
     // this tab is closing or reloading, so the seat is left as a reload (L3.11)
     // and no farewell goes out: its far ends hold the plain goodbye (mesh-wire
