@@ -14711,12 +14711,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // A request answered by an offer that went into the dark (the asker's
       // side was cut when it left): a 5 s re-offer gate put up to 5 s on a cut
       // pair's return (066ba4-room-six: 12.6 s). A dark offer is re-made after 2 s.
-      if ((participantCount() <= 1 || !pLive) && !forming && iInitiate(p.id) && Date.now() - (p.fragDialAt || 0) > (darkOffer ? 2000 : 5000)) {
+      // The re-offer gate holds back a second offer for the pair's pc. A pc built since my last dial with nothing on it
+      // (no offer of mine, no description from the far end) is a new way to the peer, not that dial again: a relayed
+      // link's end rebuilds its pc with the link's settings and the far end then asks for the dial. The gate swallowed
+      // that ask when a direct dial of the same peer had left a few seconds before (the far end's entry knock, which
+      // could never connect across the two firewalls): the link's first dial waited out the asker's next ask, 6.5 s.
+      const untouched = idle && p.fragDialPc !== p.pc && p.offerSentPc !== p.pc && !p.pc.remoteDescription;
+      if ((participantCount() <= 1 || !pLive) && !forming && iInitiate(p.id) && (untouched || Date.now() - (p.fragDialAt || 0) > (darkOffer ? 2000 : 5000))) {
         p.fragDialAt = Date.now();
         // My offer not answered yet goes again on the same pc (offerAgain): a new pc would throw away the far end's half-made answer.
         if (darkOffer && !pLive && typeof offerAgain === 'function' && offerAgain(p.id, p, 'dial-request')) return;
-        if (!pLive && p.pc) rebuildPc(p, 'frag-dial');
-        makePeer(p.id, null); sendOffer(p.id, false);
+        if (!pLive && p.pc && !untouched) rebuildPc(p, 'frag-dial');   // an untouched pc is the fresh one already
+        const pd = makePeer(p.id, null); if (pd) pd.fragDialPc = pd.pc;
+        sendOffer(p.id, false);
       }
     }
     // bootDial(pid): the wire's dial hook — a knocker has an entry ask for a
