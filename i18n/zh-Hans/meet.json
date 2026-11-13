@@ -915,5 +915,16 @@
   "meet.store.failed": "购买未成功。您没有被扣款。",
   "meet.store.tipFit": "此处无法使用 ${asked} 的小费。改为 ${fit} 吗？",
   "meet.store.tipFitYes": "打赏 ${fit}",
-  "meet.store.cancel": "取消"
+  "meet.store.cancel": "取消",
+ "meet.setCcLocal": "本机字幕",
+ "meet.setCcLocalHelp": "浏览器中的语音模型为你生成字幕。你的声音不会离开手机，只有文字会发送到会议。",
+ "meet.setCcLocalReady": "已就绪。语音模型在这部手机上。",
+ "meet.setCcLocalStarting": "正在启动语音模型…",
+ "meet.setCcLocalLoading": "正在下载语音模型：{pct}%，共 {mb} MB，仅一次。",
+ "meet.setCcLocalIdle": "首次打开麦克风时，语音模型会从 gifos.app 下载一次，并保存在这部手机上。",
+ "meet.stCcLocalReady": "字幕已就绪，在这部手机上运行。",
+ "meet.stCcLocalLoading": "正在这部手机上准备字幕：{pct}%，共 {mb} MB，仅一次。",
+ "meet.stCcLocalNoDevice": "这部手机无法使用字幕：它的浏览器无法运行语音模型。",
+ "meet.stCcLocalNoLang": "这部手机暂不支持{lang}字幕。",
+ "meet.stCcLocalFailed": "无法加载字幕的语音模型。下次打开麦克风时会再试。"
 }

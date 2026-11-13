@@ -915,5 +915,16 @@
   "meet.store.failed": "The purchase did not go through. You were not charged.",
   "meet.store.tipFit": "A tip of ${asked} is not available here. Tip ${fit} instead?",
   "meet.store.tipFitYes": "Tip ${fit}",
-  "meet.store.cancel": "Cancel"
+  "meet.store.cancel": "Cancel",
+  "meet.setCcLocal": "Captions on this phone",
+  "meet.setCcLocalHelp": "A speech model in your browser writes your captions. Your voice never leaves the phone; only the text goes to the meeting.",
+  "meet.setCcLocalReady": "Ready. The speech model is on this phone.",
+  "meet.setCcLocalStarting": "Starting the speech model…",
+  "meet.setCcLocalLoading": "Downloading the speech model: {pct}% of {mb} MB, once.",
+  "meet.setCcLocalIdle": "The speech model downloads once from gifos.app the first time your microphone is on, and stays on this phone.",
+  "meet.stCcLocalReady": "Captions are ready. They run on this phone.",
+  "meet.stCcLocalLoading": "Getting captions ready on this phone: {pct}% of {mb} MB, once.",
+  "meet.stCcLocalNoDevice": "Captions aren’t available on this phone: its browser can’t run the speech model.",
+  "meet.stCcLocalNoLang": "Captions aren’t available in {lang} on this phone yet.",
+  "meet.stCcLocalFailed": "Captions couldn’t load their speech model. They try again the next time your microphone turns on."
 }

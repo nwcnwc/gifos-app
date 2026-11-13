@@ -915,5 +915,16 @@
   "meet.store.failed": "La compra no se completó. No se te cobró nada.",
   "meet.store.tipFit": "Una propina de ${asked} no está disponible aquí. ¿Dar ${fit} en su lugar?",
   "meet.store.tipFitYes": "Dar ${fit}",
-  "meet.store.cancel": "Cancelar"
+  "meet.store.cancel": "Cancelar",
+  "meet.setCcLocal": "Subtítulos en este teléfono",
+  "meet.setCcLocalHelp": "Un modelo de voz en tu navegador escribe tus subtítulos. Tu voz nunca sale del teléfono; solo el texto va a la reunión.",
+  "meet.setCcLocalReady": "Listo. El modelo de voz está en este teléfono.",
+  "meet.setCcLocalStarting": "Iniciando el modelo de voz…",
+  "meet.setCcLocalLoading": "Descargando el modelo de voz: {pct} % de {mb} MB, una sola vez.",
+  "meet.setCcLocalIdle": "El modelo de voz se descarga una sola vez de gifos.app la primera vez que activas el micrófono, y se queda en este teléfono.",
+  "meet.stCcLocalReady": "Los subtítulos están listos. Funcionan en este teléfono.",
+  "meet.stCcLocalLoading": "Preparando los subtítulos en este teléfono: {pct} % de {mb} MB, una sola vez.",
+  "meet.stCcLocalNoDevice": "Los subtítulos no están disponibles en este teléfono: su navegador no puede ejecutar el modelo de voz.",
+  "meet.stCcLocalNoLang": "Los subtítulos en {lang} aún no están disponibles en este teléfono.",
+  "meet.stCcLocalFailed": "No se pudo cargar el modelo de voz de los subtítulos. Se volverá a intentar la próxima vez que actives el micrófono."
 }

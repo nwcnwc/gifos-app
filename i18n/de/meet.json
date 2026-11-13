@@ -915,5 +915,16 @@
   "meet.store.failed": "Der Kauf ist nicht zustande gekommen. Es wurde nichts abgebucht.",
   "meet.store.tipFit": "Ein Trinkgeld von ${asked} ist hier nicht verfügbar. Stattdessen ${fit} geben?",
   "meet.store.tipFitYes": "${fit} geben",
-  "meet.store.cancel": "Abbrechen"
+  "meet.store.cancel": "Abbrechen",
+  "meet.setCcLocal": "Untertitel auf diesem Handy",
+  "meet.setCcLocalHelp": "Ein Sprachmodell in deinem Browser schreibt deine Untertitel. Deine Stimme verlässt das Handy nie; nur der Text geht an das Meeting.",
+  "meet.setCcLocalReady": "Bereit. Das Sprachmodell ist auf diesem Handy.",
+  "meet.setCcLocalStarting": "Das Sprachmodell startet…",
+  "meet.setCcLocalLoading": "Das Sprachmodell wird geladen: {pct} % von {mb} MB, einmalig.",
+  "meet.setCcLocalIdle": "Das Sprachmodell wird einmalig von gifos.app geladen, wenn dein Mikrofon zum ersten Mal an ist, und bleibt auf diesem Handy.",
+  "meet.stCcLocalReady": "Untertitel sind bereit. Sie laufen auf diesem Handy.",
+  "meet.stCcLocalLoading": "Untertitel werden auf diesem Handy vorbereitet: {pct} % von {mb} MB, einmalig.",
+  "meet.stCcLocalNoDevice": "Untertitel sind auf diesem Handy nicht verfügbar: Sein Browser kann das Sprachmodell nicht ausführen.",
+  "meet.stCcLocalNoLang": "Untertitel auf {lang} sind auf diesem Handy noch nicht verfügbar.",
+  "meet.stCcLocalFailed": "Das Sprachmodell für die Untertitel konnte nicht geladen werden. Beim nächsten Einschalten des Mikrofons wird es erneut versucht."
 }
