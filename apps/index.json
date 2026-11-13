@@ -4430,55 +4430,6 @@
       "sha256": "f9d0b9570a172752a3f8fe01eccec63edfc19903bbe105434728529d0b61d822"
     },
     {
-      "slug": "longwave",
-      "appId": "longwave",
-      "name": "Longwave",
-      "shortName": "Longwave",
-      "version": "1.1",
-      "tagline": "One of you is the psychic. Read their clue, find the mark on the dial.",
-      "author": {
-        "name": "cynicaloptimist",
-        "url": "https://github.com/cynicaloptimist/longwave"
-      },
-      "porter": {
-        "name": "GifOS",
-        "url": "https://gifos.app"
-      },
-      "basedOn": {
-        "name": "Longwave",
-        "blessed": false
-      },
-      "minBuild": 947,
-      "offline": true,
-      "releaseDate": "2026-08-23",
-      "updated": "2026-08-23",
-      "categories": [
-        "Games"
-      ],
-      "tags": [
-        "spectrum",
-        "party",
-        "clue",
-        "needle",
-        "multiplayer"
-      ],
-      "accent": [
-        118,
-        86,
-        214
-      ],
-      "cover": "/apps/longwave/cover.jpg",
-      "bytes": 202960,
-      "download": 0,
-      "provides": null,
-      "signature": {
-        "type": "domain",
-        "id": "gifos.app",
-        "ts": "2026-10-08"
-      },
-      "sha256": "5a25177bfc1ef0816423f417ddd599b20e5e3f347833b0ae8569c8e8b85a6bc7"
-    },
-    {
       "slug": "lost-in-cyberspace",
       "appId": "lost-in-cyberspace",
       "name": "Lost in Cyberspace",
@@ -8283,55 +8234,6 @@
       "sha256": "c3c08d8b1af8dcc6a6657e9cae5102001b3b484ec6f87d68311f82209ee7de8c"
     },
     {
-      "slug": "spyfall",
-      "appId": "spyfall",
-      "name": "Spyfall",
-      "shortName": "Spyfall",
-      "version": "1.0",
-      "tagline": "One link deals everyone a role. One of you is the spy.",
-      "author": {
-        "name": "tannerkrewson",
-        "url": "https://github.com/tannerkrewson/spyfall"
-      },
-      "porter": {
-        "name": "GifOS",
-        "url": "https://gifos.app"
-      },
-      "basedOn": {
-        "name": "Spyfall",
-        "blessed": false
-      },
-      "minBuild": 947,
-      "offline": true,
-      "releaseDate": "2026-08-23",
-      "updated": "2026-08-23",
-      "categories": [
-        "Games"
-      ],
-      "tags": [
-        "spyfall",
-        "party",
-        "spy",
-        "multiplayer",
-        "offline"
-      ],
-      "accent": [
-        196,
-        40,
-        48
-      ],
-      "cover": "/apps/spyfall/cover.jpg",
-      "bytes": 198518,
-      "download": 0,
-      "provides": null,
-      "signature": {
-        "type": "domain",
-        "id": "gifos.app",
-        "ts": "2026-10-08"
-      },
-      "sha256": "a5befd230ee862df8fb489f724fac497040cacedf7a4c822b766c82fa9c95c86"
-    },
-    {
       "slug": "sql-playground",
       "appId": "sql-playground",
       "name": "SQL Playground",
@@ -9233,7 +9135,7 @@
       "appId": "tip-creators",
       "name": "Tip GifOS Creators",
       "shortName": "Tip",
-      "version": "1.1",
+      "version": "1.3",
       "tagline": "Like GifOS? Buy the people who make it a coffee.",
       "author": {
         "name": "GifOS",
@@ -9250,8 +9152,7 @@
         "tip",
         "support",
         "donate",
-        "thanks",
-        "paypal"
+        "thanks"
       ],
       "accent": [
         255,
@@ -9259,15 +9160,15 @@
         57
       ],
       "cover": "/apps/tip-creators/cover.jpg",
-      "bytes": 184455,
+      "bytes": 184421,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-17"
+        "ts": "2026-11-13"
       },
-      "sha256": "5da558a5b64da2c19f3976c402f01e859c154d62c658c5ad7ea3c97358ff4eeb"
+      "sha256": "f3ae0da9e76996fe6d7374f610a2b21eaa2173fc5407964ae70d3e18d3625dda"
     },
     {
       "slug": "tosios",
