@@ -103,7 +103,10 @@
     function turnNoDoor(x, L) { if (!L || !L.outside || !turnLink(x)) return false; doorEndCount(L); L.outside = 0; FHDOOR.delete(x); trace('TURN-NODOOR', me, null, 'peer=%d', x); return true; }
     function turnNoDoors() { if (!o.fh || !o.fh.turnHolds) return; for (const [x, L] of LINKS) if (L.outside) turnNoDoor(x, L); }
     function doorEndCount(L) { if (L.outside && L.outside !== 3 && L.dG === me && !L.dUncounted) { L.dUncounted = true; doorCount(me, L.dIn, -1); } }
+    // L8.47.4 (C++: mesh_net.inc:DOORV, my end): the peers my LATEST pc to which had its offer and answer cross and then found no path
+    const DOORV = new Set();
     function freshState(L, a, b) {
+      DOORV.delete(other(a, b));   // C++: mesh_net.inc:doorVDial (a new pc between us: the last one's verdict is spent)
       L.nnAt[0] = L.nnAt[1] = -1;
       L.ans = false;   // L13.41: the far page has not answered this dial yet
       L.ansAt = -1;    // DIAL.ICE: when the offer and the answer had crossed at my end (-1: not yet)
@@ -512,6 +515,7 @@
     // C++: mesh_link.inc:linkOpenNow   [my end]
     function opened(x) {
       FHDOOR.delete(x);   // C++: mesh_fhop.inc:fhDoorOpened (FHOP.8: the door opened)
+      DOORV.delete(x);   // C++: mesh_net.inc:doorVDial (L8.47.4: a path: no verdict stands)
       const L = LINKS.get(x); if (!L || L.state === LK_OPEN) return;
       turnNoDoor(x, L);
       DECL.delete(x);
@@ -571,6 +575,7 @@
     // C++: mesh_link.inc:linkApply EV_DIAL failure   [my end]
     function dialFailed(x) {
       const L = LINKS.get(x); if (!L || L.state !== LK_DIALING) return;
+      if (L.ansAt >= 0) { if (DOORV.size > 4096) DOORV.clear(); DOORV.add(x); }   // C++: mesh_net.inc:doorVFail (L8.47.4: both descriptions crossed and no path came up)
       const s = mySeat(); if (s) { if (L.dialBy === me) s.dials.holdLost(x, s.TICK); s.dials.failed(x, s.TICK, true); }
       L.state = LK_CLOSED; L.epoch = (L.epoch + 1) >>> 0; L.q = []; doorEndCount(L);
       if (L.view[mine(x)] === LK_DIALING || L.view[mine(x)] === LK_NONE) L.view[mine(x)] = LK_CLOSED;
@@ -609,7 +614,7 @@
       byeIn: (x, why) => byeIn(x, BYE.includes(why) ? why : 'call'), dialFailed, refused, leaveAll, pageClosed,
       busyFrom: (x) => refused(x, { busy: 1 }),
       link: (x) => LINKS.get(x) || null, dump: () => [...LINKS].map(([x, L]) => ({ x, state: L.state, view: L.view[mine(x)], outside: L.outside, gone: L.gone, q: L.q.length })),
-      dialHeld: (x) => pc.dialHeld(me, x), laws: pc, BYE,
+      dialHeld: (x) => pc.dialHeld(me, x), doorVerdict: (x) => DOORV.has(x), laws: pc, BYE,
       doorForgive: (x) => pc.S.L16COOL.delete(hash.idPair(me, x)),   // the admin's Admit: the waiting room's idle knocks are not this person's fault
     };
   }

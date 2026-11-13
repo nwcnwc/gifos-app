@@ -967,6 +967,7 @@
     ["entAsk", "{i32:i32}"],   // OMap<int,int>  (line 1937)
     ["entAnsAt", "i32"],   // int = -1  (line 1937)
     ["entIsl", "bool"],   // bool = false  (line 1937)
+    ["entV", "<i32>"],   // OSet<int>  (line 1937)
     ["lineFork", "bool"],   // bool = false  (line 1937)
     ["linkKey", "u32"],   // uint32_t = 0  (line 1937)
     ["cutAt", "i32"],   // int = -1  (line 1937)

@@ -85,8 +85,33 @@
     // C++: mesh_roomterm.inc:Seat::entNote
     entNote(g) { if (g < 0 || g === this.id || this.entAsk.has(g)) return; if (this.entAsk.size > 32) this.entAsk.clear(); this.entAsk.set(g, this.TICK); },
 
+    // L8.47.4 A DIAL THAT WAS ANSWERED AND FOUND NO PATH IS THAT GREETER'S SILENCE, FIRST-HAND: a seeker that is not blocked
+    // keeps, for this entry, each listed greeter the door tags with ITS OWN network (the same public address: a venue with
+    // client isolation) that it asked and whose pc had its offer and answer cross and then found no path
+    // (the fabric: fabricDoorVerdict, the verdict of my latest pc to it). When every listed greeter is such a one (or one
+    // the door says my network cannot meet) there is no silence wait and no second silent round: the confirm knock goes at
+    // once and founds. While one listed greeter has no such verdict nothing changes. A greeter that never answered the
+    // offer gives no verdict.
+    // C++: mesh_roomterm.inc:Seat::l8474Note
+    l8474Note() {
+      if (!this.w.lv.ISLAND_MODE || this.l8471() || !(this.state === 0 || this.state === 1)) return;
+      for (const g of this.lastGreeters) {
+        if (g < 0 || g === this.id || this.entV.has(g) || !(this.entAsk.has(g) || this.islandAsked.has(g))) continue;
+        if (!this.f.fabricDoorVerdict(this.id, g) || this.f.fabricTurnPc(this.id, g) || this.f.fabricDoorNet(this.id, g) !== 1) continue;   /* only a greeter the door tags with MY network */
+        if (this.entV.size >= 32) this.entV.clear(); this.entV.add(g); this.trace('L8.47.4-VERDICT', this.id, null, 'greeter=%d', g);
+      }
+    },
+
+    // C++: mesh_roomterm.inc:Seat::l8474All
+    l8474All(list) { if (!this.w.lv.ISLAND_MODE || this.entV.size === 0 || this.l8471()) return false; let n = 0; for (const g of list) { if (g < 0 || g === this.id) continue; if (!(this.entV.has(g) && !this.f.fabricTurnPc(this.id, g)) && !this.l854Other(g)) return false; n++; } return n > 0; },
+
     // C++: mesh_roomterm.inc:Seat::entCheck
     entCheck() {
+      this.l8474Note();
+      if (!this.entIsl && this.entV.size > 0 && !this.l8471() && (this.state === 0 || this.state === 1) && this.greetersAt >= 0 && this.TICK - this.greetersAt <= K.RELAY_TTL && this.l8474All(this.lastGreeters)) {   // L8.47.4 (2): nobody is left to ask: my asks of this entry are the round, and islandTick reads it in this tick
+        this.entIsl = true; let a0 = this.TICK | 0; for (const x of this.lastGreeters) { if (x < 0 || x === this.id || !this.entV.has(x)) continue; this.islandAsked.add(x); const it = this.entAsk.get(x); if (it !== undefined && it < a0) a0 = it; }
+        if (this.islandAskAt < 0) this.islandAskAt = a0; this.trace('L8.47.4-ENTRY', this.id, null, 'listed=%zu since=%d', this.lastGreeters.length, a0);
+      }
       if (this.entIsl || this.l8471() || !(this.state === 0 || this.state === 1) || this.lastGreeters.length === 0 || this.greetersAt < 0 || this.TICK - this.greetersAt > K.RELAY_TTL) return false;
       let n = 0, first = -1;
       for (const g of this.lastGreeters) { const it = this.entAsk.get(g); if (it === undefined || this.TICK - it < K.ISLAND_WAIT || this.entAnsAt >= it) continue; n++; if (first < 0 || it < first) first = it; }

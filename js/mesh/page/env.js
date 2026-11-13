@@ -522,6 +522,8 @@
       // beside an open one may meet it over TCP, two strict ends are left to their dials: 3, another network not known either way
       return ((n === E.NAT_BLOCKED && k !== E.NAT_OPEN) || (k === E.NAT_BLOCKED && n !== E.NAT_OPEN)) ? 0 : 3;
     };
+    // L8.47.4 (C++: mesh_net.inc:fabricDoorVerdict): my latest pc to g had its offer and its answer cross and then found no path
+    const fabricDoorVerdict = (a, g) => ((a === me && pcw && pcw.doorVerdict && pcw.doorVerdict(g)) ? 1 : 0);
     // C++: mesh_turn.inc:fabricTurnOpener   (L8.5.9: I opened the up TURN link whose far end is x)
     const fabricTurnOpener = (a, x) => { if (a !== me || x < 0 || !turnOn() || !fh.turnOpened) return false; const p = ID.pid(x); return !!p && turnSet().has(x) && !!fh.turnOpened(p); };
     // C++: mesh_turn.inc:fabricTurnMine   (x is on my side of the cut: a pc of my own reaches it, or a peer of my side claims it)
@@ -574,7 +576,7 @@
       fabricAdmitLog: noop, fabricDupMint: noop, fabricNoteBackoff: noop, fabricNoteReseat: noop, fabricNoteRollback: noop,
       fabricNoteSwap: noop, fabricVerdict: deaths.verdict, l18UxDeliv: noop, descEnd: noop, descNote: noop, g4Joined: noop,   // g4Joined: the sim's L40 contest lever only (X1 55c97d1)
       fabricFreeCells, fabricLieFor: () => null, fabricUnreachable, fhopActive: () => !!fh, fhopFriendFor,
-      fabricTurnOn: turnOn, fabricTurnPc, fabricTurnOpener, fabricTurnHold: (a) => a === me && turnOn() && !!fh.turnHold && !!fh.turnHold(), fabricDoorNet,   /* TURN.4.4: the link I opened is dialling, or just came up (js/meet-turn.js holding) */ fabricTurnStray, fabricTurnLone, fabricTurnAcross, fabricTurnMine, fabricTurnCarried, fabricTurnFeeds: noop, fabricTurnSide, fabricTurnBoth: () => false, fabricTurnPeerIn,   /* TURN.14 from my pc table (above); the feeds are the media plane's (run.html turnFeedPeers) */
+      fabricTurnOn: turnOn, fabricTurnPc, fabricTurnOpener, fabricTurnHold: (a) => a === me && turnOn() && !!fh.turnHold && !!fh.turnHold(), fabricDoorNet, fabricDoorVerdict,   /* TURN.4.4: the link I opened is dialling, or just came up (js/meet-turn.js holding) */ fabricTurnStray, fabricTurnLone, fabricTurnAcross, fabricTurnMine, fabricTurnCarried, fabricTurnFeeds: noop, fabricTurnSide, fabricTurnBoth: () => false, fabricTurnPeerIn,   /* TURN.14 from my pc table (above); the feeds are the media plane's (run.html turnFeedPeers) */
       fabricMyTier: () => ((measure.tier ? measure.tier() : E.TIER_DESKTOP) | 0),
       fabricMyNat: () => ((measure.nat ? measure.nat() : E.NAT_OPEN) | 0),
       fabricLeft: () => leaveNow(false), fabricReloadBye: () => leaveNow(true),
