@@ -16,8 +16,8 @@
  * wrote in its trace and check that the page showed what the facts say.
  *
  * Flows and their steps, in the order they normally happen:
- *   join       net, server, door, password, admit, knock, seat, relay, merge, people
- *   reconnect  server, door, knock, seat, relay, people
+ *   join       net, server, door, password, admit, knock, seat, relay, web, merge, people
+ *   reconnect  server, door, knock, seat, relay, web, people
  *   load       part1..part4 (a missing script of the page loaded again, js run.html unitsGate)
  *   update     save, reload, then the join's steps (a new GifOS version: the page saves your place,
  *              reloads into the new version and comes back in; X carries across the reload)
@@ -32,7 +32,9 @@
  *   doorUp    a door connection (to someone at the door) is open
  *   st        the seat's state: 0 asking for the list, 1 knocked, 2 asked for a seat, 3 seated
  *   coord     the seat holds a cell
- *   turn      the TURN link's state: '' none | 'ask' | 'dial' | 'up'
+ *   turn      the relayed link's state: '' none | 'ask' | 'dial' | 'web' (the relay protocol found no way out of this
+ *             network and the link is being made as a web connection) | 'up'
+ *   web       the relayed link that is up runs as a web connection
  *   n         people in the meeting as this page counts them (me included)
  *   live      people I have a working connection with (not counting door-only pairs)
  *   tries     load: tries done so far;  loaded  load: every part is in
@@ -53,6 +55,7 @@
     seat:     { key: 'pgSeat',     en: 'Taking your seat' },
     found:    { key: 'pgFound',    en: 'Starting the meeting' },
     relay:    { key: 'pgRelay',    en: 'Connecting through a relay' },
+    web:      { key: 'pgWeb',      en: 'Connecting through a web relay' },
     merge:    { key: 'pgMerge',    en: 'Joining the others through the relay' },
     people:   { key: 'pgPeople',   en: 'Connecting to the people in the meeting' },
     serverBack: { key: 'pgServerBack', en: 'Reconnecting to GifOS' },
@@ -66,6 +69,7 @@
   const HINT = {
     blocked:   { key: 'pgHintBlocked',  en: 'Your network blocks direct calls, so this goes through a relay.' },
     strict:    { key: 'pgHintStrict',   en: 'Your network makes direct calls hard, so this can take a little longer.' },
+    inspect:   { key: 'pgHintInspect',  en: 'Your network inspects web traffic, so the relay is reached as a web connection.' },
     noAnswer:  { key: 'pgHintNoAnswer', en: 'Nobody has answered the door yet. We keep knocking.' },
     first:     { key: 'pgHintFirst',    en: 'Nobody else is here yet.' },
     noServer:  { key: 'pgHintNoServer', en: 'Your internet connection may be down. We keep trying.' },
@@ -77,10 +81,10 @@
   };
 
   const FLOWS = {
-    join:      ['net', 'server', 'door', 'password', 'admit', 'knock', 'seat', 'relay', 'merge', 'people'],
-    reconnect: ['server', 'door', 'knock', 'seat', 'relay', 'people'],
+    join:      ['net', 'server', 'door', 'password', 'admit', 'knock', 'seat', 'relay', 'web', 'merge', 'people'],
+    reconnect: ['server', 'door', 'knock', 'seat', 'relay', 'web', 'people'],
     load:      ['part1', 'part2', 'part3', 'part4'],
-    update:    ['save', 'reload', 'net', 'server', 'door', 'password', 'admit', 'knock', 'seat', 'relay', 'merge', 'people'],
+    update:    ['save', 'reload', 'net', 'server', 'door', 'password', 'admit', 'knock', 'seat', 'relay', 'web', 'merge', 'people'],
   };
 
   const TEMPLATE = { key: 'pgStepOf', en: 'Step {x} of {y}: {what}…' };
@@ -123,7 +127,9 @@
     // asking for a seat (FINDACK), or a seat came through someone (not founded alone).
     add('knock', !!f.doorUp || f.st === 2 || (isSeat && (f.greeters | 0) > 0 && (f.live | 0) > 0));
     add('seat', isSeat);
-    add('relay', turnUp);
+    // the relay step ends when the link is up, or when the relay protocol has been tried and the link moves to the web path
+    add('relay', turnUp || f.turn === 'web');
+    add('web', turnUp && !!f.web);
     // merged: seated again with more people than this part had before the link
     add('merge', turnUp && isSeat && (f.n | 0) > (f.nAtRelay | 0) && (f.nAtRelay | 0) > 0);
     const alone = isSeat && (f.greeters | 0) === 0 && (f.n | 0) <= 1 && !!f.list;
@@ -144,13 +150,14 @@
       else if ((f.greeters | 0) === 0) { cur = 'seat'; text = 'found'; hint = 'first'; }
       else { cur = 'knock'; text = blocked ? 'knockBlocked' : 'knock'; hint = blocked ? 'blocked' : (f.dp === 'strict' ? 'strict' : ''); }
     }
+    else if (f.turn === 'web') { cur = 'web'; text = 'web'; hint = 'inspect'; }
     else if (f.turn === 'ask' || f.turn === 'dial' || (blocked && (f.live | 0) === 0 && (f.greeters | 0) > 0 && !turnUp)) { cur = 'relay'; text = 'relay'; hint = 'blocked'; }
     else if (turnUp && done.indexOf('merge') < 0 && (f.live | 0) <= 1) { cur = 'merge'; text = 'merge'; hint = 'blocked'; }
     else { cur = 'people'; text = 'people'; }
     // the network verdict (net) runs beside the first steps and is never waited on: it counts when it lands
     // a step this flow does not have (a changed password while reconnecting) waits under the flow's own door step
     if (FLOWS[flow].indexOf(cur) < 0) cur = 'door';
-    const end = isSeat && !f.pw && !f.wait && done.indexOf('people') >= 0 && !(f.turn === 'ask' || f.turn === 'dial')
+    const end = isSeat && !f.pw && !f.wait && done.indexOf('people') >= 0 && !(f.turn === 'ask' || f.turn === 'dial' || f.turn === 'web')
       && (!back || !!f.relay) && (!was('relay') || done.indexOf('merge') >= 0);
     return { done: done.filter((id) => FLOWS[flow].indexOf(id) >= 0), cur, text, hint, end };
   }
