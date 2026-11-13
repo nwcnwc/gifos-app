@@ -3363,7 +3363,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // A BROADCAST reads the fold at any size: a viewer's beat reaches only its
     // own links (bcViewerBeat), so the section is not first-hand there (Q79).
     const bcViewerBeat = () => BROADCAST && !amAdmin && !stageIds().includes(myId);
-    const foldIsRoom = () => roomPastSection() || (BROADCAST && !!roomDig());
+    // ...and wherever my section is not the room: I am deep, or a seat sits below Section 1 (deepInView). A deep
+    // seat's status never reaches the far side of a TURN cut first-hand, at any size (a 4 + 4 room at C=3 is under C²).
+    const foldIsRoom = () => roomPastSection() || (BROADCAST && !!roomDig()) || (!!roomDig() && deepInView());
     const digLists = () => (foldIsRoom() ? roomDig() : null);
     const stSeen = (st) => (st ? (st.rx || st.at || 0) : 0); // when a status was said, on MY clock (takeStatus)
     let gossipAgeMs = 0; // set while a relayed gossip message is being handled
@@ -10151,11 +10153,23 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // than the faces on the grid (me + shownPeerCount). A partial fold is a
     // shortfall, not the room size (healing-laws: a shortfall is not the room):
     // its n is what was heard. The line then says the count is incomplete.
-    // Am I deep, or does my occ name a cell below Section 1? (displayCount)
+    // Am I deep, does my occ name a cell below Section 1, or does the fold? (displayCount, foldIsRoom)
     function deepInView() {
       const s = meshSeat(); if (!s || !s.hasCoord) return false;
       if (s.coord.pc !== 0) return true;
       for (const k of s.occ.keys()) if (k.slice(0, 2) !== '0_') return true;
+      return foldNamesDeep();
+    }
+    // A Section-1 report in my fold that counts more than its own seat: someone sits below that cell. My view
+    // cannot name such a seat when no pc of mine reaches its row (a blocked office seated under the end of its
+    // TURN link: 4 + 4 at C=3 is 8 people, under C², and my Section-1 occ held 5 while the fold counted 8).
+    function foldNamesDeep() {
+      try {
+        const r0 = meshNode && meshNode.raw, r = typeof r0 === 'function' ? r0() : r0;
+        if (!r || !r.s1tab || !r.hasCoord || r.coord.pc !== 0 || !r.rootDig || r.rootDig.at < 0) return false;
+        const K = GifOS.meshConsts && GifOS.meshConsts.consts, ttl = K && K.DIG_TTL, lt = r.LT();
+        for (const d of r.s1tab.values()) if (d && d.at >= 0 && (!ttl || lt - d.rx <= ttl) && d.n + (d.leased || 0) > 1) return true;
+      } catch (e) {}
       return false;
     }
     function displayCount() {

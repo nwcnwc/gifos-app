@@ -861,6 +861,8 @@
  "meet.turnPass4h": "或 1 美元畅用接下来 4 小时",
  "meet.passPending": "请在 PayPal 窗口中完成付款。PayPal 确认后此处会立即更新。",
  "meet.passBuy": "1 美元：接下来 4 小时不限人数",
+ "meet.passHow": "可用银行卡或 PayPal 支付。",
+ "meet.subHow": "通过 PayPal 订阅（银行卡或 PayPal 余额）。",
  "meet.passOpening": "正在打开 PayPal…",
  "meet.passThanks": "谢谢。你的 4 小时通行证已生效。",
  "meet.passNotConfirmed": "PayPal 未确认付款。",

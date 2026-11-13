@@ -861,6 +861,8 @@
   "meet.turnPass4h": "oder 1 $ für die nächsten 4 Stunden",
   "meet.passPending": "Schließen Sie die Zahlung im PayPal-Fenster ab. Das hier aktualisiert sich, sobald PayPal bestätigt.",
   "meet.passBuy": "1 $: Unbegrenzt für die nächsten 4 Stunden",
+  "meet.passHow": "Mit Karte oder PayPal bezahlen.",
+  "meet.subHow": "Abonnieren über PayPal (Karte oder PayPal-Guthaben).",
   "meet.passOpening": "PayPal wird geöffnet…",
   "meet.passThanks": "Danke. Ihr Vier-Stunden-Pass ist aktiv.",
   "meet.passNotConfirmed": "PayPal hat die Zahlung nicht bestätigt.",
