@@ -1917,7 +1917,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function barPlan(s) {
       const phone = !!(s && s.phone), kind = s && s.kind;
-      const tail = ['ccbtn', 'whobtn', 'trbtn', 'qabtn'];
+      // Every button of the Meeting group, in the sheet's order: seat() appends these after any it does not
+      // name, so a button missing here would lead the group (Agenda came before Hand).
+      const tail = ['ccbtn', 'whobtn', 'trbtn', 'qabtn', 'agendabtn'];
       if (kind === 'bc-host') {
         return phone
           ? { dock: ['cam', 'mic', 'stagebtn', 'reactbtn', 'ccdock', 'sharebtn'], use: ['chatbtn', 'hand'].concat(tail), video: [] }
@@ -5920,7 +5922,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       const sd = stadiumEl.querySelector('[data-row="sd"] video');
       if (pipReady(sd)) out.push({ key: 'sd', label: 'The stadium', v: sd, fit: 'contain' });
-      if (meTile && !seatDark(myStatus) && pipReady(meTile.video)) out.push({ key: 'me', label: 'You', v: meTile.video, fit: myStatus.scr ? 'contain' : 'cover' });
+      // My tile shows my screen only when I share from the Stage; a share from the Row keeps my camera there.
+      if (meTile && !seatDark(myStatus) && pipReady(meTile.video)) out.push({ key: 'me', label: 'You', v: meTile.video, fit: (myStatus.scr && !shareOnlyStage('me')) ? 'contain' : 'cover' });
       return out;
     }
     function fsPaintSel() { for (const th of fsstrip.children) th.classList.toggle('sel', th.dataset.key === fsSel); }
