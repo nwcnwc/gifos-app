@@ -192,6 +192,7 @@
       this.f.fabricAdmitLog(k, id);   // V4 forensics
       this.trace('ADMIT', id, c, 'nc=%d site=%s tag=%d', nc, site, f.tag);
       this.l850Seated = true;   // L8.50: a founder that admits a seat is no ring of one
+      if (f.tag !== 1 && nc >= 0 && nc !== id && this.coord.pc !== 0) { this.l1617At = TICK; this.trace('L16.17-DOOR', id, c, 'nc=%d', nc); }   // L16.17: I stand at the door for the seat I place: its pc to me is signalled on the relay
       if (f.tag !== 1) this.l710Dial(c, nc);   // L7.10
       this.tlForget(k);   // the cell genuinely refills
       const nbrs = []; const ol = ownedLinks(c); const n = ol.length;
@@ -533,6 +534,7 @@
       let filling = false;
       if (!deep && this.coord.pc === 0) { if (this.coord.i === 0 && !this.rowLedger) filling = true; else for (const ek of this.sitting.keys()) if (ckPc(ek) === 0) { filling = true; break; } }
       if (deep && this.TICK - this.childHeadAt <= K.L7_HOLD && this.rowLedgerAt < this.childHeadAt) filling = true;
+      if (!filling && deep && this.coord.pc !== 0 && this.coord.i === 0 && this.TICK - this.seatedAt <= K.L7_HOLD) { const oc = this.ownerCoord(); if (oc && mm.from >= 0 && mm.from === this.occGet(ckey(oc))) { let nm = 0; for (let j = 1; j < C; j++) { const mk = ckey({ pc: this.coord.pc, r: this.coord.r, i: j }); if (this.occGet(mk) >= 0 && !this.translost.has(mk)) nm++; } if (nm < C - 1) { filling = true; this.trace('L7.13-HOLD', this.id, this.coord, 'nc=%d mates=%d', mm.nc, nm); } } }   // L7.13: my owner passed this seeker down, so my row is full in its books; it waits for my mates and spreads over their child rows
       if (!filling) return false;
       if (this.reserving) { this.heldAgain = true; return true; }
       if (this.held.length >= 64) return false;
