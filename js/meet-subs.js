@@ -855,6 +855,20 @@
   const BTN = 'seg';
   const BTN_STYLE = 'border:1px solid var(--border,#2a2a3f);border-radius:.4rem;margin:.2rem .4rem .2rem 0';
   function el(tag, attrs, text) { const e = document.createElement(tag); for (const k in (attrs || {})) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; return e; }
+  // One line near every pay button: terms and privacy open in a new tab (the app wrappers
+  // route target=_blank to the system browser, as for /cast and /library). Web PayPal also
+  // says whose name the charge shows under.
+  function legalLine(id, inApp) {
+    const p = el('p', { class: 'set-help', id });
+    const a = (href, t) => { const x = el('a', { href, target: '_blank', rel: 'noopener' }, t); return x; };
+    p.appendChild(document.createTextNode(tx('payAgreePre', 'By paying you agree to the ') ));
+    p.appendChild(a('https://gifos.app/terms/meet', tx('payTerms', 'Terms')));
+    p.appendChild(document.createTextNode(tx('payAnd', ' and ')));
+    p.appendChild(a('https://gifos.app/privacy/meet', tx('payPrivacy', 'Privacy policy')));
+    p.appendChild(document.createTextNode(inApp ? '' : '. '));
+    if (!inApp) p.appendChild(document.createTextNode(tx('payCharges', 'Charges show as Crowd Concepts (the company behind GifOS).')));
+    return p;
+  }
   const dateOf = (s) => { try { return new Date(s * 1000).toLocaleDateString(); } catch (e) { return ''; } };
   async function paintSettings() {
     if (!on()) return;
@@ -892,6 +906,7 @@
     };
     row.appendChild(passBtn);
     if (!inApp) row.appendChild(el('p', { class: 'set-help', id: 'sub-pass-how' }, tx('passHow', 'Pay by card or PayPal.')));
+    row.appendChild(legalLine('sub-pass-legal', inApp));
     const lic = await verifiedLicense();
     const st = readState();
     const cred = await credential();
@@ -966,6 +981,7 @@
           row.appendChild(b);
         }
       }
+      row.appendChild(legalLine('sub-legal', inApp));
     }
     if (inApp) {
       // In the app: restore, and the credentials file through the system's own
