@@ -13064,6 +13064,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const fresh = () => { const p = peers.get(pid); if (p && p.pc && !(p.dc && p.dc.readyState === 'open')) rebuildPc(p, 'turn-web'); };
       const end = GifOS.meetTunnel.createEnd({
         url: o.url, auth: o.auth, initiator: iInitiate(pid), log: turnNote,
+        // The two ends seal all they pass each other (docs/meet-security.md §E2E): keyed by the two seats' identity keys under the room key.
+        me: myId, peer: pid,
+        seal: (obj) => net.seal(roomE2E, obj),
+        open: (env) => net.open(roomE2E, env).then((m) => m || (prevRoomE2E ? net.open(prevRoomE2E, env) : null)),
+        sign: (text) => net.edSign(myIdentity.priv, text).then((sig) => ({ sig, pub: myIdentity.pubB64 })),
+        verify: (id, pub, sig, text) => GifOS.meshIdentity.peerIdOf(pub).then((got) => (got === id ? net.edVerify(pub, sig, text) : false)),
         audioContext: () => { try { return ensureAc(); } catch (e) { return null; } },
         dial: () => { if (turnWeb.get(pid) !== end) return; fresh(); seatAskAt.set(pid, Date.now()); seatMark.set(pid, cleanMark({ s: 1 })); sendOffer(pid, false); },
         toSignal: (sig) => { if (turnWeb.get(pid) !== end) return; if (sig.kind === 'offer') { fresh(); sig.ib = 1; sig.boot = 1; } onSignal(pid, sig); },
@@ -13215,6 +13221,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           video: !!(turnLinks && turnLinks.video(p.id)), paused: !!(p.tile && p.tile.querySelector(':scope > .tpause:not(.tpause-busy)')), busyNote: !!(p.tile && p.tile.querySelector(':scope > .tpause-busy')), policy: null, turn: false,
           local: null, remote: null, vOut: 0, aOut: 0, vIn: 0, aIn: 0 };
         try { const c = p.pc.getConfiguration(); r.policy = c.iceTransportPolicy; r.turn = GifOS.meetTurn.hasTurnServer(c.iceServers); } catch (e) {}
+        r.proven = !!(p.dc && p.dc.__authBy === p.id);   // the channel proved who is at its far end
         { const w = turnWeb.get(p.id); r.web = !!(turnLinks && turnLinks.web(p.id)); r.webUp = !!(w && w.up()); if (w) { try { r.webStats = await w.stats(); } catch (e) {} } }   // the web path of this link, if it runs on one
         try {
           const st = await p.pc.getStats(); const by = new Map(); st.forEach((x) => by.set(x.id, x));
@@ -21053,9 +21060,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // it, they count as unproven (sponsor / relay grade). One signature and
     // one verify per channel, never per frame.
     function sdpFp(desc) { const m = desc && typeof desc.sdp === 'string' && /a=fingerprint:(\S+) ([0-9A-Fa-f:]+)/.exec(desc.sdp); return m ? m[1].toLowerCase() + ' ' + m[2].toUpperCase() : null; }
+    // On the web path the pair's connection ends inside this page, so its certificates prove nothing about the far
+    // page. What does is the link's own key agreement (js/meet-tunnel.js): each end's signed key statement stands
+    // where its certificate would. null: not a web link (or not keyed yet: no statement is sent or taken).
+    function dcAuthFps(p, pc) {
+      const w = (typeof turnWeb !== 'undefined' && turnWeb.size) ? turnWeb.get(p.id) : null;
+      if (w) { const b = w.binding ? w.binding() : null; return b ? { fp: b.l, rfp: b.r } : { fp: null, rfp: null }; }
+      return { fp: pc && sdpFp(pc.localDescription), rfp: pc && sdpFp(pc.remoteDescription) };
+    }
     function dcAuthSend(p, dc) {
       const pc = dc.__pc || p.pc;
-      const fp = pc && sdpFp(pc.localDescription), rfp = pc && sdpFp(pc.remoteDescription);
+      const { fp, rfp } = dcAuthFps(p, pc);
       if (!fp || !myIdentity || !myId || !p.id) return;
       const sp = JSON.stringify({ v: 1, t: 'dcauth', from: myId, to: p.id, fp, rfp, ts: Date.now() });
       net.edSign(myIdentity.priv, sp).then((sig) => {
@@ -21067,7 +21082,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       let sp; try { sp = JSON.parse(m.sp); } catch (e) { return; }
       if (!sp || sp.t !== 'dcauth' || sp.from !== p.id || sp.to !== myId) return;
       const pc = dc.__pc || p.pc;
-      const rfp = pc && sdpFp(pc.remoteDescription), lfp = pc && sdpFp(pc.localDescription);
+      const { fp: lfp, rfp } = dcAuthFps(p, pc);
       if (!rfp || sp.fp !== rfp || (sp.rfp != null && sp.rfp !== lfp)) return;   // the signer's cert is the one this channel's DTLS checked
       GifOS.meshIdentity.peerIdOf(m.pub)
         .then((pid) => (pid === p.id ? net.edVerify(m.pub, m.sig, m.sp) : false))
