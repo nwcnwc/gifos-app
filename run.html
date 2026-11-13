@@ -16473,10 +16473,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // Every page checks the ticket itself (pay key, this meeting, the plan): the server's word only picks
     // between two valid tickets. The ticket also rides the room table ('capt') to pages with no server socket.
     let capKey = null, capExp = 0, capTk = null, amCaptor = false, capSaidKey = null, capBusy = false;
-    // The key whose capture the meeting server ENDED (it ran out, or its pass was revoked): a ticket of that key read from the
-    // room table is not taken back on this page until the server says that key holds the room again (a revoked pass's last
-    // ticket is still signed and current for up to TICKET_S; the server's word wins).
-    let capEndedKey = null;
+    // What the meeting server last said about the capture: the captor key, null (no capture), or undefined (it has not said).
+    // While this page's server socket is up, a ticket read from the room table is taken only for the key the server names:
+    // the table carries the ticket to pages with no server socket (and the proof after a server wake), never a capture the
+    // server ended or never granted (a revoked pass's last ticket is still signed and current for up to TICKET_S).
+    let capServerKey;
     const capOn = () => !av && !!capKey && Date.now() < capExp;
     const sigRoom = () => hasAdminRoom() || capOn();            // orders must be signed: an admin room, or a captured one
     const amAdm = () => amAdmin || (amCaptor && capOn());
@@ -16485,8 +16486,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (viaServer && c.ck) capSaidKey = c.ck;
       const t = await GifOS.meetSubs.captureTicket(c.tk, subsMeetId());
       if (!t || (c.ck && t.buyerKey !== c.ck)) return;
-      if (viaServer) { if (t.buyerKey === capEndedKey) capEndedKey = null; }
-      else if (t.buyerKey === capEndedKey) return;
+      if (!viaServer && capServerKey !== undefined && relayUp() && t.buyerKey !== capServerKey) return;
       if (capKey && capKey !== t.buyerKey && capOn() && !(viaServer || t.buyerKey === capSaidKey)) return;   // two valid claims: the server's pick wins, else the one held
       const fresh = capKey !== t.buyerKey;
       if (!fresh && t.exp * 1000 <= capExp) return;
@@ -16546,7 +16546,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function onCapFrame(m) {
       if (av) return;
       if (m.on === 1) { capTake(m, true).then(() => { if (amCaptor) capTicketPublish(false); }); return; }
-      if (m.on === 0) { if (capKey) capEndedKey = capKey; capClear('server'); return; }
+      if (m.on === 1 && m.ck) capServerKey = m.ck;
+      if (m.on === 0) { capServerKey = null; capClear('server'); return; }
       if (m.ok === 0) { pwLog('capture-refused ' + m.why); if (m.why === 'taken') setStatus(uiText('capTaken', 'Someone else is this room\u2019s admin')); else if (m.why === 'ended' && amCaptor) capClear('server ended'); else if (m.why !== 'ended') setStatus(uiText('capFailed', 'Could not make you admin of this room')); }
     }
     function capPaint() {
@@ -17401,6 +17402,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // GREETER POOL, never the room \u2014 it drives door moderation only.
     function onRelayFrame(m) {
       if (m.t === 'joined') relayTv = m.tv === 1;   // this relay vouches for TURN links (see relayTv)
+      if (m.t === 'joined' && !av) capServerKey = m.cap && m.cap.ck ? m.cap.ck : null;   // the server's word on the capture at this join
       if (m.t === 'joined' && m.cap && !av) capTake(m.cap, true);   // a captured open room: the captor's ticket, checked here
       if (m.t === 'cap') { onCapFrame(m); return; }
       if (m.t === 'tvouch') { try { if (turnLinks) turnLinks.onVouch(m); } catch (e) {} return; }   // the relay's seated vouch for one of my TURN links
