@@ -292,6 +292,7 @@
     FH_UNLINK: 30,   // C++: mesh_fhop.inc:FH_UNLINK
     FH_RENEG: 2,   // C++: mesh_fhop.inc:FH_RENEG
     FH_FTAGS: 8,   // C++: mesh_fhop.inc:FH_FTAGS
+    TURN_WARM_END: 2,   // C++: mesh_turn.inc:TURN_WARM_END
     SIG_NOSOCK_T: 60,   // C++: mesh_dialsig_fab.inc:SIG_NOSOCK_T
     SIG_DEEP_GRACE: 20,   // C++: mesh_dialsig_fab.inc:SIG_DEEP_GRACE
     SIG_RETRY_DOOR: 8,   // C++: mesh_dialsig_fab.inc:SIG_RETRY_DOOR
