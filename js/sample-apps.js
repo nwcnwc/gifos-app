@@ -1010,9 +1010,11 @@
     return '<span class="st ok" title="'+esc(T('st.ok'))+'">✓</span>';
   }
   function paint(){
-    const seen={}; last.forEach(function(m){ if(m.id!=null) seen[m.id]=1; });
-    pend=pend.filter(function(p){ return !seen[p.id]; });
-    const items=last.concat(pend).sort(function(a,b){return (a.t||0)-(b.t||0);});
+    // The shared db shows my own write the moment I make it, so "it is in the list" proves nothing about the
+    // host: a message stays in pend (its clock, then its retry mark) until db.settled says the host holds it.
+    pend=pend.filter(function(p){ return p.state!=='sent'; });
+    const held={}; pend.forEach(function(p){ held[p.id]=1; });
+    const items=last.filter(function(m){ return !held[m.id]; }).concat(pend).sort(function(a,b){return (a.t||0)-(b.t||0);});
     if(!items.length){
       log.innerHTML='<div class="empty">'+T(others>0 ? 'empty.friends' : 'empty.alone')+'</div>';
       return;
@@ -1025,13 +1027,18 @@
     const rec={ id:'m'+Date.now().toString(36)+Math.floor(Math.random()*1e6).toString(36), by:me.name, uid:me.id, text:text, t:Date.now() };
     const p=Object.assign({state:'sending'},rec);
     pend.push(p); paint();
-    db.put(rec).then(function(){ p.state='sent'; paint(); },function(){ p.state='failed'; paint(); });
+    deliver(p,rec);
+  }
+  // put() resolves at the optimistic apply; settled() resolves when the host's own state holds the record.
+  function deliver(p,rec){
+    db.put(rec).then(function(){ return typeof db.settled==='function' ? db.settled(rec.id) : true; })
+      .then(function(ok){ p.state=ok===false?'failed':'sent'; paint(); },function(){ p.state='failed'; paint(); });
   }
   log.addEventListener('click',function(ev){
     const el=ev.target.closest?ev.target.closest('.m[data-retry]'):null; if(!el) return;
     const p=pend.find(function(x){ return x.id===el.getAttribute('data-retry')&&x.state==='failed'; }); if(!p) return;
     p.state='sending'; paint();
-    db.put({id:p.id,by:p.by,uid:p.uid,text:p.text,t:p.t}).then(function(){ p.state='sent'; paint(); },function(){ p.state='failed'; paint(); });
+    deliver(p,{id:p.id,by:p.by,uid:p.uid,text:p.text,t:p.t});
   });
   ['👍','❤️','😂','🎉','😮','🔥'].forEach(function(e){
     const b=document.createElement('button'); b.type='button'; b.textContent=e;

@@ -522,6 +522,9 @@
           get:    function(id){   return rpc({type:'db',op:'get',collection:collection,key:id}); },
           getAll: function(){     return rpc({type:'db',op:'getAll',collection:collection}); },
           delete: function(id){   return rpc({type:'db',op:'delete',collection:collection,key:id}); },
+          // settled(id): did the host's own state take my write to this record? Resolves true (or null when
+          // there is nothing to wait for) once it did, false when the retries ran out. put() resolves at once.
+          settled: function(id){  return rpc({type:'db',op:'settled',collection:collection,key:id}); },
           // Set one record's visibility: 'private' | 'read-only' | 'read-write'.
           // Owner-only — the host runs it; on a guest it is refused. Use it to
           // "make visible" (opt a private item in) or to flip who may write.
@@ -4807,22 +4810,51 @@
       // wiring; the honest revert on the next snap still stands after that.
       const ACT_TRIES = 40;
       let ownerHeard = false;
-      const pendingActs = new Map(); // col\x00id -> { d, at, tries }
+      const pendingActs = new Map(); // col\x00id -> { d, at, tries, base, want } (pend below)
       const actKey = (c, id) => c + '\x00' + id;
-      const echoSatisfied = (p) => {
-        const items = (mirror.collections[p.d.collection] || {}).items || {};
-        if (p.d.op === 'delete') return !(p.d.key in items);
-        const got = items[p.d.value && p.d.value.id];
-        try { return JSON.stringify(got) === JSON.stringify(p.d.value); } catch (e) { return !!got; }
+      // THE ECHO IS READ FROM THE OWNER'S WORD, NEVER FROM THE MIRROR. The mirror
+      // also holds this tab's optimistic writes, so a write read back from it is
+      // always "echoed": an act lost on the lane was dropped from the pending set
+      // on the first sweep and never sent again, and the next owner frame then
+      // erased the row for good (a player missing from a game lobby, a vote that
+      // never counted). canon is the last owner-signed state alone; its records are
+      // shared with the mirror by reference (a local write replaces a record, it
+      // never edits one), so keeping it costs one map per collection.
+      let canon = { collections: {} };
+      const canonOf = (st) => {
+        const out = { collections: {} };
+        const cs = (st && st.collections) || {};
+        for (const c of Object.keys(cs)) out.collections[c] = { items: Object.assign({}, (cs[c] && cs[c].items) || {}), seq: (cs[c] && cs[c].seq) || 0 };
+        return out;
       };
-      const reconcilePending = () => { for (const [k, p] of pendingActs) if (echoSatisfied(p)) pendingActs.delete(k); };
+      const canonJson = (c, id) => {
+        const items = (canon.collections[c] || {}).items || {};
+        if (!Object.prototype.hasOwnProperty.call(items, id)) return undefined;
+        try { return JSON.stringify(items[id]); } catch (e) { return '?'; }
+      };
+      // A pending act is done when the owner's state shows it, or when the owner's
+      // record has moved on since the act was sent (a later write was adopted:
+      // sending ours again would undo it).
+      const pend = (d, id) => ({ d: d, at: Date.now(), tries: 0, base: canonJson(d.collection, id), want: d.op === 'put' ? (() => { try { return JSON.stringify(d.value); } catch (e) { return '?'; } })() : undefined });
+      const echoSatisfied = (p) => {
+        const id = p.d.op === 'delete' ? p.d.key : p.d.value && p.d.value.id;
+        const now = canonJson(p.d.collection, id);
+        if (p.d.op === 'delete' ? now === undefined : now === p.want) return true;
+        return now !== p.base;
+      };
+      // settled(collection, id) answers an app that wants to SHOW a write's fate (the chat's clock, check and
+      // retry mark): true when the owner's word holds it (or moved past it), false when the retries ran out.
+      // put() itself still resolves at the optimistic apply, so no app waits on the owner to boot.
+      const settleWait = new Map(); // col\x00id -> [resolve]
+      const settle = (k, ok) => { const w = settleWait.get(k); if (w) { settleWait.delete(k); for (const f of w) f(ok); } };
+      const reconcilePending = () => { for (const [k, p] of pendingActs) if (echoSatisfied(p)) { pendingActs.delete(k); settle(k, true); } };
       const actSweep = setInterval(() => {
         if (frozen) return;
         const now = Date.now();
         for (const [k, p] of pendingActs) {
-          if (echoSatisfied(p)) { pendingActs.delete(k); continue; }
+          if (echoSatisfied(p)) { pendingActs.delete(k); settle(k, true); continue; }
           if (now - p.at < 3000) continue;
-          if (ownerHeard && ++p.tries > ACT_TRIES) { pendingActs.delete(k); continue; }
+          if (ownerHeard && ++p.tries > ACT_TRIES) { pendingActs.delete(k); settle(k, false); continue; }
           p.at = now;
           try { send('act', p.d); } catch (e) {}
         }
@@ -4872,7 +4904,7 @@
             const c = mirror.collections[collection] || (mirror.collections[collection] = { items: {}, seq: 0 });
             c.items[rec.id] = rec; notify(collection);
             const d = { op: 'put', collection: collection, value: rec };
-            pendingActs.set(actKey(collection, rec.id), { d: d, at: Date.now(), tries: 0 });
+            pendingActs.set(actKey(collection, rec.id), pend(d, rec.id));
             try { send('act', d); } catch (e) {}
             return Promise.resolve({ id: rec.id });
           }
@@ -4885,11 +4917,16 @@
             if (fenced(collection, key)) return Promise.reject(new Error('the leader is driving this record'));
             const c = mirror.collections[collection]; if (c && c.items) delete c.items[key]; notify(collection);
             const dd = { op: 'delete', collection: collection, key: key };
-            pendingActs.set(actKey(collection, key), { d: dd, at: Date.now(), tries: 0 });
+            pendingActs.set(actKey(collection, key), pend(dd, key));
             try { send('act', dd); } catch (e) {}
             return Promise.resolve(true);
           }
           if (op === 'setVisibility') return Promise.reject(new Error('the app owner controls visibility'));
+          if (op === 'settled') {
+            const k = actKey(collection, key);
+            if (!pendingActs.has(k)) return Promise.resolve(true);
+            return new Promise((res) => { (settleWait.get(k) || settleWait.set(k, []).get(k)).push(res); });
+          }
           return Promise.resolve(null);
         },
       };
@@ -4964,7 +5001,7 @@
         // The mirror is this client's WORKING copy, never the retained frame's
         // body: optimistic writes land in the mirror in place, and the retained
         // frame is re-served to the next joiner under the owner's signature.
-        if (body && body.state && body.state.collections) { mirror = AO.deepCopy(body.state); captureConnect(); reconcilePending(); }
+        if (body && body.state && body.state.collections) { mirror = AO.deepCopy(body.state); canon = canonOf(mirror); captureConnect(); reconcilePending(); }
         if (!mounted && body && body.app) return mountFromB64(body.app, body.name); // legacy in-snap bytes
         notify('*');
       };
@@ -4984,8 +5021,8 @@
           if (r.kind === 'app') return mountFromB64(r.body && r.body.app, r.body && r.body.name);
           if (r.kind === 'snap') return onSnap(r.body);
           if (r.kind === 'delta') {
-            if (r.body && r.body.state && r.body.state.collections) { mirror = AO.deepCopy(r.body.state); captureConnect(); notify('*'); }
-            else if (r.body && r.body.collection && r.body.items) { AO.applyDelta(mirror, r.body); notify(r.body.collection); }
+            if (r.body && r.body.state && r.body.state.collections) { mirror = AO.deepCopy(r.body.state); canon = canonOf(mirror); captureConnect(); notify('*'); }
+            else if (r.body && r.body.collection && r.body.items) { AO.applyDelta(mirror, r.body); AO.applyDelta(canon, r.body); notify(r.body.collection); }
             reconcilePending();
           }
         }).catch(() => {});
@@ -4993,7 +5030,7 @@
 
       setStatus(T('runtime.status.connected'));
       return {
-        stop: () => { try { unsub && unsub(); } catch (e) {} clearInterval(actSweep); pendingActs.clear(); poolDetach(); },
+        stop: () => { try { unsub && unsub(); } catch (e) {} clearInterval(actSweep); for (const k of [...pendingActs.keys()]) settle(k, false); pendingActs.clear(); poolDetach(); },
         // ONE RUNTIME (docs/one-runtime.md): the client's mirror is the room's
         // survival story. snapshot() packs app bytes + the owner-verified
         // mirror into a snapshot GIF — the successor adopts it (resilient

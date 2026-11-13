@@ -12452,15 +12452,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const dc = p.dc;
       if (typeof clog === 'function') dcTally(msg); // DEBUG: what the channel bytes are
       return txm(() => net.seal(roomE2E, msg).then((env) =>
-        net.sendChunked(env, (piece, str) => { txKindAdd(msg, str.length); try { dc.send(str); } catch (e) {} })));
+        net.sendChunked(env, (piece, str) => { txKindAdd(msg, str.length, p); try { dc.send(str); } catch (e) {} })));
     };
     // Channel bytes I sent, by kind (mesh frames by type, beats by status kind):
     // what a test reads to say which traffic grows with the room.
-    const txKindBytes = {};
-    function txKindAdd(msg, n) {
+    const txKindBytes = {}, txKindLink = {};   // txKindLink: the same, for each relayed link's channel alone (turnPathsForTest: what a link's byte limit is spent on)
+    function txKindAdd(msg, n, p) {
       const m = msg.m, inner = msg.msg;
       const k = String(msg.k) + (msg.k === 'mesh' && m ? ':' + m.t + (m.m && m.m.msg && m.m.msg.kind ? ':' + m.m.msg.kind : '') : '') + (msg.k === 'sig' && inner ? ':' + inner.kind : '');
       txKindBytes[k] = (txKindBytes[k] || 0) + n;
+      try { if (p && p.id && typeof txKindLink !== 'undefined' && turnLinks && turnLinks.isLink(p.id)) { const o = txKindLink[p.id] || (txKindLink[p.id] = {}); o[k] = (o[k] || 0) + n; } } catch (e) {}
     }
     // The picture goes to each open channel once per hash, in pieces whose JSON
     // is <=16KB, paced, and only on this channel. A newer hash bumps _avGen so
@@ -13220,12 +13221,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           let sel = null;
           st.forEach((x) => { if (x.type === 'transport' && x.selectedCandidatePairId) sel = by.get(x.selectedCandidatePairId); });
           if (!sel) st.forEach((x) => { if (!sel && x.type === 'candidate-pair' && x.nominated && x.state === 'succeeded') sel = x; });
+          if (typeof txKindLink !== 'undefined' && txKindLink[p.id]) r.dk = Object.assign({}, txKindLink[p.id]);   // this link's channel bytes by message kind
+          r.shown = !!(p.tile && p.tile.isConnected && p.tile.style.display !== 'none');   // the person's tile is on screen (a pair still dialling a seat outside my row has none)
+          if (sel) { r.wOut = sel.bytesSent || 0; r.wIn = sel.bytesReceived || 0; r.pkOut = sel.packetsSent || 0; r.pkIn = sel.packetsReceived || 0; }   // the pair's own wire: every byte and packet of the pc, media, messages and all
           if (sel) { const l = by.get(sel.localCandidateId), rm = by.get(sel.remoteCandidateId); r.local = l ? l.candidateType : null; r.remote = rm ? rm.candidateType : null; r.server = l && l.url ? String(l.url).replace(/^turns?:/, '').split('?')[0] : null; r.proto = l ? (l.relayProtocol || l.protocol || null) : null; r.cap = +sel.availableOutgoingBitrate || null; }
           r.busy = !!(turnLinks && turnLinks.busy(p.id)); r.farBusy = !!(turnLinks && turnLinks.farBusy(p.id)); r.step = turnLinks && turnLinks.videoStep(p.id) ? turnLinks.videoStep(p.id).step : null;
           st.forEach((x) => {
             if (x.type === 'outbound-rtp' && x.kind === 'video') { r.vOut += x.bytesSent || 0; (r.vo = r.vo || []).push({ mid: x.mid, b: x.bytesSent || 0, f: x.framesEncoded || 0, ql: x.qualityLimitationReason || null, act: x.active, w: x.frameWidth || 0 }); }
             if (x.type === 'inbound-rtp' && x.kind === 'video') (r.vi = r.vi || []).push({ mid: x.mid, b: x.bytesReceived || 0, f: x.framesDecoded || 0 });
-            if (x.type === 'outbound-rtp' && x.kind === 'audio') r.aOut += x.bytesSent || 0;
+            if (x.type === 'outbound-rtp' && x.kind === 'audio') { r.aOut += x.bytesSent || 0; (r.ao = r.ao || []).push({ mid: x.mid, b: x.bytesSent || 0, pk: x.packetsSent || 0, tb: x.targetBitrate || 0 }); }
+            if (x.type === 'data-channel') { r.dOut = (r.dOut || 0) + (x.bytesSent || 0); r.dIn = (r.dIn || 0) + (x.bytesReceived || 0); }
             if (x.type === 'inbound-rtp' && x.kind === 'video') r.vIn += x.bytesReceived || 0;
             if (x.type === 'inbound-rtp' && x.kind === 'audio') r.aIn += x.bytesReceived || 0;
           });
@@ -16339,7 +16344,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (o && o.tk && (!capTk || o.tk.sig !== capTk.sig)) capTake({ tk: o.tk }, false);
     }
     // The captor's page: say the ticket to the room table and, renewed, to the server.
-    function capPublish(renew) {
+    function capTicketPublish(renew) {
       if (!amCaptor || !capOn()) return;
       GifOS.meetSubs.currentTicket(subsMeetId()).then((tk) => {
         if (!tk || !amCaptor) return;
@@ -16362,7 +16367,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function onCapFrame(m) {
       if (av) return;
-      if (m.on === 1) { capTake(m, true).then(() => { if (amCaptor) capPublish(false); }); return; }
+      if (m.on === 1) { capTake(m, true).then(() => { if (amCaptor) capTicketPublish(false); }); return; }
       if (m.on === 0) { capClear('server'); return; }
       if (m.ok === 0) { pwLog('capture-refused ' + m.why); if (m.why === 'taken') setStatus(uiText('capTaken', 'Someone else is this room\u2019s admin')); else if (m.why === 'ended' && amCaptor) capClear('server ended'); else if (m.why !== 'ended') setStatus(uiText('capFailed', 'Could not make you admin of this room')); }
     }
@@ -27377,6 +27382,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const beyondRowRaw = (() => {
         if (!s || !c || BROADCAST) return false;
         for (const [k, v] of s.occ) { if (v === myId) continue; const cc = net.topo.unck(k); if (cc.pc !== c.pc || cc.r !== c.r) return true; }
+        // A ROW THAT HANGS UNDER MY ROW IS A SECOND ROW (TURN.14: the cut-off side sits under its end of the link while Section 1
+        // holds one row). occ names Section 1 and my own links only, so a head never saw a mate's child row there: the room read
+        // as one row, nothing below was packed, claimed or mixed, and the seats under the end heard nobody and were heard by
+        // nobody. Every beat's PONG names the child of each cell of my row (childOf), the same word the down ships already use.
+        const kids = s.childOf;
+        if (kids && kids.size) for (let j = 0; j < SCALE.C; j++) { const v = kids.get(net.topo.ckey({ pc: c.pc, r: c.r, i: j })); if (v && v !== myId) return true; }
         return false;
       })();
       // HYSTERESIS: beyondRow reads occ, and occ flickers during heals/gossip
@@ -27918,7 +27929,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (sdmH && !sdmH.deadAt && (sdmH.org || sdmH.via) === headPid) for (let j = 1; j < C; j++) {
           if (j === c.i) continue;
           const mate = occPid({ pc: c.pc, r: c.r, i: j });
-          if (!mate || mate === sdmH.via) continue;
+          if (!mate || mate === sdmH.via || mate === sdmH.org) continue;
+          // A second pipe never rides a relayed link's carrier (TURN.14.8: the link carries each duty once). A mate no pc of mine
+          // reaches gets the head's own copy through the carrier; and where I am that carrier, the copy I hand on for the head
+          // ('tc:<mate>|sdm') is that mate's row view: my re-fan beside it took the same job ('sdm>' + mate) every other sweep, the
+          // stream under the job changed each time, and the mate's view went silent long enough for the row to call its head out.
+          { const mq = peers.get(mate); if (!mq || !mq.connected || mosIn.has('tc:' + mate + '|sdm')) continue; }
           const jr = shipMos('sdm', mate, sdmH.stream, blockMeta(sdmH)); if (jr) wanted.add(jr);
         }
       }
@@ -35990,7 +36006,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function subsJoin() {
       if (!subsOn()) return;
       GifOS.meetSubs.joinMeeting(subsMeetId(), {
-        onTicket: () => { if (amAdmin && hasAdminRoom()) subsPublishRoomPlan(); turnSubAt = 0; capPublish(true); try { capPaint(); } catch (e) {} },   // a captor re-presents each renewed ticket   // a fresh ticket is a fresh TURN vouch: say it at the next step
+        onTicket: () => { if (amAdmin && hasAdminRoom()) subsPublishRoomPlan(); turnSubAt = 0; capTicketPublish(true); try { capPaint(); } catch (e) {} },   // a captor re-presents each renewed ticket   // a fresh ticket is a fresh TURN vouch: say it at the next step
         onPass: () => { if (amAdmin && hasAdminRoom()) subsPublishRoomPlan(); turnSubAt = 0; },   // a four-hour pass bought, started or ended: the room's plan and the TURN vouch now
         onLost: (why) => {
           if (why === 'moved') setStatus('Your subscription is now in use in another meeting.');
@@ -39219,6 +39235,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         prodStream: !!(prodPack && prodPack.stream), sdStream: !!(sdView && sdView.stream), roomStream: !!(roomPack && roomPack.stream), loop: !!(packLoop && packLoop.rx),
         restarts: [...mosIn.entries(), ...mosStandby.entries()].filter(([, e]) => e && e.el).map(([rk, e]) => ({ key: rk, sid: e.el.srcObject ? String(e.el.srcObject.id).slice(0, 8) : null, vw: e.el.videoWidth, rs: e.el.readyState, n: e.el._mosRestarts || 0, held: !!e.el._mosHold })), // decoders restarted (parked, re-bound, resumed) because they showed no picture while the feed flowed (WebKit)
         jobs: [...mosJobs.keys()], claims: [...mosIn.keys()], ann: [...mosAnn.keys()],
+        claimMeta: [...mosIn.entries()].map(([rk, e]) => rk.slice(-12) + ' n' + (e.meta ? e.meta.n : '-') + ' ids' + (e.meta && e.meta.ids ? e.meta.ids.map((x) => String(x).slice(2, 6)).join(',') : '-') + ' el' + (e.el ? (e.el.videoWidth || 0) : 'x') + ' a' + (e.stream ? e.stream.getAudioTracks().map((t) => t.readyState[0] + (t.muted ? 'M' : '')).join('') : '-')),   // what each claim says it holds: cells, named ids, picture width, sound tracks
+        view: { hasView: !!sdView, n: sdView ? sdView.count() : null, sound: (typeof sdViewSt !== 'undefined' && sdViewSt) ? sdViewSt.getAudioTracks().length : null },   // my own Stadium view: its faces after hiding my row, and whether it holds a sound track
         // An announcer is only a CANDIDATE if its announced streamId resolves
         // to one of that peer's incoming streams (claimRedun's `live`). The
         // keys alone cannot show a MISMATCH — an announce whose stream never
