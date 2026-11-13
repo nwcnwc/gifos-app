@@ -339,9 +339,9 @@
     // C++: mesh_fhop.inc:fhHome   (my view seats x in Section 1: the door lists it already)
     function fhHome(s, x) { for (const [k, v] of s.occ) if (v === x) return ckPc(k) === 0; return false; }
     // C++: mesh_fhop.inc:fhDoorCall
-    function fhDoorCall(j, fwdBy) {
+    function fhDoorCall(j, fwdBy, wide) {   // wide: the call came on the wide pass (kind 9): I may pass it once more
       const s = seat(); if (!fh || !fh.doorSend || !s || dead || !s.hasCoord || s.state !== 3 || j < 0 || j === me) return;
-      { const d = dcAt.get(j); if (d !== undefined && w.TICK - d < K.DOORCALL_HOLD) return; } dcAt.set(j, w.TICK);
+      { const d = dcAt.get(j); if (d !== undefined && w.TICK - d < K.DOORCALL_HOLD) return; }   // noted below, only when a frame went out (a seat that knew no friend at its own clock still serves a call passed to it later)
       if (dcAt.size > 256) for (const [k, v] of [...dcAt]) { if (w.TICK - v > K.DOORCALL_HOLD) dcAt.delete(k); }
       const P = (x) => ID.pid(x), jp = P(j); if (!jp) return;
       const tagOf = (x) => { const p = P(x); return p ? fh.tagOf(p) || '' : ''; };
@@ -353,12 +353,19 @@
       for (const r of mc) {
         if (r === j || r === fwdBy || fhHome(s, r)) continue; const tg = tagOf(r); if (!tg || tg === skip) continue;
         const n = fh.natOf(P(r)); if (!fhopM.fhNatMeet(Number.isInteger(n) ? n : -1, kNat)) continue;
-        trace('FH-DCALL-SEND', me, s.coord, 'to=%d for=%d by=%d', r, j, fwdBy); fh.doorSend(P(r), 7, jp); return;
+        trace('FH-DCALL-SEND', me, s.coord, 'to=%d for=%d by=%d', r, j, fwdBy); dcAt.set(j, w.TICK); fh.doorSend(P(r), 7, jp); return;
       }
-      if (fwdBy >= 0) return;   // a passed call goes no further
+      if (fwdBy >= 0 && !wide) return;   // a passed call goes no further
       for (const r of mc) {
         if (r === j) continue; const ft = fh.ftags(P(r)) || []; if (!ft.some((t) => t && t !== skip)) continue;   // the pass may go to a front-row mate: the newcomer asks its greeters one at a time, and the one that holds a friend may be asked last
-        trace('FH-DCALL-PASS', me, s.coord, 'to=%d for=%d', r, j); fh.doorSend(P(r), 8, jp); return;
+        trace('FH-DCALL-PASS', me, s.coord, 'to=%d for=%d', r, j); dcAt.set(j, w.TICK); fh.doorSend(P(r), 8, jp); return;
+      }
+      if (fwdBy < 0) {   // THE WIDE PASS: I hold no friend and no peer of mine names one: every front-row mate I hold a channel to gets the call with one pass left (kind 9). The front row is a grid, so a mate of any front-row member that holds a friend is among them. At most 2(C-1) frames, once per newcomer per DOORCALL_HOLD
+        let n = 0; for (const r of mc) {
+          if (r === j || !fhHome(s, r)) continue;
+          trace('FH-DCALL-WIDE', me, s.coord, 'to=%d for=%d', r, j); fh.doorSend(P(r), 9, jp); if (++n >= 2 * (topo.C - 1)) break;
+        }
+        if (n) { dcAt.set(j, w.TICK); return; }
       }
       trace('FH-DCALL-NONE', me, s.coord, 'for=%d conns=%d', j, mc.length);
     }
@@ -367,9 +374,12 @@
     // C++: mesh_fhop.inc:fhOnMsg kinds 7 and 8   (a door-call over a dc from a peer of mine)
     function doorCallIn(fromPeer, kind, knockerPeer) {
       const by = learnPeer(fromPeer), j = learnPeer(knockerPeer), s = seat(); if (by < 0 || j < 0 || !s || dead) return;
-      if (kind === 7) s.doorCall(by, j);   // I am called to the door
-      else if (kind === 8) fhDoorCall(j, by);   // the call passed to me: I call my friend on another network
+      if (kind === 7) { const had = s.dwSent.has(j); s.doorCall(by, j); if (!had && s.dwSent.has(j) && fh && fh.doorWordSend) { const jp = ID.pid(j); if (jp) fh.doorWordSend(jp); } }   // I am called to the door; the door word goes to the newcomer over the relay, beside my dial (C++: mesh_fhop.inc:fhDoorWordAt, the frame's landing)
+      else if (kind === 8) fhDoorCall(j, by, false);   // the call passed to me: I call my friend on another network
+      else if (kind === 9) fhDoorCall(j, by, true);   // the wide pass: I call my friend, or pass once to a peer that names one
     }
+    // C++: mesh_fhop.inc:fhDoorWordAt   (the newcomer's end: a page that says a greeter called it to the door for me)
+    function doorWordIn(fromPeer) { const f = learnPeer(fromPeer), s = seat(); if (f < 0 || f === me || !s || dead || s.state === 3) return; s.doorWord(f); }
     // what the pc laws read (linkWhy LW_FHOP): my relay roles, as ints
     function fhRoles() {
       const r = fh.roles(); const n = (p) => learnPeer(p);
@@ -779,7 +789,8 @@
       me, world: w, traces: () => ring.slice(), ids: ID, f: F, pcw, tick, frame, transport, doorNet: (x) => fabricDoorNet(me, x), doorForgive: (peer) => { const x = learnPeer(peer); if (x >= 0 && pcw.doorForgive) pcw.doorForgive(x); }, dialHeld: (peer) => { const x = learnPeer(peer); return x >= 0 && !!pcw.dialHeld && pcw.dialHeld(x); }, relayFrame, absence, leave, stats, links,
       dirFor, learnDir, relayBusyList,
       doorNote: (peer) => { const x = learnPeer(peer); if (x >= 0 && x !== me && pcw.doorNote) guard('doorNote', pcw.doorNote)(x); },   // FHOP.8: a door page's offer, or its answer to my offer, reached me over the relay (run.html onRelayPeer)
-      doorCallIn: (fromPeer, kind, knockerPeer) => guard('doorCallIn', doorCallIn)(fromPeer, kind, knockerPeer),   // FHOP.8 kinds 7 and 8 off a dc
+      doorCallIn: (fromPeer, kind, knockerPeer) => guard('doorCallIn', doorCallIn)(fromPeer, kind, knockerPeer),   // FHOP.8 kinds 7, 8 and 9 off a dc
+      doorWordIn: (fromPeer) => guard('doorWordIn', doorWordIn)(fromPeer),   // FHOP.8.2: a called friend's door word off the relay (run.html onRelayPeer)
       t14Env: (peer, inner, onward) => guard('t14Env', t14Env)(peer, inner, !!onward) | 0,   // TURN.14.4 / 14.11: may this friend-hop envelope cross my pc to peer
       turnAcross: () => !!guard('turnAcross', fabricTurnAcross)(me),   // TURN.14.8: my ring lies across my TURN link (the media plane feeds it)
       // the mark my answer to peer carries back to it (A2), for the pc layer's answer

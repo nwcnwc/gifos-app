@@ -102,6 +102,7 @@
     REDIAL_MAX: 64,   // C++: mesh.cpp:REDIAL_MAX  (LAW_REDIAL_MAX)
     GONE_DIAL: 33,   // C++: mesh.cpp:GONE_DIAL
     L45_LIST_WAIT: 4,   // C++: mesh.cpp:L45_LIST_WAIT
+    FHOP_DOOR_STALL: 6,   // C++: mesh.cpp:FHOP_DOOR_STALL  (LAW_FHOP_DOOR_STALL)
     DOORCALL_HOLD: 108,   // C++: mesh.cpp:DOORCALL_HOLD  (LAW_DOORCALL_HOLD)
     FH_ICE_N: 3,   // C++: mesh.cpp:FH_ICE_N  (LAW_FH_ICE_N)
     FHOP_TTL: 12,   // C++: mesh.cpp:FHOP_TTL  (LAW_FHOP_TTL)

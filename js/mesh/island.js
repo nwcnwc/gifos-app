@@ -78,8 +78,31 @@
     doorCall(by, knocker) {
       if (!this.hasCoord || this.state !== 3 || this.coord.pc === 0) return;
       const was = this.doorCallOn(); this.doorCallUntil = (this.TICK | 0) + K.DOORCALL_HOLD;
-      if (was) return;
-      this.trace('DOOR-CALLED', this.id, this.coord, 'by=%d for=%d', by, knocker); this.emitRelay(this.genKey);
+      if (!was) { this.trace('DOOR-CALLED', this.id, this.coord, 'by=%d for=%d', by, knocker); this.emitRelay(this.genKey); this.dwSent.clear(); }
+      if (knocker >= 0 && knocker !== this.id && this.dwSent.size < 16 && !this.dwSent.has(knocker)) { this.dwSent.add(knocker); this.trace('DOOR-WORD', this.id, this.coord, 'to=%d', knocker); this.f.fabricDialJoin(this.id, knocker); }   // FHOP.8.2: registered, I dial the newcomer myself, once per newcomer per stand: the dial carries the door word
+    },
+
+    // C++: mesh_island.inc:Seat::doorWord
+    // FHOP.8.2 THE DOOR WORD, the newcomer's part. A page I never asked dials me at the door and says a greeter called
+    // it there for me. Its word alone opens nothing: I knock (one knock answers every word that lands while it is out),
+    // and I ask the page only if the door's list names it, as I ask any greeter. At most 8 such pages an entry.
+    doorWord(g) {
+      if (!(this.state === 0 || this.state === 1) || g < 0 || g === this.id) return;
+      if (this.islandAsked.has(g) || this.entAsk.has(g) || this.l16Ask.includes(g)) return;   // asked already
+      if (this.dwSeen.size >= 8 || this.dwSeen.has(g)) return;
+      this.dwSeen.add(g); this.dwWant.add(g); this.trace('DOOR-WORD-IN', this.id, null, 'from=%d knock=%d', g, this.dwKnock ? 0 : 1);
+      if (!this.dwKnock) { this.dwKnock = true; this.emitRelay(this.linkKey); }
+    },
+
+    // C++: mesh_island.inc:Seat::doorWordList   (the list is here: the friends it names are asked now; true: asked)
+    doorWordList(m) {
+      this.dwKnock = false; if (this.dwWant.size === 0) return false;
+      const a = []; for (const g of this.dwWant) if (g !== this.id && m.list.includes(g)) a.push(g);
+      this.dwWant.clear(); if (a.length === 0 || !(this.state === 0 || this.state === 1)) return false;
+      for (const g of a) { this.trace('DOOR-WORD-ASK', this.id, null, 'to=%d', g); this.islandAsked.add(g); this.entNote(g); if (this.f.fabricDoors()) this.l16AskOne(g); const w = newMsg('WHOHOME'); w.from = this.id; w.ttl = K.WHOHOME_HOPS; this.emit(g, w); }
+      if (this.f.fabricDoors() && this.l16FreshAt >= 0) this.l16FreshAt = this.TICK | 0;   // a greeter never asked this round: the silence clock restarts (L16.14.1)
+      if (this.state === 0) { this.l16Until = -1; this.state = 1; this.retryAt = this.TICK | 0; if (this.gateway < 0) this.gateway = a[0]; }
+      return true;
     },
 
     // C++: mesh_island.inc:Seat::islandFound
@@ -479,7 +502,7 @@
     l16Gateway(g, t) {
       this.l16GwClosed = false;
       for (const x of this.l16Ask) if (x !== g && x !== t) { this.f.fabricDoorDrop(this.id, x); this.doorAsk.delete(x); }
-      this.l16Ask.length = 0; this.l16Busy.length = 0; this.l16Last = -1; this.l16List.length = 0; this.l16Next = 0; this.l16WaveAt = -1; this.l16FreshAt = -1; this.l16Round = 0; this.l16Saw = false;
+      this.l16Ask.length = 0; this.l16Busy.length = 0; this.l16Last = -1; this.l16List.length = 0; this.l16Next = 0; this.l16WaveAt = -1; this.l16FreshAt = -1; this.l16Round = 0; this.l16Saw = false; this.dwSeen.clear(); this.dwWant.clear(); this.dwKnock = false;
     },
 
     // C++: mesh_island.inc:Seat::l16Backoff

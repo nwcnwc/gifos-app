@@ -11793,7 +11793,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const RELAY_NAME_MAX = 40, RELAY_PW_MAX = 64;
     const epOk = (ep) => Number.isInteger(ep) && ep >= 0;
     // The exact field set of each payload (the padding field `_` beside it).
-    const RELAY_PAYLOAD_KEYS = { boot: 'k,t,u,w,s,v,dr', fp: 'k,v,fp', ice: 'k,c,end', name: 'k,n', password: 'k,pw,ep,pr', pwsig: 'k,sig', pwpub: 'k,ep,ts,pub', pwby: 'k,ep,by', busy: 'k,g,i,n,ref,cool', tv: 'k,q,l,d,b,e,n,m,t,f' };   // tv: the fields of js/meet-turn.js TV_KEYS (relayKeysOf reads that list itself once the module is there). Its redirect to another end (t) and a forced ask (f) were missing here: both were dropped on arrival, and the asker asked the same end for good
+    const RELAY_PAYLOAD_KEYS = { boot: 'k,t,u,w,s,v,dr', fp: 'k,v,fp', ice: 'k,c,end', name: 'k,n,dc', password: 'k,pw,ep,pr', pwsig: 'k,sig', pwpub: 'k,ep,ts,pub', pwby: 'k,ep,by', busy: 'k,g,i,n,ref,cool', tv: 'k,q,l,d,b,e,n,m,t,f' };   // tv: the fields of js/meet-turn.js TV_KEYS (relayKeysOf reads that list itself once the module is there). Its redirect to another end (t) and a forced ask (f) were missing here: both were dropped on arrival, and the asker asked the same end for good
     const relayKeysOf = (ty) => (ty === 'tv' && GifOS.meetTurn && GifOS.meetTurn.TV_KEYS) || RELAY_PAYLOAD_KEYS[ty];   // one list for the link handshake: the module's
     function relayFrameAllowed(ty, inner) {
       if (!RELAY_TYPES.has(ty) || !inner || typeof inner !== 'object' || Array.isArray(inner) || inner.k !== ty || !net.fitsFixed(inner)) return null;
@@ -11802,7 +11802,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (ty === 'boot') return net.bootOk(inner) && (inner.dr === undefined || inner.dr === 1) ? ty : null;   // dr: the sender stands at the door (doorWord)
       if (ty === 'fp') return net.fpOk(inner) ? ty : null;
       if (ty === 'ice') return (inner.end === 1 && !('c' in inner)) || (!('end' in inner) && !!net.candOfIce(inner)) ? ty : null;
-      if (ty === 'name') return typeof inner.n === 'string' && inner.n.length <= RELAY_NAME_MAX ? ty : null;
+      if (ty === 'name') return typeof inner.n === 'string' && inner.n.length <= RELAY_NAME_MAX && (inner.dc === undefined || inner.dc === 1) ? ty : null;   // dc: the sender was called to the door for me (the door word)
       if (ty === 'password') return typeof inner.pw === 'string' && inner.pw.length <= RELAY_PW_MAX && epOk(inner.ep) && (inner.pr === undefined || (typeof inner.pr === 'string' && inner.pr.length <= 64)) ? ty : null;
       if (ty === 'pwsig') return typeof inner.sig === 'string' && /^[A-Za-z0-9+/]{86}==$/.test(inner.sig) ? ty : null;
       if (ty === 'pwpub') return epOk(inner.ep) && Number.isInteger(inner.ts) && inner.ts > 0 && typeof inner.pub === 'string' && /^[A-Za-z0-9+/]{43}=$/.test(inner.pub) ? ty : null;
@@ -12376,6 +12376,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return;
       }
       if (ty === 'name') {
+        // A member a greeter called to the door for me says so. Its word alone opens nothing: my seat knocks and asks it
+        // only if the door lists it. The frame is a name like any other, so it is also that member's dial request.
+        if (f.dc === 1 && meshNode && meshNode.penv && meshNode.penv.doorWordIn) { try { meshNode.penv.doorWordIn(from); } catch (e) {} }
         const nm = String(f.n || '').slice(0, RELAY_NAME_MAX);
         if (nm) rosterNames[from] = nm;
         const p = peers.get(from);
@@ -17134,6 +17137,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           conns: () => myConns(), myTag: () => netTagNow, tagOf: (pid) => netTagOf.get(pid) || '', ftags: (pid) => ftagsOf.get(pid) || [],
           score: (pid) => carrierScore(pid), knockNat: () => -1,
           doorSend: (pid, kind, knocker) => { const q = peers.get(pid); if (q && q.dc && q.dc.readyState === 'open') dcSend(q, { k: 'dcall', n: kind, j: knocker }); },
+          doorWordSend: (pid) => { relaySendSealed(pid, 'name', { k: 'name', n: '', dc: 1 }); },   // the door word: one more name frame, so a page that does not know the word drops it and loses nothing
           roles: () => ({ jobs: Array.from(relayJobs.values(), (j) => ({ target: j.target, req: j.requester })), vias: Array.from(relayVia.values(), (r) => r.via) }),
           // TURN.14 (the twin's fabricTurnAcross): the peers whose pc runs through a TURN link of mine (js/meet-turn.js)
           turnPcs: () => (turnLinks ? turnLinks.turnPcs() : []),
@@ -21623,7 +21627,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         clockSample(p.id, m.t0, m.t1, performance.now());
       } else if (m.k === 'dcall') {
         // FHOP.8: a peer of mine calls me to the door for a knocker its door could not reach (n 7), or passes the call (n 8)
-        if ((m.n === 7 || m.n === 8) && typeof m.j === 'string' && m.j.length <= 64 && m.j !== myId && meshNode && meshNode.penv && meshNode.penv.doorCallIn) meshNode.penv.doorCallIn(p.id, m.n, m.j);
+        if ((m.n === 7 || m.n === 8 || m.n === 9) && typeof m.j === 'string' && m.j.length <= 64 && m.j !== myId && meshNode && meshNode.penv && meshNode.penv.doorCallIn) meshNode.penv.doorCallIn(p.id, m.n, m.j);
       } else if (m.k === 'relay-req') {
         startRelayJob(p, String(m.target || ''));
       } else if (m.k === 'relay-no') {
