@@ -16364,7 +16364,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // regular admin, with every admin control, signing with the capture key. What belongs to a room with a
     // verifier alone (the admin password and its sign-in, the password-change boot, the door limit and plan,
     // the admin-absence close) reads `av` itself.
-    let capKey = null, capExp = 0, capTk = null, amCaptor = false, capSaidKey = null, capBusy = false;
+    let capKey = null, capExp = 0, capTk = null, capSaidKey = null, capBusy = false;
     const capOn = () => !av && !!capKey && Date.now() < capExp;
     const hasAdminRoom = () => !!av || capOn();
     const sha256hex = net.sha256hex;
@@ -16488,15 +16488,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!fresh && t.exp * 1000 <= capExp) return;
       capKey = t.buyerKey; capExp = t.exp * 1000; capTk = c.tk;
       let mine = false; try { mine = (await GifOS.meetSubs.captureKeys()).pubB64 === capKey; } catch (e) { mine = false; }
-      if (mine && !amCaptor) { try { admKeys = await GifOS.meetSubs.captureKeys(); amCaptor = true; amAdmin = true; } catch (e) {} }
-      if (!mine && amCaptor) capDemote();
+      if (mine && !amAdmin) { try { admKeys = await GifOS.meetSubs.captureKeys(); amAdmin = true; } catch (e) {} }
+      if (!mine && amAdmin) capDemote();
       capRole();
       if (fresh) { if (typeof clog === 'function') clog('capture on key=' + capKey.slice(0, 8) + ' mine=' + mine + ' exp=' + capExp); pwLog('capture-on mine=' + mine); setStatus(mine ? uiText('capYou', 'You are this room\u2019s admin') : uiText('capOther', 'This room has an admin now')); }
       capPaint();
     }
-    // The captor's admin role, the same one an admin room's admin holds (adoptAdmKey): admKeys sign its orders,
-    // amAdmin opens every admin control, `admins` names it for every rule that asks who the admins are.
-    function capDemote() { amCaptor = false; if (!admKey) { amAdmin = false; admKeys = null; } }
+    // The captor IS the room's admin (amAdmin), as an admin room's admin is after adoptAdmKey: admKeys (the capture
+    // key) sign its orders, and `admins` names it for every rule that asks who the admins are.
+    function capDemote() { amAdmin = false; admKeys = null; }   // a captured room has no verifier: its only admin key is the capture key
     function capRole() {
       admins = adminsNow();
       if (amAdmin) refreshModSig();
@@ -16510,7 +16510,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       pwLog('capture-off ' + why);
       const hadPw = !!roomPw;
       capKey = null; capExp = 0; capTk = null; capSaidKey = null;
-      if (amCaptor) capDemote();
+      if (amAdmin) capDemote();
       // The room is open again: the captor's admin presence and its signed table stop counting.
       admSeen.clear(); modVer.clear(); modWSeen = null; modWSeenTs = 0; modSigW = null; modSigSrc = ''; modSigP = null;
       capRole();
@@ -16532,9 +16532,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // The captor's page: say the ticket to the room table and, renewed, to the server.
     function capTicketPublish(renew) {
-      if (!amCaptor || !capOn()) return;
+      if (!amAdmin || !capOn()) return;
       GifOS.meetSubs.currentTicket(subsMeetId()).then((tk) => {
-        if (!tk || !amCaptor) return;
+        if (!tk || !amAdmin) return;
         if (renew) relaySendObj({ t: 'capren', tk });
         const r = modTable['*'] = modTable['*'] || {};
         r.capt = { tk, at: Date.now(), by: myName(), byId: myId };
@@ -16554,20 +16554,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function onCapFrame(m) {
       if (av) return;
-      if (m.on === 1) { capTake(m, true).then(() => { if (amCaptor) capTicketPublish(false); }); return; }
+      if (m.on === 1) { capTake(m, true).then(() => { if (amAdmin) capTicketPublish(false); }); return; }
       if (m.on === 0) { capClear('server'); return; }
-      if (m.ok === 0) { pwLog('capture-refused ' + m.why); if (m.why === 'taken') setStatus(uiText('capTaken', 'Someone else is this room\u2019s admin')); else if (m.why === 'ended' && amCaptor) capClear('server ended'); else if (m.why !== 'ended') setStatus(uiText('capFailed', 'Could not make you admin of this room')); }
+      if (m.ok === 0) { pwLog('capture-refused ' + m.why); if (m.why === 'taken') setStatus(uiText('capTaken', 'Someone else is this room\u2019s admin')); else if (m.why === 'ended' && amAdmin) capClear('server ended'); else if (m.why !== 'ended') setStatus(uiText('capFailed', 'Could not make you admin of this room')); }
     }
     function capPaint() {
       const b = document.getElementById('capbtn'), n = document.getElementById('capnote');
       const show = !av && !capOn() && subsOn() && GifOS.meetSubs.canCapture(subsMeetId());
       if (b) { b.style.display = show ? '' : 'none'; b.disabled = capBusy; }
-      if (n) { n.style.display = capOn() ? '' : 'none'; n.textContent = amCaptor ? uiText('capYou', 'You are this room\u2019s admin') : uiText('capNote', 'This room has an admin'); }
+      if (n) { n.style.display = capOn() ? '' : 'none'; n.textContent = amAdmin ? uiText('capYou', 'You are this room\u2019s admin') : uiText('capNote', 'This room has an admin'); }
       try { applyAdminUi(); } catch (e) {}
     }
     { const b = document.getElementById('capbtn'); if (b) b.onclick = () => capTry(); }
     if (DEBUG_ON) window.__capTry = () => capTry();   // DEBUG=on only: a test taps "Make me admin"
-    if (DEBUG_ON) window.__capState = () => ({ on: capOn(), key: capKey, exp: capExp, mine: amCaptor, pw: !!roomPw, ep: pwEpoch });
+    if (DEBUG_ON) window.__capState = () => ({ on: capOn(), key: capKey, exp: capExp, mine: amAdmin, pw: !!roomPw, ep: pwEpoch });
     async function admSigned(act, extra) {
       if (!admKeys) return null;
       // `by` is signed: the admin claims their own peer id inside the proof,
