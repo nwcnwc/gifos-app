@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!-- FRAME GUARD. GitHub Pages sends no X-Frame-Options and a <meta> cannot
+     carry frame-ancestors, so this is the only thing that keeps a third-party
+     page from framing GifOS at opacity 0 and steering a click onto Allow,
+     Install or Approve. Same-origin framing (booted images, app mounts) is
+     allowed; anything else sees a link to open the page itself. Parser-
+     blocking and ES5 on purpose: it runs before any chrome paints.
+     Guarded by test/unit/frame-guard.js. -->
+<script id="gifos-frame-guard">(function(){try{if(window.top===window.self)return;var ok=false;try{ok=window.top.location.origin===window.location.origin}catch(e){}if(ok)return;var h=document.documentElement;h.style.visibility='hidden';function show(){var b=document.body;if(!b)return;while(b.firstChild)b.removeChild(b.firstChild);var p=document.createElement('p');p.style.cssText='font:16px system-ui,sans-serif;padding:24px;color:#eee;background:#111;margin:0';p.appendChild(document.createTextNode('GifOS does not run inside another site\'s page. '));var a=document.createElement('a');a.href=location.href;a.target='_blank';a.rel='noopener';a.textContent='Open it in its own tab';a.style.color='#9db4ff';p.appendChild(a);b.appendChild(p);h.style.visibility='';}if(document.body)show();else document.addEventListener('DOMContentLoaded',show);}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0a0a0f">
+<!-- Theming gate: hide chrome behind the theme-color backdrop until the theme
+     cascade (js/gifos-themes.js) applies real vars, so the fallback purple never
+     paints first. Reveals the instant --accent is set; a failsafe timeout
+     guarantees we never stay hidden if a theme file 404s or hangs. -->
+<style id="theme-gate">html.gifos-booting body{visibility:hidden}html.gifos-booting{background:var(--bg,#0a0a0f)}</style>
+<script>(function(){var h=document.documentElement;h.className+=(h.className?' ':'')+'gifos-booting';var shown=0;
+function show(){if(shown)return;shown=1;h.classList.remove('gifos-booting');
+try{var bg=h.style.getPropertyValue('--bg');var m=document.querySelector('meta[name=theme-color]');if(bg&&m)m.setAttribute('content',bg.trim());}catch(e){}}
+function chk(){if(shown)return;if(h.style.getPropertyValue('--accent'))show();else requestAnimationFrame(chk);}
+requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="GifOS">
+<script src="/js/sw-register.js" defer></script>
+<script src="/js/build.js" defer></script>
+<script src="/js/build-badge.js" defer></script>
+<title>GifOS terms of service</title>
+<meta name="description" content="The terms of service for each GifOS app, with what they share.">
+<link rel="canonical" href="https://gifos.app/terms">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="GifOS">
+<meta property="og:title" content="GifOS terms of service">
+<meta property="og:description" content="The terms of service for each GifOS app.">
+<meta property="og:url" content="https://gifos.app/terms">
+<meta property="og:image" content="https://gifos.app/og.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%A6%3C/text%3E%3C/svg%3E">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font: 17px/1.6 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+         background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); }
+  .wrap { max-width: 680px; margin: 0 auto; padding: 2rem 1.2rem 4rem; }
+  h1 { font-size: 2rem; margin: 1rem 0 .4rem; }
+  h1 .brand, .topbar .brand { font-weight: 800; background: linear-gradient(135deg, var(--accent, #7b5cff), var(--accent2, #ff5caa));
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  h2 { font-size: 1.25rem; margin: 2rem 0 .5rem; color: var(--text, #cfcfe8); }
+  p, li { color: var(--muted, #a9a9c5); }
+  b { color: var(--text, #e0e0f0); }
+  a { color: var(--accent, #7b5cff); }
+  .cta { display: inline-block; margin: 1.2rem 0; padding: .8rem 1.6rem; border-radius: .7rem;
+         background: var(--accent, #7b5cff); color: var(--onaccent, #fff); text-decoration: none; font-weight: 700; }
+  ul { padding-left: 1.2rem; }
+  li { margin-bottom: .45rem; }
+  .topbar { display: flex; align-items: center; gap: .5rem; padding: .8rem 1.2rem;
+            border-bottom: 1px solid var(--border, #2a2a3f); background: var(--surface, #14141f); }
+  .topbar a { text-decoration: none; font-size: 1.05rem; }
+  .foot { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border, #2a2a3f); font-size: .85rem; color: var(--muted, #667); }
+</style>
+<script src="/js/gifos-themes.js"></script>
+</head>
+<body>
+  <div class="topbar"><a href="/"><span class="brand">GifOS</span></a></div>
+  <div class="wrap">
+    <h1><span class="brand">GifOS</span> terms of service</h1>
+    <p>Effective: 13 November 2026.</p>
+    <p>GifOS is made by Crowd Concepts, Inc., California, USA. Each GifOS app has its own terms of service, written for
+    what that app really does. They share the same ground: there are no accounts, meetings and live sharing are
+    end-to-end encrypted so we cannot see their content, paid plans are billed by PayPal on the web or by Google Play
+    or the App Store in the apps, and you keep your own credentials on your device. How we handle data is in the
+    <a href="/privacy">GifOS privacy policies</a>.</p>
+
+    <h2>Terms by app</h2>
+    <ul>
+      <li><a href="/terms/meet">GifOS Meet</a>: meetings on the web (gifos.app/meet), the Android app and the iPhone app.</li>
+      <li>GifOS Broadcast: its terms will be added here when that app ships.</li>
+    </ul>
+
+    <h2>Contact</h2>
+    <p>Questions: <a href="mailto:support@gifos.app">support@gifos.app</a>.</p>
+
+    <p class="foot"><a href="/">GifOS</a> · <a href="/privacy">privacy</a> · <a href="/about.html">what GifOS is</a> ·
+    <a href="https://github.com/nwcnwc/gifos-app">source on GitHub</a></p>
+  </div>
+<!-- FOR AI AGENTS. Off-screen, not display:none — most agent fetchers read
+     the raw HTML without running scripts (so the JS-painted build badge is
+     invisible to them), and readability-style extractors DROP display:none
+     but keep the screen-reader clip. Static, identical on every page;
+     test/unit/agent-links.js holds the copies to one text. -->
+<nav id="agent-links" aria-label="Links for AI agents" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap">
+  <p>For AI agents and assistants: <a href="https://gifos.app/llms.txt">llms.txt</a> is the complete spec for building a GifOS app as a real .gif file (packing recipe, manifest, the window.gifos API).
+  Also: <a href="https://gifos.app/about.html">what GifOS is</a> ·
+  <a href="https://gifos.app/store">the App Store</a> (machine-readable catalog: <a href="https://gifos.app/apps/index.json">/apps/index.json</a>; one listing: /apps/&lt;slug&gt;/app.json) ·
+  open any store app in one tap: https://gifos.app/?run=&lt;slug&gt; — or your own hosted GIF: https://gifos.app/?run=&lt;gif-url&gt; ·
+  <a href="https://gifos.app/browser-support.json">browser support</a> ·
+  <a href="https://gifos.app/sitemap.xml">sitemap</a> ·
+  <a href="https://github.com/nwcnwc/gifos-app">source on GitHub</a> ·
+  <a href="https://github.com/nwcnwc/gifos-app/issues/new">report a problem</a>. Contact: support@gifos.app.</p>
+</nav>
+</body>
+</html>

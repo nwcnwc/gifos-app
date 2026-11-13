@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!-- FRAME GUARD. GitHub Pages sends no X-Frame-Options and a <meta> cannot
+     carry frame-ancestors, so this is the only thing that keeps a third-party
+     page from framing GifOS at opacity 0 and steering a click onto Allow,
+     Install or Approve. Same-origin framing (booted images, app mounts) is
+     allowed; anything else sees a link to open the page itself. Parser-
+     blocking and ES5 on purpose: it runs before any chrome paints.
+     Guarded by test/unit/frame-guard.js. -->
+<script id="gifos-frame-guard">(function(){try{if(window.top===window.self)return;var ok=false;try{ok=window.top.location.origin===window.location.origin}catch(e){}if(ok)return;var h=document.documentElement;h.style.visibility='hidden';function show(){var b=document.body;if(!b)return;while(b.firstChild)b.removeChild(b.firstChild);var p=document.createElement('p');p.style.cssText='font:16px system-ui,sans-serif;padding:24px;color:#eee;background:#111;margin:0';p.appendChild(document.createTextNode('GifOS does not run inside another site\'s page. '));var a=document.createElement('a');a.href=location.href;a.target='_blank';a.rel='noopener';a.textContent='Open it in its own tab';a.style.color='#9db4ff';p.appendChild(a);b.appendChild(p);h.style.visibility='';}if(document.body)show();else document.addEventListener('DOMContentLoaded',show);}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0a0a0f">
+<!-- Theming gate: hide chrome behind the theme-color backdrop until the theme
+     cascade (js/gifos-themes.js) applies real vars, so the fallback purple never
+     paints first. Reveals the instant --accent is set; a failsafe timeout
+     guarantees we never stay hidden if a theme file 404s or hangs. -->
+<style id="theme-gate">html.gifos-booting body{visibility:hidden}html.gifos-booting{background:var(--bg,#0a0a0f)}</style>
+<script>(function(){var h=document.documentElement;h.className+=(h.className?' ':'')+'gifos-booting';var shown=0;
+function show(){if(shown)return;shown=1;h.classList.remove('gifos-booting');
+try{var bg=h.style.getPropertyValue('--bg');var m=document.querySelector('meta[name=theme-color]');if(bg&&m)m.setAttribute('content',bg.trim());}catch(e){}}
+function chk(){if(shown)return;if(h.style.getPropertyValue('--accent'))show();else requestAnimationFrame(chk);}
+requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="GifOS">
+<script src="/js/sw-register.js" defer></script>
+<script src="/js/build.js" defer></script>
+<script src="/js/build-badge.js" defer></script>
+<title>GifOS Meet terms of service</title>
+<meta name="description" content="The terms for using GifOS Meet on the web, Android and iPhone: plans, billing, credentials and acceptable use.">
+<link rel="canonical" href="https://gifos.app/terms/meet">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="GifOS">
+<meta property="og:title" content="GifOS Meet terms of service">
+<meta property="og:description" content="The terms for using GifOS Meet: plans, billing and acceptable use.">
+<meta property="og:url" content="https://gifos.app/terms/meet">
+<meta property="og:image" content="https://gifos.app/og.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%A6%3C/text%3E%3C/svg%3E">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font: 17px/1.6 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+         background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); }
+  .wrap { max-width: 680px; margin: 0 auto; padding: 2rem 1.2rem 4rem; }
+  h1 { font-size: 2rem; margin: 1rem 0 .4rem; }
+  h1 .brand, .topbar .brand { font-weight: 800; background: linear-gradient(135deg, var(--accent, #7b5cff), var(--accent2, #ff5caa));
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  h2 { font-size: 1.25rem; margin: 2rem 0 .5rem; color: var(--text, #cfcfe8); }
+  p, li { color: var(--muted, #a9a9c5); }
+  b { color: var(--text, #e0e0f0); }
+  a { color: var(--accent, #7b5cff); }
+  .cta { display: inline-block; margin: 1.2rem 0; padding: .8rem 1.6rem; border-radius: .7rem;
+         background: var(--accent, #7b5cff); color: var(--onaccent, #fff); text-decoration: none; font-weight: 700; }
+  ul { padding-left: 1.2rem; }
+  li { margin-bottom: .45rem; }
+  .topbar { display: flex; align-items: center; gap: .5rem; padding: .8rem 1.2rem;
+            border-bottom: 1px solid var(--border, #2a2a3f); background: var(--surface, #14141f); }
+  .topbar a { text-decoration: none; font-size: 1.05rem; }
+  .foot { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border, #2a2a3f); font-size: .85rem; color: var(--muted, #667); }
+</style>
+<script src="/js/gifos-themes.js"></script>
+</head>
+<body>
+  <div class="topbar"><a href="/"><span class="brand">GifOS</span></a></div>
+  <div class="wrap">
+    <h1><span class="brand">GifOS</span> Meet terms of service</h1>
+    <p>Effective: 13 November 2026.</p>
+    <p>These terms are an agreement between you and <b>Crowd Concepts, Inc.</b>, California, USA, which makes GifOS
+    ("GifOS", "we", "us"). They cover GifOS Meet on the web (gifos.app/meet), the GifOS Meet app for Android and the
+    GifOS Meet app for iPhone, and the plans, passes and tips offered in them. By using GifOS Meet you agree to them.
+    If you do not agree, please do not use it. How we handle data is in the
+    <a href="/privacy/meet">GifOS Meet privacy policy</a>. Other GifOS apps have their own terms; see the
+    <a href="/terms">GifOS terms index</a>.</p>
+
+    <h2>The service</h2>
+    <ul>
+      <li><b>Meetings in the browser or the app.</b> GifOS Meet runs video and audio meetings, chat and in-meeting apps
+      between the people in a meeting. There are no accounts: you choose a display name, and that is all.</li>
+      <li><b>End-to-end encrypted.</b> Audio, video, chat, names and files are encrypted between the people in the
+      meeting. Our servers pass connection messages and, when a direct connection is impossible, encrypted media; they
+      cannot read meeting content. So GifOS cannot see, record or recover what is said or shared in a meeting.</li>
+      <li><b>Recordings and captions</b> are made and kept on your own device. GifOS Meet offers no cloud storage.</li>
+      <li><b>Not sold in Meet.</b> The Streamer plan and cloud storage (My library) belong to the GifOS Broadcast app,
+      not to GifOS Meet, and are not offered under these terms.</li>
+    </ul>
+
+    <h2>Who may use it</h2>
+    <p>You must be at least 13 years old, or older where your country's law requires, to use GifOS Meet. If you use it
+    for an organisation, you confirm you may accept these terms for it.</p>
+
+    <h2>Rooms</h2>
+    <ul>
+      <li><b>Open rooms</b> (a link with no admin part) are free and have no people limit. Anyone with the link can
+      join.</li>
+      <li><b>Admin rooms</b> are hosted with an admin password. The admin can lock the room and remove people. On the
+      free plan an admin room holds up to 5 people; the Room 20 plan raises that to 20, and the Unlimited plan removes
+      the limit.</li>
+      <li><b>Open-room capture.</b> A person on the Unlimited plan (or on a Streamer plan from the Broadcast app) who is
+      in an open room can take it over as its admin: set a password and remove people. The capture ends when that
+      person's plan stops being used in that meeting (for example, they leave). If you meet in an open room, it can be
+      captured this way. If you need control of a room, host an admin room.</li>
+    </ul>
+
+    <h2>Plans, passes and tips</h2>
+    <p>GifOS Meet itself is free: open rooms, admin rooms of up to 5 people, and audio for everyone even on networks
+    that block direct connections. The paid options add more:</p>
+    <ul>
+      <li><b>Room 20</b>, $2 a month or $20 a year: admin rooms of up to 20 people, and video through our relay
+      servers on networks that block direct connections.</li>
+      <li><b>Unlimited</b>, $5 a month or $50 a year: admin rooms with no people limit, video through our relay
+      servers, and open-room capture.</li>
+      <li><b>The four-hour pass</b>, $1 once: the Unlimited plan's meeting rights (not open-room capture) for 4 hours
+      from purchase. Passes stack: a pass bought while you still hold pass time starts when that time ends.</li>
+      <li><b>Tips</b> to GifOS, any amount offered. A tip is a thank-you; it buys nothing and grants no feature.</li>
+    </ul>
+    <p>Prices are in US dollars; in the apps the store shows the price in your currency, with any tax it adds. A plan
+    or pass covers <b>one meeting at a time</b>: using it in a new meeting moves it there, and the meeting it left
+    returns to the free plan's limits within a few minutes. Video through our relay servers is shared capacity: at
+    busy times it may be slowed, and video slows down before audio.</p>
+
+    <h2>Billing, renewal and cancellation</h2>
+    <ul>
+      <li><b>Where you pay.</b> On the web, PayPal handles payment. In the Android app, Google Play handles it; in the
+      iPhone app, the App Store does. A purchase made through Google Play or the App Store follows that store's billing,
+      cancellation and refund rules, and the store's terms apply to it as well as these.</li>
+      <li><b>Subscriptions renew</b> automatically at the end of each month or year, at the price shown when you
+      subscribed, until you cancel. Cancel a web subscription in GifOS Meet's Settings or in your PayPal account;
+      cancel an app subscription in your Google Play or App Store subscriptions. After you cancel, the plan keeps
+      working until the end of the period you have paid for, and is not charged again.</li>
+      <li><b>Passes and tips</b> are one-time payments, not subscriptions. They are generally not refundable, except
+      where the law or the store's rules require a refund.</li>
+      <li><b>Refunds.</b> Except where the law or the store's rules say otherwise, we do not refund the unused part of a
+      subscription period. A purchase that is refunded or reversed (including a chargeback) ends the plan, pass or
+      credit it bought.</li>
+      <li><b>Price changes</b> apply only from your next renewal, and we or the store will tell you before they do.
+      You can cancel before then.</li>
+      <li>Billing questions: <a href="mailto:support@gifos.app">support@gifos.app</a>.</li>
+    </ul>
+
+    <h2>Your credentials</h2>
+    <p>Because there are no accounts, your plans and passes are held in a credentials file on your device (the GifOS
+    credentials file; in the apps, "Save my GifOS Meet credentials" saves a copy). You are responsible for keeping it
+    safe and private:</p>
+    <ul>
+      <li>Anyone who has a copy can use your plan or passes, one meeting at a time.</li>
+      <li>We keep no account, so if you lose the file or clear your device's storage, you may lose access to what you
+      bought, and we may not be able to restore it.</li>
+      <li>For subscriptions bought through Google Play or the App Store, <b>Restore purchases</b> in the app's Settings
+      recovers the subscription on your device. Passes and tips stay with the credentials they were bought for.</li>
+    </ul>
+
+    <h2>Acceptable use</h2>
+    <p>You are responsible for what you say, show and share in GifOS Meet, and for having the rights to it. Do not use
+    GifOS Meet to:</p>
+    <ul>
+      <li>share or do anything illegal, including content that exploits children, infringes others' rights, or invades
+      their privacy;</li>
+      <li>harass, threaten, impersonate or defraud anyone;</li>
+      <li>record people without the consent the law requires where you and they are;</li>
+      <li>abuse the service: overload or attack the meeting server (relay), the relay servers for media (TURN), the
+      payment service or other people's devices; get around rate limits, room limits or the one-meeting-at-a-time rule;
+      share or resell credentials; or use the relay servers for anything other than GifOS meetings.</li>
+    </ul>
+    <p>We cannot see meeting content, so we act on what our servers can see and on reports. We may limit, suspend or
+    block network addresses, credentials or plans used to abuse the service, and refuse service to anyone who breaks
+    these terms. Report abuse to <a href="mailto:support@gifos.app">support@gifos.app</a>.</p>
+
+    <h2>Ownership</h2>
+    <p>GifOS, GifOS Meet and their software, names and logos belong to Crowd Concepts, Inc. We give you a personal,
+    non-exclusive, non-transferable right to use GifOS Meet under these terms. Source code we publish is offered under
+    its own license, which these terms do not change. What you share in a meeting stays yours.</p>
+
+    <h2>Changes and ending</h2>
+    <ul>
+      <li>We keep improving GifOS Meet, so features may change, and we may add, change or stop features, plans or
+      servers. If we stop offering a paid plan you hold, we will let it run to the end of its paid period or refund the
+      unused part.</li>
+      <li>We may change these terms. We will post the new terms on this page with a new effective date. If you keep
+      using GifOS Meet after that, the new terms apply. If you do not agree, stop using it and cancel any
+      subscription.</li>
+      <li>You may stop using GifOS Meet at any time.</li>
+    </ul>
+
+    <h2>No warranty</h2>
+    <p>GifOS Meet is provided "as is" and "as available". Meetings depend on your devices, your networks and other
+    people's, so we cannot promise that every meeting will connect, that it will be uninterrupted or error-free, or
+    that a meeting will reach a given quality. To the fullest extent the law allows, we disclaim all warranties,
+    express or implied, including merchantability, fitness for a particular purpose and non-infringement.</p>
+
+    <h2>Limits on our liability</h2>
+    <p>To the fullest extent the law allows, Crowd Concepts, Inc. is not liable for indirect, incidental, special,
+    consequential or punitive damages, or for lost profits, data or business, arising from GifOS Meet. Our total
+    liability for any claim about GifOS Meet is limited to the greater of the amount you paid us for GifOS Meet in the
+    12 months before the claim and US$20. Some places do not allow some of these limits; there, they apply only as far
+    as the law allows, and nothing in these terms limits rights you have that the law says cannot be limited.</p>
+
+    <h2>Governing law</h2>
+    <p>These terms are governed by the laws of the State of California, USA, without regard to its conflict-of-laws
+    rules. If you live in a country whose consumer laws give you rights that cannot be waived, those rights still
+    apply. If any part of these terms cannot be enforced, the rest still applies.</p>
+
+    <h2>Contact</h2>
+    <p>Crowd Concepts, Inc., California, USA. Questions about these terms:
+    <a href="mailto:support@gifos.app">support@gifos.app</a>.</p>
+
+    <p class="foot"><a href="/">GifOS</a> · <a href="/terms">all GifOS terms</a> ·
+    <a href="/privacy/meet">GifOS Meet privacy policy</a> · <a href="/about.html">what GifOS is</a> ·
+    <a href="https://github.com/nwcnwc/gifos-app">source on GitHub</a></p>
+  </div>
+<!-- FOR AI AGENTS. Off-screen, not display:none — most agent fetchers read
+     the raw HTML without running scripts (so the JS-painted build badge is
+     invisible to them), and readability-style extractors DROP display:none
+     but keep the screen-reader clip. Static, identical on every page;
+     test/unit/agent-links.js holds the copies to one text. -->
+<nav id="agent-links" aria-label="Links for AI agents" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap">
+  <p>For AI agents and assistants: <a href="https://gifos.app/llms.txt">llms.txt</a> is the complete spec for building a GifOS app as a real .gif file (packing recipe, manifest, the window.gifos API).
+  Also: <a href="https://gifos.app/about.html">what GifOS is</a> ·
+  <a href="https://gifos.app/store">the App Store</a> (machine-readable catalog: <a href="https://gifos.app/apps/index.json">/apps/index.json</a>; one listing: /apps/&lt;slug&gt;/app.json) ·
+  open any store app in one tap: https://gifos.app/?run=&lt;slug&gt; — or your own hosted GIF: https://gifos.app/?run=&lt;gif-url&gt; ·
+  <a href="https://gifos.app/browser-support.json">browser support</a> ·
+  <a href="https://gifos.app/sitemap.xml">sitemap</a> ·
+  <a href="https://github.com/nwcnwc/gifos-app">source on GitHub</a> ·
+  <a href="https://github.com/nwcnwc/gifos-app/issues/new">report a problem</a>. Contact: support@gifos.app.</p>
+</nav>
+</body>
+</html>
