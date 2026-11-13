@@ -33,7 +33,7 @@
     islandAsk(list) {
       const lv = this.w.lv;
       if (!L8_47_3_OFF && this.l8471() && this.islandLast) for (const g of list) { if (g < 0 || g === this.id || !this.islandAsked.has(g)) continue; const e = this.epOf(g); if (e >= 0) { if (this.entEp.size >= 16) this.entEp.clear(); this.entEp.add(e); } }   // L8.47.3: every greeter I asked stayed silent (the verdict that sent this confirm knock): the rooms the door now says they sit in are rooms I cannot reach
-      { let fresh = false; const late = []; for (const g of list) { if (g < 0 || g === this.id) continue; if (this.islandAsked.has(g)) continue; this.islandAsked.add(g); const e = this.epOf(g); if (!L8_47_3_OFF && this.l8471() && this.islandLast && e >= 0 && this.entEp.has(e)) late.push(g); else fresh = true; }
+      { let fresh = false; const late = []; for (const g of list) { if (g < 0 || g === this.id) continue; if (this.islandAsked.has(g)) continue; this.islandAsked.add(g); const e = this.epOf(g); if ((!L8_47_3_OFF && this.l8471() && this.islandLast && e >= 0 && this.entEp.has(e)) || (this.islandLast && this.l854Other(g))) late.push(g); else fresh = true; }   /* L8.54.1 */
         if (this.islandLast) { this.islandLast = false; if (!fresh) {
           if (late.length) { this.lateAsk.clear(); for (const g of late) { if (this.lateAsk.size >= 8) break; this.lateAsk.add(g); this.trace('L8.47.3-LATE-ASK', this.id, null, 'to=%d at=%d', g, this.epOf(g)); const w = newMsg('WHOHOME'); w.from = this.id; w.ttl = K.WHOHOME_HOPS; this.emit(g, w); } }   // L8.47.3: a new name of a room I already found silent is asked, and holds no founding
           this.islandFound(); return; }
@@ -54,14 +54,15 @@
     // C++: mesh_island.inc:Seat::islandTick
     islandTick() {
       if (!this.entryTerm() || !(this.state === 0 || this.state === 1) || this.islandAskAt < 0 || this.lastReach >= this.islandAskAt) return false;
-      const iw = this.islandWait();   // L8.47.1
+      const o54 = this.l854All(this.lastGreeters); const iw = o54 ? 0 : this.islandWait();   // L8.47.1, L8.54.1
       if (!L8_47_2_OFF && this.ehAt >= 0 && this.TICK - this.ehAt < K.ISLAND_WAIT) {   // L8.47.2: it said it has no room yet: I wait for it, and ask it again once per dial verdict while it says so
         if (this.TICK - this.ehAskAt >= K.ISLAND_WAIT_BLOCKED) { this.ehAskAt = this.TICK | 0; for (const g of this.ehFrom) { const w = newMsg('WHOHOME'); w.from = this.id; w.ttl = K.WHOHOME_HOPS; this.emit(g, w); } }
         return false; }
+      if (o54 && !this.islandLast && !this.l16Saw) { this.trace('L8.54-OTHER', this.id, null, 'asked=%zu', this.lastGreeters.length); for (const x of this.l16Ask) this.f.fabricDoorDrop(this.id, x); this.l16Anch = false; this.l16Ho = -1; this.l16Ask.length = 0; this.l16Busy.length = 0; this.l16Last = -1; this.l16List.length = 0; this.l16Next = 0; this.l16WaveAt = -1; this.l16FreshAt = -1; this.islandFound(); return true; }   // L8.54.1: no silence to wait for and no second knock: my seating knock reads the door's fresh list (L8.1.3)
       if (this.TICK - this.islandAskAt < iw || this.lastGreeters.length === 0) return false;
       if (this.f.fabricDoors() && this.islandAskAt >= 0 && (this.l16Next < this.l16List.length || this.TICK - this.l16FreshAt < iw)) return false;
       if (this.l16Saw) { this.l16Saw = false; this.l16Backoff('silent'); return true; }   // a BUSY is evidence for its own round (C++: islandTick)
-      if (this.l8471() && !this.islandLast) this.trace('L8.47.1-ONE', this.id, null, 'asked=%zu since=%d wait=%d', this.islandAsked.size, this.islandAskAt, iw);
+      if (this.l8471() && !this.islandLast && !o54) this.trace('L8.47.1-ONE', this.id, null, 'asked=%zu since=%d wait=%d', this.islandAsked.size, this.islandAskAt, iw);
       if (!this.l8471() && this.islandAskN + 1 < K.ISLAND_ASKS) {   // L8.1.1: a silent round is the door's list of one moment, not the room: knock again (bounded) before founding
         this.islandAskN++; this.trace('ISLAND-REASK', this.id, null, 'round=%d asked=%zu since=%d', this.islandAskN, this.lastGreeters.length, this.islandAskAt);
         for (const x of this.l16Ask) this.f.fabricDoorDrop(this.id, x);

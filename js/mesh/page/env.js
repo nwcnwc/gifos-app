@@ -506,6 +506,22 @@
     function fabricTurnSide(a, out) { out.length = 0; if (a !== me || !turnOn()) return; const T = turnSet(); for (const x of Array.from(connSet()).sort((p, q) => p - q)) if (!T.has(x)) out.push(x); }
     // C++: mesh_turn.inc:fabricTurnPc   (my pc to x runs through TURN)
     const fabricTurnPc = (a, x) => a === me && x >= 0 && turnOn() && turnSet().has(x);
+    // L8.54 (C++: mesh_net.inc:fabricDoorNet): the network word a listed greeter registered with (its tag and its measured
+    // kind), as the door's last list gave it, read against mine: 1 my network; 0 another network, and our two kinds hold no
+    // connection (one of us blocked, or both strict); 2 another network mine can meet; -1 no tag (an older page, or my
+    // own tag not known yet). A greeter that said no kind is read as open.
+    const L8_54_4_OFF = (typeof process !== 'undefined' && process.env && process.env.MESH_L8_54_4_OFF === '1') ? 1 : 0;   // the sim's -DL8_54_4_OFF=1 build
+    const doorNt = new Map();
+    const fabricDoorNet = (a, g) => {
+      if (a !== me || !fh || !fh.myTag) return -1; const mine = fh.myTag(); if (!mine) return -1;
+      const w = doorNt.get(g); if (!w) return -1; if (w.slice(0, 8) === mine) return 1;
+      if (!L8_54_4_OFF && measure.probed && !measure.probed()) return -1;   // L8.54.4: my own kind is not known before my probe's verdict
+      const k = w.length > 9 ? +w.slice(9) : E.NAT_OPEN, n = (measure.nat ? measure.nat() : E.NAT_OPEN) | 0;
+      if (n !== E.NAT_BLOCKED && k !== E.NAT_BLOCKED && !(n === E.NAT_STRICT && k === E.NAT_STRICT)) return 2;
+      // L8.54.4 (C++: mesh_net.inc:l854Never): cannot meet only when one end is blocked and the other is not open; a blocked end
+      // beside an open one may meet it over TCP, two strict ends are left to their dials: 3, another network not known either way
+      return (L8_54_4_OFF || (n === E.NAT_BLOCKED && k !== E.NAT_OPEN) || (k === E.NAT_BLOCKED && n !== E.NAT_OPEN)) ? 0 : 3;
+    };
     // C++: mesh_turn.inc:fabricTurnOpener   (L8.5.9: I opened the up TURN link whose far end is x)
     const fabricTurnOpener = (a, x) => { if (a !== me || x < 0 || !turnOn() || !fh.turnOpened) return false; const p = ID.pid(x); return !!p && turnSet().has(x) && !!fh.turnOpened(p); };
     // C++: mesh_turn.inc:fabricTurnMine   (x is on my side of the cut: a pc of my own reaches it, or a peer of my side claims it)
@@ -558,7 +574,7 @@
       fabricAdmitLog: noop, fabricDupMint: noop, fabricNoteBackoff: noop, fabricNoteReseat: noop, fabricNoteRollback: noop,
       fabricNoteSwap: noop, fabricVerdict: deaths.verdict, l18UxDeliv: noop, descEnd: noop, descNote: noop, g4Joined: noop,   // g4Joined: the sim's L40 contest lever only (X1 55c97d1)
       fabricFreeCells, fabricLieFor: () => null, fabricUnreachable, fhopActive: () => !!fh, fhopFriendFor,
-      fabricTurnOn: turnOn, fabricTurnPc, fabricTurnOpener, fabricTurnHold: (a) => a === me && turnOn() && !!fh.turnHold && !!fh.turnHold(),   /* TURN.4.4: the link I opened is dialling, or just came up (js/meet-turn.js holding) */ fabricTurnStray, fabricTurnLone, fabricTurnAcross, fabricTurnMine, fabricTurnCarried, fabricTurnFeeds: noop, fabricTurnSide, fabricTurnBoth: () => false, fabricTurnPeerIn,   /* TURN.14 from my pc table (above); the feeds are the media plane's (run.html turnFeedPeers) */
+      fabricTurnOn: turnOn, fabricTurnPc, fabricTurnOpener, fabricTurnHold: (a) => a === me && turnOn() && !!fh.turnHold && !!fh.turnHold(), fabricDoorNet,   /* TURN.4.4: the link I opened is dialling, or just came up (js/meet-turn.js holding) */ fabricTurnStray, fabricTurnLone, fabricTurnAcross, fabricTurnMine, fabricTurnCarried, fabricTurnFeeds: noop, fabricTurnSide, fabricTurnBoth: () => false, fabricTurnPeerIn,   /* TURN.14 from my pc table (above); the feeds are the media plane's (run.html turnFeedPeers) */
       fabricMyTier: () => ((measure.tier ? measure.tier() : E.TIER_DESKTOP) | 0),
       fabricMyNat: () => ((measure.nat ? measure.nat() : E.NAT_OPEN) | 0),
       fabricLeft: () => leaveNow(false), fabricReloadBye: () => leaveNow(true),
@@ -712,7 +728,8 @@
       if (m.t === 'greeters') {
         st.relay.greeters++;
         const out = [], at = new Map();   /* L8.52.3: the founding epoch each greeter registered with (C++: relayGreeterAt) */
-        (m.list || []).forEach((p, k) => { const x = learnPeer(p); if (x >= 0 && x !== me && !out.includes(x)) { out.push(x); const e = m.at ? m.at[k] : -1; at.set(x, Number.isInteger(e) && e >= 0 ? e : -1); } });
+        doorNt.clear();   /* L8.54: what this list says of each greeter's network (C++: doorNtList) */
+        (m.list || []).forEach((p, k) => { const x = learnPeer(p); if (x >= 0 && x !== me && !out.includes(x)) { out.push(x); const e = m.at ? m.at[k] : -1; at.set(x, Number.isInteger(e) && e >= 0 ? e : -1); const t = m.nt ? m.nt[k] : ''; if (typeof t === 'string' && t) doorNt.set(x, t); } });
         for (let k = out.length - 1; k > 0; k--) { const j = Math.floor((o.rand ? o.rand() : Math.random()) * (k + 1)); const t = out[k]; out[k] = out[j]; out[j] = t; }   // the sim's relay shuffles
         const g = msg.newMsg('GREETERS'); g.list = out; g.listAt = out.map((x) => at.get(x)); g.to = me; g.from = -1; if (m.tag === 1) g.tag = 1;   /* L3.11.6: the door said admitted:false (C++: relayKnock) */ busAt(w.TICK, g);
         return;
@@ -759,7 +776,7 @@
     function stats() { return Object.assign({ tick: w.TICK, me, ids: ID.size(), woken, dead }, JSON.parse(JSON.stringify(st))); }
 
     const env = {
-      me, world: w, traces: () => ring.slice(), ids: ID, f: F, pcw, tick, frame, transport, doorForgive: (peer) => { const x = learnPeer(peer); if (x >= 0 && pcw.doorForgive) pcw.doorForgive(x); }, dialHeld: (peer) => { const x = learnPeer(peer); return x >= 0 && !!pcw.dialHeld && pcw.dialHeld(x); }, relayFrame, absence, leave, stats, links,
+      me, world: w, traces: () => ring.slice(), ids: ID, f: F, pcw, tick, frame, transport, doorNet: (x) => fabricDoorNet(me, x), doorForgive: (peer) => { const x = learnPeer(peer); if (x >= 0 && pcw.doorForgive) pcw.doorForgive(x); }, dialHeld: (peer) => { const x = learnPeer(peer); return x >= 0 && !!pcw.dialHeld && pcw.dialHeld(x); }, relayFrame, absence, leave, stats, links,
       dirFor, learnDir, relayBusyList,
       doorNote: (peer) => { const x = learnPeer(peer); if (x >= 0 && x !== me && pcw.doorNote) guard('doorNote', pcw.doorNote)(x); },   // FHOP.8: a knocker's offer reached me over the relay (run.html onRelayPeer)
       doorCallIn: (fromPeer, kind, knockerPeer) => guard('doorCallIn', doorCallIn)(fromPeer, kind, knockerPeer),   // FHOP.8 kinds 7 and 8 off a dc
