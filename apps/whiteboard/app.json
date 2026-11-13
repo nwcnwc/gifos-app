@@ -44,10 +44,10 @@
   "cover": "/apps/whiteboard/cover.jpg",
   "screenshots": [],
   "gif": "/apps/whiteboard/whiteboard.gif",
-  "bytes": 4662385,
+  "bytes": 4662636,
   "download": 0,
   "provides": null,
-  "sha256": "c66a86f37b601c1ac143729decdfb9a0326ddb4560621663a7cd42fd884419b0",
+  "sha256": "934681c9b922866e7399cb7f4cac8a718fb7d4ffefd393a2872a8e7eb836d9d0",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
