@@ -13943,7 +13943,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // The sound named apart goes into its block's container: now if the container is here, else when it arrives.
     function soloAdd(base, tr) {
-      try { if (tr.readyState === 'ended' || base.getTracks().includes(tr)) return; base.addTrack(tr); base.dispatchEvent(new MediaStreamTrackEvent('addtrack', { track: tr })); } catch (e) {}
+      try { if (tr.readyState === 'ended' || base.getTracks().includes(tr)) return; base.addTrack(tr); base.dispatchEvent(new window.MediaStreamTrackEvent('addtrack', { track: tr })); } catch (e) {}
     }
     function soloJoin(p, solo, tr) {
       const id = solo.id.slice(0, -SOLO_TAG.length);
@@ -13951,7 +13951,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       let set = held.get(id); if (!set) { set = new Set(); held.set(id, set); }
       for (const t of [...set]) if (t.readyState === 'ended') set.delete(t);
       set.add(tr);
-      const drop = () => { set.delete(tr); for (const b of p.incoming || []) if (b.id === id && b.getTracks().includes(tr)) { try { b.removeTrack(tr); b.dispatchEvent(new MediaStreamTrackEvent('removetrack', { track: tr })); } catch (e) {} } };
+      const drop = () => { set.delete(tr); for (const b of p.incoming || []) if (b.id === id && b.getTracks().includes(tr)) { try { b.removeTrack(tr); b.dispatchEvent(new window.MediaStreamTrackEvent('removetrack', { track: tr })); } catch (e) {} } };
       try { solo.addEventListener('removetrack', (ev) => { if (ev.track === tr) drop(); }); tr.addEventListener('ended', drop); } catch (e) {}
       const base = (p.incoming || []).filter((b) => b.id === id).pop() || null;
       if (base) soloAdd(base, tr);
