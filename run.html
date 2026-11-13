@@ -12064,7 +12064,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // greeter that cannot deliver "sees" it first, a later ingress on a good
       // path was being dropped — the permanent late-join wedge after door fan.
       if (m.id && fwdSeen.has(m.id)) return;
-      const ttl = (m.ttl == null ? 1 : m.ttl | 0) - 1; // legacy envelope: one direct-channel hop only
+      // The hop budget is the sender's claim, so a hop never trusts more than the budget every page starts with (FHOP_TTL):
+      // a page that stamps a huge ttl cannot make its envelope walk further than an honest one.
+      const ttl = Math.min(m.ttl == null ? 1 : m.ttl | 0, (GifOS.meshConsts && GifOS.meshConsts.consts.FHOP_TTL) || 12) - 1; // legacy envelope: one direct-channel hop only
       if (ttl < 0) return;
       const envl = { k: kind, from: m.from, to: m.to, tc: m.tc, id: m.id, ttl, m: m.m };
       // L16.3.2: an fsig carries the seats it crossed; no hop takes a seat on that list.
