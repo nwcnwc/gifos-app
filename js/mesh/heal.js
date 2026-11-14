@@ -106,6 +106,16 @@
   function l922LastRow(s) { for (let r = C - 1; r >= 0; r--) if (l922Seat(s, ckey(cell(0, r, 0)))) return r; return -1; }
   // C++: mesh_heal.inc:l922Trail
   function l922Trail(s) { for (let j = C - 1; j >= 0; j--) if (l922Seat(s, ckey(cell(0, s.coord.r, j)))) return j; return -1; }
+  // C++: mesh_heal.inc:l922Busy (a Section-1 move in flight: the puller holds)
+  function l922Busy(s) {
+    const w = K.L9_PULL + K.CONFIRM_TTL;
+    for (let q = 0; q < C * C; q++) {
+      const k = ckey(cell(0, Math.floor(q / C), q % C)); const b = s.byeAt.get(k); if (b === undefined || s.now() - b > w) continue;
+      const v = s.l1Vacated.get(k); if (v === undefined || s.now() - v > w) return true;   // a leave: its scooch may be on its way
+      const bi = s.byeId.get(k); if (bi === undefined || !(bi === s.id || s.liveElsewhere(bi, k))) return true;   // a move: in flight until I see the mover seated
+    }
+    return false;
+  }
   // C++: mesh_heal.inc:l922Ok
   function l922Ok(s, hole) {
     if (!s.hasCoord || s.state !== 3 || s.moving || s.coord.pc !== 0 || hole.pc !== 0 || s.hasChildren()) return false;
@@ -444,7 +454,7 @@
       this.l920Note();
       const nhGone = (nk) => this.occGet(nk) < 0 || (this.TICK - this.seatedAt >= 2 * K.L9_PULL && !(this.live.has(nk) && this.TICK - this.live.get(nk) <= 2 * K.L9_PULL));
       let l921 = false;   // L9.21: the small-room band and the hold stand, but for the cells a mover left
-      const front = l9RoomAllHome(this);   // L9.22: no deep seat in my view: Section 1's last seat is the leaf
+      const front = l9RoomAllHome(this) && !l922Busy(this);   // L9.22: no deep seat in my view: Section 1's last seat is the leaf
       if (!front && (l9PullSmall(this) || (!this.l13('L13.7') && l9PullHold(this)))) {
         let any = false; for (let j = 1; j < C; j++) if (this.l921Vac(ckey(cell(0, this.coord.r, j)))) any = true; const nr = (this.coord.r + 1) % C; const nk0 = ckey(cell(0, nr, 0)); if (this.l921Vac(nk0)) any = true;
         if (nhGone(nk0)) for (let j = 1; j < C; j++) if (this.l921Vac(ckey(cell(0, nr, j)))) any = true;
