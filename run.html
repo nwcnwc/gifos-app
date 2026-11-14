@@ -26116,7 +26116,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (s && s.keepAdd) s.keepAdd(rowX2To.pid, 16);
       return rowX2To.pid;
     }
-    const dbgRowHead = (e) => { const l = (window.__rowViewLog = window.__rowViewLog || []); l.push({ t: Date.now(), e }); if (l.length > 100) l.shift(); };
+    const dbgRowHead = (e) => { const l = (window.__rowViewLog = window.__rowViewLog || []); l.push({ t: Date.now(), e }); if (l.length > 100) l.shift(); if (typeof clog === 'function') clog('row-head ' + e); };   // the trace a room reads (an heir standing in, or not)
     // L49. One sim tick is 500 ms. The seat that PLAYS a row mix (a Section-1 head) counts while that mix's SOUND IS NOT
     // ARRIVING though its picture is (rowMixArrives: packets, never a level), after it has arrived, and a seat in the row
     // flags its own mic on a path that does not go through the row head. A quiet mix arrives all the same (a live mixer
