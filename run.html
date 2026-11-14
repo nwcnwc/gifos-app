@@ -13236,9 +13236,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (meshNode.sub === 0 && Date.now() - turnSubWantAt < K.TURN_WAIT * meshNode.tickMs()) return 'joiner';   // my seat asked (opts.sub.ask) lately: it asks again each silent round
           return null;
         },
-        tdoors: () => new Promise((res) => {
+        tdoors: (q) => new Promise((res) => {   // q: device tags the relay says live or gone in its signed answer (a re-pipe ask, SUB.3)
           turnDoorsWait.push(res);
-          if (turnDoorsWait.length === 1) relaySendObj({ t: 'tdoors' });
+          if (turnDoorsWait.length === 1) relaySendObj(Array.isArray(q) && q.length ? { t: 'tdoors', q } : { t: 'tdoors' });
           const giveUp = () => { const i = turnDoorsWait.indexOf(res); if (i >= 0) { turnDoorsWait.splice(i, 1); res(null); } };   // no answer: no list this time
           setTimeout(giveUp, GifOS.meetTurn.FETCH_TIMEOUT_MS);
         }),
