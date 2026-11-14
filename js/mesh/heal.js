@@ -1254,7 +1254,7 @@
       const ak = ckey(anc); if (!(this.occGet(ak) < 0 || TICK - this.lastAck >= K.L9_LONE) || this.softSitting(ak)) return;   // L50.1
       const ps = this.l50Links(); if (ps.length === 0) return;
       this.l50AskAt = TICK | 0; const pn = this.probeNote(ak), sq = ++this.w.lv.RSEQ;
-      for (const g of ps) { const r = newMsg('ROUTE'); r.target = cc(anc); r.asker = id; r.tag = 5; r.ttl = K.L50_HOPS; r.via = id; r.pseq = sq; r.pn = pn; r.ck = ckey(this.coord); this.emit(g, r); }
+      for (const g of ps) { const r = newMsg('ROUTE'); r.target = cc(anc); r.asker = id; r.tag = 5; r.ttl = K.L50_HOPS; r.via = id; r.pseq = sq; r.pn = pn; r.ck = ckey(this.coord); this.l50Send(g, r); }
       this.trace('L50-ASK', id, anc, 'links=%d', ps.length);
     },
 
@@ -1290,7 +1290,7 @@
       { const cut = this.coord.pc !== 0 && this.l14Branch() !== null && !(this.l14Up >= 0 && this.f.fabricLinkState(id, this.l14Up) === LS_OPEN);   // L14.4
         if (!cut && !this.l14Served.has(m.asker) && pcDepth(this.coord.pc) < pcDepth(ac.pc) && this.f.fabricUpTake(id, m.asker) === 0) { const r = newMsg('ROUTED'); r.tag = 5; r.target = cc(m.target); r.id = id; r.pn = m.pn; r.asker = m.asker; this.l50Back(r, m.asker); this.trace('L50-OFFER', id, this.coord, 'to=%d', m.asker); } }   // (c)
       if (m.ttl <= 1) return;
-      if (this.coord.pc === ac.pc && this.coord.r === ac.r) { for (const g of this.l50Links()) if (g !== m.from && g !== m.asker) { const f = msg.clone(m); f.ttl = m.ttl - 1; f.via = id; this.emit(g, f); } return; }   // (d) the asker's own row hands it to every link it holds
+      if (this.coord.pc === ac.pc && this.coord.r === ac.r) { for (const g of this.l50Links()) if (g !== m.from && g !== m.asker) { const f = msg.clone(m); f.ttl = m.ttl - 1; f.via = id; this.l50Send(g, f); } return; }   // (d) the asker's own row hands it to every link it holds
       { const nh = this.nextHopToward(m.target, m.via); if (nh >= 0 && nh !== m.from && nh !== m.asker) { const f = msg.clone(m); f.ttl = m.ttl - 1; f.via = id; this.emit(nh, f); } }   // (d) any other seat passes it one hop toward the named cell
     },
 
@@ -1312,9 +1312,17 @@
     l50Back(m, to) {
       const id = this.id;
       if (to < 0 || to === id) return false;
-      if (!this.w.lv.LINKMODEL || this.f.fabricLinkState(id, to) === LS_OPEN) { this.emit(to, m); return true; }
+      if (!this.w.lv.LINKMODEL || this.f.fabricLinkState(id, to) === LS_OPEN) { this.l50Send(to, m); return true; }
       const f = this.l50From.get(to); if (f === undefined || f === to || this.f.fabricLinkState(id, f) !== LS_OPEN) return false;
-      this.emit(f, m); return true;
+      this.l50Send(f, m); return true;
+    },
+
+    // C++: mesh_heal.inc:Seat::l50Send
+    // L50.3.1: a frame of the ask rides the pc it is sent on (an emit picks the path from the view, and a claimant of a
+    // contested cell is viewed there under its rival's name: the answers landed on the rival).
+    l50Send(to, m) {
+      if (!this.w.lv.LINKMODEL) { this.emit(to, m); return; }
+      const mm = msg.clone(m); mm.sr = this.sr; this.f.fabricCallFrame(this.id, to, mm);
     },
 
     // C++: mesh_heal.inc:Seat::l50Links
