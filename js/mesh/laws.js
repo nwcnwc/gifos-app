@@ -143,6 +143,7 @@
     TURN_FREE_LINKS: 6,          // TURN.10: TURN link credential names a room has in the free pool (and as many standby names); with one allocation per name this is the room's hard limit
     TURN_KEEP_BYTES: 50,         // TURN.9: bytes per tick and direction of an idle standby (keep-alives only)
     TURN_RETRY: 60,              // TURN.10: a refused or failed TURN link ask is repeated after this long (30 s). Depends on: how fast a busy pool frees a place; no mesh timing reads it
+    TURN_RETRY_MAX_X: 8,         // TURN.10: an ask refused again and again waits twice as long each time, up to this many TURN_RETRYs (4 min), while its page sees nothing change; a change it sees puts the wait back to TURN_RETRY
     TURN_VIDEO_BYTES: 225000,    // TURN: bytes per tick and direction of the video on a vouched TURN link (about 3.6 Mbps)
     TURN_VIDEO_MIN_BYTES: 12500, // TURN.13: the lowest video step on a TURN link, bytes per tick and direction (about 200 kbps); a throttled link that cannot carry this much pauses video and keeps everything else
     TURN_VOUCH_GRACE: 20,        // TURN.12: a TURN link that loses its vouch keeps video this long (10 s) before it falls back to no video. Depends on: the time another subscriber's spare vouch needs to reach the link's two ends (one credential round trip)
