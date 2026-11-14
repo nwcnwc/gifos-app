@@ -475,7 +475,7 @@
     //   { found: r, sg, far, link }        a new subroom (or a re-pipe, r unchanged): found it with sg; the pipe is opened here
     //   { wait: 1 }                        a door list, an answer or a door probe is on its way, or a subroom is opening
     //   { refused: why, retryAt }          budget, rate, no far end, the meeting full, no service: no pipe, ask again at retryAt
-    const sub = { st: 'idle', gen: 0, out: null, retryAt: 0, token: null, list: [], probe: [], found: null, why: '', heads: null, tried: null, mult: 1, lastWhy: '', doorsSig: '', repipe: false };
+    const sub = { st: 'idle', gen: 0, out: null, retryAt: 0, token: null, list: [], probe: [], found: null, why: '', heads: null, tried: null, mult: 1, lastWhy: '', doorsSig: '', repipe: false, ans: false };
     // THE WARM STANDBY (TURN.9 for pipes). Every live pipe l<r> keeps a standby s<r>: a second relayed connection between
     // OTHER seats of the same two subrooms, connected and idle (keep-alives only: no media, no mesh traffic). When a live
     // end leaves (its goodbye) or its connection dies (the pc's own verdict), the standby pair takes the pipe over at once
@@ -512,7 +512,7 @@
       if (L.sb && L.liveEnd && L.liveEnd !== io.me()) { try { io.sendTv(L.liveEnd, { k: 'tv', q: 'x', l: L.l }); } catch (e) {} }
       if (L.sb && L.liveEnd === io.me()) { const P = livePipe(pipeNo(L.l)); if (P) P.sbUp = false; }
       log('turn-link closed ' + short(L.far) + ' ' + why);
-      if (L.upAt > 0) subChanged('a pipe of my room');
+      if (L.upAt > 0) subChanged('a pipe of mine');
       if (!L.sb && L.l[0] === 'l' && L.upAt > 0 && why !== 'standby-took-over' && why !== 'replaced' && why !== 'healed' && (io.sub ? io.sub() : 0) === pipeNo(L.l)) sub.repipe = true;   // SUB.3 (a): an end of my room's pipe that closed with no takeover asks at once
       try { io.drop(L.far, why, { pipe: !L.sb && L.l[0] === 'l' && L.upAt > 0, sub: pipeNo(L.l) }); } catch (e) {}   // pipe l<r> is subroom r's (a pipe that came up: one that never did is asked for again as before)
       if (L.farPid && !L.sb) { try { io.publish({ id: L.id, a: L.opener ? io.me() : L.far, b: L.opener ? L.far : io.me(), up: 0, v: 0, gone: 1 }); } catch (e) {} }
@@ -981,14 +981,19 @@
     // order; a re-pipe probes none) → none reached: a fresh door list → ask with the list's token → 200: the pipe.
     // An answer that arrives after the machine moved on (a newer generation) is dropped.
     const busyOut = { wait: 1 };
-    // A REFUSED ASK BACKS OFF: the wait doubles from TURN_RETRY up to RETRY_MAX_X times it, and starts over at once when
-    // something the page sees changes (the door list, a pipe or standby of my room, the kind of refusal).
+    // SUB.2: A REFUSAL IS THE ANSWER. The founding attempt that follows a refusal founds at door 0 as 0.9.25 (mayAsk is
+    // closed once, whatever the wait); the next ask comes from the founded seat when the wait is over.
+    // TURN.10: A REFUSED ASK BACKS OFF: the wait doubles from TURN_RETRY up to RETRY_MAX_X times it, and starts over only
+    // when something the refusal named changes: the kind of refusal, the subrooms my answers list (their numbers), or a
+    // pipe or standby of mine opening or closing. Never the greeters at my own door (who else is knocking), and nothing
+    // read from the service for it (a read is a call).
     const RETRY_MAX_X = K.TURN_RETRY_MAX_X;
     function subRefuse(now, why) {
       if (why !== sub.lastWhy) sub.mult = 1;
       sub.lastWhy = why;
       const at = now + RETRY_MS * sub.mult;
       sub.mult = Math.min(RETRY_MAX_X, sub.mult * 2);
+      sub.ans = true;
       subIdle(now, { refused: why, retryAt: at }, at);
     }
     function subChanged(what) { if (sub.mult > 1) { sub.mult = 1; if (sub.st === 'idle' && sub.retryAt > io.now()) sub.retryAt = io.now(); log('turn-sub ' + what + ' changed: ask again now'); } }
@@ -998,7 +1003,7 @@
       Promise.resolve(io.tdoors ? io.tdoors() : null).then((x) => {
         if (g !== sub.gen) return;
         const d = x && typeof x === 'object' ? x.v : x;
-        if (d) { sub.devPid = (x && typeof x === 'object' && x.p) || {}; sub.heads = doorHeads(d, sub.devPid); const sg = doorsSig(d); if (sub.doorsSig && sg !== sub.doorsSig) subChanged('the door list'); sub.doorsSig = sg; }
+        if (d) { sub.devPid = (x && typeof x === 'object' && x.p) || {}; sub.heads = doorHeads(d, sub.devPid); const sg = doorsSig(d); if (sub.doorsSig && sg !== sub.doorsSig) subChanged('the subrooms'); sub.doorsSig = sg; }
         if (!d) { subRefuse(io.now(), 'no-doors'); return; }
         // before a new number is asked for: a listed room whose heads this fresh door list names and I have not dialled
         // yet (it opened while I tried the others) is tried first; the service would read its greeters as unreachable
@@ -1049,7 +1054,8 @@
     // The heads the relay's door list names per door, as peer ids (the answer's own map; the signed list holds device
     // tags only): at most PROBE_HEADS per door, in the list's order.
     const PROBE_HEADS = 2;
-    function doorsSig(td) { try { const t = String(td).split('.')[1].replace(/-/g, '+').replace(/_/g, '/'); const o = JSON.parse(atob(t + '='.repeat((4 - (t.length % 4)) % 4))); return JSON.stringify((o.doors || []).map((x) => [x.r, (x.g || []).map((h) => h.d)])); } catch (e) { return ''; } }
+    // the subrooms a door list names (their numbers only: who greets at a door is not what a refusal named)
+    function doorsSig(td) { try { const t = String(td).split('.')[1].replace(/-/g, '+').replace(/_/g, '/'); const o = JSON.parse(atob(t + '='.repeat((4 - (t.length % 4)) % 4))); return (o.doors || []).map((x) => x.r).sort((a, b) => a - b).join(','); } catch (e) { return ''; } }
     function doorHeads(td, peers) {
       const out = new Map();
       try {
@@ -1121,7 +1127,7 @@
         if (L.state !== 'up' && !L.web && L.client && L.cred && io.turnPath) { const tp = io.turnPath(L.far); if (tp && tp.at > 0 && !tp.relay && now - tp.at >= WEB_WAIT_MS && L.cred.web().length) webStart(L, true); }
         if (L.web && L.state !== 'up') { if (now - L.webSaidAt > RESEND_MS) webSay(L); webGo(L); }
         if (L.state !== 'up' && L.readyMe && (L.readyFar || L.web) && io.pcUp(L.far) && (!L.web || io.webUp(L.far))) {
-          L.state = 'up'; L.upAt = now; L.serial = now; log('turn-link up ' + short(L.far) + (L.sb ? ' (standby)' : '')); io.changed(L.far);
+          L.state = 'up'; L.upAt = now; L.serial = now; log('turn-link up ' + short(L.far) + (L.sb ? ' (standby)' : '')); io.changed(L.far); subChanged('a pipe of mine');
           if (L.sb && L.liveEnd && L.liveEnd !== io.me()) io.sendTv(L.liveEnd, { k: 'tv', q: 'r', l: L.l });
           if (L.sb && L.liveEnd === io.me()) { const P = livePipe(pipeNo(L.l)); if (P) P.sbUp = true; }
         }
@@ -1163,7 +1169,9 @@
       repipe() { if (io.sub && io.sub() > 0) sub.repipe = true; },
       doorEmpty() { if (io.sub && io.sub() > 0) rg.want = true; },
       regrant() { const o = rg.out; rg.out = null; return o; },
-      doorChanged() { subChanged('my door list'); },   // the mesh says my door's greeters changed (meshNode.doorSeq): a refused ask starts over
+      // the seat is about to found on silence: may it ask the Worker first? Closed once after a refusal (that founding attempt
+      // founds), and while a refusal's wait runs
+      mayAsk() { if (sub.ans) { sub.ans = false; return false; } const o = sub.out; return !(o && o.refused && io.now() < o.retryAt); },
       // The pipes this page holds an end of, for the media plane: the far end's peer id and subroom, the pipe, who opened it.
       pipeEnds() { const out = []; for (const L of links.values()) if (L.farPid) out.push({ peer: L.far, sub: L.opener ? L.farR : Number(L.l.slice(1)), pipe: L.l, opener: !!L.opener, video: !!L.video, up: L.state === 'up', standby: !!L.sb }); return out; },
       standby(pid) { const L = links.get(pid); return !!L && L.sb; },   // a warm standby: keep-alives only, nothing rides it

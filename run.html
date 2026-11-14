@@ -12985,7 +12985,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // neither the sweeper nor L22 closes it), NO video on an unvouched link, the room's link facts and subscribers'
     // vouches (room-wide gossip: tlink, tsub), and the paused-video note on the tiles a link holds back.
     let turnLinks = null, turnTimer = null, turnSubAt = 0;
-    let turnSubWantAt = 0, turnDoorSeq = 0;   // my seat asked for the meeting's rooms (opts.sub.ask); the mesh's door-list mark last read
+    let turnSubWantAt = 0;   // my seat asked for the meeting's rooms (opts.sub.ask)
     const turnDoorsWait = [];   // asks waiting for the relay's door list
     const turnProbeAt = new Map();   // a listed room's head I dialled to try its room → when
     const turnWeb = new Map();   // far peer id -> the web path end of that link (js/meet-tunnel.js)
@@ -13321,7 +13321,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function turnStep() {
       if (!turnLinks || !relayTv) return;
       try { turnLinks.step(); } catch (e) { turnNote('turn-step-err ' + String(e && e.stack || e).slice(0, 160)); }
-      try { const ds = meshNode && meshNode.doorSeq ? meshNode.doorSeq() : 0; if (ds !== turnDoorSeq) { turnDoorSeq = ds; turnLinks.doorChanged(); } } catch (e) {}   // my door's greeters changed: a refused room ask starts over
       try { turnSubApply(turnLinks.subAsk()); } catch (e) { turnNote('turn-sub-err ' + String(e && e.message || e).slice(0, 120)); }
       for (const p of peers.values()) if (turnLinks.holds(p.id) || (p.pc && p.pc.__turnGuarded)) turnApplyVideo(p);
       turnWatch();
@@ -14161,7 +14160,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const pc = p.pc, mark = {};
       p.neg.minting = mark;
       const settled = () => { if (p.neg.minting === mark) p.neg.minting = null; };
-      pipeSlotBirth(p, pc);   // a pipe's (or standby's) sound slot rides the link's first offer, whichever end makes it
+      pipeSlotBirth(p, pc);   // a pipe's (or standby's) sound slot rides its first offer over the pair's own channel (never the relay bootstrap)
       pc.createOffer(opts).then((offer) => (p.pc === pc ? pc.setLocalDescription(offer) : null))
         .then(() => {
           settled();
@@ -17238,8 +17237,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         sub: {
           ask: () => {
             if (!turnLinks || !relayTv) return false;
-            const o = turnLinks.subAsk();
-            if (o && o.refused && Date.now() < o.retryAt) return false;
+            if (!turnLinks.mayAsk()) return false;   // a refusal is the answer: this founding attempt founds; then its wait runs
             turnSubWantAt = Date.now();
             return true;
           },
@@ -21396,7 +21394,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         try { dcSend(p, { k: 'sig', msg: statusPayload() }); txStats.dcStatus++; } catch (e) {}
         try { sendAvatarTo(p); } catch (e) {}
         if (amAdmin) { try { dcSend(p, { k: 'sig', msg: { kind: 'mod', mod: modTable, modw: gossipModW() } }); } catch (e) {} }
-        try { if (enableMedia(p)) renegotiate(p); } catch (e) {}
+        try { const media = enableMedia(p); if (media || pipeSlotOwed(p)) renegotiate(p); } catch (e) {}   // a pipe's (or standby's) sound slot: the first negotiation on this channel
         try { headLinkUp(p.id); } catch (e) {}   // the channel to my row's head is up: my sends to it go now
         try { if (linkTo(p.id)) retireBootPairs(); } catch (e) {} // a seat's own link is open: the door I came in by closes
         dcSend(p, historyHi());
@@ -23921,7 +23919,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // a polite side looped rreq → rgo → roffer → ranswer for good (Q78).
       p.renegAgain = false;
       preferHwVideo(pc); // renegotiations add fresh m-lines (folds, stg, relay jobs) — they must inherit the preference
-      pipeSlotBirth(p, pc);   // (a pc that offers for the first time on a renegotiation: the slot rides that offer, never an extra one)
+      pipeSlotBirth(p, pc);   // the first negotiation on a pipe's own channel carries its sound slot (dc.onopen starts it)
       pc.createOffer()
         .then((o) => { if (pc.signalingState !== 'stable') { const e = new Error('raced'); e.name = 'GlareRace'; throw e; } return pc.setLocalDescription(o); })
         .then(() => {
@@ -28668,16 +28666,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // SUB.7 / server cost: every pipe and warm standby pc holds ONE audio slot for the mix it will carry, negotiated with no
     // track: it sends nothing until the pipe is mine, and then the mix is a track attach (addAux) in the takeover tick. No
     // video slot is made on a standby; a pipe's picture follows its vouch as a new m-line, after the sound.
-    // SOUND ACROSS A PIPE NEVER WAITS ON ANY NEGOTIATION AFTER LINK-UP (beside the san2 rule at l14Blocks: sound never waits on
-    // a picture). A pipe's pc, and its warm standby's, is born with ONE audio slot for the pipe's mix ('sdn>' + far end), with no
-    // track: the end that makes the first offer adds it to that offer (pipeSlotBirth), the answering end takes the offered sendrecv
-    // audio m-line as its own slot before its first answer (pipeSlotAdopt). The mix is then a track attach (addAux) the moment the
-    // pipe is mine: at link-up, at a takeover, whatever the link's later renegotiations (a pool move, video) do. A standby's slot
+    // SOUND ACROSS A PIPE NEEDS ONLY THE LINK'S FIRST OWN-CHANNEL NEGOTIATION; NOTHING DELAYS IT (beside the san2 rule at
+    // l14Blocks: sound never waits on a picture). A pipe's pc, and its warm standby's, gets ONE audio slot for the pipe's mix
+    // ('sdn>' + far end), with no track, in the first negotiation on the pair's own channel: the bootstrap that brings the pc
+    // up goes over the relay and carries a data channel only (a description with media never leaves), so the slot is added
+    // the moment that channel opens (dc.onopen: renegotiate) by whichever end offers then (pipeSlotBirth), and the answering
+    // end takes the offered sendrecv audio m-line as its own slot before its answer (pipeSlotAdopt, the one answer path for
+    // every offer). That negotiation is first in the pc's order: a pool move waits for a stable pc (meet-turn pump), so it
+    // comes after. The mix is then a track attach (addAux) the moment the pipe is mine: at link-up, at a takeover, whatever
+    // the link's later renegotiations (a pool move, video) do. A standby's slot is made the same way when it is warmed, and
     // carries nothing until it takes over.
+    // A pipe or standby pc whose own channel is open and that holds no slot yet: its first own-channel offer brings one.
+    function pipeSlotOwed(p) {
+      if (!p || !p.pc || !turnHolds(p.id) || !p.dc || p.dc.readyState !== 'open') return false;
+      try { return !p.pc.getTransceivers().some((t) => t.sender && t.sender.__pipeRes); } catch (e) { return false; }
+    }
     function pipeSlotCt(pid) { const jk = 'sdn>' + pid, ct = shipContainers.get(jk) || new MediaStream(); shipContainers.set(jk, ct); return ct; }
     function pipeSlotBirth(p, pc) {
-      if (!p || !pc || !turnHolds(p.id)) return;
-      try { if (pc.getTransceivers().some((t) => t.sender && t.sender.__pipeRes)) return; } catch (e) { return; }   // the pc has its slot
+      if (!p || !pc || p.pc !== pc || !pipeSlotOwed(p)) return;   // no own channel yet (the relay bootstrap stays data only), or the pc has its slot
       const ct = pipeSlotCt(p.id);
       try { const t = pc.addTransceiver('audio', { direction: 'sendrecv', streams: [ct], sendEncodings: [{ maxBitrate: AUX_AUDIO_BPS }] }); t.sender.__pipeRes = ct; t.sender._auxKind = 'audio'; auxSenders.add(t.sender); } catch (e) {}
     }
