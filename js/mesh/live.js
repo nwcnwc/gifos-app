@@ -618,17 +618,16 @@
     translostConfirmed(k) {
       const TICK = this.TICK;
       const at = this.translost.get(k); if (at === undefined) return false;
+      if (this.nlSince >= 0 || (this.nlEndAt >= 0 && TICK - this.nlEndAt < K.L30_SILENT)) return false;   // D5.4: no link of mine carries, or my first link carried again less than one silence window ago: I judge nobody
       const lv = this.live.get(k), pa = this.probeAck.get(k);
       // L3.3: a frame that lands within the probe's round trip of the loss (at, at+1) was sent before it.
       const clearAt = at + 2;
       if ((lv !== undefined && lv >= clearAt) || (pa !== undefined && pa >= at)) { if (pa !== undefined && pa >= at) { const h = this.tlHard.get(k); if (h === 2) this.d5Ans.set(k, pa); } this.tlAnswered(k); return false; }   /* L3.4.3: the answer that ends an observation is still a hearing */   // D5.1: an answered silence probe floors the next window
-      if (this.nlSince >= 0) return false;   // D5.4: no link of mine carries: no probe of mine can leave and I judge nobody (what I heard still cleared the loss, above)
       const pt = this.tlProbeAt.get(k);
       if (pt === undefined || TICK - pt >= 6) { this.tlProbeAt.set(k, TICK); if (this.routeToProbe(unck(k)) && !this.tlSent.has(k)) this.tlSent.set(k, TICK); }
       // L3.3: only a HARD close confirms before the lease runs out.
       { const h = this.tlHard.get(k); if (h === undefined || !h) return false; }
       if (!this.tlSent.has(k)) return false;   // no probe left: silence of an unsent frame is not a death; the lease is the horizon
-      if (this.nlEndAt >= 0 && TICK - this.nlEndAt < K.L30_SILENT) return false;   // D5.4: my first link carried again less than one silence window ago: the probe is out and my neighbours get that whole window to be heard before any verdict
       return TICK - this.tlSent.get(k) > K.EARLY_HOLD;   // the window starts when the first probe leaves, not at the loss
     },
 
