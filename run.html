@@ -13440,41 +13440,50 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const t = document.createElement('span'); t.textContent = uiText('turnBusy', 'Video is paused: the connection is busy. It comes back by itself.'); bel.appendChild(t);
           p.tile.appendChild(bel);
         } else if (!busy && bel) bel.remove();
-        let el = p.tile.querySelector(':scope > .tpause:not(.tpause-busy)');
-        if (show && !el) {
-          // VIDEO IS PAUSED: the named state's sentence (meet-status videoPausedRelay) over the dark tile, and one
-          // tap to subscribe ($2 monthly, PayPal). A subscription's vouch turns this link's video on where it is:
-          // the next paint finds the link carrying video and takes the note away.
-          el = document.createElement('div'); el.className = 'tpause'; el.setAttribute('role', 'note');
-          const t = document.createElement('span'); t.className = 'tpause-say';
-          const said = statusWords('videoPausedRelay');
-          t.textContent = said; el.appendChild(t);
-          if (subsOn()) {
-            const b = document.createElement('button'); b.type = 'button'; b.className = 'tpause-sub';
-            b.textContent = uiText('turnSubscribe', 'Subscribe');
-            b.addEventListener('click', async (e) => {
-              e.stopPropagation(); b.disabled = true;
-              try {
-                const r = await GifOS.meetSubs.subscribe('room20', 'monthly', (w) => { t.textContent = w; });
-                if (!(r && r.licenseJson)) { t.textContent = said; b.disabled = false; }
-              } catch (x) { t.textContent = said; b.disabled = false; }
-            });
-            el.appendChild(b);
-            // or the four-hour pass: $1 once through PayPal, Unlimited for the next 4 hours (never a subscription)
-            const b4 = document.createElement('button'); b4.type = 'button'; b4.className = 'tpause-pass';
-            b4.textContent = uiText('turnPass4h', 'or $1 for the next 4 hours');
-            b4.addEventListener('click', async (e) => {
-              e.stopPropagation(); b4.disabled = true; b.disabled = true;
-              try {
-                const r = await GifOS.meetSubs.buyPass((w) => { t.textContent = w; });
-                if (!(r && r.passJson)) { t.textContent = said; b4.disabled = false; b.disabled = false; }
-              } catch (x) { t.textContent = said; b4.disabled = false; b.disabled = false; }
-            });
-            el.appendChild(b4);
-          }
-          p.tile.appendChild(el);
-        } else if (!show && el) el.remove();
+        pauseNote(p.tile, show);
       }
+      // SUB.4 + TURN.11 for every seat: the Stadium that shows a far room over a pipe with no video says so, with the same
+      // note and Subscribe as a tile (Nathan 11-14: the note goes on the strip, not only on the pipe holders' tiles)
+      const sd = document.querySelector('#stadium [data-row="sd"]');
+      if (sd) { let far = 0; try { far = meshNode && typeof meshNode.meetingFar === 'function' ? meshNode.meetingFar() : 0; } catch (e) {} pauseNote(sd, !!turnLinks && GifOS.meetTurn.stripPaused(facts, far)); }
+    }
+    // THE PAUSED NOTE on a host: a person's tile (pausedBy), or the Stadium strip that stands for a far room whose pipe
+    // carries no video (stripPaused): the named state's sentence and one tap to subscribe or buy the pass.
+    function pauseNote(host, show) {
+      let el = host.querySelector(':scope > .tpause:not(.tpause-busy)');
+      if (show && !el) {
+        // VIDEO IS PAUSED: the named state's sentence (meet-status videoPausedRelay) over the dark tile, and one
+        // tap to subscribe ($2 monthly, PayPal). A subscription's vouch turns this link's video on where it is:
+        // the next paint finds the link carrying video and takes the note away.
+        el = document.createElement('div'); el.className = 'tpause'; el.setAttribute('role', 'note');
+        const t = document.createElement('span'); t.className = 'tpause-say';
+        const said = statusWords('videoPausedRelay');
+        t.textContent = said; el.appendChild(t);
+        if (subsOn()) {
+          const b = document.createElement('button'); b.type = 'button'; b.className = 'tpause-sub';
+          b.textContent = uiText('turnSubscribe', 'Subscribe');
+          b.addEventListener('click', async (e) => {
+            e.stopPropagation(); b.disabled = true;
+            try {
+              const r = await GifOS.meetSubs.subscribe('room20', 'monthly', (w) => { t.textContent = w; });
+              if (!(r && r.licenseJson)) { t.textContent = said; b.disabled = false; }
+            } catch (x) { t.textContent = said; b.disabled = false; }
+          });
+          el.appendChild(b);
+          // or the four-hour pass: $1 once through PayPal, Unlimited for the next 4 hours (never a subscription)
+          const b4 = document.createElement('button'); b4.type = 'button'; b4.className = 'tpause-pass';
+          b4.textContent = uiText('turnPass4h', 'or $1 for the next 4 hours');
+          b4.addEventListener('click', async (e) => {
+            e.stopPropagation(); b4.disabled = true; b.disabled = true;
+            try {
+              const r = await GifOS.meetSubs.buyPass((w) => { t.textContent = w; });
+              if (!(r && r.passJson)) { t.textContent = said; b4.disabled = false; b.disabled = false; }
+            } catch (x) { t.textContent = said; b4.disabled = false; b.disabled = false; }
+          });
+          el.appendChild(b4);
+        }
+        host.appendChild(el);
+      } else if (!show && el) el.remove();
     }
     // The subroom ask's answer: my door is r (a listed room I reached: no grant; a new room or a re-pipe: its grant).
     // The seat takes it (meshNode.subGo knocks at the new door inside the call; the relay socket follows the door).
@@ -27731,6 +27740,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const v = document.createElement('video'); v.muted = true; v.autoplay = true; v.setAttribute('playsinline', '');
         const lb = document.createElement('div'); lb.className = 'rlabel'; lb.textContent = 'The stadium';
         el.appendChild(v); el.appendChild(lb); stadiumEl.appendChild(el); trackAspect(el, v);
+        try { turnPaint(); } catch (e) {}   // a new strip takes the paused note at once (TURN.11)
       }
       const v = el.querySelector('video');
       if (!(typeof wkHolds === 'function' ? wkHolds(v, stream) : v.srcObject === stream)) { if (typeof wkBindVideo === 'function') wkBindVideo(v, stream); else v.srcObject = stream; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); changed = true; }
