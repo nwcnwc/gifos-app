@@ -3651,7 +3651,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const wait = Math.max(NEW_PEER_BEAT_MS, newPeerBeatAt + NEW_PEER_BEAT_GAP_MS - Date.now());
       newPeerBeatT = setTimeout(() => { newPeerBeatT = null; newPeerBeatAt = Date.now(); try { broadcastStatus(true); } catch (e) {} }, wait);
     }
-    const myConns = () => Array.from(peers).filter(([, p]) => p.connected).map(([pid]) => pid);
+    // A warm TURN standby is no link (TURN.9: keep-alives only, nothing crosses it): never a connection I report or a friend can use.
+    const turnSb = (pid) => { try { return !!(turnLinks && turnLinks.standby(pid)); } catch (e) { return false; } };
+    const myConns = () => Array.from(peers).filter(([pid, p]) => p.connected && !turnSb(pid)).map(([pid]) => pid);
+    // The links of mine that run through TURN (a pipe's far end): beside conns, so a friend's word "I reach X" is read as
+    // "without TURN" only when it is (TURN.7, the sim's grpReach0).
+    const myTc = () => { try { const t = turnLinks ? turnLinks.turnPcs().filter((pid) => !turnSb(pid)) : []; return t.length ? t : undefined; } catch (e) { return undefined; } };
     const mySid = () => (localStream ? localStream.id : null);
     let pulseHalt = false; // test hook: simulates a throttled phone's silent pulse gaps
     // My status pulse as one frame: what every beat carries, and what a pair
@@ -3695,7 +3700,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (Number.isInteger(msg.cls) && msg.cls >= 0 && msg.cls <= 3) clsOf.set(from, msg.cls);
       if (Array.isArray(msg.ft)) ftagsOf.set(from, msg.ft.slice(0, GifOS.meshConsts.consts.FH_FTAGS).filter((t) => typeof t === 'string' && /^[0-9a-f]{8}$/.test(t)));
     }
-    const statusPayload = () => { refreshNetTag(); const ft = myFtags(), c = linkCls(); return { kind: 'status', s: myStatus, conns: myConns(), nat: natWord(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined, nt: netTagNow || undefined, cls: c || undefined, ft: ft.length ? ft : undefined }; };
+    const statusPayload = () => { refreshNetTag(); const ft = myFtags(), c = linkCls(); return { kind: 'status', s: myStatus, conns: myConns(), tc: myTc(), nat: natWord(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined, nt: netTagNow || undefined, cls: c || undefined, ft: ft.length ? ft : undefined }; };
     function broadcastStatus(answer) {
       if (!GifOS.meshConsts) return;   // a published lobby whose meeting scripts are still arriving: nobody to tell yet
       if (pulseHalt && !answer) return; // the halt models a throttled clock; an answer to a newcomer is driven by its frame, not the clock
@@ -11939,6 +11944,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // THE RELAY HOOKS UP A JOINER AND A GREETER, nothing else. Once a mesh connection exists nobody contacts it: a seat never sends a seat a frame through it.
     // I may use it while I am at the door (no seat, or a seated seat that knocked: the seat's socketed()) for a peer my view seats nowhere, or one that spoke to me over it just now: it is at the door, whatever my view still says of its old seat.
     const relayHeardAt = new Map();
+    const relayGone = new Map();   // pid -> when the relay said its door socket closed with no unlist (greeter-gone); a later frame of its own lifts it
     function relayMayCarry(to) {
       if (pwWaitKey.has(to) && hasAdminRoom() && amAdmin) return true;   // someone waiting through a ban has no channel and cannot read the door: only this reaches them
       if (meshNode && !meshNode.socketed()) return false;
@@ -13151,9 +13157,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (sd.track !== t) sd.__turnOrig(t).catch(() => {});
       }
     }
-    // A friend reaches pid without TURN (TURN.3, TURN.7): friend-hop's own test (meshNode's fhop.friendFor).
+    // A friend reaches pid without TURN (TURN.3, TURN.7): friend-hop's own test (meshNode's fhop.friendFor), on links that do not
+    // run through TURN at either hop: mine to the friend, and the friend's to pid (its tc). A friend whose only way to pid is a
+    // TURN path (its pipe, or before tc its standby) is no way without TURN: pk42 read A3's standby to B2 as one and closed the
+    // pipe A1-B2 three times a second after it came up.
     function turnFriend(pid) {
-      const c = myConns().filter((r) => r !== pid && !(turnLinks && turnLinks.isLink(r)) && (connsOf.get(r) || []).includes(pid)).sort();
+      const c = myConns().filter((r) => r !== pid && !(turnLinks && turnLinks.isLink(r)) && (connsOf.get(r) || []).includes(pid) && !(tcOf.get(r) || []).includes(pid)).sort();
       const fp = c.length ? peers.get(c[0]) : null;
       return !!(fp && fp.dc && fp.dc.readyState === 'open');
     }
@@ -13218,8 +13227,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         sat: () => { const r = turnRaw(); return r ? r.seatedAt : -1; },   // TURN.4.6: which seating the door's answer belongs to   // the door has answered my own seating knock (L8.1.3)
         alive: (pid) => {
           // the mesh's word decides: a seat it saw leave is gone, a seat it holds is here; the door's last greeter list
-          // (read only now and then) speaks only for a greeter the mesh holds no word of
-          if (meshGone.has(pid)) return false;
+          // (read only now and then) speaks only for a greeter the mesh holds no word of. The relay's greeter-gone (a door's
+          // socket closed with no unlist: a page that left or whose renderer died) is that seat's goodbye, before any verdict.
+          if (meshGone.has(pid) || relayGone.has(pid)) return false;
           if (meshKnows(pid)) return true;
           const r = turnRaw(); if (r && (r.lastGreeters || []).indexOf(meshNode.nidOf(pid)) >= 0) return true;
           const p = peers.get(pid); return !!(p && p.connected);
@@ -14068,7 +14078,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // makes the offer at some doors and the answer at the others. On an offer the far end's gate reads the word (an
     // unseated dialler is not a stale member); on either, a seated far end starts that door's clock (onRelayPeer).
     const doorWord = () => { const ms = meshSeat(); return ms && ms.hasCoord && ms.state === 3 && ms.seatTick - ms.seatedAt > 40 ? 0 : 1; };
-    const sigMeta = () => ({ name: myName(), ip: myIp, st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), sid: mySid() });
+    const sigMeta = () => ({ name: myName(), ip: myIp, st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), tc: myTc(), sid: mySid() });
     // THE RULES THAT REBUILD BEFORE AN OFFER LANDS, first match wins. After a rebuild none of the later ones can
     // hold: a fresh pc has no death, no remote description, no connection and no media.
     const offerFpOf = (sdp) => { const m = /\r?\na=fingerprint:([^\r\n]+)/.exec(String(sdp && sdp.sdp || sdp || '')); return m ? m[1] : ''; };
@@ -14504,7 +14514,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // Group moderation: signature-verified in admin rooms (§9), open in
       // plain rooms — the transport no longer matters, only the proof.
       takeMod(from, msg);
-      if (msg.conns) setConns(from, msg.conns);
+      if (msg.conns) setConns(from, msg.conns, msg.tc);
       takeNetWords(from, msg);   // nat; FHOP.8/9 nt, cls, ft
       if ('sid' in msg && p && sidIsNews(p, msg.sid)) { p.ownSid = msg.sid; claimOwnStream(p); }
     }
@@ -14757,7 +14767,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }
       } else if (msg.kind === 'status') {
         const took = takeStatus(from, msg.s || {}); // null: the same pulse again (the DC copy and the section-gossip copy of one beat)
-        if (msg.conns) setConns(from, msg.conns);
+        if (msg.conns) setConns(from, msg.conns, msg.tc);
         takeNetWords(from, msg);   // nat; FHOP.8/9 nt, cls, ft
         // heartbeat re-gossip: moderation + guest-blur re-converge every tick
         // (signature-verified in admin rooms — takeMod, §9)
@@ -17733,7 +17743,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // my next bootstrap to X takes the relay, whatever an earlier
         // {t:'nosock'} said (a seat that just asked to be dialled is on it).
         // (altPath too: an unanswered offer to the page it replaced rotated this pair onto a sponsor path that cannot reach a seatless returner.)
-        if (from) { relayHeardAt.set(from, Date.now()); if (relayHeardAt.size > 2048) relayHeardAt.clear(); relayNoSock.delete(from); const pf = peers.get(from); if (pf) pf.altPath = false; }
+        if (from) { relayHeardAt.set(from, Date.now()); if (relayHeardAt.size > 2048) relayHeardAt.clear(); relayNoSock.delete(from); relayGone.delete(from); const pf = peers.get(from); if (pf) pf.altPath = false; }
         const take = (held) => rxm(() => net.open(roomE2E, piece).then((inner) => {
           if (!inner && !held && holdForRekey(take)) return; // sealed under the key my re-key is still deriving (rekeyHeld)
           if (!inner) return healStaleFrom(from, piece); // §LOCK: with the pair down, a stale member's frames arrive HERE — the relay path heals too
@@ -17748,6 +17758,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       else if (m.t === 'greeter-gone') {
         // Only the relay's socket gets here, and the relay only says it when a live greeter's socket closed with no unlist first: that greeter's goodbye.
         const p = peers.get(m.peer); if (p) { p.byeSeen = Date.now(); p.byeWhy = 'leave'; }
+        relayGone.set(m.peer, Date.now()); if (relayGone.size > 512) relayGone.delete(relayGone.keys().next().value);
         try { if (meshNode && meshNode.transport) meshNode.transport(m.peer, 'greeter-gone'); } catch (e) {}
       }
       else if (m.t === 'error') {
@@ -23403,6 +23414,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const relayJobs = new Map();    // target + '>' + requester -> { senders }   (as relayer)
     const relayRefusal = new Map(); // target -> { viaPid: refusedAt }
     const connsOf = new Map();      // pid -> [connected pids] (gossiped)
+    const tcOf = new Map();         // pid -> [the pids of connsOf it reaches through TURN] (the same beat's tc)
     const natOf = new Map();        // pid -> its network's kind (natWord), from the same beat
     // claimantsOf: the reverse of connsOf (target -> peers that report a link
     // to it). doorPeers reads it per forwarded frame; a greeter's socket list
@@ -23410,14 +23422,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // door lookup a scan of every socketed peer's links. Both maps change
     // ONLY through these two helpers so they can never disagree.
     const claimantsOf = new Map();
-    function setConns(pid, conns) {
+    function setConns(pid, conns, tc) {
       for (const t of (connsOf.get(pid) || [])) { const c = claimantsOf.get(t); if (c) { c.delete(pid); if (!c.size) claimantsOf.delete(t); } }
       connsOf.set(pid, conns);
+      if (Array.isArray(tc) && tc.length) tcOf.set(pid, tc.filter((x) => typeof x === 'string').slice(0, 16)); else tcOf.delete(pid);
       for (const t of conns) { let c = claimantsOf.get(t); if (!c) claimantsOf.set(t, (c = new Set())); c.add(pid); }
     }
     function forgetConns(pid) {
       for (const t of (connsOf.get(pid) || [])) { const c = claimantsOf.get(t); if (c) { c.delete(pid); if (!c.size) claimantsOf.delete(t); } }
-      connsOf.delete(pid); natOf.delete(pid); netTagOf.delete(pid); clsOf.delete(pid); ftagsOf.delete(pid);
+      connsOf.delete(pid); tcOf.delete(pid); natOf.delete(pid); netTagOf.delete(pid); clsOf.delete(pid); ftagsOf.delete(pid);
     }
     // FHOP.9: a friend carries up to FHOP_CARRY_MAX jobs (all one full row can ask of one mate); it forwards video for as many as
     // its own link class allows (fhVideoBudget: cellular 2, Wi-Fi or unknown 4, wired 8) and the voice only for every job past
@@ -24398,6 +24411,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // the ended one is silent for good (WebKit folds this voice into its one ear by that track).
         const vt = sdView.track, at = stageEarLiveTrack(sound);
         if (!sdViewSt || sdViewSt.getVideoTracks()[0] !== vt || (sdViewSt.getAudioTracks()[0] || null) !== at) sdViewSt = new MediaStream(at ? [vt, at] : [vt]);
+        paintStadiumTile(sdViewSt);
+        return;
+      }
+      // SOUND NEVER DEPENDS ON A PICTURE: a room pack with no face to draw (a one-row room whose pipe is unvouched: its own
+      // cells are hidden, the pipe's part is sound only) still carries the room's ear, and the Stadium tile is its only player.
+      const sndOnly = stageEarLiveTrack(sound);
+      if (sndOnly) {
+        sdEmptyAt = 0;
+        if (sdView) { sdView.stop(); sdView = null; }
+        sdViewSrc = null; avHoldStop();
+        if (!sdViewSt || sdViewSt.getVideoTracks().length || (sdViewSt.getAudioTracks()[0] || null) !== sndOnly) sdViewSt = new MediaStream([sndOnly]);
         paintStadiumTile(sdViewSt);
         return;
       }
@@ -28792,18 +28816,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // A pipe or standby pc whose own channel is open and that holds no slot yet: its first own-channel offer brings one.
     function pipeSlotOwed(p) {
       if (!p || !p.pc || !turnHolds(p.id) || !p.dc || p.dc.readyState !== 'open') return false;
-      try { return !p.pc.getTransceivers().some((t) => t.sender && t.sender.__pipeRes); } catch (e) { return false; }
+      try { return !p.pc.getTransceivers().some((t) => t.sender && t.sender.__pipeSlot); } catch (e) { return false; }   // __pipeSlot outlives the attach (addAux clears __pipeRes)
     }
     function pipeSlotCt(pid) { const jk = 'sdn>' + pid, ct = shipContainers.get(jk) || new MediaStream(); shipContainers.set(jk, ct); return ct; }
     function pipeSlotBirth(p, pc) {
       if (!p || !pc || p.pc !== pc || !pipeSlotOwed(p)) return;   // no own channel yet (the relay bootstrap stays data only), or the pc has its slot
       const ct = pipeSlotCt(p.id);
-      try { const t = pc.addTransceiver('audio', { direction: 'sendrecv', streams: [ct], sendEncodings: [{ maxBitrate: AUX_AUDIO_BPS }] }); t.sender.__pipeRes = ct; t.sender._auxKind = 'audio'; auxSenders.add(t.sender); } catch (e) {}
+      try { const t = pc.addTransceiver('audio', { direction: 'sendrecv', streams: [ct], sendEncodings: [{ maxBitrate: AUX_AUDIO_BPS }] }); t.sender.__pipeRes = ct; t.sender.__pipeSlot = true; t.sender._auxKind = 'audio'; auxSenders.add(t.sender); } catch (e) {}
     }
     function pipeSlotAdopt(pc, p) {
       if (!p || !pc || !turnHolds(p.id)) return;
       let trs = []; try { trs = pc.getTransceivers(); } catch (e) { return; }
-      if (trs.some((t) => t.sender && t.sender.__pipeRes)) return;   // the pc has its slot
+      if (trs.some((t) => t.sender && t.sender.__pipeSlot)) return;   // the pc has its slot (used or not)
       const sdp = (pc.remoteDescription && pc.remoteDescription.sdp) || '';
       const sendrecv = (mid) => { const sec = sdp.split(/\r?\nm=/).find((x) => new RegExp('\\r?\\na=mid:' + mid + '\\r?(\\n|$)').test('\n' + x)); return !!sec && /\na=sendrecv/.test('\n' + sec); };
       for (const t of trs) {
@@ -28811,7 +28835,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!t.receiver || !t.receiver.track || t.receiver.track.kind !== 'audio' || !sendrecv(t.mid)) continue;
         if (typeof t.sender.setStreams !== 'function') return;   // no way to name the slot's stream: the mix takes an m-line of its own
         const ct = pipeSlotCt(p.id);
-        try { t.direction = 'sendrecv'; t.sender.setStreams(ct); t.sender.__pipeRes = ct; t.sender._auxKind = 'audio'; auxSenders.add(t.sender); } catch (e) {}
+        try { t.direction = 'sendrecv'; t.sender.setStreams(ct); t.sender.__pipeRes = ct; t.sender.__pipeSlot = true; t.sender._auxKind = 'audio'; auxSenders.add(t.sender); } catch (e) {}
         return;
       }
     }
