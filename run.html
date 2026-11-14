@@ -21750,7 +21750,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // down, and a deeper seat would crop them with the old order.
         const stripReorder = m.key === 'sgs' && !!prevAnn && !annNew
           && ((prevAnn.ids || []).join(',') !== (annIds || []).join(',') || prevAnn.n !== m.n || prevAnn.cols !== m.cols);
-        mosAnn.set(ak, { streamId: m.streamId, col: m.col, row: m.row, src: (m.src ? String(m.src).slice(0, 64) : undefined), n: m.n, cols: m.cols, mt: m.mt, h: (typeof m.h === 'number' ? m.h : undefined), ao: (m.ao === 1 ? 1 : undefined), sb: (m.sb === 1 ? 1 : undefined), vp: mxPath(m.vp), ids: annIds, alag: (typeof m.alag === 'number' && isFinite(m.alag) ? Math.max(0, Math.min(2000, m.alag)) : undefined), at: Date.now() });
+        mosAnn.set(ak, { streamId: m.streamId, col: m.col, row: m.row, src: (m.src ? String(m.src).slice(0, 64) : undefined), n: m.n, cols: m.cols, mt: m.mt, h: (typeof m.h === 'number' ? m.h : undefined), ao: (m.ao === 1 ? 1 : undefined), sb: (m.sb === 1 ? 1 : undefined), vp: mxPath(m.vp), l14: (m.l14 === 1 ? 1 : undefined), via: (typeof m.via === 'string' ? m.via.slice(0, 64) : undefined), pipe: (m.pipe === 1 ? 1 : undefined), pv: (m.pv === 1 ? 1 : undefined), ids: annIds, alag: (typeof m.alag === 'number' && isFinite(m.alag) ? Math.max(0, Math.min(2000, m.alag)) : undefined), at: Date.now() });
         if (m.key.indexOf('stg:') === 0 && isPipePeer(p.id)) pipeStg.set(m.key.slice(4).split('^')[0], p.id);   // SUB.4: this stager is on that pipe's side
         if (annNew || stripReorder) schedReconcile(); else schedClaim();
       } else if (m.k === 'mx-beat') {
@@ -26211,7 +26211,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // the row+column fabric, two link-disjoint paths. Structural relay slots
     // (sub/x1/x2) keep the plain single sticky claim.
     const isRedun = (rk) => rk === 'sdm' || rk === 'sdx' || rk === 'sdn' || rk === 'sgs' || rk.indexOf('stg:') === 0 || rk.indexOf('sdrow:') === 0;
-    const annMeta = (ann) => { const m = { col: ann.col, row: ann.row, n: ann.n, cols: ann.cols, mt: ann.mt, h: ann.h, ids: ann.ids, ao: ann.ao, sb: ann.sb, vp: ann.vp, alag: ann.alag }; if (ann.src) m.src = String(ann.src).slice(0, 64); return m; };
+    const annMeta = (ann) => { const m = { col: ann.col, row: ann.row, n: ann.n, cols: ann.cols, mt: ann.mt, h: ann.h, ids: ann.ids, ao: ann.ao, sb: ann.sb, vp: ann.vp, alag: ann.alag, l14: ann.l14, via: ann.via, pipe: ann.pipe, pv: ann.pv }; if (ann.src) m.src = String(ann.src).slice(0, 64); return m; };
     // The strip's CELL ORDER (STAGE-FACES): who sits in cell 0..n-1, as the
     // compositing seat packed it. At most C peer ids, each a short string;
     // anything else is dropped, and a receiver without it falls back to the
@@ -28011,6 +28011,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // and mine, cell for cell), received from above deeper down.
           let roomV = null, roomEl = null, roomMeta = null;
           const dn = c.pc === 0 ? null : mosIn.get('sdn');
+          // SUB.4: the pipes of my row-mates (Section-1 seats that are not the head): each mate relays its pipe's product to me
+          // marked {pipe, pv}, and I build that pipe's send (the sound and, while vouched, the pack without its block) as for
+          // my own pipes; the mate hands it on ('sdxu').
+          const matePipes = [];
+          for (const [mk, uf] of mosIn) { if (mk.indexOf('subu:') !== 0 || !uf || !uf.meta || uf.meta.pipe !== 1) continue; const h = mk.slice(5); if (uf.via !== h && rowMatePid(uf.via) && pipes.indexOf(h) < 0) matePipes.push(h); }
+          const pipeKids = pipes.concat(matePipes);
+          const kidVideo = (h) => (pipes.indexOf(h) >= 0 ? pipeVideo(h) : ((mosIn.get('subu:' + h) || {}).meta || {}).pv === 1);
           if (c.pc === 0) {
             // One fill for the room pack and for each pipe's pack: the same parts, a pipe's pack leaving that pipe's own block out
             // (SUB.4 split horizon: a part is left out, never taken away).
@@ -28037,9 +28044,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             fillRoom(roomPack, null);
             if (roomPack.count() > 0) { roomEl = roomPack.canvas; roomMeta = packMeta(roomPack); roomV = packLoopTrack(roomPack.track) || roomPack.track; }
             // A pipe that carries no video (unvouched, TURN.11-13) gets no picture composited for it at all.
-            pipePacksStop((h) => pipes.indexOf(h) >= 0 && pipeVideo(h));
-            for (const h of pipes) {
-              if (!pipeVideo(h)) continue;
+            pipePacksStop((h) => pipeKids.indexOf(h) >= 0 && kidVideo(h));
+            for (const h of pipeKids) {
+              if (!kidVideo(h)) continue;
               let pk = pipePacks.get(h);
               if (!pk) { pk = MM.createPacker({ shape: 'stad', fps: compFps() }).start(); pipePacks.set(h, pk); }
               fillRoom(pk, h);
@@ -28137,8 +28144,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             const jk = st ? shipMos('sdn', h, st, pv ? Object.assign(packMeta(pk), { alag: 0 }) : { n: 0, cols: 0, alag: 0 }) : null; if (jk) wanted.add(jk);
           }
           if (roomV) for (const [mk, uf] of mosIn) {
-            if (mk.indexOf('subu:') !== 0) continue; const h = mk.slice(5); if (l14Heads.includes(h) || !uf || uf.via === h || !rowMatePid(uf.via)) continue;
+            if (mk.indexOf('subu:') !== 0) continue; const h = mk.slice(5); if (l14Heads.includes(h) || matePipes.indexOf(h) >= 0 || !uf || uf.via === h || !rowMatePid(uf.via)) continue;
             const jr = shipMos('sdxu', uf.via, avOf('r' + h, mixOf(true, 'u' + h)), Object.assign({ via: h }, roomMeta)); if (jr) wanted.add(jr);
+          }
+          // A mate's pipe: its sound with or without a picture, the picture only while that pipe is vouched (its own pack).
+          for (const h of matePipes) {
+            const uf = mosIn.get('subu:' + h); foldsNow.add('r' + h); const fh = fold('r' + h, mixOf(true, 'u' + h));
+            const pk = kidVideo(h) ? pipePacks.get(h) : null, pv = pk && pk.count() > 0 ? pk.track : null;
+            const st = downStream('r' + h, pv, fh ? fh.track() : null);
+            const jr = st ? shipMos('sdxu', uf.via, st, Object.assign({ via: h }, pv ? packMeta(pk) : { n: 0, cols: 0 }, { alag: 0 })) : null; if (jr) wanted.add(jr);
           }
           for (const [k, f] of [...downFolds]) if (!foldsNow.has(k)) { f.clear(); downFolds.delete(k); downStreams.delete(k); }
           // MY OWN STADIUM: the room's picture less my row, and my ear. The heir
@@ -28171,7 +28185,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // to my head as sdrow:q. Meta {n, cols} is FORWARDED so the far end
         // can unpack faces.
         const headPid = rowHeadPid(c); // the head, or the heir while the head's feed is gone
-        for (const [mk, uf] of mosIn) { if (mk.indexOf('subu:') !== 0) continue; const ju = shipMos('sub', headPid, uf.stream, Object.assign({ l14: 1, via: mk.slice(5) }, blockMeta(uf)), mk); if (ju) wanted.add(ju); } // L14: a branch I serve, into my row's product
+        for (const [mk, uf] of mosIn) { if (mk.indexOf('subu:') !== 0) continue; const bh = mk.slice(5), pm = pipes.indexOf(bh) >= 0 ? { pipe: 1, pv: pipeVideo(bh) ? 1 : 0 } : {}; const ju = shipMos('sub', headPid, uf.stream, Object.assign({ l14: 1, via: bh }, pm, blockMeta(uf)), mk); if (ju) wanted.add(ju); } // L14: a branch I serve, into my row's product (SUB.4: a pipe says so, and whether it carries video)
         if (beyondRow) {
           const packMetaM = (pk) => ({ n: pk.count(), cols: pk.cols() });
           // A branch I serve gets my head's pack as it came (the same encoded picture, its own sound), handed down as is.
@@ -28588,13 +28602,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // deterministic. With it set, only the widened pull can reach a holder.
     let sgaIsolated = false;
     // SUB.3/SUB.4: MY PIPES. A pipe joins my subroom to another one; its far end is one more child of mine (mutual owners)
-    // and holds no cell of my room. Only a Section-1 row head ends a pipe (an end that stops being one gives it up), so a
-    // pipe counts here only while I sit at a Section-1 head cell: there I hold the room's parts unpacked (the other rows'
-    // products, my row's faces and child blocks, every stager's own feed) and can leave the pipe's own part out of what
-    // I send it. A warm standby (SUB.7) is no pipe until it takes over: nothing media rides it.
+    // and holds no cell of my room. A pipe ends on a Section-1 seat (an end that leaves Section 1 gives it up). A row head
+    // holds the room's parts unpacked (the other rows' products, my row's faces and child blocks) and leaves the pipe's own
+    // part out of what it sends it; another Section-1 seat serves its pipe as a branch its head builds for (the L14 relay:
+    // 'sub' {l14, via, pipe} up, 'sdxu' down). Every Section-1 seat holds every stager's own feed. A warm standby (SUB.7) is
+    // no pipe until it takes over: nothing media rides it.
     function pipePeers() {
       if (!turnLinks || typeof turnLinks.pipeEnds !== 'function') return [];
-      const c = meshCoord(); if (!c || c.pc !== 0 || c.i !== 0) return [];
+      const c = meshCoord(); if (!c || c.pc !== 0) return [];
       const out = [];
       for (const e of turnLinks.pipeEnds()) { if (!e || !e.up || e.standby || e.peer === myId || out.indexOf(e.peer) >= 0) continue; const q = peers.get(e.peer); if (q && q.connected) out.push(e.peer); }
       return out.sort();
