@@ -2555,7 +2555,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // moment it lands and refused: nothing opens a device after Leave.
     const capTracks = new Set();
     let capClosed = false;
-    function capNote(t) { if (t && t.kind && t.readyState !== 'ended') capTracks.add(t); return t; }
+    // The tracks the last releaseAllCapture() stopped, kept so the page can
+    // still show that each one ended after localStream is dropped. A device
+    // opened again starts a new record.
+    let capReleased = [];
+    function capNote(t) { if (t && t.kind && t.readyState !== 'ended') { capTracks.add(t); capReleased = []; } return t; }
     function capClone(t) {
       const c = t.clone();
       if (capTracks.has(t)) { if (capClosed) { try { c.stop(); } catch (e) {} } else capNote(c); }
@@ -36545,10 +36549,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (end) capClosed = true;
       try { if (typeof stopBlurPipe === 'function') { stopBlurPipe(); withScrPipe(stopBlurPipe); } } catch (e) {}
       try { if (typeof stopLobbyPreview === 'function') stopLobbyPreview(); } catch (e) {}
-      try { if (screenStream) { const s = screenStream; screenStream = null; for (const t of s.getTracks()) { try { t.onended = null; t.stop(); } catch (e2) {} } } } catch (e) {}
-      try { if (localStream) { const s = localStream; localStream = null; for (const t of s.getTracks()) { try { t.stop(); } catch (e2) {} } } } catch (e) {}
-      for (const t of Array.from(capTracks)) { try { t.stop(); } catch (e) {} }
+      const released = new Set();
+      try { if (screenStream) { const s = screenStream; screenStream = null; for (const t of s.getTracks()) { released.add(t); try { t.onended = null; t.stop(); } catch (e2) {} } } } catch (e) {}
+      try { if (localStream) { const s = localStream; localStream = null; for (const t of s.getTracks()) { released.add(t); try { t.stop(); } catch (e2) {} } } } catch (e) {}
+      for (const t of Array.from(capTracks)) { released.add(t); try { t.stop(); } catch (e) {} }
       capTracks.clear();
+      capReleased = Array.from(released);
       myStatus.camOff = true; myStatus.muted = true;
     }
     function releaseAudioContext() {
@@ -40049,6 +40055,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const grab = (stream, where) => { if (!stream || !stream.getTracks) return; for (const t of stream.getTracks()) tracks.push({ where: where, kind: t.kind, en: !!t.enabled, rs: t.readyState }); };
         grab(localStream, 'local');
         try { grab(screenStream, 'screen'); } catch (e) {}
+        // After an end localStream is gone: the tracks it stopped still count.
+        for (const t of capReleased) tracks.push({ where: 'released', kind: t.kind, en: !!t.enabled, rs: t.readyState });
         return { held: !!outgoingHeld, leaving: !!leaving, lv: myStatus.lv || 0, mic: !myStatus.muted, cam: !myStatus.camOff, scr: myStatus.scr || 0, senders: senders, tracks: tracks };
       },
       reclaimForTest: () => {
