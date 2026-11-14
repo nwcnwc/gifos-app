@@ -107,6 +107,7 @@
         if (m.knock) { h.knock = true; this.f.fabricDialJoin(id, m.from); h.mass = this.l13On() && this.l13Mass(); }   // L13.25
         for (const [bk, bv] of this.byeAt) { if (ckPc(bk) !== 0 || this.occGet(bk) >= 0 || TICK - bv > K.LEASE_T) continue; h.byes.push(bk); if (h.byes.length >= C * C) break; }   // L1.5
         if (!this.l31Door(m, h)) this.emit(m.from, h);
+        if (this.coord.pc !== 0 && m.from >= 0 && m.from !== id && this.t14Deep() && !this.f.fabricTurnPc(id, m.from) && !this.f.fabricTurnBoth(id, m.from)) this.l16161Carry(m.from);   // TURN.14.18: a deep end is its side's whole door: it serves the asker's FIND in the tick of its HOME
         return;
       }
       const fwd = (x) => { if (x >= 0 && x !== id && x !== m.via) { const w = newMsg('WHOHOME'); w.from = m.from; w.via = id; w.ttl = m.ttl - 1; w.knock = m.knock; this.emit(x, w); return true; } return false; };
@@ -126,10 +127,13 @@
     l1616Answer() {
       const TICK = this.TICK, id = this.id;
       const v = []; for (const [k, t] of this.whAsk) if ((TICK | 0) - t <= K.ISLAND_WAIT) v.push(k); this.whAsk.clear();
+      if (this.t14Deep()) this.doorCall(id, -1);   // TURN.14.18: the askers I kept are my side: I stand at their door before I answer (onWhoHome carries each one's FIND)
       const t19 = this.coord.pc === 0 && this.f.fabricTurnAcross(id);   // L16.16.1 (C++ mesh_seat.inc)
       for (const x of v) { this.trace('L16.16-ANSWER', id, this.coord, 'to=%d', x); const w = newMsg('WHOHOME'); w.from = x; w.ttl = K.WHOHOME_HOPS; this.onWhoHome(w);
-        if (t19) { this.trace('L16.16.1-CARRY', id, this.coord, 'nc=%d', x); const f = newMsg('FIND'); f.nc = x; f.from = x; f.ttl = K.FIND_TTL; f.sgw = id; f.sgwCk = ckey(this.coord) + 1; this.farLearn(f); this.onFind(f); } }
+        if (t19) this.l16161Carry(x); }
     },
+    // C++: mesh_seat.inc:Seat::l16161Carry
+    l16161Carry(x) { const id = this.id; this.trace('L16.16.1-CARRY', id, this.coord, 'nc=%d', x); const f = newMsg('FIND'); f.nc = x; f.from = x; f.ttl = K.FIND_TTL; f.sgw = id; f.sgwCk = ckey(this.coord) + 1; this.farLearn(f); this.onFind(f); },
 
     // C++: mesh_seat.inc:Seat::onHome
     onHome(m) {

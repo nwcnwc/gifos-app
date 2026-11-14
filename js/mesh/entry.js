@@ -255,6 +255,7 @@
       const t14s = this.coord.pc === 0 && mm.tag !== 1 && mm.t14 > 0 && mm.from === id;   /* TURN.14.11: an ask of my side that I stopped at my TURN pc */
       const t14 = t14s || (t14x && !this.f.fabricTurnPc(id, mm.nc) && (this.linkIs(mm, mm.nc) || this.f.fabricTurnMine(id, mm.nc)) && !this.f.fabricTurnBoth(id, mm.nc));   /* TURN.14.1: a seeker on my side of the link sits under me */
       if (t14) this.trace('TURN14-UNDER', id, this.coord, 'nc=%d', mm.nc);
+      const t14p = mm.tag !== 1 && this.f.fabricTurnPc(id, mm.nc);   /* TURN.14.18: the seeker is the far end of my TURN link: with no Section-1 cell for it, it sits under me */
       if (this.coord.pc === 0 && !dkDeep && !t14) {
         if (this.serveFindS1(mm, skip)) return;
       }
@@ -264,13 +265,13 @@
       }
       const f = this.firstFreeInRoster();
       if (f) {
-        if (this.w.lv.TIERS_ACTIVE && !t14 && this.l4Hop(mm, f)) return;   // L4.2 (TURN.14.1: L4.2's hop goes to a row-mate, and mine sit across the link)
+        if (this.w.lv.TIERS_ACTIVE && !t14 && !t14p && this.l4Hop(mm, f)) return;   // L4.2 (TURN.14.1: L4.2's hop goes to a row-mate, and mine sit across the link)
         // Phantom occ on the admitted cell: clear it first-hand.
         { const fk = ckey(f); if (this.occIsPhantom(fk)) { this.occDrop(fk, 'phantomclr-deep'); this.live.delete(fk); this.s1seen.delete(fk); this.kidful.delete(fk); this.tlForget(fk); } }
         this.w.ADMIT_SITE = 'deep-firstFree'; this.admit(f, mm); return;
       }
       if (this.holdFind(mm, true)) return;   // L7.5
-      if (!t14 && this.serveFindSpread(mm, skip.v)) return;   // L7.5 SPREAD HOP (TURN.14.1: not to my rook neighbours across the link)
+      if (!t14 && !t14p && this.serveFindSpread(mm, skip.v)) return;   // L7.5 SPREAD HOP (TURN.14.1: not to my rook neighbours across the link; TURN.14.18: nor my link's far end, which reaches none of them)
       this.serveFindDescend(mm);
     },
 

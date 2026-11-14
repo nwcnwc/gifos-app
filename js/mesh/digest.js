@@ -195,6 +195,8 @@
     },
     // C++: mesh_seat.inc:Seat::t1415Far
     t1415Far(x) { const it = this.t1415.get(x); return it !== undefined && it[0] >= 0 && this.line >= 0 && it[0] === this.line && this.TICK - it[1][0] <= K.RELAY_TTL && this.hasCoord && this.state === 3 && this.f.fabricTurnOpener(this.id, x); },
+    // C++: mesh_seat.inc:Seat::t14Deep   (TURN.14.18: I am the end of a TURN link, my ring lies across it by my peer's word, and I sit below Section 1)
+    t14Deep() { return this.hasCoord && this.state === 3 && this.coord.pc !== 0 && this.f.fabricTurnOn() && this.t1415Across(); },
     // C++: mesh_seat.inc:Seat::t1415Across
     t1415Across() { for (const x of this.t1415.keys()) if (this.t1415Far(x)) return true; return false; },
     // C++: mesh_seat.inc:Seat::t1415Ring
@@ -210,7 +212,8 @@
     // C++: mesh_seat.inc:Seat::t1415Beat
     t1415Beat() {
       const id = this.id;
-      if (!this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return;
+      if (!this.hasCoord || this.state !== 3 || (this.coord.pc !== 0 && !this.t14Deep())) return;
+      if (this.coord.pc !== 0) this.doorCall(id, -1);   // TURN.14.18: a deep end stands at its side's door while its ring lies across its link
       const tp = Array.from(this.t1415.keys());
       for (const x of tp) { if (!this.f.fabricTurnPc(id, x)) { this.t1415.delete(x); continue; } const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = id; this.emit(x, h); }
       if (!this.t1415Across()) return;

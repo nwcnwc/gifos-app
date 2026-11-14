@@ -3684,14 +3684,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         .catch(() => {}).finally(() => { netTagBusy = false; });
     }
     const netTagOf = new Map(), clsOf = new Map(), ftagsOf = new Map();   // pid -> its beat's nt, cls, ft
+    // TURN.7: which of my connections run through a TURN link, said in the same beat as `conns`. A page that reads "r is connected
+    // to x" must know whether r reaches x itself: a connection through TURN heals no other link away.
+    const tconnsOf = new Map();   // pid -> [pids its connection to runs through a TURN link]
+    const myTurnConns = () => { try { return turnLinks ? myConns().filter((r) => turnLinks.isLink(r)) : []; } catch (e) { return []; } };
     function myFtags() { const ft = []; for (const r of myConns()) { const t = netTagOf.get(r); if (t && ft.indexOf(t) < 0) { ft.push(t); if (ft.length >= GifOS.meshConsts.consts.FH_FTAGS) break; } } return ft.sort(); }
     function takeNetWords(from, msg) {
       if (Number.isInteger(msg.nat)) natOf.set(from, msg.nat);
       if (typeof msg.nt === 'string' && /^[0-9a-f]{8}$/.test(msg.nt)) netTagOf.set(from, msg.nt);
       if (Number.isInteger(msg.cls) && msg.cls >= 0 && msg.cls <= 3) clsOf.set(from, msg.cls);
       if (Array.isArray(msg.ft)) ftagsOf.set(from, msg.ft.slice(0, GifOS.meshConsts.consts.FH_FTAGS).filter((t) => typeof t === 'string' && /^[0-9a-f]{8}$/.test(t)));
+      if (msg.conns) tconnsOf.set(from, Array.isArray(msg.tc) ? msg.tc.filter((t) => typeof t === 'string' && t.length <= 64).slice(0, 16) : []);   // in step with conns
     }
-    const statusPayload = () => { refreshNetTag(); const ft = myFtags(), c = linkCls(); return { kind: 'status', s: myStatus, conns: myConns(), nat: natWord(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined, nt: netTagNow || undefined, cls: c || undefined, ft: ft.length ? ft : undefined }; };
+    const statusPayload = () => { refreshNetTag(); const ft = myFtags(), c = linkCls(); const tc = myTurnConns(); return { kind: 'status', s: myStatus, conns: myConns(), tc: tc.length ? tc : undefined, nat: natWord(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined, nt: netTagNow || undefined, cls: c || undefined, ft: ft.length ? ft : undefined }; };
     function broadcastStatus(answer) {
       if (!GifOS.meshConsts) return;   // a published lobby whose meeting scripts are still arriving: nobody to tell yet
       if (pulseHalt && !answer) return; // the halt models a throttled clock; an answer to a newcomer is driven by its frame, not the clock
@@ -13036,9 +13041,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (sd.track !== t) sd.__turnOrig(t).catch(() => {});
       }
     }
-    // A friend reaches pid without TURN (TURN.3, TURN.7): friend-hop's own test (meshNode's fhop.friendFor).
+    // A friend reaches pid without TURN (TURN.3, TURN.7): a page I reach myself that reaches pid itself. Its connection to pid
+    // through a TURN link of its own is no such reach (the sim's turnFriend: the friend reaches both ends without TURN): two
+    // links to one far end healed each other away, and the seats behind them were left under owners they could not dial.
     function turnFriend(pid) {
-      const c = myConns().filter((r) => r !== pid && !(turnLinks && turnLinks.isLink(r)) && (connsOf.get(r) || []).includes(pid)).sort();
+      const c = myConns().filter((r) => r !== pid && !(turnLinks && turnLinks.isLink(r)) && (connsOf.get(r) || []).includes(pid) && !(tconnsOf.get(r) || []).includes(pid)).sort();
       const fp = c.length ? peers.get(c[0]) : null;
       return !!(fp && fp.dc && fp.dc.readyState === 'open');
     }
@@ -13876,7 +13883,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // makes the offer at some doors and the answer at the others. On an offer the far end's gate reads the word (an
     // unseated dialler is not a stale member); on either, a seated far end starts that door's clock (onRelayPeer).
     const doorWord = () => { const ms = meshSeat(); return ms && ms.hasCoord && ms.state === 3 && ms.seatTick - ms.seatedAt > 40 ? 0 : 1; };
-    const sigMeta = () => ({ name: myName(), ip: myIp, st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), sid: mySid() });
+    const sigMeta = () => { const tc = myTurnConns(); return { name: myName(), ip: myIp, st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), tc: tc.length ? tc : undefined, sid: mySid() }; };
     // THE RULES THAT REBUILD BEFORE AN OFFER LANDS, first match wins. After a rebuild none of the later ones can
     // hold: a fresh pc has no death, no remote description, no connection and no media.
     const offerFpOf = (sdp) => { const m = /\r?\na=fingerprint:([^\r\n]+)/.exec(String(sdp && sdp.sdp || sdp || '')); return m ? m[1] : ''; };
@@ -23195,7 +23202,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function forgetConns(pid) {
       for (const t of (connsOf.get(pid) || [])) { const c = claimantsOf.get(t); if (c) { c.delete(pid); if (!c.size) claimantsOf.delete(t); } }
-      connsOf.delete(pid); natOf.delete(pid); netTagOf.delete(pid); clsOf.delete(pid); ftagsOf.delete(pid);
+      connsOf.delete(pid); tconnsOf.delete(pid); natOf.delete(pid); netTagOf.delete(pid); clsOf.delete(pid); ftagsOf.delete(pid);
     }
     // FHOP.9: a friend carries up to FHOP_CARRY_MAX jobs (all one full row can ask of one mate); it forwards video for as many as
     // its own link class allows (fhVideoBudget: cellular 2, Wi-Fi or unknown 4, wired 8) and the voice only for every job past

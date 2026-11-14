@@ -288,6 +288,7 @@
       { if (!this.hasCoord || this.state !== 3) this.l917Ck = 0; else if (ckey(this.coord) !== this.l917Ck) { this.l917Ck = ckey(this.coord); this.l917At = TICK; } }   // L9.17
       this.l4Tick();    // L4.3: a tier swap of my row
       this.up2Tick();   // L2: judge E1, hold E2
+      if ((TICK + id) % K.HELLO_BACK === 0 && this.f.fabricTurnOn()) this.t1415Beat();   // TURN.14.18: a deep end of a link whose ring lies across it (no-op for every other deep seat)
       this.l10Early();
       if (TICK - this.lastPhone >= 8) { this.lastPhone = TICK; this.rollup(); this.phoneHome(); { this.l10UpSig = this.l10UpNow(); this.l10Spend(); this.l10Carried(); } }   // § G
       this.tlSweep();   // D5
