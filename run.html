@@ -9278,9 +9278,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const track = stream.getAudioTracks()[0];
       if (!track) return;
       const old = meters.get(id);
-      if (old) { try { old.src.disconnect(); } catch (e) {} try { if (old.an) old.an.disconnect(); } catch (e) {} }
+      if (old) { { const M = (typeof GifOS !== 'undefined' && GifOS.meshMedia && GifOS.meshMedia.trackSource ? GifOS.meshMedia : null); if (M) M.dropTrackSource(old.src); else try { old.src.disconnect(); } catch (e) {} } try { if (old.an) old.an.disconnect(); } catch (e) {} }   // a dropped node stops pulling (meshMedia trackSource)
       try {
-        const src = ac.createMediaStreamSource(new MediaStream([track]));
+        const src = (typeof GifOS !== 'undefined' && GifOS.meshMedia && GifOS.meshMedia.trackSource ? GifOS.meshMedia : null) ? GifOS.meshMedia.trackSource(ac, track) : ac.createMediaStreamSource(new MediaStream([track]));
         const an = ac.createAnalyser(); an.fftSize = 256;
         src.connect(an);
         meters.set(id, { an, src, data: new Uint8Array(an.fftSize) });
@@ -26137,8 +26137,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // SAME id (claimRedun re-binds the claim in place), and a meter left on the ended object reads 0 for a mix that plays.
       if (!slot.an || slot.track !== track) {
         try {
-          if (slot.src) slot.src.disconnect();
-          const src = ac.createMediaStreamSource(new MediaStream([track]));
+          if (slot.src) { const M = (typeof GifOS !== 'undefined' && GifOS.meshMedia && GifOS.meshMedia.trackSource ? GifOS.meshMedia : null); if (M) M.dropTrackSource(slot.src); else slot.src.disconnect(); }   // a dropped node stops pulling (meshMedia trackSource)
+          const src = (typeof GifOS !== 'undefined' && GifOS.meshMedia && GifOS.meshMedia.trackSource ? GifOS.meshMedia : null) ? GifOS.meshMedia.trackSource(ac, track) : ac.createMediaStreamSource(new MediaStream([track]));
           const an = ac.createAnalyser(); an.fftSize = 256; src.connect(an);
           slot.an = an; slot.src = src; slot.data = new Uint8Array(an.fftSize); slot.track = track;
         } catch (e) { return -1; }

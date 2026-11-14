@@ -896,6 +896,19 @@
     for (let i = 0; i < list.length; i++) { const t = list[i]; if (t && typeof t === 'object') retiredAudio.add(t); }
   }
   function trackDead(t) { return !t || t.readyState === 'ended' || retiredAudio.has(t); }
+  // A source node on its own clone of the track; dropTrackSource disconnects it and stops the clone (createAudioFold says why).
+  function trackSource(ac, track) {
+    let tc = track;
+    try { if (track && typeof track.clone === 'function') tc = track.clone(); } catch (e) { tc = track; }
+    const src = ac.createMediaStreamSource(new MediaStream([tc]));
+    src.__own = tc !== track ? tc : null;
+    return src;
+  }
+  function dropTrackSource(src) {
+    if (!src) return;
+    try { src.disconnect(); } catch (e) {}
+    try { if (src.__own) src.__own.stop(); } catch (e) {}
+  }
   function createAudioFold(ac) {
     const dest = ac.createMediaStreamDestination();
     // One tap on everything the fold sends to its destination, made once. A level read takes samples from it and
@@ -943,11 +956,18 @@
       }
       return last;
     }
+    // ONE PULLER PER NODE, AND A DROPPED NODE STOPS PULLING. A MediaStreamAudioSourceNode is not freed by disconnect: it keeps
+    // pulling its track for the life of the context. A fold that bound a fresh node for the same track (an unmute after a
+    // pipe's ICE restart on a credential renewal, a reseat) left the old node pulling beside it, and two pullers of one
+    // remote track split its frames between them: every mix that summed that track turned to static for the rest of the
+    // meeting (pk42: the far office's sound at A's pipe end, 34 dB -> 16-22 dB from the renewal on, the wire clean).
+    // Each node reads its own clone of the track, and dropping the node stops that clone.
     function bindSource(rec) {
-      const src = ac.createMediaStreamSource(new MediaStream([rec.track]));
+      const src = trackSource(ac, rec.track);
       src.connect(rec.gain);
       return src;
     }
+    const dropSource = dropTrackSource;
     function attach(key, stream, gain) {
       if (srcs.has(key)) return true;
       const t = liveAudioTrack(stream);
@@ -963,8 +983,8 @@
         rec.onUnmute = () => {
           const cur = srcs.get(key);
           if (!cur || cur.track !== t) return;
-          try { if (cur.src) cur.src.disconnect(); } catch (e) {}
-          try { cur.src = bindSource(cur); } catch (e) {}
+          const was = cur.src;
+          try { cur.src = bindSource(cur); dropSource(was); } catch (e) {}
         };
         try { t.addEventListener('unmute', rec.onUnmute); } catch (e) {}
         return true;
@@ -1009,7 +1029,7 @@
         if (s.onUnmute && s.track) { try { s.track.removeEventListener('unmute', s.onUnmute); } catch (e) {} }
         // Separate tries: a source that will not disconnect must not leave its
         // gain on the bus. The key would be gone and the sound would stay.
-        try { if (s.src) s.src.disconnect(); } catch (e) {}
+        dropSource(s.src);
         try { s.gain.disconnect(); } catch (e) {}
         srcs.delete(key);
       },
@@ -1029,7 +1049,7 @@
         let next = null;
         try { next = bindSource(s); }
         catch (e) { s.track = prev; return false; }
-        try { if (s.src) s.src.disconnect(); } catch (e) {}
+        dropSource(s.src);
         s.src = next;
         if (t !== prev && s.onUnmute) {
           if (prev) { try { prev.removeEventListener('unmute', s.onUnmute); } catch (e) {} }
@@ -1165,5 +1185,5 @@
     return pl;
   }
 
-  GifOS.meshMedia = { workerClock, createBgClock, coverBox, fitBox, createAudioFold, packGrid, stadiumGrid, stadiumTiny, cellSize, faceSrcRect, cellCrop, createPacker, retireAudioTracks, foldOfTrack, createFoldPlayer };
+  GifOS.meshMedia = { workerClock, createBgClock, coverBox, fitBox, createAudioFold, trackSource, dropTrackSource, packGrid, stadiumGrid, stadiumTiny, cellSize, faceSrcRect, cellCrop, createPacker, retireAudioTracks, foldOfTrack, createFoldPlayer };
 })(typeof window !== 'undefined' ? window : globalThis);
