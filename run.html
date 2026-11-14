@@ -10230,10 +10230,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // mate's direct tile stays BLACK until a full transport rebuild.
         // Attach the missing senders on the LIVE pc (fresh m-lines, one
         // renegotiation) instead of leaving the link cameraless.
-        if (cam && localStream && p.pc && !p.headless && (!p.mainV || !p.mainA)) {
+        if (cam && localStream && p.pc && !p.headless && (!p.mainV || (!p.mainA && micPeer(p.id)))) {
           let added = false;
           try {
-            if (!p.mainA && at) { p.mainA = typeof addMainTrack === 'function' ? addMainTrack(p.pc, at, localStream) : p.pc.addTrack(at, localStream); added = true; }
+            if (!p.mainA && at && micPeer(p.id)) { p.mainA = typeof addMainTrack === 'function' ? addMainTrack(p.pc, at, localStream) : p.pc.addTrack(at, localStream); added = true; }
             if (!p.mainV && vt) { p.mainV = typeof addMainTrack === 'function' ? addMainTrack(p.pc, vt, localStream) : p.pc.addTrack(vt, localStream); added = true; }
           } catch (e) {}
           if (added) { if (p.dc && p.dc.readyState === 'open') compKick(p.id); else renegotiate(p); }
@@ -10251,7 +10251,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (p.mainA) {
           // my mic goes to row-mates only, like my camera (camPeer): a pipe's side hears me in its mix, so a main audio sender a
           // late camera grant put on a pipe's pc (attachLocalTracks) carried my voice a second time
-          if (voiceStaged || seatSelfLeased() || !camPeer(p.id)) { if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
+          if (voiceStaged || seatSelfLeased() || !micPeer(p.id)) { if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
           else if (at && p.mainA.track !== at) p.mainA.replaceTrack(at).catch(() => {});
         }
       }
@@ -10784,7 +10784,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // TURN.13: on a TURN link whose server throttles, video takes the step the link's measured capacity leaves
           // (js/meet-turn.js throttlePlan): a lower cap, then a smaller picture, then fewer frames (the pause is the gate).
           const tst = turnLinks ? turnLinks.videoStep(p.id) : null;
-          if (tst) want = Math.min(want, tst.maxBitrate);
+          // the step is the LINK's: the pictures on its pc (a pipe's composite and my camera) share it
+          if (tst) { let nv = 0; for (const x of p.pc.getSenders()) if (x.track && x.track.kind === 'video') nv++; want = Math.min(want, Math.round(tst.maxBitrate / Math.max(1, nv))); }
           const wantScale = tst ? tst.scale : (turnScaled.has(sender) ? 1 : null), wantFps = tst ? tst.fps : null;
           const enc0 = prm.encodings[0];
           const stepSame = wantScale == null || ((enc0.scaleResolutionDownBy || 1) === wantScale && (wantFps == null ? !turnScaled.has(sender) || enc0.maxFramerate == null : enc0.maxFramerate === wantFps));
@@ -13023,9 +13024,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const cc = net.topo.unck(k);
       return cc.pc === c.pc && cc.r === c.r;
     }
-    // My camera and mic go to row-mates only: never on a pipe's pc (its side hears me in the mix it gets) or a standby's (it
-    // carries nothing until it takes over).
-    const camPeer = (pid) => isRowMate(pid);
+    // My mic goes to row-mates only: a pipe's side hears me in the mix it gets, a standby carries nothing until it takes over.
+    // My camera goes to row-mates and to my vouched pipe peers (SUB.4, Nathan 11-14): the far end of a pipe shows me on my own
+    // tile like any direct link and leaves me out of its Stadium (paintRoomView), so a 1:1 over TURN is two full tiles; the
+    // TURN guard holds it while the link is paused, and TURN.13 steps it with the composite on the same pc (adapt).
+    const micPeer = (pid) => isRowMate(pid);
+    const camPeer = (pid) => isRowMate(pid) || (!!turnLinks && turnLinks.video(pid) && (() => { try { return isPipePeer(pid); } catch (e) { return false; } })());   // isPipePeer is defined further down
     // ---- mesh early-probe intake (healing-laws D5) --------------------------
     // Transport death is MY first-hand evidence: when my DataChannel to a peer
     // closes, or its pc lands in a hard state ('closed', or 'failed' persisting
@@ -24447,6 +24451,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // Own-row hiding stops at section size (Nathan): a Stadium of more than C×C people shows everyone and hides nothing.
         const hide = [];
         if (c && meta.n <= SCALE.C * SCALE.C) for (let j = 0; j < SCALE.C; j++) { const pid = j === c.i ? myId : occPid({ pc: c.pc, r: c.r, i: j }); if (pid) hide.push(String(pid)); }
+        // SUB.4 PIPE HOLDERS: the two ends of a vouched pipe see each other on a full tile (my camera crosses to my pipe peer,
+        // camPeer), so each leaves the other out of its own Stadium; everyone else sees the far room in the Stadium only.
+        for (const h of pipePeers()) if (turnLinks && turnLinks.video(h) && hide.indexOf(String(h)) < 0) hide.push(String(h));
         // A camera on the Stage is left out of this browser's stadium only.
         // The pack that arrived is unchanged, and a share stays in the grid.
         try {
@@ -24490,7 +24497,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (sdView) { sdView.stop(); sdView = null; }
         sdViewSrc = null; avHoldStop();
         if (!sdViewSt || sdViewSt.getVideoTracks().length || (sdViewSt.getAudioTracks()[0] || null) !== sndOnly) sdViewSt = new MediaStream([sndOnly]);
-        paintStadiumTile(sdViewSt);
+        // A sound-only Stadium that stands for nobody I cannot already see (a 1:1 over a pipe: the far person is on a full tile,
+        // SUB.4 pipe holders) plays its sound and takes no place on screen.
+        let quiet = false;
+        try { const mc = meshNode && typeof meshNode.meetingCount === 'function' ? meshNode.meetingCount() : null; quiet = mc != null && mc <= facesOnScreen(); } catch (e) {}
+        paintStadiumTile(sdViewSt, quiet);
         return;
       }
       // Nothing to show: a tile already on screen lingers MOS_GRACE, so a
@@ -27696,7 +27707,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       v.addEventListener('resize', set); v.addEventListener('loadedmetadata', set); set();
     }
     // The stadium tile (one, keyed 'sd') in the stadium strip.
-    function paintStadiumTile(stream) {
+    function paintStadiumTile(stream, quiet) {
       let el = stadiumEl.querySelector('[data-row="sd"]');
       // The mosaic sweep calls this every couple of seconds with the same
       // stream. The gallery is laid out again only when the Stadium tile
@@ -27719,7 +27730,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       const v = el.querySelector('video');
       if (!(typeof wkHolds === 'function' ? wkHolds(v, stream) : v.srcObject === stream)) { if (typeof wkBindVideo === 'function') wkBindVideo(v, stream); else v.srcObject = stream; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); changed = true; }
-      stadiumEl.classList.add('on');
+      // quiet: its sound plays, and it takes no place on screen (paintRoomView)
+      const wasQuiet = el.style.display === 'none';
+      if (!!quiet !== wasQuiet) { el.style.display = quiet ? 'none' : ''; changed = true; }
+      stadiumEl.classList.toggle('on', !quiet || !!stadiumEl.querySelector('.rowtile:not([data-row="sd"])'));
       const cnt = roomPastSection() ? displayCount() : knownTotal();
       if (!prevSd || prevSd.streamId !== stream.id || prevSd.cnt !== cnt || prevSd.el !== v) changed = true;
       compOf.set('sd', { via: 'mosaic', streamId: stream.id, stream, names: [], cnt, el: v });
@@ -35320,10 +35334,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function attachLocalTracks() {
       if (!localStream || (BROADCAST && !bcMayPublishAv())) return;
       for (const [pid, p] of peers) {
-        if (!p.pc || !camPeer(pid) || p.headless) continue;   // row-mates only (camPeer): never a pipe's or a standby's pc
+        if (!p.pc || !camPeer(pid) || p.headless) continue;   // camPeer: row-mates and vouched pipe peers; never a standby's pc
         let added = false;
         for (const tr of localStream.getTracks()) {
-          if (tr.kind === 'video' ? p.mainV : p.mainA) continue;
+          if (tr.kind === 'video' ? p.mainV : (p.mainA || !micPeer(pid))) continue;   // the mic: row-mates only
           try {
             const t = p.pc.addTransceiver(tr.kind === 'audio' ? (mainAudioTrack() || tr) : tr, { streams: [localStream] });
             if (tr.kind === 'video') p.mainV = t.sender; else p.mainA = t.sender;
