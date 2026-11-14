@@ -46,6 +46,10 @@
  *   fabricVerdict        A1     the seat's death verdicts (DEATH_WHY), drained by the page's departure intake
  *   fhopActive           A1     true where the page gave a friend-hop face (o.fhop), as the sim's LINKMODEL (friend-hop has no off switch)
  *   fhopFriendFor        A1     sponsorSend's friend rung would carry it (o.fhop.friendFor)
+ *   fabricSubAsk         A1     a joiner about to found a room on silence: o.sub.ask() (true: the page's ask for the list of rooms is open)
+ *   fabricPipePeers      A1     the far ends of my joining connections that are up (o.sub.pipeEnds(), read once a tick)
+ *   fabricSubDoor        A1     my own knock found my door empty: o.sub.doorEmpty() (the page asks for a fresh grant for my door)
+ *   fabricSubRepipe      A1     my room lost its joining connection: o.sub.repipe() (the page asks once for a new one)
  * Not seat calls, the fabric's own friend-hop parts on a page (C++ mesh_fhop.inc): fhDoorCall / fhDoorDue (FHOP.8, the door
  * pcw's clock fires when a knocker's door never opened) and doorCallIn (a call that reached me over a dc, kinds 7 and 8).
  *   l164Of               A1     LINKMODEL && !islandStand(s, IS_L164)
@@ -482,13 +486,36 @@
       return ((n === E.NAT_BLOCKED && k !== E.NAT_OPEN) || (k === E.NAT_BLOCKED && n !== E.NAT_OPEN)) ? 0 : 3;
     };
 
+    // ---- rooms joined by relayed connections: the page's link manager (o.sub) ---------------------------------
+    // o.sub.ask() -> true while the page's ask for the list of rooms is open (the seat keeps knocking), false: refused or
+    // no service (the seat founds its room as before). o.sub.pipeEnds() -> [{ peer, sub, pipe, opener, video, up, standby }],
+    // read once at the start of each tick. The answer to the ask comes back through env.subGo(r). o.sub.doorEmpty(): the door of
+    // my room stood empty at my own knock; o.sub.repipe(): my room lost its joining connection (asked once per event).
+    const subF = o.sub || null;
+    let pipeNow = [];   // the seats at the far ends of my joining connections that are up, this tick
+    const pipeEnds = () => { const v = subF && subF.pipeEnds ? subF.pipeEnds() : null; return Array.isArray(v) ? v : []; };
+    function pipeRead(s) {
+      const out = []; for (const e of pipeEnds()) { if (!e || !e.up || e.standby) continue; const x = learnPeer(e.peer); if (x >= 0 && x !== me && out.indexOf(x) < 0) out.push(x); }
+      // C++: mesh_turn.inc:subMark  (a joining connection came up, went or changed hands: its old end drops that part and its new end sends, in this tick's beat)
+      if ((out.length !== pipeNow.length || out.some((x, i) => x !== pipeNow[i])) && s.state === 3 && s.hasCoord) { s.l10Mark(); s.l10Force = true; woken = true; }
+      pipeNow = out;
+    }
+    const fabricSubAsk = (id) => { const s = seat(); return (id === me && s && s.sr === 0 && subF && subF.ask && subF.ask()) ? 1 : 0; };
+    const fabricPipePeers = (id) => (id === me ? pipeNow.slice() : []);
+    const fabricSubDoor = (id) => { if (id === me && subF && subF.doorEmpty) subF.doorEmpty(); };
+    const fabricSubRepipe = (id) => { if (id === me && subF && subF.repipe) subF.repipe(); };
+    // C++: mesh_turn.inc:subTick's answer: my door is r (a listed room the page reached, or a new number it was granted)
+    function subGo(r) { const s = seat(); if (!s || dead || !(Number.isInteger(r) && r > 0) || s.sr !== 0) return false; guard('seat.subGo', () => s.subGo(r))(); woken = true; return true; }
+    // room r's people are in my count: a fresh fold of a joining connection I hold lists door r
+    function knownSub(r) { const s = seat(); return !!s && s.knownSub(r); }
+
     const noop = () => {};
     const deaths = deathLedger(me);   // fabricVerdict: the seat's death verdicts, drained by the page (drainDeaths)
     const OWN = {
       fabricAdmitLog: noop, fabricDupMint: noop, fabricNoteBackoff: noop, fabricNoteReseat: noop, fabricNoteRollback: noop,
       fabricNoteSwap: noop, fabricVerdict: deaths.verdict, l18UxDeliv: noop, descEnd: noop, descNote: noop, g4Joined: noop,   // g4Joined: the sim's L40 contest lever only (X1 55c97d1)
       fabricFreeCells, fabricLieFor: () => null, fabricUnreachable, fhopActive: () => !!fh, fhopFriendFor,
-      fabricDoorNet,
+      fabricDoorNet, fabricSubAsk, fabricPipePeers, fabricSubDoor, fabricSubRepipe,
       fabricMyTier: () => ((measure.tier ? measure.tier() : E.TIER_DESKTOP) | 0),
       fabricMyNat: () => ((measure.nat ? measure.nat() : E.NAT_OPEN) | 0),
       fabricLeft: () => leaveNow(false), fabricReloadBye: () => leaveNow(true),
@@ -530,6 +557,7 @@
       // measured again, and a seeker at the door acts on it now (l411Verdict)
       if (s && !dead && measure.nat) { const n0 = (measure.nat() | 0) & 0xff; if (n0 !== s.nat) { if (s.cnat === s.nat) s.cnat = n0; s.nat = n0; if (typeof s.l411Verdict === 'function') s.l411Verdict(); } }
       if (s && !dead) {
+        guard('pipeRead', () => pipeRead(s))();
         const due = [];
         for (const t of [...bus.keys()].sort((a, b) => a - b)) { if (t > w.TICK) break; due.push(...bus.get(t)); bus.delete(t); }
         const ib = inbox; inbox = [];
@@ -645,7 +673,7 @@
         doorNt.clear();   /* L8.54: what this list says of each greeter's network (C++: doorNtList) */
         (m.list || []).forEach((p, k) => { const x = learnPeer(p); if (x >= 0 && x !== me && !out.includes(x)) { out.push(x); const e = m.at ? m.at[k] : -1; at.set(x, Number.isInteger(e) && e >= 0 ? e : -1); const t = m.nt ? m.nt[k] : ''; if (typeof t === 'string' && t) doorNt.set(x, t); } });
         for (let k = out.length - 1; k > 0; k--) { const j = Math.floor((o.rand ? o.rand() : Math.random()) * (k + 1)); const t = out[k]; out[k] = out[j]; out[j] = t; }   // the sim's relay shuffles
-        const g = msg.newMsg('GREETERS'); g.list = out; g.listAt = out.map((x) => at.get(x)); g.to = me; g.from = -1; if (m.tag === 1) g.tag = 1;   /* L3.11.6: the door said admitted:false (C++: relayKnock) */ busAt(w.TICK, g);
+        const g = msg.newMsg('GREETERS'); g.list = out; g.listAt = out.map((x) => at.get(x)); g.to = me; g.from = -1; if (m.tag === 1 || m.tag === 3 || m.tag === 4) g.tag = m.tag;   /* 3: the relay holds no door for my room (it restarted): the seat asks for a fresh grant; 4: the first door is empty and other rooms of the meeting are live: a joiner asks before it founds */   /* L3.11.6: the door said admitted:false (C++: relayKnock) */ busAt(w.TICK, g);
         return;
       }
       if (m.t === 'nosock') {
@@ -698,6 +726,7 @@
       mark: (peer) => { const x = ID.pid(ID.nid(peer)) === String(peer) ? ID.nid(peer) : learnPeer(peer); return x >= 0 && pcw.mark ? pcw.mark(x) : null; }, farView: (to) => farView(seat(), to),
       // the seat's construction is the caller's (A3): new Seat(env.me, env.world)
       newSeat: () => new seatM.Seat(me, w),
+      subGo, knownSub, pipePeers: () => pipeNow.map((x) => ID.pid(x)).filter((p) => p != null),   // the answer to the page's ask for a room; whether a room's people are in my count
       drainDeaths: deaths.drain,   // [cellKey, seat id] the seat read dead since the last drain
     };
     if (dbg && typeof window !== 'undefined') window.__meshEnv = env;   // DEBUG: meet.js eval reaches the env (stats, traces, pcw.dump)
