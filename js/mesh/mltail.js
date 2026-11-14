@@ -99,13 +99,13 @@
 
     // C++: mesh_mltail.inc:Seat::l33ColSweep
     l33ColSweep() {
-      const TICK = this.TICK, id = this.id;
+      const id = this.id;
       if (this.standDown() || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0 || this.moving) return;
       const cm = colMates(this.coord);
       for (let q = 0; q < C - 1; q++) {
         const k = ckey(cm[q]); const x = this.occGet(k); if (x < 0 || x === id) continue;
         if (this.l13MateGone(k)) { this.trace('L33.15-COLGONE', id, cm[q], 'was=%d fails=%d', x, this.f.fabricDialFails(id, x)); this.occDrop(k, 'mate-unreach'); this.live.delete(k); this.kidful.delete(k); this.s1seen.delete(k); this.tlForget(k); continue; }   // as L13.33's sweep: no court memo, no admission cooling
-        if (TICK - this.seatedAt >= 60 && !this.firstHandLive(k) && !this.softSitting(k) && this.f.fabricLinkState(id, x) !== LS_OPEN && this.f.fabricDialFails(id, x) >= 1 && (this.greetersAt < 0 || TICK - this.greetersAt > 64) && TICK - this.l13KnockAt >= 32) { this.l13KnockAt = TICK; this.emitRelay(this.genKey); this.trace('L13-KNOCK', id, this.coord, 'door col'); }   // L13.36's knock without a seeker
+        if (this.f.fabricLinkState(id, x) !== LS_OPEN && this.f.fabricDialFails(id, x) >= 1) this.l13Knock(k);   // L13.36's knock without a seeker: a column mate my dial cannot reach
       }
     },
 
