@@ -13150,7 +13150,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (!meshNode || !turnLinks) return null;
           const far = new Set(turnLinks.pipeEnds().filter((e) => !e.standby).map((e) => e.peer));
           const load = (pid, sb) => { let n = 0; for (const f of turnFacts.values()) if (f.a === pid || f.b === pid) n++; for (const e of turnLinks.pipeEnds()) if (e.peer === pid && (!!e.standby === sb)) n++; return n; };
-          const cs = meshNode.standbyCands().filter((c) => c.pid !== myId && !far.has(c.pid) && c.dev && load(c.pid, true) < 2);
+          // a device word not heard yet ('') is no phone: capable, as the sim reads it (the seat names its own device to the far side)
+          const cs = meshNode.standbyCands().filter((c) => c.pid !== myId && !far.has(c.pid) && load(c.pid, true) < 2);
           let best = null;
           for (const c of cs) if (c.head) { const n = load(c.pid, false) + load(c.pid, true); if (!best || n < best.n) best = { c, n }; }
           if (best) return { pid: best.c.pid, dev: best.c.dev };
@@ -13369,7 +13370,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function turnDebug() {
       let seat = null, door = null;
       try { const io = turnLinks ? turnIo() : null; seat = io ? io.seat() : null; const r = turnRaw(); door = r ? { age: r.TICK - r.greetersAt, n: (r.lastGreeters || []).length, pids: io ? io.greeters().map((x) => String(x).slice(0, 8)) : null } : null; } catch (e) { door = { err: String(e).slice(0, 80) }; }
-      return { on: !!turnLinks, worker: GifOS.meetTurn ? GifOS.meetTurn.workerBase() : null, directPath, dev: myDevHash, sid: sessId, seat, door,
+      return { on: !!turnLinks, worker: GifOS.meetTurn ? GifOS.meetTurn.workerBase() : null, directPath, dev: myDevHash, sid: sessId, seat, door, sub: meshNode ? meshNode.sub : 0,
+        standbyCands: meshNode && meshNode.standbyCands ? meshNode.standbyCands() : null,
         links: turnLinks ? turnLinks.dump() : null, facts: Array.from(turnFacts.values()),
         subs: Array.from(turnSubs, ([k, v]) => ({ pid: k, tier: v.tier, exp: v.exp })), log: turnLog.slice(-80) };
     }
