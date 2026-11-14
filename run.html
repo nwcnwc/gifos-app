@@ -27937,10 +27937,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // goes up in the row product and into the stadium.
       const rowMatePid = (pid) => { if (!pid) return false; for (let j = 0; j < C; j++) { if (j === c.i) continue; if (occPid({ pc: c.pc, r: c.r, i: j }) === pid) return true; } return false; };
       const l14Keep = (h, uf) => l14Heads.includes(h) || (!!uf && uf.via !== h && (iAmHead || actHead) && rowMatePid(uf.via));
-      // An unvouched pipe's product is sound only (TURN.11): no tile for it, never a black block.
+      // SOUND NEVER DEPENDS ON A PICTURE, at any hop. A block whose product carries no video (an unvouched or paused link,
+      // TURN.11-13) draws no tile, never a black block, and its sound still enters the pack as a sound-only part (setSound):
+      // a head's row product sums its sound from the pack, so without it the other rows would hear nothing from that branch.
+      // The other hops read the sound from the streams themselves (mixOf over l14A for the ear, the row and every child; the
+      // relay up 'subl:' and 'sdxu:' forward streams), so none of them looks at a picture.
       const blockHasPicture = (f) => !!(f && f.stream && f.stream.getVideoTracks().some((t) => t.readyState !== 'ended'));
       const l14Blocks = (pk, skip, ordOf) => {
-        let q = 0; for (const [mk, uf] of mosIn) { if (mk.indexOf('subu:') !== 0) continue; const h = mk.slice(5); if (h === skip || !l14Keep(h, uf) || !blockHasPicture(uf)) { pk.delTile('u' + h); continue; } setBlock(pk, 'u' + h, ordOf(q++), uf); }
+        let q = 0; const heard = new Set();
+        for (const [mk, uf] of mosIn) {
+          if (mk.indexOf('subu:') !== 0) continue; const h = mk.slice(5);
+          if (h === skip || !l14Keep(h, uf)) { pk.delTile('u' + h); continue; }
+          if (!blockHasPicture(uf)) { pk.delTile('u' + h); if (pk.setSound && uf && uf.stream) { pk.setSound('u' + h, uf.stream); heard.add('u' + h); } continue; }
+          setBlock(pk, 'u' + h, ordOf(q++), uf);
+        }
+        if (pk.soundIds) for (const k of pk.soundIds()) if (k[0] === 'u' && !heard.has(k)) pk.delSound(k);
       };
       const l14Down = (fill, metaOf, direct) => {
         for (const [h, pk] of [...l14Packs]) if (!fill || !l14Heads.includes(h) || (direct && direct.has(h))) { pk.stop(); l14Packs.delete(h); }

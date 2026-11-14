@@ -290,6 +290,7 @@
     const canvas = (typeof document !== 'undefined') ? document.createElement('canvas') : null;
     const ctx = canvas ? canvas.getContext('2d') : null;
     const tiles = new Map(); // id -> { ord, el, streamId, n, cols }
+    const sounds = new Map(); // id -> stream: parts summed into the pack's sound with no tile (setSound)
     let fold = (opts.ac && createAudioFold(opts.ac)) || null;
     let timer = null, last = 0, cost = 0, costAvg = 0, costN = 0, drawn = 0, dropped = 0, active = true;
     let G = 1, R = 1, lastNonEmpty = 0; // lastNonEmpty: empty-packer linger (see paint)
@@ -761,6 +762,17 @@
       // — called every tick from status/audio so the frame tracks speech live.
       label(id, lbl) { const t = tiles.get(id); if (t) t.lbl = lbl; },
       delTile(id) { if (fold) fold.remove('t' + id); tiles.delete(id); },
+      // A part with sound and no picture (a relayed link that carries no video): summed into this pack's sound, never drawn.
+      setSound(id, stream) {
+        if (!stream) { pk.delSound(id); return; }
+        const prev = sounds.get(id); sounds.set(id, stream);
+        if (!fold) return;
+        if (prev && prev.id !== stream.id) fold.remove('s' + id);
+        if (!fold.has('s' + id)) fold.add('s' + id, stream, opts.gain == null ? 1 : opts.gain); else fold.follow('s' + id, stream);
+        if (fold.dedupeTracks) fold.dedupeTracks();
+      },
+      delSound(id) { if (fold) fold.remove('s' + id); sounds.delete(id); },
+      soundIds: () => [...sounds.keys()],
       // A reclaimed session retires its tracks. Drop them here too, so this
       // pack's fold does not keep summing a track the seat has already left.
       dropTracks(list) { if (fold && fold.dropTracks) fold.dropTracks(list); },
@@ -839,6 +851,7 @@
         fold = createAudioFold(ac2);
         const g = opts.gain == null ? 1 : opts.gain;
         for (const [id, st] of kept) if (st) { try { fold.add('t' + id, st, g); } catch (e) {} }
+        for (const [id, st] of sounds) { try { fold.add('s' + id, st, g); } catch (e) {} }
         const aTrack = fold.track();
         if (pk.stream && aTrack) {
           try {
@@ -855,7 +868,7 @@
         if (timer) { timer(); timer = null; }
         if (arriveT) { clearTimeout(arriveT); arriveT = null; }
         if (fold) fold.clear();
-        tiles.clear();
+        tiles.clear(); sounds.clear();
         if (pk.track) { try { pk.track.stop(); } catch (e) {} }
         pk.stream = null; pk.track = null;
       },
