@@ -12676,10 +12676,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // its fold missing for L10_NEW_WAIT, so its home seat re-piped and cut the live pipe: pk44 leave, 777a159). Room gossip
     // is idempotent (ids dedupe, refan repeats), so it waits instead: while the channel holds more than GOSSIP_BUF_MAX bytes
     // a gossip frame joins this channel's own queue (in order), sent as the buffer drains; every other frame goes at once.
-    // GOSSIP_BUF_MAX: under one second of the slowest path a pair rides (the free TURN pool's per-session cap, 24000 B/s,
-    // turn/server/provision.sh), so a control frame never waits a second behind gossip. GOSSIP_Q_MAX bounds the queue
+    // GOSSIP_BUF_MAX (timings.json, derived there): under one second of the slowest path a pair rides (the free TURN pool's
+    // per-session cap), so a control frame never waits a second behind gossip already buffered. GOSSIP_Q_MAX bounds the queue
     // (the backlog's own size, refan covers the rest).
-    const GOSSIP_BUF_MAX = 16384, GOSSIP_Q_MAX = 128;
+    const GOSSIP_BUF_MAX = GifOS.timings.GOSSIP_BUF_MAX, GOSSIP_Q_MAX = 128;
     function isGossipFrame(msg) { const f = msg && msg.k === 'mesh' && msg.m ? (msg.m.f || msg.m) : null; return !!f && (f.t === 'GSP' || f.t === 'GSPS'); }
     function gossipWaits(dc, str) {
       const q = dc.__gq || (dc.__gq = []);

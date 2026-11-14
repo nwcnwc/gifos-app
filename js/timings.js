@@ -61,6 +61,7 @@
     FRAG_DIAL_WAIT_MS: 30000,   // ms
     GLARE_YIELD_MS: 4000,   // ms
     GMARK_BEHIND: 1024,   // count
+    GOSSIP_BUF_MAX: 16000,   // bytes
     "GRID.APPLY_EVERY": 3000,   // ms
     "GRID.CK_EVERY": 5000,   // ms
     "GRID.HOP_ENC": 40,   // ms
