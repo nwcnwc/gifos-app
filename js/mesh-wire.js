@@ -183,6 +183,7 @@
     let lastRegAt = 0;     // last time we sent a greeter registration
     let doorAheadN = 0;    // blobs in my latest door reply that no key of mine (current or replaced) opens (doorAhead)
     let regPendingAt = 0;  // a registration awaiting its greeters reply (zombie detector)
+    let subGrant = null;   // the grant that founds my door's room, as the page handed it with the answer to its ask (node.subGo)
     let recountOut = false; // a door count asked for (node.recountDoor) and not answered yet: one ask at a time
     // SHRANK-TO-SOLO (the 2-person fork fix, 2026-07-29): a room that WAS
     // populated and collapsed to one is a fragment SUSPECT the moment it
@@ -1187,6 +1188,7 @@
         emit: (to, f) => { if (!stopped || f.t === 'GSP') env2send(to, f); },
         onGossip: opts.onGossip ? (src, m, ag, scoped, link) => (stopped ? undefined : opts.onGossip(src, m, (ag || 0) * tickMs, !!scoped, link)) : null,
         ckey: (c) => net.topo.ckey(c), ownedLinks: (c) => net.topo.ownedLinks(c),
+        pipes: () => (penv ? penv.pipePeers() : []),   // the far ends of my joining connections that are up: room-wide traffic crosses them
       });
       seat = layer.view; seat.answerDoor = answerHeld; seat.recheckDoor = recheckHeld;
       penv = GifOS.meshPageEnv.create({
@@ -1199,6 +1201,7 @@
         },
         send: (to, m, dir) => sendFrameTo(to, m, dir, true),   // FHOP's sponsored frames: deliver -> opts.sendDC -> the page's rungs, never the relay
         fhop: opts.fhop || null,
+        sub: opts.sub || null,   // the page's link manager for rooms joined by relayed connections: { ask(), pipeEnds() }
         levers: opts.levers || null,   // the page's levers (run.html: islands found under the meeting key of the link)
         measure: opts.measure || null,
         trace: opts.trace || null,
@@ -1267,7 +1270,17 @@
       },
       socketed() { return !raw || raw.socketed(); },   // the seat's own word: am I at the door (a joiner, a greeter, a seat that knocked)
       setRefuses(b) { if (layer) layer.setRefuses(b); },
-      roomDigest() { return layer ? layer.roomDigest() : null; },   // the display fold beside the seat (layer.js leaf)
+      roomDigest() { return layer ? layer.roomDigest() : null; },
+      // ROOMS JOINED BY RELAYED CONNECTIONS. sub: my door's number (0: the first room). door(): { sr, sg } for a door
+      // other than the first (sg: the grant handed to subGo, or null), else null. subGo(r, sg): the answer to the page's
+      // ask (opts.sub.ask): my door is r. meetingCount(): the people in the whole meeting, null while unknown.
+      // knownSub(r): room r's people are in my count. standbyCands(): see js/mesh/page/layer.js.
+      get sub() { return raw ? raw.sr : 0; },
+      door() { return raw && raw.sr > 0 ? { sr: raw.sr, sg: subGrant } : null; },
+      subGo(r, sg) { if (stopped || !penv || !raw || raw.sr !== 0) return false; subGrant = (typeof sg === 'string' && sg) ? sg : null; /* before the seat knocks at its new door */ return penv.subGo(r); },
+      meetingCount() { return layer ? layer.meetingCount() : null; },
+      knownSub(r) { return !!penv && penv.knownSub(r); },
+      standbyCands() { return layer ? layer.standbyCands() : []; },   // the display fold beside the seat (layer.js leaf)
       // App access to the wire's relay socket (the ONE socket): signaling
       // fallback ({t:'peer'}), moderation verbs (setpw/ban/votekick), etc.
       // Recreates the socket on demand, same as the mesh's own sends.

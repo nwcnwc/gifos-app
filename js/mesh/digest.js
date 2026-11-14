@@ -439,6 +439,11 @@
         else if (this.downDig.at >= 0 && this.digHeld(dk, this.downDig)) { if (this.scopeGap(dk)) { d.part = 1; d.refuse += 1; this.digGap = 1; } dig.digFoldHeld(d, this.downDig); l48h = 2; }   // L3.12: not echoed (downUsed stays empty): the author is silent
         else if (this.scopeGap(dk)) { d.part = 1; d.refuse += 1; this.digGap = 1; }   // G3 FAIL-CLOSED
         this.l48Up(d, dk, l48h);   // L48: the child row I fold, and the rows I serve over E2
+        if (this.pipeDig.size || this.pipeBase.at >= 0) {   // over a joining connection the far room is one more child: its fold is folded like a child row's, while fresh and while I hold that connection
+          this.pipeBase = dig.cloneDig(d); const pp = this.f.fabricPipePeers(id);
+          for (const [pk, pe] of [...this.pipeDig]) { if (pp.indexOf(pk) < 0 || this.LT() - pe.rx > K.DIG_TTL) { this.trace('SUB.4-DROP', id, this.coord, 'peer=%d far=%d', pk, pe.far); this.pipeDig.delete(pk); continue; } dig.digFold(d, pe); }
+          if (!this.pipeDig.size) this.pipeBase = msg.newDig();
+        }
         dig.digTrim(d);
         this.myDig = dig.cloneDig(d); this.lastPubAt = TICK; this.lastPubDepth = pcDepth(this.coord.pc);
         // --- (2) deep ROW HEAD: fold my row (my owner is linked only to me) --------
@@ -479,9 +484,11 @@
     },
     // C++: mesh_seat.inc:Seat::rootFold
     // § G (3) as its own step: the Section-1 seat's room fold.
-    rootFold(extra = false) {
+    // out: a pure fold into out.R with `mine` as my own section: no gap decision, no state change.
+    rootFold(extra = false, out = null, mine = null) {
       const id = this.id;
       if (!this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return;
+      const myDig = mine || this.myDig;
       const svFind = this.findNc; this.findNc = -1;
       try {
         const R = msg.newDig(); R.at = this.LT(); R.rx = R.at; R.by = id;
@@ -493,7 +500,7 @@
           let any = false; const ks = [];
           for (let r0 = 0; r0 < C; r0++) for (let i0 = 0; i0 < C; i0++) {
             const k = ckey({ pc: 0, r: r0, i: i0 }); let x = null;
-            if (this.hasCoord && k === ckey(this.coord)) x = this.myDig;
+            if (this.hasCoord && k === ckey(this.coord)) x = myDig;
             else {
               const it = this.s1tab.get(k); if (it === undefined) continue; const fr = this.LT() - it.rx <= K.DIG_TTL;
               if (fr && it.by >= 0 && (it.by === id || ins(newest, it.by, () => 0) !== it.at)) continue;
@@ -502,7 +509,7 @@
             if (!x) continue; ks.push(k); for (const w of x.rows) if (w.e2 === 1) any = true;
           }
           if (any) {
-            const inp = []; for (const k of ks) { const x = (this.hasCoord && k === ckey(this.coord)) ? this.myDig : this.s1tab.get(k); l48c.set(k, dig.cloneDig(x)); }
+            const inp = []; for (const k of ks) { const x = (this.hasCoord && k === ckey(this.coord)) ? myDig : this.s1tab.get(k); l48c.set(k, dig.cloneDig(x)); }
             for (const k of ks) { const x = l48c.get(k); inp.push({ d: x, age0: this.LT() - x.rx, ck: k }); }
             const won = []; e2f.l48Resolve(inp, won, (c) => (this.hasCoord && ckey(c) === ckey(this.coord)) || this.occGet(ckey(c)) >= 0);
           }
@@ -510,15 +517,17 @@
         const l48d = (k, x) => { if (!l48c.size) return x; const c = l48c.get(k); return c === undefined ? x : c; };
         for (let r0 = 0; r0 < C; r0++) for (let i0 = 0; i0 < C; i0++) {
           const k = ckey({ pc: 0, r: r0, i: i0 });
-          if (this.hasCoord && k === ckey(this.coord)) { dig.digFold(R, l48d(k, this.myDig)); if (this.myDig.kOwn.voter >= 0) this.kAddS1(R, k, this.myDig.kOwn); continue; }
+          if (this.hasCoord && k === ckey(this.coord)) { dig.digFold(R, l48d(k, myDig)); if (myDig.kOwn.voter >= 0) this.kAddS1(R, k, myDig.kOwn); continue; }
           const it = this.s1tab.get(k);
           if (it !== undefined && this.LT() - it.rx <= K.DIG_TTL && it.by >= 0 && (it.by === id || ins(newest, it.by, () => 0) !== it.at)) continue;   // superseded: the author is me, or it has a newer report from another cell
           if (it !== undefined && this.LT() - it.rx <= K.DIG_TTL) { dig.digFold(R, l48d(k, it)); if (it.kOwn.voter >= 0) this.kAddS1(R, k, it.kOwn); }
-          else if (it !== undefined && this.digHeld(k, it) && (!newest.has(it.by) || ins(newest, it.by, () => 0) <= it.at)) { if (!extra && this.scopeGap(k)) { R.part = 1; R.refuse += 1; this.digGap |= 4; } dig.digFoldHeld(R, l48d(k, it)); }   // L3.12
+          else if (it !== undefined && this.digHeld(k, it) && (!newest.has(it.by) || ins(newest, it.by, () => 0) <= it.at)) { if (!extra && !out && this.scopeGap(k)) { R.part = 1; R.refuse += 1; this.digGap |= 4; } dig.digFoldHeld(R, l48d(k, it)); }   // L3.12
+          else if (out) { /* a pure fold decides no gap */ }
           else if (extra) { if (this.occ.has(k)) return; }   // an extra fold decides no gap
           else if (this.scopeGap(k)) { R.part = 1; R.refuse += 1; this.digGap |= 4; }
         }
         dig.digTrim(R);
+        if (out) { out.R = R; return; }
         { let thin = false; if (this.TICK - this.seatedAt <= 16 && this.rootKeep.at >= 0 && R.n + R.leased < this.rootKeep.n + this.rootKeep.leased) { let nm = 0, fl = 0; for (const [ek, ev] of this.occ) { if (ek >= 65536 || ev < 0 || ek === ckey(this.coord)) continue; nm++; const t = this.s1tab.get(ek); if (t !== undefined && t.at >= 0 && this.LT() - t.rx <= K.LEASE_T) fl++; } thin = fl < nm; }
           if (!thin) this.rootDig = R; else if (this.rootDig.at < 0) this.rootDig = this.rootKeep; }   // L3.12.3
         if (!extra) { this.rootDec = dig.cloneDig(R); this.l43Fold(); }   // rootDec: the fold as the pulse made it, the one a decision may read (L5)
