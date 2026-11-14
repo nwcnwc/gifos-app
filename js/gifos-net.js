@@ -727,14 +727,14 @@
   const RELAY_TICKET = { ticketJson: { str: 640, re: /^[\x20-\x7e]{1,640}$/ }, sig: { str: 88, re: RELAY_SIG_RE } }; // a meeting ticket (gifos-sub.js)
   const RELAY_SHAPES = {
     peer: { to: { str: 64, re: RELAY_ID_RE }, ty: { one: RELAY_TYPES }, msg: { sealed: 1 } },
-    knock: { gk: { str: 128, re: RELAY_GK_RE }, gblob: { sealedText: 1, opt: 1 }, dc: { one: ['1'], opt: 1 }, c: { one: ['0', '1'], opt: 1 }, ep: { str: 15, re: /^[0-9]{1,15}$/, opt: 1 } },   // dc: a deep seat called to the door (FHOP.8) registers for the call only; c: a row head on a capable device (a TURN pipe may end there); ep: its room's founding time
+    knock: { gk: { str: 128, re: RELAY_GK_RE }, gblob: { sealedText: 1, opt: 1 }, dc: { one: ['1'], opt: 1 }, c: { one: ['0', '1', '2'], opt: 1 }, k: { str: 7, re: /^[0-9]{1,7}$/, opt: 1 }, ep: { str: 15, re: /^[0-9]{1,15}$/, opt: 1 } },   // dc: a deep seat called to the door (FHOP.8) registers for the call only; c: a row head on a capable device (a TURN pipe may end there); ep: its room's founding time
     unlist: {},                                            // a seat that left Section 1 drops its greeter registration at once
     setpw: { pw: { str: 64, re: RELAY_PROOF_RE }, w: { obj: RELAY_ORDER, opt: 1 } },
     votekick: { devs: { list: 24, item: { str: 16, re: RELAY_DEV_RE } }, abs: { list: 24, item: { str: 16, re: RELAY_ABS_RE }, opt: 1 } },
     tvouch: { to: { str: 16, re: RELAY_DEV_RE }, l: { str: 3, re: /^[ls][0-9]{1,2}$/ } },   // a seated greeter asks the relay to vouch for one TURN link (gifos shared/turn-ticket.js)
     capture: { tk: { obj: RELAY_TICKET }, w: { obj: RELAY_ORDER } },   // an open room taken by a $5/$10 subscriber: the meeting ticket and an order signed by its key
     capren: { tk: { obj: RELAY_TICKET } },                             // the captor's renewed ticket
-    tdoors: {},                                                        // the meeting's live subroom doors, signed by the relay for the TURN service
+    tdoors: { q: { list: 16, item: { str: 16, re: RELAY_DEV_RE }, opt: 1 } },   // the meeting's live subroom doors, signed by the relay for the TURN service; q: devices its signed answer says live or gone (a SUB.3 re-pipe ask)
   };
   function sealedOk(m) {
     if (!m || typeof m !== 'object' || Array.isArray(m) || m.e !== 1 || typeof m.iv !== 'string' || typeof m.ct !== 'string') return false;

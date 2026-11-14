@@ -801,7 +801,13 @@
     // oldest room's heads are its own).
     function regWords() {
       const w = {};
-      if (seat && seat.hasCoord && seat.coord.pc === 0) w.c = seat.coord.i === 0 && (typeof opts.capable !== 'function' || opts.capable()) ? '1' : '0';
+      if (seat && seat.hasCoord && seat.coord.pc === 0) {
+        const cap = typeof opts.capable !== 'function' || opts.capable();
+        // c: '1' a capable row head (a pipe may end here); '2' a capable Section-1 seat with its cell key k, which the relay
+        // names when its door has no capable row head left (the seat next in line for a head cell, SUB.3); '0' neither
+        w.c = cap ? (seat.coord.i === 0 ? '1' : '2') : '0';
+        if (w.c === '2') w.k = String(seat.coord.r * 256 + seat.coord.i);
+      }
       if (raw && Number.isInteger(raw.lineAt) && raw.lineAt >= 0 && raw.lineAt < 1e15) w.ep = String(raw.lineAt);
       return w;
     }

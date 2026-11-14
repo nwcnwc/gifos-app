@@ -12386,11 +12386,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // friend's channel carries the restart; with no path the beat retries.
       const mediaDesc = (msg.kind === 'offer' || msg.kind === 'answer') && !net.bootOf(msg.sdp, 0);
       const mayRelay = relayMayCarry(to);
+      // A TURN LINK'S OWN SIGNALLING RIDES THE RELAY: its far end sits behind another door (or is a greeter my seat cannot
+      // reach), so no friend's channel can carry it; the relay is its only way. A description with media is refused, loudly.
+      if (turnLinks && turnLinks.holds(to) && (msg.kind === 'offer' || msg.kind === 'answer' || msg.kind === 'ice')) {
+        if (mediaDesc) { txStats.relayUnfit++; if (typeof clog === 'function') clog('sig ' + msg.kind + ' to ' + String(to).slice(0, 6) + ' refused: a TURN link\'s description carries media'); return; }
+        msg = sigSansIce(to, msg);
+        if (msg) relayBootSend(to, msg);
+        return;
+      }
       if (relayDown || targetUnreachable || mediaDesc || !mayRelay) {
         const m2 = sigSansIce(to, msg);
         if (!m2) return; // a blocked pair sends nothing on either path (fault injection)
         // every negotiation frame kept off the relay says why (a pair whose bootstrap never leaves is otherwise silent)
-        if (typeof clog === 'function' && (msg.kind === 'offer' || msg.kind === 'answer')) clog('sig ' + msg.kind + ' to ' + String(to).slice(0, 6) + ' off the relay: ' + [relayDown ? 'relay-down' : '', notOnRelay ? 'nosock' : '', (peers.get(to) || {}).altPath ? 'altPath' : '', mediaDesc ? 'media' : '', !mayRelay ? 'not-relay-pair' : ''].filter(Boolean).join(',') + (turnLinks && turnLinks.holds(to) ? ' (a TURN link)' : ''));
+        if (typeof clog === 'function' && (msg.kind === 'offer' || msg.kind === 'answer')) clog('sig ' + msg.kind + ' to ' + String(to).slice(0, 6) + ' off the relay: ' + [relayDown ? 'relay-down' : '', notOnRelay ? 'nosock' : '', (peers.get(to) || {}).altPath ? 'altPath' : '', mediaDesc ? 'media' : '', !mayRelay ? 'not-relay-pair' : ''].filter(Boolean).join(','));
         const rt = (m2.kind === 'offer' || m2.kind === 'answer') ? takeRoute(to) : null;   // L16.3.2: the reply to a walked frame retraces it
         if (sponsorSend(Object.assign({ k: 'fsig', from: myId, to, tc: coordKeyOf(to), id: fwdId(), ttl: 12, m: m2 }, rt ? { rt } : {}))) { txStats.fwdSig++; return; }
         if (mediaDesc) { txStats.relayUnfit++; return; } // no friend's channel either: the sweeper's next attempt rebuilds and bootstraps (sendOffer)
@@ -13228,9 +13236,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (meshNode.sub === 0 && Date.now() - turnSubWantAt < K.TURN_WAIT * meshNode.tickMs()) return 'joiner';   // my seat asked (opts.sub.ask) lately: it asks again each silent round
           return null;
         },
-        tdoors: () => new Promise((res) => {
+        tdoors: (q) => new Promise((res) => {   // q: device tags the relay says live or gone in its signed answer (a re-pipe ask, SUB.3)
           turnDoorsWait.push(res);
-          if (turnDoorsWait.length === 1) relaySendObj({ t: 'tdoors' });
+          if (turnDoorsWait.length === 1) relaySendObj(Array.isArray(q) && q.length ? { t: 'tdoors', q } : { t: 'tdoors' });
           const giveUp = () => { const i = turnDoorsWait.indexOf(res); if (i >= 0) { turnDoorsWait.splice(i, 1); res(null); } };   // no answer: no list this time
           setTimeout(giveUp, GifOS.meetTurn.FETCH_TIMEOUT_MS);
         }),
@@ -13538,6 +13546,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function rebuildPc(p, why, opts) {
       const closing = !!(opts && opts.closing), queued = opts && opts.keepIce ? p.pendingIce : null;
       if (typeof clog === 'function') clog('pc-new ' + String(p.id).slice(0, 6) + ' ' + (why || '?') + (p.pc ? ' was ' + p.pc.connectionState + '/' + p.pc.signalingState : ''));
+      p.altPath = false;   // the transport rotation (sendSig) belongs to the pc it rotated for: a new pc starts on the relay
       // A new transport is an implicit goodbye for the old session. Retire its
       // tracks before the close, including the 300 ms the goodbye is allowed
       // to leave: a track that is still live in that window is concealment,

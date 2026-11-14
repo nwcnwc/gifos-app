@@ -276,7 +276,7 @@
   function tvOk(f) {
     if (!f || typeof f !== 'object' || Array.isArray(f) || f.k !== 'tv' || typeof f.l !== 'string' || !LINK_RE.test(f.l)) return false;
     for (const k of Object.keys(f)) if (k !== '_' && TV_KEYS.split(',').indexOf(k) < 0) return false;
-    if (f.q === 'a') return typeof f.d === 'string' && DEV_RE.test(f.d) && (f.b === 0 || f.b === 1);
+    if (f.q === 'a') return typeof f.d === 'string' && DEV_RE.test(f.d) && (f.b === 0 || f.b === 1) && (f.e === undefined || (typeof f.e === 'string' && /^[0-9a-z]{1,2}$/.test(f.e)));
     if (f.q === 'w') return f.m === undefined || (typeof f.m === 'string' && WEB_HOST_RE.test(f.m));
     if (f.q === 'v') return typeof f.e === 'string' && E36_RE.test(f.e) && typeof f.n === 'string' && NONCE_RE.test(f.n) && typeof f.m === 'string' && MAC_RE.test(f.m);
     if (f.q === 'x') return f.b === undefined || f.b === 1;
@@ -439,8 +439,8 @@
   //   sendTv(addr, frame): addr a peer id, or a device tag (a pipe's far end before it answers; the relay routes both)
   //   askVouch(farDev, l); ask(body) → Promise<json> (/v1/ice); askSub(body) → Promise<json> (/v1/sub)
   //   THE SUBROOM ASK: asker() → null | 'joiner' (about to found a room on silence at my door) | 'head' (the head of a
-  //     seated room that reaches no older room at door 0) | 'repipe' (a head of my subroom, whose pipe is gone);
-  //     tdoors() → Promise<{ v: the relay's signed door list, p: { device tag → peer id } of its listed heads }> (or the
+  //     seated room that reaches no older room at door 0) | 'repipe' (SUB.3: a seat of either side of a lost pipe, door 0 too);
+  //     tdoors(q) → Promise<{ v: the relay's signed door list (q: device tags it also says live or gone), p: { device tag → peer id } of its listed heads }> (or the
   //     list alone); probeDoor(r, pids) → true | false | 'pending': door r tried by dialling those of its heads (the
   //     ordinary dial and its verdict; my seat never leaves its own door to look); sub() → my door's subroom; meetingFull() → my meeting is at
   //     its plan's limit (a NEW pipe is then refused: room limits apply at entry only)
@@ -475,7 +475,7 @@
     //   { found: r, sg, far, link }        a new subroom (or a re-pipe, r unchanged): found it with sg; the pipe is opened here
     //   { wait: 1 }                        a door list, an answer or a door probe is on its way, or a subroom is opening
     //   { refused: why, retryAt }          budget, rate, no far end, the meeting full, no service: no pipe, ask again at retryAt
-    const sub = { st: 'idle', gen: 0, out: null, retryAt: 0, token: null, list: [], probe: [], found: null, why: '', heads: null, tried: null, mult: 1, lastWhy: '', doorsSig: '', repipe: false, ans: false };
+    const sub = { st: 'idle', gen: 0, out: null, retryAt: 0, token: null, list: [], probe: [], found: null, why: '', heads: null, tried: null, mult: 1, lastWhy: '', doorsSig: '', repipe: false, ans: false, ends: [] };
     // THE WARM STANDBY (TURN.9 for pipes). Every live pipe l<r> keeps a standby s<r>: a second relayed connection between
     // OTHER seats of the same two subrooms, connected and idle (keep-alives only: no media, no mesh traffic). When a live
     // end leaves (its goodbye) or its connection dies (the pc's own verdict), the standby pair takes the pipe over at once
@@ -490,7 +490,7 @@
     // newLink(far, l, opener, farDev, farR): a pipe I opened knows its far end's device tag and subroom from the grant and
     // is addressed by that tag until the far end answers (then by its peer id); a pipe I was asked for knows its opener.
     function newLink(far, l, opener, farDev, farR) {
-      const L = { far, l, opener, id: linkId(io.me(), far), farDev: farDev || null, farR: farR == null ? Number(l.slice(1)) : farR, farPid: opener ? null : far,
+      const L = { far, l, opener, id: linkId(io.me(), far), farDev: farDev || null, farR: farR == null ? Number(l.slice(1)) : farR, farPid: opener ? null : far, own: null,
         farBlocked: false, client: false, mine: null, peer: null,
         state: 'ask', askAt: io.now(), sentAt: 0, vAskAt: 0, readyMe: false, readyFar: false, dialAt: 0, upAt: -1, downSince: 0,
         cred: null, paid: null, paidMe: false, paidFar: false, paidSaid: false, paidAt: 0, mvWant: false, mvAt: 0, mvN: 0, mvWhy: '', video: false, vouched: false, lostAt: -1, side: [],
@@ -522,7 +522,9 @@
     // link has none at all yet), never on a timer: a vouch good for at least one credential answer's wait is usable.
     const usableAt = (e) => e - io.now() > FETCH_TIMEOUT_MS;
     const fresh = (L) => !!(L.mine && L.peer && usableAt(L.mine.e) && usableAt(L.peerE));
-    function sendAsk(L) { L.sentAt = io.now(); io.sendTv(L.far, { k: 'tv', q: 'a', l: L.l, d: io.dev(), b: io.blocked() ? 1 : 0 }); }
+    // e: the subroom my end sits in (base 36), so the far end vouches its pipe end toward the right side: pipe l<r> joins r and
+    // the subroom it hangs from, and either side may have opened it (SUB.3: a re-pipe asked for a subroom cut off from mine)
+    function sendAsk(L) { L.sentAt = io.now(); io.sendTv(L.far, { k: 'tv', q: 'a', l: L.l, d: io.dev(), b: io.blocked() ? 1 : 0, e: mySubFor(L).toString(36) }); }
     // Is pipe l<r> already part of my meeting? Then a handshake for it re-links a subroom the meeting holds (a re-pipe,
     // a standby taking over): no new entry. Judged only from what my own meeting holds, never from the asker's word: a
     // room-wide fact of pipe l<r> heard within its life, a pipe of mine by that name, or subroom r's people still in my
@@ -534,8 +536,9 @@
       for (const f of io.facts() || []) if (f && !f.gone && f.l === l) return true;
       return false;
     }
-    // My vouch names the subroom my relay socket sits in: a pipe I opened waits until my door is its new subroom.
-    const mySubFor = (L) => (L.opener ? Number(L.l.slice(1)) : (io.sub ? io.sub() : 0));
+    // My vouch names the subroom my relay socket sits in: a pipe I opened for a NEW subroom waits until my door is that
+    // subroom; a re-pipe I opened (my own subroom's, or one cut off from mine) and a standby I opened name my door as it is.
+    const mySubFor = (L) => (L.opener ? (L.own != null ? L.own : Number(L.l.slice(1))) : (io.sub ? io.sub() : 0));
     function askMine(L) { if (!L.farDev) return; if (io.sub && io.sub() !== mySubFor(L)) return; L.vAskAt = io.now(); io.askVouch(L.farDev, L.l); }
     function credFor(L, pool) {
       return createCredentials({ ask: io.ask, room: io.sid(), pool, now: io.now, setTimer: io.setTimer, clearTimer: io.clearTimer,
@@ -676,6 +679,7 @@
         if (L.l !== f.l) return;
         const first = !L.farDev;
         L.farDev = f.d; L.farBlocked = f.b === 1;
+        if (!L.opener && f.e !== undefined) L.farR = parseInt(f.e, 36);   // the opener's subroom (an older page says none: the pipe's own)
         if (!L.opener && (first || io.now() - L.sentAt > RESEND_MS)) sendAsk(L);   // the target answers with its own device and network
         if (!L.mine || !usableAt(L.mine.e)) { if (io.now() - L.vAskAt > RESEND_MS / 2) askMine(L); }
         else io.sendTv(L.far, { k: 'tv', q: 'v', l: L.l, e: L.mine.e.toString(36), n: L.mine.n, m: L.mine.m });
@@ -924,7 +928,7 @@
     }
     function openStandby(sl, farDev, farR, liveEnd) {
       for (const M of links.values()) if (M.sb && M.l === sl && M.state !== 'closed') close(M, 'replaced', true);
-      const M = newLink(farDev, sl, true, farDev, farR); M.liveEnd = liveEnd;
+      const M = newLink(farDev, sl, true, farDev, farR); M.liveEnd = liveEnd; M.own = io.sub ? io.sub() : 0;
       sendAsk(M); askMine(M);
       return M;
     }
@@ -1000,7 +1004,9 @@
     function subIdle(now, out, retryAt) { sub.st = 'idle'; sub.token = null; sub.retryAt = retryAt || 0; sub.out = out; sub.gen++; }
     function subDoors(withToken) {
       const g = ++sub.gen; sub.st = 'doors'; sub.out = busyOut;
-      Promise.resolve(io.tdoors ? io.tdoors() : null).then((x) => {
+      // a re-pipe ask with the list in hand has the relay say which ends on record still hold a socket (SUB.3: a pipe with a dead end is cut)
+      const q = withToken && sub.asker === 'repipe' ? (sub.ends || []).slice(0, 16) : null;
+      Promise.resolve(io.tdoors ? io.tdoors(q) : null).then((x) => {
         if (g !== sub.gen) return;
         const d = x && typeof x === 'object' ? x.v : x;
         if (d) { sub.devPid = (x && typeof x === 'object' && x.p) || {}; sub.heads = doorHeads(d, sub.devPid); const sg = doorsSig(d); if (sub.doorsSig && sg !== sub.doorsSig) subChanged('the subrooms'); sub.doorsSig = sg; }
@@ -1024,6 +1030,7 @@
       const g = ++sub.gen; sub.st = 'ask';
       const b = { room: String(io.sid()), doors };
       if (token) b.token = token;
+      if (sub.asker === 'repipe') b.rp = 1;   // SUB.3: a re-pipe ask, from either side of the lost pipe
       const t = budgetTicket(io.subs()); if (t) b.ticket = t;   // a plan's meeting ticket raises the meeting's budget to its allowance
       Promise.resolve(io.askSub ? io.askSub(b) : null).then((a) => {
         if (g !== sub.gen) return;
@@ -1032,8 +1039,12 @@
           subFound(a); return;
         }
         if (a && a.pending === 'opening') { log('turn-sub opening: knock its door again'); subIdle(now, busyOut, now + RESEND_MS); return; }
+        if (a && (a.root === 1 || a.closed === 1) && sub.asker === 'repipe') {   // SUB.3: nothing to pipe (my room is the tree's root now, or the other side's ask made the pipe): the ask is closed
+          sub.repipe = false; log('turn-sub re-pipe closed: ' + (a.root ? 'root' : 'nothing cut off')); subIdle(now, null, 0); return;
+        }
         if (a && a.pending === 'subrooms' && typeof a.token === 'string') {
           sub.token = a.token; sub.list = Array.isArray(a.subs) ? a.subs.filter((x) => x && Number.isInteger(x.r) && x.r > 0).map((x) => x.r) : [];
+          sub.ends = []; for (const x of a.subs || []) for (const d of (x && Array.isArray(x.e) ? x.e : [])) if (typeof d === 'string' && DEV_RE.test(d) && sub.ends.indexOf(d) < 0) sub.ends.push(d);   // the pipes' ends on record
           // the service names each listed room's heads to dial (device tags of the door list I sent); the relay's answer
           // to that same door list gave their peer ids
           for (const x of a.subs || []) { const pids = (Array.isArray(x && x.heads) ? x.heads : []).map((d) => (sub.devPid || {})[d]).filter((p) => typeof p === 'string' && p).slice(0, PROBE_HEADS); if (pids.length && sub.heads) sub.heads.set(x.r, pids); }
@@ -1070,17 +1081,20 @@
     function subFound(a) {
       const relink = sub.asker === 'repipe';   // (for the log: the far end judges a re-pipe itself)
       if (relink) sub.repipe = false;
+      // own: the subroom my end sits in. A subroom cut off from mine (SUB.3: its own ends are gone, it may hold no seat that
+      // asks) is re-piped from my side: I open l<r> toward its far end and my door stays mine (nothing to found)
+      const own = Number.isInteger(a.own) ? a.own : a.r, cut = relink && own !== a.r;
       sub.st = 'found'; sub.gen++;
       sub.found = { r: a.r, sg: a.sg, far: { r: a.far.r, d: a.far.d }, link: a.link };
-      sub.out = { found: a.r, sg: a.sg, far: sub.found.far, link: a.link };
-      log('turn-sub ' + (relink ? 're-pipe ' : 'new ') + a.r + ' far ' + a.far.d + '@' + a.far.r + ' ' + a.link);
+      sub.out = cut ? busyOut : { found: a.r, sg: a.sg, far: sub.found.far, link: a.link };
+      log('turn-sub ' + (relink ? 're-pipe ' : 'new ') + a.r + (cut ? ' (cut off, from my subroom ' + own + ')' : '') + ' far ' + a.far.d + '@' + a.far.r + ' ' + a.link);
       for (const L of Array.from(links.values())) if (L.opener && L.l === a.link) close(L, 'replaced', true);   // a re-pipe's old pipe of this subroom
-      const L = newLink(a.far.d, a.link, true, a.far.d, a.far.r);
+      const L = newLink(a.far.d, a.link, true, a.far.d, a.far.r); L.own = own;
       sendAsk(L); askMine(L);
     }
     function subStep(now) {
       head.want = headWants(now);
-      const asker = (io.asker ? io.asker() : null) || (sub.repipe && io.sub && io.sub() > 0 ? 'repipe' : null) || (head.want ? 'head' : null);
+      const asker = (io.asker ? io.asker() : null) || (sub.repipe ? 'repipe' : null) || (head.want ? 'head' : null);   // SUB.3: a re-pipe is asked from either side, door 0 too
       if (sub.st === 'found') {
         const live = Array.from(links.values()).some((L) => L.opener && sub.found && L.l === sub.found.link);
         if (live) return;
@@ -1166,14 +1180,14 @@
       subAsk() { return sub.out; },
       // the seat's hooks (opts.sub): my room lost a far door (the home-cell seat asks once to re-pipe it); my door's relay
       // forgot it (tag 3: a fresh grant). regrant(): a fresh grant to hand to the seat, once.
-      repipe() { if (io.sub && io.sub() > 0) sub.repipe = true; },
+      repipe() { sub.repipe = true; },   // SUB.3 (b): my room's fold lost a far door (the home seat of any door, door 0 too)
       doorEmpty() { if (io.sub && io.sub() > 0) rg.want = true; },
       regrant() { const o = rg.out; rg.out = null; return o; },
       // the seat is about to found on silence: may it ask the Worker first? Closed once after a refusal (that founding attempt
       // founds), and while a refusal's wait runs
       mayAsk() { if (sub.ans) { sub.ans = false; return false; } const o = sub.out; return !(o && o.refused && io.now() < o.retryAt); },
       // The pipes this page holds an end of, for the media plane: the far end's peer id and subroom, the pipe, who opened it.
-      pipeEnds() { const out = []; for (const L of links.values()) if (L.farPid) out.push({ peer: L.far, sub: L.opener ? L.farR : Number(L.l.slice(1)), pipe: L.l, opener: !!L.opener, video: !!L.video, up: L.state === 'up', standby: !!L.sb }); return out; },
+      pipeEnds() { const out = []; for (const L of links.values()) if (L.farPid) out.push({ peer: L.far, sub: L.farR, pipe: L.l, opener: !!L.opener, video: !!L.video, up: L.state === 'up', standby: !!L.sb }); return out; },
       standby(pid) { const L = links.get(pid); return !!L && L.sb; },   // a warm standby: keep-alives only, nothing rides it
       videoBlocked(pid) { const L = links.get(pid); return !!L && (L.sb || !L.video || L.busy); },
       // TURN.13: the step my video takes on this link ({ maxBitrate, scale, fps }), null when nothing limits it.
