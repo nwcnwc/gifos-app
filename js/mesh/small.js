@@ -13,6 +13,7 @@
   const { Seat, l13MergingOf } = seatM;
   const K = C_.consts;
   const { ckey, ownedLinks, down, C } = topo;
+  const { LS_OPEN } = C_.enums || {};
 
   // C++: mesh_small.inc:l30DeepWhy
   function l30DeepWhy(s) {
@@ -64,12 +65,19 @@
       return true;
     },
 
+    // D5.4.1: a pc of mine to a seat my links name (or my uplink) that my own end still reads open, carrying or not.
+    // C++: mesh_small.inc:Seat::pcHeld
+    pcHeld() {
+      for (const c of ownedLinks(this.coord)) { const x = this.occGet(ckey(c)); if (x >= 0 && x !== this.id && this.f.fabricLinkState(this.id, x) === LS_OPEN) return true; }
+      return this.l14Up >= 0 && this.f.fabricLinkState(this.id, this.l14Up) === LS_OPEN;
+    },
+
     // C++: mesh_small.inc:Seat::noLinkTick
     // While the spell lasts no loss is confirmed; when the first link carries again every loss observed in the spell, or in
     // the beat before it began, is asked again from that tick, over the link that carries.
     noLinkTick() {
       const TICK = this.TICK;
-      if (this.noLink()) { if (this.nlSince < 0) this.nlSince = TICK | 0; this.nlAt = TICK | 0; return; }
+      if (this.noLink()) { if (this.nlSince < 0) { if (!this.pcHeld()) return; this.nlSince = TICK | 0; } this.nlAt = TICK | 0; return; }   // D5.4.1: a spell starts only while a pc of mine is still open in my own view not known to have left
       if (this.nlSince < 0) return;
       let n = 0; const ks = []; for (const [k, at] of this.translost) if (at >= this.nlSince - K.L30_FRESH) ks.push(k);
       for (const k of ks) { this.tlSent.delete(k); this.tlProbeAt.delete(k); n++; }   // asked again: the window starts with the next probe that leaves over a link that carries
