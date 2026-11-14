@@ -154,6 +154,7 @@
     L9_RETRY: 16,   // C++: mesh.cpp:L9_RETRY  (LAW_L9_RETRY)
     L9_LONE: 16,   // C++: mesh.cpp:L9_LONE  (LAW_L9_LONE)
     L9_PULL: 8,   // C++: mesh.cpp:L9_PULL  (LAW_L9_PULL)
+    L50_HOPS: 60,   // C++: mesh.cpp:L50_HOPS  (LAW_L50_HOPS)
     L11_ARRIVE: 32,   // C++: mesh.cpp:L11_ARRIVE  (LAW_L11_ARRIVE)
     L165_W: 32,   // C++: mesh.cpp:L165_W  ((int)L11_ARRIVE)
     L167_W: 2,   // C++: mesh.cpp:L167_W

@@ -96,12 +96,13 @@
     L4_LEAD: 10,                 // L4.3: the head sets the exchange tick this far ahead, past the pair's greeting round trip (a dial of up to 10 ticks)
     L4_PERIOD: 16,               // L4.3: min ticks from one tier swap of a row to the next order for it
     L4_QUIET: 16,                // L4.3: a row with no arrival, departure or move for this long is quiet enough for a tier swap
+    L50_HOPS: 60,                // L50.2: hops an ask may spend, as every routed call: its own row hands it on once, every other seat passes it one hop toward the named cell
     L5_PERIOD: 8,                // L9.11: and again every beat while a home cell is free; the home row head seats one probe per free cell, no period
     L5_SETTLE: 16,               // L9.11: in a room of at most 25, a deep seat probes for a home cell once its neighbourhood has been quiet this long (two beats), not COMPACT_SETTLE
     L7_HOLD: 24,                 // L7.5: an admitter holds a seeker's FIND it cannot serve yet (its frontier row settling, a row ledger on its way) this long, serving it the tick the cell opens; past it the seeker is told NOROOM
     L9_ACK_WAIT: 6,              // L9.3: a headless row's arbiter waits at most this long after the head left for its E2 ack (one round trip: the ack carries the owner's death)
     L9_KID_WAIT: 12,             // L9.3: a head cell whose goodbye named a down-child is the vertical healer's while that child row's E2 source beats its backup owner this recently (a beat and a half)
-    L9_LONE: 16,                 // L9.9: a seat that sat this long without hearing its anchor (head, or owner) asks the ring to route its call there (two beats: a beat, and the longest dial)
+    L9_LONE: 16,                 // L50.1: a seat that sat this long without hearing its anchor (head, or owner) asks for its link up over every link it holds (two beats: a beat, and the longest dial)
     L9_PULL: 8,                  // L9.12: a home row head pulls deep leaves into its row's free home cells once per this many ticks (a beat: the home sync that names the kidful cells runs at it)
     L9_RETRY: 16,                // L9.3: a headless row's arbiter names the head cell's filler again after this long when the cell is still empty
     LEASE_ARM: 16,               // L3.2: an owned-link occupant silent this long is leased: it keeps its cell until LEASE_T, never a hole

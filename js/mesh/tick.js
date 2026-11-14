@@ -319,22 +319,7 @@
       if (this.l13On()) this.l14Uplink();   // L14
       if (this.l13('L13.18')) this.l13Condemn();   // L13.18
       if (this.l13On()) this.l13Meet();   // L13.1
-      if (this.coord.pc !== 0 && !this.moving && TICK - this.seatedAt >= K.L9_LONE && TICK - this.l9LoneAt >= 2 * K.L9_LONE) {   // L9.9
-        let anc = null; if (this.coord.i !== 0) anc = cell(this.coord.pc, this.coord.r, 0); else anc = this.ownerCoord();
-        if (anc) {
-          const ak = ckey(anc); const ob = this.byeAt.get(ak);
-          if ((this.occGet(ak) < 0 || TICK - this.lastAck >= K.L9_LONE) && !this.softSitting(ak) && !(ob !== undefined && TICK - ob <= K.LEASE_T) && !this.translost.has(ak)) {
-            const gs = []; for (const g of this.lastGreeters) if (g >= 0 && g !== id) gs.push(g); for (const e of this.roster) if (e.v >= 0 && e.v !== id && !gs.includes(e.v)) gs.push(e.v);
-            if (gs.length) this.l9LoneAt = TICK;
-            if (this.coord.i === 0 && anc.pc === 0) this.rosterAskAt = TICK;
-            for (let f = 0; f < 3 && gs.length; f++) {
-              const gi = Math.trunc(this.rng() * gs.length); const g = gs[gi]; gs.splice(gi, 1); this.f.fabricDial(id, g); this.f.l915Note(id, g);
-              if (this.coord.i === 0 && anc.pc === 0) { const w = newMsg('WHOHOME'); w.from = id; w.ttl = 60; this.emit(g, w); this.trace('LONE-ASK', id, anc, 'to=%d ring=1', g); continue; }
-              const pn = this.probeNote(ak); const r = newMsg('ROUTE'); r.target = cc(anc); r.asker = id; r.tag = 1; r.ttl = 60; r.via = id; r.pseq = ++lv.RSEQ; r.pn = pn; r.ck = ckey(this.coord); r.nc = g; this.emit(g, r); this.trace('LONE-ASK', id, anc, 'to=%d', g);
-            }
-          }
-        }
-      }
+      this.l50Ask();   // L50: my anchor does not carry: I ask for my link up over every link I hold
       if (this.drainAt && TICK >= this.drainAt) { this.reseatViaRoster(); return; }
       const didHeal = this.healOwner();   // 11a VERTICAL: a head heals its dead owner cell from its subtree
       if (!this.hasCoord) return;   // L47: it knocked again

@@ -584,10 +584,7 @@
         return;
       }
       const row = { pc: m.coord.pc, r: m.coord.r, i: 0 }; const o = roles.ownerOf(row); if (!o) return;
-      const view = (c) => ckey(c) === ckey(this.coord) || this.occGet(ckey(c)) >= 0;
-      let mine; let b;
-      if ((o.pc === this.coord.pc && o.r === this.coord.r) || (o.pc === 0 && this.coord.pc === 0)) mine = (m.tag === 3) ? ((b = roles.standbyOf(row, view)) !== null && ckey(b) === ckey(this.coord)) : ((b = roles.backupOwnerOf(row, view)) !== null && ckey(b) === ckey(this.coord));
-      else { const orow = { pc: o.pc, r: o.r, i: 0 }; const oo = roles.ownerOf(orow); mine = m.tag !== 3 && !!oo && oo.pc === this.coord.pc && oo.r === this.coord.r && (b = roles.backupOwnerOf(orow, view)) !== null && ckey(b) === ckey(this.coord); }   // L2.2b
+      const mine = roles.onOwnerWalk(row, this.coord);   // L2.2d: the owner's word: the row's owner named me, and I serve when I am a seat that owner could name, by structure, whatever my own view says about which of its neighbours comes first
       if (!mine) return;
       const ukey = u2RowKey(ckey(row), m.tag === 3);   // key = ckey*2 + variant flag
       const u = ins(this.u2Rows, ukey, () => state.newStruct('U2Row'));
@@ -614,6 +611,8 @@
     // ROUTED intake (L3.4.1: one body for the answer over a channel and the answer that walked back)
     onRouted(m) {
       const id = this.id, TICK = this.TICK;
+      if (m.tag === 5) { this.l50Offer(m); return; }   // L50.4
+      if (m.tag === 1 && m.asker >= 0 && m.asker !== id) { this.l50Back(m, m.asker); return; }   // L50.3(a): the anchor's answer on its way back to the asker
       if (m.tag === 1 || m.tag === 2) {
         const tk = ckey(m.target); const cur = this.occGet(tk);
         if (m.id >= 0 && this.hasCoord && tk !== ckey(this.coord) && this.probeAsked(tk, m.pn) && !(cur >= 0 && cur !== m.id && this.holdsCell(tk, 60))) {
@@ -627,6 +626,7 @@
     // C++: mesh_seat.inc:Seat::onRoute
     onRoute(m) {
       const id = this.id, TICK = this.TICK;
+      if (m.tag === 5) { this.l50Hear(m); return; }   // L50
       if (!this.hasCoord) return;
       if (ckey(this.coord) === ckey(m.target)) {
         if (m.tag === 4) { const r = newMsg('ROUTED'); r.tag = 1; r.target = unck(m.ck); r.id = m.asker; r.pn = m.pn; this.trace('ROUTED-BACK', id, r.target, 'from=%d asked=%d', m.asker, this.probeAsked(m.ck, m.pn) ? 1 : 0); this.onRouted(r); return; }   // L3.4.1: a probe answer that walked back to my cell: the same answer as one over a channel
@@ -637,20 +637,12 @@
           if (nh2 >= 0) { const a = newMsg('ROUTE'); a.target = cc(m.coord); a.asker = id; a.tag = 3; a.ttl = 60; a.via = id; a.pseq = ++this.w.lv.RSEQ; a.ck = ckey(this.coord); a.pn = m.pn; this.emit(nh2, a); }
           if (m.tag === K.D51_PROBE) this.d5AnsFan(m);   // D5.1: and through each of my rook mates
         }
-        if (m.tag === 1 && m.asker >= 0 && m.asker !== id && m.ck && cellOk(m.ck) && m.ck !== ckey(this.coord) && this.ownedLinkCell(m.ck) && this.occGet(m.ck) < 0) { this.setOcc(m.ck, m.asker); this.emit(m.asker, hello(ckey(this.coord), id)); return; }   // L9.9
         const r = newMsg('ROUTED'); r.tag = m.tag === K.D51_PROBE ? 2 : m.tag; r.target = cc(m.target); r.id = id; r.pn = m.pn;
         if (this.f.fabricLinkState(id, m.asker) !== E.LS_OPEN && m.tag === 1 && this.hasCoord && ckey(m.coord) !== ckey(this.coord)) { const nh4 = this.nextHopToward(m.coord, -1); if (nh4 >= 0) { const a = newMsg('ROUTE'); a.target = cc(m.coord); a.asker = id; a.tag = 4; a.ttl = 60; a.via = id; a.pseq = ++this.w.lv.RSEQ; a.ck = ckey(this.coord); a.pn = m.pn; this.emit(nh4, a); return; } }   // L3.4.1: no channel to the asker (a NAT pair, a closed pc): the answer walks back to its cell the way the probe came
         this.emit(m.asker, r); return;
       }
       if (m.ttl <= 0) { const r = newMsg('ROUTED'); r.tag = m.tag; r.target = cc(m.target); r.id = -1; r.pn = m.pn; this.emit(m.asker, r); return; }
       // FORWARD WITH THE PROBE PAYLOAD
-      if (m.tag === 1 && m.nc >= 0 && m.ck && m.asker >= 0 && m.asker !== id) {
-        const tk = ckey(m.target); const ideal = this.nextHopCoord(m.target);
-        if (ideal && ckey(ideal) === tk && this.occGet(tk) < 0 && !this.softSitting(tk)) {
-          const ob = this.byeAt.get(tk);
-          if ((ob !== undefined && TICK - ob <= K.LEASE_T) || this.translostConfirmed(tk)) { const g = newMsg('E1STATE'); g.tag = 3; g.id = id; g.oCk = tk; g.owner = m.asker; g.ck = m.ck; this.emit(m.nc, g); return; }
-        }
-      }   // L9.9
       const nh = m.tag === K.D51_ANS ? this.d5Hop(m) : this.nextHopToward(m.target, m.via);
       if (nh >= 0 && this.l191Loop(m, nh)) { this.trace('L19.1-END', id, this.hasCoord ? this.coord : null, 'asker=%d tag=%d target=%s pseq=%d ttl=%d nh=%d', m.asker, m.tag, coordStr(m.target), m.pseq, m.ttl, nh); const r = newMsg('ROUTED'); r.tag = m.tag; r.target = cc(m.target); r.id = -1; r.pn = m.pn; this.emit(m.asker, r); return; }   // L19.1
       if (nh >= 0) { const r = newMsg('ROUTE'); r.target = cc(m.target); r.asker = m.asker; r.tag = m.tag; r.ttl = m.ttl - 1; r.via = id; r.pseq = m.pseq; r.ck = m.ck; r.coord = cc(m.coord); r.pn = m.pn; this.emit(nh, r); return; }
@@ -684,7 +676,7 @@
       }
       if (m.tag === 3) {
         if (m.owner < 0) return;
-        if (m.owner !== id) { if (this.f.fabricLinkState(id, m.owner) === E.LS_OPEN) { const f = msg.clone(m); this.emit(m.owner, f); } return; }   // the greeter a lone seat called
+        if (m.owner !== id) { this.l50Back(m, m.owner); return; }   // L50.3(b): the word on its way back to the asker
         if (!this.hasCoord || this.state !== 3 || m.ck !== ckey(this.coord)) return;
         { const anc = this.coord.i !== 0 ? { pc: this.coord.pc, r: this.coord.r, i: 0 } : this.ownerCoord(); const ha = !!anc; if (ha && ckey(anc) === m.oCk && !this.firstHandLive(m.oCk) && TICK - this.lastAck >= K.L9_LONE && !this.byeAt.has(m.oCk)) { this.byeAt.set(m.oCk, TICK); if (this.occ.has(m.oCk)) { this.occDrop(m.oCk, 'ring-word'); this.live.delete(m.oCk); this.kidful.delete(m.oCk); } this.trace('ANCHOR-GONE', id, anc, 'from=%d', m.id); } }
         return;
