@@ -712,6 +712,7 @@
         lastRelayRx = Date.now();
         let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
         if (m.t === 'greeters') {
+          if (atDoor !== doorNow()) return;   // a door's answer counts only while that door is mine: my door moved since this socket knocked there
           recountOut = false;
           if (lockedFired && !(seat && seat.state === 3)) return;   // a bad password is the lock prompt: an empty list here would mint a founder
           onGreeters(m);
