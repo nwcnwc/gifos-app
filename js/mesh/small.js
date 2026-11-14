@@ -72,7 +72,7 @@
       if (this.noLink()) { if (this.nlSince < 0) this.nlSince = TICK | 0; this.nlAt = TICK | 0; return; }
       if (this.nlSince < 0) return;
       let n = 0; const ks = []; for (const [k, at] of this.translost) if (at >= this.nlSince - K.L30_FRESH) ks.push(k);
-      for (const k of ks) { this.translost.set(k, TICK | 0); this.tlProbeAt.set(k, TICK | 0); this.tlSent.delete(k); if (this.routeToProbe(unckey(k))) this.tlSent.set(k, TICK | 0); n++; }
+      for (const k of ks) { this.tlSent.delete(k); this.tlProbeAt.delete(k); n++; }   // asked again: the window starts with the next probe that leaves over a link that carries
       if (n) this.trace('D5.4-HEARS', this.id, this.hasCoord ? this.coord : null, 'spell=%lld asked=%d', TICK - this.nlSince, n); this.nlSince = -1;
     },
   });
