@@ -266,6 +266,7 @@
   //   {k:'tv', q:'s', l:'s<r>', d, e}      a live end to a seat of its own subroom: open the standby toward device d,
   //                                         in subroom e (base 36)
   //   {k:'tv', q:'s', l:'s<r>'}            a live end to a seat of its own subroom: you are this pipe's standby end
+  //   {k:'tv', q:'s', l:'s<r>', d}         that seat's answer: my device tag (the live end names it to the far side)
   //   {k:'tv', q:'r', l:'s<r>'} / q 'x'    a standby end to its live end: the standby is up / gone
   //   {k:'tv', q:'t', l:'s<r>'}            take the pipe over (the live pipe is gone)
   //   {k:'tv', q:'w', l, m}       TURN.18: this link runs over the web path; m (the opener's word) names its host
@@ -380,6 +381,20 @@
     if (held) { st.okSince = 0; return st; }   // held back by the path: no climb
     if (st.step > 0) { if (!st.okSince) st.okSince = now; else if (now - st.okSince >= THROTTLE_UP_MS) { st.step--; st.okSince = now; } }
     return st;
+  }
+
+  // subsPresent(subs, now, inRoom, freshMs, me) → [{ key, tier, ticket }] the subscribers whose vouch counts now (TURN.11: the
+  // pool sums over the subscribers present in the MEETING). subs: Map pid → { tier, exp (s), ticket, at (ms, last heard) }.
+  // Present: me; a seat of my own room (inRoom(pid)); or, in another room of the meeting (joined by a relayed pipe), one
+  // whose statement was heard within freshMs (it restates itself while it stays). Ordered by key, so the paid ticket a
+  // link presents is the same at both ends.
+  function subsPresent(subs, now, inRoom, freshMs, me) {
+    const out = [];
+    for (const [pid, s] of subs || []) {
+      if (!s || !(s.exp * 1000 > now)) continue;
+      if (pid === me || (inRoom && inRoom(pid)) || now - (s.at || 0) <= freshMs) out.push({ key: pid, tier: s.tier, ticket: s.ticket });
+    }
+    return out.sort((x, y) => (x.key === me ? -1 : y.key === me ? 1 : x.key < y.key ? -1 : 1));
   }
 
   // vouchPlan(links, pool) → the ids that carry video now: links in turnVouchOrder, the first `pool` of them.
@@ -859,14 +874,19 @@
     // A live pipe end keeps its standby: the far end names its side's standby seat (and tells that seat), the opener has
     // a seat of its own side open the standby toward it. Asked again after a whole dial budget with no standby up.
     function warmStandby(L, now) {
-      if (L.sbUp || (L.sbAt && now - L.sbAt < DIAL_BUDGET_MS)) return;
+      if (L.sbUp) return;
+      if (L.sbAt && now - L.sbAt < DIAL_BUDGET_MS) {
+        if (!(L.sbSelf && io.standbySeat && io.standbySeat())) return;   // no seat of my side could end it then: warm again the moment one can
+        L.sbAt = 0;
+      }
       if (L.tookOver) return;   // a pipe just taken over warms its next standby once the service has moved the pipe to it (its first l<r> grant)
       const r = pipeNo(L.l), sl = 's' + r, S = io.standbySeat ? io.standbySeat() : null;
       log('turn-standby warm ' + L.l + (L.opener ? ' opener far-seat=' + (L.farSb || '-') : ' target') + ' my-seat=' + (S ? short(S.pid) + '/' + S.dev : 'self'));
+      L.sbSelf = !S;
       if (!L.opener) {
         L.sbAt = now; L.sbSeat = S ? S.pid : io.me();
-        if (S) io.sendTv(S.pid, { k: 'tv', q: 's', l: sl }); else sbExpect.set(sl, io.me());
-        io.sendTv(L.far, { k: 'tv', q: 's', l: L.l, d: S ? S.dev : io.dev() });
+        // my side's standby seat names its own device (its answer, onSide); with none I keep that end myself
+        if (S) io.sendTv(S.pid, { k: 'tv', q: 's', l: sl }); else { sbExpect.set(sl, io.me()); io.sendTv(L.far, { k: 'tv', q: 's', l: L.l, d: io.dev() }); }
         return;
       }
       if (!L.farSb) return;   // the far end has not named its side's standby seat yet
@@ -885,13 +905,18 @@
     function onSide(from, f) {
       if (f.l[0] !== 's' || ['s', 'r', 'x', 't'].indexOf(f.q) < 0) return false;
       const r = pipeNo(f.l);
+      if (f.q === 's' && f.d && f.e === undefined) {   // my standby seat's device: name it to the far side
+        const P = livePipe(r);
+        if (P && !P.opener && P.sbSeat === from) io.sendTv(P.far, { k: 'tv', q: 's', l: P.l, d: f.d });
+        return true;
+      }
       if (f.q === 's' && f.d) {   // open the standby toward f.d in subroom f.e
         if (standbys() >= SB_PER_SEAT) { io.sendTv(from, { k: 'tv', q: 'x', l: f.l }); return true; }
         let M = null; for (const x of links.values()) if (x.sb && x.l === f.l && x.farDev === f.d && x.state !== 'closed') M = x;
         if (!M) { openStandby(f.l, f.d, parseInt(f.e, 36), from); log('turn-standby open ' + f.l + ' toward ' + f.d); }
         return true;
       }
-      if (f.q === 's') { sbExpect.set(f.l, from); return true; }   // I end this pipe's standby on my side
+      if (f.q === 's') { sbExpect.set(f.l, from); io.sendTv(from, { k: 'tv', q: 's', l: f.l, d: io.dev() }); return true; }   // I end this pipe's standby on my side: my device, for the far side
       // the rest come only from a seat of my subroom in its role (else: a frame of a standby link not yet keyed by its peer id)
       const P = livePipe(r);
       if ((f.q === 'r' || f.q === 'x') && P && P.sbSeat === from) { P.sbUp = f.q === 'r'; if (f.q === 'x') P.sbAt = 0; return true; }
@@ -931,7 +956,7 @@
     const busyOut = { wait: 1 };
     // A REFUSED ASK BACKS OFF: the wait doubles from TURN_RETRY up to RETRY_MAX_X times it, and starts over at once when
     // something the page sees changes (the door list, a pipe or standby of my room, the kind of refusal).
-    const RETRY_MAX_X = K.TURN_RETRY_MAX_X || 8;
+    const RETRY_MAX_X = K.TURN_RETRY_MAX_X;
     function subRefuse(now, why) {
       if (why !== sub.lastWhy) sub.mult = 1;
       sub.lastWhy = why;
@@ -1139,7 +1164,7 @@
     DEFAULT_WORKER, WORKER_KEY, FETCH_TIMEOUT_MS, RETRY_BASE_MS, RETRY_MAX_MS, SIDE_MAX, STANDBY_SWITCH_MS, THROTTLE_LOOK_MS, THROTTLE_UP_MS,
     THROTTLE_STEPS, throttlePlan, throttleNext, stepOf,
     retryDelayMs, parseIce, hasTurnServer, webHostOk, workerBase, askIce, askSub, createCredentials,
-    vouchToken, vouchParts, tvOk, TV_KEYS, linkId, clientEnd, pausedBy, vouchPlan, createLinks,
+    vouchToken, vouchParts, tvOk, TV_KEYS, linkId, clientEnd, pausedBy, vouchPlan, subsPresent, createLinks,
   };
   GifOS.meetTurn = api;
   if (isNode) module.exports = api;
