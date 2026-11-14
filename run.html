@@ -10249,7 +10249,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           else if (p.mainV.track !== vt) p.mainV.replaceTrack(vt).catch(() => {});
         }
         if (p.mainA) {
-          if (voiceStaged || seatSelfLeased()) { if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
+          // my mic goes to row-mates only, like my camera (camPeer): a pipe's side hears me in its mix, so a main audio sender a
+          // late camera grant put on a pipe's pc (attachLocalTracks) carried my voice a second time
+          if (voiceStaged || seatSelfLeased() || !camPeer(p.id)) { if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
           else if (at && p.mainA.track !== at) p.mainA.replaceTrack(at).catch(() => {});
         }
       }
@@ -10346,10 +10348,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // shortfall, not the room size (healing-laws: a shortfall is not the room):
     // its n is what was heard. The line then says the count is incomplete.
     // Am I deep, does my occ name a cell below Section 1, or does the fold? (displayCount, foldIsRoom)
+    // SUB.4: people in the OTHER rooms of the meeting (the fold's far, per door) are never first-hand either: a 2 + 2
+    // meeting across a pipe read first-hand 3 at every seat (my row + the pipe peer) for good while the fold counted 4.
     function deepInView() {
       const s = meshSeat(); if (!s || !s.hasCoord) return false;
       if (s.coord.pc !== 0) return true;
       for (const k of s.occ.keys()) if (k.slice(0, 2) !== '0_') return true;
+      try { if (meshNode && typeof meshNode.meetingFar === 'function' && meshNode.meetingFar() > 0) return true; } catch (e) {}
       return foldNamesDeep();
     }
     // A Section-1 report in my fold that counts more than its own seat: someone sits below that cell. My view
@@ -13419,7 +13424,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       for (const tile of document.querySelectorAll('.tile[data-peer]')) {
         const pid = tile.dataset.peer; if (!pid || pid === myId) continue;
         const p = { id: pid, tile };
-        const show = !!turnLinks && (GifOS.meetTurn.pausedBy(facts, myId, p.id) || (turnLinks.isLink(p.id) && !turnLinks.video(p.id)));
+        const show = !!turnLinks && (GifOS.meetTurn.pausedBy(facts, myId, p.id) || (turnLinks.isLink(p.id) && !turnLinks.standby(p.id) && !turnLinks.video(p.id)));   // a standby holds nobody's video (SUB.7)
         // TURN.13: the far end paused its video because the server throttles (vouched: nothing to subscribe to)
         const busy = !show && !!turnLinks && turnLinks.farBusy(p.id);
         let bel = p.tile.querySelector(':scope > .tpause-busy');
@@ -14960,6 +14965,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const s = meshSeat();
       if (!s || !s.hasCoord) return false;
       if (s.l14Served && s.l14Served().includes(pid)) return true;   // L14: a cut-off head dialled me for its branch's media
+      // SUB.7: a warm standby pipe is a pc and its keep, never a face: nothing rides it, and its far end sits in the other room
+      // (seen on the Stadium plane). Its keep made the far seat a black tile here that said "video is paused" (vouched A2/B2).
+      if (turnLinks && turnLinks.standby(pid) && !s.linkPeers().has(pid)) return false;
       // A row's standby (E3) is a pc only while an up edge is down: the seat's dial says so above, and u2Hot here. Idle, it is a name, as an idle row holds no third pc.
       return (!(pid === s.u3Id && !s.u2Hot) && s.linkPeers().has(pid)) || (typeof s.keepPeers === 'function' && s.keepPeers().has(pid));   // every media target is a link peer or carries a keep reason (L28)
     }
@@ -35343,7 +35351,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function attachLocalTracks() {
       if (!localStream || (BROADCAST && !bcMayPublishAv())) return;
       for (const [pid, p] of peers) {
-        if (!p.pc) continue;
+        if (!p.pc || !camPeer(pid) || p.headless) continue;   // row-mates only (camPeer): never a pipe's or a standby's pc
         let added = false;
         for (const tr of localStream.getTracks()) {
           if (tr.kind === 'video' ? p.mainV : p.mainA) continue;
