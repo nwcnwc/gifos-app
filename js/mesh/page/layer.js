@@ -206,7 +206,11 @@
       for (const olc of o.ownedLinks(s.coord)) { if (olc.pc !== s.coord.pc) continue; const x = s.occ.get(olc.pc * 65536 + olc.r * 256 + olc.i); const p = P(x); if (p != null && p !== me) out.add(p); }
       return out;
     }
-    const peersFor = (sc) => (sc !== undefined ? sectionPeers() : linkSet(15));
+    // Room-wide traffic crosses to the other rooms of the meeting like any connection: the fan is my link peers and the far
+    // ends of my joining connections that are up (o.pipes(): the set my seat reads at the start of the tick; a warm standby
+    // carries nothing). Ids dedupe; a frame is never sent back to the peer it came from.
+    const roomPeers = () => { const out = linkSet(15); if (o.pipes) for (const p of o.pipes()) if (p && p !== me) out.add(p); return out; };
+    const peersFor = (sc) => (sc !== undefined ? sectionPeers() : roomPeers());
     function frameOf(e) { const f = { t: e.sc !== undefined ? 'GSPS' : 'GSP', gid: e.gid, src: e.src, m: e.m }; if (e.sc !== undefined) f.sc = e.sc; if (e.eph) f.eph = 1; if (e.s4) f.s4 = e.s4; const ag = (e.ag0 || 0) + (e.at != null ? Math.max(0, T() - e.at) : 0); if (ag > 0) f.ag = ag; return f; }
     function remember(gid, src, m, sc, ag0, s4, tx) { const e = { gid, src, m, at: T(), tx: tx || new Map() }; if (sc !== undefined) e.sc = sc; if (ag0) e.ag0 = ag0; if (s4) e.s4 = s4; grecent.push(e); if (grecent.length > 64) grecent.shift(); }
     function budget(link, src) {
@@ -263,7 +267,7 @@
     // A peer that newly joined my link set gets my recent backlog (the new-neighbour replay).
     let lastLinks = new Set();
     function replayNew() {
-      const now = linkSet(15);
+      const now = roomPeers();
       for (const p of now) if (!lastLinks.has(p)) for (const e of grecent) { o.emit(p, frameOf(e)); e.tx.set(p, (e.tx.get(p) || 0) + 1); }
       lastLinks = now;
     }
@@ -336,6 +340,22 @@
       const mine = new Set(leaf.vup.concat(leaf.vdn, leaf.vab.map((v) => v + AB)));
       for (const [x, g] of tags) if (t - g.seen > old && !mine.has(g.t)) tags.delete(x);
     }
+    // The count a person is shown: the seats of my room and the people in the other rooms of the meeting joined to it.
+    const pop = (d) => { const n = d.n < 0 ? 0 : d.n, t = n + d.leased; let far = 0; for (const e of d.doors || []) if (e.k > 0) far += e.k; return (t < 0 ? 0 : t) + far; };   // C++: mesh.cpp:digPop
+    // meetingCount(): the people in the whole meeting as my seat's fold counts them; null while my seat holds no fold yet.
+    function meetingCount() { const s = raw(); if (!s || s.state !== 3 || !s.hasCoord) return null; const d = s.rootDig; return d && d.at >= 0 ? pop(d) : null; }
+    // standbyCands(): the other Section-1 seats of my room as my view holds them, in the order to try them for my room's end
+    // of a second joining connection: the row heads (by row), then the next seats of my own row (by column), then the
+    // rest (by row, column). Each is { pid, dev, head, r, i } (dev: its device word, '' until heard; r, i: its row and
+    // column). The page keeps the capable ones and takes the one with the fewest connections.
+    function standbyCands() {
+      const s = raw(), tp = TP(), out = []; if (!s || !tp || s.state !== 3 || !s.hasCoord || s.coord.pc !== 0) return out;
+      const add = (c, head) => { const x = s.occGet(tp.ckey(c)); if (x < 0 || x === s.id) return; const p = P(x); if (p == null || out.some((e) => e.pid === p)) return; const f = facts.get(x); out.push({ pid: p, dev: f && f.dv ? f.dv : '', head, r: c.r, i: c.i }); };
+      for (let r = 0; r < tp.C; r++) add({ pc: 0, r, i: 0 }, true);
+      for (let i = 0; i < tp.C; i++) if (i !== s.coord.i && i !== 0) add({ pc: 0, r: s.coord.r, i }, false);
+      for (let r = 0; r < tp.C; r++) for (let i = 1; i < tp.C; i++) add({ pc: 0, r, i }, false);
+      return out;
+    }
     // The seat's room fold, as the page reads it: its counts as they are, its lists with the people's names on.
     function roomDigest() {
       const s = raw(); if (!s || s.state !== 3 || !s.hasCoord) return null;
@@ -351,7 +371,7 @@
         let o = votes.get(tag); if (!o) votes.set(tag, o = { tgt: tag, up: 0, dn: 0 });
         if (isAb) { if (v.up) o.ab = v.up; } else { o.up = v.up; o.dn = v.dn; }
       }
-      return { at: d.at, age: s.LT() - (d.rx >= 0 ? d.rx : d.at), n: d.n + d.leased, refuse: d.refuse, part: d.part, handN: d.handN, awayN: d.awayN, hands, stage, apps, votes: Array.from(votes.values()).sort(veOrd) };
+      return { at: d.at, age: s.LT() - (d.rx >= 0 ? d.rx : d.at), n: pop(d), refuse: d.refuse, part: d.part, handN: d.handN, awayN: d.awayN, hands, stage, apps, votes: Array.from(votes.values()).sort(veOrd) };
     }
 
     // ---- L27 vote-off: the page's choice into the seat's statement, the seat's fold back to the page ------------
@@ -407,7 +427,7 @@
     // seen(gid, lk): a gossip frame I already took, one behind its source's mark, or a copy over a channel whose copy of it
     // was refused for that channel (the wire skips the signature check for all three)
     const seen = (gid, lk) => typeof gid === 'string' && (gseen.has(gid) || gref.has(copyKey(gid, lk)) || gstale(gid, gid.slice(0, gid.lastIndexOf(':'))));
-    return { ids, view, gossip, gossipRecv, countForged: () => { counters.gspForged++; }, seen, setKicks, kickTally, kickDevs, kickCarry, kicked, setLeaf, setRefuses, roomDigest, sideOut, sideIn, afterTick, bump };
+    return { ids, view, gossip, gossipRecv, countForged: () => { counters.gspForged++; }, seen, setKicks, kickTally, kickDevs, kickCarry, kicked, setLeaf, setRefuses, roomDigest, meetingCount, standbyCands, sideOut, sideIn, afterTick, bump };
   }
 
   const api = Object.freeze({ create, makeIds });

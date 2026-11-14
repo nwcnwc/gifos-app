@@ -51,7 +51,7 @@
     'fabricSend', 'fabricUnreachable', 'fabricVerdict', 'fhopActive', 'fhopFriendFor', 'l164Of', 'l18Deliv',
     'l18Hop', 'l18UxDeliv', 'l222Note', 'l22Agree', 'l23GreetRelease', 'l22Close', 'l22CloseAsk', 'l22Need', 'l22Quiet', 'l28Reply',
     'l915Note', 'relayKnock', 'relayUnlist', 'descEnd', 'descNote', 'wake', 'fabricAudit', 'fabricDoorHeard', 'g4Joined', 'fabricDropHalf', 'fabricLinkCarries',
-    'fabricDoorNet',
+    'fabricDoorNet', 'fabricSubAsk', 'fabricPipePeers', 'fabricSubDoor', 'fabricSubRepipe',
   ]);
 
   // A fabric that refuses every call: the interface a harness or the page adapter fills in.
@@ -862,6 +862,7 @@
     emit(to, m) {
       const id = this.id, TICK = this.TICK, lv = this.w.lv;
       if (this.hostDenseLeaf >= 0 && m.t === 'YIELD') return;   // `hostile densify`: the page never evicts the seat it placed (harness gaps3-fab.js)
+      if (m.sr !== this.sr) { const mm = msg.clone(m); mm.sr = this.sr; this.emit(to, mm); return; }   // every frame carries its sender's door number
       if (m.line < 0 && this.line >= 0 && (((m.t === 'HELLO' || m.t === 'PHONE' || m.t === 'PONG' || m.t === 'CONFIRM' || m.t === 'LEAVE' || m.t === 'HOME') && m.id === id) || (m.t === 'WALK' && m.asker === id) || (m.t === 'PLACE' && m.pp === id))) {
         const mm = msg.clone(m); mm.line = (this.hostile & K.H_RINGLIE_BIT) ? K.RINGLIE_LINE : this.line; { mm.lineAt = this.lineAt; } mm.lineF = this.lineFork; mm.cutF = (this.cutAt >= 0 || this.cutHeardAt >= 0); this.emit(to, mm); return;   // L8.38
       }
