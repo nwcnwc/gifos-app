@@ -14088,7 +14088,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (p.checkingSince && !p.connected) p.checkingSince = Date.now();
           if (drainIce) for (const c of p.pendingIce.splice(0)) pc.addIceCandidate(c).catch(() => {});
         })
-        .then(() => { same(); preferHwVideo(pc); return pc.createAnswer(); })
+        .then(() => { same(); preferHwVideo(pc); pipeSlotAdopt(pc, p); return pc.createAnswer(); })   // a pipe's sound slot rides the first answer
         .then((ans) => { same(); return pc.setLocalDescription(ans); })
         .then(() => { same(); send(pc.localDescription); });
     }
@@ -14158,6 +14158,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const pc = p.pc, mark = {};
       p.neg.minting = mark;
       const settled = () => { if (p.neg.minting === mark) p.neg.minting = null; };
+      pipeSlotBirth(p, pc);   // a pipe's (or standby's) sound slot rides the link's first offer, whichever end makes it
       pc.createOffer(opts).then((offer) => (p.pc === pc ? pc.setLocalDescription(offer) : null))
         .then(() => {
           settled();
@@ -23917,6 +23918,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // a polite side looped rreq → rgo → roffer → ranswer for good (Q78).
       p.renegAgain = false;
       preferHwVideo(pc); // renegotiations add fresh m-lines (folds, stg, relay jobs) — they must inherit the preference
+      pipeSlotBirth(p, pc);   // (a pc that offers for the first time on a renegotiation: the slot rides that offer, never an extra one)
       pc.createOffer()
         .then((o) => { if (pc.signalingState !== 'stable') { const e = new Error('raced'); e.name = 'GlareRace'; throw e; } return pc.setLocalDescription(o); })
         .then(() => {
@@ -28663,6 +28665,34 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // SUB.7 / server cost: every pipe and warm standby pc holds ONE audio slot for the mix it will carry, negotiated with no
     // track: it sends nothing until the pipe is mine, and then the mix is a track attach (addAux) in the takeover tick. No
     // video slot is made on a standby; a pipe's picture follows its vouch as a new m-line, after the sound.
+    // SOUND ACROSS A PIPE NEVER WAITS ON ANY NEGOTIATION AFTER LINK-UP (beside the san2 rule at l14Blocks: sound never waits on
+    // a picture). A pipe's pc, and its warm standby's, is born with ONE audio slot for the pipe's mix ('sdn>' + far end), with no
+    // track: the end that makes the first offer adds it to that offer (pipeSlotBirth), the answering end takes the offered sendrecv
+    // audio m-line as its own slot before its first answer (pipeSlotAdopt). The mix is then a track attach (addAux) the moment the
+    // pipe is mine: at link-up, at a takeover, whatever the link's later renegotiations (a pool move, video) do. A standby's slot
+    // carries nothing until it takes over.
+    function pipeSlotCt(pid) { const jk = 'sdn>' + pid, ct = shipContainers.get(jk) || new MediaStream(); shipContainers.set(jk, ct); return ct; }
+    function pipeSlotBirth(p, pc) {
+      if (!p || !pc || !turnHolds(p.id)) return;
+      try { if (pc.getTransceivers().some((t) => t.sender && t.sender.__pipeRes)) return; } catch (e) { return; }   // the pc has its slot
+      const ct = pipeSlotCt(p.id);
+      try { const t = pc.addTransceiver('audio', { direction: 'sendrecv', streams: [ct], sendEncodings: [{ maxBitrate: AUX_AUDIO_BPS }] }); t.sender.__pipeRes = ct; t.sender._auxKind = 'audio'; auxSenders.add(t.sender); } catch (e) {}
+    }
+    function pipeSlotAdopt(pc, p) {
+      if (!p || !pc || !turnHolds(p.id)) return;
+      let trs = []; try { trs = pc.getTransceivers(); } catch (e) { return; }
+      if (trs.some((t) => t.sender && t.sender.__pipeRes)) return;   // the pc has its slot
+      const sdp = (pc.remoteDescription && pc.remoteDescription.sdp) || '';
+      const sendrecv = (mid) => { const sec = sdp.split(/\r?\nm=/).find((x) => new RegExp('\\r?\\na=mid:' + mid + '\\r?(\\n|$)').test('\n' + x)); return !!sec && /\na=sendrecv/.test('\n' + sec); };
+      for (const t of trs) {
+        if (t.stopped || t.mid == null || !t.sender || t.sender.track || auxSenders.has(t.sender) || t.sender === p.mainA) continue;
+        if (!t.receiver || !t.receiver.track || t.receiver.track.kind !== 'audio' || !sendrecv(t.mid)) continue;
+        if (typeof t.sender.setStreams !== 'function') return;   // no way to name the slot's stream: the mix takes an m-line of its own
+        const ct = pipeSlotCt(p.id);
+        try { t.direction = 'sendrecv'; t.sender.setStreams(ct); t.sender.__pipeRes = ct; t.sender._auxKind = 'audio'; auxSenders.add(t.sender); } catch (e) {}
+        return;
+      }
+    }
     // key: the job the slot is kept for on p's pc ('sdn': the pipe's own send; 'subl:<far>' / 'sdxu:<far>': the relay up to my
     // head and its send back down when I am a Section-1 seat that is not the head, so a takeover onto me is a track attach
     // on every hop).
@@ -28690,7 +28720,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const cme = meshCoord(), headPid = cme && cme.pc === 0 && cme.i !== 0 ? occPid({ pc: 0, r: cme.r, i: 0 }) : null, hp = headPid ? peers.get(headPid) : null;
       for (const e of turnLinks.pipeEnds()) {
         if (!e || e.peer === myId) continue;
-        pipeReserve(peers.get(e.peer));
         if (hp && hp.pc && hp.connected && hp.dc && hp.dc.readyState === 'open') {
           pipeReserve(hp, 'subl:' + e.peer);
           const k = headPid + '|' + e.peer;
