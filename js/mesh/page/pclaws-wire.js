@@ -129,7 +129,7 @@
     function doorProg(L, t, m) {
       if (!(L.outside && L.dBorn >= 0)) return;
       if (t === 'WHOHOME') { if (!L.dAsked) { L.dAsked = true; L.dProg = T(); } }
-      else if (t === 'HOME') { const em = !!m && m.roster.length === 0; if (!L.dHomed) { L.dHomed = true; L.dHomedE = em; L.dProg = T(); } else if (L.dHomedE && !em) { L.dHomedE = false; L.dProg = T(); } }   // L16.16: the answer that follows an empty HOME is a step too
+      else if (t === 'HOME') { const em = !!m && m.id < 0;   /* L16.18: "no room yet" is a HOME from a page with no cell (no id), not one that names no ring */ if (!L.dHomed) { L.dHomed = true; L.dHomedE = em; L.dProg = T(); } else if (L.dHomedE && !em) { L.dHomedE = false; L.dProg = T(); } }   // L16.16: the answer that follows an empty HOME is a step too
       else if (t === 'FIND' || t === 'FINDACK' || t === 'PLACE' || t === 'NOROOM' || t === 'HANDOFF' || t === 'TAKEOVER' || t === 'TAKEN') {
         L.dProg = T(); L.dGw = true; if (t === 'FIND') L.dWaitAtFind = L.dWait; if (t === 'FINDACK') L.dWait = T(); else if (t === 'PLACE' || t === 'NOROOM') { L.dWait = -1; L.dOwed = false; }
       }
