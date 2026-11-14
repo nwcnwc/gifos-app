@@ -179,7 +179,7 @@
     L191_HOLD: 60,   // C++: mesh.cpp:L191_HOLD
     L22_RIVAL: 40,   // C++: mesh.cpp:L22_RIVAL
     L22_SEATED_SETTLE: 6,   // C++: mesh.cpp:L22_SEATED_SETTLE
-    PROOF_MT_N: 55,   // C++: mesh_proof_gen.inc:PROOF_MT_N
+    PROOF_MT_N: 56,   // C++: mesh_proof_gen.inc:PROOF_MT_N
     L16_HO_LOAD: 8,   // C++: mesh.cpp:L16_HO_LOAD
     L16_BO_BASE: 2,   // C++: mesh.cpp:L16_BO_BASE
     L16_BO_CAP: 8,   // C++: mesh.cpp:L16_BO_CAP
