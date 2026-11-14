@@ -478,7 +478,7 @@
       if (L.sb && L.liveEnd && L.liveEnd !== io.me()) { try { io.sendTv(L.liveEnd, { k: 'tv', q: 'x', l: L.l }); } catch (e) {} }
       if (L.sb && L.liveEnd === io.me()) { const P = livePipe(pipeNo(L.l)); if (P) P.sbUp = false; }
       log('turn-link closed ' + short(L.far) + ' ' + why);
-      try { io.drop(L.far, why, { pipe: !L.sb && L.l[0] === 'l', sub: pipeNo(L.l) }); } catch (e) {}   // pipe l<r> is subroom r's
+      try { io.drop(L.far, why, { pipe: !L.sb && L.l[0] === 'l' && L.upAt > 0, sub: pipeNo(L.l) }); } catch (e) {}   // pipe l<r> is subroom r's (a pipe that came up: one that never did is asked for again as before)
       if (L.farPid && !L.sb) { try { io.publish({ id: L.id, a: L.opener ? io.me() : L.far, b: L.opener ? L.far : io.me(), up: 0, v: 0, gone: 1 }); } catch (e) {} }
       try { io.changed(L.far); } catch (e) {}
     }
