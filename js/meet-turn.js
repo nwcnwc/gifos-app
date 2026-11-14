@@ -311,6 +311,15 @@
     return false;
   }
 
+  // stripPaused(facts, far) → does the Stadium, which shows the far rooms of the meeting (far: the people my fold counts
+  // in them), stand for a room whose pipe carries no video? Any up pipe the room's facts hold that is not vouched holds
+  // the far room's picture for every seat that sees it through the Stadium (TURN.11; Nathan 11-14: the note on the strip).
+  function stripPaused(facts, far) {
+    if (!(far > 0)) return false;
+    for (const f of facts || []) if (f && f.up && !f.v && !f.gone) return true;
+    return false;
+  }
+
   // ---- a throttled server (TURN.13) -------------------------------------------
   // The steps video takes on a vouched link as the link's measured send capacity drops: resolution first, then frame
   // rate; below the last step video pauses. Everything but video (TURN_BASE_BYTES a tick: voices, data, roster, chat)
@@ -1227,7 +1236,7 @@
     DEFAULT_WORKER, WORKER_KEY, FETCH_TIMEOUT_MS, RETRY_BASE_MS, RETRY_MAX_MS, SIDE_MAX, STANDBY_SWITCH_MS, THROTTLE_LOOK_MS, THROTTLE_UP_MS,
     THROTTLE_STEPS, throttlePlan, throttleNext, stepOf,
     retryDelayMs, parseIce, hasTurnServer, webHostOk, workerBase, askIce, askSub, createCredentials,
-    vouchToken, vouchParts, tvOk, TV_KEYS, linkId, clientEnd, pausedBy, vouchRank, vouchPlan, vouchPayers, budgetTicket, subsPresent, createLinks,
+    vouchToken, vouchParts, tvOk, TV_KEYS, linkId, clientEnd, pausedBy, stripPaused, vouchRank, vouchPlan, vouchPayers, budgetTicket, subsPresent, createLinks,
   };
   GifOS.meetTurn = api;
   if (isNode) module.exports = api;

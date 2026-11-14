@@ -250,6 +250,7 @@
       }   // a YIELD held for its arbiter's verdict (L16.5: not when it names a later placement than mine)
       this.l10Early();
       if (TICK - this.lastPhone >= (this.l30Small() ? K.L30_BEAT : 8)) { this.lastPhone = TICK; this.rollup(); this.s1Heartbeat(); this.s1Sync(); this.loneGreet(); { this.l10UpSig = this.l10UpNow(); this.l10Spend(); this.l10Carried(); } }   // a regular beat due this tick carries the latest state itself
+      this.s1bTick();   // L2.15: the Section-1 bridges of the empty cells in my row and column
       this.tlSweep();   // D5: a confirmed corpse leaves my view early
       this.authTick();
       if (this.coord.i === 0 && ((TICK % 12) === 0 || this.translost.size)) { this.rowSweep(); this.s1Fill(); }
@@ -566,12 +567,46 @@
       if (x < 0 || !this.hasCoord) return false;
       if (x === this.u2Id || x === this.u3Id) return true;
       for (const e of this.u2Rows.values()) if (e.heir === x && this.TICK - e.at <= 40) return true;
+      if (this.coord.pc === 0) { for (const y of this.s1bP) if (y[0] === x) return true; const b = this.s1bAt.get(x); if (b !== undefined && this.TICK - b <= K.S1B_FRESH) return true; }   // L2.15
       return false;
     },
 
     // C++: mesh_seat.inc:Seat::l2E2Up
     // L2.8: my E2 carries: I hold it open to the backup owner and its ack is fresh (E2 source side).
     l2E2Up() { return this.u2Id >= 0 && this.u2Id !== this.id && this.f.fabricLinkState(this.id, this.u2Id) === LS_OPEN && this.TICK - this.u2AckAt <= 2 * 8 + K.EARLY_HOLD; },
+
+    // C++: mesh_seat.inc:Seat::s1bTick
+    // L2.15 the Section-1 bridge: where I am an end of an empty cell's bridge in my row or column I hold a parked pc to the
+    // other end and beat it every rook beat (U2BEAT tag 4, no answer: the far end beats me the same way).
+    s1bTick() {
+      const id = this.id, TICK = this.TICK;
+      this.s1bP.length = 0; if (!this.hasCoord || this.state !== 3 || this.coord.pc !== 0 || this.moving) return;
+      const view = (c) => ckey(c) === ckey(this.coord) || this.occGet(ckey(c)) >= 0;
+      for (let s = 1; s < 2 * C - 1; s++) { const e = s < C ? cell(0, this.coord.r, (this.coord.i + s) % C) : cell(0, (this.coord.r + s - C + 1) % C, this.coord.i); const br = roles.s1BridgeOf(e, view); if (!br) continue;
+        const xk = ckey(br.a) === ckey(this.coord) ? ckey(br.b) : ckey(br.b) === ckey(this.coord) ? ckey(br.a) : topo.NO_CK; if (xk === topo.NO_CK) continue; const x = this.occGet(xk); if (x < 0 || x === id) continue;
+        let have = false; for (const y of this.s1bP) if (y[0] === x) have = true; if (!have) this.s1bP.push([x, xk]); }
+      for (const [k, v] of Array.from(this.s1bAt)) if (TICK - v > K.S1B_FRESH) this.s1bAt.delete(k);
+      if (TICK - this.s1bBeatAt < K.FHOP_BEAT) return; this.s1bBeatAt = TICK;
+      for (const y of this.s1bP) { const x = y[0], ls = this.f.fabricLinkState(id, x); if (ls === LS_CLOSED || ls === LS_NONE) this.f.fabricDial(id, x);
+        const m = newMsg('U2BEAT'); m.tag = 4; m.id = id; m.coord = cc(this.coord); m.e1dn = this.s1bHot(y[1]); this.emit(x, m); }
+    },
+
+    // C++: mesh_seat.inc:Seat::s1bHot
+    // The corner between me and the bridge end at xk holds no seat I hear: empty, lost, closed, or silent past a beat + EARLY_HOLD.
+    s1bHot(xk) {
+      if (!this.hasCoord) return false; const xc = unck(xk);
+      for (const c of [cell(0, this.coord.r, xc.i), cell(0, xc.r, this.coord.i)]) { const k = ckey(c), y = this.occGet(k); if (y < 0 || y === this.id) continue;
+        if (this.translost.has(k) || this.f.fabricLinkState(this.id, y) === LS_CLOSED) continue; const lv = this.live.get(k); if (lv !== undefined && this.TICK - lv <= K.S1B_SILENT) return false; }
+      return true;
+    },
+
+    // C++: mesh_seat.inc:Seat::s1bUp
+    // A bridge carries me: a far end beat me within two beats + EARLY_HOLD over a pc my end reads open.
+    s1bUp() {
+      if (!this.hasCoord || this.coord.pc !== 0) return false;
+      for (const [x, at] of this.s1bAt) if (this.TICK - at <= K.S1B_FRESH && this.f.fabricLinkState(this.id, x) === LS_OPEN) return true;
+      return false;
+    },
 
     // C++: mesh_seat.inc:Seat::l2RowE2Down
     // L2.8: my row's second up path is down in my own view (head side).

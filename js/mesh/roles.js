@@ -82,6 +82,16 @@
     return false;
   }
 
+  // C++: roles.h:s1BridgeOf
+  // L2.15 the Section-1 bridge: an empty Section-1 cell e is bridged by its nearest occupied row seat (row r, columns
+  // i+1.. cyclic) and its nearest occupied column seat (column i, rows r+1.. cyclic): { a, b }, or null.
+  function s1BridgeOf(e, occ) {
+    if (e.pc !== 0 || occ(e)) return null; let a = null, b = null;
+    for (let s = 1; s < C && !a; s++) { const c = { pc: 0, r: e.r, i: (e.i + s) % C }; if (occ(c)) a = c; }
+    for (let s = 1; s < C && !b; s++) { const c = { pc: 0, r: (e.r + s) % C, i: e.i }; if (occ(c)) b = c; }
+    return a && b ? { a, b } : null;
+  }
+
   // C++: roles.h:e2SrcOf
   function e2SrcOf(row, occ) {
     if (row.pc === 0) return null;
@@ -122,7 +132,7 @@
   }
 
   const api = Object.freeze({
-    fullRow, ownerOf, heirOf, ownerWalk, onOwnerWalk, backupOwnerOf, standbyOf, e2SrcOf,
+    fullRow, ownerOf, heirOf, ownerWalk, onOwnerWalk, backupOwnerOf, standbyOf, e2SrcOf, s1BridgeOf,
     E_ROW, E_COL, E_UP, E_DOWN, E_UP2, E_DOWN2, MAXLINKS_E, ownedLinksE,
   });
   GifOS.meshRoles = api;
