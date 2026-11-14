@@ -24404,6 +24404,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         paintStadiumTile(sdViewSt);
         return;
       }
+      // SOUND NEVER DEPENDS ON A PICTURE: a room pack with no face to draw (a one-row room whose pipe is unvouched: its own
+      // cells are hidden, the pipe's part is sound only) still carries the room's ear, and the Stadium tile is its only player.
+      const sndOnly = stageEarLiveTrack(sound);
+      if (sndOnly) {
+        sdEmptyAt = 0;
+        if (sdView) { sdView.stop(); sdView = null; }
+        sdViewSrc = null; avHoldStop();
+        if (!sdViewSt || sdViewSt.getVideoTracks().length || (sdViewSt.getAudioTracks()[0] || null) !== sndOnly) sdViewSt = new MediaStream([sndOnly]);
+        paintStadiumTile(sdViewSt);
+        return;
+      }
       // Nothing to show: a tile already on screen lingers MOS_GRACE, so a
       // transient empty beat never flaps it; none is ever created empty.
       if (!sdEmptyAt) sdEmptyAt = Date.now();
