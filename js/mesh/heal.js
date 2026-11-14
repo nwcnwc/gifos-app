@@ -1296,7 +1296,7 @@
       if (this.l14Up >= 0 || this.l14FailedNow(m.id)) return;
       const anc = this.coord.i !== 0 ? { pc: this.coord.pc, r: this.coord.r, i: 0 } : this.ownerCoord(); if (!anc || ckey(anc) !== ckey(m.target)) return;
       if (!(this.occGet(ckey(anc)) < 0 || TICK - this.lastAck >= K.L9_LONE)) return;
-      if (!this.f.fabricDialUplink(id, m.id, null)) return;
+      { const ref = []; if (!this.f.fabricDialUplink(id, m.id, ref)) return; }
       this.l14Up = m.id; this.l14UpAt = TICK | 0; if (this.l14UpFirst < 0) this.l14UpFirst = TICK | 0; this.l14Refused.clear(); this.trace('L14-UP', id, anc, 'to=%d ask=1', m.id);
     },
   });
