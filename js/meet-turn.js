@@ -383,6 +383,20 @@
     return st;
   }
 
+  // subsPresent(subs, now, inRoom, freshMs, me) → [{ key, tier, ticket }] the subscribers whose vouch counts now (TURN.11: the
+  // pool sums over the subscribers present in the MEETING). subs: Map pid → { tier, exp (s), ticket, at (ms, last heard) }.
+  // Present: me; a seat of my own room (inRoom(pid)); or, in another room of the meeting (joined by a relayed pipe), one
+  // whose statement was heard within freshMs (it restates itself while it stays). Ordered by key, so the paid ticket a
+  // link presents is the same at both ends.
+  function subsPresent(subs, now, inRoom, freshMs, me) {
+    const out = [];
+    for (const [pid, s] of subs || []) {
+      if (!s || !(s.exp * 1000 > now)) continue;
+      if (pid === me || (inRoom && inRoom(pid)) || now - (s.at || 0) <= freshMs) out.push({ key: pid, tier: s.tier, ticket: s.ticket });
+    }
+    return out.sort((x, y) => (x.key === me ? -1 : y.key === me ? 1 : x.key < y.key ? -1 : 1));
+  }
+
   // vouchPlan(links, pool) → the ids that carry video now: links in turnVouchOrder, the first `pool` of them.
   // links: [{ id, stage, cell, serial }]; pool: the sum of the tiers' video links over the subscribers present.
   function vouchPlan(links, pool) {
@@ -1150,7 +1164,7 @@
     DEFAULT_WORKER, WORKER_KEY, FETCH_TIMEOUT_MS, RETRY_BASE_MS, RETRY_MAX_MS, SIDE_MAX, STANDBY_SWITCH_MS, THROTTLE_LOOK_MS, THROTTLE_UP_MS,
     THROTTLE_STEPS, throttlePlan, throttleNext, stepOf,
     retryDelayMs, parseIce, hasTurnServer, webHostOk, workerBase, askIce, askSub, createCredentials,
-    vouchToken, vouchParts, tvOk, TV_KEYS, linkId, clientEnd, pausedBy, vouchPlan, createLinks,
+    vouchToken, vouchParts, tvOk, TV_KEYS, linkId, clientEnd, pausedBy, vouchPlan, subsPresent, createLinks,
   };
   GifOS.meetTurn = api;
   if (isNode) module.exports = api;
