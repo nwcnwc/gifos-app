@@ -140,7 +140,11 @@
   //       extra() → the fields of each ask ({vouch, peerVouch}, the paid pool's ticket), or null when
   //                 there is nothing to ask with yet (no fresh vouch from both ends): no ask, a retry;
   //                 may be a promise,
-  //       onChange(kind) }
+  //       onChange(kind), onList(list) }
+  // A new link in a room that already holds TURN links is answered with the room's endpoint list instead of a
+  // credential: { pending: 'endpoints', link, endpoints: [device tag...], token, tokenExp }. That is no credential
+  // yet (the retries go on); the list is kept for listed() and handed to onList. The token opens the new link
+  // only when the next ask carries it (extra() returns it with the vouches), once none of the endpoints seated us.
   // onChange kinds: 'ok' (first grant, or a grant after losing one), 'renewed'
   // (a fresh grant replaced a live one: move the link onto it), 'expired' (it
   // ran out with no renewal). state(): idle | pending | ok | down | lost.
@@ -152,7 +156,7 @@
     const onChange = o.onChange || (() => {});
     let started = false, stopped = false, inFlight = false;
     let grant = null;          // { iceServers, issuedAt, renewAt, expiresAt, pool }
-    let everHad = false, failures = 0, answered = false, refusal = null;
+    let everHad = false, failures = 0, answered = false, refusal = null, list = null;
     const pool = o.pool || 'free';
     let tNext = null, tExpire = null;
     function clearNext() { if (tNext != null) { clearTimer(tNext); tNext = null; } }
@@ -171,6 +175,12 @@
         const g = parseIce(body);
         if (!g) {
           refusal = body && typeof body === 'object' && body.unavailable ? String(body.unavailable).slice(0, 40) : (body && body.pending ? 'pending' : null);
+          if (body && body.pending === 'endpoints' && Array.isArray(body.endpoints) && typeof body.token === 'string') {
+            refusal = 'endpoints';
+            list = { endpoints: body.endpoints.filter((d) => typeof d === 'string').slice(0, 64), token: body.token,
+              tokenExp: Number(body.tokenExp) || 0, link: body.link || null, at: now() };
+            try { if (o.onList) o.onList(list); } catch (e) {}
+          }
           failures++;
           schedule(retryDelayMs(failures, random()));
           return;
@@ -216,6 +226,7 @@
       },
       grant() { return grant ? Object.assign({}, grant) : null; },
       refusal() { return refusal; },
+      listed() { return list ? { endpoints: list.endpoints.slice(), token: list.token, tokenExp: list.tokenExp, link: list.link, at: list.at } : null; },
       pool,
     };
   }
@@ -488,7 +499,8 @@
           if (pool === 'paid') { const t = io.ticket(); if (!t) return null; b.ticket = t; }
           return b;
         },
-        onChange: (k) => onCred(L, pool, k) });
+        onChange: (k) => onCred(L, pool, k),
+        onList: (x) => log('turn-list ' + short(L.far) + ' ' + pool + ' ' + x.endpoints.length + ' endpoint(s): ' + x.endpoints.join(',')) });
     }
     function onCred(L, pool, k) {
       log('turn-cred ' + short(L.far) + ' ' + pool + ' ' + k);
@@ -872,7 +884,7 @@
       dump() {
         const out = [];
         for (const L of links.values()) out.push({ far: L.far, l: L.l, opener: L.opener, state: L.state, client: L.client, farDev: L.farDev, farBlocked: L.farBlocked,
-          mine: !!L.mine, peer: !!L.peer, readyMe: L.readyMe, readyFar: L.readyFar, cred: L.cred ? L.cred.state() : null, credRefusal: L.cred ? L.cred.refusal() : null,
+          mine: !!L.mine, peer: !!L.peer, readyMe: L.readyMe, readyFar: L.readyFar, cred: L.cred ? L.cred.state() : null, credRefusal: L.cred ? L.cred.refusal() : null, credList: L.cred ? L.cred.listed() : null,
           pool: L.paidMe ? 'paid' : 'free', paid: L.paid ? L.paid.state() : null, paidRefusal: L.paid ? L.paid.refusal() : null, paidFar: L.paidFar,
           vouched: L.vouched, video: L.video, upAt: L.upAt, side: L.side.length, web: L.web, webHost: L.webHost || null,
           step: L.thr ? L.thr.step : null, cap: L.cap || null, busy: L.busy, farBusy: L.farBusy, standbyN: L.standbyN, lastSwitchMs: L.lastSwitchMs || null });
