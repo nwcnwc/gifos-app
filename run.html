@@ -13440,41 +13440,50 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const t = document.createElement('span'); t.textContent = uiText('turnBusy', 'Video is paused: the connection is busy. It comes back by itself.'); bel.appendChild(t);
           p.tile.appendChild(bel);
         } else if (!busy && bel) bel.remove();
-        let el = p.tile.querySelector(':scope > .tpause:not(.tpause-busy)');
-        if (show && !el) {
-          // VIDEO IS PAUSED: the named state's sentence (meet-status videoPausedRelay) over the dark tile, and one
-          // tap to subscribe ($2 monthly, PayPal). A subscription's vouch turns this link's video on where it is:
-          // the next paint finds the link carrying video and takes the note away.
-          el = document.createElement('div'); el.className = 'tpause'; el.setAttribute('role', 'note');
-          const t = document.createElement('span'); t.className = 'tpause-say';
-          const said = statusWords('videoPausedRelay');
-          t.textContent = said; el.appendChild(t);
-          if (subsOn()) {
-            const b = document.createElement('button'); b.type = 'button'; b.className = 'tpause-sub';
-            b.textContent = uiText('turnSubscribe', 'Subscribe');
-            b.addEventListener('click', async (e) => {
-              e.stopPropagation(); b.disabled = true;
-              try {
-                const r = await GifOS.meetSubs.subscribe('room20', 'monthly', (w) => { t.textContent = w; });
-                if (!(r && r.licenseJson)) { t.textContent = said; b.disabled = false; }
-              } catch (x) { t.textContent = said; b.disabled = false; }
-            });
-            el.appendChild(b);
-            // or the four-hour pass: $1 once through PayPal, Unlimited for the next 4 hours (never a subscription)
-            const b4 = document.createElement('button'); b4.type = 'button'; b4.className = 'tpause-pass';
-            b4.textContent = uiText('turnPass4h', 'or $1 for the next 4 hours');
-            b4.addEventListener('click', async (e) => {
-              e.stopPropagation(); b4.disabled = true; b.disabled = true;
-              try {
-                const r = await GifOS.meetSubs.buyPass((w) => { t.textContent = w; });
-                if (!(r && r.passJson)) { t.textContent = said; b4.disabled = false; b.disabled = false; }
-              } catch (x) { t.textContent = said; b4.disabled = false; b.disabled = false; }
-            });
-            el.appendChild(b4);
-          }
-          p.tile.appendChild(el);
-        } else if (!show && el) el.remove();
+        pauseNote(p.tile, show);
       }
+      // SUB.4 + TURN.11 for every seat: the Stadium that shows a far room over a pipe with no video says so, with the same
+      // note and Subscribe as a tile (Nathan 11-14: the note goes on the strip, not only on the pipe holders' tiles)
+      const sd = document.querySelector('#stadium [data-row="sd"]');
+      if (sd) { let far = 0; try { far = meshNode && typeof meshNode.meetingFar === 'function' ? meshNode.meetingFar() : 0; } catch (e) {} pauseNote(sd, !!turnLinks && GifOS.meetTurn.stripPaused(facts, far)); }
+    }
+    // THE PAUSED NOTE on a host: a person's tile (pausedBy), or the Stadium strip that stands for a far room whose pipe
+    // carries no video (stripPaused): the named state's sentence and one tap to subscribe or buy the pass.
+    function pauseNote(host, show) {
+      let el = host.querySelector(':scope > .tpause:not(.tpause-busy)');
+      if (show && !el) {
+        // VIDEO IS PAUSED: the named state's sentence (meet-status videoPausedRelay) over the dark tile, and one
+        // tap to subscribe ($2 monthly, PayPal). A subscription's vouch turns this link's video on where it is:
+        // the next paint finds the link carrying video and takes the note away.
+        el = document.createElement('div'); el.className = 'tpause'; el.setAttribute('role', 'note');
+        const t = document.createElement('span'); t.className = 'tpause-say';
+        const said = statusWords('videoPausedRelay');
+        t.textContent = said; el.appendChild(t);
+        if (subsOn()) {
+          const b = document.createElement('button'); b.type = 'button'; b.className = 'tpause-sub';
+          b.textContent = uiText('turnSubscribe', 'Subscribe');
+          b.addEventListener('click', async (e) => {
+            e.stopPropagation(); b.disabled = true;
+            try {
+              const r = await GifOS.meetSubs.subscribe('room20', 'monthly', (w) => { t.textContent = w; });
+              if (!(r && r.licenseJson)) { t.textContent = said; b.disabled = false; }
+            } catch (x) { t.textContent = said; b.disabled = false; }
+          });
+          el.appendChild(b);
+          // or the four-hour pass: $1 once through PayPal, Unlimited for the next 4 hours (never a subscription)
+          const b4 = document.createElement('button'); b4.type = 'button'; b4.className = 'tpause-pass';
+          b4.textContent = uiText('turnPass4h', 'or $1 for the next 4 hours');
+          b4.addEventListener('click', async (e) => {
+            e.stopPropagation(); b4.disabled = true; b.disabled = true;
+            try {
+              const r = await GifOS.meetSubs.buyPass((w) => { t.textContent = w; });
+              if (!(r && r.passJson)) { t.textContent = said; b4.disabled = false; b.disabled = false; }
+            } catch (x) { t.textContent = said; b4.disabled = false; b.disabled = false; }
+          });
+          el.appendChild(b4);
+        }
+        host.appendChild(el);
+      } else if (!show && el) el.remove();
     }
     // The subroom ask's answer: my door is r (a listed room I reached: no grant; a new room or a re-pipe: its grant).
     // The seat takes it (meshNode.subGo knocks at the new door inside the call; the relay socket follows the door).
@@ -27763,6 +27772,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const v = document.createElement('video'); v.muted = true; v.autoplay = true; v.setAttribute('playsinline', '');
         const lb = document.createElement('div'); lb.className = 'rlabel'; lb.textContent = 'The stadium';
         el.appendChild(v); el.appendChild(lb); stadiumEl.appendChild(el); trackAspect(el, v);
+        try { turnPaint(); } catch (e) {}   // a new strip takes the paused note at once (TURN.11)
       }
       const v = el.querySelector('video');
       if (!(typeof wkHolds === 'function' ? wkHolds(v, stream) : v.srcObject === stream)) { if (typeof wkBindVideo === 'function') wkBindVideo(v, stream); else v.srcObject = stream; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); changed = true; }
@@ -28287,6 +28297,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           for (const hm of T.colMates(hc)) {
             const jk0 = shipMos('sdrow:' + c.r, occPid(hm), prodPack.stream, Object.assign({ row: c.r, h: 0, src: myId }, prodMeta())); if (jk0) wanted.add(jk0);
           }
+          // L2.15: my product also crosses each Section-1 bridge of mine (an empty cell's two nearest seats): the far end is the head
+          // (or the heir standing in) of another row whose corner with mine may be silent; it keeps this copy parked as a standby
+          // (one-pipe law) and plays it when the head-column copy stops
+          { const sb = meshSeat(); for (const t of (sb && sb.s1Bridges ? sb.s1Bridges() : [])) { const jb = shipMos('sdrow:' + c.r, t, prodPack.stream, Object.assign({ row: c.r, h: 1, src: myId }, prodMeta())); if (jb) wanted.add(jb); } }
           // L2.7 at Section 1: the heir has no pc to the other heads; its column-mates carry its product to their heads (x2 -> sdrow), as a mate carries its head's x1
           if (actHead) for (const cm of T.colMates(c)) { const jx = shipMos('x2', occPid(cm), prodPack.stream, Object.assign({ row: c.r, h: 0, src: myId }, prodMeta())); if (jx) wanted.add(jx); }
           for (let j = 1; j < C; j++) {
@@ -28638,6 +28652,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // ONE hot pipe + a parked standby + dormant spares (ONE-PIPE
         // multi-subscribe), so the extra announces cost nothing until demanded.
         const s1peers = [...T.rowMates(c), ...T.colMates(c)].map((m) => occPid(m)).filter(Boolean);
+        { const sb = meshSeat(); for (const t of (sb && sb.s1Bridges ? sb.s1Bridges() : [])) if (s1peers.indexOf(t) < 0) s1peers.push(t); }   // L2.15: an empty Section-1 cell's bridge carries the flood around a silent corner (parked at the receiver by the one-pipe law, as E2)
         for (const t of pipePeers()) if (s1peers.indexOf(t) < 0) s1peers.push(t);   // SUB.4: every stager's own feed crosses my pipes, both ways (split horizon in floodOne)
         const flooded = new Set(); // PER-SWEEP dedup (one feed may resolve via two keys). The old
         // persistent stgSpread let the sweep-end reaper kill flood jobs after one sweep.

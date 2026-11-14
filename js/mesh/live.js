@@ -104,6 +104,8 @@
       if (!this.hasCoord || this.moving || this.state !== 3 || this.d6cBeat() < 0) return false;
       let since = this.d6cBeat(); if (this.backAt > since) since = this.backAt;
       if (this.TICK - since <= K.ORPHAN_T || (this.unpAnyAt >= 0 && this.TICK - this.unpAnyAt <= 16) || this.l2E2Up()) return false;
+      if (this.s1bUp()) return false;   // L2.15: a Section-1 bridge whose far end beats me carries me
+      if (this.f.fabricPipePeers(this.id).length) return false;   // D6c.6: a live pipe end is never an orphan
       if (this.l14Up >= 0 && this.f.fabricLinkCarries(this.id, this.l14Up)) return false;   // D6c.3
       return true;
     },
@@ -491,6 +493,7 @@
       // W7: sync S1SYNC over the whole rook neighbourhood
       const tg = new Set(); const rm = rowMates(this.coord); for (let q = 0; q < C - 1; q++) { const t = this.occGet(ckey(rm[q])); if (t >= 0 && t !== this.id) tg.add(t); }
       const cm = colMates(this.coord); for (let q = 0; q < C - 1; q++) { const t = this.occGet(ckey(cm[q])); if (t >= 0 && t !== this.id) tg.add(t); }
+      for (const y of this.s1bP) if (this.s1bHot(y[1])) tg.add(y[0]);   // L2.15: a bridge whose corner is silent carries the section table and the roster
       // § G ROOT FOLD: the digest table rides S1SYNC, relayed at the author's stamp and a grown relative age.
       this.pipeBeat();   // the state beat (and its early send) carries my fold to the far end of each joining connection
       const digs = this.l10Digs();
