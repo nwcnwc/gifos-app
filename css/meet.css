@@ -565,6 +565,11 @@
      point as the meeting tiles, so the head stays in view. A shared screen
      or a packed picture keeps contain (data-fit unset), so nothing is cut. */
   #fsmain[data-fit="cover"] { object-fit: cover; object-position: 50% 40%; }
+  /* Cross-row Follow: the big view shows the Stadium zoomed onto the far talkers' tiles (run.html fsZoomPaint sets the
+     transform). The view clips the zoomed picture. */
+  #fsview { overflow: hidden; }
+  #fsmain.fszoom { transform-origin: 0 0; transition: transform .4s ease; }
+  @media (prefers-reduced-motion: reduce) { #fsmain.fszoom { transition: none; } }
   /* A camera-off (or moderated) talker is a name card. The video element stays
      in the tree but must not paint: srcObject is null, and this hides any
      frame that was still attached. */
