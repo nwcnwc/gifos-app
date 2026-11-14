@@ -169,7 +169,7 @@
         const it = this.noneSince.get(x); if (it === undefined) { this.noneSince.set(x, this.TICK); continue; }
         if (this.deafFloor >= 0 && it < this.deafFloor) { this.noneSince.set(x, this.TICK); continue; }   // L8.48: a none-stamp from before the ear reopened is not this window
         if (this.TICK - it < K.NOTMINE_WAIT) continue;
-        if (this.f.fabricTurnCarried(this.id, x)) { this.noneSince.set(x, this.TICK); continue; }   /* TURN.14.9 */
+        if (this.f.fabricTurnCarried(this.id, x) || this.t14Deep()) { this.noneSince.set(x, this.TICK); continue; }   /* TURN.14.9 (TURN.14.18: a deep end's owner and row-mates sit across the cut too) */
         this.trace('NOT-MINE', this.id, ol[q], 'peer=%d none=%d', x, this.TICK - it);
         if (this.coord.pc !== 0 && this.coord.i === 0 && ol[q].pc === this.coord.pc && ol[q].r === this.coord.r && ol[q].i !== 0 && this.f.fabricLinkState(this.id, x) === LS_NONE && this.f.fabricDialFails(this.id, x) > 0) { this.l20Out.set(k, [x, this.TICK]); if (this.l20Out.size > C) eraseFirst(this.l20Out); }
         this.noneSince.delete(x); this.occDrop(k, 'not-my-link'); this.live.delete(k); this.s1seen.delete(k); this.noChan.add(x);

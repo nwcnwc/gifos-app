@@ -541,7 +541,7 @@
     e1Down() {
       const oc = this.ownerCoord(); if (!oc) return false; const ok = ckey(oc); const o = this.occGet(ok);
       if (o < 0 || o === this.id) return true;
-      const ls = this.f.fabricLinkState(this.id, o); if (ls === LS_CLOSED || ls === LS_NONE) return true;
+      const ls = this.f.fabricLinkState(this.id, o); if ((ls === LS_CLOSED || ls === LS_NONE) && !this.t14Deep()) return true;   // TURN.14.18: a deep end's owner sits across the cut: its E1 is judged by the answers its beats get
       if (this.translost.has(ok)) return true;
       return this.TICK - this.seatedAt > 8 + K.EARLY_HOLD && this.TICK - this.lastAck > 8 + K.EARLY_HOLD;
     },
