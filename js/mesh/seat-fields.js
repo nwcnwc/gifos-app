@@ -769,6 +769,7 @@
     ["l9SyncAt", "i32"],   // int = -1000  (line 1862)
     ["l9SyncTo", "{i32:i32}"],   // OMap<int,int>  (line 1863)
     ["l50AskAt", "i32"],   // int = -1000  (line 1864)
+    ["l50PcAt", "i32"],   // int = -1  (line 1864)
     ["l50From", "{i32:i32}"],   // OMap<int,int>  (line 1864)
     ["l1617At", "i32"],   // int = -1000  (line 1864)
     ["mvWhy", "str"],   // const char* = "?"  (line 1865)
@@ -1357,6 +1358,7 @@
     l9GrowAt: -1000,
     l9SyncAt: -1000,
     l50AskAt: -1000,
+    l50PcAt: -1,
     l1617At: -1000,
     mvWhy: "?",
     l13AskedKnock: -1000,

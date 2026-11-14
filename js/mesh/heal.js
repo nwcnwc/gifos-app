@@ -31,7 +31,7 @@
   const K = C_.consts, E = C_.enums;
   const { ckey, ckPc, unckey, ownedLinks, rowMates, down, up, pcDepth, cc } = topo;
   const C = topo.C;
-  const { LS_OPEN, LS_DIALING, LS_CLOSED } = E;
+  const { LS_NONE, LS_OPEN, LS_DIALING, LS_CLOSED } = E;
   const unck = unckey;
   const newMsg = (t) => msg.newMsg(t);
   const kvs = (a) => a.map((e) => ({ k: e.k, v: e.v }));   // a vector<KV> copy
@@ -1297,10 +1297,15 @@
     // L50: a deep seat whose anchor does not carry asks for its link up over every link it still holds.
     l50Ask() {
       const id = this.id, TICK = this.TICK;
-      if (!this.hasCoord || this.state !== 3 || this.coord.pc === 0 || this.moving || TICK - this.seatedAt < K.L9_LONE || TICK - this.l50AskAt < 2 * K.L9_LONE) return;
-      if (this.l14Up >= 0 && this.l14Dialling()) return;   // a stand-in's pc is on its way: the ask goes over it when it opens
+      if (!this.hasCoord || this.state !== 3 || this.coord.pc === 0 || this.moving) return;
       const anc = this.coord.i !== 0 ? { pc: this.coord.pc, r: this.coord.r, i: 0 } : this.ownerCoord(); if (!anc) return;
-      const ak = ckey(anc); if (!(this.occGet(ak) < 0 || TICK - this.lastAck >= K.L9_LONE) || this.softSitting(ak)) return;   // L50.1
+      const ak = ckey(anc), ax = this.occGet(ak), als = ax >= 0 ? this.f.fabricLinkState(id, ax) : LS_NONE;
+      if (als !== LS_OPEN) this.l50PcAt = -1; else if (this.l50PcAt < 0) this.l50PcAt = TICK | 0;   // L50.1.1: since when my pc to my anchor's seat reads open
+      if (TICK - this.seatedAt < K.L9_LONE || TICK - this.l50AskAt < 2 * K.L9_LONE) return;
+      if (this.l14Up >= 0 && this.l14Dialling()) return;   // a stand-in's pc is on its way: the ask goes over it when it opens
+      if (als === LS_DIALING) return;   // L50.1.1: a link on its way is not missing (its dial's own clock ends a dead dial; a closed pc is missing)
+      const quiet = TICK - Math.max(this.lastAck, als === LS_OPEN ? this.l50PcAt : -1);   // L50.1.1: silence counts on a pc that carries
+      if (!(ax < 0 || quiet >= K.L9_LONE) || this.softSitting(ak)) return;   // L50.1
       const ps = this.l50Links(); if (ps.length === 0) return;
       this.l50AskAt = TICK | 0; const pn = this.probeNote(ak), sq = ++this.w.lv.RSEQ;
       for (const g of ps) { const r = newMsg('ROUTE'); r.target = cc(anc); r.asker = id; r.tag = 5; r.ttl = K.L50_HOPS; r.via = id; r.pseq = sq; r.pn = pn; r.ck = ckey(this.coord); this.l50Send(g, r); }
