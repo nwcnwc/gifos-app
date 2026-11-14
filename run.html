@@ -12482,7 +12482,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         staleHealAt.set(pid, now);
         if (typeof clog === 'function') clog('grant-heal ' + String(pid).slice(0, 6) + ' (prev-key frame)');
       pwLog('grant-heal→' + String(pid).slice(0, 6) + ' ep=' + pwEpoch);
-        if (pd && pd.dc && pd.dc.readyState === 'open') txm(() => net.seal(prevRoomE2E, retainedGrant).then((env) => net.sendChunked(env, (piece, str) => { try { pd.dc.send(str); } catch (e) {} })));
+        if (pd && pd.dc && pd.dc.readyState === 'open' && !standbyHolds(pd, retainedGrant)) txm(() => net.seal(prevRoomE2E, retainedGrant).then((env) => net.sendChunked(env, (piece, str) => { try { pd.dc.send(str); } catch (e) {} })));
         else { const fs = pwFramesOf(retainedGrant); if (fs) for (const f of fs) relaySendSealed(pid, f.k, f, prevRoomE2E); }
       });
     }
@@ -12537,11 +12537,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         e.n++; e.b += JSON.stringify(msg).length;
       } catch (e) {}
     }
+    // A TURN pipe's WARM STANDBY is silent until it takes the pipe over (js/meet-turn.js): its channel carries only
+    // the link's own handshake and the connection's upkeep (its renegotiation), never a mesh frame, fold, flood, chat,
+    // file or clock. Every send to a peer passes here; the moment the standby takes over, its channel is ordinary.
+    const STANDBY_KINDS = new Set(['tv', 'roffer', 'ranswer', 'sig']);
+    function standbyHolds(p, msg) {
+      try { return !!(p && turnLinks && turnLinks.standby(p.id) && !(msg && STANDBY_KINDS.has(msg.k))); } catch (e) { return false; }
+    }
     // Sealed frame over this pair's DataChannel (chat, files, relay control).
     const dcSend = (p, msg) => {
       if (p && p.wireHold) return p.wireHold.then(() => dcSend(p, msg)); // DEBUG lever, see renegotiate
       if (p && p.testTx) { p.testTx.push(msg); return Promise.resolve(); } // openLinkForTest: a channel that only records
       if (!p || !p.dc || p.dc.readyState !== 'open') return Promise.resolve();
+      if (standbyHolds(p, msg)) return Promise.resolve();
       if (turnWeb.size && (msg.k === 'roffer' || msg.k === 'ranswer' || msg.k === 'sig')) { const w = turnWeb.get(p.id); if (w && w.channel(msg)) return Promise.resolve(); }   // the web path negotiates with its end in this page
       const dc = p.dc;
       if (typeof clog === 'function') dcTally(msg); // DEBUG: what the channel bytes are
@@ -12764,7 +12772,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // line queued behind the whole pin.
     const fileTx = net.makeChain();
     const dcSendFile = (p, msg) => {
-      if (!p || !p.dc || p.dc.readyState !== 'open') return Promise.resolve();
+      if (!p || !p.dc || p.dc.readyState !== 'open' || standbyHolds(p, msg)) return Promise.resolve();
       const dc = p.dc;
       return fileTx(() => net.seal(roomE2E, msg).then((env) =>
         net.sendChunked(env, (piece, str) => { try { dc.send(str); } catch (e) {} })));
@@ -15876,6 +15884,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // What a barred peer does get: the plain signed change order (no password), which sends a page to the door as any change does.
     function pwBootOf(grant) { return grant && grant.wb ? { k: 'pwreset', by: grant.by, w: grant.wb, ep: grant.ep } : null; }
     function pwSealTo(q, msg, key) {
+      if (standbyHolds(q, msg)) return;
       txm(() => net.seal(key, msg).then((env) => net.sendChunked(env, (piece, str) => { try { q.dc.send(str); } catch (e) {} })));
     }
     // One hop of a ban: my open, signed channels, under the key they still read. A peer on `no` gets the boot order instead.
@@ -21645,7 +21654,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // share can sit hundreds of seals ahead; stamping first shifted the
         // asker's offset by half that wait. Rides the free DC path.
         const dc = p.dc, t0 = m.t0;
-        if (dc && dc.readyState === 'open') txm(() => {
+        if (dc && dc.readyState === 'open' && !standbyHolds(p, { k: 'ck' })) txm(() => {
           const msg = ckReply(t0);
           return net.seal(roomE2E, msg).then((env) =>
             net.sendChunked(env, (piece, str) => { try { dc.send(str); } catch (e) {} }));

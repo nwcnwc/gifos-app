@@ -475,7 +475,10 @@
       if (L.farPid && !L.sb) { try { io.publish({ id: L.id, a: L.opener ? io.me() : L.far, b: L.opener ? L.far : io.me(), up: 0, v: 0, gone: 1 }); } catch (e) {} }
       try { io.changed(L.far); } catch (e) {}
     }
-    const fresh = (L) => !!(L.mine && L.peer && L.mine.e - io.now() > 0 && L.peerE - io.now() > 0);
+    // THE VOUCH ON DEMAND. A relay vouch is asked for only when a credential ask is about to present it (and while a
+    // link has none at all yet), never on a timer: a vouch good for at least one credential answer's wait is usable.
+    const usableAt = (e) => e - io.now() > FETCH_TIMEOUT_MS;
+    const fresh = (L) => !!(L.mine && L.peer && usableAt(L.mine.e) && usableAt(L.peerE));
     function sendAsk(L) { L.sentAt = io.now(); io.sendTv(L.far, { k: 'tv', q: 'a', l: L.l, d: io.dev(), b: io.blocked() ? 1 : 0 }); }
     // Is pipe l<r> already part of my meeting? Then a handshake for it re-links a subroom the meeting holds (a re-pipe,
     // a standby taking over): no new entry. Judged only from what my own meeting holds, never from the asker's word: a
@@ -494,7 +497,11 @@
     function credFor(L, pool) {
       return createCredentials({ ask: io.ask, room: io.sid(), pool, now: io.now, setTimer: io.setTimer, clearTimer: io.clearTimer,
         extra: () => {
-          if (!fresh(L)) { askMine(L); return null; }
+          if (!fresh(L)) {   // the ask waits (the client retries) for both ends' fresh vouches, each made now
+            if ((!L.mine || !usableAt(L.mine.e)) && io.now() - L.vAskAt > RESEND_MS) askMine(L);
+            if ((!L.peer || !usableAt(L.peerE)) && io.now() - L.sentAt > RESEND_MS) sendAsk(L);   // an ask is the far end's cue to send its vouch
+            return null;
+          }
           const b = { vouch: L.mine.v, peerVouch: L.peer };
           if (pool === 'paid') { const t = io.ticket(); if (!t) return null; b.ticket = t; }
           return b;
@@ -622,7 +629,7 @@
         const first = !L.farDev;
         L.farDev = f.d; L.farBlocked = f.b === 1;
         if (!L.opener && (first || io.now() - L.sentAt > RESEND_MS)) sendAsk(L);   // the target answers with its own device and network
-        if (!L.mine || L.mine.e - io.now() < 0) askMine(L);
+        if (!L.mine || !usableAt(L.mine.e)) { if (io.now() - L.vAskAt > RESEND_MS / 2) askMine(L); }
         else io.sendTv(L.far, { k: 'tv', q: 'v', l: L.l, e: L.mine.e.toString(36), n: L.mine.n, m: L.mine.m });
         return;
       }
@@ -933,8 +940,9 @@
         if (L.state === 'up' && !io.pcUp(L.far)) { if (!L.downSince) L.downSince = now; if (now - L.downSince > DIAL_BUDGET_MS) { if (L.opener) sub.retryAt = now + RETRY_MS; close(L, 'lost'); continue; } }
         else L.downSince = 0;
         if ((L.state === 'ask' || (L.state === 'swap' && !L.peer)) && now - L.sentAt > RESEND_MS && (L.opener || L.farDev)) sendAsk(L);
-        // my vouch is re-made once half its life is gone (the far end does the same), so a renewal always has fresh ones
-        if (L.farDev && now - L.vAskAt > RESEND_MS && (!L.mine || now - L.mine.at > (L.mine.e - L.mine.at) / 2)) askMine(L);
+        // a link that holds no vouch of mine yet (its setup, a takeover) asks again until it does; after that only a
+        // credential ask asks (the vouch on demand)
+        if (L.farDev && !L.mine && now - L.vAskAt > RESEND_MS) askMine(L);
         // TURN.18: a client end's connection has looked for its relay path for TURN_WEB_WAIT and found none
         if (L.state !== 'up' && !L.web && L.client && L.cred && io.turnPath) { const tp = io.turnPath(L.far); if (tp && tp.at > 0 && !tp.relay && now - tp.at >= WEB_WAIT_MS && L.cred.web().length) webStart(L, true); }
         if (L.web && L.state !== 'up') { if (now - L.webSaidAt > RESEND_MS) webSay(L); webGo(L); }
