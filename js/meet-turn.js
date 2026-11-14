@@ -457,7 +457,9 @@
     }
     const fresh = (L) => !!(L.mine && L.peer && L.mine.e - io.now() > 0 && L.peerE - io.now() > 0);
     function sendAsk(L) { L.sentAt = io.now(); const a = { k: 'tv', q: 'a', l: L.l, d: io.dev(), b: io.blocked() ? 1 : 0 }; if (L.relink) a.f = 1; io.sendTv(L.far, a); }
-    function askMine(L) { if (!L.farDev) return; L.vAskAt = io.now(); io.askVouch(L.farDev, L.l); }
+    // My vouch names the subroom my relay socket sits in: a pipe I opened waits until my door is its new subroom.
+    const mySubFor = (L) => (L.opener ? Number(L.l.slice(1)) : (io.sub ? io.sub() : 0));
+    function askMine(L) { if (!L.farDev) return; if (io.sub && io.sub() !== mySubFor(L)) return; L.vAskAt = io.now(); io.askVouch(L.farDev, L.l); }
     function credFor(L, pool) {
       return createCredentials({ ask: io.ask, room: io.sid(), pool, now: io.now, setTimer: io.setTimer, clearTimer: io.clearTimer,
         extra: () => {
@@ -702,6 +704,7 @@
       if (!L) return;
       if (!m.v) { log('turn-vouch refused ' + short(L.far) + ' ' + m.error); return; }
       const p = vouchParts(m.v); if (!p) return;
+      if (p.r !== mySubFor(L)) { log('turn-vouch ' + short(L.far) + ' names subroom ' + p.r + ', not this pipe\'s end'); return; }
       L.mine = { v: m.v, e: p.e, n: p.n, m: p.m, at: io.now() };
       log('turn-vouch ' + short(L.far) + ' ' + L.l);
       io.sendTv(L.far, { k: 'tv', q: 'v', l: L.l, e: p.e.toString(36), n: p.n, m: p.m });
