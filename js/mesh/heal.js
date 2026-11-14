@@ -691,6 +691,7 @@
     // C++: mesh_heal.inc:Seat::confirmMove
     confirmMove() {
       if (!this.moving) return; this.moving = false;
+      for (const [k, t] of [...this.live]) if (t <= this.moveAt && !this.occ.has(k)) { this.live.delete(k); this.liveBy.delete(k); }   // L4.3.5
       if (this.l4X) { this.l4X = false; this.oldNbrIds.length = 0; this.holdOcc.clear(); this.holdSeen.clear(); this.holdCous.clear(); this.oldPp = -1; this.oldPlacer = -1; this.trace('SWAP-CONFIRM', this.id, this.coord, 'from=%s', FREE.coordStr(unck(this.oldCk))); return; }
       this.trace('CONFIRM', this.id, this.coord, 'from=%s', FREE.coordStr(unck(this.oldCk)));
       let handTo = -1; { const it = this.rcHanded.get(ckey(this.coord)); if (it !== undefined) handTo = it[0]; }
