@@ -457,7 +457,10 @@
     let prevOld = (opts.prevTree && Array.isArray(opts.prevTree.ids) && opts.prevTree.ids.length) ? new Set(opts.prevTree.ids.map(String)) : null, treeAsk = null;
     const hadRoomMem = !!prevOld;   // this page came back from a room it sat in (kept: prevOld is consumed at the first list)
     let connects = 0;   // sockets this page has opened: a later one is a RE-open (the relay may have restarted)
-    const hadAtConnect = () => { const reopen = connects++ > 0; return (hadRoomMem || (everPopulated && reopen)) && !(seat && seat.state === 3); };   // the connect URL's had=1 (relay restart hold): only a page back from a reload, or a populated page whose socket re-opens, asks the door to wait for the room's greeters. A requeue on a live socket says nothing; no relay FRAME carries it (the frame law is unchanged)
+    // ROOMS JOINED BY RELAYED CONNECTIONS: had=1 asks a door to wait for the greeters of a room I come back to; a door I
+    // move to (the answer to my room ask) is not that room, and its own grant is short: no hold asked there.
+    let roomDoor = 0;   // the door my remembered room is at (where my seat last sat; a reload remembers door 0's room)
+    const hadAtConnect = () => { const reopen = connects++ > 0; return (hadRoomMem || (everPopulated && reopen)) && !(seat && seat.state === 3) && doorNow() === roomDoor; };   // the connect URL's had=1 (relay restart hold): only a page back from a reload, or a populated page whose socket re-opens, asks the door to wait for the room's greeters. A requeue on a live socket says nothing; no relay FRAME carries it (the frame law is unchanged)
     function treeMemAsk() {
       if (!treeAsk || !raw || raw.state !== 1) return;
       const list = treeAsk; treeAsk = null; let n = 0;
@@ -1141,7 +1144,7 @@
         // repopulates.
         {
           const osz = (seat && seat.state === 3 && seat.hasCoord) ? seat.occ.size : 0;
-          if (osz >= 2) { everPopulated = true; shrankSolo = false; }
+          if (osz >= 2) { everPopulated = true; shrankSolo = false; roomDoor = doorNow(); }
           else if (osz === 1 && everPopulated) shrankSolo = true;
         }
         {
