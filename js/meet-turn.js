@@ -775,6 +775,7 @@
     // a seat of its own side open the standby toward it. Asked again after a whole dial budget with no standby up.
     function warmStandby(L, now) {
       if (L.sbUp || (L.sbAt && now - L.sbAt < DIAL_BUDGET_MS)) return;
+      if (L.tookOver) return;   // a pipe just taken over warms its next standby once the service has moved the pipe to it (its first l<r> grant)
       const r = pipeNo(L.l), sl = 's' + r, S = io.standbySeat ? io.standbySeat() : null;
       if (!L.opener) {
         L.sbAt = now; L.sbSeat = S ? S.pid : io.me();
@@ -828,7 +829,7 @@
       const old = livePipe(r); if (old && old !== M) close(old, 'standby-took-over', true);
       try { io.sendTv(M.far, { k: 'tv', q: 't', l: sl }); } catch (e) {}
       if (M.liveEnd && M.liveEnd !== io.me()) { try { io.sendTv(M.liveEnd, { k: 'tv', q: 't', l: sl }); } catch (e) {} }   // my side's old live end: its part of the pipe ends
-      M.sb = false; M.l = 'l' + r; M.liveEnd = null; M.mine = null; M.peer = null; M.vAskAt = 0; M.tookOver = true; M.sbUp = false; M.sbAt = 0;
+      M.sb = false; M.l = 'l' + r; M.liveEnd = null; M.mine = null; M.peer = null; M.vAskAt = 0; M.tookOver = !!M.client; M.sbUp = false; M.sbAt = 0;
       sbExpect.delete(sl);
       if (M.cred) { try { M.cred.stop(); } catch (e) {} M.cred = null; }
       if (M.client) { M.cred = credFor(M, 'free'); M.cred.start(); }
