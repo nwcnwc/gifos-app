@@ -96,7 +96,7 @@
     L4_LEAD: 10,                 // L4.3: the head sets the exchange tick this far ahead, past the pair's greeting round trip (a dial of up to 10 ticks)
     L4_PERIOD: 16,               // L4.3: min ticks from one tier swap of a row to the next order for it
     L4_QUIET: 16,                // L4.3: a row with no arrival, departure or move for this long is quiet enough for a tier swap
-    L50_HOPS: 3,                 // L50.2: hops an ask may spend: three take a mate to its row's owner the second way (heir, backup owner, owner)
+    L50_HOPS: 60,                // L50.2: hops an ask may spend, as every routed call: its own row hands it on once, every other seat passes it one hop toward the named cell
     L5_PERIOD: 8,                // L9.11: and again every beat while a home cell is free; the home row head seats one probe per free cell, no period
     L5_SETTLE: 16,               // L9.11: in a room of at most 25, a deep seat probes for a home cell once its neighbourhood has been quiet this long (two beats), not COMPACT_SETTLE
     L7_HOLD: 24,                 // L7.5: an admitter holds a seeker's FIND it cannot serve yet (its frontier row settling, a row ledger on its way) this long, serving it the tick the cell opens; past it the seeker is told NOROOM

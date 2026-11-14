@@ -1110,6 +1110,7 @@
         for (const c of cand) if (c === x) return; cand.push(x);
       };
       let broke = -1; { for (const b of this.byeIds.values()) if (b > broke) broke = b; for (const t of this.l13DownAt) if (t > broke) broke = t; if (TICK - this.lastAck >= 40 && this.lastAck > broke) broke = this.lastAck; if (ancBye > broke) broke = ancBye; if (this.l14PcDown > broke) broke = this.l14PcDown; }
+      if (bare && this.lastAck > broke) broke = this.lastAck;   /* L50.5: the knock first */
       const fresh = this.greetersAt >= broke && TICK - this.greetersAt <= K.RELAY_TTL && this.lastGreeters.length > 0;
       if (!fresh) { if (TICK - this.l13KnockAt >= 32) { this.l13KnockAt = TICK | 0; this.emitRelay(this.genKey, false); this.trace('L14-KNOCK', id, anc, 'stale'); } }   // L50.5
       // L50.5: the seats the ask could not reach are the door's to name: a decliner's referrals first (L14.3), then the door's greeters
@@ -1248,7 +1249,7 @@
     l50Ask() {
       const id = this.id, TICK = this.TICK;
       if (!this.hasCoord || this.state !== 3 || this.coord.pc === 0 || this.moving || TICK - this.seatedAt < K.L9_LONE || TICK - this.l50AskAt < 2 * K.L9_LONE) return;
-      if (this.l14Up >= 0 && (this.f.fabricLinkState(id, this.l14Up) === LS_OPEN || this.l14Dialling())) return;
+      if (this.l14Up >= 0 && this.l14Dialling()) return;   // a stand-in's pc is on its way: the ask goes over it when it opens
       const anc = this.coord.i !== 0 ? { pc: this.coord.pc, r: this.coord.r, i: 0 } : this.ownerCoord(); if (!anc) return;
       const ak = ckey(anc); if (!(this.occGet(ak) < 0 || TICK - this.lastAck >= K.L9_LONE) || this.softSitting(ak)) return;   // L50.1
       const ps = this.l50Links(); if (ps.length === 0) return;
@@ -1285,9 +1286,12 @@
           const ob = this.byeAt.get(tk);
           if ((ob !== undefined && TICK - ob <= K.LEASE_T) || this.translostConfirmed(tk)) { const g = newMsg('E1STATE'); g.tag = 3; g.id = id; g.oCk = tk; g.owner = m.asker; g.ck = m.ck; this.l50Back(g, m.asker); }
         } }
-      { const ac = unck(m.ck); const cut = this.coord.pc !== 0 && this.l14Branch() !== null && !(this.l14Up >= 0 && this.f.fabricLinkState(id, this.l14Up) === LS_OPEN);   // L14.4
-        if (!cut && pcDepth(this.coord.pc) < pcDepth(ac.pc) && this.f.fabricUpTake(id, m.asker) === 0) { const r = newMsg('ROUTED'); r.tag = 5; r.target = cc(m.target); r.id = id; r.pn = m.pn; r.asker = m.asker; this.l50Back(r, m.asker); this.trace('L50-OFFER', id, this.coord, 'to=%d', m.asker); return; } }   // (c)
-      if (m.ttl > 1) for (const g of this.l50Links()) if (g !== m.from && g !== m.asker) { const f = msg.clone(m); f.ttl = m.ttl - 1; f.via = id; this.emit(g, f); }   // (d)
+      const ac = unck(m.ck);
+      { const cut = this.coord.pc !== 0 && this.l14Branch() !== null && !(this.l14Up >= 0 && this.f.fabricLinkState(id, this.l14Up) === LS_OPEN);   // L14.4
+        if (!cut && !this.l14Served.has(m.asker) && pcDepth(this.coord.pc) < pcDepth(ac.pc) && this.f.fabricUpTake(id, m.asker) === 0) { const r = newMsg('ROUTED'); r.tag = 5; r.target = cc(m.target); r.id = id; r.pn = m.pn; r.asker = m.asker; this.l50Back(r, m.asker); this.trace('L50-OFFER', id, this.coord, 'to=%d', m.asker); } }   // (c)
+      if (m.ttl <= 1) return;
+      if (this.coord.pc === ac.pc && this.coord.r === ac.r) { for (const g of this.l50Links()) if (g !== m.from && g !== m.asker) { const f = msg.clone(m); f.ttl = m.ttl - 1; f.via = id; this.emit(g, f); } return; }   // (d) the asker's own row hands it to every link it holds
+      { const nh = this.nextHopToward(m.target, m.via); if (nh >= 0 && nh !== m.from && nh !== m.asker) { const f = msg.clone(m); f.ttl = m.ttl - 1; f.via = id; this.emit(nh, f); } }   // (d) any other seat passes it one hop toward the named cell
     },
 
     // C++: mesh_heal.inc:Seat::l50Offer
