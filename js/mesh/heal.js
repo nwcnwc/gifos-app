@@ -481,6 +481,7 @@
         const nb = []; const ol = ownedLinks(c); const nl = ol.length; for (let q = 0; q < nl; q++) { const y = (ckey(ol[q]) === ckey(this.coord)) ? id : this.occGet(ckey(ol[q])); if (y >= 0) nb.push({ k: ckey(ol[q]), v: y }); }
         if (!this.rmName(c, -1, nb)) return;
         this.l9PullCell.set(k, this.TICK | 0); if (front) frontDone = true; this.trace('HOME-PULL', id, c, 'via=%d n=%d', x, n);
+        if (front) { let d = ''; for (let q = 0; q < C * C; q++) { const kk = ckey(cell(0, Math.floor(q / C), q % C)); const lv = this.live.get(kk), sn = this.s1seen.get(kk), by = this.byeAt.get(kk); d += ' ' + q + ':' + this.occGet(kk) + ',st' + (l922Seat(this, kk) ? 1 : 0) + ',ol' + (this.ownedLinkCell(kk) ? 1 : 0) + ',lv' + (lv === undefined ? '-' : (this.TICK - lv)) + ',s1' + (sn === undefined ? '-' : (this.TICK - sn)) + ',by' + (by === undefined ? '-' : (this.TICK - by)) + ',bb' + (this.s1bAt.has(this.occGet(kk)) ? (this.TICK - this.s1bAt.get(this.occGet(kk))) : '-'); } this.trace('DBG-FRONT', id, c, 'n=%d part=%d heard=%d busy=%d sb=%d%s', this.rootDec.n, this.rootDec.part, l922Heard(this) ? 1 : 0, l922Busy(this) ? 1 : 0, this.s1bAt ? this.s1bAt.size : -1, d); }   // s1move DEBUG ONLY (not for landing)
         if (x === id) { this.findLeaf(c, nb, 2 * (C - 1), 12); } else { this.emit(x, flMsg(c, nb, 2 * (C - 1), 12)); }
       };
       for (let j = 1; j < C; j++) pull(cell(0, this.coord.r, j));
