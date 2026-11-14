@@ -651,7 +651,8 @@
       }
       if (L) L.heardAt = io.now();
       if (f.q === 't') { if (L && L.sb && L.l === f.l) takeover(L, 'the far standby end took over'); return; }
-      if (f.q === 's') { if (L && !L.sb && L.opener && L.l === f.l && f.d) { if (L.farSb !== f.d) { L.farSb = f.d; L.sbAt = 0; } } return; }
+      // the far end names its side's standby seat only while it holds no standby up: the opener opens one toward it
+      if (f.q === 's') { if (L && !L.sb && L.opener && L.l === f.l && f.d) { L.sbUp = false; if (L.farSb !== f.d) { L.farSb = f.d; L.sbAt = 0; } } return; }
       if (f.q === 'x') {
         if (L && L.l === f.l) {
           if (f.b === 1 && L.opener) { sub.why = 'full'; log('turn-link refused ' + short(from) + ' ' + L.l + ': the meeting is full'); }
@@ -898,12 +899,12 @@
     // A live pipe end keeps its standby: the far end names its side's standby seat (and tells that seat), the opener has
     // a seat of its own side open the standby toward it. Asked again after a whole dial budget with no standby up.
     function warmStandby(L, now) {
+      if (L.sbUp && L.sbSeat && L.sbSeat !== io.me() && !io.alive(L.sbSeat)) { L.sbUp = false; L.sbAt = 0; }   // my side's standby end is gone: warm another
       if (L.sbUp) return;
       if (L.sbAt && now - L.sbAt < DIAL_BUDGET_MS) {
         if (!(L.sbSelf && io.standbySeat && io.standbySeat())) return;   // no seat of my side could end it then: warm again the moment one can
         L.sbAt = 0;
       }
-      if (L.tookOver) return;   // a pipe just taken over warms its next standby once the service has moved the pipe to it (its first l<r> grant)
       const r = pipeNo(L.l), sl = 's' + r, S = io.standbySeat ? io.standbySeat() : null;
       log('turn-standby warm ' + L.l + (L.opener ? ' opener far-seat=' + (L.farSb || '-') : ' target') + ' my-seat=' + (S ? short(S.pid) + '/' + S.dev : 'self'));
       L.sbSelf = !S;
@@ -938,9 +939,10 @@
         if (standbys() >= SB_PER_SEAT) { io.sendTv(from, { k: 'tv', q: 'x', l: f.l }); return true; }
         let M = null; for (const x of links.values()) if (x.sb && x.l === f.l && x.farDev === f.d && x.state !== 'closed') M = x;
         if (!M) { openStandby(f.l, f.d, parseInt(f.e, 36), from); log('turn-standby open ' + f.l + ' toward ' + f.d); }
+        else bindStandby(f.l, from);
         return true;
       }
-      if (f.q === 's') { sbExpect.set(f.l, from); io.sendTv(from, { k: 'tv', q: 's', l: f.l, d: io.dev() }); return true; }   // I end this pipe's standby on my side: my device, for the far side
+      if (f.q === 's') { sbExpect.set(f.l, from); bindStandby(f.l, from); io.sendTv(from, { k: 'tv', q: 's', l: f.l, d: io.dev() }); return true; }   // I end this pipe's standby on my side: my device, for the far side
       // the rest come only from a seat of my subroom in its role (else: a frame of a standby link not yet keyed by its peer id)
       const P = livePipe(r);
       if ((f.q === 'r' || f.q === 'x') && P && P.sbSeat === from) { P.sbUp = f.q === 'r'; if (f.q === 'x') P.sbAt = 0; return true; }
@@ -948,10 +950,22 @@
       if (f.q === 't') { const mine = Array.from(links.values()).filter((M) => M.sb && M.l === f.l && M.liveEnd === from); for (const M of mine) takeover(M, 'my live end lost the pipe'); return mine.length > 0; }
       return false;
     }
-    // A live end whose pipe connection died: its standby seat takes the pipe over; this end's part ends with it.
-    function handOver(L) {
+    // A live end names me its standby seat while a standby of that pipe I end is already open (the pipe was re-linked or
+    // changed hands): the standby answers to that live end from now on. It hears the standby is up, and the standby's
+    // credential is asked again so the service records this pair as the pipe's standby.
+    function bindStandby(sl, liveEnd) {
+      for (const M of links.values()) {
+        if (!M.sb || M.l !== sl || M.state === 'closed' || M.liveEnd === liveEnd) continue;
+        M.liveEnd = liveEnd;
+        log('turn-standby ' + sl + ' now answers to ' + short(liveEnd));
+        if (M.state === 'up') io.sendTv(liveEnd, { k: 'tv', q: 'r', l: sl });
+        if (M.cred) { try { M.cred.stop(); } catch (e) {} M.cred = credFor(M, 'free'); M.cred.start(); }
+      }
+    }
+    // A live end whose pipe is lost: its standby seat takes the pipe over; this end's part ends with it.
+    function handOver(L, why) {
       const sl = 's' + pipeNo(L.l);
-      log('turn-standby hand-over ' + L.l + ' (the connection died)');
+      log('turn-standby hand-over ' + L.l + ' (' + why + ')');
       if (L.sbSeat && L.sbSeat !== io.me()) io.sendTv(L.sbSeat, { k: 'tv', q: 't', l: sl });
       close(L, 'standby-took-over', true);
       if (!L.sbSeat || L.sbSeat === io.me()) for (const M of Array.from(links.values())) if (M.sb && M.l === sl) takeover(M, 'my own pipe died');
@@ -1100,10 +1114,13 @@
       for (const L of Array.from(links.values())) {
         // TURN.8: the far page is gone. A far end my seat does not know yet (a foreign greeter, its door entry stale here)
         // is alive while it keeps answering this link's handshake.
-        if (L.farPid && !io.alive(L.far) && now - (L.heardAt || L.askAt) > DIAL_BUDGET_MS / 2) { close(L, 'gone', true); continue; }
+        const farGone = !!L.farPid && !io.alive(L.far) && now - (L.heardAt || L.askAt) > DIAL_BUDGET_MS / 2;
+        // SUB.7, ONE PROMOTION PATH: a live pipe whose far end left (its goodbye, the mesh's word) or whose connection died
+        // (the pc's own verdict) while its warm standby is up: the standby IS the pipe now, whichever end sees it first
+        if (L.state === 'up' && !L.sb && L.sbUp && (farGone || !io.pcUp(L.far))) { handOver(L, farGone ? 'its far end left' : 'the connection died'); continue; }
+        if (farGone) { close(L, 'gone', true); continue; }
         if (L.state === 'up' && io.reach(L.far) === 'friend') { close(L, 'healed'); continue; }          // TURN.7
         if (L.state !== 'up' && now - L.askAt > DIAL_BUDGET_MS) { if (L.opener) sub.retryAt = now + RETRY_MS; close(L, 'dialfail'); continue; }
-        if (L.state === 'up' && !io.pcUp(L.far) && !L.sb && L.sbUp) { handOver(L); continue; }   // the pipe's connection died: its warm standby takes over
         if (L.sb && L.liveEnd && L.liveEnd !== io.me() && !io.alive(L.liveEnd)) { takeover(L, 'my live end left'); }
         if (L.state === 'up' && !io.pcUp(L.far)) { if (!L.downSince) L.downSince = now; if (now - L.downSince > DIAL_BUDGET_MS) { if (L.opener) sub.retryAt = now + RETRY_MS; close(L, 'lost'); continue; } }
         else L.downSince = 0;

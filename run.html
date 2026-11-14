@@ -13105,6 +13105,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         judged: () => { const r = turnRaw(); return !!r && r.greetersAt > r.seatedAt; },
         sat: () => { const r = turnRaw(); return r ? r.seatedAt : -1; },   // TURN.4.6: which seating the door's answer belongs to   // the door has answered my own seating knock (L8.1.3)
         alive: (pid) => {
+          // the mesh's word decides: a seat it saw leave is gone, a seat it holds is here; the door's last greeter list
+          // (read only now and then) speaks only for a greeter the mesh holds no word of
+          if (meshGone.has(pid)) return false;
           if (meshKnows(pid)) return true;
           const r = turnRaw(); if (r && (r.lastGreeters || []).indexOf(meshNode.nidOf(pid)) >= 0) return true;
           const p = peers.get(pid); return !!(p && p.connected);
