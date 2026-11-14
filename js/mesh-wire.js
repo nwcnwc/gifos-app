@@ -1312,6 +1312,7 @@
         subGrant = g; raw.emitRelay(raw.genKey); return true;   // a fresh grant for my own door (its door stood empty): I register with it
       },
       meetingCount() { return layer ? layer.meetingCount() : null; },
+      meetingFar() { return layer ? layer.meetingFar() : 0; },   // the people in the other rooms joined to mine (0: none)
       knownSub(r) { return !!penv && penv.knownSub(r); },
       standbyCands() { return layer ? layer.standbyCands() : []; },   // the display fold beside the seat (layer.js leaf)
       // App access to the wire's relay socket (the ONE socket): signaling
