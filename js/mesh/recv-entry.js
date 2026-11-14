@@ -132,8 +132,9 @@
       const TICK = this.TICK, id = this.id, lv = this.w.lv;
       if (m.id >= 0) this.doorAsk.delete(m.id);   // it answered: not dark
       if (this.state === 3 && m.roster.length !== 0 && m.from >= 0 && this.lateAsk.has(m.from)) { this.lateAsk.clear(); if (this.islandFounder && this.l850Lone()) { this.trace('L8.47.3-LATE', id, this.coord, 'from=%d', m.from); this.c7Yield(this.ringName(), 'L8.47.3-late'); this.c7Old.clear(); this.l851Up = -1; this.c7At = K.C7AT_NEVER; this.f.relayUnlist(id); return; } }   // L8.47.3 (mesh_roomterm.inc)
-      if (this.state === 1 && m.roster.length === 0 && m.from >= 0 && m.from !== this.id && this.l8471() && this.lastAsked < 0 && this.islandAsked.has(m.from)) { this.lastAsked = m.from; this.trace('L16.16.1-HELD', this.id, null, 'via=%d', m.from); }   // L16.16.1: "no room yet" from a mate I asked: its answer will carry my FIND
-      if (this.state === 1 && m.roster.length === 0 && m.from >= 0 && m.from !== id && this.islandAsked.has(m.from)) { if (this.ehFrom.size >= 16) this.ehFrom.clear(); if (!this.ehFrom.has(m.from) && (this.ehFrom.add(m.from), true) && this.ehAskAt < 0) this.ehAskAt = TICK | 0; this.ehAt = TICK | 0; }   // L8.47.2 (mesh_roomterm.inc): the answer to an ask of mine this entry
+      const noCell = m.id < 0;   // L16.18: the answerer holds no cell (its HOME carries no id): the one meaning of "no room yet"
+      if (this.state === 1 && noCell && m.from >= 0 && m.from !== this.id && this.l8471() && this.lastAsked < 0 && this.islandAsked.has(m.from)) { this.lastAsked = m.from; this.trace('L16.16.1-HELD', this.id, null, 'via=%d', m.from); }   // L16.16.1: "no room yet" from a mate I asked: its answer will carry my FIND
+      if (this.state === 1 && noCell && m.from >= 0 && m.from !== id && this.islandAsked.has(m.from)) { if (this.ehFrom.size >= 16) this.ehFrom.clear(); if (!this.ehFrom.has(m.from) && (this.ehFrom.add(m.from), true) && this.ehAskAt < 0) this.ehAskAt = TICK | 0; this.ehAt = TICK | 0; }   // L8.47.2 (mesh_roomterm.inc): the answer to an ask of mine this entry
       if (this.l13On() && this.state === 3 && m.knock && (m.byes.length >= 2 || m.mass)) { let n = 0; for (const v of this.byeIds.values()) if (TICK - v <= K.LEASE_T) n++; let d = 0; for (const t of this.l13DownAt) if (TICK - t <= K.LEASE_T) d++; if (n + d >= 1) this.l13MassHeard(); }   // L13
       if (this.state === 3 && TICK - this.rosterAskAt > 120) return;   // a SEATED seat hears HOME only as the answer to its own WHOHOME
       if (m.askGap >= 0) this.askGap = m.askGap | 0;   // the door's one clock, as of this answer
@@ -145,7 +146,7 @@
       if (this.state === 1 && this.oldCell && this.rcTries < 2 && !(this.rcPendAt >= 0) && m.roster.length && (this.rcTries > 0 || ((this.rcRtN = 0), (this.rcRtAt = -1), true)) && this.tryReclaim(m.roster, m.from)) { this.rcGreeter = m.from; this.rcTries++; this.roster = kvCopy(m.roster); this.haveRoster = true; this.lastReach = TICK; this.retryAt = TICK; return; }   // L3.10
       if (this.state === 1 && this.oldCell && (this.rcPendAt >= 0 || this.rcRound2) && m.roster.length) { this.roster = kvCopy(m.roster); this.haveRoster = true; this.lastReach = TICK; return; }   // L3.10.6
       if (this.state === 1) {
-        if (m.roster.length === 0) { this.retryAt = TICK - 10; return; }
+        if (noCell) { this.retryAt = TICK - 10; return; }
         if (this.entryTerm() && m.from >= 0) { this.gateway = m.from; this.islandAskAt = -1; this.islandAskN = 0; this.islandAsked.clear(); this.islandLast = false; }
         if (m.line >= 0) { this.lineAdopt(m.line, m.lineAt, 'home'); if (m.lineF) this.lineFork = true; }
         this.roster = kvCopy(m.roster); this.haveRoster = true; this.lastReach = TICK; this.seatTries = 0; this.resumeTries = 0;

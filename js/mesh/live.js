@@ -94,7 +94,8 @@
     },
 
     // C++: mesh_seat.inc:Seat::d6cBeat
-    d6cBeat() { return this.lkAnyAt >= this.seatedAt ? this.lkAnyAt : this.lkCarried; },
+    // D6c.5: a seat that was placed and never had a beat counts from the tick it sat; the founder of a room (its lineage is its own id, on the home cell) was placed by nobody and is no orphan.
+    d6cBeat() { return this.lkAnyAt >= this.seatedAt ? this.lkAnyAt : this.lkCarried >= 0 ? this.lkCarried : (this.line === this.id && ckey(this.coord) === 0) ? -1 : this.seatedAt; },
     // A pc of mine carries me up: my uplink, my anchor's own link, or my E2 uplink.
     // C++: mesh_seat.inc:Seat::l1361Carried
     l1361Carried() { if (this.l14Up >= 0 && this.f.fabricLinkCarries(this.id, this.l14Up)) return true; const a = this.l13Anchor(); if (a) { const x = this.occGet(ckey(a)); if (x >= 0 && x !== this.id && this.f.fabricLinkCarries(this.id, x)) return true; } return this.l2E2Up(); },
