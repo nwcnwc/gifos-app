@@ -12852,20 +12852,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const cc = net.topo.unck(k);
       return cc.pc === c.pc && cc.r === c.r;
     }
-    // A row-mate across a relayed link's cut is reached only through that link's carrier (mosCarrier): the carrier is the
-    // one seat that can hand my own camera and mic on to it, so it gets them as a row-mate does. Only my own row counts.
-    function rowCarrier(pid) {
-      const c = meshCoord(); if (!c || !turnLinks || typeof mosCarrier !== 'function') return false;
-      const q = peers.get(pid); if (!q || !q.connected) return false;
-      for (let j = 0; j < SCALE.C; j++) {
-        if (j === c.i) continue;
-        const m = occPid({ pc: c.pc, r: c.r, i: j }); if (!m || m === pid || m === myId) continue;
-        const mp = peers.get(m); if (mp && mp.connected) continue;
-        if (mosCarrier(m) === pid) return true;
-      }
-      return false;
-    }
-    const camPeer = (pid) => { if (isRowMate(pid)) return true; try { return rowCarrier(pid); } catch (e) { return false; } };
+    const camPeer = (pid) => isRowMate(pid);   // SUB.4: a pipe peer is no row-mate: its side hears me in the mix it gets
     // ---- mesh early-probe intake (healing-laws D5) --------------------------
     // Transport death is MY first-hand evidence: when my DataChannel to a peer
     // closes, or its pc lands in a hard state ('closed', or 'failed' persisting
@@ -12976,7 +12963,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (p.mainA) p.mainA.replaceTrack(null).catch(() => {});
           if (p.mainV) p.mainV.replaceTrack(null).catch(() => {});
         }
-      } else if (!localStream) {
+      } else if (!localStream && !turnHolds(p.id)) {   // a TURN pc (a pipe, a warm standby) gets no camera slots: its media is the pipe's (pipeReserve)
         // Same audio-then-video order as addTrack above. The opposite order
         // made a glare rollback unable to adopt the other side's offer: the
         // m-lines no longer matched, the answer was swallowed, and the pair
@@ -13254,6 +13241,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { turnLinks.step(); } catch (e) { turnNote('turn-step-err ' + String(e && e.stack || e).slice(0, 160)); }
       for (const p of peers.values()) if (turnLinks.holds(p.id) || (p.pc && p.pc.__turnGuarded)) turnApplyVideo(p);
       turnWatch();
+      pipeWatch();
       const every = GifOS.sub && GifOS.sub.RENEW_EVERY_S ? GifOS.sub.RENEW_EVERY_S * 1000 / 2 : 0;   // half the ticket's renewal period
       if (every && Date.now() - turnSubAt > every) { turnSubAt = Date.now(); turnSubOut(); }
     }
@@ -21685,8 +21673,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // down, and a deeper seat would crop them with the old order.
         const stripReorder = m.key === 'sgs' && !!prevAnn && !annNew
           && ((prevAnn.ids || []).join(',') !== (annIds || []).join(',') || prevAnn.n !== m.n || prevAnn.cols !== m.cols);
-        const org = typeof m.cf === 'string' && typeof mosCarrierOf === 'function' && mosCarrierOf(p.id, m.cf) ? m.cf : undefined;   // TURN.14.8: a ship carried across the cut, by the seat that sent it
-        mosAnn.set(ak, { org, streamId: m.streamId, col: m.col, row: m.row, src: (m.src ? String(m.src).slice(0, 64) : undefined), n: m.n, cols: m.cols, mt: m.mt, h: (typeof m.h === 'number' ? m.h : undefined), ao: (m.ao === 1 ? 1 : undefined), sb: (m.sb === 1 ? 1 : undefined), vp: mxPath(m.vp), ids: annIds, alag: (typeof m.alag === 'number' && isFinite(m.alag) ? Math.max(0, Math.min(2000, m.alag)) : undefined), at: Date.now() });
+        mosAnn.set(ak, { streamId: m.streamId, col: m.col, row: m.row, src: (m.src ? String(m.src).slice(0, 64) : undefined), n: m.n, cols: m.cols, mt: m.mt, h: (typeof m.h === 'number' ? m.h : undefined), ao: (m.ao === 1 ? 1 : undefined), sb: (m.sb === 1 ? 1 : undefined), vp: mxPath(m.vp), ids: annIds, alag: (typeof m.alag === 'number' && isFinite(m.alag) ? Math.max(0, Math.min(2000, m.alag)) : undefined), at: Date.now() });
+        if (m.key.indexOf('stg:') === 0 && isPipePeer(p.id)) pipeStg.set(m.key.slice(4).split('^')[0], p.id);   // SUB.4: this stager is on that pipe's side
         if (annNew || stripReorder) schedReconcile(); else schedClaim();
       } else if (m.k === 'mx-beat') {
         stgBeatIn(p, m);
@@ -23348,6 +23336,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const AUX_AUDIO_BPS = 64000;
     let soloMark = null;   // the second stream name that marks a block's sound (see soloSdp)
     const addAux = (pc, tr, container) => {
+      // SUB.7: a pipe's sound slot that was negotiated while its pc was a warm standby (pipeReserve) takes the mix as a
+      // track attach: no new m-line, no offer and answer before the sound flows.
+      if (tr && tr.kind === 'audio' && container) {
+        let res = null;
+        try { for (const t of pc.getTransceivers()) if (t.sender && t.sender.__pipeRes === container && !t.sender.track && !t.stopped && t.currentDirection !== 'stopped') { res = t.sender; break; } } catch (e) {}
+        if (res) { res.__pipeRes = null; res.replaceTrack(tr).catch(() => {}); return res; }
+      }
       const init = { streams: [container] };
       if (container && container.__solo && tr && tr.kind === 'audio') { try { soloMark = soloMark || new MediaStream(); init.streams.push(soloMark); } catch (e) {} }
       if (tr && tr.kind === 'audio') init.sendEncodings = [{ maxBitrate: AUX_AUDIO_BPS }];   // set at creation: valid before negotiation in every engine
@@ -23987,6 +23982,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const mosStandby = new Map(); // resolvedKey -> { via, streamId, stream, el, meta } (parked 2nd claim)
     const subWant = new Map();    // from + '|' + key + '|' + sid -> 'w'|'i' (last demand sent — debounce)
     const mosJobs = new Map();  // key + '>' + to -> { senders, trackList, active, sig, to, key, meta } (outbound ships)
+    const pipePacks = new Map();   // SUB.4: pipe peer -> the room pack without that pipe's part (a vouched pipe only)
+    const pipePacksStop = (keep) => { for (const [h, pk] of [...pipePacks]) if (!keep || !keep(h)) { try { pk.stop(); } catch (e) {} pipePacks.delete(h); } };
     let prodPack = null, roomPack = null, sdView = null, stripPack = null; // GAPLESS packers (approach A); roomPack: Section 1's whole-room pack; sdView: my Stadium (the room less my row), painted here only
     // MY VOICE IN MY OWN CELL. A head's composites (its row's product, the
     // down-mixes for its children) fold each cell's audio from the cell's
@@ -25181,32 +25178,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       return out;
     }
-    // TURN.14.8 / TURN.14.12, the mosaic's half: a ship to a seat across a TURN link's cut, where no pc of mine opens, rides the one
-    // seat that reaches both: the target's own TURN peer when I reach it (I sit on the far end's side), else my TURN peer when its
-    // beat lists the target (I am the end). The carrier re-ships it under the same key ('tc:<target>|<key>' on the way), so the target
-    // claims it as if it came straight. Only rooms that hold a TURN link carry anything: the carrier is read from the links' facts.
-    function mosCarrier(to) {
-      if (!turnLinks || !to || to === myId) return null;
-      const live = (r) => { const q = peers.get(r); return !!(q && q.connected && q.dc && q.dc.readyState === 'open'); };
-      for (const f of turnFacts.values()) {
-        if (!f.up || Date.now() - (f.at || 0) > turnLinks.factStaleMs) continue;
-        const x = f.a === to ? f.b : f.b === to ? f.a : null; if (x && x !== myId && live(x)) return x;
-      }
-      for (const r of turnLinks.turnPcs()) if (r !== to && live(r) && (connsOf.get(r) || []).includes(to)) return r;
-      return null;
-    }
-    // A carrier's word "this came from x" stands only for a pair the TURN facts join: the carrier is x's TURN peer, or mine.
-    function mosCarrierOf(carrier, x) {
-      if (!turnLinks || !carrier || !x || x === myId || x === carrier) return false;
-      const q = peers.get(x); if (q && q.connected) return false;   // a seat I reach myself sends its own
-      for (const f of turnFacts.values()) { if (!f.up || Date.now() - (f.at || 0) > turnLinks.factStaleMs) continue; if ((f.a === carrier && (f.b === x || f.b === myId)) || (f.b === carrier && (f.a === x || f.a === myId))) return true; }
-      return false;
-    }
-    const mosCarried = (k) => { if (typeof k !== 'string' || k.indexOf('tc:') !== 0) return null; const b = k.indexOf('|'); return b > 3 ? { to: k.slice(3, b), key: k.slice(b + 1) } : null; };
     function shipMos(key, to, stream, meta, upKey) {
       if (!to || !stream) return null;
       const p = peers.get(to);
-      if ((!p || !p.connected) && key.indexOf('tc:') !== 0) { const via = mosCarrier(to); if (via) return shipMos('tc:' + to + '|' + key, via, stream, meta, upKey); }
       const jk = key + '>' + to;
       const cur = mosJobs.get(jk);
       // ORPHANED BY A TRANSPORT SWAP? A job's senders belong to the pc they
@@ -25772,7 +25746,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         let b = 0, n = 0; for (const r of p.pc.getReceivers()) { if (!r.track || !pri.stream.getTracks().includes(r.track)) continue; n++; (await r.getStats()).forEach((x) => { if (x.type === 'inbound-rtp') b += x.bytesReceived || 0; }); }
         const now = Date.now();
         if (!n) { rowFeed.via = null; return; }   // no receiver carries this claim's tracks (a rebound container): nothing to judge, and no silence
-        if (rowFeed.via !== (pri.org || pri.via) || rowFeed.sid !== pri.streamId || b !== rowFeed.bytes) { rowFeed.via = pri.org || pri.via; rowFeed.sid = pri.streamId; rowFeed.bytes = b; rowFeed.at = now; }
+        if (rowFeed.via !== pri.via || rowFeed.sid !== pri.streamId || b !== rowFeed.bytes) { rowFeed.via = pri.via; rowFeed.sid = pri.streamId; rowFeed.bytes = b; rowFeed.at = now; }
         else if (now - rowFeed.at >= ROW_SILENT_MS) schedReconcile();
       } catch (e) {} finally { rowFeedBusy = false; }
     }, 400);
@@ -25791,25 +25765,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       } else rowHeadOut = null;
       if (!rowHeadOut && pid && !(rowOutSkip.get(pid) > now)) {
         const pri = mosIn.get('sdm'), fb = mosFb.get('sdm');
-        if (pri && (pri.org || pri.via) === pid && (pri.deadAt || (rowFeed.via === pid && rowFeed.at && now - rowFeed.at >= ROW_SILENT_MS))) { rowHeadOut = { pid, tick: s.seatTick, pc: c.pc, r: c.r }; dbgRowHead(pri.deadAt ? 'out:gone' : 'out:silent'); if (fb) fb.dark = true; }
+        if (pri && pri.via === pid && (pri.deadAt || (rowFeed.via === pid && rowFeed.at && now - rowFeed.at >= ROW_SILENT_MS))) { rowHeadOut = { pid, tick: s.seatTick, pc: c.pc, r: c.r }; dbgRowHead(pri.deadAt ? 'out:gone' : 'out:silent'); if (fb) fb.dark = true; }
       }
-      // A head across a relayed link's cut is reached through that link's carrier, never by a pc of mine: the seat reads
-      // that pair as closed, but the head is there. Its row keeps it; only its feed going silent (above) makes me stand in.
-      const out = !!rowHeadOut || (s.headGoneView && !(typeof headCarried === 'function' && headCarried(c)));
+      const out = !!rowHeadOut || !!s.headGoneView;
       if (rowWasOut && !out) rowHoldUntil = now + MOS_SETTLE + 2000;   // the heir's copy stays while the row fails back
       rowWasOut = out; return out;
-    }
-    // My row's head sits across a relayed link's cut: no pc of mine reaches it, and a carrier of the link does (mosCarrier).
-    function headCarried(c) {
-      if (!c || c.i === 0 || typeof mosCarrier !== 'function') return false;
-      const pid = occPid({ pc: c.pc, r: c.r, i: 0 }); if (!pid || pid === myId) return false;
-      const q = peers.get(pid); if (q && q.connected) return false;
-      return !!mosCarrier(pid);
     }
     // The head's view is back: my row-view claim is on that head, not dead, and its bytes advanced within the silence bound.
     function rowHeadFeedBack(pid, now) {
       const pri = mosIn.get('sdm');
-      return !!(pri && (pri.org || pri.via) === pid && !pri.deadAt && rowFeed.via === pid && rowFeed.at && now - rowFeed.at < ROW_SILENT_MS);
+      return !!(pri && pri.via === pid && !pri.deadAt && rowFeed.via === pid && rowFeed.at && now - rowFeed.at < ROW_SILENT_MS);
     }
     // A carrier whose target just moved up to its row's head cell keeps handing it the row's product (L28 at both ends), so the
     // new head's view does not go dark between the carried copy and the direct one.
@@ -26081,7 +26046,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function mosResolve(key, meta, from) {
       const c = meshCoord(); if (!c) return null;
-      if (key.indexOf('tc:') === 0) { const t = typeof mosCarried === 'function' ? mosCarried(key) : null; if (!t) return null; { const q = peers.get(t.to); return t.to !== myId && t.to !== from && q && q.connected && !mosCarried(t.key) ? key : null; } }   // TURN.14.8: a ship I carry across the cut
+      // SUB.4: what my pipe peer sends me is a child's product: its side's room pack and the sound of its side ('sdn', its
+      // send to one more child of its own), held as a served branch ('subu:<pipe peer>'), and every stager's own feed.
+      if (from && isPipePeer(from)) { if (key === 'sdn') return 'subu:' + from; if (key.indexOf('stg:') !== 0) return null; }
       const iAmHead = c.i === 0 || actingHead(); // L2.7: the heir stands in for a gone head
       if (key === 'sub') {
         if (meta && meta.l14) return 'subu:' + String(meta.via || from).slice(0, 64); // L14: a cut-off branch's product over its uplink (or relayed by my row-mate)
@@ -27363,7 +27330,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       for (const rk of new Set([...mosIn.keys(), ...mosStandby.keys()])) if (isRedun(rk)) redun.set(rk, []);
       for (const [ak, ann] of mosAnn) {
         const from = ak.slice(0, ak.indexOf('|')), key = ak.slice(ak.indexOf('|') + 1);
-        const rk = mosResolve(key, ann, ann.org || from);
+        const rk = mosResolve(key, ann, from);
         if (!rk) continue;
         if (isRedun(rk)) { let a = redun.get(rk); if (!a) { a = []; redun.set(rk, a); } a.push({ from, key, ann }); continue; }
         structuralSeen.add(rk);
@@ -27389,7 +27356,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const st = p.incoming.find((s) => s.id === ann.streamId && s.id !== p.ownSid);
         if (!st) continue;
         if (cur) dropMosIn(rk);
-        mosIn.set(rk, { via: from, org: ann.org, streamId: ann.streamId, stream: st, el: mosNeedsVideo(rk) ? mosVideo(st) : null, meta: annMeta(ann) });
+        mosIn.set(rk, { via: from, streamId: ann.streamId, stream: st, el: mosNeedsVideo(rk) ? mosVideo(st) : null, meta: annMeta(ann) });
       }
       // A structural slot (sub, x1, x2, sdxc) has no second announcer
       // and no claimRedun pass. Once its announce ages out, or the peer is
@@ -27590,6 +27557,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       attachFailAt.clear(); stgAudioMemo = new WeakMap();
       if (prodPack) { prodPack.stop(); prodPack = null; }
       if (roomPack) { roomPack.stop(); roomPack = null; }
+      pipePacksStop();
       if (sdView) { sdView.stop(); sdView = null; }
       packLoopStop();
       for (const f of downFolds.values()) f.clear();
@@ -27622,9 +27590,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // rides the relay tree (Q78).
       const beyondRowRaw = (() => {
         if (!s || !c || BROADCAST) return false;
+        if (pipePeers().length) return true;   // SUB.4: a pipe is one more child: the meeting goes on past my row
         for (const [k, v] of s.occ) { if (v === myId) continue; const cc = net.topo.unck(k); if (cc.pc !== c.pc || cc.r !== c.r) return true; }
-        // A ROW THAT HANGS UNDER MY ROW IS A SECOND ROW (TURN.14: the cut-off side sits under its end of the link while Section 1
-        // holds one row). occ names Section 1 and my own links only, so a head never saw a mate's child row there: the room read
+        // A ROW THAT HANGS UNDER MY ROW IS A SECOND ROW (Section 1 may hold one row). occ names Section 1 and my own links only, so a head never saw a mate's child row there: the room read
         // as one row, nothing below was packed, claimed or mixed, and the seats under the end heard nobody and were heard by
         // nobody. Every beat's PONG names the child of each cell of my row (childOf), the same word the down ships already use.
         const kids = s.childOf;
@@ -27863,14 +27831,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // relayed down as sdn). A head that dialled me while cut off and then settled under me stays in the seat's served
       // list (the mesh keeps the uplink), but a second 'sdn' from the L14 pack would replace that relay in the same job
       // with a pack of my row's faces only, and the child's whole branch would hear nobody outside the row.
-      const l14Heads = l14DownHeads(meshSeat(), beyondRow, occPid(T.down(c)));
+      // SUB.4: my pipe peers are served children too: their product rides in as 'subu:<peer>', and each gets everything I hold
+      // but its own part (below, at the Section-1 head that ends it).
+      const pipes = beyondRow ? pipePeers() : [];
+      const l14Heads = l14DownHeads(meshSeat(), beyondRow, occPid(T.down(c))).filter((h) => pipes.indexOf(h) < 0).concat(pipes);
       // A branch one of my row-mates serves reaches me as that mate's relay (sub {l14, via}): the mate relays only the
       // branches it serves, and its announce ages out when it stops. A head packs those as its own, so the branch
       // goes up in the row product and into the stadium.
       const rowMatePid = (pid) => { if (!pid) return false; for (let j = 0; j < C; j++) { if (j === c.i) continue; if (occPid({ pc: c.pc, r: c.r, i: j }) === pid) return true; } return false; };
       const l14Keep = (h, uf) => l14Heads.includes(h) || (!!uf && uf.via !== h && (iAmHead || actHead) && rowMatePid(uf.via));
+      // An unvouched pipe's product is sound only (TURN.11): no tile for it, never a black block.
+      const blockHasPicture = (f) => !!(f && f.stream && f.stream.getVideoTracks().some((t) => t.readyState !== 'ended'));
       const l14Blocks = (pk, skip, ordOf) => {
-        let q = 0; for (const [mk, uf] of mosIn) { if (mk.indexOf('subu:') !== 0) continue; const h = mk.slice(5); if (h === skip || !l14Keep(h, uf)) { pk.delTile('u' + h); continue; } setBlock(pk, 'u' + h, ordOf(q++), uf); }
+        let q = 0; for (const [mk, uf] of mosIn) { if (mk.indexOf('subu:') !== 0) continue; const h = mk.slice(5); if (h === skip || !l14Keep(h, uf) || !blockHasPicture(uf)) { pk.delTile('u' + h); continue; } setBlock(pk, 'u' + h, ordOf(q++), uf); }
       };
       const l14Down = (fill, metaOf, direct) => {
         for (const [h, pk] of [...l14Packs]) if (!fill || !l14Heads.includes(h) || (direct && direct.has(h))) { pk.stop(); l14Packs.delete(h); }
@@ -27962,27 +27935,41 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           let roomV = null, roomEl = null, roomMeta = null;
           const dn = c.pc === 0 ? null : mosIn.get('sdn');
           if (c.pc === 0) {
+            // One fill for the room pack and for each pipe's pack: the same parts, a pipe's pack leaving that pipe's own block out
+            // (SUB.4 split horizon: a part is left out, never taken away).
+            const fillRoom = (pk, skip) => {
+              for (let q = 0; q < C; q++) {
+                const rowIn = q === c.r ? null : mosIn.get('sdrow:' + q);
+                if (rowIn) setBlock(pk, 'q' + q, 'c' + q, rowIn); else pk.delTile('q' + q);
+                if (!skip && rowIn && rowIn.via !== occPid({ pc: 0, r: q, i: 0 })) { const sk = meshSeat(); if (sk && sk.keepAdd) sk.keepAdd(rowIn.via, 16); } // L28: a carried copy stays until the direct one lands
+              }
+              // My row straight from its sources (faces and child blocks), not through my product's canvas: one paint, not two in series.
+              pk.delTile('p');
+              for (let j = 0; j < C; j++) {
+                const fp0 = j === c.i ? myId : (actHead && j === 0 ? null : occPid({ pc: c.pc, r: c.r, i: j }));
+                const fp = fp0 && stagers.includes(fp0) ? null : fp0;
+                const sc = fp ? srcFor(fp) : null;
+                if (sc && sc.el) pk.setTile('f' + j, 'c' + c.r + 'a' + j, sc.el, null, { n: 1, cols: 1, lbl: stadLbl(fp), fit: fitFor(fp), pid: fp });
+                else pk.delTile('f' + j);
+                const sub = mosIn.get('sub:' + j);
+                if (sub) setBlock(pk, 's' + j, 'c' + c.r + 'b' + j, sub); else pk.delTile('s' + j);
+              }
+              l14Blocks(pk, skip, (i) => 'c' + c.r + 'd' + i);
+            };
             if (!roomPack) roomPack = MM.createPacker({ shape: 'stad', fps: compFps() }).start();   // video only
-            for (let q = 0; q < C; q++) {
-              const rowIn = q === c.r ? null : mosIn.get('sdrow:' + q);
-              if (rowIn) setBlock(roomPack, 'q' + q, 'c' + q, rowIn); else roomPack.delTile('q' + q);
-              if (rowIn && rowIn.via !== occPid({ pc: 0, r: q, i: 0 })) { const sk = meshSeat(); if (sk && sk.keepAdd) sk.keepAdd(rowIn.via, 16); } // L28: a carried copy stays until the direct one lands
-            }
-            // My row straight from its sources (faces and child blocks), not through my product's canvas: one paint, not two in series.
-            roomPack.delTile('p');
-            for (let j = 0; j < C; j++) {
-              const fp0 = j === c.i ? myId : (actHead && j === 0 ? null : occPid({ pc: c.pc, r: c.r, i: j }));
-              const fp = fp0 && stagers.includes(fp0) ? null : fp0;
-              const sc = fp ? srcFor(fp) : null;
-              if (sc && sc.el) roomPack.setTile('f' + j, 'c' + c.r + 'a' + j, sc.el, null, { n: 1, cols: 1, lbl: stadLbl(fp), fit: fitFor(fp), pid: fp });
-              else roomPack.delTile('f' + j);
-              const sub = mosIn.get('sub:' + j);
-              if (sub) setBlock(roomPack, 's' + j, 'c' + c.r + 'b' + j, sub); else roomPack.delTile('s' + j);
-            }
-            l14Blocks(roomPack, null, (i) => 'c' + c.r + 'd' + i);
+            fillRoom(roomPack, null);
             if (roomPack.count() > 0) { roomEl = roomPack.canvas; roomMeta = packMeta(roomPack); roomV = packLoopTrack(roomPack.track) || roomPack.track; }
+            // A pipe that carries no video (unvouched, TURN.11-13) gets no picture composited for it at all.
+            pipePacksStop((h) => pipes.indexOf(h) >= 0 && pipeVideo(h));
+            for (const h of pipes) {
+              if (!pipeVideo(h)) continue;
+              let pk = pipePacks.get(h);
+              if (!pk) { pk = MM.createPacker({ shape: 'stad', fps: compFps() }).start(); pipePacks.set(h, pk); }
+              fillRoom(pk, h);
+            }
           } else {
             if (roomPack) { roomPack.stop(); roomPack = null; }
+            pipePacksStop();
             packLoopStop();
             const dv = dn && dn.stream ? dn.stream.getVideoTracks()[0] : null;
             if (dv && dv.readyState !== 'ended') { roomV = dv; roomEl = dn.el; roomMeta = blockMeta(dn); }
@@ -28063,7 +28050,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // (the mate hands it down): the same pack, with a sound that leaves
           // that branch out.
           l14Down(null);
-          if (roomV) for (const h of l14Heads) { const jk = shipMos('sdn', h, avOf('u' + h, mixOf(true, 'u' + h)), roomMeta); if (jk) wanted.add(jk); }
+          if (roomV) for (const h of l14Heads) { if (pipes.indexOf(h) >= 0) continue; const jk = shipMos('sdn', h, avOf('u' + h, mixOf(true, 'u' + h)), roomMeta); if (jk) wanted.add(jk); }
+          // SUB.4: to each pipe peer, as to one more child: the sound of everything I hold but its own part, and, while the pipe
+          // is vouched, the room pack without its block. Sound goes with or without a picture (sound first).
+          for (const h of pipes) {
+            foldsNow.add('u' + h); const fh = fold('u' + h, mixOf(true, 'u' + h));
+            const pk = pipeVideo(h) ? pipePacks.get(h) : null, pv = pk && pk.count() > 0 ? pk.track : null;
+            const st = downStream('u' + h, pv, fh ? fh.track() : null);
+            const jk = st ? shipMos('sdn', h, st, pv ? Object.assign(packMeta(pk), { alag: 0 }) : { n: 0, cols: 0, alag: 0 }) : null; if (jk) wanted.add(jk);
+          }
           if (roomV) for (const [mk, uf] of mosIn) {
             if (mk.indexOf('subu:') !== 0) continue; const h = mk.slice(5); if (l14Heads.includes(h) || !uf || uf.via === h || !rowMatePid(uf.via)) continue;
             const jr = shipMos('sdxu', uf.via, avOf('r' + h, mixOf(true, 'u' + h)), Object.assign({ via: h }, roomMeta)); if (jr) wanted.add(jr);
@@ -28076,6 +28071,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           else paintRoomView(roomEl, roomMeta, earSt, c, alag);
         } else {
           if (roomPack) { roomPack.stop(); roomPack = null; }
+          pipePacksStop();
           packLoopStop();
           for (const f of downFolds.values()) f.clear();
           downFolds.clear(); downStreams.clear();
@@ -28088,6 +28084,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // forever. Receivers of the old streams re-claim the new head's mixes.
         if (prodPack) { prodPack.stop(); prodPack = null; }
         if (roomPack) { roomPack.stop(); roomPack = null; }
+        pipePacksStop();
         packLoopStop();
         for (const f of downFolds.values()) f.clear();
         downFolds.clear();
@@ -28116,7 +28113,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // ...nor a frozen head's: while my row judges its head's feed gone (rowHeadIsOut), headPid is the heir, and the
         // head's own x1 is not carried. Every copy of it is the same stopped product; carrying it kept other heads holding
         // a "live" standby that could never flow.
-        if (x1 && c.pc === 0 && !x1.deadAt && (x1.org || x1.via) === headPid) {
+        if (x1 && c.pc === 0 && !x1.deadAt && x1.via === headPid) {
           // As mate i of my row I carry my head's product to DEST row i (row 0
           // when i===r — my column's seat there covers the wrap), via my
           // COLUMN-mate sitting in that row, who hands it to its head. This is
@@ -28167,15 +28164,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const sdmH = mosIn.get('sdm');
         // Re-fan only the copy that came from my row's head (or the heir standing in): a copy a mate re-fanned to me, fanned on,
         // closes a ring of mates holding a dead head's view, which nothing breaks while the new head is not reachable.
-        if (sdmH && !sdmH.deadAt && (sdmH.org || sdmH.via) === headPid) for (let j = 1; j < C; j++) {
+        if (sdmH && !sdmH.deadAt && sdmH.via === headPid) for (let j = 1; j < C; j++) {
           if (j === c.i) continue;
           const mate = occPid({ pc: c.pc, r: c.r, i: j });
-          if (!mate || mate === sdmH.via || mate === sdmH.org) continue;
-          // A second pipe never rides a relayed link's carrier (TURN.14.8: the link carries each duty once). A mate no pc of mine
-          // reaches gets the head's own copy through the carrier; and where I am that carrier, the copy I hand on for the head
-          // ('tc:<mate>|sdm') is that mate's row view: my re-fan beside it took the same job ('sdm>' + mate) every other sweep, the
-          // stream under the job changed each time, and the mate's view went silent long enough for the row to call its head out.
-          { const mq = peers.get(mate); if (!mq || !mq.connected || mosIn.has('tc:' + mate + '|sdm')) continue; }
+          if (!mate || mate === sdmH.via) continue;
+          { const mq = peers.get(mate); if (!mq || !mq.connected) continue; }
           const jr = shipMos('sdm', mate, sdmH.stream, blockMeta(sdmH)); if (jr) wanted.add(jr);
         }
       }
@@ -28185,8 +28178,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const tr = mic && mic.getAudioTracks && mic.getAudioTracks()[0];
         if (via && tr && tr.readyState !== 'ended') { const jr = shipMos('ra', via, mic, { row: c.r, src: myId }); if (jr) { wanted.add(jr); rowMixSent++; } }
       }
-      // TURN.14.8: the ships I carry across a TURN link's cut go on to their seat under their own key
-      for (const [mk, f] of mosIn) { const t = mosCarried(mk); if (!t || !f.stream || f.deadAt) continue; const jk = shipMos(t.key, t.to, f.stream, Object.assign({}, f.meta || {}, { cf: f.via }), mk); if (jk) wanted.add(jk); }   // cf: the seat it came from (the target reads it as that seat's)
       // ---- STAGE lane: chosen <=C feeds -> S1 -> composited strip -> fan down --
       // Individual stager feeds ride UP to Section 1 (uncomposited passthrough,
       // per-stager key); at S1 they FLOOD the row+cross mesh (dedup by streamId,
@@ -28260,7 +28251,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // ONE hot pipe + a parked standby + dormant spares (ONE-PIPE
         // multi-subscribe), so the extra announces cost nothing until demanded.
         const s1peers = [...T.rowMates(c), ...T.colMates(c)].map((m) => occPid(m)).filter(Boolean);
-        for (const t of ((typeof turnFeedPeers === 'function' && turnFeedPeers()) || [])) if (s1peers.indexOf(t) < 0) s1peers.push(t);   // TURN.14.8: the stage feeds cross the TURN link of an end whose ring lies across it, both ways
+        const pipesNow = pipePeers();
+        for (const t of pipesNow) if (s1peers.indexOf(t) < 0) s1peers.push(t);   // SUB.4: every stager's own feed crosses my pipes, both ways (split horizon in floodOne)
         const flooded = new Set(); // PER-SWEEP dedup (one feed may resolve via two keys). The old
         // persistent stgSpread let the sweep-end reaper kill flood jobs after one sweep.
         // NEVER FLOOD A FEED BACK TO ITS OWNER. The owner already has the
@@ -28291,7 +28283,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const direct = owner === myId ? stgDirectSet(T.rowMates(c).map((m) => occPid(m)), T.colMates(c).map((m) => occPid(m)),
             (t) => { const q = peers.get(t); return !!(q && q.pc && q.connected); }) : null;
           const hmSb = { h, sb: 1 };
-          for (const t of s1peers) { if (owner !== myId && relayHeldForTest(key, t)) continue; if (oneRootSkipForTest(owner, t, s1peers)) continue; const s = pick(t); if (!s) continue; const jk = shipMos(key, t, s.st, (direct && !direct.has(t)) ? hmSb : s.m, up); if (jk) wanted.add(jk); }
+          for (const t of s1peers) { if (owner && pipesNow.indexOf(t) >= 0 && pipeStg.get(owner) === t) continue; if (owner !== myId && relayHeldForTest(key, t)) continue; if (oneRootSkipForTest(owner, t, s1peers)) continue; const s = pick(t); if (!s) continue; const jk = shipMos(key, t, s.st, (direct && !direct.has(t)) ? hmSb : s.m, up); if (jk) wanted.add(jk); }
           const dnP = occPid(T.down(c)); // and DOWN — Stage audio folds at every ear
           const sd = pick(dnP);
           if (sd) {
@@ -28518,22 +28510,55 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // neighbourhood is empty — the shape of the late-joiner race, made
     // deterministic. With it set, only the widened pull can reach a holder.
     let sgaIsolated = false;
-    // TURN.14.8: the peers of my up TURN links that the stage and stadium feeds cross to: all of them while my ring lies across my
-    // link (I am the end that opened it, and my Section-1 mates are on the far side); as the far end, the end that opened it (its
-    // side may hang under it; a copy it does not need stays a parked announce, ONE-PIPE, and moves nothing).
-    function turnFeedPeers() {
-      if (!turnLinks) return [];
-      const across = !!(meshNode && meshNode.penv && meshNode.penv.turnAcross && meshNode.penv.turnAcross());
+    // SUB.3/SUB.4: MY PIPES. A pipe joins my subroom to another one; its far end is one more child of mine (mutual owners)
+    // and holds no cell of my room. Only a Section-1 row head ends a pipe (an end that stops being one gives it up), so a
+    // pipe counts here only while I sit at a Section-1 head cell: there I hold the room's parts unpacked (the other rows'
+    // products, my row's faces and child blocks, every stager's own feed) and can leave the pipe's own part out of what
+    // I send it. A warm standby (SUB.7) is no pipe until it takes over: nothing media rides it.
+    function pipePeers() {
+      if (!turnLinks || typeof turnLinks.pipeEnds !== 'function') return [];
+      const c = meshCoord(); if (!c || c.pc !== 0 || c.i !== 0) return [];
       const out = [];
-      for (const r of turnLinks.turnPcs()) { const q = peers.get(r); if (r !== myId && q && q.connected && (across || !turnLinks.opened(r))) out.push(r); }
-      return out;
+      for (const e of turnLinks.pipeEnds()) { if (!e || !e.up || e.standby || e.peer === myId || out.indexOf(e.peer) >= 0) continue; const q = peers.get(e.peer); if (q && q.connected) out.push(e.peer); }
+      return out.sort();
+    }
+    const isPipePeer = (pid) => !!pid && pipePeers().indexOf(pid) >= 0;
+    // TURN.11-13: the pipe carries video only while vouched (and not paused for a busy server). Unvouched: no picture is
+    // composited for it at all, only its sound.
+    const pipeVideo = (pid) => !!(turnLinks && turnLinks.video(pid) && !turnVideoBlocked({ id: pid }));
+    // SPLIT HORIZON for the stage: a stager whose feed a pipe peer announced to me sits on that pipe's side (a pipe end
+    // never sends back what came over it, so only that side can hold the feed first-hand). That feed never goes back over
+    // that pipe, whichever mate my copy comes from. Forgotten when the pipe ends.
+    const pipeStg = new Map();   // stager pid -> the pipe peer its feed came in over
+    // Called each TURN step: a change in my pipes re-runs the media sweep at once (sound first: SUB.7's takeover moves the
+    // mix to the new pipe peer in the same tick, not at the 2 s sweep).
+    let pipeSig = '';
+    // SUB.7 / server cost: every pipe and warm standby pc holds ONE audio slot for the mix it will carry, negotiated with no
+    // track: it sends nothing until the pipe is mine, and then the mix is a track attach (addAux) in the takeover tick. No
+    // video slot is made on a standby; a pipe's picture follows its vouch as a new m-line, after the sound.
+    function pipeReserve(p) {
+      if (!p || !p.pc || !p.connected || p.pipeResPc === p.pc) return;
+      const jk = 'sdn>' + p.id, ct = shipContainers.get(jk) || new MediaStream();
+      shipContainers.set(jk, ct);
+      try {
+        const t = p.pc.addTransceiver('audio', { direction: 'sendrecv', streams: [ct], sendEncodings: [{ maxBitrate: AUX_AUDIO_BPS }] });
+        t.sender.__pipeRes = ct; t.sender._auxKind = 'audio'; auxSenders.add(t.sender);
+        p.pipeResPc = p.pc; renegotiate(p);
+      } catch (e) { turnNote('pipe-reserve ' + String(e).slice(0, 60)); }
+    }
+    function pipeWatch() {
+      for (const e of turnLinks.pipeEnds()) if (e && e.peer !== myId) pipeReserve(peers.get(e.peer));
+      const now = pipePeers(), sig = now.join(',') + '|' + now.map((h) => (pipeVideo(h) ? 1 : 0)).join('');
+      for (const [o, h] of [...pipeStg]) if (now.indexOf(h) < 0) pipeStg.delete(o);
+      if (sig === pipeSig) return;
+      pipeSig = sig; schedReconcile();
     }
     function sgaTargets() {
       if (sgaIsolated) return [];
       const c = meshCoord(); if (!c) return [];
       const T = net.topo, out = new Set();
       const add = (co) => { const pid = co ? occPid(co) : null; if (pid && pid !== myId) out.add(pid); };
-      if (c.pc === 0) { for (const m of T.rowMates(c)) add(m); for (const m of T.colMates(c)) add(m); for (const t of ((typeof turnFeedPeers === 'function' && turnFeedPeers()) || [])) out.add(t); }   // TURN.14.8
+      if (c.pc === 0) { for (const m of T.rowMates(c)) add(m); for (const m of T.colMates(c)) add(m); for (const t of pipePeers()) out.add(t); }   // SUB.4: app frames cross my pipes (deduped by frame id)
       else {
         add(c.i === 0 ? T.up(c) : { pc: c.pc, r: c.r, i: 0 });
         if (c.i === 0) for (const m of T.rowMates(c)) add(m);
