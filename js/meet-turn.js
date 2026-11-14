@@ -956,7 +956,7 @@
     const busyOut = { wait: 1 };
     // A REFUSED ASK BACKS OFF: the wait doubles from TURN_RETRY up to RETRY_MAX_X times it, and starts over at once when
     // something the page sees changes (the door list, a pipe or standby of my room, the kind of refusal).
-    const RETRY_MAX_X = K.TURN_RETRY_MAX_X || 8;
+    const RETRY_MAX_X = K.TURN_RETRY_MAX_X;
     function subRefuse(now, why) {
       if (why !== sub.lastWhy) sub.mult = 1;
       sub.lastWhy = why;
