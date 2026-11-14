@@ -631,6 +631,17 @@
       if (this.tryReclaim(this.roster, g)) this.rcGreeter = g;
     },
 
+    // C++: mesh_seat.inc:Seat::byeByDoor
+    // D6c.4: a seat that left its cell while cut off says its goodbye through the greeter it re-enters by: its own signed
+    // goodbye for the cell it left is routed to every cell that links it, so the cell is free when its seat is gone.
+    byeByDoor() {
+      if (this.hasCoord || this.gateway < 0 || !this.leftCk || this.leftTo >= 0 || this.TICK - this.leftAt > K.LEASE_T) return;
+      const c = unckey(this.leftCk); const ol = ownedLinks(c); const o = ownerCoordOf(c); if (o !== null) ol.push(o);
+      const l = newMsg('LEAVE'); l.ck = this.leftCk; l.id = this.id; l.tn = this.tn;
+      for (const t of ol) this.route(t, -1, l);
+      this.trace('BYE-DOOR', this.id, c, 'gw=%d cells=%d', this.gateway, ol.length);
+    },
+
     // C++: mesh_seat.inc:Seat::reseatViaRoster
     reseatViaRoster() {
       const id = this.id;

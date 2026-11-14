@@ -112,6 +112,7 @@
     NBR_GAP: 60,                 // S5: a neighbour silence this long resets freshness on return
     NOTMINE_ECHO: 240,           // L8.4: a Section-1 cell held only second-hand that no owner reported this long is held by nobody of my island
     NOTMINE_WAIT: 48,            // L8.4: an occupant of my owned link whose link has stayed none this long, dialled and never heard, is not of my island
+    ORPHAN_T: 60,                // D6c: a seat no link carries, whose door names another greeter, leaves after this long; its goodbye goes by the door (D6c.4)
     OWNER_SILENT: 40,            // up-edge D5: unanswered phone beats this long register a transport-loss observation of the owner
     PEND_Y: 40,                  // a YIELD waits this long for its arbiter's hearing PONG or proof verdict
     PLACE_REPLAY: 12,            // an admitter replays an unconfirmed PLACE once after this long

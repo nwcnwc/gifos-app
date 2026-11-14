@@ -199,7 +199,7 @@
 
     // C++: mesh_seat.inc:Seat::onFindAck
     onFindAck(m) {
-      if (this.state === 2 && m.nc === this.id && m.from === this.lastAsked && this.findAckAt < 0) this.findAckAt = this.TICK;
+      if (this.state === 2 && m.nc === this.id && m.from === this.lastAsked && this.findAckAt < 0) { this.findAckAt = this.TICK; this.byeByDoor(); }
     },
 
     // C++: mesh_seat.inc:Seat::onFindLeaf

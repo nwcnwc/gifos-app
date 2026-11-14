@@ -102,7 +102,7 @@
     orphanSeat() {
       if (!this.hasCoord || this.moving || this.state !== 3 || this.d6cBeat() < 0) return false;
       let since = this.d6cBeat(); if (this.backAt > since) since = this.backAt;
-      if (this.TICK - since <= K.DARK_LEAVE || (this.unpAnyAt >= 0 && this.TICK - this.unpAnyAt <= 16) || this.l2E2Up()) return false;
+      if (this.TICK - since <= K.ORPHAN_T || (this.unpAnyAt >= 0 && this.TICK - this.unpAnyAt <= 16) || this.l2E2Up()) return false;
       if (this.l14Up >= 0 && this.f.fabricLinkCarries(this.id, this.l14Up)) return false;   // D6c.3
       return true;
     },
