@@ -13029,10 +13029,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // tile like any direct link and leaves me out of its Stadium (paintRoomView), so a 1:1 over TURN is two full tiles; the
     // TURN guard holds it while the link is paused, and TURN.13 steps it with the composite on the same pc (adapt).
     const micPeer = (pid) => isRowMate(pid);
-    // VIDEO GIVES WAY, the extra camera first: on a link whose capacity has stepped its video down (TURN.13 step 1 or more; step 0 is full quality) my camera is parked and
-    // the composite (which still shows me) takes the step alone: two encoders each sat at the browser's floor under a paid
-    // server's cap and the voice under them was lost (capstep: A1 deaf to B1 at 10 000 B/s).
-    const camPeer = (pid) => isRowMate(pid) || (!!turnLinks && turnLinks.video(pid) && !((turnLinks.videoStep(pid) || {}).step >= 1) && (() => { try { return isPipePeer(pid); } catch (e) { return false; } })());   // isPipePeer is defined further down
+    // VIDEO GIVES WAY, the extra camera first: my camera rides a pipe only while the link's estimate has room for a second
+    // picture (meet-turn camRoom); otherwise it is parked and the composite (which still shows me) carries the link's video
+    // alone: two encoders at the browser's floor under a paid server's cap cost the voice (capstep: A1 deaf to B1).
+    const camPeer = (pid) => isRowMate(pid) || (!!turnLinks && turnLinks.camRoom(pid) && (() => { try { return isPipePeer(pid); } catch (e) { return false; } })());   // isPipePeer is defined further down
     // ---- mesh early-probe intake (healing-laws D5) --------------------------
     // Transport death is MY first-hand evidence: when my DataChannel to a peer
     // closes, or its pc lands in a hard state ('closed', or 'failed' persisting
@@ -13518,7 +13518,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const p = peers.get(pid); if (!p || !p.pc) continue;
         try { turnLinks.onPath(pid, p.pc.iceConnectionState === 'completed' ? 'connected' : p.pc.iceConnectionState); } catch (e) {}
         if (!look) continue;
-        const before = JSON.stringify(turnLinks.videoStep(pid)) + turnLinks.busy(pid);
+        const before = JSON.stringify(turnLinks.videoStep(pid)) + turnLinks.busy(pid) + turnLinks.camRoom(pid);
         p.pc.getStats().then((st) => {
           let sel = null; const by = new Map(); st.forEach((x) => by.set(x.id, x));
           st.forEach((x) => { if (x.type === 'transport' && x.selectedCandidatePairId) sel = by.get(x.selectedCandidatePairId); });
@@ -13538,7 +13538,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const lastV = turnSent.get(pid), tNow = Date.now(); turnSent.set(pid, { b: vBytes, t: tNow });
           if (lastV && tNow > lastV.t && vBytes >= lastV.b && (vBytes - lastV.b) * 8000 / (tNow - lastV.t) >= 0.7 * bps) limited = true;
           if (turnLinks.video(pid)) turnLinks.onCapacity(pid, bps, loss, rtt, limited);
-          if (JSON.stringify(turnLinks.videoStep(pid)) + turnLinks.busy(pid) !== before) { try { refreshOutbound(); } catch (e) { try { adapt(); } catch (e2) {} } turnApplyVideo(p); turnPaint(); }   // refreshOutbound: a pipe peer's camera follows the step (camPeer), then adapt
+          if (JSON.stringify(turnLinks.videoStep(pid)) + turnLinks.busy(pid) + turnLinks.camRoom(pid) !== before) { try { refreshOutbound(); } catch (e) { try { adapt(); } catch (e2) {} } turnApplyVideo(p); turnPaint(); }   // refreshOutbound: a pipe peer's camera follows the step (camPeer), then adapt
         }, () => {});
       }
     }
