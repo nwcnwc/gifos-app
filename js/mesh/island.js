@@ -112,26 +112,44 @@
     // WITHOUT the part that connection gave me (a part is left out, never subtracted): my own section before any
     // joining connection, with every other one's fold, folded with the section table as the room fold is. It goes in
     // far form: the people are far people, and nothing a seating decision reads crosses; the lists cross as they are.
+    // The far people are told per door: my own door with its seats, and the doors behind my room's other joining connections as they came.
     pipeOut(peer) {
       const mine = dig.cloneDig(this.pipeBase.at >= 0 ? this.pipeBase : this.myDig);
       if (this.pipeBase.at >= 0) { for (const [k, e] of this.pipeDig) if (k !== peer) dig.digFold(mine, e); dig.digTrim(mine); }
       const h = { R: msg.newDig() }; this.rootFold(false, h, mine); const R = h.R;
-      const o = msg.newDig(); o.at = R.at; o.rx = R.rx; o.by = this.id; o.far = dig.digPop(R); o.handN = R.handN; o.awayN = R.awayN; o.hands = R.hands; o.stage = R.stage; o.apps = R.apps; o.talk = R.talk;
+      const o = msg.newDig(); o.at = R.at; o.rx = R.rx; o.by = this.id; o.handN = R.handN; o.awayN = R.awayN; o.hands = R.hands; o.stage = R.stage; o.apps = R.apps; o.talk = R.talk; o.doors = R.doors.map(dig.cloneLE); dig.doorsAdd(o.doors, this.sr, dig.digSeats(R));
       return o;
+    },
+    // C++: mesh_island.inc:Seat::knownSub
+    // Door r's people are still in my fold: a fresh fold of a joining connection I hold lists r.
+    knownSub(r) { for (const e of this.pipeDig.values()) if (this.LT() - e.rx <= K.DIG_TTL) for (const d of e.doors) if (d.id === r) return true; return false; },
+    // C++: mesh_island.inc:Seat::subWatch
+    // Who asks for a new joining connection when nobody saw the old one go. Every seat notes when its room fold last listed
+    // each far door. A door that left the fold and is not back after the wait is lost. The seat on its room's home cell then
+    // asks once, whatever the number of doors lost at that beat, and forgets them; the other seats keep their note, so
+    // whoever holds the home cell next still asks.
+    subWatch() {
+      const R = this.dRoot(); if (R.at < 0 || (!R.doors.length && !this.doorAt.size)) return;
+      for (const e of R.doors) { if (this.doorAt.size >= 64 && !this.doorAt.has(e.id)) continue; this.doorAt.set(e.id, this.TICK | 0); }
+      if (this.state !== 3 || !this.hasCoord || ckey(this.coord) !== 0) return;
+      const lost = []; for (const [d, at] of this.doorAt) if (this.TICK - at > K.L10_NEW_WAIT) lost.push(d); if (!lost.length) return;
+      for (const d of lost) { this.trace('SUB.3-LOST', this.id, this.coord, 'door=%d', d); this.doorAt.delete(d); }
+      this.f.fabricSubRepipe(this.id);
     },
     // C++: mesh_island.inc:Seat::pipeBeat
     pipeBeat() {
-      if (this.state !== 3 || !this.hasCoord || this.coord.pc !== 0 || this.coord.i !== 0) return;
+      if (this.state !== 3 || !this.hasCoord || this.coord.pc !== 0) return;
       for (const p of this.f.fabricPipePeers(this.id)) { const m = newMsg('PIPE'); m.id = this.id; m.coord = { pc: this.coord.pc, r: this.coord.r, i: this.coord.i }; m.dgUp = this.wireDig(this.pipeOut(p)); m.sr = this.sr; this.f.fabricCallFrame(this.id, p, m); }
     },
     // C++: mesh_island.inc:Seat::onPipe
-    // The receiver: a row head of Section 1 that holds a joining connection to the sender (its own connection table says so).
+    // The receiver: a Section-1 seat that holds a joining connection to the sender (its own connection table says so).
     onPipe(m) {
-      if (this.state !== 3 || !this.hasCoord || this.coord.pc !== 0 || this.coord.i !== 0 || m.id < 0 || m.id !== m.from) return;
+      if (this.state !== 3 || !this.hasCoord || this.coord.pc !== 0 || m.id < 0 || m.id !== m.from) return;
       { const pp = this.f.fabricPipePeers(this.id); if (pp.indexOf(m.id) < 0) { this.trace('SUB.4-NOPEER', this.id, this.coord, 'from=%d', m.id); return; } }
       const u = dig.cloneDig(m.dgUp); this.rxDig(u); if (u.at < 0) return;
+      u.doors = u.doors.filter((e) => !(e.id === this.sr || e.k < 0));   // my own door is never far (an echo)
       u.n = 0; u.leased = 0; u.held = 0; u.refuse = 0; u.part = 0; u.freeC = 0; u.dmin = 99; u.rows = []; u.votes = []; u.kick = []; u.kabs = 0; u.kl = []; u.kOwn = msg.newKStmt();   // far form, whatever arrived: nothing of another room is a seat of mine
-      const was = this.pipeDig.get(m.id); this.l10Dirty(was !== undefined ? was : null, u); if (was === undefined) { this.trace('SUB.4-PIPE', this.id, this.coord, 'peer=%d far=%d', m.id, u.far); this.l10Mark(); }
+      const was = this.pipeDig.get(m.id); this.l10Dirty(was !== undefined ? was : null, u); if (was === undefined) { this.trace('SUB.4-PIPE', this.id, this.coord, 'peer=%d far=%d', m.id, dig.digFar(u)); this.l10Mark(); }
       this.pipeDig.set(m.id, u); if (this.pipeBase.at < 0) this.pipeBase = dig.cloneDig(this.myDig);
     },
 

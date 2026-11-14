@@ -441,7 +441,7 @@
         this.l48Up(d, dk, l48h);   // L48: the child row I fold, and the rows I serve over E2
         if (this.pipeDig.size || this.pipeBase.at >= 0) {   // over a joining connection the far room is one more child: its fold is folded like a child row's, while fresh and while I hold that connection
           this.pipeBase = dig.cloneDig(d); const pp = this.f.fabricPipePeers(id);
-          for (const [pk, pe] of [...this.pipeDig]) { if (pp.indexOf(pk) < 0 || this.LT() - pe.rx > K.DIG_TTL) { this.trace('SUB.4-DROP', id, this.coord, 'peer=%d far=%d', pk, pe.far); this.pipeDig.delete(pk); continue; } dig.digFold(d, pe); }
+          for (const [pk, pe] of [...this.pipeDig]) { if (pp.indexOf(pk) < 0 || this.LT() - pe.rx > K.DIG_TTL) { this.trace('SUB.4-DROP', id, this.coord, 'peer=%d far=%d', pk, dig.digFar(pe)); this.pipeDig.delete(pk); continue; } dig.digFold(d, pe); }
           if (!this.pipeDig.size) this.pipeBase = msg.newDig();
         }
         dig.digTrim(d);
@@ -480,6 +480,7 @@
         // --- (3) SECTION 1: fold the ROOT from the C^2 section digests -------------
         if (this.coord.pc === 0) this.rootFold();
         this.kAuditPulse();   // L27.9 (inert unless a list exists)
+        this.subWatch();   // inert unless my room fold ever listed a far door
       } finally { this.findNc = svFind; }
     },
     // C++: mesh_seat.inc:Seat::rootFold

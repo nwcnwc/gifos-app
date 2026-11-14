@@ -341,17 +341,19 @@
       for (const [x, g] of tags) if (t - g.seen > old && !mine.has(g.t)) tags.delete(x);
     }
     // The count a person is shown: the seats of my room and the people in the other rooms of the meeting joined to it.
-    const pop = (d) => { const n = d.n < 0 ? 0 : d.n, t = n + d.leased; return (t < 0 ? 0 : t) + Math.max(0, d.far || 0); };   // C++: mesh.cpp:digPop
+    const pop = (d) => { const n = d.n < 0 ? 0 : d.n, t = n + d.leased; let far = 0; for (const e of d.doors || []) if (e.k > 0) far += e.k; return (t < 0 ? 0 : t) + far; };   // C++: mesh.cpp:digPop
     // meetingCount(): the people in the whole meeting as my seat's fold counts them; null while my seat holds no fold yet.
     function meetingCount() { const s = raw(); if (!s || s.state !== 3 || !s.hasCoord) return null; const d = s.rootDig; return d && d.at >= 0 ? pop(d) : null; }
-    // standbyCands(): the seats that can hold my room's end of a warm second joining connection, in the order to try them:
-    // the other row heads of Section 1 (by row), then the next seats of my own row (by column). Each is { pid, dev, head }
-    // (dev: its device word, '' until heard). The page keeps the capable ones and takes the one with the fewest connections.
+    // standbyCands(): the other Section-1 seats of my room as my view holds them, in the order to try them for my room's end
+    // of a second joining connection: the row heads (by row), then the next seats of my own row (by column), then the
+    // rest (by row, column). Each is { pid, dev, head, r, i } (dev: its device word, '' until heard; r, i: its row and
+    // column). The page keeps the capable ones and takes the one with the fewest connections.
     function standbyCands() {
       const s = raw(), tp = TP(), out = []; if (!s || !tp || s.state !== 3 || !s.hasCoord || s.coord.pc !== 0) return out;
-      const add = (c, head) => { const x = s.occGet(tp.ckey(c)); if (x < 0 || x === s.id) return; const p = P(x); if (p == null || out.some((e) => e.pid === p)) return; const f = facts.get(x); out.push({ pid: p, dev: f && f.dv ? f.dv : '', head }); };
+      const add = (c, head) => { const x = s.occGet(tp.ckey(c)); if (x < 0 || x === s.id) return; const p = P(x); if (p == null || out.some((e) => e.pid === p)) return; const f = facts.get(x); out.push({ pid: p, dev: f && f.dv ? f.dv : '', head, r: c.r, i: c.i }); };
       for (let r = 0; r < tp.C; r++) add({ pc: 0, r, i: 0 }, true);
-      for (let i = 1; i < tp.C; i++) add({ pc: 0, r: s.coord.r, i }, false);
+      for (let i = 0; i < tp.C; i++) if (i !== s.coord.i && i !== 0) add({ pc: 0, r: s.coord.r, i }, false);
+      for (let r = 0; r < tp.C; r++) for (let i = 1; i < tp.C; i++) add({ pc: 0, r, i }, false);
       return out;
     }
     // The seat's room fold, as the page reads it: its counts as they are, its lists with the people's names on.

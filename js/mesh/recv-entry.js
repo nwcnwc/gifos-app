@@ -39,7 +39,7 @@
       if (this.foundKnock && this.state === 3 && m.list.length === 0) { this.foundKnock = false; this.islandAsked.clear(); this.entEp.clear(); }
       if (m.list.length === 0) {
         if (this.state === 0) { this.genKey = this.linkKey; this.lineAt = TICK; /* L8.52.3: before take(): my registration at the door carries my epoch */ this.take({ pc: 0, r: 0, i: 0 }, -1, [], -1, -1, [], -1); this.lineAdopt(id, TICK, 'genesis'); this.l850Seated = false; /* L8.50.3: the first page has admitted nobody yet */ }
-        else if (this.state === 3) { this.lastGreeters = []; this.greetersAt = TICK; }
+        else if (this.state === 3) { this.lastGreeters = []; this.greetersAt = TICK; if (m.tag === 3 && this.sr > 0) { this.trace('SUB.2-DOOR-EMPTY', this.id, this.coord, 'sr=%d', this.sr); this.f.fabricSubDoor(this.id); } }   // the relay forgot my door: the page asks for a fresh grant for it; my room runs on its links meanwhile
         return;
       }   // a seated seat records the empty list too; R3: empty list => I minted the genesis key & found the home
       if ((this.state === 0 || this.state === 1) && this.joinStart < 0) this.joinStart = TICK;
