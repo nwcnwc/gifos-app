@@ -32383,8 +32383,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function ccMixDrop(id) {
       const i = ccMix.ins.get(id); if (!i) return;
+      // ccMix.last stays: who spoke last is a fact about the burst, not the mix. A voice
+      // that leaves the mix mid-burst (its own page now captions it) still said those
+      // finals, and forgetting it threw them away. A doubled line beats a lost one.
       ccMix.ins.delete(id); ccMix.talk.delete(id);
-      if (ccMix.last === id) ccMix.last = null;
       try { i.node.disconnect(i.an); } catch (e) {}
       try { i.node.disconnect(i.g); } catch (e) {}
       try { i.g.disconnect(); } catch (e) {}
