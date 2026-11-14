@@ -364,18 +364,79 @@
   // throttlePlan says; on the lowest step two congested looks in a row pause it. With no congestion and no limit
   // for THROTTLE_UP_MS it climbs one step; a pause tries the lowest step again after that long.
   const THROTTLE_LOSS = 0.05;
+  // THE VOICE ON A TURN LINK (TURN.13, Nathan 11-14: sound is never lost; its quality may give under a tight cap). Every
+  // audio sender of the link has a full rate (the page's own: 64 kbps for forwarded sound) and rides RTP at Opus's 20 ms
+  // frames: 50 packets a second, each with IPv4 + UDP + TURN ChannelData + RTP + the SRTP tag in front (54 bytes). On a
+  // starved link the voices step down to the law's share: TURN_BASE_BYTES (everything but video) less the link's own
+  // data and the packet headers, split over its voices, never under the codec's floor (Opus's 6 kbps in the browsers).
+  const VOICE_PPS = 50, VOICE_HDR_BYTES = 54, VOICE_FLOOR_BPS = 6000;
+  const voiceHdr = () => VOICE_PPS * VOICE_HDR_BYTES * 8;   // bits a second of headers per audio sender
+  // voiceLow(n, dataBps, tickMs) → the rate each of n audio senders steps down to: the law's base less data and headers
+  function voiceLow(n, dataBps, tickMs) {
+    const K = meshConsts().consts, base = K.TURN_BASE_BYTES * (1000 / (tickMs || 500)) * 8, k = Math.max(1, n | 0);
+    return Math.max(VOICE_FLOOR_BPS, Math.floor((base - (+dataBps || 0) - k * voiceHdr()) / k));
+  }
+  // the wire the link needs before any video: its voices at full rate with their headers, and its data
+  const voiceWire = (look) => (+look.voiceFull || 0) + (look.voiceN | 0) * voiceHdr() + (+look.data || 0);
+  // roomFor(i, look, tickMs): the estimate (with THROTTLE_LOSS of headroom: an estimate that much too high is inside the
+  // loss a calm link has) carries the voices at full rate, the data, and video step i's own need
+  function roomFor(i, look, tickMs) {
+    const K = meshConsts().consts, min = K.TURN_VIDEO_MIN_BYTES * (1000 / (tickMs || 500)) * 8;
+    return (+look.bps || 0) * (1 - THROTTLE_LOSS) - voiceWire(look) >= THROTTLE_STEPS[i].need * min;
+  }
+  const PROBE_BACKOFF_MAX = 3;   // a failed probe doubles the next wait, up to 2^3 x TURN_THROTTLE_UP_MS
+  // throttleNext(st, look, now, tickMs): one look of a TURN link end. st = { step, busy, okSince, bad, rttBase, pausedAt,
+  // probation, probeN, voice ('full' | 'low'), vOkSince, vProbation, vProbeN } (kept by the caller); look = { bps, loss,
+  // rtt, limited, cap, stale, voiceFull, voiceN, data, video, flow, clean } (loss: the far end's fraction lost on ANY of
+  // my media, from FRESH receiver reports only; stale: my video went out but no new receiver report came back for it;
+  // flow: my video went out since the last look; clean: a fresh video report came back under TURN_THROTTLE_LOSS; rtt
+  // seconds; limited: my video already sends most of the estimate; cap: the bitrate cap the current step put on my video;
+  // voiceFull: the full rates of my sending audio senders on the link, voiceN how many, data: the bits a second my data
+  // channel sent; video: the link carries video).
+  // Congestion: loss of TURN_THROTTLE_LOSS or more, reports lost, or a video held by the path whose estimate leaves room
+  // only for a lower step (the estimate counts only while the video fills it: a pc that sends little reports what it
+  // sends). Two congested looks in a row (one with heavy loss) drop video at least one step, as far as throttlePlan says;
+  // on the lowest step two congested looks pause it.
+  // THE VOICE FIRST, AND IT GIVES QUALITY, NEVER SOUND: lost packets while video has nothing left to give (paused, or a
+  // link with no video) step every audio sender down to voiceLow at once (the caller latches the rate); calm for
+  // TURN_THROTTLE_UP_MS (doubled per failed try) tries the full rate again ON PROBATION: one lossy look puts it back down.
+  // VIDEO TRIES MORE ONLY ON PROBATION: after TURN_THROTTLE_UP_MS of calm (doubled per failed try, reset by a probe that
+  // held) a pause tries the lowest step, only with the voices back at full rate; a step climbs when the estimate carries
+  // the next one beside the full voices (roomFor) or when its video is flowing with clean fresh reports (an app-limited
+  // estimate sits at what is sent; measured 11-14: a climb gated on the estimate alone took 23 s to start). A step tried
+  // on probation goes back at the FIRST congested look, and the next try waits twice as long (measured 11-14: a pause
+  // left into an 80 kbit cap, a climb to step 0 with no video sent and no reports read as calm: both ends deaf).
   function throttleNext(st, look, now, tickMs) {
-    const last = THROTTLE_STEPS.length - 1;
+    const last = THROTTLE_STEPS.length - 1, video = look.video !== false;
     const rtt = +look.rtt > 0 ? +look.rtt : 0;
     if (rtt && (!st.rttBase || rtt < st.rttBase)) st.rttBase = rtt;
-    const plan = throttlePlan(look.bps, tickMs);
-    const K = meshConsts().consts, base = K.TURN_BASE_BYTES * (1000 / (tickMs || 500)) * 8;
-    const capHeld = +look.cap > 0 && (+look.bps || 0) - base >= +look.cap;   // the estimate leaves video its whole cap
-    const held = !!look.limited && !capHeld;   // the path, not the step's own cap, holds my video back
+    if (!st.voice) st.voice = 'full';
+    const K = meshConsts().consts, base = K.TURN_BASE_BYTES * (1000 / (tickMs || 500)) * 8, nonVideo = Math.max(base, voiceWire(look));
+    const plan = throttlePlan((+look.bps || 0) - nonVideo + base, tickMs);   // the step the estimate carries beside the voices and data
+    const capHeld = +look.cap > 0 && (+look.bps || 0) - nonVideo >= +look.cap;   // the estimate leaves video its whole cap
+    const held = video && !!look.limited && !capHeld;   // the path, not the step's own cap, holds my video back
     const short = held && (plan.step < 0 || plan.step > st.step);   // the path gives less than this step needs
-    // (the round trip is kept for the record only: a pool move or a renewal changes the relayed path's round trip
-    // under a link that is not congested, measured as false pauses right after the move)
-    const congested = (+look.loss || 0) >= THROTTLE_LOSS || short;
+    // lost reports count while my video is a real load (at least half the lowest step's need): a trickle (a paused
+    // sender's keep-alive frames) gets no prompt report, and read as lost reports it held a calm link down (t3/t4 11-14:
+    // 'stale' every look while the estimate climbed 0.9 -> 5.9 Mbit)
+    const minBps = K.TURN_VIDEO_MIN_BYTES * (1000 / (tickMs || 500)) * 8;
+    const lossy = (+look.loss || 0) >= THROTTLE_LOSS || (!!look.stale && (+look.vRate || 0) >= THROTTLE_STEPS[last].need * minBps / 2);
+    const congested = lossy || short;
+    const wait = (n) => THROTTLE_UP_MS * Math.pow(2, Math.min(PROBE_BACKOFF_MAX, n || 0));
+    // the voices
+    const noVideoLeft = !video || st.busy;
+    if (st.voice === 'full') {
+      if (lossy && noVideoLeft) { st.voice = 'low'; st.vOkSince = 0; if (st.vProbation) st.vProbeN = (st.vProbeN || 0) + 1; st.vProbation = false; }
+      else if (st.vProbation && !lossy && now - st.vProbation >= THROTTLE_UP_MS) { st.vProbation = false; st.vProbeN = 0; }
+    } else if (lossy) st.vOkSince = 0;
+    else if (!st.vOkSince) st.vOkSince = now;
+    else if (now - st.vOkSince >= wait(st.vProbeN)) { st.voice = 'full'; st.vProbation = now; }
+    if (!video) return st;
+    // video on probation: the first congested look takes the try back
+    if (st.probation) {
+      if (congested) { if (st.probation.from < 0) { st.busy = true; st.pausedAt = now; } else st.step = st.probation.from; st.probeN = (st.probeN || 0) + 1; st.probation = null; st.okSince = 0; st.bad = 0; return st; }
+      if (now - st.probation.at >= THROTTLE_UP_MS) { st.probation = null; st.probeN = 0; }
+    }
     if (congested) {
       st.okSince = 0; st.bad = (st.bad || 0) + 1;
       if (st.busy) return st;
@@ -385,10 +446,14 @@
       st.bad = 0;   // the pause counts congested looks ON the lowest step only
       return st;
     }
+    if (look.fresh === false) return st;   // no fresh report this look: neither calm nor congested (audio reports come seconds apart; a calm read here broke every two-look count, t5 11-14)
     st.bad = 0;
-    if (st.busy) { if (now - (st.pausedAt || 0) >= THROTTLE_UP_MS) { st.busy = false; st.step = last; st.okSince = now; } return st; }
+    if (st.busy) { if (st.voice === 'full' && !st.vProbation && now - (st.pausedAt || 0) >= wait(st.probeN)) { st.busy = false; st.step = last; st.okSince = now; st.probation = { from: -1, at: now }; } return st; }
     if (held) { st.okSince = 0; return st; }   // held back by the path: no climb
-    if (st.step > 0) { if (!st.okSince) st.okSince = now; else if (now - st.okSince >= THROTTLE_UP_MS) { st.step--; st.okSince = now; } }
+    if (st.step > 0) {
+      if (!st.okSince) st.okSince = now;
+      else if (now - st.okSince >= wait(st.probeN) && (roomFor(st.step - 1, look, tickMs) || (look.flow && look.clean))) { st.probation = { from: st.step, at: now }; st.step--; st.okSince = now; }
+    }
     return st;
   }
 
@@ -713,12 +778,19 @@
     }
     // TURN.13: each look at the link pc (every THROTTLE_LOOK_MS while it carries video): the browser's send estimate,
     // the loss and round trip the far end reports. throttleNext decides the step (pure, below).
-    function onCapacity(pid, bps, loss, rtt, limited) {
-      const L = links.get(pid); if (!L || L.state !== 'up' || !L.video) return;
+    // m = { stale, voiceFull, voiceN, data } (run.html turnWatch): the link's reports, its audio senders and its data.
+    // Every TURN link's voices are watched (TURN.13); its video steps only while it carries video.
+    function onCapacity(pid, bps, loss, rtt, limited, m) {
+      const L = links.get(pid); if (!L || L.state !== 'up') return;
       const now = io.now(); L.capAt = now; L.cap = bps;
+      const x = m || {};
       if (!L.ts) L.ts = { step: 0, busy: false };
-      const was = L.ts.busy ? -1 : L.ts.step;
-      throttleNext(L.ts, { bps, loss, rtt, limited: !!limited, cap: L.thr && L.thr.step >= 0 ? L.thr.maxBitrate : 0 }, now, tick);
+      const was = L.ts.busy ? -1 : L.ts.step, vWas = L.ts.voice || 'full';
+      throttleNext(L.ts, { bps, loss, rtt, limited: !!limited, cap: L.thr && L.thr.step >= 0 ? L.thr.maxBitrate : 0, stale: !!x.stale, voiceFull: +x.voiceFull || 0, voiceN: x.voiceN | 0, data: +x.data || 0, video: !!L.video, flow: !!x.flow, clean: !!x.clean, vRate: +x.vRate || 0, fresh: x.fresh == null ? undefined : !!x.fresh }, now, tick);
+      if ((+loss || 0) >= THROTTLE_LOSS || x.stale) log('turn-lossy ' + short(L.far) + ' loss=' + Math.round((+loss || 0) * 100) + '%' + (x.lossKind ? '(' + x.lossKind + ')' : '') + (x.stale ? ' stale ' + Math.round((+x.vRate || 0) / 1000) + 'k' : '') + ' flow=' + (x.flow ? 1 : 0) + ' cap=' + Math.round((bps || 0) / 1000) + 'k voices=' + (x.voiceN | 0) + ' data=' + Math.round((+x.data || 0) / 1000) + 'k');   // what made a look congested (TURN.13)
+      if (L.ts.voice !== 'low') L.voiceLow = 0; else if (vWas !== 'low' || !L.voiceLow) L.voiceLow = voiceLow(x.voiceN, x.data, tick);   // latched: the step is set once per step down
+      if (L.ts.voice !== vWas) { log('turn-voice ' + short(L.far) + ' ' + (L.voiceLow ? 'low ' + Math.round(L.voiceLow / 1000) + 'k' : 'full') + ' cap=' + Math.round((bps || 0) / 1000) + 'k'); io.changed(L.far); }
+      if (!L.video) return;
       const st = L.ts.busy ? -1 : L.ts.step;
       if (st !== was || !L.thr) setThrottle(L, st < 0 ? { step: -1 } : stepOf(st, bps, tick));
     }
@@ -842,7 +914,7 @@
         if (!L.vouched && !cl && L.paidMe) { L.paidMe = false; io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 0 }); }
         // the web path's connection never moves (its 'p' goes out at the credential, onCred), so its video waits for no move
         const v = L.vouched && L.paidMe && L.paidFar && (!L.client || L.web || L.paidSaid);
-        if (v !== L.video) { L.video = v; L.ts = null; log('turn-video ' + short(L.far) + ' ' + (v ? 'on' : 'off')); if (!v) setThrottle(L, null); io.changed(L.far); }
+        if (v !== L.video) { L.video = v; L.ts = L.ts ? { step: 0, busy: false, voice: L.ts.voice, vOkSince: L.ts.vOkSince, vProbation: L.ts.vProbation, vProbeN: L.ts.vProbeN } : null; log('turn-video ' + short(L.far) + ' ' + (v ? 'on' : 'off')); if (!v) setThrottle(L, null); io.changed(L.far); }
       }
     }
     function factOf(L) {
@@ -1208,6 +1280,8 @@
       videoBlocked(pid) { const L = links.get(pid); return !!L && (L.sb || !L.video || L.busy); },
       // TURN.13: the step my video takes on this link ({ maxBitrate, scale, fps }), null when nothing limits it.
       videoStep(pid) { const L = links.get(pid); return L && L.video && L.thr && L.thr.step >= 0 ? L.thr : null; },
+      // TURN.13: the rate each audio sender of the link takes while it is starved (bits a second), or 0: its full rate
+      voiceCap(pid) { const L = links.get(pid); return L && L.state === 'up' && L.voiceLow > 0 ? L.voiceLow : 0; },
       busy(pid) { const L = links.get(pid); return !!L && L.busy; },
       farBusy(pid) { const L = links.get(pid); return !!L && L.video && L.farBusy; },
       // the pcs that run through TURN (the page watches their path, server and capacity)
@@ -1234,7 +1308,7 @@
 
   const api = {
     DEFAULT_WORKER, WORKER_KEY, FETCH_TIMEOUT_MS, RETRY_BASE_MS, RETRY_MAX_MS, SIDE_MAX, STANDBY_SWITCH_MS, THROTTLE_LOOK_MS, THROTTLE_UP_MS,
-    THROTTLE_STEPS, throttlePlan, throttleNext, stepOf,
+    THROTTLE_STEPS, THROTTLE_LOSS, throttlePlan, throttleNext, stepOf, voiceLow,
     retryDelayMs, parseIce, hasTurnServer, webHostOk, workerBase, askIce, askSub, createCredentials,
     vouchToken, vouchParts, tvOk, TV_KEYS, linkId, clientEnd, pausedBy, stripPaused, vouchRank, vouchPlan, vouchPayers, budgetTicket, subsPresent, createLinks,
   };

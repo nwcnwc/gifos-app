@@ -13519,10 +13519,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // pair: onPath moves the link onto its standby allocation), and its measured send capacity every lookMs while it
     // carries video (onCapacity steps the video). A step that changed re-runs adapt(), which applies it per sender.
     let turnLookAt = 0;
-    const turnSent = new Map();   // link far pid -> { b, t }: my video bytes on its pc at the last look
+    const turnSent = new Map();   // link far pid -> { b, t, d, rr, vf }: my video bytes, data bytes, video reports and full voice rates on its pc at the last look
     function turnWatch() {
       const now = Date.now(), look = now - turnLookAt >= turnLinks.lookMs;
-      if (look) turnLookAt = now;
+      if (look) { turnLookAt = now; for (const q of peers.values()) { if (q && q.pc && !(turnLinks.voiceCap(q.id) > 0)) { try { if (q.pc.getSenders().some((sd) => '__voiceFull' in sd)) turnVoice(q); } catch (e) {} } } }   // TURN.13: voices back where no link holds them down
       for (const pid of turnLinks.turnPcs()) {
         const p = peers.get(pid); if (!p || !p.pc) continue;
         try { turnLinks.onPath(pid, p.pc.iceConnectionState === 'completed' ? 'connected' : p.pc.iceConnectionState); } catch (e) {}
@@ -13542,13 +13542,68 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // at least most of the estimate (bytes since the last look). Not the browser's qualityLimitationReason: a step's
           // own maxBitrate cap makes it say 'bandwidth' on a fast path (measured 2026-11-12: 'bandwidth' for 100+ s while
           // 50 kbit went out against a 2 Mbit estimate), and that held video at the lowest step for good
-          let limited = false, vBytes = 0;
-          st.forEach((x) => { if (x.type === 'remote-inbound-rtp' && x.kind === 'video') { if (+x.fractionLost > loss) loss = +x.fractionLost; } if (x.type === 'outbound-rtp' && x.kind === 'video') vBytes += +x.bytesSent || 0; });   // (the round trip: the selected pair's own, one clock)
-          const lastV = turnSent.get(pid), tNow = Date.now(); turnSent.set(pid, { b: vBytes, t: tNow });
-          if (lastV && tNow > lastV.t && vBytes >= lastV.b && (vBytes - lastV.b) * 8000 / (tNow - lastV.t) >= 0.7 * bps) limited = true;
-          if (turnLinks.video(pid)) turnLinks.onCapacity(pid, bps, loss, rtt, limited);
+          // TURN.13: loss on ANY of my media, read from FRESH receiver reports only (a report's fractionLost stays in the
+          // stats until the next one: audio reports come seconds apart); stale: my video went out since the last look and
+          // no new report for it came back (video reports come about every second, a look is two): the reports are lost
+          // with the rest; flow/clean: my video went out and a fresh report for it came back under the loss line. The voices:
+          // the audio senders that sent since the last look and their full rates (what the page set: AUX_AUDIO_BPS for a
+          // forwarded mix; a mic with no cap, the encoder's own target read while not stepped down), and my data bits.
+          const lastV = turnSent.get(pid), tNow = Date.now(), lowNow = turnLinks.voiceCap(pid) > 0;
+          const rrs = new Map(), aPk = new Map(); let lossKind = null, anyFresh = false, limited = false, vFrames = 0, vBytes = 0, dBytes = 0, vFresh = 0, vClean = false, vRrSeen = false, voiceN = 0, voiceFull = 0;
+          const midSender = new Map(); try { for (const tr of p.pc.getTransceivers()) if (tr.mid != null && tr.sender) midSender.set(String(tr.mid), tr.sender); } catch (e) {}
+          st.forEach((x) => {
+            if (x.type === 'remote-inbound-rtp' && typeof x.roundTripTimeMeasurements === 'number') {
+              rrs.set(x.id, x.roundTripTimeMeasurements);
+              const was = lastV && lastV.rrs ? lastV.rrs.get(x.id) : undefined;
+              if (x.kind === 'video') vRrSeen = vRrSeen || was !== undefined;
+              if ((was === undefined && lastV && x.roundTripTimeMeasurements > 0) || (was !== undefined && x.roundTripTimeMeasurements > was)) {   // a report newer than the last look (a stream that started since: its first)
+                anyFresh = true; if (+x.fractionLost > loss) { loss = +x.fractionLost; lossKind = x.kind; } if (x.kind === 'video') { vFresh++; if (!(+x.fractionLost >= GifOS.meetTurn.THROTTLE_LOSS)) vClean = true; } }
+            }
+            if (x.type === 'outbound-rtp' && x.kind === 'video') { vBytes += +x.bytesSent || 0; vFrames += +x.framesEncoded || 0; }
+            if (x.type === 'outbound-rtp' && x.kind === 'audio') {
+              aPk.set(x.id, +x.packetsSent || 0);
+              const was = lastV && lastV.aPk ? lastV.aPk.get(x.id) : undefined;
+              if (was !== undefined && (+x.packetsSent || 0) > was) {
+                const sd = x.mid != null ? midSender.get(String(x.mid)) : null;
+                if (sd && !lowNow) sd.__tbFull = +x.targetBitrate || sd.__tbFull;
+                const set = sd ? ('__voiceFull' in sd ? sd.__voiceFull : (sd.getParameters().encodings || [{}])[0].maxBitrate) : null;
+                voiceN++; voiceFull += +set || (sd && sd.__tbFull) || +x.targetBitrate || 0;
+              }
+            }
+            if (x.type === 'data-channel') dBytes += +x.bytesSent || 0;
+          });   // (the round trip: the selected pair's own, one clock)
+          const dRaw = lastV && tNow > lastV.t && dBytes >= lastV.d ? (dBytes - lastV.d) * 8000 / (tNow - lastV.t) : 0;
+          const dAvg = lastV && lastV.dAvg != null ? 0.7 * lastV.dAvg + 0.3 * dRaw : dRaw;   // the data rate, smoothed: a gossip burst is not the link's data share
+          turnSent.set(pid, { b: vBytes, f: vFrames, t: tNow, d: dBytes, rrs, aPk, dAvg });
+          const dt = lastV && tNow > lastV.t ? tNow - lastV.t : 0;
+          // flow: my video ENCODED frames since the last look. Bytes alone are not video: a paused sender carries the
+          // browser's padding probes (measured 11-14: 1-4 Mbit of padding, frames still, while paused) and they draw no
+          // round-trip reports (no sender report goes out without media), so they read as lost reports
+          const flow = !!(dt && vFrames > (lastV.f || 0) && vBytes > lastV.b);
+          if (flow && (vBytes - lastV.b) * 8000 / dt >= 0.7 * bps) limited = true;
+          const stale = flow && vRrSeen && !vFresh;
+          const data = dAvg;
+          const vcWas = turnLinks.voiceCap(pid);
+          turnLinks.onCapacity(pid, bps, loss, rtt, limited, { stale, voiceFull, voiceN, data, flow, clean: flow && vClean, lossKind, vRate: flow ? (vBytes - lastV.b) * 8000 / dt : 0, fresh: anyFresh });
+          if (turnLinks.voiceCap(pid) !== vcWas || turnLinks.voiceCap(pid) > 0) turnVoice(p);   // (while starved, every look: a sender added since takes the step too)
           if (JSON.stringify(turnLinks.videoStep(pid)) + turnLinks.busy(pid) + turnLinks.camRoom(pid) !== before) { try { refreshOutbound(); } catch (e) { try { adapt(); } catch (e2) {} } turnApplyVideo(p); turnPaint(); }   // refreshOutbound: a pipe peer's camera follows the step (camPeer), then adapt
         }, () => {});
+      }
+    }
+    // TURN.13: every audio sender of a TURN link takes the link's starved voice rate (turnLinks.voiceCap), and its own
+    // rate back (the mic's engine default, a forwarded sender's AUX_AUDIO_BPS) when the link has room again.
+    function turnVoice(p) {
+      if (!p || !p.pc || !turnLinks) return;
+      const cap = turnLinks.voiceCap(p.id);
+      for (const sender of p.pc.getSenders()) {
+        if (!sender.track || sender.track.kind !== 'audio') continue;
+        try {
+          const prm = sender.getParameters(); if (!prm || !prm.encodings || !prm.encodings.length) continue;
+          const e = prm.encodings[0];
+          if (cap > 0) { if (!('__voiceFull' in sender)) sender.__voiceFull = e.maxBitrate; if (e.maxBitrate === cap) continue; e.maxBitrate = cap; }
+          else { if (!('__voiceFull' in sender)) continue; const f = sender.__voiceFull; delete sender.__voiceFull; if (f == null) delete e.maxBitrate; else e.maxBitrate = f; }
+          sender.setParameters(prm).catch(() => {});
+        } catch (e) {}
       }
     }
     // Called once a mesh node exists (startMesh): a new node is a new set of links.
@@ -23641,6 +23696,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // (pk42: the stadium static at 8-10 dB tone-to-noise whenever the far end adopted). Every forwarded sender gets the cap.
       const auxRate = (sender) => {
         try {
+          if ('__voiceFull' in sender) { sender.__voiceFull = AUX_AUDIO_BPS; return; }   // a starved TURN link holds it at its voice step (turnVoice): this is its rate once the link has room
           const prm = sender.getParameters(); if (!prm || !prm.encodings || !prm.encodings.length || prm.encodings[0].maxBitrate === AUX_AUDIO_BPS) return;
           prm.encodings[0].maxBitrate = AUX_AUDIO_BPS; sender.setParameters(prm).catch(() => {});
         } catch (e) {}
