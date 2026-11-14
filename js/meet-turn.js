@@ -862,6 +862,7 @@
       if (L.sbUp || (L.sbAt && now - L.sbAt < DIAL_BUDGET_MS)) return;
       if (L.tookOver) return;   // a pipe just taken over warms its next standby once the service has moved the pipe to it (its first l<r> grant)
       const r = pipeNo(L.l), sl = 's' + r, S = io.standbySeat ? io.standbySeat() : null;
+      log('turn-standby warm ' + L.l + (L.opener ? ' opener far-seat=' + (L.farSb || '-') : ' target') + ' my-seat=' + (S ? short(S.pid) + '/' + S.dev : 'self'));
       if (!L.opener) {
         L.sbAt = now; L.sbSeat = S ? S.pid : io.me();
         if (S) io.sendTv(S.pid, { k: 'tv', q: 's', l: sl }); else sbExpect.set(sl, io.me());
