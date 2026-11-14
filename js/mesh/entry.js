@@ -265,6 +265,14 @@
       this.serveFindDescend(mm);
     },
 
+    // C++: mesh_seat.inc:Seat::l13Knock
+    // L13.36's knock: a home cell whose occupant I do not hear, on a list older than eight beats, makes me knock (at most one knock per 32 ticks).
+    l13Knock(k) {
+      const TICK = this.TICK;
+      if (this.coord.pc !== 0 || this.occGet(k) < 0 || this.firstHandLive(k) || this.softSitting(k) || !(this.greetersAt < 0 || TICK - this.greetersAt > 64) || TICK - this.l13KnockAt < 32) return false;
+      this.l13KnockAt = TICK; this.emitRelay(this.genKey); this.trace('L13-KNOCK', this.id, this.coord, 'door'); return true;
+    },
+
     // C++: mesh_seat.inc:Seat::serveFindS1
     // serveFind, Section 1: a home seat serving a FIND (designated arm, row scan, home admission); true when served.
     // skip is the holder of the C++ out-parameter l33Skip.
@@ -346,7 +354,7 @@
           // Soft / real occupant reserved. Phantom occ is free for rejoin.
           if (this.l31On() && this.l31Held(k, mm.nc)) continue;   // L31.4
           if (this.cellReserved(k) && !this.l13MateGone(k)) {
-            if ((this.l13('L13.36') || this.l33MateArm(k)) && this.coord.pc === 0 && this.occGet(k) >= 0 && !this.firstHandLive(k) && !this.softSitting(k) && (this.greetersAt < 0 || TICK - this.greetersAt > 64) && TICK - this.l13KnockAt >= 32) { this.l13KnockAt = TICK; this.emitRelay(this.genKey); this.trace('L13-KNOCK', id, this.coord, 'door'); }   // L13.36
+            if (this.l13('L13.36') || this.l33MateArm(k) || this.l33ColArm(k)) this.l13Knock(k);   // L13.36
             continue;
           }
           if (this.courtHeld(k)) { break; }   // L3.14
