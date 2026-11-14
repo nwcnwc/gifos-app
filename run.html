@@ -14061,6 +14061,37 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (typeof clog === 'function') clog('wk-h264 stripped from an offer');
       return { type: desc.type, sdp: out.join('') };
     }
+    // IN-BAND FEC ONLY FOR MY OWN VOICE. My sender follows the far end's fmtp for its m-line, and with useinbandfec=1 Opus
+    // answers every loss report (RTCP, smoothed over tens of seconds) by moving into its speech coder (SILK, with the FEC
+    // copy), which renders a sum of voices as noise. A forwarded sound (a mix-minus, a relay, a stage feed, a pipe's office
+    // mix) is a sum of voices, and the office behind it re-mixes it into every row (pk42 after a TURN renewal: a 2-6 s loss
+    // burst on the pipe, then 0 lost and 0 concealed, while the far office's sound read 22-28 dB instead of 37 for 20-30 s
+    // as the reported loss decayed; the received track itself carried it). So every audio m-line I send on is applied with
+    // useinbandfec=0, except the one my voice rides (p.mainA). A voice sender made with addTrack before this description
+    // has no mid yet; it takes the first audio m-line no transceiver of mine holds (JSEP), so that one keeps the far end's word.
+    function fecVoiceOnly(desc, pc, p) {
+      if (!desc || typeof desc.sdp !== 'string' || desc.sdp.indexOf('useinbandfec=1') < 0 || !pc) return desc;
+      const held = new Map();   // mid -> true when my voice rides it
+      let voicePending = false;
+      try {
+        for (const t of pc.getTransceivers()) {
+          const voice = !!(p && p.mainA && t.sender === p.mainA);
+          if (t.mid != null) held.set(String(t.mid), voice); else if (voice) voicePending = true;
+        }
+      } catch (e) { return desc; }
+      const nl = desc.sdp.indexOf('\r\n') >= 0 ? '\r\n' : '\n';
+      let changed = false;
+      const out = desc.sdp.split(/(?=^m=)/m).map((sec) => {
+        if (sec.indexOf('m=audio') !== 0) return sec;
+        const mm = sec.match(/^a=mid:(\S+)/m), mid = mm ? mm[1] : null;
+        let voice = mid != null && held.get(mid) === true;
+        if (!voice && voicePending && mid != null && !held.has(mid)) { voice = true; voicePending = false; }
+        if (voice || sec.indexOf('useinbandfec=1') < 0) return sec;
+        changed = true;
+        return sec.split(nl).map((l) => (/^a=fmtp:\d+ /.test(l) ? l.replace(/useinbandfec=1/g, 'useinbandfec=0') : l)).join(nl);
+      });
+      return changed ? { type: desc.type, sdp: out.join('') } : desc;
+    }
 
     // A GLARE DEADLOCK IS BROKEN BY WHOEVER IS STILL STUCK, not by whoever is
     // senior. Both peers offered; the polite one was supposed to yield and did
@@ -14248,7 +14279,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // meanwhile ends the chain with PcReplaced: that offer described a pc now closed, and the answer must not leave.
     function answerOffer(pc, p, msg, drainIce, send) {
       const same = () => { if (p.pc !== pc) { const e = new Error('pc replaced'); e.name = 'PcReplaced'; throw e; } };
-      return pc.setRemoteDescription(typeof wkStripH264 === 'function' ? wkStripH264(msg.sdp, pc) : msg.sdp)
+      return pc.setRemoteDescription(fecVoiceOnly(typeof wkStripH264 === 'function' ? wkStripH264(msg.sdp, pc) : msg.sdp, pc, p))
         .then(() => {
           same();
           // A restart offer applied while ICE is already checking may not
@@ -22385,7 +22416,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }
         noteGecko(p, m.sdp);
         const carried = p.connected || (p.dc && p.dc.readyState === 'open');
-        const srd = () => p.pc.setRemoteDescription(m.sdp);
+        const srd = () => p.pc.setRemoteDescription(fecVoiceOnly(m.sdp, p.pc, p));
         // A renegotiation answer that never settles (lost on the wire, or a
         // test harness that swallows it) leaves have-local-offer on a live
         // pair forever and offer-stale rollback races the hung promise (06d:
