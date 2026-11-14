@@ -23596,12 +23596,22 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const AUX_AUDIO_BPS = 64000;
     let soloMark = null;   // the second stream name that marks a block's sound (see soloSdp)
     const addAux = (pc, tr, container) => {
+      // A pipe slot the far end offered is taken by my answer (pipeSlotAdopt), so it was never made with sendEncodings: its
+      // sender would encode at the engine's default (Opus 32 kbps) while the end that offered sends 64, and every seat of the
+      // office behind the adopting end heard the far sound one 32 kbps generation worse, re-mixed into every row's product
+      // (pk42: the stadium static at 8-10 dB tone-to-noise whenever the far end adopted). Every forwarded sender gets the cap.
+      const auxRate = (sender) => {
+        try {
+          const prm = sender.getParameters(); if (!prm || !prm.encodings || !prm.encodings.length || prm.encodings[0].maxBitrate === AUX_AUDIO_BPS) return;
+          prm.encodings[0].maxBitrate = AUX_AUDIO_BPS; sender.setParameters(prm).catch(() => {});
+        } catch (e) {}
+      };
       // SUB.7: a pipe's sound slot that was negotiated while its pc was a warm standby (pipeReserve) takes the mix as a
       // track attach: no new m-line, no offer and answer before the sound flows.
       if (tr && tr.kind === 'audio' && container) {
         let res = null;
         try { for (const t of pc.getTransceivers()) if (t.sender && t.sender.__pipeRes === container && !t.sender.track && !t.stopped && t.currentDirection !== 'stopped') { res = t.sender; break; } } catch (e) {}
-        if (res) { res.__pipeRes = null; res.replaceTrack(tr).catch(() => {}); return res; }
+        if (res) { res.__pipeRes = null; auxRate(res); res.replaceTrack(tr).catch(() => {}); return res; }
       }
       const init = { streams: [container] };
       if (container && container.__solo && tr && tr.kind === 'audio') { try { soloMark = soloMark || new MediaStream(); init.streams.push(soloMark); } catch (e) {} }
