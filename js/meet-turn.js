@@ -385,7 +385,7 @@
     return (+look.bps || 0) * (1 - THROTTLE_LOSS) - voiceWire(look) >= THROTTLE_STEPS[i].need * min;
   }
   const PROBE_BACKOFF_MAX = 3;   // a failed probe doubles the next wait, up to 2^3 x TURN_THROTTLE_UP_MS
-  const VOICE_BAD = 3;   // fresh lossy looks in a row before the voices step down (one or two are a path change, not a cap)
+  const VOICE_BAD = 3;   // lossy looks within TURN_THROTTLE_UP_MS before the voices step down (one or two are a path change, not a cap)
   // throttleNext(st, look, now, tickMs): one look of a TURN link end. st = { step, busy, okSince, bad, rttBase, pausedAt,
   // probation, probeN, voice ('full' | 'low'), vOkSince, vProbation, vProbeN } (kept by the caller); look = { bps, loss,
   // rtt, limited, cap, stale, voiceFull, voiceN, data, video, flow, clean } (loss: the far end's fraction lost on ANY of
@@ -424,42 +424,49 @@
     const lossy = (+look.loss || 0) >= THROTTLE_LOSS || (!!look.stale && (+look.vRate || 0) >= THROTTLE_STEPS[last].need * minBps / 2);
     const congested = lossy || short;
     const wait = (n) => THROTTLE_UP_MS * Math.pow(2, Math.min(PROBE_BACKOFF_MAX, n || 0));
-    // the voices
-    const noVideoLeft = !video || st.busy;
-    // a starved link loses packets look after look; a path change (a pipe end killed, a standby taking over) loses them
-    // for a look or two (pk42 11-14: the voices stepped to the floor on every kill leg, and the far office heard the
-    // re-mixed low voice as static). VOICE_BAD fresh lossy looks in a row, a look with no fresh report not counting.
-    if (lossy && noVideoLeft) st.vBad = (st.vBad || 0) + 1; else if (look.fresh !== false) st.vBad = 0;
-    if (st.voice === 'full') {
-      if (lossy && noVideoLeft && (st.vProbation || st.vBad >= VOICE_BAD)) { st.voice = 'low'; st.vOkSince = 0; if (st.vProbation) st.vProbeN = (st.vProbeN || 0) + 1; st.vProbation = false; }
-      else if (st.vProbation && !lossy && now - st.vProbation >= THROTTLE_UP_MS) { st.vProbation = false; st.vProbeN = 0; }
-    } else if (lossy) st.vOkSince = 0;
-    else if (!st.vOkSince) st.vOkSince = now;
-    else if (now - st.vOkSince >= wait(st.vProbeN)) { st.voice = 'full'; st.vProbation = now; }
-    if (!video) return st;
+    if (video) videoLook();
+    voiceLook();
+    return st;
+    function videoLook() {
     // video on probation: the first congested look takes the try back
     if (st.probation) {
-      if (congested) { if (st.probation.from < 0) { st.busy = true; st.pausedAt = now; } else st.step = st.probation.from; st.probeN = (st.probeN || 0) + 1; st.probation = null; st.okSince = 0; st.bad = 0; return st; }
+      if (congested) { if (st.probation.from < 0) { st.busy = true; st.pausedAt = now; } else st.step = st.probation.from; st.probeN = (st.probeN || 0) + 1; st.probation = null; st.okSince = 0; st.bad = 0; return; }
       if (now - st.probation.at >= THROTTLE_UP_MS) { st.probation = null; st.probeN = 0; }
     }
     if (congested) {
       st.okSince = 0; st.bad = (st.bad || 0) + 1;
-      if (st.busy) return st;
-      if (st.step >= last) { if (st.bad >= 2) { st.busy = true; st.pausedAt = now; } return st; }
-      if (st.bad < 2 && (+look.loss || 0) < 4 * THROTTLE_LOSS) return st;   // one congested look is a blip; heavy loss acts at once
+      if (st.busy) { st.pausedAt = now; return; }   // still congested while paused: the calm wait starts again
+      if (st.step >= last) { if (st.bad >= 2) { st.busy = true; st.pausedAt = now; } return; }
+      if (st.bad < 2 && (+look.loss || 0) < 4 * THROTTLE_LOSS) return;   // one congested look is a blip; heavy loss acts at once
       st.step = Math.max(st.step + 1, plan.step < 0 ? last : Math.min(last, plan.step));
       st.bad = 0;   // the pause counts congested looks ON the lowest step only
-      return st;
+      return;
     }
-    if (look.fresh === false) return st;   // no fresh report this look: neither calm nor congested (audio reports come seconds apart; a calm read here broke every two-look count, t5 11-14)
+    if (look.fresh === false) return;   // no fresh report this look: neither calm nor congested (audio reports come seconds apart; a calm read here broke every two-look count, t5 11-14)
     st.bad = 0;
-    if (st.busy) { if (st.voice === 'full' && !st.vProbation && now - (st.pausedAt || 0) >= wait(st.probeN)) { st.busy = false; st.step = last; st.okSince = now; st.probation = { from: -1, at: now }; } return st; }
-    if (held) { st.okSince = 0; return st; }   // held back by the path: no climb
+    if (st.busy) { if (st.voice === 'full' && !st.vProbation && now - (st.pausedAt || 0) >= wait(st.probeN)) { st.busy = false; st.step = last; st.okSince = now; st.probation = { from: -1, at: now }; } return; }
+    if (held) { st.okSince = 0; return; }   // held back by the path: no climb
     if (st.step > 0) {
       if (!st.okSince) st.okSince = now;
       else if (now - st.okSince >= wait(st.probeN) && (roomFor(st.step - 1, look, tickMs) || (look.flow && look.clean))) { st.probation = { from: st.step, at: now }; st.step--; st.okSince = now; }
     }
-    return st;
+    }
+    // THE VOICES, after the video's look (they read whether video has anything left to give). A starved link loses
+    // packets look after look; a path change (a pipe end killed, a standby taking over) loses them in one burst (pk42
+    // 11-14: the voices stepped to the floor on every kill leg, and the far office heard the re-mixed low voice). The
+    // voices step down on VOICE_BAD lossy looks within TURN_THROTTLE_UP_MS (any media, video or not) with no video left
+    // to give; on probation one lossy look is enough.
+    function voiceLook() {
+      const noVideoLeft = !video || st.busy;
+      st.vLoss = (st.vLoss || []).filter((t) => now - t < THROTTLE_UP_MS);
+      if (lossy) st.vLoss.push(now);
+      if (st.voice === 'full') {
+        if (lossy && noVideoLeft && (st.vProbation || st.vLoss.length >= VOICE_BAD)) { st.voice = 'low'; st.vOkSince = 0; if (st.vProbation) st.vProbeN = (st.vProbeN || 0) + 1; st.vProbation = false; }
+        else if (st.vProbation && !lossy && now - st.vProbation >= THROTTLE_UP_MS) { st.vProbation = false; st.vProbeN = 0; }
+      } else if (lossy) st.vOkSince = 0;
+      else if (!st.vOkSince) st.vOkSince = now;
+      else if (now - st.vOkSince >= wait(st.vProbeN)) { st.voice = 'full'; st.vProbation = now; }
+    }
   }
 
   // subsPresent(subs, now, inRoom, freshMs, me) → [{ key, tier, ticket }] the subscribers whose vouch counts now (TURN.11: the
