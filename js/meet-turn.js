@@ -911,7 +911,7 @@
       Promise.resolve(io.tdoors ? io.tdoors() : null).then((x) => {
         if (g !== sub.gen) return;
         const d = x && typeof x === 'object' ? x.v : x;
-        if (d) sub.heads = doorHeads(d, (x && typeof x === 'object' && x.p) || {});
+        if (d) { sub.devPid = (x && typeof x === 'object' && x.p) || {}; sub.heads = doorHeads(d, sub.devPid); }
         if (!d) { subIdle(io.now(), { refused: 'no-doors', retryAt: io.now() + RETRY_MS }, io.now() + RETRY_MS); return; }
         subAsk(d, withToken ? sub.token : null);
       }, () => { if (g === sub.gen) subIdle(io.now(), { refused: 'no-doors', retryAt: io.now() + RETRY_MS }, io.now() + RETRY_MS); });
@@ -921,7 +921,7 @@
       Promise.resolve(io.tdoors ? io.tdoors() : null).then((x) => {
         if (g !== sub.gen) return;
         const d = x && typeof x === 'object' ? x.v : x;
-        if (d) sub.heads = doorHeads(d, (x && typeof x === 'object' && x.p) || {});
+        if (d) { sub.devPid = (x && typeof x === 'object' && x.p) || {}; sub.heads = doorHeads(d, sub.devPid); }
         sub.gen++; sub.st = 'probe';
       }, () => { if (g === sub.gen) { sub.gen++; sub.st = 'probe'; } });
     }
@@ -939,6 +939,9 @@
         if (a && a.pending === 'opening') { log('turn-sub opening: knock its door again'); subIdle(now, busyOut, now + RESEND_MS); return; }
         if (a && a.pending === 'subrooms' && typeof a.token === 'string') {
           sub.token = a.token; sub.list = Array.isArray(a.subs) ? a.subs.filter((x) => x && Number.isInteger(x.r) && x.r > 0).map((x) => x.r) : [];
+          // the service names each listed room's heads to dial (device tags of the door list I sent); the relay's answer
+          // to that same door list gave their peer ids
+          for (const x of a.subs || []) { const pids = (Array.isArray(x && x.heads) ? x.heads : []).map((d) => (sub.devPid || {})[d]).filter((p) => typeof p === 'string' && p).slice(0, PROBE_HEADS); if (pids.length && sub.heads) sub.heads.set(x.r, pids); }
           if (sub.asker === 'repipe') { subDoors(true); return; }   // my own subroom keeps its number: no doors to try
           sub.probe = sub.list.filter((r) => r !== (io.sub ? io.sub() : 0));   // every listed room side by side (door 0 is the one my seat already failed at)
           log('turn-sub list ' + sub.list.join(',') + ': trying the doors');
