@@ -105,7 +105,6 @@
       let since = this.d6cBeat(); if (this.backAt > since) since = this.backAt;
       if (this.TICK - since <= K.ORPHAN_T || (this.unpAnyAt >= 0 && this.TICK - this.unpAnyAt <= 16) || this.l2E2Up()) return false;
       if (this.s1bUp()) return false;   // L2.15: a Section-1 bridge whose far end beats me carries me
-      if (this.f.fabricPipePeers(this.id).length) return false;   // D6c.6: a live pipe end is never an orphan
       if (this.l14Up >= 0 && this.f.fabricLinkCarries(this.id, this.l14Up)) return false;   // D6c.3
       return true;
     },
