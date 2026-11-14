@@ -955,21 +955,16 @@
       try {
         const g = ac.createGain(); g.gain.value = gain == null ? 1 : gain;
         g.connect(bus);
-        const rec = { src: null, gain: g, track: t, onUnmute: null, live: !t.muted };
+        const rec = { src: null, gain: g, track: t, onUnmute: null };
         rec.src = bindSource(rec);
         srcs.set(key, rec);
         // `unmute` is the honest edge when the browser raises it. Silence
         // frames never do — the caller reseats those from a later sample.
-        // ONLY A NODE BUILT ON A MUTED TRACK IS REBUILT. A MediaStreamAudioSourceNode is not freed by disconnect: it keeps
-        // pulling its track for the life of the context. A node built while the track carried sound keeps playing through a
-        // later mute and unmute (a pipe's ICE restart on a TURN credential renewal), and binding a second one beside it left
-        // two pullers on the far office's track: they split its frames, and every mix that summed it crackled for the rest
-        // of the meeting (pk42: 34 dB -> 16-22 dB from the renewal on, the wire clean).
         rec.onUnmute = () => {
           const cur = srcs.get(key);
-          if (!cur || cur.track !== t || cur.live) return;
+          if (!cur || cur.track !== t) return;
           try { if (cur.src) cur.src.disconnect(); } catch (e) {}
-          try { cur.src = bindSource(cur); cur.live = true; } catch (e) {}
+          try { cur.src = bindSource(cur); } catch (e) {}
         };
         try { t.addEventListener('unmute', rec.onUnmute); } catch (e) {}
         return true;
@@ -1034,7 +1029,6 @@
         let next = null;
         try { next = bindSource(s); }
         catch (e) { s.track = prev; return false; }
-        s.live = !t.muted;
         try { if (s.src) s.src.disconnect(); } catch (e) {}
         s.src = next;
         if (t !== prev && s.onUnmute) {
