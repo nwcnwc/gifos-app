@@ -10249,7 +10249,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           else if (p.mainV.track !== vt) p.mainV.replaceTrack(vt).catch(() => {});
         }
         if (p.mainA) {
-          if (voiceStaged || seatSelfLeased()) { if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
+          // my mic goes to row-mates only, like my camera (camPeer): a pipe's side hears me in its mix, so a main audio sender a
+          // late camera grant put on a pipe's pc (attachLocalTracks) carried my voice a second time
+          if (voiceStaged || seatSelfLeased() || !camPeer(p.id)) { if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
           else if (at && p.mainA.track !== at) p.mainA.replaceTrack(at).catch(() => {});
         }
       }
@@ -35318,7 +35320,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function attachLocalTracks() {
       if (!localStream || (BROADCAST && !bcMayPublishAv())) return;
       for (const [pid, p] of peers) {
-        if (!p.pc) continue;
+        if (!p.pc || !camPeer(pid) || p.headless) continue;   // row-mates only (camPeer): never a pipe's or a standby's pc
         let added = false;
         for (const tr of localStream.getTracks()) {
           if (tr.kind === 'video' ? p.mainV : p.mainA) continue;
