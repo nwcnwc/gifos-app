@@ -12667,7 +12667,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (typeof clog === 'function') dcTally(msg); // DEBUG: what the channel bytes are
       const bulk = isGossipFrame(msg);
       return txm(() => net.seal(roomE2E, msg).then((env) =>
-        net.sendChunked(env, (piece, str) => { txKindAdd(msg, str.length, p); if (bulk && gossipWaits(dc, str)) return; try { dc.send(str); } catch (e) {} })));
+        net.sendChunked(env, (piece, str) => { txKindAdd(msg, str.length, p); if (bulk && gossipWaits(dc, str, p)) return; try { dc.send(str); } catch (e) {} if (!bulk) pipeFirstSent(dc, msg); })));
     };
     // GOSSIP NEVER STANDS IN FRONT OF SOUND. A pair's channel is one ordered stream: whatever is in its send buffer goes
     // first. A link that newly joins my link set gets my whole recent gossip backlog at once (layer.js replayNew, up to 64
@@ -12681,18 +12681,33 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // (the backlog's own size, refan covers the rest).
     const GOSSIP_BUF_MAX = GifOS.timings.GOSSIP_BUF_MAX, GOSSIP_Q_MAX = 128;
     function isGossipFrame(msg) { const f = msg && msg.k === 'mesh' && msg.m ? (msg.m.f || msg.m) : null; return !!f && (f.t === 'GSP' || f.t === 'GSPS'); }
-    function gossipWaits(dc, str) {
+    // SUB.7.1: A PIPE'S CHANNEL CARRIES ITS SOUND ANNOUNCE AND ITS FOLD BEFORE ANY GOSSIP. The bound above still let the
+    // backlog replay put up to GOSSIP_BUF_MAX in front of them on a pipe a standby had just taken over, and that cold relayed
+    // channel drained 8.6-10 KB in 1.2-4 s (pk42 leave: the far office heard the new end up to 16 s late). Gossip on a pipe's
+    // channel waits in the channel's queue until the 'mx' sdn announce and a PIPE fold have both gone on it.
+    const pipeLink = (p) => { try { return !!p && isPipePeer(p.id); } catch (e) { return false; } };   // isPipePeer is defined further down
+    const pipeFirstDone = (dc) => !!(dc.__pipeAnn && dc.__pipeFold);
+    function pipeFirstSent(dc, msg) {
+      if (pipeFirstDone(dc) || !msg) return;
+      if (msg.k === 'mx' && msg.key === 'sdn') dc.__pipeAnn = true;
+      else { const f = msg.k === 'mesh' && msg.m ? (msg.m.f || msg.m) : null; if (f && f.t === 'PIPE') dc.__pipeFold = true; else return; }
+      if (pipeFirstDone(dc)) gossipDrain(dc);
+    }
+    function gossipDrain(dc) {
+      if (!dc.__gq) return;
+      while (dc.__gq.length && dc.readyState === 'open' && dc.bufferedAmount <= GOSSIP_BUF_MAX) { const s0 = dc.__gq.shift(); try { dc.send(s0); } catch (e) {} }
+      if (dc.readyState !== 'open') dc.__gq.length = 0;
+    }
+    function gossipWaits(dc, str, p) {
       const q = dc.__gq || (dc.__gq = []);
-      if (!q.length && dc.bufferedAmount <= GOSSIP_BUF_MAX) return false;
+      const held = !pipeFirstDone(dc) && pipeLink(p);
+      if (!q.length && !held && dc.bufferedAmount <= GOSSIP_BUF_MAX) return false;
       if (q.length >= GOSSIP_Q_MAX) q.shift();
       q.push(str);
       if (!dc.__gqWired) {
         dc.__gqWired = true;
         try { dc.bufferedAmountLowThreshold = GOSSIP_BUF_MAX >> 1; } catch (e) {}
-        dc.addEventListener('bufferedamountlow', () => {
-          while (dc.__gq.length && dc.readyState === 'open' && dc.bufferedAmount <= GOSSIP_BUF_MAX) { const s0 = dc.__gq.shift(); try { dc.send(s0); } catch (e) {} }
-          if (dc.readyState !== 'open') dc.__gq.length = 0;
-        });
+        dc.addEventListener('bufferedamountlow', () => { if (!pipeFirstDone(dc) && pipeLink(p)) return; gossipDrain(dc); });
       }
       return true;
     }
