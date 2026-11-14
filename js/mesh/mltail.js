@@ -11,6 +11,7 @@
   const topo = req('./topo.js', 'meshTopo');
   const K = C_.consts;
   const { ckey, unckey, down, C } = topo;
+  const LS_OPEN = C_.enums.LS_OPEN;
 
   // The C++ passes ~0ULL (all 64 bits set) to l33MateArm to mean "the sweep's own dials". As a JS number that
   // is 2^64 (the nearest double); callers pass NONE_KEY.
@@ -87,6 +88,15 @@
       if (this.l13Merging() || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0 || this.coord.i !== 0) return false;
       if (k === NONE_KEY) return this.TICK - this.seatedAt >= 60;
       const c = unckey(k); return c.pc === 0 && c.r === this.coord.r && c.i !== 0;
+    },
+
+    // C++: mesh_mltail.inc:Seat::l33ColArm
+    // L33.15: the door's scan reads a cell of my own column by L13.36's word, mass leave or not. k is a cell of my column
+    // in another home row whose occupant my dial cannot reach.
+    l33ColArm(k) {
+      if (this.l13Merging() || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return false;
+      const c = unckey(k); if (!(c.pc === 0 && c.i === this.coord.i && c.r !== this.coord.r)) return false;
+      const x = this.occGet(k); return x >= 0 && x !== this.id && this.f.fabricLinkState(this.id, x) !== LS_OPEN && this.f.fabricDialFails(this.id, x) >= 1;
     },
 
     // C++: mesh_mltail.inc:Seat::l33NoSockAsk
