@@ -642,6 +642,7 @@
     RC_DD_PEER: -1,   // C++: mesh_realcheck.inc:RC_DD_PEER
     V: -1,   // C++: mesh.cpp:V
     VBK: -1,   // C++: mesh.cpp:VBK
+    VRQ: 0,   // C++: mesh.cpp:VRQ
     VAT: -1,   // C++: mesh.cpp:VAT
     VCK: 0,   // C++: mesh.cpp:VCK
     T0: 0,   // C++: mesh.cpp:T0
