@@ -730,7 +730,7 @@
       if (L) L.heardAt = io.now();
       if (f.q === 't') { if (L && L.sb && L.l === f.l) takeover(L, 'the far standby end took over'); return; }
       // the far end names its side's standby seat only while it holds no standby up: the opener opens one toward it
-      if (f.q === 's') { if (L && !L.sb && L.opener && L.l === f.l && f.d) { L.sbUp = false; if (L.farSb !== f.d) { L.farSb = f.d; L.sbAt = 0; } } return; }
+      if (f.q === 's') { if (L && !L.sb && L.opener && L.l === f.l && f.d) { L.sbUp = false; L.sbAt = 0; if (L.farSb !== f.d) L.farSb = f.d; } return; }   // (sbAt 0: ask my side's seat at once; a standby already up answers 'r' at once, bindStandby)
       if (f.q === 'x') {
         if (L && L.l === f.l) {
           if (f.b === 1 && L.opener) { sub.why = 'full'; log('turn-link refused ' + short(from) + ' ' + L.l + ': the meeting is full'); }
@@ -1033,15 +1033,29 @@
         if (standbys() >= SB_PER_SEAT) { io.sendTv(from, { k: 'tv', q: 'x', l: f.l }); return true; }
         let M = null; for (const x of links.values()) if (x.sb && x.l === f.l && x.farDev === f.d && x.state !== 'closed') M = x;
         if (!M) { openStandby(f.l, f.d, parseInt(f.e, 36), from); log('turn-standby open ' + f.l + ' toward ' + f.d); }
+        else bindStandby(f.l, from);
         return true;
       }
-      if (f.q === 's') { sbExpect.set(f.l, from); io.sendTv(from, { k: 'tv', q: 's', l: f.l, d: io.dev() }); return true; }   // I end this pipe's standby on my side: my device, for the far side
+      if (f.q === 's') { sbExpect.set(f.l, from); bindStandby(f.l, from); io.sendTv(from, { k: 'tv', q: 's', l: f.l, d: io.dev() }); return true; }   // I end this pipe's standby on my side: my device, for the far side
       // the rest come only from a seat of my subroom in its role (else: a frame of a standby link not yet keyed by its peer id)
       const P = livePipe(r);
       if ((f.q === 'r' || f.q === 'x') && P && P.sbSeat === from) { P.sbUp = f.q === 'r'; if (f.q === 'x') P.sbAt = 0; return true; }
       if (f.q === 't' && P && P.sbSeat === from) { close(P, 'standby-took-over', true); return true; }   // my standby seat holds the pipe now: my part ends
       if (f.q === 't') { const mine = Array.from(links.values()).filter((M) => M.sb && M.l === f.l && M.liveEnd === from); for (const M of mine) takeover(M, 'my live end lost the pipe'); return mine.length > 0; }
       return false;
+    }
+    // A live end names me its standby seat while a standby of that pipe I end is already open (the pipe was re-made or changed
+    // hands): the standby answers to that live end from now on, and tells it the standby is up on every such naming (an 'r'
+    // lost, or the live end's own reset when the far side names its seat, heals at the next naming). Without it a re-made
+    // pipe's live ends never heard 'r', handed nothing over when their far end froze, and the standby watched a stale live
+    // end (3+3 freeze room: 151 s silence). The credential is not asked again here (that restart loop is why 0ed954cd dropped
+    // the first version).
+    function bindStandby(sl, liveEnd) {
+      for (const M of links.values()) {
+        if (!M.sb || M.l !== sl || M.state === 'closed') continue;
+        if (M.liveEnd !== liveEnd) { M.liveEnd = liveEnd; log('turn-standby ' + sl + ' now answers to ' + short(liveEnd)); }
+        if (M.state === 'up') io.sendTv(liveEnd, { k: 'tv', q: 'r', l: sl });
+      }
     }
     // A live end whose pipe is lost: its standby seat takes the pipe over; this end's part ends with it.
     function handOver(L, why) {

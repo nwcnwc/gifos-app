@@ -105,7 +105,6 @@
       let since = this.d6cBeat(); if (this.backAt > since) since = this.backAt;
       if (this.TICK - since <= K.ORPHAN_T || (this.unpAnyAt >= 0 && this.TICK - this.unpAnyAt <= 16) || this.l2E2Up()) return false;
       if (this.s1bUp()) return false;   // L2.15: a Section-1 bridge whose far end beats me carries me
-      if (this.f.fabricPipePeers(this.id).length) return false;   // D6c.6: a live pipe end is never an orphan
       if (this.l14Up >= 0 && this.f.fabricLinkCarries(this.id, this.l14Up)) return false;   // D6c.3
       return true;
     },
@@ -429,6 +428,10 @@
       else if (this.state === 3 && this.myDig.at >= 0) { m.dgSi = this.wireDig(this.myDig); m.dgSi.rows.length = 0; }   // L48: my own report, for the heir's stand-in fold
       if (!early && !standIn && this.u2Hot && this.state === 3 && this.coord.pc !== 0 && this.coord.i !== 0 && this.rootDig.at >= 0) { m.dgRoot = this.wireDig(this.rootDig); m.dgRoot.kl.length = 0; }   // L2.4.1
       this.emit(tid, m); this.l10Sent = true;
+      if (!early && standIn && this.lastAck <= this.headAckAt) {   // L9.6: nobody answers my stand-in beat: my head still gets one (C++ phoneHome)
+        const hk = ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 }); const h = this.occGet(hk);
+        if (h >= 0 && h !== id && h !== tid && !this.translost.has(hk) && this.f.fabricLinkState(id, h) === LS_OPEN) { const b = newMsg('PHONE'); b.coord = cc(this.coord); b.tock = hk; b.id = id; b.kids = this.hasChildren(); b.child = this.occGet(ckey(down(this.coord))); this.emit(h, b); }
+      }
       if (early) return;
       // A GHOST PHONE TARGET MUST BE FALSIFIABLE (2026-08-05, churn-combos leg C): see the sim for the long form.
       {
