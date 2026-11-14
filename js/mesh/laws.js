@@ -143,6 +143,7 @@
     TURN_DIAL: 6,                // TURN: ticks from a TURN link ask to an open path. Depends on: one credential round trip, the offer and answer over the relay, ICE through the server
     TURN_FREE_CLAMP: 6000,       // TURN: bytes per tick and direction the free pool lets one allocation carry (the server limit, 12000 bytes/s); everything except video fits, video does not
     TURN_FREE_LINKS: 6,          // TURN.10: TURN link credential names a room has in the free pool (and as many standby names); with one allocation per name this is the room's hard limit
+    TURN_HELD_TTL: 1000,         // TURN.5.2: a greeter a door-0 head's own view held within this long, listed under its room's epoch, is its own room's seat (frozen, crashed, between cells), not another room. Depends on: RELAY_TTL twice: a door entry outlives its seat's last word by RELAY_TTL and a knock's list is trusted RELAY_TTL more; shorter, a frozen seat still listed reads as an older room nothing reaches
     TURN_KEEP_BYTES: 50,         // TURN.9: bytes per tick and direction of an idle standby (keep-alives only)
     TURN_RETRY: 60,              // TURN.10: a refused or failed TURN link ask is repeated after this long (30 s). Depends on: how fast a busy pool frees a place; no mesh timing reads it
     TURN_RETRY_MAX_X: 8,         // TURN.10: an ask refused again and again waits twice as long each time, up to this many TURN_RETRYs (4 min), while its page sees nothing change; a change it sees puts the wait back to TURN_RETRY

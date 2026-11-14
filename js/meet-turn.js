@@ -461,6 +461,7 @@
     const WAIT_MS = K.TURN_WAIT * tick;                        // TURN.4
     const ASK_MS = K.FHOP_RELAY_ASK * tick;                    // TURN.4.3: one dial's direct verdict
     const MERGE_MS = K.RELAY_TTL * tick;                       // TURN.4.3: an entry ask's verdict holds this long
+    const HELD_MS = K.TURN_HELD_TTL * tick;                    // TURN.5.2: a listing's longest life (2 x RELAY_TTL)
     const RETRY_MS = K.TURN_RETRY * tick;                      // TURN.10
     const RESEND_MS = K.TURN_DIAL * tick;                      // a handshake frame the relay lost is sent again
     const DIAL_BUDGET_MS = (K.TURN_DIAL + K.TURN_RETRY) * tick; // an ask that never came up is closed (TURN.8 dialfail)
@@ -846,7 +847,7 @@
     // friend) for TURN_WAIT, of an OLDER room (the door's founding times; on a tie the lower ring), asks for a subroom:
     // the oldest room keeps door 0. TURN.4.3: the wait is kept per greeter; TURN.18: a greeter the door's list tags with a
     // network mine cannot meet is a verdict at once.
-    const head = { since: -1, seen: new Map(), want: false, held: new Map() };   // held (TURN.5.1): pid -> when my view last held it, as a Section-1 seat of door 0
+    const head = { since: -1, seen: new Map(), want: false, held: new Map() };   // held (TURN.5.2): pid -> when my view last held it, as a Section-1 seat of door 0
     function turnWaited(now, F) {
       if (F.length && io.doorNet && io.probed && io.probed() && !(io.friends ? io.friends() : true) && (io.judged ? io.judged() : false) && F.every((g) => io.doorNet(g) === 0)) return true;
       if (!io.blocked()) return now - head.since >= WAIT_MS;
@@ -862,9 +863,9 @@
     }
     function headWants(now) {
       const s = io.seat();
-      if (s && s.greeter && !(io.sub && io.sub() !== 0)) {   // TURN.5.1: whom my view holds (any Section-1 seat of door 0 may be the head next)
+      if (s && s.greeter && !(io.sub && io.sub() !== 0)) {   // TURN.5.2: whom my view holds (any Section-1 seat of door 0 may be the head next)
         for (const x of s.view) head.held.set(x, now);
-        if (head.held.size > 64) for (const [x, t] of Array.from(head.held)) if (now - t > 2 * MERGE_MS) head.held.delete(x);
+        if (head.held.size > 64) for (const [x, t] of Array.from(head.held)) if (now - t > HELD_MS) head.held.delete(x);
       }
       if (!s || !s.head || !io.greeters || (io.sub && io.sub() !== 0)) { head.since = -1; head.seen.clear(); return false; }
       const view = new Set(s.view), F = [], mine0 = io.myEpoch ? io.myEpoch() : -1;
@@ -872,7 +873,7 @@
         if (!g || g === io.me() || view.has(g)) continue;
         const r = io.reach(g);
         if (r === 'direct' || r === 'friend') { head.since = -1; head.seen.clear(); return false; }   // something foreign is reachable: merge first
-        { const h = head.held.get(g), e = io.epoch ? io.epoch(g) : -1; if (h !== undefined && now - h <= 2 * MERGE_MS && !(e >= 0 && mine0 >= 0 && e !== mine0)) continue; }   // TURN.5.1: a seat my own view held inside a listing's longest life (its entry outlives its last word by RELAY_TTL, my knock's list is trusted RELAY_TTL more), under my room's epoch, is my room's (frozen, crashed, between cells): no other room (a stopped page answers no probe)
+        { const h = head.held.get(g), e = io.epoch ? io.epoch(g) : -1; if (h !== undefined && now - h <= HELD_MS && !(e >= 0 && mine0 >= 0 && e !== mine0)) continue; }   // TURN.5.2: a seat my own view held inside a listing's longest life (its entry outlives its last word by RELAY_TTL, my knock's list is trusted RELAY_TTL more), under my room's epoch, is my room's (frozen, crashed, between cells): no other room (a stopped page answers no probe)
         F.push(g);
       }
       if (!F.length) { head.since = -1; head.seen.clear(); return false; }
