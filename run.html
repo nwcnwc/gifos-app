@@ -14054,6 +14054,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const m = p.neg.glareOffer; p.neg.glareOffer = null;
         if (!m || !p.pc || leaving) return;
         if (p.pc.signalingState !== 'have-local-offer') return;  // it healed; leave it alone
+        if (p.neg.answerIn) return;   // my dial has its answer: the far end yielded, and a later offer on this pc is no glare (pk42)
         if (typeof clog === 'function') clog('glare-yield ' + String(from).slice(0, 6));
         // A pair with no live transport yields on a FRESH pc, not by
         // rollback: an answer made after rolling back an offer gathers no ICE
@@ -14748,7 +14749,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const negA = p.neg; if (negA) negA.answerIn = true;   // this pc's offer has its answer in hand: no longer unanswered (onDialRequest), though the pc reads have-local-offer until it is set
         const pcA = p.pc;
         pcA.setRemoteDescription(msg.sdp)
-          .then(() => { for (const c of p.pendingIce.splice(0)) p.pc.addIceCandidate(c).catch(() => {}); })
+          .then(() => {
+            // THE GLARE IS OVER: the far end answered my dial, so it yielded. A yield still armed would fire on this pc's
+            // next renegotiation, roll it back to answer a dead offer and rebuild a live pc (pk42: the pipe, 'glare-failed').
+            if (negA && p.neg === negA) { clearTimeout(negA.glareTimer); negA.glareTimer = null; negA.glareOffer = null; }
+            for (const c of p.pendingIce.splice(0)) p.pc.addIceCandidate(c).catch(() => {});
+          })
           .catch((e) => { if (negA) negA.answerIn = false; noteNegFail('answer', from, e);
             const em = String((e && e.message) || ''), q = peers.get(from);
             if (/extension ID reassignment/i.test(em)) maybeRebuildNeg(q, e);
