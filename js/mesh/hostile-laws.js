@@ -70,6 +70,7 @@
             const signer = m.fo >= 0 ? m.fo : m.from; let c = null, ok = false, found = false;
             const standing = () => {
               if (m.hole.pc === 0 ? (c.pc === 0 && (c.r === m.hole.r || (c.i === 0 && m.hole.r === (c.r + 1) % topo.C))) : (c.pc === m.hole.pc && c.r === m.hole.r)) return true;   // L37.6.1: a home hole's row, or the next row for a row head (L9.12's pull)
+              if (m.hole.pc === 0 && c.pc === 0 && c.i === 0 && req('./heal.js', 'meshHeal').l922Ok(this, m.hole)) { let empty = true; for (let rr = (c.r + 1) % topo.C; rr !== m.hole.r && empty; rr = (rr + 1) % topo.C) for (let j = 0; j < topo.C; j++) if (req('./heal.js', 'meshHeal').l922Seat(this, ckey({ pc: 0, r: rr, i: j }))) empty = false; if (empty) return true; }   // L9.22: a row head standing in for the empty rows after it (no deep seat in my view, the hole free in front of me)
               let o, oo;
               if (m.hole.pc !== 0) { o = { pc: m.hole.pc, r: m.hole.r }; while (o.pc !== 0 && (oo = up({ pc: o.pc, r: o.r, i: 0 }))) { if (c.pc === oo.pc && c.r === oo.r) return true; o = oo; } }
               o = { pc: c.pc, r: c.r };

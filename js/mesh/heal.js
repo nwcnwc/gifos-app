@@ -86,6 +86,31 @@
     }
     return s.rootDec.n <= home;
   }
+  // L9.22: Section 1 packs to its front (room with no deep seat: the last row's trailing seat fills the first free home cell).
+  // C++: mesh_heal.inc:l922Heard
+  function l922Heard(s) {
+    let h = 1;
+    for (let q = 0; q < C * C; q++) { const k = ckey(cell(0, Math.floor(q / C), q % C)); if (!(s.hasCoord && ckey(s.coord) === k) && s.occGet(k) >= 0 && s.firstHandLive(k)) h++; }
+    return s.rootDec.at >= 0 && !s.rootDec.part && s.rootDec.n <= h;
+  }
+  // C++: mesh_heal.inc:l922Seat
+  function l922Seat(s, k) {
+    if (s.hasCoord && ckey(s.coord) === k) return true;
+    if (s.occGet(k) < 0) return false;
+    if (s.ownedLinkCell(k)) return !(s.now() - s.seatedAt >= 2 * K.L9_PULL && !(s.live.has(k) && s.now() - s.live.get(k) <= 2 * K.L9_PULL) && !s.l920Deaf(k));   // a seat on my rook phones me (L9.12's echo test)
+    return s.firstHandLive(k) || (s.s1Fresh(k) && !l922Heard(s));
+  }
+  // C++: mesh_heal.inc:l922Scooch
+  function l922Scooch(s, hole) { for (let j = hole.i + 1; j < C; j++) if (l922Seat(s, ckey(cell(0, hole.r, j)))) return true; return false; }
+  // C++: mesh_heal.inc:l922LastRow
+  function l922LastRow(s) { for (let r = C - 1; r >= 0; r--) if (l922Seat(s, ckey(cell(0, r, 0)))) return r; return -1; }
+  // C++: mesh_heal.inc:l922Trail
+  function l922Trail(s) { for (let j = C - 1; j >= 0; j--) if (l922Seat(s, ckey(cell(0, s.coord.r, j)))) return j; return -1; }
+  // C++: mesh_heal.inc:l922Ok
+  function l922Ok(s, hole) {
+    if (!s.hasCoord || s.state !== 3 || s.moving || s.coord.pc !== 0 || hole.pc !== 0 || s.hasChildren()) return false;
+    return hole.r * C + hole.i < s.coord.r * C + s.coord.i && !l922Seat(s, ckey(hole)) && l9RoomAllHome(s);
+  }
   // C++: mesh_heal.inc:l9PullSmall
   function l9PullSmall(s) {
     if (s.rootDec.at < 0 || s.rootDec.part || s.rootDec.n <= 0) return false;
@@ -419,7 +444,8 @@
       this.l920Note();
       const nhGone = (nk) => this.occGet(nk) < 0 || (this.TICK - this.seatedAt >= 2 * K.L9_PULL && !(this.live.has(nk) && this.TICK - this.live.get(nk) <= 2 * K.L9_PULL));
       let l921 = false;   // L9.21: the small-room band and the hold stand, but for the cells a mover left
-      if (l9PullSmall(this) || (!this.l13('L13.7') && l9PullHold(this))) {
+      const front = l9RoomAllHome(this);   // L9.22: no deep seat in my view: Section 1's last seat is the leaf
+      if (!front && (l9PullSmall(this) || (!this.l13('L13.7') && l9PullHold(this)))) {
         let any = false; for (let j = 1; j < C; j++) if (this.l921Vac(ckey(cell(0, this.coord.r, j)))) any = true; const nr = (this.coord.r + 1) % C; const nk0 = ckey(cell(0, nr, 0)); if (this.l921Vac(nk0)) any = true;
         if (nhGone(nk0)) for (let j = 1; j < C; j++) if (this.l921Vac(ckey(cell(0, nr, j)))) any = true;
         if (!any) return; l921 = true;
@@ -431,18 +457,20 @@
         const fh = kf !== undefined && kf && this.firstHandLive(k), syn = ch !== undefined && ch >= 0;
         if (pass === 0 ? fh : (syn && !fh)) ks.push(x);
       }
-      if (ks.length === 0) return;
-      this.l9PullAt = this.TICK | 0; let cellIx = 0;
+      if (ks.length === 0 && !front) return;
+      this.l9PullAt = this.TICK | 0; let cellIx = 0; let frontDone = false; let frontHole = -1; if (front) for (let q = 0; q < C * C && frontHole < 0; q++) if (!l922Seat(this, ckey(cell(0, Math.floor(q / C), q % C)))) frontHole = q;   // L9.22: Section 1 fills in row-major order
       const pull = (c) => {
-        const k = ckey(c); if (l921 && !this.l921Vac(k)) return; let echo = this.occGet(k) >= 0 && this.occGet(k) !== id && this.TICK - this.seatedAt >= 2 * K.L9_PULL && !(this.live.has(k) && this.TICK - this.live.get(k) <= 2 * K.L9_PULL);
+        const k = ckey(c); if (l921 && !this.l921Vac(k)) return; if (front && (frontDone || c.r * C + c.i !== frontHole || l922Scooch(this, c))) return; let echo = this.occGet(k) >= 0 && this.occGet(k) !== id && this.TICK - this.seatedAt >= 2 * K.L9_PULL && !(this.live.has(k) && this.TICK - this.live.get(k) <= 2 * K.L9_PULL);
         if (echo && !this.ownedLinkCell(k)) echo = false;
         if (echo && this.l920Deaf(k)) echo = false;
-        if ((this.occGet(k) >= 0 && !echo) || this.softSitting(k) || this.sitting.has(k) || this.occGet(ckey(down(c))) >= 0 || (this.hasDownChild(c) && !l1HeirFailed(this, c))) return;
+        if ((this.occGet(k) >= 0 && !echo && !front) || this.softSitting(k) || this.sitting.has(k) || this.occGet(ckey(down(c))) >= 0 || (this.hasDownChild(c) && !l1HeirFailed(this, c))) return;
         const p = this.l9PullCell.get(k); if (p !== undefined && this.TICK - p < ((roomTerm(this, 1) || l921) ? K.L9_PULL + K.CONFIRM_TTL : K.L9_PULL)) return;
-        const pn = ins(this.l9PullN, k, () => 0); this.l9PullN.set(k, (pn + 1) >>> 0); const n = pn | 0; const x = ks[(cellIx++ + n) % ks.length];
+        let n = 0, x = -1;
+        if (front) { const lr = l922LastRow(this); if (lr <= c.r) return; x = (lr === this.coord.r) ? id : this.occGet(ckey(cell(0, lr, 0))); if (x < 0) return; }   // L9.22: the head of Section 1's last row picks its trailing seat
+        else { const pn = ins(this.l9PullN, k, () => 0); this.l9PullN.set(k, (pn + 1) >>> 0); n = pn | 0; x = ks[(cellIx++ + n) % ks.length]; }
         const nb = []; const ol = ownedLinks(c); const nl = ol.length; for (let q = 0; q < nl; q++) { const y = (ckey(ol[q]) === ckey(this.coord)) ? id : this.occGet(ckey(ol[q])); if (y >= 0) nb.push({ k: ckey(ol[q]), v: y }); }
         if (!this.rmName(c, -1, nb)) return;
-        this.l9PullCell.set(k, this.TICK | 0); this.trace('HOME-PULL', id, c, 'via=%d n=%d', x, n);
+        this.l9PullCell.set(k, this.TICK | 0); if (front) frontDone = true; this.trace('HOME-PULL', id, c, 'via=%d n=%d', x, n);
         if (x === id) { this.findLeaf(c, nb, 2 * (C - 1), 12); } else { this.emit(x, flMsg(c, nb, 2 * (C - 1), 12)); }
       };
       for (let j = 1; j < C; j++) pull(cell(0, this.coord.r, j));
@@ -450,6 +478,7 @@
       const nhEmpty = nhGone(nk);
       pull(nh);
       if (nhEmpty) for (let j = 1; j < C; j++) pull(cell(0, nh.r, j));
+      if (front && nhEmpty) for (let t = 2; t < C; t++) { const hc = cell(0, (this.coord.r + t) % C, 0); const gone = nhGone(ckey(hc)); pull(hc); if (!gone) break; for (let j = 1; j < C; j++) pull(cell(0, hc.r, j)); }   // L9.22: the rows after it with no head I hear, up to the next head I hear
     },
 
     // L16.7: a cell whose holder I hear now is no hole.
@@ -530,6 +559,15 @@
                 }
               }
             }
+            if (l922Ok(this, hole) && !this.chanless(ckey(hole)) && !this.heldRightNow(ckey(hole))) {   // L9.22: a room with no deep leaf: Section 1's last row gives its trailing seat
+              if (this.coord.i === 0) {
+                const lr = l922LastRow(this);
+                if (lr > this.coord.r) { const h = this.occGet(ckey(cell(0, lr, 0))); if (h >= 0 && h !== id && ttl > 0) this.emit(h, flMsg(hole, nbrs, ttl - 1, 12)); return; }   // a later row: its head
+                const t = l922Trail(this);
+                if (t > 0) { if (this.coord.r * C + t <= hole.r * C + hole.i) return; const x = this.occGet(ckey(cell(0, this.coord.r, t))); if (x >= 0 && x !== id && ttl > 0) this.emit(x, flMsg(hole, nbrs, ttl - 1, 12)); return; }   // my row's trailing seat
+              } else if (l922Trail(this) !== this.coord.i) return;   // only my row's trailing seat moves
+              this.trace('L9.22-FRONT', id, hole, 'from=%s', FREE.coordStr(this.coord)); this.mvWhy = 'front'; this.doMove(hole, -1, nbrs);
+            }
             return;
           }
           if (this.moving) return;
@@ -545,7 +583,8 @@
                 this.l9Asg.set(ch, this.TICK | 0); const m = flMsg(hole, nbrs, 0, 12); this.f.fabricDialJoin(id, ch); this.emit(ch, m); return;
               }
             }
-            if (mates || this.hasChildren()) return;
+            let onWay = false; for (let j = 1; j < C; j++) { const c = cell(this.coord.pc, this.coord.r, j); const k = ckey(c); const x = this.occGet(k); if (x >= 0 && x !== id && !this.translost.has(k) && !this.hasDownChild(c)) onWay = true; }   // L9.12.1: a childless mate not picked is one already sent
+            if (onWay || (mates && !this.hasChildren())) return;   // L9.12.1: my mates all hold rows and so do I: my own child row has the leaf (P), below
           }
           if (this.hasChildren()) { const dk = ckey(down(this.coord)); const ch = this.occGet(dk); if (ch >= 0 && ch !== id && this.firstHandLive(dk)) { this.emit(ch, flMsg(hole, nbrs, 0, 12)); } return; }
           this.promoteInto(hole, nbrs); return;
@@ -1338,7 +1377,7 @@
   // C++: mesh_heal.inc:Seat::findLeaf
   function l9FwdKey(k, x) { return 2 ** 50 + hash.hmix64(hash.hmixId(hash.H_INIT, x), k); }
 
-  const api = { l1RowEmpty, l1HeirFailed, l1RightCell, l1ColCell, l9RoomAllHome, l9PullSmall, l9PullHold, l1MoverCell, l1HasMover, rmWitCells, l13Ring, l13Witness, l13Chain, l13Line, L13_CHAIN_MAX, l9FwdKey };
+  const api = { l922Seat, l922Ok, l1RowEmpty, l1HeirFailed, l1RightCell, l1ColCell, l9RoomAllHome, l9PullSmall, l9PullHold, l1MoverCell, l1HasMover, rmWitCells, l13Ring, l13Witness, l13Chain, l13Line, L13_CHAIN_MAX, l9FwdKey };
   GifOS.meshHeal = api;
   if (isNode) module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
