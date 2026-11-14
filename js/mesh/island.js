@@ -169,7 +169,6 @@
         const it = this.noneSince.get(x); if (it === undefined) { this.noneSince.set(x, this.TICK); continue; }
         if (this.deafFloor >= 0 && it < this.deafFloor) { this.noneSince.set(x, this.TICK); continue; }   // L8.48: a none-stamp from before the ear reopened is not this window
         if (this.TICK - it < K.NOTMINE_WAIT) continue;
-        if (this.f.fabricTurnCarried(this.id, x)) { this.noneSince.set(x, this.TICK); continue; }   /* TURN.14.9 */
         this.trace('NOT-MINE', this.id, ol[q], 'peer=%d none=%d', x, this.TICK - it);
         if (this.coord.pc !== 0 && this.coord.i === 0 && ol[q].pc === this.coord.pc && ol[q].r === this.coord.r && ol[q].i !== 0 && this.f.fabricLinkState(this.id, x) === LS_NONE && this.f.fabricDialFails(this.id, x) > 0) { this.l20Out.set(k, [x, this.TICK]); if (this.l20Out.size > C) eraseFirst(this.l20Out); }
         this.noneSince.delete(x); this.occDrop(k, 'not-my-link'); this.live.delete(k); this.s1seen.delete(k); this.noChan.add(x);
@@ -208,7 +207,6 @@
     // C++: mesh_island.inc:Seat::ringMin
     ringMin() {
       let mine = this.id; for (const [k, v] of this.occ) if (v >= 0 && ckPc(k) === 0 && v < mine) mine = v;
-      if (this.t14Ring >= 0 && this.hasCoord && this.coord.pc !== 0 && this.TICK - this.t14RingAt < K.RELAY_TTL) mine = this.t14Ring;   /* TURN.14.6: a deep seat names the ring its placer named */
       return mine;
     },
 
@@ -248,8 +246,6 @@
       for (const [k, v] of this.occ) if (v >= 0 && v !== this.id && v !== m.id && ckPc(k) === 0) return false;
       return true;
     },
-    // C++: mesh_island.inc:Seat::l859Link   (L8.5.9: the far end of a relayed connection I opened speaks for its part of the meeting)
-    l859Link(m) { return m.from === m.id && m.c7Held && this.f.fabricTurnPc(this.id, m.id) && this.f.fabricTurnOpener(this.id, m.id); },
     // C++: mesh_island.inc:Seat::l858Ring   (L8.5.8: with mates beside me I do not give up my seat alone to someone from another founding of the meeting)
     l858Ring(m) {
       if (!roomTerm(this, 1) || m.from !== m.id || m.line < 0 || this.line < 0 || m.line === this.line || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return false;
@@ -264,30 +260,22 @@
     l850Lone() { return this.line === this.id && !this.l850Seated && this.hasCoord && this.state === 3 && ckey(this.coord) === 0 && !this.moving; },
 
     // C++: mesh_island.inc:Seat::l850
-    // TURN.19.1/19.4 at the far end. C++: mesh_island.inc:Seat::t19Find
-    t19Find(m) {
-      if (!this.f.fabricDoors() || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0 || m.nc < 0 || m.nc === this.id || m.from !== m.nc || !this.f.fabricTurnPc(this.id, m.nc) || this.l850Lone()) return false;
-      let mate = false; for (const [k, v] of this.occ) if (v >= 0 && v !== this.id && v !== m.nc && ckPc(k) === 0 && this.firstHandLive(k)) { mate = true; break; }
-      if (!mate) return false;
-      this.trace('TURN19-CARRY', this.id, this.coord, 'nc=%d', m.nc); m.sgw = this.id; m.sgwCk = ckey(this.coord) + 1; this.farLearn(m); return true;
-    },
     // L8.50: a founder of one and a room (.1 the room's seat, .2 the founder)
     l850(m) {
       if (!this.f.fabricDoors() || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return false;
       if (m.from !== m.id || !this.linkIs(m, m.id) || m.line < 0 || this.line < 0 || m.line === this.line) return false;
       if (m.c7One) {   // L8.50.1
         if (this.l850Lone()) return false;   // two founders of one: T1
-        if ((m.c7Link || (m.line !== m.id && this.lineAt >= 0 && m.lineAt >= 0 && m.lineAt < this.lineAt))) return false;   // L8.52.5 (mesh_ring.inc): "alone" said by the end of a TURN link for its side is no founder of one
+        if (m.line !== m.id && this.lineAt >= 0 && m.lineAt >= 0 && m.lineAt < this.lineAt) return false;   // L8.52.5 (mesh_ring.inc): "alone" said by a seat that did not found the lineage it stamps, an older one than mine, is no founder of one
         let mate = false; for (const [k, v] of this.occ) if (v >= 0 && v !== this.id && v !== m.id && ckPc(k) === 0 && this.firstHandLive(k)) { mate = true; break; }
         if (!mate) return false;
         this.trace('L8.50-ROOM', this.id, this.coord, 'to=%d line=%d', m.id, m.line); const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = this.id; h.c7Min = this.ringName(); h.c7Held = true; h.c7One = false; this.emit(m.id, h);   // one answer per HELLO received
-        return true;   // (TURN.19.1: the founder's own FIND, sent beside this HELLO, is served by t19Find)
+        return true;
       }
       const lone = this.l850Lone(), left = !lone && this.ringAlone() && !this.moving && this.lineAt >= 0 && m.lineAt >= 0 && m.lineAt < this.lineAt;   // L8.52.4 (mesh_ring.inc): the last seat of the younger room, alone on its ring, follows on the older room's one word
       if (m.c7Min < 0 || !(lone || left)) return false;   // L8.50.2
       this.trace(lone ? 'L8.50-LONE' : 'L8.52-LEFT', this.id, this.coord, 'via=%d ring=%d', m.id, m.c7Min);
-      const t19 = lone && this.f.fabricTurnPc(this.id, m.id);   // TURN.19.2
-      this.c7Yield(this.ringName(), 'L8.50-lone'); this.c7Old.clear(); this.l851Up = -1; if (t19) { this.lastAsked = m.id; this.trace('TURN19-HELD', this.id, null, 'via=%d', m.id); } return true;
+      this.c7Yield(this.ringName(), 'L8.50-lone'); this.c7Old.clear(); this.l851Up = -1; return true;
     },
 
     // C++: mesh_island.inc:Seat::l51Rooms
@@ -298,13 +286,6 @@
       const other = (lh === this.line && lc !== this.line) ? claimant : (lc === this.line && lh !== this.line) ? holder : -1; if (other < 0) return 0;
       if (this.hasCoord && this.state === 3 && this.l828RingOf(other) === this.ringName()) return 0;
       return other === claimant ? 1 : 2;
-    },
-
-    // C++: mesh_island.inc:Seat::l8422Link   (L8.42.2: the far end of my relayed connection, naming another founding, is of another part whatever my view holds)
-    l8422Link(m, other) {
-      if (!other || !this.f.fabricTurnOn() || !this.f.fabricTurnPc(this.id, m.id)) return false;
-      for (const [, v] of this.occ) if (v === m.id) { this.trace('L8.42.2-LINK', this.id, this.coord, 'peer=%d line=%d ring=%d', m.id, m.line, m.c7Min); break; }
-      return true;
     },
 
     // C++: mesh_island.inc:Seat::l8510Bye   (L8.5.10: the one-merge gate does not hold a mate's goodbye toward an older founding)
@@ -374,15 +355,13 @@
     // C++: mesh_island.inc:Seat::islandC7
     islandC7(m) {
       if (!roomTerm(this, 1) || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return false;
-      const fh = this.l842Stranger(m) || this.l857Alone(m) || this.t1415Word(m);   // TURN.14.15 (mesh_turn.inc): the word of a link's end for its side   // L8.5.7
-      let tl = false;   // L8.42.2
+      const fh = this.l842Stranger(m) || this.l857Alone(m);   // L8.5.7
       if (!fh) {
         const other = (m.from === m.id || (m.sig && this.l853Dated(m.id))) && m.line >= 0 && this.line >= 0 && m.line !== this.line;   // L8.53.2: or its signed greeting, carried, when the door dates it to another founding   // L8.42.1: its own greeting names another founding
-        tl = this.l8422Link(m, other);
-        for (const [k, v] of this.occ) if (v === m.id && !tl && (!other || this.firstHandLive(k))) return false;   // a seat my view holds is of my ring, unless I hold it only second-hand and its own greeting names another founding
+        for (const [k, v] of this.occ) if (v === m.id && (!other || this.firstHandLive(k))) return false;   // a seat my view holds is of my ring, unless I hold it only second-hand and its own greeting names another founding
       }
       const ss = this.strangeSeen.get(m.id), xr = this.xrOk.get(m.id);
-      if (!fh && !tl && !((ss !== undefined && ss >= 2) || (xr !== undefined && this.TICK - xr <= 2 * K.RELAY_TTL) || this.l853Dated(m.id))) return false;
+      if (!fh && !((ss !== undefined && ss >= 2) || (xr !== undefined && this.TICK - xr <= 2 * K.RELAY_TTL) || this.l853Dated(m.id))) return false;
       const mine = this.ringName(), theirs = m.c7Min; if (theirs < 0 || theirs === mine) return false;
       const gated = this.TICK - this.c7At < K.RELAY_TTL;
       let tAt = m.lineAt; { const ve = this.c7VouchEp.get(theirs); if (ve !== undefined && this.TICK - ve[1] <= K.RELAY_TTL) tAt = (tAt < 0 || ve[0] < 0) ? -1 : Math.max(tAt, ve[0]); }   // L8.52.1: of two vouchers' epochs for one name the YOUNGER counts
@@ -393,13 +372,13 @@
         for (const [wk, wv] of v) { if (this.TICK - wv > K.RELAY_TTL) v.delete(wk); }
         let vGone = false; if (this.c7Vouch.size > 16) { vGone = (this.c7Vouch.keys().next().value === theirs); eraseFirst(this.c7Vouch); }
         if (gated) return false;
-        if (vGone || (v.size < 2 && !m.c7One && !this.l857Alone(m) && !this.l859Link(m))) { if (!vGone && v.size < 2) this.l853Second(m, theirs, tAt);   /* L8.53.2: one voucher short: ask the second through the first */ return false; }   // L8.5.2: a settled founder that holds nobody else IS its ring: its one vouch is the whole ring's word
+        if (vGone || (v.size < 2 && !m.c7One && !this.l857Alone(m))) { if (!vGone && v.size < 2) this.l853Second(m, theirs, tAt);   /* L8.53.2: one voucher short: ask the second through the first */ return false; }   // L8.5.2: a settled founder that holds nobody else IS its ring: its one vouch is the whole ring's word
         {
           this.l842Join.clear(); const ls = new Set();
           for (const wk of v.keys()) { this.l842Join.add(wk); const l = this.lineOf(wk); if (l >= 0 && l !== this.line) ls.add(l); }
           for (const x of this.occ.values()) { if (x < 0 || x === this.id) continue; const l = this.lineOf(x); if ((l >= 0 && ls.has(l)) || this.l828RingOf(x) === theirs) this.l842Join.add(x); }
         }
-        this.trace('C7', this.id, this.coord, 'mine=%d theirs=%d', mine, theirs); if (this.l853From >= 0 && v.has(this.l853From)) { this.l853Via = this.l853From; this.l853From = -1; }   /* L8.53.4 */ if (this.t1415Word(m)) this.t161Note(m.id);   /* TURN.16.1: moved by the word of my side's link end: it is my way in */ this.c7TowardEp = tAt; this.c7Yield(mine, 'C7-merge', theirs); this.c7TowardEp = -1; this.l842Join.clear(); return true;
+        this.trace('C7', this.id, this.coord, 'mine=%d theirs=%d', mine, theirs); if (this.l853From >= 0 && v.has(this.l853From)) { this.l853Via = this.l853From; this.l853From = -1; }   /* L8.53.4 */ this.c7TowardEp = tAt; this.c7Yield(mine, 'C7-merge', theirs); this.c7TowardEp = -1; this.l842Join.clear(); return true;
       }
       if (gated) return false;
       const t = this.c7Told.get(m.id);
@@ -429,7 +408,7 @@
       const fromHead = this.coord.i !== 0 && m.ck === ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 });
       if (!(fromOwner || fromHead) || !this.provenEv(m, m.id)) return false;
       this.trace('C7-FOLLOW', this.id, this.coord, 'by=%d theirs=%d', m.id, m.c7Min);
-      this.t161Note(m.id); this.c7Yield(m.c7Min, 'C7-subtree'); return true;
+      this.c7Yield(m.c7Min, 'C7-subtree'); return true;
     },
 
     // C++: mesh_island.inc:Seat::c7Yield

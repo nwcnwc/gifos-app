@@ -51,8 +51,6 @@
     }
     return true;
   }
-  // C++: mesh_seat.inc:t14Under   (cell c is the cell the word w names, or lies in its subtree)
-  function t14Under(c, w) { if (w <= 0) return false; const R = unckey(w - 1); if (c.pc === 0) return c.r === R.r && c.i === R.i; const [r0, col] = l12Origin(c); return r0 === R.r && col === R.i; }
   // C++: mesh_seat.inc:l12Origin
   // returns [r0, col]
   function l12Origin(seeker) {
@@ -85,7 +83,6 @@
     }
     return null;
   }
-  Seat.free({ t14Under });
   Seat.unit('mesh_seat.inc compaction', {
     // C++: mesh_seat.inc:Seat::l12SectionLone
     l12SectionLone() {
@@ -108,7 +105,7 @@
         const rr = cand[0], cc2 = cand[1];
         if (rr === this.coord.r && cc2 === this.coord.i) {
           const ch = down(this.coord);
-          if (pcDepth(ch.pc) < sd && !this.f.fabricTurnAcross(id)) {   /* TURN.14.3: my child row is my side of the link */
+          if (pcDepth(ch.pc) < sd) {
             const dk = ckey(ch), x = this.occGet(dk);
             if (x >= 0 && x !== id && this.firstHandLive(dk)) { const m = msg.clone(mm); m.ttl--; m.l12s = 2; this.emit(x, m); return true; }
           }
@@ -155,87 +152,6 @@
       }
       mm.l12s = 1; mm.l12n = 0; return this.l12Step(mm);
     },
-    // TURN.14.5 THE SUBTREE UNDER A LINK'S END KNOWS IT, AND STAYS. The end's word is its Section-1 cell (key + 1); a seat that
-    // holds the word moves to no cell outside that subtree (doMove). It clears itself: the end says "none" on the first beat
-    // after its link closes, and a word not heard for a lease is void.
-    // C++: mesh_seat.inc:Seat::t14Word
-    t14Word() { if (!this.hasCoord || this.state !== 3) return 0; if (this.coord.pc === 0) return this.f.fabricTurnAcross(this.id) ? ckey(this.coord) + 1 : 0; return (this.t14Ck > 0 && this.TICK - this.t14At <= K.LEASE_T && t14Under(this.coord, this.t14Ck)) ? this.t14Ck : 0; },
-    // C++: mesh_seat.inc:Seat::t14Stay
-    t14Stay(c) { if (!this.hasCoord || this.state !== 3 || this.coord.pc === 0 || this.t14Ck <= 0 || this.TICK - this.t14At > K.LEASE_T || !t14Under(this.coord, this.t14Ck)) return false; return !t14Under(c, this.t14Ck); },
-    // TURN.14.7 THE END KEEPS ITS CELL WHILE ITS SIDE HANGS UNDER IT: the end with a child row makes no move and no exchange.
-    // TURN.14.11 NO THIRD PARTY'S PLACEMENT ASK, AND NO PLACEMENT, CROSSES A TURN LINK: an entry ask for a seeker on my side stops at me and I seat
-    // it under me (the ask comes back to me on my own bus); a placement for a seat that is neither end is not carried.
-    // TURN.14.13 A STRAY OF THE END'S SIDE IN SECTION 1 IS CALLED UNDER THE END: every TURN_RETRY ticks an end whose ring lies across its link
-    // sends its word (HELLO.t14, the key of its cell + 1) to each Section-1 seat of its view that its own probe reaches and that is no TURN peer;
-    // a Section-1 seat that hears it over the sender's own channel, holds no TURN link and no pc of its own to any other Section-1 neighbour, leaves its cell.
-    // C++: mesh_seat.inc:Seat::t14Call
-    t14Call() {
-      const id = this.id;
-      if (!this.hasCoord || this.state !== 3 || this.coord.pc !== 0 || !this.f.fabricTurnAcross(id)) return;
-      let xs = []; for (const [k, x] of this.occ) { if (x < 0 || x === id || ckPc(k) !== 0) continue; if (this.f.fabricTurnStray(id, x)) xs.push(x); }
-      xs.sort((a, b) => a - b); xs = xs.filter((x, i) => i === 0 || x !== xs[i - 1]);
-      for (const x of xs) { this.trace('TURN14-CALL', id, this.coord, 'to=%d', x); const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = id; h.t14 = ckey(this.coord) + 1; this.emit(x, h); }
-    },
-    // TURN.14.15 (mesh_turn.inc): the end of a relayed link knows its ring lies across the link by its peer's word, whatever its view holds
-    // C++: mesh_seat.inc:Seat::t161Note   (TURN.16.1: the mate whose goodbye I followed out of my part of the meeting, and when)
-    t161Note(x) { if (x < 0 || x === this.id || !this.f.fabricTurnOn()) return; this.t161Via = x; this.t161At = this.TICK; },
-    // C++: mesh_seat.inc:Seat::t161Mate   (TURN.16.1: x is the mate I followed and its word still lives)
-    t161Mate(x) { return x >= 0 && x === this.t161Via && this.TICK - this.t161At <= K.SIT_TTL && this.f.fabricTurnOn(); },
-    // C++: mesh_seat.inc:Seat::t161Pick   (TURN.16.1: that mate is my gateway while the door lists it and it is on my side of the cut)
-    t161Pick(list) {
-      if (!this.t161Mate(this.t161Via)) return -1;
-      if (list.indexOf(this.t161Via) < 0 || !this.f.fabricTurnMine(this.id, this.t161Via)) return -1;
-      this.trace('TURN16.1-VIA', this.id, null, 'via=%d since=%d', this.t161Via, this.t161At); return this.t161Via;
-    },
-    // C++: mesh_seat.inc:Seat::t1415Home
-    t1415Home() {
-      if (!this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return false; const sd = []; this.f.fabricTurnSide(this.id, sd); const rn = this.ringName();
-      for (const x of sd) for (const [k, v] of this.occ) if (v === x && ckPc(k) === 0) { const rx = this.l828RingOf(x); if (rx < 0 || rx === rn) return true; }
-      return false;
-    },
-    // C++: mesh_seat.inc:Seat::t1415Far
-    t1415Far(x) { const it = this.t1415.get(x); return it !== undefined && it[0] >= 0 && this.line >= 0 && it[0] === this.line && this.TICK - it[1][0] <= K.RELAY_TTL && this.hasCoord && this.state === 3 && this.f.fabricTurnOpener(this.id, x); },
-    // C++: mesh_seat.inc:Seat::t1415Across
-    t1415Across() { for (const x of this.t1415.keys()) if (this.t1415Far(x)) return true; return false; },
-    // C++: mesh_seat.inc:Seat::t1415Ring
-    t1415Ring() { for (const [x, r] of this.t1415) if (r[1][1] >= 0 && this.t1415Far(x)) return r[1][1]; return -1; },
-    // C++: mesh_seat.inc:Seat::t1415Note
-    t1415Note(m) {
-      if (m.t !== 'HELLO' || m.from !== m.id || m.id < 0 || m.id === this.id || !this.f.fabricTurnOn() || !this.f.fabricTurnPc(this.id, m.id)) return;
-      const v = m.c7Home ? m.line : -1; const it = this.t1415.get(m.id);
-      if (it === undefined || it[0] !== v) this.trace('TURN14-HOME', this.id, this.hasCoord ? this.coord : null, 'from=%d home=%d line=%d ring=%d', m.id, m.c7Home ? 1 : 0, m.line, m.c7Min);
-      if (it === undefined && this.t1415.size >= 16) this.t1415.delete(this.t1415.keys().next().value);
-      this.t1415.set(m.id, [v, [this.TICK, m.c7Min]]);
-    },
-    // C++: mesh_seat.inc:Seat::t1415Beat
-    t1415Beat() {
-      const id = this.id;
-      if (!this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return;
-      const tp = Array.from(this.t1415.keys());
-      for (const x of tp) { if (!this.f.fabricTurnPc(id, x)) { this.t1415.delete(x); continue; } const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = id; this.emit(x, h); }
-      if (!this.t1415Across()) return;
-      const sd = []; this.f.fabricTurnSide(id, sd);
-      for (const x of sd) { const l = this.lineOf(x); if (l < 0 || l === this.line) continue; this.trace('TURN14-SAY', id, this.coord, 'to=%d line=%d', x, l); const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = id; this.emit(x, h); }
-    },
-    // C++: mesh_seat.inc:Seat::t1415Word
-    t1415Word(m) { return m.c7Link && m.c7One && m.from === m.id && this.linkIs(m, m.id) && m.line >= 0 && this.line >= 0 && m.line !== this.line && this.f.fabricTurnOn(); },
-    // C++: mesh_seat.inc:Seat::t14Come
-    t14Come(m) {
-      if (m.t14 <= 0 || m.from !== m.id || !this.linkIs(m, m.id) || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0 || this.moving || m.ck + 1 !== m.t14 || !this.f.fabricTurnLone(this.id, m.id)) return false;
-      this.trace('TURN14-COME', this.id, this.coord, 'by=%d', m.id); this.requeue('TURN14-come'); return true;
-    },
-    // C++: mesh_seat.inc:Seat::t14Cross
-    t14Cross(to, m) {
-      const id = this.id;
-      if (m.t === 'PLACE') { if (m.nc === to) return false; { const f = this.t14From.get(m.nc); if (f !== undefined && f[0] === to && this.TICK - f[1] <= K.RELAY_TTL) { this.trace('TURN14-BACK', id, this.hasCoord ? this.coord : null, 'nc=%d to=%d', m.nc, to); return false; } }   /* TURN.14.16: the answer to an entry ask goes back over the TURN pc the ask came over */ this.trace('TURN14-NOPLACE', id, this.hasCoord ? this.coord : null, 'nc=%d to=%d', m.nc, to); return true; }
-      if (m.tag === 1) return false;   // a compaction walk passes (the far end answers it, TURN.14.2/14.3)
-      if (!this.f.fabricTurnMine(id, m.nc) || this.f.fabricTurnBoth(id, m.nc)) return false;   // a seeker I cannot tell is mine (TURN.14.14: or one that reaches the far end too): as before
-      if (!this.hasCoord || this.state !== 3 || m.t14 > 0) { this.trace('TURN14-STOP', id, this.hasCoord ? this.coord : null, 'nc=%d to=%d drop', m.nc, to); return true; }   // between two cells I seat nobody: the seeker asks again
-      this.trace('TURN14-STOP', id, this.coord, 'nc=%d to=%d', m.nc, to);
-      const mm = msg.clone(m); mm.routing = false; mm.rfinal = -1; mm.direct = false; mm.l18 = false; mm.fhTo = -1; mm.fhOrig = -1; mm.fhTtl = 0; mm.fhId = 0; mm.fhTc = 0; mm.t14 = 1; this.emit(id, mm); return true;
-    },
-    // C++: mesh_seat.inc:Seat::t14Fixed
-    t14Fixed() { return this.hasCoord && this.state === 3 && this.coord.pc === 0 && this.occGet(ckey(down(this.coord))) >= 0 && this.f.fabricTurnAcross(this.id); },
     // L3.10.9: the cell is inside the returner's window.
     // C++: mesh_seat.inc:Seat::l3109Wait
     l3109Wait(k) { const TICK = this.TICK; return (this.l3109Ck === k + 1 && TICK - this.l3109At <= 2 * K.RC_WAIT) || (this.leaseCk === k && this.leaseUntil >= 0 && TICK <= this.leaseUntil && TICK - (this.leaseUntil - K.LEASE_TTL) <= 2 * K.RC_WAIT); },
@@ -244,7 +160,6 @@
     serveCompact(mm) {
       const id = this.id, TICK = this.TICK, lv = this.w.lv;
       if (!this.hasCoord || this.state !== 3 || mm.ttl <= 0) return;
-      if (this.coord.pc === 0 && mm.coord.pc !== 0) { const [r0, col] = l12Origin(mm.coord); if (r0 === this.coord.r && col === this.coord.i && this.f.fabricTurnAcross(id)) { this.trace('TURN14-STAY', id, this.coord, 'nc=%d', mm.nc); return; } }   /* TURN.14.2: a seat of my subtree does not come home across my TURN link: the climb ends at me */
       // L12.3: a held densify probe whose wait ended this tick is served before a probe that arrives in the same tick.
       if (!this.dBypass && this.dHoldCol >= 0 && TICK >= this.dHoldDue) { const hm = msg.clone(this.dHoldMsg); this.dHoldCol = -1; this.dBypass = true; this.serveCompact(hm); this.dBypass = false; }
       if (mm.l12 && mm.l12s === 2) { this.l12AdmitOnly(mm); return; }

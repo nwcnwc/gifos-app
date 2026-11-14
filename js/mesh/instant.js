@@ -127,7 +127,6 @@
     l31Door(w, h) {
       const lv = this.w.lv;
       if (!w.l31 || w.knock || w.via >= 0 || w.from < 0 || w.from === this.id || !this.l31On()) return false;
-      if (this.coord.pc === 0 && this.f.fabricTurnAcross(this.id) && (this.linkIs(w, w.from) || this.f.fabricTurnMine(this.id, w.from))) return false;   /* TURN.14.1: no Section-1 proposal for a seeker that sits under me (the parent's path: its FIND) */
       for (const e of this.sitting.values()) if (e.joiner === w.from && e.assigner === this.id && e.pl.t === 'PLACE' && this.TICK - e.at <= K.SIT_TTL) return false;
       for (const p of this.l31Pend) if (p.nc === w.from) return true;
       const p = state.newStruct('L31Pend'); p.nc = w.from; p.home = true; p.hm = msg.clone(h);

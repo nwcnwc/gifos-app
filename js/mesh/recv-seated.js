@@ -74,7 +74,6 @@
     // C++: mesh_seat.inc:Seat::onHello
     onHello(m) {
       const id = this.id, TICK = this.TICK, lv = this.w.lv;
-      if (this.t14Come(m)) return;   /* TURN.14.13 */
       // A HELLO is FIRST-HAND: its sender (m.id) is speaking on a link it holds to me, claiming coord m.ck.
       if (m.id < 0 || !cellOk(m.ck)) return;
       if (this.f.fabricDoors()) { const lb = this.l152Bye.get(m.id); if (lb !== undefined && lb[0] === m.ck && TICK - lb[1] <= 2) return; }   // L15.2 for a HELLO
@@ -277,8 +276,8 @@
       const id = this.id, TICK = this.TICK;
       this.l44Left(m.ck, m.id);   // L44.2 (burst.js)
       if (roomTerm(this, 1) && m.c7 && m.id >= 0 && this.provenEv(m, m.id)) { this.l829Bye.set(m.id, TICK); if (this.l829Bye.size > 128) this.l829Bye.clear(); }   // L8.29
-      if (roomTerm(this, 1) && !m.c7 && m.c7Min >= 0 && m.id >= 0 && this.hasCoord && this.state === 3 && (TICK - this.c7At >= K.RELAY_TTL || this.l8510Bye(m)) && this.ringName() === m.c7Min && this.occGet(m.ck) === m.id && this.provenEv(m, m.id) && this.l42Second(m)) { if (TICK - this.c7At < K.RELAY_TTL) this.trace('L8.5.10-PAST', id, this.coord, 'bye=%d mine=%d since=%d', m.id, this.lineAt, (TICK - this.c7At) | 0); this.trace('L8.34-FOLLOW', id, this.coord, 'from=%d ring=%d', m.id, m.c7Min); this.t161Note(m.id); this.c7Yield(m.c7Min); return; }   // L8.34
-      if (roomTerm(this, 1) && m.c7 && this.hasCoord && this.state === 3) { if (TICK - this.c7At >= K.RELAY_TTL || this.l8510Bye(m)) { let mate = false; for (const [, ev] of this.occ) if (ev === m.id) { mate = true; break; } if (mate && this.ringName() === m.c7Min && this.provenEv(m, m.id) && this.l42Second(m)) { if (TICK - this.c7At < K.RELAY_TTL) this.trace('L8.5.10-PAST', id, this.coord, 'bye=%d mine=%d since=%d', m.id, this.lineAt, (TICK - this.c7At) | 0); this.t161Note(m.id); this.c7Yield(m.c7Min); return; } } if (this.c7Follow(m)) return; }   // L8.5 / L8.6
+      if (roomTerm(this, 1) && !m.c7 && m.c7Min >= 0 && m.id >= 0 && this.hasCoord && this.state === 3 && (TICK - this.c7At >= K.RELAY_TTL || this.l8510Bye(m)) && this.ringName() === m.c7Min && this.occGet(m.ck) === m.id && this.provenEv(m, m.id) && this.l42Second(m)) { if (TICK - this.c7At < K.RELAY_TTL) this.trace('L8.5.10-PAST', id, this.coord, 'bye=%d mine=%d since=%d', m.id, this.lineAt, (TICK - this.c7At) | 0); this.trace('L8.34-FOLLOW', id, this.coord, 'from=%d ring=%d', m.id, m.c7Min); this.c7Yield(m.c7Min); return; }   // L8.34
+      if (roomTerm(this, 1) && m.c7 && this.hasCoord && this.state === 3) { if (TICK - this.c7At >= K.RELAY_TTL || this.l8510Bye(m)) { let mate = false; for (const [, ev] of this.occ) if (ev === m.id) { mate = true; break; } if (mate && this.ringName() === m.c7Min && this.provenEv(m, m.id) && this.l42Second(m)) { if (TICK - this.c7At < K.RELAY_TTL) this.trace('L8.5.10-PAST', id, this.coord, 'bye=%d mine=%d since=%d', m.id, this.lineAt, (TICK - this.c7At) | 0); this.c7Yield(m.c7Min); return; } } if (this.c7Follow(m)) return; }   // L8.5 / L8.6
       else if (roomTerm(this, 1) && !m.c7 && m.c7Min >= 0 && this.hasCoord && this.state === 3 && this.c7Follow(m)) return;   // L8.40
       // FRAME AUTHORITY: a goodbye frees the LEAVER'S OWN cell
       if (m.id < 0 || !cellOk(m.ck) || (m.mvd && !cellOk(m.mvd)) || !this.provenEv(m, m.id)) return;
@@ -539,7 +538,7 @@
       this.lastAck = TICK; this.nbrHeard(); this.noteLinked(pk, pid, m.tn); this.pongBy.set(pk, [pid, TICK]);
       if (this.coord.pc !== 0) {
         const oc = this.ownerCoord(); const fromOwner = this.coord.i === 0 && !!oc && ckey(oc) === pk, fromHead = this.coord.i !== 0 && pk === ckey({ pc: this.coord.pc, r: this.coord.r, i: 0 });   // L2
-        if (fromOwner || fromHead) { this.bkId = m.bkId; this.bkCk = m.bkCk; this.sbId = m.u3Id; this.sbCk = m.u3Ck; if (m.t14 >= 0) { if (m.t14 > 0) { if (this.t14Ck !== m.t14) this.trace('TURN14-WORD', id, this.coord, 'from=%d root=%s', pid, coordStr(unckey(m.t14 - 1))); this.t14Ck = m.t14; this.t14At = TICK | 0; } else { if (this.t14Ck > 0) this.trace('TURN14-WORD', id, this.coord, 'from=%d root=-', pid); this.t14Ck = 0; } } }   /* TURN.14.5: the link end my row hangs under */
+        if (fromOwner || fromHead) { this.bkId = m.bkId; this.bkCk = m.bkCk; this.sbId = m.u3Id; this.sbCk = m.u3Ck; }
         if (fromHead) { this.headAckAt = TICK; this.headEver = true; this.headE1Dn = m.e1dn; this.headE1At = m.e1At; if (m.dgPub.at >= 0) { this.u2RowDig = dig.cloneDig(m.dgPub); this.u2RowDig.rx = this.LT() - this.u2RowDig.ag; } }   // L48: held with its age, so the copy over E2 ages on
       }
       if (m.coord.pc === 0) { this.setOcc(pk, pid); this.liveMark(pk); this.noteS1(pk); }   // FIRST-HAND
@@ -640,7 +639,7 @@
         }
         if (m.tag === 1 && m.asker >= 0 && m.asker !== id && m.ck && cellOk(m.ck) && m.ck !== ckey(this.coord) && this.ownedLinkCell(m.ck) && this.occGet(m.ck) < 0) { this.setOcc(m.ck, m.asker); this.emit(m.asker, hello(ckey(this.coord), id)); return; }   // L9.9
         const r = newMsg('ROUTED'); r.tag = m.tag === K.D51_PROBE ? 2 : m.tag; r.target = cc(m.target); r.id = id; r.pn = m.pn;
-        if (this.f.fabricLinkState(id, m.asker) !== E.LS_OPEN && m.tag === 1 && this.hasCoord && ckey(m.coord) !== ckey(this.coord) && !(m.coord.pc === 0 && this.t17Carried(m.asker))) { const nh4 = this.nextHopToward(m.coord, -1); if (nh4 >= 0) { const a = newMsg('ROUTE'); a.target = cc(m.coord); a.asker = id; a.tag = 4; a.ttl = 60; a.via = id; a.pseq = ++this.w.lv.RSEQ; a.ck = ckey(this.coord); a.pn = m.pn; this.emit(nh4, a); return; } }   // L3.4.1: no channel to the asker (a NAT pair, a closed pc): the answer walks back to its cell the way the probe came
+        if (this.f.fabricLinkState(id, m.asker) !== E.LS_OPEN && m.tag === 1 && this.hasCoord && ckey(m.coord) !== ckey(this.coord)) { const nh4 = this.nextHopToward(m.coord, -1); if (nh4 >= 0) { const a = newMsg('ROUTE'); a.target = cc(m.coord); a.asker = id; a.tag = 4; a.ttl = 60; a.via = id; a.pseq = ++this.w.lv.RSEQ; a.ck = ckey(this.coord); a.pn = m.pn; this.emit(nh4, a); return; } }   // L3.4.1: no channel to the asker (a NAT pair, a closed pc): the answer walks back to its cell the way the probe came
         this.emit(m.asker, r); return;
       }
       if (m.ttl <= 0) { const r = newMsg('ROUTED'); r.tag = m.tag; r.target = cc(m.target); r.id = -1; r.pn = m.pn; this.emit(m.asker, r); return; }

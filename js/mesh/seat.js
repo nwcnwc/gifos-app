@@ -51,7 +51,7 @@
     'fabricSend', 'fabricUnreachable', 'fabricVerdict', 'fhopActive', 'fhopFriendFor', 'l164Of', 'l18Deliv',
     'l18Hop', 'l18UxDeliv', 'l222Note', 'l22Agree', 'l23GreetRelease', 'l22Close', 'l22CloseAsk', 'l22Need', 'l22Quiet', 'l28Reply',
     'l915Note', 'relayKnock', 'relayUnlist', 'descEnd', 'descNote', 'wake', 'fabricAudit', 'fabricDoorHeard', 'g4Joined', 'fabricDropHalf', 'fabricLinkCarries',
-    'fabricTurnOn', 'fabricTurnPc', 'fabricTurnOpener', 'fabricTurnHold', 'fabricDoorNet', 'fabricTurnStray', 'fabricTurnLone', 'fabricTurnAcross', 'fabricTurnMine', 'fabricTurnCarried', 'fabricTurnFeeds', 'fabricTurnBoth', 'fabricTurnPeerIn', 'fabricTurnSide',   /* TURN.14 (mesh_turn.inc) */
+    'fabricDoorNet',
   ]);
 
   // A fabric that refuses every call: the interface a harness or the page adapter fills in.
@@ -716,7 +716,7 @@
       const pool = []; for (const g of this.lastGreeters) if (g >= 0 && g !== this.id) pool.push(g);
       if (!pool.length) return false;
       this.resumeTries++;
-      let g = pool[Math.floor(this.rng() * pool.length)]; { const fv = this.t161Pick(this.lastGreeters); if (fv >= 0) g = fv; }   /* TURN.16.1: the mate I followed, while its word lives */ this.gateway = g; this.entNote(g); if (this.f.fabricDoors()) { this.l16AskOne(g); }
+      let g = pool[Math.floor(this.rng() * pool.length)]; this.gateway = g; this.entNote(g); if (this.f.fabricDoors()) { this.l16AskOne(g); }
       const w = newMsg('WHOHOME'); w.from = this.id; w.ttl = 60; if (!this.oldCell && !islandStand(this, E.IS_L31)) w.l31 = 1; this.emit(g, w); this.l3115Knock(g);   // L3.11.5
       this.state = 1; this.retryAt = this.TICK; this.f.wake(this.id); return true;
     },
@@ -884,11 +884,8 @@
         }
       }
       if (roomTerm(this, 1) && m.t === 'PONG' && m.id === id && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); this.emit(to, mm); return; }   // L8.31
-      if (m.t === 'HELLO' && !m.c7Home && m.id === id && to >= 0 && to !== id && this.hasCoord && this.state === 3 && this.f.fabricTurnOn() && this.f.fabricTurnPc(id, to) && this.t1415Home()) { const mm = msg.clone(m); mm.c7Home = true; this.emit(to, mm); return; }   // TURN.14.15: over a TURN pc my HELLO says that my network sits at home in my ring
-      if (roomTerm(this, 1) && m.t === 'HELLO' && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); mm.c7Held = this.l845Held(); { const own = this.ringAlone() || (this.l850Lone()); mm.c7One = own || this.f.fabricTurnAcross(id); mm.c7Link = mm.c7One && !own; } if (this.f.fabricTurnOn() && this.t1415Across()) { const w = this.t1415Ring(); if (w >= 0) mm.c7Min = w; mm.c7Held = true; }   /* TURN.14.15: the end names its ring by its TURN peer's word */   /* L8.52.5: c7Link, the 'alone' of a TURN link end */ /* L8.50: a founder that has seated nobody is its ring, whatever its view has absorbed from a room it has one pc into */ /* TURN.14.10: the end of a TURN link whose ring lies across it is the one seat of that ring its own side can hear: its vouch is the ring's word there */ this.emit(to, mm); if (to >= 0 && to !== id && mm.c7One && !mm.c7Link && this.l850Lone() && this.f.fabricTurnOn() && this.f.fabricTurnPc(id, to)) { this.trace('TURN19-FIND', id, this.coord, 'to=%d', to); const f = msg.newMsg('FIND'); f.nc = id; f.f19 = true; f.ttl = K.FIND_TTL; this.emit(to, f); }   /* TURN.19.4 (C++ mesh.cpp emit): a founder of one's own signed FIND rides its HELLO over its TURN pc */ return; }   // L8.5 (L8.5.2: c7One says my ring holds nobody else)
+      if (roomTerm(this, 1) && m.t === 'HELLO' && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); mm.c7Held = this.l845Held(); mm.c7One = this.ringAlone() || (this.l850Lone());   /* L8.50: a founder that has seated nobody is its ring, whatever its view has absorbed from a room it has one pc into */ this.emit(to, mm); return; }   // L8.5 (L8.5.2: c7One says my ring holds nobody else)
       if (roomTerm(this, 1) && ((m.t === 'HOME' && m.id === id) || (m.t === 'PLACE' && m.pp === id)) && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); this.emit(to, mm); return; }   // L8.5.1
-      if (m.nc >= 0 && m.nc !== id && to !== id && to >= 0 && (m.t === 'FIND' || m.t === 'PLACE') && this.f.fabricTurnPc(id, to) && this.t14Cross(to, m)) return;   /* TURN.14.11 */
-      if (m.t === 'PLACE' && m.pp === id && m.t14 < 0 && this.hasCoord && this.state === 3 && this.f.fabricTurnOn()) { const mm = msg.clone(m); const w = this.t14Word(); mm.t14 = (w > 0 && FREE.t14Under(m.coord, w)) ? w : 0; this.emit(to, mm); return; }   /* TURN.14.5: my placement says whether the cell hangs under a link end */
       if (roomTerm(this, 1) && m.t === 'PHONE' && m.id === id && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); this.emit(to, mm); return; }   // L8.10
       if (m.t === 'WHOHOME' && !this.hasCoord && m.from === id) this.noteDoorAsk(to);   // dark-greeter evidence
       if (roomTerm(this, 1) && m.t === 'CONFIRM' && m.id === id && m.c7Min < 0 && this.hasCoord && this.state === 3) { const mm = msg.clone(m); mm.c7Min = this.ringName(); this.emit(to, mm); return; }   // L8.11
