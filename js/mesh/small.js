@@ -73,7 +73,7 @@
       if (this.nlSince < 0) return;
       let n = 0; const ks = []; for (const [k, at] of this.translost) if (at >= this.nlSince - K.L30_FRESH) ks.push(k);
       for (const k of ks) { this.tlSent.delete(k); this.tlProbeAt.delete(k); n++; }   // asked again: the window starts with the next probe that leaves over a link that carries
-      if (n) this.trace('D5.4-HEARS', this.id, this.hasCoord ? this.coord : null, 'spell=%lld asked=%d', TICK - this.nlSince, n); this.nlSince = -1;
+      this.nlEndAt = TICK | 0; if (n) this.trace('D5.4-HEARS', this.id, this.hasCoord ? this.coord : null, 'spell=%lld asked=%d', TICK - this.nlSince, n); this.nlSince = -1;
     },
   });
   GifOS.meshSmall = Object.freeze({});

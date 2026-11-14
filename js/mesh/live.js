@@ -618,7 +618,7 @@
     translostConfirmed(k) {
       const TICK = this.TICK;
       const at = this.translost.get(k); if (at === undefined) return false;
-      if (this.nlSince >= 0) return false;   // D5.4: no link of mine carries: I judge nobody
+      if (this.nlSince >= 0 || (this.nlEndAt >= 0 && TICK - this.nlEndAt < K.L30_SILENT)) return false;   // D5.4: no link of mine carries, or my first link carried again less than one silence window ago: I judge nobody
       const lv = this.live.get(k), pa = this.probeAck.get(k);
       // L3.3: a frame that lands within the probe's round trip of the loss (at, at+1) was sent before it.
       const clearAt = at + 2;
