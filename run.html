@@ -28580,6 +28580,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // ONE hot pipe + a parked standby + dormant spares (ONE-PIPE
         // multi-subscribe), so the extra announces cost nothing until demanded.
         const s1peers = [...T.rowMates(c), ...T.colMates(c)].map((m) => occPid(m)).filter(Boolean);
+        { const sb = meshSeat(); for (const t of (sb && sb.s1Bridges ? sb.s1Bridges() : [])) if (s1peers.indexOf(t) < 0) s1peers.push(t); }   // L2.15: an empty Section-1 cell's bridge carries the flood around a silent corner (parked at the receiver by the one-pipe law, as E2)
         for (const t of pipePeers()) if (s1peers.indexOf(t) < 0) s1peers.push(t);   // SUB.4: every stager's own feed crosses my pipes, both ways (split horizon in floodOne)
         const flooded = new Set(); // PER-SWEEP dedup (one feed may resolve via two keys). The old
         // persistent stgSpread let the sweep-end reaper kill flood jobs after one sweep.
