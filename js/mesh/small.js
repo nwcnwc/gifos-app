@@ -44,7 +44,7 @@
     l30Silence() {
       if (!this.hasCoord || this.state !== 3 || this.moving) return;
       const ol = ownedLinks(this.coord), n = ol.length; let heard = 0; const qx = [];
-      let floor_ = Math.max(this.seatedAt, this.l30At); if (this.backAt >= 0 && this.backAt > floor_) floor_ = this.backAt; if (this.l30Deaf > floor_) floor_ = this.l30Deaf;
+      let floor_ = Math.max(this.seatedAt, this.l30At); if (this.backAt >= 0 && this.backAt > floor_) floor_ = this.backAt; if (this.nlAt > floor_) floor_ = this.nlAt;
       for (let q = 0; q < n; q++) {
         if (ol[q].pc !== 0) continue; const k = ckey(ol[q]); const x = this.occGet(k); if (x < 0 || x === this.id) continue;
         const lv = this.live.get(k); if (lv === undefined) continue;
@@ -52,8 +52,28 @@
         if (this.TICK - lv <= K.L30_FRESH) heard++;
         if (this.TICK - since > K.L30_SILENT && !this.translost.has(k)) qx.push(x);
       }
-      if (heard < 1) { this.l30Deaf = this.TICK; return; }
+      if (heard < 1) { this.nlAt = this.TICK; return; }   // D5.4, the fast detector's own reading
       for (let i = 0; i < qx.length; i++) { this.l30SilN++; this.transportLost(qx[i], true, true); }
+    },
+
+    // C++: mesh_small.inc:Seat::noLink
+    // D5.4: a seat that no link carries judges nobody. None of MY pcs is open and not half-open.
+    noLink() {
+      if (!this.w.lv.LINKMODEL || !this.hasCoord || this.state !== 3) return false;
+      for (const p of this.f.fabricOpenPeers(this.id)) if (this.f.fabricLinkCarries(this.id, p)) return false;
+      return true;
+    },
+
+    // C++: mesh_small.inc:Seat::noLinkTick
+    // While the spell lasts no loss is confirmed; when the first link carries again every loss observed in the spell, or in
+    // the beat before it began, is asked again from that tick, over the link that carries.
+    noLinkTick() {
+      const TICK = this.TICK;
+      if (this.noLink()) { if (this.nlSince < 0) this.nlSince = TICK | 0; this.nlAt = TICK | 0; return; }
+      if (this.nlSince < 0) return;
+      let n = 0; const ks = []; for (const [k, at] of this.translost) if (at >= this.nlSince - K.L30_FRESH) ks.push(k);
+      for (const k of ks) { this.tlSent.delete(k); this.tlProbeAt.delete(k); n++; }   // asked again: the window starts with the next probe that leaves over a link that carries
+      this.nlEndAt = TICK | 0; if (n) this.trace('D5.4-HEARS', this.id, this.hasCoord ? this.coord : null, 'spell=%lld asked=%d', TICK - this.nlSince, n); this.nlSince = -1;
     },
   });
   GifOS.meshSmall = Object.freeze({});

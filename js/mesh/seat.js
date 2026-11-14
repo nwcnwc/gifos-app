@@ -292,8 +292,10 @@
       if ((why === 'hint-move' || why === 'moved-by-gossip' || why === 'moved-confirmed') && this.hasCoord && this.coord.pc === 0 && ckPc(k) === 0) { const st = this.s1tab.get(k); if (st !== undefined && st.by >= 0 && st.by === this.occGet(k)) this.digForget(k); }   // the occupant moved to another cell: its report here is not a second person
       this.occ.delete(k);
     },
+    // C++: mesh.cpp:Seat::tlAnswered
+    tlAnswered(k) { this.translost.delete(k); this.tlProbeAt.delete(k); this.tlHard.delete(k); this.tlSent.delete(k); },   // L3.4.3: the occupant answered: the OBSERVATION ends, the answer stays (probeAck is the hearing heardAny reads)
     // C++: mesh.cpp:Seat::tlForget
-    tlForget(k) { this.translost.delete(k); this.tlProbeAt.delete(k); this.probeAck.delete(k); this.tlHard.delete(k); this.tlSent.delete(k); },
+    tlForget(k) { this.tlAnswered(k); this.probeAck.delete(k); },   // the occupant left or changed: nothing about it stands
     // C++: mesh.cpp:Seat::tlClear
     tlClear() { this.translost.clear(); this.tlProbeAt.clear(); this.probeAck.clear(); this.tlSent.clear(); },
     // C++: mesh.cpp:Seat::absence

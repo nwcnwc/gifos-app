@@ -93,6 +93,7 @@
       try {
       if (this.dead) return;
       this.earGap();   // L8.48: a tick gap longer than the silence window rebases the clocks before this tick judges anyone
+      this.noLinkTick();   // D5.4: a seat that no link carries judges nobody
       if (this.l4Out) { this.l4Tick(); return; }   // L4.3: between cells, waiting for my partner's word
       if (this.l1341Hello.length) { const v = this.l1341Hello; this.l1341Hello = []; if (this.hasCoord && this.state === 3 && !this.moving) for (const o of v) { if (o < 0 || o === id) continue; const h = newMsg('HELLO'); h.ck = ckey(this.coord); h.id = id; this.emit(o, h); this.trace('L13.41-HELLO', id, this.coord, 'to=%d', o); } }   // L13.41.2: a seated seat whose pc just opened and whom my view names nowhere (or held across a split) hears my cell: two rings that healed into each other's cells meet on such a pc, and the contest (lower id, earlier placement) settles each doubled cell
       if (this.vban.size || this.rootDec.kick.length) this.kickEval(); else if (this.kHeal.length) this.kHealDue();   // L27 (inert unless a vote exists)
