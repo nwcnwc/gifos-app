@@ -39,6 +39,7 @@
       if (this.w.onRecv) this.w.onRecv(this, m);   // page adapter seam (the network edge), outside the proof
       const id = this.id, w = this.w, lv = w.lv;
       const TICK = this.TICK;
+      if (m.sr !== this.sr && m.from >= 0 && !this.subTake(m)) return;   // a frame from another door is dropped
       if (m.tx >= 0) {   // CLOCKS (0.9.25): the frame's holder-clock fields onto my clock
         const d = TICK - m.tx; m.tx = -1;
         const mv = (k) => { if (m[k] >= 0) m[k] = Math.max(0, m[k] + d); };
@@ -110,6 +111,7 @@
       if (this.evilDoor && (m.t !== 'GREETERS' || m.list.length === 0)) return;   // L16 adversary
       switch (m.t) {
         case 'BUSY': if (m.tag === 14) { this.l14Declined(m); return; } this.l16Busied(m); return;   // L14.1
+        case 'PIPE': this.onPipe(m); return;   // the far end's fold over a joining connection
         case 'UPOFFER': this.l14Offer(m); return;   // L16
         case 'HANDOFF': this.l16Handoff(m); return;   // L16.2
         case 'TAKEOVER': if (this.hasCoord && this.state === 3 && m.nc >= 0 && m.nc === m.from && m.nc !== id) { const a = newMsg('TAKEN'); a.nc = m.nc; a.id = id; this.emit(m.nc, a); } return;   // L16.2
