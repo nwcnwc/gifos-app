@@ -864,15 +864,15 @@
       const s = io.seat();
       if (s && s.greeter && !(io.sub && io.sub() !== 0)) {   // TURN.5.1: whom my view holds (any Section-1 seat of door 0 may be the head next)
         for (const x of s.view) head.held.set(x, now);
-        if (head.held.size > 64) for (const [x, t] of Array.from(head.held)) if (now - t > MERGE_MS) head.held.delete(x);
+        if (head.held.size > 64) for (const [x, t] of Array.from(head.held)) if (now - t > 2 * MERGE_MS) head.held.delete(x);
       }
       if (!s || !s.head || !io.greeters || (io.sub && io.sub() !== 0)) { head.since = -1; head.seen.clear(); return false; }
       const view = new Set(s.view), F = [], mine0 = io.myEpoch ? io.myEpoch() : -1;
       for (const g of io.greeters() || []) {
         if (!g || g === io.me() || view.has(g)) continue;
-        { const h = head.held.get(g), e = io.epoch ? io.epoch(g) : -1; if (h !== undefined && now - h <= MERGE_MS && !(e >= 0 && mine0 >= 0 && e !== mine0)) continue; }   // TURN.5.1: a seat my own view held inside the door list's lifetime, under my room's epoch, is my room's (frozen, crashed, between cells): no other room (a stopped page answers no probe)
         const r = io.reach(g);
         if (r === 'direct' || r === 'friend') { head.since = -1; head.seen.clear(); return false; }   // something foreign is reachable: merge first
+        { const h = head.held.get(g), e = io.epoch ? io.epoch(g) : -1; if (h !== undefined && now - h <= 2 * MERGE_MS && !(e >= 0 && mine0 >= 0 && e !== mine0)) continue; }   // TURN.5.1: a seat my own view held inside a listing's longest life (its entry outlives its last word by RELAY_TTL, my knock's list is trusted RELAY_TTL more), under my room's epoch, is my room's (frozen, crashed, between cells): no other room (a stopped page answers no probe)
         F.push(g);
       }
       if (!F.length) { head.since = -1; head.seen.clear(); return false; }
