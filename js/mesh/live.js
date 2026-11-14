@@ -102,7 +102,7 @@
     orphanSeat() {
       if (!this.hasCoord || this.moving || this.state !== 3 || this.d6cBeat() < 0) return false;
       let since = this.d6cBeat(); if (this.backAt > since) since = this.backAt;
-      if (this.TICK - since <= K.DARK_LEAVE || (this.unpAnyAt >= 0 && this.TICK - this.unpAnyAt <= 16) || this.l2E2Up()) return false;
+      if (this.TICK - since <= K.ORPHAN_T || (this.unpAnyAt >= 0 && this.TICK - this.unpAnyAt <= 16) || this.l2E2Up()) return false;
       if (this.l14Up >= 0 && this.f.fabricLinkCarries(this.id, this.l14Up)) return false;   // D6c.3
       return true;
     },
@@ -496,7 +496,7 @@
     // C++: mesh_seat.inc:Seat::l13MateGone
     l13MateGone(k) {
       const TICK = this.TICK;
-      if (!(this.l13('L13.33') || this.l33MateArm(k)) || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0 || TICK - this.seatedAt < 60) return false;
+      if (!(this.l13('L13.33') || this.l33MateArm(k) || this.l33ColArm(k)) || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0 || TICK - this.seatedAt < 60) return false;
       const c = unck(k); if (c.pc !== 0 || k === ckey(this.coord)) return false;
       const mine = this.coord.i === 0 && c.r === this.coord.r && c.i !== 0;   // a mate cell of my own row (I am its head): my dial is evidence too
       const x = this.occGet(k); if (x < 0 || x === this.id || this.softSitting(k) || this.firstHandLive(k)) return false;
@@ -504,7 +504,7 @@
       if (this.f.fabricLinkState(this.id, x) === LS_OPEN) return false;
       if (mine) { if (this.f.fabricDialFails(this.id, x) < 1) return false; if (this.greetersAt < 0 || TICK - this.greetersAt > K.RELAY_TTL) return false; }
       else {
-        if (!this.l13('L13.36')) return false; let broke = this.seatedAt; for (const [, bv] of this.byeIds) if (bv > broke) broke = bv; if (this.greetersAt < broke || TICK - this.greetersAt > K.RELAY_TTL) return false;
+        if (!this.l13('L13.36') && !this.l33ColArm(k)) return false;   /* L33.15: outside a mass leave, a cell of my own column my dial cannot reach */ let broke = this.seatedAt; for (const [, bv] of this.byeIds) if (bv > broke) broke = bv; if (this.greetersAt < broke || TICK - this.greetersAt > K.RELAY_TTL) return false;
         const bn = this.born.get(k); if (bn === undefined || bn >= this.greetersAt - 8) return false;
       }   // L13.36: any other home cell: the door's list, received after I sat and after my latest goodbye, is the word
       for (const g of this.lastGreeters) if (g === x) return false;

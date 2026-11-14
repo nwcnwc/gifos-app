@@ -42,6 +42,7 @@
     KICK_EVID_FORGET: 720,   // C++: mesh.cpp:KICK_EVID_FORGET  (LAW_KICK_EVID_FORGET)
     KICK_LIFT: 120,   // C++: mesh.cpp:KICK_LIFT  (LAW_KICK_LIFT)
     DIG_LOSS_H: 300,   // C++: mesh.cpp:DIG_LOSS_H  (LAW_DIG_LOSS_H)
+    ORPHAN_T: 60,   // C++: mesh.cpp:ORPHAN_T  (LAW_ORPHAN_T)
     DARK_LEAVE: 60,   // C++: mesh.cpp:DARK_LEAVE  (LAW_DARK_LEAVE)
     CHAN_UP: 32,   // C++: mesh.cpp:CHAN_UP  (LAW_CHAN_UP)
     DIG_HOLD_LEVEL: 16,   // C++: mesh.cpp:DIG_HOLD_LEVEL  (LAW_DIG_HOLD_LEVEL)
@@ -639,6 +640,10 @@
     RC_DD_AGO: -1,   // C++: mesh_realcheck.inc:RC_DD_AGO
     RC_DD_SEAT: -1,   // C++: mesh_realcheck.inc:RC_DD_SEAT
     RC_DD_PEER: -1,   // C++: mesh_realcheck.inc:RC_DD_PEER
+    V: -1,   // C++: mesh.cpp:V
+    VBK: -1,   // C++: mesh.cpp:VBK
+    VAT: -1,   // C++: mesh.cpp:VAT
+    VCK: 0,   // C++: mesh.cpp:VCK
     T0: 0,   // C++: mesh.cpp:T0
   };
 
