@@ -14079,7 +14079,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // mix) is a sum of voices, and the office behind it re-mixes it into every row (pk42 after a TURN renewal: a 2-6 s loss
     // burst on the pipe, then 0 lost and 0 concealed, while the far office's sound read 22-28 dB instead of 37 for 20-30 s
     // as the reported loss decayed; the received track itself carried it). So every audio m-line I send on is applied with
-    // useinbandfec=0, except the one my voice rides (p.mainA). A voice sender made with addTrack before this description
+    // useinbandfec=0, except the one my voice rides: p.mainA while it carries my mic (a pipe's or standby's pc may hold a main
+    // sender with no track: my voice reaches that side inside the mix). A voice sender made with addTrack before this description
     // has no mid yet; it takes the first audio m-line no transceiver of mine holds (JSEP), so that one keeps the far end's word.
     function fecVoiceOnly(desc, pc, p) {
       if (!desc || typeof desc.sdp !== 'string' || desc.sdp.indexOf('useinbandfec=1') < 0 || !pc) return desc;
@@ -14087,7 +14088,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       let voicePending = false;
       try {
         for (const t of pc.getTransceivers()) {
-          const voice = !!(p && p.mainA && t.sender === p.mainA);
+          const voice = !!(p && p.mainA && t.sender === p.mainA && p.mainA.track && p.mainA.track.readyState !== 'ended');
           if (t.mid != null) held.set(String(t.mid), voice); else if (voice) voicePending = true;
         }
       } catch (e) { return desc; }
