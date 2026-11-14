@@ -28792,18 +28792,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // A pipe or standby pc whose own channel is open and that holds no slot yet: its first own-channel offer brings one.
     function pipeSlotOwed(p) {
       if (!p || !p.pc || !turnHolds(p.id) || !p.dc || p.dc.readyState !== 'open') return false;
-      try { return !p.pc.getTransceivers().some((t) => t.sender && t.sender.__pipeRes); } catch (e) { return false; }
+      try { return !p.pc.getTransceivers().some((t) => t.sender && t.sender.__pipeSlot); } catch (e) { return false; }   // __pipeSlot outlives the attach (addAux clears __pipeRes)
     }
     function pipeSlotCt(pid) { const jk = 'sdn>' + pid, ct = shipContainers.get(jk) || new MediaStream(); shipContainers.set(jk, ct); return ct; }
     function pipeSlotBirth(p, pc) {
       if (!p || !pc || p.pc !== pc || !pipeSlotOwed(p)) return;   // no own channel yet (the relay bootstrap stays data only), or the pc has its slot
       const ct = pipeSlotCt(p.id);
-      try { const t = pc.addTransceiver('audio', { direction: 'sendrecv', streams: [ct], sendEncodings: [{ maxBitrate: AUX_AUDIO_BPS }] }); t.sender.__pipeRes = ct; t.sender._auxKind = 'audio'; auxSenders.add(t.sender); } catch (e) {}
+      try { const t = pc.addTransceiver('audio', { direction: 'sendrecv', streams: [ct], sendEncodings: [{ maxBitrate: AUX_AUDIO_BPS }] }); t.sender.__pipeRes = ct; t.sender.__pipeSlot = true; t.sender._auxKind = 'audio'; auxSenders.add(t.sender); } catch (e) {}
     }
     function pipeSlotAdopt(pc, p) {
       if (!p || !pc || !turnHolds(p.id)) return;
       let trs = []; try { trs = pc.getTransceivers(); } catch (e) { return; }
-      if (trs.some((t) => t.sender && t.sender.__pipeRes)) return;   // the pc has its slot
+      if (trs.some((t) => t.sender && t.sender.__pipeSlot)) return;   // the pc has its slot (used or not)
       const sdp = (pc.remoteDescription && pc.remoteDescription.sdp) || '';
       const sendrecv = (mid) => { const sec = sdp.split(/\r?\nm=/).find((x) => new RegExp('\\r?\\na=mid:' + mid + '\\r?(\\n|$)').test('\n' + x)); return !!sec && /\na=sendrecv/.test('\n' + sec); };
       for (const t of trs) {
@@ -28811,7 +28811,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!t.receiver || !t.receiver.track || t.receiver.track.kind !== 'audio' || !sendrecv(t.mid)) continue;
         if (typeof t.sender.setStreams !== 'function') return;   // no way to name the slot's stream: the mix takes an m-line of its own
         const ct = pipeSlotCt(p.id);
-        try { t.direction = 'sendrecv'; t.sender.setStreams(ct); t.sender.__pipeRes = ct; t.sender._auxKind = 'audio'; auxSenders.add(t.sender); } catch (e) {}
+        try { t.direction = 'sendrecv'; t.sender.setStreams(ct); t.sender.__pipeRes = ct; t.sender.__pipeSlot = true; t.sender._auxKind = 'audio'; auxSenders.add(t.sender); } catch (e) {}
         return;
       }
     }
