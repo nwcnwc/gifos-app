@@ -916,6 +916,15 @@
         subAsk(d, withToken ? sub.token : null);
       }, () => { if (g === sub.gen) subIdle(io.now(), { refused: 'no-doors', retryAt: io.now() + RETRY_MS }, io.now() + RETRY_MS); });
     }
+    function subProbeDoors() {
+      const g = ++sub.gen; sub.st = 'doors'; sub.out = busyOut;
+      Promise.resolve(io.tdoors ? io.tdoors() : null).then((x) => {
+        if (g !== sub.gen) return;
+        const d = x && typeof x === 'object' ? x.v : x;
+        if (d) sub.heads = doorHeads(d, (x && typeof x === 'object' && x.p) || {});
+        sub.gen++; sub.st = 'probe';
+      }, () => { if (g === sub.gen) { sub.gen++; sub.st = 'probe'; } });
+    }
     function subAsk(doors, token) {
       const g = ++sub.gen; sub.st = 'ask';
       const b = { room: String(io.sid()), doors };
@@ -932,8 +941,10 @@
           sub.token = a.token; sub.list = Array.isArray(a.subs) ? a.subs.filter((x) => x && Number.isInteger(x.r) && x.r > 0).map((x) => x.r) : [];
           if (sub.asker === 'repipe') { subDoors(true); return; }   // my own subroom keeps its number: no doors to try
           sub.probe = sub.list.filter((r) => r !== (io.sub ? io.sub() : 0));   // every listed room side by side (door 0 is the one my seat already failed at)
-          sub.st = 'probe'; sub.out = busyOut;
           log('turn-sub list ' + sub.list.join(',') + ': trying the doors');
+          // a listed room my door list did not show yet (it opened meanwhile): read the doors once more to know its heads
+          if (sub.probe.some((r) => !((sub.heads && sub.heads.get(r)) || []).length)) { subProbeDoors(); return; }
+          sub.st = 'probe'; sub.out = busyOut;
           return;
         }
         const why = (a && a.unavailable) ? String(a.unavailable).slice(0, 40) : 'no-answer';
