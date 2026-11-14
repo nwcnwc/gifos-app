@@ -111,6 +111,9 @@
     // C++: mesh_gaps4.inc:Seat::l40Handed
     l40Handed(m) {
       if (m.tag !== 40 || m.nc < 0 || m.nc === m.id) return false;
+      { const hb = this.l152Bye.get(m.nc); const both = this.occGet(m.ck) === m.id && hb !== undefined && hb[0] === m.ck && this.TICK - hb[1] <= K.L25_WAIT;
+        if (this.l152Bye.size >= 256) this.l152Bye.clear(); this.l152Bye.set(m.id, [m.ck, this.TICK]);   // L40.3.5: a handed goodbye is the leaver's goodbye from that cell too
+        if (both) { this.trace('L40.3.5-BOTH', this.id, this.hasCoord ? this.coord : null, 'cell=%s by=%d named=%d', coordStr(unck(m.ck)), m.id, m.nc); return false; } }   // L40.3.5: the seat it names left that cell too
       if (this.hasCoord && ckey(this.coord) === m.ck) return true;   // the rival left my cell to me
       if (this.occGet(m.ck) !== m.id) return true;   // my view names someone else there, or nobody
       this.linkedBy.delete(m.ck); this.tenOf.delete(m.ck); this.live.delete(m.ck); this.setOcc(m.ck, m.nc);
