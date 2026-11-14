@@ -766,7 +766,7 @@
     ["l9GrowAt", "i32"],   // int = -1000  (line 1859)
     ["l9SyncAt", "i32"],   // int = -1000  (line 1860)
     ["l9SyncTo", "{i32:i32}"],   // OMap<int,int>  (line 1861)
-    ["l9LoneAt", "i32"],   // int = -1000  (line 1862)
+    ["l50AskAt", "i32"],   // int = -1000  (line 1862)
     ["l1617At", "i32"],   // int = -1000  (line 1862)
     ["mvWhy", "str"],   // const char* = "?"  (line 1863)
     ["l13Asked", "<i32>"],   // OSet<int>  (line 1864)
@@ -797,7 +797,6 @@
     ["l14Up", "i32"],   // int = -1  (line 1870)
     ["l14UpAt", "i32"],   // int = -1000  (line 1870)
     ["l14UpFirst", "i32"],   // int = -1  (line 1870)
-    ["l14KnockAt0", "i32"],   // int = -1000  (line 1870)
     ["l14Failed", "{i32:i32}"],   // OMap<int,int>  (line 1870)
     ["l14Refused", "<i32>"],   // OSet<int>  (line 1870)
     ["l13MergTr", "bool"],   // bool = false  (line 1872)
@@ -1352,7 +1351,7 @@
     l9GrowN: -1,
     l9GrowAt: -1000,
     l9SyncAt: -1000,
-    l9LoneAt: -1000,
+    l50AskAt: -1000,
     l1617At: -1000,
     mvWhy: "?",
     l13AskedKnock: -1000,
@@ -1369,7 +1368,6 @@
     l14Up: -1,
     l14UpAt: -1000,
     l14UpFirst: -1,
-    l14KnockAt0: -1000,
     l13MergTr: false,
     l13AnchorCrashAt: -1000,
     l13OwnerPullAt: -1000,
