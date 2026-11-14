@@ -3651,7 +3651,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const wait = Math.max(NEW_PEER_BEAT_MS, newPeerBeatAt + NEW_PEER_BEAT_GAP_MS - Date.now());
       newPeerBeatT = setTimeout(() => { newPeerBeatT = null; newPeerBeatAt = Date.now(); try { broadcastStatus(true); } catch (e) {} }, wait);
     }
-    const myConns = () => Array.from(peers).filter(([, p]) => p.connected).map(([pid]) => pid);
+    // A warm TURN standby is no link (TURN.9: keep-alives only, nothing crosses it): never a connection I report or a friend can use.
+    const turnSb = (pid) => { try { return !!(turnLinks && turnLinks.standby(pid)); } catch (e) { return false; } };
+    const myConns = () => Array.from(peers).filter(([pid, p]) => p.connected && !turnSb(pid)).map(([pid]) => pid);
+    // The links of mine that run through TURN (a pipe's far end): beside conns, so a friend's word "I reach X" is read as
+    // "without TURN" only when it is (TURN.7, the sim's grpReach0).
+    const myTc = () => { try { const t = turnLinks ? turnLinks.turnPcs().filter((pid) => !turnSb(pid)) : []; return t.length ? t : undefined; } catch (e) { return undefined; } };
     const mySid = () => (localStream ? localStream.id : null);
     let pulseHalt = false; // test hook: simulates a throttled phone's silent pulse gaps
     // My status pulse as one frame: what every beat carries, and what a pair
@@ -3695,7 +3700,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (Number.isInteger(msg.cls) && msg.cls >= 0 && msg.cls <= 3) clsOf.set(from, msg.cls);
       if (Array.isArray(msg.ft)) ftagsOf.set(from, msg.ft.slice(0, GifOS.meshConsts.consts.FH_FTAGS).filter((t) => typeof t === 'string' && /^[0-9a-f]{8}$/.test(t)));
     }
-    const statusPayload = () => { refreshNetTag(); const ft = myFtags(), c = linkCls(); return { kind: 'status', s: myStatus, conns: myConns(), nat: natWord(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined, nt: netTagNow || undefined, cls: c || undefined, ft: ft.length ? ft : undefined }; };
+    const statusPayload = () => { refreshNetTag(); const ft = myFtags(), c = linkCls(); return { kind: 'status', s: myStatus, conns: myConns(), tc: myTc(), nat: natWord(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined, nt: netTagNow || undefined, cls: c || undefined, ft: ft.length ? ft : undefined }; };
     function broadcastStatus(answer) {
       if (!GifOS.meshConsts) return;   // a published lobby whose meeting scripts are still arriving: nobody to tell yet
       if (pulseHalt && !answer) return; // the halt models a throttled clock; an answer to a newcomer is driven by its frame, not the clock
@@ -13152,9 +13157,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (sd.track !== t) sd.__turnOrig(t).catch(() => {});
       }
     }
-    // A friend reaches pid without TURN (TURN.3, TURN.7): friend-hop's own test (meshNode's fhop.friendFor).
+    // A friend reaches pid without TURN (TURN.3, TURN.7): friend-hop's own test (meshNode's fhop.friendFor), on links that do not
+    // run through TURN at either hop: mine to the friend, and the friend's to pid (its tc). A friend whose only way to pid is a
+    // TURN path (its pipe, or before tc its standby) is no way without TURN: pk42 read A3's standby to B2 as one and closed the
+    // pipe A1-B2 three times a second after it came up.
     function turnFriend(pid) {
-      const c = myConns().filter((r) => r !== pid && !(turnLinks && turnLinks.isLink(r)) && (connsOf.get(r) || []).includes(pid)).sort();
+      const c = myConns().filter((r) => r !== pid && !(turnLinks && turnLinks.isLink(r)) && (connsOf.get(r) || []).includes(pid) && !(tcOf.get(r) || []).includes(pid)).sort();
       const fp = c.length ? peers.get(c[0]) : null;
       return !!(fp && fp.dc && fp.dc.readyState === 'open');
     }
@@ -14070,7 +14078,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // makes the offer at some doors and the answer at the others. On an offer the far end's gate reads the word (an
     // unseated dialler is not a stale member); on either, a seated far end starts that door's clock (onRelayPeer).
     const doorWord = () => { const ms = meshSeat(); return ms && ms.hasCoord && ms.state === 3 && ms.seatTick - ms.seatedAt > 40 ? 0 : 1; };
-    const sigMeta = () => ({ name: myName(), ip: myIp, st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), sid: mySid() });
+    const sigMeta = () => ({ name: myName(), ip: myIp, st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), tc: myTc(), sid: mySid() });
     // THE RULES THAT REBUILD BEFORE AN OFFER LANDS, first match wins. After a rebuild none of the later ones can
     // hold: a fresh pc has no death, no remote description, no connection and no media.
     const offerFpOf = (sdp) => { const m = /\r?\na=fingerprint:([^\r\n]+)/.exec(String(sdp && sdp.sdp || sdp || '')); return m ? m[1] : ''; };
@@ -14506,7 +14514,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // Group moderation: signature-verified in admin rooms (§9), open in
       // plain rooms — the transport no longer matters, only the proof.
       takeMod(from, msg);
-      if (msg.conns) setConns(from, msg.conns);
+      if (msg.conns) setConns(from, msg.conns, msg.tc);
       takeNetWords(from, msg);   // nat; FHOP.8/9 nt, cls, ft
       if ('sid' in msg && p && sidIsNews(p, msg.sid)) { p.ownSid = msg.sid; claimOwnStream(p); }
     }
@@ -14759,7 +14767,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }
       } else if (msg.kind === 'status') {
         const took = takeStatus(from, msg.s || {}); // null: the same pulse again (the DC copy and the section-gossip copy of one beat)
-        if (msg.conns) setConns(from, msg.conns);
+        if (msg.conns) setConns(from, msg.conns, msg.tc);
         takeNetWords(from, msg);   // nat; FHOP.8/9 nt, cls, ft
         // heartbeat re-gossip: moderation + guest-blur re-converge every tick
         // (signature-verified in admin rooms — takeMod, §9)
@@ -23406,6 +23414,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const relayJobs = new Map();    // target + '>' + requester -> { senders }   (as relayer)
     const relayRefusal = new Map(); // target -> { viaPid: refusedAt }
     const connsOf = new Map();      // pid -> [connected pids] (gossiped)
+    const tcOf = new Map();         // pid -> [the pids of connsOf it reaches through TURN] (the same beat's tc)
     const natOf = new Map();        // pid -> its network's kind (natWord), from the same beat
     // claimantsOf: the reverse of connsOf (target -> peers that report a link
     // to it). doorPeers reads it per forwarded frame; a greeter's socket list
@@ -23413,14 +23422,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // door lookup a scan of every socketed peer's links. Both maps change
     // ONLY through these two helpers so they can never disagree.
     const claimantsOf = new Map();
-    function setConns(pid, conns) {
+    function setConns(pid, conns, tc) {
       for (const t of (connsOf.get(pid) || [])) { const c = claimantsOf.get(t); if (c) { c.delete(pid); if (!c.size) claimantsOf.delete(t); } }
       connsOf.set(pid, conns);
+      if (Array.isArray(tc) && tc.length) tcOf.set(pid, tc.filter((x) => typeof x === 'string').slice(0, 16)); else tcOf.delete(pid);
       for (const t of conns) { let c = claimantsOf.get(t); if (!c) claimantsOf.set(t, (c = new Set())); c.add(pid); }
     }
     function forgetConns(pid) {
       for (const t of (connsOf.get(pid) || [])) { const c = claimantsOf.get(t); if (c) { c.delete(pid); if (!c.size) claimantsOf.delete(t); } }
-      connsOf.delete(pid); natOf.delete(pid); netTagOf.delete(pid); clsOf.delete(pid); ftagsOf.delete(pid);
+      connsOf.delete(pid); tcOf.delete(pid); natOf.delete(pid); netTagOf.delete(pid); clsOf.delete(pid); ftagsOf.delete(pid);
     }
     // FHOP.9: a friend carries up to FHOP_CARRY_MAX jobs (all one full row can ask of one mate); it forwards video for as many as
     // its own link class allows (fhVideoBudget: cellular 2, Wi-Fi or unknown 4, wired 8) and the voice only for every job past
