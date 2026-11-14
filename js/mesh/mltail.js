@@ -91,16 +91,16 @@
     },
 
     // C++: mesh_mltail.inc:Seat::l33ColArm
-    // L33.15: a home seat reads its own column, mass leave or not. k is a cell of my column in another home row.
+    // L33.15: in a small room a home seat reads its own column, mass leave or not. k is a cell of my column in another home row.
     l33ColArm(k) {
-      if (this.l13Merging() || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return false;
+      if (this.l13Merging() || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0 || !this.l30Small()) return false;   // small mode (L30.1)
       const c = unckey(k); return c.pc === 0 && c.i === this.coord.i && c.r !== this.coord.r;
     },
 
     // C++: mesh_mltail.inc:Seat::l33ColSweep
     l33ColSweep() {
       const id = this.id;
-      if (this.standDown() || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0 || this.moving) return;
+      if (this.standDown() || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0 || this.moving || !this.l30Small()) return;
       const cm = colMates(this.coord);
       for (let q = 0; q < C - 1; q++) {
         const k = ckey(cm[q]); const x = this.occGet(k); if (x < 0 || x === id) continue;
