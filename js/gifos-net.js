@@ -149,7 +149,7 @@
         for (const frame of queue.splice(0)) { try { sock.send(frame); } catch (e) { /* re-dropped */ } }
         if (s.onopen) s.onopen();
       };
-      sock.onmessage = (ev) => { if (ws === sock && s.onmessage) s.onmessage(ev); };
+      sock.onmessage = (ev) => { if (!closed && ws === sock && s.onmessage) s.onmessage(ev); };   // only my current socket speaks: one I closed or replaced says nothing more, even a frame already on its way
       sock.onclose = (ev) => {
         clearTimeout(bornTimer); clearTimeout(slowTimer);
         if (ws !== sock) return;
