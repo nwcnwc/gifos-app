@@ -28229,6 +28229,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           for (const hm of T.colMates(hc)) {
             const jk0 = shipMos('sdrow:' + c.r, occPid(hm), prodPack.stream, Object.assign({ row: c.r, h: 0, src: myId }, prodMeta())); if (jk0) wanted.add(jk0);
           }
+          // L2.15: my product also crosses each Section-1 bridge of mine (an empty cell's two nearest seats): the far end is the head
+          // (or the heir standing in) of another row whose corner with mine may be silent; it keeps this copy parked as a standby
+          // (one-pipe law) and plays it when the head-column copy stops
+          { const sb = meshSeat(); for (const t of (sb && sb.s1Bridges ? sb.s1Bridges() : [])) { const jb = shipMos('sdrow:' + c.r, t, prodPack.stream, Object.assign({ row: c.r, h: 1, src: myId }, prodMeta())); if (jb) wanted.add(jb); } }
           // L2.7 at Section 1: the heir has no pc to the other heads; its column-mates carry its product to their heads (x2 -> sdrow), as a mate carries its head's x1
           if (actHead) for (const cm of T.colMates(c)) { const jx = shipMos('x2', occPid(cm), prodPack.stream, Object.assign({ row: c.r, h: 0, src: myId }, prodMeta())); if (jx) wanted.add(jx); }
           for (let j = 1; j < C; j++) {
