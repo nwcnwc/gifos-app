@@ -682,6 +682,7 @@
     H_HOLDS_: 9,   // C++: mesh.cpp:H_HOLDS_
     H_HOLE_: 32,   // C++: mesh.cpp:H_HOLE_
     H_MEDIA_: 128,   // C++: mesh.cpp:H_MEDIA_
+    H_PIPELIE_: 65536,   // C++: mesh.cpp:H_PIPELIE_
     LR_OWNED: 1,   // C++: mesh.cpp:LR_OWNED
     LR_E2: 2,   // C++: mesh.cpp:LR_E2
     LR_L4: 4,   // C++: mesh.cpp:LR_L4
@@ -728,6 +729,7 @@
     H_BIG: 1024,   // C++: mesh_hostile.inc:H_BIG
     H_STEAL: 16384,   // C++: mesh_hostile.inc:H_STEAL
     H_VACLIE: 32768,   // C++: mesh_hostile.inc:H_VACLIE
+    H_PIPELIE: 65536,   // C++: mesh_hostile.inc:H_PIPELIE
     LW_ENTRY: 1,   // C++: mesh_linkset_fab.inc:LW_ENTRY
     LW_ROLE: 2,   // C++: mesh_linkset_fab.inc:LW_ROLE
     LW_CALL: 4,   // C++: mesh_linkset_fab.inc:LW_CALL
