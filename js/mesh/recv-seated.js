@@ -702,6 +702,7 @@
       const c = unck(m.ck); if (c.pc !== this.coord.pc) return;
       const key = String(m.ck) + '|' + String(m.id) + '|' + String(m.tn);
       if (this.byeRly.has(key)) return;
+      if (m.from >= 0 && m.from !== id) { const b = this.l24Bucket(-2 - m.from); if (b.tok <= 0) { this.w.lv.L24_DROP++; return; } b.tok--; }   // L24: a goodbye I pass on spends the pass-on bucket of the seat that gave it to me
       this.byeRly.set(key, TICK);
       if (this.byeRly.size > 256) { for (const [k, v] of this.byeRly) { if (TICK - v > 120) this.byeRly.delete(k); } while (this.byeRly.size > 256) eraseFirst(this.byeRly); }
       const seen = new Set();

@@ -19,18 +19,26 @@
   const { coordStr } = req('./shared.js', 'meshShared');
 
   Seat.unit('mesh_seat.inc l24/l26', {
+    // C++: mesh_seat.inc:Seat::l24Bucket
+    // L24: one bucket a sender (key >= 0: its own asks; key <= -2: the frames it passes on for others). The table holds 256
+    // senders; one more evicts the sender whose bucket was touched longest ago.
+    l24Bucket(okey) {
+      const b = ins(this.l24B, okey, () => new books.Bucket(true));
+      if (b.at === 0 && b.tok === 0) { b.tok = K.L24_BURST; b.at = this.TICK; } else b.refill(this.TICK, K.L24_BURST, K.L24_RATE, 1);
+      if (this.l24B.size > 256) { let old, oldAt = 0; for (const [k, v] of this.l24B) if (k !== okey && (old === undefined || v.at < oldAt)) { old = k; oldAt = v.at; } this.l24B.delete(old); }
+      return b;
+    },
+
     // C++: mesh_seat.inc:Seat::l24Take
     l24Take(m) {
       const lv = this.w.lv;
       if (m.from < 0 || m.from === this.id) return true;
-      switch (m.t) { case 'WHOHOME': case 'FIND': case 'FINDLEAF': case 'RECLAIM': case 'WALK': case 'MEET': case 'OFFER': case 'SITPING': case 'SWAPQ': break; default: return true; }
+      switch (m.t) { case 'WHOHOME': case 'FIND': case 'FINDLEAF': case 'RECLAIM': case 'WALK': case 'MEET': case 'OFFER': case 'SITPING': case 'SWAPQ': case 'ROUTE': break; default: return true; }
       if (m.t === 'FIND' && !m.fsig) { lv.L24_DROP++; return false; }
       if (m.t === 'FIND' && m.tag === 0 && m.from === m.nc && this.hasCoord && this.state === 3) { for (const [ek, ev] of this.occ) if (ev === m.nc && this.firstHandLive(ek) && ek !== ckey(this.coord)) { lv.L24_DROP++; return false; } }
       { const w = ins(this.l23Work, m.from, () => [0, 0]); if (this.TICK - w[1] > 40) { w[0] = 0; w[1] = this.TICK; } w[0]++; if (this.l23Work.size > 128) this.l23Work.clear(); }
-      let okey = m.t === 'FIND' ? m.nc : m.from; if (m.t === 'WHOHOME' && m.via >= 0) okey = -2 - m.via;
-      const b = ins(this.l24B, okey, () => new books.Bucket(true));
-      if (this.l24B.size > 256) { this.l24B.clear(); return true; }
-      if (b.at === 0 && b.tok === 0) { b.tok = K.L24_BURST; b.at = this.TICK; } else b.refill(this.TICK, K.L24_BURST, K.L24_RATE, 1);
+      let okey = m.t === 'FIND' ? m.nc : m.from; if ((m.t === 'WHOHOME' || m.t === 'ROUTE') && m.via >= 0) okey = -2 - m.via;   // L24: a walked ask spends the pass-on bucket of the hop that handed it on
+      const b = this.l24Bucket(okey);
       if (b.tok <= 0) { lv.L24_DROP++; return false; }
       if (this.l24AllAt !== this.TICK) { this.l24AllAt = this.TICK; this.l24All = 0; } if (++this.l24All > K.L24_ALL) { lv.L24_DROP++; return false; }
       b.tok--; return true;
