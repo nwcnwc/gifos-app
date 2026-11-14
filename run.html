@@ -13123,11 +13123,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         askSub: GifOS.meetTurn.askSub(window.fetch.bind(window)),
         asker: () => {
           if (!meshNode) return null;
-          if (meshNode.sub === 0 && Date.now() - turnSubWantAt < 2 * K.TURN_DIAL * meshNode.tickMs()) return 'joiner';   // my seat asked (opts.sub.ask) this round
+          if (meshNode.sub === 0 && Date.now() - turnSubWantAt < K.TURN_WAIT * meshNode.tickMs()) return 'joiner';   // my seat asked (opts.sub.ask) lately: it asks again each silent round
           if (meshNode.sub > 0 && turnRepipe === meshNode.sub) return 'repipe';
           return null;
         },
-        tdoors: () => new Promise((res) => { turnDoorsWait.push(res); if (turnDoorsWait.length === 1) relaySendObj({ t: 'tdoors' }); setTimeout(() => { const i = turnDoorsWait.indexOf(res); if (i >= 0) { turnDoorsWait.splice(i, 1); res(null); } }, GifOS.meetTurn.FETCH_TIMEOUT_MS); }),
+        tdoors: () => new Promise((res) => {
+          turnDoorsWait.push(res);
+          if (turnDoorsWait.length === 1) relaySendObj({ t: 'tdoors' });
+          const giveUp = () => { const i = turnDoorsWait.indexOf(res); if (i >= 0) { turnDoorsWait.splice(i, 1); res(null); } };   // no answer: no list this time
+          setTimeout(giveUp, GifOS.meetTurn.FETCH_TIMEOUT_MS);
+        }),
         probeDoor: () => false,
         sub: () => (meshNode ? meshNode.sub : 0),
         knownSub: (r) => !!(meshNode && meshNode.knownSub(r)),
