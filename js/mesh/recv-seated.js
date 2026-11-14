@@ -612,6 +612,7 @@
     onRouted(m) {
       const id = this.id, TICK = this.TICK;
       if (m.tag === 5) { this.l50Offer(m); return; }   // L50.4
+      if (m.tag === 1 && m.asker >= 0 && m.asker !== id) { this.l50Back(m, m.asker); return; }   // L50.3(a): the anchor's answer on its way back to the asker
       if (m.tag === 1 || m.tag === 2) {
         const tk = ckey(m.target); const cur = this.occGet(tk);
         if (m.id >= 0 && this.hasCoord && tk !== ckey(this.coord) && this.probeAsked(tk, m.pn) && !(cur >= 0 && cur !== m.id && this.holdsCell(tk, 60))) {
@@ -675,7 +676,7 @@
       }
       if (m.tag === 3) {
         if (m.owner < 0) return;
-        if (m.owner !== id) return;   // L50.3(b): the word is for the asker alone
+        if (m.owner !== id) { this.l50Back(m, m.owner); return; }   // L50.3(b): the word on its way back to the asker
         if (!this.hasCoord || this.state !== 3 || m.ck !== ckey(this.coord)) return;
         { const anc = this.coord.i !== 0 ? { pc: this.coord.pc, r: this.coord.r, i: 0 } : this.ownerCoord(); const ha = !!anc; if (ha && ckey(anc) === m.oCk && !this.firstHandLive(m.oCk) && TICK - this.lastAck >= K.L9_LONE && !this.byeAt.has(m.oCk)) { this.byeAt.set(m.oCk, TICK); if (this.occ.has(m.oCk)) { this.occDrop(m.oCk, 'ring-word'); this.live.delete(m.oCk); this.kidful.delete(m.oCk); } this.trace('ANCHOR-GONE', id, anc, 'from=%d', m.id); } }
         return;

@@ -767,6 +767,7 @@
     ["l9SyncAt", "i32"],   // int = -1000  (line 1860)
     ["l9SyncTo", "{i32:i32}"],   // OMap<int,int>  (line 1861)
     ["l50AskAt", "i32"],   // int = -1000  (line 1862)
+    ["l50From", "{i32:i32}"],   // OMap<int,int>  (line 1862)
     ["l1617At", "i32"],   // int = -1000  (line 1862)
     ["mvWhy", "str"],   // const char* = "?"  (line 1863)
     ["l13Asked", "<i32>"],   // OSet<int>  (line 1864)
