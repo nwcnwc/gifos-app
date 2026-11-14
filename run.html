@@ -12980,7 +12980,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // neither the sweeper nor L22 closes it), NO video on an unvouched link, the room's link facts and subscribers'
     // vouches (room-wide gossip: tlink, tsub), and the paused-video note on the tiles a link holds back.
     let turnLinks = null, turnTimer = null, turnSubAt = 0;
-    let turnSubWantAt = 0;   // my seat asked for the meeting's rooms (opts.sub.ask)
+    let turnSubWantAt = 0, turnDoorSeq = 0;   // my seat asked for the meeting's rooms (opts.sub.ask); the mesh's door-list mark last read
     const turnDoorsWait = [];   // asks waiting for the relay's door list
     const turnProbeAt = new Map();   // a listed room's head I dialled to try its room → when
     const turnWeb = new Map();   // far peer id -> the web path end of that link (js/meet-tunnel.js)
@@ -13315,6 +13315,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function turnStep() {
       if (!turnLinks || !relayTv) return;
       try { turnLinks.step(); } catch (e) { turnNote('turn-step-err ' + String(e && e.stack || e).slice(0, 160)); }
+      try { const ds = meshNode && meshNode.doorSeq ? meshNode.doorSeq() : 0; if (ds !== turnDoorSeq) { turnDoorSeq = ds; turnLinks.doorChanged(); } } catch (e) {}   // my door's greeters changed: a refused room ask starts over
       try { turnSubApply(turnLinks.subAsk()); } catch (e) { turnNote('turn-sub-err ' + String(e && e.message || e).slice(0, 120)); }
       for (const p of peers.values()) if (turnLinks.holds(p.id) || (p.pc && p.pc.__turnGuarded)) turnApplyVideo(p);
       turnWatch();
@@ -13368,7 +13369,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function turnDebug() {
       let seat = null, door = null;
       try { const io = turnLinks ? turnIo() : null; seat = io ? io.seat() : null; const r = turnRaw(); door = r ? { age: r.TICK - r.greetersAt, n: (r.lastGreeters || []).length, pids: io ? io.greeters().map((x) => String(x).slice(0, 8)) : null } : null; } catch (e) { door = { err: String(e).slice(0, 80) }; }
-      return { on: !!turnLinks, worker: GifOS.meetTurn ? GifOS.meetTurn.workerBase() : null, directPath, dev: myDevHash, sid: sessId, seat, door,
+      return { on: !!turnLinks, worker: GifOS.meetTurn ? GifOS.meetTurn.workerBase() : null, directPath, dev: myDevHash, sid: sessId, seat, door, sub: meshNode ? meshNode.sub : 0,
+        standbyCands: meshNode && meshNode.standbyCands ? meshNode.standbyCands() : null,
         links: turnLinks ? turnLinks.dump() : null, facts: Array.from(turnFacts.values()),
         subs: Array.from(turnSubs, ([k, v]) => ({ pid: k, tier: v.tier, exp: v.exp })), log: turnLog.slice(-80) };
     }

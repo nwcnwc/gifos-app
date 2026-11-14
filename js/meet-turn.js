@@ -862,6 +862,7 @@
       if (L.sbUp || (L.sbAt && now - L.sbAt < DIAL_BUDGET_MS)) return;
       if (L.tookOver) return;   // a pipe just taken over warms its next standby once the service has moved the pipe to it (its first l<r> grant)
       const r = pipeNo(L.l), sl = 's' + r, S = io.standbySeat ? io.standbySeat() : null;
+      log('turn-standby warm ' + L.l + (L.opener ? ' opener far-seat=' + (L.farSb || '-') : ' target') + ' my-seat=' + (S ? short(S.pid) + '/' + S.dev : 'self'));
       if (!L.opener) {
         L.sbAt = now; L.sbSeat = S ? S.pid : io.me();
         if (S) io.sendTv(S.pid, { k: 'tv', q: 's', l: sl }); else sbExpect.set(sl, io.me());
@@ -1107,6 +1108,7 @@
       repipe() { if (io.sub && io.sub() > 0) sub.repipe = true; },
       doorEmpty() { if (io.sub && io.sub() > 0) rg.want = true; },
       regrant() { const o = rg.out; rg.out = null; return o; },
+      doorChanged() { subChanged('my door list'); },   // the mesh says my door's greeters changed (meshNode.doorSeq): a refused ask starts over
       // The pipes this page holds an end of, for the media plane: the far end's peer id and subroom, the pipe, who opened it.
       pipeEnds() { const out = []; for (const L of links.values()) if (L.farPid) out.push({ peer: L.far, sub: L.opener ? L.farR : Number(L.l.slice(1)), pipe: L.l, opener: !!L.opener, video: !!L.video, up: L.state === 'up', standby: !!L.sb }); return out; },
       standby(pid) { const L = links.get(pid); return !!L && L.sb; },   // a warm standby: keep-alives only, nothing rides it
