@@ -289,12 +289,20 @@
       : Promise.resolve());
     // pv: the page's wire version. 0.9.25 was a flag day: the relay refuses a page that does not name
     // 0.9.25 or newer with 4010, which every older page shows as "reload to update" and stops knocking.
+    // SUBROOMS: the door this socket uses (opts.door() → { sr, sg } | null): a subroom r>0 of the meeting, and the TURN
+    // service's grant that founds it (any member of r may hold one; the relay ignores it at a live door).
+    const doorParams = () => {
+      const d = opts.door ? opts.door() : null;
+      if (!d || !(Number.isInteger(d.sr) && d.sr > 0 && d.sr < 100)) return '';
+      return '&sr=' + d.sr + (typeof d.sg === 'string' && d.sg ? '&sg=' + encodeURIComponent(d.sg) : '');
+    };
     const makeUrl = () => {
       const extra = opts.urlParams ? String(opts.urlParams() || '') : '';
       return relayBase + '/s/' + opts.sid
         + '?role=mesh&pv=' + WIRE_VERSION + '&token=' + encodeURIComponent(opts.tok || '')
         + '&peer=' + encodeURIComponent(peer)
         + '&gk=' + encodeURIComponent(gkStr()) + (hadAtConnect() ? '&had=1' : '')
+        + doorParams()
         + (rs ? '&rs=' + rs : '')
         + (/[&?]dev=/.test(extra) ? '' : '&dev=' + encodeURIComponent(devTag || net.randHex(8)))
         + (ipp && identity ? '&pk=' + encodeURIComponent(identity.pubB64) + '&ipp=' + encodeURIComponent(ipp) : '')

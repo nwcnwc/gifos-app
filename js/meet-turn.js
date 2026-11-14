@@ -2,12 +2,15 @@
  * meet-turn.js — the page side of a TURN link (0.9.26; gifos docs/turn-0926.md).
  *
  * A TURN link is an ordinary mesh link whose path runs through a TURN server.
- * When two parts of one meeting cannot reach each other (no direct path and
- * no friend who reaches both), the head of the part with the higher ids asks
- * for ONE link to the lowest listed greeter it cannot reach (TURN.1-5). Once
- * that pair's connection is up the mesh's own laws merge the two parts and
- * friend-hop carries everyone else through the link's two ends. The page
- * follows the sim (test/sim/mesh_turn.inc); the pure choices are
+ * SUBROOMS: each TURN link (a pipe) makes its own subroom, an ordinary room at
+ * the relay with its own door, joined to the subroom it hangs from by that one
+ * pipe, so a meeting's subrooms and pipes form a tree. A page that reaches no
+ * greeter at its door asks the credential service (POST /v1/sub) with the
+ * relay's signed list of the meeting's doors. It is shown the subrooms already
+ * linked in and knocks each; it joins the first it reaches as an ordinary
+ * joiner. Only when none is reachable is it granted a new subroom (or, for a
+ * subroom whose pipe is gone, a new pipe for the same one), whose far end the
+ * service picks among the meeting's capable row heads. The pure choices are
  * js/mesh/turn.js.
  *
  *   - Last resort. Only after the direct dial and every friend have failed for
@@ -135,6 +138,9 @@
     }).then((r) => r.json()).catch(() => null);
   }
 
+  // askSub(fetchFn, url) → (body) → Promise<json>: the subroom ask (POST /v1/sub), the same simple request.
+  function askSub(fetchFn, url) { return askIce(fetchFn, url || workerBase() + '/v1/sub'); }
+
   // createCredentials(o) → the credential client of one link end.
   // o = { ask(body) → Promise<json>, room, pool, now(), setTimer(fn, ms), clearTimer(h), random(),
   //       extra() → the fields of each ask ({vouch, peerVouch}, the paid pool's ticket), or null when
@@ -221,20 +227,21 @@
   }
 
   // ---- the seated vouch, carried in parts ------------------------------------
-  // The relay signs tv1.<base64url JSON {k:'v', s, d, p, l, e, n}>.<base64url HMAC> (gifos shared/turn-ticket.js
-  // signVouch). A relay frame holds 128 bytes, too few for the whole token, so an end sends only what the other
-  // cannot know: e (base 36), n and the MAC. s is the room's relay session, d the sender's device tag (from its
-  // ask), p the receiver's own: the receiver rebuilds the exact token. JSON.stringify keeps that key order.
+  // The relay signs tv1.<base64url JSON {k:'v', s, r, d, p, l, e, n}>.<base64url HMAC> (signVouch on the relay). A
+  // relay frame holds 128 bytes, too few for the whole token, so an end sends only what the other cannot know: e
+  // (base 36), n and the MAC. s is the room's relay session, r the sender's subroom (pipe l<r>'s opener sits in
+  // subroom r, its far end in the subroom the service named), d the sender's device tag (from its ask), p the
+  // receiver's own: the receiver rebuilds the exact token. JSON.stringify keeps that key order.
   const enc = typeof TextEncoder === 'function' ? new TextEncoder() : null;
   function b64urlText(s) {
     let bin = '';
     for (const b of enc.encode(s)) bin += String.fromCharCode(b);
     return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
-  function vouchToken(s, d, p, l, e, n, m) {
-    return 'tv1.' + b64urlText(JSON.stringify({ k: 'v', s, d, p, l, e, n })) + '.' + m;
+  function vouchToken(s, r, d, p, l, e, n, m) {
+    return 'tv1.' + b64urlText(JSON.stringify({ k: 'v', s, r, d, p, l, e, n })) + '.' + m;
   }
-  // vouchParts(tv) → { s, d, p, l, e, n, m } of a token, or null.
+  // vouchParts(tv) → { s, r, d, p, l, e, n, m } of a token, or null.
   function vouchParts(tv) {
     try {
       const x = String(tv).split('.');
@@ -243,39 +250,35 @@
       const bin = atob(t + '='.repeat((4 - (t.length % 4)) % 4));
       const o = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))));
       if (!o || o.k !== 'v') return null;
-      return { s: o.s, d: o.d, p: o.p, l: o.l, e: o.e, n: o.n, m: x[2] };
+      return { s: o.s, r: o.r, d: o.d, p: o.p, l: o.l, e: o.e, n: o.n, m: x[2] };
     } catch (e) { return null; }
   }
 
   // The `tv` relay frame (gifos-net.js RELAY_TYPES): one link's handshake between its two ends.
-  //   {k:'tv', q:'a', l, d, b}   ask / answer: the link name, my device tag, my network blocks direct paths (b 1)
+  //   {k:'tv', q:'a', l, d, b}   ask / answer: the pipe's link name, my device tag, my network blocks direct paths (b 1)
+  //                               (an opener's ask carries f:1 when it re-links a subroom that is already in the meeting)
   //   {k:'tv', q:'v', l, e, n, m} my seated vouch for this link (its expiry in base 36, nonce, MAC)
   //   {k:'tv', q:'r', l}          ready: I hold what my end needs (a credential, or none: not a client)
   //   {k:'tv', q:'p', l, b}       paid: my end is on the paid pool (b 1) or back on free (b 0)
   //   {k:'tv', q:'i', l}          move our pc onto new settings: the pair's offerer restarts ICE
-  //   {k:'tv', q:'x', l}          the link is closed at my end
-  //   {k:'tv', q:'h', l, t}       TURN.5.1: I sit in this meeting through a link of my own: ask my link's far end t instead
-  //                               (an ask that carries f:1 is taken as it is: the asker could not use the answer)
+  //   {k:'tv', q:'x', l}          the link is closed at my end; b 1: refused, the meeting is at its plan's limit
   //   {k:'tv', q:'w', l, m}       TURN.18: this link runs over the web path; m (the opener's word) names its host
   //   {k:'tv', q:'b', l, b}       busy: my end paused its video because the server throttles (b 1), or sends again (b 0)
-  const TV_KEYS = 'k,q,l,d,b,e,n,m,t,f';
+  const TV_KEYS = 'k,q,l,d,b,e,n,m,f';
   const LINK_RE = /^[ls][0-9]{1,2}$/, DEV_RE = /^[A-Za-z0-9_.-]{1,16}$/, NONCE_RE = /^[0-9a-f]{18}$/, MAC_RE = /^[A-Za-z0-9_-]{43}$/, E36_RE = /^[0-9a-z]{1,11}$/;
   function tvOk(f) {
     if (!f || typeof f !== 'object' || Array.isArray(f) || f.k !== 'tv' || typeof f.l !== 'string' || !LINK_RE.test(f.l)) return false;
     for (const k of Object.keys(f)) if (k !== '_' && TV_KEYS.split(',').indexOf(k) < 0) return false;
     if (f.q === 'a') return typeof f.d === 'string' && DEV_RE.test(f.d) && (f.b === 0 || f.b === 1) && (f.f === undefined || f.f === 1);
-    if (f.q === 'h') return typeof f.t === 'string' && f.t.length > 0 && f.t.length <= 128;
     if (f.q === 'w') return f.m === undefined || (typeof f.m === 'string' && WEB_HOST_RE.test(f.m));
     if (f.q === 'v') return typeof f.e === 'string' && E36_RE.test(f.e) && typeof f.n === 'string' && NONCE_RE.test(f.n) && typeof f.m === 'string' && MAC_RE.test(f.m);
-    if (f.q === 'r' || f.q === 'x' || f.q === 'i') return true;
+    if (f.q === 'x') return f.b === undefined || f.b === 1;
+    if (f.q === 'r' || f.q === 'i') return true;
     if (f.q === 'p' || f.q === 'b') return f.b === 0 || f.b === 1;
     return false;
   }
 
-  // linkName(a, b, n) → 'l<k>': the free pool's link name of the pair (k < n, the room's TURN_FREE_LINKS). Both ends
-  // compute the same one; two links of a room may share a name (they then share its allocation quota).
   function fnv(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; }
-  function linkName(a, b, n) { const x = String(a) < String(b) ? a + '|' + b : b + '|' + a; return 'l' + (fnv(x) % Math.max(1, n | 0)); }
   // linkId(a, b) → the room-wide name of a link in the gossiped facts.
   function linkId(a, b) { const x = String(a) < String(b) ? a + '|' + b : b + '|' + a; return fnv(x).toString(36); }
 
@@ -386,13 +389,16 @@
   // createLinks(io) → the manager run.html drives once a tick. io (all functions):
   //   me() my peer id; dev() my device tag; sid() the room's relay session; now(); tickMs
   //   seat() → { head, greeter, view: [pid], cell } | null   (head: my seat is its part's home cell; greeter: Section 1)
-  //   greeters() → [pid]   the door's list as my seat last read it (fresh only)
-  //   nid(pid) → the seat's number for a peer id (the order turnPick compares)
-  //   epoch(pid) → when that greeter's part was founded, as the door's list says (-1: not said); myEpoch() → my part's (-1: unknown)
-  //   reach(pid) → 'direct' | 'friend' | null   TURN.2 / TURN.3 as this page knows them
+  //   reach(pid) → 'direct' | 'friend' | null   as this page knows them
   //   blocked() → my network blocks direct connections (the page's own probe)
   //   alive(pid) → the far page is still in the meeting      pcUp(pid) → the pair's connection is up
-  //   sendTv(pid, frame); askVouch(farDev, l); ask(body) → Promise<json>
+  //   sendTv(addr, frame): addr a peer id, or a device tag (a pipe's far end before it answers; the relay routes both)
+  //   askVouch(farDev, l); ask(body) → Promise<json> (/v1/ice); askSub(body) → Promise<json> (/v1/sub)
+  //   THE SUBROOM ASK: asker() → null | 'joiner' (about to found a room on silence at my door) | 'head' (the head of a
+  //     seated room that reaches no older room at door 0) | 'repipe' (a head of my subroom, whose pipe is gone);
+  //     tdoors() → Promise<the relay's signed door list> ; probeDoor(r) → true | false | 'pending' (knock door r
+  //     without registering and dial its listed heads); sub() → my door's subroom; meetingFull() → my meeting is at
+  //     its plan's limit (a NEW pipe is then refused: room limits apply at entry only)
   //   dial(pid); reset(pid) (a fresh pc on the new settings, no dial); restart(pid, l) (move a live pc onto new settings)
   //   keep(pid) (the seat holds this pc: an L28 keep); drop(pid, why) (the TURN pc ends)
   //   subs() → [{ key, tier }] verified subscribers present; ticket() → a meeting ticket for a paid ask, or null
@@ -403,9 +409,6 @@
   function createLinks(io) {
     const K = meshConsts().consts, T = meshTurn();
     const tick = io.tickMs || 500;
-    const WAIT_MS = K.TURN_WAIT * tick;                        // TURN.4
-    const ASK_MS = K.FHOP_RELAY_ASK * tick;                    // TURN.4.3: one dial's direct verdict; TURN.4.4: the hold after the link came up
-    const MERGE_MS = K.RELAY_TTL * tick;                       // TURN.15.2: the span of one merge
     const RETRY_MS = K.TURN_RETRY * tick;                      // TURN.10
     const RESEND_MS = K.TURN_DIAL * tick;                      // a handshake frame the relay lost is sent again
     const DIAL_BUDGET_MS = (K.TURN_DIAL + K.TURN_RETRY) * tick; // an ask that never came up is closed (TURN.8 dialfail)
@@ -414,47 +417,22 @@
     const MOVE_MS = (K.TURN_DIAL + K.LINK_DIAL_ICE) * tick;     // one move of a link's pc onto new settings: its offer and answer over the pair's channel, then the path check through the server
     const FACT_EVERY_MS = K.TURN_DIAL * tick * 2;              // a link end restates its fact
     const FACT_STALE_MS = FACT_EVERY_MS * 4;
-    const links = new Map();   // far pid → link
-    // TURN.4.3 (C++: mesh_turn.inc:turnWaited): the wait is kept per greeter. A foreign greeter I asked at my entry has
-    // its direct verdict FHOP_RELAY_ASK after that ask (my own dial to it stayed silent); one I never asked has it
-    // TURN_WAIT after I first held it as foreign. The entry's credit counts only with no connected peer of my own (a
-    // friend's probe starts when I first hold the greeter) and once the door has answered my seating knock.
-    // TURN.18: a greeter the door's list tags with another network cannot be dialled from a blocked network: that
-    // verdict is in the moment the door has answered my own seating knock, with no wait.
-    // TURN.4.5: one verdict per room: a greeter of a room (the door's founding epoch) that already has a verdict does
-    // not hold the ask.
-    function turnWaited(now, F) {
-      // TURN.18 (C++: mesh_turn.inc:turn18All): every foreign greeter is one the door's list says my network cannot meet
-      if (F.length && io.doorNet && io.probed && io.probed() && !(io.friends ? io.friends() : true) && (io.judged ? io.judged() : false) && F.every((g) => io.doorNet(g) === 0)) return true;
-      if (!io.blocked()) return now - head.since >= WAIT_MS;   // the per-greeter wait is a blocked head's: any other head keeps TURN.4's one clock
-      const friends = io.friends ? !!io.friends() : true;
-      const judged = !friends && !!io.askedAt && (io.judged ? !!io.judged() : true);
-      for (const g of Array.from(head.seen.keys())) if (F.indexOf(g) < 0) head.seen.delete(g);
-      const due = (g) => { let d = head.seen.get(g) + WAIT_MS; if (judged) { const a = io.askedAt(g); if (a > 0 && now - a <= MERGE_MS) d = Math.min(d, a + ASK_MS); if (io.doorNet && io.doorNet(g) === 0) d = head.seen.get(g); } return d; };
-      const epOf = (g) => { const e = io.epoch ? io.epoch(g) : -1; return Number.isInteger(e) ? e : -1; };
-      let ok = true; const ep = new Set();
-      for (const g of F) { if (!head.seen.has(g)) head.seen.set(g, now); if (now < due(g)) ok = false; else { const e = epOf(g); if (e >= 0) ep.add(e); } }
-      if (!ok) { ok = true; for (const g of F) { const e = epOf(g); if (e >= 0 && ep.has(e)) continue; if (now < due(g)) { ok = false; break; } } }
-      return ok;
-    }
-    // TURN.4.4 (C++: mesh_turn.inc:fabricTurnHold): the link I opened is dialling, or came up inside FHOP_RELAY_ASK.
-    function holding(now) {
-      if (!io.blocked()) return false;
-      for (const L of links.values()) if (L.opener && (L.state !== 'up' || !(L.upAt > 0) || now - L.upAt < ASK_MS)) return true;
-      // TURN.4.6 (C++: mesh_turn.inc:fabricTurnHold): from my founding until the head has looked at the door's answer to my
-      // seating knock (the look that asks for the link), with a greeter listed that my network cannot meet and no link yet.
-      if (!links.size && io.doorNet && io.probed && io.probed() && io.judged && io.sat) {
-        if (!io.judged() || head.lookedSat !== io.sat()) for (const g of io.greeters() || []) if (g && g !== io.me() && io.doorNet(g) === 0) return true;
-      }
-      return false;
-    }
-    const head = { since: -1, retryAt: -1, skip: '', seen: new Map() };   // seen: foreign greeter → when I first held it as foreign (TURN.4.3)
+    const links = new Map();   // far address (its peer id; a pipe I opened: the far end's device tag until it answers) → link
+    // THE SUBROOM ASK. One machine, stepped once a tick while io.asker() names a reason to ask. Its outcome for the page:
+    //   { join: r }                        a listed subroom's door reached: reconnect there, an ordinary join
+    //   { found: r, sg, far, link }        a new subroom (or a re-pipe, r unchanged): found it with sg; the pipe is opened here
+    //   { wait: 1 }                        a door list, an answer or a door probe is on its way, or a subroom is opening
+    //   { refused: why, retryAt }          budget, rate, no far end, the meeting full, no service: no pipe, ask again at retryAt
+    const sub = { st: 'idle', gen: 0, out: null, retryAt: 0, token: null, list: [], probe: [], found: null, why: '' };
     let serialN = 0, lastFactAt = 0;
     const log = (s) => { try { if (io.log) io.log(s); } catch (e) {} };
     const short = (p) => String(p || '').slice(0, 8);
 
-    function newLink(far, l, opener) {
-      const L = { far, l, opener, id: linkId(io.me(), far), farDev: null, farBlocked: false, client: false, mine: null, peer: null,
+    // newLink(far, l, opener, farDev, farR): a pipe I opened knows its far end's device tag and subroom from the grant and
+    // is addressed by that tag until the far end answers (then by its peer id); a pipe I was asked for knows its opener.
+    function newLink(far, l, opener, farDev, farR) {
+      const L = { far, l, opener, id: linkId(io.me(), far), farDev: farDev || null, farR: farR == null ? Number(l.slice(1)) : farR, farPid: opener ? null : far,
+        farBlocked: false, client: false, mine: null, peer: null,
         state: 'ask', askAt: io.now(), sentAt: 0, vAskAt: 0, readyMe: false, readyFar: false, dialAt: 0, upAt: -1, downSince: 0,
         cred: null, paid: null, paidMe: false, paidFar: false, paidSaid: false, paidAt: 0, mvWant: false, mvAt: 0, mvHeldAt: 0, mvN: 0, mvWhy: '', video: false, vouched: false, lostAt: -1, side: [],
         thr: null, busy: false, farBusy: false, capAt: 0, upOkSince: 0, standbyAt: 0, standbyN: 0,
@@ -474,11 +452,11 @@
       if (!quiet) { try { io.sendTv(L.far, { k: 'tv', q: 'x', l: L.l }); } catch (e) {} }
       log('turn-link closed ' + short(L.far) + ' ' + why);
       try { io.drop(L.far, why); } catch (e) {}
-      try { io.publish({ id: L.id, a: L.opener ? io.me() : L.far, b: L.opener ? L.far : io.me(), up: 0, v: 0, gone: 1 }); } catch (e) {}
+      if (L.farPid) { try { io.publish({ id: L.id, a: L.opener ? io.me() : L.far, b: L.opener ? L.far : io.me(), up: 0, v: 0, gone: 1 }); } catch (e) {} }
       try { io.changed(L.far); } catch (e) {}
     }
     const fresh = (L) => !!(L.mine && L.peer && L.mine.e - io.now() > 0 && L.peerE - io.now() > 0);
-    function sendAsk(L) { L.sentAt = io.now(); const a = { k: 'tv', q: 'a', l: L.l, d: io.dev(), b: io.blocked() ? 1 : 0 }; if (L.force) a.f = 1; io.sendTv(L.far, a); }
+    function sendAsk(L) { L.sentAt = io.now(); const a = { k: 'tv', q: 'a', l: L.l, d: io.dev(), b: io.blocked() ? 1 : 0 }; if (L.relink) a.f = 1; io.sendTv(L.far, a); }
     function askMine(L) { if (!L.farDev) return; L.vAskAt = io.now(); io.askVouch(L.farDev, L.l); }
     function credFor(L, pool) {
       return createCredentials({ ask: io.ask, room: io.sid(), pool, now: io.now, setTimer: io.setTimer, clearTimer: io.clearTimer,
@@ -578,17 +556,26 @@
     function onFrame(from, f) {
       if (!tvOk(f) || from === io.me()) return;
       let L = links.get(from);
+      if (!L) {   // the first answer of a pipe I opened: from now on it is addressed by the far end's peer id
+        for (const x of links.values()) if (x.opener && !x.farPid && x.l === f.l) { L = x; break; }
+        if (L) { links.delete(L.far); L.far = from; L.farPid = from; L.id = linkId(io.me(), from); links.set(from, L); }
+      }
       if (L) L.heardAt = io.now();
-      if (f.q === 'x') { if (L && L.l === f.l) close(L, 'far-closed', true); return; }
+      if (f.q === 'x') {
+        if (L && L.l === f.l) {
+          if (f.b === 1 && L.opener) { sub.why = 'full'; log('turn-link refused ' + short(from) + ' ' + L.l + ': the meeting is full'); }
+          close(L, f.b === 1 ? 'full' : 'far-closed', true);
+        }
+        return;
+      }
       if (f.q === 'a') {
         if (!L) {
           const s = io.seat();
           if (!s || !s.greeter) return;                       // only a seated greeter can be vouched for: say nothing
           if (s.view.indexOf(from) >= 0 && io.reach(from) === 'direct') return;   // reached already: no link
-          // TURN.5.1 (C++: mesh_turn.inc:turnHomeEnd): a link is not hung on another link's end. I sit in the room of the far end of a
-          // link I opened: a newcomer linked to me would be two relayed hops from every other seat, and nobody carries a pair two
-          // hops apart. I answer with my link's far end and the asker asks that seat.
-          if (f.f !== 1) { let home = null; for (const M of links.values()) if (M.opener && M.state === 'up' && M.far !== from && s.view.indexOf(M.far) >= 0) { home = M.far; break; } if (home) { log('turn-link home-end ' + short(from) + ' -> ' + short(home)); io.sendTv(from, { k: 'tv', q: 'h', l: f.l, t: home }); return; } }
+          // A new pipe is a new entry: refused while my meeting is at its plan's limit (room limits apply at entry
+          // only; a pipe re-linking a subroom already in the meeting, f 1, is never refused for it).
+          if (f.f !== 1 && io.meetingFull && io.meetingFull()) { log('turn-link refused ' + short(from) + ' ' + f.l + ': the meeting is full'); io.sendTv(from, { k: 'tv', q: 'x', l: f.l, b: 1 }); return; }
           L = newLink(from, f.l, false); L.heardAt = io.now();
         }
         if (L.l !== f.l) return;
@@ -600,19 +587,10 @@
         return;
       }
       if (!L || L.l !== f.l) return;
-      if (f.q === 'h') {   // TURN.5.1: the seat I asked sits in the meeting through a link of its own: its far end is the one to ask
-        if (!L.opener || L.state === 'up' || f.t === io.me()) return;
-        const hops = (L.hops | 0) + 1, known = (io.greeters() || []).indexOf(f.t) >= 0;
-        if (hops > 4 || !known || links.has(f.t)) { L.force = true; sendAsk(L); return; }   // an answer I cannot use (a seat the door does not list for me): the asked seat takes the link itself
-        log('turn-link home-end: asking ' + short(f.t) + ' instead of ' + short(L.far));
-        close(L, 'home-end', true);
-        const N = newLink(f.t, linkName(io.me(), f.t, K.TURN_FREE_LINKS), true); N.hops = hops; sendAsk(N);
-        return;
-      }
       if (f.q === 'v') {
         if (!L.farDev) return;
         const e = parseInt(f.e, 36);
-        L.peer = vouchToken(io.sid(), L.farDev, io.dev(), L.l, e, f.n, f.m); L.peerE = e;
+        L.peer = vouchToken(io.sid(), L.farR, L.farDev, io.dev(), L.l, e, f.n, f.m); L.peerE = e;
         if (L.mine) haveBoth(L);
         return;
       }
@@ -760,15 +738,87 @@
         s: L.serial || 0, c: s ? s.cell : 0, g: 0, [L.opener ? 'va' : 'vb']: L.side.slice(0, SIDE_MAX) };
     }
 
+    // ---- THE SUBROOM ASK (header) ------------------------------------------------------------------------------------
+    // idle → doors (the relay's signed list) → ask → 202 list: probe each listed door (subroom 0 first, then the list's
+    // order; a re-pipe probes none) → none reached: a fresh door list → ask with the list's token → 200: the pipe.
+    // An answer that arrives after the machine moved on (a newer generation) is dropped.
+    const busyOut = { wait: 1 };
+    function subIdle(now, out, retryAt) { sub.st = 'idle'; sub.token = null; sub.retryAt = retryAt || 0; sub.out = out; sub.gen++; }
+    function subDoors(withToken) {
+      const g = ++sub.gen; sub.st = 'doors'; sub.out = busyOut;
+      Promise.resolve(io.tdoors ? io.tdoors() : null).then((d) => {
+        if (g !== sub.gen) return;
+        if (!d) { subIdle(io.now(), { refused: 'no-doors', retryAt: io.now() + RETRY_MS }, io.now() + RETRY_MS); return; }
+        subAsk(d, withToken ? sub.token : null);
+      }, () => { if (g === sub.gen) subIdle(io.now(), { refused: 'no-doors', retryAt: io.now() + RETRY_MS }, io.now() + RETRY_MS); });
+    }
+    function subAsk(doors, token) {
+      const g = ++sub.gen; sub.st = 'ask';
+      const b = { room: String(io.sid()), doors };
+      if (token) b.token = token;
+      const t = io.ticket ? io.ticket() : null; if (t) b.ticket = t;   // a plan's meeting ticket raises the meeting's budget to its allowance
+      Promise.resolve(io.askSub ? io.askSub(b) : null).then((a) => {
+        if (g !== sub.gen) return;
+        const now = io.now();
+        if (a && Number.isInteger(a.r) && a.r > 0 && typeof a.sg === 'string' && a.far && typeof a.far.d === 'string' && Number.isInteger(a.far.r) && LINK_RE.test(a.link || '')) {
+          subFound(a); return;
+        }
+        if (a && a.pending === 'opening') { log('turn-sub opening: knock its door again'); subIdle(now, busyOut, now + RESEND_MS); return; }
+        if (a && a.pending === 'subrooms' && typeof a.token === 'string') {
+          sub.token = a.token; sub.list = Array.isArray(a.subs) ? a.subs.filter((x) => x && Number.isInteger(x.r) && x.r > 0).map((x) => x.r) : [];
+          if (io.asker && io.asker() === 'repipe') { subDoors(true); return; }   // my own subroom keeps its number: no doors to try
+          sub.probe = [0].concat(sub.list.filter((r) => r !== (io.sub ? io.sub() : 0)));
+          sub.st = 'probe'; sub.out = busyOut;
+          log('turn-sub list ' + sub.list.join(',') + ': trying the doors');
+          return;
+        }
+        const why = (a && a.unavailable) ? String(a.unavailable).slice(0, 40) : 'no-answer';
+        log('turn-sub refused ' + why);
+        subIdle(now, { refused: why, retryAt: now + RETRY_MS }, now + RETRY_MS);
+      }, () => { if (g === sub.gen) subIdle(io.now(), { refused: 'no-answer', retryAt: io.now() + RETRY_MS }, io.now() + RETRY_MS); });
+    }
+    function subFound(a) {
+      const relink = io.asker && io.asker() === 'repipe';
+      sub.st = 'found'; sub.gen++;
+      sub.found = { r: a.r, sg: a.sg, far: { r: a.far.r, d: a.far.d }, link: a.link };
+      sub.out = { found: a.r, sg: a.sg, far: sub.found.far, link: a.link };
+      log('turn-sub ' + (relink ? 're-pipe ' : 'new ') + a.r + ' far ' + a.far.d + '@' + a.far.r + ' ' + a.link);
+      for (const L of Array.from(links.values())) if (L.opener && L.l === a.link) close(L, 'replaced', true);   // a re-pipe's old pipe of this subroom
+      const L = newLink(a.far.d, a.link, true, a.far.d, a.far.r);
+      L.relink = relink;
+      sendAsk(L); askMine(L);
+    }
+    function subStep(now) {
+      const asker = io.asker ? io.asker() : null;
+      if (sub.st === 'found') {
+        const live = Array.from(links.values()).some((L) => L.opener && sub.found && L.l === sub.found.link);
+        if (live) return;
+        sub.found = null;
+        if (sub.why === 'full') { sub.why = ''; subIdle(now, { refused: 'full', retryAt: now + RETRY_MS }, now + RETRY_MS); return; }
+        subIdle(now, null, sub.retryAt);
+      }
+      if (!asker) { if (sub.st !== 'idle') subIdle(now, null, sub.retryAt); else if (sub.out && sub.out.join != null) sub.out = null; return; }
+      if (sub.st === 'idle') { if (now >= sub.retryAt) subDoors(false); return; }
+      if (sub.st === 'probe') {
+        let pending = false;
+        for (const r of sub.probe) {
+          const v = io.probeDoor ? io.probeDoor(r) : false;
+          if (v === true) { log('turn-sub join ' + r); subIdle(now, { join: r }, now + RESEND_MS); return; }   // the page moves its door there; no new ask meanwhile
+          if (v !== false) pending = true;
+        }
+        if (!pending) { log('turn-sub no listed door reached'); subDoors(true); }
+      }
+    }
+
     function step() {
       const now = io.now();
       for (const L of Array.from(links.values())) {
         // TURN.8: the far page is gone. A far end my seat does not know yet (a foreign greeter, its door entry stale here)
         // is alive while it keeps answering this link's handshake.
-        if (!io.alive(L.far) && now - (L.heardAt || L.askAt) > DIAL_BUDGET_MS / 2) { close(L, 'gone', true); continue; }
+        if (L.farPid && !io.alive(L.far) && now - (L.heardAt || L.askAt) > DIAL_BUDGET_MS / 2) { close(L, 'gone', true); continue; }
         if (L.state === 'up' && io.reach(L.far) === 'friend') { close(L, 'healed'); continue; }          // TURN.7
-        if (L.state !== 'up' && now - L.askAt > DIAL_BUDGET_MS) { if (L.opener) head.retryAt = now + RETRY_MS; close(L, 'dialfail'); continue; }
-        if (L.state === 'up' && !io.pcUp(L.far)) { if (!L.downSince) L.downSince = now; if (now - L.downSince > DIAL_BUDGET_MS) { if (L.opener) head.retryAt = now + RETRY_MS; close(L, 'lost'); continue; } }
+        if (L.state !== 'up' && now - L.askAt > DIAL_BUDGET_MS) { if (L.opener) sub.retryAt = now + RETRY_MS; close(L, 'dialfail'); continue; }
+        if (L.state === 'up' && !io.pcUp(L.far)) { if (!L.downSince) L.downSince = now; if (now - L.downSince > DIAL_BUDGET_MS) { if (L.opener) sub.retryAt = now + RETRY_MS; close(L, 'lost'); continue; } }
         else L.downSince = 0;
         if ((L.state === 'ask' || (L.state === 'swap' && !L.peer)) && now - L.sentAt > RESEND_MS && (L.opener || L.farDev)) sendAsk(L);
         // my vouch is re-made once half its life is gone (the far end does the same), so a renewal always has fresh ones
@@ -785,58 +835,7 @@
         }
       }
       planVideo(now);
-      // THE HEAD (TURN.1-5): one link per part, toward the lower part, after TURN_WAIT.
-      const s = io.seat();
-      if (s && s.head) {
-        const view = new Set(s.view);
-        if (io.judged && io.sat && io.judged()) head.lookedSat = io.sat();   // TURN.4.6: this look reads the door's answer to my seating knock
-        const F = []; let direct = false, fr = false;
-        for (const g of io.greeters() || []) {
-          if (!g || g === io.me() || view.has(g)) continue;
-          const r = io.reach(g);
-          if (r === 'direct') { direct = true; continue; }
-          if (r === 'friend') { fr = true; continue; }
-          F.push(g);
-        }
-        // TURN.15.4: no second link between two parts. A link whose far end is me or sits in my view already joins
-        // its opener's part to mine: I never ask its opener, nor anyone its opener reaches directly (its side).
-        if (F.length) {
-          const theirs = new Set();
-          for (const L of links.values()) if (!L.opener) theirs.add(L.far);
-          for (const f of io.facts() || []) if (f && !f.gone && (f.b === io.me() || view.has(f.b))) { theirs.add(f.a); for (const x of f.va || []) theirs.add(x); }
-          if (theirs.size) for (let i = F.length - 1; i >= 0; i--) if (theirs.has(F[i])) F.splice(i, 1);
-        }
-        head.F = F.map(short); head.n = (io.greeters() || []).length;
-        if (direct || fr) { head.skip = direct ? 'direct' : 'friend'; head.since = -1; head.seen.clear(); }
-        else if (!F.length) { head.since = -1; head.seen.clear(); }
-        else {
-          head.skip = '';
-          if (head.since < 0) head.since = now;
-          // TURN.15.2: a link up for the span of one merge whose two ends both sit in my part joins nothing new: it is
-          // not this part's link out, and a third part of the meeting may still need one.
-          const mine = (x) => x === io.me() || view.has(x);
-          const inside = (a, b, upAt) => upAt > 0 && now - upAt >= MERGE_MS && mine(a) && mine(b);
-          let has = false;
-          for (const L of links.values()) if ((L.opener || view.has(L.far)) && !inside(io.me(), L.far, L.state === 'up' ? L.upAt : -1)) { has = true; break; }
-          for (const f of io.facts() || []) if (f && !f.gone && f.up && mine(f.a) && !inside(f.a, f.b, f.s || -1)) { has = true; break; }
-          if (!has && turnWaited(now, F) && now >= head.retryAt) {
-            // TURN.15.1: which part is "the lower" must read the same from both sides, so a part's place in the order is
-            // its lowest greeter on the door's list (the one thing both heads read), or me: never the lowest id of my view.
-            let myMin = io.nid(io.me()); for (const g of io.greeters() || []) { if (!g || g === io.me() || !view.has(g)) continue; const n = io.nid(g); if (n >= 0 && n < myMin) myMin = n; }
-            const byNid = new Map(); for (const g of F) byNid.set(io.nid(g), g);
-            // The older part stays: I ask toward the oldest part I cannot reach, and only if it is older than mine. The
-            // door's list says when each greeter's part was founded; with no such word the lower id decides, as before.
-            const epOf = (n) => { const g = byNid.get(n), e = (g && io.epoch) ? io.epoch(g) : -1; return Number.isInteger(e) ? e : -1; };
-            const pick = T.turnPick52(Array.from(byNid.keys()), epOf, myMin, io.myEpoch ? io.myEpoch() : -1);
-            if (pick >= 0) {
-              const g = byNid.get(pick);
-              const L = newLink(g, linkName(io.me(), g, K.TURN_FREE_LINKS), true);
-              head.retryAt = now + RETRY_MS;
-              sendAsk(L);
-            }
-          }
-        }
-      }
+      subStep(now);
       if (now - lastFactAt >= FACT_EVERY_MS) {
         lastFactAt = now;
         for (const L of links.values()) if (L.state === 'up') io.publish(factOf(L));
@@ -855,7 +854,11 @@
       factStaleMs: FACT_STALE_MS,
       holds(pid) { const L = links.get(pid); return !!L && L.state !== 'closed'; },
       isLink(pid) { const L = links.get(pid); return !!L && (L.state === 'up' || L.state === 'dial'); },
-      holding() { return holding(io.now()); },   // TURN.4.4
+      holding() { return (sub.st !== 'idle' && sub.st !== 'found') || Array.from(links.values()).some((L) => L.opener && L.state !== 'up'); },   // a subroom ask or my pipe is on its way
+      // THE SUBROOM ASK's outcome for the page this tick (header): { join }, { found }, { wait }, { refused, retryAt }, or null
+      subAsk() { return sub.out; },
+      // The pipes this page holds an end of, for the media plane: the far end's peer id and subroom, the pipe, who opened it.
+      pipeEnds() { const out = []; for (const L of links.values()) if (L.farPid) out.push({ peer: L.far, sub: L.opener ? L.farR : Number(L.l.slice(1)), pipe: L.l, opener: !!L.opener, video: !!L.video, up: L.state === 'up' }); return out; },
       videoBlocked(pid) { const L = links.get(pid); return !!L && (!L.video || L.busy); },
       // TURN.13: the step my video takes on this link ({ maxBitrate, scale, fps }), null when nothing limits it.
       videoStep(pid) { const L = links.get(pid); return L && L.video && L.thr && L.thr.step >= 0 ? L.thr : null; },
@@ -876,7 +879,7 @@
           pool: L.paidMe ? 'paid' : 'free', paid: L.paid ? L.paid.state() : null, paidRefusal: L.paid ? L.paid.refusal() : null, paidFar: L.paidFar,
           vouched: L.vouched, video: L.video, upAt: L.upAt, side: L.side.length, web: L.web, webHost: L.webHost || null,
           step: L.thr ? L.thr.step : null, cap: L.cap || null, busy: L.busy, farBusy: L.farBusy, standbyN: L.standbyN, lastSwitchMs: L.lastSwitchMs || null });
-        return { links: out, head: Object.assign({}, head, { seen: Array.from(head.seen.entries()).map(([g, t]) => [short(g), t]) }) };
+        return { links: out, sub: { st: sub.st, out: sub.out, list: sub.list.slice(), retryAt: sub.retryAt, found: sub.found } };
       },
     };
   }
@@ -884,8 +887,8 @@
   const api = {
     DEFAULT_WORKER, WORKER_KEY, FETCH_TIMEOUT_MS, RETRY_BASE_MS, RETRY_MAX_MS, SIDE_MAX, STANDBY_SWITCH_MS, THROTTLE_LOOK_MS, THROTTLE_UP_MS,
     THROTTLE_STEPS, throttlePlan, throttleNext, stepOf,
-    retryDelayMs, parseIce, hasTurnServer, webHostOk, workerBase, askIce, createCredentials,
-    vouchToken, vouchParts, tvOk, TV_KEYS, linkName, linkId, clientEnd, pausedBy, vouchPlan, createLinks,
+    retryDelayMs, parseIce, hasTurnServer, webHostOk, workerBase, askIce, askSub, createCredentials,
+    vouchToken, vouchParts, tvOk, TV_KEYS, linkId, clientEnd, pausedBy, vouchPlan, createLinks,
   };
   GifOS.meetTurn = api;
   if (isNode) module.exports = api;

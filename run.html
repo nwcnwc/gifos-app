@@ -36177,15 +36177,24 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // that came after the knocker did. Otherwise the door asks for a fresh one
     // and answers 'wait'. undefined when there is no list to read (not seated,
     // not a greeter): an unread count lets people in.
+    // THE MEETING'S COUNT. A meeting may be several subrooms joined by TURN pipes, and an admin room's limit counts them
+    // all: the count is the mesh's shown count of the whole meeting (meetingCount), or my door's own count where the
+    // mesh gives none. null: not known yet (a subroom whose pipe has not told it the meeting's size), so the knock waits.
+    function subsMeetingCount() {
+      try { if (meshNode && typeof meshNode.meetingCount === 'function') return meshNode.meetingCount(); } catch (e) {}
+      return subsListLen;
+    }
     function subsRoomCount(id) {
       const ms = meshSeat();
       if (!ms || ms.state !== 3) return undefined;
       if (!subsWaitList.has(id)) { subsWaitList.set(id, Date.now()); if (subsWaitList.size > 64) subsWaitList.delete(subsWaitList.keys().next().value); }
-      if (subsListLen != null && subsListAt >= subsWaitList.get(id)) return subsListLen + 1;
+      if (subsListLen != null && subsListAt >= subsWaitList.get(id)) { const n = subsMeetingCount(); return n == null ? 'wait' : n + 1; }
       let asked = false; try { asked = !!(meshNode && meshNode.recountDoor && meshNode.recountDoor()); } catch (e) {}
       if (asked) return 'wait';
       subsWaitList.delete(id);
-      return subsListLen != null ? subsListLen + 1 : undefined;
+      if (subsListLen == null) return undefined;
+      const n = subsMeetingCount();
+      return n == null ? 'wait' : n + 1;
     }
     // THE PLAN IS UNKNOWN, not absent, to a door that has not yet heard the
     // admin's signed orders (a door seated a moment ago) while the room may
