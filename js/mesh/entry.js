@@ -61,6 +61,7 @@
       this.rowGen = 0; this.rowLedgerLast = ''; this.rowGenSeenId = -1; this.rowGenSeen = -1;   // V7b
       this.rcRound2 = false; this.rcRound2At = -1; this.rcPendWait = K.RC_WAIT;
       this.f.fabricDupMint(id, c, owner);   // MESH_DUPLOG forensics: the fabric compares against its own table
+      this.byeByDoor();   // D6c.4: the goodbye for the place I left while cut off goes out as I sit again
       this.trace('TAKE', id, c, 'placer=%d from=%s', owner, this.hasCoord ? coordStr(this.coord) : '-');
       this.myPlacer = owner;
       this.l13Wit.length = 0;
@@ -640,7 +641,7 @@
     },
 
     // C++: mesh_seat.inc:Seat::byeByDoor
-    // D6c.4: a seat that left its cell while cut off says its goodbye through the greeter it re-enters by: its own signed
+    // D6c.4: a seat that left its cell while cut off says its goodbye as it sits again, through the greeter it re-entered by: its own signed
     // goodbye for the cell it left is routed to every cell that links it, so the cell is free when its seat is gone.
     byeByDoor() {
       if (this.hasCoord || this.gateway < 0 || !this.leftCk || this.leftTo >= 0 || this.TICK - this.leftAt > K.LEASE_T) return;
