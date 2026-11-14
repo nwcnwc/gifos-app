@@ -12038,29 +12038,23 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // sponsorSend: carry envelope envl toward envl.to when the relay cannot
     // (§FWD). Returns true iff the frame was handed to SOME viable path.
-    // TURN.14.4 / TURN.14.11 (js/mesh/page/env.js t14Env): a mesh frame in an envelope that may not cross my TURN pc to this
-    // peer. 0: send it there; 1: not over this pc; 2: consumed (my seat took the ask back, or a third party's placement stops here).
-    const t14Env = (pid, envl, onward) => (envl && envl.k === 'fmesh' && envl.m && meshNode && meshNode.penv && meshNode.penv.t14Env ? meshNode.penv.t14Env(pid, envl.m, onward) : 0);
     function sponsorSend(envl) {
       const to = envl.to;
       // L16.3.2: a reply starts back along the list its frame crossed. No such channel now: the rungs, the list dropped.
       if (Array.isArray(envl.rt)) {
         const back = envl.rt.length ? peers.get(envl.rt[envl.rt.length - 1]) : null;
-        const tb = back ? t14Env(back.id, envl) : 0; if (tb === 2) return true;
-        if (back && !tb && back.connected && back.dc && back.dc.readyState === 'open') { envl.rt = envl.rt.slice(0, -1); dcSend(back, envl); return true; }
+        if (back && back.connected && back.dc && back.dc.readyState === 'open') { envl.rt = envl.rt.slice(0, -1); dcSend(back, envl); return true; }
         delete envl.rt;
       }
       // 1) the classic mutual-DC friend (one hop, deterministic pick)
       const cands = myConns().filter((r) => r !== to && (connsOf.get(r) || []).includes(to)).sort();
-      for (const r of cands) {   // the first friend whose pc this frame may cross (TURN.14.4: an entry ask stays on its side)
+      for (const r of cands) {   // the first friend with an open channel
         const fp = peers.get(r); if (!(fp && fp.dc && fp.dc.readyState === 'open')) break;
-        const t = t14Env(r, envl); if (t === 2) return true; if (t === 1) continue;
         dcSend(fp, envl); return true;
       }
       // 2) the mesh itself: my one open-DC step toward the target's seat
       const hp = nextHopDc(to, envl.tc);
-      const th = hp ? t14Env(hp.id, envl) : 0; if (th === 2) return true;
-      if (hp && !th) { dcSend(hp, envl); return true; }
+      if (hp) { dcSend(hp, envl); return true; }
       // 3) the DOOR (the friendless-newcomer bootstrap): sealed over the relay
       // to a socketed seat wired near the target, else a greeter, which
       // hop-forwards it onward over its own channels. Throttled per target —
@@ -12076,8 +12070,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // NOROOM / FINDACK / HOME reaches a knocker: back along the FIND's path
       // to the greeter that holds the knocker's bootstrap channel.
       const cp = crumbPeer(to);
-      const tc = cp ? t14Env(cp.id, envl) : 0; if (tc === 2) return true;
-      if (cp && !tc) { dcSend(cp, envl); return true; }
+      if (cp) { dcSend(cp, envl); return true; }
       // 4) one other live channel (lowest id): the frame enters the room's
       // connected component, which has another chance to land a real last
       // hop (fwdOnward's dedup and ttl bound the walk). Never the relay: an
@@ -12092,7 +12085,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const alts = [];
       for (const [pid, p] of peers) { if (pid !== to && pid !== myId && p.connected && p.dc && p.dc.readyState === 'open') alts.push(pid); }
       alts.sort();
-      for (const a of alts) { const t = t14Env(a, envl); if (t === 2) return true; if (t === 1) continue; txStats.doorSig++; dcSend(peers.get(a), envl); return true; }
+      for (const a of alts) { txStats.doorSig++; dcSend(peers.get(a), envl); return true; }
       return false;
     }
     // fwdCrumb: pid -> { via, at }: the channel peer that last delivered a
@@ -12158,7 +12151,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (kind === 'fsig') envl.p = crossed.concat(myId);
       const handoff = (p) => {
         if (!p || p.id === viaPid || p.id === m.from || crossed.includes(p.id) || !(p.connected && p.dc && p.dc.readyState === 'open')) return false;
-        const t = t14Env(p.id, envl, true); if (t === 2) { if (m.id) fwdSeenNote(fwdSeen, m.id); return true; } if (t === 1) return false;   // TURN.14.4 / 14.11
         if (m.id) fwdSeenNote(fwdSeen, m.id);
         txStats.hopFwd++; dcSend(p, envl); return true;
       };
@@ -12482,7 +12474,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         staleHealAt.set(pid, now);
         if (typeof clog === 'function') clog('grant-heal ' + String(pid).slice(0, 6) + ' (prev-key frame)');
       pwLog('grant-heal→' + String(pid).slice(0, 6) + ' ep=' + pwEpoch);
-        if (pd && pd.dc && pd.dc.readyState === 'open') txm(() => net.seal(prevRoomE2E, retainedGrant).then((env) => net.sendChunked(env, (piece, str) => { try { pd.dc.send(str); } catch (e) {} })));
+        if (pd && pd.dc && pd.dc.readyState === 'open' && !standbyHolds(pd, retainedGrant)) txm(() => net.seal(prevRoomE2E, retainedGrant).then((env) => net.sendChunked(env, (piece, str) => { try { pd.dc.send(str); } catch (e) {} })));
         else { const fs = pwFramesOf(retainedGrant); if (fs) for (const f of fs) relaySendSealed(pid, f.k, f, prevRoomE2E); }
       });
     }
@@ -12537,11 +12529,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         e.n++; e.b += JSON.stringify(msg).length;
       } catch (e) {}
     }
+    // A TURN pipe's WARM STANDBY is silent until it takes the pipe over (js/meet-turn.js): its channel carries only
+    // the link's own handshake and the connection's upkeep (its renegotiation), never a mesh frame, fold, flood, chat,
+    // file or clock. Every send to a peer passes here; the moment the standby takes over, its channel is ordinary.
+    // The offer-turn handshake (rreq / rgo / rwait) is part of that renegotiation: without it the end that does not make
+    // offers could never add the standby's one trackless audio slot (pipeReserve), and the takeover would wait for an offer.
+    const STANDBY_KINDS = new Set(['tv', 'roffer', 'ranswer', 'sig', 'rreq', 'rgo', 'rwait']);
+    function standbyHolds(p, msg) {
+      try { return !!(p && turnLinks && turnLinks.standby(p.id) && !(msg && STANDBY_KINDS.has(msg.k))); } catch (e) { return false; }
+    }
     // Sealed frame over this pair's DataChannel (chat, files, relay control).
     const dcSend = (p, msg) => {
       if (p && p.wireHold) return p.wireHold.then(() => dcSend(p, msg)); // DEBUG lever, see renegotiate
       if (p && p.testTx) { p.testTx.push(msg); return Promise.resolve(); } // openLinkForTest: a channel that only records
       if (!p || !p.dc || p.dc.readyState !== 'open') return Promise.resolve();
+      if (standbyHolds(p, msg)) return Promise.resolve();
       if (turnWeb.size && (msg.k === 'roffer' || msg.k === 'ranswer' || msg.k === 'sig')) { const w = turnWeb.get(p.id); if (w && w.channel(msg)) return Promise.resolve(); }   // the web path negotiates with its end in this page
       const dc = p.dc;
       if (typeof clog === 'function') dcTally(msg); // DEBUG: what the channel bytes are
@@ -12764,7 +12766,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // line queued behind the whole pin.
     const fileTx = net.makeChain();
     const dcSendFile = (p, msg) => {
-      if (!p || !p.dc || p.dc.readyState !== 'open') return Promise.resolve();
+      if (!p || !p.dc || p.dc.readyState !== 'open' || standbyHolds(p, msg)) return Promise.resolve();
       const dc = p.dc;
       return fileTx(() => net.seal(roomE2E, msg).then((env) =>
         net.sendChunked(env, (piece, str) => { try { dc.send(str); } catch (e) {} })));
@@ -12978,6 +12980,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // neither the sweeper nor L22 closes it), NO video on an unvouched link, the room's link facts and subscribers'
     // vouches (room-wide gossip: tlink, tsub), and the paused-video note on the tiles a link holds back.
     let turnLinks = null, turnTimer = null, turnSubAt = 0;
+    let turnSubWantAt = 0, turnRepipe = 0;   // my seat asked for the meeting's rooms (opts.sub.ask); my room's pipe to re-pipe
+    const turnDoorsWait = [];   // asks waiting for the relay's door list
     const turnWeb = new Map();   // far peer id -> the web path end of that link (js/meet-tunnel.js)
     // The relay says it carries TURN handshakes (`tv` frames, the tvouch verb) on its joined frame. An older relay closes a
     // socket that sends an unlisted type, so without its word this page asks for no link and answers none.
@@ -13060,7 +13064,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       else if (r.hasCoord && r.state === 3) {
         joinEverSat = true;
         const lone = !!r.islandFounder && r.line === r.id && !r.l850Seated && GifOS.meshTopo.ckey(r.coord) === 0;
-        ph = !lone ? 'seated' : (turnLinks && turnLinks.holding && turnLinks.holding()) ? 'linking' : 'founding';
+        ph = !lone ? 'seated' : (turnLinks && turnLinks.linking()) ? 'linking' : 'founding';
       } else if (joinEverSat) ph = 'moving';
       else if (Number.isInteger(r.ehAt) && r.ehAt >= 0 && r.TICK - r.ehAt < K.ISLAND_WAIT) ph = 'waiting';
       else if (r.state === 1) ph = 'asking';
@@ -13103,6 +13107,43 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         sendTv: (pid, f) => { const p = peers.get(pid); if (p && p.dc && p.dc.readyState === 'open') { try { dcSend(p, f); return; } catch (e) {} } relaySendSealed(pid, 'tv', f); },
         askVouch: (dev, l) => relaySendObj({ t: 'tvouch', to: dev, l }),
         ask: GifOS.meetTurn.askIce(window.fetch.bind(window)),
+        // THE SUBROOM ASK (js/meet-turn.js): who asks, the relay's signed list of the meeting's doors, my door, the plan's
+        // limit for a NEW pipe, and the seat of my room that ends a pipe's warm standby on my side.
+        askSub: GifOS.meetTurn.askSub(window.fetch.bind(window)),
+        asker: () => {
+          if (!meshNode) return null;
+          if (meshNode.sub === 0 && Date.now() - turnSubWantAt < K.TURN_WAIT * meshNode.tickMs()) return 'joiner';   // my seat asked (opts.sub.ask) lately: it asks again each silent round
+          if (meshNode.sub > 0 && turnRepipe === meshNode.sub) return 'repipe';
+          return null;
+        },
+        tdoors: () => new Promise((res) => {
+          turnDoorsWait.push(res);
+          if (turnDoorsWait.length === 1) relaySendObj({ t: 'tdoors' });
+          const giveUp = () => { const i = turnDoorsWait.indexOf(res); if (i >= 0) { turnDoorsWait.splice(i, 1); res(null); } };   // no answer: no list this time
+          setTimeout(giveUp, GifOS.meetTurn.FETCH_TIMEOUT_MS);
+        }),
+        probeDoor: () => false,
+        sub: () => (meshNode ? meshNode.sub : 0),
+        knownSub: (r) => !!(meshNode && meshNode.knownSub(r)),
+        meetingFull: () => {
+          if (!hasAdminRoom() || !GifOS.sub) return false;
+          const n = subsMeetingCount();
+          return n != null && GifOS.sub.doorVerdict({ adminRoom: true, roomTier: subsRoomTier() || null, count: n }) !== 'let-in';   // at the limit already
+        },
+        // SUB.7: among the other row heads of my view keep the capable ones (not a phone) that
+        // are not the pipe's far end and end fewer than two standbys, the fewest pipes and standbys first; else the next
+        // seat of my row; else nobody (I keep that end myself). Pipe and standby counts are what the link facts say.
+        standbySeat: () => {
+          if (!meshNode || !turnLinks) return null;
+          const far = new Set(turnLinks.pipeEnds().filter((e) => !e.standby).map((e) => e.peer));
+          const load = (pid, sb) => { let n = 0; for (const f of turnFacts.values()) if (f.a === pid || f.b === pid) n++; for (const e of turnLinks.pipeEnds()) if (e.peer === pid && (!!e.standby === sb)) n++; return n; };
+          const cs = meshNode.standbyCands().filter((c) => c.pid !== myId && !far.has(c.pid) && c.dev && load(c.pid, true) < 2);
+          let best = null;
+          for (const c of cs) if (c.head) { const n = load(c.pid, false) + load(c.pid, true); if (!best || n < best.n) best = { c, n }; }
+          if (best) return { pid: best.c.pid, dev: best.c.dev };
+          const row = cs.find((c) => !c.head);
+          return row ? { pid: row.pid, dev: row.dev } : null;
+        },
         dial: (pid) => { seatAskAt.set(pid, Date.now()); seatMark.set(pid, cleanMark({ s: 1 })); seatDial(pid); },
         reset: (pid) => { const p = peers.get(pid); if (p && p.pc && !p.connected) rebuildPc(p, 'turn-settings'); },
         // my end of the pair's pc takes its current settings now (no restart): the next move's candidates come from them
@@ -13117,7 +13158,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (iInitiate(pid)) sendOffer(pid, true); else if (l) { if (pathUp) relaySendSealedOrDc(p, { k: 'tv', q: 'i', l }); else relaySendSealed(pid, 'tv', { k: 'tv', q: 'i', l }); }
         },
         keep: (pid) => { const s = meshSeat(); if (!s || !s.keepAdd || !s.keepPeers) return; const ks = s.keepPeers(); if (ks.has(pid) || ks.size < K.KEEP_MAX) s.keepAdd(pid, K.TURN_DIAL); },
-        drop: (pid, why) => { const p = peers.get(pid); if (!p) return; if (!linkTo(pid)) pcBye(pid, 'turn-' + why); else if (p.pc) rebuildPc(p, 'turn-' + why); },
+        drop: (pid, why, info) => {
+          // a pipe of my room lost with no standby taking over: a head of my room re-pipes it (SUB.3)
+          if (info && info.pipe && meshNode && meshNode.sub > 0 && info.sub === meshNode.sub && ['lost', 'gone', 'dialfail', 'expired', 'far-closed'].indexOf(why) >= 0) turnRepipe = meshNode.sub;
+          const p = peers.get(pid); if (!p) return; if (!linkTo(pid)) pcBye(pid, 'turn-' + why); else if (p.pc) rebuildPc(p, 'turn-' + why);
+        },
         subs: () => { const now = Date.now(), out = []; for (const [pid, s] of turnSubs) if (s.exp * 1000 > now && (pid === myId || meshKnows(pid))) out.push({ key: pid, tier: s.tier }); return out; },
         ticket: () => {
           const ok = (pid) => { const s = turnSubs.get(pid); return !!s && s.exp * 1000 > Date.now() && (pid === myId || meshKnows(pid)); };
@@ -13236,9 +13281,28 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         } else if (!show && el) el.remove();
       }
     }
+    // The subroom ask's answer: my door is r (a listed room I reached: no grant; a new room or a re-pipe: its grant).
+    // The seat takes it (meshNode.subGo knocks at the new door inside the call; the relay socket follows the door).
+    let turnSubDone = '';
+    function turnSubApply(o) {
+      if (!o || !meshNode) return;
+      if (o.found != null) {
+        const k = 'f' + o.found + ':' + o.link + ':' + String(o.sg).slice(-8);
+        if (turnSubDone === k) return;
+        turnSubDone = k;
+        if (turnRepipe === o.found) turnRepipe = 0;   // a re-pipe keeps my door
+        if (meshNode.sub === 0) meshNode.subGo(o.found, o.sg);
+        turnNote('turn-sub found ' + o.found + ' far ' + o.far.d + '@' + o.far.r);
+      } else if (o.join != null && meshNode.sub === 0) {
+        turnSubDone = 'j' + o.join;
+        meshNode.subGo(o.join);
+        turnNote('turn-sub join ' + o.join);
+      } else if (o.refused === 'full') turnNote('turn-sub refused: the meeting is full');
+    }
     function turnStep() {
       if (!turnLinks || !relayTv) return;
       try { turnLinks.step(); } catch (e) { turnNote('turn-step-err ' + String(e && e.stack || e).slice(0, 160)); }
+      try { turnSubApply(turnLinks.subAsk()); } catch (e) { turnNote('turn-sub-err ' + String(e && e.message || e).slice(0, 120)); }
       for (const p of peers.values()) if (turnLinks.holds(p.id) || (p.pc && p.pc.__turnGuarded)) turnApplyVideo(p);
       turnWatch();
       pipeWatch();
@@ -15864,6 +15928,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // What a barred peer does get: the plain signed change order (no password), which sends a page to the door as any change does.
     function pwBootOf(grant) { return grant && grant.wb ? { k: 'pwreset', by: grant.by, w: grant.wb, ep: grant.ep } : null; }
     function pwSealTo(q, msg, key) {
+      if (standbyHolds(q, msg)) return;
       txm(() => net.seal(key, msg).then((env) => net.sendChunked(env, (piece, str) => { try { q.dc.send(str); } catch (e) {} })));
     }
     // One hop of a ban: my open, signed channels, under the key they still read. A peer on `no` gets the boot order instead.
@@ -17134,7 +17199,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         excluded: isEjected, // ejected forgers: their mesh frames never reach the seat
         urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
         holdDoor: () => pwWaitProof && !meshCoord(),
-        netTag: () => netTagNow,   // my registration at the door says which network I am on (the tag my beat carries)
+        netTag: () => netTagNow,
+        capable: () => { const hc = navigator.hardwareConcurrency | 0; return !IS_MOBILE && !(hc > 0 && hc <= 2); },   // a relayed pipe may end at my seat when it heads a row (the device class the mesh's tier reads)   // my registration at the door says which network I am on (the tag my beat carries)
         netKind: () => (directPath === 'blocked' ? 2 : directPath === 'strict' ? 1 : directPath === 'ok' ? 0 : -1),   // and what it measured as (the seat's NAT kinds)
         doorHeld: (id) => { try { if (DEBUG_ON && window.__doorHoldAll) return true;   /* DEBUG=on only: this door answers no knock (a test picks the doors) */ const b = meetWait.blocks(id); if (b && id && amAdmin) meetWait.note(id, rosterNames[id] || 'Someone waiting'); if (b && id) sayHeld(id); return b || subsHolds(id); } catch (e) { return false; } },   // a withheld knock goes on the host's list: nothing else names a plain room's knocker
         onDoor: (kind, frame) => {
@@ -17144,6 +17210,19 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           }
         },
         sendDC: meshSendDC,
+        // ROOMS JOINED BY RELAYED CONNECTIONS (js/meet-turn.js). ask(): my seat is about to found a room on silence at
+        // door 0: true while the page's ask for the meeting's rooms is open (or now opened), false when refused, off or
+        // inside the retry time. pipeEnds(): the relayed pipes this page holds an end of (read once a mesh tick).
+        sub: {
+          ask: () => {
+            if (!turnLinks || !relayTv) return false;
+            const o = turnLinks.subAsk();
+            if (o && o.refused && Date.now() < o.retryAt) return false;
+            turnSubWantAt = Date.now();
+            return true;
+          },
+          pipeEnds: () => (turnLinks ? turnLinks.pipeEnds() : []),
+        },
         // Friend-hop's page face (env.js decides which frames; sponsorSend and fwdOnward are the rungs).
         fhop: {
           friendFor: (pid) => { const c = myConns().filter((r) => r !== pid && (connsOf.get(r) || []).includes(pid)).sort(); const fp = c.length ? peers.get(c[0]) : null; return !!(fp && fp.dc && fp.dc.readyState === 'open'); },
@@ -17154,10 +17233,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           score: (pid) => carrierScore(pid), knockNat: () => -1,
           doorSend: (pid, kind, knocker) => { const q = peers.get(pid); if (q && q.dc && q.dc.readyState === 'open') dcSend(q, { k: 'dcall', n: kind, j: knocker }); },
           roles: () => ({ jobs: Array.from(relayJobs.values(), (j) => ({ target: j.target, req: j.requester })), vias: Array.from(relayVia.values(), (r) => r.via) }),
-          // TURN.14 (the twin's fabricTurnAcross): the peers whose pc runs through a TURN link of mine (js/meet-turn.js)
-          turnPcs: () => (turnLinks ? turnLinks.turnPcs() : []),
-          turnHold: () => !!(turnLinks && turnLinks.holding && turnLinks.holding()), turnAsked: (pid) => { const at = turnAskedAt.get(pid), now = Date.now(); if (at == null || now - at > GifOS.meshConsts.consts.RELAY_TTL * meshNode.tickMs()) { if (turnAskedAt.size >= 64) turnAskedAt.clear(); turnAskedAt.set(pid, now); } },   // TURN.4.4, TURN.4.3
-          turnOn: () => !!turnLinks, turnOpened: (pid) => !!(turnLinks && turnLinks.opened(pid)), turnHeld: () => !!(turnLinks && turnLinks.anyHeld()),
+          turnAsked: (pid) => { const at = turnAskedAt.get(pid), now = Date.now(); if (at == null || now - at > GifOS.meshConsts.consts.RELAY_TTL * meshNode.tickMs()) { if (turnAskedAt.size >= 64) turnAskedAt.clear(); turnAskedAt.set(pid, now); } },   // TURN.4.4, TURN.4.3
           turnHolds: (pid) => turnHolds(pid),   // a TURN link of mine, in any state, rides the pc to this peer: that pc is no door
           claims: (r, x) => (connsOf.get(r) || []).includes(x), relayed: (pid) => relayVia.has(pid),
         },
@@ -17407,7 +17483,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (m.t === 'joined') relayTv = m.tv === 1;   // this relay vouches for TURN links (see relayTv)
       if (m.t === 'joined' && m.cap && !av) capTake(m.cap, true);   // a captured open room: the captor's ticket, checked here
       if (m.t === 'cap') { onCapFrame(m); return; }
-      if (m.t === 'tvouch') { try { if (turnLinks) turnLinks.onVouch(m); } catch (e) {} return; }   // the relay's seated vouch for one of my TURN links
+      if (m.t === 'tvouch') { try { if (turnLinks) turnLinks.onVouch(m); } catch (e) {} return; }
+      if (m.t === 'tdoors') { const w = turnDoorsWait.splice(0); for (const res of w) res(typeof m.v === 'string' ? m.v : null); return; }   // the relay's signed door list (the subroom ask)   // the relay's seated vouch for one of my TURN links
       if (m.t === 'joined') {
         updateStatus(); broadcastStatus();
         // admins[] comes from VERIFIED signatures (adminsNow, \u00a79), never the relay
@@ -21633,7 +21710,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // share can sit hundreds of seals ahead; stamping first shifted the
         // asker's offset by half that wait. Rides the free DC path.
         const dc = p.dc, t0 = m.t0;
-        if (dc && dc.readyState === 'open') txm(() => {
+        if (dc && dc.readyState === 'open' && !standbyHolds(p, { k: 'ck' })) txm(() => {
           const msg = ckReply(t0);
           return net.seal(roomE2E, msg).then((env) =>
             net.sendChunked(env, (piece, str) => { try { dc.send(str); } catch (e) {} }));
