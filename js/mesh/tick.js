@@ -251,6 +251,7 @@
       this.tlSweep();   // D5: a confirmed corpse leaves my view early
       this.authTick();
       if (this.coord.i === 0 && ((TICK % 12) === 0 || this.translost.size)) { this.rowSweep(); this.s1Fill(); }
+      if ((TICK % 12) === 0) this.l33ColSweep();   // L33.15: every home seat reads its own column
       this.homePull();   // L9.12
       if (this.l13('L13.8')) this.ownerPull();   // L13.8
       if ((TICK % 12) === 0) this.childSweep();   // a Section-1 owner sweeps its silent child row too

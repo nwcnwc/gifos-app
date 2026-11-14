@@ -10,7 +10,8 @@
   const C_ = req('./consts.js', 'meshConsts');
   const topo = req('./topo.js', 'meshTopo');
   const K = C_.consts;
-  const { ckey, unckey, down, C } = topo;
+  const { ckey, unckey, down, colMates, C } = topo;
+  const LS_OPEN = C_.enums.LS_OPEN;
 
   // The C++ passes ~0ULL (all 64 bits set) to l33MateArm to mean "the sweep's own dials". As a JS number that
   // is 2^64 (the nearest double); callers pass NONE_KEY.
@@ -87,6 +88,25 @@
       if (this.l13Merging() || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0 || this.coord.i !== 0) return false;
       if (k === NONE_KEY) return this.TICK - this.seatedAt >= 60;
       const c = unckey(k); return c.pc === 0 && c.r === this.coord.r && c.i !== 0;
+    },
+
+    // C++: mesh_mltail.inc:Seat::l33ColArm
+    // L33.15: a home seat reads its own column, mass leave or not. k is a cell of my column in another home row.
+    l33ColArm(k) {
+      if (this.l13Merging() || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0) return false;
+      const c = unckey(k); return c.pc === 0 && c.i === this.coord.i && c.r !== this.coord.r;
+    },
+
+    // C++: mesh_mltail.inc:Seat::l33ColSweep
+    l33ColSweep() {
+      const TICK = this.TICK, id = this.id;
+      if (this.standDown() || !this.hasCoord || this.state !== 3 || this.coord.pc !== 0 || this.moving) return;
+      const cm = colMates(this.coord);
+      for (let q = 0; q < C - 1; q++) {
+        const k = ckey(cm[q]); const x = this.occGet(k); if (x < 0 || x === id) continue;
+        if (this.l13MateGone(k)) { this.trace('L33.15-COLGONE', id, cm[q], 'was=%d fails=%d', x, this.f.fabricDialFails(id, x)); this.occDrop(k, 'mate-unreach'); this.live.delete(k); this.kidful.delete(k); this.s1seen.delete(k); this.tlForget(k); continue; }   // as L13.33's sweep: no court memo, no admission cooling
+        if (TICK - this.seatedAt >= 60 && !this.firstHandLive(k) && !this.softSitting(k) && this.f.fabricLinkState(id, x) !== LS_OPEN && this.f.fabricDialFails(id, x) >= 1 && (this.greetersAt < 0 || TICK - this.greetersAt > 64) && TICK - this.l13KnockAt >= 32) { this.l13KnockAt = TICK; this.emitRelay(this.genKey); this.trace('L13-KNOCK', id, this.coord, 'door col'); }   // L13.36's knock without a seeker
+      }
     },
 
     // C++: mesh_mltail.inc:Seat::l33NoSockAsk

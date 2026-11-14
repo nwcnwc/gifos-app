@@ -355,7 +355,7 @@
           // Soft / real occupant reserved. Phantom occ is free for rejoin.
           if (this.l31On() && this.l31Held(k, mm.nc)) continue;   // L31.4
           if (this.cellReserved(k) && !this.l13MateGone(k)) {
-            if ((this.l13('L13.36') || this.l33MateArm(k)) && this.coord.pc === 0 && this.occGet(k) >= 0 && !this.firstHandLive(k) && !this.softSitting(k) && (this.greetersAt < 0 || TICK - this.greetersAt > 64) && TICK - this.l13KnockAt >= 32) { this.l13KnockAt = TICK; this.emitRelay(this.genKey); this.trace('L13-KNOCK', id, this.coord, 'door'); }   // L13.36
+            if ((this.l13('L13.36') || this.l33MateArm(k) || this.l33ColArm(k)) && this.coord.pc === 0 && this.occGet(k) >= 0 && !this.firstHandLive(k) && !this.softSitting(k) && (this.greetersAt < 0 || TICK - this.greetersAt > 64) && TICK - this.l13KnockAt >= 32) { this.l13KnockAt = TICK; this.emitRelay(this.genKey); this.trace('L13-KNOCK', id, this.coord, 'door'); }   // L13.36
             continue;
           }
           if (this.courtHeld(k)) { break; }   // L3.14
