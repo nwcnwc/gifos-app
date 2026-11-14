@@ -633,6 +633,8 @@
     ["l13Wit", "[i32]"],   // vector<int>  (line 1635)
     ["lateY", "{i32:(i32,u64)}"],   // OMap<int,pair<int,uint64_t>>  (line 1637)
     ["lateYCk", "u64"],   // uint64_t = 0  (line 1637)
+    ["t20Tried", "{i32:i32}"],   // OMap<int,int>  (line 1750)
+    ["t20At", "i32"],   // int = -1  (line 1750)
     ["whAsk", "{i32:i32}"],   // OMap<int,int>  (line 1751)
     ["ehAt", "i32"],   // int = -1  (line 1751)
     ["ehAskAt", "i32"],   // int = -1  (line 1751)
@@ -1260,6 +1262,7 @@
     l1361Said: -100000,
     l1361CarriedAt: -100000,
     lateYCk: 0,
+    t20At: -1,
     ehAt: -1,
     ehAskAt: -1,
     foundKnock: false,
