@@ -259,6 +259,7 @@
     ["l30SilN", "i32"],   // int = 0  (line 1065)
     ["nlAt", "i32"],   // int = -1  (line 1065)
     ["nlSince", "i32"],   // int = -1  (line 1065)
+    ["nlEndAt", "i32"],   // int = -1  (line 1065)
     ["d5Ans", "{u64:i32}"],   // Occ  (line 1065)
     ["earAt", "i32"],   // int = -1  (line 1066)
     ["deafFloor", "i32"],   // int = -1  (line 1066)
@@ -1012,6 +1013,7 @@
     l30SilN: 0,
     nlAt: -1,
     nlSince: -1,
+    nlEndAt: -1,
     earAt: -1,
     deafFloor: -1,
     earTick: -1,
