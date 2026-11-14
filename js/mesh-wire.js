@@ -1303,6 +1303,7 @@
       },
       meetingCount() { return layer ? layer.meetingCount() : null; },
       knownSub(r) { return !!penv && penv.knownSub(r); },
+      doorSeq() { return penv ? penv.doorSeq() : 0; },   // moves each time my door's answer to a knock names a different set of greeters
       standbyCands() { return layer ? layer.standbyCands() : []; },   // the display fold beside the seat (layer.js leaf)
       // App access to the wire's relay socket (the ONE socket): signaling
       // fallback ({t:'peer'}), moderation verbs (setpw/ban/votekick), etc.
