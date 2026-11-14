@@ -321,7 +321,7 @@
       let tenOk; { const t = this.tenOf.get(m.ck); tenOk = (t !== undefined && t[0] === m.id) ? (m.tn >= 0 && m.tn === t[1]) : s4live; }
       const mine = this.occGet(m.ck) === m.id && tenOk;
       // The leaver's channel had already been dead
-      if (mine) { const l = this.linkedBy.get(m.ck); const at = this.lkAt.get(m.ck); if (l !== undefined && l === m.id && at !== undefined && TICK - at > K.DARK_LEAVE / 2) this.noChan.add(m.id); }
+      if (mine) { const l = this.linkedBy.get(m.ck); const at = this.lkAt.get(m.ck); if (l !== undefined && l === m.id && at !== undefined && TICK - at > K.DARK_LEAVE / 2 && this.unreachPair(m.id)) this.noChan.add(m.id); }   /* FHOP typing (unreachPair): only a pair the page types unreachable is held off my owned links */
       { const dh = this.darkHold.get(m.ck); if (dh !== undefined && dh === m.id) this.darkHold.delete(m.ck); }
       // WHERE it went is taken only from a stay a LINK proved
       let mvdFrom = false; if (mine && m.mvd) { const t = this.tenOf.get(m.ck); const l = this.linkedBy.get(m.ck); mvdFrom = t !== undefined && t[0] === m.id && m.tn >= 0 && m.tn === t[1] && l !== undefined && l === m.id && this.mvdOk(m.ck, m.mvd, m.id); }

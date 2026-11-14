@@ -123,7 +123,7 @@
         const at = this.lkAt.get(k); if (at === undefined) continue;
         proven++;
         if (TICK - at <= K.DARK_LEAVE) fresh++;
-        else if (this.f.fhopActive() && !this.f.fabricUnreachable(this.id, x)) blip++;   // FHOP typing: a stale channel to a peer I am not typed unreachable from is a blip friend-hop carries, not a dark link
+        else if (!this.unreachPair(x)) blip++;   // FHOP typing: a stale channel to a peer I am not typed unreachable from is a blip friend-hop carries, not a dark link
       }
       return proven > 0 && fresh === 0 && blip === 0 && this.unpAnyAt >= 0 && TICK - this.unpAnyAt <= 16;
     },
@@ -150,6 +150,9 @@
       return this.TICK - this.selfLeaseAt <= K.LEASE_T;
     },
 
+    // C++: mesh_seat.inc:Seat::unreachPair
+    unreachPair(x) { return !this.f.fhopActive() || this.f.fabricUnreachable(this.id, x); },   // THE FHOP TYPING, one predicate: my pair with x is seating's (true) or friend-hop's (false)
+
     // C++: mesh_seat.inc:Seat::retireDead
     retireDead() {
       if (!this.hasCoord || this.moving || this.state !== 3) return false;
@@ -168,7 +171,7 @@
         const streak = since !== undefined && (TICK - since > K.DARK_LEAVE || since - at <= 16);   // no silence between the last proof and the streak: it runs from the proof
         if (age <= K.CHAN_UP) recent++;
         if (age <= K.DARK_LEAVE) fresh++;
-        if (hearing && age > K.DARK_LEAVE && streak && (!this.f.fhopActive() || this.f.fabricUnreachable(this.id, x))) dead.push(x);
+        if (hearing && age > K.DARK_LEAVE && streak && this.unreachPair(x)) dead.push(x);
       }
       if (!fresh || dead.length === 0) return false;
       let move = false;

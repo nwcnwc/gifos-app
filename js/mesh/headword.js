@@ -28,6 +28,10 @@
       return 0;
     },
 
+    // x holds k by a placement signed AFTER the verdict (a proof note whose signing instant, on my clock, is later): the word told of the seat x left, not of the one it holds now.
+    // C++: mesh_headword.inc:Seat::d52Reseated
+    d52Reseated(k, x, vt) { const pn = this.ppNotes.get(k); if (pn === undefined) return false; for (const n of pn) if (n.x === x && n.loc > vt) return true; return false; },
+
     // C++: mesh_headword.inc:Seat::d52Drop
     d52Drop(k, x, head, vt) {
       const id = this.id, C_k = unckey(k);
@@ -50,6 +54,7 @@
         const k = e.k, x = e.v, c = unckey(k);
         if (ckPc(k) !== 0 || c.r !== this.coord.r || c.i === 0 || k === ckey(this.coord) || x < 0 || x === id || this.occGet(k) !== x) continue;
         let vt = TICK - e.age; { const vs = this.vacSeen.get(k); if (vs !== undefined && vs[0] === x && vs[1] < vt) vt = vs[1]; }   // a repeated word keeps its first verdict tick: a liar cannot restamp it
+        if (this.d52Reseated(k, x, vt)) { this.vacSeen.delete(k); continue; }   // seated again since: the word is spent
         const ev = this.d52Evidence(k, x, vt, false);
         if (ev === 0) { this.d52Drop(k, x, head, vt); continue; }
         if (!this.vacSeen.has(k)) { this.w.lv.D52_KEEP++; this.trace('D5.2-KEEP', id, c, 'x=%d head=%d ev=%d', x, head, ev); }
@@ -101,6 +106,7 @@
         const at = TICK - e.age;
         if (this.fhdIn.size >= C * C) eraseFirst(this.fhdIn); this.fhdIn.set(e.k, [e.v, at]);
         const vi = this.vacIn.get(e.k);
+        if (vi !== undefined && vi[0] === e.v && this.d52Reseated(e.k, e.v, vi[1])) { this.vacIn.delete(e.k); continue; }   // seated again since the drop: no lie to undo
         if (vi !== undefined && vi[0] === e.v && at > vi[1] + K.D52_FLIGHT && this.occGet(e.k) < 0) {
           this.trace('D5.2-RESTORE', id, c, 'x=%d by=%d', e.v, m.from); this.w.lv.D52_RESTORE++; this.w.lv.D52_FLAG++;
           this.setOcc(e.k, e.v); this.s1seen.set(e.k, at); this.vacIn.delete(e.k); this.l25Mark(head); this.trace('D5.2-HOSTILE-HEAD', id, c, 'x=%d head=%d', e.v, head);
@@ -118,7 +124,7 @@
       const TICK = this.TICK, id = this.id;
       for (const [k, v] of Array.from(this.vacSeen)) {
         const x = v[0], vt = v[1];
-        if (!this.hasCoord || this.occGet(k) !== x || TICK - vt > K.D52_KEEPMAX) { this.vacSeen.delete(k); continue; }
+        if (!this.hasCoord || this.occGet(k) !== x || TICK - vt > K.D52_KEEPMAX || this.d52Reseated(k, x, vt)) { this.vacSeen.delete(k); continue; }
         const ev = this.d52Evidence(k, x, vt, false), head = this.occGet(ckey({ pc: 0, r: this.coord.r, i: 0 }));
         if (ev === 0) { this.vacSeen.delete(k); this.d52Drop(k, x, head, vt); continue; }
         if (ev === 2 && head >= 0 && !this.l25Bad(head)) { const c = unckey(k); this.w.lv.D52_FLAG++; this.trace('D5.2-HOSTILE-HEAD', id, c, 'x=%d head=%d', x, head); this.l25Mark(head); }
