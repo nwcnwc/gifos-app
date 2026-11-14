@@ -441,7 +441,7 @@
     //   { found: r, sg, far, link }        a new subroom (or a re-pipe, r unchanged): found it with sg; the pipe is opened here
     //   { wait: 1 }                        a door list, an answer or a door probe is on its way, or a subroom is opening
     //   { refused: why, retryAt }          budget, rate, no far end, the meeting full, no service: no pipe, ask again at retryAt
-    const sub = { st: 'idle', gen: 0, out: null, retryAt: 0, token: null, list: [], probe: [], found: null, why: '', heads: null, tried: null };
+    const sub = { st: 'idle', gen: 0, out: null, retryAt: 0, token: null, list: [], probe: [], found: null, why: '', heads: null, tried: null, mult: 1, lastWhy: '', doorsSig: '', repipe: false };
     // THE WARM STANDBY (TURN.9 for pipes). Every live pipe l<r> keeps a standby s<r>: a second relayed connection between
     // OTHER seats of the same two subrooms, connected and idle (keep-alives only: no media, no mesh traffic). When a live
     // end leaves (its goodbye) or its connection dies (the pc's own verdict), the standby pair takes the pipe over at once
@@ -478,6 +478,8 @@
       if (L.sb && L.liveEnd && L.liveEnd !== io.me()) { try { io.sendTv(L.liveEnd, { k: 'tv', q: 'x', l: L.l }); } catch (e) {} }
       if (L.sb && L.liveEnd === io.me()) { const P = livePipe(pipeNo(L.l)); if (P) P.sbUp = false; }
       log('turn-link closed ' + short(L.far) + ' ' + why);
+      if (L.upAt > 0) subChanged('a pipe of my room');
+      if (!L.sb && L.l[0] === 'l' && L.upAt > 0 && why !== 'standby-took-over' && why !== 'replaced' && why !== 'healed' && (io.sub ? io.sub() : 0) === pipeNo(L.l)) sub.repipe = true;   // SUB.3 (a): an end of my room's pipe that closed with no takeover asks at once
       try { io.drop(L.far, why, { pipe: !L.sb && L.l[0] === 'l' && L.upAt > 0, sub: pipeNo(L.l) }); } catch (e) {}   // pipe l<r> is subroom r's (a pipe that came up: one that never did is asked for again as before)
       if (L.farPid && !L.sb) { try { io.publish({ id: L.id, a: L.opener ? io.me() : L.far, b: L.opener ? L.far : io.me(), up: 0, v: 0, gone: 1 }); } catch (e) {} }
       try { io.changed(L.far); } catch (e) {}
@@ -830,6 +832,27 @@
       return F.some(older);
     }
 
+    // ---- THE DOOR RE-GRANT (the relay restarted and forgot my door r > 0: my seat heard tag 3) -------------------------
+    // One ask for a fresh grant for my own door; the page hands it to the seat (meshNode.subGo(r, sg)), which re-mints the
+    // door. A re-grant still out (another seat of my room asked): ask again after TURN_DIAL; refused: after TURN_RETRY.
+    const rg = { want: false, st: 'idle', retryAt: 0, out: null, gen: 0 };
+    function regrantStep(now) {
+      if (!rg.want || rg.st !== 'idle' || now < rg.retryAt || !io.askSub) return;
+      rg.st = 'busy'; const g = ++rg.gen;
+      Promise.resolve(io.tdoors ? io.tdoors() : null).then((x) => {
+        const d = x && typeof x === 'object' ? x.v : x;
+        if (!d) return null;
+        return io.askSub({ room: String(io.sid()), doors: d, regrant: 1 });
+      }).then((a) => {
+        if (g !== rg.gen) return;
+        rg.st = 'idle';
+        if (a && Number.isInteger(a.r) && a.r > 0 && typeof a.sg === 'string') { rg.want = false; rg.out = { r: a.r, sg: a.sg }; log('turn-sub door ' + a.r + ' re-granted'); }
+        else if (a && a.live) { rg.want = false; log('turn-sub door has greeters again'); }
+        else if (a && a.pending === 'opening') rg.retryAt = io.now() + RESEND_MS;
+        else rg.retryAt = io.now() + RETRY_MS;
+      }, () => { if (g === rg.gen) { rg.st = 'idle'; rg.retryAt = io.now() + RETRY_MS; } });
+    }
+
     // ---- THE WARM STANDBY ---------------------------------------------------------------------------------------------
     function livePipe(r) { for (const L of links.values()) if (!L.sb && L.l === 'l' + r && L.state !== 'closed') return L; return null; }
     function standbys() { let n = 0; for (const L of links.values()) if (L.sb) n++; return n; }
@@ -905,19 +928,30 @@
     // order; a re-pipe probes none) → none reached: a fresh door list → ask with the list's token → 200: the pipe.
     // An answer that arrives after the machine moved on (a newer generation) is dropped.
     const busyOut = { wait: 1 };
+    // A REFUSED ASK BACKS OFF: the wait doubles from TURN_RETRY up to RETRY_MAX_X times it, and starts over at once when
+    // something the page sees changes (the door list, a pipe or standby of my room, the kind of refusal).
+    const RETRY_MAX_X = K.TURN_RETRY_MAX_X || 8;
+    function subRefuse(now, why) {
+      if (why !== sub.lastWhy) sub.mult = 1;
+      sub.lastWhy = why;
+      const at = now + RETRY_MS * sub.mult;
+      sub.mult = Math.min(RETRY_MAX_X, sub.mult * 2);
+      subIdle(now, { refused: why, retryAt: at }, at);
+    }
+    function subChanged(what) { if (sub.mult > 1) { sub.mult = 1; if (sub.st === 'idle' && sub.retryAt > io.now()) sub.retryAt = io.now(); log('turn-sub ' + what + ' changed: ask again now'); } }
     function subIdle(now, out, retryAt) { sub.st = 'idle'; sub.token = null; sub.retryAt = retryAt || 0; sub.out = out; sub.gen++; }
     function subDoors(withToken) {
       const g = ++sub.gen; sub.st = 'doors'; sub.out = busyOut;
       Promise.resolve(io.tdoors ? io.tdoors() : null).then((x) => {
         if (g !== sub.gen) return;
         const d = x && typeof x === 'object' ? x.v : x;
-        if (d) { sub.devPid = (x && typeof x === 'object' && x.p) || {}; sub.heads = doorHeads(d, sub.devPid); }
-        if (!d) { subIdle(io.now(), { refused: 'no-doors', retryAt: io.now() + RETRY_MS }, io.now() + RETRY_MS); return; }
+        if (d) { sub.devPid = (x && typeof x === 'object' && x.p) || {}; sub.heads = doorHeads(d, sub.devPid); const sg = doorsSig(d); if (sub.doorsSig && sg !== sub.doorsSig) subChanged('the door list'); sub.doorsSig = sg; }
+        if (!d) { subRefuse(io.now(), 'no-doors'); return; }
         // before a new number is asked for: a listed room whose heads this fresh door list names and I have not dialled
         // yet (it opened while I tried the others) is tried first; the service would read its greeters as unreachable
         if (withToken && untried().length) { log('turn-sub a listed room opened: trying its heads'); sub.st = 'probe'; return; }
         subAsk(d, withToken ? sub.token : null);
-      }, () => { if (g === sub.gen) subIdle(io.now(), { refused: 'no-doors', retryAt: io.now() + RETRY_MS }, io.now() + RETRY_MS); });
+      }, () => { if (g === sub.gen) subRefuse(io.now(), 'no-doors'); });
     }
     function subProbeDoors() {
       const g = ++sub.gen; sub.st = 'doors'; sub.out = busyOut;
@@ -956,12 +990,13 @@
         }
         const why = (a && a.unavailable) ? String(a.unavailable).slice(0, 40) : 'no-answer';
         log('turn-sub refused ' + why);
-        subIdle(now, { refused: why, retryAt: now + RETRY_MS }, now + RETRY_MS);
-      }, () => { if (g === sub.gen) subIdle(io.now(), { refused: 'no-answer', retryAt: io.now() + RETRY_MS }, io.now() + RETRY_MS); });
+        subRefuse(now, why);
+      }, () => { if (g === sub.gen) subRefuse(io.now(), 'no-answer'); });
     }
     // The heads the relay's door list names per door, as peer ids (the answer's own map; the signed list holds device
     // tags only): at most PROBE_HEADS per door, in the list's order.
     const PROBE_HEADS = 2;
+    function doorsSig(td) { try { const t = String(td).split('.')[1].replace(/-/g, '+').replace(/_/g, '/'); const o = JSON.parse(atob(t + '='.repeat((4 - (t.length % 4)) % 4))); return JSON.stringify((o.doors || []).map((x) => [x.r, (x.g || []).map((h) => h.d)])); } catch (e) { return ''; } }
     function doorHeads(td, peers) {
       const out = new Map();
       try {
@@ -975,6 +1010,7 @@
     function untried() { const out = []; for (const r of sub.probe || []) for (const p of (sub.heads && sub.heads.get(r)) || []) if (!(sub.tried && sub.tried.has(p))) out.push(p); return out; }
     function subFound(a) {
       const relink = sub.asker === 'repipe';   // (for the log: the far end judges a re-pipe itself)
+      if (relink) sub.repipe = false;
       sub.st = 'found'; sub.gen++;
       sub.found = { r: a.r, sg: a.sg, far: { r: a.far.r, d: a.far.d }, link: a.link };
       sub.out = { found: a.r, sg: a.sg, far: sub.found.far, link: a.link };
@@ -985,12 +1021,12 @@
     }
     function subStep(now) {
       head.want = headWants(now);
-      const asker = (io.asker ? io.asker() : null) || (head.want ? 'head' : null);
+      const asker = (io.asker ? io.asker() : null) || (sub.repipe && io.sub && io.sub() > 0 ? 'repipe' : null) || (head.want ? 'head' : null);
       if (sub.st === 'found') {
         const live = Array.from(links.values()).some((L) => L.opener && sub.found && L.l === sub.found.link);
         if (live) return;
         sub.found = null;
-        if (sub.why === 'full') { sub.why = ''; subIdle(now, { refused: 'full', retryAt: now + RETRY_MS }, now + RETRY_MS); return; }
+        if (sub.why === 'full') { sub.why = ''; subRefuse(now, 'full'); return; }
         subIdle(now, null, sub.retryAt);
       }
       if (!asker) { if (sub.st !== 'idle') subIdle(now, null, sub.retryAt); else if (sub.out && sub.out.join != null) sub.out = null; return; }
@@ -1044,6 +1080,7 @@
       }
       planVideo(now);
       subStep(now);
+      regrantStep(now);
       if (now - lastFactAt >= FACT_EVERY_MS) {
         lastFactAt = now;
         for (const L of links.values()) if (L.state === 'up' && !L.sb) io.publish(factOf(L));
@@ -1065,6 +1102,11 @@
       linking() { return (sub.st !== 'idle' && sub.st !== 'found') || Array.from(links.values()).some((L) => L.opener && !L.sb && L.state !== 'up'); },   // a subroom ask or my pipe is on its way
       // THE SUBROOM ASK's outcome for the page this tick (header): { join }, { found }, { wait }, { refused, retryAt }, or null
       subAsk() { return sub.out; },
+      // the seat's hooks (opts.sub): my room lost a far door (the home-cell seat asks once to re-pipe it); my door's relay
+      // forgot it (tag 3: a fresh grant). regrant(): a fresh grant to hand to the seat, once.
+      repipe() { if (io.sub && io.sub() > 0) sub.repipe = true; },
+      doorEmpty() { if (io.sub && io.sub() > 0) rg.want = true; },
+      regrant() { const o = rg.out; rg.out = null; return o; },
       // The pipes this page holds an end of, for the media plane: the far end's peer id and subroom, the pipe, who opened it.
       pipeEnds() { const out = []; for (const L of links.values()) if (L.farPid) out.push({ peer: L.far, sub: L.opener ? L.farR : Number(L.l.slice(1)), pipe: L.l, opener: !!L.opener, video: !!L.video, up: L.state === 'up', standby: !!L.sb }); return out; },
       standby(pid) { const L = links.get(pid); return !!L && L.sb; },   // a warm standby: keep-alives only, nothing rides it

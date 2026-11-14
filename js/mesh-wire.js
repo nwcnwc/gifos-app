@@ -854,6 +854,9 @@
 
     async function onGreeters(m) {
       if (opts.holdDoor && opts.holdDoor()) return;   // waiting on the admin with a lock I cannot read: a list I cannot open must not make me a founder
+      // ROOMS JOINED BY RELAYED CONNECTIONS: tag 3, my own door is empty (the relay forgot it; the seat asks for a fresh
+      // grant); tag 4, door 0 is empty while other doors of the meeting live (the seat asks before founding). The seat decides.
+      if ((m.tag === 3 || m.tag === 4) && penv) { if (!stopped && seat) penv.relayFrame({ t: 'greeters', list: [], tag: m.tag }); return; }
       const list = m.list || [];
       const ids = [], sealedFps = [], fa = [], behind = [];
       const ep = new Map(), atOf = (l) => l.map((p) => (ep.has(p) ? ep.get(p) : -1));   // each greeter's word of when its room was founded (-1: not said)
