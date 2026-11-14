@@ -1152,9 +1152,10 @@
       let any = this.l13Mass() || bare; if (!any) { for (const b of this.byeIds.values()) if (TICK - b <= K.LEASE_T) { any = true; break; } for (const t of this.l13DownAt) if (TICK - t <= K.LEASE_T) { any = true; break; } if (TICK - this.lastAck >= 40 || this.l14PcCut()) any = true; }
       let ancBye = -1; { const ab = this.byeAt.get(ckey(anc)); if (ab !== undefined && TICK - ab <= K.LEASE_T && this.occGet(ckey(anc)) < 0) { any = true; ancBye = ab; } }
       if (!any || TICK - this.l14UpAt < (this.l14Up < 0 && this.l14Refused.size > 0 ? 2 : 8)) return;
-      const closed = (x) => { if (this.f.fabricLinkState(id, x) === LS_CLOSED) return true; for (let q = 0; q < this.l13DownAt.length; q++) if (this.l13DownPeer[q] === x && TICK - this.l13DownAt[q] <= K.LEASE_T) return true; return false; };
-      const cand = []; const push = (x, k) => {
-        if (x < 0 || x === id || this.l14FailedNow(x) || this.noChan.has(x) || closed(x) || (this.l14PcDown >= 0 && x === this.l14PcPeer)) return; if (k && this.byeAt.has(k) && !this.firstHandLive(k)) return;
+      const l13Closed = (x) => { for (let q = 0; q < this.l13DownAt.length; q++) if (this.l13DownPeer[q] === x && TICK - this.l13DownAt[q] <= K.LEASE_T) return true; return false; };   // a loss of x this lease
+      const closed = (x) => this.f.fabricLinkState(id, x) === LS_CLOSED || l13Closed(x);
+      const cand = []; const push = (x, k, listed = false) => {
+        if (x < 0 || x === id || this.l14FailedNow(x) || this.noChan.has(x) || (listed ? l13Closed(x) : closed(x)) || (this.l14PcDown >= 0 && x === this.l14PcPeer)) return; if (k && this.byeAt.has(k) && !this.firstHandLive(k)) return;
         if (k) { const c = unck(k); if (c.pc === this.coord.pc && c.r === this.coord.r) return; if (c.pc !== 0 && pcDepth(c.pc) >= pcDepth(this.coord.pc) && !(this.coord.i === 0 && c.pc === anc.pc && c.r === anc.r)) return; }
         for (const c of cand) if (c === x) return; cand.push(x);
       };
@@ -1164,7 +1165,7 @@
       if (!fresh) { if (TICK - this.l13KnockAt >= 32) { this.l13KnockAt = TICK | 0; this.emitRelay(this.genKey, false); this.trace('L14-KNOCK', id, anc, 'stale'); } }   // L50.5
       // L50.5: the seats the ask could not reach are the door's to name: a decliner's referrals first (L14.3), then the door's greeters
       for (const r of this.l14Refer) { let rk = 0; for (const [ek, ev] of this.occ) if (ev === r) { rk = ek; break; } if (rk) { const c = unck(rk); if (c.pc === this.coord.pc && c.r === this.coord.r) continue; } push(r, 0); } this.l14Refer.length = 0;
-      if (fresh) { const n = this.lastGreeters.length; for (let q = 0; q < n; q++) push(this.lastGreeters[(q + id) % n], 0); }
+      if (fresh) { const n = this.lastGreeters.length; for (let q = 0; q < n; q++) push(this.lastGreeters[(q + id) % n], 0, true); }   // L14.13: a greeter the door lists now is live by the relay's word
       if (cand.length === 0) { return; }
       for (let q = 0; q < cand.length; q++) {
         const x = cand[q]; const ref = [];
