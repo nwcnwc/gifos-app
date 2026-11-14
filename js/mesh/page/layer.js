@@ -12,7 +12,8 @@
  *           (net.topo.ckey), the names the old page read. Read-only.
  *   gossip  GSP / GSPS: room-wide and section-scoped app traffic, flooded over
  *           the seat's link peers with dedup, a per-link budget and a re-fan.
- *   leaf    setLeaf: my facts go into the seat's own fields (handT, stageT, stageF, appT, away, refuses, vup, vdn), and the
+ *   leaf    setLeaf: my facts go into the seat's own fields (handT, stageT, stageF, appT, away, refuses, vup, vdn, and
+ *           talk through talkSet, L6.2: my own voice-activity verdict), and the
  *           seat folds them up its tree. The seat's digest is the only fold of the room.
  *   facts   what the seat's digest cannot hold: a person's peer id, name and device, an app's ad, a vote's string tag.
  *           They ride beside the seat's digest frames (MW2 `pd`) for the people and tags those frames name, once per
@@ -59,11 +60,12 @@
     if ('nm' in f) L.nm = str(f.nm, 24);
     if ('dv' in f) L.dv = str(f.dv, 16);
     if ('away' in f) L.away = !!f.away;
+    if ('talk' in f) L.talk = !!f.talk;
     if ('vup' in f) L.vup = tags(f.vup);
     if ('vdn' in f) L.vdn = tags(f.vdn);
     if ('vab' in f) L.vab = tags(f.vab);
   }
-  const newLeaf = () => ({ hand: 0, stage: 0, sf: 0, app: 0, ad: null, nm: '', dv: '', away: false, vup: [], vdn: [], vab: [] });
+  const newLeaf = () => ({ hand: 0, stage: 0, sf: 0, app: 0, ad: null, nm: '', dv: '', away: false, talk: false, vup: [], vdn: [], vab: [] });
 
   const GSP_RATE = 10, GSP_BURST = 200, GSP_SRC_RATE = 2, GSP_SRC_BURST = 80;
 
@@ -77,7 +79,7 @@
   // The digests a seat frame carries (written or wire form; dgEcho only repeats what its receiver wrote).
   const framesDigs = (m) => { const a = []; for (const f of ['dgUp', 'dgPub', 'dgRoot', 'dgSi']) if (m[f] && m[f].at >= 0) a.push(m[f]); for (const e of arr(m.digs)) if (e && e.d) a.push(e.d); return a; };
   function eachName(d, who, tag) {
-    const les = (x) => { for (const f of ['hands', 'stage', 'apps']) for (const e of arr(x[f])) if (e) who(e.id); };
+    const les = (x) => { for (const f of ['hands', 'stage', 'apps', 'talk']) for (const e of arr(x[f])) if (e) who(e.id); };
     les(d); for (const r of arr(d.rows)) if (r) les(r);
     for (const v of arr(d.votes)) if (v) tag(v.tgt);
   }
@@ -286,6 +288,7 @@
       s.refuses = refuses;
       s.handT = Math.floor(L.hand); s.stageT = Math.floor(L.stage); s.stageF = L.sf; s.appT = L.ad ? Math.floor(L.app) : 0;
       s.away = L.away || allAb;
+      if (typeof s.talkSet === 'function') s.talkSet(L.talk);   // L6.2: the seat keeps its own start, hold and expiry (idempotent)
       for (const t of L.vup.concat(L.vdn)) learnTag(t, s.TICK); for (const t of ab) learnTag(t + AB, s.TICK);
       s.vup = L.vup.filter((t) => !ab.includes(t)).map(tagInt).concat(ab.map((t) => tagInt(t + AB)));
       s.vdn = L.vdn.filter((t) => !ab.includes(t)).map(tagInt);
@@ -361,17 +364,19 @@
       const s = raw(); if (!s || s.state !== 3 || !s.hasCoord) return null;
       const d = s.rootDig; if (!d || d.at < 0) return null;
       const t = s.TICK, who = (x) => { const f = facts.get(x); if (f && f.seen !== Infinity) f.seen = t; return f || null; };
-      const hands = [], stage = [], apps = [], votes = new Map();
+      const hands = [], stage = [], apps = [], talk = [], votes = new Map();
       for (const e of d.hands) { const id = P(e.id); if (id == null) continue; const f = who(e.id); hands.push({ id, k: e.k, nm: f ? f.nm : '' }); }
       for (const e of d.stage) { const id = P(e.id); if (id == null) continue; const f = who(e.id); stage.push({ id, k: e.k, f: e.f, nm: f ? f.nm : '', dv: f ? f.dv : '' }); }
       for (const e of d.apps) { const id = P(e.id), f = who(e.id); if (id != null && f && f.a) apps.push({ id, k: e.k, a: copyAd(f.a) }); }   // an ad not yet here is no app yet
+      // L6.2: the room's talk set in its rank (f: 1 pinned, 2 talking now, 4 holding after a stop)
+      for (const e of d.talk || []) { const id = P(e.id); if (id == null) continue; const f = who(e.id); talk.push({ id, k: e.k, f: e.f, nm: f ? f.nm : '' }); }
       for (const v of d.votes) {
         const g = tags.get(v.tgt); if (!g) continue; g.seen = t;
         const isAb = g.t.endsWith(AB), tag = isAb ? g.t.slice(0, -AB.length) : g.t;
         let o = votes.get(tag); if (!o) votes.set(tag, o = { tgt: tag, up: 0, dn: 0 });
         if (isAb) { if (v.up) o.ab = v.up; } else { o.up = v.up; o.dn = v.dn; }
       }
-      return { at: d.at, age: s.LT() - (d.rx >= 0 ? d.rx : d.at), n: pop(d), refuse: d.refuse, part: d.part, handN: d.handN, awayN: d.awayN, hands, stage, apps, votes: Array.from(votes.values()).sort(veOrd) };
+      return { at: d.at, age: s.LT() - (d.rx >= 0 ? d.rx : d.at), n: pop(d), refuse: d.refuse, part: d.part, handN: d.handN, awayN: d.awayN, hands, stage, apps, talk, votes: Array.from(votes.values()).sort(veOrd) };
     }
 
     // ---- L27 vote-off: the page's choice into the seat's statement, the seat's fold back to the page ------------

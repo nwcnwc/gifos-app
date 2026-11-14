@@ -665,7 +665,6 @@
 
     // a relay frame (mesh-wire opened any sealed part)
     const refPend = new Map();
-    let doorSeq = 0, doorSet = '';   // a count that moves each time my door's answer names a different set of greeters (the page's refused-ask wait starts over on a change)
     function relayFrame(m) {
       if (!m || dead) return;
       if (m.t === 'greeters') {
@@ -673,7 +672,6 @@
         const out = [], at = new Map();   /* L8.52.3: the founding epoch each greeter registered with (C++: relayGreeterAt) */
         doorNt.clear();   /* L8.54: what this list says of each greeter's network (C++: doorNtList) */
         (m.list || []).forEach((p, k) => { const x = learnPeer(p); if (x >= 0 && x !== me && !out.includes(x)) { out.push(x); const e = m.at ? m.at[k] : -1; at.set(x, Number.isInteger(e) && e >= 0 ? e : -1); const t = m.nt ? m.nt[k] : ''; if (typeof t === 'string' && t) doorNt.set(x, t); } });
-        { const ds = out.slice().sort((x, y) => x - y).join(','); if (ds !== doorSet) { doorSet = ds; doorSeq++; } }
         for (let k = out.length - 1; k > 0; k--) { const j = Math.floor((o.rand ? o.rand() : Math.random()) * (k + 1)); const t = out[k]; out[k] = out[j]; out[j] = t; }   // the sim's relay shuffles
         const g = msg.newMsg('GREETERS'); g.list = out; g.listAt = out.map((x) => at.get(x)); g.to = me; g.from = -1; if (m.tag === 1 || m.tag === 3 || m.tag === 4) g.tag = m.tag;   /* 3: the relay holds no door for my room (it restarted): the seat asks for a fresh grant; 4: the first door is empty and other rooms of the meeting are live: a joiner asks before it founds */   /* L3.11.6: the door said admitted:false (C++: relayKnock) */ busAt(w.TICK, g);
         return;
@@ -728,7 +726,7 @@
       mark: (peer) => { const x = ID.pid(ID.nid(peer)) === String(peer) ? ID.nid(peer) : learnPeer(peer); return x >= 0 && pcw.mark ? pcw.mark(x) : null; }, farView: (to) => farView(seat(), to),
       // the seat's construction is the caller's (A3): new Seat(env.me, env.world)
       newSeat: () => new seatM.Seat(me, w),
-      subGo, knownSub, doorSeq: () => doorSeq, pipePeers: () => pipeNow.map((x) => ID.pid(x)).filter((p) => p != null),   // the answer to the page's ask for a room; whether a room's people are in my count
+      subGo, knownSub, pipePeers: () => pipeNow.map((x) => ID.pid(x)).filter((p) => p != null),   // the answer to the page's ask for a room; whether a room's people are in my count
       drainDeaths: deaths.drain,   // [cellKey, seat id] the seat read dead since the last drain
     };
     if (dbg && typeof window !== 'undefined') window.__meshEnv = env;   // DEBUG: meet.js eval reaches the env (stats, traces, pcw.dump)

@@ -3793,7 +3793,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         sf: (myStatus.sing ? 1 : 0) | (myStatus.scr ? 2 : 0) | (a ? 4 : 0),
         app: a ? (a.ts || 0) : 0,
         ad: a ? { s: a.s, k: a.k, relay: a.relay, name: a.name, mesh: !!a.mesh, pk: a.pk, ts: a.ts, byName: a.byName, audio: !!a.audio } : null,
-        away: !!myStatus.away, vup: myStatus.vup || [], vdn: myStatus.vdn || [], vab: myStatus.vab || [] });
+        away: !!myStatus.away, talk: !!leafTalk, vup: myStatus.vup || [], vdn: myStatus.vdn || [], vab: myStatus.vab || [] });
       if (typeof meshNode.setRefuses === 'function') meshNode.setRefuses(!consents(myStatus));
     }
     // Presence: the mesh occ map IS the local count — distinct peers at
@@ -5841,6 +5841,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     fsview.appendChild(fsmain); fsview.appendChild(fsname); fsview.appendChild(fsstrip); fsview.appendChild(fsclose);
     document.body.appendChild(fsview);
     let fsSel = null, fsTick = null, fsAutoPid = null;
+    // Cross-row Follow: fsAutoKey is the followed key ('peer:<pid>', or 'sd:<pid>' for a face in my Stadium); fsZoomIds the
+    // far talkers the big view zooms to while it shows the Stadium, fsZoomBox their box in Stadium picture pixels.
+    let fsAutoKey = null, fsZoomIds = null, fsZoomBox = null;
     // fsInline: the view is the meeting's Focus view, drawn in the page under
     // the floating bar and the header, not a full screen of its own.
     let fsInline = false;
@@ -5856,8 +5859,80 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     window.__meetFocusState = () => ({
       view: window.__meetView || 'fit', on: fsview.classList.contains('on'), inline: fsInline,
       follow: fsSel === 'auto', main: fsmain.dataset.key || '', auto: fsAutoPid || '',
-      strip: fsstrip.dataset.set || '',
+      strip: fsstrip.dataset.set || '', zoom: fsZoomBox ? (fsZoomIds || []).slice() : [], zbox: fsZoomBox ? fsZoomBox.slice() : null,
+      far: fsFarTalkers(fsFarCells()),
     });
+    // CROSS-ROW FOLLOW. A page holds a person's own camera and voice only from row-mates (camPeer); everyone else is a face
+    // in my Stadium, the room pack less my row. Two things this page already has say who talks out there and where they
+    // sit: the fold's talk set (L6.2, each seat's own voice verdict, rolled up the digests as a short capped list with its
+    // own start and hold) and the Stadium's cell list (the pack's ids). A far talker is followed as 'sd:<pid>' by the same
+    // followStep, and the big view shows the Stadium zoomed to the tiles of the far people talking now. No new stream, no
+    // encode, nothing for a server. A Stadium that names no cells (dense, past STAD_CAP faces) shows whole.
+    function fsFarCells() {   // pid -> cell index in my Stadium picture, or null
+      try {
+        const ids = sdView && sdView.cellIds ? sdView.cellIds() : null;
+        if (!ids) return null;
+        const out = new Map(), me = String(myId || '');
+        for (let j = 0; j < ids.length; j++) { const id = ids[j]; if (id && id !== me && !out.has(id)) out.set(id, j); }
+        return out;
+      } catch (e) { return null; }
+    }
+    function fsFarTalkers(cells) {   // the far faces talking now, in the fold's rank (earliest start first)
+      const out = [];
+      if (!cells || !cells.size) return out;
+      let d = null; try { d = roomDig(); } catch (e) { d = null; }
+      for (const e of (d && d.talk) || []) {
+        if (!(e.f & 2) || !cells.has(e.id) || out.indexOf(e.id) >= 0) continue;
+        if (isRowMate(e.id) || speakingOf.get(e.id)) continue;   // a person I meter myself is followed by their own picture
+        out.push(e.id);
+      }
+      return out;
+    }
+    // The big view's zoom onto Stadium cells: a CSS transform on #fsmain, the picture itself unchanged. The box of the
+    // cells, padded, fills the view as far as FS_ZOOM_MAX allows, and the picture never slides off its own edge.
+    const FS_ZOOM_MAX = 8, FS_ZOOM_PAD = 0.1;
+    function fsZoomPaint(ids) {
+      let box = null;
+      const cv = sdView && sdView.canvas;
+      const cells = ids && ids.length ? fsFarCells() : null;
+      if (cells && cv && cv.width > 2 && cv.height > 2) {
+        const G = Math.max(1, sdView.cols() | 0), cell = cv.width / G;
+        for (const id of ids) {
+          const j = cells.get(id); if (j == null) continue;
+          const x = (j % G) * cell, y = Math.floor(j / G) * cell;
+          if (!box) { box = [x, y, x + cell, y + cell]; continue; }
+          box = [Math.min(box[0], x), Math.min(box[1], y), Math.max(box[2], x + cell), Math.max(box[3], y + cell)];
+        }
+      }
+      const vw = fsmain.videoWidth || (cv ? cv.width : 0), vh = fsmain.videoHeight || (cv ? cv.height : 0);
+      const ew = fsmain.clientWidth, eh = fsmain.clientHeight;
+      const was = fsZoomBox ? fsZoomBox.join(',') : '';
+      if (!box || !vw || !vh || !ew || !eh) {
+        fsZoomBox = null;
+        if (fsmain.classList.contains('fszoom')) { fsmain.classList.remove('fszoom'); fsmain.style.transform = ''; }
+        if (was) viewNote('zoom', { ids: [] });
+        return;
+      }
+      const kx = vw / cv.width, ky = vh / cv.height;   // canvas px to frame px (equal unless a frame lags a resize)
+      let bx = box[0] * kx, by = box[1] * ky, bw = (box[2] - box[0]) * kx, bh = (box[3] - box[1]) * ky;
+      const pad = FS_ZOOM_PAD * Math.max(bw, bh);
+      bx = Math.max(0, bx - pad); by = Math.max(0, by - pad); bw = Math.min(vw - bx, bw + 2 * pad); bh = Math.min(vh - by, bh + 2 * pad);
+      const s0 = Math.min(ew / vw, eh / vh), ox = (ew - vw * s0) / 2, oy = (eh - vh * s0) / 2;   // object-fit: contain
+      const z = Math.max(1, Math.min(FS_ZOOM_MAX, ew / (bw * s0), eh / (bh * s0)));
+      const fit = (c, e, o, span) => {   // the translate on one axis: centre the box, then keep the picture over the view
+        let t = e / 2 - c * z;
+        const lo = o * z + t, hi = (o + span) * z + t;
+        if (span * z >= e) { if (lo > 0) t -= lo; else if (hi < e) t += e - hi; }
+        else t = (e - span * z) / 2 - o * z;
+        return t;
+      };
+      const tx = fit(ox + (bx + bw / 2) * s0, ew, ox, vw * s0), ty = fit(oy + (by + bh / 2) * s0, eh, oy, vh * s0);
+      fsZoomBox = [Math.round(bx), Math.round(by), Math.round(bw), Math.round(bh)];
+      fsmain.classList.add('fszoom');
+      const tf = 'translate(' + tx.toFixed(1) + 'px,' + ty.toFixed(1) + 'px) scale(' + z.toFixed(3) + ')';
+      if (fsmain.style.transform !== tf) fsmain.style.transform = tf;
+      if (fsZoomBox.join(',') !== was) viewNote('zoom', { ids: ids.slice(), box: fsZoomBox.slice(), z: +z.toFixed(2) });
+    }
     // The grid videos stay attached while #fsview is open; body.fsopen only
     // hides their paint. busVolume, the row head's packer, selfStageStream
     // and the recorder all read those elements, so detaching them would
@@ -5878,16 +5953,35 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // timings table: a new talker must hold the floor a moment before the
         // view moves, and whoever took it keeps it a while.
         if (!fsFollow) fsFollow = VM.followState();
+        // Far faces join as 'sd:<pid>' while my Stadium is a source (CROSS-ROW FOLLOW above).
+        const sd = src.find((s) => s.key === 'sd');
+        const cells = sd ? fsFarCells() : null;
+        const far = fsFarTalkers(cells);
         const keys = src.filter((s) => s.key.indexOf('peer:') === 0).map((s) => s.key);
-        const step = VM.followStep(fsFollow, keys.filter(speakingKey), keys, Date.now());
-        fsAutoPid = step.key ? step.key.slice(5) : null;
-        if (step.changed) viewNote('follow', { to: fsAutoPid, talking: keys.filter(speakingKey).map((k) => k.slice(5)) });
+        const near = keys.filter(speakingKey);
+        if (cells) for (const id of cells.keys()) if (!isRowMate(id)) keys.push('sd:' + id);
+        const talking = near.concat(far.map((id) => 'sd:' + id));
+        const step = VM.followStep(fsFollow, talking, keys, Date.now());
+        fsAutoKey = step.key || null;
+        fsAutoPid = fsAutoKey ? fsAutoKey.slice(fsAutoKey.indexOf(':') + 1) : null;
+        if (step.changed) viewNote('follow', { to: fsAutoPid, key: fsAutoKey, talking: talking });
         if (fsFollowT) { clearTimeout(fsFollowT); fsFollowT = 0; }
         if (step.wakeAt) fsFollowT = setTimeout(() => { fsFollowT = 0; if (fsSel === 'auto' && fsview.classList.contains('on')) fsRefresh(); }, Math.max(0, step.wakeAt - Date.now()));
       } else if (!(fsAutoPid && speakingKey('peer:' + fsAutoPid))) {
         for (const s of src) if (speakingKey(s.key)) { fsAutoPid = s.key.slice(5); break; }
+        fsAutoKey = fsAutoPid ? 'peer:' + fsAutoPid : null;
       }
-      return (fsAutoPid && src.find((s) => s.key === 'peer:' + fsAutoPid))
+      fsZoomIds = null;
+      if (fsAutoKey && fsAutoKey.indexOf('sd:') === 0) {
+        const sd = src.find((s) => s.key === 'sd');
+        if (sd) {
+          // While the followed far person talks, the zoom fits every far talker; a quiet holder keeps their own tile.
+          const far = fsFarTalkers(fsFarCells());
+          fsZoomIds = far.indexOf(fsAutoPid) >= 0 ? far : [fsAutoPid];
+          return sd;
+        }
+      }
+      return (fsAutoKey && fsAutoKey.indexOf('peer:') === 0 && src.find((s) => s.key === fsAutoKey))
         || src.find((s) => s.key.indexOf('stage:') === 0) || src[0] || null;
     }
     // Follow speaker does not skip a camera-off person: that person is a
@@ -6012,7 +6106,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }
         fsmain.dataset.key = main.key;
         if (main.fit === 'cover') fsmain.dataset.fit = 'cover'; else delete fsmain.dataset.fit;
+        fsZoomPaint(fsSel === 'auto' && main.key === 'sd' ? fsZoomIds : null);
       } else {
+        fsZoomPaint(null);
         fsmain.srcObject = null; fsmain.dataset.key = ''; fsmain.classList.remove('dark'); fsBlurClass(fsmain, 0); delete fsmain.dataset.fit;
         if (identOn) identCard();
         else if (broadcastFs) {
@@ -6040,7 +6136,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         auto = document.createElement('div');
         auto.className = 'fsthumb fsauto'; auto.dataset.key = 'auto';
         auto.innerHTML = '<span class="fsautoglyph"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M17 6.5c1 .9 1.5 2 1.5 3.2s-.5 2.3-1.5 3.2M19.5 4c1.7 1.5 2.5 3.5 2.5 5.7s-.8 4.2-2.5 5.7"/></svg></span><span class="fslbl">' + uiText('viewFollow', 'Follow the speaker') + '</span>';
-        asButton(auto, uiText('viewFollow', 'Follow the speaker'), () => { fsSel = 'auto'; fsAutoPid = null; fsFollow = null; fsRefresh(); fsFollowChanged(); });
+        asButton(auto, uiText('viewFollow', 'Follow the speaker'), () => { fsSel = 'auto'; fsAutoPid = null; fsAutoKey = null; fsFollow = null; fsRefresh(); fsFollowChanged(); });
       }
       const keep = new Set(broadcastFs ? [] : ['auto']);
       const place = (th, pos) => { if (fsstrip.children[pos] !== th) fsstrip.insertBefore(th, fsstrip.children[pos] || null); };
@@ -6149,6 +6245,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (fsTick) { clearInterval(fsTick); fsTick = null; }
       if (fsFollowT) { clearTimeout(fsFollowT); fsFollowT = 0; }
       fsFollow = null;
+      fsZoomIds = null; fsZoomPaint(null);
       const wasInline = fsInline;
       fsInline = false;
       document.body.classList.remove('view-focus');
@@ -7582,7 +7679,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const on = vpFollow.getAttribute('aria-checked') !== 'true';
       if (VMODE) VMODE.saveFollow(viewStore, on);
       if (fsview.classList.contains('on') && fsInline) {
-        if (on) { fsSel = 'auto'; fsAutoPid = null; fsFollow = null; }
+        if (on) { fsSel = 'auto'; fsAutoPid = null; fsAutoKey = null; fsFollow = null; }
         else fsSel = fsmain.dataset.key || null; // pin whoever is on the big view now
         fsRefresh();
       }
@@ -9168,6 +9265,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     document.addEventListener('pointerdown', () => ensureAc());
     var myVoiceAt = 0; // last tick my OWN echo-cancelled mic carried voice (the caption gate reads it)
+    var leafTalk = false; // my talk verdict as the fold last heard it (L6.2; pushLeaf repeats it to a new seat)
     var myVoiceFrom = 0; // when the current stretch of my voice began (a caption line's span starts here)
     var myVoiceSinceFinal = false; // my mic carried voice since the engine's previous final (the own-voice gate reads it)
     function meterFor(id, stream) {
@@ -9242,6 +9340,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         speakingOf.set(id, speaking); // fed to the packer overlay (green talking frame on composite faces)
         if (id === 'me' && speaking) rowMixTalkAt = Date.now();
       }
+      // L6.2: my own voice verdict into the fold's talk set, which every page reads for cross-row Follow. A pause shorter
+      // than FOLLOW_GAP_MS is the same turn; the seat keeps the start, the hold and the expiry. Sent on a change only.
+      const talkNow = !!myVoiceAt && Date.now() - myVoiceAt <= GifOS.timings.FOLLOW_GAP_MS;
+      if (talkNow !== leafTalk) { leafTalk = talkNow; try { if (digestMode()) meshNode.setLeaf({ talk: talkNow }); } catch (e) {} }
       if (fsSel === 'auto' && fsview.classList.contains('on')) fsRefresh();
     }, 180);
     function tileNote(t, msg) {
@@ -12287,6 +12389,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (relayDown || targetUnreachable || mediaDesc || !mayRelay) {
         const m2 = sigSansIce(to, msg);
         if (!m2) return; // a blocked pair sends nothing on either path (fault injection)
+        // every negotiation frame kept off the relay says why (a pair whose bootstrap never leaves is otherwise silent)
+        if (typeof clog === 'function' && (msg.kind === 'offer' || msg.kind === 'answer')) clog('sig ' + msg.kind + ' to ' + String(to).slice(0, 6) + ' off the relay: ' + [relayDown ? 'relay-down' : '', notOnRelay ? 'nosock' : '', (peers.get(to) || {}).altPath ? 'altPath' : '', mediaDesc ? 'media' : '', !mayRelay ? 'not-relay-pair' : ''].filter(Boolean).join(',') + (turnLinks && turnLinks.holds(to) ? ' (a TURN link)' : ''));
         const rt = (m2.kind === 'offer' || m2.kind === 'answer') ? takeRoute(to) : null;   // L16.3.2: the reply to a walked frame retraces it
         if (sponsorSend(Object.assign({ k: 'fsig', from: myId, to, tc: coordKeyOf(to), id: fwdId(), ttl: 12, m: m2 }, rt ? { rt } : {}))) { txStats.fwdSig++; return; }
         if (mediaDesc) { txStats.relayUnfit++; return; } // no friend's channel either: the sweeper's next attempt rebuilds and bootstraps (sendOffer)
