@@ -161,7 +161,7 @@
           this.l33ChildGone(m.id);   // L33.12
           if (this.f.fabricDoors() && !this.hasCoord && this.state === 2 && m.id >= 0 && m.id === this.gateway && m.hard) this.l16GwClosed = true;   // L16.3
           if (m.id >= 0 && m.id !== id && !(this.f.fabricDoors() && !this.hasCoord)) this.dials.holdGone(m.id, TICK + K.GONE_DIAL);   // L16.3 + L17
-          let hard = m.hard || (m.pst && this.l30Small() && !(this.backAt >= 0 && TICK - this.backAt < K.L30_DISC_DEAD) && !(this.l30Deaf >= 0 && TICK - this.l30Deaf < K.L30_DISC_DEAD));   // L30.3
+          let hard = m.hard || (m.pst && this.l30Small() && !(this.backAt >= 0 && TICK - this.backAt < K.L30_DISC_DEAD) && !(this.nlAt >= 0 && TICK - this.nlAt < K.L30_DISC_DEAD));   // L30.3
           { const rm = this.relMark.get(m.id); if (hard && rm !== undefined && TICK - rm <= K.RELOAD_MARK_T) { hard = false; this.trace('RELOAD-LEASE', id, this.hasCoord ? this.coord : null, 'peer=%d', m.id); } }
           this.transportLost(m.id, hard); return;
         }

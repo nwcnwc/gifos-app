@@ -257,7 +257,8 @@
     ["l30Flips", "i32"],   // int = 0  (line 1064)
     ["l30Deep_", "i32"],   // int = -1  (line 1064)
     ["l30SilN", "i32"],   // int = 0  (line 1065)
-    ["l30Deaf", "i32"],   // int = -1  (line 1065)
+    ["nlAt", "i32"],   // int = -1  (line 1065)
+    ["nlSince", "i32"],   // int = -1  (line 1065)
     ["d5Ans", "{u64:i32}"],   // Occ  (line 1065)
     ["earAt", "i32"],   // int = -1  (line 1066)
     ["deafFloor", "i32"],   // int = -1  (line 1066)
@@ -1009,7 +1010,8 @@
     l30Flips: 0,
     l30Deep_: -1,
     l30SilN: 0,
-    l30Deaf: -1,
+    nlAt: -1,
+    nlSince: -1,
     earAt: -1,
     deafFloor: -1,
     earTick: -1,
