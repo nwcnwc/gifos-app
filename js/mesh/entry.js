@@ -195,6 +195,7 @@
       if (f.tag !== 1 && nc >= 0 && nc !== id && this.coord.pc !== 0) { this.l1617At = TICK; this.trace('L16.17-DOOR', id, c, 'nc=%d', nc); }   // L16.17: I stand at the door for the seat I place: its pc to me is signalled on the relay
       if (f.tag !== 1) this.l710Dial(c, nc);   // L7.10
       this.tlForget(k);   // the cell genuinely refills
+      this.vacOut.delete(k);   // D5.2: ...and my vacancy word for it (C++ admit)
       const nbrs = []; const ol = ownedLinks(c); const n = ol.length;
       for (let i = 0; i < n; i++) { const x = this.occGet(ckey(ol[i])); if (x >= 0 && x !== nc) nbrs.push({ k: ckey(ol[i]), v: x }); }
       // ALWAYS teach the admittee its ADMITTER (2026-08-02).
