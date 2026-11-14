@@ -1257,10 +1257,10 @@
     },
 
     // C++: mesh_heal.inc:Seat::l50Heard
-    // L50.3: a seat answers one ask once.
+    // L50.3: a seat hears one ask of one asker per two beats (the same send come round again, or a flood under one name).
     l50Heard(m) {
-      const rk = hash.hmix(hash.hmix(hash.hmixId(hash.H_INIT, m.asker), m.pseq >>> 0), 5);
-      const rs = this.routeSeen.get(rk); if (rs !== undefined && this.TICK - rs <= K.L191_HOLD) return true;
+      const rk = hash.hmix(hash.hmixId(hash.H_INIT, m.asker), 5);
+      const rs = this.routeSeen.get(rk); if (rs !== undefined && this.TICK - rs <= K.L9_LONE) return true;
       if (this.routeSeen.size >= 16) {
         for (const [k, v] of this.routeSeen) if (this.TICK - v > K.L191_HOLD) this.routeSeen.delete(k);
         if (this.routeSeen.size >= 256) { for (const k of this.routeSeen.keys()) { this.routeSeen.delete(k); break; } }
