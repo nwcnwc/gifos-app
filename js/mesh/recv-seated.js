@@ -573,6 +573,7 @@
     onU2(m) {
       const id = this.id, TICK = this.TICK;
       if (!this.hasCoord || this.state !== 3 || m.id < 0) return;
+      if (m.tag === 4) { if (m.t === 'U2BEAT' && this.coord.pc === 0 && m.coord.pc === 0 && m.coord.r !== this.coord.r && m.coord.i !== this.coord.i) { if (!this.s1bAt.has(m.id) && this.s1bAt.size >= 2 * C) { let ok = null, ov = 0; for (const [k, v] of this.s1bAt) if (ok === null || v < ov) { ok = k; ov = v; } this.s1bAt.delete(ok); } this.s1bAt.set(m.id, TICK); } return; }   // L2.15: a bridge beat from a Section-1 seat off my row and column; bounded at 2C far ends
       if (m.t === 'U2ACK') {
         if (m.id === this.u2Id || (m.id === this.u3Id && 1 >= 1)) {
           if (this.u2Hot && m.dgRoot.at >= 0 && this.state === 3 && this.hasCoord && this.coord.pc !== 0) { const rt = dig.cloneDig(m.dgRoot); this.rxDig(rt); if (this.rootDig.at < 0 || rt.rx > this.rootDig.rx) this.rootDig = rt; }   // L2.4.1
