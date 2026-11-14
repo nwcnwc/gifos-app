@@ -13029,10 +13029,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // tile like any direct link and leaves me out of its Stadium (paintRoomView), so a 1:1 over TURN is two full tiles; the
     // TURN guard holds it while the link is paused, and TURN.13 steps it with the composite on the same pc (adapt).
     const micPeer = (pid) => isRowMate(pid);
-    // VIDEO GIVES WAY, the extra camera first: on a link whose capacity has stepped its video (TURN.13) my camera is parked and
+    // VIDEO GIVES WAY, the extra camera first: on a link whose capacity has stepped its video down (TURN.13 step 1 or more; step 0 is full quality) my camera is parked and
     // the composite (which still shows me) takes the step alone: two encoders each sat at the browser's floor under a paid
     // server's cap and the voice under them was lost (capstep: A1 deaf to B1 at 10 000 B/s).
-    const camPeer = (pid) => isRowMate(pid) || (!!turnLinks && turnLinks.video(pid) && !turnLinks.videoStep(pid) && (() => { try { return isPipePeer(pid); } catch (e) { return false; } })());   // isPipePeer is defined further down
+    const camPeer = (pid) => isRowMate(pid) || (!!turnLinks && turnLinks.video(pid) && !((turnLinks.videoStep(pid) || {}).step >= 1) && (() => { try { return isPipePeer(pid); } catch (e) { return false; } })());   // isPipePeer is defined further down
     // ---- mesh early-probe intake (healing-laws D5) --------------------------
     // Transport death is MY first-hand evidence: when my DataChannel to a peer
     // closes, or its pc lands in a hard state ('closed', or 'failed' persisting
