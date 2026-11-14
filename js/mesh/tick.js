@@ -64,6 +64,7 @@
       const ol = ownedLinks(this.coord); const n = ol.length;
       for (let q = 0; q < n; q++) {
         const x = this.occGet(ckey(ol[q])); if (x < 0 || x === id) continue;
+        if (this.bareAt.has(ckey(ol[q]))) continue;   // L25.7.1: a listing on its claimant's word alone is no role (L23), so it is not re-dialled either
         const ls = this.f.fabricLinkState(id, x);
         if (ls === LS_OPEN) { if (this.redial.size) this.redial.delete(x); continue; }
         if (ls === LS_DIALING) continue;
