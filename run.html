@@ -8995,7 +8995,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!t || !t.closest) return;
         // Open is the only control that opens the sheet. Its own listener does.
         if (t.closest('.tile-open')) return;
-        if (t.closest('button, a, input, select, textarea, label')) return;
+        // A control inside a tile keeps its own click: a real button, or a chip that acts as one (role=button, the
+        // self tile's Stop sharing chip), which this capture listener would otherwise swallow before its handler.
+        if (t.closest('button, a, input, select, textarea, label, [role="button"]')) return;
         const bcStage = () => {
           const id = document.getElementById('bc-ident');
           if (id && id.offsetParent !== null) return id;
