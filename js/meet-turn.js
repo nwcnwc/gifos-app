@@ -406,8 +406,9 @@
   //   askVouch(farDev, l); ask(body) → Promise<json> (/v1/ice); askSub(body) → Promise<json> (/v1/sub)
   //   THE SUBROOM ASK: asker() → null | 'joiner' (about to found a room on silence at my door) | 'head' (the head of a
   //     seated room that reaches no older room at door 0) | 'repipe' (a head of my subroom, whose pipe is gone);
-  //     tdoors() → Promise<the relay's signed door list> ; probeDoor(r) → true | false | 'pending' (knock door r
-  //     without registering and dial its listed heads); sub() → my door's subroom; meetingFull() → my meeting is at
+  //     tdoors() → Promise<{ v: the relay's signed door list, p: { device tag → peer id } of its listed heads }> (or the
+  //     list alone); probeDoor(r, pids) → true | false | 'pending': door r tried by dialling those of its heads (the
+  //     ordinary dial and its verdict; my seat never leaves its own door to look); sub() → my door's subroom; meetingFull() → my meeting is at
   //     its plan's limit (a NEW pipe is then refused: room limits apply at entry only)
   //   standbySeat() → { pid, dev } | null: the seat of my subroom that ends a pipe's warm standby on my side (another
   //     capable row head, the fewest pipes and standbys first; with one row head the next seat of its row); null: I am
@@ -440,7 +441,7 @@
     //   { found: r, sg, far, link }        a new subroom (or a re-pipe, r unchanged): found it with sg; the pipe is opened here
     //   { wait: 1 }                        a door list, an answer or a door probe is on its way, or a subroom is opening
     //   { refused: why, retryAt }          budget, rate, no far end, the meeting full, no service: no pipe, ask again at retryAt
-    const sub = { st: 'idle', gen: 0, out: null, retryAt: 0, token: null, list: [], probe: [], found: null, why: '' };
+    const sub = { st: 'idle', gen: 0, out: null, retryAt: 0, token: null, list: [], probe: [], found: null, why: '', heads: null };
     // THE WARM STANDBY (TURN.9 for pipes). Every live pipe l<r> keeps a standby s<r>: a second relayed connection between
     // OTHER seats of the same two subrooms, connected and idle (keep-alives only: no media, no mesh traffic). When a live
     // end leaves (its goodbye) or its connection dies (the pc's own verdict), the standby pair takes the pipe over at once
@@ -907,8 +908,10 @@
     function subIdle(now, out, retryAt) { sub.st = 'idle'; sub.token = null; sub.retryAt = retryAt || 0; sub.out = out; sub.gen++; }
     function subDoors(withToken) {
       const g = ++sub.gen; sub.st = 'doors'; sub.out = busyOut;
-      Promise.resolve(io.tdoors ? io.tdoors() : null).then((d) => {
+      Promise.resolve(io.tdoors ? io.tdoors() : null).then((x) => {
         if (g !== sub.gen) return;
+        const d = x && typeof x === 'object' ? x.v : x;
+        if (d) sub.heads = doorHeads(d, (x && typeof x === 'object' && x.p) || {});
         if (!d) { subIdle(io.now(), { refused: 'no-doors', retryAt: io.now() + RETRY_MS }, io.now() + RETRY_MS); return; }
         subAsk(d, withToken ? sub.token : null);
       }, () => { if (g === sub.gen) subIdle(io.now(), { refused: 'no-doors', retryAt: io.now() + RETRY_MS }, io.now() + RETRY_MS); });
@@ -928,7 +931,7 @@
         if (a && a.pending === 'subrooms' && typeof a.token === 'string') {
           sub.token = a.token; sub.list = Array.isArray(a.subs) ? a.subs.filter((x) => x && Number.isInteger(x.r) && x.r > 0).map((x) => x.r) : [];
           if (sub.asker === 'repipe') { subDoors(true); return; }   // my own subroom keeps its number: no doors to try
-          sub.probe = [0].concat(sub.list.filter((r) => r !== (io.sub ? io.sub() : 0)));
+          sub.probe = sub.list.filter((r) => r !== (io.sub ? io.sub() : 0));   // every listed room side by side (door 0 is the one my seat already failed at)
           sub.st = 'probe'; sub.out = busyOut;
           log('turn-sub list ' + sub.list.join(',') + ': trying the doors');
           return;
@@ -937,6 +940,18 @@
         log('turn-sub refused ' + why);
         subIdle(now, { refused: why, retryAt: now + RETRY_MS }, now + RETRY_MS);
       }, () => { if (g === sub.gen) subIdle(io.now(), { refused: 'no-answer', retryAt: io.now() + RETRY_MS }, io.now() + RETRY_MS); });
+    }
+    // The heads the relay's door list names per door, as peer ids (the answer's own map; the signed list holds device
+    // tags only): at most PROBE_HEADS per door, in the list's order.
+    const PROBE_HEADS = 2;
+    function doorHeads(td, peers) {
+      const out = new Map();
+      try {
+        const t = String(td).split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        const o = JSON.parse(atob(t + '='.repeat((4 - (t.length % 4)) % 4)));
+        for (const x of o.doors || []) out.set(x.r, (x.g || []).map((h) => peers[h && h.d]).filter((p) => typeof p === 'string' && p).slice(0, PROBE_HEADS));
+      } catch (e) {}
+      return out;
     }
     function subFound(a) {
       const relink = sub.asker === 'repipe';   // (for the log: the far end judges a re-pipe itself)
@@ -964,7 +979,8 @@
       if (sub.st === 'probe') {
         let pending = false;
         for (const r of sub.probe) {
-          const v = io.probeDoor ? io.probeDoor(r) : false;
+          const pids = (sub.heads && sub.heads.get(r)) || [];
+          const v = pids.length && io.probeDoor ? io.probeDoor(r, pids) : false;
           if (v === true) { log('turn-sub join ' + r); subIdle(now, { join: r }, now + RESEND_MS); return; }   // the page moves its door there; no new ask meanwhile
           if (v !== false) pending = true;
         }
