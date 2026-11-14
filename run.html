@@ -11939,6 +11939,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // THE RELAY HOOKS UP A JOINER AND A GREETER, nothing else. Once a mesh connection exists nobody contacts it: a seat never sends a seat a frame through it.
     // I may use it while I am at the door (no seat, or a seated seat that knocked: the seat's socketed()) for a peer my view seats nowhere, or one that spoke to me over it just now: it is at the door, whatever my view still says of its old seat.
     const relayHeardAt = new Map();
+    const relayGone = new Map();   // pid -> when the relay said its door socket closed with no unlist (greeter-gone); a later frame of its own lifts it
     function relayMayCarry(to) {
       if (pwWaitKey.has(to) && hasAdminRoom() && amAdmin) return true;   // someone waiting through a ban has no channel and cannot read the door: only this reaches them
       if (meshNode && !meshNode.socketed()) return false;
@@ -13218,8 +13219,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         sat: () => { const r = turnRaw(); return r ? r.seatedAt : -1; },   // TURN.4.6: which seating the door's answer belongs to   // the door has answered my own seating knock (L8.1.3)
         alive: (pid) => {
           // the mesh's word decides: a seat it saw leave is gone, a seat it holds is here; the door's last greeter list
-          // (read only now and then) speaks only for a greeter the mesh holds no word of
-          if (meshGone.has(pid)) return false;
+          // (read only now and then) speaks only for a greeter the mesh holds no word of. The relay's greeter-gone (a door's
+          // socket closed with no unlist: a page that left or whose renderer died) is that seat's goodbye, before any verdict.
+          if (meshGone.has(pid) || relayGone.has(pid)) return false;
           if (meshKnows(pid)) return true;
           const r = turnRaw(); if (r && (r.lastGreeters || []).indexOf(meshNode.nidOf(pid)) >= 0) return true;
           const p = peers.get(pid); return !!(p && p.connected);
@@ -17733,7 +17735,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // my next bootstrap to X takes the relay, whatever an earlier
         // {t:'nosock'} said (a seat that just asked to be dialled is on it).
         // (altPath too: an unanswered offer to the page it replaced rotated this pair onto a sponsor path that cannot reach a seatless returner.)
-        if (from) { relayHeardAt.set(from, Date.now()); if (relayHeardAt.size > 2048) relayHeardAt.clear(); relayNoSock.delete(from); const pf = peers.get(from); if (pf) pf.altPath = false; }
+        if (from) { relayHeardAt.set(from, Date.now()); if (relayHeardAt.size > 2048) relayHeardAt.clear(); relayNoSock.delete(from); relayGone.delete(from); const pf = peers.get(from); if (pf) pf.altPath = false; }
         const take = (held) => rxm(() => net.open(roomE2E, piece).then((inner) => {
           if (!inner && !held && holdForRekey(take)) return; // sealed under the key my re-key is still deriving (rekeyHeld)
           if (!inner) return healStaleFrom(from, piece); // §LOCK: with the pair down, a stale member's frames arrive HERE — the relay path heals too
@@ -17748,6 +17750,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       else if (m.t === 'greeter-gone') {
         // Only the relay's socket gets here, and the relay only says it when a live greeter's socket closed with no unlist first: that greeter's goodbye.
         const p = peers.get(m.peer); if (p) { p.byeSeen = Date.now(); p.byeWhy = 'leave'; }
+        relayGone.set(m.peer, Date.now()); if (relayGone.size > 512) relayGone.delete(relayGone.keys().next().value);
         try { if (meshNode && meshNode.transport) meshNode.transport(m.peer, 'greeter-gone'); } catch (e) {}
       }
       else if (m.t === 'error') {
