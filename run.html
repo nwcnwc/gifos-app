@@ -9204,17 +9204,27 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // hidden non-stager BOTH consumers are dead, and the FFT + 256-sample
       // loop underneath it is pure waste, 5.5x/sec per such peer. In a stadium
       // most of the room is exactly that. Stagers keep their meter (their tile
-      // hides but the Stage strip frames them); anything I cannot classify
-      // keeps its meter too — never go quiet on a face that might be painted.
-      let stgSet = null;
+      // hides but the Stage strip frames them), and so does everyone the Focus
+      // view shows (its big view or a strip thumb): Follow the speaker reads
+      // their level to move the big view, whatever row they sit in. Anything I
+      // cannot classify keeps its meter too — never go quiet on a face that
+      // might be painted.
+      let shownSet = null;
       for (const [id, m] of meters) {
         const t = id === 'me' ? meTile : peers.get(id);
         if (!t) { releaseMeter(id); continue; }
         const hiddenTile = id !== 'me' && !!(t.tile && t.tile.style.display === 'none');
-        if (hiddenTile && stgSet === null) {
-          try { stgSet = new Set(stageIds()); } catch (e) { stgSet = false; }
+        if (hiddenTile && shownSet === null) {
+          try {
+            shownSet = new Set(stageIds());
+            if (fsview.classList.contains('on')) {
+              for (const k of (fsstrip.dataset.set || '').split('|').concat(fsmain.dataset.key || '')) {
+                if (k.indexOf('peer:') === 0) shownSet.add(k.slice(5));
+              }
+            }
+          } catch (e) { shownSet = false; }
         }
-        const unpainted = hiddenTile && stgSet && !stgSet.has(id);
+        const unpainted = hiddenTile && shownSet && !shownSet.has(id);
         if (unpainted) {
           // Don't measure, but don't lie either: a peer nobody paints is not
           // "speaking", and the stale ring must not survive the tile going dark.
