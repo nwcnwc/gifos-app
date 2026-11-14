@@ -715,6 +715,7 @@
     function onServer(pid, server) {
       const L = links.get(pid); if (!L || L.state !== 'up' || !L.client || !server) return;
       const list = configOf(L).iceServers || [];
+      if (!list.length) { L.offSince = 0; return; }   // no credential of this link yet (a takeover's, a refused one): the pc keeps the path it has
       const on = list.some((x) => (Array.isArray(x.urls) ? x.urls : [x.urls]).some((u) => String(u).replace(/^turns?:/, '').split('?')[0] === server));
       const now = io.now();
       if (on) { L.offSince = 0; if (L.paidMe && L.paid && !L.paidSaid) paidSay(L, 'moved'); return; }
@@ -739,6 +740,7 @@
     }
     function pump(L) {
       if (!L.mvWant || L.state === 'closed' || L.web) return;
+      if (!(configOf(L).iceServers || []).length) return;   // nothing to move onto: the move waits for the link's credential
       const now = io.now(), settled = io.settled ? !!io.settled(L.far) : true;
       if (L.mvAt && now - L.mvAt < MOVE_MS && !(settled && now - L.mvAt >= RESEND_MS)) return;   // the last move is still on its way
       if (!settled) { if (!L.mvHeldAt) L.mvHeldAt = now; if (now - L.mvHeldAt < MOVE_MS) return; }   // an offer of this pc (a move, the video's) is crossing: never a second one on top
@@ -939,28 +941,15 @@
         if (standbys() >= SB_PER_SEAT) { io.sendTv(from, { k: 'tv', q: 'x', l: f.l }); return true; }
         let M = null; for (const x of links.values()) if (x.sb && x.l === f.l && x.farDev === f.d && x.state !== 'closed') M = x;
         if (!M) { openStandby(f.l, f.d, parseInt(f.e, 36), from); log('turn-standby open ' + f.l + ' toward ' + f.d); }
-        else bindStandby(f.l, from);
         return true;
       }
-      if (f.q === 's') { sbExpect.set(f.l, from); bindStandby(f.l, from); io.sendTv(from, { k: 'tv', q: 's', l: f.l, d: io.dev() }); return true; }   // I end this pipe's standby on my side: my device, for the far side
+      if (f.q === 's') { sbExpect.set(f.l, from); io.sendTv(from, { k: 'tv', q: 's', l: f.l, d: io.dev() }); return true; }   // I end this pipe's standby on my side: my device, for the far side
       // the rest come only from a seat of my subroom in its role (else: a frame of a standby link not yet keyed by its peer id)
       const P = livePipe(r);
       if ((f.q === 'r' || f.q === 'x') && P && P.sbSeat === from) { P.sbUp = f.q === 'r'; if (f.q === 'x') P.sbAt = 0; return true; }
       if (f.q === 't' && P && P.sbSeat === from) { close(P, 'standby-took-over', true); return true; }   // my standby seat holds the pipe now: my part ends
       if (f.q === 't') { const mine = Array.from(links.values()).filter((M) => M.sb && M.l === f.l && M.liveEnd === from); for (const M of mine) takeover(M, 'my live end lost the pipe'); return mine.length > 0; }
       return false;
-    }
-    // A live end names me its standby seat while a standby of that pipe I end is already open (the pipe was re-linked or
-    // changed hands): the standby answers to that live end from now on. It hears the standby is up, and the standby's
-    // credential is asked again so the service records this pair as the pipe's standby.
-    function bindStandby(sl, liveEnd) {
-      for (const M of links.values()) {
-        if (!M.sb || M.l !== sl || M.state === 'closed' || M.liveEnd === liveEnd) continue;
-        M.liveEnd = liveEnd;
-        log('turn-standby ' + sl + ' now answers to ' + short(liveEnd));
-        if (M.state === 'up') io.sendTv(liveEnd, { k: 'tv', q: 'r', l: sl });
-        if (M.cred) { try { M.cred.stop(); } catch (e) {} M.cred = credFor(M, 'free'); M.cred.start(); }
-      }
     }
     // A live end whose pipe is lost: its standby seat takes the pipe over; this end's part ends with it.
     function handOver(L, why) {
