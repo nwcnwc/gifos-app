@@ -673,7 +673,7 @@
         doorNt.clear();   /* L8.54: what this list says of each greeter's network (C++: doorNtList) */
         (m.list || []).forEach((p, k) => { const x = learnPeer(p); if (x >= 0 && x !== me && !out.includes(x)) { out.push(x); const e = m.at ? m.at[k] : -1; at.set(x, Number.isInteger(e) && e >= 0 ? e : -1); const t = m.nt ? m.nt[k] : ''; if (typeof t === 'string' && t) doorNt.set(x, t); } });
         for (let k = out.length - 1; k > 0; k--) { const j = Math.floor((o.rand ? o.rand() : Math.random()) * (k + 1)); const t = out[k]; out[k] = out[j]; out[j] = t; }   // the sim's relay shuffles
-        const g = msg.newMsg('GREETERS'); g.list = out; g.listAt = out.map((x) => at.get(x)); g.to = me; g.from = -1; if (m.tag === 1 || m.tag === 3) g.tag = m.tag;   /* 3: the relay holds no door for my room (it restarted): the seat asks for a fresh grant */   /* L3.11.6: the door said admitted:false (C++: relayKnock) */ busAt(w.TICK, g);
+        const g = msg.newMsg('GREETERS'); g.list = out; g.listAt = out.map((x) => at.get(x)); g.to = me; g.from = -1; if (m.tag === 1 || m.tag === 3 || m.tag === 4) g.tag = m.tag;   /* 3: the relay holds no door for my room (it restarted): the seat asks for a fresh grant; 4: the first door is empty and other rooms of the meeting are live: a joiner asks before it founds */   /* L3.11.6: the door said admitted:false (C++: relayKnock) */ busAt(w.TICK, g);
         return;
       }
       if (m.t === 'nosock') {
