@@ -493,7 +493,7 @@
       const L = { far, l, opener, id: linkId(io.me(), far), farDev: farDev || null, farR: farR == null ? Number(l.slice(1)) : farR, farPid: opener ? null : far,
         farBlocked: false, client: false, mine: null, peer: null,
         state: 'ask', askAt: io.now(), sentAt: 0, vAskAt: 0, readyMe: false, readyFar: false, dialAt: 0, upAt: -1, downSince: 0,
-        cred: null, paid: null, paidMe: false, paidFar: false, paidSaid: false, paidAt: 0, mvWant: false, mvAt: 0, mvHeldAt: 0, mvN: 0, mvWhy: '', video: false, vouched: false, lostAt: -1, side: [],
+        cred: null, paid: null, paidMe: false, paidFar: false, paidSaid: false, paidAt: 0, mvWant: false, mvAt: 0, mvN: 0, mvWhy: '', video: false, vouched: false, lostAt: -1, side: [],
         thr: null, busy: false, farBusy: false, capAt: 0, upOkSince: 0, standbyAt: 0, standbyN: 0,
         web: false, webHost: '', webOpen: false, webSaidAt: 0, sb: l[0] === 's', liveEnd: null, sbUp: false, sbAt: 0, sbSeat: null, farSb: null };
       const s = io.seat(); if (s) L.side = s.view.filter((x) => x !== far).slice(0, SIDE_MAX);
@@ -743,8 +743,8 @@
       if (!(configOf(L).iceServers || []).length) return;   // nothing to move onto: the move waits for the link's credential
       const now = io.now(), settled = io.settled ? !!io.settled(L.far) : true;
       if (L.mvAt && now - L.mvAt < MOVE_MS && !(settled && now - L.mvAt >= RESEND_MS)) return;   // the last move is still on its way
-      if (!settled) { if (!L.mvHeldAt) L.mvHeldAt = now; if (now - L.mvHeldAt < MOVE_MS) return; }   // an offer of this pc (a move, the video's) is crossing: never a second one on top
-      L.mvHeldAt = 0; L.mvWant = false; L.mvAt = now; L.mvN++;
+      if (!settled) return;   // an offer of this pc (a move, its media lines') is crossing: the move waits for it, never an ICE restart on top
+      L.mvWant = false; L.mvAt = now; L.mvN++;
       log('turn-move ' + short(L.far) + ' ' + L.mvWhy + ' #' + L.mvN);
       io.restart(L.far, L.l);
     }
