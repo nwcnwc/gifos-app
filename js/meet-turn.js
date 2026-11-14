@@ -1107,6 +1107,7 @@
       repipe() { if (io.sub && io.sub() > 0) sub.repipe = true; },
       doorEmpty() { if (io.sub && io.sub() > 0) rg.want = true; },
       regrant() { const o = rg.out; rg.out = null; return o; },
+      doorChanged() { subChanged('my door list'); },   // the mesh says my door's greeters changed (meshNode.doorSeq): a refused ask starts over
       // The pipes this page holds an end of, for the media plane: the far end's peer id and subroom, the pipe, who opened it.
       pipeEnds() { const out = []; for (const L of links.values()) if (L.farPid) out.push({ peer: L.far, sub: L.opener ? L.farR : Number(L.l.slice(1)), pipe: L.l, opener: !!L.opener, video: !!L.video, up: L.state === 'up', standby: !!L.sb }); return out; },
       standby(pid) { const L = links.get(pid); return !!L && L.sb; },   // a warm standby: keep-alives only, nothing rides it
