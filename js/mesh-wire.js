@@ -1273,11 +1273,16 @@
       roomDigest() { return layer ? layer.roomDigest() : null; },
       // ROOMS JOINED BY RELAYED CONNECTIONS. sub: my door's number (0: the first room). door(): { sr, sg } for a door
       // other than the first (sg: the grant handed to subGo, or null), else null. subGo(r, sg): the answer to the page's
-      // ask (opts.sub.ask): my door is r. meetingCount(): the people in the whole meeting, null while unknown.
+      // ask (opts.sub.ask): my door is r. With r my own door and a grant: a fresh grant for it, and I register again. meetingCount(): the people in the whole meeting, null while unknown.
       // knownSub(r): room r's people are in my count. standbyCands(): see js/mesh/page/layer.js.
       get sub() { return raw ? raw.sr : 0; },
       door() { return raw && raw.sr > 0 ? { sr: raw.sr, sg: subGrant } : null; },
-      subGo(r, sg) { if (stopped || !penv || !raw || raw.sr !== 0) return false; subGrant = (typeof sg === 'string' && sg) ? sg : null; /* before the seat knocks at its new door */ return penv.subGo(r); },
+      subGo(r, sg) {
+        if (stopped || !penv || !raw) return false; const g = (typeof sg === 'string' && sg) ? sg : null;
+        if (raw.sr === 0) { subGrant = g; /* before the seat knocks at its new door */ return penv.subGo(r); }
+        if (r !== raw.sr || !g || raw.state !== 3) return false;   // any other door is refused once my door is not the first
+        subGrant = g; raw.emitRelay(raw.genKey); return true;   // a fresh grant for my own door (its door stood empty): I register with it
+      },
       meetingCount() { return layer ? layer.meetingCount() : null; },
       knownSub(r) { return !!penv && penv.knownSub(r); },
       standbyCands() { return layer ? layer.standbyCands() : []; },   // the display fold beside the seat (layer.js leaf)
