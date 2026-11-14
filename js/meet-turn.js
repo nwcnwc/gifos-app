@@ -459,7 +459,7 @@
     // TURN_THROTTLE_UP_MS (look.settling). The voices step down on VOICE_BAD lossy of the last 3 fresh reports with no
     // video left to give; on probation one lossy report is enough, and two clean fresh ones end it.
     function voiceLook() {
-      const noVideoLeft = !video || st.busy;
+      const noVideoLeft = !video || st.busy || !look.flow;   // a link whose video sends nothing (paused, or no frames from this end) has nothing left to give
       if (look.fresh !== false && !look.settling) st.vHist = (st.vHist || []).concat(lossy ? 1 : 0).slice(-3);   // the last fresh reports (a path event's own losses left out)
       const bad = (st.vHist || []).reduce((a, b) => a + b, 0);
       if (st.voice === 'full') {
@@ -467,7 +467,7 @@
         else if (st.vProbation && !lossy && look.fresh !== false && ++st.vClean >= 2) { st.vProbation = 0; st.vProbeN = 0; }   // two clean fresh reports end the probation
       } else if (lossy) st.vOkSince = 0;
       else if (!st.vOkSince) st.vOkSince = now;
-      else if (now - st.vOkSince >= wait(st.vProbeN)) { st.voice = 'full'; st.vProbation = now; st.vClean = 0; }
+      else if (now - st.vOkSince >= wait(st.vProbeN) && (+look.bps || 0) * (1 - THROTTLE_LOSS) >= voiceWire(look)) { st.voice = 'full'; st.vProbation = now; st.vClean = 0; }   // only into an estimate that carries the full voices (a starved link's padding probes raise it when the path has room: t1 11-14, 5.6 Mbit while paused)
     }
   }
 
