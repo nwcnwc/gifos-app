@@ -27837,6 +27837,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const beyondRowRaw = (() => {
         if (!s || !c || BROADCAST) return false;
         if (pipePeers().length) return true;   // SUB.4: a pipe is one more child: the meeting goes on past my row
+        // SUB.4 at every seat of a joined room, not only at a pipe's end: my room fold counts the people of the other rooms (far,
+        // per door), so the meeting goes on past my row although none of it is in my occ. A one-row room's non-end seat read its
+        // room as just its row: no Stadium plane, no claim of its head's 'sdm', deaf and blind to the whole far room (pk42 B2).
+        try { if (meshNode && typeof meshNode.meetingFar === 'function' && meshNode.meetingFar() > 0) return true; } catch (e) {}
         for (const [k, v] of s.occ) { if (v === myId) continue; const cc = net.topo.unck(k); if (cc.pc !== c.pc || cc.r !== c.r) return true; }
         // A ROW THAT HANGS UNDER MY ROW IS A SECOND ROW (Section 1 may hold one row). occ names Section 1 and my own links only, so a head never saw a mate's child row there: the room read
         // as one row, nothing below was packed, claimed or mixed, and the seats under the end heard nobody and were heard by
