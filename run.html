@@ -12980,7 +12980,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // neither the sweeper nor L22 closes it), NO video on an unvouched link, the room's link facts and subscribers'
     // vouches (room-wide gossip: tlink, tsub), and the paused-video note on the tiles a link holds back.
     let turnLinks = null, turnTimer = null, turnSubAt = 0;
-    let turnSubWantAt = 0, turnRepipe = 0;   // my seat asked for the meeting's rooms (opts.sub.ask); my room's pipe to re-pipe
+    let turnSubWantAt = 0;   // my seat asked for the meeting's rooms (opts.sub.ask)
     const turnDoorsWait = [];   // asks waiting for the relay's door list
     const turnProbeAt = new Map();   // a listed room's head I dialled to try its room → when
     const turnWeb = new Map();   // far peer id -> the web path end of that link (js/meet-tunnel.js)
@@ -13114,7 +13114,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         asker: () => {
           if (!meshNode) return null;
           if (meshNode.sub === 0 && Date.now() - turnSubWantAt < K.TURN_WAIT * meshNode.tickMs()) return 'joiner';   // my seat asked (opts.sub.ask) lately: it asks again each silent round
-          if (meshNode.sub > 0 && turnRepipe === meshNode.sub) return 'repipe';
           return null;
         },
         tdoors: () => new Promise((res) => {
@@ -13172,9 +13171,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (iInitiate(pid)) sendOffer(pid, true); else if (l) { if (pathUp) relaySendSealedOrDc(p, { k: 'tv', q: 'i', l }); else relaySendSealed(pid, 'tv', { k: 'tv', q: 'i', l }); }
         },
         keep: (pid) => { const s = meshSeat(); if (!s || !s.keepAdd || !s.keepPeers) return; const ks = s.keepPeers(); if (ks.has(pid) || ks.size < K.KEEP_MAX) s.keepAdd(pid, K.TURN_DIAL); },
-        drop: (pid, why, info) => {
-          // a pipe of my room lost with no standby taking over: a head of my room re-pipes it (SUB.3)
-          if (info && info.pipe && meshNode && meshNode.sub > 0 && info.sub === meshNode.sub && ['lost', 'gone', 'dialfail', 'expired', 'far-closed'].indexOf(why) >= 0) turnRepipe = meshNode.sub;
+        drop: (pid, why) => {
           const p = peers.get(pid); if (!p) return; if (!linkTo(pid)) pcBye(pid, 'turn-' + why); else if (p.pc) rebuildPc(p, 'turn-' + why);
         },
         subs: () => { const now = Date.now(), out = []; for (const [pid, s] of turnSubs) if (s.exp * 1000 > now && (pid === myId || meshKnows(pid))) out.push({ key: pid, tier: s.tier }); return out; },
@@ -13299,12 +13296,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // The seat takes it (meshNode.subGo knocks at the new door inside the call; the relay socket follows the door).
     let turnSubDone = '';
     function turnSubApply(o) {
-      if (!o || !meshNode) return;
+      if (!meshNode) return;
+      const rg = turnLinks ? turnLinks.regrant() : null;   // my door's relay forgot it: the fresh grant re-mints it (the seat registers again inside the call)
+      if (rg && rg.r === meshNode.sub) { meshNode.subGo(rg.r, rg.sg); turnNote('turn-sub door ' + rg.r + ' re-granted'); }
+      if (!o) return;
       if (o.found != null) {
         const k = 'f' + o.found + ':' + o.link + ':' + String(o.sg).slice(-8);
         if (turnSubDone === k) return;
         turnSubDone = k;
-        if (turnRepipe === o.found) turnRepipe = 0;   // a re-pipe keeps my door
         if (meshNode.sub === 0) meshNode.subGo(o.found, o.sg);
         turnNote('turn-sub found ' + o.found + ' far ' + o.far.d + '@' + o.far.r);
       } else if (o.join != null && meshNode.sub === 0) {
@@ -17236,6 +17235,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             return true;
           },
           pipeEnds: () => (turnLinks ? turnLinks.pipeEnds() : []),
+          repipe: () => { if (turnLinks) turnLinks.repipe(); },   // my room's fold lost a far door: re-pipe my room (asked once, by the home-cell seat)
+          doorEmpty: () => { if (turnLinks) turnLinks.doorEmpty(); },   // my door's relay forgot it (tag 3): a fresh grant for it
         },
         // Friend-hop's page face (env.js decides which frames; sponsorSend and fwdOnward are the rungs).
         fhop: {
