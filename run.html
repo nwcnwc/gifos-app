@@ -13029,7 +13029,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // tile like any direct link and leaves me out of its Stadium (paintRoomView), so a 1:1 over TURN is two full tiles; the
     // TURN guard holds it while the link is paused, and TURN.13 steps it with the composite on the same pc (adapt).
     const micPeer = (pid) => isRowMate(pid);
-    const camPeer = (pid) => isRowMate(pid) || (!!turnLinks && turnLinks.video(pid) && (() => { try { return isPipePeer(pid); } catch (e) { return false; } })());   // isPipePeer is defined further down
+    // VIDEO GIVES WAY, the extra camera first: on a link whose capacity has stepped its video (TURN.13) my camera is parked and
+    // the composite (which still shows me) takes the step alone: two encoders each sat at the browser's floor under a paid
+    // server's cap and the voice under them was lost (capstep: A1 deaf to B1 at 10 000 B/s).
+    const camPeer = (pid) => isRowMate(pid) || (!!turnLinks && turnLinks.video(pid) && !turnLinks.videoStep(pid) && (() => { try { return isPipePeer(pid); } catch (e) { return false; } })());   // isPipePeer is defined further down
     // ---- mesh early-probe intake (healing-laws D5) --------------------------
     // Transport death is MY first-hand evidence: when my DataChannel to a peer
     // closes, or its pc lands in a hard state ('closed', or 'failed' persisting
@@ -13535,7 +13538,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const lastV = turnSent.get(pid), tNow = Date.now(); turnSent.set(pid, { b: vBytes, t: tNow });
           if (lastV && tNow > lastV.t && vBytes >= lastV.b && (vBytes - lastV.b) * 8000 / (tNow - lastV.t) >= 0.7 * bps) limited = true;
           if (turnLinks.video(pid)) turnLinks.onCapacity(pid, bps, loss, rtt, limited);
-          if (JSON.stringify(turnLinks.videoStep(pid)) + turnLinks.busy(pid) !== before) { try { adapt(); } catch (e) {} turnApplyVideo(p); turnPaint(); }
+          if (JSON.stringify(turnLinks.videoStep(pid)) + turnLinks.busy(pid) !== before) { try { refreshOutbound(); } catch (e) { try { adapt(); } catch (e2) {} } turnApplyVideo(p); turnPaint(); }   // refreshOutbound: a pipe peer's camera follows the step (camPeer), then adapt
         }, () => {});
       }
     }
@@ -24453,7 +24456,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (c && meta.n <= SCALE.C * SCALE.C) for (let j = 0; j < SCALE.C; j++) { const pid = j === c.i ? myId : occPid({ pc: c.pc, r: c.r, i: j }); if (pid) hide.push(String(pid)); }
         // SUB.4 PIPE HOLDERS: the two ends of a vouched pipe see each other on a full tile (my camera crosses to my pipe peer,
         // camPeer), so each leaves the other out of its own Stadium; everyone else sees the far room in the Stadium only.
-        for (const h of pipePeers()) if (turnLinks && turnLinks.video(h) && hide.indexOf(String(h)) < 0) hide.push(String(h));
+        // (only while its tile shows its own live camera: under a TURN step the camera gives way and the composite shows it again)
+        for (const h of pipePeers()) { const q = peers.get(h), vt = q && q.stream && q.stream.getVideoTracks ? q.stream.getVideoTracks()[0] : null; if (turnLinks && turnLinks.video(h) && vt && vt.readyState === 'live' && !vt.muted && hide.indexOf(String(h)) < 0) hide.push(String(h)); }
         // A camera on the Stage is left out of this browser's stadium only.
         // The pack that arrived is unchanged, and a share stays in the grid.
         try {
