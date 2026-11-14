@@ -1205,6 +1205,10 @@
       turnPcs() { const out = []; for (const L of links.values()) if (L.state === 'up') out.push(L.far); return out; },
       lookMs: THROTTLE_LOOK_MS,
       video(pid) { const L = links.get(pid); return !!L && L.video; },
+      // SUB.4 pipe holders: may a second picture (my camera beside the composite) ride this link? Only on a measured estimate
+      // that leaves room for two pictures at the law's minimum (TURN_VIDEO_MIN_BYTES) over everything else (TURN_BASE_BYTES):
+      // under a paid server's cap the camera sat at the browser's floor beside the composite and the voice was lost (capstep).
+      camRoom(pid) { const L = links.get(pid); if (!L || !L.video || L.busy || !(L.cap > 0)) return false; const K = meshConsts().consts, perS = 1000 / tick; return L.cap - K.TURN_BASE_BYTES * perS * 8 >= 2 * K.TURN_VIDEO_MIN_BYTES * perS * 8; },
       close(pid, why) { const L = links.get(pid); if (L) close(L, why || 'closed'); },
       stopAll(why) { for (const L of Array.from(links.values())) close(L, why || 'stop', true); },
       dump() {
