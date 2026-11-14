@@ -12847,6 +12847,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // camera? Unknown coord / pre-seat ⇒ true (carry, safe; the sweeper trims
     // once the coord lands). meshOccAt reverses occ.
     function isRowMate(pid) {
+      // A peer reached over a TURN link (a pipe, a warm standby, SUB.4/SUB.7) sits in another subroom: never a row-mate. It holds
+      // no cell of my room, which below would read as a joiner not seated yet.
+      if (turnHolds(pid)) return false;
       const c = meshCoord(), s = meshSeat(); if (!c || !s) return true;
       let k = null; for (const [kk, v] of s.occ) if (v === pid) { k = kk; break; }
       // A peer the seat holds by a role but names at no cell is the far end of a backup uplink (E2): a parked pc, no camera.
@@ -12854,7 +12857,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const cc = net.topo.unck(k);
       return cc.pc === c.pc && cc.r === c.r;
     }
-    const camPeer = (pid) => isRowMate(pid);   // SUB.4: a pipe peer is no row-mate: its side hears me in the mix it gets
+    // My camera and mic go to row-mates only: never on a pipe's pc (its side hears me in the mix it gets) or a standby's (it
+    // carries nothing until it takes over).
+    const camPeer = (pid) => isRowMate(pid);
     // ---- mesh early-probe intake (healing-laws D5) --------------------------
     // Transport death is MY first-hand evidence: when my DataChannel to a peer
     // closes, or its pc lands in a hard state ('closed', or 'failed' persisting
