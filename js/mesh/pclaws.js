@@ -565,8 +565,10 @@
       return n;
     }
     // C++: mesh_link.inc:fabricDialUplink   [end: the head's dial and its offer]; refer is left as given (the sim: (void)refer)
+    // C++: mesh_link.inc:uplinkDialable   [fabric: an uplink from me to x can be dialled at all (L14/L50.3.2)]
+    function uplinkDialable(me, x) { return !!lv.LINKMODEL && me >= 0 && x >= 0 && me !== x && me < lv.nextId && x < lv.nextId; }
     function fabricDialUplink(me, x, refer) {
-      if (!lv.LINKMODEL || me < 0 || x < 0 || me === x || x >= lv.nextId) return false;
+      if (!uplinkDialable(me, x)) return false;
       const L0 = linkFind(me, x); const had = !!L0 && (L0.state === LK_OPEN || L0.state === LK_DIALING);
       fabricDialJoin(me, x); const L = linkFind(me, x); if (L && L.state === LK_DIALING) L.uplink = true;
       if (L && (L.state === LK_OPEN || L.state === LK_DIALING)) { const o = msg.newMsg('UPOFFER'); o.id = me; o.tag = had ? 1 : 0; o.to = x; o.from = -1; o.lk = -1; P.wireTx(o, me); P.busPush(T() + 1, o); }
@@ -578,9 +580,9 @@
       for (const p of P.LINKPEERS[x]) { if (p >= lv.nextId || !alive[p] || seats[p].l14Up !== x) continue; const L = linkFind(x, p); if (L && L.state === LK_OPEN && !(L.half & (1 << lEnd(p, x))) && P.fhConn && P.fhConn(x, p)) n++; }
       return n;
     }
-    // C++: mesh_link.inc:fabricUpTake   [end: the far page decides from its own pcs and chain]; 0 take, 1 chain cut, 2 at budget
+    // C++: mesh_link.inc:fabricUpTake   [end: the far page decides from its own pcs and chain]; 0 take, 1 chain cut, 2 at budget, 3 no uplink can be dialled (L50.3.2)
     function fabricUpTake(x, h) {
-      if (!lv.LINKMODEL || x < 0 || h < 0 || x >= lv.nextId || h >= lv.nextId) return 0;
+      if (!uplinkDialable(h, x)) return 3;
       const sx = seats[x];
       if (sx.hasCoord && sx.state === 3 && sx.coord.pc !== 0 && sx.l14Branch() && !(sx.l14Up >= 0 && fabricLinkState(x, sx.l14Up) === LS_OPEN)) { trace('L14-REFUSE', x, null, 'from=%d cut=1', h); return 1; }
       if (linkHeld(x) - fhCarriers(x) > pcBudget(x, E.PB_CLASS)) { lv.L14_REFUSED++; trace('L14-REFUSE', x, null, 'from=%d held=%d budget=%d', h, linkHeld(x), pcBudget(x, E.PB_CLASS)); return 2; }
