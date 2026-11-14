@@ -12982,6 +12982,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     let turnLinks = null, turnTimer = null, turnSubAt = 0;
     let turnSubWantAt = 0, turnRepipe = 0;   // my seat asked for the meeting's rooms (opts.sub.ask); my room's pipe to re-pipe
     const turnDoorsWait = [];   // asks waiting for the relay's door list
+    const turnProbeAt = new Map();   // a listed room's head I dialled to try its room → when
     const turnWeb = new Map();   // far peer id -> the web path end of that link (js/meet-tunnel.js)
     // The relay says it carries TURN handshakes (`tv` frames, the tvouch verb) on its joined frame. An older relay closes a
     // socket that sends an unlisted type, so without its word this page asks for no link and answers none.
@@ -13122,7 +13123,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const giveUp = () => { const i = turnDoorsWait.indexOf(res); if (i >= 0) { turnDoorsWait.splice(i, 1); res(null); } };   // no answer: no list this time
           setTimeout(giveUp, GifOS.meetTurn.FETCH_TIMEOUT_MS);
         }),
-        probeDoor: () => false,
+        // a listed room tried by dialling its heads (the relay's answer names their peer ids): the ordinary dial; reached
+        // one: that room; none inside one dial's verdict (FHOP_RELAY_ASK): not this room. The join that follows reuses the pc.
+        probeDoor: (r, pids) => {
+          const now = Date.now(), tick = meshNode.tickMs(), verdict = K.FHOP_RELAY_ASK * tick;
+          let pending = false;
+          for (const pid of pids || []) {
+            const p = peers.get(pid);
+            if (p && p.connected) return true;
+            const at = turnProbeAt.get(pid);
+            if (!at || now - at > K.RELAY_TTL * tick) { turnProbeAt.set(pid, now); if (turnProbeAt.size > 64) turnProbeAt.delete(turnProbeAt.keys().next().value); seatAskAt.set(pid, now); seatMark.set(pid, cleanMark({ s: 1 })); seatDial(pid); pending = true; continue; }
+            if (now - at < verdict) pending = true;
+          }
+          return pending ? 'pending' : false;
+        },
         sub: () => (meshNode ? meshNode.sub : 0),
         knownSub: (r) => !!(meshNode && meshNode.knownSub(r)),
         meetingFull: () => {
@@ -17484,7 +17498,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (m.t === 'joined' && m.cap && !av) capTake(m.cap, true);   // a captured open room: the captor's ticket, checked here
       if (m.t === 'cap') { onCapFrame(m); return; }
       if (m.t === 'tvouch') { try { if (turnLinks) turnLinks.onVouch(m); } catch (e) {} return; }
-      if (m.t === 'tdoors') { const w = turnDoorsWait.splice(0); for (const res of w) res(typeof m.v === 'string' ? m.v : null); return; }   // the relay's signed door list (the subroom ask)   // the relay's seated vouch for one of my TURN links
+      if (m.t === 'tdoors') { const w = turnDoorsWait.splice(0); const ans = typeof m.v === 'string' ? { v: m.v, p: m.p && typeof m.p === 'object' ? m.p : {} } : null; for (const res of w) res(ans); return; }   // the relay's signed door list (the subroom ask)   // the relay's seated vouch for one of my TURN links
       if (m.t === 'joined') {
         updateStatus(); broadcastStatus();
         // admins[] comes from VERIFIED signatures (adminsNow, \u00a79), never the relay
