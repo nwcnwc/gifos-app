@@ -441,7 +441,7 @@
     //   { found: r, sg, far, link }        a new subroom (or a re-pipe, r unchanged): found it with sg; the pipe is opened here
     //   { wait: 1 }                        a door list, an answer or a door probe is on its way, or a subroom is opening
     //   { refused: why, retryAt }          budget, rate, no far end, the meeting full, no service: no pipe, ask again at retryAt
-    const sub = { st: 'idle', gen: 0, out: null, retryAt: 0, token: null, list: [], probe: [], found: null, why: '', heads: null };
+    const sub = { st: 'idle', gen: 0, out: null, retryAt: 0, token: null, list: [], probe: [], found: null, why: '', heads: null, tried: null };
     // THE WARM STANDBY (TURN.9 for pipes). Every live pipe l<r> keeps a standby s<r>: a second relayed connection between
     // OTHER seats of the same two subrooms, connected and idle (keep-alives only: no media, no mesh traffic). When a live
     // end leaves (its goodbye) or its connection dies (the pc's own verdict), the standby pair takes the pipe over at once
@@ -913,6 +913,9 @@
         const d = x && typeof x === 'object' ? x.v : x;
         if (d) { sub.devPid = (x && typeof x === 'object' && x.p) || {}; sub.heads = doorHeads(d, sub.devPid); }
         if (!d) { subIdle(io.now(), { refused: 'no-doors', retryAt: io.now() + RETRY_MS }, io.now() + RETRY_MS); return; }
+        // before a new number is asked for: a listed room whose heads this fresh door list names and I have not dialled
+        // yet (it opened while I tried the others) is tried first; the service would read its greeters as unreachable
+        if (withToken && untried().length) { log('turn-sub a listed room opened: trying its heads'); sub.st = 'probe'; return; }
         subAsk(d, withToken ? sub.token : null);
       }, () => { if (g === sub.gen) subIdle(io.now(), { refused: 'no-doors', retryAt: io.now() + RETRY_MS }, io.now() + RETRY_MS); });
     }
@@ -944,6 +947,7 @@
           for (const x of a.subs || []) { const pids = (Array.isArray(x && x.heads) ? x.heads : []).map((d) => (sub.devPid || {})[d]).filter((p) => typeof p === 'string' && p).slice(0, PROBE_HEADS); if (pids.length && sub.heads) sub.heads.set(x.r, pids); }
           if (sub.asker === 'repipe') { subDoors(true); return; }   // my own subroom keeps its number: no doors to try
           sub.probe = sub.list.filter((r) => r !== (io.sub ? io.sub() : 0));   // every listed room side by side (door 0 is the one my seat already failed at)
+          sub.tried = new Set();
           log('turn-sub list ' + sub.list.join(',') + ': trying the doors');
           // a listed room my door list did not show yet (it opened meanwhile): read the doors once more to know its heads
           if (sub.probe.some((r) => !((sub.heads && sub.heads.get(r)) || []).length)) { subProbeDoors(); return; }
@@ -967,6 +971,8 @@
       } catch (e) {}
       return out;
     }
+    // the heads of the listed rooms the latest door list names that this round has not dialled
+    function untried() { const out = []; for (const r of sub.probe || []) for (const p of (sub.heads && sub.heads.get(r)) || []) if (!(sub.tried && sub.tried.has(p))) out.push(p); return out; }
     function subFound(a) {
       const relink = sub.asker === 'repipe';   // (for the log: the far end judges a re-pipe itself)
       sub.st = 'found'; sub.gen++;
@@ -994,6 +1000,7 @@
         let pending = false;
         for (const r of sub.probe) {
           const pids = (sub.heads && sub.heads.get(r)) || [];
+          for (const p of pids) sub.tried.add(p);
           const v = pids.length && io.probeDoor ? io.probeDoor(r, pids) : false;
           if (v === true) { log('turn-sub join ' + r); subIdle(now, { join: r }, now + RESEND_MS); return; }   // the page moves its door there; no new ask meanwhile
           if (v !== false) pending = true;
