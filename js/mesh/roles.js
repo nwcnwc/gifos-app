@@ -9,7 +9,9 @@
  *   ownerOf(row)            the cell whose down-child is the row's head (deep rows only)
  *   heirOf(row, occ)        the lowest-column seat of the row that is not the head (L2.1)
  *   backupOwnerOf(row, occ) the owner's right-neighbour over columns 1..C-1, cyclic,
- *                           never the owner; an owner alone passes the role up (L2.2, L2.2b)
+ *                           never the owner; an owner alone passes the role up (L2.2, L2.2b);
+ *                           a Section-1 owner alone goes on over its rook links: down its
+ *                           column, then its row's head (L2.2c)
  *   standbyOf(row, occ)     the backup owner's right-neighbour by the same walk (L2.6)
  *   e2SrcOf(row, occ)       the seat of the row that holds E2: the heir, or a lone head (L2.1b)
  */
@@ -53,7 +55,13 @@
     const j0 = o.i < C - 1 ? o.i + 1 : 1;
     const b = rightWalk(o, j0, o.i, -1, occ); if (b) return b;
     // L2.2b: the owner sits alone in its row: land on the owner row's own backup owner.
-    return backupOwnerOf({ pc: o.pc, r: o.r, i: 0 }, occ);
+    if (o.pc !== 0) return backupOwnerOf({ pc: o.pc, r: o.r, i: 0 }, occ);
+    // L2.2c: a Section-1 owner has no row above it. Its links are the rook: the walk goes on over them, down its column
+    // (the next occupied row, cyclic: a seat of another row, so one row's leave never takes both ways up), then to its
+    // own row's head (in Section 1 a head is a rook seat like any other: no path up runs through it).
+    for (let s = 1; s < C; s++) { const c = { pc: 0, r: (o.r + s) % C, i: o.i }; if (occ(c)) return c; }
+    if (o.i !== 0) { const c = { pc: 0, r: o.r, i: 0 }; if (occ(c)) return c; }
+    return null;
   }
 
   // C++: roles.h:standbyOf
@@ -94,6 +102,10 @@
     if ((src = e2SrcOf(row, fullRow)) && ckey(src) === ckey(s) && (b = backupOwnerOf(row, fullRow))) { out.push(b); cls.push(E_UP2); }
     if (s.i !== 0) for (let d = 0; d < C; d++) {
       const cr = { pc: childPath(s.pc, d), r: s.r, i: 0 };
+      if ((b = backupOwnerOf(cr, fullRow)) && ckey(b) === ckey(s) && (src = e2SrcOf(cr, fullRow))) { out.push(src); cls.push(E_DOWN2); }
+    }
+    if (s.i !== 0 && s.pc === 0) for (let r = 0; r < C; r++) if (r !== s.r) {   // L2.2c: the rows of my column's owners (in the full topology only where a row has no third column, C=2)
+      const cr = { pc: childPath(0, s.i), r, i: 0 };
       if ((b = backupOwnerOf(cr, fullRow)) && ckey(b) === ckey(s) && (src = e2SrcOf(cr, fullRow))) { out.push(src); cls.push(E_DOWN2); }
     }
     return { out, cls };

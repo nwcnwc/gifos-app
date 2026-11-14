@@ -326,8 +326,8 @@
           const crow = { pc: m.coord.pc, r: m.coord.r, i: 0 };
           {
             const alone = !roles.rightWalk(this.coord, this.coord.i < C - 1 ? this.coord.i + 1 : 1, this.coord.i, -1, view);
-            const b = alone ? null : roles.backupOwnerOf(crow, view);
-            if (!alone && b) { p.bkCk = ckey(b); p.bkId = (ckey(b) === ckey(this.coord)) ? id : this.occGet(ckey(b)); }
+            const b = (alone && this.coord.pc !== 0) ? null : roles.backupOwnerOf(crow, view);   /* L2.2c: alone in a Section-1 row, it is the next seat of my column, or my row's head */
+            if (b) { p.bkCk = ckey(b); p.bkId = (ckey(b) === ckey(this.coord)) ? id : this.occGet(ckey(b)); }
             else if (alone && this.bkId >= 0) { p.bkCk = this.bkCk; p.bkId = this.bkId; }
           }   /* L2.2b: alone in my row, my child row's backup owner is my own row's, as my owner named it */
           const b3 = roles.standbyOf(crow, view); if (b3) { p.u3Ck = ckey(b3); p.u3Id = (ckey(b3) === ckey(this.coord)) ? id : this.occGet(ckey(b3)); }

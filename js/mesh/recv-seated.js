@@ -586,7 +586,7 @@
       const row = { pc: m.coord.pc, r: m.coord.r, i: 0 }; const o = roles.ownerOf(row); if (!o) return;
       const view = (c) => ckey(c) === ckey(this.coord) || this.occGet(ckey(c)) >= 0;
       let mine; let b;
-      if (o.pc === this.coord.pc && o.r === this.coord.r) mine = (m.tag === 3) ? ((b = roles.standbyOf(row, view)) !== null && ckey(b) === ckey(this.coord)) : ((b = roles.backupOwnerOf(row, view)) !== null && ckey(b) === ckey(this.coord));
+      if ((o.pc === this.coord.pc && o.r === this.coord.r) || (o.pc === 0 && this.coord.pc === 0)) mine = (m.tag === 3) ? ((b = roles.standbyOf(row, view)) !== null && ckey(b) === ckey(this.coord)) : ((b = roles.backupOwnerOf(row, view)) !== null && ckey(b) === ckey(this.coord));
       else { const orow = { pc: o.pc, r: o.r, i: 0 }; const oo = roles.ownerOf(orow); mine = m.tag !== 3 && !!oo && oo.pc === this.coord.pc && oo.r === this.coord.r && (b = roles.backupOwnerOf(orow, view)) !== null && ckey(b) === ckey(this.coord); }   // L2.2b
       if (!mine) return;
       const ukey = u2RowKey(ckey(row), m.tag === 3);   // key = ckey*2 + variant flag
