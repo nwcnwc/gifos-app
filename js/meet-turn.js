@@ -911,7 +911,8 @@
     // A live pipe end keeps its standby: the far end names its side's standby seat (and tells that seat), the opener has
     // a seat of its own side open the standby toward it. Asked again after a whole dial budget with no standby up.
     function warmStandby(L, now) {
-      if (L.sbUp && L.sbSeat && L.sbSeat !== io.me() && !io.alive(L.sbSeat)) { L.sbUp = false; L.sbAt = 0; }   // my side's standby end is gone: warm another
+      // my side's standby end is gone (up, or named and not answered yet: a seat picked in the tick it left): warm another now
+      if (L.sbSeat && L.sbSeat !== io.me() && !io.alive(L.sbSeat)) { L.sbUp = false; L.sbAt = 0; L.sbSeat = null; }
       if (L.sbUp) return;
       if (L.sbAt && now - L.sbAt < DIAL_BUDGET_MS) {
         if (!(L.sbSelf && io.standbySeat && io.standbySeat())) return;   // no seat of my side could end it then: warm again the moment one can

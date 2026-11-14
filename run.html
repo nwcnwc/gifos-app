@@ -12665,9 +12665,37 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (turnWeb.size && (msg.k === 'roffer' || msg.k === 'ranswer' || msg.k === 'sig')) { const w = turnWeb.get(p.id); if (w && w.channel(msg)) return Promise.resolve(); }   // the web path negotiates with its end in this page
       const dc = p.dc;
       if (typeof clog === 'function') dcTally(msg); // DEBUG: what the channel bytes are
+      const bulk = isGossipFrame(msg);
       return txm(() => net.seal(roomE2E, msg).then((env) =>
-        net.sendChunked(env, (piece, str) => { txKindAdd(msg, str.length, p); try { dc.send(str); } catch (e) {} })));
+        net.sendChunked(env, (piece, str) => { txKindAdd(msg, str.length, p); if (bulk && gossipWaits(dc, str)) return; try { dc.send(str); } catch (e) {} })));
     };
+    // GOSSIP NEVER STANDS IN FRONT OF SOUND. A pair's channel is one ordered stream: whatever is in its send buffer goes
+    // first. A link that newly joins my link set gets my whole recent gossip backlog at once (layer.js replayNew, up to 64
+    // frames of about 1.3 KB), and a pipe that a standby just took over is such a link: on a relayed path that backlog sat
+    // 60 KB deep in the buffer for 8 to 30 s, and behind it the pipe's sound announce and its fold (the far office deaf;
+    // its fold missing for L10_NEW_WAIT, so its home seat re-piped and cut the live pipe: pk44 leave, 777a159). Room gossip
+    // is idempotent (ids dedupe, refan repeats), so it waits instead: while the channel holds more than GOSSIP_BUF_MAX bytes
+    // a gossip frame joins this channel's own queue (in order), sent as the buffer drains; every other frame goes at once.
+    // GOSSIP_BUF_MAX: under one second of the slowest path a pair rides (the free TURN pool's per-session cap, 24000 B/s,
+    // turn/server/provision.sh), so a control frame never waits a second behind gossip. GOSSIP_Q_MAX bounds the queue
+    // (the backlog's own size, refan covers the rest).
+    const GOSSIP_BUF_MAX = 16384, GOSSIP_Q_MAX = 128;
+    function isGossipFrame(msg) { const f = msg && msg.k === 'mesh' && msg.m ? (msg.m.f || msg.m) : null; return !!f && (f.t === 'GSP' || f.t === 'GSPS'); }
+    function gossipWaits(dc, str) {
+      const q = dc.__gq || (dc.__gq = []);
+      if (!q.length && dc.bufferedAmount <= GOSSIP_BUF_MAX) return false;
+      if (q.length >= GOSSIP_Q_MAX) q.shift();
+      q.push(str);
+      if (!dc.__gqWired) {
+        dc.__gqWired = true;
+        try { dc.bufferedAmountLowThreshold = GOSSIP_BUF_MAX >> 1; } catch (e) {}
+        dc.addEventListener('bufferedamountlow', () => {
+          while (dc.__gq.length && dc.readyState === 'open' && dc.bufferedAmount <= GOSSIP_BUF_MAX) { const s0 = dc.__gq.shift(); try { dc.send(s0); } catch (e) {} }
+          if (dc.readyState !== 'open') dc.__gq.length = 0;
+        });
+      }
+      return true;
+    }
     // Channel bytes I sent, by kind (mesh frames by type, beats by status kind):
     // what a test reads to say which traffic grows with the room.
     const txKindBytes = {}, txKindLink = {};   // txKindLink: the same, for each relayed link's channel alone (turnPathsForTest: what a link's byte limit is spent on)
@@ -13281,7 +13309,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const far = new Set(turnLinks.pipeEnds().filter((e) => !e.standby).map((e) => e.peer));
           const load = (pid, sb) => { let n = 0; for (const f of turnFacts.values()) if (f.a === pid || f.b === pid) n++; for (const e of turnLinks.pipeEnds()) if (e.peer === pid && (!!e.standby === sb)) n++; return n; };
           // a device word not heard yet ('') is no phone: capable, as the sim reads it (the seat names its own device to the far side)
-          const cs = meshNode.standbyCands().filter((c) => c.pid !== myId && !far.has(c.pid) && load(c.pid, true) < 2);
+          // never a seat the mesh saw leave or the relay saw go: the view can hold its cell for a tick after its goodbye
+          const cs = meshNode.standbyCands().filter((c) => c.pid !== myId && !far.has(c.pid) && !meshGone.has(c.pid) && !relayGone.has(c.pid) && load(c.pid, true) < 2);
           let best = null;
           for (const c of cs) if (c.head) { const n = load(c.pid, false) + load(c.pid, true); if (!best || n < best.n) best = { c, n }; }
           if (best) return { pid: best.c.pid, dev: best.c.dev };
