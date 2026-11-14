@@ -53,7 +53,7 @@
       if (this.state === 0) {
         let g = m.list[Math.floor(this.rng() * m.list.length)];
         { const via = this.w.L31_VIA; const dv = via ? via.get(id) : undefined; if (dv !== undefined && m.list.includes(dv)) g = dv; }
-        { const tp = this.f.fabricTurnPeerIn(id, m.list); if (tp >= 0) g = tp; else { const fv = this.t161Pick(m.list); if (fv >= 0) g = fv; else { const dv = this.l853Pick(m.list); if (dv >= 0) g = dv; } } }   /* L8.53.4 */   /* TURN.16 (mesh_turn.inc): my TURN link's peer first; TURN.16.1: else the mate I followed */
+        { const dv = this.l853Pick(m.list); if (dv >= 0) g = dv; }   /* L8.53.4 */
         this.gateway = g; this.entNote(g); if (this.f.fabricDoors()) this.l16AskOne(g);
         const w = newMsg('WHOHOME'); w.from = id; w.ttl = 60; if (!this.oldCell && !islandStand(this, E.IS_L31)) w.l31 = 1; this.emit(g, w); this.state = 1; this.retryAt = TICK;
       }
@@ -99,7 +99,7 @@
     // C++: mesh_seat.inc:Seat::onWhoHome
     onWhoHome(m) {
       const TICK = this.TICK, id = this.id;
-      if (!this.hasCoord || this.doorHeld()) { if (m.from >= 0 && m.from !== id) { if (this.whAsk.size >= 8 && !this.whAsk.has(m.from)) this.whAsk.clear(); this.whAsk.set(m.from, TICK | 0); } /* L16.16 */ const h = newMsg('HOME'); this.emit(m.from, h); return; }
+      if (!this.hasCoord) { if (m.from >= 0 && m.from !== id) { if (this.whAsk.size >= 8 && !this.whAsk.has(m.from)) this.whAsk.clear(); this.whAsk.set(m.from, TICK | 0); } /* L16.16 */ const h = newMsg('HOME'); this.emit(m.from, h); return; }
       if (m.ttl <= 0) return;
       if (this.coord.pc === 0 || this.doorCallOn()) {   // FHOP.8: a friend called to the door answers there as a greeter
         const h = newMsg('HOME'); h.roster = this.s1Roster(); h.id = id; h.gkey = this.genKey;
@@ -119,30 +119,24 @@
       }
     },
 
-    // C++: mesh_seat.inc:Seat::doorHeld   (TURN.4.4: a founder of one holds its door while its TURN link dials)
-    doorHeld() { return this.hasCoord && this.state === 3 && this.l850Lone() && this.f.fabricTurnHold(this.id); },
-
     // C++: mesh_seat.inc:Seat::l1616Answer   (L16.16: a seat asked while it had no cell answers each asker in the tick after it takes a cell)
     l1616Answer() {
       const TICK = this.TICK, id = this.id;
       const v = []; for (const [k, t] of this.whAsk) if ((TICK | 0) - t <= K.ISLAND_WAIT) v.push(k); this.whAsk.clear();
-      const t19 = this.coord.pc === 0 && this.f.fabricTurnAcross(id);   // L16.16.1 (C++ mesh_seat.inc)
-      for (const x of v) { this.trace('L16.16-ANSWER', id, this.coord, 'to=%d', x); const w = newMsg('WHOHOME'); w.from = x; w.ttl = K.WHOHOME_HOPS; this.onWhoHome(w);
-        if (t19) { this.trace('L16.16.1-CARRY', id, this.coord, 'nc=%d', x); const f = newMsg('FIND'); f.nc = x; f.from = x; f.ttl = K.FIND_TTL; f.sgw = id; f.sgwCk = ckey(this.coord) + 1; this.farLearn(f); this.onFind(f); } }
+      for (const x of v) { this.trace('L16.16-ANSWER', id, this.coord, 'to=%d', x); const w = newMsg('WHOHOME'); w.from = x; w.ttl = K.WHOHOME_HOPS; this.onWhoHome(w); }
     },
 
     // C++: mesh_seat.inc:Seat::onHome
     onHome(m) {
       const TICK = this.TICK, id = this.id, lv = this.w.lv;
       if (m.id >= 0) this.doorAsk.delete(m.id);   // it answered: not dark
-      if (this.state === 3 && m.roster.length !== 0 && m.from >= 0 && this.lateAsk.has(m.from) && !(this.f.fabricTurnOn() && this.f.fabricTurnPc(id, m.from))) { /* an answer over my TURN pc is my link's far end, no page of my own network */ this.lateAsk.clear(); if (this.islandFounder && this.l850Lone()) { this.trace('L8.47.3-LATE', id, this.coord, 'from=%d', m.from); this.c7Yield(this.ringName(), 'L8.47.3-late'); this.c7Old.clear(); this.l851Up = -1; this.c7At = K.C7AT_NEVER; this.f.relayUnlist(id); return; } }   // L8.47.3 (mesh_roomterm.inc)
+      if (this.state === 3 && m.roster.length !== 0 && m.from >= 0 && this.lateAsk.has(m.from)) { this.lateAsk.clear(); if (this.islandFounder && this.l850Lone()) { this.trace('L8.47.3-LATE', id, this.coord, 'from=%d', m.from); this.c7Yield(this.ringName(), 'L8.47.3-late'); this.c7Old.clear(); this.l851Up = -1; this.c7At = K.C7AT_NEVER; this.f.relayUnlist(id); return; } }   // L8.47.3 (mesh_roomterm.inc)
       if (this.state === 1 && m.roster.length === 0 && m.from >= 0 && m.from !== this.id && this.l8471() && this.lastAsked < 0 && this.islandAsked.has(m.from)) { this.lastAsked = m.from; this.trace('L16.16.1-HELD', this.id, null, 'via=%d', m.from); }   // L16.16.1: "no room yet" from a mate I asked: its answer will carry my FIND
       if (this.state === 1 && m.roster.length === 0 && m.from >= 0 && m.from !== id && this.islandAsked.has(m.from)) { if (this.ehFrom.size >= 16) this.ehFrom.clear(); if (!this.ehFrom.has(m.from) && (this.ehFrom.add(m.from), true) && this.ehAskAt < 0) this.ehAskAt = TICK | 0; this.ehAt = TICK | 0; }   // L8.47.2 (mesh_roomterm.inc): the answer to an ask of mine this entry
       if (this.l13On() && this.state === 3 && m.knock && (m.byes.length >= 2 || m.mass)) { let n = 0; for (const v of this.byeIds.values()) if (TICK - v <= K.LEASE_T) n++; let d = 0; for (const t of this.l13DownAt) if (TICK - t <= K.LEASE_T) d++; if (n + d >= 1) this.l13MassHeard(); }   // L13
       if (this.state === 3 && TICK - this.rosterAskAt > 120) return;   // a SEATED seat hears HOME only as the answer to its own WHOHOME
       if (m.askGap >= 0) this.askGap = m.askGap | 0;   // the door's one clock, as of this answer
       if (m.gkey) { const rk = this.state === 3 && this.hasCoord && this.coord.pc === 0 && this.genKey !== m.gkey; this.genKey = m.gkey; if (rk) { this.trace('L3.11.6-REKEY', id, this.coord, 'from=%d', m.from); this.emitRelay(this.genKey); } }   // THIS meeting's genesis key. L3.11.6: a seated Section-1 seat whose key changed registers under it now (C++: onHome)
-      if (this.state === 1 && m.roster.length === 0 && this.t161Mate(m.from)) { this.retryAt = TICK - 10; return; }   // TURN.16.1: the mate I followed has no seat yet: ask it again in ten ticks
       if (this.state === 1 && roomTerm(this, 1) && m.from >= 0 && this.c7Old.has(m.from) && TICK - this.c7At < K.RELAY_TTL && !this.l853Stays(m)) return;   // L8.5; L8.5.3: unless its HOME names a ring below the one I left (it re-seated in the ring we move toward: the carrier)
       if (this.state === 1 && this.l851Moves(m)) return;   // L8.5.1
       if (this.state === 1 && m.l31 === 1 && this.l31TakeDoor(m)) return;   // L31.1
@@ -192,7 +186,6 @@
     // C++: mesh_seat.inc:Seat::onFind
     onFind(m) {
       const TICK = this.TICK;
-      if (m.f19 && !this.t19Find(m)) return;   // TURN.19.4 (C++ mesh_island.inc)
       if (m.ttl > K.FIND_TTL) m.ttl = K.FIND_TTL; if (m.tag !== 1) this.l711Took(m);   // L7.11; FIND hop budget clamp
       if (this.f.fabricDoors() && m.tag !== 1 && m.nc >= 0 && m.nc !== this.id) this.dials.heard(m.nc);   // L16.3 + L17
       if (m.tag === 1) this.serveCompact(m);
@@ -228,7 +221,6 @@
     // C++: mesh_seat.inc:Seat::onPlace
     onPlace(m) {
       const id = this.id, lv = this.w.lv;
-      if (this.state === 3 && m.nc === id && m.owner >= 0 && m.owner !== id && m.l31 !== 5 && m.l31 !== 7 && m.tag !== 1 && this.l850Lone() && this.f.fabricTurnPc(id, m.from)) { this.trace('TURN19-TAKE', id, this.coord, 'via=%d owner=%d', m.from, m.owner); this.c7Yield(this.ringName(), 'TURN19-take'); this.c7Old.clear(); this.l851Up = -1; this.state = 2; }   // TURN.19.3 (C++ mesh_seat.inc onPlace)
       if (this.l44Answer(m)) this.state = 2;   // L44.6: the answer to my own FIND, after an early re-ask sent me back to the door
       if (this.state === 2 && m.l31 === 7) return;   // L31.4: a withdrawal is no placement: the seeker has already moved on, and it names no neighbours
       if (this.state === 2 && this.l317Declined(m)) { this.trace('L31.7-DECLINED', id, m.coord, 'owner=%d at=%d', m.owner, m.ppAt); return; }   // L31.7: a placement I declined while seated is no answer to this search
@@ -236,7 +228,7 @@
       if (this.state === 2 && this.l851Moves(m)) return;   // L8.5.1
       if (this.state === 2 && this.l25BadPlacer.size && (this.l25Bad(m.owner) || this.l25Bad(m.from))) { this.trace('L25-BADPLACER', id, null, 'owner=%d', m.owner); this.l2520Door(m.from); if (m.nc === id) this.l711Reask('badplacer'); return; }
       if (this.state === 2 && m.nbrs.length === 0 && ckey(m.coord) !== 0) { lv.L25_TWICE++; this.l25Mark(m.owner, true); this.trace('L25-BARE-PLACE', id, m.coord, 'owner=%d', m.owner); this.l2520Door(m.owner); if (m.nc === id) this.l711Reask('bare'); return; }   // L25
-      if (this.state === 2) { if (m.line >= 0) { this.lineAdopt(m.line, m.lineAt, 'place'); if (m.lineF) this.lineFork = true; } this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, m.row, m.ppL); if (this.pp >= 0 && this.pp !== id) this.placer = this.pp; if (m.t14 >= 0) { if (m.t14 > 0) { this.t14Ck = m.t14; this.t14At = this.TICK | 0; } if (m.c7Min >= 0) { this.t14Ring = m.c7Min; this.t14RingAt = this.TICK | 0; } } return; }   // placer: only this intake   // TURN.14.5/6: the placer's word of the link end above the cell, and of its ring
+      if (this.state === 2) { if (m.line >= 0) { this.lineAdopt(m.line, m.lineAt, 'place'); if (m.lineF) this.lineFork = true; } this.take(m.coord, m.owner, m.nbrs, m.pp, m.ppAt, m.row, m.ppL); if (this.pp >= 0 && this.pp !== id) this.placer = this.pp; return; }   // placer: only this intake
       if (this.state === 3 && m.nc === id && m.owner >= 0 && m.owner !== id && m.l31 !== 5 && m.l31 !== 7 && m.tag !== 1 && this.hasCoord && !(m.owner === this.myPlacer && m.ppAt === this.ppAt)) this.l317Decline(m);   // L31.7
       if (this.state === 3 && (m.l31 === 5 || m.l31 === 7) && this.l31Replace(m)) return;   // L31.4
       if (this.state === 3 && m.tag === 1 && m.nc === id) lv.COMPACT_PLACES++;

@@ -143,7 +143,7 @@
       const TICK = this.TICK, id = this.id, wake = () => this.f.wake(id);
       if (this.evilDoor) { if (this.hostile && !(TICK % 2)) { this.state = 0; this.emitRelay(this.linkKey); } this.l16Evil(); wake(); return true; }   // L16 adversary
       if (this.state !== 3 && this.l16Wait()) { wake(); return true; }   // L16: backing off
-      if (this.state === 3 && this.hasCoord && this.whAsk.size !== 0 && !this.doorHeld()) this.l1616Answer();   // L16.16
+      if (this.state === 3 && this.hasCoord && this.whAsk.size !== 0) this.l1616Answer();   // L16.16
       if (this.state !== 3) {
         if (this.stranded) { if (TICK - this.strandedAt > K.STRAND_TTL) { this.stranded = false; this.lastReach = -1; this.joinStart = -1; this.join(); } wake(); return true; }   // R6
         if (this.l16WaveTick()) { wake(); return true; }   // L16: a silent ask wave: everyone left
@@ -275,8 +275,6 @@
       this.rmRetry();   // L11: a home hole that waited for a witness
       if (TICK >= this.xlinkAt) { this.xlinkAt = TICK + 150 + Math.trunc(this.rng() * 100); const cm = colMates(this.coord); for (let q = 0; q < C - 1; q++) if (this.occGet(ckey(cm[q])) < 0) this.routeTo(cm[q], 1); }   // W7: keep column links live
       if (this.s1CheckAt < 0) this.s1CheckAt = TICK + K.E3_PERIOD + Math.trunc(this.rng() * K.E3_PERIOD);
-      if (this.coord.pc === 0 && (TICK + id) % K.TURN_RETRY === 0 && this.f.fabricTurnOn()) this.t14Call();   /* TURN.14.13 */
-      if (this.coord.pc === 0 && (TICK + id) % K.HELLO_BACK === 0 && this.f.fabricTurnOn()) this.t1415Beat();   /* TURN.14.15 */
       if (TICK >= this.s1CheckAt) { this.s1CheckAt = TICK + K.E3_PERIOD + Math.trunc(this.rng() * K.E3_PERIOD); this.emitRelay(this.genKey); }   // E3: re-knock each ~E3_PERIOD
       this.f.wake(id); return;
     },

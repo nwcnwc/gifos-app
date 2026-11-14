@@ -94,14 +94,10 @@
         return -1;
       }
     },
-    // C++: mesh_seat.inc:Seat::t17Carried   (TURN.17: a Section-1 mate I hold no open connection to, carried by a friend)
-    t17Carried(x) { const id = this.id; return x >= 0 && x !== id && this.hasCoord && this.coord.pc === 0 && this.f.fabricTurnOn() && this.f.fabricLinkState(id, x) !== E.LS_OPEN && this.f.fabricTurnCarried(id, x); },
-    // C++: mesh_seat.inc:Seat::t17Hop   (TURN.17: the probe of such a mate goes to the mate itself: the sponsored frame takes the friend)
-    t17Hop(target) { if (target.pc !== 0) return -1; const x = this.occGet(ckey(target)); if (!this.t17Carried(x)) return -1; this.trace('TURN17-PROBE', this.id, target, 'to=%d', x); return x; },
     // C++: mesh_seat.inc:Seat::routeTo
     routeTo(target, tag) {
       const id = this.id;
-      let nh = this.nextHopToward(target, -1); if (ckey(this.coord) === ckey(target)) return; { const t17 = this.t17Hop(target); if (t17 >= 0) nh = t17; }   /* TURN.17 */
+      const nh = this.nextHopToward(target, -1); if (ckey(this.coord) === ckey(target)) return;
       if (nh >= 0) { const pn = this.probeNote(ckey(target)); const m = newMsg('ROUTE'); m.target = cc(target); m.asker = id; m.tag = tag; m.ttl = 60; m.via = id; m.pseq = ++this.w.lv.RSEQ; m.pn = pn; m.coord = cc(this.coord); this.emit(nh, m); }   // L3.4.1: my cell rides along: the answer comes back by route when the answerer has no channel to me
     },
     // C++: mesh_seat.inc:Seat::routeToProbe
@@ -110,9 +106,8 @@
     routeToProbe(target) {
       const id = this.id;
       const tk = ckey(target); if (!this.hasCoord || ckey(this.coord) === tk) return false;
-      const t17 = this.t17Hop(target);   // TURN.17: the friend that carries the pair is the path around the connection that never opens
-      if (t17 < 0) { const h = this.tlHard.get(tk); if (h === 2 && this.coord.pc === 0 && target.pc === 0) return this.d5Fan(target); }   // D5.1: a loss read from silence is probed on every rook path
-      const nh = t17 >= 0 ? t17 : this.probeHop(target, this.occGet(tk));
+      { const h = this.tlHard.get(tk); if (h === 2 && this.coord.pc === 0 && target.pc === 0) return this.d5Fan(target); }   // D5.1: a loss read from silence is probed on every rook path
+      const nh = this.probeHop(target, this.occGet(tk));
       if (nh >= 0) { const pn = this.probeNote(tk); const m = newMsg('ROUTE'); m.target = cc(target); m.asker = id; m.tag = 2; m.ttl = 60; m.via = id; m.pseq = ++this.w.lv.RSEQ; m.coord = cc(this.coord); m.pn = pn; this.emit(nh, m); return true; }
       return false;
     },
@@ -137,15 +132,6 @@
       for (let k = 0; k < ol.length; k++) if (ckey(ol[k]) === ik) { const x = this.occGet(ik); return (x >= 0 && x !== id) ? x : -1; }
       return -1;                                               // ideal isn't a direct link: drop
     },
-    // C++: mesh_seat.inc:Seat::t1417Back   (an answer to an ask that came over my TURN pc goes back over it before any door)
-    t1417Back(nh, rfinal, m) {
-      if (m.adoor || rfinal < 0 || rfinal === this.id || !this.hasCoord || this.state !== 3 || !(m.t === 'NOROOM' || m.t === 'PLACE' || m.t === 'FINDACK')) return -1;
-      if (nh >= 0 && this.f.fabricLinkState(this.id, nh) === E.LS_OPEN) return -1;
-      const f = this.t14From.get(rfinal); if (f === undefined || this.TICK - f[1] > K.RELAY_TTL) return -1;
-      const p = f[0]; if (p < 0 || p === this.id || p === rfinal || p === m.rvia || !this.f.fabricTurnOn() || !this.f.fabricTurnPc(this.id, p) || this.f.fabricLinkState(this.id, p) !== E.LS_OPEN) return -1;
-      this.trace('TURN14-RETURN', this.id, this.coord, 'nc=%d via=%d mt=%d', rfinal, p, mtInt(m.t));
-      return p;
-    },
 
     // C++: mesh_seat.inc:Seat::route
     // route(): deliver `inner` to coord rdst over LINKS only. (inner is a C++ by-value Msg: copied here.)
@@ -160,7 +146,6 @@
       }
       if (inner.l18) inner.rttl = 16;   // L18: a frame that only lacked a role travels a short way or not at all
       const nh = !this.hasCoord ? this.gateway : inner.l18 ? this.f.l18Hop(id, cc(rdst), -1) : this.strictNextHop(rdst);      // unseated: leave via the gateway link
-      { const bk = this.t1417Back(nh, rfinal, inner); if (bk >= 0) { this.emit(bk, inner); return; } }   // TURN.14.17
       if (!inner.adoor && this.answerDoor(nh, rfinal, inner)) { const d = msg.clone(inner); d.routing = false; d.rfinal = -1; d.gwc = true; d.adoor = true; this.emit(rfinal, d); return; }   // L16.3
       if (nh >= 0) this.emit(nh, inner); else if (rfinal >= 0 && answerType(inner.t)) this.trace('ROUTE-DROP', id, this.hasCoord ? this.coord : null, 'mt=%d final=%d dst=%s why=origin', mtInt(inner.t), rfinal, coordStr(rdst));
     },
@@ -181,7 +166,6 @@
       if (m.t === 'WHOHOME' && m.sgw === id && this.hasCoord && this.state === 3) { this.trace('L16.15-GATEWAY', id, this.coord, 'from=%d dst=%s', m.from, coordStr(m.rdst)); m.routing = false; return true; }
       if (m.rttl <= 0) { if (m.rfinal >= 0 && answerType(m.t)) this.trace('ROUTE-DROP', id, this.hasCoord ? this.coord : null, 'mt=%d final=%d dst=%s why=ttl', mtInt(m.t), m.rfinal, coordStr(m.rdst)); return false; }   // give up: sender retries
       const nh = m.l18 ? this.f.l18Hop(id, cc(m.rdst), m.rvia) : this.strictNextHop(m.rdst);   // L18: round a hole on my own links
-      { const bk = this.t1417Back(nh, m.rfinal, m); if (bk >= 0) { const d = msg.clone(m); this.emit(bk, d); return false; } }   // TURN.14.17
       if (!m.adoor && this.answerDoor(nh, m.rfinal, m)) { const d = msg.clone(m); d.routing = false; d.rfinal = -1; d.gwc = true; d.adoor = true; this.emit(m.rfinal, d); return false; }   // L16.3
       if (nh < 0) { if (m.rfinal >= 0 && answerType(m.t)) this.trace('ROUTE-DROP', id, this.hasCoord ? this.coord : null, 'mt=%d final=%d dst=%s why=nohop', mtInt(m.t), m.rfinal, coordStr(m.rdst)); return false; }   // no link toward rdst: drop
       const f = msg.clone(m); f.rttl = m.rttl - 1; f.rvia = id; this.emit(nh, f); return false;

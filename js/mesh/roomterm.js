@@ -43,9 +43,9 @@
     // strict) as silent at once: the two kinds are that dial's verdict.
     // A greeter at the far end of a TURN pc of mine answers me over it: no silence there.
     // C++: mesh_roomterm.inc:Seat::l854Other
-    l854Other(g) { return !!this.w.lv.ISLAND_MODE && g >= 0 && g !== this.id && this.f.fabricDoorNet(this.id, g) === 0 && !this.f.fabricTurnPc(this.id, g); },
+    l854Other(g) { return !!this.w.lv.ISLAND_MODE && g >= 0 && g !== this.id && this.f.fabricDoorNet(this.id, g) === 0; },
     // C++: mesh_roomterm.inc:Seat::l854All
-    l854All(list) { if (!this.w.lv.ISLAND_MODE) return false; let n = 0; for (const g of list) { if (g < 0 || g === this.id) continue; if (this.f.fabricDoorNet(this.id, g) !== 0 || this.f.fabricTurnPc(this.id, g)) return false; n++; } return n > 0; },
+    l854All(list) { if (!this.w.lv.ISLAND_MODE) return false; let n = 0; for (const g of list) { if (g < 0 || g === this.id) continue; if (this.f.fabricDoorNet(this.id, g) !== 0) return false; n++; } return n > 0; },
 
     // C++: mesh_roomterm.inc:Seat::l813Unfound   (L8.1.3: a founder still alone on its cell that reads, on the list its seating knock got, a greeter it never asked this entry, of a room it has not found silent, goes back to the door)
     l813Unfound(m) {

@@ -125,7 +125,6 @@
     // C++: mesh_tier.inc:Seat::l4Ready
     l4Ready(q) {
       if (!this.w.lv.TIERS_ACTIVE || !this.hasCoord || this.state !== 3 || this.moving || this.l4ExecAt >= 0) return false;
-      if (this.t14Fixed()) return false;   /* TURN.14.7 */
       const mine = ckey(this.coord);
       if (!((q.swA === this.id && q.swCa === mine) || (q.swB === this.id && q.swCb === mine))) return false;
       if (this.l4Hold) return false;
