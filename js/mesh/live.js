@@ -323,15 +323,12 @@
       {
         const view = (c) => ckey(c) === ckey(this.coord) || this.occGet(ckey(c)) >= 0;
         if (ckey(m.coord) === ckey(down(this.coord))) {
-          const crow = { pc: m.coord.pc, r: m.coord.r, i: 0 };
-          {
-            const alone = !roles.rightWalk(this.coord, this.coord.i < C - 1 ? this.coord.i + 1 : 1, this.coord.i, -1, view);
-            const b = (alone && this.coord.pc !== 0) ? null : roles.backupOwnerOf(crow, view);   /* L2.2c: alone in a Section-1 row, it is the next seat of my column, or my row's head */
-            if (b) { p.bkCk = ckey(b); p.bkId = (ckey(b) === ckey(this.coord)) ? id : this.occGet(ckey(b)); }
-            else if (alone && this.bkId >= 0) { p.bkCk = this.bkCk; p.bkId = this.bkId; }
-          }   /* L2.2b: alone in my row, my child row's backup owner is my own row's, as my owner named it */
-          const b3 = roles.standbyOf(crow, view); if (b3) { p.u3Ck = ckey(b3); p.u3Id = (ckey(b3) === ckey(this.coord)) ? id : this.occGet(ckey(b3)); }
-        }   // L2.2: my child row's backup owner (and standby), read off my own row
+          // L2.2, L2.2d: my child row's backup owner and standby are the first two seats of my walk, and they are MY word: the seats I name serve the row on it
+          const wid = [-1, -1], wck = [0, 0]; let n = 0, c;
+          while (n < 2 && (c = roles.ownerWalk(this.coord, view, n, false))) { wck[n] = ckey(c); wid[n] = this.occGet(wck[n]); n++; }
+          if (this.coord.pc !== 0) { if (n < 2 && this.bkId >= 0 && this.bkId !== id) { wck[n] = this.bkCk; wid[n] = this.bkId; n++; } if (n < 2 && this.sbId >= 0 && this.sbId !== id) { wck[n] = this.sbCk; wid[n] = this.sbId; n++; } }   /* L2.2b: where my own row runs out, the walk passes up: my row's backup owner and standby, as my owner named them */
+          if (n > 0) { p.bkCk = wck[0]; p.bkId = wid[0]; } if (n > 1) { p.u3Ck = wck[1]; p.u3Id = wid[1]; }
+        }
         else if (this.coord.pc !== 0 && this.coord.i === 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r) { p.bkId = this.bkId; p.bkCk = this.bkCk; if ((this.bkId < 0 || this.bkId === id) && this.l9BkId >= 0 && TICK - this.l9BkAt <= K.LEASE_T) { p.bkId = this.l9BkId; p.bkCk = this.l9BkCk; } p.u3Id = this.sbId; p.u3Ck = this.sbCk; p.e1dn = this.e1Dn; p.e1At = this.e1DnAt; }   // ...relayed to my row, with my E1's state
       }
       // § G DOWN-LEG (rides the PONG I already send)
