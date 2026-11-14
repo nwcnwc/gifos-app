@@ -290,12 +290,13 @@
       : Promise.resolve());
     // pv: the page's wire version. 0.9.25 was a flag day: the relay refuses a page that does not name
     // 0.9.25 or newer with 4010, which every older page shows as "reload to update" and stops knocking.
-    // SUBROOMS: the door this socket uses (opts.door() → { sr, sg } | null): a subroom r>0 of the meeting, and the TURN
-    // service's grant that founds it (any member of r may hold one; the relay ignores it at a live door).
+    // SUBROOMS: the door this socket uses: my door's room number (the seat's sr; 0 is the first room) and the TURN
+    // service's grant that founds it (any member of that room may hold one; the relay ignores it at a live door).
+    const doorNow = () => (raw && raw.sr > 0 && raw.sr < 100 ? raw.sr : 0);
     const doorParams = () => {
-      const d = opts.door ? opts.door() : null;
-      if (!d || !(Number.isInteger(d.sr) && d.sr > 0 && d.sr < 100)) return '';
-      return '&sr=' + d.sr + (typeof d.sg === 'string' && d.sg ? '&sg=' + encodeURIComponent(d.sg) : '');
+      const r = doorNow();
+      if (!r) return '';
+      return '&sr=' + r + (subGrant ? '&sg=' + encodeURIComponent(subGrant) : '');
     };
     const makeUrl = () => {
       const extra = opts.urlParams ? String(opts.urlParams() || '') : '';
@@ -685,10 +686,12 @@
       // dropped relay retries on the short cap. The patient cap is for a
       // hidden page that is not in a call. This socket exists only for the
       // call and stays on duty until the node stops.
+      const atDoor = doorNow();
       sock = net.steadySocket(makeUrl, {
         onClose: (code) => { relayCloses.push({ code, at: Date.now() }); if (relayCloses.length > RELAY_CLOSES_KEPT) relayCloses.shift(); },
         onDuty: () => !stopped,
       });
+      sock.door = atDoor;   // the room number this socket's URL names (sendRaw moves it when my door moves)
       lastRelayRx = Date.now(); // fresh socket starts its idle clock now
       // EVERY (re)connect: if I am a seated Section-1 greeter, my pool entry
       // died with the old socket — restore it NOW, not at the next E3 tick.
@@ -764,6 +767,9 @@
       // size) and never longer than the largest legal frame. Anything else
       // is counted and never sent, whoever asked.
       if (!net.relayVerbOk(obj) || JSON.stringify(obj).length > net.RELAY_MAX_FRAME_LEN) { relayUnsent++; return; }
+      // SUBROOMS: a frame goes out at my door. My door moved (the answer to my ask, or my room took a number): the socket
+      // at the old door goes and the next one opens at the new door, before this frame (a knock, a register) is sent.
+      if (sock && sock.door !== doorNow() && !sock.rejected) { try { sock.close(); } catch (e) {} sock = null; }
       if (!sock) makeSock(); // recreate on demand (deep seats run socketless)
       // A POLICY-REJECTED socket (4000 replaced / banned / voted off) stays
       // DOWN — steadySocket already refuses to reconnect it, but replacing
@@ -786,6 +792,15 @@
     // (1) KNOCK — I have no greeter yet, so I ask the registry for the sealed
     // list (R3: an empty list mints genesis). The one call that exists precisely
     // because there is no other way in.
+    // SUBROOMS: what a registration says for the TURN service's pick: c '1' when my seat heads a Section-1 row on a
+    // capable device (a relayed pipe may end here), and ep, my room's founding time (at a door two rooms share, the
+    // oldest room's heads are its own).
+    function regWords() {
+      const w = {};
+      if (seat && seat.hasCoord && seat.coord.pc === 0) w.c = seat.coord.i === 0 && (typeof opts.capable !== 'function' || opts.capable()) ? '1' : '0';
+      if (raw && Number.isInteger(raw.lineAt) && raw.lineAt >= 0 && raw.lineAt < 1e15) w.ep = String(raw.lineAt);
+      return w;
+    }
     function KNOCK_FOR_THE_GREETER_LIST(gk) { sendRaw({ t: 'knock', gk: gk || myKey }); }
 
     // (2) REGISTER — I am a seated Section-1 seat, so I AM a door; E3 keeps my
@@ -812,7 +827,7 @@
       lastRegWord = netWord();
       net.sealFixed(roomKey, net.fitsFixed(blob1) ? blob1 : blob0)
         // a greeter's sealed address is one fixed-size sealed part, like every sealed thing on the relay
-        .then((b) => { const s = JSON.stringify(b); greeterTrace.push({ t: Date.now(), tick: env.TICK, state: seat.state, post: seat.state, listLen: -1, open: -1, founded: false, action: 'register-blob:' + blobFp(s) }); if (greeterTrace.length > GREETER_TRACE_CAP) greeterTrace.shift(); sendRaw(Object.assign({ t: 'knock', gk: k, gblob: s }, seat.coord.pc !== 0 ? { dc: '1' } : {})); })   /* dc: a door-call registration (FHOP.8), which the relay keeps only for the call */
+        .then((b) => { const s = JSON.stringify(b); greeterTrace.push({ t: Date.now(), tick: env.TICK, state: seat.state, post: seat.state, listLen: -1, open: -1, founded: false, action: 'register-blob:' + blobFp(s) }); if (greeterTrace.length > GREETER_TRACE_CAP) greeterTrace.shift(); sendRaw(Object.assign({ t: 'knock', gk: k, gblob: s }, seat.coord.pc !== 0 ? { dc: '1' } : {}, regWords())); })   /* dc: a door-call registration (FHOP.8), which the relay keeps only for the call */
         .catch(() => sendRaw({ t: 'knock', gk: k }));
     }
     // (2b) RE-REGISTER on a wire event — same door function as (2), fired when
