@@ -367,14 +367,16 @@
   // THE VOICE ON A TURN LINK (TURN.13, Nathan 11-14: sound is never lost; its quality may give under a tight cap). Every
   // audio sender of the link has a full rate (the page's own: 64 kbps for forwarded sound) and rides RTP at Opus's 20 ms
   // frames: 50 packets a second, each with IPv4 + UDP + TURN ChannelData + RTP + the SRTP tag in front (54 bytes). On a
-  // starved link the voices step down to the law's share: TURN_BASE_BYTES (everything but video) less the link's own
-  // data and the packet headers, split over its voices, never under the codec's floor (Opus's 6 kbps in the browsers).
+  // starved link the voices step down to the law's share: TURN_BASE_BYTES (everything but video) less the packet headers,
+  // split over its voices, never under the codec's floor (Opus's 6 kbps in the browsers). The link's data is not taken
+  // off: it is elastic (its channel's own congestion control) and gives way before the voice (pk42 11-14: 60-70 kbit of
+  // gossip after a kill took the whole share and the voice sat on the floor: static in the far office).
   const VOICE_PPS = 50, VOICE_HDR_BYTES = 54, VOICE_FLOOR_BPS = 6000;
   const voiceHdr = () => VOICE_PPS * VOICE_HDR_BYTES * 8;   // bits a second of headers per audio sender
-  // voiceLow(n, dataBps, tickMs) → the rate each of n audio senders steps down to: the law's base less data and headers
-  function voiceLow(n, dataBps, tickMs) {
+  // voiceLow(n, tickMs) → the rate each of n audio senders steps down to: the law's base less their headers, split
+  function voiceLow(n, tickMs) {
     const K = meshConsts().consts, base = K.TURN_BASE_BYTES * (1000 / (tickMs || 500)) * 8, k = Math.max(1, n | 0);
-    return Math.max(VOICE_FLOOR_BPS, Math.floor((base - (+dataBps || 0) - k * voiceHdr()) / k));
+    return Math.max(VOICE_FLOOR_BPS, Math.floor((base - k * voiceHdr()) / k));
   }
   // the wire the link needs before any video: its voices at full rate with their headers, and its data
   const voiceWire = (look) => (+look.voiceFull || 0) + (look.voiceN | 0) * voiceHdr() + (+look.data || 0);
@@ -385,7 +387,7 @@
     return (+look.bps || 0) * (1 - THROTTLE_LOSS) - voiceWire(look) >= THROTTLE_STEPS[i].need * min;
   }
   const PROBE_BACKOFF_MAX = 3;   // a failed probe doubles the next wait, up to 2^3 x TURN_THROTTLE_UP_MS
-  const VOICE_BAD = 3;   // lossy looks within TURN_THROTTLE_UP_MS before the voices step down (one or two are a path change, not a cap)
+  const VOICE_BAD = 2;   // lossy reports among the last 3 fresh ones before the voices step down (a path event's own are left out)
   // throttleNext(st, look, now, tickMs): one look of a TURN link end. st = { step, busy, okSince, bad, rttBase, pausedAt,
   // probation, probeN, voice ('full' | 'low'), vOkSince, vProbation, vProbeN } (kept by the caller); look = { bps, loss,
   // rtt, limited, cap, stale, voiceFull, voiceN, data, video, flow, clean } (loss: the far end's fraction lost on ANY of
@@ -431,7 +433,7 @@
     // video on probation: the first congested look takes the try back
     if (st.probation) {
       if (congested) { if (st.probation.from < 0) { st.busy = true; st.pausedAt = now; } else st.step = st.probation.from; st.probeN = (st.probeN || 0) + 1; st.probation = null; st.okSince = 0; st.bad = 0; return; }
-      if (now - st.probation.at >= THROTTLE_UP_MS) { st.probation = null; st.probeN = 0; }
+      if (look.fresh !== false && ++st.probation.clean >= 2) { st.probation = null; st.probeN = 0; }   // two clean fresh reports end it
     }
     if (congested) {
       st.okSince = 0; st.bad = (st.bad || 0) + 1;
@@ -444,28 +446,28 @@
     }
     if (look.fresh === false) return;   // no fresh report this look: neither calm nor congested (audio reports come seconds apart; a calm read here broke every two-look count, t5 11-14)
     st.bad = 0;
-    if (st.busy) { if (st.voice === 'full' && !st.vProbation && now - (st.pausedAt || 0) >= wait(st.probeN)) { st.busy = false; st.step = last; st.okSince = now; st.probation = { from: -1, at: now }; } return; }
+    if (st.busy) { if (st.voice === 'full' && !st.vProbation && now - (st.pausedAt || 0) >= wait(st.probeN)) { st.busy = false; st.step = last; st.okSince = now; st.probation = { from: -1, at: now, clean: 0 }; } return; }
     if (held) { st.okSince = 0; return; }   // held back by the path: no climb
     if (st.step > 0) {
       if (!st.okSince) st.okSince = now;
-      else if (now - st.okSince >= wait(st.probeN) && (roomFor(st.step - 1, look, tickMs) || (look.flow && look.clean))) { st.probation = { from: st.step, at: now }; st.step--; st.okSince = now; }
+      else if (now - st.okSince >= wait(st.probeN) && (roomFor(st.step - 1, look, tickMs) || (look.flow && look.clean))) { st.probation = { from: st.step, at: now, clean: 0 }; st.step--; st.okSince = now; }
     }
     }
     // THE VOICES, after the video's look (they read whether video has anything left to give). A starved link loses
-    // packets look after look; a path change (a pipe end killed, a standby taking over) loses them in one burst (pk42
-    // 11-14: the voices stepped to the floor on every kill leg, and the far office heard the re-mixed low voice). The
-    // voices step down on VOICE_BAD lossy looks within TURN_THROTTLE_UP_MS (any media, video or not) with no video left
-    // to give; on probation one lossy look is enough.
+    // packets report after report (c81 11-14: every other audio report under an 80 kbit cap); a path change (the link
+    // just came up, its path went down and back, a standby took over) loses them in a burst of its own, left out for
+    // TURN_THROTTLE_UP_MS (look.settling). The voices step down on VOICE_BAD lossy of the last 3 fresh reports with no
+    // video left to give; on probation one lossy report is enough, and two clean fresh ones end it.
     function voiceLook() {
       const noVideoLeft = !video || st.busy;
-      st.vLoss = (st.vLoss || []).filter((t) => now - t < THROTTLE_UP_MS);
-      if (lossy) st.vLoss.push(now);
+      if (look.fresh !== false && !look.settling) st.vHist = (st.vHist || []).concat(lossy ? 1 : 0).slice(-3);   // the last fresh reports (a path event's own losses left out)
+      const bad = (st.vHist || []).reduce((a, b) => a + b, 0);
       if (st.voice === 'full') {
-        if (lossy && noVideoLeft && (st.vProbation || st.vLoss.length >= VOICE_BAD)) { st.voice = 'low'; st.vOkSince = 0; if (st.vProbation) st.vProbeN = (st.vProbeN || 0) + 1; st.vProbation = false; }
-        else if (st.vProbation && !lossy && now - st.vProbation >= THROTTLE_UP_MS) { st.vProbation = false; st.vProbeN = 0; }
+        if (lossy && !look.settling && noVideoLeft && (st.vProbation || bad >= VOICE_BAD)) { st.voice = 'low'; st.vOkSince = 0; st.vHist = []; if (st.vProbation) st.vProbeN = (st.vProbeN || 0) + 1; st.vProbation = 0; }
+        else if (st.vProbation && !lossy && look.fresh !== false && ++st.vClean >= 2) { st.vProbation = 0; st.vProbeN = 0; }   // two clean fresh reports end the probation
       } else if (lossy) st.vOkSince = 0;
       else if (!st.vOkSince) st.vOkSince = now;
-      else if (now - st.vOkSince >= wait(st.vProbeN)) { st.voice = 'full'; st.vProbation = now; }
+      else if (now - st.vOkSince >= wait(st.vProbeN)) { st.voice = 'full'; st.vProbation = now; st.vClean = 0; }
     }
   }
 
@@ -798,9 +800,9 @@
       const x = m || {};
       if (!L.ts) L.ts = { step: 0, busy: false };
       const was = L.ts.busy ? -1 : L.ts.step, vWas = L.ts.voice || 'full';
-      throttleNext(L.ts, { bps, loss, rtt, limited: !!limited, cap: L.thr && L.thr.step >= 0 ? L.thr.maxBitrate : 0, stale: !!x.stale, voiceFull: +x.voiceFull || 0, voiceN: x.voiceN | 0, data: +x.data || 0, video: !!L.video, flow: !!x.flow, clean: !!x.clean, vRate: +x.vRate || 0, fresh: x.fresh == null ? undefined : !!x.fresh }, now, tick);
+      throttleNext(L.ts, { bps, loss, rtt, limited: !!limited, cap: L.thr && L.thr.step >= 0 ? L.thr.maxBitrate : 0, stale: !!x.stale, voiceFull: +x.voiceFull || 0, voiceN: x.voiceN | 0, data: +x.data || 0, video: !!L.video, flow: !!x.flow, clean: !!x.clean, vRate: +x.vRate || 0, settling: now - Math.max(L.upAt || 0, L.pathAt || 0) < THROTTLE_UP_MS, fresh: x.fresh == null ? undefined : !!x.fresh }, now, tick);
       if ((+loss || 0) >= THROTTLE_LOSS || x.stale) log('turn-lossy ' + short(L.far) + ' loss=' + Math.round((+loss || 0) * 100) + '%' + (x.lossKind ? '(' + x.lossKind + ')' : '') + (x.stale ? ' stale ' + Math.round((+x.vRate || 0) / 1000) + 'k' : '') + ' flow=' + (x.flow ? 1 : 0) + ' cap=' + Math.round((bps || 0) / 1000) + 'k voices=' + (x.voiceN | 0) + ' data=' + Math.round((+x.data || 0) / 1000) + 'k');   // what made a look congested (TURN.13)
-      if (L.ts.voice !== 'low') L.voiceLow = 0; else if (vWas !== 'low' || !L.voiceLow) L.voiceLow = voiceLow(x.voiceN, x.data, tick);   // latched: the step is set once per step down
+      if (L.ts.voice !== 'low') L.voiceLow = 0; else if (vWas !== 'low' || !L.voiceLow) L.voiceLow = voiceLow(x.voiceN, tick);   // latched: the step is set once per step down
       if (L.ts.voice !== vWas) { log('turn-voice ' + short(L.far) + ' ' + (L.voiceLow ? 'low ' + Math.round(L.voiceLow / 1000) + 'k' : 'full') + ' cap=' + Math.round((bps || 0) / 1000) + 'k'); io.changed(L.far); }
       if (!L.video) return;
       const st = L.ts.busy ? -1 : L.ts.step;
@@ -882,6 +884,7 @@
     function onPath(pid, st) {
       const L = links.get(pid); if (!L || L.state !== 'up') return;
       const now = io.now();
+      if (st !== 'connected' || L.standbyAt) L.pathAt = now;   // a path event: its own losses are not a cap (TURN.13 voices)
       if (st === 'disconnected' || st === 'failed') {   // (checking is an ICE restart of ours: the paid move, a renewal)
         if (!L.standbyAt) { L.standbyAt = now; L.standbyN++; log('turn-standby path down ' + short(L.far) + ' (' + st + ')'); }
       } else if (st === 'connected' && L.standbyAt) {
@@ -926,7 +929,7 @@
         if (!L.vouched && !cl && L.paidMe) { L.paidMe = false; io.sendTv(L.far, { k: 'tv', q: 'p', l: L.l, b: 0 }); }
         // the web path's connection never moves (its 'p' goes out at the credential, onCred), so its video waits for no move
         const v = L.vouched && L.paidMe && L.paidFar && (!L.client || L.web || L.paidSaid);
-        if (v !== L.video) { L.video = v; L.ts = L.ts ? { step: 0, busy: false, voice: L.ts.voice, vOkSince: L.ts.vOkSince, vProbation: L.ts.vProbation, vProbeN: L.ts.vProbeN } : null; log('turn-video ' + short(L.far) + ' ' + (v ? 'on' : 'off')); if (!v) setThrottle(L, null); io.changed(L.far); }
+        if (v !== L.video) { L.video = v; L.ts = L.ts ? { step: 0, busy: false, voice: L.ts.voice, vOkSince: L.ts.vOkSince, vProbation: L.ts.vProbation, vProbeN: L.ts.vProbeN, vClean: L.ts.vClean, vHist: L.ts.vHist } : null; log('turn-video ' + short(L.far) + ' ' + (v ? 'on' : 'off')); if (!v) setThrottle(L, null); io.changed(L.far); }
       }
     }
     function factOf(L) {
