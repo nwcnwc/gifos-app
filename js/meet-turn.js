@@ -386,25 +386,44 @@
   // subsPresent(subs, now, inRoom, freshMs, me) → [{ key, tier, ticket }] the subscribers whose vouch counts now (TURN.11: the
   // pool sums over the subscribers present in the MEETING). subs: Map pid → { tier, exp (s), ticket, at (ms, last heard) }.
   // Present: me; a seat of my own room (inRoom(pid)); or, in another room of the meeting (joined by a relayed pipe), one
-  // whose statement was heard within freshMs (it restates itself while it stays). Ordered by key, so the paid ticket a
-  // link presents is the same at both ends.
+  // whose statement was heard within freshMs (it restates itself while it stays). Ordered by key alone, so both ends of
+  // a link read the same list and pick the same subscriber for it (vouchPayers).
   function subsPresent(subs, now, inRoom, freshMs, me) {
     const out = [];
     for (const [pid, s] of subs || []) {
       if (!s || !(s.exp * 1000 > now)) continue;
       if (pid === me || (inRoom && inRoom(pid)) || now - (s.at || 0) <= freshMs) out.push({ key: pid, tier: s.tier, ticket: s.ticket });
     }
-    return out.sort((x, y) => (x.key === me ? -1 : y.key === me ? 1 : x.key < y.key ? -1 : 1));
+    return out.sort((x, y) => (x.key < y.key ? -1 : x.key > y.key ? 1 : 0));
   }
 
-  // vouchPlan(links, pool) → the ids that carry video now: links in turnVouchOrder, the first `pool` of them.
+  // vouchRank(links, pool) → the ids that carry video now, in turnVouchOrder: the first `pool` links.
   // links: [{ id, stage, cell, serial }]; pool: the sum of the tiers' video links over the subscribers present.
-  function vouchPlan(links, pool) {
+  function vouchRank(links, pool) {
     const T = meshTurn();
     const ix = (links || []).slice();
     const before = (x, y) => T.turnVouchOrder(!!x.stage, x.cell, x.serial, !!y.stage, y.cell, y.serial);
     ix.sort((x, y) => (before(x, y) ? -1 : before(y, x) ? 1 : 0));
-    return new Set(ix.slice(0, Math.max(0, pool | 0)).map((x) => x.id));
+    return ix.slice(0, Math.max(0, pool | 0)).map((x) => x.id);
+  }
+  function vouchPlan(links, pool) { return new Set(vouchRank(links, pool)); }
+  // vouchPayers(ids, subs) → Map id → subscriber: whose vouch each vouched link uses. subs in key order (subsPresent),
+  // each taking as many links as its tier vouches for, in the order of ids (vouchRank). A link's paid ask presents that
+  // subscriber's ticket, and the service counts the link on that subscriber, so the pool is the sum of what each
+  // subscriber may vouch for. Both ends read the same subscribers and link facts, so they pick the same one.
+  function vouchPayers(ids, subs) {
+    const T = meshTurn(), out = new Map();
+    let k = 0;
+    for (const s of subs || []) for (let n = T.turnTierLinks(s.tier); n > 0 && k < ids.length; n--) out.set(ids[k++], s);
+    return out;
+  }
+  // budgetTicket(subs) → the meeting ticket a subroom ask presents: the subscriber whose plan vouches for the most links
+  // (the meeting's pipe budget follows it), the lowest key on a tie; null with no subscriber.
+  function budgetTicket(subs) {
+    const T = meshTurn();
+    let best = null;
+    for (const s of subs || []) if (s && s.ticket && (!best || T.turnTierLinks(s.tier) > T.turnTierLinks(best.tier) || (T.turnTierLinks(s.tier) === T.turnTierLinks(best.tier) && s.key < best.key))) best = s;
+    return best ? best.ticket : null;
   }
 
   // ---- the links of this page --------------------------------------------------
@@ -431,7 +450,7 @@
   //   knownSub(r) → subroom r's people are still in my meeting's count (the mesh's fold): a pipe for r re-links it
   //   dial(pid); reset(pid) (a fresh pc on the new settings, no dial); restart(pid, l) (move a live pc onto new settings)
   //   keep(pid) (the seat holds this pc: an L28 keep); drop(pid, why) (the TURN pc ends)
-  //   subs() → [{ key, tier }] verified subscribers present; ticket() → a meeting ticket for a paid ask, or null
+  //   subs() → [{ key, tier, ticket }] verified subscribers present (subsPresent: key order), each with its meeting ticket
   //   web() → this browser can run the web path; turnPath(pid) → { at, relay }: when my connection of that pair began
   //   looking for its relay path (0: not yet) and whether it found one; webOpen(pid, { url, auth }); webAuth(pid, auth);
   //   webUp(pid) → the web path carries end to end; webClose(pid)                                    (TURN.18)
@@ -527,7 +546,11 @@
             return null;
           }
           const b = { vouch: L.mine.v, peerVouch: L.peer };
-          if (pool === 'paid') { const t = io.ticket(); if (!t) return null; b.ticket = t; }
+          if (pool === 'paid') {   // the ticket of the subscriber whose vouch this link uses (vouchPayers)
+            const s = (io.subs() || []).find((x) => x.key === L.payer);
+            if (!s || !s.ticket) return null;
+            b.ticket = s.ticket;
+          }
           return b;
         },
         onChange: (k) => onCred(L, pool, k) });
@@ -782,15 +805,16 @@
 
     // The video plan (TURN.11/12) for my own links, from the room's facts and the subscribers present.
     function planVideo(now) {
+      const subs = io.subs() || [];
       let pool = 0;
-      for (const s of io.subs() || []) pool += T.turnTierLinks(s.tier);
+      for (const s of subs) pool += T.turnTierLinks(s.tier);
       const ups = [];
       for (const f of io.facts() || []) if (f && f.up && !f.gone) ups.push({ id: f.id, stage: !!f.g, cell: f.c, serial: f.s });
-      const want = vouchPlan(ups, pool);
+      const rank = vouchRank(ups, pool), want = new Set(rank), payers = vouchPayers(rank, subs);
       for (const L of links.values()) {
         if (L.state !== 'up' || L.sb) continue;   // a standby carries keep-alives only
         const yes = want.has(L.id);
-        if (yes) { L.vouched = true; L.lostAt = -1; }
+        if (yes) { L.vouched = true; L.lostAt = -1; L.payer = payers.get(L.id).key; }
         else if (L.vouched) { if (L.lostAt < 0) L.lostAt = now; if (now - L.lostAt >= GRACE_MS) { L.vouched = false; L.lostAt = -1; } }
         // A vouched client end moves to the paid pool; an end back on free leaves it.
         const cl = L.client || L.web;   // on the web path each end holds its own credential (TURN.18)
@@ -992,7 +1016,7 @@
       const g = ++sub.gen; sub.st = 'ask';
       const b = { room: String(io.sid()), doors };
       if (token) b.token = token;
-      const t = io.ticket ? io.ticket() : null; if (t) b.ticket = t;   // a plan's meeting ticket raises the meeting's budget to its allowance
+      const t = budgetTicket(io.subs()); if (t) b.ticket = t;   // a plan's meeting ticket raises the meeting's budget to its allowance
       Promise.resolve(io.askSub ? io.askSub(b) : null).then((a) => {
         if (g !== sub.gen) return;
         const now = io.now();
@@ -1164,7 +1188,7 @@
     DEFAULT_WORKER, WORKER_KEY, FETCH_TIMEOUT_MS, RETRY_BASE_MS, RETRY_MAX_MS, SIDE_MAX, STANDBY_SWITCH_MS, THROTTLE_LOOK_MS, THROTTLE_UP_MS,
     THROTTLE_STEPS, throttlePlan, throttleNext, stepOf,
     retryDelayMs, parseIce, hasTurnServer, webHostOk, workerBase, askIce, askSub, createCredentials,
-    vouchToken, vouchParts, tvOk, TV_KEYS, linkId, clientEnd, pausedBy, vouchPlan, subsPresent, createLinks,
+    vouchToken, vouchParts, tvOk, TV_KEYS, linkId, clientEnd, pausedBy, vouchRank, vouchPlan, vouchPayers, budgetTicket, subsPresent, createLinks,
   };
   GifOS.meetTurn = api;
   if (isNode) module.exports = api;
