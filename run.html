@@ -14279,7 +14279,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // meanwhile ends the chain with PcReplaced: that offer described a pc now closed, and the answer must not leave.
     function answerOffer(pc, p, msg, drainIce, send) {
       const same = () => { if (p.pc !== pc) { const e = new Error('pc replaced'); e.name = 'PcReplaced'; throw e; } };
-      return pc.setRemoteDescription(fecVoiceOnly(typeof wkStripH264 === 'function' ? wkStripH264(msg.sdp, pc) : msg.sdp, pc, p))
+      return pc.setRemoteDescription((typeof fecVoiceOnly === 'function' ? fecVoiceOnly : (d) => d)(typeof wkStripH264 === 'function' ? wkStripH264(msg.sdp, pc) : msg.sdp, pc, p))
         .then(() => {
           same();
           // A restart offer applied while ICE is already checking may not
@@ -22416,7 +22416,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }
         noteGecko(p, m.sdp);
         const carried = p.connected || (p.dc && p.dc.readyState === 'open');
-        const srd = () => p.pc.setRemoteDescription(fecVoiceOnly(m.sdp, p.pc, p));
+        const srd = () => p.pc.setRemoteDescription(typeof fecVoiceOnly === 'function' ? fecVoiceOnly(m.sdp, p.pc, p) : m.sdp);
         // A renegotiation answer that never settles (lost on the wire, or a
         // test harness that swallows it) leaves have-local-offer on a live
         // pair forever and offer-stale rollback races the hung promise (06d:
