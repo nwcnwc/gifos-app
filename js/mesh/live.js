@@ -622,7 +622,7 @@
       const lv = this.live.get(k), pa = this.probeAck.get(k);
       // L3.3: a frame that lands within the probe's round trip of the loss (at, at+1) was sent before it.
       const clearAt = at + 2;
-      if ((lv !== undefined && lv >= clearAt) || (pa !== undefined && pa >= at)) { if (pa !== undefined && pa >= at) { const h = this.tlHard.get(k); if (h === 2) this.d5Ans.set(k, pa); } this.tlForget(k); return false; }   // D5.1: an answered silence probe floors the next window
+      if ((lv !== undefined && lv >= clearAt) || (pa !== undefined && pa >= at)) { if (pa !== undefined && pa >= at) { const h = this.tlHard.get(k); if (h === 2) this.d5Ans.set(k, pa); } this.tlAnswered(k); return false; }   /* L3.4.3: the answer that ends an observation is still a hearing */   // D5.1: an answered silence probe floors the next window
       const pt = this.tlProbeAt.get(k);
       if (pt === undefined || TICK - pt >= 6) { this.tlProbeAt.set(k, TICK); if (this.routeToProbe(unck(k)) && !this.tlSent.has(k)) this.tlSent.set(k, TICK); }
       // L3.3: only a HARD close confirms before the lease runs out.
