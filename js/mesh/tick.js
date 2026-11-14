@@ -567,7 +567,7 @@
       if (x < 0 || !this.hasCoord) return false;
       if (x === this.u2Id || x === this.u3Id) return true;
       for (const e of this.u2Rows.values()) if (e.heir === x && this.TICK - e.at <= 40) return true;
-      if (this.coord.pc === 0) { for (const y of this.s1bP) if (y[0] === x) return true; const b = this.s1bAt.get(x); if (b !== undefined && this.TICK - b <= 40) return true; }   // L2.15
+      if (this.coord.pc === 0) { for (const y of this.s1bP) if (y[0] === x) return true; const b = this.s1bAt.get(x); if (b !== undefined && this.TICK - b <= K.S1B_FRESH) return true; }   // L2.15
       return false;
     },
 
@@ -577,7 +577,7 @@
 
     // C++: mesh_seat.inc:Seat::s1bTick
     // L2.15 the Section-1 bridge: where I am an end of an empty cell's bridge in my row or column I hold a parked pc to the
-    // other end and beat it every 8 ticks (U2BEAT tag 4, no answer: the far end beats me the same way).
+    // other end and beat it every rook beat (U2BEAT tag 4, no answer: the far end beats me the same way).
     s1bTick() {
       const id = this.id, TICK = this.TICK;
       this.s1bP.length = 0; if (!this.hasCoord || this.state !== 3 || this.coord.pc !== 0 || this.moving) return;
@@ -585,8 +585,8 @@
       for (let s = 1; s < 2 * C - 1; s++) { const e = s < C ? cell(0, this.coord.r, (this.coord.i + s) % C) : cell(0, (this.coord.r + s - C + 1) % C, this.coord.i); const br = roles.s1BridgeOf(e, view); if (!br) continue;
         const xk = ckey(br.a) === ckey(this.coord) ? ckey(br.b) : ckey(br.b) === ckey(this.coord) ? ckey(br.a) : topo.NO_CK; if (xk === topo.NO_CK) continue; const x = this.occGet(xk); if (x < 0 || x === id) continue;
         let have = false; for (const y of this.s1bP) if (y[0] === x) have = true; if (!have) this.s1bP.push([x, xk]); }
-      for (const [k, v] of Array.from(this.s1bAt)) if (TICK - v > 60) this.s1bAt.delete(k);
-      if (TICK - this.s1bBeatAt < 8) return; this.s1bBeatAt = TICK;
+      for (const [k, v] of Array.from(this.s1bAt)) if (TICK - v > K.S1B_FRESH) this.s1bAt.delete(k);
+      if (TICK - this.s1bBeatAt < K.FHOP_BEAT) return; this.s1bBeatAt = TICK;
       for (const y of this.s1bP) { const x = y[0], ls = this.f.fabricLinkState(id, x); if (ls === LS_CLOSED || ls === LS_NONE) this.f.fabricDial(id, x);
         const m = newMsg('U2BEAT'); m.tag = 4; m.id = id; m.coord = cc(this.coord); m.e1dn = this.s1bHot(y[1]); this.emit(x, m); }
     },
@@ -596,7 +596,7 @@
     s1bHot(xk) {
       if (!this.hasCoord) return false; const xc = unck(xk);
       for (const c of [cell(0, this.coord.r, xc.i), cell(0, xc.r, this.coord.i)]) { const k = ckey(c), y = this.occGet(k); if (y < 0 || y === this.id) continue;
-        if (this.translost.has(k) || this.f.fabricLinkState(this.id, y) === LS_CLOSED) continue; const lv = this.live.get(k); if (lv !== undefined && this.TICK - lv <= 8 + K.EARLY_HOLD) return false; }
+        if (this.translost.has(k) || this.f.fabricLinkState(this.id, y) === LS_CLOSED) continue; const lv = this.live.get(k); if (lv !== undefined && this.TICK - lv <= K.S1B_SILENT) return false; }
       return true;
     },
 
@@ -604,7 +604,7 @@
     // A bridge carries me: a far end beat me within two beats + EARLY_HOLD over a pc my end reads open.
     s1bUp() {
       if (!this.hasCoord || this.coord.pc !== 0) return false;
-      for (const [x, at] of this.s1bAt) if (this.TICK - at <= 2 * 8 + K.EARLY_HOLD && this.f.fabricLinkState(this.id, x) === LS_OPEN) return true;
+      for (const [x, at] of this.s1bAt) if (this.TICK - at <= K.S1B_FRESH && this.f.fabricLinkState(this.id, x) === LS_OPEN) return true;
       return false;
     },
 

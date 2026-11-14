@@ -90,6 +90,8 @@
     PLACE_REPLAY: 12,   // C++: mesh.cpp:PLACE_REPLAY  (LAW_PLACE_REPLAY)
     SIT_PING_WAIT: 15,   // C++: mesh.cpp:SIT_PING_WAIT  (LAW_SIT_PING_WAIT)
     EARLY_HOLD: 12,   // C++: mesh.cpp:EARLY_HOLD  (LAW_EARLY_HOLD)
+    S1B_SILENT: 20,   // C++: mesh.cpp:S1B_SILENT
+    S1B_FRESH: 28,   // C++: mesh.cpp:S1B_FRESH
     OWNER_SILENT: 40,   // C++: mesh.cpp:OWNER_SILENT  (LAW_OWNER_SILENT)
     DARK_WAIT: 6,   // C++: mesh.cpp:DARK_WAIT  (LAW_DARK_WAIT)
     DARK_ASK_FRESH: 60,   // C++: mesh.cpp:DARK_ASK_FRESH  (LAW_DARK_ASK_FRESH)

@@ -30,7 +30,7 @@
       const add = (x) => { if (x >= 0 && x !== this.id) out.push(x); };
       if ((want & Seat.LR_OWNED) && this.hasCoord) { const ol = ownedLinks(this.coord), n = ol.length; for (let k = 0; k < n; k++) add(this.occGet(ckey(ol[k]))); }
       if ((want & Seat.LR_E2) && this.hasCoord) { add(this.u2Id); add(this.u3Id); for (const e of this.u2Rows.values()) if (this.TICK - e.at <= 40) add(e.heir);
-        if (this.coord.pc === 0) { for (const y of this.s1bP) add(y[0]); for (const [x, at] of this.s1bAt) if (this.TICK - at <= 40) add(x); } }   // L2.15: my Section-1 bridges
+        if (this.coord.pc === 0) { for (const y of this.s1bP) add(y[0]); for (const [x, at] of this.s1bAt) if (this.TICK - at <= K.S1B_FRESH) add(x); } }   // L2.15: my Section-1 bridges
       if ((want & Seat.LR_L4) && this.l4MarkUntil >= this.TICK) for (const x of this.l4Old) add(x);
       if ((want & Seat.LR_L4) && (this.l4ExecAt >= 0 || this.l4Out)) for (const e of this.l4Nb) add(e.v);   // L4.3.1: the links of the cell I am to enter are dialled ahead
       if ((want & Seat.LR_UP) && this.l14Up >= 0) add(this.l14Up);
