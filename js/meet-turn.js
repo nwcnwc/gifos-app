@@ -385,6 +385,7 @@
     return (+look.bps || 0) * (1 - THROTTLE_LOSS) - voiceWire(look) >= THROTTLE_STEPS[i].need * min;
   }
   const PROBE_BACKOFF_MAX = 3;   // a failed probe doubles the next wait, up to 2^3 x TURN_THROTTLE_UP_MS
+  const VOICE_BAD = 3;   // fresh lossy looks in a row before the voices step down (one or two are a path change, not a cap)
   // throttleNext(st, look, now, tickMs): one look of a TURN link end. st = { step, busy, okSince, bad, rttBase, pausedAt,
   // probation, probeN, voice ('full' | 'low'), vOkSince, vProbation, vProbeN } (kept by the caller); look = { bps, loss,
   // rtt, limited, cap, stale, voiceFull, voiceN, data, video, flow, clean } (loss: the far end's fraction lost on ANY of
@@ -425,8 +426,12 @@
     const wait = (n) => THROTTLE_UP_MS * Math.pow(2, Math.min(PROBE_BACKOFF_MAX, n || 0));
     // the voices
     const noVideoLeft = !video || st.busy;
+    // a starved link loses packets look after look; a path change (a pipe end killed, a standby taking over) loses them
+    // for a look or two (pk42 11-14: the voices stepped to the floor on every kill leg, and the far office heard the
+    // re-mixed low voice as static). VOICE_BAD fresh lossy looks in a row, a look with no fresh report not counting.
+    if (lossy && noVideoLeft) st.vBad = (st.vBad || 0) + 1; else if (look.fresh !== false) st.vBad = 0;
     if (st.voice === 'full') {
-      if (lossy && noVideoLeft) { st.voice = 'low'; st.vOkSince = 0; if (st.vProbation) st.vProbeN = (st.vProbeN || 0) + 1; st.vProbation = false; }
+      if (lossy && noVideoLeft && (st.vProbation || st.vBad >= VOICE_BAD)) { st.voice = 'low'; st.vOkSince = 0; if (st.vProbation) st.vProbeN = (st.vProbeN || 0) + 1; st.vProbation = false; }
       else if (st.vProbation && !lossy && now - st.vProbation >= THROTTLE_UP_MS) { st.vProbation = false; st.vProbeN = 0; }
     } else if (lossy) st.vOkSince = 0;
     else if (!st.vOkSince) st.vOkSince = now;
