@@ -3816,7 +3816,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const frameHeard = (q) => {
         if (!q) return false;
         const stq = statusOf.get(q.id);
-        if (stq && stq.rx) return true;
+        if (stq && stq.rx && stq.rx > (q.bornAt || 0)) return true; // a status heard before this pair was born is not a frame on it
         if (q.meshRxAt || q.dcRxAt) return true;
         const born = q.bornAt || 0, lh = q.lastHeard || 0;
         return born ? lh > born : lh > 0;
@@ -10211,7 +10211,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const frameHeard = (q) => {
         if (!q) return false;
         const stq = statusOf.get(q.id);
-        if (stq && stq.rx) return true;
+        if (stq && stq.rx && stq.rx > (q.bornAt || 0)) return true; // a status heard before this pair was born is not a frame on it
         if (q.meshRxAt || q.dcRxAt) return true;
         const born = q.bornAt || 0, lh = q.lastHeard || 0;
         return born ? lh > born : lh > 0;
@@ -10290,7 +10290,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const frameHeard = (q) => {
         if (!q) return false;
         const stq = statusOf.get(q.id);
-        if (stq && stq.rx) return true;
+        if (stq && stq.rx && stq.rx > (q.bornAt || 0)) return true; // a status heard before this pair was born is not a frame on it
         if (q.meshRxAt || q.dcRxAt) return true;
         const born = q.bornAt || 0, lh = q.lastHeard || 0;
         return born ? lh > born : lh > 0;
