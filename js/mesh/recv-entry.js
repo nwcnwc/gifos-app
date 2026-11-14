@@ -156,7 +156,7 @@
         if (t >= 0) this.askSeat(t); else this.retryAt = TICK - 10;
       } else if (this.state === 3 && m.roster.length) {
         this.roster = kvCopy(m.roster); this.haveRoster = true; this.rmHomeAt = TICK;   // L11
-        if (this.hasCoord && this.coord.pc !== 0 && this.coord.i === 0) { const oc = this.ownerCoord(); if (oc && oc.pc === 0) { const ok = ckey(oc); if (!this.byeAt.has(ok) && !this.firstHandLive(ok) && TICK - this.lastAck >= K.L9_LONE) for (const b of m.byes) if (b === ok) { this.byeAt.set(ok, TICK); if (this.occ.has(ok)) { this.occDrop(ok, 'ring-bye'); this.live.delete(ok); this.kidful.delete(ok); } this.trace('BYE-LEARNED', id, oc, 'from=%d', m.id); break; } } }   // L9.9
+        if (this.hasCoord && this.coord.pc !== 0 && this.coord.i === 0) { const oc = this.ownerCoord(); if (oc && oc.pc === 0) { const ok = ckey(oc); if (!this.byeAt.has(ok) && !this.firstHandLive(ok) && TICK - this.lastAck >= K.L9_LONE) for (const b of m.byes) if (b === ok) { this.byeAt.set(ok, TICK); if (this.occ.has(ok)) { this.occDrop(ok, 'ring-bye'); this.live.delete(ok); this.kidful.delete(ok); } this.trace('BYE-LEARNED', id, oc, 'from=%d', m.id); break; } } }   // L50: a deep seat that heard nothing from its anchor for L9_LONE learns the anchor's goodbye from the home roster (this was L9.9's BYE-LEARNED)
         if (this.l13('L13.9') && this.hasCoord && this.coord.pc !== 0 && this.coord.i !== 0) {
           const H = { pc: this.coord.pc, r: this.coord.r, i: 0 }; const chain = FREE.l13Chain(this, H); const nc = chain.length;
           for (let l = 1; l < nc; l++) {
