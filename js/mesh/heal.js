@@ -98,6 +98,7 @@
     if (s.hasCoord && ckey(s.coord) === k) return true;
     if (s.occGet(k) < 0) return false;
     if (s.ownedLinkCell(k)) return !(s.now() - s.seatedAt >= 2 * K.L9_PULL && !(s.live.has(k) && s.now() - s.live.get(k) <= 2 * K.L9_PULL) && !s.l920Deaf(k));   // a seat on my rook phones me (L9.12's echo test)
+    { const b = s.s1bAt.get(s.occGet(k)); if (b !== undefined && s.now() - b <= K.S1B_FRESH) return true; }   // L2.15.1: a Section-1 bridge's far end that beats me sits where my view has it
     return s.firstHandLive(k) || (s.s1Fresh(k) && !l922Heard(s));
   }
   // C++: mesh_heal.inc:l922Scooch
