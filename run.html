@@ -21751,7 +21751,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const stripReorder = m.key === 'sgs' && !!prevAnn && !annNew
           && ((prevAnn.ids || []).join(',') !== (annIds || []).join(',') || prevAnn.n !== m.n || prevAnn.cols !== m.cols);
         mosAnn.set(ak, { streamId: m.streamId, col: m.col, row: m.row, src: (m.src ? String(m.src).slice(0, 64) : undefined), n: m.n, cols: m.cols, mt: m.mt, h: (typeof m.h === 'number' ? m.h : undefined), ao: (m.ao === 1 ? 1 : undefined), sb: (m.sb === 1 ? 1 : undefined), vp: mxPath(m.vp), l14: (m.l14 === 1 ? 1 : undefined), via: (typeof m.via === 'string' ? m.via.slice(0, 64) : undefined), pipe: (m.pipe === 1 ? 1 : undefined), pv: (m.pv === 1 ? 1 : undefined), ids: annIds, alag: (typeof m.alag === 'number' && isFinite(m.alag) ? Math.max(0, Math.min(2000, m.alag)) : undefined), at: Date.now() });
-        if (m.key.indexOf('stg:') === 0 && isPipePeer(p.id)) pipeStg.set(m.key.slice(4).split('^')[0], p.id);   // SUB.4: this stager is on that pipe's side
         if (annNew || stripReorder) schedReconcile(); else schedClaim();
       } else if (m.k === 'mx-beat') {
         stgBeatIn(p, m);
@@ -28342,8 +28341,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // ONE hot pipe + a parked standby + dormant spares (ONE-PIPE
         // multi-subscribe), so the extra announces cost nothing until demanded.
         const s1peers = [...T.rowMates(c), ...T.colMates(c)].map((m) => occPid(m)).filter(Boolean);
-        const pipesNow = pipePeers();
-        for (const t of pipesNow) if (s1peers.indexOf(t) < 0) s1peers.push(t);   // SUB.4: every stager's own feed crosses my pipes, both ways (split horizon in floodOne)
+        for (const t of pipePeers()) if (s1peers.indexOf(t) < 0) s1peers.push(t);   // SUB.4: every stager's own feed crosses my pipes, both ways (split horizon in floodOne)
         const flooded = new Set(); // PER-SWEEP dedup (one feed may resolve via two keys). The old
         // persistent stgSpread let the sweep-end reaper kill flood jobs after one sweep.
         // NEVER FLOOD A FEED BACK TO ITS OWNER. The owner already has the
@@ -28360,6 +28358,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const floodOne = (key, stream, via, h, vp, upKey) => {
           if (stream) { if (flooded.has(stream.id)) return; flooded.add(stream.id); } else if (!upKey) return;
           const owner = key.indexOf('stg:') === 0 ? key.slice(4).split('^')[0] : null;
+          const pipesNow = pipePeers();   // SUB.4: a feed from a pipe's side never goes back over that pipe (below)
           const skip = (t) => !t || (owner && t === owner) || (!!upKey && !!vp && vp.indexOf(vpId(t)) >= 0);
           const up = upKey || key;
           const hm = vp ? { h, vp } : { h }; // hop count from the producer — claims prefer min-h (see prefCand); vp: the seats this copy came through
@@ -28374,7 +28373,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const direct = owner === myId ? stgDirectSet(T.rowMates(c).map((m) => occPid(m)), T.colMates(c).map((m) => occPid(m)),
             (t) => { const q = peers.get(t); return !!(q && q.pc && q.connected); }) : null;
           const hmSb = { h, sb: 1 };
-          for (const t of s1peers) { if (owner && pipesNow.indexOf(t) >= 0 && pipeStg.get(owner) === t) continue; if (owner !== myId && relayHeldForTest(key, t)) continue; if (oneRootSkipForTest(owner, t, s1peers)) continue; const s = pick(t); if (!s) continue; const jk = shipMos(key, t, s.st, (direct && !direct.has(t)) ? hmSb : s.m, up); if (jk) wanted.add(jk); }
+          for (const t of s1peers) { if (owner && pipesNow.indexOf(t) >= 0 && (pipeStg.get(owner) === t || mosAnn.has(t + '|' + key))) continue; if (owner !== myId && relayHeldForTest(key, t)) continue; if (oneRootSkipForTest(owner, t, s1peers)) continue; const s = pick(t); if (!s) continue; const jk = shipMos(key, t, s.st, (direct && !direct.has(t)) ? hmSb : s.m, up); if (jk) wanted.add(jk); }
           const dnP = occPid(T.down(c)); // and DOWN — Stage audio folds at every ear
           const sd = pick(dnP);
           if (sd) {
@@ -28551,6 +28550,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (roomPack && roomPack.setActive) roomPack.setActive(!!(roomPack.track && shippedTracks.has(roomPack.track)) || !!(packLoop && packLoop.rx && shippedTracks.has(packLoop.rx)) || !!(sdView && sdView.stats().active && roomPack.canvas && sdViewSrc === roomPack.canvas));
       gatePack(prodPack);
       for (const pk of l14Packs.values()) gatePack(pk);
+      for (const pk of pipePacks.values()) gatePack(pk);
     }
 
     // ============ THE STAGE DATA LANE (§11 — docs/media-plane.md, Channel St):
@@ -28642,6 +28642,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       for (const e of turnLinks.pipeEnds()) if (e && e.peer !== myId) pipeReserve(peers.get(e.peer));
       const now = pipePeers(), sig = now.join(',') + '|' + now.map((h) => (pipeVideo(h) ? 1 : 0)).join('');
       for (const [o, h] of [...pipeStg]) if (now.indexOf(h) < 0) pipeStg.delete(o);
+      for (const h of now) for (const ak of mosAnn.keys()) if (ak.indexOf(h + '|stg:') === 0) pipeStg.set(ak.slice(h.length + 5).split('^')[0], h);   // this stager is on that pipe's side
       if (sig === pipeSig) return;
       pipeSig = sig; schedReconcile();
     }
