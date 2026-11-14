@@ -618,7 +618,6 @@
     translostConfirmed(k) {
       const TICK = this.TICK;
       const at = this.translost.get(k); if (at === undefined) return false;
-      if (this.nlSince >= 0 || (this.nlEndAt >= 0 && TICK - this.nlEndAt < K.L30_SILENT)) return false;   // D5.4: no link of mine carries, or my first link carried again less than one silence window ago: I judge nobody
       const lv = this.live.get(k), pa = this.probeAck.get(k);
       // L3.3: a frame that lands within the probe's round trip of the loss (at, at+1) was sent before it.
       const clearAt = at + 2;
@@ -628,6 +627,7 @@
       // L3.3: only a HARD close confirms before the lease runs out.
       { const h = this.tlHard.get(k); if (h === undefined || !h) return false; }
       if (!this.tlSent.has(k)) return false;   // no probe left: silence of an unsent frame is not a death; the lease is the horizon
+      if (this.nlSince >= 0 || (this.nlEndAt >= 0 && TICK - this.nlEndAt < K.L30_SILENT)) return false;   // D5.4: only the verdict is withheld; the lines above still clear the loss and keep the probe going
       return TICK - this.tlSent.get(k) > K.EARLY_HOLD;   // the window starts when the first probe leaves, not at the loss
     },
 
