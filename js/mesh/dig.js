@@ -47,7 +47,7 @@
       leased: d.leased, held: d.held, handN: d.handN, awayN: d.awayN,
       hands: d.hands.map(cloneLE), stage: d.stage.map(cloneLE), apps: d.apps.map(cloneLE), votes: d.votes.map(cloneVE),
       talk: d.talk.map(cloneLE), kick: d.kick.map(cloneVE), kabs: d.kabs, kOwn: cloneKStmt(d.kOwn), kl: d.kl.map(cloneKStmt),
-      rows: d.rows.map(cloneDRow),
+      rows: d.rows.map(cloneDRow), doors: d.doors.map(cloneLE),
     };
   }
   // C++: mesh.cpp:DigE
@@ -130,6 +130,15 @@
   // L48: the seats a report speaks for, n + leased, never below 0 (a fold that dropped an older copy of a row can hold a
   // negative leased). Equal to the parent's clamp for leased >= 0.
   function digSeats(d) { const n = d.n < 0 ? 0 : d.n; const t = n + d.leased; return t < 0 ? 0 : t; }
+  // C++: mesh.cpp:digFar
+  // The people in the other rooms of the meeting, told per door.
+  function digFar(d) { let n = 0; for (const e of d.doors) if (e.k > 0) n += e.k; return n; }
+  // C++: mesh.cpp:digPop
+  // The people a report speaks for, with the ones in the other rooms of the meeting: the bound of its claims and the count a person is shown.
+  function digPop(d) { return digSeats(d) + digFar(d); }
+  // C++: mesh.cpp:doorsAdd
+  // The people of other rooms are keyed by their door, so a door told twice is one door, not two: the larger count stays.
+  function doorsAdd(dst, r, n) { let i = 0; while (i < dst.length && dst[i].id < r) i++; if (i === dst.length || dst[i].id !== r) dst.splice(i, 0, { id: r, k: n, f: 0 }); else if (n > dst[i].k) dst[i].k = n; }
   // C++: mesh.cpp:digLeasedIn
   function digLeasedIn(s) { const n = s.n < 0 ? 0 : s.n; return s.leased < -n ? -n : s.leased; }
   // C++: mesh.cpp:digFoldHeld
@@ -152,9 +161,10 @@
   }
   // C++: mesh.cpp:digFold
   function digFold(dst, s) {
+    for (const e of s.doors) doorsAdd(dst.doors, e.id, e.k);
     dst.n += s.n; dst.leased += digLeasedIn(s); if (s.held > 0) dst.held += s.held; dst.refuse += s.refuse; dst.freeC += s.freeC; if (s.dmin < dst.dmin) dst.dmin = s.dmin; if (s.part) dst.part = 1;
     // population-bounded claims, per input
-    const cap = digSeats(s);
+    const cap = digPop(s);
     dst.handN += Math.min(s.handN, cap); dst.awayN += Math.min(s.awayN, cap);
     listMerge(dst.hands, s.hands, K_HAND, true); listMerge(dst.stage, s.stage, K_STAGE, true); listMerge(dst.apps, s.apps, K_APP, false); talkMerge(dst.talk, s.talk);
     for (const v of s.votes) {
@@ -168,7 +178,7 @@
   // C++: mesh.cpp:digTrim
   // Close a level: population clamps, then the one vote truncation.
   function digTrim(d) {
-    const cap = digSeats(d);
+    const cap = digPop(d);
     if (d.handN > cap) d.handN = cap; if (d.awayN > cap) d.awayN = cap;
     for (const v of d.votes) { if (v.up > cap) v.up = cap; if (v.dn > cap) v.dn = cap; }
     d.votes.sort(byLess(veOrd));
@@ -202,6 +212,7 @@
     let h = digListHash(d); const mix = (x) => { h = hmix64(h, x); };
     mix(d.n); mix(d.refuse); mix(d.freeC); mix(d.dmin); mix(d.part); mix(d.leased);
     if (d.held) { mix(10); mix(d.held); }   // only while a mover is held
+    for (const e of d.doors) { mix(11); mix(e.id); mix(e.k); }   // only with people in another room of the meeting
     return h;
   }
   // C++: mesh.cpp:listHolds
@@ -229,7 +240,7 @@
 
   const api = Object.freeze({
     K_HAND, K_STAGE, K_APP, K_VOTE, STAGE_CAP, TALK_ON, TALK_HOLD, K_TALK,
-    newDig, newKStmt, cloneLE, cloneVE, cloneKStmt, cloneDRow, cloneDig, cloneDigE, digBarPop, digSeats, digLeasedIn, leEq, veEq, byLess,
+    newDig, newKStmt, cloneLE, cloneVE, cloneKStmt, cloneDRow, cloneDig, cloneDigE, digBarPop, digSeats, digFar, digPop, doorsAdd, digLeasedIn, leEq, veEq, byLess,
     leAsc, leDesc, talkCls, talkLess, talkMerge, veOrd, listMerge, kOrd, kickAdd, kSigOk, kListAdd, kListUnion,
     kDerive, voteAdd, digFoldHeld, digFold, digTrim, digListHash, digSig, listHolds, votesHold,
   });

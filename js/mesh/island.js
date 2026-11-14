@@ -12,6 +12,7 @@
   const seatM = req('./seat.js', 'meshSeat');
   const C_ = req('./consts.js', 'meshConsts');
   const msg = req('./msg.js', 'meshMsg');
+  const dig = req('./dig.js', 'meshDig');
   const topo = req('./topo.js', 'meshTopo');
   const { ins, eraseFirst } = req('./util.js', 'meshUtil');
   const { Seat, roomTerm, FREE } = seatM;
@@ -82,8 +83,79 @@
       this.trace('DOOR-CALLED', this.id, this.coord, 'by=%d for=%d', by, knocker); this.emitRelay(this.genKey);
     },
 
+    // C++: mesh_island.inc:Seat::subTake
+    // The door number. A large meeting is several rooms joined by relayed connections; each room is an ordinary room
+    // behind its own door. Every frame carries its sender's door number and a seat drops a frame from another door,
+    // except the joining frame from the seat at the far end of its own joining connection, and a frame from a seat its
+    // own view names when one of the two numbers is 0: the seat at 0 then takes the other's number (a seated room that
+    // was given a number moves its door as one; the number only ever goes 0 -> r). true: the frame is taken.
+    subTake(m) {
+      if (m.t === 'PIPE') return true;   // onPipe takes it from my own far end only
+      let named = false; if (m.sr === 0 || this.sr === 0) for (const x of this.occ.values()) if (x === m.from) { named = true; break; }
+      if (!named) { this.trace('SUB.1-DROP', this.id, null, 'from=%d sr=%d mine=%d mt=%d', m.from, m.sr, this.sr, msg.MT_NAMES.indexOf(m.t)); return false; }
+      if (this.sr === 0) { this.sr = m.sr; this.trace('SUB.1-ADOPT', this.id, this.hasCoord ? this.coord : null, 'from=%d sr=%d', m.from, this.sr); }
+      return true;
+    },
+    // C++: mesh_island.inc:Seat::subGo
+    // The answer to the page's ask: my door is r, either a listed room one of whose greeters the page reached, or a new
+    // number granted with a joining connection. Seated: I take the number and register at that door, and my room
+    // follows frame by frame. Outside: my entry starts again at that door.
+    subGo(r) {
+      this.trace('SUB.2-GO', this.id, this.hasCoord ? this.coord : null, 'sr=%d state=%d', r, this.state); this.sr = r;
+      if (this.state === 3) { this.emitRelay(this.genKey); return; }
+      for (const x of this.l16Ask) this.f.fabricDoorDrop(this.id, x);
+      this.l16Anch = false; this.l16Ho = -1; this.l16Until = 0; this.l16Round = 0; this.l16Ask.length = 0; this.l16Busy.length = 0; this.l16Last = -1; this.l16List.length = 0; this.l16Next = 0; this.l16WaveAt = -1; this.l16FreshAt = -1; this.l16Saw = false;
+      this.islandAsked.clear(); this.entEp.clear(); this.islandLast = false; this.islandAskN = 0; this.islandAskAt = -1; this.gateway = -1; this.lastGreeters.length = 0; this.lastGreetersAt.length = 0; this.greetersAt = -1; this.state = 0; this.join();
+    },
+    // C++: mesh_island.inc:Seat::pipeOut
+    // Each end of a joining connection is one more child of the other. What I send my far end is the room fold built
+    // WITHOUT the part that connection gave me (a part is left out, never subtracted): my own section before any
+    // joining connection, with every other one's fold, folded with the section table as the room fold is. It goes in
+    // far form: the people are far people, and nothing a seating decision reads crosses; the lists cross as they are.
+    // The far people are told per door: my own door with its seats, and the doors behind my room's other joining connections as they came.
+    pipeOut(peer) {
+      const mine = dig.cloneDig(this.pipeBase.at >= 0 ? this.pipeBase : this.myDig);
+      if (this.pipeBase.at >= 0) { for (const [k, e] of this.pipeDig) if (k !== peer) dig.digFold(mine, e); dig.digTrim(mine); }
+      const h = { R: msg.newDig() }; this.rootFold(false, h, mine); const R = h.R;
+      const o = msg.newDig(); o.at = R.at; o.rx = R.rx; o.by = this.id; o.handN = R.handN; o.awayN = R.awayN; o.hands = R.hands; o.stage = R.stage; o.apps = R.apps; o.talk = R.talk; o.doors = R.doors.map(dig.cloneLE); dig.doorsAdd(o.doors, this.sr, dig.digSeats(R));
+      return o;
+    },
+    // C++: mesh_island.inc:Seat::knownSub
+    // Door r's people are still in my fold: a fresh fold of a joining connection I hold lists r.
+    knownSub(r) { for (const e of this.pipeDig.values()) if (this.LT() - e.rx <= K.DIG_TTL) for (const d of e.doors) if (d.id === r) return true; return false; },
+    // C++: mesh_island.inc:Seat::subWatch
+    // Who asks for a new joining connection when nobody saw the old one go. Every seat notes when its room fold last listed
+    // each far door. A door that left the fold and is not back after the wait is lost. The seat on its room's home cell then
+    // asks once, whatever the number of doors lost at that beat, and forgets them; the other seats keep their note, so
+    // whoever holds the home cell next still asks.
+    subWatch() {
+      const R = this.dRoot(); if (R.at < 0 || (!R.doors.length && !this.doorAt.size)) return;
+      for (const e of R.doors) { if (this.doorAt.size >= 64 && !this.doorAt.has(e.id)) continue; this.doorAt.set(e.id, this.TICK | 0); }
+      if (this.state !== 3 || !this.hasCoord || ckey(this.coord) !== 0) return;
+      const lost = []; for (const [d, at] of this.doorAt) if (this.TICK - at > K.L10_NEW_WAIT) lost.push(d); if (!lost.length) return;
+      for (const d of lost) { this.trace('SUB.3-LOST', this.id, this.coord, 'door=%d', d); this.doorAt.delete(d); }
+      this.f.fabricSubRepipe(this.id);
+    },
+    // C++: mesh_island.inc:Seat::pipeBeat
+    pipeBeat() {
+      if (this.state !== 3 || !this.hasCoord || this.coord.pc !== 0) return;
+      for (const p of this.f.fabricPipePeers(this.id)) { const m = newMsg('PIPE'); m.id = this.id; m.coord = { pc: this.coord.pc, r: this.coord.r, i: this.coord.i }; m.dgUp = this.wireDig(this.pipeOut(p)); m.sr = this.sr; this.f.fabricCallFrame(this.id, p, m); }
+    },
+    // C++: mesh_island.inc:Seat::onPipe
+    // The receiver: a Section-1 seat that holds a joining connection to the sender (its own connection table says so).
+    onPipe(m) {
+      if (this.state !== 3 || !this.hasCoord || this.coord.pc !== 0 || m.id < 0 || m.id !== m.from) return;
+      { const pp = this.f.fabricPipePeers(this.id); if (pp.indexOf(m.id) < 0) { this.trace('SUB.4-NOPEER', this.id, this.coord, 'from=%d', m.id); return; } }
+      const u = dig.cloneDig(m.dgUp); this.rxDig(u); if (u.at < 0) return;
+      u.doors = u.doors.filter((e) => !(e.id === this.sr || e.k < 0));   // my own door is never far (an echo)
+      u.n = 0; u.leased = 0; u.held = 0; u.refuse = 0; u.part = 0; u.freeC = 0; u.dmin = 99; u.rows = []; u.votes = []; u.kick = []; u.kabs = 0; u.kl = []; u.kOwn = msg.newKStmt();   // far form, whatever arrived: nothing of another room is a seat of mine
+      const was = this.pipeDig.get(m.id); this.l10Dirty(was !== undefined ? was : null, u); if (was === undefined) { this.trace('SUB.4-PIPE', this.id, this.coord, 'peer=%d far=%d', m.id, dig.digFar(u)); this.l10Mark(); }
+      this.pipeDig.set(m.id, u); if (this.pipeBase.at < 0) this.pipeBase = dig.cloneDig(this.myDig);
+    },
+
     // C++: mesh_island.inc:Seat::islandFound
     islandFound() {
+      if (this.f.fabricSubAsk(this.id)) { this.trace('SUB.2-WAIT', this.id, null, 'asked=%zu', this.lastGreeters.length); this.l16Backoff('sub-ask'); return; }   // a joiner about to found on silence asks for the list of rooms first, and keeps knocking while the ask is open
       this.trace('ISLAND', this.id, null, 'asked=%zu since=%d rounds=%d reach=%d', this.lastGreeters.length, this.islandAskAt, this.islandAskN + 1, typeof this.f.fabricReachSeated === 'function' ? this.f.fabricReachSeated(this.id) : -1);   // reach: the oracle's count (netmatrix bar), -1 without groups
       this.l850Seated = false; this.ehAt = -1; this.ehAskAt = -1; this.ehFrom.clear(); this.foundKnock = true;
       this.islandAskAt = -1; this.islandAskN = 0; this.islandLast = false; this.genKey = this.w.lv.URL_KEY ? this.w.lv.URL_KEY : this.myKey; /* a founder with no link key mints its own (C++: islandFound) */ const e = []; this.lineAt = this.TICK; /* L8.52.3: before take(): my registration at the door carries my epoch */ this.take({ pc: 0, r: 0, i: 0 }, -1, e); this.islandFounder = true; this.lineAdopt(this.id, this.TICK, 'found'); this.lineFork = true;

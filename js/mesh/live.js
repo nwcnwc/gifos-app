@@ -491,6 +491,7 @@
       const tg = new Set(); const rm = rowMates(this.coord); for (let q = 0; q < C - 1; q++) { const t = this.occGet(ckey(rm[q])); if (t >= 0 && t !== this.id) tg.add(t); }
       const cm = colMates(this.coord); for (let q = 0; q < C - 1; q++) { const t = this.occGet(ckey(cm[q])); if (t >= 0 && t !== this.id) tg.add(t); }
       // § G ROOT FOLD: the digest table rides S1SYNC, relayed at the author's stamp and a grown relative age.
+      this.pipeBeat();   // the state beat (and its early send) carries my fold to the far end of each joining connection
       const digs = this.l10Digs();
       for (const t of tg) { const m = newMsg('S1SYNC'); if (!early) m.ent = ents.map((e) => ({ ...e })); m.digs = digs.map(digM.cloneDigE); m.l10E = early; if (!early) this.d52Fh(m); this.emit(t, m); }
     },
