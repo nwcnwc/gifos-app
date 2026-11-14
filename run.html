@@ -10230,10 +10230,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // mate's direct tile stays BLACK until a full transport rebuild.
         // Attach the missing senders on the LIVE pc (fresh m-lines, one
         // renegotiation) instead of leaving the link cameraless.
-        if (cam && localStream && p.pc && !p.headless && (!p.mainV || !p.mainA)) {
+        if (cam && localStream && p.pc && !p.headless && (!p.mainV || (!p.mainA && micPeer(p.id)))) {
           let added = false;
           try {
-            if (!p.mainA && at) { p.mainA = typeof addMainTrack === 'function' ? addMainTrack(p.pc, at, localStream) : p.pc.addTrack(at, localStream); added = true; }
+            if (!p.mainA && at && micPeer(p.id)) { p.mainA = typeof addMainTrack === 'function' ? addMainTrack(p.pc, at, localStream) : p.pc.addTrack(at, localStream); added = true; }
             if (!p.mainV && vt) { p.mainV = typeof addMainTrack === 'function' ? addMainTrack(p.pc, vt, localStream) : p.pc.addTrack(vt, localStream); added = true; }
           } catch (e) {}
           if (added) { if (p.dc && p.dc.readyState === 'open') compKick(p.id); else renegotiate(p); }
@@ -10249,7 +10249,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           else if (p.mainV.track !== vt) p.mainV.replaceTrack(vt).catch(() => {});
         }
         if (p.mainA) {
-          if (voiceStaged || seatSelfLeased()) { if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
+          // my mic goes to row-mates only, like my camera (camPeer): a pipe's side hears me in its mix, so a main audio sender a
+          // late camera grant put on a pipe's pc (attachLocalTracks) carried my voice a second time
+          if (voiceStaged || seatSelfLeased() || !micPeer(p.id)) { if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
           else if (at && p.mainA.track !== at) p.mainA.replaceTrack(at).catch(() => {});
         }
       }
@@ -10346,10 +10348,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // shortfall, not the room size (healing-laws: a shortfall is not the room):
     // its n is what was heard. The line then says the count is incomplete.
     // Am I deep, does my occ name a cell below Section 1, or does the fold? (displayCount, foldIsRoom)
+    // SUB.4: people in the OTHER rooms of the meeting (the fold's far, per door) are never first-hand either: a 2 + 2
+    // meeting across a pipe read first-hand 3 at every seat (my row + the pipe peer) for good while the fold counted 4.
     function deepInView() {
       const s = meshSeat(); if (!s || !s.hasCoord) return false;
       if (s.coord.pc !== 0) return true;
       for (const k of s.occ.keys()) if (k.slice(0, 2) !== '0_') return true;
+      try { if (meshNode && typeof meshNode.meetingFar === 'function' && meshNode.meetingFar() > 0) return true; } catch (e) {}
       return foldNamesDeep();
     }
     // A Section-1 report in my fold that counts more than its own seat: someone sits below that cell. My view
@@ -10779,7 +10784,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // TURN.13: on a TURN link whose server throttles, video takes the step the link's measured capacity leaves
           // (js/meet-turn.js throttlePlan): a lower cap, then a smaller picture, then fewer frames (the pause is the gate).
           const tst = turnLinks ? turnLinks.videoStep(p.id) : null;
-          if (tst) want = Math.min(want, tst.maxBitrate);
+          // the step is the LINK's: the pictures on its pc (a pipe's composite and my camera) share it
+          if (tst) { let nv = 0; for (const x of p.pc.getSenders()) if (x.track && x.track.kind === 'video') nv++; want = Math.min(want, Math.round(tst.maxBitrate / Math.max(1, nv))); }
           const wantScale = tst ? tst.scale : (turnScaled.has(sender) ? 1 : null), wantFps = tst ? tst.fps : null;
           const enc0 = prm.encodings[0];
           const stepSame = wantScale == null || ((enc0.scaleResolutionDownBy || 1) === wantScale && (wantFps == null ? !turnScaled.has(sender) || enc0.maxFramerate == null : enc0.maxFramerate === wantFps));
@@ -13018,9 +13024,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const cc = net.topo.unck(k);
       return cc.pc === c.pc && cc.r === c.r;
     }
-    // My camera and mic go to row-mates only: never on a pipe's pc (its side hears me in the mix it gets) or a standby's (it
-    // carries nothing until it takes over).
-    const camPeer = (pid) => isRowMate(pid);
+    // My mic goes to row-mates only: a pipe's side hears me in the mix it gets, a standby carries nothing until it takes over.
+    // My camera goes to row-mates and to my vouched pipe peers (SUB.4, Nathan 11-14): the far end of a pipe shows me on my own
+    // tile like any direct link and leaves me out of its Stadium (paintRoomView), so a 1:1 over TURN is two full tiles; the
+    // TURN guard holds it while the link is paused, and TURN.13 steps it with the composite on the same pc (adapt).
+    const micPeer = (pid) => isRowMate(pid);
+    // VIDEO GIVES WAY, the extra camera first: my camera rides a pipe only while the link's estimate has room for a second
+    // picture (meet-turn camRoom); otherwise it is parked and the composite (which still shows me) carries the link's video
+    // alone: two encoders at the browser's floor under a paid server's cap cost the voice (capstep: A1 deaf to B1).
+    const camPeer = (pid) => isRowMate(pid) || (!!turnLinks && turnLinks.camRoom(pid) && (() => { try { return isPipePeer(pid); } catch (e) { return false; } })());   // isPipePeer is defined further down
     // ---- mesh early-probe intake (healing-laws D5) --------------------------
     // Transport death is MY first-hand evidence: when my DataChannel to a peer
     // closes, or its pc lands in a hard state ('closed', or 'failed' persisting
@@ -13419,7 +13431,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       for (const tile of document.querySelectorAll('.tile[data-peer]')) {
         const pid = tile.dataset.peer; if (!pid || pid === myId) continue;
         const p = { id: pid, tile };
-        const show = !!turnLinks && (GifOS.meetTurn.pausedBy(facts, myId, p.id) || (turnLinks.isLink(p.id) && !turnLinks.video(p.id)));
+        const show = !!turnLinks && (GifOS.meetTurn.pausedBy(facts, myId, p.id) || (turnLinks.isLink(p.id) && !turnLinks.standby(p.id) && !turnLinks.video(p.id)));   // a standby holds nobody's video (SUB.7)
         // TURN.13: the far end paused its video because the server throttles (vouched: nothing to subscribe to)
         const busy = !show && !!turnLinks && turnLinks.farBusy(p.id);
         let bel = p.tile.querySelector(':scope > .tpause-busy');
@@ -13506,7 +13518,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const p = peers.get(pid); if (!p || !p.pc) continue;
         try { turnLinks.onPath(pid, p.pc.iceConnectionState === 'completed' ? 'connected' : p.pc.iceConnectionState); } catch (e) {}
         if (!look) continue;
-        const before = JSON.stringify(turnLinks.videoStep(pid)) + turnLinks.busy(pid);
+        const before = JSON.stringify(turnLinks.videoStep(pid)) + turnLinks.busy(pid) + turnLinks.camRoom(pid);
         p.pc.getStats().then((st) => {
           let sel = null; const by = new Map(); st.forEach((x) => by.set(x.id, x));
           st.forEach((x) => { if (x.type === 'transport' && x.selectedCandidatePairId) sel = by.get(x.selectedCandidatePairId); });
@@ -13526,7 +13538,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const lastV = turnSent.get(pid), tNow = Date.now(); turnSent.set(pid, { b: vBytes, t: tNow });
           if (lastV && tNow > lastV.t && vBytes >= lastV.b && (vBytes - lastV.b) * 8000 / (tNow - lastV.t) >= 0.7 * bps) limited = true;
           if (turnLinks.video(pid)) turnLinks.onCapacity(pid, bps, loss, rtt, limited);
-          if (JSON.stringify(turnLinks.videoStep(pid)) + turnLinks.busy(pid) !== before) { try { adapt(); } catch (e) {} turnApplyVideo(p); turnPaint(); }
+          if (JSON.stringify(turnLinks.videoStep(pid)) + turnLinks.busy(pid) + turnLinks.camRoom(pid) !== before) { try { refreshOutbound(); } catch (e) { try { adapt(); } catch (e2) {} } turnApplyVideo(p); turnPaint(); }   // refreshOutbound: a pipe peer's camera follows the step (camPeer), then adapt
         }, () => {});
       }
     }
@@ -14929,6 +14941,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const s = meshSeat();
       if (!s || !s.hasCoord) return false;
       if (s.l14Served && s.l14Served().includes(pid)) return true;   // L14: a cut-off head dialled me for its branch's media
+      // SUB.7: a warm standby pipe is a pc and its keep, never a face: nothing rides it, and its far end sits in the other room
+      // (seen on the Stadium plane). Its keep made the far seat a black tile here that said "video is paused" (vouched A2/B2).
+      if (turnLinks && turnLinks.standby(pid) && !s.linkPeers().has(pid)) return false;
       // A row's standby (E3) is a pc only while an up edge is down: the seat's dial says so above, and u2Hot here. Idle, it is a name, as an idle row holds no third pc.
       return (!(pid === s.u3Id && !s.u2Hot) && s.linkPeers().has(pid)) || (typeof s.keepPeers === 'function' && s.keepPeers().has(pid));   // every media target is a link peer or carries a keep reason (L28)
     }
@@ -24439,6 +24454,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // Own-row hiding stops at section size (Nathan): a Stadium of more than C×C people shows everyone and hides nothing.
         const hide = [];
         if (c && meta.n <= SCALE.C * SCALE.C) for (let j = 0; j < SCALE.C; j++) { const pid = j === c.i ? myId : occPid({ pc: c.pc, r: c.r, i: j }); if (pid) hide.push(String(pid)); }
+        // SUB.4 PIPE HOLDERS: the two ends of a vouched pipe see each other on a full tile (my camera crosses to my pipe peer,
+        // camPeer), so each leaves the other out of its own Stadium; everyone else sees the far room in the Stadium only.
+        // (only while its tile shows its own live camera: under a TURN step the camera gives way and the composite shows it again)
+        for (const h of pipePeers()) { const q = peers.get(h), vt = q && q.stream && q.stream.getVideoTracks ? q.stream.getVideoTracks()[0] : null; if (turnLinks && turnLinks.video(h) && vt && vt.readyState === 'live' && !vt.muted && hide.indexOf(String(h)) < 0) hide.push(String(h)); }
         // A camera on the Stage is left out of this browser's stadium only.
         // The pack that arrived is unchanged, and a share stays in the grid.
         try {
@@ -24482,7 +24501,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (sdView) { sdView.stop(); sdView = null; }
         sdViewSrc = null; avHoldStop();
         if (!sdViewSt || sdViewSt.getVideoTracks().length || (sdViewSt.getAudioTracks()[0] || null) !== sndOnly) sdViewSt = new MediaStream([sndOnly]);
-        paintStadiumTile(sdViewSt);
+        // A sound-only Stadium that stands for nobody I cannot already see (a 1:1 over a pipe: the far person is on a full tile,
+        // SUB.4 pipe holders) plays its sound and takes no place on screen.
+        let quiet = false;
+        try { const mc = meshNode && typeof meshNode.meetingCount === 'function' ? meshNode.meetingCount() : null; quiet = mc != null && mc <= facesOnScreen(); } catch (e) {}
+        paintStadiumTile(sdViewSt, quiet);
         return;
       }
       // Nothing to show: a tile already on screen lingers MOS_GRACE, so a
@@ -27688,7 +27711,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       v.addEventListener('resize', set); v.addEventListener('loadedmetadata', set); set();
     }
     // The stadium tile (one, keyed 'sd') in the stadium strip.
-    function paintStadiumTile(stream) {
+    function paintStadiumTile(stream, quiet) {
       let el = stadiumEl.querySelector('[data-row="sd"]');
       // The mosaic sweep calls this every couple of seconds with the same
       // stream. The gallery is laid out again only when the Stadium tile
@@ -27711,7 +27734,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       const v = el.querySelector('video');
       if (!(typeof wkHolds === 'function' ? wkHolds(v, stream) : v.srcObject === stream)) { if (typeof wkBindVideo === 'function') wkBindVideo(v, stream); else v.srcObject = stream; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); changed = true; }
-      stadiumEl.classList.add('on');
+      // quiet: its sound plays, and it takes no place on screen (paintRoomView)
+      const wasQuiet = el.style.display === 'none';
+      if (!!quiet !== wasQuiet) { el.style.display = quiet ? 'none' : ''; changed = true; }
+      stadiumEl.classList.toggle('on', !quiet || !!stadiumEl.querySelector('.rowtile:not([data-row="sd"])'));
       const cnt = roomPastSection() ? displayCount() : knownTotal();
       if (!prevSd || prevSd.streamId !== stream.id || prevSd.cnt !== cnt || prevSd.el !== v) changed = true;
       compOf.set('sd', { via: 'mosaic', streamId: stream.id, stream, names: [], cnt, el: v });
@@ -35317,10 +35343,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function attachLocalTracks() {
       if (!localStream || (BROADCAST && !bcMayPublishAv())) return;
       for (const [pid, p] of peers) {
-        if (!p.pc) continue;
+        if (!p.pc || !camPeer(pid) || p.headless) continue;   // camPeer: row-mates and vouched pipe peers; never a standby's pc
         let added = false;
         for (const tr of localStream.getTracks()) {
-          if (tr.kind === 'video' ? p.mainV : p.mainA) continue;
+          if (tr.kind === 'video' ? p.mainV : (p.mainA || !micPeer(pid))) continue;   // the mic: row-mates only
           try {
             const t = p.pc.addTransceiver(tr.kind === 'audio' ? (mainAudioTrack() || tr) : tr, { streams: [localStream] });
             if (tr.kind === 'video') p.mainV = t.sender; else p.mainA = t.sender;

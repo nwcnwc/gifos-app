@@ -150,7 +150,9 @@
       stop() { if (timer) clearInterval(timer); timer = null; for (const obj of [...taps.keys()]) drop(obj); },
       running: () => !!timer,
       // { name: hz }: the pitches a check plays, one per talker. {} turns the tone read off.
-      setTones(t) { tones = {}; for (const [k, v] of Object.entries(t || {})) if (+v > 0) tones[k] = +v; return Object.keys(tones).length; },
+      // The sample taken before the names were set read no tones at all (tn null), so the next read() samples afresh: a
+      // check that set its tones and read once found every mix (stadium, stage) deaf while it played at -12 dB.
+      setTones(t) { tones = {}; for (const [k, v] of Object.entries(t || {})) if (+v > 0) tones[k] = +v; last = null; return Object.keys(tones).length; },
       tones: () => Object.assign({}, tones),
       read() { const s = last || sample(); return Object.assign({ err, taps: taps.size, hears: hears(s) }, s); },
       hears: () => hears(last),
