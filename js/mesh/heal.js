@@ -1250,7 +1250,7 @@
       if (this.l14Up >= 0 && (this.f.fabricLinkState(id, this.l14Up) === LS_OPEN || this.l14Dialling())) return;
       const anc = this.coord.i !== 0 ? { pc: this.coord.pc, r: this.coord.r, i: 0 } : this.ownerCoord(); if (!anc) return;
       const ak = ckey(anc); if (!(this.occGet(ak) < 0 || TICK - this.lastAck >= K.L9_LONE) || this.softSitting(ak)) return;   // L50.1
-      const ps = this.f.fabricOpenPeers(id); if (ps.length === 0) return;
+      const ps = this.l50Links(); if (ps.length === 0) return;
       this.l50AskAt = TICK | 0; const pn = this.probeNote(ak), sq = ++this.w.lv.RSEQ;
       for (const g of ps) { const r = newMsg('ROUTE'); r.target = cc(anc); r.asker = id; r.tag = 5; r.ttl = K.L50_HOPS; r.via = id; r.pseq = sq; r.pn = pn; r.ck = ckey(this.coord); this.emit(g, r); }
       this.trace('L50-ASK', id, anc, 'links=%d', ps.length);
@@ -1286,7 +1286,7 @@
         } }
       { const ac = unck(m.ck); const cut = this.coord.pc !== 0 && this.l14Branch() !== null && !(this.l14Up >= 0 && this.f.fabricLinkState(id, this.l14Up) === LS_OPEN);   // L14.4
         if (!cut && pcDepth(this.coord.pc) < pcDepth(ac.pc) && this.f.fabricUpTake(id, m.asker) === 0) { const r = newMsg('ROUTED'); r.tag = 5; r.target = cc(m.target); r.id = id; r.pn = m.pn; r.asker = m.asker; this.l50Back(r, m.asker); this.trace('L50-OFFER', id, this.coord, 'to=%d', m.asker); return; } }   // (c)
-      if (m.ttl > 1) for (const g of this.f.fabricOpenPeers(id)) if (g !== m.from && g !== m.asker) { const f = msg.clone(m); f.ttl = m.ttl - 1; f.via = id; this.emit(g, f); }   // (d)
+      if (m.ttl > 1) for (const g of this.l50Links()) if (g !== m.from && g !== m.asker) { const f = msg.clone(m); f.ttl = m.ttl - 1; f.via = id; this.emit(g, f); }   // (d)
     },
 
     // C++: mesh_heal.inc:Seat::l50Offer
@@ -1307,15 +1307,20 @@
     l50Back(m, to) {
       const id = this.id;
       if (to < 0 || to === id) return false;
-      if (this.f.fabricLinkState(id, to) === LS_OPEN) { this.emit(to, m); return true; }
+      if (!this.w.lv.LINKMODEL || this.f.fabricLinkState(id, to) === LS_OPEN) { this.emit(to, m); return true; }
       const f = this.l50From.get(to); if (f === undefined || f === to || this.f.fabricLinkState(id, f) !== LS_OPEN) return false;
       this.emit(f, m); return true;
     },
+
+    // C++: mesh_heal.inc:Seat::l50Links
+    // The links I hold: my open pcs under the link model; on the parent fabric the seats my cell's roles name.
+    l50Links() { if (this.w.lv.LINKMODEL) return this.f.fabricOpenPeers(this.id); const out = []; this.linkPeers(out); return out; },
 
     // C++: mesh_heal.inc:Seat::l50NoLink
     // L50.5: my anchor does not carry and no pc of mine carries anything: the door is next. Returns the anchor, or null.
     l50NoLink() {
       const id = this.id, TICK = this.TICK;
+      if (!this.w.lv.LINKMODEL) return null;
       if (!this.hasCoord || this.state !== 3 || this.coord.pc === 0 || this.moving || TICK - this.seatedAt < K.L9_LONE) return null;
       const anc = this.coord.i !== 0 ? { pc: this.coord.pc, r: this.coord.r, i: 0 } : this.ownerCoord(); if (!anc) return null;
       const ak = ckey(anc); if (!(this.occGet(ak) < 0 || TICK - this.lastAck >= K.L9_LONE) || this.softSitting(ak)) return null;
