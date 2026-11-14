@@ -12389,6 +12389,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (relayDown || targetUnreachable || mediaDesc || !mayRelay) {
         const m2 = sigSansIce(to, msg);
         if (!m2) return; // a blocked pair sends nothing on either path (fault injection)
+        // every negotiation frame kept off the relay says why (a pair whose bootstrap never leaves is otherwise silent)
+        if (typeof clog === 'function' && (msg.kind === 'offer' || msg.kind === 'answer')) clog('sig ' + msg.kind + ' to ' + String(to).slice(0, 6) + ' off the relay: ' + [relayDown ? 'relay-down' : '', notOnRelay ? 'nosock' : '', (peers.get(to) || {}).altPath ? 'altPath' : '', mediaDesc ? 'media' : '', !mayRelay ? 'not-relay-pair' : ''].filter(Boolean).join(',') + (turnLinks && turnLinks.holds(to) ? ' (a TURN link)' : ''));
         const rt = (m2.kind === 'offer' || m2.kind === 'answer') ? takeRoute(to) : null;   // L16.3.2: the reply to a walked frame retraces it
         if (sponsorSend(Object.assign({ k: 'fsig', from: myId, to, tc: coordKeyOf(to), id: fwdId(), ttl: 12, m: m2 }, rt ? { rt } : {}))) { txStats.fwdSig++; return; }
         if (mediaDesc) { txStats.relayUnfit++; return; } // no friend's channel either: the sweeper's next attempt rebuilds and bootstraps (sendOffer)
