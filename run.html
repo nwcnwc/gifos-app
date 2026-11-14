@@ -13176,6 +13176,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (f.gone) { turnFacts.delete(f.id); turnPaint(); return; }
       const ids = (x) => (Array.isArray(x) ? x.filter((y) => typeof y === 'string' && y.length <= 64).slice(0, GifOS.meetTurn.SIDE_MAX) : null);
       const o = turnFacts.get(f.id) || { id: f.id, a: f.a, b: f.b, up: 0, v: 0, s: 0, c: 0, g: 0, va: [], vb: [] };
+      if (typeof f.l === 'string' && /^l[0-9]{1,2}$/.test(f.l)) o.l = f.l;   // the pipe's name: a subroom the meeting holds
       if (from === f.a) { o.up = f.up ? 1 : 0; o.v = f.v ? 1 : 0; o.s = +f.s || 0; o.c = +f.c || 0; o.g = f.g ? 1 : 0; if (ids(f.va)) o.va = ids(f.va); }
       else { if (ids(f.vb)) o.vb = ids(f.vb); if (!o.s) { o.up = f.up ? 1 : 0; o.v = f.v ? 1 : 0; } }
       o.at = Date.now(); turnFacts.set(f.id, o);

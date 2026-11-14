@@ -256,7 +256,6 @@
 
   // The `tv` relay frame (gifos-net.js RELAY_TYPES): one link's handshake between its two ends.
   //   {k:'tv', q:'a', l, d, b}   ask / answer: the pipe's link name, my device tag, my network blocks direct paths (b 1)
-  //                               (an opener's ask carries f:1 when it re-links a subroom that is already in the meeting)
   //   {k:'tv', q:'v', l, e, n, m} my seated vouch for this link (its expiry in base 36, nonce, MAC)
   //   {k:'tv', q:'r', l}          ready: I hold what my end needs (a credential, or none: not a client)
   //   {k:'tv', q:'p', l, b}       paid: my end is on the paid pool (b 1) or back on free (b 0)
@@ -271,12 +270,12 @@
   //   {k:'tv', q:'t', l:'s<r>'}            take the pipe over (the live pipe is gone)
   //   {k:'tv', q:'w', l, m}       TURN.18: this link runs over the web path; m (the opener's word) names its host
   //   {k:'tv', q:'b', l, b}       busy: my end paused its video because the server throttles (b 1), or sends again (b 0)
-  const TV_KEYS = 'k,q,l,d,b,e,n,m,f';
+  const TV_KEYS = 'k,q,l,d,b,e,n,m';
   const LINK_RE = /^[ls][0-9]{1,2}$/, DEV_RE = /^[A-Za-z0-9_.-]{1,16}$/, NONCE_RE = /^[0-9a-f]{18}$/, MAC_RE = /^[A-Za-z0-9_-]{43}$/, E36_RE = /^[0-9a-z]{1,11}$/;
   function tvOk(f) {
     if (!f || typeof f !== 'object' || Array.isArray(f) || f.k !== 'tv' || typeof f.l !== 'string' || !LINK_RE.test(f.l)) return false;
     for (const k of Object.keys(f)) if (k !== '_' && TV_KEYS.split(',').indexOf(k) < 0) return false;
-    if (f.q === 'a') return typeof f.d === 'string' && DEV_RE.test(f.d) && (f.b === 0 || f.b === 1) && (f.f === undefined || f.f === 1);
+    if (f.q === 'a') return typeof f.d === 'string' && DEV_RE.test(f.d) && (f.b === 0 || f.b === 1);
     if (f.q === 'w') return f.m === undefined || (typeof f.m === 'string' && WEB_HOST_RE.test(f.m));
     if (f.q === 'v') return typeof f.e === 'string' && E36_RE.test(f.e) && typeof f.n === 'string' && NONCE_RE.test(f.n) && typeof f.m === 'string' && MAC_RE.test(f.m);
     if (f.q === 'x') return f.b === undefined || f.b === 1;
@@ -410,6 +409,7 @@
   //   standbySeat() → { pid, dev } | null: the seat of my subroom that ends a pipe's warm standby on my side (another
   //     capable row head, the fewest pipes and standbys first; with one row head the next seat of its row); null: I am
   //     my subroom's only seat, so I keep that end myself
+  //   knownSub(r) → subroom r's people are still in my meeting's count (the mesh's fold): a pipe for r re-links it
   //   dial(pid); reset(pid) (a fresh pc on the new settings, no dial); restart(pid, l) (move a live pc onto new settings)
   //   keep(pid) (the seat holds this pc: an L28 keep); drop(pid, why) (the TURN pc ends)
   //   subs() → [{ key, tier }] verified subscribers present; ticket() → a meeting ticket for a paid ask, or null
@@ -476,7 +476,18 @@
       try { io.changed(L.far); } catch (e) {}
     }
     const fresh = (L) => !!(L.mine && L.peer && L.mine.e - io.now() > 0 && L.peerE - io.now() > 0);
-    function sendAsk(L) { L.sentAt = io.now(); const a = { k: 'tv', q: 'a', l: L.l, d: io.dev(), b: io.blocked() ? 1 : 0 }; if (L.relink) a.f = 1; io.sendTv(L.far, a); }
+    function sendAsk(L) { L.sentAt = io.now(); io.sendTv(L.far, { k: 'tv', q: 'a', l: L.l, d: io.dev(), b: io.blocked() ? 1 : 0 }); }
+    // Is pipe l<r> already part of my meeting? Then a handshake for it re-links a subroom the meeting holds (a re-pipe,
+    // a standby taking over): no new entry. Judged only from what my own meeting holds, never from the asker's word: a
+    // room-wide fact of pipe l<r> heard within its life, a pipe of mine by that name, or subroom r's people still in my
+    // meeting's count (io.knownSub, from the mesh's fold).
+    function knownPipe(l) {
+      const r = pipeNo(l);
+      if (io.knownSub && io.knownSub(r)) return true;
+      for (const L of links.values()) if (pipeNo(L.l) === r && L.state !== 'closed') return true;
+      for (const f of io.facts() || []) if (f && !f.gone && f.l === l) return true;
+      return false;
+    }
     // My vouch names the subroom my relay socket sits in: a pipe I opened waits until my door is its new subroom.
     const mySubFor = (L) => (L.opener ? Number(L.l.slice(1)) : (io.sub ? io.sub() : 0));
     function askMine(L) { if (!L.farDev) return; if (io.sub && io.sub() !== mySubFor(L)) return; L.vAskAt = io.now(); io.askVouch(L.farDev, L.l); }
@@ -600,11 +611,11 @@
           if (!s || !s.greeter) return;                       // only a seated greeter can be vouched for: say nothing
           if (s.view.indexOf(from) >= 0 && io.reach(from) === 'direct') return;   // reached already: no link
           // A new pipe is a new entry: refused while my meeting is at its plan's limit (room limits apply at entry
-          // only; a pipe re-linking a subroom already in the meeting, f 1, is never refused for it).
+          // only; a pipe re-linking a subroom my meeting already holds is never refused for it: knownPipe).
           if (f.l[0] === 's') {   // a standby: only a seat its own live end named takes it
             if (!sbExpect.has(f.l)) return;
             L = newLink(from, f.l, false); L.heardAt = io.now(); L.liveEnd = sbExpect.get(f.l);
-          } else if (f.f !== 1 && io.meetingFull && io.meetingFull()) { log('turn-link refused ' + short(from) + ' ' + f.l + ': the meeting is full'); io.sendTv(from, { k: 'tv', q: 'x', l: f.l, b: 1 }); return; }
+          } else if (io.meetingFull && io.meetingFull() && !knownPipe(f.l)) { log('turn-link refused ' + short(from) + ' ' + f.l + ': the meeting is full'); io.sendTv(from, { k: 'tv', q: 'x', l: f.l, b: 1 }); return; }
           if (!L) { L = newLink(from, f.l, false); L.heardAt = io.now(); }
         }
         if (L.l !== f.l) return;
@@ -764,7 +775,7 @@
     }
     function factOf(L) {
       const s = io.seat();
-      return { id: L.id, a: L.opener ? io.me() : L.far, b: L.opener ? L.far : io.me(), up: L.state === 'up' ? 1 : 0, v: L.video ? 1 : 0,
+      return { id: L.id, l: L.l, a: L.opener ? io.me() : L.far, b: L.opener ? L.far : io.me(), up: L.state === 'up' ? 1 : 0, v: L.video ? 1 : 0,
         s: L.serial || 0, c: s ? s.cell : 0, g: 0, [L.opener ? 'va' : 'vb']: L.side.slice(0, SIDE_MAX) };
     }
 
@@ -878,14 +889,13 @@
       }, () => { if (g === sub.gen) subIdle(io.now(), { refused: 'no-answer', retryAt: io.now() + RETRY_MS }, io.now() + RETRY_MS); });
     }
     function subFound(a) {
-      const relink = io.asker && io.asker() === 'repipe';
+      const relink = io.asker && io.asker() === 'repipe';   // (for the log: the far end judges a re-pipe itself)
       sub.st = 'found'; sub.gen++;
       sub.found = { r: a.r, sg: a.sg, far: { r: a.far.r, d: a.far.d }, link: a.link };
       sub.out = { found: a.r, sg: a.sg, far: sub.found.far, link: a.link };
       log('turn-sub ' + (relink ? 're-pipe ' : 'new ') + a.r + ' far ' + a.far.d + '@' + a.far.r + ' ' + a.link);
       for (const L of Array.from(links.values())) if (L.opener && L.l === a.link) close(L, 'replaced', true);   // a re-pipe's old pipe of this subroom
       const L = newLink(a.far.d, a.link, true, a.far.d, a.far.r);
-      L.relink = relink;
       sendAsk(L); askMine(L);
     }
     function subStep(now) {
