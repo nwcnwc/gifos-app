@@ -2,6 +2,66 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.26",
+      "date": "2026-11-15",
+      "headline": "Offices behind strict firewalls join one meeting, and healing is faster",
+      "critical": false,
+      "features": [
+        "Meetings: two offices or companies behind strict firewalls can now join the same meeting. A relay server links their rooms, and everyone sees, hears and counts everyone in the other rooms.",
+        "Meetings: if one end of a link between two offices drops out, a spare link takes over, so the far office keeps its sound.",
+        "Meetings: Follow the speaker now also follows people talking in other rows, zooming the Stadium to their tile.",
+        "Meetings: admin rooms can take a monthly or yearly plan through PayPal. A plan pays for video over the relay between offices, and several subscribers' shares add up for the whole meeting.",
+        "Payments: paid apps and the Creators tip jar can now be paid in USDC on Base.",
+        "Meetings: recording shows as a small REC badge on the floating bar.",
+        "Apps: one Save for every app, and a new page for making your own app for meetings.",
+        "Meetings: passes carry their own permissions, and several sessions of one pass can share one meeting.",
+        "Meet: Terms and Privacy links in Settings and next to every pay button. GifOS Meet has its own privacy page."
+      ],
+      "fixes": [
+        "Meetings: the far office no longer sounds like static after a short loss on the link between offices.",
+        "Meetings: a newcomer is heard at once, instead of sometimes staying unheard for half a minute.",
+        "Meetings: someone who moves into your row hears you right away.",
+        "Meetings: a row that lost all its seats above it is reconnected in about a second instead of half a minute.",
+        "Meetings: a listener on the Stage could stay deaf after a connection change. They now keep hearing.",
+        "Meetings: a caption line spoken while people talk over each other is kept, not dropped.",
+        "Meetings: a newcomer who gets no answer at the door tries another way in only when the first one has really stalled, so joining is faster and steadier.",
+        "Meetings: the Stop sharing button on your own tile now stops the share."
+      ],
+      "notes": [
+        "Known issue: once two networks joined by a relay can reach each other directly, the relay link stays open. Sound and video are fine; it only costs relay traffic.",
+        "Known issue: sound over the free relay is sent at 64 kbps; a lighter setting is planned.",
+        "Known issue: when one end of a link between two offices crashes, one far speaker can stay silent for about 6 seconds. Other far voices return within 2 seconds.",
+        "Known issue: someone watching from another row can wait a long time, tens of seconds, before a shared screen or a new Stage speaker shows up.",
+        "Known issue: a caption line one person's page keeps for another speaker is not yet shared with the whole room."
+      ]
+    },
+    {
+      "version": "0.9.25.3",
+      "date": "2026-11-12",
+      "headline": "Voices in the Stadium and on the Stage keep their true pitch",
+      "fixes": [
+        "Meetings: on a busy phone or computer, voices heard through the Stadium or the Stage could come out a little high, about a semitone and a half, for several seconds before drifting back. They now always play at their true pitch."
+      ]
+    },
+    {
+      "version": "0.9.25.2",
+      "date": "2026-11-12",
+      "headline": "Everyone hears camera-off people, and sharing from the Row keeps your camera",
+      "fixes": [
+        "Meetings: people in another row, a phone in a big room for example, could stop hearing someone whose camera was off, while their captions still arrived. Every voice now reaches every seat whatever the camera does.",
+        "Meetings: sharing a screen from the Row no longer freezes your Row tile or drops you from the Stadium. Your camera stays where it was; only stepping onto the Stage yourself takes it off the Row."
+      ]
+    },
+    {
+      "version": "0.9.25.1",
+      "date": "2026-11-12",
+      "headline": "Joining works again with tracker blockers on",
+      "critical": true,
+      "fixes": [
+        "Meetings: people whose browser blocks trackers (tracking protection, iOS Safari's default privacy protection, or an ad blocker) could be stuck at \"This page did not finish loading\" and never reach the room. A blocked third-party script no longer stops a join."
+      ]
+    },
+    {
       "version": "0.9.25",
       "date": "2026-11-06",
       "headline": "Meetings rebuilt to grow without limit",
