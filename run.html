@@ -4622,6 +4622,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // before the video element's own float. The handler arms the timer and
     // returns; it does not wait.
     const PIP_AUTO_FALLBACK_MS = GifOS.timings.PIP_AUTO_FALLBACK_MS;
+    // How long a return waits for the browser to close its own float (see pipReturn).
+    const PIP_RETURN_WAIT_MS = GifOS.timings.PIP_RETURN_WAIT_MS;
     let pipAutoT = 0;
     // Bumped when a float is cancelled. A document window that answers after
     // that is closed instead of left over a tab the person is looking at.
@@ -5009,6 +5011,28 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const pr = v.play(); if (pr && pr.catch) pr.catch(() => {});
       pipNote('el-recover', { err: refused || '' });
     }
+    // Coming back to the meeting. The browser closes its own float on the
+    // way back and says so (leavepictureinpicture); its word goes first. An
+    // exit asked at the same moment can cancel that word: Android Chrome,
+    // back through the float's expand control, then never answers the exit
+    // and never says the float left, and the tile stayed black with a float
+    // nobody could close. The page closes the float itself only when it is
+    // still up after PIP_RETURN_WAIT_MS. A document window has no such word
+    // and closes at once.
+    let pipReturnT = 0;
+    function pipReturn(why) {
+      if (pipReturnT) { clearTimeout(pipReturnT); pipReturnT = 0; }
+      if (docPip || !document.pictureInPictureElement) { exitPip(why); return; }
+      clearPipAuto();
+      pipEpoch++;   // a float still being asked for is cancelled now, as exitPip does
+      pipCardRun(false);
+      pipNote('return-wait', { why });
+      pipReturnT = setTimeout(() => {
+        pipReturnT = 0;
+        if (document.hidden || !document.pictureInPictureElement) return;
+        exitPip(why + '-late');
+      }, PIP_RETURN_WAIT_MS);
+    }
     async function exitPip(why) {
       clearPipAuto();
       pipEpoch++;
@@ -5108,7 +5132,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         pipHintArmed = IS_MOBILE && !pipHintDone && !pipFloating() && pipBtnShown() && !!(pipSource() || (pipCard && pipCardOk()));
         enterPip();
       } else {
-        exitPip('visible');
+        pipReturn('visible');
         if (pipHintArmed) {
           pipHintDone = true;
           setStatus(uiText('floatHint', 'Before you switch apps, tap More › Float.'), 9000);
@@ -5136,7 +5160,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (document.pictureInPictureElement
         || Array.from(document.querySelectorAll('video')).some((v) => v.webkitPresentationMode === 'picture-in-picture')) exitPip();
     }, true);
-    window.addEventListener('pageshow', () => { awayFull(false); if (IS_MOBILE) exitPip(); });
+    window.addEventListener('pageshow', () => { awayFull(false); if (IS_MOBILE) pipReturn('pageshow'); });
     // ANDROID: FULL SCREEN ON THE FIRST TAP. Android Chrome floats a page on
     // Home or an app switch only when it is in full screen (the media-session
     // action and autoPictureInPicture never fire there, and a float asked for
