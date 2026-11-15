@@ -915,5 +915,18 @@
   "meet.store.sorryTitle": "抱歉",
   "meet.store.ok": "好",
   "meet.store.busy": "另一笔购买仍未完成。",
-  "meet.store.failed": "购买未成功。您没有被扣款。"
+  "meet.store.failed": "购买未成功。您没有被扣款。",
+  "meet.blurWhyNoPw": "已模糊：房间没有密码",
+  "meet.blurWhyGuests": "已模糊：管理员模糊了访客",
+  "meet.blurWhyForAll": "已对所有人模糊",
+  "meet.blurWhyNoAdmin": "已模糊：管理员不在",
+  "meet.blurWhyReady": "已模糊：还有人没准备好",
+  "meet.blurSaysNoPw": "你选择了清晰视频，但为了安全，在这个房间设置密码之前你会保持模糊。",
+  "meet.blurSaysGuests": "你选择了清晰视频，但管理员模糊了所有访客，在取消之前你会保持模糊。",
+  "meet.blurSaysForAll": "你选择了清晰视频，但这里有人对所有人模糊了你，在取消之前你会保持模糊。",
+  "meet.blurSaysNoAdmin": "你选择了清晰视频，但在管理员到场之前，这个房间会保持模糊。",
+  "meet.blurSaysReady": "你选择了清晰视频。当这里每个人都打开摄像头并选择“不模糊”时，画面就会变清晰。",
+  "meet.blurPwYou": "用“密码”按钮设置一个。",
+  "meet.blurPwAdmin": "只有这个房间的管理员可以设置。",
+  "meet.blurPwAnyone": "这里的任何人都可以用“密码”按钮设置一个。"
 }

@@ -4463,6 +4463,22 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const word = uiText('away', 'Away');
       if (mark.textContent !== word) mark.textContent = word;
     }
+    // The blur note (tileBlurWhy): a face its sender wants clear, kept soft by
+    // the room, says why in a few words. CSS shows it only while the meeting
+    // controls are up, never on a resting screen.
+    function paintBlurWhy(t, why) {
+      if (!t || !t.tile || typeof t.tile.querySelector !== 'function') return;
+      let el = t.tile.querySelector(':scope > .blurwhy');
+      if (!why) { if (el) el.remove(); return; }
+      if (!el) {
+        el = document.createElement('span');
+        el.className = 'blurwhy';
+        t.tile.appendChild(el);
+      }
+      const words = blurWhyWords(why, 'tile');
+      if (el.textContent !== words) el.textContent = words;
+      if (el.dataset.why !== why) el.dataset.why = why;
+    }
     const stillBtn = document.getElementById('still');
     if (stillBtn) stillBtn.onclick = () => { stillBtn.classList.remove('on'); clearTimeout(stillTimer); };
     document.addEventListener('visibilitychange', () => {
@@ -5673,6 +5689,43 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       for (const pid of roomConsentIds()) { if (freshConsent(pid)) n++; }
       return n;
     }
+    // WHAT KEEPS A FACE BLURRED (Nathan, 2026-11-15: a first-time visitor
+    // could not tell why No blur stayed soft). The room's reason this tile is
+    // not clear, in THE BLUR RULE's own order, or '' when the room lets it be
+    // clear. blurLevelFor decides by it, and the No blur message and the tile
+    // note take their words from BLUR_WHY, so the picture and the words agree.
+    //   nopw     the room has no password (an open room, or an admin room not locked yet)
+    //   guests   the admin's "Blur guests" order covers this guest
+    //   forall   someone's "Blur for all" on this person
+    //   noadmin  an admin room with no admin here
+    //   ready    a plain room where not everyone is ready (camera on, No blur): the viewer counts too
+    function blurHold(id) {
+      if (!roomPw) return 'nopw';
+      const m = modOf(id).blur;
+      if (m && m.on) return (hasAdminRoom() && modTable['*'] && modTable['*'].blur === m) ? 'guests' : 'forall';
+      if (hasAdminRoom()) return adminPresent() ? '' : 'noadmin';
+      return allConsent() ? '' : 'ready';
+    }
+    // One table: [key, English] for the tile note and for the message the
+    // sender reads after picking No blur. uiText translates both.
+    const BLUR_WHY = {
+      nopw: { tile: ['blurWhyNoPw', 'Blurred: no room password'], says: ['blurSaysNoPw', 'You chose clear video, but for safety you stay blurred until this room has a password.'] },
+      guests: { tile: ['blurWhyGuests', 'Blurred: admin blurs guests'], says: ['blurSaysGuests', 'You chose clear video, but the admin has blurred every guest, so you stay blurred until they lift it.'] },
+      forall: { tile: ['blurWhyForAll', 'Blurred for all'], says: ['blurSaysForAll', 'You chose clear video, but someone here blurred you for all, so you stay blurred until that is lifted.'] },
+      noadmin: { tile: ['blurWhyNoAdmin', 'Blurred: no admin here'], says: ['blurSaysNoAdmin', 'You chose clear video, but this room stays blurred until an admin is here.'] },
+      ready: { tile: ['blurWhyReady', 'Blurred: not everyone is ready'], says: ['blurSaysReady', 'You chose clear video. Faces clear once everyone here has their camera on with No blur.'] },
+    };
+    function blurWhyWords(reason, part) {
+      const e = BLUR_WHY[reason];
+      return e ? uiText(e[part][0], e[part][1]) : '';
+    }
+    // The note on a tile: only a face that WOULD be clear (its sender picked
+    // No blur with the camera on, or shares) and that the room still blurs.
+    // A bot has no face; a dark tile shows no picture to explain.
+    function tileBlurWhy(id, st) {
+      if (!st || st.bot || !consents(st)) return '';
+      return blurHold(id);
+    }
     let clearForTest = false; // a test stands in for a consented password room
     // asIfCamOn: the level a camera-off seat's PLACEHOLDER (initial or picture)
     // takes. It stands in for the face, so it is as soft as the face would be
@@ -5689,7 +5742,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // exactly as to a camera: no password, a room short of unanimity, a
       // moderator's blur all keep it blurred.
       if (st.scr || st.rb) st = Object.assign({}, st, { camOff: false, blur: 0 });
-      const blocked = !!(modOf(id).blur && modOf(id).blur.on);
       // (This rule applies UNCHANGED in broadcast rooms — Nathan's call,
       // 2026-08-03. An admin room is born UNLOCKED; the host locking it with
       // a room password after arriving IS the deliberate "this room may show
@@ -5701,7 +5753,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // one: live clear video reachable by unvetted strangers triggers
       // minor-protection law in many countries. The password gate is the
       // legal boundary, not a UX inconvenience to optimize away.)
-      const clear = !!roomPw && !blocked && (hasAdminRoom() ? (adminPresent() && consents(st)) : allConsent());
+      // The room's part is blurHold (password, moderator block, admin here,
+      // everyone ready); an admin room clears per tile, so its own consent too.
+      const clear = !blurHold(id) && (!hasAdminRoom() || consents(st));
       if (clear || (isMe && clearForTest)) return 0;
       return Math.max(1, blurLevel(st.blur));
     }
@@ -7071,6 +7125,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       t.tile.classList.toggle('noroute', !isMe && !!t.noRoute);
       t.tile.classList.toggle('reconnecting', reconnecting);
       t.tile.classList.toggle('cam-off', dark); // admin video-off, and an unpermitted screen claim, hide the tile on every receiver; a permitted share is not a dark seat
+      try { paintBlurWhy(t, dark ? '' : tileBlurWhy(id, st)); } catch (e) {}
       if (t.avatar && typeof t.avatar.querySelector === 'function') {
         if (isMe) {
           const mine = (GifOS.store.identity() || {}).avatar;
@@ -36235,15 +36290,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // person looks for clear video, and a bare "Camera on." hid the reason.
     function noBlurWhy() {
       if (myStatus.blur !== 0) return '';
-      if (!roomPw) {
-        const who = hasAdminRoom()
-          ? (amAdmin ? 'Set one with the Password button.' : 'Only this room’s admin can set one.')
-          : 'Anyone here can set one with the Password button.';
-        return 'No blur saved — it applies the moment this room has a password. ' + who;
+      const why = blurHold('me');
+      if (!why) return '';
+      let words = blurWhyWords(why, 'says');
+      if (why === 'nopw') {
+        words += ' ' + (hasAdminRoom()
+          ? (amAdmin ? uiText('blurPwYou', 'Set one with the Password button.') : uiText('blurPwAdmin', 'Only this room’s admin can set one.'))
+          : uiText('blurPwAnyone', 'Anyone here can set one with the Password button.'));
       }
-      if (modOf('me').blur && modOf('me').blur.on) return uiText('stSomeoneInTheRoomHas', 'Someone in the room has blurred you for all — you stay blurred until that is lifted.');
-      if (hasAdminRoom() && !adminPresent()) return uiText('stNoAdminIsHereThe', 'No admin is here — the room stays blurred until an admin returns.');
-      return '';
+      if (why === 'ready') words += ' (' + consentCount() + '/' + participantCount() + ')';
+      return words;
     }
     function camOnWords() {
       const why = noBlurWhy();
@@ -36259,21 +36315,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       reactRoomState();
       blurNote('');
       if (v !== 0) return;
-      const blocked = !!(modOf('me').blur && modOf('me').blur.on);
-      if (!roomPw) {
-        const who = hasAdminRoom()
-          ? (amAdmin ? 'Set one with the Password button.' : 'Only this room’s admin can set one.')
-          : 'Anyone here can set one with the Password button.';
-        blurNote('No blur is saved. It applies once this room has a password, and then right away. ' + who);
-        setStatus('No blur saved — it applies the moment this room has a password. ' + who);
-      } else if (blocked) {
-        setStatus(uiText('stSomeoneInTheRoomHas', 'Someone in the room has blurred you for all — you stay blurred until that is lifted.'));
-      } else if (myStatus.camOff) {
+      // A camera that is still off is the first step (pickCamera's camera-on
+      // line follows with the reason); a password or a moderator's block is
+      // said at once, since turning the camera on does not lift it.
+      const hold = blurHold('me');
+      const why = noBlurWhy();
+      if (myStatus.camOff && hold !== 'nopw' && hold !== 'guests' && hold !== 'forall') {
         setStatus(uiText('stNoBlurPickedTurnYour', 'No blur picked — turn your camera on to be ready for clear video.'));
-      } else if (hasAdminRoom() && !adminPresent()) {
-        setStatus(uiText('stNoAdminIsHereThe', 'No admin is here — the room stays blurred until an admin returns.'));
-      } else if (!adminPresent() && !allConsent()) {
-        setStatus('You are ready for clear video — it shows when everyone here is (camera on, No blur: ' + consentCount() + ' of ' + participantCount() + ').');
+      } else if (why) {
+        blurNote(why);
+        setStatus(why);
       } else {
         setStatus(uiText('stBlurOff', 'Blur off.'));
       }
