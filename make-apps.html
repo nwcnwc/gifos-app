@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!-- FRAME GUARD. GitHub Pages sends no X-Frame-Options and a <meta> cannot
+     carry frame-ancestors, so this is the only thing that keeps a third-party
+     page from framing GifOS at opacity 0 and steering a click onto Allow,
+     Install or Approve. Same-origin framing (booted images, app mounts) is
+     allowed; anything else sees a link to open the page itself. Parser-
+     blocking and ES5 on purpose: it runs before any chrome paints.
+     Guarded by test/unit/frame-guard.js. -->
+<script id="gifos-frame-guard">(function(){try{if(window.top===window.self)return;var ok=false;try{ok=window.top.location.origin===window.location.origin}catch(e){}if(ok)return;var h=document.documentElement;h.style.visibility='hidden';function show(){var b=document.body;if(!b)return;while(b.firstChild)b.removeChild(b.firstChild);var p=document.createElement('p');p.style.cssText='font:16px system-ui,sans-serif;padding:24px;color:#eee;background:#111;margin:0';p.appendChild(document.createTextNode('GifOS does not run inside another site\'s page. '));var a=document.createElement('a');a.href=location.href;a.target='_blank';a.rel='noopener';a.textContent='Open it in its own tab';a.style.color='#9db4ff';p.appendChild(a);b.appendChild(p);h.style.visibility='';}if(document.body)show();else document.addEventListener('DOMContentLoaded',show);}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0a0a0f">
+<!-- Theming gate: hide chrome behind the theme-color backdrop until the theme
+     cascade (js/gifos-themes.js) applies real vars, so the fallback purple never
+     paints first. Reveals the instant --accent is set; a failsafe timeout
+     guarantees we never stay hidden if a theme file 404s or hangs. -->
+<style id="theme-gate">html.gifos-booting body{visibility:hidden}html.gifos-booting{background:var(--bg,#0a0a0f)}</style>
+<script>(function(){var h=document.documentElement;h.className+=(h.className?' ':'')+'gifos-booting';var shown=0;
+function show(){if(shown)return;shown=1;h.classList.remove('gifos-booting');
+try{var bg=h.style.getPropertyValue('--bg');var m=document.querySelector('meta[name=theme-color]');if(bg&&m)m.setAttribute('content',bg.trim());}catch(e){}}
+function chk(){if(shown)return;if(h.style.getPropertyValue('--accent'))show();else requestAnimationFrame(chk);}
+requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="GifOS">
+<script src="js/sw-register.js" defer></script>
+<script src="js/build.js" defer></script>
+<script src="js/build-badge.js" defer></script>
+<title>Make your own app for meetings — GifOS</title>
+<meta name="description" content="Build a GifOS app that everyone in a meeting uses together: one GIF file, shared live state, no server. Your AI can build it for you from gifos.app/llms.txt.">
+<link rel="canonical" href="https://gifos.app/make-apps.html">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="GifOS">
+<meta property="og:title" content="Make your own app for meetings">
+<meta property="og:description" content="One GIF, everyone in the meeting, the same live state. Build it with your AI.">
+<meta property="og:url" content="https://gifos.app/make-apps.html">
+<meta property="og:image" content="https://gifos.app/og.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%A6%3C/text%3E%3C/svg%3E">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font: 17px/1.6 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+         background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); }
+  .wrap { max-width: 680px; margin: 0 auto; padding: 2rem 1.2rem 4rem; }
+  h1 { font-size: 2rem; margin: 1rem 0 .4rem; }
+  h1 .brand, .topbar .brand { font-weight: 800; background: linear-gradient(135deg, var(--accent, #7b5cff), var(--accent2, #ff5caa));
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  h2 { font-size: 1.25rem; margin: 2rem 0 .5rem; color: var(--text, #cfcfe8); }
+  p, li { color: var(--muted, #a9a9c5); }
+  b { color: var(--text, #e0e0f0); }
+  a { color: var(--accent, #7b5cff); }
+  .cta { display: inline-block; margin: 1.2rem 0; padding: .8rem 1.6rem; border-radius: .7rem;
+         background: var(--accent, #7b5cff); color: var(--onaccent, #fff); text-decoration: none; font-weight: 700; }
+  ul { padding-left: 1.2rem; }
+  li { margin-bottom: .45rem; }
+  .topbar { display: flex; align-items: center; gap: .5rem; padding: .8rem 1.2rem;
+            border-bottom: 1px solid var(--border, #2a2a3f); background: var(--surface, #14141f); }
+  .topbar a { text-decoration: none; font-size: 1.05rem; }
+  pre { background: var(--surface, #14141f); border: 1px solid var(--border, #2a2a3f); border-radius: .6rem;
+        padding: .8rem 1rem; overflow-x: auto; font: 14px/1.5 ui-monospace, monospace; color: var(--text, #e0e0f0); }
+  code { font-family: ui-monospace, monospace; }
+  .foot { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border, #2a2a3f); font-size: .85rem; color: var(--muted, #667); }
+</style>
+<script src="js/gifos-themes.js"></script>
+</head>
+<body>
+  <div class="topbar"><a href="/"><span class="brand">GifOS</span></a></div>
+  <div class="wrap">
+    <h1>Make your own app for meetings</h1>
+    <p>A meeting is more than faces in boxes. Bring an app and <b>everyone in the
+    meeting uses it together</b>: the same board, the same list, the same turn,
+    live, with voice and video around it. In GifOS an app is <b>one GIF file</b>,
+    so the app you make is something you can send, keep and remix. No server, no
+    account, no app store needed.</p>
+    <p>You don't need to know how to code. Tell your AI what you want, and it
+    builds the GIF for you.</p>
+    <a class="cta" href="/llms.txt">The guide your AI reads →</a>
+
+    <h2>1. Ask your AI to build it</h2>
+    <p>Give Claude (or any AI) this link: <a href="/llms.txt">gifos.app/llms.txt</a>.
+    It is the complete recipe: how to pack an app into a GIF, the manifest, and
+    every <code>window.gifos</code> call. Then say what you want, for example:</p>
+    <ul>
+      <li><i>"A GifOS meeting app where everyone adds sticky notes and votes on them."</i></li>
+      <li><i>"A quiz for our team meeting: I ask, everyone answers, scores add up."</i></li>
+      <li><i>"A shared checklist for our stand-up, ticked live by everyone."</i></li>
+    </ul>
+    <p>If the AI can run code, it hands you a finished <b>.gif file</b>. Give it
+    your favourite GIF and it hides the app inside that exact animation. If it
+    can only write code, paste the code into <b>＋ Add</b> on your
+    <a href="/">Home Screen</a> and GifOS packs it for you.</p>
+
+    <h2>2. Make it shared</h2>
+    <p>An app is multiplayer by default. Your one job is to say which data
+    everyone shares. In the app's <code>manifest.json</code>:</p>
+<pre>"capabilities": { "db": true, "multiplayer": true },
+"data": {
+  "notes": { "visibility": "read-write" },
+  "prefs": { "visibility": "private" }
+}</pre>
+    <p><b>read-write</b> is shared by everyone in the meeting, <b>private</b>
+    stays with each person. Draw your screen from <code>db.subscribe()</code>, and
+    GifOS does the rest: syncing, late joiners, reconnects. Want the host to steer,
+    like a presenter turning pages? Add <code>"lead"</code>. All of it is in
+    <a href="/llms.txt">llms.txt</a> under "Multiplayer".</p>
+
+    <h2>3. Run it in your meeting</h2>
+    <p>In a meeting, press <b>Run app</b>, then <b>Choose a GIF file</b>, or paste
+    a link to your GIF. It opens on the stage for everyone. This works on
+    gifos.app in any modern browser and in the <b>GifOS Meet</b> app on Android.</p>
+    <p>Look at what already ships for ideas: <b>Take Turns</b> (who talks next,
+    with a gentle timer) and <b>Timer</b> (a stopwatch and countdown).</p>
+
+    <h2>4. Share it</h2>
+    <p>Your app is a file. Post the GIF anywhere a picture goes, send it in a chat,
+    or put it online and share the link: anyone can paste that link into
+    <b>Run app</b>. Sign it so people know it's yours, remix other people's apps,
+    and, when it's ready, ask for a place in the <a href="/store">App Store</a>.
+    The "Sharing", "Signing" and "Modding" parts of <a href="/llms.txt">llms.txt</a>
+    tell you how.</p>
+
+    <h2>Good to know</h2>
+    <ul>
+      <li>Apps run in a sandbox with <b>no network access</b> unless they declare
+      the sites they need, and every person sees what an app asks for.</li>
+      <li>An app never touches anyone's camera or microphone. The meeting does
+      the audio and video; your app is the shared thing in the middle.</li>
+      <li>In the GifOS Meet phone apps, an app in a meeting can't take payments:
+      there, only GifOS's own plans are sold, through the phone's store.</li>
+    </ul>
+
+    <a class="cta" href="/llms.txt">Start with llms.txt →</a>
+    <div class="foot">
+      <p style="margin-bottom:.7rem">Stuck, or built something you'd like us to see?
+      <a id="issue-link" href="https://github.com/nwcnwc/gifos-app/issues/new">Open an issue on GitHub</a> —
+      no account with us needed, just a free GitHub login.</p>
+      <p id="gifos-contact" style="margin:.7rem 0">Contact: <a href="mailto:support@gifos.app">support@gifos.app</a></p>
+      GifOS — apps are GIFs, data is GIFs, everything is just files. ·
+      <a href="/">gifos.app</a> · <a href="/about.html">what is GifOS</a> · <a href="/store">app store</a> ·
+      <a href="browser-support.html">which browsers work</a> · <a href="/llms.txt">llms.txt</a> ·
+      <a href="https://github.com/nwcnwc/gifos-app">source</a></div>
+  </div>
+<script src="js/gifos-help.js"></script>
+<script>
+  // Pre-fill the new-issue form with where it was clicked from (this page),
+  // the build and the browser — the context a report never remembers to carry.
+  (function () {
+    var a = document.getElementById('issue-link');
+    if (a && window.GifOS && GifOS.help && GifOS.help.issueUrl) a.href = GifOS.help.issueUrl({ from: 'Make apps page' });
+  })();
+</script>
+<!-- FOR AI AGENTS. Off-screen, not display:none — most agent fetchers read
+     the raw HTML without running scripts (so the JS-painted build badge is
+     invisible to them), and readability-style extractors DROP display:none
+     but keep the screen-reader clip. Static, identical on every page;
+     test/unit/agent-links.js holds the copies to one text. -->
+<nav id="agent-links" aria-label="Links for AI agents" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap">
+  <p>For AI agents and assistants: <a href="https://gifos.app/llms.txt">llms.txt</a> is the complete spec for building a GifOS app as a real .gif file (packing recipe, manifest, the window.gifos API).
+  Also: <a href="https://gifos.app/about.html">what GifOS is</a> ·
+  <a href="https://gifos.app/store">the App Store</a> (machine-readable catalog: <a href="https://gifos.app/apps/index.json">/apps/index.json</a>; one listing: /apps/&lt;slug&gt;/app.json) ·
+  open any store app in one tap: https://gifos.app/?run=&lt;slug&gt; — or your own hosted GIF: https://gifos.app/?run=&lt;gif-url&gt; ·
+  <a href="https://gifos.app/browser-support.json">browser support</a> ·
+  <a href="https://gifos.app/sitemap.xml">sitemap</a> ·
+  <a href="https://github.com/nwcnwc/gifos-app">source on GitHub</a> ·
+  <a href="https://github.com/nwcnwc/gifos-app/issues/new">report a problem</a>. Contact: support@gifos.app.</p>
+</nav>
+<!-- A newer GifOS release: the same header bar and Update as every page
+     (js/gifos-update.js). A page served from the site root names the release
+     that was live when it loaded; a later one is news. -->
+<script src="js/gifos-update.js"></script>
+<script>if (window.GifOS && GifOS.update) GifOS.update.watch({ root: true });</script>
+</body>
+</html>
