@@ -753,7 +753,7 @@
     }
     function maybeDial(L) {
       if (L.web) return;
-      if (!L.opener || !L.readyMe || !L.readyFar || L.dialAt) return;
+      if (!L.opener || !L.readyMe || !L.readyFar || L.dialAt || (L.direct && !L.dEcho)) return;   // a direct standby dials once the far end echoed 'd' (its pc is plain too)
       L.dialAt = io.now(); L.state = 'dial';
       log('turn-dial ' + short(L.far) + ' client=' + (L.client ? 1 : 0));
       io.dial(L.far);
@@ -770,7 +770,7 @@
       }
       if (L) L.heardAt = io.now();
       // SUB.5: the standby's opener knows its far end now; a plain pc of mine reached it off TURN: only a proven direct path
-      if (L && L.sb && L.opener && !L.direct && L.farPid && L.l === f.l && f.q !== 'x' && io.directSeen && io.directSeen(L.farPid)) { setDirect(L); io.sendTv(L.far, { k: 'tv', q: 'd', l: L.l }); }
+      if (L && L.sb && L.opener && !L.direct && L.farPid && L.l === f.l && f.q !== 'x' && io.directSeen && io.directSeen(L.farPid)) { setDirect(L); L.dSentAt = io.now(); io.sendTv(L.far, { k: 'tv', q: 'd', l: L.l }); }
       if (f.q === 't') { if (L && L.sb && L.l === f.l) takeover(L, f.b === 1 ? 'healed' : 'the far standby end took over'); return; }
       // the far end names its side's standby seat only while it holds no standby up: the opener opens one toward it
       if (f.q === 's') { if (L && !L.sb && L.opener && L.l === f.l && f.d) { L.sbUp = false; L.sbAt = 0; if (L.farSb !== f.d) L.farSb = f.d; } return; }   // (sbAt 0: ask my side's seat at once; a standby already up answers 'r' at once, bindStandby)
@@ -812,7 +812,7 @@
         return;
       }
       if (f.q === 'r') { L.readyFar = true; maybeDial(L); return; }
-      if (f.q === 'd') { if (L.sb && !L.opener) setDirect(L); return; }
+      if (f.q === 'd') { if (!L.sb) return; if (L.opener) { if (L.direct && !L.dEcho) { L.dEcho = true; maybeDial(L); } } else { setDirect(L); io.sendTv(L.far, { k: 'tv', q: 'd', l: L.l }); } return; }   // the target echoes: the opener dials only then
       if (f.q === 'w') { webStart(L, false, f.m); if (L.opener && io.now() - L.webSaidAt > RESEND_MS / 2) webSay(L); return; }
       // the far end moved its pool: it moves the pc itself (its own restart, or 'i' to the offerer), so no restart here:
       // a second one per move restarted the path again mid-move and the video's estimate with it (vouched one-way, 2026-11-12)
@@ -1294,6 +1294,7 @@
         // TURN.7, SUB.5: a direct standby I opened that is up is the pipe now (TURN.7-MOVE, make before break); one that
         // finds no path within a dial's direct verdict was no direct pair after all: forgotten, and warmed again on TURN
         if (L.direct && L.sb && L.state === 'up' && L.opener) { takeover(L, 'healed'); continue; }
+        if (L.direct && L.opener && !L.dEcho && now - (L.dSentAt || 0) > RESEND_MS) { L.dSentAt = now; io.sendTv(L.far, { k: 'tv', q: 'd', l: L.l }); }   // a lost 'd' is said again
         if (L.direct && L.state !== 'up' && now - L.directAt > ASK_MS) { if (io.directForget) io.directForget(L.far); close(L, 'dialfail'); continue; }
         if (L.state !== 'up' && now - L.askAt > DIAL_BUDGET_MS) { neverUp(L, 'dialfail'); continue; }
         if (L.sb && L.liveEnd && L.liveEnd !== io.me() && !io.alive(L.liveEnd)) { takeover(L, 'my live end left'); }
@@ -1369,7 +1370,7 @@
       // SUB.4 pipe holders: may a second picture (my camera beside the composite) ride this link? Only on a measured estimate
       // that leaves room for two pictures at the law's minimum (TURN_VIDEO_MIN_BYTES) over everything else (TURN_BASE_BYTES):
       // under a paid server's cap the camera sat at the browser's floor beside the composite and the voice was lost (capstep).
-      camRoom(pid) { const L = links.get(pid); if (!L || !L.video || L.busy || !(L.cap > 0)) return false; const K = meshConsts().consts, perS = 1000 / tick; return L.cap - K.TURN_BASE_BYTES * perS * 8 >= 2 * K.TURN_VIDEO_MIN_BYTES * perS * 8; },
+      camRoom(pid) { const L = links.get(pid); if (L && L.direct) return L.state === 'up' && !L.sb; if (!L || !L.video || L.busy || !(L.cap > 0)) return false; const K = meshConsts().consts, perS = 1000 / tick; return L.cap - K.TURN_BASE_BYTES * perS * 8 >= 2 * K.TURN_VIDEO_MIN_BYTES * perS * 8; },
       close(pid, why) { const L = links.get(pid); if (L) close(L, why || 'closed'); },
       stopAll(why) { for (const L of Array.from(links.values())) close(L, why || 'stop', true); },
       dump() {
