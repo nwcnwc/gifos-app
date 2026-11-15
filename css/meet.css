@@ -3560,4 +3560,6 @@ body.view-focus.comfy.has-app:not(.app-full):not(.ct-app-off) #apppane { z-index
 /* The meeting's room line (#airbar "Meeting · N here") always sat under the full-bleed feed; with the
    meeting box under the one top bar it would show as a band. A meeting has its status in the bar's chip. */
 body.comfy:not(.broadcast) #airbar { display: none !important; }
-#tophead > #appbar > button { width: auto !important; min-width: 0 !important; flex: 0 0 auto !important; white-space: nowrap; }
+/* Invite, Help and Full screen keep one width: equal columns, each as wide as the widest label. */
+#tophead > #appbar { display: grid !important; grid-auto-flow: column; grid-auto-columns: 1fr; }
+#tophead > #appbar > button { width: auto !important; min-width: 0 !important; white-space: nowrap; }
