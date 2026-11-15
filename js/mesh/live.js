@@ -492,6 +492,7 @@
     s1Sync(early = false) {
       const TICK = this.TICK;
       const ents = []; ents.push(ent(ckey(this.coord), this.id, 0, this.occGet(ckey(down(this.coord))), this.born.has(ckey(this.coord)) ? Math.max(0, this.LT() - this.born.get(ckey(this.coord))) : 0));   // carry MY heir (my down-child) and my claim's AGE
+      if (!early) for (const [ek, ev] of this.occ) { if (ckPc(ek) === 0 && ev !== this.id) { const it0 = this.s1seen.get(ek), why = this.s1Told(ek) ? 'told' : (it0 === undefined ? 'noseen' : (TICK - it0 >= 120 ? 'stale' : 'sent')); const dk = 'tx:' + ek + ':' + ev + ':' + why; if (!this.__s1dbg) this.__s1dbg = new Set(); if (!this.__s1dbg.has(dk)) { this.__s1dbg.add(dk); this.trace('S1-TX', this.id, unckey(ek), 'eid=%d why=%s seenAge=%d', ev, why, it0 === undefined ? -1 : TICK - it0); } } }   // DEBUG (echo f2 diag)
       if (!early) for (const [ek, ev] of this.occ) { if (ckPc(ek) === 0 && ev !== this.id && !this.s1Told(ek)) { const it = this.s1seen.get(ek); if (it !== undefined && TICK - it < 120) ents.push(ent(ek, ev, TICK - it, this.childOf.has(ek) ? this.childOf.get(ek) : -1, this.born.has(ek) ? Math.max(0, this.LT() - this.born.get(ek)) : -1)); } }
       // W7: sync S1SYNC over the whole rook neighbourhood
       const tg = new Set(); const rm = rowMates(this.coord); for (let q = 0; q < C - 1; q++) { const t = this.occGet(ckey(rm[q])); if (t >= 0 && t !== this.id) tg.add(t); }
