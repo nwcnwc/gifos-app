@@ -714,6 +714,7 @@
       L.direct = true; L.directAt = io.now(); L.video = true; L.client = false; L.readyMe = true;
       if (L.cred) { try { L.cred.stop(); } catch (e) {} L.cred = null; }
       if (L.state === 'ask') L.state = 'swap';
+      if (L.state === 'up') { L.state = 'swap'; L.dialAt = 0; }   // a standby that was up on TURN is dialled again, plain: it is up (and says so, direct) when that connection is
       log('turn-direct ' + short(L.far) + ' ' + L.l);
       io.reset(L.far);   // a pc not yet open, built on relay-only settings, is built again plain
       io.sendTv(L.far, { k: 'tv', q: 'r', l: L.l });
