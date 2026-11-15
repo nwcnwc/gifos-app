@@ -362,11 +362,19 @@
     let jt = '', rt = '', inflight = null, busyUntil = 0;
     let mode = '';   // '' unknown, 'off' (the relay answered 404: it issues no tokens), 'on' (it asks for them)
     try { rt = (root.sessionStorage && root.sessionStorage.getItem(key)) || ''; } catch (e) { rt = ''; }
-    const live = (t, dev) => { if (!t) return false; const x = tokenExp(t); return x.d === dev && x.e - Date.now() > TM.RELAY_TOKEN_SLACK_MS; };
+    // A token's expiry is the RELAY's time, so it is judged on the relay's clock: off = relay minus this device,
+    // learned from every /t answer (its `now`, or a fresh token's exp minus its life). A phone whose clock ran
+    // minutes ahead read every fresh join token as expired and minted again forever (Step 2 of 11, 2026-11-15).
+    let off = 0;
+    const learn = (j) => {
+      const at = Number(j && j.now) || (Number(j && j.exp) && Number(j && j.life) ? Number(j.exp) - Number(j.life) : 0);
+      if (at > 0) off = at - Date.now();
+    };
+    const live = (t, dev) => { if (!t) return false; const x = tokenExp(t); return x.d === dev && x.e - (Date.now() + off) > TM.RELAY_TOKEN_SLACK_MS; };
     const token = (dev) => (live(rt, dev) ? rt : live(jt, dev) ? jt : '');
     const busy = () => { busyUntil = Date.now() + TM.RELAY_BUSY_WAIT_MS; if (o.onBusy) { try { o.onBusy(); } catch (e) {} } return 'wait'; };
     const getJson = (dev, extra) => fetchFn(httpBase + '/t?sid=' + encodeURIComponent(o.sid) + '&dev=' + encodeURIComponent(dev) + (extra || ''))
-      .then((r) => r.json().catch(() => ({})).then((j) => ({ status: r.status, j })));
+      .then((r) => r.json().catch(() => ({})).then((j) => { learn(j); return { status: r.status, j }; }));
     async function mint(dev) {
       let r;
       // No answer at all (a relay without /t answers a 404 with no CORS
@@ -405,7 +413,7 @@
       try { if (root.sessionStorage) root.sessionStorage.setItem(key, t); } catch (e) {}
     };
     const drop = () => { jt = ''; rt = ''; mode = 'on'; try { if (root.sessionStorage) root.sessionStorage.removeItem(key); } catch (e) {} };
-    return { prepare, token, setRejoin, drop, busy: () => Date.now() < busyUntil, mode: () => mode };
+    return { prepare, token, setRejoin, drop, busy: () => Date.now() < busyUntil, mode: () => mode, skew: () => off };
   }
 
   // ---- transport fragmentation ----------------------------------------------
