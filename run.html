@@ -24740,7 +24740,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // track with a NEW node: one born during silence stays quiet, one born
     // after the samples does not. Rebuild the fold only while the wire is
     // loud and the fold is still quiet, then leave a loud fold alone.
-    let stageEarWatchT = 0;
+    let stageEarWatchT = 0, stageEarWatchBusy = false; // ONE watch chain: a key armed while a tick is out joins that tick's next round
     function stageEarLiveTrack(stream) {
       const ts = stream && stream.getAudioTracks ? stream.getAudioTracks() : [];
       let held = null;
@@ -24780,10 +24780,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return stageEar.fold.peak(ms);
     }
     function scheduleStageEarWatch() {
-      if (stageEarWatchT) return;
+      if (stageEarWatchT || stageEarWatchBusy) return;
       const tick = async () => {
         stageEarWatchT = 0;
         if (!stageEar || !stageEar.watch || !stageEar.watch.size || !ac) return;
+        stageEarWatchBusy = true;
         let delay = 2000;
         try {
           for (const k2 of [...stageEar.watch.keys()]) {
@@ -24799,10 +24800,23 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             const w = stageEar.watch.get(k2);
             if (w.trackId !== t.id) { w.trackId = t.id; w.tries = 0; w.settleUntil = 0; }
             if (w.settleUntil && Date.now() < w.settleUntil) continue;
+            // A sample spans two awaits, and a sweep can move the slot meanwhile (a failback onto another copy re-binds the
+            // ear to that copy's stream). A verdict on the copy the slot left must touch nothing: rebinding the ear to its track
+            // pointed the fold, and the player that follows it, at a copy just parked, and the listener stayed deaf for good
+            // (long-soak 02c: the stale tick crossed noor's failback onto the relay, and the relay's track was never played).
+            // A moderator mute that lands meanwhile holds too: the repair below re-adds the source at gain 1.
+            const still = () => {
+              if (!stageEar || !stageEar.watch || stageEar.watch.get(k2) !== w || stageEar.sids.get(k2) !== sid) return false;
+              if (mosIn.get(k2) !== f || !stageEar.bound || stageEar.bound.get(k2) !== f.stream) return false;
+              let m = null; try { m = modOf(owner).mute; } catch (e) { m = null; }
+              return !(m && m.on);
+            };
             const raw = await stageEarRawPeak(t, 180, f);
+            if (!still()) { delay = 700; continue; }
             w.rawPeak = raw; w.foldPeak = null; w.peakAt = Date.now(); // earState reads the watch's last sample: it makes no audio nodes of its own
             if (raw > 0.02) {
               const fold = await stageEarFoldPeak(180);
+              if (!still()) { delay = 700; continue; }
               w.foldPeak = fold;
               if (fold > 0.02) { w.tries = 0; w.settleUntil = Date.now() + 2500; }
               else if (w.tries < 12) {
@@ -24817,6 +24831,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             } else { w.tries = 0; delay = Math.min(delay, 1000); }
           }
         } catch (e) { delay = 700; }
+        stageEarWatchBusy = false;
         if (stageEar && stageEar.watch && stageEar.watch.size) stageEarWatchT = setTimeout(tick, delay);
       };
       stageEarWatchT = setTimeout(tick, 400);
@@ -24861,6 +24876,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       out.claim = { key: k2, via: String(f.via).slice(0, 8), dead: !!f.deadAt, dark: !!(fb && fb.dark), hop: f.meta ? f.meta.h : null };
       out.lost = stgLost(k2);
       out.bound = !!(ear && ear.sids.has(k2) && ear.bound && f.stream && ear.bound.get(k2) === f.stream);
+      // ...and the fold sums a track of that very stream: an ear bound to one copy while its source reads another is deaf
+      const fd = ear ? ear.fold : null; // parts() reads the fold's bookkeeping: no audio node
+      if (out.bound && fd && typeof fd.parts === 'function') {
+        const part = fd.parts().find((x) => x.k === k2);
+        out.bound = !!part && f.stream.getAudioTracks().indexOf(part.track) >= 0;
+      }
       if (f.stream) { const t = stageEarLiveTrack(f.stream); out.trackLive = !!t && t.readyState === 'live'; }
       if (ear) out.earOpen = !ear.el.muted && !ear.el.paused;
       const w = ear && ear.watch ? ear.watch.get(k2) : null;
