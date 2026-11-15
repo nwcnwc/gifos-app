@@ -4479,7 +4479,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (el.textContent !== words) el.textContent = words;
       if (el.dataset.why !== why) el.dataset.why = why;
     }
-    // The Stage is one picture of every stager: it carries the note when every
+    // The Stage's composite is one picture of every stager: it carries the note when every
     // face on it would be clear and the room holds them all for one reason
     // (no password, no admin here, not everyone ready, Blur guests). Two
     // reasons, or one clear face, and the faces' own tiles say it instead.
@@ -4488,6 +4488,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const reasons = ids.map((pid) => (pid === myId ? tileBlurWhy('me', myStatus) : tileBlurWhy(pid, statusOf.get(pid))));
       const why = reasons.length && reasons.every((r) => r && r === reasons[0]) ? reasons[0] : '';
       for (const el of document.querySelectorAll('#stagefeed > .rowtile')) paintBlurWhy({ tile: el }, why);
+      // A stager's own Stage view (ensureStageView: one picture per person) says that person's reason.
+      const views = (typeof applyComfy !== 'undefined' && applyComfy.views) || null;
+      if (views) for (const [pid, el] of views) paintBlurWhy({ tile: el }, pid === myId ? tileBlurWhy('me', myStatus) : tileBlurWhy(pid, statusOf.get(pid)));
     }
     const stillBtn = document.getElementById('still');
     if (stillBtn) stillBtn.onclick = () => { stillBtn.classList.remove('on'); clearTimeout(stillTimer); };
@@ -7337,6 +7340,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       let label = '';
       try { label = displayName(id) || ''; } catch (e) {}
       if (nm && nm.textContent !== label) nm.textContent = label;
+      try { paintBlurWhy({ tile: el }, id === myId ? tileBlurWhy('me', myStatus) : tileBlurWhy(id, statusOf.get(id))); } catch (e) {}
       return el;
     }
     function dropStageViews(keep) {
