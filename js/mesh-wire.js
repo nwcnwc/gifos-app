@@ -437,7 +437,7 @@
       outq.set(to, q); q.then(() => { if (outq.get(to) === q) outq.delete(to); });
       return true;
     }
-    // THE PRE-SIGNED GOODBYE (0.9.24 preLeave): leave() runs in pagehide / beforeunload and the node stops in the
+    // THE PRE-SIGNED GOODBYE (0.9.24 preLeave): leave() runs in pagehide and the node stops in the
     // same tick, so a goodbye signed only then may never leave. Kept current: signed once per change of what the
     // goodbye says, or per PRELEAVE_MS, in both CLAIMS forms (whole frame, relay form). What it says comes from the
     // seat's own leave() and emit(), run on a throwaway view of the seat (their writes land on the view, their frames
