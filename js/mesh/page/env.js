@@ -483,7 +483,8 @@
       if (a !== me || !fh || !fh.myTag) return -1; const mine = fh.myTag(); if (!mine) return -1;
       const w = doorNt.get(g); if (!w) return -1; if (w.slice(0, 8) === mine) return 1;
       if (measure.probed && !measure.probed()) return -1;   // L8.54.4: my own kind is not known before my probe's verdict
-      const k = w.length > 9 ? +w.slice(9) : E.NAT_OPEN, n = (measure.nat ? measure.nat() : E.NAT_OPEN) | 0;
+      if (w.length <= 9) return -2;   // L8.54.8: another network whose kind is not said yet (it registered before its own probe's verdict)
+      const k = +w.slice(9), n = (measure.nat ? measure.nat() : E.NAT_OPEN) | 0;
       if (n !== E.NAT_BLOCKED && k !== E.NAT_BLOCKED && !(n === E.NAT_STRICT && k === E.NAT_STRICT)) return 2;
       // L8.54.4 (C++: mesh_net.inc:l854Never): cannot meet only when one end is blocked and the other is not open; a blocked end
       // beside an open one may meet it over TCP, two strict ends are left to their dials: 3, another network not known either way
@@ -565,7 +566,7 @@
       if (pcw.tick) guard('pcw.tick', pcw.tick)();
       // C++: mesh_net.inc:netTick's probe loop (L4.1.1): my network verdict landed or changed since the join read it: the seat's kind is
       // measured again, and a seeker at the door acts on it now (l411Verdict)
-      if (s && !dead && measure.nat) { const n0 = (measure.nat() | 0) & 0xff; if (n0 !== s.nat) { if (s.cnat === s.nat) s.cnat = n0; s.nat = n0; if (typeof s.l411Verdict === 'function') s.l411Verdict(); } else if (!probedSeen && measure.probed && measure.probed() && typeof s.l854Tcp === 'function' && s.l854Tcp()) s.l411Verdict(); }   // L8.54.7: an open page's verdict lands with no change of kind: the greeters it holds now read 4
+      if (s && !dead && measure.nat) { const n0 = (measure.nat() | 0) & 0xff; if (n0 !== s.nat) { if (s.cnat === s.nat) s.cnat = n0; s.nat = n0; if (typeof s.l8548Verdict === 'function') s.l8548Verdict(); if (typeof s.l411Verdict === 'function') s.l411Verdict(); } else if (!probedSeen && measure.probed && measure.probed()) { if (typeof s.l8548Verdict === 'function') s.l8548Verdict(); if (typeof s.l854Tcp === 'function' && s.l854Tcp()) s.l411Verdict(); } }   // L8.54.7: an open page's verdict lands with no change of kind: the greeters it holds now read 4
       if (measure.probed && measure.probed()) probedSeen = true;
       if (s && !dead) {
         guard('pipeRead', () => pipeRead(s))();

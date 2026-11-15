@@ -23,6 +23,17 @@
 
   Seat.unit('mesh_island.inc', {
     // C++: mesh_island.inc:Seat::islandAsk
+    // L8.54.8 A WORD NOT SAID YET: a list that names a greeter of another network whose kind is not said (it registered before
+    // its own probe's verdict) gets one more knock REACH_PROBE later, one knock pending at a time.
+    // C++: mesh_island.inc:Seat::l8548Tick
+    l8548Tick() { if (this.l8548At < 0 || this.TICK < this.l8548At || !(this.state === 0 || this.state === 1)) return false; this.l8548At = -1; this.trace('L8.54.8-REKNOCK', this.id, null, 'asked=%zu', this.islandAsked.size); this.greetersAt = -1; this.emitRelay(this.linkKey); return true; },
+
+    // ...and my own verdict: a list I read before it named every greeter -1; one that now reads "not said" gets a knock at once.
+    // C++: mesh_island.inc:Seat::l8548List   (every list a seeker reads: onGreeters)
+    l8548List(list) { if (!this.w.lv.ISLAND_MODE || !(this.state === 0 || this.state === 1) || this.l8548At >= 0) return; for (const g of list) if (g >= 0 && g !== this.id && this.f.fabricDoorNet(this.id, g) === -2) { this.l8548At = this.TICK + K.REACH_PROBE; this.l8548Last = this.TICK; return; } },
+    // C++: mesh_island.inc:Seat::l8548Verdict
+    l8548Verdict() { if (!this.w.lv.ISLAND_MODE || !(this.state === 0 || this.state === 1) || this.l8548At >= 0) return; for (const g of this.lastGreeters) if (g >= 0 && g !== this.id && this.f.fabricDoorNet(this.id, g) === -2) { this.l8548At = this.TICK; this.l8548Last = this.TICK; return; } },
+
     islandAsk(list) {
       const lv = this.w.lv;
       if (this.l8471() && this.islandLast) for (const g of list) { if (g < 0 || g === this.id || !this.islandAsked.has(g)) continue; const e = this.epOf(g); if (e >= 0) { if (this.entEp.size >= 16) this.entEp.clear(); this.entEp.add(e); } }   // L8.47.3: every greeter I asked stayed silent (the verdict that sent this confirm knock): the rooms the door now says they sit in are rooms I cannot reach
