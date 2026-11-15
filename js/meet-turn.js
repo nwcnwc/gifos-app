@@ -813,6 +813,9 @@
       const was = L.ts.busy ? -1 : L.ts.step, vWas = L.ts.voice || 'full';
       throttleNext(L.ts, { bps, loss, rtt, limited: !!limited, cap: L.thr && L.thr.step >= 0 ? L.thr.maxBitrate : 0, stale: !!x.stale, voiceFull: +x.voiceFull || 0, voiceN: x.voiceN | 0, data: +x.data || 0, video: !!L.video, flow: !!x.flow, clean: !!x.clean, vRate: +x.vRate || 0, settling: now - Math.max(L.upAt || 0, L.pathAt || 0) < THROTTLE_UP_MS, fresh: x.fresh == null ? undefined : !!x.fresh }, now, tick);
       if ((+loss || 0) >= THROTTLE_LOSS || x.stale) log('turn-lossy ' + short(L.far) + ' loss=' + Math.round((+loss || 0) * 100) + '%' + (x.lossKind ? '(' + x.lossKind + ')' : '') + (x.stale ? ' stale ' + Math.round((+x.vRate || 0) / 1000) + 'k' : '') + ' flow=' + (x.flow ? 1 : 0) + ' cap=' + Math.round((bps || 0) / 1000) + 'k voices=' + (x.voiceN | 0) + ' data=' + Math.round((+x.data || 0) / 1000) + 'k');   // what made a look congested (TURN.13)
+      // a FREE pipe (no vouch, no video) carries its sound at the law's non-video budget, TURN_BASE_BYTES less the headers
+      // (Nathan 11-14, this cut: we can't afford more on the free pool); a vouched pipe keeps the full rate
+      L.voiceFree = L.video ? 0 : voiceLow(x.voiceN, tick);
       if (L.ts.voice !== 'low') L.voiceLow = 0; else if (vWas !== 'low' || !L.voiceLow) L.voiceLow = voiceLow(x.voiceN, tick);   // latched: the step is set once per step down
       if (L.ts.voice !== vWas) { log('turn-voice ' + short(L.far) + ' ' + (L.voiceLow ? 'low ' + Math.round(L.voiceLow / 1000) + 'k' : 'full') + ' cap=' + Math.round((bps || 0) / 1000) + 'k'); io.changed(L.far); }
       if (!L.video) return;
@@ -1334,7 +1337,7 @@
       // TURN.13: the step my video takes on this link ({ maxBitrate, scale, fps }), null when nothing limits it.
       videoStep(pid) { const L = links.get(pid); return L && L.video && L.thr && L.thr.step >= 0 ? L.thr : null; },
       // TURN.13: the rate each audio sender of the link takes while it is starved (bits a second), or 0: its full rate
-      voiceCap(pid) { const L = links.get(pid); return L && L.state === 'up' && L.voiceLow > 0 ? L.voiceLow : 0; },
+      voiceCap(pid) { const L = links.get(pid); if (!L || L.state !== 'up') return 0; const c = [L.voiceLow, L.video ? 0 : L.voiceFree].filter((x) => x > 0); return c.length ? Math.min(...c) : 0; },
       busy(pid) { const L = links.get(pid); return !!L && L.busy; },
       farBusy(pid) { const L = links.get(pid); return !!L && L.video && L.farBusy; },
       // the pcs that run through TURN (the page watches their path, server and capacity)
