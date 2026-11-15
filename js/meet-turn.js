@@ -267,8 +267,9 @@
   //                                         in subroom e (base 36)
   //   {k:'tv', q:'s', l:'s<r>'}            a live end to a seat of its own subroom: you are this pipe's standby end
   //   {k:'tv', q:'s', l:'s<r>', d}         that seat's answer: my device tag (the live end names it to the far side)
-  //   {k:'tv', q:'r', l:'s<r>'} / q 'x'    a standby end to its live end: the standby is up / gone
-  //   {k:'tv', q:'t', l:'s<r>'}            take the pipe over (the live pipe is gone); b 1: healed (TURN.7-MOVE, a direct standby)
+  //   {k:'tv', q:'r', l:'s<r>'} / q 'x'    a standby end to its live end: the standby is up (b 1: on a direct path) / gone
+  //   {k:'tv', q:'t', l:'s<r>'}            take the pipe over (the live pipe is gone); b 1: healed (SUB.8: the standby is
+  //                                         direct and the pipe on TURN: the two change places, the TURN path stays as s<r>)
   //   {k:'tv', q:'d', l:'s<r>'}            the opener's word: this standby's ends reach each other directly (a plain pc of
   //                                         ours reached 'connected' off TURN), so it is dialled with no TURN server (SUB.5)
   //   {k:'tv', q:'w', l, m}       TURN.18: this link runs over the web path; m (the opener's word) names its host
@@ -697,8 +698,8 @@
       if (L.state === 'ask') L.state = 'swap';
     }
     // SUB.5 THE DIRECT STANDBY (TURN.7, the sim's sweep (1)): a standby whose two ends reach each other without TURN is
-    // dialled on a plain pc (no server, no credential, no vouch), and once it is open it IS the pipe: the TURN path closes
-    // as healed (make before break, TURN.7-MOVE). A direct pipe carries everything, video too, and takes no vouch slot.
+    // dialled on a plain pc (no server, no credential, no vouch), and once it is open beside a pipe on TURN it IS the pipe
+    // (SUB.8: the two change places, make before break). A direct pipe carries everything, video too, and takes no vouch slot.
     function setDirect(L) {
       if (L.direct || L.state === 'closed') return;
       L.direct = true; L.directAt = io.now(); L.video = true; L.client = false; L.readyMe = true;
@@ -1086,9 +1087,10 @@
       if (f.q === 's') { sbExpect.set(f.l, from); bindStandby(f.l, from); io.sendTv(from, { k: 'tv', q: 's', l: f.l, d: io.dev() }); return true; }   // I end this pipe's standby on my side: my device, for the far side
       // the rest come only from a seat of my subroom in its role (else: a frame of a standby link not yet keyed by its peer id)
       const P = livePipe(r);
-      if ((f.q === 'r' || f.q === 'x') && P && P.sbSeat === from) { P.sbUp = f.q === 'r'; if (f.q === 'x') P.sbAt = 0; return true; }
-      if (f.q === 't' && P && P.sbSeat === from) { close(P, f.b === 1 ? 'healed' : 'standby-took-over', true); return true; }   // my standby seat holds the pipe now: my part ends (b 1: on a direct path, TURN.7)
-      if (f.q === 't') { const mine = Array.from(links.values()).filter((M) => M.sb && M.l === f.l && M.liveEnd === from); for (const M of mine) takeover(M, 'my live end lost the pipe'); return mine.length > 0; }
+      if ((f.q === 'r' || f.q === 'x') && P && P.sbSeat === from) { P.sbUp = f.q === 'r'; P.sbDirect = f.q === 'r' && f.b === 1; if (f.q === 'x') P.sbAt = 0; return true; }
+      // my standby seat holds the pipe now. Healed (b 1, SUB.8): my pipe on TURN is its standby from now on; else my part ends
+      if (f.q === 't' && P && P.sbSeat === from) { if (f.b !== 1) close(P, 'standby-took-over', true); else if (!P.direct) demote(P, from); return true; }
+      if (f.q === 't') { const mine = Array.from(links.values()).filter((M) => M.sb && M.l === f.l && M.liveEnd === from); for (const M of mine) takeover(M, f.b === 1 ? 'healed' : 'my live end lost the pipe'); return mine.length > 0; }
       return false;
     }
     // A live end names me its standby seat while a standby of that pipe I end is already open (the pipe was re-made or changed
@@ -1101,28 +1103,65 @@
       for (const M of links.values()) {
         if (!M.sb || M.l !== sl || M.state === 'closed') continue;
         if (M.liveEnd !== liveEnd) { M.liveEnd = liveEnd; log('turn-standby ' + sl + ' now answers to ' + short(liveEnd)); }
-        if (M.state === 'up') io.sendTv(liveEnd, { k: 'tv', q: 'r', l: sl });
+        if (M.state === 'up') io.sendTv(liveEnd, { k: 'tv', q: 'r', l: sl, b: M.direct ? 1 : 0 });
       }
     }
-    // A live end whose pipe is lost: its standby seat takes the pipe over; this end's part ends with it.
+    // A live end whose pipe is lost, or (SUB.8, 'healed') whose standby is on a better path: its standby seat takes the
+    // pipe over. A lost pipe's part ends here; a pipe on TURN that gave way to a direct standby stays, as the standby.
     function handOver(L, why) {
-      const sl = 's' + pipeNo(L.l);
+      const sl = 's' + pipeNo(L.l), healed = why === 'healed', seat = L.sbSeat && L.sbSeat !== io.me() ? L.sbSeat : null;
+      if (healed) {   // make before break: my pipe stays the pipe until the direct standby has taken it (its seat's word back demotes me, onSide)
+        if (io.now() - (L.healAt || 0) < RESEND_MS) return;
+        L.healAt = io.now();
+        log('turn-standby hand-over ' + L.l + ' (' + why + ')');
+        if (seat) { io.sendTv(seat, { k: 'tv', q: 't', l: sl, b: 1 }); return; }
+        const M = Array.from(links.values()).find((x) => x.sb && x.l === sl && x !== L && x.direct && x.state === 'up');
+        if (M) takeover(M, 'healed');   // I hold both: the two change places here (takeover demotes my pipe)
+        return;
+      }
       log('turn-standby hand-over ' + L.l + ' (' + why + ')');
-      if (L.sbSeat && L.sbSeat !== io.me()) io.sendTv(L.sbSeat, { k: 'tv', q: 't', l: sl });
+      if (seat) io.sendTv(seat, { k: 'tv', q: 't', l: sl });
+      if (L.direct && io.directForget) io.directForget(L.far);   // a direct path that died is no direct pair until a plain pc proves it again
       close(L, 'standby-took-over', true);
-      if (!L.sbSeat || L.sbSeat === io.me()) for (const M of Array.from(links.values())) if (M.sb && M.l === sl) takeover(M, 'my own pipe died');
+      if (!seat) for (const M of Array.from(links.values())) if (M.sb && M.l === sl) takeover(M, 'my own pipe died');
+    }
+    // SUB.8: the pipe gave way to a better path. The path it left is that pipe's standby now: the same connection, s<r>,
+    // idle (keep-alives only), answering to the seat of my side that holds the pipe; a credential and vouches under the
+    // standby's name (the mirror of takeover). Nothing closes: the meeting holds two paths the whole time.
+    function demote(P, liveEnd) {
+      if (P.sb || P.state === 'closed') return;
+      const r = pipeNo(P.l), sl = 's' + r;
+      if (P.farPid) { try { io.publish({ id: P.id, a: P.opener ? io.me() : P.far, b: P.opener ? P.far : io.me(), up: 0, v: 0, gone: 1 }); } catch (e) {} }
+      P.sb = true; P.l = sl; P.liveEnd = liveEnd; P.mine = null; P.peer = null; P.vAskAt = 0; P.tookOver = !!P.client;
+      P.sbUp = false; P.sbDirect = false; P.sbAt = 0; P.sbSeat = null; P.farSb = null; P.video = false; P.vouched = false; P.lostAt = -1; P.thr = null;
+      if (P.paid) { try { P.paid.stop(); } catch (e) {} P.paid = null; } P.paidMe = false; P.paidFar = false; P.paidSaid = false;
+      sbExpect.set(sl, liveEnd);
+      if (P.cred) { try { P.cred.stop(); } catch (e) {} P.cred = null; }
+      if (P.client) { P.cred = credFor(P, 'free'); P.cred.start(); }
+      log('turn-standby kept ' + sl + ' with ' + short(P.far) + ': the pipe moved to a direct path');
+      askMine(P);
+      if (liveEnd !== io.me() && P.state === 'up') io.sendTv(liveEnd, { k: 'tv', q: 'r', l: sl, b: 0 });
+      subChanged('a pipe of mine');
+      if (io.demoted) { try { io.demoted(P.far); } catch (e) { log('turn-standby kept ' + sl + ': media hand-back failed ' + String(e).slice(0, 80)); } }
+      io.changed(P.far);
     }
     // The standby becomes the pipe: the same connection, now l<r>; fresh vouches and a credential for l<r> (the service
     // moves the pipe's ends to this pair), the far standby end told over the standby itself.
     function takeover(M, why) {
       if (!M.sb || M.state === 'closed') return;
       const sl = M.l, r = pipeNo(sl);
-      const healed = why === 'healed', t = healed ? { k: 'tv', q: 't', l: sl, b: 1 } : { k: 'tv', q: 't', l: sl };   // TURN.7-MOVE: the TURN pipe closes as healed
-      const old = livePipe(r); if (old && old !== M) close(old, healed ? 'healed' : 'standby-took-over', true);
+      const healed = why === 'healed', t = healed ? { k: 'tv', q: 't', l: sl, b: 1 } : { k: 'tv', q: 't', l: sl };
+      if (healed && !M.direct) return;   // SUB.8: healed names a direct path; a standby on TURN is no better path than the pipe's
+      const old = livePipe(r), was = M.liveEnd && M.liveEnd !== io.me() ? M.liveEnd : null;
+      if (old && old !== M) { if (healed && !old.direct) demote(old, io.me()); else close(old, 'standby-took-over', true); }
       try { io.sendTv(M.far, t); } catch (e) {}
-      if (M.liveEnd && M.liveEnd !== io.me()) { try { io.sendTv(M.liveEnd, t); } catch (e) {} }   // my side's old live end: its part of the pipe ends
-      M.sb = false; M.l = 'l' + r; M.liveEnd = null; M.mine = null; M.peer = null; M.vAskAt = 0; M.tookOver = !!M.client; M.sbUp = false; M.sbAt = 0;
+      if (was) { try { io.sendTv(was, t); } catch (e) {} }   // my side's old live end: its part of the pipe ends (healed: its pipe is my standby now)
+      M.sb = false; M.l = 'l' + r; M.liveEnd = null; M.mine = null; M.peer = null; M.vAskAt = 0; M.tookOver = !!M.client; M.sbUp = false; M.sbDirect = false; M.sbAt = 0;
       sbExpect.delete(sl);
+      if (healed) {   // SUB.8: the path the pipe left is my standby: at my old live end (its 'r' says it is up), or here when I held both
+        const kept = Array.from(links.values()).find((x) => x !== M && x.sb && x.l === sl && x.liveEnd === io.me() && x.state !== 'closed');
+        M.sbSeat = kept ? io.me() : was; M.sbUp = !!kept && kept.state === 'up'; M.sbAt = io.now();
+      }
       if (M.cred) { try { M.cred.stop(); } catch (e) {} M.cred = null; }
       if (M.client && !M.direct) { M.cred = credFor(M, 'free'); M.cred.start(); }
       log('turn-standby took over ' + M.l + ' with ' + short(M.far) + ': ' + why + (M.direct ? ' (direct)' : ''));
@@ -1290,10 +1329,12 @@
         // SUB.7, ONE PROMOTION PATH: a live pipe whose far end left (its goodbye, the mesh's word) or whose connection died
         // (the pc's own verdict) while its warm standby is up: the standby IS the pipe now, whichever end sees it first
         if (L.state === 'up' && !L.sb && L.sbUp && (farGone || !io.pcUp(L.far))) { handOver(L, farGone ? 'its far end left' : 'the connection died'); continue; }
+        // SUB.8, the same path: ...or whose standby is on a better path (direct, beside my pipe on TURN): the two change places
+        // (my pipe carries on until the standby has taken it)
+        if (L.state === 'up' && !L.sb && L.sbUp && L.sbDirect && !L.direct) { handOver(L, 'healed'); if (L.sb) continue; }
         if (farGone) { if (L.state === 'up') close(L, 'gone', true); else neverUp(L, 'gone', true); continue; }
-        // TURN.7, SUB.5: a direct standby I opened that is up is the pipe now (TURN.7-MOVE, make before break); one that
-        // finds no path within a dial's direct verdict was no direct pair after all: forgotten, and warmed again on TURN
-        if (L.direct && L.sb && L.state === 'up' && L.opener) { takeover(L, 'healed'); continue; }
+        // SUB.5: a direct standby that finds no path within a dial's direct verdict was no direct pair after all: forgotten,
+        // and warmed again on TURN (one that is up is the pipe when its live end, on TURN, hands over: SUB.8 above)
         if (L.direct && L.opener && !L.dEcho && now - (L.dSentAt || 0) > RESEND_MS) { L.dSentAt = now; io.sendTv(L.far, { k: 'tv', q: 'd', l: L.l }); }   // a lost 'd' is said again
         if (L.direct && L.state !== 'up' && now - L.directAt > ASK_MS) { if (io.directForget) io.directForget(L.far); close(L, 'dialfail'); continue; }
         if (L.state !== 'up' && now - L.askAt > DIAL_BUDGET_MS) { neverUp(L, 'dialfail'); continue; }
@@ -1309,11 +1350,11 @@
         if (L.web && L.state !== 'up') { if (now - L.webSaidAt > RESEND_MS) webSay(L); webGo(L); }
         if (L.state !== 'up' && L.readyMe && (L.readyFar || L.web) && io.pcUp(L.far) && (!L.web || io.webUp(L.far))) {
           L.state = 'up'; L.upAt = now; L.serial = now; log('turn-link up ' + short(L.far) + (L.sb ? ' (standby)' : '')); io.changed(L.far); subChanged('a pipe of mine');
-          if (L.sb && L.liveEnd && L.liveEnd !== io.me()) io.sendTv(L.liveEnd, { k: 'tv', q: 'r', l: L.l });
-          if (L.sb && L.liveEnd === io.me()) { const P = livePipe(pipeNo(L.l)); if (P) P.sbUp = true; }
+          if (L.sb && L.liveEnd && L.liveEnd !== io.me()) io.sendTv(L.liveEnd, { k: 'tv', q: 'r', l: L.l, b: L.direct ? 1 : 0 });
+          if (L.sb && L.liveEnd === io.me()) { const P = livePipe(pipeNo(L.l)); if (P) { P.sbUp = true; P.sbDirect = !!L.direct; } }
         }
         if (L.mine && !L.peer && !L.direct && L.farDev && now - (L.vSentAt || 0) > RESEND_MS) { L.vSentAt = now; io.sendTv(L.far, { k: 'tv', q: 'v', l: L.l, e: L.mine.e.toString(36), n: L.mine.n, m: L.mine.m }); }   // the far end may have missed it (a takeover renames the link)
-        if (L.state === 'up' && !L.sb && !L.direct) warmStandby(L, now);   // a direct pipe keeps no TURN standby (the sim's sweep)
+        if (L.state === 'up' && !L.sb) warmStandby(L, now);   // SUB.8: a direct pipe keeps its standby too (the bridging seat may leave)
         if (L.state === 'up' || L.state === 'dial') io.keep(L.far);
         pump(L);
         if (L.state === 'up') {   // my side grows with the people I reach directly
@@ -1380,7 +1421,7 @@
           mine: !!L.mine, peer: !!L.peer, readyMe: L.readyMe, readyFar: L.readyFar, cred: L.cred ? L.cred.state() : null, credRefusal: L.cred ? L.cred.refusal() : null,
           pool: L.paidMe ? 'paid' : 'free', paid: L.paid ? L.paid.state() : null, paidRefusal: L.paid ? L.paid.refusal() : null, paidFar: L.paidFar,
           vouched: L.vouched, video: L.video, upAt: L.upAt, side: L.side.length, web: L.web, webHost: L.webHost || null,
-          step: L.thr ? L.thr.step : null, cap: L.cap || null, busy: L.busy, farBusy: L.farBusy, standbyN: L.standbyN, lastSwitchMs: L.lastSwitchMs || null, direct: !!L.direct });
+          step: L.thr ? L.thr.step : null, cap: L.cap || null, busy: L.busy, farBusy: L.farBusy, standbyN: L.standbyN, lastSwitchMs: L.lastSwitchMs || null, direct: !!L.direct, sb: !!L.sb, sbUp: !!L.sbUp });
         return { links: out, sub: { st: sub.st, out: sub.out, list: sub.list.slice(), retryAt: sub.retryAt, found: sub.found } };
       },
     };
