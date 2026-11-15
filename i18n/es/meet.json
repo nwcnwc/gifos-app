@@ -928,5 +928,18 @@
   "meet.stCcLocalLoading": "Preparando los subtítulos en este teléfono: {pct} % de {mb} MB, una sola vez.",
   "meet.stCcLocalNoDevice": "Los subtítulos no están disponibles en este teléfono: su navegador no puede ejecutar el modelo de voz.",
   "meet.stCcLocalNoLang": "Los subtítulos en {lang} aún no están disponibles en este teléfono.",
-  "meet.stCcLocalFailed": "No se pudo cargar el modelo de voz de los subtítulos. Se volverá a intentar la próxima vez que actives el micrófono."
+  "meet.stCcLocalFailed": "No se pudo cargar el modelo de voz de los subtítulos. Se volverá a intentar la próxima vez que actives el micrófono.",
+  "meet.blurWhyNoPw": "Difuminado: sala sin contraseña",
+  "meet.blurWhyGuests": "Difuminado: el admin difumina a los invitados",
+  "meet.blurWhyForAll": "Difuminado para todos",
+  "meet.blurWhyNoAdmin": "Difuminado: no hay admin",
+  "meet.blurWhyReady": "Difuminado: no todos están listos",
+  "meet.blurSaysNoPw": "Elegiste vídeo nítido, pero por seguridad sigues difuminado hasta que esta sala tenga contraseña.",
+  "meet.blurSaysGuests": "Elegiste vídeo nítido, pero el admin difuminó a todos los invitados, así que sigues difuminado hasta que lo quite.",
+  "meet.blurSaysForAll": "Elegiste vídeo nítido, pero alguien aquí te difuminó para todos, así que sigues difuminado hasta que se quite.",
+  "meet.blurSaysNoAdmin": "Elegiste vídeo nítido, pero esta sala sigue difuminada hasta que haya un admin.",
+  "meet.blurSaysReady": "Elegiste vídeo nítido. Las caras se ven nítidas cuando todos aquí tengan la cámara encendida con Sin desenfoque.",
+  "meet.blurPwYou": "Pon una con el botón Contraseña.",
+  "meet.blurPwAdmin": "Solo el admin de esta sala puede ponerla.",
+  "meet.blurPwAnyone": "Cualquiera aquí puede ponerla con el botón Contraseña."
 }

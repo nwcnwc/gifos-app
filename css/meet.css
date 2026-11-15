@@ -731,6 +731,21 @@
     background: rgba(255,255,255,.96); color: var(--c-ink); font: 700 22px/1 system-ui, sans-serif;
     white-space: nowrap; box-shadow: 0 8px 24px rgba(0,0,0,.28);
   }
+  /* Why a face its sender wants clear is still soft (paintBlurWhy). It sits in
+     the middle, clear of the name (bottom left), the chips and Open (top), and
+     shows only while the meeting controls are up: a resting screen is faces only. */
+  .tile > .blurwhy {
+    display: block; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 5;
+    box-sizing: border-box; width: max-content; max-width: calc(100% - 12px); padding: 3px 8px;
+    border-radius: var(--r-md); pointer-events: none; text-align: center;
+    background: rgba(10,10,15,.78); border: 1px solid rgba(255,255,255,.14); color: #eceef8;
+    font: 600 12px/1.25 system-ui, sans-serif; white-space: normal; overflow-wrap: anywhere;
+  }
+  .tile.slim > .blurwhy { font-size: 11px; padding: 2px 6px; }
+  .tile.thin > .blurwhy { font-size: 10px; padding: 2px 4px; max-width: calc(100% - 6px); }
+  body.desk-ptr .tile > .blurwhy { font-size: 14px; }
+  body.dock-calm .tile > .blurwhy, body.chrome-away .tile > .blurwhy,
+  .tile.away > .blurwhy, .tile.camback > .blurwhy, .tile.menu > .blurwhy { display: none; }
   .tile .cambackmark { display: none; }
   .tile.camback > .cambackmark {
     display: flex; align-items: center; justify-content: center; text-align: center;

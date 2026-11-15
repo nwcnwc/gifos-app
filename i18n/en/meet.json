@@ -928,5 +928,18 @@
   "meet.stCcLocalLoading": "Getting captions ready on this phone: {pct}% of {mb} MB, once.",
   "meet.stCcLocalNoDevice": "Captions aren’t available on this phone: its browser can’t run the speech model.",
   "meet.stCcLocalNoLang": "Captions aren’t available in {lang} on this phone yet.",
-  "meet.stCcLocalFailed": "Captions couldn’t load their speech model. They try again the next time your microphone turns on."
+  "meet.stCcLocalFailed": "Captions couldn’t load their speech model. They try again the next time your microphone turns on.",
+  "meet.blurWhyNoPw": "Blurred: no room password",
+  "meet.blurWhyGuests": "Blurred: admin blurs guests",
+  "meet.blurWhyForAll": "Blurred for all",
+  "meet.blurWhyNoAdmin": "Blurred: no admin here",
+  "meet.blurWhyReady": "Blurred: not everyone is ready",
+  "meet.blurSaysNoPw": "You chose clear video, but for safety you stay blurred until this room has a password.",
+  "meet.blurSaysGuests": "You chose clear video, but the admin has blurred every guest, so you stay blurred until they lift it.",
+  "meet.blurSaysForAll": "You chose clear video, but someone here blurred you for all, so you stay blurred until that is lifted.",
+  "meet.blurSaysNoAdmin": "You chose clear video, but this room stays blurred until an admin is here.",
+  "meet.blurSaysReady": "You chose clear video. Faces clear once everyone here has their camera on with No blur.",
+  "meet.blurPwYou": "Set one with the Password button.",
+  "meet.blurPwAdmin": "Only this room’s admin can set one.",
+  "meet.blurPwAnyone": "Anyone here can set one with the Password button."
 }
