@@ -2,6 +2,16 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.26.2",
+      "date": "2026-11-15",
+      "headline": "Meetings check that a real browser is joining",
+      "critical": true,
+      "fixes": [
+        "Meetings: before your browser joins, it does a quick check that proves it is a real visitor, usually in under a second. Automated floods can no longer pile into the meeting servers.",
+        "Meetings: if GifOS is ever very busy, the meeting screen says so and lets you in as soon as there is room, instead of saying your connection may be down."
+      ]
+    },
+    {
       "version": "0.9.26.1",
       "date": "2026-11-15",
       "headline": "A shared screen reaches everyone at once, and you always open the latest version",
