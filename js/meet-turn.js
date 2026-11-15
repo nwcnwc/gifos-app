@@ -691,7 +691,7 @@
       if (L.readyMe || L.state === 'closed') return;
       L.client = clientEnd(io.blocked(), L.farBlocked, L.opener);
       if (L.client) { if (!L.cred) { L.cred = credFor(L, 'free'); L.cred.start(); } }
-      else { L.readyMe = true; io.sendTv(L.far, { k: 'tv', q: 'r', l: L.l }); maybeDial(L); }
+      else { L.readyMe = true; io.reset(L.far); io.sendTv(L.far, { k: 'tv', q: 'r', l: L.l }); maybeDial(L); }   // both ends dial on a fresh pc: a half-made one from a door knock (still checking, an offer of its own out) ignores the dial ask
       if (L.state === 'ask') L.state = 'swap';
     }
     // ---- TURN.18: the web path -------------------------------------------------------------------------------------
@@ -1246,18 +1246,31 @@
       }
     }
 
+    // SUB.3 (c): a pipe I opened that never came up (its dial failed, or its far end went before it did) is a refusal:
+    // I ask for a re-pipe after the refused wait (TURN.10). A founder sits at its own door by then, so no other asker
+    // of mine would ever ask again.
+    function neverUp(L, why, quiet) {
+      if (L.opener && !L.sb && L.l[0] === 'l' && !(L.upAt > 0)) {
+        if (why !== sub.lastWhy) sub.mult = 1;
+        sub.lastWhy = why; sub.retryAt = Math.max(sub.retryAt, io.now() + RETRY_MS * sub.mult); sub.mult = Math.min(RETRY_MAX_X, sub.mult * 2);
+        sub.repipe = true;
+      } else if (L.opener && why === 'dialfail') sub.retryAt = io.now() + RETRY_MS;
+      close(L, why, quiet);
+    }
     function step() {
       const now = io.now();
       for (const L of Array.from(links.values())) {
         // TURN.8: the far page is gone. A far end my seat does not know yet (a foreign greeter, its door entry stale here)
         // is alive while it keeps answering this link's handshake.
-        const farGone = !!L.farPid && !io.alive(L.far) && now - (L.heardAt || L.askAt) > DIAL_BUDGET_MS / 2;
+        // Once both ends are ready the handshake is over and the far end sends nothing more until the pc is up: that
+        // silence is no goodbye, and the dial budget alone judges the dial (TURN.8 dialfail).
+        const farGone = !!L.farPid && !io.alive(L.far) && (L.state === 'up' || !(L.readyMe && L.readyFar)) && now - (L.heardAt || L.askAt) > DIAL_BUDGET_MS / 2;
         // SUB.7, ONE PROMOTION PATH: a live pipe whose far end left (its goodbye, the mesh's word) or whose connection died
         // (the pc's own verdict) while its warm standby is up: the standby IS the pipe now, whichever end sees it first
         if (L.state === 'up' && !L.sb && L.sbUp && (farGone || !io.pcUp(L.far))) { handOver(L, farGone ? 'its far end left' : 'the connection died'); continue; }
-        if (farGone) { close(L, 'gone', true); continue; }
+        if (farGone) { if (L.state === 'up') close(L, 'gone', true); else neverUp(L, 'gone', true); continue; }
         if (L.state === 'up' && io.reach(L.far) === 'friend') { close(L, 'healed'); continue; }          // TURN.7
-        if (L.state !== 'up' && now - L.askAt > DIAL_BUDGET_MS) { if (L.opener) sub.retryAt = now + RETRY_MS; close(L, 'dialfail'); continue; }
+        if (L.state !== 'up' && now - L.askAt > DIAL_BUDGET_MS) { neverUp(L, 'dialfail'); continue; }
         if (L.sb && L.liveEnd && L.liveEnd !== io.me() && !io.alive(L.liveEnd)) { takeover(L, 'my live end left'); }
         if (L.state === 'up' && !io.pcUp(L.far)) { if (!L.downSince) L.downSince = now; if (now - L.downSince > DIAL_BUDGET_MS) { if (L.opener) sub.retryAt = now + RETRY_MS; close(L, 'lost'); continue; } }
         else L.downSince = 0;
