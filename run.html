@@ -718,12 +718,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
   <div id="airbar" hidden>
     <span id="airkind" role="status"></span>
     <span class="airacts">
-      <button data-t="airrec" type="button" id="airrec" aria-pressed="false">Not recording</button>
       <button type="button" id="airwho">1 here</button>
       <button data-t="airsound" type="button" id="airsound" hidden aria-pressed="false">Sound on</button>
     </span>
   </div>
   <div data-al="callControlsPressForAria" class="bar collapsed" role="toolbar" aria-label="Call controls. Press ? for keyboard shortcuts">
+    <!-- Recording rides on the bar's top edge, so it moves with the bar and
+         never pins over the meeting. Not recording shows nothing. -->
+    <span data-t="recMark" id="barrec" role="status" hidden>REC</span>
     <button data-ti="bargripTip" data-al="bargripAria" id="bargrip" type="button" aria-label="Move the controls" title="Drag to move. Double-tap to reset. Arrow keys nudge.">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 8h14M5 12h14M5 16h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
     </button>
@@ -1755,15 +1757,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return Math.max(0, roomHeadCount() - up.size);
     }
     function paintRoomTrust() {
-      const rec = document.getElementById('airrec');
+      const rec = document.getElementById('barrec');
       const who = document.getElementById('airwho');
       const on = someoneRecording();
+      // Not recording is the normal state and says nothing. Recording shows
+      // REC on the floating bar for every seat (the recorder's tile says who).
       if (rec) {
-        rec.setAttribute('aria-pressed', on ? 'true' : 'false');
-        rec.textContent = on ? 'Recording' : 'Not recording';
-        rec.title = on
-          ? 'Recording on this device. Everyone here can see it. Tap to stop.'
-          : 'Not recording. Tap to record on this device. Everyone here will see it.';
+        rec.hidden = !on;
+        rec.title = on ? recNoticeTitle() : '';
+        rec.setAttribute('aria-label', on ? recNoticeTitle() : '');
       }
       if (who) {
         // Not joined yet, so there is nobody to count.
@@ -1825,8 +1827,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const service = BROADCAST;
       const ask = !mine && (!service || (onStage && !host));
       // A broadcast keeps its own service recording from the host's Go live:
-      // the host who started it and a viewer who sends nothing read the bar's
-      // Recording chip, not a card to dismiss. Someone on the stage is asked.
+      // the host who started it and a viewer who sends nothing read the REC mark
+      // on the floating bar, not a card to dismiss. Someone on the stage is asked.
       if (service && !ask) { if (existing) existing.remove(); return; }
       const bg = document.createElement('div');
       bg.id = 'rec-notice';
@@ -1835,7 +1837,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       bg.setAttribute('aria-modal', 'true');
       bg.setAttribute('aria-labelledby', 'rec-notice-title');
       bg.innerHTML = '<div class="name-box appear-box"><h3 id="rec-notice-title"></h3>' +
-        '<p>Saved on a device in this room. The bar keeps saying Recording until it stops.</p>' +
+        '<p>Saved on a device in this room. The control bar shows REC until it stops.</p>' +
         (ask
           ? '<p>Staying means you agree to be recorded.</p><div class="appear-actions">' +
             '<button id="rec-notice-leave" type="button" class="appear-secondary">Leave</button>' +
@@ -33185,8 +33187,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function recordingIndicatorsOk() {
       try { updateTile('me'); } catch (e) {}
       try { paintRoomTrust(); } catch (e) {}
-      const airRec = document.getElementById('airrec');
-      if (!airRec || airRec.textContent !== 'Recording' || airRec.offsetParent === null) return false;
+      const recMark = document.getElementById('barrec');
+      if (!recMark || recMark.hidden || recMark.offsetParent === null) return false;
       const tile = meTile && meTile.tile;
       const chips = tile && tile.querySelector('.chips');
       const text = chips ? (chips.textContent || '') : '';
@@ -34083,8 +34085,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       showRecOptions();
     };
-    const airRecBtn = document.getElementById('airrec');
-    if (airRecBtn) airRecBtn.onclick = () => recBtn.click();
     let callStateBox = '';
     // A sideways phone puts Live and Record in a column left of the dock
     // and steps the dock right if the column needs the room. Live (a
@@ -34470,7 +34470,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const dockStateClasses = (id) => (id === 'cam' ? ['cam-max', 'cam-min'] : []);
       const lockDockWidths = () => {
         for (const b of bar.children) {
-          if (!b || !b.style || b.id === 'barmore' || b.id === 'reacttray' || b.id === 'bargrip') continue;
+          if (!b || !b.style || b.id === 'barmore' || b.id === 'reacttray' || b.id === 'bargrip' || b.id === 'barrec') continue;
           b.style.width = ''; b.style.minWidth = '';
           let w = b.offsetWidth || 0;
           for (const cls of dockStateClasses(b.id)) {
@@ -34490,7 +34490,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const dockNeed = () => {
         let lo = Infinity, hi = -Infinity;
         for (const el of bar.children) {
-          if (el.id === 'barmore' || el.id === 'reacttray') continue;
+          if (el.id === 'barmore' || el.id === 'reacttray' || el.id === 'barrec') continue;
           for (const r of el.getClientRects()) { if (r.width) { lo = Math.min(lo, r.left); hi = Math.max(hi, r.right); } }
         }
         if (hi < lo) return bar.offsetWidth;
