@@ -12123,6 +12123,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // the target. Sealed under the room key the whole way (the relay carries
     // only opaque {t:'peer'} ciphertext — R2 unchanged); dedup kills loops.
     const coordKeyOf = (pid) => { const s = meshSeat(); if (s) { for (const [k, v] of s.occ) if (v === pid) return k; } return null; };
+    // L50.7 a: the cell a signal to pid is walked toward: my view's, else the cell of the role that names it (my E2 or E3 far end sits off my view)
+    const sigKeyOf = (pid) => { const k = coordKeyOf(pid); if (k) return k; const s = meshSeat(); return (s && typeof s.roleKeyOf === 'function') ? s.roleKeyOf(pid) : null; };
     // An envelope id names its page LOAD as well as its sender: forwarders and targets drop an id they have
     // seen (loop-kill, dedup), and they keep ids for a long time in a quiet room. A page back from a reload
     // that counted from one again reused its old ids, so its first envelopes after the reload (its answer to
@@ -12414,7 +12416,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // path over the mesh's channels. None of them is a relay type.
         if (msg.kind !== 'appstop') return;
         const m2 = sigSansIce(to, msg);
-        if (m2) { if (sponsorSend({ k: 'fsig', from: myId, to, tc: coordKeyOf(to), id: fwdId(), ttl: 12, m: m2 })) txStats.fwdSig++; }
+        if (m2) { if (sponsorSend({ k: 'fsig', from: myId, to, tc: sigKeyOf(to), id: fwdId(), ttl: 12, m: m2 })) txStats.fwdSig++; }
         return;
       }
       // POST-JOIN SIGNALING ON THE PAIR'S OWN CHANNEL (docs/meet-security.md §FWD):
@@ -12462,7 +12464,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // every negotiation frame kept off the relay says why (a pair whose bootstrap never leaves is otherwise silent)
         if (typeof clog === 'function' && (msg.kind === 'offer' || msg.kind === 'answer')) clog('sig ' + msg.kind + ' to ' + String(to).slice(0, 6) + ' off the relay: ' + [relayDown ? 'relay-down' : '', notOnRelay ? 'nosock' : '', (peers.get(to) || {}).altPath ? 'altPath' : '', mediaDesc ? 'media' : '', !mayRelay ? 'not-relay-pair' : ''].filter(Boolean).join(','));
         const rt = (m2.kind === 'offer' || m2.kind === 'answer') ? takeRoute(to) : null;   // L16.3.2: the reply to a walked frame retraces it
-        if (sponsorSend(Object.assign({ k: 'fsig', from: myId, to, tc: coordKeyOf(to), id: fwdId(), ttl: 12, m: m2 }, rt ? { rt } : {}))) { txStats.fwdSig++; return; }
+        if (sponsorSend(Object.assign({ k: 'fsig', from: myId, to, tc: sigKeyOf(to), id: fwdId(), ttl: 12, m: m2 }, rt ? { rt } : {}))) { txStats.fwdSig++; return; }
         if (mediaDesc) { txStats.relayUnfit++; return; } // no friend's channel either: the sweeper's next attempt rebuilds and bootstraps (sendOffer)
         if (!mayRelay) return;
       }
@@ -15294,7 +15296,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const now = Date.now(); if (now - (p.dialReqAt || 0) < DIAL_ASK_GAP_MS) return;
       p.dialReqAt = now;
       // L16.3.2: the relay may not carry my ask (a deep seat): it walks. The polite side still only asks; an offer here would cross the initiator's at birth (e2e-sixth-audio).
-      if (!relayUp() || !relayMayCarry(pid)) { sponsorSend({ k: 'fsig', from: myId, to: pid, tc: coordKeyOf(pid), id: fwdId(), ttl: 12, m: { kind: 'dialask' } }); return; }
+      // L50.7 c: the relay said pid holds no socket: the ask walks too, as an offer does (sendSig's relayNoSockRecently)
+      if (!relayUp() || !relayMayCarry(pid) || relayNoSockRecently(pid)) { sponsorSend({ k: 'fsig', from: myId, to: pid, tc: sigKeyOf(pid), id: fwdId(), ttl: 12, m: { kind: 'dialask' } }); return; }
       try { relayName(pid); } catch (e) {}
     }
     // onDialRequest(p): a member sent me its name over the relay with no live
@@ -17719,6 +17722,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         pc: {
           ensure: (pid, o) => { if (!pid || pid === myId) return; seatAskAt.set(pid, Date.now()); if (seatAskAt.size > 256) seatAskAt.delete(seatAskAt.keys().next().value); seatMark.set(pid, cleanMark(o && o.mark)); if (seatMark.size > 256) seatMark.delete(seatMark.keys().next().value); seatDial(pid); },
           bye: pcBye,
+          // L50.7 b: a new way out (my socket after a knock, my uplink's pc): my dial to pid has no answer yet and starts again now, as the sweeper's plain re-offer would on its beat
+          redial: (pid) => { const p = peers.get(pid); if (!p || p.connected || (p.dc && p.dc.readyState === 'open') || p.hungUp || p.absentSince || !p.pc) return; const st = p.pc.connectionState; p.lastKick = Date.now(); if (typeof clog === 'function') clog('redial ' + String(pid).slice(0, 6) + ' (a new way out)'); if (politeWaits(pid, p)) { p.dialReqAt = 0; askDial(pid, p); } else sendOffer(pid, st !== 'new' && st !== 'connecting'); },
           close: (pid, why) => {
             seatAskAt.delete(pid); const p = peers.get(pid); if (!p) return;
             p.envClosing = Date.now(); if (typeof clog === 'function') clog('pcclose ' + String(pid).slice(0, 6) + ' ' + (why || ''));

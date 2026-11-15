@@ -461,6 +461,18 @@
       for (const [x, L] of LINKS) if (L.state === LK_DIALING && dialOver(L) && !turnLink(x)) { dialFailed(x); io.close(x); }   // a TURN link's dial has its own budget (the link manager closes it as dialfail)
     }
 
+    // C++: mesh_dialsig_fab.inc:sigWayOut   [my end. L50.7 b: a new way out (my socket after a knock, my uplink's pc) starts
+    // every dial between seats that has no answer yet again: a fresh clock here, a fresh offer or ask from the page (io.redial)]
+    function wayOut(why) {
+      const s = mySeat(); if (!s || s.dead || !mySeated()) return 0; let n = 0;
+      for (const [x, L] of LINKS) {
+        if (L.state !== LK_DIALING || L.outside || L.ansAt >= 0 || turnLink(x)) continue;
+        L.dialAt = T(); n++; trace('L50.7-REDIAL', me, null, 'peer=%d why=%s', x, why);
+        if (io.redial) io.redial(x);
+      }
+      return n;
+    }
+
     // ---- the page face -----------------------------------------------------------------------------------------
     function tick() {
       const s = mySeat(); if (!s || s.dead) return;
@@ -523,6 +535,7 @@
         if (!hello && !L.outside && s.hasCoord && s.state === 3) { let named = false; for (const v of s.occ.values()) if (v === x) { named = true; break; } if (!named) hello = true; }   // L13.41.2: a pc between members to a seat my view names nowhere (the page cannot read the far seat's state: a door pc is outside, every other pc is between members)
         if (hello && s.l1341Hello.length < 64) s.l1341Hello.push(x); s.l213HeadPc(x); }
       if (L.wasOpen) trace('LINK-UP', me, null, 'peer=%d', x); L.wasOpen = true;
+      if (s && s.l14Up === x) wayOut('uplink');   // L50.7 b: my uplink is up: a way out
       const q = L.q; L.q = [];
       if (s && q.some((m) => seatM.l13Frame(m)) && seatM.roomTerm(s, -1)) pc.noteCall(me, x);
       for (const m of q) linkDeliver(me, x, m, L);
@@ -606,7 +619,7 @@
     delete fns.fabricNoSock;   // A1: the relay's bounce
     return {
       fhDcRaw: (x) => { const L = LINKS.get(x); return !!L && L.view[mine(x)] === LK_OPEN; }, fhState: (x) => { const L = LINKS.get(x); return L ? L.state : LK_NONE; }, fhDialBehind,
-      fns, lv, send: (x, m) => linkSchedule(me, x, m), tick, mark, offer, answered, opened, frame, lost, doorNote: fhDoorOuter,
+      fns, lv, send: (x, m) => linkSchedule(me, x, m), tick, mark, offer, answered, opened, wayOut, frame, lost, doorNote: fhDoorOuter,
       byeIn: (x, why) => byeIn(x, BYE.includes(why) ? why : 'call'), dialFailed, refused, leaveAll, pageClosed,
       busyFrom: (x) => refused(x, { busy: 1 }),
       link: (x) => LINKS.get(x) || null, dump: () => [...LINKS].map(([x, L]) => ({ x, state: L.state, view: L.view[mine(x)], outside: L.outside, gone: L.gone, q: L.q.length })),

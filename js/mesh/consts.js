@@ -705,6 +705,7 @@
     EV_SIGA: 10,   // C++: mesh_link.inc:EV_SIGA
     EV_SIGN: 11,   // C++: mesh_link.inc:EV_SIGN
     EV_DCALL: 12,   // C++: mesh_link.inc:EV_DCALL
+    EV_WAYOUT: 13,   // C++: mesh_link.inc:EV_WAYOUT
     PB_DOORS: 0,   // C++: mesh_link.inc:PB_DOORS
     PB_KNOCKS: 1,   // C++: mesh_link.inc:PB_KNOCKS
     PB_S1: 2,   // C++: mesh_link.inc:PB_S1

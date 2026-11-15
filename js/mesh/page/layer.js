@@ -156,6 +156,8 @@
       get u2Id() { const s = raw(); return s && s.hasCoord && s.coord.pc !== 0 && s.u2Id >= 0 && s.u2Id !== s.id ? P(s.u2Id) : null; },   // a seat in Section 1 holds no E2 (the seat clears it there; the guard stays for a tick read before that)
       get u3Id() { const s = raw(); return s && s.hasCoord && s.coord.pc !== 0 && s.u3Id >= 0 && s.u3Id !== s.id ? P(s.u3Id) : null; },
       get u2Hot() { const s = raw(); return !!(s && s.hasCoord && s.coord.pc !== 0 && s.u2Hot); },
+      // L50.7 a: the cell of a seat my roles name and my view does not (the E2 and E3 far ends), as an occ key; null: none
+      roleKeyOf(peer) { const s = raw(); if (!s || !s.hasCoord || s.state !== 3 || s.coord.pc === 0) return null; const x = ids.nid(peer); if (x < 0) return null; if (s.u2Id === x) return s.u2Ck; if (s.u3Id === x) return s.u3Ck; return null; },
       // L14 as the seat holds it, as peers (read only): my branch's temporary uplink, and the heads whose uplink I took.
       get l14Up() { const s = raw(); return s && s.l14Up >= 0 && s.l14Up !== s.id ? P(s.l14Up) : null; },
       // L2.7: my row's head is gone in my own view and I am the row's heir (its lowest live column): its duties are mine

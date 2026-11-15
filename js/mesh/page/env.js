@@ -186,7 +186,7 @@
     // The same clock across a reload of one identity: the seat's digest stamps (Dig.at) must keep rising, or mates refuse the returning page's report until it outlives the old one, and read the room short meanwhile.
     w.TICK = (1 << 24) + Math.floor((Date.now() - 1700000000000) / (o.tickMs || 500));
     const seat = () => (typeof o.seat === 'function' ? o.seat() : null);
-    let woken = false, dead = false, closeAt = -1;
+    let woken = false, dead = false, closeAt = -1, wayOutAt = -1;   // wayOutAt (L50.7 b): my knock as a seated deep seat: its socket is a way out
     const bus = new Map();        // tick -> frames for my seat (synthesized: GREETERS, BUSY, deliveries the laws post)
     let inbox = [];               // frames off the dcs since the last tick, in arrival order: [m, arrivedAtTick]
     const busAt = (t, m) => { let s = bus.get(t); if (!s) { s = []; bus.set(t, s); } s.push(m); };
@@ -240,6 +240,7 @@
         return pc.send(p, m, m && m.t !== 'pcbye' ? dirFor(m) : null) !== false;
       },
       close(x, why) { const p = ID.pid(x); if (p && pc.close) pc.close(p, why); },
+      redial(x) { const p = ID.pid(x); if (p && pc.redial) pc.redial(p); },   // L50.7 b: a fresh offer (the polite side: a fresh ask) on a dial with no answer yet
       // the page seam that sends {k:'pcbye', why} on the dc and closes my end (A3); without it A2 sends pcbye itself
       bye: pc.bye ? (x, why) => { const p = ID.pid(x); if (p) pc.bye(p, why); } : undefined,
       refuse(x, info) { relayBusy(x, { k: 'busy', g: info && info.busy ? 16 : 23 }); },
@@ -434,6 +435,7 @@
       const isl = seatM.islandStand(s, E.IS_RELAY); const s1Only = isl || l164Of(s);
       const blobOk = !!blob && (!s1Only || (s.state === 3 && s.hasCoord && (s.coord.pc === 0 || s.doorCallOn())));   // FHOP.8: a friend called to the door registers there
       st.relay.knock++; relay.knock(null, blobOk);
+      if (s.state === 3 && s.hasCoord && s.coord.pc !== 0) wayOutAt = w.TICK + 1;   // C++: mesh_dialsig_fab.inc:sigSockOpened   [L50.7 b]
     }
     // C++: mesh.cpp:relayUnlist
     function relayUnlist(id) { const s = seat(); if (!s || !l164Of(s) || !relay.unlist) return; st.relay.unlist++; relay.unlist(); }
@@ -562,6 +564,7 @@
       const s = seat();
       if (closeAt >= 0 && w.TICK >= closeAt) { closeAt = -1; if (pcw.leaveAll) pcw.leaveAll(); }
       while (dialFailLater.length) { const x = dialFailLater.shift(); if (pcw.dialFailed) pcw.dialFailed(x); }
+      if (wayOutAt >= 0 && w.TICK >= wayOutAt && (!relay.up || relay.up())) { wayOutAt = -1; if (pcw.wayOut) pcw.wayOut('knock'); }   // L50.7 b: once the socket my knock opened is up
       if (pcw.tick) guard('pcw.tick', pcw.tick)();
       // C++: mesh_net.inc:netTick's probe loop (L4.1.1): my network verdict landed or changed since the join read it: the seat's kind is
       // measured again, and a seeker at the door acts on it now (l411Verdict)

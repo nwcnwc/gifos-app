@@ -1252,6 +1252,7 @@
         relay: {
           knock: (gk, blobOk) => { const k = gkStr(); /* the room's string, as every register presents it ('g' + hex): a decimal genKey was refused (admitted:false), and three refusals requeued a seated greeter */ if (blobOk && iAmAGreeter()) REGISTER_MYSELF_AS_A_GREETER(gk || k); else KNOCK_FOR_THE_GREETER_LIST(gk || k); },
           unlist: () => sendRaw({ t: 'unlist' }),
+          up: () => !!(sock && sock.state === 'up'),   // L50.7 b: the socket a seated seat's knock opened is a way out once it is up
           busy: (to, body) => { if (opts.relayBusy) { try { opts.relayBusy(to, body); } catch (e) {} } },
         },
         send: (to, m, dir) => sendFrameTo(to, m, dir, true),   // FHOP's sponsored frames: deliver -> opts.sendDC -> the page's rungs, never the relay
