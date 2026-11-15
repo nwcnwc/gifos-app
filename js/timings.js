@@ -219,6 +219,7 @@
     UPDATE_CHECK_MS: 60000,   // ms
     UPDATE_RESUME_TTL: 120000,   // ms
     UPDATE_TRIED_MS: 600000,   // ms
+    VERSION_ASK_MS: 1900,   // ms
     VIEW_FPS: 30,   // count
     VOUCH_MS: 180000,   // ms
     WAKE_PROBE_MS: 1500,   // ms
