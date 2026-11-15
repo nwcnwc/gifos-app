@@ -37055,10 +37055,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       setTimeout(() => { if (btn.textContent === 'Copied') btn.textContent = 'Copy'; }, 1600);
     };
     document.getElementById('closed-reload').onclick = () => location.reload();
-    // D2 "goodbyes are instant" — graceful-close coverage. beforeunload alone
-    // misses most MOBILE closes (swipe-away, navigation): pagehide is the
-    // strict superset that fires on every real unload path, so both are wired
-    // (idempotent — the LEAVE flushes over the DCs once). A phone that merely
+    // D2 "goodbyes are instant" — graceful-close coverage. pagehide fires on
+    // every real unload path (close, swipe-away, navigation, reload), so it
+    // alone says goodbye. Never beforeunload: it fires BEFORE a navigation is
+    // decided, and many never happen (a link the app shell opens in the
+    // browser, a mailto:/tel: link, a download): the page stayed, seated in
+    // its own eyes, while every peer had let it go. A phone that merely
     // LOCKS or app-switches fires visibilitychange, NOT pagehide — stepping
     // away keeps your seat (the away/absentSince machinery above handles it).
     // If a browser does fire pagehide and the page is only entering bfcache
@@ -37096,7 +37098,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (e && e.persisted) return;
       sendMeshLeave(e);
     }
-    window.addEventListener('beforeunload', sendMeshLeave);
     window.addEventListener('pagehide', pageHideLeaves);
     // bfcache resume after a pagehide: we already gave up our seat — rejoin fresh.
     window.addEventListener('pageshow', (e) => { if (e.persisted && leftMesh) location.reload(); });
