@@ -113,7 +113,7 @@
       }
       {
         this.l31Notify(p.k, p.nc, true, p.forge); if (this.l31Done.length >= 4 * C) this.l31Done.shift();
-        this.l31Done.push({ nc: p.nc, k: p.k, at: p.at, wait: p.needAck && !p.ack });
+        this.l31Done.push({ nc: p.nc, k: p.k, at: p.at, wait: p.needAck && !p.ack, home: !!p.home });
       }
     },
 
@@ -161,10 +161,14 @@
     },
 
     // C++: mesh_instant.inc:Seat::l31PendTick
+    // C++: mesh_instant.inc:Seat::l31DoorLeft
+    // FHOP.8.3.2: my door placement lives on my channel to the knocker; once it reads closed the knocker left my door.
+    l31DoorLeft(nc, home) { return !!home && this.f.fabricDoors() && !this.f.fabricLinkOpen(this.id, nc); },
     l31PendTick() {
       const lv = this.w.lv;
       const v = this.l31Pend; this.l31Pend = [];
       for (const p of v) {
+        if (this.l31DoorLeft(p.nc, p.home)) { this.clearSoft(p.k, 'l31-door-left'); this.healTry.delete(p.k); this.trace('L31-DOORLEFT', this.id, this.hasCoord ? this.coord : null, 'cell=%s seeker=%d open=1', coordStr(unckey(p.k)), p.nc); continue; }
         if (!this.hasCoord || this.state !== 3 || this.coord.pc !== 0) { this.clearSoft(p.k, 'l31-stood-down'); this.l31Fallback(p); continue; }
         const a = this.l31Acc.get(p.k);
         const lost = a !== undefined && a.q !== p.nc;
@@ -254,6 +258,7 @@
         { const st = this.sitting.get(k); if (st !== undefined && st.joiner === d.nc && st.assigner === this.id) this.clearSoft(k, 'l31-beaten'); }
         this.trace('L31-BEATEN', this.id, this.coord, 'cell=%s seeker=%d by=%d', coordStr(unckey(k)), d.nc, q);
         if (!this.l31On()) return;
+        if (this.l31DoorLeft(d.nc, d.home)) { this.trace('L31-DOORLEFT', this.id, this.coord, 'cell=%s seeker=%d open=0', coordStr(unckey(k)), d.nc); return; }   // FHOP.8.3.2
         for (const p of this.l31Pend) if (p.nc === d.nc) return;
         const p = state.newStruct('L31Pend'); p.nc = d.nc; p.home = false; p.replace = true; p.lost = k;
         if (this.l31Propose(p)) { this.l31Pend.push(p); this.f.wake(this.id); } else

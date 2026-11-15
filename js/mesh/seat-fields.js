@@ -78,6 +78,7 @@
       ["k", "u64"],   // uint64_t = 0  (line 1065)
       ["at", "i32"],   // int = -1  (line 1065)
       ["wait", "bool"],   // bool = false  (line 1065)
+      ["home", "bool"],   // bool = false  (line 1065)
     ],
     Probe: [   // C++: mesh.cpp:Seat::Probe
       ["at", "i32"],   // int  (line 1085)
@@ -196,7 +197,7 @@
     SoftSit: { "pingAt": -1, "replayed": false },
     L31Rec: { "q": -1, "at": -1, "by": -1, "commit": false, "left": false },
     L31Pend: { "nc": -1, "k": 0, "lost": 0, "at": -1, "tries": 0, "forge": 0, "home": false, "replace": false, "parent": false, "needAck": false, "ack": false },
-    L31Done: { "nc": -1, "k": 0, "at": -1, "wait": false },
+    L31Done: { "nc": -1, "k": 0, "at": -1, "wait": false, "home": false },
     KLst: { "child": -1, "since": 0, "last": 0 },
     KHold: { "child": -1, "voter": -1, "cell": 0, "ck": 0, "at": -1 },
     KAud: { "child": -1, "ck": 0, "at": -1, "kind": 0, "held": false, "rs": -1 },
