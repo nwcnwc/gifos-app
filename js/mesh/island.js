@@ -36,7 +36,9 @@
         for (const g of list) { if (g < 0 || g === this.id) continue; this.l16List.push(g); if (this.l16List.length >= 32) break; }
         this.l16Next = 0; this.l16Busy.length = 0; this.l16Last = -1; this.l16Hedged = false;
         const f = lv.L16FAN < 0 ? K.L16_FAN : lv.L16FAN;
-        this.l16Wave(this.evilDoor || f === 0 || this.l8471() ? this.l16List.length : f); return;
+        this.l16Wave(this.evilDoor || f === 0 || this.l8471() || this.l854Tcp() ? this.l16List.length : f);
+        if (this.l854Tcp() && this.islandAskAt >= 0) { let a0 = -1; for (const g of this.l16List) { const t = this.entAsk.get(g); if (t === undefined) { a0 = -1; break; } if (a0 < 0 || t < a0) a0 = t; } if (a0 >= 0 && a0 < this.islandAskAt) { this.islandAskAt = a0; this.l16FreshAt = a0; } }   // L8.54.7: the greeters I asked already keep their clock (C++: islandAsk)
+        return;
       }
       let n = 0;
       for (const g of list) { if (g < 0 || g === this.id) continue; const w = newMsg('WHOHOME'); w.from = this.id; w.ttl = 60; this.emit(g, w); if (++n >= 32) break; }
@@ -56,7 +58,8 @@
       if (this.f.fabricDoors() && this.islandAskAt >= 0 && (this.l16Next < this.l16List.length || this.TICK - this.l16FreshAt < iw)) return false;
       if (this.l16Saw) { this.l16Saw = false; this.l16Backoff('silent'); return true; }   // a BUSY is evidence for its own round (C++: islandTick)
       if (this.l8471() && !this.islandLast && !o54) this.trace('L8.47.1-ONE', this.id, null, 'asked=%zu since=%d wait=%d', this.islandAsked.size, this.islandAskAt, iw);
-      if (!this.l8471() && this.islandAskN + 1 < K.ISLAND_ASKS) {   // L8.1.1: a silent round is the door's list of one moment, not the room: knock again (bounded) before founding
+      if (this.l854Tcp() && !this.islandLast) this.trace('L8.54.7-TCP', this.id, null, 'asked=%zu since=%d wait=%d', this.islandAsked.size, this.islandAskAt, iw);
+      if (!this.l8471() && !this.l854Tcp() && this.islandAskN + 1 < K.ISLAND_ASKS) {   // L8.1.1: a silent round is the door's list of one moment, not the room: knock again (bounded) before founding
         this.islandAskN++; this.trace('ISLAND-REASK', this.id, null, 'round=%d asked=%zu since=%d', this.islandAskN, this.lastGreeters.length, this.islandAskAt);
         for (const x of this.l16Ask) this.f.fabricDoorDrop(this.id, x);
         this.l16Anch = false; this.l16Ho = -1; this.l16Ask.length = 0; this.l16Busy.length = 0; this.l16Last = -1; this.l16List.length = 0; this.l16Next = 0; this.l16WaveAt = -1; this.l16FreshAt = -1;
