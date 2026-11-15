@@ -54,7 +54,8 @@ const MARK = "<!-- the lobby's scripts end here -->";
 
 const pagePath = path.join(SITE, PAGE);
 const html = fs.readFileSync(pagePath, 'utf8');
-if (html.includes('js/run.lobby.js')) throw new Error(PAGE + ' is already bundled');
+// Already bundled = the page's loader requests the hashed lobby bundle ("js/run.lobby.js?h=..."); a comment that names the file is not that.
+if (/["']js\/run\.lobby\.js\?h=/.test(html)) throw new Error(PAGE + ' is already bundled');
 const files = [...html.matchAll(TAG)].map((m) => m[1]);
 if (files.length < 2) throw new Error('no deferred scripts found in ' + PAGE);
 const markAt = html.indexOf(MARK);
