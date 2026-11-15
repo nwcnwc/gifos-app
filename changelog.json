@@ -9,8 +9,8 @@
       "fixes": [
         "Meetings: a phone or computer whose clock runs a few minutes fast could not join, stuck at \"Connecting to GifOS\". It now joins normally.",
         "Meetings: when a meeting needs a newer GifOS, the page now says to reload to update, instead of saying your internet may be down.",
-        "Meetings: the Stadium no longer shows a count of people with no faces after someone leaves or drops out.",
-        "Android: a floating video from full screen now stays up when you switch to another app."
+        "Android: a floating video from full screen now stays up when you switch to another app.",
+        "Android: returning to the meeting through the floating video's expand button no longer leaves a black tile behind."
       ]
     },
     {
