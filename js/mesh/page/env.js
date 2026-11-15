@@ -483,7 +483,12 @@
       if (n !== E.NAT_BLOCKED && k !== E.NAT_BLOCKED && !(n === E.NAT_STRICT && k === E.NAT_STRICT)) return 2;
       // L8.54.4 (C++: mesh_net.inc:l854Never): cannot meet only when one end is blocked and the other is not open; a blocked end
       // beside an open one may meet it over TCP, two strict ends are left to their dials: 3, another network not known either way
-      return ((n === E.NAT_BLOCKED && k !== E.NAT_OPEN) || (k === E.NAT_BLOCKED && n !== E.NAT_OPEN)) ? 0 : 3;
+      const never = (n === E.NAT_BLOCKED && k !== E.NAT_OPEN) || (k === E.NAT_BLOCKED && n !== E.NAT_OPEN);
+      // L8.54.6 a word never beats a path (TURN.7.1): the sim's kinds are the networks themselves, the page's are one probe's
+      // reading. A "blocked" page on a network that routes to another one (heal: D1 reaches both blocked singles) holds an open
+      // pc to that greeter; reading it "cannot meet" founded D1 alone at every entry, beside that very pc (L11-yield, found, ...)
+      if (never && F.fabricLinkCarries && F.fabricLinkCarries(me, g) && !pipeEnds().some((e) => e && learnPeer(e.peer) === g)) return 2;   // a joining connection (TURN) is no such path
+      return never ? 0 : 3;
     };
 
     // ---- rooms joined by relayed connections: the page's link manager (o.sub) ---------------------------------
