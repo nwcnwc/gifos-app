@@ -703,7 +703,7 @@
       if (L.state === 'closed' || L.state === 'up') return;
       if (!io.web || !io.web()) { if (!L.webNo) { L.webNo = true; log('turn-web ' + short(L.far) + ' not in this browser'); } return; }
       if (!L.web) {
-        L.web = true; L.askAt = io.now();
+        L.web = true; L.webMine = !!mine; L.askAt = io.now();
         log('turn-web ' + short(L.far) + (mine ? ' no relay path from here' : ' the far end has no relay path'));
         if (!L.cred && L.mine && L.peer) { L.cred = credFor(L, 'free'); L.cred.start(); }
         io.changed(L.far);
@@ -1313,6 +1313,7 @@
         return configOf(L);
       },
       web(pid) { const L = links.get(pid); return !!L && L.web; },   // TURN.18: this link runs over the web path
+      webMine(pid) { const L = links.get(pid); return !!L && L.web && !!L.webMine; },   // ...because MY end found no relay path (the reason a seat shows is its own network's only then)
       factStaleMs: FACT_STALE_MS,
       holds(pid) { const L = links.get(pid); return !!L && L.state !== 'closed'; },
       isLink(pid) { const L = links.get(pid); return !!L && (L.state === 'up' || L.state === 'dial'); },
