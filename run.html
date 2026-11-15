@@ -13018,11 +13018,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // no cell of my room, which below would read as a joiner not seated yet.
       if (turnHolds(pid)) return false;
       const c = meshCoord(), s = meshSeat(); if (!c || !s) return true;
-      let k = null; for (const [kk, v] of s.occ) if (v === pid) { k = kk; break; }
+      // ONE ROW, ONE ANSWER: a row-mate is whoever a cell of my row holds, the same reading as rowMates() (which my buses,
+      // packs and the row signature that re-runs refreshOutbound use). The view can name a seat that just moved at its old
+      // cell too, until that hint ages out; reading the first cell found then called a seat in my row a stranger, my mic
+      // stayed off its pc and it heard me nowhere (hearall freeze.s1head: the L9.22 front fill moved it into my row).
+      if (myRowIds().includes(pid)) return true;
+      let held = false; for (const v of s.occ.values()) if (v === pid) { held = true; break; }
       // A peer the seat holds by a role but names at no cell is the far end of a backup uplink (E2): a parked pc, no camera.
-      if (!k) return !s.linkPeers().has(pid);
-      const cc = net.topo.unck(k);
-      return cc.pc === c.pc && cc.r === c.r;
+      return held ? false : !s.linkPeers().has(pid);
     }
     // My mic goes to row-mates only: a pipe's side hears me in the mix it gets, a standby carries nothing until it takes over.
     // My camera goes to row-mates and to my vouched pipe peers (SUB.4, Nathan 11-14): the far end of a pipe shows me on my own
