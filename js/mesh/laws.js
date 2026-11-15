@@ -26,6 +26,7 @@
     FHOP_BEAT: 8,                // FHOP: the status beat that carries a seat's conns list (SCALE.HB 4 s)
     FHOP_CARRY_MAX: 12,          // FHOP.9: carries one friend runs at once, video or voice only: every carry one full row can ask of one mate, (C-1) x (C-2)
     FHOP_CRUMB_TTL: 120,         // FHOP: a crumb (the channel a peer's frames came in on) and an envelope dedup entry live this long (60 s)
+    FHOP_DOOR_STALL: 6,          // FHOP.8.2: a door dial whose offer and answer crossed and that has not opened this long after has stalled: the seated end starts the friend path beside it (one dial at the internet budget, and never under the slowest desktop dial the link model draws)
     FHOP_MAX_JOBS: 4,            // FHOP: carries with video one friend on Wi-Fi (or an unknown link) runs at once; past it a carry is voice only (FHOP.9)
     FHOP_REFUSE_HOLD: 60,        // FHOP: a friend that refused a relay is not asked again for this long (30 s)
     FHOP_RELAY_ASK: 13,          // FHOP: the direct verdict. A peer's direct pair down this long before a friend is asked, and the gap between asks. Depends on: the offer and answer over the relay, then the answered dial's clock (LINK_DIAL_ICE)

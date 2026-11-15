@@ -345,7 +345,7 @@
     // C++: mesh_fhop.inc:fhDoorCall
     function fhDoorCall(j, fwdBy) {
       const s = seat(); if (!fh || !fh.doorSend || !s || dead || !s.hasCoord || s.state !== 3 || j < 0 || j === me) return;
-      { const d = dcAt.get(j); if (d !== undefined && w.TICK - d < K.DOORCALL_HOLD) return; } dcAt.set(j, w.TICK);
+      { const d = dcAt.get(j); if (d !== undefined && w.TICK - d < K.DOORCALL_HOLD) return; }   // noted below, only when a frame went out (a seat that knew no friend at its own clock still serves a call passed to it later)
       if (dcAt.size > 256) for (const [k, v] of [...dcAt]) { if (w.TICK - v > K.DOORCALL_HOLD) dcAt.delete(k); }
       const P = (x) => ID.pid(x), jp = P(j); if (!jp) return;
       const tagOf = (x) => { const p = P(x); return p ? fh.tagOf(p) || '' : ''; };
@@ -357,12 +357,12 @@
       for (const r of mc) {
         if (r === j || r === fwdBy || fhHome(s, r)) continue; const tg = tagOf(r); if (!tg || tg === skip) continue;
         const n = fh.natOf(P(r)); if (!fhopM.fhNatMeet(Number.isInteger(n) ? n : -1, kNat)) continue;
-        trace('FH-DCALL-SEND', me, s.coord, 'to=%d for=%d by=%d', r, j, fwdBy); fh.doorSend(P(r), 7, jp); return;
+        trace('FH-DCALL-SEND', me, s.coord, 'to=%d for=%d by=%d', r, j, fwdBy); dcAt.set(j, w.TICK); fh.doorSend(P(r), 7, jp); return;
       }
       if (fwdBy >= 0) return;   // a passed call goes no further
       for (const r of mc) {
-        if (r === j || fhHome(s, r)) continue; const ft = fh.ftags(P(r)) || []; if (!ft.some((t) => t && t !== skip)) continue;
-        trace('FH-DCALL-PASS', me, s.coord, 'to=%d for=%d', r, j); fh.doorSend(P(r), 8, jp); return;
+        if (r === j) continue; const ft = fh.ftags(P(r)) || []; if (!ft.some((t) => t && t !== skip)) continue;   // the pass may go to a front-row mate: the newcomer asks its greeters one at a time, and the one that holds a friend may be asked last
+        trace('FH-DCALL-PASS', me, s.coord, 'to=%d for=%d', r, j); dcAt.set(j, w.TICK); fh.doorSend(P(r), 8, jp); return;
       }
       trace('FH-DCALL-NONE', me, s.coord, 'for=%d conns=%d', j, mc.length);
     }
@@ -371,9 +371,11 @@
     // C++: mesh_fhop.inc:fhOnMsg kinds 7 and 8   (a door-call over a dc from a peer of mine)
     function doorCallIn(fromPeer, kind, knockerPeer) {
       const by = learnPeer(fromPeer), j = learnPeer(knockerPeer), s = seat(); if (by < 0 || j < 0 || !s || dead) return;
-      if (kind === 7) s.doorCall(by, j);   // I am called to the door
+      if (kind === 7) { const had = s.dwSent.has(j); s.doorCall(by, j); if (!had && s.dwSent.has(j) && fh && fh.doorWordSend) { const jp = ID.pid(j); if (jp) fh.doorWordSend(jp); } }   // I am called to the door; the door word goes to the newcomer over the relay, beside my dial (C++: mesh_fhop.inc:fhDoorWordAt, the frame's landing)
       else if (kind === 8) fhDoorCall(j, by);   // the call passed to me: I call my friend on another network
     }
+    // C++: mesh_fhop.inc:fhDoorWordAt   (the newcomer's end: a page that says a greeter called it to the door for me)
+    function doorWordIn(fromPeer) { const f = learnPeer(fromPeer), s = seat(); if (f < 0 || f === me || !s || dead || s.state === 3) return; s.doorWord(f); }
     // what the pc laws read (linkWhy LW_FHOP): my relay roles, as ints
     function fhRoles() {
       const r = fh.roles(); const n = (p) => learnPeer(p);
@@ -727,6 +729,7 @@
       dirFor, learnDir, relayBusyList,
       doorNote: (peer) => { const x = learnPeer(peer); if (x >= 0 && x !== me && pcw.doorNote) guard('doorNote', pcw.doorNote)(x); },   // FHOP.8: a door page's offer, or its answer to my offer, reached me over the relay (run.html onRelayPeer)
       doorCallIn: (fromPeer, kind, knockerPeer) => guard('doorCallIn', doorCallIn)(fromPeer, kind, knockerPeer),   // FHOP.8 kinds 7 and 8 off a dc
+      doorWordIn: (fromPeer) => guard('doorWordIn', doorWordIn)(fromPeer),   // FHOP.8.2: a called friend's door word off the relay (run.html onRelayPeer)
       // the mark my answer to peer carries back to it (A2), for the pc layer's answer
       mark: (peer) => { const x = ID.pid(ID.nid(peer)) === String(peer) ? ID.nid(peer) : learnPeer(peer); return x >= 0 && pcw.mark ? pcw.mark(x) : null; }, farView: (to) => farView(seat(), to),
       // the seat's construction is the caller's (A3): new Seat(env.me, env.world)
