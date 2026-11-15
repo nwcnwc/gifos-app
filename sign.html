@@ -106,15 +106,20 @@
     // Default channel follows the live release — but only on the real domain. On
     // localhost / preview hosts the root IS what you're developing, so stay edge.
     if (!/(^|\.)gifos\.app$/.test(location.hostname)) return stay;
-    if (cur) return to(cur);                                  // default, fast path (last-known release)
-    // Default, first visit: resolve the release pointer, then redirect. On failure
-    // (offline, no cache) fall through and run this edge build.
+    // Default: ASK for the release pointer, every entry, then redirect.
+    // gifos_current is only what the LAST visit read. Trusting it first sent
+    // every returning visitor to the release before the newest deploy (the first
+    // load after 0.9.26 shipped landed on /versions/0.9.25.3/), and that
+    // frozen snapshot can never move itself. The answer is under 2 KB
+    // and a redirect costs a round trip anyway. gifos_current answers only
+    // when the network cannot (offline); with neither, run this edge build.
     try {
       var x = new XMLHttpRequest(); x.open('GET', '/version.json?ts=' + Date.now(), false); x.send();
       // `latest` (may be four-part, 0.9.24.1) first; `current` is the three-part legacy pointer.
       var v = ''; try { var j = JSON.parse(x.responseText) || {}; v = (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(j.latest || '')) ? j.latest : j.current) || ''; } catch (e) {}
       if (v) { try { localStorage.setItem('gifos_current', v); } catch (e) {} return to(v); }
     } catch (e) {}
+    if (cur) return to(cur);                                  // offline: the last-known release
     return stay;
   }
   window.gifosPinTarget = pinTarget;
