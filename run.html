@@ -1064,12 +1064,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         </div>
         <p class="set-help set-row set-wide" id="ccall-row" style="display:none"><button data-t="setCcAllOff" id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span data-t="ccallNote" id="ccall-note">Admins only — every screen shows captions. Anyone can tap Captions to hide them.</span></p>
       </section>
-      <section class="set-group" id="set-g-legal">
-        <h4 data-t="setGroupLegal">About</h4>
-        <div class="set-row set-wide">
-          <p class="set-help" id="set-legal"><a id="set-terms" href="https://gifos.app/terms/meet" target="_blank" rel="noopener" data-t="setTerms">Terms</a> · <a id="set-privacy" href="https://gifos.app/privacy/meet" target="_blank" rel="noopener" data-t="setPrivacy">Privacy</a></p>
-        </div>
-      </section>
       <!-- Debug: a log of this page kept on this device only, for finding
            problems. Nothing leaves the device unless the person exports it. -->
       <section class="set-group" id="set-g-debug">
@@ -6013,16 +6007,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function fsSources() {
       const out = [];
       // The content region first (content tabs, js/meet-viewmode.js content):
-      // in Focus the big view can be a content item as well as a person. Full
-      // screen lists the shared screens too, as pictures of their own: a share
-      // shows in the content area, and its Stage tile can be a hidden element
-      // that WebKit never starts, so without them full screen had no share.
+      // in Focus the big view can be a content item as well as a person.
       try {
         const VMc = window.GifOS && GifOS.meetViewMode && GifOS.meetViewMode.content;
-        if (VMc && !BROADCAST) for (const it of VMc.items()) {
-          if (fsInline) { if (it.stream || it.v) out.push({ key: it.key, label: it.label || '', v: it.v || null, stream: it.stream || null, fit: 'contain', content: true }); }
-          else if (it.kind === 'screen' && it.stream) out.push({ key: it.key, label: it.label || '', v: { srcObject: it.stream }, fit: 'contain' });
-        }
+        if (VMc && !BROADCAST) for (const it of VMc.items()) if (it.stream || it.v) out.push({ key: it.key, label: it.label || '', v: it.v || null, stream: it.stream || null, fit: 'contain', content: true });
       } catch (e) {}
       let stageFit = null;
       for (const v of stagefeedEl.querySelectorAll('.rowtile video')) {
@@ -6264,7 +6252,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function closeFsView(fromPicker) {
       if (fsTick) { clearInterval(fsTick); fsTick = null; }
-      try { ctFsDrop(null); } catch (e) {} // the view's screen clones end with it
       if (fsFollowT) { clearTimeout(fsFollowT); fsFollowT = 0; }
       fsFollow = null;
       fsZoomIds = null; fsZoomPaint(null);
@@ -8168,16 +8155,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
 
     // ---- Focus: the content tabs are in the picker strip ----
-    // The full-screen view's clones of the content screens (ctFocusSources).
-    function ctFsStop(c) { try { if (c && c.own) c.own.stop(); } catch (e) {} }
-    function ctFsDrop(keep) {
-      if (!CT || !CT.fsStreams) return;
-      for (const [k, c] of CT.fsStreams) if (!keep || !keep.has(k)) { ctFsStop(c); CT.fsStreams.delete(k); }
-    }
     function ctFocusSources() {
-      if (!CT || !ctRefresh().length) { ctFsDrop(null); return []; }
+      if (!CT || !ctRefresh().length) return [];
       if (!CT.fsStreams) CT.fsStreams = new Map();
-      const out = [], seen = new Set();
+      const out = [];
       for (const it of CT.items) {
         // The content region's shape (GifOS.meetViewMode.content): a screen
         // brings its stream; the app and the agenda have no picture of their
@@ -8186,21 +8167,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (it.kind === 'screen') {
           const src = ctScreenTrack(it.sid);
           let c = CT.fsStreams.get(it.key);
-          // Its own clone: WebKit paints one track in one <video> only, and the
-          // content pane already shows the original. ctFsDrop stops each clone.
-          if (src && (!c || c.track !== src.track)) {
-            if (c) ctFsStop(c);
-            let tr = src.track;
-            try { tr = src.track.clone(); } catch (e) { tr = src.track; }
-            c = { track: src.track, own: tr !== src.track ? tr : null, stream: new MediaStream([tr]) };
-            CT.fsStreams.set(it.key, c);
-          }
-          if (src && c) { e.stream = c.stream; seen.add(it.key); }
+          if (src && (!c || c.track !== src.track)) { c = { track: src.track, stream: new MediaStream([src.track]) }; CT.fsStreams.set(it.key, c); }
+          if (src && c) e.stream = c.stream;
           else e.v = { srcObject: null };
         } else e.v = { srcObject: null };
         out.push(e);
       }
-      ctFsDrop(seen);
       return out;
     }
     // Focus moved on or off a content tab: the area goes back to the gallery,
@@ -8653,7 +8625,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const ab = document.getElementById('agendabtn');
       if (ab) ab.addEventListener('click', () => ctAgendaOpen());
       // The content tabs are the meeting's content region: Focus lists them.
-      try { if (window.GifOS && GifOS.meetViewMode && GifOS.meetViewMode.content) GifOS.meetViewMode.content.add(() => (fsview.classList.contains('on') ? ctFocusSources() : [])); } catch (e) {}
+      try { if (window.GifOS && GifOS.meetViewMode && GifOS.meetViewMode.content) GifOS.meetViewMode.content.add(() => (fsInline ? ctFocusSources() : [])); } catch (e) {}
     }
     // For the room tests and the debug dump: what the area shows.
     window.__meetContent = () => {
@@ -31712,7 +31684,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     const WSP_WEAK = whisperWeakWhy(navigator);
     const whisperAllowed = () => !WSP_WEAK || lsGet(CC_WHISPER_ANYWAY_KEY) === '1';
-    const ccEngine = () => (lsGet(CC_ENGINE_KEY) === 'whisper' && whisperAllowed() && !phoneCaptions() ? 'whisper' : 'browser');
+    const ccEngine = () => (lsGet(CC_ENGINE_KEY) === 'whisper' && whisperAllowed() ? 'whisper' : 'browser');
     const WHISPER_APP_ID = 'offline-stt-whisper';
     const whisperReady = () => !!(window.GifOS && GifOS.providers && GifOS.providers.assigned('stt'));
     // Can this browser run Whisper at all: allowed on this device, and an
@@ -32411,22 +32383,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }).catch(() => {});
       }, 4000);
     }
-    // The GifOS Meet apps (Android, iPhone) run captions on the phone itself (its own speech engine stands in for the
-    // browser's): that is the only engine, it sends no voice anywhere, and Whisper is not offered.
-    function phoneCaptions() {
-      try { const N = window.GifosNative; return !!(N && N.info && N.info().captions === 'device'); } catch (e) { return false; }
-    }
-    function paintPhoneCaptions() {
-      const row = document.querySelector('input[name="ccengine"][value="browser"]');
-      const lab = row && row.closest('label'); if (!lab) return;
-      const b = lab.querySelector('b'), sm = lab.querySelector('small');
-      if (b) { b.removeAttribute('data-t'); b.textContent = uiText('setCcPhone', 'On this phone'); }
-      if (sm) { sm.removeAttribute('data-t'); sm.textContent = uiText('setCcPhoneHelp', 'Captions are made on this phone. No voice is ever sent to any server: only the caption text goes to the meeting. The first time a language is used, the phone may download its speech model once.'); }
-      for (const id of ['ccwhisper-st', 'ccwhisper-weak', 'ccwhisper', 'cctranslate-row', 'cctranslate-no', 'cctranslate-need']) { const e = document.getElementById(id); if (e) e.style.display = 'none'; }
-      const w = document.querySelector('input[name="ccengine"][value="whisper"]'), wl = w && w.closest('label'); if (wl) wl.style.display = 'none';
-    }
     function paintCcState() {
-      if (phoneCaptions()) { const r = document.querySelector('input[name="ccengine"][value="browser"]'); if (r) r.checked = true; paintPhoneCaptions(); return; }
       const radios = Array.from(document.querySelectorAll('input[name="ccengine"]')); if (!radios.length) return;
       const box = document.getElementById('ccwhisper'), state = document.getElementById('ccwhisper-state');
       const on = ccEngine() === 'whisper';
