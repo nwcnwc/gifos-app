@@ -12570,6 +12570,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           if (p.avatar) { const letter = nameInitial(nm); if (typeof setTileLetter === 'function') setTileLetter(p.avatar, letter); else p.avatar.textContent = letter; }
         }
         if (typeof updateStatus === 'function') { try { updateStatus(); } catch (e) {} }
+        try { const s = meshSeat(); if (s && s.heardFrom && from) s.heardFrom(from); } catch (e) {}   // D6c.7.3: its name frame is a word from it
         onDialRequest(p || { id: from, dc: null });
         return;
       }
@@ -18074,6 +18075,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // retry goes over the sponsor path immediately, not blind.
         txStats.nosock++;
         if (m.to) { if (relayNoSock.size > 2048) relayNoSock.clear(); relayNoSock.set(m.to, Date.now()); }
+        try { const s = meshSeat(); if (s && s.relayNoSock && m.to) s.relayNoSock(m.to); } catch (e) {}   // D6c.7.3: the relay's word reaches the seat (sim: mesh_dialsig_fab.inc d6cNoSock)
         { const pb = m.to && peers.get(m.to); if (pb && pb.pc && pb.offerSentPc === pb.pc && pb.pc.signalingState === 'have-local-offer') pb.offerNoSockAt = Date.now(); }   // my unanswered offer reached no page: a dial request from it is answered at once (onDialRequest)
         // A greeter's joiner has gone: stop dialling it, its door slot is free. (A joiner's greeter that has gone: the seat hears BUSY{nosock} and asks the next.)
         { const pn = m.to && peers.get(m.to); if (pn && pn.neverUp && meshCoord() && !coordKeyOf(m.to) && meshNode && meshNode.transport) { try { meshNode.transport(m.to, 'unanswered'); } catch (e) {} } }   // L33.13: a seat my view seats went deep, it did not go: no failed dial, the next offer walks (relayNoSock)
@@ -22197,7 +22199,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             if (k3 === 'offer') sponsorReplyTo.add(String(m.from));
             if (k3 === 'offer' || k3 === 'dialask') noteRoute(m.from, m.p);
             // L16.3.2: a walked dial request, the relay's name frame for a seat the relay may not carry. The initiator offers back, over the ask's list.
-            if (k3 === 'dialask') { const pa = peers.get(String(m.from)); if (pa) pa.altPath = true; onDialRequest(pa || { id: String(m.from), dc: null }); return; }
+            if (k3 === 'dialask') { const pa = peers.get(String(m.from)); if (pa) pa.altPath = true; try { const s = meshSeat(); if (s && s.heardFrom && m.from) s.heardFrom(String(m.from)); } catch (e) {}   /* D6c.7.3: its walked ask is a word from it */ onDialRequest(pa || { id: String(m.from), dc: null }); return; }
             onSignal(String(m.from), m.m);
           }
           return;

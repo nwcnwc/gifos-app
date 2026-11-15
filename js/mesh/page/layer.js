@@ -182,7 +182,9 @@
       s1Bridges() { const s = raw(), out = [], K = KC(); if (!s || !s.hasCoord || s.coord.pc !== 0) return out; const add = (x) => { const p = P(x); if (p != null && p !== me && out.indexOf(p) < 0) out.push(p); }; for (const y of s.s1bP) add(y[0]); for (const [x, at] of s.s1bAt) if (s.TICK - at <= K.S1B_FRESH) add(x); return out; },   // L2.15: the far ends of my Section-1 bridges (the stage flood rides them; the receiver keeps the copy parked until its corner goes silent)
       e2Src() { const s = raw(), R = GifOS.meshRoles, Tp = GifOS.meshTopo; if (!s || !s.hasCoord || s.coord.pc === 0 || !R || !Tp) return null; const src = R.e2SrcOf({ pc: s.coord.pc, r: s.coord.r, i: 0 }, (c) => s.occGet(Tp.ckey(c)) >= 0); return src ? P(s.occGet(Tp.ckey(src))) : null; },
       // The old page's door and fork helpers: the new seat runs its own L16 knocker and L8 islands decide.
-      heardFrom() {}, answerDoor() {}, chooseFork() { return false; },
+      heardFrom(p) { const s = raw(); if (!s || !s.d6cHeard) return; const x = ids.nid(p); if (x >= 0 && x !== s.id) s.d6cHeard(x); },   // D6c.7.3: a sealed signalling frame of p is a word from p
+      relayNoSock(p) { const s = raw(); if (!s || !s.d6cNoSock) return; const x = ids.nid(p); if (x >= 0 && x !== s.id) s.d6cNoSock(x); },   // D6c.7.3: the relay's nosock for my ask of p
+      answerDoor() {}, chooseFork() { return false; },
       get gspInAll() { return counters.gspInAll; }, get gspRefused() { return counters.gspRefused; },
       get gspForged() { return counters.gspForged; }, get gspDropped() { return counters.gspDropped; }, get gspRefusedLink() { return counters.gspRefusedLink; },
     };

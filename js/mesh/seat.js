@@ -794,8 +794,10 @@
       for (const [k, e] of this.doorAsk) { if (k !== skip && this.TICK - e[0] >= K.DARK_WAIT && this.TICK - e[1] <= K.DARK_ASK_FRESH) out.push(k); if (out.length >= 32) break; }
       return out;
     },
+    // C++: mesh.cpp:Seat::d6cDoor (D6c.7.2: while my clock for a name on an owned link runs I stand at the door for it)
+    d6cDoor() { for (const e of this.d6cAt.values()) if (e[0] >= 0) return true; return false; },
     // C++: mesh.cpp:Seat::socketed
-    socketed() { return this.state !== 3 || (this.hasCoord && this.coord.pc === 0) || (!l13MergingOf(this) && this.TICK - this.l13KnockAt <= K.RELAY_TTL) || this.doorCarry || this.doorCallOn() || this.TICK - this.l1617At < K.L16_17_DOOR; },   // L16.17: an admitter stands at the door for the seat it placed   // FHOP.8: a friend called to the door holds a door socket while it stands there
+    socketed() { return this.state !== 3 || (this.hasCoord && this.coord.pc === 0) || (!l13MergingOf(this) && this.TICK - this.l13KnockAt <= K.RELAY_TTL) || this.doorCarry || this.d6cDoor() || this.doorCallOn() || this.TICK - this.l1617At < K.L16_17_DOOR; },   // L16.17: an admitter stands at the door for the seat it placed   // FHOP.8: a friend called to the door holds a door socket while it stands there
     // C++: mesh.cpp:Seat::doorCallOn
     // FHOP.8: a friend called to the door (doorCall, island.js) answers there as a greeter until doorCallUntil.
     doorCallOn() { return this.hasCoord && this.state === 3 && this.coord.pc !== 0 && this.TICK < this.doorCallUntil; },

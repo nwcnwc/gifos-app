@@ -274,6 +274,9 @@
     ["l31Pend", "[L31Pend]"],   // vector<L31Pend>  (line 1066)
     ["l31Done", "[L31Done]"],   // vector<L31Done>  (line 1066)
     ["l33Deny", "{u64:i32}"],   // OMap<uint64_t,int>  (line 1070)
+    ["d6cAt", "{i32:(i64,i32)}"],   // OMap<int,pair<long long,int>>  (line 1070)
+    ["d6cAsk", "{i32:(i64,i32)}"],   // OMap<int,pair<long long,int>>  (line 1070)
+    ["d6cMe", "u64"],   // uint64_t = 0  (line 1070)
     ["l33ChildNc", "i32"],   // int = -1  (line 1070)
     ["askTick", "i32"],   // int = -1  (line 1079)
     ["joinTick", "i32"],   // int = -1  (line 1079)
@@ -1031,6 +1034,7 @@
     l31Got: false,
     l31BridgeCk: 0,
     l31Bridge: -1,
+    d6cMe: 0,
     l33ChildNc: -1,
     askTick: -1,
     joinTick: -1,

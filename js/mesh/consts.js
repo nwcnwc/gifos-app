@@ -213,6 +213,7 @@
     L711_WIN: 60,   // C++: mesh_rcleft.inc:L711_WIN
     L711_PEND: 16,   // C++: mesh_rcleft.inc:L711_PEND
     KEEP_MAX: 4,   // C++: mesh_linkset.inc:KEEP_MAX
+    D6C7_ASK2: 60,   // C++: mesh_mltail.inc:D6C7_ASK2  (TIMING_SIG_NOSOCK_T>TIMING_LINK_DIAL_FAIL ? TIMING_SIG_NOSOCK_T : TIMING_LINK_DIAL_FAIL)
     L25_WIT_WAIT: 16,   // C++: mesh_witness.inc:L25_WIT_WAIT  (L25_WAIT)
     L25_WIT_MIN: 3,   // C++: mesh_witness.inc:L25_WIT_MIN
     L43_WAIT: 76,   // C++: mesh_ijoin.inc:L43_WAIT  (60+L5_SETTLE)

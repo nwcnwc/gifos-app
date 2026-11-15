@@ -105,15 +105,33 @@
       this.f.fabricNoSock(this.id, g);
     },
 
-    // C++: mesh_mltail.inc:Seat::d6cGone (D6c.7, H9 one clock: a name unheard first-hand for the healing bound is not believed)
-    d6cGone(x) {
+    // C++: mesh_mltail.inc:Seat::d6cHeard (D6c.7.3: any word from x restarts my clock for it)
+    d6cHeard(x) {
+      if (!this.d6cAt.size) return; const u = this.d6cAt.get(x); if (u === undefined) return;
+      if (u[0] >= 0) u[0] = this.TICK; u[1] = 0; this.d6cAsk.delete(x);
+    },
+    // C++: mesh_mltail.inc:Seat::d6cNoSock (D6c.7.3: the relay's nosock for my last ask)
+    d6cNoSock(x) {
+      if (!this.d6cAt.size) return; const a = this.d6cAsk.get(x); if (a === undefined || a[1]) return;
+      a[1] = 1; const u = this.d6cAt.get(x); if (u !== undefined) u[1]++;
+    },
+    // C++: mesh_mltail.inc:Seat::d6cGone (D6c.7, H9 one clock: nobody can reach a name on an owned link of mine for the healing bound: it is gone)
+    d6cGone(x, c, rd) {
+      const k = ckey(c), TICK = this.TICK;
       if (!this.hasCoord || this.state !== 3) return false;
-      const TICK = this.TICK, g = this.dials.goneAt(x); if (g < 0 || g > TICK || TICK - g < K.ORPHAN_T) return false;
-      const ol = ownedLinks(this.coord); let any = false;
-      for (let q = 0; q < ol.length; q++) { const k = ckey(ol[q]); if (this.occGet(k) !== x) continue; any = true;
-        this.trace('D6c.7-GONE', this.id, ol[q], 'peer=%d since=%lld', x, TICK - g);
-        this.occDrop(k, 'unheard-gone'); this.live.delete(k); this.s1seen.delete(k); this.kidful.delete(k); this.tlForget(k); }
-      this.redial.delete(x); return any;
+      const u = this.d6cAt.get(x); if (u === undefined) return false;   // no dial of mine as this link's owner yet
+      if (u[0] === -3) return false;   // my first dial as its owner is not out yet
+      if (u[0] < 0) { u[0] = TICK; u[1] = 0; this.d6cAsk.delete(x); this.dials.lapse(x); rd[0] = TICK; this.trace('D6c.7-DOOR', this.id, c, 'peer=%d', x); return false; }   // .1/.2: my own dial ended unopened: the clock starts, I stand at the door and dial again at once
+      if (TICK - u[0] < K.ORPHAN_T) return false;
+      if (u[1] >= 2) {
+        this.trace('D6c.7-GONE', this.id, c, 'peer=%d since=%lld', x, TICK - u[0]);
+        this.occDrop(k, 'unheard-gone'); this.live.delete(k); this.s1seen.delete(k); this.kidful.delete(k); this.tlForget(k);
+        this.d6cAt.delete(x); this.d6cAsk.delete(x); this.redial.delete(x); return true;
+      }
+      const a = this.d6cAsk.get(x);
+      if (a !== undefined && (a[1] ? TICK - a[0] <= K.D6C7_ASK2 : TICK < rd[0])) return true;   // .3: the second ask when the page's memory of the first nosock has lapsed (until then its offers walk and never reach the relay), never sooner than a dial's length; an ask the relay did not answer is repeated on the ladder
+      if (a !== undefined && !a[1]) u[1] = 0;   // the last ask went unanswered: the nosocks no longer stand in a row
+      this.d6cAsk.set(x, [TICK, 0]); this.dials.lapse(x); this.trace('D6c.7-ASK', this.id, c, 'peer=%d n=%d', x, u[1]); this.f.fabricDial(this.id, x); rd[0] = TICK + rd[1]; rd[1] = Math.min(rd[1] * 2, K.REDIAL_MAX); return true;
     },
     // C++: mesh_mltail.inc:Seat::l33NoSock
     l33NoSock(g) {

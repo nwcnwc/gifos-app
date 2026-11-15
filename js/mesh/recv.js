@@ -66,7 +66,7 @@
       const TICK = this.TICK;
       if (this.hostile && this.hostileRecv(m)) return;
       if (m.from >= 0 && m.from !== id && m.t !== 'UNNEEDED' && !m.dgOnly && !m.l10E) this.callBook.touchOut(m.from, TICK);   // CALL
-      { if (m.from >= 0 && m.from !== id) this.dials.heard(m.from); if (m.sig && m.id >= 0 && m.id !== id && m.t !== 'LEAVE' && m.t !== 'TRANSLOST') this.dials.heard(m.id); }   // L17
+      { if (m.from >= 0 && m.from !== id) { this.dials.heard(m.from); this.d6cHeard(m.from); } if (m.sig && m.id >= 0 && m.id !== id && m.t !== 'LEAVE' && m.t !== 'TRANSLOST') { this.dials.heard(m.id); this.d6cHeard(m.id); } }   // L17
       if ((m.t === 'HELLO' || m.t === 'YIELD') && !m.l10E && !m.dgOnly) this.l25131Note(m);   // L25.13.1: a placer I asked answers with its own cell, taken where the frame lands
       if (m.id >= 0 && m.id !== id && m.from === m.id && !m.l10E && !m.dgOnly && (m.t === 'HELLO' || m.t === 'CLAIM' || m.t === 'PHONE' || m.t === 'PONG' || m.t === 'CONFIRM') && m.ck) { if (this.l22Cell.size > 64) this.l22Cell.clear(); this.l22Cell.set(m.id, [m.ck, TICK]); }   // L22
       if (this.hasCoord && this.state === 3 && m.id >= 0 && m.id !== id && !m.l10E && !m.dgOnly && (m.t === 'HELLO' || m.t === 'CLAIM' || m.t === 'PHONE' || m.t === 'CONFIRM') && m.ck === ckey(this.coord)) { if (this.l22Rival.size > 32) this.l22Rival.clear(); this.l22Rival.set(m.id, TICK); }   // L22

@@ -45,7 +45,7 @@
       }   // a seated seat records the empty list too; R3: empty list => I minted the genesis key & found the home
       if ((this.state === 0 || this.state === 1) && this.joinStart < 0) this.joinStart = TICK;
       if ((this.state === 0 || this.state === 1) && this.joinStart >= 0 && TICK - this.joinStart > K.STRAND_TTL && (this.lastReach < 0 || TICK - this.lastReach > K.STRAND_TTL) && !this.l16Saw && !this.evilDoor) { this.stranded = true; this.strandedAt = TICK; return; }   // R6
-      for (const g of m.list) this.dials.heard(g);   // L17
+      for (const g of m.list) { this.dials.heard(g); this.d6cHeard(g); }   // L17 (D6c.7.3: a word)
       this.lastGreeters = m.list.slice(); this.lastGreetersAt = m.listAt.slice(); this.greetersAt = TICK;
       if (this.doorWordList(m)) return;   // FHOP.8.2 (mesh_island.inc): the friend whose door word I heard is listed: asked now
       if (this.foundKnock && this.state === 3) { this.foundKnock = false; const un = this.l813Unfound(m); this.islandAsked.clear(); this.entEp.clear(); if (un) return; }   // L8.1.3 (mesh_roomterm.inc)
