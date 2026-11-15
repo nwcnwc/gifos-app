@@ -691,7 +691,7 @@
       if (L.readyMe || L.state === 'closed') return;
       L.client = clientEnd(io.blocked(), L.farBlocked, L.opener);
       if (L.client) { if (!L.cred) { L.cred = credFor(L, 'free'); L.cred.start(); } }
-      else { L.readyMe = true; io.sendTv(L.far, { k: 'tv', q: 'r', l: L.l }); maybeDial(L); }
+      else { L.readyMe = true; io.reset(L.far); io.sendTv(L.far, { k: 'tv', q: 'r', l: L.l }); maybeDial(L); }   // both ends dial on a fresh pc: a half-made one from a door knock (still checking, an offer of its own out) ignores the dial ask
       if (L.state === 'ask') L.state = 'swap';
     }
     // ---- TURN.18: the web path -------------------------------------------------------------------------------------
