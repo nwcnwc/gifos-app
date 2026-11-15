@@ -13638,6 +13638,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }),
         // a listed room tried by dialling its heads (the relay's answer names their peer ids): the ordinary dial; reached
         // one: that room; none inside one dial's verdict (FHOP_RELAY_ASK): not this room. The join that follows reuses the pc.
+        // SUB.8.1: the Section-1 seats of my own room (me first), for the probe: a pipe end names them to the far end, whose
+        // side dials them one at a time on a plain connection (never a seat the mesh saw leave or the relay saw go).
+        s1Seats: () => {
+          if (!meshNode || !myId) return [];
+          const c = meshCoord(); if (!c || c.pc !== 0) return [];
+          return [myId].concat(meshNode.standbyCands().filter((x) => x.pid !== myId && !meshGone.has(x.pid) && !relayGone.has(x.pid)).map((x) => x.pid));
+        },
         probeDoor: (r, pids) => {
           const now = Date.now(), tick = meshNode.tickMs(), verdict = K.FHOP_RELAY_ASK * tick;
           let pending = false;

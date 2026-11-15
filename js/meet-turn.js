@@ -272,9 +272,17 @@
   //                                         direct and the pipe on TURN: the two change places, the TURN path stays as s<r>)
   //   {k:'tv', q:'d', l:'s<r>'}            the opener's word: this standby's ends reach each other directly (a plain pc of
   //                                         ours reached 'connected' off TURN), so it is dialled with no TURN server (SUB.5)
+  //   SUB.8.1 THE PROBE (how a pair of seats of two subrooms learns it reaches; all on the one `tv` envelope, SUB.9):
+  //   {k:'tv', q:'o', l:'l<r>', m}         a pipe end to the other: my side's Section-1 seats (peer ids, comma-joined), once a change
+  //   {k:'tv', q:'o', l:'s<r>', m}         the pipe's opener end to a seat of its own subroom: dial the far seat m on a plain
+  //                                         connection and tell me; that seat's answer carries b: 1 it came up, 0 no path within
+  //                                         the direct verdict, 2 I hold a path of this link to it already (not tried)
+  //   {k:'tv', q:'o', l:'l<r>', m, b:1}    the opener end to the far end: stand your side's standby end on your seat m (a
+  //                                         seat of mine reaches it directly)
   //   {k:'tv', q:'w', l, m}       TURN.18: this link runs over the web path; m (the opener's word) names its host
   //   {k:'tv', q:'b', l, b}       busy: my end paused its video because the server throttles (b 1), or sends again (b 0)
   const TV_KEYS = 'k,q,l,d,b,e,n,m';
+  const PROBE_RE = /^[A-Za-z0-9_]{1,64}(,[A-Za-z0-9_]{1,64}){0,24}$/;   // SUB.8.1: at most a Section 1 of peer ids
   const LINK_RE = /^[ls][0-9]{1,2}$/, DEV_RE = /^[A-Za-z0-9_.-]{1,16}$/, NONCE_RE = /^[0-9a-f]{18}$/, MAC_RE = /^[A-Za-z0-9_-]{43}$/, E36_RE = /^[0-9a-z]{1,11}$/;
   function tvOk(f) {
     if (!f || typeof f !== 'object' || Array.isArray(f) || f.k !== 'tv' || typeof f.l !== 'string' || !LINK_RE.test(f.l)) return false;
@@ -286,6 +294,7 @@
     if (f.q === 'r' || f.q === 'i' || f.q === 't' || f.q === 'd') return true;
     if (f.q === 's') return (f.d === undefined || (typeof f.d === 'string' && DEV_RE.test(f.d))) && (f.e === undefined || (typeof f.e === 'string' && /^[0-9a-z]{1,2}$/.test(f.e)));
     if (f.q === 'p' || f.q === 'b') return f.b === 0 || f.b === 1;
+    if (f.q === 'o') return typeof f.m === 'string' && PROBE_RE.test(f.m) && (f.b === undefined || f.b === 0 || f.b === 1 || f.b === 2);
     return false;
   }
 
@@ -774,6 +783,12 @@
       if (L && L.sb && L.opener && !L.direct && L.farPid && L.l === f.l && f.q !== 'x' && io.directSeen && io.directSeen(L.farPid)) { setDirect(L); L.dSentAt = io.now(); io.sendTv(L.far, { k: 'tv', q: 'd', l: L.l }); }
       if (f.q === 't') { if (L && L.sb && L.l === f.l) takeover(L, f.b === 1 ? 'healed' : 'the far standby end took over'); return; }
       // the far end names its side's standby seat only while it holds no standby up: the opener opens one toward it
+      if (f.q === 'o') {   // SUB.8.1, between the two ends of a pipe
+        if (!L || L.sb || L.l !== f.l || L.state === 'closed') return;
+        if (f.b === undefined) L.farS1 = String(f.m).split(',');
+        else if (f.b === 1 && !L.opener && s1List().indexOf(f.m) >= 0) { log('turn-probe stand ' + L.l + ' on my seat ' + short(f.m)); L.sbWant = f.m; restand(L); }
+        return;
+      }
       if (f.q === 's') { if (L && !L.sb && L.opener && L.l === f.l && f.d) { L.sbUp = false; L.sbAt = 0; if (L.farSb !== f.d) L.farSb = f.d; } return; }   // (sbAt 0: ask my side's seat at once; a standby already up answers 'r' at once, bindStandby)
       if (f.q === 'x') {
         if (L && L.l === f.l) {
@@ -1047,7 +1062,8 @@
         if (!(L.sbSelf && io.standbySeat && io.standbySeat())) return;   // no seat of my side could end it then: warm again the moment one can
         L.sbAt = 0;
       }
-      const r = pipeNo(L.l), sl = 's' + r, S = io.standbySeat ? io.standbySeat() : null;
+      if (L.sbWant && L.sbWant !== io.me() && !io.alive(L.sbWant)) L.sbWant = null;
+      const r = pipeNo(L.l), sl = 's' + r, S = L.sbWant ? (L.sbWant === io.me() ? null : { pid: L.sbWant, dev: '' }) : (io.standbySeat ? io.standbySeat() : null);   // SUB.8.1: the seat a probe found, else TURN.9's
       log('turn-standby warm ' + L.l + (L.opener ? ' opener far-seat=' + (L.farSb || '-') : ' target') + ' my-seat=' + (S ? short(S.pid) + '/' + S.dev : 'self'));
       L.sbSelf = !S;
       if (!L.opener) {
@@ -1070,8 +1086,13 @@
     }
     // A frame from a seat of my own subroom about a standby (no link between us): returns true when it was one.
     function onSide(from, f) {
-      if (f.l[0] !== 's' || ['s', 'r', 'x', 't'].indexOf(f.q) < 0) return false;
+      if (f.l[0] !== 's' || ['s', 'r', 'x', 't', 'o'].indexOf(f.q) < 0) return false;
       const r = pipeNo(f.l);
+      if (f.q === 'o') { if (f.b === undefined) probeAsk(from, f.l, f.m); else probeHeard(from, f.l, f.m, f.b); return true; }   // SUB.8.1
+      if (f.q === 'x' && !(livePipe(r) && livePipe(r).sbSeat === from)) {   // my live end stands its standby elsewhere: my standby end closes
+        const mine = Array.from(links.values()).filter((M) => M.sb && M.l === f.l && M.liveEnd === from); for (const M of mine) close(M, 'replaced');
+        if (mine.length) return true;
+      }
       if (f.q === 's' && f.d && f.e === undefined) {   // my standby seat's device: name it to the far side
         const P = livePipe(r);
         if (P && !P.opener && P.sbSeat === from) io.sendTv(P.far, { k: 'tv', q: 's', l: P.l, d: f.d });
@@ -1105,6 +1126,63 @@
         if (M.liveEnd !== liveEnd) { M.liveEnd = liveEnd; log('turn-standby ' + sl + ' now answers to ' + short(liveEnd)); }
         if (M.state === 'up') io.sendTv(liveEnd, { k: 'tv', q: 'r', l: sl, b: M.direct ? 1 : 0 });
       }
+    }
+    // ---- SUB.8.1 THE PROBE (docs/turn-0926.md; the sim's subProbeTick) ---------------------------------------------------
+    // No page knows that two seats of two subrooms reach each other until one dialled the other and the connection came
+    // up. While my pipe still holds a path a direct pair could replace, I (its opener end) have one seat of my side at a
+    // time dial one Section-1 seat of the far side on a plain connection; a hit is where the standby is stood (SUB.8 then
+    // moves the pipe there, make before break). Rate: one dial per direct verdict until every seat of the bigger side had
+    // a turn, then one per TURN_RETRY, doubling up to TURN_RETRY_MAX_X once every pair left has failed (TURN.10's wait).
+    const probes = new Map();   // far peer id -> { from, sl, at }: a dial I make for a pipe end of my subroom
+    function s1List() { try { return (io.s1Seats ? io.s1Seats() : []) || []; } catch (e) { return []; } }
+    function probeSay(to, sl, y, b) { if (to === io.me()) probeHeard(to, sl, y, b); else io.sendTv(to, { k: 'tv', q: 'o', l: sl, m: y, b }); }
+    function probeAsk(from, sl, y) {
+      if (links.has(y)) { probeSay(from, sl, y, 2); return; }                          // one connection a pair: a path of this link is not tried
+      if (io.directSeen && io.directSeen(y)) { probeSay(from, sl, y, 1); return; }     // a plain connection of mine reached it before
+      if (probes.has(y)) return;
+      probes.set(y, { from, sl, at: io.now() }); if (probes.size > 16) probes.delete(probes.keys().next().value);
+      log('turn-probe dial ' + short(y) + ' ' + sl);
+      try { if (io.probeDoor) io.probeDoor(pipeNo(sl), [y]); } catch (e) {}
+    }
+    function probeStep(now) { for (const [y, p] of Array.from(probes)) { const hit = !!(io.directSeen && io.directSeen(y)); if (hit || now - p.at > ASK_MS) { probes.delete(y); probeSay(p.from, p.sl, y, hit ? 1 : 0); } } }
+    // My standby is to stand elsewhere: its present seat is told, and the warm-up starts again (warmStandby reads sbWant).
+    function restand(L) {
+      const sl = 's' + pipeNo(L.l);
+      if (L.sbSeat && L.sbSeat !== io.me() && L.sbSeat !== L.sbWant) io.sendTv(L.sbSeat, { k: 'tv', q: 'x', l: sl });
+      if (L.sbWant !== io.me()) for (const M of Array.from(links.values())) if (M.sb && M.l === sl && M.liveEnd === io.me()) close(M, 'replaced');
+      L.sbUp = false; L.sbDirect = false; L.sbAt = 0; L.sbSeat = null; if (L.opener) L.farSb = null;
+    }
+    function probeHeard(from, sl, y, b) {
+      const L = livePipe(pipeNo(sl)), P = L && L.pr; if (!L || !L.opener || !P || P.q !== from || P.y !== y) return;
+      P.q = null;
+      if (b === 2) { P.held.add(from + '|' + y); return; }
+      if (b !== 1) { P.fails++; return; }
+      P.ok.add(from + '|' + y); P.fails = 0; P.x = 1;
+      log('turn-probe hit ' + short(from) + ' reaches ' + short(y));
+      const disjoint = from !== io.me() && y !== L.far;
+      if (L.sbUp && L.sbDirect) return;                 // a direct standby stands already
+      if (L.direct && !disjoint) return;                // beside a direct pipe only a pair on other seats is a better standby
+      L.sbWant = from; io.sendTv(L.far, { k: 'tv', q: 'o', l: L.l, m: y, b: 1 }); restand(L);
+    }
+    function probeRound(L, now) {
+      if (L.direct && L.sbUp && L.sbDirect) { L.pr = null; return; }   // two direct paths: nothing left to find
+      const A = s1List(), Z = L.farS1 || []; if (!A.length || !Z.length) return;
+      const sees = A.join() + '|' + Z.join();
+      let P = L.pr; if (!P || P.sees !== sees) P = L.pr = { sees, nextAt: now, x: 1, fails: 0, n: 0, seat: P ? P.seat : 0, turn: new Map(), q: null, y: null, sentAt: 0, ok: P ? P.ok : new Set(), held: new Set() };
+      if (P.q) { if (now - P.sentAt < ASK_MS + 2 * RESEND_MS) return; P.q = null; P.fails++; }   // no word back: a miss
+      if (now < P.nextAt) return;
+      let open = 0, pq = null, py = null, ps = -1;
+      for (let k = 0; k < A.length; k++) {
+        const si = (P.seat + k) % A.length, q = A[si], t0 = P.turn.get(q) || 0;
+        for (let j = 0; j < Z.length; j++) { const y = Z[(si + t0 + j) % Z.length], key = q + '|' + y; if ((q === io.me() && y === L.far) || P.ok.has(key) || P.held.has(key)) continue; open++; if (!pq) { pq = q; py = y; ps = si; P.turn.set(q, t0 + j + 1); } }
+      }
+      if (!pq) return;
+      if (P.fails >= open) { P.x = Math.min(2 * P.x, K.TURN_RETRY_MAX_X); P.fails = 0; }
+      P.q = pq; P.y = py; P.sentAt = now; P.seat = (ps + 1) % A.length; P.n++;
+      P.nextAt = now + (P.n < Math.max(A.length, Z.length) ? ASK_MS : RETRY_MS * P.x);
+      const sl = 's' + pipeNo(L.l);
+      log('turn-probe ask ' + short(pq) + ' -> ' + short(py) + ' n=' + P.n + ' x=' + P.x);
+      if (pq === io.me()) probeAsk(io.me(), sl, py); else io.sendTv(pq, { k: 'tv', q: 'o', l: sl, m: py });
     }
     // A live end whose pipe is lost, or (SUB.8, 'healed') whose standby is on a better path: its standby seat takes the
     // pipe over. A lost pipe's part ends here; a pipe on TURN that gave way to a direct standby stays, as the standby.
@@ -1354,6 +1432,10 @@
           if (L.sb && L.liveEnd === io.me()) { const P = livePipe(pipeNo(L.l)); if (P) { P.sbUp = true; P.sbDirect = !!L.direct; } }
         }
         if (L.mine && !L.peer && !L.direct && L.farDev && now - (L.vSentAt || 0) > RESEND_MS) { L.vSentAt = now; io.sendTv(L.far, { k: 'tv', q: 'v', l: L.l, e: L.mine.e.toString(36), n: L.mine.n, m: L.mine.m }); }   // the far end may have missed it (a takeover renames the link)
+        if (L.state === 'up' && !L.sb) {   // SUB.8.1: each pipe end names its side's Section-1 seats once a change; the opener end runs the rounds
+          const mine = s1List().slice(0, 25).join(','); if (mine && mine !== L.s1Sent && PROBE_RE.test(mine)) { L.s1Sent = mine; io.sendTv(L.far, { k: 'tv', q: 'o', l: L.l, m: mine }); }
+          if (L.opener) probeRound(L, now);
+        }
         if (L.state === 'up' && !L.sb) warmStandby(L, now);   // SUB.8: a direct pipe keeps its standby too (the bridging seat may leave)
         if (L.state === 'up' || L.state === 'dial') io.keep(L.far);
         pump(L);
@@ -1362,6 +1444,7 @@
           if (s) for (const x of s.view) if (x !== L.far && L.side.indexOf(x) < 0 && L.side.length < SIDE_MAX && io.reach(x) === 'direct') L.side.push(x);
         }
       }
+      probeStep(now);
       planVideo(now);
       subStep(now);
       regrantStep(now);
@@ -1421,7 +1504,7 @@
           mine: !!L.mine, peer: !!L.peer, readyMe: L.readyMe, readyFar: L.readyFar, cred: L.cred ? L.cred.state() : null, credRefusal: L.cred ? L.cred.refusal() : null,
           pool: L.paidMe ? 'paid' : 'free', paid: L.paid ? L.paid.state() : null, paidRefusal: L.paid ? L.paid.refusal() : null, paidFar: L.paidFar,
           vouched: L.vouched, video: L.video, upAt: L.upAt, side: L.side.length, web: L.web, webHost: L.webHost || null,
-          step: L.thr ? L.thr.step : null, cap: L.cap || null, busy: L.busy, farBusy: L.farBusy, standbyN: L.standbyN, lastSwitchMs: L.lastSwitchMs || null, direct: !!L.direct, sb: !!L.sb, sbUp: !!L.sbUp });
+          step: L.thr ? L.thr.step : null, cap: L.cap || null, busy: L.busy, farBusy: L.farBusy, standbyN: L.standbyN, lastSwitchMs: L.lastSwitchMs || null, direct: !!L.direct, sb: !!L.sb, sbUp: !!L.sbUp, probes: L.pr ? L.pr.n : 0, probeX: L.pr ? L.pr.x : 0 });
         return { links: out, sub: { st: sub.st, out: sub.out, list: sub.list.slice(), retryAt: sub.retryAt, found: sub.found } };
       },
     };
