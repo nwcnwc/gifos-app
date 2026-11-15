@@ -64,7 +64,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%A6%3C/text%3E%3C/svg%3E">
 <!-- CHANNEL LOADER — runs before any app code. The site root (/) is the UNRELEASED
      edge build; releases are immutable /versions/<x.y.z>/ snapshots. A fresh
-     visitor follows the live-release pointer (version.json.latest, may be four-part; `current` only if latest is malformed). The edge
+     visitor follows the live-release pointer (version.json.latest, may be four-part; a missing or malformed latest means no redirect). The edge
      build and pins to older snapshots are chosen only in Settings, behind a
      confirm; a link never attaches anyone. '?stable'/'?unpin' returns to the
      default release channel. Snapshots under /versions/ never
@@ -177,7 +177,7 @@ window.GIFOS_VERSION = 'edge';
     try {
       var x = new XMLHttpRequest(); x.open('GET', '/version.json?ts=' + Date.now(), false); x.send();
       // `latest` (may be four-part, 0.9.24.1) first; `current` is the three-part legacy pointer.
-      var v = ''; try { var j = JSON.parse(x.responseText) || {}; v = (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(j.latest || '')) ? j.latest : j.current) || ''; } catch (e) {}
+      var v = ''; try { var j = JSON.parse(x.responseText) || {}; v = (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(j.latest || '')) ? j.latest : ''); } catch (e) {}
       if (v) { try { localStorage.setItem('gifos_current', v); } catch (e) {} return to(v); }
     } catch (e) {}
     return stay;
@@ -197,7 +197,7 @@ window.GIFOS_VERSION = 'edge';
       var x = new XMLHttpRequest(); x.open('GET', '/version.json?ts=' + Date.now(), true); x.timeout = LOADER_T.VERSION_ASK_MS;
       x.onload = function () {
         // `latest` (may be four-part, 0.9.24.1) first; `current` is the three-part legacy pointer.
-        var v = ''; try { var j = JSON.parse(x.responseText) || {}; v = (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(j.latest || '')) ? j.latest : j.current) || ''; } catch (e) {}
+        var v = ''; try { var j = JSON.parse(x.responseText) || {}; v = (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(j.latest || '')) ? j.latest : ''); } catch (e) {}
         if (!/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(v))) { go(d.redirect); return; }
         try { localStorage.setItem('gifos_current', v); } catch (e) {}
         go('/versions/' + v + d.ask);

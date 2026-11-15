@@ -155,9 +155,9 @@
     // them as an edge user and hand their install to a desktop that is about
     // to redirect itself into a snapshot.
     const v = await versionJson();
-    // `latest` (may be four-part) first; `current` is the three-part legacy pointer.
+    // `latest` (may be four-part) is the one pointer; `current` is frozen legacy for pre-0.9.24 pages only.
     if (v && /^\d+\.\d+\.\d+(\.\d+)?$/.test(String(v.latest || ''))) return String(v.latest);
-    return (v && v.current) || null;
+    return null;
   }
 
   // WHY THIS NO LONGER REDIRECTS INTO THE SNAPSHOT'S OWN STORE. It used to: a

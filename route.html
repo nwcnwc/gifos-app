@@ -67,7 +67,7 @@
         try {
           // `latest` (may be four-part) first; `current` is the three-part legacy pointer.
           var j = JSON.parse(x.responseText) || {}, VER = /^\d+\.\d+\.\d+(\.\d+)?$/;
-          var v = String((VER.test(String(j.latest || '')) ? j.latest : j.current) || '');
+          var v = String(VER.test(String(j.latest || '')) ? j.latest : '');
           if (x.status >= 200 && x.status < 300 && VER.test(v)) localStorage.setItem('gifos_current', v);
         } catch (e) {}
         finish();
