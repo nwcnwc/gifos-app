@@ -18574,11 +18574,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // link — refreshOutbound attaches the missing camera/mic senders on it
       // (otherwise the new mate sees a black direct tile until a transport
       // rebuild); one that STOPPED being a mate gets its video parked.
-      // The key is the verdict refreshOutbound applies (micPeer/camPeer per pc), not only the row it is mostly read from: a
-      // joiner whose view named its linked mates at no cell yet withheld its mic at enableMedia, and the row set had already
-      // settled, so nothing re-ran it and nobody heard the joiner for 30 s (echo-tones steady: p1 never heard p5).
+      // The key is also the verdict refreshOutbound applies (micPeer/camPeer) on each pc whose media enableMedia already set: a
+      // joiner whose view named its linked mates at no cell yet withheld its mic there, the row set had already settled, and
+      // nothing re-ran it, so nobody heard the joiner for 30 s (echo-tones steady: p1 never heard p5). Only pcs past
+      // enableMedia, only a verdict that holds: a newcomer outside my row or a pc still being born is not a change of mine.
       let rmSig = rowMates().sort().join(',');
-      for (const [pid, q] of peers) if (q.pc) rmSig += '|' + pid + (micPeer(pid) ? 'm' : '') + (camPeer(pid) ? 'c' : '');
+      for (const [pid, q] of peers) if (q.pc && q.mediaOn) { const v = (micPeer(pid) ? 'm' : '') + (camPeer(pid) ? 'c' : ''); if (v) rmSig += '|' + pid + v; }
       if (rmSig !== lastRmSig) { lastRmSig = rmSig; refreshOutbound(); }
       reconcileMosaic(); // the nested mosaic follows the same occ (3b)
       applyBuses();    // bus membership follows the same arithmetic
