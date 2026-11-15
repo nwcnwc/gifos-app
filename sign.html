@@ -115,40 +115,54 @@
     // A visitor who HAS a stored release is asked without blocking, bounded by
     // VERSION_ASK_MS (the caller below, askLive): a stalled network must not
     // hold the page, so past the bound the stored release answers, as offline.
-    // Only a first visit (nothing stored) asks synchronously; with no answer
-    // at all it runs this edge build.
-    if (cur) return { redirect: to(cur).redirect, ask: here };
-    try {
-      var x = new XMLHttpRequest(); x.open('GET', '/version.json?ts=' + Date.now(), false); x.send();
-      // `latest` (may be four-part, 0.9.24.1) first; `current` is the three-part legacy pointer.
-      var v = ''; try { var j = JSON.parse(x.responseText) || {}; v = (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(j.latest || '')) ? j.latest : ''); } catch (e) {}
-      if (v) { try { localStorage.setItem('gifos_current', v); } catch (e) {} return to(v); }
-    } catch (e) {}
-    return stay;
+    // A first visit (nothing stored) is asked the same way and never blocks
+    // either: a synchronous ask held a first visitor on a stalled network on a
+    // blank page until the browser gave up (23 min in a stalled-network run).
+    // With no answer in the bound it runs this edge build: the caller reloads
+    // the page once with gifos_ask_edge set, and that load stays here.
+    var once = null;
+    try { once = sessionStorage.getItem('gifos_ask_edge'); if (once) sessionStorage.removeItem('gifos_ask_edge'); } catch (e) {}
+    if (once) return stay;
+    // `clear`: ?stable/?unpin/?latest just cleared a pin (the page still asks for the live release).
+    return { redirect: cur ? to(cur).redirect : null, ask: here, clear: cleared || undefined };
   }
   window.gifosPinTarget = pinTarget;
   // GENERATED from gifos timings.json by scripts/gen-timings.mjs (the line below): do not edit by hand.
-  var LOADER_T = { VERSION_ASK_MS: 1900 };
-  // A stored release is asked about without blocking: the rest of this page
-  // (the edge build) is stopped at once, version.json gets LOADER_T.VERSION_ASK_MS to
-  // answer, and the page moves to the live release or, on no answer, to the
-  // stored one. Exactly one move either way.
+  var LOADER_T = { VERSION_ASK_MS: 1900, VERSION_FIRST_ASK_MS: 3900 };
+  // The release is asked about without blocking: the rest of this page (the
+  // edge build) is stopped at once, version.json gets LOADER_T.VERSION_ASK_MS
+  // to answer, and the page moves to the live release or, on no answer, to the
+  // stored one (first visit: this edge build). Exactly one move either way.
   function askLive(d) {
     var moved = false;
     function go(u) { if (moved) return; moved = true; location.replace(u); }
-    try { window.stop(); } catch (e) {}
+    // No answer: the stored release, or (first visit) this edge build, reached
+    // by one marked reload. That edge build is the wrong build for a meeting,
+    // so a first visit waits longer (VERSION_FIRST_ASK_MS) than a returning one. Without session storage there is no mark, so that
+    // page is not stopped: it boots as the edge build unless the answer comes
+    // in the bound.
+    var mark = false;
+    try { sessionStorage.setItem('gifos_ask_probe', '1'); sessionStorage.removeItem('gifos_ask_probe'); mark = true; } catch (e) {}
+    function fallback() {
+      if (d.redirect) { go(d.redirect); return; }
+      if (moved || !mark) { moved = true; return; }
+      moved = true;
+      try { sessionStorage.setItem('gifos_ask_edge', '1'); } catch (e) {}
+      location.reload();
+    }
+    if (d.redirect || mark) { try { window.stop(); } catch (e) {} }
     try {
-      var x = new XMLHttpRequest(); x.open('GET', '/version.json?ts=' + Date.now(), true); x.timeout = LOADER_T.VERSION_ASK_MS;
+      var x = new XMLHttpRequest(); x.open('GET', '/version.json?ts=' + Date.now(), true); x.timeout = d.redirect ? LOADER_T.VERSION_ASK_MS : LOADER_T.VERSION_FIRST_ASK_MS;
       x.onload = function () {
         // `latest` (may be four-part, 0.9.24.1) first; `current` is the three-part legacy pointer.
         var v = ''; try { var j = JSON.parse(x.responseText) || {}; v = (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(j.latest || '')) ? j.latest : ''); } catch (e) {}
-        if (!/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(v))) { go(d.redirect); return; }
+        if (!/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(v))) { fallback(); return; }
         try { localStorage.setItem('gifos_current', v); } catch (e) {}
         go('/versions/' + v + d.ask);
       };
-      x.onerror = x.ontimeout = x.onabort = function () { go(d.redirect); };
+      x.onerror = x.ontimeout = x.onabort = fallback;
       x.send();
-    } catch (e) { go(d.redirect); }
+    } catch (e) { fallback(); }
   }
   var decision = pinTarget(location.pathname, location.search, location.hash);
   if (decision && decision.ask) askLive(decision);
