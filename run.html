@@ -6340,7 +6340,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function fsRefreshIfOpen() {
       if (fsview.classList.contains('on')) fsRefresh();
     }
-    function fsBlurClass(v, bl) { v.classList.remove('blur1', 'blur2'); if (bl) v.classList.add('blur' + bl); }
+    function fsBlurClass(v, bl) { v.classList.remove('blur1', 'blur2'); if (bl) { v.classList.add('blur' + bl); try { blurSized(v); } catch (e) {} } }
     let fsOwnExit = false; // an exit closeFsView asked for is on its way
     let fsFull = false; // the view was the full-screen element at the last change
     let fsAskAt = 0; // when the view last asked the browser for full screen
@@ -6801,6 +6801,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             const h = en.contentRect.height;
             if (w > 0) { en.target.classList.toggle('slim', w < 200); en.target.classList.toggle('thin', w < 116); en.target.classList.toggle('short', w < 200 && h > 0 && h < 130); }
             if (h > 0) en.target.style.setProperty('--th', Math.round(h) + 'px'); // sizes a short tile's initial
+            if (w > 0) en.target.style.setProperty('--bw', Math.round(w) + 'px'); // the receiver blur's width (blurSized)
           }));
         }
         try { makeTile.slimObs.observe(tile); } catch (e) {}
@@ -9638,6 +9639,46 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       };
     }
 
+    // BLUR STRENGTH IS A FRACTION OF THE PICTURE'S WIDTH (Nathan, 2026-11-15:
+    // a fixed radius in pixels read strong on a phone tile and nearly clear on
+    // a big one, and Min was too clear). The sender's blur is the privacy blur:
+    // Min leaves a soft person, Max hides the face. The viewer's blur is only a
+    // backstop against a sender that ships clear video when the rule says blur,
+    // so it is lighter and barely changes an honest, already blurred picture.
+    // The numbers and their derivations live in the global timings table.
+    const BLUR_MIN_FRAC = GifOS.timings.BLUR_MIN_FRAC, BLUR_MAX_FRAC = GifOS.timings.BLUR_MAX_FRAC;
+    const BLUR_VIEW_MIN_FRAC = GifOS.timings.BLUR_VIEW_MIN_FRAC, BLUR_VIEW_MAX_FRAC = GifOS.timings.BLUR_VIEW_MAX_FRAC;
+    const BLUR_PYRAMID_K = GifOS.timings.BLUR_PYRAMID_K;
+    function blurSenderFrac(level) { return level >= 2 ? BLUR_MAX_FRAC : level >= 1 ? BLUR_MIN_FRAC : 0; }
+    function blurViewFrac(level) { return level >= 2 ? BLUR_VIEW_MAX_FRAC : level >= 1 ? BLUR_VIEW_MIN_FRAC : 0; }
+    // The filter's sigma in pixels for a picture w wide (two decimals: a
+    // sub-pixel radius still blurs, and a whole-pixel floor would change the look on small pictures).
+    function blurPx(frac, w) { return Math.max(0, Math.round(frac * w * 100) / 100); }
+    // The mip pyramid's bottom width for the same sigma (at least 2 columns).
+    function blurPyramidBottom(frac) { return Math.max(2, Math.round(BLUR_PYRAMID_K / Math.max(1e-6, frac))); }
+    // The receiver's CSS blur reads the element's own rendered width (--bw)
+    // times the fraction (--blur-view-min/max on the root): one observer keeps
+    // --bw on every element that wears a blur class.
+    try {
+      const rs = document.documentElement.style;
+      rs.setProperty('--blur-view-min', String(BLUR_VIEW_MIN_FRAC));
+      rs.setProperty('--blur-view-max', String(BLUR_VIEW_MAX_FRAC));
+      rs.setProperty('--blur-min', String(BLUR_MIN_FRAC)); // the lobby preview shows the sender's own look
+      rs.setProperty('--blur-max', String(BLUR_MAX_FRAC));
+    } catch (e) {}
+    const blurSizeObs = (typeof ResizeObserver === 'function') ? new ResizeObserver((list) => list.forEach((en) => {
+      if (!en.target.isConnected) { blurSizeObs.unobserve(en.target); en.target.__bwObs = false; return; }
+      const w = Math.round(en.contentRect.width);
+      if (w > 0) en.target.style.setProperty('--bw', w + 'px');
+    })) : null;
+    // A blurred element outside a grid tile (full screen, a face on a shared
+    // screen, the lobby preview) gets its own --bw; a grid tile's comes from
+    // makeTile's observer and is inherited by its video and letter.
+    function blurSized(el) {
+      if (!el || !blurSizeObs || el.__bwObs) return;
+      el.__bwObs = true;
+      try { blurSizeObs.observe(el); } catch (e) {}
+    }
     // Canvas blur that works EVERYWHERE. ctx.filter='blur()' is unsupported in
     // Safari/WebKit (iOS), where it silently no-ops — so the baked-in self-blur
     // canvas drew the RAW camera and your self-view was never blurry. Detect it
@@ -9654,8 +9695,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // Two ping-pong scratch canvases for the iOS fallback's progressive scaling.
     let blurA = document.createElement('canvas'), blurActx = blurA.getContext('2d');
     let blurB = document.createElement('canvas'), blurBctx = blurB.getContext('2d');
-    function blurDraw(ctx, src, dx, dy, dw, dh, px, level) {
-      if (ctxFilterOK) { ctx.filter = 'blur(' + px + 'px)'; ctx.drawImage(src, dx, dy, dw, dh); ctx.filter = 'none'; return; }
+    // frac: the blur's Gaussian sigma as a fraction of the drawn width dw, so
+    // the look is the same at every picture size and on every engine (Nathan,
+    // 2026-11-15: blur depends on picture size). blurSenderFrac and
+    // blurViewFrac hold the room's numbers (GifOS.timings).
+    function blurDraw(ctx, src, dx, dy, dw, dh, frac) {
+      if (ctxFilterOK) { ctx.filter = 'blur(' + blurPx(frac, dw) + 'px)'; ctx.drawImage(src, dx, dy, dw, dh); ctx.filter = 'none'; return; }
       // iOS/WebKit has no ctx.filter. A single big downscale→upscale looks BLOCKY
       // (like a bad connection). Build a mip pyramid instead: halve the image
       // repeatedly (each bilinear step averages neighbours ≈ one Gaussian pass)
@@ -9663,9 +9708,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // bilinear and the final stretch expands an already-smooth gradient, the
       // result reads as a real Gaussian blur, not fat pixels. The bottom width
       // 'tPx' is the master knob: smaller bottom = stronger AND smoother blur.
-      // Tuned against native blur() so iOS matches (and slightly exceeds) Android
-      // — Min is a clear real blur, Max heavy enough to fully hide a face.
-      const tPx = level >= 2 ? 7 : 12, rPx = 96; // bottom width; resume width for final stretch
+      // It is set from the same fraction as the filter path: measured, the
+      // pyramid's sigma is BLUR_PYRAMID_K / tPx of the width (blurPyramidBottom).
+      const tPx = blurPyramidBottom(frac), rPx = 96; // bottom width; resume width for final stretch
       const asp = dh / dw;
       const tW = Math.max(2, Math.round(tPx)), tH = Math.max(2, Math.round(tPx * asp));
       const rW = Math.max(tW, Math.round(rPx)), rH = Math.max(tH, Math.round(rPx * asp));
@@ -9748,7 +9793,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function blurPipeTune(level) {
       // Level 0 runs only for a sender crop or stage frame on a clear camera.
-      return { level: level, px: level === 2 ? 26 : 11, capW: level >= 2 ? 320 : level === 1 ? 480 : 640 };
+      return { level: level, frac: blurSenderFrac(level), capW: level >= 2 ? 320 : level === 1 ? 480 : 640 };
     }
     function blurPipeCanReuse(pipe, camId) {
       return !!(pipe && pipe.camId === camId && pipe.track && pipe.track.readyState === 'live');
@@ -9761,7 +9806,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (blurPipeCanReuse(blurPipe, cam.id)) {
         const tune = blurPipeTune(level);
         blurPipe.level = tune.level;
-        blurPipe.px = tune.px;
+        blurPipe.frac = tune.frac;
         blurPipe.capW = tune.capW;
         return blurPipe.track;
       }
@@ -9787,7 +9832,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       const tune = blurPipeTune(level);
-      const pipe = { level: tune.level, px: tune.px, capW: tune.capW, camId: cam.id, screen: !!source, src, srcTrack, cloned, canvas, ctx, track: null, unsub: null, rvfc: 0, painted: 0 };
+      const pipe = { level: tune.level, frac: tune.frac, capW: tune.capW, camId: cam.id, screen: !!source, src, srcTrack, cloned, canvas, ctx, track: null, unsub: null, rvfc: 0, painted: 0 };
       // ADAPTIVE FRAME-DROP: paint is driven by BOTH the metronome and rVFC,
       // and on a software-rendered / overloaded device one filtered drawImage
       // can cost 100ms+. Without a governor the paint tasks queue FASTER than
@@ -9868,7 +9913,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
         let drew = false;
         try {
-          if (pipe.level > 0) blurDraw(ctx, src, ox, oy, dw, dh, Math.max(4, Math.round(pipe.px * dw / Math.max(1, sw))), pipe.level);
+          // The fraction is of the SHIPPED picture's width (w): a crop or a
+          // stage frame draws the camera wider than the canvas (dw).
+          if (pipe.level > 0) blurDraw(ctx, src, ox, oy, dw, dh, pipe.frac * w / Math.max(1, dw));
           else ctx.drawImage(src, ox, oy, dw, dh);
           drew = true;
         } catch (e) {}
@@ -9988,7 +10035,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // One blur() leaves a readable rim on a high-contrast letter. Max
       // blur on a camera destroys that rim; the avatar is baked the same
       // way, ping-ponged so a pass never reads the canvas it is clearing.
-      const px = lvl >= 2 ? 26 : 11;
+      const frac = blurSenderFrac(lvl);
       const passes = lvl >= 2 ? 2 : 1;
       const bufs = [document.createElement('canvas'), document.createElement('canvas')];
       let src = avatarSharp;
@@ -9996,7 +10043,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const dest = i === passes - 1 ? canvas : bufs[i];
         dest.width = w; dest.height = h;
         const dx = dest.getContext('2d');
-        blurDraw(dx, src, 0, 0, w, h, px, lvl);
+        blurDraw(dx, src, 0, 0, w, h, frac);
         src = dest;
       }
     }
@@ -20481,6 +20528,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         try { bl = blurLevelFor('me', true); } catch (e) {}
         vid.classList.toggle('blur1', bl === 1);
         vid.classList.toggle('blur2', bl === 2);
+        if (bl) { try { blurSized(vid); } catch (e) {} }
         vid.dataset.blur = String(bl);
       }
     }
@@ -28603,7 +28651,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           face._cell = fc.cell || null;
           stageFaceCss(face);
           face.classList.remove('blur1', 'blur2');
-          if (fc.bl) face.classList.add('blur' + fc.bl);
+          if (fc.bl) { face.classList.add('blur' + fc.bl); try { blurSized(face); } catch (e) {} }
         }
         for (const ch of [...box.children]) {
           if (keep.has(ch.dataset.face)) continue;
@@ -34114,7 +34162,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const bl = src.me ? 0 : src.blur; // ME is already the pre-blurred outbound; folds are consent-baked
         // On iOS ctx.filter is a no-op, so a blurred guest would record clear
         // without blurDraw, which handles both paths.
-        if (bl) blurDraw(ctx, v, dx, dy, dw, dh, bl === 2 ? 22 : 10, bl);
+        if (bl) blurDraw(ctx, v, dx, dy, dw, dh, blurViewFrac(bl)); // a guest's blur, as a receiver's tile shows it
         else ctx.drawImage(v, dx, dy, dw, dh);
       } else {
         ctx.fillStyle = '#14141f'; ctx.fillRect(x + 2, y + 2, w - 4, h - 4);

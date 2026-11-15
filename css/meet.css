@@ -455,12 +455,17 @@
      THEMSELVES their browser also broadcasts blurred pixels (canvas), so a
      receiver editing the DOM can't recover a clear image — the CSS here is
      the visible half of a two-sided guarantee. */
-  .tile video.blur1, #fsmain.blur1, .fsthumb video.blur1 { filter: blur(11px) saturate(.9); transform: scale(1.07); }
-  .tile video.blur2, #fsmain.blur2, .fsthumb video.blur2 { filter: blur(26px) saturate(.75); transform: scale(1.15); }
+  /* The radius is a fraction of the element's rendered width (--bw, kept by
+     the page's size observer; the fractions are GifOS.timings BLUR_VIEW_*),
+     so a phone tile and a full-screen tile look the same. This receiver blur
+     is the backstop against a sender that ships clear video: lighter than the
+     sender's own blur, which it barely changes. */
+  .tile video.blur1, #fsmain.blur1, .fsthumb video.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .0225))) saturate(.9); transform: scale(1.07); }
+  .tile video.blur2, #fsmain.blur2, .fsthumb video.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-max, .045))) saturate(.75); transform: scale(1.15); }
   /* The face boxes on a shared screen (STAGE-FACES). No transform here: a
      strip-cell face is positioned by left/top, and a scale would move it. */
-  .stagefacebox video.blur1 { filter: blur(11px) saturate(.9); }
-  .stagefacebox video.blur2 { filter: blur(26px) saturate(.75); }
+  .stagefacebox video.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .0225))) saturate(.9); }
+  .stagefacebox video.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-max, .045))) saturate(.75); }
   #muteall.on { border-color: #ff5c5c; color: #ff9c9c; background: #2a1010; }
   #blurall.on { border-color: #ffb86c; color: var(--c-yellow); background: #2a1f10; }
   #camall.on { border-color: #ff5c5c; color: #ff9c9c; background: #2a1010; }
@@ -673,8 +678,8 @@
   .tile .avatar.has-img { font-size: 0; color: transparent; }
   .tile .avatar .avatar-img { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   /* A camera-off placeholder is as soft as the face it stands in for. */
-  .tile .avatar.blur1 { filter: blur(11px) saturate(.9); transform: scale(1.07); }
-  .tile .avatar.blur2 { filter: blur(26px) saturate(.75); transform: scale(1.15); }
+  .tile .avatar.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-min, .0225))) saturate(.9); transform: scale(1.07); }
+  .tile .avatar.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-view-max, .045))) saturate(.75); transform: scale(1.15); }
   .cmsg img.avchip, .trline img.avchip, .brow img.avchip { width: 1.25rem; height: 1.25rem; object-fit: cover;
     border-radius: .25rem; vertical-align: middle; margin-right: .35rem; }
   #bc-ident { display: none; }
@@ -2542,8 +2547,9 @@
      "Camera off", on is the camera as blurred as the room will see it. */
   #lob-preview[data-cam="off"] video { display: none; }
   #lob-preview[data-cam="on"] .lob-pv-off { display: none; }
-  .lob-preview video.blur1 { filter: blur(11px) saturate(.9); transform: scale(1.07); }
-  .lob-preview video.blur2 { filter: blur(26px) saturate(.75); transform: scale(1.15); }
+  /* The lobby preview is the raw camera: it shows the SENDER's look (BLUR_MIN/MAX_FRAC). */
+  .lob-preview video.blur1 { filter: blur(calc(var(--bw, 320px) * var(--blur-min, .045))) saturate(.9); transform: scale(1.07); }
+  .lob-preview video.blur2 { filter: blur(calc(var(--bw, 320px) * var(--blur-max, .09))) saturate(.75); transform: scale(1.15); }
   .lob-pv-off { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 12px; color: var(--c-paper); pointer-events: none; }
   .lob-pv-face { width: 112px; height: 112px; border-radius: 50%; background: #2c313b; color: var(--c-paper); overflow: hidden;

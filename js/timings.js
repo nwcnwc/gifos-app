@@ -23,8 +23,13 @@
     AWAKE_MS: 3000,   // ms
     BANNER_HOLD: 5000,   // ms
     BG_BEAT_MS: 50,   // ms
+    BLUR_MAX_FRAC: 0.09,   // ratio
+    BLUR_MIN_FRAC: 0.045,   // ratio
     BLUR_NOTE_MS: 7000,   // ms
+    BLUR_PYRAMID_K: 0.6,   // ratio
     BLUR_REST_MAX_MS: 1000,   // ms
+    BLUR_VIEW_MAX_FRAC: 0.045,   // ratio
+    BLUR_VIEW_MIN_FRAC: 0.0225,   // ratio
     BOT_THINK_MS: 60000,   // ms
     BUSY_DELAY_MS: 600,   // ms
     BYE_STRAY_MS: 800,   // ms
