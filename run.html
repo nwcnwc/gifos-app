@@ -11834,7 +11834,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         directPath = v; updateStatus(); if (meshNode && meshNode.remeasure) meshNode.remeasure(); return v;
       });
     }
-    try { window.addEventListener('online', () => { if (meshNode) startDirectPathProbe(); }); } catch (e) {}
+    try { window.addEventListener('online', () => { turnDirect.clear(); if (meshNode) startDirectPathProbe(); }); } catch (e) {}
     // reachCounts(peerList, isAway) → { live, dead } over the pairs the
     // meeting named for me: live = a working connection (direct, or carried
     // by a friend); dead = the tile chip's own verdict (no path for 15 s, not
@@ -13169,6 +13169,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const turnSubs = new Map();    // subscriber pid → { tier, exp, ticket, at }
     const turnLog = [];
     const turnHolds = (pid) => !!(turnLinks && turnLinks.holds(pid));
+    // SUB.5: peers a plain pc of mine (no TURN link, no relay-only settings) reached 'connected' with: a proven direct path,
+    // until my network changes ('online'). It only picks a standby's transport; the standby's own dial is the proof.
+    const turnDirect = new Map();
     // The connection settings of a pair: TURN servers only for a link whose end here is a TURN client (never double TURN).
     // ONE TRANSPORT PER PAIR (bundlePolicy 'max-bundle'). Under the default 'balanced' policy Firefox gives each new
     // m-line of an offer a provisional transport of its own until the answer bundles it, and while that transport
@@ -13290,6 +13293,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const p = peers.get(pid); return !!(p && p.connected);
         },
         pcUp: (pid) => { const p = peers.get(pid); return !!(p && p.connected); },
+        directSeen: (pid) => turnDirect.has(pid),
+        directForget: (pid) => { turnDirect.delete(pid); },
         sendTv: (pid, f) => { const p = peers.get(pid); if (p && p.dc && p.dc.readyState === 'open') { try { dcSend(p, f); return; } catch (e) {} } relaySendSealed(pid, 'tv', f); },
         askVouch: (dev, l) => relaySendObj({ t: 'tvouch', to: dev, l }),
         ask: GifOS.meetTurn.askIce(window.fetch.bind(window)),
@@ -13408,7 +13413,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const ids = (x) => (Array.isArray(x) ? x.filter((y) => typeof y === 'string' && y.length <= 64).slice(0, GifOS.meetTurn.SIDE_MAX) : null);
       const o = turnFacts.get(f.id) || { id: f.id, a: f.a, b: f.b, up: 0, v: 0, s: 0, c: 0, g: 0, va: [], vb: [] };
       if (typeof f.l === 'string' && /^l[0-9]{1,2}$/.test(f.l)) o.l = f.l;   // the pipe's name: a subroom the meeting holds
-      if (from === f.a) { o.up = f.up ? 1 : 0; o.v = f.v ? 1 : 0; o.s = +f.s || 0; o.c = +f.c || 0; o.g = f.g ? 1 : 0; if (ids(f.va)) o.va = ids(f.va); }
+      if (from === f.a) { o.up = f.up ? 1 : 0; o.v = f.v ? 1 : 0; o.dr = f.dr ? 1 : 0; o.s = +f.s || 0; o.c = +f.c || 0; o.g = f.g ? 1 : 0; if (ids(f.va)) o.va = ids(f.va); }
       else { if (ids(f.vb)) o.vb = ids(f.vb); if (!o.s) { o.up = f.up ? 1 : 0; o.v = f.v ? 1 : 0; } }
       o.at = Date.now(); turnFacts.set(f.id, o);
       turnPaint();
@@ -13842,6 +13847,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (pc.connectionState === 'failed' || pc.connectionState === 'closed') { if (!p.deadSince) p.deadSince = Date.now(); }
         else if (p.connected) { doorPace.delete(p.id); p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; p.checkingSince = 0; if (!seatStranger(p)) restoreDoorTile(p); try { updateTile(p.id); } catch (e) {} }
         updateStatus();
+        if (p.connected && !turnHolds(p.id)) { let relayOnly = false; try { relayOnly = pc.getConfiguration().iceTransportPolicy === 'relay'; } catch (e) {} if (!relayOnly) { turnDirect.set(p.id, Date.now()); if (turnDirect.size > 256) turnDirect.delete(turnDirect.keys().next().value); } }   // SUB.5: a proven direct path
         if (p.connected) { p.altPath = false; p.tlAt = 0; p.hungUp = false; adapt(); try { headLinkUp(p.id); } catch (e) {} } // rotation ends when the pair lands; D5 edge re-arms; a link up to my row's head re-routes my sends now
         // D5: 'closed' out of nowhere (we didn't rebuild it and the peer is
         // still in the room) is a hard transport death — first-hand evidence.
