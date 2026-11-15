@@ -3514,7 +3514,7 @@
   padding: 4px max(10px, env(safe-area-inset-right, 0px)) 6px max(10px, env(safe-area-inset-left, 0px));
   pointer-events: none; }
 body.broadcast #tophead { top: calc(var(--banner-h, 0px) + var(--inset-top, 0px)); }
-#tophead > * { pointer-events: auto; position: static !important; inset: auto !important; top: auto !important; right: auto !important;
+#tophead > * { pointer-events: auto; position: static !important; top: auto !important; right: auto !important;
   bottom: auto !important; left: auto !important; transform: none !important; margin: 0 !important; }
 #tophead > .topchip { flex: 1 1 12rem; min-width: 0; max-width: none !important; width: auto; }
 #tophead > .fitbtn { flex: 0 0 auto; }
@@ -3550,7 +3550,7 @@ body:not(.broadcast) #callstate { display: none !important; }
 @media (orientation: portrait) {
   body.chatside { --sidew: 0px; --sheeth: 50vh; padding-right: 0; }
   body.chatside #chatpanel.open { left: 0; right: 0; width: auto; top: auto; bottom: 0; height: var(--sheeth);
-    border-left: 0; border-top: 1px solid var(--border, #2a2a3f); border-radius: 14px 14px 0 0; }
+    border-left: 0; border-top: 1px solid var(--border, #2a2a3f); border-radius: var(--r-lg); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
   /* The keyboard takes the bottom: the sheet sits on it and grows to the top bar's edge. */
   html.kb-up body.chatside #chatpanel.open { top: var(--headh, 0px); height: auto; bottom: var(--kb, 0px); }
 }
