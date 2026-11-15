@@ -719,7 +719,7 @@
       if (L.state === 'closed' || L.state === 'up') return;
       if (!io.web || !io.web()) { if (!L.webNo) { L.webNo = true; log('turn-web ' + short(L.far) + ' not in this browser'); } return; }
       if (!L.web) {
-        L.web = true; L.askAt = io.now();
+        L.web = true; L.webMine = !!mine; L.askAt = io.now();
         log('turn-web ' + short(L.far) + (mine ? ' no relay path from here' : ' the far end has no relay path'));
         if (!L.cred && L.mine && L.peer) { L.cred = credFor(L, 'free'); L.cred.start(); }
         io.changed(L.far);
@@ -1381,7 +1381,7 @@
         for (const L of links.values()) out.push({ far: L.far, l: L.l, opener: L.opener, state: L.state, client: L.client, farDev: L.farDev, farBlocked: L.farBlocked,
           mine: !!L.mine, peer: !!L.peer, readyMe: L.readyMe, readyFar: L.readyFar, cred: L.cred ? L.cred.state() : null, credRefusal: L.cred ? L.cred.refusal() : null,
           pool: L.paidMe ? 'paid' : 'free', paid: L.paid ? L.paid.state() : null, paidRefusal: L.paid ? L.paid.refusal() : null, paidFar: L.paidFar,
-          vouched: L.vouched, video: L.video, upAt: L.upAt, side: L.side.length, web: L.web, webHost: L.webHost || null,
+          vouched: L.vouched, video: L.video, upAt: L.upAt, side: L.side.length, web: L.web, webMine: !!L.webMine, webHost: L.webHost || null,
           step: L.thr ? L.thr.step : null, cap: L.cap || null, busy: L.busy, farBusy: L.farBusy, standbyN: L.standbyN, lastSwitchMs: L.lastSwitchMs || null, direct: !!L.direct });
         return { links: out, sub: { st: sub.st, out: sub.out, list: sub.list.slice(), retryAt: sub.retryAt, found: sub.found } };
       },

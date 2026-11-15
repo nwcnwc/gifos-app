@@ -70,6 +70,7 @@
     blocked:   { key: 'pgHintBlocked',  en: 'Your network blocks direct calls, so this goes through a relay.' },
     strict:    { key: 'pgHintStrict',   en: 'Your network makes direct calls hard, so this can take a little longer.' },
     inspect:   { key: 'pgHintInspect',  en: 'Your network inspects web traffic, so the relay is reached as a web connection.' },
+    farBlocked: { key: 'pgHintFarBlocked', en: 'The other side\'s network blocks direct calls, so this goes through a relay.' },
     noAnswer:  { key: 'pgHintNoAnswer', en: 'Nobody has answered the door yet. We keep knocking.' },
     first:     { key: 'pgHintFirst',    en: 'Nobody else is here yet.' },
     noServer:  { key: 'pgHintNoServer', en: 'Your internet connection may be down. We keep trying.' },
@@ -103,6 +104,9 @@
     const add = (id, ok) => { if (ok) done.push(id); };
     const blocked = f.dp === 'blocked';
     const turnUp = f.turn === 'up';
+    // the reason names the network that needs the relay: mine (my verdict says blocked, or my end is the link's TURN client), else
+    // the far side's; the web path's reason (inspect) only when MY end found no relay path (f.webMine)
+    const relayHint = blocked || f.client ? 'blocked' : 'farBlocked';
     if (flow === 'load') {
       const t = Math.max(0, Math.min(4, f.tries | 0));
       for (let i = 1; i <= t; i++) done.push('part' + i);
@@ -144,15 +148,15 @@
     else if (!f.relay && (back || !isSeat)) { cur = 'server'; text = back ? 'serverBack' : 'server'; hint = back ? 'dropped' : (f.offline ? 'noServer' : ''); }
     else if (!f.list && !isSeat) { cur = 'door'; text = 'door'; }
     // a relayed link is up and the seat moves through it into the others' part: that is the merge
-    else if (!isSeat && turnUp && done.indexOf('merge') < 0) { cur = 'merge'; text = 'merge'; hint = 'blocked'; }
+    else if (!isSeat && turnUp && done.indexOf('merge') < 0) { cur = 'merge'; text = 'merge'; hint = relayHint; }
     else if (!isSeat) {
       if (f.st === 2) { cur = 'seat'; text = back ? 'seatBack' : 'seat'; }
       else if ((f.greeters | 0) === 0) { cur = 'seat'; text = 'found'; hint = 'first'; }
       else { cur = 'knock'; text = blocked ? 'knockBlocked' : 'knock'; hint = blocked ? 'blocked' : (f.dp === 'strict' ? 'strict' : ''); }
     }
-    else if (f.turn === 'web') { cur = 'web'; text = 'web'; hint = 'inspect'; }
-    else if (f.turn === 'ask' || f.turn === 'dial' || (blocked && (f.live | 0) === 0 && (f.greeters | 0) > 0 && !turnUp)) { cur = 'relay'; text = 'relay'; hint = 'blocked'; }
-    else if (turnUp && done.indexOf('merge') < 0 && (f.live | 0) <= 1) { cur = 'merge'; text = 'merge'; hint = 'blocked'; }
+    else if (f.turn === 'web') { cur = 'web'; text = 'web'; hint = f.webMine ? 'inspect' : relayHint; }
+    else if (f.turn === 'ask' || f.turn === 'dial' || (blocked && (f.live | 0) === 0 && (f.greeters | 0) > 0 && !turnUp)) { cur = 'relay'; text = 'relay'; hint = relayHint; }
+    else if (turnUp && done.indexOf('merge') < 0 && (f.live | 0) <= 1) { cur = 'merge'; text = 'merge'; hint = relayHint; }
     else { cur = 'people'; text = 'people'; }
     // the network verdict (net) runs beside the first steps and is never waited on: it counts when it lands
     // a step this flow does not have (a changed password while reconnecting) waits under the flow's own door step
