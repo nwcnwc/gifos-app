@@ -13231,6 +13231,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // SUB.5: peers a plain pc of mine (no TURN link, no relay-only settings) reached 'connected' with: a proven direct path,
     // until my network changes ('online'). It only picks a standby's transport; the standby's own dial is the proof.
     const turnDirect = new Map();
+    function turnDirectNote(p, pc) { let relayOnly = false; try { relayOnly = pc.getConfiguration().iceTransportPolicy === 'relay'; } catch (e) {} if (relayOnly) return; turnDirect.set(p.id, Date.now()); if (turnDirect.size > 256) turnDirect.delete(turnDirect.keys().next().value); }
     // The connection settings of a pair: TURN servers only for a link whose end here is a TURN client (never double TURN).
     // ONE TRANSPORT PER PAIR (bundlePolicy 'max-bundle'). Under the default 'balanced' policy Firefox gives each new
     // m-line of an offer a provisional transport of its own until the answer bundles it, and while that transport
@@ -13682,7 +13683,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { const io = turnLinks ? turnIo() : null; seat = io ? io.seat() : null; const r = turnRaw(); door = r ? { age: r.TICK - r.greetersAt, n: (r.lastGreeters || []).length, pids: io ? io.greeters().map((x) => String(x).slice(0, 8)) : null } : null; } catch (e) { door = { err: String(e).slice(0, 80) }; }
       return { on: !!turnLinks, worker: GifOS.meetTurn ? GifOS.meetTurn.workerBase() : null, directPath, dev: myDevHash, sid: sessId, seat, door, sub: meshNode ? meshNode.sub : 0,
         standbyCands: meshNode && meshNode.standbyCands ? meshNode.standbyCands() : null,
-        links: turnLinks ? turnLinks.dump() : null, facts: Array.from(turnFacts.values()),
+        links: turnLinks ? turnLinks.dump() : null, direct: Array.from(turnDirect.keys()).map((x) => String(x).slice(0, 8)), facts: Array.from(turnFacts.values()),
         subs: Array.from(turnSubs, ([k, v]) => ({ pid: k, tier: v.tier, exp: v.exp })), log: turnLog.slice(-80) };
     }
     // Per pair: the selected path's candidate types (relay = through a TURN server), the pc's ICE policy, and the bytes
@@ -13896,6 +13897,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // report connected without a checking event. A later event must not
         // extend the window; a restart re-stamps it when the offer is applied.
         if (!p.connected && pc.connectionState !== 'connected' && (ice === 'checking' || ice === 'connected' || ice === 'completed') && !p.checkingSince) p.checkingSince = Date.now();
+        if ((ice === 'connected' || ice === 'completed') && !turnHolds(p.id)) turnDirectNote(p, pc);   // SUB.5: the path itself, before DTLS (a knock's pc lives 300 ms after its goodbye)
       };
       pc.onconnectionstatechange = () => {
         if (p.pc !== pc) return; // a replaced transport's tail events — not this pair's truth
@@ -13906,7 +13908,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (pc.connectionState === 'failed' || pc.connectionState === 'closed') { if (!p.deadSince) p.deadSince = Date.now(); }
         else if (p.connected) { doorPace.delete(p.id); p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; p.checkingSince = 0; if (!seatStranger(p)) restoreDoorTile(p); try { updateTile(p.id); } catch (e) {} }
         updateStatus();
-        if (p.connected && !turnHolds(p.id)) { let relayOnly = false; try { relayOnly = pc.getConfiguration().iceTransportPolicy === 'relay'; } catch (e) {} if (!relayOnly) { turnDirect.set(p.id, Date.now()); if (turnDirect.size > 256) turnDirect.delete(turnDirect.keys().next().value); } }   // SUB.5: a proven direct path
+        if (p.connected && !turnHolds(p.id)) turnDirectNote(p, pc);   // SUB.5: a proven direct path
         if (p.connected) { p.altPath = false; p.tlAt = 0; p.hungUp = false; adapt(); try { headLinkUp(p.id); } catch (e) {} } // rotation ends when the pair lands; D5 edge re-arms; a link up to my row's head re-routes my sends now
         // D5: 'closed' out of nowhere (we didn't rebuild it and the peer is
         // still in the room) is a hard transport death — first-hand evidence.
