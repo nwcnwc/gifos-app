@@ -1928,7 +1928,7 @@
     display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 7px;
     border-radius: var(--r-pill); background: var(--c-red); color: var(--c-white);
     font: 800 12px/1.1 system-ui, sans-serif; letter-spacing: .04em; white-space: nowrap;
-    box-shadow: 0 2px 6px rgba(0,0,0,.3); pointer-events: none; }
+    box-shadow: 0 1px 5px rgba(0,0,0,.3); pointer-events: none; }
   .bar > #barrec::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--c-white); flex: none; }
   .bar > #barrec[hidden] { display: none !important; }
   /* A quiet small call fades the dock (and Fit) so only faces are left. Coming
