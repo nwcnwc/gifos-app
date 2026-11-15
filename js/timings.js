@@ -120,6 +120,7 @@
     POOL_TTL: 1800000,   // ms
     POOL_WAIT_MS: 7000,   // ms
     POWER_READ_WINDOW: 60000,   // ms
+    POW_WORKERS: 4,   // count
     PRELEAVE_MS: 10000,   // ms
     PRE_ICE_MS: 15000,   // ms
     PROVIDER_BOOT_MS: 30000,   // ms
@@ -141,7 +142,11 @@
     REFRESH_BEFORE_S: 604800,   // s
     REF_STALE: 20,   // tick
     REKEY_HOLD_MS: 10000,   // ms
+    RELAY_BUSY_SHOW_MS: 40000,   // ms
+    RELAY_BUSY_WAIT_MS: 30000,   // ms
     RELAY_NOSOCK_MS: 30000,   // ms
+    RELAY_TICKET_PREP_MS: 60000,   // ms
+    RELAY_TOKEN_SLACK_MS: 20000,   // ms
     RELOAD_HOLD_MS: 15000,   // ms
     REMIX_DOC_TIMEOUT: 8000,   // ms
     RENEW_EVERY_S: 120,   // s

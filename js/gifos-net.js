@@ -90,7 +90,17 @@
     // cut, a crowd code, a plain network drop) instead of only that it did.
     const CLOSES_KEPT = 32;
     const onClose = sockOpts && typeof sockOpts.onClose === 'function' ? sockOpts.onClose : null;
-    let ws = null, closed = false, attempt = 0, timer = null, slow = false, stableTimer = null, bornTimer = null, slowTimer = null;
+    // sockOpts.prepare() (optional) runs before every connect and resolves
+    // 'go' (open now; makeUrl() carries what it fetched: the relay join
+    // ticket, relayTicket below) or 'wait' (the relay wants a ticket this page
+    // could not get yet, or it is busy: retry on the slow leash, never knock
+    // without one). A prepare that has not answered in RELAY_TICKET_PREP_MS
+    // counts as 'wait'.
+    const prep = sockOpts && typeof sockOpts.prepare === 'function' ? sockOpts.prepare : null;
+    const onBusy = sockOpts && typeof sockOpts.onBusy === 'function' ? sockOpts.onBusy : null;
+    const onTokenRefused = sockOpts && typeof sockOpts.onTokenRefused === 'function' ? sockOpts.onTokenRefused : null;
+    let ws = null, closed = false, attempt = 0, timer = null, slow = false, stableTimer = null, bornTimer = null, slowTimer = null, preparing = false;
+    s.busy = false; // the relay's spend breaker said "very busy" (4015) and no socket has stayed open since
     const queue = [];
     const STABLE_MS = TM.STABLE_MS; // how long a socket must stay open before the backoff resets
     // Close-code policy — the relay is BILLED for every wake, so reconnects are
@@ -103,7 +113,11 @@
     // password, deliberate re-join) re-arms. CROWD codes (full / rate-limited /
     // no host yet) keep retrying on a longer leash.
     const FATAL_CLOSES = [1008, 4000, 4001, 4003, 4007, 4008, 4009, 4010, 4011, 4012, 4013, 4014]; // 4013: no key proof; 4014: a frame outside the relay's message types — update GifOS
-    const SLOW_CLOSES = [1011, 1013];
+    const SLOW_CLOSES = [1011, 1013, 4015]; // 4015: the relay's spend breaker is tripped; it lets joins in again on its own
+    // Join-ticket codes (relay lockdown): 4016 the token failed (expired, other
+    // room or device), and 4010 whose reason names the join token (this relay
+    // requires one). Not final for a page with a ticket machine: the ticket is
+    // dropped (onTokenRefused) and the next attempt mints a fresh one.
     const setState = (st) => {
       if (s.state === st) return;
       s.state = st;
@@ -112,6 +126,23 @@
       if (s.onstate) s.onstate(st);
     };
     function connect() {
+      if (closed || preparing) return;
+      if (!prep) { open(); return; }
+      preparing = true;
+      let done = false;
+      const go = (v) => {
+        if (done) return;
+        done = true; clearTimeout(pt); preparing = false;
+        if (closed) return;
+        if (v === 'go') open();
+        else { slow = true; setState('down'); schedule(); }
+      };
+      const pt = setTimeout(() => go('wait'), TM.RELAY_TICKET_PREP_MS);
+      let p;
+      try { p = Promise.resolve(prep()); } catch (e) { p = Promise.resolve('go'); }
+      p.then(go, () => go('wait'));
+    }
+    function open() {
       if (closed) return;
       let sock;
       try { sock = new WebSocket(makeUrl()); } catch (e) { schedule(); return; }
@@ -144,7 +175,7 @@
         // retried every ~0.5s forever, each retry a billed wake. Only a socket
         // that STAYS open earns the reset.
         clearTimeout(stableTimer);
-        stableTimer = setTimeout(() => { if (ws === sock) { attempt = 0; slow = false; } }, STABLE_MS);
+        stableTimer = setTimeout(() => { if (ws === sock) { attempt = 0; slow = false; s.busy = false; } }, STABLE_MS);
         setState('up');
         for (const frame of queue.splice(0)) { try { sock.send(frame); } catch (e) { /* re-dropped */ } }
         if (s.onopen) s.onopen();
@@ -159,8 +190,11 @@
         s.closes.push({ code: code == null ? 0 : code, at: Date.now() });
         if (s.closes.length > CLOSES_KEPT) s.closes.shift();
         if (onClose) { try { onClose(code == null ? 0 : code); } catch (e) {} }
-        if (FATAL_CLOSES.indexOf(code) >= 0) s.rejected = code;
+        const needsToken = code === 4010 && prep && /join token/.test(String((ev && ev.reason) || ''));
+        if (code === 4016 || needsToken) { if (onTokenRefused) { try { onTokenRefused(code); } catch (e) {} } }
+        else if (FATAL_CLOSES.indexOf(code) >= 0) s.rejected = code;
         else if (SLOW_CLOSES.indexOf(code) >= 0) slow = true;
+        if (code === 4015) { s.busy = true; if (onBusy) { try { onBusy(); } catch (e) {} } }
         setState('down');
         schedule();
       };
@@ -189,7 +223,10 @@
     const kick = (force) => {
       if (closed || (s.rejected && !force)) return; // a policy-rejected socket stays down until the app re-arms it
       if (force) s.rejected = 0;
-      if (ws && ws.readyState <= 1) return;
+      // A socket still held is in flight: CONNECTING, OPEN, or CLOSING with its
+      // close event to come (which schedules). Kicking a CLOSING one reset the
+      // backoff each time a frame was sent into a 4015 the relay had just sent.
+      if (preparing || ws) return;
       if (timer) { clearTimeout(timer); timer = null; }
       attempt = 0;
       connect();
@@ -232,6 +269,143 @@
     connect();
     (root.__gifosConns = root.__gifosConns || []).push(s);
     return s;
+  }
+
+  // ---- the relay join ticket (relay lockdown, gifos docs/relay-lockdown.md) --
+  // The relay lets a socket in on a JOIN TOKEN (?jt=): GET /t?sid=&dev= on the
+  // relay's own host, after a proof of work, returns a token for this room and
+  // this device (3 minutes). The room then hands a REJOIN token in
+  // {t:'joined', rt} (12 hours) that lets this tab reconnect or reload with no
+  // new work; it is the one entry the relay's spend breaker lets through while
+  // tripped. Kept in sessionStorage per room, so it dies with the tab like the
+  // peer id beside it. Every client earns its join the same way (bots too).
+  //   prepare(dev) -> Promise<'go'|'wait'>: 'go' = a token is ready, or this
+  //     relay issues none (404: a local test relay); 'wait' = the relay asks
+  //     for a ticket this page does not have yet (busy, or the mint failed):
+  //     never knock without one.
+  //   token(dev) -> the token for the next upgrade, or ''.
+  //   drop() -> the relay refused the token (4016) or requires one (4010
+  //     "join token"): both tokens go and the next connect mints.
+  // The first ask carries no answer: it costs one edge request and says what
+  // the relay wants (404 off, 503 busy, 403 {powBits, now}). `now` is the
+  // relay's clock, so a phone with a wrong clock still mints.
+  const BUSY_TEXT = 'GifOS is very busy right now, please try again later';
+  function tokenExp(t) {
+    try {
+      const p = String(t).split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      const o = JSON.parse(atob(p + '='.repeat((4 - (p.length % 4)) % 4)));
+      return { e: Number(o.e) || 0, d: String(o.d || '') };
+    } catch (e) { return { e: 0, d: '' }; }
+  }
+  // THE PROOF OF WORK: the first `pow` (base 36) for which
+  // SHA-256("gifos-pow:v1:<sid>:<dev>:<pts>:<pow>") has `bits` leading zero
+  // bits. Synchronous SHA-256 in Web Workers, one per core (at most
+  // POW_WORKERS): on a budget phone WebCrypto's one promise per digest is
+  // slower than plain JS (Moto, 2026-11-15: 15k/s against 22k/s on one core),
+  // and the cores add up. Without Workers (Node, a locked-down WebView) the
+  // same search runs on WebCrypto in batches.
+  const POW_SRC = 'const K=new Uint32Array([0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2]);'
+    + 'const W=new Uint32Array(64),H=new Uint32Array(8),B=new Uint8Array(256),E=new TextEncoder();'
+    + 'function zb(){let n=0;for(let i=0;i<8;i++){const h=H[i];if(h===0){n+=32;continue;}return n+Math.clz32(h);}return n;}'
+    + 'function sha(m){const L=m.length,nb=(L+9+63)>>6,end=nb*64;B.fill(0,0,end);B.set(m);B[L]=0x80;const bits=L*8;B[end-4]=bits>>>24;B[end-3]=bits>>>16;B[end-2]=bits>>>8;B[end-1]=bits;'
+    + 'H[0]=0x6a09e667;H[1]=0xbb67ae85;H[2]=0x3c6ef372;H[3]=0xa54ff53a;H[4]=0x510e527f;H[5]=0x9b05688c;H[6]=0x1f83d9ab;H[7]=0x5be0cd19;'
+    + 'for(let b=0;b<nb;b++){for(let i=0;i<16;i++){const o=b*64+i*4;W[i]=(B[o]<<24)|(B[o+1]<<16)|(B[o+2]<<8)|B[o+3];}'
+    + 'for(let i=16;i<64;i++){const x=W[i-15],y=W[i-2];W[i]=(((x>>>7|x<<25)^(x>>>18|x<<14)^(x>>>3))+W[i-7]+((y>>>17|y<<15)^(y>>>19|y<<13)^(y>>>10))+W[i-16])|0;}'
+    + 'let a=H[0],c1=H[1],c2=H[2],d=H[3],e=H[4],f=H[5],g=H[6],h=H[7];'
+    + 'for(let i=0;i<64;i++){const t1=(h+((e>>>6|e<<26)^(e>>>11|e<<21)^(e>>>25|e<<7))+((e&f)^(~e&g))+K[i]+W[i])|0;const t2=(((a>>>2|a<<30)^(a>>>13|a<<19)^(a>>>22|a<<10))+((a&c1)^(a&c2)^(c1&c2)))|0;h=g;g=f;f=e;e=(d+t1)|0;d=c2;c2=c1;c1=a;a=(t1+t2)|0;}'
+    + 'H[0]+=a;H[1]+=c1;H[2]+=c2;H[3]+=d;H[4]+=e;H[5]+=f;H[6]+=g;H[7]+=h;}}'
+    + 'onmessage=function(ev){const q=ev.data;for(let i=q.start;i<q.max;i+=q.step){sha(E.encode(q.pre+i.toString(36)));if(zb()>=q.bits){postMessage(i);return;}}postMessage(-1);};';
+  function leadingZeroBits(buf) {
+    let n = 0;
+    for (const b of new Uint8Array(buf)) { if (b === 0) { n += 8; continue; } return n + Math.clz32(b) - 24; }
+    return n;
+  }
+  const POW_MAX = 1 << 28; // never spin forever on a relay asking for silly work
+  async function solvePowSubtle(pre, bits) {
+    for (let i = 0; i < POW_MAX; i += 256) {
+      const tries = [];
+      for (let j = 0; j < 256; j++) tries.push(root.crypto.subtle.digest('SHA-256', enc(pre + (i + j).toString(36))));
+      const ds = await Promise.all(tries);
+      for (let j = 0; j < 256; j++) if (leadingZeroBits(ds[j]) >= bits) return (i + j).toString(36);
+    }
+    return '';
+  }
+  let powUrl = null;
+  function solvePow(sid, dev, pts, bits) {
+    const pre = 'gifos-pow:v1:' + sid + ':' + dev + ':' + pts + ':';
+    if (typeof root.Worker !== 'function' || typeof root.Blob !== 'function' || !root.URL || !root.URL.createObjectURL) return solvePowSubtle(pre, bits);
+    const n = Math.max(1, Math.min(TM.POW_WORKERS, Number(root.navigator && root.navigator.hardwareConcurrency) || 2));
+    return new Promise((resolve) => {
+      const ws = [];
+      let left = n, done = false;
+      const finish = (v) => { if (done) return; done = true; for (const w of ws) { try { w.terminate(); } catch (e) {} } resolve(v); };
+      try {
+        if (!powUrl) powUrl = root.URL.createObjectURL(new root.Blob([POW_SRC], { type: 'text/javascript' }));
+        for (let k = 0; k < n; k++) {
+          const w = new root.Worker(powUrl);
+          ws.push(w);
+          w.onmessage = (ev) => { if (ev.data >= 0) finish(ev.data.toString(36)); else if (--left === 0) finish(''); };
+          w.onerror = () => { if (--left === 0) { done = true; solvePowSubtle(pre, bits).then(resolve, () => resolve('')); } };
+          w.postMessage({ pre, bits, start: k, step: n, max: POW_MAX });
+        }
+      } catch (e) {
+        for (const w of ws) { try { w.terminate(); } catch (e2) {} }
+        done = true;
+        solvePowSubtle(pre, bits).then(resolve, () => resolve(''));
+      }
+    });
+  }
+  function relayTicket(o) {
+    const httpBase = String(o.relayBase || '').replace(/^ws/, 'http').replace(/\/+$/, '');
+    const key = 'gifos_rt:' + o.sid;
+    const fetchFn = o.fetch || ((u) => root.fetch(u, { cache: 'no-store', credentials: 'omit' }));
+    let jt = '', rt = '', inflight = null, busyUntil = 0;
+    let mode = '';   // '' unknown, 'off' (the relay answered 404: it issues no tokens), 'on' (it asks for them)
+    try { rt = (root.sessionStorage && root.sessionStorage.getItem(key)) || ''; } catch (e) { rt = ''; }
+    const live = (t, dev) => { if (!t) return false; const x = tokenExp(t); return x.d === dev && x.e - Date.now() > TM.RELAY_TOKEN_SLACK_MS; };
+    const token = (dev) => (live(rt, dev) ? rt : live(jt, dev) ? jt : '');
+    const busy = () => { busyUntil = Date.now() + TM.RELAY_BUSY_WAIT_MS; if (o.onBusy) { try { o.onBusy(); } catch (e) {} } return 'wait'; };
+    const getJson = (dev, extra) => fetchFn(httpBase + '/t?sid=' + encodeURIComponent(o.sid) + '&dev=' + encodeURIComponent(dev) + (extra || ''))
+      .then((r) => r.json().catch(() => ({})).then((j) => ({ status: r.status, j })));
+    async function mint(dev) {
+      let r;
+      // No answer at all (a relay without /t answers a 404 with no CORS
+      // header, which reads as a network error): a relay never seen asking
+      // for tickets is knocked as before; one that asked is not.
+      try { r = await getJson(dev); } catch (e) { return mode === 'on' ? 'wait' : 'go'; }
+      if (r.status === 503 && r.j && r.j.busy) { mode = 'on'; return busy(); }
+      if (r.status === 200 && r.j && r.j.jt) { mode = 'on'; jt = r.j.jt; return 'go'; }
+      if (r.status !== 403 || !r.j || !(r.j.powBits > 0)) {
+        // Not a ticket answer (404, or a test relay that answers every path
+        // with its banner): this relay issues no tokens, unless it already
+        // asked for them.
+        if (mode === 'on') return 'wait';
+        mode = 'off';
+        return 'go';
+      }
+      mode = 'on';
+      const pts = Number(r.j.now) || Date.now();   // the relay's clock: its window is about its time, not this device's
+      const pow = await solvePow(o.sid, dev, pts, r.j.powBits);
+      if (!pow) return 'wait';
+      try { r = await getJson(dev, '&pts=' + pts + '&pow=' + pow); } catch (e) { return 'wait'; }
+      if (r.status === 200 && r.j && r.j.jt) { jt = r.j.jt; return 'go'; }
+      if (r.status === 503) return busy();
+      return 'wait';
+    }
+    const prepare = (dev) => {
+      if (!httpBase || !dev) return Promise.resolve('go');
+      if (token(dev) || mode === 'off') return Promise.resolve('go');
+      if (Date.now() < busyUntil) return Promise.resolve('wait');
+      if (!inflight) inflight = mint(dev).catch(() => (mode === 'on' ? 'wait' : 'go')).then((v) => { inflight = null; return v; });
+      return inflight;
+    };
+    const setRejoin = (t) => {
+      if (typeof t !== 'string' || !t || t.length > 1024) return;
+      rt = t;
+      try { if (root.sessionStorage) root.sessionStorage.setItem(key, t); } catch (e) {}
+    };
+    const drop = () => { jt = ''; rt = ''; mode = 'on'; try { if (root.sessionStorage) root.sessionStorage.removeItem(key); } catch (e) {} };
+    return { prepare, token, setRejoin, drop, busy: () => Date.now() < busyUntil, mode: () => mode };
   }
 
   // ---- transport fragmentation ----------------------------------------------
@@ -895,7 +1069,7 @@
     RELAY_TYPES, RELAY_PLAIN_BYTES, RELAY_IV_B64_LEN, RELAY_CT_B64_LEN, RELAY_MAX_FRAME_LEN, RELAY_SHAPES, relayFrameOk, relayVerbOk, fitsFixed, sansPad, sealFixed, relayNameFit, referralFrames, referralJoin,
     bootOf, bootOk, fpOk, sdpOfBoot, iceOf, candOfIce,
     ICE_SERVERS, hasP2P, holdSessionLock,
-    steadySocket, RECONNECT_CAP_MS, RECONNECT_SLOW_CAP_MS, RECONNECT_HIDDEN_CAP_MS, RECONNECT_JITTER_MIN, RECONNECT_JITTER_MAX,
+    steadySocket, relayTicket, solvePow, BUSY_TEXT, RECONNECT_CAP_MS, RECONNECT_SLOW_CAP_MS, RECONNECT_HIDDEN_CAP_MS, RECONNECT_JITTER_MIN, RECONNECT_JITTER_MAX,
     FRAG_PART, FRAG_BUDGET, sendChunked, chunk, makeDefrag,
     shortCode, randHex, sha256hex, sha256hexOfBytes, keyId, keyVerifier,
     deriveMeet, deriveMeetKey, meetPwProof, mintGenesisKey,

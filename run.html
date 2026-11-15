@@ -15917,7 +15917,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       if (waited > 8000 && !veilCeilLogged) { veilCeilLogged = true; try { console.debug('seat ceiling 210s'); } catch (e) {} }
       let why = w ? w.hint : '';
-      if (doorUnreachAt && now - doorUnreachAt < 60000 && waited > 8000) why = uiText('pgHintUnreach', 'Your device could not connect to the people at the door. A firewall, VPN or strict network may be blocking calls. We keep trying.');
+      if (now - relayBusyAt < GifOS.timings.RELAY_BUSY_SHOW_MS) why = uiText('pgHintBusy', 'GifOS is very busy right now. We keep trying, and you will be in the moment it lets new people in.');
+      else if (doorUnreachAt && now - doorUnreachAt < 60000 && waited > 8000) why = uiText('pgHintUnreach', 'Your device could not connect to the people at the door. A firewall, VPN or strict network may be blocking calls. We keep trying.');
       else if (waited > 210000) why = uiText('pgHintLong', 'This is taking longer than it should. Check your connection, or reopen the link.');
       else if (!why && waited > 20000 && !relayUp()) why = uiText('pgHintNoServer', 'Your internet connection may be down. We keep trying.');
       else if (!why && waited > 20000 && w && w.step === 'knock') why = uiText('pgHintNoAnswer', 'Nobody has answered the door yet. We keep knocking.');
@@ -17849,7 +17850,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // THE DOOR SAID NO, IN A CLOSE CODE: 4007 is a vote-off's verdict; every other policy code keeps its own path.
         onRejected: (code) => {
           if (code === 4011) { setStatus(uiText('stThisRoomAlreadyHasYou', '\u26d4 This room already has you connected from another device. Close it there, or reload here.')); return; }
-          if (code === 4013 || code === 4010) { setStatus(uiText('stThisMeetingNeedsTheCurrent', '\u26d4 This meeting needs the current GifOS. Reload the page to update.')); return; } // 4010: the relay saw no key proof
+          if (code === 4013 || code === 4010 || code === 4014) { setStatus(uiText('stThisMeetingNeedsTheCurrent', '\u26d4 This meeting needs the current GifOS. Reload the page to update.')); return; } // 4010: the relay saw no key proof or ticket; 4014: a frame outside the relay's types
           if (code !== 4007) return;
           bannedOut = true;
           quietAtDoor();
@@ -17940,6 +17941,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         },
         onUpdate: () => { try { renderFromOcc(); } catch (e) { rosterBuild.throws++; rosterBuild.err = String((e && e.message) || e).slice(0, 80); throw e; } saveTreeMem(); try { reportDarkDeaths(); } catch (e) {} try { meshVoteBeat(); } catch (e) {} try { if (headSendsStale()) schedReconcile(); } catch (e) {} },
         onRelayMsg: onRelayFrame,
+        onBusy: showRelayBusy, // the relay's spend breaker: new joins wait, live meetings go on
         prevTree: readTreeMem(),
         oldCell: seatMemNow ? seatMemNow.ck : -1,
         onByeHold: (pid) => { try { confirmGone(pid, 'bye'); } catch (e) {} },   // a page gone: its tile leaves at once, a reload brings it back
@@ -17950,6 +17952,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // App-level relay frames the wire does not consume. The roster here is the
     // GREETER POOL, never the room \u2014 it drives door moderation only.
+    // THE RELAY IS VERY BUSY (its spend breaker: close 4015, a 503 from the
+    // join-token mint, or an error frame with busy): it lets nobody new in until
+    // it recovers on its own, and the socket keeps trying on its slow leash. Say
+    // so in its own words, held so the ambient line does not eat it between
+    // tries; the join veil says it too (relayBusyAt).
+    var relayBusyAt = 0;   // var: the join veil (above) reads it before this line runs
+    function showRelayBusy() {
+      relayBusyAt = Date.now();
+      setStatus('\u23f3 ' + net.BUSY_TEXT, GifOS.timings.RELAY_BUSY_SHOW_MS);
+      try { const el = document.getElementById('status'); if (el && el.dataset) el.dataset.kind = 'busy'; } catch (e) {}
+    }
     function onRelayFrame(m) {
       if (m.t === 'joined') relayTv = m.tv === 1;   // this relay vouches for TURN links (see relayTv)
       if (m.t === 'joined' && !av) capServerKey = m.cap && m.cap.ck ? m.cap.ck : null;   // the server's word on the capture at this join
@@ -18093,6 +18106,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       }
       else if (m.t === 'error') {
         pwLog('relay-error: ' + String(m.error || '?').slice(0, 60));
+        if (m.busy) { showRelayBusy(); return; }
         // Password gate is handled by the wire (onLocked / R6 sealing); vote-offs
         // land here. No walk \u2014 the session cap is the greeter
         // pool\u2019s, and newcomers drop their socket after seating anyway.

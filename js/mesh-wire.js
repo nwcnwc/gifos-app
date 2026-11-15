@@ -264,7 +264,9 @@
     // rooms. With no storage at all it is ephemeral — one per page load —
     // because the relay refuses a socket without one (4012).
     let rs = '', devTag = '';
-    const rsFor = () => {
+    let rsP = null;   // once per node: the ticket and the upgrade must name the same device tag
+    const rsFor = () => rsP || (rsP = rsOnce());
+    const rsOnce = () => {
       let sec = null;
       try {
         const st = root.localStorage;
@@ -306,10 +308,26 @@
         + '&gk=' + encodeURIComponent(gkStr()) + (hadAtConnect() ? '&had=1' : '')
         + doorParams()
         + (rs ? '&rs=' + rs : '')
-        + (/[&?]dev=/.test(extra) ? '' : '&dev=' + encodeURIComponent(devTag || net.randHex(8)))
+        + (/[&?]dev=/.test(extra) ? '' : '&dev=' + encodeURIComponent(devOf(extra)))
         + (ipp && identity ? '&pk=' + encodeURIComponent(identity.pubB64) + '&ipp=' + encodeURIComponent(ipp) : '')
-        + extra;
+        + extra
+        + ticketParam(extra);
     };
+    // THE JOIN TICKET (relay lockdown, gifos-net.js relayTicket): a join token
+    // minted at the relay's /t after a proof of work, then the room's rejoin
+    // token, for THIS room and THIS device tag. The upgrade carries it as &jt=.
+    // Minting starts as soon as the device tag is known (startTicket), so the
+    // work is usually done before the first knock.
+    const ticket = net.relayTicket && relayBase ? net.relayTicket({ relayBase, sid: opts.sid, onBusy: () => { if (opts.onBusy) { try { opts.onBusy(); } catch (e) {} } } }) : null;
+    const devOf = (extra) => {
+      const m = /[&?]dev=([^&]*)/.exec(extra);
+      if (m) return decodeURIComponent(m[1]);
+      if (!devTag) devTag = net.randHex(8);   // one tag per page, so the ticket and the upgrade name the same device
+      return devTag;
+    };
+    function ticketParam(extra) { const jt = ticket ? ticket.token(devOf(extra)) : ''; return jt ? '&jt=' + encodeURIComponent(jt) : ''; }
+    const prepareTicket = () => (ticket ? ticket.prepare(devOf(opts.urlParams ? String(opts.urlParams() || '') : '')) : Promise.resolve('go'));
+    const startTicket = () => { if (ticket && !stopped) prepareTicket().catch(() => {}); };
 
     // deliver(to, m): the raw transport step — DataChannel first, sealed relay
     // {t:'peer'} fallback. (Signing, when S4 is on, happens in env.send before
@@ -693,6 +711,9 @@
       sock = net.steadySocket(makeUrl, {
         onClose: (code) => { relayCloses.push({ code, at: Date.now() }); if (relayCloses.length > RELAY_CLOSES_KEPT) relayCloses.shift(); },
         onDuty: () => !stopped,
+        prepare: prepareTicket,
+        onTokenRefused: () => { if (ticket) ticket.drop(); },
+        onBusy: () => { if (opts.onBusy) { try { opts.onBusy(); } catch (e) {} } },
       });
       sock.door = atDoor;   // the room number this socket's URL names (sendRaw moves it when my door moves)
       lastRelayRx = Date.now(); // fresh socket starts its idle clock now
@@ -711,6 +732,7 @@
         if (stopped) return;
         lastRelayRx = Date.now();
         let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+        if (m.t === 'joined' && m.rt && ticket) ticket.setRejoin(m.rt);   // reconnects and reloads of this tab need no new proof of work
         if (m.t === 'greeters') {
           if (atDoor !== doorNow()) return;   // a door's answer counts only while that door is mine: my door moved since this socket knocked there
           recountOut = false;
@@ -1160,6 +1182,11 @@
         }
         if (iAmAGreeter() && sock && !sock.rejected) {
           const nowMs = Date.now();
+          // A registration sent into a socket that is down (refused 4015 by a
+          // stopped relay, reconnecting) proves nothing, and rebuilding it would
+          // restart steadySocket's backoff at 0.5 s: seated pages knocked a
+          // stopped relay every ~3 s instead of on the 15 s leash.
+          if (regPendingAt && sock.state !== 'up') regPendingAt = 0;
           if (regPendingAt && nowMs - regPendingAt > 12000) {
             // a registration the relay never answered ⇒ zombie socket:
             // rebuild it (the fresh socket's onopen re-registers).
@@ -1437,12 +1464,14 @@
     };
 
     if (wantMint) {
+      rsFor().then(startTicket, startTicket);
       Promise.all([ident.mint(), rsFor()]).then(([id]) => {
         if (stopped) return;
         identity = id; peer = id.peerId; node.peer = peer;
         return ipProofFor().then(() => { if (!stopped) build(); });
       }).catch(() => {});
     } else {
+      rsFor().then(startTicket, startTicket);
       Promise.all([rsFor(), ipProofFor()]).then(() => { if (!stopped) build(); }, () => { if (!stopped) build(); });
     }
     return node;
