@@ -1389,6 +1389,7 @@
       },
       RAW_SOCKET_SEND_FOR_TEST(obj) { if (stopped) return { err: 'stopped' }; if (!sock) makeSock(); if (sock.rejected) return { err: 'rejected' }; sock.send(obj); return { ok: true }; },
       relayUp() { return !!(sock && sock.state === 'up'); },
+      relayRejected() { return (sock && sock.rejected) || 0; },   // the relay's final close code (gifos-net.js FATAL_CLOSES), 0 while it may still let me in
       // The network came back after a dark spell: read the door again now
       // (re-register as a door, or ask for the list), so a change made while
       // I was away — a new room password above all — shows at once (R6).

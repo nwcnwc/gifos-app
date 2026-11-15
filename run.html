@@ -11391,7 +11391,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // 'partial' adds a note to the count line; every other reach state
       // replaces the line.
       const inlineReach = reachState === 'partial';
-      const refused = !leftUp && typeof refusedLine === 'function' && refusedLine();
+      const relayNo = !leftUp && typeof relaySaidNo === 'function' ? relaySaidNo() : null;
+      const refused = !leftUp && (!!relayNo || (typeof refusedLine === 'function' && refusedLine()));
       const reachLine = !refused && !!(reachState && !inlineReach && !leftUp);
       const partial = reachState === 'partial' ? reachNote(reach.dead) : '';
       // shown is the room you can see: the count, or the faces on the wall (qa-meet-desktop).
@@ -11409,7 +11410,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       let restText = '';
       let gettingBack = false;
       if (refused) {
-        restText = uiText('stThePeopleInThisRoom', '\u26d4 The people in this room voted not to let this device in.');
+        restText = relayNo ? relayNo.words : uiText('stThePeopleInThisRoom', '\u26d4 The people in this room voted not to let this device in.');
       } else if (atPwPrompt()) {
         restText = uiText('pwHintLocked', 'Enter the room password to join the meeting.');   // the prompt is the answer: no network line under it
       } else if (reachLine) {
@@ -11494,7 +11495,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (statusEl.dataset.progress !== px) statusEl.dataset.progress = px;
         if (statusEl.dataset.unreached !== du) statusEl.dataset.unreached = du;
       }
-      if (reachLine && !prog) statusEl.classList.add('alert');
+      if ((reachLine || relayNo) && !prog) statusEl.classList.add('alert');
       if (statusEl.title !== shownDetail) statusEl.title = shownDetail;
       const countEl = document.getElementById('statuscount');
       const restEl = document.getElementById('statusrest');
@@ -16116,6 +16117,36 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { paintProgressSteps(w); } catch (e) {}
       return w;
     }
+    // THE RELAY SAID NO FOR GOOD (a final close code: gifos-net.js FATAL_CLOSES stops knocking). Waiting cannot get
+    // this page in, so no wait is on: the status line and the join veil both say what the person can do, and never
+    // "we keep trying" or "your internet connection may be down" over it (2026-11-15: an old page under the relay's
+    // version floor, 4010, sat behind "Step 2 of 11: Connecting to GifOS... Your internet connection may be down":
+    // the one-shot line from onRejected lasted its 4 s hold, then the wait's words painted over it).
+    // The words are plain (one voice: setStatus drops a leading symbol; the line and the veil say it the same way).
+    function relayRefusalOf(code) {
+      const plain = (m) => String(m).replace(/^(?:[\u2600-\u27BF]|[\uD83C-\uD83E][\uDC00-\uDFFF])\uFE0F?\s*/, '');
+      if (code === 4010 || code === 4013 || code === 4014) return { code, words: plain(uiText('stThisMeetingNeedsTheCurrent', '\u26d4 This meeting needs the current GifOS. Reload the page to update.')) };   // 4010: the version floor, or no key proof; 4013: a failed key proof; 4014: a frame outside the relay's types
+      if (code === 4011) return { code, words: plain(uiText('stThisRoomAlreadyHasYou', '\u26d4 This room already has you connected from another device. Close it there, or reload here.')) };
+      return null;
+    }
+    function relaySaidNo() { return relayRefusalOf(meshNode && meshNode.relayRejected ? meshNode.relayRejected() : 0); }
+    // joinVeilWords(o): what the join veil says this second. o = { w: progress words or null, waited, now, busyAt,
+    // busyShowMs, unreachAt, relayUp, refusal: relaySaidNo() } -> { step, title, body, spin }. The step and what it
+    // waits for; the reason under it. Past the 210 s reap bound the reason says the wait has run long; a door that
+    // closed without ever connecting names the network as the likely cause. A refusal is no wait: its words, no spinner.
+    function joinVeilWords(o) {
+      const w = o.w, waited = o.waited, now = o.now;
+      if (o.refusal) return { step: '', title: o.refusal.words, body: '', spin: false };
+      let why = w ? w.hint : '';
+      if (now - o.busyAt < o.busyShowMs) why = uiText('pgHintBusy', 'GifOS is very busy right now. We keep trying, and you will be in the moment it lets new people in.');
+      else if (o.unreachAt && now - o.unreachAt < 60000 && waited > 8000) why = uiText('pgHintUnreach', 'Your device could not connect to the people at the door. A firewall, VPN or strict network may be blocking calls. We keep trying.');
+      else if (waited > 210000) why = uiText('pgHintLong', 'This is taking longer than it should. Check your connection, or reopen the link.');
+      else if (!why && waited > 20000 && !o.relayUp) why = uiText('pgHintNoServer', 'Your internet connection may be down. We keep trying.');
+      else if (!why && waited > 20000 && w && w.step === 'knock') why = uiText('pgHintNoAnswer', 'Nobody has answered the door yet. We keep knocking.');
+      // the time shown is time waited (on this step), never a countdown to a seat
+      if (w) return { step: w.stepOnly + (w.secs ? ' \u00b7 ' + w.secs : ''), title: w.what + '\u2026', body: why, spin: true };
+      return { step: Math.max(1, Math.ceil(waited / 1000)) + ' s', title: uiText('pgDoor', 'Finding your meeting') + '\u2026', body: why, spin: true };
+    }
     let joinVeilEl = null, unseatedSince = 0, veilCeilLogged = false;
     setInterval(() => {
       if (!room || typeof meshSeat !== 'function') return;
@@ -16142,22 +16173,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (ht && ht.textContent !== title) ht.textContent = title;
         if (hp && hp.textContent !== body) hp.textContent = body;
       };
-      // The step and what it waits for; the reason under it. Past the 210 s
-      // reap bound the reason says the wait has run long; a door that closed
-      // without ever connecting names the network as the likely cause.
       if (w) {
         joinVeilEl.dataset.flow = w.flow; joinVeilEl.dataset.step = w.step; joinVeilEl.dataset.x = String(w.x); joinVeilEl.dataset.y = String(w.y);
       }
       if (waited > 8000 && !veilCeilLogged) { veilCeilLogged = true; try { console.debug('seat ceiling 210s'); } catch (e) {} }
-      let why = w ? w.hint : '';
-      if (now - relayBusyAt < GifOS.timings.RELAY_BUSY_SHOW_MS) why = uiText('pgHintBusy', 'GifOS is very busy right now. We keep trying, and you will be in the moment it lets new people in.');
-      else if (doorUnreachAt && now - doorUnreachAt < 60000 && waited > 8000) why = uiText('pgHintUnreach', 'Your device could not connect to the people at the door. A firewall, VPN or strict network may be blocking calls. We keep trying.');
-      else if (waited > 210000) why = uiText('pgHintLong', 'This is taking longer than it should. Check your connection, or reopen the link.');
-      else if (!why && waited > 20000 && !relayUp()) why = uiText('pgHintNoServer', 'Your internet connection may be down. We keep trying.');
-      else if (!why && waited > 20000 && w && w.step === 'knock') why = uiText('pgHintNoAnswer', 'Nobody has answered the door yet. We keep knocking.');
-      // the time shown is time waited (on this step), never a countdown to a seat
-      if (w) veilSay(w.stepOnly + (w.secs ? ' · ' + w.secs : ''), w.what + '…', why);
-      else veilSay(Math.max(1, Math.ceil(waited / 1000)) + ' s', uiText('pgDoor', 'Finding your meeting') + '…', why);
+      const refusal = relaySaidNo();
+      const vw = joinVeilWords({ w, waited, now, busyAt: relayBusyAt, busyShowMs: GifOS.timings.RELAY_BUSY_SHOW_MS, unreachAt: doorUnreachAt, relayUp: relayUp(), refusal });
+      joinVeilEl.dataset.refused = refusal ? String(refusal.code) : '';
+      const spin = joinVeilEl.querySelector('.jv-spin');
+      if (spin && spin.hidden !== !vw.spin) spin.hidden = !vw.spin;
+      veilSay(vw.step, vw.title, vw.body);
     }, 1000);
     // The step line in the places a wait shows that are not the status line:
     // the password prompt and the waiting room screen.
@@ -18084,8 +18109,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         },
         // THE DOOR SAID NO, IN A CLOSE CODE: 4007 is a vote-off's verdict; every other policy code keeps its own path.
         onRejected: (code) => {
-          if (code === 4011) { setStatus(uiText('stThisRoomAlreadyHasYou', '\u26d4 This room already has you connected from another device. Close it there, or reload here.')); return; }
-          if (code === 4013 || code === 4010 || code === 4014) { setStatus(uiText('stThisMeetingNeedsTheCurrent', '\u26d4 This meeting needs the current GifOS. Reload the page to update.')); return; } // 4010: the relay saw no key proof or ticket; 4014: a frame outside the relay's types
+          const no = relayRefusalOf(code);   // 4010/4013/4014: this page is older than the relay admits; 4011: this room has me on another device
+          if (no) { setStatus(no.words, 0, 'stop'); return; }   // the line and the veil keep saying it (relaySaidNo): no wait is on
           if (code !== 4007) return;
           bannedOut = true;
           quietAtDoor();
