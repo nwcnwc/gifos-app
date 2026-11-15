@@ -43,12 +43,20 @@
       return true;
     },
 
+    // L25.12.1: a witness that has not answered when the window closes is out of the count; the ones that answered decide by
+    // majority when at least L25_WIT_MIN did; else L40.2 (b)'s rank orders the two claims (l40First, gaps4.js).
     // C++: mesh_rcleft_l25.inc:Seat::l2512Decide
     l2512Decide(deadline) {
       if (this.l25WitAsk.length && !deadline && this.TICK - this.l25WitAt < K.L25_WIT_WAIT) return 0;
-      if (this.l25WitRival > this.l25WitMe && 2 * this.l25WitRival > this.l25WitAskedN && this.l25WitRival + 1 >= K.L25_WIT_MIN) { this.trace('L25.12-OUTVOTED', this.id, this.coord, 'kept=%d me=%d asked=%d', this.l25WitRival, this.l25WitMe, this.l25WitAskedN); return 1; }
-      if (this.l405Rooked()) { this.trace('L40.5-ROOKED', this.id, this.coord, 'kept=%d me=%d asked=%d', this.l25WitRival, this.l25WitMe, this.l25WitAskedN); return 1; }   // L40.5: the teller's rook keeps it, a witness of mine hears it, and my rook does not keep me (gaps4.js)
-      this.trace('L25.12-STAY', this.id, this.coord, 'kept=%d me=%d asked=%d', this.l25WitRival, this.l25WitMe, this.l25WitAskedN); return 2;
+      const R = this.l25WitRival, M = this.l25WitMe, N = this.l25WitAnsN;
+      if (N >= K.L25_WIT_MIN && R > M && 2 * R > N) { this.trace('L25.12-OUTVOTED', this.id, this.coord, 'kept=%d me=%d answered=%d', R, M, N); return 1; }
+      if (N >= K.L25_WIT_MIN && M > R && 2 * M > N) { this.trace('L25.12-STAY', this.id, this.coord, 'kept=%d me=%d answered=%d', R, M, N); return 2; }
+      if (this.l405Rooked()) { this.trace('L40.5-ROOKED', this.id, this.coord, 'kept=%d me=%d asked=%d', R, M, this.l25WitAskedN); return 1; }   // L40.5: the teller's rook keeps it, a witness of mine hears it, and my rook does not keep me (gaps4.js)
+      if (!(this.l40Arb || R > 0)) { this.trace('L25.12-ALONE', this.id, this.coord, 'kept=%d me=%d answered=%d', R, M, N); return 2; }   // a rival nobody but itself speaks for moves nobody (L40.2)
+      const first = this.l40First(this.l25WitRivalId);
+      this.trace('L25.12-ORDER', this.id, this.coord, 'rival=%d %s kept=%d me=%d answered=%d', this.l25WitRivalId, first ? 'first' : 'later', R, M, N);
+      if (first) this.l40Tell(this.l25WitRivalId, this.l405Kept(this.l25WitRivalId));
+      return first ? 2 : 1;
     },
 
     // C++: mesh_rcleft_l25.inc:Seat::l2512TellHeard

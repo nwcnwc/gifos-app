@@ -22,7 +22,7 @@
     // C++: mesh_witness.inc:Seat::l25WitAskAll
     l25WitAskAll() {
       if (this.l25WitPend && this.TICK - this.l25WitAt < K.L25_WIT_WAIT) return;
-      this.l25WitAsk.length = 0; this.l25WitMe = 0; this.l25WitRival = 0; this.l25WitAt = this.TICK; this.l25WitPend = false; this.l25WitRivalId = this.l25Nc; this.l25WitAskedN = 0;
+      this.l25WitAsk.length = 0; this.l25WitMe = 0; this.l25WitRival = 0; this.l25WitAt = this.TICK; this.l25WitPend = false; this.l25WitRivalId = this.l25Nc; this.l25WitAskedN = 0; this.l25WitAnsN = 0;
       if (!this.hasCoord || this.state !== 3) return;
       if (this.l25Nc !== this.l25WitSinceNc || this.l25Ck !== this.l25WitSinceCk || this.TICK - this.l25WitLast > K.L25_ORD_AGE) { this.l25WitSince = this.TICK; this.l25WitSinceNc = this.l25Nc; this.l25WitSinceCk = this.l25Ck; this.l40Arb = false; }   // L40.2.1: a new contest has no arbiter's word yet
       this.l25WitLast = this.TICK;
@@ -55,6 +55,7 @@
       let asked = false; for (let q = 0; q < this.l25WitAsk.length; q++) if (this.l25WitAsk[q] === m.id) { asked = true; this.l25WitAsk.splice(q, 1); break; }
       if (!asked) return;
       if (m.born > this.l25WitSince) { if (this.l25WitAskedN > 0) this.l25WitAskedN--; this.trace('L25-WITLATE', this.id, this.coord, 'witness=%d seated=%lld since=%d', m.id, m.born, this.l25WitSince); if (this.l25WitPend) this.l25WitTick(); return; }
+      this.l25WitAnsN++;   // L25.12.1: the witnesses that answered inside the window (rcleft-l25.js)
       if (m.nc === this.id) this.l25WitMe++; if ((m.nc >= 0 && m.nc === this.l25WitRivalId) || m.tag === 1) this.l25WitRival++;
       this.l2512Witness();
       if (this.l25WitPend) this.l25WitTick();

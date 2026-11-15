@@ -60,7 +60,9 @@
       this.l40Riv = m.id; this.l40Ck = m.ck; this.l40Arb = this.l40Arb || (this.l25By >= 0 && this.l25By !== m.id);   // L40.2.1: an arbiter's word for this rival stands for the whole contest
       if (this.l40ToldBy !== m.id || this.TICK - this.l40ToldAt > K.L25_WAIT) this.l40ToldK = false;
       const mine = (this.pp >= 0 && this.ppCk === ckey(this.coord)) || (this.mpK > 0 && this.mpCk === ckey(this.coord));
-      if (mine) { this.trace('L40-MINE', this.id, this.coord, 'rival=%d', m.id); if (this.l40Arb || this.l25WitRival > 0) this.l40Tell(m.id, false); else this.l2512TellHeard(m.id); return true; }   // my claim carries a proof
+      const told = this.l40ToldBy === m.id && this.TICK - this.l40ToldAt <= K.L25_WAIT;   // L25.12.1: the rival read my answer and told me it stays: my proof is none its view admits, so I order as it does
+      if (mine && told) this.trace('L40-MINE-TOLD', this.id, this.coord, 'rival=%d', m.id);
+      if (mine && !told) { this.trace('L40-MINE', this.id, this.coord, 'rival=%d', m.id); if (this.l40Arb || this.l25WitRival > 0) this.l40Tell(m.id, false); else this.l2512TellHeard(m.id); return true; }   // my claim carries a proof
       this.l40Rev = true; const d = this.l40Decide(false);
       if (d === 0) { this.l25WitPend = true; this.f.wake(this.id); return true; }
       this.l40Rev = false; this.l40Act(d); return true;
@@ -71,6 +73,16 @@
       if (d === 1) { this.l40Go(this.l40Riv, 'L40-yield'); return; }
       const corr = this.l40Arb || this.l25WitRival > 0;
       if (corr) this.l40Tell(this.l40Riv, this.l40Kept); else this.l2512TellHeard(this.l40Riv);
+    },
+
+    // L40.2 (b): am I first in the order of the two claims to my cell (read by L40.2 and by L25.12.1)
+    // C++: mesh_gaps4.inc:Seat::l40First
+    l40First(riv) {
+      const ck = ckey(this.coord), ra = l40Rank(ck, this.id), rb = l40Rank(ck, riv);
+      let first = ra < rb || (ra === rb && this.id < riv);
+      { let ea = this.lineAtOf(riv), el = this.lineOf(riv); if ((ea < 0 || el < 0) && this.l25By >= 0 && this.l25By !== this.id) { ea = this.lineAtOf(this.l25By); el = this.lineOf(this.l25By); }
+        if (this.coord.pc === 0 && this.lineAt >= 0 && ea >= 0 && ea !== this.lineAt && el >= 0 && el !== this.line && this.lineAt > ea) first = false; }   // L8.52.2: the seat of the younger room is never the first by the rank's coin
+      return first;
     },
 
     // 1 = go, 2 = stay, 0 = answers still due
@@ -85,10 +97,7 @@
       const corr = this.l40Arb || R > 0;
       if (!corr) { this.trace('L40-ALONE', this.id, this.coord, 'rival=%d kept=%d me=%d asked=%d', this.l40Riv, R, M, A); return 2; }
       if (this.l40ToldK && this.l40ToldBy === this.l40Riv) { this.trace('L40-ROOKED', this.id, this.coord, 'rival=%d kept=%d me=%d asked=%d', this.l40Riv, R, M, A); return 1; }
-      const ck = ckey(this.coord), ra = l40Rank(ck, this.id), rb = l40Rank(ck, this.l40Riv);
-      let first = ra < rb || (ra === rb && this.id < this.l40Riv);
-      { let ea = this.lineAtOf(this.l40Riv), el = this.lineOf(this.l40Riv); if ((ea < 0 || el < 0) && this.l25By >= 0 && this.l25By !== this.id) { ea = this.lineAtOf(this.l25By); el = this.lineOf(this.l25By); }
-        if (this.coord.pc === 0 && this.lineAt >= 0 && ea >= 0 && ea !== this.lineAt && el >= 0 && el !== this.line && this.lineAt > ea) first = false; }   // L8.52.2: the seat of the younger room is never the first by the rank's coin
+      const first = this.l40First(this.l40Riv);
       this.trace('L40-ORDER', this.id, this.coord, 'rival=%d %s kept=%d me=%d asked=%d arb=%d', this.l40Riv, first ? 'first' : 'later', R, M, A, this.l40Arb ? 1 : 0);
       return first ? 2 : 1;
     },
