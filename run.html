@@ -16997,7 +16997,23 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     // The captor IS the room's admin (amAdmin), as an admin room's admin is after adoptAdmKey: admKeys (the capture
     // key) sign its orders, and `admins` names it for every rule that asks who the admins are.
-    function capDemote() { amAdmin = false; admKeys = null; }   // a captured room has no verifier: its only admin key is the capture key
+    function capDemote() { amAdmin = false; admKeys = null; }
+    // This browser's own ticket or pass just changed (a subscription joined, a pass file opened): the room's captor key
+    // may be this browser's too (a second session of the same pass, such as a sibling bot), so ask now instead of at the
+    // captor's next renewal (up to RENEW_EVERY_S later). Until then this page was no admin, and could not keep the hold
+    // if the other session died.
+    async function capMineCheck() {
+      if (av || amAdmin || !capKey || !capOn()) return false;
+      const ck = capKey;
+      let k = null; try { k = await GifOS.meetSubs.captureKeys(ck); } catch (e) { k = null; }
+      if (!k || k.pubB64 !== ck || amAdmin || capKey !== ck) return false;
+      admKeys = k; amAdmin = true;
+      capRole();
+      pwLog('capture-mine-late');
+      setStatus(uiText('capYou', 'You are this room\u2019s admin'));
+      capPaint();
+      return true;
+    }   // a captured room has no verifier: its only admin key is the capture key
     function capRole() {
       admins = adminsNow();
       if (amAdmin) refreshModSig();
@@ -36990,8 +37006,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function subsJoin() {
       if (!subsOn()) return;
       GifOS.meetSubs.joinMeeting(subsMeetId(), {
-        onTicket: () => { if (amAdmin && !!av) subsPublishRoomPlan(); turnSubAt = 0; capTicketPublish(true); try { capPaint(); } catch (e) {} },   // a captor re-presents each renewed ticket   // a fresh ticket is a fresh TURN vouch: say it at the next step
-        onPass: () => { if (amAdmin && !!av) subsPublishRoomPlan(); turnSubAt = 0; capTicketPublish(true); try { capPaint(); } catch (e) {} },   // a pass bought, started, renewed or ended: the room's plan, the TURN vouch and a pass captor's ticket now
+        onTicket: () => { if (amAdmin && !!av) subsPublishRoomPlan(); turnSubAt = 0; capMineCheck().catch(() => false).then(() => capTicketPublish(true)); try { capPaint(); } catch (e) {} },   // a captor re-presents each renewed ticket   // a fresh ticket is a fresh TURN vouch: say it at the next step
+        onPass: () => { if (amAdmin && !!av) subsPublishRoomPlan(); turnSubAt = 0; capMineCheck().catch(() => false).then(() => capTicketPublish(true)); try { capPaint(); } catch (e) {} },   // a pass bought, started, renewed or ended: the room's plan, the TURN vouch and a pass captor's ticket now
         onLost: (why) => {
           if (why === 'moved') setStatus('Your subscription is now in use in another meeting.');
           if (why === 'pass-moved') setStatus(uiText('passMoved', 'Your four-hour pass is in use in another meeting now: it works in one meeting at a time.'));
