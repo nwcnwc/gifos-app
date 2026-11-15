@@ -5069,10 +5069,47 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       btn.style.display = '';
       btn.onclick = () => { if (pipFloating()) exitPip(); else enterPip(true); };
     })();
+    // BACK KEEPS THE MEETING (Nathan, 2026-11-15: "back key should float the
+    // meeting"). Android Chrome's Back walked the page history and left the
+    // meeting. In a meeting a CloseWatcher (Chrome's own API for Back: no
+    // history entries, so nothing piles up on a reload or a rejoin) catches it
+    // and the meeting stays; Leave is the only way out. A float needs a tap on
+    // Android Chrome (Back carries none: requestPictureInPicture is refused,
+    // measured on a Moto), so Back opens More, where Float is one tap away. With
+    // a float up Back adds nothing. The native app floats on Back itself, and a
+    // desktop's Esc stays Esc: Android Chrome only. Re-armed after each Back and
+    // on the heartbeat; dropped once the meeting is left, so Back then behaves
+    // as usual. Chrome spends a Back on leaving full screen first, by itself.
+    let backWatch = null;
+    function inMeetingNow() {
+      try { return !!roomJoinedAt && !leaving && !leftMesh; } catch (e) { return false; }
+    }
+    function backGuardSync() {
+      let want = false;   // IS_ANDROID is declared further down: a beat before it would throw, and the float's re-aim must not
+      try { want = IS_ANDROID && IS_MOBILE && typeof window.CloseWatcher === 'function' && !window.__gifosNativeBoot && inMeetingNow(); } catch (e) {}
+      if (want && !backWatch) {
+        try {
+          const w = new window.CloseWatcher();
+          w.onclose = () => { if (backWatch === w) backWatch = null; onMeetingBack(); backGuardSync(); };
+          backWatch = w;
+        } catch (e) { backWatch = null; }
+      } else if (!want && backWatch) {
+        const w = backWatch; backWatch = null;
+        try { w.destroy(); } catch (e) {}
+      }
+    }
+    function onMeetingBack() {
+      const up = pipFloating();
+      pipNote('back', { floating: up });
+      if (up || !inMeetingNow()) return;
+      const bar = document.querySelector('.bar'), t = document.getElementById('bartoggle');
+      if (bar && t && bar.classList.contains('collapsed')) t.click();
+    }
     // Safari's auto-PiP flag rides the current best candidate; re-aimed on the
     // heartbeat since who's on stage / who's talking drifts.
     let pipAimed = null;
     function pipReaim() {
+      backGuardSync();
       const v = pipSource();
       sendVisPark(); // hidden-viewer dormancy re-aims with the float (and catches mates that connected while hidden)
       docPipAim();
