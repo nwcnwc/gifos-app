@@ -439,20 +439,48 @@
     // every returning visitor to the release before the newest deploy (the first
     // load after 0.9.26 shipped landed on /versions/0.9.25.3/), and that
     // frozen snapshot can never move itself. The answer is under 2 KB
-    // and a redirect costs a round trip anyway. gifos_current answers only
-    // when the network cannot (offline); with neither, run this edge build.
+    // and a redirect costs a round trip anyway.
+    // A visitor who HAS a stored release is asked without blocking, bounded by
+    // VERSION_ASK_MS (the caller below, askLive): a stalled network must not
+    // hold the page, so past the bound the stored release answers, as offline.
+    // Only a first visit (nothing stored) asks synchronously; with no answer
+    // at all it runs this edge build.
+    if (cur) return { redirect: to(cur).redirect, ask: here };
     try {
       var x = new XMLHttpRequest(); x.open('GET', '/version.json?ts=' + Date.now(), false); x.send();
       // `latest` (may be four-part, 0.9.24.1) first; `current` is the three-part legacy pointer.
       var v = ''; try { var j = JSON.parse(x.responseText) || {}; v = (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(j.latest || '')) ? j.latest : j.current) || ''; } catch (e) {}
       if (v) { try { localStorage.setItem('gifos_current', v); } catch (e) {} return to(v); }
     } catch (e) {}
-    if (cur) return to(cur);                                  // offline: the last-known release
     return stay;
   }
   window.gifosPinTarget = pinTarget;
+  // GENERATED from gifos timings.json by scripts/gen-timings.mjs (the line below): do not edit by hand.
+  var LOADER_T = { VERSION_ASK_MS: 1900 };
+  // A stored release is asked about without blocking: the rest of this page
+  // (the edge build) is stopped at once, version.json gets LOADER_T.VERSION_ASK_MS to
+  // answer, and the page moves to the live release or, on no answer, to the
+  // stored one. Exactly one move either way.
+  function askLive(d) {
+    var moved = false;
+    function go(u) { if (moved) return; moved = true; location.replace(u); }
+    try { window.stop(); } catch (e) {}
+    try {
+      var x = new XMLHttpRequest(); x.open('GET', '/version.json?ts=' + Date.now(), true); x.timeout = LOADER_T.VERSION_ASK_MS;
+      x.onload = function () {
+        // `latest` (may be four-part, 0.9.24.1) first; `current` is the three-part legacy pointer.
+        var v = ''; try { var j = JSON.parse(x.responseText) || {}; v = (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(j.latest || '')) ? j.latest : j.current) || ''; } catch (e) {}
+        if (!/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(v))) { go(d.redirect); return; }
+        try { localStorage.setItem('gifos_current', v); } catch (e) {}
+        go('/versions/' + v + d.ask);
+      };
+      x.onerror = x.ontimeout = x.onabort = function () { go(d.redirect); };
+      x.send();
+    } catch (e) { go(d.redirect); }
+  }
   var decision = pinTarget(location.pathname, location.search, location.hash);
-  if (decision && decision.redirect) location.replace(decision.redirect);
+  if (decision && decision.ask) askLive(decision);
+  else if (decision && decision.redirect) location.replace(decision.redirect);
   // A document that stays refreshes gifos_current for the next visit.
   // The redirect above is still immediate. desktop.js is the other writer.
   try {
