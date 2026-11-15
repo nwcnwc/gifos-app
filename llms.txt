@@ -465,8 +465,7 @@ PAYMENTS — gifos.charge / entitled / license  [capabilities.pay]
    so sign the app (see "Signing") after it is final. Any signed app can
    be paid, listed in the store or not. GifOS keeps 3% on paypal, x402
    and mpp.
-   Right now payments run on TEST networks only (PayPal sandbox, Base
-   Sepolia) — no real money moves yet.
+   Payments are real money: PayPal, and USDC on Base mainnet.
 
 THIRD-PARTY APIs — gifos.api  [capabilities.api: ["<name>", ...]]
    For ANY keyed API that isn't OpenAI-shaped (Deepgram, MapTiler, a

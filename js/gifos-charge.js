@@ -17,8 +17,8 @@
   const GifOS = (root.GifOS = root.GifOS || {});
   if (GifOS.charge) return;
 
-  // Default pin, same as gifos-x402.js. The live network is gifos-base-net.js
-  // when that module is loaded. An app cannot ask to be paid on mainnet:
+  // The network is gifos-base-net.js's (Base mainnet on the OS page). This
+  // pin is only for a process that loads this file without it (unit tests). An app cannot ask to be paid on mainnet:
   // the manifest's chain must equal the network the OS already selected.
   const CHAIN = 'eip155:84532';       // Base Sepolia
   const CHAIN_NAME = 'Base Sepolia';
@@ -368,7 +368,7 @@
   // Getters, so the words follow the language at the moment they are read.
   const PAID_BY = {
     get paypal() { return tr('charge.paidBy.paypal', 'by PayPal'); },
-    get x402() { return chainNow().caip === 'eip155:8453' ? tr('charge.paidBy.x402Mainnet', 'in USDC (Base)') : tr('charge.paidBy.x402', 'in USDC (Base Sepolia)'); },
+    get x402() { return tr('charge.paidBy.x402', 'in USDC ({chain})', { chain: chainNow().name }); },
     get transfer() { return tr('charge.paidBy.transfer', 'in USDC (wallet transfer)'); },
     get fednow() { return tr('charge.paidBy.fednow', 'by bank transfer (FedNow)'); },
     get mpp() { return tr('charge.paidBy.mpp', 'by card, through an AI agent (Stripe Link)'); },
