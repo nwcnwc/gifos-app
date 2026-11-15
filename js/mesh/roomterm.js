@@ -82,6 +82,8 @@
     l411Verdict() {
       if (!(this.l8471() || this.l854Tcp()) || !(this.state === 0 || this.state === 1) || this.lastGreeters.length === 0 || !this.f.fabricDoors() || (this.state === 1 && this.islandAskAt >= 0)) return;
       if (this.l16Until >= 0 && this.TICK < this.l16Until) return;   // waiting out a backoff: its knock's list is asked whole
+      // L8.54.7 at an open seeker's verdict: its ask under way stays (no new wave, no door dropped); only its clock is the first ask's
+      if (!this.l8471()) { if (this.state === 1 && this.islandAskAt < 0) { this.islandAskAt = this.retryAt; this.l16FreshAt = this.retryAt; this.trace('L8.54.7-CLOCK', this.id, null, 'since=%d', this.retryAt); } return; }
       const a0 = (this.state === 1) ? this.retryAt : -1; const was = this.l16Ask.slice();
       this.trace('L4.1.1-VERDICT', this.id, null, 'asked=%zu since=%d', was.length, a0);
       this.islandAsk(this.lastGreeters);
