@@ -2,6 +2,21 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.26.3",
+      "date": "2026-11-15",
+      "headline": "Offices behind firewalls stay linked when someone leaves, and joining is steadier",
+      "critical": false,
+      "fixes": [
+        "Meetings: when the person linking two offices leaves, a spare link takes over in about two seconds, instead of the offices being cut off for half a minute.",
+        "Meetings: two offices linked through a relay switch to a direct connection when one appears, so the relay is used only while it is needed.",
+        "Meetings: on a network that is slow to look up names, the link between offices now uses the secure relay instead of a slower fallback.",
+        "Meetings: a newcomer is no longer kept waiting when a join request is lost as a connection closes.",
+        "Meetings: when two people claim the same seat, it is settled within seconds instead of both waiting.",
+        "Opening GifOS on a stalled network no longer leaves a blank page: it opens within a few seconds.",
+        "Open rooms: a second session of the same pass is the room's admin at once."
+      ]
+    },
+    {
       "version": "0.9.26.2",
       "date": "2026-11-15",
       "headline": "Meetings check that a real browser is joining",
