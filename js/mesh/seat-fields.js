@@ -651,6 +651,8 @@
     ["lateAsk", "<i32>"],   // OSet<int>  (line 1738)
     ["l8548At", "i32"],   // int = -1  (line 1738)
     ["l8548Last", "i32"],   // int = -1  (line 1738)
+    ["l8549Said", "bool"],   // bool = false  (line 1738)
+    ["l8549No", "bool"],   // bool = false  (line 1738)
     ["foundKnock", "bool"],   // bool = false  (line 1738)
     ["kidMemo", "{u64:i32}"],   // OMap<uint64_t,int>  (line 1767)
     ["l3WaitAt", "i32"],   // int = -100000  (line 1768)
@@ -1281,6 +1283,8 @@
     ehAskAt: -1,
     l8548At: -1,
     l8548Last: -1,
+    l8549Said: false,
+    l8549No: false,
     foundKnock: false,
     l3WaitAt: -100000,
     l3WaitCk: 0,
