@@ -258,18 +258,23 @@
       const e = { gid: m.gid, src: m.src, m: m.m, sc: scoped ? m.sc : undefined, eph: m.eph ? 1 : 0, ag0: ag, s4: m.s4 };
       for (const p of peersFor(e.sc)) if (p !== m.src && p !== m.from) { o.emit(p, frameOf(e)); tx.set(p, 1); }
     }
+    // SUB.9: a bridge (o.pipes(): a joining connection to another subroom) gets each room-wide frame ONCE, as it happens:
+    // no refan copy (its channel is reliable and ordered) and no backlog replay when it comes up or a standby takes it
+    // over (the far subroom holds its own room's recent past; pk42: 13-53 KB in one second at pipe up and takeover).
+    const bridgeSet = () => { const s = new Set(); if (o.pipes) for (const p of o.pipes()) if (p && p !== me) s.add(p); return s; };
     function refan() {
       grecent = grecent.filter((e) => T() - e.at <= 256);
+      const br = bridgeSet();
       for (const e of grecent) {
         if (T() - e.at > 32) continue;
-        for (const p of peersFor(e.sc)) { const n = e.tx.get(p) || 0; if (n >= 2) continue; e.tx.set(p, n + 1); o.emit(p, frameOf(e)); }
+        for (const p of peersFor(e.sc)) { if (br.has(p)) continue; const n = e.tx.get(p) || 0; if (n >= 2) continue; e.tx.set(p, n + 1); o.emit(p, frameOf(e)); }
       }
     }
-    // A peer that newly joined my link set gets my recent backlog (the new-neighbour replay).
+    // A peer that newly joined my link set gets my recent backlog (the new-neighbour replay); a bridge does not (SUB.9).
     let lastLinks = new Set();
     function replayNew() {
-      const now = roomPeers();
-      for (const p of now) if (!lastLinks.has(p)) for (const e of grecent) { o.emit(p, frameOf(e)); e.tx.set(p, (e.tx.get(p) || 0) + 1); }
+      const now = roomPeers(), br = bridgeSet();
+      for (const p of now) if (!lastLinks.has(p) && !br.has(p)) for (const e of grecent) { o.emit(p, frameOf(e)); e.tx.set(p, (e.tx.get(p) || 0) + 1); }
       lastLinks = now;
     }
 

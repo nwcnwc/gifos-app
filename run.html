@@ -12767,12 +12767,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function standbyHolds(p, msg) {
       try { return !!(p && turnLinks && turnLinks.standby(p.id) && !(msg && STANDBY_KINDS.has(msg.k))); } catch (e) { return false; }
     }
+    // SUB.9: a bridge (a TURN link that joins my subroom to another: a pipe, its warm standby, the subroom of one seat)
+    // carries no mesh upkeep (js/meet-turn.js bridgeHolds); the far subroom runs its own mesh.
+    function bridgeHolds(p, msg) {
+      try { return !!(p && turnLinks && turnLinks.isLink(p.id) && GifOS.meetTurn.bridgeHolds(msg)); } catch (e) { return false; }
+    }
     // Sealed frame over this pair's DataChannel (chat, files, relay control).
     const dcSend = (p, msg) => {
       if (p && p.wireHold) return p.wireHold.then(() => dcSend(p, msg)); // DEBUG lever, see renegotiate
       if (p && p.testTx) { p.testTx.push(msg); return Promise.resolve(); } // openLinkForTest: a channel that only records
       if (!p || !p.dc || p.dc.readyState !== 'open') return Promise.resolve();
-      if (standbyHolds(p, msg)) return Promise.resolve();
+      if (standbyHolds(p, msg) || bridgeHolds(p, msg)) return Promise.resolve();
       if (turnWeb.size && (msg.k === 'roffer' || msg.k === 'ranswer' || msg.k === 'sig')) { const w = turnWeb.get(p.id); if (w && w.channel(msg)) return Promise.resolve(); }   // the web path negotiates with its end in this page
       const dc = p.dc;
       if (typeof clog === 'function') dcTally(msg); // DEBUG: what the channel bytes are
@@ -12827,7 +12832,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const txKindBytes = {}, txKindLink = {};   // txKindLink: the same, for each relayed link's channel alone (turnPathsForTest: what a link's byte limit is spent on)
     function txKindAdd(msg, n, p) {
       const m = msg.m, inner = msg.msg;
-      const k = String(msg.k) + (msg.k === 'mesh' && m ? ':' + m.t + (m.m && m.m.msg && m.m.msg.kind ? ':' + m.m.msg.kind : '') : '') + (msg.k === 'sig' && inner ? ':' + inner.kind : '');
+      const gk = m && m.m && m.m.msg ? (m.m.msg.kind || m.m.msg.k) : null;   // a gossip payload by its own kind (status, chat, tlink...); a seat frame (MW2) by its type
+      const k = String(msg.k) + (msg.k === 'mesh' && m ? ':' + m.t + (gk ? ':' + gk : '') + (m.t === 'MW2' && m.f && m.f.t ? ':' + m.f.t : '') : '') + (msg.k === 'sig' && inner ? ':' + inner.kind : '');
       txKindBytes[k] = (txKindBytes[k] || 0) + n;
       try { if (p && p.id && typeof txKindLink !== 'undefined' && turnLinks && turnLinks.isLink(p.id)) { const o = txKindLink[p.id] || (txKindLink[p.id] = {}); o[k] = (o[k] || 0) + n; } } catch (e) {}
     }
