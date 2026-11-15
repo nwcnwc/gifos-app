@@ -701,6 +701,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       </div>
     </div>
   </div>
+  <!-- The one top bar (R1, 2026-11-15): every top control sits in this row, in flow, so none lands on another; its measured bottom is where the meeting box starts. -->
+  <div id="tophead" role="banner"></div>
   <div class="topchip">
     <span data-al="livebadgeAria" id="livebadge" data-state="off" aria-label="You are off air"><i class="livedot" aria-hidden="true"></i><span data-t="livebadgeTxt" id="livebadge-txt">OFF AIR</span></span>
     <a data-ti="openYourGifosComputerTip" class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
@@ -7540,12 +7542,23 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             topInset = Math.ceil(chipEl.getBoundingClientRect().bottom + 8);
           }
         }
+        // The meeting box: an open chat / transcript panel takes its edge (right
+        // or bottom, css "The meeting box"); the faces lay out in what is left.
+        const panelIn = { r: 0, b: 0 };
+        try {
+          const cp = document.getElementById('chatpanel');
+          if (document.body.classList.contains('chatside') && cp && cp.classList.contains('open') && cp.getClientRects().length) {
+            const pr = cp.getBoundingClientRect();
+            if (pr.width >= window.innerWidth - 1) panelIn.b = Math.max(0, Math.round(window.innerHeight - pr.top));
+            else panelIn.r = Math.max(0, Math.round(window.innerWidth - pr.left));
+          }
+        } catch (e) {}
         const ctTile = contentTile(phone);
         if (ctTile) tiles.unshift(ctTile);
         window.__comfyLast = MV.apply({
           feed: feed, tiles: tiles, faces: shownFaces, video: meta.video, srcW: meta.w, srcH: meta.h, cols: cols, cellN: cellOf ? meta.n : 0, cellOf: cellOf, skipCells: skipCells, pictureCells: pictureCells,
           holdMs: holdMs, floor: floor,
-          vw: window.innerWidth, vh: window.innerHeight, phone: phone, selfId: shadeKey('me'),
+          vw: window.innerWidth - panelIn.r, vh: window.innerHeight - panelIn.b, phone: phone, selfId: shadeKey('me'),
           pill: document.body.classList.contains('has-pill'), bottom: 0, holdBottom: 0, top: 0,
           mode: window.__meetViewMode || 'gallery',
           swapSelf: !!(window.__meetSwapSelf || (window.__meetSelf && window.__meetSelf.onStage)),
@@ -7900,7 +7913,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       const v = window.__meetView || 'fit';
       // Drag is the meeting's own layout (the content takes the screen, the
       // people inset); a phone's Fit is the content full with a face strip.
-      return { phone: !!phone && v !== 'scroll' && v !== 'drag', hideFaces: !!(CT && CT.facesHidden && phone) };
+      // R2: an agenda needs only its list (and the tab row); a screen or an
+      // app is sized by its aspect in the zones. The rest goes to the faces.
+      let needH = 0;
+      try {
+        const it = CT && CT.st && !CT.st.all ? CT.items.find((i) => i.key === CT.st.sel) : null;
+        if (it && it.kind === 'agenda') needH = Math.round(1000 / ctAspect(it, 1000)); // the list's own height (ctAspect)
+      } catch (e) {}
+      // Beside the faces (a wide screen) a list reads well at a column's width; the faces take the rest.
+      const needW = needH ? 640 : 0;
+      return { phone: !!phone && v !== 'scroll' && v !== 'drag', hideFaces: !!(CT && CT.facesHidden && phone), needH: needH > 40 ? needH : 0, needW: needW };
     }
 
     // ---- panes ----
@@ -8096,8 +8118,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (CT.present) {
         box = { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight }; fixed = true;
       } else if (focusC) {
+        // R4: Focus keeps everyone. The item takes the big view and stops at
+        // the face strip (down the side when wide, across the bottom when tall).
         const r = fsmain.getBoundingClientRect();
         box = { x: r.left, y: r.top, w: r.width, h: r.height }; fixed = true;
+        const st = document.getElementById('fsstrip');
+        if (st && st.getClientRects().length && getComputedStyle(st).display !== 'none' && st.children.length) {
+          const sr = st.getBoundingClientRect();
+          if (sr.width >= r.width - 1) box.h = Math.max(1, Math.round(sr.top - r.top));
+          else box.w = Math.max(1, Math.round(sr.left - r.left));
+        }
       } else if (!el.classList.contains('comfy-off') && el.style.width) {
         box = { x: parseFloat(el.style.left) || 0, y: parseFloat(el.style.top) || 0, w: parseFloat(el.style.width) || 0, h: parseFloat(el.style.height) || 0 };
       }
@@ -9176,6 +9206,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // The build label's width changes with the build, so Fit sits just left of it.
     function placeFit() {
       if (!fitbtn) return;
+      // In the top bar nothing is placed by hand: flex lays the row out.
+      if (fitbtn.parentNode && fitbtn.parentNode.id === 'tophead') { fitbtn.style.right = ''; const c = document.querySelector('.topchip'); if (c) c.style.maxWidth = ''; return; }
       const bf = document.getElementById('gifos-build-float');
       const r = bf && bf.getClientRects().length ? bf.getBoundingClientRect() : null;
       const desk = window.matchMedia('(min-width: 601px) and (min-height: 501px)').matches;
@@ -9195,6 +9227,48 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         chip.style.maxWidth = end > cl ? Math.max(160, Math.floor(end - cl - 8)) + 'px' : '';
       }
     }
+    // The top bar (R1): adopt the top controls once, keep the meeting's own
+    // Invite / Help / Full screen row in it outside an app (an app shows its
+    // own bar at the top of its pane), and publish the bar's bottom edge as
+    // --headh: the one number the meeting box starts from.
+    (function topHead() {
+      const head = document.getElementById('tophead');
+      if (!head) return;
+      const put = (el) => { if (el && el.parentNode !== head) head.appendChild(el); };
+      const ver = () => { const v = document.getElementById('gifos-build-float'); if (v && v.parentNode !== head) head.insertBefore(v, head.firstChild); return !!v; };
+      put(document.querySelector('.topchip'));
+      put(document.getElementById('unmute'));
+      put(document.getElementById('showcam'));
+      put(fitbtn);
+      const appbar = document.getElementById('appbar'), pane = document.getElementById('apppane');
+      const appOwn = () => document.body.classList.contains('has-app') || document.body.classList.contains('solo-app') || document.body.classList.contains('app-room');
+      let headH = -1;
+      const measure = () => {
+        const r = head.getBoundingClientRect();
+        const h = head.getClientRects().length && getComputedStyle(head).display !== 'none' ? Math.ceil(r.bottom) : 0;
+        if (h === headH) return;
+        headH = h;
+        document.documentElement.style.setProperty('--headh', h + 'px');
+        try { layout(); } catch (e) {}
+      };
+      const sync = () => {
+        if (appbar && pane) {
+          if (appOwn()) { if (appbar.parentNode !== pane) pane.insertBefore(appbar, pane.firstChild); }
+          else put(appbar);
+        }
+        ver();
+        measure();
+      };
+      window.__meetHeadH = () => (headH > 0 ? headH : 0);
+      sync();
+      if (!ver() && window.MutationObserver) {
+        const mo = new MutationObserver(() => { if (ver()) { mo.disconnect(); measure(); } });
+        try { mo.observe(document.body, { childList: true }); } catch (e) {}
+      }
+      if (window.MutationObserver) { try { new MutationObserver(sync).observe(document.body, { attributes: true, attributeFilter: ['class'] }); } catch (e) {} }
+      if (window.ResizeObserver) { try { new ResizeObserver(measure).observe(head); } catch (e) {} }
+      window.addEventListener('resize', measure);
+    })();
     placeFit();
     window.addEventListener('load', placeFit);
     window.addEventListener('resize', placeFit);
@@ -23516,6 +23590,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (window.__gifosDock) window.__gifosDock.place();
       // The header's right end moved with the panel: Fit and the hand line follow it.
       try { placeHandq(); } catch (e) {}
+      // The panel takes its edge of the meeting box: lay the meeting out again once it is drawn.
+      requestAnimationFrame(() => { try { layout(); } catch (e) {} });
     }).observe(chatPanel, { attributes: true, attributeFilter: ['class'] });
     chatBtn.setAttribute('aria-expanded', chatPanelOpen() ? 'true' : 'false');
     chatBtn.onclick = () => {
@@ -23525,6 +23601,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // is not painted while the panel is closed: paint the tab that shows.
       if (chatPanel.classList.contains('open')) {
         unread = 0; paintChatCount(); if (transcriptShown()) renderTranscript(); else renderChat(); renderFiles();
+        // Opening the panel shows the newest lines: nothing is unread once it is open.
+        for (const id of ['chatlog', 'trlog']) { const lg = document.getElementById(id); if (lg) lg.scrollTop = lg.scrollHeight; }
+        paintChatNew(true);
         try { mentionAlert = null; reactAlert = null; paintChatBadge(); } catch (e) {}
         try { paintChatBtn(); } catch (e) {}
         // The More sheet floats above the chat (the dock's stacking context).

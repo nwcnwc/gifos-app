@@ -563,7 +563,9 @@
 
   // The Float view's inset tiles: a share of the screen's short side, held
   // between a readable floor and a size that leaves the content in view.
-  const FLOAT_INSET = { frac: 0.22, min: 72, max: 220, margin: 12 };
+  // The face floor's share of the short side (R2): Fit beside a share and the Drag insets alike.
+  const FACE_FLOOR_FRAC = 0.28;
+  const FLOAT_INSET = { frac: FACE_FLOOR_FRAC, min: 96, max: 220, margin: 12 };
 
   function laid(rects, contentH, regions, extra, gallery) {
     return {
@@ -753,61 +755,33 @@
     return laid(rects, box.h, { stage: stageBox, share: null, people: rowBox || stadBox || stageBox }, extra, 'fit');
   }
 
-  // Fit with a share: the share takes the left (wide) or the top (tall).
-  // Row and stadium fit in the remaining band. Stage people float over the
-  // share, shrunk to about a third of its short side.
-  // The content area full size on a phone (Nathan 2026-11-11): the faces are
-  // one strip along the bottom (upright) or the right (sideways) that the
-  // viewer can hide. (Drag is layoutFloatShare: the people inset.)
-  function faceStrip(ids, tierOf, strip, gap, vertical) {
-    const out = [];
-    const n = ids.length;
-    if (!n) return out;
-    const thick = vertical ? strip.w : strip.h;
-    const len = vertical ? strip.h : strip.w;
-    const side = Math.max(24, Math.min(thick, (len - gap * (n - 1)) / n));
-    const used = n * side + (n - 1) * gap;
-    let at = (vertical ? strip.y : strip.x) + Math.max(0, (len - used) / 2);
-    for (let i = 0; i < n; i++) {
-      const r = vertical
-        ? { x: strip.x + (thick - side) / 2, y: at, w: side, h: side }
-        : { x: at, y: strip.y + (thick - side) / 2, w: side, h: side };
-      out.push(Object.assign({ id: ids[i], tier: tierOf(ids[i]), fit: 'cover' }, r));
-      at += side + gap;
-    }
-    return out;
-  }
-  function layoutContentFull(opts, box, gap, phone, row, stad, shareItem, onStage) {
-    const c = opts.content || {};
-    const hide = !!c.hideFaces;
-    const people = onStage.map((it) => it.id).concat(row, stad);
-    const isStage = new Set(onStage.map((it) => it.id));
-    const isStad = new Set(stad);
-    const tierOf = (id) => (isStage.has(id) ? 'stage' : isStad.has(id) ? 'stad' : 'row');
-    // Phone: the strip runs along the bottom when upright, down the right
-    // side when sideways; hidden, the content has the whole screen.
-    const vertical = box.w > box.h;
-    const thick = hide || !people.length ? 0 : Math.round(vertical ? Math.min(140, Math.max(80, box.w * 0.16)) : Math.min(120, Math.max(72, box.h * 0.14)));
-    const sb = vertical ? { x: box.x, y: box.y, w: Math.max(1, box.w - (thick ? thick + gap : 0)), h: box.h }
-      : { x: box.x, y: box.y, w: box.w, h: Math.max(1, box.h - (thick ? thick + gap : 0)) };
-    const rects = [{ id: shareItem.id, tier: 'stage', x: sb.x, y: sb.y, w: sb.w, h: sb.h, fit: 'cover' }];
-    let pb = null;
-    if (thick) {
-      pb = vertical ? { x: sb.x + sb.w + gap, y: box.y, w: thick, h: box.h } : { x: box.x, y: sb.y + sb.h + gap, w: box.w, h: thick };
-      const fr = faceStrip(people, tierOf, pb, gap, vertical);
-      for (const r of fr) rects.push(r);
-    }
-    return laid(rects, box.h, { stage: pb, share: sb, people: pb }, { side: thick, stadSide: 0, tooSmall: false }, 'fit');
-  }
-
+  // Fit with a share: the share takes the left (wide) or the top (tall), sized
+  // by what it needs; row and stadium fit in the remaining band, the people on
+  // stage at its head. (Drag is layoutFloatShare: the people inset.)
+  // Content takes what it needs; faces keep a floor (R2, 2026-11-15). The
+  // share is sized by its content (a screen or an app by its aspect, an
+  // agenda by its list, opts.content.needH / needW) and the people get the
+  // rest, never less than the face floor. One rule for every screen size.
+  function faceFloor(box) { return Math.round(Math.max(FIT_ROW_MIN.phone, Math.min(box.w, box.h) * FACE_FLOOR_FRAC)); }
   function layoutFitShare(opts, box, gap, phone, row, stad, shareItem, onStage) {
-    if (shareItem.content && opts.content && opts.content.phone) {
-      return layoutContentFull(opts, box, gap, phone, row, stad, shareItem, onStage);
+    const c = opts.content || {};
+    const nPeople = onStage.length + row.length + stad.length;
+    if (shareItem.content && (c.hideFaces || !nPeople)) {
+      const rects = [{ id: shareItem.id, tier: 'stage', x: box.x, y: box.y, w: box.w, h: box.h, fit: 'cover' }];
+      return laid(rects, box.h, { stage: null, share: box, people: null }, { side: 0, stadSide: 0, tooSmall: false }, 'fit');
     }
     const wide = box.w >= box.h * 1.15;
+    const floor = faceFloor(box);
+    const asp = shareItem.aspect > 0 ? shareItem.aspect : 0;
     let sb, pb, sr;
     if (wide) {
-      const pw = Math.round(Math.max(phone ? 110 : 160, Math.min(box.w * 0.28, phone ? 260 : 440)));
+      const need = c.needW > 0 ? c.needW : asp ? Math.round(box.h * asp) : Math.round(box.w * 0.72);
+      // Enough columns that every face keeps the floor (capped at 60% of the width).
+      const perCol = Math.max(1, Math.floor((box.h + gap) / (floor + gap)));
+      const cols = Math.ceil(nPeople / perCol);
+      const pwMin = Math.max(phone ? 110 : 160, Math.min(Math.round(box.w * 0.6), cols * floor + (cols - 1) * gap));
+      const sw0 = Math.max(Math.round(box.w * 0.4), Math.min(need, box.w - pwMin - gap));
+      const pw = Math.max(1, box.w - sw0 - gap);
       const sh = opts.floor > box.y + box.h ? opts.floor - box.y : box.h;
       sb = { x: box.x, y: box.y, w: Math.max(1, box.w - pw - gap), h: sh };
       sr = stageRects([shareItem], sb, gap, phone);
@@ -820,8 +794,13 @@
       }
       pb = { x: sb.x + sb.w + gap, y: box.y, w: Math.max(1, box.x + box.w - (sb.x + sb.w + gap)), h: box.h };
     } else {
-      const ph = Math.round(Math.max(phone ? 110 : 160, Math.min(box.h * 0.28, box.h * 0.62)));
-      const sh = Math.max(1, box.h - ph - gap);
+      const need = c.needH > 0 ? c.needH : asp ? Math.round(box.w / asp) : Math.round(box.h * 0.72);
+      // Enough rows that every face keeps the floor (capped at 70% of the height).
+      const perRow = Math.max(1, Math.floor((box.w + gap) / (floor + gap)));
+      const rows = Math.ceil(nPeople / perRow);
+      const phMin = Math.min(Math.round(box.h * 0.7), rows * floor + (rows - 1) * gap);
+      const sh = Math.max(Math.round(box.h * 0.3), Math.min(need, box.h - phMin - gap));
+      const ph = Math.max(1, box.h - sh - gap);
       sb = { x: box.x, y: box.y, w: box.w, h: sh };
       pb = { x: box.x, y: box.y + sh + gap, w: box.w, h: Math.max(1, ph) };
       sr = stageRects([shareItem], sb, gap, phone);
