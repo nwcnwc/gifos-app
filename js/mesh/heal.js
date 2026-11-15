@@ -93,11 +93,17 @@
     for (let q = 0; q < C * C; q++) { const k = ckey(cell(0, Math.floor(q / C), q % C)); if (!(s.hasCoord && ckey(s.coord) === k) && s.occGet(k) >= 0 && s.firstHandLive(k)) h++; }
     return s.rootDec.at >= 0 && !s.rootDec.part && s.rootDec.n <= h;
   }
+  // C++: mesh_heal.inc:l9Echo   (L9.12.2: the echo test has one clock per seat, not per cell: silent two pull beats while I sat AND
+  // while my view named that seat there; a mover that just took the cell does not inherit the silence of the seat it replaced)
+  function l9Echo(s, k) {
+    const p = s.pairAt.get(k), since = Math.max(s.seatedAt, p === undefined ? -1 : p);
+    return s.now() - since >= 2 * K.L9_PULL && !(s.live.has(k) && s.now() - s.live.get(k) <= 2 * K.L9_PULL);
+  }
   // C++: mesh_heal.inc:l922Seat
   function l922Seat(s, k) {
     if (s.hasCoord && ckey(s.coord) === k) return true;
     if (s.occGet(k) < 0) return false;
-    if (s.ownedLinkCell(k)) return !(s.now() - s.seatedAt >= 2 * K.L9_PULL && !(s.live.has(k) && s.now() - s.live.get(k) <= 2 * K.L9_PULL) && !s.l920Deaf(k));   // a seat on my rook phones me (L9.12's echo test)
+    if (s.ownedLinkCell(k)) return !(l9Echo(s, k) && !s.l920Deaf(k));   // a seat on my rook phones me (L9.12's echo test)
     { const b = s.s1bAt.get(s.occGet(k)); if (b !== undefined && s.now() - b <= K.S1B_FRESH) return true; }   // L2.15.1: a Section-1 bridge's far end that beats me sits where my view has it
     return s.firstHandLive(k) || (s.s1Fresh(k) && !l922Heard(s));
   }
@@ -453,7 +459,7 @@
       if (!this.hasCoord || this.state !== 3 || this.coord.pc !== 0 || this.coord.i !== 0 || this.moving) return;
       const id = this.id;
       this.l920Note();
-      const nhGone = (nk) => this.occGet(nk) < 0 || (this.TICK - this.seatedAt >= 2 * K.L9_PULL && !(this.live.has(nk) && this.TICK - this.live.get(nk) <= 2 * K.L9_PULL));
+      const nhGone = (nk) => this.occGet(nk) < 0 || l9Echo(this, nk);
       let l921 = false;   // L9.21: the small-room band and the hold stand, but for the cells a mover left
       const front = l9RoomAllHome(this) && !l922Busy(this);   // L9.22: no deep seat in my view: Section 1's last seat is the leaf
       if (!front && (l9PullSmall(this) || (!this.l13('L13.7') && l9PullHold(this)))) {
