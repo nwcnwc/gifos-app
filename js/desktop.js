@@ -38,7 +38,7 @@
     appstore: 'desktop.sys.appstore',
   };
 
-  let latestVersion = VERSION;      // version.json.current — the LIVE release everyone gets
+  let latestVersion = VERSION;      // version.json.latest (may be four-part) — the LIVE release everyone gets; `current` is only the three-part legacy pointer
   let edgeBuild = BUILD;            // version.json.edgeBuild — the LATEST edge build available
   let releaseBuilds = {};           // version.json.builds — release → edge build it was cut from
   let availableVersions = [VERSION];
@@ -2920,7 +2920,7 @@
     const U = GifOS.update;
     // liveOf: version.json's `latest`/`latestEmergency` (may be four-part)
     // first, the three-part legacy `current`/`emergency` otherwise.
-    const liveOf = (info) => (U && U.liveOf ? U.liveOf(info) : null) || { latest: info && info.current, emergency: info && info.emergency };
+    const liveOf = (info) => (U && U.liveOf ? U.liveOf(info) : null) || { latest: info && (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(info.latest || '')) ? info.latest : info.current), emergency: info && (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(info.latestEmergency || '')) ? info.latestEmergency : info.emergency) };
     const notes = withNotes === true ? undefined : (info) => {
       const live = liveOf(info);
       const d = U.decide({ version: VERSION, edge: runningEdge(), pinned: pinnedVersion(), latest: live.latest, changelog: null, emergency: live.emergency });
@@ -3966,7 +3966,7 @@
     location.replace('/versions/' + v + '/');
   }
   // USE THE LIVE RELEASE: default channel (no pin, no edge). The loader resolves
-  // version.json.current and lands on that snapshot.
+  // version.json.latest (`current` only if latest is malformed) and lands on that snapshot.
   function useRelease() {
     try { localStorage.removeItem('gifos_pin'); localStorage.removeItem('gifos_channel'); localStorage.removeItem('gifos_pin_until'); localStorage.setItem('gifos_reseed', '1'); } catch (e) {}
     location.replace('/?stable&ts=' + Date.now());

@@ -64,7 +64,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%A6%3C/text%3E%3C/svg%3E">
 <!-- CHANNEL LOADER — runs before any app code. The site root (/) is the UNRELEASED
      edge build; releases are immutable /versions/<x.y.z>/ snapshots. A fresh
-     visitor follows the live-release pointer (version.json.current). The edge
+     visitor follows the live-release pointer (version.json.latest, may be four-part; `current` only if latest is malformed). The edge
      build and pins to older snapshots are chosen only in Settings, behind a
      confirm; a link never attaches anyone. '?stable'/'?unpin' returns to the
      default release channel. Snapshots under /versions/ never
