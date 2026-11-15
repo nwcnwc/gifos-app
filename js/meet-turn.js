@@ -1511,11 +1511,29 @@
     };
   }
 
+  // SUB.9 WHAT CROSSES A SUBROOM BRIDGE (Nathan 11-15). Every TURN link joins two subrooms (two offices, or a blocked seat
+  // that is a subroom of one), and each subroom runs its own mesh: its upkeep stays home. bridgeHolds(msg) -> true: the
+  // frame never goes on a bridge's channel.
+  //   UPKEEP (held): a seat frame (MW2) other than the PIPE fold (the far end drops it anyway, SUB.1), the status plane
+  //     (sig 'status': my beat to my own links and section), section-scoped gossip (GSPS).
+  //   CONTENT (crosses, once per event): room-wide gossip (chat, transcript lines, TURN facts, subscriptions, goodbyes), who
+  //     is talking (vtalk), the PIPE fold (the far roster, hands, Stage, talk), the sound announce (mx) and media. Once: a
+  //     bridge gets no refan copy and no backlog replay (js/mesh/page/layer.js).
+  //   LINK (crosses): the link's own words (tv: handshake, standby, the SUB.8 direct-path probe list) and its own
+  //     connection's upkeep (renegotiation, ICE, channel auth).
+  // A frame of no class named here crosses (a new kind is content until a law says otherwise).
+  function bridgeHolds(msg) {
+    if (!msg || typeof msg !== 'object') return false;
+    if (msg.k === 'mesh') { const m = msg.m || {}, t = m.t === 'MW2' && m.f ? m.f.t : m.t; return m.t === 'GSPS' || (m.t === 'MW2' && t !== 'PIPE'); }
+    if (msg.k === 'sig') return !!(msg.msg && msg.msg.kind === 'status');
+    return false;
+  }
+
   const api = {
     DEFAULT_WORKER, WORKER_KEY, FETCH_TIMEOUT_MS, RETRY_BASE_MS, RETRY_MAX_MS, SIDE_MAX, STANDBY_SWITCH_MS, THROTTLE_LOOK_MS, THROTTLE_UP_MS,
     THROTTLE_STEPS, THROTTLE_LOSS, throttlePlan, throttleNext, stepOf, voiceLow,
     retryDelayMs, parseIce, hasTurnServer, webHostOk, workerBase, askIce, askSub, createCredentials,
-    vouchToken, vouchParts, tvOk, TV_KEYS, linkId, clientEnd, pausedBy, stripPaused, vouchRank, vouchPlan, vouchPayers, budgetTicket, subsPresent, createLinks,
+    vouchToken, vouchParts, tvOk, TV_KEYS, bridgeHolds, linkId, clientEnd, pausedBy, stripPaused, vouchRank, vouchPlan, vouchPayers, budgetTicket, subsPresent, createLinks,
   };
   GifOS.meetTurn = api;
   if (isNode) module.exports = api;
