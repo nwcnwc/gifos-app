@@ -5118,9 +5118,16 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // On a phone a float is for when you are away. A touch on the meeting
     // means you are back, and your tile must not stay black under the
     // label. Float itself (and the tile window's Float) toggles on click.
+    // Not a float the person asked for with Float: Android Chrome keeps the
+    // meeting tab in front under that float, and the touch on the way out
+    // (reaching for the system bars, Home or another app) landed here and
+    // closed it (reported 2026-11-15). That float ends like the desktop's: a
+    // real return (hidden -> visible), Float again, the floated tile, or the
+    // float's own close.
     document.addEventListener('pointerdown', (e) => {
       if (!IS_MOBILE) return;
       awayFull(false);
+      if (pipManual) return;
       const t = e.target;
       if (t && t.closest && t.closest('#pipbtn, [data-pip]')) return;
       if (document.pictureInPictureElement
@@ -5148,8 +5155,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { if (on) sessionStorage.setItem(AUTO_FS_OFF_KEY, '1'); else sessionStorage.removeItem(AUTO_FS_OFF_KEY); } catch (e) {}
     }
     const AUTO_FS_SKIP = '#appfull, #pipbtn, [data-pip], #cam, #mic, [id^="campick"], #sharebtn, a[href], input, textarea, select, [contenteditable="true"]';
+    // Never under a float: the float means the person is on the way out, and
+    // full screen would hide the system bars they leave by.
     function autoFsWanted() {
-      if (!IS_ANDROID || !IS_MOBILE || autoFsOff || ROOM.solo || leaving || pageFull()) return false;
+      if (!IS_ANDROID || !IS_MOBILE || autoFsOff || ROOM.solo || leaving || pageFull() || pipFloating()) return false;
       if (mediaAskPending > 0) return false;
       const FS = window.GifOS && GifOS.fullscreen;
       return !!(FS && FS.supported());
@@ -5199,8 +5208,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // its blur alone means a prompt, a picker or the float's own opening.
     // A float the person asked for, or the browser asked for, is never
     // closed by a blur or a focus: only a real return closes it, which is
-    // hidden -> visible (above), a touch on the meeting (a phone, below), or
-    // the browser's own close. The focus-return close of a Float-button
+    // hidden -> visible (above), a touch on the meeting (a phone, above; never
+    // for a Float-button float), or the browser's own close. The focus-return
+    // close of a Float-button
     // float (0.9.23-0.9.25) is gone: on Android the float's own opening
     // blurs the window and gives the focus back 0.2-0.6 s later, in either
     // order against the float coming up, and that rule closed the float the
