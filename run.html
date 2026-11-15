@@ -29183,25 +29183,23 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // the ad carries one, else the sid's own binding): a frame that fails it
     // is dropped and the chase goes on. My OWN broadcast is retained as is.
     const sgaAppVer = new Map(); // sid -> { pk, ver } (one pin per sid and ad key)
-    // Anchor the lane's on-demand load to runtime.js, captured now — while this
-    // script is evaluating and the document base is still this page. runtime.js
-    // is always a sibling of app-owner.js. joinRoom() later rewrites the address
-    // to /meet/<room> or /join/… (history.replaceState) and moves the base; a
-    // bare 'js/app-owner.js' then resolves to /meet/js/app-owner.js (or
-    // /join/js/…) and 404s, the verifier never builds, and the lane does not
-    // retain the app frame. Reading the script's src inside sgaAppOwner is too
-    // late: the reflected URL re-resolves the relative attribute against the
-    // new base. appOwnerLib in runtime.js anchors the same way from its own
-    // currentScript, at static-load time.
+    // Anchor the lane's on-demand load to the page's own js/ folder, captured now, while this script is evaluating and the
+    // document base is still this page. joinRoom() later rewrites the address to /meet/<room> or /join/… (history.replaceState)
+    // and moves the base; a bare 'js/app-owner.js' then resolves to /meet/js/app-owner.js (or /join/js/…) and 404s, the
+    // verifier never builds, and the lane does not retain the app frame. Reading a script's src inside sgaAppOwner is too
+    // late: the reflected URL re-resolves the relative attribute against the new base. The anchor is a script of this page
+    // in js/: runtime.js on the repo page, or the bundle that carries it on the published page (js/run.bundle.js,
+    // js/run.lobby.js, beside the files). With neither, this page's own address now. appOwnerLib in runtime.js anchors the
+    // same way from its own currentScript, at static-load time.
     const _runtimeSrc = (() => {
       const nodes = document.getElementsByTagName('script');
       for (let i = 0; i < nodes.length; i++) {
         const raw = nodes[i].getAttribute('src') || '';
-        if (/(^|\/)runtime\.js(?:[?#]|$)/.test(raw)) return nodes[i].src || '';
+        if (/(^|\/)(runtime|run\.bundle|run\.lobby)\.js(?:[?#]|$)/.test(raw)) return nodes[i].src || '';
       }
-      return '';
+      try { return new URL('js/runtime.js', document.baseURI).href; } catch (e) { return ''; }
     })();
-    let sgaAOP = null;           // the app-owner module, loaded once, sibling of runtime.js
+    let sgaAOP = null;           // the app-owner module, loaded once, from this page's js/ folder
     function sgaAppOwner() {
       if (window.GifOS && GifOS.appOwner) return Promise.resolve(GifOS.appOwner);
       if (sgaAOP) return sgaAOP;
