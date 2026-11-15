@@ -6805,7 +6805,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             const h = en.contentRect.height;
             if (w > 0) { en.target.classList.toggle('slim', w < 200); en.target.classList.toggle('thin', w < 116); en.target.classList.toggle('short', w < 200 && h > 0 && h < 130); }
             if (h > 0) en.target.style.setProperty('--th', Math.round(h) + 'px'); // sizes a short tile's initial
-            if (w > 0) en.target.style.setProperty('--bw', Math.round(w) + 'px'); // the receiver blur's width (blurSized)
+            if (w > 0) en.target.style.setProperty('--bw', Math.round(Math.max(w, h)) + 'px'); // the receiver blur's size: the long side (blurSized)
           }));
         }
         try { makeTile.slimObs.observe(tile); } catch (e) {}
@@ -9644,13 +9644,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       };
     }
 
-    // BLUR STRENGTH IS A FRACTION OF THE PICTURE'S WIDTH (Nathan, 2026-11-15:
+    // BLUR STRENGTH IS A FRACTION OF THE PICTURE'S SIZE (Nathan, 2026-11-15:
     // a fixed radius in pixels read strong on a phone tile and nearly clear on
     // a big one, and Min was too clear). The sender's blur is the privacy blur:
     // Min leaves a soft person, Max hides the face. The viewer's blur is only a
     // backstop against a sender that ships clear video when the rule says blur,
     // so it is lighter and barely changes an honest, already blurred picture.
     // The numbers and their derivations live in the global timings table.
+    // SIZE IS THE LONG SIDE, not the width: a face is about the same share of
+    // a picture's long side held either way (a portrait phone camera's face is
+    // half its width, a landscape webcam's a quarter), so a width fraction
+    // blurred a portrait picture about half as much (room proof, 2026-11-15).
     const BLUR_MIN_FRAC = GifOS.timings.BLUR_MIN_FRAC, BLUR_MAX_FRAC = GifOS.timings.BLUR_MAX_FRAC;
     const BLUR_VIEW_MIN_FRAC = GifOS.timings.BLUR_VIEW_MIN_FRAC, BLUR_VIEW_MAX_FRAC = GifOS.timings.BLUR_VIEW_MAX_FRAC;
     const BLUR_PYRAMID_K = GifOS.timings.BLUR_PYRAMID_K;
@@ -9673,7 +9677,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     } catch (e) {}
     const blurSizeObs = (typeof ResizeObserver === 'function') ? new ResizeObserver((list) => list.forEach((en) => {
       if (!en.target.isConnected) { blurSizeObs.unobserve(en.target); en.target.__bwObs = false; return; }
-      const w = Math.round(en.contentRect.width);
+      const w = Math.round(Math.max(en.contentRect.width, en.contentRect.height));
       if (w > 0) en.target.style.setProperty('--bw', w + 'px');
     })) : null;
     // A blurred element outside a grid tile (full screen, a face on a shared
@@ -9918,9 +9922,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
         let drew = false;
         try {
-          // The fraction is of the SHIPPED picture's width (w): a crop or a
+          // The fraction is of the SHIPPED picture's long side: a crop or a
           // stage frame draws the camera wider than the canvas (dw).
-          if (pipe.level > 0) blurDraw(ctx, src, ox, oy, dw, dh, pipe.frac * w / Math.max(1, dw));
+          if (pipe.level > 0) blurDraw(ctx, src, ox, oy, dw, dh, pipe.frac * Math.max(w, h) / Math.max(1, dw));
           else ctx.drawImage(src, ox, oy, dw, dh);
           drew = true;
         } catch (e) {}
@@ -10048,7 +10052,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const dest = i === passes - 1 ? canvas : bufs[i];
         dest.width = w; dest.height = h;
         const dx = dest.getContext('2d');
-        blurDraw(dx, src, 0, 0, w, h, frac);
+        blurDraw(dx, src, 0, 0, w, h, frac * Math.max(w, h) / Math.max(1, w));
         src = dest;
       }
     }
@@ -34380,7 +34384,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const bl = src.me ? 0 : src.blur; // ME is already the pre-blurred outbound; folds are consent-baked
         // On iOS ctx.filter is a no-op, so a blurred guest would record clear
         // without blurDraw, which handles both paths.
-        if (bl) blurDraw(ctx, v, dx, dy, dw, dh, blurViewFrac(bl)); // a guest's blur, as a receiver's tile shows it
+        if (bl) blurDraw(ctx, v, dx, dy, dw, dh, blurViewFrac(bl) * Math.max(dw, dh) / Math.max(1, dw)); // a guest's blur, as a receiver's tile shows it
         else ctx.drawImage(v, dx, dy, dw, dh);
       } else {
         ctx.fillStyle = '#14141f'; ctx.fillRect(x + 2, y + 2, w - 4, h - 4);
