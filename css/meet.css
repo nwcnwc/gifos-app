@@ -455,7 +455,7 @@
      THEMSELVES their browser also broadcasts blurred pixels (canvas), so a
      receiver editing the DOM can't recover a clear image — the CSS here is
      the visible half of a two-sided guarantee. */
-  /* The radius is a fraction of the element's rendered width (--bw, kept by
+  /* The radius is a fraction of the element's rendered long side (--bw, kept by
      the page's size observer; the fractions are GifOS.timings BLUR_VIEW_*),
      so a phone tile and a full-screen tile look the same. This receiver blur
      is the backstop against a sender that ships clear video: lighter than the
