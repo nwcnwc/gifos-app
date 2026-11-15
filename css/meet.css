@@ -993,9 +993,9 @@
     html.kb-up body.chatside #chatpanel { padding-bottom: 12px; }
     body.chatside #chatpanel.open { bottom: var(--kb, 0px); }
     /* The call beside the chat is 460-684px: the room bar's pills move to a
-       row under the title rather than breaking "Not / recording". */
+       row under the title rather than breaking a pill in two. */
     body.chatside #airbar.on { flex-wrap: wrap; row-gap: 6px; padding: 6px 16px; }
-    #airkind, #airrec, #airwho, #airsound { white-space: nowrap; }
+    #airkind, #airwho, #airsound { white-space: nowrap; }
     /* No slim bar beside the panel: the floating bar keeps its size (placeDock). */
   }
   #chathead { display: flex; align-items: center; flex-wrap: wrap; gap: .35rem .5rem; padding: .6rem .8rem; border-bottom: 1px solid var(--border, #2a2a3f); font-weight: 700; }
@@ -1598,46 +1598,23 @@
   #airbar.watch { background: var(--c-line); color: var(--c-ink); }
   #airbar.group { background: #143024; color: #e7f6ec; }
   #airbar.off { background: #2a2a3f; color: #e0e0f0; }
-  /* A shared slide needs the height: the small-group label steps aside
-     while a screen or an app is on the stage. The Recording button stays
-     (a recording that hides its own indicator must not start). A service
-     keeps its on-air bar. */
-  body.screen-on:not(.broadcast) #airbar:not(.on),
-  body.comfy.has-app #airbar:not(.on) { display: none !important; }
-  body.screen-on:not(.broadcast) #airbar.on,
-  body.comfy.has-app #airbar.on {
-    display: flex !important; position: fixed; z-index: 30; top: 8px; right: 12px;
-    left: auto; margin: 0; width: auto; min-height: 0; padding: 0;
-    background: transparent; justify-content: flex-end; }
-  body.screen-on:not(.broadcast) #airbar.on::before,
-  body.comfy.has-app #airbar.on::before { content: none; }
-  body.screen-on:not(.broadcast) #airkind,
-  body.comfy.has-app #airkind,
-  body.screen-on:not(.broadcast) #airwho,
-  body.comfy.has-app #airwho { display: none !important; }
-  /* Phone portrait: top-right is Invite, Help and Full screen. The recording
-     pill steps under that row, on the left, and keeps its own ink so it
-     still reads on the shared picture. */
+  /* A shared slide or an app needs the height: the room bar steps aside
+     while a screen or an app is on the stage (a service keeps its on-air
+     bar). Nothing of it pins over the content; recording shows on the
+     floating bar (#barrec). */
+  body.screen-on:not(.broadcast) #airbar,
+  body.comfy.has-app:not(.broadcast) #airbar { display: none !important; }
+  /* A service with an app keeps only its Sound control, where it was:
+     top-left under the room chip, under the app's own bar on a phone. */
+  body.broadcast.comfy.has-app #airbar.on {
+    display: flex !important; position: fixed; z-index: 30; top: calc(70px + var(--gtop, 0px));
+    right: auto; left: calc(12px + env(safe-area-inset-left, 0px)); margin: 0; width: auto;
+    min-height: 0; padding: 0; background: transparent; }
+  body.broadcast.comfy.has-app #airbar.on::before,
+  body.broadcast.comfy.has-app #airkind,
+  body.broadcast.comfy.has-app #airwho { display: none !important; }
   @media (max-width: 700px) and (orientation: portrait) {
-    body.screen-on:not(.broadcast) #airbar.on,
-    body.comfy.has-app #airbar.on {
-      top: calc(62px + var(--gtop, 0px));
-      right: auto;
-      left: calc(12px + env(safe-area-inset-left, 0px));
-    }
-    body.screen-on:not(.broadcast) #airbar.on #airrec,
-    body.comfy.has-app #airbar.on #airrec {
-      background: var(--c-scrim);
-      color: var(--c-paper);
-    }
-  }
-  /* Since Invite, Help and Full screen share Fit's row on an upright phone
-     (58px to 102px, see #appbar below), the pill at 62px sat on them again.
-     It steps under that row. Large text keeps those buttons in the top row. */
-  @media (max-width: 700px) and (orientation: portrait) {
-    html:not(.ui-large) body.screen-on:not(.broadcast):not(.has-app):not(.solo-app):not(.app-room) #airbar.on {
-      top: calc(110px + var(--gtop, 0px));
-    }
+    body.broadcast.comfy.has-app #airbar.on { top: calc(110px + var(--gtop, 0px)); }
   }
   #airbar.live::before, #airbar.watch::before, #airbar.group::before {
     content: ''; width: 12px; height: 12px; border-radius: 50%; flex: none; }
@@ -1647,11 +1624,11 @@
   #airbar.off::before { background: #8a8aa8; }
   #airbar .airacts { display: flex; align-items: center; gap: 8px; margin-left: 8px; }
   #airwho[hidden] { display: none !important; }
-  #airrec, #airwho, body.broadcast #airsound:not([hidden]) { appearance: none; display: inline-block; font: 700 15px/1 system-ui, sans-serif; min-height: 36px;
+  #airwho, body.broadcast #airsound:not([hidden]) { appearance: none; display: inline-block; font: 700 15px/1 system-ui, sans-serif; min-height: 36px;
     padding: 0 12px; border-radius: var(--r-pill); cursor: pointer; background: transparent; color: inherit;
     border: 2px solid currentColor; }
   #airsound { display: none; }
-  #airrec[aria-pressed="true"], #airsound[aria-pressed="true"] { background: var(--c-white); color: var(--c-red); border-color: var(--c-red); }
+  #airsound[aria-pressed="true"] { background: var(--c-white); color: var(--c-red); border-color: var(--c-red); }
   #avstate { display: none; }
   #avstate[hidden] { display: none !important; }
   #avstate.on { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 14px;
@@ -1943,6 +1920,17 @@
      has only the stage, and those rows made More tall enough to cover it. */
   body.broadcast .barmore .selfctl { display: none !important; }
   .bar { transition: opacity var(--t-fast) ease; }
+  /* Recording: a red REC mark on the bar's top edge, for every seat. It is
+     part of the bar, so it moves when the bar is dragged, never pins over the
+     meeting, and takes no slot (the bar's width and buttons never change).
+     Not recording shows nothing. */
+  .bar > #barrec { position: absolute; z-index: 2; top: -12px; left: 30px;
+    display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 7px;
+    border-radius: var(--r-pill); background: var(--c-red); color: var(--c-white);
+    font: 800 12px/1.1 system-ui, sans-serif; letter-spacing: .04em; white-space: nowrap;
+    box-shadow: 0 1px 5px rgba(0,0,0,.3); pointer-events: none; }
+  .bar > #barrec::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--c-white); flex: none; }
+  .bar > #barrec[hidden] { display: none !important; }
   /* A quiet small call fades the dock (and Fit) so only faces are left. Coming
      back is quick; going away is slow, so it never feels like a flicker. */
   body.dock-calm .bar, body.dock-calm .fitbtn { opacity: 0; pointer-events: none; transition: opacity var(--t-slow) ease; }
@@ -3343,7 +3331,7 @@
       border: 11px solid transparent; background-clip: padding-box; }
     html body:not(.broadcast) #stagefeed > .rowtile > .tile-open { top: auto; bottom: 0; }
     html body.comfy .tile.slim > .tile-open { width: 44px; max-width: 44px; }
-    #airrec, #airwho, body.broadcast #airsound:not([hidden]) { min-height: 44px; }
+    #airwho, body.broadcast #airsound:not([hidden]) { min-height: 44px; }
     #chathead #trtab { min-height: 44px; }
   }
   @media (max-width: 700px) and (min-height: 501px) {

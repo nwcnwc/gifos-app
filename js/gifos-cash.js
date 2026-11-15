@@ -1,8 +1,7 @@
 /*
  * gifos-cash.js — optional tip / "feature this listing" on the App Store.
  *
- * THIS IS NOT gifos-pay / gifos-charge / x402. Those stay parked on testnet
- * (docs/payments.md). Near-term cash is a public Payment Link the deploy
+ * THIS IS NOT gifos-pay / gifos-charge / x402 (docs/payments.md). Near-term cash is a public Payment Link the deploy
  * may bake into js/pay.js. No account, no paywall, no SKU on a GIF: the
  * catalog installs free whether a link is configured or not.
  *

@@ -668,34 +668,12 @@ html.ui-large body:not(.has-app):not(.solo-app):not(.app-room) #appbar #appinvit
   #tilewin button.tw-btn, #tilewin .modbar button { min-height: 32px; padding: 4px 8px; font-size: 13px; }
 }
 
-/* Recording during a share or an app sat on the OS header row: Full screen
-   on a desktop (appbar 0-53px), Invite on an upright phone (its row is at
-   58-103px since the header redo). The pill now sits on the left, under the
-   room chip (it ends by 62px), clear of the faces' Open corners on the
-   right, and keeps its own ink on the shared picture. */
-body.screen-on:not(.broadcast) #airbar.on,
-body.comfy.has-app #airbar.on { top: calc(70px + var(--gtop, 0px)); right: auto; left: calc(12px + env(safe-area-inset-left, 0px)); }
-body.screen-on:not(.broadcast) #airbar.on #airrec,
-body.comfy.has-app #airbar.on #airrec { background: var(--c-scrim); color: var(--c-paper); }
-@media (max-width: 700px) and (orientation: portrait) {
-  body.screen-on:not(.broadcast) #airbar.on,
-  body.comfy.has-app #airbar.on { top: calc(110px + var(--gtop, 0px)); }
-}
-/* An app in a phone meeting starts under the header chip, and its own bar
-   (name, Invite, Help, Stop app, who runs it) runs 66-139px. At 110px the
-   pill sat on Invite and the who line and took their taps. It steps under
-   that bar. */
-@media (max-width: 700px) and (orientation: portrait) {
-  body.comfy.has-app:not(.broadcast) #airbar.on { top: calc(146px + var(--gtop, 0px)); }
-}
-
 /* A meeting app (run-app): the app's own bar is the top 53px of the app
    pane, and the room chip at 14px sat on the app's name and who runs it.
    The chip floats just under that bar instead, over the app, still in
-   reach. Recording steps under the chip. A phone keeps its own rows. */
+   reach. A phone keeps its own rows. */
 @media (min-width: 701px) and (min-height: 501px) {
   body.comfy.has-app:not(.broadcast) .topchip { top: calc(60px + var(--gtop, 0px)); }
-  body.comfy.has-app:not(.broadcast) #airbar.on { top: calc(116px + var(--gtop, 0px)); }
 }
 
 /* A phone on its side (Nathan 1313/1315): the dock and the chat sheet take

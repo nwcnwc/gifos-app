@@ -7,7 +7,7 @@
  * only. The minimum is $5. Email and phone must already be verified; this
  * file refuses to order without that proof. The destination is the user's
  * Base Account address, on the network gifos-base-net.js already selected
- * (Sepolia unless mainnet is actually running). GifOS holds no key.
+ * (Base mainnet on the OS page). GifOS holds no key.
  *
  * Credentials are a slot, empty in this build. Configure one later:
  *   configure({ sessionTokenUrl }) — POST that URL, it returns { token }.
