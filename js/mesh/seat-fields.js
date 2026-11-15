@@ -342,6 +342,7 @@
     ["l25WitRival", "i32"],   // int = 0  (line 1102)
     ["l25WitRivalId", "i32"],   // int = -1  (line 1102)
     ["l25WitAskedN", "i32"],   // int = 0  (line 1102)
+    ["l25WitAnsN", "i32"],   // int = 0  (line 1102)
     ["l25WitPend", "bool"],   // bool = false  (line 1102)
     ["l25WitSince", "i32"],   // int = -100000  (line 1102)
     ["l25WitSinceNc", "i32"],   // int = -1  (line 1102)
@@ -1085,6 +1086,7 @@
     l25WitRival: 0,
     l25WitRivalId: -1,
     l25WitAskedN: 0,
+    l25WitAnsN: 0,
     l25WitPend: false,
     l25WitSince: -100000,
     l25WitSinceNc: -1,
