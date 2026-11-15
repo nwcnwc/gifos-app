@@ -463,7 +463,11 @@
       if (look.fresh !== false && !look.settling) st.vHist = (st.vHist || []).concat(lossy ? 1 : 0).slice(-3);   // the last fresh reports (a path event's own losses left out)
       const bad = (st.vHist || []).reduce((a, b) => a + b, 0);
       if (st.voice === 'full') {
-        if (lossy && !look.settling && noVideoLeft && (st.vProbation || bad >= VOICE_BAD)) { st.voice = 'low'; st.vOkSince = 0; st.vHist = []; if (st.vProbation) st.vProbeN = (st.vProbeN || 0) + 1; st.vProbation = 0; }
+        // EVIDENCE OF THE CAP, not just loss: the estimate leaves less than one TURN_BASE_BYTES of room over the voices' own
+        // full wire (fin42-1 11-14: one 6% report on a link sending 12 of 24 KB/s with a 178 kbit estimate stepped a forwarded
+        // mix to 16k for 13 s, and the far office heard the re-encode as static; capped links read 90-120 kbit)
+        const capped = (+look.bps || 0) * (1 - THROTTLE_LOSS) < voiceWire(look) + K.TURN_BASE_BYTES * (1000 / (tickMs || 500)) * 8;
+        if (lossy && !look.settling && noVideoLeft && capped && (st.vProbation || bad >= VOICE_BAD)) { st.voice = 'low'; st.vOkSince = 0; st.vHist = []; if (st.vProbation) st.vProbeN = (st.vProbeN || 0) + 1; st.vProbation = 0; }
         else if (st.vProbation && !lossy && look.fresh !== false && ++st.vClean >= 2) { st.vProbation = 0; st.vProbeN = 0; }   // two clean fresh reports end the probation
       } else if (lossy) st.vOkSince = 0;
       else {
