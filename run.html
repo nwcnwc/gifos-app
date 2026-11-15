@@ -7168,7 +7168,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { applyComfy(); } catch (e) {}
     }
 
-    // Members hidden from the row are the stadium. Stagers stay in the row
+    // People hidden from the row are the stadium. Stagers stay in the row
     // while comfy is on (their direct tile is the face; the strip is not).
     function comfyStadRoster() {
       // While I wait I see no one; a held person is no one's face here.
@@ -7187,14 +7187,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         seen[id] = true;
         out.push(id);
       };
-      // STADIUM.ROSTER: the faces are the members the count reads (rosterIds), never a pc object. A pair outlives its
-      // person (a crashed or departed page parks disconnected until the ring lets it go, and the tile of a pair outside my
-      // row is hidden), so reading `peers` drew "Stadium \u00b7 N" over an empty box beside a header that had already let
-      // them go. A page gone whose cell is held (byeIsHeld) is no face, as it is no head in the header.
-      for (const id of (Array.isArray(rosterIds) ? rosterIds : [])) {
-        if (meshNode && meshNode.byeIsHeld && meshNode.byeIsHeld(id)) continue;
-        push(id);
-      }
+      try { for (const id of Object.keys(rosterNames)) push(id); } catch (e) {}
+      for (const id of peers.keys()) push(id);
       return out;
     }
     function comfyStadMeta() {
