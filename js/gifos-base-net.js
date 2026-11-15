@@ -2,17 +2,18 @@
  * gifos-base-net.js — the one Base network config.
  *
  * Two networks live here and nowhere else an app can edit:
- *   Base Sepolia (84532) — the default. USDC 0x036CbD53842c5426634e7929541eC2318f3dCF7e.
- *   Base mainnet (8453)  — USDC 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913.
+ *   Base mainnet (8453)  — what the OS pays on. USDC 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913.
+ *   Base Sepolia (84532) — for tests. USDC 0x036CbD53842c5426634e7929541eC2318f3dCF7e.
  *
- * Mainnet needs BASE_NETWORK below set to 'mainnet' and a real fee address.
- * In a Node process (tests, tools) it also needs GIFOS_BASE_MAINNET ("1" or
- * "true") in the environment, so a test that loads this file never pays on
- * mainnet by accident. A browser page has no process environment: there the
- * constant is the switch, flipped at the cut deploy (docs/payments.md "The
- * mainnet switch"). A fee address alone never turns it on. A manifest, a query
- * string, localStorage, or an app message cannot select it: active() takes
- * no network argument, and extra arguments are ignored.
+ * BASE_NETWORK below is the one switch; it ships 'mainnet' (0.9.26), and
+ * mainnet also needs a real fee address. A browser page has no process
+ * environment: there the constant alone decides. In a Node process (tests,
+ * tools) mainnet also needs GIFOS_BASE_MAINNET ("1" or "true") in the
+ * environment; without it Node runs on Sepolia, so a test that loads this
+ * file never pays on mainnet by accident. A fee address alone never turns
+ * mainnet on. A manifest, a query string, localStorage, or an app message
+ * cannot select the network: active() takes no network argument, and extra
+ * arguments are ignored.
  *
  * The fee address is GifOS's treasury (EIP-55 form). The 3% fee leg pays it
  * on every network; on Sepolia that is a test payment to a real address.
@@ -28,8 +29,9 @@
   const GifOS = (root.GifOS = root.GifOS || {});
   if (GifOS.baseNet) return;
 
-  // THE NETWORK SWITCH. 'sepolia' (testnet) until Nathan sets 'mainnet'.
-  const BASE_NETWORK = 'sepolia';
+  // THE NETWORK SWITCH. 'mainnet' since 0.9.26 (docs/payments.md "The
+  // mainnet switch"); 'sepolia' is for tests.
+  const BASE_NETWORK = 'mainnet';
   // GifOS's treasury: where the 3% fee leg lands (EIP-55 checksummed).
   const FEE_ADDRESS = '0xBB6Ee87BBFF5F7AB6E8Fb4f38Fe6fE69B500b2d0';
   // The old stand-in. Never a real fee address; mainnet treats it as unset.
@@ -75,7 +77,7 @@
 
   // The environment half of the switch. In Node it is GIFOS_BASE_MAINNET.
   // A page has no process environment, and apps cannot reach one: there the
-  // flag is on and BASE_NETWORK alone decides (it ships 'sepolia').
+  // flag is on and BASE_NETWORK alone decides.
   function mainnetFlag() {
     try {
       if (typeof process === 'undefined' || !process.env) return true;

@@ -17,7 +17,7 @@
  *           an approval URL. The human finishes in PayPal's own window. Proof
  *           is an Ed25519-signed receipt from the Worker, verified here
  *           against /gifos-pay.key — the purse never takes the browser's word.
- *   X402    USDC on Base (Sepolia until the mainnet switch, gifos-base-net.js).
+ *   X402    USDC on Base (the network is gifos-base-net.js's: Base mainnet).
  *           The broker builds the 97/3 split itself — two EIP-3009 transfers,
  *           no splitter contract; one when the signed payee is GifOS's own
  *           fee address — and hands them to the wallet adapter
@@ -29,7 +29,7 @@
  * while building the sheet. GET /health reports the same string; an app
  * does not fetch it. mode "LIVE" is the only value labeled as real money.
  * Anything else, including a worker that omits mode, is shown as sandbox.
- * The chain rail's network is gifos-base-net.js's (Sepolia as shipped).
+ * The chain rail's network is gifos-base-net.js's (Base mainnet as shipped).
  *
  * A PayPal order is remembered (pay.paypal:<id>, never exported) before the
  * approval window is opened. Closing that window or hiding the wait is not
@@ -58,8 +58,7 @@
   // split is built here, because the broker constructs the payment.
   const FEE_BPS = 300n;
   // Where the x402 fee lands: GifOS's treasury, the same value as
-  // gifos-base-net.js FEE_ADDRESS (EIP-55 form). Mainnet stays off until
-  // BASE_NETWORK is set to 'mainnet' there (docs/payments.md).
+  // gifos-base-net.js FEE_ADDRESS (EIP-55 form).
   const TREASURY = '0xBB6Ee87BBFF5F7AB6E8Fb4f38Fe6fE69B500b2d0';
   // The PayPal button's words, from i18n/<locale>/charge.json (gifos-charge.js
   // loads that catalog). PayPal's page opens on its card form, so no account is needed.
@@ -86,14 +85,6 @@
     const network = x.ALLOWED.networks[0];
     return { network, asset: x.ALLOWED.assets[network][0] };
   }
-  // THE USDC SWITCH. While false, the sheet never offers the USDC rails
-  // (x402 and wallet transfer), and the permission sheet does not list them,
-  // for any app; nothing else about them is removed. Flip to true only when
-  // the USDC rails point at mainnet and a real treasury address is set in
-  // both TREASURY above and the pay Worker's TREASURY_ADDRESS.
-  const USDC_ENABLED = false;
-  const USDC_RAILS = ['x402', 'transfer'];
-  const USDC_OFF = 'USDC payments are off until mainnet';
   const PAYPAL_PENDING = 'PayPal payments open once PayPal approves GifOS as a platform partner';
   // PayPal's platform-partner approval for GifOS, the same value as the pay
   // Worker's PAYPAL_PARTNER. While it is pending, a third-party PayPal order
@@ -106,8 +97,7 @@
   // The rails this OS will offer out of a list (the author's, or the Worker's).
   // signer is the app's signing identity ({type, id}). With no signer, PayPal
   // is not offered.
-  const offeredRails = (rails, signer) => (rails || []).filter((r) =>
-    (USDC_ENABLED || USDC_RAILS.indexOf(r) === -1) && (r !== 'paypal' || paypalFor(signer)));
+  const offeredRails = (rails, signer) => (rails || []).filter((r) => r !== 'paypal' || paypalFor(signer));
 
   const ls = () => root.localStorage;
 
@@ -227,10 +217,9 @@
       const s = body.rails[rail];
       if (s && s.ok === true) accepted[rail] = true; else why[rail] = (s && s.why) || 'unavailable';
     }
-    // A rail the switch above turns off is never accepted, whatever the
-    // Worker says, and the human is told why.
+    // A rail this OS does not offer the signer is never accepted, whatever
+    // the Worker says, and the human is told why.
     for (const rail of Object.keys(accepted)) if (offeredRails([rail], signer).length === 0) delete accepted[rail];
-    if (!USDC_ENABLED) for (const rail of USDC_RAILS) why[rail] = USDC_OFF;
     if (!paypalFor(signer)) why.paypal = PAYPAL_PENDING;
     return { accepted, why, mode: body && body.mode === 'LIVE' ? 'LIVE' : 'test' };
   }
@@ -1240,8 +1229,8 @@
     // storage of its own.
     purse, maxAmountFor, setMaxAmount, fmtUsd, entScope,
     DEFAULT_MAX, WORKER_KEY, POLICY_KEY,
-    // The permission sheet lists rails through this, so one switch rules both.
-    USDC_ENABLED, PAYPAL_PARTNER, offeredRails,
+    // The permission sheet lists rails through this, so one rule serves both.
+    PAYPAL_PARTNER, offeredRails,
     // The same payment service and key, for anything else that needs them.
     workerBase, verifyReceipt,
   };

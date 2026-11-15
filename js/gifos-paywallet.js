@@ -34,14 +34,15 @@
  *      only on the OS page. Signing happens in Coinbase's own account
  *      surface; GifOS holds a connection, not a key.
  *   3. An injected `window.ethereum` (Coinbase Wallet extension and kin) —
- *      an INTERIM rail for tier-3 hand testing on Base Sepolia. It works
+ *      an INTERIM rail, first used for tier-3 hand testing. It works
  *      today with a wallet a human already trusts; the Base Account is still
  *      the destination, because an extension keeps key custody in the
  *      extension rather than behind a passkey.
  *
- * CHAIN: gifos-base-net.js picks the network. With that module absent, or
- * with GIFOS_BASE_MAINNET off, the only chain this file will build for is
- * Base Sepolia (eip155:84532). A transfer naming any other network throws
+ * CHAIN: gifos-base-net.js picks the network (Base mainnet on the OS page).
+ * With that module absent (unit tests), or in a Node process without
+ * GIFOS_BASE_MAINNET, the only chain this file will build for is Base
+ * Sepolia (eip155:84532). A transfer naming any other network throws
  * before any wallet sees anything.
  *
  * Attaches to `GifOS.payWallet`.
@@ -50,7 +51,7 @@
   const GifOS = (root.GifOS = root.GifOS || {});
   if (GifOS.payWallet) return;
 
-  const CHAIN_CAIP = 'eip155:84532';       // Base Sepolia — the default chain
+  const CHAIN_CAIP = 'eip155:84532';       // Base Sepolia — the pin without gifos-base-net.js (unit tests)
   const CHAIN_ID = 84532;
   const CHAIN_HEX = '0x14a34';
   function chainNow() {
