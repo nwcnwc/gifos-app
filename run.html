@@ -13222,6 +13222,30 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // renegotiation then read as a lost pair: a slow answer turned the tile to "no route", the reach line to "cannot
     // reach room" and asked a friend to relay a pair that was up. With max-bundle every m-line rides the one transport
     // from the start, so the pc's states stay true through a renegotiation. Every engine GifOS runs on supports it.
+    // TURN.18 THE WEB PATH'S CLOCK (turnPath().at): when a TURN client's connection began trying its relay servers. A server named
+    // by its host name is tried only once the browser has looked the name up, and a slow resolver that answers (4 s) used to
+    // eat the whole TURN_WEB_WAIT counted from the start of gathering: the link took the web path with no TURN try. So the
+    // clock starts at the browser's first word on a server (a candidate error or a relay candidate: the names are looked up);
+    // servers given as addresses need no lookup (gathering starts the clock); a browser that says nothing is given
+    // TURN_WEB_LOOKUP_MS for the lookup. 0: the clock has not started (not a relay-only pc, or not gathering yet).
+    function turnWebClock(pc, now) {
+      let c = null; try { c = pc.getConfiguration(); } catch (e) {}
+      if (!c || c.iceTransportPolicy !== 'relay' || !pc.__gatherAt) return 0;
+      if (pc.__turnSeenAt) return pc.__turnSeenAt;
+      let named = false;
+      for (const s of c.iceServers || []) for (const u of [].concat(s.urls || [])) { const h = /^turns?:\[?([^\]?:]+)/.exec(String(u)); if (h && !/^[0-9.]+$/.test(h[1]) && h[1].indexOf(':') < 0 && /[a-z]/i.test(h[1])) named = true; }
+      if (!named) return pc.__gatherAt;
+      const cap = pc.__gatherAt + GifOS.timings.TURN_WEB_LOOKUP_MS;
+      return now >= cap ? cap : 0;
+    }
+    // a candidate error's url names one of this pc's TURN servers (the browser reports a STUN url for a TURN server too)
+    function turnServerWord(pc, url) {
+      const host = (u) => { const m = /^(?:turns?|stun):\[?([^\]?:\/]+)/.exec(String(u || '')); return m ? m[1].toLowerCase() : ''; };
+      const h = host(url); if (!h) return false;
+      let c = null; try { c = pc.getConfiguration(); } catch (e) { return false; }
+      for (const s of (c && c.iceServers) || []) for (const u of [].concat(s.urls || [])) if (/^turns?:/.test(String(u)) && host(u) === h) return true;
+      return false;
+    }
     function turnPcConfig(p) {
       const c = turnLinks && p ? turnLinks.config(p.id) : null;
       if (!c) return { iceServers: ICE_SERVERS, bundlePolicy: 'max-bundle' };
@@ -13415,7 +13439,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         setTimer: (fn, ms) => setTimeout(fn, ms), clearTimer: (h) => clearTimeout(h),
         // The web path (js/meet-tunnel.js): a link whose relay protocol finds no way out of this network runs over a WebSocket.
         web: () => !!(GifOS.meetTunnel && GifOS.meetTunnel.supported()),
-        turnPath: (pid) => { const p = peers.get(pid), pc = p && p.pc; if (!pc) return { at: 0, relay: false }; let relayOnly = false; try { relayOnly = pc.getConfiguration().iceTransportPolicy === 'relay'; } catch (e) {} return { at: relayOnly ? (pc.__gatherAt || 0) : 0, relay: !!pc.__relayCand || !!p.connected }; },
+        turnPath: (pid) => { const p = peers.get(pid), pc = p && p.pc; if (!pc) return { at: 0, relay: false }; return { at: turnWebClock(pc, Date.now()), relay: !!pc.__relayCand || !!p.connected }; },
         webOpen: (pid, o) => turnWebOpen(pid, o),
         webAuth: (pid, auth) => { const w = turnWeb.get(pid); if (w) w.auth(auth); },
         webUp: (pid) => { const w = turnWeb.get(pid); return !!w && w.up(); },
@@ -13868,7 +13892,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         fsRefreshIfOpen();
         if (p.video && fsview.classList.contains('on')) p.video.addEventListener('resize', () => fsRefreshIfOpen(), { once: true });
       };
-      pc.onicecandidate = (ev) => { if (p.pc !== pc) return; if (ev.candidate && / typ relay/.test(ev.candidate.candidate || '')) pc.__relayCand = true; noteIce(p.id, ev.candidate || null); };
+      pc.onicecandidate = (ev) => { if (p.pc !== pc) return; if (ev.candidate && / typ relay/.test(ev.candidate.candidate || '')) { pc.__relayCand = true; if (!pc.__turnSeenAt) pc.__turnSeenAt = Date.now(); } noteIce(p.id, ev.candidate || null); };
+      pc.addEventListener('icecandidateerror', (ev) => { if (!pc.__turnSeenAt && turnServerWord(pc, ev && ev.url)) pc.__turnSeenAt = Date.now(); });   // the browser looked my TURN servers' names up and tried one: the web path's clock (turnWebClock)
       pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'gathering' && !pc.__gatherAt) pc.__gatherAt = Date.now(); });   // when this connection began looking for its paths (the web path's clock)
       pc.oniceconnectionstatechange = () => {
         if (p.pc !== pc) return;
