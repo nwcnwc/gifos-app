@@ -3,7 +3,7 @@
  *
  * GifOS itself (the Home Screen, the meeting/app runtime, the signer) is
  * versioned as a whole: a release is an immutable /versions/<x.y.z>/ snapshot,
- * and version.json.current names the live one. Releases carry no backward
+ * and version.json.latest names the live one (`current` is the three-part legacy pointer). Releases carry no backward
  * compatibility, so a person on an older build is not merely behind: they are
  * on a build the rest of the room may no longer speak to.
  *
