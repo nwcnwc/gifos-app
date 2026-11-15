@@ -13440,6 +13440,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         webClose: (pid) => { const w = turnWeb.get(pid); if (w) { turnWeb.delete(pid); try { w.close('link closed'); } catch (e) {} } },
         log: turnNote,
         changed: (pid) => { const p = peers.get(pid); if (p) turnApplyVideo(p); turnPaint(); },
+        // SUB.8: a pipe of mine is its own standby from now on (the pipe moved to a better path): nothing media rides this pc
+        // any more, and a standby's channel carries no 'mx-end'. So each end ends, by itself, what the pipe carried: my jobs
+        // toward that peer, its announces and what I claimed from it; then it claims again (the same branch comes in through
+        // my room's new pipe end). Before: the old far end's sound stayed claimed on the idle pc and its room was deaf to it.
+        demoted: (pid) => {
+          for (const [jk, job] of [...mosJobs]) if (job.to === pid) unshipMos(jk, false);
+          for (const ak of [...mosAnn.keys()]) if (ak.indexOf(pid + '|') === 0) mosAnn.delete(ak);
+          for (const [rk, c] of [...mosIn]) if (c.via === pid) dropMosIn(rk);
+          for (const [rk, c] of [...mosStandby]) if (c.via === pid) dropStandby(rk);
+          if (typeof clog === 'function') clog('turn-demoted ' + String(pid).slice(0, 6) + ': its jobs and claims end');
+          claimMos(); schedReconcile();
+        },
       };
     }
     // The web path's end for one link (js/meet-tunnel.js). It stands in for the far page in every negotiation of the
