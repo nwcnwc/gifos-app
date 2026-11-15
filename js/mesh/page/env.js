@@ -260,9 +260,11 @@
       const v = { seat: 0, c: { pc: 0, r: 0, i: 0 }, gw: -1, gc: { pc: 0, r: 0, i: 0 }, gcOk: false };
       if (!s || to < 0) return v;
       const now = s.TICK; let any = false, ak = 0;
-      for (const [k, x] of s.occ) if (x === to) { const lt = s.live.get(k); if (lt !== undefined && now - lt <= 60) { v.seat = 1; v.c = topo.unckey(k); break; } if (!any) { any = true; ak = k; } }
-      if (v.seat === 0) { const it = s.farCk.get(to); if (it !== undefined && now - it.at <= K.RELAY_TTL) { if (it.ck) { v.seat = 1; v.c = topo.unckey(it.ck - 1); } else v.seat = -1; } }
+      let kAt = -1; { const kn = s.knockAt.get(to); if (kn !== undefined && now - kn <= K.SIT_TTL) kAt = kn; }   // FARVIEW.1: a FIND for it reached me, fresh while a chair would be held for it: outside as of that tick
+      for (const [k, x] of s.occ) if (x === to) { const lt = s.live.get(k); if (lt !== undefined && now - lt <= 60 && lt >= kAt) { v.seat = 1; v.c = topo.unckey(k); break; } if (!any && kAt < 0) { any = true; ak = k; } }
+      if (v.seat === 0) { const it = s.farCk.get(to); if (it !== undefined && now - it.at <= K.RELAY_TTL && it.at >= kAt) { if (it.ck) { v.seat = 1; v.c = topo.unckey(it.ck - 1); } else v.seat = -1; } }
       if (v.seat === 0 && any) { v.seat = 1; v.c = topo.unckey(ak); }
+      if (v.seat === 0 && kAt >= 0) v.seat = -1;   // FARVIEW.1: it asked for a seat and I have heard it in none since: outside
       const g = s.farGw.get(to); if (g !== undefined && now - g.at <= K.RELAY_TTL) { v.gw = g.gw; if (g.gck) { v.gc = topo.unckey(g.gck - 1); v.gcOk = true; } if (v.seat === 0) v.seat = -1; }
       return v;
     }
