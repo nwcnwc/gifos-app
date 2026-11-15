@@ -15338,12 +15338,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // A fresh pc nothing has happened on (no offer either way, no ICE) is idle, not forming: the one a
       // goodbye leaves behind for the seat's next dial. Counting it as forming made a dial request from a
       // page back from a reload wait out this window and its own 4 s retries: the pair came up at 8-9 s.
-      const idle = !!(p.pc && p.pc.signalingState === 'stable' && p.pc.connectionState === 'new' && !p.neg.minting);
+      // (no description either way: a pc whose offer and answer have landed reads stable and 'new' too while it still gathers)
+      const idle = !!(p.pc && p.pc.signalingState === 'stable' && p.pc.connectionState === 'new' && !p.neg.minting && !p.pc.localDescription && !p.pc.remoteDescription);
       // Age alone is not "still forming" once an answer has landed and ICE is
       // inside its finish window. Past that window a dial request rebuilds,
       // which is what a lost trickle used to wait out forever. A reload
       // (back) is a new page; the old pc is left to fail.
-      const forming = !pLive && p.pc && !darkOffer && !idle && (answering || iceFinishing(p, Date.now(), back) || Date.now() - pcBuiltAt(p) < 5000) && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
+      // A TURN link's pc that has not come up belongs to the link: its relay candidates wait on the browser's lookup of the
+      // servers' names and their allocations, and the link itself closes it at its dial budget (TURN.8) or moves it to the
+      // web path (TURN.18). A dial request rebuilt it every 5 s while it still gathered (11-15, a 4 s resolver: three
+      // relay pcs, link up 13 s after the credential): the pc that was about to allocate went, and the lookup began again.
+      const turnOwned = !pLive && !!(p.pc && typeof turnLinks !== 'undefined' && turnLinks && turnLinks.holds(p.id));
+      const forming = !pLive && p.pc && (turnOwned || (!darkOffer && !idle && (answering || iceFinishing(p, Date.now(), back) || Date.now() - pcBuiltAt(p) < 5000))) && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
       if (typeof clog === 'function') clog('dial-request from ' + String(p.id || '?').slice(0, 6) + ' solo=' + (participantCount() <= 1) + ' live=' + !!pLive
         + ' init=' + iInitiate(p.id) + ' forming=' + !!forming + ' dark=' + !!darkOffer + ' pc=' + (p.pc ? p.pc.connectionState + '/' + p.pc.signalingState : '-')
         + ' age=' + Math.round((Date.now() - pcBuiltAt(p)) / 100) / 10 + 's frag=' + Math.round((Date.now() - (p.fragDialAt || 0)) / 100) / 10 + 's');
