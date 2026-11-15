@@ -512,6 +512,12 @@
       }
     },
 
+    // C++: mesh_seat.inc:Seat::relTail (D2.1: the tail of my view is no row to heal)
+    relTail(k, x) {
+      if (!this.hasCoord || this.coord.pc !== 0) return false; const lc = unck(k); if (lc.pc !== 0) return false;
+      for (const [ek, ev] of this.occ) { if (ev < 0 || ek === k) continue; const c = unck(ek); if (c.pc !== 0 || c.r >= lc.r) return false; }
+      return this.occGet(k) === x;
+    },
     // C++: mesh_seat.inc:Seat::relStake
     relStake(k) {
       if (!this.hasCoord) return false;

@@ -307,7 +307,7 @@
         // L9.6
         if (!okR || this.occGet(m.ck) !== m.id || m.ck === ckey(this.coord)) return;
         if (this.relStake(m.ck)) { this.byeRelay(m); return; }
-        { const lc = unck(m.ck); const h = this.occGet(ckey({ pc: lc.pc, r: lc.r, i: 0 })); if (lc.i === 0 || h < 0 || h === m.id) { this.byeRelay(m); return; } }
+        { const lc = unck(m.ck); const h = this.occGet(ckey({ pc: lc.pc, r: lc.r, i: 0 })); if ((lc.i === 0 || h < 0 || h === m.id) && !this.relTail(m.ck, m.id)) { this.byeRelay(m); return; } }   // D2.1 (relTail)
         this.linkedBy.delete(m.ck); this.tenOf.delete(m.ck); this.occDrop(m.ck, 'leave'); this.live.delete(m.ck); this.kidful.delete(m.ck); this.s1seen.delete(m.ck); this.tlForget(m.ck); this.healTry.delete(m.ck); this.digForget(m.ck);
         { const sit = this.sitting.get(m.ck); if (sit !== undefined && sit.joiner === m.id) { this.sitting.delete(m.ck); } }
         this.lastChurn = TICK; this.l12DepartAt = TICK;
