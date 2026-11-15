@@ -451,7 +451,7 @@
   function mergeWallet(w) {
     const cur = SUB.walletOk(readJson(WALLET_KEY));
     const n = nowS();
-    if (cur && cur.seed !== w.seed && cur.passes.some((p) => { const o = passOf(p); return o && o.end > n; })) return false;
+    if (cur && cur.seed !== w.seed && cur.passes.some((p) => { const o = passOf(p); return o && (o.end === null || o.end > n); })) return false;
     const seen = new Set();
     const passes = (cur && cur.seed === w.seed ? cur.passes : []).concat(w.passes).filter((p) => !seen.has(p.passJson) && seen.add(p.passJson));
     writeJson(WALLET_KEY, Object.assign({}, w, { passes, pending: (cur && cur.seed === w.seed && cur.pending) || w.pending }));
@@ -652,6 +652,7 @@
   }
   function passTake(m, j) {
     m.ticket = { ticketJson: j.ticketJson, sig: j.sig }; m.exp = j.exp; m.gen = j.gen; m.until = j.until || m.until; m.moved = null;
+    m.perms = SUB.passTicketPerms(j.ticketJson);   // what this pass grants in this meeting (capture, the plan)
     passSchedule(m, (j.renewEvery || SUB.RENEW_EVERY_S) * 1000);
     passChanged();
   }
@@ -710,11 +711,12 @@
   // The admin's order that carries their plan into the room, or null.
   // A live four-hour pass rides instead of a ticket whose plan is below it
   // (none, free, $2): the best right held is the one the room reads.
-  const beatsPass = (tier) => SUB.isPaid(tier) && !SUB.bestRights([SUB.ticketRights({ tier, exp: 1 }), SUB.passRights({ end: 1 })]).pass;
+  const beatsPass = (tier, perms) => SUB.isPaid(tier) && !SUB.bestRights([SUB.ticketRights({ tier, exp: 1 }), SUB.passRights({ end: 1, perms })]).pass;
   async function roomOrder(room) {
     if (!on()) return null;
     const ticket = await currentTicket(room);
-    if (!(ticket && meet && beatsPass(meet.tier))) {
+    const lp = ticket && meet ? await livePass().catch(() => null) : null;
+    if (!(ticket && meet && beatsPass(meet.tier, lp && lp.o.perms))) {
       const pt = await currentPassTicket(room);
       if (pt) {
         const at = Date.now();
@@ -745,23 +747,43 @@
   }
   const newNonce = () => { const u = new Uint8Array(18); crypto.getRandomValues(u); return 'n' + b64(u).replace(/[+/=]/g, ''); };
 
-  // ---- an open room's admin by subscription (capture) -------------------------
-  // Only the $5 and $10 plans capture an open room: such a room keeps no door
-  // limit. canCapture: this browser's ticket for the meeting is on such a plan.
-  const capturePlan = (tier) => SUB.isPaid(tier) && SUB.TIERS[tier].roomLimit == null;
-  function canCapture(room) { return !!(meet && meet.room === room && meet.ticket && nowS() < meet.exp && capturePlan(meet.tier)); }
-  // A captor's ticket checked by anyone in the room: the ticket or null.
+  // ---- an open room's admin (capture) ------------------------------------------
+  // Whoever holds a meeting right whose permissions say capture may take an
+  // open room: the $5 and $10 subscriptions (permsOfTier), and any pass
+  // signed with capture (the staff pass; never the $1 pass). captureVia:
+  // which of this browser's rights for the meeting carries it ('sub', 'pass') or null.
+  function captureVia(room) {
+    const n = nowS();
+    if (meet && meet.room === room && meet.ticket && n < meet.exp) { const p = SUB.permsOfTier(meet.tier); if (p && p.capture) return 'sub'; }
+    if (pmeet && pmeet.room === room && pmeet.ticket && n < pmeet.exp && pmeet.perms && pmeet.perms.capture) return 'pass';
+    return null;
+  }
+  function canCapture(room) { return !!captureVia(room); }
+  // A captor's ticket checked by anyone in the room: the meeting right or null.
   async function captureTicket(tk, room) {
-    try { const t = await SUB.verifyTicket(tk, verifyPay, nowS(), await SUB.meetingTag(room)); return t && capturePlan(t.tier) ? t : null; } catch (e) { return null; }
+    try { return await SUB.captureRight(tk, verifyPay, nowS(), await SUB.meetingTag(room)); } catch (e) { return null; }
+  }
+  // The ticket that carries this browser's capture now (renewed), or null.
+  async function captureCurrent(room) {
+    const via = captureVia(room);
+    return via === 'sub' ? currentTicket(room) : via === 'pass' ? currentPassTicket(room) : null;
   }
   // {tk, w}: the ticket and an order signed by the ticket's key, for the meeting server.
   async function captureOrder(room) {
-    if (!canCapture(room)) return null;
-    const tk = await currentTicket(room); if (!tk) return null;
-    const k = await myKey(), sp = JSON.stringify({ act: 'capture', ts: Date.now(), room });
-    return { tk, w: { sp, sig: await signText(sp), pub: k.pub } };
+    const via = captureVia(room);
+    if (!via) return null;
+    const tk = await captureCurrent(room); if (!tk) return null;
+    const k = via === 'pass' ? await walletKey(await wallet()) : await myKey(), sp = JSON.stringify({ act: 'capture', ts: Date.now(), room });
+    return { tk, w: { sp, sig: b64(await GifOS.ed.sign(k.priv, new TextEncoder().encode(sp))), pub: k.pub } };
   }
-  async function captureKeys() { const k = await myKey(); return { priv: k.priv, pubB64: k.pub }; }
+  // The keys that sign as the captor: the pass key when ck (the room's captor
+  // key) is this browser's pass key, else the subscription's.
+  async function captureKeys(ck) {
+    const w = ck ? await wallet().catch(() => null) : null;
+    const pk = w ? await walletKey(w) : null;
+    const k = pk && pk.pub === ck ? pk : await myKey();
+    return { priv: k.priv, pubB64: k.pub };
+  }
 
   // ---- what this browser holds, and what is in effect now ---------------------
   // Read from this browser's copy of the subscription file (or the one in the
@@ -788,21 +810,21 @@
       const status = st.status === 'CANCELLED' ? 'cancelled' : st.paidThrough && st.paidThrough < n ? 'grace' : 'active';
       sub = { tier: lic.tier, period: cred && cred.period === 'yearly' ? 'yearly' : 'monthly', status, until: st.until || lic.exp, renews: status === 'active' ? st.paidThrough || null : null };
     }
-    const held = (await passes().catch(() => [])).filter((x) => x.o.end > n).map((x) => ({ id: x.o.id, start: x.o.start, end: x.o.end, live: SUB.passLive(x.o, n) }));
+    const mine = (await passes().catch(() => [])).filter((x) => x.o.end > n);
+    const held = mine.map((x) => ({ id: x.o.id, start: x.o.start, end: x.o.end, live: SUB.passLive(x.o, n), never: !Number.isFinite(x.o.end), plan: x.o.perms.plan, capture: x.o.perms.capture }));
     const base = SUB.rightsOf(lic || free, n);
-    const live = held.filter((x) => x.live);
-    const lp = live.length ? live[live.length - 1] : null;
     // The passes run back to back: the window in effect ends with the last
-    // pass that follows on without a gap.
-    let passEnd = lp ? lp.end : 0;
-    for (const x of held) if (lp && x.start <= passEnd && x.end > passEnd) passEnd = x.end;
-    const best = lp ? SUB.bestRights([base, SUB.passRights({ end: passEnd })]) : base;
+    // pass of the same permissions that follows on without a gap (passChain).
+    const chain = SUB.passChain(mine.map((x) => x.o), n);
+    const passEnd = chain ? chain.until : 0;
+    const best = chain ? SUB.bestRights([base, SUB.passRights({ end: passEnd, perms: chain.live.perms })]) : base;
     const now = best.pass ? { tier: best.tier, why: 'pass', until: passEnd } : base.tier ? { tier: base.tier, why: base.tier === 'free' ? 'free' : 'sub', until: base.until } : { tier: null, why: 'none' };
     const then = best.pass && base.tier ? base.tier : null;
     return { sub, free: !!free, passes: held, now, then };
   }
   // One line for the meeting's status: what is in effect, quietly.
   function nowLine(c) {
+    if (c.now.why === 'pass' && !Number.isFinite(c.now.until)) return planShort(c.now.tier);
     if (c.now.why === 'pass') return fill(tx('nowPassLine', '{plan} until {until}, {left} left'), { plan: planShort(c.now.tier), until: clockOf(c.now.until), left: leftOf(c.now.until - nowS()) });
     if (c.now.why === 'sub') return planShort(c.now.tier);
     return '';
@@ -830,7 +852,8 @@
     const n = nowS();
     const p = (id, text) => { const e = el('p', { class: 'set-help', id }, text); box.appendChild(e); return e; };
     let why;
-    if (c.now.why === 'pass') why = fill(tx('nowByPass', 'In effect now: {plan} until {until} ({left} left), from your four-hour pass.'), { plan: planShort(c.now.tier), until: clockOf(c.now.until), left: leftOf(c.now.until - n) });
+    if (c.now.why === 'pass' && !Number.isFinite(c.now.until)) why = fill(tx('nowByPassNever', 'In effect now: {plan}, from your pass (no end).'), { plan: planShort(c.now.tier) });
+    else if (c.now.why === 'pass') why = fill(tx('nowByPass', 'In effect now: {plan} until {until} ({left} left), from your four-hour pass.'), { plan: planShort(c.now.tier), until: clockOf(c.now.until), left: leftOf(c.now.until - n) });
     else if (c.now.why === 'sub') why = fill(tx('nowBySub', 'In effect now: {plan}, from your subscription.'), { plan: planShort(c.now.tier) });
     else if (c.now.why === 'free') why = tx('nowByFree', 'In effect now: Free. Admin rooms of up to 5 people.');
     else why = tx('nowByNone', 'In effect now: no plan. Open rooms are free.');
@@ -844,7 +867,8 @@
       p('held-sub', fill(tx('heldSub', 'Subscription: {plan}, {period}, {standing}.'), { plan: planShort(c.sub.tier), period: per, standing: stand }));
     }
     for (const x of c.passes) {
-      const e = x.live ? fill(tx('heldPassLive', 'Four-hour pass: Unlimited until {until}, {left} left.'), { until: clockOf(x.end), left: leftOf(x.end - n) })
+      const e = x.never ? fill(tx('heldPassNever', 'Pass: {plan}, no end{capture}.'), { plan: planShort(x.plan), capture: x.capture ? tx('heldPassCaptures', ', takes open rooms') : '' })
+        : x.live ? fill(tx('heldPassLive', 'Four-hour pass: Unlimited until {until}, {left} left.'), { until: clockOf(x.end), left: leftOf(x.end - n) })
         : fill(tx('heldPassNext', 'Four-hour pass: Unlimited from {start} to {until}.'), { start: clockOf(x.start), until: clockOf(x.end) });
       const q = p('', e); q.className = 'set-help held-pass'; q.dataset.pass = x.id;
     }
@@ -1107,7 +1131,7 @@
   GifOS.meetSubs = {
     enabled: on, rights, planRights, refresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, paintNow, paintSettings, openSettings, mayCreateAdminRoom, showFull, ensureFree, showHostPrompt,
     roomOrder, roomTier, proveAtDoor, checkShown, newNonce,
-    appNow, joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureOrder, captureKeys, fileBytes, downloadFile, useFile, librarySigner, restoreInApp,
+    appNow, joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureCurrent, captureOrder, captureKeys, fileBytes, downloadFile, useFile, librarySigner, restoreInApp,
     passMeeting: () => (pmeet ? { room: pmeet.room, gen: pmeet.gen, exp: pmeet.exp, until: pmeet.until, moved: pmeet.moved, held: !!pmeet.ticket } : null),
     currentPassTicket,
     meeting: () => (meet ? { room: meet.room, gen: meet.gen, exp: meet.exp, moved: meet.moved, held: !!meet.ticket, tier: meet.tier, paid: !!(meet.ticket && SUB.isPaid(meet.tier)) } : null),
