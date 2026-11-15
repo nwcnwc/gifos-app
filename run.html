@@ -17426,7 +17426,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return net.deriveMeetKey(room, av, roomPw).then((k) => {
         try {
           if (k && roomE2E && k !== roomE2E) { prevRoomE2E = roomE2E; rekeyAt = Date.now(); } // keep ONE generation for stale-neighbour healing (§LOCK)
-          if (k) roomE2E = k;
+          if (k) { roomE2E = k; if (typeof refreshNetTag === 'function') refreshNetTag(); }
           // The WIRE seals with its own captured key (greeter registry blobs,
           // sealed relay fallback) — hand it the new one, or a Section-1 greeter
           // keeps registering blobs under the OLD key and every new-password
@@ -18041,6 +18041,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // never stores it or puts it in anyone's roster.
         myIp = String(m.ip || '').slice(0, 64);
         if (myId) ipsOf[myId] = myIp;
+        // my network tag (L8.54: the word my door registration and every door list are read by) is known as soon as my address
+        // and the room key are: a knocker that never seated sent no status beat, so its tag stayed '' and every greeter read -1
+        if (typeof refreshNetTag === 'function') refreshNetTag();
         // The relay's SIGNED statement of that address, when it
         // gives one: it rides my status so peers can show my address as
         // relay-verified, which nobody else can claim for me.
@@ -20133,7 +20136,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         net.meetPwProof(room, av, roomPw),
         sha256hex('gifos-dev|' + room + '|' + (av || '') + '|' + deviceId()),
       ]).then(([d, pr, dh]) => {
-        sessId = d.sid; sessTok = d.tok; roomE2E = d.key; pwProof = pr;
+        sessId = d.sid; sessTok = d.tok; roomE2E = d.key; pwProof = pr; if (typeof refreshNetTag === 'function') refreshNetTag();
         myDevHash = dh.slice(0, 16);
         startMesh();
       }).catch((err) => { setStatus('Could not join the meeting (' + ((err && err.name) || 'Error') + ').'); try { statusEl.dataset.why = 'nojoin'; paintLiveBadge(); } catch (e2) {} });
@@ -21093,7 +21096,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           net.meetPwProof(room, av, roomPw),
           sha256hex('gifos-dev|' + room + '|' + (av || '') + '|' + deviceId()),
         ]).then(([d, pr, dh]) => {
-          sessId = d.sid; sessTok = d.tok; roomE2E = d.key; pwProof = pr;
+          sessId = d.sid; sessTok = d.tok; roomE2E = d.key; pwProof = pr; if (typeof refreshNetTag === 'function') refreshNetTag();
           myDevHash = dh.slice(0, 16);
           startMesh();
           updateStatus();
