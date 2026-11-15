@@ -678,6 +678,7 @@
       for (let k = 0; k < ol.length; k++) { const x = this.occGet(ckey(ol[k])); if (x >= 0 && !seen.has(x)) { seen.add(x); this.emit(x, msg.clone(bm)); } }
       const o = this.ownerCoord(); if (o) { const oid = this.occGet(ckey(o)); if (oid >= 0 && !seen.has(oid)) { this.emit(oid, msg.clone(bm)); } }   // bye: a room goodbye, relayed across the section
       if (bm.child >= 0 && bm.child !== id && !seen.has(bm.child)) { seen.add(bm.child); this.emit(bm.child, msg.clone(bm)); }   // L1.1 (a): my heir below hears it first-hand
+      if (this.coord.pc === 0) { const br = []; for (const y of this.s1bP) br.push(y[0]); for (const [x, at] of this.s1bAt) if (this.TICK - at <= K.S1B_FRESH) br.push(x); br.sort((a, b) => a - b); for (const x of br) if (x >= 0 && x !== id && !seen.has(x)) { seen.add(x); this.emit(x, msg.clone(bm)); } }   // L2.15.2: a bridge's far end hears my goodbye first-hand
       { const ops = this.f.fabricOpenPeers(id); for (const x of ops) if (x !== id && x !== bm.child && !seen.has(x)) { let named = false; for (const [, v] of this.occ) if (v === x) { named = true; break; } if (named) continue; let mine = false; for (const [, e] of this.tenOf) if (e[0] === x) { mine = true; break; } if (!mine) for (const [, e] of this.sitting) if (e.joiner === x) { mine = true; break; } if (!mine) continue; seen.add(x); this.emit(x, msg.clone(bm)); } }   // L1.5A: a seat on an open link of mine that my view does not name yet, and that a proven frame or my own vouch seats, hears it too
     },
   });
