@@ -3576,6 +3576,10 @@ body:not(.broadcast) #callstate { display: none !important; }
   html.kb-up body.chatside #chatpanel.open { top: var(--headh, 0px); height: auto; bottom: var(--kb, 0px); }
 }
 body.comfy:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app).chatside #feed { right: var(--sidew, 0px) !important; bottom: var(--sheeth, 0px) !important; }
+/* Its composer stays above the floating bar wherever the bar stands over the panel's lower half (--barclear, as on a wide
+   screen); with the keyboard up the bar is under the keyboard and the composer sits on the keyboard. */
+body.chatside #chatpanel.open { padding-bottom: max(12px, var(--barclear, 0px)); }
+html.kb-up body.chatside #chatpanel.open { padding-bottom: 12px; }
 /* R4: an app picked in Focus draws in the big view, above the focus layer (it sat under it: a black view). */
 body.view-focus.comfy.has-app:not(.app-full):not(.ct-app-off) #apppane { z-index: 7; } /* over the Focus content area (z 6), which is drawn later */
 /* The meeting's room line (#airbar "Meeting · N here") always sat under the full-bleed feed; with the

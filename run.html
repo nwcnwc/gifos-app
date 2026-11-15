@@ -23807,6 +23807,23 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // The panel takes its edge of the meeting box: lay the meeting out again once it is drawn.
       requestAnimationFrame(() => { try { layout(); } catch (e) {} });
     }).observe(chatPanel, { attributes: true, attributeFilter: ['class'] });
+    // A log the reader keeps at its newest line stays there when it changes size (the panel docking as a sheet or a
+    // column, the keyboard, a turn of the phone). A reader who scrolled up keeps their place.
+    if (window.ResizeObserver) {
+      try {
+        const keep = new ResizeObserver((entries) => {
+          let pinned = false;
+          for (const en of entries) { const lg = en.target; if (lg._atNewest !== false) { lg.scrollTop = lg.scrollHeight; if (lg.id === 'chatlog') pinned = true; } }
+          if (pinned) paintChatNew(true);
+        });
+        for (const id of ['chatlog', 'trlog']) {
+          const lg = document.getElementById(id);
+          if (!lg) continue;
+          keep.observe(lg);
+          lg.addEventListener('scroll', () => { lg._atNewest = logNearBottom(lg); }, { passive: true });
+        }
+      } catch (e) {}
+    }
     chatBtn.setAttribute('aria-expanded', chatPanelOpen() ? 'true' : 'false');
     chatBtn.onclick = () => {
       chatPanel.classList.toggle('open');
