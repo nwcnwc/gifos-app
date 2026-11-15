@@ -147,7 +147,7 @@
     // The FINDs I handed to a pc in the last L374_W ticks may have crossed the far end's close: its goodbye is the close I see.
     const L374F = new Map();   // peer -> [[tick, FIND]]
     function l374Note(to, m) {
-      if (m.t !== 'FIND' || !(m.rvia < 0)) return;
+      if (m.t !== 'FIND' || !(m.rvia < 0) || m.nc === me) return;   // L37.4.2: a hand-on only; my own ask is the re-ask law's
       if (L374F.size > 256) for (const [k, v] of L374F) if (!v.length || T() - v[v.length - 1][0] > K.L374_W) L374F.delete(k);
       let v = L374F.get(to); if (!v) { v = []; L374F.set(to, v); }
       while (v.length && T() - v[0][0] > K.L374_W) v.shift();
@@ -579,7 +579,7 @@
       if (L.agreed[e]) {
         L.agreed[e] = false; L.closingAt[e] = -1; const h = L.hold[e];
         if (h.length) { const q = h.slice(); h.length = 0; L.callClosed = false; startDial(me, x, L); L.dialT = mtI(q[0].t); for (const f of q) if (L.q.length < K.LINK_QCAP) L.q.push(f); trace('L22-REDIAL', me, null, 'peer=%d held=%zu why=%s', x, q.length, why); return; }
-      } else if (why === 'unneeded') {   // L37.4: a close I did not ask for; the FINDs I handed to that pc in its last ticks go again on a fresh dial
+      } else if (why === 'unneeded' || why === 'door') {   // L37.4 / L37.4.2: a close I did not ask for (unneeded, or the far end's door); the FINDs I handed to that pc in its last ticks go again on a fresh dial
         const s = mySeat(); const q = s && !s.dead ? l374Take(x) : [];
         if (q.length) { trace('L37.4-RESEND', me, null, 'peer=%d n=%zu state=%d', x, q.length, L.state); L.callClosed = false; startDial(me, x, L); L.dialT = mtI(q[0].t); L.dialHow = 3; for (const f of q) { f.from = me; f.to = x; if (L.q.length < K.LINK_QCAP) L.q.push(f); } return; }
       }
