@@ -834,7 +834,7 @@
       if ((+loss || 0) >= THROTTLE_LOSS || x.stale) log('turn-lossy ' + short(L.far) + ' loss=' + Math.round((+loss || 0) * 100) + '%' + (x.lossKind ? '(' + x.lossKind + ')' : '') + (x.stale ? ' stale ' + Math.round((+x.vRate || 0) / 1000) + 'k' : '') + ' flow=' + (x.flow ? 1 : 0) + ' cap=' + Math.round((bps || 0) / 1000) + 'k voices=' + (x.voiceN | 0) + ' data=' + Math.round((+x.data || 0) / 1000) + 'k');   // what made a look congested (TURN.13)
       // a FREE pipe (no vouch, no video) carries its sound at the law's non-video budget, TURN_BASE_BYTES less the headers
       // (Nathan 11-14, this cut: we can't afford more on the free pool); a vouched pipe keeps the full rate
-      L.voiceFree = L.video ? 0 : 40000;   // EXPERIMENT (static at 40k payload), never lands
+      L.voiceFree = L.video ? 0 : voiceLow(x.voiceN, tick);
       if (L.ts.voice !== 'low') L.voiceLow = 0; else if (vWas !== 'low' || !L.voiceLow) L.voiceLow = voiceLow(x.voiceN, tick);   // latched: the step is set once per step down
       if (L.ts.voice !== vWas) { log('turn-voice ' + short(L.far) + ' ' + (L.voiceLow ? 'low ' + Math.round(L.voiceLow / 1000) + 'k' : 'full') + ' cap=' + Math.round((bps || 0) / 1000) + 'k'); io.changed(L.far); }
       if (!L.video) return;
