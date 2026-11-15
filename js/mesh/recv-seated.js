@@ -569,11 +569,21 @@
       if (m.tag !== 5) this.pongDig(m, pid);   // a stand-in heir's answer carries no digest
     },
 
+    // C++: mesh_seat.inc:Seat::s1bSeat
+    // L2.15.3: a bridge beat is its sender's own word, over the pc we hold, of the cell it sits in. The far end is off my rook:
+    // its PHONE never reaches me and only gossip seats it in my view. Where my view does not name it there, the beat does (as
+    // a hint: it never displaces a seat I hold, and marks nothing first-hand live, L2.15.1), so a bridge always has two ends.
+    s1bSeat(m) {
+      const k = ckey(m.coord); if (!cellOk(k) || !this.linkIs(m, m.id) || this.occGet(k) === m.id) return;
+      { const f = this.byeFloor(m.id, k); if (f >= 0 && this.TICK - f <= K.LEASE_T) return; }   // its own goodbye from that cell stands for the lease: a beat still in flight seats nobody (L15.2)
+      if (this.hintClaim(k, m.id)) this.trace('L2.15.3-SEAT', this.id, this.coord, 'cell=%s seat=%d', coordStr(unck(k)), m.id);
+    },
+
     // C++: mesh_seat.inc:Seat::onU2
     onU2(m) {
       const id = this.id, TICK = this.TICK;
       if (!this.hasCoord || this.state !== 3 || m.id < 0) return;
-      if (m.tag === 4) { if (m.t === 'U2BEAT' && this.coord.pc === 0 && m.coord.pc === 0 && m.coord.r !== this.coord.r && m.coord.i !== this.coord.i) { if (!this.s1bAt.has(m.id) && this.s1bAt.size >= 2 * C) { let ok = null, ov = 0; for (const [k, v] of this.s1bAt) if (ok === null || v < ov) { ok = k; ov = v; } this.s1bAt.delete(ok); } this.s1bAt.set(m.id, TICK); } return; }   // L2.15: a bridge beat from a Section-1 seat off my row and column; bounded at 2C far ends
+      if (m.tag === 4) { if (m.t === 'U2BEAT' && this.coord.pc === 0 && m.coord.pc === 0 && m.coord.r !== this.coord.r && m.coord.i !== this.coord.i) { if (!this.s1bAt.has(m.id) && this.s1bAt.size >= 2 * C) { let ok = null, ov = 0; for (const [k, v] of this.s1bAt) if (ok === null || v < ov) { ok = k; ov = v; } this.s1bAt.delete(ok); } this.s1bAt.set(m.id, TICK); this.s1bSeat(m); } return; }   // L2.15: a bridge beat from a Section-1 seat off my row and column; bounded at 2C far ends
       if (m.t === 'U2ACK') {
         if (m.id === this.u2Id || (m.id === this.u3Id && 1 >= 1)) {
           if (this.u2Hot && m.dgRoot.at >= 0 && this.state === 3 && this.hasCoord && this.coord.pc !== 0) { const rt = dig.cloneDig(m.dgRoot); this.rxDig(rt); if (this.rootDig.at < 0 || rt.rx > this.rootDig.rx) this.rootDig = rt; }   // L2.4.1
