@@ -852,7 +852,6 @@
  "meet.pgUpdReload": "正在打开新版 GifOS",
  "meet.pgHintBlocked": "你的网络阻止直接通话，所以通过中继连接。",
  "meet.pgHintInspect": "你的网络会检查网页流量，所以通过网页连接到中继。",
- "meet.pgHintFarBlocked": "对方的网络阻止直接通话，所以通过中继连接。",
  "meet.pgHintStrict": "你的网络让直接通话变得困难，所以可能会多花一点时间。",
  "meet.pgHintNoAnswer": "还没有人应门。我们会继续敲门。",
  "meet.pgHintFirst": "这里还没有其他人。",

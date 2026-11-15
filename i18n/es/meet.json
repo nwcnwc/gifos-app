@@ -852,7 +852,6 @@
   "meet.pgUpdReload": "Abriendo la nueva versión de GifOS",
   "meet.pgHintBlocked": "Tu red bloquea las llamadas directas, así que esto pasa por un relé.",
   "meet.pgHintInspect": "Tu red inspecciona el tráfico web, así que el relé se alcanza como una conexión web.",
-  "meet.pgHintFarBlocked": "La red del otro lado bloquea las llamadas directas, así que esto pasa por un relé.",
   "meet.pgHintStrict": "Tu red dificulta las llamadas directas, así que puede tardar un poco más.",
   "meet.pgHintNoAnswer": "Nadie ha abierto la puerta todavía. Seguimos llamando.",
   "meet.pgHintFirst": "Todavía no hay nadie más aquí.",
