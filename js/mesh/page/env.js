@@ -474,9 +474,11 @@
 
     // L8.54 (C++: mesh_net.inc:fabricDoorNet): the network word a listed greeter registered with (its tag and its measured
     // kind), as the door's last list gave it, read against mine: 1 my network; 0 another network, and our two kinds hold no
-    // connection (one of us blocked, or both strict); 2 another network mine can meet; -1 no tag (an older page, or my
+    // connection (one of us blocked, or both strict); 2 another network mine can meet; 3 another network not known either way;
+    // 4 another network, one end blocked and the other open (L8.54.7); -1 no tag (an older page, or my
     // own tag not known yet). A greeter that said no kind is read as open.
     const doorNt = new Map();
+    let probedSeen = false;   // L8.54.7: my probe's verdict was seen (an open page's lands with no change of kind)
     const fabricDoorNet = (a, g) => {
       if (a !== me || !fh || !fh.myTag) return -1; const mine = fh.myTag(); if (!mine) return -1;
       const w = doorNt.get(g); if (!w) return -1; if (w.slice(0, 8) === mine) return 1;
@@ -490,7 +492,8 @@
       // reading. A "blocked" page on a network that routes to another one (heal: D1 reaches both blocked singles) holds an open
       // pc to that greeter; reading it "cannot meet" founded D1 alone at every entry, beside that very pc (L11-yield, found, ...)
       if (never && F.fabricLinkCarries && F.fabricLinkCarries(me, g) && !pipeEnds().some((e) => e && learnPeer(e.peer) === g)) return 2;   // a joining connection (TURN) is no such path
-      return never ? 0 : 3;
+      // L8.54.7: one end blocked and the other open: they meet at most over the TCP path one dial finds (4); two strict ends: 3
+      return never ? 0 : (n === E.NAT_BLOCKED || k === E.NAT_BLOCKED) ? 4 : 3;
     };
 
     // ---- rooms joined by relayed connections: the page's link manager (o.sub) ---------------------------------
@@ -562,7 +565,8 @@
       if (pcw.tick) guard('pcw.tick', pcw.tick)();
       // C++: mesh_net.inc:netTick's probe loop (L4.1.1): my network verdict landed or changed since the join read it: the seat's kind is
       // measured again, and a seeker at the door acts on it now (l411Verdict)
-      if (s && !dead && measure.nat) { const n0 = (measure.nat() | 0) & 0xff; if (n0 !== s.nat) { if (s.cnat === s.nat) s.cnat = n0; s.nat = n0; if (typeof s.l411Verdict === 'function') s.l411Verdict(); } }
+      if (s && !dead && measure.nat) { const n0 = (measure.nat() | 0) & 0xff; if (n0 !== s.nat) { if (s.cnat === s.nat) s.cnat = n0; s.nat = n0; if (typeof s.l411Verdict === 'function') s.l411Verdict(); } else if (!probedSeen && measure.probed && measure.probed() && typeof s.l854Tcp === 'function' && s.l854Tcp()) s.l411Verdict(); }   // L8.54.7: an open page's verdict lands with no change of kind: the greeters it holds now read 4
+      if (measure.probed && measure.probed()) probedSeen = true;
       if (s && !dead) {
         guard('pipeRead', () => pipeRead(s))();
         const due = [];
