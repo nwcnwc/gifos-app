@@ -3577,10 +3577,12 @@ body:not(.broadcast) #callstate { display: none !important; }
 }
 body.comfy:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app).chatside #feed { right: var(--sidew, 0px) !important; bottom: var(--sheeth, 0px) !important; }
 /* R4: an app picked in Focus draws in the big view, above the focus layer (it sat under it: a black view). */
-body.view-focus.comfy.has-app:not(.app-full):not(.ct-app-off) #apppane { z-index: 6; }
+body.view-focus.comfy.has-app:not(.app-full):not(.ct-app-off) #apppane { z-index: 7; } /* over the Focus content area (z 6), which is drawn later */
 /* The meeting's room line (#airbar "Meeting · N here") always sat under the full-bleed feed; with the
    meeting box under the one top bar it would show as a band. A meeting has its status in the bar's chip. */
 body.comfy:not(.broadcast) #airbar { display: none !important; }
 /* Invite, Help and Full screen keep one width: equal columns, each as wide as the widest label. */
 #tophead > #appbar { display: grid !important; grid-auto-flow: column; grid-auto-columns: 1fr; }
 #tophead > #appbar > button { width: auto !important; min-width: 0 !important; white-space: nowrap; }
+/* An app pane carries its own bar with Full screen in the top-right corner: its Presentation view button sits bottom-right instead. */
+.ct-pane.ct-appbox > .ct-pview { top: auto; bottom: 8px; pointer-events: auto; }

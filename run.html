@@ -23730,8 +23730,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (chatPanel.classList.contains('open')) {
         unread = 0; paintChatCount(); if (transcriptShown()) renderTranscript(); else renderChat(); renderFiles();
         // Opening the panel shows the newest lines: nothing is unread once it is open.
-        for (const id of ['chatlog', 'trlog']) { const lg = document.getElementById(id); if (lg) lg.scrollTop = lg.scrollHeight; }
-        paintChatNew(true);
+        const toNewest = () => { for (const id of ['chatlog', 'trlog']) { const lg = document.getElementById(id); if (lg) lg.scrollTop = lg.scrollHeight; } paintChatNew(true); };
+        toNewest(); requestAnimationFrame(toNewest); // again once the opened panel has its height
         try { mentionAlert = null; reactAlert = null; paintChatBadge(); } catch (e) {}
         try { paintChatBtn(); } catch (e) {}
         // The More sheet floats above the chat (the dock's stacking context).
