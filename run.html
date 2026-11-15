@@ -11939,7 +11939,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const RELAY_NAME_MAX = 40, RELAY_PW_MAX = 64;
     const epOk = (ep) => Number.isInteger(ep) && ep >= 0;
     // The exact field set of each payload (the padding field `_` beside it).
-    const RELAY_PAYLOAD_KEYS = { boot: 'k,t,u,w,s,v,dr', fp: 'k,v,fp', ice: 'k,c,end', name: 'k,n', password: 'k,pw,ep,pr', pwsig: 'k,sig', pwpub: 'k,ep,ts,pub', pwby: 'k,ep,by', busy: 'k,g,i,n,ref,cool', tv: 'k,q,l,d,b,e,n,m,t,f' };   // tv: the fields of js/meet-turn.js TV_KEYS (relayKeysOf reads that list itself once the module is there). Its redirect to another end (t) and a forced ask (f) were missing here: both were dropped on arrival, and the asker asked the same end for good
+    const RELAY_PAYLOAD_KEYS = { boot: 'k,t,u,w,s,v,dr', fp: 'k,v,fp', ice: 'k,c,end', name: 'k,n,dc', password: 'k,pw,ep,pr', pwsig: 'k,sig', pwpub: 'k,ep,ts,pub', pwby: 'k,ep,by', busy: 'k,g,i,n,ref,cool', tv: 'k,q,l,d,b,e,n,m,t,f' };   // tv: the fields of js/meet-turn.js TV_KEYS (relayKeysOf reads that list itself once the module is there). Its redirect to another end (t) and a forced ask (f) were missing here: both were dropped on arrival, and the asker asked the same end for good
     const relayKeysOf = (ty) => (ty === 'tv' && GifOS.meetTurn && GifOS.meetTurn.TV_KEYS) || RELAY_PAYLOAD_KEYS[ty];   // one list for the link handshake: the module's
     function relayFrameAllowed(ty, inner) {
       if (!RELAY_TYPES.has(ty) || !inner || typeof inner !== 'object' || Array.isArray(inner) || inner.k !== ty || !net.fitsFixed(inner)) return null;
@@ -11948,7 +11948,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (ty === 'boot') return net.bootOk(inner) && (inner.dr === undefined || inner.dr === 1) ? ty : null;   // dr: the sender stands at the door (doorWord)
       if (ty === 'fp') return net.fpOk(inner) ? ty : null;
       if (ty === 'ice') return (inner.end === 1 && !('c' in inner)) || (!('end' in inner) && !!net.candOfIce(inner)) ? ty : null;
-      if (ty === 'name') return typeof inner.n === 'string' && inner.n.length <= RELAY_NAME_MAX ? ty : null;
+      if (ty === 'name') return typeof inner.n === 'string' && inner.n.length <= RELAY_NAME_MAX && (inner.dc === undefined || inner.dc === 1) ? ty : null;   // dc: the sender was called to the door for me (the door word)
       if (ty === 'password') return typeof inner.pw === 'string' && inner.pw.length <= RELAY_PW_MAX && epOk(inner.ep) && (inner.pr === undefined || (typeof inner.pr === 'string' && inner.pr.length <= 64)) ? ty : null;
       if (ty === 'pwsig') return typeof inner.sig === 'string' && /^[A-Za-z0-9+/]{86}==$/.test(inner.sig) ? ty : null;
       if (ty === 'pwpub') return epOk(inner.ep) && Number.isInteger(inner.ts) && inner.ts > 0 && typeof inner.pub === 'string' && /^[A-Za-z0-9+/]{43}=$/.test(inner.pub) ? ty : null;
@@ -12525,6 +12525,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         return;
       }
       if (ty === 'name') {
+        // A member a greeter called to the door for me says so. Its word alone opens nothing: my seat knocks and asks it
+        // only if the door lists it. The frame is a name like any other, so it is also that member's dial request.
+        if (f.dc === 1 && meshNode && meshNode.penv && meshNode.penv.doorWordIn) { try { meshNode.penv.doorWordIn(from); } catch (e) {} }
         const nm = String(f.n || '').slice(0, RELAY_NAME_MAX);
         if (nm) rosterNames[from] = nm;
         const p = peers.get(from);
@@ -16759,6 +16762,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // verifier alone (the admin password and its sign-in, the password-change boot, the door limit and plan,
     // the admin-absence close) reads `av` itself.
     let capKey = null, capExp = 0, capTk = null, capSaidKey = null, capBusy = false;
+    // What the meeting server last said about the capture: the captor key, null (no capture), or undefined (it has not said).
+    // While this page's server socket is up, a ticket read from the room table is taken only for the key the server names:
+    // the table carries the ticket to pages with no server socket (and the proof after a server wake), never a capture the
+    // server ended or never granted (a revoked pass's last ticket is still signed and current for up to TICKET_S).
+    let capServerKey;
     const capOn = () => !av && !!capKey && Date.now() < capExp;
     const hasAdminRoom = () => !!av || capOn();
     const sha256hex = net.sha256hex;
@@ -16864,8 +16872,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { tryBroadcastStage(); } catch (e) {}
       return true;
     }
-    // AN OPEN ROOM'S ADMIN BY SUBSCRIPTION (capture). In an open room the first person on the $5 or $10 plan may
-    // take the room: the meeting server checks their meeting ticket and an order signed by the ticket's key, and
+    // AN OPEN ROOM'S ADMIN BY SUBSCRIPTION (capture). In an open room the first person whose meeting right says capture
+    // (the $5 or $10 plan, or a pass signed with capture: GifOS.sub PERMISSIONS) may take the room: the meeting server checks their meeting ticket and an order signed by the ticket's key, and
     // the first one wins. While it lasts, that key signs the room's password and bans like an admin's (setpw is
     // refused unsigned; a password set is handed to everyone inside except the banned). The room keeps no door
     // limit. The captor's page re-presents each renewed ticket; when the ticket runs out (they left, or the
@@ -16877,12 +16885,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (viaServer && c.ck) capSaidKey = c.ck;
       const t = await GifOS.meetSubs.captureTicket(c.tk, subsMeetId());
       if (!t || (c.ck && t.buyerKey !== c.ck)) return;
+      if (!viaServer && capServerKey !== undefined && relayUp() && t.buyerKey !== capServerKey) return;
       if (capKey && capKey !== t.buyerKey && capOn() && !(viaServer || t.buyerKey === capSaidKey)) return;   // two valid claims: the server's pick wins, else the one held
       const fresh = capKey !== t.buyerKey;
       if (!fresh && t.exp * 1000 <= capExp) return;
       capKey = t.buyerKey; capExp = t.exp * 1000; capTk = c.tk;
-      let mine = false; try { mine = (await GifOS.meetSubs.captureKeys()).pubB64 === capKey; } catch (e) { mine = false; }
-      if (mine && !amAdmin) { try { admKeys = await GifOS.meetSubs.captureKeys(); amAdmin = true; } catch (e) {} }
+      let mine = false; try { mine = (await GifOS.meetSubs.captureKeys(capKey)).pubB64 === capKey; } catch (e) { mine = false; }
+      if (mine && !amAdmin) { try { admKeys = await GifOS.meetSubs.captureKeys(capKey); amAdmin = true; } catch (e) {} }
       if (!mine && amAdmin) capDemote();
       capRole();
       if (fresh) { if (typeof clog === 'function') clog('capture on key=' + capKey.slice(0, 8) + ' mine=' + mine + ' exp=' + capExp); pwLog('capture-on mine=' + mine); setStatus(mine ? uiText('capYou', 'You are this room\u2019s admin') : uiText('capOther', 'This room has an admin now')); }
@@ -16927,7 +16936,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // The captor's page: say the ticket to the room table and, renewed, to the server.
     function capTicketPublish(renew) {
       if (!amAdmin || !capOn()) return;
-      GifOS.meetSubs.currentTicket(subsMeetId()).then((tk) => {
+      GifOS.meetSubs.captureCurrent(subsMeetId()).then((tk) => {
         if (!tk || !amAdmin) return;
         if (renew) relaySendObj({ t: 'capren', tk });
         const r = modTable['*'] = modTable['*'] || {};
@@ -16948,8 +16957,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     function onCapFrame(m) {
       if (av) return;
-      if (m.on === 1) { capTake(m, true).then(() => { if (amAdmin) capTicketPublish(false); }); return; }
-      if (m.on === 0) { capClear('server'); return; }
+      if (m.on === 1) { if (m.ck) capServerKey = m.ck; capTake(m, true).then(() => { if (amAdmin) capTicketPublish(false); }); return; }
+      if (m.on === 0) { capServerKey = null; capClear('server'); return; }
       if (m.ok === 0) { pwLog('capture-refused ' + m.why); if (m.why === 'taken') setStatus(uiText('capTaken', 'Someone else is this room\u2019s admin')); else if (m.why === 'ended' && amAdmin) capClear('server ended'); else if (m.why !== 'ended') setStatus(uiText('capFailed', 'Could not make you admin of this room')); }
     }
     function capPaint() {
@@ -17567,6 +17576,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           conns: () => myConns(), myTag: () => netTagNow, tagOf: (pid) => netTagOf.get(pid) || '', ftags: (pid) => ftagsOf.get(pid) || [],
           score: (pid) => carrierScore(pid), knockNat: () => -1,
           doorSend: (pid, kind, knocker) => { const q = peers.get(pid); if (q && q.dc && q.dc.readyState === 'open') dcSend(q, { k: 'dcall', n: kind, j: knocker }); },
+          doorWordSend: (pid) => { relaySendSealed(pid, 'name', { k: 'name', n: '', dc: 1 }); },   // the door word: one more name frame, so a page that does not know the word drops it and loses nothing
           roles: () => ({ jobs: Array.from(relayJobs.values(), (j) => ({ target: j.target, req: j.requester })), vias: Array.from(relayVia.values(), (r) => r.via) }),
           turnAsked: (pid) => { const at = turnAskedAt.get(pid), now = Date.now(); if (at == null || now - at > GifOS.meshConsts.consts.RELAY_TTL * meshNode.tickMs()) { if (turnAskedAt.size >= 64) turnAskedAt.clear(); turnAskedAt.set(pid, now); } },   // TURN.4.4, TURN.4.3
           turnHolds: (pid) => turnHolds(pid),   // a TURN link of mine, in any state, rides the pc to this peer: that pc is no door
@@ -17816,6 +17826,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // GREETER POOL, never the room \u2014 it drives door moderation only.
     function onRelayFrame(m) {
       if (m.t === 'joined') relayTv = m.tv === 1;   // this relay vouches for TURN links (see relayTv)
+      if (m.t === 'joined' && !av) capServerKey = m.cap && m.cap.ck ? m.cap.ck : null;   // the server's word on the capture at this join
       if (m.t === 'joined' && m.cap && !av) capTake(m.cap, true);   // a captured open room: the captor's ticket, checked here
       if (m.t === 'cap') { onCapFrame(m); return; }
       if (m.t === 'tvouch') { try { if (turnLinks) turnLinks.onVouch(m); } catch (e) {} return; }
@@ -29205,25 +29216,23 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // the ad carries one, else the sid's own binding): a frame that fails it
     // is dropped and the chase goes on. My OWN broadcast is retained as is.
     const sgaAppVer = new Map(); // sid -> { pk, ver } (one pin per sid and ad key)
-    // Anchor the lane's on-demand load to runtime.js, captured now — while this
-    // script is evaluating and the document base is still this page. runtime.js
-    // is always a sibling of app-owner.js. joinRoom() later rewrites the address
-    // to /meet/<room> or /join/… (history.replaceState) and moves the base; a
-    // bare 'js/app-owner.js' then resolves to /meet/js/app-owner.js (or
-    // /join/js/…) and 404s, the verifier never builds, and the lane does not
-    // retain the app frame. Reading the script's src inside sgaAppOwner is too
-    // late: the reflected URL re-resolves the relative attribute against the
-    // new base. appOwnerLib in runtime.js anchors the same way from its own
-    // currentScript, at static-load time.
+    // Anchor the lane's on-demand load to the page's own js/ folder, captured now, while this script is evaluating and the
+    // document base is still this page. joinRoom() later rewrites the address to /meet/<room> or /join/… (history.replaceState)
+    // and moves the base; a bare 'js/app-owner.js' then resolves to /meet/js/app-owner.js (or /join/js/…) and 404s, the
+    // verifier never builds, and the lane does not retain the app frame. Reading a script's src inside sgaAppOwner is too
+    // late: the reflected URL re-resolves the relative attribute against the new base. The anchor is a script of this page
+    // in js/: runtime.js on the repo page, or the bundle that carries it on the published page (js/run.bundle.js,
+    // js/run.lobby.js, beside the files). With neither, this page's own address now. appOwnerLib in runtime.js anchors the
+    // same way from its own currentScript, at static-load time.
     const _runtimeSrc = (() => {
       const nodes = document.getElementsByTagName('script');
       for (let i = 0; i < nodes.length; i++) {
         const raw = nodes[i].getAttribute('src') || '';
-        if (/(^|\/)runtime\.js(?:[?#]|$)/.test(raw)) return nodes[i].src || '';
+        if (/(^|\/)(runtime|run\.bundle|run\.lobby)\.js(?:[?#]|$)/.test(raw)) return nodes[i].src || '';
       }
-      return '';
+      try { return new URL('js/runtime.js', document.baseURI).href; } catch (e) { return ''; }
     })();
-    let sgaAOP = null;           // the app-owner module, loaded once, sibling of runtime.js
+    let sgaAOP = null;           // the app-owner module, loaded once, from this page's js/ folder
     function sgaAppOwner() {
       if (window.GifOS && GifOS.appOwner) return Promise.resolve(GifOS.appOwner);
       if (sgaAOP) return sgaAOP;
@@ -37026,7 +37035,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (!subsOn()) return;
       GifOS.meetSubs.joinMeeting(subsMeetId(), {
         onTicket: () => { if (amAdmin && !!av) subsPublishRoomPlan(); turnSubAt = 0; capTicketPublish(true); try { capPaint(); } catch (e) {} },   // a captor re-presents each renewed ticket   // a fresh ticket is a fresh TURN vouch: say it at the next step
-        onPass: () => { if (amAdmin && !!av) subsPublishRoomPlan(); turnSubAt = 0; },   // a four-hour pass bought, started or ended: the room's plan and the TURN vouch now
+        onPass: () => { if (amAdmin && !!av) subsPublishRoomPlan(); turnSubAt = 0; capTicketPublish(true); try { capPaint(); } catch (e) {} },   // a pass bought, started, renewed or ended: the room's plan, the TURN vouch and a pass captor's ticket now
         onLost: (why) => {
           if (why === 'moved') setStatus('Your subscription is now in use in another meeting.');
           if (why === 'pass-moved') setStatus(uiText('passMoved', 'Your four-hour pass is in use in another meeting now: it works in one meeting at a time.'));

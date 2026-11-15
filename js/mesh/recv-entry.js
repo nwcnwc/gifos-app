@@ -47,6 +47,7 @@
       if ((this.state === 0 || this.state === 1) && this.joinStart >= 0 && TICK - this.joinStart > K.STRAND_TTL && (this.lastReach < 0 || TICK - this.lastReach > K.STRAND_TTL) && !this.l16Saw && !this.evilDoor) { this.stranded = true; this.strandedAt = TICK; return; }   // R6
       for (const g of m.list) this.dials.heard(g);   // L17
       this.lastGreeters = m.list.slice(); this.lastGreetersAt = m.listAt.slice(); this.greetersAt = TICK;
+      if (this.doorWordList(m)) return;   // FHOP.8.2 (mesh_island.inc): the friend whose door word I heard is listed: asked now
       if (this.foundKnock && this.state === 3) { this.foundKnock = false; const un = this.l813Unfound(m); this.islandAsked.clear(); this.entEp.clear(); if (un) return; }   // L8.1.3 (mesh_roomterm.inc)
       if (this.state === 3) this.l853Door();   // L8.53.3 (mesh_island.inc): the door's second word for a vouch I hold
       if (m.tag === 1) { const st = this.l3117Stray(m.list); if (st === 2) return; if (st === 0) this.keyAsk(m.list); }   // L3.11.7 (C++: onGreeters)   // L3.11.6: the door refused my registration (C++: onGreeters)
@@ -55,7 +56,7 @@
         let g = m.list[Math.floor(this.rng() * m.list.length)];
         { const via = this.w.L31_VIA; const dv = via ? via.get(id) : undefined; if (dv !== undefined && m.list.includes(dv)) g = dv; }
         { const dv = this.l853Pick(m.list); if (dv >= 0) g = dv; }   /* L8.53.4 */
-        this.gateway = g; this.entNote(g); if (this.f.fabricDoors()) this.l16AskOne(g);
+        this.gateway = g; this.entNote(g); if (this.f.fabricDoors()) { this.l16AskOne(g); this.l16Hedged = false; }
         const w = newMsg('WHOHOME'); w.from = id; w.ttl = 60; if (!this.oldCell && !islandStand(this, E.IS_L31)) w.l31 = 1; this.emit(g, w); this.state = 1; this.retryAt = TICK;
       }
       this.islandFork(m.list);   // L8.3

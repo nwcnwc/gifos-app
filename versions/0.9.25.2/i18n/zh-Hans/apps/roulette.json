@@ -1,0 +1,21 @@
+{
+  "player.you": "你",
+  "lobby.players": "在场玩家（{n}）",
+  "lobby.invite": "📲 每个人用自己的手机玩：点按顶部栏的<b>邀请</b>，发送链接，朋友打开后就会出现在这里。",
+  "lobby.start": "开始",
+  "lobby.startN": "{label}（{n} 位玩家）",
+  "lobby.min": "至少需要 {n} 位玩家",
+  "lobby.confirmRemove": "要把 {name} 从大厅中移除吗？",
+  "name.placeholder": "添加名字，然后按回车",
+  "players.none": "还没有玩家",
+  "orPhones": "或者每人用自己的手机 📲",
+  "setup.dealAll": "发到每部手机",
+  "setup.title": "牌组说了算 🎲",
+  "setup.intro": "把大家的名字都加进来，把手机放在中间，点一下抽一张牌，照牌上说的做。就这么简单，这就是游戏。",
+  "setup.in": "谁参加？",
+  "setup.go": "洗牌发牌",
+  "setup.lobbyText": "点按<b>邀请</b>。同一张牌会出现在每个人的屏幕上，不用再挤在一部手机旁。",
+  "card.n": "第 {n} 张",
+  "card.next": "下一张 →",
+  "card.players": "玩家"
+}
