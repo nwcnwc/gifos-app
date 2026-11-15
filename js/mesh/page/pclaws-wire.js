@@ -140,7 +140,22 @@
       if (L.outside) m.dsat = mySeated();
       doorProg(L, m.t, m); if ((m.t === 'PLACE' || m.t === 'RECLAIMED') && L.outside && L.dBorn >= 0) L.dPlaced |= (1 << mine(to));   // L16.3.1: my end sent it
       m.to = to; m.from = from; m.lk = (m.rvia < 0) ? from : -1; m.lkEp = L.epoch;
+      l374Note(to, m);
       if (!io.send(to, m)) trace('PCW-SENDFAIL', me, null, 'peer=%d mt=%d', to, mtI(m.t));
+    }
+    // C++: mesh_gaps_fab.inc:l374Note / l374Resend   [L37.4: a FIND that crossed a close I did not ask for rides my next dial]
+    // The FINDs I handed to a pc in the last L374_W ticks may have crossed the far end's close: its goodbye is the close I see.
+    const L374F = new Map();   // peer -> [[tick, FIND]]
+    function l374Note(to, m) {
+      if (m.t !== 'FIND' || !(m.rvia < 0)) return;
+      if (L374F.size > 256) for (const [k, v] of L374F) if (!v.length || T() - v[v.length - 1][0] > K.L374_W) L374F.delete(k);
+      let v = L374F.get(to); if (!v) { v = []; L374F.set(to, v); }
+      while (v.length && T() - v[0][0] > K.L374_W) v.shift();
+      if (v.length < 8) v.push([T(), msg.clone(m)]);
+    }
+    function l374Take(x) {
+      const v = L374F.get(x); if (!v) return []; L374F.delete(x);
+      return v.filter((p) => T() - p[0] <= K.L374_W).map((p) => p[1]);
     }
     // C++: mesh_link.inc:linkSchedule   [my end: the far end's L23 / L16 gates run at its offer, from my mark]
     function linkSchedule(from, to, m) {
@@ -551,6 +566,9 @@
       if (L.agreed[e]) {
         L.agreed[e] = false; L.closingAt[e] = -1; const h = L.hold[e];
         if (h.length) { const q = h.slice(); h.length = 0; L.callClosed = false; startDial(me, x, L); L.dialT = mtI(q[0].t); for (const f of q) if (L.q.length < K.LINK_QCAP) L.q.push(f); trace('L22-REDIAL', me, null, 'peer=%d held=%zu why=%s', x, q.length, why); return; }
+      } else if (why === 'unneeded') {   // L37.4: a close I did not ask for; the FINDs I handed to that pc in its last ticks go again on a fresh dial
+        const s = mySeat(); const q = s && !s.dead ? l374Take(x) : [];
+        if (q.length) { trace('L37.4-RESEND', me, null, 'peer=%d n=%zu state=%d', x, q.length, L.state); L.callClosed = false; startDial(me, x, L); L.dialT = mtI(q[0].t); L.dialHow = 3; for (const f of q) { f.from = me; f.to = x; if (L.q.length < K.LINK_QCAP) L.q.push(f); } return; }
       }
       io.close(x);
     }
