@@ -378,7 +378,7 @@
         if (ckPc(ck) !== 0 || !cellOk(ck) || eid < 0) continue;   // Section-1 cells only
         if (e.ch >= 0 && !(roomTerm(this, 1) && this.heirNotMine.has(e.ch))) this.childOf.set(ck, e.ch);
         if (this.hasCoord && ck === ckey(this.coord) && eid !== id) continue;   // gossip claims MY seat: IGNORE
-        if (this.firstHandLive(ck)) continue;
+        if (this.firstHandLive(ck) && !this.heardUnseated(ck, eid)) continue;   // first-hand truth, unless all I hear there is the unproven beat of the seat this names
         if (this.translost.has(ck)) continue;   // D5
         const seen = TICK - age - 2; const cur = this.occGet(ck); const curSeen = this.s1seen.has(ck) ? this.s1seen.get(ck) : -999;
         // CLAIM BIRTH

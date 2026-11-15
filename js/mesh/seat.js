@@ -337,6 +337,10 @@
     heardAny(k, since) { const pa = this.probeAck.get(k); return (pa !== undefined && pa > since) ? pa : since; },
     // C++: mesh.cpp:Seat::firstHandLive
     firstHandLive(ck) { const it = this.live.get(ck); return it !== undefined && this.TICK - it <= 60; },
+    // A cell I hear only through the unproven beat of the seat gossip names there (it knocked me too: entryOpen marked it live
+    // without seating it) is no first-hand word against that same gossip: the seat is the one I hear.
+    // C++: mesh.cpp:Seat::heardUnseated
+    heardUnseated(ck, eid) { if (this.occGet(ck) >= 0) return false; const o = this.upOpen.get(ck); return o !== undefined && o[0] === eid; },
     // C++: mesh.cpp:Seat::darkMate
     darkMate(k) { if (this.hasCoord && ckey(this.coord) === k) return false; if (this.translost.has(k)) return true; const it = this.live.get(k); return it !== undefined && this.TICK - it > 16; },
     // C++: mesh.cpp:Seat::noteBye
