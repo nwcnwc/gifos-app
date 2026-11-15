@@ -852,6 +852,7 @@
   "meet.pgUpdReload": "Die neue Version von GifOS wird geöffnet",
   "meet.pgHintBlocked": "Ihr Netzwerk blockiert direkte Anrufe, daher läuft dies über ein Relay.",
   "meet.pgHintInspect": "Ihr Netzwerk prüft den Webverkehr, daher wird das Relay als Webverbindung erreicht.",
+  "meet.pgHintFarBlocked": "Das Netzwerk der anderen Seite blockiert direkte Anrufe, daher läuft dies über ein Relay.",
   "meet.pgHintStrict": "Ihr Netzwerk erschwert direkte Anrufe, daher kann es etwas länger dauern.",
   "meet.pgHintNoAnswer": "Noch hat niemand die Tür geöffnet. Wir klopfen weiter.",
   "meet.pgHintFirst": "Noch ist niemand sonst hier.",
