@@ -45,6 +45,13 @@
     // a chip in the lower half.
     const body = doc && doc.body;
     if (body && body.classList && body.classList.contains('away-full')) return 0;
+    // The one top bar measures itself (run.html topHead, R1): its bottom edge
+    // is the band. The guesses below only serve a page without the bar.
+    try {
+      const view = doc.defaultView;
+      const h = view && typeof view.__meetHeadH === 'function' ? +view.__meetHeadH() : 0;
+      if (h > 0) return Math.round(h);
+    } catch (e) {}
     let gtop = 0;
     try {
       const n = parseFloat(getComputedStyle(doc.documentElement).getPropertyValue('--gtop'));
@@ -65,14 +72,14 @@
   // The feed starts below that band, so a top-row tile's Open (still the
   // tile's upper-right corner) is not under the room line, Fit, Invite,
   // Help or Full screen, and a scroll cannot slide a face into the band.
-  // A shared screen or an app keeps the full-bleed feed those layouts
-  // already size.
+  // A shared screen or an app starts there too (it used to run full-bleed
+  // under the header, and the view button sat on the tiles' Open).
   function reserveHeader(feed, opts) {
     if (!feed || !feed.style) return 0;
     const doc = feed.ownerDocument || document;
     const body = doc.body;
-    const skip = !opts || (body && body.classList && (body.classList.contains('screen-on') || body.classList.contains('has-app')));
-    if (skip) { feed.style.top = ''; return 0; }
+    // With or without a share: the meeting box always starts under the top bar (R1).
+    if (!opts) { feed.style.top = ''; return 0; }
     const view = doc.defaultView || root;
     const vw = +opts.vw || (view && view.innerWidth) || 0;
     const vh = +opts.vh || (view && view.innerHeight) || 0;

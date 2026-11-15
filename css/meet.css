@@ -1660,8 +1660,7 @@
   body.desk-ptr.comfy.hq-tight .topchip { min-width: max-content; }
   body.desk-ptr.comfy #handq.on.hq-tight { display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
     white-space: normal; padding: 4px 14px; font-size: 16px; line-height: 20px; min-height: 48px; border-radius: var(--r-lg); }
-  /* A shared slide starts below the header row, so the header never covers it. */
-  body.desk-ptr.screen-on #feed { padding-top: 70px; }
+  /* A shared slide starts below the one top bar (the feed's top is --headh). */
   /* Phone chrome from qa-meet-mobile: the status sheet, the 44px chip, Fit as a
      44px target, the Live/Record/Captions band and the chat preview. */
   #status-full .name-box {
@@ -3368,14 +3367,14 @@
     background: var(--c-white); transition: transform var(--t-fast) ease; }
   .vp-follow[aria-checked="true"] .vp-knob { background: var(--c-blue); }
   .vp-follow[aria-checked="true"] .vp-knob::after { transform: translateX(16px); }
-  /* Focus: #fsview drawn in the page under the header, Fit's button and the
+  /* Focus: #fsview drawn in the meeting box, below the one top bar, under the
      floating bar (the bar overlays, nothing is reserved). The strip runs down
      the side when the screen is wide and across the bottom when it is tall;
      either strip pads by --barclear so no thumb sits under the bar where it
      stands (placeBarAvoiders). Thumbs wear no frame; the one on the big view is outlined. */
-  body.view-focus #fsview { z-index: 5; }
+  body.view-focus #fsview { z-index: 5; top: var(--headh, 0px); right: var(--sidew, 0px); } /* under the one top bar (R1), beside an open panel */
   body.view-focus #fsclose { display: none; }
-  body.view-focus #fsstrip { top: calc(72px + var(--gtop, 0px)); background: none; gap: 8px; padding: 8px;
+  body.view-focus #fsstrip { top: 0; background: none; gap: 8px; padding: 8px;
     padding-bottom: max(8px, var(--barclear, 0px)); }
   body.view-focus .fsthumb { border: 0; border-radius: var(--r-md); background: var(--c-night); }
   body.view-focus .fsthumb.sel { box-shadow: none; outline: 2px solid var(--c-white); outline-offset: -2px; }
@@ -3502,3 +3501,63 @@
     display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
   .ct-pview[hidden] { display: none; }
   .ct-pane.ag > .ct-pview { position: sticky; float: right; top: 0; margin: -8px -8px 0 8px; }
+
+/* ---- The one top bar (R1, 2026-11-15) ----
+   Every top control lives in #tophead, in flow: the GifOS name and status,
+   Unmute / Camera, the view button, the meeting's Invite / Help / Full screen
+   and the build label. Nothing at the top is placed at a hand-picked offset,
+   so nothing there can land on anything else. The row wraps inside the bar
+   when it must; the bar's measured bottom (--headh, run.html topHead) is
+   where the meeting box starts, with or without a share. */
+#tophead { position: fixed; z-index: 7; top: var(--gtop, 0px); left: 0; right: var(--sidew, 0px);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; box-sizing: border-box;
+  padding: 4px max(10px, env(safe-area-inset-right, 0px)) 6px max(10px, env(safe-area-inset-left, 0px));
+  pointer-events: none; }
+body.broadcast #tophead { top: calc(var(--banner-h, 0px) + var(--inset-top, 0px)); }
+#tophead > * { pointer-events: auto; position: static !important; inset: auto !important; top: auto !important; right: auto !important;
+  bottom: auto !important; left: auto !important; transform: none !important; margin: 0 !important; }
+#tophead > .topchip { flex: 1 1 12rem; min-width: 0; max-width: none !important; width: auto; }
+#tophead > .fitbtn { flex: 0 0 auto; }
+#tophead > #unmute, #tophead > #showcam { flex: 0 0 auto; }
+#tophead > #gifos-build-float { order: -1; flex: 1 0 100%; padding: 0 !important; background: transparent !important;
+  border-radius: 0 !important; font: 11px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace !important; color: #c5cad3 !important;
+  opacity: .8 !important; text-shadow: none !important; pointer-events: none !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#tophead > #appbar { container-type: normal; flex: 0 0 auto; width: auto !important; max-width: 100%; margin-left: auto !important; box-sizing: border-box;
+  padding: 0 !important; gap: 6px; flex-wrap: wrap; background: transparent !important; border: 0 !important; }
+#tophead > #appbar::before { display: none !important; }
+#tophead > #appbar #appinvite, #tophead > #appbar #apphelp, #tophead > #appbar #appfull { min-height: 40px; }
+/* The view button and the bar's buttons fade with the controls; the bar keeps its size, so the faces never move on a wake. */
+body.dock-idle #tophead > #fitbtn { opacity: 0; pointer-events: none; transition: opacity var(--t-slow) ease; }
+
+/* ---- Only the floating bar floats (R3, 2026-11-15) ----
+   Present is the content's own tool (the Presentation view button in the
+   content tab row), not a second floating pill; Record lives in More and,
+   while on, shows as the REC mark on the floating bar. A broadcast keeps its
+   Live row (a producer's state, not a meeting control). */
+.presentbtn, body.has-content:not(.broadcast):not(.has-app):not(.view-drag) .presentbtn { display: none !important; }
+body:not(.broadcast) #callstate { display: none !important; }
+
+/* ---- The meeting box (2026-11-15) ----
+   The meeting lays out in one box: the screen minus the one top bar minus an
+   open panel (chat or transcript). A panel docks on the screen's long edge:
+   down the right side when the screen is wider than tall, as a bottom sheet
+   when it is taller. It never floats over the meeting; the faces keep their
+   floor inside what is left; its header and Close stay in view. */
+@media (orientation: landscape) {
+  body.chatside { --sidew: min(340px, 45vw); padding-right: 0; }
+  body.chatside #chatpanel.open { width: var(--sidew); left: auto; right: 0; }
+}
+@media (orientation: portrait) {
+  body.chatside { --sidew: 0px; --sheeth: 50vh; padding-right: 0; }
+  body.chatside #chatpanel.open { left: 0; right: 0; width: auto; top: auto; bottom: 0; height: var(--sheeth);
+    border-left: 0; border-top: 1px solid var(--border, #2a2a3f); border-radius: 14px 14px 0 0; }
+  /* The keyboard takes the bottom: the sheet sits on it and grows to the top bar's edge. */
+  html.kb-up body.chatside #chatpanel.open { top: var(--headh, 0px); height: auto; bottom: var(--kb, 0px); }
+}
+body.comfy:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app).chatside #feed { right: var(--sidew, 0px) !important; bottom: var(--sheeth, 0px) !important; }
+/* R4: an app picked in Focus draws in the big view, above the focus layer (it sat under it: a black view). */
+body.view-focus.comfy.has-app:not(.app-full):not(.ct-app-off) #apppane { z-index: 6; }
+/* The meeting's room line (#airbar "Meeting · N here") always sat under the full-bleed feed; with the
+   meeting box under the one top bar it would show as a band. A meeting has its status in the bar's chip. */
+body.comfy:not(.broadcast) #airbar { display: none !important; }
+#tophead > #appbar > button { width: auto !important; min-width: 0 !important; flex: 0 0 auto !important; white-space: nowrap; }
