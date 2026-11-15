@@ -15366,7 +15366,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // servers' names and their allocations, and the link itself closes it at its dial budget (TURN.8) or moves it to the
       // web path (TURN.18). A dial request rebuilt it every 5 s while it still gathered (11-15, a 4 s resolver: three
       // relay pcs, link up 13 s after the credential): the pc that was about to allocate went, and the lookup began again.
-      const turnOwned = !pLive && !!(p.pc && typeof turnLinks !== 'undefined' && turnLinks && turnLinks.holds(p.id));
+      // ...once it is under way (an offer or an answer made): a link pc that is still idle waits for exactly this dial request's offer
+      const turnOwned = !pLive && !idle && !!(p.pc && typeof turnLinks !== 'undefined' && turnLinks && turnLinks.holds(p.id));
       const forming = !pLive && p.pc && (turnOwned || (!darkOffer && !idle && (answering || iceFinishing(p, Date.now(), back) || Date.now() - pcBuiltAt(p) < 5000))) && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
       if (typeof clog === 'function') clog('dial-request from ' + String(p.id || '?').slice(0, 6) + ' solo=' + (participantCount() <= 1) + ' live=' + !!pLive
         + ' init=' + iInitiate(p.id) + ' forming=' + !!forming + ' dark=' + !!darkOffer + ' pc=' + (p.pc ? p.pc.connectionState + '/' + p.pc.signalingState : '-')
