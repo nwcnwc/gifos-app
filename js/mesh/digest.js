@@ -589,7 +589,7 @@
     l1010Wait(tid) { return this.hasCoord && this.state === 3 && this.coord.pc !== 0 && this.TICK - this.seatedAt < K.L10_NEW_WAIT && this.pp >= 0 && this.ppCk === ckey(this.coord) && tid >= 0 && this.f.fabricLinkState(this.id, tid) !== E.LS_OPEN; },
     // C++: mesh_seat.inc:Seat::l1010First
     l1010First() {
-      if (!this.w.lv.DIGEST || !this.hasCoord || this.state !== 3 || this.coord.pc === 0 || this.TICK - this.seatedAt >= K.L10_NEW_WAIT) return;
+      if (!this.hasCoord || this.state !== 3 || this.coord.pc === 0 || this.TICK - this.seatedAt >= K.L10_NEW_WAIT) return;
       let tc; if (this.coord.i !== 0) tc = { pc: this.coord.pc, r: this.coord.r, i: 0 }; else { tc = this.ownerCoord(); if (!tc) return; }
       if (this.l1010Wait(this.occGet(ckey(tc)))) { this.l10Mark(); this.l10Force = true; this.l10Early(); }   // the same tick: the beat has just folded
     },
