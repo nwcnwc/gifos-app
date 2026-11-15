@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 #
 # r2-models.sh: GifOS's own copy of the public model files the site fetches
-# (the Offline Captions / Whisper encoder and decoder, tiny and base), on
+# (the Offline Captions / Whisper encoder and decoder, tiny and base, and the
+# on-device captions engine and models phones run, js/ondevice/models.json), on
 # Cloudflare R2 behind the gifos.app edge cache, so a page that picks Whisper
 # never contacts an outside site. The deploy workflow runs it before the site
 # goes up: --check, --apply, then --verify, and the deploy stops if --verify
@@ -93,9 +94,18 @@ MODELS="$(node -e '
     }
   });' "$APP" "$DOMAIN")"
 [ "$(printf '%s\n' "$MODELS" | grep -c . || true)" -ge 1 ] || die "no model files found"
+# On-device captions (js/ondevice/models.json): the engine and model files a phone's
+# browser fetches. Each comes out of a published upstream archive, so its source is
+# 'ondevice': ondevice-files.mjs downloads the archives, checks every file against its
+# pin and leaves it at $WORK/ondevice/out/<key>.
+ONDEVICE_TOOL="$APP/.github/scripts/ondevice-files.mjs"
+if [ -f "$ONDEVICE_TOOL" ]; then
+  MODELS="$MODELS
+$(node "$ONDEVICE_TOOL" list | awk '{ print $1, $2, $3, "ondevice" }')"
+fi
 while read -r key sha _bytes src; do
   case "$key" in */"$sha"/*) ;; *) die "key $key does not hold its sha256" ;; esac
-  case "$src" in https://*) ;; *) die "source of $key is not https" ;; esac
+  case "$src" in https://*|ondevice) ;; *) die "source of $key is not https" ;; esac
 done <<< "$MODELS"
 say "$(printf '%s\n' "$MODELS" | grep -c .) files for $DOMAIN (bucket $BUCKET):"
 printf '%s\n' "$MODELS" | awk '{ printf "  %s  %.1f MB\n", $1, $3/1e6 }'
@@ -194,7 +204,10 @@ while read -r key sha bytes src; do
   if [ "$have" = "$bytes|-|-" ]; then say "ok   $key stored (headers checked by --verify)"; continue; fi
   if [ "$MODE" != apply ]; then plan "upload $key (${have:-missing}) from $src"; continue; fi
   f="$WORK/files/$sha"
-  if [ ! -f "$f" ] || [ "$(sha256sum "$f" | cut -d' ' -f1)" != "$sha" ]; then
+  if [ "$src" = ondevice ]; then
+    f="$WORK/ondevice/out/$key"
+    [ -f "$f" ] || node "$ONDEVICE_TOOL" fetch "$WORK/ondevice" >/dev/null
+  elif [ ! -f "$f" ] || [ "$(sha256sum "$f" | cut -d' ' -f1)" != "$sha" ]; then
     curl -fsSL --retry 3 --connect-timeout 20 --max-time 1200 -o "$f.part" "$src"
     mv "$f.part" "$f"
   fi
