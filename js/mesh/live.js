@@ -263,7 +263,7 @@
           named.set(e.k, e.v); this.ledgerSeen.set(e.k, TICK);
           if (this.l13On()) { this.l13RowMemo.set(e.k, [e.v, TICK]); if (this.l13RowMemo.size > 4 * C) eraseFirst(this.l13RowMemo); }
           if ((e.tn & 0x8000) && lv.TIERS_ACTIVE && e.v !== id && !this.tierSeen.has(e.v)) this.tierSeen.set(e.v, e.tn & 0x7fff);   // L4: the head's word on its mate's tier and NAT kind
-          if (!this.occ.has(e.k)) { this.setOcc(e.k, e.v); this.noteS1(e.k); }
+          if (!this.occ.has(e.k) && !this.ledgerEcho(e.k, e.v)) { this.setOcc(e.k, e.v); this.noteS1(e.k); }
         }   // only the head itself, only cells 1..C-1 of ITS row
         // V7b GENERATION (H4): past the grace (generation >= 1) THE LEDGER IS THE ROW on every beat.
         if (m.rg >= 1) {

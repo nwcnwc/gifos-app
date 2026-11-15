@@ -542,6 +542,10 @@
       const lb = this.liveBy.get(k); if (lb === undefined || lb !== x) return false;
       const it = this.live.get(k); return it !== undefined && this.TICK - it <= win;
     },
+    // C++: mesh.cpp:Seat::ledgerEcho
+    // L15.2.1: a row ledger sent before a goodbye never lands after it. My child head's ledger still lists a seat whose own
+    // goodbye from that cell I took less than a beat + EARLY_HOLD ago: the head has not heard it yet, and its next ledger is the row.
+    ledgerEcho(k, x) { const f = this.byeFloor(x, k); return f >= 0 && this.TICK - f <= K.FHOP_BEAT + K.EARLY_HOLD; },
     // C++: mesh.cpp:Seat::byeFloor
     // L25.19: the tick I took seat x's own goodbye from cell k (a reload's is no goodbye: L3.11), or -1
     byeFloor(x, k) {
