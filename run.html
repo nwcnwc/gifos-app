@@ -613,6 +613,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
 <script src="js/meet-debuglog.js" defer></script>
 <script src="js/meet-views.js" defer></script>
 <script src="js/meet-viewmode.js" defer></script>
+<script src="js/meet-power.js" defer></script>
 <script src="js/mesh-pipe.js" defer></script>
 <script src="js/relay-config.js" defer></script>
 <script src="js/runtime.js" defer></script>
@@ -1634,9 +1635,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // Upload cost grows with those links, so both resolution and each link's
     // bitrate step down to keep total upstream roughly flat.
     // NOTE: the link-count rung is only the STARTING POINT — adapt() then steps
-    // further down this same ladder by the device's power tier (on battery /
-    // battery low / charger losing / phone at all / parked phone). See the
-    // battery-tier block above adapt().
+    // further down this same ladder by the device's power level (save or low,
+    // js/meet-power.js: POWER_SAVE_RUNG_SHIFT / POWER_LOW_RUNG_SHIFT rungs).
     const LADDER = [
       { max: 2, w: 1280, h: 720, fps: 30, kbps: 1800, label: '720p' },
       { max: 4, w: 854,  h: 480, fps: 24, kbps: 800,  label: '480p' },
@@ -1650,7 +1650,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // tracks pixels x fps, so 240p -> 144p is ~2.8x fewer pixels and 2/3
       // the frames — the deepest cut available without killing the picture.
       // rung(n) still floors at 240p for the link count (find() takes the first
-      // max>=n), so these are reachable ONLY by power tier / tune — nobody
+      // max>=n), so these are reachable ONLY by the power level / tune — nobody
       // lands here just for being in a big room.
       { max: 99, w: 320, h: 180, fps: 12, kbps: 150,  label: '180p' },
       { max: 99, w: 256, h: 144, fps: 10, kbps: 100,  label: '144p' },
@@ -1672,7 +1672,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const SCREEN_KBPS = 2500;
     // ---- VIDEO QUALITY (Settings): what YOUR OWN camera records --------------
     // Auto (the default, and the whole behavior until 2026-08-03) = the LADDER
-    // above: the link count picks the rung, the power tier and tune cut deeper. A
+    // above: the link count picks the rung, the power level and tune cut deeper. A
     // MANUAL choice pins capture + encode to that rung instead — the user's
     // deliberate knob, so it overrides the room-size and power stepping. Two
     // laws still apply on top of a manual rung: blur's fps honesty caps (a
@@ -9626,7 +9626,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // recordings), but a Web Worker's metronome keeps ticking.
     let wakeLock = null;
     // Parked-phone idleness state lives HERE (above keepAwake's first call)
-    // — the deciders and the poke() reactivator are with the battery tiers.
+    // — the deciders and the poke() reactivator are with the power level.
     let lastActive = Date.now(), idleNow = false;
     async function keepAwake() {
       if (idleNow) return; // a parked phone's screen is allowed to rest
@@ -9635,7 +9635,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (leaving) return;
       try { if (navigator.wakeLock && !document.hidden) wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
     }
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) { lastActive = Date.now(); if (idleNow) { idleNow = false; adapt(); } keepAwake(); } });
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) { lastActive = Date.now(); if (idleNow) setParked(false); keepAwake(); } });
     keepAwake();
     // One blob URL for the life of the page. The worker is terminated when
     // the last subscriber leaves and minted again on the next subscribe (a
@@ -10720,79 +10720,37 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return n;
     }
     function headerCount() { const h = (meshNode && meshNode.byesHeld) ? meshNode.byesHeld() : 0; return Math.max(displayCount() - h, facesOnScreen()); }
-    // BATTERY TIERS (Nathan 2026-07-26): encode watts are the meeting's
-    // biggest phone cost, so quality follows the battery — ON BATTERY at all
-    // sends one rung lighter, under 50% two rungs, under 25% three rungs and
-    // capped at 15fps. A phone that stays in the room beats a pretty feed
-    // from a dead one; a charger restores the full rung on the spot. Browsers
-    // without the Battery API (iOS Safari, Firefox) read as tier 0 — plugged.
-    let battTier = 0; // 0 charging/unknown · 1 on battery · 2 <50% · 3 <25%
-    // PHONES CUT DEEPER, EVEN PLUGGED IN (Nathan 2026-07-26, after a Moto
-    // drained 30%→2% OVERNIGHT ON ITS CHARGER): a phone SoC+screen can lose
-    // to a weak charger at full quality, so being a phone is itself tier ≥1.
-    function mobileDevice(nav) {
-      nav = nav || {};
-      // iPadOS Safari sends a Macintosh UA and no userAgentData. A Mac
-      // with no touch points stays a desktop.
-      return !!((nav.userAgentData && nav.userAgentData.mobile)
-        || /Android|iPhone|iPad|Mobi/i.test(nav.userAgent || '')
-        || ((nav.maxTouchPoints || 0) > 1 && /Mac/.test(nav.platform || '')));
+    // THE POWER LEVEL (js/meet-power.js): full, save or low, from the battery, a losing
+    // charger, being a phone, and a parked phone. Every dial it turns (the camera rung and
+    // fps cap, the composites, the Stage strip) is read from GifOS.meetPower.dials(level).
+    // Browsers without the Battery API (iOS Safari, Firefox) report no battery: a phone
+    // there is still at least save, and a parked one is low.
+    const MP = GifOS.meetPower;
+    const IS_MOBILE = MP.mobileDevice(navigator);
+    let battNow = null; // { charging, level } from the Battery API, or null where there is none
+    const drainState = { losing: false, last: null, falls: 0, trip: null };
+    let powNow = { level: 'full', why: 'unknown' }, powDials = MP.dials('full');
+    function powerUpdate() {
+      const was = powNow.level;
+      powNow = MP.level({ mobile: IS_MOBILE, battery: battNow, losing: drainState.losing, parked: idleNow });
+      powDials = MP.dials(powNow.level);
+      return was !== powNow.level;
     }
-    const IS_MOBILE = mobileDevice(navigator);
-    // CHARGER LOSING: plugged in but the level is FALLING — the overnight
-    // Moto failure exactly. Emergency tier until the level rises again.
-    function drainStep(st, charging, level) {
-      let tripped = false;
-      if (charging && st.last !== null && st.last !== undefined) {
-        if (level < st.last) {
-          st.falls = (st.falls || 0) + 1;
-          if (st.falls >= 2 && st.tier !== 3) {
-            st.tier = 3;
-            st.trip = level;
-            tripped = true;
-          }
-        } else if (level > st.last) {
-          st.falls = 0;
-          if (st.tier === 3 && st.trip !== null && level > st.trip) {
-            st.tier = 0;
-            st.trip = null;
-          }
-        }
-      } else if (!charging) {
-        st.tier = 0;
-        st.falls = 0;
-        st.trip = null;
-      }
-      st.last = level;
-      return tripped;
-    }
-    // Two falling readings, not one 1% wobble from adaptive charging.
-    // The cut clears only after the level rises past the reading that tripped it.
-    let drainTier = 0;
-    const drainState = { tier: 0, last: null, falls: 0, trip: null };
     if (navigator.getBattery) navigator.getBattery().then((b) => {
       const upd = () => {
-        // ON BATTERY IS NOW ACTUAL POLICY (2026-07-31). The old ladder was
-        // 1 / 2 / 3 at 100% / 50% / 25% — but `tier` takes the MAX with the
-        // IS_MOBILE floor of 2, so on a phone tiers 1 and 2 were SWALLOWED:
-        // between 25% and 100% "on battery" bought exactly nothing over
-        // "plugged in", and 144p was unreachable outside the <25% emergency.
-        // The sub-240p rungs exist precisely so the tier has somewhere to go;
-        // leaving them behind an emergency wastes them. Unplugged now means
-        // at least the phone floor (2 ⇒ 180p), and half a battery means the
-        // bottom rung (3 ⇒ 144p) — reached at 50%, not 25%.
-        const t = b.charging ? 0 : (b.level <= 0.5 ? 3 : 2);
-        const tripped = drainStep(drainState, !!b.charging, b.level);
-        drainTier = drainState.tier;
-        if (tripped) setStatus(uiText('stPluggedInButTheBattery', '🔋 Plugged in, but the battery is falling. Sending lighter video.'));
-        if (t === battTier) { adapt(); return; } // drainTier may still have moved
-        battTier = t;
+        const tripped = MP.drainStep(drainState, !!b.charging, b.level);
+        const wasCharging = battNow ? battNow.charging : null;
+        battNow = { charging: !!b.charging, level: b.level };
+        powerUpdate();
         adapt();
-        setStatus(t === 0 ? '🔌 On power — full video quality restored.'
-          : '🔋 On battery — sending lighter video to stretch it' + (t >= 2 ? ' (' + Math.round(b.level * 100) + '%)' : '') + '.');
+        if (tripped) setStatus(uiText('stPluggedInButTheBattery', '🔋 Plugged in, but the battery is falling. Sending lighter video.'));
+        else if (wasCharging !== battNow.charging && !(wasCharging === null && battNow.charging)) setStatus(battNow.charging ? '🔌 On power — full video quality restored.'
+          : '🔋 On battery — sending lighter video to stretch it (' + Math.round(b.level * 100) + '%).');
       };
       b.onchargingchange = upd; b.onlevelchange = upd; upd();
     }).catch(() => {});
+    powerUpdate();
+    function setParked(on) { idleNow = !!on; powerUpdate(); adapt(); }
     // PARKED PHONE: minutes with no touch and no speech means nobody is
     // holding this phone — release the wake lock (the pinned-on screen is
     // 1-2W, the single biggest burner of a parked phone's night) and floor
@@ -10800,7 +10758,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const IDLE_MS = GifOS.timings.IDLE_MS; // (lastActive/idleNow live beside wakeLock — keepAwake runs before this block)
     const poke = () => {
       lastActive = Date.now();
-      if (idleNow) { idleNow = false; adapt(); keepAwake(); }
+      if (idleNow) { setParked(false); keepAwake(); }
     };
     addEventListener('pointerdown', poke, { passive: true });
     addEventListener('keydown', poke);
@@ -10882,8 +10840,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // is the default, and a live audio track would never release the lock.
       const idle = IS_MOBILE && !viewerWatching() && Date.now() - lastActive > IDLE_MS;
       if (idle === idleNow) return;
-      idleNow = idle;
-      adapt();
+      setParked(idle);
       if (idle) {
         try { if (wakeLock) { wakeLock.release(); wakeLock = null; } } catch (e) {}
         setStatus(uiText('stPhoneLooksParkedLettingThe', '😴 Phone looks parked — letting the screen rest. Tap for full quality.'));
@@ -10903,22 +10860,14 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function adapt() {
       const n = Math.max(2, 1 + peers.size);
       // A MANUAL video-quality choice (Settings) replaces the auto selection —
-      // room size, power tier and tune all step aside; blur caps still apply.
+      // room size, power level and tune all step aside; blur caps still apply.
       const manual = vqRung();
       let q = manual || rung(n);
       const tune = tuneCfg();
-      // Effective power tier: the deepest cut wins — battery level, a losing
-      // charger, being a phone at all, or a parked phone (floor).
-      // PHONES ARE FLOOR 2 IN EVERY STATE (Nathan 2026-07-29, after his phone
-      // drained 41%→33% in 30min PLUGGED IN at 6 seats): the g24 measurements
-      // (docs/phone-power-scaling-2026-07-29.md) put a phone's meeting load at
-      // ~2.2W against a 2.5W USB budget — full-rung video loses to real-world
-      // chargers in BOTH states, so both states cut deeper.
-      const tier = Math.max(battTier, drainTier, IS_MOBILE ? 2 : 0, idleNow ? 3 : 0);
-      if (tier && !manual) {
-        q = LADDER[Math.min(LADDER.indexOf(q) + tier, LADDER.length - 1)];
-        if (tier >= 3 && q.fps > 15) q = Object.assign({}, q, { fps: 15 });
-      }
+      // The power level's camera dial: steps down the ladder (each rung has its own fps).
+      // A phone saves even on its charger: a phone's meeting load is close to
+      // what a USB charger gives, so full-rung video loses to it plugged in.
+      if (!manual && powDials.rungShift) q = LADDER[Math.min(LADDER.indexOf(q) + powDials.rungShift, LADDER.length - 1)];
       // BLUR IS ALREADY A BLUR — DON'T PAY FOR FRAMES (Nathan, 2026-07-30).
       // A blurred feed has deliberately destroyed its spatial detail, so
       // spending 15-30 fps preserving TEMPORAL detail is paying to transmit
@@ -11015,7 +10964,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // ONCE per sweep, not once per sender: stageCeilingKbps walks the roster
       // through participantCount(), and adapt() runs on every connect and every
       // sweep — evaluating it inside the sender loop is quadratic in a big room.
-      const stageBudget = Math.round(stageCeilingKbps() * (tier >= 3 ? 0.6 : 1)) * 1000;
+      const stageBudget = Math.round(stageCeilingKbps() * powDials.stageKbps) * 1000;   // the power level's Stage/screen budget dial
       // MY OWN screen rides the MAIN row-mesh senders, because a share is a
       // source swap and not a second channel (sentVideoTrack) — so those
       // senders are carrying a document while still being budgeted from `q`,
@@ -11023,7 +10972,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       // 3-person room's 450k face budget is scaled to mush by the encoder
       // before it ever leaves. Screens get the screen lane.
       const myScreen = !!(myStatus.scr && screenStream && screenStream.getVideoTracks()[0]);
-      const screenBudget = Math.round(screenCeilingKbps() * (tier >= 3 ? 0.6 : 1)) * 1000;
+      const screenBudget = Math.round(screenCeilingKbps() * powDials.stageKbps) * 1000;
       // And the same question one hop out: is the thing this node is FORWARDING
       // on the Stage a screen? Gossip already says so on every heartbeat (`scr`),
       // so a forwarder does not have to inspect pixels to know not to squeeze it.
@@ -11061,9 +11010,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // one who deliberately picked 1080p is no longer squeezed to 900k.
           // That is "stage quality follows the person on the stage", with the
           // room type as the "within reason".
-          // The deepest power tiers still trim it: a phone forwarding the stage
-          // is still a phone, and tier 3 is the state where it has already
-          // decided that frames and pixels are what it is spending.
+          // The low power level still trims it: a phone forwarding the stage is
+          // still a phone, and low is the state where it has already decided
+          // that frames and pixels are what it is spending.
           const isStageSd = stageSenders.has(sender), isAuxSd = auxSenders.has(sender);
           let want = isStageSd ? (screenOnStage ? Math.max(stageBudget, screenBudget) : stageBudget)
             : isAuxSd ? auxBudget
@@ -11132,9 +11081,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function compFps() {
       const base = (net.SCALE && net.SCALE.COMP_FPS) || 8;
       if (meshNode && meshNode.raw && meshNode.raw.lgLvl >= 2) return 1;   // L29.1: nothing is encoding these
-      if (!IS_MOBILE) return base;
-      const deep = battTier >= 3 || drainTier >= 3 || idleNow;
-      return deep ? Math.max(4, Math.round(base * 0.6)) : base;
+      return Math.max(powDials.compFpsMin, Math.round(base * powDials.compFps));
     }
     // ---- THE STAGE IS NOT A SECONDARY TILE (2026-08-04) ----------------------
     // The Stage is the ONE feed the whole stadium is looking AT, and both of the
@@ -11156,7 +11103,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     //     packer's CPU vs 12 with no perceptible loss". That argument is the
     //     exact one this block rejects, and it was left in place when the other
     //     two were fixed: the strip composited, captured and shipped the room's
-    //     ONE live tier at 8fps (5 on a phone in a deep power tier), which is
+    //     ONE live tier at 8fps (5 on a device at low power), which is
     //     what "the stage feels laggy" is (2026-08-15,
     //     test/tools/stage-solo-lag.js). Raising it is cheap where it is cheap:
     //     the still-frame skip drops any repaint that would be byte-identical,
@@ -11183,19 +11130,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const STAGE_FPS = GifOS.timings.STAGE_FPS;    // strip paint/capture rate — the live tier, not a tapestry
     function stageCell() {
       const base = stageIds().some(sharingScreen) ? STAGE_CELL_SCREEN : STAGE_CELL;
-      if (!IS_MOBILE) return base;
-      const deep = battTier >= 3 || drainTier >= 3 || idleNow;
-      return deep ? Math.round(base * 0.5) : base;
+      return Math.round(base * powDials.stageCell);
     }
-    // The strip's rate, by power tier — STAGE_FPS is the ceiling captureStream
+    // The strip's rate, by power level — STAGE_FPS is the ceiling captureStream
     // is built at, and stripPack.setFps() moves the paint rate under it without
-    // a rebuild. A phone still pays less than a desktop, and a deep tier still
-    // halves it; the floor stays above compFps() because a stuttery broadcast
+    // a rebuild. Save pays POWER_SAVE_STAGE_FPS_PCT of it and low
+    // POWER_LOW_STAGE_FPS_PCT; the floor stays above compFps() because a stuttery broadcast
     // is the bug being fixed, not a saving.
     function stageFps() {
-      if (!IS_MOBILE) return STAGE_FPS;
-      const deep = battTier >= 3 || drainTier >= 3 || idleNow;
-      return deep ? Math.round(STAGE_FPS * 0.5) : Math.round(STAGE_FPS * 0.75);
+      return Math.round(STAGE_FPS * powDials.stageFps);
     }
     function stageCeilingKbps() {
       if (BROADCAST) return 3500;      // viewers bring NO media — the whole local budget is the stage's, at any scale
@@ -11342,9 +11285,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       try { for (const p of peers.values()) if (p && isHeld(p.id)) heldN++; } catch (e) {}
       // THE LABEL MUST NAME WHAT WE ACTUALLY SEND (2026-07-29, Nathan: "it says
       // 480p, I unplugged, it still says 480p"). rung(n) is only the HEADCOUNT
-      // baseline; adapt() then pushes it down by the power tier (a phone is
-      // never at the baseline — floor 2 — and a losing charger or a parked
-      // phone cuts further). Reporting the baseline meant the status lied by
+      // baseline; adapt() then pushes it down by the power level (a phone is
+      // never at the baseline — it is at least save — and low cuts further). Reporting the baseline meant the status lied by
       // up to three rungs and never moved when the battery state did.
       const q = lastQ || rung(linked);
       // You left on purpose. A dead pair after that is not a network the
@@ -16578,11 +16520,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         vid: !!(localStream && localStream.getVideoTracks && localStream.getVideoTracks().length),
         // POWER/PARK forensics (G2): the census is the one channel that reads
         // a live PHONE's own state remotely (pi monitor → probeTree). hidden/
-        // away, the power tier stack, who I asked to park, my PiP aim, the
+        // away, the power level, who I asked to park, my PiP aim, the
         // worker-vs-DOM heartbeat clock, and each sender's negotiated codec +
         // encoder implementation (SoC hardware name vs libvpx/OpenH264).
         hidden: !!document.hidden, hbVia,
-        pow: { batt: battTier, drain: drainTier, mobile: IS_MOBILE ? 2 : 0, idle: idleNow ? 3 : 0 },
+        pow: { level: powNow.level, why: powNow.why },
         parkAsked: Array.from(visParkSent.entries()).filter(([, v]) => v).map(([id]) => String(id).slice(0, 8)),
         parked: Array.from(peers.entries()).filter(([, p]) => p.remoteParkMain).map(([id]) => String(id).slice(0, 8)),
         pipAim: (() => { try { const v = pipSource(); if (!v) return null; const t = v.closest('[data-peer]'); return t ? 'peer:' + String(t.dataset.peer).slice(0, 8) : 'comp'; } catch (e) { return 'err'; } })(),
@@ -29312,7 +29254,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         }
         else {
         if (!stripPack) stripPack = MM.createPacker({ shape: 'bar', fps: STAGE_FPS, cell: stageCell(), maxW: STAGE_MAXW, native: true }).start(); // VIDEO-ONLY: Stage audio folds at the ear (mix-minus). NOT the secondary-tile defaults — see "THE STAGE IS NOT A SECONDARY TILE"
-        // The power tier moves under a long-lived strip; track it without a
+        // The power level moves under a long-lived strip; track it without a
         // teardown (a rebuild would mint a new stream id and re-ship to
         // everyone). Both dials, every sweep — setCell/setFps no-op unchanged.
         stripPack.setCell(stageCell()); stripPack.setFps(stageFps());
@@ -32159,7 +32101,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // model, or a language with no model yet, gets no captions from this page
     // and is told so. Clips are cut and queued exactly as for Whisper, and the
     // lines go to the room the same way.
-    const CC_ON_PHONE = mobileDevice(navigator);
+    const CC_ON_PHONE = MP.mobileDevice(navigator);
     const ccLocal = { eng: null, opening: null, lang: '', state: '', loaded: 0, total: 0, cached: false, err: '', step: -1, said: '' };
     let ccLocalWhyV = null;
     // '' when this phone can run the model, else why not (the module's answer,
@@ -32303,7 +32245,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     const CC_WHISPER_ANYWAY_KEY = 'gifos_cc_whisper_anyway';
     function whisperWeakWhy(nav) {
       nav = nav || {};
-      if (mobileDevice(nav)) return 'phone';
+      if (MP.mobileDevice(nav)) return 'phone';
       const cores = Number(nav.hardwareConcurrency) || 0, mem = Number(nav.deviceMemory) || 0;
       if (cores && cores < 4) return 'cores';
       if (mem && mem < 4) return 'memory';
@@ -41078,8 +41020,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       stopRoomAppForTest: () => { const w = findSharedApp(); if (w) stopRoomApp(w); },
       quality: () => rung(participantCount()).label,
       power: () => { notePowerRead(); return powerStats; }, // per-sender codec/encoderImplementation/qualityLimitationReason (10s cache, demand-gated)
-      battTier: () => battTier, // 0 charging/unknown · 1 on battery · 2 <50% · 3 <25%
-      powTier: () => ({ batt: battTier, drain: drainTier, mobile: IS_MOBILE ? 2 : 0, idle: idleNow ? 3 : 0, rung: lastQ && { label: lastQ.label, fps: lastQ.fps, kbps: lastQ.kbps }, tune: tuneCfg() }),
+      powerLevel: () => ({ level: powNow.level, why: powNow.why, dials: powDials, battery: battNow, parked: idleNow, rung: lastQ && { label: lastQ.label, fps: lastQ.fps, kbps: lastQ.kbps }, tune: tuneCfg() }),
       pokeForTest: () => poke(),
       idleForTest: (ms) => { lastActive = Date.now() - (ms | 0); },
       camTrackLive: () => !!(localStream && localStream.getVideoTracks()[0] && localStream.getVideoTracks()[0].readyState === 'live'),

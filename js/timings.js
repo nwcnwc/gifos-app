@@ -125,7 +125,16 @@
     POOL_SETTLE_MS: 300,   // ms
     POOL_TTL: 1800000,   // ms
     POOL_WAIT_MS: 7000,   // ms
+    POWER_LOW_COMP_FPS_MIN: 4,   // count
+    POWER_LOW_COMP_PCT: 63,   // pct
+    POWER_LOW_PCT: 27,   // pct
+    POWER_LOW_RUNG_SHIFT: 3,   // count
+    POWER_LOW_STAGE_CELL_PCT: 50,   // pct
+    POWER_LOW_STAGE_FPS_PCT: 50,   // pct
+    POWER_LOW_STAGE_KBPS_PCT: 63,   // pct
     POWER_READ_WINDOW: 60000,   // ms
+    POWER_SAVE_RUNG_SHIFT: 2,   // count
+    POWER_SAVE_STAGE_FPS_PCT: 75,   // pct
     POW_WORKERS: 4,   // count
     PRELEAVE_MS: 10000,   // ms
     PRE_ICE_MS: 15000,   // ms
