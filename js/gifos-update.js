@@ -3,7 +3,7 @@
  *
  * GifOS itself (the Home Screen, the meeting/app runtime, the signer) is
  * versioned as a whole: a release is an immutable /versions/<x.y.z>/ snapshot,
- * and version.json.latest names the live one (`current` is the three-part legacy pointer). Releases carry no backward
+ * and version.json.latest names the live one (`current` is a frozen legacy field for pre-0.9.24 pages). Releases carry no backward
  * compatibility, so a person on an older build is not merely behind: they are
  * on a build the rest of the room may no longer speak to.
  *
@@ -76,15 +76,15 @@
   // The live release and the emergency floor version.json names. `current` and
   // `emergency` stay three-part forever: they are what the frozen 0.9.23-and-
   // older updaters read (their VER is three-part), so they are the legacy hop.
-  // `latest` / `latestEmergency` may be four-part; this code reads them first
-  // and falls back to the legacy pair. A `latest` behind `current` is ignored.
+  // `latest` / `latestEmergency` may be four-part and are the ONLY pointers this
+  // code reads; the legacy pair is not read at all. No usable `latest` is null.
   function liveOf(info) {
     if (!info) return null;
     const ok = (v) => (VER.test(String(v || '')) ? String(v) : null);
     const pick = (fresh, legacy) => (fresh && (!legacy || cmpVer(fresh, legacy) >= 0) ? fresh : legacy);
-    const latest = pick(ok(info.latest), ok(info.current));
+    const latest = ok(info.latest);
     if (!latest) return null;
-    return { latest, emergency: pick(ok(info.latestEmergency), ok(info.emergency)), meetFloor: pick(ok(info.latestMeetFloor), ok(info.meetFloor)) };
+    return { latest, emergency: ok(info.latestEmergency), meetFloor: pick(ok(info.latestMeetFloor), ok(info.meetFloor)) };
   }
 
   // What THIS page is running. index.html and boot.html declare

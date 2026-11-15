@@ -449,7 +449,7 @@
     try {
       var x = new XMLHttpRequest(); x.open('GET', '/version.json?ts=' + Date.now(), false); x.send();
       // `latest` (may be four-part, 0.9.24.1) first; `current` is the three-part legacy pointer.
-      var v = ''; try { var j = JSON.parse(x.responseText) || {}; v = (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(j.latest || '')) ? j.latest : j.current) || ''; } catch (e) {}
+      var v = ''; try { var j = JSON.parse(x.responseText) || {}; v = (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(j.latest || '')) ? j.latest : ''); } catch (e) {}
       if (v) { try { localStorage.setItem('gifos_current', v); } catch (e) {} return to(v); }
     } catch (e) {}
     return stay;
@@ -469,7 +469,7 @@
       var x = new XMLHttpRequest(); x.open('GET', '/version.json?ts=' + Date.now(), true); x.timeout = LOADER_T.VERSION_ASK_MS;
       x.onload = function () {
         // `latest` (may be four-part, 0.9.24.1) first; `current` is the three-part legacy pointer.
-        var v = ''; try { var j = JSON.parse(x.responseText) || {}; v = (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(j.latest || '')) ? j.latest : j.current) || ''; } catch (e) {}
+        var v = ''; try { var j = JSON.parse(x.responseText) || {}; v = (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(j.latest || '')) ? j.latest : ''); } catch (e) {}
         if (!/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(v))) { go(d.redirect); return; }
         try { localStorage.setItem('gifos_current', v); } catch (e) {}
         go('/versions/' + v + d.ask);
@@ -488,7 +488,7 @@
       fetch('/version.json', { cache: 'no-cache' }).then(function (r) {
         return r && r.ok ? r.json() : null;
       }).then(function (j) {
-        var v = j && (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(j.latest || '')) ? j.latest : j.current);   // latest (may be 4-part) first
+        var v = j && (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(j.latest || '')) ? j.latest : '');   // latest (may be 4-part) is the only pointer
         if (!v || !/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(v))) return;
         try { localStorage.setItem('gifos_current', String(v)); } catch (e2) {}
       }).catch(function () {});

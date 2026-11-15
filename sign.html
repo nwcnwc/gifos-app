@@ -121,7 +121,7 @@
     try {
       var x = new XMLHttpRequest(); x.open('GET', '/version.json?ts=' + Date.now(), false); x.send();
       // `latest` (may be four-part, 0.9.24.1) first; `current` is the three-part legacy pointer.
-      var v = ''; try { var j = JSON.parse(x.responseText) || {}; v = (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(j.latest || '')) ? j.latest : j.current) || ''; } catch (e) {}
+      var v = ''; try { var j = JSON.parse(x.responseText) || {}; v = (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(j.latest || '')) ? j.latest : ''); } catch (e) {}
       if (v) { try { localStorage.setItem('gifos_current', v); } catch (e) {} return to(v); }
     } catch (e) {}
     return stay;
@@ -141,7 +141,7 @@
       var x = new XMLHttpRequest(); x.open('GET', '/version.json?ts=' + Date.now(), true); x.timeout = LOADER_T.VERSION_ASK_MS;
       x.onload = function () {
         // `latest` (may be four-part, 0.9.24.1) first; `current` is the three-part legacy pointer.
-        var v = ''; try { var j = JSON.parse(x.responseText) || {}; v = (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(j.latest || '')) ? j.latest : j.current) || ''; } catch (e) {}
+        var v = ''; try { var j = JSON.parse(x.responseText) || {}; v = (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(j.latest || '')) ? j.latest : ''); } catch (e) {}
         if (!/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(v))) { go(d.redirect); return; }
         try { localStorage.setItem('gifos_current', v); } catch (e) {}
         go('/versions/' + v + d.ask);

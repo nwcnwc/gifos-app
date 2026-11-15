@@ -2735,7 +2735,7 @@
     if (root.ResizeObserver) new ResizeObserver(syncUpdh).observe(updateBar);
     syncUpdh();
   }
-  let emergencyFloor = null;        // version.json.emergency — releases under it move now
+  let emergencyFloor = null;        // version.json.latestEmergency — releases under it move now
   let updateMoving = false;
   function updateInPlace() {
     if (updateMoving || !GifOS.update) return;
@@ -2918,9 +2918,9 @@
     // can redirect default visitors instantly on the next visit. The release
     // notes come along only when Settings is open or the bar has news.
     const U = GifOS.update;
-    // liveOf: version.json's `latest`/`latestEmergency` (may be four-part)
-    // first, the three-part legacy `current`/`emergency` otherwise.
-    const liveOf = (info) => (U && U.liveOf ? U.liveOf(info) : null) || { latest: info && (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(info.latest || '')) ? info.latest : info.current), emergency: info && (/^\d+\.\d+\.\d+(\.\d+)?$/.test(String(info.latestEmergency || '')) ? info.latestEmergency : info.emergency) };
+    // liveOf: version.json's `latest`/`latestEmergency` (may be four-part), the only pointers
+    // read; `current`/`emergency` are frozen legacy fields for pre-0.9.24 pages.
+    const liveOf = (info) => (U && U.liveOf ? U.liveOf(info) : null) || { latest: info && /^\d+\.\d+\.\d+(\.\d+)?$/.test(String(info.latest || '')) ? info.latest : null, emergency: info && /^\d+\.\d+\.\d+(\.\d+)?$/.test(String(info.latestEmergency || '')) ? info.latestEmergency : null };
     const notes = withNotes === true ? undefined : (info) => {
       const live = liveOf(info);
       const d = U.decide({ version: VERSION, edge: runningEdge(), pinned: pinnedVersion(), latest: live.latest, changelog: null, emergency: live.emergency });
@@ -3966,7 +3966,7 @@
     location.replace('/versions/' + v + '/');
   }
   // USE THE LIVE RELEASE: default channel (no pin, no edge). The loader resolves
-  // version.json.latest (`current` only if latest is malformed) and lands on that snapshot.
+  // version.json.latest and lands on that snapshot.
   function useRelease() {
     try { localStorage.removeItem('gifos_pin'); localStorage.removeItem('gifos_channel'); localStorage.removeItem('gifos_pin_until'); localStorage.setItem('gifos_reseed', '1'); } catch (e) {}
     location.replace('/?stable&ts=' + Date.now());
