@@ -12561,7 +12561,20 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // stale frame can carry the cure). Eligibility is neighbour-local: a pair
     // that predates the rotation, or a roster-present member — and never a
     // tombstoned one. The excluded were disconnected before the change; no
-    // one heals them, and the stale frame itself is never processed.
+    // one heals them, and their stale frames are never processed.
+    // A STALE FRAME FROM A MEMBER I HAND THE PASSWORD TO IS READ (2026-11-15).
+    // The channel is reliable and ordered, and the mesh laws count on it: a
+    // joiner's WHOHOME sent under the open key just before the lock landed was
+    // healed and then dropped, the seat never asked again on that pair, and the
+    // joiner stood at the door until the door's idle limit cut the pair (8 s),
+    // then met refusals for up to a minute (no seat, so no Stage feed: the
+    // screen-share item of 0.9.26.1). Reading it gives the sender nothing: the
+    // grant sent first (ordered on the same channel) hands it the password, and
+    // it would say the same frame again under the new key. So healStaleFrom
+    // resolves to the frame when the retained grant is a pwinfo it hands over;
+    // the caller reads it as if it opened under the current key. Never for a
+    // pwreset (an admin room's order sends the sender to the door), never for
+    // a barred, banned or ejected sender.
     const staleHealAt = new Map(); // pid -> last heal attempt (throttle)
     // THE RE-KEY WINDOW (see rekeyHeld). take(held) re-runs a receive path;
     // a frame is held at most once, so a replay that still cannot open goes
@@ -12580,26 +12593,27 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     }
     const STALE_BYE_MS = GifOS.timings.STALE_BYE_MS;   // a goodbye under the key I replaced is read this long after the change
     function healStaleFrom(pid, envPiece, dc, pair) {
-      if (!prevRoomE2E || !pid) return;
+      if (!prevRoomE2E || !pid) return Promise.resolve(null);
       return net.open(prevRoomE2E, envPiece).then((old) => {
-        if (!old || (!old.k && !old.kind)) return; // not a previous-generation frame — just noise
+        if (!old || (!old.k && !old.kind)) return null; // not a previous-generation frame — just noise
         // The one stale frame that is handled: the sender's own signed goodbye on
         // its own channel, just after the change. A password change sends everyone
         // to the door under the key it replaced; read as a crash, the room holds the
         // seat and its death verdict later closes the pair they come back on.
-        if (pair && dc && dc.__authBy === pid && old.k === 'mesh' && Date.now() - rekeyAt < STALE_BYE_MS && meshNode && meshNode.isOwnGoodbye && meshNode.isOwnGoodbye(old.m, pid)) { onDc(pair, dc, old); return; }
-        if (!retainedGrant) return;
+        if (pair && dc && dc.__authBy === pid && old.k === 'mesh' && Date.now() - rekeyAt < STALE_BYE_MS && meshNode && meshNode.isOwnGoodbye && meshNode.isOwnGoodbye(old.m, pid)) { onDc(pair, dc, old); return null; }
+        if (!retainedGrant) return null;
         const now = Date.now();
-        if (now - (staleHealAt.get(pid) || 0) < 5000) return;
+        const sentLately = now - (staleHealAt.get(pid) || 0) < 5000;
         const noList = retainedGrant.no || null;
         if (noList && noList.includes(pid)) {   // a barred peer asking, by any frame: the boot order, never the grant
-          const boot = pwBootOf(retainedGrant); if (!boot) return;
+          if (sentLately) return null;
+          const boot = pwBootOf(retainedGrant); if (!boot) return null;
           staleHealAt.set(pid, now);
           pwLog('ban-boot→' + String(pid).slice(0, 6) + ' ep=' + boot.ep);
           const qd = peers.get(pid);
           if (qd && qd.dc && qd.dc.readyState === 'open') pwSealTo(qd, boot, prevRoomE2E);
           else { const fs = pwFramesOf(boot); if (fs) for (const f of fs) relaySendSealed(pid, f.k, f, prevRoomE2E); }
-          return;
+          return null;
         }
         // ELIGIBILITY IS THE KEY ITSELF (2026-10-20). This used to ask
         // for a pair older than the rotation, or a roster entry, and no
@@ -12612,15 +12626,18 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // under the key I replaced is itself the proof its sender held that
         // generation — a member — and the only ones never healed are those
         // excluded on purpose: a banned / voted-off seat, or an ejected forger.
-        if (typeof bannedSeat !== 'undefined' && bannedSeat.has(pid)) return;
-        if (typeof isEjected === 'function' && isEjected(pid) === true) return;
+        if (typeof bannedSeat !== 'undefined' && bannedSeat.has(pid)) return null;
+        if (typeof isEjected === 'function' && isEjected(pid) === true) return null;
         const pd = peers.get(pid);
-        if (noList && (!(pd && pd.dc && pd.dc.__authBy === pid) || meetWait.blocks(pid))) return;   // a ban's grant goes only to the signed id at the far end of this channel, and not into the waiting room. A stale key is the member's proof: one back from a gap may have left my view
+        if (noList && (!(pd && pd.dc && pd.dc.__authBy === pid) || meetWait.blocks(pid))) return null;   // a ban's grant goes only to the signed id at the far end of this channel, and not into the waiting room. A stale key is the member's proof: one back from a gap may have left my view
+        const readIt = retainedGrant.k === 'pwinfo' ? old : null;   // the password is handed over: its frame is read (above)
+        if (sentLately) return readIt;   // the grant left within the throttle, ahead of this frame's answers
         staleHealAt.set(pid, now);
-        if (typeof clog === 'function') clog('grant-heal ' + String(pid).slice(0, 6) + ' (prev-key frame)');
+        if (typeof clog === 'function') clog('grant-heal ' + String(pid).slice(0, 6) + ' (prev-key frame)' + (readIt ? ' read' : ''));
       pwLog('grant-heal→' + String(pid).slice(0, 6) + ' ep=' + pwEpoch);
         if (pd && pd.dc && pd.dc.readyState === 'open' && !standbyHolds(pd, retainedGrant)) txm(() => net.seal(prevRoomE2E, retainedGrant).then((env) => net.sendChunked(env, (piece, str) => { try { pd.dc.send(str); } catch (e) {} })));
         else { const fs = pwFramesOf(retainedGrant); if (fs) for (const f of fs) relaySendSealed(pid, f.k, f, prevRoomE2E); }
+        return readIt;
       });
     }
     // §LOCK DOOR-SIDE HEAL (2026-10-20). A member that missed the
@@ -16280,6 +16297,21 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (q.dc.__authBy === q.id && !doorOutsider(q.id) && !meetWait.blocks(q.id)) pwSealTo(q, grant, key);   // nor someone still in the waiting room
       }
     }
+    // A PLAIN GRANT ALSO GOES TO MY DOOR (0.9.26.1). The flood (sendAll) rides the roster's pairs and gossip, and a joiner
+    // on my door is on neither. It still speaks the key I am about to replace and runs no key change of its own, so every
+    // frame I sealed after my rotation was unreadable to it and dropped: a HOME lost that way left the joiner knocking on an
+    // idle door until the door's limit cut the pair (8 s), then met refusals for up to a minute (no seat, so no Stage feed).
+    // Handed the grant on its own ordered channel ahead of my rotation, it starts its key change first and holds my next
+    // frames for it (rekeyHeld). The heal (healStaleFrom) hands it the same grant on its first stale frame; this closes the
+    // race in the other direction. The excluded get nothing, as there.
+    function pwDoorOut(grant, key, fromId) {
+      const flood = new Set(gossipIds());
+      for (const q of Array.from(peers.values())) {
+        if (q.id === fromId || flood.has(q.id) || !q.dc || q.dc.readyState !== 'open') continue;
+        if (bannedSeat.has(q.id) || isEjected(q.id) === true || meetWait.blocks(q.id)) continue;
+        pwSealTo(q, grant, key);
+      }
+    }
     function pwBarOut(no) {
       for (const id of no) {
         if (id === myId) continue;
@@ -17948,14 +17980,17 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // {t:'nosock'} said (a seat that just asked to be dialled is on it).
         // (altPath too: an unanswered offer to the page it replaced rotated this pair onto a sponsor path that cannot reach a seatless returner.)
         if (from) { relayHeardAt.set(from, Date.now()); if (relayHeardAt.size > 2048) relayHeardAt.clear(); relayNoSock.delete(from); relayGone.delete(from); const pf = peers.get(from); if (pf) pf.altPath = false; }
-        const take = (held) => rxm(() => net.open(roomE2E, piece).then((inner) => {
-          if (!inner && !held && holdForRekey(take)) return; // sealed under the key my re-key is still deriving (rekeyHeld)
-          if (!inner) return healStaleFrom(from, piece); // §LOCK: with the pair down, a stale member's frames arrive HERE — the relay path heals too
+        const read = (inner) => {
           const label = relayFrameAllowed(ty, inner);
           if (!label) { const d = relayFrameLabel(ty, inner); rxStats.relayDropped[d] = (rxStats.relayDropped[d] || 0) + 1; return; }
           rxStats.relayAccepted[label] = (rxStats.relayAccepted[label] || 0) + 1;
           if (pwNoAny()) pwHeardNow(from);
           onRelayPeer(from, ty, inner);
+        };
+        const take = (held) => rxm(() => net.open(roomE2E, piece).then((inner) => {
+          if (!inner && !held && holdForRekey(take)) return; // sealed under the key my re-key is still deriving (rekeyHeld)
+          if (!inner) return healStaleFrom(from, piece).then((old) => { if (old) read(old); }); // §LOCK: with the pair down, a stale member's frames arrive HERE — the relay path heals too, and reads what a healed member said
+          read(inner);
         }));
         take(false);
       }
@@ -19416,6 +19451,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           relaySendObj({ t: 'setpw', pw: pr, w: wRelay });
           const grant = { k: 'pwinfo', pw: v, by: myName(), w: wPeers, ep };
           sendAll(grant);
+          pwDoorOut(grant, roomE2E, null);   // and my door, still under the key the rotation below replaces
           // RELAY-ENVELOPE COPY (same law as the follow-me link): the flood
           // above rides DC pairs + gossip, and a member whose pair is
           // down/rebuilding at THIS instant needs the grant more than anyone
@@ -21776,10 +21812,11 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       dc.onmessage = (ev) => {
         let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
         m = meshDefrag(m, 'dc|' + p.id); if (!m) return;
+        const read = (inner) => { const dk = rxStats.dcKinds; const kk = String(inner.k).slice(0, 16); dk[kk] = (dk[kk] || 0) + 1; if (pwNoAny()) { pwHeardNow(p.id); pwHeardNow(inner.from); } onDc(p, dc, inner); };
         const take = (held) => rxm(() => net.open(roomE2E, m).then((inner) => {
-          if (inner && inner.k) { const dk = rxStats.dcKinds; const kk = String(inner.k).slice(0, 16); dk[kk] = (dk[kk] || 0) + 1; if (pwNoAny()) { pwHeardNow(p.id); pwHeardNow(inner.from); } onDc(p, dc, inner); return; }
+          if (inner && inner.k) { read(inner); return; }
           if (!inner && !held && holdForRekey(take)) return; // sealed under the key my re-key is still deriving (rekeyHeld)
-          return healStaleFrom(p.id, m, dc, p); // §LOCK: a previous-key frame is the staleness signal — see healStaleFrom
+          return healStaleFrom(p.id, m, dc, p).then((old) => { if (old && old.k) read(old); }); // §LOCK: a previous-key frame is the staleness signal, and a healed member's frame is read — see healStaleFrom
         }));
         take(false);
       };
@@ -22371,6 +22408,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           pwBarOut(grantNo);
           if (amAdmin) pwNoStore(grantNo);
         }
+        else pwDoorOut(retainedGrant, oldKey, p.id);   // my door hears it before my rotation (pwDoorOut)
         storePw(m.pw || '');
         // A GRANT ANSWERS THE DOOR CHALLENGE (2026-07-29). A member whose
         // churned socket re-knocked mid-rotation gets the R6 "This room is
