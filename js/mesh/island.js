@@ -23,19 +23,7 @@
 
   Seat.unit('mesh_island.inc', {
     // C++: mesh_island.inc:Seat::islandAsk
-    // L8.54.8 A WORD NOT SAID YET: a list that names a greeter of another network whose kind is not said (it registered before
-    // its own probe's verdict) gets one more knock REACH_PROBE later, one knock pending at a time.
-    // C++: mesh_island.inc:Seat::l8548Tick
-    l8548Tick() { if (this.l8548At < 0 || this.TICK < this.l8548At || !(this.state === 0 || this.state === 1)) return false; this.l8548At = -1; this.trace('L8.54.8-REKNOCK', this.id, null, 'asked=%zu', this.islandAsked.size); this.greetersAt = -1; this.emitRelay(this.linkKey); return true; },
-
-    // ...and my own verdict: a list I read before it named every greeter -1; one that now reads "not said" gets a knock at once.
-    // C++: mesh_island.inc:Seat::l8548List   (every list a seeker reads: onGreeters)
-    l8548List(list) { if (!this.w.lv.ISLAND_MODE || !(this.state === 0 || this.state === 1) || this.l8548At >= 0) return; for (const g of list) if (g >= 0 && g !== this.id && this.f.fabricDoorNet(this.id, g) === -2) { this.l8548At = this.TICK + K.REACH_PROBE; this.l8548Last = this.TICK; return; } },
-    // C++: mesh_island.inc:Seat::l8548Verdict
-    l8548Verdict() { if (!this.w.lv.ISLAND_MODE || !(this.state === 0 || this.state === 1) || this.l8548At >= 0) return; for (const g of this.lastGreeters) if (g >= 0 && g !== this.id && this.f.fabricDoorNet(this.id, g) === -2) { this.l8548At = this.TICK; this.l8548Last = this.TICK; return; } },
-
     islandAsk(list) {
-      if (this.islandAskAt < 0) { this.l8549Said = false; this.l8549No = false; }   // L8.54.9: a new entry asks afresh
       const lv = this.w.lv;
       if (this.l8471() && this.islandLast) for (const g of list) { if (g < 0 || g === this.id || !this.islandAsked.has(g)) continue; const e = this.epOf(g); if (e >= 0) { if (this.entEp.size >= 16) this.entEp.clear(); this.entEp.add(e); } }   // L8.47.3: every greeter I asked stayed silent (the verdict that sent this confirm knock): the rooms the door now says they sit in are rooms I cannot reach
       { let fresh = false; const late = []; for (const g of list) { if (g < 0 || g === this.id) continue; if (this.islandAsked.has(g)) continue; this.islandAsked.add(g); const e = this.epOf(g); if ((this.l8471() && this.islandLast && e >= 0 && this.entEp.has(e)) || (this.islandLast && this.l854Other(g))) late.push(g); else fresh = true; }   /* L8.54.1 */
@@ -48,9 +36,7 @@
         for (const g of list) { if (g < 0 || g === this.id) continue; this.l16List.push(g); if (this.l16List.length >= 32) break; }
         this.l16Next = 0; this.l16Busy.length = 0; this.l16Last = -1; this.l16Hedged = false;
         const f = lv.L16FAN < 0 ? K.L16_FAN : lv.L16FAN;
-        this.l16Wave(this.evilDoor || f === 0 || this.l8471() || this.l854Tcp() ? this.l16List.length : f);
-        if (this.l854Tcp() && this.islandAskAt >= 0) { let a0 = -1; for (const g of this.l16List) { const t = this.entAsk.get(g); if (t === undefined) { a0 = -1; break; } if (a0 < 0 || t < a0) a0 = t; } if (a0 >= 0 && a0 < this.islandAskAt) { this.islandAskAt = a0; this.l16FreshAt = a0; } }   // L8.54.7: the greeters I asked already keep their clock (C++: islandAsk)
-        return;
+        this.l16Wave(this.evilDoor || f === 0 || this.l8471() ? this.l16List.length : f); return;
       }
       let n = 0;
       for (const g of list) { if (g < 0 || g === this.id) continue; const w = newMsg('WHOHOME'); w.from = this.id; w.ttl = 60; this.emit(g, w); if (++n >= 32) break; }
@@ -62,8 +48,6 @@
     islandTick() {
       if (!this.entryTerm() || !(this.state === 0 || this.state === 1) || this.islandAskAt < 0 || this.lastReach >= this.islandAskAt) return false;
       const o54 = this.l854All(this.lastGreeters); const iw = o54 ? 0 : this.islandWait();   // L8.47.1, L8.54.1
-      // L8.54.9 connect fast, then upgrade: an L8.54.7 seeker asks for a subroom at the start of its wait, beside the dial (C++: islandTick)
-      if (this.l854Tcp() && !this.islandLast && !this.l8549No) { if (!this.f.fabricSubAsk(this.id)) this.l8549No = true; else if (!this.l8549Said) { this.l8549Said = true; this.trace('L8.54.9-ASK', this.id, null, 'asked=%zu since=%d', this.islandAsked.size, this.islandAskAt); } }
       if (this.ehAt >= 0 && this.TICK - this.ehAt < K.ISLAND_WAIT) {   // L8.47.2: it said it has no room yet: I wait for it, and ask it again once per dial verdict while it says so
         if (this.TICK - this.ehAskAt >= K.ISLAND_WAIT_BLOCKED) { this.ehAskAt = this.TICK | 0; for (const g of this.ehFrom) { const w = newMsg('WHOHOME'); w.from = this.id; w.ttl = K.WHOHOME_HOPS; this.emit(g, w); } }
         return false; }
@@ -72,8 +56,7 @@
       if (this.f.fabricDoors() && this.islandAskAt >= 0 && (this.l16Next < this.l16List.length || this.TICK - this.l16FreshAt < iw)) return false;
       if (this.l16Saw) { this.l16Saw = false; this.l16Backoff('silent'); return true; }   // a BUSY is evidence for its own round (C++: islandTick)
       if (this.l8471() && !this.islandLast && !o54) this.trace('L8.47.1-ONE', this.id, null, 'asked=%zu since=%d wait=%d', this.islandAsked.size, this.islandAskAt, iw);
-      if (this.l854Tcp() && !this.islandLast) this.trace('L8.54.7-TCP', this.id, null, 'asked=%zu since=%d wait=%d', this.islandAsked.size, this.islandAskAt, iw);
-      if (!this.l8471() && !this.l854Tcp() && this.islandAskN + 1 < K.ISLAND_ASKS) {   // L8.1.1: a silent round is the door's list of one moment, not the room: knock again (bounded) before founding
+      if (!this.l8471() && this.islandAskN + 1 < K.ISLAND_ASKS) {   // L8.1.1: a silent round is the door's list of one moment, not the room: knock again (bounded) before founding
         this.islandAskN++; this.trace('ISLAND-REASK', this.id, null, 'round=%d asked=%zu since=%d', this.islandAskN, this.lastGreeters.length, this.islandAskAt);
         for (const x of this.l16Ask) this.f.fabricDoorDrop(this.id, x);
         this.l16Anch = false; this.l16Ho = -1; this.l16Ask.length = 0; this.l16Busy.length = 0; this.l16Last = -1; this.l16List.length = 0; this.l16Next = 0; this.l16WaveAt = -1; this.l16FreshAt = -1;
@@ -195,7 +178,7 @@
 
     // C++: mesh_island.inc:Seat::islandFound
     islandFound() {
-      if (!this.l8549No && this.f.fabricSubAsk(this.id)) { this.trace('SUB.2-WAIT', this.id, null, 'asked=%zu', this.lastGreeters.length); this.l16Backoff('sub-ask'); return; }   // a joiner about to found on silence asks for the list of rooms first, and keeps knocking while the ask is open
+      if (this.f.fabricSubAsk(this.id)) { this.trace('SUB.2-WAIT', this.id, null, 'asked=%zu', this.lastGreeters.length); this.l16Backoff('sub-ask'); return; }   // a joiner about to found on silence asks for the list of rooms first, and keeps knocking while the ask is open
       this.trace('ISLAND', this.id, null, 'asked=%zu since=%d rounds=%d reach=%d', this.lastGreeters.length, this.islandAskAt, this.islandAskN + 1, typeof this.f.fabricReachSeated === 'function' ? this.f.fabricReachSeated(this.id) : -1);   // reach: the oracle's count (netmatrix bar), -1 without groups
       this.l850Seated = false; this.ehAt = -1; this.ehAskAt = -1; this.ehFrom.clear(); this.foundKnock = true;
       this.islandAskAt = -1; this.islandAskN = 0; this.islandLast = false; this.genKey = this.w.lv.URL_KEY ? this.w.lv.URL_KEY : this.myKey; /* a founder with no link key mints its own (C++: islandFound) */ const e = []; this.lineAt = this.TICK; /* L8.52.3: before take(): my registration at the door carries my epoch */ this.take({ pc: 0, r: 0, i: 0 }, -1, e); this.islandFounder = true; this.lineAdopt(this.id, this.TICK, 'found'); this.lineFork = true;
