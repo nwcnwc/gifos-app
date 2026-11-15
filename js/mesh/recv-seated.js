@@ -378,6 +378,12 @@
         if (ckPc(ck) !== 0 || !cellOk(ck) || eid < 0) continue;   // Section-1 cells only
         if (e.ch >= 0 && !(roomTerm(this, 1) && this.heirNotMine.has(e.ch))) this.childOf.set(ck, e.ch);
         if (this.hasCoord && ck === ckey(this.coord) && eid !== id) continue;   // gossip claims MY seat: IGNORE
+        if (this.occGet(ck) < 0) {   // DEBUG (echo f2 diag, not for landing): why an empty cell does not take this gossip
+          const sn = TICK - age - 2, bz = this.byeAt.get(ck), gb = this.l152Bye.get(eid), uo = this.upOpen.get(ck), lv = this.live.get(ck);
+          const why = this.firstHandLive(ck) && !this.heardUnseated(ck, eid) ? 'fhl' : this.translost.has(ck) ? 'translost' : this.liveElsewhere(eid, ck) ? 'elsewhere' : (bz !== undefined && sn <= bz) ? 'byeAt' : this.d52Echo(ck, eid, sn) ? 'd52' : (gb !== undefined && gb[0] === ck && sn <= gb[1]) ? 'l152' : 'take';
+          const key = ck + ':' + eid + ':' + why; if (!this.__s1dbg) this.__s1dbg = new Set();
+          if (!this.__s1dbg.has(key)) { this.__s1dbg.add(key); this.trace('S1-DBG', id, unck(ck), 'eid=%d why=%s live=%d up=%s pair=%d bz=%d sn=%d', eid, why, lv === undefined ? -1 : TICK - lv, uo ? uo[0] + '@' + (TICK - uo[1]) : '-', this.pairAt.has(ck) ? 1 : 0, bz === undefined ? -1 : bz, sn); }
+        }
         if (this.firstHandLive(ck) && !this.heardUnseated(ck, eid)) continue;   // first-hand truth, unless all I hear there is the unproven beat of the seat this names
         if (this.translost.has(ck)) continue;   // D5
         const seen = TICK - age - 2; const cur = this.occGet(ck); const curSeen = this.s1seen.has(ck) ? this.s1seen.get(ck) : -999;
