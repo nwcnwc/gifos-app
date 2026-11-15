@@ -122,7 +122,7 @@
     POOL_WAIT_MS: 7000,   // ms
     POWER_LOW_COMP_FPS_MIN: 4,   // count
     POWER_LOW_COMP_PCT: 63,   // pct
-    POWER_LOW_PCT: 27,   // pct
+    POWER_LOW_PCT: 50,   // pct
     POWER_LOW_RUNG_SHIFT: 3,   // count
     POWER_LOW_STAGE_CELL_PCT: 50,   // pct
     POWER_LOW_STAGE_FPS_PCT: 50,   // pct
