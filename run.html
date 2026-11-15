@@ -10271,9 +10271,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (staged === stagedSelfWas) return;
       stagedSelfWas = staged;
       refreshOutbound(); // park (staged) or restore (stepped down) my MAIN senders
-      // The Stage feed ('stg:' + me) is shipped, and unshipped, only by the mosaic sweep. Nothing else here asks
-      // for one, so the room off my row saw my step-up, or my shared screen, only at the next unrelated event.
-      try { schedReconcile(); } catch (e) {}
     }
 
     // ---- adaptive quality ----------------------------------------------------
