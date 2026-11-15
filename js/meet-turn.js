@@ -466,8 +466,15 @@
         if (lossy && !look.settling && noVideoLeft && (st.vProbation || bad >= VOICE_BAD)) { st.voice = 'low'; st.vOkSince = 0; st.vHist = []; if (st.vProbation) st.vProbeN = (st.vProbeN || 0) + 1; st.vProbation = 0; }
         else if (st.vProbation && !lossy && look.fresh !== false && ++st.vClean >= 2) { st.vProbation = 0; st.vProbeN = 0; }   // two clean fresh reports end the probation
       } else if (lossy) st.vOkSince = 0;
-      else if (!st.vOkSince) st.vOkSince = now;
-      else if (now - st.vOkSince >= wait(st.vProbeN) && (+look.bps || 0) * (1 - THROTTLE_LOSS) >= voiceWire(look)) { st.voice = 'full'; st.vProbation = now; st.vClean = 0; }   // only into an estimate that carries the full voices (a starved link's padding probes raise it when the path has room: t1 11-14, 5.6 Mbit while paused)
+      else {
+        // back to the full rate when the loss stops: at the first clean fresh report the first time (a burst that only looked
+        // like starvation costs the forwarded mixes a few seconds, not a re-encoded voice for TURN_THROTTLE_UP_MS: 3+3 freeze
+        // rooms 11-14, static on the stadium mixes 10-18 s), after TURN_THROTTLE_UP_MS doubled per failed try once a try failed;
+        // only ever into an estimate that carries the full voices (c91: a full-voice try under an 80 kbit cap took the link down)
+        if (!st.vOkSince) st.vOkSince = now;
+        const calmFor = st.vProbeN ? wait(st.vProbeN - 1) : 0;
+        if (look.fresh !== false && now - st.vOkSince >= calmFor && (+look.bps || 0) * (1 - THROTTLE_LOSS) >= voiceWire(look)) { st.voice = 'full'; st.vProbation = now; st.vClean = 0; }
+      }
     }
   }
 
