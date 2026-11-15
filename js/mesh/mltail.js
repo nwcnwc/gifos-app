@@ -10,7 +10,7 @@
   const C_ = req('./consts.js', 'meshConsts');
   const topo = req('./topo.js', 'meshTopo');
   const K = C_.consts;
-  const { ckey, unckey, down, C } = topo;
+  const { ckey, unckey, down, C, ownedLinks } = topo;
   const LS_OPEN = C_.enums.LS_OPEN;
 
   // The C++ passes ~0ULL (all 64 bits set) to l33MateArm to mean "the sweep's own dials". As a JS number that
@@ -105,6 +105,16 @@
       this.f.fabricNoSock(this.id, g);
     },
 
+    // C++: mesh_mltail.inc:Seat::d6cGone (D6c.7, H9 one clock: a name unheard first-hand for the healing bound is not believed)
+    d6cGone(x) {
+      if (!this.hasCoord || this.state !== 3) return false;
+      const TICK = this.TICK, g = this.dials.goneAt(x); if (g < 0 || g > TICK || TICK - g < K.ORPHAN_T) return false;
+      const ol = ownedLinks(this.coord); let any = false;
+      for (let q = 0; q < ol.length; q++) { const k = ckey(ol[q]); if (this.occGet(k) !== x) continue; any = true;
+        this.trace('D6c.7-GONE', this.id, ol[q], 'peer=%d since=%lld', x, TICK - g);
+        this.occDrop(k, 'unheard-gone'); this.live.delete(k); this.s1seen.delete(k); this.kidful.delete(k); this.tlForget(k); }
+      this.redial.delete(x); return any;
+    },
     // C++: mesh_mltail.inc:Seat::l33NoSock
     l33NoSock(g) {
       if (this.state !== 1) return;
