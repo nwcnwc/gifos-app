@@ -2,6 +2,19 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.26.1",
+      "date": "2026-11-15",
+      "headline": "A shared screen reaches everyone at once, and you always open the latest version",
+      "critical": false,
+      "fixes": [
+        "Meetings: when the room was locked while someone was still joining, their view of a shared screen could take up to a minute to start, or never start. It now starts within seconds.",
+        "Opening GifOS after an update now takes you to the new version at once, instead of the version you last used.",
+        "Safari: joining the same meeting again from the same tab no longer stops with \"This page did not finish loading\".",
+        "Meetings: the connection steps no longer say \"your network blocks direct calls\" when it is the other person's network that does.",
+        "GifOS Meet for iPhone can now use the relay servers when a network blocks direct calls."
+      ]
+    },
+    {
       "version": "0.9.26",
       "date": "2026-11-15",
       "headline": "Offices behind strict firewalls join one meeting, and healing is faster",
