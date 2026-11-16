@@ -2,12 +2,23 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.26.7",
+      "date": "2026-11-15",
+      "headline": "Blurred faces say why, and Back keeps you in the meeting",
+      "critical": false,
+      "fixes": [
+        "Meetings: a blurred face now says why it is blurred, on its tile and on the Stage.",
+        "Meetings: blur is measured on the picture's long side, so it looks the same on every screen shape, and Min blur is stronger.",
+        "Android: the Back button no longer drops you out of a meeting. It opens More, where Float is one tap away. After you leave, Back works as usual."
+      ]
+    },
+    {
       "version": "0.9.26.5",
       "date": "2026-11-15",
       "headline": "A tidier meeting screen and steadier joins",
       "critical": false,
       "fixes": [
-          "Meetings: a join that was cut off when someone closed their connection is now sent again, so joins no longer stall.",
+        "Meetings: a join that was cut off when someone closed their connection is now sent again, so joins no longer stall.",
         "Meetings: the Stadium no longer shows a count of people with no faces after someone leaves or drops out.",
         "Meetings: the top bar, chat and floating bar now line up the same on every screen, and chat opens at the newest message.",
         "Phones and laptops on battery: one power level (full, save, low) now sets how much video they send."
