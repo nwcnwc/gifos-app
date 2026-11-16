@@ -1,0 +1,14 @@
+{
+  "title": "Libro de visitas",
+  "who.alone": "solo tú — Invitar",
+  "who.here": "{n} aquí",
+  "hint.alone": "Firmas como <b>{name}</b>. Pulsa <b>Invitar</b> en la barra superior para firmar con tus amigos.",
+  "hint.friends": "Firmas como <b>{name}</b>. Tus amigos de esta sala firman con su nombre en pantalla; las nuevas líneas aparecen aquí.",
+  "msg.placeholder": "Escribe algo…",
+  "sign": "Firmar",
+  "empty": "Nadie ha firmado todavía. Eres la primera persona.<br>Pulsa <b>Invitar</b> en la barra superior y envía el enlace.",
+  "anon": "anónimo",
+  "ago.now": "ahora mismo",
+  "ago.m": "hace {n} min",
+  "ago.h": "hace {n} h"
+}
