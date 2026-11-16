@@ -1,0 +1,21 @@
+{
+  "empty.title": "此电脑上没有相机",
+  "empty.why": "请在浏览器中允许使用相机，然后在标签页顶部此应用的“权限”标签中将其开启。",
+  "stage.tap": "点按快门",
+  "mm.title": "打开 My Media",
+  "mm.label": "🖼️ My Media",
+  "shutter.aria": "打开相机",
+  "roll.title": "最近项目",
+  "name.video": "视频 · {when}",
+  "name.burst": "连拍 · {when}",
+  "name.boomerang": "回弹 · {when}",
+  "name.slowmo": "慢动作 · {when}",
+  "name.timelapse": "延时 · {when}",
+  "name.clip": "片段 · {when}",
+  "name.photo": "照片 · {when}",
+  "name.photoBare": "照片",
+  "hint.inLibrary": "{name} — 在 My Media 中",
+  "hint.openToPlay": "打开 My Media 播放此片段。",
+  "hint.saved": "{n, plural, =1 {已保存到 My Media} other {已将 # 张拍摄内容保存到 My Media}} — 点按下方的 My Media 查看",
+  "toast.saved": "已保存到 My Media"
+}
