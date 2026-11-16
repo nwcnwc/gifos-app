@@ -13460,7 +13460,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     let turnSubWantAt = 0;   // my seat asked for the meeting's rooms (opts.sub.ask)
     const turnDoorsWait = [];   // asks waiting for the relay's door list
     // SUB.8.1: a peer I dialled only to try a direct path (a probe: no link of my seat, no TURN link): it never friend-hops
-    function turnProbeOnly(pid) { return turnProbeAt.has(pid) && !linkTo(pid) && !turnHolds(pid); }
+    // (seatLinks, not linkTo: the probe's own dial marks the peer as asked by the seat for a minute, and linkTo counts that)
+    function turnProbeOnly(pid) { return turnProbeAt.has(pid) && !seatLinks(pid) && !turnHolds(pid); }
     const turnProbeAt = new Map();   // a listed room's head I dialled to try its room → when
     const turnWeb = new Map();   // far peer id -> the web path end of that link (js/meet-tunnel.js)
     // The relay says it carries TURN handshakes (`tv` frames, the tvouch verb) on its joined frame. An older relay closes a
@@ -13650,7 +13651,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         // SUB.8.1 a probe's dial is DIRECT ONLY, and a miss ends it: the connection the probe made is closed and forgotten
         // (never one the seat links to, never a TURN link's). A probe that lingered was a pair with no path, and the
         // friend-hop tick asked a carrier for it every FHOP_RELAY_ASK: the forwarded offers and answers crossed the pipe.
-        probeEnd: (pid) => { const p = peers.get(pid); if (!p || p.connected || linkTo(pid) || turnHolds(pid)) return; seatAskAt.delete(pid); seatMark.delete(pid); p.envClosing = Date.now(); turnNote('turn-probe end ' + String(pid).slice(0, 8)); pcCloseNow(pid, p); },
+        probeEnd: (pid) => { const p = peers.get(pid); if (!p || p.connected || seatLinks(pid) || turnHolds(pid)) return; seatAskAt.delete(pid); seatMark.delete(pid); p.envClosing = Date.now(); turnNote('turn-probe end ' + String(pid).slice(0, 8)); pcCloseNow(pid, p); },
         probeDoor: (r, pids) => {
           const now = Date.now(), tick = meshNode.tickMs(), verdict = K.FHOP_RELAY_ASK * tick;
           let pending = false;
