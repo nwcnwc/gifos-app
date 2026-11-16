@@ -1,10 +1,9 @@
 /*
  * meet-subs.js — GifOS subscriptions in the meeting page.
  *
- * Off unless switched on (#subs=1 in the link, or localStorage
- * 'gifos-subs' = '1'). While off, nothing here touches the page.
+ * Always on (0.9.26.13): every meeting page has subscriptions.
  *
- * What it does when on:
+ * What it does:
  *   - Settings gets a Subscription group: the plans (monthly or yearly),
  *     sign-up through PayPal, the current plan, Cancel, and the subscription
  *     file: download it, or use one brought from another browser.
@@ -53,24 +52,16 @@
   const RETRY_MS = TM.SUBS_RETRY_MS;                  // a renewal that could not reach the service tries again
   const REFRESH_BEFORE_S = TM.REFRESH_BEFORE_S;      // fetch a fresh license this long before it runs out
 
-  // The switch in the link is read from the address the page was opened
-  // with. Once the meeting page joins it rewrites its own address to the
-  // room's plain link, which no longer carries #subs=1; reading only the
-  // current address turned the switch off at that moment. A subs= word in
-  // the current address still wins.
-  const SWITCH_RE = /(?:^|[#&?])subs=[01](?:&|$)/;
+  // The address the page was opened with. Once the meeting page joins it
+  // rewrites its own address to the room's plain link, so a word in the link
+  // (#bc) is read from both.
   const opened = (() => { try { return { hash: String(root.location.hash || ''), search: String(root.location.search || '') }; } catch (e) { return null; } })();
-  function switchFrom() {
-    const cur = root.location;
-    try { if (SWITCH_RE.test(String(cur.hash || '') + '&' + String(cur.search || ''))) return cur; } catch (e) {}
-    return opened || cur;
-  }
   // In the GifOS Meet apps everything is paid for through the store's own
   // purchase sheet (gifos-store-rail.js): the one rail there. RAIL() is null
   // in a browser.
   // The Broadcast app is this page opened with #bc (route.html /cast);
   // everything else is the Meet app. Read from the address the page was
-  // opened with as well as the current one, like the subs switch.
+  // opened with as well as the current one.
   const BC_RE = /(?:^|[#&?])bc(?:=[^&]*)?(?:&|$)/;
   function appNow() {
     try { if (root.document && root.document.body && root.document.body.classList.contains('broadcast')) return 'broadcast'; } catch (e) {}
@@ -82,7 +73,6 @@
     return 'meet';
   }
   const RAIL = () => (GifOS.storeRail && GifOS.storeRail.present() ? GifOS.storeRail : null);
-  const on = () => !!(SUB && (RAIL() || SUB.enabled(switchFrom(), safeStore())));
   function safeStore() { try { return root.localStorage; } catch (e) { return null; } }
   const payBase = () => String(root.GIFOS_PAY_URL || 'https://pay.gifos.app').replace(/\/$/, '');
   const nowS = () => Math.floor(Date.now() / 1000);
@@ -204,7 +194,6 @@
   // current license (or the last one, after the plan ended) and the
   // subscription key. null when this browser holds no subscription.
   async function librarySigner() {
-    if (!on()) return null;
     const c = await credential();
     if (!c) return null;
     const st = readState();
@@ -230,14 +219,12 @@
   }
   // The subscription's rights alone (paid, else free).
   async function planRights() {
-    if (!on()) return Object.assign({}, SUB ? SUB.FREE : {});
     const lic = await verifiedLicense();
     return SUB.rightsOf(lic || (await verifiedFree()), nowS());
   }
   // What is in effect now: the best of the subscription and a live pass.
   async function rights() {
     const base = await planRights();
-    if (!on()) return base;
     const lp = await livePass();
     return lp ? SUB.bestRights([base, SUB.passRights(lp.o)]) : base;
   }
@@ -394,7 +381,6 @@
   // one now, kept like a subscription file (tier 'free'). Never PayPal.
   let freeP = null;
   function ensureFree() {
-    if (!on()) return Promise.resolve(null);
     if (!freeP) {
       freeP = (async () => {
         if (await verifiedLicense()) return null;   // a paid plan already makes admin rooms
@@ -484,7 +470,6 @@
   let passSeen = '';
   function passChanged() { try { if (hooks.onPass) hooks.onPass(); } catch (e) {} }
   async function passWatch() {
-    if (!on()) return;
     const lp = await livePass().catch(() => null);
     const k = lp ? lp.o.id + ':' + lp.o.end : '';
     if (k !== passSeen) {
@@ -597,7 +582,6 @@
   // that starts its meeting first and gets the subscription after (signing
   // up, or opening the subscription file) joins with it then.
   function joinMeeting(room, h) {
-    if (!on()) return Promise.resolve(null);
     if (meet && meet.room === room && (meet.ticket || meet.moved || meet.pending)) return meet.joining;
     const keep = h || hooks;
     leaveMeeting(!!(pmeet && pmeet.room === room));
@@ -681,7 +665,6 @@
     }
   }
   function passJoin(room, force) {
-    if (!on()) return Promise.resolve(null);
     if (!force && pmeet && pmeet.room === room && (pmeet.ticket || pmeet.moved || pmeet.pending)) return pmeet.joining;
     passStop();
     const m = pmeet = { room, tag: null, ticket: null, exp: 0, gen: 0, until: 0, timer: null, moved: null, joining: null, pending: true };
@@ -700,7 +683,6 @@
   // This meeting's pass ticket, or null. A page that knocks before its
   // meeting started (no join yet) joins with the pass now.
   async function currentPassTicket(room) {
-    if (!on()) return null;
     if (!pmeet || pmeet.room !== room) { if (!(await livePass().catch(() => null))) return null; passJoin(room, true); }
     const m = pmeet;
     await m.joining;
@@ -713,7 +695,6 @@
   // (none, free, $2): the best right held is the one the room reads.
   const beatsPass = (tier, perms) => SUB.isPaid(tier) && !SUB.bestRights([SUB.ticketRights({ tier, exp: 1 }), SUB.passRights({ end: 1, perms })]).pass;
   async function roomOrder(room) {
-    if (!on()) return null;
     const ticket = await currentTicket(room);
     const lp = ticket && meet ? await livePass().catch(() => null) : null;
     if (!(ticket && meet && beatsPass(meet.tier, lp && lp.o.perms))) {
@@ -733,7 +714,6 @@
   }
   // A knocker answering the door's challenge, or null without a ticket here.
   async function proveAtDoor(room, nonce) {
-    if (!on()) return null;
     const ticket = await currentTicket(room);
     if (ticket && meet && SUB.isPaid(meet.tier)) return { ticket, proof: await signText(SUB.proofMessage(SUB.doorContext(room), nonce)) };
     // A four-hour pass in this meeting is let in as a subscriber is; a free plan is no way past a room's line.
@@ -830,7 +810,7 @@
     return '';
   }
   async function paintNow() {
-    if (!on() || typeof document === 'undefined') return;
+    if (typeof document === 'undefined') return;
     const status = document.getElementById('status');
     if (!status) return;
     const c = await credentialsNow();
@@ -881,7 +861,6 @@
   function el(tag, attrs, text) { const e = document.createElement(tag); for (const k in (attrs || {})) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; return e; }
   const dateOf = (s) => { try { return new Date(s * 1000).toLocaleDateString(); } catch (e) { return ''; } };
   async function paintSettings() {
-    if (!on()) return;
     const body = document.querySelector('#set-modal .dlg-body');
     if (!body) return;
     let g = document.getElementById('set-g-sub');
@@ -1057,21 +1036,9 @@
     if (b) b.click();
     setTimeout(() => { const g = document.getElementById('set-g-sub'); if (g && g.scrollIntoView) g.scrollIntoView({ block: 'start' }); }, 50);
   }
-  // optIn() -> true once this browser has subscriptions on. A Subscribe
-  // button anywhere turns them on for this browser (the same word as
-  // localStorage 'gifos-subs' = '1') and starts what boot() starts, so the
-  // plan bought here is used by this page at once. A link carrying subs=0
-  // still wins.
-  function optIn() {
-    try { const s = safeStore(); if (s && !on()) s.setItem(SUB.FLAG_KEY, '1'); } catch (e) {}
-    if (on()) boot();
-    return on();
-  }
   // The Subscribe entry: the Subscription group of Settings, painted before it
-  // is scrolled to. Where this page cannot turn subscriptions on, the
-  // subscribe page opens instead.
+  // is scrolled to.
   function openSubscribe() {
-    if (!optIn()) { try { root.open('/subscribe', '_blank', 'noopener'); } catch (e) {} return false; }
     openSettings();
     paintSettings().then(() => { const g = document.getElementById('set-g-sub'); if (g && g.scrollIntoView) g.scrollIntoView({ block: 'start' }); }, () => {});
     return true;
@@ -1082,7 +1049,6 @@
   // a paid plan the free plan's license is fetched first (up to 5 people);
   // a payment service that cannot be reached does not stop the room.
   async function mayCreateAdminRoom(say) {
-    if (!on()) return true;
     const r = await planRights();
     if (r.adminRooms) return true;
     await ensureFree();
@@ -1109,7 +1075,7 @@
   // The host of a room on the free plan, when the door turned someone away:
   // a one-tap upgrade to the $2 plan (20 people) over the meeting.
   function showHostPrompt() {
-    if (!on() || typeof document === 'undefined' || !document.body) return false;
+    if (typeof document === 'undefined' || !document.body) return false;
     let bar = document.getElementById('sub-host-up');
     if (bar) { bar.hidden = false; return true; }
     bar = el('div', { id: 'sub-host-up', role: 'status', 'aria-live': 'polite', style: 'position:fixed;left:50%;bottom:5.5rem;transform:translateX(-50%);z-index:41;max-width:min(92vw,28rem);background:var(--panel,#1d1d2b);color:var(--text,#e8e8f4);border:1px solid var(--border,#2a2a3f);border-radius:.6rem;padding:.6rem .8rem;box-shadow:0 12px 32px rgba(0,0,0,.5);font:14px/1.4 system-ui,sans-serif;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap' });
@@ -1131,7 +1097,7 @@
 
   let booted = false;
   function boot() {
-    if (booted || !on()) return;
+    if (booted) return;
     booted = true;
     const b = document.getElementById('setbtn');
     if (b) b.addEventListener('click', () => { paintSettings().catch(() => {}); });
@@ -1150,7 +1116,7 @@
   }
 
   GifOS.meetSubs = {
-    enabled: on, rights, planRights, refresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, paintNow, paintSettings, openSettings, optIn, openSubscribe, mayCreateAdminRoom, showFull, ensureFree, showHostPrompt,
+    rights, planRights, refresh, subscribe, cancel, buyPass, claimPass, passes, livePass, credentialsNow, paintNow, paintSettings, openSettings, openSubscribe, mayCreateAdminRoom, showFull, ensureFree, showHostPrompt,
     roomOrder, roomTier, proveAtDoor, checkShown, newNonce,
     appNow, joinMeeting, leaveMeeting, currentTicket, canCapture, captureTicket, captureCurrent, captureOrder, captureKeys, fileBytes, downloadFile, useFile, librarySigner, restoreInApp,
     passMeeting: () => (pmeet ? { room: pmeet.room, gen: pmeet.gen, exp: pmeet.exp, until: pmeet.until, moved: pmeet.moved, held: !!pmeet.ticket } : null),

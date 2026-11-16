@@ -75,7 +75,6 @@
   const PEOPLE_LIMIT = 20;                         // the room20 plan's room size
   const FREE_LIMIT = 5;                            // the free plan's admin room size
   const ASK_WINDOW_S = 300;                        // a signed request is good this long
-  const FLAG_KEY = 'gifos-subs';                   // the page switch (default off)
 
   // What each PAID plan grants. storage is filled from the license (the
   // payment service's settings), never assumed here. vouches: the TURN video
@@ -806,23 +805,11 @@
     return (h.slice(0, 8) + '-' + h.slice(8, 12) + '-4' + h.slice(13, 16) + '-8' + h.slice(17, 20) + '-' + h.slice(20, 32)).toLowerCase();
   }
 
-  // ---- the page switch ------------------------------------------------------
-  // Off unless #subs=1 / ?subs=1 rides the URL or localStorage['gifos-subs']
-  // is '1'. #subs=0 turns it off again.
-  function enabled(loc, store) {
-    try {
-      const s = String((loc && (loc.hash || '')) || '') + '&' + String((loc && (loc.search || '')) || '');
-      const m = /(?:^|[#&?])subs=([01])(?:&|$)/.exec(s);
-      if (m) return m[1] === '1';
-      return !!(store && store.getItem(FLAG_KEY) === '1');
-    } catch (e) { return false; }
-  }
-
   GifOS.sub = {
-    TIERS, TIER_IDS, APP_TIERS, tiersSoldIn, FREE, TEXT, PEOPLE_LIMIT, LICENSE_KIND, SELLER, KEY_RE, SUB_ID_RE, ASK_WINDOW_S, FLAG_KEY,
+    TIERS, TIER_IDS, APP_TIERS, tiersSoldIn, FREE, TEXT, PEOPLE_LIMIT, LICENSE_KIND, SELLER, KEY_RE, SUB_ID_RE, ASK_WINDOW_S,
     FREE_PLAN, FREE_LIMIT, FREE_ID_RE, PLANS, PLAN_IDS, isPlan, isPaid, freeIdFor, freeRights,
     checkLicense, verifyLicense, rightsOf, storageAfterLapse, proofMessage, verifyProof, askMessage, askFresh,
-    roomLimitFor, admission, enabled, roomContext, doorContext, roomTierOf, doorVerdict, doorProofOk,
+    roomLimitFor, admission, roomContext, doorContext, roomTierOf, doorVerdict, doorProofOk,
     TICKET_KIND, TICKET_S, RENEW_EVERY_S, meetingTag, checkTicket, verifyTicket, ticketRights,
     PASS_KIND, passSeconds, PASS_PLAN, PASS_PRICE, PASS_VALUE, ORDER_ID_RE, PASS_ID_RE, passMessage, checkPass, passLive, passEnd, verifyPass,
     passStart, passRights, meetingRight, bestRights,

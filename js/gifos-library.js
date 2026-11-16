@@ -86,7 +86,7 @@
   function fail(code, message, extra) { const e = new Error(message); e.code = code; if (extra) Object.assign(e, extra); return e; }
   const WRONG_KEY = 'This file cannot be opened with this subscription file.';
 
-  function enabled() { const s = SUBS(); return !!(s && s.enabled && s.enabled()); }
+  function enabled() { return !!SUBS(); }   // the meeting's subscription code is on this page
   async function signer() {
     const s = SUBS();
     const sg = s && s.librarySigner ? await s.librarySigner() : null;

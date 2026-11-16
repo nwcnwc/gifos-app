@@ -13847,15 +13847,13 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         const t = document.createElement('span'); t.className = 'tpause-say';
         const said = statusWords('videoPausedRelay');
         t.textContent = said; el.appendChild(t);
-        // Subscribe is offered on every paused tile; a tap turns subscriptions
-        // on for this browser (optIn) before PayPal opens.
+        // Subscribe is offered on every paused tile.
         if (window.GifOS && GifOS.meetSubs && GifOS.sub) {
           const b = document.createElement('button'); b.type = 'button'; b.className = 'tpause-sub';
           b.textContent = uiText('turnSubscribe', 'Subscribe');
           b.addEventListener('click', async (e) => {
             e.stopPropagation(); b.disabled = true;
             try {
-              if (GifOS.meetSubs.optIn) GifOS.meetSubs.optIn();
               const r = await GifOS.meetSubs.subscribe('room20', 'monthly', (w) => { t.textContent = w; });
               if (!(r && r.licenseJson)) { t.textContent = said; b.disabled = false; }
             } catch (x) { t.textContent = said; b.disabled = false; }
@@ -13867,7 +13865,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           b4.addEventListener('click', async (e) => {
             e.stopPropagation(); b4.disabled = true; b.disabled = true;
             try {
-              if (GifOS.meetSubs.optIn) GifOS.meetSubs.optIn();
               const r = await GifOS.meetSubs.buyPass((w) => { t.textContent = w; });
               if (!(r && r.passJson)) { t.textContent = said; b4.disabled = false; b.disabled = false; }
             } catch (x) { t.textContent = said; b4.disabled = false; b.disabled = false; }
@@ -37118,7 +37115,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         if (!pass) { document.getElementById('inv-adm-pass').focus(); return; }
         const post = !!(document.getElementById('inv-adm-post') && document.getElementById('inv-adm-post').checked);
         const guest = (document.getElementById('inv-adm-guest').value || '').trim();
-        // Subscriptions (off unless switched on): an admin room needs a plan.
+        // Subscriptions: an admin room needs a plan.
         if (window.GifOS && GifOS.meetSubs && !(await GifOS.meetSubs.mayCreateAdminRoom(setStatus))) { invModal.style.display = 'none'; return; }
         go.disabled = true; go.textContent = 'Creating…';
         invModal.style.display = 'none';
@@ -37248,7 +37245,7 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       return out || fallback || 'room';
     }
 
-    // SUBSCRIPTIONS AT THE DOOR (off unless switched on; js/meet-subs.js).
+    // SUBSCRIPTIONS AT THE DOOR (js/meet-subs.js).
     // The people limit is the room admin's plan: the admin's meeting ticket
     // (a few minutes long, renewed while this is the subscription's newest
     // meeting) rides the room's signed orders (sublic), and every door checks
@@ -37273,8 +37270,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // reads, not one seat's view of the room.
     let subsTurnedAway = false, subsTierKey = '', subsTier = null, subsTierExp = 0;
     const subsProven = new Set(), subsAsked = new Map();   // knocker -> {n, at}
-    const subsOn = () => !!(window.GifOS && GifOS.meetSubs && GifOS.sub && GifOS.meetSubs.enabled());
-    // The Subscribe entry in More: the plans in Settings, on for this browser from that tap.
+    const subsOn = () => !!(window.GifOS && GifOS.meetSubs && GifOS.sub);   // the subscription code is loaded (always on)
+    // The Subscribe entry in More: the plans in Settings.
     { const sb = document.getElementById('subbtn'); if (sb) sb.addEventListener('click', () => { if (window.GifOS && GifOS.meetSubs && GifOS.meetSubs.openSubscribe) GifOS.meetSubs.openSubscribe(); }); }
     // The meeting a subscription ticket names: the room's relay session (a one-way hash of the room code), the same
     // room the relay's TURN vouches name, so the TURN Worker can check a paid ask's ticket against its vouches.
