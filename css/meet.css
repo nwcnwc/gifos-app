@@ -751,6 +751,10 @@
   body.desk-ptr :is(.tile, .rowtile) > .blurwhy { font-size: 14px; }
   body.dock-calm :is(.tile, .rowtile) > .blurwhy, body.chrome-away :is(.tile, .rowtile) > .blurwhy,
   .tile.away > .blurwhy, .tile.camback > .blurwhy, .tile.menu > .blurwhy { display: none; }
+  /* The free-link pause sentence is centered on the same host (every tile
+     size, a Stage view, the stadium strip). No picture is flowing, so the
+     blur reason stays off for as long as that sentence is up. */
+  :is(.tile, .rowtile):has(> .tpause:not(.tpause-busy)) > .blurwhy { display: none; }
   .tile .cambackmark { display: none; }
   .tile.camback > .cambackmark {
     display: flex; align-items: center; justify-content: center; text-align: center;
