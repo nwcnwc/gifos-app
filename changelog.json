@@ -2,6 +2,15 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.26.11",
+      "date": "2026-11-16",
+      "headline": "App Store: the Subscribe link keeps its name",
+      "critical": false,
+      "fixes": [
+        "The App Store's Subscribe link no longer shows as a second Home Screen button."
+      ]
+    },
+    {
       "version": "0.9.26.10",
       "date": "2026-11-16",
       "headline": "Subscribe from the meeting and the App Store",
