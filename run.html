@@ -36999,20 +36999,43 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (isApp) {
         body.innerHTML = '<p>' + uiText('invApp', 'Send this link. They join you live inside this app.') + '</p>' + linkRowHtml();
       } else if (hasAdminRoom() || BROADCAST) {
-        // A service is a hosted room even before the verifier is stored.
-        // The link lets people in. It does not hand them the host password.
-        const host = !BROADCAST
-          || document.body.classList.contains('amadmin')
+        // The link never carries the host password. Say that only to a reader
+        // who holds the key. An open room has no verifier and no host password,
+        // even while a capture makes hasAdminRoom() true. A member is told the
+        // host admits people only while the waiting room is holding the door:
+        // dhold is on and an admin is here (meetWait.blocks).
+        const roomAv = (typeof av === 'undefined') ? null : av;
+        const holdsKey = document.body.classList.contains('amadmin')
+          || (typeof amAdmin !== 'undefined' && !!amAdmin)
           || (typeof bcHostStored === 'function' && bcHostStored());
-        const line = BROADCAST
-          ? (host
-            ? 'Send this link. People who open it are watching. The host password stays with you.'
-            : 'Send this link. People who open it are watching.')
-          : 'Send this link. People who open it can join. The host password stays with you.';
+        let doorHolds = false;
+        if (roomAv) {
+          try {
+            const table = (typeof modTable !== 'undefined' && modTable) || {};
+            const h = (table['*'] || {}).dhold;
+            const here = (typeof admins !== 'undefined' && admins && admins.length) || 0;
+            doorHolds = !!(h && h.on && here);
+          } catch (e) { doorHolds = false; }
+        }
+        const line = !roomAv
+          ? (BROADCAST
+            ? uiText('invBcWatch', 'Send this link. People who open it are watching.')
+            : uiText('invOpen', 'Send this link. Anyone who opens it can join this open meeting.'))
+          : BROADCAST
+            ? (holdsKey
+              ? uiText('invBcHost', 'Send this link. People who open it are watching. The host password stays with you.')
+              : doorHolds
+                ? uiText('invBcWait', 'Send this link. People who open it are watching. The host admits them.')
+                : uiText('invBcWatch', 'Send this link. People who open it are watching.'))
+            : (holdsKey
+              ? uiText('invAdmHost', 'Send this link. People who open it can join. The host password stays with you.')
+              : doorHolds
+                ? uiText('invAdmWait', 'Send this link. People who open it can join. The host admits them.')
+                : uiText('invAdmJoin', 'Send this link. People who open it can join.'));
         body.innerHTML = '<p>' + line + '</p>' + linkRowHtml();
       } else {
         body.innerHTML =
-          '<p>' + uiText('invOpen', 'Send this link. Anyone who opens it joins you.') + '</p>' +
+          '<p>' + uiText('invOpen', 'Send this link. Anyone who opens it can join this open meeting.') + '</p>' +
           linkRowHtml() +
           '<button id="inv-mkadm" type="button" class="inv-more">' + esc(uiText('invMk', 'A room you run')) + '</button>' +
           '<div id="inv-adm-open" style="display:none">' +
