@@ -34,10 +34,6 @@
     // C++: mesh_island.inc:Seat::l8548Verdict
     l8548Verdict() { if (!this.w.lv.ISLAND_MODE || !(this.state === 0 || this.state === 1) || this.l8548At >= 0) return; for (const g of this.lastGreeters) if (g >= 0 && g !== this.id && this.f.fabricDoorNet(this.id, g) === -2) { this.l8548At = this.TICK; this.l8548Last = this.TICK; return; } },
 
-    // L8.54.9's fast path is the dial: the subroom ask waits until it has stalled (FHOP_DOOR_STALL after my first ask, no
-    // channel of mine to an asked greeter open). C++: mesh_island.inc:Seat::l8549Stalled
-    l8549Stalled() { if (this.islandAskAt < 0 || this.TICK - this.islandAskAt < K.FHOP_DOOR_STALL || this.lastReach >= this.islandAskAt) return false; for (const g of this.l16Ask) if (this.f.fabricLinkOpen(this.id, g)) return false; return true; },
-
     islandAsk(list) {
       if (this.islandAskAt < 0) { this.l8549Said = false; this.l8549No = false; }   // L8.54.9: a new entry asks afresh
       const lv = this.w.lv;
@@ -67,7 +63,7 @@
       if (!this.entryTerm() || !(this.state === 0 || this.state === 1) || this.islandAskAt < 0 || this.lastReach >= this.islandAskAt) return false;
       const o54 = this.l854All(this.lastGreeters); const iw = o54 ? 0 : this.islandWait();   // L8.47.1, L8.54.1
       // L8.54.9 connect fast, then upgrade: an L8.54.7 seeker asks for a subroom at the start of its wait, beside the dial (C++: islandTick)
-      if (this.l854Tcp() && !this.islandLast && !this.l8549No && (this.l8549Said || this.l8549Stalled())) { if (!this.f.fabricSubAsk(this.id)) this.l8549No = true; else if (!this.l8549Said) { this.l8549Said = true; this.trace('L8.54.9-ASK', this.id, null, 'asked=%zu since=%d', this.islandAsked.size, this.islandAskAt); } }
+      if (this.l854Tcp() && !this.islandLast && !this.l8549No) { if (!this.f.fabricSubAsk(this.id)) this.l8549No = true; else if (!this.l8549Said) { this.l8549Said = true; this.trace('L8.54.9-ASK', this.id, null, 'asked=%zu since=%d', this.islandAsked.size, this.islandAskAt); } }
       if (this.ehAt >= 0 && this.TICK - this.ehAt < K.ISLAND_WAIT) {   // L8.47.2: it said it has no room yet: I wait for it, and ask it again once per dial verdict while it says so
         if (this.TICK - this.ehAskAt >= K.ISLAND_WAIT_BLOCKED) { this.ehAskAt = this.TICK | 0; for (const g of this.ehFrom) { const w = newMsg('WHOHOME'); w.from = this.id; w.ttl = K.WHOHOME_HOPS; this.emit(g, w); } }
         return false; }
