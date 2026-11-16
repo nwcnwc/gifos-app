@@ -29011,7 +29011,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           // SUB.4: to each pipe peer, as to one more child: the sound of everything I hold but its own part, and, while the pipe
           // is vouched, the room pack without its block. Sound goes with or without a picture (sound first).
           for (const h of pipes) {
-            foldsNow.add('u' + h); const fh = fold('u' + h, mixOf(true, 'u' + h));
+            // SUB.4.1 (Nathan 11-15): over a FREE pipe the Stage sound rides this one mix: every stage feed I hold or make,
+            // but one that came over this pipe (pipeStg: mix-minus), and no stage feed of its own crosses (floodOne). Vouched,
+            // the stage feeds cross as they are, with their pictures.
+            const parts = mixOf(true, 'u' + h);
+            if (!pipeVideo(h)) {
+              if (amStager) { const st = mySelfStream(); if (st) parts.set('g' + myId, st); }
+              for (const [mk, sf] of mosIn) { if (mk.indexOf('stg:') !== 0 || stgEnded(mk) || !sf || !sf.stream) continue; const o = mk.slice(4).split('^')[0]; if (o === myId || pipeStg.get(o) === h || parts.has('g' + o)) continue; parts.set('g' + o, sf.stream); }
+            }
+            foldsNow.add('u' + h); const fh = fold('u' + h, parts);
             const pk = pipeVideo(h) ? pipePacks.get(h) : null, pv = pk && pk.count() > 0 ? pk.track : null;
             const st = downStream('u' + h, pv, fh ? fh.track() : null);
             const jk = st ? shipMos('sdn', h, st, pv ? Object.assign(packMeta(pk), { alag: 0 }) : { n: 0, cols: 0, alag: 0 }) : null; if (jk) wanted.add(jk);
@@ -29248,7 +29256,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           const direct = owner === myId ? stgDirectSet(T.rowMates(c).map((m) => occPid(m)), T.colMates(c).map((m) => occPid(m)),
             (t) => { const q = peers.get(t); return !!(q && q.pc && q.connected); }) : null;
           const hmSb = { h, sb: 1 };
-          for (const t of s1peers) { if (owner && pipesNow.indexOf(t) >= 0 && (pipeStg.get(owner) === t || mosAnn.has(t + '|' + key))) continue; if (owner !== myId && relayHeldForTest(key, t)) continue; if (oneRootSkipForTest(owner, t, s1peers)) continue; const s = pick(t); if (!s) continue; const jk = shipMos(key, t, s.st, (direct && !direct.has(t)) ? hmSb : s.m, up); if (jk) wanted.add(jk); }
+          // SUB.4.1: a free pipe hears the Stage inside its one mix (the pipes loop above), so no stage feed is shipped to it
+          for (const t of s1peers) { if (owner && pipesNow.indexOf(t) >= 0 && (pipeStg.get(owner) === t || mosAnn.has(t + '|' + key) || !pipeVideo(t))) continue; if (owner !== myId && relayHeldForTest(key, t)) continue; if (oneRootSkipForTest(owner, t, s1peers)) continue; const s = pick(t); if (!s) continue; const jk = shipMos(key, t, s.st, (direct && !direct.has(t)) ? hmSb : s.m, up); if (jk) wanted.add(jk); }
           const dnP = occPid(T.down(c)); // and DOWN — Stage audio folds at every ear
           const sd = pick(dnP);
           if (sd) {
