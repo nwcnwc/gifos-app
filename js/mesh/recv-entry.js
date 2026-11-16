@@ -34,7 +34,6 @@
   Seat.unit('mesh_seat.inc recv entry handlers', {
     // C++: mesh_seat.inc:Seat::onGreeters
     onGreeters(m) {
-      this.l8548List(m.list);   // L8.54.8: a word not said yet is asked for again (C++: onGreeters)
       const TICK = this.TICK, id = this.id, lv = this.w.lv;
       if ((this.state === 0 || this.state === 1) && this.l45Stale(m.list)) { this.reJoin = true; this.f.wake(id); return; }   // L45
       if (this.foundKnock && this.state === 3 && m.list.length === 0) { this.foundKnock = false; this.islandAsked.clear(); this.entEp.clear(); }
@@ -49,7 +48,6 @@
       for (const g of m.list) this.dials.heard(g);   // L17
       this.lastGreeters = m.list.slice(); this.lastGreetersAt = m.listAt.slice(); this.greetersAt = TICK;
       if (this.doorWordList(m)) return;   // FHOP.8.2 (mesh_island.inc): the friend whose door word I heard is listed: asked now
-      if (this.l8548At === -2) { this.l8548At = -1; if (this.state === 1 && this.entryTerm()) { this.islandAsk(m.list); this.f.wake(this.id); return; } }   // L8.54.8.1 (mesh_island.inc): the word I knocked for is my entry's list
       if (this.foundKnock && this.state === 3) { this.foundKnock = false; const un = this.l813Unfound(m); this.islandAsked.clear(); this.entEp.clear(); if (un) return; }   // L8.1.3 (mesh_roomterm.inc)
       if (this.state === 3) this.l853Door();   // L8.53.3 (mesh_island.inc): the door's second word for a vouch I hold
       if (m.tag === 1) { const st = this.l3117Stray(m.list); if (st === 2) return; if (st === 0) this.keyAsk(m.list); }   // L3.11.7 (C++: onGreeters)   // L3.11.6: the door refused my registration (C++: onGreeters)

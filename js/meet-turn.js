@@ -1232,7 +1232,7 @@
           sub.repipe = false; log('turn-sub re-pipe closed: ' + (a.root ? 'root' : 'nothing cut off')); subIdle(now, null, 0); return;
         }
         if (a && a.pending === 'subrooms' && typeof a.token === 'string') {
-          sub.token = a.token; sub.listAt = now; sub.lookAt = 0; sub.list = Array.isArray(a.subs) ? a.subs.filter((x) => x && Number.isInteger(x.r) && x.r > 0).map((x) => x.r) : [];
+          sub.token = a.token; sub.list = Array.isArray(a.subs) ? a.subs.filter((x) => x && Number.isInteger(x.r) && x.r > 0).map((x) => x.r) : [];
           sub.ends = []; for (const x of a.subs || []) for (const d of (x && Array.isArray(x.e) ? x.e : [])) if (typeof d === 'string' && DEV_RE.test(d) && sub.ends.indexOf(d) < 0) sub.ends.push(d);   // the pipes' ends on record
           // the service names each listed room's heads to dial (device tags of the door list I sent); the relay's answer
           // to that same door list gave their peer ids
@@ -1303,15 +1303,7 @@
           if (v === true) { log('turn-sub join ' + r); subIdle(now, { join: r }, now + RESEND_MS); return; }   // the page moves its door there; no new ask meanwhile
           if (v !== false) pending = true;
         }
-        if (!pending) {
-          // SUB.2.1: a listed room whose door names no head yet is still opening (its founder is at its door within TURN_DIAL of
-          // its grant): read the relay's door list once more TURN_DIAL after the list and dial its heads, before asking the
-          // Worker for a new number. Burst-mates join the one room the first of them opened.
-          const open = sub.probe.some((r) => !((sub.heads && sub.heads.get(r)) || []).length);
-          if (open && now - (sub.listAt || 0) < RESEND_MS) return;
-          if (open && !sub.lookAt) { sub.lookAt = now; log('turn-sub a listed room is opening: its door once more'); subProbeDoors(); return; }
-          log('turn-sub no listed door reached'); subDoors(true);
-        }
+        if (!pending) { log('turn-sub no listed door reached'); subDoors(true); }
       }
     }
 
