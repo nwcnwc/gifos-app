@@ -2,6 +2,17 @@
   "note": "Release notes shown in Settings \u2192 Advanced \u2192 Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" \u2014 a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
   "entries": [
     {
+      "version": "0.9.26.10",
+      "date": "2026-11-16",
+      "headline": "Subscribe from the meeting and the App Store",
+      "critical": false,
+      "fixes": [
+        "Meetings: More now has a Subscribe button. It opens the plans in Settings: $2 a month for admin rooms of up to 20 people, $5 a month unlimited, paid with PayPal.",
+        "Meetings: when video is paused on a connection, the message offers Subscribe and the 4-hour pass in every browser.",
+        "The App Store links to a new Subscribe page with the same plans."
+      ]
+    },
+    {
       "version": "0.9.26.9",
       "date": "2026-11-16",
       "headline": "Clearer Share and paused-video messages",
