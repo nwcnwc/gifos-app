@@ -4486,7 +4486,15 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     function paintBlurWhy(t, why) {
       if (!t || !t.tile || typeof t.tile.querySelector !== 'function') return;
       let el = t.tile.querySelector(':scope > .blurwhy');
-      if (!why) { if (el) el.remove(); return; }
+      // Only the element the selector named counts: a blur note is .blurwhy,
+      // and the free-link sentence is .tpause, not the busy line.
+      if (el && !/(^|\s)blurwhy(\s|$)/.test(String(el.className || ''))) el = null;
+      const held = t.tile.querySelector(':scope > .tpause:not(.tpause-busy)');
+      const heldOn = !!(held && /(^|\s)tpause(\s|$)/.test(String(held.className || '')) && !/(^|\s)tpause-busy(\s|$)/.test(String(held.className || '')));
+      // The pause sentence fills the middle of this host (a tile, a Stage
+      // view, or the stadium strip). The video is not flowing, so a blur
+      // reason there would cover the sentence and explain nothing.
+      if (!why || heldOn) { if (el) el.remove(); return; }
       if (!el) {
         el = document.createElement('span');
         el.className = 'blurwhy';
@@ -13879,6 +13887,10 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           el.appendChild(b4);
         }
         host.appendChild(el);
+        // The sentence takes the middle. Drop a blur reason that was already
+        // painted there; paintBlurWhy will not put it back while this note shows.
+        const why = host.querySelector(':scope > .blurwhy');
+        if (why && /(^|\s)blurwhy(\s|$)/.test(String(why.className || ''))) why.remove();
       } else if (!show && el) el.remove();
     }
     // The subroom ask's answer: my door is r (a listed room I reached: no grant; a new room or a re-pipe: its grant).
