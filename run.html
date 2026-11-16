@@ -7695,23 +7695,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
             topInset = Math.ceil(chipEl.getBoundingClientRect().bottom + 8);
           }
         }
-        // The meeting box: an open chat / transcript panel takes its edge (right
-        // or bottom, css "The meeting box"); the faces lay out in what is left.
-        const panelIn = { r: 0, b: 0 };
-        try {
-          const cp = document.getElementById('chatpanel');
-          if (document.body.classList.contains('chatside') && cp && cp.classList.contains('open') && cp.getClientRects().length) {
-            const pr = cp.getBoundingClientRect();
-            if (pr.width >= window.innerWidth - 1) panelIn.b = Math.max(0, Math.round(window.innerHeight - pr.top));
-            else panelIn.r = Math.max(0, Math.round(window.innerWidth - pr.left));
-          }
-        } catch (e) {}
         const ctTile = contentTile(phone);
         if (ctTile) tiles.unshift(ctTile);
         window.__comfyLast = MV.apply({
           feed: feed, tiles: tiles, faces: shownFaces, video: meta.video, srcW: meta.w, srcH: meta.h, cols: cols, cellN: cellOf ? meta.n : 0, cellOf: cellOf, skipCells: skipCells, pictureCells: pictureCells,
           holdMs: holdMs, floor: floor,
-          vw: window.innerWidth - panelIn.r, vh: window.innerHeight - panelIn.b, phone: phone, selfId: shadeKey('me'),
+          vw: window.innerWidth, vh: window.innerHeight, phone: phone, selfId: shadeKey('me'),
           pill: document.body.classList.contains('has-pill'), bottom: 0, holdBottom: 0, top: 0,
           mode: window.__meetViewMode || 'gallery',
           swapSelf: !!(window.__meetSwapSelf || (window.__meetSelf && window.__meetSelf.onStage)),
@@ -9412,6 +9401,39 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
         ver();
         measure();
       };
+      // A small phone keeps the bar to one row: the meeting's Invite / Help /
+      // Full screen go behind one "…" button that opens them as a short menu.
+      const more = document.createElement('button');
+      more.type = 'button'; more.id = 'topmore'; more.className = 'topmore';
+      more.setAttribute('aria-haspopup', 'menu'); more.setAttribute('aria-expanded', 'false');
+      more.setAttribute('aria-label', uiText('more', 'More')); more.title = uiText('more', 'More');
+      more.textContent = '\u22ef';
+      head.appendChild(more);
+      const menu = document.createElement('div');
+      menu.id = 'topmenu'; menu.setAttribute('role', 'menu'); menu.hidden = true;
+      document.body.appendChild(menu);
+      const closeMenu = () => { if (menu.hidden) return; menu.hidden = true; more.setAttribute('aria-expanded', 'false'); };
+      more.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!menu.hidden) { closeMenu(); return; }
+        menu.textContent = '';
+        for (const id of ['appinvite', 'apphelp', 'appfull']) {
+          const src = document.getElementById(id);
+          if (!src || src.style.display === 'none' || src.hidden) continue;
+          const b = document.createElement('button');
+          b.type = 'button'; b.setAttribute('role', 'menuitem');
+          b.textContent = (src.textContent || '').trim() || src.getAttribute('aria-label') || src.title || id;
+          b.addEventListener('click', () => { closeMenu(); src.click(); });
+          menu.appendChild(b);
+        }
+        const r = more.getBoundingClientRect();
+        menu.style.top = Math.round(r.bottom + 6) + 'px';
+        menu.style.right = Math.max(8, Math.round(window.innerWidth - r.right)) + 'px';
+        menu.hidden = false; more.setAttribute('aria-expanded', 'true');
+      });
+      document.addEventListener('click', (e) => { if (!menu.hidden && !menu.contains(e.target)) closeMenu(); }, true);
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
+      window.addEventListener('resize', closeMenu);
       window.__meetHeadH = () => (headH > 0 ? headH : 0);
       sync();
       if (!ver() && window.MutationObserver) {
@@ -23771,8 +23793,6 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (window.__gifosDock) window.__gifosDock.place();
       // The header's right end moved with the panel: Fit and the hand line follow it.
       try { placeHandq(); } catch (e) {}
-      // The panel takes its edge of the meeting box: lay the meeting out again once it is drawn.
-      requestAnimationFrame(() => { try { layout(); } catch (e) {} });
     }).observe(chatPanel, { attributes: true, attributeFilter: ['class'] });
     // A log the reader keeps at its newest line stays there when it changes size (the panel docking as a sheet or a
     // column, the keyboard, a turn of the phone). A reader who scrolled up keeps their place.

@@ -3393,7 +3393,7 @@
      the side when the screen is wide and across the bottom when it is tall;
      either strip pads by --barclear so no thumb sits under the bar where it
      stands (placeBarAvoiders). Thumbs wear no frame; the one on the big view is outlined. */
-  body.view-focus #fsview { z-index: 5; top: var(--headh, 0px); right: var(--sidew, 0px); } /* under the one top bar (R1), beside an open panel */
+  body.view-focus #fsview { z-index: 5; top: var(--headh, 0px); } /* under the one top bar (R1) */
   body.view-focus #fsclose { display: none; }
   body.view-focus #fsstrip { top: 0; background: none; gap: 8px; padding: 8px;
     padding-bottom: max(8px, var(--barclear, 0px)); }
@@ -3530,7 +3530,7 @@
    so nothing there can land on anything else. The row wraps inside the bar
    when it must; the bar's measured bottom (--headh, run.html topHead) is
    where the meeting box starts, with or without a share. */
-#tophead { position: fixed; z-index: 7; top: var(--gtop, 0px); left: 0; right: var(--sidew, 0px);
+#tophead { position: fixed; z-index: 7; top: var(--gtop, 0px); left: 0; right: 0;
   display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; box-sizing: border-box;
   padding: 4px max(10px, env(safe-area-inset-right, 0px)) 6px max(10px, env(safe-area-inset-left, 0px));
   pointer-events: none; }
@@ -3558,24 +3558,22 @@ body.dock-idle #tophead > #fitbtn { opacity: 0; pointer-events: none; transition
 .presentbtn, body.has-content:not(.broadcast):not(.has-app):not(.view-drag) .presentbtn { display: none !important; }
 body:not(.broadcast) #callstate { display: none !important; }
 
-/* ---- The meeting box (2026-11-15) ----
-   The meeting lays out in one box: the screen minus the one top bar minus an
-   open panel (chat or transcript). A panel docks on the screen's long edge:
-   down the right side when the screen is wider than tall, as a bottom sheet
-   when it is taller. It never floats over the meeting; the faces keep their
-   floor inside what is left; its header and Close stay in view. */
+/* ---- The chat and transcript flyout (Nathan 2026-11-15) ----
+   Like any flyout menu: it sits on top and changes nothing under it. The
+   meeting keeps its layout, its top bar and its size when the panel opens.
+   It docks on the screen's long edge: a column down the right side when the
+   screen is wider than tall, a bottom sheet when it is taller. Its header with
+   Close stays in view. --sidew is 0 here on every screen: nothing makes room. */
+body.chatside { --sidew: 0px; padding-right: 0; }
 @media (orientation: landscape) {
-  body.chatside { --sidew: min(340px, 45vw); padding-right: 0; }
-  body.chatside #chatpanel.open { width: var(--sidew); left: auto; right: 0; }
+  body.chatside #chatpanel.open { width: min(340px, 45vw); left: auto; right: 0; }
 }
 @media (orientation: portrait) {
-  body.chatside { --sidew: 0px; --sheeth: 50vh; padding-right: 0; }
-  body.chatside #chatpanel.open { left: 0; right: 0; width: auto; top: auto; bottom: 0; height: var(--sheeth);
+  body.chatside #chatpanel.open { left: 0; right: 0; width: auto; top: auto; bottom: 0; height: 50vh;
     border-left: 0; border-top: 1px solid var(--border, #2a2a3f); border-radius: var(--r-lg); border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
   /* The keyboard takes the bottom: the sheet sits on it and grows to the top bar's edge. */
   html.kb-up body.chatside #chatpanel.open { top: var(--headh, 0px); height: auto; bottom: var(--kb, 0px); }
 }
-body.comfy:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app).chatside #feed { right: var(--sidew, 0px) !important; bottom: var(--sheeth, 0px) !important; }
 /* Its composer stays above the floating bar wherever the bar stands over the panel's lower half (--barclear, as on a wide
    screen); with the keyboard up the bar is under the keyboard and the composer sits on the keyboard. */
 body.chatside #chatpanel.open { padding-bottom: max(12px, var(--barclear, 0px)); }
@@ -3590,3 +3588,27 @@ body.comfy:not(.broadcast) #airbar { display: none !important; }
 #tophead > #appbar > button { width: auto !important; min-width: 0 !important; white-space: nowrap; }
 /* An app pane carries its own bar with Full screen in the top-right corner: its Presentation view button sits bottom-right instead. */
 .ct-pane.ct-appbox > .ct-pview { top: auto; bottom: 8px; pointer-events: auto; }
+
+/* ---- A small phone: the top bar is one row (Nathan 2026-11-15) ----
+   The GifOS name and status, the view button (icon only) and one "…" that
+   opens Invite / Help / Full screen. The build label stays in view as a small
+   line in the bar's top edge. */
+.topmore { display: none; }
+#topmenu { position: fixed; z-index: 40; display: flex; flex-direction: column; gap: 4px; padding: 6px;
+  min-width: 160px; border-radius: var(--r-md); background: var(--c-scrim); }
+#topmenu[hidden] { display: none !important; }
+#topmenu button { min-height: 44px; padding: 8px 14px; border: 0; border-radius: var(--r-sm); background: transparent;
+  color: var(--c-white); font: 600 1rem/1.2 system-ui, sans-serif; text-align: left; cursor: pointer; }
+#topmenu button:hover, #topmenu button:focus-visible { outline: 2px solid var(--c-white); outline-offset: -2px; }
+@media (max-width: 480px) {
+  #tophead { flex-wrap: nowrap; padding-top: 14px; }
+  #tophead > #appbar { display: none !important; }
+  #tophead > .topmore { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center;
+    min-width: 44px; min-height: 44px; border: 0; border-radius: var(--r-pill); background: var(--c-scrim);
+    color: var(--c-white); font: 700 1.25rem/1 system-ui, sans-serif; cursor: pointer; }
+  #tophead > .fitbtn { padding-left: 10px; padding-right: 10px; }
+  #tophead > .fitbtn .vb-word { display: none; }
+  #tophead > #gifos-build-float { position: absolute !important; top: 1px !important; left: max(10px, env(safe-area-inset-left, 0px)) !important;
+    right: auto !important; flex: none; line-height: 12px !important; font-size: 10px !important; }
+}
+body:is(.dock-calm, .chrome-away) #tophead > .topmore { opacity: 0; pointer-events: none; transition: opacity var(--t-slow) ease; }
