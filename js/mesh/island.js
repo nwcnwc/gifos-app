@@ -26,7 +26,13 @@
     // L8.54.8 A WORD NOT SAID YET: a list that names a greeter of another network whose kind is not said (it registered before
     // its own probe's verdict) gets one more knock REACH_PROBE later, one knock pending at a time.
     // C++: mesh_island.inc:Seat::l8548Tick
-    l8548Tick() { if (this.l8548At < 0 || this.TICK < this.l8548At || !(this.state === 0 || this.state === 1)) return false; this.l8548At = -1; this.trace('L8.54.8-REKNOCK', this.id, null, 'asked=%zu', this.islandAsked.size); this.greetersAt = -1; this.emitRelay(this.linkKey); return true; },
+    // L8.54.8.1: the knock waits while my dial may still open and is dropped once I reached a greeter; its list is my entry's (l8548At -2)
+    l8548Tick() { if (this.l8548At < 0 || this.TICK < this.l8548At || !(this.state === 0 || this.state === 1)) return false;
+      if (this.state === 1) { const t0 = this.islandAskAt >= 0 ? this.islandAskAt : this.retryAt;   // my ask: the island round's first, or the plain path's one greeter
+        if (t0 >= 0 && this.lastReach >= t0) { this.l8548At = -1; return false; }   // reached: the kind no longer matters
+        let open = t0 >= 0 && this.TICK - t0 < K.FHOP_DOOR_STALL; for (const g of this.l16Ask) if (this.f.fabricLinkOpen(this.id, g)) open = true; if (this.gateway >= 0 && this.f.fabricLinkOpen(this.id, this.gateway)) open = true;
+        if (open) { this.f.wake(this.id); return false; } }   // my dial may still open
+      this.l8548At = -2; this.trace('L8.54.8-REKNOCK', this.id, null, 'asked=%zu', this.islandAsked.size); this.greetersAt = -1; this.emitRelay(this.linkKey); return true; },
 
     // ...and my own verdict: a list I read before it named every greeter -1; one that now reads "not said" gets a knock at once.
     // C++: mesh_island.inc:Seat::l8548List   (every list a seeker reads: onGreeters)
