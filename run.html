@@ -3935,6 +3935,9 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
       if (hbWorkerUrl) { try { URL.revokeObjectURL(hbWorkerUrl); } catch (e) {} hbWorkerUrl = null; }
       if (hbFallback) { clearInterval(hbFallback); hbFallback = null; }
       if (loopSentinel) { clearInterval(loopSentinel); loopSentinel = null; }
+      // The Back guard lives exactly as long as the room's clock: the meeting is
+      // left here, and no later beat would come to drop it.
+      try { backGuardDrop(); } catch (e) {}
     }
     function bgClock(ms, fn) {
       try {
@@ -5064,8 +5067,8 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
     // measured on a Moto), so Back opens More, where Float is one tap away. With
     // a float up Back adds nothing. The native app floats on Back itself, and a
     // desktop's Esc stays Esc: Android Chrome only. Re-armed after each Back and
-    // on the heartbeat; dropped once the meeting is left, so Back then behaves
-    // as usual. Chrome spends a Back on leaving full screen first, by itself.
+    // on the heartbeat; dropped where the room's clocks stop (the meeting is
+    // left), so Back then behaves as usual. Chrome spends a Back on leaving full screen first, by itself.
     let backWatch = null;
     function inMeetingNow() {
       try { return !!roomJoinedAt && !leaving && !leftMesh; } catch (e) { return false; }
@@ -5079,10 +5082,12 @@ window.addEventListener('error',function(e){try{var t=e&&e.target;if(t&&t.tagNam
           w.onclose = () => { if (backWatch === w) backWatch = null; onMeetingBack(); backGuardSync(); };
           backWatch = w;
         } catch (e) { backWatch = null; }
-      } else if (!want && backWatch) {
-        const w = backWatch; backWatch = null;
-        try { w.destroy(); } catch (e) {}
-      }
+      } else if (!want) backGuardDrop();
+    }
+    function backGuardDrop() {
+      if (!backWatch) return;
+      const w = backWatch; backWatch = null;
+      try { w.destroy(); } catch (e) {}
     }
     function onMeetingBack() {
       const up = pipFloating();
