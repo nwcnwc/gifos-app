@@ -1058,15 +1058,18 @@
     function warmStandby(L, now) {
       // my side's standby end is gone (up, or named and not answered yet: a seat picked in the tick it left): warm another now
       if (L.sbSeat && L.sbSeat !== io.me() && !io.alive(L.sbSeat)) { L.sbUp = false; L.sbAt = 0; L.sbSeat = null; }
+      // SUB.8 (the sim's sweep, `rewarm`): a standby that ends on my own seat, the pipe's, because no other seat of my side
+      // could end it, stands on another seat the moment one can, whether it is up, dialling or not asked yet. It MOVES: the
+      // end I hold closes first (restand). Warmed again beside it, the pipe held two standbys for good, one of them on the
+      // pipe's own seat (two offices of 3: the opener's first colleague sat while the opener's own standby was dialling).
+      if (L.sbSelf && !L.sbWant && io.standbySeat && io.standbySeat()) restand(L, true);
       if (L.sbUp) return;
-      if (L.sbAt && now - L.sbAt < DIAL_BUDGET_MS) {
-        if (!(L.sbSelf && io.standbySeat && io.standbySeat())) return;   // no seat of my side could end it then: warm again the moment one can
-        L.sbAt = 0;
-      }
+      if (L.sbAt && now - L.sbAt < DIAL_BUDGET_MS) return;
       if (L.sbWant && L.sbWant !== io.me() && !io.alive(L.sbWant)) L.sbWant = null;
       const r = pipeNo(L.l), sl = 's' + r, S = L.sbWant ? (L.sbWant === io.me() ? null : { pid: L.sbWant, dev: '' }) : (io.standbySeat ? io.standbySeat() : null);   // SUB.8.1: the seat a probe found, else TURN.9's
       log('turn-standby warm ' + L.l + (L.opener ? ' opener far-seat=' + (L.farSb || '-') : ' target') + ' my-seat=' + (S ? short(S.pid) + '/' + S.dev : 'self'));
       L.sbSelf = !S;
+      sbLeave(L, S ? S.pid : io.me());   // one standby a pipe: a seat I named before and name no more (it never answered within a dial budget) is told
       if (!L.opener) {
         L.sbAt = now; L.sbSeat = S ? S.pid : io.me();
         // my side's standby seat names its own device (its answer, onSide); with none I keep that end myself
@@ -1147,16 +1150,22 @@
     }
     function probeStep(now) { for (const [y, p] of Array.from(probes)) { const hit = !!(io.directSeen && io.directSeen(y)); if (hit || now - p.at > ASK_MS) { probes.delete(y); if (!hit && io.probeEnd) { try { io.probeEnd(y); } catch (e) {} } probeSay(p.from, p.sl, y, hit ? 1 : 0); } } }   // a miss ends the probe's connection (SUB.8.1: a probe asks for a direct path only; nothing of it lingers)
     // My standby is to stand elsewhere: its present seat is told, and the warm-up starts again (warmStandby reads sbWant).
-    function restand(L) {
+    // keepFar: only my side's end moves (the far side's standby seat stays the one it named).
+    function restand(L, keepFar) {
+      sbLeave(L, L.sbWant);
+      L.sbUp = false; L.sbDirect = false; L.sbAt = 0; L.sbSeat = null; if (L.opener && !keepFar) L.farSb = null;
+    }
+    // My side's standby end goes to seat `next` (null: not picked yet): the seat that ends it now is told, and an end I hold
+    // myself closes (its far end is told by the close), unless it stays where it is.
+    function sbLeave(L, next) {
       const sl = 's' + pipeNo(L.l);
-      if (L.sbSeat && L.sbSeat !== io.me() && L.sbSeat !== L.sbWant) io.sendTv(L.sbSeat, { k: 'tv', q: 'x', l: sl });
-      if (L.sbWant !== io.me()) for (const M of Array.from(links.values())) if (M.sb && M.l === sl && M.liveEnd === io.me()) close(M, 'replaced');
-      L.sbUp = false; L.sbDirect = false; L.sbAt = 0; L.sbSeat = null; if (L.opener) L.farSb = null;
+      if (L.sbSeat && L.sbSeat !== io.me() && L.sbSeat !== next) io.sendTv(L.sbSeat, { k: 'tv', q: 'x', l: sl });
+      if (next !== io.me()) for (const M of Array.from(links.values())) if (M.sb && M.l === sl && M.liveEnd === io.me()) close(M, 'replaced');
     }
     function probeHeard(from, sl, y, b) {
       const L = livePipe(pipeNo(sl)), P = L && L.pr; if (!L || !L.opener || !P || P.q !== from || P.y !== y) return;
       P.q = null;
-      if (b === 2) { P.held.add(from + '|' + y); return; }
+      if (b === 2) { P.held.add(from + '|' + y); P.n--; P.nextAt = io.now(); return; }   // a pair that holds a path of this link was no dial: the turn is not spent (the sim's rounds skip such a pair, subHolds)
       if (b !== 1) { P.fails++; return; }
       P.ok.add(from + '|' + y); P.fails = 0; P.x = 1;
       log('turn-probe hit ' + short(from) + ' reaches ' + short(y));
