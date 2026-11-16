@@ -1173,18 +1173,14 @@
     // The host allow-list above still gates WHICH sites the app may reach.
     const viaProxy = !!d.proxy;
     const headers = Object.assign({}, d.headers);
-    let fetchUrl = d.url;
-    if (viaProxy) {
-      const pbase = String(root.GIFOS_CORS_PROXY || API_PROXY_DEFAULT).replace(/\/+$/, '');
-      headers['x-gifos-target'] = d.url;
-      fetchUrl = pbase + '/';
-    }
     // Proxied requests all share ONE URL (the proxy origin) with the real target
     // in the x-gifos-target header, so the browser's HTTP cache — which keys on
     // URL — would replay the first target's response for every later one (e.g.
     // every Bible chapter comes back as the home page). Bypass the cache for
     // proxied fetches; direct fetches keep normal caching (distinct URLs).
-    return fetch(fetchUrl, { method: d.method, headers: headers, body: d.body || undefined, credentials: 'omit', redirect: 'follow', cache: viaProxy ? 'no-store' : 'default' })
+    // The proxy also wants its join token: net.proxyFetch attaches it.
+    const init = { method: d.method, headers: headers, body: d.body || undefined, credentials: 'omit', redirect: 'follow', cache: viaProxy ? 'no-store' : 'default' };
+    return (viaProxy ? net.proxyFetch(String(root.GIFOS_CORS_PROXY || API_PROXY_DEFAULT), d.url, init, (pu, pi) => fetch(pu, pi)) : fetch(d.url, init))
       .then((resp) => {
         // A redirect can walk an allowed (or '*') host to a first-party or
         // otherwise-forbidden one, and follow makes the FINAL response readable.
@@ -3600,14 +3596,10 @@
     // we send to the proxy with the true target in x-gifos-target; the proxy
     // forwards and adds the CORS headers. The key still travels ONLY toward the
     // configured host (host-pinning above already proved u.origin === base).
-    let fetchUrl = u.toString();
-    if (c.proxy) {
-      const pbase = (c.proxy === true || c.proxy === 'default') ? API_PROXY_DEFAULT : String(c.proxy).replace(/\/+$/, '');
-      headers['x-gifos-target'] = fetchUrl;
-      fetchUrl = pbase + '/';
-    }
+    // The proxy also wants its join token: net.proxyFetch attaches it.
+    const pbase = !c.proxy ? '' : (c.proxy === true || c.proxy === 'default') ? API_PROXY_DEFAULT : String(c.proxy);
     let tooLarge = false;
-    return root.fetch(fetchUrl, init).then((r) => {
+    return (pbase ? net.proxyFetch(pbase, u.toString(), init) : root.fetch(u.toString(), init)).then((r) => {
       const ct = r.headers.get('content-type') || '';
       const as = d.as || (/json/.test(ct) ? 'json' : 'text');
       const meta = { status: r.status, ok: r.ok, contentType: ct };

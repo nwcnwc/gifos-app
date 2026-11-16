@@ -3224,11 +3224,31 @@
   // A bare GET probe. `reached` = the host answered at all (so CORS worked, if
   // direct); `keyRejected` = it answered 401/403. A thrown fetch (CORS/network)
   // → reached:false. When proxyBase is set, we probe THROUGH the proxy.
+  // A proxy wants its join token (gifos-net.js proxyFetch). index.html does
+  // not load the net fabric, so the first probe through a proxy loads it, and
+  // the timings table it reads, from the same build.
+  let netP = null;
+  function netFabric() {
+    const G = root.GifOS || {};
+    if (G.net && G.net.proxyFetch) return Promise.resolve(G.net);
+    const load = (src) => new Promise((ok, no) => {
+      const s = document.createElement('script');
+      s.src = src; s.onload = ok; s.onerror = () => no(new Error('could not load ' + src));
+      document.head.appendChild(s);
+    });
+    if (!netP) {
+      netP = ((root.GifOS && root.GifOS.timings) ? Promise.resolve() : load('js/timings.js'))
+        .then(() => load('js/gifos-net.js')).then(() => root.GifOS.net)
+        .catch((e) => { netP = null; throw e; });
+    }
+    return netP;
+  }
   function apiProbe(c, proxyBase) {
     let t; try { t = apiTarget(c); } catch (e) { return Promise.resolve({ bad: true }); }
-    let url = t.url; const headers = Object.assign({}, t.headers);
-    if (proxyBase) { headers['x-gifos-target'] = url; url = String(proxyBase).replace(/\/+$/, '') + '/'; }
-    return fetch(url, { method: 'GET', headers })
+    const headers = Object.assign({}, t.headers);
+    const go = proxyBase ? netFabric().then((net) => net.proxyFetch(proxyBase, t.url, { method: 'GET', headers }))
+      : fetch(t.url, { method: 'GET', headers });
+    return go
       .then((r) => ({ reached: true, status: r.status, keyRejected: (r.status === 401 || r.status === 403) }))
       .catch(() => ({ reached: false }));
   }
