@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<base href="/versions/0.9.26.11/">
+<meta charset="UTF-8">
+<!-- FRAME GUARD: same as every entry page (see store.html; test/unit/frame-guard.js). -->
+<script id="gifos-frame-guard">(function(){try{if(window.top===window.self)return;var ok=false;try{ok=window.top.location.origin===window.location.origin}catch(e){}if(ok)return;var h=document.documentElement;h.style.visibility='hidden';function show(){var b=document.body;if(!b)return;while(b.firstChild)b.removeChild(b.firstChild);var p=document.createElement('p');p.style.cssText='font:16px system-ui,sans-serif;padding:24px;color:#eee;background:#111;margin:0';p.appendChild(document.createTextNode('GifOS does not run inside another site\'s page. '));var a=document.createElement('a');a.href=location.href;a.target='_blank';a.rel='noopener';a.textContent='Open it in its own tab';a.style.color='#9db4ff';p.appendChild(a);b.appendChild(p);h.style.visibility='';}if(document.body)show();else document.addEventListener('DOMContentLoaded',show);}catch(e){}})();</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0a0a0f">
+<title>Subscribe — GifOS</title>
+<meta name="description" content="GifOS subscriptions with PayPal: admin rooms for up to 20 people for $2 a month, or unlimited for $5 a month, with video over every connection.">
+<link rel="canonical" href="https://gifos.app/subscribe">
+<script src="js/build.js" defer></script>
+<script src="js/build-badge.js" defer></script>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font: 16px/1.55 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: #0a0a0f; color: #e0e0f0; }
+  a { color: #9db4ff; }
+  .topbar { display: flex; align-items: center; gap: .8rem; padding: .8rem 1.2rem; border-bottom: 1px solid #2a2a3f; }
+  .brand { font-weight: 800; color: #9db4ff; }
+  .spacer { flex: 1; }
+  .wrap { max-width: 46rem; margin: 0 auto; padding: 1.6rem 1.2rem 3rem; }
+  h1 { font-size: 1.7rem; margin-bottom: .4rem; }
+  .lede { color: #b8b8d0; margin-bottom: 1.2rem; }
+  .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; }
+  .plan { border: 1px solid #2a2a3f; border-radius: .8rem; padding: 1rem; background: #14141f; }
+  .plan h2 { font-size: 1.15rem; }
+  .price { font-size: 1.4rem; font-weight: 700; margin: .3rem 0; }
+  .plan ul { padding-left: 1.1rem; margin: .4rem 0 .8rem; color: #c8c8de; }
+  .plan button { font: inherit; font-weight: 600; padding: .55rem .9rem; border-radius: .5rem; border: 0; background: #ffc439; color: #111; cursor: pointer; margin: .2rem .3rem .2rem 0; }
+  .plan button.year { background: transparent; color: #e0e0f0; border: 1px solid #3a3a55; }
+  .plan button:disabled { opacity: .6; cursor: default; }
+  .free { margin-top: 1.2rem; color: #b8b8d0; }
+  #sub-msg { margin-top: 1rem; min-height: 1.5em; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <a href="/"><span class="brand">GifOS</span></a>
+    <span>Subscribe</span>
+    <span class="spacer"></span>
+    <a href="/meet">Start a meeting</a>
+  </div>
+  <div class="wrap">
+    <h1>GifOS subscriptions</h1>
+    <p class="lede">Pay with PayPal (card or PayPal balance). Cancel any time in Settings, Subscription. Your subscription is kept in this browser as a file you can take to another browser.</p>
+    <div class="plans">
+      <div class="plan" data-tier="room20">
+        <h2>Room 20</h2>
+        <div class="price">$2 a month</div>
+        <ul><li>Admin rooms with up to 20 people</li><li>Video over every connection, also when a firewall needs the relay</li></ul>
+        <button type="button" class="sub-go" data-tier="room20" data-period="monthly">Subscribe: $2 a month</button>
+        <button type="button" class="sub-go year" data-tier="room20" data-period="yearly">or $20 a year</button>
+      </div>
+      <div class="plan" data-tier="unlimited">
+        <h2>Unlimited</h2>
+        <div class="price">$5 a month</div>
+        <ul><li>Admin rooms with no limit on people</li><li>Video over every connection, also when a firewall needs the relay</li></ul>
+        <button type="button" class="sub-go" data-tier="unlimited" data-period="monthly">Subscribe: $5 a month</button>
+        <button type="button" class="sub-go year" data-tier="unlimited" data-period="yearly">or $50 a year</button>
+      </div>
+    </div>
+    <p class="free">Free: open rooms never have a limit, and admin rooms hold up to 5 people. Video that has to cross the relay stays paused until someone in the meeting subscribes.</p>
+    <p id="sub-msg" role="status" aria-live="polite"></p>
+  </div>
+  <script src="js/timings.js"></script>
+  <script src="js/gifos-ed.js"></script>
+  <script src="js/gifos-sub.js"></script>
+  <script>
+    // Subscriptions on for this browser, so meetings opened here use the plan bought here.
+    try { if (!/(?:^|[#&?])subs=0(?:&|$)/.test(location.hash + '&' + location.search)) localStorage.setItem('gifos-subs', '1'); } catch (e) {}
+  </script>
+  <script src="js/meet-subs.js"></script>
+  <script>
+    (function () {
+      var msg = document.getElementById('sub-msg');
+      var say = function (t) { msg.textContent = t || ''; };
+      var btns = Array.prototype.slice.call(document.querySelectorAll('.sub-go'));
+      btns.forEach(function (b) {
+        b.addEventListener('click', function () {
+          var M = window.GifOS && GifOS.meetSubs;
+          if (!M) { say('The payment page did not load. Reload and try again.'); return; }
+          if (M.optIn) M.optIn();
+          btns.forEach(function (x) { x.disabled = true; });
+          say('Opening PayPal…');
+          M.subscribe(b.getAttribute('data-tier'), b.getAttribute('data-period'), say).then(function (st) {
+            if (st && st.licenseJson) say('Subscribed. Your plan is ready in every meeting you open in this browser.');
+            else if (st && st.status === 'APPROVAL_PENDING') say('Finish in the PayPal window. This page updates when PayPal confirms.');
+            else say('PayPal did not confirm the subscription.');
+          }, function (e) { say(String((e && e.message) || e)); }).then(function () { btns.forEach(function (x) { x.disabled = false; }); });
+        });
+      });
+    })();
+  </script>
+<!-- AGENT LINKS: the same static nav as every badge page (test/unit/agent-links.js). -->
+<nav id="agent-links" aria-label="Links for AI agents" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap">
+  <p>For AI agents and assistants: <a href="https://gifos.app/llms.txt">llms.txt</a> is the complete spec for building a GifOS app as a real .gif file (packing recipe, manifest, the window.gifos API).
+  Also: <a href="https://gifos.app/about.html">what GifOS is</a> ·
+  <a href="https://gifos.app/store">the App Store</a> (machine-readable catalog: <a href="https://gifos.app/apps/index.json">/apps/index.json</a>; one listing: /apps/&lt;slug&gt;/app.json) ·
+  open any store app in one tap: https://gifos.app/?run=&lt;slug&gt; — or your own hosted GIF: https://gifos.app/?run=&lt;gif-url&gt; ·
+  <a href="https://gifos.app/browser-support.json">browser support</a> ·
+  <a href="https://gifos.app/sitemap.xml">sitemap</a> ·
+  <a href="https://github.com/nwcnwc/gifos-app">source on GitHub</a> ·
+  <a href="https://github.com/nwcnwc/gifos-app/issues/new">report a problem</a>. Contact: support@gifos.app.</p>
+</nav>
+</body>
+</html>
