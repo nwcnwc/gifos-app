@@ -1538,9 +1538,15 @@
   //     bridge gets no refan copy and no backlog replay (js/mesh/page/layer.js).
   //   LINK (crosses): the link's own words (tv: handshake, standby, the SUB.8 direct-path probe list) and its own
   //     connection's upkeep (renegotiation, ICE, channel auth).
+  //   THIRD-SEAT SIGNALLING (held, SUB.9.2): a friend-hop ask for a seat of the far subroom and what it forwards (fsig, fhi,
+  //     fmesh) and the carry it sets up (relay-req and its answers). Seats of two subrooms never pair over a bridge: SUB.1
+  //     drops their frames, and SUB.8's direct-path probe dials over the relay (pk42 on the tip: 60-80 KB of fsig on a
+  //     pipe, the far office's seats asking the link end to carry them, static).
   // A frame of no class named here crosses (a new kind is content until a law says otherwise).
+  const THIRD_SEAT = new Set(['fsig', 'fhi', 'fmesh', 'relay-req', 'relay-no', 'relay-stream', 'relay-stop', 'relay-end']);
   function bridgeHolds(msg) {
     if (!msg || typeof msg !== 'object') return false;
+    if (THIRD_SEAT.has(msg.k)) return true;
     if (msg.k === 'mesh') { const m = msg.m || {}, t = m.t === 'MW2' && m.f ? m.f.t : m.t; return m.t === 'GSPS' || (m.t === 'MW2' && t !== 'PIPE'); }
     if (msg.k === 'sig') return !!(msg.msg && msg.msg.kind === 'status');
     return false;
